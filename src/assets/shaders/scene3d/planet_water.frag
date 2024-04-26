@@ -315,26 +315,26 @@ float INFINITY = uintBitsToFloat(0x7f800000u);
 int countSteps = 0;
 
 // Based on https://www.researchgate.net/publication/329152815_Accelerating_Sphere_Tracing
-bool acceleratedRayMarching(vec3 rayOrigin, vec3 rayDirection, float startTime, float maxTime, float w, out float hitTime, out float originSign){ // accelerated ray marching
+bool acceleratedRayMarching(vec3 rayOrigin, vec3 rayDirection, float startTime, float maxTime, float w, out float hitTime){ // accelerated ray marching
   float previousR = 0.0; 
   float currentR = 0.0;
   float nextR = INFINITY;
   float stepDistance = 0.0;
   float time = startTime;
   vec2 closest = vec2(INFINITY, 0.0);    
-  originSign = (map(rayOrigin) < 0.0) ? -1.0 : 1.0;  
+  float raySign = (map(rayOrigin) < 0.0) ? -1.0 : 1.0;  
   for(int i = 0; (i < MAX_MARCHING_STEPS) && (nextR >= PRECISION) && (time < maxTime); i++){
-    float currentSignedDistance = map(fma(rayDirection, vec3(time + stepDistance), rayOrigin));
+    float currentSignedDistance = map(fma(rayDirection, vec3(time + stepDistance), rayOrigin)) * raySign;
     if(closest.x > abs(currentSignedDistance)){
       closest = vec2(abs(currentSignedDistance), time);
     }
     nextR = currentSignedDistance;
     if(stepDistance > (currentR + nextR)){
       stepDistance = currentR;
-      currentSignedDistance = map(fma(rayDirection, vec3(time + stepDistance), rayOrigin));
+      currentSignedDistance = map(fma(rayDirection, vec3(time + (stepDistance * raySign)), rayOrigin));
       nextR = currentSignedDistance;
     }
-    time += stepDistance;
+    time += stepDistance * raySign;
     previousR = currentR;
     currentR = nextR;
     stepDistance = currentR + ((w * currentR) * (((stepDistance - previousR) + currentR) / ((stepDistance + previousR) - currentR)));
@@ -351,7 +351,7 @@ bool acceleratedRayMarching(vec3 rayOrigin, vec3 rayDirection, float startTime, 
   return hit;
 }
 
-bool standardRayMarching(vec3 rayOrigin, vec3 rayDirection, float startTime, float maxTime, out float hitTime, out float originSign){
+bool standardRayMarching(vec3 rayOrigin, vec3 rayDirection, float startTime, float maxTime, out float hitTime){
 
   bool hit = false;
   
@@ -366,7 +366,7 @@ bool standardRayMarching(vec3 rayOrigin, vec3 rayDirection, float startTime, flo
   float secondClosestT = 0.0;
   float previousDT = 0.0;
 
-  originSign = (map(rayOrigin) < 0.0) ? -1.0 : 1.0;  
+  //float raySign = (map(rayOrigin) < 0.0) ? -1.0 : 1.0;  
 
   for(int i = 0; (i < MAX_MARCHING_STEPS) && (t < maxTime); i++){
 
@@ -638,6 +638,8 @@ void main(){
                         rayDirection,     
                         hitRayTime)){
 
+   bool underWater = map(rayOrigin) <= 0.0;
+
 #if defined(LOCKOIT) || defined(DFAOIT) || defined(WBOIT) || defined(MBOIT) || defined(LOOPOIT) //|| defined(BLEND)
   #ifdef MSAA 
     float opaqueDepth = subpassLoad(uOITImgDepth, gl_SampleID).r; 
@@ -664,12 +666,10 @@ void main(){
       )
     );
 
-    float hitTime, originSign;
+    float hitTime;
 
-    //if(acceleratedRayMarching(rayOrigin, rayDirection, 0.0, maxTime, 0.6, hitTime, originSign)){
-    if(standardRayMarching(rayOrigin, rayDirection, 0.0, maxTime, hitTime, originSign)){
-
-      bool underWater = originSign <= 0.0;
+    //if(acceleratedRayMarching(rayOrigin, rayDirection, 0.0, maxTime, 0.6, hitTime)){
+    if(standardRayMarching(rayOrigin, rayDirection, 0.0, maxTime, hitTime)){
 
       vec3 hitPoint = rayOrigin + (rayDirection * hitTime); // in planet space
 
