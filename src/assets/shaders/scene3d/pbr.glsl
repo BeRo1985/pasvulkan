@@ -555,7 +555,7 @@ vec3 getReflectionSample(vec2 fragCoord, float roughness) {
   return reflectedLight;
 }
 
-vec3 getScreenSpaceReflection(vec3 worldSpacePosition,
+vec4 getScreenSpaceReflection(vec3 worldSpacePosition,
                               vec3 worldSpaceNormal, 
                               vec3 worldSpaceViewDirection,
                               float roughness,
@@ -597,7 +597,7 @@ vec3 getScreenSpaceReflection(vec3 worldSpacePosition,
 
     if((all(greaterThanEqual(screenSpaceCurrentPosition.xy, vec2(0.0))) && all(lessThanEqual(screenSpaceCurrentPosition.xy, vec2(1.0)))) &&
        ((depthDifference >= 0.0) && (depthDifference < distanceBias))){
-      return getReflectionSample(screenSpaceCurrentPosition.xy, roughness);
+      return vec4(getReflectionSample(screenSpaceCurrentPosition.xy, roughness), 1.0);
     } 
 
     if(isBinarySearchEnabled && (depthDifference > 0.0)){
@@ -635,7 +635,7 @@ vec3 getScreenSpaceReflection(vec3 worldSpacePosition,
 
       if((all(greaterThanEqual(screenSpaceCurrentPosition.xy, vec2(0.0))) && all(lessThanEqual(screenSpaceCurrentPosition.xy, vec2(1.0)))) &&
          ((depthDifference >= 0.0) && (depthDifference < distanceBias))){
-        return getReflectionSample(screenSpaceCurrentPosition.xy, roughness);
+        return vec4(getReflectionSample(screenSpaceCurrentPosition.xy, roughness), 1.0);
       }
 
     }
@@ -644,13 +644,16 @@ vec3 getScreenSpaceReflection(vec3 worldSpacePosition,
 
   // No reflection found, so fall back to the environment map (in the GGX variant, since it is also used for IBL specular lighting).
 
-  return (fallbackColor.w >= 0.99999) 
-           ? fallbackColor.xyz
-           : mix(
-               textureLod(uImageBasedLightingEnvMaps[0], worldSpaceReflectionVector, roughnessToMipMapLevel(roughness, envMapMaxLevelGGX)).xyz,
-               fallbackColor.xyz,
-                fallbackColor.w
-              );
+  return vec4(
+    (fallbackColor.w >= 0.99999) 
+    ? fallbackColor.xyz
+    : mix(
+        textureLod(uImageBasedLightingEnvMaps[0], worldSpaceReflectionVector, roughnessToMipMapLevel(roughness, envMapMaxLevelGGX)).xyz,
+        fallbackColor.xyz,
+        fallbackColor.w
+      ),
+    0.0
+  );
 
 }
 

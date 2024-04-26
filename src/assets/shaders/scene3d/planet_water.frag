@@ -562,10 +562,14 @@ vec4 doShade(float hitTime, bool underWater){
     vec3 diffuse = diffuseOutput;
 #endif
 
-    reflection = getScreenSpaceReflection(worldSpacePosition, normal, -viewDirection, 0.0, vec4(iblSpecular, 1.0));
-    refraction = transmissionOutput;
+    vec4 screenSpaceReflection = getScreenSpaceReflection(worldSpacePosition, normal, -viewDirection, 0.0, vec4(iblSpecular, 1.0));
 
-    color.xyz = mix(refraction, mix(refraction, reflection + diffuse + specularOutput, fresnel), clamp(hitTime * 0.1, 0.0, 1.0));
+    reflection = mix(screenSpaceReflection.xyz, screenSpaceReflection.xyz * albedo.xyz, screenSpaceReflection.w);
+
+    refraction = transmissionOutput * albedo.xyz;
+
+    color.xyz = mix(refraction, mix(refraction, reflection, fresnel), clamp(hitTime * 0.1, 0.0, 1.0));
+//   color.xyz = mix(refraction, mix(refraction, reflection + diffuse + specularOutput, fresnel), clamp(hitTime * 0.1, 0.0, 1.0));
   }
   
 
