@@ -511,7 +511,20 @@ vec4 doShade(float hitTime, bool underWater){
 #else
 
   //diffuseOutput = vec3(0.0);
- 
+
+  //vec3(0.015625) * edgeFactor() * fma(clamp(dot(normal, vec3(0.0, 1.0, 0.0)), 0.0, 1.0), 1.0, 0.0), 1.0);
+  vec4 color = vec4(0.0, 0.0, 0.0, 1.0);
+  
+  //float fresnel = clamp(fresnelDielectric(-viewDirection, normal, 1.0 / ior), 0.0, 1.0);
+  float fresnel = pow(1.0 - max(dot(normal, -viewDirection), 0.0), 3.0) * 1.0;
+  
+  if(underWater){
+    
+    vec3 r = textureLod(uPassTextures[1], vec3(inTexCoord, gl_ViewIndex), 1.0).xyz;
+    color = vec4(r * baseColorLinearRGB * baseColorLinearRGB, 1.0);
+
+  }else{
+
 #define LIGHTING_INITIALIZATION
 #include "lighting.glsl"
 #undef LIGHTING_INITIALIZATION
@@ -520,12 +533,11 @@ vec4 doShade(float hitTime, bool underWater){
 #include "lighting.glsl"
 #undef LIGHTING_IMPLEMENTATION
 
-  diffuseOutput += getIBLRadianceLambertian(normal, viewDirection, perceptualRoughness, diffuseColorAlpha.xyz, F0, specularWeight) * iblWeight;
-  vec3 iblSpecular = getIBLRadianceGGX(normal, perceptualRoughness, F0, specularWeight, viewDirection, litIntensity, imageLightBasedLightDirection) * iblWeight;
+    diffuseOutput += getIBLRadianceLambertian(normal, viewDirection, perceptualRoughness, diffuseColorAlpha.xyz, F0, specularWeight) * iblWeight;
+    vec3 iblSpecular = getIBLRadianceGGX(normal, perceptualRoughness, F0, specularWeight, viewDirection, litIntensity, imageLightBasedLightDirection) * iblWeight;
        
 #if defined(TRANSMISSION)
 
-  if(!underWater){
     transmissionOutput += getIBLVolumeRefraction(normal.xyz, 
                                                  viewDirection,
                                                  clamp(hitTime * 0.1, 0.0, 0.25),//perceptualRoughness,
@@ -538,28 +550,12 @@ vec4 doShade(float hitTime, bool underWater){
                                                  volumeAttenuationColor, 
                                                  volumeAttenuationDistance,
                                                  volumeDispersion);        
-  }
 
 #endif
 
-  //vec3(0.015625) * edgeFactor() * fma(clamp(dot(normal, vec3(0.0, 1.0, 0.0)), 0.0, 1.0), 1.0, 0.0), 1.0);
-  vec4 color = vec4(0.0, 0.0, 0.0, 1.0);
-  
-  vec3 reflection, refraction;
-
-  //float fresnel = clamp(fresnelDielectric(-viewDirection, normal, 1.0 / ior), 0.0, 1.0);
-  float fresnel = pow(1.0 - max(dot(normal, -viewDirection), 0.0), 3.0) * 1.0;
-  
-  if(underWater){
-    reflection = vec3(0.0);
-    refraction = vec3(0.0);
-    vec3 r = textureLod(uPassTextures[1], vec3(inTexCoord, gl_ViewIndex), 1.0).xyz;
-    color = vec4(r * baseColorLinearRGB * baseColorLinearRGB, 1.0);
-  }else{
-
     vec4 screenSpaceReflection = getScreenSpaceReflection(worldSpacePosition, normal, -viewDirection, 0.0, vec4(iblSpecular, 1.0));
 
-    reflection = mix(screenSpaceReflection.xyz, screenSpaceReflection.xyz * albedo.xyz, screenSpaceReflection.w) + 
+    vec3 reflection = mix(screenSpaceReflection.xyz, screenSpaceReflection.xyz * albedo.xyz, screenSpaceReflection.w) + 
 #if defined(TRANSMISSION) 
        mix(diffuseOutput, transmissionOutput, transmissionFactor) +
 #else
@@ -567,12 +563,16 @@ vec4 doShade(float hitTime, bool underWater){
 #endif
       specularOutput;
 
-    refraction = transmissionOutput;
+#if defined(TRANSMISSION) 
+    vec3 refraction = transmissionOutput;
+#else
+    vec3 refraction = vec3(0.0);
+#endif
 
     color.xyz = mix(refraction, reflection, fresnel) * baseColorLinearRGB;
-//   color.xyz = mix(refraction, mix(refraction, reflection + diffuse + specularOutput, fresnel), clamp(hitTime * 0.1, 0.0, 1.0));
+//  color.xyz = mix(refraction, mix(refraction, reflection + diffuse + specularOutput, fresnel), clamp(hitTime * 0.1, 0.0, 1.0));
+
   }
-  
 
   //color.xyz = reflection;
 
@@ -660,6 +660,8 @@ void main(){
     //if(acceleratedRayMarching(rayOrigin, rayDirection, 0.0, maxTime, 0.6, hitTime, originSign)){
     if(standardRayMarching(rayOrigin, rayDirection, 0.0, maxTime, hitTime, originSign)){
 
+      bool underWater = originSign <= 0.0;
+
       vec3 hitPoint = rayOrigin + (rayDirection * hitTime); // in planet space
 
       worldSpacePosition = (planetModelMatrix * vec4(hitPoint, 1.0)).xyz;
@@ -670,13 +672,13 @@ void main(){
 
       hit = true;    
 
-      hitDepth = delinearizeDepth(viewSpacePosition.z);
+      hitDepth = underWater ? opaqueDepth : delinearizeDepth(viewSpacePosition.z);
 
       workNormal = normalize((planetModelMatrix * vec4(mapNormal(hitPoint), 0.0)).xyz);
 
       //gl_FragDepth = hitDepth;  
 
-      finalColor = doShade(maxTime - hitTime, originSign <= 0.0);
+      finalColor = doShade(maxTime - hitTime, underWater);
 //     finalColor = vec4(workNormal.xyz * 0.1, 1.0);//doShade();
       
     }    
