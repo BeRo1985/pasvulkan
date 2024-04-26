@@ -438,7 +438,7 @@ void processLight(const in vec3 lightColor,
 vec4 doShade(float hitTime, bool underWater){
 
   vec4 albedo = vec4(1.0);  
-  vec4 occlusionRoughnessMetallic = underWater ? vec4(clamp(hitTime * 0.1, 0.0, 1.0), 1.0, 0.0, 0.0) :  vec4(1.0, 0.0, 0.9, 0.0);
+  vec4 occlusionRoughnessMetallic = underWater ? vec4(1.0, 0.0, 0.9, 0.0) :  vec4(1.0, 0.0, 0.9, 0.0);
 
   // The blade normal is rotated slightly to the left or right depending on the x texture coordinate for
   // to fake roundness of the blade without real more complex geometry
@@ -491,7 +491,7 @@ vec4 doShade(float hitTime, bool underWater){
 
 #if 0
 
-  ior = 1.33;
+  ior = underWater ? 0.66 : 1.33;
   float eta = max(ior, 1e-5);
   
   float fresnel = clamp(fresnelDielectric(-viewDirection, normal, eta), 0.0, 1.0);
@@ -527,12 +527,12 @@ vec4 doShade(float hitTime, bool underWater){
   //float fresnel = clamp(fresnelDielectric(-viewDirection, normal, 1.0 / ior), 0.0, 1.0);
   float fresnel = pow(1.0 - max(dot(normal, -viewDirection), 0.0), 3.0) * 1.0;
   
-  if(underWater){
+/*if(underWater){
     
     vec3 r = textureLod(uPassTextures[1], vec3(inTexCoord, gl_ViewIndex), 1.0).xyz;
-    color = vec4(r * waterBaseColor * waterBaseColor, 1.0);
+    color = vec4(r, 1.0);
 
-  }else{
+  }else*/{
 
 #define LIGHTING_INITIALIZATION
 #include "lighting.glsl"
@@ -544,7 +544,7 @@ vec4 doShade(float hitTime, bool underWater){
 
     diffuseOutput += getIBLRadianceLambertian(normal, viewDirection, perceptualRoughness, diffuseColorAlpha.xyz, F0, specularWeight) * iblWeight;
     vec3 iblSpecular = getIBLRadianceGGX(normal, perceptualRoughness, F0, specularWeight, viewDirection, litIntensity, imageLightBasedLightDirection) * iblWeight;
-       
+     
 #if defined(TRANSMISSION)
 
     transmissionOutput += getIBLVolumeRefraction(normal.xyz, 
@@ -562,7 +562,9 @@ vec4 doShade(float hitTime, bool underWater){
 
 #endif
 
-    vec4 screenSpaceReflection = getScreenSpaceReflection(worldSpacePosition, normal, -viewDirection, 0.0, vec4(iblSpecular, 1.0));
+    vec4 screenSpaceReflection = underWater 
+                                   ? vec4(0.0) 
+                                   : getScreenSpaceReflection(worldSpacePosition, normal, -viewDirection, 0.0, vec4(iblSpecular, 1.0));
 
     vec3 reflection = mix(screenSpaceReflection.xyz, screenSpaceReflection.xyz * albedo.xyz, screenSpaceReflection.w) + 
 #if defined(TRANSMISSION) 
@@ -579,6 +581,7 @@ vec4 doShade(float hitTime, bool underWater){
 #endif
 
     color.xyz = mix(refraction, reflection, fresnel) * waterBaseColor;
+
 //  color.xyz = mix(refraction, mix(refraction, reflection + diffuse + specularOutput, fresnel), clamp(hitTime * 0.1, 0.0, 1.0));
 
   }
@@ -683,7 +686,7 @@ void main(){
 
       hitDepth = delinearizeDepth(viewSpacePosition.z);
 
-      workNormal = normalize((planetModelMatrix * vec4(mapNormal(hitPoint), 0.0)).xyz);
+      workNormal = normalize((planetModelMatrix * vec4(mapNormal(hitPoint), 0.0)).xyz) * (underWater ? -1.0 : 1.0);
 
       finalColor = doShade(maxTime - hitTime, underWater);
 //    finalColor = vec4(workNormal.xyz * 0.1, 1.0);//doShade();
