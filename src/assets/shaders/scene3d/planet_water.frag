@@ -331,10 +331,10 @@ bool acceleratedRayMarching(vec3 rayOrigin, vec3 rayDirection, float startTime, 
     nextR = currentSignedDistance;
     if(stepDistance > (currentR + nextR)){
       stepDistance = currentR;
-      currentSignedDistance = map(fma(rayDirection, vec3(time + (stepDistance * raySign)), rayOrigin));
+      currentSignedDistance = map(fma(rayDirection, vec3(time + stepDistance), rayOrigin));
       nextR = currentSignedDistance;
     }
-    time += stepDistance * raySign;
+    time += stepDistance;
     previousR = currentR;
     currentR = nextR;
     stepDistance = currentR + ((w * currentR) * (((stepDistance - previousR) + currentR) / ((stepDistance + previousR) - currentR)));
@@ -366,13 +366,13 @@ bool standardRayMarching(vec3 rayOrigin, vec3 rayDirection, float startTime, flo
   float secondClosestT = 0.0;
   float previousDT = 0.0;
 
-  //float raySign = (map(rayOrigin) < 0.0) ? -1.0 : 1.0;  
+  float raySign = (map(rayOrigin) < 0.0) ? -1.0 : 1.0;  
 
   for(int i = 0; (i < MAX_MARCHING_STEPS) && (t < maxTime); i++){
 
     vec3 rayPosition = fma(rayDirection, vec3(t), rayOrigin);
 
-    float dt = map(rayPosition);
+    float dt = map(rayPosition) * raySign;
     if(dt < closest){
       closest = dt;
       closestT = t;
@@ -389,7 +389,7 @@ bool standardRayMarching(vec3 rayOrigin, vec3 rayDirection, float startTime, flo
       break;
     }    
 
-    t += clamp(abs(dt) * 0.9, 1e-6, timeStep) * ((dt < 0.0) ? -1.0 : 1.0);
+    t += (clamp(abs(dt) * 0.9, 1e-6, timeStep) * ((dt < 0.0) ? -1.0 : 1.0));
     
     previousDT = dt;
 
@@ -398,7 +398,7 @@ bool standardRayMarching(vec3 rayOrigin, vec3 rayDirection, float startTime, flo
   }       
   
   if((!hit) && (closest < 1e-2)){
-   // hit = true;
+ // hit = true;
     hitTime = closestT;
   }
 
@@ -681,16 +681,23 @@ void main(){
 
       hit = true;    
 
-      hitDepth = underWater ? opaqueDepth : delinearizeDepth(viewSpacePosition.z);
+      hitDepth = delinearizeDepth(viewSpacePosition.z);
 
       workNormal = normalize((planetModelMatrix * vec4(mapNormal(hitPoint), 0.0)).xyz);
 
-      //gl_FragDepth = hitDepth;  
-
       finalColor = doShade(maxTime - hitTime, underWater);
-//     finalColor = vec4(workNormal.xyz * 0.1, 1.0);//doShade();
+//    finalColor = vec4(workNormal.xyz * 0.1, 1.0);//doShade();
       
-    }    
+    }else if(underWater){
+
+      vec3 r = textureLod(uPassTextures[1], vec3(inTexCoord, gl_ViewIndex), 1.0).xyz;
+      finalColor = vec4(r * waterBaseColor * waterBaseColor, 1.0);
+
+      hitDepth = opaqueDepth;
+
+      hit = true;
+
+    }     
     
   }  
 

@@ -561,6 +561,35 @@ vec4 getScreenSpaceReflection(vec3 worldSpacePosition,
                               float roughness,
                               vec4 fallbackColor){
 
+  vec3 worldSpaceReflectionVector = normalize(reflect(worldSpaceViewDirection, worldSpaceNormal.xyz)); 
+
+#if 0
+
+  const int countIterations = 64;
+  const float maxDistance = 64.0;
+
+  vec3 rayOrigin = (viewMatrix * vec4(worldSpacePosition, 1.0)).xyz;
+
+  vec3 rayDirection = (viewMatrix * vec4(worldSpaceReflectionVector, 0.0)).xyz;
+
+  float viewIndex = float(gl_ViewIndex);
+
+  vec2 nearPlaneTemporary = (inverseProjectionMatrix * vec4(0.0, 0.0, (projectionMatrix[2][3] < -1e-7) ? 1.0 : 0.0, 1.0)).zw;
+  float nearPlane = nearPlaneTemporary.x / nearPlaneTemporary.y;
+
+  // Limit the ray length to the near plane distance, when needed.
+  float rayLength = ((rayOrigin.z + (rayDirection.z * maxDistance)) < nearPlane)
+                      ? (nearPlane - rayOrigin.z) / rayDirection.z
+                      : maxDistance;
+
+  vec3 rayEnd = rayOrigin + (rayDirection * rayLength);
+
+  vec2 texSize = vec2(textureSize(uPassTextures[2], 0).xy);
+
+  // TODO 
+
+#else
+
   const float rayStep = 0.2;
   const int countLinearSearchIterations = 32;
   const int countBinarySearchIterations = 8;
@@ -568,8 +597,6 @@ vec4 getScreenSpaceReflection(vec3 worldSpacePosition,
   const bool isBinarySearchEnabled = true;  
   const bool isAdaptiveStepEnabled = true;  
   const bool isExponentialStepEnabled = true;
-
-  vec3 worldSpaceReflectionVector = normalize(reflect(worldSpaceViewDirection, worldSpaceNormal.xyz)); 
 
   vec3 viewSpaceReflectionVector = (viewMatrix * vec4(worldSpaceReflectionVector, 0.0)).xyz;
 
@@ -641,6 +668,8 @@ vec4 getScreenSpaceReflection(vec3 worldSpacePosition,
     }
 
   }
+
+#endif
 
   // No reflection found, so fall back to the environment map (in the GGX variant, since it is also used for IBL specular lighting).
 
