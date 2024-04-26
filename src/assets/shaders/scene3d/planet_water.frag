@@ -428,7 +428,7 @@ vec4 doShade(float hitTime, bool underWater){
   const vec3 baseColorLinearRGB = convertSRGBToLinearRGB(baseColorSRGB * 0.00392156862745098);*/
   const vec3 baseColorLinearRGB = vec3(0.5, 0.7, 0.9);
 
-  vec4 albedo = vec4(baseColorLinearRGB, 1.0);  
+  vec4 albedo = vec4(1.0);  
   vec4 occlusionRoughnessMetallic = underWater ? vec4(clamp(hitTime * 0.1, 0.0, 1.0), 1.0, 0.0, 0.0) :  vec4(1.0, 0.0, 0.9, 0.0);
 
   // The blade normal is rotated slightly to the left or right depending on the x texture coordinate for
@@ -529,7 +529,7 @@ vec4 doShade(float hitTime, bool underWater){
     transmissionOutput += getIBLVolumeRefraction(normal.xyz, 
                                                  viewDirection,
                                                  clamp(hitTime * 0.1, 0.0, 0.25),//perceptualRoughness,
-                                                 albedo.xyz, //diffuseColorAlpha.xyz, 
+                                                 vec3(1.0), //diffuseColorAlpha.xyz, 
                                                  vec3(0.04), //F0, 
                                                  vec3(1.0), //F90,
                                                  inWorldSpacePosition,
@@ -556,19 +556,19 @@ vec4 doShade(float hitTime, bool underWater){
     color = vec4(diffuseOutput + specularOutput, fresnel * 0.5);
   }else{
 
-#if defined(TRANSMISSION) 
-    vec3 diffuse = mix(diffuseOutput, transmissionOutput, transmissionFactor);
-#else
-    vec3 diffuse = diffuseOutput;
-#endif
-
     vec4 screenSpaceReflection = getScreenSpaceReflection(worldSpacePosition, normal, -viewDirection, 0.0, vec4(iblSpecular, 1.0));
 
-    reflection = mix(screenSpaceReflection.xyz, screenSpaceReflection.xyz * albedo.xyz, screenSpaceReflection.w);
+    reflection = mix(screenSpaceReflection.xyz, screenSpaceReflection.xyz * albedo.xyz, screenSpaceReflection.w) + 
+#if defined(TRANSMISSION) 
+       mix(diffuseOutput, transmissionOutput, transmissionFactor) +
+#else
+       diffuseOutput +
+#endif
+      specularOutput;
 
-    refraction = transmissionOutput * albedo.xyz;
+    refraction = transmissionOutput;
 
-    color.xyz = mix(refraction, mix(refraction, reflection, fresnel), clamp(hitTime * 0.1, 0.0, 1.0));
+    color.xyz = mix(refraction, reflection, fresnel) * baseColorLinearRGB;
 //   color.xyz = mix(refraction, mix(refraction, reflection + diffuse + specularOutput, fresnel), clamp(hitTime * 0.1, 0.0, 1.0));
   }
   
