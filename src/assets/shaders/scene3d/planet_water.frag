@@ -671,8 +671,8 @@ void main(){
 
     float hitTime;
 
-    //if(acceleratedRayMarching(rayOrigin, rayDirection, 0.0, maxTime, 0.6, hitTime)){
-    if(standardRayMarching(rayOrigin, rayDirection, 0.0, maxTime, hitTime)){
+    if(acceleratedRayMarching(rayOrigin, rayDirection, 0.0, maxTime, 0.6, hitTime)){
+    //if(standardRayMarching(rayOrigin, rayDirection, 0.0, maxTime, hitTime)){
 
       vec3 hitPoint = rayOrigin + (rayDirection * hitTime); // in planet space
 
