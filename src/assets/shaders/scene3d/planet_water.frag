@@ -553,7 +553,8 @@ vec4 doShade(float hitTime, bool underWater){
   if(underWater){
     reflection = vec3(0.0);
     refraction = vec3(0.0);
-    color = vec4(diffuseOutput + specularOutput, fresnel * 0.5);
+    vec3 r = textureLod(uPassTextures[1], vec3(inTexCoord, gl_ViewIndex), 1.0).xyz;
+    color = vec4(r * baseColorLinearRGB * baseColorLinearRGB, 1.0);
   }else{
 
     vec4 screenSpaceReflection = getScreenSpaceReflection(worldSpacePosition, normal, -viewDirection, 0.0, vec4(iblSpecular, 1.0));
