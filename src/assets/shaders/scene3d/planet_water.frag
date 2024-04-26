@@ -314,29 +314,33 @@ float INFINITY = uintBitsToFloat(0x7f800000u);
 
 int countSteps = 0;
 
-// Based on https://www.researchgate.net/publication/329152815_Accelerating_Sphere_Tracing
-bool acceleratedRayMarching(vec3 rayOrigin, vec3 rayDirection, float startTime, float maxTime, float w, out float hitTime){ // accelerated ray marching
+// Accelerated ray marching based on https://www.researchgate.net/publication/329152815_Accelerating_Sphere_Tracing
+bool acceleratedRayMarching(vec3 rayOrigin, vec3 rayDirection, float startTime, float maxTime, float w, float q, out float hitTime){
   float previousR = 0.0; 
   float currentR = 0.0;
   float nextR = INFINITY;
   float stepDistance = 0.0;
   float time = startTime;
+#if 0
   vec2 closest = vec2(INFINITY, 0.0);    
+#endif
   float raySign = (map(rayOrigin) < 0.0) ? -1.0 : 1.0;  
   for(int i = 0; (i < MAX_MARCHING_STEPS) && (nextR >= PRECISION) && (time < maxTime); i++){
     float currentSignedDistance = map(fma(rayDirection, vec3(time + stepDistance), rayOrigin)) * raySign;
+#if 0
     if(closest.x > abs(currentSignedDistance)){
       closest = vec2(abs(currentSignedDistance), time);
     }
+#endif
     nextR = currentSignedDistance;
     if(stepDistance > (currentR + nextR)){
       stepDistance = currentR;
-      currentSignedDistance = map(fma(rayDirection, vec3(time + stepDistance), rayOrigin));
+      currentSignedDistance = map(fma(rayDirection, vec3(time + stepDistance), rayOrigin)) * raySign;
       nextR = currentSignedDistance;
     }
     time += stepDistance;
     previousR = currentR;
-    currentR = nextR;
+    currentR = nextR * q;
     stepDistance = currentR + ((w * currentR) * (((stepDistance - previousR) + currentR) / ((stepDistance + previousR) - currentR)));
     countSteps++;
   }    
@@ -675,7 +679,7 @@ void main(){
 
     float hitTime;
 
-    if(acceleratedRayMarching(rayOrigin, rayDirection, 0.0, maxTime, 0.6, hitTime)){
+    if(acceleratedRayMarching(rayOrigin, rayDirection, 0.0, maxTime, 0.6, underWater ? 0.9 : 1.0, hitTime)){
     //if(standardRayMarching(rayOrigin, rayDirection, 0.0, maxTime, hitTime)){
 
       vec3 hitPoint = rayOrigin + (rayDirection * hitTime); // in planet space
