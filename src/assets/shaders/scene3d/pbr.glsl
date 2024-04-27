@@ -551,6 +551,7 @@ bool castScreenSpaceRay(vec3 worldSpaceRayOrigin,
   const float stepEpsilon = 1e-4;
   const float zeroEpsilon = 1e-5;
   const float zeroDirectionEpsilon = 1e-3;
+  const float maxDistance = 100.0;
 
   const ivec2 lod0Size = ivec2(textureSize(uPassTextures[2], 0).xy);
   const vec2 invLOD0Size = vec2(1.0) / vec2(lod0Size);
@@ -559,7 +560,15 @@ bool castScreenSpaceRay(vec3 worldSpaceRayOrigin,
 
   vec3 rayDirection = normalize((viewMatrix * vec4(worldSpaceRayDirection, 0.0)).xyz);
 
-  vec3 rayEnd = fma(rayDirection, vec3(10.0), rayOrigin);
+  vec2 nearPlaneTemporary = (inverseProjectionMatrix * vec4(0.0, 0.0, (projectionMatrix[2][3] < -1e-7) ? 1.0 : 0.0, 1.0)).zw;
+  float nearPlane = nearPlaneTemporary.x / nearPlaneTemporary.y;
+
+  // Limit the ray length to the near plane distance, when needed.
+  float rayLength = ((rayOrigin.z + (rayDirection.z * maxDistance)) < nearPlane)
+                      ? (nearPlane - rayOrigin.z) / rayDirection.z
+                      : maxDistance;
+
+  vec3 rayEnd = fma(rayDirection, vec3(rayLength), rayOrigin);
 
   vec4 pHS0 = projectionMatrix * vec4(rayOrigin, 1.0);
   pHS0 /= pHS0.w;
