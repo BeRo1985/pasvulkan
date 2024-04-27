@@ -605,7 +605,7 @@ bool castScreenSpaceRay(vec3 worldSpaceRayOrigin,
   vec2 timeSceneZMinMax = vec2(1.0, 0.0);
   int mipLevel = countLODLevels - 1;
  
-  for(int iteration = 0; (mipLevel >= 0.0) && (iteration < countHiZRayIterations) && (time <= 1.0); iteration++){
+  for(int iteration = 0; (mipLevel >= 0) && (iteration < countHiZRayIterations) && (time <= 1.0); iteration++){
     const vec2 maxRayPointXY = fma(vSS.xy, vec2(time), pSS0.xy);
     const vec2 levelSize = floor(vec2(lod0Size) / min(vec2(exp2(mipLevel)), vec2(lod0Size)));
     const vec2 pixel = floor(maxRayPointXY * levelSize);
