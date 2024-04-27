@@ -542,6 +542,104 @@ vec3 getIBLVolumeRefraction(vec3 n, vec3 v, float perceptualRoughness, vec3 base
 
 #ifdef SCREEN_SPACE_REFLECTIONS
 
+float ssrRayAAABBIntersection(const in vec2 rayOrigin, const in vec2 rayDirection, const in vec2 aabbMin, const in vec2 aabbMax){
+  vec2 boundary = mix(aabbMin, aabbMax, greaterThan(rayDirection, vec2(0.0)));
+  vec2 times = (boundary - rayOrigin) / rayDirection;
+  return min(times.x, times.y);
+}
+
+vec3 ssrEnhance(const in vec3 rayOrigin, const in vec3 rayDirection, const in int mipLevel, const in ivec2 texSize){
+  const vec2 mipSize = vec2(texSize >> mipLevel);
+  const vec2 position = rayOrigin.xy * mipSize;
+  return fma(
+    rayDirection, 
+    vec3(ssrRayAAABBIntersection(rayOrigin.xy, rayDirection.xy, floor(position) / mipSize, ceil(position) / mipSize) + (0.1 / mipSize.x)), 
+    rayOrigin
+  );
+}
+
+#if 1
+// Don't work also yet
+bool castScreenSpaceRay(vec3 worldSpaceRayOrigin,
+                        vec3 worldSpaceRayDirection,
+                        out vec2 hitUV){
+
+  vec3 rayOrigin = (viewMatrix * vec4(worldSpaceRayOrigin, 1.0)).xyz;
+
+  vec3 rayDirection = normalize((viewMatrix * vec4(worldSpaceRayDirection, 0.0)).xyz);
+
+  vec3 viewDirection = normalize(rayDirection);
+
+  float cameraContribution = smoothstep(0.5, 0.25, dot(-viewDirection, rayDirection));  
+  if(cameraContribution < 1e-6){
+    return false;
+  } 
+
+  const bool reversedZ = false;//projectionMatrix[2][3] < -1e-7;
+
+  const float maxDistance = 100.0;
+  const int countIterations = 128;
+
+  const ivec2 texSize = ivec2(textureSize(uPassTextures[2], 0).xy);
+  
+  const int countLODLevels = int(textureQueryLevels(uPassTextures[2]));
+
+  vec3 p0 = rayOrigin;
+  vec3 p1 = fma(rayDirection, vec3(maxDistance), rayOrigin);
+
+  vec4 t = projectionMatrix * vec4(p0, 1.0);
+  vec3 start = t.xyz / t.w; 
+  start.xy = fma(start.xy, vec2(0.5), vec2(0.5));
+
+  t = projectionMatrix * vec4(p1, 1.0);
+  vec3 end = t.xyz / t.w; 
+  end.xy = fma(end.xy, vec2(0.5), vec2(0.5));
+
+  vec3 origin = start;
+  vec3 direction = normalize(end - start);
+
+  int mipLevel = 0;
+  for(int iteration = 0; (iteration < countIterations) && (mipLevel >= 0); iteration++){
+
+    //origin = ssrEnhance(origin, direction, mipLevel, texSize);
+
+	  ivec2 mipSize = texSize >> mipLevel;
+
+    vec2 mipCellIndex = origin.xy * vec2(mipSize);
+
+    vec2 boundaryUV = vec2(
+      (direction.x > 0.0) ? ceil(mipCellIndex.x) / float(mipSize.x) : floor(mipCellIndex.x) / float(mipSize.x),
+      (direction.y > 0.0) ? ceil(mipCellIndex.y) / float(mipSize.y) : floor(mipCellIndex.y) / float(mipSize.y)
+    );
+
+    vec2 t = (boundaryUV - origin.xy) / direction.xy;
+
+    origin += ((abs(t.x) < abs(t.y)) ? (t.x + (0.1 / mipSize.x)) : (t.y + (0.1 / mipSize.y))) * direction;
+
+    if(all(greaterThanEqual(origin, vec3(0.0))) && all(lessThanEqual(origin, vec3(1.0)))){
+
+      float depth = textureLod(uPassTextures[2], vec3(origin.xy, inViewIndex), float(mipLevel)).x;
+
+      if(origin.z < depth){
+        mipLevel = min(mipLevel + 1, countLODLevels - 1);
+      }else{
+        origin -= direction * ((origin.z - depth) / direction.z);
+        mipLevel--;
+      }
+      
+    }else{
+      break;
+    }
+
+  }
+
+  hitUV = origin.xy;
+
+  return all(greaterThanEqual(hitUV, vec2(0.0))) && all(lessThanEqual(hitUV, vec2(1.0)));
+
+}
+#else
+// Don't work yet
 bool castScreenSpaceRay(vec3 worldSpaceRayOrigin,
                         vec3 worldSpaceRayDirection,
                         out vec2 hitUV){
@@ -637,6 +735,7 @@ bool castScreenSpaceRay(vec3 worldSpaceRayOrigin,
   return (mipLevel == -1) && (time >= timeSceneZMinMax.x) && (time <= timeSceneZMinMax.y);
 
 }
+#endif
 
 vec3 getReflectionSample(vec2 fragCoord, float roughness) {
   int maxLod = int(textureQueryLevels(uPassTextures[1]));
@@ -657,32 +756,15 @@ vec4 getScreenSpaceReflection(vec3 worldSpacePosition,
                               float roughness,
                               vec4 fallbackColor){
 
+  // Compute the reflection vector in world space.
   vec3 worldSpaceReflectionVector = normalize(reflect(worldSpaceViewDirection, worldSpaceNormal.xyz)); 
 
 #if 0
 
-  const int countIterations = 64;
-  const float maxDistance = 64.0;
-
-  vec3 rayOrigin = (viewMatrix * vec4(worldSpacePosition, 1.0)).xyz;
-
-  vec3 rayDirection = (viewMatrix * vec4(worldSpaceReflectionVector, 0.0)).xyz;
-
-  float viewIndex = float(gl_ViewIndex);
-
-  vec2 nearPlaneTemporary = (inverseProjectionMatrix * vec4(0.0, 0.0, (projectionMatrix[2][3] < -1e-7) ? 1.0 : 0.0, 1.0)).zw;
-  float nearPlane = nearPlaneTemporary.x / nearPlaneTemporary.y;
-
-  // Limit the ray length to the near plane distance, when needed.
-  float rayLength = ((rayOrigin.z + (rayDirection.z * maxDistance)) < nearPlane)
-                      ? (nearPlane - rayOrigin.z) / rayDirection.z
-                      : maxDistance;
-
-  vec3 rayEnd = rayOrigin + (rayDirection * rayLength);
-
-  vec2 texSize = vec2(textureSize(uPassTextures[2], 0).xy);
-
-  // TODO 
+  vec2 hitUV;
+  if(castScreenSpaceRay(worldSpacePosition, worldSpaceReflectionVector, hitUV)){
+    return vec4(getReflectionSample(hitUV, roughness), 1.0);
+  }
 
 #else
 
@@ -691,53 +773,54 @@ vec4 getScreenSpaceReflection(vec3 worldSpacePosition,
   const int countBinarySearchIterations = 16;
   const float distanceBias = 0.05;
   const bool isBinarySearchEnabled = true;  
-  const bool isAdaptiveStepEnabled = true;  
+  const bool isAdaptiveStepEnabled = false;  
   const bool isExponentialStepEnabled = true;
 
-  vec3 viewSpaceReflectionVector = (viewMatrix * vec4(worldSpaceReflectionVector, 0.0)).xyz;
-
-  vec3 viewSpaceCurrentPosition = (viewMatrix * vec4(worldSpacePosition, 1.0)).xyz;
-
   float viewIndex = float(gl_ViewIndex);
+
+  // Compute the ray origin and direction in view space.
+  vec3 rayOrigin = (viewMatrix * vec4(worldSpacePosition, 1.0)).xyz;
+
+  vec3 rayDirection = (viewMatrix * vec4(worldSpaceReflectionVector, 0.0)).xyz;
 
   // First, perform a linear search to find the first intersection point. 
 
   float depthDifference;
 
-  vec3 stepVector = viewSpaceReflectionVector * rayStep;  
+  vec3 stepVector = rayDirection * rayStep;  
 
-  viewSpaceCurrentPosition += stepVector;
+  vec3 rayPosition = rayOrigin + stepVector;
 
   for(int iteration = 0; iteration < countLinearSearchIterations; iteration++){
 
-    vec4 screenSpaceCurrentPosition = projectionMatrix * vec4(viewSpaceCurrentPosition, 1.0);
-    screenSpaceCurrentPosition.xy = fma(screenSpaceCurrentPosition.xy / screenSpaceCurrentPosition.w, vec2(0.5), vec2(0.5));
+    vec4 screenSpaceRayPosition = projectionMatrix * vec4(rayPosition, 1.0);
+    screenSpaceRayPosition.xy = fma(screenSpaceRayPosition.xy / screenSpaceRayPosition.w, vec2(0.5), vec2(0.5));
 
-    float viewSpaceRawDepth = textureLod(uPassTextures[2], vec3(screenSpaceCurrentPosition.xy, viewIndex), 0.0).x;
+    float viewSpaceRawDepth = textureLod(uPassTextures[2], vec3(screenSpaceRayPosition.xy, viewIndex), 0.0).x;
 
-    vec4 viewSpaceProbePosition = inverseProjectionMatrix * vec4(fma(screenSpaceCurrentPosition.xy, vec2(2.0), vec2(-1.0)), viewSpaceRawDepth, 1.0);
-    depthDifference = (viewSpaceProbePosition.z / viewSpaceProbePosition.w) - viewSpaceCurrentPosition.z;
+    vec4 viewSpaceProbePosition = inverseProjectionMatrix * vec4(fma(screenSpaceRayPosition.xy, vec2(2.0), vec2(-1.0)), viewSpaceRawDepth, 1.0);
+    depthDifference = (viewSpaceProbePosition.z / viewSpaceProbePosition.w) - rayPosition.z;
 
-    if((all(greaterThanEqual(screenSpaceCurrentPosition.xy, vec2(0.0))) && all(lessThanEqual(screenSpaceCurrentPosition.xy, vec2(1.0)))) &&
+    if((all(greaterThanEqual(screenSpaceRayPosition.xy, vec2(0.0))) && all(lessThanEqual(screenSpaceRayPosition.xy, vec2(1.0)))) &&
        ((depthDifference >= 0.0) && (depthDifference < distanceBias))){
-      return vec4(getReflectionSample(screenSpaceCurrentPosition.xy, roughness), 1.0);
+      return vec4(getReflectionSample(screenSpaceRayPosition.xy, roughness), 1.0);
     } 
 
     if(isBinarySearchEnabled && (depthDifference > 0.0)){
       // Switch to binary search for further refinement.
-	    break;
-	  }
+      break;
+    }
 
-		if(isAdaptiveStepEnabled){
-	    float directionSign = sign(depthDifference);
-	    viewSpaceCurrentPosition += (stepVector *= (1.0 - rayStep * max(directionSign, 0.0))) * (-directionSign);
-	  }else {
-	    viewSpaceCurrentPosition += stepVector;
-	  }
+    if(isAdaptiveStepEnabled){
+      float directionSign = sign(depthDifference);
+      rayPosition += (stepVector *= (1.0 - rayStep * max(directionSign, 0.0))) * (-directionSign);
+    }else {
+      rayPosition += stepVector;
+    }
 
-	  if(isExponentialStepEnabled){
-	    stepVector *= 1.05;
-	  }
+    if(isExponentialStepEnabled){
+      stepVector *= 1.05;
+    }
 
   }
 
@@ -747,19 +830,19 @@ vec4 getScreenSpaceReflection(vec3 worldSpacePosition,
 
     for(int iteration = 0; iteration < countBinarySearchIterations; iteration++){
 	
-      viewSpaceCurrentPosition -= ((stepVector *= 0.5) * sign(depthDifference));
+      rayPosition -= ((stepVector *= 0.5) * sign(depthDifference));
 
-      vec4 screenSpaceCurrentPosition = projectionMatrix * vec4(viewSpaceCurrentPosition, 1.0);
-      screenSpaceCurrentPosition.xy = fma(screenSpaceCurrentPosition.xy / screenSpaceCurrentPosition.w, vec2(0.5), vec2(0.5));
+      vec4 screenSpaceRayPosition = projectionMatrix * vec4(rayPosition, 1.0);
+      screenSpaceRayPosition.xy = fma(screenSpaceRayPosition.xy / screenSpaceRayPosition.w, vec2(0.5), vec2(0.5));
 			
-      float viewSpaceRawDepth = textureLod(uPassTextures[2], vec3(screenSpaceCurrentPosition.xy, viewIndex), 0.0).x;
+      float viewSpaceRawDepth = textureLod(uPassTextures[2], vec3(screenSpaceRayPosition.xy, viewIndex), 0.0).x;
 
-      vec4 viewSpaceProbePosition = inverseProjectionMatrix * vec4(fma(screenSpaceCurrentPosition.xy, vec2(2.0), vec2(-1.0)), viewSpaceRawDepth, 1.0);
-      depthDifference = (viewSpaceProbePosition.z / viewSpaceProbePosition.w) - viewSpaceCurrentPosition.z;
+      vec4 viewSpaceProbePosition = inverseProjectionMatrix * vec4(fma(screenSpaceRayPosition.xy, vec2(2.0), vec2(-1.0)), viewSpaceRawDepth, 1.0);
+      depthDifference = (viewSpaceProbePosition.z / viewSpaceProbePosition.w) - rayPosition.z;
 
-      if((all(greaterThanEqual(screenSpaceCurrentPosition.xy, vec2(0.0))) && all(lessThanEqual(screenSpaceCurrentPosition.xy, vec2(1.0)))) &&
+      if((all(greaterThanEqual(screenSpaceRayPosition.xy, vec2(0.0))) && all(lessThanEqual(screenSpaceRayPosition.xy, vec2(1.0)))) &&
          ((depthDifference >= 0.0) && (depthDifference < distanceBias))){
-        return vec4(getReflectionSample(screenSpaceCurrentPosition.xy, roughness), 1.0);
+        return vec4(getReflectionSample(screenSpaceRayPosition.xy, roughness), 1.0);
       }
 
     }
