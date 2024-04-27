@@ -92,6 +92,7 @@ layout(set = 1, binding = 6, std430) readonly buffer ImageBasedSphericalHarmonic
 
 layout(set = 2, binding = 0) uniform sampler2D uTextures[]; // 0 = height map, 1 = normal map, 2 = tangent bitangent map
 
+#include "planet_textures.glsl"
 #include "planet_renderpass.glsl"
 
 #define FRAGMENT_SHADER
@@ -221,7 +222,7 @@ void main(){
 #ifdef EXTERNAL_VERTICES
   workNormal = inBlock.normal.xyz;
 #else
-  workNormal = normalize((planetData.normalMatrix * vec4(normalize(fma(texturePlanetOctahedralMap(uTextures[1], sphereNormal).xyz, vec3(2.0), vec3(-1.0))), 0.0)).xyz);
+  workNormal = normalize((planetData.normalMatrix * vec4(normalize(fma(texturePlanetOctahedralMap(uTextures[PLANET_TEXTURE_NORMALMAP], sphereNormal).xyz, vec3(2.0), vec3(-1.0))), 0.0)).xyz);
 #endif
   vec3 workTangent = normalize(cross((abs(workNormal.y) < 0.999999) ? vec3(0.0, 1.0, 0.0) : vec3(0.0, 0.0, 1.0), workNormal));
   vec3 workBitangent = normalize(cross(workNormal, workTangent));
