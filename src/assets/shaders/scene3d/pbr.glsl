@@ -316,7 +316,7 @@ vec3 getPunctualRadianceTransmission(vec3 normal, vec3 view, vec3 pointToLight, 
 // Compute attenuated light as it travels through a volume.
 vec3 applyVolumeAttenuation(vec3 radiance, float transmissionDistance, vec3 attenuationColor, float attenuationDistance) {
   if (isinf(attenuationDistance) || (attenuationDistance == 0.0)) {
-    // Attenuation distance is +Ã¯ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ch we indicate by zero), i.e. the transmitted color is not attenuated at all.
+    // Attenuation distance is infinity (which we indicate by zero), i.e. the transmitted color is not attenuated at all.
     return radiance;
   } else {
     // Compute light attenuation using Beer's law.
@@ -591,8 +591,8 @@ vec4 getScreenSpaceReflection(vec3 worldSpacePosition,
 #else
 
   const float rayStep = 0.2;
-  const int countLinearSearchIterations = 32;
-  const int countBinarySearchIterations = 8;
+  const int countLinearSearchIterations = 128;
+  const int countBinarySearchIterations = 16;
   const float distanceBias = 0.05;
   const bool isBinarySearchEnabled = true;  
   const bool isAdaptiveStepEnabled = true;  
@@ -628,6 +628,7 @@ vec4 getScreenSpaceReflection(vec3 worldSpacePosition,
     } 
 
     if(isBinarySearchEnabled && (depthDifference > 0.0)){
+      // Switch to binary search for further refinement.
 	    break;
 	  }
 

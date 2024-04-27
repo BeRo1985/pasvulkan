@@ -19,9 +19,9 @@ layout(set = 0, binding = 0) uniform sampler2DMSArray uSourceTexture; // Source 
 layout(set = 0, binding = 0) uniform sampler2DArray uSourceTexture; // Source mipmap level texture
 #endif
 #if defined(REDUCTION)                                     
-layout(set = 0, binding = 1, r32f) writeonly uniform image2DArray uDestinationTextures[]; // Destination mipmap level image
+layout(set = 0, binding = 1, rg32f) writeonly uniform image2DArray uDestinationTextures[]; // Destination mipmap level image
 #else
-layout(set = 0, binding = 1, r32f) writeonly uniform image2DArray uDestinationTexture; // Destination mipmap level image
+layout(set = 0, binding = 1, rg32f) writeonly uniform image2DArray uDestinationTexture; // Destination mipmap level image
 #endif
 #else
 #ifdef MSAA
@@ -30,21 +30,35 @@ layout(set = 0, binding = 0) uniform sampler2DMS uSourceTexture; // Source mipma
 layout(set = 0, binding = 0) uniform sampler2D uSourceTexture; // Source mipmap level texture
 #endif
 #if defined(REDUCTION)
-layout(set = 0, binding = 1, r32f) writeonly uniform image2D uDestinationTextures[]; // Destination mipmap level image
+layout(set = 0, binding = 1, rg32f) writeonly uniform image2D uDestinationTextures[]; // Destination mipmap level image
 #else
-layout(set = 0, binding = 1, r32f) writeonly uniform image2D uDestinationTexture; // Destination mipmap level image
+layout(set = 0, binding = 1, rg32f) writeonly uniform image2D uDestinationTexture; // Destination mipmap level image
 #endif
 #endif
 
 #ifdef REVERSEDZ
-  #define reduceOp min
+
+  //#define reduceOp min
   #define minDepthOp max
   #define maxDepthOp min
+
 #else
-  #define reduceOp max
+
+  //#define reduceOp max
   #define minDepthOp min
   #define maxDepthOp max
+
 #endif
+
+vec2 reduceOp(vec2 a, vec2 b){
+  vec2 aMinMax = vec2(min(a.x, a.y), max(a.x, a.y));
+  vec2 bMinMax = vec2(min(b.x, b.y), max(b.x, b.y));
+#ifdef REVERSEDZ
+  return vec2(min(aMinMax.x, bMinMax.x), max(aMinMax.y, bMinMax.y));
+#else
+  return vec2(max(aMinMax.y, bMinMax.y), min(aMinMax.x, bMinMax.x));
+#endif
+} 
 
 #ifdef FIRSTPASS
 struct View {
@@ -84,11 +98,28 @@ layout(push_constant) uniform PushConstants {
   int countMipMapLevels;
 } pushConstants;
 
-shared float sharedZ[8 * 8];
+shared vec2 sharedZ[8 * 8];
 
 #endif
 
 /* clang-format on */
+
+#if defined(REDUCTION)
+ivec2 sourceSize = ivec2(textureSize(uSourceTexture, 0).xy);
+
+vec2 getTexel(ivec2 xy, 
+#ifdef MULTIVIEW 
+              int viewIndex,
+#endif
+              int level, 
+              ivec2 offset) { 
+#ifdef MULTIVIEW
+  return texelFetch(uSourceTexture, ivec3(clamp(xy + offset, ivec2(0), ivec2(sourceSize - 1)), viewIndex), level).xy;
+#else
+  return texelFetch(uSourceTexture, clamp(xy + offset, ivec2(0), ivec2(sourceSize - 1)), level).xy;
+#endif
+}
+#endif
 
 void main() {
 #if defined(FIRSTPASS)
@@ -193,67 +224,73 @@ void main() {
   ivec2 invocationPosition = ivec2(gl_GlobalInvocationID.xy);
 #endif
              
-  vec4 depths;
+  vec2 depths;
 
-  ivec2 sourceSize = textureSize(uSourceTexture, 0).xy;
+  //ivec2 sourceSize = textureSize(uSourceTexture, 0).xy;
 
   ivec2 destinationTextureSize = imageSize(uDestinationTextures[0]).xy;
 
 #ifdef MULTIVIEW
+  depths = reduceOp(
+    reduceOp(
+      getTexel(invocationPosition.xy << 1, invocationPosition.z, 0, ivec2(0, 0)), 
+      getTexel(invocationPosition.xy << 1, invocationPosition.z, 0, ivec2(1, 0))), 
+    reduceOp(
+      getTexel(invocationPosition.xy << 1, invocationPosition.z, 0, ivec2(0, 1)), 
+      getTexel(invocationPosition.xy << 1, invocationPosition.z, 0, ivec2(1, 1))
+    )
+  );
   if((sourceSize.x & 1) != 0){
     if((sourceSize.y & 1) != 0){
-      // When width and height are odd, 4 bilinear samples (with min or max sampler reduction filter) are used to reduce undersampling.
-      depths = vec4(reduceOp(reduceOp(textureLod(uSourceTexture, vec3((vec2(invocationPosition.xy) + vec2(0.25, 0.25)) / vec2(destinationTextureSize), float(invocationPosition.z)), 0.0).x,
-                                      textureLod(uSourceTexture, vec3((vec2(invocationPosition.xy) + vec2(0.75, 0.75)) / vec2(destinationTextureSize), float(invocationPosition.z)), 0.0).x),
-                             reduceOp(textureLod(uSourceTexture, vec3((vec2(invocationPosition.xy) + vec2(0.25, 0.75)) / vec2(destinationTextureSize), float(invocationPosition.z)), 0.0).x,
-                                      textureLod(uSourceTexture, vec3((vec2(invocationPosition.xy) + vec2(0.75, 0.25)) / vec2(destinationTextureSize), float(invocationPosition.z)), 0.0).x)));
+      depths = reduceOp(depths, getTexel(invocationPosition.xy << 1, invocationPosition.z, 0, ivec2(0, 2)));
+      depths = reduceOp(depths, getTexel(invocationPosition.xy << 1, invocationPosition.z, 0, ivec2(1, 2)));
+      depths = reduceOp(depths, getTexel(invocationPosition.xy << 1, invocationPosition.z, 0, ivec2(2, 0)));
+      depths = reduceOp(depths, getTexel(invocationPosition.xy << 1, invocationPosition.z, 0, ivec2(2, 1)));
+      depths = reduceOp(depths, getTexel(invocationPosition.xy << 1, invocationPosition.z, 0, ivec2(2, 2)));
     }else{
-      // When only width is odd, 2 bilinear samples (with min or max sampler reduction filter) are used to reduce undersampling.
-      depths = vec4(reduceOp(textureLod(uSourceTexture, vec3((vec2(invocationPosition.xy) + vec2(0.25, 0.5)) / vec2(destinationTextureSize), float(invocationPosition.z)), 0.0).x,
-                             textureLod(uSourceTexture, vec3((vec2(invocationPosition.xy) + vec2(0.75, 0.5)) / vec2(destinationTextureSize), float(invocationPosition.z)), 0.0).x));
+      depths = reduceOp(depths, getTexel(invocationPosition.xy << 1, invocationPosition.z, 0, ivec2(2, 0)));
+      depths = reduceOp(depths, getTexel(invocationPosition.xy << 1, invocationPosition.z, 0, ivec2(2, 1)));
     }      
   }else{
     if((sourceSize.y & 1) != 0){
-      // When only height is odd, 2 bilinear samples (with min or max sampler reduction filter) are used to reduce undersampling.
-      depths = vec4(reduceOp(textureLod(uSourceTexture, vec3((vec2(invocationPosition.xy) + vec2(0.5, 0.25)) / vec2(destinationTextureSize), float(invocationPosition.z)), 0.0).x,
-                             textureLod(uSourceTexture, vec3((vec2(invocationPosition.xy) + vec2(0.5, 0.75)) / vec2(destinationTextureSize), float(invocationPosition.z)), 0.0).x));
-    }else{
-      // Otherwise when width and height are even, just one bilinear sample (with min or max sampler reduction filter) is used, since it is already 
-      // perfectly 2x2.
-      depths = vec4(textureLod(uSourceTexture, vec3((vec2(invocationPosition.xy) + vec2(0.5)) / vec2(destinationTextureSize), float(invocationPosition.z)), 0.0).x);
+      depths = reduceOp(depths, getTexel(invocationPosition.xy << 1, invocationPosition.z, 0, ivec2(0, 2)));
+      depths = reduceOp(depths, getTexel(invocationPosition.xy << 1, invocationPosition.z, 0, ivec2(1, 2)));
     }
   }
 #else
+  depths = reduceOp(
+    reduceOp(
+      getTexel(invocationPosition.xy << 1, 0, ivec2(0, 0)), 
+      getTexel(invocationPosition.xy << 1, 0, ivec2(1, 0))), 
+    reduceOp(
+      getTexel(invocationPosition.xy << 1, 0, ivec2(0, 1)), 
+      getTexel(invocationPosition.xy << 1, 0, ivec2(1, 1))
+    )
+  );
   if((sourceSize.x & 1) != 0){
     if((sourceSize.y & 1) != 0){
-      // When width and height are odd, 4 bilinear samples (with min or max sampler reduction filter) are used to reduce undersampling.
-      depths = vec4(reduceOp(reduceOp(textureLod(uSourceTexture, (vec2(invocationPosition.xy) + vec2(0.25, 0.25)) / vec2(destinationTextureSize), 0.0).x,
-                                      textureLod(uSourceTexture, (vec2(invocationPosition.xy) + vec2(0.75, 0.75)) / vec2(destinationTextureSize), 0.0).x),
-                             reduceOp(textureLod(uSourceTexture, (vec2(invocationPosition.xy) + vec2(0.25, 0.75)) / vec2(destinationTextureSize), 0.0).x,
-                                      textureLod(uSourceTexture, (vec2(invocationPosition.xy) + vec2(0.75, 0.25)) / vec2(destinationTextureSize), 0.0).x)));
+      depths = reduceOp(depths, getTexel(invocationPosition.xy << 1, 0, ivec2(0, 2)));
+      depths = reduceOp(depths, getTexel(invocationPosition.xy << 1, 0, ivec2(1, 2)));
+      depths = reduceOp(depths, getTexel(invocationPosition.xy << 1, 0, ivec2(2, 0)));
+      depths = reduceOp(depths, getTexel(invocationPosition.xy << 1, 0, ivec2(2, 1)));
+      depths = reduceOp(depths, getTexel(invocationPosition.xy << 1, 0, ivec2(2, 2)));
     }else{
-      // When only width is odd, 2 bilinear samples (with min or max sampler reduction filter) are used to reduce undersampling.
-      depths = vec4(reduceOp(textureLod(uSourceTexture, (vec2(invocationPosition.xy) + vec2(0.25, 0.5)) / vec2(destinationTextureSize), 0.0).x,
-                             textureLod(uSourceTexture, (vec2(invocationPosition.xy) + vec2(0.75, 0.5)) / vec2(destinationTextureSize), 0.0).x));
+      depths = reduceOp(depths, getTexel(invocationPosition.xy << 1, 0, ivec2(2, 0)));
+      depths = reduceOp(depths, getTexel(invocationPosition.xy << 1, 0, ivec2(2, 1)));
     }      
   }else{
     if((sourceSize.y & 1) != 0){
-      // When only height is odd, 2 bilinear samples (with min or max sampler reduction filter) are used to reduce undersampling.
-      depths = vec4(reduceOp(textureLod(uSourceTexture, (vec2(invocationPosition.xy) + vec2(0.5, 0.25)) / vec2(destinationTextureSize), 0.0).x,
-                             textureLod(uSourceTexture, (vec2(invocationPosition.xy) + vec2(0.5, 0.75)) / vec2(destinationTextureSize), 0.0).x));
-    }else{
-      // Otherwise when width and height are even, just one bilinear sample (with min or max sampler reduction filter) is used, since it is already 
-      // perfectly 2x2.
-      depths = vec4(textureLod(uSourceTexture, (vec2(invocationPosition.xy) + vec2(0.5)) / vec2(destinationTextureSize), 0.0).x);
+      depths = reduceOp(depths, getTexel(invocationPosition.xy << 1, 0, ivec2(0, 2)));
+      depths = reduceOp(depths, getTexel(invocationPosition.xy << 1, 0, ivec2(1, 2)));
     }
   }
 #endif
  
   if(all(lessThan(invocationPosition.xy >> 0, destinationTextureSize))){
 #ifdef MULTIVIEW
-    imageStore(uDestinationTextures[0], ivec3(invocationPosition.xy >> 0, invocationPosition.z), depths.xxxx);
+    imageStore(uDestinationTextures[0], ivec3(invocationPosition.xy >> 0, invocationPosition.z), depths.xyxy);
 #else
-    imageStore(uDestinationTextures[0], invocationPosition.xy >> 0, depths.xxxx);
+    imageStore(uDestinationTextures[0], invocationPosition.xy >> 0, depths.xyxy);
 #endif
   }
   if(pushConstants.countMipMapLevels == 1){
@@ -262,25 +299,22 @@ void main() {
 
   int localInvocationIndex = int(gl_LocalInvocationIndex);
 
-  sharedZ[localInvocationIndex] = depths.x;
+  sharedZ[localInvocationIndex] = depths;
 
   barrier();
 
   destinationTextureSize = max(ivec2(1), destinationTextureSize >> 1);
   
   if((localInvocationIndex & 0x09 /*0b001001*/) == 0){
-    depths.y = sharedZ[localInvocationIndex + 0x01];
-    depths.z = sharedZ[localInvocationIndex + 0x08];
-    depths.w = sharedZ[localInvocationIndex + 0x09];
-    depths = vec4(reduceOp(reduceOp(depths.x, depths.y), reduceOp(depths.z, depths.w)));
+    depths = reduceOp(reduceOp(depths, sharedZ[localInvocationIndex + 0x01]), reduceOp(sharedZ[localInvocationIndex + 0x08], sharedZ[localInvocationIndex + 0x09]));
     if(all(lessThan(invocationPosition.xy >> 1, destinationTextureSize))){
 #ifdef MULTIVIEW
-      imageStore(uDestinationTextures[1], ivec3(invocationPosition.xy >> 1, invocationPosition.z), depths.xxxx);
+      imageStore(uDestinationTextures[1], ivec3(invocationPosition.xy >> 1, invocationPosition.z), depths.xyxy);
 #else
-      imageStore(uDestinationTextures[1], invocationPosition.xy >> 1, depths.xxxx);
+      imageStore(uDestinationTextures[1], invocationPosition.xy >> 1, depths.xyxy);
 #endif
     }
-    sharedZ[localInvocationIndex] = depths.x;
+    sharedZ[localInvocationIndex] = depths;
   }
   if(pushConstants.countMipMapLevels == 2){
     return;
@@ -290,18 +324,15 @@ void main() {
   destinationTextureSize = max(ivec2(1), destinationTextureSize >> 1);
 
   if((localInvocationIndex & 0x1b /*0b011011*/) == 0){
-    depths.y = sharedZ[localInvocationIndex + 0x02];
-    depths.z = sharedZ[localInvocationIndex + 0x10];
-    depths.w = sharedZ[localInvocationIndex + 0x12];
-    depths = vec4(reduceOp(reduceOp(depths.x, depths.y), reduceOp(depths.z, depths.w)));
+    depths = reduceOp(reduceOp(depths, sharedZ[localInvocationIndex + 0x02]), reduceOp(sharedZ[localInvocationIndex + 0x10], sharedZ[localInvocationIndex + 0x12]));
     if(all(lessThan(invocationPosition.xy >> 2, destinationTextureSize))){
 #ifdef MULTIVIEW
-      imageStore(uDestinationTextures[2], ivec3(invocationPosition.xy >> 2, invocationPosition.z), depths.xxxx);
+      imageStore(uDestinationTextures[2], ivec3(invocationPosition.xy >> 2, invocationPosition.z), depths.xyxy);
 #else
-      imageStore(uDestinationTextures[2], invocationPosition.xy >> 2, depths.xxxx);
+      imageStore(uDestinationTextures[2], invocationPosition.xy >> 2, depths.xyxy);
 #endif
     }
-    sharedZ[localInvocationIndex] = depths.x;
+    sharedZ[localInvocationIndex] = depths;
   }
   if(pushConstants.countMipMapLevels == 3){
     return;
@@ -311,15 +342,12 @@ void main() {
   destinationTextureSize = max(ivec2(1), destinationTextureSize >> 1);
 
   if((localInvocationIndex & 0x3f /*0b111111*/) == 0){
-    depths.y = sharedZ[localInvocationIndex + 0x04];
-    depths.z = sharedZ[localInvocationIndex + 0x20];
-    depths.w = sharedZ[localInvocationIndex + 0x24];
-    depths = vec4(reduceOp(reduceOp(depths.x, depths.y), reduceOp(depths.z, depths.w)));
+    depths = reduceOp(reduceOp(depths, sharedZ[localInvocationIndex + 0x04]), reduceOp(sharedZ[localInvocationIndex + 0x20], sharedZ[localInvocationIndex + 0x24]));
     if(all(lessThan(invocationPosition.xy >> 3, destinationTextureSize))){
 #ifdef MULTIVIEW
-      imageStore(uDestinationTextures[3], ivec3(invocationPosition.xy >> 3, invocationPosition.z), depths.xxxx);
+      imageStore(uDestinationTextures[3], ivec3(invocationPosition.xy >> 3, invocationPosition.z), depths.xyxy);
 #else
-      imageStore(uDestinationTextures[3], invocationPosition.xy >> 3, depths.xxxx);
+      imageStore(uDestinationTextures[3], invocationPosition.xy >> 3, depths.xyxy);
 #endif
     }
   }
