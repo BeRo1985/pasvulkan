@@ -283,7 +283,8 @@ float getWaves(vec2 position, int iterations) {
 
 float mapEx(vec3 p, int i){
   vec3 n = normalize(planetCenter - p);
-  vec2 uv = vec2((atan(n.z, n.x) / 6.283185307179586476925286766559) + 0.5, acos(n.y) / 3.1415926535897932384626433832795); 
+  vec3 nc = mix(n, vec3(1e-6), lessThan(abs(n), vec3(1e-6)));
+  vec2 uv = vec2((atan(abs(nc.x / nc.z)) / 6.283185307179586476925286766559) + 0.5, acos(n.y) / 3.1415926535897932384626433832795); 
   float w = getWaves(uv * 128.0, i) * 0.01; 
   float h = 0.75 + w;//textureBicubicOctahedralMap(uImageHeightMap, n).x + w;
   float r = length(planetCenter - p) - mix(planetBottomRadius, planetTopRadius, h);
