@@ -542,6 +542,92 @@ vec3 getIBLVolumeRefraction(vec3 n, vec3 v, float perceptualRoughness, vec3 base
 
 #ifdef SCREEN_SPACE_REFLECTIONS
 
+bool castScreenSpaceRay(vec3 worldSpaceRayOrigin,
+                        vec3 worldSpaceRayDirection,
+                        out vec2 hitUV){
+
+  const int countHiZRayIterations = 128;
+  const int countLODLevels = int(textureQueryLevels(uPassTextures[2]));
+  const float stepEpsilon = 1e-4;
+  const float zeroEpsilon = 1e-5;
+  const float zeroDirectionEpsilon = 1e-3;
+
+  const ivec2 lod0Size = ivec2(textureSize(uPassTextures[2], 0).xy);
+  const vec2 invLOD0Size = vec2(1.0) / vec2(lod0Size);
+
+  vec3 rayOrigin = (viewMatrix * vec4(worldSpaceRayOrigin, 1.0)).xyz;
+
+  vec3 rayDirection = normalize((viewMatrix * vec4(worldSpaceRayDirection, 0.0)).xyz);
+
+  vec3 rayEnd = fma(rayDirection, vec3(10.0), rayOrigin);
+
+  vec4 pHS0 = projectionMatrix * vec4(rayOrigin, 1.0);
+  pHS0 /= pHS0.w;
+  vec3 pSS0 = vec3(fma(pHS0.xy / pHS0.w, vec2(0.5), vec2(0.5)), pHS0.z);
+
+  vec4 pHS1 = projectionMatrix * vec4(rayEnd, 1.0);
+  pHS1 /= pHS1.w;
+  vec3 pSS1 = vec3(fma(pHS1.xy / pHS1.w, vec2(0.5), vec2(0.5)), pHS1.z);
+
+  vec3 vSS = pSS1 - pSS0;
+
+  vec3 stepSign = mix(vec3(1.0), vec3(-1.0), lessThan(vSS, vec3(0.0)));
+
+  vec2 stepOffset = stepSign.xy * (stepEpsilon * invLOD0Size);
+
+  vec3 vSSAbs = abs(vSS);
+  vSS = mix(vSS, stepSign * zeroDirectionEpsilon, lessThan(vSSAbs, vec3(zeroEpsilon)));
+ 
+  vec2 stepVector = clamp(stepSign.xy, vec2(0.0), vec2(1.0));
+ 
+  vec3 vSSInv = vec3(1.0) / vSS;
+
+  float pSS0InvZ = 1.0 / pSS0.z;
+  float pSS1InvZ = 1.0 / pSS1.z;
+
+  float interpolationPoint = pSS0InvZ;
+  float interpolationVector = pSS1InvZ - pSS0InvZ;
+
+  float calcT0 = -pSS0InvZ;
+  float calcT1 = 1.0f / (pSS1InvZ - pSS0InvZ);
+ 
+  const vec2 timeStartPixelXY = ((((floor(pSS0.xy * vec2(lod0Size)) + stepVector) / vec2(lod0Size)) + stepOffset) - pSS0.xy) * vSSInv.xy;
+  float time = min(timeStartPixelXY.x, timeStartPixelXY.y);
+  vec2 timeSceneZMinMax = vec2(1.0, 0.0);
+  int mipLevel = countLODLevels - 1;
+ 
+  for(int iteration = 0; (mipLevel >= 0.0) && (iteration < countHiZRayIterations) && (time <= 1.0); iteration++){
+    const vec2 maxRayPointXY = fma(vSS.xy, vec2(time), pSS0.xy);
+    const vec2 levelSize = floor(vec2(lod0Size) / min(vec2(exp2(mipLevel)), vec2(lod0Size)));
+    const vec2 pixel = floor(maxRayPointXY * levelSize);
+    const vec2 timePixelXY = ((((pixel + stepVector) / levelSize) + stepOffset) - pSS0.xy) * vSSInv.xy;
+    const float timePixelEdge = min(timePixelXY.x, timePixelXY.y);
+    vec2 uv = (pixel + vec2(0.5)) * invLOD0Size;   
+    vec2 rawDepths = textureLod(uPassTextures[2], vec3(uv, inViewIndex), float(mipLevel)).xy;
+    uv = fma(uv, vec2(2.0), vec2(-1.0));
+    vec4 depths = vec4((inverseProjectionMatrix * vec4(uv, rawDepths.x, 1.0)).zw, (inverseProjectionMatrix * vec4(uv, rawDepths.y, 1.0)).zw);
+    vec2 sceneZMinMax = depths.xz / depths.yw;
+    if(sceneZMinMax.y == 0.0){
+      sceneZMinMax.xy = vec2(16777216.0, 0.0);
+    }
+    timeSceneZMinMax = ((vec2(1.0) / sceneZMinMax) + calcT0) * calcT1;
+    if((timeSceneZMinMax.x <= timePixelEdge) && (time <= timeSceneZMinMax.y)){
+      mipLevel--;
+      time = max(time, timeSceneZMinMax.x);
+    }else{
+      time = timePixelEdge;
+      mipLevel = min(mipLevel + 1, countLODLevels - 1);
+    }
+  }
+
+  vec3 hit = vec3(fma(vSS.xy, vec2(time), pSS0.xy), 1.0 / fma(interpolationVector, time, interpolationPoint));
+
+  hitUV = hit.xy;
+  
+  return (mipLevel == -1) && (time >= timeSceneZMinMax.x) && (time <= timeSceneZMinMax.y);
+
+}
+
 vec3 getReflectionSample(vec2 fragCoord, float roughness) {
   int maxLod = int(textureQueryLevels(uPassTextures[1]));
   float framebufferLod = float(maxLod) * applyIorToRoughness(roughness, 1.0);
