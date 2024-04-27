@@ -552,6 +552,7 @@ bool castScreenSpaceRay(vec3 worldSpaceRayOrigin,
   const float zeroEpsilon = 1e-5;
   const float zeroDirectionEpsilon = 1e-3;
   const float maxDistance = 100.0;
+  const float zThickness = 0.02;
 
   const ivec2 lod0Size = ivec2(textureSize(uPassTextures[2], 0).xy);
   const vec2 invLOD0Size = vec2(1.0) / vec2(lod0Size);
@@ -615,7 +616,7 @@ bool castScreenSpaceRay(vec3 worldSpaceRayOrigin,
     vec2 rawDepths = textureLod(uPassTextures[2], vec3(uv, inViewIndex), float(mipLevel)).xy;
     uv = fma(uv, vec2(2.0), vec2(-1.0));
     vec4 depths = vec4((inverseProjectionMatrix * vec4(uv, rawDepths.x, 1.0)).zw, (inverseProjectionMatrix * vec4(uv, rawDepths.y, 1.0)).zw);
-    vec2 sceneZMinMax = depths.xz / depths.yw;
+    vec2 sceneZMinMax = vec2(depths.xz / depths.yw) + vec2(0.0, zThickness);
     if(sceneZMinMax.y == 0.0){
       sceneZMinMax.xy = vec2(16777216.0, 0.0);
     }
