@@ -309,7 +309,7 @@ vec3 mapNormal(vec3 p) {
 
 const int MAX_MARCHING_STEPS = 256;
 
-const float PRECISION = 1e-4;
+const float PRECISION = 1e-2;
 
 float INFINITY = uintBitsToFloat(0x7f800000u); 
 
@@ -573,7 +573,7 @@ vec4 doShade(float hitTime, bool underWater){
 
     vec4 screenSpaceReflection = underWater 
                                    ? vec4(0.0) 
-                                   : getScreenSpaceReflection(worldSpacePosition, normal, -viewDirection, 0.0, vec4(iblSpecular, 1.0));
+                                   : vec4(iblSpecular, 1.0); //getScreenSpaceReflection(worldSpacePosition, normal, -viewDirection, 0.0, vec4(iblSpecular, 1.0));
 
     vec3 reflection = mix(screenSpaceReflection.xyz, screenSpaceReflection.xyz * albedo.xyz, screenSpaceReflection.w) + 
 #if defined(TRANSMISSION) 
