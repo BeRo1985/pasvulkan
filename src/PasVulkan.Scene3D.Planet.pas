@@ -7515,8 +7515,8 @@ begin
   fPipelineLayout:=TpvVulkanPipelineLayout.Create(fVulkanDevice);
   fPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),0,SizeOf(TPushConstants));
   fPipelineLayout.AddDescriptorSetLayout(fDescriptorSetLayout);
-  fPipelineLayout.AddDescriptorSetLayout(TpvScene3D(fRenderer).PlanetWaterPrepassDescriptorSetLayout);
-  fPipelineLayout.AddDescriptorSetLayout(TpvScene3D(fRenderer).PlanetDescriptorSetLayout);
+  fPipelineLayout.AddDescriptorSetLayout(TpvScene3D(fScene3D).PlanetWaterPrepassDescriptorSetLayout);
+  fPipelineLayout.AddDescriptorSetLayout(TpvScene3D(fScene3D).PlanetDescriptorSetLayout);
   fPipelineLayout.Initialize;
 
   fVulkanDevice.DebugUtils.SetObjectName(fPipelineLayout.Handle,VK_OBJECT_TYPE_PIPELINE_LAYOUT,'TpvScene3DPlanet.TWaterPrepass.fPipelineLayout');
@@ -7558,14 +7558,14 @@ begin
 
  fDescriptorPool:=TpvVulkanDescriptorPool.Create(fVulkanDevice,
                                                  TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
-                                                 MaxInFlightFrames);
- fDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,MaxInFlightFrames*1);
- fDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,MaxInFlightFrames*1);
+                                                 TpvScene3D(fScene3D).CountInFlightFrames);
+ fDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,TpvScene3D(fScene3D).CountInFlightFrames*1);
+ fDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,TpvScene3D(fScene3D).CountInFlightFrames*1);
  fDescriptorPool.Initialize;
 
  fVulkanDevice.DebugUtils.SetObjectName(fDescriptorPool.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'TpvScene3DPlanet.TWaterPrepass.fDescriptorPool');
 
- for InFlightFrameIndex:=0 to MaxInFlightFrames-1 do begin
+ for InFlightFrameIndex:=0 to TpvScene3D(fScene3D).CountInFlightFrames-1 do begin
  
   fDescriptorSets[InFlightFrameIndex]:=TpvVulkanDescriptorSet.Create(fDescriptorPool,
                                                                      fDescriptorSetLayout);
@@ -7653,7 +7653,7 @@ begin
 
      aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT),
                                        TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
-                                       TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                       TVkDependencyFlags(0),
                                        0,nil,
                                        0,nil,
                                        1,@ImageMemoryBarriers[0]);
@@ -7698,7 +7698,7 @@ begin
 
       aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
                                         TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
-                                        0,
+                                        TVkDependencyFlags(0),
                                         0,nil,
                                         0,nil,
                                         1,@ImageMemoryBarriers[0]);
@@ -7740,7 +7740,7 @@ begin
 
      aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
                                        TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT),
-                                       0,
+                                       TVkDependencyFlags(0),
                                        0,nil,
                                        0,nil,
                                        1,@ImageMemoryBarriers[0]);
