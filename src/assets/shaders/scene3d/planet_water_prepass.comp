@@ -157,7 +157,9 @@ void main(){
     // Conservative cone tracing for finding initial starting ray marching times in a lower resolution for the actual ray marching in
     // full resolution later on.
 
-    const int maxSteps = 256;
+    const int maxSteps = 512;
+
+    float raySign = (map(rayOrigin) < 0.0) ? -1.0 : 1.0;
 
     float t = 0.0;
 
@@ -174,13 +176,13 @@ void main(){
     //const float beamRadius = (2.0 * tan((2.0 * atan(1.0 / projectionMatrix[1][1])) * 0.5)) / float(imgSize.y);
     
     // Optimized version of the above calculation:
-    const float beamRadius = 2.0 / (float(imgSize.y) * projectionMatrix[1][1]);
+    const float beamRadius = 0.5 / (float(imgSize.y) * projectionMatrix[1][1]);
 
     for(int stepIndex = 0; (stepIndex < maxSteps) && (t < maxTime); stepIndex++){
 
       float capRadius = t * beamRadius;
 
-      float d = map(fma(rayDirection, vec3(t), rayOrigin));
+      float d = map(fma(rayDirection, vec3(t), rayOrigin)) * raySign;
 
       if(d <= capRadius){
         t = max(0.0, t - capRadius);
@@ -196,14 +198,14 @@ void main(){
     const float bias = 1.0; // Bias factor for cone sphere    
     //const float aperture = float(max(imgSize.x, imgSize.y)) / sqrt(2.0); // Aperture of the cone sphere    
     //const float aperture = sqrt(2.0) / float(max(imgSize.x, imgSize.y));
-    const float aperture = 2.0 / (float(imgSize.y) * projectionMatrix[1][1]);
+    const float aperture = 0.5 / (float(imgSize.y) * projectionMatrix[1][1]);
     const float C = sqrt(fma(aperture, aperture, 1.0));
     const float R = aperture / C; // Radius of sphere at t=1       
     const float A = C / fma(aperture, bias, C);// Constant adjustment factor for t so that the cone sphere touches the distance radius 
    
     for(int stepIndex = 0; (stepIndex < maxSteps) && (t < maxTime); stepIndex++){
       float limit = (t * R * bias) + (t * 1e-03);
-      float d = map(fma(rayDirection, vec3(t), rayOrigin));
+      float d = map(fma(rayDirection, vec3(t), rayOrigin)) * raySign;
       if(d <= limit){
         if(d < 0.0){
           // Avoid intersections, so shift t a bit back again, so that the actual ray marching will not missing anything at the beginning 
@@ -222,7 +224,8 @@ void main(){
 
   }  
 
-
+  // Scatter the hit time to the neighboring texels for the water acceleration structure for the full resolution ray marching
+  // for being conservative and avoiding artifacts as much as possible.
   if(hitTime >= 0.0){
     ivec2 baseTexelPos = ivec2(gl_GlobalInvocationID.xy);
     ivec2 x01 = ivec2((baseTexelPos.x > 0) ? -1 : 0, ((baseTexelPos.x + 1) < imgSize.x) ? 1 : 0);
@@ -231,7 +234,7 @@ void main(){
       for(int x = x01.x; x <= x01.y; x++){
         ivec2 texelPos = baseTexelPos + ivec2(x, y);
         if(all(greaterThanEqual(texelPos, ivec2(0))) && all(lessThan(texelPos, imgSize))){
-          imageAtomicMin(uImageWaterAcceleration, ivec3(gl_GlobalInvocationID.xy, computeViewIndex), floatBitsToUint(hitTime));
+          imageAtomicMin(uImageWaterAcceleration, ivec3(texelPos, computeViewIndex), floatBitsToUint(hitTime));
         }
       }
     }
