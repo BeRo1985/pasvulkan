@@ -21,30 +21,20 @@
 
 #include "bufferreference_definitions.glsl"
 
-#if defined(LOCKOIT) || defined(DFAOIT)
-  #ifdef INTERLOCK
-    #extension GL_ARB_fragment_shader_interlock : enable
-    #define beginInvocationInterlock beginInvocationInterlockARB
-    #define endInvocationInterlock endInvocationInterlockARB
-    #ifdef MSAA
-      layout(sample_interlock_ordered) in;
-    #else
-      layout(pixel_interlock_ordered) in;
-    #endif
-  #else
-    #if defined(ALPHATEST)
-    #else
-    #endif
-  #endif
-#elif !defined(ALPHATEST)
-#endif
-
 layout(location = 0) in vec2 inTexCoord;
+
+layout(location = 0) out vec4 outFragColor;
 
 #if defined(VELOCITY)
   layout(location = 1) out vec2 outVelocity;
 #elif defined(REFLECTIVESHADOWMAPOUTPUT)
   layout(location = 1) out vec4 outFragNormalUsed; // xyz = normal, w = 1.0 if normal was used, 0.0 otherwise (by clearing the normal buffer to vec4(0.0))
+#endif
+
+#ifdef MSAA
+layout(input_attachment_index = 0, set = 1, binding = 9) uniform subpassInputMS uOITImgDepth;
+#else
+layout(input_attachment_index = 0, set = 1, binding = 9) uniform subpassInput uOITImgDepth;
 #endif
 
 vec3 viewSpacePosition;
@@ -89,7 +79,7 @@ layout(set = 3, binding = 0) uniform sampler2DArray uTextureWaterAcceleration;
 
 #define WATER_FRAGMENT_SHADER
 
-#if defined(LOCKOIT) || defined(DFAOIT) || defined(WBOIT) || defined(MBOIT) || defined(LOOPOIT) || defined(BLEND)
+#if defined(LOCKOIT) || defined(DFAOIT) || defined(WBOIT) || defined(MBOIT) || defined(LOOPOIT) || defined(BLEND) || defined(DIRECT)
  #define TRANSMISSION
  #define TRANSMISSION_FORCED
  #define VOLUMEATTENUTATION_FORCED
@@ -165,14 +155,6 @@ float delinearizeDepth(float z){
 #undef ENABLE_ANISOTROPIC
 #define SCREEN_SPACE_REFLECTIONS
 #include "pbr.glsl"
-
-#define TRANSPARENCY_DECLARATION
-#include "transparency.glsl"
-#undef TRANSPARENCY_DECLARATION
-
-#define TRANSPARENCY_GLOBALS
-#include "transparency.glsl"
-#undef TRANSPARENCY_GLOBALS
 
 const vec3 planetCenter = vec3(0.0); // The planet is at the origin in planet space
 float planetBottomRadius = planetData.bottomRadiusTopRadiusHeightMapScale.x;
@@ -499,17 +481,6 @@ void main(){
 #endif
   }
 
-  float alpha = finalColor.w;
-
-  bool additiveBlending = false;
-
-#define OVERRIDED_DEPTH hitDepth // instead gl_FragCoord.z 
-#if defined(LOCKOIT) || defined(DFAOIT) || defined(WBOIT) || defined(MBOIT) || defined(LOOPOIT) || defined(BLEND)
-#define TRANSPARENCY_IMPLEMENTATION
-#include "transparency.glsl"
-#undef TRANSPARENCY_IMPLEMENTATION
-#else
   outFragColor = vec4(clamp(finalColor.xyz * finalColor.w, vec3(-65504.0), vec3(65504.0)), finalColor.w);
-#endif
 
 } 

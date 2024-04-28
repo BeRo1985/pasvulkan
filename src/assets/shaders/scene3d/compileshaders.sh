@@ -273,6 +273,8 @@ compileshaderarguments=(
   
   "-V blit.frag -o ${tempPath}/blit_frag.spv"
 
+  "-V blit.frag -DMSAA -o ${tempPath}/blit_msaa_frag.spv"
+
   "-V framebuffer_blit.frag -o ${tempPath}/framebuffer_blit_frag.spv"
 
   "-V msaa_resolve.frag -o ${tempPath}/msaa_resolve_frag.spv"
@@ -667,39 +669,13 @@ addPlanetWaterFragmentShader(){
 }
 
 # Add planet water fragment shader variants with different transparency techniques (if any)
-addPlanetWaterFragmentShadingTransparencyVariants(){
-
-  # Standard alpha blending
-  addPlanetWaterFragmentShader "${1}_blend" "$2 -DBLEND"
-
-  # WBOIT (Weighted-Blended Order Independent Transparency)
-  addPlanetWaterFragmentShader "${1}_wboit" "$2 -DWBOIT"
-
-  # MBOIT (Moment-Based order independent transparency)
-  addPlanetWaterFragmentShader "${1}_mboit_pass1" "$2 -DMBOIT -DMBOITPASS1"
-  addPlanetWaterFragmentShader "${1}_mboit_pass2" "$2 -DMBOIT -DMBOITPASS2"
-
-  # LoopOIT (Multi-pass order independent transparency)
-  addPlanetWaterFragmentShader "${1}_loopoit_pass1" "$2 -DLOOPOIT -DLOOPOIT_PASS1"
-  addPlanetWaterFragmentShader "${1}_loopoit_pass2" "$2 -DLOOPOIT -DLOOPOIT_PASS2"
-
-  # LockOIT (Order independent transparency with spinlock/interlock, depending on the GPU capabilities)
-  addPlanetWaterFragmentShader "${1}_spinlock_lockoit" "$2 -DLOCKOIT -DSPINLOCK"
-  addPlanetWaterFragmentShader "${1}_interlock_lockoit" "$2 -DLOCKOIT -DINTERLOCK"
-
-  # DFAOIT (Neural network based order independent transparency)
-  addPlanetWaterFragmentShader "${1}_spinlock_dfaoit" "$2 -DDFAOIT -DSPINLOCK"
-  addPlanetWaterFragmentShader "${1}_interlock_dfaoit" "$2 -DDFAOIT -DINTERLOCK"
-
-}
-
 addPlanetWaterFragmentShadingAntialiasingVariants(){
   
   # No antialiasing or temporal antialiasing
-  addPlanetWaterFragmentShadingTransparencyVariants "${1}" "$2"
+  addPlanetWaterFragmentShader "${1}" "$2"
 
   # MSAA (Multi-sample anti-aliasing)
-  addPlanetWaterFragmentShadingTransparencyVariants "${1}_msaa" "$2 -DMSAA"  
+  addPlanetWaterFragmentShader "${1}_msaa" "$2 -DMSAA"  
 
 }
 

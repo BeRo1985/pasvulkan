@@ -9035,7 +9035,7 @@ begin
   ShaderFileName:=ShaderFileName+'_msaa';
  end;
 
- case TpvScene3DRenderer(aRenderer).TransparencyMode of
+{case TpvScene3DRenderer(aRenderer).TransparencyMode of
   TpvScene3DRendererTransparencyMode.SPINLOCKOIT:begin
    ShaderFileName:=ShaderFileName+'_spinlock_lockoit';
   end;
@@ -9060,7 +9060,9 @@ begin
   else begin
    ShaderFileName:=ShaderFileName+'_blend';
   end;
- end;
+ end;}
+
+ ShaderFileName:=ShaderFileName+'_blend';
 
  ShaderFileName:=ShaderFileName+'_frag.spv';
 
@@ -9160,7 +9162,7 @@ begin
   fPipeline.MultisampleState.AlphaToCoverageEnable:=false;
   fPipeline.MultisampleState.AlphaToOneEnable:=false;
 
-  case TpvScene3DRenderer(fRendererInstance).TransparencyMode of
+{ case TpvScene3DRenderer(fRendererInstance).TransparencyMode of
 
    TpvScene3DRendererTransparencyMode.SPINLOCKOIT,
    TpvScene3DRendererTransparencyMode.INTERLOCKOIT:begin
@@ -9368,7 +9370,25 @@ begin
 
    end;
 
-  end;
+  end;}
+
+  fPipeline.ColorBlendState.LogicOpEnable:=false;
+  fPipeline.ColorBlendState.LogicOp:=VK_LOGIC_OP_COPY;
+  fPipeline.ColorBlendState.BlendConstants[0]:=0.0;
+  fPipeline.ColorBlendState.BlendConstants[1]:=0.0;
+  fPipeline.ColorBlendState.BlendConstants[2]:=0.0;
+  fPipeline.ColorBlendState.BlendConstants[3]:=0.0;
+  fPipeline.ColorBlendState.AddColorBlendAttachmentState(true,
+                                                         VK_BLEND_FACTOR_ONE,
+                                                         VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+                                                         VK_BLEND_OP_ADD,
+                                                         VK_BLEND_FACTOR_ONE,
+                                                         VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+                                                         VK_BLEND_OP_ADD,
+                                                         TVkColorComponentFlags(VK_COLOR_COMPONENT_R_BIT) or
+                                                         TVkColorComponentFlags(VK_COLOR_COMPONENT_G_BIT) or
+                                                         TVkColorComponentFlags(VK_COLOR_COMPONENT_B_BIT) or
+                                                         TVkColorComponentFlags(VK_COLOR_COMPONENT_A_BIT));
 
   fPipeline.DepthStencilState.DepthTestEnable:=false;
   fPipeline.DepthStencilState.DepthWriteEnable:=false;
