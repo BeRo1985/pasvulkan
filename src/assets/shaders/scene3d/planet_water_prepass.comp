@@ -146,13 +146,45 @@ void main(){
     // full resolution later on.
 
     const int maxSteps = 256;
+
+    float t = 0.0;
+
+#if 1
+
+    //const float aspectRatio = projectionMatrix[1][1] / projectionMatrix[0][0];
+
+    //const float fovX = 2.0 * atan(1.0 / projectionMatrix[0][0]);
+
+    const float fovY = 2.0 * atan(1.0 / projectionMatrix[1][1]);
+
+    const float beamRadius = (2.0 * tan(fovY * 0.5)) / float(imgSize.y);
+
+    for(int stepIndex = 0; (stepIndex < maxSteps) && (t < maxTime); stepIndex++){
+
+      float capRadius = t * beamRadius;
+
+      float d = map(fma(rayDirection, vec3(t), rayOrigin));
+
+      if(d <= capRadius){
+        if(d < 0.0){
+          // Avoid intersections, so shift t a bit back again, so that the actual ray marching will not missing anything at the beginning 
+          t = max(0.0, t - (d * 4.0)); // That should be enough for now    
+        }
+        break;
+      }
+
+      t += d - capRadius; 
+
+    }
+
+#else
+
     const float bias = 1.0; // Bias factor for cone sphere    
     const float aperture = float(max(imgSize.x, imgSize.y)) / sqrt(2.0); // Aperture of the cone sphere    
     const float C = sqrt(fma(aperture, aperture, 1.0));
     const float R = aperture / C; // Radius of sphere at t=1       
     const float A = C / fma(aperture, bias, C);// Constant adjustment factor for t so that the cone sphere touches the distance radius 
-
-    float t = 0.0;
+   
     for(int stepIndex = 0; (stepIndex < maxSteps) && (t < maxTime); stepIndex++){
       float limit = (t * R * bias) + (t * 1e-03);
       float d = map(fma(rayDirection, vec3(t), rayOrigin));
@@ -166,11 +198,14 @@ void main(){
       t = (t + d) * A;
     }
 
+#endif
+
     if(t < maxTime){
       hitTime = t;
     }
 
   }  
+
 
   imageStore(uImageStartTimes, ivec3(gl_GlobalInvocationID.xy, computeViewIndex), vec4(hitTime));
 
