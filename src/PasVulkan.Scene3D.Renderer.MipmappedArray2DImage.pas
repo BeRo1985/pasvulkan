@@ -80,6 +80,7 @@ type { TpvScene3DRendererMipmappedArray2DImage }
        fMemoryBlock:TpvVulkanDeviceMemoryBlock;
        fWidth:TpvInt32;
        fHeight:TpvInt32;
+       fLayers:TpvInt32;
        fMipMapLevels:TpvInt32;
        fFormat:TVkFormat;
       public
@@ -103,6 +104,8 @@ type { TpvScene3DRendererMipmappedArray2DImage }
        property Width:TpvInt32 read fWidth;
 
        property Height:TpvInt32 read fHeight;
+
+       property Layers:TpvInt32 read fLayers;
 
        property MipMapLevels:TpvInt32 read fMipMapLevels;
 
@@ -135,6 +138,8 @@ begin
  fWidth:=aWidth;
 
  fHeight:=aHeight;
+
+ fLayers:=aLayers;
 
  fMipMapLevels:=Max(1,IntLog2(Max(aWidth,aHeight))+1);
 

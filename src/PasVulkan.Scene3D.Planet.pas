@@ -83,6 +83,7 @@ uses Classes,
      PasVulkan.HighResolutionTimer,
      PasVulkan.Scene3D.Renderer.Globals,
      PasVulkan.Scene3D.Renderer.Image2D,
+     PasVulkan.Scene3D.Renderer.Array2DImage,
      PasVulkan.Scene3D.Renderer.MipmapImage2D;
 
 type TpvScene3DPlanets=class;
@@ -1111,7 +1112,7 @@ type TpvScene3DPlanets=class;
               fVulkanGrassMetaDataBuffer:TpvVulkanBuffer;
               fVulkanGrassVerticesBuffer:TpvVulkanBuffer;
               fVulkanGrassIndicesBuffer:TpvVulkanBuffer;
-              fVulkanWaterAccelerationImage:TpvScene3DRendererImage2D;
+              fVulkanWaterAccelerationImage:TpvScene3DRendererArray2DImage;
               fPlanetCullDescriptorPool:TpvVulkanDescriptorPool;
               fPlanetCullDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
               fGrassCullDescriptorPool:TpvVulkanDescriptorPool;
@@ -7611,7 +7612,148 @@ begin
 end;
 
 procedure TpvScene3DPlanet.TWaterPrepass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt);
+var PlanetIndex,RenderPassIndex,BaseViewIndex,CountViews,AdditionalViewIndex,CountAdditionalViews:TpvSizeInt;
+    Planet:TpvScene3DPlanet;
+    First:Boolean;
+    InFlightFrameState:TpvScene3DRendererInstance.PInFlightFrameState;
+    RendererInstance:TpvScene3DPlanet.TRendererInstance;
+    RendererViewInstance:TpvScene3DPlanet.TRendererViewInstance;
+    ImageMemoryBarriers:array[0..1] of TVkImageMemoryBarrier;
+    DstPipelineStageFlags:TVkPipelineStageFlags;
+    DescriptorSets:array[0..1] of TVkDescriptorSet;
 begin
+
+ TpvScene3DPlanets(TpvScene3D(fScene3D).Planets).Lock.Acquire;
+ try
+
+  First:=true;
+
+  for PlanetIndex:=0 to TpvScene3DPlanets(TpvScene3D(fScene3D).Planets).Count-1 do begin
+
+   Planet:=TpvScene3DPlanets(TpvScene3D(fScene3D).Planets).Items[PlanetIndex];
+
+   if Planet.fReady and Planet.fInFlightFrameReady[aInFlightFrameIndex] then begin
+
+    if First then begin
+
+     First:=false;
+
+     ImageMemoryBarriers[0]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT),
+                                                          TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                          VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                          VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                          VK_QUEUE_FAMILY_IGNORED,
+                                                          VK_QUEUE_FAMILY_IGNORED,
+                                                          TpvScene3DRendererInstance(fRendererInstance).DepthMipmappedArray2DImage.VulkanImage.Handle,
+                                                          TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                          0,
+                                                                                          TpvScene3DRendererInstance(fRendererInstance).DepthMipmappedArray2DImage.MipMapLevels,
+                                                                                          0,
+                                                                                          TpvScene3DRendererInstance(fRendererInstance).DepthMipmappedArray2DImage.Layers));
+
+     aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT),
+                                       TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                       TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                       0,nil,
+                                       0,nil,
+                                       1,@ImageMemoryBarriers[0]);
+
+     aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,fPipeline.Handle);
+
+     aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE,
+                                          fPipelineLayout.Handle,
+                                          0,
+                                          1,
+                                          @fDescriptorSets[aInFlightFrameIndex].Handle,
+                                          0,
+                                          nil);
+
+    end;
+
+    if Planet.fRendererInstanceHashMap.TryGet(TpvScene3DPlanet.TRendererInstance.TKey.Create(fRendererInstance),RendererInstance) and
+       Planet.fRendererViewInstanceHashMap.TryGet(TpvScene3DPlanet.TRendererViewInstance.TKey.Create(fRendererInstance,InFlightFrameState^.ViewRenderPassIndex),RendererViewInstance) then begin
+
+     fPushConstants.ModelMatrix:=Planet.fInFlightFrameDataList[aInFlightFrameIndex].fModelMatrix;
+     fPushConstants.ViewBaseIndex:=InFlightFrameState^.FinalViewIndex;
+     fPushConstants.CountViews:=InFlightFrameState^.CountFinalViews;
+     fPushConstants.Time:=Modulo(TpvScene3D(Planet.Scene3D).SceneTimes^[aInFlightFrameIndex],65536.0);
+     fPushConstants.BottomRadius:=Planet.fBottomRadius;
+     fPushConstants.TopRadius:=Planet.fTopRadius;
+
+     begin
+
+      ImageMemoryBarriers[0]:=TVkImageMemoryBarrier.Create(0,
+                                                           TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                           VK_IMAGE_LAYOUT_UNDEFINED,
+                                                           VK_IMAGE_LAYOUT_GENERAL,
+                                                           VK_QUEUE_FAMILY_IGNORED,
+                                                           VK_QUEUE_FAMILY_IGNORED,
+                                                           RendererViewInstance.fVulkanWaterAccelerationImage.VulkanImage.Handle,
+                                                           TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                           0,
+                                                                                           1,
+                                                                                           0,
+                                                                                           RendererViewInstance.fVulkanWaterAccelerationImage.Layers));
+
+
+      aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
+                                        TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                        0,
+                                        0,nil,
+                                        0,nil,
+                                        1,@ImageMemoryBarriers[0]);
+     end;
+
+     aCommandBuffer.CmdPushConstants(fPipelineLayout.Handle,
+                                     TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                     0,
+                                     SizeOf(TPushConstants),
+                                     @fPushConstants);
+
+     DescriptorSets[0]:=RendererViewInstance.fWaterPrepassDescriptorSet.Handle;
+     DescriptorSets[1]:=Planet.fDescriptorSets[aInFlightFrameIndex].Handle;
+
+     aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE,
+                                          fPipelineLayout.Handle,
+                                          1,
+                                          2,
+                                          @DescriptorSets[0],
+                                          0,
+                                          nil);
+
+     aCommandBuffer.CmdDispatch((RendererViewInstance.fVulkanWaterAccelerationImage.Width+15) shr 4,
+                                (RendererViewInstance.fVulkanWaterAccelerationImage.Height+15) shr 4,
+                                RendererViewInstance.fVulkanWaterAccelerationImage.Layers);
+
+     ImageMemoryBarriers[0]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                          TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT),
+                                                          VK_IMAGE_LAYOUT_GENERAL,
+                                                          VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                          VK_QUEUE_FAMILY_IGNORED,
+                                                          VK_QUEUE_FAMILY_IGNORED,
+                                                          RendererViewInstance.fVulkanWaterAccelerationImage.VulkanImage.Handle,
+                                                          TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                          0,
+                                                                                          1,
+                                                                                          0,
+                                                                                          RendererViewInstance.fVulkanWaterAccelerationImage.Layers));
+
+     aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                       TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT),
+                                       0,
+                                       0,nil,
+                                       0,nil,
+                                       1,@ImageMemoryBarriers[0]);
+
+    end;
+
+   end;
+
+  end;
+
+ finally
+  TpvScene3DPlanets(TpvScene3D(fScene3D).Planets).Lock.Release;
+ end;
 
 end;
 
@@ -9738,16 +9880,15 @@ begin
 
  if aMainViewPort then begin
 
-  fVulkanWaterAccelerationImage:=TpvScene3DRendererImage2D.Create(fPlanet.fVulkanDevice,
-                                                                  256,
-                                                                  256,
-                                                                  VK_FORMAT_R32_SFLOAT,
-                                                                  true,
-                                                                  TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
-                                                                  VK_IMAGE_LAYOUT_GENERAL,
-                                                                  VK_SHARING_MODE_EXCLUSIVE,
-                                                                  nil,
-                                                                  pvAllocationGroupIDScene3DPlanetStatic);
+  fVulkanWaterAccelerationImage:=TpvScene3DRendererArray2DImage.Create(fPlanet.fVulkanDevice,
+                                                                       256,
+                                                                       256,
+                                                                       TpvScene3DRendererInstance(fRendererInstance).CountSurfaceViews,
+                                                                       VK_FORMAT_R32_SFLOAT,
+                                                                       TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
+                                                                       VK_IMAGE_LAYOUT_GENERAL,
+                                                                       true,
+                                                                       pvAllocationGroupIDScene3DPlanetStatic);
   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fVulkanWaterAccelerationImage.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DPlanet.WaterAccelerationImage.Image');
   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fVulkanWaterAccelerationImage.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DPlanet.WaterAccelerationImage.ImageView');
 
