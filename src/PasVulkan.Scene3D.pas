@@ -3036,6 +3036,7 @@ type EpvScene3D=class(Exception);
        fPlanetDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fPlanetCullDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fPlanetGrassCullAndMeshGenerationDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
+       fPlanetWaterPrepassDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fMeshComputeVulkanDescriptorSet0Layout:TpvVulkanDescriptorSetLayout;
        fMeshComputeVulkanDescriptorSet1Layout:TpvVulkanDescriptorSetLayout;
        fVulkanStagingQueue:TpvVulkanQueue;
@@ -3447,6 +3448,7 @@ type EpvScene3D=class(Exception);
        property PlanetDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fPlanetDescriptorSetLayout;
        property PlanetCullDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fPlanetCullDescriptorSetLayout;
        property PlanetGrassCullAndMeshGenerationDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fPlanetGrassCullAndMeshGenerationDescriptorSetLayout;
+       property PlanetWaterPrepassDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fPlanetWaterPrepassDescriptorSetLayout;
        property MeshComputeVulkanDescriptorSet0Layout:TpvVulkanDescriptorSetLayout read fMeshComputeVulkanDescriptorSet0Layout;
        property MeshComputeVulkanDescriptorSet1Layout:TpvVulkanDescriptorSetLayout read fMeshComputeVulkanDescriptorSet1Layout;
        property GlobalVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fGlobalVulkanDescriptorSetLayout;
@@ -21180,6 +21182,8 @@ begin
 
   fPlanetGrassCullAndMeshGenerationDescriptorSetLayout:=TpvScene3DPlanet.CreatePlanetGrassCullAndMeshGenerationDescriptorSetLayout(fVulkanDevice,fMeshShaderSupport);
 
+  fPlanetWaterPrepassDescriptorSetLayout:=TpvScene3DPlanet.CreatePlanetWaterPrepassDescriptorSetLayout(fVulkanDevice);
+
   fMeshComputeVulkanDescriptorSet0Layout:=TpvVulkanDescriptorSetLayout.Create(fVulkanDevice);
 
   // Group - Vertices
@@ -21541,6 +21545,8 @@ begin
  FreeAndNil(fPlanetCullDescriptorSetLayout);
 
  FreeAndNil(fPlanetGrassCullAndMeshGenerationDescriptorSetLayout);
+
+ FreeAndNil(fPlanetWaterPrepassDescriptorSetLayout);
 
  FreeAndNil(fMeshComputeVulkanDescriptorSet0Layout);
 
