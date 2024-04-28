@@ -161,7 +161,7 @@ void main(){
 
     float t = 0.0;
 
-#if 1
+#if 0
 
     //const float aspectRatio = projectionMatrix[1][1] / projectionMatrix[0][0];
 
@@ -183,10 +183,7 @@ void main(){
       float d = map(fma(rayDirection, vec3(t), rayOrigin));
 
       if(d <= capRadius){
-        if(d < 0.0){
-          // Avoid intersections, so shift t a bit back again, so that the actual ray marching will not missing anything at the beginning 
-          t = max(0.0, t - (d * 4.0)); // That should be enough for now    
-        }
+        t = max(0.0, t - capRadius);
         break;
       }
 
@@ -197,7 +194,9 @@ void main(){
 #else
 
     const float bias = 1.0; // Bias factor for cone sphere    
-    const float aperture = float(max(imgSize.x, imgSize.y)) / sqrt(2.0); // Aperture of the cone sphere    
+    //const float aperture = float(max(imgSize.x, imgSize.y)) / sqrt(2.0); // Aperture of the cone sphere    
+    //const float aperture = sqrt(2.0) / float(max(imgSize.x, imgSize.y));
+    const float aperture = 2.0 / (float(imgSize.y) * projectionMatrix[1][1]);
     const float C = sqrt(fma(aperture, aperture, 1.0));
     const float R = aperture / C; // Radius of sphere at t=1       
     const float A = C / fma(aperture, bias, C);// Constant adjustment factor for t so that the cone sphere touches the distance radius 
