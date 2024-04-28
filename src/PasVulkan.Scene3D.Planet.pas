@@ -9944,9 +9944,12 @@ begin
                                                                        TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
                                                                        VK_IMAGE_LAYOUT_GENERAL,
                                                                        true,
-                                                                       pvAllocationGroupIDScene3DPlanetStatic);
+                                                                       pvAllocationGroupIDScene3DPlanetStatic,
+                                                                       VK_FORMAT_R32_UINT);
   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fVulkanWaterAccelerationImage.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DPlanet.WaterAccelerationImage.Image');
   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fVulkanWaterAccelerationImage.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DPlanet.WaterAccelerationImage.ImageView');
+  fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fVulkanWaterAccelerationImage.VulkanArrayImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DPlanet.WaterAccelerationImage.ArrayImageView');
+  fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fVulkanWaterAccelerationImage.VulkanOtherArrayImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DPlanet.WaterAccelerationImage.OtherArrayImageView');
 
   fWaterPrepassDescriptorPool:=TpvScene3DPlanet.CreatePlanetWaterPrepassDescriptorPool(fPlanet.fVulkanDevice,1);
 
@@ -9957,7 +9960,7 @@ begin
                                                   1,
                                                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
                                                   [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,
-                                                                                 fVulkanWaterAccelerationImage.VulkanArrayImageView.Handle,
+                                                                                 fVulkanWaterAccelerationImage.VulkanOtherArrayImageView.Handle,
                                                                                  VK_IMAGE_LAYOUT_GENERAL)],
                                                   [],
                                                   [],

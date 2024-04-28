@@ -77,6 +77,7 @@ type { TpvScene3DRendererArray2DImage }
        fVulkanImage:TpvVulkanImage;
        fVulkanImageView:TpvVulkanImageView;
        fVulkanArrayImageView:TpvVulkanImageView;
+       fVulkanOtherArrayImageView:TpvVulkanImageView;
        fMemoryBlock:TpvVulkanDeviceMemoryBlock;
        fWidth:TpvInt32;
        fHeight:TpvInt32;
@@ -84,7 +85,7 @@ type { TpvScene3DRendererArray2DImage }
        fFormat:TVkFormat;
       public
 
-       constructor Create(const aDevice:TpvVulkanDevice;const aWidth,aHeight,aLayers:TpvInt32;const aFormat:TVkFormat;const aSampleBits:TVkSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT);const aImageLayout:TVkImageLayout=TVkImageLayout(VK_IMAGE_LAYOUT_GENERAL);const aStorage:boolean=false;const aAllocationGroupID:TpvUInt64=0);
+       constructor Create(const aDevice:TpvVulkanDevice;const aWidth,aHeight,aLayers:TpvInt32;const aFormat:TVkFormat;const aSampleBits:TVkSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT);const aImageLayout:TVkImageLayout=TVkImageLayout(VK_IMAGE_LAYOUT_GENERAL);const aStorage:boolean=false;const aAllocationGroupID:TpvUInt64=0;const aOtherFormat:TVkFormat=VK_FORMAT_UNDEFINED);
 
        destructor Destroy; override;
 
@@ -93,6 +94,8 @@ type { TpvScene3DRendererArray2DImage }
        property VulkanImage:TpvVulkanImage read fVulkanImage;
 
        property VulkanArrayImageView:TpvVulkanImageView read fVulkanArrayImageView;
+
+       property VulkanOtherArrayImageView:TpvVulkanImageView read fVulkanOtherArrayImageView;
 
        property VulkanImageView:TpvVulkanImageView read fVulkanImageView;
 
@@ -110,7 +113,7 @@ implementation
 
 { TpvScene3DRendererArray2DImage }
 
-constructor TpvScene3DRendererArray2DImage.Create(const aDevice:TpvVulkanDevice;const aWidth,aHeight,aLayers:TpvInt32;const aFormat:TVkFormat;const aSampleBits:TVkSampleCountFlagBits;const aImageLayout:TVkImageLayout;const aStorage:boolean;const aAllocationGroupID:TpvUInt64);
+constructor TpvScene3DRendererArray2DImage.Create(const aDevice:TpvVulkanDevice;const aWidth,aHeight,aLayers:TpvInt32;const aFormat:TVkFormat;const aSampleBits:TVkSampleCountFlagBits;const aImageLayout:TVkImageLayout;const aStorage:boolean;const aAllocationGroupID:TpvUInt64;const aOtherFormat:TVkFormat=VK_FORMAT_UNDEFINED);
 var MemoryRequirements:TVkMemoryRequirements;
     RequiresDedicatedAllocation,
     PrefersDedicatedAllocation:boolean;
@@ -153,7 +156,7 @@ begin
  end;
 
  fVulkanImage:=TpvVulkanImage.Create(aDevice,
-                                     0, //TVkImageCreateFlags(VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT),
+                                     IfThen(aOtherFormat<>VK_FORMAT_UNDEFINED,TVkImageCreateFlags(VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT),0), //TVkImageCreateFlags(VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT),
                                      VK_IMAGE_TYPE_2D,
                                      aFormat,
                                      aWidth,
@@ -169,7 +172,8 @@ begin
                                      VK_SHARING_MODE_EXCLUSIVE,
                                      0,
                                      nil,
-                                     VK_IMAGE_LAYOUT_UNDEFINED
+                                     VK_IMAGE_LAYOUT_UNDEFINED,
+                                     aOtherFormat
                                     );
 
  MemoryRequirements:=aDevice.MemoryManager.GetImageMemoryRequirements(fVulkanImage.Handle,
@@ -264,6 +268,28 @@ begin
                                                      0,
                                                      aLayers);
 
+    if aOtherFormat<>VK_FORMAT_UNDEFINED then begin
+
+     fVulkanOtherArrayImageView:=TpvVulkanImageView.Create(aDevice,
+                                                           fVulkanImage,
+                                                           TVkImageViewType(VK_IMAGE_VIEW_TYPE_2D_ARRAY),
+                                                           aOtherFormat,
+                                                           TVkComponentSwizzle(VK_COMPONENT_SWIZZLE_IDENTITY),
+                                                           TVkComponentSwizzle(VK_COMPONENT_SWIZZLE_IDENTITY),
+                                                           TVkComponentSwizzle(VK_COMPONENT_SWIZZLE_IDENTITY),
+                                                           TVkComponentSwizzle(VK_COMPONENT_SWIZZLE_IDENTITY),
+                                                           ImageAspectMask,
+                                                           0,
+                                                           1,
+                                                           0,
+                                                           aLayers);
+
+    end else begin
+
+     fVulkanOtherArrayImageView:=nil;
+
+    end;
+
    finally
     FreeAndNil(Fence);
    end;
@@ -282,6 +308,7 @@ destructor TpvScene3DRendererArray2DImage.Destroy;
 begin
  FreeAndNil(fMemoryBlock);
  FreeAndNil(fVulkanArrayImageView);
+ FreeAndNil(fVulkanOtherArrayImageView);
  FreeAndNil(fVulkanImageView);
  FreeAndNil(fVulkanImage);
  inherited Destroy;
