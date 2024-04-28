@@ -9556,28 +9556,28 @@ begin
 
   end;
 
-  begin
+ end;
 
-   fWaterPrepassDescriptorPool:=TpvScene3DPlanet.CreatePlanetWaterPrepassDescriptorPool(fPlanet.fVulkanDevice,1);
-   
-   fWaterPrepassDescriptorSet:=TpvVulkanDescriptorSet.Create(fWaterPrepassDescriptorPool,TpvScene3D(fPlanet.Scene3D).PlanetWaterPrepassDescriptorSetLayout);
+ begin
 
-   fWaterPrepassDescriptorSet.WriteToDescriptorSet(0,
-                                                   0,
-                                                   1,
-                                                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
-                                                   [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,
-                                                                                  fVulkanWaterAccelerationImage.VulkanImageView.Handle,
-                                                                                  VK_IMAGE_LAYOUT_GENERAL)],
-                                                   [],
-                                                   [],
-                                                   false);
-                                                 
-   fWaterPrepassDescriptorSet.Flush;
+  fWaterPrepassDescriptorPool:=TpvScene3DPlanet.CreatePlanetWaterPrepassDescriptorPool(fPlanet.fVulkanDevice,1);
 
-   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fWaterPrepassDescriptorSet.Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET,'TpvScene3DPlanet.TRendererViewInstance.fWaterPrepassDescriptorSet');
+  fWaterPrepassDescriptorSet:=TpvVulkanDescriptorSet.Create(fWaterPrepassDescriptorPool,TpvScene3D(fPlanet.Scene3D).PlanetWaterPrepassDescriptorSetLayout);
 
-  end;
+  fWaterPrepassDescriptorSet.WriteToDescriptorSet(0,
+                                                  0,
+                                                  1,
+                                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
+                                                  [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,
+                                                                                 fVulkanWaterAccelerationImage.VulkanImageView.Handle,
+                                                                                 VK_IMAGE_LAYOUT_GENERAL)],
+                                                  [],
+                                                  [],
+                                                  false);
+
+  fWaterPrepassDescriptorSet.Flush;
+
+  fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fWaterPrepassDescriptorSet.Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET,'TpvScene3DPlanet.TRendererViewInstance.fWaterPrepassDescriptorSet');
 
  end;
 
