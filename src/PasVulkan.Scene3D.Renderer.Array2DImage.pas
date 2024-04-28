@@ -208,9 +208,9 @@ begin
  fMemoryBlock.AssociatedObject:=self;
 
  VulkanCheckResult(aDevice.Commands.BindImageMemory(aDevice.Handle,
-                                                                       fVulkanImage.Handle,
-                                                                       fMemoryBlock.MemoryChunk.Handle,
-                                                                       fMemoryBlock.Offset));
+                                                    fVulkanImage.Handle,
+                                                    fMemoryBlock.MemoryChunk.Handle,
+                                                    fMemoryBlock.Offset));
 
  Queue:=aDevice.GraphicsQueue;
 

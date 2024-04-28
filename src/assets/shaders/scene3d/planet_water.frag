@@ -412,18 +412,19 @@ void main(){
   
   vec4 finalColor = vec4(0.0);
 
-  // Get the hit time from the lower resolution water prepass, so that the ray does not need to be traced if the ray does not hit the planet
-  // and so that we can skip empty space as much as possible for faster ray marching. 
-  float prepassTime = textureLod(uTextureWaterAcceleration, vec3(inTexCoord, gl_ViewIndex), 0.0).x;
-
   // Pre-check if the ray intersects the planet's bounding sphere
-  if((prepassTime >= 0.0) &&
-     intersectRaySphere(vec4(planetCenter, planetTopRadius * 1.0), 
+  if(intersectRaySphere(vec4(planetCenter, planetTopRadius * 1.0), 
                         rayOrigin,
                         rayDirection,     
                         hitRayTime)){
 
-   hitRayTime = max(hitRayTime, prepassTime);
+    // Get the hit time from the lower resolution water prepass, so that the ray does not need to be traced if the ray does not hit the planet
+    // and so that we can skip empty space as much as possible for faster ray marching. 
+    float prepassTime = textureLod(uTextureWaterAcceleration, vec3(inTexCoord, gl_ViewIndex), 0.0).x;
+
+    if(prepassTime > 0.0){ 
+      hitRayTime = max(hitRayTime, prepassTime);
+    }
 
    bool underWater = map(rayOrigin) <= 0.0;
 
@@ -455,7 +456,8 @@ void main(){
 
     float hitTime;
 
-    if(acceleratedRayMarching(rayOrigin, rayDirection, 0.0, maxTime, 0.6, underWater ? 0.9 : 1.0, hitTime)){
+    if((prepassTime >= 0.0) &&
+       acceleratedRayMarching(rayOrigin, rayDirection, 0.0, maxTime, 0.6, underWater ? 0.9 : 1.0, hitTime)){
     //if(standardRayMarching(rayOrigin, rayDirection, 0.0, maxTime, hitTime)){
 
       vec3 hitPoint = rayOrigin + (rayDirection * hitTime); // in planet space
