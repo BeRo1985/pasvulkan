@@ -7623,6 +7623,8 @@ var PlanetIndex,RenderPassIndex,BaseViewIndex,CountViews,AdditionalViewIndex,Cou
     DescriptorSets:array[0..1] of TVkDescriptorSet;
 begin
 
+ InFlightFrameState:=@TpvScene3DRendererInstance(fRendererInstance).InFlightFrameStates[aInFlightFrameIndex];
+
  TpvScene3DPlanets(TpvScene3D(fScene3D).Planets).Lock.Acquire;
  try
 
@@ -7639,7 +7641,7 @@ begin
      First:=false;
 
      ImageMemoryBarriers[0]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT),
-                                                          TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                          TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT),
                                                           VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                                           VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                                           VK_QUEUE_FAMILY_IGNORED,
@@ -9901,7 +9903,7 @@ begin
                                                   1,
                                                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
                                                   [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,
-                                                                                 fVulkanWaterAccelerationImage.VulkanImageView.Handle,
+                                                                                 fVulkanWaterAccelerationImage.VulkanArrayImageView.Handle,
                                                                                  VK_IMAGE_LAYOUT_GENERAL)],
                                                   [],
                                                   [],

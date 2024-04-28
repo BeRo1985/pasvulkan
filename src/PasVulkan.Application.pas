@@ -7572,11 +7572,14 @@ var Index:TpvSizeInt;
     Message,MessageIDName,MessageTypes,MessageSeverityTypes,Objects,QueueLabels,CmdBufLabels,Whole:TpvUTF8String;
     pObjects:PVkDebugUtilsObjectNameInfoEXT;
     pLabels:PVkDebugUtilsLabelEXT;
+    DoBreak:Boolean;
 begin
+
+ DoBreak:=false;
 
  try
 
- if assigned(aCallbackData) then begin
+  if assigned(aCallbackData) then begin
 
    Message:=aCallbackData^.pMessage;
 
@@ -7618,6 +7621,7 @@ begin
       MessageSeverityTypes:=MessageSeverityTypes+'|';
      end;
      MessageSeverityTypes:=MessageSeverityTypes+'ERROR';
+     DoBreak:=true;
     end;
 
     MessageTypes:='';
@@ -7691,6 +7695,10 @@ begin
 
  finally
   result:=VK_FALSE;
+ end;
+
+ if DoBreak then begin
+  Sleep(0);
  end;
 
 end;
