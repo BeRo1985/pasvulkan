@@ -15,9 +15,9 @@ layout(push_constant) uniform PushConstants {
   mat4 modelMatrix;
   uint viewBaseIndex;
   uint countViews;
+  float time;
   float bottomRadius;
   float topRadius;
-  float time;
 } pushConstants;
 
 struct View {
@@ -35,7 +35,7 @@ layout(set = 0, binding = 1) uniform sampler2DArray uTextureDepth;
 
 // Pass descriptor set
 
-layout(set = 1, binding = 0, r32f) uniform image2DArray uImageStartTimes;
+layout(set = 1, binding = 0, r32f) uniform image2DArray uImageWaterAcceleration;
 
 // Per planet descriptor set
 
@@ -52,7 +52,7 @@ mat4 inverseProjectionMatrix = uView.views[viewIndex].inverseProjectionMatrix;
 mat4 viewProjectionMatrix = projectionMatrix * viewMatrix;
 mat4 inverseViewProjectionMatrix = inverseViewMatrix * inverseProjectionMatrix;
 
-ivec2 imgSize = ivec2(imageSize(uImageStartTimes).xy);
+ivec2 imgSize = ivec2(imageSize(uImageWaterAcceleration).xy);
 vec2 invImgSize = 1.0 / vec2(imgSize);
 
 vec2 inTexCoord = vec2(gl_GlobalInvocationID.xy) / imgSize;
@@ -214,6 +214,6 @@ void main(){
   }  
 
 
-  imageStore(uImageStartTimes, ivec3(gl_GlobalInvocationID.xy, computeViewIndex), vec4(hitTime));
+  imageStore(uImageWaterAcceleration, ivec3(gl_GlobalInvocationID.xy, computeViewIndex), vec4(hitTime));
 
 }
