@@ -9371,19 +9371,6 @@ begin
 
  end;
 
- fVulkanWaterAccelerationImage:=TpvScene3DRendererImage2D.Create(fPlanet.fVulkanDevice,
-                                                                 256,
-                                                                 256,
-                                                                 VK_FORMAT_R32_SFLOAT,
-                                                                 true,
-                                                                 TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
-                                                                 VK_IMAGE_LAYOUT_GENERAL,
-                                                                 VK_SHARING_MODE_EXCLUSIVE,
-                                                                 nil,
-                                                                 pvAllocationGroupIDScene3DPlanetStatic);
- fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fVulkanWaterAccelerationImage.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DPlanet.WaterAccelerationImage.Image');
- fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fVulkanWaterAccelerationImage.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DPlanet.WaterAccelerationImage.ImageView');
-
  fPlanetCullDescriptorPool:=TpvScene3DPlanet.CreatePlanetCullDescriptorPool(fPlanet.fVulkanDevice,
                                                                             TpvScene3DRendererInstance(fRendererInstance).Scene3D.CountInFlightFrames);
 
@@ -9558,7 +9545,20 @@ begin
 
  end;
 
- begin
+ if aMainViewPort then begin
+
+  fVulkanWaterAccelerationImage:=TpvScene3DRendererImage2D.Create(fPlanet.fVulkanDevice,
+                                                                  256,
+                                                                  256,
+                                                                  VK_FORMAT_R32_SFLOAT,
+                                                                  true,
+                                                                  TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
+                                                                  VK_IMAGE_LAYOUT_GENERAL,
+                                                                  VK_SHARING_MODE_EXCLUSIVE,
+                                                                  nil,
+                                                                  pvAllocationGroupIDScene3DPlanetStatic);
+  fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fVulkanWaterAccelerationImage.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DPlanet.WaterAccelerationImage.Image');
+  fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fVulkanWaterAccelerationImage.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DPlanet.WaterAccelerationImage.ImageView');
 
   fWaterPrepassDescriptorPool:=TpvScene3DPlanet.CreatePlanetWaterPrepassDescriptorPool(fPlanet.fVulkanDevice,1);
 
@@ -9578,6 +9578,14 @@ begin
   fWaterPrepassDescriptorSet.Flush;
 
   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fWaterPrepassDescriptorSet.Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET,'TpvScene3DPlanet.TRendererViewInstance.fWaterPrepassDescriptorSet');
+
+ end else begin
+
+  fVulkanWaterAccelerationImage:=nil;
+
+  fWaterPrepassDescriptorPool:=nil;
+
+  fWaterPrepassDescriptorSet:=nil;
 
  end;
 
