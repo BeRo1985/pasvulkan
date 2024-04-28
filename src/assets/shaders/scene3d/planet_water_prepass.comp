@@ -1,0 +1,177 @@
+#version 450 core
+
+#pragma shader_stage(compute)
+
+#extension GL_ARB_separate_shader_objects : enable
+#extension GL_ARB_shading_language_420pack : enable
+#extension GL_EXT_control_flow_attributes : enable
+#extension GL_GOOGLE_include_directive : enable
+
+/* clang-format off */
+
+layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+
+layout(push_constant) uniform PushConstants {
+  mat4 modelMatrix;
+  uint viewBaseIndex;
+  uint countViews;
+  float bottomRadius;
+  float topRadius;
+  float time;
+} pushConstants;
+
+struct View {
+  mat4 viewMatrix;
+  mat4 projectionMatrix;
+  mat4 inverseViewMatrix;
+  mat4 inverseProjectionMatrix;
+};
+
+layout(set = 0, binding = 0, std140) uniform uboViews {
+  View views[256]; // 65536 / (64 * 4) = 256 views as maximum for a single renderer instance (but a application/game can have multiple renderer instances for the same scene)  
+} uView;
+
+layout(set = 0, binding = 1) uniform sampler2DArray uTextureDepth;
+
+layout(set = 0, binding = 2, r32f) uniform image2DArray uImageStartTimes;
+
+// Per planet descriptor set
+
+layout(set = 1, binding = 0) uniform sampler2D uPlanetTextures[]; 
+
+#include "planet_textures.glsl"
+
+uint computeViewIndex = uint(gl_GlobalInvocationID.z);
+uint viewIndex = pushConstants.viewBaseIndex + computeViewIndex;
+mat4 viewMatrix = uView.views[viewIndex].viewMatrix;
+mat4 inverseViewMatrix = uView.views[viewIndex].inverseViewMatrix;
+mat4 projectionMatrix = uView.views[viewIndex].projectionMatrix;
+mat4 inverseProjectionMatrix = uView.views[viewIndex].inverseProjectionMatrix;
+mat4 viewProjectionMatrix = projectionMatrix * viewMatrix;
+mat4 inverseViewProjectionMatrix = inverseViewMatrix * inverseProjectionMatrix;
+
+ivec2 imgSize = ivec2(imageSize(uImageStartTimes).xy);
+vec2 invImgSize = 1.0 / vec2(imgSize);
+
+vec2 inTexCoord = vec2(gl_GlobalInvocationID.xy) / imgSize;
+
+float linearizeDepth(float z){
+#if 1
+  vec2 v = (inverseProjectionMatrix * vec4(vec3(fma(inTexCoord, vec2(2.0), vec2(-1.0)), z), 1.0)).zw;
+#else
+  vec2 v = fma(inverseProjectionMatrix[2].zw, vec2(z), inverseProjectionMatrix[3].zw);
+#endif
+  return v.x / v.y;
+}
+
+float delinearizeDepth(float z){
+#if 1
+  vec2 v = (projectionMatrix * vec4(vec3(fma(inTexCoord, vec2(2.0), vec2(-1.0)), z), 1.0)).zw;
+#else
+  vec2 v = fma(projectionMatrix[2].zw, vec2(z), projectionMatrix[3].zw);
+#endif
+  return v.x / v.y;
+}
+
+const vec3 planetCenter = vec3(0.0); // The planet is at the origin in planet space
+float planetBottomRadius = pushConstants.bottomRadius;
+float planetTopRadius = pushConstants.topRadius;
+
+mat4 planetModelMatrix = pushConstants.modelMatrix;
+mat4 planetInverseModelMatrix = inverse(planetModelMatrix);
+
+#include "planet_water.glsl"
+
+void main(){
+
+  uvec2 texelPos = uvec2(gl_GlobalInvocationID.xy);
+  if(any(greaterThanEqual(texelPos, imgSize))){
+    return;
+  }
+
+  bool reversedZ = projectionMatrix[2][3] < -1e-7;
+  
+  //bool infiniteFarPlane = reversedZ && ((abs(projectionMatrix[2][2]) < 1e-7) && (abs(projectionMatrix[3][2]) > 1e-7));
+
+  vec4 nearPlane = vec4(fma(inTexCoord.xy, vec2(2.0), vec2(-1.0)), reversedZ ? 1.0 : 0.0, 1.0);
+
+  vec4 cameraPosition = vec4((inverseProjectionMatrix * nearPlane).xyz, 1.0); 
+  cameraPosition /= cameraPosition.w;
+
+  vec4 cameraDirection = vec4((inverseProjectionMatrix * nearPlane).xyz, 0.0); 
+      
+/*vec4 primaryRayOrigin = inverseViewProjectionMatrix * vec4(fma(inTexCoord.xy, vec2(2.0), vec2(-1.0)), reversedZ ? 1.0 : 0.0, 1.0);
+  primaryRayOrigin /= primaryRayOrigin.w;*/
+
+  vec3 rayOrigin = inverseViewMatrix[3].xyz;
+
+  vec3 rayDirection = normalize((inverseViewMatrix * cameraDirection).xyz);
+  
+  // Transform world space ray origin and direction to planet space for simplicity, so that the planet is at the origin and 
+  // correctly oriented. This is not strictly necessary, but it simplifies the math. 
+  rayOrigin = (planetInverseModelMatrix * vec4(rayOrigin, 1.0)).xyz;
+  rayDirection = (planetInverseModelMatrix * vec4(rayDirection, 0.0)).xyz;
+
+  float hitRayTime;
+   
+  bool hit = false;
+
+  float hitTime = -1.0; // -1.0 indicates no hit
+
+  // Pre-check if the ray intersects the planet's bounding sphere
+  if(intersectRaySphere(vec4(planetCenter, planetTopRadius * 1.0), 
+                        rayOrigin,
+                        rayDirection,     
+                        hitRayTime)){
+
+    bool underWater = map(rayOrigin) <= 0.0;
+
+    float opaqueDepth = textureLod(uTextureDepth, vec3(inTexCoord, float(computeViewIndex)), 0.0).x;
+
+    float opaqueLinearDepth = -linearizeDepth(opaqueDepth);
+
+    bool inside = length(rayOrigin - planetCenter) <= planetTopRadius;
+
+    rayOrigin += (inside ? vec3(0.0) : (rayDirection * hitRayTime));
+
+    float maxTime = min(
+      opaqueLinearDepth,
+      max(
+        length((planetCenter - (rayDirection * planetBottomRadius)) - rayOrigin),
+        length((planetCenter - (rayDirection * planetTopRadius)) - rayOrigin)
+      )
+    );
+
+    // Conservative cone tracing for finding initial starting ray marching times in a lower resolution for the actual ray marching in
+    // full resolution later on.
+
+    const int maxSteps = 256;
+    const float bias = 1.0; // Bias factor for cone sphere    
+    const float aperture = float(max(imgSize.x, imgSize.y)) / sqrt(2.0); // Aperture of the cone sphere    
+    const float C = sqrt(fma(aperture, aperture, 1.0));
+    const float R = aperture / C; // Radius of sphere at t=1       
+    const float A = C / fma(aperture, bias, C);// Constant adjustment factor for t so that the cone sphere touches the distance radius 
+
+    float t = 0.0;
+    for(int stepIndex = 0; (stepIndex < maxSteps) && (t < maxTime); stepIndex++){
+      float limit = (t * R * bias) + (t * 1e-03);
+      float d = map(fma(rayDirection, vec3(t), rayOrigin));
+      if(d <= limit){
+        if(d < 0.0){
+          // Avoid intersections, so shift t a bit back again, so that the actual ray marching will not missing anything at the beginning 
+          t = max(0.0, t - (d * 4.0)); // That should be enough for now    
+        }
+        break;
+      }          
+      t = (t + d) * A;
+    }
+
+    if(t < maxTime){
+      hitTime = t;
+    }
+
+  }  
+
+  imageStore(uImageStartTimes, ivec3(gl_GlobalInvocationID.xy, computeViewIndex), vec4(hitTime));
+
+}
