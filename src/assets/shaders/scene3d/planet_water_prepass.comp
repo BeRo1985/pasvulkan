@@ -155,9 +155,14 @@ void main(){
 
     //const float fovX = 2.0 * atan(1.0 / projectionMatrix[0][0]);
 
-    const float fovY = 2.0 * atan(1.0 / projectionMatrix[1][1]);
+    //const float fovY = 2.0 * atan(1.0 / projectionMatrix[1][1]);
 
-    const float beamRadius = (2.0 * tan(fovY * 0.5)) / float(imgSize.y);
+    //const float beamRadius = (2.0 * tan(fovY * 0.5)) / float(imgSize.y);
+
+    //const float beamRadius = (2.0 * tan((2.0 * atan(1.0 / projectionMatrix[1][1])) * 0.5)) / float(imgSize.y);
+    
+    // Optimized version of the above calculation:
+    const float beamRadius = 2.0 / (float(imgSize.y) * projectionMatrix[1][1]);
 
     for(int stepIndex = 0; (stepIndex < maxSteps) && (t < maxTime); stepIndex++){
 
