@@ -35,7 +35,7 @@ layout(set = 0, binding = 1) uniform sampler2DArray uTextureDepth;
 
 // Pass descriptor set
 
-layout(set = 1, binding = 0, r32f) uniform image2DArray uImageWaterAcceleration;
+layout(set = 1, binding = 0, r32ui) uniform uimage2DArray uImageWaterAcceleration;
 
 // Per planet descriptor set
 
@@ -223,6 +223,20 @@ void main(){
   }  
 
 
-  imageStore(uImageWaterAcceleration, ivec3(gl_GlobalInvocationID.xy, computeViewIndex), vec4(hitTime));
+  if(hitTime >= 0.0){
+    ivec2 baseTexelPos = ivec2(gl_GlobalInvocationID.xy);
+    ivec2 x01 = ivec2((baseTexelPos.x > 0) ? -1 : 0, ((baseTexelPos.x + 1) < imgSize.x) ? 1 : 0);
+    ivec2 y01 = ivec2((baseTexelPos.y > 0) ? -1 : 0, ((baseTexelPos.y + 1) < imgSize.y) ? 1 : 0);
+    for(int y = y01.x; y <= y01.y; y++){ 
+      for(int x = x01.x; x <= x01.y; x++){
+        ivec2 texelPos = baseTexelPos + ivec2(x, y);
+        if(all(greaterThanEqual(texelPos, ivec2(0))) && all(lessThan(texelPos, imgSize))){
+          imageAtomicMin(uImageWaterAcceleration, ivec3(gl_GlobalInvocationID.xy, computeViewIndex), floatBitsToUint(hitTime));
+        }
+      }
+    }
+  }
+
+//imageStore(uImageWaterAcceleration, ivec3(gl_GlobalInvocationID.xy, computeViewIndex), vec4(hitTime));
 
 }

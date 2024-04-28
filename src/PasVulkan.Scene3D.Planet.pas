@@ -7625,6 +7625,8 @@ var PlanetIndex,RenderPassIndex,BaseViewIndex,CountViews,AdditionalViewIndex,Cou
     ImageMemoryBarriers:array[0..1] of TVkImageMemoryBarrier;
     DstPipelineStageFlags:TVkPipelineStageFlags;
     DescriptorSets:array[0..1] of TVkDescriptorSet;
+    ClearColorValue:TVkClearColorValue;
+    ImageSubresourceRange:TVkImageSubresourceRange;
 begin
 
  InFlightFrameState:=@TpvScene3DRendererInstance(fRendererInstance).InFlightFrameStates[aInFlightFrameIndex];
@@ -7686,28 +7688,64 @@ begin
      fPushConstants.BottomRadius:=Planet.fBottomRadius;
      fPushConstants.TopRadius:=Planet.fTopRadius;
 
+     ImageSubresourceRange:=TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                            0,
+                                                            1,
+                                                            0,
+                                                            RendererViewInstance.fVulkanWaterAccelerationImage.Layers);
+
      begin
 
       ImageMemoryBarriers[0]:=TVkImageMemoryBarrier.Create(0,
-                                                           TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                           TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
                                                            VK_IMAGE_LAYOUT_UNDEFINED,
+                                                           VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                                           VK_QUEUE_FAMILY_IGNORED,
+                                                           VK_QUEUE_FAMILY_IGNORED,
+                                                           RendererViewInstance.fVulkanWaterAccelerationImage.VulkanImage.Handle,
+                                                           ImageSubresourceRange);
+
+
+      aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
+                                        TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                        TVkDependencyFlags(0),
+                                        0,nil,
+                                        0,nil,
+                                        1,@ImageMemoryBarriers[0]);
+     end;
+
+     begin
+
+      ClearColorValue.uint32[0]:=$bf800000; // -1.0 as float
+      ClearColorValue.uint32[1]:=$bf800000; // -1.0 as float
+      ClearColorValue.uint32[2]:=$bf800000; // -1.0 as float
+      ClearColorValue.uint32[3]:=$bf800000; // -1.0 as float
+
+      aCommandBuffer.CmdClearColorImage(RendererViewInstance.fVulkanWaterAccelerationImage.VulkanImage.Handle,
+                                        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                        @ClearColorValue,
+                                        1,@ImageSubresourceRange);
+
+     end;
+
+     begin
+
+      ImageMemoryBarriers[0]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                                                           TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT),
+                                                           VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                                                            VK_IMAGE_LAYOUT_GENERAL,
                                                            VK_QUEUE_FAMILY_IGNORED,
                                                            VK_QUEUE_FAMILY_IGNORED,
                                                            RendererViewInstance.fVulkanWaterAccelerationImage.VulkanImage.Handle,
-                                                           TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
-                                                                                           0,
-                                                                                           1,
-                                                                                           0,
-                                                                                           RendererViewInstance.fVulkanWaterAccelerationImage.Layers));
+                                                           ImageSubresourceRange);
 
-
-      aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
+      aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
                                         TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
                                         TVkDependencyFlags(0),
                                         0,nil,
                                         0,nil,
                                         1,@ImageMemoryBarriers[0]);
+
      end;
 
      aCommandBuffer.CmdPushConstants(fPipelineLayout.Handle,
