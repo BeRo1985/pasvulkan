@@ -128,7 +128,17 @@ void main(){
 
     bool underWater = map(rayOrigin) <= 0.0;
 
-    float opaqueDepth = textureLod(uTextureDepth, vec3(inTexCoord, float(computeViewIndex)), 0.0).x;
+    vec2 textureDepthSize = vec2(textureSize(uTextureDepth, 0).xy);
+
+    // Compute the LOD level for the opaque depth texture, so that we can sample the depth texture at the correct LOD level in 
+    // an conservative way for creating the acceleration data for the full resolution water ray marching.
+
+    int opaqueLOD = int(ceil(max(0.0, max(log2(textureDepthSize.x / float(imgSize.x)), log2(textureDepthSize.y / float(imgSize.y))))));
+
+    // or mathematically equivalent:
+    // int opaqueLOD = int(ceil(max(0.0, max(log2(textureDepthSize.x) - log2(float(imgSize.x)), log2(textureDepthSize.y) - log2(float(imgSize.y)))));
+
+    float opaqueDepth = textureLod(uTextureDepth, vec3(inTexCoord, float(computeViewIndex)), float(opaqueLOD)).x;
 
     float opaqueLinearDepth = -linearizeDepth(opaqueDepth);
 
