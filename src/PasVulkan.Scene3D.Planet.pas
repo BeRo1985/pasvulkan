@@ -9078,6 +9078,7 @@ begin
  fPipelineLayout.AddDescriptorSetLayout(TpvScene3D(fScene3D).GlobalVulkanDescriptorSetLayout); // Global scene descriptor set
  fPipelineLayout.AddDescriptorSetLayout(aPassVulkanDescriptorSetLayout); // Passs descriptor set
  fPipelineLayout.AddDescriptorSetLayout(TpvScene3D(fScene3D).PlanetDescriptorSetLayout); // Per planet descriptor set
+ fPipelineLayout.AddDescriptorSetLayout(TpvScene3D(fScene3D).PlanetWaterRenderDescriptorSetLayout); // Per render pas descriptor set
  fPipelineLayout.Initialize;
  fVulkanDevice.DebugUtils.SetObjectName(fPipelineLayout.Handle,VK_OBJECT_TYPE_PIPELINE_LAYOUT,'TpvScene3DPlanet.TWaterRenderPass.fPipelineLayout');
 
@@ -9364,9 +9365,12 @@ var PlanetIndex:TpvSizeInt;
     Planet:TpvScene3DPlanet;
     First:Boolean;
     DescriptorSets:array[0..1] of TVkDescriptorSet;
+    InFlightFrameState:TpvScene3DRendererInstance.PInFlightFrameState;
     RendererInstance:TpvScene3DPlanet.TRendererInstance;
     RendererViewInstance:TpvScene3DPlanet.TRendererViewInstance;
 begin
+
+ InFlightFrameState:=@TpvScene3DRendererInstance(fRendererInstance).InFlightFrameStates[aInFlightFrameIndex];
 
  TpvScene3DPlanets(TpvScene3D(fScene3D).Planets).Lock.Acquire;
  try
@@ -9402,34 +9406,42 @@ begin
 
       end;
 
-      aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                           fPipelineLayout.Handle,
-                                           2,
-                                           1,
-                                           @Planet.fDescriptorSets[aInFlightFrameIndex].Handle,
-                                           0,
-                                           nil);
+      if Planet.fRendererInstanceHashMap.TryGet(TpvScene3DPlanet.TRendererInstance.TKey.Create(fRendererInstance),RendererInstance) and
+         Planet.fRendererViewInstanceHashMap.TryGet(TpvScene3DPlanet.TRendererViewInstance.TKey.Create(fRendererInstance,InFlightFrameState^.ViewRenderPassIndex),RendererViewInstance) then begin
 
-      fPushConstants.ViewBaseIndex:=aViewBaseIndex;
-      fPushConstants.CountViews:=aCountViews;
-      fPushConstants.CountAllViews:=TpvScene3DRendererInstance(fRendererInstance).InFlightFrameStates[aInFlightFrameIndex].CountViews;
-      fPushConstants.FrameIndex:=aFrameIndex;
-//    fPushConstants.Jitter:=TpvScene3DRendererInstance(fRendererInstance).InFlightFrameStates[aInFlightFrameIndex].Jitter.xy;
-      fPushConstants.Jitter:=TpvVector2.Null;
-      if TpvScene3D(fScene3D).UseBufferDeviceAddress then begin
-       fPushConstants.PlanetData:=Planet.fPlanetDataVulkanBuffers[aInFlightFrameIndex].DeviceAddress;
-      end else begin
-       fPushConstants.PlanetData:=0;
+       DescriptorSets[0]:=Planet.fDescriptorSets[aInFlightFrameIndex].Handle;
+       DescriptorSets[1]:=RendererViewInstance.fWaterRenderDescriptorSet.Handle;
+
+       aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                            fPipelineLayout.Handle,
+                                            2,
+                                            2,
+                                            @DescriptorSets,
+                                            0,
+                                            nil);
+
+       fPushConstants.ViewBaseIndex:=aViewBaseIndex;
+       fPushConstants.CountViews:=aCountViews;
+       fPushConstants.CountAllViews:=TpvScene3DRendererInstance(fRendererInstance).InFlightFrameStates[aInFlightFrameIndex].CountViews;
+       fPushConstants.FrameIndex:=aFrameIndex;
+ //    fPushConstants.Jitter:=TpvScene3DRendererInstance(fRendererInstance).InFlightFrameStates[aInFlightFrameIndex].Jitter.xy;
+       fPushConstants.Jitter:=TpvVector2.Null;
+       if TpvScene3D(fScene3D).UseBufferDeviceAddress then begin
+        fPushConstants.PlanetData:=Planet.fPlanetDataVulkanBuffers[aInFlightFrameIndex].DeviceAddress;
+       end else begin
+        fPushConstants.PlanetData:=0;
+       end;
+       fPushConstants.Time:=Modulo(TpvScene3D(Planet.Scene3D).SceneTimes^[aInFlightFrameIndex],65536.0);
+
+       aCommandBuffer.CmdPushConstants(fPipelineLayout.Handle,
+                                       TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                       0,
+                                       SizeOf(TPushConstants),
+                                       @fPushConstants);
+
+       aCommandBuffer.CmdDraw(3,1,0,0);
+
       end;
-      fPushConstants.Time:=Modulo(TpvScene3D(Planet.Scene3D).SceneTimes^[aInFlightFrameIndex],65536.0);
-
-      aCommandBuffer.CmdPushConstants(fPipelineLayout.Handle,
-                                      TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
-                                      0,
-                                      SizeOf(TPushConstants),
-                                      @fPushConstants);
-
-      aCommandBuffer.CmdDraw(3,1,0,0);
 
      end;
 
@@ -9925,10 +9937,7 @@ begin
                                                  0,
                                                  1,
                                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                                                 [TVkDescriptorImageInfo.Create(TVkSampler(
-                                                                                 IfThen(TpvScene3DRendererInstance(fRendererInstance).ZFar<0,
-                                                                                        Int64(TpvScene3DRendererInstance(fRendererInstance).Renderer.MipMapMinFilterSampler.Handle),
-                                                                                        Int64(TpvScene3DRendererInstance(fRendererInstance).Renderer.MipMapMaxFilterSampler.Handle))),
+                                                 [TVkDescriptorImageInfo.Create(TpvScene3DRendererInstance(fRendererInstance).Renderer.ClampedNearestSampler.Handle,
                                                                                 fVulkanWaterAccelerationImage.VulkanArrayImageView.Handle,
                                                                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
                                                  [],

@@ -78,6 +78,10 @@ vec3 cameraRelativePosition;
 
 layout(set = 2, binding = 0) uniform sampler2D uTextures[]; // 0 = height map, 1 = normal map, 2 = tangent bitangent map
 
+// Per render pass descriptor set
+
+layout(set = 3, binding = 0) uniform sampler2DArray uTextureWaterAcceleration;
+
 #define PLANET_WATER
 #include "planet_renderpass.glsl"
 
@@ -405,14 +409,21 @@ void main(){
   bool hit = false;
 
   float hitDepth = 0.0;
-
+  
   vec4 finalColor = vec4(0.0);
 
+  // Get the hit time from the lower resolution water prepass, so that the ray does not need to be traced if the ray does not hit the planet
+  // and so that we can skip empty space as much as possible for faster ray marching. 
+  float prepassTime = textureLod(uTextureWaterAcceleration, vec3(inTexCoord, gl_ViewIndex), 0.0).x;
+
   // Pre-check if the ray intersects the planet's bounding sphere
-  if(intersectRaySphere(vec4(planetCenter, planetTopRadius * 1.0), 
+  if((prepassTime >= 0.0) &&
+     intersectRaySphere(vec4(planetCenter, planetTopRadius * 1.0), 
                         rayOrigin,
                         rayDirection,     
                         hitRayTime)){
+
+   hitRayTime = max(hitRayTime, prepassTime);
 
    bool underWater = map(rayOrigin) <= 0.0;
 
