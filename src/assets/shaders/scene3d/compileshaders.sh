@@ -688,6 +688,9 @@ addPlanetWaterFragmentShadingAntialiasingVariants(){
   # MSAA (Multi-sample anti-aliasing)
   addPlanetWaterFragmentShadingDiscardVariants "${1}_msaa" "$2 -DMSAA"  
 
+  # MSAA (Multi-sample anti-aliasing)
+  addPlanetWaterFragmentShadingDiscardVariants "${1}_msaa_fast" "$2 -DMSAA -DMSAA_FAST"  
+
 }
 
 # Add planet water fragment shader variants with different Z direction
