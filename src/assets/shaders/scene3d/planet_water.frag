@@ -426,7 +426,7 @@ void main(){
 #if defined(MSAA_FAST)
     // In the MSAA_FAST case, the depth is fetched from the pre-resolved MSAA depth buffer, not from the actual MSAA depth buffer, since
     // the water is not multisampled here, even if the input is multisampled but also pre-resolved. 
-    float opaqueDepth = textureLod(uPassTextures[2], vec3(inTexCoord, gl_ViewIndex), 0.0).x;
+    float opaqueDepth = texelFetch(uPassTextures[2], ivec3(gl_FragCoord.xy, gl_ViewIndex), 0).x;
 #else
     // In the MSAA case, the depth is fetched from the actual MSAA depth buffer, since the water is multisampled here, or better said,
     // supersampled, since all fragment samples are processed separately, not just the geometric edges as like at MSAA otherwise with
