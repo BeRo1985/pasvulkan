@@ -16,6 +16,8 @@
   #define HAVE_PERVERTEX
 #endif
 
+// MSAA_FAST = MSAA input but not MSAA output, so that the water isn't multisampled then.
+
 #define LIGHTS 
 #define SHADOWS
 
@@ -360,7 +362,7 @@ void main(){
   vec2 texCoord = inTexCoord;
 #endif
 
-#ifdef MSAA
+#if defined(MSAA) && !defined(MSAA_FAST) 
   
   // With MSAA, this fullscreen water rendering pass per ray marching will be become SSAA actually effectively,
   // where each sample is processed separately.
@@ -421,9 +423,19 @@ void main(){
     bool underWater = map(rayOrigin) <= 0.0;
 
 #ifdef MSAA 
-    float opaqueDepth = subpassLoad(uOITImgDepth, gl_SampleID).r; 
+#if defined(MSAA_FAST)
+    // In the MSAA_FAST case, the depth is fetched from the pre-resolved MSAA depth buffer, not from the actual MSAA depth buffer, since
+    // the water is not multisampled here, even if the input is multisampled but also pre-resolved. 
+    float opaqueDepth = textureLod(uPassTextures[2], vec3(inTexCoord, gl_ViewIndex), 0.0).x;
 #else
-    float opaqueDepth = subpassLoad(uOITImgDepth).r; 
+    // In the MSAA case, the depth is fetched from the actual MSAA depth buffer, since the water is multisampled here, or better said,
+    // supersampled, since all fragment samples are processed separately, not just the geometric edges as like at MSAA otherwise with
+    // geometry triangles.
+    float opaqueDepth = subpassLoad(uOITImgDepth, gl_SampleID).x; 
+#endif
+#else
+    // And without MSAA at all, the depth is just fetched from the non-MSAA depth buffer, since we are not multisampled here at all anyway.
+    float opaqueDepth = subpassLoad(uOITImgDepth).x; 
 #endif 
 
     float opaqueLinearDepth = -linearizeDepth(opaqueDepth);
