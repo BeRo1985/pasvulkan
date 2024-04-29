@@ -34,7 +34,7 @@ layout(location = 0) out vec4 outFragColor;
 #endif
 
 #ifdef MSAA
-layout(input_attachment_index = 0, set = 1, binding = 9) uniform subpassInputMS uOITImgDepth;
+layout(input_attachment_index = 0, set = 1, binding = 9) uniform subpassInputMS uOITImgDepth; // Ignored/Unused in the MSAA_FAST case 
 #else
 layout(input_attachment_index = 0, set = 1, binding = 9) uniform subpassInput uOITImgDepth;
 #endif
