@@ -123,7 +123,11 @@ inherited Create(aFrameGraph);
 
  Name:='WaterRenderPass';
 
- MultiviewMask:=fInstance.SurfaceMultiviewMask;
+ if (fInstance.Renderer.SurfaceSampleCountFlagBits<>TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT)) and not fInstance.Renderer.SupersampleWaterWhenMSAA then begin
+  MultiviewMask:=0;
+ end else begin
+  MultiviewMask:=fInstance.SurfaceMultiviewMask;
+ end;
 
  Queue:=aFrameGraph.UniversalQueue;
 
@@ -170,15 +174,15 @@ inherited Create(aFrameGraph);
 
  end else begin
 
-  fResourceDepth:=AddImageDepthInput('resourcetype_msaa_depth',
-                                     'resource_msaa_depth_data',
-                                     VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,//VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                     [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
-                                    );
-
   fMSAA:=fInstance.Renderer.SupersampleWaterWhenMSAA;
 
   if fMSAA then begin
+
+   fResourceDepth:=AddImageDepthInput('resourcetype_msaa_depth',
+                                      'resource_msaa_depth_data',
+                                      VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,//VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                      [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
+                                     );
 
    fResourceColor:=AddImageOutput('resourcetype_msaa_color',
                                   'resource_water_msaa_color',
@@ -198,6 +202,8 @@ inherited Create(aFrameGraph);
                                         );
 
   end else begin
+
+   fResourceDepth:=nil;
 
    fResourceColor:=AddImageOutput('resourcetype_color',
                                   'resource_water_color',
@@ -299,11 +305,13 @@ begin
                                              1,
                                              TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                              []);
- fPassVulkanDescriptorSetLayout.AddBinding(9,
-                                             VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,
-                                             1,
-                                             TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
-                                             []);
+ if assigned(fResourceDepth) then begin
+  fPassVulkanDescriptorSetLayout.AddBinding(9,
+                                            VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,
+                                            1,
+                                            TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                            []);
+ end;
  fPassVulkanDescriptorSetLayout.Initialize;
 
  fPassVulkanDescriptorPool:=TpvVulkanDescriptorPool.Create(fInstance.Renderer.VulkanDevice,TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),fInstance.Renderer.CountInFlightFrames);
@@ -421,16 +429,18 @@ begin
                                                                        [fInstance.FrustumClusterGridDataVulkanBuffers[InFlightFrameIndex].DescriptorBufferInfo],
                                                                        [],
                                                                        false);
-  fPassVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(9,
-                                                                       0,
-                                                                       1,
-                                                                       TVkDescriptorType(VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT),
-                                                                       [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,
-                                                                                                      fResourceDepth.VulkanImageViews[InFlightFrameIndex].Handle,
-                                                                                                      fResourceDepth.ResourceTransition.Layout)],// TVkImageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL))],
-                                                                       [],
-                                                                       [],
-                                                                       false);
+  if assigned(fResourceDepth) then begin
+   fPassVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(9,
+                                                                      0,
+                                                                      1,
+                                                                      TVkDescriptorType(VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT),
+                                                                      [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,
+                                                                                                     fResourceDepth.VulkanImageViews[InFlightFrameIndex].Handle,
+                                                                                                     fResourceDepth.ResourceTransition.Layout)],// TVkImageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL))],
+                                                                      [],
+                                                                      [],
+                                                                      false);
+  end;
   fPassVulkanDescriptorSets[InFlightFrameIndex].Flush;
  end;
 
