@@ -1783,9 +1783,12 @@ type EpvScene3D=class(Exception);
                      fIndex:TpvSizeInt;
                      fChannels:TpvScene3D.TGroup.TAnimation.TChannels;
                      fDefaultChannels:TpvScene3D.TGroup.TAnimation.TDefaultChannels;
+                     fAnimationBeginTime:TpvDouble;
+                     fAnimationEndTime:TpvDouble;
                     public
                      constructor Create(const aGroup:TGroup;const aIndex:TpvSizeInt=-1); reintroduce;
                      destructor Destroy; override;
+                     procedure Finish;
                      procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceAnimation:TPasGLTF.TAnimation);
                      function GetAnimationBeginTime:TpvDouble;
                      function GetAnimationEndTime:TpvDouble;
@@ -10076,6 +10079,8 @@ begin
  fIndex:=aIndex;
  fChannels:=TpvScene3D.TGroup.TAnimation.TChannels.Create(true);
  fDefaultChannels:=TpvScene3D.TGroup.TAnimation.TDefaultChannels.Create(true);
+ fAnimationBeginTime:=0.0;
+ fAnimationEndTime:=0.0;
 end;
 
 destructor TpvScene3D.TGroup.TAnimation.Destroy;
@@ -10083,6 +10088,29 @@ begin
  FreeAndNil(fChannels);
  FreeAndNil(fDefaultChannels);
  inherited Destroy;
+end;
+
+procedure TpvScene3D.TGroup.TAnimation.Finish;
+var Index:TpvSizeInt;
+    Channel:TpvScene3D.TGroup.TAnimation.TChannel;
+begin
+
+ fAnimationBeginTime:=0.0;
+ fAnimationEndTime:=1.0;
+
+ for Index:=0 to fChannels.Count-1 do begin
+  Channel:=fChannels[Index];
+  if length(Channel.fInputTimeArray)>0 then begin
+   if Index=0 then begin
+    fAnimationBeginTime:=Channel.fInputTimeArray[0];
+    fAnimationEndTime:=Channel.fInputTimeArray[length(Channel.fInputTimeArray)-1];
+   end else begin
+    fAnimationBeginTime:=Min(fAnimationBeginTime,Channel.fInputTimeArray[0]);
+    fAnimationEndTime:=Max(fAnimationEndTime,Channel.fInputTimeArray[length(Channel.fInputTimeArray)-1]);
+   end;
+  end;
+ end;
+
 end;
 
 procedure TpvScene3D.TGroup.TAnimation.AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceAnimation:TPasGLTF.TAnimation);
@@ -10262,40 +10290,18 @@ begin
 
  end;
 
+ Finish;
+
 end;
 
 function TpvScene3D.TGroup.TAnimation.GetAnimationBeginTime:TpvDouble;
-var Index:TpvSizeInt;
-    Channel:TpvScene3D.TGroup.TAnimation.TChannel;
 begin
- result:=0.0;
- for Index:=0 to fChannels.Count-1 do begin
-  Channel:=fChannels[Index];
-  if length(Channel.fInputTimeArray)>0 then begin
-   if Index=0 then begin
-    result:=Channel.fInputTimeArray[0];
-   end else begin
-    result:=Min(result,Channel.fInputTimeArray[0]);
-   end;
-  end;
- end;
+ result:=fAnimationBeginTime;
 end;
 
 function TpvScene3D.TGroup.TAnimation.GetAnimationEndTime:TpvDouble;
-var Index:TpvSizeInt;
-    Channel:TpvScene3D.TGroup.TAnimation.TChannel;
 begin
- result:=1.0;
- for Index:=0 to fChannels.Count-1 do begin
-  Channel:=fChannels[Index];
-  if length(Channel.fInputTimeArray)>0 then begin
-   if Index=0 then begin
-    result:=Channel.fInputTimeArray[length(Channel.fInputTimeArray)-1];
-   end else begin
-    result:=Max(result,Channel.fInputTimeArray[length(Channel.fInputTimeArray)-1]);
-   end;
-  end;
- end;
+ result:=fAnimationEndTime;
 end;
 
 { TpvScene3D.TGroup.TCamera }
