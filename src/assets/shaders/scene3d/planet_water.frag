@@ -430,28 +430,35 @@ void main(){
 
     float hitTime;
 
+    vec3 hitPoint;
+
     if((prepassTime >= 0.0) &&
        acceleratedRayMarching(rayOrigin, rayDirection, 0.0, maxTime, 0.6, underWater ? 0.9 : 1.0, hitTime)
      //standardRayMarching(rayOrigin, rayDirection, 0.0, maxTime, hitTime)
       ){
 
-      vec3 hitPoint = rayOrigin + (rayDirection * hitTime); // in planet space
+      hitPoint = rayOrigin + (rayDirection * hitTime); // in planet space
 
       worldSpacePosition = (planetModelMatrix * vec4(hitPoint, 1.0)).xyz;
 
       viewSpacePosition = (viewMatrix * vec4(worldSpacePosition, 1.0)).xyz;
 
+      hit = opaqueLinearDepth >= -viewSpacePosition.z;    
+      
+    }
+
+    if(hit){
+
+	  hitDepth = delinearizeDepth(viewSpacePosition.z);
+
+	  workNormal = normalize((planetModelMatrix * vec4(mapNormal(hitPoint), 0.0)).xyz) * (underWater ? -1.0 : 1.0);
+
       cameraRelativePosition = worldSpacePosition - cameraPosition.xyz;
 
-      hit = true;    
+	  finalColor = doShade(maxTime - hitTime, underWater);
 
-      hitDepth = delinearizeDepth(viewSpacePosition.z);
-
-      workNormal = normalize((planetModelMatrix * vec4(mapNormal(hitPoint), 0.0)).xyz) * (underWater ? -1.0 : 1.0);
-
-      finalColor = doShade(maxTime - hitTime, underWater);
 //    finalColor = vec4(workNormal.xyz * 0.1, 1.0);//doShade();
-      
+  
     }else if(underWater){
 
       vec3 r = textureLod(uPassTextures[1], vec3(inTexCoord, gl_ViewIndex), 1.0).xyz;
