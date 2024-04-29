@@ -367,7 +367,7 @@ void main(){
 
   vec2 resolution = vec2(textureSize(uPassTextures[2], 0).xy);
 
-  texCoord += vec2(gl_SamplePosition.xy) / resolution;
+  texCoord.xy += vec2(gl_SamplePosition.xy) / resolution;
 
 #endif
   
