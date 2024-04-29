@@ -668,14 +668,25 @@ addPlanetWaterFragmentShader(){
   addShader "-V planet_water.frag ${2} -o ${tempPath}/${1}_frag.spv"
 }
 
-# Add planet water fragment shader variants with different transparency techniques (if any)
-addPlanetWaterFragmentShadingAntialiasingVariants(){
+# Add planet water fragment shader variants with different discard techniques (if any)
+addPlanetWaterFragmentShadingDiscardVariants(){
   
   # No antialiasing or temporal antialiasing
   addPlanetWaterFragmentShader "${1}" "$2"
 
   # MSAA (Multi-sample anti-aliasing)
-  addPlanetWaterFragmentShader "${1}_msaa" "$2 -DMSAA"  
+  addPlanetWaterFragmentShader "${1}_demote" "$2 -DUSEDEMOTE"
+
+}
+
+# Add planet water fragment shader variants with different transparency techniques (if any)
+addPlanetWaterFragmentShadingAntialiasingVariants(){
+  
+  # No antialiasing or temporal antialiasing
+  addPlanetWaterFragmentShadingDiscardVariants "${1}" "$2"
+
+  # MSAA (Multi-sample anti-aliasing)
+  addPlanetWaterFragmentShadingDiscardVariants "${1}_msaa" "$2 -DMSAA"  
 
 }
 

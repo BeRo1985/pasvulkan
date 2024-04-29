@@ -3438,7 +3438,7 @@ begin
  TpvScene3DRendererInstancePasses(fPasses).fPlanetWaterRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fPlanetWaterPrepassComputePass);
 
  PreLastPass:=nil;
- LastPass:=TpvScene3DRendererInstancePasses(fPasses).fForwardRenderMipMapComputePass;
+ LastPass:=TpvScene3DRendererInstancePasses(fPasses).fPlanetWaterRenderPass;
 
  case Renderer.TransparencyMode of
 

@@ -79,11 +79,9 @@ layout(set = 3, binding = 0) uniform sampler2DArray uTextureWaterAcceleration;
 
 #define WATER_FRAGMENT_SHADER
 
-#if defined(LOCKOIT) || defined(DFAOIT) || defined(WBOIT) || defined(MBOIT) || defined(LOOPOIT) || defined(BLEND) || defined(DIRECT)
- #define TRANSMISSION
- #define TRANSMISSION_FORCED
- #define VOLUMEATTENUTATION_FORCED
-#endif
+#define TRANSMISSION
+#define TRANSMISSION_FORCED
+#define VOLUMEATTENUTATION_FORCED
 
 #include "math.glsl"
 
@@ -408,19 +406,13 @@ void main(){
       hitRayTime = max(hitRayTime, prepassTime);
     }
 
-   bool underWater = map(rayOrigin) <= 0.0;
+    bool underWater = map(rayOrigin) <= 0.0;
 
-#if defined(LOCKOIT) || defined(DFAOIT) || defined(WBOIT) || defined(MBOIT) || defined(LOOPOIT) //|| defined(BLEND)
-  #ifdef MSAA 
+#ifdef MSAA 
     float opaqueDepth = subpassLoad(uOITImgDepth, gl_SampleID).r; 
-  #else
-    float opaqueDepth = subpassLoad(uOITImgDepth).r; 
-  #endif 
-#elif defined(BLEND)
-    float opaqueDepth = textureLod(uPassTextures[2], vec3(inTexCoord, float(gl_ViewIndex)), 0.0).x;
 #else
-    float opaqueDepth = 1.0; // To satisfy the IDE GLSL syntax checker, since this shader will be never compiled without OIT
-#endif
+    float opaqueDepth = subpassLoad(uOITImgDepth).r; 
+#endif 
 
     float opaqueLinearDepth = -linearizeDepth(opaqueDepth);
 
@@ -439,8 +431,9 @@ void main(){
     float hitTime;
 
     if((prepassTime >= 0.0) &&
-       acceleratedRayMarching(rayOrigin, rayDirection, 0.0, maxTime, 0.6, underWater ? 0.9 : 1.0, hitTime)){
-    //if(standardRayMarching(rayOrigin, rayDirection, 0.0, maxTime, hitTime)){
+       acceleratedRayMarching(rayOrigin, rayDirection, 0.0, maxTime, 0.6, underWater ? 0.9 : 1.0, hitTime)
+     //standardRayMarching(rayOrigin, rayDirection, 0.0, maxTime, hitTime)
+      ){
 
       vec3 hitPoint = rayOrigin + (rayDirection * hitTime); // in planet space
 

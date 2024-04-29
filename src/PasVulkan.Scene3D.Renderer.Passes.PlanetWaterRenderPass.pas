@@ -180,14 +180,14 @@ inherited Create(aFrameGraph);
                                  [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                 );
 
-{ fResourceColor:=AddImageResolveOutput('resourcetype_color',
-                                        'resource_orderindependenttransparency_tailblending_color',
-                                        'resource_orderindependenttransparency_tailblending_msaa_color',
+  fResourceColor:=AddImageResolveOutput('resourcetype_color',
+                                        'resource_water_color',
+                                        'resource_water_msaa_color',
                                         VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                         TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.DontCare,
                                                                      TpvVector4.InlineableCreate(0.0,0.0,0.0,0.0)),
                                         [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
-                                       );}
+                                       );
 
  end;
 
