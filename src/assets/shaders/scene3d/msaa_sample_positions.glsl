@@ -59,7 +59,7 @@ const vec2 msaa16SamplePositions[16] = vec2[16](
   vec2(0.0625, 0.0)
 );
 
-vec2 getSamplePosition(const in int countSamples, const in int sampleIndex){
+vec2 getMSAASamplePosition(const in int countSamples, const in int sampleIndex){
   switch(countSamples){
     case 1:{
       return msaa1SamplePositions[0]; // Only one sample position, no need to mess with sampleIndex

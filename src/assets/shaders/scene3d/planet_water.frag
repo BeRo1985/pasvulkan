@@ -351,12 +351,24 @@ vec4 doShade(float hitTime, bool underWater){
 #endif
 
 }
+
 void main(){
 
 #ifdef MULTIVIEW
   vec3 texCoord = vec3(inTexCoord, float(gl_ViewIndex));
 #else
   vec2 texCoord = inTexCoord;
+#endif
+
+#ifdef MSAA
+  
+  // With MSAA, this fullscreen water rendering pass per ray marching will be become SSAA actually effectively,
+  // where each sample is processed separately.
+
+  vec2 resolution = vec2(textureSize(uPassTextures[2], 0).xy);
+
+  texCoord += vec2(gl_SamplePosition.xy) / resolution;
+
 #endif
   
   bool reversedZ = projectionMatrix[2][3] < -1e-7;
