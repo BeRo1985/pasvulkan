@@ -144,12 +144,6 @@ begin
                                  [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                 );
 
-  fResourceWater:=AddImageInput('resourcetype_color',
-                                'resource_water_color',
-                                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
-                               );                                
-
  end else begin
 
   fResourceOpaque:=AddImageInput('resourcetype_msaa_color_optimized_non_alpha',
@@ -158,12 +152,20 @@ begin
                                  [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                 );
 
+ end;
+
+ if (fInstance.Renderer.SurfaceSampleCountFlagBits<>TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT)) and fInstance.Renderer.SupersampleWaterWhenMSAA then begin
   fResourceWater:=AddImageInput('resourcetype_msaa_color',
                                 'resource_water_msaa_color',
                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                 [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
-                               );                                
-
+                                );
+ end else begin
+  fResourceWater:=AddImageInput('resourcetype_color',
+                                'resource_water_color',
+                                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
+                                );
  end;
 
  fResourceAccumlation:=AddImageInput('resourcetype_wboit_accumulation',
@@ -238,7 +240,11 @@ begin
  if fInstance.Renderer.SurfaceSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('wboit_resolve_frag.spv');
  end else begin
-   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('wboit_resolve_msaa_frag.spv');
+   if fInstance.Renderer.SupersampleWaterWhenMSAA then begin
+    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('wboit_resolve_msaa_frag.spv');
+   end else begin
+    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('wboit_resolve_msaa_no_msaa_water_frag.spv');
+   end; 
  end;
  try
   fVulkanFragmentShaderModule:=TpvVulkanShaderModule.Create(fInstance.Renderer.VulkanDevice,Stream);

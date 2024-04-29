@@ -141,11 +141,19 @@ begin
                                 [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                );
 
- fResourceWater:=AddImageInput('resourcetype_color',
-                               'resource_water_color',
-                               VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                               [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
-                              );
+ if (fInstance.Renderer.SurfaceSampleCountFlagBits<>TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT)) and fInstance.Renderer.SupersampleWaterWhenMSAA then begin
+  fResourceWater:=AddImageInput('resourcetype_msaa_color',
+                                'resource_water_msaa_color',
+                                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
+                                );
+ end else begin
+  fResourceWater:=AddImageInput('resourcetype_color',
+                                'resource_water_color',
+                                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
+                                );
+ end;
 
  if fInstance.Renderer.SurfaceSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
   fResourceTransparent:=AddImageInput('resourcetype_color',
@@ -202,10 +210,18 @@ begin
    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('lockoit_resolve_frag.spv');
   end;
  end else begin
-  if fInstance.ZFar<0.0 then begin
-   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('lockoit_resolve_reversedz_msaa_frag.spv');
+  if fInstance.Renderer.SupersampleWaterWhenMSAA then begin
+   if fInstance.ZFar<0.0 then begin
+    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('lockoit_resolve_reversedz_msaa_frag.spv');
+   end else begin
+    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('lockoit_resolve_msaa_frag.spv');
+   end;
   end else begin
-   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('lockoit_resolve_msaa_frag.spv');
+   if fInstance.ZFar<0.0 then begin
+    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('lockoit_resolve_reversedz_msaa_no_msaa_water_frag.spv');
+   end else begin
+    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('lockoit_resolve_msaa_no_msaa_water_frag.spv');
+   end;
   end;
  end;
  try

@@ -12,7 +12,11 @@ layout(location = 0) out vec4 outColor;
 #ifdef MSAA
 layout(input_attachment_index = 0, set = 0, binding = 0) uniform subpassInputMS uSubpassInputOpaque;
 
+#ifdef NO_MSAA_WATER
+layout(input_attachment_index = 1, set = 0, binding = 1) uniform subpassInput uSubpassInputWater;
+#else
 layout(input_attachment_index = 1, set = 0, binding = 1) uniform subpassInputMS uSubpassInputWater;
+#endif
 
 layout(set = 0, binding = 2, rgba32ui) uniform readonly uimage2DMSArray uOITImgFragmentCouterFragmentDepthsSampleMask;
 layout(set = 0, binding = 3, rgba16f) uniform readonly image2DMSArray uOITImgAccumlation;
@@ -59,7 +63,11 @@ void main() {
 
 #ifdef MSAA
   vec4 opaque = subpassLoad(uSubpassInputOpaque, gl_SampleID);
+#ifdef NO_MSAA_WATER
+  vec4 water = subpassLoad(uSubpassInputWater);
+#else
   vec4 water = subpassLoad(uSubpassInputWater, gl_SampleID);
+#endif
   uint countFragments = imageLoad(uOITImgFragmentCouterFragmentDepthsSampleMask, oitCoord, gl_SampleID).x;
   vec4 accumulatedColor = imageLoad(uOITImgAccumlation, oitCoord, gl_SampleID);
 #else

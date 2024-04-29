@@ -12,12 +12,21 @@ layout(location = 0) out vec4 outColor;
 
 layout(input_attachment_index = 0, set = 0, binding = 0) uniform subpassInput uSubpassInputOpaque;
 
-layout(input_attachment_index = 1, set = 0, binding = 1) uniform subpassInput uSubpassInputWater;
-
 #ifdef MSAA
+
+#ifdef NO_MSAA_WATER
+layout(input_attachment_index = 1, set = 0, binding = 1) uniform subpassInput uSubpassInputWater;
+#else
+layout(input_attachment_index = 1, set = 0, binding = 1) uniform subpassInputMS uSubpassInputWater;
+#endif
+
 layout(input_attachment_index = 2, set = 0, binding = 2) uniform subpassInputMS uSubpassInputTransparent;
 #else
+
+layout(input_attachment_index = 1, set = 0, binding = 1) uniform subpassInput uSubpassInputWater;
+
 layout(input_attachment_index = 2, set = 0, binding = 2) uniform subpassInput uSubpassInputTransparent;
+
 #endif
 
 #if defined(MSAA)
@@ -60,7 +69,22 @@ void main() {
   bool hasTransparency = transparency.w > 1e-4;
   blend(color, transparency);
 
-  blend(color, subpassLoad(uSubpassInputWater));
+  vec4 waterColor;  
+#if defined(MSAA) && !defined(NO_MSAA_WATER)
+  {
+    vec4 sampleColor = vec4(0.0);  
+    for (int sampleIndex = 0; sampleIndex < countSamples; sampleIndex++) {
+      sampleColor += ApplyToneMapping(subpassLoad(uSubpassInputWater, sampleIndex) * histogramLuminanceBuffer.luminanceFactor);
+    }
+    waterColor = ApplyInverseToneMapping(sampleColor / float(countSamples)) / histogramLuminanceBuffer.luminanceFactor;   
+  }
+#else
+  waterColor = subpassLoad(uSubpassInputWater); // Already premultiplied alpha
+#endif
+  if(waterColor.w > 1e-4){
+    hasTransparency = true;
+  }
+  blend(color, waterColor);
 
   blend(color, subpassLoad(uSubpassInputOpaque));
 

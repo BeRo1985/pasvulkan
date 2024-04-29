@@ -196,26 +196,36 @@ compileshaderarguments=(
   
   "-V mboit_resolve.frag -o ${tempPath}/mboit_resolve_frag.spv"
   "-V mboit_resolve.frag -DMSAA -o ${tempPath}/mboit_resolve_msaa_frag.spv"
+  "-V mboit_resolve.frag -DMSAA -DNO_MSAA_WATER -o ${tempPath}/mboit_resolve_msaa_no_msaa_water_frag.spv"
+  
   "-V wboit_resolve.frag -o ${tempPath}/wboit_resolve_frag.spv"
   "-V wboit_resolve.frag -DMSAA -o ${tempPath}/wboit_resolve_msaa_frag.spv"
+  "-V wboit_resolve.frag -DMSAA -DNO_MSAA_WATER -o ${tempPath}/wboit_resolve_msaa_no_msaa_water_frag.spv"
   
   "-V lockoit_resolve.frag -o ${tempPath}/lockoit_resolve_frag.spv"
   "-V lockoit_resolve.frag -DREVERSEDZ -o ${tempPath}/lockoit_resolve_reversedz_frag.spv"
   "-V lockoit_resolve.frag -DMSAA -o ${tempPath}/lockoit_resolve_msaa_frag.spv"
   "-V lockoit_resolve.frag -DMSAA -DREVERSEDZ -o ${tempPath}/lockoit_resolve_reversedz_msaa_frag.spv"
+  "-V lockoit_resolve.frag -DMSAA -DNO_MSAA_WATER -o ${tempPath}/lockoit_resolve_msaa_no_msaa_water_frag.spv"
+  "-V lockoit_resolve.frag -DMSAA -DNO_MSAA_WATER -DREVERSEDZ -o ${tempPath}/lockoit_resolve_reversedz_msaa_no_msaa_water_frag.spv"
 
   "-V loopoit_resolve.frag -o ${tempPath}/loopoit_resolve_frag.spv"
   "-V loopoit_resolve.frag -DREVERSEDZ -o ${tempPath}/loopoit_resolve_reversedz_frag.spv"
   "-V loopoit_resolve.frag -DMSAA -o ${tempPath}/loopoit_resolve_msaa_frag.spv"
   "-V loopoit_resolve.frag -DMSAA -DREVERSEDZ -o ${tempPath}/loopoit_resolve_reversedz_msaa_frag.spv"
+  "-V loopoit_resolve.frag -DMSAA -DNO_MSAA_WATER -o ${tempPath}/loopoit_resolve_msaa_no_msaa_water_frag.spv"
+  "-V loopoit_resolve.frag -DMSAA -DNO_MSAA_WATER -DREVERSEDZ -o ${tempPath}/loopoit_resolve_reversedz_msaa_no_msaa_water_frag.spv"
 
   "-V dfaoit_resolve.frag -o ${tempPath}/dfaoit_resolve_frag.spv"
   "-V dfaoit_resolve.frag -DREVERSEDZ -o ${tempPath}/dfaoit_resolve_reversedz_frag.spv"
   "-V dfaoit_resolve.frag -DMSAA -o ${tempPath}/dfaoit_resolve_msaa_frag.spv"
   "-V dfaoit_resolve.frag -DMSAA -DREVERSEDZ -o ${tempPath}/dfaoit_resolve_reversedz_msaa_frag.spv"
+  "-V dfaoit_resolve.frag -DMSAA -DNO_MSAA_WATER -o ${tempPath}/dfaoit_resolve_msaa_no_msaa_water_frag.spv"
+  "-V dfaoit_resolve.frag -DMSAA -DNO_MSAA_WATER -DREVERSEDZ -o ${tempPath}/dfaoit_resolve_reversedz_msaa_no_msaa_water_frag.spv"
 
   "-V blend_resolve.frag -o ${tempPath}/blend_resolve_frag.spv"
   "-V blend_resolve.frag -DMSAA -o ${tempPath}/blend_resolve_msaa_frag.spv"  
+  "-V blend_resolve.frag -DMSAA -DNO_MSAA_WATER -o ${tempPath}/blend_resolve_msaa_no_msaa_water_frag.spv"
 
   "-V brdf_charlie.frag -o ${tempPath}/brdf_charlie_frag.spv"
   "-V brdf_ggx.frag -o ${tempPath}/brdf_ggx_frag.spv"

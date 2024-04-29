@@ -176,7 +176,7 @@ inherited Create(aFrameGraph);
                                      [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                     );
 
-  fMSAA:=fInstance.Renderer.SurfaceSampleCountFlagBits<>TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT);
+  fMSAA:=fInstance.Renderer.SupersampleWaterWhenMSAA;
 
   if fMSAA then begin
 

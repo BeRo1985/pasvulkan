@@ -10,12 +10,21 @@ layout(location = 0) out vec4 outColor;
 
 layout(input_attachment_index = 0, set = 0, binding = 0) uniform subpassInput uSubpassInputOpaque;
 
-layout(input_attachment_index = 1, set = 0, binding = 1) uniform subpassInput uSubpassInputWater;
-
 #ifdef MSAA
+
+#ifdef NO_MSAA_WATER
+layout(input_attachment_index = 1, set = 0, binding = 1) uniform subpassInput uSubpassInputWater;
+#else
+layout(input_attachment_index = 1, set = 0, binding = 1) uniform subpassInputMS uSubpassInputWater;
+#endif
+
 layout(input_attachment_index = 2, set = 0, binding = 2) uniform subpassInputMS uSubpassInputTransparent;
 #else
+
+layout(input_attachment_index = 1, set = 0, binding = 1) uniform subpassInput uSubpassInputWater;
+
 layout(input_attachment_index = 2, set = 0, binding = 2) uniform subpassInput uSubpassInputTransparent;
+
 #endif
 
 layout(set = 0, binding = 3, std140) uniform uboOIT {
@@ -161,12 +170,25 @@ void main() {
   blend(color, subpassLoad(uSubpassInputTransparent));
 #endif
 
-  blend(color, subpassLoad(uSubpassInputWater)); // Already premultiplied alpha
+  vec4 waterColor;  
+#if defined(MSAA) && !defined(NO_MSAA_WATER)
+  {
+    vec4 sampleColor = vec4(0.0);  
+    for (int oitMSAASampleIndex = 0; oitMSAASampleIndex < oitMSAA; oitMSAASampleIndex++) {
+      sampleColor += ApplyToneMapping(subpassLoad(uSubpassInputWater, oitMSAASampleIndex) * histogramLuminanceBuffer.luminanceFactor);
+    }
+    waterColor = ApplyInverseToneMapping(sampleColor / float(oitMSAA)) / histogramLuminanceBuffer.luminanceFactor;   
+  }
+#else
+  waterColor = subpassLoad(uSubpassInputWater); // Already premultiplied alpha
+#endif
+  bool hasWaterTransparency = waterColor.w > 1e-4;
+  blend(color, waterColor);
 
   vec4 temporary = subpassLoad(uSubpassInputOpaque);
   temporary.xyz *= temporary.w; // Premultiply alpha for opaque fragments
   blend(color, temporary);
 
-  outColor = vec4(clamp(color.xyz, vec3(-65504.0), vec3(65504.0)), (oitCountFragments == 0) ? 1.0 : 0.0);
+  outColor = vec4(clamp(color.xyz, vec3(-65504.0), vec3(65504.0)), ((oitCountFragments == 0) && !hasWaterTransparency) ? 1.0 : 0.0);
   
 }

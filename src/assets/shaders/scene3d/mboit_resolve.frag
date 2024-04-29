@@ -10,7 +10,11 @@ layout(location = 0) out vec4 outColor;
 #ifdef MSAA
 layout(input_attachment_index = 0, set = 0, binding = 0) uniform subpassInputMS uSubpassInputOpaque;
 
+#ifdef NO_MSAA_WATER
+layout(input_attachment_index = 1, set = 0, binding = 1) uniform subpassInput uSubpassInputWater;
+#else
 layout(input_attachment_index = 1, set = 0, binding = 1) uniform subpassInputMS uSubpassInputWater;
+#endif
 
 layout(input_attachment_index = 2, set = 0, binding = 2) uniform subpassInputMS uSubpassInputTransparent;
 
@@ -30,7 +34,11 @@ layout(input_attachment_index = 3, set = 0, binding = 3) uniform subpassInput uS
 void main() {
 #ifdef MSAA
   vec4 opaque = subpassLoad(uSubpassInputOpaque, gl_SampleID);
+#ifdef NO_MSAA_WATER
+  vec4 water = subpassLoad(uSubpassInputWater);
+#else
   vec4 water = subpassLoad(uSubpassInputWater, gl_SampleID);
+#endif
   vec4 transparent = subpassLoad(uSubpassInputTransparent, gl_SampleID);
   float b0 = subpassLoad(uSubpassInputMoments0, gl_SampleID).x;
 #else
@@ -45,11 +53,11 @@ void main() {
 
   vec4 color = vec4(0.0);
 
-  if (b0 < 0.00100050033) {
-    color = vec4(opaque.xyz, 1.0);
+  if(b0 < 0.00100050033){
+    color = vec4(opaque.xyz, (water.w < 1e-4) ? 1.0 : 0.0);
   } else {
     float total_transmittance = exp(-b0);
-    if (isinf(b0) || isnan(b0)) {
+    if(isinf(b0) || isnan(b0)){
       total_transmittance = 1e7;
     }
     color = vec4((total_transmittance * opaque.xyz) + (((1.0 - total_transmittance) / transparent.w) * vec3(transparent.xyz)), 0.0);
