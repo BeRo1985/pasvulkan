@@ -1306,13 +1306,13 @@ type TpvScene3DPlanets=class;
      TpvScene3DPlanets=class(TpvObjectGenericList<TpvScene3DPlanet>)
       private
        fScene3D:TObject;
-       fLock:TPasMPCriticalSection;
+       fLock:TPasMPMultipleReaderSingleWriterLock;
       public
        constructor Create(const aScene3D:TObject); reintroduce;
        destructor Destroy; override;
       published
        property Scene3D:TObject read fScene3D;
-       property Lock:TPasMPCriticalSection read fLock;
+       property Lock:TPasMPMultipleReaderSingleWriterLock read fLock;
      end;
 
 implementation
@@ -6862,7 +6862,7 @@ begin
 
  InFlightFrameState:=@TpvScene3DRendererInstance(fRendererInstance).InFlightFrameStates[aInFlightFrameIndex];
 
- TpvScene3DPlanets(TpvScene3D(fScene3D).Planets).Lock.Acquire;
+ TpvScene3DPlanets(TpvScene3D(fScene3D).Planets).Lock.AcquireRead;
  try
 
   First:=true;
@@ -7466,7 +7466,7 @@ begin
   end;
 
  finally
-  TpvScene3DPlanets(TpvScene3D(fScene3D).Planets).Lock.Release;
+  TpvScene3DPlanets(TpvScene3D(fScene3D).Planets).Lock.ReleaseRead;
  end;
 
 end;
@@ -7631,7 +7631,7 @@ begin
 
  InFlightFrameState:=@TpvScene3DRendererInstance(fRendererInstance).InFlightFrameStates[aInFlightFrameIndex];
 
- TpvScene3DPlanets(TpvScene3D(fScene3D).Planets).Lock.Acquire;
+ TpvScene3DPlanets(TpvScene3D(fScene3D).Planets).Lock.AcquireRead;
  try
 
   First:=true;
@@ -7796,7 +7796,7 @@ begin
   end;
 
  finally
-  TpvScene3DPlanets(TpvScene3D(fScene3D).Planets).Lock.Release;
+  TpvScene3DPlanets(TpvScene3D(fScene3D).Planets).Lock.ReleaseRead;
  end;
 
 end;
@@ -8650,7 +8650,7 @@ begin
   vkCmdDrawIndexedIndirectCount:=nil;
  end;
 
- TpvScene3DPlanets(TpvScene3D(fScene3D).Planets).Lock.Acquire;
+ TpvScene3DPlanets(TpvScene3D(fScene3D).Planets).Lock.AcquireRead;
  try
 
   begin
@@ -8956,7 +8956,7 @@ begin
   end;
 
  finally
-  TpvScene3DPlanets(TpvScene3D(fScene3D).Planets).Lock.Release;
+  TpvScene3DPlanets(TpvScene3D(fScene3D).Planets).Lock.ReleaseRead;
  end;
 
 end;
@@ -9191,7 +9191,7 @@ begin
 
  InFlightFrameState:=@TpvScene3DRendererInstance(fRendererInstance).InFlightFrameStates[aInFlightFrameIndex];
 
- TpvScene3DPlanets(TpvScene3D(fScene3D).Planets).Lock.Acquire;
+ TpvScene3DPlanets(TpvScene3D(fScene3D).Planets).Lock.AcquireRead;
  try
 
   begin
@@ -9271,7 +9271,7 @@ begin
   end;
 
  finally
-  TpvScene3DPlanets(TpvScene3D(fScene3D).Planets).Lock.Release;
+  TpvScene3DPlanets(TpvScene3D(fScene3D).Planets).Lock.ReleaseRead;
  end;
 
 end;
@@ -10346,11 +10346,11 @@ procedure TpvScene3DPlanet.AfterConstruction;
 begin
  inherited AfterConstruction;
  if assigned(fScene3D) then begin
-  TpvScene3DPlanets(TpvScene3D(fScene3D).Planets).Lock.Acquire;
+  TpvScene3DPlanets(TpvScene3D(fScene3D).Planets).Lock.AcquireWrite;
   try  
    TpvScene3DPlanets(TpvScene3D(fScene3D).Planets).Add(self); 
   finally 
-   TpvScene3DPlanets(TpvScene3D(fScene3D).Planets).Lock.Release;
+   TpvScene3DPlanets(TpvScene3D(fScene3D).Planets).Lock.ReleaseWrite;
   end; 
  end;
 end;
@@ -10359,14 +10359,14 @@ procedure TpvScene3DPlanet.BeforeDestruction;
 var Index:TpvSizeInt;
 begin
  if assigned(fScene3D) then begin
-  TpvScene3DPlanets(TpvScene3D(fScene3D).Planets).Lock.Acquire;
+  TpvScene3DPlanets(TpvScene3D(fScene3D).Planets).Lock.AcquireWrite;
   try  
    Index:=TpvScene3DPlanets(TpvScene3D(fScene3D).Planets).IndexOf(self);
    if Index>=0 then begin
     TpvScene3DPlanets(TpvScene3D(fScene3D).Planets).Extract(Index); // not delete or remove, since we don't want to free ourself here already.
    end;
   finally 
-   TpvScene3DPlanets(TpvScene3D(fScene3D).Planets).Lock.Release;
+   TpvScene3DPlanets(TpvScene3D(fScene3D).Planets).Lock.ReleaseWrite;
   end; 
  end; 
  inherited BeforeDestruction;
@@ -11605,7 +11605,7 @@ constructor TpvScene3DPlanets.Create(const aScene3D:TObject);
 begin
  inherited Create(true);
  fScene3D:=aScene3D;
- fLock:=TPasMPCriticalSection.Create;
+ fLock:=TPasMPMultipleReaderSingleWriterLock.Create;
 end;
 
 destructor TpvScene3DPlanets.Destroy;

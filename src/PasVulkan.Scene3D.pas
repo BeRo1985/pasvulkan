@@ -22736,7 +22736,7 @@ begin
 
  fCountLights[aInFlightFrameIndex]:=0;
 
- TpvScene3DPlanets(fPlanets).Lock.Acquire;
+ TpvScene3DPlanets(fPlanets).Lock.AcquireRead;
  try
   for Index:=0 to TpvScene3DPlanets(fPlanets).Count-1 do begin
    Planet:=TpvScene3DPlanets(fPlanets).Items[Index];
@@ -22745,7 +22745,7 @@ begin
    end;
   end;
  finally
-  TpvScene3DPlanets(fPlanets).Lock.Release;
+  TpvScene3DPlanets(fPlanets).Lock.ReleaseRead;
  end;
 
  fGroupListLock.Acquire;
@@ -22858,7 +22858,7 @@ begin
    end;
   end;
 
-  TpvScene3DPlanets(fPlanets).Lock.Acquire;
+  TpvScene3DPlanets(fPlanets).Lock.AcquireRead;
   try
    for Index:=0 to TpvScene3DPlanets(fPlanets).Count-1 do begin
     Planet:=TpvScene3DPlanets(fPlanets).Items[Index];
@@ -22873,7 +22873,7 @@ begin
     end;
    end;
   finally
-   TpvScene3DPlanets(fPlanets).Lock.Release;
+   TpvScene3DPlanets(fPlanets).Lock.ReleaseRead;
   end;
 
   if First or IsZero(fBoundingBox.Radius) then begin
@@ -23084,7 +23084,7 @@ begin
 
  if assigned(fVulkanDevice) then begin
 
-  TpvScene3DPlanets(fPlanets).Lock.Acquire;
+  TpvScene3DPlanets(fPlanets).Lock.AcquireRead;
   try
    for Index:=0 to TpvScene3DPlanets(fPlanets).Count-1 do begin
     Planet:=TpvScene3DPlanets(fPlanets).Items[Index];
@@ -23093,7 +23093,7 @@ begin
     end;
    end;
   finally
-   TpvScene3DPlanets(fPlanets).Lock.Release;
+   TpvScene3DPlanets(fPlanets).Lock.ReleaseRead;
   end;
 
   for Group in fGroups do begin
@@ -23217,7 +23217,7 @@ begin
    fInFlightFrameDataTransferQueues[aInFlightFrameIndex].Reset;
   end;
 
-  TpvScene3DPlanets(fPlanets).Lock.Acquire;
+  TpvScene3DPlanets(fPlanets).Lock.AcquireRead;
   try
    for PlanetIndex:=0 to TpvScene3DPlanets(fPlanets).Count-1 do begin
     Planet:=TpvScene3DPlanets(fPlanets).Items[PlanetIndex];
@@ -23226,7 +23226,7 @@ begin
     end;
    end;
   finally
-   TpvScene3DPlanets(fPlanets).Lock.Release;
+   TpvScene3DPlanets(fPlanets).Lock.ReleaseRead;
   end;
 
  if assigned(aWaitFence) then begin
@@ -23287,7 +23287,7 @@ begin
    fInFlightFrameDataTransferQueues[aInFlightFrameIndex].Reset;
   end;
 
-  TpvScene3DPlanets(fPlanets).Lock.Acquire;
+  TpvScene3DPlanets(fPlanets).Lock.AcquireRead;
   try
    for PlanetIndex:=0 to TpvScene3DPlanets(fPlanets).Count-1 do begin
     Planet:=TpvScene3DPlanets(fPlanets).Items[PlanetIndex];
@@ -23296,7 +23296,7 @@ begin
     end;
    end;
   finally
-   TpvScene3DPlanets(fPlanets).Lock.Release;
+   TpvScene3DPlanets(fPlanets).Lock.ReleaseRead;
   end;
 
   begin
@@ -23454,7 +23454,7 @@ begin
    fInFlightFrameDataTransferQueues[aInFlightFrameIndex].Reset;
   end;
 
-  TpvScene3DPlanets(fPlanets).Lock.Acquire;
+  TpvScene3DPlanets(fPlanets).Lock.AcquireRead;
   try
    for PlanetIndex:=0 to TpvScene3DPlanets(fPlanets).Count-1 do begin
     Planet:=TpvScene3DPlanets(fPlanets).Items[PlanetIndex];
@@ -23463,7 +23463,7 @@ begin
     end;
    end;
   finally
-   TpvScene3DPlanets(fPlanets).Lock.Release;
+   TpvScene3DPlanets(fPlanets).Lock.ReleaseRead;
   end;
 
   if assigned(aWaitFence) then begin
@@ -23510,7 +23510,7 @@ begin
 
  if assigned(fVulkanDevice) then begin
 
-  TpvScene3DPlanets(fPlanets).Lock.Acquire;
+  TpvScene3DPlanets(fPlanets).Lock.AcquireRead;
   try
    for PlanetIndex:=0 to TpvScene3DPlanets(fPlanets).Count-1 do begin
     Planet:=TpvScene3DPlanets(fPlanets).Items[PlanetIndex];
@@ -23519,7 +23519,7 @@ begin
     end;
    end;
   finally
-   TpvScene3DPlanets(fPlanets).Lock.Release;
+   TpvScene3DPlanets(fPlanets).Lock.ReleaseRead;
   end;
 
   for Group in fGroups do begin
@@ -24117,7 +24117,7 @@ begin
    Frustums:=nil;
   end;
 
-  TpvScene3DPlanets(fPlanets).Lock.Acquire;
+  TpvScene3DPlanets(fPlanets).Lock.AcquireRead;
   try
    for Index:=0 to TpvScene3DPlanets(fPlanets).Count-1 do begin
     Planet:=TpvScene3DPlanets(fPlanets).Items[Index];
@@ -24126,7 +24126,7 @@ begin
     end;
    end;
   finally
-   TpvScene3DPlanets(fPlanets).Lock.Release;
+   TpvScene3DPlanets(fPlanets).Lock.ReleaseRead;
   end;
 
  end;
@@ -24365,7 +24365,7 @@ begin
 
  if fUseBufferDeviceAddress then begin
 
-  TpvScene3DPlanets(fPlanets).Lock.Acquire;
+  TpvScene3DPlanets(fPlanets).Lock.AcquireRead;
   try
 
    MustReupload:=false;
@@ -24435,7 +24435,7 @@ begin
    end; 
 
   finally
-   TpvScene3DPlanets(fPlanets).Lock.Release;
+   TpvScene3DPlanets(fPlanets).Lock.ReleaseRead;
   end;
 
  end;
@@ -24781,7 +24781,7 @@ begin
 
     MustHandlePlanets:=false;
 
-    TpvScene3DPlanets(fPlanets).Lock.Acquire;
+    TpvScene3DPlanets(fPlanets).Lock.AcquireRead;
     try
 
      CountPlanetTiles:=0;
@@ -24800,7 +24800,7 @@ begin
      end;
 
     finally
-     TpvScene3DPlanets(fPlanets).Lock.Release;
+     TpvScene3DPlanets(fPlanets).Lock.ReleaseRead;
     end;
 
     if (fRaytracingCountPlanetTiles<>CountPlanetTiles) or
@@ -24861,7 +24861,7 @@ begin
 
      if fRaytracingCountPlanetTiles>0 then begin
 
-      TpvScene3DPlanets(fPlanets).Lock.Acquire;
+      TpvScene3DPlanets(fPlanets).Lock.AcquireRead;
       try
 
        for PlanetIndex:=0 to TpvScene3DPlanets(fPlanets).Count-1 do begin
@@ -24894,7 +24894,7 @@ begin
        end;
 
       finally
-       TpvScene3DPlanets(fPlanets).Lock.Release;
+       TpvScene3DPlanets(fPlanets).Lock.ReleaseRead;
       end;
 
      end;//}
@@ -25030,7 +25030,7 @@ begin
 
     if MustHandlePlanets and (fRaytracingCountPlanetTiles>0) then begin
 
-     TpvScene3DPlanets(fPlanets).Lock.Acquire;
+     TpvScene3DPlanets(fPlanets).Lock.AcquireRead;
      try
 
       for PlanetIndex:=0 to TpvScene3DPlanets(fPlanets).Count-1 do begin
@@ -25066,7 +25066,7 @@ begin
       end;
 
      finally
-      TpvScene3DPlanets(fPlanets).Lock.Release;
+      TpvScene3DPlanets(fPlanets).Lock.ReleaseRead;
      end;
 
     end;   //}
@@ -25161,7 +25161,7 @@ begin
 
     if MustHandlePlanets and (fRaytracingCountPlanetTiles>0) then begin
 
-     TpvScene3DPlanets(fPlanets).Lock.Acquire;
+     TpvScene3DPlanets(fPlanets).Lock.AcquireRead;
      try
 
       for PlanetIndex:=0 to TpvScene3DPlanets(fPlanets).Count-1 do begin
@@ -25197,7 +25197,7 @@ begin
       end;
 
      finally
-      TpvScene3DPlanets(fPlanets).Lock.Release;
+      TpvScene3DPlanets(fPlanets).Lock.ReleaseRead;
      end;
 
     end;//}
@@ -25531,7 +25531,7 @@ begin
     end;
 
     if MustHandlePlanets then begin
-     TpvScene3DPlanets(fPlanets).Lock.Acquire;
+     TpvScene3DPlanets(fPlanets).Lock.AcquireRead;
      try
       for PlanetIndex:=0 to TpvScene3DPlanets(fPlanets).Count-1 do begin
        Planet:=TpvScene3DPlanets(fPlanets).Items[PlanetIndex];
@@ -25540,7 +25540,7 @@ begin
        end;
       end;
      finally
-      TpvScene3DPlanets(fPlanets).Lock.Release;
+      TpvScene3DPlanets(fPlanets).Lock.ReleaseRead;
      end;
     end;
 
