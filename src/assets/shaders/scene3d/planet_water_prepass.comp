@@ -228,7 +228,7 @@ void main(){
   // Scatter the hit time to the neighboring texels for the water acceleration structure for the full resolution ray marching
   // for being conservative and avoiding artifacts as much as possible.
   if(hitTime >= 0.0){
-    ivec4 xyMinMax = clamp(texelPos.xyxy + ivec2(-2, 2).xxyy, ivec4(0), imgSize.xyxy - ivec4(1));
+    ivec4 xyMinMax = clamp(texelPos.xyxy + ivec2(-3, 3).xxyy, ivec4(0), imgSize.xyxy - ivec4(1));
     for(int y = xyMinMax.y; y <= xyMinMax.w; y++){ 
       for(int x = xyMinMax.x; x <= xyMinMax.z; x++){
         imageAtomicMin(uImageWaterAcceleration, ivec3(x, y, computeViewIndex), floatBitsToUint(hitTime));
