@@ -1041,6 +1041,7 @@ type TpvScene3DPlanets=class;
               fPipelineLayout:TpvVulkanPipelineLayout;
               fPipeline:TpvVulkanGraphicsPipeline;
               fPushConstants:TPushConstants;
+              fMSAA:Boolean;
               fPass:TpvSizeInt;
               fWidth:TpvInt32;
               fHeight:TpvInt32;
@@ -1048,6 +1049,7 @@ type TpvScene3DPlanets=class;
               constructor Create(const aRenderer:TObject;
                                  const aRendererInstance:TObject;
                                  const aScene3D:TObject;
+                                 const aMSAA:Boolean;
                                  const aPass:TpvSizeInt;
                                  const aResourceCascadedShadowMap:TpvFrameGraph.TPass.TUsedImageResource;
                                  const aResourceSSAO:TpvFrameGraph.TPass.TUsedImageResource); reintroduce;
@@ -8966,6 +8968,7 @@ end;
 constructor TpvScene3DPlanet.TWaterRenderPass.Create(const aRenderer:TObject;
                                                      const aRendererInstance:TObject;
                                                      const aScene3D:TObject;
+                                                     const aMSAA:Boolean;
                                                      const aPass:TpvSizeInt;
                                                      const aResourceCascadedShadowMap:TpvFrameGraph.TPass.TUsedImageResource;
                                                      const aResourceSSAO:TpvFrameGraph.TPass.TUsedImageResource);
@@ -9005,6 +9008,8 @@ begin
 
  fPipeline:=nil;
 
+ fMSAA:=aMSAA;
+
  fPass:=aPass;
 
  fWidth:=0;
@@ -9032,7 +9037,11 @@ begin
  end;
 
  if TpvScene3DRenderer(aRenderer).SurfaceSampleCountFlagBits<>TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
-  ShaderFileName:=ShaderFileName+'_msaa';
+  if fMSAA then begin
+   ShaderFileName:=ShaderFileName+'_msaa';
+  end else begin
+   ShaderFileName:=ShaderFileName+'_msaa_fast';
+  end;
  end;
 
  ShaderFileName:=ShaderFileName+'_frag.spv';
@@ -9126,7 +9135,11 @@ begin
   fPipeline.RasterizationState.DepthBiasSlopeFactor:=0.0;
   fPipeline.RasterizationState.LineWidth:=1.0;
 
-  fPipeline.MultisampleState.RasterizationSamples:=aVulkanSampleCountFlagBits;
+  if fMSAA then begin
+   fPipeline.MultisampleState.RasterizationSamples:=aVulkanSampleCountFlagBits;
+  end else begin
+   fPipeline.MultisampleState.RasterizationSamples:=VK_SAMPLE_COUNT_1_BIT;
+  end;
   fPipeline.MultisampleState.SampleShadingEnable:=false;
   fPipeline.MultisampleState.MinSampleShading:=0.0;
   fPipeline.MultisampleState.CountSampleMasks:=0;

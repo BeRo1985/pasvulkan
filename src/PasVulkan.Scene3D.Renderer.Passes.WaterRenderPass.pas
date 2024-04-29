@@ -99,6 +99,7 @@ type { TpvScene3DRendererPassesWaterRenderPass }
        fPassVulkanDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
        fVulkanPipelineLayout:TpvVulkanPipelineLayout;
        fPlanetWaterRenderPass:TpvScene3DPlanet.TWaterRenderPass;
+       fMSAA:Boolean;
       public
        constructor Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance); reintroduce;
        destructor Destroy; override;
@@ -150,11 +151,14 @@ inherited Create(aFrameGraph);
 
  if fInstance.Renderer.SurfaceSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
 
+  fMSAA:=false;
+
   fResourceDepth:=AddImageDepthInput('resourcetype_depth',
                                      'resource_depth_data',
                                      VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,//VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                      [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                     );
+
 
   fResourceColor:=AddImageOutput('resourcetype_color',
                                  'resource_water_color',
@@ -172,22 +176,38 @@ inherited Create(aFrameGraph);
                                      [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                     );
 
-  fResourceColor:=AddImageOutput('resourcetype_msaa_color',
-                                 'resource_water_msaa_color',
-                                 VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                                 TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
-                                                              TpvVector4.InlineableCreate(0.0,0.0,0.0,0.0)),
-                                 [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
-                                );
+  fMSAA:=fInstance.Renderer.SurfaceSampleCountFlagBits<>TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT);
 
-  fResourceColor:=AddImageResolveOutput('resourcetype_color',
-                                        'resource_water_color',
-                                        'resource_water_msaa_color',
-                                        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                                        TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.DontCare,
-                                                                     TpvVector4.InlineableCreate(0.0,0.0,0.0,0.0)),
-                                        [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
-                                       );
+  if fMSAA then begin
+
+   fResourceColor:=AddImageOutput('resourcetype_msaa_color',
+                                  'resource_water_msaa_color',
+                                  VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                                  TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
+                                                               TpvVector4.InlineableCreate(0.0,0.0,0.0,0.0)),
+                                  [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
+                                 );
+
+   fResourceColor:=AddImageResolveOutput('resourcetype_color',
+                                         'resource_water_color',
+                                         'resource_water_msaa_color',
+                                         VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                                         TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.DontCare,
+                                                                      TpvVector4.InlineableCreate(0.0,0.0,0.0,0.0)),
+                                         [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
+                                        );
+
+  end else begin
+
+   fResourceColor:=AddImageOutput('resourcetype_color',
+                                  'resource_water_color',
+                                  VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                                  TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
+                                                               TpvVector4.InlineableCreate(0.0,0.0,0.0,0.0)),
+                                  [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
+                                 );
+
+  end;
 
  end;
 
@@ -206,6 +226,7 @@ begin
  fPlanetWaterRenderPass:=TpvScene3DPlanet.TWaterRenderPass.Create(fInstance.Renderer,
                                                                   fInstance,
                                                                   fInstance.Renderer.Scene3D,
+                                                                  fMSAA,
                                                                   0,
                                                                   fResourceCascadedShadowMap,
                                                                   fResourceSSAO);
