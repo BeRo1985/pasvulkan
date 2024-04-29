@@ -10,22 +10,24 @@ layout(location = 0) out vec4 outColor;
 
 layout(input_attachment_index = 0, set = 0, binding = 0) uniform subpassInput uSubpassInputOpaque;
 
+layout(input_attachment_index = 1, set = 0, binding = 1) uniform subpassInput uSubpassInputWater;
+
 #ifdef MSAA
-layout(input_attachment_index = 1, set = 0, binding = 1) uniform subpassInputMS uSubpassInputTransparent;
+layout(input_attachment_index = 2, set = 0, binding = 2) uniform subpassInputMS uSubpassInputTransparent;
 #else
-layout(input_attachment_index = 1, set = 0, binding = 1) uniform subpassInput uSubpassInputTransparent;
+layout(input_attachment_index = 2, set = 0, binding = 2) uniform subpassInput uSubpassInputTransparent;
 #endif
 
-layout(set = 0, binding = 2, std140) uniform uboOIT {
+layout(set = 0, binding = 3, std140) uniform uboOIT {
   uvec4 oitViewPort;  //
 } uOIT;
 
-layout(set = 0, binding = 3, rg32ui) uniform readonly uimageBuffer uOITImgABuffer;
+layout(set = 0, binding = 4, rg32ui) uniform readonly uimageBuffer uOITImgABuffer;
 
 #if defined(MSAA)
-layout(set = 0, binding = 4, r32ui) uniform readonly uimageBuffer uOITImgSBuffer;
+layout(set = 0, binding = 5, r32ui) uniform readonly uimageBuffer uOITImgSBuffer;
 
-layout(set = 0, binding = 5, std430) buffer HistogramLuminanceBuffer {
+layout(set = 0, binding = 6, std430) buffer HistogramLuminanceBuffer {
   float histogramLuminance;
   float luminanceFactor; 
 } histogramLuminanceBuffer;
@@ -158,6 +160,8 @@ void main() {
 #else
   blend(color, subpassLoad(uSubpassInputTransparent));
 #endif
+
+  blend(color, subpassLoad(uSubpassInputWater)); // Already premultiplied alpha
 
   vec4 temporary = subpassLoad(uSubpassInputOpaque);
   temporary.xyz *= temporary.w; // Premultiply alpha for opaque fragments

@@ -10,15 +10,19 @@ layout(location = 0) out vec4 outColor;
 #ifdef MSAA
 layout(input_attachment_index = 0, set = 0, binding = 0) uniform subpassInputMS uSubpassInputOpaque;
 
-layout(input_attachment_index = 1, set = 0, binding = 1) uniform subpassInputMS uSubpassInputTransparent;
+layout(input_attachment_index = 1, set = 0, binding = 1) uniform subpassInputMS uSubpassInputWater;
 
-layout(input_attachment_index = 2, set = 0, binding = 2) uniform subpassInputMS uSubpassInputMoments0;
+layout(input_attachment_index = 2, set = 0, binding = 2) uniform subpassInputMS uSubpassInputTransparent;
+
+layout(input_attachment_index = 3, set = 0, binding = 3) uniform subpassInputMS uSubpassInputMoments0;
 #else
 layout(input_attachment_index = 0, set = 0, binding = 0) uniform subpassInput uSubpassInputOpaque;
 
-layout(input_attachment_index = 1, set = 0, binding = 1) uniform subpassInput uSubpassInputTransparent;
+layout(input_attachment_index = 1, set = 0, binding = 1) uniform subpassInput uSubpassInputWater;
 
-layout(input_attachment_index = 2, set = 0, binding = 2) uniform subpassInput uSubpassInputMoments0;
+layout(input_attachment_index = 2, set = 0, binding = 2) uniform subpassInput uSubpassInputTransparent;
+
+layout(input_attachment_index = 3, set = 0, binding = 3) uniform subpassInput uSubpassInputMoments0;
 #endif
 
 /* clang-format on */
@@ -26,13 +30,18 @@ layout(input_attachment_index = 2, set = 0, binding = 2) uniform subpassInput uS
 void main() {
 #ifdef MSAA
   vec4 opaque = subpassLoad(uSubpassInputOpaque, gl_SampleID);
+  vec4 water = subpassLoad(uSubpassInputWater, gl_SampleID);
   vec4 transparent = subpassLoad(uSubpassInputTransparent, gl_SampleID);
   float b0 = subpassLoad(uSubpassInputMoments0, gl_SampleID).x;
 #else
   vec4 opaque = subpassLoad(uSubpassInputOpaque);
+  vec4 water = subpassLoad(uSubpassInputWater);
   vec4 transparent = subpassLoad(uSubpassInputTransparent);
   float b0 = subpassLoad(uSubpassInputMoments0).x;
 #endif
+
+  // Blend water into opaque
+  opaque = mix(opaque, water, water.w);
 
   vec4 color = vec4(0.0);
 

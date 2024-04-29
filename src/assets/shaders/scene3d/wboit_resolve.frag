@@ -10,15 +10,19 @@ layout(location = 0) out vec4 outColor;
 #ifdef MSAA
 layout(input_attachment_index = 0, set = 0, binding = 0) uniform subpassInputMS uSubpassInputOpaque;
 
-layout(input_attachment_index = 1, set = 0, binding = 1) uniform subpassInputMS uSubpassInputAccumulation;
+layout(input_attachment_index = 1, set = 0, binding = 1) uniform subpassInputMS uSubpassInputWater;
 
-layout(input_attachment_index = 2, set = 0, binding = 2) uniform subpassInputMS uSubpassInputRevealage;
+layout(input_attachment_index = 2, set = 0, binding = 2) uniform subpassInputMS uSubpassInputAccumulation;
+
+layout(input_attachment_index = 3, set = 0, binding = 3) uniform subpassInputMS uSubpassInputRevealage;
 #else
 layout(input_attachment_index = 0, set = 0, binding = 0) uniform subpassInput uSubpassInputOpaque;
 
-layout(input_attachment_index = 1, set = 0, binding = 1) uniform subpassInput uSubpassInputAccumulation;
+layout(input_attachment_index = 1, set = 0, binding = 1) uniform subpassInput uSubpassInputWater;
 
-layout(input_attachment_index = 2, set = 0, binding = 2) uniform subpassInput uSubpassInputRevealage;
+layout(input_attachment_index = 2, set = 0, binding = 2) uniform subpassInput uSubpassInputAccumulation;
+
+layout(input_attachment_index = 3, set = 0, binding = 3) uniform subpassInput uSubpassInputRevealage;
 #endif
 
 /* clang-format on */
@@ -26,14 +30,19 @@ layout(input_attachment_index = 2, set = 0, binding = 2) uniform subpassInput uS
 void main() {
 #ifdef MSAA
   vec4 opaque = subpassLoad(uSubpassInputOpaque, gl_SampleID);
+  vec4 water = subpassLoad(uSubpassInputWater, gl_SampleID);
   vec4 accumulation = subpassLoad(uSubpassInputAccumulation, gl_SampleID);
   float revealage = subpassLoad(uSubpassInputRevealage, gl_SampleID).x;
 #else
   vec4 opaque = subpassLoad(uSubpassInputOpaque);
+  vec4 water = subpassLoad(uSubpassInputWater);
   vec4 accumulation = subpassLoad(uSubpassInputAccumulation);
   float revealage = subpassLoad(uSubpassInputRevealage).x;
 #endif
 
+  // Blend water into opaque
+  opaque = mix(opaque, water, water.w);
+ 
   vec4 color = vec4(0.0);
 
   if (revealage >= 1.0) {
