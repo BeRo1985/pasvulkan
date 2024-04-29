@@ -55,7 +55,9 @@ mat4 inverseViewProjectionMatrix = inverseViewMatrix * inverseProjectionMatrix;
 ivec2 imgSize = ivec2(imageSize(uImageWaterAcceleration).xy);
 vec2 invImgSize = 1.0 / vec2(imgSize);
 
-vec2 inTexCoord = vec2(gl_GlobalInvocationID.xy) / imgSize;
+ivec2 texelPos = ivec2(gl_GlobalInvocationID.xy);
+
+vec2 inTexCoord = vec2(texelPos) / imgSize;
 
 float linearizeDepth(float z){
 #if 1
@@ -86,8 +88,7 @@ mat4 planetInverseModelMatrix = inverse(planetModelMatrix);
 
 void main(){
 
-  uvec2 texelPos = uvec2(gl_GlobalInvocationID.xy);
-  if(any(greaterThanEqual(texelPos, imgSize))){
+  if(any(greaterThanEqual(uvec2(texelPos), imgSize))){
     return;
   }
 
@@ -227,19 +228,14 @@ void main(){
   // Scatter the hit time to the neighboring texels for the water acceleration structure for the full resolution ray marching
   // for being conservative and avoiding artifacts as much as possible.
   if(hitTime >= 0.0){
-    ivec2 baseTexelPos = ivec2(gl_GlobalInvocationID.xy);
-    ivec2 x01 = ivec2((baseTexelPos.x > 0) ? -1 : 0, ((baseTexelPos.x + 1) < imgSize.x) ? 1 : 0);
-    ivec2 y01 = ivec2((baseTexelPos.y > 0) ? -1 : 0, ((baseTexelPos.y + 1) < imgSize.y) ? 1 : 0);
-    for(int y = y01.x; y <= y01.y; y++){ 
-      for(int x = x01.x; x <= x01.y; x++){
-        ivec2 texelPos = baseTexelPos + ivec2(x, y);
-        if(all(greaterThanEqual(texelPos, ivec2(0))) && all(lessThan(texelPos, imgSize))){
-          imageAtomicMin(uImageWaterAcceleration, ivec3(texelPos, computeViewIndex), floatBitsToUint(hitTime));
-        }
+    ivec4 xyMinMax = clamp(texelPos.xyxy + ivec2(-2, 2).xxyy, ivec4(0), imgSize.xyxy - ivec4(1));
+    for(int y = xyMinMax.y; y <= xyMinMax.w; y++){ 
+      for(int x = xyMinMax.x; x <= xyMinMax.z; x++){
+        imageAtomicMin(uImageWaterAcceleration, ivec3(x, y, computeViewIndex), floatBitsToUint(hitTime));
       }
     }
   }
 
-//imageStore(uImageWaterAcceleration, ivec3(gl_GlobalInvocationID.xy, computeViewIndex), vec4(hitTime));
+//imageStore(uImageWaterAcceleration, ivec3(writeTexelPos, computeViewIndex), vec4(hitTime));
 
 }
