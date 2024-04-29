@@ -19327,6 +19327,7 @@ procedure TpvScene3D.TGroup.TInstance.Update(const aInFlightFrameIndex:TpvSizeIn
 
  end;
 var Index,OtherIndex,PerInFlightFrameRenderInstanceIndex:TpvSizeInt;
+    WeightSum,WeightOverFactor:TpvDouble;
     Scene:TpvScene3D.TGroup.TScene;
     Animation:TpvScene3D.TGroup.TInstance.TAnimation;
     Node:TpvScene3D.TGroup.TNode;
@@ -19338,6 +19339,7 @@ var Index,OtherIndex,PerInFlightFrameRenderInstanceIndex:TpvSizeInt;
     AABBTreeState:TpvBVHDynamicAABBTree.PState;
     AABBTreeNode:TpvBVHDynamicAABBTree.PTreeNode;
     AABBTreeNodePotentiallyVisibleSet:TpvScene3D.TPotentiallyVisibleSet.TNodeIndex;
+    StartCPUTime,EndCPUTime:TpvHighResolutionTime;
 begin
 
  if assigned(fAppendageInstance) and assigned(fAppendageNode) then begin
@@ -19383,16 +19385,36 @@ begin
     fSkins[Index].Used:=false;
    end;
 
-   for Index:=-1 to length(fAnimations)-2 do begin
-    Animation:=fAnimations[Index+1];
-    if Animation.fFactor>=-0.5 then begin
-     if Index<0 then begin
-      ProcessBaseOverwrite(Animation.fFactor);
-     end else begin
-      ProcessAnimation(Index,Animation.fTime,Animation.fFactor);
+   StartCPUTime:=pvApplication.HighResolutionTimer.GetTime;
+   begin
+
+    WeightSum:=0.0;
+
+    for Index:=-1 to length(fAnimations)-2 do begin
+     Animation:=fAnimations[Index+1];
+     WeightSum:=WeightSum+Max(0.0,Animation.fFactor);
+    end;
+
+    if IsZero(WeightSum) then begin
+     WeightOverFactor:=0.0;
+    end else begin
+     WeightOverFactor:=1.0/WeightSum;
+    end;
+
+    for Index:=-1 to length(fAnimations)-2 do begin
+     Animation:=fAnimations[Index+1];
+     if Animation.fFactor>0.0 then begin
+      if Index<0 then begin
+       ProcessBaseOverwrite(Animation.fFactor);
+      end else if (Animation.fFactor*WeightOverFactor)>1e-3 then begin
+       ProcessAnimation(Index,Animation.fTime,Animation.fFactor);
+      end;
      end;
     end;
+
    end;
+   EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
+   //write(pvApplication.HighResolutionTimer.ToFloatSeconds(EndCPUTime-StartCPUTime)*1000:5:2,'ms');
 
    if aInFlightFrameIndex>=0 then begin
 
@@ -22732,6 +22754,7 @@ var Index,OtherIndex,MaterialBufferDataOffset,MaterialBufferDataSize:TpvSizeInt;
     Planet:TpvScene3DPlanet;
     GroupInstanceStack:TGroupInstanceStack;
     Sphere:TpvSphere;
+    StartCPUTime,EndCPUTime:TpvHighResolutionTime;
 begin
 
  fCountLights[aInFlightFrameIndex]:=0;
@@ -22756,6 +22779,8 @@ begin
     Group.Update(aInFlightFrameIndex);
    end;
   end;
+
+  StartCPUTime:=pvApplication.HighResolutionTimer.GetTime;
 
   fGroupInstanceListLock.Acquire;
   try
@@ -22819,6 +22844,9 @@ begin
   finally
    fGroupInstanceListLock.Release;
   end;
+
+  EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
+//write(pvApplication.HighResolutionTimer.ToFloatSeconds(EndCPUTime-StartCPUTime)*1000:5:2,'ms');
 
  finally
   fGroupListLock.Release;
