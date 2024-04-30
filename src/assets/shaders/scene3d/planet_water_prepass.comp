@@ -85,7 +85,7 @@ mat4 planetModelMatrix = pushConstants.modelMatrix;
 mat4 planetInverseModelMatrix = inverse(planetModelMatrix);
 
 #include "planet_water.glsl"
-
+ 
 void main(){
 
   if(any(greaterThanEqual(uvec2(texelPos), imgSize))){

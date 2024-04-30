@@ -70,7 +70,7 @@ vec3 cameraRelativePosition;
 
 // Per planet descriptor set
 
-layout(set = 2, binding = 0) uniform sampler2D uTextures[]; // 0 = height map, 1 = normal map, 2 = tangent bitangent map
+layout(set = 2, binding = 0) uniform sampler2D uPlanetTextures[]; // 0 = height map, 1 = normal map, 2 = tangent bitangent map
 
 // Per render pass descriptor set
 
@@ -164,6 +164,8 @@ float planetTopRadius = planetData.bottomRadiusTopRadiusHeightMapScale.y;
 
 mat4 planetModelMatrix = planetData.modelMatrix;
 mat4 planetInverseModelMatrix = inverse(planetModelMatrix);
+
+#include "planet_textures.glsl"
 
 #include "planet_water.glsl"
 

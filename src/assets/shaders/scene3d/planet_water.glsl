@@ -1,6 +1,10 @@
 #ifndef PLANET_WATER_GLSL
 #define PLANET_WATER_GLSL
 
+#include "octahedral.glsl"
+
+#include "octahedralmap.glsl"
+
 #if 1
 // This solveQuadraticRoots function offers a significant improvement over the old solveQuadraticRoots
 // function in terms of numerical stability and accuracy. In computing, especially for floating-point
@@ -110,7 +114,7 @@ float mapEx(vec3 p, int i){
   vec3 nc = mix(n, vec3(1e-6), lessThan(abs(n), vec3(1e-6)));
   vec2 uv = vec2((atan(abs(nc.x / nc.z)) / 6.283185307179586476925286766559) + 0.5, acos(n.y) / 3.1415926535897932384626433832795); 
   float w = getWaves(uv * 128.0, i) * 0.01; 
-  float h = 0.75 + w;//textureBicubicOctahedralMap(uImageHeightMap, n).x + w;
+  float h = clamp(textureBicubicPlanetOctahedralMap(uPlanetTextures[PLANET_TEXTURE_WATERMAP], n).x + w, 0.0, 1.0);
   float r = length(planetCenter - p) - mix(planetBottomRadius, planetTopRadius, h);
   return r;
 }
