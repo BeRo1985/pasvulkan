@@ -219,6 +219,15 @@ void main(){
 
 #endif
 
+    float hitTimeEx = uintBitsToFloat(0x7f80000u);
+
+    if(
+      //acceleratedRayMarching(rayOrigin, rayDirection, 0.0, maxTime, 0.6, underWater ? 0.9 : 1.0, hitTimeEx)
+      standardRayMarching(rayOrigin, rayDirection, 0.0, maxTime, hitTimeEx)
+     ){
+      hitTime = max(0.0, min(hitTime, hitTimeEx - 1.0)); 
+    }
+
     if(t < maxTime){
       hitTime = t;
     }
