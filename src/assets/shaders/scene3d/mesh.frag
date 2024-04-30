@@ -41,7 +41,11 @@
     #define beginInvocationInterlock beginInvocationInterlockARB
     #define endInvocationInterlock endInvocationInterlockARB
     #ifdef MSAA
-      layout(early_fragment_tests, post_depth_coverage, sample_interlock_ordered) in;
+      #if defined(DFAOIT)
+        layout(early_fragment_tests, post_depth_coverage, sample_interlock_ordered) in;
+      #else
+        layout(early_fragment_tests, post_depth_coverage, pixel_interlock_ordered) in;
+      #endif
     #else
       layout(early_fragment_tests, post_depth_coverage, pixel_interlock_ordered) in;
     #endif
