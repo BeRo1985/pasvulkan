@@ -356,6 +356,10 @@ compileshaderarguments=(
 
   "-V planet_grassmap_modification.comp -o ${tempPath}/planet_grassmap_modification_comp.spv"
 
+  "-V planet_watermap_initialization.comp -o ${tempPath}/planet_watermap_initialization_comp.spv"
+
+  "-V planet_watermap_modification.comp -o ${tempPath}/planet_watermap_modification_comp.spv"
+
   "-V planet_heightmap_random_initialization.comp -o ${tempPath}/planet_heightmap_random_initialization_comp.spv"
 
   "-V planet_heightmap_data_initialization.comp -o ${tempPath}/planet_heightmap_data_initialization_comp.spv"
