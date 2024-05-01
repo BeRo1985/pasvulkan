@@ -128,7 +128,9 @@ void main(){
  
   //position += sphereNormal * textureCatmullRomPlanetOctahedralMap(uTextures[0], sphereNormal).x * pushConstants.heightMapScale;
  
-  vec3 localPosition = sphereNormal * (planetData.bottomRadiusTopRadiusHeightMapScale.x + (getSphereHeight(sphereNormal) * planetData.bottomRadiusTopRadiusHeightMapScale.z));
+  float sphereHeight = getSphereHeight(sphereNormal);
+
+  vec3 localPosition = sphereNormal * ((sphereHeight > 1e-6) ? (planetData.bottomRadiusTopRadiusHeightMapScale.x + (sphereHeight * planetData.bottomRadiusTopRadiusHeightMapScale.z)) : 1e-6);
 
   vec3 position = (planetData.modelMatrix * vec4(localPosition, 1.0)).xyz;
 

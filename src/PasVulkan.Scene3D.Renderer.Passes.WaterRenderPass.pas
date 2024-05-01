@@ -123,7 +123,13 @@ inherited Create(aFrameGraph);
 
  Name:='WaterRenderPass';
 
- if (fInstance.Renderer.SurfaceSampleCountFlagBits<>TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT)) and not fInstance.Renderer.SupersampleWaterWhenMSAA then begin
+{if (fInstance.Renderer.SurfaceSampleCountFlagBits<>TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT)) and not fInstance.Renderer.SupersampleWaterWhenMSAA then begin
+  MultiviewMask:=0;
+ end else begin
+  MultiviewMask:=fInstance.SurfaceMultiviewMask;
+ end;}
+
+ if fInstance.CountSurfaceViews=1 then begin
   MultiviewMask:=0;
  end else begin
   MultiviewMask:=fInstance.SurfaceMultiviewMask;
@@ -159,8 +165,11 @@ inherited Create(aFrameGraph);
 
   fResourceDepth:=AddImageDepthInput('resourcetype_depth',
                                      'resource_depth_data',
-                                     VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,//VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                     [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
+                                   {  VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,//VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                     [TpvFrameGraph.TResourceTransition.TFlag.Attachment]}
+                                     VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+                                     [TpvFrameGraph.TResourceTransition.TFlag.Attachment,
+                                      TpvFrameGraph.TResourceTransition.TFlag.ExplicitOutputAttachment]
                                     );
 
 
@@ -180,8 +189,11 @@ inherited Create(aFrameGraph);
 
    fResourceDepth:=AddImageDepthInput('resourcetype_msaa_depth',
                                       'resource_msaa_depth_data',
-                                      VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,//VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                      [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
+                                   {  VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,//VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                      [TpvFrameGraph.TResourceTransition.TFlag.Attachment]}
+                                      VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+                                      [TpvFrameGraph.TResourceTransition.TFlag.Attachment,
+                                       TpvFrameGraph.TResourceTransition.TFlag.ExplicitOutputAttachment]
                                      );
 
    fResourceColor:=AddImageOutput('resourcetype_msaa_color',

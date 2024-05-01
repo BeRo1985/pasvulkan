@@ -9753,7 +9753,7 @@ begin
                                                          TVkColorComponentFlags(VK_COLOR_COMPONENT_A_BIT));
 
   fPipeline.DepthStencilState.DepthTestEnable:=true;
-  fPipeline.DepthStencilState.DepthWriteEnable:=false;
+  fPipeline.DepthStencilState.DepthWriteEnable:=true;
   if TpvScene3DRendererInstance(fRendererInstance).ZFar<0.0 then begin
    fPipeline.DepthStencilState.DepthCompareOp:=VK_COMPARE_OP_GREATER_OR_EQUAL;
   end else begin

@@ -393,6 +393,8 @@ void main(){
 
   workNormal = normalize((planetModelMatrix * vec4(mapNormal(inBlock.localPosition), 0.0)).xyz) * ((inBlock.underWater > 0.0) ? -1.0 : 1.0);
 
+  viewDirection = normalize(-inCameraRelativePosition);
+
   vec4 finalColor = doShade(abs(inBlock.viewSpacePosition.z), inBlock.underWater > 0.0);
 
   outFragColor = vec4(clamp(finalColor.xyz * finalColor.w, vec3(-65504.0), vec3(65504.0)), finalColor.w);

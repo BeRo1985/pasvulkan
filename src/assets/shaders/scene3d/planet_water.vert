@@ -40,18 +40,18 @@ layout(location = 0) out OutBlock {
 #define PLANET_WATER
 #include "planet_renderpass.glsl"
 
-#ifdef UNDERWATER
+//#ifdef UNDERWATER
 #include "planet_textures.glsl"
-#endif
+//#endif
 
-#ifndef UNDERWATER
+//#ifndef UNDERWATER
 #include "octahedral.glsl"
-#endif
+//#endif
 
 uint viewIndex = pushConstants.viewBaseIndex + uint(gl_ViewIndex);
 mat4 inverseViewMatrix = uView.views[viewIndex].inverseViewMatrix; 
 
-#ifdef UNDERWATER
+//#ifdef UNDERWATER
 
 layout(set = 2, binding = 0) uniform sampler2D uPlanetTextures[]; // 0 = height map, 1 = normal map, 2 = tangent bitangent map
 
@@ -63,7 +63,7 @@ mat4 planetModelMatrix = planetData.modelMatrix;
 mat4 planetInverseModelMatrix = inverse(planetModelMatrix);
 
 #include "planet_water.glsl"
-#endif
+//#endif
 
 void main(){ 
 #ifdef UNDERWATER
@@ -133,7 +133,11 @@ void main(){
 
   }  
 
-  outBlock.position = (planetData.modelMatrix * vec4(sphereNormal * planetData.bottomRadiusTopRadiusHeightMapScale.x, 1.0)).xyz;
+  float sphereHeight = getSphereHeight(sphereNormal);
+
+  vec3 localPosition = sphereNormal * ((sphereHeight > 1e-6) ? (planetData.bottomRadiusTopRadiusHeightMapScale.x + (sphereHeight * planetData.bottomRadiusTopRadiusHeightMapScale.z)) : 1e-6);
+
+  outBlock.position = (planetData.modelMatrix * vec4(localPosition, 1.0)).xyz;
   outBlock.normal = sphereNormal;
   outBlock.planetCenterToCamera = inverseViewMatrix[3].xyz - (planetData.modelMatrix * vec2(0.0, 1.0).xxxy).xyz; 
 #endif
