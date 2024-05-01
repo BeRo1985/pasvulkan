@@ -9743,6 +9743,83 @@ begin
 
  begin
 
+  fUnderwaterPipeline:=TpvVulkanGraphicsPipeline.Create(fVulkanDevice,
+                                                        TpvScene3DRenderer(fRenderer).VulkanPipelineCache,
+                                                        0,
+                                                        [],
+                                                        fPipelineLayout,
+                                                        aRenderPass,
+                                                        0,
+                                                        nil,
+                                                        0);
+
+  fUnderwaterPipeline.AddStage(fUnderwaterVertexShaderStage);
+  fUnderwaterPipeline.AddStage(fUnderwaterFragmentShaderStage);
+
+  fUnderwaterPipeline.InputAssemblyState.Topology:=TVkPrimitiveTopology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
+  fUnderwaterPipeline.InputAssemblyState.PrimitiveRestartEnable:=false;
+
+  fUnderwaterPipeline.ViewPortState.AddViewPort(0.0,0.0,aWidth,aHeight,0.0,1.0);
+  fUnderwaterPipeline.ViewPortState.AddScissor(0,0,aWidth,aHeight);
+
+  fUnderwaterPipeline.RasterizationState.DepthClampEnable:=false;
+  fUnderwaterPipeline.RasterizationState.RasterizerDiscardEnable:=false;
+  fUnderwaterPipeline.RasterizationState.PolygonMode:=VK_POLYGON_MODE_FILL;
+  fUnderwaterPipeline.RasterizationState.CullMode:=TVkCullModeFlags(VK_CULL_MODE_NONE);
+  fUnderwaterPipeline.RasterizationState.FrontFace:=VK_FRONT_FACE_COUNTER_CLOCKWISE;
+  fUnderwaterPipeline.RasterizationState.DepthBiasEnable:=false;
+  fUnderwaterPipeline.RasterizationState.DepthBiasConstantFactor:=0.0;
+  fUnderwaterPipeline.RasterizationState.DepthBiasClamp:=0.0;
+  fUnderwaterPipeline.RasterizationState.DepthBiasSlopeFactor:=0.0;
+  fUnderwaterPipeline.RasterizationState.LineWidth:=1.0;
+
+  if fMSAA then begin
+   fUnderwaterPipeline.MultisampleState.RasterizationSamples:=aVulkanSampleCountFlagBits;
+  end else begin
+   fUnderwaterPipeline.MultisampleState.RasterizationSamples:=VK_SAMPLE_COUNT_1_BIT;
+  end;
+  fUnderwaterPipeline.MultisampleState.SampleShadingEnable:=false;
+  fUnderwaterPipeline.MultisampleState.MinSampleShading:=0.0;
+  fUnderwaterPipeline.MultisampleState.CountSampleMasks:=0;
+  fUnderwaterPipeline.MultisampleState.AlphaToCoverageEnable:=false;
+  fUnderwaterPipeline.MultisampleState.AlphaToOneEnable:=false;
+
+  fUnderwaterPipeline.ColorBlendState.LogicOpEnable:=false;
+  fUnderwaterPipeline.ColorBlendState.LogicOp:=VK_LOGIC_OP_COPY;
+  fUnderwaterPipeline.ColorBlendState.BlendConstants[0]:=0.0;
+  fUnderwaterPipeline.ColorBlendState.BlendConstants[1]:=0.0;
+  fUnderwaterPipeline.ColorBlendState.BlendConstants[2]:=0.0;
+  fUnderwaterPipeline.ColorBlendState.BlendConstants[3]:=0.0;
+  fUnderwaterPipeline.ColorBlendState.AddColorBlendAttachmentState(true,
+                                                         VK_BLEND_FACTOR_ONE,
+                                                         VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+                                                         VK_BLEND_OP_ADD,
+                                                         VK_BLEND_FACTOR_ONE,
+                                                         VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+                                                         VK_BLEND_OP_ADD,
+                                                         TVkColorComponentFlags(VK_COLOR_COMPONENT_R_BIT) or
+                                                         TVkColorComponentFlags(VK_COLOR_COMPONENT_G_BIT) or
+                                                         TVkColorComponentFlags(VK_COLOR_COMPONENT_B_BIT) or
+                                                         TVkColorComponentFlags(VK_COLOR_COMPONENT_A_BIT));
+
+  fUnderwaterPipeline.DepthStencilState.DepthTestEnable:=false;
+  fUnderwaterPipeline.DepthStencilState.DepthWriteEnable:=false;
+  if TpvScene3DRendererInstance(fRendererInstance).ZFar<0.0 then begin
+   fUnderwaterPipeline.DepthStencilState.DepthCompareOp:=VK_COMPARE_OP_GREATER_OR_EQUAL;
+  end else begin
+   fUnderwaterPipeline.DepthStencilState.DepthCompareOp:=VK_COMPARE_OP_LESS_OR_EQUAL;
+  end;
+  fUnderwaterPipeline.DepthStencilState.DepthBoundsTestEnable:=false;
+  fUnderwaterPipeline.DepthStencilState.StencilTestEnable:=false;
+
+  fUnderwaterPipeline.Initialize;
+
+  fVulkanDevice.DebugUtils.SetObjectName(fUnderwaterPipeline.Handle,VK_OBJECT_TYPE_PIPELINE,'TpvScene3DPlanet.TWaterRenderPass.fUnderwaterPipeline');
+
+ end;
+
+ begin
+
   fWaterPipeline:=TpvVulkanGraphicsPipeline.Create(fVulkanDevice,
                                               TpvScene3DRenderer(fRenderer).VulkanPipelineCache,
                                               0,
@@ -9818,7 +9895,7 @@ begin
 
   fWaterPipeline.Initialize;
 
-  fVulkanDevice.DebugUtils.SetObjectName(fWaterPipeline.Handle,VK_OBJECT_TYPE_PIPELINE,'TpvScene3DPlanet.TWaterRenderPass.fPipeline');
+  fVulkanDevice.DebugUtils.SetObjectName(fWaterPipeline.Handle,VK_OBJECT_TYPE_PIPELINE,'TpvScene3DPlanet.TWaterRenderPass.fWaterPipeline');
 
  end;
 
@@ -9829,6 +9906,8 @@ procedure TpvScene3DPlanet.TWaterRenderPass.ReleaseResources;
 begin
 
  FreeAndNil(fWaterPipeline);
+
+ FreeAndNil(fUnderwaterPipeline);
 
  FreeAndNil(fPipelineLayout);
 
@@ -9864,8 +9943,6 @@ begin
       if First then begin
 
        First:=false;
-
-       aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fWaterPipeline.Handle);
 
        DescriptorSets[0]:=TpvScene3D(fScene3D).GlobalVulkanDescriptorSets[aInFlightFrameIndex].Handle;
        DescriptorSets[1]:=aPassDescriptorSet.Handle;
@@ -9921,6 +9998,10 @@ begin
                                        SizeOf(TPushConstants),
                                        @fPushConstants);
 
+       aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fUnderwaterPipeline.Handle);
+       aCommandBuffer.CmdDraw(3,1,0,0);
+
+       aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fWaterPipeline.Handle);
        aCommandBuffer.CmdDraw(fPushConstants.CountQuadPointsInOneDirection*fPushConstants.CountQuadPointsInOneDirection*4,1,0,0);
 
       end;
