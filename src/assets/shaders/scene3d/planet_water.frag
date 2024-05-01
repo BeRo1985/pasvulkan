@@ -16,6 +16,10 @@
   #define HAVE_PERVERTEX
 #endif
 
+#if defined(TESSELLATION)
+layout(early_fragment_tests) in;
+#endif
+      
 // MSAA_FAST = MSAA input but not MSAA output, so that the water isn't multisampled then.
 
 #define LIGHTS 
