@@ -424,7 +424,7 @@ begin
  fVirtualRealityHUDWidth:=2048;
  fVirtualRealityHUDHeight:=1152;
 
- fSupersampleWaterWhenMSAA:=false;
+ fSupersampleWaterWhenMSAA:=true;
 
  fGlobalIlluminationCaching:=true;
 

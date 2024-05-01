@@ -14,7 +14,7 @@
 #ifdef UNDERWATER
 layout(location = 0) out OutBlock {
   vec2 texCoord;
-  flat bool underWater;
+  float underWater;
 } outBlock;
 #else
 layout(location = 0) out OutBlock {
@@ -81,12 +81,12 @@ void main(){
 #undef OLD
 #ifdef OLD
   outBlock.texCoord = vec2((gl_VertexIndex >> 1) * 2.0, (gl_VertexIndex & 1) * 2.0);
-  outBlock.underWater = underWater;
+  outBlock.underWater = underWater ? 1.0 : 0.0;
   gl_Position = underWater ? vec4(((gl_VertexIndex >> 1) * 4.0) - 1.0, ((gl_VertexIndex & 1) * 4.0) - 1.0, 0.0, 1.0) : vec4(uintBitsToFloat(0x7fffffffu));
 #else
   ivec2 uv = ivec2(ivec2(int(gl_VertexIndex)) << ivec2(0, 1)) & ivec2(2); // ivec2 uv = ivec2(gl_VertexIndex & 2, (gl_VertexIndex << 1) & 2);
   outBlock.texCoord = vec2(uv);
-  outBlock.underWater = underWater;
+  outBlock.underWater = underWater ? 1.0 : 0.0;
   gl_Position = underWater ? vec4(vec2(ivec2((uv << ivec2(1)) - ivec2(1))), 0.0, 1.0) : vec4(uintBitsToFloat(0x7fffffffu));
 #endif
 

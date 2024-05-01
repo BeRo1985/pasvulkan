@@ -336,9 +336,6 @@ begin
   fPassVulkanDescriptorSetLayout.AddBinding(9,
                                             VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,
                                             1,
-                                            TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or
-                                            TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT) or
-                                            TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT) or
                                             TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                             []);
  end;

@@ -33,12 +33,12 @@ layout(location = 0) in InBlock {
   vec3 viewSpacePosition;
   vec3 cameraRelativePosition;
   vec2 jitter;
-  flat bool underWater;
+  float underWater;
 } inBlock;
 #elif defined(UNDERWATER)
 layout(location = 0) in InBlock {
   vec2 texCoord;
-  flat bool underWater;
+  float underWater;
 } inBlock;
 #else
 layout(location = 0) in vec2 inTexCoord;
@@ -391,9 +391,9 @@ vec4 doShade(float hitTime, bool underWater){
 void main(){
 #if defined(TESSELLATION)
 
-  workNormal = normalize((planetModelMatrix * vec4(mapNormal(inBlock.localPosition), 0.0)).xyz) * (inBlock.underWater ? -1.0 : 1.0);
+  workNormal = normalize((planetModelMatrix * vec4(mapNormal(inBlock.localPosition), 0.0)).xyz) * ((inBlock.underWater > 0.0) ? -1.0 : 1.0);
 
-  vec4 finalColor = doShade(abs(inBlock.viewSpacePosition.z), inBlock.underWater);
+  vec4 finalColor = doShade(abs(inBlock.viewSpacePosition.z), inBlock.underWater > 0.0);
 
   outFragColor = vec4(clamp(finalColor.xyz * finalColor.w, vec3(-65504.0), vec3(65504.0)), finalColor.w);
 

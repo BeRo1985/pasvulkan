@@ -31,7 +31,7 @@ layout(location = 0) out OutBlock {
   vec3 viewSpacePosition;
   vec3 cameraRelativePosition;
   vec2 jitter;
-  flat bool underWater;
+  float underWater;
 } outBlock;
 
 in gl_PerVertex {
@@ -147,7 +147,7 @@ void main(){
   outBlock.viewSpacePosition = viewSpacePosition.xyz;  
   outBlock.cameraRelativePosition = worldSpacePosition - cameraPosition;
   outBlock.jitter = pushConstants.jitter;
-  outBlock.underWater = map(cameraPosition) <= 0.0;
+  outBlock.underWater = (map(cameraPosition) <= 0.0) ? 1.0 : 0.0;
 
 	gl_Position = viewProjectionMatrix * vec4(position, 1.0);
   
