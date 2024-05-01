@@ -23,7 +23,26 @@
 
 #include "bufferreference_definitions.glsl"
 
+#if defined(TESSELLATION)
+layout(location = 0) in InBlock {
+  vec3 localPosition;
+  vec3 position;
+  vec3 sphereNormal;
+  vec3 normal;
+  vec3 worldSpacePosition;
+  vec3 viewSpacePosition;
+  vec3 cameraRelativePosition;
+  vec2 jitter;
+  flat bool underWater;
+} inBlock;
+#elif defined(UNDERWATER)
+layout(location = 0) in InBlock {
+  vec2 texCoord;
+  flat bool underWater;
+} inBlock;
+#else
 layout(location = 0) in vec2 inTexCoord;
+#endif
 
 layout(location = 0) out vec4 outFragColor;
 
@@ -41,6 +60,11 @@ layout(input_attachment_index = 0, set = 1, binding = 9) uniform subpassInputMS 
 layout(input_attachment_index = 0, set = 1, binding = 9) uniform subpassInput uOITImgDepth;
 #endif
 
+#if defined(TESSELLATION)
+#define inViewSpacePosition inBlock.viewSpacePosition
+#define inWorldSpacePosition inBlock.worldSpacePosition
+#define inCameraRelativePosition inBlock.cameraRelativePosition
+#else
 vec3 viewSpacePosition;
 vec3 worldSpacePosition;
 vec3 cameraRelativePosition;
@@ -48,6 +72,7 @@ vec3 cameraRelativePosition;
 #define inViewSpacePosition viewSpacePosition
 #define inWorldSpacePosition worldSpacePosition
 #define inCameraRelativePosition cameraRelativePosition
+#endif
 
 // Global descriptor set
 
@@ -74,7 +99,9 @@ layout(set = 2, binding = 0) uniform sampler2D uPlanetTextures[]; // 0 = height 
 
 // Per render pass descriptor set
 
+#if !defined(TESSELLATION)
 layout(set = 3, binding = 0) uniform sampler2DArray uTextureWaterAcceleration;
+#endif
 
 #define PLANET_WATER
 #include "planet_renderpass.glsl"
@@ -129,6 +156,8 @@ mat4 viewMatrix = uView.views[viewIndex].viewMatrix;
 mat4 inverseViewMatrix = uView.views[viewIndex].inverseViewMatrix;
 mat4 projectionMatrix = uView.views[viewIndex].projectionMatrix;
 mat4 inverseProjectionMatrix = uView.views[viewIndex].inverseProjectionMatrix;
+
+#if !(defined(TESSELLATION) || defined(UNDERWATER))
 mat4 viewProjectionMatrix = projectionMatrix * viewMatrix;
 mat4 inverseViewProjectionMatrix = inverseViewMatrix * inverseProjectionMatrix;
 
@@ -149,6 +178,7 @@ float delinearizeDepth(float z){
 #endif
   return v.x / v.y;
 }
+#endif
 
 #define NOTEXCOORDS
 #define inFrameIndex pushConstants.frameIndex
@@ -359,7 +389,21 @@ vec4 doShade(float hitTime, bool underWater){
 }
 
 void main(){
+#if defined(TESSELLATION)
 
+  workNormal = normalize((planetModelMatrix * vec4(mapNormal(inBlock.localPosition), 0.0)).xyz) * (inBlock.underWater ? -1.0 : 1.0);
+
+  vec4 finalColor = doShade(abs(inBlock.viewSpacePosition.z), inBlock.underWater);
+
+  outFragColor = vec4(clamp(finalColor.xyz * finalColor.w, vec3(-65504.0), vec3(65504.0)), finalColor.w);
+
+#elif defined(UNDERWATER)
+
+  vec4 finalColor = vec4(textureLod(uPassTextures[1], vec3(inBlock.texCoord, gl_ViewIndex), 1.0).xyz * waterBaseColor * waterBaseColor, 1.0);
+
+  outFragColor = vec4(clamp(finalColor.xyz * finalColor.w, vec3(-65504.0), vec3(65504.0)), finalColor.w);
+
+#else
 #ifdef MULTIVIEW
   vec3 texCoord = vec3(inTexCoord, float(gl_ViewIndex));
 #else
@@ -418,7 +462,7 @@ void main(){
 
     // Get the hit time from the lower resolution water prepass, so that the ray does not need to be traced if the ray does not hit the planet
     // and so that we can skip empty space as much as possible for faster ray marching. 
-    float prepassTime = textureLod(uTextureWaterAcceleration, vec3(inTexCoord, gl_ViewIndex), 0.0).x;
+    float prepassTime = 0.0;//textureLod(uTextureWaterAcceleration, vec3(inTexCoord, gl_ViewIndex), 0.0).x;
 
     if(prepassTime > 0.0){ 
       hitRayTime = max(hitRayTime, prepassTime);
@@ -456,14 +500,20 @@ void main(){
       )
     );
 
+#ifndef ONLY_UNDERWATER
     float hitTime;
 
     vec3 hitPoint;
 
+#if 0
     if((prepassTime >= 0.0) &&
-       acceleratedRayMarching(rayOrigin, rayDirection, 0.0, maxTime, 0.6, underWater ? 0.9 : 1.0, hitTime)
-     //standardRayMarching(rayOrigin, rayDirection, 0.0, maxTime, hitTime)
-      ){
+      //acceleratedRayMarching(rayOrigin, rayDirection, 0.0, maxTime, 0.6, underWater ? 0.9 : 1.0, hitTime)
+      standardRayMarching(rayOrigin, rayDirection, 0.0, maxTime, hitTime)
+      )
+#else
+    if(planetRayMarching(rayOrigin, rayDirection, maxTime, hitTime))
+#endif
+    {
 
       hitPoint = rayOrigin + (rayDirection * hitTime); // in planet space
 
@@ -477,17 +527,19 @@ void main(){
 
     if(hit){
 
-	  hitDepth = delinearizeDepth(viewSpacePosition.z);
+      hitDepth = delinearizeDepth(viewSpacePosition.z);
 
-	  workNormal = normalize((planetModelMatrix * vec4(mapNormal(hitPoint), 0.0)).xyz) * (underWater ? -1.0 : 1.0);
+      workNormal = normalize((planetModelMatrix * vec4(mapNormal(hitPoint), 0.0)).xyz) * (underWater ? -1.0 : 1.0);
 
       cameraRelativePosition = worldSpacePosition - cameraPosition.xyz;
 
-	  finalColor = doShade(maxTime - hitTime, underWater);
+      finalColor = doShade(maxTime - hitTime, underWater);
 
 //    finalColor = vec4(workNormal.xyz * 0.1, 1.0);//doShade();
   
-    }else if(underWater){
+    }else 
+#endif
+    if(underWater){
 
       vec3 r = textureLod(uPassTextures[1], vec3(inTexCoord, gl_ViewIndex), 1.0).xyz;
       finalColor = vec4(r * waterBaseColor * waterBaseColor, 1.0);
@@ -504,11 +556,11 @@ void main(){
     // If the ray does not hit the planet, discard the fragment, since it is not visible. Use demote if available. 
 #if defined(USEDEMOTE)
     demote;
-#else
+#else 
     discard;
 #endif
   }
 
   outFragColor = vec4(clamp(finalColor.xyz * finalColor.w, vec3(-65504.0), vec3(65504.0)), finalColor.w);
-
+#endif
 } 

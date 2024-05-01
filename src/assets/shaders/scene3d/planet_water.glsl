@@ -90,6 +90,28 @@ bool intersectRaySphere(vec4 sphere, vec3 rayOrigin, vec3 rayDirection, out floa
   return result;
 }
 
+bool intersectRaySphere(vec4 sphere, vec3 rayOrigin, vec3 rayDirection, out vec2 times) {
+  vec3 sphereCenterToRayOrigin = rayOrigin - sphere.xyz;
+  vec2 t;
+  bool result = solveQuadraticRoots(dot(rayDirection, rayDirection), 
+                                    dot(rayDirection, sphereCenterToRayOrigin) * 2.0, 
+                                    dot(sphereCenterToRayOrigin, sphereCenterToRayOrigin) - (sphere.w * sphere.w), 
+                                    t);
+  if(result){
+    if(t.x > t.y){
+      t = t.yx;
+    }
+    if(t.x < 0.0){
+      t.x = t.y;
+      if(t.x < 0.0){
+        result = false;
+      }
+    }    
+    times = t;
+  }
+  return result;
+}
+
 float getWaves(vec2 position, int iterations) {
   vec2 frequencyTimeMultiplier = vec2(1.0, 2.0);
   float weight = 1.0;
@@ -109,14 +131,19 @@ float getWaves(vec2 position, int iterations) {
   return result.x / result.y;
 }
 
-float mapEx(vec3 p, int i){
-  vec3 n = normalize(p - planetCenter);
+float getSphereHeight(vec3 n, int i) {
   vec3 nc = mix(n, vec3(1e-6), lessThan(abs(n), vec3(1e-6)));
   vec2 uv = vec2((atan(abs(nc.x / nc.z)) / 6.283185307179586476925286766559) + 0.5, acos(n.y) / 3.1415926535897932384626433832795); 
   float w = getWaves(uv * 128.0, i) * 0.01; 
-  float h = clamp(textureBicubicPlanetOctahedralMap(uPlanetTextures[PLANET_TEXTURE_WATERMAP], n).x + w, 0.0, 1.0);
-  float r = length(planetCenter - p) - mix(planetBottomRadius, planetTopRadius, h);
-  return r;
+  return clamp(textureBicubicPlanetOctahedralMap(uPlanetTextures[PLANET_TEXTURE_WATERMAP], n).x + w, 0.0, 1.0);
+}
+
+float getSphereHeight(vec3 n) {
+  return getSphereHeight(n, 12);
+}
+
+float mapEx(vec3 p, int i){
+  return length(planetCenter - p) - mix(planetBottomRadius, planetTopRadius, getSphereHeight(normalize(p - planetCenter), i));
 }
 
 float map(vec3 p){
@@ -224,7 +251,7 @@ bool standardRayMarching(vec3 rayOrigin, vec3 rayDirection, float startTime, flo
       break;
     }    
 
-    t += (clamp(abs(dt) * 0.9, 1e-6, timeStep) * ((dt < 0.0) ? -1.0 : 1.0));
+    t += (clamp(abs(dt) * 0.1, 1e-6, timeStep) * ((dt < 0.0) ? -1.0 : 1.0));
     
     previousDT = dt;
 
@@ -242,5 +269,108 @@ bool standardRayMarching(vec3 rayOrigin, vec3 rayDirection, float startTime, flo
   return hit;
 
 } 
+
+vec3 getRaySphereIntersections(vec4 sphere, vec3 rayOrigin, vec3 rayDirection) {
+#if 1 
+  vec3 sphereCenterToRayOrigin = rayOrigin - sphere.xyz;
+  vec2 t;
+  bool result = solveQuadraticRoots(dot(rayDirection, rayDirection), 
+                                    dot(rayDirection, sphereCenterToRayOrigin) * 2.0, 
+                                    dot(sphereCenterToRayOrigin, sphereCenterToRayOrigin) - (sphere.w * sphere.w), 
+                                    t);
+  return result ? vec3(t, 10) : vec3(0.0);
+#else
+  vec3 p = rayOrigin - sphere.xyz;
+  float b = 2.0 * dot(p, rayDirection);
+  float discriminant = (b * b) - (4.0 * (dot(p, p) - (sphere.w * sphere.w)));
+  return (discriminant >= 0.0) : vec3((vec2(-b) + (vec2(sqrt(discriminant)) * vec2(-1.0, 1.0))) * 0.5, 1.0) : vec3(0.0);
+#endif
+}
+
+bool planetRayMarching(vec3 rayOrigin, vec3 rayDirection, float maxTime, out float hitTime){
+
+  vec3 outer = getRaySphereIntersections(vec4(planetCenter, planetTopRadius), rayOrigin, rayDirection);
+
+  if((outer.z > 0.0) && (outer.y >= 0.0)){
+
+    vec3 inner = getRaySphereIntersections(vec4(planetCenter, planetBottomRadius), rayOrigin, rayDirection);
+
+    float start = max(0.0, outer.x);
+    float end = outer.y;
+
+    if (inner.z > 0.0){
+      if((inner.x < 0.0) && (inner.y > 0.0)) {
+        return false;
+      } else if(inner.x > 0.0){
+        end = inner.x;
+      }
+    }
+
+    vec3 startPoint = rayOrigin + (rayDirection * start) - planetCenter;
+    vec3 offset = rayDirection * (end - start);
+
+    const int maxSteps = 1024;
+
+    const float rayMarchStride = 1e-3;
+
+    float stride = rayMarchStride * (planetTopRadius * 2.0) / (end - start);
+
+    for(int t = 0; t < maxSteps; t++){
+    
+      if((float(t) * stride) > 1.0){
+        break;
+      }
+
+      vec3 point = startPoint + (offset * float(t) * stride);
+
+      float radius = length(point);
+      vec3 unit = point / radius;
+            
+      float rayHeight = (radius - planetBottomRadius) / (planetTopRadius - planetBottomRadius);
+
+      float height = getSphereHeight(unit);
+
+      if(height >= rayHeight){
+ 
+        if(float(t) < 0.5){          
+          return (hitTime = start) < maxTime;
+        }
+
+        float lower = float(t - 1) * stride;
+        float upper = float(t) * stride;
+        float midpoint = (lower + upper) * 0.5;
+
+        for(int i = 0; i < 8; i++){
+
+          point = startPoint + (offset * midpoint);
+          unit = point / (radius = length(point));
+          rayHeight = (radius - planetBottomRadius) / (planetTopRadius - planetBottomRadius);
+          height = getSphereHeight(unit);
+
+          if(height >= rayHeight){
+            upper = midpoint;
+          } else {
+            lower = midpoint;
+          }
+
+          midpoint = (lower + upper) * 0.5;
+
+        }
+
+        return (hitTime = (start + (midpoint * (end - start)))) <= maxTime;
+
+      }
+
+    }
+
+   if((inner.z > 0.0) && (inner.y >= 0.0)){
+      return (hitTime = end) <= maxTime;
+    }
+
+  }
+
+  return false;
+
+}
 
 #endif // PLANET_WATER_GLSL

@@ -1077,10 +1077,16 @@ type TpvScene3DPlanets=class;
                     ViewBaseIndex:TpvUInt32;
                     CountViews:TpvUInt32;
                     CountAllViews:TpvUInt32;
-                    FrameIndex:TpvUInt32;
+                    CountQuadPointsInOneDirection:TpvUInt32;
+
+                    ResolutionXY:TpvUInt32;
+                    TessellationFactor:TpvFloat;
                     Jitter:TpvVector2;
-                    PlanetData:TVkDeviceAddress;
+
+                    FrameIndex:TpvUInt32;
                     Time:TpvFloat;
+                    PlanetData:TVkDeviceAddress;
+
                    end;
                    PPushConstants=^TPushConstants;
              private
@@ -1092,8 +1098,12 @@ type TpvScene3DPlanets=class;
               fResourceSSAO:TpvFrameGraph.TPass.TUsedImageResource;
               fRenderPass:TpvVulkanRenderPass;
               fVertexShaderModule:TpvVulkanShaderModule;
+              fTessellationControlShaderModule:TpvVulkanShaderModule;
+              fTessellationEvaluationShaderModule:TpvVulkanShaderModule;
               fFragmentShaderModule:TpvVulkanShaderModule;
               fVertexShaderStage:TpvVulkanPipelineShaderStage;
+              fTessellationControlShaderStage:TpvVulkanPipelineShaderStage;
+              fTessellationEvaluationShaderStage:TpvVulkanPipelineShaderStage;
               fFragmentShaderStage:TpvVulkanPipelineShaderStage;
               fDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
               fDescriptorPool:TpvVulkanDescriptorPool;
@@ -9522,9 +9532,17 @@ begin
 
  fVertexShaderModule:=nil;
 
+ fTessellationControlShaderModule:=nil;
+ 
+ fTessellationEvaluationShaderModule:=nil;
+
  fFragmentShaderModule:=nil;
 
  fVertexShaderStage:=nil;
+
+ fTessellationControlShaderStage:=nil;
+
+ fTessellationEvaluationShaderStage:=nil;
 
  fFragmentShaderStage:=nil;
 
@@ -9544,13 +9562,37 @@ begin
 
  fHeight:=0;
 
- Stream:=pvScene3DShaderVirtualFileSystem.GetFile('fullscreen_vert.spv');
+ ShaderFileName:='planet_water';
+
+ if TpvScene3D(fScene3D).RaytracingActive then begin
+  ShaderFileName:=ShaderFileName+'_raytracing';
+ end else if TpvScene3D(fScene3D).UseBufferDeviceAddress then begin
+  ShaderFileName:=ShaderFileName+'_bufref';
+ end;
+
+ Stream:=pvScene3DShaderVirtualFileSystem.GetFile(ShaderFileName+'_vert.spv');
  try
   fVertexShaderModule:=TpvVulkanShaderModule.Create(fVulkanDevice,Stream);
  finally
   FreeAndNil(Stream);
  end;
  fVulkanDevice.DebugUtils.SetObjectName(fVertexShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DPlanet.TWaterRenderPass.fVertexShaderModule');
+
+ Stream:=pvScene3DShaderVirtualFileSystem.GetFile(ShaderFileName+'_tesc.spv');
+ try
+  fTessellationControlShaderModule:=TpvVulkanShaderModule.Create(fVulkanDevice,Stream);
+ finally
+  FreeAndNil(Stream);
+ end;
+ fVulkanDevice.DebugUtils.SetObjectName(fTessellationControlShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DPlanet.TWaterRenderPass.fTessellationControlShaderModule');
+
+ Stream:=pvScene3DShaderVirtualFileSystem.GetFile(ShaderFileName+'_tese.spv');
+ try
+  fTessellationEvaluationShaderModule:=TpvVulkanShaderModule.Create(fVulkanDevice,Stream);
+ finally
+  FreeAndNil(Stream);
+ end;
+ fVulkanDevice.DebugUtils.SetObjectName(fTessellationEvaluationShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DPlanet.TWaterRenderPass.fTessellationEvaluationShaderModule');
 
  ShaderFileName:='planet_water';
 
@@ -9584,6 +9626,10 @@ begin
 
  fVertexShaderStage:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_VERTEX_BIT,fVertexShaderModule,'main');
 
+ fTessellationControlShaderStage:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT,fTessellationControlShaderModule,'main');
+
+ fTessellationEvaluationShaderStage:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT,fTessellationEvaluationShaderModule,'main');
+
  fFragmentShaderStage:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_FRAGMENT_BIT,fFragmentShaderModule,'main');
 
 end; 
@@ -9601,7 +9647,15 @@ begin
 
  FreeAndNil(fFragmentShaderStage);
 
+ FreeAndNil(fTessellationEvaluationShaderStage);
+
+ FreeAndNil(fTessellationControlShaderStage);
+
  FreeAndNil(fVertexShaderStage);
+
+ FreeAndNil(fTessellationEvaluationShaderModule);
+
+ FreeAndNil(fTessellationControlShaderModule);
 
  FreeAndNil(fFragmentShaderModule);
 
@@ -9620,11 +9674,14 @@ procedure TpvScene3DPlanet.TWaterRenderPass.AllocateResources(const aRenderPass:
 begin
 
  fPipelineLayout:=TpvVulkanPipelineLayout.Create(fVulkanDevice);
- fPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+ fPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or
+                                      TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT) or
+                                      TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT) or
+                                      TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                       0,
                                       SizeOf(TPushConstants));
  fPipelineLayout.AddDescriptorSetLayout(TpvScene3D(fScene3D).GlobalVulkanDescriptorSetLayout); // Global scene descriptor set
- fPipelineLayout.AddDescriptorSetLayout(aPassVulkanDescriptorSetLayout); // Passs descriptor set
+ fPipelineLayout.AddDescriptorSetLayout(aPassVulkanDescriptorSetLayout); // Pass descriptor set
  fPipelineLayout.AddDescriptorSetLayout(TpvScene3D(fScene3D).PlanetDescriptorSetLayout); // Per planet descriptor set
  fPipelineLayout.AddDescriptorSetLayout(TpvScene3D(fScene3D).PlanetWaterRenderDescriptorSetLayout); // Per render pas descriptor set
  fPipelineLayout.Initialize;
@@ -9643,11 +9700,14 @@ begin
                                               0);
 
   fPipeline.AddStage(fVertexShaderStage);
+  fPipeline.AddStage(fTessellationControlShaderStage);
+  fPipeline.AddStage(fTessellationEvaluationShaderStage);
   fPipeline.AddStage(fFragmentShaderStage);
 
-  fPipeline.InputAssemblyState.Topology:=TVkPrimitiveTopology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
-
+  fPipeline.InputAssemblyState.Topology:=TVkPrimitiveTopology(VK_PRIMITIVE_TOPOLOGY_PATCH_LIST);
   fPipeline.InputAssemblyState.PrimitiveRestartEnable:=false;
+
+  fPipeline.TessellationState.PatchControlPoints:=4;
 
   fPipeline.ViewPortState.AddViewPort(0.0,0.0,aWidth,aHeight,0.0,1.0);
   fPipeline.ViewPortState.AddScissor(0,0,aWidth,aHeight);
@@ -9692,7 +9752,7 @@ begin
                                                          TVkColorComponentFlags(VK_COLOR_COMPONENT_B_BIT) or
                                                          TVkColorComponentFlags(VK_COLOR_COMPONENT_A_BIT));
 
-  fPipeline.DepthStencilState.DepthTestEnable:=false;
+  fPipeline.DepthStencilState.DepthTestEnable:=true;
   fPipeline.DepthStencilState.DepthWriteEnable:=false;
   if TpvScene3DRendererInstance(fRendererInstance).ZFar<0.0 then begin
    fPipeline.DepthStencilState.DepthCompareOp:=VK_COMPARE_OP_GREATER_OR_EQUAL;
@@ -9783,23 +9843,31 @@ begin
        fPushConstants.ViewBaseIndex:=aViewBaseIndex;
        fPushConstants.CountViews:=aCountViews;
        fPushConstants.CountAllViews:=TpvScene3DRendererInstance(fRendererInstance).InFlightFrameStates[aInFlightFrameIndex].CountViews;
-       fPushConstants.FrameIndex:=aFrameIndex;
+       fPushConstants.CountQuadPointsInOneDirection:=64;
+
+       fPushConstants.ResolutionXY:=(fWidth and $ffff) or ((fHeight and $ffff) shl 16);
+       fPushConstants.TessellationFactor:=2.0;
  //    fPushConstants.Jitter:=TpvScene3DRendererInstance(fRendererInstance).InFlightFrameStates[aInFlightFrameIndex].Jitter.xy;
        fPushConstants.Jitter:=TpvVector2.Null;
+
+       fPushConstants.FrameIndex:=aFrameIndex;
+       fPushConstants.Time:=Modulo(TpvScene3D(Planet.Scene3D).SceneTimes^[aInFlightFrameIndex],65536.0);
        if TpvScene3D(fScene3D).UseBufferDeviceAddress then begin
         fPushConstants.PlanetData:=Planet.fPlanetDataVulkanBuffers[aInFlightFrameIndex].DeviceAddress;
        end else begin
         fPushConstants.PlanetData:=0;
        end;
-       fPushConstants.Time:=Modulo(TpvScene3D(Planet.Scene3D).SceneTimes^[aInFlightFrameIndex],65536.0);
 
        aCommandBuffer.CmdPushConstants(fPipelineLayout.Handle,
+                                       TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or
+                                       TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT) or
+                                       TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT) or
                                        TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                        0,
                                        SizeOf(TPushConstants),
                                        @fPushConstants);
 
-       aCommandBuffer.CmdDraw(3,1,0,0);
+       aCommandBuffer.CmdDraw(fPushConstants.CountQuadPointsInOneDirection*fPushConstants.CountQuadPointsInOneDirection*4,1,0,0);
 
       end;
 
@@ -11154,6 +11222,8 @@ var ShaderStageFlags:TVkShaderStageFlags;
 begin
 
  ShaderStageFlags:=TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or
+                   TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT) or
+                   TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT) or
                    TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT) or
                    TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT) or
                    IfThen(aMeshShaders and
@@ -11380,6 +11450,9 @@ begin
  result.AddBinding(0,
                    TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
                    1,
+                   TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or
+                   TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT) or
+                   TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT) or
                    TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                    [],
                    0);

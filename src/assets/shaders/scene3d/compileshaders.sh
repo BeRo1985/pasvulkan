@@ -388,6 +388,26 @@ compileshaderarguments=(
   "-V planet_cull.comp -DPASS0 -o ${tempPath}/planet_cull_pass0_comp.spv"
   "-V planet_cull.comp -DPASS1 -o ${tempPath}/planet_cull_pass1_comp.spv"
 
+  "-V planet_water.vert -DTESSELLATION -o ${tempPath}/planet_water_vert.spv"
+  "-V planet_water.vert -DTESSELLATION -DUSE_BUFFER_REFERENCE -o ${tempPath}/planet_water_bufref_vert.spv"
+  "-V planet_water.vert -DTESSELLATION -DRAYTRACING -o ${tempPath}/planet_water_raytracing_vert.spv"
+
+  "-V planet_water.tesc -o ${tempPath}/planet_water_tesc.spv"
+  "-V planet_water.tesc -DUSE_BUFFER_REFERENCE -o ${tempPath}/planet_water_bufref_tesc.spv"
+  "-V planet_water.tesc -DRAYTRACING -o ${tempPath}/planet_water_raytracing_tesc.spv"
+
+  "-V planet_water.tese -o ${tempPath}/planet_water_tese.spv"
+  "-V planet_water.tese -DUSE_BUFFER_REFERENCE -o ${tempPath}/planet_water_bufref_tese.spv"
+  "-V planet_water.tese -DRAYTRACING -o ${tempPath}/planet_water_raytracing_tese.spv"
+
+  "-V planet_water.vert -DUNDERWATER -o ${tempPath}/planet_water_underwater_vert.spv"
+  "-V planet_water.vert -DUNDERWATER -DUSE_BUFFER_REFERENCE -o ${tempPath}/planet_water_underwater_bufref_vert.spv"
+  "-V planet_water.vert -DUNDERWATER -DRAYTRACING -o ${tempPath}/planet_water_underwater_raytracing_vert.spv"
+  
+  "-V planet_water.frag -DUNDERWATER -o ${tempPath}/planet_water_underwater_frag.spv"
+  "-V planet_water.frag -DUNDERWATER -DUSE_BUFFER_REFERENCE -o ${tempPath}/planet_water_underwater_bufref_frag.spv"
+  "-V planet_water.frag -DUNDERWATER -DRAYTRACING -o ${tempPath}/planet_water_underwater_raytracing_frag.spv"
+
   "-V planet_renderpass.vert -o ${tempPath}/planet_renderpass_vert.spv"
   "-V planet_renderpass.vert -DVELOCITY -o ${tempPath}/planet_renderpass_velocity_vert.spv"
   "-V planet_renderpass.vert -DUSE_BUFFER_REFERENCE -o ${tempPath}/planet_renderpass_bufref_vert.spv"
@@ -741,7 +761,7 @@ addPlanetWaterFragmentVariants(){
   
 }
 
-addPlanetWaterFragmentVariants "planet_water" ""
+addPlanetWaterFragmentVariants "planet_water" "-DTESSELLATION"
 
 #############################################
 #               Mesh shaders                #

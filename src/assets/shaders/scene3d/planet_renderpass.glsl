@@ -46,16 +46,19 @@ layout(push_constant) uniform PushConstants {
   uint viewBaseIndex;
   uint countViews;
   uint countAllViews;
-  int frameIndex; 
-
+  uint countQuadPointsInOneDirection; 
+  
+  uint resolutionXY;  
+  float tessellationFactor; // = factor / referenceMinEdgeSize, for to avoid at least one division in the shader 
   vec2 jitter;
+
+  int frameIndex; 
+  float time;
 #if defined(USE_BUFFER_REFERENCE) 
   PlanetData planetData;
 #else
   uvec2 unusedPlanetData; // Ignored in this case  
 #endif
-  
-  float time;
 
 } pushConstants;
 
