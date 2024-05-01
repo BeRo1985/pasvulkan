@@ -150,7 +150,7 @@ end;
 procedure TpvScene3DRendererPassesPlanetWaterPrepassComputePass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
 begin
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
- fWaterPrepass.Execute(aCommandBuffer,aInFlightFrameIndex);
+ //fWaterPrepass.Execute(aCommandBuffer,aInFlightFrameIndex);
 end;
 
 

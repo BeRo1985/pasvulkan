@@ -9686,7 +9686,7 @@ begin
  fPipelineLayout.AddDescriptorSetLayout(TpvScene3D(fScene3D).GlobalVulkanDescriptorSetLayout); // Global scene descriptor set
  fPipelineLayout.AddDescriptorSetLayout(aPassVulkanDescriptorSetLayout); // Pass descriptor set
  fPipelineLayout.AddDescriptorSetLayout(TpvScene3D(fScene3D).PlanetDescriptorSetLayout); // Per planet descriptor set
- fPipelineLayout.AddDescriptorSetLayout(TpvScene3D(fScene3D).PlanetWaterRenderDescriptorSetLayout); // Per render pas descriptor set
+//fPipelineLayout.AddDescriptorSetLayout(TpvScene3D(fScene3D).PlanetWaterRenderDescriptorSetLayout); // Per render pas descriptor set
  fPipelineLayout.Initialize;
  fVulkanDevice.DebugUtils.SetObjectName(fPipelineLayout.Handle,VK_OBJECT_TYPE_PIPELINE_LAYOUT,'TpvScene3DPlanet.TWaterRenderPass.fPipelineLayout');
 
@@ -9833,12 +9833,12 @@ begin
          Planet.fRendererViewInstanceHashMap.TryGet(TpvScene3DPlanet.TRendererViewInstance.TKey.Create(fRendererInstance,InFlightFrameState^.ViewRenderPassIndex),RendererViewInstance) then begin
 
        DescriptorSets[0]:=Planet.fDescriptorSets[aInFlightFrameIndex].Handle;
-       DescriptorSets[1]:=RendererViewInstance.fWaterRenderDescriptorSet.Handle;
+       //DescriptorSets[1]:=RendererViewInstance.fWaterRenderDescriptorSet.Handle;
 
        aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
                                             fPipelineLayout.Handle,
                                             2,
-                                            2,
+                                            1,
                                             @DescriptorSets,
                                             0,
                                             nil);
