@@ -142,6 +142,10 @@ float getSphereHeight(vec3 n) {
   return getSphereHeight(n, 12);
 }
 
+float mapHeight(vec3 p, float h){
+  return length(planetCenter - p) - mix(planetBottomRadius, planetTopRadius, h);
+}
+
 float mapEx(vec3 p, int i){
   return length(planetCenter - p) - mix(planetBottomRadius, planetTopRadius, getSphereHeight(normalize(p - planetCenter), i));
 }

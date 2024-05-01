@@ -9673,6 +9673,9 @@ procedure TpvScene3DPlanet.TWaterRenderPass.AllocateResources(const aRenderPass:
 //var InFlightFrameIndex:TpvSizeInt;
 begin
 
+ fWidth:=aWidth;
+ fHeight:=aHeight;
+
  fPipelineLayout:=TpvVulkanPipelineLayout.Create(fVulkanDevice);
  fPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or
                                       TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT) or
@@ -9846,7 +9849,7 @@ begin
        fPushConstants.CountQuadPointsInOneDirection:=64;
 
        fPushConstants.ResolutionXY:=(fWidth and $ffff) or ((fHeight and $ffff) shl 16);
-       fPushConstants.TessellationFactor:=2.0;
+       fPushConstants.TessellationFactor:=1.0/4.0;
  //    fPushConstants.Jitter:=TpvScene3DRendererInstance(fRendererInstance).InFlightFrameStates[aInFlightFrameIndex].Jitter.xy;
        fPushConstants.Jitter:=TpvVector2.Null;
 

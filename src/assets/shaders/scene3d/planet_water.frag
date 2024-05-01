@@ -33,6 +33,7 @@ layout(location = 0) in InBlock {
   vec3 viewSpacePosition;
   vec3 cameraRelativePosition;
   vec2 jitter;
+  float mapValue;
   float underWater;
 } inBlock;
 #elif defined(UNDERWATER)
@@ -52,6 +53,7 @@ layout(location = 0) out vec4 outFragColor;
   layout(location = 1) out vec4 outFragNormalUsed; // xyz = normal, w = 1.0 if normal was used, 0.0 otherwise (by clearing the normal buffer to vec4(0.0))
 #endif
 
+#if !(defined(TESSELLATION) || defined(UNDERWATER))
 #ifdef MSAA
 #ifndef MSAA_FAST
 layout(input_attachment_index = 0, set = 1, binding = 9) uniform subpassInputMS uOITImgDepth; // Ignored/Unused in the MSAA_FAST case 
@@ -59,6 +61,7 @@ layout(input_attachment_index = 0, set = 1, binding = 9) uniform subpassInputMS 
 #else
 layout(input_attachment_index = 0, set = 1, binding = 9) uniform subpassInput uOITImgDepth;
 #endif
+#endif // !(defined(TESSELLATION) || defined(UNDERWATER))
 
 #if defined(TESSELLATION)
 #define inViewSpacePosition inBlock.viewSpacePosition
@@ -396,6 +399,12 @@ void main(){
   viewDirection = normalize(-inCameraRelativePosition);
 
   vec4 finalColor = doShade(abs(inBlock.viewSpacePosition.z), inBlock.underWater > 0.0);
+  
+  if((inBlock.underWater > 0.0) /*&& (inBlock.mapValue < 0.0)*/){
+    finalColor = vec4(textureLod(uPassTextures[1], vec3((vec2(gl_FragCoord.xy) + vec2(0.5)) / vec2(float(uint(pushConstants.resolutionXY & 0xffffu)), float(uint(pushConstants.resolutionXY >> 16u))), gl_ViewIndex), 1.0).xyz * waterBaseColor * waterBaseColor, 1.0);
+  }else{
+    finalColor = doShade(abs(inBlock.viewSpacePosition.z), inBlock.underWater > 0.0);
+  }
 
   outFragColor = vec4(clamp(finalColor.xyz * finalColor.w, vec3(-65504.0), vec3(65504.0)), finalColor.w);
 

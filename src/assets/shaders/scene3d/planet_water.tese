@@ -31,6 +31,7 @@ layout(location = 0) out OutBlock {
   vec3 viewSpacePosition;
   vec3 cameraRelativePosition;
   vec2 jitter;
+  float mapValue;
   float underWater;
 } outBlock;
 
@@ -149,6 +150,7 @@ void main(){
   outBlock.viewSpacePosition = viewSpacePosition.xyz;  
   outBlock.cameraRelativePosition = worldSpacePosition - cameraPosition;
   outBlock.jitter = pushConstants.jitter;
+  outBlock.mapValue = mapHeight(localPosition, sphereHeight);
   outBlock.underWater = (map(cameraPosition) <= 0.0) ? 1.0 : 0.0;
 
 	gl_Position = viewProjectionMatrix * vec4(position, 1.0);

@@ -344,13 +344,13 @@ begin
                                              TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT) or
                                              TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                              []);
- if assigned(fResourceDepth) then begin
+{if assigned(fResourceDepth) then begin
   fPassVulkanDescriptorSetLayout.AddBinding(9,
                                             VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,
                                             1,
                                             TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                             []);
- end;
+ end;}
  fPassVulkanDescriptorSetLayout.Initialize;
 
  fPassVulkanDescriptorPool:=TpvVulkanDescriptorPool.Create(fInstance.Renderer.VulkanDevice,TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),fInstance.Renderer.CountInFlightFrames);
@@ -468,7 +468,7 @@ begin
                                                                        [fInstance.FrustumClusterGridDataVulkanBuffers[InFlightFrameIndex].DescriptorBufferInfo],
                                                                        [],
                                                                        false);
-  if assigned(fResourceDepth) then begin
+{ if assigned(fResourceDepth) then begin
    fPassVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(9,
                                                                       0,
                                                                       1,
@@ -479,7 +479,7 @@ begin
                                                                       [],
                                                                       [],
                                                                       false);
-  end;
+  end;}
   fPassVulkanDescriptorSets[InFlightFrameIndex].Flush;
  end;
 
