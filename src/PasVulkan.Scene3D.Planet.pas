@@ -9798,17 +9798,17 @@ begin
   fUnderwaterPipeline.ColorBlendState.BlendConstants[1]:=0.0;
   fUnderwaterPipeline.ColorBlendState.BlendConstants[2]:=0.0;
   fUnderwaterPipeline.ColorBlendState.BlendConstants[3]:=0.0;
-  fUnderwaterPipeline.ColorBlendState.AddColorBlendAttachmentState(true,
-                                                         VK_BLEND_FACTOR_ONE,
-                                                         VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
-                                                         VK_BLEND_OP_ADD,
-                                                         VK_BLEND_FACTOR_ONE,
-                                                         VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
-                                                         VK_BLEND_OP_ADD,
-                                                         TVkColorComponentFlags(VK_COLOR_COMPONENT_R_BIT) or
-                                                         TVkColorComponentFlags(VK_COLOR_COMPONENT_G_BIT) or
-                                                         TVkColorComponentFlags(VK_COLOR_COMPONENT_B_BIT) or
-                                                         TVkColorComponentFlags(VK_COLOR_COMPONENT_A_BIT));
+  fUnderwaterPipeline.ColorBlendState.AddColorBlendAttachmentState(false,
+                                                                   VK_BLEND_FACTOR_ONE,
+                                                                   VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+                                                                   VK_BLEND_OP_ADD,
+                                                                   VK_BLEND_FACTOR_ONE,
+                                                                   VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+                                                                   VK_BLEND_OP_ADD,
+                                                                   TVkColorComponentFlags(VK_COLOR_COMPONENT_R_BIT) or
+                                                                   TVkColorComponentFlags(VK_COLOR_COMPONENT_G_BIT) or
+                                                                   TVkColorComponentFlags(VK_COLOR_COMPONENT_B_BIT) or
+                                                                   TVkColorComponentFlags(VK_COLOR_COMPONENT_A_BIT));
 
   fUnderwaterPipeline.DepthStencilState.DepthTestEnable:=false;
   fUnderwaterPipeline.DepthStencilState.DepthWriteEnable:=false;
@@ -9879,17 +9879,17 @@ begin
   fWaterPipeline.ColorBlendState.BlendConstants[1]:=0.0;
   fWaterPipeline.ColorBlendState.BlendConstants[2]:=0.0;
   fWaterPipeline.ColorBlendState.BlendConstants[3]:=0.0;
-  fWaterPipeline.ColorBlendState.AddColorBlendAttachmentState(true,
-                                                         VK_BLEND_FACTOR_ONE,
-                                                         VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
-                                                         VK_BLEND_OP_ADD,
-                                                         VK_BLEND_FACTOR_ONE,
-                                                         VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
-                                                         VK_BLEND_OP_ADD,
-                                                         TVkColorComponentFlags(VK_COLOR_COMPONENT_R_BIT) or
-                                                         TVkColorComponentFlags(VK_COLOR_COMPONENT_G_BIT) or
-                                                         TVkColorComponentFlags(VK_COLOR_COMPONENT_B_BIT) or
-                                                         TVkColorComponentFlags(VK_COLOR_COMPONENT_A_BIT));
+  fWaterPipeline.ColorBlendState.AddColorBlendAttachmentState(false,
+                                                              VK_BLEND_FACTOR_ONE,
+                                                              VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+                                                              VK_BLEND_OP_ADD,
+                                                              VK_BLEND_FACTOR_ONE,
+                                                              VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+                                                              VK_BLEND_OP_ADD,
+                                                              TVkColorComponentFlags(VK_COLOR_COMPONENT_R_BIT) or
+                                                              TVkColorComponentFlags(VK_COLOR_COMPONENT_G_BIT) or
+                                                              TVkColorComponentFlags(VK_COLOR_COMPONENT_B_BIT) or
+                                                              TVkColorComponentFlags(VK_COLOR_COMPONENT_A_BIT));
 
   fWaterPipeline.DepthStencilState.DepthTestEnable:=true;
   fWaterPipeline.DepthStencilState.DepthWriteEnable:=true;

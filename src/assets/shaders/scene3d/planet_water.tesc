@@ -21,6 +21,7 @@ layout(location = 0) in InBlock {
   vec3 position;
   vec3 normal;
   vec3 planetCenterToCamera;
+  float underWater;
 } inBlocks[];
 
 layout(location = 0) out OutBlock {
@@ -73,8 +74,8 @@ float AdaptiveTessellation(vec3 p0, vec3 p1){
  	return clamp(distance(v.xy, v.zw) * pushConstants.tessellationFactor, 1.0, 64.0);
 }
 void main(){	 
-  bool visible = true;
-  {
+  bool visible = inBlocks[0].underWater < 0.5;
+  if(visible){
 #ifdef TRIANGLES
     vec3 faceNormal = normalize(inBlocks[0].normal + inBlocks[1].normal + inBlocks[2].normal);
 #else

@@ -21,6 +21,7 @@ layout(location = 0) out OutBlock {
   vec3 position;
   vec3 normal;
   vec3 planetCenterToCamera;
+  float underWater;
 } outBlock;
 #endif
 
@@ -66,8 +67,7 @@ mat4 planetInverseModelMatrix = inverse(planetModelMatrix);
 //#endif
 
 void main(){ 
-#ifdef UNDERWATER
-  
+
 #if 1
   // The actual standard approach
   vec3 cameraPosition = inverseViewMatrix[3].xyz;
@@ -77,6 +77,8 @@ void main(){
 #endif
 
   bool underWater = map(cameraPosition) <= 0.0;
+
+#ifdef UNDERWATER
 
 #undef OLD
 #ifdef OLD
@@ -140,6 +142,7 @@ void main(){
   outBlock.position = (planetData.modelMatrix * vec4(localPosition, 1.0)).xyz;
   outBlock.normal = sphereNormal;
   outBlock.planetCenterToCamera = inverseViewMatrix[3].xyz - (planetData.modelMatrix * vec2(0.0, 1.0).xxxy).xyz; 
+  outBlock.underWater = underWater ? 1.0 : 0.0;
 #endif
 
 }
