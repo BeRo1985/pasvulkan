@@ -1097,6 +1097,10 @@ type TpvScene3DPlanets=class;
               fResourceCascadedShadowMap:TpvFrameGraph.TPass.TUsedImageResource;
               fResourceSSAO:TpvFrameGraph.TPass.TUsedImageResource;
               fRenderPass:TpvVulkanRenderPass;
+              fUnderwaterVertexShaderModule:TpvVulkanShaderModule;
+              fUnderwaterFragmentShaderModule:TpvVulkanShaderModule;
+              fUnderwaterVertexShaderStage:TpvVulkanPipelineShaderStage;
+              fUnderwaterFragmentShaderStage:TpvVulkanPipelineShaderStage;              
               fWaterVertexShaderModule:TpvVulkanShaderModule;
               fWaterTessellationControlShaderModule:TpvVulkanShaderModule;
               fWaterTessellationEvaluationShaderModule:TpvVulkanShaderModule;
@@ -1109,6 +1113,7 @@ type TpvScene3DPlanets=class;
               fDescriptorPool:TpvVulkanDescriptorPool;
               fDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
               fPipelineLayout:TpvVulkanPipelineLayout;
+              fUnderwaterPipeline:TpvVulkanGraphicsPipeline;
               fWaterPipeline:TpvVulkanGraphicsPipeline;
               fPushConstants:TPushConstants;
               fMSAA:Boolean;
@@ -9530,6 +9535,14 @@ begin
 
  fRenderPass:=nil;
 
+ fUnderwaterVertexShaderModule:=nil;
+
+ fUnderwaterFragmentShaderModule:=nil;
+
+ fUnderwaterVertexShaderStage:=nil;
+
+ fUnderwaterFragmentShaderStage:=nil;
+
  fWaterVertexShaderModule:=nil;
 
  fWaterTessellationControlShaderModule:=nil;
@@ -9552,6 +9565,8 @@ begin
 
  fPipelineLayout:=nil;
 
+ fUnderwaterPipeline:=nil;
+
  fWaterPipeline:=nil;
 
  fMSAA:=aMSAA;
@@ -9561,6 +9576,30 @@ begin
  fWidth:=0;
 
  fHeight:=0;
+
+ ShaderFileName:='planet_water_underwater';
+
+ if TpvScene3D(fScene3D).RaytracingActive then begin
+  ShaderFileName:=ShaderFileName+'_raytracing';
+ end else if TpvScene3D(fScene3D).UseBufferDeviceAddress then begin
+  ShaderFileName:=ShaderFileName+'_bufref';
+ end;
+
+ Stream:=pvScene3DShaderVirtualFileSystem.GetFile(ShaderFileName+'_vert.spv');
+ try
+  fUnderwaterVertexShaderModule:=TpvVulkanShaderModule.Create(fVulkanDevice,Stream);
+ finally
+  FreeAndNil(Stream);
+ end;
+ fVulkanDevice.DebugUtils.SetObjectName(fUnderwaterVertexShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DPlanet.TWaterRenderPass.fUnderwaterVertexShaderModule');
+
+ Stream:=pvScene3DShaderVirtualFileSystem.GetFile(ShaderFileName+'_frag.spv');
+ try
+  fUnderwaterFragmentShaderModule:=TpvVulkanShaderModule.Create(fVulkanDevice,Stream);
+ finally
+  FreeAndNil(Stream);
+ end;
+ fVulkanDevice.DebugUtils.SetObjectName(fUnderwaterFragmentShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DPlanet.TWaterRenderPass.fUnderwaterFragmentShaderModule');
 
  ShaderFileName:='planet_water';
 
@@ -9576,7 +9615,7 @@ begin
  finally
   FreeAndNil(Stream);
  end;
- fVulkanDevice.DebugUtils.SetObjectName(fWaterVertexShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DPlanet.TWaterRenderPass.fVertexShaderModule');
+ fVulkanDevice.DebugUtils.SetObjectName(fWaterVertexShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DPlanet.TWaterRenderPass.fWaterVertexShaderModule');
 
  Stream:=pvScene3DShaderVirtualFileSystem.GetFile(ShaderFileName+'_tesc.spv');
  try
@@ -9584,7 +9623,7 @@ begin
  finally
   FreeAndNil(Stream);
  end;
- fVulkanDevice.DebugUtils.SetObjectName(fWaterTessellationControlShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DPlanet.TWaterRenderPass.fTessellationControlShaderModule');
+ fVulkanDevice.DebugUtils.SetObjectName(fWaterTessellationControlShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DPlanet.TWaterRenderPass.fWaterTessellationControlShaderModule');
 
  Stream:=pvScene3DShaderVirtualFileSystem.GetFile(ShaderFileName+'_tese.spv');
  try
@@ -9592,7 +9631,7 @@ begin
  finally
   FreeAndNil(Stream);
  end;
- fVulkanDevice.DebugUtils.SetObjectName(fWaterTessellationEvaluationShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DPlanet.TWaterRenderPass.fTessellationEvaluationShaderModule');
+ fVulkanDevice.DebugUtils.SetObjectName(fWaterTessellationEvaluationShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DPlanet.TWaterRenderPass.fWaterTessellationEvaluationShaderModule');
 
  ShaderFileName:='planet_water';
 
@@ -9622,7 +9661,11 @@ begin
  finally
   FreeAndNil(Stream);
  end;
- fVulkanDevice.DebugUtils.SetObjectName(fWaterFragmentShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DPlanet.TWaterRenderPass.fFragmentShaderModule');
+ fVulkanDevice.DebugUtils.SetObjectName(fWaterFragmentShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DPlanet.TWaterRenderPass.fWaterFragmentShaderModule');
+
+ fUnderwaterVertexShaderStage:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_VERTEX_BIT,fUnderwaterVertexShaderModule,'main');
+
+ fUnderwaterFragmentShaderStage:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_FRAGMENT_BIT,fUnderwaterFragmentShaderModule,'main');
 
  fWaterVertexShaderStage:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_VERTEX_BIT,fWaterVertexShaderModule,'main');
 
@@ -9660,6 +9703,14 @@ begin
  FreeAndNil(fWaterFragmentShaderModule);
 
  FreeAndNil(fWaterVertexShaderModule);
+
+ FreeAndNil(fUnderwaterFragmentShaderStage);
+
+ FreeAndNil(fUnderwaterVertexShaderStage);
+
+ FreeAndNil(fUnderwaterFragmentShaderModule);
+
+ FreeAndNil(fUnderwaterVertexShaderModule);
 
  inherited Destroy;
 
