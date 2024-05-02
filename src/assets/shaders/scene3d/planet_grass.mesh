@@ -599,10 +599,15 @@ void main() {
 
   #if defined(MESH_SHADER_EMULATION)
 
+      normal = normalize(normal); 
+
+      // This improves quality a bit by rescaling the normal to make it more consistent for the RGB10A2_SNORM encoding
+      normal /= max(max(abs(normal.x),abs(normal.y)),abs(normal.z)); 
+
       // Pack the normal and binary texcoord U into a RGB10A2_SNORM encoded normal, leaving just one bit unused, and texcoord V as 32-bit float
       uvec4 encodedNormalTexCoordU = (
           uvec4(
-            uvec3(ivec3(clamp(normalize(normal), vec3(-1.0), vec3(1.0)) * 511.0)), 
+            uvec3(ivec3(clamp(normal, vec3(-1.0), vec3(1.0)) * 511.0)), 
             uint(vertexIndex & 1u)
           ) & uvec2(0x3ffu, 0x3u).xxxy
         ) << uvec4(0u, 10u, 20u, 30u);
