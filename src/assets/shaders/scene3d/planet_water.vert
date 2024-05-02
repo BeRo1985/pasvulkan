@@ -152,8 +152,8 @@ void main(){
   bool visible;
   {
     vec2 planetUV = octPlanetUnsignedEncode(sphereNormal);
-    ivec2 tileUV = ivec2(floor(planetUV * vec2(pushConstants.tileResolution))) & ivec2(pushConstants.tileResolution - 1);    
-    uint tileIndex = (uint(tileUV.y) * pushConstants.tileResolution) + uint(tileUV.x);
+    ivec2 tileUV = ivec2(floor(planetUV * vec2(pushConstants.tileMapResolution))) & ivec2(pushConstants.tileMapResolution - 1);    
+    uint tileIndex = (uint(tileUV.y) * pushConstants.tileMapResolution) + uint(tileUV.x);
     visible = (visibilityBuffer.bitmap[tileIndex >> 5u] & (1u << (tileIndex & 31u))) != 0u;
   }
 

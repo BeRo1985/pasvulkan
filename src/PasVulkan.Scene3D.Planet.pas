@@ -1087,7 +1087,7 @@ type TpvScene3DPlanets=class;
                     Time:TpvFloat;
                     PlanetData:TVkDeviceAddress;
 
-                    TileResolution:TpvUInt32;
+                    TileMapResolution:TpvUInt32;
 
                    end;
                    PPushConstants=^TPushConstants;
@@ -9999,7 +9999,7 @@ begin
         fPushConstants.PlanetData:=0;
        end;
 
-       fPushConstants.TileResolution:=Planet.VisualTileResolution;
+       fPushConstants.TileMapResolution:=Planet.VisualResolution;
 
        aCommandBuffer.CmdPushConstants(fPipelineLayout.Handle,
                                        TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or
