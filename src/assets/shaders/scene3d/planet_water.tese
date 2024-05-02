@@ -20,6 +20,7 @@ layout(quads, fractional_even_spacing, ccw) in;
 layout(location = 0) in InBlock {
   vec3 position;
   vec3 normal;
+  uint flags;
 } inBlocks[];
 
 layout(location = 0) out OutBlock {
@@ -151,7 +152,7 @@ void main(){
   outBlock.cameraRelativePosition = worldSpacePosition - cameraPosition;
   outBlock.jitter = pushConstants.jitter;
   outBlock.mapValue = mapHeight(localPosition, sphereHeight);
-  outBlock.underWater = (map(cameraPosition) <= 0.0) ? 1.0 : 0.0;
+  outBlock.underWater = ((inBlocks[0].flags & (1u << 0u)) != 0u) ? 1.0 : 0.0;
 
 	gl_Position = viewProjectionMatrix * vec4(position, 1.0);
   

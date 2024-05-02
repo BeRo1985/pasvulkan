@@ -60,6 +60,8 @@ layout(push_constant) uniform PushConstants {
   uvec2 unusedPlanetData; // Ignored in this case  
 #endif
 
+  uint tileResolution;
+
 } pushConstants;
 
 #else

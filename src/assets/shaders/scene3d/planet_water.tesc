@@ -21,12 +21,13 @@ layout(location = 0) in InBlock {
   vec3 position;
   vec3 normal;
   vec3 planetCenterToCamera;
-  float underWater;
+  uint flags;
 } inBlocks[];
 
 layout(location = 0) out OutBlock {
   vec3 position;
   vec3 normal;
+  uint flags;
 } outBlocks[];
 
 // Global descriptor set
@@ -74,7 +75,24 @@ float AdaptiveTessellation(vec3 p0, vec3 p1){
  	return clamp(distance(v.xy, v.zw) * pushConstants.tessellationFactor, 1.0, 64.0);
 }
 void main(){	 
-  bool visible = inBlocks[0].underWater < 0.5;
+  const uint anyFlags = inBlocks[0].flags | 
+                        inBlocks[1].flags | 
+                        inBlocks[2].flags |
+#ifndef TRIANGLES
+                        inBlocks[3].flags |             
+#endif
+                        0u;
+  const uint maskedFlags = inBlocks[0].flags & 
+                           inBlocks[1].flags & 
+                           inBlocks[2].flags &
+#ifndef TRIANGLES
+                           inBlocks[3].flags &
+#endif
+                           0xffffffffu; 
+  const bool underWater = (maskedFlags & (1u << 0u)) != 0u;
+  const bool isVisible = (anyFlags & (1u << 1u)) != 0u;
+  //const bool aboveGround = (anyFlags & (1u << 2u)) != 0u;
+  bool visible = isVisible && /*aboveGround &&*/ !underWater;
   if(visible){
 #ifdef TRIANGLES
     vec3 faceNormal = normalize(inBlocks[0].normal + inBlocks[1].normal + inBlocks[2].normal);
@@ -129,4 +147,5 @@ void main(){
   }
   outBlocks[gl_InvocationID].position = inBlocks[gl_InvocationID].position;
 	outBlocks[gl_InvocationID].normal = inBlocks[gl_InvocationID].normal;
+	outBlocks[gl_InvocationID].flags = inBlocks[gl_InvocationID].flags;
 }  

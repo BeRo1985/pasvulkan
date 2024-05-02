@@ -21,7 +21,7 @@ layout(location = 0) out OutBlock {
   vec3 position;
   vec3 normal;
   vec3 planetCenterToCamera;
-  float underWater;
+  uint flags;
 } outBlock;
 #endif
 
@@ -37,6 +37,14 @@ layout(location = 0) out OutBlock {
 // Pass descriptor set
 
 #include "mesh_rendering_pass_descriptorset.glsl"
+
+// Per water render pass descriptor set
+
+#if !defined(UNDERWATER)
+layout(set = 3, binding = 0) readonly buffer VisibilityBuffer {
+  uint bitmap[];
+} visibilityBuffer;
+#endif
 
 #define PLANET_WATER
 #include "planet_renderpass.glsl"
@@ -139,10 +147,22 @@ void main(){
 
   vec3 localPosition = sphereNormal * ((sphereHeight > 1e-6) ? (planetData.bottomRadiusTopRadiusHeightMapScale.x + (sphereHeight * planetData.bottomRadiusTopRadiusHeightMapScale.z)) : 1e-6);
 
+  //float planetHeight = textureBicubicPlanetOctahedralMap(uPlanetTextures[PLANET_TEXTURE_HEIGHTMAP], sphereNormal).x;
+  
+  bool visible;
+  {
+    vec2 planetUV = octPlanetUnsignedEncode(sphereNormal);
+    ivec2 tileUV = ivec2(floor(planetUV * vec2(pushConstants.tileResolution))) & ivec2(pushConstants.tileResolution - 1);    
+    uint tileIndex = (uint(tileUV.y) * pushConstants.tileResolution) + uint(tileUV.x);
+    visible = (visibilityBuffer.bitmap[tileIndex >> 5u] & (1u << (tileIndex & 31u))) != 0u;
+  }
+
   outBlock.position = (planetData.modelMatrix * vec4(localPosition, 1.0)).xyz;
   outBlock.normal = sphereNormal;
   outBlock.planetCenterToCamera = inverseViewMatrix[3].xyz - (planetData.modelMatrix * vec2(0.0, 1.0).xxxy).xyz; 
-  outBlock.underWater = underWater ? 1.0 : 0.0;
+  outBlock.flags = (underWater ? (1u << 0u) : 0u) |
+                   (visible ? (1u << 1u) : 0u) /*| 
+                   ((planetHeight <= sphereHeight) ? (1u << 2u) : 0u)*/;
 #endif
 
 }

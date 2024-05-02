@@ -1087,6 +1087,8 @@ type TpvScene3DPlanets=class;
                     Time:TpvFloat;
                     PlanetData:TVkDeviceAddress;
 
+                    TileResolution:TpvUInt32;
+
                    end;
                    PPushConstants=^TPushConstants;
              private
@@ -1197,7 +1199,7 @@ type TpvScene3DPlanets=class;
               fWaterPrepassDescriptorPool:TpvVulkanDescriptorPool;
               fWaterPrepassDescriptorSet:TpvVulkanDescriptorSet;
               fWaterRenderDescriptorPool:TpvVulkanDescriptorPool;
-              fWaterRenderDescriptorSet:TpvVulkanDescriptorSet;
+              fWaterRenderDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
              public
               constructor Create(const aPlanet:TpvScene3DPlanet;const aRendererInstance:TObject;const aRenderPassIndex:TpvSizeInt;const aMainViewPort:Boolean);
               destructor Destroy; override;
@@ -9745,7 +9747,7 @@ begin
  fPipelineLayout.AddDescriptorSetLayout(TpvScene3D(fScene3D).GlobalVulkanDescriptorSetLayout); // Global scene descriptor set
  fPipelineLayout.AddDescriptorSetLayout(aPassVulkanDescriptorSetLayout); // Pass descriptor set
  fPipelineLayout.AddDescriptorSetLayout(TpvScene3D(fScene3D).PlanetDescriptorSetLayout); // Per planet descriptor set
-//fPipelineLayout.AddDescriptorSetLayout(TpvScene3D(fScene3D).PlanetWaterRenderDescriptorSetLayout); // Per render pas descriptor set
+ fPipelineLayout.AddDescriptorSetLayout(TpvScene3D(fScene3D).PlanetWaterRenderDescriptorSetLayout); // Per render pass descriptor set
  fPipelineLayout.Initialize;
  fVulkanDevice.DebugUtils.SetObjectName(fPipelineLayout.Handle,VK_OBJECT_TYPE_PIPELINE_LAYOUT,'TpvScene3DPlanet.TWaterRenderPass.fPipelineLayout');
 
@@ -9969,12 +9971,12 @@ begin
          Planet.fRendererViewInstanceHashMap.TryGet(TpvScene3DPlanet.TRendererViewInstance.TKey.Create(fRendererInstance,InFlightFrameState^.ViewRenderPassIndex),RendererViewInstance) then begin
 
        DescriptorSets[0]:=Planet.fDescriptorSets[aInFlightFrameIndex].Handle;
-       //DescriptorSets[1]:=RendererViewInstance.fWaterRenderDescriptorSet.Handle;
+       DescriptorSets[1]:=RendererViewInstance.fWaterRenderDescriptorSets[aInFlightFrameIndex].Handle;
 
        aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
                                             fPipelineLayout.Handle,
                                             2,
-                                            1,
+                                            2,
                                             @DescriptorSets,
                                             0,
                                             nil);
@@ -9996,6 +9998,8 @@ begin
        end else begin
         fPushConstants.PlanetData:=0;
        end;
+
+       fPushConstants.TileResolution:=Planet.VisualTileResolution;
 
        aCommandBuffer.CmdPushConstants(fPipelineLayout.Handle,
                                        TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or
@@ -10503,24 +10507,37 @@ begin
 
   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fWaterPrepassDescriptorSet.Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET,'TpvScene3DPlanet.TRendererViewInstance.fWaterPrepassDescriptorSet');
 
-  fWaterRenderDescriptorPool:=TpvScene3DPlanet.CreatePlanetWaterRenderDescriptorPool(fPlanet.fVulkanDevice,1);
+  fWaterRenderDescriptorPool:=TpvScene3DPlanet.CreatePlanetWaterRenderDescriptorPool(fPlanet.fVulkanDevice,TpvScene3D(fPlanet.Scene3D).CountInFlightFrames);
 
-  fWaterRenderDescriptorSet:=TpvVulkanDescriptorSet.Create(fWaterRenderDescriptorPool,TpvScene3D(fPlanet.Scene3D).PlanetWaterRenderDescriptorSetLayout);
+  for InFlightFrameIndex:=0 to TpvScene3DRendererInstance(fRendererInstance).Scene3D.CountInFlightFrames-1 do begin
 
-  fWaterRenderDescriptorSet.WriteToDescriptorSet(0,
-                                                 0,
-                                                 1,
-                                                 TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                                                 [TVkDescriptorImageInfo.Create(TpvScene3DRendererInstance(fRendererInstance).Renderer.ClampedNearestSampler.Handle,
-                                                                                fVulkanWaterAccelerationImage.VulkanArrayImageView.Handle,
-                                                                                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
-                                                 [],
-                                                 [],
-                                                 false);
+   fWaterRenderDescriptorSets[InFlightFrameIndex]:=TpvVulkanDescriptorSet.Create(fWaterRenderDescriptorPool,TpvScene3D(fPlanet.Scene3D).PlanetWaterRenderDescriptorSetLayout);
 
-  fWaterRenderDescriptorSet.Flush;
+   fWaterRenderDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(0,
+                                                                       0,
+                                                                       1,
+                                                                       TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                                       [],
+                                                                       [fVulkanVisiblityBuffers[InFlightFrameIndex].DescriptorBufferInfo],
+                                                                       [],
+                                                                       false);
 
-  fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fWaterRenderDescriptorSet.Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET,'TpvScene3DPlanet.TRendererViewInstance.fWaterRenderDescriptorSet');
+   fWaterRenderDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(1,
+                                                                       0,
+                                                                       1,
+                                                                       TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                                                       [TVkDescriptorImageInfo.Create(TpvScene3DRendererInstance(fRendererInstance).Renderer.ClampedNearestSampler.Handle,
+                                                                                                      fVulkanWaterAccelerationImage.VulkanArrayImageView.Handle,
+                                                                                                      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
+                                                                       [],
+                                                                       [],
+                                                                       false);
+
+   fWaterRenderDescriptorSets[InFlightFrameIndex].Flush;
+
+   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fWaterRenderDescriptorSets[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET,'TpvScene3DPlanet.TRendererViewInstance.fWaterRenderDescriptorSets['+IntToStr(InFlightFrameIndex)+']');
+
+  end;
 
  end else begin
 
@@ -10532,7 +10549,9 @@ begin
 
   fWaterRenderDescriptorPool:=nil;
 
-  fWaterRenderDescriptorSet:=nil;
+ for InFlightFrameIndex:=0 to MaxInFlightFrames-1 do begin
+  fWaterRenderDescriptorSets[InFlightFrameIndex]:=nil;
+ end;
 
  end;
 
@@ -10543,7 +10562,9 @@ var InFlightFrameIndex,Index:TpvSizeInt;
 begin
  FreeAndNil(fWaterPrepassDescriptorSet);
  FreeAndNil(fWaterPrepassDescriptorPool);
- FreeAndNil(fWaterRenderDescriptorSet);
+ for InFlightFrameIndex:=0 to MaxInFlightFrames-1 do begin
+  FreeAndNil(fWaterRenderDescriptorSets[InFlightFrameIndex]);
+ end;
  FreeAndNil(fWaterRenderDescriptorPool);
  for Index:=0 to 1 do begin
   FreeAndNil(fGrassCullDescriptorSets[Index]);
@@ -11591,6 +11612,15 @@ class function TpvScene3DPlanet.CreatePlanetWaterRenderDescriptorSetLayout(const
 begin
  result:=TpvVulkanDescriptorSetLayout.Create(aVulkanDevice);
  result.AddBinding(0,
+                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                   1,
+                   TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or
+                   TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT) or
+                   TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT) or
+                   TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                   [],
+                   0);
+ result.AddBinding(1,
                    TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
                    1,
                    TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or
@@ -11608,7 +11638,8 @@ begin
  result:=TpvVulkanDescriptorPool.Create(aVulkanDevice,
                                         TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
                                         aCountInFlightFrames);
- result.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),aCountInFlightFrames);
+ result.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),1*aCountInFlightFrames);
+ result.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),1*aCountInFlightFrames);
  result.Initialize;
  aVulkanDevice.DebugUtils.SetObjectName(result.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'TpvScene3DPlanet.PlanetWaterRenderDescriptorPool');
 end;
