@@ -602,7 +602,7 @@ void main() {
       normal = normalize(normal); 
 
       // This improves quality a bit by rescaling the normal to make it more consistent for the RGB10A2_SNORM encoding
-      normal /= max(max(abs(normal.x),abs(normal.y)),abs(normal.z)); 
+      normal /= max(max(abs(normal.x), abs(normal.y)), abs(normal.z)); 
 
       // Pack the normal and binary texcoord U into a RGB10A2_SNORM encoded normal, leaving just one bit unused, and texcoord V as 32-bit float
       uvec4 encodedNormalTexCoordU = (
