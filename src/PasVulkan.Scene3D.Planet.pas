@@ -9999,7 +9999,7 @@ begin
         fPushConstants.PlanetData:=0;
        end;
 
-       fPushConstants.TileMapResolution:=Planet.VisualResolution;
+       fPushConstants.TileMapResolution:=Planet.TileMapResolution;
 
        aCommandBuffer.CmdPushConstants(fPipelineLayout.Handle,
                                        TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or
