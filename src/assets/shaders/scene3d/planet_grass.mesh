@@ -599,10 +599,15 @@ void main() {
 
   #if defined(MESH_SHADER_EMULATION)
 
+#if 0 // Not needed, because these are already normalized in the code above
       normal = normalize(normal); 
+      tangentSign.xyz = normalize(tangentSign.xyz);
+#endif
 
-      // This improves quality a bit by rescaling the normal to make it more consistent for the RGB10A2_SNORM encoding
+      // This improves quality a bit by rescaling the normal to make it more consistent for the RGB10A2_SNORM encoding, where
+      // the vertex shader needs to do the final normalization, because the RGB10A2_SNORM encoding is not normalized as stored.
       normal /= max(max(abs(normal.x), abs(normal.y)), abs(normal.z)); 
+      tangentSign.xyz /= max(max(abs(tangentSign.x), abs(tangentSign.y)), abs(tangentSign.z));
 
       // Pack the normal and binary texcoord U into a RGB10A2_SNORM encoded normal, leaving just one bit unused, and texcoord V as 32-bit float
       uvec4 encodedNormalTexCoordU = (
@@ -614,7 +619,7 @@ void main() {
 
       uvec4 encodedTangentSign = (
           uvec4(
-            uvec3(ivec3(clamp(normalize(tangentSign.xyz), vec3(-1.0), vec3(1.0)) * 511.0)), 
+            uvec3(ivec3(clamp(tangentSign.xyz, vec3(-1.0), vec3(1.0)) * 511.0)), 
             uint((tangentSign.w < 0.0) ? 1u : 0u)
           ) & uvec2(0x3ffu, 0x3u).xxxy
         ) << uvec4(0u, 10u, 20u, 30u);
