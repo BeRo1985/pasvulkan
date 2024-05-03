@@ -24,7 +24,8 @@ layout(push_constant) uniform PushConstants {
   float initialWaterLevel;
   float bottomRadius;
   float topRadius;
-  uint resolution;
+  uint planetHeightMapResolution;
+  uint waterHeightMapResolution;
   uint frameIndex;
 } pushConstants;
 
@@ -55,22 +56,24 @@ layout(set = 0, binding = 4, std430) writeonly buffer OutWaterFlowMap {
 #include "octahedral.glsl"
 #include "octahedralmap.glsl"
 
-vec2 texelSize = 1.0 / vec2(pushConstants.resolution);
+vec2 texelSize = 1.0 / vec2(pushConstants.waterHeightMapResolution);
 
 uint getIndex(uvec2 position, ivec2 offset){
-  const ivec2 intPosition = wrapOctahedralTexelCoordinates(ivec2(position) + offset, ivec2(pushConstants.resolution));  
-  return (intPosition.y * pushConstants.resolution) + intPosition.x;
+  const ivec2 intPosition = wrapOctahedralTexelCoordinates(ivec2(position) + offset, ivec2(pushConstants.waterHeightMapResolution));  
+  return (intPosition.y * pushConstants.waterHeightMapResolution) + intPosition.x;
 }
 
 vec2 readHeight(ivec2 p){
-  p = clamp(wrapOctahedralTexelCoordinates(p, ivec2(pushConstants.resolution)), ivec2(0), ivec2(pushConstants.resolution - 1));
+  p = clamp(wrapOctahedralTexelCoordinates(p, ivec2(pushConstants.waterHeightMapResolution)), ivec2(0), ivec2(pushConstants.waterHeightMapResolution - 1));
   return vec2(
     mix(
       pushConstants.bottomRadius,
       pushConstants.topRadius,
-      textureBicubicPlanetOctahedralMap(uPlanetHeightmap, vec2(p) * texelSize).x
+      (pushConstants.planetHeightMapResolution == pushConstants.waterHeightMapResolution) 
+        ? texelFetch(uPlanetHeightmap, ivec2(p), 0).x // When the planet height map resolution is the same as the water height map resolution, we can just use texelFetch.
+        : textureBicubicPlanetOctahedralMap(uPlanetHeightmap, vec2(p) * texelSize).x // Otherwise we need to use interpolation.
     ),  
-    inWaterHeightMap.values[(p.y * pushConstants.resolution) + p.x]
+    inWaterHeightMap.values[(p.y * pushConstants.waterHeightMapResolution) + p.x]
   );
 } 
 
@@ -82,9 +85,9 @@ void main(){
 
   const uvec2 position = uvec2(gl_GlobalInvocationID.xy);
 
-  if(all(lessThan(position, uvec2(pushConstants.resolution)))){
+  if(all(lessThan(position, uvec2(pushConstants.waterHeightMapResolution)))){
 
-    const uint index = (position.y * pushConstants.resolution) + position.x;
+    const uint index = (position.y * pushConstants.waterHeightMapResolution) + position.x;
 
 #if defined(OUTFLOW)
     
