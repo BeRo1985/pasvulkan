@@ -388,6 +388,8 @@ compileshaderarguments=(
   "-V planet_cull.comp -DPASS0 -o ${tempPath}/planet_cull_pass0_comp.spv"
   "-V planet_cull.comp -DPASS1 -o ${tempPath}/planet_cull_pass1_comp.spv"
 
+  "-V planet_water_cull.comp -o ${tempPath}/planet_water_cull_comp.spv"
+  
   "-V planet_water.vert -DTESSELLATION -o ${tempPath}/planet_water_vert.spv"
   "-V planet_water.vert -DTESSELLATION -DUSE_BUFFER_REFERENCE -o ${tempPath}/planet_water_bufref_vert.spv"
   "-V planet_water.vert -DTESSELLATION -DRAYTRACING -o ${tempPath}/planet_water_raytracing_vert.spv"
