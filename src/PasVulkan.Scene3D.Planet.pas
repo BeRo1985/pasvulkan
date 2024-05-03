@@ -2536,14 +2536,19 @@ procedure TpvScene3DPlanet.TData.TransferTo(const aCommandBuffer:TpvVulkanComman
                                             const aTransferHeightMap:Boolean;
                                             const aTransferGrass:Boolean;
                                             const aTransferWater:Boolean);
-var MipMapIndex,CountImageMemoryBarriers:TpvSizeInt;
+var MipMapIndex,CountImageMemoryBarriers,CountBufferMemoryBarriers:TpvSizeInt;
     ImageSubresourceRange:TVkImageSubresourceRange;
     ImageMemoryBarriers:array[0..9] of TVkImageMemoryBarrier;
+    BufferMemoryBarriers:array[0..1] of TVkBufferMemoryBarrier;
     ImageCopies:array[0..31] of TVkImageCopy;
     ImageCopy:PVkImageCopy;
+    BufferCopy:TVkBufferCopy;
+    DoNeedCopyWaterVisibilityBuffer:Boolean;    
 begin
   
  if assigned(fPlanet.fVulkanDevice) then begin
+
+  DoNeedCopyWaterVisibilityBuffer:=aTransferHeightMap or aTransferWater;
 
   fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'Planet TransferTo',[0.25,0.25,0.5,1.0]);
 
@@ -2613,7 +2618,7 @@ begin
                                                                                                                 aInFlightFrameData.fHeightMapImage.MipMapLevels,
                                                                                                                 0,
                                                                                                                 1));
-   inc(CountImageMemoryBarriers);
+    inc(CountImageMemoryBarriers);
 
     ImageMemoryBarriers[CountImageMemoryBarriers]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                                                 TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
@@ -2689,12 +2694,36 @@ begin
 
    end;
 
-   if CountImageMemoryBarriers>0 then begin
+   CountBufferMemoryBarriers:=0;
+
+   if DoNeedCopyWaterVisibilityBuffer then begin
+
+    BufferMemoryBarriers[CountBufferMemoryBarriers]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                                                   TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT),
+                                                                                   VK_QUEUE_FAMILY_IGNORED,
+                                                                                   VK_QUEUE_FAMILY_IGNORED,
+                                                                                   fWaterVisibilityBuffer.Handle,
+                                                                                   0,
+                                                                                   fWaterVisibilityBuffer.Size);
+    inc(CountBufferMemoryBarriers);
+
+    BufferMemoryBarriers[CountBufferMemoryBarriers]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                                                   TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                                                                                   VK_QUEUE_FAMILY_IGNORED,
+                                                                                   VK_QUEUE_FAMILY_IGNORED,
+                                                                                   aInFlightFrameData.fWaterVisibilityBuffer.Handle,
+                                                                                   0,
+                                                                                   aInFlightFrameData.fWaterVisibilityBuffer.Size);
+    inc(CountBufferMemoryBarriers);
+
+   end;
+
+   if (CountImageMemoryBarriers>0) or (CountBufferMemoryBarriers>0) then begin
     aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
                                       TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
                                       0,
                                       0,nil,
-                                      0,nil,
+                                      CountBufferMemoryBarriers,@BufferMemoryBarriers[0],
                                       CountImageMemoryBarriers,@ImageMemoryBarriers[0]);
    end;
 
@@ -2762,6 +2791,15 @@ begin
                                 aInFlightFrameData.fWaterMapImage.VulkanImage.Handle,
                                 VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                                 1,@ImageCopies[0]);
+   end;
+
+   if DoNeedCopyWaterVisibilityBuffer then begin
+    BufferCopy.srcOffset:=0;
+    BufferCopy.dstOffset:=0;
+    BufferCopy.size:=fWaterVisibilityBuffer.Size;
+    aCommandBuffer.CmdCopyBuffer(fWaterVisibilityBuffer.Handle,
+                                 aInFlightFrameData.fWaterVisibilityBuffer.Handle,
+                                 1,@BufferCopy);
    end;
 
   end;
@@ -2901,14 +2939,37 @@ begin
 
    end;
 
-   if CountImageMemoryBarriers>0 then begin
+   CountBufferMemoryBarriers:=0;
+
+   if DoNeedCopyWaterVisibilityBuffer then begin
+
+    BufferMemoryBarriers[CountBufferMemoryBarriers]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT),
+                                                                                   TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                                                   VK_QUEUE_FAMILY_IGNORED,
+                                                                                   VK_QUEUE_FAMILY_IGNORED,
+                                                                                   fWaterVisibilityBuffer.Handle,
+                                                                                   0,
+                                                                                   fWaterVisibilityBuffer.Size);
+    inc(CountBufferMemoryBarriers);
+
+    BufferMemoryBarriers[CountBufferMemoryBarriers]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                                                                                   TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                                                   VK_QUEUE_FAMILY_IGNORED,
+                                                                                   VK_QUEUE_FAMILY_IGNORED,
+                                                                                   aInFlightFrameData.fWaterVisibilityBuffer.Handle,
+                                                                                   0,
+                                                                                   aInFlightFrameData.fWaterVisibilityBuffer.Size);
+    inc(CountBufferMemoryBarriers);
+
+   end;
+
+   if (CountImageMemoryBarriers>0) or (CountBufferMemoryBarriers>0) then begin
 
     aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
                                       TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
                                       0,
-                                      0,
-                                      nil,
                                       0,nil,
+                                      CountBufferMemoryBarriers,@BufferMemoryBarriers[0],
                                       CountImageMemoryBarriers,@ImageMemoryBarriers[0]);
 
    end;
