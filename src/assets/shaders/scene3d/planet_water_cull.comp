@@ -37,7 +37,7 @@ void main(){
 
   if(all(lessThan(texel, texSize))){
 
-    if(mix(pushConstants.bottomRadius, pushConstants.topRadius, clamp(texelFetch(uImageWaterMap, ivec2(texel), 0).x, 0.0, 1.0) + pushConstants.maxWaterAdditionalWavesHeight) >= mix(pushConstants.bottomRadius, pushConstants.topRadius, clamp(texelFetch(uImageHeightMap, ivec2(texel), 0).x, 0.0, 1.0))){
+    if(min(pushConstants.topRadius, mix(pushConstants.bottomRadius, pushConstants.topRadius, clamp(texelFetch(uImageWaterMap, ivec2(texel), 0).x, 0.0, 1.0)) + pushConstants.maxWaterAdditionalWavesHeight) >= mix(pushConstants.bottomRadius, pushConstants.topRadius, clamp(texelFetch(uImageHeightMap, ivec2(texel), 0).x, 0.0, 1.0))){
    
       const uvec2 tileMapXY = texel >> uvec2(pushConstants.tileShift);
    
