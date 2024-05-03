@@ -375,4 +375,36 @@ vec4 textureBicubicPlanetOctahedralMap(const in sampler2D tex, vec3 direction) {
   }
 }
 
+vec4 textureBicubicPlanetOctahedralMap(const in sampler2D tex, vec2 uv) {
+  ivec2 texSize = textureSize(tex, 0).xy;
+  vec2 invTexSize = vec2(1.0) / vec2(texSize);
+  if((any(lessThanEqual(uv, invTexSize * 2.0)) || any(greaterThanEqual(uv, vec2(1.0) - (invTexSize * 2.0))))){
+   // Handle edges with manual catmull rom interpolation using texelFetch for correct octahedral texel edge mirroring 
+   uv = fma(uv, vec2(texSize), vec2(-0.5));
+   ivec2 baseCoord = ivec2(floor(uv));
+   vec2 fractionalPart = uv - vec2(baseCoord);
+   vec4 xCoefficients = textureBicubicCoefficents(fractionalPart.x);
+   vec4 yCoefficients = textureBicubicCoefficents(fractionalPart.y);
+   return (((texelFetch(tex, wrapOctahedralTexelCoordinates(baseCoord + ivec2(-1, -1), texSize), 0) * xCoefficients.x) + 
+            (texelFetch(tex, wrapOctahedralTexelCoordinates(baseCoord + ivec2( 0, -1), texSize), 0) * xCoefficients.y) + 
+            (texelFetch(tex, wrapOctahedralTexelCoordinates(baseCoord + ivec2( 1, -1), texSize), 0) * xCoefficients.z) + 
+            (texelFetch(tex, wrapOctahedralTexelCoordinates(baseCoord + ivec2( 2, -1), texSize), 0) * xCoefficients.w)) * yCoefficients.x) + 
+          (((texelFetch(tex, wrapOctahedralTexelCoordinates(baseCoord + ivec2(-1,  0), texSize), 0) * xCoefficients.x) + 
+            (texelFetch(tex, wrapOctahedralTexelCoordinates(baseCoord + ivec2( 0,  0), texSize), 0) * xCoefficients.y) + 
+            (texelFetch(tex, wrapOctahedralTexelCoordinates(baseCoord + ivec2( 1,  0), texSize), 0) * xCoefficients.z) + 
+            (texelFetch(tex, wrapOctahedralTexelCoordinates(baseCoord + ivec2( 2,  0), texSize), 0) * xCoefficients.w)) * yCoefficients.y) + 
+          (((texelFetch(tex, wrapOctahedralTexelCoordinates(baseCoord + ivec2(-1,  1), texSize), 0) * xCoefficients.x) + 
+            (texelFetch(tex, wrapOctahedralTexelCoordinates(baseCoord + ivec2( 0,  1), texSize), 0) * xCoefficients.y) + 
+            (texelFetch(tex, wrapOctahedralTexelCoordinates(baseCoord + ivec2( 1,  1), texSize), 0) * xCoefficients.z) + 
+            (texelFetch(tex, wrapOctahedralTexelCoordinates(baseCoord + ivec2( 2,  1), texSize), 0) * xCoefficients.w)) * yCoefficients.z) + 
+          (((texelFetch(tex, wrapOctahedralTexelCoordinates(baseCoord + ivec2(-1,  2), texSize), 0) * xCoefficients.x) + 
+            (texelFetch(tex, wrapOctahedralTexelCoordinates(baseCoord + ivec2( 0,  2), texSize), 0) * xCoefficients.y) + 
+            (texelFetch(tex, wrapOctahedralTexelCoordinates(baseCoord + ivec2( 1,  2), texSize), 0) * xCoefficients.z) + 
+            (texelFetch(tex, wrapOctahedralTexelCoordinates(baseCoord + ivec2( 2,  2), texSize), 0) * xCoefficients.w)) * yCoefficients.w);
+  }else{
+    // Non-edge texels can be sampled directly with an optimized catmull rom interpolation using just nine bilinear textureLod calls
+    return textureBicubic(tex, uv, 0);
+  }
+}
+
 #endif

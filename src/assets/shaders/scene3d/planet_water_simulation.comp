@@ -1,0 +1,136 @@
+#version 450 core
+
+#pragma shader_stage(compute)
+
+// Water simulation based on "Fast Hydraulic Erosion Simulation and Visualization on GPU" by Xing Mei, Philippe Decaudin, Bao-Gang Hu
+// Link: https://hal.inria.fr/inria-00402079/document
+
+// But yet without the erosion part of the terrain part, just the water flow simulation for now.
+
+#extension GL_ARB_separate_shader_objects : enable
+#extension GL_ARB_shading_language_420pack : enable
+#extension GL_EXT_control_flow_attributes : enable
+#extension GL_EXT_samplerless_texture_functions : enable
+#extension GL_GOOGLE_include_directive : enable
+
+/* clang-format off */
+
+layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+
+layout(push_constant) uniform PushConstants {
+  float attenuation;
+  float strength;
+  float minTotalFlow;
+  float initialWaterLevel;
+  float bottomRadius;
+  float topRadius;
+  uint resolution;
+  uint frameIndex;
+} pushConstants;
+
+layout(set = 0, binding = 0) uniform sampler2D uPlanetHeightmap;
+
+// Buffers instead images because for buffers we don't to worry about Vulkan family ownership transfers, since they are no-op on the
+// most GPU architectures anyway, and we can use them as a simple shared memory between compute and graphics pipelines randomly.
+
+// However the water height map buffer is transferred to an image for rendering the water surface in the graphics pipeline every 
+// frame, but that's a different story.
+
+layout(set = 0, binding = 1, std430) readonly buffer InWaterHeightMap {
+  float values[];
+} inWaterHeightMap;
+
+layout(set = 0, binding = 2, std430) readonly buffer InWaterFlowMap {
+  vec4 values[];
+} inWaterFlowMap;
+
+layout(set = 0, binding = 3, std430) writeonly buffer OutWaterHeightMap {
+  float values[];
+} outWaterHeightMap;
+
+layout(set = 0, binding = 4, std430) writeonly buffer OutWaterFlowMap {
+  vec4 values[];
+} outWaterFlowMap;
+
+#include "octahedral.glsl"
+#include "octahedralmap.glsl"
+
+vec2 texelSize = 1.0 / vec2(pushConstants.resolution);
+
+uint getIndex(uvec2 position, ivec2 offset){
+  const ivec2 intPosition = wrapOctahedralTexelCoordinates(ivec2(position) + offset, ivec2(pushConstants.resolution));  
+  return (intPosition.y * pushConstants.resolution) + intPosition.x;
+}
+
+vec2 readHeight(ivec2 p){
+	p = clamp(wrapOctahedralTexelCoordinates(p, ivec2(pushConstants.resolution)), ivec2(0), ivec2(pushConstants.resolution - 1));
+	return vec2(
+    mix(
+      pushConstants.bottomRadius,
+      pushConstants.topRadius,
+      textureBicubicPlanetOctahedralMap(uPlanetHeightmap, vec2(p) * texelSize).x
+    ),  
+    inWaterHeightMap.values[(p.y * pushConstants.resolution) + p.x]
+  );
+} 
+
+float computeOutFlowDir(vec2 centerHeight, ivec2 pos){
+	return max(0.0, dot(centerHeight, vec2(1.0)) - dot(readHeight(pos), vec2(1.0)));
+}
+
+void main(){
+
+  const uvec2 position = uvec2(gl_GlobalInvocationID.xy);
+
+  if(all(lessThan(position, uvec2(pushConstants.resolution)))){
+
+    const uint index = (position.y * pushConstants.resolution) + position.x;
+
+#if defined(OUTFLOW)
+    
+    vec4 outFlow;
+
+    if(pushConstants.frameIndex == 0){
+
+      // The first frame is a special case and the easy one, we just need to initialize the water flow map.
+      outFlow = vec4(0.0);
+
+    }else{
+
+      const vec2 centerHeight = readHeight(ivec2(position));
+
+      outFlow = (vec4(
+        computeOutFlowDir(centerHeight, ivec2(position) + ivec2( 1,  0)),
+        computeOutFlowDir(centerHeight, ivec2(position) + ivec2( 0,  1)),
+        computeOutFlowDir(centerHeight, ivec2(position) + ivec2(-1,  0)),
+        computeOutFlowDir(centerHeight, ivec2(position) + ivec2( 0, -1))
+      ) * pushConstants.strength) + (inWaterFlowMap.values[index] * pushConstants.attenuation);
+     
+    }
+
+#else
+
+    float waterOutHeight;
+
+    if(pushConstants.frameIndex == 0){
+
+      // The first frame is a special case and the easy one, we just need to initialize the water height map.     
+      waterOutHeight = pushConstants.initialWaterLevel;
+
+    }else{
+
+      waterOutHeight = (inWaterHeightMap.values[index] - dot(inWaterFlowMap.values[index], vec4(1.0))) + 
+                       (inWaterFlowMap.values[getIndex(position, ivec2( 1,  0))].z +
+                        inWaterFlowMap.values[getIndex(position, ivec2( 0,  1))].w + 
+                        inWaterFlowMap.values[getIndex(position, ivec2(-1,  0))].x + 
+                        inWaterFlowMap.values[getIndex(position, ivec2( 0, -1))].y);
+
+    }
+
+    outWaterHeightMap.values[index] = waterOutHeight;
+
+#endif
+
+  }
+
+}
