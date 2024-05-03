@@ -63,8 +63,8 @@ uint getIndex(uvec2 position, ivec2 offset){
 }
 
 vec2 readHeight(ivec2 p){
-	p = clamp(wrapOctahedralTexelCoordinates(p, ivec2(pushConstants.resolution)), ivec2(0), ivec2(pushConstants.resolution - 1));
-	return vec2(
+  p = clamp(wrapOctahedralTexelCoordinates(p, ivec2(pushConstants.resolution)), ivec2(0), ivec2(pushConstants.resolution - 1));
+  return vec2(
     mix(
       pushConstants.bottomRadius,
       pushConstants.topRadius,
@@ -75,7 +75,7 @@ vec2 readHeight(ivec2 p){
 } 
 
 float computeOutFlowDir(vec2 centerHeight, ivec2 pos){
-	return max(0.0, dot(centerHeight, vec2(1.0)) - dot(readHeight(pos), vec2(1.0)));
+  return max(0.0, dot(centerHeight, vec2(1.0)) - dot(readHeight(pos), vec2(1.0)));
 }
 
 void main(){
