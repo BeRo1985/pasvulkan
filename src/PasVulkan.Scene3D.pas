@@ -3039,6 +3039,7 @@ type EpvScene3D=class(Exception);
        fPlanetDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fPlanetCullDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fPlanetGrassCullAndMeshGenerationDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
+       fPlanetWaterCullDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fPlanetWaterPrepassDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fPlanetWaterRenderDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fMeshComputeVulkanDescriptorSet0Layout:TpvVulkanDescriptorSetLayout;
@@ -3452,6 +3453,7 @@ type EpvScene3D=class(Exception);
        property PlanetDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fPlanetDescriptorSetLayout;
        property PlanetCullDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fPlanetCullDescriptorSetLayout;
        property PlanetGrassCullAndMeshGenerationDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fPlanetGrassCullAndMeshGenerationDescriptorSetLayout;
+       property PlanetWaterCullDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fPlanetWaterCullDescriptorSetLayout;
        property PlanetWaterPrepassDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fPlanetWaterPrepassDescriptorSetLayout;
        property PlanetWaterRenderDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fPlanetWaterRenderDescriptorSetLayout;
        property MeshComputeVulkanDescriptorSet0Layout:TpvVulkanDescriptorSetLayout read fMeshComputeVulkanDescriptorSet0Layout;
@@ -21212,6 +21214,8 @@ begin
 
   fPlanetGrassCullAndMeshGenerationDescriptorSetLayout:=TpvScene3DPlanet.CreatePlanetGrassCullAndMeshGenerationDescriptorSetLayout(fVulkanDevice,fMeshShaderSupport);
 
+  fPlanetWaterCullDescriptorSetLayout:=TpvScene3DPlanet.CreatePlanetWaterCullDescriptorSetLayout(fVulkanDevice);
+
   fPlanetWaterPrepassDescriptorSetLayout:=TpvScene3DPlanet.CreatePlanetWaterPrepassDescriptorSetLayout(fVulkanDevice);
 
   fPlanetWaterRenderDescriptorSetLayout:=TpvScene3DPlanet.CreatePlanetWaterRenderDescriptorSetLayout(fVulkanDevice);
@@ -21577,6 +21581,8 @@ begin
  FreeAndNil(fPlanetCullDescriptorSetLayout);
 
  FreeAndNil(fPlanetGrassCullAndMeshGenerationDescriptorSetLayout);
+
+ FreeAndNil(fPlanetWaterCullDescriptorSetLayout);
 
  FreeAndNil(fPlanetWaterPrepassDescriptorSetLayout);
 
