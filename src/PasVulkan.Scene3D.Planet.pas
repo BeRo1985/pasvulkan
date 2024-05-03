@@ -10858,6 +10858,15 @@ begin
    fWaterRenderDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(1,
                                                                        0,
                                                                        1,
+                                                                       TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                                       [],
+                                                                       [fPlanet.InFlightFrameDataList[InFlightFrameIndex].fWaterVisibilityBuffer.DescriptorBufferInfo],
+                                                                       [],
+                                                                       false);
+
+   fWaterRenderDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(2,
+                                                                       0,
+                                                                       1,
                                                                        TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
                                                                        [TVkDescriptorImageInfo.Create(TpvScene3DRendererInstance(fRendererInstance).Renderer.ClampedNearestSampler.Handle,
                                                                                                       fVulkanWaterAccelerationImage.VulkanArrayImageView.Handle,
@@ -11994,6 +12003,15 @@ begin
                    [],
                    0);
  result.AddBinding(1,
+                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                   1,
+                   TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or
+                   TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT) or
+                   TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT) or
+                   TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                   [],
+                   0);
+ result.AddBinding(2,
                    TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
                    1,
                    TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or
@@ -12011,7 +12029,7 @@ begin
  result:=TpvVulkanDescriptorPool.Create(aVulkanDevice,
                                         TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
                                         aCountInFlightFrames);
- result.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),1*aCountInFlightFrames);
+ result.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),2*aCountInFlightFrames);
  result.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),1*aCountInFlightFrames);
  result.Initialize;
  aVulkanDevice.DebugUtils.SetObjectName(result.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'TpvScene3DPlanet.PlanetWaterRenderDescriptorPool');

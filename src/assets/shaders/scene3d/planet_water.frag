@@ -107,7 +107,7 @@ layout(set = 2, binding = 0) uniform sampler2D uPlanetTextures[]; // 0 = height 
 // Per water render pass descriptor set
 
 #if !(defined(TESSELLATION) || defined(UNDERWATER))
-layout(set = 3, binding = 1) uniform sampler2DArray uTextureWaterAcceleration;
+layout(set = 3, binding = 2) uniform sampler2DArray uTextureWaterAcceleration;
 #endif
 
 #define PLANET_WATER

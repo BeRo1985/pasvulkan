@@ -91,8 +91,9 @@ void main(){
                            0xffffffffu; 
   const bool underWater = (maskedFlags & (1u << 0u)) != 0u;
   const bool isVisible = (anyFlags & (1u << 1u)) != 0u;
+  const bool isWaterVisible = (anyFlags & (1u << 2u)) != 0u;
   //const bool aboveGround = (anyFlags & (1u << 2u)) != 0u;
-  bool visible = isVisible && /*aboveGround &&*/ !underWater;
+  bool visible = isVisible && isWaterVisible && /*aboveGround &&*/ !underWater;
   if(visible){
 #ifdef TRIANGLES
     vec3 faceNormal = normalize(inBlocks[0].normal + inBlocks[1].normal + inBlocks[2].normal);
