@@ -215,9 +215,9 @@ type TpvScene3DPlanets=class;
               fBlendMapImage:TpvScene3DRendererImage2D; // A2B10G10R10_UNORM_PACK32
               fGrassMapImage:TpvScene3DRendererImage2D; // R8G8B8A8_UNORM
               fWaterMapImage:TpvScene3DRendererImage2D; // R32_SFLOAT
-              fWaterHeightMapBuffers:array[0..1] of TVulkanBuffer;
-              fWaterFlowMapBuffers:array[0..1] of TVulkanBuffer;
-              fWaterMapBuffer:TpvVulkanBuffer;
+              fWaterHeightMapBuffers:array[0..1] of TVulkanBuffer; // Double-buffered
+              fWaterFlowMapBuffers:array[0..1] of TVulkanBuffer; // Double-buffered
+              fWaterMapBuffer:TpvVulkanBuffer; // The target buffer for the water map from the double-buffered water height map buffers, where the graphics pipeline reads from. 
               fWaterVisibilityBuffer:TpvVulkanBuffer;
               fTileDirtyMap:TpvScene3DPlanet.TData.TTileDirtyMap;
               fTileExpandedDirtyMap:TpvScene3DPlanet.TData.TTileDirtyMap;
