@@ -10981,7 +10981,7 @@ begin
 
  fGrassMapResolution:=fHeightMapResolution;
 
- fWaterMapResolution:=fHeightMapResolution;
+ fWaterMapResolution:=fHeightMapResolution; // needs to be matched with fHeightMapResolution for now
 
  fTileMapResolution:=Min(Max(fHeightMapResolution shr 8,32),fHeightMapResolution);
 
