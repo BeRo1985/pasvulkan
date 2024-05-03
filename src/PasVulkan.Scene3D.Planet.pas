@@ -1308,6 +1308,7 @@ type TpvScene3DPlanets=class;
        fVisualMeshVertexGeneration:TMeshVertexGeneration;
        fVisualMeshDistanceGeneration:TMeshDistanceGeneration;
        fPhysicsMeshVertexGeneration:TMeshVertexGeneration;
+       fWaterCullPass:TWaterCullPass;
        fRayIntersection:TRayIntersection;
        fCommandBufferLevel:TpvInt32;
        fCommandBufferLock:TPasMPInt32;
@@ -8147,6 +8148,10 @@ begin
  fDescriptorPool:=TpvVulkanDescriptorPool.Create(fVulkanDevice,
                                                  TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
                                                  1);
+ fDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,2);
+ fDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,1);
+ fDescriptorPool.Initialize;
+
  fVulkanDevice.DebugUtils.SetObjectName(fDescriptorPool.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'TpvScene3DPlanet.TWaterCullPass.fDescriptorPool');
 
  fDescriptorSet:=TpvVulkanDescriptorSet.Create(fDescriptorPool,
@@ -8158,7 +8163,7 @@ begin
                                      TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
                                      [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,
                                                                     fPlanet.fData.fHeightMapImage.VulkanImageViews[0].Handle,
-                                                                    VK_IMAGE_LAYOUT_GENERAL)],
+                                                                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
                                      [],
                                      [],
                                      false);
@@ -8169,7 +8174,7 @@ begin
                                      TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
                                      [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,
                                                                     fPlanet.fData.fWaterMapImage.VulkanImageView.Handle,
-                                                                    VK_IMAGE_LAYOUT_GENERAL)],
+                                                                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
                                      [],
                                      [],
                                      false);
@@ -8177,7 +8182,7 @@ begin
  fDescriptorSet.WriteToDescriptorSet(2,
                                      0,
                                      1,
-                                     TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
+                                     TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
                                      [],
                                      [fPlanet.fData.fWaterVisibilityBuffer.DescriptorBufferInfo],
                                      [],
@@ -8211,7 +8216,50 @@ begin
 end;
 
 procedure TpvScene3DPlanet.TWaterCullPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer);
+var BufferMemoryBarrier:TVkBufferMemoryBarrier;
 begin
+
+ fPushConstants.TileMapResolution:=fPlanet.fTileMapResolution;
+ fPushConstants.TileShift:=fPlanet.fTileMapShift;
+ fPushConstants.BottomRadius:=fPlanet.fBottomRadius;
+ fPushConstants.TopRadius:=fPlanet.fTopRadius;
+ fPushConstants.MaxWaterAdditionalWavesHeight:=0.25;
+
+ BufferMemoryBarrier:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                    TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                                                    VK_QUEUE_FAMILY_IGNORED,
+                                                    VK_QUEUE_FAMILY_IGNORED,
+                                                    fPlanet.fData.fWaterVisibilityBuffer.Handle,
+                                                    0,
+                                                    VK_WHOLE_SIZE);
+
+ aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT) or
+                                   TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                   TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                   0,
+                                   0,nil,
+                                   1,@BufferMemoryBarrier,
+                                   0,nil); 
+
+ aCommandBuffer.CmdFillBuffer(fPlanet.fData.fWaterVisibilityBuffer.Handle,
+                              0,
+                              fPlanet.fData.fWaterVisibilityBuffer.Size,
+                              0);
+
+ BufferMemoryBarrier:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                                                    TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                    VK_QUEUE_FAMILY_IGNORED,
+                                                    VK_QUEUE_FAMILY_IGNORED,
+                                                    fPlanet.fData.fWaterVisibilityBuffer.Handle,
+                                                    0,
+                                                    VK_WHOLE_SIZE);                                  
+
+ aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                   TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                   0,
+                                   0,nil,
+                                   1,@BufferMemoryBarrier,
+                                   0,nil);   
   
  aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,fPipeline.Handle);
 
@@ -8233,6 +8281,20 @@ begin
                             (fPlanet.fVisualResolution*15) shr 4,
                             1);
 
+ BufferMemoryBarrier:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                    TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT) or TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT),
+                                                    VK_QUEUE_FAMILY_IGNORED,
+                                                    VK_QUEUE_FAMILY_IGNORED,
+                                                    fPlanet.fData.fWaterVisibilityBuffer.Handle,
+                                                    0,
+                                                    VK_WHOLE_SIZE); 
+
+ aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                   TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                   0,
+                                   0,nil,
+                                   1,@BufferMemoryBarrier,
+                                   0,nil);
 
 end;
 
@@ -11042,6 +11104,8 @@ begin
 
  fVisualMeshDistanceGeneration:=TMeshDistanceGeneration.Create(self);
 
+ fWaterCullPass:=TWaterCullPass.Create(self);
+
  fRayIntersection:=TRayIntersection.Create(self);
 
  fCommandBufferLevel:=0;
@@ -11270,6 +11334,8 @@ begin
  FreeAndNil(fVisualMeshIndexGeneration); }
 
  FreeAndNil(fVisualMeshDistanceGeneration);
+
+ FreeAndNil(fWaterCullPass);
 
  FreeAndNil(fNormalMapMipMapGeneration);
 
@@ -12124,7 +12190,7 @@ procedure TpvScene3DPlanet.Update(const aInFlightFrameIndex:TpvSizeInt);
 var QueueTileIndex:TpvSizeInt;
     TileIndex:TpvUInt32;
     Source:Pointer;
-    UpdateRenderIndex:Boolean;
+    UpdateRenderIndex,UpdateWaterVisibility:Boolean;
     RaytracingTile:TRaytracingTile;
     CurrentRaytracingTileQueue:TRaytracingTiles;
 begin
@@ -12132,6 +12198,8 @@ begin
  fData.fCountDirtyTiles:=0;
 
  UpdateRenderIndex:=false;
+
+ UpdateWaterVisibility:=false;
 
  if fData.fModifyGrassMapActive then begin
 
@@ -12161,6 +12229,7 @@ if fData.fModifyWaterMapActive then begin
 
     if fData.fModifyWaterMapActive then begin
      fWaterMapModification.Execute(fVulkanComputeCommandBuffer);
+     UpdateWaterVisibility:=true;
     end;
 
    finally
@@ -12231,6 +12300,8 @@ if fData.fModifyWaterMapActive then begin
      fData.fVisualMeshVertexBufferUpdateIndex:=(fData.fVisualMeshVertexBufferUpdateIndex+1) and 1;
 
      UpdateRenderIndex:=true;
+
+     UpdateWaterVisibility:=true;
 
     end;
 
@@ -12348,6 +12419,15 @@ if fData.fModifyWaterMapActive then begin
 
     end;
 
+   end;
+
+   if UpdateWaterVisibility then begin
+    BeginUpdate;
+    try
+     fWaterCullPass.Execute(fVulkanComputeCommandBuffer);
+    finally
+     EndUpdate;
+    end;
    end;
 
    if UpdateRenderIndex then begin
