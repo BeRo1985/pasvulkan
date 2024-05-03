@@ -42,8 +42,6 @@ void main(){
     );
 
     if(d > 0.0){
-
-      float planetHeight = imageLoad(uImageHeightMap, texel).x;
       
       float height = imageLoad(uImageWaterMap, texel).x + (d * pushConstants.innerRadiusValueMinMax.y);
           
