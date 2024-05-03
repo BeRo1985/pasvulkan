@@ -12500,21 +12500,21 @@ if fData.fModifyWaterMapActive then begin
 
    end;
 
-   if UpdateWaterVisibility then begin
-    BeginUpdate;
-    try
-     fWaterCullPass.Execute(fVulkanComputeCommandBuffer);
-    finally
-     EndUpdate;
-    end;
-   end;
-
    if UpdateRenderIndex then begin
     TPasMPInterlocked.Write(fData.fVisualMeshVertexBufferRenderIndex,fData.fVisualMeshVertexBufferNextRenderIndex);
    end;
 
   end;
 
+ end;
+
+ if assigned(fVulkanDevice) and UpdateWaterVisibility then begin
+  BeginUpdate;
+  try
+   fWaterCullPass.Execute(fVulkanComputeCommandBuffer);
+  finally
+   EndUpdate;
+  end;
  end;
 
 end;
