@@ -940,6 +940,36 @@ type TpvScene3DPlanets=class;
                property PlanetPushConstants:TPlanetPushConstants read fPlanetPushConstants write fPlanetPushConstants;
 //             property GrassPushConstants:TGrassPushConstants read fGrassPushConstants write fGrassPushConstants;
             end;
+            { TWaterCullPass }
+            TWaterCullPass=class
+             public
+              type TPushConstants=packed record
+                    TileMapResolution:TpvUInt32;
+                    TileShift:TpvUInt32;
+                    BottomRadius:TpvFloat;
+                    TopRadius:TpvFloat;
+                    MaxWaterAdditionalWavesHeight:TpvFloat;
+                   end;
+                   PPushConstants=^TPushConstants;
+             private
+              fPlanet:TpvScene3DPlanet;
+              fScene3D:TObject;
+              fVulkanDevice:TpvVulkanDevice;
+              fComputeShaderModule:TpvVulkanShaderModule;
+              fComputeShaderStage:TpvVulkanPipelineShaderStage;
+              fDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
+              fDescriptorPool:TpvVulkanDescriptorPool;
+              fDescriptorSet:TpvVulkanDescriptorSet;
+              fPipelineLayout:TpvVulkanPipelineLayout;
+              fPipeline:TpvVulkanComputePipeline;
+              fPushConstants:TPushConstants;
+             public
+              constructor Create(const aPlanet:TpvScene3DPlanet); reintroduce;
+              destructor Destroy; override;
+              procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer);
+             public
+              property PushConstants:TPushConstants read fPushConstants write fPushConstants;
+            end;
             { TWaterPrepass }
             TWaterPrepass=class
              public
@@ -8049,6 +8079,160 @@ begin
  finally
   TpvScene3DPlanets(TpvScene3D(fScene3D).Planets).Lock.ReleaseRead;
  end;
+
+end;
+
+{ TpvScene3DPlanet.TWaterCullPass }
+
+constructor TpvScene3DPlanet.TWaterCullPass.Create(const aPlanet:TpvScene3DPlanet);
+var Stream:TStream;
+begin
+
+ inherited Create;
+
+ fPlanet:=aPlanet;
+
+ fVulkanDevice:=TpvScene3D(fPlanet.fScene3D).VulkanDevice;
+
+ Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_water_cull_comp.spv');
+ try
+  fComputeShaderModule:=TpvVulkanShaderModule.Create(fVulkanDevice,Stream);
+ finally
+  FreeAndNil(Stream);
+ end;
+ fVulkanDevice.DebugUtils.SetObjectName(fComputeShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DPlanet.TWaterCullPass.fComputeShaderModule');
+ 
+ fComputeShaderStage:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_COMPUTE_BIT,fComputeShaderModule,'main');
+ 
+ fDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(fVulkanDevice);
+ 
+ fDescriptorSetLayout.AddBinding(0, // Height map
+                                 TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
+                                 1,
+                                 TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                 [],
+                                 0);
+
+ fDescriptorSetLayout.AddBinding(1, // Water map
+                                 TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
+                                 1,
+                                 TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                 [],
+                                 0);
+
+ fDescriptorSetLayout.AddBinding(2, // Water visibility buffer
+                                 TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                 1,
+                                 TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                 [],
+                                 0); 
+ fDescriptorSetLayout.Initialize;
+
+ fPipelineLayout:=TpvVulkanPipelineLayout.Create(fVulkanDevice);
+ fPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),0,SizeOf(TPushConstants));
+ fPipelineLayout.AddDescriptorSetLayout(fDescriptorSetLayout);
+ fPipelineLayout.Initialize;
+
+ fVulkanDevice.DebugUtils.SetObjectName(fPipelineLayout.Handle,VK_OBJECT_TYPE_PIPELINE_LAYOUT,'TpvScene3DPlanet.TWaterCullPass.fPipelineLayout');
+ 
+ fPipeline:=TpvVulkanComputePipeline.Create(fVulkanDevice,
+                                            pvApplication.VulkanPipelineCache,
+                                            TVkPipelineCreateFlags(0),
+                                            fComputeShaderStage,
+                                            fPipelineLayout,
+                                            nil,
+                                            0);
+ fVulkanDevice.DebugUtils.SetObjectName(fPipeline.Handle,VK_OBJECT_TYPE_PIPELINE,'TpvScene3DPlanet.TWaterCullPass.fPipeline');
+
+ fDescriptorPool:=TpvVulkanDescriptorPool.Create(fVulkanDevice,
+                                                 TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
+                                                 1);
+ fVulkanDevice.DebugUtils.SetObjectName(fDescriptorPool.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'TpvScene3DPlanet.TWaterCullPass.fDescriptorPool');
+
+ fDescriptorSet:=TpvVulkanDescriptorSet.Create(fDescriptorPool,
+                                               fDescriptorSetLayout);
+
+ fDescriptorSet.WriteToDescriptorSet(0,
+                                     0,
+                                     1,
+                                     TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
+                                     [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,
+                                                                    fPlanet.fData.fHeightMapImage.VulkanImageViews[0].Handle,
+                                                                    VK_IMAGE_LAYOUT_GENERAL)],
+                                     [],
+                                     [],
+                                     false);
+
+ fDescriptorSet.WriteToDescriptorSet(1,
+                                     0,
+                                     1,
+                                     TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
+                                     [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,
+                                                                    fPlanet.fData.fWaterMapImage.VulkanImageView.Handle,
+                                                                    VK_IMAGE_LAYOUT_GENERAL)],
+                                     [],
+                                     [],
+                                     false);
+
+ fDescriptorSet.WriteToDescriptorSet(2,
+                                     0,
+                                     1,
+                                     TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
+                                     [],
+                                     [fPlanet.fData.fWaterVisibilityBuffer.DescriptorBufferInfo],
+                                     [],
+                                     false);
+
+ fDescriptorSet.Flush;
+
+ fVulkanDevice.DebugUtils.SetObjectName(fDescriptorSet.Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET,'TpvScene3DPlanet.TWaterCullPass.fDescriptorSet');
+
+end;
+
+destructor TpvScene3DPlanet.TWaterCullPass.Destroy;
+begin
+
+ FreeAndNil(fPipeline);
+
+ FreeAndNil(fPipelineLayout);
+                                                
+ FreeAndNil(fDescriptorSet);
+
+ FreeAndNil(fDescriptorPool);
+
+ FreeAndNil(fDescriptorSetLayout);
+
+ FreeAndNil(fComputeShaderStage);
+
+ FreeAndNil(fComputeShaderModule);
+
+ inherited Destroy;
+
+end;
+
+procedure TpvScene3DPlanet.TWaterCullPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer);
+begin
+  
+ aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,fPipeline.Handle);
+
+ aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE,
+                                      fPipelineLayout.Handle,
+                                      0,
+                                      1,
+                                      @fDescriptorSet.Handle,
+                                      0,
+                                      nil);
+
+ aCommandBuffer.CmdPushConstants(fPipelineLayout.Handle,
+                                 TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                 0,
+                                 SizeOf(TPushConstants),
+                                 @fPushConstants);
+
+ aCommandBuffer.CmdDispatch((fPlanet.fVisualResolution*15) shr 4,
+                            (fPlanet.fVisualResolution*15) shr 4,
+                            1);
+
 
 end;
 
