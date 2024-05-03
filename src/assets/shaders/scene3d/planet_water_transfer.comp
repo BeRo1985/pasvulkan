@@ -29,7 +29,7 @@ layout(push_constant) uniform PushConstants {
   uint frameIndex;
 } pushConstants;
 
-// This shader transforms the relative water height map buffer to a normalized water height map image for rendering.
+// This shader transforms the relative water height map buffer to an absolute water height map image for rendering.
 
 layout(set = 0, binding = 0) uniform sampler2D uPlanetHeightmap;
 
@@ -67,7 +67,7 @@ void main(){
     vec2 heights = readHeight(ivec2(position));
     float height = (heights.y < 1e-6) 
                      ? -1.0 // no water
-                     : (dot(heights, vec2(1.0)) - pushConstants.bottomRadius) / (pushConstants.topRadius - pushConstants.bottomRadius); // normalized water height
+                     : dot(heights, vec2(1.0)); // water
     
     imageStore(uImageWaterMap, ivec2(position), vec4(height));
 
