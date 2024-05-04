@@ -13,6 +13,13 @@
 #extension GL_EXT_samplerless_texture_functions : enable
 #extension GL_GOOGLE_include_directive : enable
 
+#if 0
+// 16-bit floats
+#extension GL_EXT_shader_explicit_arithmetic_types_float16 : enable
+#extension GL_EXT_shader_explicit_arithmetic_types_int16 : enable
+#extension GL_EXT_shader_16bit_storage : enable
+#endif
+
 /* clang-format off */
 
 layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
@@ -37,20 +44,28 @@ layout(set = 0, binding = 0) uniform sampler2D uPlanetHeightmap;
 // However the water height map buffer is transferred to an image for rendering the water surface in the graphics pipeline every 
 // frame, but that's a different story.
 
+#if 0
+#define _float float16_t
+#define _vec4 f16vec4
+#else
+#define _float float
+#define _vec4 vec4
+#endif
+
 layout(set = 0, binding = 1, std430) readonly buffer InWaterHeightMap {
-  float values[];
+  _float values[];
 } inWaterHeightMap;
 
 layout(set = 0, binding = 2, std430) readonly buffer InWaterFlowMap {
-  vec4 values[];
+  _vec4 values[];
 } inWaterFlowMap;
 
 layout(set = 0, binding = 3, std430) writeonly buffer OutWaterHeightMap {
-  float values[];
+  _float values[];
 } outWaterHeightMap;
 
 layout(set = 0, binding = 4, std430) writeonly buffer OutWaterFlowMap {
-  vec4 values[];
+  _vec4 values[];
 } outWaterFlowMap;
 
 #include "octahedral.glsl"
@@ -63,6 +78,7 @@ uint getIndex(uvec2 position, ivec2 offset){
   return (intPosition.y * pushConstants.waterHeightMapResolution) + intPosition.x;
 }
 
+#if defined(OUTFLOW)
 vec2 readHeight(ivec2 p){
   p = clamp(wrapOctahedralTexelCoordinates(p, ivec2(pushConstants.waterHeightMapResolution)), ivec2(0), ivec2(pushConstants.waterHeightMapResolution - 1));
   return vec2(
@@ -73,13 +89,14 @@ vec2 readHeight(ivec2 p){
         ? texelFetch(uPlanetHeightmap, ivec2(p), 0).x // When the planet height map resolution is the same as the water height map resolution, we can just use texelFetch.
         : textureBicubicPlanetOctahedralMap(uPlanetHeightmap, vec2(p) * texelSize).x // Otherwise we need to use interpolation.
     ),  
-    inWaterHeightMap.values[(p.y * pushConstants.waterHeightMapResolution) + p.x]
+    float(inWaterHeightMap.values[(p.y * pushConstants.waterHeightMapResolution) + p.x])
   );
 } 
 
 float computeOutFlowDir(vec2 centerHeight, ivec2 pos){
   return max(0.0, dot(centerHeight, vec2(1.0)) - dot(readHeight(pos), vec2(1.0)));
 }
+#endif
 
 void main(){
 
@@ -102,7 +119,7 @@ void main(){
 
       const vec2 centerHeight = readHeight(ivec2(position));
 
-      const vec4 oldFlow = inWaterFlowMap.values[index];
+      const vec4 oldFlow = vec4(inWaterFlowMap.values[index]);
 
       const vec4 newFlow = vec4(
         computeOutFlowDir(centerHeight, ivec2(position) + ivec2( 1,  0)),
@@ -115,7 +132,7 @@ void main(){
      
     }
 
-    outWaterFlowMap.values[index] = outFlow;
+    outWaterFlowMap.values[index] = _vec4(outFlow);
 
 #else
 
@@ -128,7 +145,7 @@ void main(){
 
     }else{
 
-      const float totalInFlow = dot(inWaterFlowMap.values[index], vec4(1.0));
+      const float totalInFlow = dot(vec4(inWaterFlowMap.values[index]), vec4(1.0));
 
       const float totalOutFlow = inWaterFlowMap.values[getIndex(position, ivec2( 1,  0))].z +
                                  inWaterFlowMap.values[getIndex(position, ivec2( 0,  1))].w + 
@@ -139,7 +156,7 @@ void main(){
 
     }
 
-    outWaterHeightMap.values[index] = waterOutHeight;
+    outWaterHeightMap.values[index] = _float(waterOutHeight);
 
 #endif
 

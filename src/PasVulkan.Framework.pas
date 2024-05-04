@@ -421,6 +421,9 @@ type EpvVulkanException=class(Exception);
        fMultiviewPropertiesKHR:TVkPhysicalDeviceMultiviewPropertiesKHR;
        fMultiDrawFeaturesEXT:TVkPhysicalDeviceMultiDrawFeaturesEXT;
        fMultiDrawPropertiesEXT:TVkPhysicalDeviceMultiDrawPropertiesEXT;
+{      fFloatControlsPropertiesKHR:TVkPhysicalDeviceFloatControlsPropertiesKHR;
+       fFloat16Int8FeaturesKHR:TVkPhysicalDeviceFloat16Int8FeaturesKHR;
+       fShaderFloat16Int8FeaturesKHR:TVkPhysicalDeviceShaderFloat16Int8Features;}
        fSamplerFilterMinmaxPropertiesEXT:TVkPhysicalDeviceSamplerFilterMinmaxPropertiesEXT;
        fConservativeRasterizationPropertiesEXT:TVkPhysicalDeviceConservativeRasterizationPropertiesEXT;
        fDescriptorIndexingFeaturesEXT:TVkPhysicalDeviceDescriptorIndexingFeaturesEXT;

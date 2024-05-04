@@ -527,6 +527,18 @@ begin
  if aVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME)>=0 then begin
   aVulkanDevice.EnabledExtensionNames.Add(VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME);
  end;
+{if aVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_KHR_SHADER_FLOAT_CONTROLS_EXTENSION_NAME)>=0 then begin
+  aVulkanDevice.EnabledExtensionNames.Add(VK_KHR_SHADER_FLOAT_CONTROLS_EXTENSION_NAME);
+ end;
+ if aVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_KHR_SHADER_FLOAT16_INT8_EXTENSION_NAME)>=0 then begin
+  aVulkanDevice.EnabledExtensionNames.Add(VK_KHR_SHADER_FLOAT16_INT8_EXTENSION_NAME);
+ end;
+ if aVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_KHR_8BIT_STORAGE_EXTENSION_NAME)>=0 then begin
+  aVulkanDevice.EnabledExtensionNames.Add(VK_KHR_8BIT_STORAGE_EXTENSION_NAME);
+ end;
+ if aVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_KHR_16BIT_STORAGE_EXTENSION_NAME)>=0 then begin
+  aVulkanDevice.EnabledExtensionNames.Add(VK_KHR_16BIT_STORAGE_EXTENSION_NAME);
+ end;//}
  if aVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_EXT_HOST_QUERY_RESET_EXTENSION_NAME)>=0 then begin
   aVulkanDevice.EnabledExtensionNames.Add(VK_EXT_HOST_QUERY_RESET_EXTENSION_NAME);
  end;
