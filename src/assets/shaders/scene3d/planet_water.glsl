@@ -135,7 +135,7 @@ float getSphereHeight(vec3 n, int i) {
   vec3 nc = mix(n, vec3(1e-6), lessThan(abs(n), vec3(1e-6)));
   vec2 uv = vec2((atan(abs(nc.x / nc.z)) / 6.283185307179586476925286766559) + 0.5, acos(n.y) / 3.1415926535897932384626433832795); 
   float w = getWaves(uv * 128.0, i) * 0.01; 
-  return clamp(textureBicubicPlanetOctahedralMap(uPlanetTextures[PLANET_TEXTURE_WATERMAP], n).x + w, 0.0, 1.0);
+  return textureBicubicPlanetOctahedralMap(uPlanetTextures[PLANET_TEXTURE_WATERMAP], n).x + w;
 }
 
 float getSphereHeight(vec3 n) {
@@ -143,7 +143,7 @@ float getSphereHeight(vec3 n) {
 }
 
 float mapHeight(vec3 p, float h){
-  return length(planetCenter - p) - mix(planetBottomRadius, planetTopRadius, h);
+  return length(planetCenter - p) - clamp(h, planetBottomRadius * 0.5, planetTopRadius);
 }
 
 float mapEx(vec3 p, int i){
