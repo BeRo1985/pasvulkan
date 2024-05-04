@@ -23374,7 +23374,7 @@ begin
    fLastProcessFrameCPUTimeValues[fProcessFrameTimerQueryUploadFrameDataIndex]:=pvApplication.HighResolutionTimer.GetTime-BeginTime;
    fProcessFrameTimerQueries[aInFlightFrameIndex].Stop(fVulkanProcessFrameQueue,CommandBuffer);
 
-   fProcessFrameTimerQueryPlanetSimulationIndex:=fProcessFrameTimerQueries[aInFlightFrameIndex].Start(fVulkanProcessFrameQueue,CommandBuffer,'Upload frame data');
+   fProcessFrameTimerQueryPlanetSimulationIndex:=fProcessFrameTimerQueries[aInFlightFrameIndex].Start(fVulkanProcessFrameQueue,CommandBuffer,'Planet Simulation');
    BeginTime:=pvApplication.HighResolutionTimer.GetTime;
    fVulkanDevice.DebugUtils.CmdBufLabelBegin(CommandBuffer,'Planet Simulation',[0.25,1.0,0.5,1.0]);
    ProcessPlanetSimulations(CommandBuffer,aInFlightFrameIndex);
