@@ -1424,6 +1424,7 @@ type TpvScene3DPlanets=class;
        procedure FrameUpdate(const aInFlightFrameIndex:TpvSizeInt);
        procedure Prepare(const aInFlightFrameIndex:TpvSizeInt;const aRendererInstance:TObject;const aRenderPassIndex:TpvSizeInt;const aViewPortWidth,aViewPortHeight:TpvInt32;const aMainViewPort:Boolean);
        procedure UploadFrame(const aInFlightFrameIndex:TpvSizeInt);
+       procedure ProcessSimulation(const aInFlightFrameIndex:TpvSizeInt;var aCommandBuffer:TpvVulkanCommandBuffer);
        procedure BeginFrame(const aInFlightFrameIndex:TpvSizeInt;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil);
        procedure EndFrame(const aInFlightFrameIndex:TpvSizeInt;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil);
        procedure ExportPhysicsMeshToOBJ(const aStream:TStream); overload;
@@ -13246,6 +13247,17 @@ begin
 
 end;
 
+procedure TpvScene3DPlanet.ProcessSimulation(const aInFlightFrameIndex:TpvSizeInt;var aCommandBuffer:TpvVulkanCommandBuffer);
+var InFlightFrameData:TData;
+begin
+ if assigned(fVulkanDevice) and (aInFlightFrameIndex>=0) then begin
+  InFlightFrameData:=fInFlightFrameDataList[aInFlightFrameIndex];
+  if assigned(InFlightFrameData) then begin
+   fWaterSimulation.Execute(aCommandBuffer,TpvScene3D(fScene3D).DeltaTimes^[aInFlightFrameIndex]);
+  end;
+ end;
+end;
+
 procedure TpvScene3DPlanet.BeginFrame(const aInFlightFrameIndex:TpvSizeInt;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence);
 var InFlightFrameData:TData;
     CommandBuffer:TpvVulkanCommandBuffer;
@@ -13266,8 +13278,6 @@ begin
    CommandBuffer.BeginRecording(TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT));
 
    InFlightFrameData.AcquireOnUniversalQueue(CommandBuffer);
-
-   fWaterSimulation.Execute(CommandBuffer,TpvScene3D(fScene3D).DeltaTimes^[aInFlightFrameIndex]);
 
    CommandBuffer.EndRecording;
 
