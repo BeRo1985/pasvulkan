@@ -4131,7 +4131,7 @@ begin
                                        fInterpolationPipelineLayout.Handle,
                                        0,
                                        1,
-                                       @fInterpolationDescriptorSets[0].Handle,
+                                       @fInterpolationDescriptorSets[fPlanet.fData.fWaterBufferIndex and 1].Handle,
                                        0,
                                        nil);
 
