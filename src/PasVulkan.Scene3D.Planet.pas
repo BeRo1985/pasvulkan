@@ -13267,6 +13267,8 @@ begin
 
    InFlightFrameData.AcquireOnUniversalQueue(CommandBuffer);
 
+   fWaterSimulation.Execute(CommandBuffer,TpvScene3D(fScene3D).DeltaTimes^[aInFlightFrameIndex]);
+
    CommandBuffer.EndRecording;
 
    CommandBuffer.Execute(fVulkanUniversalQueue,

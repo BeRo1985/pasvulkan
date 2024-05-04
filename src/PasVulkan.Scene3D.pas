@@ -3000,6 +3000,10 @@ type EpvScene3D=class(Exception);
             PRaytracingGroupInstanceNodeQueueItem=^TRaytracingGroupInstanceNodeQueueItem;
             TRaytracingGroupInstanceNodeQueue=TpvDynamicQueue<TRaytracingGroupInstanceNodeQueueItem>;
             TRaytracingAccelerationStructureInstanceList=TpvDynamicArrayList<TVkAccelerationStructureInstanceKHR>;
+            TDeltaTime=TpvDouble;
+            PDeltaTime=^TDeltaTime;
+            TDeltaTimes=array[0..MaxInFlightFrames-1] of TDeltaTime;
+            PDeltaTimes=^TDeltaTimes;
       public
        const DoubleSidedFaceCullingModes:array[TDoubleSided,TFrontFacesInversed] of TFaceCullingMode=
               (
@@ -3241,6 +3245,8 @@ type EpvScene3D=class(Exception);
        fProcessFrameTimerQueryUpdateRaytracingIndex:TpvSizeInt;
        fSceneTimes:TSceneTimes;
        fPointerToSceneTimes:PSceneTimes;
+       fDeltaTimes:TDeltaTimes;
+       fPointerToDeltaTimes:PDeltaTimes;
        fVirtualReality:TpvVirtualReality;
        procedure NewImageDescriptorGeneration;
        procedure NewMaterialDataGeneration;
@@ -3434,6 +3440,7 @@ type EpvScene3D=class(Exception);
        property LastProcessFrameTimerQueryResults:TpvTimerQuery.TResults read fLastProcessFrameTimerQueryResults;
       public
        property SceneTimes:PSceneTimes read fPointerToSceneTimes;
+       property DeltaTimes:PDeltaTimes read fPointerToDeltaTimes;
       published
        property SkyBoxTextureImage:TpvScene3D.TImage read fSkyBoxTextureImage write fSkyBoxTextureImage;
        property SkyBoxMode:TpvScene3DEnvironmentMode read fSkyBoxMode write fSkyBoxMode;
@@ -21059,6 +21066,10 @@ begin
  FillChar(fSceneTimes,SizeOf(TSceneTimes),#0);
 
  fPointerToSceneTimes:=@fSceneTimes;
+
+ FillChar(fDeltaTimes,SizeOf(TDeltaTimes),#0);
+
+ fPointerToDeltaTimes:=@fDeltaTimes;
 
  fSkyBoxTextureImage:=nil;
 
