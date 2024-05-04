@@ -3486,63 +3486,6 @@ end;
 
 { TpvScene3DPlanet.TWaterSimulationPass }
             
-(*
-            TWaterSimulationPass=class
-             public
-              type TPushConstants=packed record
-                    Attenuation:TpvFloat;
-                    Strength:TpvFloat;
-                    MinTotalFlow:TpvFloat;
-                    InitialWaterLevel:TpvFloat;
-                    BottomRadius:TpvFloat;
-                    TopRadius:TpvFloat;
-                    PlanetHeightMapResolution:TpvUInt32;
-                    WaterHeightMapResolution:TpvUInt32;
-                    FrameIndex:TpvUInt32;
-                   end;
-                   PPushConstants=^TPushConstants;
-             private
-              fPlanet:TpvScene3DPlanet;
-              fVulkanDevice:TpvVulkanDevice;
-              fPass1ComputeShaderModule:TpvVulkanShaderModule;
-              fPass1ComputeShaderStage:TpvVulkanPipelineShaderStage;
-              fPass1Pipeline:TpvVulkanComputePipeline;
-              fPass2ComputeShaderModule:TpvVulkanShaderModule;
-              fPass2ComputeShaderStage:TpvVulkanPipelineShaderStage;
-              fPass2Pipeline:TpvVulkanComputePipeline;
-              fDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
-              fDescriptorPool:TpvVulkanDescriptorPool;
-              fDescriptorSets:array[0..1] of TpvVulkanDescriptorSet; // Double-buffered
-              fPipelineLayout:TpvVulkanPipelineLayout;
-              fPushConstants:TPushConstants;
-             public 
-              constructor Create(const aPlanet:TpvScene3DPlanet); reintroduce;
-              destructor Destroy; override;
-              procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer);
-             public
-              property PushConstants:TPushConstants read fPushConstants write fPushConstants;
-            end;
-
-layout(set = 0, binding = 0) uniform sampler2D uPlanetHeightmap;
-
-layout(set = 0, binding = 1, std430) readonly buffer InWaterHeightMap {
-  float values[];
-} inWaterHeightMap;
-
-layout(set = 0, binding = 2, std430) readonly buffer InWaterFlowMap {
-  vec4 values[];
-} inWaterFlowMap;
-
-layout(set = 0, binding = 3, std430) writeonly buffer OutWaterHeightMap {
-  float values[];
-} outWaterHeightMap;
-
-layout(set = 0, binding = 4, std430) writeonly buffer OutWaterFlowMap {
-  vec4 values[];
-} outWaterFlowMap;
-
-*)          
-
 constructor TpvScene3DPlanet.TWaterSimulationPass.Create(const aPlanet:TpvScene3DPlanet);
 var Index:TpvSizeInt;
     Stream:TStream;
