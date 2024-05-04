@@ -22,17 +22,22 @@ layout(push_constant) uniform PushConstants {
   float topRadius;
   uint planetHeightMapResolution;
   uint waterHeightMapResolution;
+  float factor;
 } pushConstants;
 
 // This shader transforms the relative water height map buffer to an absolute water height map image for rendering.
 
 layout(set = 0, binding = 0) uniform sampler2D uPlanetHeightmap;
 
-layout(set = 0, binding = 1, std430) readonly buffer InWaterHeightMap {
+layout(set = 0, binding = 1, std430) readonly buffer InWaterHeightMapA {
   float values[];
-} inWaterHeightMap;
+} inWaterHeightMapA;
 
-layout(set = 0, binding = 2, r32f) writeonly uniform image2D uImageWaterMap;  
+layout(set = 0, binding = 2, std430) readonly buffer InWaterHeightMapB {
+  float values[];
+} inWaterHeightMapB;
+
+layout(set = 0, binding = 3, r32f) writeonly uniform image2D uImageWaterMap;  
 
 #include "octahedral.glsl"
 #include "octahedralmap.glsl"
@@ -41,6 +46,7 @@ vec2 texelSize = 1.0 / vec2(pushConstants.waterHeightMapResolution);
 
 vec2 readHeight(ivec2 p){
   p = clamp(wrapOctahedralTexelCoordinates(p, ivec2(pushConstants.waterHeightMapResolution)), ivec2(0), ivec2(pushConstants.waterHeightMapResolution - 1));
+  uint index = (uint(p.y) * pushConstants.waterHeightMapResolution) + uint(p.x);
   return vec2(
     mix(
       pushConstants.bottomRadius,
@@ -49,7 +55,11 @@ vec2 readHeight(ivec2 p){
         ? texelFetch(uPlanetHeightmap, ivec2(p), 0).x // When the planet height map resolution is the same as the water height map resolution, we can just use texelFetch.
         : textureBicubicPlanetOctahedralMap(uPlanetHeightmap, vec2(p) * texelSize).x // Otherwise we need to use interpolation.
     ),  
-    inWaterHeightMap.values[(p.y * pushConstants.waterHeightMapResolution) + p.x]
+    mix(
+      inWaterHeightMapA.values[index],
+      inWaterHeightMapB.values[index],
+      pushConstants.factor
+    )
   );
 } 
 
