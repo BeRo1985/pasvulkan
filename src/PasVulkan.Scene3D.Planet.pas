@@ -411,7 +411,8 @@ type TpvScene3DPlanets=class;
               fPass2Pipeline:TpvVulkanComputePipeline;
               fDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
               fDescriptorPool:TpvVulkanDescriptorPool;
-              fDescriptorSets:array[0..1] of TpvVulkanDescriptorSet; // Double-buffered
+              fPass1DescriptorSets:array[0..1] of TpvVulkanDescriptorSet; // Double-buffered
+              fPass2DescriptorSets:array[0..1] of TpvVulkanDescriptorSet; // Double-buffered
               fPipelineLayout:TpvVulkanPipelineLayout;
               fPushConstants:TPushConstants;
              public 
@@ -3563,59 +3564,107 @@ begin
 
   fDescriptorPool:=TpvVulkanDescriptorPool.Create(fVulkanDevice,
                                                   TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
-                                                  2);
-  fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),1*2);
-  fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),4*2);
+                                                  4);
+  fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),1*4);
+  fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),4*4);
   fDescriptorPool.Initialize;
 
   fVulkanDevice.DebugUtils.SetObjectName(fDescriptorPool.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'TpvScene3DPlanet.TWaterSimulationPass.fDescriptorPool');
 
   for Index:=0 to 1 do begin
-   fDescriptorSets[Index]:=TpvVulkanDescriptorSet.Create(fDescriptorPool,fDescriptorSetLayout);
-   fDescriptorSets[Index].WriteToDescriptorSet(0,
-                                               0,
-                                               1,
-                                               TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                                               [TVkDescriptorImageInfo.Create(TpvScene3D(fPlanet.fScene3D).GeneralComputeSampler.Handle,
-                                                                              fPlanet.fData.fHeightMapImage.VulkanImageView.Handle,
-                                                                              VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
-                                               [],
-                                               [],
-                                               false);
-   fDescriptorSets[Index].WriteToDescriptorSet(1,
-                                               0,
-                                               1,
-                                               TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
-                                               [],
-                                               [fPlanet.fData.fWaterHeightMapBuffers[Index].DescriptorBufferInfo],
-                                               [],
-                                               false);
-   fDescriptorSets[Index].WriteToDescriptorSet(2,
-                                               0,
-                                               1,
-                                               TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
-                                               [],
-                                               [fPlanet.fData.fWaterFlowMapBuffers[Index].DescriptorBufferInfo],
-                                               [],
-                                               false);
-   fDescriptorSets[Index].WriteToDescriptorSet(3,
-                                               0,
-                                               1,
-                                               TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
-                                               [],
-                                               [fPlanet.fData.fWaterHeightMapBuffers[(Index+1) and 1].DescriptorBufferInfo],
-                                               [],
-                                               false);
-   fDescriptorSets[Index].WriteToDescriptorSet(4,
-                                               0,
-                                               1,
-                                               TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
-                                               [],
-                                               [fPlanet.fData.fWaterFlowMapBuffers[(Index+1) and 1].DescriptorBufferInfo],
-                                               [],
-                                               false);
-   fDescriptorSets[Index].Flush;
-   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fDescriptorSets[Index].Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET,'TpvScene3DPlanet.TWaterSimulationPass.fDescriptorSets['+IntToStr(Index)+']');
+
+   fPass1DescriptorSets[Index]:=TpvVulkanDescriptorSet.Create(fDescriptorPool,fDescriptorSetLayout);
+   fPass1DescriptorSets[Index].WriteToDescriptorSet(0, // uPlanetHeightmap
+                                                    0,
+                                                    1,
+                                                    TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                                    [TVkDescriptorImageInfo.Create(TpvScene3D(fPlanet.fScene3D).GeneralComputeSampler.Handle,
+                                                                                   fPlanet.fData.fHeightMapImage.VulkanImageView.Handle,
+                                                                                   VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
+                                                    [],
+                                                    [],
+                                                    false);
+   fPass1DescriptorSets[Index].WriteToDescriptorSet(1, // InWaterHeightMap
+                                                    0,
+                                                    1,
+                                                    TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                    [],
+                                                    [fPlanet.fData.fWaterHeightMapBuffers[(Index+1) and 1].DescriptorBufferInfo],
+                                                    [],
+                                                    false);
+   fPass1DescriptorSets[Index].WriteToDescriptorSet(2, // InWaterFlowMap
+                                                    0,
+                                                    1,
+                                                    TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                    [],
+                                                    [fPlanet.fData.fWaterFlowMapBuffers[(Index+1) and 1].DescriptorBufferInfo],
+                                                    [],
+                                                    false);
+   fPass1DescriptorSets[Index].WriteToDescriptorSet(3, // OutWaterHeightMap
+                                                    0,
+                                                    1,
+                                                    TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                    [],
+                                                    [fPlanet.fData.fWaterHeightMapBuffers[Index].DescriptorBufferInfo],
+                                                    [],
+                                                    false);
+   fPass1DescriptorSets[Index].WriteToDescriptorSet(4, // OutWaterFlowMap (not used, but needed for descriptor set layout)
+                                                    0,
+                                                    1,
+                                                    TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                    [],
+                                                    [fPlanet.fData.fWaterFlowMapBuffers[Index].DescriptorBufferInfo],
+                                                    [],
+                                                    false);
+   fPass1DescriptorSets[Index].Flush;
+   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fPass1DescriptorSets[Index].Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET,'TpvScene3DPlanet.TWaterSimulationPass.fPass1DescriptorSets['+IntToStr(Index)+']');
+
+   fPass2DescriptorSets[Index]:=TpvVulkanDescriptorSet.Create(fDescriptorPool,fDescriptorSetLayout);
+   fPass2DescriptorSets[Index].WriteToDescriptorSet(0, // uPlanetHeightmap
+                                                    0,
+                                                    1,
+                                                    TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                                    [TVkDescriptorImageInfo.Create(TpvScene3D(fPlanet.fScene3D).GeneralComputeSampler.Handle,
+                                                                                   fPlanet.fData.fHeightMapImage.VulkanImageView.Handle,
+                                                                                   VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
+                                                    [],
+                                                    [],
+                                                    false);
+   fPass2DescriptorSets[Index].WriteToDescriptorSet(1, // InWaterHeightMap
+                                                    0,
+                                                    1,
+                                                    TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                    [],
+                                                    [fPlanet.fData.fWaterHeightMapBuffers[Index].DescriptorBufferInfo],
+                                                    [],
+                                                    false);
+   fPass2DescriptorSets[Index].WriteToDescriptorSet(2, // InWaterFlowMap
+                                                    0,
+                                                    1,
+                                                    TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                    [],
+                                                    [fPlanet.fData.fWaterFlowMapBuffers[(Index+1) and 1].DescriptorBufferInfo],
+                                                    [],
+                                                    false);
+   fPass2DescriptorSets[Index].WriteToDescriptorSet(3, // OutWaterHeightMap (not used, but needed for descriptor set layout)
+                                                    0,
+                                                    1,
+                                                    TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                    [],
+                                                    [fPlanet.fData.fWaterHeightMapBuffers[(Index+1) and 1].DescriptorBufferInfo],
+                                                    [],
+                                                    false);
+   fPass2DescriptorSets[Index].WriteToDescriptorSet(4, // OutWaterFlowMap
+                                                    0,
+                                                    1,
+                                                    TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                    [],
+                                                    [fPlanet.fData.fWaterFlowMapBuffers[Index].DescriptorBufferInfo],
+                                                    [],
+                                                    false);
+   fPass2DescriptorSets[Index].Flush;
+   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fPass2DescriptorSets[Index].Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET,'TpvScene3DPlanet.TWaterSimulationPass.fPass2DescriptorSets['+IntToStr(Index)+']');
+
   end;
 
   fPushConstants.Attenuation:=0.99;
@@ -3635,9 +3684,13 @@ end;
 destructor TpvScene3DPlanet.TWaterSimulationPass.Destroy;
 begin
 
- FreeAndNil(fDescriptorSets[1]);
+ FreeAndNil(fPass2DescriptorSets[1]);
 
- FreeAndNil(fDescriptorSets[0]);
+ FreeAndNil(fPass2DescriptorSets[0]);
+
+ FreeAndNil(fPass1DescriptorSets[1]);
+
+ FreeAndNil(fPass1DescriptorSets[0]);
 
  FreeAndNil(fDescriptorPool);
 
@@ -3728,7 +3781,7 @@ begin
                                       fPipelineLayout.Handle,
                                       0,
                                       1,
-                                      @fDescriptorSets[SourceBufferIndex].Handle,
+                                      @fPass1DescriptorSets[SourceBufferIndex].Handle,
                                       0,
                                       nil);
 
@@ -3755,7 +3808,7 @@ begin
                                       fPipelineLayout.Handle,
                                       0,
                                       1,
-                                      @fDescriptorSets[DestinationBufferIndex].Handle,
+                                      @fPass2DescriptorSets[DestinationBufferIndex].Handle,
                                       0,
                                       nil);
 
