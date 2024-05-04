@@ -1741,6 +1741,25 @@ begin
                                                   );
    fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fWaterFlowMapBuffers[1].Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fWaterFlowMapBuffers[1]');
 
+   fWaterMapBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
+                                           fPlanet.fWaterMapResolution*fPlanet.fWaterMapResolution*SizeOf(TpvFloat),
+                                           TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
+                                           fPlanet.fGlobalBufferSharingMode,
+                                           fPlanet.fGlobalBufferQueueFamilyIndices,
+                                           0,
+                                           TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                           0,
+                                           0,
+                                           0,
+                                           0,
+                                           0,
+                                           0,
+                                           [],
+                                           0,
+                                           pvAllocationGroupIDScene3DPlanetStatic
+                                          );
+   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fWaterMapBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fWaterMapBuffer');
+
   end;
 
   fWaterVisibilityBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,

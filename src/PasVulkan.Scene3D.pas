@@ -3400,6 +3400,7 @@ type EpvScene3D=class(Exception);
       public
        function CreateGroup(const aName:TpvUTF8String=''):TpvScene3D.TGroup;
       public
+       procedure GetProfilerTimes(out aCPUTime,aGPUTime:TpvDouble);
        procedure DumpProfiler(const aStringList:TStringList=nil);
       public
        property BoundingBox:TpvAABB read fBoundingBox;
@@ -26098,6 +26099,71 @@ begin
  result.fName:=aName;
 end;
 
+procedure TpvScene3D.GetProfilerTimes(out aCPUTime,aGPUTime:TpvDouble);
+var MaxLen,Index,RendererInstanceIndex:TpvSizeInt;
+    Result_:TpvTimerQuery.TResult;
+    RendererInstance:TpvScene3DRendererInstance;
+    TotalDuration:TpvDouble;
+    TotalCPUTime:TpvHighResolutionTime;
+begin
+
+ fRendererInstanceLock.Acquire;
+ try
+
+  TotalDuration:=0.0;
+
+  TotalCPUTime:=0;
+
+  if assigned(fLastProcessFrameTimerQueryResults) then begin
+
+   Index:=0;
+   for Result_ in fLastProcessFrameTimerQueryResults do begin
+    if Result_.Valid then begin
+     if Result_.Name='Total' then begin
+      TotalDuration:=TotalDuration+Result_.Duration;
+      inc(TotalCPUTime,fLastProcessFrameCPUTimeValues[Index]);
+     end;
+    end;
+    inc(Index);
+   end;
+
+  end;
+
+  for RendererInstanceIndex:=0 to fRendererInstanceList.Count-1 do begin
+
+   RendererInstance:=TpvScene3DRendererInstance(fRendererInstanceList.Items[RendererInstanceIndex]);
+
+   if assigned(RendererInstance.FrameGraph.LastTimerQueryResults) then begin
+
+    Index:=0;
+    for Result_ in RendererInstance.FrameGraph.LastTimerQueryResults do begin
+     if Result_.Valid then begin
+      if Result_.Name='Total' then begin
+       TotalDuration:=TotalDuration+Result_.Duration;
+       inc(TotalCPUTime,RendererInstance.FrameGraph.LastCPUTimeValues[Index]);
+      end;
+     end;
+     inc(Index);
+    end;
+
+   end;
+
+  end;
+
+  begin
+
+   aCPUTime:=pvApplication.HighResolutionTimer.ToFloatSeconds(TotalCPUTime);
+
+   aGPUTime:=TotalDuration;
+
+  end;
+
+ finally
+  fRendererInstanceLock.Release;
+ end;
+
+end;
+
 procedure TpvScene3D.DumpProfiler(const aStringList:TStringList);
  procedure AddLine(const aLine:TpvUTF8String);
  begin
@@ -26136,7 +26202,7 @@ begin
   AddLine(s2);
   AddLine('');
 
-  begin
+  if assigned(fLastProcessFrameTimerQueryResults) then begin
 
    MaxLen:=1;
    for Result_ in fLastProcessFrameTimerQueryResults do begin
@@ -26172,42 +26238,46 @@ begin
 
    RendererInstance:=TpvScene3DRendererInstance(fRendererInstanceList.Items[RendererInstanceIndex]);
 
-   AddLine('');
-   s1:='Renderer instance #'+IntToStr(RendererInstanceIndex)+':';
-   s2:='';
-   for Index:=1 to length(s1) do begin
-    s2:=s2+'-';
-   end;
-   AddLine(s1);
-   AddLine(s2);
-   AddLine('');
+   if assigned(RendererInstance.FrameGraph.LastTimerQueryResults) then begin
 
-   MaxLen:=1;
-   for Result_ in RendererInstance.FrameGraph.LastTimerQueryResults do begin
-    if Result_.Valid then begin
-     MaxLen:=Max(MaxLen,length(Result_.Name));
+    AddLine('');
+    s1:='Renderer instance #'+IntToStr(RendererInstanceIndex)+':';
+    s2:='';
+    for Index:=1 to length(s1) do begin
+     s2:=s2+'-';
     end;
-   end;
+    AddLine(s1);
+    AddLine(s2);
+    AddLine('');
 
-   Index:=0;
-   for Result_ in RendererInstance.FrameGraph.LastTimerQueryResults do begin
-    if Result_.Valid then begin
-     s0:=Result_.Name;
-     while length(s0)<MaxLen do begin
-      s0:=' '+s0;
-     end;
-     Str(Result_.Duration*1000.0:1:5,s1);
-     Str(pvApplication.HighResolutionTimer.ToFloatSeconds(RendererInstance.FrameGraph.LastCPUTimeValues[Index])*1000.0:1:5,s2);
-     AddLine(s0+': '+s1+' ms GPU, '+s2+' ms CPU');
-     if Result_.Name='Sum' then begin
-      SumDuration:=SumDuration+Result_.Duration;
-      inc(SumCPUTime,RendererInstance.FrameGraph.LastCPUTimeValues[Index]);
-     end else if Result_.Name='Total' then begin
-      TotalDuration:=TotalDuration+Result_.Duration;
-      inc(TotalCPUTime,RendererInstance.FrameGraph.LastCPUTimeValues[Index]);
+    MaxLen:=1;
+    for Result_ in RendererInstance.FrameGraph.LastTimerQueryResults do begin
+     if Result_.Valid then begin
+      MaxLen:=Max(MaxLen,length(Result_.Name));
      end;
     end;
-    inc(Index);
+
+    Index:=0;
+    for Result_ in RendererInstance.FrameGraph.LastTimerQueryResults do begin
+     if Result_.Valid then begin
+      s0:=Result_.Name;
+      while length(s0)<MaxLen do begin
+       s0:=' '+s0;
+      end;
+      Str(Result_.Duration*1000.0:1:5,s1);
+      Str(pvApplication.HighResolutionTimer.ToFloatSeconds(RendererInstance.FrameGraph.LastCPUTimeValues[Index])*1000.0:1:5,s2);
+      AddLine(s0+': '+s1+' ms GPU, '+s2+' ms CPU');
+      if Result_.Name='Sum' then begin
+       SumDuration:=SumDuration+Result_.Duration;
+       inc(SumCPUTime,RendererInstance.FrameGraph.LastCPUTimeValues[Index]);
+      end else if Result_.Name='Total' then begin
+       TotalDuration:=TotalDuration+Result_.Duration;
+       inc(TotalCPUTime,RendererInstance.FrameGraph.LastCPUTimeValues[Index]);
+      end;
+     end;
+     inc(Index);
+    end;
+
    end;
 
   end;
