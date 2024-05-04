@@ -3701,7 +3701,7 @@ begin
 
  fTimeAccumulator:=0.0;
 
- fTimeStep:=1.0/30.0;
+ fTimeStep:=1.0/60.0;
 
 end;
 
@@ -3841,7 +3841,7 @@ begin
                                        fPipelineLayout.Handle,
                                        0,
                                        1,
-                                       @fPass2DescriptorSets[DestinationBufferIndex].Handle,
+                                       @fPass2DescriptorSets[SourceBufferIndex].Handle,
                                        0,
                                        nil);
 
