@@ -400,6 +400,11 @@ type TpvScene3DPlanets=class;
                     FrameIndex:TpvUInt32;
                    end;
                    PPushConstants=^TPushConstants;
+                   TInterpolationPushConstants=packed record
+                    WaterHeightMapResolution:TpvUInt32;
+                    Factor:TpvFloat;
+                   end;
+                   PInterpolationPushConstants=^TInterpolationPushConstants;
              private
               fPlanet:TpvScene3DPlanet;
               fVulkanDevice:TpvVulkanDevice;
@@ -409,12 +414,19 @@ type TpvScene3DPlanets=class;
               fPass2ComputeShaderModule:TpvVulkanShaderModule;
               fPass2ComputeShaderStage:TpvVulkanPipelineShaderStage;
               fPass2Pipeline:TpvVulkanComputePipeline;
+              fInterpolationComputeShaderModule:TpvVulkanShaderModule;
+              fInterpolationComputeShaderStage:TpvVulkanPipelineShaderStage;
               fDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
               fDescriptorPool:TpvVulkanDescriptorPool;
               fPass1DescriptorSets:array[0..1] of TpvVulkanDescriptorSet; // Double-buffered
               fPass2DescriptorSets:array[0..1] of TpvVulkanDescriptorSet; // Double-buffered
+              fInterpolationDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
+              fInterpolationDescriptorPool:TpvVulkanDescriptorPool;
+              fInterpolationDescriptorSet:TpvVulkanDescriptorSet;
               fPipelineLayout:TpvVulkanPipelineLayout;
+              fInterpolationPipelineLayout:TpvVulkanPipelineLayout;
               fPushConstants:TPushConstants;
+              fInterpolationPushConstants:TInterpolationPushConstants;
               fTimeAccumulator:TpvDouble;
               fTimeStep:TpvDouble;
              public
