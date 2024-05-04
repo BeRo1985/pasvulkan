@@ -3241,6 +3241,7 @@ type EpvScene3D=class(Exception);
        fLastProcessFrameTimerQueryResults:TpvTimerQuery.TResults;
        fLastProcessFrameCPUTimeValues:array of TpvHighResolutionTime;
        fProcessFrameTimerQueryUploadFrameDataIndex:TpvSizeInt;
+       fProcessFrameTimerQueryPlanetSimulationIndex:TpvSizeInt;
        fProcessFrameTimerQueryMeshComputeIndex:TpvSizeInt;
        fProcessFrameTimerQueryUpdateRaytracingIndex:TpvSizeInt;
        fSceneTimes:TSceneTimes;
@@ -3332,6 +3333,8 @@ type EpvScene3D=class(Exception);
                                       const aPipelineLayout:TpvVulkanPipelineLayout);
        procedure UpdatePlanetBufRefArray(const aCommandBuffer:TpvVulkanCommandBuffer;
                                          const aInFlightFrameIndex:TpvSizeInt);
+       procedure ProcessPlanetSimulations(const aCommandBuffer:TpvVulkanCommandBuffer;
+                                          const aInFlightFrameIndex:TpvSizeInt);
        procedure UpdateRaytracing(const aCommandBuffer:TpvVulkanCommandBuffer;
                                   const aInFlightFrameIndex:TpvSizeInt;
                                   const aLabels:Boolean);
@@ -21182,13 +21185,14 @@ begin
 
   begin
 
-   Count:=2+IfThen(fRaytracingActive,1,0);
+   Count:=3+IfThen(fRaytracingActive,1,0);
 
    for Index:=0 to fCountInFlightFrames-1 do begin
     fProcessFrameTimerQueries[Index]:=TpvTimerQuery.Create(fVulkanDevice,Count);
    end;
 
    fProcessFrameTimerQueryUploadFrameDataIndex:=-1;
+   fProcessFrameTimerQueryPlanetSimulationIndex:=-1;
    fProcessFrameTimerQueryMeshComputeIndex:=-1;
    fProcessFrameTimerQueryUpdateRaytracingIndex:=-1;
 
@@ -23370,6 +23374,14 @@ begin
    fLastProcessFrameCPUTimeValues[fProcessFrameTimerQueryUploadFrameDataIndex]:=pvApplication.HighResolutionTimer.GetTime-BeginTime;
    fProcessFrameTimerQueries[aInFlightFrameIndex].Stop(fVulkanProcessFrameQueue,CommandBuffer);
 
+   fProcessFrameTimerQueryPlanetSimulationIndex:=fProcessFrameTimerQueries[aInFlightFrameIndex].Start(fVulkanProcessFrameQueue,CommandBuffer,'Upload frame data');
+   BeginTime:=pvApplication.HighResolutionTimer.GetTime;
+   fVulkanDevice.DebugUtils.CmdBufLabelBegin(CommandBuffer,'Planet Simulation',[0.25,1.0,0.5,1.0]);
+   ProcessPlanetSimulations(CommandBuffer,aInFlightFrameIndex);
+   fVulkanDevice.DebugUtils.CmdBufLabelEnd(CommandBuffer);
+   fLastProcessFrameCPUTimeValues[fProcessFrameTimerQueryPlanetSimulationIndex]:=pvApplication.HighResolutionTimer.GetTime-BeginTime;
+   fProcessFrameTimerQueries[aInFlightFrameIndex].Stop(fVulkanProcessFrameQueue,CommandBuffer);
+
    fProcessFrameTimerQueryMeshComputeIndex:=fProcessFrameTimerQueries[aInFlightFrameIndex].Start(fVulkanProcessFrameQueue,CommandBuffer,'Mesh compute');
    BeginTime:=pvApplication.HighResolutionTimer.GetTime;
    TpvScene3DMeshCompute(fMeshCompute).Execute(CommandBuffer,aInFlightFrameIndex,true);
@@ -24477,7 +24489,7 @@ begin
                                        0,
                                        length(fReferencedPlanetDataBufRefArray[aInFlightFrameIndex])*SizeOf(TVkDeviceAddress));
 
-   end; 
+   end;
 
   finally
    TpvScene3DPlanets(fPlanets).Lock.ReleaseRead;
@@ -24485,6 +24497,24 @@ begin
 
  end;
 
+end;
+
+procedure TpvScene3D.ProcessPlanetSimulations(const aCommandBuffer:TpvVulkanCommandBuffer;
+                                              const aInFlightFrameIndex:TpvSizeInt);
+var PlanetIndex:TpvSizeInt;
+    Planet:TpvScene3DPlanet;
+begin
+ TpvScene3DPlanets(fPlanets).Lock.AcquireRead;
+ try
+  for PlanetIndex:=0 to TpvScene3DPlanets(fPlanets).Count-1 do begin
+   Planet:=TpvScene3DPlanets(fPlanets).Items[PlanetIndex];
+   if Planet.Ready then begin
+    Planet.ProcessSimulation(aCommandBuffer,aInFlightFrameIndex);
+   end;
+  end;
+ finally
+  TpvScene3DPlanets(fPlanets).Lock.ReleaseRead;
+ end;
 end;
 
 procedure TpvScene3D.UpdateRaytracing(const aCommandBuffer:TpvVulkanCommandBuffer;

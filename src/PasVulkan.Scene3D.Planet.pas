@@ -1424,7 +1424,7 @@ type TpvScene3DPlanets=class;
        procedure FrameUpdate(const aInFlightFrameIndex:TpvSizeInt);
        procedure Prepare(const aInFlightFrameIndex:TpvSizeInt;const aRendererInstance:TObject;const aRenderPassIndex:TpvSizeInt;const aViewPortWidth,aViewPortHeight:TpvInt32;const aMainViewPort:Boolean);
        procedure UploadFrame(const aInFlightFrameIndex:TpvSizeInt);
-       procedure ProcessSimulation(const aInFlightFrameIndex:TpvSizeInt;var aCommandBuffer:TpvVulkanCommandBuffer);
+       procedure ProcessSimulation(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt);
        procedure BeginFrame(const aInFlightFrameIndex:TpvSizeInt;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil);
        procedure EndFrame(const aInFlightFrameIndex:TpvSizeInt;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil);
        procedure ExportPhysicsMeshToOBJ(const aStream:TStream); overload;
@@ -3744,7 +3744,7 @@ var SourceBufferIndex,DestinationBufferIndex:TpvSizeInt;
     BufferMemoryBarriers:array[0..3] of TVkBufferMemoryBarrier;
 begin
 
- fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'Planet WaterSimulation',[0.5,0.5,0.5,1.0]);
+ //fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'Planet WaterSimulation',[0.5,0.5,0.5,1.0]);
 
  fTimeAccumulator:=Min(fTimeAccumulator+aDeltaTime,0.1); // Limit to 100ms for avoid too long frame times
  while fTimeAccumulator>=fTimeStep do begin
@@ -3873,7 +3873,7 @@ begin
 
  end; 
 
- fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
+ //fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
 
 end;
 
@@ -13247,7 +13247,7 @@ begin
 
 end;
 
-procedure TpvScene3DPlanet.ProcessSimulation(const aInFlightFrameIndex:TpvSizeInt;var aCommandBuffer:TpvVulkanCommandBuffer);
+procedure TpvScene3DPlanet.ProcessSimulation(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt);
 var InFlightFrameData:TData;
 begin
  if assigned(fVulkanDevice) and (aInFlightFrameIndex>=0) then begin
