@@ -18,15 +18,10 @@
 layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
 
 layout(push_constant) uniform PushConstants {
-  float attenuation;
-  float strength;
-  float minTotalFlow;
-  float initialWaterLevel;
   float bottomRadius;
   float topRadius;
   uint planetHeightMapResolution;
   uint waterHeightMapResolution;
-  uint frameIndex;
 } pushConstants;
 
 // This shader transforms the relative water height map buffer to an absolute water height map image for rendering.
