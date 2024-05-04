@@ -102,14 +102,20 @@ void main(){
 
       const vec2 centerHeight = readHeight(ivec2(position));
 
-      outFlow = (vec4(
+      const vec4 oldFlow = inWaterFlowMap.values[index];
+
+      const vec4 newFlow = vec4(
         computeOutFlowDir(centerHeight, ivec2(position) + ivec2( 1,  0)),
         computeOutFlowDir(centerHeight, ivec2(position) + ivec2( 0,  1)),
         computeOutFlowDir(centerHeight, ivec2(position) + ivec2(-1,  0)),
         computeOutFlowDir(centerHeight, ivec2(position) + ivec2( 0, -1))
-      ) * pushConstants.strength) + (inWaterFlowMap.values[index] * pushConstants.attenuation);
+      );
+
+      outFlow = (newFlow * pushConstants.strength) + (oldFlow * pushConstants.attenuation);
      
     }
+
+    outWaterFlowMap.values[index] = outFlow;
 
 #else
 
@@ -122,11 +128,14 @@ void main(){
 
     }else{
 
-      waterOutHeight = (inWaterHeightMap.values[index] - dot(inWaterFlowMap.values[index], vec4(1.0))) + 
-                       (inWaterFlowMap.values[getIndex(position, ivec2( 1,  0))].z +
-                        inWaterFlowMap.values[getIndex(position, ivec2( 0,  1))].w + 
-                        inWaterFlowMap.values[getIndex(position, ivec2(-1,  0))].x + 
-                        inWaterFlowMap.values[getIndex(position, ivec2( 0, -1))].y);
+      const float totalInFlow = dot(inWaterFlowMap.values[index], vec4(1.0));
+
+      const float totalOutFlow = inWaterFlowMap.values[getIndex(position, ivec2( 1,  0))].z +
+                                 inWaterFlowMap.values[getIndex(position, ivec2( 0,  1))].w + 
+                                 inWaterFlowMap.values[getIndex(position, ivec2(-1,  0))].x + 
+                                 inWaterFlowMap.values[getIndex(position, ivec2( 0, -1))].y;
+
+      waterOutHeight = (inWaterHeightMap.values[index] - totalInFlow) + totalOutFlow;
 
     }
 
