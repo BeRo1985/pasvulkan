@@ -2879,7 +2879,7 @@ begin
 
    if DoNeedCopyWaterVisibilityBuffer then begin
 
-    BufferMemoryBarriers[CountBufferMemoryBarriers]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+{   BufferMemoryBarriers[CountBufferMemoryBarriers]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                                                    TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT),
                                                                                    VK_QUEUE_FAMILY_IGNORED,
                                                                                    VK_QUEUE_FAMILY_IGNORED,
@@ -2895,7 +2895,7 @@ begin
                                                                                    aInFlightFrameData.fWaterVisibilityBuffer.Handle,
                                                                                    0,
                                                                                    aInFlightFrameData.fWaterVisibilityBuffer.Size);
-    inc(CountBufferMemoryBarriers);
+    inc(CountBufferMemoryBarriers);}
 
    end;
 
@@ -2975,12 +2975,12 @@ begin
    end;
 
    if DoNeedCopyWaterVisibilityBuffer then begin
-    BufferCopy.srcOffset:=0;
+{   BufferCopy.srcOffset:=0;
     BufferCopy.dstOffset:=0;
     BufferCopy.size:=fWaterVisibilityBuffer.Size;
     aCommandBuffer.CmdCopyBuffer(fWaterVisibilityBuffer.Handle,
                                  aInFlightFrameData.fWaterVisibilityBuffer.Handle,
-                                 1,@BufferCopy);
+                                 1,@BufferCopy);}
    end;
 
   end;
@@ -3124,7 +3124,7 @@ begin
 
    if DoNeedCopyWaterVisibilityBuffer then begin
 
-    BufferMemoryBarriers[CountBufferMemoryBarriers]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT),
+{   BufferMemoryBarriers[CountBufferMemoryBarriers]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT),
                                                                                    TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                                                    VK_QUEUE_FAMILY_IGNORED,
                                                                                    VK_QUEUE_FAMILY_IGNORED,
@@ -3140,7 +3140,7 @@ begin
                                                                                    aInFlightFrameData.fWaterVisibilityBuffer.Handle,
                                                                                    0,
                                                                                    aInFlightFrameData.fWaterVisibilityBuffer.Size);
-    inc(CountBufferMemoryBarriers);
+    inc(CountBufferMemoryBarriers);}
 
    end;
 
@@ -11688,7 +11688,7 @@ begin
                                                                        1,
                                                                        TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
                                                                        [],
-                                                                       [fPlanet.InFlightFrameDataList[InFlightFrameIndex].fWaterVisibilityBuffer.DescriptorBufferInfo],
+                                                                       [fPlanet.Data.fWaterVisibilityBuffer.DescriptorBufferInfo],
                                                                        [],
                                                                        false);
 
@@ -13340,14 +13340,14 @@ if fData.fModifyWaterMapActive then begin
 
  end;
 
- if assigned(fVulkanDevice) and UpdateWaterVisibility then begin
+{if assigned(fVulkanDevice) and UpdateWaterVisibility then begin
   BeginUpdate;
   try
    fWaterCullPass.Execute(fVulkanComputeCommandBuffer);
   finally
    EndUpdate;
   end;
- end;
+ end;}
 
 end;
 
@@ -13548,6 +13548,7 @@ begin
   InFlightFrameData:=fInFlightFrameDataList[aInFlightFrameIndex];
   if assigned(InFlightFrameData) then begin
    fWaterSimulation.Execute(aCommandBuffer,TpvScene3D(fScene3D).DeltaTimes^[aInFlightFrameIndex]);
+   fWaterCullPass.Execute(aCommandBuffer);
   end;
  end;
 end;
