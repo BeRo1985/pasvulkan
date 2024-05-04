@@ -3667,10 +3667,10 @@ begin
 
   end;
 
-  fPushConstants.Attenuation:=0.99;
-  fPushConstants.Strength:=0.1;
-  fPushConstants.MinTotalFlow:=0.01;
-  fPushConstants.InitialWaterLevel:=0.5;
+  fPushConstants.Attenuation:=0.995;
+  fPushConstants.Strength:=0.25;
+  fPushConstants.MinTotalFlow:=1e-4;
+  fPushConstants.InitialWaterLevel:=5e-2;
   fPushConstants.BottomRadius:=fPlanet.fBottomRadius;
   fPushConstants.TopRadius:=fPlanet.fTopRadius;
   fPushConstants.PlanetHeightMapResolution:=fPlanet.fHeightMapResolution;
