@@ -3723,7 +3723,7 @@ begin
  SourceBufferIndex:=fPlanet.fData.fWaterBufferIndex;
  DestinationBufferIndex:=(SourceBufferIndex+1) and 1;
 
- fPlanet.fData.fWaterBufferIndex:=(fPlanet.fData.fWaterBufferIndex+1) and 1;
+ fPushConstants.FrameIndex:=fPlanet.fData.fWaterFrameIndex;
 
  fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'Planet WaterSimulationPass',[0.5,0.5,0.5,1.0]);
 
@@ -3834,6 +3834,15 @@ begin
                                    0,nil);
 
  fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
+
+ fPlanet.fData.fWaterBufferIndex:=(fPlanet.fData.fWaterBufferIndex+1) and 1;
+
+ inc(fPlanet.fData.fWaterFrameIndex);
+ if fPlanet.fData.fWaterFrameIndex=0 then begin
+  // Frame index should never be zero again, because it is just for the real first frame, for to indicate that the water 
+  // simulation has been started and the data should be initialized.
+  inc(fPlanet.fData.fWaterFrameIndex); 
+ end;
 
 end;
 
