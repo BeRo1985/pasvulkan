@@ -4097,6 +4097,76 @@ begin
 
  end; 
 
+ begin
+   
+  fInterpolationPushConstants.BottomRadius:=fPlanet.fBottomRadius;
+  fInterpolationPushConstants.TopRadius:=fPlanet.fTopRadius;
+  fInterpolationPushConstants.PlanetHeightMapResolution:=fPlanet.fHeightMapResolution;
+  fInterpolationPushConstants.WaterHeightMapResolution:=fPlanet.fWaterMapResolution;
+  fInterpolationPushConstants.Factor:=fTimeAccumulator/fTimeStep;                                  
+
+  ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                   TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                   VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                   VK_IMAGE_LAYOUT_GENERAL,
+                                                   VK_QUEUE_FAMILY_IGNORED,
+                                                   VK_QUEUE_FAMILY_IGNORED,
+                                                   fPlanet.fData.fWaterMapImage.VulkanImage.Handle,
+                                                   TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                   0,
+                                                                                   1,
+                                                                                   0,
+                                                                                   1));
+
+  aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                    0,
+                                    0,nil,
+                                    0,nil,
+                                    1,@ImageMemoryBarrier);
+
+  aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,fInterpolationPipeline.Handle);
+
+  aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE,
+                                       fInterpolationPipelineLayout.Handle,
+                                       0,
+                                       1,
+                                       @fInterpolationDescriptorSets[0].Handle,
+                                       0,
+                                       nil);
+
+  aCommandBuffer.CmdPushConstants(fInterpolationPipelineLayout.Handle,
+                                  TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                  0,
+                                  SizeOf(TInterpolationPushConstants),
+                                  @fInterpolationPushConstants);   
+
+  aCommandBuffer.CmdDispatch((fPlanet.fWaterMapResolution+15) shr 4,
+                             (fPlanet.fWaterMapResolution+15) shr 4,
+                             1);  
+
+  ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                   TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                   VK_IMAGE_LAYOUT_GENERAL,
+                                                   VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                   VK_QUEUE_FAMILY_IGNORED,
+                                                   VK_QUEUE_FAMILY_IGNORED,
+                                                   fPlanet.fData.fWaterMapImage.VulkanImage.Handle,
+                                                   TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                   0,
+                                                                                   1,
+                                                                                   0,
+                                                                                   1));
+
+  aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_HOST_BIT),
+                                    0,
+                                    0,nil,
+                                    0,nil,
+                                    1,@ImageMemoryBarrier);
+
+ end;
+
  //fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
 
 end;
