@@ -401,6 +401,9 @@ type TpvScene3DPlanets=class;
                    end;
                    PPushConstants=^TPushConstants;
                    TInterpolationPushConstants=packed record
+                    BottomRadius:TpvFloat;
+                    TopRadius:TpvFloat;
+                    PlanetHeightMapResolution:TpvUInt32;
                     WaterHeightMapResolution:TpvUInt32;
                     Factor:TpvFloat;
                    end;
