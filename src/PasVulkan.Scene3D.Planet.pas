@@ -1464,7 +1464,7 @@ type TpvScene3DPlanets=class;
        procedure FrameUpdate(const aInFlightFrameIndex:TpvSizeInt);
        procedure Prepare(const aInFlightFrameIndex:TpvSizeInt;const aRendererInstance:TObject;const aRenderPassIndex:TpvSizeInt;const aViewPortWidth,aViewPortHeight:TpvInt32;const aMainViewPort:Boolean);
        procedure UploadFrame(const aInFlightFrameIndex:TpvSizeInt);
-       procedure EnqueueWaterModification(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aRadius,aInnerRadius,aValue:TpvScalar);
+       procedure EnqueueWaterModification(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aRadius,aBorderRadius,aValue:TpvScalar);
        procedure ProcessSimulation(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt);
        procedure BeginFrame(const aInFlightFrameIndex:TpvSizeInt;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil);
        procedure EndFrame(const aInFlightFrameIndex:TpvSizeInt;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil);
@@ -13752,13 +13752,13 @@ begin
 
 end;
 
-procedure TpvScene3DPlanet.EnqueueWaterModification(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aRadius,aInnerRadius,aValue:TpvScalar);
+procedure TpvScene3DPlanet.EnqueueWaterModification(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aRadius,aBorderRadius,aValue:TpvScalar);
 var WaterModification:PWaterModification;
 begin
  if aInFlightFrameIndex>=0 then begin
   WaterModification:=@fWaterModifications[aInFlightFrameIndex];
-  WaterModification^.PositionRadius:=TpvVector4.Create(aPosition,aRadius);
-  WaterModification^.InnerRadius:=aInnerRadius;
+  WaterModification^.PositionRadius:=TpvVector4.Create(aPosition.Normalize,aRadius);
+  WaterModification^.InnerRadius:=Max(0.0,aRadius-aBorderRadius);
   WaterModification^.Value:=aValue;
  end;
 end;
