@@ -18,49 +18,19 @@
 layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
 
 layout(push_constant) uniform PushConstants {
-  float bottomRadius;
-  float topRadius;
-  uint planetHeightMapResolution;
+  vec4 positionRadius; // xyz = position, w = radius
+  vec4 innerRadiusValueMinMax; // x = inner radius, y = value, z = min, w = max
   uint waterHeightMapResolution;
-  float factor;
 } pushConstants;
 
 // This shader transforms the relative water height map buffer to an absolute water height map image for rendering.
 
-layout(set = 0, binding = 0) uniform sampler2D uPlanetHeightmap;
-
-layout(set = 0, binding = 1, std430) readonly buffer InWaterHeightMapA {
+layout(set = 0, binding = 0, std430) coherent buffer WaterHeightMap {
   float values[];
-} inWaterHeightMapA;
-
-layout(set = 0, binding = 2, std430) readonly buffer InWaterHeightMapB {
-  float values[];
-} inWaterHeightMapB;
-
-layout(set = 0, binding = 3, r32f) writeonly uniform image2D uImageWaterMap;  
+} waterHeightMap;
 
 #include "octahedral.glsl"
 #include "octahedralmap.glsl"
-
-vec2 texelSize = 1.0 / vec2(pushConstants.waterHeightMapResolution);
-
-vec2 readHeight(ivec2 p){
-  p = clamp(wrapOctahedralTexelCoordinates(p, ivec2(pushConstants.waterHeightMapResolution)), ivec2(0), ivec2(pushConstants.waterHeightMapResolution - 1));
-  uint index = (uint(p.y) * pushConstants.waterHeightMapResolution) + uint(p.x);
-  float planetHeight = mix(
-    pushConstants.bottomRadius,
-    pushConstants.topRadius,
-    (pushConstants.planetHeightMapResolution == pushConstants.waterHeightMapResolution) 
-      ? texelFetch(uPlanetHeightmap, ivec2(p), 0).x // When the planet height map resolution is the same as the water height map resolution, we can just use texelFetch.
-      : textureBicubicPlanetOctahedralMap(uPlanetHeightmap, vec2(p) * texelSize).x // Otherwise we need to use interpolation.
-  );
-  float waterHeight = mix(
-    inWaterHeightMapA.values[index],
-    inWaterHeightMapB.values[index],
-    pushConstants.factor
-  );
-  return vec2(planetHeight, waterHeight);
-} 
 
 void main(){
 
@@ -68,12 +38,21 @@ void main(){
 
   if(all(lessThan(position, uvec2(pushConstants.waterHeightMapResolution)))){
 
-    vec2 heights = readHeight(ivec2(position));
-    float height = (heights.y < 1e-6) 
-                     ? -1.0 // no water
-                     : dot(heights, vec2(1.0)); // water
-    
-    imageStore(uImageWaterMap, ivec2(position), vec4(height));
+    vec3 sphereNormal = octPlanetUnsignedDecode(vec2(position) / vec2(pushConstants.waterHeightMapResolution));
+
+    float d = smoothstep(
+      0.0,
+      -pushConstants.innerRadiusValueMinMax.x,
+      length(sphereNormal - pushConstants.positionRadius.xyz) - pushConstants.positionRadius.w
+    );
+
+    if(d > 0.0){
+
+      uint index = (position.y * pushConstants.waterHeightMapResolution) + position.x;
+
+      waterHeightMap.values[index] += d * pushConstants.innerRadiusValueMinMax.y;
+
+    }      
 
   }
 
