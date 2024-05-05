@@ -221,7 +221,7 @@ type TpvScene3DPlanets=class;
               fNormalMapImage:TpvScene3DRendererMipmapImage2D; // R16G16B16A16_SNORM (at least for now, just for the sake of simplicity, later maybe RGBA8_SNORM)
               fBlendMapImage:TpvScene3DRendererImage2D; // A2B10G10R10_UNORM_PACK32
               fGrassMapImage:TpvScene3DRendererImage2D; // R8G8B8A8_UNORM
-              fWaterMapImage:TpvScene3DRendererImage2D; // R32_SFLOAT
+//            fWaterMapImage:TpvScene3DRendererImage2D; // R32_SFLOAT
               fWaterHeightMapImage:TpvScene3DRendererImage2D; // R32_SFLOAT
               fWaterHeightMapBuffers:array[0..1] of TpvVulkanBuffer; // Double-buffered
               fWaterFlowMapBuffer:TpvVulkanBuffer;
@@ -462,7 +462,7 @@ type TpvScene3DPlanets=class;
              public
               property PushConstants:TPushConstants read fPushConstants write fPushConstants;
             end;
-            { TWaterMapInitialization }
+(*          { TWaterMapInitialization }
             TWaterMapInitialization=class
              public
               type TPushConstants=packed record
@@ -512,7 +512,7 @@ type TpvScene3DPlanets=class;
               procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer);
              public
               property PushConstants:TPushConstants read fPushConstants write fPushConstants;
-            end;
+            end;*)
             { THeightMapDataInitialization }
             THeightMapDataInitialization=class
              public
@@ -1374,8 +1374,8 @@ type TpvScene3DPlanets=class;
        fInFlightFrameReady:array[0..MaxInFlightFrames-1] of TPasMPBool32;
        fGrassMapInitialization:TGrassMapInitialization;
        fGrassMapModification:TGrassMapModification;
-       fWaterMapInitialization:TWaterMapInitialization;
-       fWaterMapModification:TWaterMapModification;
+{      fWaterMapInitialization:TWaterMapInitialization;
+       fWaterMapModification:TWaterMapModification;}
        fHeightMapRandomInitialization:THeightMapRandomInitialization;
        fHeightMapModification:THeightMapModification;
        fHeightMapFlatten:THeightMapFlatten;
@@ -1580,7 +1580,7 @@ begin
 
  fGrassMapImage:=nil;
 
- fWaterMapImage:=nil;
+//fWaterMapImage:=nil;
 
  fWaterHeightMapImage:=nil;
 
@@ -1689,7 +1689,7 @@ begin
   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fGrassMapImage.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fGrassMapImage.Image');
   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fGrassMapImage.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fGrassMapImage.ImageView');
 
-  fWaterMapImage:=TpvScene3DRendererImage2D.Create(fPlanet.fVulkanDevice,
+{ fWaterMapImage:=TpvScene3DRendererImage2D.Create(fPlanet.fVulkanDevice,
                                                    fPlanet.fWaterMapResolution,
                                                    fPlanet.fWaterMapResolution,
                                                    VK_FORMAT_R32_SFLOAT,
@@ -1700,7 +1700,7 @@ begin
                                                    ImageQueueFamilyIndices,
                                                    pvAllocationGroupIDScene3DPlanetStatic);
   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fWaterMapImage.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fWaterMapImage.Image');
-  fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fWaterMapImage.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fWaterMapImage.ImageView');
+  fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fWaterMapImage.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fWaterMapImage.ImageView');}
 
   if fInFlightFrameIndex<0 then begin
 
@@ -2205,7 +2205,7 @@ begin
 
  FreeAndNil(fGrassMapImage);
 
- FreeAndNil(fWaterMapImage);
+//FreeAndNil(fWaterMapImage);
 
  FreeAndNil(fWaterHeightMapImage);
 
@@ -2270,7 +2270,7 @@ end;
 
 procedure TpvScene3DPlanet.TData.AcquireOnUniversalQueue(const aCommandBuffer:TpvVulkanCommandBuffer);
 var ImageSubresourceRange:TVkImageSubresourceRange;
-    ImageMemoryBarriers:array[0..4] of TVkImageMemoryBarrier;
+    ImageMemoryBarriers:array[0..3] of TVkImageMemoryBarrier;
 begin
 
  if fOwnershipHolderState=TpvScene3DPlanet.TData.TOwnershipHolderState.ReleasedOnComputeQueue then begin
@@ -2329,14 +2329,14 @@ begin
                                                          fGrassMapImage.VulkanImage.Handle,
                                                          ImageSubresourceRange);
 
-    ImageMemoryBarriers[4]:=TVkImageMemoryBarrier.Create(0,
+{  ImageMemoryBarriers[4]:=TVkImageMemoryBarrier.Create(0,
                                                          TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                          VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                                          VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                                          fPlanet.fVulkanDevice.ComputeQueueFamilyIndex,
                                                          fPlanet.fVulkanDevice.UniversalQueueFamilyIndex,
                                                          fWaterMapImage.VulkanImage.Handle,
-                                                         ImageSubresourceRange);
+                                                         ImageSubresourceRange);}
 
    fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].AcquireOnUniversalQueue',[0.5,0.25,0.25,1.0]);
 
@@ -2354,7 +2354,7 @@ begin
                                      0,
                                      0,nil,
                                      0,nil,
-                                     5,@ImageMemoryBarriers[0]);
+                                     4,@ImageMemoryBarriers[0]);
 
    fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
 
@@ -2368,7 +2368,7 @@ end;
 
 procedure TpvScene3DPlanet.TData.ReleaseOnUniversalQueue(const aCommandBuffer:TpvVulkanCommandBuffer);
 var ImageSubresourceRange:TVkImageSubresourceRange;
-    ImageMemoryBarriers:array[0..4] of TVkImageMemoryBarrier;
+    ImageMemoryBarriers:array[0..3] of TVkImageMemoryBarrier;
 begin
 
  if fOwnershipHolderState in [TpvScene3DPlanet.TData.TOwnershipHolderState.Uninitialized,TpvScene3DPlanet.TData.TOwnershipHolderState.AcquiredOnUniversalQueue] then begin
@@ -2427,14 +2427,14 @@ begin
                                                         fGrassMapImage.VulkanImage.Handle,
                                                         ImageSubresourceRange);
 
-   ImageMemoryBarriers[4]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+{  ImageMemoryBarriers[4]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                         0,
                                                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                                         fPlanet.fVulkanDevice.UniversalQueueFamilyIndex,
                                                         fPlanet.fVulkanDevice.ComputeQueueFamilyIndex,
                                                         fWaterMapImage.VulkanImage.Handle,
-                                                        ImageSubresourceRange);
+                                                        ImageSubresourceRange);}
 
    fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].ReleaseOnUniversalQueue',[0.5,0.25,0.25,1.0]);
 
@@ -2452,7 +2452,7 @@ begin
                                      0,
                                      0,nil,
                                      0,nil,
-                                     5,@ImageMemoryBarriers[0]);
+                                     4,@ImageMemoryBarriers[0]);
 
    fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
 
@@ -2466,7 +2466,7 @@ end;
 
 procedure TpvScene3DPlanet.TData.AcquireOnComputeQueue(const aCommandBuffer:TpvVulkanCommandBuffer);
 var ImageSubresourceRange:TVkImageSubresourceRange;
-    ImageMemoryBarriers:array[0..4] of TVkImageMemoryBarrier;
+    ImageMemoryBarriers:array[0..3] of TVkImageMemoryBarrier;
 begin
 
  if fOwnershipHolderState=TpvScene3DPlanet.TData.TOwnershipHolderState.ReleasedOnUniversalQueue then begin
@@ -2525,14 +2525,14 @@ begin
                                                         fGrassMapImage.VulkanImage.Handle,
                                                         ImageSubresourceRange);
 
-   ImageMemoryBarriers[4]:=TVkImageMemoryBarrier.Create(0,
+{  ImageMemoryBarriers[4]:=TVkImageMemoryBarrier.Create(0,
                                                         TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                                         fPlanet.fVulkanDevice.UniversalQueueFamilyIndex,
                                                         fPlanet.fVulkanDevice.ComputeQueueFamilyIndex,
                                                         fWaterMapImage.VulkanImage.Handle,
-                                                        ImageSubresourceRange);
+                                                        ImageSubresourceRange);}
 
    fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].AcquireOnComputeQueue',[0.5,0.25,0.25,1.0]);
 
@@ -2541,7 +2541,7 @@ begin
                                      0,
                                      0,nil,
                                      0,nil,
-                                     5,@ImageMemoryBarriers[0]);
+                                     4,@ImageMemoryBarriers[0]);
 
    fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
 
@@ -2555,7 +2555,7 @@ end;
 
 procedure TpvScene3DPlanet.TData.ReleaseOnComputeQueue(const aCommandBuffer:TpvVulkanCommandBuffer);
 var ImageSubresourceRange:TVkImageSubresourceRange;
-    ImageMemoryBarriers:array[0..4] of TVkImageMemoryBarrier;
+    ImageMemoryBarriers:array[0..3] of TVkImageMemoryBarrier;
     BufferMemoryBarriers:array[0..1] of TVkBufferMemoryBarrier;
 begin
 
@@ -2615,14 +2615,14 @@ begin
                                                         fGrassMapImage.VulkanImage.Handle,
                                                         ImageSubresourceRange);
 
-   ImageMemoryBarriers[4]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+{  ImageMemoryBarriers[4]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                         0,
                                                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                                         fPlanet.fVulkanDevice.ComputeQueueFamilyIndex,
                                                         fPlanet.fVulkanDevice.UniversalQueueFamilyIndex,
                                                         fWaterMapImage.VulkanImage.Handle,
-                                                        ImageSubresourceRange);
+                                                        ImageSubresourceRange);}
 
    fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].ReleaseOnComputeQueue',[0.5,0.25,0.25,1.0]);
 
@@ -2631,7 +2631,7 @@ begin
                                      0,
                                      0,nil,
                                      0,nil,
-                                     5,@ImageMemoryBarriers[0]);
+                                     4,@ImageMemoryBarriers[0]);
 
    fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
 
@@ -2848,7 +2848,7 @@ begin
 
    end;
 
-   if aTransferWater then begin
+{  if aTransferWater then begin
 
     ImageMemoryBarriers[CountImageMemoryBarriers]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                                                 TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT),
@@ -2870,7 +2870,7 @@ begin
                                                                                 ImageSubresourceRange);
     inc(CountImageMemoryBarriers);
 
-   end;
+   end;}
 
    CountBufferMemoryBarriers:=0;
 
@@ -2963,13 +2963,13 @@ begin
                                 1,@ImageCopies[0]);
    end;
 
-   if aTransferWater then begin
+{  if aTransferWater then begin
     aCommandBuffer.CmdCopyImage(fWaterMapImage.VulkanImage.Handle,
                                 VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
                                 aInFlightFrameData.fWaterMapImage.VulkanImage.Handle,
                                 VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                                 1,@ImageCopies[0]);
-   end;
+   end; }
 
    if DoNeedCopyWaterVisibilityBuffer then begin
 {   BufferCopy.srcOffset:=0;
@@ -3093,7 +3093,7 @@ begin
 
    end;
 
-   if aTransferWater then begin
+{  if aTransferWater then begin
 
     ImageMemoryBarriers[CountImageMemoryBarriers]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT),
                                                                                 TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
@@ -3115,7 +3115,7 @@ begin
                                                                                 ImageSubresourceRange);
     inc(CountImageMemoryBarriers);
 
-   end;
+   end;}
 
    CountBufferMemoryBarriers:=0;
 
@@ -4233,6 +4233,7 @@ begin
 
 end;
 
+(*
 { TpvScene3DPlanet.TWaterMapInitialization }
 
 constructor TpvScene3DPlanet.TWaterMapInitialization.Create(const aPlanet:TpvScene3DPlanet);
@@ -4578,6 +4579,7 @@ begin
  fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
 
 end;
+*)
 
 { TpvScene3DPlanet.THeightMapDataInitialization }
 
@@ -12034,9 +12036,9 @@ begin
 
  fGrassMapModification:=TGrassMapModification.Create(self);
 
- fWaterMapInitialization:=TWaterMapInitialization.Create(self);
+{fWaterMapInitialization:=TWaterMapInitialization.Create(self);
 
- fWaterMapModification:=TWaterMapModification.Create(self);
+ fWaterMapModification:=TWaterMapModification.Create(self);}
 
  fHeightMapRandomInitialization:=THeightMapRandomInitialization.Create(self);
 
@@ -12325,9 +12327,9 @@ begin
 
  FreeAndNil(fGrassMapModification);
 
- FreeAndNil(fWaterMapInitialization);
+{FreeAndNil(fWaterMapInitialization);
 
- FreeAndNil(fWaterMapModification);
+ FreeAndNil(fWaterMapModification);}
 
  FreeAndNil(fInFlightFrameDataList);
 
@@ -13019,7 +13021,7 @@ begin
 
      fGrassMapInitialization.Execute(fVulkanComputeCommandBuffer);
 
-     fWaterMapInitialization.Execute(fVulkanComputeCommandBuffer);
+//   fWaterMapInitialization.Execute(fVulkanComputeCommandBuffer);
 
     finally
      EndUpdate;
@@ -13195,7 +13197,7 @@ begin
 
  end;
 
-if fData.fModifyWaterMapActive then begin
+{if fData.fModifyWaterMapActive then begin
 
   if assigned(fVulkanDevice) then begin
 
@@ -13213,7 +13215,7 @@ if fData.fModifyWaterMapActive then begin
 
   end;
 
- end;
+ end;}
 
  if (fData.fHeightMapProcessedGeneration<>fData.fHeightMapGeneration) or
     fData.fModifyHeightMapActive then begin
