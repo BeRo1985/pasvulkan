@@ -400,9 +400,10 @@ type TpvScene3DPlanets=class;
                     Strength:TpvFloat;
                     MinTotalFlow:TpvFloat;
                     InitialWaterLevel:TpvFloat;
-                    CellSizeSquared:TpvFloat;
-                    Area:TpvFloat;
+                    PipeLengthSquared:TpvFloat;
+                    CrossSectionalPipeArea:TpvFloat;
                     Gravity:TpvFloat;
+                    CompensationFactor:TpvFloat;
                     BottomRadius:TpvFloat;
                     TopRadius:TpvFloat;
                     PlanetHeightMapResolution:TpvUInt32;
@@ -3879,15 +3880,19 @@ begin
 
   fPushConstants.Attenuation:=0.995;
   fPushConstants.Strength:=0.25;
-  fPushConstants.MinTotalFlow:=1e-4;
+  fPushConstants.MinTotalFlow:=-1e-4; //1e-4;
   fPushConstants.InitialWaterLevel:=0.0;//5e-2;
-  fPushConstants.CellSizeSquared:=1.0;
-  fPushConstants.Area:=1.0;
+  fPushConstants.PipeLengthSquared:=1.0;
+  fPushConstants.CrossSectionalPipeArea:=1.0;
   fPushConstants.Gravity:=1.0;
+  fPushConstants.CompensationFactor:=1.0;
+
   fPushConstants.BottomRadius:=fPlanet.fBottomRadius;
   fPushConstants.TopRadius:=fPlanet.fTopRadius;
+
   fPushConstants.PlanetHeightMapResolution:=fPlanet.fHeightMapResolution;
   fPushConstants.WaterHeightMapResolution:=fPlanet.fWaterMapResolution;
+
   fPushConstants.FrameIndex:=0;
   fPushConstants.DeltaTime:=1.0;
 
@@ -4057,11 +4062,14 @@ begin
   DestinationBufferIndex:=(SourceBufferIndex+1) and 1;
 
   fPushConstants.FrameIndex:=fPlanet.fData.fWaterFrameIndex;
-{ fPushConstants.Attenuation:=1.0;
-  fPushConstants.Strength:=1.0;}
-  fPushConstants.Gravity:=1.0;//60.0;
-  fPushConstants.CellSizeSquared:=1.0;//1.0/60.0;
-  fPushConstants.DeltaTime:=1.0;//fTimeStep;
+  fPushConstants.Attenuation:=1.0;//0.995;
+  fPushConstants.Strength:=1.0;//0.25;
+  fPushConstants.MinTotalFlow:=1e-4;
+  fPushConstants.PipeLengthSquared:=sqr(1.0);
+  fPushConstants.CrossSectionalPipeArea:=1.0;
+  fPushConstants.Gravity:=9.81;
+  fPushConstants.CompensationFactor:=60.0;//600.0;
+  fPushConstants.DeltaTime:=fTimeStep;
 
   ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                    TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
@@ -4178,7 +4186,7 @@ begin
   fInterpolationPushConstants.TopRadius:=fPlanet.fTopRadius;
   fInterpolationPushConstants.PlanetHeightMapResolution:=fPlanet.fHeightMapResolution;
   fInterpolationPushConstants.WaterHeightMapResolution:=fPlanet.fWaterMapResolution;
-  fInterpolationPushConstants.Factor:=fTimeAccumulator/fTimeStep;                                  
+  fInterpolationPushConstants.Factor:=fTimeAccumulator/fTimeStep;
 
   ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                    TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),

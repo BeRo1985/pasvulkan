@@ -28,14 +28,15 @@ layout(push_constant) uniform PushConstants {
   float attenuation;
   float strength;
   float minTotalFlow;
-  float initialWaterLevel;  
-  float cellSizeSquared;
-  float area;
+  float initialWaterLevel;    
+  float pipeLengthSquared;
+  float crossSectionalPipeArea;
   float gravity;
+  float compensationFactor;
   float bottomRadius;
   float topRadius;
   uint planetHeightMapResolution;
-  uint waterHeightMapResolution;
+  uint waterHeightMapResolution;  
   uint frameIndex;
   float deltaTime;
 } pushConstants;
@@ -125,24 +126,29 @@ void main(){
                                        dot(readHeight(ivec2(position) + ivec2( 0, -1)), vec2(1.0))
                                      ); 
 
-      const vec4 newFlow = max(vec4(0.0), heightDifferences * pushConstants.area * pushConstants.gravity * pushConstants.deltaTime);
+      const vec4 newFlow = max(vec4(0.0), heightDifferences * pushConstants.crossSectionalPipeArea * pushConstants.gravity * pushConstants.compensationFactor * pushConstants.deltaTime);
 
       outFlow = max(vec4(0.0), (newFlow * pushConstants.strength) + (oldFlow * pushConstants.attenuation));
 
       // Apply K factor from the paper:
       // The total outflow should not exceed the total amount of the water in the given cell. If the calculated value is larger than 
       // the current amount in the given cell, then flux will be scaled down with an appropriate factor K. 
-      if(pushConstants.minTotalFlow > 0.0){ 
+      const float absMinTotalFlow = abs(pushConstants.minTotalFlow);
+      if(absMinTotalFlow > 1e-7){ 
         float totalOutFlow = dot(outFlow, vec4(1.0));
-        if(totalOutFlow > pushConstants.minTotalFlow){
-          if(centerHeight.y < totalOutFlow){
-            outFlow *= (centerHeight.y / totalOutFlow);
-          }
-        }else{
+        if(totalOutFlow > absMinTotalFlow){
+          if(pushConstants.minTotalFlow > 0.0){
+            // The way the paper describes it
+            outFlow *= min(1.0, (centerHeight.y * pushConstants.pipeLengthSquared) / (dot(outFlow, vec4(1.0)) * pushConstants.deltaTime));
+          }else{ // if ushConstants.minTotalFlow < 0.0
+            // A more simple way to do it
+            if(centerHeight.y < totalOutFlow){
+              outFlow *= (centerHeight.y / totalOutFlow);
+            }
+          }  
+        }else{          
           outFlow = vec4(0.0);
         }
-      }else{
-        outFlow *= min(1.0, (centerHeight.y * pushConstants.cellSizeSquared) / (dot(outFlow, vec4(1.0)) * pushConstants.deltaTime));
       }
      
     }
@@ -167,7 +173,7 @@ void main(){
                                  waterFlowMap.values[getIndex(position, ivec2(-1,  0))].x + 
                                  waterFlowMap.values[getIndex(position, ivec2( 0, -1))].y;
 
-      waterOutHeight = max(0.0, inWaterHeightMap.values[index] + (((totalOutFlow - totalInFlow) * pushConstants.deltaTime) / pushConstants.cellSizeSquared));
+      waterOutHeight = max(0.0, inWaterHeightMap.values[index] + (((totalOutFlow - totalInFlow) * pushConstants.deltaTime) / pushConstants.pipeLengthSquared));
 
     }
 
