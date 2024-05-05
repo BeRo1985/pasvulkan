@@ -1399,6 +1399,7 @@ type TpvScene3DPlanets=class;
        fRaytracingTileNextQueue:TRaytracingTiles;
        fRaytracingTileQueues:TRaytracingTileQueues;
        fRaytracingTileQueueUpdateIndex:TPasMPUInt32;
+       fWaterModifications:TWaterModifications;
        fRendererInstanceListLock:TPasMPCriticalSection;
        fRendererInstances:TRendererInstances;
        fRendererInstanceHashMap:TRendererInstanceHashMap;
@@ -11919,6 +11920,8 @@ begin
  end;
  fCountPhysicsMeshIndices:=fCountPhysicsMeshIndices*((fTileMapResolution*fTileMapResolution)*6); }
 
+ FillChar(fWaterModifications,SizeOf(TWaterModifications),#0);
+       
  fBottomRadius:=aBottomRadius;
 
  fTopRadius:=aTopRadius;
@@ -13568,7 +13571,14 @@ begin
 end;
 
 procedure TpvScene3DPlanet.EnqueueWaterModification(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aRadius,aInnerRadius,aValue:TpvScalar);
+var WaterModification:PWaterModification;
 begin
+ if aInFlightFrameIndex>=0 then begin
+  WaterModification:=@fWaterModifications[aInFlightFrameIndex];
+  WaterModification^.PositionRadius:=TpvVector4.Create(aPosition,aRadius);
+  WaterModification^.InnerRadius:=aInnerRadius;
+  WaterModification^.Value:=aValue;
+ end;
 end;
 
 procedure TpvScene3DPlanet.ProcessSimulation(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt);
