@@ -81,16 +81,16 @@ uint getIndex(uvec2 position, ivec2 offset){
 #if defined(OUTFLOW)
 vec2 readHeight(ivec2 p){
   p = clamp(wrapOctahedralTexelCoordinates(p, ivec2(pushConstants.waterHeightMapResolution)), ivec2(0), ivec2(pushConstants.waterHeightMapResolution - 1));
-  return vec2(
-    mix(
-      pushConstants.bottomRadius,
-      pushConstants.topRadius,
-      (pushConstants.planetHeightMapResolution == pushConstants.waterHeightMapResolution) 
-        ? texelFetch(uPlanetHeightmap, ivec2(p), 0).x // When the planet height map resolution is the same as the water height map resolution, we can just use texelFetch.
-        : textureBicubicPlanetOctahedralMap(uPlanetHeightmap, vec2(p) * texelSize).x // Otherwise we need to use interpolation.
-    ),  
-    float(inWaterHeightMap.values[(p.y * pushConstants.waterHeightMapResolution) + p.x])
+  uint index = (uint(p.y) * pushConstants.waterHeightMapResolution) + uint(p.x);
+  const float planetHeight = mix(
+    pushConstants.bottomRadius,
+    pushConstants.topRadius,
+    (pushConstants.planetHeightMapResolution == pushConstants.waterHeightMapResolution) 
+      ? texelFetch(uPlanetHeightmap, ivec2(p), 0).x // When the planet height map resolution is the same as the water height map resolution, we can just use texelFetch.
+      : texturePlanetOctahedralMap(uPlanetHeightmap, (vec2(p) + vec2(0.5)) * texelSize).x // Otherwise we need to use interpolation.
   );
+  const float waterHeight = inWaterHeightMap.values[index];
+  return vec2(planetHeight, waterHeight);
 } 
 
 float computeOutFlowDir(vec2 centerHeight, ivec2 pos){

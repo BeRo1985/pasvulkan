@@ -47,14 +47,14 @@ vec2 texelSize = 1.0 / vec2(pushConstants.waterHeightMapResolution);
 vec2 readHeight(ivec2 p){
   p = clamp(wrapOctahedralTexelCoordinates(p, ivec2(pushConstants.waterHeightMapResolution)), ivec2(0), ivec2(pushConstants.waterHeightMapResolution - 1));
   uint index = (uint(p.y) * pushConstants.waterHeightMapResolution) + uint(p.x);
-  float planetHeight = mix(
+  const float planetHeight = mix(
     pushConstants.bottomRadius,
     pushConstants.topRadius,
     (pushConstants.planetHeightMapResolution == pushConstants.waterHeightMapResolution) 
       ? texelFetch(uPlanetHeightmap, ivec2(p), 0).x // When the planet height map resolution is the same as the water height map resolution, we can just use texelFetch.
-      : textureBicubicPlanetOctahedralMap(uPlanetHeightmap, vec2(p) * texelSize).x // Otherwise we need to use interpolation.
+      : texturePlanetOctahedralMap(uPlanetHeightmap, (vec2(p) + vec2(0.5)) * texelSize).x // Otherwise we need to use interpolation.
   );
-  float waterHeight = mix(
+  const float waterHeight = mix(
     inWaterHeightMapA.values[index],
     inWaterHeightMapB.values[index],
     pushConstants.factor
