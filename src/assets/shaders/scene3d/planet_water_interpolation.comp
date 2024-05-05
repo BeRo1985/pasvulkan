@@ -42,38 +42,23 @@ layout(set = 0, binding = 3, r32f) writeonly uniform image2D uImageWaterMap;
 #include "octahedral.glsl"
 #include "octahedralmap.glsl"
 
-vec2 texelSize = 1.0 / vec2(pushConstants.waterHeightMapResolution);
-
-vec2 readHeight(ivec2 p){
-  p = clamp(wrapOctahedralTexelCoordinates(p, ivec2(pushConstants.waterHeightMapResolution)), ivec2(0), ivec2(pushConstants.waterHeightMapResolution - 1));
-  uint index = (uint(p.y) * pushConstants.waterHeightMapResolution) + uint(p.x);
-  const float planetHeight = mix(
-    pushConstants.bottomRadius,
-    pushConstants.topRadius,
-    (pushConstants.planetHeightMapResolution == pushConstants.waterHeightMapResolution) 
-      ? texelFetch(uPlanetHeightmap, ivec2(p), 0).x // When the planet height map resolution is the same as the water height map resolution, we can just use texelFetch.
-      : texturePlanetOctahedralMap(uPlanetHeightmap, (vec2(p) + vec2(0.5)) * texelSize).x // Otherwise we need to use interpolation.
-  );
-  const float waterHeight = mix(
-    inWaterHeightMapA.values[index],
-    inWaterHeightMapB.values[index],
-    pushConstants.factor
-  );
-  return vec2(planetHeight, waterHeight);
-} 
-
 void main(){
 
   const uvec2 position = uvec2(gl_GlobalInvocationID.xy);
 
   if(all(lessThan(position, uvec2(pushConstants.waterHeightMapResolution)))){
 
-    vec2 heights = readHeight(ivec2(position));
-    float height = (heights.y < 1e-6) 
-                     ? -1.0 // no water
-                     : dot(heights, vec2(1.0)); // water
-    
-    imageStore(uImageWaterMap, ivec2(position), vec4(height));
+    const ivec2 p = clamp(wrapOctahedralTexelCoordinates(ivec2(position), ivec2(pushConstants.waterHeightMapResolution)), ivec2(0), ivec2(pushConstants.waterHeightMapResolution - 1));
+   
+    const uint index = (uint(p.y) * pushConstants.waterHeightMapResolution) + uint(p.x);
+
+    const float waterHeight = mix(
+      inWaterHeightMapA.values[index],
+      inWaterHeightMapB.values[index],
+      pushConstants.factor
+    );
+
+    imageStore(uImageWaterMap, ivec2(position), vec4((waterHeight < 1e-6) ? -1.0 : waterHeight));
 
   }
 
