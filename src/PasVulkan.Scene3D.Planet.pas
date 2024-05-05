@@ -3568,78 +3568,6 @@ end;
 
 { TpvScene3DPlanet.TWaterSimulation }
 
-{
-            TWaterSimulation=class
-             public
-              type TPushConstants=packed record
-                    Attenuation:TpvFloat;
-                    Strength:TpvFloat;
-                    MinTotalFlow:TpvFloat;
-                    InitialWaterLevel:TpvFloat;
-                    BottomRadius:TpvFloat;
-                    TopRadius:TpvFloat;
-                    PlanetHeightMapResolution:TpvUInt32;
-                    WaterHeightMapResolution:TpvUInt32;
-                    FrameIndex:TpvUInt32;
-                   end;
-                   PPushConstants=^TPushConstants;
-                   TInterpolationPushConstants=packed record
-                    BottomRadius:TpvFloat;
-                    TopRadius:TpvFloat;
-                    PlanetHeightMapResolution:TpvUInt32;
-                    WaterHeightMapResolution:TpvUInt32;
-                    Factor:TpvFloat;
-                   end;
-                   PInterpolationPushConstants=^TInterpolationPushConstants;
-                   TModificationPushConstants=packed record
-                    PositionRadius:TpvVector4; // xyz = position, w = radius
-                    InnerRadius:TpvFloat;
-                    Value:TpvFloat;
-                    WaterHeightMapResolution:TpvUInt32;
-                   end;
-                   PModificationPushConstants=^TModificationPushConstants;
-             private
-              fPlanet:TpvScene3DPlanet;
-              fVulkanDevice:TpvVulkanDevice;
-              fPass1ComputeShaderModule:TpvVulkanShaderModule;
-              fPass1ComputeShaderStage:TpvVulkanPipelineShaderStage;
-              fPass1Pipeline:TpvVulkanComputePipeline;
-              fPass2ComputeShaderModule:TpvVulkanShaderModule;
-              fPass2ComputeShaderStage:TpvVulkanPipelineShaderStage;
-              fPass2Pipeline:TpvVulkanComputePipeline;
-              fInterpolationComputeShaderModule:TpvVulkanShaderModule;
-              fInterpolationComputeShaderStage:TpvVulkanPipelineShaderStage;
-              fInterpolationPipeline:TpvVulkanComputePipeline;
-              fModificationComputeShaderModule:TpvVulkanShaderModule;
-              fModificationComputeShaderStage:TpvVulkanPipelineShaderStage;
-              fModificationPipeline:TpvVulkanComputePipeline;
-              fDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
-              fDescriptorPool:TpvVulkanDescriptorPool;
-              fPass1DescriptorSets:array[0..1] of TpvVulkanDescriptorSet; // Double-buffered
-              fPass2DescriptorSets:array[0..1] of TpvVulkanDescriptorSet; // Double-buffered
-              fInterpolationDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
-              fInterpolationDescriptorPool:TpvVulkanDescriptorPool;
-              fInterpolationDescriptorSets:array[0..1] of TpvVulkanDescriptorSet;
-              fModificationDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
-              fModificationDescriptorPool:TpvVulkanDescriptorPool;
-              fModificationDescriptorSets:array[0..1] of TpvVulkanDescriptorSet;
-              fPipelineLayout:TpvVulkanPipelineLayout;
-              fInterpolationPipelineLayout:TpvVulkanPipelineLayout;
-              fModificationPipelineLayout:TpvVulkanPipelineLayout;
-              fPushConstants:TPushConstants;
-              fInterpolationPushConstants:TInterpolationPushConstants;
-              fModificationPushConstants:TModificationPushConstants;
-              fTimeAccumulator:TpvDouble;
-              fTimeStep:TpvDouble;
-             public
-              constructor Create(const aPlanet:TpvScene3DPlanet); reintroduce;
-              destructor Destroy; override;
-              procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aDeltaTime:TpvDouble);
-             public
-              property PushConstants:TPushConstants read fPushConstants write fPushConstants;
-            end;
-}
-
 constructor TpvScene3DPlanet.TWaterSimulation.Create(const aPlanet:TpvScene3DPlanet);
 var Index:TpvSizeInt;
     Stream:TStream;
@@ -4015,7 +3943,7 @@ begin
   fPushConstants.Attenuation:=0.995;
   fPushConstants.Strength:=0.25;
   fPushConstants.MinTotalFlow:=1e-4;
-  fPushConstants.InitialWaterLevel:=5e-2;
+  fPushConstants.InitialWaterLevel:=0.0;//5e-2;
   fPushConstants.BottomRadius:=fPlanet.fBottomRadius;
   fPushConstants.TopRadius:=fPlanet.fTopRadius;
   fPushConstants.PlanetHeightMapResolution:=fPlanet.fHeightMapResolution;
