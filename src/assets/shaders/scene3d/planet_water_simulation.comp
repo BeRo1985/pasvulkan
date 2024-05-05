@@ -50,17 +50,19 @@ layout(set = 0, binding = 1, std430) readonly buffer InWaterHeightMap {
   _float values[];
 } inWaterHeightMap;
 
-layout(set = 0, binding = 2, std430) readonly buffer InWaterFlowMap {
-  _vec4 values[];
-} inWaterFlowMap;
-
-layout(set = 0, binding = 3, std430) writeonly buffer OutWaterHeightMap {
+layout(set = 0, binding = 2, std430) writeonly buffer OutWaterHeightMap {
   _float values[];
 } outWaterHeightMap;
 
-layout(set = 0, binding = 4, std430) writeonly buffer OutWaterFlowMap {
+#if defined(OUTFLOW)
+layout(set = 0, binding = 3, std430) coherent buffer WaterFlowMap {
   _vec4 values[];
-} outWaterFlowMap;
+} waterFlowMap;
+#else
+layout(set = 0, binding = 3, std430) readonly buffer WaterFlowMap {
+  _vec4 values[];
+} waterFlowMap;
+#endif
 
 #include "octahedral.glsl"
 #include "octahedralmap.glsl"
@@ -109,7 +111,7 @@ void main(){
 
       const vec2 centerHeight = readHeight(ivec2(position));
 
-      const vec4 oldFlow = vec4(inWaterFlowMap.values[index]);
+      const vec4 oldFlow = vec4(waterFlowMap.values[index]);
 
       const vec4 heightDifferences = vec4(dot(centerHeight, vec2(1.0))) - 
                                      vec4(
@@ -136,7 +138,7 @@ void main(){
      
     }
 
-    outWaterFlowMap.values[index] = _vec4(max(vec4(0.0), outFlow));
+    waterFlowMap.values[index] = _vec4(max(vec4(0.0), outFlow));
 
 #else
 
@@ -149,12 +151,12 @@ void main(){
 
     }else{
 
-      const float totalInFlow = dot(vec4(inWaterFlowMap.values[index]), vec4(1.0));
+      const float totalInFlow = dot(vec4(waterFlowMap.values[index]), vec4(1.0));
 
-      const float totalOutFlow = inWaterFlowMap.values[getIndex(position, ivec2( 1,  0))].z +
-                                 inWaterFlowMap.values[getIndex(position, ivec2( 0,  1))].w + 
-                                 inWaterFlowMap.values[getIndex(position, ivec2(-1,  0))].x + 
-                                 inWaterFlowMap.values[getIndex(position, ivec2( 0, -1))].y;
+      const float totalOutFlow = waterFlowMap.values[getIndex(position, ivec2( 1,  0))].z +
+                                 waterFlowMap.values[getIndex(position, ivec2( 0,  1))].w + 
+                                 waterFlowMap.values[getIndex(position, ivec2(-1,  0))].x + 
+                                 waterFlowMap.values[getIndex(position, ivec2( 0, -1))].y;
 
       waterOutHeight = max(0.0, (inWaterHeightMap.values[index] - totalInFlow) + totalOutFlow);
 
