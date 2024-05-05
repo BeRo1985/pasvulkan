@@ -388,6 +388,8 @@ compileshaderarguments=(
   "-V planet_cull.comp -DPASS0 -o ${tempPath}/planet_cull_pass0_comp.spv"
   "-V planet_cull.comp -DPASS1 -o ${tempPath}/planet_cull_pass1_comp.spv"
 
+  "-V planet_water_modification.comp -o ${tempPath}/planet_water_modification_comp.spv"
+  
   "-V planet_water_simulation.comp -o ${tempPath}/planet_water_simulation_pass1_comp.spv"
   "-V planet_water_simulation.comp -DOUTFLOW -o ${tempPath}/planet_water_simulation_pass2_comp.spv"
 

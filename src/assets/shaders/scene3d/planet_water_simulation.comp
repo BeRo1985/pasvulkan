@@ -163,7 +163,7 @@ void main(){
                                  inWaterFlowMap.values[getIndex(position, ivec2(-1,  0))].x + 
                                  inWaterFlowMap.values[getIndex(position, ivec2( 0, -1))].y;
 
-      waterOutHeight = (inWaterHeightMap.values[index] - totalInFlow) + totalOutFlow;
+      waterOutHeight = max(0.0, (inWaterHeightMap.values[index] - totalInFlow) + totalOutFlow);
 
     }
 
