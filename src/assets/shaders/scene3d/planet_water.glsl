@@ -143,11 +143,11 @@ float getSphereHeight(vec3 n) {
 }
 
 float mapHeight(vec3 p, float h){
-  return length(planetCenter - p) - clamp(h, planetBottomRadius * 0.5, planetTopRadius);
+  return length(planetCenter - p) - clamp(h, max(0.0, planetBottomRadius - 0.01), planetTopRadius);
 }
 
 float mapEx(vec3 p, int i){
-  return length(planetCenter - p) - clamp(getSphereHeight(normalize(p - planetCenter), i), planetBottomRadius * 0.5, planetTopRadius);
+  return length(planetCenter - p) - clamp(getSphereHeight(normalize(p - planetCenter), i), max(0.0, planetBottomRadius - 0.01), planetTopRadius);
 }
 
 float map(vec3 p){
@@ -332,7 +332,7 @@ bool planetRayMarching(vec3 rayOrigin, vec3 rayDirection, float maxTime, out flo
             
       float rayHeight = (radius - planetBottomRadius) / (planetTopRadius - planetBottomRadius);
 
-      float height = (getSphereHeight(unit) - planetBottomRadius) / (planetTopRadius - planetBottomRadius);
+      float height = clamp((getSphereHeight(unit) - planetBottomRadius) / (planetTopRadius - planetBottomRadius), 0.0, 1.0);
 
       if(height >= rayHeight){
  
@@ -349,7 +349,7 @@ bool planetRayMarching(vec3 rayOrigin, vec3 rayDirection, float maxTime, out flo
           point = startPoint + (offset * midpoint);
           unit = point / (radius = length(point));
           rayHeight = (radius - planetBottomRadius) / (planetTopRadius - planetBottomRadius);
-          height = (getSphereHeight(unit) - planetBottomRadius) / (planetTopRadius - planetBottomRadius);
+          height = clamp((getSphereHeight(unit) - planetBottomRadius) / (planetTopRadius - planetBottomRadius), 0.0, 1.0); 
 
           if(height >= rayHeight){
             upper = midpoint;
