@@ -182,6 +182,13 @@ type TpvScene3DPlanets=class;
 
             end;
             PGrassVertex=^TGrassVertex;
+            TWaterModification=packed record
+             PositionRadius:TpvVector4;
+             InnerRadius:TpvFloat;
+             Value:TpvFloat;
+            end;
+            PWaterModification=^TWaterModification;
+            TWaterModifications=array[0..MaxInFlightFrames-1] of TWaterModification;
             { TData }
             TData=class // one ground truth instance and one or more in-flight instances for flawlessly parallel rendering
              public
@@ -1441,6 +1448,7 @@ type TpvScene3DPlanets=class;
        procedure FrameUpdate(const aInFlightFrameIndex:TpvSizeInt);
        procedure Prepare(const aInFlightFrameIndex:TpvSizeInt;const aRendererInstance:TObject;const aRenderPassIndex:TpvSizeInt;const aViewPortWidth,aViewPortHeight:TpvInt32;const aMainViewPort:Boolean);
        procedure UploadFrame(const aInFlightFrameIndex:TpvSizeInt);
+       procedure EnqueueWaterModification(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aRadius,aInnerRadius,aValue:TpvScalar);
        procedure ProcessSimulation(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt);
        procedure BeginFrame(const aInFlightFrameIndex:TpvSizeInt;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil);
        procedure EndFrame(const aInFlightFrameIndex:TpvSizeInt;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil);
@@ -13557,6 +13565,10 @@ begin
 
  end;
 
+end;
+
+procedure TpvScene3DPlanet.EnqueueWaterModification(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aRadius,aInnerRadius,aValue:TpvScalar);
+begin
 end;
 
 procedure TpvScene3DPlanet.ProcessSimulation(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt);

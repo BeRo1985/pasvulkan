@@ -19,7 +19,8 @@ layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
 
 layout(push_constant) uniform PushConstants {
   vec4 positionRadius; // xyz = position, w = radius
-  vec4 innerRadiusValueMinMax; // x = inner radius, y = value, z = min, w = max
+  float innerRadius;
+  float value;
   uint waterHeightMapResolution;
 } pushConstants;
 
@@ -36,13 +37,13 @@ void main(){
 
   const uvec2 position = uvec2(gl_GlobalInvocationID.xy);
 
-  if(all(lessThan(position, uvec2(pushConstants.waterHeightMapResolution)))){
+  if((all(lessThan(position, uvec2(pushConstants.waterHeightMapResolution)))) && (abs(pushConstants.value) > 1e-7)){      
 
     vec3 sphereNormal = octPlanetUnsignedDecode(vec2(position) / vec2(pushConstants.waterHeightMapResolution));
 
     float d = smoothstep(
       0.0,
-      -pushConstants.innerRadiusValueMinMax.x,
+      -pushConstants.innerRadius,
       length(sphereNormal - pushConstants.positionRadius.xyz) - pushConstants.positionRadius.w
     );
 
@@ -50,12 +51,12 @@ void main(){
 
       uint index = (position.y * pushConstants.waterHeightMapResolution) + position.x;
 
-      if(pushConstants.innerRadiusValueMinMax.y < 0.0){
-        waterHeightMap.values[index] += d * pushConstants.innerRadiusValueMinMax.y;
+      if(pushConstants.value < 0.0){
+        waterHeightMap.values[index] += d * pushConstants.value;
       }else{  
         // When the value is positive, we want to add the value to the water height map, where we ensure that the
         // original value is not negative, so that it is being pushed up and not below the terrain.
-        waterHeightMap.values[index] = max(0.0, waterHeightMap.values[index]) + (d * pushConstants.innerRadiusValueMinMax.y);
+        waterHeightMap.values[index] = max(0.0, waterHeightMap.values[index]) + (d * pushConstants.value);
       }
 
     }      
