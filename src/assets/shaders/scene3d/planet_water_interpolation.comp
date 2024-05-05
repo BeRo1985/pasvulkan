@@ -56,7 +56,7 @@ void main(){
       pushConstants.factor
     );
 
-    imageStore(uImageWaterMap, ivec2(position), vec4((waterHeight < 1e-6) ? -0.1 : waterHeight));
+    imageStore(uImageWaterMap, ivec2(position), vec4((waterHeight < 1e-6) ? -1.0 : waterHeight));
 
   }
 
