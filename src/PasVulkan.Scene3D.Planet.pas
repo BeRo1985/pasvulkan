@@ -403,6 +403,7 @@ type TpvScene3DPlanets=class;
                     PipeLengthSquared:TpvFloat;
                     CrossSectionalPipeArea:TpvFloat;
                     Gravity:TpvFloat;
+                    Evaporation:TpvFloat;
                     CompensationFactor:TpvFloat;
                     BottomRadius:TpvFloat;
                     TopRadius:TpvFloat;
@@ -3885,6 +3886,7 @@ begin
   fPushConstants.PipeLengthSquared:=1.0;
   fPushConstants.CrossSectionalPipeArea:=1.0;
   fPushConstants.Gravity:=1.0;
+  fPushConstants.Evaporation:=0.0;
   fPushConstants.CompensationFactor:=1.0;
 
   fPushConstants.BottomRadius:=fPlanet.fBottomRadius;
@@ -4069,6 +4071,7 @@ begin
   fPushConstants.PipeLengthSquared:=sqr(1.0);
   fPushConstants.CrossSectionalPipeArea:=1.0;
   fPushConstants.Gravity:=9.81;
+  fPushConstants.Evaporation:=0.0;//0.015;
   fPushConstants.CompensationFactor:=60.0;//600.0;
   fPushConstants.DeltaTime:=fTimeStep;
 {$else}
@@ -4078,6 +4081,7 @@ begin
   fPushConstants.PipeLengthSquared:=sqr(1.0);
   fPushConstants.CrossSectionalPipeArea:=1.0;
   fPushConstants.Gravity:=1.0;
+  fPushConstants.Evaporation:=0.0;//0.015;
   fPushConstants.CompensationFactor:=Ln(1.0/60)/Ln(fTimeStep);//600.0;
   fPushConstants.DeltaTime:=1.0;
 {$endif}

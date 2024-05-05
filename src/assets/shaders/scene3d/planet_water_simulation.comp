@@ -32,6 +32,7 @@ layout(push_constant) uniform PushConstants {
   float pipeLengthSquared;
   float crossSectionalPipeArea;
   float gravity;
+  float evaporation;
   float compensationFactor;
   float bottomRadius;
   float topRadius;
@@ -171,7 +172,7 @@ void main(){
                                  waterFlowMap.values[getIndex(position, ivec2(-1,  0))].x + 
                                  waterFlowMap.values[getIndex(position, ivec2( 0, -1))].y;
 
-      waterOutHeight = max(0.0, inWaterHeightMap.values[index] + (((totalOutFlow - totalInFlow) * pushConstants.deltaTime) / pushConstants.pipeLengthSquared));
+      waterOutHeight = max(0.0, (inWaterHeightMap.values[index] + (((totalOutFlow - totalInFlow) * pushConstants.deltaTime) / pushConstants.pipeLengthSquared)) * (1.0 - clamp(pushConstants.evaporation * pushConstants.deltaTime, 0.0, 1.0)));
 
     }
 
