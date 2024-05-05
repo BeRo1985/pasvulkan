@@ -4062,6 +4062,7 @@ begin
   DestinationBufferIndex:=(SourceBufferIndex+1) and 1;
 
   fPushConstants.FrameIndex:=fPlanet.fData.fWaterFrameIndex;
+{$if true}
   fPushConstants.Attenuation:=1.0;//0.995;
   fPushConstants.Strength:=1.0;//0.25;
   fPushConstants.MinTotalFlow:=1e-4;
@@ -4070,6 +4071,16 @@ begin
   fPushConstants.Gravity:=9.81;
   fPushConstants.CompensationFactor:=60.0;//600.0;
   fPushConstants.DeltaTime:=fTimeStep;
+{$else}
+  fPushConstants.Attenuation:=0.995;
+  fPushConstants.Strength:=0.25;
+  fPushConstants.MinTotalFlow:=-1e-4;
+  fPushConstants.PipeLengthSquared:=sqr(1.0);
+  fPushConstants.CrossSectionalPipeArea:=1.0;
+  fPushConstants.Gravity:=1.0;
+  fPushConstants.CompensationFactor:=Ln(1.0/60)/Ln(fTimeStep);//600.0;
+  fPushConstants.DeltaTime:=1.0;
+{$endif}
 
   ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                    TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
