@@ -139,12 +139,10 @@ void main(){
         if(totalOutFlow > absMinTotalFlow){
           if(pushConstants.minTotalFlow > 0.0){
             // The way the paper describes it
-            outFlow *= min(1.0, (centerHeight.y * pushConstants.pipeLengthSquared) / (dot(outFlow, vec4(1.0)) * pushConstants.deltaTime));
-          }else{ // if ushConstants.minTotalFlow < 0.0
+            outFlow *= min(1.0, (centerHeight.y * pushConstants.pipeLengthSquared) / (totalOutFlow * pushConstants.deltaTime));
+          }else{ // if pushConstants.minTotalFlow < 0.0
             // A more simple way to do it
-            if(centerHeight.y < totalOutFlow){
-              outFlow *= (centerHeight.y / totalOutFlow);
-            }
+            outFlow *= min(1.0, centerHeight.y / totalOutFlow);
           }  
         }else{          
           outFlow = vec4(0.0);
