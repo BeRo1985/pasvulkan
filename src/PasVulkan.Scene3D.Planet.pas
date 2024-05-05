@@ -215,6 +215,7 @@ type TpvScene3DPlanets=class;
               fBlendMapImage:TpvScene3DRendererImage2D; // A2B10G10R10_UNORM_PACK32
               fGrassMapImage:TpvScene3DRendererImage2D; // R8G8B8A8_UNORM
               fWaterMapImage:TpvScene3DRendererImage2D; // R32_SFLOAT
+              fWaterHeightMapImage:TpvScene3DRendererImage2D; // R32_SFLOAT
               fWaterHeightMapBuffers:array[0..1] of TpvVulkanBuffer; // Double-buffered
               fWaterFlowMapBuffers:array[0..1] of TpvVulkanBuffer; // Double-buffered
               fWaterMapBuffer:TpvVulkanBuffer; // The target buffer for the water map from the double-buffered water height map buffers, where the graphics pipeline reads from.
@@ -1558,6 +1559,8 @@ begin
 
  fWaterMapImage:=nil;
 
+ fWaterHeightMapImage:=nil;
+
  fWaterHeightMapBuffers[0]:=nil;
  fWaterHeightMapBuffers[1]:=nil;
 
@@ -1680,6 +1683,19 @@ begin
   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fWaterMapImage.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fWaterMapImage.ImageView');
 
   if fInFlightFrameIndex<0 then begin
+
+   fWaterHeightMapImage:=TpvScene3DRendererImage2D.Create(fPlanet.fVulkanDevice,
+                                                          fPlanet.fWaterMapResolution,
+                                                          fPlanet.fWaterMapResolution,
+                                                          VK_FORMAT_R32_SFLOAT,
+                                                          true,
+                                                          VK_SAMPLE_COUNT_1_BIT,
+                                                          VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                          ImageSharingMode,
+                                                          ImageQueueFamilyIndices,
+                                                          pvAllocationGroupIDScene3DPlanetStatic);
+   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fWaterHeightMapImage.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fWaterHeightMapImage.Image');
+   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fWaterHeightMapImage.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fWaterHeightMapImage.ImageView');
 
    fWaterHeightMapBuffers[0]:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
                                                      fPlanet.fWaterMapResolution*fPlanet.fWaterMapResolution*SizeOf(TpvFloat),
@@ -2208,6 +2224,8 @@ begin
  FreeAndNil(fGrassMapImage);
 
  FreeAndNil(fWaterMapImage);
+
+ FreeAndNil(fWaterHeightMapImage);
 
  FreeAndNil(fWaterHeightMapBuffers[0]);
  FreeAndNil(fWaterHeightMapBuffers[1]);
@@ -3859,7 +3877,7 @@ begin
                                                             1,
                                                             TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
                                                             [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,
-                                                                                           fPlanet.fData.fWaterMapImage.VulkanImageView.Handle,
+                                                                                           fPlanet.fData.fWaterHeightMapImage.VulkanImageView.Handle,
                                                                                            VK_IMAGE_LAYOUT_GENERAL)],
                                                             [],
                                                             [],
@@ -4111,7 +4129,7 @@ begin
                                                    VK_IMAGE_LAYOUT_GENERAL,
                                                    VK_QUEUE_FAMILY_IGNORED,
                                                    VK_QUEUE_FAMILY_IGNORED,
-                                                   fPlanet.fData.fWaterMapImage.VulkanImage.Handle,
+                                                   fPlanet.fData.fWaterHeightMapImage.VulkanImage.Handle,
                                                    TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
                                                                                    0,
                                                                                    1,
@@ -4151,7 +4169,7 @@ begin
                                                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                                    VK_QUEUE_FAMILY_IGNORED,
                                                    VK_QUEUE_FAMILY_IGNORED,
-                                                   fPlanet.fData.fWaterMapImage.VulkanImage.Handle,
+                                                   fPlanet.fData.fWaterHeightMapImage.VulkanImage.Handle,
                                                    TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
                                                                                    0,
                                                                                    1,
@@ -9062,7 +9080,7 @@ begin
                                      1,
                                      TVkDescriptorType(VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE),
                                      [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,
-                                                                    fPlanet.fData.fWaterMapImage.VulkanImageView.Handle,
+                                                                    fPlanet.fData.fWaterHeightMapImage.VulkanImageView.Handle,
                                                                     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
                                      [],
                                      [],
@@ -12064,7 +12082,7 @@ begin
                                                                                            fInFlightFrameDataList[InFlightFrameIndex].fGrassMapImage.VulkanImageView.Handle,
                                                                                            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
                                                              TVkDescriptorImageInfo.Create(TpvScene3D(fScene3D).GeneralComputeSampler.Handle,
-                                                                                           fInFlightFrameDataList[InFlightFrameIndex].fWaterMapImage.VulkanImageView.Handle,
+                                                                                           {fInFlightFrameDataList[InFlightFrameIndex].}fData.fWaterHeightMapImage.VulkanImageView.Handle,
                                                                                            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
                                                             [],
                                                             [],
