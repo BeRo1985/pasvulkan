@@ -38,12 +38,6 @@ layout(push_constant) uniform PushConstants {
 
 layout(set = 0, binding = 0) uniform sampler2D uPlanetHeightmap;
 
-// Buffers instead images because for buffers we don't to worry about Vulkan family ownership transfers, since they are no-op on the
-// most GPU architectures anyway, and we can use them as a simple shared memory between compute and graphics pipelines randomly.
-
-// However the water height map buffer is transferred to an image for rendering the water surface in the graphics pipeline every 
-// frame, but that's a different story.
-
 #if 0
 #define _float float16_t
 #define _vec4 f16vec4
