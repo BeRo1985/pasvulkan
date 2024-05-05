@@ -400,11 +400,15 @@ type TpvScene3DPlanets=class;
                     Strength:TpvFloat;
                     MinTotalFlow:TpvFloat;
                     InitialWaterLevel:TpvFloat;
+                    CellSizeSquared:TpvFloat;
+                    Area:TpvFloat;
+                    Gravity:TpvFloat;
                     BottomRadius:TpvFloat;
                     TopRadius:TpvFloat;
                     PlanetHeightMapResolution:TpvUInt32;
                     WaterHeightMapResolution:TpvUInt32;
                     FrameIndex:TpvUInt32;
+                    DeltaTime:TpvFloat;
                    end;
                    PPushConstants=^TPushConstants;
                    TInterpolationPushConstants=packed record
@@ -3877,11 +3881,15 @@ begin
   fPushConstants.Strength:=0.25;
   fPushConstants.MinTotalFlow:=1e-4;
   fPushConstants.InitialWaterLevel:=0.0;//5e-2;
+  fPushConstants.CellSizeSquared:=1.0;
+  fPushConstants.Area:=1.0;
+  fPushConstants.Gravity:=1.0;
   fPushConstants.BottomRadius:=fPlanet.fBottomRadius;
   fPushConstants.TopRadius:=fPlanet.fTopRadius;
   fPushConstants.PlanetHeightMapResolution:=fPlanet.fHeightMapResolution;
   fPushConstants.WaterHeightMapResolution:=fPlanet.fWaterMapResolution;
   fPushConstants.FrameIndex:=0;
+  fPushConstants.DeltaTime:=1.0;
 
   fModificationPushConstants.PositionRadius:=TpvVector4.Create(0.0,0.0,0.0,0.0);
   fModificationPushConstants.InnerRadius:=0.0;
@@ -4049,6 +4057,11 @@ begin
   DestinationBufferIndex:=(SourceBufferIndex+1) and 1;
 
   fPushConstants.FrameIndex:=fPlanet.fData.fWaterFrameIndex;
+{ fPushConstants.Attenuation:=1.0;
+  fPushConstants.Strength:=1.0;}
+  fPushConstants.Gravity:=60.0;
+  fPushConstants.CellSizeSquared:=1.0/60.0;
+  fPushConstants.DeltaTime:=fTimeStep;
 
   ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                    TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
