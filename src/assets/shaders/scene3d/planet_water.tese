@@ -132,7 +132,7 @@ void main(){
  
   float sphereHeight = getSphereHeight(sphereNormal);
 
-  vec3 localPosition = sphereNormal * ((sphereHeight > 1e-6) ? (planetData.bottomRadiusTopRadiusHeightMapScale.x + (sphereHeight * planetData.bottomRadiusTopRadiusHeightMapScale.z)) : 1e-6);
+  vec3 localPosition = sphereNormal * ((sphereHeight > 1e-6) ? clamp(sphereHeight, planetData.bottomRadiusTopRadiusHeightMapScale.x * 0.5, planetData.bottomRadiusTopRadiusHeightMapScale.y) : 1e-6);
 
   vec3 position = (planetData.modelMatrix * vec4(localPosition, 1.0)).xyz;
 
