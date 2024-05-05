@@ -4114,7 +4114,7 @@ begin
 
   try
 
-   SourceBufferIndex:=fPlanet.fData.fWaterBufferIndex;
+   DestinationBufferIndex:=(fPlanet.fData.fWaterBufferIndex+1) and 1;
 
    fModificationPushConstants.PositionRadius:=WaterModification^.PositionRadius;
    fModificationPushConstants.InnerRadius:=WaterModification^.InnerRadius;
@@ -4125,9 +4125,9 @@ begin
                                                           TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                           VK_QUEUE_FAMILY_IGNORED,
                                                           VK_QUEUE_FAMILY_IGNORED,
-                                                          fPlanet.fData.fWaterHeightMapBuffers[SourceBufferIndex].Handle,
+                                                          fPlanet.fData.fWaterHeightMapBuffers[DestinationBufferIndex].Handle,
                                                           0,
-                                                          fPlanet.fData.fWaterHeightMapBuffers[SourceBufferIndex].Size);
+                                                          fPlanet.fData.fWaterHeightMapBuffers[DestinationBufferIndex].Size);
 
    aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
@@ -4142,7 +4142,7 @@ begin
                                         fModificationPipelineLayout.Handle,
                                         0,
                                         1,
-                                        @fModificationDescriptorSets[SourceBufferIndex].Handle,
+                                        @fModificationDescriptorSets[DestinationBufferIndex].Handle,
                                         0,
                                         nil);
 
@@ -4160,9 +4160,9 @@ begin
                                                           TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                           VK_QUEUE_FAMILY_IGNORED,
                                                           VK_QUEUE_FAMILY_IGNORED,
-                                                          fPlanet.fData.fWaterHeightMapBuffers[SourceBufferIndex].Handle,
+                                                          fPlanet.fData.fWaterHeightMapBuffers[DestinationBufferIndex].Handle,
                                                           0,
-                                                          fPlanet.fData.fWaterHeightMapBuffers[SourceBufferIndex].Size);
+                                                          fPlanet.fData.fWaterHeightMapBuffers[DestinationBufferIndex].Size);
 
    aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
