@@ -50,7 +50,13 @@ void main(){
 
       uint index = (position.y * pushConstants.waterHeightMapResolution) + position.x;
 
-      waterHeightMap.values[index] += d * pushConstants.innerRadiusValueMinMax.y;
+      if(pushConstants.innerRadiusValueMinMax.y < 0.0){
+        waterHeightMap.values[index] += d * pushConstants.innerRadiusValueMinMax.y;
+      }else{  
+        // When the value is positive, we want to add the value to the water height map, where we ensure that the
+        // original value is not negative, so that it is being pushed up and not below the terrain.
+        waterHeightMap.values[index] = max(0.0, waterHeightMap.values[index]) + (d * pushConstants.innerRadiusValueMinMax.y);
+      }
 
     }      
 
