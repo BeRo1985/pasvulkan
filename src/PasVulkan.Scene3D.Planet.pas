@@ -4059,9 +4059,9 @@ begin
   fPushConstants.FrameIndex:=fPlanet.fData.fWaterFrameIndex;
 { fPushConstants.Attenuation:=1.0;
   fPushConstants.Strength:=1.0;}
-  fPushConstants.Gravity:=60.0;
-  fPushConstants.CellSizeSquared:=1.0/60.0;
-  fPushConstants.DeltaTime:=fTimeStep;
+  fPushConstants.Gravity:=1.0;//60.0;
+  fPushConstants.CellSizeSquared:=1.0;//1.0/60.0;
+  fPushConstants.DeltaTime:=1.0;//fTimeStep;
 
   ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                    TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),

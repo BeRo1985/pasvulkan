@@ -129,6 +129,9 @@ void main(){
 
       outFlow = max(vec4(0.0), (newFlow * pushConstants.strength) + (oldFlow * pushConstants.attenuation));
 
+      // Apply K factor from the paper:
+      // The total outflow should not exceed the total amount of the water in the given cell. If the calculated value is larger than 
+      // the current amount in the given cell, then flux will be scaled down with an appropriate factor K. 
       if(pushConstants.minTotalFlow > 0.0){ 
         float totalOutFlow = dot(outFlow, vec4(1.0));
         if(totalOutFlow > pushConstants.minTotalFlow){
@@ -138,6 +141,8 @@ void main(){
         }else{
           outFlow = vec4(0.0);
         }
+      }else{
+        outFlow *= min(1.0, (centerHeight.y * pushConstants.cellSizeSquared) / (dot(outFlow, vec4(1.0)) * pushConstants.deltaTime));
       }
      
     }
