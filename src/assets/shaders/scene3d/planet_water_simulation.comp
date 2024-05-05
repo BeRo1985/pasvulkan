@@ -129,6 +129,17 @@ void main(){
       );
 
       outFlow = (newFlow * pushConstants.strength) + (oldFlow * pushConstants.attenuation);
+
+      if(pushConstants.minTotalFlow > 0.0){ 
+        float totalOutFlow = dot(outFlow, vec4(1.0));
+        if(totalOutFlow > pushConstants.minTotalFlow){
+          if(centerHeight.y < totalOutFlow){
+            outFlow *= (centerHeight.y / totalOutFlow);
+          }
+        }else{
+          outFlow = vec4(0.0);
+        }
+      }
      
     }
 
