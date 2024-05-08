@@ -663,7 +663,7 @@ void main(){
   const bool underWater = (maskedFlags & (1u << 0u)) != 0u;
   const bool isVisible = (anyFlags & (1u << 1u)) != 0u;
   const bool isWaterVisible = (anyFlags & (1u << 2u)) != 0u;
-  const bool aboveGround = (anyFlags & (1u << 3u)) != 0u;
+  const bool aboveGround = true;//(anyFlags & (1u << 3u)) != 0u;
   bool visible = isVisible && isWaterVisible && aboveGround && !underWater;
   if(visible){
 #ifdef TRIANGLES
@@ -681,45 +681,45 @@ void main(){
       // camera is less than 90 degrees, and invisible otherwise.
       visible = false;
     }    
-  }
-  if(visible){
+    if(visible){
 #ifdef TRIANGLES
   #define COUNT_VERTICES 3
 #else
   #define COUNT_VERTICES 4
 #endif
-    vec4 vertices[COUNT_VERTICES] = vec4[COUNT_VERTICES](
-      viewMatrix * vec4(inBlocks[0].position, 1.0),
-      viewMatrix * vec4(inBlocks[1].position, 1.0),
+      vec4 vertices[COUNT_VERTICES] = vec4[COUNT_VERTICES](
+        viewMatrix * vec4(inBlocks[0].position, 1.0),
+        viewMatrix * vec4(inBlocks[1].position, 1.0),
 #ifdef TRIANGLES
-      viewMatrix * vec4(inBlocks[2].position, 1.0)
+        viewMatrix * vec4(inBlocks[2].position, 1.0)
 #else
-      viewMatrix * vec4(inBlocks[2].position, 1.0),
-      viewMatrix * vec4(inBlocks[3].position, 1.0)
+        viewMatrix * vec4(inBlocks[2].position, 1.0),
+        viewMatrix * vec4(inBlocks[3].position, 1.0)
 #endif
-    );
-    int countVerticesInFrontOfNearPlane = 0; 
-    for(int i = 0; i < COUNT_VERTICES; i++){
-       if(vertices[i].w < 0.0){
-         countVerticesInFrontOfNearPlane++;
-         vertices[i].w *= -1.0;
-       }
-       vertices[i].xy = (vertices[i].xy / (vertices[i].w * 2.0)) + vec2(0.5);  
-    } 
-    if(countVerticesInFrontOfNearPlane == COUNT_VERTICES){
-      visible = false;
-    }else{
-      vec4 minMax = vec4(
-#ifdef TRIANGLES
-        min(min(vertices[0].xy, vertices[1].xy), vertices[2].xy),
-        max(max(vertices[0].xy, vertices[1].xy), vertices[2].xy) 
-#else
-        min(min(min(vertices[0].xy, vertices[1].xy), vertices[2].xy), vertices[3].xy),
-        max(max(max(vertices[0].xy, vertices[1].xy), vertices[2].xy), vertices[3].xy) 
-#endif      
       );
-      visible = all(lessThanEqual(minMax.xy, vec2(1.0))) && all(greaterThanEqual(minMax.zw, vec2(-1.0)));
-    }   
+      int countVerticesInFrontOfNearPlane = 0; 
+      for(int i = 0; i < COUNT_VERTICES; i++){
+        if(vertices[i].w < 0.0){
+          countVerticesInFrontOfNearPlane++;
+          vertices[i].w *= -1.0;
+        }
+        vertices[i].xy = (vertices[i].xy / (vertices[i].w * 2.0)) + vec2(0.5);  
+      } 
+      if(countVerticesInFrontOfNearPlane == COUNT_VERTICES){
+        visible = false;
+      }else{
+        vec4 minMax = vec4(
+#ifdef TRIANGLES
+          min(min(vertices[0].xy, vertices[1].xy), vertices[2].xy),
+          max(max(vertices[0].xy, vertices[1].xy), vertices[2].xy) 
+#else
+          min(min(min(vertices[0].xy, vertices[1].xy), vertices[2].xy), vertices[3].xy),
+          max(max(max(vertices[0].xy, vertices[1].xy), vertices[2].xy), vertices[3].xy) 
+#endif      
+        );
+        visible = all(lessThanEqual(minMax.xy, vec2(1.0))) && all(greaterThanEqual(minMax.zw, vec2(-1.0)));
+      }   
+    }
   }
   if(visible){
 #ifdef TRIANGLES
