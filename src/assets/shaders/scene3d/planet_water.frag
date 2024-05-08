@@ -206,6 +206,112 @@ mat4 planetInverseModelMatrix = inverse(planetModelMatrix);
 
 #include "planet_water.glsl"
 
+vec3 safeNormalize(vec3 v){
+  return (length(v) > 0.0) ? normalize(v) : vec3(0.0);
+}
+
+vec3 getWaterNormal(vec3 position){
+
+  vec3 n = normalize(position);
+
+#if 1
+  float texScale = 1.0 / 4096.0;
+
+  vec3 normal;
+
+  {
+
+    // Calculate the normal as the average of the normals of some temporary virtual triangles
+    
+    // a(-1, -1) b( 0, -1) c( 1, -1)
+    // d(-1,  0) e( 0,  0) f( 1,  0)
+    // g(-1,  1) h( 0,  1) i( 1,  1)
+
+    vec2 euv = octPlanetUnsignedEncode(n);
+    
+    vec2 auv = wrapOctahedralCoordinates(euv + (vec2(-1.0, -1.0) * texScale)); // -1, -1
+    vec2 buv = wrapOctahedralCoordinates(euv + (vec2(0.0, -1.0) * texScale)); //  0, -1
+    vec2 cuv = wrapOctahedralCoordinates(euv + (vec2(1.0, -1.0) * texScale)); //  1, -1
+    vec2 duv = wrapOctahedralCoordinates(euv + (vec2(-1.0, 0.0) * texScale)); // -1,  0
+    vec2 fuv = wrapOctahedralCoordinates(euv + (vec2(1.0, 0.0) * texScale)); //  1,  0
+    vec2 guv = wrapOctahedralCoordinates(euv + (vec2(-1.0, 1.0) * texScale)); // -1,  1
+    vec2 huv = wrapOctahedralCoordinates(euv + (vec2(0.0, 1.0) * texScale)); //  0,  1
+    vec2 iuv = wrapOctahedralCoordinates(euv + (vec2(1.0, 1.0) * texScale)); //  1,  1
+
+    float eh = getSphereHeight(euv);
+
+    float ah = getSphereHeightEx(auv);
+    float bh = getSphereHeightEx(buv);
+    float ch = getSphereHeightEx(cuv);
+    float dh = getSphereHeightEx(duv);
+    float fh = getSphereHeightEx(fuv);
+    float gh = getSphereHeightEx(guv);
+    float hh = getSphereHeightEx(huv);
+    float ih = getSphereHeightEx(iuv);
+
+    vec3 a = octPlanetUnsignedDecode(auv) * ((ah > 0.0) ? ah : eh);
+    vec3 b = octPlanetUnsignedDecode(buv) * ((bh > 0.0) ? bh : eh);
+    vec3 c = octPlanetUnsignedDecode(cuv) * ((ch > 0.0) ? ch : eh);
+    vec3 d = octPlanetUnsignedDecode(duv) * ((dh > 0.0) ? dh : eh);
+    vec3 e = n * eh;
+    vec3 f = octPlanetUnsignedDecode(fuv) * ((fh > 0.0) ? fh : eh);
+    vec3 g = octPlanetUnsignedDecode(guv) * ((gh > 0.0) ? gh : eh);
+    vec3 h = octPlanetUnsignedDecode(huv) * ((hh > 0.0) ? hh : eh);
+    vec3 i = octPlanetUnsignedDecode(iuv) * ((ih > 0.0) ? ih : eh);
+
+    // Calculate the smoothed normal at point e as the average of the normals of the surrounding triangles in triangle fan order:
+    normal = safeNormalize(
+      safeNormalize(cross(a - e, b - e)) + // Triangle EAB
+      safeNormalize(cross(b - e, c - e)) + // Triangle EBC          
+      safeNormalize(cross(c - e, f - e)) + // Triangle EDA
+      safeNormalize(cross(f - e, i - e)) + // Triangle EFI
+      safeNormalize(cross(i - e, h - e)) + // Triangle EIH
+      safeNormalize(cross(h - e, g - e)) + // Triangle EHG
+      safeNormalize(cross(g - e, d - e)) + // Triangle EGD
+      safeNormalize(cross(d - e, a - e))   // Triangle EDA
+    );   
+
+  }       
+
+  return normal;
+#else
+
+  const vec2 uvOfs = vec2(1.0 / 4096.0, 0.0);
+
+  vec2 uv = octPlanetUnsignedEncode(n);
+  vec2 uv00 = wrapOctahedralCoordinates(uv - uvOfs.xy);
+  vec2 uv01 = wrapOctahedralCoordinates(uv + uvOfs.xy);
+  vec2 uv10 = wrapOctahedralCoordinates(uv - uvOfs.yx);
+  vec2 uv11 = wrapOctahedralCoordinates(uv + uvOfs.yx);
+
+  float h = getSphereHeight(uv); 
+  float h00 = getSphereHeightEx(uv00);
+  float h01 = getSphereHeightEx(uv01);
+  float h10 = getSphereHeightEx(uv10);
+  float h11 = getSphereHeightEx(uv11);
+
+  vec3 p = n * h; 
+  vec3 p00 = octPlanetUnsignedDecode(uv00) * ((h00 > 0.0) ? h00 : h);
+  vec3 p01 = octPlanetUnsignedDecode(uv01) * ((h01 > 0.0) ? h01 : h);
+  vec3 p10 = octPlanetUnsignedDecode(uv10) * ((h10 > 0.0) ? h10 : h);
+  vec3 p11 = octPlanetUnsignedDecode(uv11) * ((h11 > 0.0) ? h11 : h);
+  
+  vec3 tangent = (distance(p00, p01) > 0.0)
+                    ? normalize(p01 - p00) 
+                    : ((distance(p10, p11) > 0.0) 
+                        ? normalize(cross(normalize(p11 - p10), p)) 
+                        : normalize(p - p00));
+
+  vec3 bitangent = (distance(p10, p11) > 0.0) 
+                      ? normalize(p11 - p10) 
+                      : ((distance(p01, p00) > 0.0)
+                          ? normalize(cross(normalize(p01 - p00), p)) 
+                          : normalize(p - p10));
+
+  return normalize(cross(tangent, bitangent));
+#endif
+}
+
 float fresnelDielectric(vec3 Incoming, vec3 Normal, float eta){
   // compute fresnel reflectance without explicitly computing the refracted direction 
   float c = abs(dot(Incoming, Normal));
@@ -395,10 +501,12 @@ vec4 doShade(float hitTime, bool underWater){
 
 }
 
+
 void main(){
 #if defined(TESSELLATION)
-
-  workNormal = normalize((planetModelMatrix * vec4(mapNormal(inBlock.localPosition), 0.0)).xyz) * ((inBlock.underWater > 0.0) ? -1.0 : 1.0);
+ 
+  workNormal = normalize((planetModelMatrix * vec4(getWaterNormal(inBlock.position), 0.0)).xyz) * ((inBlock.underWater > 0.0) ? -1.0 : 1.0);
+//workNormal = normalize((planetModelMatrix * vec4(mapNormal(inBlock.localPosition), 0.0)).xyz) * ((inBlock.underWater > 0.0) ? -1.0 : 1.0);
 
   viewDirection = normalize(-inCameraRelativePosition);
 

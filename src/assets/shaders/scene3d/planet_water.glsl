@@ -132,8 +132,8 @@ float getWaves(vec2 position, int iterations) {
 }
 
 float getSphereHeight(vec3 n, int i) {
-  vec3 nc = mix(n, vec3(1e-6), lessThan(abs(n), vec3(1e-6)));
-  vec2 uv = vec2((atan(abs(nc.x / nc.z)) / 6.283185307179586476925286766559) + 0.5, acos(n.y) / 3.1415926535897932384626433832795); 
+//vec3 nc = mix(n, vec3(1e-6), lessThan(abs(n), vec3(1e-6)));
+//vec2 uv = vec2((atan(abs(nc.x / nc.z)) / 6.283185307179586476925286766559) + 0.5, acos(n.y) / 3.1415926535897932384626433832795); 
   float w = 0.0;//getWaves(uv * 128.0, i) * 0.01; 
   return mix( 
            planetBottomRadius,
@@ -144,8 +144,29 @@ float getSphereHeight(vec3 n, int i) {
          w;
 }
 
+float getSphereHeight(vec2 uv) {
+  return mix( 
+           planetBottomRadius,
+           planetTopRadius,
+           texturePlanetOctahedralMap(uPlanetTextures[PLANET_TEXTURE_HEIGHTMAP], uv).x  // Linear interpolation of the heightmap for to match the vertex-based rendering
+         ) +
+         textureBicubicPlanetOctahedralMap(uPlanetTextures[PLANET_TEXTURE_WATERMAP], uv).x; // But for the water map, we use bicubic interpolation to get a smoother water surface 
+}
+
 float getSphereHeight(vec3 n) {
   return getSphereHeight(n, 12);
+}
+
+float getSphereHeightEx(vec2 uv) {
+  float h = textureBicubicPlanetOctahedralMap(uPlanetTextures[PLANET_TEXTURE_WATERMAP], uv).x; // But for the water map, we use bicubic interpolation to get a smoother water surface 
+  return (h > 1e-7) 
+          ? (mix( 
+              planetBottomRadius,
+              planetTopRadius,
+              texturePlanetOctahedralMap(uPlanetTextures[PLANET_TEXTURE_HEIGHTMAP], uv).x  // Linear interpolation of the heightmap for to match the vertex-based rendering
+             ) +
+             h)
+          : -1.0; 
 }
 
 float mapHeight(vec3 p, float h){
