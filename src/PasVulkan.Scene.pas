@@ -258,7 +258,7 @@ begin
 
  fParent:=aParent;
 
- if assigned(fScene) then begin
+ if assigned(fParent) then begin
   fScene:=fParent.fScene;
  end else begin
   fScene:=nil;
