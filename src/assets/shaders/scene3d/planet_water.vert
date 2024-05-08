@@ -149,11 +149,9 @@ void main(){
 
   }  
 
-  float sphereHeight = getSphereHeight(sphereNormal);
+  vec2 sphereHeightData = getSphereHeightData(sphereNormal);
 
-  vec3 localPosition = sphereNormal * ((sphereHeight > 1e-6) ? clamp(sphereHeight, planetData.bottomRadiusTopRadiusHeightMapScale.x * 0.5, planetData.bottomRadiusTopRadiusHeightMapScale.y) : 1e-6);
-
-  //float planetHeight = textureBicubicPlanetOctahedralMap(uPlanetTextures[PLANET_TEXTURE_HEIGHTMAP], sphereNormal).x;
+  vec3 localPosition = sphereNormal * ((sphereHeightData.y > 1e-6) ? clamp(sphereHeightData.x + sphereHeightData.y, planetData.bottomRadiusTopRadiusHeightMapScale.x * 0.5, planetData.bottomRadiusTopRadiusHeightMapScale.y) : 1e-6);
   
   bool visible, waterVisible;
   {
@@ -169,8 +167,8 @@ void main(){
   outBlock.planetCenterToCamera = inverseViewMatrix[3].xyz - (planetData.modelMatrix * vec2(0.0, 1.0).xxxy).xyz; 
   outBlock.flags = (underWater ? (1u << 0u) : 0u) |
                    (visible ? (1u << 1u) : 0u) |
-                   (waterVisible ? (1u << 2u) : 0u) /*| 
-                   ((planetHeight <= sphereHeight) ? (1u << 2u) : 0u)*/;
+                   (waterVisible ? (1u << 2u) : 0u) | 
+                   ((sphereHeightData.y > 0.0) ? (1u << 3u) : 0u);
 #endif
 
 }
