@@ -522,6 +522,7 @@ begin
      (FileHeader.CompressedSize=Size) and
      ((FileHeader.CompressionMethod=TpvUInt8(TpvCompressionMethod.None)) or
       (FileHeader.CompressionMethod=TpvUInt8(TpvCompressionMethod.Deflate)) or
+      (FileHeader.CompressionMethod=TpvUInt8(TpvCompressionMethod.LZBRS)) or
       (FileHeader.CompressionMethod=TpvUInt8(TpvCompressionMethod.LZBRSF)) or
       (FileHeader.CompressionMethod=TpvUInt8(TpvCompressionMethod.LZBRRC)) or
       (FileHeader.CompressionMethod=TpvUInt8(TpvCompressionMethod.LZMA))) then begin
