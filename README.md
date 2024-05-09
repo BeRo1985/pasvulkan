@@ -20,13 +20,13 @@ The Vulkan.pas binding header unit itself (including the vkxml2pas.dpr converter
 If you've problems with the git clone command, because the repository is too large for you or you don't need the full history of the repository, you can try to use the following command instead: 
 
 ```bash
-git clone --single-branch --depth 1 https://github.com/BeRo1985/pasvulkan.git pasvulkan
+git clone --single-branch --depth 1 --recursive https://github.com/BeRo1985/pasvulkan.git pasvulkan
 ```
 
 or respectively for the SSH variant:
 
 ```bash
-git clone --single-branch --depth 1 git@github.com:BeRo1985/pasvulkan.git pasvulkan
+git clone --single-branch --depth 1 --recursive git@github.com:BeRo1985/pasvulkan.git pasvulkan
 ```  
 
 or alternatively, you can try to turn off the compression, which can also help in some cases, but aware, it is a global setting for all git repositories on your system:
