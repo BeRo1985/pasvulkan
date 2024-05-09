@@ -113,6 +113,36 @@ void main(){
       visible = false;
     }    
     if(visible){
+#if 1
+      // Fast culling based on the clip space coordinates of the vertices.
+#ifdef TRIANGLES
+    const mat3x4 clipPositions = mat3x4(
+      viewProjectionMatrix * vec4(inBlocks[0].position, 1.0),
+      viewProjectionMatrix * vec4(inBlocks[1].position, 1.0),
+      viewProjectionMatrix * vec4(inBlocks[2].position, 1.0)
+    );
+    const mat4x3 cullingMatrix = transpose(clipPositions);
+    if((all(greaterThan(cullingMatrix[0], cullingMatrix[3])) || all(lessThan(cullingMatrix[0], -cullingMatrix[3]))) ||
+       (all(greaterThan(cullingMatrix[1], cullingMatrix[3])) || all(lessThan(cullingMatrix[1], -cullingMatrix[3]))) ||
+       (all(greaterThan(cullingMatrix[2], cullingMatrix[3])) || all(lessThan(cullingMatrix[2], -cullingMatrix[3])))){
+      visible = false;
+    }
+#else
+    const mat4 clipPositions = mat4(
+      viewProjectionMatrix * vec4(inBlocks[0].position, 1.0),
+      viewProjectionMatrix * vec4(inBlocks[1].position, 1.0),
+      viewProjectionMatrix * vec4(inBlocks[2].position, 1.0),
+      viewProjectionMatrix * vec4(inBlocks[3].position, 1.0)
+    );
+    const mat4 cullingMatrix = transpose(clipPositions);
+    if((all(greaterThan(cullingMatrix[0], cullingMatrix[3])) || all(lessThan(cullingMatrix[0], -cullingMatrix[3]))) ||
+       (all(greaterThan(cullingMatrix[1], cullingMatrix[3])) || all(lessThan(cullingMatrix[1], -cullingMatrix[3]))) ||
+       (all(greaterThan(cullingMatrix[2], cullingMatrix[3])) || all(lessThan(cullingMatrix[2], -cullingMatrix[3])))){
+      visible = false;
+    }
+#endif
+#else
+      // Reference culling based on the screen space coordinates of the vertices.
 #ifdef TRIANGLES
   #define COUNT_VERTICES 3
 #else
@@ -150,7 +180,8 @@ void main(){
         visible = all(lessThanEqual(min(min(min(vertices[0].xy, vertices[1].xy), vertices[2].xy), vertices[3].xy), vec2(1.0))) && 
                   all(greaterThanEqual(max(max(max(vertices[0].xy, vertices[1].xy), vertices[2].xy), vertices[3].xy), vec2(0.0)));
 #endif        
-      }   
+      }
+#endif   
     }
   }
   if(visible){
