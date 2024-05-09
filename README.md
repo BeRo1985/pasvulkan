@@ -15,6 +15,26 @@ The Vulkan.pas binding header unit itself (including the vkxml2pas.dpr converter
 - [My Twitter account](https://twitter.com/coder)
 - [My Facebook account](https://www.facebook.com/benjamin.rosseaux)
 
+## Important repository checkout information
+
+If you've problems with the git clone command, because the repository is too large for you or you don't need the full history of the repository, you can try to use the following command instead: 
+
+```bash
+git clone --single-branch --depth 1 https://github.com/BeRo1985/pasvulkan.git pasvulkan
+```
+
+or respectively for the SSH variant:
+
+```bash
+git clone --single-branch --depth 1 git@github.com:BeRo1985/pasvulkan.git pasvulkan
+```  
+
+or alternatively, you can try to turn off the compression, which can also help in some cases, but aware, it is a global setting for all git repositories on your system:
+
+```bash
+git config --global core.compression 0
+```
+
 ## Important information
 
 You must first compile the (yet incomplete) PasVulkan project manager using compileprojectmanager (*nix) or compileprojectmanager.bat (Windows) so that you can then use the PasVulkan project manager as a command line tool named projectmanager(.exe) .
