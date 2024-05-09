@@ -151,7 +151,7 @@ void main(){
 
   vec2 sphereHeightData = getSphereHeightData(sphereNormal);
 
-  vec3 localPosition = sphereNormal * ((sphereHeightData.y > 1e-6) ? clamp(sphereHeightData.x + sphereHeightData.y, planetData.bottomRadiusTopRadiusHeightMapScale.x * 0.5, planetData.bottomRadiusTopRadiusHeightMapScale.y) : 1e-6);
+  vec3 localPosition = sphereNormal * clamp(sphereHeightData.x + sphereHeightData.y, planetData.bottomRadiusTopRadiusHeightMapScale.x * 0.5, planetData.bottomRadiusTopRadiusHeightMapScale.y);
   
   bool visible, waterVisible;
   {

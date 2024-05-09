@@ -663,7 +663,7 @@ void main(){
   const bool underWater = (maskedFlags & (1u << 0u)) != 0u;
   const bool isVisible = (anyFlags & (1u << 1u)) != 0u;
   const bool isWaterVisible = (anyFlags & (1u << 2u)) != 0u;
-  const bool aboveGround = true;//(anyFlags & (1u << 3u)) != 0u;
+  const bool aboveGround = true;//(anyFlags & (1u << 3u)) != 0u; // Not used, since the vertex shader has a too roughly map processing resolution to determine this correctly in every case.   
   bool visible = isVisible && isWaterVisible && aboveGround && !underWater;
   if(visible){
 #ifdef TRIANGLES
@@ -698,26 +698,27 @@ void main(){
 #endif
       );
       int countVerticesInFrontOfNearPlane = 0; 
-      for(int i = 0; i < COUNT_VERTICES; i++){
+      [[unroll]] for(int i = 0; i < COUNT_VERTICES; i++){
         if(vertices[i].w < 0.0){
           countVerticesInFrontOfNearPlane++;
           vertices[i].w *= -1.0;
         }
-        vertices[i].xy = (vertices[i].xy / (vertices[i].w * 2.0)) + vec2(0.5);  
       } 
       if(countVerticesInFrontOfNearPlane == COUNT_VERTICES){
+        // All vertices are behind the near plane, so it is invisible.
         visible = false;
       }else{
-        vec4 minMax = vec4(
+        // Otherwise, it is visible if all vertices are inside the screen space bounds, as quick&dirty cheap frustum-like culling. 
+        [[unroll]] for(int i = 0; i < COUNT_VERTICES; i++){
+          vertices[i].xy = (vertices[i].xy / (vertices[i].w * 2.0)) + vec2(0.5);  
+        }
 #ifdef TRIANGLES
-          min(min(vertices[0].xy, vertices[1].xy), vertices[2].xy),
-          max(max(vertices[0].xy, vertices[1].xy), vertices[2].xy) 
+        visible = all(lessThanEqual(min(min(vertices[0].xy, vertices[1].xy), vertices[2].xy), vec2(1.0))) && 
+                  all(greaterThanEqual(max(max(vertices[0].xy, vertices[1].xy), vertices[2].xy), vec2(-1.0)));
 #else
-          min(min(min(vertices[0].xy, vertices[1].xy), vertices[2].xy), vertices[3].xy),
-          max(max(max(vertices[0].xy, vertices[1].xy), vertices[2].xy), vertices[3].xy) 
-#endif      
-        );
-        visible = all(lessThanEqual(minMax.xy, vec2(1.0))) && all(greaterThanEqual(minMax.zw, vec2(-1.0)));
+        visible = all(lessThanEqual(min(min(min(vertices[0].xy, vertices[1].xy), vertices[2].xy), vertices[3].xy), vec2(1.0))) && 
+                  all(greaterThanEqual(max(max(max(vertices[0].xy, vertices[1].xy), vertices[2].xy), vertices[3].xy), vec2(-1.0)));
+#endif        
       }   
     }
   }
