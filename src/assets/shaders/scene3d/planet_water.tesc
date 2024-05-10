@@ -113,7 +113,7 @@ void main(){
       visible = false;
     }    
     if(visible){
-#if 1
+#if 0
       // Fast culling based on the clip space coordinates of the vertices.
 #ifdef TRIANGLES
     const mat3x4 clipPositions = mat3x4(
