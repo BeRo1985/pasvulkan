@@ -23230,6 +23230,8 @@ begin
 
  fImageView:=nil;
 
+ fSRGBImageView:=nil;
+
  fSampler:=nil;
 
  fExternalSampler:=false;
@@ -24538,11 +24540,15 @@ begin
 
   fImageLayout:=VK_IMAGE_LAYOUT_UNDEFINED;
 
-  fImage:=nil;
+  FreeAndNil(fImage);
 
-  fImageView:=nil;
+  FreeAndNil(fSRGBImageView);
 
-  fSampler:=nil;
+  FreeAndNil(fImageView);
+
+  if not fExternalSampler then begin
+   FreeAndNil(fSampler);
+  end;
 
   if (fDepth<0) or (fCountArrayLayers<0) or (fCountFaces<1) then begin
    raise EpvVulkanTextureException.Create('Invalid parameters');
