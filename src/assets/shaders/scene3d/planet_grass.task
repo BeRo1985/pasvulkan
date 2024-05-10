@@ -327,9 +327,9 @@ void main() {
     // Check grass map when we do need grass at the current position at all
     if(visible){
 
-      ivec2 texSize = ivec2(textureSize(uPlanetTextures[PLANET_TEXTURE_GRASSMAP], 0).xy);
+      //ivec2 texSize = ivec2(textureSize(uPlanetTextures[PLANET_TEXTURE_GRASSMAP], 0).xy);
 
-      float grassDensity = textureLod(uPlanetTextures[PLANET_TEXTURE_GRASSMAP], (vec2(globalXY) + vec2(0.5)) / vec2(texSize), 0).x;
+      float grassDensity = textureLod(uPlanetTextures[PLANET_TEXTURE_GRASSMAP], (vec2(globalXY) + vec2(0.5)) / vec2(float(pushConstants.tileMapResolution * pushConstants.tileResolution)), 0).x;
 
       if((!(grassDensity >= 0.99999)) && 
          ((grassDensity < 1e-6) || (grassDensity < makeAbsFloat(pcgHash31(uvec3(uvec2(globalXY) ^ uvec2(0x61a77u), 0xffu)))))){
