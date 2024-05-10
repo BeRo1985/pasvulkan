@@ -9266,8 +9266,8 @@ begin
                                  SizeOf(TPushConstants),
                                  @fPushConstants);
 
- aCommandBuffer.CmdDispatch((fPlanet.fVisualResolution+15) shr 4,
-                            (fPlanet.fVisualResolution+15) shr 4,
+ aCommandBuffer.CmdDispatch((fPlanet.fHeightMapResolution+15) shr 4,
+                            (fPlanet.fHeightMapResolution+15) shr 4,
                             1);
 
  BufferMemoryBarrier:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
