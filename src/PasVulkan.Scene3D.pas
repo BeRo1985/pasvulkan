@@ -11170,7 +11170,7 @@ begin
        if length(fGroup.fJointBlockOffsets)<=NewJointBlockIndex then begin
         Old:=length(fGroup.fJointBlockOffsets);
         SetLength(fGroup.fJointBlockOffsets,(NewJointBlockIndex+1)*2);
-        FillChar(fGroup.fJointBlockOffsets[Old],((length(fGroup.fJointBlockOffsets)-Old)+1)*SizeOf(TpvSizeInt),#0);
+        FillChar(fGroup.fJointBlockOffsets[Old],(length(fGroup.fJointBlockOffsets)-Old)*SizeOf(TpvSizeInt),#0);
        end;
        fGroup.fJointBlockOffsets[NewJointBlockIndex]:=aJointNodeOffset;
       end;
