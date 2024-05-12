@@ -12361,7 +12361,8 @@ begin
   if (fVulkanDevice.UniversalQueueFamilyIndex<>fVulkanDevice.ComputeQueueFamilyIndex) and
      fVulkanDevice.PhysicalDevice.RenderDocDetected then begin
    fInFlightFrameSharingMode:=TVkSharingMode(VK_SHARING_MODE_CONCURRENT);
-   fInFlightFrameQueueFamilyIndices:=[fVulkanDevice.UniversalQueueFamilyIndex,fVulkanDevice.ComputeQueueFamilyIndex];
+   fInFlightFrameQueueFamilyIndices:=[fVulkanDevice.UniversalQueueFamilyIndex,
+                                      fVulkanDevice.ComputeQueueFamilyIndex];
   end else begin
    fInFlightFrameSharingMode:=TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE);
    fInFlightFrameQueueFamilyIndices:=nil;
