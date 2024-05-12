@@ -348,6 +348,12 @@ type TpvScene3DPlanets=class;
                     Size:TpvUInt64;
                    end;
                    PChunk=^TChunk;
+                   TMetaDataChunkHeader=packed record
+                    ModelMatrix:TpvMatrix4x4;
+                    BottomRadius:TpvFloat;
+                    TopRadius:TpvFloat;
+                   end;
+                   PMetaDataChunkHeader=^TMetaDataChunkHeader;
                    THeightMapDataChunkHeader=packed record
                     Resolution:TpvUInt32;
                    end;
@@ -362,6 +368,7 @@ type TpvScene3DPlanets=class;
                    PWaterHeightMapDataChunkHeader=^TWaterHeightMapDataChunkHeader;
                const Signature:TSignature=('P','V','P','D'); // PasVulkan Planet Data
                      Version:TpvUInt32=1;
+                     ChunkSignatureMetaData:TSignature=('M','E','T','A'); // Meta Data
                      ChunkSignatureHeightMapData:TSignature=('H','M','D','T'); // Height Map Data
                      ChunkSignatureGrassMapData:TSignature=('G','M','D','T'); // Grass Map Data
                      ChunkSignatureWaterHeightMapData:TSignature=('W','M','D','T'); // Water Height Map Data
@@ -3641,6 +3648,7 @@ procedure TpvScene3DPlanet.TSerializedData.LoadFromStream(const aStream:TStream)
 var Header:THeader;
     Chunk:TChunk;
     Size,StartPosition,NextChunkPosition:TpvInt64;
+    MetaDataChunkHeader:TMetaDataChunkHeader;
     HeightMapDataChunkHeader:THeightMapDataChunkHeader;
     GrassMapDataChunkHeader:TGrassMapDataChunkHeader;
     WaterHeightMapDataChunkHeader:TWaterHeightMapDataChunkHeader;
@@ -3666,7 +3674,15 @@ begin
     raise EpvScene3DPlanet.Create('Invalid serialized data chunk size');
    end;
 
-   if Chunk.Signature=TpvScene3DPlanet.TSerializedData.ChunkSignatureHeightMapData then begin
+   if Chunk.Signature=TpvScene3DPlanet.TSerializedData.ChunkSignatureMetaData then begin
+
+    aStream.ReadBuffer(MetaDataChunkHeader,SizeOf(TMetaDataChunkHeader));
+
+    fPlanet.Data.fModelMatrix:=MetaDataChunkHeader.ModelMatrix;
+    fPlanet.fBottomRadius:=MetaDataChunkHeader.BottomRadius;
+    fPlanet.fTopRadius:=MetaDataChunkHeader.TopRadius;
+   
+   end else if Chunk.Signature=TpvScene3DPlanet.TSerializedData.ChunkSignatureHeightMapData then begin
 
     aStream.ReadBuffer(HeightMapDataChunkHeader,SizeOf(THeightMapDataChunkHeader));
 
@@ -3717,6 +3733,7 @@ procedure TpvScene3DPlanet.TSerializedData.SaveToStream(const aStream:TStream);
 var StartPosition,NextChunkPosition:TpvInt64;
     Header:THeader;
     Chunk:TChunk;
+    MetaDataChunkHeader:TMetaDataChunkHeader;
     HeightMapDataChunkHeader:THeightMapDataChunkHeader;
     GrassMapDataChunkHeader:TGrassMapDataChunkHeader;
     WaterHeightMapDataChunkHeader:TWaterHeightMapDataChunkHeader;
@@ -3729,6 +3746,19 @@ begin
  Header.Size:=0; // Will be updated later
  
  aStream.WriteBuffer(Header,SizeOf(Header));
+
+ begin
+
+  Chunk.Signature:=TpvScene3DPlanet.TSerializedData.ChunkSignatureMetaData;
+  Chunk.Size:=SizeOf(TMetaDataChunkHeader);
+  aStream.WriteBuffer(Chunk,SizeOf(TChunk));
+
+  MetaDataChunkHeader.ModelMatrix:=fPlanet.fData.fModelMatrix;
+  MetaDataChunkHeader.BottomRadius:=fPlanet.fBottomRadius;
+  MetaDataChunkHeader.TopRadius:=fPlanet.fTopRadius;
+  aStream.WriteBuffer(MetaDataChunkHeader,SizeOf(TMetaDataChunkHeader));
+
+ end;
 
  begin
 
