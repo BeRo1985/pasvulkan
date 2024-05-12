@@ -93,7 +93,8 @@ type TpvHashXXHash64=class
        destructor Destroy; override;
        procedure Update(const aData:pointer;const aDataLength:TpvSizeUInt);
        function Final:TMessageDigest;
-       class function Process(const aData:pointer;const aDataLength:TpvSizeUInt;const aSeed:TpvUInt64=0):TMessageDigest; static;
+       class function Process(const aData:pointer;const aDataLength:TpvSizeUInt;const aSeed:TpvUInt64=0):TMessageDigest; static; overload;
+       class function Process(const aStream:TStream;const aCheckSumPosition:TpvInt64=-1;const aSeed:TpvUInt64=0):TMessageDigest; static; overload;
      end;
 
 implementation
@@ -104,132 +105,6 @@ implementation
 class function TpvHashxxHash64.ROLQWord(const aValue:TpvUInt64;const aBits:TpvSizeUInt):TpvUInt64;
 begin
  result:=(aValue shl aBits) or (aValue shr (64-aBits));
-end;
-{$ifend}
-
-class function TpvHashXXHash64.Process(const aData:pointer;const aDataLength:TpvSizeUInt;const aSeed:TpvUInt64):TpvHashXXHash64.TMessageDigest;
-{$if true}
-var TotalLength:TpvSizeUInt;
-    v1:TpvUInt64;
-    v2:TpvUInt64;
-    v3:TpvUInt64;
-    v4:TpvUInt64;
-    DataSize:TpvSizeUInt;
-    Data:array[0..31] of TpvUInt8;
-    CurrentData,DataEnd,DataStop:Pointer;
-begin
- v1:=aSeed+PRIME64_1;
- v1:=v1+PRIME64_2;
- v2:=aSeed+PRIME64_2;
- v3:=aSeed;
- v4:=aSeed-PRIME64_1;
- TotalLength:=0;
- DataSize:=0;
- FillChar(Data,SizeOf(Data),#0);
-
- CurrentData:=aData;
-
- inc(TotalLength,aDataLength);
-
- if (DataSize+aDataLength)<TpvSizeUInt(32) then begin
-
-  Move(CurrentData^,Data[DataSize],aDataLength);
-  inc(DataSize,32);
-
- end else begin
-
-  DataEnd:=@PpvUInt8Array(aData)^[aDataLength];
-
-  if DataSize>0 then begin
-
-   Move(CurrentData^,Data[DataSize],32-DataSize);
-
-   v1:=PRIME64_1*ROLQWord(v1+(PRIME64_2*PpvUInt64(pointer(@Data[0]))^),31);
-   v2:=PRIME64_1*ROLQWord(v2+(PRIME64_2*PpvUInt64(pointer(@Data[8]))^),31);
-   v3:=PRIME64_1*ROLQWord(v3+(PRIME64_2*PpvUInt64(pointer(@Data[16]))^),31);
-   v4:=PRIME64_1*ROLQWord(v4+(PRIME64_2*PpvUInt64(pointer(@Data[24]))^),31);
-
-   CurrentData:=@PpvUInt8Array(CurrentData)^[32-DataSize];
-
-   DataSize:=0;
-
-  end;
-
-  if (TpvPtrUInt(CurrentData)+31)<TpvPtrUInt(DataEnd) then begin
-
-   DataStop:=Pointer(TpvPtrUInt(TpvPtrUInt(DataEnd)-32));
-   repeat
-    v1:=PRIME64_1*ROLQWord(v1+(PRIME64_2*PpvUInt64(CurrentData)^),31);
-    inc(PpvUInt64(CurrentData));
-    v2:=PRIME64_1*ROLQWord(v2+(PRIME64_2*PpvUInt64(CurrentData)^),31);
-    inc(PpvUInt64(CurrentData));
-    v3:=PRIME64_1*ROLQWord(v3+(PRIME64_2*PpvUInt64(CurrentData)^),31);
-    inc(PpvUInt64(CurrentData));
-    v4:=PRIME64_1*ROLQWord(v4+(PRIME64_2*PpvUInt64(CurrentData)^),31);
-    inc(PpvUInt64(CurrentData));
-   until TpvPtrUInt(CurrentData)>TpvPtrUInt(DataStop);
-
-  end;
-
-  if TpvPtrUInt(CurrentData)<TpvPtrUInt(DataEnd) then begin
-   DataSize:=TpvPtrUInt(DataEnd)-TpvPtrUInt(CurrentData);
-   Move(CurrentData^,Data[0],DataSize);
-  end;
-
- end;
-
- if TotalLength>=TpvSizeUInt(32) then begin
-  result:=ROLQWord(v1,1)+ROLQWord(v2,7)+ROLQWord(v3,12)+ROLQWord(v4,18);
-  v1:=ROLQWord(v1*PRIME64_2,31)*PRIME64_1;
-  result:=((result xor v1)*PRIME64_1)+PRIME64_4;
-  v2:=ROLQWord(v2*PRIME64_2,31)*PRIME64_1;
-  result:=((result xor v2)*PRIME64_1)+PRIME64_4;
-  v3:=ROLQWord(v3*PRIME64_2,31)*PRIME64_1;
-  result:=((result xor v3)*PRIME64_1)+PRIME64_4;
-  v4:=ROLQWord(v4*PRIME64_2,31)*PRIME64_1;
-  result:=((result xor v4)*PRIME64_1)+PRIME64_4;
- end else begin
-  result:=aSeed+PRIME64_5;
- end;
-
- inc(result,TotalLength);
-
- CurrentData:=@Data[0];
- DataEnd:=@Data[DataSize];
-
- while (TpvPtrUInt(CurrentData)+7)<TpvPtrUInt(DataEnd) do begin
-  result:=result xor (PRIME64_1*ROLQWord(PRIME64_2*PpvUInt64(CurrentData)^,31));
-  result:=(ROLQWord(result,27)*PRIME64_1)+PRIME64_4;
-  inc(PpvUInt64(CurrentData));
- end;
-
- while (TpvPtrUInt(CurrentData)+3)<TpvPtrUInt(DataEnd) do begin
-  result:=result xor (PpvUInt32(CurrentData)^*PRIME64_1);
-  result:=(ROLQWord(result,23)*PRIME64_2)+PRIME64_3;
-  inc(PpvUInt32(CurrentData));
- end;
-
- while TpvPtrUInt(CurrentData)<TpvPtrUInt(DataEnd) do begin
-  result:=result xor (PpvUInt8(CurrentData)^*PRIME64_5);
-  result:=ROLQWord(result,11)*PRIME64_1;
-  inc(PpvUInt8(CurrentData));
- end;
-
- result:=(result xor (result shr 33))*PRIME64_2;
- result:=(result xor (result shr 29))*PRIME64_3;
- result:=result xor (result shr 32);
-
-end;
-{$else}
-var Instance:TpvHashXXHash64;
-begin
- Instance:=TpvHashXXHash64.Create(aSeed);
- try
-  Instance.Update(aData,aDataLength);
-  result:=Instance.Final;
- finally
-  FreeAndNil(Instance);
- end;
 end;
 {$ifend}
 
@@ -368,5 +243,192 @@ begin
  result:=result xor (result shr 32);
 
 end;
+
+class function TpvHashXXHash64.Process(const aData:pointer;const aDataLength:TpvSizeUInt;const aSeed:TpvUInt64):TpvHashXXHash64.TMessageDigest;
+{$if true}
+var TotalLength:TpvSizeUInt;
+    v1:TpvUInt64;
+    v2:TpvUInt64;
+    v3:TpvUInt64;
+    v4:TpvUInt64;
+    DataSize:TpvSizeUInt;
+    Data:array[0..31] of TpvUInt8;
+    CurrentData,DataEnd,DataStop:Pointer;
+begin
+ v1:=aSeed+PRIME64_1;
+ v1:=v1+PRIME64_2;
+ v2:=aSeed+PRIME64_2;
+ v3:=aSeed;
+ v4:=aSeed-PRIME64_1;
+ TotalLength:=0;
+ DataSize:=0;
+ FillChar(Data,SizeOf(Data),#0);
+
+ CurrentData:=aData;
+
+ inc(TotalLength,aDataLength);
+
+ if (DataSize+aDataLength)<TpvSizeUInt(32) then begin
+
+  Move(CurrentData^,Data[DataSize],aDataLength);
+  inc(DataSize,32);
+
+ end else begin
+
+  DataEnd:=@PpvUInt8Array(aData)^[aDataLength];
+
+  if DataSize>0 then begin
+
+   Move(CurrentData^,Data[DataSize],32-DataSize);
+
+   v1:=PRIME64_1*ROLQWord(v1+(PRIME64_2*PpvUInt64(pointer(@Data[0]))^),31);
+   v2:=PRIME64_1*ROLQWord(v2+(PRIME64_2*PpvUInt64(pointer(@Data[8]))^),31);
+   v3:=PRIME64_1*ROLQWord(v3+(PRIME64_2*PpvUInt64(pointer(@Data[16]))^),31);
+   v4:=PRIME64_1*ROLQWord(v4+(PRIME64_2*PpvUInt64(pointer(@Data[24]))^),31);
+
+   CurrentData:=@PpvUInt8Array(CurrentData)^[32-DataSize];
+
+   DataSize:=0;
+
+  end;
+
+  if (TpvPtrUInt(CurrentData)+31)<TpvPtrUInt(DataEnd) then begin
+
+   DataStop:=Pointer(TpvPtrUInt(TpvPtrUInt(DataEnd)-32));
+   repeat
+    v1:=PRIME64_1*ROLQWord(v1+(PRIME64_2*PpvUInt64(CurrentData)^),31);
+    inc(PpvUInt64(CurrentData));
+    v2:=PRIME64_1*ROLQWord(v2+(PRIME64_2*PpvUInt64(CurrentData)^),31);
+    inc(PpvUInt64(CurrentData));
+    v3:=PRIME64_1*ROLQWord(v3+(PRIME64_2*PpvUInt64(CurrentData)^),31);
+    inc(PpvUInt64(CurrentData));
+    v4:=PRIME64_1*ROLQWord(v4+(PRIME64_2*PpvUInt64(CurrentData)^),31);
+    inc(PpvUInt64(CurrentData));
+   until TpvPtrUInt(CurrentData)>TpvPtrUInt(DataStop);
+
+  end;
+
+  if TpvPtrUInt(CurrentData)<TpvPtrUInt(DataEnd) then begin
+   DataSize:=TpvPtrUInt(DataEnd)-TpvPtrUInt(CurrentData);
+   Move(CurrentData^,Data[0],DataSize);
+  end;
+
+ end;
+
+ if TotalLength>=TpvSizeUInt(32) then begin
+  result:=ROLQWord(v1,1)+ROLQWord(v2,7)+ROLQWord(v3,12)+ROLQWord(v4,18);
+  v1:=ROLQWord(v1*PRIME64_2,31)*PRIME64_1;
+  result:=((result xor v1)*PRIME64_1)+PRIME64_4;
+  v2:=ROLQWord(v2*PRIME64_2,31)*PRIME64_1;
+  result:=((result xor v2)*PRIME64_1)+PRIME64_4;
+  v3:=ROLQWord(v3*PRIME64_2,31)*PRIME64_1;
+  result:=((result xor v3)*PRIME64_1)+PRIME64_4;
+  v4:=ROLQWord(v4*PRIME64_2,31)*PRIME64_1;
+  result:=((result xor v4)*PRIME64_1)+PRIME64_4;
+ end else begin
+  result:=aSeed+PRIME64_5;
+ end;
+
+ inc(result,TotalLength);
+
+ CurrentData:=@Data[0];
+ DataEnd:=@Data[DataSize];
+
+ while (TpvPtrUInt(CurrentData)+7)<TpvPtrUInt(DataEnd) do begin
+  result:=result xor (PRIME64_1*ROLQWord(PRIME64_2*PpvUInt64(CurrentData)^,31));
+  result:=(ROLQWord(result,27)*PRIME64_1)+PRIME64_4;
+  inc(PpvUInt64(CurrentData));
+ end;
+
+ while (TpvPtrUInt(CurrentData)+3)<TpvPtrUInt(DataEnd) do begin
+  result:=result xor (PpvUInt32(CurrentData)^*PRIME64_1);
+  result:=(ROLQWord(result,23)*PRIME64_2)+PRIME64_3;
+  inc(PpvUInt32(CurrentData));
+ end;
+
+ while TpvPtrUInt(CurrentData)<TpvPtrUInt(DataEnd) do begin
+  result:=result xor (PpvUInt8(CurrentData)^*PRIME64_5);
+  result:=ROLQWord(result,11)*PRIME64_1;
+  inc(PpvUInt8(CurrentData));
+ end;
+
+ result:=(result xor (result shr 33))*PRIME64_2;
+ result:=(result xor (result shr 29))*PRIME64_3;
+ result:=result xor (result shr 32);
+
+end;
+{$else}
+var Instance:TpvHashXXHash64;
+begin
+ Instance:=TpvHashXXHash64.Create(aSeed);
+ try
+  Instance.Update(aData,aDataLength);
+  result:=Instance.Final;
+ finally
+  FreeAndNil(Instance);
+ end;
+end;
+{$ifend}
+
+class function TpvHashXXHash64.Process(const aStream:TStream;const aCheckSumPosition:TpvInt64=-1;const aSeed:TpvUInt64=0):TMessageDigest; 
+const BufferSize=4096;
+var Instance:TpvHashXXHash64;
+    Buffer:pointer;
+    BytesRead,Remaining,Position,FromIndex,ToIndex:TpvInt64;
+begin
+ 
+ GetMem(Buffer,BufferSize);
+ try
+
+  Instance:=TpvHashXXHash64.Create(aSeed);
+  try
+   
+   Position:=0;
+
+   Remaining:=aStream.Size;
+
+   while Remaining>0 do begin
+    
+    BytesRead:=aStream.Read(Buffer^,Min(BufferSize,Remaining));
+    
+    if BytesRead>0 then begin
+      
+     // Blank out the checksum, so that the checksum isn't part of the checksum calculation itself
+     if aCheckSumPosition>=0 then begin
+      // 1D intersection test between (Position .. Position+BytesRead) and (aCheckSumPosition .. aCheckSumPosition+SizeOf(TMessageDigest)) 
+      if (Position<(aCheckSumPosition+SizeOf(TMessageDigest))) and ((Position+BytesRead)>aCheckSumPosition) then begin 
+       FromIndex:=Max(0,aCheckSumPosition-Position);
+       ToIndex:=Min(Max(FromIndex+(aCheckSumPosition+SizeOf(TMessageDigest))-Position,0),BytesRead);
+       if FromIndex<ToIndex then begin
+        FillChar(PpvUInt8Array(Buffer)^[FromIndex],ToIndex-FromIndex,#0);
+       end; 
+      end;      
+     end;
+
+     Instance.Update(Buffer,BytesRead);
+     dec(Remaining,BytesRead);     
+     inc(Position,BytesRead);
+
+    end else begin
+
+     break;
+
+    end;
+
+   end;
+
+   result:=Instance.Final;
+
+  finally
+   FreeAndNil(Instance);
+  end;
+ 
+ finally
+  FreeMem(Buffer);
+ end;
+
+end;
+
+
 
 end.

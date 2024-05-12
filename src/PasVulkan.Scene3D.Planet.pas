@@ -84,7 +84,8 @@ uses Classes,
      PasVulkan.Scene3D.Renderer.Globals,
      PasVulkan.Scene3D.Renderer.Image2D,
      PasVulkan.Scene3D.Renderer.Array2DImage,
-     PasVulkan.Scene3D.Renderer.MipmapImage2D;
+     PasVulkan.Scene3D.Renderer.MipmapImage2D,
+     PasVulkan.Hash.xxHash64;
 
 type TpvScene3DPlanets=class;
 
@@ -341,6 +342,7 @@ type TpvScene3DPlanets=class;
                     Signature:TSignature;
                     Version:TpvUInt32;
                     Size:TpvUInt64;
+                    CheckSum:TpvUInt64;
                    end;
                    PHeader=^THeader;
                    TChunk=packed record
@@ -3652,6 +3654,7 @@ var Header:THeader;
     HeightMapDataChunkHeader:THeightMapDataChunkHeader;
     GrassMapDataChunkHeader:TGrassMapDataChunkHeader;
     WaterHeightMapDataChunkHeader:TWaterHeightMapDataChunkHeader;
+    CheckSum:TpvUInt64;
 begin
 
  StartPosition:=aStream.Position;
@@ -3661,6 +3664,15 @@ begin
  if (Header.Signature=TpvScene3DPlanet.TSerializedData.Signature) and
     (Header.Version=TpvScene3DPlanet.TSerializedData.Version) and
     (TpvInt64(Header.Size)>=(aStream.Size-(StartPosition+SizeOf(Header)))) then begin
+
+  aStream.Seek(StartPosition,soBeginning);
+
+  CheckSum:=TpvHashXXHash64.Process(aStream,TpvPtrUInt(Pointer(@PHeader(nil)^.CheckSum)),0);
+  if CheckSum<>Header.CheckSum then begin
+   raise EpvScene3DPlanet.Create('Invalid serialized data checksum');
+  end;
+
+  aStream.Seek(StartPosition+SizeOf(Header),soBeginning);
 
   Size:=Min(aStream.Size,StartPosition+TpvInt64(Header.Size)+TpvInt64(SizeOf(Header)));
 
@@ -3803,6 +3815,12 @@ begin
  end;
 
  Header.Size:=aStream.Position-(StartPosition+SizeOf(Header));
+ aStream.Seek(StartPosition,soBeginning);
+ aStream.WriteBuffer(Header,SizeOf(Header));
+ aStream.Seek(0,soEnd);
+
+ aStream.Seek(StartPosition,soBeginning);
+ Header.CheckSum:=TpvHashXXHash64.Process(aStream,TpvPtrUInt(Pointer(@PHeader(nil)^.CheckSum)),0);
  aStream.Seek(StartPosition,soBeginning);
  aStream.WriteBuffer(Header,SizeOf(Header));
  aStream.Seek(0,soEnd);
