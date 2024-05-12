@@ -114,105 +114,131 @@ implementation
 // This function transforms 32-bit float data to a better compressible format
 procedure ForwardTransform32BitFloatData(const aInData,aOutData:pointer;const aDataSize:TpvSizeInt);
 var Index,Count:TpvSizeInt;
-    Value:TpvUInt32; 
+    Previous,Value,Delta:TpvUInt32;
 begin
- 
  Count:=aDataSize shr 2;
-
- Value:=0;
-
+ Previous:=0;
  for Index:=0 to Count-1 do begin
-  Value:=PpvUInt32Array(aInData)^[Index]-Value;
-  PpvUInt8Array(aOutData)^[Index]:=(Value shr 24);
-  PpvUInt8Array(aOutData)^[Index+Count]:=(Value shr 16);
-  PpvUInt8Array(aOutData)^[Index+(Count*2)]:=(Value shr 8);
-  PpvUInt8Array(aOutData)^[Index+(Count*3)]:=(Value shr 0) and $ff;
- end; 
-
+  Value:=PpvUInt32Array(aInData)^[Index];
+  Delta:=Value-Previous;
+  Previous:=Value;
+  PpvUInt8Array(aOutData)^[Index]:=(Delta shr 24) and $ff;
+  PpvUInt8Array(aOutData)^[Index+Count]:=(Delta shr 16) and $ff;
+  PpvUInt8Array(aOutData)^[Index+(Count*2)]:=(Delta shr 8) and $ff;
+  PpvUInt8Array(aOutData)^[Index+(Count*3)]:=(Delta shr 0) and $ff;
+ end;
 end;
 
 procedure ForwardTransform32BitFloatData(const aStream:TStream); 
 var InData,OutData:Pointer;
     Size:TpvSizeInt;
 begin
- Size:=aStream.Size;
- if Size>0 then begin
-  GetMem(InData,Size);
-  try
-   aStream.Seek(0,soBeginning);
-   aStream.ReadBuffer(InData^,Size);
-   GetMem(OutData,Size);
-   try
-    ForwardTransform32BitFloatData(InData,OutData,Size);
-    aStream.Seek(0,soBeginning);
-    aStream.WriteBuffer(OutData^,Size);
-   finally
+ if assigned(aStream) then begin
+  Size:=aStream.Size;
+  if Size>0 then begin
+   if aStream is TMemoryStream then begin
+    GetMem(OutData,Size);
     try
-     FreeMem(OutData);
+     ForwardTransform32BitFloatData(TMemoryStream(aStream).Memory,OutData,Size);
+     Move(OutData^,TMemoryStream(aStream).Memory^,Size);
     finally
-     OutData:=nil;
-    end; 
-   end;
-  finally
-   try
-    FreeMem(InData);
-   finally 
-    InData:=nil;
+     try
+      FreeMem(OutData);
+     finally
+      OutData:=nil;
+     end; 
+    end;
+   end else begin
+    GetMem(InData,Size);
+    try
+     aStream.Seek(0,soBeginning);
+     aStream.ReadBuffer(InData^,Size);
+     GetMem(OutData,Size);
+     try
+      ForwardTransform32BitFloatData(InData,OutData,Size);
+      aStream.Seek(0,soBeginning);
+      aStream.WriteBuffer(OutData^,Size);
+     finally
+      try
+       FreeMem(OutData);
+      finally
+       OutData:=nil;
+      end; 
+     end;
+    finally
+     try
+      FreeMem(InData);
+     finally 
+      InData:=nil;
+     end; 
+    end;
    end; 
   end;
- end;
+ end; 
 end;
 
 // This function transforms 32-bit float data back from a better compressible format
 procedure BackwardTransform32BitFloatData(const aInData,aOutData:pointer;const aDataSize:TpvSizeInt);
 var Index,Count:TpvSizeInt;
-    Value:TpvUInt32; 
+    Value:TpvUInt32;
 begin
- 
  Count:=aDataSize shr 2;
-
  Value:=0;
-
  for Index:=0 to Count-1 do begin
   inc(Value,(TpvUInt32(PpvUInt8Array(aInData)^[Index]) shl 24) or
             (TpvUInt32(PpvUInt8Array(aInData)^[Index+Count]) shl 16) or
             (TpvUInt32(PpvUInt8Array(aInData)^[Index+(Count*2)]) shl 8) or
             (TpvUInt32(PpvUInt8Array(aInData)^[Index+(Count*3)]) shl 0));
   PpvUInt32Array(aOutData)^[Index]:=Value;
- end; 
-
+ end;
 end;
 
 procedure BackwardTransform32BitFloatData(const aStream:TStream);
 var InData,OutData:Pointer;
     Size:TpvSizeInt;
 begin
- Size:=aStream.Size;
- if Size>0 then begin
-  GetMem(InData,Size);
-  try
-   aStream.Seek(0,soBeginning);
-   aStream.ReadBuffer(InData^,Size);
-   GetMem(OutData,Size);
-   try
-    BackwardTransform32BitFloatData(InData,OutData,Size);
-    aStream.Seek(0,soBeginning);
-    aStream.WriteBuffer(OutData^,Size);
-   finally
+ if assigned(aStream) then begin
+  Size:=aStream.Size;
+  if Size>0 then begin
+   if aStream is TMemoryStream then begin
+    GetMem(OutData,Size);
     try
-     FreeMem(OutData);
+     BackwardTransform32BitFloatData(TMemoryStream(aStream).Memory,OutData,Size);
+     Move(OutData^,TMemoryStream(aStream).Memory^,Size);
     finally
-     OutData:=nil;
-    end; 
-   end;
-  finally
-   try
-    FreeMem(InData);
-   finally 
-    InData:=nil;
+     try
+      FreeMem(OutData);
+     finally
+      OutData:=nil;
+     end; 
+    end;
+   end else begin
+    GetMem(InData,Size);
+    try
+     aStream.Seek(0,soBeginning);
+     aStream.ReadBuffer(InData^,Size);
+     GetMem(OutData,Size);
+     try
+      BackwardTransform32BitFloatData(InData,OutData,Size);
+      aStream.Seek(0,soBeginning);
+      aStream.WriteBuffer(OutData^,Size);
+     finally
+      try
+       FreeMem(OutData);
+      finally
+       OutData:=nil;
+      end; 
+     end;
+    finally
+     try
+      FreeMem(InData);
+     finally 
+      InData:=nil;
+     end; 
+    end;
    end; 
   end;
- end;
+ end; 
 end;
 
 ////////////////////////////////////////////////////////////////////////////////////////

@@ -85,6 +85,7 @@ uses Classes,
      PasVulkan.Scene3D.Renderer.Image2D,
      PasVulkan.Scene3D.Renderer.Array2DImage,
      PasVulkan.Scene3D.Renderer.MipmapImage2D,
+     PasVulkan.Compression,
      PasVulkan.Hash.xxHash64;
 
 type TpvScene3DPlanets=class;
@@ -3654,12 +3655,13 @@ end;
 procedure TpvScene3DPlanet.TSerializedData.LoadFromStream(const aStream:TStream);
 var Header:THeader;
     Chunk:TChunk;
-    Size,StartPosition,NextChunkPosition:TpvInt64;
+    Size,StartPosition,NextChunkPosition{,DataSize}:TpvInt64;
     MetaDataChunkHeader:TMetaDataChunkHeader;
     HeightMapDataChunkHeader:THeightMapDataChunkHeader;
     GrassMapDataChunkHeader:TGrassMapDataChunkHeader;
     WaterHeightMapDataChunkHeader:TWaterHeightMapDataChunkHeader;
     CheckSum:TpvUInt64;
+    //InData,OutData:pointer;
 begin
 
  StartPosition:=aStream.Position;
@@ -3708,7 +3710,25 @@ begin
     end;
 
     fHeightMapData.Seek(0,soBeginning);
+
+{   DataSize:=fHeightMapResolution*fHeightMapResolution*SizeOf(TpvFloat);
+    GetMem(InData,DataSize);
+    try
+     aStream.ReadBuffer(InData^,DataSize);
+     GetMem(OutData,DataSize);
+     try
+      BackwardTransform32BitFloatData(InData,OutData,DataSize);
+      fHeightMapData.WriteBuffer(OutData^,DataSize);
+     finally
+      FreeMem(OutData);
+     end;
+    finally
+     FreeMem(InData);
+    end;}
+
     fHeightMapData.CopyFrom(aStream,fHeightMapResolution*fHeightMapResolution*SizeOf(TpvFloat));
+
+    BackwardTransform32BitFloatData(fHeightMapData);
 
    end else if Chunk.Signature=TpvScene3DPlanet.TSerializedData.ChunkSignatureGrassMapData then begin
 
@@ -3719,7 +3739,25 @@ begin
     end;
 
     fGrassMapData.Seek(0,soBeginning);
+
+{   DataSize:=fGrassMapResolution*fGrassMapResolution*SizeOf(TpvFloat);
+    GetMem(InData,DataSize);
+    try
+     aStream.ReadBuffer(InData^,DataSize);
+     GetMem(OutData,DataSize);
+     try
+      BackwardTransform32BitFloatData(InData,OutData,DataSize);
+      fGrassMapData.WriteBuffer(OutData^,DataSize);
+     finally
+      FreeMem(OutData);
+     end;
+    finally
+     FreeMem(InData);
+    end;}
+    
     fGrassMapData.CopyFrom(aStream,fGrassMapResolution*fGrassMapResolution*SizeOf(TpvFloat));
+
+    BackwardTransform32BitFloatData(fGrassMapData);
 
    end else if Chunk.Signature=TpvScene3DPlanet.TSerializedData.ChunkSignatureWaterHeightMapData then begin
 
@@ -3730,7 +3768,25 @@ begin
     end;
  
     fWaterHeightMapData.Seek(0,soBeginning);
+
+{   DataSize:=fWaterMapResolution*fWaterMapResolution*SizeOf(TpvFloat);
+    GetMem(InData,DataSize);
+    try
+     aStream.ReadBuffer(InData^,DataSize);
+     GetMem(OutData,DataSize);
+     try
+      BackwardTransform32BitFloatData(InData,OutData,DataSize);
+      fWaterHeightMapData.WriteBuffer(OutData^,DataSize);
+     finally
+      FreeMem(OutData);
+     end;
+    finally
+     FreeMem(InData);
+    end;}
+    
     fWaterHeightMapData.CopyFrom(aStream,fWaterMapResolution*fWaterMapResolution*SizeOf(TpvFloat));
+
+    BackwardTransform32BitFloatData(fWaterHeightMapData);
 
    end;
 
@@ -3754,6 +3810,7 @@ var StartPosition,NextChunkPosition:TpvInt64;
     HeightMapDataChunkHeader:THeightMapDataChunkHeader;
     GrassMapDataChunkHeader:TGrassMapDataChunkHeader;
     WaterHeightMapDataChunkHeader:TWaterHeightMapDataChunkHeader;
+    InData,OutData:pointer;
 begin
 
  StartPosition:=aStream.Position;
@@ -3787,7 +3844,20 @@ begin
   aStream.WriteBuffer(HeightMapDataChunkHeader,SizeOf(THeightMapDataChunkHeader));
 
   fHeightMapData.Seek(0,soBeginning);
-  aStream.CopyFrom(fHeightMapData,fHeightMapData.Size);
+  GetMem(InData,fHeightMapData.Size);
+  try
+   fHeightMapData.ReadBuffer(InData^,fHeightMapData.Size);
+   GetMem(OutData,fHeightMapData.Size);
+   try
+    ForwardTransform32BitFloatData(InData,OutData,fHeightMapData.Size);
+    aStream.WriteBuffer(OutData^,fHeightMapData.Size);
+   finally
+    FreeMem(OutData);
+   end;
+  finally
+   FreeMem(InData);
+  end;
+//aStream.CopyFrom(fHeightMapData,fHeightMapData.Size);
 
  end; 
 
@@ -3801,7 +3871,20 @@ begin
    aStream.WriteBuffer(GrassMapDataChunkHeader,SizeOf(TGrassMapDataChunkHeader));
 
    fGrassMapData.Seek(0,soBeginning);
-   aStream.CopyFrom(fGrassMapData,fGrassMapData.Size);
+   GetMem(InData,fGrassMapData.Size);
+   try
+    fGrassMapData.ReadBuffer(InData^,fGrassMapData.Size);
+    GetMem(OutData,fGrassMapData.Size);
+    try
+     ForwardTransform32BitFloatData(InData,OutData,fGrassMapData.Size);
+     aStream.WriteBuffer(OutData^,fGrassMapData.Size);
+    finally
+     FreeMem(OutData);
+    end;
+   finally
+    FreeMem(InData);
+   end;
+ //aStream.CopyFrom(fGrassMapData,fGrassMapData.Size);
 
  end;
 
@@ -3815,7 +3898,20 @@ begin
   aStream.WriteBuffer(WaterHeightMapDataChunkHeader,SizeOf(TWaterHeightMapDataChunkHeader));
 
   fWaterHeightMapData.Seek(0,soBeginning);
-  aStream.CopyFrom(fWaterHeightMapData,fWaterHeightMapData.Size);
+  GetMem(InData,fWaterHeightMapData.Size);
+  try
+   fWaterHeightMapData.ReadBuffer(InData^,fWaterHeightMapData.Size);
+   GetMem(OutData,fWaterHeightMapData.Size);
+   try
+    ForwardTransform32BitFloatData(InData,OutData,fWaterHeightMapData.Size);
+    aStream.WriteBuffer(OutData^,fWaterHeightMapData.Size);
+   finally
+    FreeMem(OutData);
+   end;
+  finally
+   FreeMem(InData);
+  end; 
+//aStream.CopyFrom(fWaterHeightMapData,fWaterHeightMapData.Size);
 
  end;
 
