@@ -406,6 +406,7 @@ begin
      end;
 
      Instance.Update(Buffer,BytesRead);
+     
      dec(Remaining,BytesRead);     
      inc(Position,BytesRead);
 
