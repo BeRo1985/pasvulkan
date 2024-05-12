@@ -3174,7 +3174,7 @@ begin
                                                 TemporaryBuffer,
                                                 0,
                                                 fHeightMapData.Memory^,
-                                                fHeightMapData.Size);
+                                                fHeightMapResolution*fHeightMapResolution*SizeOf(TpvFloat));
 
   end;
 
@@ -3258,9 +3258,9 @@ begin
                                                 aCommandBuffer,
                                                 aFence,
                                                 TemporaryBuffer,
-                                                fHeightMapResolution*fHeightMapResolution*SizeOf(TpvFloat),
+                                                0,
                                                 fGrassMapData.Memory^,
-                                                fGrassMapData.Size);
+                                                fGrassMapResolution*fGrassMapResolution*SizeOf(TpvFloat));
 
   end;
 
@@ -3294,9 +3294,9 @@ begin
                                                 aCommandBuffer,
                                                 aFence,
                                                 TemporaryBuffer,
-                                                fHeightMapResolution*fHeightMapResolution*SizeOf(TpvFloat)+fGrassMapResolution*fGrassMapResolution*SizeOf(TpvFloat),
+                                                0,
                                                 fWaterHeightMapData.Memory^,
-                                                fWaterHeightMapData.Size);
+                                                fWaterMapResolution*fWaterMapResolution*SizeOf(TpvFloat));
 
   end; 
 
@@ -3348,7 +3348,7 @@ begin
                                               fHeightMapData.Memory^,
                                               TemporaryBuffer,
                                               0,
-                                              fHeightMapData.Size);
+                                              fHeightMapResolution*fHeightMapResolution*SizeOf(TpvFloat));
 
    aCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
    aCommandBuffer.BeginRecording;
@@ -3445,7 +3445,7 @@ begin
                                               fGrassMapData.Memory^,
                                               TemporaryBuffer,
                                               0,
-                                              fGrassMapData.Size);  
+                                              fGrassMapResolution*fGrassMapResolution*SizeOf(TpvFloat));
 
    aCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
    aCommandBuffer.BeginRecording;
