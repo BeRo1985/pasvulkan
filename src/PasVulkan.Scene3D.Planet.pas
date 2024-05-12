@@ -3393,6 +3393,8 @@ begin
 
    aCommandBuffer.Execute(aQueue,TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),nil,nil,aFence,true);
 
+   inc(fPlanet.fData.fHeightMapGeneration); // Increment the height map generation counter
+
   end;
 
   if (fGrassMapData.Size=(fGrassMapResolution*fGrassMapResolution*SizeOf(TpvFloat))) and
@@ -3479,6 +3481,8 @@ begin
    aCommandBuffer.EndRecording;
 
    aCommandBuffer.Execute(aQueue,TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),nil,nil,aFence,true);
+
+   inc(fPlanet.fData.fGrassMapGeneration); // Increment the grass map generation counter
 
   end;
 
