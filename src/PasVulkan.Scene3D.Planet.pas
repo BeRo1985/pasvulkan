@@ -3833,7 +3833,7 @@ begin
 end;
 
 procedure TpvScene3DPlanet.TSerializedData.LoadFromFile(const aFileName:String);
-var Stream:TFileStream;
+(*var Stream:TFileStream;
 begin
  Stream:=TFileStream.Create(aFileName,fmOpenRead {or fmShareDenyWrite});
  try
@@ -3841,14 +3841,34 @@ begin
  finally
   FreeAndNil(Stream);
  end;
+end;*)
+var Stream:TMemoryStream; // Memory stream is used, because the checksum calculation will be done in memory and not on disk for better performance  
+begin
+ Stream:=TMemoryStream.Create;
+ try
+  Stream.LoadFromFile(aFileName);
+  LoadFromStream(Stream);
+ finally
+  FreeAndNil(Stream);
+ end;
 end;
 
 procedure TpvScene3DPlanet.TSerializedData.SaveToFile(const aFileName:String);
-var Stream:TFileStream;
+(*var Stream:TFileStream;
 begin
  Stream:=TFileStream.Create(aFileName,fmCreate);
  try
   SaveToStream(Stream);
+ finally
+  FreeAndNil(Stream);
+ end;
+end;*)
+var Stream:TMemoryStream; // Memory stream is used, because the checksum calculation will be done in memory and not on disk for better performance  
+begin
+ Stream:=TMemoryStream.Create;
+ try
+  SaveToStream(Stream);
+  Stream.SaveToFile(aFileName);
  finally
   FreeAndNil(Stream);
  end;
