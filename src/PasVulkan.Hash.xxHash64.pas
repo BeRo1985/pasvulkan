@@ -398,7 +398,7 @@ begin
       // 1D intersection test between (Position .. Position+BytesRead) and (aCheckSumPosition .. aCheckSumPosition+SizeOf(TMessageDigest)) 
       if (Position<(aCheckSumPosition+SizeOf(TMessageDigest))) and ((Position+BytesRead)>aCheckSumPosition) then begin 
        FromIndex:=Max(0,aCheckSumPosition-Position);
-       ToIndex:=Min(Max(FromIndex+(aCheckSumPosition+SizeOf(TMessageDigest))-Position,0),BytesRead);
+       ToIndex:=Min(Max((aCheckSumPosition+SizeOf(TMessageDigest))-Position,0),BytesRead);
        if FromIndex<ToIndex then begin
         FillChar(PpvUInt8Array(Buffer)^[FromIndex],ToIndex-FromIndex,#0);
        end; 
