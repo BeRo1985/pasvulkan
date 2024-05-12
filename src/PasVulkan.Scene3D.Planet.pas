@@ -3465,6 +3465,7 @@ begin
                                                                                      1,
                                                                                      0,
                                                                                      1));
+
     aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
                                       TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
                                       0,
@@ -3507,6 +3508,7 @@ begin
                                                                                      1,
                                                                                      0,
                                                                                      1));
+
     aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
                                       TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
                                       0,
@@ -12328,9 +12330,29 @@ begin
 
  if assigned(fVulkanDevice) then begin
 
-  if fVulkanDevice.UniversalQueueFamilyIndex<>fVulkanDevice.ComputeQueueFamilyIndex then begin
+  if (fVulkanDevice.UniversalQueueFamilyIndex<>fVulkanDevice.ComputeQueueFamilyIndex) or
+     (fVulkanDevice.UniversalQueueFamilyIndex<>fVulkanDevice.TransferQueueFamilyIndex) or
+     (fVulkanDevice.ComputeQueueFamilyIndex<>fVulkanDevice.TransferQueueFamilyIndex) then begin
    fGlobalBufferSharingMode:=TVkSharingMode(VK_SHARING_MODE_CONCURRENT);
-   fGlobalBufferQueueFamilyIndices:=[fVulkanDevice.UniversalQueueFamilyIndex,fVulkanDevice.ComputeQueueFamilyIndex];
+   if (fVulkanDevice.UniversalQueueFamilyIndex<>fVulkanDevice.ComputeQueueFamilyIndex) and
+      (fVulkanDevice.UniversalQueueFamilyIndex<>fVulkanDevice.TransferQueueFamilyIndex) and
+      (fVulkanDevice.ComputeQueueFamilyIndex<>fVulkanDevice.TransferQueueFamilyIndex) then begin
+    fGlobalBufferQueueFamilyIndices:=[fVulkanDevice.UniversalQueueFamilyIndex,
+                                      fVulkanDevice.ComputeQueueFamilyIndex,
+                                      fVulkanDevice.TransferQueueFamilyIndex];
+   end else if (fVulkanDevice.UniversalQueueFamilyIndex<>fVulkanDevice.ComputeQueueFamilyIndex) and
+               (fVulkanDevice.UniversalQueueFamilyIndex=fVulkanDevice.TransferQueueFamilyIndex) then begin
+    fGlobalBufferQueueFamilyIndices:=[fVulkanDevice.UniversalQueueFamilyIndex,
+                                      fVulkanDevice.ComputeQueueFamilyIndex];
+   end else if (fVulkanDevice.UniversalQueueFamilyIndex=fVulkanDevice.ComputeQueueFamilyIndex) and
+               (fVulkanDevice.UniversalQueueFamilyIndex<>fVulkanDevice.TransferQueueFamilyIndex) then begin
+    fGlobalBufferQueueFamilyIndices:=[fVulkanDevice.UniversalQueueFamilyIndex,
+                                      fVulkanDevice.TransferQueueFamilyIndex];
+   end else begin
+    fGlobalBufferQueueFamilyIndices:=[fVulkanDevice.UniversalQueueFamilyIndex,
+                                      fVulkanDevice.ComputeQueueFamilyIndex,
+                                      fVulkanDevice.TransferQueueFamilyIndex];
+   end;
   end else begin
    fGlobalBufferSharingMode:=TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE);
    fGlobalBufferQueueFamilyIndices:=nil;
