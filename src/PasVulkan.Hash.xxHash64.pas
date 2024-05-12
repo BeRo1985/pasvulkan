@@ -93,8 +93,8 @@ type TpvHashXXHash64=class
        destructor Destroy; override;
        procedure Update(const aData:pointer;const aDataLength:TpvSizeUInt);
        function Final:TMessageDigest;
-       class function Process(const aData:pointer;const aDataLength:TpvSizeUInt;const aSeed:TpvUInt64=0):TMessageDigest; static; overload;
-       class function Process(const aStream:TStream;const aCheckSumPosition:TpvInt64=-1;const aSeed:TpvUInt64=0):TMessageDigest; static; overload;
+       class function Process(const aData:pointer;const aDataLength:TpvSizeUInt;const aSeed:TpvUInt64=0):TMessageDigest; overload; static;
+       class function Process(const aStream:TStream;const aCheckSumPosition:TpvInt64=-1;const aSeed:TpvUInt64=0):TMessageDigest; overload; static;
      end;
 
 implementation
