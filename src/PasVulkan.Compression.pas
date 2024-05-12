@@ -94,10 +94,12 @@ type TpvCompressionMethod=
 var pvCompressionPasMPInstance:TPasMP=nil;
 
 // This function transforms 32-bit float data to a better compressible format
-procedure ForwardTransform32BitFloatData(const aInData,aOutData:pointer;const aDataSize:TpvSizeInt);
+procedure ForwardTransform32BitFloatData(const aInData,aOutData:pointer;const aDataSize:TpvSizeInt); overload;
+procedure ForwardTransform32BitFloatData(const aStream:TStream); overload;
 
 // This function transforms 32-bit float data back from a better compressible format
-procedure BackwardTransform32BitFloatData(const aInData,aOutData:pointer;const aDataSize:TpvSizeInt);
+procedure BackwardTransform32BitFloatData(const aInData,aOutData:pointer;const aDataSize:TpvSizeInt); overload;
+procedure BackwardTransform32BitFloatData(const aStream:TStream); overload;
 
 function CompressStream(const aInStream:TStream;const aOutStream:TStream;const aCompressionMethod:TpvCompressionMethod=TpvCompressionMethod.LZBRRC;const aCompressionLevel:TpvUInt32=5;const aParts:TpvUInt32=0):boolean;
 
@@ -129,6 +131,38 @@ begin
 
 end;
 
+procedure ForwardTransform32BitFloatData(const aStream:TStream); 
+var InData,OutData:Pointer;
+    Size:TpvSizeInt;
+begin
+ Size:=aStream.Size;
+ if Size>0 then begin
+  GetMem(InData,Size);
+  try
+   aStream.Seek(0,soBeginning);
+   aStream.ReadBuffer(InData^,Size);
+   GetMem(OutData,Size);
+   try
+    ForwardTransform32BitFloatData(InData,OutData,Size);
+    aStream.Seek(0,soBeginning);
+    aStream.WriteBuffer(OutData^,Size);
+   finally
+    try
+     FreeMem(OutData);
+    finally
+     OutData:=nil;
+    end; 
+   end;
+  finally
+   try
+    FreeMem(InData);
+   finally 
+    InData:=nil;
+   end; 
+  end;
+ end;
+end;
+
 // This function transforms 32-bit float data back from a better compressible format
 procedure BackwardTransform32BitFloatData(const aInData,aOutData:pointer;const aDataSize:TpvSizeInt);
 var Index,Count:TpvSizeInt;
@@ -147,6 +181,38 @@ begin
   PpvUInt32Array(aOutData)^[Index]:=Value;
  end; 
 
+end;
+
+procedure BackwardTransform32BitFloatData(const aStream:TStream);
+var InData,OutData:Pointer;
+    Size:TpvSizeInt;
+begin
+ Size:=aStream.Size;
+ if Size>0 then begin
+  GetMem(InData,Size);
+  try
+   aStream.Seek(0,soBeginning);
+   aStream.ReadBuffer(InData^,Size);
+   GetMem(OutData,Size);
+   try
+    BackwardTransform32BitFloatData(InData,OutData,Size);
+    aStream.Seek(0,soBeginning);
+    aStream.WriteBuffer(OutData^,Size);
+   finally
+    try
+     FreeMem(OutData);
+    finally
+     OutData:=nil;
+    end; 
+   end;
+  finally
+   try
+    FreeMem(InData);
+   finally 
+    InData:=nil;
+   end; 
+  end;
+ end;
 end;
 
 ////////////////////////////////////////////////////////////////////////////////////////
