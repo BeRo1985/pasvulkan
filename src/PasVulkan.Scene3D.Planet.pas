@@ -334,6 +334,19 @@ type TpvScene3DPlanets=class;
             TInFlightFrameDataList=TpvObjectGenericList<TData>;
             { TSerializedData }
             TSerializedData=class
+             public
+              type TSignature=packed array[0..3] of AnsiChar;
+                   PSignature=^TSignature;
+                   THeader=packed record
+                    Signature:TSignature;
+                    Version:TpvUInt32;
+                    HeightMapResolution:TpvUInt32;
+                    GrassMapResolution:TpvUInt32;
+                    WaterMapResolution:TpvUInt32;
+                   end;
+                   PHeader=^THeader;
+               const Signature:TSignature=('P','V','P','D'); // PasVulkan Planet Data
+                     Version:TpvUInt32=1;
              private
               fPlanet:TpvScene3DPlanet;
               fHeightMapResolution:TpvUInt32;
@@ -347,8 +360,10 @@ type TpvScene3DPlanets=class;
               destructor Destroy; override;
               procedure Download(const aQueue:TpvVulkanQueue;const aCommandBuffer:TpvVulkanCommandBuffer;const aFence:TpvVulkanFence); 
               procedure Upload(const aQueue:TpvVulkanQueue;const aCommandBuffer:TpvVulkanCommandBuffer;const aFence:TpvVulkanFence); 
-              procedure Serialize(const aStream:TStream);
-              procedure Deserialize(const aStream:TStream); 
+              procedure LoadFromStream(const aStream:TStream);
+              procedure SaveToStream(const aStream:TStream);
+              procedure LoadFromFile(const aFileName:String);
+              procedure SaveToFile(const aFileName:String);
              published
               property Planet:TpvScene3DPlanet read fPlanet;
               property HeightMapResolution:TpvUInt32 read fHeightMapResolution write fHeightMapResolution;
@@ -3508,13 +3523,87 @@ begin
 
 end;
 
-procedure TpvScene3DPlanet.TSerializedData.Serialize(const aStream:TStream);
+procedure TpvScene3DPlanet.TSerializedData.LoadFromStream(const aStream:TStream);
+var Header:THeader;
 begin
+
+ aStream.ReadBuffer(Header,SizeOf(Header));
+
+ if (Header.Signature=TpvScene3DPlanet.TSerializedData.Signature) and
+    (Header.Version=TpvScene3DPlanet.TSerializedData.Version) and
+    (Header.HeightMapResolution=fPlanet.fHeightMapResolution) and
+    (Header.GrassMapResolution=fPlanet.fGrassMapResolution) and
+    (Header.WaterMapResolution=fPlanet.fWaterMapResolution) then begin
+
+{  fHeightMapResolution:=Header.HeightMapResolution;
+
+  fGrassMapResolution:=Header.GrassMapResolution;
+
+  fWaterMapResolution:=Header.WaterMapResolution;}
+
+  fHeightMapData.Seek(0,soBeginning);
+  fHeightMapData.CopyFrom(aStream,fHeightMapResolution*fHeightMapResolution*SizeOf(TpvFloat));
+
+  fGrassMapData.Seek(0,soBeginning);
+  fGrassMapData.CopyFrom(aStream,fGrassMapResolution*fGrassMapResolution*SizeOf(TpvFloat));
+
+  fWaterHeightMapData.Seek(0,soBeginning);
+  fWaterHeightMapData.CopyFrom(aStream,fWaterMapResolution*fWaterMapResolution*SizeOf(TpvFloat));
+
+ end else begin
+
+  raise EpvScene3DPlanet.Create('Invalid serialized data signature or version');
+  
+ end;
+
 end;
 
-procedure TpvScene3DPlanet.TSerializedData.Deserialize(const aStream:TStream);
+procedure TpvScene3DPlanet.TSerializedData.SaveToStream(const aStream:TStream);
+var Header:THeader;
 begin
+
+ Header.Signature:=TpvScene3DPlanet.TSerializedData.Signature;
+ Header.Version:=TpvScene3DPlanet.TSerializedData.Version;
+ Header.HeightMapResolution:=fHeightMapResolution;
+ Header.GrassMapResolution:=fGrassMapResolution;
+ Header.WaterMapResolution:=fWaterMapResolution;
+
+ aStream.WriteBuffer(Header,SizeOf(Header));
+
+ fHeightMapData.Seek(0,soBeginning);
+ aStream.CopyFrom(fHeightMapData,fHeightMapData.Size);
+
+ fGrassMapData.Seek(0,soBeginning);
+ aStream.CopyFrom(fGrassMapData,fGrassMapData.Size);
+
+ fWaterHeightMapData.Seek(0,soBeginning);
+ aStream.CopyFrom(fWaterHeightMapData,fWaterHeightMapData.Size);
+
 end;
+
+procedure TpvScene3DPlanet.TSerializedData.LoadFromFile(const aFileName:String);
+var Stream:TFileStream;
+begin
+ Stream:=TFileStream.Create(aFileName,fmOpenRead {or fmShareDenyWrite});
+ try
+  LoadFromStream(Stream);
+ finally
+  FreeAndNil(Stream);
+ end;
+end;
+
+procedure TpvScene3DPlanet.TSerializedData.SaveToFile(const aFileName:String);
+var Stream:TFileStream;
+begin
+ Stream:=TFileStream.Create(aFileName,fmCreate);
+ try
+  SaveToStream(Stream);
+ finally
+  FreeAndNil(Stream);
+ end;
+end;
+
+{ TpvScene3DPlanet.THeightMapInitialization }
 
 { TpvScene3DPlanet.TGrassMapInitialization }
 
