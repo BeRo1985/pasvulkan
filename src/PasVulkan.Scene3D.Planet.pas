@@ -332,6 +332,32 @@ type TpvScene3DPlanets=class;
               property ParallaxMappingActive:Boolean read fParallaxMappingActive write fParallaxMappingActive;
             end;
             TInFlightFrameDataList=TpvObjectGenericList<TData>;
+            { TSerializedData }
+            TSerializedData=class
+             private
+              fPlanet:TpvScene3DPlanet;
+              fHeightMapResolution:TpvUInt32;
+              fGrassMapResolution:TpvUInt32;
+              fWaterMapResolution:TpvUInt32;
+              fHeightMapData:TMemoryStream;
+              fGrassMapData:TMemoryStream;            
+              fWaterHeightMapData:TMemoryStream;
+             public 
+              constructor Create(const aPlanet:TpvScene3DPlanet); reintroduce;
+              destructor Destroy; override;
+              procedure Download(const aQueue:TpvVulkanQueue;const aCommandBuffer:TpvVulkanCommandBuffer;const aFence:TpvVulkanFence); 
+              procedure Upload(const aQueue:TpvVulkanQueue;const aCommandBuffer:TpvVulkanCommandBuffer;const aFence:TpvVulkanFence); 
+              procedure Serialize(const aStream:TStream);
+              procedure Deserialize(const aStream:TStream); 
+             published
+              property Planet:TpvScene3DPlanet read fPlanet;
+              property HeightMapResolution:TpvUInt32 read fHeightMapResolution write fHeightMapResolution;
+              property GrassMapResolution:TpvUInt32 read fGrassMapResolution write fGrassMapResolution;
+              property WaterMapResolution:TpvUInt32 read fWaterMapResolution write fWaterMapResolution;
+              property HeightMapData:TMemoryStream read fHeightMapData;
+              property GrassMapData:TMemoryStream read fGrassMapData;
+              property WaterHeightMapData:TMemoryStream read fWaterHeightMapData; 
+            end;
             { TGrassMapInitialization }
             TGrassMapInitialization=class
              public
@@ -2943,6 +2969,551 @@ begin
  fDisplacementMappingActive:=aData.fDisplacementMappingActive;
  fParallaxMappingActive:=aData.fParallaxMappingActive;
  fVisualMeshVertexBufferRenderIndex:=aData.fVisualMeshVertexBufferRenderIndex;
+end;
+
+{ TpvScene3DPlanet.TSerializedData }
+
+constructor TpvScene3DPlanet.TSerializedData.Create(const aPlanet:TpvScene3DPlanet);
+begin
+ 
+ inherited Create;
+ 
+ fPlanet:=aPlanet;
+ 
+ fHeightMapResolution:=fPlanet.fHeightMapResolution;
+ 
+ fGrassMapResolution:=fPlanet.GrassMapResolution;
+ 
+ fWaterMapResolution:=fPlanet.WaterMapResolution;
+
+ fHeightMapData:=TMemoryStream.Create;
+ 
+ fGrassMapData:=TMemoryStream.Create;
+ 
+ fWaterHeightMapData:=TMemoryStream.Create;
+
+end;
+
+destructor TpvScene3DPlanet.TSerializedData.Destroy;
+begin
+ FreeAndNil(fHeightMapData);
+ FreeAndNil(fGrassMapData);
+ FreeAndNil(fWaterHeightMapData);
+ inherited Destroy;
+end;
+
+procedure TpvScene3DPlanet.TSerializedData.Download(const aQueue:TpvVulkanQueue;const aCommandBuffer:TpvVulkanCommandBuffer;const aFence:TpvVulkanFence); 
+var TemporaryBuffer:TpvVulkanBuffer;
+    ImageMemoryBarrier:TVkImageMemoryBarrier;
+    BufferImageCopy:TVkBufferImageCopy;
+    BufferCopy:TVkBufferCopy;
+begin
+
+ if fHeightMapData.Size<>(fHeightMapResolution*fHeightMapResolution*SizeOf(TpvFloat)) then begin
+  fHeightMapData.SetSize(fHeightMapResolution*fHeightMapResolution*SizeOf(TpvFloat));
+ end;
+
+ if fGrassMapData.Size<>(fGrassMapResolution*fGrassMapResolution*SizeOf(TpvFloat)) then begin
+  fGrassMapData.SetSize(fGrassMapResolution*fGrassMapResolution*SizeOf(TpvFloat));
+ end;
+ 
+ if fWaterHeightMapData.Size<>(fWaterMapResolution*fWaterMapResolution*SizeOf(TpvFloat)) then begin
+  fWaterHeightMapData.SetSize(fWaterMapResolution*fWaterMapResolution*SizeOf(TpvFloat));
+ end;
+
+ TemporaryBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
+                                         Max(
+                                          Max(
+                                           fHeightMapResolution*fHeightMapResolution*SizeOf(TpvFloat),
+                                           fGrassMapResolution*fGrassMapResolution*SizeOf(TpvFloat)
+                                          ),
+                                          fWaterMapResolution*fWaterMapResolution*SizeOf(TpvFloat)
+                                         ),
+                                         TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
+                                         TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                         [],
+                                         0,
+                                         TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_CACHED_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                         0,
+                                         0,
+                                         0,
+                                         0,
+                                         0,
+                                         0,
+                                         [TpvVulkanBufferFlag.PersistentMappedIfPossibe],
+                                         0,
+                                         pvAllocationGroupIDScene3DPlanetDynamic
+                                        );
+
+ try
+
+  // Height map
+  begin
+
+   aCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+   aCommandBuffer.BeginRecording;
+
+   begin
+
+    ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                                    TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT),
+                                                                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                                    VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                                                                    VK_QUEUE_FAMILY_IGNORED,
+                                                                    VK_QUEUE_FAMILY_IGNORED,
+                                                                    fPlanet.fData.fHeightMapImage.VulkanImage.Handle,
+                                                                    TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                                    0,
+                                                                                                    1,
+                                                                                                    0,
+                                                                                                    1));
+    aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
+                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                      0,
+                                      0,nil,
+                                      0,nil,
+                                      1,@ImageMemoryBarrier);
+
+   end;
+
+   // Copy the height map to the buffer
+   begin
+
+    BufferImageCopy:=TVkBufferImageCopy.Create(0,
+                                               fHeightMapResolution*SizeOf(TpvFloat),
+                                               fHeightMapResolution,
+                                               TVkImageSubresourceLayers.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),0,0,1),
+                                               TVkOffset3D.Create(0,0,0),
+                                               TVkExtent3D.Create(fHeightMapResolution,fHeightMapResolution,1));
+
+    // First copy the height map to the temporary buffer
+    aCommandBuffer.CmdCopyImageToBuffer(fPlanet.fData.fHeightMapImage.VulkanImage.Handle,
+                                        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                                        TemporaryBuffer.Handle,
+                                        0,
+                                        @BufferImageCopy);
+   end;
+
+   // Change the layout of the height map image back to shader read only optimal
+   begin
+
+    ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT),
+                                                                    TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                                    VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                                                                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                                    VK_QUEUE_FAMILY_IGNORED,
+                                                                    VK_QUEUE_FAMILY_IGNORED,
+                                                                    fPlanet.fData.fHeightMapImage.VulkanImage.Handle,
+                                                                    TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                                    0,
+                                                                                                    1,
+                                                                                                    0,
+                                                                                                    1));
+    aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
+                                      0,
+                                      0,nil,
+                                      0,nil,
+                                      1,@ImageMemoryBarrier);
+
+   end;
+
+   aCommandBuffer.EndRecording;
+
+   aCommandBuffer.Execute(aQueue,TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),nil,nil,aFence,true);
+
+   // Download the buffer of the height map data to fHeightMapData
+   fPlanet.fVulkanDevice.MemoryStaging.Download(aQueue,
+                                                aCommandBuffer,
+                                                aFence,
+                                                TemporaryBuffer,
+                                                0,
+                                                fHeightMapData.Memory^,
+                                                fHeightMapData.Size);
+
+  end;
+
+  // Grass map
+  begin
+
+   aCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+   aCommandBuffer.BeginRecording;
+
+   begin
+
+    ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                                    TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT),
+                                                                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                                    VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                                                                    VK_QUEUE_FAMILY_IGNORED,
+                                                                    VK_QUEUE_FAMILY_IGNORED,
+                                                                    fPlanet.fData.fGrassMapImage.VulkanImage.Handle,
+                                                                    TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                                    0,
+                                                                                                    1,
+                                                                                                    0,
+                                                                                                    1));
+    aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
+                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                      0,
+                                      0,nil,
+                                      0,nil,
+                                      1,@ImageMemoryBarrier);
+
+   end;
+
+   // Copy the grass map to the buffer
+   begin
+
+    BufferImageCopy:=TVkBufferImageCopy.Create(0,
+                                               fGrassMapResolution*SizeOf(TpvFloat),
+                                               fGrassMapResolution,
+                                               TVkImageSubresourceLayers.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),0,0,1),
+                                               TVkOffset3D.Create(0,0,0),
+                                               TVkExtent3D.Create(fGrassMapResolution,fGrassMapResolution,1));
+
+    // First copy the grass map to the temporary buffer
+    aCommandBuffer.CmdCopyImageToBuffer(fPlanet.fData.fGrassMapImage.VulkanImage.Handle,
+                                        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                                        TemporaryBuffer.Handle,
+                                        fGrassMapResolution*fGrassMapResolution*SizeOf(TpvFloat),
+                                        @BufferImageCopy);
+   end;
+
+   // Change the layout of the grass map image back to shader read only optimal
+   begin
+
+    ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT),
+                                                                    TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                                    VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                                                                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                                    VK_QUEUE_FAMILY_IGNORED,
+                                                                    VK_QUEUE_FAMILY_IGNORED,
+                                                                    fPlanet.fData.fGrassMapImage.VulkanImage.Handle,
+                                                                    TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                                    0,
+                                                                                                    1,
+                                                                                                    0,
+                                                                                                    1));
+
+    aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
+                                      0,
+                                      0,nil,
+                                      0,nil,
+                                      1,@ImageMemoryBarrier);         
+   end;
+
+   aCommandBuffer.EndRecording;
+
+   aCommandBuffer.Execute(aQueue,TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),nil,nil,aFence,true);
+
+   // Download the buffer of the grass map data to fGrassMapData
+   fPlanet.fVulkanDevice.MemoryStaging.Download(aQueue,
+                                                aCommandBuffer,
+                                                aFence,
+                                                TemporaryBuffer,
+                                                fHeightMapResolution*fHeightMapResolution*SizeOf(TpvFloat),
+                                                fGrassMapData.Memory^,
+                                                fGrassMapData.Size);
+
+  end;
+
+  // Water height map (which is already a buffer, not an image)
+  begin
+
+   aCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+   aCommandBuffer.BeginRecording;
+
+   // Copy the water height map to the buffer
+   begin
+
+    BufferCopy:=TVkBufferCopy.Create(0,
+                                     0,
+                                     fWaterMapResolution*fWaterMapResolution*SizeOf(TpvFloat));
+
+    // First copy the water height map to the temporary buffer
+    aCommandBuffer.CmdCopyBuffer(fPlanet.fData.fWaterHeightMapBuffers[fPlanet.fData.fWaterBufferIndex and 1].Handle,
+                                 TemporaryBuffer.Handle,
+                                 1,
+                                 @BufferCopy);
+
+   end;
+
+   aCommandBuffer.EndRecording;
+
+   aCommandBuffer.Execute(aQueue,TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),nil,nil,aFence,true);
+
+   // Download the buffer of the water height map data to fWaterHeightMapData
+   fPlanet.fVulkanDevice.MemoryStaging.Download(aQueue,
+                                                aCommandBuffer,
+                                                aFence,
+                                                TemporaryBuffer,
+                                                fHeightMapResolution*fHeightMapResolution*SizeOf(TpvFloat)+fGrassMapResolution*fGrassMapResolution*SizeOf(TpvFloat),
+                                                fWaterHeightMapData.Memory^,
+                                                fWaterHeightMapData.Size);
+
+  end; 
+
+ finally
+  FreeAndNil(TemporaryBuffer);
+ end;
+
+end;
+
+procedure TpvScene3DPlanet.TSerializedData.Upload(const aQueue:TpvVulkanQueue;const aCommandBuffer:TpvVulkanCommandBuffer;const aFence:TpvVulkanFence); 
+var TemporaryBuffer:TpvVulkanBuffer;
+    ImageMemoryBarrier:TVkImageMemoryBarrier;
+    BufferImageCopy:TVkBufferImageCopy;
+    BufferCopy:TVkBufferCopy;
+begin
+
+ TemporaryBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
+                                         Max(
+                                          Max(
+                                           fHeightMapResolution*fHeightMapResolution*SizeOf(TpvFloat),
+                                           fGrassMapResolution*fGrassMapResolution*SizeOf(TpvFloat)
+                                          ),
+                                          fWaterMapResolution*fWaterMapResolution*SizeOf(TpvFloat)
+                                         ),
+                                         TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
+                                         TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                         [],
+                                         0,
+                                         TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_CACHED_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                         0,
+                                         0,
+                                         0,
+                                         0,
+                                         0,
+                                         0,
+                                         [TpvVulkanBufferFlag.PersistentMappedIfPossibe],
+                                         0,
+                                         pvAllocationGroupIDScene3DPlanetDynamic
+                                        );
+ try                                       
+
+  if (fHeightMapData.Size=(fHeightMapResolution*fHeightMapResolution*SizeOf(TpvFloat))) and
+     (fPlanet.fHeightMapResolution=fHeightMapResolution) then begin
+
+   // Upload the height map data from fHeightMapData to the buffer
+   fPlanet.fVulkanDevice.MemoryStaging.Upload(aQueue,
+                                              aCommandBuffer,
+                                              aFence,
+                                              fHeightMapData.Memory^,
+                                              TemporaryBuffer,
+                                              0,
+                                              fHeightMapData.Size);
+
+   aCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+   aCommandBuffer.BeginRecording;
+
+   // Change the layout of the height map image to transfer destination optimal
+   begin
+
+    ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                     TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                                                     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                     VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                                     VK_QUEUE_FAMILY_IGNORED,
+                                                     VK_QUEUE_FAMILY_IGNORED,
+                                                     fPlanet.fData.fHeightMapImage.VulkanImage.Handle,
+                                                     TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                     0,
+                                                                                     1,
+                                                                                     0,
+                                                                                     1));
+    aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
+                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                      0,
+                                      0,nil,
+                                      0,nil,
+                                      1,@ImageMemoryBarrier);
+
+   end;             
+
+   // Copy the buffer to the height map image
+   begin
+
+    BufferImageCopy:=TVkBufferImageCopy.Create(0,
+                                               fHeightMapResolution*SizeOf(TpvFloat),
+                                               fHeightMapResolution,
+                                               TVkImageSubresourceLayers.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),0,0,1),
+                                               TVkOffset3D.Create(0,0,0),
+                                               TVkExtent3D.Create(fHeightMapResolution,fHeightMapResolution,1));
+
+    aCommandBuffer.CmdCopyBufferToImage(TemporaryBuffer.Handle,
+                                        fPlanet.fData.fHeightMapImage.VulkanImage.Handle,
+                                        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                        1,
+                                        @BufferImageCopy);
+
+   end;
+
+   // Change the layout of the height map image back to shader read only optimal
+   begin
+
+    ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                                                     TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                     VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                                     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                     VK_QUEUE_FAMILY_IGNORED,
+                                                     VK_QUEUE_FAMILY_IGNORED,
+                                                     fPlanet.fData.fHeightMapImage.VulkanImage.Handle,
+                                                     TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                     0,
+                                                                                     1,
+                                                                                     0,
+                                                                                     1));
+    aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
+                                      0,
+                                      0,nil,
+                                      0,nil,
+                                      1,@ImageMemoryBarrier);
+
+   end;
+
+   aCommandBuffer.EndRecording;
+
+   aCommandBuffer.Execute(aQueue,TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),nil,nil,aFence,true);
+
+  end;
+
+  if (fGrassMapData.Size=(fGrassMapResolution*fGrassMapResolution*SizeOf(TpvFloat))) and
+     (fPlanet.fGrassMapResolution=fGrassMapResolution) then begin
+
+   // Upload the grass map data from fGrassMapData to the buffer
+   fPlanet.fVulkanDevice.MemoryStaging.Upload(aQueue,
+                                              aCommandBuffer,
+                                              aFence,
+                                              fGrassMapData.Memory^,
+                                              TemporaryBuffer,
+                                              0,
+                                              fGrassMapData.Size);  
+
+   aCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+   aCommandBuffer.BeginRecording;
+
+   // Change the layout of the grass map image to transfer destination optimal
+   begin
+
+    ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                     TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                                                     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                     VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                                     VK_QUEUE_FAMILY_IGNORED,
+                                                     VK_QUEUE_FAMILY_IGNORED,
+                                                     fPlanet.fData.fGrassMapImage.VulkanImage.Handle,
+                                                     TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                     0,
+                                                                                     1,
+                                                                                     0,
+                                                                                     1));
+    aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
+                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                      0,
+                                      0,nil,
+                                      0,nil,
+                                      1,@ImageMemoryBarrier);
+
+   end;
+
+   // Copy the buffer to the grass map image
+   begin
+
+    BufferImageCopy:=TVkBufferImageCopy.Create(0,
+                                               fGrassMapResolution*SizeOf(TpvFloat),
+                                               fGrassMapResolution,
+                                               TVkImageSubresourceLayers.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),0,0,1),
+                                               TVkOffset3D.Create(0,0,0),
+                                               TVkExtent3D.Create(fGrassMapResolution,fGrassMapResolution,1));
+
+    aCommandBuffer.CmdCopyBufferToImage(TemporaryBuffer.Handle,
+                                        fPlanet.fData.fGrassMapImage.VulkanImage.Handle,
+                                        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                        1,
+                                        @BufferImageCopy);
+
+   end;
+
+   // Change the layout of the grass map image back to shader read only optimal
+   begin
+
+    ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                                                     TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                     VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                                     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                     VK_QUEUE_FAMILY_IGNORED,
+                                                     VK_QUEUE_FAMILY_IGNORED,
+                                                     fPlanet.fData.fGrassMapImage.VulkanImage.Handle,
+                                                     TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                     0,
+                                                                                     1,
+                                                                                     0,
+                                                                                     1));
+    aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
+                                      0,
+                                      0,nil,
+                                      0,nil,
+                                      1,@ImageMemoryBarrier);
+
+   end;
+
+   aCommandBuffer.EndRecording;
+
+   aCommandBuffer.Execute(aQueue,TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),nil,nil,aFence,true);
+
+  end;
+
+  if (fWaterHeightMapData.Size=(fWaterMapResolution*fWaterMapResolution*SizeOf(TpvFloat))) and
+     (fPlanet.fWaterMapResolution=fWaterMapResolution) then begin
+
+   // Upload the water height map data from fWaterHeightMapData to the buffer
+   fPlanet.fVulkanDevice.MemoryStaging.Upload(aQueue,
+                                              aCommandBuffer,
+                                              aFence,
+                                              fWaterHeightMapData.Memory^,
+                                              TemporaryBuffer,
+                                              0,
+                                              fWaterHeightMapData.Size);
+
+   aCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+   aCommandBuffer.BeginRecording;
+
+   // Copy the buffer to the water height map buffer
+   begin
+
+    BufferCopy:=TVkBufferCopy.Create(0,
+                                     0,
+                                     fWaterMapResolution*fWaterMapResolution*SizeOf(TpvFloat));
+
+    aCommandBuffer.CmdCopyBuffer(TemporaryBuffer.Handle,
+                                 fPlanet.fData.fWaterHeightMapBuffers[fPlanet.fData.fWaterBufferIndex and 1].Handle,
+                                 1,
+                                 @BufferCopy);
+
+   end;
+
+   aCommandBuffer.EndRecording;
+
+   aCommandBuffer.Execute(aQueue,TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),nil,nil,aFence,true);
+   
+  end;
+
+ finally
+  FreeAndNil(TemporaryBuffer);
+ end; 
+
+end;
+
+procedure TpvScene3DPlanet.TSerializedData.Serialize(const aStream:TStream);
+begin
+end;
+
+procedure TpvScene3DPlanet.TSerializedData.Deserialize(const aStream:TStream);
+begin
 end;
 
 { TpvScene3DPlanet.TGrassMapInitialization }
