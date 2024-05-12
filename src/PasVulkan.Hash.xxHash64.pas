@@ -371,7 +371,7 @@ end;
 {$ifend}
 
 class function TpvHashXXHash64.ProcessStream(const aStream:TStream;const aCheckSumPosition:TpvInt64=-1;const aSeed:TpvUInt64=0):TMessageDigest; 
-const BufferSize=4096;
+const BufferSize=4194304; // four megabytes at once 
 var Instance:TpvHashXXHash64;
     Buffer:pointer;
     BytesRead,Remaining,Position,FromIndex,ToIndex:TpvInt64;
