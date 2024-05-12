@@ -3368,6 +3368,7 @@ begin
                                                                                      1,
                                                                                      0,
                                                                                      1));
+
     aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
                                       TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
                                       0,
@@ -3416,6 +3417,7 @@ begin
                                                                                      1,
                                                                                      0,
                                                                                      1));
+
     aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
                                       TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
                                       0,
