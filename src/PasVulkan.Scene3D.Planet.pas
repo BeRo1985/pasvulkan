@@ -340,13 +340,31 @@ type TpvScene3DPlanets=class;
                    THeader=packed record
                     Signature:TSignature;
                     Version:TpvUInt32;
-                    HeightMapResolution:TpvUInt32;
-                    GrassMapResolution:TpvUInt32;
-                    WaterMapResolution:TpvUInt32;
+                    Size:TpvUInt64;
                    end;
                    PHeader=^THeader;
+                   TChunk=packed record
+                    Signature:TSignature;
+                    Size:TpvUInt64;
+                   end;
+                   PChunk=^TChunk;
+                   THeightMapDataChunkHeader=packed record
+                    Resolution:TpvUInt32;
+                   end;
+                   PHeightMapDataChunkHeader=^THeightMapDataChunkHeader;
+                   TGrassMapDataChunkHeader=packed record
+                    Resolution:TpvUInt32;
+                   end;
+                   PGrassMapDataChunkHeader=^TGrassMapDataChunkHeader;
+                   TWaterHeightMapDataChunkHeader=packed record
+                    Resolution:TpvUInt32;
+                   end;
+                   PWaterHeightMapDataChunkHeader=^TWaterHeightMapDataChunkHeader;
                const Signature:TSignature=('P','V','P','D'); // PasVulkan Planet Data
                      Version:TpvUInt32=1;
+                     ChunkSignatureHeightMapData:TSignature=('H','M','D','T'); // Height Map Data
+                     ChunkSignatureGrassMapData:TSignature=('G','M','D','T'); // Grass Map Data
+                     ChunkSignatureWaterHeightMapData:TSignature=('W','M','D','T'); // Water Height Map Data
              private
               fPlanet:TpvScene3DPlanet;
               fHeightMapResolution:TpvUInt32;
@@ -3549,7 +3567,7 @@ procedure TpvScene3DPlanet.TSerializedData.Download;
 var Queue:TpvVulkanQueue;
     CommandPool:TpvVulkanCommandPool;
     CommandBuffer:TpvVulkanCommandBuffer;
-    Fence:TpvVulkanFence;    
+    Fence:TpvVulkanFence;        
 begin
 
  Queue:=fPlanet.fVulkanDevice.TransferQueue;
@@ -3615,60 +3633,144 @@ end;
 
 procedure TpvScene3DPlanet.TSerializedData.LoadFromStream(const aStream:TStream);
 var Header:THeader;
+    Chunk:TChunk;
+    Size,StartPosition,NextChunkPosition:TpvInt64;
+    HeightMapDataChunkHeader:THeightMapDataChunkHeader;
+    GrassMapDataChunkHeader:TGrassMapDataChunkHeader;
+    WaterHeightMapDataChunkHeader:TWaterHeightMapDataChunkHeader;
 begin
+
+ StartPosition:=aStream.Position;
 
  aStream.ReadBuffer(Header,SizeOf(Header));
 
  if (Header.Signature=TpvScene3DPlanet.TSerializedData.Signature) and
     (Header.Version=TpvScene3DPlanet.TSerializedData.Version) and
-    (Header.HeightMapResolution=fPlanet.fHeightMapResolution) and
-    (Header.GrassMapResolution=fPlanet.fGrassMapResolution) and
-    (Header.WaterMapResolution=fPlanet.fWaterMapResolution) then begin
+    (TpvInt64(Header.Size)>=(aStream.Size-(StartPosition+SizeOf(Header)))) then begin
 
-{  fHeightMapResolution:=Header.HeightMapResolution;
+  Size:=Min(aStream.Size,StartPosition+TpvInt64(Header.Size)+TpvInt64(SizeOf(Header)));
 
-  fGrassMapResolution:=Header.GrassMapResolution;
+  while aStream.Position<Size do begin
 
-  fWaterMapResolution:=Header.WaterMapResolution;}
+   aStream.ReadBuffer(Chunk,SizeOf(TChunk));
 
-  fHeightMapData.Seek(0,soBeginning);
-  fHeightMapData.CopyFrom(aStream,fHeightMapResolution*fHeightMapResolution*SizeOf(TpvFloat));
+   NextChunkPosition:=aStream.Position+TpvInt64(Chunk.Size);
 
-  fGrassMapData.Seek(0,soBeginning);
-  fGrassMapData.CopyFrom(aStream,fGrassMapResolution*fGrassMapResolution*SizeOf(TpvFloat));
+   if NextChunkPosition>Size then begin
+    raise EpvScene3DPlanet.Create('Invalid serialized data chunk size');
+   end;
 
-  fWaterHeightMapData.Seek(0,soBeginning);
-  fWaterHeightMapData.CopyFrom(aStream,fWaterMapResolution*fWaterMapResolution*SizeOf(TpvFloat));
+   if Chunk.Signature=TpvScene3DPlanet.TSerializedData.ChunkSignatureHeightMapData then begin
+
+    aStream.ReadBuffer(HeightMapDataChunkHeader,SizeOf(THeightMapDataChunkHeader));
+
+    if HeightMapDataChunkHeader.Resolution<>fHeightMapResolution then begin
+     raise EpvScene3DPlanet.Create('Invalid height map resolution');
+    end;
+
+    fHeightMapData.Seek(0,soBeginning);
+    fHeightMapData.CopyFrom(aStream,fHeightMapResolution*fHeightMapResolution*SizeOf(TpvFloat));
+
+   end else if Chunk.Signature=TpvScene3DPlanet.TSerializedData.ChunkSignatureGrassMapData then begin
+
+    aStream.ReadBuffer(GrassMapDataChunkHeader,SizeOf(TGrassMapDataChunkHeader));
+
+    if GrassMapDataChunkHeader.Resolution<>fGrassMapResolution then begin
+     raise EpvScene3DPlanet.Create('Invalid grass map resolution');
+    end;
+
+    fGrassMapData.Seek(0,soBeginning);
+    fGrassMapData.CopyFrom(aStream,fGrassMapResolution*fGrassMapResolution*SizeOf(TpvFloat));
+
+   end else if Chunk.Signature=TpvScene3DPlanet.TSerializedData.ChunkSignatureWaterHeightMapData then begin
+
+    aStream.ReadBuffer(WaterHeightMapDataChunkHeader,SizeOf(TWaterHeightMapDataChunkHeader));
+
+    if WaterHeightMapDataChunkHeader.Resolution<>fWaterMapResolution then begin
+     raise EpvScene3DPlanet.Create('Invalid water height map resolution');
+    end;
+ 
+    fWaterHeightMapData.Seek(0,soBeginning);
+    fWaterHeightMapData.CopyFrom(aStream,fWaterMapResolution*fWaterMapResolution*SizeOf(TpvFloat));
+
+   end;
+
+   aStream.Seek(NextChunkPosition,soBeginning);
+
+  end;
 
  end else begin
 
-  raise EpvScene3DPlanet.Create('Invalid serialized data signature or version');
+  raise EpvScene3DPlanet.Create('Invalid serialized data signature, version or size');
   
  end;
 
 end;
 
 procedure TpvScene3DPlanet.TSerializedData.SaveToStream(const aStream:TStream);
-var Header:THeader;
+var StartPosition,NextChunkPosition:TpvInt64;
+    Header:THeader;
+    Chunk:TChunk;
+    HeightMapDataChunkHeader:THeightMapDataChunkHeader;
+    GrassMapDataChunkHeader:TGrassMapDataChunkHeader;
+    WaterHeightMapDataChunkHeader:TWaterHeightMapDataChunkHeader;
 begin
+
+ StartPosition:=aStream.Position;
 
  Header.Signature:=TpvScene3DPlanet.TSerializedData.Signature;
  Header.Version:=TpvScene3DPlanet.TSerializedData.Version;
- Header.HeightMapResolution:=fHeightMapResolution;
- Header.GrassMapResolution:=fGrassMapResolution;
- Header.WaterMapResolution:=fWaterMapResolution;
-
+ Header.Size:=0; // Will be updated later
+ 
  aStream.WriteBuffer(Header,SizeOf(Header));
 
- fHeightMapData.Seek(0,soBeginning);
- aStream.CopyFrom(fHeightMapData,fHeightMapData.Size);
+ begin
 
- fGrassMapData.Seek(0,soBeginning);
- aStream.CopyFrom(fGrassMapData,fGrassMapData.Size);
+  Chunk.Signature:=TpvScene3DPlanet.TSerializedData.ChunkSignatureHeightMapData;
+  Chunk.Size:=SizeOf(THeightMapDataChunkHeader)+(fHeightMapResolution*fHeightMapResolution*SizeOf(TpvFloat));
+  aStream.WriteBuffer(Chunk,SizeOf(TChunk));
 
- fWaterHeightMapData.Seek(0,soBeginning);
- aStream.CopyFrom(fWaterHeightMapData,fWaterHeightMapData.Size);
+  HeightMapDataChunkHeader.Resolution:=fHeightMapResolution;
+  aStream.WriteBuffer(HeightMapDataChunkHeader,SizeOf(THeightMapDataChunkHeader));
 
+  fHeightMapData.Seek(0,soBeginning);
+  aStream.CopyFrom(fHeightMapData,fHeightMapData.Size);
+
+ end; 
+
+ begin
+   
+   Chunk.Signature:=TpvScene3DPlanet.TSerializedData.ChunkSignatureGrassMapData;
+   Chunk.Size:=SizeOf(TGrassMapDataChunkHeader)+(fGrassMapResolution*fGrassMapResolution*SizeOf(TpvFloat));
+   aStream.WriteBuffer(Chunk,SizeOf(TChunk));
+
+   GrassMapDataChunkHeader.Resolution:=fGrassMapResolution;
+   aStream.WriteBuffer(GrassMapDataChunkHeader,SizeOf(TGrassMapDataChunkHeader));
+
+   fGrassMapData.Seek(0,soBeginning);
+   aStream.CopyFrom(fGrassMapData,fGrassMapData.Size);
+
+ end;
+
+ begin
+
+  Chunk.Signature:=TpvScene3DPlanet.TSerializedData.ChunkSignatureWaterHeightMapData;
+  Chunk.Size:=SizeOf(TWaterHeightMapDataChunkHeader)+(fWaterMapResolution*fWaterMapResolution*SizeOf(TpvFloat));
+  aStream.WriteBuffer(Chunk,SizeOf(TChunk));
+
+  WaterHeightMapDataChunkHeader.Resolution:=fWaterMapResolution;
+  aStream.WriteBuffer(WaterHeightMapDataChunkHeader,SizeOf(TWaterHeightMapDataChunkHeader));
+
+  fWaterHeightMapData.Seek(0,soBeginning);
+  aStream.CopyFrom(fWaterHeightMapData,fWaterHeightMapData.Size);
+
+ end;
+
+ Header.Size:=aStream.Position-(StartPosition+SizeOf(Header));
+ aStream.Seek(StartPosition,soBeginning);
+ aStream.WriteBuffer(Header,SizeOf(Header));
+ aStream.Seek(0,soEnd);
+  
 end;
 
 procedure TpvScene3DPlanet.TSerializedData.LoadFromFile(const aFileName:String);
