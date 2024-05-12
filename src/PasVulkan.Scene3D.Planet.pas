@@ -358,8 +358,10 @@ type TpvScene3DPlanets=class;
              public 
               constructor Create(const aPlanet:TpvScene3DPlanet); reintroduce;
               destructor Destroy; override;
-              procedure Download(const aQueue:TpvVulkanQueue;const aCommandBuffer:TpvVulkanCommandBuffer;const aFence:TpvVulkanFence); 
-              procedure Upload(const aQueue:TpvVulkanQueue;const aCommandBuffer:TpvVulkanCommandBuffer;const aFence:TpvVulkanFence); 
+              procedure Download(const aQueue:TpvVulkanQueue;const aCommandBuffer:TpvVulkanCommandBuffer;const aFence:TpvVulkanFence); overload;
+              procedure Upload(const aQueue:TpvVulkanQueue;const aCommandBuffer:TpvVulkanCommandBuffer;const aFence:TpvVulkanFence); overload;
+              procedure Download; overload;
+              procedure Upload; overload;
               procedure LoadFromStream(const aStream:TStream);
               procedure SaveToStream(const aStream:TStream);
               procedure LoadFromFile(const aFileName:String);
@@ -3524,6 +3526,74 @@ begin
  finally
   FreeAndNil(TemporaryBuffer);
  end; 
+
+end;
+
+procedure TpvScene3DPlanet.TSerializedData.Download;
+var Queue:TpvVulkanQueue;
+    CommandPool:TpvVulkanCommandPool;
+    CommandBuffer:TpvVulkanCommandBuffer;
+    Fence:TpvVulkanFence;    
+begin
+
+ Queue:=fPlanet.fVulkanDevice.TransferQueue;
+
+ CommandPool:=TpvVulkanCommandPool.Create(fPlanet.fVulkanDevice,fPlanet.fVulkanDevice.TransferQueueFamilyIndex);
+ try
+
+  CommandBuffer:=TpvVulkanCommandBuffer.Create(CommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+  try
+
+   Fence:=TpvVulkanFence.Create(fPlanet.fVulkanDevice);
+   try
+
+    Download(Queue,CommandBuffer,Fence);
+
+   finally
+    FreeAndNil(Fence);
+   end;
+
+  finally
+   FreeAndNil(CommandBuffer); 
+  end;
+
+ finally
+  FreeAndNil(CommandPool);
+ end; 
+
+end;
+
+procedure TpvScene3DPlanet.TSerializedData.Upload;
+var Queue:TpvVulkanQueue;
+    CommandPool:TpvVulkanCommandPool;
+    CommandBuffer:TpvVulkanCommandBuffer;
+    Fence:TpvVulkanFence;
+begin
+
+ Queue:=fPlanet.fVulkanDevice.TransferQueue;
+
+ CommandPool:=TpvVulkanCommandPool.Create(fPlanet.fVulkanDevice,fPlanet.fVulkanDevice.TransferQueueFamilyIndex);
+ try
+
+  CommandBuffer:=TpvVulkanCommandBuffer.Create(CommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+  try
+
+   Fence:=TpvVulkanFence.Create(fPlanet.fVulkanDevice);
+   try
+
+    Upload(Queue,CommandBuffer,Fence);
+
+   finally
+    FreeAndNil(Fence);
+   end;
+
+  finally
+   FreeAndNil(CommandBuffer);
+  end;
+
+ finally
+  FreeAndNil(CommandPool);
+ end;
 
 end;
 
