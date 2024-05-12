@@ -93,6 +93,12 @@ type TpvCompressionMethod=
 
 var pvCompressionPasMPInstance:TPasMP=nil;
 
+// This function transforms 32-bit float data to a better compressible format
+procedure ForwardTransform32BitFloatData(const aInData,aOutData:pointer;const aDataSize:TpvSizeInt);
+
+// This function transforms 32-bit float data back from a better compressible format
+procedure BackwardTransform32BitFloatData(const aInData,aOutData:pointer;const aDataSize:TpvSizeInt);
+
 function CompressStream(const aInStream:TStream;const aOutStream:TStream;const aCompressionMethod:TpvCompressionMethod=TpvCompressionMethod.LZBRRC;const aCompressionLevel:TpvUInt32=5;const aParts:TpvUInt32=0):boolean;
 
 function DecompressStream(const aInStream:TStream;const aOutStream:TStream):boolean;
@@ -100,6 +106,50 @@ function DecompressStream(const aInStream:TStream;const aOutStream:TStream):bool
 implementation
 
 //uses PasVulkan.Application;
+
+////////////////////////////////////////////////////////////////////////////////////////
+
+// This function transforms 32-bit float data to a better compressible format
+procedure ForwardTransform32BitFloatData(const aInData,aOutData:pointer;const aDataSize:TpvSizeInt);
+var Index,Count:TpvSizeInt;
+    Value:TpvUInt32; 
+begin
+ 
+ Count:=aDataSize shr 2;
+
+ Value:=0;
+
+ for Index:=0 to Count-1 do begin
+  Value:=PpvUInt32Array(aInData)^[Index]-Value;
+  PpvUInt8Array(aOutData)^[Index]:=(Value shr 24);
+  PpvUInt8Array(aOutData)^[Index+Count]:=(Value shr 16);
+  PpvUInt8Array(aOutData)^[Index+(Count*2)]:=(Value shr 8);
+  PpvUInt8Array(aOutData)^[Index+(Count*3)]:=(Value shr 0) and $ff;
+ end; 
+
+end;
+
+// This function transforms 32-bit float data back from a better compressible format
+procedure BackwardTransform32BitFloatData(const aInData,aOutData:pointer;const aDataSize:TpvSizeInt);
+var Index,Count:TpvSizeInt;
+    Value:TpvUInt32; 
+begin
+ 
+ Count:=aDataSize shr 2;
+
+ Value:=0;
+
+ for Index:=0 to Count-1 do begin
+  inc(Value,(TpvUInt32(PpvUInt8Array(aInData)^[Index]) shl 24) or
+            (TpvUInt32(PpvUInt8Array(aInData)^[Index+Count]) shl 16) or
+            (TpvUInt32(PpvUInt8Array(aInData)^[Index+(Count*2)]) shl 8) or
+            (TpvUInt32(PpvUInt8Array(aInData)^[Index+(Count*3)]) shl 0));
+  PpvUInt32Array(aOutData)^[Index]:=Value;
+ end; 
+
+end;
+
+////////////////////////////////////////////////////////////////////////////////////////
 
 type TCompressedFileSignature=array[0..3] of AnsiChar;
 
