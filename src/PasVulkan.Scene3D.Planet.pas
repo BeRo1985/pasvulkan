@@ -3667,7 +3667,7 @@ begin
 
   aStream.Seek(StartPosition,soBeginning);
 
-  CheckSum:=TpvHashXXHash64.Process(aStream,TpvPtrUInt(Pointer(@PHeader(nil)^.CheckSum)),0);
+  CheckSum:=TpvHashXXHash64.ProcessStream(aStream,TpvPtrUInt(Pointer(@PHeader(nil)^.CheckSum)),0);
   if CheckSum<>Header.CheckSum then begin
    raise EpvScene3DPlanet.Create('Invalid serialized data checksum');
   end;
@@ -3820,7 +3820,7 @@ begin
  aStream.Seek(0,soEnd);
 
  aStream.Seek(StartPosition,soBeginning);
- Header.CheckSum:=TpvHashXXHash64.Process(aStream,TpvPtrUInt(Pointer(@PHeader(nil)^.CheckSum)),0);
+ Header.CheckSum:=TpvHashXXHash64.ProcessStream(aStream,TpvPtrUInt(Pointer(@PHeader(nil)^.CheckSum)),0);
  aStream.Seek(StartPosition,soBeginning);
  aStream.WriteBuffer(Header,SizeOf(Header));
  aStream.Seek(0,soEnd);

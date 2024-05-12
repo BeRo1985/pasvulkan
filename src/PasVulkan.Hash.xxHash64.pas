@@ -93,8 +93,8 @@ type TpvHashXXHash64=class
        destructor Destroy; override;
        procedure Update(const aData:pointer;const aDataLength:TpvSizeUInt);
        function Final:TMessageDigest;
-       class function Process(const aData:pointer;const aDataLength:TpvSizeUInt;const aSeed:TpvUInt64=0):TMessageDigest; overload; static;
-       class function Process(const aStream:TStream;const aCheckSumPosition:TpvInt64=-1;const aSeed:TpvUInt64=0):TMessageDigest; overload; static;
+       class function Process(const aData:pointer;const aDataLength:TpvSizeUInt;const aSeed:TpvUInt64=0):TMessageDigest; static;
+       class function ProcessStream(const aStream:TStream;const aCheckSumPosition:TpvInt64=-1;const aSeed:TpvUInt64=0):TMessageDigest; static;
      end;
 
 implementation
@@ -370,7 +370,7 @@ begin
 end;
 {$ifend}
 
-class function TpvHashXXHash64.Process(const aStream:TStream;const aCheckSumPosition:TpvInt64=-1;const aSeed:TpvUInt64=0):TMessageDigest; 
+class function TpvHashXXHash64.ProcessStream(const aStream:TStream;const aCheckSumPosition:TpvInt64=-1;const aSeed:TpvUInt64=0):TMessageDigest; 
 const BufferSize=4096;
 var Instance:TpvHashXXHash64;
     Buffer:pointer;
@@ -428,7 +428,5 @@ begin
  end;
 
 end;
-
-
 
 end.
