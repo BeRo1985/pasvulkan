@@ -3099,18 +3099,19 @@ begin
 
    begin
 
-    ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
-                                                                    TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT),
-                                                                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                                                    VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                                                                    VK_QUEUE_FAMILY_IGNORED,
-                                                                    VK_QUEUE_FAMILY_IGNORED,
-                                                                    fPlanet.fData.fHeightMapImage.VulkanImage.Handle,
-                                                                    TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
-                                                                                                    0,
-                                                                                                    1,
-                                                                                                    0,
-                                                                                                    1));
+    ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(0,//TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                     TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT),
+                                                     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                     VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                                                     VK_QUEUE_FAMILY_IGNORED,
+                                                     VK_QUEUE_FAMILY_IGNORED,
+                                                     fPlanet.fData.fHeightMapImage.VulkanImage.Handle,
+                                                     TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                     0,
+                                                                                     1,
+                                                                                     0,
+                                                                                     1));
+
     aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
                                       TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
                                       0,
@@ -3124,7 +3125,7 @@ begin
    begin
 
     BufferImageCopy:=TVkBufferImageCopy.Create(0,
-                                               fHeightMapResolution*SizeOf(TpvFloat),
+                                               fHeightMapResolution,
                                                fHeightMapResolution,
                                                TVkImageSubresourceLayers.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),0,0,1),
                                                TVkOffset3D.Create(0,0,0),
@@ -3134,7 +3135,7 @@ begin
     aCommandBuffer.CmdCopyImageToBuffer(fPlanet.fData.fHeightMapImage.VulkanImage.Handle,
                                         VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
                                         TemporaryBuffer.Handle,
-                                        0,
+                                        1,
                                         @BufferImageCopy);
    end;
 
@@ -3142,17 +3143,17 @@ begin
    begin
 
     ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT),
-                                                                    TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
-                                                                    VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                                                                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                                                    VK_QUEUE_FAMILY_IGNORED,
-                                                                    VK_QUEUE_FAMILY_IGNORED,
-                                                                    fPlanet.fData.fHeightMapImage.VulkanImage.Handle,
-                                                                    TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
-                                                                                                    0,
-                                                                                                    1,
-                                                                                                    0,
-                                                                                                    1));
+                                                     0,//TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                     VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                                                     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                     VK_QUEUE_FAMILY_IGNORED,
+                                                     VK_QUEUE_FAMILY_IGNORED,
+                                                     fPlanet.fData.fHeightMapImage.VulkanImage.Handle,
+                                                     TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                     0,
+                                                                                     1,
+                                                                                     0,
+                                                                                     1));
     aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
                                       TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
                                       0,
@@ -3185,18 +3186,18 @@ begin
 
    begin
 
-    ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
-                                                                    TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT),
-                                                                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                                                    VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                                                                    VK_QUEUE_FAMILY_IGNORED,
-                                                                    VK_QUEUE_FAMILY_IGNORED,
-                                                                    fPlanet.fData.fGrassMapImage.VulkanImage.Handle,
-                                                                    TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
-                                                                                                    0,
-                                                                                                    1,
-                                                                                                    0,
-                                                                                                    1));
+    ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(0,//TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                     TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT),
+                                                     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                     VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                                                     VK_QUEUE_FAMILY_IGNORED,
+                                                     VK_QUEUE_FAMILY_IGNORED,
+                                                     fPlanet.fData.fGrassMapImage.VulkanImage.Handle,
+                                                     TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                     0,
+                                                                                     1,
+                                                                                     0,
+                                                                                     1));
     aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
                                       TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
                                       0,
@@ -3210,7 +3211,7 @@ begin
    begin
 
     BufferImageCopy:=TVkBufferImageCopy.Create(0,
-                                               fGrassMapResolution*SizeOf(TpvFloat),
+                                               fGrassMapResolution,
                                                fGrassMapResolution,
                                                TVkImageSubresourceLayers.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),0,0,1),
                                                TVkOffset3D.Create(0,0,0),
@@ -3220,7 +3221,7 @@ begin
     aCommandBuffer.CmdCopyImageToBuffer(fPlanet.fData.fGrassMapImage.VulkanImage.Handle,
                                         VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
                                         TemporaryBuffer.Handle,
-                                        fGrassMapResolution*fGrassMapResolution*SizeOf(TpvFloat),
+                                        1,
                                         @BufferImageCopy);
    end;
 
@@ -3228,17 +3229,17 @@ begin
    begin
 
     ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT),
-                                                                    TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
-                                                                    VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                                                                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                                                    VK_QUEUE_FAMILY_IGNORED,
-                                                                    VK_QUEUE_FAMILY_IGNORED,
-                                                                    fPlanet.fData.fGrassMapImage.VulkanImage.Handle,
-                                                                    TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
-                                                                                                    0,
-                                                                                                    1,
-                                                                                                    0,
-                                                                                                    1));
+                                                     0,//TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                     VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                                                     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                     VK_QUEUE_FAMILY_IGNORED,
+                                                     VK_QUEUE_FAMILY_IGNORED,
+                                                     fPlanet.fData.fGrassMapImage.VulkanImage.Handle,
+                                                     TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                     0,
+                                                                                     1,
+                                                                                     0,
+                                                                                     1));
 
     aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
                                       TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
@@ -3355,7 +3356,7 @@ begin
    // Change the layout of the height map image to transfer destination optimal
    begin
 
-    ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+    ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(0,//TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                      TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
                                                      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                                      VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
@@ -3380,7 +3381,7 @@ begin
    begin
 
     BufferImageCopy:=TVkBufferImageCopy.Create(0,
-                                               fHeightMapResolution*SizeOf(TpvFloat),
+                                               fHeightMapResolution,
                                                fHeightMapResolution,
                                                TVkImageSubresourceLayers.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),0,0,1),
                                                TVkOffset3D.Create(0,0,0),
@@ -3404,7 +3405,7 @@ begin
    begin
 
     ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
-                                                     TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                     0,//TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                      VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                                                      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                                      VK_QUEUE_FAMILY_IGNORED,
@@ -3450,7 +3451,7 @@ begin
    // Change the layout of the grass map image to transfer destination optimal
    begin
 
-    ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+    ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(0,//TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                      TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
                                                      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                                      VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
@@ -3475,7 +3476,7 @@ begin
    begin
 
     BufferImageCopy:=TVkBufferImageCopy.Create(0,
-                                               fGrassMapResolution*SizeOf(TpvFloat),
+                                               fGrassMapResolution,
                                                fGrassMapResolution,
                                                TVkImageSubresourceLayers.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),0,0,1),
                                                TVkOffset3D.Create(0,0,0),
@@ -3493,7 +3494,7 @@ begin
    begin
 
     ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
-                                                     TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                     0,//TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                      VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                                                      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                                      VK_QUEUE_FAMILY_IGNORED,
