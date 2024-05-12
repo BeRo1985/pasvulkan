@@ -3525,7 +3525,7 @@ begin
 
     end;
 
-    // And clear the water flow buffer, so that the water flow is reset for the new water height map content
+    // And clear the water flow buffer, so that the water flow map is reset for the new water height map content
     aCommandBuffer.CmdFillBuffer(fPlanet.fData.fWaterFlowMapBuffer.Handle,
                                  0,
                                  VK_WHOLE_SIZE,
