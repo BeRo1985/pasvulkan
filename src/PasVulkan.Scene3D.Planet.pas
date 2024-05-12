@@ -3874,8 +3874,6 @@ begin
  end;
 end;
 
-{ TpvScene3DPlanet.THeightMapInitialization }
-
 { TpvScene3DPlanet.TGrassMapInitialization }
 
 constructor TpvScene3DPlanet.TGrassMapInitialization.Create(const aPlanet:TpvScene3DPlanet);
