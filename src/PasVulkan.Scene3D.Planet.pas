@@ -3383,6 +3383,12 @@ begin
                                         1,
                                         @BufferImageCopy);
 
+    // Mark all tiles as dirty
+    aCommandBuffer.CmdFillBuffer(fPlanet.fData.fTileDirtyMapBuffer.Handle,
+                                 0,
+                                 VK_WHOLE_SIZE,
+                                 TVkUInt32($ffffffff));
+
    end;
 
    // Change the layout of the height map image back to shader read only optimal
