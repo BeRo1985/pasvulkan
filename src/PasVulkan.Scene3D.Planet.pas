@@ -3510,10 +3510,26 @@ begin
                                      0,
                                      fWaterMapResolution*fWaterMapResolution*SizeOf(TpvFloat));
 
-    aCommandBuffer.CmdCopyBuffer(TemporaryBuffer.Handle,
-                                 fPlanet.fData.fWaterHeightMapBuffers[fPlanet.fData.fWaterBufferIndex and 1].Handle,
-                                 1,
-                                 @BufferCopy);
+    // Copy to both water height map buffers, because we have two of them for double buffering
+    begin
+
+     aCommandBuffer.CmdCopyBuffer(TemporaryBuffer.Handle,
+                                  fPlanet.fData.fWaterHeightMapBuffers[0].Handle,
+                                  1,
+                                  @BufferCopy);
+
+     aCommandBuffer.CmdCopyBuffer(TemporaryBuffer.Handle,
+                                  fPlanet.fData.fWaterHeightMapBuffers[1].Handle,
+                                  1,
+                                  @BufferCopy);
+
+    end;
+
+    // And clear the water flow buffer, so that the water flow is reset for the new water height map content
+    aCommandBuffer.CmdFillBuffer(fPlanet.fData.fWaterFlowMapBuffer.Handle,
+                                 0,
+                                 VK_WHOLE_SIZE,
+                                 0);
 
    end;
 
