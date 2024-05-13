@@ -71,7 +71,7 @@ uses SysUtils,
      Math,
      PasVulkan.Types;
 
-procedure ResizeMonoFloat(const aInData:Pointer;const aInWidth,aInHeight:TpvSizeInt;const aOutData:Pointer;const aOutWidth,aOutHeight:TpvSizeInt);
+procedure ResizeMonoFloat2D(const aInData:Pointer;const aInWidth,aInHeight:TpvSizeInt;const aOutData:Pointer;const aOutWidth,aOutHeight:TpvSizeInt);
 
 procedure RGBAAlphaBleeding(const aData:Pointer;const aWidth,aHeight:TpvSizeInt;const a16Bit:Boolean=false);
 
@@ -79,7 +79,7 @@ implementation
 
 uses PasVulkan.Utils;
 
-procedure ResizeMonoFloat(const aInData:Pointer;const aInWidth,aInHeight:TpvSizeInt;const aOutData:Pointer;const aOutWidth,aOutHeight:TpvSizeInt);
+procedure ResizeMonoFloat2D(const aInData:Pointer;const aInWidth,aInHeight:TpvSizeInt;const aOutData:Pointer;const aOutWidth,aOutHeight:TpvSizeInt);
 var x,y,ix,iy,nx,ny,iwm,ihm,owm,ohm:TpvSizeInt;
     wf,hf,fx,fy:TpvDouble;
     InData,OutData:PpvFloatArray;

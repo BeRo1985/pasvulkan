@@ -3747,8 +3747,8 @@ begin
        try
         aStream.ReadBuffer(InData^,HeightMapDataChunkHeader.Resolution*HeightMapDataChunkHeader.Resolution*SizeOf(TpvFloat));
         BackwardTransform32BitFloatData(InData,OutData,HeightMapDataChunkHeader.Resolution*HeightMapDataChunkHeader.Resolution*SizeOf(TpvFloat));
-        ResizeMonoFloat(InData,HeightMapDataChunkHeader.Resolution,HeightMapDataChunkHeader.Resolution,
-                        OutData,fHeightMapResolution,fHeightMapResolution);
+        ResizeMonoFloat2D(InData,HeightMapDataChunkHeader.Resolution,HeightMapDataChunkHeader.Resolution,
+                          OutData,fHeightMapResolution,fHeightMapResolution);
         fHeightMapData.WriteBuffer(OutData^,fHeightMapResolution*fHeightMapResolution*SizeOf(TpvFloat));
        finally
         FreeMem(OutData);
@@ -3787,8 +3787,8 @@ begin
        try
         aStream.ReadBuffer(InData^,GrassMapDataChunkHeader.Resolution*GrassMapDataChunkHeader.Resolution*SizeOf(TpvFloat));
         BackwardTransform32BitFloatData(InData,OutData,GrassMapDataChunkHeader.Resolution*GrassMapDataChunkHeader.Resolution*SizeOf(TpvFloat));
-        ResizeMonoFloat(InData,GrassMapDataChunkHeader.Resolution,GrassMapDataChunkHeader.Resolution,
-                        OutData,fGrassMapResolution,fGrassMapResolution);
+        ResizeMonoFloat2D(InData,GrassMapDataChunkHeader.Resolution,GrassMapDataChunkHeader.Resolution,
+                          OutData,fGrassMapResolution,fGrassMapResolution);
         fGrassMapData.WriteBuffer(OutData^,fGrassMapResolution*fGrassMapResolution*SizeOf(TpvFloat));
        finally
         FreeMem(OutData);
@@ -3827,8 +3827,8 @@ begin
        try
         aStream.ReadBuffer(InData^,WaterHeightMapDataChunkHeader.Resolution*WaterHeightMapDataChunkHeader.Resolution*SizeOf(TpvFloat));
         BackwardTransform32BitFloatData(InData,OutData,WaterHeightMapDataChunkHeader.Resolution*WaterHeightMapDataChunkHeader.Resolution*SizeOf(TpvFloat));
-        ResizeMonoFloat(InData,WaterHeightMapDataChunkHeader.Resolution,WaterHeightMapDataChunkHeader.Resolution,
-                        OutData,fWaterMapResolution,fWaterMapResolution);
+        ResizeMonoFloat2D(InData,WaterHeightMapDataChunkHeader.Resolution,WaterHeightMapDataChunkHeader.Resolution,
+                          OutData,fWaterMapResolution,fWaterMapResolution);
         fWaterHeightMapData.WriteBuffer(OutData^,fWaterMapResolution*fWaterMapResolution*SizeOf(TpvFloat));
        finally
         FreeMem(OutData);
