@@ -3856,7 +3856,7 @@ begin
 end;
 
 procedure TpvScene3DPlanet.TSerializedData.SaveToStream(const aStream:TStream;const aCompressionMethod:TpvCompressionMethod=TpvCompressionMethod.None;const aCompressionLevel:TpvUInt32=5;const aParts:TpvUInt32=0);
-var StartPosition,NextChunkPosition:TpvInt64;
+var StartPosition:TpvInt64;
     Header:TpvScene3DPlanet.TSerializedData.THeader;
     Chunk:TpvScene3DPlanet.TSerializedData.TChunk;
     MetaDataChunkHeader:TMetaDataChunkHeader;
@@ -3885,7 +3885,7 @@ begin
   Header.Version:=TpvScene3DPlanet.TSerializedData.Version;
   Header.Size:=0; // Will be updated later
   
-  OutStream.WriteBuffer(Header,SizeOf(Header));
+  OutStream.WriteBuffer(Header,SizeOf(THeader));
 
   begin
 
