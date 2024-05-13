@@ -80,7 +80,7 @@ implementation
 uses PasVulkan.Utils;
 
 procedure ResizeMonoFloat(const aInData:Pointer;const aInWidth,aInHeight:TpvSizeInt;const aOutData:Pointer;const aOutWidth,aOutHeight:TpvSizeInt);
-var x,y,ix,iy,ox,oy,iwm,ihm,owm,ohm:TpvSizeInt;
+var x,y,ix,iy,nx,ny,iwm,ihm,owm,ohm:TpvSizeInt;
     wf,hf,fx,fy:TpvDouble;
     InData,OutData:PpvFloatArray;
 begin
@@ -110,21 +110,21 @@ begin
   for y:=0 to ohm do begin
    fy:=y*hf;
    iy:=Trunc(fy);
-   oy:=iy+1;
-   if oy>=aInHeight then begin
-    oy:=iy;
-   end;
    fy:=fy-iy;
+   ny:=iy+1;
+   if ny>=aInHeight then begin
+    ny:=iy;
+   end;
    for x:=0 to owm do begin
     fx:=x*wf;
     ix:=Trunc(fx);
-    ox:=ix+1;
-    if ox>=aInWidth then begin
-     ox:=ix;
-    end;
     fx:=fx-ix;
-    OutData^[x+(y*aOutWidth)]:=(((InData^[ix+(iy*aInWidth)]*(1.0-fx))+(InData^[ox+(iy*aInWidth)]*fx))*(1.0-fy))+
-                               (((InData^[ix+(oy*aInWidth)]*(1.0-fx))+(InData^[ox+(oy*aInWidth)]*fx))*fy);
+    nx:=ix+1;
+    if nx>=aInWidth then begin
+     nx:=ix;
+    end;
+    OutData^[x+(y*aOutWidth)]:=(((InData^[ix+(iy*aInWidth)]*(1.0-fx))+(InData^[nx+(iy*aInWidth)]*fx))*(1.0-fy))+
+                               (((InData^[ix+(ny*aInWidth)]*(1.0-fx))+(InData^[nx+(ny*aInWidth)]*fx))*fy);
    end;
   end;
 
