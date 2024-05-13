@@ -148,7 +148,7 @@ type PPpvInt8=^PpvInt8;
 
      PPpvFloatArray=^PpvFloatArray;
      PpvFloatArray=^TpvFloatArray;
-     TpvFloatArray=array[0..65535] of TpvUInt16;
+     TpvFloatArray=array[0..65535] of TpvFloat;
 
      PPpvDouble=^PpvDouble;
      PpvDouble=^TpvDouble;
