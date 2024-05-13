@@ -85,6 +85,7 @@ uses Classes,
      PasVulkan.Scene3D.Renderer.Image2D,
      PasVulkan.Scene3D.Renderer.Array2DImage,
      PasVulkan.Scene3D.Renderer.MipmapImage2D,
+     PasVulkan.Image.Utils,
      PasVulkan.Compression,
      PasVulkan.Hash.xxHash64;
 
@@ -3662,7 +3663,7 @@ var Header:TpvScene3DPlanet.TSerializedData.THeader;
     GrassMapDataChunkHeader:TGrassMapDataChunkHeader;
     WaterHeightMapDataChunkHeader:TWaterHeightMapDataChunkHeader;
     CheckSum:TpvUInt64;
-    //InData,OutData:pointer;
+    InData,OutData:pointer;
     UncompressedStream:TMemoryStream;
 begin
 
@@ -3726,30 +3727,37 @@ begin
 
      aStream.ReadBuffer(HeightMapDataChunkHeader,SizeOf(THeightMapDataChunkHeader));
 
-     if HeightMapDataChunkHeader.Resolution<>fHeightMapResolution then begin
-      raise EpvScene3DPlanet.Create('Invalid height map resolution');
-     end;
-
      fHeightMapData.Seek(0,soBeginning);
 
- {   DataSize:=fHeightMapResolution*fHeightMapResolution*SizeOf(TpvFloat);
-     GetMem(InData,DataSize);
-     try
-      aStream.ReadBuffer(InData^,DataSize);
-      GetMem(OutData,DataSize);
+     if HeightMapDataChunkHeader.Resolution=fHeightMapResolution then begin
+
+      // The easy way, just copy the data 
+
+      fHeightMapData.CopyFrom(aStream,fHeightMapResolution*fHeightMapResolution*SizeOf(TpvFloat));
+
+      BackwardTransform32BitFloatData(fHeightMapData);
+
+     end else begin
+
+      // The more complicated way, resize the data
+      
+      GetMem(InData,HeightMapDataChunkHeader.Resolution*HeightMapDataChunkHeader.Resolution*SizeOf(TpvFloat));
       try
-       BackwardTransform32BitFloatData(InData,OutData,DataSize);
-       fHeightMapData.WriteBuffer(OutData^,DataSize);
+       GetMem(OutData,fHeightMapResolution*fHeightMapResolution*SizeOf(TpvFloat));
+       try
+        aStream.ReadBuffer(InData^,HeightMapDataChunkHeader.Resolution*HeightMapDataChunkHeader.Resolution*SizeOf(TpvFloat));
+        BackwardTransform32BitFloatData(InData,OutData,HeightMapDataChunkHeader.Resolution*HeightMapDataChunkHeader.Resolution*SizeOf(TpvFloat));
+        ResizeMonoFloat(InData,HeightMapDataChunkHeader.Resolution,HeightMapDataChunkHeader.Resolution,
+                        OutData,fHeightMapResolution,fHeightMapResolution);
+        fHeightMapData.WriteBuffer(OutData^,fHeightMapResolution*fHeightMapResolution*SizeOf(TpvFloat));
+       finally
+        FreeMem(OutData);
+       end;
       finally
-       FreeMem(OutData);
+       FreeMem(InData);
       end;
-     finally
-      FreeMem(InData);
-     end;}
 
-     fHeightMapData.CopyFrom(aStream,fHeightMapResolution*fHeightMapResolution*SizeOf(TpvFloat));
-
-     BackwardTransform32BitFloatData(fHeightMapData);
+     end;  
 
     end else if Chunk.Signature=TpvScene3DPlanet.TSerializedData.ChunkSignatureGrassMapData then begin
 
@@ -3761,24 +3769,35 @@ begin
 
      fGrassMapData.Seek(0,soBeginning);
 
- {   DataSize:=fGrassMapResolution*fGrassMapResolution*SizeOf(TpvFloat);
-     GetMem(InData,DataSize);
-     try
-      aStream.ReadBuffer(InData^,DataSize);
-      GetMem(OutData,DataSize);
-      try
-       BackwardTransform32BitFloatData(InData,OutData,DataSize);
-       fGrassMapData.WriteBuffer(OutData^,DataSize);
-      finally
-       FreeMem(OutData);
-      end;
-     finally
-      FreeMem(InData);
-     end;}
-     
-     fGrassMapData.CopyFrom(aStream,fGrassMapResolution*fGrassMapResolution*SizeOf(TpvFloat));
+     if GrassMapDataChunkHeader.Resolution=fGrassMapResolution then begin
 
-     BackwardTransform32BitFloatData(fGrassMapData);
+      // The easy way, just copy the data 
+
+      fGrassMapData.CopyFrom(aStream,fGrassMapResolution*fGrassMapResolution*SizeOf(TpvFloat));
+
+      BackwardTransform32BitFloatData(fGrassMapData);
+
+     end else begin
+
+      // The more complicated way, resize the data
+      
+      GetMem(InData,GrassMapDataChunkHeader.Resolution*GrassMapDataChunkHeader.Resolution*SizeOf(TpvFloat));
+      try
+       GetMem(OutData,fGrassMapResolution*fGrassMapResolution*SizeOf(TpvFloat));
+       try
+        aStream.ReadBuffer(InData^,GrassMapDataChunkHeader.Resolution*GrassMapDataChunkHeader.Resolution*SizeOf(TpvFloat));
+        BackwardTransform32BitFloatData(InData,OutData,GrassMapDataChunkHeader.Resolution*GrassMapDataChunkHeader.Resolution*SizeOf(TpvFloat));
+        ResizeMonoFloat(InData,GrassMapDataChunkHeader.Resolution,GrassMapDataChunkHeader.Resolution,
+                        OutData,fGrassMapResolution,fGrassMapResolution);
+        fGrassMapData.WriteBuffer(OutData^,fGrassMapResolution*fGrassMapResolution*SizeOf(TpvFloat));
+       finally
+        FreeMem(OutData);
+       end;
+      finally
+       FreeMem(InData);
+      end;
+
+     end;
 
     end else if Chunk.Signature=TpvScene3DPlanet.TSerializedData.ChunkSignatureWaterHeightMapData then begin
 
@@ -3789,25 +3808,36 @@ begin
      end;
   
      fWaterHeightMapData.Seek(0,soBeginning);
+    
+     if WaterHeightMapDataChunkHeader.Resolution=fWaterMapResolution then begin
 
- {   DataSize:=fWaterMapResolution*fWaterMapResolution*SizeOf(TpvFloat);
-     GetMem(InData,DataSize);
-     try
-      aStream.ReadBuffer(InData^,DataSize);
-      GetMem(OutData,DataSize);
+      // The easy way, just copy the data
+
+      fWaterHeightMapData.CopyFrom(aStream,fWaterMapResolution*fWaterMapResolution*SizeOf(TpvFloat));
+
+      BackwardTransform32BitFloatData(fWaterHeightMapData);
+
+     end else begin
+
+      // The more complicated way, resize the data
+      
+      GetMem(InData,WaterHeightMapDataChunkHeader.Resolution*WaterHeightMapDataChunkHeader.Resolution*SizeOf(TpvFloat));
       try
-       BackwardTransform32BitFloatData(InData,OutData,DataSize);
-       fWaterHeightMapData.WriteBuffer(OutData^,DataSize);
+       GetMem(OutData,fWaterMapResolution*fWaterMapResolution*SizeOf(TpvFloat));
+       try
+        aStream.ReadBuffer(InData^,WaterHeightMapDataChunkHeader.Resolution*WaterHeightMapDataChunkHeader.Resolution*SizeOf(TpvFloat));
+        BackwardTransform32BitFloatData(InData,OutData,WaterHeightMapDataChunkHeader.Resolution*WaterHeightMapDataChunkHeader.Resolution*SizeOf(TpvFloat));
+        ResizeMonoFloat(InData,WaterHeightMapDataChunkHeader.Resolution,WaterHeightMapDataChunkHeader.Resolution,
+                        OutData,fWaterMapResolution,fWaterMapResolution);
+        fWaterHeightMapData.WriteBuffer(OutData^,fWaterMapResolution*fWaterMapResolution*SizeOf(TpvFloat));
+       finally
+        FreeMem(OutData);
+       end;
       finally
-       FreeMem(OutData);
+       FreeMem(InData);
       end;
-     finally
-      FreeMem(InData);
-     end;}
-     
-     fWaterHeightMapData.CopyFrom(aStream,fWaterMapResolution*fWaterMapResolution*SizeOf(TpvFloat));
 
-     BackwardTransform32BitFloatData(fWaterHeightMapData);
+     end; 
 
     end;
 
