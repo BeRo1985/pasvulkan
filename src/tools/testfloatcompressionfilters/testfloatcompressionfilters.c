@@ -174,6 +174,13 @@ int32_t main(const int32_t aArgc, const char *aArgv[]) {
   ForwardTransform32BitFloatDataBytewiseDelta(Data, PrefilteredByteWiseData, DataSize);
   fprintf(stdout, "done!\n");
 
+  // Compress unfiltered data using zlib
+  fprintf(stdout, "Compressing unfiltered data using zlib . . . ");
+  size_t CompressedDataSize = DataSize * 2;
+  void *CompressedData = malloc(CompressedDataSize);
+  zlibCompress(Data, CompressedData, DataSize, &CompressedDataSize);
+  fprintf(stdout, "done!\n");
+
   // Compress prefiltered value-wise data using zlib
   fprintf(stdout, "Compressing prefiltered value-wise data using zlib . . . ");
   size_t CompressedValueWiseDataSize = DataSize * 2;
@@ -190,6 +197,7 @@ int32_t main(const int32_t aArgc, const char *aArgv[]) {
 
   // Print sizes
   fprintf(stdout, "Original data size: %zu bytes\n", DataSize);
+  fprintf(stdout, "Compressed data size: %zu bytes\n", CompressedDataSize);
   fprintf(stdout, "Compressed value-wise data size: %zu bytes\n", CompressedValueWiseDataSize);
   fprintf(stdout, "Compressed byte-wise data size: %zu bytes\n", CompressedByteWiseDataSize);
 
@@ -231,6 +239,7 @@ int32_t main(const int32_t aArgc, const char *aArgv[]) {
   free(Data);
   free(PrefilteredValueWiseData);
   free(PrefilteredByteWiseData);
+  free(CompressedData);
   free(CompressedValueWiseData);
   free(CompressedByteWiseData);
   free(DecompressedValueWiseData);
