@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 
 // Deflate compression
 #include <zlib.h>
@@ -130,16 +131,36 @@ int32_t zlibDecompress(const void *aInData, void *aOutData, size_t aInDataSize, 
 
 int32_t main(const int32_t aArgc, const char *aArgv[]) {
 
-  // Load test data from data.bin 
-  fprintf(stdout, "Loading test data from data.bin . . . ");
+  void *Data = NULL;
+  size_t DataSize = 0;
+
+  // Check for data.bin
   FILE *File = fopen("data.bin", "rb");
-  fseek(File, 0, SEEK_END);
-  size_t DataSize = ftell(File);
-  fseek(File, 0, SEEK_SET);
-  void *Data = malloc(DataSize);
-  fread(Data, 1, DataSize, File);
-  fclose(File);
-  fprintf(stdout, "done!\n");
+  if (File != NULL) {
+    
+    // Load test data from data.bin 
+    fprintf(stdout, "Loading test data from data.bin . . . ");
+    FILE *File = fopen("data.bin", "rb");
+    fseek(File, 0, SEEK_END);
+    DataSize = ftell(File);
+    fseek(File, 0, SEEK_SET);
+    Data = malloc(DataSize);
+    fread(Data, 1, DataSize, File);
+    fclose(File);
+    fprintf(stdout, "done!\n");
+
+  }else{
+
+    // Generate test data
+    fprintf(stdout, "Generating test data . . . ");
+    DataSize = 1024 * 1024;
+    Data = malloc(DataSize);
+    for (size_t Index = 0; Index < DataSize / 4; ++Index) {
+      ((float *)Data)[Index] = sinf((float)Index / (float)(DataSize) * 2.0f * 3.14159265359f);
+    }
+    fprintf(stdout, "done!\n");
+
+  }  
 
   // Prefilter data using value-wise delta encoding
   fprintf(stdout, "Prefiltering data using value-wise delta encoding . . . ");
