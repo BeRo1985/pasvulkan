@@ -93,11 +93,19 @@ type TpvCompressionMethod=
 
 var pvCompressionPasMPInstance:TPasMP=nil;
 
-// This function transforms 32-bit float data to a better compressible format
+// Convert a 32-bit float to a uint32, preserving order.
+function MapFloatToUInt32WithOrderPreservation(const aValue:TpvFloat):TpvUInt32; inline;
+
+// Convert a 32-bit uint32 to a float, preserving order.
+function UnmapFloatFromUInt32WithOrderPreservation(const aValue:TpvUInt32):TpvFloat; inline;
+
+// This function transforms 32-bit float data to a better compressible format, together with preserving the order 
+// before and after the transformation for better delta compression 
 procedure ForwardTransform32BitFloatData(const aInData,aOutData:pointer;const aDataSize:TpvSizeInt); overload;
 procedure ForwardTransform32BitFloatData(const aStream:TStream); overload;
 
-// This function transforms 32-bit float data back from a better compressible format
+// This function transforms 32-bit float data back from a better compressible format, together with preserving the order 
+// before and after the transformation for better delta compression 
 procedure BackwardTransform32BitFloatData(const aInData,aOutData:pointer;const aDataSize:TpvSizeInt); overload;
 procedure BackwardTransform32BitFloatData(const aStream:TStream); overload;
 
@@ -111,7 +119,26 @@ implementation
 
 ////////////////////////////////////////////////////////////////////////////////////////
 
-// This function transforms 32-bit float data to a better compressible format
+// Convert a 32-bit float to a uint32, preserving order.
+function MapFloatToUInt32WithOrderPreservation(const aValue:TpvFloat):TpvUInt32; inline;
+var Temporary:TpvUInt32;
+begin
+ Temporary:=TpvUInt32(Pointer(@aValue)^);
+ result:=Temporary xor (TpvUInt32(TpvUInt32(-TpvInt32(TpvUInt32(Temporary shr 31)))) or TpvUInt32($80000000));
+end;
+
+// Convert a 32-bit uint32 to a float, preserving order.
+function UnmapFloatFromUInt32WithOrderPreservation(const aValue:TpvUInt32):TpvFloat; inline;
+var Temporary:TpvUInt32;
+begin
+ Temporary:=aValue xor TpvUInt32(TpvUInt32(TpvUInt32(aValue shr 31)-1) or TpvUInt32($80000000));
+ result:=TpvFloat(Pointer(@Temporary)^);
+end;
+
+////////////////////////////////////////////////////////////////////////////////////////
+
+// This function transforms 32-bit float data to a better compressible format, together with preserving the order 
+// before and after the transformation for better delta compression 
 procedure ForwardTransform32BitFloatData(const aInData,aOutData:pointer;const aDataSize:TpvSizeInt);
 var Index,Count:TpvSizeInt;
     Previous,Value,Delta:TpvUInt32;
@@ -120,6 +147,7 @@ begin
  Previous:=0;
  for Index:=0 to Count-1 do begin
   Value:=PpvUInt32Array(aInData)^[Index];
+  Value:=Value xor (TpvUInt32(TpvUInt32(-TpvInt32(TpvUInt32(Value shr 31)))) or TpvUInt32($80000000));
   Delta:=Value-Previous;
   Previous:=Value;
   PpvUInt8Array(aOutData)^[Index]:=(Delta shr 24) and $ff;
@@ -177,7 +205,8 @@ begin
  end; 
 end;
 
-// This function transforms 32-bit float data back from a better compressible format
+// This function transforms 32-bit float data back from a better compressible format, together with preserving the order 
+// before and after the transformation for better delta compression 
 procedure BackwardTransform32BitFloatData(const aInData,aOutData:pointer;const aDataSize:TpvSizeInt);
 var Index,Count:TpvSizeInt;
     Value:TpvUInt32;
@@ -189,7 +218,7 @@ begin
             (TpvUInt32(PpvUInt8Array(aInData)^[Index+Count]) shl 16) or
             (TpvUInt32(PpvUInt8Array(aInData)^[Index+(Count*2)]) shl 8) or
             (TpvUInt32(PpvUInt8Array(aInData)^[Index+(Count*3)]) shl 0));
-  PpvUInt32Array(aOutData)^[Index]:=Value;
+  PpvUInt32Array(aOutData)^[Index]:=Value xor TpvUInt32(TpvUInt32(TpvUInt32(Value shr 31)-1) or TpvUInt32($80000000));
  end;
 end;
 
