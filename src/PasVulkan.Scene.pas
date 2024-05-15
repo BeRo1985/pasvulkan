@@ -99,7 +99,7 @@ FinishLoad is called after the background loading of the scene graph. It's calle
 LoadSynchronizationPoint should be called every frame outside of Update and Render functions to have a synchronization point for the loading
 mechanism of the scene graph.
 
-WaitForLoaded waits until the scene graph or node is loaded.
+WaitForLoaded waits until the scene graph or node is loaded, and should be only used with awareness, because it can block the main thread.
 
 IsLoaded returns true, if the scene graph or node is loaded.
 
