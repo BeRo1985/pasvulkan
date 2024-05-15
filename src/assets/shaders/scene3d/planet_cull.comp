@@ -327,7 +327,7 @@ void main(){
 
 #else  
 
-    const uint lod = min(pushConstants.minimumLODLevel, max(1u, countLODLevels) - 1u);
+      const uint lod = min(pushConstants.minimumLODLevel, max(1u, countLODLevels) - 1u);
 
 #endif
 
