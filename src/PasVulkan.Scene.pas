@@ -161,6 +161,7 @@ type TpvScene=class;
        fScene:TpvScene;
        fParent:TpvSceneNode;
        fData:TObject;
+       fIndex:TpvSizeInt;
        fChildren:TpvSceneNodes;
        fIncomingNodeDependencies:TpvSceneNodes;
        fOutgoingNodeDependencies:TpvSceneNodes;
@@ -221,6 +222,7 @@ type TpvScene=class;
             end;
       private
        fRootNode:TpvSceneNode;
+       fAllNodesLock:TPasMPSlimReaderWriterLock;
        fAllNodes:TpvSceneNodes;
        fCountToLoadNodes:TPasMPInt32;
        fBackgroundLoadThread:TBackgroundLoadThread;
@@ -304,6 +306,8 @@ begin
 
  fData:=aData;
 
+ fIndex:=-1;
+
  fChildren:=TpvSceneNodes.Create;
  fChildren.OwnsObjects:=true;
 
@@ -373,7 +377,12 @@ procedure TpvSceneNode.AfterConstruction;
 begin
  inherited AfterConstruction;
  if assigned(fScene) then begin
-  fScene.fAllNodes.Add(self);
+  fScene.fAllNodesLock.Acquire;
+  try
+   fIndex:=fScene.fAllNodes.Add(self);
+  finally
+   fScene.fAllNodesLock.Release;
+  end; 
   TPasMPInterlocked.Increment(fScene.fCountToLoadNodes);
  end;
 end;
@@ -382,7 +391,25 @@ procedure TpvSceneNode.BeforeDestruction;
 var Index:TpvSizeInt;
 begin
  if assigned(fScene) then begin
-  fScene.fAllNodes.RemoveWithoutFree(self);
+  if fIndex>=0 then begin
+   try
+    fScene.fAllNodesLock.Acquire;
+    try
+     Index:=fIndex;
+     if Index=(fScene.fAllNodes.Count-1) then begin
+      fScene.fAllNodes.Delete(Index);
+     end else begin
+      fScene.fAllNodes.Exchange(Index,fScene.fAllNodes.Count-1);
+      fScene.fAllNodes.Delete(fScene.fAllNodes.Count-1);
+      fScene.fAllNodes[Index].fIndex:=Index;
+     end;
+    finally
+     fScene.fAllNodesLock.Release;
+    end;
+   finally
+    fIndex:=-1;
+   end; 
+  end;
  end;
  if fOutgoingNodeDependencies.Count>0 then begin
   for Index:=fOutgoingNodeDependencies.Count-1 downto 0 do begin
@@ -784,6 +811,7 @@ end;
 constructor TpvScene.Create(const aData:TObject=nil);
 begin
  inherited Create;
+ fAllNodesLock:=TPasMPSlimReaderWriterLock.Create;
  fAllNodes:=TpvSceneNodes.Create(false);
  fRootNode:=TpvSceneNode.Create(nil);
  fRootNode.fScene:=self;
@@ -798,6 +826,7 @@ begin
  FreeAndNil(fBackgroundLoadThread);
  FreeAndNil(fRootNode);
  FreeAndNil(fAllNodes);
+ FreeAndNil(fAllNodesLock);
  inherited Destroy;
 end;
 
