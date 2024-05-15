@@ -843,8 +843,11 @@ begin
      if TPasMPInterlocked.CompareExchange(Node.fState,TpvSceneNodeState.StartingLoading,TpvSceneNodeState.Unloaded)=TpvSceneNodeState.Unloaded then begin
       try
        Node.StartLoad;
-      finally
-       TPasMPInterlocked.CompareExchange(Node.fState,TpvSceneNodeState.StartingLoaded,TpvSceneNodeState.StartingLoading);
+      except
+       on e:Exception do begin
+        pvApplication.Log(LOG_ERROR,ClassName+'.StartLoad',e.Message);
+        TPasMPInterlocked.Write(Node.fState,TpvSceneNodeState.Failed);
+       end; 
       end;
      end;
     end;
@@ -901,8 +904,11 @@ begin
      if TPasMPInterlocked.CompareExchange(Node.fState,TpvSceneNodeState.BackgroundLoading,TpvSceneNodeState.StartingLoaded)=TpvSceneNodeState.StartingLoaded then begin
       try
        Node.BackgroundLoad;
-      finally
-       TPasMPInterlocked.CompareExchange(Node.fState,TpvSceneNodeState.BackgroundLoaded,TpvSceneNodeState.BackgroundLoading);
+      except
+       on e:Exception do begin
+        pvApplication.Log(LOG_ERROR,ClassName+'.BackgroundLoad',e.Message);
+        TPasMPInterlocked.Write(Node.fState,TpvSceneNodeState.Failed);
+       end; 
       end;
      end;
     end;
@@ -959,8 +965,11 @@ begin
      if TPasMPInterlocked.CompareExchange(Node.fState,TpvSceneNodeState.Loading,TpvSceneNodeState.BackgroundLoaded)=TpvSceneNodeState.BackgroundLoaded then begin
       try
        Node.FinishLoad;
-      finally
-       TPasMPInterlocked.CompareExchange(Node.fState,TpvSceneNodeState.Loaded,TpvSceneNodeState.Loading);
+      except
+       on e:Exception do begin
+        pvApplication.Log(LOG_ERROR,ClassName+'.FinishLoad',e.Message);
+        TPasMPInterlocked.Write(Node.fState,TpvSceneNodeState.Failed);
+       end; 
       end;
      end;
     end;

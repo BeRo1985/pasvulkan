@@ -2155,6 +2155,8 @@ function IsDebuggerPresent:LongBool; stdcall; external 'kernel32.dll' name 'IsDe
 function IsDebuggerPresent:LongBool;
 {$ifend}
 
+function DumpExceptionCallStack(e:Exception):string;
+
 implementation
 
 uses PasVulkan.Utils,PasDblStrUtils,PasVulkan.Compression;
