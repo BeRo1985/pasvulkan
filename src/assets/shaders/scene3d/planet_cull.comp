@@ -278,7 +278,58 @@ void main(){
 
     if(visible){
 
-      const uint lod = min(pushConstants.minimumLODLevel, max(1u, countLODLevels) - 1u);
+#if defined(PLANET_SCREEN_FILL_SCALE) || defined(TILE_SCREEN_FILL_SCALE)
+
+#if defined(TILE_SCREEN_FILL_SCALE)
+      float tileScreenFillScale = 0.0;
+      for(uint viewIndex = 0u; viewIndex < countViews; viewIndex++){
+        vec4 aabb2D;
+        vec4 tileSphereCenter = viewMatrices[viewIndex] * vec4(boundingSphere.xyz, 1.0);
+        tileSphereCenter.xyz /= tileSphereCenter.w;
+        if(projectSphere(tileSphereCenter.xyz, boundingSphere.w, zNears[viewIndex], projectionMatrices[viewIndex], aabb2D)){
+          tileScreenFillScale = max(tileScreenFillScale, length(aabb2D.zw - aabb2D.xy));
+        }
+      }
+      if(tileScreenFillScale == 0.0){
+        tileScreenFillScale = 1.0;
+      }
+#endif
+
+#if defined(PLANET_SCREEN_FILL_SCALE)
+      // Additional LOD stuff for the whole planet sphere itself
+      float planetSphereScreenFillScale = 0.0;
+      for(uint viewIndex = 0u; viewIndex < countViews; viewIndex++){
+        vec4 planetSphereCenter = (viewMatrices[viewIndex] * pushConstants.modelMatrix) * vec4(0.0, 0.0, 0.0, 1.0);
+        planetSphereCenter.xyz /= planetSphereCenter.w;
+        vec4 aabb2D;
+        if(projectSphere(planetSphereCenter.xyz, pushConstants.radius, zNears[viewIndex], projectionMatrices[viewIndex], aabb2D)){
+          planetSphereScreenFillScale = max(planetSphereScreenFillScale, length(aabb2D.zw - aabb2D.xy) * 0.0625);
+        }
+      }
+      if(planetSphereScreenFillScale == 0.0){
+        planetSphereScreenFillScale = 1.0;
+      }
+
+#if defined(TILE_SCREEN_FILL_SCALE)
+      uint lod = uint(min(max(floor(log2(1.0 / clamp(min(tileScreenFillScale, planetSphereScreenFillScale), 1e-6, 1.0))), 0.0), max(0.0, float(int(countLODLevels) - 2)))); 
+#else
+      uint lod = uint(min(max(floor(log2(1.0 / clamp(planetSphereScreenFillScale, 1e-6, 1.0))), 0.0), max(0.0, float(int(countLODLevels) - 2))));
+#endif                                      
+#else
+#if defined(TILE_SCREEN_FILL_SCALE)
+      uint lod = uint(min(max(floor(log2(1.0 / clamp(tileScreenFillScale, 1e-6, 1.0))), 0.0), max(0.0, float(int(countLODLevels) - 2)))); 
+#else
+      uint lod = 0u;
+#endif      
+#endif
+
+      lod = min(max(lod, pushConstants.minimumLODLevel), max(1u, countLODLevels) - 1u);
+
+#else  
+
+    const uint lod = min(pushConstants.minimumLODLevel, max(1u, countLODLevels) - 1u);
+
+#endif
 
 #if 1
       

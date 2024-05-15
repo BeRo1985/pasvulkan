@@ -151,6 +151,7 @@ type TpvScene=class;
        fParent:TpvSceneNode;
        fData:TObject;
        fChildren:TpvSceneNodes;
+       fNodeDependencies:TpvSceneNodes;
        fNodeHashMap:TpvSceneNodeHashMap;
        fLock:TpvInt32;
        fState:TpvSceneNodeState;
@@ -158,6 +159,8 @@ type TpvScene=class;
       public
        constructor Create(const aParent:TpvSceneNode;const aData:TObject=nil); reintroduce; virtual;
        destructor Destroy; override;
+       procedure AddDependency(const aNode:TpvSceneNode);
+       procedure RemoveDependency(const aNode:TpvSceneNode);
        procedure Add(const aNode:TpvSceneNode);
        procedure Remove(const aNode:TpvSceneNode);
        function GetNodeListOf(const aNodeClass:TpvSceneNodeClass):TpvSceneNodes;
@@ -269,6 +272,9 @@ begin
  fChildren:=TpvSceneNodes.Create;
  fChildren.OwnsObjects:=true;
 
+ fNodeDependencies:=TpvSceneNodes.Create;
+ fNodeDependencies.OwnsObjects:=false;
+
  fDestroying:=false;
 
  TPasMPInterlocked.Write(fState,TpvSceneNodeState.Unloaded);
@@ -307,6 +313,8 @@ begin
   end;
  end;
 
+ FreeAndNil(fNodeDependencies);
+
  for ChildNodeIndex:=0 to fChildren.Count-1 do begin
   ChildNode:=fChildren[ChildNodeIndex];
   ChildNode.fDestroying:=true;
@@ -319,6 +327,48 @@ begin
  FreeAndNil(fNodeHashMap);
 
  inherited Destroy;
+end;
+
+procedure TpvSceneNode.AddDependency(const aNode:TpvSceneNode);
+begin
+
+ if assigned(aNode) then begin
+
+  TPasMPMultipleReaderSingleWriterSpinLock.AcquireWrite(fLock);
+  try
+
+   if not fNodeDependencies.Contains(aNode) then begin
+    fNodeDependencies.Add(aNode);
+   end;
+
+  finally
+   TPasMPMultipleReaderSingleWriterSpinLock.ReleaseWrite(fLock);
+  end;
+
+ end;
+
+end;
+
+procedure TpvSceneNode.RemoveDependency(const aNode:TpvSceneNode);
+var Index:TpvSizeInt;
+begin
+
+ if assigned(aNode) then begin
+
+  TPasMPMultipleReaderSingleWriterSpinLock.AcquireWrite(fLock);
+  try
+
+   Index:=fNodeDependencies.IndexOf(aNode);
+   if Index>=0 then begin
+    fNodeDependencies.Delete(Index);
+   end;
+
+  finally
+   TPasMPMultipleReaderSingleWriterSpinLock.ReleaseWrite(fLock);
+  end;
+
+ end;
+
 end;
 
 procedure TpvSceneNode.Add(const aNode:TpvSceneNode);
