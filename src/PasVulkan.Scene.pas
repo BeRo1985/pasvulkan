@@ -117,6 +117,12 @@ UpdateAudio is called for updating audio and is called in the audio thread, so b
 FrameUpdate, which is called in the main thread, with a thread safe data ring buffer oder queue for audio data, which is filled in FrameUpdate
 and read in UpdateAudio. You can use the constructs from PasMP for that, see the PasMP.pas unit.
 
+Serialize and Deserialize are used for serialization and deserialization of the scene graph and can be used for saving and loading of the
+scene graph, for example for saving and loading of a game level, etc.
+
+And very important, avoid acyclic and circular dependencies, because it can lead to deadlocks, so be careful with that, since there is no
+automatic detection for that in the PasVulkan scene graph so far now. 
+
 }
 
 type TpvScene=class;
