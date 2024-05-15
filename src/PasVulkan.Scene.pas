@@ -144,8 +144,8 @@ type TpvScene=class;
       public
        const Unused=TpvSceneNodeState(0);
              Unloaded=TpvSceneNodeState(1);
-             StartingLoading=TpvSceneNodeState(2);
-             StartingLoaded=TpvSceneNodeState(3);
+             StartLoading=TpvSceneNodeState(2);
+             StartLoaded=TpvSceneNodeState(3);
              BackgroundLoading=TpvSceneNodeState(4);
              BackgroundLoaded=TpvSceneNodeState(5);
              Loading=TpvSceneNodeState(6);
@@ -170,32 +170,56 @@ type TpvScene=class;
        fState:TpvSceneNodeState;
        fDestroying:boolean;
       public
+       
        constructor Create(const aParent:TpvSceneNode;const aData:TObject=nil); reintroduce; virtual;
        destructor Destroy; override;
+       
        procedure AfterConstruction; override;
        procedure BeforeDestruction; override;
+       
        procedure AddDependency(const aNode:TpvSceneNode);
        procedure RemoveDependency(const aNode:TpvSceneNode);
+       
        procedure Add(const aNode:TpvSceneNode);
        procedure Remove(const aNode:TpvSceneNode);
+       
        function GetNodeListOf(const aNodeClass:TpvSceneNodeClass):TpvSceneNodes;
        function GetNodeOf(const aNodeClass:TpvSceneNodeClass;const aIndex:TpvSizeInt=0):TpvSceneNode;
        function GetNodeCountOf(const aNodeClass:TpvSceneNodeClass):TpvSizeInt;
+       
+       procedure BeforeStartLoad; virtual;
        procedure StartLoad; virtual;
-       procedure BackgroundLoad; virtual                                      ;
+       procedure AfterStartLoad; virtual;
+       
+       procedure BeforeBackgroundLoad; virtual;
+       procedure BackgroundLoad; virtual;
+       procedure AfterBackgroundLoad; virtual;
+       
+       procedure BeforeFinishLoad; virtual;
        procedure FinishLoad; virtual;
+       procedure AfterFinishLoad; virtual;
+       
        procedure WaitForLoaded; virtual;
+       
        function IsLoaded:boolean; virtual;
+              
        procedure Store; virtual;
+       
        procedure BeginUpdate(const aDeltaTime:TpvDouble); virtual;
        procedure Update(const aDeltaTime:TpvDouble); virtual;
        procedure EndUpdate(const aDeltaTime:TpvDouble); virtual;
+       
        procedure Interpolate(const aAlpha:TpvDouble); virtual;
+       
        procedure FrameUpdate; virtual;
+       
        procedure Render; virtual;
+       
        procedure UpdateAudio; virtual;
-       function Serialize:TObject; virtual;
+       
+       function Serialize:TObject; virtual;       
        procedure Deserialize(const aData:TObject); virtual;
+
       public
        property State:TpvSceneNodeState read fState;
       published
@@ -577,25 +601,49 @@ begin
  end;
 end;
 
+procedure TpvSceneNode.BeforeStartLoad;
+begin
+end;
+
 procedure TpvSceneNode.StartLoad;
+begin
+end;
+
+procedure TpvSceneNode.AfterStartLoad;
 var OldState:TpvSceneNodeState;
 begin
  OldState:=TPasMPInterlocked.Read(fState);
- if (OldState=TpvSceneNodeState.Unloaded) or (OldState=TpvSceneNodeState.StartingLoading) then begin
-  TPasMPInterlocked.CompareExchange(fState,TpvSceneNodeState.StartingLoaded,OldState);
+ if (OldState=TpvSceneNodeState.Unloaded) or (OldState=TpvSceneNodeState.StartLoading) then begin
+  TPasMPInterlocked.CompareExchange(fState,TpvSceneNodeState.StartLoaded,OldState);
  end;  
 end;
 
+procedure TpvSceneNode.BeforeBackgroundLoad;
+begin  
+end;
+
 procedure TpvSceneNode.BackgroundLoad;
+begin
+end;
+
+procedure TpvSceneNode.AfterBackgroundLoad;
 var OldState:TpvSceneNodeState;
 begin
  OldState:=TPasMPInterlocked.Read(fState);
- if (OldState=TpvSceneNodeState.StartingLoaded) or (OldState=TpvSceneNodeState.BackgroundLoading) then begin
+ if (OldState=TpvSceneNodeState.StartLoaded) or (OldState=TpvSceneNodeState.BackgroundLoading) then begin
   TPasMPInterlocked.CompareExchange(fState,TpvSceneNodeState.BackgroundLoaded,OldState);
  end;  
 end;
 
+procedure TpvSceneNode.BeforeFinishLoad;
+begin
+end;
+
 procedure TpvSceneNode.FinishLoad;
+begin
+end;
+
+procedure TpvSceneNode.AfterFinishLoad;
 var OldState:TpvSceneNodeState;
 begin
  OldState:=TPasMPInterlocked.Read(fState);
@@ -856,6 +904,16 @@ begin
       NewStackItem:=Pointer(Stack.PushIndirect);
       NewStackItem^.Node:=Node;
       NewStackItem^.Pass:=1;
+      try
+       Node.BeforeStartLoad;
+      except
+       on e:Exception do begin
+        pvApplication.Log(LOG_ERROR,ClassName+'.StartLoad',DumpExceptionCallStack(e));
+        if TPasMPInterlocked.CompareExchange(Node.fState,TpvSceneNodeState.Failed,TpvSceneNodeState.Unloaded)=TpvSceneNodeState.Unloaded then begin
+         TPasMPInterlocked.Decrement(fCountToLoadNodes);
+        end;
+       end;
+      end;
      end;
      if Node.Children.Count>0 then begin
       for Index:=Node.Children.Count-1 downto 0 do begin
@@ -873,13 +931,14 @@ begin
      end;
     end;
     1:begin
-     if TPasMPInterlocked.CompareExchange(Node.fState,TpvSceneNodeState.StartingLoading,TpvSceneNodeState.Unloaded)=TpvSceneNodeState.Unloaded then begin
+     if TPasMPInterlocked.CompareExchange(Node.fState,TpvSceneNodeState.StartLoading,TpvSceneNodeState.Unloaded)=TpvSceneNodeState.Unloaded then begin
       try
        Node.StartLoad;
+       Node.AfterStartLoad;
       except
        on e:Exception do begin
         pvApplication.Log(LOG_ERROR,ClassName+'.StartLoad',DumpExceptionCallStack(e));
-        if TPasMPInterlocked.CompareExchange(Node.fState,TpvSceneNodeState.Failed,TpvSceneNodeState.StartingLoading)=TpvSceneNodeState.StartingLoading then begin
+        if TPasMPInterlocked.CompareExchange(Node.fState,TpvSceneNodeState.Failed,TpvSceneNodeState.StartLoading)=TpvSceneNodeState.StartLoading then begin
          TPasMPInterlocked.Decrement(fCountToLoadNodes);
         end;
        end;
@@ -915,10 +974,20 @@ begin
    Node:=CurrentStackItem.Node;
    case CurrentStackItem.Pass of
     0:begin
-     if TPasMPInterlocked.Read(Node.fState)=TpvSceneNodeState.StartingLoaded then begin
+     if TPasMPInterlocked.Read(Node.fState)=TpvSceneNodeState.StartLoaded then begin
       NewStackItem:=Pointer(Stack.PushIndirect);
       NewStackItem^.Node:=Node;
       NewStackItem^.Pass:=1;
+      try
+       Node.BeforeBackgroundLoad;
+      except
+       on e:Exception do begin
+        pvApplication.Log(LOG_ERROR,ClassName+'.BackgroundLoad',DumpExceptionCallStack(e));
+        if TPasMPInterlocked.CompareExchange(Node.fState,TpvSceneNodeState.Failed,TpvSceneNodeState.StartLoaded)=TpvSceneNodeState.StartLoaded then begin
+         TPasMPInterlocked.Decrement(fCountToLoadNodes);
+        end;
+       end;
+      end;
      end;
      if Node.Children.Count>0 then begin
       for Index:=Node.Children.Count-1 downto 0 do begin
@@ -936,9 +1005,10 @@ begin
      end;
     end;
     1:begin
-     if TPasMPInterlocked.CompareExchange(Node.fState,TpvSceneNodeState.BackgroundLoading,TpvSceneNodeState.StartingLoaded)=TpvSceneNodeState.StartingLoaded then begin
+     if TPasMPInterlocked.CompareExchange(Node.fState,TpvSceneNodeState.BackgroundLoading,TpvSceneNodeState.StartLoaded)=TpvSceneNodeState.StartLoaded then begin
       try
        Node.BackgroundLoad;
+       Node.AfterBackgroundLoad;
       except
        on e:Exception do begin
         pvApplication.Log(LOG_ERROR,ClassName+'.BackgroundLoad',DumpExceptionCallStack(e));
@@ -982,6 +1052,16 @@ begin
       NewStackItem:=Pointer(Stack.PushIndirect);
       NewStackItem^.Node:=Node;
       NewStackItem^.Pass:=1;
+      try
+       Node.BeforeFinishLoad;
+      except
+       on e:Exception do begin
+        pvApplication.Log(LOG_ERROR,ClassName+'.FinishLoad',DumpExceptionCallStack(e));
+        if TPasMPInterlocked.CompareExchange(Node.fState,TpvSceneNodeState.Failed,TpvSceneNodeState.BackgroundLoaded)=TpvSceneNodeState.BackgroundLoaded then begin
+         TPasMPInterlocked.Decrement(fCountToLoadNodes);
+        end;
+       end;
+      end;
      end;
      if Node.Children.Count>0 then begin
       for Index:=Node.Children.Count-1 downto 0 do begin
@@ -1002,6 +1082,7 @@ begin
      if TPasMPInterlocked.CompareExchange(Node.fState,TpvSceneNodeState.Loading,TpvSceneNodeState.BackgroundLoaded)=TpvSceneNodeState.BackgroundLoaded then begin
       try
        Node.FinishLoad;
+       Node.AfterFinishLoad;
       except
        on e:Exception do begin
         pvApplication.Log(LOG_ERROR,ClassName+'.FinishLoad',DumpExceptionCallStack(e));
