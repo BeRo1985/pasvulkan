@@ -96,14 +96,12 @@ BackgroundLoad is called in a background thread and should be used for loading o
 
 FinishLoad is called after the background loading of the scene graph. It's called in the main thread.
 
+LoadSynchronizationPoint should be called every frame outside of Update and Render functions to have a synchronization point for the loading
+mechanism of the scene graph.
+
 WaitForLoaded waits until the scene graph or node is loaded.
 
 IsLoaded returns true, if the scene graph or node is loaded.
-
-These loading functions should be called just once before the beginning of a level or game together with a loading screen, etc. For other
-resources, which are loaded during the game, like textures, meshes, etc. should be loaded in an other way, for example, with the
-resource manager of the PasVulkan framework, see the PasVulkan.Resources.pas unit. These loading functions here are just for to simplify 
-the initial loading of a level or game without the actual mess of loading of resources during the game with a resource manager, etc.  
 
 Store and Interpolate are used for interpolation of the scene graph for the "Fix your timestep" pattern, which means, that the scene graph
 is updated with a fixed timestep, but rendered with a variable timestep, which is interpolated between the last and the current scene graph
