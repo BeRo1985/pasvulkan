@@ -852,12 +852,10 @@ begin
    Node:=CurrentStackItem.Node;
    case CurrentStackItem.Pass of
     0:begin
-     if Node.fIncomingNodeDependencies.Count>0 then begin
-      for Index:=Node.fIncomingNodeDependencies.Count-1 downto 0 do begin
-       NewStackItem:=Pointer(Stack.PushIndirect);
-       NewStackItem^.Node:=Node.fIncomingNodeDependencies[Index];
-       NewStackItem^.Pass:=0;
-      end;
+     if TPasMPInterlocked.Read(Node.fState)=TpvSceneNodeState.Unloaded then begin
+      NewStackItem:=Pointer(Stack.PushIndirect);
+      NewStackItem^.Node:=Node;
+      NewStackItem^.Pass:=1;
      end;
      if Node.Children.Count>0 then begin
       for Index:=Node.Children.Count-1 downto 0 do begin
@@ -866,10 +864,12 @@ begin
        NewStackItem^.Pass:=0;
       end;
      end;
-     if TPasMPInterlocked.Read(Node.fState)=TpvSceneNodeState.Unloaded then begin
-      NewStackItem:=Pointer(Stack.PushIndirect);
-      NewStackItem^.Node:=Node;
-      NewStackItem^.Pass:=1;
+     if Node.fIncomingNodeDependencies.Count>0 then begin
+      for Index:=Node.fIncomingNodeDependencies.Count-1 downto 0 do begin
+       NewStackItem:=Pointer(Stack.PushIndirect);
+       NewStackItem^.Node:=Node.fIncomingNodeDependencies[Index];
+       NewStackItem^.Pass:=0;
+      end;
      end;
     end;
     1:begin
@@ -915,12 +915,10 @@ begin
    Node:=CurrentStackItem.Node;
    case CurrentStackItem.Pass of
     0:begin
-     if Node.fIncomingNodeDependencies.Count>0 then begin
-      for Index:=Node.fIncomingNodeDependencies.Count-1 downto 0 do begin
-       NewStackItem:=Pointer(Stack.PushIndirect);
-       NewStackItem^.Node:=Node.fIncomingNodeDependencies[Index];
-       NewStackItem^.Pass:=0;
-      end;
+     if TPasMPInterlocked.Read(Node.fState)=TpvSceneNodeState.StartingLoaded then begin
+      NewStackItem:=Pointer(Stack.PushIndirect);
+      NewStackItem^.Node:=Node;
+      NewStackItem^.Pass:=1;
      end;
      if Node.Children.Count>0 then begin
       for Index:=Node.Children.Count-1 downto 0 do begin
@@ -929,10 +927,12 @@ begin
        NewStackItem^.Pass:=0;
       end;
      end;
-     if TPasMPInterlocked.Read(Node.fState)=TpvSceneNodeState.StartingLoaded then begin
-      NewStackItem:=Pointer(Stack.PushIndirect);
-      NewStackItem^.Node:=Node;
-      NewStackItem^.Pass:=1;
+     if Node.fIncomingNodeDependencies.Count>0 then begin
+      for Index:=Node.fIncomingNodeDependencies.Count-1 downto 0 do begin
+       NewStackItem:=Pointer(Stack.PushIndirect);
+       NewStackItem^.Node:=Node.fIncomingNodeDependencies[Index];
+       NewStackItem^.Pass:=0;
+      end;
      end;
     end;
     1:begin
@@ -978,12 +978,10 @@ begin
    Node:=CurrentStackItem.Node;
    case CurrentStackItem.Pass of
     0:begin
-     if Node.fIncomingNodeDependencies.Count>0 then begin
-      for Index:=Node.fIncomingNodeDependencies.Count-1 downto 0 do begin
-       NewStackItem:=Pointer(Stack.PushIndirect);
-       NewStackItem^.Node:=Node.fIncomingNodeDependencies[Index];
-       NewStackItem^.Pass:=0;
-      end;
+     if TPasMPInterlocked.Read(Node.fState)=TpvSceneNodeState.BackgroundLoaded then begin
+      NewStackItem:=Pointer(Stack.PushIndirect);
+      NewStackItem^.Node:=Node;
+      NewStackItem^.Pass:=1;
      end;
      if Node.Children.Count>0 then begin
       for Index:=Node.Children.Count-1 downto 0 do begin
@@ -992,10 +990,12 @@ begin
        NewStackItem^.Pass:=0;
       end;
      end;
-     if TPasMPInterlocked.Read(Node.fState)=TpvSceneNodeState.BackgroundLoaded then begin
-      NewStackItem:=Pointer(Stack.PushIndirect);
-      NewStackItem^.Node:=Node;
-      NewStackItem^.Pass:=1;
+     if Node.fIncomingNodeDependencies.Count>0 then begin
+      for Index:=Node.fIncomingNodeDependencies.Count-1 downto 0 do begin
+       NewStackItem:=Pointer(Stack.PushIndirect);
+       NewStackItem^.Node:=Node.fIncomingNodeDependencies[Index];
+       NewStackItem^.Pass:=0;
+      end;
      end;
     end;
     1:begin
