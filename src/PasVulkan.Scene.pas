@@ -547,18 +547,33 @@ begin
 end;
 
 procedure TpvSceneNode.StartLoad;
+var OldState:TpvSceneNodeState;
 begin
- TPasMPInterlocked.CompareExchange(fState,TpvSceneNodeState.StartingLoaded,TpvSceneNodeState.Unloaded);
+ OldState:=TPasMPInterlocked.Read(fState);
+ if (OldState=TpvSceneNodeState.Unloaded) or (OldState=TpvSceneNodeState.StartingLoading) then begin
+  TPasMPInterlocked.CompareExchange(fState,TpvSceneNodeState.StartingLoaded,OldState);
+ end;  
 end;
 
 procedure TpvSceneNode.BackgroundLoad;
+var OldState:TpvSceneNodeState;
 begin
- TPasMPInterlocked.CompareExchange(fState,TpvSceneNodeState.BackgroundLoaded,TpvSceneNodeState.StartingLoaded);
+ OldState:=TPasMPInterlocked.Read(fState);
+ if (OldState=TpvSceneNodeState.StartingLoaded) or (OldState=TpvSceneNodeState.BackgroundLoading) then begin
+  TPasMPInterlocked.CompareExchange(fState,TpvSceneNodeState.BackgroundLoaded,OldState);
+ end;  
 end;
 
 procedure TpvSceneNode.FinishLoad;
+var OldState:TpvSceneNodeState;
 begin
- TPasMPInterlocked.CompareExchange(fState,TpvSceneNodeState.Loaded,TpvSceneNodeState.BackgroundLoaded);
+ OldState:=TPasMPInterlocked.Read(fState);
+ if ((OldState=TpvSceneNodeState.BackgroundLoaded) or (OldState=TpvSceneNodeState.Loading)) and
+    (TPasMPInterlocked.CompareExchange(fState,TpvSceneNodeState.Loaded,OldState)=OldState) then begin
+  if assigned(fScene) then begin
+   TPasMPInterlocked.Decrement(fScene.fCountToLoadNodes);
+  end;
+ end;
 end;
 
 procedure TpvSceneNode.WaitForLoaded;
@@ -943,13 +958,9 @@ begin
     1:begin
      if TPasMPInterlocked.CompareExchange(Node.fState,TpvSceneNodeState.Loading,TpvSceneNodeState.BackgroundLoaded)=TpvSceneNodeState.BackgroundLoaded then begin
       try
-       try
-        Node.FinishLoad;
-       finally
-        TPasMPInterlocked.CompareExchange(Node.fState,TpvSceneNodeState.Loaded,TpvSceneNodeState.Loading);
-       end;
+       Node.FinishLoad;
       finally
-       TPasMPInterlocked.Decrement(fCountToLoadNodes);
+       TPasMPInterlocked.CompareExchange(Node.fState,TpvSceneNodeState.Loaded,TpvSceneNodeState.Loading);
       end;
      end;
     end;
