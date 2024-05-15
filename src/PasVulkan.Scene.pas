@@ -354,9 +354,20 @@ begin
 end;
 
 procedure TpvSceneNode.BeforeDestruction;
+var Index:TpvSizeInt;
 begin
  if assigned(fScene) then begin
   fScene.fAllNodes.RemoveWithoutFree(self);
+ end;
+ if fOutgoingNodeDependencies.Count>0 then begin
+  for Index:=fOutgoingNodeDependencies.Count-1 downto 0 do begin
+   fOutgoingNodeDependencies[Index].RemoveDependency(self);
+  end;
+ end;
+ if fIncomingNodeDependencies.Count>0 then begin
+  for Index:=fIncomingNodeDependencies.Count-1 downto 0 do begin
+   RemoveDependency(fIncomingNodeDependencies[Index]);
+  end;
  end;
  inherited BeforeDestruction;
 end;
@@ -368,7 +379,7 @@ begin
 
   TPasMPMultipleReaderSingleWriterSpinLock.AcquireWrite(fLock);
   try
-   if not fIncomingNodeDependencies.Contains(aNode) then begin
+   if assigned(fIncomingNodeDependencies) and not fIncomingNodeDependencies.Contains(aNode) then begin
     fIncomingNodeDependencies.Add(aNode);
    end;
   finally
@@ -377,7 +388,7 @@ begin
 
   TPasMPMultipleReaderSingleWriterSpinLock.AcquireWrite(aNode.fLock);
   try
-   if not aNode.fOutgoingNodeDependencies.Contains(self) then begin
+   if assigned(aNode.fOutgoingNodeDependencies) and not aNode.fOutgoingNodeDependencies.Contains(self) then begin
     aNode.fOutgoingNodeDependencies.Add(self);
    end;
   finally
@@ -394,21 +405,25 @@ begin
 
  if assigned(aNode) then begin
 
-  TPasMPMultipleReaderSingleWriterSpinLock.AcquireWrite(fLock);
-  try
-   Index:=fIncomingNodeDependencies.IndexOf(aNode);
-   if Index>=0 then begin
-    fIncomingNodeDependencies.Delete(Index);
+  if assigned(fIncomingNodeDependencies) then begin
+   TPasMPMultipleReaderSingleWriterSpinLock.AcquireWrite(fLock);
+   try
+    Index:=fIncomingNodeDependencies.IndexOf(aNode);
+    if Index>=0 then begin
+     fIncomingNodeDependencies.Delete(Index);
+    end;
+   finally
+    TPasMPMultipleReaderSingleWriterSpinLock.ReleaseWrite(fLock);
    end;
-  finally
-   TPasMPMultipleReaderSingleWriterSpinLock.ReleaseWrite(fLock);
   end;
 
   TPasMPMultipleReaderSingleWriterSpinLock.AcquireWrite(aNode.fLock);
   try
-   Index:=aNode.fOutgoingNodeDependencies.IndexOf(self);
-   if Index>=0 then begin
-    aNode.fOutgoingNodeDependencies.Delete(Index);
+   if assigned(aNode.fOutgoingNodeDependencies) then begin
+    Index:=aNode.fOutgoingNodeDependencies.IndexOf(self);
+    if Index>=0 then begin
+     aNode.fOutgoingNodeDependencies.Delete(Index);
+    end;
    end;
   finally
    TPasMPMultipleReaderSingleWriterSpinLock.ReleaseWrite(aNode.fLock);
