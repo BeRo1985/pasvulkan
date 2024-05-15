@@ -203,6 +203,7 @@ type TpvScene=class;
       private
        fRootNode:TpvSceneNode;
        fAllNodes:TpvSceneNodes;
+       fCountToLoadNodes:TPasMPInt32;
        fData:TObject;
       public
        constructor Create(const aData:TObject=nil); reintroduce; virtual;
@@ -212,6 +213,7 @@ type TpvScene=class;
        procedure FinishLoad; virtual;
        procedure WaitForLoaded; virtual;
        function IsLoaded:boolean; virtual;
+       procedure LoadSynchronizationPoint; virtual;
        procedure Store; virtual;
        procedure BeginUpdate(const aDeltaTime:TpvDouble); virtual;
        procedure Update(const aDeltaTime:TpvDouble); virtual;
@@ -350,6 +352,7 @@ begin
  inherited AfterConstruction;
  if assigned(fScene) then begin
   fScene.fAllNodes.Add(self);
+  TPasMPInterlocked.Increment(fScene.fCountToLoadNodes);
  end;
 end;
 
@@ -689,6 +692,7 @@ begin
  fAllNodes:=TpvSceneNodes.Create(false);
  fRootNode:=TpvSceneNode.Create(nil);
  fRootNode.fScene:=self;
+ fCountToLoadNodes:=1;
  fData:=aData;
 end;
 
@@ -861,6 +865,7 @@ begin
      if TPasMPInterlocked.CompareExchange(Node.fState,TpvSceneNodeState.Loading,TpvSceneNodeState.BackgroundLoaded)=TpvSceneNodeState.BackgroundLoaded then begin
       try
        Node.FinishLoad;
+       TPasMPInterlocked.Decrement(fCountToLoadNodes);
       finally
        TPasMPInterlocked.Write(Node.fState,TpvSceneNodeState.Loaded);
       end;
@@ -881,6 +886,14 @@ end;
 function TpvScene.IsLoaded:boolean;
 begin
  result:=fRootNode.IsLoaded;
+end;
+
+procedure TpvScene.LoadSynchronizationPoint;
+begin
+ if TPasMPInterlocked.Read(fCountToLoadNodes)>0 then begin
+  StartLoad;
+  FinishLoad;
+ end;
 end;
 
 procedure TpvScene.Store;
