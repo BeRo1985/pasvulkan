@@ -200,10 +200,24 @@ type TpvScene=class;
 
      { TpvScene }
      TpvScene=class
+      public
+       type TBackgroundLoadThread=class(TPasMPThread)
+             private
+              fScene:TpvScene;
+              fEvent:TPasMPEvent;
+             protected
+              procedure Execute; override;
+             public
+              constructor Create(const aScene:TpvScene); reintroduce;
+              destructor Destroy; override;
+              procedure Shutdown;
+              procedure WakeUp;
+            end;
       private
        fRootNode:TpvSceneNode;
        fAllNodes:TpvSceneNodes;
        fCountToLoadNodes:TPasMPInt32;
+       fBackgroundLoadThread:TBackgroundLoadThread;
        fData:TObject;
       public
        constructor Create(const aData:TObject=nil); reintroduce; virtual;
@@ -684,6 +698,52 @@ begin
  end;
 end;
 
+{ TpvScene.TBackgroundLoadThread }
+
+constructor TpvScene.TBackgroundLoadThread.Create(const aScene:TpvScene);
+begin
+ fScene:=aScene;
+ fEvent:=TPasMPEvent.Create(nil,false,false,'');
+ inherited Create(false);
+end;
+
+destructor TpvScene.TBackgroundLoadThread.Destroy;
+begin
+ Shutdown;
+ FreeAndNil(fEvent);
+ inherited Destroy;
+end;
+
+procedure TpvScene.TBackgroundLoadThread.Shutdown;
+begin
+ if not Finished then begin
+  Terminate;
+  fEvent.SetEvent;
+  WaitFor;
+ end;
+end;
+
+procedure TpvScene.TBackgroundLoadThread.WakeUp;
+begin
+ fEvent.SetEvent;
+end;
+
+procedure TpvScene.TBackgroundLoadThread.Execute;
+begin
+ while not Terminated do begin
+  fEvent.WaitFor;
+  if Terminated then begin
+   break;
+  end else begin 
+   if TPasMPInterlocked.Read(fScene.fCountToLoadNodes)>0 then begin
+    fScene.BackgroundLoad;
+   end else begin
+    Sleep(0);
+   end;
+  end;
+ end;
+end;
+
 { TpvScene }
 
 constructor TpvScene.Create(const aData:TObject=nil);
@@ -694,10 +754,13 @@ begin
  fRootNode.fScene:=self;
  fCountToLoadNodes:=1;
  fData:=aData;
+ fBackgroundLoadThread:=TBackgroundLoadThread.Create(self);
 end;
 
 destructor TpvScene.Destroy;
 begin
+ fBackgroundLoadThread.Shutdown;
+ FreeAndNil(fBackgroundLoadThread);
  FreeAndNil(fRootNode);
  FreeAndNil(fAllNodes);
  inherited Destroy;
@@ -892,6 +955,7 @@ procedure TpvScene.LoadSynchronizationPoint;
 begin
  if TPasMPInterlocked.Read(fCountToLoadNodes)>0 then begin
   StartLoad;
+  fBackgroundLoadThread.WakeUp;
   FinishLoad;
  end;
 end;
