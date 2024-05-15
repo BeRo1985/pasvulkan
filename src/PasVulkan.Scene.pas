@@ -158,7 +158,8 @@ type TpvScene=class;
        fParent:TpvSceneNode;
        fData:TObject;
        fChildren:TpvSceneNodes;
-       fNodeDependencies:TpvSceneNodes;
+       fIncomingNodeDependencies:TpvSceneNodes;
+       fOutgoingNodeDependencies:TpvSceneNodes;
        fNodeHashMap:TpvSceneNodeHashMap;
        fLock:TpvInt32;
        fState:TpvSceneNodeState;
@@ -282,8 +283,11 @@ begin
  fChildren:=TpvSceneNodes.Create;
  fChildren.OwnsObjects:=true;
 
- fNodeDependencies:=TpvSceneNodes.Create;
- fNodeDependencies.OwnsObjects:=false;
+ fIncomingNodeDependencies:=TpvSceneNodes.Create;
+ fIncomingNodeDependencies.OwnsObjects:=false;
+
+ fOutgoingNodeDependencies:=TpvSceneNodes.Create;
+ fOutgoingNodeDependencies.OwnsObjects:=false;
 
  fDestroying:=false;
 
@@ -323,7 +327,9 @@ begin
   end;
  end;
 
- FreeAndNil(fNodeDependencies);
+ FreeAndNil(fOutgoingNodeDependencies);
+
+ FreeAndNil(fIncomingNodeDependencies);
 
  for ChildNodeIndex:=0 to fChildren.Count-1 do begin
   ChildNode:=fChildren[ChildNodeIndex];
@@ -362,13 +368,20 @@ begin
 
   TPasMPMultipleReaderSingleWriterSpinLock.AcquireWrite(fLock);
   try
-
-   if not fNodeDependencies.Contains(aNode) then begin
-    fNodeDependencies.Add(aNode);
+   if not fIncomingNodeDependencies.Contains(aNode) then begin
+    fIncomingNodeDependencies.Add(aNode);
    end;
-
   finally
    TPasMPMultipleReaderSingleWriterSpinLock.ReleaseWrite(fLock);
+  end;
+
+  TPasMPMultipleReaderSingleWriterSpinLock.AcquireWrite(aNode.fLock);
+  try
+   if not aNode.fOutgoingNodeDependencies.Contains(self) then begin
+    aNode.fOutgoingNodeDependencies.Add(self);
+   end;
+  finally
+   TPasMPMultipleReaderSingleWriterSpinLock.ReleaseWrite(aNode.fLock);
   end;
 
  end;
@@ -383,14 +396,22 @@ begin
 
   TPasMPMultipleReaderSingleWriterSpinLock.AcquireWrite(fLock);
   try
-
-   Index:=fNodeDependencies.IndexOf(aNode);
+   Index:=fIncomingNodeDependencies.IndexOf(aNode);
    if Index>=0 then begin
-    fNodeDependencies.Delete(Index);
+    fIncomingNodeDependencies.Delete(Index);
    end;
-
   finally
    TPasMPMultipleReaderSingleWriterSpinLock.ReleaseWrite(fLock);
+  end;
+
+  TPasMPMultipleReaderSingleWriterSpinLock.AcquireWrite(aNode.fLock);
+  try
+   Index:=aNode.fOutgoingNodeDependencies.IndexOf(self);
+   if Index>=0 then begin
+    aNode.fOutgoingNodeDependencies.Delete(Index);
+   end;
+  finally
+   TPasMPMultipleReaderSingleWriterSpinLock.ReleaseWrite(aNode.fLock);
   end;
 
  end;
@@ -685,10 +706,10 @@ begin
    Node:=CurrentStackItem.Node;
    case CurrentStackItem.Pass of
     0:begin
-     if Node.fNodeDependencies.Count>0 then begin
-      for Index:=Node.fNodeDependencies.Count-1 downto 0 do begin
+     if Node.fIncomingNodeDependencies.Count>0 then begin
+      for Index:=Node.fIncomingNodeDependencies.Count-1 downto 0 do begin
        NewStackItem:=Pointer(Stack.PushIndirect);
-       NewStackItem^.Node:=Node.fNodeDependencies[Index];
+       NewStackItem^.Node:=Node.fIncomingNodeDependencies[Index];
        NewStackItem^.Pass:=0;
       end;
      end;
@@ -743,10 +764,10 @@ begin
    Node:=CurrentStackItem.Node;
    case CurrentStackItem.Pass of
     0:begin
-     if Node.fNodeDependencies.Count>0 then begin
-      for Index:=Node.fNodeDependencies.Count-1 downto 0 do begin
+     if Node.fIncomingNodeDependencies.Count>0 then begin
+      for Index:=Node.fIncomingNodeDependencies.Count-1 downto 0 do begin
        NewStackItem:=Pointer(Stack.PushIndirect);
-       NewStackItem^.Node:=Node.fNodeDependencies[Index];
+       NewStackItem^.Node:=Node.fIncomingNodeDependencies[Index];
        NewStackItem^.Pass:=0;
       end;
      end;
@@ -801,10 +822,10 @@ begin
    Node:=CurrentStackItem.Node;
    case CurrentStackItem.Pass of
     0:begin
-     if Node.fNodeDependencies.Count>0 then begin
-      for Index:=Node.fNodeDependencies.Count-1 downto 0 do begin
+     if Node.fIncomingNodeDependencies.Count>0 then begin
+      for Index:=Node.fIncomingNodeDependencies.Count-1 downto 0 do begin
        NewStackItem:=Pointer(Stack.PushIndirect);
-       NewStackItem^.Node:=Node.fNodeDependencies[Index];
+       NewStackItem^.Node:=Node.fIncomingNodeDependencies[Index];
        NewStackItem^.Pass:=0;
       end;
      end;
