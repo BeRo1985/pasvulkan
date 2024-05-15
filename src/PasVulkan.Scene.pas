@@ -885,7 +885,7 @@ type TStackItem=record
      end;
      PStackItem=^TStackItem;
      TStack=TpvDynamicFastStack<TStackItem>;
-var Index:TpvSizeInt;
+var Index,Pass:TpvSizeInt;
     Stack:TStack;
     NewStackItem:PStackItem;
     CurrentStackItem:TStackItem;
@@ -898,54 +898,66 @@ begin
   NewStackItem^.Pass:=0;
   while Stack.Pop(CurrentStackItem) do begin
    Node:=CurrentStackItem.Node;
-   case CurrentStackItem.Pass of
-    0:begin
-     if TPasMPInterlocked.Read(Node.fState)=TpvSceneNodeState.Unloaded then begin
-      NewStackItem:=Pointer(Stack.PushIndirect);
-      NewStackItem^.Node:=Node;
-      NewStackItem^.Pass:=1;
-      try
-       Node.BeforeStartLoad;
-      except
-       on e:Exception do begin
-        pvApplication.Log(LOG_ERROR,ClassName+'.StartLoad',DumpExceptionCallStack(e));
-        if TPasMPInterlocked.CompareExchange(Node.fState,TpvSceneNodeState.Failed,TpvSceneNodeState.Unloaded)=TpvSceneNodeState.Unloaded then begin
-         TPasMPInterlocked.Decrement(fCountToLoadNodes);
+   Pass:=CurrentStackItem.Pass;
+   repeat
+    case Pass of
+     0:begin
+      if Node.fIncomingNodeDependencies.Count>0 then begin
+       NewStackItem:=Pointer(Stack.PushIndirect);
+       NewStackItem^.Node:=Node;
+       NewStackItem^.Pass:=1;
+       for Index:=Node.fIncomingNodeDependencies.Count-1 downto 0 do begin
+        NewStackItem:=Pointer(Stack.PushIndirect);
+        NewStackItem^.Node:=Node.fIncomingNodeDependencies[Index];
+        NewStackItem^.Pass:=0;
+       end;       
+      end else begin
+       Pass:=1;
+       continue;
+      end;
+     end;
+     1:begin     
+      if TPasMPInterlocked.Read(Node.fState)=TpvSceneNodeState.Unloaded then begin
+       NewStackItem:=Pointer(Stack.PushIndirect);
+       NewStackItem^.Node:=Node;
+       NewStackItem^.Pass:=2;
+       try
+        Node.BeforeStartLoad;
+       except
+        on e:Exception do begin
+         pvApplication.Log(LOG_ERROR,ClassName+'.StartLoad',DumpExceptionCallStack(e));
+         if TPasMPInterlocked.CompareExchange(Node.fState,TpvSceneNodeState.Failed,TpvSceneNodeState.Unloaded)=TpvSceneNodeState.Unloaded then begin
+          TPasMPInterlocked.Decrement(fCountToLoadNodes);
+         end;
         end;
        end;
       end;
-     end;
-     if Node.Children.Count>0 then begin
-      for Index:=Node.Children.Count-1 downto 0 do begin
-       NewStackItem:=Pointer(Stack.PushIndirect);
-       NewStackItem^.Node:=Node.Children[Index];
-       NewStackItem^.Pass:=0;
-      end;
-     end;
-     if Node.fIncomingNodeDependencies.Count>0 then begin
-      for Index:=Node.fIncomingNodeDependencies.Count-1 downto 0 do begin
-       NewStackItem:=Pointer(Stack.PushIndirect);
-       NewStackItem^.Node:=Node.fIncomingNodeDependencies[Index];
-       NewStackItem^.Pass:=0;
-      end;
-     end;
-    end;
-    1:begin
-     if TPasMPInterlocked.CompareExchange(Node.fState,TpvSceneNodeState.StartLoading,TpvSceneNodeState.Unloaded)=TpvSceneNodeState.Unloaded then begin
-      try
-       Node.StartLoad;
-       Node.AfterStartLoad;
-      except
-       on e:Exception do begin
-        pvApplication.Log(LOG_ERROR,ClassName+'.StartLoad',DumpExceptionCallStack(e));
-        if TPasMPInterlocked.CompareExchange(Node.fState,TpvSceneNodeState.Failed,TpvSceneNodeState.StartLoading)=TpvSceneNodeState.StartLoading then begin
-         TPasMPInterlocked.Decrement(fCountToLoadNodes);
-        end;
+      if Node.Children.Count>0 then begin
+       for Index:=Node.Children.Count-1 downto 0 do begin
+        NewStackItem:=Pointer(Stack.PushIndirect);
+        NewStackItem^.Node:=Node.Children[Index];
+        NewStackItem^.Pass:=0;
        end;
       end;
      end;
+     2:begin
+      if TPasMPInterlocked.CompareExchange(Node.fState,TpvSceneNodeState.StartLoading,TpvSceneNodeState.Unloaded)=TpvSceneNodeState.Unloaded then begin
+       try
+        Node.StartLoad;
+        Node.AfterStartLoad;
+       except
+        on e:Exception do begin
+         pvApplication.Log(LOG_ERROR,ClassName+'.StartLoad',DumpExceptionCallStack(e));
+         if TPasMPInterlocked.CompareExchange(Node.fState,TpvSceneNodeState.Failed,TpvSceneNodeState.StartLoading)=TpvSceneNodeState.StartLoading then begin
+          TPasMPInterlocked.Decrement(fCountToLoadNodes);
+         end;
+        end;
+       end;
+      end;
+     end;    
     end;
-   end;
+    break;
+   until false;
   end;
  finally
   Stack.Finalize;
@@ -959,7 +971,7 @@ type TStackItem=record
      end;
      PStackItem=^TStackItem;
      TStack=TpvDynamicFastStack<TStackItem>;
-var Index:TpvSizeInt;
+var Index,Pass:TpvSizeInt;
     Stack:TStack;
     NewStackItem:PStackItem;
     CurrentStackItem:TStackItem;
@@ -972,54 +984,66 @@ begin
   NewStackItem^.Pass:=0;
   while Stack.Pop(CurrentStackItem) do begin
    Node:=CurrentStackItem.Node;
-   case CurrentStackItem.Pass of
-    0:begin
-     if TPasMPInterlocked.Read(Node.fState)=TpvSceneNodeState.StartLoaded then begin
-      NewStackItem:=Pointer(Stack.PushIndirect);
-      NewStackItem^.Node:=Node;
-      NewStackItem^.Pass:=1;
-      try
-       Node.BeforeBackgroundLoad;
-      except
-       on e:Exception do begin
-        pvApplication.Log(LOG_ERROR,ClassName+'.BackgroundLoad',DumpExceptionCallStack(e));
-        if TPasMPInterlocked.CompareExchange(Node.fState,TpvSceneNodeState.Failed,TpvSceneNodeState.StartLoaded)=TpvSceneNodeState.StartLoaded then begin
-         TPasMPInterlocked.Decrement(fCountToLoadNodes);
+   Pass:=CurrentStackItem.Pass;
+   repeat
+    case Pass of
+     0:begin
+      if Node.fIncomingNodeDependencies.Count>0 then begin
+       NewStackItem:=Pointer(Stack.PushIndirect);
+       NewStackItem^.Node:=Node;
+       NewStackItem^.Pass:=1;
+       for Index:=Node.fIncomingNodeDependencies.Count-1 downto 0 do begin
+        NewStackItem:=Pointer(Stack.PushIndirect);
+        NewStackItem^.Node:=Node.fIncomingNodeDependencies[Index];
+        NewStackItem^.Pass:=0;
+       end;       
+      end else begin
+       Pass:=1;
+       continue;
+      end;
+     end;
+     1:begin     
+      if TPasMPInterlocked.Read(Node.fState)=TpvSceneNodeState.StartLoaded then begin
+       NewStackItem:=Pointer(Stack.PushIndirect);
+       NewStackItem^.Node:=Node;
+       NewStackItem^.Pass:=2;
+       try
+        Node.BeforeBackgroundLoad;
+       except
+        on e:Exception do begin
+         pvApplication.Log(LOG_ERROR,ClassName+'.BackgroundLoad',DumpExceptionCallStack(e));
+         if TPasMPInterlocked.CompareExchange(Node.fState,TpvSceneNodeState.Failed,TpvSceneNodeState.StartLoaded)=TpvSceneNodeState.StartLoaded then begin
+          TPasMPInterlocked.Decrement(fCountToLoadNodes);
+         end;
+        end;
+       end;
+      end;
+      if Node.Children.Count>0 then begin
+       for Index:=Node.Children.Count-1 downto 0 do begin
+        NewStackItem:=Pointer(Stack.PushIndirect);
+        NewStackItem^.Node:=Node.Children[Index];
+        NewStackItem^.Pass:=0;
+       end;
+      end;
+     end;
+     2:begin
+      if TPasMPInterlocked.CompareExchange(Node.fState,TpvSceneNodeState.BackgroundLoading,TpvSceneNodeState.StartLoaded)=TpvSceneNodeState.StartLoaded then begin
+       try
+        Node.BackgroundLoad;
+        Node.AfterBackgroundLoad;
+       except
+        on e:Exception do begin
+         pvApplication.Log(LOG_ERROR,ClassName+'.BackgroundLoad',DumpExceptionCallStack(e));
+         if TPasMPInterlocked.CompareExchange(Node.fState,TpvSceneNodeState.Failed,TpvSceneNodeState.BackgroundLoading)=TpvSceneNodeState.BackgroundLoading then begin
+          TPasMPInterlocked.Decrement(fCountToLoadNodes);
+         end;
         end;
        end;
       end;
      end;
-     if Node.Children.Count>0 then begin
-      for Index:=Node.Children.Count-1 downto 0 do begin
-       NewStackItem:=Pointer(Stack.PushIndirect);
-       NewStackItem^.Node:=Node.Children[Index];
-       NewStackItem^.Pass:=0;
-      end;
-     end;
-     if Node.fIncomingNodeDependencies.Count>0 then begin
-      for Index:=Node.fIncomingNodeDependencies.Count-1 downto 0 do begin
-       NewStackItem:=Pointer(Stack.PushIndirect);
-       NewStackItem^.Node:=Node.fIncomingNodeDependencies[Index];
-       NewStackItem^.Pass:=0;
-      end;
-     end;
     end;
-    1:begin
-     if TPasMPInterlocked.CompareExchange(Node.fState,TpvSceneNodeState.BackgroundLoading,TpvSceneNodeState.StartLoaded)=TpvSceneNodeState.StartLoaded then begin
-      try
-       Node.BackgroundLoad;
-       Node.AfterBackgroundLoad;
-      except
-       on e:Exception do begin
-        pvApplication.Log(LOG_ERROR,ClassName+'.BackgroundLoad',DumpExceptionCallStack(e));
-        if TPasMPInterlocked.CompareExchange(Node.fState,TpvSceneNodeState.Failed,TpvSceneNodeState.BackgroundLoading)=TpvSceneNodeState.BackgroundLoading then begin
-         TPasMPInterlocked.Decrement(fCountToLoadNodes);
-        end;
-       end;
-      end;
-     end;
-    end;
-   end;
+    break;
+   until false;
   end;
  finally
   Stack.Finalize;
@@ -1033,7 +1057,7 @@ type TStackItem=record
      end;
      PStackItem=^TStackItem;
      TStack=TpvDynamicFastStack<TStackItem>;
-var Index:TpvSizeInt;
+var Index,Pass:TpvSizeInt;
     Stack:TStack;
     NewStackItem:PStackItem;
     CurrentStackItem:TStackItem;
@@ -1046,54 +1070,66 @@ begin
   NewStackItem^.Pass:=0;
   while Stack.Pop(CurrentStackItem) do begin
    Node:=CurrentStackItem.Node;
-   case CurrentStackItem.Pass of
-    0:begin
-     if TPasMPInterlocked.Read(Node.fState)=TpvSceneNodeState.BackgroundLoaded then begin
-      NewStackItem:=Pointer(Stack.PushIndirect);
-      NewStackItem^.Node:=Node;
-      NewStackItem^.Pass:=1;
-      try
-       Node.BeforeFinishLoad;
-      except
-       on e:Exception do begin
-        pvApplication.Log(LOG_ERROR,ClassName+'.FinishLoad',DumpExceptionCallStack(e));
-        if TPasMPInterlocked.CompareExchange(Node.fState,TpvSceneNodeState.Failed,TpvSceneNodeState.BackgroundLoaded)=TpvSceneNodeState.BackgroundLoaded then begin
-         TPasMPInterlocked.Decrement(fCountToLoadNodes);
+   Pass:=CurrentStackItem.Pass;
+   repeat
+    case Pass of
+     0:begin
+      if Node.fIncomingNodeDependencies.Count>0 then begin
+       NewStackItem:=Pointer(Stack.PushIndirect);
+       NewStackItem^.Node:=Node;
+       NewStackItem^.Pass:=1;
+       for Index:=Node.fIncomingNodeDependencies.Count-1 downto 0 do begin
+        NewStackItem:=Pointer(Stack.PushIndirect);
+        NewStackItem^.Node:=Node.fIncomingNodeDependencies[Index];
+        NewStackItem^.Pass:=0;
+       end;       
+      end else begin
+       Pass:=1;
+       continue;
+      end;
+     end;
+     1:begin     
+      if TPasMPInterlocked.Read(Node.fState)=TpvSceneNodeState.BackgroundLoaded then begin
+       NewStackItem:=Pointer(Stack.PushIndirect);
+       NewStackItem^.Node:=Node;
+       NewStackItem^.Pass:=2;
+       try
+        Node.BeforeFinishLoad;
+       except
+        on e:Exception do begin
+         pvApplication.Log(LOG_ERROR,ClassName+'.FinishLoad',DumpExceptionCallStack(e));
+         if TPasMPInterlocked.CompareExchange(Node.fState,TpvSceneNodeState.Failed,TpvSceneNodeState.BackgroundLoaded)=TpvSceneNodeState.BackgroundLoaded then begin
+          TPasMPInterlocked.Decrement(fCountToLoadNodes);
+         end;
+        end;
+       end;
+      end;
+      if Node.Children.Count>0 then begin
+       for Index:=Node.Children.Count-1 downto 0 do begin
+        NewStackItem:=Pointer(Stack.PushIndirect);
+        NewStackItem^.Node:=Node.Children[Index];
+        NewStackItem^.Pass:=0;
+       end;
+      end;
+     end;
+     2:begin
+      if TPasMPInterlocked.CompareExchange(Node.fState,TpvSceneNodeState.Loading,TpvSceneNodeState.BackgroundLoaded)=TpvSceneNodeState.BackgroundLoaded then begin
+       try
+        Node.FinishLoad;
+        Node.AfterFinishLoad;
+       except
+        on e:Exception do begin
+         pvApplication.Log(LOG_ERROR,ClassName+'.FinishLoad',DumpExceptionCallStack(e));
+         if TPasMPInterlocked.CompareExchange(Node.fState,TpvSceneNodeState.Failed,TpvSceneNodeState.Loading)=TpvSceneNodeState.Loading then begin
+          TPasMPInterlocked.Decrement(fCountToLoadNodes);
+         end;
         end;
        end;
       end;
      end;
-     if Node.Children.Count>0 then begin
-      for Index:=Node.Children.Count-1 downto 0 do begin
-       NewStackItem:=Pointer(Stack.PushIndirect);
-       NewStackItem^.Node:=Node.Children[Index];
-       NewStackItem^.Pass:=0;
-      end;
-     end;
-     if Node.fIncomingNodeDependencies.Count>0 then begin
-      for Index:=Node.fIncomingNodeDependencies.Count-1 downto 0 do begin
-       NewStackItem:=Pointer(Stack.PushIndirect);
-       NewStackItem^.Node:=Node.fIncomingNodeDependencies[Index];
-       NewStackItem^.Pass:=0;
-      end;
-     end;
     end;
-    1:begin
-     if TPasMPInterlocked.CompareExchange(Node.fState,TpvSceneNodeState.Loading,TpvSceneNodeState.BackgroundLoaded)=TpvSceneNodeState.BackgroundLoaded then begin
-      try
-       Node.FinishLoad;
-       Node.AfterFinishLoad;
-      except
-       on e:Exception do begin
-        pvApplication.Log(LOG_ERROR,ClassName+'.FinishLoad',DumpExceptionCallStack(e));
-        if TPasMPInterlocked.CompareExchange(Node.fState,TpvSceneNodeState.Failed,TpvSceneNodeState.Loading)=TpvSceneNodeState.Loading then begin
-         TPasMPInterlocked.Decrement(fCountToLoadNodes);
-        end;
-       end;
-      end;
-     end;
-    end;
-   end;
+    break;
+   until false;
   end;
  finally
   Stack.Finalize;
