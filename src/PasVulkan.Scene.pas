@@ -548,17 +548,17 @@ end;
 
 procedure TpvSceneNode.StartLoad;
 begin
- TPasMPInterlocked.Write(fState,TpvSceneNodeState.StartingLoaded);
+ TPasMPInterlocked.CompareExchange(fState,TpvSceneNodeState.StartingLoaded,TpvSceneNodeState.Unloaded);
 end;
 
 procedure TpvSceneNode.BackgroundLoad;
 begin
- TPasMPInterlocked.Write(fState,TpvSceneNodeState.BackgroundLoaded);
+ TPasMPInterlocked.CompareExchange(fState,TpvSceneNodeState.BackgroundLoaded,TpvSceneNodeState.StartingLoaded);
 end;
 
 procedure TpvSceneNode.FinishLoad;
 begin
- TPasMPInterlocked.Write(fState,TpvSceneNodeState.Loaded);
+ TPasMPInterlocked.CompareExchange(fState,TpvSceneNodeState.Loaded,TpvSceneNodeState.BackgroundLoaded);
 end;
 
 procedure TpvSceneNode.WaitForLoaded;
@@ -829,7 +829,7 @@ begin
       try
        Node.StartLoad;
       finally
-       TPasMPInterlocked.Write(Node.fState,TpvSceneNodeState.StartingLoaded);
+       TPasMPInterlocked.CompareExchange(Node.fState,TpvSceneNodeState.StartingLoaded,TpvSceneNodeState.StartingLoading);
       end;
      end;
     end;
@@ -887,7 +887,7 @@ begin
       try
        Node.BackgroundLoad;
       finally
-       TPasMPInterlocked.Write(Node.fState,TpvSceneNodeState.BackgroundLoaded);
+       TPasMPInterlocked.CompareExchange(Node.fState,TpvSceneNodeState.BackgroundLoaded,TpvSceneNodeState.BackgroundLoading);
       end;
      end;
     end;
@@ -943,10 +943,13 @@ begin
     1:begin
      if TPasMPInterlocked.CompareExchange(Node.fState,TpvSceneNodeState.Loading,TpvSceneNodeState.BackgroundLoaded)=TpvSceneNodeState.BackgroundLoaded then begin
       try
-       Node.FinishLoad;
-       TPasMPInterlocked.Decrement(fCountToLoadNodes);
+       try
+        Node.FinishLoad;
+       finally
+        TPasMPInterlocked.CompareExchange(Node.fState,TpvSceneNodeState.Loaded,TpvSceneNodeState.Loading);
+       end;
       finally
-       TPasMPInterlocked.Write(Node.fState,TpvSceneNodeState.Loaded);
+       TPasMPInterlocked.Decrement(fCountToLoadNodes);
       end;
      end;
     end;
