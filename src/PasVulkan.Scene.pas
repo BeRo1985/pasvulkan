@@ -548,14 +548,17 @@ end;
 
 procedure TpvSceneNode.StartLoad;
 begin
+ TPasMPInterlocked.Write(fState,TpvSceneNodeState.StartingLoaded);
 end;
 
 procedure TpvSceneNode.BackgroundLoad;
 begin
+ TPasMPInterlocked.Write(fState,TpvSceneNodeState.BackgroundLoaded);
 end;
 
 procedure TpvSceneNode.FinishLoad;
 begin
+ TPasMPInterlocked.Write(fState,TpvSceneNodeState.Loaded);
 end;
 
 procedure TpvSceneNode.WaitForLoaded;
