@@ -189,6 +189,8 @@ type TpvScene=class;
        procedure FrameUpdate; virtual;
        procedure Render; virtual;
        procedure UpdateAudio; virtual;
+       function Serialize:TObject; virtual;
+       procedure Deserialize(const aData:TObject); virtual;
       public
        property State:TpvSceneNodeState read fState;
       published
@@ -236,6 +238,8 @@ type TpvScene=class;
        procedure FrameUpdate; virtual;
        procedure Render; virtual;
        procedure UpdateAudio; virtual;
+       function Serialize:TObject; virtual;
+       procedure Deserialize(const aData:TObject); virtual;
       published
        property RootNode:TpvSceneNode read fRootNode;
        property Data:TObject read fData;
@@ -698,6 +702,15 @@ begin
  end;
 end;
 
+function TpvSceneNode.Serialize:TObject;
+begin
+ result:=nil;
+end;
+
+procedure TpvSceneNode.Deserialize(const aData:TObject);
+begin
+end;
+
 { TpvScene.TBackgroundLoadThread }
 
 constructor TpvScene.TBackgroundLoadThread.Create(const aScene:TpvScene);
@@ -998,6 +1011,15 @@ end;
 procedure TpvScene.UpdateAudio;
 begin
  fRootNode.UpdateAudio;
+end;
+
+function TpvScene.Serialize:TObject;
+begin
+ result:=nil;
+end;
+
+procedure TpvScene.Deserialize(const aData:TObject);
+begin
 end;
 
 { TpvSceneNode3D }
