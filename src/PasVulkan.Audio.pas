@@ -752,6 +752,7 @@ type PpvAudioInt32=^TpvInt32;
             TStack=TpvDynamicStack<TQueueItem>;
       private
        fAudioEngine:TpvAudio;
+       fGlobalLock:TPasMPCriticalSection;
        fLock:TPasMPCriticalSection;
        fQueue:TQueue;
        fFreeStack:TStack;
@@ -4807,6 +4808,7 @@ constructor TpvAudioCommandQueue.Create(aAudioEngine:TpvAudio);
 begin
  inherited Create;
  fAudioEngine:=aAudioEngine;
+ fGlobalLock:=TPasMPCriticalSection.Create;
  fLock:=TPasMPCriticalSection.Create;
  fQueue.Initialize;
  fFreeStack.Initialize;
@@ -4828,18 +4830,20 @@ begin
 
  FreeAndNil(fLock);
 
+ FreeAndNil(fGlobalLock);
+
  inherited Destroy;
 
 end;
 
 procedure TpvAudioCommandQueue.Lock;
 begin
- fLock.Acquire;
+ fGlobalLock.Acquire;
 end;
 
 procedure TpvAudioCommandQueue.Unlock;
 begin
- fLock.Release;
+ fGlobalLock.Release;
 end;
 
 function TpvAudioCommandQueue.AcquireQueueItem:TQueueItem;
@@ -5299,143 +5303,159 @@ procedure TpvAudioCommandQueue.Process;
 var QueueItem:TQueueItem;
     GlobalVoiceID:TpvID;
     GlobalVoice:TpvAudioSoundSampleGlobalVoice;
+    OK:Boolean;
 begin
- fLock.Acquire;
+ fGlobalLock.Acquire;
  try
-  while fQueue.Dequeue(QueueItem) do begin
+  repeat
+   fLock.Acquire;
    try
-    case QueueItem.fCommandType of
-     TQueueItem.TCommandType.SampleVoicePlay:begin
-      GlobalVoiceID:=QueueItem.fGlobalVoiceID;
-      if GlobalVoiceID<>0 then begin
-       GlobalVoice:=fAudioEngine.GlobalVoiceManager.GetGlobalVoice(GlobalVoiceID);
-       if assigned(GlobalVoice.SoundSample) then begin
-        GlobalVoice.SoundSample.Play(QueueItem.fVolume,QueueItem.fPanning,QueueItem.fRate,QueueItem.fVoiceIndexPointer,GlobalVoiceID);
+    OK:=fQueue.Dequeue(QueueItem);
+   finally
+    fLock.Release;
+   end;
+   if OK then begin
+    try
+     case QueueItem.fCommandType of
+      TQueueItem.TCommandType.SampleVoicePlay:begin
+       GlobalVoiceID:=QueueItem.fGlobalVoiceID;
+       if GlobalVoiceID<>0 then begin
+        GlobalVoice:=fAudioEngine.GlobalVoiceManager.GetGlobalVoice(GlobalVoiceID);
+        if assigned(GlobalVoice.SoundSample) then begin
+         GlobalVoice.SoundSample.Play(QueueItem.fVolume,QueueItem.fPanning,QueueItem.fRate,QueueItem.fVoiceIndexPointer,GlobalVoiceID);
+        end;
+       end else if assigned(QueueItem.fSample) then begin
+        QueueItem.fSample.Play(QueueItem.fVolume,QueueItem.fPanning,QueueItem.fRate,QueueItem.fVoiceIndexPointer);
        end;
-      end else if assigned(QueueItem.fSample) then begin
-       QueueItem.fSample.Play(QueueItem.fVolume,QueueItem.fPanning,QueueItem.fRate,QueueItem.fVoiceIndexPointer);
       end;
-     end;
-     TQueueItem.TCommandType.SampleVoicePlaySpatialization:begin
-      GlobalVoiceID:=QueueItem.fGlobalVoiceID;
-      if GlobalVoiceID<>0 then begin
-       GlobalVoice:=fAudioEngine.GlobalVoiceManager.GetGlobalVoice(GlobalVoiceID);
-       if assigned(GlobalVoice.SoundSample) then begin
-        GlobalVoice.SoundSample.PlaySpatialization(QueueItem.fVolume,QueueItem.fPanning,QueueItem.fRate,QueueItem.fSpatialization,QueueItem.fPosition,QueueItem.fVelocity,QueueItem.fLocal,QueueItem.fVoiceIndexPointer,GlobalVoiceID);
+      TQueueItem.TCommandType.SampleVoicePlaySpatialization:begin
+       GlobalVoiceID:=QueueItem.fGlobalVoiceID;
+       if GlobalVoiceID<>0 then begin
+        GlobalVoice:=fAudioEngine.GlobalVoiceManager.GetGlobalVoice(GlobalVoiceID);
+        if assigned(GlobalVoice.SoundSample) then begin
+         GlobalVoice.SoundSample.PlaySpatialization(QueueItem.fVolume,QueueItem.fPanning,QueueItem.fRate,QueueItem.fSpatialization,QueueItem.fPosition,QueueItem.fVelocity,QueueItem.fLocal,QueueItem.fVoiceIndexPointer,GlobalVoiceID);
+        end;
+       end else if assigned(QueueItem.fSample) then begin
+        QueueItem.fSample.PlaySpatialization(QueueItem.fVolume,QueueItem.fPanning,QueueItem.fRate,QueueItem.fSpatialization,QueueItem.fPosition,QueueItem.fVelocity,QueueItem.fLocal,QueueItem.fVoiceIndexPointer);
        end;
-      end else if assigned(QueueItem.fSample) then begin
-       QueueItem.fSample.PlaySpatialization(QueueItem.fVolume,QueueItem.fPanning,QueueItem.fRate,QueueItem.fSpatialization,QueueItem.fPosition,QueueItem.fVelocity,QueueItem.fLocal,QueueItem.fVoiceIndexPointer);
-      end; 
-     end;
-     TQueueItem.TCommandType.SampleVoiceStop:begin
-      GlobalVoiceID:=QueueItem.fGlobalVoiceID;
-      if GlobalVoiceID<>0 then begin
-       GlobalVoice:=fAudioEngine.GlobalVoiceManager.GetGlobalVoice(GlobalVoiceID);
-       if assigned(GlobalVoice.SoundSample) then begin
-        GlobalVoice.SoundSample.Stop(GlobalVoice.VoiceNumber);
+      end;
+      TQueueItem.TCommandType.SampleVoiceStop:begin
+       GlobalVoiceID:=QueueItem.fGlobalVoiceID;
+       if GlobalVoiceID<>0 then begin
+        GlobalVoice:=fAudioEngine.GlobalVoiceManager.GetGlobalVoice(GlobalVoiceID);
+        if assigned(GlobalVoice.SoundSample) then begin
+         GlobalVoice.SoundSample.Stop(GlobalVoice.VoiceNumber);
+        end;
+       end else if assigned(QueueItem.fSample) then begin
+        QueueItem.fSample.Stop(QueueItem.fVoiceNumber);
        end;
-      end else if assigned(QueueItem.fSample) then begin
-       QueueItem.fSample.Stop(QueueItem.fVoiceNumber);
       end;
-     end;
-     TQueueItem.TCommandType.SampleVoiceKeyOff:begin
-      GlobalVoiceID:=QueueItem.fGlobalVoiceID;
-      if GlobalVoiceID<>0 then begin
-       GlobalVoice:=fAudioEngine.GlobalVoiceManager.GetGlobalVoice(GlobalVoiceID);
-       if assigned(GlobalVoice.SoundSample) then begin
-        GlobalVoice.SoundSample.KeyOff(GlobalVoice.VoiceNumber);
+      TQueueItem.TCommandType.SampleVoiceKeyOff:begin
+       GlobalVoiceID:=QueueItem.fGlobalVoiceID;
+       if GlobalVoiceID<>0 then begin
+        GlobalVoice:=fAudioEngine.GlobalVoiceManager.GetGlobalVoice(GlobalVoiceID);
+        if assigned(GlobalVoice.SoundSample) then begin
+         GlobalVoice.SoundSample.KeyOff(GlobalVoice.VoiceNumber);
+        end;
+       end else if assigned(QueueItem.fSample) then begin
+        QueueItem.fSample.KeyOff(QueueItem.fVoiceNumber);
        end;
-      end else if assigned(QueueItem.fSample) then begin
-       QueueItem.fSample.KeyOff(QueueItem.fVoiceNumber);
       end;
-     end;
-     TQueueItem.TCommandType.SampleVoiceSetVolume:begin
-      GlobalVoiceID:=QueueItem.fGlobalVoiceID;
-      if GlobalVoiceID<>0 then begin
-       GlobalVoice:=fAudioEngine.GlobalVoiceManager.GetGlobalVoice(GlobalVoiceID);
-       if assigned(GlobalVoice.SoundSample) then begin
-        GlobalVoice.SoundSample.SetVolume(GlobalVoice.VoiceNumber,QueueItem.fVolume);
+      TQueueItem.TCommandType.SampleVoiceSetVolume:begin
+       GlobalVoiceID:=QueueItem.fGlobalVoiceID;
+       if GlobalVoiceID<>0 then begin
+        GlobalVoice:=fAudioEngine.GlobalVoiceManager.GetGlobalVoice(GlobalVoiceID);
+        if assigned(GlobalVoice.SoundSample) then begin
+         GlobalVoice.SoundSample.SetVolume(GlobalVoice.VoiceNumber,QueueItem.fVolume);
+        end;
+       end else if assigned(QueueItem.fSample) then begin
+        QueueItem.fSample.SetVolume(QueueItem.fVoiceNumber,QueueItem.fVolume);
        end;
-      end else if assigned(QueueItem.fSample) then begin
-       QueueItem.fSample.SetVolume(QueueItem.fVoiceNumber,QueueItem.fVolume);
       end;
-     end;
-     TQueueItem.TCommandType.SampleVoiceSetPanning:begin
-      GlobalVoiceID:=QueueItem.fGlobalVoiceID;
-      if GlobalVoiceID<>0 then begin
-       GlobalVoice:=fAudioEngine.GlobalVoiceManager.GetGlobalVoice(GlobalVoiceID);
-       if assigned(GlobalVoice.SoundSample) then begin
-        GlobalVoice.SoundSample.SetPanning(GlobalVoice.VoiceNumber,QueueItem.fPanning);
+      TQueueItem.TCommandType.SampleVoiceSetPanning:begin
+       GlobalVoiceID:=QueueItem.fGlobalVoiceID;
+       if GlobalVoiceID<>0 then begin
+        GlobalVoice:=fAudioEngine.GlobalVoiceManager.GetGlobalVoice(GlobalVoiceID);
+        if assigned(GlobalVoice.SoundSample) then begin
+         GlobalVoice.SoundSample.SetPanning(GlobalVoice.VoiceNumber,QueueItem.fPanning);
+        end;
+       end else if assigned(QueueItem.fSample) then begin
+        QueueItem.fSample.SetPanning(QueueItem.fVoiceNumber,QueueItem.fPanning);
        end;
-      end else if assigned(QueueItem.fSample) then begin
-       QueueItem.fSample.SetPanning(QueueItem.fVoiceNumber,QueueItem.fPanning);
       end;
-     end;
-     TQueueItem.TCommandType.SampleVoiceSetRate:begin
-      GlobalVoiceID:=QueueItem.fGlobalVoiceID;
-      if GlobalVoiceID<>0 then begin
-       GlobalVoice:=fAudioEngine.GlobalVoiceManager.GetGlobalVoice(GlobalVoiceID);
-       if assigned(GlobalVoice.SoundSample) then begin
-        GlobalVoice.SoundSample.SetRate(GlobalVoice.VoiceNumber,QueueItem.fRate);
+      TQueueItem.TCommandType.SampleVoiceSetRate:begin
+       GlobalVoiceID:=QueueItem.fGlobalVoiceID;
+       if GlobalVoiceID<>0 then begin
+        GlobalVoice:=fAudioEngine.GlobalVoiceManager.GetGlobalVoice(GlobalVoiceID);
+        if assigned(GlobalVoice.SoundSample) then begin
+         GlobalVoice.SoundSample.SetRate(GlobalVoice.VoiceNumber,QueueItem.fRate);
+        end;
+       end else if assigned(QueueItem.fSample) then begin
+        QueueItem.fSample.SetRate(QueueItem.fVoiceNumber,QueueItem.fRate);
        end;
-      end else if assigned(QueueItem.fSample) then begin
-       QueueItem.fSample.SetRate(QueueItem.fVoiceNumber,QueueItem.fRate);
       end;
-     end;
-     TQueueItem.TCommandType.SampleVoiceSetPosition:begin
-      GlobalVoiceID:=QueueItem.fGlobalVoiceID;
-      if GlobalVoiceID<>0 then begin
-       GlobalVoice:=fAudioEngine.GlobalVoiceManager.GetGlobalVoice(GlobalVoiceID);
-       if assigned(GlobalVoice.SoundSample) then begin
-        GlobalVoice.SoundSample.SetPosition(GlobalVoice.VoiceNumber,QueueItem.fSpatialization,QueueItem.fPosition,QueueItem.fVelocity,QueueItem.fLocal);
+      TQueueItem.TCommandType.SampleVoiceSetPosition:begin
+       GlobalVoiceID:=QueueItem.fGlobalVoiceID;
+       if GlobalVoiceID<>0 then begin
+        GlobalVoice:=fAudioEngine.GlobalVoiceManager.GetGlobalVoice(GlobalVoiceID);
+        if assigned(GlobalVoice.SoundSample) then begin
+         GlobalVoice.SoundSample.SetPosition(GlobalVoice.VoiceNumber,QueueItem.fSpatialization,QueueItem.fPosition,QueueItem.fVelocity,QueueItem.fLocal);
+        end;
+       end else if assigned(QueueItem.fSample) then begin
+        QueueItem.fSample.SetPosition(QueueItem.fVoiceNumber,QueueItem.fSpatialization,QueueItem.fPosition,QueueItem.fVelocity,QueueItem.fLocal);
        end;
-      end else if assigned(QueueItem.fSample) then begin
-       QueueItem.fSample.SetPosition(QueueItem.fVoiceNumber,QueueItem.fSpatialization,QueueItem.fPosition,QueueItem.fVelocity,QueueItem.fLocal);
       end;
-     end;
-     TQueueItem.TCommandType.SampleVoiceSetEffectMix:begin
-      GlobalVoiceID:=QueueItem.fGlobalVoiceID;
-      if GlobalVoiceID<>0 then begin
-       GlobalVoice:=fAudioEngine.GlobalVoiceManager.GetGlobalVoice(GlobalVoiceID);
-       if assigned(GlobalVoice.SoundSample) then begin
-        GlobalVoice.SoundSample.SetEffectMix(GlobalVoice.VoiceNumber,QueueItem.fActive);
+      TQueueItem.TCommandType.SampleVoiceSetEffectMix:begin
+       GlobalVoiceID:=QueueItem.fGlobalVoiceID;
+       if GlobalVoiceID<>0 then begin
+        GlobalVoice:=fAudioEngine.GlobalVoiceManager.GetGlobalVoice(GlobalVoiceID);
+        if assigned(GlobalVoice.SoundSample) then begin
+         GlobalVoice.SoundSample.SetEffectMix(GlobalVoice.VoiceNumber,QueueItem.fActive);
+        end;
+       end else if assigned(QueueItem.fSample) then begin
+        QueueItem.fSample.SetEffectMix(QueueItem.fVoiceNumber,QueueItem.fActive);
        end;
-      end else if assigned(QueueItem.fSample) then begin
-       QueueItem.fSample.SetEffectMix(QueueItem.fVoiceNumber,QueueItem.fActive);
+      end;
+      TQueueItem.TCommandType.MusicPlay:begin
+       if assigned(QueueItem.fMusic) then begin
+        QueueItem.fMusic.Play(QueueItem.fVolume,QueueItem.fPanning,QueueItem.fRate,QueueItem.fLoop);
+       end;
+      end;
+      TQueueItem.TCommandType.MusicStop:begin
+       if assigned(QueueItem.fMusic) then begin
+        QueueItem.fMusic.Stop;
+       end;
+      end;
+      TQueueItem.TCommandType.MusicSetVolume:begin
+       if assigned(QueueItem.fMusic) then begin
+        QueueItem.fMusic.SetVolume(QueueItem.fVolume);
+       end;
+      end;
+      TQueueItem.TCommandType.MusicSetPanning:begin
+       if assigned(QueueItem.fMusic) then begin
+        QueueItem.fMusic.SetPanning(QueueItem.fPanning);
+       end;
+      end;
+      TQueueItem.TCommandType.MusicSetRate:begin
+       if assigned(QueueItem.fMusic) then begin
+        QueueItem.fMusic.SetRate(QueueItem.fRate);
+       end;
       end;
      end;
-     TQueueItem.TCommandType.MusicPlay:begin
-      if assigned(QueueItem.fMusic) then begin
-       QueueItem.fMusic.Play(QueueItem.fVolume,QueueItem.fPanning,QueueItem.fRate,QueueItem.fLoop);
-      end;
-     end;
-     TQueueItem.TCommandType.MusicStop:begin
-      if assigned(QueueItem.fMusic) then begin
-       QueueItem.fMusic.Stop;
-      end;
-     end;
-     TQueueItem.TCommandType.MusicSetVolume:begin
-      if assigned(QueueItem.fMusic) then begin
-       QueueItem.fMusic.SetVolume(QueueItem.fVolume);
-      end;
-     end;
-     TQueueItem.TCommandType.MusicSetPanning:begin
-      if assigned(QueueItem.fMusic) then begin
-       QueueItem.fMusic.SetPanning(QueueItem.fPanning);
-      end;
-     end;
-     TQueueItem.TCommandType.MusicSetRate:begin
-      if assigned(QueueItem.fMusic) then begin
-       QueueItem.fMusic.SetRate(QueueItem.fRate);
-      end;
+    finally
+     fLock.Acquire;
+     try
+      fFreeStack.Push(QueueItem);
+     finally
+      fLock.Release;
      end;
     end;
-   finally
-    fFreeStack.Push(QueueItem);
+   end else begin
+    break;
    end;
-  end;
+  until false;
  finally
-  fLock.Release;
+  fGlobalLock.Release;
  end;
 end;
 
