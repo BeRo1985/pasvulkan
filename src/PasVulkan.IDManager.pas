@@ -102,6 +102,8 @@ type EpvIDManager=class(Exception);
        fGenerationArray:TIDManagerGenerationArray;
        fTypeArray:TIDManagerTypeArray;
        fUsedBitmap:TIDManagerUsedBitmap;
+{$else}
+       fGenerationCounter:TpvUInt32;
 {$endif}
       public
        constructor Create;
@@ -198,6 +200,8 @@ begin
  fGenerationArray:=nil;
  fTypeArray:=nil;
  fUsedBitmap:=nil;
+{$else}
+ fGenerationCounter:=0;
 {$endif}
 end;
 
@@ -308,7 +312,7 @@ begin
    Index:=TPasMPInterlocked.Increment(fIDCounter);
   end;
  end;
- result:=Index;
+ result:=Index or (TpvUInt64(TPasMPInterlocked.Increment(fGenerationCounter)) shl 32);
 end;
 {$endif}
 
