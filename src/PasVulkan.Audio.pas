@@ -400,6 +400,7 @@ type PpvAudioInt32=^TpvInt32;
        function GetGlobalVoiceID(const aSoundSample:TpvAudioSoundSample;const aVoiceNumber:TpvInt32):TpvID;
        function GetGlobalVoice(const aGlobalVoiceID:TpvID):TpvAudioSoundSampleGlobalVoice;
        function AllocateGlobalVoice(const aSoundSample:TpvAudioSoundSample;const aVoiceNumber:TpvInt32):TpvID;
+       procedure SetGlobalVoice(const aGlobalVoiceID:TpvID;const aSoundSample:TpvAudioSoundSample;const aVoiceNumber:TpvInt32);
        procedure DeallocateGlobalVoice(const aGlobalVoiceID:TpvID); overload;
        procedure DeallocateGlobalVoice(const aSoundSample:TpvAudioSoundSample;const aVoiceNumber:TpvInt32); overload;
        procedure DeallocateAllGlobalVoicesForSoundSample(const aSoundSample:TpvAudioSoundSample);
@@ -429,7 +430,7 @@ type PpvAudioInt32=^TpvInt32;
        procedure CorrectPolyphony;
        procedure FixUp;
        procedure SetPolyphony(Polyphony:TpvInt32);
-       function Play(Volume,Panning,Rate:TpvFloat;VoiceIndexPointer:TpvPointer=nil):TpvInt32;
+       function Play(Volume,Panning,Rate:TpvFloat;VoiceIndexPointer:TpvPointer=nil;PerreservedGlobalVoiceID:TpvID=0):TpvInt32;
        procedure Stop(VoiceNumber:TpvInt32);
        procedure KeyOff(VoiceNumber:TpvInt32);
        function SetVolume(VoiceNumber:TpvInt32;Volume:TpvFloat):TpvInt32;
@@ -524,7 +525,7 @@ type PpvAudioInt32=^TpvInt32;
      IpvAudioSoundSampleResource=interface(IpvResource)['{9E4ABC9F-7EBE-49D8-BD78-146A875F44FF}']
        procedure FixUp;
        procedure SetPolyphony(Polyphony:TpvInt32);
-       function Play(Volume,Panning,Rate:TpvFloat;VoiceIndexPointer:TpvPointer=nil):TpvInt32;
+       function Play(Volume,Panning,Rate:TpvFloat;VoiceIndexPointer:TpvPointer=nil;PerreservedGlobalVoiceID:TpvID=0):TpvInt32;
        procedure Stop(VoiceNumber:TpvInt32);
        procedure KeyOff(VoiceNumber:TpvInt32);
        function SetVolume(VoiceNumber:TpvInt32;Volume:TpvFloat):TpvInt32;
@@ -545,7 +546,7 @@ type PpvAudioInt32=^TpvInt32;
        function BeginLoad(const aStream:TStream):boolean; override;
        procedure FixUp;
        procedure SetPolyphony(Polyphony:TpvInt32);
-       function Play(Volume,Panning,Rate:TpvFloat;VoiceIndexPointer:TpvPointer=nil):TpvInt32;
+       function Play(Volume,Panning,Rate:TpvFloat;VoiceIndexPointer:TpvPointer=nil;PerreservedGlobalVoiceID:TpvID=0):TpvInt32;
        procedure Stop(VoiceNumber:TpvInt32);
        procedure KeyOff(VoiceNumber:TpvInt32);
        function SetVolume(VoiceNumber:TpvInt32;Volume:TpvFloat):TpvInt32;
@@ -2473,6 +2474,7 @@ end;
        function GetGlobalVoiceID(const aSoundSample:TpvAudioSoundSample;const aVoiceNumber:TpvInt32):TpvID;
        function GetGlobalVoice(const aGlobalVoiceID:TpvID):TpvAudioSoundSampleGlobalVoice;
        function AllocateGlobalVoice(const aSoundSample:TpvAudioSoundSample;const aVoiceNumber:TpvInt32):TpvID;
+       procedure SetGlobalVoice(const aGlobalVoiceID:TpvID;const aSoundSample:TpvAudioSoundSample;const aVoiceNumber:TpvInt32);
        procedure DeallocateGlobalVoice(const aGlobalVoiceID:TpvID); overload;
        procedure DeallocateGlobalVoice(const aSoundSample:TpvAudioSoundSample;const aVoiceNumber:TpvInt32); overload;
        procedure DeallocateAllGlobalVoicesForSoundSample(const aSoundSample:TpvAudioSoundSample);
@@ -2559,6 +2561,27 @@ begin
    end;
    fGlobalVoices[Index]:=GlobalVoice;
   end;
+ finally
+  fLock.ReleaseWrite;
+ end;
+end;
+
+procedure TpvAudioSoundSampleGlobalVoiceManager.SetGlobalVoice(const aGlobalVoiceID:TpvID;const aSoundSample:TpvAudioSoundSample;const aVoiceNumber:TpvInt32);
+var Index:TpvUInt32;
+    GlobalVoice:PpvAudioSoundSampleGlobalVoice;
+begin
+ fLock.AcquireWrite;
+ try
+  if fIDManager.CheckID(aGlobalVoiceID) then begin
+   Index:=aGlobalVoiceID and TpvUInt32($ffffffff);
+   if (Index>0) and (Index<=length(fGlobalVoices)) then begin
+    GlobalVoice:=@fGlobalVoices[Index];
+    fHashMap.Delete(GlobalVoice^);
+    GlobalVoice^.SoundSample:=aSoundSample;
+    GlobalVoice^.VoiceNumber:=aVoiceNumber;
+    fHashMap.Add(GlobalVoice^,aGlobalVoiceID);
+   end;
+  end; 
  finally
   fLock.ReleaseWrite;
  end;
@@ -2781,7 +2804,7 @@ begin
  end;
 end;
 
-function TpvAudioSoundSample.Play(Volume,Panning,Rate:TpvFloat;VoiceIndexPointer:TpvPointer=nil):TpvInt32;
+function TpvAudioSoundSample.Play(Volume,Panning,Rate:TpvFloat;VoiceIndexPointer:TpvPointer=nil;PerreservedGlobalVoiceID:TpvID=0):TpvInt32;
 var BestVoice,BestVolume,i:TpvInt32;
     BestAge:TpvInt64;
     Voice:TpvAudioSoundSampleVoice;
@@ -2813,7 +2836,12 @@ begin
  end;
  if (BestVoice>=0) and (BestVoice<length(Voices)) then begin
   Voice:=Voices[BestVoice];
-  Voice.GlobalVoiceID:=AudioEngine.GlobalVoiceManager.AllocateGlobalVoice(self,BestVoice);
+  if PerreservedGlobalVoiceID<>0 then begin
+   Voice.GlobalVoiceID:=PerreservedGlobalVoiceID;
+   AudioEngine.GlobalVoiceManager.SetGlobalVoice(PerreservedGlobalVoiceID,self,BestVoice);
+  end else begin
+   Voice.GlobalVoiceID:=AudioEngine.GlobalVoiceManager.AllocateGlobalVoice(self,BestVoice);
+  end;
   if assigned(Voice.VoiceIndexPointer) then begin
    InterlockedExchange(TpvInt32(Voice.VoiceIndexPointer^),-1);
    Voice.VoiceIndexPointer:=nil;
@@ -3404,7 +3432,7 @@ begin
  fSample.SetPolyphony(Polyphony);
 end;
 
-function TpvAudioSoundSampleResource.Play(Volume,Panning,Rate:TpvFloat;VoiceIndexPointer:TpvPointer=nil):TpvInt32;
+function TpvAudioSoundSampleResource.Play(Volume,Panning,Rate:TpvFloat;VoiceIndexPointer:TpvPointer=nil;PerreservedGlobalVoiceID:TpvID=0):TpvInt32;
 begin
  result:=fSample.Play(Volume,Panning,Rate,VoiceIndexPointer);
 end;
