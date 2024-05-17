@@ -73,6 +73,7 @@ uses {$ifdef windows}Windows,{$endif}SysUtils,Classes,Math,SyncObjs,
      PasVulkan.Collections,
      PasVulkan.Math,
      PasVulkan.Audio.HRTFTables,
+     PasVulkan.IDManager,
      PasVulkan.Resources;
 
 const SampleFixUp=1024;
@@ -348,6 +349,7 @@ type PpvAudioInt32=^TpvInt32;
        LastElevation:TpvFloat;
        LastAzimuth:TpvFloat;
        VoiceIndexPointer:TpvPointer;
+       GlobalVoiceID:TpvID;
        procedure UpdateSpatialization;
        function GetSampleLength(CountSamplesValue:TpvInt32):TpvInt32;
        procedure PreClickRemoval(Buffer:TpvPointer);
@@ -372,6 +374,36 @@ type PpvAudioInt32=^TpvInt32;
      TpvAudioSoundSampleVoices=array of TpvAudioSoundSampleVoice;
 
      TpvAudioSoundSamples=class;
+
+     TpvAudioSoundSampleGlobalVoice=record
+      public
+       SoundSample:TpvAudioSoundSample;
+       VoiceNumber:TpvInt32;
+       constructor Create(const aSoundSample:TpvAudioSoundSample;const aVoiceNumber:TpvInt32);
+     end;
+     PpvAudioSoundSampleGlobalVoice=^TpvAudioSoundSampleGlobalVoice;
+
+     TpvAudioSoundSampleGlobalVoices=array of TpvAudioSoundSampleGlobalVoice;
+
+     TpvAudioSoundSampleGlobalVoiceHashMap=class(TpvHashMap<TpvAudioSoundSampleGlobalVoice,TpvID>);
+      
+     TpvAudioSoundSampleGlobalVoiceManager=class
+      private
+       fAudioEngine:TpvAudio;
+       fLock:TPasMPMultipleReaderSingleWriterLock;
+       fGlobalVoices:TpvAudioSoundSampleGlobalVoices;
+       fIDManager:TpvIDManager;
+       fHashMap:TpvAudioSoundSampleGlobalVoiceHashMap;
+      public
+       constructor Create(aAudioEngine:TpvAudio);
+       destructor Destroy; override;
+       function GetGlobalVoiceID(const aSoundSample:TpvAudioSoundSample;const aVoiceNumber:TpvInt32):TpvID;
+       function GetGlobalVoice(const aGlobalVoiceID:TpvID):TpvAudioSoundSampleGlobalVoice;
+       function AllocateGlobalVoice(const aSoundSample:TpvAudioSoundSample;const aVoiceNumber:TpvInt32):TpvID;
+       procedure DeallocateGlobalVoice(const aGlobalVoiceID:TpvID); overload;
+       procedure DeallocateGlobalVoice(const aSoundSample:TpvAudioSoundSample;const aVoiceNumber:TpvInt32); overload;
+       procedure DeallocateAllGlobalVoicesForSoundSample(const aSoundSample:TpvAudioSoundSample);
+     end;
 
      TpvAudioSoundSample=class
       public
@@ -656,6 +688,83 @@ type PpvAudioInt32=^TpvInt32;
        property Terminated;
      end;
 
+{    TpvAudioCommandQueue=class
+      public
+       type TGlobalVoice=record
+             Sample:TpvAudioSoundSample;
+             VoiceNumber:TpvInt32;
+            end;
+            PGlobalVoice=^TGlobalVoice;
+            TGlobalVoices=array of TGlobalVoice;
+            TGlobalVoiceIDManager=TpvIDManager;
+            TQueueItem=class 
+             public
+              type TCommandType=
+                    (
+                     SampleVoicePlay,
+                     SampleVoiceStop,
+                     SampleVoiceKeyOff,
+                     SampleVoiceSetVolume,
+                     SampleVoiceSetPanning,
+                     SampleVoiceSetRate,
+                     SampleVoiceSetPosition,
+                     SampleVoiceSetEffectMix,
+                     MusicPlay,
+                     MusicStop,
+                     MusicSetVolume,
+                     MusicSetPanning,
+                     MusicSetRate 
+                    );
+                    PCommandType=^TCommandType;
+             private
+              fCommandType:TCommandType;
+              fSample:TpvAudioSoundSample;
+              fMusic:TpvAudioSoundMusic;
+              fVoiceNumber:TpvInt32;
+              fVolume:TpvFloat;
+              fPanning:TpvFloat;
+              fRate:TpvFloat;
+              fPosition:TpvVector3;
+              fSpatialization:LongBool;
+              fLocal:LongBool;
+              fActive:LongBool;
+              fVoiceIndexPointer:TpvPointer;              
+             public
+            end; 
+            TQueue=TpvDynamicQueue<TQueueItem>;
+      private
+       fAudioEngine:TpvAudio;
+       fCriticalSection:TCriticalSection;
+       fQueue:TQueue;
+      public
+       constructor Create(aAudioEngine:TpvAudio);
+       destructor Destroy; override;
+       procedure Lock;
+       procedure Unlock;
+       function SampleVoicePlay(const aSample:TpvAudioSoundSample;const aVolume,aPanning,aRate:TpvFloat;const aVoiceIndexPointer:TpvPointer=nil):TpvID;
+       procedure SampleVoiceStop(const aSample:TpvAudioSoundSample;const aVoiceNumber:TpvInt32);
+       procedure SampleVoiceStop(const aGlobalVoiceID:TpvUInt32);
+       procedure SampleVoiceKeyOff(const aSample:TpvAudioSoundSample;const aVoiceNumber:TpvInt32);
+       procedure SampleVoiceKeyOff(const aGlobalVoiceID:TpvUInt32);       
+       procedure SampleVoiceSetVolume(const aSample:TpvAudioSoundSample;const aVoiceNumber:TpvInt32;const aVolume:TpvFloat);
+       procedure SampleVoiceSetVolume(const aGlobalVoiceID:TpvUInt32;const aVolume:TpvFloat);
+       procedure SampleVoiceSetPanning(const aSample:TpvAudioSoundSample;const aVoiceNumber:TpvInt32;const aPanning:TpvFloat);
+       procedure SampleVoiceSetPanning(const aGlobalVoiceID:TpvUInt32;const aPanning:TpvFloat);
+       procedure SampleVoiceSetRate(const aSample:TpvAudioSoundSample;const aVoiceNumber:TpvInt32;const aRate:TpvFloat);
+       procedure SampleVoiceSetRate(const aGlobalVoiceID:TpvUInt32;const aRate:TpvFloat);
+       procedure SampleVoiceSetPosition(const aSample:TpvAudioSoundSample;const aVoiceNumber:TpvInt32;const aSpatialization:LongBool;const aPosition,aVelocity:TpvVector3;const aLocal:LongBool=false);
+       procedure SampleVoiceSetPosition(const aGlobalVoiceID:TpvUInt32;const aSpatialization:LongBool;const aPosition,aVelocity:TpvVector3;const aLocal:LongBool=false);
+       procedure SampleVoiceSetEffectMix(const aSample:TpvAudioSoundSample;const aVoiceNumber:TpvInt32;const aActive:LongBool);
+       procedure SampleVoiceSetEffectMix(const aGlobalVoiceID:TpvUInt32;const aActive:LongBool);
+       procedure MusicPlay(const aMusic:TpvAudioSoundMusic;const aVolume,aPanning,aRate:TpvFloat;const aLoop:boolean);
+       procedure MusicStop(const aMusic:TpvAudioSoundMusic);
+       procedure MusicSetVolume(const aMusic:TpvAudioSoundMusic;const aVolume:TpvFloat);
+       procedure MusicSetPanning(const aMusic:TpvAudioSoundMusic;const aPanning:TpvFloat);
+       procedure MusicSetRate(const aMusic:TpvAudioSoundMusic;const aRate:TpvFloat);
+       procedure Process; 
+      end;
+}
+
      TpvAudio=class
       private
        procedure CalcEvIndices(ev:TpvFloat;evidx:PpvAudioInt32s;var evmu:TpvFloat);
@@ -732,6 +841,7 @@ type PpvAudioInt32=^TpvInt32;
        OuterAngle:TpvScalar;
        OuterGain:TpvScalar;
        OuterGainHF:TpvScalar;
+       GlobalVoiceManager:TpvAudioSoundSampleGlobalVoiceManager;
        constructor Create(ASampleRate,AChannels,ABits,ABufferSamples:TpvInt32);
        destructor Destroy; override;
        procedure SetMixerMasterVolume(NewVolume:TpvFloat);
@@ -1090,6 +1200,7 @@ begin
   HRTFLength:=HRIR_MAX_LENGTH;
  end;
  HRTFMask:=HRTFLength-1;
+ GlobalVoiceID:=0;
 end;
 
 destructor TpvAudioSoundSampleVoice.Destroy;
@@ -2328,15 +2439,215 @@ begin
     InterlockedExchange(TpvInt32(VoiceIndexPointer^),-1);
     VoiceIndexPointer:=nil;
    end;
+   if GlobalVoiceID<>0 then begin
+    AudioEngine.GlobalVoiceManager.DeallocateGlobalVoice(GlobalVoiceID);
+    GlobalVoiceID:=0;
+   end;
   end;
  end else begin
   if (LastLeft=0) and (LastRight=0) then begin
    Dequeue;
    NextFree:=Sample.FreeVoice;
    Sample.FreeVoice:=self;
+   if GlobalVoiceID<>0 then begin
+    AudioEngine.GlobalVoiceManager.DeallocateGlobalVoice(GlobalVoiceID);
+    GlobalVoiceID:=0;
+   end;
   end;
  end;
 end;
+
+(*
+     TpvAudioSoundSampleGlobalVoiceManager=class
+      private
+       fAudioEngine:TpvAudio;
+       fCriticalSection:TCriticalSection;
+       fGlobalVoices:TpvAudioSoundSampleGlobalVoices;
+       fGlobalVoiceIDManager:TpvIDManager;
+       fHashMap:TpvAudioSoundSampleGlobalVoiceHashMap;
+      public
+       constructor Create(aAudioEngine:TpvAudio);
+       destructor Destroy; override;
+       procedure Lock;
+       procedure Unlock;
+       function GetGlobalVoiceID(const aSoundSample:TpvAudioSoundSample;const aVoiceNumber:TpvInt32):TpvID;
+       function GetGlobalVoice(const aGlobalVoiceID:TpvID):TpvAudioSoundSampleGlobalVoice;
+       function AllocateGlobalVoice(const aSoundSample:TpvAudioSoundSample;const aVoiceNumber:TpvInt32):TpvID;
+       procedure DeallocateGlobalVoice(const aGlobalVoiceID:TpvID); overload;
+       procedure DeallocateGlobalVoice(const aSoundSample:TpvAudioSoundSample;const aVoiceNumber:TpvInt32); overload;
+       procedure DeallocateAllGlobalVoicesForSoundSample(const aSoundSample:TpvAudioSoundSample);
+     end;
+*)
+
+{ TpvAudioSoundSampleGlobalVoice }
+
+constructor TpvAudioSoundSampleGlobalVoice.Create(const aSoundSample:TpvAudioSoundSample;const aVoiceNumber:TpvInt32);
+begin
+ SoundSample:=aSoundSample;
+ VoiceNumber:=aVoiceNumber;
+end;
+
+{ TpvAudioSoundSampleGlobalVoiceManager }
+
+constructor TpvAudioSoundSampleGlobalVoiceManager.Create(aAudioEngine:TpvAudio);
+begin
+ inherited Create;
+ fAudioEngine:=aAudioEngine;
+ fLock:=TPasMPMultipleReaderSingleWriterLock.Create;
+ fGlobalVoices:=nil;
+ fIDManager:=TpvIDManager.Create;
+ fHashMap:=TpvAudioSoundSampleGlobalVoiceHashMap.Create(0);
+end;
+
+destructor TpvAudioSoundSampleGlobalVoiceManager.Destroy;
+begin
+ FreeAndNil(fHashMap);
+ FreeAndNil(fIDManager);
+ FreeAndNil(fLock);
+ fGlobalVoices:=nil;
+ inherited Destroy;
+end;
+
+function TpvAudioSoundSampleGlobalVoiceManager.GetGlobalVoiceID(const aSoundSample:TpvAudioSoundSample;const aVoiceNumber:TpvInt32):TpvID;
+begin
+ fLock.AcquireRead;
+ try
+  result:=fHashMap.Values[TpvAudioSoundSampleGlobalVoice.Create(aSoundSample,aVoiceNumber)];
+ finally
+  fLock.ReleaseRead;
+ end;
+end;
+
+function TpvAudioSoundSampleGlobalVoiceManager.GetGlobalVoice(const aGlobalVoiceID:TpvID):TpvAudioSoundSampleGlobalVoice;
+var Index:TpvUInt32;
+begin
+ fLock.AcquireRead;
+ try
+  Index:=aGlobalVoiceID and TpvUInt32($ffffffff);
+  if (Index>0) and (Index<=length(fGlobalVoices)) then begin
+   result:=fGlobalVoices[Index];
+  end else begin
+   result:=TpvAudioSoundSampleGlobalVoice.Create(nil,-1);
+  end;
+ finally
+  fLock.ReleaseRead;
+ end;
+end;
+
+function TpvAudioSoundSampleGlobalVoiceManager.AllocateGlobalVoice(const aSoundSample:TpvAudioSoundSample;const aVoiceNumber:TpvInt32):TpvID;
+var GlobalVoice:TpvAudioSoundSampleGlobalVoice;
+    Index:TpvUInt32;
+    OldCount,OtherIndex:TpvSizeInt;
+    GlobalVoicePointer:PpvAudioSoundSampleGlobalVoice;
+begin
+ fLock.AcquireWrite;
+ try
+  GlobalVoice:=TpvAudioSoundSampleGlobalVoice.Create(aSoundSample,aVoiceNumber);
+  result:=fHashMap.Values[GlobalVoice];
+  if result=0 then begin
+   result:=fIDManager.AllocateID(0);
+   fHashMap.Add(GlobalVoice,result);
+   Index:=result and TpvUInt32($ffffffff);
+   if (Index+1)>length(fGlobalVoices) then begin
+    OldCount:=length(fGlobalVoices);
+    SetLength(fGlobalVoices,(Index+1)+((Index+2) shr 1));
+    for OtherIndex:=OldCount to length(fGlobalVoices)-1 do begin
+     GlobalVoicePointer:=@fGlobalVoices[OtherIndex];
+     GlobalVoicePointer^.SoundSample:=nil;
+     GlobalVoicePointer^.VoiceNumber:=-1;
+    end;
+   end;
+   fGlobalVoices[Index]:=GlobalVoice;
+  end;
+ finally
+  fLock.ReleaseWrite;
+ end;
+end;
+
+procedure TpvAudioSoundSampleGlobalVoiceManager.DeallocateGlobalVoice(const aGlobalVoiceID:TpvID);
+var Index:TpvUInt32;
+    GlobalVoice:PpvAudioSoundSampleGlobalVoice;
+begin
+ if aGlobalVoiceID<>0 then begin
+  fLock.AcquireWrite;
+  try
+   Index:=aGlobalVoiceID and TpvUInt32($ffffffff);
+   if (Index>0) and (Index<=length(fGlobalVoices)) then begin
+    GlobalVoice:=@fGlobalVoices[Index];
+    fHashMap.Delete(GlobalVoice^);
+    fIDManager.FreeID(aGlobalVoiceID);
+    GlobalVoice^.SoundSample:=nil;
+    GlobalVoice^.VoiceNumber:=-1;
+   end;
+  finally
+   fLock.ReleaseWrite;
+  end;
+ end;
+end;
+
+procedure TpvAudioSoundSampleGlobalVoiceManager.DeallocateGlobalVoice(const aSoundSample:TpvAudioSoundSample;const aVoiceNumber:TpvInt32);
+var Index:TpvUInt32;
+    GlobalVoiceID:TpvID;
+    GlobalVoice:PpvAudioSoundSampleGlobalVoice;
+begin
+ if assigned(aSoundSample) and (aVoiceNumber>=0) then begin
+  fLock.AcquireWrite;
+  try
+   GlobalVoiceID:=fHashMap.Values[TpvAudioSoundSampleGlobalVoice.Create(aSoundSample,aVoiceNumber)];
+   Index:=GlobalVoiceID and TpvUInt32($ffffffff);
+   if (Index>0) and (Index<=length(fGlobalVoices)) then begin
+    GlobalVoice:=@fGlobalVoices[Index];
+    fHashMap.Delete(GlobalVoice^);
+    fIDManager.FreeID(GlobalVoiceID);
+    GlobalVoice^.SoundSample:=nil;
+    GlobalVoice^.VoiceNumber:=-1;
+   end;
+  finally
+   fLock.ReleaseWrite;
+  end;
+ end;
+end;
+
+procedure TpvAudioSoundSampleGlobalVoiceManager.DeallocateAllGlobalVoicesForSoundSample(const aSoundSample:TpvAudioSoundSample);
+type TIDs=array of TpvID;
+var Count:TpvSizeInt;
+    GlobalVoice:PpvAudioSoundSampleGlobalVoice;
+    Entity:TpvAudioSoundSampleGlobalVoiceHashMap.TEntity;
+    IDs:TIDs;
+begin
+ if assigned(aSoundSample) then begin
+  fLock.AcquireWrite;
+  try
+   IDs:=nil;
+   try
+    Count:=0;
+    for Entity in fHashMap.Entities do begin
+     if Entity.Key.SoundSample=aSoundSample then begin
+      if (Count+1)>length(IDs) then begin
+       SetLength(IDs,(Count+1)*2);
+      end;
+      IDs[Count]:=Entity.Value;
+      inc(Count);
+     end;
+    end;
+    while Count>0 do begin
+     dec(Count);
+     GlobalVoice:=@fGlobalVoices[IDs[Count] and TpvUInt32($ffffffff)];
+     fHashMap.Delete(GlobalVoice^);
+     GlobalVoice^.SoundSample:=nil;
+     GlobalVoice^.VoiceNumber:=-1;
+     fIDManager.FreeID(IDs[Count]);
+    end;
+   finally
+    IDs:=nil;
+   end;
+  finally
+   fLock.ReleaseWrite;
+  end;
+ end;
+end;
+
+{ TpvAudioSoundSample }
 
 constructor TpvAudioSoundSample.Create(AAudioEngine:TpvAudio;ASoundSamples:TpvAudioSoundSamples);
 begin
@@ -2363,6 +2674,7 @@ destructor TpvAudioSoundSample.Destroy;
 var i:TpvInt32;
     Voice:TpvAudioSoundSampleVoice;
 begin
+ AudioEngine.GlobalVoiceManager.DeallocateAllGlobalVoicesForSoundSample(self);
  SoundSamples.Remove(self);
  if length(Name)>0 then begin
   SoundSamples.HashMap.Delete(Name);
@@ -2501,6 +2813,7 @@ begin
  end;
  if (BestVoice>=0) and (BestVoice<length(Voices)) then begin
   Voice:=Voices[BestVoice];
+  Voice.GlobalVoiceID:=AudioEngine.GlobalVoiceManager.AllocateGlobalVoice(self,BestVoice);
   if assigned(Voice.VoiceIndexPointer) then begin
    InterlockedExchange(TpvInt32(Voice.VoiceIndexPointer^),-1);
    Voice.VoiceIndexPointer:=nil;
@@ -2521,6 +2834,12 @@ begin
  if (VoiceNumber>=0) and (VoiceNumber<length(Voices)) then begin
   Voice:=Voices[VoiceNumber];
   Voice.Active:=false;
+  if Voice.GlobalVoiceID<>0 then begin
+   AudioEngine.GlobalVoiceManager.DeallocateGlobalVoice(Voice.GlobalVoiceID);
+   Voice.GlobalVoiceID:=0;
+  end else begin
+   AudioEngine.GlobalVoiceManager.DeallocateGlobalVoice(self,VoiceNumber);
+  end;
   if assigned(Voice.VoiceIndexPointer) then begin
    InterlockedExchange(TpvInt32(Voice.VoiceIndexPointer^),-1);
    Voice.VoiceIndexPointer:=nil;
@@ -4404,6 +4723,7 @@ begin
  inherited Create;
  AudioInstance:=self;
  CriticalSection:=TCriticalSection.Create;
+ GlobalVoiceManager:=TpvAudioSoundSampleGlobalVoiceManager.Create(self);
  SampleRate:=ASampleRate;
  Channels:=AChannels;
  Bits:=ABits;
@@ -4506,6 +4826,7 @@ begin
  FreeMem(MixingBuffer);
  FreeMem(EffectMixingBuffer);
  FreeMem(OutputBuffer);
+ FreeAndNil(GlobalVoiceManager);
  FreeAndNil(CriticalSection);
  AudioInstance:=nil;
  inherited Destroy;
