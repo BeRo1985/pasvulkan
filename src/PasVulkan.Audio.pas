@@ -828,7 +828,7 @@ type PpvAudioInt32=^TpvInt32;
        AGC:TpvInt32;
        AGCCounter:TpvInt32;
        AGCInterval:TpvInt32;
-       CriticalSection:TCriticalSection;
+       CriticalSection:TPasMPCriticalSection;
        CubicSplineTable:TpvAudioResamplerCubicSplineArray;
        ListenerViewMatrix:TpvMatrix4x4;
        ListenerVelocity:TpvVector3;
@@ -863,6 +863,7 @@ type PpvAudioInt32=^TpvInt32;
        OuterGain:TpvScalar;
        OuterGainHF:TpvScalar;
        GlobalVoiceManager:TpvAudioSoundSampleGlobalVoiceManager;
+       CommandQueue:TpvAudioCommandQueue;
        constructor Create(ASampleRate,AChannels,ABits,ABufferSamples:TpvInt32);
        destructor Destroy; override;
        procedure SetMixerMasterVolume(NewVolume:TpvFloat);
@@ -4802,88 +4803,6 @@ end;
 
 { TpvAudioCommandQueue }
 
-{ TpvAudioCommandQueue=class
-      public
-       type TGlobalVoice=record
-             Sample:TpvAudioSoundSample;
-             VoiceNumber:TpvInt32;
-            end;
-            PGlobalVoice=^TGlobalVoice;
-            TGlobalVoices=array of TGlobalVoice;
-            TGlobalVoiceIDManager=TpvIDManager;
-            TQueueItem=class
-             public
-              type TCommandType=
-                    (
-                     SampleVoicePlay,
-                     SampleVoicePlaySpatialization,
-                     SampleVoiceStop,
-                     SampleVoiceKeyOff,
-                     SampleVoiceSetVolume,
-                     SampleVoiceSetPanning,
-                     SampleVoiceSetRate,
-                     SampleVoiceSetPosition,
-                     SampleVoiceSetEffectMix,
-                     MusicPlay,
-                     MusicStop,
-                     MusicSetVolume,
-                     MusicSetPanning,
-                     MusicSetRate
-                    );
-                    PCommandType=^TCommandType;
-             private
-              fCommandType:TCommandType;
-              fSample:TpvAudioSoundSample;
-              fMusic:TpvAudioSoundMusic;
-              fVoiceNumber:TpvInt32;
-              fVolume:TpvFloat;
-              fPanning:TpvFloat;
-              fRate:TpvFloat;
-              fPosition:TpvVector3;
-              fSpatialization:LongBool;
-              fLocal:LongBool;
-              fActive:LongBool;
-              fVoiceIndexPointer:TpvPointer;
-             public
-            end;
-            TQueue=TpvDynamicQueue<TQueueItem>;
-            TStack=TpvDynamicStack<TQueueItem>;
-      private
-       fAudioEngine:TpvAudio;
-       fLock:TPasMPCriticalSection;
-       fQueue:TQueue;
-       fFreeStack:TStack;
-       function AcquireQueueItem:TQueueItem;
-      public
-       constructor Create(aAudioEngine:TpvAudio);
-       destructor Destroy; override;
-       procedure Lock;
-       procedure Unlock;
-       function SampleVoicePlay(const aSample:TpvAudioSoundSample;const aVolume,aPanning,aRate:TpvFloat;const aVoiceIndexPointer:TpvPointer=nil):TpvID;
-       function SampleVoicePlaySpatialization(const aSample:TpvAudioSoundSample;const aVolume,aPanning,aRate:TpvFloat;const aSpatialization:LongBool;const aPosition,aVelocity:TpvVector3;const aLocal:LongBool=false;const aVoiceIndexPointer:TpvPointer=nil):TpvID;
-       procedure SampleVoiceStop(const aSample:TpvAudioSoundSample;const aVoiceNumber:TpvInt32);
-       procedure SampleVoiceStop(const aGlobalVoiceID:TpvID);
-       procedure SampleVoiceKeyOff(const aSample:TpvAudioSoundSample;const aVoiceNumber:TpvInt32);
-       procedure SampleVoiceKeyOff(const aGlobalVoiceID:TpvID);
-       procedure SampleVoiceSetVolume(const aSample:TpvAudioSoundSample;const aVoiceNumber:TpvInt32;const aVolume:TpvFloat);
-       procedure SampleVoiceSetVolume(const aGlobalVoiceID:TpvID;const aVolume:TpvFloat);
-       procedure SampleVoiceSetPanning(const aSample:TpvAudioSoundSample;const aVoiceNumber:TpvInt32;const aPanning:TpvFloat);
-       procedure SampleVoiceSetPanning(const aGlobalVoiceID:TpvID;const aPanning:TpvFloat);
-       procedure SampleVoiceSetRate(const aSample:TpvAudioSoundSample;const aVoiceNumber:TpvInt32;const aRate:TpvFloat);
-       procedure SampleVoiceSetRate(const aGlobalVoiceID:TpvID;const aRate:TpvFloat);
-       procedure SampleVoiceSetPosition(const aSample:TpvAudioSoundSample;const aVoiceNumber:TpvInt32;const aSpatialization:LongBool;const aPosition,aVelocity:TpvVector3;const aLocal:LongBool=false);
-       procedure SampleVoiceSetPosition(const aGlobalVoiceID:TpvID;const aSpatialization:LongBool;const aPosition,aVelocity:TpvVector3;const aLocal:LongBool=false);
-       procedure SampleVoiceSetEffectMix(const aSample:TpvAudioSoundSample;const aVoiceNumber:TpvInt32;const aActive:LongBool);
-       procedure SampleVoiceSetEffectMix(const aGlobalVoiceID:TpvID;const aActive:LongBool);
-       procedure MusicPlay(const aMusic:TpvAudioSoundMusic;const aVolume,aPanning,aRate:TpvFloat;const aLoop:boolean);
-       procedure MusicStop(const aMusic:TpvAudioSoundMusic);
-       procedure MusicSetVolume(const aMusic:TpvAudioSoundMusic;const aVolume:TpvFloat);
-       procedure MusicSetPanning(const aMusic:TpvAudioSoundMusic;const aPanning:TpvFloat);
-       procedure MusicSetRate(const aMusic:TpvAudioSoundMusic;const aRate:TpvFloat);
-       procedure Process;
-     end;
-}
-
 constructor TpvAudioCommandQueue.Create(aAudioEngine:TpvAudio);
 begin
  inherited Create;
@@ -5533,8 +5452,9 @@ var i,TableLengthSize:TpvInt32;
 begin
  inherited Create;
  AudioInstance:=self;
- CriticalSection:=TCriticalSection.Create;
+ CriticalSection:=TPasMPCriticalSection.Create;
  GlobalVoiceManager:=TpvAudioSoundSampleGlobalVoiceManager.Create(self);
+ CommandQueue:=TpvAudioCommandQueue.Create(self);
  SampleRate:=ASampleRate;
  Channels:=AChannels;
  Bits:=ABits;
@@ -5638,6 +5558,7 @@ begin
  FreeMem(EffectMixingBuffer);
  FreeMem(OutputBuffer);
  FreeAndNil(GlobalVoiceManager);
+ FreeAndNil(CommandQueue);
  FreeAndNil(CriticalSection);
  AudioInstance:=nil;
  inherited Destroy;
@@ -5813,6 +5734,8 @@ begin
   if assigned(UpdateHook) then begin
    UpdateHook;
   end;
+
+  CommandQueue.Process;
 
   // Clearing
   FillChar(MixingBuffer^,MixingBufferSize,AnsiChar(#0));
