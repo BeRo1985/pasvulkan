@@ -385,6 +385,8 @@ type PpvAudioInt32=^TpvInt32;
 
      TpvAudioSoundSampleGlobalVoices=array of TpvAudioSoundSampleGlobalVoice;
 
+     TpvAudioSoundSampleGlobalVoiceIDs=array of TpvID;
+
      TpvAudioSoundSampleGlobalVoiceHashMap=class(TpvHashMap<TpvAudioSoundSampleGlobalVoice,TpvID>);
       
      { TpvAudioSoundSampleGlobalVoiceManager }
@@ -394,6 +396,7 @@ type PpvAudioInt32=^TpvInt32;
        fAudioEngine:TpvAudio;
        fLock:TPasMPMultipleReaderSingleWriterLock;
        fGlobalVoices:TpvAudioSoundSampleGlobalVoices;
+       fGlobalVoiceIDs:TpvAudioSoundSampleGlobalVoiceIDs;
        fIDManager:TpvIDManager;
        fHashMap:TpvAudioSoundSampleGlobalVoiceHashMap;
       public
@@ -406,6 +409,7 @@ type PpvAudioInt32=^TpvInt32;
        procedure DeallocateGlobalVoice(const aGlobalVoiceID:TpvID); overload;
        procedure DeallocateGlobalVoice(const aSoundSample:TpvAudioSoundSample;const aVoiceNumber:TpvInt32); overload;
        procedure DeallocateAllGlobalVoicesForSoundSample(const aSoundSample:TpvAudioSoundSample);
+       function CheckGlobalVoiceID(const aGlobalVoiceID:TpvID):Boolean;
      end;
 
      TpvAudioSoundSample=class
@@ -2490,6 +2494,7 @@ begin
  fAudioEngine:=aAudioEngine;
  fLock:=TPasMPMultipleReaderSingleWriterLock.Create;
  fGlobalVoices:=nil;
+ fGlobalVoiceIDs:=nil;
  fIDManager:=TpvIDManager.Create;
  fHashMap:=TpvAudioSoundSampleGlobalVoiceHashMap.Create(0);
 end;
@@ -2500,6 +2505,7 @@ begin
  FreeAndNil(fIDManager);
  FreeAndNil(fLock);
  fGlobalVoices:=nil;
+ fGlobalVoiceIDs:=nil;
  inherited Destroy;
 end;
 
@@ -2520,9 +2526,15 @@ begin
  try
   Index:=aGlobalVoiceID and TpvUInt32($ffffffff);
   if (Index>0) and (Index<=length(fGlobalVoices)) then begin
-   result:=fGlobalVoices[Index];
+   if fGlobalVoiceIDs[Index]=aGlobalVoiceID then begin
+    result:=fGlobalVoices[Index];
+   end else begin
+    result.SoundSample:=nil;
+    result.VoiceNumber:=-1;
+   end;
   end else begin
-   result:=TpvAudioSoundSampleGlobalVoice.Create(nil,-1);
+   result.SoundSample:=nil;
+   result.VoiceNumber:=-1;
   end;
  finally
   fLock.ReleaseRead;
@@ -2557,7 +2569,15 @@ begin
       GlobalVoicePointer^.VoiceNumber:=-1;
      end;
     end;
+    if (Index+1)>length(fGlobalVoiceIDs) then begin
+     OldCount:=length(fGlobalVoiceIDs);
+     SetLength(fGlobalVoiceIDs,(Index+1)+((Index+2) shr 1));
+     for OtherIndex:=OldCount to length(fGlobalVoiceIDs)-1 do begin
+      fGlobalVoiceIDs[OtherIndex]:=0;
+     end;
+    end;
     fGlobalVoices[Index]:=GlobalVoice;
+    fGlobalVoiceIDs[Index]:=result;
    end;
   finally
    fLock.ReleaseWrite;
@@ -2597,6 +2617,7 @@ begin
   try
    Index:=aGlobalVoiceID and TpvUInt32($ffffffff);
    if (Index>0) and (Index<=length(fGlobalVoices)) then begin
+    fGlobalVoiceIDs[Index]:=0;
     GlobalVoice:=@fGlobalVoices[Index];
     fHashMap.Delete(GlobalVoice^);
     fIDManager.FreeID(aGlobalVoiceID);
@@ -2620,6 +2641,7 @@ begin
    GlobalVoiceID:=fHashMap.Values[TpvAudioSoundSampleGlobalVoice.Create(aSoundSample,aVoiceNumber)];
    Index:=GlobalVoiceID and TpvUInt32($ffffffff);
    if (Index>0) and (Index<=length(fGlobalVoices)) then begin
+    fGlobalVoiceIDs[Index]:=0;
     GlobalVoice:=@fGlobalVoices[Index];
     fHashMap.Delete(GlobalVoice^);
     fIDManager.FreeID(GlobalVoiceID);
@@ -2634,7 +2656,8 @@ end;
 
 procedure TpvAudioSoundSampleGlobalVoiceManager.DeallocateAllGlobalVoicesForSoundSample(const aSoundSample:TpvAudioSoundSample);
 type TIDs=array of TpvID;
-var Count:TpvSizeInt;
+var Index:TpvUInt32;
+    Count:TpvSizeInt;
     GlobalVoice:PpvAudioSoundSampleGlobalVoice;
     Entity:TpvAudioSoundSampleGlobalVoiceHashMap.TEntity;
     IDs:TIDs;
@@ -2656,7 +2679,9 @@ begin
     end;
     while Count>0 do begin
      dec(Count);
-     GlobalVoice:=@fGlobalVoices[IDs[Count] and TpvUInt32($ffffffff)];
+     Index:=IDs[Count] and TpvUInt32($ffffffff);
+     fGlobalVoiceIDs[Index]:=0;
+     GlobalVoice:=@fGlobalVoices[Index];
      fHashMap.Delete(GlobalVoice^);
      GlobalVoice^.SoundSample:=nil;
      GlobalVoice^.VoiceNumber:=-1;
@@ -2668,6 +2693,22 @@ begin
   finally
    fLock.ReleaseWrite;
   end;
+ end;
+end;
+
+function TpvAudioSoundSampleGlobalVoiceManager.CheckGlobalVoiceID(const aGlobalVoiceID:TpvID):Boolean;
+var Index:TpvUInt32;
+begin
+ fLock.AcquireRead;
+ try
+  Index:=aGlobalVoiceID and TpvUInt32($ffffffff);
+  if (Index>0) and (Index<=length(fGlobalVoices)) then begin
+   result:=(fGlobalVoiceIDs[Index]=aGlobalVoiceID) and fIDManager.CheckID(aGlobalVoiceID);
+  end else begin
+   result:=false;
+  end;
+ finally
+  fLock.ReleaseRead;
  end;
 end;
 
