@@ -196,23 +196,23 @@ type PpvAudioInt32=^TpvInt32;
      TPpvAudioInt32s=array[0..$ffff] of PpvAudioInt32s;
      TpvAudioInt32s=array[0..$ffff] of TpvInt32;
 
-     PpvAudioFloat=PpvFloat;
      TpvAudioFloat=TpvFloat;
+     PpvAudioFloat=PpvFloat;
 
-     PpvAudioFloats=^TpvAudioFloats;
      TpvAudioFloats=array[0..$ffff] of TpvFloat;
+     PpvAudioFloats=^TpvAudioFloats;
 
-     PPpvAudioFloats=^TPpvAudioFloats;
      TPpvAudioFloats=array[0..$ffff] of PpvAudioFloats;
+     PPpvAudioFloats=^TPpvAudioFloats;
      
-     PpvAudioSoundSampleValue=^TpvAudioSoundSampleValue;
      TpvAudioSoundSampleValue=TpvInt32;
+     PpvAudioSoundSampleValue=^TpvAudioSoundSampleValue;
 
-     PpvAudioSoundSampleStereoValue=^TpvAudioSoundSampleStereoValue;
      TpvAudioSoundSampleStereoValue=array[0..1] of TpvInt32;
+     PpvAudioSoundSampleStereoValue=^TpvAudioSoundSampleStereoValue;
 
-     PpvAudioSoundSampleValues=^TpvAudioSoundSampleValues;
      TpvAudioSoundSampleValues=array[0..($7ffffff0 div sizeof(TpvAudioSoundSampleValue))-1] of TpvAudioSoundSampleValue;
+     PpvAudioSoundSampleValues=^TpvAudioSoundSampleValues;
 
      PpvAudioSoundSampleLoop=^TpvAudioSoundSampleLoop;
      TpvAudioSoundSampleLoop=record
@@ -295,6 +295,7 @@ type PpvAudioInt32=^TpvInt32;
        fWaveFormatChunkHeader:TpvAudioWAVFormat.TWaveChunkHeader;
        fWaveFormatHeader:TpvAudioWAVFormat.TWaveFormatHeader;
        fWaveDataChunkHeader:TpvAudioWAVFormat.TWaveChunkHeader;
+       fBufferFloats:TpvFloatDynamicArray;
       public
        constructor Create(const aAudioEngine:TpvAudio;const aStream:TStream;const aDoFreeStream:boolean=true);
        destructor Destroy; override;
@@ -871,6 +872,7 @@ type PpvAudioInt32=^TpvInt32;
        MixingBufferSize:TpvInt32;
        OutputBufferSize:TpvInt32;
        MixingBuffer:PpvAudioSoundSampleValues;
+       MusicMixingBuffer:PpvAudioSoundSampleValues;
        EffectMixingBuffer:PpvAudioSoundSampleValues;
        OutputBuffer:TpvPointer;
        MasterVolume:TpvInt32;
@@ -918,6 +920,9 @@ type PpvAudioInt32=^TpvInt32;
        OuterGainHF:TpvScalar;
        GlobalVoiceManager:TpvAudioSoundSampleGlobalVoiceManager;
        CommandQueue:TpvAudioCommandQueue;
+       WAVStreamDumpMusic:TpvAudioWAVStreamDump;
+       WAVStreamDumpSample:TpvAudioWAVStreamDump;
+       WAVStreamDumpFinalMix:TpvAudioWAVStreamDump;
        constructor Create(ASampleRate,AChannels,ABits,ABufferSamples:TpvInt32);
        destructor Destroy; override;
        procedure SetMixerMasterVolume(NewVolume:TpvFloat);
@@ -1013,6 +1018,8 @@ const AudioSpeakerLayoutMono:TpvAudioSpeakerLayout=
          (Index:7;YawAngle:180.0;DotScale:0.2;DotBias:0.2;AmbientVolume:0.5)
         );
        );
+
+var pvAudioDump:Boolean=false;       
 
 implementation
 
@@ -1196,15 +1203,15 @@ begin
 
  fSampleRate:=aAudioEngine.SampleRate;
 
- fChannels:=aAudioEngine.Channels;
+ fChannels:=2;
 
- fBitsPerSample:=aAudioEngine.Bits;
+ fBitsPerSample:=32;
 
  fWaveFileHeader.Signature:=TpvAudioWAVFormat.RIFFSignature;
  fWaveFileHeader.Size:=0;
  fWaveFileHeader.WAVESignature:=TpvAudioWAVFormat.WAVESignature;
 
- fWaveFormatHeader.FormatTag:=1;
+ fWaveFormatHeader.FormatTag:=3;
  fWaveFormatHeader.Channels:=fChannels;
  fWaveFormatHeader.SamplesPerSecond:=fSampleRate;
  fWaveFormatHeader.AvgBytesPerSecond:=((fSampleRate*fChannels*fBitsPerSample)+7) shr 3;
@@ -1231,6 +1238,8 @@ begin
 
  fDataSize:=0;
 
+ fBufferFloats:=nil;
+
 end;
 
 destructor TpvAudioWAVStreamDump.Destroy;
@@ -1239,6 +1248,7 @@ begin
  if fDoFreeStream then begin
   FreeAndNil(fStream);
  end;
+ fBufferFloats:=nil;
  inherited Destroy;
 end;
 
@@ -1269,12 +1279,25 @@ begin
 end;
 
 procedure TpvAudioWAVStreamDump.Dump(const aData:TpvPointer;const aDataSize:TpvSizeInt);
+var CountSamples,Index:TpvSizeInt;
 begin
 
- if assigned(fStream) and (aDataSize>0) then begin
+ if assigned(fStream) and (aDataSize>=SizeOf(TpvUInt32)) then begin
+
+  CountSamples:=aDataSize shr 5; // Mono-wise 32 bit stereo samples
+
+  // Check if buffer is big enough, if not, resize it
+  if length(fBufferFloats)<CountSamples then begin
+   SetLength(fBufferFloats,CountSamples*2);
+  end;
+
+  // Convert 32 bit stereo samples to 32 bit float stereo samples 
+  for Index:=0 to CountSamples-1 do begin
+   fBufferFloats[Index]:=PpvAudioSoundSampleValues(aData)^[Index]/32768.0;
+  end;
 
   fStream.Seek(fDataOffset+fDataSize,soFromBeginning);  
-  fStream.WriteBuffer(aData^,aDataSize);
+  fStream.WriteBuffer(fBufferFloats[0],aDataSize); // same byte size as aDataSize since uint32 = 4 bytes like float32 as well 
   
   inc(fDataSize,aDataSize);
 
@@ -5637,6 +5660,7 @@ begin
  MixingBufferSize:=(BufferSamples*2*32) shr 3;
  OutputBufferSize:=(BufferSamples*Channels*Bits) shr 3;
  GetMem(MixingBuffer,MixingBufferSize);
+ GetMem(MusicMixingBuffer,MixingBufferSize);
  GetMem(EffectMixingBuffer,MixingBufferSize);
  GetMem(OutputBuffer,OutputBufferSize);
  SpatializationWaterLowPassCW:=Min(Max(2*sin(pi*(WATER_LOWPASS_FREQUENCY/SampleRate)),0.0),1.0);
@@ -5717,6 +5741,15 @@ begin
  IsReady:=true;
  IsMuted:=false;
  IsActive:=true;
+ if pvAudioDump then begin
+  WAVStreamDumpMusic:=TpvAudioWAVStreamDump.Create(self,TFileStream.Create('music.wav',fmCreate),true);
+  WAVStreamDumpSample:=TpvAudioWAVStreamDump.Create(self,TFileStream.Create('sample.wav',fmCreate),true);
+  WAVStreamDumpFinalMix:=TpvAudioWAVStreamDump.Create(self,TFileStream.Create('finalmix.wav',fmCreate),true);
+ end else begin
+  WAVStreamDumpMusic:=nil;
+  WAVStreamDumpSample:=nil;
+  WAVStreamDumpFinalMix:=nil; 
+ end; 
 end;
 
 destructor TpvAudio.Destroy;
@@ -5728,10 +5761,14 @@ begin
  FreeAndNil(Samples);
  FreeAndNil(Musics);
  FreeMem(MixingBuffer);
+ FreeMem(MusicMixingBuffer);
  FreeMem(EffectMixingBuffer);
  FreeMem(OutputBuffer);
  FreeAndNil(GlobalVoiceManager);
  FreeAndNil(CommandQueue);
+ FreeAndNil(WAVStreamDumpFinalMix);
+ FreeAndNil(WAVStreamDumpSample);
+ FreeAndNil(WAVStreamDumpMusic);
  FreeAndNil(CriticalSection);
  AudioInstance:=nil;
  inherited Destroy;
@@ -5912,6 +5949,7 @@ begin
 
   // Clearing
   FillChar(MixingBuffer^,MixingBufferSize,AnsiChar(#0));
+  FillChar(MusicMixingBuffer^,MixingBufferSize,AnsiChar(#0));
   FillChar(EffectMixingBuffer^,MixingBufferSize,AnsiChar(#0));
 
   // Mixing all sample voices
@@ -5926,10 +5964,19 @@ begin
    Voice.MixTo(p,SampleVolume);
    Voice:=NextVoice;
   end;
+  if assigned(WAVStreamDumpSample) then begin
+   WAVStreamDumpSample.Dump(MixingBuffer,MixingBufferSize);
+  end; 
 
   // Mixing all music streams
   for i:=0 to Musics.Count-1 do begin
-   Musics[i].MixTo(MixingBuffer,MusicVolume);
+   Musics[i].MixTo(MusicMixingBuffer,MusicVolume);
+  end;
+  for i:=0 to BufferChannelSamples-1 do begin
+   inc(MixingBuffer[i],MusicMixingBuffer[i]);
+  end; 
+  if assigned(WAVStreamDumpMusic) then begin
+   WAVStreamDumpSample.Dump(MusicMixingBuffer,MixingBufferSize);
   end;
 
   if ListenerUnderwater then begin
@@ -6202,6 +6249,10 @@ begin
    end;
 {$endif}
   end;
+
+  if assigned(WAVStreamDumpFinalMix) then begin
+   WAVStreamDumpFinalMix.Dump(MixingBuffer,MixingBufferSize);
+  end; 
 
   // Downmixing
   if Channels=1 then begin
