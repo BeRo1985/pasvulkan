@@ -1278,11 +1278,12 @@ end;
 
 procedure TpvAudioWAVStreamDump.Dump(const aData:TpvPointer;const aDataSize:TpvSizeInt);
 var CountSamples,Index:TpvSizeInt;
+    ValueInt32:TpvInt32;
 begin
 
  if assigned(fStream) and (aDataSize>=SizeOf(TpvUInt32)) then begin
 
-  CountSamples:=aDataSize shr 5; // Mono-wise 32 bit stereo samples
+  CountSamples:=aDataSize shr 2; // Mono-wise 32 bit stereo samples
 
   // Check if buffer is big enough, if not, resize it
   if length(fBufferFloats)<CountSamples then begin
@@ -1291,7 +1292,8 @@ begin
 
   // Convert 32 bit stereo samples to 32 bit float stereo samples 
   for Index:=0 to CountSamples-1 do begin
-   fBufferFloats[Index]:=PpvAudioSoundSampleValues(aData)^[Index]/32768.0;
+   ValueInt32:=PpvAudioSoundSampleValues(aData)^[Index];
+   fBufferFloats[Index]:=ValueInt32/32768.0;
   end;
 
   fStream.Seek(fDataOffset+fDataSize,soFromBeginning);  
