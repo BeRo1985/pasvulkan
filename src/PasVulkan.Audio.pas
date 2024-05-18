@@ -249,6 +249,59 @@ type PpvAudioInt32=^TpvInt32;
 
      TpvAudioHRTFHistory=array[0..HRIR_MAX_LENGTH-1] of TpvInt32;
 
+     TpvAudioWAVFormat=class
+      public
+       type TWaveSignature=array[1..4] of ansichar;
+            TWaveFileHeader=packed record
+             Signature:TWaveSignature;
+             Size:TpvUInt32;
+             WAVESignature:TWaveSignature;
+            end;
+            PWaveFileHeader=^TWaveFileHeader;
+            TWaveFormatHeader=packed record
+             FormatTag:TpvUInt16;
+             Channels:TpvUInt16;
+             SamplesPerSecond:TpvUInt32;
+             AvgBytesPerSecond:TpvUInt32;
+             SampleSize:TpvUInt16;
+             BitsPerSample:TpvUInt16;
+            end;
+            PWaveFormatHeader=^TWaveFormatHeader;
+            TWaveChunkHeader=packed record
+             Signature:TWaveSignature;
+             Size:TpvUInt32;
+            end;
+            PWaveChunkHeader=^TWaveChunkHeader;
+       const RIFFSignature:TWaveSignature=('R','I','F','F');
+             WAVESignature:TWaveSignature=('W','A','V','E');
+             FMTSignature:TWaveSignature=('f','m','t',' ');
+             DATASignature:TWaveSignature=('d','a','t','a'); 
+     end;
+
+     TpvAudioWAVStreamDump=class
+      private
+       fAudioEngine:TpvAudio;
+       fStream:TStream;
+       fDoFreeStream:boolean;
+       fSampleRate:TpvInt32;
+       fChannels:TpvInt32;
+       fBitsPerSample:TpvInt32;
+       fDataOffset:TpvInt64;
+       fDataSize:TpvInt64;
+       fFileHeaderOffset:TpvInt64;
+       fFormatChunkHeaderOffset:TpvInt64;
+       fDataChunkHeaderOffset:TpvInt64;
+       fWaveFileHeader:TpvAudioWAVFormat.TWaveFileHeader;
+       fWaveFormatChunkHeader:TpvAudioWAVFormat.TWaveChunkHeader;
+       fWaveFormatHeader:TpvAudioWAVFormat.TWaveFormatHeader;
+       fWaveDataChunkHeader:TpvAudioWAVFormat.TWaveChunkHeader;
+      public
+       constructor Create(const aAudioEngine:TpvAudio;const aStream:TStream;const aDoFreeStream:boolean=true);
+       destructor Destroy; override;
+       procedure Flush;
+       procedure Dump(const aData:TpvPointer;const aDataSize:TpvSizeInt);
+     end;  
+       
      TpvAudioSoundSampleVoiceLowPassHistory=array[0..1] of TpvInt32;
 
      TpvAudioSoundSampleVoice=class
@@ -1129,6 +1182,106 @@ begin
    dec(result,y);
   end;
  end;}
+end;
+
+constructor TpvAudioWAVStreamDump.Create(const aAudioEngine:TpvAudio;const aStream:TStream;const aDoFreeStream:boolean=true);
+begin
+ inherited Create;
+
+ fAudioEngine:=aAudioEngine;
+
+ fStream:=aStream;
+
+ fDoFreeStream:=aDoFreeStream;
+
+ fSampleRate:=aAudioEngine.SampleRate;
+
+ fChannels:=aAudioEngine.Channels;
+
+ fBitsPerSample:=aAudioEngine.Bits;
+
+ fWaveFileHeader.Signature:=TpvAudioWAVFormat.RIFFSignature;
+ fWaveFileHeader.Size:=0;
+ fWaveFileHeader.WAVESignature:=TpvAudioWAVFormat.WAVESignature;
+
+ fWaveFormatHeader.FormatTag:=1;
+ fWaveFormatHeader.Channels:=fChannels;
+ fWaveFormatHeader.SamplesPerSecond:=fSampleRate;
+ fWaveFormatHeader.AvgBytesPerSecond:=((fSampleRate*fChannels*fBitsPerSample)+7) shr 3;
+ fWaveFormatHeader.SampleSize:=((fChannels*fBitsPerSample)+7) shr 3;
+ fWaveFormatHeader.BitsPerSample:=fBitsPerSample;
+
+ fWaveFormatChunkHeader.Signature:=TpvAudioWAVFormat.FMTSignature;
+ fWaveFormatChunkHeader.Size:=SizeOf(TpvAudioWAVFormat.TWaveFormatHeader);
+
+ fWaveDataChunkHeader.Signature:=TpvAudioWAVFormat.DATASignature;
+ fWaveDataChunkHeader.Size:=0;
+
+ fFileHeaderOffset:=fStream.Position;
+ fStream.WriteBuffer(fWaveFileHeader,SizeOf(TpvAudioWAVFormat.TWaveFileHeader));
+
+ fFormatChunkHeaderOffset:=fStream.Position;
+ fStream.WriteBuffer(fWaveFormatChunkHeader,SizeOf(TpvAudioWAVFormat.TWaveChunkHeader));
+ fStream.WriteBuffer(fWaveFormatHeader,SizeOf(TpvAudioWAVFormat.TWaveFormatHeader));
+
+ fDataChunkHeaderOffset:=fStream.Position;
+ fStream.WriteBuffer(fWaveDataChunkHeader,SizeOf(TpvAudioWAVFormat.TWaveChunkHeader));
+
+ fDataOffset:=fStream.Position;
+
+ fDataSize:=0;
+
+end;
+
+destructor TpvAudioWAVStreamDump.Destroy;
+begin
+ Flush;
+ if fDoFreeStream then begin
+  FreeAndNil(fStream);
+ end;
+ inherited Destroy;
+end;
+
+procedure TpvAudioWAVStreamDump.Flush;
+begin
+ 
+ if assigned(fStream) and (fDataSize>0) then begin
+   
+  fStream.Seek(fDataChunkHeaderOffset,soFromBeginning);
+  fWaveDataChunkHeader.Size:=fDataSize;
+  fStream.WriteBuffer(fWaveDataChunkHeader,SizeOf(TpvAudioWAVFormat.TWaveChunkHeader));
+  
+  fStream.Seek(fFileHeaderOffset,soFromBeginning);
+  fWaveFileHeader.Size:=SizeOf(TpvAudioWAVFormat.TWaveChunkHeader)+
+                        SizeOf(TpvAudioWAVFormat.TWaveFormatHeader)+
+                        SizeOf(TpvAudioWAVFormat.TWaveChunkHeader)+
+                        fDataSize;
+  fStream.WriteBuffer(fWaveFileHeader,SizeOf(TpvAudioWAVFormat.TWaveFileHeader));
+
+  fStream.Seek(0,soFromEnd);
+  
+  if fStream is TFileStream then begin
+   TFileStream(fStream).Flush;
+  end;
+   
+ end;
+
+end;
+
+procedure TpvAudioWAVStreamDump.Dump(const aData:TpvPointer;const aDataSize:TpvSizeInt);
+begin
+
+ if assigned(fStream) and (aDataSize>0) then begin
+
+  fStream.Seek(fDataOffset+fDataSize,soFromBeginning);  
+  fStream.WriteBuffer(aData^,aDataSize);
+  
+  inc(fDataSize,aDataSize);
+
+  Flush; // Flush every time, because we can't know when the stream is closed, so that the header is valid anyway
+
+ end;
+
 end;
 
 function CalculateDelta(OldGain,NewGain:TpvFloat;OldDir,NewDir:TpvVector3):TpvFloat;
