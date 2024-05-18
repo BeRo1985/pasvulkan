@@ -1240,6 +1240,8 @@ begin
 
  fBufferFloats:=nil;
 
+ SetLength(fBufferFloats,65536);
+
 end;
 
 destructor TpvAudioWAVStreamDump.Destroy;
@@ -1269,11 +1271,7 @@ begin
   fStream.WriteBuffer(fWaveFileHeader,SizeOf(TpvAudioWAVFormat.TWaveFileHeader));
 
   fStream.Seek(0,soFromEnd);
-  
-  if fStream is TFileStream then begin
-   TFileStream(fStream).Flush;
-  end;
-   
+
  end;
 
 end;
@@ -5976,7 +5974,7 @@ begin
    inc(MixingBuffer[i],MusicMixingBuffer[i]);
   end; 
   if assigned(WAVStreamDumpMusic) then begin
-   WAVStreamDumpSample.Dump(MusicMixingBuffer,MixingBufferSize);
+   WAVStreamDumpMusic.Dump(MusicMixingBuffer,MixingBufferSize);
   end;
 
   if ListenerUnderwater then begin
