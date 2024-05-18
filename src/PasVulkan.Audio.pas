@@ -6413,7 +6413,21 @@ begin
  end;
 end;
 
+procedure ParseCommandParameters;
+var Index:TpvSizeInt;
+    Command:String;
+begin
+ for Index:=1 to ParamCount do begin
+  Command:=ParamStr(Index);
+  if (Command='/dumpaudio') or (Command='-dumpaudio') or (Command='--dumpaudio') then begin
+   pvAudioDump:=true;
+   break;
+  end;
+ end;
+end;
+
 initialization
+ ParseCommandParameters;
 end.
 
 
