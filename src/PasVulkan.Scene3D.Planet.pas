@@ -12988,6 +12988,7 @@ var TotalResolution,TotalResolutionMask,TotalResolutionBits,
     v0,v1,v2,v3:TpvUInt32;
     TiledMeshIndexGroup:PTiledMeshIndexGroup;
     TileVertices:TpvUInt32DynamicArray;
+    LOD0TileVertices:TpvUInt32DynamicArray;
     x,y,TileQuadMapX,TileQuadMapY,TileQuadX,TileQuadY:TpvInt32;
 begin
 
@@ -13033,131 +13034,186 @@ begin
 
   SetLength(TileVertices,(aTileResolution+2)*(aTileResolution+2));
 
-  for LODIndex:=0 to aCountMeshLODLevels-1 do begin
+  LOD0TileVertices:=nil;
+  try
 
-   TileLODResolution:=aTileResolution shr LODIndex;
+   SetLength(LOD0TileVertices,(aTileResolution+2)*(aTileResolution+2));
 
-   TileLODResolutionPlusBorder:=TileLODResolution+2;
+   for LODIndex:=0 to aCountMeshLODLevels-1 do begin
 
-   aMeshLODOffsets[LODIndex]:=CountIndices;
+    TileLODResolution:=aTileResolution shr LODIndex;
 
-   for TileMapY:=0 to aTileMapResolution-1 do begin
+    TileLODResolutionPlusBorder:=TileLODResolution+2;
 
-    for TileMapX:=0 to aTileMapResolution-1 do begin
+    aMeshLODOffsets[LODIndex]:=CountIndices;
 
-     TiledMeshIndexGroup:=Pointer(aTiledMeshIndexGroups.AddNew);
-     TiledMeshIndexGroup^.FirstIndex:=CountIndices;
+    for TileMapY:=0 to aTileMapResolution-1 do begin
 
-     if (TileMapX=0) or (TileMapY=0) then begin
-      Start:=-1;
-     end else begin
-      Start:=0;
-     end;
+     for TileMapX:=0 to aTileMapResolution-1 do begin
 
-     if (TotalResolution and TotalResolutionMask)<>0 then begin
-      for TileLODY:=Start to (TileLODResolution+1)-1 do begin
+      TiledMeshIndexGroup:=Pointer(aTiledMeshIndexGroups.AddNew);
+      TiledMeshIndexGroup^.FirstIndex:=CountIndices;
+
+      if (TileMapX=0) or (TileMapY=0) then begin
+       Start:=-1;
+      end else begin
+       Start:=0;
+      end;
+
+      // Generate cached border LOD0 tile vertices for LODIndex>0 to avoid border artifacts (cracks) between tiles 
+      if LODIndex>0 then begin
+       if (TotalResolution and TotalResolutionMask)<>0 then begin
+        for TileLODY:=Start to 2 do begin
+         TileY:=TileLODY+IfThen(TileLODY>0,aTileResolution-1,0);
+         for TileLODX:=Start to 2 do begin
+          TileX:=TileLODX+IfThen(TileLODX>0,aTileResolution-1,0);
+          GlobalX:=(TileMapX*aTileResolution)+TileX;
+          GlobalY:=(TileMapY*aTileResolution)+TileY;
+          x:=((GlobalX mod TotalResolution)+TotalResolution) mod TotalResolution;
+          y:=((GlobalY mod TotalResolution)+TotalResolution) mod TotalResolution;
+          if ((((abs(GlobalX) div TotalResolution)+IfThen(GlobalX<0,1,0)) xor ((abs(GlobalY) div TotalResolution)+IfThen(GlobalY<0,1,0))) and 1)<>0 then begin
+           x:=(TotalResolution-(x+1)) mod TotalResolution;
+           y:=(TotalResolution-(y+1)) mod TotalResolution;
+          end;
+          TileQuadMapX:=x div aTileResolution;
+          TileQuadMapY:=y div aTileResolution;
+          TileQuadX:=x-(TileQuadMapX*aTileResolution);
+          TileQuadY:=y-(TileQuadMapY*aTileResolution);
+          LOD0TileVertices[((TileY+1)*TileLODResolutionPlusBorder)+(TileX+1)]:=(((TileQuadMapY*fTileMapResolution)+TileQuadMapX)*TileVertexSize)+((TileQuadY*aTileResolution)+TileQuadX);
+         end;
+        end;
+       end else begin
+        for TileLODY:=Start to 2 do begin
+         TileY:=TileLODY+IfThen(TileLODY>0,aTileResolution-1,0);
+         for TileLODX:=Start to 2 do begin
+          TileX:=TileLODX+IfThen(TileLODX>0,aTileResolution-1,0);
+          GlobalX:=(TileMapX*aTileResolution)+TileX;
+          GlobalY:=(TileMapY*aTileResolution)+TileY;
+          x:=(GlobalX+TotalResolution) and TotalResolutionMask;
+          y:=(GlobalY+TotalResolution) and TotalResolutionMask;
+          if ((((abs(GlobalX) shr TotalResolutionBits)+IfThen(GlobalX<0,1,0)) xor ((abs(GlobalY) shr TotalResolutionBits)+IfThen(GlobalY<0,1,0))) and 1)<>0 then begin
+           x:=(TotalResolution-(x+1)) and TotalResolutionMask;
+           y:=(TotalResolution-(y+1)) and TotalResolutionMask;
+          end;
+          TileQuadMapX:=x shr TileResolutionBits;
+          TileQuadMapY:=y shr TileResolutionBits;
+          TileQuadX:=x-(TileQuadMapX*aTileResolution);
+          TileQuadY:=y-(TileQuadMapY*aTileResolution);
+          LOD0TileVertices[((TileY+1)*TileLODResolutionPlusBorder)+(TileX+1)]:=(((TileQuadMapY*fTileMapResolution)+TileQuadMapX)*TileVertexSize)+((TileQuadY*aTileResolution)+TileQuadX);
+         end;
+        end;
+       end;
+      end;
+
+      // Generate actual cached LOD tile vertices
+      if (TotalResolution and TotalResolutionMask)<>0 then begin
+       for TileLODY:=Start to (TileLODResolution+1)-1 do begin
+        TileY:=TileLODY shl LODIndex;
+        for TileLODX:=Start to (TileLODResolution+1)-1 do begin
+         TileX:=TileLODX shl LODIndex;
+         GlobalX:=(TileMapX*aTileResolution)+TileX;
+         GlobalY:=(TileMapY*aTileResolution)+TileY;
+         x:=((GlobalX mod TotalResolution)+TotalResolution) mod TotalResolution;
+         y:=((GlobalY mod TotalResolution)+TotalResolution) mod TotalResolution;
+         if ((((abs(GlobalX) div TotalResolution)+IfThen(GlobalX<0,1,0)) xor ((abs(GlobalY) div TotalResolution)+IfThen(GlobalY<0,1,0))) and 1)<>0 then begin
+          x:=(TotalResolution-(x+1)) mod TotalResolution;
+          y:=(TotalResolution-(y+1)) mod TotalResolution;
+         end;
+         TileQuadMapX:=x div aTileResolution;
+         TileQuadMapY:=y div aTileResolution;
+         TileQuadX:=x-(TileQuadMapX*aTileResolution);
+         TileQuadY:=y-(TileQuadMapY*aTileResolution);
+         TileVertices[((TileLODY+1)*TileLODResolutionPlusBorder)+(TileLODX+1)]:=(((TileQuadMapY*fTileMapResolution)+TileQuadMapX)*TileVertexSize)+((TileQuadY*aTileResolution)+TileQuadX);
+        end;
+       end;
+      end else begin
+       for TileLODY:=Start to (TileLODResolution+1)-1 do begin
+        TileY:=TileLODY shl LODIndex;
+        for TileLODX:=Start to (TileLODResolution+1)-1 do begin
+         TileX:=TileLODX shl LODIndex;
+         GlobalX:=(TileMapX*aTileResolution)+TileX;
+         GlobalY:=(TileMapY*aTileResolution)+TileY;
+         x:=(GlobalX+TotalResolution) and TotalResolutionMask;
+         y:=(GlobalY+TotalResolution) and TotalResolutionMask;
+         if ((((abs(GlobalX) shr TotalResolutionBits)+IfThen(GlobalX<0,1,0)) xor ((abs(GlobalY) shr TotalResolutionBits)+IfThen(GlobalY<0,1,0))) and 1)<>0 then begin
+          x:=(TotalResolution-(x+1)) and TotalResolutionMask;
+          y:=(TotalResolution-(y+1)) and TotalResolutionMask;
+         end;
+         TileQuadMapX:=x shr TileResolutionBits;
+         TileQuadMapY:=y shr TileResolutionBits;
+         TileQuadX:=x-(TileQuadMapX*aTileResolution);
+         TileQuadY:=y-(TileQuadMapY*aTileResolution);
+         TileVertices[((TileLODY+1)*TileLODResolutionPlusBorder)+(TileLODX+1)]:=(((TileQuadMapY*fTileMapResolution)+TileQuadMapX)*TileVertexSize)+((TileQuadY*aTileResolution)+TileQuadX);
+        end;
+       end;
+      end;
+
+      for TileLODY:=0 to TileLODResolution-1 do begin
+
        TileY:=TileLODY shl LODIndex;
-       for TileLODX:=Start to (TileLODResolution+1)-1 do begin
+
+       for TileLODX:=0 to TileLODResolution-1 do begin
+
         TileX:=TileLODX shl LODIndex;
+
         GlobalX:=(TileMapX*aTileResolution)+TileX;
         GlobalY:=(TileMapY*aTileResolution)+TileY;
-        x:=((GlobalX mod TotalResolution)+TotalResolution) mod TotalResolution;
-        y:=((GlobalY mod TotalResolution)+TotalResolution) mod TotalResolution;
-        if ((((abs(GlobalX) div TotalResolution)+IfThen(GlobalX<0,1,0)) xor ((abs(GlobalY) div TotalResolution)+IfThen(GlobalY<0,1,0))) and 1)<>0 then begin
-         x:=(TotalResolution-(x+1)) mod TotalResolution;
-         y:=(TotalResolution-(y+1)) mod TotalResolution;
+
+        if (GlobalX=0) or (GlobalY=0) then begin
+         v0:=TileVertices[((TileLODY+0)*TileLODResolutionPlusBorder)+(TileLODX+0)]; // -1 -1
+         v1:=TileVertices[((TileLODY+0)*TileLODResolutionPlusBorder)+(TileLODX+1)]; //  0 -1
+         v2:=TileVertices[((TileLODY+1)*TileLODResolutionPlusBorder)+(TileLODX+1)]; //  0  0
+         v3:=TileVertices[((TileLODY+1)*TileLODResolutionPlusBorder)+(TileLODX+0)]; // -1  0
+         if (v0<>v1) and (v0<>v2) and (v1<>v2) then begin
+          aTiledMeshIndices.ItemArray[CountIndices+0]:=v0;
+          aTiledMeshIndices.ItemArray[CountIndices+1]:=v1;
+          aTiledMeshIndices.ItemArray[CountIndices+2]:=v2;
+          inc(CountIndices,3);
+         end;
+         if (v0<>v2) and (v0<>v3) and (v2<>v3) then begin
+          aTiledMeshIndices.ItemArray[CountIndices+0]:=v0;
+          aTiledMeshIndices.ItemArray[CountIndices+1]:=v2;
+          aTiledMeshIndices.ItemArray[CountIndices+2]:=v3;
+          inc(CountIndices,3);
+         end;
+        end;//}
+
+        begin
+         v0:=TileVertices[((TileLODY+1)*TileLODResolutionPlusBorder)+(TileLODX+1)]; //  0  0
+         v1:=TileVertices[((TileLODY+1)*TileLODResolutionPlusBorder)+(TileLODX+2)]; //  1  0
+         v2:=TileVertices[((TileLODY+2)*TileLODResolutionPlusBorder)+(TileLODX+2)]; //  1  1
+         v3:=TileVertices[((TileLODY+2)*TileLODResolutionPlusBorder)+(TileLODX+1)]; //  0  1
+         if (v0<>v1) and (v0<>v2) and (v1<>v2) then begin
+          aTiledMeshIndices.ItemArray[CountIndices+0]:=v0;
+          aTiledMeshIndices.ItemArray[CountIndices+1]:=v1;
+          aTiledMeshIndices.ItemArray[CountIndices+2]:=v2;
+          inc(CountIndices,3);
+         end;
+         if (v0<>v2) and (v0<>v3) and (v2<>v3) then begin
+          aTiledMeshIndices.ItemArray[CountIndices+0]:=v0;
+          aTiledMeshIndices.ItemArray[CountIndices+1]:=v2;
+          aTiledMeshIndices.ItemArray[CountIndices+2]:=v3;
+          inc(CountIndices,3);
+         end;
         end;
-        TileQuadMapX:=x div aTileResolution;
-        TileQuadMapY:=y div aTileResolution;
-        TileQuadX:=x-(TileQuadMapX*aTileResolution);
-        TileQuadY:=y-(TileQuadMapY*aTileResolution);
-        TileVertices[((TileLODY+1)*TileLODResolutionPlusBorder)+(TileLODX+1)]:=(((TileQuadMapY*fTileMapResolution)+TileQuadMapX)*TileVertexSize)+((TileQuadY*aTileResolution)+TileQuadX);
-       end;
-      end;
-     end else begin
-      for TileLODY:=Start to (TileLODResolution+1)-1 do begin
-       TileY:=TileLODY shl LODIndex;
-       for TileLODX:=Start to (TileLODResolution+1)-1 do begin
-        TileX:=TileLODX shl LODIndex;
-        GlobalX:=(TileMapX*aTileResolution)+TileX;
-        GlobalY:=(TileMapY*aTileResolution)+TileY;
-        x:=(GlobalX+TotalResolution) and TotalResolutionMask;
-        y:=(GlobalY+TotalResolution) and TotalResolutionMask;
-        if ((((abs(GlobalX) shr TotalResolutionBits)+IfThen(GlobalX<0,1,0)) xor ((abs(GlobalY) shr TotalResolutionBits)+IfThen(GlobalY<0,1,0))) and 1)<>0 then begin
-         x:=(TotalResolution-(x+1)) and TotalResolutionMask;
-         y:=(TotalResolution-(y+1)) and TotalResolutionMask;
-        end;
-        TileQuadMapX:=x shr TileResolutionBits;
-        TileQuadMapY:=y shr TileResolutionBits;
-        TileQuadX:=x-(TileQuadMapX*aTileResolution);
-        TileQuadY:=y-(TileQuadMapY*aTileResolution);
-        TileVertices[((TileLODY+1)*TileLODResolutionPlusBorder)+(TileLODX+1)]:=(((TileQuadMapY*fTileMapResolution)+TileQuadMapX)*TileVertexSize)+((TileQuadY*aTileResolution)+TileQuadX);
-       end;
-      end;
-     end;
 
-     for TileLODY:=0 to TileLODResolution-1 do begin
-
-      TileY:=TileLODY shl LODIndex;
-
-      for TileLODX:=0 to TileLODResolution-1 do begin
-
-       TileX:=TileLODX shl LODIndex;
-
-       GlobalX:=(TileMapX*aTileResolution)+TileX;
-       GlobalY:=(TileMapY*aTileResolution)+TileY;
-
-       if (GlobalX=0) or (GlobalY=0) then begin
-        v0:=TileVertices[((TileLODY+0)*TileLODResolutionPlusBorder)+(TileLODX+0)]; // -1 -1
-        v1:=TileVertices[((TileLODY+0)*TileLODResolutionPlusBorder)+(TileLODX+1)]; //  0 -1
-        v2:=TileVertices[((TileLODY+1)*TileLODResolutionPlusBorder)+(TileLODX+1)]; //  0  0
-        v3:=TileVertices[((TileLODY+1)*TileLODResolutionPlusBorder)+(TileLODX+0)]; // -1  0
-        if (v0<>v1) and (v0<>v2) and (v1<>v2) then begin
-         aTiledMeshIndices.ItemArray[CountIndices+0]:=v0;
-         aTiledMeshIndices.ItemArray[CountIndices+1]:=v1;
-         aTiledMeshIndices.ItemArray[CountIndices+2]:=v2;
-         inc(CountIndices,3);
-        end;
-        if (v0<>v2) and (v0<>v3) and (v2<>v3) then begin
-         aTiledMeshIndices.ItemArray[CountIndices+0]:=v0;
-         aTiledMeshIndices.ItemArray[CountIndices+1]:=v2;
-         aTiledMeshIndices.ItemArray[CountIndices+2]:=v3;
-         inc(CountIndices,3);
-        end;
-       end;//}
-
-       begin
-        v0:=TileVertices[((TileLODY+1)*TileLODResolutionPlusBorder)+(TileLODX+1)]; //  0  0
-        v1:=TileVertices[((TileLODY+1)*TileLODResolutionPlusBorder)+(TileLODX+2)]; //  1  0
-        v2:=TileVertices[((TileLODY+2)*TileLODResolutionPlusBorder)+(TileLODX+2)]; //  1  1
-        v3:=TileVertices[((TileLODY+2)*TileLODResolutionPlusBorder)+(TileLODX+1)]; //  0  1
-        if (v0<>v1) and (v0<>v2) and (v1<>v2) then begin
-         aTiledMeshIndices.ItemArray[CountIndices+0]:=v0;
-         aTiledMeshIndices.ItemArray[CountIndices+1]:=v1;
-         aTiledMeshIndices.ItemArray[CountIndices+2]:=v2;
-         inc(CountIndices,3);
-        end;
-        if (v0<>v2) and (v0<>v3) and (v2<>v3) then begin
-         aTiledMeshIndices.ItemArray[CountIndices+0]:=v0;
-         aTiledMeshIndices.ItemArray[CountIndices+1]:=v2;
-         aTiledMeshIndices.ItemArray[CountIndices+2]:=v3;
-         inc(CountIndices,3);
-        end;
        end;
 
       end;
+
+      TiledMeshIndexGroup^.CountIndices:=CountIndices-TiledMeshIndexGroup^.FirstIndex;
 
      end;
-
-     TiledMeshIndexGroup^.CountIndices:=CountIndices-TiledMeshIndexGroup^.FirstIndex;
 
     end;
 
+    aMeshLODCounts[LODIndex]:=CountIndices-aMeshLODOffsets[LODIndex];
+
    end;
 
-   aMeshLODCounts[LODIndex]:=CountIndices-aMeshLODOffsets[LODIndex];
-
-  end;
+  finally
+   LOD0TileVertices:=nil;
+  end;  
 
  finally
   TileVertices:=nil;
