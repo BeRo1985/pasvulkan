@@ -13244,6 +13244,11 @@ begin
 
       end;
 
+      if LODIndex>0 then begin
+        
+
+      end;
+
       TiledMeshIndexGroup^.CountIndices:=CountIndices-TiledMeshIndexGroup^.FirstIndex;
 
      end;
