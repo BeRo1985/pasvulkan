@@ -169,6 +169,10 @@ type TpvScene=class;
        fLock:TpvInt32;
        fState:TpvSceneNodeState;
        fDestroying:boolean;
+      public 
+       fStartLoadVisitGeneration:TpvUInt32;
+       fBackgroundLoadVisitGeneration:TpvUInt32;
+       fFinishLoadVisitGeneration:TpvUInt32;
       public
        
        constructor Create(const aParent:TpvSceneNode;const aData:TObject=nil); reintroduce; virtual;
@@ -251,6 +255,10 @@ type TpvScene=class;
        fCountToLoadNodes:TPasMPInt32;
        fBackgroundLoadThread:TBackgroundLoadThread;
        fData:TObject;
+      public 
+       fStartLoadVisitGeneration:TpvUInt32;
+       fBackgroundLoadVisitGeneration:TpvUInt32;
+       fFinishLoadVisitGeneration:TpvUInt32;
       public
        constructor Create(const aData:TObject=nil); reintroduce; virtual;
        destructor Destroy; override;
@@ -342,6 +350,10 @@ begin
  fOutgoingNodeDependencies.OwnsObjects:=false;
 
  fDestroying:=false;
+
+ fStartLoadVisitGeneration:=0;
+ fBackgroundLoadVisitGeneration:=0;
+ fFinishLoadVisitGeneration:=0;
 
  TPasMPInterlocked.Write(fState,TpvSceneNodeState.Unloaded);
 
@@ -859,13 +871,24 @@ end;
 constructor TpvScene.Create(const aData:TObject=nil);
 begin
  inherited Create;
+
  fAllNodesLock:=TPasMPSlimReaderWriterLock.Create;
+
  fAllNodes:=TpvSceneNodes.Create(false);
+
  fRootNode:=TpvSceneNode.Create(nil);
  fRootNode.fScene:=self;
+
  fCountToLoadNodes:=1;
+
  fData:=aData;
+
+ fStartLoadVisitGeneration:=1;
+ fBackgroundLoadVisitGeneration:=1;
+ fFinishLoadVisitGeneration:=1;
+
  fBackgroundLoadThread:=TBackgroundLoadThread.Create(self);
+
 end;
 
 destructor TpvScene.Destroy;
@@ -902,19 +925,22 @@ begin
    repeat
     case Pass of
      0:begin
-      if Node.fIncomingNodeDependencies.Count>0 then begin
-       NewStackItem:=Pointer(Stack.PushIndirect);
-       NewStackItem^.Node:=Node;
-       NewStackItem^.Pass:=1;
-       for Index:=Node.fIncomingNodeDependencies.Count-1 downto 0 do begin
+      if Node.fStartLoadVisitGeneration<>fStartLoadVisitGeneration then begin
+       Node.fStartLoadVisitGeneration:=fStartLoadVisitGeneration;
+       if Node.fIncomingNodeDependencies.Count>0 then begin
         NewStackItem:=Pointer(Stack.PushIndirect);
-        NewStackItem^.Node:=Node.fIncomingNodeDependencies[Index];
-        NewStackItem^.Pass:=0;
-       end;       
-      end else begin
-       Pass:=1;
-       continue;
-      end;
+        NewStackItem^.Node:=Node;
+        NewStackItem^.Pass:=1;
+        for Index:=Node.fIncomingNodeDependencies.Count-1 downto 0 do begin
+         NewStackItem:=Pointer(Stack.PushIndirect);
+         NewStackItem^.Node:=Node.fIncomingNodeDependencies[Index];
+         NewStackItem^.Pass:=0;
+        end;       
+       end else begin
+        Pass:=1;
+        continue;
+       end;
+      end; 
      end;
      1:begin     
       if TPasMPInterlocked.Read(Node.fState)=TpvSceneNodeState.Unloaded then begin
@@ -962,6 +988,7 @@ begin
  finally
   Stack.Finalize;
  end;
+ inc(fStartLoadVisitGeneration);
 end;
 
 procedure TpvScene.BackgroundLoad;
@@ -988,19 +1015,22 @@ begin
    repeat
     case Pass of
      0:begin
-      if Node.fIncomingNodeDependencies.Count>0 then begin
-       NewStackItem:=Pointer(Stack.PushIndirect);
-       NewStackItem^.Node:=Node;
-       NewStackItem^.Pass:=1;
-       for Index:=Node.fIncomingNodeDependencies.Count-1 downto 0 do begin
+      if Node.fBackgroundLoadVisitGeneration<>fBackgroundLoadVisitGeneration then begin
+       Node.fBackgroundLoadVisitGeneration:=fBackgroundLoadVisitGeneration;
+       if Node.fIncomingNodeDependencies.Count>0 then begin
         NewStackItem:=Pointer(Stack.PushIndirect);
-        NewStackItem^.Node:=Node.fIncomingNodeDependencies[Index];
-        NewStackItem^.Pass:=0;
-       end;       
-      end else begin
-       Pass:=1;
-       continue;
-      end;
+        NewStackItem^.Node:=Node;
+        NewStackItem^.Pass:=1;
+        for Index:=Node.fIncomingNodeDependencies.Count-1 downto 0 do begin
+         NewStackItem:=Pointer(Stack.PushIndirect);
+         NewStackItem^.Node:=Node.fIncomingNodeDependencies[Index];
+         NewStackItem^.Pass:=0;
+        end;       
+       end else begin
+        Pass:=1;
+        continue;
+       end;
+      end; 
      end;
      1:begin     
       if TPasMPInterlocked.Read(Node.fState)=TpvSceneNodeState.StartLoaded then begin
@@ -1048,6 +1078,7 @@ begin
  finally
   Stack.Finalize;
  end;
+ inc(fBackgroundLoadVisitGeneration);
 end;
 
 procedure TpvScene.FinishLoad;
@@ -1074,18 +1105,21 @@ begin
    repeat
     case Pass of
      0:begin
-      if Node.fIncomingNodeDependencies.Count>0 then begin
-       NewStackItem:=Pointer(Stack.PushIndirect);
-       NewStackItem^.Node:=Node;
-       NewStackItem^.Pass:=1;
-       for Index:=Node.fIncomingNodeDependencies.Count-1 downto 0 do begin
+      if Node.fFinishLoadVisitGeneration<>fFinishLoadVisitGeneration then begin
+       Node.fFinishLoadVisitGeneration:=fFinishLoadVisitGeneration;
+       if Node.fIncomingNodeDependencies.Count>0 then begin
         NewStackItem:=Pointer(Stack.PushIndirect);
-        NewStackItem^.Node:=Node.fIncomingNodeDependencies[Index];
-        NewStackItem^.Pass:=0;
-       end;       
-      end else begin
-       Pass:=1;
-       continue;
+        NewStackItem^.Node:=Node;
+        NewStackItem^.Pass:=1;
+        for Index:=Node.fIncomingNodeDependencies.Count-1 downto 0 do begin
+         NewStackItem:=Pointer(Stack.PushIndirect);
+         NewStackItem^.Node:=Node.fIncomingNodeDependencies[Index];
+         NewStackItem^.Pass:=0;
+        end;       
+       end else begin
+        Pass:=1;
+        continue;
+       end;
       end;
      end;
      1:begin     
@@ -1134,6 +1168,7 @@ begin
  finally
   Stack.Finalize;
  end;
+ inc(fFinishLoadVisitGeneration);
 end;
 
 procedure TpvScene.WaitForLoaded;
