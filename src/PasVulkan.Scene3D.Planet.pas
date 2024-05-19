@@ -13060,46 +13060,89 @@ begin
        Start:=0;
       end;
 
-      // Generate cached border LOD0 tile vertices for LODIndex>0 to avoid border artifacts (cracks) between tiles 
+      // Generate cached border LOD0 tile vertices for LODIndex>0 to avoid border
+      // artifacts (cracks) between tiles
       if LODIndex>0 then begin
        if (TotalResolution and TotalResolutionMask)<>0 then begin
-        for TileLODY:=Start to 2 do begin
-         TileY:=TileLODY+IfThen(TileLODY>0,aTileResolution-1,0);
-         for TileLODX:=Start to 2 do begin
-          TileX:=TileLODX+IfThen(TileLODX>0,aTileResolution-1,0);
-          GlobalX:=(TileMapX*aTileResolution)+TileX;
-          GlobalY:=(TileMapY*aTileResolution)+TileY;
-          x:=((GlobalX mod TotalResolution)+TotalResolution) mod TotalResolution;
-          y:=((GlobalY mod TotalResolution)+TotalResolution) mod TotalResolution;
-          if ((((abs(GlobalX) div TotalResolution)+IfThen(GlobalX<0,1,0)) xor ((abs(GlobalY) div TotalResolution)+IfThen(GlobalY<0,1,0))) and 1)<>0 then begin
-           x:=(TotalResolution-(x+1)) mod TotalResolution;
-           y:=(TotalResolution-(y+1)) mod TotalResolution;
+        for TileLODY:=Start to (aTileResolution+1)-1 do begin
+         TileY:=TileLODY;
+         if (TileY<=0) or (TileY>=(aTileResolution-1)) then begin
+          // Full row on top and bottom borders
+          for TileLODX:=Start to (aTileResolution+1)-1 do begin
+           TileX:=TileLODX;
+           GlobalX:=(TileMapX*aTileResolution)+TileX;
+           GlobalY:=(TileMapY*aTileResolution)+TileY;
+           x:=((GlobalX mod TotalResolution)+TotalResolution) mod TotalResolution;
+           y:=((GlobalY mod TotalResolution)+TotalResolution) mod TotalResolution;
+           if ((((abs(GlobalX) div TotalResolution)+IfThen(GlobalX<0,1,0)) xor ((abs(GlobalY) div TotalResolution)+IfThen(GlobalY<0,1,0))) and 1)<>0 then begin
+            x:=(TotalResolution-(x+1)) mod TotalResolution;
+            y:=(TotalResolution-(y+1)) mod TotalResolution;
+           end;
+           TileQuadMapX:=x div aTileResolution;
+           TileQuadMapY:=y div aTileResolution;
+           TileQuadX:=x-(TileQuadMapX*aTileResolution);
+           TileQuadY:=y-(TileQuadMapY*aTileResolution);
+           LOD0TileVertices[((TileY+1)*TileLODResolutionPlusBorder)+(TileX+1)]:=(((TileQuadMapY*fTileMapResolution)+TileQuadMapX)*TileVertexSize)+((TileQuadY*aTileResolution)+TileQuadX);
           end;
-          TileQuadMapX:=x div aTileResolution;
-          TileQuadMapY:=y div aTileResolution;
-          TileQuadX:=x-(TileQuadMapX*aTileResolution);
-          TileQuadY:=y-(TileQuadMapY*aTileResolution);
-          LOD0TileVertices[((TileY+1)*TileLODResolutionPlusBorder)+(TileX+1)]:=(((TileQuadMapY*fTileMapResolution)+TileQuadMapX)*TileVertexSize)+((TileQuadY*aTileResolution)+TileQuadX);
+         end else begin
+          // Otherwise only horizontal border vertices
+          for TileLODX:=Start to 2 do begin
+           TileX:=TileLODX+IfThen(TileLODX>0,aTileResolution-2,0);
+           GlobalX:=(TileMapX*aTileResolution)+TileX;
+           GlobalY:=(TileMapY*aTileResolution)+TileY;
+           x:=((GlobalX mod TotalResolution)+TotalResolution) mod TotalResolution;
+           y:=((GlobalY mod TotalResolution)+TotalResolution) mod TotalResolution;
+           if ((((abs(GlobalX) div TotalResolution)+IfThen(GlobalX<0,1,0)) xor ((abs(GlobalY) div TotalResolution)+IfThen(GlobalY<0,1,0))) and 1)<>0 then begin
+            x:=(TotalResolution-(x+1)) mod TotalResolution;
+            y:=(TotalResolution-(y+1)) mod TotalResolution;
+           end;
+           TileQuadMapX:=x div aTileResolution;
+           TileQuadMapY:=y div aTileResolution;
+           TileQuadX:=x-(TileQuadMapX*aTileResolution);
+           TileQuadY:=y-(TileQuadMapY*aTileResolution);
+           LOD0TileVertices[((TileY+1)*TileLODResolutionPlusBorder)+(TileX+1)]:=(((TileQuadMapY*fTileMapResolution)+TileQuadMapX)*TileVertexSize)+((TileQuadY*aTileResolution)+TileQuadX);
+          end;
          end;
         end;
        end else begin
-        for TileLODY:=Start to 2 do begin
-         TileY:=TileLODY+IfThen(TileLODY>0,aTileResolution-1,0);
-         for TileLODX:=Start to 2 do begin
-          TileX:=TileLODX+IfThen(TileLODX>0,aTileResolution-1,0);
-          GlobalX:=(TileMapX*aTileResolution)+TileX;
-          GlobalY:=(TileMapY*aTileResolution)+TileY;
-          x:=(GlobalX+TotalResolution) and TotalResolutionMask;
-          y:=(GlobalY+TotalResolution) and TotalResolutionMask;
-          if ((((abs(GlobalX) shr TotalResolutionBits)+IfThen(GlobalX<0,1,0)) xor ((abs(GlobalY) shr TotalResolutionBits)+IfThen(GlobalY<0,1,0))) and 1)<>0 then begin
-           x:=(TotalResolution-(x+1)) and TotalResolutionMask;
-           y:=(TotalResolution-(y+1)) and TotalResolutionMask;
+        for TileLODY:=Start to (aTileResolution+1)-1 do begin
+         TileY:=TileLODY;
+         if (TileY<=0) or (TileY>=(aTileResolution-1)) then begin
+          // Full row on top and bottom borders
+          for TileLODX:=Start to (aTileResolution+1)-1 do begin
+           TileX:=TileLODX;
+           GlobalX:=(TileMapX*aTileResolution)+TileX;
+           GlobalY:=(TileMapY*aTileResolution)+TileY;
+           x:=(GlobalX+TotalResolution) and TotalResolutionMask;
+           y:=(GlobalY+TotalResolution) and TotalResolutionMask;
+           if ((((abs(GlobalX) shr TotalResolutionBits)+IfThen(GlobalX<0,1,0)) xor ((abs(GlobalY) shr TotalResolutionBits)+IfThen(GlobalY<0,1,0))) and 1)<>0 then begin
+            x:=(TotalResolution-(x+1)) and TotalResolutionMask;
+            y:=(TotalResolution-(y+1)) and TotalResolutionMask;
+           end;
+           TileQuadMapX:=x shr TileResolutionBits;
+           TileQuadMapY:=y shr TileResolutionBits;
+           TileQuadX:=x-(TileQuadMapX*aTileResolution);
+           TileQuadY:=y-(TileQuadMapY*aTileResolution);
+           LOD0TileVertices[((TileY+1)*TileLODResolutionPlusBorder)+(TileX+1)]:=(((TileQuadMapY*fTileMapResolution)+TileQuadMapX)*TileVertexSize)+((TileQuadY*aTileResolution)+TileQuadX);
           end;
-          TileQuadMapX:=x shr TileResolutionBits;
-          TileQuadMapY:=y shr TileResolutionBits;
-          TileQuadX:=x-(TileQuadMapX*aTileResolution);
-          TileQuadY:=y-(TileQuadMapY*aTileResolution);
-          LOD0TileVertices[((TileY+1)*TileLODResolutionPlusBorder)+(TileX+1)]:=(((TileQuadMapY*fTileMapResolution)+TileQuadMapX)*TileVertexSize)+((TileQuadY*aTileResolution)+TileQuadX);
+         end else begin
+          // Otherwise only horizontal border vertices          
+          for TileLODX:=Start to 2 do begin
+           TileX:=TileLODX+IfThen(TileLODX>0,aTileResolution-2,0);
+           GlobalX:=(TileMapX*aTileResolution)+TileX;
+           GlobalY:=(TileMapY*aTileResolution)+TileY;
+           x:=(GlobalX+TotalResolution) and TotalResolutionMask;
+           y:=(GlobalY+TotalResolution) and TotalResolutionMask;
+           if ((((abs(GlobalX) shr TotalResolutionBits)+IfThen(GlobalX<0,1,0)) xor ((abs(GlobalY) shr TotalResolutionBits)+IfThen(GlobalY<0,1,0))) and 1)<>0 then begin
+            x:=(TotalResolution-(x+1)) and TotalResolutionMask;
+            y:=(TotalResolution-(y+1)) and TotalResolutionMask;
+           end;
+           TileQuadMapX:=x shr TileResolutionBits;
+           TileQuadMapY:=y shr TileResolutionBits;
+           TileQuadX:=x-(TileQuadMapX*aTileResolution);
+           TileQuadY:=y-(TileQuadMapY*aTileResolution);
+           LOD0TileVertices[((TileY+1)*TileLODResolutionPlusBorder)+(TileX+1)]:=(((TileQuadMapY*fTileMapResolution)+TileQuadMapX)*TileVertexSize)+((TileQuadY*aTileResolution)+TileQuadX);
+          end; 
          end;
         end;
        end;
