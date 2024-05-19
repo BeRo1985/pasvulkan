@@ -121,7 +121,11 @@ Serialize and Deserialize are used for serialization and deserialization of the 
 scene graph, for example for saving and loading of a game level, etc.
 
 And very important, avoid acyclic and circular dependencies, because it can lead to deadlocks, so be careful with that, since there is no
-automatic detection for that in the PasVulkan scene graph so far now. 
+automatic detection for that in the PasVulkan scene graph so far now. Only the loading mechanism is checking for cyclic dependencies and
+avoids endless loops at loading, but it's not a general solution for that. 
+
+}
+, but it's not a general solution for that. 
 
 }
 
