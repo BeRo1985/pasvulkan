@@ -13191,6 +13191,7 @@ begin
        end;
       end;
 
+      // Generate indices for the current LOD
       for TileLODY:=0 to TileLODResolution-1 do begin
 
        TileY:=TileLODY shl LODIndex;
@@ -13244,8 +13245,10 @@ begin
 
       end;
 
+      // Generate anti-crack border indices to avoid border artifacts (cracks) between tiles, when LODIndex>0
       if LODIndex>0 then begin
-        
+             
+       // TODO      
 
       end;
 
