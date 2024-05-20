@@ -17,7 +17,7 @@ uses Classes,
      PasVulkan.Collections in '../../PasVulkan.Collections.pas',
      PasVulkan.FileFormats.GLTF in '../../PasVulkan.FileFormats.GLTF.pas';
 
-const CountPresetAnimations=5;
+const CountPresetAnimations=4;
 
 type TPresetAnimation=record
       Index:TpvSizeInt;
@@ -30,8 +30,7 @@ const PresetAnimations:TPresetAnimations=(
        (Index:0;Name:'grow'),
        (Index:1;Name:'blossoms'),
        (Index:2;Name:'falloff'),
-       (Index:3;Name:'wither'),
-       (Index:4;Name:'death')
+       (Index:3;Name:'wither')
       );
 
 procedure ConvertModel(const aInputFileName,aOutputFileName:String);
@@ -44,6 +43,15 @@ type TVertex=packed record
      end; // 12+2+2+8 = 24 bytes
      PVertex=^TVertex;
      TVertices=array of TVertex;
+     TIndex=TpvUInt32;
+     PIndex=^TIndex;
+     TIndices=array of TIndex;
+     TFrame=record
+      Vertices:TVertices;
+      Indices:TIndices;
+     end;
+     PFrames=^TFrames;
+     TFrames=array[0..CountFrames-1] of TFrame;
 var Index,FrameIndex,OtherIndex,FoundPresetAnimation:TpvSizeInt;
     GLTF:TpvGLTF;
     GLTFInstance:TpvGLTF.TInstance;
