@@ -19,12 +19,27 @@ uses Classes,
 
 procedure ConvertModel(const aInputFileName,aOutputFileName:String);
 var GLTF:TpvGLTF;
+    GLTFInstance:TpvGLTF.TInstance;
 begin
 
  GLTF:=TpvGLTF.Create;
  try
 
   GLTF.LoadFromFile(aInputFileName);
+
+  GLTFInstance:=GLTF.AcquireInstance;
+  try
+
+   if length(GLTF.Animations)>0 then begin
+
+    GLTFInstance.Animation:=0;
+    GLTFInstance.AnimationTime:=0.0;
+
+   end;
+
+  finally
+   FreeAndNil(GLTFInstance);
+  end;
 
  finally
   FreeAndNil(GLTF);

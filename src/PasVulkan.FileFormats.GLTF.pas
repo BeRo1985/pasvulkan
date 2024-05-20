@@ -248,7 +248,7 @@ type EpvGLTF=class(Exception);
               property DynamicBoundingBox:TBoundingBox read fDynamicBoundingBox;
               property WorstCaseStaticBoundingBox:TBoundingBox read fWorstCaseStaticBoundingBox;
               property UserData:pointer read fUserData write fUserData;
-              property Automations[const aIndex:TPasGLTFSizeInt]:TAnimation read GetAutomation;
+              property Animations[const aIndex:TPasGLTFSizeInt]:TAnimation read GetAutomation;
              published
               property Parent:TpvGLTF read fParent;
               property OnNodeMatrixPre:TOnNodeMatrix read fOnNodeMatrixPre write fOnNodeMatrixPre;
@@ -3665,18 +3665,52 @@ var CullFace,Blend:TPasGLTFInt32;
 
  end;
  procedure ProcessNode(const aNodeIndex:TPasGLTFSizeInt;const aMatrix:TMatrix);
- var Index,OtherIndex:TPasGLTFSizeInt;
+ var Index,OtherIndex,RotationCounter:TPasGLTFSizeInt;
      Matrix:TPasGLTF.TMatrix4x4;
      InstanceNode:TpvGLTF.TInstance.PNode;
      Node:TpvGLTF.PNode;
      Translation,Scale:TPasGLTF.TVector3;
-     Rotation:TPasGLTF.TVector4;
+     Rotation,WeightedRotation:TPasGLTF.TVector4;
      TranslationSum,ScaleSum:TpvGLTF.TVector3Sum;
-     RotationSum:TpvGLTF.TVector4Sum;
+//   RotationSum:TpvGLTF.TVector4Sum;
      Factor,
      WeightsFactorSum:TPasGLTFDouble;
      Overwrite:TpvGLTF.TInstance.TNode.POverwrite;
      FirstWeights:boolean;
+     WeightedRotationFactorSum:TPasGLTFDouble;
+  procedure AddRotation(const aRotation:TPasGLTF.TVector4;const aFactor:TPasGLTFDouble);
+  begin
+   if not IsZero(aFactor) then begin
+    if RotationCounter=0 then begin
+     WeightedRotation:=aRotation;
+    end else begin
+     // Informal rolling weighted average proof as javascript/ecmascript:
+     // var data = [[1, 0.5], [2, 0.25], [3, 0.125], [4, 0.0625]]; // <= [[value, weight], ... ]
+     // var weightedAverage = 0, weightSum = 0;
+     // for(var i = 0; i < data.length; i++){
+     //   weightSum += data[i][1];
+     // }
+     // for(var i = 0; i < data.length; i++){
+     //    weightedAverage += data[i][0] * data[i][1];
+     // };
+     // weightedAverage /= weightSum;
+     // var rollingAverage = 0, rollingWeightSum = 0;
+     // for(var i = 0; i < data.length; i++){
+     //   //-------------------- THIS -----------------\\ should be replaced with the actual blend operation, for example slerping
+     //   rollingAverage += (data[i][0] - rollingAverage) * (data[i][1] / (rollingWeightSum + data[i][1]));
+     //   rollingWeightSum += data[i][1];
+     // }
+     // var output = [weightedAverage, rollingAverage, weightedAverage * weightSum, rollingAverage * weightSum];
+     // output should be [1.7333333333333334, 1.7333333333333334, 1.625, 1.625] then
+     // Slerp: Commutative =  No, Constant velocity = Yes, Torque minimal = Yes (no artefact-jumps)
+     // Nlerp: Commutative = Yes, Constant velocity = No,  Torque minimal = Yes (no artefact-jumps)
+     // Elerp: Commutative = Yes, Constant velocity = Yes, Torque minimal = No  (can produce artefact-jumps on too distinct to blending automation WeightedRotation frames)
+     WeightedRotation:=QuaternionSlerp(WeightedRotation,aRotation,aFactor/(WeightedRotationFactorSum+aFactor)); // Rolling weighted average
+    end;
+    inc(RotationCounter);
+    WeightedRotationFactorSum:=WeightedRotationFactorSum+aFactor;
+   end;
+  end;
  begin
   InstanceNode:=@fNodes[aNodeIndex];
   Node:=@fParent.fNodes[aNodeIndex];
@@ -3689,12 +3723,18 @@ var CullFace,Blend:TPasGLTFInt32;
    ScaleSum.y:=0.0;
    ScaleSum.z:=0.0;
    ScaleSum.FactorSum:=0.0;
-   RotationSum.x:=0.0;
+{  RotationSum.x:=0.0;
    RotationSum.y:=0.0;
    RotationSum.z:=0.0;
    RotationSum.w:=0.0;
-   RotationSum.FactorSum:=0.0;
+   RotationSum.FactorSum:=0.0;}
+   WeightedRotation[0]:=0.0;
+   WeightedRotation[1]:=0.0;
+   WeightedRotation[2]:=0.0;
+   WeightedRotation[3]:=1.0;
    WeightsFactorSum:=0.0;
+   WeightedRotationFactorSum:=0.0;
+   RotationCounter:=0;
    FirstWeights:=true;
    for Index:=0 to InstanceNode^.CountOverwrites-1 do begin
     Overwrite:=@InstanceNode^.Overwrites[Index];
@@ -3708,11 +3748,12 @@ var CullFace,Blend:TPasGLTFInt32;
      ScaleSum.y:=ScaleSum.y+(Node^.Scale[1]*Factor);
      ScaleSum.z:=ScaleSum.z+(Node^.Scale[2]*Factor);
      ScaleSum.FactorSum:=ScaleSum.FactorSum+Factor;
-     RotationSum.x:=RotationSum.x+(Node^.Rotation[0]*Factor);
+     AddRotation(Node.Rotation,Factor);
+{    RotationSum.x:=RotationSum.x+(Node^.Rotation[0]*Factor);
      RotationSum.y:=RotationSum.y+(Node^.Rotation[1]*Factor);
      RotationSum.z:=RotationSum.z+(Node^.Rotation[2]*Factor);
      RotationSum.w:=RotationSum.w+(Node^.Rotation[3]*Factor);
-     RotationSum.FactorSum:=RotationSum.FactorSum+Factor;
+     RotationSum.FactorSum:=RotationSum.FactorSum+Factor;}
      if length(Node^.Weights)>0 then begin
       if FirstWeights then begin
        FirstWeights:=false;
@@ -3739,11 +3780,12 @@ var CullFace,Blend:TPasGLTFInt32;
       ScaleSum.FactorSum:=ScaleSum.FactorSum+Factor;
      end;
      if TpvGLTF.TInstance.TNode.TOverwriteFlag.Rotation in Overwrite^.Flags then begin
-      RotationSum.x:=RotationSum.x+(Overwrite^.Rotation[0]*Factor);
+      AddRotation(Overwrite^.Rotation,Factor);
+{     RotationSum.x:=RotationSum.x+(Overwrite^.Rotation[0]*Factor);
       RotationSum.y:=RotationSum.y+(Overwrite^.Rotation[1]*Factor);
       RotationSum.z:=RotationSum.z+(Overwrite^.Rotation[2]*Factor);
       RotationSum.w:=RotationSum.w+(Overwrite^.Rotation[3]*Factor);
-      RotationSum.FactorSum:=RotationSum.FactorSum+Factor;
+      RotationSum.FactorSum:=RotationSum.FactorSum+Factor;}
      end;
      if TpvGLTF.TInstance.TNode.TOverwriteFlag.Weights in Overwrite^.Flags then begin
       if FirstWeights then begin
@@ -3775,7 +3817,12 @@ var CullFace,Blend:TPasGLTFInt32;
    end else begin
     Scale:=Node^.Scale;
    end;
-   if RotationSum.FactorSum>0.0 then begin
+   if WeightedRotationFactorSum>0.0 then begin
+    Rotation:=Vector4Normalize(WeightedRotation);
+   end else begin
+    Rotation:=Node.Rotation;
+   end;
+{  if RotationSum.FactorSum>0.0 then begin
     Factor:=1.0/RotationSum.FactorSum;
     Rotation[0]:=RotationSum.x*Factor;
     Rotation[1]:=RotationSum.y*Factor;
@@ -3784,7 +3831,7 @@ var CullFace,Blend:TPasGLTFInt32;
     Rotation:=Vector4Normalize(Rotation);
    end else begin
     Rotation:=Node^.Rotation;
-   end;
+   end;}
    if WeightsFactorSum>0.0 then begin
     Factor:=1.0/WeightsFactorSum;
     for Index:=0 to Min(length(InstanceNode^.WorkWeights),length(Node^.Weights))-1 do begin
