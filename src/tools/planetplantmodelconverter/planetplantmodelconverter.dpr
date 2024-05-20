@@ -18,8 +18,13 @@ uses Classes,
      PasVulkan.FileFormats.GLTF in '../../PasVulkan.FileFormats.GLTF.pas';
 
 procedure ConvertModel(const aInputFileName,aOutputFileName:String);
-var GLTF:TpvGLTF;
+const CountFrames=64;
+var Index,FrameIndex:TpvSizeInt;
+    GLTF:TpvGLTF;
     GLTFInstance:TpvGLTF.TInstance;
+    GLTFBakedMesh:TpvGLTF.TBakedMesh;
+    ta,tb,t:TpvDouble;
+    AnimationName:TpvUTF8String;
 begin
 
  GLTF:=TpvGLTF.Create;
@@ -32,8 +37,36 @@ begin
 
    if length(GLTF.Animations)>0 then begin
 
-    GLTFInstance.Animation:=0;
-    GLTFInstance.AnimationTime:=0.0;
+    for Index:=0 to length(GLTF.Animations)-1 do begin
+
+     GLTFInstance.Animation:=Index;
+
+     AnimationName:=GLTF.Animations[Index].Name;
+
+
+     ta:=GLTF.GetAnimationBeginTime(Index);
+     tb:=GLTF.GetAnimationEndTime(Index);
+
+     for FrameIndex:=0 to CountFrames-1 do begin
+
+      t:=FrameIndex/(CountFrames-1);
+
+      GLTFInstance.AnimationTime:=(ta*(1.0-t))+(tb*t);
+
+      GLTFInstance.Update;
+
+      GLTFBakedMesh:=GLTFInstance.GetBakedMesh(false,true,-1,[TPasGLTF.TMaterial.TAlphaMode.Opaque,TPasGLTF.TMaterial.TAlphaMode.Blend,TPasGLTF.TMaterial.TAlphaMode.Mask]);
+      if assigned(GLTFBakedMesh) then begin
+       try
+
+       finally
+        FreeAndNil(GLTFBakedMesh);
+       end;
+      end;
+
+     end;
+
+    end;
 
    end;
 
