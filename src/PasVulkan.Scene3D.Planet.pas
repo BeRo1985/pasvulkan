@@ -13236,8 +13236,8 @@ begin
          TileX:=TileLODX shl LODIndex;
          GlobalX:=(TileMapX*aTileResolution)+TileX;
          GlobalY:=(TileMapY*aTileResolution)+TileY;
-         v0:=GetVertexIndex(GlobalX+(aTileResolution-1),GlobalY); // 0 0
-         v1:=GetVertexIndex(GlobalX+(aTileResolution-1),GlobalY-LODCountVertices); // 0 -1
+         v0:=GetVertexIndex(GlobalX+(aTileResolution-LODCountVertices),GlobalY); // 0 0
+         v1:=GetVertexIndex(GlobalX+(aTileResolution-LODCountVertices),GlobalY-LODCountVertices); // 0 -1
          for LOD0Index:=0 to LODCountVertices do begin
           v2:=v1;
           v1:=GetVertexIndex(GlobalX+aTileResolution,(GlobalY-LODCountVertices)+LOD0Index); // 1 -y/lod
@@ -13246,8 +13246,8 @@ begin
             aTiledMeshIndices.Reserve(CountIndices+3);
            end;
            aTiledMeshIndices.ItemArray[CountIndices+0]:=v0;
-           aTiledMeshIndices.ItemArray[CountIndices+1]:=v1;
-           aTiledMeshIndices.ItemArray[CountIndices+2]:=v2;
+           aTiledMeshIndices.ItemArray[CountIndices+1]:=v2;
+           aTiledMeshIndices.ItemArray[CountIndices+2]:=v1;
            inc(CountIndices,3);
           end;
          end;
@@ -13261,7 +13261,7 @@ begin
          GlobalX:=(TileMapX*aTileResolution)+TileX;
          GlobalY:=(TileMapY*aTileResolution)+TileY;
          v0:=GetVertexIndex(GlobalX+LODCountVertices,GlobalY); // 0 0
-         v1:=GetVertexIndex(GlobalX,GlobalY-LODCountVertices); // 0 -1
+         v1:=GetVertexIndex(GlobalX+LODCountVertices,GlobalY-LODCountVertices); // 0 -1
          for LOD0Index:=0 to LODCountVertices do begin
           v2:=v1;
           v1:=GetVertexIndex(GlobalX,(GlobalY-LODCountVertices)+LOD0Index); // 1 -y/lod
@@ -13285,7 +13285,7 @@ begin
          GlobalX:=(TileMapX*aTileResolution)+TileX;
          GlobalY:=(TileMapY*aTileResolution)+TileY;
          v0:=GetVertexIndex(GlobalX+aTileResolution-LODCountVertices,GlobalY); // 0 0
-         v1:=GetVertexIndex(GlobalX+aTileResolution,GlobalY-LODCountVertices); // 0 -1
+         v1:=GetVertexIndex(GlobalX+aTileResolution-LODCountVertices,GlobalY-LODCountVertices); // 0 -1
          for LOD0Index:=0 to LODCountVertices do begin
           v2:=v1;
           v1:=GetVertexIndex(GlobalX+aTileResolution,(GlobalY-LODCountVertices)+LOD0Index); // 1 -y/lod
@@ -13294,8 +13294,8 @@ begin
             aTiledMeshIndices.Reserve(CountIndices+3);
            end;
            aTiledMeshIndices.ItemArray[CountIndices+0]:=v0;
-           aTiledMeshIndices.ItemArray[CountIndices+1]:=v1;
-           aTiledMeshIndices.ItemArray[CountIndices+2]:=v2;
+           aTiledMeshIndices.ItemArray[CountIndices+1]:=v2;
+           aTiledMeshIndices.ItemArray[CountIndices+2]:=v1;
            inc(CountIndices,3);
           end;
          end;
@@ -13320,8 +13320,8 @@ begin
             aTiledMeshIndices.Reserve(CountIndices+3);
            end;
            aTiledMeshIndices.ItemArray[CountIndices+0]:=v0;
-           aTiledMeshIndices.ItemArray[CountIndices+1]:=v1;
-           aTiledMeshIndices.ItemArray[CountIndices+2]:=v2;
+           aTiledMeshIndices.ItemArray[CountIndices+1]:=v2;
+           aTiledMeshIndices.ItemArray[CountIndices+2]:=v1;
            inc(CountIndices,3);
           end;
          end;
@@ -13333,8 +13333,8 @@ begin
          TileY:=TileLODY shl LODIndex;
          GlobalX:=(TileMapX*aTileResolution)+TileX;
          GlobalY:=(TileMapY*aTileResolution)+TileY;
-         v0:=GetVertexIndex(GlobalX,GlobalY+(aTileResolution-1)); // 0 0
-         v1:=GetVertexIndex(GlobalX-LODCountVertices,GlobalY+(aTileResolution-1)); // -1 0
+         v0:=GetVertexIndex(GlobalX,GlobalY+(aTileResolution-LODCountVertices)); // 0 0
+         v1:=GetVertexIndex(GlobalX-LODCountVertices,GlobalY+(aTileResolution-LODCountVertices)); // -1 0
          for LOD0Index:=0 to LODCountVertices do begin
           v2:=v1;
           v1:=GetVertexIndex((GlobalX-LODCountVertices)+LOD0Index,GlobalY+aTileResolution); // -x/lod 1
@@ -13358,7 +13358,7 @@ begin
          GlobalX:=(TileMapX*aTileResolution)+TileX;
          GlobalY:=(TileMapY*aTileResolution)+TileY;
          v0:=GetVertexIndex(GlobalX,GlobalY+LODCountVertices); // 0 0
-         v1:=GetVertexIndex(GlobalX-LODCountVertices,GlobalY); // -1 0
+         v1:=GetVertexIndex(GlobalX-LODCountVertices,GlobalY+LODCountVertices); // -1 0
          for LOD0Index:=0 to LODCountVertices do begin
           v2:=v1;
           v1:=GetVertexIndex((GlobalX-LODCountVertices)+LOD0Index,GlobalY); // -x/lod 1
@@ -13367,8 +13367,8 @@ begin
             aTiledMeshIndices.Reserve(CountIndices+3);
            end;
            aTiledMeshIndices.ItemArray[CountIndices+0]:=v0;
-           aTiledMeshIndices.ItemArray[CountIndices+1]:=v1;
-           aTiledMeshIndices.ItemArray[CountIndices+2]:=v2;
+           aTiledMeshIndices.ItemArray[CountIndices+1]:=v2;
+           aTiledMeshIndices.ItemArray[CountIndices+2]:=v1;
            inc(CountIndices,3);
           end;
          end;
@@ -13382,7 +13382,7 @@ begin
          GlobalX:=(TileMapX*aTileResolution)+TileX;
          GlobalY:=(TileMapY*aTileResolution)+TileY;
          v0:=GetVertexIndex(GlobalX,GlobalY+(aTileResolution-LODCountVertices)); // 0 0
-         v1:=GetVertexIndex(GlobalX-LODCountVertices,GlobalY+(aTileResolution-1)); // -1 0
+         v1:=GetVertexIndex(GlobalX-LODCountVertices,GlobalY+(aTileResolution-LODCountVertices)); // -1 0
          for LOD0Index:=0 to LODCountVertices do begin
           v2:=v1;
           v1:=GetVertexIndex((GlobalX-LODCountVertices)+LOD0Index,GlobalY+aTileResolution); // -x/lod 1
@@ -13398,6 +13398,7 @@ begin
          end;
         end;
        end;
+       //*)
 
       end;
 
@@ -14293,6 +14294,7 @@ begin
       end else begin
        RendererInstance.fMinimumLODLevel:=0;//Ceil(Clamp(Log2(Sphere.Center.Length/Sphere.Radius),0.0,Max(0.0,fTileMapBits-1)));
       end;
+//    RendererInstance.fMinimumLODLevel:=2;
 
      end;
 
