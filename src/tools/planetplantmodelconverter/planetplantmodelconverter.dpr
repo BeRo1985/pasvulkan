@@ -17,9 +17,33 @@ uses Classes,
      PasVulkan.Collections in '../../PasVulkan.Collections.pas',
      PasVulkan.FileFormats.GLTF in '../../PasVulkan.FileFormats.GLTF.pas';
 
+const CountPresetAnimations=5;
+
+type TPresetAnimation=record
+      Index:TpvSizeInt;
+      Name:TpvUTF8String; 
+     end;
+
+     TPresetAnimations=array[0..CountPresetAnimations-1] of TPresetAnimation;
+
+const PresetAnimations:TPresetAnimations=(
+       (Index:0;Name:'grow'),
+       (Index:1;Name:'blossoms'),
+       (Index:2;Name:'falloff'),
+       (Index:3;Name:'wither'),
+       (Index:4;Name:'death')
+      );
+
 procedure ConvertModel(const aInputFileName,aOutputFileName:String);
-const CountFrames=64;
-var Index,FrameIndex:TpvSizeInt;
+const CountFrames=16;
+type TVertex=packed record
+      Position:TpvVector3;
+      TexCoordU:TpvUInt16;
+      TexCoordV:TpvUInt16;
+     end;
+     PVertex=^TVertex;
+     TVertices=array of TVertex;
+var Index,FrameIndex,OtherIndex,FoundPresetAnimation:TpvSizeInt;
     GLTF:TpvGLTF;
     GLTFInstance:TpvGLTF.TInstance;
     GLTFBakedMesh:TpvGLTF.TBakedMesh;
@@ -39,29 +63,40 @@ begin
 
     for Index:=0 to length(GLTF.Animations)-1 do begin
 
-     GLTFInstance.Animation:=Index;
+     AnimationName:=Trim(LowerCase(GLTF.Animations[Index].Name));
 
-     AnimationName:=GLTF.Animations[Index].Name;
+     FoundPresetAnimation:=-1;
+     for OtherIndex:=0 to CountPresetAnimations-1 do begin
+      if AnimationName=PresetAnimations[OtherIndex].Name then begin
+       FoundPresetAnimation:=PresetAnimations[OtherIndex].Index;
+       break;
+      end;
+     end;
 
+     if FoundPresetAnimation>=0 then begin
 
-     ta:=GLTF.GetAnimationBeginTime(Index);
-     tb:=GLTF.GetAnimationEndTime(Index);
+      GLTFInstance.Animation:=Index;
 
-     for FrameIndex:=0 to CountFrames-1 do begin
+      ta:=GLTF.GetAnimationBeginTime(Index);
+      tb:=GLTF.GetAnimationEndTime(Index);
 
-      t:=FrameIndex/(CountFrames-1);
+      for FrameIndex:=0 to CountFrames-1 do begin
 
-      GLTFInstance.AnimationTime:=(ta*(1.0-t))+(tb*t);
+       t:=FrameIndex/(CountFrames-1);
 
-      GLTFInstance.Update;
+       GLTFInstance.AnimationTime:=(ta*(1.0-t))+(tb*t);
 
-      GLTFBakedMesh:=GLTFInstance.GetBakedMesh(false,true,-1,[TPasGLTF.TMaterial.TAlphaMode.Opaque,TPasGLTF.TMaterial.TAlphaMode.Blend,TPasGLTF.TMaterial.TAlphaMode.Mask]);
-      if assigned(GLTFBakedMesh) then begin
-       try
+       GLTFInstance.Update;
 
-       finally
-        FreeAndNil(GLTFBakedMesh);
+       GLTFBakedMesh:=GLTFInstance.GetBakedMesh(false,true,-1,[TPasGLTF.TMaterial.TAlphaMode.Opaque,TPasGLTF.TMaterial.TAlphaMode.Blend,TPasGLTF.TMaterial.TAlphaMode.Mask]);
+       if assigned(GLTFBakedMesh) then begin
+        try
+
+        finally
+         FreeAndNil(GLTFBakedMesh);
+        end;
        end;
+
       end;
 
      end;
@@ -81,7 +116,7 @@ begin
 end;
 
 var Index:TpvSizeInt;
-    Parameter,InputFileName,OutputFileName:String; 
+    Parameter,InputFileName,OutputFileName:String;
 begin
 
  if ParamCount=0 then begin
@@ -91,11 +126,11 @@ begin
 
  InputFileName:='';
  OutputFileName:='';
- 
+
  for Index:=1 to ParamCount do begin
   Parameter:=ParamStr(Index);
   if length(Parameter)>0 then begin
-   case Parameter[1] of 
+   case Parameter[1] of
     '-':begin
     end;
     '/':begin
@@ -107,7 +142,7 @@ begin
       OutputFileName:=Parameter;
      end;
     end;
-   end;  
+   end;
   end;
  end;
 
@@ -124,4 +159,5 @@ begin
  ConvertModel(InputFileName,OutputFileName);
 
 end.
+
 

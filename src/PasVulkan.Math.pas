@@ -120,6 +120,10 @@ const EPSILON={$ifdef UseDouble}1e-14{$else}1e-5{$endif}; // actually {$ifdef Us
 
       SQRT_0_DOT_5=0.70710678118;
 
+      QTangentThreshold8Bit=1.0/127.0;
+
+      QTangentThreshold16Bit=1.0/32767.0;
+
       SupraEngineFPUPrecisionMode:TFPUPrecisionMode={$ifdef cpu386}pmExtended{$else}{$ifdef cpux64}pmExtended{$else}pmDouble{$endif}{$endif};
 
       SupraEngineFPUExceptionMask:TFPUExceptionMask=[exInvalidOp,exDenormalized,exZeroDivide,exOverflow,exUnderflow,exPrecision];
@@ -434,9 +438,14 @@ type PpvScalar=^TpvScalar;
         6:(Vector3:TpvHalfFloatVector3);
      end;
 
-     PpvPackedTangentSpace=^TpvPackedTangentSpace;
-     TpvPackedTangentSpace=record
+     PpvUInt8PackedTangentSpace=^TpvUInt8PackedTangentSpace;
+     TpvUInt8PackedTangentSpace=record
       x,y,z,w:TpvUInt8;
+     end;
+
+     PpvUInt16PackedTangentSpace=^TpvUInt16PackedTangentSpace;
+     TpvUInt16PackedTangentSpace=record
+      x,y,z,w:TpvUInt16;
      end;
 
      PpvNormalizedSphericalCoordinates=^TpvNormalizedSphericalCoordinates;
@@ -735,7 +744,7 @@ type PpvScalar=^TpvScalar;
        function OrthoNormalize:TpvMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
        function RobustOrthoNormalize(const Tolerance:TpvScalar=1e-3):TpvMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
        function ToQuaternion:TpvQuaternion;
-       function ToQTangent:TpvQuaternion;
+       function ToQTangent(const aThreshold:TpvDouble=QTangentThreshold16Bit):TpvQuaternion;
        function SimpleLerp(const b:TpvMatrix3x3;const t:TpvScalar):TpvMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
        function SimpleNlerp(const b:TpvMatrix3x3;const t:TpvScalar):TpvMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
        function SimpleSlerp(const b:TpvMatrix3x3;const t:TpvScalar):TpvMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
@@ -907,7 +916,7 @@ type PpvScalar=^TpvScalar;
        function OrthoNormalize:TpvMatrix4x4; //{$ifdef CAN_INLINE}inline;{$endif}
        function RobustOrthoNormalize(const Tolerance:TpvScalar=1e-3):TpvMatrix4x4; //{$ifdef CAN_INLINE}inline;{$endif}
        function ToQuaternion:TpvQuaternion;
-       function ToQTangent:TpvQuaternion;
+       function ToQTangent(const aThreshold:TpvDouble=QTangentThreshold16Bit):TpvQuaternion;
        function ToMatrix3x3:TpvMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
        function ToRotation:TpvMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
        function SimpleLerp(const b:TpvMatrix4x4;const t:TpvScalar):TpvMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
@@ -1730,8 +1739,17 @@ function Float32ToFloat10(const pValue:TpvFloat):TpvUInt32;
 function ConvertRGB32FToRGB9E5(r,g,b:TpvFloat):TpvUInt32;
 function ConvertRGB32FToR11FG11FB10F(const r,g,b:TpvFloat):TpvUInt32; {$ifdef CAN_INLINE}inline;{$endif}
 
-function PackTangentSpace(const aTangent,aBitangent,aNormal:TpvVector3):TpvPackedTangentSpace;
-procedure UnpackTangentSpace(const aPackedTangentSpace:TpvPackedTangentSpace;out aTangent,aBitangent,aNormal:TpvVector3);
+function PackUInt8TangentSpace(const aTangent,aBitangent,aNormal:TpvVector3):TpvUInt8PackedTangentSpace;
+procedure UnpackUInt8TangentSpace(const aPackedTangentSpace:TpvUInt8PackedTangentSpace;out aTangent,aBitangent,aNormal:TpvVector3);
+
+function PackUInt16TangentSpace(const aTangent,aBitangent,aNormal:TpvVector3):TpvUInt16PackedTangentSpace;
+procedure UnpackUInt16TangentSpace(const aPackedTangentSpace:TpvUInt16PackedTangentSpace;out aTangent,aBitangent,aNormal:TpvVector3);
+
+function PackUInt8QTangentSpace(const aTangent,aBitangent,aNormal:TpvVector3):TpvUInt8PackedTangentSpace;
+procedure UnpackUInt8QTangentSpace(const aPackedTangentSpace:TpvUInt8PackedTangentSpace;out aTangent,aBitangent,aNormal:TpvVector3);
+
+function PackUInt16QTangentSpace(const aTangent,aBitangent,aNormal:TpvVector3):TpvUInt16PackedTangentSpace;
+procedure UnpackUInt16QTangentSpace(const aPackedTangentSpace:TpvUInt16PackedTangentSpace;out aTangent,aBitangent,aNormal:TpvVector3);
 
 function ConvertLinearToSRGB(const aColor:TpvFloat):TpvFloat; overload;
 function ConvertLinearToSRGB(const aColor:TpvVector3):TpvVector3; overload;
@@ -7972,8 +7990,7 @@ begin
  result:=result.Normalize;
 end;
 
-function TpvMatrix3x3.ToQTangent:TpvQuaternion;
-const Threshold=1.0/32767.0;
+function TpvMatrix3x3.ToQTangent(const aThreshold:TpvDouble):TpvQuaternion;
 var Scale,t,s,Renormalization:TpvScalar;
 begin
  if ((((((RawComponents[0,0]*RawComponents[1,1]*RawComponents[2,2])+
@@ -8033,15 +8050,15 @@ begin
  end;
  begin
   // Make sure, that we don't end up with 0 as w component
-  if abs(result.w)<=Threshold then begin
-   Renormalization:=sqrt(1.0-sqr(Threshold));
+  if abs(result.w)<=aThreshold then begin
+   Renormalization:=sqrt(1.0-sqr(aThreshold));
    result.x:=result.x*Renormalization;
    result.y:=result.y*Renormalization;
    result.z:=result.z*Renormalization;
    if result.w>0.0 then begin
-    result.w:=Threshold;
+    result.w:=aThreshold;
    end else begin
-    result.w:=-Threshold;
+    result.w:=-aThreshold;
    end;
   end;
  end;
@@ -12109,8 +12126,7 @@ begin
  result:=result.Normalize;
 end;
 
-function TpvMatrix4x4.ToQTangent:TpvQuaternion;
-const Threshold=1.0/32767.0;
+function TpvMatrix4x4.ToQTangent(const aThreshold:TpvDouble):TpvQuaternion;
 var Scale,t,s,Renormalization:TpvScalar;
 begin
  if ((((((RawComponents[0,0]*RawComponents[1,1]*RawComponents[2,2])+
@@ -12170,15 +12186,15 @@ begin
  end;
  begin
   // Make sure, that we don't end up with 0 as w component
-  if abs(result.w)<=Threshold then begin
-   Renormalization:=sqrt(1.0-sqr(Threshold));
+  if abs(result.w)<=aThreshold then begin
+   Renormalization:=sqrt(1.0-sqr(aThreshold));
    result.x:=result.x*Renormalization;
    result.y:=result.y*Renormalization;
    result.z:=result.z*Renormalization;
    if result.w>0.0 then begin
-    result.w:=Threshold;
+    result.w:=aThreshold;
    end else begin
-    result.w:=-Threshold;
+    result.w:=-aThreshold;
    end;
   end;
  end;
@@ -18471,31 +18487,72 @@ begin
  result:=(Float32ToFloat11(r) and $7ff) or ((Float32ToFloat11(g) and $7ff) shl 11) or ((Float32ToFloat10(b) and $3ff) shl 22);
 end;
 
-function PackTangentSpace(const aTangent,aBitangent,aNormal:TpvVector3):TpvPackedTangentSpace;
+function PackUInt8TangentSpace(const aTangent,aBitangent,aNormal:TpvVector3):TpvUInt8PackedTangentSpace;
+begin
+ result.x:=Min(Max((round((ArcSin(aNormal.z)/PI)*127.0)+128),0),255);
+ result.y:=Min(Max((round((ArcTan2(aNormal.y,aNormal.x)/PI)*127.0)+128),0),255);
+ result.z:=Min(Max((round((ArcSin(aTangent.z)/PI)*127.0)+128),0),255);
+ result.w:=Min(Max((round((ArcTan2(aTangent.y,aTangent.x)/PI)*127.0)+128),0),255);
+end;
+
+procedure UnpackUInt8TangentSpace(const aPackedTangentSpace:TpvUInt8PackedTangentSpace;out aTangent,aBitangent,aNormal:TpvVector3);
+var Latitude,Longitude:TpvScalar;
+begin
+ Latitude:=((aPackedTangentSpace.x-128.0)/127.0)*PI;
+ Longitude:=((aPackedTangentSpace.y-128.0)/127.0)*PI;
+ aNormal.x:=cos(Latitude)*cos(Longitude);
+ aNormal.y:=cos(Latitude)*sin(Longitude);
+ aNormal.z:=sin(Latitude);
+ Latitude:=((aPackedTangentSpace.z-128.0)/127.0)*PI;
+ Longitude:=((aPackedTangentSpace.w-128.0)/127.0)*PI;
+ aTangent.x:=cos(Latitude)*cos(Longitude);
+ aTangent.y:=cos(Latitude)*sin(Longitude);
+ aTangent.z:=sin(Latitude);
+ aBitangent:=(aNormal.Cross(aTangent)).Normalize;
+end;
+
+function PackUInt16TangentSpace(const aTangent,aBitangent,aNormal:TpvVector3):TpvUInt16PackedTangentSpace;
+begin
+ result.x:=Min(Max((round((ArcSin(aNormal.z)/PI)*32767.0)+32768),0),65535);
+ result.y:=Min(Max((round((ArcTan2(aNormal.y,aNormal.x)/PI)*32767.0)+32768),0),65535);
+ result.z:=Min(Max((round((ArcSin(aTangent.z)/PI)*32767.0)+32768),0),255);
+ result.w:=Min(Max((round((ArcTan2(aTangent.y,aTangent.x)/PI)*32767.0)+32768),0),65535);
+end;
+
+procedure UnpackUInt16TangentSpace(const aPackedTangentSpace:TpvUInt16PackedTangentSpace;out aTangent,aBitangent,aNormal:TpvVector3);
+var Latitude,Longitude:TpvScalar;
+begin
+ Latitude:=((aPackedTangentSpace.x-32768.0)/32767.0)*PI;
+ Longitude:=((aPackedTangentSpace.y-32768.0)/32767.0)*PI;
+ aNormal.x:=cos(Latitude)*cos(Longitude);
+ aNormal.y:=cos(Latitude)*sin(Longitude);
+ aNormal.z:=sin(Latitude);
+ Latitude:=((aPackedTangentSpace.z-32768.0)/32767.0)*PI;
+ Longitude:=((aPackedTangentSpace.w-32768.0)/32767.0)*PI;
+ aTangent.x:=cos(Latitude)*cos(Longitude);
+ aTangent.y:=cos(Latitude)*sin(Longitude);
+ aTangent.z:=sin(Latitude);
+ aBitangent:=(aNormal.Cross(aTangent)).Normalize;
+end;
+
+function PackUInt8QTangentSpace(const aTangent,aBitangent,aNormal:TpvVector3):TpvUInt8PackedTangentSpace;
 var q:TpvQuaternion;
 begin
- q:=TpvMatrix3x3.Create(aTangent,aBitangent,aNormal).ToQTangent;
- result.x:=Min(Max((round(q.x*127)+128),0),255);
- result.y:=Min(Max((round(q.y*127)+128),0),255);
- result.z:=Min(Max((round(q.z*127)+128),0),255);
- result.w:=Min(Max((round(q.w*127)+128),0),255);
+ q:=TpvMatrix3x3.Create(aTangent,aBitangent,aNormal).ToQTangent(QTangentThreshold8Bit);
+ result.x:=Min(Max((round(q.x*127.0)+128),0),255);
+ result.y:=Min(Max((round(q.y*127.0)+128),0),255);
+ result.z:=Min(Max((round(q.z*127.0)+128),0),255);
+ result.w:=Min(Max((round(q.w*127.0)+128),0),255);
 end;
-{
-begin
- result.x:=Min(Max((round((ArcSin(aNormal.z)/PI)*127)+128),0),255);
- result.y:=Min(Max((round((ArcTan2(aNormal.y,aNormal.x)/PI)*127)+128),0),255);
- result.z:=Min(Max((round((ArcSin(aTangent.z)/PI)*127)+128),0),255);
- result.w:=Min(Max((round((ArcTan2(aTangent.y,aTangent.x)/PI)*127)+128),0),255);
-end;//}
 
-procedure UnpackTangentSpace(const aPackedTangentSpace:TpvPackedTangentSpace;out aTangent,aBitangent,aNormal:TpvVector3);
+procedure UnpackUInt8QTangentSpace(const aPackedTangentSpace:TpvUInt8PackedTangentSpace;out aTangent,aBitangent,aNormal:TpvVector3);
 var q:TpvQuaternion;
     m:TpvMatrix3x3;
 begin
- q.x:=(aPackedTangentSpace.x-128)/127;
- q.y:=(aPackedTangentSpace.y-128)/127;
- q.z:=(aPackedTangentSpace.z-128)/127;
- q.w:=(aPackedTangentSpace.w-128)/127;
+ q.x:=(aPackedTangentSpace.x-128.0)/127.0;
+ q.y:=(aPackedTangentSpace.y-128.0)/127.0;
+ q.z:=(aPackedTangentSpace.z-128.0)/127.0;
+ q.w:=(aPackedTangentSpace.w-128.0)/127.0;
  m:=TpvMatrix3x3.CreateFromQTangent(q);
  aTangent.x:=m[0,0];
  aTangent.y:=m[0,1];
@@ -18507,20 +18564,36 @@ begin
  aNormal.y:=m[2,1];
  aNormal.z:=m[2,2];
 end;
-{var Latitude,Longitude:single;
+
+function PackUInt16QTangentSpace(const aTangent,aBitangent,aNormal:TpvVector3):TpvUInt16PackedTangentSpace;
+var q:TpvQuaternion;
 begin
- Latitude:=((aPackedTangentSpace.x-128)/127)*PI;
- Longitude:=((aPackedTangentSpace.y-128)/127)*PI;
- aNormal.x:=cos(Latitude)*cos(Longitude);
- aNormal.y:=cos(Latitude)*sin(Longitude);
- aNormal.z:=sin(Latitude);
- Latitude:=((aPackedTangentSpace.z-128)/127)*PI;
- Longitude:=((aPackedTangentSpace.w-128)/127)*PI;
- aTangent.x:=cos(Latitude)*cos(Longitude);
- aTangent.y:=cos(Latitude)*sin(Longitude);
- aTangent.z:=sin(Latitude);
- aBitangent:=Vector3Norm(Vector3Cross(aNormal,aTangent));
-end;//}
+ q:=TpvMatrix3x3.Create(aTangent,aBitangent,aNormal).ToQTangent(QTangentThreshold16Bit);
+ result.x:=Min(Max((round(q.x*32767.0)+32768),0),65535);
+ result.y:=Min(Max((round(q.y*32767.0)+32768),0),65535);
+ result.z:=Min(Max((round(q.z*32767.0)+32768),0),65535);
+ result.w:=Min(Max((round(q.w*32767.0)+32768),0),65535);
+end;
+
+procedure UnpackUInt16QTangentSpace(const aPackedTangentSpace:TpvUInt16PackedTangentSpace;out aTangent,aBitangent,aNormal:TpvVector3);
+var q:TpvQuaternion;
+    m:TpvMatrix3x3;
+begin
+ q.x:=(aPackedTangentSpace.x-32768.0)/32767.0;
+ q.y:=(aPackedTangentSpace.y-32768.0)/32767.0;
+ q.z:=(aPackedTangentSpace.z-32768.0)/32767.0;
+ q.w:=(aPackedTangentSpace.w-32768.0)/32767.0;
+ m:=TpvMatrix3x3.CreateFromQTangent(q);
+ aTangent.x:=m[0,0];
+ aTangent.y:=m[0,1];
+ aTangent.z:=m[0,2];
+ aBitangent.x:=m[1,0];
+ aBitangent.y:=m[1,1];
+ aBitangent.z:=m[1,2];
+ aNormal.x:=m[2,0];
+ aNormal.y:=m[2,1];
+ aNormal.z:=m[2,2];
+end;
 
 function ConvertLinearToSRGB(const aColor:TpvFloat):TpvFloat;
 const InverseGamma=1.0/2.4;
