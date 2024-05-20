@@ -37,10 +37,11 @@ const PresetAnimations:TPresetAnimations=(
 procedure ConvertModel(const aInputFileName,aOutputFileName:String);
 const CountFrames=16;
 type TVertex=packed record
-      Position:TpvVector3;
-      TexCoordU:TpvUInt16;
-      TexCoordV:TpvUInt16;
-     end;
+      Position:TpvVector3; // 12 bytes
+      TexCoordU:TpvUInt16; // 2 bytes
+      TexCoordV:TpvUInt16; // 2 bytes
+      TangentSpace:TpvUInt16PackedTangentSpace; // 8 bytes
+     end; // 12+2+2+8 = 24 bytes
      PVertex=^TVertex;
      TVertices=array of TVertex;
 var Index,FrameIndex,OtherIndex,FoundPresetAnimation:TpvSizeInt;
