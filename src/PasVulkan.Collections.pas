@@ -1271,7 +1271,9 @@ end;
 procedure TpvDynamicArrayList<T>.Finish;
 begin
  fAllocated:=fCount;
- SetLength(fItems,fAllocated);
+ if length(fItems)<>fAllocated then begin
+  SetLength(fItems,fAllocated);
+ end;
 end;
 
 function TpvDynamicArrayList<T>.GetItem(const pIndex:TpvSizeInt):T;
