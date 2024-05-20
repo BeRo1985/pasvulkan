@@ -13047,7 +13047,7 @@ begin
    TileLODResolution:=aTileResolution shr LODIndex;
    inc(CountIndices,aTileMapResolution*aTileMapResolution*(TileLODResolution+1)*(TileLODResolution+1)*6);
    if LODIndex>0 then begin
-    inc(CountIndices,aTileMapResolution*aTileMapResolution*(8*(aTileResolution+1))*3);
+    inc(CountIndices,aTileMapResolution*aTileMapResolution*(4*(aTileResolution+1))*3);
    end;
   end;
   aTiledMeshIndices.Reserve(CountIndices);
@@ -13148,7 +13148,7 @@ begin
          v3:=TileVertices[((TileLODY+1)*TileLODResolutionPlusBorder)+(TileLODX+0)]; // -1  0
          if (v0<>v1) and (v0<>v2) and (v1<>v2) then begin
           if aTiledMeshIndices.Allocated<(CountIndices+3) then begin
-           aTiledMeshIndices.Reserve((CountIndices+3)*2);
+           aTiledMeshIndices.Reserve(CountIndices+3);
           end;
           aTiledMeshIndices.ItemArray[CountIndices+0]:=v0;
           aTiledMeshIndices.ItemArray[CountIndices+1]:=v1;
@@ -13157,7 +13157,7 @@ begin
          end;
          if (v0<>v2) and (v0<>v3) and (v2<>v3) then begin
           if aTiledMeshIndices.Allocated<(CountIndices+3) then begin
-           aTiledMeshIndices.Reserve((CountIndices+3)*2);
+           aTiledMeshIndices.Reserve(CountIndices+3);
           end;
           aTiledMeshIndices.ItemArray[CountIndices+0]:=v0;
           aTiledMeshIndices.ItemArray[CountIndices+1]:=v2;
@@ -13176,7 +13176,7 @@ begin
         v3:=TileVertices[((TileLODY+2)*TileLODResolutionPlusBorder)+(TileLODX+1)]; //  0  1
         if (v0<>v1) and (v0<>v2) and (v1<>v2) then begin
          if aTiledMeshIndices.Allocated<(CountIndices+3) then begin
-          aTiledMeshIndices.Reserve((CountIndices+3)*2);
+          aTiledMeshIndices.Reserve(CountIndices+3);
          end;
          aTiledMeshIndices.ItemArray[CountIndices+0]:=v0;
          aTiledMeshIndices.ItemArray[CountIndices+1]:=v1;
@@ -13185,7 +13185,7 @@ begin
         end;
         if (v0<>v2) and (v0<>v3) and (v2<>v3) then begin
          if aTiledMeshIndices.Allocated<(CountIndices+3) then begin
-          aTiledMeshIndices.Reserve((CountIndices+3)*2);
+          aTiledMeshIndices.Reserve(CountIndices+3);
          end;
          aTiledMeshIndices.ItemArray[CountIndices+0]:=v0;
          aTiledMeshIndices.ItemArray[CountIndices+1]:=v2;
@@ -13220,7 +13220,7 @@ begin
           v1:=GetVertexIndex(GlobalX-1,(GlobalY-LODCountVertices)+LOD0Index); // -1 -y/lod
           if (v0<>v1) and (v0<>v2) and (v1<>v2) then begin
            if aTiledMeshIndices.Allocated<(CountIndices+3) then begin
-            aTiledMeshIndices.Reserve((CountIndices+3)*2);
+            aTiledMeshIndices.Reserve(CountIndices+3);
            end;
            aTiledMeshIndices.ItemArray[CountIndices+0]:=v0;
            aTiledMeshIndices.ItemArray[CountIndices+1]:=v1;
@@ -13243,7 +13243,7 @@ begin
           v1:=GetVertexIndex(GlobalX+aTileResolution,(GlobalY-LODCountVertices)+LOD0Index); // 1 -y/lod
           if (v0<>v1) and (v0<>v2) and (v1<>v2) then begin
            if aTiledMeshIndices.Allocated<(CountIndices+3) then begin
-            aTiledMeshIndices.Reserve((CountIndices+3)*2);
+            aTiledMeshIndices.Reserve(CountIndices+3);
            end;
            aTiledMeshIndices.ItemArray[CountIndices+0]:=v0;
            aTiledMeshIndices.ItemArray[CountIndices+1]:=v1;
@@ -13267,7 +13267,7 @@ begin
           v1:=GetVertexIndex(GlobalX,(GlobalY-LODCountVertices)+LOD0Index); // 1 -y/lod
           if (v0<>v1) and (v0<>v2) and (v1<>v2) then begin
            if aTiledMeshIndices.Allocated<(CountIndices+3) then begin
-            aTiledMeshIndices.Reserve((CountIndices+3)*2);
+            aTiledMeshIndices.Reserve(CountIndices+3);
            end;
            aTiledMeshIndices.ItemArray[CountIndices+0]:=v0;
            aTiledMeshIndices.ItemArray[CountIndices+1]:=v1;
@@ -13291,7 +13291,7 @@ begin
           v1:=GetVertexIndex(GlobalX+aTileResolution,(GlobalY-LODCountVertices)+LOD0Index); // 1 -y/lod
           if (v0<>v1) and (v0<>v2) and (v1<>v2) then begin
            if aTiledMeshIndices.Allocated<(CountIndices+3) then begin
-            aTiledMeshIndices.Reserve((CountIndices+3)*2);
+            aTiledMeshIndices.Reserve(CountIndices+3);
            end;
            aTiledMeshIndices.ItemArray[CountIndices+0]:=v0;
            aTiledMeshIndices.ItemArray[CountIndices+1]:=v1;
@@ -13317,7 +13317,7 @@ begin
           v1:=GetVertexIndex((GlobalX-LODCountVertices)+LOD0Index,GlobalY); // -x/lod 0
           if (v0<>v1) and (v0<>v2) and (v1<>v2) then begin
            if aTiledMeshIndices.Allocated<(CountIndices+3) then begin
-            aTiledMeshIndices.Reserve((CountIndices+3)*2);
+            aTiledMeshIndices.Reserve(CountIndices+3);
            end;
            aTiledMeshIndices.ItemArray[CountIndices+0]:=v0;
            aTiledMeshIndices.ItemArray[CountIndices+1]:=v1;
@@ -13340,7 +13340,7 @@ begin
           v1:=GetVertexIndex((GlobalX-LODCountVertices)+LOD0Index,GlobalY+aTileResolution); // -x/lod 1
           if (v0<>v1) and (v0<>v2) and (v1<>v2) then begin
            if aTiledMeshIndices.Allocated<(CountIndices+3) then begin
-            aTiledMeshIndices.Reserve((CountIndices+3)*2);
+            aTiledMeshIndices.Reserve(CountIndices+3);
            end;
            aTiledMeshIndices.ItemArray[CountIndices+0]:=v0;
            aTiledMeshIndices.ItemArray[CountIndices+1]:=v1;
@@ -13364,7 +13364,7 @@ begin
           v1:=GetVertexIndex((GlobalX-LODCountVertices)+LOD0Index,GlobalY); // -x/lod 1
           if (v0<>v1) and (v0<>v2) and (v1<>v2) then begin
            if aTiledMeshIndices.Allocated<(CountIndices+3) then begin
-            aTiledMeshIndices.Reserve((CountIndices+3)*2);
+            aTiledMeshIndices.Reserve(CountIndices+3);
            end;
            aTiledMeshIndices.ItemArray[CountIndices+0]:=v0;
            aTiledMeshIndices.ItemArray[CountIndices+1]:=v1;
@@ -13388,7 +13388,7 @@ begin
           v1:=GetVertexIndex((GlobalX-LODCountVertices)+LOD0Index,GlobalY+aTileResolution); // -x/lod 1
           if (v0<>v1) and (v0<>v2) and (v1<>v2) then begin
            if aTiledMeshIndices.Allocated<(CountIndices+3) then begin
-            aTiledMeshIndices.Reserve((CountIndices+3)*2);
+            aTiledMeshIndices.Reserve(CountIndices+3);
            end;
            aTiledMeshIndices.ItemArray[CountIndices+0]:=v0;
            aTiledMeshIndices.ItemArray[CountIndices+1]:=v1;
