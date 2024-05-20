@@ -52,12 +52,12 @@ begin
   end;
  end;
 
- if (length(InputFileName))=0) or not FileExists(InputFileName) then begin
+ if (length(InputFileName)=0) or not FileExists(InputFileName) then begin
   writeln('Error: No input file name specified or input file name not found!');
   halt(1);
  end;
 
- if length(OutputFileName))=0 then begin
+ if length(OutputFileName)=0 then begin
   writeln('Error: No output file name specified!');
   halt(1);
  end;
