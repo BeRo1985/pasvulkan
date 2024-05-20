@@ -18,7 +18,18 @@ uses Classes,
      PasVulkan.FileFormats.GLTF in '../../PasVulkan.FileFormats.GLTF.pas';
 
 procedure ConvertModel(const aInputFileName,aOutputFileName:String);
+var GLTF:TpvGLTF;
 begin
+
+ GLTF:=TpvGLTF.Create;
+ try
+
+  GLTF.LoadFromFile(aInputFileName);
+
+ finally
+  FreeAndNil(GLTF);
+ end;
+
 end;
 
 var Index:TpvSizeInt;
