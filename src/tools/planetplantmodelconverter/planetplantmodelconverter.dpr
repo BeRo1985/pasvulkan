@@ -292,6 +292,7 @@ var Index,FrameIndex,OtherIndex,FoundPresetAnimation:TpvSizeInt;
     GLTFBakedVertexIndexedMesh:TpvGLTF.TBakedVertexIndexedMesh;
     ta,tb,t:TpvDouble;
     AnimationName:TpvUTF8String;
+    TimeFrames:TTimeFrames;
 begin
 
  FillChar(Animations,SizeOf(TAnimations),#0);
@@ -324,6 +325,23 @@ begin
       end;
      end;
 
+    end;
+
+    // Get all animations
+    for Index:=0 to CountPresetAnimations-1 do begin
+     TimeFrames:=GetMergedAnimation(Index);
+     if length(TimeFrames)>0 then begin
+      try
+       ConvertTimeFramesToNormalizedFrames(TimeFrames,Animations[Index].Frames);
+      finally
+       TimeFrames:=nil;
+      end;
+     end else begin
+      // Use last frame of the first animation as fallback 
+      for FrameIndex:=0 to CountFrames-1 do begin
+       Animations[Index].Frames[FrameIndex]:=Animations[0].Frames[CountFrames-1];
+      end;
+     end;
     end;
    
    end;
