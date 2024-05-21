@@ -98,6 +98,7 @@ var Animations:TAnimations;
     Indices:TIndices;
 
     CountUsedVertices:TpvSizeInt;
+    CountUsedIndices:TpvSizeInt;
 
     GLTF:TpvGLTF;
     GLTFInstance:TpvGLTF.TInstance;
@@ -336,17 +337,30 @@ begin
      GLTFBakedVertexIndexedMesh:=GLTFInstance.GetBakedVertexIndexedMesh(false,true,-1,[TPasGLTF.TMaterial.TAlphaMode.Opaque,TPasGLTF.TMaterial.TAlphaMode.Blend,TPasGLTF.TMaterial.TAlphaMode.Mask]);
      if assigned(GLTFBakedVertexIndexedMesh) then begin
       try
-       if (GLTFBakedVertexIndexedMesh.Vertices.Count<=MaximalCountVertices) and (GLTFBakedVertexIndexedMesh.Indices.Count<=MaximalCountIndices) then begin
+       CountUsedVertices:=GLTFBakedVertexIndexedMesh.Vertices.Count;
+       CountUsedIndices:=GLTFBakedVertexIndexedMesh.Indices.Count;
+       if (CountUsedVertices<=MaximalCountVertices) and (CountUsedIndices<=MaximalCountIndices) then begin
         for Index:=0 to GLTFBakedVertexIndexedMesh.Indices.Count-1 do begin
          Indices[Index]:=GLTFBakedVertexIndexedMesh.Indices.ItemArray[Index];
         end;
        end else begin 
-        WriteLn('Error: Too many vertices or indices!');
+        if CountUsedVertices>MaximalCountVertices then begin
+         if CountUsedIndices>MaximalCountIndices then begin
+          WriteLn('Error: Too many vertices and indices!');
+         end else begin 
+          WriteLn('Error: Too many vertices!');
+         end;
+        end else if CountUsedIndices>MaximalCountIndices then begin
+         WriteLn('Error: Too many indices!');
+        end;
         result:=false;
        end;         
       finally
        FreeAndNil(GLTFBakedVertexIndexedMesh);
       end;
+     end else begin
+      WriteLn('Error: No vertex indexed mesh found!');
+      result:=false;       
      end;
 
     end;
@@ -377,13 +391,13 @@ begin
       FileHeader.Signature:=Signature;
       FileHeader.Version:=1;
       FileHeader.CountVertices:=CountUsedVertices;
-      FileHeader.CountIndices:=length(Indices);
+      FileHeader.CountIndices:=CountUsedIndices;
       FileHeader.CountFrames:=CountFrames;
       FileHeader.CountAnimations:=CountPresetAnimations;
 
       Stream.WriteBuffer(FileHeader,SizeOf(TFileHeader));
 
-      Stream.WriteBuffer(Indices[0],SizeOf(TIndex)*length(Indices));
+      Stream.WriteBuffer(Indices[0],SizeOf(TIndex)*CountUsedIndices);
 
       for Index:=0 to CountPresetAnimations-1 do begin
        for FrameIndex:=0 to CountFrames-1 do begin
