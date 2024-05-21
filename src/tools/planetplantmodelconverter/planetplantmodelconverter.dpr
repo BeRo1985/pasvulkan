@@ -310,6 +310,7 @@ var Index,FrameIndex,OtherIndex,FoundPresetAnimation:TpvSizeInt;
     ta,tb,t:TpvDouble;
     AnimationName:TpvUTF8String;
     TimeFrames:TTimeFrames;
+    Material:TpvGLTF.PMaterial;
     Stream:TMemoryStream;
 begin
 
@@ -360,7 +361,24 @@ begin
       end;
      end else begin
       WriteLn('Error: No vertex indexed mesh found!');
-      result:=false;       
+      result:=false;
+     end;
+
+    end;
+
+    if result then begin
+
+     // Get PBR textures
+     if length(GLTF.Materials)>0 then begin
+      Material:=@GLTF.Materials[0];
+      if Material^.ShadingModel=TpvGLTF.TMaterial.TShadingModel.PBRMetallicRoughness then begin
+      end else begin
+       WriteLn('Error: No PBR metallic roughness material found!');
+       result:=false;
+      end;
+     end else begin
+      WriteLn('Error: No material found!');
+      result:=false;
      end;
 
     end;
