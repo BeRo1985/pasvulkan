@@ -278,6 +278,10 @@ type EpvGLTF=class(Exception);
                                     const aWithDynamicMeshs:boolean=false;
                                     const aRootNodeIndex:TpvSizeInt=-1;
                                     const aMaterialAlphaModes:TPasGLTF.TMaterial.TAlphaModes=[TPasGLTF.TMaterial.TAlphaMode.Opaque,TPasGLTF.TMaterial.TAlphaMode.Blend,TPasGLTF.TMaterial.TAlphaMode.Mask]):TpvGLTF.TBakedMesh;
+              function GetBakedVertexIndexedMesh(const aRelative:boolean=false;
+                                                 const aWithDynamicMeshs:boolean=false;
+                                                 const aRootNodeIndex:TpvSizeInt=-1;
+                                                 const aMaterialAlphaModes:TPasGLTF.TMaterial.TAlphaModes=[TPasGLTF.TMaterial.TAlphaMode.Opaque,TPasGLTF.TMaterial.TAlphaMode.Blend,TPasGLTF.TMaterial.TAlphaMode.Mask]):TpvGLTF.TBakedVertexIndexedMesh;
               function GetJointPoints:TPasGLTF.TVector3DynamicArray;
               function GetJointMatrices:TPasGLTF.TMatrix4x4DynamicArray;
               property Scene:TPasGLTFSizeInt read fScene write SetScene;
@@ -4686,6 +4690,235 @@ begin
   end;
  finally
   result:=BakedMesh;
+ end;
+end;
+
+function TpvGLTF.TInstance.GetBakedVertexIndexedMesh(const aRelative:boolean=false;
+                                                     const aWithDynamicMeshs:boolean=false;
+                                                     const aRootNodeIndex:TpvSizeInt=-1;
+                                                     const aMaterialAlphaModes:TPasGLTF.TMaterial.TAlphaModes=[TPasGLTF.TMaterial.TAlphaMode.Opaque,TPasGLTF.TMaterial.TAlphaMode.Blend,TPasGLTF.TMaterial.TAlphaMode.Mask]):TpvGLTF.TBakedVertexIndexedMesh;
+var BakedVertexIndexedMesh:TpvGLTF.TBakedVertexIndexedMesh;
+ procedure ProcessMorphSkinNode(const aNode:TpvGLTF.PNode;const aInstanceNode:TpvGLTF.TInstance.PNode);
+ type TBakedVertex=record
+       Position:TpvVector3;
+       Normal:TpvVector3;
+       Tangent:TpvVector3;
+      end;
+      PBakedVertex=^TBakedVertex;
+      TBakedVertices=array of TBakedVertex;
+      TTemporaryTriangleIndices=array of TpvSizeInt;
+ var PrimitiveIndex,VertexIndex,JointBlockIndex,JointIndex,IndexIndex,SideIndex,
+     MorphTargetWeightIndex,JointPartIndex,JointWeightIndex:TpvSizeInt;
+     Mesh:TpvGLTF.PMesh;
+     Skin:TpvGLTF.PSkin;
+     InverseMatrix,Matrix,ModelNodeMatrix,ModelNodeMatrixEx:TpvMatrix4x4;
+     Primitive:TpvGLTF.TMesh.PPrimitive;
+     Vertex:TpvGLTF.PVertex;
+     Position,Normal,Tangent:TpvVector3;
+     BakedVertices:TBakedVertices;
+     BakedVertex:PBakedVertex;
+     BakedTriangle:TpvGLTF.TBakedMesh.PTriangle;
+     TemporaryTriangleIndices:TTemporaryTriangleIndices;
+     JointIndices:TPasGLTF.PUInt32Vector4;
+     JointWeights:TPasGLTF.PVector4;
+     JointWeight:TPasGLTFFloat;
+     OutVertex:TpvGLTF.TVertex;
+ begin
+  BakedVertices:=nil;
+  try
+   if aNode.Mesh>=0 then begin
+    Mesh:=@fParent.fMeshes[aNode.Mesh];
+   end else begin
+    Mesh:=nil;
+   end;
+   if assigned(Mesh) and
+      (aWithDynamicMeshs or
+       ((not aWithDynamicMeshs) and
+        ((aNode.Skin<0) and
+         (length(aNode.Weights)=0) and
+         ((aInstanceNode^.CountOverwrites=0) or
+          ((aInstanceNode^.CountOverwrites=1) and
+           ((aInstanceNode^.Overwrites[0].Flags=[TpvGLTF.TInstance.TNode.TOverwriteFlag.Defaults]))))))) then begin
+    if aNode.Skin>=0 then begin
+     Skin:=@fParent.fSkins[aNode.Skin];
+    end else begin
+     Skin:=nil;
+    end;
+    if assigned(Skin) then begin
+     InverseMatrix:=TpvMatrix4x4(pointer(@aInstanceNode^.WorkMatrix)^).Inverse;
+    end else begin
+     InverseMatrix:=TpvMatrix4x4.Identity;
+    end;
+    ModelNodeMatrixEx:=TpvMatrix4x4(pointer(@aInstanceNode^.WorkMatrix)^);
+{   if not aRelative then begin
+     ModelNodeMatrixEx:=ModelNodeMatrixEx*fModelMatrix;
+    end;}
+    for PrimitiveIndex:=0 to length(Mesh.Primitives)-1 do begin
+     Primitive:=@Mesh.Primitives[PrimitiveIndex];
+     if (Primitive^.Material<0) or
+        ((Primitive^.Material>=0) and
+         (fParent.Materials[Primitive^.Material].AlphaMode in aMaterialAlphaModes)) then begin
+      case Primitive^.PrimitiveMode of
+       GL_TRIANGLES,
+       GL_TRIANGLE_STRIP,
+       GL_TRIANGLE_FAN:begin
+        SetLength(BakedVertices,Primitive^.CountVertices);
+        for VertexIndex:=0 to Primitive^.CountVertices-1 do begin
+         Vertex:=@Primitive.Vertices[VertexIndex];
+         BakedVertex:=@BakedVertices[VertexIndex];
+         Position:=TpvVector3(pointer(@Vertex^.Position)^);
+         Normal:=TpvVector3(pointer(@Vertex^.Normal)^);
+         Tangent:=TpvVector3(pointer(@Vertex^.Tangent)^);
+         for MorphTargetWeightIndex:=0 to length(aInstanceNode^.WorkWeights)-1 do begin
+          Position:=Position+(TpvVector3(pointer(@Primitive^.Targets[MorphTargetWeightIndex].Vertices[VertexIndex].Position)^)*aInstanceNode^.WorkWeights[MorphTargetWeightIndex]);
+          Normal:=Normal+(TpvVector3(pointer(@Primitive^.Targets[MorphTargetWeightIndex].Vertices[VertexIndex].Normal)^)*aInstanceNode^.WorkWeights[MorphTargetWeightIndex]);
+          Tangent:=Tangent+(TpvVector3(pointer(@Primitive^.Targets[MorphTargetWeightIndex].Vertices[VertexIndex].Tangent)^)*aInstanceNode^.WorkWeights[MorphTargetWeightIndex]);
+         end;
+         Normal:=Normal.Normalize;
+         Tangent:=Tangent.Normalize;
+         ModelNodeMatrix:=ModelNodeMatrixEx;
+         if assigned(Skin) then begin
+          Matrix:=TpvMatrix4x4.Identity;
+          for JointPartIndex:=0 to 1 do begin
+           case JointPartIndex of
+            0:begin
+             JointIndices:=@Vertex^.Joints0;
+             JointWeights:=@Vertex^.Weights0;
+            end;
+            else begin
+             JointIndices:=@Vertex^.Joints1;
+             JointWeights:=@Vertex^.Weights1;
+            end;
+           end;
+           for JointWeightIndex:=0 to 3 do begin
+            JointIndex:=JointIndices^[JointWeightIndex];
+            JointWeight:=JointWeights^[JointWeightIndex];
+            if JointWeight<>0.0 then begin
+             Matrix:=Matrix+(((TpvMatrix4x4(pointer(@Skin^.InverseBindMatrices[JointIndex])^)*
+                               TpvMatrix4x4(pointer(@fNodes[Skin^.Joints[JointIndex]].WorkMatrix)^))*
+                              InverseMatrix)*JointWeight);
+            end;
+           end;
+          end;
+          ModelNodeMatrix:=Matrix*ModelNodeMatrix;
+         end;
+         BakedVertex^.Position:=ModelNodeMatrix.MulHomogen(Position);
+         BakedVertex^.Normal:=ModelNodeMatrix.Transpose.Inverse.MulBasis(Normal);
+         BakedVertex^.Tangent:=ModelNodeMatrix.Transpose.Inverse.MulBasis(Tangent);
+        end;
+        TemporaryTriangleIndices:=nil;
+        try
+         case Primitive^.PrimitiveMode of
+          GL_TRIANGLES:begin
+           SetLength(TemporaryTriangleIndices,Primitive^.CountIndices);
+           for IndexIndex:=0 to Primitive^.CountIndices-1 do begin
+            TemporaryTriangleIndices[IndexIndex]:=Primitive^.Indices[IndexIndex];
+           end;
+          end;
+          GL_TRIANGLE_STRIP:begin
+           SetLength(TemporaryTriangleIndices,(Primitive^.CountIndices-2)*3);
+           for IndexIndex:=0 to Primitive^.CountIndices-3 do begin
+            if (IndexIndex and 1)<>0 then begin
+             TemporaryTriangleIndices[(IndexIndex*3)+0]:=Primitive^.Indices[IndexIndex+0];
+             TemporaryTriangleIndices[(IndexIndex*3)+1]:=Primitive^.Indices[IndexIndex+1];
+             TemporaryTriangleIndices[(IndexIndex*3)+2]:=Primitive^.Indices[IndexIndex+2];
+            end else begin
+             TemporaryTriangleIndices[(IndexIndex*3)+0]:=Primitive^.Indices[IndexIndex+0];
+             TemporaryTriangleIndices[(IndexIndex*3)+1]:=Primitive^.Indices[IndexIndex+2];
+             TemporaryTriangleIndices[(IndexIndex*3)+2]:=Primitive^.Indices[IndexIndex+1];
+            end;
+           end;
+          end;
+          GL_TRIANGLE_FAN:begin
+           SetLength(TemporaryTriangleIndices,(Primitive^.CountIndices-2)*3);
+           for IndexIndex:=2 to Primitive^.CountIndices-1 do begin
+            TemporaryTriangleIndices[((IndexIndex-1)*3)+0]:=Primitive^.Indices[0];
+            TemporaryTriangleIndices[((IndexIndex-1)*3)+1]:=Primitive^.Indices[IndexIndex-1];
+            TemporaryTriangleIndices[((IndexIndex-1)*3)+2]:=Primitive^.Indices[IndexIndex];
+           end;
+          end;
+          else begin
+          end;
+         end;
+         for IndexIndex:=0 to length(TemporaryTriangleIndices)-1 do begin
+          OutVertex:=Primitive.Vertices[TemporaryTriangleIndices[IndexIndex]];
+          BakedVertex:=@BakedVertices[TemporaryTriangleIndices[IndexIndex]];
+          OutVertex.Position[0]:=BakedVertex^.Position.x;
+          OutVertex.Position[1]:=BakedVertex^.Position.y;
+          OutVertex.Position[2]:=BakedVertex^.Position.z;
+          OutVertex.Normal[0]:=BakedVertex^.Normal.x;
+          OutVertex.Normal[1]:=BakedVertex^.Normal.y;
+          OutVertex.Normal[2]:=BakedVertex^.Normal.z;
+          OutVertex.Tangent[0]:=BakedVertex^.Tangent.x;
+          OutVertex.Tangent[1]:=BakedVertex^.Tangent.y;
+          OutVertex.Tangent[2]:=BakedVertex^.Tangent.z;
+          BakedVertexIndexedMesh.AddOriginalVertexIndex(TemporaryTriangleIndices[IndexIndex],OutVertex,true);
+         end;
+        finally
+         TemporaryTriangleIndices:=nil;
+        end;
+       end;
+       else begin
+       end;
+      end;
+     end;
+    end;
+   end;
+  finally
+   BakedVertices:=nil;
+  end;
+ end;
+type TNodeStack=TpvDynamicStack<TpvSizeInt>;
+var Index,NodeIndex:TpvSizeInt;
+    NodeStack:TNodeStack;
+    GroupScene:TpvGLTF.PScene;
+    GroupNode:TpvGLTF.PNode;
+    GroupInstanceNode:TpvGLTF.TInstance.PNode;
+begin
+ BakedVertexIndexedMesh:=TpvGLTF.TBakedVertexIndexedMesh.Create;
+ try
+  NodeStack.Initialize;
+  try
+   if (aRootNodeIndex>=0) and (aRootNodeIndex<length(fParent.fNodes)) then begin
+    NodeStack.Push(aRootNodeIndex);
+   end else begin
+    if (fScene>=0) and (fScene<length(fParent.fScenes)) then begin
+     GroupScene:=@fParent.fScenes[fScene];
+    end else if length(fParent.fScenes)>0 then begin
+     GroupScene:=@fParent.fScenes[0];
+    end else begin
+     GroupScene:=nil;
+    end;
+    if assigned(GroupScene) then begin
+     for Index:=length(GroupScene.Nodes)-1 downto 0 do begin
+      NodeStack.Push(GroupScene.Nodes[Index]);
+     end;
+    end;
+   end;
+   while NodeStack.Pop(NodeIndex) do begin
+    GroupNode:=@fParent.fNodes[NodeIndex];
+    GroupInstanceNode:=@fNodes[NodeIndex];
+    if ((aRootNodeIndex>=0) and
+        (NodeIndex=aRootNodeIndex)) or
+       (aWithDynamicMeshs or
+        ((not aWithDynamicMeshs) and
+         ((GroupInstanceNode^.CountOverwrites=0) or
+          ((GroupInstanceNode^.CountOverwrites=1) and
+           ((GroupInstanceNode^.Overwrites[0].Flags=[TpvGLTF.TInstance.TNode.TOverwriteFlag.Defaults])))))) then begin
+     for Index:=length(GroupNode.Children)-1 downto 0 do begin
+      NodeStack.Push(GroupNode.Children[Index]);
+     end;
+     if GroupNode.Mesh>=0 then begin
+      ProcessMorphSkinNode(GroupNode,GroupInstanceNode);
+     end;
+    end;
+   end;
+  finally
+   NodeStack.Finalize;
+  end;
+  BakedVertexIndexedMesh.Finish;
+ finally
+  result:=BakedVertexIndexedMesh;
  end;
 end;
 
