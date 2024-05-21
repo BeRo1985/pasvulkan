@@ -104,6 +104,21 @@ type EpvGLTF=class(Exception);
             end;
             PScene=^TScene;
             TScenes=array of TScene;
+            TVertex=packed record
+             Position:TPasGLTF.TVector3;
+             VertexIndex:TPasGLTFUInt32;
+             Normal:TPasGLTF.TVector3;
+             Tangent:TPasGLTF.TVector4;
+             TexCoord0:TPasGLTF.TVector2;
+             TexCoord1:TPasGLTF.TVector2;
+             Color0:TPasGLTF.TVector4;
+             Joints0:TPasGLTF.TUInt32Vector4;
+             Joints1:TPasGLTF.TUInt32Vector4;
+             Weights0:TPasGLTF.TVector4;
+             Weights1:TPasGLTF.TVector4;
+            end;
+            PVertex=^TVertex;
+            TVertices=array of TVertex;
             { TBakedMesh }
             TBakedMesh=class
              public
@@ -143,6 +158,31 @@ type EpvGLTF=class(Exception);
               procedure Combine(const aWith:TBakedMesh);
              published
               property Triangles:TTriangles read fTriangles;
+            end;
+            { TBakedVertexIndexedMesh }
+            TBakedVertexIndexedMesh=class
+             public
+              type TVertices=TpvDynamicArrayList<TpvGLTF.TVertex>;
+                   TIndex=TpvUInt32;
+                   PIndex=^TIndex;
+                   TIndices=TpvDynamicArrayList<TpvGLTF.TBakedVertexIndexedMesh.TIndex>;
+                   TVertexRemapHashMap=TpvHashMap<TpvUInt32,TpvSizeInt>;
+             private
+              fVertices:TVertices;
+              fIndices:TIndices;
+              fVertexRemapHashMap:TVertexRemapHashMap;
+             public
+              constructor Create; reintroduce;
+              destructor Destroy; override;
+              procedure Clear;
+              function ExistOriginalVertexIndex(const aVertexIndex:TpvUInt32):boolean;
+              function AddOriginalVertexIndex(const aVertexIndex:TpvUInt32;const aVertex:TpvGLTF.TVertex;const aAddIndex:boolean=true):TpvUInt32;
+              procedure AddIndex(const aIndex:TpvGLTF.TBakedVertexIndexedMesh.TIndex);
+              procedure Finish;
+             published
+              property Vertices:TVertices read fVertices;
+              property Indices:TIndices read fIndices;
+              property VertexRemapHashMap:TVertexRemapHashMap read fVertexRemapHashMap;              
             end;
             { TInstance }
             TInstance=class
@@ -304,21 +344,6 @@ type EpvGLTF=class(Exception);
                     Weights1=9;
                     VertexIndex=10;
             end;
-            TVertex=packed record
-             Position:TPasGLTF.TVector3;
-             VertexIndex:TPasGLTFUInt32;
-             Normal:TPasGLTF.TVector3;
-             Tangent:TPasGLTF.TVector4;
-             TexCoord0:TPasGLTF.TVector2;
-             TexCoord1:TPasGLTF.TVector2;
-             Color0:TPasGLTF.TVector4;
-             Joints0:TPasGLTF.TUInt32Vector4;
-             Joints1:TPasGLTF.TUInt32Vector4;
-             Weights0:TPasGLTF.TVector4;
-             Weights1:TPasGLTF.TVector4;
-            end;
-            PVertex=^TVertex;
-            TVertices=array of TVertex;
             TMaterial=record
              public
               type TTextureTransform=record
@@ -1531,6 +1556,62 @@ end;
 procedure TpvGLTF.TBakedMesh.Combine(const aWith:TBakedMesh);
 begin
  fTriangles.Add(aWith.fTriangles);
+end;
+
+{ TpvGLTF. TBakedVertexIndexedMesh }
+
+constructor TpvGLTF.TBakedVertexIndexedMesh.Create; 
+begin
+ inherited Create;
+ fVertices:=TVertices.Create;
+ fIndices:=TIndices.Create;
+ fVertexRemapHashMap:=TVertexRemapHashMap.Create(-1);
+end;
+
+destructor TpvGLTF.TBakedVertexIndexedMesh.Destroy;
+begin
+ FreeAndNil(fVertices);
+ FreeAndNil(fIndices);
+ FreeAndNil(fVertexRemapHashMap);
+ inherited Destroy;
+end;
+
+procedure TpvGLTF.TBakedVertexIndexedMesh.Clear;
+begin
+ fVertices.Clear;
+ fIndices.Clear;
+ fVertexRemapHashMap.Clear;
+end;
+
+function TpvGLTF.TBakedVertexIndexedMesh.ExistOriginalVertexIndex(const aVertexIndex:TpvUInt32):boolean;
+begin
+ result:=fVertexRemapHashMap.ExistKey(aVertexIndex);
+end;
+
+function TpvGLTF.TBakedVertexIndexedMesh.AddOriginalVertexIndex(const aVertexIndex:TpvUInt32;const aVertex:TpvGLTF.TVertex;const aAddIndex:boolean):TpvUInt32;
+var RemappedVertexIndex:TpvSizeInt;
+begin
+ RemappedVertexIndex:=fVertexRemapHashMap[aVertexIndex];
+ if RemappedVertexIndex<0 then begin
+  fVertexRemapHashMap[aVertexIndex]:=RemappedVertexIndex;
+  RemappedVertexIndex:=fVertices.Add(aVertex);
+ end;
+ if aAddIndex then begin
+  fIndices.Add(RemappedVertexIndex);
+ end;
+ result:=RemappedVertexIndex;
+end;
+
+procedure TpvGLTF.TBakedVertexIndexedMesh.AddIndex(const aIndex:TpvGLTF.TBakedVertexIndexedMesh.TIndex);
+begin
+ fIndices.Add(aIndex);
+end;
+
+procedure TpvGLTF.TBakedVertexIndexedMesh.Finish;
+begin
+ fVertices.Finish; // Finalize the array size
+ fIndices.Finish; // Finalize the array size 
+ fVertexRemapHashMap.Clear; // Because no more needed 
 end;
 
 { TpvGLTF }
@@ -4374,9 +4455,9 @@ begin
 end;
 
 function TpvGLTF.TInstance.GetBakedMesh(const aRelative:boolean=false;
-                                            const aWithDynamicMeshs:boolean=false;
-                                            const aRootNodeIndex:TpvSizeInt=-1;
-                                            const aMaterialAlphaModes:TPasGLTF.TMaterial.TAlphaModes=[TPasGLTF.TMaterial.TAlphaMode.Opaque,TPasGLTF.TMaterial.TAlphaMode.Blend,TPasGLTF.TMaterial.TAlphaMode.Mask]):TpvGLTF.TBakedMesh;
+                                        const aWithDynamicMeshs:boolean=false;
+                                        const aRootNodeIndex:TpvSizeInt=-1;
+                                        const aMaterialAlphaModes:TPasGLTF.TMaterial.TAlphaModes=[TPasGLTF.TMaterial.TAlphaMode.Opaque,TPasGLTF.TMaterial.TAlphaMode.Blend,TPasGLTF.TMaterial.TAlphaMode.Mask]):TpvGLTF.TBakedMesh;
 var BakedMesh:TpvGLTF.TBakedMesh;
  procedure ProcessMorphSkinNode(const aNode:TpvGLTF.PNode;const aInstanceNode:TpvGLTF.TInstance.PNode);
  type TBakedVertex=record
