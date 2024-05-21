@@ -88,8 +88,13 @@ var Animations:TAnimations;
     GLTF:TpvGLTF;
     GLTFInstance:TpvGLTF.TInstance;
 
-function ConvertTimeFramesToNormalizedFrames(const aTimeFrames:TTimeFrames;out aFrames:TFrames):boolean;
-var Index,OtherIndex,FrameIndex,NextFrameIndex,OutFrameIndex,VertexIndex:TpvSizeInt;
+function CompareTimeFrames(const a,b:TTimeFrame):TpvInt32;
+begin
+ result:=Sign(a.Time-b.Time);
+end;
+
+function ConvertTimeFramesToNormalizedFrames(var aTimeFrames:TTimeFrames;out aFrames:TFrames):boolean;
+var FrameIndex,NextFrameIndex,OutFrameIndex,VertexIndex:TpvSizeInt;
     StartTime,EndTime,Time,TimeStep,InterpolationFactor:TpvDouble;
     CurrentFrame,NextFrame:PFrame;
     CurrentVertex,NextVertex,InterpolatedVertex:PVertex;
@@ -103,6 +108,9 @@ begin
   result:=false;
   exit;
  end;
+
+ // Sort time frames
+ TpvTypedSort<TTimeFrame>.IntroSort(@aTimeFrames[0],0,length(aTimeFrames),CompareTimeFrames);
 
  // Find start and end time
  StartTime:=aTimeFrames[0].Time;
