@@ -83,8 +83,88 @@ var Animations:TAnimations;
 
     Indices:TIndices;
 
+    CountUsedVertices:TpvSizeInt;
+
+    InterpolatedFrame:TFrame;
+
     GLTF:TpvGLTF;
     GLTFInstance:TpvGLTF.TInstance;
+
+function ConvertTimeFramesToNormalizedFrames(const aTimeFrames:TTimeFrames;out aFrames:TFrames):boolean;
+var Index,OtherIndex,FrameIndex,NextFrameIndex,OutFrameIndex,VertexIndex:TpvSizeInt;
+    StartTime,EndTime,Time,TimeStep,InterpolationFactor:TpvDouble;
+    CurrentFrame,NextFrame:PFrame;
+    CurrentVertex,NextVertex,InterpolatedVertex:PVertex;
+    CurrentTangent,CurrentBitangent,CurrentNormal,
+    NextTangent,NextBitangent,NextNormal,
+    InterpolatedTangent,InterpolatedBitangent,InterpolatedNormal:TpvVector3;
+    CurrentTangentSpace,NextTangentSpace,InterpolatedTangentSpace:TpvMatrix3x3;
+begin
+
+ if length(aTimeFrames)=0 then begin
+  result:=false;
+  exit;
+ end;
+
+ // Find start and end time
+ StartTime:=aTimeFrames[0].Time;
+ EndTime:=aTimeFrames[length(aTimeFrames)-1].Time;
+
+ // Calculate time step
+ TimeStep:=(EndTime-StartTime)/CountFrames;
+
+ // Normalize time frames
+ Time:=StartTime;
+ FrameIndex:=0;
+ OutFrameIndex:=0;
+ while (Time<(EndTime+TimeStep)) and (OutFrameIndex<CountFrames) do begin
+
+  // Advance to next frame
+  while (FrameIndex<length(aTimeFrames)) and (aTimeFrames[FrameIndex].Time<Time) do begin
+   inc(FrameIndex);
+  end;
+  NextFrameIndex:=Min(FrameIndex+1,length(aTimeFrames)-1);
+
+  CurrentFrame:=@aTimeFrames[FrameIndex].Frame;
+  NextFrame:=@aTimeFrames[NextFrameIndex].Frame;
+
+  // Interpolate between current and next frame
+  InterpolationFactor:=(Time-aTimeFrames[FrameIndex].Time)/(aTimeFrames[NextFrameIndex].Time-aTimeFrames[FrameIndex].Time);
+  for VertexIndex:=0 to CountUsedVertices-1 do begin
+   
+   CurrentVertex:=@CurrentFrame^.Vertices[VertexIndex];
+   NextVertex:=@NextFrame^.Vertices[VertexIndex];
+   InterpolatedVertex:=@InterpolatedFrame.Vertices[VertexIndex];
+   
+   InterpolatedVertex^.Position:=CurrentVertex^.Position.Lerp(NextVertex^.Position,InterpolationFactor);
+   InterpolatedVertex^.TexCoordU:=Min(Max(round((CurrentVertex^.TexCoordU*(1.0-InterpolationFactor))+(NextVertex^.TexCoordU*InterpolationFactor)),0),65535);
+   InterpolatedVertex^.TexCoordV:=Min(Max(round((CurrentVertex^.TexCoordV*(1.0-InterpolationFactor))+(NextVertex^.TexCoordV*InterpolationFactor)),0),65535);
+   
+   UnpackUInt16QTangentSpace(CurrentVertex^.TangentSpace,CurrentTangent,CurrentBitangent,CurrentNormal);
+   CurrentTangentSpace:=TpvMatrix3x3.Create(CurrentTangent,CurrentBitangent,CurrentNormal);
+   
+   UnpackUInt16QTangentSpace(NextVertex^.TangentSpace,NextTangent,NextBitangent,NextNormal);
+   NextTangentSpace:=TpvMatrix3x3.Create(NextTangent,NextBitangent,NextNormal);
+
+   InterpolatedTangentSpace:=CurrentTangentSpace.Slerp(NextTangentSpace,InterpolationFactor);
+
+   InterpolatedTangent:=InterpolatedTangentSpace.Tangent;
+   InterpolatedBitangent:=InterpolatedTangentSpace.Bitangent;
+   InterpolatedNormal:=InterpolatedTangentSpace.Normal;
+
+   InterpolatedVertex^.TangentSpace:=PackUInt16QTangentSpace(InterpolatedTangent,InterpolatedBitangent,InterpolatedNormal);
+   
+  end; 
+
+  aFrames[OutFrameIndex]:=InterpolatedFrame;
+  
+  Time:=Time+TimeStep; 
+
+  inc(OutFrameIndex);
+
+ end;
+
+end;
 
 function GetMergedAnimation(const aPresetAnimationIndex:TpvSizeInt):TTimeFrames;
 const CountNonNormalizedFrames=100; // 100 frames as non normalized frames before normalization into fewer frames
