@@ -27,7 +27,7 @@ const CountFrames=16;
       MaximalCountIndices=65536;
 
 type TVertex=packed record
-      Position:TpvVector3; // 12 bytes
+      Position:TpvVector3; // 12 bytes (must be non-quantized and non-compressed for direct use with hardware raytracing)
       TexCoordU:TpvUInt16; // 2 bytes
       TexCoordV:TpvUInt16; // 2 bytes
       TangentSpace:TpvUInt16PackedTangentSpace; // 8 bytes
