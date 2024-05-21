@@ -72,7 +72,21 @@ type TVertex=packed record
 
      TPresetAnimations=array[0..CountPresetAnimations-1] of TPresetAnimation;
 
-const PresetAnimations:TPresetAnimations=(
+     TSignature=array[0..3] of AnsiChar;
+
+     TFileHeader=packed record
+      Signature:TSignature;
+      Version:TpvUInt32;
+      CountVertices:TpvUInt32;
+      CountIndices:TpvUInt32;
+      CountFrames:TpvUInt32;
+      CountAnimations:TpvUInt32;
+     end;
+     PFileHeader=^TFileHeader;
+     
+const Signature:TSignature=('P','P','M','F'); // Planet Plant Model File
+
+      PresetAnimations:TPresetAnimations=(
        (Index:0;Name:'grow'),
        (Index:1;Name:'blossoms'),
        (Index:2;Name:'falloff'),
@@ -87,6 +101,8 @@ var Animations:TAnimations;
 
     GLTF:TpvGLTF;
     GLTFInstance:TpvGLTF.TInstance;
+
+    FileHeader:TFileHeader;
 
 function CompareTimeFrames(const a,b:TTimeFrame):TpvInt32;
 begin
@@ -293,6 +309,7 @@ var Index,FrameIndex,OtherIndex,FoundPresetAnimation:TpvSizeInt;
     ta,tb,t:TpvDouble;
     AnimationName:TpvUTF8String;
     TimeFrames:TTimeFrames;
+    Stream:TMemoryStream;
 begin
 
  result:=true;
@@ -351,6 +368,33 @@ begin
         Animations[Index].Frames[FrameIndex]:=Animations[0].Frames[CountFrames-1];
        end;
       end;
+     end;
+
+     // Save
+     Stream:=TMemoryStream.Create;
+     try
+
+      FileHeader.Signature:=Signature;
+      FileHeader.Version:=1;
+      FileHeader.CountVertices:=CountUsedVertices;
+      FileHeader.CountIndices:=length(Indices);
+      FileHeader.CountFrames:=CountFrames;
+      FileHeader.CountAnimations:=CountPresetAnimations;
+
+      Stream.WriteBuffer(FileHeader,SizeOf(TFileHeader));
+
+      Stream.WriteBuffer(Indices[0],SizeOf(TIndex)*length(Indices));
+
+      for Index:=0 to CountPresetAnimations-1 do begin
+       for FrameIndex:=0 to CountFrames-1 do begin
+        Stream.WriteBuffer(Animations[Index].Frames[FrameIndex].Vertices[0],SizeOf(TVertex)*CountUsedVertices);
+       end;
+      end;
+
+      Stream.SaveToFile(aOutputFileName);
+
+     finally
+      FreeAndNil(Stream);
      end;
 
     end;
