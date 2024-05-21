@@ -105,6 +105,12 @@ var Animations:TAnimations;
 
     FileHeader:TFileHeader;
 
+    BaseColorTextureData:TBytes;
+    NormalTextureData:TBytes;
+    MetallicRoughnessTextureData:TBytes;
+    OcclusionTextureData:TBytes;
+    EmissiveTextureData:TBytes;
+    
 function CompareTimeFrames(const a,b:TTimeFrame):TpvInt32;
 begin
  result:=Sign(a.Time-b.Time);
@@ -307,7 +313,8 @@ end;
 function ConvertModel(const aInputFileName,aOutputFileName:String):boolean;
 var Index,FrameIndex,OtherIndex,FoundPresetAnimation,
     BaseColorTextureIndex,NormalTextureIndex,MetallicRoughnessTextureIndex,
-    OcclusionTextureIndex,EmmisiveTextureIndex:TpvSizeInt;
+    OcclusionTextureIndex,EmissiveTextureIndex,
+    ImageIndex:TpvSizeInt;
     GLTFBakedVertexIndexedMesh:TpvGLTF.TBakedVertexIndexedMesh;
     ta,tb,t:TpvDouble;
     AnimationName:TpvUTF8String;
@@ -317,7 +324,7 @@ var Index,FrameIndex,OtherIndex,FoundPresetAnimation,
     BaseColorFactor:TpvVector4;
     MetallicRoughnessFactor:TpvVector2;
     OcclusionStrength:TpvFloat;
-    EmmisiveFactor:TpvVector3;
+    EmissiveFactor:TpvVector3;
 begin
 
  result:=true;
@@ -379,11 +386,11 @@ begin
      NormalTextureIndex:=-1;
      MetallicRoughnessTextureIndex:=-1;
      OcclusionTextureIndex:=-1;
-     EmmisiveTextureIndex:=-1;
+     EmissiveTextureIndex:=-1;
      BaseColorFactor:=TpvVector4.Create(1.0,1.0,1.0,1.0);
      MetallicRoughnessFactor:=TpvVector2.Create(1.0,1.0);
      OcclusionStrength:=1.0;
-     EmmisiveFactor:=TpvVector3.Create(1.0,1.0,1.0);
+     EmissiveFactor:=TpvVector3.Create(1.0,1.0,1.0);
      if length(GLTF.Materials)>0 then begin
       Material:=@GLTF.Materials[0];
       if Material^.ShadingModel=TpvGLTF.TMaterial.TShadingModel.PBRMetallicRoughness then begin
@@ -394,8 +401,38 @@ begin
        MetallicRoughnessTextureIndex:=Material^.PBRMetallicRoughness.MetallicRoughnessTexture.Index;
        OcclusionTextureIndex:=Material^.OcclusionTexture.Index;
        OcclusionStrength:=Material^.OcclusionTextureStrength;
-       EmmisiveTextureIndex:=Material^.EmissiveTexture.Index;
-       EmmisiveFactor:=TpvVector3(Pointer(@Material^.EmissiveFactor)^);
+       EmissiveTextureIndex:=Material^.EmissiveTexture.Index;
+       EmissiveFactor:=TpvVector3(Pointer(@Material^.EmissiveFactor)^);
+       if BaseColorTextureIndex>=0 then begin
+        ImageIndex:=GLTF.Textures[BaseColorTextureIndex].Image;
+        if ImageIndex>=0 then begin
+         BaseColorTextureData:=GLTF.Images[ImageIndex].Data;
+        end;
+       end;
+       if NormalTextureIndex>=0 then begin
+        ImageIndex:=GLTF.Textures[NormalTextureIndex].Image;
+        if ImageIndex>=0 then begin
+         NormalTextureData:=GLTF.Images[ImageIndex].Data;
+        end;
+       end;
+       if MetallicRoughnessTextureIndex>=0 then begin
+        ImageIndex:=GLTF.Textures[MetallicRoughnessTextureIndex].Image;
+        if ImageIndex>=0 then begin
+         MetallicRoughnessTextureData:=GLTF.Images[ImageIndex].Data;
+        end;
+       end;
+       if OcclusionTextureIndex>=0 then begin
+        ImageIndex:=GLTF.Textures[OcclusionTextureIndex].Image;
+        if ImageIndex>=0 then begin
+         OcclusionTextureData:=GLTF.Images[ImageIndex].Data;
+        end;
+       end;
+       if EmissiveTextureIndex>=0 then begin
+        ImageIndex:=GLTF.Textures[EmissiveTextureIndex].Image;
+        if ImageIndex>=0 then begin
+         EmissiveTextureData:=GLTF.Images[ImageIndex].Data;
+        end;
+       end;
       end else begin
        WriteLn('Error: No PBR metallic roughness material found!');
        result:=false;
@@ -508,8 +545,20 @@ begin
   halt(1);
  end;
 
+ BaseColorTextureData:=nil;
+ NormalTextureData:=nil;
+ MetallicRoughnessTextureData:=nil;
+ OcclusionTextureData:=nil;
+ EmissiveTextureData:=nil;
+ 
  ConvertModel(InputFileName,OutputFileName);
 
+ BaseColorTextureData:=nil;
+ NormalTextureData:=nil;
+ MetallicRoughnessTextureData:=nil;
+ OcclusionTextureData:=nil;
+ EmissiveTextureData:=nil;
+ 
 end.
 
 
