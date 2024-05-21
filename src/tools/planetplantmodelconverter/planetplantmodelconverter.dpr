@@ -74,6 +74,17 @@ type TVertex=packed record
 
      TSignature=array[0..3] of AnsiChar;
 
+     TMaterialHeader=packed record
+      BaseColorFactor:TpvVector4;
+      EmissiveFactorOcclusionStrength:TpvVector4; // xyz = EmissiveFactor, w = OcclusionStrength
+      MetallicRoughnessFactor:TpvVector4; // x = MetallicFactor, y = RoughnessFactor, zw = Reserved
+      BaseColorTextureSize:TpvUInt32;
+      NormalTextureSize:TpvUInt32;
+      MetallicRoughnessTextureSize:TpvUInt32;
+      OcclusionTextureSize:TpvUInt32;
+      EmissiveTextureSize:TpvUInt32; 
+     end;
+
      TFileHeader=packed record
       Signature:TSignature;
       Version:TpvUInt32;
@@ -81,6 +92,7 @@ type TVertex=packed record
       CountIndices:TpvUInt32;
       CountFrames:TpvUInt32;
       CountAnimations:TpvUInt32;
+      MaterialHeader:TMaterialHeader;
      end;
      PFileHeader=^TFileHeader;
      
@@ -474,6 +486,15 @@ begin
       FileHeader.CountFrames:=CountFrames;
       FileHeader.CountAnimations:=CountPresetAnimations;
 
+      FileHeader.MaterialHeader.BaseColorFactor:=BaseColorFactor;
+      FileHeader.MaterialHeader.EmissiveFactorOcclusionStrength:=TpvVector4.Create(EmissiveFactor.x,EmissiveFactor.y,EmissiveFactor.z,OcclusionStrength);
+      FileHeader.MaterialHeader.MetallicRoughnessFactor:=TpvVector4.Create(MetallicRoughnessFactor.x,MetallicRoughnessFactor.y,0.0,0.0);
+      FileHeader.MaterialHeader.BaseColorTextureSize:=length(BaseColorTextureData);
+      FileHeader.MaterialHeader.NormalTextureSize:=length(NormalTextureData);
+      FileHeader.MaterialHeader.MetallicRoughnessTextureSize:=length(MetallicRoughnessTextureData);
+      FileHeader.MaterialHeader.OcclusionTextureSize:=length(OcclusionTextureData);
+      FileHeader.MaterialHeader.EmissiveTextureSize:=length(EmissiveTextureData);
+
       Stream.WriteBuffer(FileHeader,SizeOf(TFileHeader));
 
       Stream.WriteBuffer(Indices[0],SizeOf(TIndex)*CountUsedIndices);
@@ -482,6 +503,26 @@ begin
        for FrameIndex:=0 to CountFrames-1 do begin
         Stream.WriteBuffer(Animations[Index].Frames[FrameIndex].Vertices[0],SizeOf(TVertex)*CountUsedVertices);
        end;
+      end;
+      
+      if length(BaseColorTextureData)>0 then begin
+       Stream.WriteBuffer(BaseColorTextureData[0],length(BaseColorTextureData));
+      end;
+
+      if length(NormalTextureData)>0 then begin
+       Stream.WriteBuffer(NormalTextureData[0],length(NormalTextureData));
+      end;
+
+      if length(MetallicRoughnessTextureData)>0 then begin
+       Stream.WriteBuffer(MetallicRoughnessTextureData[0],length(MetallicRoughnessTextureData));
+      end;
+
+      if length(OcclusionTextureData)>0 then begin
+       Stream.WriteBuffer(OcclusionTextureData[0],length(OcclusionTextureData));
+      end;
+
+      if length(EmissiveTextureData)>0 then begin
+       Stream.WriteBuffer(EmissiveTextureData[0],length(EmissiveTextureData));
       end;
 
       Stream.SaveToFile(aOutputFileName);
