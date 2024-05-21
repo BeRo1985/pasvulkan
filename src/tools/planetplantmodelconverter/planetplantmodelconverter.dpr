@@ -305,13 +305,19 @@ begin
 end;
 
 function ConvertModel(const aInputFileName,aOutputFileName:String):boolean;
-var Index,FrameIndex,OtherIndex,FoundPresetAnimation:TpvSizeInt;
+var Index,FrameIndex,OtherIndex,FoundPresetAnimation,
+    BaseColorTextureIndex,NormalTextureIndex,MetallicRoughnessTextureIndex,
+    OcclusionTextureIndex,EmmisiveTextureIndex:TpvSizeInt;
     GLTFBakedVertexIndexedMesh:TpvGLTF.TBakedVertexIndexedMesh;
     ta,tb,t:TpvDouble;
     AnimationName:TpvUTF8String;
     TimeFrames:TTimeFrames;
     Material:TpvGLTF.PMaterial;
     Stream:TMemoryStream;
+    BaseColorFactor:TpvVector4;
+    MetallicRoughnessFactor:TpvVector2;
+    OcclusionStrength:TpvFloat;
+    EmmisiveFactor:TpvVector3;
 begin
 
  result:=true;
@@ -369,9 +375,27 @@ begin
     if result then begin
 
      // Get PBR textures
+     BaseColorTextureIndex:=-1;
+     NormalTextureIndex:=-1;
+     MetallicRoughnessTextureIndex:=-1;
+     OcclusionTextureIndex:=-1;
+     EmmisiveTextureIndex:=-1;
+     BaseColorFactor:=TpvVector4.Create(1.0,1.0,1.0,1.0);
+     MetallicRoughnessFactor:=TpvVector2.Create(1.0,1.0);
+     OcclusionStrength:=1.0;
+     EmmisiveFactor:=TpvVector3.Create(1.0,1.0,1.0);
      if length(GLTF.Materials)>0 then begin
       Material:=@GLTF.Materials[0];
       if Material^.ShadingModel=TpvGLTF.TMaterial.TShadingModel.PBRMetallicRoughness then begin
+       BaseColorFactor:=TpvVector4(Pointer(@Material^.PBRMetallicRoughness.BaseColorFactor)^);
+       BaseColorTextureIndex:=Material^.PBRMetallicRoughness.BaseColorTexture.Index;
+       NormalTextureIndex:=Material^.NormalTexture.Index;
+       MetallicRoughnessFactor:=TpvVector2.Create(Material^.PBRMetallicRoughness.MetallicFactor,Material^.PBRMetallicRoughness.RoughnessFactor);
+       MetallicRoughnessTextureIndex:=Material^.PBRMetallicRoughness.MetallicRoughnessTexture.Index;
+       OcclusionTextureIndex:=Material^.OcclusionTexture.Index;
+       OcclusionStrength:=Material^.OcclusionTextureStrength;
+       EmmisiveTextureIndex:=Material^.EmissiveTexture.Index;
+       EmmisiveFactor:=TpvVector3(Pointer(@Material^.EmissiveFactor)^);
       end else begin
        WriteLn('Error: No PBR metallic roughness material found!');
        result:=false;
