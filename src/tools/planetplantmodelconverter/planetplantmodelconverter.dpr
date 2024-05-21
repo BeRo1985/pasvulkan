@@ -130,9 +130,11 @@ begin
    inc(FrameIndex);
   end;
 
+  // Get current and next frame indices
   CurrentFrameIndex:=FrameIndex; 
   NextFrameIndex:=Min(CurrentFrameIndex+1,length(aTimeFrames)-1);
-  
+
+  // Get current and next frame pointers  
   CurrentFrame:=@aTimeFrames[CurrentFrameIndex].Frame;
   NextFrame:=@aTimeFrames[NextFrameIndex].Frame;
 
