@@ -287,13 +287,15 @@ begin
 
 end;
 
-procedure ConvertModel(const aInputFileName,aOutputFileName:String);
+function ConvertModel(const aInputFileName,aOutputFileName:String):boolean;
 var Index,FrameIndex,OtherIndex,FoundPresetAnimation:TpvSizeInt;
     GLTFBakedVertexIndexedMesh:TpvGLTF.TBakedVertexIndexedMesh;
     ta,tb,t:TpvDouble;
     AnimationName:TpvUTF8String;
     TimeFrames:TTimeFrames;
 begin
+
+ result:=true;
 
  FillChar(Animations,SizeOf(TAnimations),#0);
 
@@ -317,9 +319,14 @@ begin
      GLTFBakedVertexIndexedMesh:=GLTFInstance.GetBakedVertexIndexedMesh(false,true,-1,[TPasGLTF.TMaterial.TAlphaMode.Opaque,TPasGLTF.TMaterial.TAlphaMode.Blend,TPasGLTF.TMaterial.TAlphaMode.Mask]);
      if assigned(GLTFBakedVertexIndexedMesh) then begin
       try
-       for Index:=0 to GLTFBakedVertexIndexedMesh.Indices.Count-1 do begin
-        Indices[Index]:=GLTFBakedVertexIndexedMesh.Indices.ItemArray[Index];
-       end;
+       if (GLTFBakedVertexIndexedMesh.Vertices.Count<=MaximalCountVertices) and (GLTFBakedVertexIndexedMesh.Indices.Count<=MaximalCountIndices) then begin
+        for Index:=0 to GLTFBakedVertexIndexedMesh.Indices.Count-1 do begin
+         Indices[Index]:=GLTFBakedVertexIndexedMesh.Indices.ItemArray[Index];
+        end;
+       end else begin 
+        WriteLn('Error: Too many vertices or indices!');
+        result:=false;
+       end;         
       finally
        FreeAndNil(GLTFBakedVertexIndexedMesh);
       end;
@@ -327,21 +334,25 @@ begin
 
     end;
 
-    // Get all animations
-    for Index:=0 to CountPresetAnimations-1 do begin
-     TimeFrames:=GetMergedAnimation(Index);
-     if length(TimeFrames)>0 then begin
-      try
-       ConvertTimeFramesToNormalizedFrames(TimeFrames,Animations[Index].Frames);
-      finally
-       TimeFrames:=nil;
-      end;
-     end else begin
-      // Use last frame of the first animation as fallback 
-      for FrameIndex:=0 to CountFrames-1 do begin
-       Animations[Index].Frames[FrameIndex]:=Animations[0].Frames[CountFrames-1];
+    if result then begin
+
+     // Get all animations
+     for Index:=0 to CountPresetAnimations-1 do begin
+      TimeFrames:=GetMergedAnimation(Index);
+      if length(TimeFrames)>0 then begin
+       try
+        ConvertTimeFramesToNormalizedFrames(TimeFrames,Animations[Index].Frames);
+       finally
+        TimeFrames:=nil;
+       end;
+      end else begin
+       // Use last frame of the first animation as fallback 
+       for FrameIndex:=0 to CountFrames-1 do begin
+        Animations[Index].Frames[FrameIndex]:=Animations[0].Frames[CountFrames-1];
+       end;
       end;
      end;
+
     end;
    
    end;
