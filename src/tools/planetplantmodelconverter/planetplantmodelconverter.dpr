@@ -602,7 +602,7 @@ begin
  MetallicRoughnessTextureData:=nil;
  OcclusionTextureData:=nil;
  EmissiveTextureData:=nil;
- 
+
 end.
 
 
