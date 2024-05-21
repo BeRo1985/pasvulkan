@@ -5,6 +5,7 @@ program planetplantmodelconverter;
 
 uses Classes,
      SysUtils,
+     Math,
      PUCU in '../../../externals/pucu/src/PUCU.pas',
      PasMP in '../../../externals/pasmp/src/PasMP.pas',
      PasDblStrUtils in '../../../externals/pasdblstrutils/src/PasDblStrUtils.pas',
@@ -42,7 +43,6 @@ type TVertex=packed record
 
      TFrame=record
       Vertices:TVertices;
-      Indices:TIndices;
      end;
      PFrame=^TFrame;
 
@@ -81,6 +81,8 @@ const PresetAnimations:TPresetAnimations=(
 
 var Animations:TAnimations;
 
+    Indices:TIndices;
+
     GLTF:TpvGLTF;
     GLTFInstance:TpvGLTF.TInstance;
 
@@ -91,8 +93,8 @@ var AnimationPart,Index,FrameIndex,OtherIndex,FoundPresetAnimation,BaseIndex,
     ta,tb,t:TpvDouble;
     PresetAnimationName,AnimationName:TpvUTF8String;
     FoundAnimationPart:boolean;
-    GLTFBakedMesh:TpvGLTF.TBakedMesh;
-    GLTFBakedMeshTriangle:TpvGLTF.TBakedMesh.PTriangle;
+    GLTFBakedVertexIndexedMesh:TpvGLTF.TBakedVertexIndexedMesh;
+    GLTFBakedVertexIndexedMeshVertex:TpvGLTF.PVertex;
     PartFrames:TTimeFrames;
     Vertex:TVertex;
 begin
@@ -139,23 +141,31 @@ begin
 
        FillChar(result[FrameIndex].Frame,SizeOf(TFrame),#0);
 
-       GLTFBakedMesh:=GLTFInstance.GetBakedMesh(false,true,-1,[TPasGLTF.TMaterial.TAlphaMode.Opaque,TPasGLTF.TMaterial.TAlphaMode.Blend,TPasGLTF.TMaterial.TAlphaMode.Mask]);
-       if assigned(GLTFBakedMesh) then begin
+       GLTFBakedVertexIndexedMesh:=GLTFInstance.GetBakedVertexIndexedMesh(false,true,-1,[TPasGLTF.TMaterial.TAlphaMode.Opaque,TPasGLTF.TMaterial.TAlphaMode.Blend,TPasGLTF.TMaterial.TAlphaMode.Mask]);
+       if assigned(GLTFBakedVertexIndexedMesh) then begin
         try
 
-         for TriangleIndex:=0 to GLTFBakedMesh.Triangles.Count-1 do begin
+         for VertexIndex:=0 to GLTFBakedVertexIndexedMesh.Vertices.Count-1 do begin
 
-          GLTFBakedMeshTriangle:=@GLTFBakedMesh.Triangles.ItemArray[TriangleIndex];
+          GLTFBakedVertexIndexedMeshVertex:=@GLTFBakedVertexIndexedMesh.Vertices.ItemArray[VertexIndex];
 
-          for VertexIndex:=0 to 2 do begin
-           Vertex.Position:=TpvVector3.Create(GLTFBakedMeshTriangle^.Positions[VertexIndex][0],GLTFBakedMeshTriangle^.Positions[VertexIndex][1],GLTFBakedMeshTriangle^.Positions[VertexIndex][2]);
+          Vertex.Position:=TpvVector3.Create(GLTFBakedVertexIndexedMeshVertex^.Position[0],GLTFBakedVertexIndexedMeshVertex^.Position[1],GLTFBakedVertexIndexedMeshVertex^.Position[2]);
 
-          end;
+          Vertex.TexCoordU:=Min(Max(round(GLTFBakedVertexIndexedMeshVertex^.TexCoord0[0]*16384.0),0),65535);
+          Vertex.TexCoordV:=Min(Max(round(GLTFBakedVertexIndexedMeshVertex^.TexCoord0[1]*16384.0),0),65535);
+
+          Vertex.TangentSpace:=PackUInt16QTangentSpace(
+                                TpvVector3.Create(GLTFBakedVertexIndexedMeshVertex^.Tangent[0],GLTFBakedVertexIndexedMeshVertex^.Tangent[1],GLTFBakedVertexIndexedMeshVertex^.Tangent[2]),
+                                (TpvVector3.Create(GLTFBakedVertexIndexedMeshVertex^.Normal[0],GLTFBakedVertexIndexedMeshVertex^.Normal[1],GLTFBakedVertexIndexedMeshVertex^.Normal[2]).Cross(TpvVector3.Create(GLTFBakedVertexIndexedMeshVertex^.Tangent[0],GLTFBakedVertexIndexedMeshVertex^.Tangent[1],GLTFBakedVertexIndexedMeshVertex^.Tangent[2])))*GLTFBakedVertexIndexedMeshVertex^.Tangent[3],
+                                TpvVector3.Create(GLTFBakedVertexIndexedMeshVertex^.Normal[0],GLTFBakedVertexIndexedMeshVertex^.Normal[1],GLTFBakedVertexIndexedMeshVertex^.Normal[2])
+                               );
+
+          result[FrameIndex].Frame.Vertices[VertexIndex]:=Vertex;
 
          end;
-        
+
         finally
-         FreeAndNil(GLTFBakedMesh);
+         FreeAndNil(GLTFBakedVertexIndexedMesh);
         end;
        end;
 

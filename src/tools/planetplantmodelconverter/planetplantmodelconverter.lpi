@@ -52,6 +52,10 @@
         <Filename Value="../../../externals/pasmp/src/PasMP.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>
+      <Unit>
+        <Filename Value="../../../externals/pucu/src/PUCU.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
     </Units>
   </ProjectOptions>
   <CompilerOptions>
@@ -61,7 +65,7 @@
     </Target>
     <SearchPaths>
       <IncludeFiles Value="$(ProjOutDir)"/>
-      <OtherUnitFiles Value="../..;../../../externals/pasgltf/src;../../../externals/pasjson/src;../../../externals/pasmp/src"/>
+      <OtherUnitFiles Value="../..;../../../externals/pasgltf/src;../../../externals/pasjson/src;../../../externals/pasmp/src;../../../externals/pucu/src"/>
       <UnitOutputDirectory Value="lib/$(TargetCPU)-$(TargetOS)"/>
     </SearchPaths>
     <Parsing>
