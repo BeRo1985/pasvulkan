@@ -177,7 +177,7 @@ begin
 end;
 
 function GetMergedAnimation(const aPresetAnimationIndex:TpvSizeInt):TTimeFrames;
-const CountNonNormalizedFrames=100; // 100 frames as non normalized frames before normalization into fewer frames
+const CountNonNormalizedFrames=128; // 128 frames as non normalized frames before normalization into fewer frames
 var AnimationPart,Index,FrameIndex,OtherIndex,FoundPresetAnimation,BaseIndex,
     TriangleIndex,VertexIndex:TpvSizeInt;
     ta,tb,t:TpvDouble;
