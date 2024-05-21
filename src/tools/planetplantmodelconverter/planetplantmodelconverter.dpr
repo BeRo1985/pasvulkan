@@ -85,8 +85,6 @@ var Animations:TAnimations;
 
     CountUsedVertices:TpvSizeInt;
 
-    InterpolatedFrame:TFrame;
-
     GLTF:TpvGLTF;
     GLTFInstance:TpvGLTF.TInstance;
 
@@ -134,7 +132,8 @@ begin
    
    CurrentVertex:=@CurrentFrame^.Vertices[VertexIndex];
    NextVertex:=@NextFrame^.Vertices[VertexIndex];
-   InterpolatedVertex:=@InterpolatedFrame.Vertices[VertexIndex];
+
+   InterpolatedVertex:=@aFrames[OutFrameIndex].Vertices[VertexIndex];
    
    InterpolatedVertex^.Position:=CurrentVertex^.Position.Lerp(NextVertex^.Position,InterpolationFactor);
    InterpolatedVertex^.TexCoordU:=Min(Max(round((CurrentVertex^.TexCoordU*(1.0-InterpolationFactor))+(NextVertex^.TexCoordU*InterpolationFactor)),0),65535);
@@ -156,8 +155,6 @@ begin
    
   end; 
 
-  aFrames[OutFrameIndex]:=InterpolatedFrame;
-  
   Time:=Time+TimeStep; 
 
   inc(OutFrameIndex);
