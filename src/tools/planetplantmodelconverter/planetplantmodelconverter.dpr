@@ -94,7 +94,7 @@ begin
 end;
 
 function ConvertTimeFramesToNormalizedFrames(var aTimeFrames:TTimeFrames;out aFrames:TFrames):boolean;
-var FrameIndex,NextFrameIndex,OutFrameIndex,VertexIndex:TpvSizeInt;
+var FrameIndex,CurrentFrameIndex,NextFrameIndex,OutFrameIndex,VertexIndex:TpvSizeInt;
     StartTime,EndTime,Time,TimeStep,InterpolationFactor:TpvDouble;
     CurrentFrame,NextFrame:PFrame;
     CurrentVertex,NextVertex,InterpolatedVertex:PVertex;
@@ -129,13 +129,15 @@ begin
   while (FrameIndex<length(aTimeFrames)) and (aTimeFrames[FrameIndex].Time<Time) do begin
    inc(FrameIndex);
   end;
-  NextFrameIndex:=Min(FrameIndex+1,length(aTimeFrames)-1);
 
-  CurrentFrame:=@aTimeFrames[FrameIndex].Frame;
+  CurrentFrameIndex:=FrameIndex; 
+  NextFrameIndex:=Min(CurrentFrameIndex+1,length(aTimeFrames)-1);
+  
+  CurrentFrame:=@aTimeFrames[CurrentFrameIndex].Frame;
   NextFrame:=@aTimeFrames[NextFrameIndex].Frame;
 
   // Interpolate between current and next frame
-  InterpolationFactor:=(Time-aTimeFrames[FrameIndex].Time)/(aTimeFrames[NextFrameIndex].Time-aTimeFrames[FrameIndex].Time);
+  InterpolationFactor:=(Time-aTimeFrames[CurrentFrameIndex].Time)/(aTimeFrames[NextFrameIndex].Time-aTimeFrames[CurrentFrameIndex].Time);
   for VertexIndex:=0 to CountUsedVertices-1 do begin
    
    CurrentVertex:=@CurrentFrame^.Vertices[VertexIndex];
@@ -144,7 +146,7 @@ begin
    InterpolatedVertex:=@aFrames[OutFrameIndex].Vertices[VertexIndex];
    
    InterpolatedVertex^.Position:=CurrentVertex^.Position.Lerp(NextVertex^.Position,InterpolationFactor);
-   
+
    InterpolatedVertex^.TexCoordU:=Min(Max(round((CurrentVertex^.TexCoordU*(1.0-InterpolationFactor))+(NextVertex^.TexCoordU*InterpolationFactor)),0),65535);
    InterpolatedVertex^.TexCoordV:=Min(Max(round((CurrentVertex^.TexCoordV*(1.0-InterpolationFactor))+(NextVertex^.TexCoordV*InterpolationFactor)),0),65535);
    
