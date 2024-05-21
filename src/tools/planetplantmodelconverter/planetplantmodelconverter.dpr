@@ -495,37 +495,40 @@ begin
       FileHeader.MaterialHeader.OcclusionTextureSize:=length(OcclusionTextureData);
       FileHeader.MaterialHeader.EmissiveTextureSize:=length(EmissiveTextureData);
 
+      // Write file header
       Stream.WriteBuffer(FileHeader,SizeOf(TFileHeader));
 
+      // Write indices globally
       Stream.WriteBuffer(Indices[0],SizeOf(TIndex)*CountUsedIndices);
 
+      // Write vertices from all animations
       for Index:=0 to CountPresetAnimations-1 do begin
        for FrameIndex:=0 to CountFrames-1 do begin
         Stream.WriteBuffer(Animations[Index].Frames[FrameIndex].Vertices[0],SizeOf(TVertex)*CountUsedVertices);
        end;
       end;
       
+      // Write textures
       if length(BaseColorTextureData)>0 then begin
        Stream.WriteBuffer(BaseColorTextureData[0],length(BaseColorTextureData));
       end;
-
       if length(NormalTextureData)>0 then begin
        Stream.WriteBuffer(NormalTextureData[0],length(NormalTextureData));
       end;
-
       if length(MetallicRoughnessTextureData)>0 then begin
        Stream.WriteBuffer(MetallicRoughnessTextureData[0],length(MetallicRoughnessTextureData));
       end;
-
       if length(OcclusionTextureData)>0 then begin
        Stream.WriteBuffer(OcclusionTextureData[0],length(OcclusionTextureData));
       end;
-
       if length(EmissiveTextureData)>0 then begin
        Stream.WriteBuffer(EmissiveTextureData[0],length(EmissiveTextureData));
       end;
 
+      // Save to file
       Stream.SaveToFile(aOutputFileName);
+
+      // Done!
 
      finally
       FreeAndNil(Stream);
