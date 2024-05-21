@@ -125,6 +125,9 @@ begin
  OutFrameIndex:=0;
  while (Time<(EndTime+TimeStep)) and (OutFrameIndex<CountFrames) do begin
 
+  // Clear frame
+  FillChar(aFrames[OutFrameIndex],SizeOf(TFrame),#0);  
+
   // Advance to next frame
   while (FrameIndex<length(aTimeFrames)) and (aTimeFrames[FrameIndex].Time<Time) do begin
    inc(FrameIndex);
