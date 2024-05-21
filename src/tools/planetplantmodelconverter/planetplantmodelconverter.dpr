@@ -196,7 +196,7 @@ end;
 
 procedure ConvertModel(const aInputFileName,aOutputFileName:String);
 var Index,FrameIndex,OtherIndex,FoundPresetAnimation:TpvSizeInt;
-    GLTFBakedMesh:TpvGLTF.TBakedMesh;
+    GLTFBakedVertexIndexedMesh:TpvGLTF.TBakedVertexIndexedMesh;
     ta,tb,t:TpvDouble;
     AnimationName:TpvUTF8String;
 begin
@@ -213,48 +213,26 @@ begin
 
    if length(GLTF.Animations)>0 then begin
 
-    for Index:=0 to length(GLTF.Animations)-1 do begin
+    // Get indices for all animations once for all in advance
+    begin
 
-     AnimationName:=Trim(LowerCase(GLTF.Animations[Index].Name));
+     GLTFInstance.Animation:=-1;
+     GLTFInstance.AnimationTime:=0;
+     GLTFInstance.Update;
 
-     FoundPresetAnimation:=-1;
-     for OtherIndex:=0 to CountPresetAnimations-1 do begin
-      if AnimationName=PresetAnimations[OtherIndex].Name then begin
-       FoundPresetAnimation:=PresetAnimations[OtherIndex].Index;
-       break;
-      end;
-     end;
-
-     if FoundPresetAnimation>=0 then begin
-
-      GLTFInstance.Animation:=Index;
-
-      ta:=GLTF.GetAnimationBeginTime(Index);
-      tb:=GLTF.GetAnimationEndTime(Index);
-
-      for FrameIndex:=0 to CountFrames-1 do begin
-
-       t:=FrameIndex/(CountFrames-1);
-
-       GLTFInstance.AnimationTime:=(ta*(1.0-t))+(tb*t);
-
-       GLTFInstance.Update;
-
-       GLTFBakedMesh:=GLTFInstance.GetBakedMesh(false,true,-1,[TPasGLTF.TMaterial.TAlphaMode.Opaque,TPasGLTF.TMaterial.TAlphaMode.Blend,TPasGLTF.TMaterial.TAlphaMode.Mask]);
-       if assigned(GLTFBakedMesh) then begin
-        try
-
-        finally
-         FreeAndNil(GLTFBakedMesh);
-        end;
+     GLTFBakedVertexIndexedMesh:=GLTFInstance.GetBakedVertexIndexedMesh(false,true,-1,[TPasGLTF.TMaterial.TAlphaMode.Opaque,TPasGLTF.TMaterial.TAlphaMode.Blend,TPasGLTF.TMaterial.TAlphaMode.Mask]);
+     if assigned(GLTFBakedVertexIndexedMesh) then begin
+      try
+       for Index:=0 to GLTFBakedVertexIndexedMesh.Indices.Count-1 do begin
+        Indices[Index]:=GLTFBakedVertexIndexedMesh.Indices.ItemArray[Index];
        end;
-
+      finally
+       FreeAndNil(GLTFBakedVertexIndexedMesh);
       end;
-
      end;
 
     end;
-
+   
    end;
 
   finally
