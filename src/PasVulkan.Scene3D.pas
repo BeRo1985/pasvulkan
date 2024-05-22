@@ -21857,8 +21857,11 @@ begin
  inherited Destroy;
 end;
 
-// TpvScene3D.TFileType is Unknown, GLTF, WavefrontOBJ, ColladaDAE, FBX and PPM
 class function TpvScene3D.DetectFileType(const aMemory:pointer;const aSize:TpvSizeInt):TpvScene3D.TFileType; 
+// Limited to the first 1024 bytes for performance reasons, since critical information for file type detection
+// is usually within the first few bytes. This approach balances efficiency and practicality. 
+// While edge cases (e.g., long comments at the beginning of ASCII files) may exist, they are rare and can be 
+// ignored for simplicity.
  function IsJSON(const aMemory:pointer;const aSize:TpvSizeInt):boolean;
  var Index:TpvSizeInt;
  begin
