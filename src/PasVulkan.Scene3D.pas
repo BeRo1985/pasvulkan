@@ -22111,8 +22111,11 @@ begin
  
   RawBytes:=aMemory;
 
-  Size:=Min(aSize,1024); // Limit to the first 1024 bytes for performance reasons, since we only need to check the first few bytes anyway
-  
+  // Limit to the first 1024 bytes for performance reasons, since we only need to check the first few bytes anyway
+  // Even if there could be edge cases where for example ASCII FBX, Collada DAE and Wavefront OBJ files could have
+  // long comments at the beginning, we can ignore this and similar edge cases for now for simplicity.
+  Size:=Min(aSize,1024); 
+
   if ((aSize>=2) and IsJSON(aMemory,Size)) or // GLTF, which is just JSON with a JSON object at the beginning  
      ((aSize>=4) and (RawBytes^[0]=ord('g')) and (RawBytes^[1]=ord('l')) and (RawBytes^[2]=ord('T')) and (RawBytes^[3]=ord('F'))) then begin // Binary GLTF
    result:=TpvScene3D.TFileType.GLTF;
