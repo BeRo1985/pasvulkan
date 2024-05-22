@@ -22146,13 +22146,13 @@ class function TpvScene3D.DetectFileType(const aStream:TStream):TpvScene3D.TFile
 var Memory:TpvPointer;
     Size:TpvSizeInt;
 begin
- if assigned(aStream) then begin
+ if assigned(aStream) and (aStream.Size>0) then begin
   if aStream is TMemoryStream then begin
    // If the stream is already a memory stream, we can directly access the memory 
    result:=DetectFileType(TMemoryStream(aStream).Memory,TMemoryStream(aStream).Size);
   end else begin
    // Otherwise we have to read the stream into a memory block
-   Size:=aStream.Size;
+   Size:=Min(aStream.Size,1024); // Limit to the first 1024 bytes for performance reasons
    GetMem(Memory,Size);
    try
     aStream.Seek(0,soBeginning);
