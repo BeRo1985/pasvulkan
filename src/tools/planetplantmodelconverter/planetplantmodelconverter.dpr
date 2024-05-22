@@ -92,6 +92,8 @@ type TVertex=packed record
       CountIndices:TpvUInt32;
       CountFrames:TpvUInt32;
       CountAnimations:TpvUInt32;
+      BoundingBox:TpvAABB;
+      BoundingSphere:TpvSphere;
       MaterialHeader:TMaterialHeader;
      end;
      PFileHeader=^TFileHeader;
@@ -116,6 +118,10 @@ var Animations:TAnimations;
     GLTFInstance:TpvGLTF.TInstance;
 
     FileHeader:TFileHeader;
+
+    BoundingBox:TpvAABB;
+
+    BoundingSphere:TpvSphere;
 
     BaseColorTextureData:TBytes;
     NormalTextureData:TBytes;
@@ -323,7 +329,7 @@ begin
 end;
 
 function ConvertModel(const aInputFileName,aOutputFileName:String):boolean;
-var Index,FrameIndex,OtherIndex,FoundPresetAnimation,
+var Index,FrameIndex,OtherIndex,FoundPresetAnimation,VertexIndex,
     BaseColorTextureIndex,NormalTextureIndex,MetallicRoughnessTextureIndex,
     OcclusionTextureIndex,EmissiveTextureIndex,
     ImageIndex:TpvSizeInt;
@@ -337,6 +343,7 @@ var Index,FrameIndex,OtherIndex,FoundPresetAnimation,
     MetallicRoughnessFactor:TpvVector2;
     OcclusionStrength:TpvFloat;
     EmissiveFactor:TpvVector3;
+    First:boolean;
 begin
 
  result:=true;
@@ -475,6 +482,25 @@ begin
       end;
      end;
 
+     // Get bounding box
+     First:=true;
+     for Index:=0 to CountPresetAnimations-1 do begin
+      for FrameIndex:=0 to CountFrames-1 do begin
+       for VertexIndex:=0 to CountUsedVertices-1 do begin
+        if First then begin
+         First:=false;
+         BoundingBox.Min:=Animations[Index].Frames[FrameIndex].Vertices[VertexIndex].Position;
+         BoundingBox.Max:=Animations[Index].Frames[FrameIndex].Vertices[VertexIndex].Position;
+        end else begin
+         BoundingBox.DirectCombineVector3(Animations[Index].Frames[FrameIndex].Vertices[VertexIndex].Position);
+        end;
+       end;
+      end;
+     end;
+
+     // Get bounding sphere
+     BoundingSphere:=TpvSphere.CreateFromAABB(BoundingBox);
+
      // Save
      Stream:=TMemoryStream.Create;
      try
@@ -485,6 +511,9 @@ begin
       FileHeader.CountIndices:=CountUsedIndices;
       FileHeader.CountFrames:=CountFrames;
       FileHeader.CountAnimations:=CountPresetAnimations;
+
+      FileHeader.BoundingBox:=BoundingBox;
+      FileHeader.BoundingSphere:=BoundingSphere;
 
       FileHeader.MaterialHeader.BaseColorFactor:=BaseColorFactor;
       FileHeader.MaterialHeader.EmissiveFactorOcclusionStrength:=TpvVector4.Create(EmissiveFactor.x,EmissiveFactor.y,EmissiveFactor.z,OcclusionStrength);
