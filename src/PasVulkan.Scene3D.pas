@@ -22104,23 +22104,25 @@ class function TpvScene3D.DetectFileType(const aMemory:pointer;const aSize:TpvSi
   result:=false;
  end;
 var RawBytes:PpvUInt8Array;
+    Size:TpvSizeInt;
 begin
 
  if assigned(aMemory) and (aSize>=2) then begin
  
   RawBytes:=aMemory;
 
-  // GLTF or GLB
-  if ((aSize>=2) and IsJSON(aMemory,aSize)) or // GLTF, which is just JSON with a JSON object at the beginning  
+  Size:=Min(aSize,1024); // Limit to the first 1024 bytes for performance reasons, since we only need to check the first few bytes anyway
+  
+  if ((aSize>=2) and IsJSON(aMemory,Size)) or // GLTF, which is just JSON with a JSON object at the beginning  
      ((aSize>=4) and (RawBytes^[0]=ord('g')) and (RawBytes^[1]=ord('l')) and (RawBytes^[2]=ord('T')) and (RawBytes^[3]=ord('F'))) then begin // Binary GLTF
    result:=TpvScene3D.TFileType.GLTF;
-  end else if (aSize>=2) and IsXML(aMemory,aSize) then begin // Collada DAE, which is XML 
+  end else if (aSize>=2) and IsXML(aMemory,Size) then begin // Collada DAE, which is XML 
    result:=TpvScene3D.TFileType.ColladaDAE;
-  end else if (aSize>=23) and IsFBX(aMemory,aSize) then begin // FBX, which can be either binary or ASCII
+  end else if (aSize>=23) and IsFBX(aMemory,Size) then begin // FBX, which can be either binary or ASCII
    result:=TpvScene3D.TFileType.FBX; 
-  end else if (aSize>=4) and IsPPM(aMemory,aSize) then begin // PPM, which is binary
+  end else if (aSize>=4) and IsPPM(aMemory,Size) then begin // PPM, which is binary
    result:=TpvScene3D.TFileType.PPM;
-  end else if (aSize>=2) and IsMaybeWavefrontOBJ(aMemory,aSize) then begin // Wavefront OBJ, which is ASCII
+  end else if (aSize>=2) and IsMaybeWavefrontOBJ(aMemory,Size) then begin // Wavefront OBJ, which is ASCII
    result:=TpvScene3D.TFileType.WavefrontOBJ;
   end else begin // Unable to detect
    result:=TpvScene3D.TFileType.Unknown;
