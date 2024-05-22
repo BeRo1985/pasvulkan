@@ -242,6 +242,16 @@ type EpvScene3D=class(Exception);
              public
               const Position=0;
             end;
+            TFileType=
+             (
+              Unknown, 
+              GLTF,
+              PPM,
+              WavefrontOBJ,
+              ColladaDAE, 
+              FBX
+             );
+            PFileType=^TFileType; 
             TVkPrimitiveTopologySet=set of TVkPrimitiveTopology;
             TUInt32Vector4=array[0..3] of TpvUInt32;
             TUInt16Vector4=array[0..3] of TpvUInt16;
@@ -3282,6 +3292,8 @@ type EpvScene3D=class(Exception);
       private
        procedure ProcessFreeQueue;
       public
+       class function DetectFileType(const aMemory:pointer;const aSize:TpvSizeInt):TpvScene3D.TFileType; overload; static;
+       class function DetectFileType(const aStream:TStream):TpvScene3D.TFileType; overload; static;
        class function EncodeModeFlags(const aAlphaMode:TpvScene3D.TMaterial.TAlphaMode;
                                       const aPrimitiveTopology:TpvScene3D.TPrimitiveTopology;
                                       const aFaceCullingMode:TpvScene3D.TFaceCullingMode):TpvUInt32; static;
@@ -21843,6 +21855,308 @@ begin
  end;
 
  inherited Destroy;
+end;
+
+// TpvScene3D.TFileType is Unknown, GLTF, WavefrontOBJ, ColladaDAE, FBX and PPM
+class function TpvScene3D.DetectFileType(const aMemory:pointer;const aSize:TpvSizeInt):TpvScene3D.TFileType; 
+ function IsJSON(const aMemory:pointer;const aSize:TpvSizeInt):boolean;
+ var Index:TpvSizeInt;
+ begin
+  if assigned(aMemory) and (aSize>=2) then begin
+   for Index:=0 to aSize-1 do begin
+    case PpvUInt8Array(aMemory)^[Index] of
+     ord('{'),ord('['):begin
+      result:=true;
+      exit;
+     end;
+     9,10,13,32:begin
+     end;
+     else begin
+      break;
+     end;
+    end;
+   end;
+  end;
+  result:=false;
+ end;    
+ function IsXML(const aMemory:pointer;const aSize:TpvSizeInt):boolean;
+ var Index:TpvSizeInt;
+ begin
+  if assigned(aMemory) and (aSize>=2) then begin
+   Index:=0;
+   while Index<aSize do begin
+    case PpvUInt8Array(aMemory)^[Index] of
+     ord('<'):begin
+      inc(Index);
+      while Index<aSize do begin
+       if PpvUInt8Array(aMemory)^[Index]=ord('>') then begin
+        result:=true;
+        exit;
+       end;
+       inc(Index);
+      end;
+      break; // Otherwise give up
+     end;
+     9,10,13,32:begin
+     end;
+     else begin
+      break;
+     end;
+    end;
+    inc(Index);
+   end;
+  end;
+  result:=false;
+ end;
+ function IsFBX(aMemory:pointer;const aSize:TpvSizeInt):boolean;
+ var Index:TpvSizeInt;
+ begin
+  if assigned(aMemory) and 
+     (aSize>=23) and
+     (PpvUInt8Array(aMemory)^[0]=ord('K')) and
+      (PpvUInt8Array(aMemory)^[1]=ord('a')) and
+      (PpvUInt8Array(aMemory)^[2]=ord('y')) and
+      (PpvUInt8Array(aMemory)^[3]=ord('d')) and
+      (PpvUInt8Array(aMemory)^[4]=ord('a')) and
+      (PpvUInt8Array(aMemory)^[5]=ord('r')) and
+      (PpvUInt8Array(aMemory)^[6]=ord('a')) and
+      (PpvUInt8Array(aMemory)^[7]=ord(' ')) and
+      (PpvUInt8Array(aMemory)^[8]=ord('F')) and
+      (PpvUInt8Array(aMemory)^[9]=ord('B')) and
+      (PpvUInt8Array(aMemory)^[10]=ord('X')) and
+      (PpvUInt8Array(aMemory)^[11]=ord(' ')) and
+      (PpvUInt8Array(aMemory)^[12]=ord('B')) and
+      (PpvUInt8Array(aMemory)^[13]=ord('i')) and
+      (PpvUInt8Array(aMemory)^[14]=ord('n')) and
+      (PpvUInt8Array(aMemory)^[15]=ord('a')) and
+      (PpvUInt8Array(aMemory)^[16]=ord('r')) and
+      (PpvUInt8Array(aMemory)^[17]=ord('y')) and
+      (PpvUInt8Array(aMemory)^[18]=ord(' ')) and
+      (PpvUInt8Array(aMemory)^[19]=ord(' ')) and
+      (PpvUInt8Array(aMemory)^[20]=$00) and
+      (PpvUInt8Array(aMemory)^[21]=$1a) and
+      (PpvUInt8Array(aMemory)^[22]=$00) then begin 
+   result:=true; // Binary FBX format
+  end else begin
+   if assigned(aMemory) then begin
+    // Search for FBXHeaderExtension (18 bytes) for the ASCII version of the FBX format 
+    Index:=0;
+    while (Index+18)<aSize do begin
+     if (PpvUInt8Array(aMemory)^[Index]=ord('F')) and
+        (PpvUInt8Array(aMemory)^[Index+1]=ord('B')) and
+        (PpvUInt8Array(aMemory)^[Index+2]=ord('X')) and
+        (PpvUInt8Array(aMemory)^[Index+3]=ord('H')) and
+        (PpvUInt8Array(aMemory)^[Index+4]=ord('e')) and
+        (PpvUInt8Array(aMemory)^[Index+5]=ord('a')) and
+        (PpvUInt8Array(aMemory)^[Index+6]=ord('d')) and
+        (PpvUInt8Array(aMemory)^[Index+7]=ord('e')) and
+        (PpvUInt8Array(aMemory)^[Index+8]=ord('r')) and
+        (PpvUInt8Array(aMemory)^[Index+9]=ord('E')) and
+        (PpvUInt8Array(aMemory)^[Index+10]=ord('x')) and
+        (PpvUInt8Array(aMemory)^[Index+11]=ord('t')) and
+        (PpvUInt8Array(aMemory)^[Index+12]=ord('e')) and
+        (PpvUInt8Array(aMemory)^[Index+13]=ord('n')) and
+        (PpvUInt8Array(aMemory)^[Index+14]=ord('s')) and
+        (PpvUInt8Array(aMemory)^[Index+15]=ord('i')) and
+        (PpvUInt8Array(aMemory)^[Index+16]=ord('o')) and
+        (PpvUInt8Array(aMemory)^[Index+17]=ord('n')) then begin
+      result:=true;
+      exit;
+     end;
+     inc(Index);
+    end;
+   end;
+   result:=false;
+  end;
+ end;
+ function IsPPM(aMemory:pointer;const aSize:TpvSizeInt):boolean;
+ begin
+  if assigned(aMemory) and 
+     (aSize>=4) and
+     ((PpvUInt8Array(aMemory)^[0]=ord('P')) and
+      (PpvUInt8Array(aMemory)^[1]=ord('P')) and
+      (PpvUInt8Array(aMemory)^[2]=ord('M')) and
+      (PpvUInt8Array(aMemory)^[3]=ord('F'))) then begin
+   result:=true;
+  end else begin
+   result:=false;
+  end;
+ end;
+ function IsMaybeWavefrontOBJ(aMemory:pointer;const aSize:TpvSizeInt):boolean; 
+ var Index:TpvSizeInt;
+     NewLine:boolean;
+ begin
+  if assigned(aMemory) then begin
+   NewLine:=true;
+   Index:=0;
+   while Index<aSize do begin
+    case PpvUInt8Array(aMemory)^[Index] of
+     9,32:begin
+      NewLine:=false;
+     end;
+     10,13:begin
+      NewLine:=true;
+     end;
+     ord('#'):begin
+      // Skip comments 
+      while (Index<aSize) and (PpvUInt8Array(aMemory)^[Index]<>10) and (PpvUInt8Array(aMemory)^[Index]<>13) do begin
+       inc(Index);
+      end;
+      dec(Index);
+     end;
+     ord('v'):begin // v, vt, vn, vp
+      if NewLine then begin
+       if (Index+1)<aSize then begin
+        case PpvUInt8Array(aMemory)^[Index+1] of
+         9,32:begin
+          result:=true;
+          exit;
+         end;
+         ord('t'),ord('n'),ord('p'):begin
+          if (Index+2)<aSize then begin
+           case PpvUInt8Array(aMemory)^[Index+2] of
+            9,32:begin
+             result:=true;
+             exit;
+            end;
+            else begin
+             break;
+            end;
+           end;
+          end else begin
+           break;
+          end;
+         end;
+         else begin
+          break;
+         end;
+        end;
+       end else begin
+        break;
+       end;
+      end else begin
+       break;
+      end;
+     end;
+     ord('o'),ord('g'),ord('s'),ord('f'),ord('l'):begin
+      if NewLine then begin
+       if (Index+1)<aSize then begin
+        case PpvUInt8Array(aMemory)^[Index+1] of
+         9,32:begin
+          result:=true;
+          exit;
+         end;
+         else begin
+          break;
+         end;
+        end;
+       end else begin
+        break;
+       end;
+      end else begin
+       break;
+      end; 
+     end;
+     ord('m'):begin
+      if NewLine then begin
+       if (Index+5)<aSize then begin
+        if (PpvUInt8Array(aMemory)^[Index+1]=ord('t')) and
+           (PpvUInt8Array(aMemory)^[Index+2]=ord('l')) and
+           (PpvUInt8Array(aMemory)^[Index+3]=ord('i')) and
+           (PpvUInt8Array(aMemory)^[Index+4]=ord('b')) and
+           ((PpvUInt8Array(aMemory)^[Index+5]=9) or (PpvUInt8Array(aMemory)^[Index+5]=32)) then begin
+         result:=true;
+         exit;
+        end;
+       end else begin
+        break;
+       end;
+      end else begin
+       break;
+      end;
+     end;
+     ord('u'):begin
+      if NewLine then begin
+       if (Index+6)<aSize then begin
+        if (PpvUInt8Array(aMemory)^[Index+1]=ord('s')) and
+           (PpvUInt8Array(aMemory)^[Index+2]=ord('e')) and
+           (PpvUInt8Array(aMemory)^[Index+3]=ord('m')) and
+           (PpvUInt8Array(aMemory)^[Index+4]=ord('t')) and
+           (PpvUInt8Array(aMemory)^[Index+5]=ord('l')) and
+          ((PpvUInt8Array(aMemory)^[Index+6]=9) or (PpvUInt8Array(aMemory)^[Index+6]=32)) then begin
+         result:=true;
+         exit;
+        end;
+       end else begin
+        break;
+       end;
+      end else begin
+       break;
+      end;
+     end;
+     else begin
+      break;
+     end;
+    end;
+    inc(Index);
+   end;
+  end;
+  result:=false;
+ end;
+var RawBytes:PpvUInt8Array;
+begin
+
+ if assigned(aMemory) and (aSize>=2) then begin
+ 
+  RawBytes:=aMemory;
+
+  // GLTF or GLB
+  if ((aSize>=2) and IsJSON(aMemory,aSize)) or // GLTF, which is just JSON with a JSON object at the beginning  
+     ((aSize>=4) and (RawBytes^[0]=ord('g')) and (RawBytes^[1]=ord('l')) and (RawBytes^[2]=ord('T')) and (RawBytes^[3]=ord('F'))) then begin // Binary GLTF
+   result:=TpvScene3D.TFileType.GLTF;
+  end else if (aSize>=2) and IsXML(aMemory,aSize) then begin // Collada DAE, which is XML 
+   result:=TpvScene3D.TFileType.ColladaDAE;
+  end else if (aSize>=23) and IsFBX(aMemory,aSize) then begin // FBX, which can be either binary or ASCII
+   result:=TpvScene3D.TFileType.FBX; 
+  end else if (aSize>=4) and IsPPM(aMemory,aSize) then begin // PPM, which is binary
+   result:=TpvScene3D.TFileType.PPM;
+  end else if (aSize>=2) and IsMaybeWavefrontOBJ(aMemory,aSize) then begin // Wavefront OBJ, which is ASCII
+   result:=TpvScene3D.TFileType.WavefrontOBJ;
+  end else begin // Unable to detect
+   result:=TpvScene3D.TFileType.Unknown;
+  end;
+
+ end else begin // Unable to detect
+ 
+  result:=TpvScene3D.TFileType.Unknown;
+
+ end;
+
+end;
+
+class function TpvScene3D.DetectFileType(const aStream:TStream):TpvScene3D.TFileType;
+var Memory:TpvPointer;
+    Size:TpvSizeInt;
+begin
+ if assigned(aStream) then begin
+  if aStream is TMemoryStream then begin
+   // If the stream is already a memory stream, we can directly access the memory 
+   result:=DetectFileType(TMemoryStream(aStream).Memory,TMemoryStream(aStream).Size);
+  end else begin
+   // Otherwise we have to read the stream into a memory block
+   Size:=aStream.Size;
+   GetMem(Memory,Size);
+   try
+    aStream.Seek(0,soBeginning);
+    aStream.ReadBuffer(Memory^,Size);
+    result:=DetectFileType(Memory,Size);
+   finally
+    FreeMem(Memory);
+   end;
+  end; 
+ end else begin
+  result:=TpvScene3D.TFileType.Unknown;
+ end;
 end;
 
 class function TpvScene3D.EncodeModeFlags(const aAlphaMode:TpvScene3D.TMaterial.TAlphaMode;
