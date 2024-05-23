@@ -407,7 +407,11 @@ begin
      // Get all animations
      SetLength(Animations,1);
      Frames:=GetMergedAnimation(-1);
-     OptimizeFrames(Frames,Animations[0].Frames,10);
+     if length(Frames)>40 then begin
+      OptimizeFrames(Frames,Animations[0].Frames,40);
+     end else begin
+      Animations[0].Frames:=Frames;
+     end;
 
 {    for Index:=0 to TpvPPM.CountPresetAnimations-1 do begin
       TimeFrames:=GetMergedAnimation(Index);
