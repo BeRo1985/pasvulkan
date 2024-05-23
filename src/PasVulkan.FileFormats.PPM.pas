@@ -70,10 +70,7 @@ type EpvPPM=class(Exception);
      { TpvPPM }
      TpvPPM=class
       public
-       const CountFrames=16;
-             CountPresetAnimations=4;
-             MaximalCountVertices=32768;
-             MaximalCountIndices=65536;
+       const CountPresetAnimations=4;
              Version=1;
        type TVertex=packed record
              Position:TpvVector3; // 12 bytes (must be non-quantized and non-compressed for direct use with hardware raytracing)
@@ -82,27 +79,21 @@ type EpvPPM=class(Exception);
              TangentSpace:TpvUInt16PackedTangentSpace; // 8 bytes
             end; // 12+2+2+8 = 24 bytes
             PVertex=^TVertex;
-            TVertices=array[0..MaximalCountVertices-1] of TVertex;
+            TVertices=array of TVertex;
             TIndex=TpvUInt32;
             PIndex=^TIndex;
-            TIndices=array[0..MaximalCountIndices-1] of TIndex;
+            TIndices=array of TIndex;
             TFrame=record
+             Time:TpvDouble;
              Vertices:TVertices;
             end;
             PFrame=^TFrame;
-            TFrames=array[0..CountFrames-1] of TFrame;
-            PFrames=^TFrames;
-            TTimeFrame=record // For merging animations like grow0 grow1 grow2 etc. to grow and so on    
-             Time:TpvDouble;
-             Frame:TFrame;
-            end;
-            PTimeFrame=^TTimeFrame;
-            TTimeFrames=array of TTimeFrame;
+            TFrames=array of TFrame;
             TAnimation=record
              Frames:TFrames;
             end;
             PAnimation=^TAnimation;
-            TAnimations=array[0..CountPresetAnimations-1] of TAnimation;
+            TAnimations=array of TAnimation;
             TPresetAnimation=record
              Index:TpvSizeInt;
              Name:TpvUTF8String; 
@@ -125,7 +116,6 @@ type EpvPPM=class(Exception);
              Version:TpvUInt32;
              CountVertices:TpvUInt32;
              CountIndices:TpvUInt32;
-             CountFrames:TpvUInt32;
              CountAnimations:TpvUInt32;
              BoundingBoxMin:TpvVector3;
              BoundingBoxMax:TpvVector3;
@@ -168,11 +158,12 @@ implementation
 { TpvPPM.TModel }
 
 constructor TpvPPM.TModel.Create;
+var Index:TpvSizeInt; 
 begin
  inherited Create;
  FillChar(FileHeader,SizeOf(TpvPPM.TFileHeader),#0);
- FillChar(Indices,SizeOf(TpvPPM.TIndices),#0);
- FillChar(Animations,SizeOf(TpvPPM.TAnimations),#0);
+ Indices:=nil;
+ Animations:=nil;
  BaseColorTextureStream:=TMemoryStream.Create;
  NormalTextureStream:=TMemoryStream.Create;
  MetallicRoughnessTextureStream:=TMemoryStream.Create;
@@ -182,6 +173,8 @@ end;
 
 destructor TpvPPM.TModel.Destroy;
 begin
+ Indices:=nil;
+ Animations:=nil;
  FreeAndNil(EmissiveTextureStream);
  FreeAndNil(OcclusionTextureStream);
  FreeAndNil(MetallicRoughnessTextureStream);
@@ -191,12 +184,14 @@ begin
 end;
 
 procedure TpvPPM.TModel.LoadFromStream(const aStream:TStream);
-var AnimationIndex,FramesIndex,VerticesIndex:TpvInt32;
+var AnimationIndex,FramesIndex:TpvSizeInt;
+    CountFrames:TpvInt32;
 begin
 
+ Indices:=nil;
+ Animations:=nil;
+
  FillChar(FileHeader,SizeOf(TpvPPM.TFileHeader),#0);
- FillChar(Indices,SizeOf(TpvPPM.TIndices),#0);
- FillChar(Animations,SizeOf(TpvPPM.TAnimations),#0);
 
  aStream.ReadBuffer(FileHeader,SizeOf(TpvPPM.TFileHeader));
  
@@ -209,13 +204,22 @@ begin
  end;
 
  if FileHeader.CountIndices>0 then begin
+  SetLength(Indices,FileHeader.CountIndices);
   aStream.ReadBuffer(Indices[0],SizeOf(TpvPPM.TIndex)*FileHeader.CountIndices);
  end;
 
+ SetLength(Animations,FileHeader.CountAnimations);
  for AnimationIndex:=0 to FileHeader.CountAnimations-1 do begin
-  for FramesIndex:=0 to FileHeader.CountFrames-1 do begin
-   for VerticesIndex:=0 to FileHeader.CountVertices-1 do begin
-    aStream.ReadBuffer(Animations[AnimationIndex].Frames[FramesIndex].Vertices[VerticesIndex],SizeOf(TpvPPM.TVertex));
+  aStream.ReadBuffer(CountFrames,SizeOf(TpvInt32));
+  Animations[AnimationIndex].Frames:=nil;
+  if CountFrames>0 then begin
+   SetLength(Animations[AnimationIndex].Frames,CountFrames);
+   for FramesIndex:=0 to CountFrames-1 do begin
+    aStream.ReadBuffer(Animations[AnimationIndex].Frames[FramesIndex].Time,SizeOf(TpvDouble));
+    SetLength(Animations[AnimationIndex].Frames[FramesIndex].Vertices,FileHeader.CountVertices);
+    if FileHeader.CountVertices>0 then begin
+     aStream.ReadBuffer(Animations[AnimationIndex].Frames[FramesIndex].Vertices[0],SizeOf(TpvPPM.TVertex)*FileHeader.CountVertices);
+    end;
    end;
   end;
  end;
@@ -261,14 +265,19 @@ begin
 end;
 
 procedure TpvPPM.TModel.SaveToStream(const aStream:TStream);
-var AnimationIndex,FramesIndex,VerticesIndex:TpvInt32;
+var AnimationIndex,FramesIndex:TpvSizeInt;
+    CountFrames:TpvInt32;
 begin
  FileHeader.Signature:=TpvPPM.Signature;
  FileHeader.Version:=TpvPPM.Version;
+ FileHeader.CountAnimations:=length(Animations);
  aStream.WriteBuffer(FileHeader,SizeOf(TpvPPM.TFileHeader));
  aStream.WriteBuffer(Indices[0],SizeOf(TpvPPM.TIndex)*FileHeader.CountIndices);
- for AnimationIndex:=0 to FileHeader.CountAnimations-1 do begin
-  for FramesIndex:=0 to FileHeader.CountFrames-1 do begin
+ for AnimationIndex:=0 to length(Animations)-1 do begin
+  CountFrames:=length(Animations[AnimationIndex].Frames);
+  aStream.WriteBuffer(CountFrames,SizeOf(TpvInt32));
+  for FramesIndex:=0 to CountFrames-1 do begin
+   aStream.WriteBuffer(Animations[AnimationIndex].Frames[FramesIndex].Time,SizeOf(TpvDouble));
    aStream.WriteBuffer(Animations[AnimationIndex].Frames[FramesIndex].Vertices[0],SizeOf(TpvPPM.TVertex)*FileHeader.CountVertices);
   end;
  end;

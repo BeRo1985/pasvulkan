@@ -15242,17 +15242,15 @@ begin
   MeshPrimitive.MaterialID:=AddMaterial(Material);
   MeshPrimitive.Material:=Material;
 
-  // Calculate count of morph targets
-  Mesh.fCountMorphTargets:=TpvSizeInt(aSourceModel.FileHeader.CountAnimations)*
-                           TpvSizeInt(aSourceModel.FileHeader.CountFrames);
-
-  // Create initial morph target weights
+  // Create initial morph target weights and calculate count of morph targets
+  Mesh.fCountMorphTargets:=0;
   MorphWeightIndex:=0;
   Node.fWeights.ClearNoFree;
-  for AnimationIndex:=0 to TpvSizeInt(aSourceModel.FileHeader.CountAnimations)-1 do begin
-   for FrameIndex:=0 to TpvSizeInt(aSourceModel.FileHeader.CountFrames)-1 do begin
+  for AnimationIndex:=0 to length(aSourceModel.Animations)-1 do begin
+   for FrameIndex:=0 to length(aSourceModel.Animations[AnimationIndex].Frames)-1 do begin
     Node.fWeights.Add(0.0);
     inc(MorphWeightIndex);
+    inc(Mesh.fCountMorphTargets);
    end;
   end;
   Node.fWeights.Finish;
@@ -15285,8 +15283,8 @@ begin
    // Create morph target vertices for this vertex
    LastMorphTargetVertex:=nil;
    MorphWeightIndex:=0;
-   for AnimationIndex:=0 to TpvSizeInt(aSourceModel.FileHeader.CountAnimations)-1 do begin
-    for FrameIndex:=0 to TpvSizeInt(aSourceModel.FileHeader.CountFrames)-1 do begin
+   for AnimationIndex:=0 to length(aSourceModel.Animations)-1 do begin
+    for FrameIndex:=0 to length(aSourceModel.Animations[AnimationIndex].Frames)-1 do begin
      PPMVertex:=@aSourceModel.Animations[AnimationIndex].Frames[FrameIndex].Vertices[VertexIndex];
      MorphTargetVertexIndex:=fMorphTargetVertices.AddNewIndex;
      MorphTargetVertex:=@fMorphTargetVertices.ItemArray[MorphTargetVertexIndex];
@@ -15324,6 +15322,10 @@ begin
  end;
 
  // TODO: Add animation data for morph targets 
+ for AnimationIndex:=0 to length(aSourceModel.Animations)-1 do begin
+  for FrameIndex:=0 to length(aSourceModel.Animations[AnimationIndex].Frames)-1 do begin
+  end;
+ end;
 
  // Finalize the mesh
  Mesh.Finish;

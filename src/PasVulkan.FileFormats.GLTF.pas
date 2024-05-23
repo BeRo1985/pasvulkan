@@ -744,8 +744,9 @@ type EpvGLTF=class(Exception);
        function AddDirectionalLight(const aDirectionX,aDirectionY,aDirectionZ,aColorX,aColorY,aColorZ:TPasGLTFFloat):TPasGLTFSizeInt;
        procedure Upload;
        procedure Unload;
-       function GetAnimationBeginTime(const aAnimation:TPasGLTFSizeInt):TPasGLTFFloat;
-       function GetAnimationEndTime(const aAnimation:TPasGLTFSizeInt):TPasGLTFFloat;
+       function GetAnimationBeginTime(const aAnimation:TPasGLTFSizeInt):TPasGLTFDouble;
+       function GetAnimationEndTime(const aAnimation:TPasGLTFSizeInt):TPasGLTFDouble;
+       function GetAnimationTimes(const aAnimation:TPasGLTFSizeInt):TPasGLTFDoubleDynamicArray;
        function GetNodeIndex(const aNodeName:TPasGLTFUTF8String):TPasGLTFSizeInt;
        function AcquireInstance:TpvGLTF.TInstance;
       public
@@ -3320,7 +3321,7 @@ begin
  end;
 end;
 
-function TpvGLTF.GetAnimationBeginTime(const aAnimation:TPasGLTFSizeInt):TPasGLTFFloat;
+function TpvGLTF.GetAnimationBeginTime(const aAnimation:TPasGLTFSizeInt):TPasGLTFDouble;
 var Index:TPasGLTFSizeInt;
     Animation:TpvGLTF.PAnimation;
     Channel:TpvGLTF.TAnimation.PChannel;
@@ -3341,7 +3342,7 @@ begin
  end;
 end;
 
-function TpvGLTF.GetAnimationEndTime(const aAnimation:TPasGLTFSizeInt):TPasGLTFFloat;
+function TpvGLTF.GetAnimationEndTime(const aAnimation:TPasGLTFSizeInt):TPasGLTFDouble;
 var Index:TPasGLTFSizeInt;
     Animation:TpvGLTF.PAnimation;
     Channel:TpvGLTF.TAnimation.PChannel;
@@ -3360,6 +3361,80 @@ begin
    end;
   end;
  end;
+end;
+
+function TpvGLTF.GetAnimationTimes(const aAnimation:TPasGLTFSizeInt):TPasGLTFDoubleDynamicArray;
+var Index,TimeIndex,Count:TPasGLTFSizeInt;
+    Animation:TpvGLTF.PAnimation;
+    Channel:TpvGLTF.TAnimation.PChannel;
+    Temporary:TPasGLTFDouble;
+begin
+ 
+ result:=nil;
+ 
+ if (aAnimation>=0) and (aAnimation<length(fAnimations)) then begin
+
+  Animation:=@fAnimations[aAnimation];
+
+  // Count all time values  
+  Count:=0;
+  for Index:=0 to length(Animation^.Channels)-1 do begin
+   Channel:=@Animation^.Channels[Index];
+   if length(Channel^.InputTimeArray)>0 then begin
+    inc(Count,length(Channel^.InputTimeArray));
+   end;
+  end;
+  SetLength(result,Count);
+  
+  // Copy all time values
+  Count:=0;
+  for Index:=0 to length(Animation^.Channels)-1 do begin
+   Channel:=@Animation^.Channels[Index];
+   if length(Channel^.InputTimeArray)>0 then begin
+    for TimeIndex:=0 to length(Channel^.InputTimeArray)-1 do begin
+     result[Count+TimeIndex]:=Channel^.InputTimeArray[TimeIndex];
+    end;
+    inc(Count,length(Channel^.InputTimeArray));
+   end;
+  end;
+
+  // Sort all time values. Bubble sort for now
+  Index:=0;
+  while (Index+1)<Count do begin
+   if result[Index]>result[Index+1] then begin
+    Temporary:=result[Index];
+    result[Index]:=result[Index+1];
+    result[Index+1]:=Temporary;
+    if Index>0 then begin
+     dec(Index);
+    end else begin
+     inc(Index);
+    end;
+   end else begin
+    inc(Index);
+   end;
+  end;
+
+  // Remove duplicates
+  Index:=0;
+  while Index<(Count-1) do begin
+   if result[Index]=result[Index+1] then begin
+    for TimeIndex:=Index to (Count-2) do begin
+     result[TimeIndex]:=result[TimeIndex+1];
+    end;
+    dec(Count);
+   end else begin
+    inc(Index);
+   end;
+  end;
+
+  // Set final array size
+  if length(result)<>Count then begin
+   SetLength(result,Count);
+  end;
+
+ end;
+
 end;
 
 function TpvGLTF.GetNodeIndex(const aNodeName:TPasGLTFUTF8String):TPasGLTFSizeInt;
