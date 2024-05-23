@@ -96,6 +96,7 @@ uses {$ifdef Windows}
      PasVulkan.VirtualReality,
      PasVulkan.Raytracing,
      PasVulkan.FileFormats.DAE,
+     PasVulkan.FileFormats.FBX,
      PasVulkan.FileFormats.PPM,
      POCA;
 

@@ -763,10 +763,11 @@ type PpvScalar=^TpvScalar;
        property Rows[const pIndex:TpvInt32]:TpvVector3 read GetRow write SetRow;
        case TpvInt32 of
         0:(RawComponents:array[0..2,0..2] of TpvScalar);
-        1:(m00,m01,m02,m10,m11,m12,m20,m21,m22:TpvScalar);
-        2:(Tangent,Bitangent,Normal:TpvVector3);
-        3:(Right,Up,Forwards:TpvVector3);
-        4:(RawVectors:array[0..2] of TpvVector3);
+        1:(LinearRawComponents:array[0..8] of TpvScalar);
+        2:(m00,m01,m02,m10,m11,m12,m20,m21,m22:TpvScalar);
+        3:(Tangent,Bitangent,Normal:TpvVector3);
+        4:(Right,Up,Forwards:TpvVector3);
+        5:(RawVectors:array[0..2] of TpvVector3);
        end;
 
      PpvDecomposedMatrix4x4=^TpvDecomposedMatrix4x4;
@@ -947,10 +948,11 @@ type PpvScalar=^TpvScalar;
        property Rows[const pIndex:TpvInt32]:TpvVector4 read GetRow write SetRow;
        case TpvInt32 of
         0:(RawComponents:array[0..3,0..3] of TpvScalar);
-        1:(m00,m01,m02,m03,m10,m11,m12,m13,m20,m21,m22,m23,m30,m31,m32,m33:TpvScalar);
-        2:(Tangent,Bitangent,Normal,Translation:TpvVector4);
-        3:(Right,Up,Forwards,Offset:TpvVector4);
-        4:(RawVectors:array[0..3] of TpvVector4);
+        1:(LinearRawComponents:array[0..15] of TpvScalar);
+        2:(m00,m01,m02,m03,m10,m11,m12,m13,m20,m21,m22,m23,m30,m31,m32,m33:TpvScalar);
+        3:(Tangent,Bitangent,Normal,Translation:TpvVector4);
+        4:(Right,Up,Forwards,Offset:TpvVector4);
+        5:(RawVectors:array[0..3] of TpvVector4);
      end;
 
      // Dual quaternion with uniform scaling support
