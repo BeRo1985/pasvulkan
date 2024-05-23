@@ -64,13 +64,23 @@ unit PasVulkan.FileFormats.FBX;
 
 interface
 
-uses SysUtils,Classes,Math,StrUtils,PasDblStrUtils,Generics.Collections,TypInfo,Variants,
-     PasVulkan.Types,
-     PasVulkan.Math;
+uses SysUtils,Classes,Math,StrUtils,PasDblStrUtils,Generics.Collections,TypInfo,Variants,PasVulkan.Types;
 
-type EpvFBX=class(Exception);
+type EFBX=class(Exception);
 
      TpvFBXLoader=class;
+
+     PpvFBXScalar=^TpvFBXScalar;
+     TpvFBXScalar=TpvDouble;
+
+     PpvFBXSizeInt=^TpvFBXSizeInt;
+     TpvFBXSizeInt={$ifdef fpc}SizeInt{$else}NativeInt{$endif};
+
+     PpvFBXPtrInt=^TpvFBXPtrInt;
+     TpvFBXPtrInt={$ifdef fpc}PtrInt{$else}NativeInt{$endif};
+
+     PpvFBXPtrUInt=^TpvFBXPtrUInt;
+     TpvFBXPtrUInt={$ifdef fpc}PtrUInt{$else}NativeUInt{$endif};
 
      TpvFBXBytes=array of TpvUInt8;
 
@@ -96,6 +106,192 @@ type EpvFBX=class(Exception);
 
      TpvFBXFloat64List=class(TList<TpvDouble>);
 
+     PpvFBXVector2=^TpvFBXVector2;
+     TpvFBXVector2=record
+      public
+       constructor Create(const pX:TpvFBXScalar); overload;
+       constructor Create(const pX,pY:TpvFBXScalar); overload;
+       class operator Implicit(const a:TpvFBXScalar):TpvFBXVector2; {$ifdef caninline}inline;{$endif}
+       class operator Explicit(const a:TpvFBXScalar):TpvFBXVector2; {$ifdef caninline}inline;{$endif}
+       class operator Equal(const a,b:TpvFBXVector2):boolean; {$ifdef caninline}inline;{$endif}
+       class operator NotEqual(const a,b:TpvFBXVector2):boolean; {$ifdef caninline}inline;{$endif}
+       class operator Inc(const a:TpvFBXVector2):TpvFBXVector2; {$ifdef caninline}inline;{$endif}
+       class operator Dec(const a:TpvFBXVector2):TpvFBXVector2; {$ifdef caninline}inline;{$endif}
+       class operator Add(const a,b:TpvFBXVector2):TpvFBXVector2; {$ifdef caninline}inline;{$endif}
+       class operator Add(const a:TpvFBXVector2;const b:TpvFBXScalar):TpvFBXVector2; {$ifdef caninline}inline;{$endif}
+       class operator Add(const a:TpvFBXScalar;const b:TpvFBXVector2):TpvFBXVector2; {$ifdef caninline}inline;{$endif}
+       class operator Subtract(const a,b:TpvFBXVector2):TpvFBXVector2; {$ifdef caninline}inline;{$endif}
+       class operator Subtract(const a:TpvFBXVector2;const b:TpvFBXScalar):TpvFBXVector2; {$ifdef caninline}inline;{$endif}
+       class operator Subtract(const a:TpvFBXScalar;const b:TpvFBXVector2): TpvFBXVector2; {$ifdef caninline}inline;{$endif}
+       class operator Multiply(const a,b:TpvFBXVector2):TpvFBXVector2; {$ifdef caninline}inline;{$endif}
+       class operator Multiply(const a:TpvFBXVector2;const b:TpvFBXScalar):TpvFBXVector2; {$ifdef caninline}inline;{$endif}
+       class operator Multiply(const a:TpvFBXScalar;const b:TpvFBXVector2):TpvFBXVector2; {$ifdef caninline}inline;{$endif}
+       class operator Divide(const a,b:TpvFBXVector2):TpvFBXVector2; {$ifdef caninline}inline;{$endif}
+       class operator Divide(const a:TpvFBXVector2;const b:TpvFBXScalar):TpvFBXVector2; {$ifdef caninline}inline;{$endif}
+       class operator Divide(const a:TpvFBXScalar;const b:TpvFBXVector2):TpvFBXVector2; {$ifdef caninline}inline;{$endif}
+       class operator IntDivide(const a,b:TpvFBXVector2):TpvFBXVector2; {$ifdef caninline}inline;{$endif}
+       class operator IntDivide(const a:TpvFBXVector2;const b:TpvFBXScalar):TpvFBXVector2; {$ifdef caninline}inline;{$endif}
+       class operator IntDivide(const a:TpvFBXScalar;const b:TpvFBXVector2):TpvFBXVector2; {$ifdef caninline}inline;{$endif}
+       class operator Modulus(const a,b:TpvFBXVector2):TpvFBXVector2; {$ifdef caninline}inline;{$endif}
+       class operator Modulus(const a:TpvFBXVector2;const b:TpvFBXScalar):TpvFBXVector2; {$ifdef caninline}inline;{$endif}
+       class operator Modulus(const a:TpvFBXScalar;const b:TpvFBXVector2):TpvFBXVector2; {$ifdef caninline}inline;{$endif}
+       class operator Negative(const a:TpvFBXVector2):TpvFBXVector2; {$ifdef caninline}inline;{$endif}
+       class operator Positive(const a:TpvFBXVector2):TpvFBXVector2; {$ifdef caninline}inline;{$endif}
+      private
+      private
+       function GetComponent(const pIndex:TpvInt32):TpvFBXScalar; {$ifdef caninline}inline;{$endif}
+       procedure SetComponent(const pIndex:TpvInt32;const pValue:TpvFBXScalar); {$ifdef caninline}inline;{$endif}
+      public
+       function Perpendicular:TpvFBXVector2; {$ifdef caninline}inline;{$endif}
+       function Length:TpvFBXScalar; {$ifdef caninline}inline;{$endif}
+       function SquaredLength:TpvFBXScalar; {$ifdef caninline}inline;{$endif}
+       function Normalize:TpvFBXVector2; {$ifdef caninline}inline;{$endif}
+       function DistanceTo(const b:TpvFBXVector2):TpvFBXScalar; {$ifdef caninline}inline;{$endif}
+       function Dot(const b:TpvFBXVector2):TpvFBXScalar; {$ifdef caninline}inline;{$endif}
+       function Cross(const b:TpvFBXVector2):TpvFBXVector2; {$ifdef caninline}inline;{$endif}
+       function Lerp(const b:TpvFBXVector2;const t:TpvFBXScalar):TpvFBXVector2; {$ifdef caninline}inline;{$endif}
+       function Angle(const b,c:TpvFBXVector2):TpvFBXScalar; {$ifdef caninline}inline;{$endif}
+       function Rotate(const Angle:TpvFBXScalar):TpvFBXVector2; overload; {$ifdef caninline}inline;{$endif}
+       function Rotate(const Center:TpvFBXVector2;const Angle:TpvFBXScalar):TpvFBXVector2; overload; {$ifdef caninline}inline;{$endif}
+       property Components[const pIndex:TpvInt32]:TpvFBXScalar read GetComponent write SetComponent; default;
+       case TpvUInt8 of
+        0:(RawComponents:array[0..1] of TpvFBXScalar);
+        1:(x,y:TpvFBXScalar);
+        2:(u,v:TpvFBXScalar);
+        3:(s,t:TpvFBXScalar);
+        4:(r,g:TpvFBXScalar);
+     end;
+
+     PpvFBXVector3=^TpvFBXVector3;
+     TpvFBXVector3=record
+      public
+       constructor Create(const pX:TpvFBXScalar); overload;
+       constructor Create(const pX,pY,pZ:TpvFBXScalar); overload;
+       constructor Create(const pXY:TpvFBXVector2;const pZ:TpvFBXScalar=0.0); overload;
+       class operator Implicit(const a:TpvFBXScalar):TpvFBXVector3; {$ifdef caninline}inline;{$endif}
+       class operator Explicit(const a:TpvFBXScalar):TpvFBXVector3; {$ifdef caninline}inline;{$endif}
+       class operator Equal(const a,b:TpvFBXVector3):boolean; {$ifdef caninline}inline;{$endif}
+       class operator NotEqual(const a,b:TpvFBXVector3):boolean; {$ifdef caninline}inline;{$endif}
+       class operator Inc({$ifdef fpc}constref{$else}const{$endif} a:TpvFBXVector3):TpvFBXVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
+       class operator Dec({$ifdef fpc}constref{$else}const{$endif} a:TpvFBXVector3):TpvFBXVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
+       class operator Add({$ifdef fpc}constref{$else}const{$endif} a,b:TpvFBXVector3):TpvFBXVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
+       class operator Add(const a:TpvFBXVector3;const b:TpvFBXScalar):TpvFBXVector3; {$ifdef caninline}inline;{$endif}
+       class operator Add(const a:TpvFBXScalar;const b:TpvFBXVector3):TpvFBXVector3; {$ifdef caninline}inline;{$endif}
+       class operator Subtract({$ifdef fpc}constref{$else}const{$endif} a,b:TpvFBXVector3):TpvFBXVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
+       class operator Subtract(const a:TpvFBXVector3;const b:TpvFBXScalar):TpvFBXVector3; {$ifdef caninline}inline;{$endif}
+       class operator Subtract(const a:TpvFBXScalar;const b:TpvFBXVector3):TpvFBXVector3; {$ifdef caninline}inline;{$endif}
+       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a,b:TpvFBXVector3):TpvFBXVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
+       class operator Multiply(const a:TpvFBXVector3;const b:TpvFBXScalar):TpvFBXVector3; {$ifdef caninline}inline;{$endif}
+       class operator Multiply(const a:TpvFBXScalar;const b:TpvFBXVector3):TpvFBXVector3; {$ifdef caninline}inline;{$endif}
+       class operator Divide({$ifdef fpc}constref{$else}const{$endif} a,b:TpvFBXVector3):TpvFBXVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
+       class operator Divide(const a:TpvFBXVector3;const b:TpvFBXScalar):TpvFBXVector3; {$ifdef caninline}inline;{$endif}
+       class operator Divide(const a:TpvFBXScalar;const b:TpvFBXVector3):TpvFBXVector3; {$ifdef caninline}inline;{$endif}
+       class operator IntDivide({$ifdef fpc}constref{$else}const{$endif} a,b:TpvFBXVector3):TpvFBXVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
+       class operator IntDivide(const a:TpvFBXVector3;const b:TpvFBXScalar):TpvFBXVector3; {$ifdef caninline}inline;{$endif}
+       class operator IntDivide(const a:TpvFBXScalar;const b:TpvFBXVector3):TpvFBXVector3; {$ifdef caninline}inline;{$endif}
+       class operator Modulus(const a,b:TpvFBXVector3):TpvFBXVector3; {$ifdef caninline}inline;{$endif}
+       class operator Modulus(const a:TpvFBXVector3;const b:TpvFBXScalar):TpvFBXVector3; {$ifdef caninline}inline;{$endif}
+       class operator Modulus(const a:TpvFBXScalar;const b:TpvFBXVector3):TpvFBXVector3; {$ifdef caninline}inline;{$endif}
+       class operator Negative({$ifdef fpc}constref{$else}const{$endif} a:TpvFBXVector3):TpvFBXVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
+       class operator Positive(const a:TpvFBXVector3):TpvFBXVector3; {$ifdef caninline}inline;{$endif}
+      private
+      private
+       function GetComponent(const pIndex:TpvInt32):TpvFBXScalar; {$ifdef caninline}inline;{$endif}
+       procedure SetComponent(const pIndex:TpvInt32;const pValue:TpvFBXScalar); {$ifdef caninline}inline;{$endif}
+      public
+       function Flip:TpvFBXVector3; {$ifdef caninline}inline;{$endif}
+       function Perpendicular:TpvFBXVector3; {$ifdef caninline}inline;{$endif}
+       function OneUnitOrthogonalVector:TpvFBXVector3;
+       function Length:TpvFBXScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
+       function SquaredLength:TpvFBXScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
+       function Normalize:TpvFBXVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
+       function DistanceTo({$ifdef fpc}constref{$else}const{$endif} b:TpvFBXVector3):TpvFBXScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
+       function Abs:TpvFBXVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
+       function Dot({$ifdef fpc}constref{$else}const{$endif} b:TpvFBXVector3):TpvFBXScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
+       function AngleTo(const b:TpvFBXVector3):TpvFBXScalar; {$ifdef caninline}inline;{$endif}
+       function Cross({$ifdef fpc}constref{$else}const{$endif} b:TpvFBXVector3):TpvFBXVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
+       function Lerp(const b:TpvFBXVector3;const t:TpvFBXScalar):TpvFBXVector3; {$ifdef caninline}inline;{$endif}
+       function Angle(const b,c:TpvFBXVector3):TpvFBXScalar; {$ifdef caninline}inline;{$endif}
+       function RotateX(const Angle:TpvFBXScalar):TpvFBXVector3; {$ifdef caninline}inline;{$endif}
+       function RotateY(const Angle:TpvFBXScalar):TpvFBXVector3; {$ifdef caninline}inline;{$endif}
+       function RotateZ(const Angle:TpvFBXScalar):TpvFBXVector3; {$ifdef caninline}inline;{$endif}
+       function ProjectToBounds(const MinVector,MaxVector:TpvFBXVector3):TpvFBXScalar;
+       property Components[const pIndex:TpvInt32]:TpvFBXScalar read GetComponent write SetComponent; default;
+       case TpvUInt8 of
+        0:(RawComponents:array[0..2] of TpvFBXScalar);
+        1:(x,y,z:TpvFBXScalar);
+        2:(r,g,b:TpvFBXScalar);
+        3:(s,t,p:TpvFBXScalar);
+        4:(Pitch,Yaw,Roll:TpvFBXScalar);
+        6:(Vector2:TpvFBXVector2);
+     end;
+
+     PpvFBXVector4=^TpvFBXVector4;
+     TpvFBXVector4=record
+      public
+       constructor Create(const pX:TpvFBXScalar); overload;
+       constructor Create(const pX,pY,pZ,pW:TpvFBXScalar); overload;
+       constructor Create(const pXY:TpvFBXVector2;const pZ:TpvFBXScalar=0.0;const pW:TpvFBXScalar=1.0); overload;
+       constructor Create(const pXYZ:TpvFBXVector3;const pW:TpvFBXScalar=1.0); overload;
+       class operator Implicit(const a:TpvFBXScalar):TpvFBXVector4; {$ifdef caninline}inline;{$endif}
+       class operator Explicit(const a:TpvFBXScalar):TpvFBXVector4; {$ifdef caninline}inline;{$endif}
+       class operator Equal(const a,b:TpvFBXVector4):boolean; {$ifdef caninline}inline;{$endif}
+       class operator NotEqual(const a,b:TpvFBXVector4):boolean; {$ifdef caninline}inline;{$endif}
+       class operator Inc({$ifdef fpc}constref{$else}const{$endif} a:TpvFBXVector4):TpvFBXVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
+       class operator Dec({$ifdef fpc}constref{$else}const{$endif} a:TpvFBXVector4):TpvFBXVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
+       class operator Add({$ifdef fpc}constref{$else}const{$endif} a,b:TpvFBXVector4):TpvFBXVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
+       class operator Add(const a:TpvFBXVector4;const b:TpvFBXScalar):TpvFBXVector4; {$ifdef caninline}inline;{$endif}
+       class operator Add(const a:TpvFBXScalar;const b:TpvFBXVector4):TpvFBXVector4; {$ifdef caninline}inline;{$endif}
+       class operator Subtract({$ifdef fpc}constref{$else}const{$endif} a,b:TpvFBXVector4):TpvFBXVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
+       class operator Subtract(const a:TpvFBXVector4;const b:TpvFBXScalar):TpvFBXVector4; {$ifdef caninline}inline;{$endif}
+       class operator Subtract(const a:TpvFBXScalar;const b:TpvFBXVector4): TpvFBXVector4; {$ifdef caninline}inline;{$endif}
+       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a,b:TpvFBXVector4):TpvFBXVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
+       class operator Multiply(const a:TpvFBXVector4;const b:TpvFBXScalar):TpvFBXVector4; {$ifdef caninline}inline;{$endif}
+       class operator Multiply(const a:TpvFBXScalar;const b:TpvFBXVector4):TpvFBXVector4; {$ifdef caninline}inline;{$endif}
+       class operator Divide({$ifdef fpc}constref{$else}const{$endif} a,b:TpvFBXVector4):TpvFBXVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
+       class operator Divide(const a:TpvFBXVector4;const b:TpvFBXScalar):TpvFBXVector4; {$ifdef caninline}inline;{$endif}
+       class operator Divide(const a:TpvFBXScalar;const b:TpvFBXVector4):TpvFBXVector4; {$ifdef caninline}inline;{$endif}
+       class operator IntDivide({$ifdef fpc}constref{$else}const{$endif} a,b:TpvFBXVector4):TpvFBXVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
+       class operator IntDivide(const a:TpvFBXVector4;const b:TpvFBXScalar):TpvFBXVector4; {$ifdef caninline}inline;{$endif}
+       class operator IntDivide(const a:TpvFBXScalar;const b:TpvFBXVector4):TpvFBXVector4; {$ifdef caninline}inline;{$endif}
+       class operator Modulus(const a,b:TpvFBXVector4):TpvFBXVector4; {$ifdef caninline}inline;{$endif}
+       class operator Modulus(const a:TpvFBXVector4;const b:TpvFBXScalar):TpvFBXVector4; {$ifdef caninline}inline;{$endif}
+       class operator Modulus(const a:TpvFBXScalar;const b:TpvFBXVector4):TpvFBXVector4; {$ifdef caninline}inline;{$endif}
+       class operator Negative({$ifdef fpc}constref{$else}const{$endif} a:TpvFBXVector4):TpvFBXVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
+       class operator Positive(const a:TpvFBXVector4):TpvFBXVector4; {$ifdef caninline}inline;{$endif}
+      private
+      private
+       function GetComponent(const pIndex:TpvInt32):TpvFBXScalar; {$ifdef caninline}inline;{$endif}
+       procedure SetComponent(const pIndex:TpvInt32;const pValue:TpvFBXScalar); {$ifdef caninline}inline;{$endif}
+      public
+       function Flip:TpvFBXVector4; {$ifdef caninline}inline;{$endif}
+       function Perpendicular:TpvFBXVector4; {$ifdef caninline}inline;{$endif}
+       function Length:TpvFBXScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
+       function SquaredLength:TpvFBXScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
+       function Normalize:TpvFBXVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
+       function DistanceTo({$ifdef fpc}constref{$else}const{$endif} b:TpvFBXVector4):TpvFBXScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
+       function Abs:TpvFBXVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
+       function Dot({$ifdef fpc}constref{$else}const{$endif} b:TpvFBXVector4):TpvFBXScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
+       function AngleTo(const b:TpvFBXVector4):TpvFBXScalar; {$ifdef caninline}inline;{$endif}
+       function Cross({$ifdef fpc}constref{$else}const{$endif} b:TpvFBXVector4):TpvFBXVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
+       function Lerp(const b:TpvFBXVector4;const t:TpvFBXScalar):TpvFBXVector4; {$ifdef caninline}inline;{$endif}
+       function Angle(const b,c:TpvFBXVector4):TpvFBXScalar; {$ifdef caninline}inline;{$endif}
+       function RotateX(const Angle:TpvFBXScalar):TpvFBXVector4; {$ifdef caninline}inline;{$endif}
+       function RotateY(const Angle:TpvFBXScalar):TpvFBXVector4; {$ifdef caninline}inline;{$endif}
+       function RotateZ(const Angle:TpvFBXScalar):TpvFBXVector4; {$ifdef caninline}inline;{$endif}
+       function Rotate(const Angle:TpvFBXScalar;const Axis:TpvFBXVector3):TpvFBXVector4; {$ifdef caninline}inline;{$endif}
+       function ProjectToBounds(const MinVector,MaxVector:TpvFBXVector4):TpvFBXScalar;
+      public
+       property Components[const pIndex:TpvInt32]:TpvFBXScalar read GetComponent write SetComponent; default;
+       case TpvUInt8 of
+        0:(RawComponents:array[0..3] of TpvFBXScalar);
+        1:(x,y,z,w:TpvFBXScalar);
+        2:(r,g,b,a:TpvFBXScalar);
+        3:(s,t,p,q:TpvFBXScalar);
+        5:(Vector2:TpvFBXVector2);
+        6:(Vector3:TpvFBXVector3);
+     end;
+
      PpvFBXColor=^TpvFBXColor;
      TpvFBXColor=record
       private
@@ -118,18 +314,124 @@ type EpvFBX=class(Exception);
          RawComponents:array[0..3] of TpvDouble;
         );
         2:(
-         Vector2:TpvVector2;
+         Vector2:TpvFBXVector2;
         );
         3:(
-         Vector3:TpvVector3;
+         Vector3:TpvFBXVector3;
         );
         4:(
-         Vector4:TpvVector4;
+         Vector4:TpvFBXVector4;
         );
      end;
 
+     PpvFBXMatrix4x4=^TpvFBXMatrix4x4;
+     TpvFBXMatrix4x4=record
+      public
+//     constructor Create; overload;
+       constructor Create(const pX:TpvFBXScalar); overload;
+       constructor Create(const pXX,pXY,pXZ,pXW,pYX,pYY,pYZ,pYW,pZX,pZY,pZZ,pZW,pWX,pWY,pWZ,pWW:TpvFBXScalar); overload;
+       constructor Create(const pX,pY,pZ,pW:TpvFBXVector4); overload;
+       constructor CreateRotateX(const Angle:TpvFBXScalar);
+       constructor CreateRotateY(const Angle:TpvFBXScalar);
+       constructor CreateRotateZ(const Angle:TpvFBXScalar);
+       constructor CreateRotate(const Angle:TpvFBXScalar;const Axis:TpvFBXVector3);
+       constructor CreateRotation(const pMatrix:TpvFBXMatrix4x4); overload;
+       constructor CreateScale(const sx,sy,sz:TpvFBXScalar); overload;
+       constructor CreateScale(const pScale:TpvFBXVector3); overload;
+       constructor CreateScale(const sx,sy,sz,sw:TpvFBXScalar); overload;
+       constructor CreateScale(const pScale:TpvFBXVector4); overload;
+       constructor CreateTranslation(const tx,ty,tz:TpvFBXScalar); overload;
+       constructor CreateTranslation(const pTranslation:TpvFBXVector3); overload;
+       constructor CreateTranslation(const tx,ty,tz,tw:TpvFBXScalar); overload;
+       constructor CreateTranslation(const pTranslation:TpvFBXVector4); overload;
+       constructor CreateTranslated(const pMatrix:TpvFBXMatrix4x4;pTranslation:TpvFBXVector3); overload;
+       constructor CreateTranslated(const pMatrix:TpvFBXMatrix4x4;pTranslation:TpvFBXVector4); overload;
+       constructor CreateFromToRotation(const FromDirection,ToDirection:TpvFBXVector3);
+       constructor CreateConstruct(const pForwards,pUp:TpvFBXVector3);
+       constructor CreateOuterProduct(const u,v:TpvFBXVector3);
+       constructor CreateFrustum(const Left,Right,Bottom,Top,zNear,zFar:TpvFBXScalar);
+       constructor CreateOrtho(const Left,Right,Bottom,Top,zNear,zFar:TpvFBXScalar);
+       constructor CreateOrthoLH(const Left,Right,Bottom,Top,zNear,zFar:TpvFBXScalar);
+       constructor CreateOrthoRH(const Left,Right,Bottom,Top,zNear,zFar:TpvFBXScalar);
+       constructor CreateOrthoOffCenterLH(const Left,Right,Bottom,Top,zNear,zFar:TpvFBXScalar);
+       constructor CreateOrthoOffCenterRH(const Left,Right,Bottom,Top,zNear,zFar:TpvFBXScalar);
+       constructor CreatePerspective(const fovy,Aspect,zNear,zFar:TpvFBXScalar);
+       constructor CreateLookAt(const Eye,Center,Up:TpvFBXVector3);
+       constructor CreateFill(const Eye,RightVector,UpVector,ForwardVector:TpvFBXVector3);
+       constructor CreateConstructX(const xAxis:TpvFBXVector3);
+       constructor CreateConstructY(const yAxis:TpvFBXVector3);
+       constructor CreateConstructZ(const zAxis:TpvFBXVector3);
+       class operator Implicit({$ifdef fpc}constref{$else}const{$endif} a:TpvFBXScalar):TpvFBXMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
+       class operator Explicit({$ifdef fpc}constref{$else}const{$endif} a:TpvFBXScalar):TpvFBXMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
+       class operator Equal({$ifdef fpc}constref{$else}const{$endif} a,b:TpvFBXMatrix4x4):boolean; {$ifdef caninline}inline;{$endif}
+       class operator NotEqual({$ifdef fpc}constref{$else}const{$endif} a,b:TpvFBXMatrix4x4):boolean; {$ifdef caninline}inline;{$endif}
+       class operator Inc({$ifdef fpc}constref{$else}const{$endif} a:TpvFBXMatrix4x4):TpvFBXMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
+       class operator Dec({$ifdef fpc}constref{$else}const{$endif} a:TpvFBXMatrix4x4):TpvFBXMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
+       class operator Add({$ifdef fpc}constref{$else}const{$endif} a,b:TpvFBXMatrix4x4):TpvFBXMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
+       class operator Add({$ifdef fpc}constref{$else}const{$endif} a:TpvFBXMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TpvFBXScalar):TpvFBXMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
+       class operator Add({$ifdef fpc}constref{$else}const{$endif} a:TpvFBXScalar;{$ifdef fpc}constref{$else}const{$endif} b:TpvFBXMatrix4x4):TpvFBXMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
+       class operator Subtract({$ifdef fpc}constref{$else}const{$endif} a,b:TpvFBXMatrix4x4):TpvFBXMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
+       class operator Subtract({$ifdef fpc}constref{$else}const{$endif} a:TpvFBXMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TpvFBXScalar):TpvFBXMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
+       class operator Subtract({$ifdef fpc}constref{$else}const{$endif} a:TpvFBXScalar;{$ifdef fpc}constref{$else}const{$endif} b:TpvFBXMatrix4x4): TpvFBXMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
+       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a,b:TpvFBXMatrix4x4):TpvFBXMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
+       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvFBXMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TpvFBXScalar):TpvFBXMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
+       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvFBXScalar;{$ifdef fpc}constref{$else}const{$endif} b:TpvFBXMatrix4x4):TpvFBXMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
+       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvFBXMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TpvFBXVector3):TpvFBXVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
+       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvFBXVector3;{$ifdef fpc}constref{$else}const{$endif} b:TpvFBXMatrix4x4):TpvFBXVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
+       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvFBXMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TpvFBXVector4):TpvFBXVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
+       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvFBXVector4;{$ifdef fpc}constref{$else}const{$endif} b:TpvFBXMatrix4x4):TpvFBXVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
+       class operator Divide({$ifdef fpc}constref{$else}const{$endif} a,b:TpvFBXMatrix4x4):TpvFBXMatrix4x4; {$ifdef caninline}inline;{$endif}
+       class operator Divide({$ifdef fpc}constref{$else}const{$endif} a:TpvFBXMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TpvFBXScalar):TpvFBXMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
+       class operator Divide({$ifdef fpc}constref{$else}const{$endif} a:TpvFBXScalar;{$ifdef fpc}constref{$else}const{$endif} b:TpvFBXMatrix4x4):TpvFBXMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
+       class operator IntDivide({$ifdef fpc}constref{$else}const{$endif} a,b:TpvFBXMatrix4x4):TpvFBXMatrix4x4; {$ifdef caninline}inline;{$endif}
+       class operator IntDivide({$ifdef fpc}constref{$else}const{$endif} a:TpvFBXMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TpvFBXScalar):TpvFBXMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
+       class operator IntDivide({$ifdef fpc}constref{$else}const{$endif} a:TpvFBXScalar;{$ifdef fpc}constref{$else}const{$endif} b:TpvFBXMatrix4x4):TpvFBXMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
+       class operator Modulus({$ifdef fpc}constref{$else}const{$endif} a,b:TpvFBXMatrix4x4):TpvFBXMatrix4x4; {$ifdef caninline}inline;{$endif}
+       class operator Modulus({$ifdef fpc}constref{$else}const{$endif} a:TpvFBXMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TpvFBXScalar):TpvFBXMatrix4x4; {$ifdef caninline}inline;{$endif}
+       class operator Modulus({$ifdef fpc}constref{$else}const{$endif} a:TpvFBXScalar;{$ifdef fpc}constref{$else}const{$endif} b:TpvFBXMatrix4x4):TpvFBXMatrix4x4; {$ifdef caninline}inline;{$endif}
+       class operator Negative({$ifdef fpc}constref{$else}const{$endif} a:TpvFBXMatrix4x4):TpvFBXMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
+       class operator Positive(const a:TpvFBXMatrix4x4):TpvFBXMatrix4x4; {$ifdef caninline}inline;{$endif}
+      private
+       function GetComponent(const pIndexA,pIndexB:TpvInt32):TpvFBXScalar; {$ifdef caninline}inline;{$endif}
+       procedure SetComponent(const pIndexA,pIndexB:TpvInt32;const pValue:TpvFBXScalar); {$ifdef caninline}inline;{$endif}
+       function GetColumn(const pIndex:TpvInt32):TpvFBXVector4; {$ifdef caninline}inline;{$endif}
+       procedure SetColumn(const pIndex:TpvInt32;const pValue:TpvFBXVector4); {$ifdef caninline}inline;{$endif}
+       function GetRow(const pIndex:TpvInt32):TpvFBXVector4; {$ifdef caninline}inline;{$endif}
+       procedure SetRow(const pIndex:TpvInt32;const pValue:TpvFBXVector4); {$ifdef caninline}inline;{$endif}
+      public
+       function Determinant:TpvFBXScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
+       function SimpleInverse:TpvFBXMatrix4x4; {$ifdef caninline}inline;{$endif}
+       function Inverse:TpvFBXMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
+       function Transpose:TpvFBXMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
+       function EulerAngles:TpvFBXVector3; {$ifdef caninline}inline;{$endif}
+       function Normalize:TpvFBXMatrix4x4; {$ifdef caninline}inline;{$endif}
+       function OrthoNormalize:TpvFBXMatrix4x4; {$ifdef caninline}inline;{$endif}
+       function RobustOrthoNormalize(const Tolerance:TpvFBXScalar=1e-3):TpvFBXMatrix4x4; {$ifdef caninline}inline;{$endif}
+       function ToRotation:TpvFBXMatrix4x4; {$ifdef caninline}inline;{$endif}
+       function SimpleLerp(const b:TpvFBXMatrix4x4;const t:TpvFBXScalar):TpvFBXMatrix4x4; {$ifdef caninline}inline;{$endif}
+       function MulInverse({$ifdef fpc}constref{$else}const{$endif} a:TpvFBXVector3):TpvFBXVector3; overload; {$ifdef caninline}inline;{$endif}
+       function MulInverse({$ifdef fpc}constref{$else}const{$endif} a:TpvFBXVector4):TpvFBXVector4; overload; {$ifdef caninline}inline;{$endif}
+       function MulInverted({$ifdef fpc}constref{$else}const{$endif} a:TpvFBXVector3):TpvFBXVector3; overload; {$ifdef caninline}inline;{$endif}
+       function MulInverted({$ifdef fpc}constref{$else}const{$endif} a:TpvFBXVector4):TpvFBXVector4; overload; {$ifdef caninline}inline;{$endif}
+       function MulBasis({$ifdef fpc}constref{$else}const{$endif} a:TpvFBXVector3):TpvFBXVector3; overload; {$ifdef caninline}inline;{$endif}
+       function MulBasis({$ifdef fpc}constref{$else}const{$endif} a:TpvFBXVector4):TpvFBXVector4; overload; {$ifdef caninline}inline;{$endif}
+       function MulTransposedBasis({$ifdef fpc}constref{$else}const{$endif} a:TpvFBXVector3):TpvFBXVector3; overload; {$ifdef caninline}inline;{$endif}
+       function MulTransposedBasis({$ifdef fpc}constref{$else}const{$endif} a:TpvFBXVector4):TpvFBXVector4; overload; {$ifdef caninline}inline;{$endif}
+       function MulHomogen({$ifdef fpc}constref{$else}const{$endif} a:TpvFBXVector3):TpvFBXVector3; overload; {$ifdef caninline}inline;{$endif}
+       function MulHomogen({$ifdef fpc}constref{$else}const{$endif} a:TpvFBXVector4):TpvFBXVector4; overload; {$ifdef caninline}inline;{$endif}
+       property Components[const pIndexA,pIndexB:TpvInt32]:TpvFBXScalar read GetComponent write SetComponent; default;
+       property Columns[const pIndex:TpvInt32]:TpvFBXVector4 read GetColumn write SetColumn;
+       property Rows[const pIndex:TpvInt32]:TpvFBXVector4 read GetRow write SetRow;
+       case TpvInt32 of
+        0:(RawComponents:array[0..3,0..3] of TpvFBXScalar);
+        1:(LinearRawComponents:array[0..15] of TpvFBXScalar);
+        2:(m00,m01,m02,m03,m10,m11,m12,m13,m20,m21,m22,m23,m30,m31,m32,m33:TpvFBXScalar);
+        3:(Tangent,Bitangent,Normal,Translation:TpvFBXVector4);
+        4:(Right,Up,Forwards,Offset:TpvFBXVector4);
+     end;
+
      PpvFBXTime=^TpvFBXTime;
-     TpvFBXTime=Int64;
+     TpvFBXTime=TpvInt64;
 
      PpvFBXTimeSpan=^TpvFBXTimeSpan;
 
@@ -160,28 +462,28 @@ type EpvFBX=class(Exception);
        destructor Destroy; override;
      end;
 
-     TpvVector2Property=class(TpvFBXBaseObject)
+     TpvFBXVector2Property=class(TpvFBXBaseObject)
       private
-       fVector:TpvVector2;
+       fVector:TpvFBXVector2;
        function GetX:TpvDouble; inline;
        procedure SetX(const pValue:TpvDouble); inline;
        function GetY:TpvDouble; inline;
        procedure SetY(const pValue:TpvDouble); inline;
       public
        constructor Create; reintroduce; overload;
-       constructor Create(const pFrom:TpvVector2); reintroduce; overload;
+       constructor Create(const pFrom:TpvFBXVector2); reintroduce; overload;
        constructor Create(const pX,pY:TpvDouble); reintroduce; overload;
        constructor Create(const pArray:array of TpvDouble); reintroduce; overload;
        destructor Destroy; override;
-       property Vector:TpvVector2 read fVector write fVector;
+       property Vector:TpvFBXVector2 read fVector write fVector;
       published
        property x:TpvDouble read GetX write SetX;
        property y:TpvDouble read GetY write SetY;
      end;
 
-     TpvVector3Property=class(TpvFBXBaseObject)
+     TpvFBXVector3Property=class(TpvFBXBaseObject)
       private
-       fVector:TpvVector3;
+       fVector:TpvFBXVector3;
        function GetX:TpvDouble; inline;
        procedure SetX(const pValue:TpvDouble); inline;
        function GetY:TpvDouble; inline;
@@ -190,20 +492,20 @@ type EpvFBX=class(Exception);
        procedure SetZ(const pValue:TpvDouble); inline;
       public
        constructor Create; reintroduce; overload;
-       constructor Create(const pFrom:TpvVector3); reintroduce; overload;
+       constructor Create(const pFrom:TpvFBXVector3); reintroduce; overload;
        constructor Create(const pX,pY,pZ:TpvDouble); reintroduce; overload;
        constructor Create(const pArray:array of TpvDouble); reintroduce; overload;
        destructor Destroy; override;
-       property Vector:TpvVector3 read fVector write fVector;
+       property Vector:TpvFBXVector3 read fVector write fVector;
       published
        property x:TpvDouble read GetX write SetX;
        property y:TpvDouble read GetY write SetY;
        property z:TpvDouble read GetZ write SetZ;
      end;
 
-     TpvVector4Property=class(TpvFBXBaseObject)
+     TpvFBXVector4Property=class(TpvFBXBaseObject)
       private
-       fVector:TpvVector4;
+       fVector:TpvFBXVector4;
        function GetX:TpvDouble; inline;
        procedure SetX(const pValue:TpvDouble); inline;
        function GetY:TpvDouble; inline;
@@ -214,11 +516,11 @@ type EpvFBX=class(Exception);
        procedure SetW(const pValue:TpvDouble); inline;
       public
        constructor Create; reintroduce; overload;
-       constructor Create(const pFrom:TpvVector4); reintroduce; overload;
+       constructor Create(const pFrom:TpvFBXVector4); reintroduce; overload;
        constructor Create(const pX,pY,pZ,pW:TpvDouble); reintroduce; overload;
        constructor Create(const pArray:array of TpvDouble); reintroduce; overload;
        destructor Destroy; override;
-       property Vector:TpvVector4 read fVector write fVector;
+       property Vector:TpvFBXVector4 read fVector write fVector;
       published
        property x:TpvDouble read GetX write SetX;
        property y:TpvDouble read GetY write SetY;
@@ -294,7 +596,7 @@ type EpvFBX=class(Exception);
       private
        fLoader:TpvFBXLoader;
        fElement:TpvFBXElement;
-       fID:Int64;
+       fID:TpvInt64;
        fName:TpvFBXString;
        fType_:TpvFBXString;
        fProperties:TpvFBXPropertyList;
@@ -305,7 +607,7 @@ type EpvFBX=class(Exception);
       protected
        fConnectedTo:TpvFBXObjectList;
       public
-       constructor Create(const pLoader:TpvFBXLoader;const pElement:TpvFBXElement;const pID:Int64;const pName,pType_:TpvFBXString); reintroduce; virtual;
+       constructor Create(const pLoader:TpvFBXLoader;const pElement:TpvFBXElement;const pID:TpvInt64;const pName,pType_:TpvFBXString); reintroduce; virtual;
        destructor Destroy; override;
        procedure AfterConstruction; override;
        procedure BeforeDestruction; override;
@@ -320,7 +622,7 @@ type EpvFBX=class(Exception);
       public
        property Loader:TpvFBXLoader read fLoader;
        property Element:TpvFBXElement read fElement;
-       property ID:Int64 read fID write fID;
+       property ID:TpvInt64 read fID write fID;
        property Name:TpvFBXString read fName write fName;
        property Type_:TpvFBXString read fType_ write fType_;
        property Properties:TpvFBXPropertyList read fProperties;
@@ -338,20 +640,20 @@ type EpvFBX=class(Exception);
       private
        fParent:TpvFBXNode;
        fChildren:TpvFBXNodeList;
-       fLclTranslation:TpvVector3Property;
-       fLclRotation:TpvVector3Property;
-       fLclScaling:TpvVector3Property;
+       fLclTranslation:TpvFBXVector3Property;
+       fLclRotation:TpvFBXVector3Property;
+       fLclScaling:TpvFBXVector3Property;
        fVisibility:Boolean;
       public
-       constructor Create(const pLoader:TpvFBXLoader;const pElement:TpvFBXElement;const pID:Int64;const pName,pType_:TpvFBXString); override;
+       constructor Create(const pLoader:TpvFBXLoader;const pElement:TpvFBXElement;const pID:TpvInt64;const pName,pType_:TpvFBXString); override;
        destructor Destroy; override;
        procedure ConnectTo(const pObject:TpvFBXObject); override;
       published
        property Parent:TpvFBXNode read fParent write fParent;
        property Children:TpvFBXNodeList read fChildren write fChildren;
-       property LclTranslation:TpvVector3Property read fLclTranslation write fLclTranslation;
-       property LclRotation:TpvVector3Property read fLclRotation write fLclRotation;
-       property LclScaling:TpvVector3Property read fLclScaling write fLclScaling;
+       property LclTranslation:TpvFBXVector3Property read fLclTranslation write fLclTranslation;
+       property LclRotation:TpvFBXVector3Property read fLclRotation write fLclRotation;
+       property LclScaling:TpvFBXVector3Property read fLclScaling write fLclScaling;
        property Visibility:Boolean read fVisibility write fVisibility;
      end;
 
@@ -393,12 +695,12 @@ type EpvFBX=class(Exception);
       public
        constructor Create; override;
        destructor Destroy; override;
-       function GetArrayLength:TpvSizeInt; virtual;
-       function GetVariantValue(const pIndex:TpvSizeInt=0):Variant; virtual;
-       function GetString(const pIndex:TpvSizeInt=0):TpvFBXString; virtual;
-       function GetBoolean(const pIndex:TpvSizeInt=0):Boolean; virtual;
-       function GetInteger(const pIndex:TpvSizeInt=0):Int64; virtual;
-       function GetFloat(const pIndex:TpvSizeInt=0):TpvDouble; virtual;
+       function GetArrayLength:TpvFBXSizeInt; virtual;
+       function GetVariantValue(const pIndex:TpvFBXSizeInt=0):Variant; virtual;
+       function GetString(const pIndex:TpvFBXSizeInt=0):TpvFBXString; virtual;
+       function GetBoolean(const pIndex:TpvFBXSizeInt=0):Boolean; virtual;
+       function GetInteger(const pIndex:TpvFBXSizeInt=0):TpvInt64; virtual;
+       function GetFloat(const pIndex:TpvFBXSizeInt=0):TpvDouble; virtual;
      end;
 
      TpvFBXElementPropertyBoolean=class(TpvFBXElementProperty)
@@ -407,30 +709,30 @@ type EpvFBX=class(Exception);
       public
        constructor Create(const pValue:Boolean); reintroduce;
        destructor Destroy; override;
-       function GetArrayLength:TpvSizeInt; override;
-       function GetVariantValue(const pIndex:TpvSizeInt=0):Variant; override;
-       function GetString(const pIndex:TpvSizeInt=0):TpvFBXString; override;
-       function GetBoolean(const pIndex:TpvSizeInt=0):Boolean; override;
-       function GetInteger(const pIndex:TpvSizeInt=0):Int64; override;
-       function GetFloat(const pIndex:TpvSizeInt=0):TpvDouble; override;
+       function GetArrayLength:TpvFBXSizeInt; override;
+       function GetVariantValue(const pIndex:TpvFBXSizeInt=0):Variant; override;
+       function GetString(const pIndex:TpvFBXSizeInt=0):TpvFBXString; override;
+       function GetBoolean(const pIndex:TpvFBXSizeInt=0):Boolean; override;
+       function GetInteger(const pIndex:TpvFBXSizeInt=0):TpvInt64; override;
+       function GetFloat(const pIndex:TpvFBXSizeInt=0):TpvDouble; override;
       published
        property Value:Boolean read fValue;
      end;
 
      TpvFBXElementPropertyInteger=class(TpvFBXElementProperty)
       private
-       fValue:Int64;
+       fValue:TpvInt64;
       public
-       constructor Create(const pValue:Int64); reintroduce;
+       constructor Create(const pValue:TpvInt64); reintroduce;
        destructor Destroy; override;
-       function GetArrayLength:TpvSizeInt; override;
-       function GetVariantValue(const pIndex:TpvSizeInt=0):Variant; override;
-       function GetString(const pIndex:TpvSizeInt=0):TpvFBXString; override;
-       function GetBoolean(const pIndex:TpvSizeInt=0):Boolean; override;
-       function GetInteger(const pIndex:TpvSizeInt=0):Int64; override;
-       function GetFloat(const pIndex:TpvSizeInt=0):TpvDouble; override;
+       function GetArrayLength:TpvFBXSizeInt; override;
+       function GetVariantValue(const pIndex:TpvFBXSizeInt=0):Variant; override;
+       function GetString(const pIndex:TpvFBXSizeInt=0):TpvFBXString; override;
+       function GetBoolean(const pIndex:TpvFBXSizeInt=0):Boolean; override;
+       function GetInteger(const pIndex:TpvFBXSizeInt=0):TpvInt64; override;
+       function GetFloat(const pIndex:TpvFBXSizeInt=0):TpvDouble; override;
       published
-       property Value:Int64 read fValue;
+       property Value:TpvInt64 read fValue;
      end;
 
      TpvFBXElementPropertyFloat=class(TpvFBXElementProperty)
@@ -439,12 +741,12 @@ type EpvFBX=class(Exception);
       public
        constructor Create(const pValue:TpvDouble); reintroduce;
        destructor Destroy; override;
-       function GetArrayLength:TpvSizeInt; override;
-       function GetVariantValue(const pIndex:TpvSizeInt=0):Variant; override;
-       function GetString(const pIndex:TpvSizeInt=0):TpvFBXString; override;
-       function GetBoolean(const pIndex:TpvSizeInt=0):Boolean; override;
-       function GetInteger(const pIndex:TpvSizeInt=0):Int64; override;
-       function GetFloat(const pIndex:TpvSizeInt=0):TpvDouble; override;
+       function GetArrayLength:TpvFBXSizeInt; override;
+       function GetVariantValue(const pIndex:TpvFBXSizeInt=0):Variant; override;
+       function GetString(const pIndex:TpvFBXSizeInt=0):TpvFBXString; override;
+       function GetBoolean(const pIndex:TpvFBXSizeInt=0):Boolean; override;
+       function GetInteger(const pIndex:TpvFBXSizeInt=0):TpvInt64; override;
+       function GetFloat(const pIndex:TpvFBXSizeInt=0):TpvDouble; override;
       published
        property Value:TpvDouble read fValue;
      end;
@@ -455,12 +757,12 @@ type EpvFBX=class(Exception);
       public
        constructor Create(const pValue:TpvFBXBytes); reintroduce;
        destructor Destroy; override;
-       function GetArrayLength:TpvSizeInt; override;
-       function GetVariantValue(const pIndex:TpvSizeInt=0):Variant; override;
-       function GetString(const pIndex:TpvSizeInt=0):TpvFBXString; override;
-       function GetBoolean(const pIndex:TpvSizeInt=0):Boolean; override;
-       function GetInteger(const pIndex:TpvSizeInt=0):Int64; override;
-       function GetFloat(const pIndex:TpvSizeInt=0):TpvDouble; override;
+       function GetArrayLength:TpvFBXSizeInt; override;
+       function GetVariantValue(const pIndex:TpvFBXSizeInt=0):Variant; override;
+       function GetString(const pIndex:TpvFBXSizeInt=0):TpvFBXString; override;
+       function GetBoolean(const pIndex:TpvFBXSizeInt=0):Boolean; override;
+       function GetInteger(const pIndex:TpvFBXSizeInt=0):TpvInt64; override;
+       function GetFloat(const pIndex:TpvFBXSizeInt=0):TpvDouble; override;
        property Value:TpvFBXBytes read fValue;
      end;
 
@@ -470,12 +772,12 @@ type EpvFBX=class(Exception);
       public
        constructor Create(const pValue:TpvFBXString); reintroduce;
        destructor Destroy; override;
-       function GetArrayLength:TpvSizeInt; override;
-       function GetVariantValue(const pIndex:TpvSizeInt=0):Variant; override;
-       function GetString(const pIndex:TpvSizeInt=0):TpvFBXString; override;
-       function GetBoolean(const pIndex:TpvSizeInt=0):Boolean; override;
-       function GetInteger(const pIndex:TpvSizeInt=0):Int64; override;
-       function GetFloat(const pIndex:TpvSizeInt=0):TpvDouble; override;
+       function GetArrayLength:TpvFBXSizeInt; override;
+       function GetVariantValue(const pIndex:TpvFBXSizeInt=0):Variant; override;
+       function GetString(const pIndex:TpvFBXSizeInt=0):TpvFBXString; override;
+       function GetBoolean(const pIndex:TpvFBXSizeInt=0):Boolean; override;
+       function GetInteger(const pIndex:TpvFBXSizeInt=0):TpvInt64; override;
+       function GetFloat(const pIndex:TpvFBXSizeInt=0):TpvDouble; override;
       published
        property Value:TpvFBXString read fValue;
      end;
@@ -493,7 +795,7 @@ type EpvFBX=class(Exception);
 
      TpvFBXElementPropertyArray=class(TpvFBXElementProperty)
       private
-       const DataTypeSizes:array[TpvFBXElementPropertyArrayDataType.Bool..TpvFBXElementPropertyArrayDataType.Float64] of TpvSizeInt=
+       const DataTypeSizes:array[TpvFBXElementPropertyArrayDataType.Bool..TpvFBXElementPropertyArrayDataType.Float64] of TpvFBXSizeInt=
               (
                1,
                1,
@@ -506,21 +808,21 @@ type EpvFBX=class(Exception);
       private
        fData:TpvFBXBytes;
        fDataType:TpvFBXElementPropertyArrayDataType;
-       fDataTypeSize:TpvSizeInt;
-       fDataCount:TpvSizeInt;
+       fDataTypeSize:TpvFBXSizeInt;
+       fDataCount:TpvFBXSizeInt;
       public
-       constructor Create(const pData:pointer;const pDataCount:TpvSizeInt;const pDataType:TpvFBXElementPropertyArrayDataType); reintroduce;
+       constructor Create(const pData:pointer;const pDataCount:TpvFBXSizeInt;const pDataType:TpvFBXElementPropertyArrayDataType); reintroduce;
        constructor CreateFrom(const pStream:TStream;const pDataType:TpvFBXElementPropertyArrayDataType); reintroduce;
        destructor Destroy; override;
-       function GetArrayLength:TpvSizeInt; override;
-       function GetVariantValue(const pIndex:TpvSizeInt=0):Variant; override;
-       function GetString(const pIndex:TpvSizeInt=0):TpvFBXString; override;
-       function GetBoolean(const pIndex:TpvSizeInt=0):Boolean; override;
-       function GetInteger(const pIndex:TpvSizeInt=0):Int64; override;
-       function GetFloat(const pIndex:TpvSizeInt=0):TpvDouble; override;
+       function GetArrayLength:TpvFBXSizeInt; override;
+       function GetVariantValue(const pIndex:TpvFBXSizeInt=0):Variant; override;
+       function GetString(const pIndex:TpvFBXSizeInt=0):TpvFBXString; override;
+       function GetBoolean(const pIndex:TpvFBXSizeInt=0):Boolean; override;
+       function GetInteger(const pIndex:TpvFBXSizeInt=0):TpvInt64; override;
+       function GetFloat(const pIndex:TpvFBXSizeInt=0):TpvDouble; override;
      end;
 
-     EFBXParser=class(EpvFBX);
+     EFBXParser=class(EFBX);
 
      TpvFBXParser=class
       private
@@ -560,7 +862,7 @@ type EpvFBX=class(Exception);
       StringValue:TpvFBXString;
       case Kind:TpvFBXASCIIParserTokenKind of
        TpvFBXASCIIParserTokenKind.Int64:(
-        Int64Value:Int64;
+        Int64Value:TpvInt64;
        );
        TpvFBXASCIIParserTokenKind.Float64:(
         Float64Value:TpvDouble;
@@ -728,7 +1030,7 @@ type EpvFBX=class(Exception);
        fCurrentTake:TpvFBXTake;
        fRootNodes:TpvFBXObjectList;
       public
-       constructor Create(const pLoader:TpvFBXLoader;const pElement:TpvFBXElement;const pID:Int64;const pName,pType_:TpvFBXString); override;
+       constructor Create(const pLoader:TpvFBXLoader;const pElement:TpvFBXElement;const pID:TpvInt64;const pName,pType_:TpvFBXString); override;
        destructor Destroy; override;
        property Header:TpvFBXHeader read fHeader;
        property SceneInfo:TpvFBXSceneInfo read fSceneInfo;
@@ -772,7 +1074,7 @@ type EpvFBX=class(Exception);
        function GetTimeSpanStop:TpvFBXTime; inline;
        procedure SetTimeSpanStop(const pValue:TpvFBXTime); inline;
       public
-       constructor Create(const pLoader:TpvFBXLoader;const pElement:TpvFBXElement;const pID:Int64;const pName,pType_:TpvFBXString); override;
+       constructor Create(const pLoader:TpvFBXLoader;const pElement:TpvFBXElement;const pID:TpvInt64;const pName,pType_:TpvFBXString); override;
        destructor Destroy; override;
        property AmbientColor:TpvFBXColor read fAmbientColor write fAmbientColor;
        property TimeSpan:TpvFBXTimeSpan read fTimeSpan write fTimeSpan;
@@ -798,8 +1100,8 @@ type EpvFBX=class(Exception);
 
      TpvFBXCamera=class(TpvFBXObject)
       private
-       fPosition:TpvVector3Property;
-       fLookAt:TpvVector3Property;
+       fPosition:TpvFBXVector3Property;
+       fLookAt:TpvFBXVector3Property;
        fCameraOrthoZoom:TpvDouble;
        fRoll:TpvDouble;
        fFieldOfView:TpvDouble;
@@ -807,11 +1109,11 @@ type EpvFBX=class(Exception);
        fNearPlane:TpvDouble;
        fFarPlane:TpvDouble;
       public
-       constructor Create(const pLoader:TpvFBXLoader;const pElement:TpvFBXElement;const pID:Int64;const pName,pType_:TpvFBXString); override;
+       constructor Create(const pLoader:TpvFBXLoader;const pElement:TpvFBXElement;const pID:TpvInt64;const pName,pType_:TpvFBXString); override;
        destructor Destroy; override;
       published
-       property Position:TpvVector3Property read fPosition write fPosition;
-       property LookAt:TpvVector3Property read fLookAt write fLookAt;
+       property Position:TpvFBXVector3Property read fPosition write fPosition;
+       property LookAt:TpvFBXVector3Property read fLookAt write fLookAt;
        property CameraOrthoZoom:TpvDouble read fCameraOrthoZoom write fCameraOrthoZoom;
        property Roll:TpvDouble read fRoll write fRoll;
        property FieldOfView:TpvDouble read fFieldOfView write fFieldOfView;
@@ -836,7 +1138,7 @@ type EpvFBX=class(Exception);
        fDecay:TpvInt32;
        fLightType:TpvInt32;
       public
-       constructor Create(const pLoader:TpvFBXLoader;const pElement:TpvFBXElement;const pID:Int64;const pName,pType_:TpvFBXString); override;
+       constructor Create(const pLoader:TpvFBXLoader;const pElement:TpvFBXElement;const pID:TpvInt64;const pName,pType_:TpvFBXString); override;
        destructor Destroy; override;
       published
        property Color:TpvFBXColorProperty read fColor write fColor;
@@ -869,7 +1171,7 @@ type EpvFBX=class(Exception);
 
      TpvFBXLayerElement<TDataType>=class(TpvFBXBaseObject)
       public
-       type TpvFBXLayerElementIntegerList=class(TList<Int64>);
+       type TpvFBXLayerElementIntegerList=class(TList<TpvInt64>);
             TpvFBXLayerElementDataList=class(TList<TDataType>);
       private
        fMappingMode:TpvFBXMappingMode;
@@ -877,13 +1179,13 @@ type EpvFBX=class(Exception);
        fIndexArray:TpvFBXLayerElementIntegerList;
        fByPolygonVertexIndexArray:TpvFBXLayerElementIntegerList;
        fData:TpvFBXLayerElementDataList;
-       function GetItem(const pIndex:TpvSizeInt):TDataType; inline;
-       procedure SetItem(const pIndex:TpvSizeInt;const pItem:TDataType); inline;
+       function GetItem(const pIndex:TpvFBXSizeInt):TDataType; inline;
+       procedure SetItem(const pIndex:TpvFBXSizeInt;const pItem:TDataType); inline;
       public
        constructor Create; override;
        destructor Destroy; override;
        procedure Finish(const pMesh:TpvFBXMesh);
-       property Items[const pIndex:TpvSizeInt]:TDataType read GetItem write SetItem; default;
+       property Items[const pIndex:TpvFBXSizeInt]:TDataType read GetItem write SetItem; default;
       published
        property MappingMode:TpvFBXMappingMode read fMappingMode;
        property ReferenceMode:TpvFBXReferenceMode read fReferenceMode;
@@ -892,15 +1194,15 @@ type EpvFBX=class(Exception);
        property Data:TpvFBXLayerElementDataList read fData;
      end;
 
-     TpvFBXLayerElementVector2=class(TpvFBXLayerElement<TpvVector2>);
+     TpvFBXLayerElementVector2=class(TpvFBXLayerElement<TpvFBXVector2>);
 
-     TpvFBXLayerElementVector3=class(TpvFBXLayerElement<TpvVector3>);
+     TpvFBXLayerElementVector3=class(TpvFBXLayerElement<TpvFBXVector3>);
 
-     TpvFBXLayerElementVector4=class(TpvFBXLayerElement<TpvVector4>);
+     TpvFBXLayerElementVector4=class(TpvFBXLayerElement<TpvFBXVector4>);
 
      TpvFBXLayerElementColor=class(TpvFBXLayerElement<TpvFBXColor>);
 
-     TpvFBXLayerElementInteger=class(TpvFBXLayerElement<Int64>);
+     TpvFBXLayerElementInteger=class(TpvFBXLayerElement<TpvInt64>);
 
      TpvFBXLayer=class(TpvFBXBaseObject)
       private
@@ -926,14 +1228,14 @@ type EpvFBX=class(Exception);
 
      TpvFBXCluster=class;
 
-     TpvFBXMeshVertices=class(TList<TpvVector3>);
+     TpvFBXMeshVertices=class(TList<TpvFBXVector3>);
 
-     TpvFBXMeshIndices=class(TList<Int64>);
+     TpvFBXMeshIndices=class(TList<TpvInt64>);
 
      TpvFBXMeshPolygons=class(TObjectList<TpvFBXMeshIndices>);
 
      PpvFBXMeshEdge=^TpvFBXMeshEdge;
-     TpvFBXMeshEdge=array[0..1] of Int64;
+     TpvFBXMeshEdge=array[0..1] of TpvInt64;
 
      TpvFBXMeshEdges=class(TList<TpvFBXMeshEdge>);
 
@@ -949,11 +1251,11 @@ type EpvFBX=class(Exception);
 
      PpvFBXMeshTriangleVertex=^TpvFBXMeshTriangleVertex;
      TpvFBXMeshTriangleVertex=record
-      Position:TpvVector3;
-      Normal:TpvVector3;
-      Tangent:TpvVector3;
-      Bitangent:TpvVector3;
-      UV:TpvVector2;
+      Position:TpvFBXVector3;
+      Normal:TpvFBXVector3;
+      Tangent:TpvFBXVector3;
+      Bitangent:TpvFBXVector3;
+      UV:TpvFBXVector2;
       Color:TpvFBXColor;
       Material:TpvInt32;
      end;
@@ -971,7 +1273,7 @@ type EpvFBX=class(Exception);
        fTriangleIndices:TpvFBXInt64List;
        fMaterials:TpvFBXMaterialList;
       public
-       constructor Create(const pLoader:TpvFBXLoader;const pElement:TpvFBXElement;const pID:Int64;const pName,pType_:TpvFBXString); override;
+       constructor Create(const pLoader:TpvFBXLoader;const pElement:TpvFBXElement;const pID:TpvInt64;const pName,pType_:TpvFBXString); override;
        destructor Destroy; override;
        procedure ConnectTo(const pObject:TpvFBXObject); override;
        procedure Finish;
@@ -995,7 +1297,7 @@ type EpvFBX=class(Exception);
       private
        fSkeletonType:TpvInt32;
       public
-       constructor Create(const pLoader:TpvFBXLoader;const pElement:TpvFBXElement;const pID:Int64;const pName,pType_:TpvFBXString); override;
+       constructor Create(const pLoader:TpvFBXLoader;const pElement:TpvFBXElement;const pID:TpvInt64;const pName,pType_:TpvFBXString); override;
        destructor Destroy; override;
       published
        property SkeletonType:TpvInt32 read fSkeletonType;
@@ -1027,7 +1329,7 @@ type EpvFBX=class(Exception);
        fReflection:TpvFBXColorProperty;
        fReflectionFactor:TpvDouble;
       public
-       constructor Create(const pLoader:TpvFBXLoader;const pElement:TpvFBXElement;const pID:Int64;const pName,pType_:TpvFBXString); override;
+       constructor Create(const pLoader:TpvFBXLoader;const pElement:TpvFBXElement;const pID:TpvInt64;const pName,pType_:TpvFBXString); override;
        destructor Destroy; override;
        procedure ConnectTo(const pObject:TpvFBXObject); override;
       published
@@ -1056,7 +1358,7 @@ type EpvFBX=class(Exception);
        fReferenceStart:TpvFBXTime;
        fReferenceStop:TpvFBXTime;
       public
-       constructor Create(const pLoader:TpvFBXLoader;const pElement:TpvFBXElement;const pID:Int64;const pName,pType_:TpvFBXString); override;
+       constructor Create(const pLoader:TpvFBXLoader;const pElement:TpvFBXElement;const pID:TpvInt64;const pName,pType_:TpvFBXString); override;
        destructor Destroy; override;
       published
        property Description:TpvFBXString read fDescription write fDescription;
@@ -1085,7 +1387,7 @@ type EpvFBX=class(Exception);
        fRotationAccumulationMode:TpvInt32;
        fScaleAccumulationMode:TpvInt32;
       public
-       constructor Create(const pLoader:TpvFBXLoader;const pElement:TpvFBXElement;const pID:Int64;const pName,pType_:TpvFBXString); override;
+       constructor Create(const pLoader:TpvFBXLoader;const pElement:TpvFBXElement;const pID:TpvInt64;const pName,pType_:TpvFBXString); override;
        destructor Destroy; override;
       published
        property Weight:TpvDouble read fWeight write fWeight;
@@ -1122,7 +1424,7 @@ type EpvFBX=class(Exception);
        fLink_DeformAcuracy:TpvInt32;
        fSkinningType:TpvInt32;
       public
-       constructor Create(const pLoader:TpvFBXLoader;const pElement:TpvFBXElement;const pID:Int64;const pName,pType_:TpvFBXString); override;
+       constructor Create(const pLoader:TpvFBXLoader;const pElement:TpvFBXElement;const pID:TpvInt64;const pName,pType_:TpvFBXString); override;
        destructor Destroy; override;
       published
        property Link_DeformAcuracy:TpvInt32 read fLink_DeformAcuracy write fLink_DeformAcuracy;
@@ -1138,15 +1440,15 @@ type EpvFBX=class(Exception);
       private
        fIndexes:TpvFBXInt64Array;
        fWeights:TpvFBXFloat64Array;
-       fTransform:TpvMatrix4x4;
-       fTransformLink:TpvMatrix4x4;
+       fTransform:TpvFBXMatrix4x4;
+       fTransformLink:TpvFBXMatrix4x4;
        fLinkMode:TpvInt32;
       public
-       constructor Create(const pLoader:TpvFBXLoader;const pElement:TpvFBXElement;const pID:Int64;const pName,pType_:TpvFBXString); override;
+       constructor Create(const pLoader:TpvFBXLoader;const pElement:TpvFBXElement;const pID:TpvInt64;const pName,pType_:TpvFBXString); override;
        destructor Destroy; override;
        function GetLink:TpvFBXNode;
-       property Transform:TpvMatrix4x4 read fTransform write fTransform;
-       property TransformLink:TpvMatrix4x4 read fTransformLink write fTransformLink;
+       property Transform:TpvFBXMatrix4x4 read fTransform write fTransform;
+       property TransformLink:TpvFBXMatrix4x4 read fTransformLink write fTransformLink;
       published
        property Indexes:TpvFBXInt64Array read fIndexes write fIndexes;
        property Weights:TpvFBXFloat64Array read fWeights write fWeights;
@@ -1157,7 +1459,7 @@ type EpvFBX=class(Exception);
       private
        fFileName:TpvFBXString;
       public
-       constructor Create(const pLoader:TpvFBXLoader;const pElement:TpvFBXElement;const pID:Int64;const pName,pType_:TpvFBXString); override;
+       constructor Create(const pLoader:TpvFBXLoader;const pElement:TpvFBXElement;const pID:TpvInt64;const pName,pType_:TpvFBXString); override;
        destructor Destroy; override;
       published
        property FileName:TpvFBXString read fFileName write fFileName;
@@ -1260,24 +1562,24 @@ type EpvFBX=class(Exception);
        fDefaultValue:TpvDouble;
        fAnimationKeys:TpvFBXAnimationKeyList;
       public
-       constructor Create(const pLoader:TpvFBXLoader;const pElement:TpvFBXElement;const pID:Int64;const pName,pType_:TpvFBXString); override;
-       constructor CreateOldFBX6000(const pLoader:TpvFBXLoader;const pElement:TpvFBXElement;const pID:Int64;const pName,pType_:TpvFBXString);
+       constructor Create(const pLoader:TpvFBXLoader;const pElement:TpvFBXElement;const pID:TpvInt64;const pName,pType_:TpvFBXString); override;
+       constructor CreateOldFBX6000(const pLoader:TpvFBXLoader;const pElement:TpvFBXElement;const pID:TpvInt64;const pName,pType_:TpvFBXString);
        destructor Destroy; override;
       published
        property DefaultValue:TpvDouble read fDefaultValue write fDefaultValue;
        property AnimationKeys:TpvFBXAnimationKeyList read fAnimationKeys;
      end;
 
-     TpvFBXPoseNodeMatrixMap=class(TDictionary<TpvFBXNode,TpvMatrix4x4>);
+     TpvFBXPoseNodeMatrixMap=class(TDictionary<TpvFBXNode,TpvFBXMatrix4x4>);
 
      TpvFBXPose=class(TpvFBXObject)
       private
        fPoseType:TpvFBXString;
        fNodeMatrixMap:TpvFBXPoseNodeMatrixMap;
       public
-       constructor Create(const pLoader:TpvFBXLoader;const pElement:TpvFBXElement;const pID:Int64;const pName,pType_:TpvFBXString); override;
+       constructor Create(const pLoader:TpvFBXLoader;const pElement:TpvFBXElement;const pID:TpvInt64;const pName,pType_:TpvFBXString); override;
        destructor Destroy; override;
-       function GetMatrix(const pNode:TpvFBXNode):TpvMatrix4x4;
+       function GetMatrix(const pNode:TpvFBXNode):TpvFBXMatrix4x4;
       published
        property PoseType:TpvFBXString read fPoseType;
        property NodeMatrixMap:TpvFBXPoseNodeMatrixMap read fNodeMatrixMap;
@@ -1288,7 +1590,7 @@ type EpvFBX=class(Exception);
        fFileName:TpvFBXString;
        fUseMipMap:Boolean;
       public
-       constructor Create(const pLoader:TpvFBXLoader;const pElement:TpvFBXElement;const pID:Int64;const pName,pType_:TpvFBXString); override;
+       constructor Create(const pLoader:TpvFBXLoader;const pElement:TpvFBXElement;const pID:TpvInt64;const pName,pType_:TpvFBXString); override;
        destructor Destroy; override;
       published
        property FileName:TpvFBXString read fFileName write fFileName;
@@ -1301,7 +1603,7 @@ type EpvFBX=class(Exception);
        fLocalTimeSpan:TpvFBXTimeSpan;
        fReferenceTimeSpan:TpvFBXTimeSpan;
       public
-       constructor Create(const pLoader:TpvFBXLoader;const pElement:TpvFBXElement;const pID:Int64;const pName,pType_:TpvFBXString); override;
+       constructor Create(const pLoader:TpvFBXLoader;const pElement:TpvFBXElement;const pID:TpvInt64;const pName,pType_:TpvFBXString); override;
        destructor Destroy; override;
        property LocalTimeSpan:TpvFBXTimeSpan read fLocalTimeSpan write fLocalTimeSpan;
        property ReferenceTimeSpan:TpvFBXTimeSpan read fReferenceTimeSpan write fReferenceTimeSpan;
@@ -1311,10 +1613,10 @@ type EpvFBX=class(Exception);
 
      TpvFBXTimeUtils=class
       public
-       const UnitsPerSecond=Int64(46186158000);
-             InverseUnitsPerSecond=1.0/Int64(46186158000);
-             Zero=Int64(0);
-             Infinite=Int64($7fffffffffffffff);
+       const UnitsPerSecond=TpvInt64(46186158000);
+             InverseUnitsPerSecond=1.0/TpvInt64(46186158000);
+             Zero=TpvInt64(0);
+             Infinite=TpvInt64($7fffffffffffffff);
              FramesPerSecondValues:array[TpvFBXTimeMode.Default..TpvFBXTimeMode.FPS_59_DOT_94] of TpvDouble=
               (
                60.0,
@@ -1370,9 +1672,9 @@ type EpvFBX=class(Exception);
 
 var PropertyNameRemap:TpvFBXPropertyNameRemap=nil;
 
-const FBXMatrix4x4Identity:TpvMatrix4x4=(RawComponents:((1.0,0.0,0.0,0.0),(0.0,1.0,0.0,0.0),(0.0,0.0,1.0,0.0),(0.0,0.0,0.0,1.0)););
+const FBXMatrix4x4Identity:TpvFBXMatrix4x4=(RawComponents:((1.0,0.0,0.0,0.0),(0.0,1.0,0.0,0.0),(0.0,0.0,1.0,0.0),(0.0,0.0,0.0,1.0)););
 
-function Modulus(x,y:TpvScalar):TpvScalar; {$ifdef caninline}inline;{$endif}
+function Modulus(x,y:TpvFBXScalar):TpvFBXScalar; {$ifdef caninline}inline;{$endif}
 
 function DoInflate(InData:pointer;InLen:TpvUInt32;var DestData:pointer;var DestLen:TpvUInt32;ParseHeader:boolean):boolean;
 
@@ -1389,7 +1691,7 @@ function StreamReadFloat64(const pStream:TStream):TpvDouble;
 
 implementation
 
-function Modulus(x,y:TpvScalar):TpvScalar; {$ifdef caninline}inline;{$endif}
+function Modulus(x,y:TpvFBXScalar):TpvFBXScalar; {$ifdef caninline}inline;{$endif}
 begin
  result:=(abs(x)-(abs(y)*(floor(abs(x)/abs(y)))))*sign(x);
 end;
@@ -1428,9 +1730,9 @@ var Tag,BitCount,DestSize:TpvUInt32;
    while (DestLen+length)>=DestSize do begin
     inc(DestSize,DestSize);
    end;
-   j:=TpvPtrUInt(Dest)-TpvPtrUInt(DestData);
+   j:=TpvFBXPtrUInt(Dest)-TpvFBXPtrUInt(DestData);
    ReAllocMem(DestData,DestSize);
-   TpvPtrUInt(Dest):=TpvPtrUInt(DestData)+j;
+   TpvFBXPtrUInt(Dest):=TpvFBXPtrUInt(DestData)+j;
   end;
  end;
  function adler32(data:pointer;length:TpvUInt32):TpvUInt32;
@@ -1839,6 +2141,1135 @@ begin
  end;
 end;
 
+constructor TpvFBXVector2.Create(const pX:TpvFBXScalar);
+begin
+ x:=pX;
+ y:=pX;
+end;
+
+constructor TpvFBXVector2.Create(const pX,pY:TpvFBXScalar);
+begin
+ x:=pX;
+ y:=pY;
+end;
+
+class operator TpvFBXVector2.Implicit(const a:TpvFBXScalar):TpvFBXVector2;
+begin
+ result.x:=a;
+ result.y:=a;
+end;
+
+class operator TpvFBXVector2.Explicit(const a:TpvFBXScalar):TpvFBXVector2;
+begin
+ result.x:=a;
+ result.y:=a;
+end;
+
+class operator TpvFBXVector2.Equal(const a,b:TpvFBXVector2):boolean;
+begin
+ result:=SameValue(a.x,b.x) and SameValue(a.y,b.y);
+end;
+
+class operator TpvFBXVector2.NotEqual(const a,b:TpvFBXVector2):boolean;
+begin
+ result:=(not SameValue(a.x,b.x)) or (not SameValue(a.y,b.y));
+end;
+
+class operator TpvFBXVector2.Inc(const a:TpvFBXVector2):TpvFBXVector2;
+begin
+ result.x:=a.x+1.0;
+ result.y:=a.y+1.0;
+end;
+
+class operator TpvFBXVector2.Dec(const a:TpvFBXVector2):TpvFBXVector2;
+begin
+ result.x:=a.x-1.0;
+ result.y:=a.y-1.0;
+end;
+
+class operator TpvFBXVector2.Add(const a,b:TpvFBXVector2):TpvFBXVector2;
+begin
+ result.x:=a.x+b.x;
+ result.y:=a.y+b.y;
+end;
+
+class operator TpvFBXVector2.Add(const a:TpvFBXVector2;const b:TpvFBXScalar):TpvFBXVector2;
+begin
+ result.x:=a.x+b;
+ result.y:=a.y+b;
+end;
+
+class operator TpvFBXVector2.Add(const a:TpvFBXScalar;const b:TpvFBXVector2):TpvFBXVector2;
+begin
+ result.x:=a+b.x;
+ result.y:=a+b.y;
+end;
+
+class operator TpvFBXVector2.Subtract(const a,b:TpvFBXVector2):TpvFBXVector2;
+begin
+ result.x:=a.x-b.x;
+ result.y:=a.y-b.y;
+end;
+
+class operator TpvFBXVector2.Subtract(const a:TpvFBXVector2;const b:TpvFBXScalar):TpvFBXVector2;
+begin
+ result.x:=a.x-b;
+ result.y:=a.y-b;
+end;
+
+class operator TpvFBXVector2.Subtract(const a:TpvFBXScalar;const b:TpvFBXVector2): TpvFBXVector2;
+begin
+ result.x:=a-b.x;
+ result.y:=a-b.y;
+end;
+
+class operator TpvFBXVector2.Multiply(const a,b:TpvFBXVector2):TpvFBXVector2;
+begin
+ result.x:=a.x*b.x;
+ result.y:=a.y*b.y;
+end;
+
+class operator TpvFBXVector2.Multiply(const a:TpvFBXVector2;const b:TpvFBXScalar):TpvFBXVector2;
+begin
+ result.x:=a.x*b;
+ result.y:=a.y*b;
+end;
+
+class operator TpvFBXVector2.Multiply(const a:TpvFBXScalar;const b:TpvFBXVector2):TpvFBXVector2;
+begin
+ result.x:=a*b.x;
+ result.y:=a*b.y;
+end;
+
+class operator TpvFBXVector2.Divide(const a,b:TpvFBXVector2):TpvFBXVector2;
+begin
+ result.x:=a.x/b.x;
+ result.y:=a.y/b.y;
+end;
+
+class operator TpvFBXVector2.Divide(const a:TpvFBXVector2;const b:TpvFBXScalar):TpvFBXVector2;
+begin
+ result.x:=a.x/b;
+ result.y:=a.y/b;
+end;
+
+class operator TpvFBXVector2.Divide(const a:TpvFBXScalar;const b:TpvFBXVector2):TpvFBXVector2;
+begin
+ result.x:=a/b.x;
+ result.y:=a/b.y;
+end;
+
+class operator TpvFBXVector2.IntDivide(const a,b:TpvFBXVector2):TpvFBXVector2;
+begin
+ result.x:=a.x/b.x;
+ result.y:=a.y/b.y;
+end;
+
+class operator TpvFBXVector2.IntDivide(const a:TpvFBXVector2;const b:TpvFBXScalar):TpvFBXVector2;
+begin
+ result.x:=a.x/b;
+ result.y:=a.y/b;
+end;
+
+class operator TpvFBXVector2.IntDivide(const a:TpvFBXScalar;const b:TpvFBXVector2):TpvFBXVector2;
+begin
+ result.x:=a/b.x;
+ result.y:=a/b.y;
+end;
+
+class operator TpvFBXVector2.Modulus(const a,b:TpvFBXVector2):TpvFBXVector2;
+begin
+ result.x:=Modulus(a.x,b.x);
+ result.y:=Modulus(a.y,b.y);
+end;
+
+class operator TpvFBXVector2.Modulus(const a:TpvFBXVector2;const b:TpvFBXScalar):TpvFBXVector2;
+begin
+ result.x:=Modulus(a.x,b);
+ result.y:=Modulus(a.y,b);
+end;
+
+class operator TpvFBXVector2.Modulus(const a:TpvFBXScalar;const b:TpvFBXVector2):TpvFBXVector2;
+begin
+ result.x:=Modulus(a,b.x);
+ result.y:=Modulus(a,b.y);
+end;
+
+class operator TpvFBXVector2.Negative(const a:TpvFBXVector2):TpvFBXVector2;
+begin
+ result.x:=-a.x;
+ result.y:=-a.y;
+end;
+
+class operator TpvFBXVector2.Positive(const a:TpvFBXVector2):TpvFBXVector2;
+begin
+ result:=a;
+end;
+
+function TpvFBXVector2.GetComponent(const pIndex:TpvInt32):TpvFBXScalar;
+begin
+ result:=RawComponents[pIndex];
+end;
+
+procedure TpvFBXVector2.SetComponent(const pIndex:TpvInt32;const pValue:TpvFBXScalar);
+begin
+ RawComponents[pIndex]:=pValue;
+end;
+
+function TpvFBXVector2.Perpendicular:TpvFBXVector2;
+begin
+ result.x:=-y;
+ result.y:=x;
+end;
+
+function TpvFBXVector2.Length:TpvFBXScalar;
+begin
+ result:=sqrt(sqr(x)+sqr(y));
+end;
+
+function TpvFBXVector2.SquaredLength:TpvFBXScalar;
+begin
+ result:=sqr(x)+sqr(y);
+end;
+
+function TpvFBXVector2.Normalize:TpvFBXVector2;
+var Factor:TpvFBXScalar;
+begin
+ Factor:=sqrt(sqr(x)+sqr(y));
+ if Factor<>0.0 then begin
+  Factor:=1.0/Factor;
+  result.x:=x*Factor;
+  result.y:=y*Factor;
+ end else begin
+  result.x:=0.0;
+  result.y:=0.0;
+ end;
+end;
+
+function TpvFBXVector2.DistanceTo(const b:TpvFBXVector2):TpvFBXScalar;
+begin
+ result:=sqrt(sqr(x-b.x)+sqr(y-b.y));
+end;
+
+function TpvFBXVector2.Dot(const b:TpvFBXVector2):TpvFBXScalar;
+begin
+ result:=(x*b.x)+(y*b.y);
+end;
+
+function TpvFBXVector2.Cross(const b:TpvFBXVector2):TpvFBXVector2;
+begin
+ result.x:=(y*b.x)-(x*b.y);
+ result.y:=(x*b.y)-(y*b.x);
+end;
+
+function TpvFBXVector2.Lerp(const b:TpvFBXVector2;const t:TpvFBXScalar):TpvFBXVector2;
+var InvT:TpvFBXScalar;
+begin
+ if t<=0.0 then begin
+  result:=self;
+ end else if t>=1.0 then begin
+  result:=b;
+ end else begin
+  InvT:=1.0-t;
+  result.x:=(x*InvT)+(b.x*t);
+  result.y:=(y*InvT)+(b.y*t);
+ end;
+end;
+
+function TpvFBXVector2.Angle(const b,c:TpvFBXVector2):TpvFBXScalar;
+var DeltaAB,DeltaCB:TpvFBXVector2;
+    LengthAB,LengthCB:TpvFBXScalar;
+begin
+ DeltaAB:=self-b;
+ DeltaCB:=c-b;
+ LengthAB:=DeltaAB.Length;
+ LengthCB:=DeltaCB.Length;
+ if (LengthAB=0.0) or (LengthCB=0.0) then begin
+  result:=0.0;
+ end else begin
+  result:=ArcCos(DeltaAB.Dot(DeltaCB)/(LengthAB*LengthCB));
+ end;
+end;
+
+function TpvFBXVector2.Rotate(const Angle:TpvFBXScalar):TpvFBXVector2;
+var Sinus,Cosinus:TpvFBXScalar;
+begin
+ Sinus:=0.0;
+ Cosinus:=0.0;
+ SinCos(Angle,Sinus,Cosinus);
+ result.x:=(x*Cosinus)-(y*Sinus);
+ result.y:=(y*Cosinus)+(x*Sinus);
+end;
+
+function TpvFBXVector2.Rotate(const Center:TpvFBXVector2;const Angle:TpvFBXScalar):TpvFBXVector2;
+var Sinus,Cosinus:TpvFBXScalar;
+begin
+ Sinus:=0.0;
+ Cosinus:=0.0;
+ SinCos(Angle,Sinus,Cosinus);
+ result.x:=(((x-Center.x)*Cosinus)-((y-Center.y)*Sinus))+Center.x;
+ result.y:=(((y-Center.y)*Cosinus)+((x-Center.x)*Sinus))+Center.y;
+end;
+
+constructor TpvFBXVector3.Create(const pX:TpvFBXScalar);
+begin
+ x:=pX;
+ y:=pX;
+ z:=pX;
+end;
+
+constructor TpvFBXVector3.Create(const pX,pY,pZ:TpvFBXScalar);
+begin
+ x:=pX;
+ y:=pY;
+ z:=pZ;
+end;
+
+constructor TpvFBXVector3.Create(const pXY:TpvFBXVector2;const pZ:TpvFBXScalar=0.0);
+begin
+ x:=pXY.x;
+ y:=pXY.y;
+ z:=pZ;
+end;
+
+class operator TpvFBXVector3.Implicit(const a:TpvFBXScalar):TpvFBXVector3;
+begin
+ result.x:=a;
+ result.y:=a;
+ result.z:=a;
+end;
+
+class operator TpvFBXVector3.Explicit(const a:TpvFBXScalar):TpvFBXVector3;
+begin
+ result.x:=a;
+ result.y:=a;
+ result.z:=a;
+end;
+
+class operator TpvFBXVector3.Equal(const a,b:TpvFBXVector3):boolean;
+begin
+ result:=SameValue(a.x,b.x) and SameValue(a.y,b.y) and SameValue(a.z,b.z);
+end;
+
+class operator TpvFBXVector3.NotEqual(const a,b:TpvFBXVector3):boolean;
+begin
+ result:=(not SameValue(a.x,b.x)) or (not SameValue(a.y,b.y)) or (not SameValue(a.z,b.z));
+end;
+
+class operator TpvFBXVector3.Inc({$ifdef fpc}constref{$else}const{$endif} a:TpvFBXVector3):TpvFBXVector3;
+begin
+ result.x:=a.x+1.0;
+ result.y:=a.y+1.0;
+ result.z:=a.z+1.0;
+end;
+
+class operator TpvFBXVector3.Dec({$ifdef fpc}constref{$else}const{$endif} a:TpvFBXVector3):TpvFBXVector3;
+begin
+ result.x:=a.x-1.0;
+ result.y:=a.y-1.0;
+ result.z:=a.z-1.0;
+end;
+
+class operator TpvFBXVector3.Add({$ifdef fpc}constref{$else}const{$endif} a,b:TpvFBXVector3):TpvFBXVector3;
+begin
+ result.x:=a.x+b.x;
+ result.y:=a.y+b.y;
+ result.z:=a.z+b.z;
+end;
+
+class operator TpvFBXVector3.Add(const a:TpvFBXVector3;const b:TpvFBXScalar):TpvFBXVector3;
+begin
+ result.x:=a.x+b;
+ result.y:=a.y+b;
+ result.z:=a.z+b;
+end;
+
+class operator TpvFBXVector3.Add(const a:TpvFBXScalar;const b:TpvFBXVector3):TpvFBXVector3;
+begin
+ result.x:=a+b.x;
+ result.y:=a+b.y;
+ result.z:=a+b.z;
+end;
+
+class operator TpvFBXVector3.Subtract({$ifdef fpc}constref{$else}const{$endif} a,b:TpvFBXVector3):TpvFBXVector3;
+begin
+ result.x:=a.x-b.x;
+ result.y:=a.y-b.y;
+ result.z:=a.z-b.z;
+end;
+
+class operator TpvFBXVector3.Subtract(const a:TpvFBXVector3;const b:TpvFBXScalar):TpvFBXVector3;
+begin
+ result.x:=a.x-b;
+ result.y:=a.y-b;
+ result.z:=a.z-b;
+end;
+
+class operator TpvFBXVector3.Subtract(const a:TpvFBXScalar;const b:TpvFBXVector3): TpvFBXVector3;
+begin
+ result.x:=a-b.x;
+ result.y:=a-b.y;
+ result.z:=a-b.z;
+end;
+
+class operator TpvFBXVector3.Multiply({$ifdef fpc}constref{$else}const{$endif} a,b:TpvFBXVector3):TpvFBXVector3;
+begin
+ result.x:=a.x*b.x;
+ result.y:=a.y*b.y;
+ result.z:=a.z*b.z;
+end;
+
+class operator TpvFBXVector3.Multiply(const a:TpvFBXVector3;const b:TpvFBXScalar):TpvFBXVector3;
+begin
+ result.x:=a.x*b;
+ result.y:=a.y*b;
+ result.z:=a.z*b;
+end;
+
+class operator TpvFBXVector3.Multiply(const a:TpvFBXScalar;const b:TpvFBXVector3):TpvFBXVector3;
+begin
+ result.x:=a*b.x;
+ result.y:=a*b.y;
+ result.z:=a*b.z;
+end;
+
+class operator TpvFBXVector3.Divide({$ifdef fpc}constref{$else}const{$endif} a,b:TpvFBXVector3):TpvFBXVector3;
+begin
+ result.x:=a.x/b.x;
+ result.y:=a.y/b.y;
+ result.z:=a.z/b.z;
+end;
+
+class operator TpvFBXVector3.Divide(const a:TpvFBXVector3;const b:TpvFBXScalar):TpvFBXVector3;
+begin
+ result.x:=a.x/b;
+ result.y:=a.y/b;
+ result.z:=a.z/b;
+end;
+
+class operator TpvFBXVector3.Divide(const a:TpvFBXScalar;const b:TpvFBXVector3):TpvFBXVector3;
+begin
+ result.x:=a/b.x;
+ result.y:=a/b.y;
+ result.z:=a/b.z;
+end;
+
+class operator TpvFBXVector3.IntDivide({$ifdef fpc}constref{$else}const{$endif} a,b:TpvFBXVector3):TpvFBXVector3;
+begin
+ result.x:=a.x/b.x;
+ result.y:=a.y/b.y;
+ result.z:=a.z/b.z;
+end;
+
+class operator TpvFBXVector3.IntDivide(const a:TpvFBXVector3;const b:TpvFBXScalar):TpvFBXVector3;
+begin
+ result.x:=a.x/b;
+ result.y:=a.y/b;
+ result.z:=a.z/b;
+end;
+
+class operator TpvFBXVector3.IntDivide(const a:TpvFBXScalar;const b:TpvFBXVector3):TpvFBXVector3;
+begin
+ result.x:=a/b.x;
+ result.y:=a/b.y;
+ result.z:=a/b.z;
+end;
+
+class operator TpvFBXVector3.Modulus(const a,b:TpvFBXVector3):TpvFBXVector3;
+begin
+ result.x:=Modulus(a.x,b.x);
+ result.y:=Modulus(a.y,b.y);
+ result.z:=Modulus(a.z,b.z);
+end;
+
+class operator TpvFBXVector3.Modulus(const a:TpvFBXVector3;const b:TpvFBXScalar):TpvFBXVector3;
+begin
+ result.x:=Modulus(a.x,b);
+ result.y:=Modulus(a.y,b);
+ result.z:=Modulus(a.z,b);
+end;
+
+class operator TpvFBXVector3.Modulus(const a:TpvFBXScalar;const b:TpvFBXVector3):TpvFBXVector3;
+begin
+ result.x:=Modulus(a,b.x);
+ result.y:=Modulus(a,b.y);
+ result.z:=Modulus(a,b.z);
+end;
+
+class operator TpvFBXVector3.Negative({$ifdef fpc}constref{$else}const{$endif} a:TpvFBXVector3):TpvFBXVector3;
+begin
+ result.x:=-a.x;
+ result.y:=-a.y;
+ result.z:=-a.z;
+end;
+
+class operator TpvFBXVector3.Positive(const a:TpvFBXVector3):TpvFBXVector3;
+begin
+ result:=a;
+end;
+
+function TpvFBXVector3.GetComponent(const pIndex:TpvInt32):TpvFBXScalar;
+begin
+ result:=RawComponents[pIndex];
+end;
+
+procedure TpvFBXVector3.SetComponent(const pIndex:TpvInt32;const pValue:TpvFBXScalar);
+begin
+ RawComponents[pIndex]:=pValue;
+end;
+
+function TpvFBXVector3.Flip:TpvFBXVector3;
+begin
+ result.x:=x;
+ result.y:=z;
+ result.z:=-y;
+end;
+
+function TpvFBXVector3.Perpendicular:TpvFBXVector3;
+var v,p:TpvFBXVector3;
+begin
+ v:=p.Normalize;
+ p.x:=System.abs(v.x);
+ p.y:=System.abs(v.y);
+ p.z:=System.abs(v.z);
+ if (p.x<=p.y) and (p.x<=p.z) then begin
+  p.x:=1.0;
+  p.y:=0.0;
+  p.z:=0.0;
+ end else if (p.y<=p.x) and (p.y<=p.z) then begin
+  p.x:=0.0;
+  p.y:=1.0;
+  p.z:=0.0;
+ end else begin
+  p.x:=0.0;
+  p.y:=0.0;
+  p.z:=1.0;
+ end;
+ result:=p-(v*v.Dot(p));
+end;
+
+function TpvFBXVector3.OneUnitOrthogonalVector:TpvFBXVector3;
+var MinimumAxis:TpvInt32;
+    l:TpvFBXScalar;
+begin
+ if System.abs(x)<System.abs(y) then begin
+  if System.abs(x)<System.abs(z) then begin
+   MinimumAxis:=0;
+  end else begin
+   MinimumAxis:=2;
+  end;
+ end else begin
+  if System.abs(y)<System.abs(z) then begin
+   MinimumAxis:=1;
+  end else begin
+   MinimumAxis:=2;
+  end;
+ end;
+ case MinimumAxis of
+  0:begin
+   l:=sqrt(sqr(y)+sqr(z));
+   result.x:=0.0;
+   result.y:=-(z/l);
+   result.z:=y/l;
+  end;
+  1:begin
+   l:=sqrt(sqr(x)+sqr(z));
+   result.x:=-(z/l);
+   result.y:=0.0;
+   result.z:=x/l;
+  end;
+  else begin
+   l:=sqrt(sqr(x)+sqr(y));
+   result.x:=-(y/l);
+   result.y:=x/l;
+   result.z:=0.0;
+  end;
+ end;
+end;
+
+function TpvFBXVector3.Length:TpvFBXScalar;
+begin
+ result:=sqrt(sqr(x)+sqr(y)+sqr(z));
+end;
+
+function TpvFBXVector3.SquaredLength:TpvFBXScalar;
+begin
+ result:=sqr(x)+sqr(y)+sqr(z);
+end;
+
+function TpvFBXVector3.Normalize:TpvFBXVector3;
+var Factor:TpvFBXScalar;
+begin
+ Factor:=sqrt(sqr(x)+sqr(y)+sqr(z));
+ if Factor<>0.0 then begin
+  Factor:=1.0/Factor;
+  result.x:=x*Factor;
+  result.y:=y*Factor;
+  result.z:=z*Factor;
+ end else begin
+  result.x:=0.0;
+  result.y:=0.0;
+  result.z:=0.0;
+ end;
+end;
+
+function TpvFBXVector3.DistanceTo({$ifdef fpc}constref{$else}const{$endif} b:TpvFBXVector3):TpvFBXScalar;
+begin
+ result:=sqrt(sqr(x-b.x)+sqr(y-b.y)+sqr(z-b.z));
+end;
+
+function TpvFBXVector3.Abs:TpvFBXVector3;
+begin
+ result.x:=System.Abs(x);
+ result.y:=System.Abs(y);
+ result.z:=System.Abs(z);
+end;
+
+function TpvFBXVector3.Dot({$ifdef fpc}constref{$else}const{$endif} b:TpvFBXVector3):TpvFBXScalar;
+begin
+ result:=(x*b.x)+(y*b.y)+(z*b.z);
+end;
+
+function TpvFBXVector3.AngleTo(const b:TpvFBXVector3):TpvFBXScalar;
+var d:TpvFloat;
+begin
+ d:=sqrt(SquaredLength*b.SquaredLength);
+ if d<>0.0 then begin
+  result:=Dot(b)/d;
+ end else begin
+  result:=0.0;
+ end
+end;
+
+function TpvFBXVector3.Cross({$ifdef fpc}constref{$else}const{$endif} b:TpvFBXVector3):TpvFBXVector3;
+begin
+ result.x:=(y*b.z)-(z*b.y);
+ result.y:=(z*b.x)-(x*b.z);
+ result.z:=(x*b.y)-(y*b.x);
+end;
+
+function TpvFBXVector3.Lerp(const b:TpvFBXVector3;const t:TpvFBXScalar):TpvFBXVector3;
+var InvT:TpvFBXScalar;
+begin
+ if t<=0.0 then begin
+  result:=self;
+ end else if t>=1.0 then begin
+  result:=b;
+ end else begin
+  InvT:=1.0-t;
+  result:=(self*InvT)+(b*t);
+ end;
+end;
+
+function TpvFBXVector3.Angle(const b,c:TpvFBXVector3):TpvFBXScalar;
+var DeltaAB,DeltaCB:TpvFBXVector3;
+    LengthAB,LengthCB:TpvFBXScalar;
+begin
+ DeltaAB:=self-b;
+ DeltaCB:=c-b;
+ LengthAB:=DeltaAB.Length;
+ LengthCB:=DeltaCB.Length;
+ if (LengthAB=0.0) or (LengthCB=0.0) then begin
+  result:=0.0;
+ end else begin
+  result:=ArcCos(DeltaAB.Dot(DeltaCB)/(LengthAB*LengthCB));
+ end;
+end;
+
+function TpvFBXVector3.RotateX(const Angle:TpvFBXScalar):TpvFBXVector3;
+var Sinus,Cosinus:TpvFBXScalar;
+begin
+ Sinus:=0.0;
+ Cosinus:=0.0;
+ SinCos(Angle,Sinus,Cosinus);
+ result.x:=x;
+ result.y:=(y*Cosinus)-(z*Sinus);
+ result.z:=(y*Sinus)+(z*Cosinus);
+end;
+
+function TpvFBXVector3.RotateY(const Angle:TpvFBXScalar):TpvFBXVector3;
+var Sinus,Cosinus:TpvFBXScalar;
+begin
+ Sinus:=0.0;
+ Cosinus:=0.0;
+ SinCos(Angle,Sinus,Cosinus);
+ result.x:=(z*Sinus)+(x*Cosinus);
+ result.y:=y;
+ result.z:=(z*Cosinus)-(x*Sinus);
+end;
+
+function TpvFBXVector3.RotateZ(const Angle:TpvFBXScalar):TpvFBXVector3;
+var Sinus,Cosinus:TpvFBXScalar;
+begin
+ Sinus:=0.0;
+ Cosinus:=0.0;
+ SinCos(Angle,Sinus,Cosinus);
+ result.x:=(x*Cosinus)-(y*Sinus);
+ result.y:=(x*Sinus)+(y*Cosinus);
+ result.z:=z;
+end;
+
+function TpvFBXVector3.ProjectToBounds(const MinVector,MaxVector:TpvFBXVector3):TpvFBXScalar;
+begin
+ if x<0.0 then begin
+  result:=x*MaxVector.x;
+ end else begin
+  result:=x*MinVector.x;
+ end;
+ if y<0.0 then begin
+  result:=result+(y*MaxVector.y);
+ end else begin
+  result:=result+(y*MinVector.y);
+ end;
+ if z<0.0 then begin
+  result:=result+(z*MaxVector.z);
+ end else begin
+  result:=result+(z*MinVector.z);
+ end;
+end;
+
+constructor TpvFBXVector4.Create(const pX:TpvFBXScalar);
+begin
+ x:=pX;
+ y:=pX;
+ z:=pX;
+ w:=pX;
+end;
+
+constructor TpvFBXVector4.Create(const pX,pY,pZ,pW:TpvFBXScalar);
+begin
+ x:=pX;
+ y:=pY;
+ z:=pZ;
+ w:=pW;
+end;
+
+constructor TpvFBXVector4.Create(const pXY:TpvFBXVector2;const pZ:TpvFBXScalar=0.0;const pW:TpvFBXScalar=1.0);
+begin
+ x:=pXY.x;
+ y:=pXY.y;
+ z:=pZ;
+ w:=pW;
+end;
+
+constructor TpvFBXVector4.Create(const pXYZ:TpvFBXVector3;const pW:TpvFBXScalar=1.0);
+begin
+ x:=pXYZ.x;
+ y:=pXYZ.y;
+ z:=pXYZ.z;
+ w:=pW;
+end;
+
+class operator TpvFBXVector4.Implicit(const a:TpvFBXScalar):TpvFBXVector4;
+begin
+ result.x:=a;
+ result.y:=a;
+ result.z:=a;
+ result.w:=a;
+end;
+
+class operator TpvFBXVector4.Explicit(const a:TpvFBXScalar):TpvFBXVector4;
+begin
+ result.x:=a;
+ result.y:=a;
+ result.z:=a;
+ result.w:=a;
+end;
+
+class operator TpvFBXVector4.Equal(const a,b:TpvFBXVector4):boolean;
+begin
+ result:=SameValue(a.x,b.x) and SameValue(a.y,b.y) and SameValue(a.z,b.z) and SameValue(a.w,b.w);
+end;
+
+class operator TpvFBXVector4.NotEqual(const a,b:TpvFBXVector4):boolean;
+begin
+ result:=(not SameValue(a.x,b.x)) or (not SameValue(a.y,b.y)) or (not SameValue(a.z,b.z)) or (not SameValue(a.w,b.w));
+end;
+
+class operator TpvFBXVector4.Inc({$ifdef fpc}constref{$else}const{$endif} a:TpvFBXVector4):TpvFBXVector4;
+begin
+ result.x:=a.x+1.0;
+ result.y:=a.y+1.0;
+ result.z:=a.z+1.0;
+ result.w:=a.w+1.0;
+end;
+
+class operator TpvFBXVector4.Dec({$ifdef fpc}constref{$else}const{$endif} a:TpvFBXVector4):TpvFBXVector4;
+begin
+ result.x:=a.x-1.0;
+ result.y:=a.y-1.0;
+ result.z:=a.z-1.0;
+ result.w:=a.w-1.0;
+end;
+
+class operator TpvFBXVector4.Add({$ifdef fpc}constref{$else}const{$endif} a,b:TpvFBXVector4):TpvFBXVector4;
+begin
+ result.x:=a.x+b.x;
+ result.y:=a.y+b.y;
+ result.z:=a.z+b.z;
+ result.w:=a.w+b.w;
+end;
+
+class operator TpvFBXVector4.Add(const a:TpvFBXVector4;const b:TpvFBXScalar):TpvFBXVector4;
+begin
+ result.x:=a.x+b;
+ result.y:=a.y+b;
+ result.z:=a.z+b;
+ result.w:=a.w+b;
+end;
+
+class operator TpvFBXVector4.Add(const a:TpvFBXScalar;const b:TpvFBXVector4):TpvFBXVector4;
+begin
+ result.x:=a+b.x;
+ result.y:=a+b.y;
+ result.z:=a+b.z;
+ result.w:=a+b.w;
+end;
+
+class operator TpvFBXVector4.Subtract({$ifdef fpc}constref{$else}const{$endif} a,b:TpvFBXVector4):TpvFBXVector4;
+begin
+ result.x:=a.x-b.x;
+ result.y:=a.y-b.y;
+ result.z:=a.z-b.z;
+ result.w:=a.w-b.w;
+end;
+
+class operator TpvFBXVector4.Subtract(const a:TpvFBXVector4;const b:TpvFBXScalar):TpvFBXVector4;
+begin
+ result.x:=a.x-b;
+ result.y:=a.y-b;
+ result.z:=a.z-b;
+ result.w:=a.w-b;
+end;
+
+class operator TpvFBXVector4.Subtract(const a:TpvFBXScalar;const b:TpvFBXVector4): TpvFBXVector4;
+begin
+ result.x:=a-b.x;
+ result.y:=a-b.y;
+ result.z:=a-b.z;
+ result.w:=a-b.w;
+end;
+
+class operator TpvFBXVector4.Multiply({$ifdef fpc}constref{$else}const{$endif} a,b:TpvFBXVector4):TpvFBXVector4;
+begin
+ result.x:=a.x*b.x;
+ result.y:=a.y*b.y;
+ result.z:=a.z*b.z;
+ result.w:=a.w*b.w;
+end;
+
+class operator TpvFBXVector4.Multiply(const a:TpvFBXVector4;const b:TpvFBXScalar):TpvFBXVector4;
+begin
+ result.x:=a.x*b;
+ result.y:=a.y*b;
+ result.z:=a.z*b;
+ result.w:=a.w*b;
+end;
+
+class operator TpvFBXVector4.Multiply(const a:TpvFBXScalar;const b:TpvFBXVector4):TpvFBXVector4;
+begin
+ result.x:=a*b.x;
+ result.y:=a*b.y;
+ result.z:=a*b.z;
+ result.w:=a*b.w;
+end;
+
+class operator TpvFBXVector4.Divide({$ifdef fpc}constref{$else}const{$endif} a,b:TpvFBXVector4):TpvFBXVector4;
+begin
+ result.x:=a.x/b.x;
+ result.y:=a.y/b.y;
+ result.z:=a.z/b.z;
+ result.w:=a.w/b.w;
+end;
+
+class operator TpvFBXVector4.Divide(const a:TpvFBXVector4;const b:TpvFBXScalar):TpvFBXVector4;
+begin
+ result.x:=a.x/b;
+ result.y:=a.y/b;
+ result.z:=a.z/b;
+ result.w:=a.w/b;
+end;
+
+class operator TpvFBXVector4.Divide(const a:TpvFBXScalar;const b:TpvFBXVector4):TpvFBXVector4;
+begin
+ result.x:=a/b.x;
+ result.y:=a/b.y;
+ result.z:=a/b.z;
+ result.w:=a/b.z;
+end;
+
+class operator TpvFBXVector4.IntDivide({$ifdef fpc}constref{$else}const{$endif} a,b:TpvFBXVector4):TpvFBXVector4;
+begin
+ result.x:=a.x/b.x;
+ result.y:=a.y/b.y;
+ result.z:=a.z/b.z;
+ result.w:=a.w/b.w;
+end;
+
+class operator TpvFBXVector4.IntDivide(const a:TpvFBXVector4;const b:TpvFBXScalar):TpvFBXVector4;
+begin
+ result.x:=a.x/b;
+ result.y:=a.y/b;
+ result.z:=a.z/b;
+ result.w:=a.w/b;
+end;
+
+class operator TpvFBXVector4.IntDivide(const a:TpvFBXScalar;const b:TpvFBXVector4):TpvFBXVector4;
+begin
+ result.x:=a/b.x;
+ result.y:=a/b.y;
+ result.z:=a/b.z;
+ result.w:=a/b.w;
+end;
+
+class operator TpvFBXVector4.Modulus(const a,b:TpvFBXVector4):TpvFBXVector4;
+begin
+ result.x:=Modulus(a.x,b.x);
+ result.y:=Modulus(a.y,b.y);
+ result.z:=Modulus(a.z,b.z);
+ result.w:=Modulus(a.w,b.w);
+end;
+
+class operator TpvFBXVector4.Modulus(const a:TpvFBXVector4;const b:TpvFBXScalar):TpvFBXVector4;
+begin
+ result.x:=Modulus(a.x,b);
+ result.y:=Modulus(a.y,b);
+ result.z:=Modulus(a.z,b);
+ result.w:=Modulus(a.w,b);
+end;
+
+class operator TpvFBXVector4.Modulus(const a:TpvFBXScalar;const b:TpvFBXVector4):TpvFBXVector4;
+begin
+ result.x:=Modulus(a,b.x);
+ result.y:=Modulus(a,b.y);
+ result.z:=Modulus(a,b.z);
+ result.w:=Modulus(a,b.w);
+end;
+
+class operator TpvFBXVector4.Negative({$ifdef fpc}constref{$else}const{$endif} a:TpvFBXVector4):TpvFBXVector4;
+begin
+ result.x:=-a.x;
+ result.y:=-a.y;
+ result.z:=-a.z;
+ result.w:=-a.w;
+end;
+
+class operator TpvFBXVector4.Positive(const a:TpvFBXVector4):TpvFBXVector4;
+begin
+ result:=a;
+end;
+
+function TpvFBXVector4.GetComponent(const pIndex:TpvInt32):TpvFBXScalar;
+begin
+ result:=RawComponents[pIndex];
+end;
+
+procedure TpvFBXVector4.SetComponent(const pIndex:TpvInt32;const pValue:TpvFBXScalar);
+begin
+ RawComponents[pIndex]:=pValue;
+end;
+
+function TpvFBXVector4.Flip:TpvFBXVector4;
+begin
+ result.x:=x;
+ result.y:=z;
+ result.z:=-y;
+ result.w:=w;
+end;
+
+function TpvFBXVector4.Perpendicular:TpvFBXVector4;
+var v,p:TpvFBXVector4;
+begin
+ v:=p.Normalize;
+ p.x:=System.abs(v.x);
+ p.y:=System.abs(v.y);
+ p.z:=System.abs(v.z);
+ p.w:=System.abs(v.w);
+ if (p.x<=p.y) and (p.x<=p.z) and (p.x<=p.w) then begin
+  p.x:=1.0;
+  p.y:=0.0;
+  p.z:=0.0;
+  p.w:=0.0;
+ end else if (p.y<=p.x) and (p.y<=p.z) and (p.y<=p.w) then begin
+  p.x:=0.0;
+  p.y:=1.0;
+  p.z:=0.0;
+  p.w:=0.0;
+ end else if (p.z<=p.x) and (p.z<=p.y) and (p.z<=p.w) then begin
+  p.x:=0.0;
+  p.y:=0.0;
+  p.z:=0.0;
+  p.w:=1.0;
+ end else begin
+  p.x:=0.0;
+  p.y:=0.0;
+  p.z:=1.0;
+  p.w:=0.0;
+ end;
+ result:=p-(v*v.Dot(p));
+end;
+
+function TpvFBXVector4.Length:TpvFBXScalar;
+begin
+ result:=sqrt(sqr(x)+sqr(y)+sqr(z)+sqr(w));
+end;
+
+function TpvFBXVector4.SquaredLength:TpvFBXScalar;
+begin
+ result:=sqr(x)+sqr(y)+sqr(z)+sqr(w);
+end;
+
+function TpvFBXVector4.Normalize:TpvFBXVector4;
+var Factor:TpvFBXScalar;
+begin
+ Factor:=sqrt(sqr(x)+sqr(y)+sqr(z)+sqr(w));
+ if Factor<>0.0 then begin
+  Factor:=1.0/Factor;
+  result.x:=x*Factor;
+  result.y:=y*Factor;
+  result.z:=z*Factor;
+  result.w:=w*Factor;
+ end else begin
+  result.x:=0.0;
+  result.y:=0.0;
+  result.z:=0.0;
+  result.w:=0.0;
+ end;
+end;
+
+function TpvFBXVector4.DistanceTo({$ifdef fpc}constref{$else}const{$endif} b:TpvFBXVector4):TpvFBXScalar;
+begin
+ result:=sqrt(sqr(x-b.x)+sqr(y-b.y)+sqr(z-b.z)+sqr(w-b.w));
+end;
+
+function TpvFBXVector4.Abs:TpvFBXVector4;
+begin
+ result.x:=System.Abs(x);
+ result.y:=System.Abs(y);
+ result.z:=System.Abs(z);
+ result.w:=System.Abs(w);
+end;
+
+function TpvFBXVector4.Dot({$ifdef fpc}constref{$else}const{$endif} b:TpvFBXVector4):TpvFBXScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef caninline}inline;{$endif}{$ifend}
+begin
+ result:=(x*b.x)+(y*b.y)+(z*b.z)+(w*b.w);
+end;
+
+function TpvFBXVector4.AngleTo(const b:TpvFBXVector4):TpvFBXScalar;
+var d:TpvFloat;
+begin
+ d:=sqrt(SquaredLength*b.SquaredLength);
+ if d<>0.0 then begin
+  result:=Dot(b)/d;
+ end else begin
+  result:=0.0;
+ end
+end;
+
+function TpvFBXVector4.Cross({$ifdef fpc}constref{$else}const{$endif} b:TpvFBXVector4):TpvFBXVector4;
+begin
+ result.x:=(y*b.z)-(z*b.y);
+ result.y:=(z*b.x)-(x*b.z);
+ result.z:=(x*b.y)-(y*b.x);
+ result.w:=1.0;
+end;
+
+function TpvFBXVector4.Lerp(const b:TpvFBXVector4;const t:TpvFBXScalar):TpvFBXVector4;
+var InvT:TpvFBXScalar;
+begin
+ if t<=0.0 then begin
+  result:=self;
+ end else if t>=1.0 then begin
+  result:=b;
+ end else begin
+  InvT:=1.0-t;
+  result.x:=(x*InvT)+(b.x*t);
+  result.y:=(y*InvT)+(b.y*t);
+  result.z:=(z*InvT)+(b.z*t);
+  result.w:=(w*InvT)+(b.w*t);
+ end;
+end;
+
+function TpvFBXVector4.Angle(const b,c:TpvFBXVector4):TpvFBXScalar;
+var DeltaAB,DeltaCB:TpvFBXVector4;
+    LengthAB,LengthCB:TpvFBXScalar;
+begin
+ DeltaAB:=self-b;
+ DeltaCB:=c-b;
+ LengthAB:=DeltaAB.Length;
+ LengthCB:=DeltaCB.Length;
+ if (LengthAB=0.0) or (LengthCB=0.0) then begin
+  result:=0.0;
+ end else begin
+  result:=ArcCos(DeltaAB.Dot(DeltaCB)/(LengthAB*LengthCB));
+ end;
+end;
+
+function TpvFBXVector4.RotateX(const Angle:TpvFBXScalar):TpvFBXVector4;
+var Sinus,Cosinus:TpvFBXScalar;
+begin
+ Sinus:=0.0;
+ Cosinus:=0.0;
+ SinCos(Angle,Sinus,Cosinus);
+ result.x:=x;
+ result.y:=(y*Cosinus)-(z*Sinus);
+ result.z:=(y*Sinus)+(z*Cosinus);
+ result.w:=w;
+end;
+
+function TpvFBXVector4.RotateY(const Angle:TpvFBXScalar):TpvFBXVector4;
+var Sinus,Cosinus:TpvFBXScalar;
+begin
+ Sinus:=0.0;
+ Cosinus:=0.0;
+ SinCos(Angle,Sinus,Cosinus);
+ result.x:=(z*Sinus)+(x*Cosinus);
+ result.y:=y;
+ result.z:=(z*Cosinus)-(x*Sinus);
+ result.w:=w;
+end;
+
+function TpvFBXVector4.RotateZ(const Angle:TpvFBXScalar):TpvFBXVector4;
+var Sinus,Cosinus:TpvFBXScalar;
+begin
+ Sinus:=0.0;
+ Cosinus:=0.0;
+ SinCos(Angle,Sinus,Cosinus);
+ result.x:=(x*Cosinus)-(y*Sinus);
+ result.y:=(x*Sinus)+(y*Cosinus);
+ result.z:=z;
+ result.w:=w;
+end;
+
+function TpvFBXVector4.Rotate(const Angle:TpvFBXScalar;const Axis:TpvFBXVector3):TpvFBXVector4;
+begin
+ result:=TpvFBXMatrix4x4.CreateRotate(Angle,Axis)*self;
+end;
+
+function TpvFBXVector4.ProjectToBounds(const MinVector,MaxVector:TpvFBXVector4):TpvFBXScalar;
+begin
+ if x<0.0 then begin
+  result:=x*MaxVector.x;
+ end else begin
+  result:=x*MinVector.x;
+ end;
+ if y<0.0 then begin
+  result:=result+(y*MaxVector.y);
+ end else begin
+  result:=result+(y*MinVector.y);
+ end;
+ if z<0.0 then begin
+  result:=result+(z*MaxVector.z);
+ end else begin
+  result:=result+(z*MinVector.z);
+ end;
+ if w<0.0 then begin
+  result:=result+(w*MaxVector.w);
+ end else begin
+  result:=result+(w*MinVector.w);
+ end;
+end;
+
 constructor TpvFBXColor.Create(const pFrom:TpvFBXColor);
 begin
  self:=pFrom;
@@ -1875,6 +3306,1633 @@ begin
  result:='{{R:{'+ConvertDoubleToString(Red,omStandard,-1)+'} G:{'+ConvertDoubleToString(Green,omStandard,-1)+'} B:{'+ConvertDoubleToString(Blue,omStandard,-1)+'} A:{'+ConvertDoubleToString(Alpha,omStandard,-1)+'}}}';
 end;
 
+constructor TpvFBXMatrix4x4.Create(const pX:TpvFBXScalar);
+begin
+ RawComponents[0,0]:=pX;
+ RawComponents[0,1]:=pX;
+ RawComponents[0,2]:=pX;
+ RawComponents[0,3]:=pX;
+ RawComponents[1,0]:=pX;
+ RawComponents[1,1]:=pX;
+ RawComponents[1,2]:=pX;
+ RawComponents[1,3]:=pX;
+ RawComponents[2,0]:=pX;
+ RawComponents[2,1]:=pX;
+ RawComponents[2,2]:=pX;
+ RawComponents[2,3]:=pX;
+ RawComponents[3,0]:=pX;
+ RawComponents[3,1]:=pX;
+ RawComponents[3,2]:=pX;
+ RawComponents[3,3]:=pX;
+end;
+
+constructor TpvFBXMatrix4x4.Create(const pXX,pXY,pXZ,pXW,pYX,pYY,pYZ,pYW,pZX,pZY,pZZ,pZW,pWX,pWY,pWZ,pWW:TpvFBXScalar);
+begin
+ RawComponents[0,0]:=pXX;
+ RawComponents[0,1]:=pXY;
+ RawComponents[0,2]:=pXZ;
+ RawComponents[0,3]:=pXW;
+ RawComponents[1,0]:=pYX;
+ RawComponents[1,1]:=pYY;
+ RawComponents[1,2]:=pYZ;
+ RawComponents[1,3]:=pYW;
+ RawComponents[2,0]:=pZX;
+ RawComponents[2,1]:=pZY;
+ RawComponents[2,2]:=pZZ;
+ RawComponents[2,3]:=pZW;
+ RawComponents[3,0]:=pWX;
+ RawComponents[3,1]:=pWY;
+ RawComponents[3,2]:=pWZ;
+ RawComponents[3,3]:=pWW;
+end;
+
+constructor TpvFBXMatrix4x4.Create(const pX,pY,pZ,pW:TpvFBXVector4);
+begin
+ RawComponents[0,0]:=pX.x;
+ RawComponents[0,1]:=pX.y;
+ RawComponents[0,2]:=pX.z;
+ RawComponents[0,3]:=pX.w;
+ RawComponents[1,0]:=pY.x;
+ RawComponents[1,1]:=pY.y;
+ RawComponents[1,2]:=pY.z;
+ RawComponents[1,3]:=pY.w;
+ RawComponents[2,0]:=pZ.x;
+ RawComponents[2,1]:=pZ.y;
+ RawComponents[2,2]:=pZ.z;
+ RawComponents[2,3]:=pZ.w;
+ RawComponents[3,0]:=pW.x;
+ RawComponents[3,1]:=pW.y;
+ RawComponents[3,2]:=pW.z;
+ RawComponents[3,3]:=pW.w;
+end;
+
+constructor TpvFBXMatrix4x4.CreateRotateX(const Angle:TpvFBXScalar);
+begin
+ RawComponents[0,0]:=1.0;
+ RawComponents[0,1]:=0.0;
+ RawComponents[0,2]:=0.0;
+ RawComponents[0,3]:=0.0;
+ RawComponents[1,0]:=0.0;
+ SinCos(Angle,RawComponents[1,2],RawComponents[1,1]);
+ RawComponents[1,3]:=0.0;
+ RawComponents[2,0]:=0.0;
+ RawComponents[2,1]:=-RawComponents[1,2];
+ RawComponents[2,2]:=RawComponents[1,1];
+ RawComponents[2,3]:=0.0;
+ RawComponents[3,0]:=0.0;
+ RawComponents[3,1]:=0.0;
+ RawComponents[3,2]:=0.0;
+ RawComponents[3,3]:=1.0;
+end;
+
+constructor TpvFBXMatrix4x4.CreateRotateY(const Angle:TpvFBXScalar);
+begin
+ SinCos(Angle,RawComponents[2,0],RawComponents[0,0]);
+ RawComponents[0,1]:=0.0;
+ RawComponents[0,2]:=-RawComponents[2,0];
+ RawComponents[0,3]:=0.0;
+ RawComponents[1,0]:=0.0;
+ RawComponents[1,1]:=1.0;
+ RawComponents[1,2]:=0.0;
+ RawComponents[1,3]:=0.0;
+ RawComponents[2,1]:=0.0;
+ RawComponents[2,2]:=RawComponents[0,0];
+ RawComponents[2,3]:=0.0;
+ RawComponents[3,0]:=0.0;
+ RawComponents[3,1]:=0.0;
+ RawComponents[3,2]:=0.0;
+ RawComponents[3,3]:=1.0;
+end;
+
+constructor TpvFBXMatrix4x4.CreateRotateZ(const Angle:TpvFBXScalar);
+begin
+ SinCos(Angle,RawComponents[0,1],RawComponents[0,0]);
+ RawComponents[0,2]:=0.0;
+ RawComponents[0,3]:=0.0;
+ RawComponents[1,0]:=-RawComponents[0,1];
+ RawComponents[1,1]:=RawComponents[0,0];
+ RawComponents[1,2]:=0.0;
+ RawComponents[1,3]:=0.0;
+ RawComponents[2,0]:=0.0;
+ RawComponents[2,1]:=0.0;
+ RawComponents[2,2]:=1.0;
+ RawComponents[2,3]:=0.0;
+ RawComponents[3,0]:=0.0;
+ RawComponents[3,1]:=0.0;
+ RawComponents[3,2]:=0.0;
+ RawComponents[3,3]:=1.0;
+end;
+
+constructor TpvFBXMatrix4x4.CreateRotate(const Angle:TpvFBXScalar;const Axis:TpvFBXVector3);
+var SinusAngle,CosinusAngle:TpvFBXScalar;
+begin
+ SinCos(Angle,SinusAngle,CosinusAngle);
+ RawComponents[0,0]:=CosinusAngle+((1.0-CosinusAngle)*sqr(Axis.x));
+ RawComponents[1,0]:=((1.0-CosinusAngle)*Axis.x*Axis.y)-(Axis.z*SinusAngle);
+ RawComponents[2,0]:=((1.0-CosinusAngle)*Axis.x*Axis.z)+(Axis.y*SinusAngle);
+ RawComponents[0,3]:=0.0;
+ RawComponents[0,1]:=((1.0-CosinusAngle)*Axis.x*Axis.z)+(Axis.z*SinusAngle);
+ RawComponents[1,1]:=CosinusAngle+((1.0-CosinusAngle)*sqr(Axis.y));
+ RawComponents[2,1]:=((1.0-CosinusAngle)*Axis.y*Axis.z)-(Axis.x*SinusAngle);
+ RawComponents[1,3]:=0.0;
+ RawComponents[0,2]:=((1.0-CosinusAngle)*Axis.x*Axis.z)-(Axis.y*SinusAngle);
+ RawComponents[1,2]:=((1.0-CosinusAngle)*Axis.y*Axis.z)+(Axis.x*SinusAngle);
+ RawComponents[2,2]:=CosinusAngle+((1.0-CosinusAngle)*sqr(Axis.z));
+ RawComponents[2,3]:=0.0;
+ RawComponents[3,0]:=0.0;
+ RawComponents[3,1]:=0.0;
+ RawComponents[3,2]:=0.0;
+ RawComponents[3,3]:=1.0;
+end;
+
+constructor TpvFBXMatrix4x4.CreateRotation(const pMatrix:TpvFBXMatrix4x4);
+begin
+ RawComponents[0,0]:=pMatrix.RawComponents[0,0];
+ RawComponents[0,1]:=pMatrix.RawComponents[0,1];
+ RawComponents[0,2]:=pMatrix.RawComponents[0,2];
+ RawComponents[0,3]:=0.0;
+ RawComponents[1,0]:=pMatrix.RawComponents[1,0];
+ RawComponents[1,1]:=pMatrix.RawComponents[1,1];
+ RawComponents[1,2]:=pMatrix.RawComponents[1,2];
+ RawComponents[1,3]:=0.0;
+ RawComponents[2,0]:=pMatrix.RawComponents[2,0];
+ RawComponents[2,1]:=pMatrix.RawComponents[2,1];
+ RawComponents[2,2]:=pMatrix.RawComponents[2,2];
+ RawComponents[2,3]:=0.0;
+ RawComponents[3,0]:=0.0;
+ RawComponents[3,1]:=0.0;
+ RawComponents[3,2]:=0.0;
+ RawComponents[3,3]:=1.0;
+end;
+
+constructor TpvFBXMatrix4x4.CreateScale(const sx,sy,sz:TpvFBXScalar);
+begin
+ RawComponents[0,0]:=sx;
+ RawComponents[0,1]:=0.0;
+ RawComponents[0,2]:=0.0;
+ RawComponents[0,3]:=0.0;
+ RawComponents[1,0]:=0.0;
+ RawComponents[1,1]:=sy;
+ RawComponents[1,2]:=0.0;
+ RawComponents[1,3]:=0.0;
+ RawComponents[2,0]:=0.0;
+ RawComponents[2,1]:=0.0;
+ RawComponents[2,2]:=sz;
+ RawComponents[2,3]:=0.0;
+ RawComponents[3,0]:=0.0;
+ RawComponents[3,1]:=0.0;
+ RawComponents[3,2]:=0.0;
+ RawComponents[3,3]:=1.0;
+end;
+
+constructor TpvFBXMatrix4x4.CreateScale(const pScale:TpvFBXVector3);
+begin
+ RawComponents[0,0]:=pScale.x;
+ RawComponents[0,1]:=0.0;
+ RawComponents[0,2]:=0.0;
+ RawComponents[0,3]:=0.0;
+ RawComponents[1,0]:=0.0;
+ RawComponents[1,1]:=pScale.y;
+ RawComponents[1,2]:=0.0;
+ RawComponents[1,3]:=0.0;
+ RawComponents[2,0]:=0.0;
+ RawComponents[2,1]:=0.0;
+ RawComponents[2,2]:=pScale.z;
+ RawComponents[2,3]:=0.0;
+ RawComponents[3,0]:=0.0;
+ RawComponents[3,1]:=0.0;
+ RawComponents[3,2]:=0.0;
+ RawComponents[3,3]:=1.0;
+end;
+
+constructor TpvFBXMatrix4x4.CreateScale(const sx,sy,sz,sw:TpvFBXScalar);
+begin
+ RawComponents[0,0]:=sx;
+ RawComponents[0,1]:=0.0;
+ RawComponents[0,2]:=0.0;
+ RawComponents[0,3]:=0.0;
+ RawComponents[1,0]:=0.0;
+ RawComponents[1,1]:=sy;
+ RawComponents[1,2]:=0.0;
+ RawComponents[1,3]:=0.0;
+ RawComponents[2,0]:=0.0;
+ RawComponents[2,1]:=0.0;
+ RawComponents[2,2]:=sz;
+ RawComponents[2,3]:=0.0;
+ RawComponents[3,0]:=0.0;
+ RawComponents[3,1]:=0.0;
+ RawComponents[3,2]:=0.0;
+ RawComponents[3,3]:=sw;
+end;
+
+constructor TpvFBXMatrix4x4.CreateScale(const pScale:TpvFBXVector4);
+begin
+ RawComponents[0,0]:=pScale.x;
+ RawComponents[0,1]:=0.0;
+ RawComponents[0,2]:=0.0;
+ RawComponents[0,3]:=0.0;
+ RawComponents[1,0]:=0.0;
+ RawComponents[1,1]:=pScale.y;
+ RawComponents[1,2]:=0.0;
+ RawComponents[1,3]:=0.0;
+ RawComponents[2,0]:=0.0;
+ RawComponents[2,1]:=0.0;
+ RawComponents[2,2]:=pScale.z;
+ RawComponents[2,3]:=0.0;
+ RawComponents[3,0]:=0.0;
+ RawComponents[3,1]:=0.0;
+ RawComponents[3,2]:=0.0;
+ RawComponents[3,3]:=pScale.w;
+end;
+
+constructor TpvFBXMatrix4x4.CreateTranslation(const tx,ty,tz:TpvFBXScalar);
+begin
+ RawComponents[0,0]:=1.0;
+ RawComponents[0,1]:=0.0;
+ RawComponents[0,2]:=0.0;
+ RawComponents[0,3]:=0.0;
+ RawComponents[1,0]:=0.0;
+ RawComponents[1,1]:=1.0;
+ RawComponents[1,2]:=0.0;
+ RawComponents[1,3]:=0.0;
+ RawComponents[2,0]:=0.0;
+ RawComponents[2,1]:=0.0;
+ RawComponents[2,2]:=1.0;
+ RawComponents[2,3]:=0.0;
+ RawComponents[3,0]:=tx;
+ RawComponents[3,1]:=ty;
+ RawComponents[3,2]:=tz;
+ RawComponents[3,3]:=1.0;
+end;
+
+constructor TpvFBXMatrix4x4.CreateTranslation(const pTranslation:TpvFBXVector3);
+begin
+ RawComponents[0,0]:=1.0;
+ RawComponents[0,1]:=0.0;
+ RawComponents[0,2]:=0.0;
+ RawComponents[0,3]:=0.0;
+ RawComponents[1,0]:=0.0;
+ RawComponents[1,1]:=1.0;
+ RawComponents[1,2]:=0.0;
+ RawComponents[1,3]:=0.0;
+ RawComponents[2,0]:=0.0;
+ RawComponents[2,1]:=0.0;
+ RawComponents[2,2]:=1.0;
+ RawComponents[2,3]:=0.0;
+ RawComponents[3,0]:=pTranslation.x;
+ RawComponents[3,1]:=pTranslation.y;
+ RawComponents[3,2]:=pTranslation.z;
+ RawComponents[3,3]:=1.0;
+end;
+
+constructor TpvFBXMatrix4x4.CreateTranslation(const tx,ty,tz,tw:TpvFBXScalar);
+begin
+ RawComponents[0,0]:=1.0;
+ RawComponents[0,1]:=0.0;
+ RawComponents[0,2]:=0.0;
+ RawComponents[0,3]:=0.0;
+ RawComponents[1,0]:=0.0;
+ RawComponents[1,1]:=1.0;
+ RawComponents[1,2]:=0.0;
+ RawComponents[1,3]:=0.0;
+ RawComponents[2,0]:=0.0;
+ RawComponents[2,1]:=0.0;
+ RawComponents[2,2]:=1.0;
+ RawComponents[2,3]:=0.0;
+ RawComponents[3,0]:=tx;
+ RawComponents[3,1]:=ty;
+ RawComponents[3,2]:=tz;
+ RawComponents[3,3]:=tw;
+end;
+
+constructor TpvFBXMatrix4x4.CreateTranslation(const pTranslation:TpvFBXVector4);
+begin
+ RawComponents[0,0]:=1.0;
+ RawComponents[0,1]:=0.0;
+ RawComponents[0,2]:=0.0;
+ RawComponents[0,3]:=0.0;
+ RawComponents[1,0]:=0.0;
+ RawComponents[1,1]:=1.0;
+ RawComponents[1,2]:=0.0;
+ RawComponents[1,3]:=0.0;
+ RawComponents[2,0]:=0.0;
+ RawComponents[2,1]:=0.0;
+ RawComponents[2,2]:=1.0;
+ RawComponents[2,3]:=0.0;
+ RawComponents[3,0]:=pTranslation.x;
+ RawComponents[3,1]:=pTranslation.y;
+ RawComponents[3,2]:=pTranslation.z;
+ RawComponents[3,3]:=pTranslation.w;
+end;
+
+constructor TpvFBXMatrix4x4.CreateTranslated(const pMatrix:TpvFBXMatrix4x4;pTranslation:TpvFBXVector3);
+begin
+ RawComponents[0]:=pMatrix.RawComponents[0];
+ RawComponents[1]:=pMatrix.RawComponents[1];
+ RawComponents[2]:=pMatrix.RawComponents[2];
+ RawComponents[3,0]:=(pMatrix.RawComponents[0,0]*pTranslation.x)+(pMatrix.RawComponents[1,0]*pTranslation.y)+(pMatrix.RawComponents[2,0]*pTranslation.z)+pMatrix.RawComponents[3,0];
+ RawComponents[3,1]:=(pMatrix.RawComponents[0,1]*pTranslation.x)+(pMatrix.RawComponents[1,1]*pTranslation.y)+(pMatrix.RawComponents[2,1]*pTranslation.z)+pMatrix.RawComponents[3,1];
+ RawComponents[3,2]:=(pMatrix.RawComponents[0,2]*pTranslation.x)+(pMatrix.RawComponents[1,2]*pTranslation.y)+(pMatrix.RawComponents[2,2]*pTranslation.z)+pMatrix.RawComponents[3,2];
+ RawComponents[3,3]:=(pMatrix.RawComponents[0,3]*pTranslation.x)+(pMatrix.RawComponents[1,3]*pTranslation.y)+(pMatrix.RawComponents[2,3]*pTranslation.z)+pMatrix.RawComponents[3,3];
+end;
+
+constructor TpvFBXMatrix4x4.CreateTranslated(const pMatrix:TpvFBXMatrix4x4;pTranslation:TpvFBXVector4);
+begin
+ RawComponents[0]:=pMatrix.RawComponents[0];
+ RawComponents[1]:=pMatrix.RawComponents[1];
+ RawComponents[2]:=pMatrix.RawComponents[2];
+ RawComponents[3,0]:=(pMatrix.RawComponents[0,0]*pTranslation.x)+(pMatrix.RawComponents[1,0]*pTranslation.y)+(pMatrix.RawComponents[2,0]*pTranslation.z)+(pMatrix.RawComponents[3,0]*pTranslation.w);
+ RawComponents[3,1]:=(pMatrix.RawComponents[0,1]*pTranslation.x)+(pMatrix.RawComponents[1,1]*pTranslation.y)+(pMatrix.RawComponents[2,1]*pTranslation.z)+(pMatrix.RawComponents[3,1]*pTranslation.w);
+ RawComponents[3,2]:=(pMatrix.RawComponents[0,2]*pTranslation.x)+(pMatrix.RawComponents[1,2]*pTranslation.y)+(pMatrix.RawComponents[2,2]*pTranslation.z)+(pMatrix.RawComponents[3,2]*pTranslation.w);
+ RawComponents[3,3]:=(pMatrix.RawComponents[0,3]*pTranslation.x)+(pMatrix.RawComponents[1,3]*pTranslation.y)+(pMatrix.RawComponents[2,3]*pTranslation.z)+(pMatrix.RawComponents[3,3]*pTranslation.w);
+end;
+
+constructor TpvFBXMatrix4x4.CreateFromToRotation(const FromDirection,ToDirection:TpvFBXVector3);
+const EPSILON=1e-8;
+var e,h,hvx,hvz,hvxy,hvxz,hvyz:TpvFBXScalar;
+    x,u,v,c:TpvFBXVector3;
+begin
+ e:=FromDirection.Dot(ToDirection);
+ if abs(e)>(1.0-EPSILON) then begin
+  x:=FromDirection.Abs;
+  if x.x<x.y then begin
+   if x.x<x.z then begin
+    x.x:=1.0;
+    x.y:=0.0;
+    x.z:=0.0;
+   end else begin
+    x.x:=0.0;
+    x.y:=0.0;
+    x.z:=1.0;
+   end;
+  end else begin
+   if x.y<x.z then begin
+    x.x:=0.0;
+    x.y:=1.0;
+    x.z:=0.0;
+   end else begin
+    x.x:=0.0;
+    x.y:=0.0;
+    x.z:=1.0;
+   end;
+  end;
+  u:=x-FromDirection;
+  v:=x-ToDirection;
+  c.x:=2.0/(sqr(u.x)+sqr(u.y)+sqr(u.z));
+  c.y:=2.0/(sqr(v.x)+sqr(v.y)+sqr(v.z));
+  c.z:=c.x*c.y*((u.x*v.x)+(u.y*v.y)+(u.z*v.z));
+  RawComponents[0,0]:=1.0+((c.z*(v.x*u.x))-((c.y*(v.x*v.x))+(c.x*(u.x*u.x))));
+  RawComponents[0,1]:=(c.z*(v.x*u.y))-((c.y*(v.x*v.y))+(c.x*(u.x*u.y)));
+  RawComponents[0,2]:=(c.z*(v.x*u.z))-((c.y*(v.x*v.z))+(c.x*(u.x*u.z)));
+  RawComponents[0,3]:=0.0;
+  RawComponents[1,0]:=(c.z*(v.y*u.x))-((c.y*(v.y*v.x))+(c.x*(u.y*u.x)));
+  RawComponents[1,1]:=1.0+((c.z*(v.y*u.y))-((c.y*(v.y*v.y))+(c.x*(u.y*u.y))));
+  RawComponents[1,2]:=(c.z*(v.y*u.z))-((c.y*(v.y*v.z))+(c.x*(u.y*u.z)));
+  RawComponents[1,3]:=0.0;
+  RawComponents[2,0]:=(c.z*(v.z*u.x))-((c.y*(v.z*v.x))+(c.x*(u.z*u.x)));
+  RawComponents[2,1]:=(c.z*(v.z*u.y))-((c.y*(v.z*v.y))+(c.x*(u.z*u.y)));
+  RawComponents[2,2]:=1.0+((c.z*(v.z*u.z))-((c.y*(v.z*v.z))+(c.x*(u.z*u.z))));
+  RawComponents[2,3]:=0.0;
+  RawComponents[3,0]:=0.0;
+  RawComponents[3,1]:=0.0;
+  RawComponents[3,2]:=0.0;
+  RawComponents[3,3]:=1.0;
+ end else begin
+  v:=FromDirection.Cross(ToDirection);
+  h:=1.0/(1.0+e);
+  hvx:=h*v.x;
+  hvz:=h*v.z;
+  hvxy:=hvx*v.y;
+  hvxz:=hvx*v.z;
+  hvyz:=hvz*v.y;
+  RawComponents[0,0]:=e+(hvx*v.x);
+  RawComponents[0,1]:=hvxy-v.z;
+  RawComponents[0,2]:=hvxz+v.y;
+  RawComponents[0,3]:=0.0;
+  RawComponents[1,0]:=hvxy+v.z;
+  RawComponents[1,1]:=e+(h*sqr(v.y));
+  RawComponents[1,2]:=hvyz-v.x;
+  RawComponents[1,3]:=0.0;
+  RawComponents[2,0]:=hvxz-v.y;
+  RawComponents[2,1]:=hvyz+v.x;
+  RawComponents[2,2]:=e+(hvz*v.z);
+  RawComponents[2,3]:=0.0;
+  RawComponents[3,0]:=0.0;
+  RawComponents[3,1]:=0.0;
+  RawComponents[3,2]:=0.0;
+  RawComponents[3,3]:=1.0;
+ end;
+end;
+
+constructor TpvFBXMatrix4x4.CreateConstruct(const pForwards,pUp:TpvFBXVector3);
+var RightVector,UpVector,ForwardVector:TpvFBXVector3;
+begin
+ ForwardVector:=(-pForwards).Normalize;
+ RightVector:=pUp.Cross(ForwardVector).Normalize;
+ UpVector:=ForwardVector.Cross(RightVector).Normalize;
+ RawComponents[0,0]:=RightVector.x;
+ RawComponents[0,1]:=RightVector.y;
+ RawComponents[0,2]:=RightVector.z;
+ RawComponents[0,3]:=0.0;
+ RawComponents[1,0]:=UpVector.x;
+ RawComponents[1,1]:=UpVector.y;
+ RawComponents[1,2]:=UpVector.z;
+ RawComponents[1,3]:=0.0;
+ RawComponents[2,0]:=ForwardVector.x;
+ RawComponents[2,1]:=ForwardVector.y;
+ RawComponents[2,2]:=ForwardVector.z;
+ RawComponents[2,3]:=0.0;
+ RawComponents[3,0]:=0.0;
+ RawComponents[3,1]:=0.0;
+ RawComponents[3,2]:=0.0;
+ RawComponents[3,3]:=1.0;
+end;
+
+constructor TpvFBXMatrix4x4.CreateOuterProduct(const u,v:TpvFBXVector3);
+begin
+ RawComponents[0,0]:=u.x*v.x;
+ RawComponents[0,1]:=u.x*v.y;
+ RawComponents[0,2]:=u.x*v.z;
+ RawComponents[0,3]:=0.0;
+ RawComponents[1,0]:=u.y*v.x;
+ RawComponents[1,1]:=u.y*v.y;
+ RawComponents[1,2]:=u.y*v.z;
+ RawComponents[1,3]:=0.0;
+ RawComponents[2,0]:=u.z*v.x;
+ RawComponents[2,1]:=u.z*v.y;
+ RawComponents[2,2]:=u.z*v.z;
+ RawComponents[2,3]:=0.0;
+ RawComponents[3,0]:=0.0;
+ RawComponents[3,1]:=0.0;
+ RawComponents[3,2]:=0.0;
+ RawComponents[3,3]:=1.0;
+end;
+
+constructor TpvFBXMatrix4x4.CreateFrustum(const Left,Right,Bottom,Top,zNear,zFar:TpvFBXScalar);
+var rml,tmb,fmn:TpvFBXScalar;
+begin
+ rml:=Right-Left;
+ tmb:=Top-Bottom;
+ fmn:=zFar-zNear;
+ RawComponents[0,0]:=(zNear*2.0)/rml;
+ RawComponents[0,1]:=0.0;
+ RawComponents[0,2]:=0.0;
+ RawComponents[0,3]:=0.0;
+ RawComponents[1,0]:=0.0;
+ RawComponents[1,1]:=(zNear*2.0)/tmb;
+ RawComponents[1,2]:=0.0;
+ RawComponents[1,3]:=0.0;
+ RawComponents[2,0]:=(Right+Left)/rml;
+ RawComponents[2,1]:=(Top+Bottom)/tmb;
+ RawComponents[2,2]:=(-(zFar+zNear))/fmn;
+ RawComponents[2,3]:=-1.0;
+ RawComponents[3,0]:=0.0;
+ RawComponents[3,1]:=0.0;
+ RawComponents[3,2]:=(-((zFar*zNear)*2.0))/fmn;
+ RawComponents[3,3]:=0.0;
+end;
+
+constructor TpvFBXMatrix4x4.CreateOrtho(const Left,Right,Bottom,Top,zNear,zFar:TpvFBXScalar);
+var rml,tmb,fmn:TpvFBXScalar;
+begin
+ rml:=Right-Left;
+ tmb:=Top-Bottom;
+ fmn:=zFar-zNear;
+ RawComponents[0,0]:=2.0/rml;
+ RawComponents[0,1]:=0.0;
+ RawComponents[0,2]:=0.0;
+ RawComponents[0,3]:=0.0;
+ RawComponents[1,0]:=0.0;
+ RawComponents[1,1]:=2.0/tmb;
+ RawComponents[1,2]:=0.0;
+ RawComponents[1,3]:=0.0;
+ RawComponents[2,0]:=0.0;
+ RawComponents[2,1]:=0.0;
+ RawComponents[2,2]:=(-2.0)/fmn;
+ RawComponents[2,3]:=0.0;
+ RawComponents[3,0]:=(-(Right+Left))/rml;
+ RawComponents[3,1]:=(-(Top+Bottom))/tmb;
+ RawComponents[3,2]:=(-(zFar+zNear))/fmn;
+ RawComponents[3,3]:=1.0;
+end;
+
+constructor TpvFBXMatrix4x4.CreateOrthoLH(const Left,Right,Bottom,Top,zNear,zFar:TpvFBXScalar);
+var rml,tmb,fmn:TpvFBXScalar;
+begin
+ rml:=Right-Left;
+ tmb:=Top-Bottom;
+ fmn:=zFar-zNear;
+ RawComponents[0,0]:=2.0/rml;
+ RawComponents[0,1]:=0.0;
+ RawComponents[0,2]:=0.0;
+ RawComponents[0,3]:=0.0;
+ RawComponents[1,0]:=0.0;
+ RawComponents[1,1]:=2.0/tmb;
+ RawComponents[1,2]:=0.0;
+ RawComponents[1,3]:=0.0;
+ RawComponents[2,0]:=0.0;
+ RawComponents[2,1]:=0.0;
+ RawComponents[2,2]:=1.0/fmn;
+ RawComponents[2,3]:=0.0;
+ RawComponents[3,0]:=0;
+ RawComponents[3,1]:=0;
+ RawComponents[3,2]:=(-zNear)/fmn;
+ RawComponents[3,3]:=1.0;
+end;
+
+constructor TpvFBXMatrix4x4.CreateOrthoRH(const Left,Right,Bottom,Top,zNear,zFar:TpvFBXScalar);
+var rml,tmb,fmn:TpvFBXScalar;
+begin
+ rml:=Right-Left;
+ tmb:=Top-Bottom;
+ fmn:=zFar-zNear;
+ RawComponents[0,0]:=2.0/rml;
+ RawComponents[0,1]:=0.0;
+ RawComponents[0,2]:=0.0;
+ RawComponents[0,3]:=0.0;
+ RawComponents[1,0]:=0.0;
+ RawComponents[1,1]:=2.0/tmb;
+ RawComponents[1,2]:=0.0;
+ RawComponents[1,3]:=0.0;
+ RawComponents[2,0]:=0.0;
+ RawComponents[2,1]:=0.0;
+ RawComponents[2,2]:=1.0/fmn;
+ RawComponents[2,3]:=0.0;
+ RawComponents[3,0]:=0;
+ RawComponents[3,1]:=0;
+ RawComponents[3,2]:=zNear/fmn;
+ RawComponents[3,3]:=1.0;
+end;
+
+constructor TpvFBXMatrix4x4.CreateOrthoOffCenterLH(const Left,Right,Bottom,Top,zNear,zFar:TpvFBXScalar);
+var rml,tmb,fmn:TpvFBXScalar;
+begin
+ rml:=Right-Left;
+ tmb:=Top-Bottom;
+ fmn:=zFar-zNear;
+ RawComponents[0,0]:=2.0/rml;
+ RawComponents[0,1]:=0.0;
+ RawComponents[0,2]:=0.0;
+ RawComponents[0,3]:=0.0;
+ RawComponents[1,0]:=0.0;
+ RawComponents[1,1]:=2.0/tmb;
+ RawComponents[1,2]:=0.0;
+ RawComponents[1,3]:=0.0;
+ RawComponents[2,0]:=0.0;
+ RawComponents[2,1]:=0.0;
+ RawComponents[2,2]:=1.0/fmn;
+ RawComponents[2,3]:=0.0;
+ RawComponents[3,0]:=(Right+Left)/rml;
+ RawComponents[3,1]:=(Top+Bottom)/tmb;
+ RawComponents[3,2]:=zNear/fmn;
+ RawComponents[3,3]:=1.0;
+end;
+
+constructor TpvFBXMatrix4x4.CreateOrthoOffCenterRH(const Left,Right,Bottom,Top,zNear,zFar:TpvFBXScalar);
+var rml,tmb,fmn:TpvFBXScalar;
+begin
+ rml:=Right-Left;
+ tmb:=Top-Bottom;
+ fmn:=zFar-zNear;
+ RawComponents[0,0]:=2.0/rml;
+ RawComponents[0,1]:=0.0;
+ RawComponents[0,2]:=0.0;
+ RawComponents[0,3]:=0.0;
+ RawComponents[1,0]:=0.0;
+ RawComponents[1,1]:=2.0/tmb;
+ RawComponents[1,2]:=0.0;
+ RawComponents[1,3]:=0.0;
+ RawComponents[2,0]:=0.0;
+ RawComponents[2,1]:=0.0;
+ RawComponents[2,2]:=(-2.0)/fmn;
+ RawComponents[2,3]:=0.0;
+ RawComponents[3,0]:=(-(Right+Left))/rml;
+ RawComponents[3,1]:=(-(Top+Bottom))/tmb;
+ RawComponents[3,2]:=(-(zFar+zNear))/fmn;
+ RawComponents[3,3]:=1.0;
+end;
+
+constructor TpvFBXMatrix4x4.CreatePerspective(const fovy,Aspect,zNear,zFar:TpvFBXScalar);
+const DEG2RAD=180.0/pi;
+var Sine,Cotangent,ZDelta,Radians:TpvFBXScalar;
+begin
+ Radians:=(fovy*0.5)*DEG2RAD;
+ ZDelta:=zFar-zNear;
+ Sine:=sin(Radians);
+ if not ((ZDelta=0) or (Sine=0) or (aspect=0)) then begin
+  Cotangent:=cos(Radians)/Sine;
+  RawComponents:=FBXMatrix4x4Identity.RawComponents;
+  RawComponents[0,0]:=Cotangent/aspect;
+  RawComponents[1,1]:=Cotangent;
+  RawComponents[2,2]:=(-(zFar+zNear))/ZDelta;
+  RawComponents[2,3]:=-1-0;
+  RawComponents[3,2]:=(-(2.0*zNear*zFar))/ZDelta;
+  RawComponents[3,3]:=0.0;
+ end;
+end;
+
+constructor TpvFBXMatrix4x4.CreateLookAt(const Eye,Center,Up:TpvFBXVector3);
+var RightVector,UpVector,ForwardVector:TpvFBXVector3;
+begin
+ ForwardVector:=(Eye-Center).Normalize;
+ RightVector:=(Up.Cross(ForwardVector)).Normalize;
+ UpVector:=(ForwardVector.Cross(RightVector)).Normalize;
+ RawComponents[0,0]:=RightVector.x;
+ RawComponents[1,0]:=RightVector.y;
+ RawComponents[2,0]:=RightVector.z;
+ RawComponents[3,0]:=-((RightVector.x*Eye.x)+(RightVector.y*Eye.y)+(RightVector.z*Eye.z));
+ RawComponents[0,1]:=UpVector.x;
+ RawComponents[1,1]:=UpVector.y;
+ RawComponents[2,1]:=UpVector.z;
+ RawComponents[3,1]:=-((UpVector.x*Eye.x)+(UpVector.y*Eye.y)+(UpVector.z*Eye.z));
+ RawComponents[0,2]:=ForwardVector.x;
+ RawComponents[1,2]:=ForwardVector.y;
+ RawComponents[2,2]:=ForwardVector.z;
+ RawComponents[3,2]:=-((ForwardVector.x*Eye.x)+(ForwardVector.y*Eye.y)+(ForwardVector.z*Eye.z));
+ RawComponents[0,3]:=0.0;
+ RawComponents[1,3]:=0.0;
+ RawComponents[2,3]:=0.0;
+ RawComponents[3,3]:=1.0;
+end;
+
+constructor TpvFBXMatrix4x4.CreateFill(const Eye,RightVector,UpVector,ForwardVector:TpvFBXVector3);
+begin
+ RawComponents[0,0]:=RightVector.x;
+ RawComponents[1,0]:=RightVector.y;
+ RawComponents[2,0]:=RightVector.z;
+ RawComponents[3,0]:=-((RightVector.x*Eye.x)+(RightVector.y*Eye.y)+(RightVector.z*Eye.z));
+ RawComponents[0,1]:=UpVector.x;
+ RawComponents[1,1]:=UpVector.y;
+ RawComponents[2,1]:=UpVector.z;
+ RawComponents[3,1]:=-((UpVector.x*Eye.x)+(UpVector.y*Eye.y)+(UpVector.z*Eye.z));
+ RawComponents[0,2]:=ForwardVector.x;
+ RawComponents[1,2]:=ForwardVector.y;
+ RawComponents[2,2]:=ForwardVector.z;
+ RawComponents[3,2]:=-((ForwardVector.x*Eye.x)+(ForwardVector.y*Eye.y)+(ForwardVector.z*Eye.z));
+ RawComponents[0,3]:=0.0;
+ RawComponents[1,3]:=0.0;
+ RawComponents[2,3]:=0.0;
+ RawComponents[3,3]:=1.0;
+end;
+
+constructor TpvFBXMatrix4x4.CreateConstructX(const xAxis:TpvFBXVector3);
+var a,b,c:TpvFBXVector3;
+begin
+ a:=xAxis.Normalize;
+ RawComponents[0,0]:=a.x;
+ RawComponents[0,1]:=a.y;
+ RawComponents[0,2]:=a.z;
+ RawComponents[0,3]:=0.0;
+//b:=TpvFBXVector3.Create(0.0,0.0,1.0).Cross(a).Normalize;
+ b:=a.Perpendicular.Normalize;
+ RawComponents[1,0]:=b.x;
+ RawComponents[1,1]:=b.y;
+ RawComponents[1,2]:=b.z;
+ RawComponents[1,3]:=0.0;
+ c:=b.Cross(a).Normalize;
+ RawComponents[2,0]:=c.x;
+ RawComponents[2,1]:=c.y;
+ RawComponents[2,2]:=c.z;
+ RawComponents[2,3]:=0.0;
+ RawComponents[3,0]:=0.0;
+ RawComponents[3,1]:=0.0;
+ RawComponents[3,2]:=0.0;
+ RawComponents[3,3]:=1.0;
+end;
+
+constructor TpvFBXMatrix4x4.CreateConstructY(const yAxis:TpvFBXVector3);
+var a,b,c:TpvFBXVector3;
+begin
+ a:=yAxis.Normalize;
+ RawComponents[1,0]:=a.x;
+ RawComponents[1,1]:=a.y;
+ RawComponents[1,2]:=a.z;
+ RawComponents[1,3]:=0.0;
+ b:=a.Perpendicular.Normalize;
+ RawComponents[0,0]:=b.x;
+ RawComponents[0,1]:=b.y;
+ RawComponents[0,2]:=b.z;
+ RawComponents[0,3]:=0.0;
+ c:=b.Cross(a).Normalize;
+ RawComponents[2,0]:=c.x;
+ RawComponents[2,1]:=c.y;
+ RawComponents[2,2]:=c.z;
+ RawComponents[2,3]:=0.0;
+ RawComponents[3,0]:=0.0;
+ RawComponents[3,1]:=0.0;
+ RawComponents[3,2]:=0.0;
+ RawComponents[3,3]:=1.0;
+end;
+
+constructor TpvFBXMatrix4x4.CreateConstructZ(const zAxis:TpvFBXVector3);
+var a,b,c:TpvFBXVector3;
+begin
+ a:=zAxis.Normalize;
+ RawComponents[2,0]:=a.x;
+ RawComponents[2,1]:=a.y;
+ RawComponents[2,2]:=a.z;
+ RawComponents[2,3]:=0.0;
+//b:=TpvFBXVector3.Create(0.0,1.0,0.0).Cross(a).Normalize;
+ b:=a.Perpendicular.Normalize;
+ RawComponents[1,0]:=b.x;
+ RawComponents[1,1]:=b.y;
+ RawComponents[1,2]:=b.z;
+ RawComponents[1,3]:=0.0;
+ c:=b.Cross(a).Normalize;
+ RawComponents[0,0]:=c.x;
+ RawComponents[0,1]:=c.y;
+ RawComponents[0,2]:=c.z;
+ RawComponents[0,3]:=0.0;
+ RawComponents[3,0]:=0.0;
+ RawComponents[3,1]:=0.0;
+ RawComponents[3,2]:=0.0;
+ RawComponents[3,3]:=1.0;
+end;
+
+class operator TpvFBXMatrix4x4.Implicit({$ifdef fpc}constref{$else}const{$endif} a:TpvFBXScalar):TpvFBXMatrix4x4;
+begin
+ result.RawComponents[0,0]:=a;
+ result.RawComponents[0,1]:=a;
+ result.RawComponents[0,2]:=a;
+ result.RawComponents[0,3]:=a;
+ result.RawComponents[1,0]:=a;
+ result.RawComponents[1,1]:=a;
+ result.RawComponents[1,2]:=a;
+ result.RawComponents[1,3]:=a;
+ result.RawComponents[2,0]:=a;
+ result.RawComponents[2,1]:=a;
+ result.RawComponents[2,2]:=a;
+ result.RawComponents[2,3]:=a;
+ result.RawComponents[3,0]:=a;
+ result.RawComponents[3,1]:=a;
+ result.RawComponents[3,2]:=a;
+ result.RawComponents[3,3]:=a;
+end;
+
+class operator TpvFBXMatrix4x4.Explicit({$ifdef fpc}constref{$else}const{$endif} a:TpvFBXScalar):TpvFBXMatrix4x4;
+begin
+ result.RawComponents[0,0]:=a;
+ result.RawComponents[0,1]:=a;
+ result.RawComponents[0,2]:=a;
+ result.RawComponents[0,3]:=a;
+ result.RawComponents[1,0]:=a;
+ result.RawComponents[1,1]:=a;
+ result.RawComponents[1,2]:=a;
+ result.RawComponents[1,3]:=a;
+ result.RawComponents[2,0]:=a;
+ result.RawComponents[2,1]:=a;
+ result.RawComponents[2,2]:=a;
+ result.RawComponents[2,3]:=a;
+ result.RawComponents[3,0]:=a;
+ result.RawComponents[3,1]:=a;
+ result.RawComponents[3,2]:=a;
+ result.RawComponents[3,3]:=a;
+end;
+
+class operator TpvFBXMatrix4x4.Equal({$ifdef fpc}constref{$else}const{$endif} a,b:TpvFBXMatrix4x4):boolean;
+begin
+ result:=SameValue(a.RawComponents[0,0],b.RawComponents[0,0]) and
+         SameValue(a.RawComponents[0,1],b.RawComponents[0,1]) and
+         SameValue(a.RawComponents[0,2],b.RawComponents[0,2]) and
+         SameValue(a.RawComponents[0,3],b.RawComponents[0,3]) and
+         SameValue(a.RawComponents[1,0],b.RawComponents[1,0]) and
+         SameValue(a.RawComponents[1,1],b.RawComponents[1,1]) and
+         SameValue(a.RawComponents[1,2],b.RawComponents[1,2]) and
+         SameValue(a.RawComponents[1,3],b.RawComponents[1,3]) and
+         SameValue(a.RawComponents[2,0],b.RawComponents[2,0]) and
+         SameValue(a.RawComponents[2,1],b.RawComponents[2,1]) and
+         SameValue(a.RawComponents[2,2],b.RawComponents[2,2]) and
+         SameValue(a.RawComponents[2,3],b.RawComponents[2,3]) and
+         SameValue(a.RawComponents[3,0],b.RawComponents[3,0]) and
+         SameValue(a.RawComponents[3,1],b.RawComponents[3,1]) and
+         SameValue(a.RawComponents[3,2],b.RawComponents[3,2]) and
+         SameValue(a.RawComponents[3,3],b.RawComponents[3,3]);
+end;
+
+class operator TpvFBXMatrix4x4.NotEqual({$ifdef fpc}constref{$else}const{$endif} a,b:TpvFBXMatrix4x4):boolean;
+begin
+ result:=(not SameValue(a.RawComponents[0,0],b.RawComponents[0,0])) or
+         (not SameValue(a.RawComponents[0,1],b.RawComponents[0,1])) or
+         (not SameValue(a.RawComponents[0,2],b.RawComponents[0,2])) or
+         (not SameValue(a.RawComponents[0,3],b.RawComponents[0,3])) or
+         (not SameValue(a.RawComponents[1,0],b.RawComponents[1,0])) or
+         (not SameValue(a.RawComponents[1,1],b.RawComponents[1,1])) or
+         (not SameValue(a.RawComponents[1,2],b.RawComponents[1,2])) or
+         (not SameValue(a.RawComponents[1,3],b.RawComponents[1,3])) or
+         (not SameValue(a.RawComponents[2,0],b.RawComponents[2,0])) or
+         (not SameValue(a.RawComponents[2,1],b.RawComponents[2,1])) or
+         (not SameValue(a.RawComponents[2,2],b.RawComponents[2,2])) or
+         (not SameValue(a.RawComponents[2,3],b.RawComponents[2,3])) or
+         (not SameValue(a.RawComponents[3,0],b.RawComponents[3,0])) or
+         (not SameValue(a.RawComponents[3,1],b.RawComponents[3,1])) or
+         (not SameValue(a.RawComponents[3,2],b.RawComponents[3,2])) or
+         (not SameValue(a.RawComponents[3,3],b.RawComponents[3,3]));
+end;
+
+class operator TpvFBXMatrix4x4.Inc({$ifdef fpc}constref{$else}const{$endif} a:TpvFBXMatrix4x4):TpvFBXMatrix4x4;
+begin
+ result.RawComponents[0,0]:=a.RawComponents[0,0]+1.0;
+ result.RawComponents[0,1]:=a.RawComponents[0,1]+1.0;
+ result.RawComponents[0,2]:=a.RawComponents[0,2]+1.0;
+ result.RawComponents[0,3]:=a.RawComponents[0,3]+1.0;
+ result.RawComponents[1,0]:=a.RawComponents[1,0]+1.0;
+ result.RawComponents[1,1]:=a.RawComponents[1,1]+1.0;
+ result.RawComponents[1,2]:=a.RawComponents[1,2]+1.0;
+ result.RawComponents[1,3]:=a.RawComponents[1,3]+1.0;
+ result.RawComponents[2,0]:=a.RawComponents[2,0]+1.0;
+ result.RawComponents[2,1]:=a.RawComponents[2,1]+1.0;
+ result.RawComponents[2,2]:=a.RawComponents[2,2]+1.0;
+ result.RawComponents[2,3]:=a.RawComponents[2,3]+1.0;
+ result.RawComponents[3,0]:=a.RawComponents[3,0]+1.0;
+ result.RawComponents[3,1]:=a.RawComponents[3,1]+1.0;
+ result.RawComponents[3,2]:=a.RawComponents[3,2]+1.0;
+ result.RawComponents[3,3]:=a.RawComponents[3,3]+1.0;
+end;
+
+class operator TpvFBXMatrix4x4.Dec({$ifdef fpc}constref{$else}const{$endif} a:TpvFBXMatrix4x4):TpvFBXMatrix4x4;
+begin
+ result.RawComponents[0,0]:=a.RawComponents[0,0]-1.0;
+ result.RawComponents[0,1]:=a.RawComponents[0,1]-1.0;
+ result.RawComponents[0,2]:=a.RawComponents[0,2]-1.0;
+ result.RawComponents[0,3]:=a.RawComponents[0,3]-1.0;
+ result.RawComponents[1,0]:=a.RawComponents[1,0]-1.0;
+ result.RawComponents[1,1]:=a.RawComponents[1,1]-1.0;
+ result.RawComponents[1,2]:=a.RawComponents[1,2]-1.0;
+ result.RawComponents[1,3]:=a.RawComponents[1,3]-1.0;
+ result.RawComponents[2,0]:=a.RawComponents[2,0]-1.0;
+ result.RawComponents[2,1]:=a.RawComponents[2,1]-1.0;
+ result.RawComponents[2,2]:=a.RawComponents[2,2]-1.0;
+ result.RawComponents[2,3]:=a.RawComponents[2,3]-1.0;
+ result.RawComponents[3,0]:=a.RawComponents[3,0]-1.0;
+ result.RawComponents[3,1]:=a.RawComponents[3,1]-1.0;
+ result.RawComponents[3,2]:=a.RawComponents[3,2]-1.0;
+ result.RawComponents[3,3]:=a.RawComponents[3,3]-1.0;
+end;
+
+class operator TpvFBXMatrix4x4.Add({$ifdef fpc}constref{$else}const{$endif} a,b:TpvFBXMatrix4x4):TpvFBXMatrix4x4;
+begin
+ result.RawComponents[0,0]:=a.RawComponents[0,0]+b.RawComponents[0,0];
+ result.RawComponents[0,1]:=a.RawComponents[0,1]+b.RawComponents[0,1];
+ result.RawComponents[0,2]:=a.RawComponents[0,2]+b.RawComponents[0,2];
+ result.RawComponents[0,3]:=a.RawComponents[0,3]+b.RawComponents[0,3];
+ result.RawComponents[1,0]:=a.RawComponents[1,0]+b.RawComponents[1,0];
+ result.RawComponents[1,1]:=a.RawComponents[1,1]+b.RawComponents[1,1];
+ result.RawComponents[1,2]:=a.RawComponents[1,2]+b.RawComponents[1,2];
+ result.RawComponents[1,3]:=a.RawComponents[1,3]+b.RawComponents[1,3];
+ result.RawComponents[2,0]:=a.RawComponents[2,0]+b.RawComponents[2,0];
+ result.RawComponents[2,1]:=a.RawComponents[2,1]+b.RawComponents[2,1];
+ result.RawComponents[2,2]:=a.RawComponents[2,2]+b.RawComponents[2,2];
+ result.RawComponents[2,3]:=a.RawComponents[2,3]+b.RawComponents[2,3];
+ result.RawComponents[3,0]:=a.RawComponents[3,0]+b.RawComponents[3,0];
+ result.RawComponents[3,1]:=a.RawComponents[3,1]+b.RawComponents[3,1];
+ result.RawComponents[3,2]:=a.RawComponents[3,2]+b.RawComponents[3,2];
+ result.RawComponents[3,3]:=a.RawComponents[3,3]+b.RawComponents[3,3];
+end;
+
+class operator TpvFBXMatrix4x4.Add({$ifdef fpc}constref{$else}const{$endif} a:TpvFBXMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TpvFBXScalar):TpvFBXMatrix4x4;
+begin
+ result.RawComponents[0,0]:=a.RawComponents[0,0]+b;
+ result.RawComponents[0,1]:=a.RawComponents[0,1]+b;
+ result.RawComponents[0,2]:=a.RawComponents[0,2]+b;
+ result.RawComponents[0,3]:=a.RawComponents[0,3]+b;
+ result.RawComponents[1,0]:=a.RawComponents[1,0]+b;
+ result.RawComponents[1,1]:=a.RawComponents[1,1]+b;
+ result.RawComponents[1,2]:=a.RawComponents[1,2]+b;
+ result.RawComponents[1,3]:=a.RawComponents[1,3]+b;
+ result.RawComponents[2,0]:=a.RawComponents[2,0]+b;
+ result.RawComponents[2,1]:=a.RawComponents[2,1]+b;
+ result.RawComponents[2,2]:=a.RawComponents[2,2]+b;
+ result.RawComponents[2,3]:=a.RawComponents[2,3]+b;
+ result.RawComponents[3,0]:=a.RawComponents[3,0]+b;
+ result.RawComponents[3,1]:=a.RawComponents[3,1]+b;
+ result.RawComponents[3,2]:=a.RawComponents[3,2]+b;
+ result.RawComponents[3,3]:=a.RawComponents[3,3]+b;
+end;
+
+class operator TpvFBXMatrix4x4.Add({$ifdef fpc}constref{$else}const{$endif} a:TpvFBXScalar;{$ifdef fpc}constref{$else}const{$endif} b:TpvFBXMatrix4x4):TpvFBXMatrix4x4;
+begin
+ result.RawComponents[0,0]:=a+b.RawComponents[0,0];
+ result.RawComponents[0,1]:=a+b.RawComponents[0,1];
+ result.RawComponents[0,2]:=a+b.RawComponents[0,2];
+ result.RawComponents[0,3]:=a+b.RawComponents[0,3];
+ result.RawComponents[1,0]:=a+b.RawComponents[1,0];
+ result.RawComponents[1,1]:=a+b.RawComponents[1,1];
+ result.RawComponents[1,2]:=a+b.RawComponents[1,2];
+ result.RawComponents[1,3]:=a+b.RawComponents[1,3];
+ result.RawComponents[2,0]:=a+b.RawComponents[2,0];
+ result.RawComponents[2,1]:=a+b.RawComponents[2,1];
+ result.RawComponents[2,2]:=a+b.RawComponents[2,2];
+ result.RawComponents[2,3]:=a+b.RawComponents[2,3];
+ result.RawComponents[3,0]:=a+b.RawComponents[3,0];
+ result.RawComponents[3,1]:=a+b.RawComponents[3,1];
+ result.RawComponents[3,2]:=a+b.RawComponents[3,2];
+ result.RawComponents[3,3]:=a+b.RawComponents[3,3];
+end;
+
+class operator TpvFBXMatrix4x4.Subtract({$ifdef fpc}constref{$else}const{$endif} a,b:TpvFBXMatrix4x4):TpvFBXMatrix4x4;
+begin
+ result.RawComponents[0,0]:=a.RawComponents[0,0]-b.RawComponents[0,0];
+ result.RawComponents[0,1]:=a.RawComponents[0,1]-b.RawComponents[0,1];
+ result.RawComponents[0,2]:=a.RawComponents[0,2]-b.RawComponents[0,2];
+ result.RawComponents[0,3]:=a.RawComponents[0,3]-b.RawComponents[0,3];
+ result.RawComponents[1,0]:=a.RawComponents[1,0]-b.RawComponents[1,0];
+ result.RawComponents[1,1]:=a.RawComponents[1,1]-b.RawComponents[1,1];
+ result.RawComponents[1,2]:=a.RawComponents[1,2]-b.RawComponents[1,2];
+ result.RawComponents[1,3]:=a.RawComponents[1,3]-b.RawComponents[1,3];
+ result.RawComponents[2,0]:=a.RawComponents[2,0]-b.RawComponents[2,0];
+ result.RawComponents[2,1]:=a.RawComponents[2,1]-b.RawComponents[2,1];
+ result.RawComponents[2,2]:=a.RawComponents[2,2]-b.RawComponents[2,2];
+ result.RawComponents[2,3]:=a.RawComponents[2,3]-b.RawComponents[2,3];
+ result.RawComponents[3,0]:=a.RawComponents[3,0]-b.RawComponents[3,0];
+ result.RawComponents[3,1]:=a.RawComponents[3,1]-b.RawComponents[3,1];
+ result.RawComponents[3,2]:=a.RawComponents[3,2]-b.RawComponents[3,2];
+ result.RawComponents[3,3]:=a.RawComponents[3,3]-b.RawComponents[3,3];
+end;
+
+class operator TpvFBXMatrix4x4.Subtract({$ifdef fpc}constref{$else}const{$endif} a:TpvFBXMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TpvFBXScalar):TpvFBXMatrix4x4;
+begin
+ result.RawComponents[0,0]:=a.RawComponents[0,0]-b;
+ result.RawComponents[0,1]:=a.RawComponents[0,1]-b;
+ result.RawComponents[0,2]:=a.RawComponents[0,2]-b;
+ result.RawComponents[0,3]:=a.RawComponents[0,3]-b;
+ result.RawComponents[1,0]:=a.RawComponents[1,0]-b;
+ result.RawComponents[1,1]:=a.RawComponents[1,1]-b;
+ result.RawComponents[1,2]:=a.RawComponents[1,2]-b;
+ result.RawComponents[1,3]:=a.RawComponents[1,3]-b;
+ result.RawComponents[2,0]:=a.RawComponents[2,0]-b;
+ result.RawComponents[2,1]:=a.RawComponents[2,1]-b;
+ result.RawComponents[2,2]:=a.RawComponents[2,2]-b;
+ result.RawComponents[2,3]:=a.RawComponents[2,3]-b;
+ result.RawComponents[3,0]:=a.RawComponents[3,0]-b;
+ result.RawComponents[3,1]:=a.RawComponents[3,1]-b;
+ result.RawComponents[3,2]:=a.RawComponents[3,2]-b;
+ result.RawComponents[3,3]:=a.RawComponents[3,3]-b;
+end;
+
+class operator TpvFBXMatrix4x4.Subtract({$ifdef fpc}constref{$else}const{$endif} a:TpvFBXScalar;{$ifdef fpc}constref{$else}const{$endif} b:TpvFBXMatrix4x4): TpvFBXMatrix4x4;
+begin
+ result.RawComponents[0,0]:=a-b.RawComponents[0,0];
+ result.RawComponents[0,1]:=a-b.RawComponents[0,1];
+ result.RawComponents[0,2]:=a-b.RawComponents[0,2];
+ result.RawComponents[0,3]:=a-b.RawComponents[0,3];
+ result.RawComponents[1,0]:=a-b.RawComponents[1,0];
+ result.RawComponents[1,1]:=a-b.RawComponents[1,1];
+ result.RawComponents[1,2]:=a-b.RawComponents[1,2];
+ result.RawComponents[1,3]:=a-b.RawComponents[1,3];
+ result.RawComponents[2,0]:=a-b.RawComponents[2,0];
+ result.RawComponents[2,1]:=a-b.RawComponents[2,1];
+ result.RawComponents[2,2]:=a-b.RawComponents[2,2];
+ result.RawComponents[2,3]:=a-b.RawComponents[2,3];
+ result.RawComponents[3,0]:=a-b.RawComponents[3,0];
+ result.RawComponents[3,1]:=a-b.RawComponents[3,1];
+ result.RawComponents[3,2]:=a-b.RawComponents[3,2];
+ result.RawComponents[3,3]:=a-b.RawComponents[3,3];
+end;
+
+class operator TpvFBXMatrix4x4.Multiply({$ifdef fpc}constref{$else}const{$endif} a,b:TpvFBXMatrix4x4):TpvFBXMatrix4x4;
+begin
+ result.RawComponents[0,0]:=(a.RawComponents[0,0]*b.RawComponents[0,0])+(a.RawComponents[0,1]*b.RawComponents[1,0])+(a.RawComponents[0,2]*b.RawComponents[2,0])+(a.RawComponents[0,3]*b.RawComponents[3,0]);
+ result.RawComponents[0,1]:=(a.RawComponents[0,0]*b.RawComponents[0,1])+(a.RawComponents[0,1]*b.RawComponents[1,1])+(a.RawComponents[0,2]*b.RawComponents[2,1])+(a.RawComponents[0,3]*b.RawComponents[3,1]);
+ result.RawComponents[0,2]:=(a.RawComponents[0,0]*b.RawComponents[0,2])+(a.RawComponents[0,1]*b.RawComponents[1,2])+(a.RawComponents[0,2]*b.RawComponents[2,2])+(a.RawComponents[0,3]*b.RawComponents[3,2]);
+ result.RawComponents[0,3]:=(a.RawComponents[0,0]*b.RawComponents[0,3])+(a.RawComponents[0,1]*b.RawComponents[1,3])+(a.RawComponents[0,2]*b.RawComponents[2,3])+(a.RawComponents[0,3]*b.RawComponents[3,3]);
+ result.RawComponents[1,0]:=(a.RawComponents[1,0]*b.RawComponents[0,0])+(a.RawComponents[1,1]*b.RawComponents[1,0])+(a.RawComponents[1,2]*b.RawComponents[2,0])+(a.RawComponents[1,3]*b.RawComponents[3,0]);
+ result.RawComponents[1,1]:=(a.RawComponents[1,0]*b.RawComponents[0,1])+(a.RawComponents[1,1]*b.RawComponents[1,1])+(a.RawComponents[1,2]*b.RawComponents[2,1])+(a.RawComponents[1,3]*b.RawComponents[3,1]);
+ result.RawComponents[1,2]:=(a.RawComponents[1,0]*b.RawComponents[0,2])+(a.RawComponents[1,1]*b.RawComponents[1,2])+(a.RawComponents[1,2]*b.RawComponents[2,2])+(a.RawComponents[1,3]*b.RawComponents[3,2]);
+ result.RawComponents[1,3]:=(a.RawComponents[1,0]*b.RawComponents[0,3])+(a.RawComponents[1,1]*b.RawComponents[1,3])+(a.RawComponents[1,2]*b.RawComponents[2,3])+(a.RawComponents[1,3]*b.RawComponents[3,3]);
+ result.RawComponents[2,0]:=(a.RawComponents[2,0]*b.RawComponents[0,0])+(a.RawComponents[2,1]*b.RawComponents[1,0])+(a.RawComponents[2,2]*b.RawComponents[2,0])+(a.RawComponents[2,3]*b.RawComponents[3,0]);
+ result.RawComponents[2,1]:=(a.RawComponents[2,0]*b.RawComponents[0,1])+(a.RawComponents[2,1]*b.RawComponents[1,1])+(a.RawComponents[2,2]*b.RawComponents[2,1])+(a.RawComponents[2,3]*b.RawComponents[3,1]);
+ result.RawComponents[2,2]:=(a.RawComponents[2,0]*b.RawComponents[0,2])+(a.RawComponents[2,1]*b.RawComponents[1,2])+(a.RawComponents[2,2]*b.RawComponents[2,2])+(a.RawComponents[2,3]*b.RawComponents[3,2]);
+ result.RawComponents[2,3]:=(a.RawComponents[2,0]*b.RawComponents[0,3])+(a.RawComponents[2,1]*b.RawComponents[1,3])+(a.RawComponents[2,2]*b.RawComponents[2,3])+(a.RawComponents[2,3]*b.RawComponents[3,3]);
+ result.RawComponents[3,0]:=(a.RawComponents[3,0]*b.RawComponents[0,0])+(a.RawComponents[3,1]*b.RawComponents[1,0])+(a.RawComponents[3,2]*b.RawComponents[2,0])+(a.RawComponents[3,3]*b.RawComponents[3,0]);
+ result.RawComponents[3,1]:=(a.RawComponents[3,0]*b.RawComponents[0,1])+(a.RawComponents[3,1]*b.RawComponents[1,1])+(a.RawComponents[3,2]*b.RawComponents[2,1])+(a.RawComponents[3,3]*b.RawComponents[3,1]);
+ result.RawComponents[3,2]:=(a.RawComponents[3,0]*b.RawComponents[0,2])+(a.RawComponents[3,1]*b.RawComponents[1,2])+(a.RawComponents[3,2]*b.RawComponents[2,2])+(a.RawComponents[3,3]*b.RawComponents[3,2]);
+ result.RawComponents[3,3]:=(a.RawComponents[3,0]*b.RawComponents[0,3])+(a.RawComponents[3,1]*b.RawComponents[1,3])+(a.RawComponents[3,2]*b.RawComponents[2,3])+(a.RawComponents[3,3]*b.RawComponents[3,3]);
+end;
+
+class operator TpvFBXMatrix4x4.Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvFBXMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TpvFBXScalar):TpvFBXMatrix4x4;
+begin
+ result.RawComponents[0,0]:=a.RawComponents[0,0]*b;
+ result.RawComponents[0,1]:=a.RawComponents[0,1]*b;
+ result.RawComponents[0,2]:=a.RawComponents[0,2]*b;
+ result.RawComponents[0,3]:=a.RawComponents[0,3]*b;
+ result.RawComponents[1,0]:=a.RawComponents[1,0]*b;
+ result.RawComponents[1,1]:=a.RawComponents[1,1]*b;
+ result.RawComponents[1,2]:=a.RawComponents[1,2]*b;
+ result.RawComponents[1,3]:=a.RawComponents[1,3]*b;
+ result.RawComponents[2,0]:=a.RawComponents[2,0]*b;
+ result.RawComponents[2,1]:=a.RawComponents[2,1]*b;
+ result.RawComponents[2,2]:=a.RawComponents[2,2]*b;
+ result.RawComponents[2,3]:=a.RawComponents[2,3]*b;
+ result.RawComponents[3,0]:=a.RawComponents[3,0]*b;
+ result.RawComponents[3,1]:=a.RawComponents[3,1]*b;
+ result.RawComponents[3,2]:=a.RawComponents[3,2]*b;
+ result.RawComponents[3,3]:=a.RawComponents[3,3]*b;
+end;
+
+class operator TpvFBXMatrix4x4.Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvFBXScalar;{$ifdef fpc}constref{$else}const{$endif} b:TpvFBXMatrix4x4):TpvFBXMatrix4x4;
+begin
+ result.RawComponents[0,0]:=a*b.RawComponents[0,0];
+ result.RawComponents[0,1]:=a*b.RawComponents[0,1];
+ result.RawComponents[0,2]:=a*b.RawComponents[0,2];
+ result.RawComponents[0,3]:=a*b.RawComponents[0,3];
+ result.RawComponents[1,0]:=a*b.RawComponents[1,0];
+ result.RawComponents[1,1]:=a*b.RawComponents[1,1];
+ result.RawComponents[1,2]:=a*b.RawComponents[1,2];
+ result.RawComponents[1,3]:=a*b.RawComponents[1,3];
+ result.RawComponents[2,0]:=a*b.RawComponents[2,0];
+ result.RawComponents[2,1]:=a*b.RawComponents[2,1];
+ result.RawComponents[2,2]:=a*b.RawComponents[2,2];
+ result.RawComponents[2,3]:=a*b.RawComponents[2,3];
+ result.RawComponents[3,0]:=a*b.RawComponents[3,0];
+ result.RawComponents[3,1]:=a*b.RawComponents[3,1];
+ result.RawComponents[3,2]:=a*b.RawComponents[3,2];
+ result.RawComponents[3,3]:=a*b.RawComponents[3,3];
+end;
+
+class operator TpvFBXMatrix4x4.Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvFBXMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TpvFBXVector3):TpvFBXVector3;
+begin
+ result.x:=(a.RawComponents[0,0]*b.x)+(a.RawComponents[1,0]*b.y)+(a.RawComponents[2,0]*b.z)+a.RawComponents[3,0];
+ result.y:=(a.RawComponents[0,1]*b.x)+(a.RawComponents[1,1]*b.y)+(a.RawComponents[2,1]*b.z)+a.RawComponents[3,1];
+ result.z:=(a.RawComponents[0,2]*b.x)+(a.RawComponents[1,2]*b.y)+(a.RawComponents[2,2]*b.z)+a.RawComponents[3,2];
+end;
+
+class operator TpvFBXMatrix4x4.Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvFBXVector3;{$ifdef fpc}constref{$else}const{$endif} b:TpvFBXMatrix4x4):TpvFBXVector3;
+begin
+ result.x:=(a.x*b.RawComponents[0,0])+(a.y*b.RawComponents[0,1])+(a.z*b.RawComponents[0,2])+b.RawComponents[0,3];
+ result.y:=(a.x*b.RawComponents[1,0])+(a.y*b.RawComponents[1,1])+(a.z*b.RawComponents[1,2])+b.RawComponents[1,3];
+ result.z:=(a.x*b.RawComponents[2,0])+(a.y*b.RawComponents[2,1])+(a.z*b.RawComponents[2,2])+b.RawComponents[2,3];
+end;
+
+class operator TpvFBXMatrix4x4.Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvFBXMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TpvFBXVector4):TpvFBXVector4;
+begin
+ result.x:=(a.RawComponents[0,0]*b.x)+(a.RawComponents[1,0]*b.y)+(a.RawComponents[2,0]*b.z)+(a.RawComponents[3,0]*b.w);
+ result.y:=(a.RawComponents[0,1]*b.x)+(a.RawComponents[1,1]*b.y)+(a.RawComponents[2,1]*b.z)+(a.RawComponents[3,1]*b.w);
+ result.z:=(a.RawComponents[0,2]*b.x)+(a.RawComponents[1,2]*b.y)+(a.RawComponents[2,2]*b.z)+(a.RawComponents[3,2]*b.w);
+ result.w:=(a.RawComponents[0,3]*b.x)+(a.RawComponents[1,3]*b.y)+(a.RawComponents[2,3]*b.z)+(a.RawComponents[3,3]*b.w);
+end;
+
+class operator TpvFBXMatrix4x4.Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvFBXVector4;{$ifdef fpc}constref{$else}const{$endif} b:TpvFBXMatrix4x4):TpvFBXVector4;
+begin
+ result.x:=(a.x*b.RawComponents[0,0])+(a.y*b.RawComponents[0,1])+(a.z*b.RawComponents[0,2])+(a.w*b.RawComponents[0,3]);
+ result.y:=(a.x*b.RawComponents[1,0])+(a.y*b.RawComponents[1,1])+(a.z*b.RawComponents[1,2])+(a.w*b.RawComponents[1,3]);
+ result.z:=(a.x*b.RawComponents[2,0])+(a.y*b.RawComponents[2,1])+(a.z*b.RawComponents[2,2])+(a.w*b.RawComponents[2,3]);
+ result.w:=(a.x*b.RawComponents[3,0])+(a.y*b.RawComponents[3,1])+(a.z*b.RawComponents[3,2])+(a.w*b.RawComponents[3,3]);
+end;
+
+class operator TpvFBXMatrix4x4.Divide({$ifdef fpc}constref{$else}const{$endif} a,b:TpvFBXMatrix4x4):TpvFBXMatrix4x4;
+begin
+ result:=a*b.Inverse;
+end;
+
+class operator TpvFBXMatrix4x4.Divide({$ifdef fpc}constref{$else}const{$endif} a:TpvFBXMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TpvFBXScalar):TpvFBXMatrix4x4;
+begin
+ result.RawComponents[0,0]:=a.RawComponents[0,0]/b;
+ result.RawComponents[0,1]:=a.RawComponents[0,1]/b;
+ result.RawComponents[0,2]:=a.RawComponents[0,2]/b;
+ result.RawComponents[0,3]:=a.RawComponents[0,3]/b;
+ result.RawComponents[1,0]:=a.RawComponents[1,0]/b;
+ result.RawComponents[1,1]:=a.RawComponents[1,1]/b;
+ result.RawComponents[1,2]:=a.RawComponents[1,2]/b;
+ result.RawComponents[1,3]:=a.RawComponents[1,3]/b;
+ result.RawComponents[2,0]:=a.RawComponents[2,0]/b;
+ result.RawComponents[2,1]:=a.RawComponents[2,1]/b;
+ result.RawComponents[2,2]:=a.RawComponents[2,2]/b;
+ result.RawComponents[2,3]:=a.RawComponents[2,3]/b;
+ result.RawComponents[3,0]:=a.RawComponents[3,0]/b;
+ result.RawComponents[3,1]:=a.RawComponents[3,1]/b;
+ result.RawComponents[3,2]:=a.RawComponents[3,2]/b;
+ result.RawComponents[3,3]:=a.RawComponents[3,3]/b;
+end;
+
+class operator TpvFBXMatrix4x4.Divide({$ifdef fpc}constref{$else}const{$endif} a:TpvFBXScalar;{$ifdef fpc}constref{$else}const{$endif} b:TpvFBXMatrix4x4):TpvFBXMatrix4x4;
+begin
+ result.RawComponents[0,0]:=a/b.RawComponents[0,0];
+ result.RawComponents[0,1]:=a/b.RawComponents[0,1];
+ result.RawComponents[0,2]:=a/b.RawComponents[0,2];
+ result.RawComponents[0,3]:=a/b.RawComponents[0,3];
+ result.RawComponents[1,0]:=a/b.RawComponents[1,0];
+ result.RawComponents[1,1]:=a/b.RawComponents[1,1];
+ result.RawComponents[1,2]:=a/b.RawComponents[1,2];
+ result.RawComponents[1,3]:=a/b.RawComponents[1,3];
+ result.RawComponents[2,0]:=a/b.RawComponents[2,0];
+ result.RawComponents[2,1]:=a/b.RawComponents[2,1];
+ result.RawComponents[2,2]:=a/b.RawComponents[2,2];
+ result.RawComponents[2,3]:=a/b.RawComponents[2,3];
+ result.RawComponents[3,0]:=a/b.RawComponents[3,0];
+ result.RawComponents[3,1]:=a/b.RawComponents[3,1];
+ result.RawComponents[3,2]:=a/b.RawComponents[3,2];
+ result.RawComponents[3,3]:=a/b.RawComponents[3,3];
+end;
+
+class operator TpvFBXMatrix4x4.IntDivide({$ifdef fpc}constref{$else}const{$endif} a,b:TpvFBXMatrix4x4):TpvFBXMatrix4x4;
+begin
+ result:=a*b.Inverse;
+end;
+
+class operator TpvFBXMatrix4x4.IntDivide({$ifdef fpc}constref{$else}const{$endif} a:TpvFBXMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TpvFBXScalar):TpvFBXMatrix4x4;
+begin
+ result.RawComponents[0,0]:=a.RawComponents[0,0]/b;
+ result.RawComponents[0,1]:=a.RawComponents[0,1]/b;
+ result.RawComponents[0,2]:=a.RawComponents[0,2]/b;
+ result.RawComponents[0,3]:=a.RawComponents[0,3]/b;
+ result.RawComponents[1,0]:=a.RawComponents[1,0]/b;
+ result.RawComponents[1,1]:=a.RawComponents[1,1]/b;
+ result.RawComponents[1,2]:=a.RawComponents[1,2]/b;
+ result.RawComponents[1,3]:=a.RawComponents[1,3]/b;
+ result.RawComponents[2,0]:=a.RawComponents[2,0]/b;
+ result.RawComponents[2,1]:=a.RawComponents[2,1]/b;
+ result.RawComponents[2,2]:=a.RawComponents[2,2]/b;
+ result.RawComponents[2,3]:=a.RawComponents[2,3]/b;
+ result.RawComponents[3,0]:=a.RawComponents[3,0]/b;
+ result.RawComponents[3,1]:=a.RawComponents[3,1]/b;
+ result.RawComponents[3,2]:=a.RawComponents[3,2]/b;
+ result.RawComponents[3,3]:=a.RawComponents[3,3]/b;
+end;
+
+class operator TpvFBXMatrix4x4.IntDivide({$ifdef fpc}constref{$else}const{$endif} a:TpvFBXScalar;{$ifdef fpc}constref{$else}const{$endif} b:TpvFBXMatrix4x4):TpvFBXMatrix4x4;
+begin
+ result.RawComponents[0,0]:=a/b.RawComponents[0,0];
+ result.RawComponents[0,1]:=a/b.RawComponents[0,1];
+ result.RawComponents[0,2]:=a/b.RawComponents[0,2];
+ result.RawComponents[0,3]:=a/b.RawComponents[0,3];
+ result.RawComponents[1,0]:=a/b.RawComponents[1,0];
+ result.RawComponents[1,1]:=a/b.RawComponents[1,1];
+ result.RawComponents[1,2]:=a/b.RawComponents[1,2];
+ result.RawComponents[1,3]:=a/b.RawComponents[1,3];
+ result.RawComponents[2,0]:=a/b.RawComponents[2,0];
+ result.RawComponents[2,1]:=a/b.RawComponents[2,1];
+ result.RawComponents[2,2]:=a/b.RawComponents[2,2];
+ result.RawComponents[2,3]:=a/b.RawComponents[2,3];
+ result.RawComponents[3,0]:=a/b.RawComponents[3,0];
+ result.RawComponents[3,1]:=a/b.RawComponents[3,1];
+ result.RawComponents[3,2]:=a/b.RawComponents[3,2];
+ result.RawComponents[3,3]:=a/b.RawComponents[3,3];
+end;
+
+class operator TpvFBXMatrix4x4.Modulus({$ifdef fpc}constref{$else}const{$endif} a,b:TpvFBXMatrix4x4):TpvFBXMatrix4x4;
+begin
+ result.RawComponents[0,0]:=Modulus(a.RawComponents[0,0],b.RawComponents[0,0]);
+ result.RawComponents[0,1]:=Modulus(a.RawComponents[0,1],b.RawComponents[0,1]);
+ result.RawComponents[0,2]:=Modulus(a.RawComponents[0,2],b.RawComponents[0,2]);
+ result.RawComponents[0,3]:=Modulus(a.RawComponents[0,3],b.RawComponents[0,3]);
+ result.RawComponents[1,0]:=Modulus(a.RawComponents[1,0],b.RawComponents[1,0]);
+ result.RawComponents[1,1]:=Modulus(a.RawComponents[1,1],b.RawComponents[1,1]);
+ result.RawComponents[1,2]:=Modulus(a.RawComponents[1,2],b.RawComponents[1,2]);
+ result.RawComponents[1,3]:=Modulus(a.RawComponents[1,3],b.RawComponents[1,3]);
+ result.RawComponents[2,0]:=Modulus(a.RawComponents[2,0],b.RawComponents[2,0]);
+ result.RawComponents[2,1]:=Modulus(a.RawComponents[2,1],b.RawComponents[2,1]);
+ result.RawComponents[2,2]:=Modulus(a.RawComponents[2,2],b.RawComponents[2,2]);
+ result.RawComponents[2,3]:=Modulus(a.RawComponents[2,3],b.RawComponents[2,3]);
+ result.RawComponents[3,0]:=Modulus(a.RawComponents[3,0],b.RawComponents[3,0]);
+ result.RawComponents[3,1]:=Modulus(a.RawComponents[3,1],b.RawComponents[3,1]);
+ result.RawComponents[3,2]:=Modulus(a.RawComponents[3,2],b.RawComponents[3,2]);
+ result.RawComponents[3,3]:=Modulus(a.RawComponents[3,3],b.RawComponents[3,3]);
+end;
+
+class operator TpvFBXMatrix4x4.Modulus({$ifdef fpc}constref{$else}const{$endif} a:TpvFBXMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TpvFBXScalar):TpvFBXMatrix4x4;
+begin
+ result.RawComponents[0,0]:=Modulus(a.RawComponents[0,0],b);
+ result.RawComponents[0,1]:=Modulus(a.RawComponents[0,1],b);
+ result.RawComponents[0,2]:=Modulus(a.RawComponents[0,2],b);
+ result.RawComponents[0,3]:=Modulus(a.RawComponents[0,3],b);
+ result.RawComponents[1,0]:=Modulus(a.RawComponents[1,0],b);
+ result.RawComponents[1,1]:=Modulus(a.RawComponents[1,1],b);
+ result.RawComponents[1,2]:=Modulus(a.RawComponents[1,2],b);
+ result.RawComponents[1,3]:=Modulus(a.RawComponents[1,3],b);
+ result.RawComponents[2,0]:=Modulus(a.RawComponents[2,0],b);
+ result.RawComponents[2,1]:=Modulus(a.RawComponents[2,1],b);
+ result.RawComponents[2,2]:=Modulus(a.RawComponents[2,2],b);
+ result.RawComponents[2,3]:=Modulus(a.RawComponents[2,3],b);
+ result.RawComponents[3,0]:=Modulus(a.RawComponents[3,0],b);
+ result.RawComponents[3,1]:=Modulus(a.RawComponents[3,1],b);
+ result.RawComponents[3,2]:=Modulus(a.RawComponents[3,2],b);
+ result.RawComponents[3,3]:=Modulus(a.RawComponents[3,3],b);
+end;
+
+class operator TpvFBXMatrix4x4.Modulus({$ifdef fpc}constref{$else}const{$endif} a:TpvFBXScalar;{$ifdef fpc}constref{$else}const{$endif} b:TpvFBXMatrix4x4):TpvFBXMatrix4x4;
+begin
+ result.RawComponents[0,0]:=Modulus(a,b.RawComponents[0,0]);
+ result.RawComponents[0,1]:=Modulus(a,b.RawComponents[0,1]);
+ result.RawComponents[0,2]:=Modulus(a,b.RawComponents[0,2]);
+ result.RawComponents[0,3]:=Modulus(a,b.RawComponents[0,3]);
+ result.RawComponents[1,0]:=Modulus(a,b.RawComponents[1,0]);
+ result.RawComponents[1,1]:=Modulus(a,b.RawComponents[1,1]);
+ result.RawComponents[1,2]:=Modulus(a,b.RawComponents[1,2]);
+ result.RawComponents[1,3]:=Modulus(a,b.RawComponents[1,3]);
+ result.RawComponents[2,0]:=Modulus(a,b.RawComponents[2,0]);
+ result.RawComponents[2,1]:=Modulus(a,b.RawComponents[2,1]);
+ result.RawComponents[2,2]:=Modulus(a,b.RawComponents[2,2]);
+ result.RawComponents[2,3]:=Modulus(a,b.RawComponents[2,3]);
+ result.RawComponents[3,0]:=Modulus(a,b.RawComponents[3,0]);
+ result.RawComponents[3,1]:=Modulus(a,b.RawComponents[3,1]);
+ result.RawComponents[3,2]:=Modulus(a,b.RawComponents[3,2]);
+ result.RawComponents[3,3]:=Modulus(a,b.RawComponents[3,3]);
+end;
+
+class operator TpvFBXMatrix4x4.Negative({$ifdef fpc}constref{$else}const{$endif} a:TpvFBXMatrix4x4):TpvFBXMatrix4x4;
+begin
+ result.RawComponents[0,0]:=-a.RawComponents[0,0];
+ result.RawComponents[0,1]:=-a.RawComponents[0,1];
+ result.RawComponents[0,2]:=-a.RawComponents[0,2];
+ result.RawComponents[0,3]:=-a.RawComponents[0,3];
+ result.RawComponents[1,0]:=-a.RawComponents[1,0];
+ result.RawComponents[1,1]:=-a.RawComponents[1,1];
+ result.RawComponents[1,2]:=-a.RawComponents[1,2];
+ result.RawComponents[1,3]:=-a.RawComponents[1,3];
+ result.RawComponents[2,0]:=-a.RawComponents[2,0];
+ result.RawComponents[2,1]:=-a.RawComponents[2,1];
+ result.RawComponents[2,2]:=-a.RawComponents[2,2];
+ result.RawComponents[2,3]:=-a.RawComponents[2,3];
+ result.RawComponents[3,0]:=-a.RawComponents[3,0];
+ result.RawComponents[3,1]:=-a.RawComponents[3,1];
+ result.RawComponents[3,2]:=-a.RawComponents[3,2];
+ result.RawComponents[3,3]:=-a.RawComponents[3,3];
+end;
+
+class operator TpvFBXMatrix4x4.Positive(const a:TpvFBXMatrix4x4):TpvFBXMatrix4x4;
+begin
+ result:=a;
+end;
+
+function TpvFBXMatrix4x4.GetComponent(const pIndexA,pIndexB:TpvInt32):TpvFBXScalar;
+begin
+ result:=RawComponents[pIndexA,pIndexB];
+end;
+
+procedure TpvFBXMatrix4x4.SetComponent(const pIndexA,pIndexB:TpvInt32;const pValue:TpvFBXScalar);
+begin
+ RawComponents[pIndexA,pIndexB]:=pValue;
+end;
+
+function TpvFBXMatrix4x4.GetColumn(const pIndex:TpvInt32):TpvFBXVector4;
+begin
+ result.x:=RawComponents[pIndex,0];
+ result.y:=RawComponents[pIndex,1];
+ result.z:=RawComponents[pIndex,2];
+ result.w:=RawComponents[pIndex,3];
+end;
+
+procedure TpvFBXMatrix4x4.SetColumn(const pIndex:TpvInt32;const pValue:TpvFBXVector4);
+begin
+ RawComponents[pIndex,0]:=pValue.x;
+ RawComponents[pIndex,1]:=pValue.y;
+ RawComponents[pIndex,2]:=pValue.z;
+ RawComponents[pIndex,3]:=pValue.w;
+end;
+
+function TpvFBXMatrix4x4.GetRow(const pIndex:TpvInt32):TpvFBXVector4;
+begin
+ result.x:=RawComponents[0,pIndex];
+ result.y:=RawComponents[1,pIndex];
+ result.z:=RawComponents[2,pIndex];
+ result.w:=RawComponents[3,pIndex];
+end;
+
+procedure TpvFBXMatrix4x4.SetRow(const pIndex:TpvInt32;const pValue:TpvFBXVector4);
+begin
+ RawComponents[0,pIndex]:=pValue.x;
+ RawComponents[1,pIndex]:=pValue.y;
+ RawComponents[2,pIndex]:=pValue.z;
+ RawComponents[3,pIndex]:=pValue.w;
+end;
+
+function TpvFBXMatrix4x4.Determinant:TpvFBXScalar;
+begin
+ result:=(RawComponents[0,0]*((((RawComponents[1,1]*RawComponents[2,2]*RawComponents[3,3])-(RawComponents[1,1]*RawComponents[2,3]*RawComponents[3,2]))-(RawComponents[2,1]*RawComponents[1,2]*RawComponents[3,3])+(RawComponents[2,1]*RawComponents[1,3]*RawComponents[3,2])+(RawComponents[3,1]*RawComponents[1,2]*RawComponents[2,3]))-(RawComponents[3,1]*RawComponents[1,3]*RawComponents[2,2])))+
+         (RawComponents[0,1]*(((((-(RawComponents[1,0]*RawComponents[2,2]*RawComponents[3,3]))+(RawComponents[1,0]*RawComponents[2,3]*RawComponents[3,2])+(RawComponents[2,0]*RawComponents[1,2]*RawComponents[3,3]))-(RawComponents[2,0]*RawComponents[1,3]*RawComponents[3,2]))-(RawComponents[3,0]*RawComponents[1,2]*RawComponents[2,3]))+(RawComponents[3,0]*RawComponents[1,3]*RawComponents[2,2])))+
+         (RawComponents[0,2]*(((((RawComponents[1,0]*RawComponents[2,1]*RawComponents[3,3])-(RawComponents[1,0]*RawComponents[2,3]*RawComponents[3,1]))-(RawComponents[2,0]*RawComponents[1,1]*RawComponents[3,3]))+(RawComponents[2,0]*RawComponents[1,3]*RawComponents[3,1])+(RawComponents[3,0]*RawComponents[1,1]*RawComponents[2,3]))-(RawComponents[3,0]*RawComponents[1,3]*RawComponents[2,1])))+
+         (RawComponents[0,3]*(((((-(RawComponents[1,0]*RawComponents[2,1]*RawComponents[3,2]))+(RawComponents[1,0]*RawComponents[2,2]*RawComponents[3,1])+(RawComponents[2,0]*RawComponents[1,1]*RawComponents[3,2]))-(RawComponents[2,0]*RawComponents[1,2]*RawComponents[3,1]))-(RawComponents[3,0]*RawComponents[1,1]*RawComponents[2,2]))+(RawComponents[3,0]*RawComponents[1,2]*RawComponents[2,1])));
+end;
+
+function TpvFBXMatrix4x4.SimpleInverse:TpvFBXMatrix4x4;
+begin
+ result.RawComponents[0,0]:=RawComponents[0,0];
+ result.RawComponents[0,1]:=RawComponents[1,0];
+ result.RawComponents[0,2]:=RawComponents[2,0];
+ result.RawComponents[0,3]:=RawComponents[0,3];
+ result.RawComponents[1,0]:=RawComponents[0,1];
+ result.RawComponents[1,1]:=RawComponents[1,1];
+ result.RawComponents[1,2]:=RawComponents[2,1];
+ result.RawComponents[1,3]:=RawComponents[1,3];
+ result.RawComponents[2,0]:=RawComponents[0,2];
+ result.RawComponents[2,1]:=RawComponents[1,2];
+ result.RawComponents[2,2]:=RawComponents[2,2];
+ result.RawComponents[2,3]:=RawComponents[2,3];
+ result.RawComponents[3,0]:=-PpvFBXVector3(pointer(@RawComponents[3,0]))^.Dot(TpvFBXVector3.Create(RawComponents[0,0],RawComponents[0,1],RawComponents[0,2]));
+ result.RawComponents[3,1]:=-PpvFBXVector3(pointer(@RawComponents[3,0]))^.Dot(TpvFBXVector3.Create(RawComponents[1,0],RawComponents[1,1],RawComponents[1,2]));
+ result.RawComponents[3,2]:=-PpvFBXVector3(pointer(@RawComponents[3,0]))^.Dot(TpvFBXVector3.Create(RawComponents[2,0],RawComponents[2,1],RawComponents[2,2]));
+ result.RawComponents[3,3]:=RawComponents[3,3];
+end;
+
+function TpvFBXMatrix4x4.Inverse:TpvFBXMatrix4x4;
+var t0,t4,t8,t12,d:TpvFBXScalar;
+begin
+ t0:=(((RawComponents[1,1]*RawComponents[2,2]*RawComponents[3,3])-(RawComponents[1,1]*RawComponents[2,3]*RawComponents[3,2]))-(RawComponents[2,1]*RawComponents[1,2]*RawComponents[3,3])+(RawComponents[2,1]*RawComponents[1,3]*RawComponents[3,2])+(RawComponents[3,1]*RawComponents[1,2]*RawComponents[2,3]))-(RawComponents[3,1]*RawComponents[1,3]*RawComponents[2,2]);
+ t4:=((((-(RawComponents[1,0]*RawComponents[2,2]*RawComponents[3,3]))+(RawComponents[1,0]*RawComponents[2,3]*RawComponents[3,2])+(RawComponents[2,0]*RawComponents[1,2]*RawComponents[3,3]))-(RawComponents[2,0]*RawComponents[1,3]*RawComponents[3,2]))-(RawComponents[3,0]*RawComponents[1,2]*RawComponents[2,3]))+(RawComponents[3,0]*RawComponents[1,3]*RawComponents[2,2]);
+ t8:=((((RawComponents[1,0]*RawComponents[2,1]*RawComponents[3,3])-(RawComponents[1,0]*RawComponents[2,3]*RawComponents[3,1]))-(RawComponents[2,0]*RawComponents[1,1]*RawComponents[3,3]))+(RawComponents[2,0]*RawComponents[1,3]*RawComponents[3,1])+(RawComponents[3,0]*RawComponents[1,1]*RawComponents[2,3]))-(RawComponents[3,0]*RawComponents[1,3]*RawComponents[2,1]);
+ t12:=((((-(RawComponents[1,0]*RawComponents[2,1]*RawComponents[3,2]))+(RawComponents[1,0]*RawComponents[2,2]*RawComponents[3,1])+(RawComponents[2,0]*RawComponents[1,1]*RawComponents[3,2]))-(RawComponents[2,0]*RawComponents[1,2]*RawComponents[3,1]))-(RawComponents[3,0]*RawComponents[1,1]*RawComponents[2,2]))+(RawComponents[3,0]*RawComponents[1,2]*RawComponents[2,1]);
+ d:=(RawComponents[0,0]*t0)+(RawComponents[0,1]*t4)+(RawComponents[0,2]*t8)+(RawComponents[0,3]*t12);
+ if d<>0.0 then begin
+  d:=1.0/d;
+  result.RawComponents[0,0]:=t0*d;
+  result.RawComponents[0,1]:=(((((-(RawComponents[0,1]*RawComponents[2,2]*RawComponents[3,3]))+(RawComponents[0,1]*RawComponents[2,3]*RawComponents[3,2])+(RawComponents[2,1]*RawComponents[0,2]*RawComponents[3,3]))-(RawComponents[2,1]*RawComponents[0,3]*RawComponents[3,2]))-(RawComponents[3,1]*RawComponents[0,2]*RawComponents[2,3]))+(RawComponents[3,1]*RawComponents[0,3]*RawComponents[2,2]))*d;
+  result.RawComponents[0,2]:=(((((RawComponents[0,1]*RawComponents[1,2]*RawComponents[3,3])-(RawComponents[0,1]*RawComponents[1,3]*RawComponents[3,2]))-(RawComponents[1,1]*RawComponents[0,2]*RawComponents[3,3]))+(RawComponents[1,1]*RawComponents[0,3]*RawComponents[3,2])+(RawComponents[3,1]*RawComponents[0,2]*RawComponents[1,3]))-(RawComponents[3,1]*RawComponents[0,3]*RawComponents[1,2]))*d;
+  result.RawComponents[0,3]:=(((((-(RawComponents[0,1]*RawComponents[1,2]*RawComponents[2,3]))+(RawComponents[0,1]*RawComponents[1,3]*RawComponents[2,2])+(RawComponents[1,1]*RawComponents[0,2]*RawComponents[2,3]))-(RawComponents[1,1]*RawComponents[0,3]*RawComponents[2,2]))-(RawComponents[2,1]*RawComponents[0,2]*RawComponents[1,3]))+(RawComponents[2,1]*RawComponents[0,3]*RawComponents[1,2]))*d;
+  result.RawComponents[1,0]:=t4*d;
+  result.RawComponents[1,1]:=((((RawComponents[0,0]*RawComponents[2,2]*RawComponents[3,3])-(RawComponents[0,0]*RawComponents[2,3]*RawComponents[3,2]))-(RawComponents[2,0]*RawComponents[0,2]*RawComponents[3,3])+(RawComponents[2,0]*RawComponents[0,3]*RawComponents[3,2])+(RawComponents[3,0]*RawComponents[0,2]*RawComponents[2,3]))-(RawComponents[3,0]*RawComponents[0,3]*RawComponents[2,2]))*d;
+  result.RawComponents[1,2]:=(((((-(RawComponents[0,0]*RawComponents[1,2]*RawComponents[3,3]))+(RawComponents[0,0]*RawComponents[1,3]*RawComponents[3,2])+(RawComponents[1,0]*RawComponents[0,2]*RawComponents[3,3]))-(RawComponents[1,0]*RawComponents[0,3]*RawComponents[3,2]))-(RawComponents[3,0]*RawComponents[0,2]*RawComponents[1,3]))+(RawComponents[3,0]*RawComponents[0,3]*RawComponents[1,2]))*d;
+  result.RawComponents[1,3]:=(((((RawComponents[0,0]*RawComponents[1,2]*RawComponents[2,3])-(RawComponents[0,0]*RawComponents[1,3]*RawComponents[2,2]))-(RawComponents[1,0]*RawComponents[0,2]*RawComponents[2,3]))+(RawComponents[1,0]*RawComponents[0,3]*RawComponents[2,2])+(RawComponents[2,0]*RawComponents[0,2]*RawComponents[1,3]))-(RawComponents[2,0]*RawComponents[0,3]*RawComponents[1,2]))*d;
+  result.RawComponents[2,0]:=t8*d;
+  result.RawComponents[2,1]:=(((((-(RawComponents[0,0]*RawComponents[2,1]*RawComponents[3,3]))+(RawComponents[0,0]*RawComponents[2,3]*RawComponents[3,1])+(RawComponents[2,0]*RawComponents[0,1]*RawComponents[3,3]))-(RawComponents[2,0]*RawComponents[0,3]*RawComponents[3,1]))-(RawComponents[3,0]*RawComponents[0,1]*RawComponents[2,3]))+(RawComponents[3,0]*RawComponents[0,3]*RawComponents[2,1]))*d;
+  result.RawComponents[2,2]:=(((((RawComponents[0,0]*RawComponents[1,1]*RawComponents[3,3])-(RawComponents[0,0]*RawComponents[1,3]*RawComponents[3,1]))-(RawComponents[1,0]*RawComponents[0,1]*RawComponents[3,3]))+(RawComponents[1,0]*RawComponents[0,3]*RawComponents[3,1])+(RawComponents[3,0]*RawComponents[0,1]*RawComponents[1,3]))-(RawComponents[3,0]*RawComponents[0,3]*RawComponents[1,1]))*d;
+  result.RawComponents[2,3]:=(((((-(RawComponents[0,0]*RawComponents[1,1]*RawComponents[2,3]))+(RawComponents[0,0]*RawComponents[1,3]*RawComponents[2,1])+(RawComponents[1,0]*RawComponents[0,1]*RawComponents[2,3]))-(RawComponents[1,0]*RawComponents[0,3]*RawComponents[2,1]))-(RawComponents[2,0]*RawComponents[0,1]*RawComponents[1,3]))+(RawComponents[2,0]*RawComponents[0,3]*RawComponents[1,1]))*d;
+  result.RawComponents[3,0]:=t12*d;
+  result.RawComponents[3,1]:=(((((RawComponents[0,0]*RawComponents[2,1]*RawComponents[3,2])-(RawComponents[0,0]*RawComponents[2,2]*RawComponents[3,1]))-(RawComponents[2,0]*RawComponents[0,1]*RawComponents[3,2]))+(RawComponents[2,0]*RawComponents[0,2]*RawComponents[3,1])+(RawComponents[3,0]*RawComponents[0,1]*RawComponents[2,2]))-(RawComponents[3,0]*RawComponents[0,2]*RawComponents[2,1]))*d;
+  result.RawComponents[3,2]:=(((((-(RawComponents[0,0]*RawComponents[1,1]*RawComponents[3,2]))+(RawComponents[0,0]*RawComponents[1,2]*RawComponents[3,1])+(RawComponents[1,0]*RawComponents[0,1]*RawComponents[3,2]))-(RawComponents[1,0]*RawComponents[0,2]*RawComponents[3,1]))-(RawComponents[3,0]*RawComponents[0,1]*RawComponents[1,2]))+(RawComponents[3,0]*RawComponents[0,2]*RawComponents[1,1]))*d;
+  result.RawComponents[3,3]:=(((((RawComponents[0,0]*RawComponents[1,1]*RawComponents[2,2])-(RawComponents[0,0]*RawComponents[1,2]*RawComponents[2,1]))-(RawComponents[1,0]*RawComponents[0,1]*RawComponents[2,2]))+(RawComponents[1,0]*RawComponents[0,2]*RawComponents[2,1])+(RawComponents[2,0]*RawComponents[0,1]*RawComponents[1,2]))-(RawComponents[2,0]*RawComponents[0,2]*RawComponents[1,1]))*d;
+ end;
+end;
+
+function TpvFBXMatrix4x4.Transpose:TpvFBXMatrix4x4;
+begin
+ result.RawComponents[0,0]:=RawComponents[0,0];
+ result.RawComponents[0,1]:=RawComponents[1,0];
+ result.RawComponents[0,2]:=RawComponents[2,0];
+ result.RawComponents[0,3]:=RawComponents[3,0];
+ result.RawComponents[1,0]:=RawComponents[0,1];
+ result.RawComponents[1,1]:=RawComponents[1,1];
+ result.RawComponents[1,2]:=RawComponents[2,1];
+ result.RawComponents[1,3]:=RawComponents[3,1];
+ result.RawComponents[2,0]:=RawComponents[0,2];
+ result.RawComponents[2,1]:=RawComponents[1,2];
+ result.RawComponents[2,2]:=RawComponents[2,2];
+ result.RawComponents[2,3]:=RawComponents[3,2];
+ result.RawComponents[3,0]:=RawComponents[0,3];
+ result.RawComponents[3,1]:=RawComponents[1,3];
+ result.RawComponents[3,2]:=RawComponents[2,3];
+ result.RawComponents[3,3]:=RawComponents[3,3];
+end;
+
+function TpvFBXMatrix4x4.EulerAngles:TpvFBXVector3;
+const EPSILON=1e-8;
+var v0,v1:TpvFBXVector3;
+begin
+ if abs((-1.0)-RawComponents[0,2])<EPSILON then begin
+  result.x:=0.0;
+  result.y:=pi*0.5;
+  result.z:=ArcTan2(RawComponents[1,0],RawComponents[2,0]);
+ end else if abs(1.0-RawComponents[0,2])<EPSILON then begin
+  result.x:=0.0;
+  result.y:=-(pi*0.5);
+  result.z:=ArcTan2(-RawComponents[1,0],-RawComponents[2,0]);
+ end else begin
+  v0.x:=-ArcSin(RawComponents[0,2]);
+  v1.x:=pi-v0.x;
+  v0.y:=ArcTan2(RawComponents[1,2]/cos(v0.x),RawComponents[2,2]/cos(v0.x));
+  v1.y:=ArcTan2(RawComponents[1,2]/cos(v1.x),RawComponents[2,2]/cos(v1.x));
+  v0.z:=ArcTan2(RawComponents[0,1]/cos(v0.x),RawComponents[0,0]/cos(v0.x));
+  v1.z:=ArcTan2(RawComponents[0,1]/cos(v1.x),RawComponents[0,0]/cos(v1.x));
+  if v0.SquaredLength<v1.SquaredLength then begin
+   result:=v0;
+  end else begin
+   result:=v1;
+  end;
+ end;
+end;
+
+function TpvFBXMatrix4x4.Normalize:TpvFBXMatrix4x4;
+begin
+ result.Right.Vector3:=Right.Vector3.Normalize;
+ result.RawComponents[0,3]:=RawComponents[0,3];
+ result.Up.Vector3:=Up.Vector3.Normalize;
+ result.RawComponents[1,3]:=RawComponents[1,3];
+ result.Forwards.Vector3:=Forwards.Vector3.Normalize;
+ result.RawComponents[2,3]:=RawComponents[2,3];
+ result.Translation:=Translation;
+end;
+
+function TpvFBXMatrix4x4.OrthoNormalize:TpvFBXMatrix4x4;
+var Backup:TpvFBXVector3;
+begin
+ Backup.x:=RawComponents[0,3];
+ Backup.y:=RawComponents[1,3];
+ Backup.z:=RawComponents[2,3];
+ Normal.Vector3:=Normal.Vector3.Normalize;
+ Tangent.Vector3:=(Tangent.Vector3-(Normal.Vector3*Tangent.Vector3.Dot(Normal.Vector3))).Normalize;
+ Bitangent.Vector3:=Normal.Vector3.Cross(Tangent.Vector3).Normalize;
+ Bitangent.Vector3:=Bitangent.Vector3-(Normal.Vector3*Bitangent.Vector3.Dot(Normal.Vector3));
+ Bitangent.Vector3:=(Bitangent.Vector3-(Tangent.Vector3*Bitangent.Vector3.Dot(Tangent.Vector3))).Normalize;
+ Tangent.Vector3:=Bitangent.Vector3.Cross(Normal.Vector3).Normalize;
+ Normal.Vector3:=Tangent.Vector3.Cross(Bitangent.Vector3).Normalize;
+ result.RawComponents:=RawComponents;
+ result.RawComponents[0,3]:=Backup.x;
+ result.RawComponents[1,3]:=Backup.y;
+ result.RawComponents[2,3]:=Backup.z;
+end;
+
+function TpvFBXMatrix4x4.RobustOrthoNormalize(const Tolerance:TpvFBXScalar=1e-3):TpvFBXMatrix4x4;
+var Backup,Bisector,Axis:TpvFBXVector3;
+begin
+ Backup.x:=RawComponents[0,3];
+ Backup.y:=RawComponents[1,3];
+ Backup.z:=RawComponents[2,3];
+ begin
+  if Normal.Vector3.Length<Tolerance then begin
+   // Degenerate case, compute new normal
+   Normal.Vector3:=Tangent.Vector3.Cross(Bitangent.Vector3);
+   if Normal.Vector3.Length<Tolerance then begin
+    Tangent.Vector3:=TpvFBXVector3.Create(1.0,0.0,0.0);
+    Bitangent.Vector3:=TpvFBXVector3.Create(0.0,1.0,0.0);
+    Normal.Vector3:=TpvFBXVector3.Create(0.0,0.0,1.0);
+    RawComponents[0,3]:=Backup.x;
+    RawComponents[1,3]:=Backup.y;
+    RawComponents[2,3]:=Backup.z;
+    exit;
+   end;
+  end;
+  Normal.Vector3:=Normal.Vector3.Normalize;
+ end;
+ begin
+  // Project tangent and bitangent onto the normal orthogonal plane
+  Tangent.Vector3:=Tangent.Vector3-(Normal.Vector3*Tangent.Vector3.Dot(Normal.Vector3));
+  Bitangent.Vector3:=Bitangent.Vector3-(Normal.Vector3*Bitangent.Vector3.Dot(Normal.Vector3));
+ end;
+ begin
+  // Check for several degenerate cases
+  if Tangent.Vector3.Length<Tolerance then begin
+   if Bitangent.Vector3.Length<Tolerance then begin
+    Tangent.Vector3:=Normal.Vector3.Normalize;
+    if (Tangent.x<=Tangent.y) and (Tangent.x<=Tangent.z) then begin
+     Tangent.Vector3:=TpvFBXVector3.Create(1.0,0.0,0.0);
+    end else if (Tangent.y<=Tangent.x) and (Tangent.y<=Tangent.z) then begin
+     Tangent.Vector3:=TpvFBXVector3.Create(0.0,1.0,0.0);
+    end else begin
+     Tangent.Vector3:=TpvFBXVector3.Create(0.0,0.0,1.0);
+    end;
+    Tangent.Vector3:=Tangent.Vector3-(Normal.Vector3*Tangent.Vector3.Dot(Normal.Vector3));
+    Bitangent.Vector3:=Normal.Vector3.Cross(Tangent.Vector3).Normalize;
+   end else begin
+    Tangent.Vector3:=Bitangent.Vector3.Cross(Normal.Vector3).Normalize;
+   end;
+  end else begin
+   Tangent.Vector3:=Tangent.Vector3.Normalize;
+   if Bitangent.Vector3.Length<Tolerance then begin
+    Bitangent.Vector3:=Normal.Vector3.Cross(Tangent.Vector3).Normalize;
+   end else begin
+    Bitangent.Vector3:=Bitangent.Vector3.Normalize;
+    Bisector:=Tangent.Vector3+Bitangent.Vector3;
+    if Bisector.Length<Tolerance then begin
+     Bisector:=Tangent.Vector3;
+    end else begin
+     Bisector:=Bisector.Normalize;
+    end;
+    Axis:=Bisector.Cross(Normal.Vector3).Normalize;
+    if Axis.Dot(Tangent.Vector3)>0.0 then begin
+     Tangent.Vector3:=(Bisector+Axis).Normalize;
+     Bitangent.Vector3:=(Bisector-Axis).Normalize;
+    end else begin
+     Tangent.Vector3:=(Bisector-Axis).Normalize;
+     Bitangent.Vector3:=(Bisector+Axis).Normalize;
+    end;
+   end;
+  end;
+ end;
+ Bitangent.Vector3:=Normal.Vector3.Cross(Tangent.Vector3).Normalize;
+ Tangent.Vector3:=Bitangent.Vector3.Cross(Normal.Vector3).Normalize;
+ Normal.Vector3:=Tangent.Vector3.Cross(Bitangent.Vector3).Normalize;
+ result.RawComponents:=RawComponents;
+ result.RawComponents[0,3]:=Backup.x;
+ result.RawComponents[1,3]:=Backup.y;
+ result.RawComponents[2,3]:=Backup.z;
+end;
+
+function TpvFBXMatrix4x4.ToRotation:TpvFBXMatrix4x4;
+begin
+ result.RawComponents[0,0]:=RawComponents[0,0];
+ result.RawComponents[0,1]:=RawComponents[0,1];
+ result.RawComponents[0,2]:=RawComponents[0,2];
+ result.RawComponents[0,3]:=0.0;
+ result.RawComponents[1,0]:=RawComponents[1,0];
+ result.RawComponents[1,1]:=RawComponents[1,1];
+ result.RawComponents[1,2]:=RawComponents[1,2];
+ result.RawComponents[1,3]:=0.0;
+ result.RawComponents[2,0]:=RawComponents[2,0];
+ result.RawComponents[2,1]:=RawComponents[2,1];
+ result.RawComponents[2,2]:=RawComponents[2,2];
+ result.RawComponents[2,3]:=0.0;
+ result.RawComponents[3,0]:=0.0;
+ result.RawComponents[3,1]:=0.0;
+ result.RawComponents[3,2]:=0.0;
+ result.RawComponents[3,3]:=1.0;
+end;
+
+function TpvFBXMatrix4x4.SimpleLerp(const b:TpvFBXMatrix4x4;const t:TpvFBXScalar):TpvFBXMatrix4x4;
+begin
+ if t<=0.0 then begin
+  result:=self;
+ end else if t>=1.0 then begin
+  result:=b;
+ end else begin
+  result:=(self*(1.0-t))+(b*t);
+ end;
+end;
+
+function TpvFBXMatrix4x4.MulInverse({$ifdef fpc}constref{$else}const{$endif} a:TpvFBXVector3):TpvFBXVector3;
+var d:TpvFBXScalar;
+begin
+ d:=((RawComponents[0,0]*((RawComponents[1,1]*RawComponents[2,2])-(RawComponents[2,1]*RawComponents[1,2])))-
+     (RawComponents[0,1]*((RawComponents[1,0]*RawComponents[2,2])-(RawComponents[2,0]*RawComponents[1,2]))))+
+     (RawComponents[0,2]*((RawComponents[1,0]*RawComponents[2,1])-(RawComponents[2,0]*RawComponents[1,1])));
+ if d<>0.0 then begin
+  d:=1.0/d;
+ end;
+ result.x:=((a.x*((RawComponents[1,1]*RawComponents[2,2])-(RawComponents[1,2]*RawComponents[2,1])))+(a.y*((RawComponents[1,2]*RawComponents[2,0])-(RawComponents[1,0]*RawComponents[2,2])))+(a.z*((RawComponents[1,0]*RawComponents[2,1])-(RawComponents[1,1]*RawComponents[2,0]))))*d;
+ result.y:=((RawComponents[0,0]*((a.y*RawComponents[2,2])-(a.z*RawComponents[2,1])))+(RawComponents[0,1]*((a.z*RawComponents[2,0])-(a.x*RawComponents[2,2])))+(RawComponents[0,2]*((a.x*RawComponents[2,1])-(a.y*RawComponents[2,0]))))*d;
+ result.z:=((RawComponents[0,0]*((RawComponents[1,1]*a.z)-(RawComponents[1,2]*a.y)))+(RawComponents[0,1]*((RawComponents[1,2]*a.x)-(RawComponents[1,0]*a.z)))+(RawComponents[0,2]*((RawComponents[1,0]*a.y)-(RawComponents[1,1]*a.x))))*d;
+end;
+
+function TpvFBXMatrix4x4.MulInverse({$ifdef fpc}constref{$else}const{$endif} a:TpvFBXVector4):TpvFBXVector4;
+var d:TpvFBXScalar;
+begin
+ d:=((RawComponents[0,0]*((RawComponents[1,1]*RawComponents[2,2])-(RawComponents[2,1]*RawComponents[1,2])))-
+     (RawComponents[0,1]*((RawComponents[1,0]*RawComponents[2,2])-(RawComponents[2,0]*RawComponents[1,2]))))+
+     (RawComponents[0,2]*((RawComponents[1,0]*RawComponents[2,1])-(RawComponents[2,0]*RawComponents[1,1])));
+ if d<>0.0 then begin
+  d:=1.0/d;
+ end;
+ result.x:=((a.x*((RawComponents[1,1]*RawComponents[2,2])-(RawComponents[1,2]*RawComponents[2,1])))+(a.y*((RawComponents[1,2]*RawComponents[2,0])-(RawComponents[1,0]*RawComponents[2,2])))+(a.z*((RawComponents[1,0]*RawComponents[2,1])-(RawComponents[1,1]*RawComponents[2,0]))))*d;
+ result.y:=((RawComponents[0,0]*((a.y*RawComponents[2,2])-(a.z*RawComponents[2,1])))+(RawComponents[0,1]*((a.z*RawComponents[2,0])-(a.x*RawComponents[2,2])))+(RawComponents[0,2]*((a.x*RawComponents[2,1])-(a.y*RawComponents[2,0]))))*d;
+ result.z:=((RawComponents[0,0]*((RawComponents[1,1]*a.z)-(RawComponents[1,2]*a.y)))+(RawComponents[0,1]*((RawComponents[1,2]*a.x)-(RawComponents[1,0]*a.z)))+(RawComponents[0,2]*((RawComponents[1,0]*a.y)-(RawComponents[1,1]*a.x))))*d;
+ result.w:=a.w;
+end;
+
+function TpvFBXMatrix4x4.MulInverted({$ifdef fpc}constref{$else}const{$endif} a:TpvFBXVector3):TpvFBXVector3;
+var p:TpvFBXVector3;
+begin
+ p.x:=a.x-RawComponents[3,0];
+ p.y:=a.y-RawComponents[3,1];
+ p.z:=a.z-RawComponents[3,2];
+ result.x:=(RawComponents[0,0]*p.x)+(RawComponents[0,1]*p.y)+(RawComponents[0,2]*p.z);
+ result.y:=(RawComponents[1,0]*p.x)+(RawComponents[1,1]*p.y)+(RawComponents[1,2]*p.z);
+ result.z:=(RawComponents[2,0]*p.x)+(RawComponents[2,1]*p.y)+(RawComponents[2,2]*p.z);
+end;
+
+function TpvFBXMatrix4x4.MulInverted({$ifdef fpc}constref{$else}const{$endif} a:TpvFBXVector4):TpvFBXVector4;
+var p:TpvFBXVector3;
+begin
+ p.x:=a.x-RawComponents[3,0];
+ p.y:=a.y-RawComponents[3,1];
+ p.z:=a.z-RawComponents[3,2];
+ result.x:=(RawComponents[0,0]*p.x)+(RawComponents[0,1]*p.y)+(RawComponents[0,2]*p.z);
+ result.y:=(RawComponents[1,0]*p.x)+(RawComponents[1,1]*p.y)+(RawComponents[1,2]*p.z);
+ result.z:=(RawComponents[2,0]*p.x)+(RawComponents[2,1]*p.y)+(RawComponents[2,2]*p.z);
+ result.w:=a.w;
+end;
+
+function TpvFBXMatrix4x4.MulBasis({$ifdef fpc}constref{$else}const{$endif} a:TpvFBXVector3):TpvFBXVector3;
+begin
+ result.x:=(RawComponents[0,0]*a.x)+(RawComponents[1,0]*a.y)+(RawComponents[2,0]*a.z);
+ result.y:=(RawComponents[0,1]*a.x)+(RawComponents[1,1]*a.y)+(RawComponents[2,1]*a.z);
+ result.z:=(RawComponents[0,2]*a.x)+(RawComponents[1,2]*a.y)+(RawComponents[2,2]*a.z);
+end;
+
+function TpvFBXMatrix4x4.MulBasis({$ifdef fpc}constref{$else}const{$endif} a:TpvFBXVector4):TpvFBXVector4;
+begin
+ result.x:=(RawComponents[0,0]*a.x)+(RawComponents[1,0]*a.y)+(RawComponents[2,0]*a.z);
+ result.y:=(RawComponents[0,1]*a.x)+(RawComponents[1,1]*a.y)+(RawComponents[2,1]*a.z);
+ result.z:=(RawComponents[0,2]*a.x)+(RawComponents[1,2]*a.y)+(RawComponents[2,2]*a.z);
+ result.w:=a.w;
+end;
+
+function TpvFBXMatrix4x4.MulTransposedBasis({$ifdef fpc}constref{$else}const{$endif} a:TpvFBXVector3):TpvFBXVector3;
+begin
+ result.x:=(RawComponents[0,0]*a.x)+(RawComponents[0,1]*a.y)+(RawComponents[0,2]*a.z);
+ result.y:=(RawComponents[1,0]*a.x)+(RawComponents[1,1]*a.y)+(RawComponents[1,2]*a.z);
+ result.z:=(RawComponents[2,0]*a.x)+(RawComponents[2,1]*a.y)+(RawComponents[2,2]*a.z);
+end;
+
+function TpvFBXMatrix4x4.MulTransposedBasis({$ifdef fpc}constref{$else}const{$endif} a:TpvFBXVector4):TpvFBXVector4;
+begin
+ result.x:=(RawComponents[0,0]*a.x)+(RawComponents[0,1]*a.y)+(RawComponents[0,2]*a.z);
+ result.y:=(RawComponents[1,0]*a.x)+(RawComponents[1,1]*a.y)+(RawComponents[1,2]*a.z);
+ result.z:=(RawComponents[2,0]*a.x)+(RawComponents[2,1]*a.y)+(RawComponents[2,2]*a.z);
+ result.w:=a.w;
+end;
+
+function TpvFBXMatrix4x4.MulHomogen({$ifdef fpc}constref{$else}const{$endif} a:TpvFBXVector3):TpvFBXVector3;
+var Temporary:TpvFBXVector4;
+begin
+ Temporary:=self*TpvFBXVector4.Create(a,1.0);
+ Temporary:=Temporary/Temporary.w;
+ result:=Temporary.Vector3;
+end;
+
+function TpvFBXMatrix4x4.MulHomogen({$ifdef fpc}constref{$else}const{$endif} a:TpvFBXVector4):TpvFBXVector4;
+begin
+ result:=self*a;
+ result:=result/result.w;
+end;
+
 constructor TpvFBXTimeSpan.Create(const pFrom:TpvFBXTimeSpan);
 begin
  self:=pFrom;
@@ -1907,59 +4965,59 @@ begin
  result:=TpvFBXString('{{StartTime:{'+IntToStr(StartTime)+'} EndTime:{'+IntToStr(EndTime)+'}}}');
 end;
 
-constructor TpvVector2Property.Create;
+constructor TpvFBXVector2Property.Create;
 begin
  inherited Create;
  fVector.x:=0.0;
  fVector.y:=0.0;
 end;
 
-constructor TpvVector2Property.Create(const pFrom:TpvVector2);
+constructor TpvFBXVector2Property.Create(const pFrom:TpvFBXVector2);
 begin
  inherited Create;
  fVector:=pFrom;
 end;
 
-constructor TpvVector2Property.Create(const pX,pY:TpvDouble);
+constructor TpvFBXVector2Property.Create(const pX,pY:TpvDouble);
 begin
  inherited Create;
  fVector.x:=pX;
  fVector.y:=pY;
 end;
 
-constructor TpvVector2Property.Create(const pArray:array of TpvDouble);
+constructor TpvFBXVector2Property.Create(const pArray:array of TpvDouble);
 begin
  inherited Create;
  fVector.x:=pArray[0];
  fVector.y:=pArray[1];
 end;
 
-destructor TpvVector2Property.Destroy;
+destructor TpvFBXVector2Property.Destroy;
 begin
  inherited Destroy;
 end;
 
-function TpvVector2Property.GetX:TpvDouble;
+function TpvFBXVector2Property.GetX:TpvDouble;
 begin
  result:=fVector.x;
 end;
 
-procedure TpvVector2Property.SetX(const pValue:TpvDouble);
+procedure TpvFBXVector2Property.SetX(const pValue:TpvDouble);
 begin
  fVector.x:=pValue;
 end;
 
-function TpvVector2Property.GetY:TpvDouble;
+function TpvFBXVector2Property.GetY:TpvDouble;
 begin
  result:=fVector.y;
 end;
 
-procedure TpvVector2Property.SetY(const pValue:TpvDouble);
+procedure TpvFBXVector2Property.SetY(const pValue:TpvDouble);
 begin
  fVector.y:=pValue;
 end;
 
-constructor TpvVector3Property.Create;
+constructor TpvFBXVector3Property.Create;
 begin
  inherited Create;
  fVector.x:=0.0;
@@ -1967,13 +5025,13 @@ begin
  fVector.z:=0.0;
 end;
 
-constructor TpvVector3Property.Create(const pFrom:TpvVector3);
+constructor TpvFBXVector3Property.Create(const pFrom:TpvFBXVector3);
 begin
  inherited Create;
  fVector:=pFrom;
 end;
 
-constructor TpvVector3Property.Create(const pX,pY,pZ:TpvDouble);
+constructor TpvFBXVector3Property.Create(const pX,pY,pZ:TpvDouble);
 begin
  inherited Create;
  fVector.x:=pX;
@@ -1981,7 +5039,7 @@ begin
  fVector.z:=pZ;
 end;
 
-constructor TpvVector3Property.Create(const pArray:array of TpvDouble);
+constructor TpvFBXVector3Property.Create(const pArray:array of TpvDouble);
 begin
  inherited Create;
  fVector.x:=pArray[0];
@@ -1989,42 +5047,42 @@ begin
  fVector.z:=pArray[2];
 end;
 
-destructor TpvVector3Property.Destroy;
+destructor TpvFBXVector3Property.Destroy;
 begin
  inherited Destroy;
 end;
 
-function TpvVector3Property.GetX:TpvDouble;
+function TpvFBXVector3Property.GetX:TpvDouble;
 begin
  result:=fVector.x;
 end;
 
-procedure TpvVector3Property.SetX(const pValue:TpvDouble);
+procedure TpvFBXVector3Property.SetX(const pValue:TpvDouble);
 begin
  fVector.x:=pValue;
 end;
 
-function TpvVector3Property.GetY:TpvDouble;
+function TpvFBXVector3Property.GetY:TpvDouble;
 begin
  result:=fVector.y;
 end;
 
-procedure TpvVector3Property.SetY(const pValue:TpvDouble);
+procedure TpvFBXVector3Property.SetY(const pValue:TpvDouble);
 begin
  fVector.y:=pValue;
 end;
 
-function TpvVector3Property.GetZ:TpvDouble;
+function TpvFBXVector3Property.GetZ:TpvDouble;
 begin
  result:=fVector.z;
 end;
 
-procedure TpvVector3Property.SetZ(const pValue:TpvDouble);
+procedure TpvFBXVector3Property.SetZ(const pValue:TpvDouble);
 begin
  fVector.z:=pValue;
 end;
 
-constructor TpvVector4Property.Create;
+constructor TpvFBXVector4Property.Create;
 begin
  inherited Create;
  fVector.x:=0.0;
@@ -2033,13 +5091,13 @@ begin
  fVector.w:=0.0;
 end;
 
-constructor TpvVector4Property.Create(const pFrom:TpvVector4);
+constructor TpvFBXVector4Property.Create(const pFrom:TpvFBXVector4);
 begin
  inherited Create;
  fVector:=pFrom;
 end;
 
-constructor TpvVector4Property.Create(const pX,pY,pZ,pW:TpvDouble);
+constructor TpvFBXVector4Property.Create(const pX,pY,pZ,pW:TpvDouble);
 begin
  inherited Create;
  fVector.x:=pX;
@@ -2048,7 +5106,7 @@ begin
  fVector.w:=pw;
 end;
 
-constructor TpvVector4Property.Create(const pArray:array of TpvDouble);
+constructor TpvFBXVector4Property.Create(const pArray:array of TpvDouble);
 begin
  inherited Create;
  fVector.x:=pArray[0];
@@ -2057,47 +5115,47 @@ begin
  fVector.w:=pArray[3];
 end;
 
-destructor TpvVector4Property.Destroy;
+destructor TpvFBXVector4Property.Destroy;
 begin
  inherited Destroy;
 end;
 
-function TpvVector4Property.GetX:TpvDouble;
+function TpvFBXVector4Property.GetX:TpvDouble;
 begin
  result:=fVector.x;
 end;
 
-procedure TpvVector4Property.SetX(const pValue:TpvDouble);
+procedure TpvFBXVector4Property.SetX(const pValue:TpvDouble);
 begin
  fVector.x:=pValue;
 end;
 
-function TpvVector4Property.GetY:TpvDouble;
+function TpvFBXVector4Property.GetY:TpvDouble;
 begin
  result:=fVector.y;
 end;
 
-procedure TpvVector4Property.SetY(const pValue:TpvDouble);
+procedure TpvFBXVector4Property.SetY(const pValue:TpvDouble);
 begin
  fVector.y:=pValue;
 end;
 
-function TpvVector4Property.GetZ:TpvDouble;
+function TpvFBXVector4Property.GetZ:TpvDouble;
 begin
  result:=fVector.z;
 end;
 
-procedure TpvVector4Property.SetZ(const pValue:TpvDouble);
+procedure TpvFBXVector4Property.SetZ(const pValue:TpvDouble);
 begin
  fVector.z:=pValue;
 end;
 
-function TpvVector4Property.GetW:TpvDouble;
+function TpvFBXVector4Property.GetW:TpvDouble;
 begin
  result:=fVector.w;
 end;
 
-procedure TpvVector4Property.SetW(const pValue:TpvDouble);
+procedure TpvFBXVector4Property.SetW(const pValue:TpvDouble);
 begin
  fVector.w:=pValue;
 end;
@@ -2208,15 +5266,15 @@ begin
  result:=TpvInt32(pointer(@Temporary)^);
 end;
 
-function StreamReadInt64(const pStream:TStream):Int64;
+function StreamReadInt64(const pStream:TStream):TpvInt64;
 type TBytes=array[0..7] of TpvUInt8;
 var Bytes:TBytes;
-    Temporary:UInt64;
+    Temporary:TpvUInt64;
 begin
  Bytes[0]:=0;
  pStream.ReadBuffer(Bytes,SizeOf(TBytes));
- Temporary:=(UInt64(Bytes[0]) shl 0) or (UInt64(Bytes[1]) shl 8) or (UInt64(Bytes[2]) shl 16) or (UInt64(Bytes[3]) shl 24) or (UInt64(Bytes[4]) shl 32) or (UInt64(Bytes[5]) shl 40) or (UInt64(Bytes[6]) shl 48) or (UInt64(Bytes[7]) shl 56);
- result:=Int64(pointer(@Temporary)^);
+ Temporary:=(TpvUInt64(Bytes[0]) shl 0) or (TpvUInt64(Bytes[1]) shl 8) or (TpvUInt64(Bytes[2]) shl 16) or (TpvUInt64(Bytes[3]) shl 24) or (TpvUInt64(Bytes[4]) shl 32) or (TpvUInt64(Bytes[5]) shl 40) or (TpvUInt64(Bytes[6]) shl 48) or (TpvUInt64(Bytes[7]) shl 56);
+ result:=TpvInt64(pointer(@Temporary)^);
 end;
 
 function StreamReadUInt8(const pStream:TStream):TpvUInt8;
@@ -2243,13 +5301,13 @@ begin
  result:=(TpvUInt32(Bytes[0]) shl 0) or (TpvUInt32(Bytes[1]) shl 8) or (TpvUInt32(Bytes[2]) shl 16) or (TpvUInt32(Bytes[3]) shl 24);
 end;
 
-function StreamReadUInt64(const pStream:TStream):UInt64;
+function StreamReadUInt64(const pStream:TStream):TpvUInt64;
 type TBytes=array[0..7] of TpvUInt8;
 var Bytes:TBytes;
 begin
  Bytes[0]:=0;
  pStream.ReadBuffer(Bytes,SizeOf(TBytes));
- result:=(UInt64(Bytes[0]) shl 0) or (UInt64(Bytes[1]) shl 8) or (UInt64(Bytes[2]) shl 16) or (UInt64(Bytes[3]) shl 24) or (UInt64(Bytes[4]) shl 32) or (UInt64(Bytes[5]) shl 40) or (UInt64(Bytes[6]) shl 48) or (UInt64(Bytes[7]) shl 56);
+ result:=(TpvUInt64(Bytes[0]) shl 0) or (TpvUInt64(Bytes[1]) shl 8) or (TpvUInt64(Bytes[2]) shl 16) or (TpvUInt64(Bytes[3]) shl 24) or (TpvUInt64(Bytes[4]) shl 32) or (TpvUInt64(Bytes[5]) shl 40) or (TpvUInt64(Bytes[6]) shl 48) or (TpvUInt64(Bytes[7]) shl 56);
 end;
 
 function StreamReadFloat32(const pStream:TStream):TpvFloat;
@@ -2259,7 +5317,7 @@ end;
 
 function StreamReadFloat64(const pStream:TStream):TpvDouble;
 begin
- UInt64(pointer(@result)^):=StreamReadUInt64(pStream);
+ TpvUInt64(pointer(@result)^):=StreamReadUInt64(pStream);
 end;
 
 constructor TpvFBXBaseObject.Create;
@@ -2312,12 +5370,12 @@ begin
  inherited Destroy;
 end;
 
-function TpvFBXElementProperty.GetArrayLength:TpvSizeInt;
+function TpvFBXElementProperty.GetArrayLength:TpvFBXSizeInt;
 begin
  result:=1;
 end;
 
-function TpvFBXElementProperty.GetVariantValue(const pIndex:TpvSizeInt=0):Variant;
+function TpvFBXElementProperty.GetVariantValue(const pIndex:TpvFBXSizeInt=0):Variant;
 begin
  if pIndex<>0 then begin
   raise ERangeError.Create('Array index must be zero');
@@ -2325,7 +5383,7 @@ begin
  result:=0;
 end;
 
-function TpvFBXElementProperty.GetString(const pIndex:TpvSizeInt=0):TpvFBXString;
+function TpvFBXElementProperty.GetString(const pIndex:TpvFBXSizeInt=0):TpvFBXString;
 begin
  if pIndex<>0 then begin
   raise ERangeError.Create('Array index must be zero');
@@ -2333,7 +5391,7 @@ begin
  result:=TpvFBXString(String(GetVariantValue));
 end;
 
-function TpvFBXElementProperty.GetBoolean(const pIndex:TpvSizeInt=0):Boolean;
+function TpvFBXElementProperty.GetBoolean(const pIndex:TpvFBXSizeInt=0):Boolean;
 begin
  if pIndex<>0 then begin
   raise ERangeError.Create('Array index must be zero');
@@ -2341,7 +5399,7 @@ begin
  result:=GetVariantValue;
 end;
 
-function TpvFBXElementProperty.GetInteger(const pIndex:TpvSizeInt=0):Int64;
+function TpvFBXElementProperty.GetInteger(const pIndex:TpvFBXSizeInt=0):TpvInt64;
 begin
  if pIndex<>0 then begin
   raise ERangeError.Create('Array index must be zero');
@@ -2349,7 +5407,7 @@ begin
  result:=GetVariantValue;
 end;
 
-function TpvFBXElementProperty.GetFloat(const pIndex:TpvSizeInt=0):TpvDouble;
+function TpvFBXElementProperty.GetFloat(const pIndex:TpvFBXSizeInt=0):TpvDouble;
 begin
  if pIndex<>0 then begin
   raise ERangeError.Create('Array index must be zero');
@@ -2368,12 +5426,12 @@ begin
  inherited Destroy;
 end;
 
-function TpvFBXElementPropertyBoolean.GetArrayLength:TpvSizeInt;
+function TpvFBXElementPropertyBoolean.GetArrayLength:TpvFBXSizeInt;
 begin
  result:=1;
 end;
 
-function TpvFBXElementPropertyBoolean.GetVariantValue(const pIndex:TpvSizeInt=0):Variant;
+function TpvFBXElementPropertyBoolean.GetVariantValue(const pIndex:TpvFBXSizeInt=0):Variant;
 begin
  if pIndex<>0 then begin
   raise ERangeError.Create('Array index must be zero');
@@ -2381,7 +5439,7 @@ begin
  result:=fValue;
 end;
 
-function TpvFBXElementPropertyBoolean.GetString(const pIndex:TpvSizeInt=0):TpvFBXString;
+function TpvFBXElementPropertyBoolean.GetString(const pIndex:TpvFBXSizeInt=0):TpvFBXString;
 begin
  if pIndex<>0 then begin
   raise ERangeError.Create('Array index must be zero');
@@ -2393,7 +5451,7 @@ begin
  end;
 end;
 
-function TpvFBXElementPropertyBoolean.GetBoolean(const pIndex:TpvSizeInt=0):Boolean;
+function TpvFBXElementPropertyBoolean.GetBoolean(const pIndex:TpvFBXSizeInt=0):Boolean;
 begin
  if pIndex<>0 then begin
   raise ERangeError.Create('Array index must be zero');
@@ -2401,7 +5459,7 @@ begin
  result:=fValue;
 end;
 
-function TpvFBXElementPropertyBoolean.GetInteger(const pIndex:TpvSizeInt=0):Int64;
+function TpvFBXElementPropertyBoolean.GetInteger(const pIndex:TpvFBXSizeInt=0):TpvInt64;
 begin
  if pIndex<>0 then begin
   raise ERangeError.Create('Array index must be zero');
@@ -2409,7 +5467,7 @@ begin
  result:=ord(fValue) and 1;
 end;
 
-function TpvFBXElementPropertyBoolean.GetFloat(const pIndex:TpvSizeInt=0):TpvDouble;
+function TpvFBXElementPropertyBoolean.GetFloat(const pIndex:TpvFBXSizeInt=0):TpvDouble;
 begin
  if pIndex<>0 then begin
   raise ERangeError.Create('Array index must be zero');
@@ -2417,7 +5475,7 @@ begin
  result:=ord(fValue) and 1;
 end;
 
-constructor TpvFBXElementPropertyInteger.Create(const pValue:Int64);
+constructor TpvFBXElementPropertyInteger.Create(const pValue:TpvInt64);
 begin
  inherited Create;
  fValue:=pValue;
@@ -2428,12 +5486,12 @@ begin
  inherited Destroy;
 end;
 
-function TpvFBXElementPropertyInteger.GetArrayLength:TpvSizeInt;
+function TpvFBXElementPropertyInteger.GetArrayLength:TpvFBXSizeInt;
 begin
  result:=1;
 end;
 
-function TpvFBXElementPropertyInteger.GetVariantValue(const pIndex:TpvSizeInt=0):Variant;
+function TpvFBXElementPropertyInteger.GetVariantValue(const pIndex:TpvFBXSizeInt=0):Variant;
 begin
  if pIndex<>0 then begin
   raise ERangeError.Create('Array index must be zero');
@@ -2441,7 +5499,7 @@ begin
  result:=fValue;
 end;
 
-function TpvFBXElementPropertyInteger.GetString(const pIndex:TpvSizeInt=0):TpvFBXString;
+function TpvFBXElementPropertyInteger.GetString(const pIndex:TpvFBXSizeInt=0):TpvFBXString;
 begin
  if pIndex<>0 then begin
   raise ERangeError.Create('Array index must be zero');
@@ -2449,7 +5507,7 @@ begin
  result:=TpvFBXString(IntToStr(fValue));
 end;
 
-function TpvFBXElementPropertyInteger.GetBoolean(const pIndex:TpvSizeInt=0):Boolean;
+function TpvFBXElementPropertyInteger.GetBoolean(const pIndex:TpvFBXSizeInt=0):Boolean;
 begin
  if pIndex<>0 then begin
   raise ERangeError.Create('Array index must be zero');
@@ -2457,7 +5515,7 @@ begin
  result:=fValue<>0;
 end;
 
-function TpvFBXElementPropertyInteger.GetInteger(const pIndex:TpvSizeInt=0):Int64;
+function TpvFBXElementPropertyInteger.GetInteger(const pIndex:TpvFBXSizeInt=0):TpvInt64;
 begin
  if pIndex<>0 then begin
   raise ERangeError.Create('Array index must be zero');
@@ -2465,7 +5523,7 @@ begin
  result:=fValue;
 end;
 
-function TpvFBXElementPropertyInteger.GetFloat(const pIndex:TpvSizeInt=0):TpvDouble;
+function TpvFBXElementPropertyInteger.GetFloat(const pIndex:TpvFBXSizeInt=0):TpvDouble;
 begin
  if pIndex<>0 then begin
   raise ERangeError.Create('Array index must be zero');
@@ -2484,12 +5542,12 @@ begin
  inherited Destroy;
 end;
 
-function TpvFBXElementPropertyFloat.GetArrayLength:TpvSizeInt;
+function TpvFBXElementPropertyFloat.GetArrayLength:TpvFBXSizeInt;
 begin
  result:=1;
 end;
 
-function TpvFBXElementPropertyFloat.GetVariantValue(const pIndex:TpvSizeInt=0):Variant;
+function TpvFBXElementPropertyFloat.GetVariantValue(const pIndex:TpvFBXSizeInt=0):Variant;
 begin
  if pIndex<>0 then begin
   raise ERangeError.Create('Array index must be zero');
@@ -2497,7 +5555,7 @@ begin
  result:=fValue;
 end;
 
-function TpvFBXElementPropertyFloat.GetString(const pIndex:TpvSizeInt=0):TpvFBXString;
+function TpvFBXElementPropertyFloat.GetString(const pIndex:TpvFBXSizeInt=0):TpvFBXString;
 var f:TpvDouble;
 begin
  if pIndex<>0 then begin
@@ -2507,7 +5565,7 @@ begin
  result:=ConvertDoubleToString(f,omStandard,-1);
 end;
 
-function TpvFBXElementPropertyFloat.GetBoolean(const pIndex:TpvSizeInt=0):Boolean;
+function TpvFBXElementPropertyFloat.GetBoolean(const pIndex:TpvFBXSizeInt=0):Boolean;
 begin
  if pIndex<>0 then begin
   raise ERangeError.Create('Array index must be zero');
@@ -2515,7 +5573,7 @@ begin
  result:=fValue<>0.0;
 end;
 
-function TpvFBXElementPropertyFloat.GetInteger(const pIndex:TpvSizeInt=0):Int64;
+function TpvFBXElementPropertyFloat.GetInteger(const pIndex:TpvFBXSizeInt=0):TpvInt64;
 begin
  if pIndex<>0 then begin
   raise ERangeError.Create('Array index must be zero');
@@ -2523,7 +5581,7 @@ begin
  result:=trunc(fValue);
 end;
 
-function TpvFBXElementPropertyFloat.GetFloat(const pIndex:TpvSizeInt=0):TpvDouble;
+function TpvFBXElementPropertyFloat.GetFloat(const pIndex:TpvFBXSizeInt=0):TpvDouble;
 begin
  if pIndex<>0 then begin
   raise ERangeError.Create('Array index must be zero');
@@ -2542,12 +5600,12 @@ begin
  inherited Destroy;
 end;
 
-function TpvFBXElementPropertyBytes.GetArrayLength:TpvSizeInt;
+function TpvFBXElementPropertyBytes.GetArrayLength:TpvFBXSizeInt;
 begin
  result:=length(fValue);
 end;
 
-function TpvFBXElementPropertyBytes.GetVariantValue(const pIndex:TpvSizeInt=0):Variant;
+function TpvFBXElementPropertyBytes.GetVariantValue(const pIndex:TpvFBXSizeInt=0):Variant;
 begin
  if (pIndex<0) or (pIndex>=length(fValue)) then begin
   raise ERangeError.Create('Array index must be greater than or equal zero and less than '+IntToStr(length(fValue)));
@@ -2555,7 +5613,7 @@ begin
  result:=fValue[pIndex];
 end;
 
-function TpvFBXElementPropertyBytes.GetString(const pIndex:TpvSizeInt=0):TpvFBXString;
+function TpvFBXElementPropertyBytes.GetString(const pIndex:TpvFBXSizeInt=0):TpvFBXString;
 begin
  if (pIndex<0) or (pIndex>=length(fValue)) then begin
   raise ERangeError.Create('Array index must be greater than or equal zero and less than '+IntToStr(length(fValue)));
@@ -2563,7 +5621,7 @@ begin
  result:=TpvFBXString(IntToStr(fValue[pIndex]));
 end;
 
-function TpvFBXElementPropertyBytes.GetBoolean(const pIndex:TpvSizeInt=0):Boolean;
+function TpvFBXElementPropertyBytes.GetBoolean(const pIndex:TpvFBXSizeInt=0):Boolean;
 begin
  if (pIndex<0) or (pIndex>=length(fValue)) then begin
   raise ERangeError.Create('Array index must be greater than or equal zero and less than '+IntToStr(length(fValue)));
@@ -2571,7 +5629,7 @@ begin
  result:=fValue[pIndex]<>0.0;
 end;
 
-function TpvFBXElementPropertyBytes.GetInteger(const pIndex:TpvSizeInt=0):Int64;
+function TpvFBXElementPropertyBytes.GetInteger(const pIndex:TpvFBXSizeInt=0):TpvInt64;
 begin
  if (pIndex<0) or (pIndex>=length(fValue)) then begin
   raise ERangeError.Create('Array index must be greater than or equal zero and less than '+IntToStr(length(fValue)));
@@ -2579,7 +5637,7 @@ begin
  result:=fValue[pIndex];
 end;
 
-function TpvFBXElementPropertyBytes.GetFloat(const pIndex:TpvSizeInt=0):TpvDouble;
+function TpvFBXElementPropertyBytes.GetFloat(const pIndex:TpvFBXSizeInt=0):TpvDouble;
 begin
  if (pIndex<0) or (pIndex>=length(fValue)) then begin
   raise ERangeError.Create('Array index must be greater than or equal zero and less than '+IntToStr(length(fValue)));
@@ -2598,12 +5656,12 @@ begin
  inherited Destroy;
 end;
 
-function TpvFBXElementPropertyString.GetArrayLength:TpvSizeInt;
+function TpvFBXElementPropertyString.GetArrayLength:TpvFBXSizeInt;
 begin
  result:=1;
 end;
 
-function TpvFBXElementPropertyString.GetVariantValue(const pIndex:TpvSizeInt=0):Variant;
+function TpvFBXElementPropertyString.GetVariantValue(const pIndex:TpvFBXSizeInt=0):Variant;
 begin
  if pIndex<>0 then begin
   raise ERangeError.Create('Array index must be zero');
@@ -2611,7 +5669,7 @@ begin
  result:=fValue;
 end;
 
-function TpvFBXElementPropertyString.GetString(const pIndex:TpvSizeInt=0):TpvFBXString;
+function TpvFBXElementPropertyString.GetString(const pIndex:TpvFBXSizeInt=0):TpvFBXString;
 begin
  if pIndex<>0 then begin
   raise ERangeError.Create('Array index must be zero');
@@ -2619,7 +5677,7 @@ begin
  result:=fValue;
 end;
 
-function TpvFBXElementPropertyString.GetBoolean(const pIndex:TpvSizeInt=0):Boolean;
+function TpvFBXElementPropertyString.GetBoolean(const pIndex:TpvFBXSizeInt=0):Boolean;
 begin
  if pIndex<>0 then begin
   raise ERangeError.Create('Array index must be zero');
@@ -2627,7 +5685,7 @@ begin
  result:=(fValue<>'false') and (fValue<>'0');
 end;
 
-function TpvFBXElementPropertyString.GetInteger(const pIndex:TpvSizeInt=0):Int64;
+function TpvFBXElementPropertyString.GetInteger(const pIndex:TpvFBXSizeInt=0):TpvInt64;
 begin
  if pIndex<>0 then begin
   raise ERangeError.Create('Array index must be zero');
@@ -2635,7 +5693,7 @@ begin
  result:=StrToIntDef(String(fValue),0);
 end;
 
-function TpvFBXElementPropertyString.GetFloat(const pIndex:TpvSizeInt=0):TpvDouble;
+function TpvFBXElementPropertyString.GetFloat(const pIndex:TpvFBXSizeInt=0):TpvDouble;
 var OK:TPasDblStrUtilsBoolean;
 begin
  if pIndex<>0 then begin
@@ -2648,7 +5706,7 @@ begin
  end;
 end;
 
-constructor TpvFBXElementPropertyArray.Create(const pData:pointer;const pDataCount:TpvSizeInt;const pDataType:TpvFBXElementPropertyArrayDataType);
+constructor TpvFBXElementPropertyArray.Create(const pData:pointer;const pDataCount:TpvFBXSizeInt;const pDataType:TpvFBXElementPropertyArrayDataType);
 begin
  inherited Create;
 
@@ -2713,7 +5771,7 @@ begin
    end;
   end;
 
-  if Int64(fDataCount*fDataTypeSize)<>DataStream.Size then begin
+  if TpvInt64(fDataCount*fDataTypeSize)<>DataStream.Size then begin
    raise EFBXBinaryParser.Create('Corrupt binary FBX file');
   end;
 
@@ -2722,25 +5780,25 @@ begin
   for Index:=1 to fDataCount do begin
    case fDataType of
     TpvFBXElementPropertyArrayDataType.Bool:begin
-     Boolean(pointer(@fData[TpvSizeInt(Index-1)*fDataTypeSize])^):=StreamReadUInt8(DataStream)<>0;
+     Boolean(pointer(@fData[TpvFBXSizeInt(Index-1)*fDataTypeSize])^):=StreamReadUInt8(DataStream)<>0;
     end;
     TpvFBXElementPropertyArrayDataType.Int8:begin
-     TpvInt8(pointer(@fData[TpvSizeInt(Index-1)*fDataTypeSize])^):=StreamReadInt8(DataStream);
+     TpvInt8(pointer(@fData[TpvFBXSizeInt(Index-1)*fDataTypeSize])^):=StreamReadInt8(DataStream);
     end;
     TpvFBXElementPropertyArrayDataType.Int16:begin
-     TpvInt16(pointer(@fData[TpvSizeInt(Index-1)*fDataTypeSize])^):=StreamReadInt16(DataStream);
+     TpvInt16(pointer(@fData[TpvFBXSizeInt(Index-1)*fDataTypeSize])^):=StreamReadInt16(DataStream);
     end;
     TpvFBXElementPropertyArrayDataType.Int32:begin
-     TpvInt32(pointer(@fData[TpvSizeInt(Index-1)*fDataTypeSize])^):=StreamReadInt32(DataStream);
+     TpvInt32(pointer(@fData[TpvFBXSizeInt(Index-1)*fDataTypeSize])^):=StreamReadInt32(DataStream);
     end;
     TpvFBXElementPropertyArrayDataType.Int64:begin
-     TpvInt64(pointer(@fData[TpvSizeInt(Index-1)*fDataTypeSize])^):=StreamReadInt64(DataStream);
+     TpvInt64(pointer(@fData[TpvFBXSizeInt(Index-1)*fDataTypeSize])^):=StreamReadInt64(DataStream);
     end;
     TpvFBXElementPropertyArrayDataType.Float32:begin
-     TpvFloat(pointer(@fData[TpvSizeInt(Index-1)*fDataTypeSize])^):=StreamReadFloat32(DataStream);
+     TpvFloat(pointer(@fData[TpvFBXSizeInt(Index-1)*fDataTypeSize])^):=StreamReadFloat32(DataStream);
     end;
     TpvFBXElementPropertyArrayDataType.Float64:begin
-     TpvDouble(pointer(@fData[TpvSizeInt(Index-1)*fDataTypeSize])^):=StreamReadFloat64(DataStream);
+     TpvDouble(pointer(@fData[TpvFBXSizeInt(Index-1)*fDataTypeSize])^):=StreamReadFloat64(DataStream);
     end;
    end;
   end;
@@ -2757,12 +5815,12 @@ begin
  inherited Destroy;
 end;
 
-function TpvFBXElementPropertyArray.GetArrayLength:TpvSizeInt;
+function TpvFBXElementPropertyArray.GetArrayLength:TpvFBXSizeInt;
 begin
  result:=fDataCount;
 end;
 
-function TpvFBXElementPropertyArray.GetVariantValue(const pIndex:TpvSizeInt=0):Variant;
+function TpvFBXElementPropertyArray.GetVariantValue(const pIndex:TpvFBXSizeInt=0):Variant;
 begin
  if (pIndex<0) or (pIndex>=fDataCount) then begin
   raise ERangeError.Create('Array index must be greater than or equal zero and less than '+IntToStr(fDataCount));
@@ -2796,7 +5854,7 @@ begin
  end;
 end;
 
-function TpvFBXElementPropertyArray.GetString(const pIndex:TpvSizeInt=0):TpvFBXString;
+function TpvFBXElementPropertyArray.GetString(const pIndex:TpvFBXSizeInt=0):TpvFBXString;
 begin
  if (pIndex<0) or (pIndex>=fDataCount) then begin
   raise ERangeError.Create('Array index must be greater than or equal zero and less than '+IntToStr(fDataCount));
@@ -2834,7 +5892,7 @@ begin
  end;
 end;
 
-function TpvFBXElementPropertyArray.GetBoolean(const pIndex:TpvSizeInt=0):Boolean;
+function TpvFBXElementPropertyArray.GetBoolean(const pIndex:TpvFBXSizeInt=0):Boolean;
 begin
  if (pIndex<0) or (pIndex>=fDataCount) then begin
   raise ERangeError.Create('Array index must be greater than or equal zero and less than '+IntToStr(fDataCount));
@@ -2868,7 +5926,7 @@ begin
  end;
 end;
 
-function TpvFBXElementPropertyArray.GetInteger(const pIndex:TpvSizeInt=0):Int64;
+function TpvFBXElementPropertyArray.GetInteger(const pIndex:TpvFBXSizeInt=0):TpvInt64;
 begin
  if (pIndex<0) or (pIndex>=fDataCount) then begin
   raise ERangeError.Create('Array index must be greater than or equal zero and less than '+IntToStr(fDataCount));
@@ -2902,7 +5960,7 @@ begin
  end;
 end;
 
-function TpvFBXElementPropertyArray.GetFloat(const pIndex:TpvSizeInt=0):TpvDouble;
+function TpvFBXElementPropertyArray.GetFloat(const pIndex:TpvFBXSizeInt=0):TpvDouble;
 begin
  if (pIndex<0) or (pIndex>=fDataCount) then begin
   raise ERangeError.Create('Array index must be greater than or equal zero and less than '+IntToStr(fDataCount));
@@ -2995,7 +6053,7 @@ begin
 end;
 
 function TpvFBXASCIIParser.GetName(const pRawName:TpvFBXString):TpvFBXString;
-var Position:TpvSizeInt;
+var Position:TpvFBXSizeInt;
 begin
  for Position:=length(pRawName)-1 downto 1 do begin
   if (pRawName[Position]=':') and (pRawName[Position+1]=':') then begin
@@ -3083,7 +6141,7 @@ begin
 end;
 
 procedure TpvFBXASCIIParser.NextToken;
-var Len:Int64;
+var Len:TpvInt64;
     CurrentChar:AnsiChar;
     OK:TPasDblStrUtilsBoolean;
 begin
@@ -3193,7 +6251,7 @@ type TProperties=array of TpvFBXASCIIParserToken;
      TNumber=record
       case DataType:TNumberDataType of
        TNumberDataType.Int64:(
-        Int64Value:Int64;
+        Int64Value:TpvInt64;
        );
        TNumberDataType.Float64:(
         Float64Value:TpvDouble;
@@ -3209,7 +6267,7 @@ var Current,Element:TpvFBXElement;
     CountProperties,CountNumbers,Index:TpvInt32;
     HasFloat:boolean;
     OldToken:TpvFBXASCIIParserToken;
-    OldPosition:Int64;
+    OldPosition:TpvInt64;
  procedure FlushProperties;
  var Index:TpvInt32;
      Token:PpvFBXASCIIParserToken;
@@ -3545,7 +6603,7 @@ begin
 end;
 
 function TpvFBXBinaryParser.GetName(const pRawName:TpvFBXString):TpvFBXString;
-var Position:TpvSizeInt;
+var Position:TpvFBXSizeInt;
 begin
  Position:=Pos(#0,String(pRawName));
  if Position>0 then begin
@@ -3595,15 +6653,15 @@ begin
  result:=TpvInt32(pointer(@Temporary)^);
 end;
 
-function TpvFBXBinaryParser.ReadInt64:Int64;
+function TpvFBXBinaryParser.ReadInt64:TpvInt64;
 type TBytes=array[0..7] of TpvUInt8;
 var Bytes:TBytes;
-    Temporary:UInt64;
+    Temporary:TpvUInt64;
 begin
  Bytes[0]:=0;
  fStream.ReadBuffer(Bytes,SizeOf(TBytes));
- Temporary:=(UInt64(Bytes[0]) shl 0) or (UInt64(Bytes[1]) shl 8) or (UInt64(Bytes[2]) shl 16) or (UInt64(Bytes[3]) shl 24) or (UInt64(Bytes[4]) shl 32) or (UInt64(Bytes[5]) shl 40) or (UInt64(Bytes[6]) shl 48) or (UInt64(Bytes[7]) shl 56);
- result:=Int64(pointer(@Temporary)^);
+ Temporary:=(TpvUInt64(Bytes[0]) shl 0) or (TpvUInt64(Bytes[1]) shl 8) or (TpvUInt64(Bytes[2]) shl 16) or (TpvUInt64(Bytes[3]) shl 24) or (TpvUInt64(Bytes[4]) shl 32) or (TpvUInt64(Bytes[5]) shl 40) or (TpvUInt64(Bytes[6]) shl 48) or (TpvUInt64(Bytes[7]) shl 56);
+ result:=TpvInt64(pointer(@Temporary)^);
 end;
 
 function TpvFBXBinaryParser.ReadUInt8:TpvUInt8;
@@ -3636,7 +6694,7 @@ var Bytes:TBytes;
 begin
  Bytes[0]:=0;
  fStream.ReadBuffer(Bytes,SizeOf(TBytes));
- result:=(TpvUInt64(Bytes[0]) shl 0) or (TpvUInt64(Bytes[1]) shl 8) or (TpvUInt64(Bytes[2]) shl 16) or (TpvUInt64(Bytes[3]) shl 24) or (UInt64(Bytes[4]) shl 32) or (TpvUInt64(Bytes[5]) shl 40) or (TpvUInt64(Bytes[6]) shl 48) or (TpvUInt64(Bytes[7]) shl 56);
+ result:=(TpvUInt64(Bytes[0]) shl 0) or (TpvUInt64(Bytes[1]) shl 8) or (TpvUInt64(Bytes[2]) shl 16) or (TpvUInt64(Bytes[3]) shl 24) or (TpvUInt64(Bytes[4]) shl 32) or (TpvUInt64(Bytes[5]) shl 40) or (TpvUInt64(Bytes[6]) shl 48) or (TpvUInt64(Bytes[7]) shl 56);
 end;
 
 function TpvFBXBinaryParser.ReadFloat32:TpvFloat;
@@ -3646,7 +6704,7 @@ end;
 
 function TpvFBXBinaryParser.ReadFloat64:TpvDouble;
 begin
- UInt64(pointer(@result)^):=ReadUInt64;
+ TpvUInt64(pointer(@result)^):=ReadUInt64;
 end;
 
 function TpvFBXBinaryParser.ReadString(const pLength:TpvInt32):TpvFBXString;
@@ -3875,7 +6933,7 @@ begin
  end;
 end;
 
-constructor TpvFBXObject.Create(const pLoader:TpvFBXLoader;const pElement:TpvFBXElement;const pID:Int64;const pName,pType_:TpvFBXString);
+constructor TpvFBXObject.Create(const pLoader:TpvFBXLoader;const pElement:TpvFBXElement;const pID:TpvInt64;const pName,pType_:TpvFBXString);
 begin
  inherited Create;
  fLoader:=pLoader;
@@ -3908,7 +6966,7 @@ begin
 end;
 
 procedure TpvFBXObject.BeforeDestruction;
-var Index:TpvSizeInt;
+var Index:TpvFBXSizeInt;
 begin
  Index:=fLoader.fAllocatedList.IndexOf(self);
  if Index>=0 then begin
@@ -4025,7 +7083,7 @@ begin
  end;
 end;
 
-constructor TpvFBXNode.Create(const pLoader:TpvFBXLoader;const pElement:TpvFBXElement;const pID:Int64;const pName,pType_:TpvFBXString);
+constructor TpvFBXNode.Create(const pLoader:TpvFBXLoader;const pElement:TpvFBXElement;const pID:TpvInt64;const pName,pType_:TpvFBXString);
 begin
 
  inherited Create(pLoader,pElement,pID,pName,pType_);
@@ -4034,11 +7092,11 @@ begin
 
  fChildren:=TpvFBXNodeList.Create(false);
 
- fLclTranslation:=TpvVector3Property.Create(0.0,0.0,0.0);
+ fLclTranslation:=TpvFBXVector3Property.Create(0.0,0.0,0.0);
 
- fLclRotation:=TpvVector3Property.Create(0.0,0.0,0.0);
+ fLclRotation:=TpvFBXVector3Property.Create(0.0,0.0,0.0);
 
- fLclScaling:=TpvVector3Property.Create(1.0,1.0,1.0);
+ fLclScaling:=TpvFBXVector3Property.Create(1.0,1.0,1.0);
 
  fVisibility:=true;
 
@@ -4070,7 +7128,7 @@ begin
  end;
 end;
 
-constructor TpvFBXScene.Create(const pLoader:TpvFBXLoader;const pElement:TpvFBXElement;const pID:Int64;const pName,pType_:TpvFBXString);
+constructor TpvFBXScene.Create(const pLoader:TpvFBXLoader;const pElement:TpvFBXElement;const pID:TpvInt64;const pName,pType_:TpvFBXString);
 begin
  inherited Create(pLoader,pElement,pID,pName,pType_);
  fAllObjects:=TpvFBXObjectNameMap.Create;
@@ -4112,7 +7170,7 @@ begin
  inherited Destroy;
 end;
 
-constructor TpvFBXGlobalSettings.Create(const pLoader:TpvFBXLoader;const pElement:TpvFBXElement;const pID:Int64;const pName,pType_:TpvFBXString);
+constructor TpvFBXGlobalSettings.Create(const pLoader:TpvFBXLoader;const pElement:TpvFBXElement;const pID:TpvInt64;const pName,pType_:TpvFBXString);
 begin
  inherited Create(pLoader,pElement,pID,pName,pType_);
  fUpAxis:=1;
@@ -4159,14 +7217,14 @@ begin
  fTimeSpan.EndTime:=pValue;
 end;
 
-constructor TpvFBXCamera.Create(const pLoader:TpvFBXLoader;const pElement:TpvFBXElement;const pID:Int64;const pName,pType_:TpvFBXString);
+constructor TpvFBXCamera.Create(const pLoader:TpvFBXLoader;const pElement:TpvFBXElement;const pID:TpvInt64;const pName,pType_:TpvFBXString);
 var SubElement,SubSubElement:TpvFBXElement;
 begin
 
  inherited Create(pLoader,pElement,pID,pName,pType_);
 
- fPosition:=TpvVector3Property.Create(0.0,0.0,0.0);
- fLookAt:=TpvVector3Property.Create(0.0,0.0,0.0);
+ fPosition:=TpvFBXVector3Property.Create(0.0,0.0,0.0);
+ fLookAt:=TpvFBXVector3Property.Create(0.0,0.0,0.0);
  fCameraOrthoZoom:=1.0;
  fRoll:=0.0;
  fFieldOfView:=0.0;
@@ -4220,7 +7278,7 @@ begin
  inherited Destroy;
 end;
 
-constructor TpvFBXLight.Create(const pLoader:TpvFBXLoader;const pElement:TpvFBXElement;const pID:Int64;const pName,pType_:TpvFBXString);
+constructor TpvFBXLight.Create(const pLoader:TpvFBXLoader;const pElement:TpvFBXElement;const pID:TpvInt64;const pName,pType_:TpvFBXString);
 var SubElement,SubSubElement:TpvFBXElement;
 begin
 
@@ -4282,9 +7340,9 @@ begin
 end;
 
 procedure TpvFBXLayerElement<TDataType>.Finish(const pMesh:TpvFBXMesh);
-type TEdgeMap=TDictionary<TpvFBXMeshEdge,Int64>;
+type TEdgeMap=TDictionary<TpvFBXMeshEdge,TpvInt64>;
 var Index,SubIndex:TpvInt32;
-    DataIndex:Int64;
+    DataIndex:TpvInt64;
     EdgeMap:TEdgeMap;
     Edge:TpvFBXMeshEdge;
 begin
@@ -4369,17 +7427,17 @@ begin
    end;
   end;
   else begin
-   raise EpvFBX.Create('Unknown mapping mode');
+   raise EFBX.Create('Unknown mapping mode');
   end;
  end;
 end;
 
-function TpvFBXLayerElement<TDataType>.GetItem(const pIndex:TpvSizeInt):TDataType;
+function TpvFBXLayerElement<TDataType>.GetItem(const pIndex:TpvFBXSizeInt):TDataType;
 begin
  result:=fData[pIndex];
 end;
 
-procedure TpvFBXLayerElement<TDataType>.SetItem(const pIndex:TpvSizeInt;const pItem:TDataType);
+procedure TpvFBXLayerElement<TDataType>.SetItem(const pIndex:TpvFBXSizeInt;const pItem:TDataType);
 begin
  fData[pIndex]:=pItem;
 end;
@@ -4406,7 +7464,7 @@ begin
  inherited Destroy;
 end;
 
-constructor TpvFBXMesh.Create(const pLoader:TpvFBXLoader;const pElement:TpvFBXElement;const pID:Int64;const pName,pType_:TpvFBXString);
+constructor TpvFBXMesh.Create(const pLoader:TpvFBXLoader;const pElement:TpvFBXElement;const pID:TpvInt64;const pName,pType_:TpvFBXString);
  function GetLayer(const pLayerIndex:TpvInt32):TpvFBXLayer;
  begin
   while fLayers.Count<=pLayerIndex do begin
@@ -4449,7 +7507,7 @@ constructor TpvFBXMesh.Create(const pLoader:TpvFBXLoader;const pElement:TpvFBXEl
  end;
 var SubElement,SubSubElement,ArrayElement:TpvFBXElement;
     Index,LayerIndex:TpvInt32;
-    Value:Int64;
+    Value:TpvInt64;
     IntList:TpvFBXInt64List;
     FloatList:TpvFBXFloat64List;
     Polygon:TpvFBXMeshIndices;
@@ -4505,7 +7563,7 @@ begin
      end;
      Index:=0;
      while (Index+2)<FloatList.Count do begin
-      fVertices.Add(TpvVector3.Create(FloatList[Index+0],FloatList[Index+1],FloatList[Index+2]));
+      fVertices.Add(TpvFBXVector3.Create(FloatList[Index+0],FloatList[Index+1],FloatList[Index+2]));
       inc(Index,3);
      end;
     finally
@@ -4631,7 +7689,7 @@ begin
          end;
          Index:=0;
          while (Index+2)<FloatList.Count do begin
-          Layer.Normals.fData.Add(TpvVector3.Create(FloatList[Index+0],FloatList[Index+1],FloatList[Index+2]));
+          Layer.Normals.fData.Add(TpvFBXVector3.Create(FloatList[Index+0],FloatList[Index+1],FloatList[Index+2]));
           inc(Index,3);
          end;
         finally
@@ -4716,7 +7774,7 @@ begin
          end;
          Index:=0;
          while (Index+2)<FloatList.Count do begin
-          Layer.Tangents.fData.Add(TpvVector3.Create(FloatList[Index+0],FloatList[Index+1],FloatList[Index+2]));
+          Layer.Tangents.fData.Add(TpvFBXVector3.Create(FloatList[Index+0],FloatList[Index+1],FloatList[Index+2]));
           inc(Index,3);
          end;
         finally
@@ -4801,7 +7859,7 @@ begin
          end;
          Index:=0;
          while (Index+2)<FloatList.Count do begin
-          Layer.Bitangents.fData.Add(TpvVector3.Create(FloatList[Index+0],FloatList[Index+1],FloatList[Index+2]));
+          Layer.Bitangents.fData.Add(TpvFBXVector3.Create(FloatList[Index+0],FloatList[Index+1],FloatList[Index+2]));
           inc(Index,3);
          end;
         finally
@@ -4971,7 +8029,7 @@ begin
          end;
          Index:=0;
          while (Index+1)<FloatList.Count do begin
-          Layer.UVs.fData.Add(TpvVector2.Create(FloatList[Index+0],FloatList[Index+1]));
+          Layer.UVs.fData.Add(TpvFBXVector2.Create(FloatList[Index+0],FloatList[Index+1]));
           inc(Index,2);
          end;
         finally
@@ -5125,9 +8183,9 @@ begin
 end;
 
 procedure TpvFBXMesh.Finish;
-type TTriangleVertexMap=TDictionary<TpvFBXMeshTriangleVertex,Int64>;
+type TTriangleVertexMap=TDictionary<TpvFBXMeshTriangleVertex,TpvInt64>;
 var Index,SubIndex,WorkIndex,PolygonVertexIndex:TpvInt32;
-    VertexIndex,TriangleVertexIndex,ClusterIndex:Int64;
+    VertexIndex,TriangleVertexIndex,ClusterIndex:TpvInt64;
     Skins,Clusters:TpvFBXObjects;
     Skin,Cluster:TpvFBXObject;
     ClusterMapItem:TpvFBXMeshClusterMapItem;
@@ -5136,7 +8194,7 @@ var Index,SubIndex,WorkIndex,PolygonVertexIndex:TpvInt32;
     TriangleVertexMap:TTriangleVertexMap;
     Layer:TpvFBXLayer;
     HasBlendShapes:boolean;
- function FillTriangleVertex(const pVertexIndex,pPolygonVertexIndex:Int64):TpvFBXMeshTriangleVertex;
+ function FillTriangleVertex(const pVertexIndex,pPolygonVertexIndex:TpvInt64):TpvFBXMeshTriangleVertex;
  begin
   FillChar(result,SizeOf(TpvFBXMeshTriangleVertex),#0);
   result.Position:=fVertices[pVertexIndex];
@@ -5238,7 +8296,7 @@ begin
 
 end;
 
-constructor TpvFBXSkeleton.Create(const pLoader:TpvFBXLoader;const pElement:TpvFBXElement;const pID:Int64;const pName,pType_:TpvFBXString);
+constructor TpvFBXSkeleton.Create(const pLoader:TpvFBXLoader;const pElement:TpvFBXElement;const pID:TpvInt64;const pName,pType_:TpvFBXString);
 begin
  inherited Create(pLoader,pElement,pID,pName,pType_);
  if pType_='Root' then begin
@@ -5259,7 +8317,7 @@ begin
  inherited Destroy;
 end;
 
-constructor TpvFBXMaterial.Create(const pLoader:TpvFBXLoader;const pElement:TpvFBXElement;const pID:Int64;const pName,pType_:TpvFBXString);
+constructor TpvFBXMaterial.Create(const pLoader:TpvFBXLoader;const pElement:TpvFBXElement;const pID:TpvInt64;const pName,pType_:TpvFBXString);
 var SubElement,SubSubElement:TpvFBXElement;
     PropertyName:TpvFBXString;
     ValuePropertyIndex:TpvInt32;
@@ -5365,7 +8423,7 @@ begin
  inherited ConnectTo(pObject);
 end;
 
-constructor TpvFBXAnimationStack.Create(const pLoader:TpvFBXLoader;const pElement:TpvFBXElement;const pID:Int64;const pName,pType_:TpvFBXString);
+constructor TpvFBXAnimationStack.Create(const pLoader:TpvFBXLoader;const pElement:TpvFBXElement;const pID:TpvInt64;const pName,pType_:TpvFBXString);
 var SubElement,SubSubElement:TpvFBXElement;
     PropertyName:TpvFBXString;
     ValuePropertyIndex:TpvInt32;
@@ -5414,7 +8472,7 @@ begin
  inherited Destroy;
 end;
 
-constructor TpvFBXAnimationLayer.Create(const pLoader:TpvFBXLoader;const pElement:TpvFBXElement;const pID:Int64;const pName,pType_:TpvFBXString);
+constructor TpvFBXAnimationLayer.Create(const pLoader:TpvFBXLoader;const pElement:TpvFBXElement;const pID:TpvInt64;const pName,pType_:TpvFBXString);
 var SubElement:TpvFBXElement;
 begin
  inherited Create(pLoader,pElement,pID,pName,pType_);
@@ -5460,7 +8518,7 @@ begin
  inherited Destroy;
 end;
 
-constructor TpvFBXSkinDeformer.Create(const pLoader:TpvFBXLoader;const pElement:TpvFBXElement;const pID:Int64;const pName,pType_:TpvFBXString);
+constructor TpvFBXSkinDeformer.Create(const pLoader:TpvFBXLoader;const pElement:TpvFBXElement;const pID:TpvInt64;const pName,pType_:TpvFBXString);
 var SubElement:TpvFBXElement;
 begin
  inherited Create(pLoader,pElement,pID,pName,pType_);
@@ -5491,7 +8549,7 @@ begin
  inherited Destroy;
 end;
 
-constructor TpvFBXCluster.Create(const pLoader:TpvFBXLoader;const pElement:TpvFBXElement;const pID:Int64;const pName,pType_:TpvFBXString);
+constructor TpvFBXCluster.Create(const pLoader:TpvFBXLoader;const pElement:TpvFBXElement;const pID:TpvInt64;const pName,pType_:TpvFBXString);
 var SubElement,ArrayElement:TpvFBXElement;
     Index:TpvUInt32;
 begin
@@ -5615,7 +8673,7 @@ begin
  end;
 end;
 
-constructor TpvFBXTexture.Create(const pLoader:TpvFBXLoader;const pElement:TpvFBXElement;const pID:Int64;const pName,pType_:TpvFBXString);
+constructor TpvFBXTexture.Create(const pLoader:TpvFBXLoader;const pElement:TpvFBXElement;const pID:TpvInt64;const pName,pType_:TpvFBXString);
 var SubElement:TpvFBXElement;
 begin
  inherited Create(pLoader,pElement,pID,pName,pType_);
@@ -5655,10 +8713,10 @@ begin
  inherited Destroy;
 end;
 
-constructor TpvFBXAnimationCurve.Create(const pLoader:TpvFBXLoader;const pElement:TpvFBXElement;const pID:Int64;const pName,pType_:TpvFBXString);
+constructor TpvFBXAnimationCurve.Create(const pLoader:TpvFBXLoader;const pElement:TpvFBXElement;const pID:TpvInt64;const pName,pType_:TpvFBXString);
 var SubElement:TpvFBXElement;
     Index,OtherIndex,YetOtherIndex,AttrCount,Flags:TpvUInt32;
-    Data0,Data1,Data2,Data3:Int64;
+    Data0,Data1,Data2,Data3:TpvInt64;
     KeyTime,KeyValue,KeyAttrFlags,KeyAttrDataFloat,KeyAttrRefCount:TpvFBXElementPropertyArray;
     Key:TpvFBXAnimationKey;
 begin
@@ -5686,10 +8744,10 @@ begin
     if SubElement.Properties.Count>0 then begin
      Data0:=SubElement.Properties[0].GetInteger;
      if (Data0<>4008) and (Data0<>4009) then begin
-      raise EpvFBX.Create('Not implemented TpvFBXAnimationCurve KeyVer version '+IntToStr(Data0));
+      raise EFBX.Create('Not implemented TpvFBXAnimationCurve KeyVer version '+IntToStr(Data0));
      end;
     end else begin
-     raise EpvFBX.Create('Not implemented feature');
+     raise EFBX.Create('Not implemented feature');
     end;
    end else if SubElement.ID='KeyTime' then begin
     if (SubElement.Properties.Count>0) and (SubElement.Properties[0] is TpvFBXElementPropertyArray) then begin
@@ -5739,7 +8797,7 @@ begin
      Flags:=KeyAttrFlags.GetInteger(YetOtherIndex);
      while AttrCount>0 do begin
       dec(AttrCount);
-      if TpvSizeInt(OtherIndex)<TpvSizeInt(fAnimationKeys.Count) then begin
+      if TpvFBXSizeInt(OtherIndex)<TpvFBXSizeInt(fAnimationKeys.Count) then begin
        Key:=fAnimationKeys[OtherIndex];
        Key.fTangentMode:=Flags and TpvFBXAnimationKey.TANGENT_MASK;
        Key.fInterpolation:=Flags and TpvFBXAnimationKey.INTERPOLATION_MASK;
@@ -5754,7 +8812,7 @@ begin
       end;
       inc(OtherIndex);
      end;
-     if TpvSizeInt(OtherIndex)<TpvSizeInt(fAnimationKeys.Count) then begin
+     if TpvFBXSizeInt(OtherIndex)<TpvFBXSizeInt(fAnimationKeys.Count) then begin
       inc(YetOtherIndex);
      end else begin
       break;
@@ -5769,10 +8827,10 @@ begin
 
 end;
 
-constructor TpvFBXAnimationCurve.CreateOldFBX6000(const pLoader:TpvFBXLoader;const pElement:TpvFBXElement;const pID:Int64;const pName,pType_:TpvFBXString);
+constructor TpvFBXAnimationCurve.CreateOldFBX6000(const pLoader:TpvFBXLoader;const pElement:TpvFBXElement;const pID:TpvInt64;const pName,pType_:TpvFBXString);
 var SubElement,ArrayElement:TpvFBXElement;
     Index:TpvUInt32;
-    Data0:Int64;
+    Data0:TpvInt64;
     Key:TpvFBXAnimationKey;
     InterpolationType:TpvFBXString;
 begin
@@ -5796,10 +8854,10 @@ begin
     if SubElement.Properties.Count>0 then begin
      Data0:=SubElement.Properties[0].GetInteger;
      if (Data0<>4005) and (Data0<>4006) and (Data0<>4007) then begin
-      raise EpvFBX.Create('Not implemented TpvFBXAnimationCurve KeyVer version '+IntToStr(Data0));
+      raise EFBX.Create('Not implemented TpvFBXAnimationCurve KeyVer version '+IntToStr(Data0));
      end;
     end else begin
-     raise EpvFBX.Create('Not implemented feature');
+     raise EFBX.Create('Not implemented feature');
     end;
    end else if SubElement.ID='Key' then begin
     ArrayElement:=SubElement;
@@ -5808,21 +8866,21 @@ begin
 
   if assigned(ArrayElement) then begin
    Index:=0;
-   while Index<Int64(ArrayElement.fProperties.Count) do begin
+   while Index<TpvInt64(ArrayElement.fProperties.Count) do begin
     Key:=TpvFBXAnimationKey.Create;
     fAnimationKeys.Add(Key);
 
     Key.fTime:=ArrayElement.Properties[Index].GetInteger;
     inc(Index);
 
-    if Index<Int64(ArrayElement.fProperties.Count) then begin
+    if Index<TpvInt64(ArrayElement.fProperties.Count) then begin
      Key.fValue:=ArrayElement.Properties[Index].GetFloat;
      inc(Index);
     end else begin
      break;
     end;
 
-    if Index<Int64(ArrayElement.fProperties.Count) then begin
+    if Index<TpvInt64(ArrayElement.fProperties.Count) then begin
      InterpolationType:=ArrayElement.Properties[Index].GetString;
      inc(Index);
 
@@ -5870,10 +8928,10 @@ begin
  inherited Destroy;
 end;
 
-constructor TpvFBXPose.Create(const pLoader:TpvFBXLoader;const pElement:TpvFBXElement;const pID:Int64;const pName,pType_:TpvFBXString);
+constructor TpvFBXPose.Create(const pLoader:TpvFBXLoader;const pElement:TpvFBXElement;const pID:TpvInt64;const pName,pType_:TpvFBXString);
 var SubElement,SubSubElement,ArrayElement:TpvFBXElement;
     Index:TpvInt32;
-    Matrix:TpvMatrix4x4;
+    Matrix:TpvFBXMatrix4x4;
     NodeName:TpvFBXString;
     Node:TpvFBXObject;
 begin
@@ -5921,7 +8979,7 @@ begin
       if Node is TpvFBXNode then begin
        fNodeMatrixMap.AddOrSetValue(TpvFBXNode(Node),Matrix);
       end else begin
-       raise EpvFBX.Create('Wrong object type of "'+String(NodeName)+'", it must be TpvFBXNode and not '+Node.ClassName);
+       raise EFBX.Create('Wrong object type of "'+String(NodeName)+'", it must be TpvFBXNode and not '+Node.ClassName);
       end;
      end;
     end;
@@ -5937,7 +8995,7 @@ begin
  inherited Destroy;
 end;
 
-function TpvFBXPose.GetMatrix(const pNode:TpvFBXNode):TpvMatrix4x4;
+function TpvFBXPose.GetMatrix(const pNode:TpvFBXNode):TpvFBXMatrix4x4;
 begin
  result:=FBXMatrix4x4Identity;
  if not fNodeMatrixMap.TryGetValue(pNode,result) then begin
@@ -5945,7 +9003,7 @@ begin
  end;
 end;
 
-constructor TpvFBXVideo.Create(const pLoader:TpvFBXLoader;const pElement:TpvFBXElement;const pID:Int64;const pName,pType_:TpvFBXString);
+constructor TpvFBXVideo.Create(const pLoader:TpvFBXLoader;const pElement:TpvFBXElement;const pID:TpvInt64;const pName,pType_:TpvFBXString);
 var SubElement:TpvFBXElement;
 begin
 
@@ -5970,7 +9028,7 @@ begin
  inherited Destroy;
 end;
 
-constructor TpvFBXTake.Create(const pLoader:TpvFBXLoader;const pElement:TpvFBXElement;const pID:Int64;const pName,pType_:TpvFBXString);
+constructor TpvFBXTake.Create(const pLoader:TpvFBXLoader;const pElement:TpvFBXElement;const pID:TpvInt64;const pName,pType_:TpvFBXString);
 var SubElement:TpvFBXElement;
 begin
 
@@ -6168,7 +9226,7 @@ var Parser:TpvFBXParser;
  end;
  procedure ProcessObjects(const pObjectsElement:TpvFBXElement);
   procedure ProcessModel(const pModelElement:TpvFBXElement);
-  var ID:Int64;
+  var ID:TpvInt64;
       RawName,Type_,Name:TpvFBXString;
       StringList:TStringList;
       Node,MeshNode:TpvFBXNode;
@@ -6262,7 +9320,7 @@ var Parser:TpvFBXParser;
    end;
   end;
   procedure ProcessGeometry(const pGeometryElement:TpvFBXElement);
-  var ID:Int64;
+  var ID:TpvInt64;
       Type_:TpvFBXString;
       Mesh:TpvFBXMesh;
   begin
@@ -6277,7 +9335,7 @@ var Parser:TpvFBXParser;
    end;
   end;
   procedure ProcessMaterial(const pMaterialElement:TpvFBXElement);
-  var ID:Int64;
+  var ID:TpvInt64;
       RawName,Name:TpvFBXString;
       Material:TpvFBXMaterial;
   begin
@@ -6298,7 +9356,7 @@ var Parser:TpvFBXParser;
    fScene.fMaterials.Add(Material);
   end;
   procedure ProcessAnimationStack(const pAnimationStackElement:TpvFBXElement);
-  var ID:Int64;
+  var ID:TpvInt64;
       RawName,Name:TpvFBXString;
       AnimationStack:TpvFBXAnimationStack;
   begin
@@ -6319,7 +9377,7 @@ var Parser:TpvFBXParser;
    fScene.fAnimationStackList.Add(AnimationStack);
   end;
   procedure ProcessAnimationLayer(const pAnimationLayerElement:TpvFBXElement);
-  var ID:Int64;
+  var ID:TpvInt64;
       RawName,Name:TpvFBXString;
       AnimationLayer:TpvFBXAnimationLayer;
   begin
@@ -6339,7 +9397,7 @@ var Parser:TpvFBXParser;
    end;
   end;
   procedure ProcessAnimationCurveNode(const pAnimationCurveNodeElement:TpvFBXElement);
-  var ID:Int64;
+  var ID:TpvInt64;
       RawName,Name:TpvFBXString;
       AnimationCurveNode:TpvFBXAnimationCurveNode;
   begin
@@ -6359,7 +9417,7 @@ var Parser:TpvFBXParser;
    end;
   end;
   procedure ProcessDeformer(const pDeformerElement:TpvFBXElement);
-  var ID:Int64;
+  var ID:TpvInt64;
       RawName,Name,Type_:TpvFBXString;
       Deformer:TpvFBXDeformer;
   begin
@@ -6390,7 +9448,7 @@ var Parser:TpvFBXParser;
    end;
   end;
   procedure ProcessTexture(const pTextureElement:TpvFBXElement);
-  var ID:Int64;
+  var ID:TpvInt64;
       RawName,Name:TpvFBXString;
       Texture:TpvFBXTexture;
   begin
@@ -6411,7 +9469,7 @@ var Parser:TpvFBXParser;
    fScene.fTextures.Add(Texture);
   end;
   procedure ProcessFolder(const pFolderElement:TpvFBXElement);
-  var ID:Int64;
+  var ID:TpvInt64;
       RawName,Name:TpvFBXString;
       Folder:TpvFBXFolder;
   begin
@@ -6431,7 +9489,7 @@ var Parser:TpvFBXParser;
    end;
   end;
   procedure ProcessConstraint(const pConstraintElement:TpvFBXElement);
-  var ID:Int64;
+  var ID:TpvInt64;
       RawName,Name:TpvFBXString;
       Constraint:TpvFBXConstraint;
   begin
@@ -6451,7 +9509,7 @@ var Parser:TpvFBXParser;
    end;
   end;
   procedure ProcessAnimationCurve(const pAnimationCurveElement:TpvFBXElement);
-  var ID:Int64;
+  var ID:TpvInt64;
       RawName,Name:TpvFBXString;
       AnimationCurve:TpvFBXAnimationCurve;
   begin
@@ -6471,7 +9529,7 @@ var Parser:TpvFBXParser;
    end;
   end;
   procedure ProcessNodeAttribute(const pNodeAttributeElement:TpvFBXElement);
-  var ID:Int64;
+  var ID:TpvInt64;
       RawName,Name:TpvFBXString;
       NodeAttribute:TpvFBXNodeAttribute;
   begin
@@ -6500,7 +9558,7 @@ var Parser:TpvFBXParser;
    fScene.fPoses.Add(TpvFBXPose.Create(self,pPoseElement,0,pPoseElement.Properties[0].GetString,pPoseElement.Properties[1].GetString));
   end;
   procedure ProcessVideo(const pVideoElement:TpvFBXElement);
-  var ID:Int64;
+  var ID:TpvInt64;
       RawName,Name:TpvFBXString;
       Video:TpvFBXVideo;
   begin
@@ -6761,7 +9819,7 @@ begin
   end;
 
   if not assigned(Parser) then begin
-   raise EpvFBX.Create('Invalid oder corrupt FBX file');
+   raise EFBX.Create('Invalid oder corrupt FBX file');
   end;
 
   FreeAndNil(fGlobalSettings);
