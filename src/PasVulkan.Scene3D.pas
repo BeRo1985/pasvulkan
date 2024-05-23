@@ -15093,8 +15093,8 @@ begin
   MeshPrimitive.MaterialID:=AddMaterial(Material);
   MeshPrimitive.Material:=Material;
 
-  for IndexIndex:=0 to TpvSizeInt(aSourceModel.FileHeader.CountVertices)-1 do begin
-   PPMVertex:=@aSourceModel.Animations[0].Frames[0].Vertices[0];
+  for VertexIndex:=0 to TpvSizeInt(aSourceModel.FileHeader.CountVertices)-1 do begin
+   PPMVertex:=@aSourceModel.Animations[0].Frames[0].Vertices[VertexIndex];
    MeshVertex:=MeshPrimitive.AddIndirectVertex;
    MeshVertex^.NodeIndex:=0;
    MeshVertex^.MaterialID:=0;
