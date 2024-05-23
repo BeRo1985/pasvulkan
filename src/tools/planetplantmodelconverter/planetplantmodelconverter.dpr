@@ -16,100 +16,12 @@ uses Classes,
      PasVulkan.Utils in '../../PasVulkan.Utils.pas',
      PasVulkan.Math in '../../PasVulkan.Math.pas',
      PasVulkan.Collections in '../../PasVulkan.Collections.pas',
-     PasVulkan.FileFormats.GLTF in '../../PasVulkan.FileFormats.GLTF.pas';
+     PasVulkan.FileFormats.GLTF in '../../PasVulkan.FileFormats.GLTF.pas',
+     PasVulkan.FileFormats.PPM in '../../PasVulkan.FileFormats.PPM.pas';
 
-const CountFrames=16;
+var Animations:TpvPPM.TAnimations;
 
-      CountPresetAnimations=4;
-
-      MaximalCountVertices=16384;
-
-      MaximalCountIndices=65536;
-
-type TVertex=packed record
-      Position:TpvVector3; // 12 bytes (must be non-quantized and non-compressed for direct use with hardware raytracing)
-      TexCoordU:TpvUInt16; // 2 bytes
-      TexCoordV:TpvUInt16; // 2 bytes
-      TangentSpace:TpvUInt16PackedTangentSpace; // 8 bytes
-     end; // 12+2+2+8 = 24 bytes
-     PVertex=^TVertex;
-
-     TVertices=array[0..MaximalCountVertices-1] of TVertex;
-
-     TIndex=TpvUInt32;
-     PIndex=^TIndex;
-
-     TIndices=array[0..MaximalCountIndices-1] of TIndex;
-
-     TFrame=record
-      Vertices:TVertices;
-     end;
-     PFrame=^TFrame;
-
-     TFrames=array[0..CountFrames-1] of TFrame;
-     PFrames=^TFrames;
-
-     TTimeFrame=record // For merging animations like grow0 grow1 grow2 etc. to grow and so on    
-      Time:TpvDouble;
-      Frame:TFrame;
-     end;
-     PTimeFrame=^TTimeFrame;
-
-     TTimeFrames=array of TTimeFrame;
-
-     TAnimation=record
-      Frames:TFrames;
-     end;
-     PAnimation=^TAnimation;
-
-     TAnimations=array[0..CountPresetAnimations-1] of TAnimation;
-
-     TPresetAnimation=record
-      Index:TpvSizeInt;
-      Name:TpvUTF8String; 
-     end;
-     PPresetAnimation=^TPresetAnimation;
-
-     TPresetAnimations=array[0..CountPresetAnimations-1] of TPresetAnimation;
-
-     TSignature=array[0..3] of AnsiChar;
-
-     TMaterialHeader=packed record
-      BaseColorFactor:TpvVector4;
-      EmissiveFactorOcclusionStrength:TpvVector4; // xyz = EmissiveFactor, w = OcclusionStrength
-      MetallicRoughnessFactor:TpvVector4; // x = MetallicFactor, y = RoughnessFactor, zw = Reserved
-      BaseColorTextureSize:TpvUInt32;
-      NormalTextureSize:TpvUInt32;
-      MetallicRoughnessTextureSize:TpvUInt32;
-      OcclusionTextureSize:TpvUInt32;
-      EmissiveTextureSize:TpvUInt32; 
-     end;
-
-     TFileHeader=packed record
-      Signature:TSignature;
-      Version:TpvUInt32;
-      CountVertices:TpvUInt32;
-      CountIndices:TpvUInt32;
-      CountFrames:TpvUInt32;
-      CountAnimations:TpvUInt32;
-      BoundingBox:TpvAABB;
-      BoundingSphere:TpvSphere;
-      MaterialHeader:TMaterialHeader;
-     end;
-     PFileHeader=^TFileHeader;
-     
-const Signature:TSignature=('P','P','M','F'); // Planet Plant Model File
-
-      PresetAnimations:TPresetAnimations=(
-       (Index:0;Name:'grow'),
-       (Index:1;Name:'blossoms'),
-       (Index:2;Name:'falloff'),
-       (Index:3;Name:'wither')
-      );
-
-var Animations:TAnimations;
-
-    Indices:TIndices;
+    Indices:TpvPPM.TIndices;
 
     CountUsedVertices:TpvSizeInt;
     CountUsedIndices:TpvSizeInt;
@@ -117,7 +29,7 @@ var Animations:TAnimations;
     GLTF:TpvGLTF;
     GLTFInstance:TpvGLTF.TInstance;
 
-    FileHeader:TFileHeader;
+    FileHeader:TpvPPM.TFileHeader;
 
     BoundingBox:TpvAABB;
 
@@ -129,16 +41,16 @@ var Animations:TAnimations;
     OcclusionTextureData:TBytes;
     EmissiveTextureData:TBytes;
     
-function CompareTimeFrames(const a,b:TTimeFrame):TpvInt32;
+function CompareTimeFrames(const a,b:TpvPPM.TTimeFrame):TpvInt32;
 begin
  result:=Sign(a.Time-b.Time);
 end;
 
-function ConvertTimeFramesToNormalizedFrames(var aTimeFrames:TTimeFrames;out aFrames:TFrames):boolean;
+function ConvertTimeFramesToNormalizedFrames(var aTimeFrames:TpvPPM.TTimeFrames;out aFrames:TpvPPM.TFrames):boolean;
 var FrameIndex,CurrentFrameIndex,NextFrameIndex,OutFrameIndex,VertexIndex:TpvSizeInt;
     StartTime,EndTime,Time,TimeStep,InterpolationFactor:TpvDouble;
-    CurrentFrame,NextFrame:PFrame;
-    CurrentVertex,NextVertex,InterpolatedVertex:PVertex;
+    CurrentFrame,NextFrame:TpvPPM.PFrame;
+    CurrentVertex,NextVertex,InterpolatedVertex:TpvPPM.PVertex;
     CurrentTangent,CurrentBitangent,CurrentNormal,
     NextTangent,NextBitangent,NextNormal,
     InterpolatedTangent,InterpolatedBitangent,InterpolatedNormal:TpvVector3;
@@ -151,23 +63,23 @@ begin
  end;
 
  // Sort time frames
- TpvTypedSort<TTimeFrame>.IntroSort(@aTimeFrames[0],0,length(aTimeFrames),CompareTimeFrames);
+ TpvTypedSort<TpvPPM.TTimeFrame>.IntroSort(@aTimeFrames[0],0,length(aTimeFrames),CompareTimeFrames);
 
  // Find start and end time
  StartTime:=aTimeFrames[0].Time;
  EndTime:=aTimeFrames[length(aTimeFrames)-1].Time;
 
  // Calculate time step
- TimeStep:=(EndTime-StartTime)/CountFrames;
+ TimeStep:=(EndTime-StartTime)/TpvPPM.CountFrames;
 
  // Normalize time frames
  Time:=StartTime;
  FrameIndex:=0;
  OutFrameIndex:=0;
- while (Time<(EndTime+TimeStep)) and (OutFrameIndex<CountFrames) do begin
+ while (Time<(EndTime+TimeStep)) and (OutFrameIndex<TpvPPM.CountFrames) do begin
 
   // Clear frame
-  FillChar(aFrames[OutFrameIndex],SizeOf(TFrame),#0);  
+  FillChar(aFrames[OutFrameIndex],SizeOf(TpvPPM.TFrame),#0);  
 
   // Advance to next frame
   while (FrameIndex<length(aTimeFrames)) and (aTimeFrames[FrameIndex].Time<Time) do begin
@@ -220,7 +132,7 @@ begin
 
 end;
 
-function GetMergedAnimation(const aPresetAnimationIndex:TpvSizeInt):TTimeFrames;
+function GetMergedAnimation(const aPresetAnimationIndex:TpvSizeInt):TpvPPM.TTimeFrames;
 const CountNonNormalizedFrames=128; // 128 frames as non normalized frames before normalization into fewer frames
 var AnimationPart,Index,FrameIndex,OtherIndex,FoundPresetAnimation,BaseIndex,
     TriangleIndex,VertexIndex:TpvSizeInt;
@@ -229,15 +141,15 @@ var AnimationPart,Index,FrameIndex,OtherIndex,FoundPresetAnimation,BaseIndex,
     FoundAnimationPart:boolean;
     GLTFBakedVertexIndexedMesh:TpvGLTF.TBakedVertexIndexedMesh;
     GLTFBakedVertexIndexedMeshVertex:TpvGLTF.PVertex;
-    PartFrames:TTimeFrames;
-    Vertex:TVertex;
+    PartFrames:TpvPPM.TTimeFrames;
+    Vertex:TpvPPM.TVertex;
 begin
 
  result:=nil; // Nothing yet
 
  if length(GLTF.Animations)>0 then begin
 
-  PresetAnimationName:=PresetAnimations[aPresetAnimationIndex].Name;
+  PresetAnimationName:=TpvPPM.PresetAnimations[aPresetAnimationIndex].Name;
 
   // Limit the possible parts to the count of animations in the GLTF file, -1 = without number postfix 
   for AnimationPart:=-1 to length(GLTF.Animations)-1 do begin 
@@ -273,7 +185,7 @@ begin
 
        result[FrameIndex].Time:=GLTFInstance.AnimationTime; // because non normalized
 
-       FillChar(result[FrameIndex].Frame,SizeOf(TFrame),#0);
+       FillChar(result[FrameIndex].Frame,SizeOf(TpvPPM.TFrame),#0);
 
        GLTFBakedVertexIndexedMesh:=GLTFInstance.GetBakedVertexIndexedMesh(false,true,-1,[TPasGLTF.TMaterial.TAlphaMode.Opaque,TPasGLTF.TMaterial.TAlphaMode.Blend,TPasGLTF.TMaterial.TAlphaMode.Mask]);
        if assigned(GLTFBakedVertexIndexedMesh) then begin
@@ -336,7 +248,7 @@ var Index,FrameIndex,OtherIndex,FoundPresetAnimation,VertexIndex,
     GLTFBakedVertexIndexedMesh:TpvGLTF.TBakedVertexIndexedMesh;
     ta,tb,t:TpvDouble;
     AnimationName:TpvUTF8String;
-    TimeFrames:TTimeFrames;
+    TimeFrames:TpvPPM.TTimeFrames;
     Material:TpvGLTF.PMaterial;
     Stream:TMemoryStream;
     BaseColorFactor:TpvVector4;
@@ -348,7 +260,7 @@ begin
 
  result:=true;
 
- FillChar(Animations,SizeOf(TAnimations),#0);
+ FillChar(Animations,SizeOf(TpvPPM.TAnimations),#0);
 
  GLTF:=TpvGLTF.Create;
  try
@@ -372,18 +284,18 @@ begin
       try
        CountUsedVertices:=GLTFBakedVertexIndexedMesh.Vertices.Count;
        CountUsedIndices:=GLTFBakedVertexIndexedMesh.Indices.Count;
-       if (CountUsedVertices<=MaximalCountVertices) and (CountUsedIndices<=MaximalCountIndices) then begin
+       if (CountUsedVertices<=TpvPPM.MaximalCountVertices) and (CountUsedIndices<=TpvPPM.MaximalCountIndices) then begin
         for Index:=0 to GLTFBakedVertexIndexedMesh.Indices.Count-1 do begin
          Indices[Index]:=GLTFBakedVertexIndexedMesh.Indices.ItemArray[Index];
         end;
        end else begin 
-        if CountUsedVertices>MaximalCountVertices then begin
-         if CountUsedIndices>MaximalCountIndices then begin
+        if CountUsedVertices>TpvPPM.MaximalCountVertices then begin
+         if CountUsedIndices>TpvPPM.MaximalCountIndices then begin
           WriteLn('Error: Too many vertices and indices!');
          end else begin 
           WriteLn('Error: Too many vertices!');
          end;
-        end else if CountUsedIndices>MaximalCountIndices then begin
+        end else if CountUsedIndices>TpvPPM.MaximalCountIndices then begin
          WriteLn('Error: Too many indices!');
         end;
         result:=false;
@@ -466,7 +378,7 @@ begin
     if result then begin
 
      // Get all animations
-     for Index:=0 to CountPresetAnimations-1 do begin
+     for Index:=0 to TpvPPM.CountPresetAnimations-1 do begin
       TimeFrames:=GetMergedAnimation(Index);
       if length(TimeFrames)>0 then begin
        try
@@ -476,16 +388,16 @@ begin
        end;
       end else begin
        // Use last frame of the first animation as fallback 
-       for FrameIndex:=0 to CountFrames-1 do begin
-        Animations[Index].Frames[FrameIndex]:=Animations[0].Frames[CountFrames-1];
+       for FrameIndex:=0 to TpvPPM.CountFrames-1 do begin
+        Animations[Index].Frames[FrameIndex]:=Animations[0].Frames[TpvPPM.CountFrames-1];
        end;
       end;
      end;
 
      // Get bounding box
      First:=true;
-     for Index:=0 to CountPresetAnimations-1 do begin
-      for FrameIndex:=0 to CountFrames-1 do begin
+     for Index:=0 to TpvPPM.CountPresetAnimations-1 do begin
+      for FrameIndex:=0 to TpvPPM.CountFrames-1 do begin
        for VertexIndex:=0 to CountUsedVertices-1 do begin
         if First then begin
          First:=false;
@@ -505,12 +417,12 @@ begin
      Stream:=TMemoryStream.Create;
      try
 
-      FileHeader.Signature:=Signature;
-      FileHeader.Version:=1;
+      FileHeader.Signature:=TpvPPM.Signature;
+      FileHeader.Version:=TpvPPM.Version;
       FileHeader.CountVertices:=CountUsedVertices;
       FileHeader.CountIndices:=CountUsedIndices;
-      FileHeader.CountFrames:=CountFrames;
-      FileHeader.CountAnimations:=CountPresetAnimations;
+      FileHeader.CountFrames:=TpvPPM.CountFrames;
+      FileHeader.CountAnimations:=TpvPPM.CountPresetAnimations;
 
       FileHeader.BoundingBox:=BoundingBox;
       FileHeader.BoundingSphere:=BoundingSphere;
@@ -525,15 +437,15 @@ begin
       FileHeader.MaterialHeader.EmissiveTextureSize:=length(EmissiveTextureData);
 
       // Write file header
-      Stream.WriteBuffer(FileHeader,SizeOf(TFileHeader));
+      Stream.WriteBuffer(FileHeader,SizeOf(TpvPPM.TFileHeader));
 
       // Write indices globally
-      Stream.WriteBuffer(Indices[0],SizeOf(TIndex)*CountUsedIndices);
+      Stream.WriteBuffer(Indices[0],SizeOf(TpvPPM.TIndex)*CountUsedIndices);
 
       // Write vertices from all animations
-      for Index:=0 to CountPresetAnimations-1 do begin
-       for FrameIndex:=0 to CountFrames-1 do begin
-        Stream.WriteBuffer(Animations[Index].Frames[FrameIndex].Vertices[0],SizeOf(TVertex)*CountUsedVertices);
+      for Index:=0 to TpvPPM.CountPresetAnimations-1 do begin
+       for FrameIndex:=0 to TpvPPM.CountFrames-1 do begin
+        Stream.WriteBuffer(Animations[Index].Frames[FrameIndex].Vertices[0],SizeOf(TpvPPM.TVertex)*CountUsedVertices);
        end;
       end;
       

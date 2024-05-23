@@ -15069,20 +15069,30 @@ begin
   pvApplication.Log(LOG_DEBUG,'TpvScene3D.TGroup.BeginLoad','Entering...');
   try
    if assigned(aStream) then begin
-    GLTF:=TPasGLTF.TDocument.Create;
-    try
-     if (length(FileName)>0) and (FileExists(FileName)) then begin
-      GLTF.RootPath:=ExtractFilePath(ExpandFileName(FileName));
+    case TpvScene3D.DetectFileType(aStream) of
+     TpvScene3D.TFileType.PPM:begin
+     //AssignFromPPM(aStream);
+      result:=true;
      end;
-     if IsAsset then begin
-      GLTF.GetURI:=AssetGetURI;
+     TpvScene3D.TFileType.GLTF:begin
+      GLTF:=TPasGLTF.TDocument.Create;
+      try
+       if (length(FileName)>0) and (FileExists(FileName)) then begin
+        GLTF.RootPath:=ExtractFilePath(ExpandFileName(FileName));
+       end;
+       if IsAsset then begin
+        GLTF.GetURI:=AssetGetURI;
+       end;
+       GLTF.LoadFromStream(aStream);
+       AssignFromGLTF(GLTF);
+      finally
+       FreeAndNil(GLTF);
+      end;
+      result:=true;
      end;
-     GLTF.LoadFromStream(aStream);
-     AssignFromGLTF(GLTF);
-    finally
-     FreeAndNil(GLTF);
+     else begin
+     end;
     end;
-    result:=true;
    end;
   finally
    pvApplication.Log(LOG_DEBUG,'TpvScene3D.TGroup.BeginLoad','Leaving...');
@@ -22157,6 +22167,7 @@ begin
    try
     aStream.Seek(0,soBeginning);
     aStream.ReadBuffer(Memory^,Size);
+    aStream.Seek(0,soBeginning);
     result:=DetectFileType(Memory,Size);
    finally
     FreeMem(Memory);
