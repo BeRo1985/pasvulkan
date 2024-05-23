@@ -2833,6 +2833,8 @@ type EpvScene3D=class(Exception);
              public
               procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument);
              public
+              procedure AssignFromPPM(const aSourceDocument:TpvPPM.TModel);
+             public
               function CreateInstance(const aHeadless:Boolean=false):TpvScene3D.TGroup.TInstance;
              public
               property BoundingBox:TpvAABB read fBoundingBox;
@@ -15063,6 +15065,11 @@ begin
 
 end;
 
+procedure TpvScene3D.TGroup.AssignFromPPM(const aSourceDocument:TpvPPM.TModel);
+begin
+
+end;
+
 function TpvScene3D.TGroup.BeginLoad(const aStream:TStream):boolean;
 var GLTF:TPasGLTF.TDocument;
     FBX:TpvFBXLoader;
@@ -15105,7 +15112,7 @@ begin
       PPM:=TpvPPM.TModel.Create;
       try
        PPM.LoadFromStream(aStream);
-     //AssignFromPPM(PPM);
+       AssignFromPPM(PPM);
       finally
        FreeAndNil(PPM);
       end;
