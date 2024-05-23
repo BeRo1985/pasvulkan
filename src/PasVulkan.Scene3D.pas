@@ -2833,7 +2833,7 @@ type EpvScene3D=class(Exception);
              public
               procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument);
              public
-              procedure AssignFromPPM(const aSourceDocument:TpvPPM.TModel);
+              procedure AssignFromPPM(const aSourceModel:TpvPPM.TModel);
              public
               function CreateInstance(const aHeadless:Boolean=false):TpvScene3D.TGroup.TInstance;
              public
@@ -15065,8 +15065,46 @@ begin
 
 end;
 
-procedure TpvScene3D.TGroup.AssignFromPPM(const aSourceDocument:TpvPPM.TModel);
+procedure TpvScene3D.TGroup.AssignFromPPM(const aSourceModel:TpvPPM.TModel);
+var VertexIndex,IndexIndex:TpvSizeInt;
+    Mesh:TpvScene3D.TGroup.TMesh;
+    MeshPrimitive:TpvScene3D.TGroup.TMesh.TPrimitive;
+    MeshVertex:TpvScene3D.PVertex;
+    PPMVertex:TpvPPM.PVertex;
+    Tangent,Bitangent,Normal:TpvVector3;
 begin
+
+ Mesh:=CreateMesh('plant');
+
+ MeshPrimitive:=Mesh.CreatePrimitive;
+ try
+  for IndexIndex:=0 to TpvSizeInt(aSourceModel.FileHeader.CountVertices)-1 do begin
+   PPMVertex:=@aSourceModel.Animations[0].Frames[0].Vertices[0];
+   MeshVertex:=MeshPrimitive.AddIndirectVertex;
+   MeshVertex^.NodeIndex:=0;
+   MeshVertex^.MaterialID:=0;
+   MeshVertex^.Flags:=0;
+   MeshVertex^.Position:=PPMVertex^.Position;
+   UnpackUInt16QTangentSpace(PPMVertex^.TangentSpace,Tangent,Bitangent,Normal);
+   MeshVertex^.SetTangentSpaceVectors(Tangent,Bitangent,Normal);
+   MeshVertex^.TexCoord0:=TpvVector2.Create(PPMVertex^.TexCoordU/16384.0,PPMVertex^.TexCoordV/16384.0);
+   MeshVertex^.TexCoord1:=TpvVector2.Origin;
+   MeshVertex^.Color0.r:=1.0;
+   MeshVertex^.Color0.g:=1.0;
+   MeshVertex^.Color0.b:=1.0;
+   MeshVertex^.Color0.a:=1.0;
+   MeshVertex^.MorphTargetVertexBaseIndex:=TpvUInt32($ffffffff);
+   MeshVertex^.JointBlockBaseIndex:=0;
+   MeshVertex^.CountJointBlocks:=0;
+  end;
+
+  for IndexIndex:=0 to TpvSizeInt(aSourceModel.FileHeader.CountIndices)-1 do begin
+   MeshPrimitive.AddIndex(aSourceModel.Indices[IndexIndex]);
+  end;
+
+ finally
+  MeshPrimitive.Finish;
+ end;
 
 end;
 
