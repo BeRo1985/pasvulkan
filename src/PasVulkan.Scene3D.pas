@@ -15066,7 +15066,8 @@ begin
 end;
 
 procedure TpvScene3D.TGroup.AssignFromPPM(const aSourceModel:TpvPPM.TModel);
-var VertexIndex,IndexIndex:TpvSizeInt;
+var VertexIndex,IndexIndex,AnimationIndex,FrameIndex,
+    MorphTargetVertexIndex,MorphWeightIndex:TpvSizeInt;
     Material:TpvScene3D.TMaterial;
     Scene:TpvScene3D.TGroup.TScene;
     Node:TpvScene3D.TGroup.TNode;
@@ -15075,6 +15076,7 @@ var VertexIndex,IndexIndex:TpvSizeInt;
     MeshVertex:TpvScene3D.PVertex;
     PPMVertex:TpvPPM.PVertex;
     Tangent,Bitangent,Normal:TpvVector3;
+    LastMorphTargetVertex,MorphTargetVertex:PMorphTargetVertex;
 begin
 
  Material:=TpvScene3D.TMaterial.Create(nil,self,nil);
@@ -15101,6 +15103,19 @@ begin
   MeshPrimitive.MaterialID:=AddMaterial(Material);
   MeshPrimitive.Material:=Material;
 
+  Mesh.fCountMorphTargets:=TpvSizeInt(aSourceModel.FileHeader.CountAnimations)*
+                           TpvSizeInt(aSourceModel.FileHeader.CountFrames)*
+                           TpvSizeInt(aSourceModel.FileHeader.CountVertices);
+
+  MorphWeightIndex:=0;
+  for AnimationIndex:=0 to TpvSizeInt(aSourceModel.FileHeader.CountAnimations)-1 do begin
+   for FrameIndex:=0 to TpvSizeInt(aSourceModel.FileHeader.CountFrames)-1 do begin
+    inc(MorphWeightIndex);
+   end;
+  end;
+
+  fMorphTargetVertices.ClearNoFree;
+
   for VertexIndex:=0 to TpvSizeInt(aSourceModel.FileHeader.CountVertices)-1 do begin
    PPMVertex:=@aSourceModel.Animations[0].Frames[0].Vertices[VertexIndex];
    MeshVertex:=MeshPrimitive.AddIndirectVertex;
@@ -15119,7 +15134,31 @@ begin
    MeshVertex^.MorphTargetVertexBaseIndex:=TpvUInt32($ffffffff);
    MeshVertex^.JointBlockBaseIndex:=0;
    MeshVertex^.CountJointBlocks:=0;
+   LastMorphTargetVertex:=nil;
+   MorphWeightIndex:=0;
+   for AnimationIndex:=0 to TpvSizeInt(aSourceModel.FileHeader.CountAnimations)-1 do begin
+    for FrameIndex:=0 to TpvSizeInt(aSourceModel.FileHeader.CountFrames)-1 do begin
+     PPMVertex:=@aSourceModel.Animations[AnimationIndex].Frames[FrameIndex].Vertices[VertexIndex];
+     MorphTargetVertexIndex:=fMorphTargetVertices.AddNewIndex;
+     MorphTargetVertex:=@fMorphTargetVertices.ItemArray[MorphTargetVertexIndex];
+     if assigned(LastMorphTargetVertex) then begin
+      LastMorphTargetVertex^.Next:=MorphTargetVertexIndex;
+     end else begin
+      MeshVertex^.MorphTargetVertexBaseIndex:=MorphTargetVertexIndex;
+     end;
+     LastMorphTargetVertex:=MorphTargetVertex;
+     MorphTargetVertex^.Index:=MorphWeightIndex;
+     MorphTargetVertex^.Position:=TpvVector4.InlineableCreate(PPMVertex^.Position-MeshVertex^.Position,0.0);
+     UnpackUInt16QTangentSpace(PPMVertex^.TangentSpace,Tangent,Bitangent,Normal);
+     MorphTargetVertex^.Normal:=TpvVector4.InlineableCreate(Normal-OctDecode(MeshVertex^.Normal),0.0);
+     MorphTargetVertex^.Tangent:=TpvVector4.InlineableCreate(Tangent-OctDecode(MeshVertex^.Tangent),0.0);
+     MorphTargetVertex^.Next:=TpvUInt32($ffffffff);
+     inc(MorphWeightIndex);
+    end;
+   end;
   end;
+
+  fMorphTargetVertices.Finish;
 
   for IndexIndex:=0 to TpvSizeInt(aSourceModel.FileHeader.CountIndices)-1 do begin
    MeshPrimitive.AddIndex(aSourceModel.Indices[IndexIndex]);
