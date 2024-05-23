@@ -15063,6 +15063,7 @@ end;
 
 function TpvScene3D.TGroup.BeginLoad(const aStream:TStream):boolean;
 var GLTF:TPasGLTF.TDocument;
+    PPM:TpvPPM.TModel;
 begin
  result:=false;
  fSceneInstance.fLoadLock.Acquire;
@@ -15071,10 +15072,6 @@ begin
   try
    if assigned(aStream) then begin
     case TpvScene3D.DetectFileType(aStream) of
-     TpvScene3D.TFileType.PPM:begin
-     //AssignFromPPM(aStream);
-      result:=true;
-     end;
      TpvScene3D.TFileType.GLTF:begin
       GLTF:=TPasGLTF.TDocument.Create;
       try
@@ -15088,6 +15085,16 @@ begin
        AssignFromGLTF(GLTF);
       finally
        FreeAndNil(GLTF);
+      end;
+      result:=true;
+     end;
+     TpvScene3D.TFileType.PPM:begin
+      PPM:=TpvPPM.TModel.Create;
+      try
+       PPM.LoadFromStream(aStream);
+     //AssignFromPPM(PPM);
+      finally
+       FreeAndNil(PPM);
       end;
       result:=true;
      end;
