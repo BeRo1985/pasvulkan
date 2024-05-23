@@ -15108,11 +15108,14 @@ begin
                            TpvSizeInt(aSourceModel.FileHeader.CountVertices);
 
   MorphWeightIndex:=0;
+  Node.fWeights.ClearNoFree;
   for AnimationIndex:=0 to TpvSizeInt(aSourceModel.FileHeader.CountAnimations)-1 do begin
    for FrameIndex:=0 to TpvSizeInt(aSourceModel.FileHeader.CountFrames)-1 do begin
+    Node.fWeights.Add(0.0);
     inc(MorphWeightIndex);
    end;
   end;
+  Node.fWeights.Finish;
 
   fMorphTargetVertices.ClearNoFree;
 
