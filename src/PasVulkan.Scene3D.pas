@@ -15079,8 +15079,8 @@ var VertexIndex,IndexIndex,AnimationIndex,FrameIndex,
     LastMorphTargetVertex,MorphTargetVertex:PMorphTargetVertex;
 begin
 
+ // Create material
  Material:=TpvScene3D.TMaterial.Create(nil,self,nil);
-
  Material.fData.ShadingModel:=TpvScene3D.TMaterial.TShadingModel.PBRMetallicRoughness;
  Material.fData.PBRMetallicRoughness.BaseColorFactor:=aSourceModel.FileHeader.MaterialHeader.BaseColorFactor;
  Material.fData.PBRMetallicRoughness.MetallicFactor:=aSourceModel.FileHeader.MaterialHeader.MetallicRoughnessFactorNormalScale.x;
@@ -15089,24 +15089,29 @@ begin
  Material.fData.OcclusionTextureStrength:=aSourceModel.FileHeader.MaterialHeader.EmissiveFactorOcclusionStrength.w;
  Material.fData.NormalTextureScale:=aSourceModel.FileHeader.MaterialHeader.MetallicRoughnessFactorNormalScale.z;
 
+ // Create scene
  Scene:=CreateScene('plant');
 
+ // Create node and add it to the scene
  Node:=CreateNode('plant');
-
  Scene.Nodes.Add(Node);
 
+ // Create mesh 
  Mesh:=CreateMesh('plant');
 
+ // Create mesh primitive
  MeshPrimitive:=Mesh.CreatePrimitive;
  try
 
+  // Set material to mesh primitive
   MeshPrimitive.MaterialID:=AddMaterial(Material);
   MeshPrimitive.Material:=Material;
 
+  // Calculate count of morph targets
   Mesh.fCountMorphTargets:=TpvSizeInt(aSourceModel.FileHeader.CountAnimations)*
-                           TpvSizeInt(aSourceModel.FileHeader.CountFrames)*
-                           TpvSizeInt(aSourceModel.FileHeader.CountVertices);
+                           TpvSizeInt(aSourceModel.FileHeader.CountFrames);
 
+  // Create initial morph target weights
   MorphWeightIndex:=0;
   Node.fWeights.ClearNoFree;
   for AnimationIndex:=0 to TpvSizeInt(aSourceModel.FileHeader.CountAnimations)-1 do begin
@@ -15117,10 +15122,14 @@ begin
   end;
   Node.fWeights.Finish;
 
+  // Clear morph target vertices
   fMorphTargetVertices.ClearNoFree;
 
+  // Create vertices
   for VertexIndex:=0 to TpvSizeInt(aSourceModel.FileHeader.CountVertices)-1 do begin
+
    PPMVertex:=@aSourceModel.Animations[0].Frames[0].Vertices[VertexIndex];
+  
    MeshVertex:=MeshPrimitive.AddIndirectVertex;
    MeshVertex^.NodeIndex:=0;
    MeshVertex^.MaterialID:=0;
@@ -15137,6 +15146,8 @@ begin
    MeshVertex^.MorphTargetVertexBaseIndex:=TpvUInt32($ffffffff);
    MeshVertex^.JointBlockBaseIndex:=0;
    MeshVertex^.CountJointBlocks:=0;
+
+   // Create morph target vertices for this vertex
    LastMorphTargetVertex:=nil;
    MorphWeightIndex:=0;
    for AnimationIndex:=0 to TpvSizeInt(aSourceModel.FileHeader.CountAnimations)-1 do begin
@@ -15159,22 +15170,33 @@ begin
      inc(MorphWeightIndex);
     end;
    end;
+
   end;
 
+  // Finalize the morph target vertices array to its final size  
   fMorphTargetVertices.Finish;
 
+  // Create indices
   for IndexIndex:=0 to TpvSizeInt(aSourceModel.FileHeader.CountIndices)-1 do begin
    MeshPrimitive.AddIndex(aSourceModel.Indices[IndexIndex]);
   end;
 
  finally
+
+  // Finalize the mesh primitive 
   MeshPrimitive.Finish;
+
  end;
 
+ // TODO: Add animation data for morph targets 
+
+ // Finalize the mesh
  Mesh.Finish;
 
+ // Set the mesh as the node's mesh
  Node.Mesh:=Mesh;
 
+ // Finalize the node
  Node.Finish;
 
 //Scene.Finish;
