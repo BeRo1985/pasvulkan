@@ -424,8 +424,9 @@ begin
       FileHeader.CountFrames:=TpvPPM.CountFrames;
       FileHeader.CountAnimations:=TpvPPM.CountPresetAnimations;
 
-      FileHeader.BoundingBox:=BoundingBox;
-      FileHeader.BoundingSphere:=BoundingSphere;
+      FileHeader.BoundingBoxMin:=BoundingBox.Min;
+      FileHeader.BoundingBoxMax:=BoundingBox.Max;
+      FileHeader.BoundingSphere:=TpvVector4.InlineableCreate(BoundingSphere.Center,BoundingSphere.Radius);
 
       FileHeader.MaterialHeader.BaseColorFactor:=BaseColorFactor;
       FileHeader.MaterialHeader.EmissiveFactorOcclusionStrength:=TpvVector4.Create(EmissiveFactor.x,EmissiveFactor.y,EmissiveFactor.z,OcclusionStrength);

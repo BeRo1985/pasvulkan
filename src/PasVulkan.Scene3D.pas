@@ -95,6 +95,7 @@ uses {$ifdef Windows}
      PasVulkan.TimerQuery,
      PasVulkan.VirtualReality,
      PasVulkan.Raytracing,
+     PasVulkan.FileFormats.PPM,
      POCA;
 
 type EpvScene3D=class(Exception);
