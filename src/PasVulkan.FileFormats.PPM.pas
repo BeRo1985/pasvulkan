@@ -146,11 +146,11 @@ type EpvPPM=class(Exception);
               FileHeader:TFileHeader;
               Indices:TIndices;
               Animations:TAnimations;
-              BaseColorTextureData:TBytes;
-              NormalTextureData:TBytes;
-              MetallicRoughnessTextureData:TBytes;
-              OcclusionTextureData:TBytes;
-              EmissiveTextureData:TBytes;
+              BaseColorTextureStream:TMemoryStream;
+              NormalTextureStream:TMemoryStream;
+              MetallicRoughnessTextureStream:TMemoryStream;
+              OcclusionTextureStream:TMemoryStream;
+              EmissiveTextureStream:TMemoryStream;
              public
               constructor Create; reintroduce;
               destructor Destroy; override;
@@ -173,20 +173,20 @@ begin
  FillChar(FileHeader,SizeOf(TpvPPM.TFileHeader),#0);
  FillChar(Indices,SizeOf(TpvPPM.TIndices),#0);
  FillChar(Animations,SizeOf(TpvPPM.TAnimations),#0);
- BaseColorTextureData:=nil;
- NormalTextureData:=nil;
- MetallicRoughnessTextureData:=nil;
- OcclusionTextureData:=nil;
- EmissiveTextureData:=nil;
+ BaseColorTextureStream:=TMemoryStream.Create;
+ NormalTextureStream:=TMemoryStream.Create;
+ MetallicRoughnessTextureStream:=TMemoryStream.Create;
+ OcclusionTextureStream:=TMemoryStream.Create;
+ EmissiveTextureStream:=TMemoryStream.Create;
 end;
 
 destructor TpvPPM.TModel.Destroy;
 begin
- BaseColorTextureData:=nil;
- NormalTextureData:=nil;
- MetallicRoughnessTextureData:=nil;
- OcclusionTextureData:=nil;
- EmissiveTextureData:=nil;
+ FreeAndNil(EmissiveTextureStream);
+ FreeAndNil(OcclusionTextureStream);
+ FreeAndNil(MetallicRoughnessTextureStream);
+ FreeAndNil(NormalTextureStream);
+ FreeAndNil(BaseColorTextureStream);
  inherited Destroy;
 end;
 
@@ -220,39 +220,29 @@ begin
   end;
  end;
 
+ BaseColorTextureStream.Clear;
  if FileHeader.MaterialHeader.BaseColorTextureSize>0 then begin
-  SetLength(BaseColorTextureData,FileHeader.MaterialHeader.BaseColorTextureSize);
-  aStream.ReadBuffer(BaseColorTextureData[0],FileHeader.MaterialHeader.BaseColorTextureSize);
- end else begin
-  BaseColorTextureData:=nil;
+  BaseColorTextureStream.CopyFrom(aStream,FileHeader.MaterialHeader.BaseColorTextureSize);
  end;
 
+ NormalTextureStream.Clear;
  if FileHeader.MaterialHeader.NormalTextureSize>0 then begin
-  SetLength(NormalTextureData,FileHeader.MaterialHeader.NormalTextureSize);
-  aStream.ReadBuffer(NormalTextureData[0],FileHeader.MaterialHeader.NormalTextureSize);
- end else begin
-  NormalTextureData:=nil;
+  NormalTextureStream.CopyFrom(aStream,FileHeader.MaterialHeader.NormalTextureSize);
  end;
 
+ MetallicRoughnessTextureStream.Clear;
  if FileHeader.MaterialHeader.MetallicRoughnessTextureSize>0 then begin
-  SetLength(MetallicRoughnessTextureData,FileHeader.MaterialHeader.MetallicRoughnessTextureSize);
-  aStream.ReadBuffer(MetallicRoughnessTextureData[0],FileHeader.MaterialHeader.MetallicRoughnessTextureSize);
- end else begin
-  MetallicRoughnessTextureData:=nil;
+  MetallicRoughnessTextureStream.CopyFrom(aStream,FileHeader.MaterialHeader.MetallicRoughnessTextureSize);
  end;
 
+ OcclusionTextureStream.Clear;
  if FileHeader.MaterialHeader.OcclusionTextureSize>0 then begin
-  SetLength(OcclusionTextureData,FileHeader.MaterialHeader.OcclusionTextureSize);
-  aStream.ReadBuffer(OcclusionTextureData[0],FileHeader.MaterialHeader.OcclusionTextureSize);
- end else begin
-  OcclusionTextureData:=nil;
+  OcclusionTextureStream.CopyFrom(aStream,FileHeader.MaterialHeader.OcclusionTextureSize);
  end;
 
+ EmissiveTextureStream.Clear;
  if FileHeader.MaterialHeader.EmissiveTextureSize>0 then begin
-  SetLength(EmissiveTextureData,FileHeader.MaterialHeader.EmissiveTextureSize);
-  aStream.ReadBuffer(EmissiveTextureData[0],FileHeader.MaterialHeader.EmissiveTextureSize);
- end else begin
-  EmissiveTextureData:=nil;
+  EmissiveTextureStream.CopyFrom(aStream,FileHeader.MaterialHeader.EmissiveTextureSize);
  end;
 
 end;
@@ -282,20 +272,25 @@ begin
    aStream.WriteBuffer(Animations[AnimationIndex].Frames[FramesIndex].Vertices[0],SizeOf(TpvPPM.TVertex)*FileHeader.CountVertices);
   end;
  end;
- if length(BaseColorTextureData)>0 then begin
-  aStream.WriteBuffer(BaseColorTextureData[0],length(BaseColorTextureData));
+ if BaseColorTextureStream.Size>0 then begin
+  BaseColorTextureStream.Seek(0,soBeginning);
+  aStream.CopyFrom(BaseColorTextureStream,BaseColorTextureStream.Size);
  end;
- if length(NormalTextureData)>0 then begin
-  aStream.WriteBuffer(NormalTextureData[0],length(NormalTextureData));
+ if NormalTextureStream.Size>0 then begin
+  NormalTextureStream.Seek(0,soBeginning);
+  aStream.CopyFrom(NormalTextureStream,NormalTextureStream.Size);
  end;
- if length(MetallicRoughnessTextureData)>0 then begin
-  aStream.WriteBuffer(MetallicRoughnessTextureData[0],length(MetallicRoughnessTextureData));
+ if MetallicRoughnessTextureStream.Size>0 then begin
+  MetallicRoughnessTextureStream.Seek(0,soBeginning);
+  aStream.CopyFrom(MetallicRoughnessTextureStream,MetallicRoughnessTextureStream.Size);
  end;
- if length(OcclusionTextureData)>0 then begin
-  aStream.WriteBuffer(OcclusionTextureData[0],length(OcclusionTextureData));
+ if OcclusionTextureStream.Size>0 then begin
+  OcclusionTextureStream.Seek(0,soBeginning);
+  aStream.CopyFrom(OcclusionTextureStream,OcclusionTextureStream.Size);
  end;
- if length(EmissiveTextureData)>0 then begin
-  aStream.WriteBuffer(EmissiveTextureData[0],length(EmissiveTextureData));
+ if EmissiveTextureStream.Size>0 then begin
+  EmissiveTextureStream.Seek(0,soBeginning);
+  aStream.CopyFrom(EmissiveTextureStream,EmissiveTextureStream.Size);
  end;
 end;
 

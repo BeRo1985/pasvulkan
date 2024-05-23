@@ -885,6 +885,7 @@ type EpvScene3D=class(Exception);
               procedure AssignFromWhiteTexture;
               procedure AssignFromDefaultNormalMapTexture;
               procedure AssignFromDefaultParticleTexture;
+              procedure AssignForImage(const aName:TpvUTF8String;const aImage:TpvScene3D.TImage);
               procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceTexture:TPasGLTF.TTexture;const aImageMap:TImages;const aSamplerMap:TSamplers);
               function GetDescriptorImageInfo(const aSRGB:boolean):TVkDescriptorImageInfo;
              published
@@ -921,6 +922,7 @@ type EpvScene3D=class(Exception);
                             Rotation:TpvFloat;
                             Scale:TpvVector2;
                            public
+                            procedure AssignDefault;
                             procedure AssignFromGLTF(var aTextureReference:TTextureReference;const aExtensionsItem:TPasJSONItem);
                             function ToMatrix4x4:TpvMatrix4x4;
                             function ToAlignedMatrix3x2:TAlignedMatrix3x2;
@@ -1198,7 +1200,9 @@ type EpvScene3D=class(Exception);
                     );
              private
               fData:TData;
+              fDataPointer:PData;
               fShaderData:TShaderData;
+              fShaderDataPointer:PShaderData;
               fLock:TPasMPSpinLock;
               fGeneration:TpvUInt64;
               fVisible:boolean;
@@ -1216,8 +1220,8 @@ type EpvScene3D=class(Exception);
               procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceMaterial:TPasGLTF.TMaterial;const aTextureMap:TTextures);
               procedure FillShaderData;
              public
-              property Data:TData read fData write fData;
-              property ShaderData:TShaderData read fShaderData write fShaderData;
+              property Data:PData read fDataPointer;
+              property ShaderData:PShaderData read fShaderDataPointer;
              published
               property Visible:boolean read fVisible write fVisible;
             end;
@@ -6724,6 +6728,36 @@ begin
 
 end;
 
+procedure TpvScene3D.TTexture.AssignForImage(const aName:TpvUTF8String;const aImage:TpvScene3D.TImage);
+begin
+
+ fName:=aName;
+
+ fSceneInstance.fTextureListLock.Acquire;
+ try
+
+  fSceneInstance.fImageListLock.Acquire;
+  try
+   fImage:=aImage;
+   fImage.IncRef;
+  finally
+   fSceneInstance.fImageListLock.Release;
+  end;
+
+  fSceneInstance.fSamplerListLock.Acquire;
+  try
+   fSampler:=fSceneInstance.fDefaultSampler;
+   fSampler.IncRef;
+  finally
+   fSceneInstance.fSamplerListLock.Release;
+  end;
+
+ finally
+  fSceneInstance.fTextureListLock.Release;
+ end;
+
+end;
+
 procedure TpvScene3D.TTexture.AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceTexture:TPasGLTF.TTexture;const aImageMap:TImages;const aSamplerMap:TSamplers);
 var TextureBASISUJSONItem:TPasJSONItem;
     TextureBASISUSource:TpvInt64;
@@ -6781,6 +6815,16 @@ begin
 end;
 
 { TpvScene3D.TMaterial.TTextureReference }
+
+procedure TpvScene3D.TMaterial.TTextureReference.TTransform.AssignDefault;
+begin
+ Active:=false;
+ Offset[0]:=0.0;
+ Offset[1]:=0.0;
+ Rotation:=0.0;
+ Scale[0]:=1.0;
+ Scale[1]:=1.0;
+end;
 
 procedure TpvScene3D.TMaterial.TTextureReference.TTransform.AssignFromGLTF(var aTextureReference:TTextureReference;const aExtensionsItem:TPasJSONItem);
 var JSONItem:TPasJSONItem;
@@ -6911,6 +6955,10 @@ begin
  inherited Create(aResourceManager,aParent,aMetaResource);
 
  fData:=DefaultData;
+
+ fDataPointer:=@fData;
+
+ fShaderDataPointer:=@fShaderData;
 
  fLock:=TPasMPSpinLock.Create;
 
@@ -15077,10 +15125,16 @@ var VertexIndex,IndexIndex,AnimationIndex,FrameIndex,
     PPMVertex:TpvPPM.PVertex;
     Tangent,Bitangent,Normal:TpvVector3;
     LastMorphTargetVertex,MorphTargetVertex:PMorphTargetVertex;
+    Image:TpvScene3D.TImage;
+    Texture:TpvScene3D.TTexture;
+    Name:TpvUTF8String;
 begin
+
+ Name:=#0+IntToStr(TpvPtrUInt(self))+'_'+IntToStr(TpvPtrUInt(aSourceModel));
 
  // Create material
  Material:=TpvScene3D.TMaterial.Create(nil,self,nil);
+ Material.AssignFromEmpty;
  Material.fData.ShadingModel:=TpvScene3D.TMaterial.TShadingModel.PBRMetallicRoughness;
  Material.fData.PBRMetallicRoughness.BaseColorFactor:=aSourceModel.FileHeader.MaterialHeader.BaseColorFactor;
  Material.fData.PBRMetallicRoughness.MetallicFactor:=aSourceModel.FileHeader.MaterialHeader.MetallicRoughnessFactorNormalScale.x;
@@ -15088,6 +15142,87 @@ begin
  Material.fData.EmissiveFactor:=TpvVector4.InlineableCreate(aSourceModel.FileHeader.MaterialHeader.EmissiveFactorOcclusionStrength.xyz,1.0);
  Material.fData.OcclusionTextureStrength:=aSourceModel.FileHeader.MaterialHeader.EmissiveFactorOcclusionStrength.w;
  Material.fData.NormalTextureScale:=aSourceModel.FileHeader.MaterialHeader.MetallicRoughnessFactorNormalScale.z;
+
+ // Load textures if these exist
+ if aSourceModel.BaseColorTextureStream.Size>0 then begin
+
+  Image:=TpvScene3D.TImage.Create(ResourceManager,fSceneInstance,nil);
+  aSourceModel.BaseColorTextureStream.Seek(0,soBeginning);
+  Image.AssignFromStream(Name,aSourceModel.BaseColorTextureStream);
+
+  Texture:=TpvScene3D.TTexture.Create(ResourceManager,fSceneInstance,nil);
+  Texture.AssignForImage(Name,Image);
+  Texture.IncRef;
+
+  Material.fData.PBRMetallicRoughness.BaseColorTexture.Texture:=Texture;
+  Material.fData.PBRMetallicRoughness.BaseColorTexture.TexCoord:=0;
+  Material.fData.PBRMetallicRoughness.BaseColorTexture.Transform.AssignDefault;
+
+ end;
+
+ if aSourceModel.MetallicRoughnessTextureStream.Size>0 then begin
+
+  Image:=TpvScene3D.TImage.Create(ResourceManager,fSceneInstance,nil);
+  aSourceModel.MetallicRoughnessTextureStream.Seek(0,soBeginning);
+  Image.AssignFromStream(Name,aSourceModel.MetallicRoughnessTextureStream);
+
+  Texture:=TpvScene3D.TTexture.Create(ResourceManager,fSceneInstance,nil);
+  Texture.AssignForImage(Name,Image);
+  Texture.IncRef;
+
+  Material.fData.PBRMetallicRoughness.MetallicRoughnessTexture.Texture:=Texture;
+  Material.fData.PBRMetallicRoughness.MetallicRoughnessTexture.TexCoord:=0;
+  Material.fData.PBRMetallicRoughness.MetallicRoughnessTexture.Transform.AssignDefault;
+
+ end;
+
+ if aSourceModel.NormalTextureStream.Size>0 then begin
+
+  Image:=TpvScene3D.TImage.Create(ResourceManager,fSceneInstance,nil);
+  aSourceModel.NormalTextureStream.Seek(0,soBeginning);
+  Image.AssignFromStream(Name,aSourceModel.NormalTextureStream);
+
+  Texture:=TpvScene3D.TTexture.Create(ResourceManager,fSceneInstance,nil);
+  Texture.AssignForImage(Name,Image);
+  Texture.IncRef;
+
+  Material.fData.NormalTexture.Texture:=Texture;
+  Material.fData.NormalTexture.TexCoord:=0;
+  Material.fData.NormalTexture.Transform.AssignDefault;
+
+ end;
+
+ if aSourceModel.OcclusionTextureStream.Size>0 then begin
+
+  Image:=TpvScene3D.TImage.Create(ResourceManager,fSceneInstance,nil);
+  aSourceModel.OcclusionTextureStream.Seek(0,soBeginning);
+  Image.AssignFromStream(Name,aSourceModel.OcclusionTextureStream);
+
+  Texture:=TpvScene3D.TTexture.Create(ResourceManager,fSceneInstance,nil);
+  Texture.AssignForImage(Name,Image);
+  Texture.IncRef;
+
+  Material.fData.OcclusionTexture.Texture:=Texture;
+  Material.fData.OcclusionTexture.TexCoord:=0;
+  Material.fData.OcclusionTexture.Transform.AssignDefault;
+
+ end;
+
+ if aSourceModel.EmissiveTextureStream.Size>0 then begin
+
+  Image:=TpvScene3D.TImage.Create(ResourceManager,fSceneInstance,nil);
+  aSourceModel.EmissiveTextureStream.Seek(0,soBeginning);
+  Image.AssignFromStream(Name,aSourceModel.EmissiveTextureStream);
+
+  Texture:=TpvScene3D.TTexture.Create(ResourceManager,fSceneInstance,nil);
+  Texture.AssignForImage(Name,Image);
+  Texture.IncRef;
+
+  Material.fData.EmissiveTexture.Texture:=Texture;
+  Material.fData.EmissiveTexture.TexCoord:=0;
+  Material.fData.EmissiveTexture.Transform.AssignDefault;
+
+ end;
 
  // Create scene
  Scene:=CreateScene('plant');
