@@ -15065,6 +15065,7 @@ end;
 
 function TpvScene3D.TGroup.BeginLoad(const aStream:TStream):boolean;
 var GLTF:TPasGLTF.TDocument;
+    FBX:TpvFBXLoader;
     PPM:TpvPPM.TModel;
 begin
  result:=false;
@@ -15087,6 +15088,16 @@ begin
        AssignFromGLTF(GLTF);
       finally
        FreeAndNil(GLTF);
+      end;
+      result:=true;
+     end;
+     TpvScene3D.TFileType.FBX:begin
+      FBX:=TpvFBXLoader.Create;
+      try
+       FBX.LoadFromStream(aStream);
+     //AssignFromFBX(FBX);
+      finally
+       FreeAndNil(FBX);
       end;
       result:=true;
      end;
