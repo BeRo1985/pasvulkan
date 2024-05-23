@@ -66,9 +66,11 @@ interface
 uses SysUtils,
      Classes,
      Math,
+     Generics.Collections,
      PasVulkan.Types,
      PasVulkan.Math,
-     PasVulkan.XML;
+     PasVulkan.XML,
+     PasVulkan.Collections;
 
 const dluaNONE=-1;
       dluaXUP=0;
@@ -467,13 +469,18 @@ type PpvDAEColorOrTexture=^TpvDAEColorOrTexture;
 
      TpvDAENodes=class;
 
-     TpvDAENodeType=(Node,Joint);
+     TpvDAENodeType=
+      (
+       Node,
+       Joint
+      );
 
      TpvDAENode=class
       private
       public
        NodeType:TpvDAENodeType;
        Parent:TpvDAENode;
+       Visible:longbool;
        ID:ansistring;
        Name:ansistring;
        SID:ansistring;
@@ -546,10 +553,14 @@ type PpvDAEColorOrTexture=^TpvDAEColorOrTexture;
       private
       public
        Interpolation:TpvDAEInterpolationType;
-       Time:TpvFloat;
+       Time:TpvDouble;
        Values:TpvDAEAnimationChannelKeyFrameValues;
-       InTangent:TpvDAEAnimationChannelKeyFrameTangent;
-       OutTangent:TpvDAEAnimationChannelKeyFrameTangent;
+       InTangents:TpvDAEAnimationChannelKeyFrameValues;
+       InTangentStride:TpvInt32;
+       InTangentParams:TpvInt32;
+       OutTangents:TpvDAEAnimationChannelKeyFrameValues;
+       OutTangentStride:TpvInt32;
+       OutTangentParams:TpvInt32;
        constructor Create;
        destructor Destroy; override;
      end;
@@ -565,6 +576,13 @@ type PpvDAEColorOrTexture=^TpvDAEColorOrTexture;
        property Items[const Index:TpvInt32]:TpvDAEAnimationChannelKeyFrame read GetAnimationChannelKeyFrame write SetAnimationChannelKeyFrame; default;
      end;
 
+     PpvDAEAnimationChannelLinearKeyFrameValue=^TpvDAEAnimationChannelLinearKeyFrameValue;
+     TpvDAEAnimationChannelLinearKeyFrameValue=TpvFloat;
+
+     TpvDAEAnimationChannelLinearKeyFrameValues=array of TpvDAEAnimationChannelLinearKeyFrameValue;
+
+     TpvDAEAnimationChannelLinearKeyFrames=array of TpvDAEAnimationChannelLinearKeyFrameValues;
+
      TpvDAEAnimationChannel=class
       private
       public
@@ -574,8 +592,16 @@ type PpvDAEColorOrTexture=^TpvDAEColorOrTexture;
        DestinationObject:TObject;
        DestinationElement:TpvInt32;
        KeyFrames:TpvDAEAnimationChannelKeyFrames;
+       LinearKeyFrames:TpvDAEAnimationChannelLinearKeyFrames;
+       CountLinearKeyFrames:TpvInt32;
+       CountValues:TpvInt32;
+       StartTime:TpvDouble;
+       EndTime:TpvDouble;
+       TimeStep:TpvDouble;
        constructor Create;
        destructor Destroy; override;
+       function GetInterpolatedValue(const Time:TpvDouble;const ValueIndex:TpvInt32):TpvDAEAnimationChannelLinearKeyFrameValue;
+       function GetInterpolatedValuesMatrix(const Time:TpvDouble):TpvMatrix4x4;
      end;
 
      TpvDAEAnimationChannels=class(TList)
@@ -634,6 +660,10 @@ type PpvDAEColorOrTexture=^TpvDAEColorOrTexture;
        property Items[const Index:TpvInt32]:TpvDAEAnimationClip read GetAnimationClip write SetAnimationClip; default;
      end;
 
+     TpvDAECameraHashMap=TpvStringHashMap<TpvDAECamera>;
+
+     TpvDAECameraList=TObjectList<TpvDAECamera>;
+
      TpvDAELoader=class
       private
       public
@@ -646,10 +676,13 @@ type PpvDAEColorOrTexture=^TpvDAEColorOrTexture;
        UpAxis:TpvInt32;
        AutomaticCorrect:longbool;
        VisualScenes:TpvDAEVisualScenes;
+       CameraHashMap:TpvDAECameraHashMap;
+       CameraList:TpvDAECameraList;
        MainVisualScene:TpvDAEVisualScene;
        Animations:TpvDAEAnimations;
        AnimationClips:TpvDAEAnimationClips;
        Materials:TpvDAEMaterials;
+       StaticAABB:TpvAABB;
        constructor Create;
        destructor Destroy; override;
        function Load(Stream:TStream):boolean;
@@ -1942,6 +1975,7 @@ begin
  inherited Create;
  NodeType:=TpvDAENodeType.Node;
  Parent:=nil;
+ Visible:=true;
  ID:='';
  Name:='';
  SID:='';
@@ -2076,15 +2110,19 @@ begin
  Interpolation:=TpvDAEInterpolationType.Linear;
  Time:=0;
  Values:=nil;
- InTangent.x:=0.0;
- InTangent.y:=0.0;
- OutTangent.x:=0.0;
- OutTangent.y:=0.0;
+ InTangents:=nil;
+ InTangentStride:=0;
+ InTangentParams:=0;
+ OutTangents:=nil;
+ OutTangentStride:=0;
+ OutTangentParams:=0;
 end;
 
 destructor TpvDAEAnimationChannelKeyFrame.Destroy;
 begin
  SetLength(Values,0);
+ SetLength(InTangents,0);
+ SetLength(OutTangents,0);
  inherited Destroy;
 end;
 
@@ -2135,15 +2173,67 @@ begin
  ElementID:='';
  DestinationObject:=nil;
  DestinationElement:=0;
+ StartTime:=0.0;
+ EndTime:=0.0;
+ TimeStep:=0.0;
  KeyFrames:=TpvDAEAnimationChannelKeyFrames.Create;
+ LinearKeyFrames:=nil;
+ CountLinearKeyFrames:=0;
+ CountValues:=0;
 end;
 
 destructor TpvDAEAnimationChannel.Destroy;
 begin
+ LinearKeyFrames:=nil;
  KeyFrames.Free;
  NodeID:='';
  ElementID:='';
  inherited Destroy;
+end;
+
+function TpvDAEAnimationChannel.GetInterpolatedValue(const Time:TpvDouble;const ValueIndex:TpvInt32):TpvDAEAnimationChannelLinearKeyFrameValue;
+var FrameTime:TpvDouble;
+    LastKeyFrameIndex,Index0,Index1:TpvInt32;
+begin
+ LastKeyFrameIndex:=CountLinearKeyFrames-1;
+ if Time<=StartTime then begin
+  FrameTime:=0.0;
+ end else begin
+  FrameTime:=Min(Max((Min(Time,EndTime)-StartTime)/TimeStep,0.0),LastKeyFrameIndex);
+ end;
+ Index0:=Min(Max(trunc(FrameTime),0),LastKeyFrameIndex);
+ Index1:=Min(Max(Index0+1,0),LastKeyFrameIndex);
+ if (Index0>=0) and (Index1<CountLinearKeyFrames) and (ValueIndex>=0) and (ValueIndex<CountValues) then begin
+  result:=FloatLerp(LinearKeyFrames[Index0,ValueIndex],LinearKeyFrames[Index1,ValueIndex],Min(Max(frac(FrameTime),0.0),1.0));
+ end else begin
+  result:=0.0;
+ end;
+end;
+
+function TpvDAEAnimationChannel.GetInterpolatedValuesMatrix(const Time:TpvDouble):TpvMatrix4x4;
+var FrameTime:TpvDouble;
+    LastKeyFrameIndex,Index0,Index1:TpvInt32;
+    dm0,dm1:TpvDecomposedMatrix4x4;
+begin
+ LastKeyFrameIndex:=CountLinearKeyFrames-1;
+ if Time<=StartTime then begin
+  FrameTime:=0.0;
+ end else begin
+  FrameTime:=Min(Max((Min(Time,EndTime)-StartTime)/TimeStep,0.0),LastKeyFrameIndex);
+ end;
+ Index0:=Min(Max(trunc(FrameTime),0),LastKeyFrameIndex);
+ Index1:=Min(Max(Index0+1,0),LastKeyFrameIndex);
+ if (Index0>=0) and (Index1<CountLinearKeyFrames) and (CountValues=16) then begin
+  dm0:=TpvMatrix4x4(pointer(@LinearKeyFrames[Index0,0])^).Decompose;
+  dm1:=TpvMatrix4x4(pointer(@LinearKeyFrames[Index1,0])^).Decompose;
+  if dm0.Valid and dm1.Valid then begin
+   result:=TpvMatrix4x4.CreateRecomposed(dm0.Slerp(dm1,Min(Max(frac(FrameTime),0.0),1.0)));
+  end else begin
+   result:=TpvMatrix4x4(pointer(@LinearKeyFrames[Index0,0])^).SimpleLerp(TpvMatrix4x4(pointer(@LinearKeyFrames[Index1,0])^),Min(Max(frac(FrameTime),0.0),1.0));
+  end;
+ end else begin
+  result:=0.0;
+ end;
 end;
 
 constructor TpvDAEAnimationChannels.Create;
@@ -2308,6 +2398,8 @@ begin
  UpAxis:=dluaYUP;
  AutomaticCorrect:=true;
  VisualScenes:=TpvDAEVisualScenes.Create;
+ CameraHashMap:=TpvDAECameraHashMap.Create(nil);
+ CameraList:=TpvDAECameraList.Create(false);
  MainVisualScene:=nil;
  Animations:=TpvDAEAnimations.Create;
  AnimationClips:=TpvDAEAnimationClips.Create;
@@ -2316,6 +2408,8 @@ end;
 
 destructor TpvDAELoader.Destroy;
 begin
+ CameraHashMap.Free;
+ CameraList.Free;
  VisualScenes.Free;
  Animations.Free;
  AnimationClips.Free;
@@ -2329,15 +2423,15 @@ end;
 function TpvDAELoader.Load(Stream:TStream):boolean;
 const lstBOOL=0;
       lstINT=1;
-      lstFLOAT=2;
+      lsTpvFloat=2;
       lstIDREF=3;
       lstNAME=4;
       aptNONE=0;
       aptIDREF=1;
       aptNAME=2;
       aptINT=3;
-      aptFLOAT=4;
-      aptFLOAT4x4=5;
+      apTpvFloat=4;
+      apTpvFloat4x4=5;
       ltAMBIENT=0;
       ltDIRECTIONAL=1;
       ltPOINT=2;
@@ -2403,16 +2497,16 @@ type PLibraryImage=^TLibraryImage;
       MagFilter:ansistring;
       MipFilter:ansistring;
      end;
-     PLibraryEffectFloat=^TLibraryEffectFloat;
-     TLibraryEffectFloat=record
-      Next:PLibraryEffectFloat;
+     PLibraryEffecTpvFloat=^TLibraryEffecTpvFloat;
+     TLibraryEffecTpvFloat=record
+      Next:PLibraryEffecTpvFloat;
       Effect:PLibraryEffect;
       SID:ansistring;
       Value:TpvFloat;
      end;
-     PLibraryEffectFloat4=^TLibraryEffectFloat4;
-     TLibraryEffectFloat4=record
-      Next:PLibraryEffectFloat4;
+     PLibraryEffecTpvFloat4=^TLibraryEffecTpvFloat4;
+     TLibraryEffecTpvFloat4=record
+      Next:PLibraryEffecTpvFloat4;
       Effect:PLibraryEffect;
       SID:ansistring;
       Values:array[0..3] of TpvFloat;
@@ -2424,8 +2518,8 @@ type PLibraryImage=^TLibraryImage;
       Images:TList;
       Surfaces:PLibraryEffectSurface;
       Sampler2D:PLibraryEffectSampler2D;
-      Floats:PLibraryEffectFloat;
-      Float4s:PLibraryEffectFloat4;
+      Floats:PLibraryEffecTpvFloat;
+      Float4s:PLibraryEffecTpvFloat4;
       ShadingType:TpvInt32;
       Ambient:TpvDAEColorOrTexture;
       Diffuse:TpvDAEColorOrTexture;
@@ -2627,6 +2721,7 @@ type PLibraryImage=^TLibraryImage;
       Name:ansistring;
       NodeType_:ansistring;
       IsJoint:longbool;
+      Visible:longbool;
       InstanceMaterials:TInstanceMaterials;
       InstanceNode:ansistring;
       case NodeType:TpvInt32 of
@@ -2986,8 +3081,8 @@ var IDStringHashMap:TpvDAEStringHashMap;
      SID,s:ansistring;
      Surface:PLibraryEffectSurface;
      Sampler2D:PLibraryEffectSampler2D;
-     Float:PLibraryEffectFloat;
-     Float4:PLibraryEffectFloat4;
+     Float:PLibraryEffecTpvFloat;
+     Float4:PLibraryEffecTpvFloat4;
      Image:PLibraryImage;
  begin
   result:=false;
@@ -3039,16 +3134,16 @@ var IDStringHashMap:TpvDAEStringHashMap;
          end;
         end;
        end else if XMLTag.Name='float' then begin
-        GetMem(Float,SizeOf(TLibraryEffectFloat));
-        FillChar(Float^,SizeOf(TLibraryEffectFloat),AnsiChar(#0));
+        GetMem(Float,SizeOf(TLibraryEffecTpvFloat));
+        FillChar(Float^,SizeOf(TLibraryEffecTpvFloat),AnsiChar(#0));
         Float^.Next:=Effect^.Floats;
         Effect^.Floats:=Float;
         Float^.Effect:=Effect;
         Float^.SID:=SID;
         Float^.Value:=StrToDouble(ParseText(XMLTag),0.0);
        end else if XMLTag.Name='float4' then begin
-        GetMem(Float4,SizeOf(TLibraryEffectFloat4));
-        FillChar(Float4^,SizeOf(TLibraryEffectFloat4),AnsiChar(#0));
+        GetMem(Float4,SizeOf(TLibraryEffecTpvFloat4));
+        FillChar(Float4^,SizeOf(TLibraryEffecTpvFloat4),AnsiChar(#0));
         Float4^.Next:=Effect^.Float4s;
         Effect^.Float4s:=Float4;
         Float4^.Effect:=Effect;
@@ -3072,7 +3167,7 @@ var IDStringHashMap:TpvDAEStringHashMap;
      XMLItem:TpvXMLItem;
      XMLTag:TpvXMLTag;
      s:ansistring;
-     Float:PLibraryEffectFloat;
+     Float:PLibraryEffecTpvFloat;
  begin
   result:=DefaultValue;
   if assigned(ParentTag) then begin
@@ -3108,7 +3203,7 @@ var IDStringHashMap:TpvDAEStringHashMap;
      XMLItem:TpvXMLItem;
      XMLTag:TpvXMLTag;
      s:ansistring;
-     Float4:PLibraryEffectFloat4;
+     Float4:PLibraryEffecTpvFloat4;
  begin
   result:=DefaultValue;
   if assigned(ParentTag) then begin
@@ -3400,9 +3495,9 @@ var IDStringHashMap:TpvDAEStringHashMap;
        end else if s='int' then begin
         Accessor^.Params[Count].ParamType:=aptINT;
        end else if s='float' then begin
-        Accessor^.Params[Count].ParamType:=aptFLOAT;
+        Accessor^.Params[Count].ParamType:=apTpvFloat;
        end else if s='float4x4' then begin
-        Accessor^.Params[Count].ParamType:=aptFLOAT4x4;
+        Accessor^.Params[Count].ParamType:=apTpvFloat4x4;
        end else begin
         Accessor^.Params[Count].ParamType:=aptNONE;
        end;
@@ -3489,7 +3584,7 @@ var IDStringHashMap:TpvDAEStringHashMap;
          LibrarySourceDatas:=SourceData;
          SourceData^.ID:=XMLTag.GetParameter('id');
          LibrarySourceDatasIDStringHashMap.Add(SourceData^.ID,SourceData);
-         SourceData^.SourceType:=lstFLOAT;
+         SourceData^.SourceType:=lsTpvFloat;
          Source^.SourceDatas.Add(SourceData);
          s:=ParseText(XMLTag);
          Count:=0;
@@ -4592,7 +4687,7 @@ var IDStringHashMap:TpvDAEStringHashMap;
  function ParseNodeTag(ParentTag:TpvXMLTag):PLibraryNode;
  var XMLItemIndex{,XMLSubItemIndex,XMLSubSubItemIndex{,Count,SubCount}:TpvInt32;
      XMLItem{,XMLSubItem,XMLSubSubItem}:TpvXMLItem;
-     XMLTag{,XMLSubTag,XMLSubSubTag,BindMaterialTag,TechniqueCommonTag}:TpvXMLTag;
+     XMLTag,XMLSubTag,XMLSubSubTag{,BindMaterialTag,TechniqueCommonTag}:TpvXMLTag;
      ID,Name,s:ansistring;
      Node,Item:PLibraryNode;
      Vector3,LookAtOrigin,LookAtDest,LookAtUp,SkewA,SkewB:TpvVector3;
@@ -4608,6 +4703,7 @@ var IDStringHashMap:TpvDAEStringHashMap;
    Item^.Name:=XMLTag.GetParameter('name','');
    Item^.NodeType_:=XMLTag.GetParameter('type','');
    Item^.NodeType:=NodeType;
+   Item^.Visible:=true;
    LibraryNodesIDStringHashMap.Add(Item^.ID,Item);
   end;
   procedure ParseInstanceMaterials;
@@ -4685,6 +4781,7 @@ var IDStringHashMap:TpvDAEStringHashMap;
     Node^.Name:=Name;
     Node^.NodeType_:=ParentTag.GetParameter('type','node');
     Node^.IsJoint:=MyLowerCase(Node^.NodeType_)='joint';
+    Node^.Visible:=true;
     Node^.Children:=TList.Create;
     Node^.NodeType:=ntNODE;
     LibraryNodesIDStringHashMap.Add(ID,Node);
@@ -4768,6 +4865,17 @@ var IDStringHashMap:TpvDAEStringHashMap;
         Item^.SkewB:=SkewB;
        end else if XMLTag.Name='extra' then begin
         CreateItem(ntEXTRA);
+        XMLSubTag:=XMLTag.FindTag('technique');
+        if assigned(XMLSubTag) then begin
+         if XMLSubTag.GetParameter('profile','')='OpenCOLLADAMaya' then begin
+          XMLSubSubTag:=XMLSubTag.FindTag('visibility');
+          if assigned(XMLSubSubTag) then begin
+           if trim(ParseText(XMLSubSubTag))='0' then begin
+            Node^.Visible:=false;
+           end;
+          end;
+         end;
+        end;
        end else if XMLTag.Name='instance_camera' then begin
         CreateItem(ntINSTANCECAMERA);
         Item^.InstanceCamera:=LibraryCamerasIDStringHashMap.Values[MyStringReplace(XMLTag.GetParameter('url',''),'#','',[rfReplaceAll])];
@@ -4808,7 +4916,7 @@ var IDStringHashMap:TpvDAEStringHashMap;
   result:=false;
   if assigned(ParentTag) then begin
    ID:=TpvXMLTag(ParentTag).GetParameter('id','');
-   if length(ID)>0 then begin
+   if length(ID)>=0 then begin
     GetMem(VisualScene,SizeOf(TLibraryVisualScene));
     FillChar(VisualScene^,SizeOf(TLibraryVisualScene),AnsiChar(#0));
     VisualScene^.Next:=LibraryVisualScenes;
@@ -4902,7 +5010,7 @@ var IDStringHashMap:TpvDAEStringHashMap;
       if XMLTag.Name='instance_visual_scene' then begin
        ParseInstanceVisualSceneTag(XMLTag);
       end;
-     end;                                                   
+     end;
     end;
    end;
    result:=true;
@@ -5022,10 +5130,11 @@ var IDStringHashMap:TpvDAEStringHashMap;
        Vectors:array of TpvVector4;
        Count:TpvInt32;
       end;
-      TFloatArray=record
+      TpvFloatArray=record
        Floats:array of TpvFloat;
        Count:TpvInt32;
        Stride:TpvInt32;
+       Params:TpvInt32;
       end;
       TNameArray=record
        Names:array of ansistring;
@@ -5058,7 +5167,7 @@ var IDStringHashMap:TpvDAEStringHashMap;
      if CountParams>0 then begin
       for Index:=0 to CountParams-1 do begin
        Param:=@Source^.Accessor.Params[Index];
-       if Param^.ParamType in [aptINT,aptFLOAT] then begin
+       if Param^.ParamType in [aptINT,apTpvFloat] then begin
         if BadAccessor and (length(Param^.ParamName)=0) then begin
          if (Index>=0) and (Index<=3) then begin
           Mapping[Index]:=Index;
@@ -5088,7 +5197,7 @@ var IDStringHashMap:TpvDAEStringHashMap;
        SourceData:=Source^.SourceDatas.Items[0];
       end;
      end;
-     if assigned(SourceData) and (SourceData^.SourceType in [lstBOOL,lstINT,lstFLOAT]) then begin
+     if assigned(SourceData) and (SourceData^.SourceType in [lstBOOL,lstINT,lsTpvFloat]) then begin
       DataSize:=length(SourceData^.Data);
       DataCount:=DataSize div Stride;
       SetLength(Target.Vectors,DataCount);
@@ -5112,11 +5221,11 @@ var IDStringHashMap:TpvDAEStringHashMap;
     end;
    end;
   end;
-  procedure ConvertFloatSource(Source:PLibrarySource;var Target:TFloatArray);
+  procedure ConverTpvFloatSource(Source:PLibrarySource;var Target:TpvFloatArray);
   var {Index,}CountParams,Offset,Stride,DataSize,DataIndex,DataCount:TpvInt32;
 //     Param:PLibrarySourceAccessorParam;
       SourceData:PLibrarySourceData;
-//      v:PpvVector4;
+//      v:PVector4;
   begin
    if assigned(Source) then begin
     CountParams:=length(Source^.Accessor.Params);
@@ -5124,14 +5233,14 @@ var IDStringHashMap:TpvDAEStringHashMap;
     if Offset>0 then begin
     end;
     Stride:=Source^.Accessor.Stride;
-    if (Stride>0) and (CountParams=1) and (Source^.Accessor.Params[0].ParamType=aptFLOAT) then begin
+    if (Stride>0) and (CountParams=1) and (Source^.Accessor.Params[0].ParamType=apTpvFloat) then begin
      SourceData:=LibrarySourceDatasIDStringHashMap.Values[Source^.Accessor.Source];
      if not assigned(SourceData) then begin
       if Source^.SourceDatas.Count>0 then begin
        SourceData:=Source^.SourceDatas.Items[0];
       end;
      end;
-     if assigned(SourceData) and (SourceData^.SourceType in [lstBOOL,lstINT,lstFLOAT]) then begin
+     if assigned(SourceData) and (SourceData^.SourceType in [lstBOOL,lstINT,lsTpvFloat]) then begin
       DataSize:=length(SourceData^.Data);
       DataCount:=DataSize div Stride;
       SetLength(Target.Floats,DataCount);
@@ -5148,11 +5257,11 @@ var IDStringHashMap:TpvDAEStringHashMap;
     end;
    end;
   end;
-  procedure ConvertMultipleFloatSource(Source:PLibrarySource;var Target:TFloatArray);
+  procedure ConvertMultipleFloatSource(Source:PLibrarySource;var Target:TpvFloatArray);
   var {Index,}CountParams,Offset,Stride,DataSize,DataIndex,DataCount:TpvInt32;
 //     Param:PLibrarySourceAccessorParam;
       SourceData:PLibrarySourceData;
-//      v:PpvVector4;                                                         
+//      v:PVector4;
   begin
    if assigned(Source) then begin
     CountParams:=length(Source^.Accessor.Params);
@@ -5161,20 +5270,71 @@ var IDStringHashMap:TpvDAEStringHashMap;
     end;
     Stride:=Source^.Accessor.Stride;
     Target.Stride:=Stride;
-    if (Stride>0) and (CountParams=1) and (Source^.Accessor.Params[0].ParamType in [aptFLOAT,aptFLOAT4X4]) then begin
+    if (Stride>0) and (CountParams=1) and (Source^.Accessor.Params[0].ParamType in [apTpvFloat,apTpvFloat4X4]) then begin
      SourceData:=LibrarySourceDatasIDStringHashMap.Values[Source^.Accessor.Source];
      if not assigned(SourceData) then begin
       if Source^.SourceDatas.Count>0 then begin
        SourceData:=Source^.SourceDatas.Items[0];
       end;
      end;
-     if assigned(SourceData) and (SourceData^.SourceType in [lstBOOL,lstINT,lstFLOAT]) then begin
+     if assigned(SourceData) and (SourceData^.SourceType in [lstBOOL,lstINT,lsTpvFloat]) then begin
       DataSize:=length(SourceData^.Data);
       DataCount:=DataSize;
       SetLength(Target.Floats,DataCount);
       DataCount:=0;
       DataIndex:=0;
-      if (Stride=16) and (Source^.Accessor.Params[0].ParamType=aptFLOAT4X4) then begin
+      if (Stride=16) and (Source^.Accessor.Params[0].ParamType=apTpvFloat4X4) then begin
+       while DataIndex<DataSize do begin
+        Target.Floats[DataCount]:=SourceData^.Data[DataIndex];
+        inc(DataCount);
+        inc(DataIndex);
+       end;
+       DataIndex:=0;
+       while (DataIndex+15)<DataSize do begin
+        PpvMatrix4x4(TpvPointer(@Target.Floats[DataIndex]))^:=PpvMatrix4x4(TpvPointer(@Target.Floats[DataIndex]))^.Transpose;
+        inc(DataIndex,16);
+       end;
+      end else begin
+       while DataIndex<DataSize do begin
+        Target.Floats[DataCount]:=SourceData^.Data[DataIndex];
+        inc(DataCount);
+        inc(DataIndex);
+       end;
+      end;
+      SetLength(Target.Floats,DataCount);
+      Target.Count:=DataCount;
+     end;
+    end;
+   end;
+  end;
+  procedure ConvertMultipleParamFloatSource(Source:PLibrarySource;var Target:TpvFloatArray);
+  var {Index,}CountParams,Offset,Stride,DataSize,DataIndex,DataCount:TpvInt32;
+//     Param:PLibrarySourceAccessorParam;
+      SourceData:PLibrarySourceData;
+//      v:PVector4;
+  begin
+   if assigned(Source) then begin
+    CountParams:=length(Source^.Accessor.Params);
+    Offset:=Source^.Accessor.Offset;
+    if Offset>0 then begin
+    end;
+    Stride:=Source^.Accessor.Stride;
+    Target.Stride:=Stride;
+    Target.Params:=CountParams;
+    if (Stride>0) and (CountParams>0) and (Source^.Accessor.Params[0].ParamType in [apTpvFloat,apTpvFloat4X4]) then begin
+     SourceData:=LibrarySourceDatasIDStringHashMap.Values[Source^.Accessor.Source];
+     if not assigned(SourceData) then begin
+      if Source^.SourceDatas.Count>0 then begin
+       SourceData:=Source^.SourceDatas.Items[0];
+      end;
+     end;
+     if assigned(SourceData) and (SourceData^.SourceType in [lstBOOL,lstINT,lsTpvFloat]) then begin
+      DataSize:=length(SourceData^.Data);
+      DataCount:=DataSize;
+      SetLength(Target.Floats,DataCount);
+      DataCount:=0;
+      DataIndex:=0;
+      if (Stride=16) and (Source^.Accessor.Params[0].ParamType=apTpvFloat4X4) then begin
        while DataIndex<DataSize do begin
         Target.Floats[DataCount]:=SourceData^.Data[DataIndex];
         inc(DataCount);
@@ -5200,9 +5360,9 @@ var IDStringHashMap:TpvDAEStringHashMap;
   end;
   procedure ConvertNameSource(Source:PLibrarySource;var Target:TNameArray);
   var {Index,}CountParams,Offset,Stride,DataSize,DataIndex,DataCount:TpvInt32;
-//    Param:PLibrarySourceAccessorParam;
+//      Param:PLibrarySourceAccessorParam;
       SourceData:PLibrarySourceData;
-//    v:PpvVector4;
+//      v:PVector4;
   begin
    if assigned(Source) then begin
     CountParams:=length(Source^.Accessor.Params);
@@ -5246,14 +5406,14 @@ var IDStringHashMap:TpvDAEStringHashMap;
     if Offset>0 then begin
     end;
     Stride:=Source^.Accessor.Stride;
-    if (Stride>0) and (CountParams=1) and (Source^.Accessor.Params[0].ParamType=aptFLOAT4x4) then begin
+    if (Stride>0) and (CountParams=1) and (Source^.Accessor.Params[0].ParamType=apTpvFloat4x4) then begin
      SourceData:=LibrarySourceDatasIDStringHashMap.Values[Source^.Accessor.Source];
      if not assigned(SourceData) then begin
       if Source^.SourceDatas.Count>0 then begin
        SourceData:=Source^.SourceDatas.Items[0];
       end;
      end;
-     if assigned(SourceData) and (SourceData^.SourceType in [lstBOOL,lstINT,lstFLOAT]) and (Stride=16) then begin
+     if assigned(SourceData) and (SourceData^.SourceType in [lstBOOL,lstINT,lsTpvFloat]) and (Stride=16) then begin
       DataSize:=length(SourceData^.Data);
       DataCount:=DataSize div Stride;
       SetLength(Target.Matrices,DataCount);
@@ -5317,7 +5477,7 @@ var IDStringHashMap:TpvDAEStringHashMap;
        VertexIndicesArray:TpvDAEVertexIndicesArray;
        Mesh,OtherMesh:TpvDAEMesh;
        HasNormals,HasTangents:boolean;
-       Weights:TFloatArray;
+       Weights:TpvFloatArray;
        Joints,Targets:TNameArray;
        BlendVertices:TBlendVertices;
        BlendVertex:PBlendVertex;
@@ -5953,7 +6113,7 @@ var IDStringHashMap:TpvDAEStringHashMap;
           WeightOffset:=Input^.Offset;
           LibrarySource:=LibrarySourcesIDStringHashMap.Values[Input^.Source];
           if assigned(LibrarySource) then begin
-           ConvertFloatSource(LibrarySource,Weights);
+           ConverTpvFloatSource(LibrarySource,Weights);
           end;
          end;
         end;
@@ -6061,7 +6221,7 @@ var IDStringHashMap:TpvDAEStringHashMap;
         end else if Input^.Semantic='MORPH_WEIGHT' then begin
          LibrarySource:=LibrarySourcesIDStringHashMap.Values[Input^.Source];
          if assigned(LibrarySource) then begin
-          ConvertFloatSource(LibrarySource,Weights);
+          ConverTpvFloatSource(LibrarySource,Weights);
           MorphTargetWeightIDStringHashMap.Add(Input^.Source,result);
          end;
         end;
@@ -6147,6 +6307,7 @@ var IDStringHashMap:TpvDAEStringHashMap;
       Node.ID:=LibraryNode^.ID;
       Node.SID:=LibraryNode^.SID;
       Node.Name:=LibraryNode^.Name;
+      Node.Visible:=LibraryNode^.Visible;
       if LibraryNode^.IsJoint then begin
        Node.NodeType:=TpvDAENodeType.Joint;
        VisualScene.JointNodes.AddObject(String(LibraryNode^.SID),Node);
@@ -6212,7 +6373,7 @@ var IDStringHashMap:TpvDAEStringHashMap;
       TranformSkew.SkewAngle:=LibraryNode^.SkewAngle;
       TranformSkew.SkewA:=LibraryNode^.SkewA;
       TranformSkew.SkewB:=LibraryNode^.SkewB;
-      TranformSkew.Convert;                                                          
+      TranformSkew.Convert;
       ParentNode.Transforms.Add(TranformSkew);
       ParentNode.Transforms.SIDStringHashMap.Add(TranformSkew.SID,TranformSkew);
      end;
@@ -6232,6 +6393,12 @@ var IDStringHashMap:TpvDAEStringHashMap;
        Camera.XMag:=LibraryNode^.InstanceCamera^.Camera.XMag;
        Camera.YMag:=LibraryNode^.InstanceCamera^.Camera.YMag;
        ParentNode.Cameras.Add(Camera);
+       if assigned(ParentNode) and (length(ParentNode.ID)>0) then begin
+        CameraHashMap.Add(ParentNode.ID,Camera);
+       end else begin
+        CameraHashMap.Add(Camera.ID,Camera);
+       end;
+       CameraList.Add(Camera);
       end;
      end;
      ntINSTANCELIGHT:begin
@@ -6326,6 +6493,7 @@ var IDStringHashMap:TpvDAEStringHashMap;
        Node.ID:=LibraryNode^.ID;
        Node.SID:=LibraryNode^.SID;
        Node.Name:=LibraryNode^.Name;
+       Node.Visible:=LibraryNode^.Visible;
        if ((length(LibraryNode^.NodeType_)>0) and (MyLowerCase(LibraryNode^.NodeType_)='joint')) or
           ((length(LibraryNode^.NodeType_)=0) and InstanceNode^.IsJoint) then begin
         Node.NodeType:=TpvDAENodeType.Joint;
@@ -6376,8 +6544,7 @@ var IDStringHashMap:TpvDAEStringHashMap;
       AnimationChannel:TpvDAEAnimationChannel;
       SamplerInput:PInput;
       SamplerInputSource:PLibrarySource;
-      InputValues,OutputValues:TFloatArray;
-      InTangentValues,OutTangentValues:TVectorArray;
+      InputValues,OutputValues,InTangentValues,OutTangentValues:TpvFloatArray;
       InterpolationValues:TNameArray;
       AnimationChannelKeyFrame:TpvDAEAnimationChannelKeyFrame;
       StartChar,EndChar:ansichar;
@@ -6510,10 +6677,12 @@ var IDStringHashMap:TpvDAEStringHashMap;
         InputValues.Count:=0;
         OutputValues.Floats:=nil;
         OutputValues.Count:=0;
-        InTangentValues.Vectors:=nil;
+        InTangentValues.Floats:=nil;
         InTangentValues.Count:=0;
-        OutTangentValues.Vectors:=nil;
+        InTangentValues.Params:=0;
+        OutTangentValues.Floats:=nil;
         OutTangentValues.Count:=0;
+        OutTangentValues.Params:=0;
         InterpolationValues.Names:=nil;
         InterpolationValues.Count:=0;
         try
@@ -6528,13 +6697,15 @@ var IDStringHashMap:TpvDAEStringHashMap;
           if assigned(SamplerInputSource) then begin
            CountOffsets:=Max(CountOffsets,SamplerInput^.Offset+1);
            if SamplerInput^.Semantic='INPUT' then begin
-            ConvertFloatSource(SamplerInputSource,InputValues);
+            ConverTpvFloatSource(SamplerInputSource,InputValues);
            end else if SamplerInput^.Semantic='OUTPUT' then begin
             ConvertMultipleFloatSource(SamplerInputSource,OutputValues);
            end else if SamplerInput^.Semantic='IN_TANGENT' then begin
-            ConvertVectorSource(SamplerInputSource,InTangentValues,stTANGENT);
+            ConvertMultipleParamFloatSource(SamplerInputSource,InTangentValues);
+//          ConvertVectorSource(SamplerInputSource,InTangentValues,stTANGENT);
            end else if SamplerInput^.Semantic='OUT_TANGENT' then begin
-            ConvertVectorSource(SamplerInputSource,OutTangentValues,stTANGENT);
+            ConvertMultipleParamFloatSource(SamplerInputSource,OutTangentValues);
+//          ConvertVectorSource(SamplerInputSource,OutTangentValues,stTANGENT);
            end else if SamplerInput^.Semantic='INTERPOLATION' then begin
             ConvertNameSource(SamplerInputSource,InterpolationValues);
            end;
@@ -6575,19 +6746,29 @@ var IDStringHashMap:TpvDAEStringHashMap;
              AnimationChannelKeyFrame.Values[ValueIndex]:=0.0;
             end;
            end;
-           if KeyFrameIndex<length(InTangentValues.Vectors) then begin
-            AnimationChannelKeyFrame.InTangent.x:=InTangentValues.Vectors[KeyFrameIndex].x;
-            AnimationChannelKeyFrame.InTangent.y:=InTangentValues.Vectors[KeyFrameIndex].y;
-           end else begin
-            AnimationChannelKeyFrame.InTangent.x:=0.0;
-            AnimationChannelKeyFrame.InTangent.y:=0.0;
+           begin
+            SetLength(AnimationChannelKeyFrame.InTangents,InTangentValues.Stride);
+            AnimationChannelKeyFrame.InTangentStride:=InTangentValues.Stride;
+            AnimationChannelKeyFrame.InTangentParams:=InTangentValues.Params;
+            for ValueIndex:=0 to InTangentValues.Stride-1 do begin
+             if ((KeyFrameIndex*InTangentValues.Stride)+ValueIndex)<length(InTangentValues.Floats) then begin
+              AnimationChannelKeyFrame.InTangents[ValueIndex]:=InTangentValues.Floats[(KeyFrameIndex*InTangentValues.Stride)+ValueIndex];
+             end else begin
+              AnimationChannelKeyFrame.InTangents[ValueIndex]:=0.0;
+             end;
+            end;
            end;
-           if KeyFrameIndex<length(OutTangentValues.Vectors) then begin
-            AnimationChannelKeyFrame.OutTangent.x:=OutTangentValues.Vectors[KeyFrameIndex].x;
-            AnimationChannelKeyFrame.OutTangent.y:=OutTangentValues.Vectors[KeyFrameIndex].y;
-           end else begin
-            AnimationChannelKeyFrame.OutTangent.x:=0.0;
-            AnimationChannelKeyFrame.OutTangent.y:=0.0;
+           begin
+            SetLength(AnimationChannelKeyFrame.OutTangents,OutTangentValues.Stride);
+            AnimationChannelKeyFrame.OutTangentStride:=OutTangentValues.Stride;
+            AnimationChannelKeyFrame.OutTangentParams:=OutTangentValues.Params;
+            for ValueIndex:=0 to OutTangentValues.Stride-1 do begin
+             if ((KeyFrameIndex*OutTangentValues.Stride)+ValueIndex)<length(OutTangentValues.Floats) then begin
+              AnimationChannelKeyFrame.OutTangents[ValueIndex]:=OutTangentValues.Floats[(KeyFrameIndex*OutTangentValues.Stride)+ValueIndex];
+             end else begin
+              AnimationChannelKeyFrame.OutTangents[ValueIndex]:=0.0;
+             end;
+            end;
            end;
            inc(KeyFrameIndex);//,CountOffsets);
           end;
@@ -6595,8 +6776,8 @@ var IDStringHashMap:TpvDAEStringHashMap;
         finally
          SetLength(InputValues.Floats,0);
          SetLength(OutputValues.Floats,0);
-         SetLength(InTangentValues.Vectors,0);
-         SetLength(OutTangentValues.Vectors,0);
+         SetLength(InTangentValues.Floats,0);
+         SetLength(OutTangentValues.Floats,0);
          SetLength(InterpolationValues.Names,0);
         end;
        end;
@@ -6636,6 +6817,285 @@ var IDStringHashMap:TpvDAEStringHashMap;
      end;
     end;
     LibraryAnimationClip:=LibraryAnimationClip^.Next;
+   end;
+  end;
+  procedure ConvertAnimationKeyframes;
+  const TimeStep=1.0/60.0; // 60 Hz
+  type PValue=^TValue;
+       TValue=record
+        Time:TpvDouble;
+        Value:TpvFloat;
+       end;
+   function InverseParametericCubic(x,x0,x1,x2,x3:TpvDouble):TpvFloat;
+   const Tolerance=1.0e-09;
+         SmallerTolerance=1.0e-20;
+         MaxIterationCount=100;
+   var Iteration:TpvInt32;
+       u,v:TpvFloat;
+       a,b,c,d,e,f:TpvDouble;
+   begin
+    if (x-x0)<SmallerTolerance then begin
+     result:=0.0;
+    end else if (x3-x)<SmallerTolerance then begin
+     result:=1.0;
+    end else begin
+     u:=0.0;
+     v:=1.0;
+     for Iteration:=0 to MaxIterationCount-1 do begin
+      a:=(x0+x1)*0.5;
+      b:=(x1+x2)*0.5;
+      c:=(x2+x3)*0.5;
+      d:=(a+b)*0.5;
+      e:=(b+c)*0.5;
+      f:=(d+e)*0.5;
+      if abs(f-x)<Tolerance then begin
+       break;
+      end else if f<x then begin
+       x0:=f;
+       x1:=e;
+       x2:=c;
+       u:=(u+v)*0.5;
+      end else begin
+       x1:=a;
+       x2:=d;
+       x3:=f;
+       v:=(u+v)*0.5;
+      end;
+     end;
+     result:=Min(Max((u+v)*0.5,0.0),1.0);
+    end;
+   end;
+  var AnimationIndex,AnimationChannelIndex,CountLinearKeyFrames,TimeStepIndex,CountValues,ValueIndex,KeyFrameIndex,
+      SubValueIndex:TpvInt32;
+      Animation:TpvDAEAnimation;
+      AnimationChannel:TpvDAEAnimationChannel;
+      AnimationChannelKeyFrame:TpvDAEAnimationChannelKeyFrame;
+      StartTime,EndTime,CurrentTime:TpvDouble;
+      s,c,e:TpvFloat;
+      Indices:array[-1..3] of TpvInt32;
+      Values:array[0..3] of TValue;
+      dm0,dm1:TpvDecomposedMatrix4x4;
+  begin
+   for AnimationIndex:=0 to Animations.Count-1 do begin
+    Animation:=Animations[AnimationIndex];
+    for AnimationChannelIndex:=0 to Animation.Channels.Count-1 do begin
+     AnimationChannel:=Animation.Channels[AnimationChannelIndex];
+     if AnimationChannel.KeyFrames.Count>0 then begin
+      StartTime:=AnimationChannel.KeyFrames[0].Time;
+      AnimationChannelKeyFrame:=AnimationChannel.KeyFrames[AnimationChannel.KeyFrames.Count-1];
+      EndTime:=AnimationChannelKeyFrame.Time;
+      CountValues:=length(AnimationChannelKeyFrame.Values);
+      AnimationChannel.CountValues:=CountValues;
+      AnimationChannel.StartTime:=StartTime;
+      AnimationChannel.EndTime:=EndTime;
+      AnimationChannel.TimeStep:=TimeStep;
+      CountLinearKeyFrames:=trunc(ceil((EndTime-StartTime)/TimeStep));
+      AnimationChannel.CountLinearKeyFrames:=CountLinearKeyFrames;
+      CurrentTime:=StartTime;
+      for TimeStepIndex:=0 to CountLinearKeyFrames-1 do begin
+       Indices[1]:=Max(0,AnimationChannel.KeyFrames.Count-1);
+       for KeyFrameIndex:=0 to AnimationChannel.KeyFrames.Count-1 do begin
+        if CurrentTime<=AnimationChannel.KeyFrames[KeyFrameIndex].Time then begin
+         Indices[1]:=KeyFrameIndex;
+         break;
+        end;
+       end;
+       Indices[0]:=Min(Max(Indices[1]-1,0),AnimationChannel.KeyFrames.Count-1);
+       Indices[-1]:=Min(Max(Indices[0]-1,0),AnimationChannel.KeyFrames.Count-1);
+       Indices[2]:=Min(Max(Indices[1]+1,0),AnimationChannel.KeyFrames.Count-1);
+       Indices[3]:=Min(Max(Indices[2]+1,0),AnimationChannel.KeyFrames.Count-1);
+       SetLength(AnimationChannel.LinearKeyFrames,CountLinearKeyFrames,CountValues);
+       if (CountValues=16) and
+          (AnimationChannel.KeyFrames[Indices[0]].Interpolation in [TpvDAEInterpolationType.Linear]) then begin
+        case AnimationChannel.KeyFrames[Indices[0]].Interpolation of
+         TpvDAEInterpolationType.Linear:begin
+          if AnimationChannel.KeyFrames[Indices[0]].Time=AnimationChannel.KeyFrames[Indices[1]].Time then begin
+           TpvMatrix4x4(pointer(@AnimationChannel.LinearKeyFrames[TimeStepIndex,0])^):=TpvMatrix4x4(pointer(@AnimationChannel.KeyFrames[Indices[0]].Values[0])^);
+          end else if CurrentTime<=AnimationChannel.KeyFrames[Indices[0]].Time then begin
+           TpvMatrix4x4(pointer(@AnimationChannel.LinearKeyFrames[TimeStepIndex,0])^):=TpvMatrix4x4(pointer(@AnimationChannel.KeyFrames[Indices[0]].Values[0])^);
+          end else if CurrentTime>=AnimationChannel.KeyFrames[Indices[1]].Time then begin
+           TpvMatrix4x4(pointer(@AnimationChannel.LinearKeyFrames[TimeStepIndex,0])^):=TpvMatrix4x4(pointer(@AnimationChannel.KeyFrames[Indices[1]].Values[0])^);
+          end else begin
+           dm0:=TpvMatrix4x4(pointer(@AnimationChannel.KeyFrames[Indices[0]].Values[0])^).Decompose;
+           dm1:=TpvMatrix4x4(pointer(@AnimationChannel.KeyFrames[Indices[1]].Values[0])^).Decompose;
+           if dm0.Valid and dm1.Valid then begin
+            TpvMatrix4x4(pointer(@AnimationChannel.LinearKeyFrames[TimeStepIndex,0])^):=TpvMatrix4x4.CreateRecomposed(dm0.Slerp(dm1,Min(Max((CurrentTime-AnimationChannel.KeyFrames[Indices[0]].Time)/(AnimationChannel.KeyFrames[Indices[1]].Time-AnimationChannel.KeyFrames[Indices[0]].Time),0.0),1.0)));
+           end else begin
+            TpvMatrix4x4(pointer(@AnimationChannel.LinearKeyFrames[TimeStepIndex,0])^):=TpvMatrix4x4(pointer(@AnimationChannel.KeyFrames[Indices[0]].Values[0])^).SimpleLerp(TpvMatrix4x4(pointer(@AnimationChannel.KeyFrames[Indices[1]].Values[0])^),Min(Max((CurrentTime-AnimationChannel.KeyFrames[Indices[0]].Time)/(AnimationChannel.KeyFrames[Indices[1]].Time-AnimationChannel.KeyFrames[Indices[0]].Time),0.0),1.0));
+           end;
+          end;
+         end;
+        end;
+       end else begin
+        for ValueIndex:=0 to CountValues-1 do begin
+         case AnimationChannel.KeyFrames[Indices[0]].Interpolation of
+          TpvDAEInterpolationType.Linear:begin
+           if AnimationChannel.KeyFrames[Indices[0]].Time=AnimationChannel.KeyFrames[Indices[1]].Time then begin
+            AnimationChannel.LinearKeyFrames[TimeStepIndex,ValueIndex]:=AnimationChannel.KeyFrames[Indices[0]].Values[ValueIndex];
+           end else if CurrentTime<=AnimationChannel.KeyFrames[Indices[0]].Time then begin
+            AnimationChannel.LinearKeyFrames[TimeStepIndex,ValueIndex]:=AnimationChannel.KeyFrames[Indices[0]].Values[ValueIndex];
+           end else if CurrentTime>=AnimationChannel.KeyFrames[Indices[1]].Time then begin
+            AnimationChannel.LinearKeyFrames[TimeStepIndex,ValueIndex]:=AnimationChannel.KeyFrames[Indices[1]].Values[ValueIndex];
+           end else begin
+            AnimationChannel.LinearKeyFrames[TimeStepIndex,ValueIndex]:=FloatLerp(AnimationChannel.KeyFrames[Indices[0]].Values[ValueIndex],
+                                                                                  AnimationChannel.KeyFrames[Indices[1]].Values[ValueIndex],
+                                                                                  Min(Max((CurrentTime-AnimationChannel.KeyFrames[Indices[0]].Time)/(AnimationChannel.KeyFrames[Indices[1]].Time-AnimationChannel.KeyFrames[Indices[0]].Time),0.0),1.0));
+           end;
+          end;
+          TpvDAEInterpolationType.Bezier:begin
+           Values[0].Time:=AnimationChannel.KeyFrames[Indices[0]].Time;
+           Values[0].Value:=AnimationChannel.KeyFrames[Indices[0]].Values[ValueIndex];
+           if (AnimationChannel.KeyFrames[Indices[1]].InTangentStride=AnimationChannel.KeyFrames[Indices[0]].OutTangentStride) and
+              (AnimationChannel.KeyFrames[Indices[1]].InTangentParams=AnimationChannel.KeyFrames[Indices[0]].OutTangentParams) then begin
+            case AnimationChannel.KeyFrames[Indices[0]].OutTangentParams of
+             1:begin
+              Values[1].Time:=((AnimationChannel.KeyFrames[Indices[0]].Time*2.0)+AnimationChannel.KeyFrames[Indices[1]].Time)/3.0;
+              Values[1].Value:=AnimationChannel.KeyFrames[Indices[0]].OutTangents[ValueIndex];
+              Values[2].Time:=(AnimationChannel.KeyFrames[Indices[0]].Time+(AnimationChannel.KeyFrames[Indices[1]].Time*2.0))/3.0;
+              Values[2].Value:=AnimationChannel.KeyFrames[Indices[1]].InTangents[ValueIndex];
+             end;
+             2:begin
+              Values[1].Time:=AnimationChannel.KeyFrames[Indices[0]].OutTangents[(ValueIndex*2)+0];
+              Values[1].Value:=AnimationChannel.KeyFrames[Indices[0]].OutTangents[(ValueIndex*2)+1];
+              Values[2].Time:=AnimationChannel.KeyFrames[Indices[1]].InTangents[(ValueIndex*2)+0];
+              Values[2].Value:=AnimationChannel.KeyFrames[Indices[1]].InTangents[(ValueIndex*2)+1];
+             end;
+             else begin
+              Values[1].Time:=((AnimationChannel.KeyFrames[Indices[0]].Time*2.0)+AnimationChannel.KeyFrames[Indices[1]].Time)/3.0;
+              Values[1].Value:=((AnimationChannel.KeyFrames[Indices[0]].Values[ValueIndex]*2.0)+AnimationChannel.KeyFrames[Indices[1]].Values[ValueIndex])/3.0;
+              Values[2].Time:=(AnimationChannel.KeyFrames[Indices[0]].Time+(AnimationChannel.KeyFrames[Indices[1]].Time*2.0))/3.0;
+              Values[2].Value:=(AnimationChannel.KeyFrames[Indices[0]].Values[ValueIndex]+(AnimationChannel.KeyFrames[Indices[1]].Values[ValueIndex]*2.0))/3.0;
+             end;
+            end;
+           end else begin
+            Values[1].Time:=((AnimationChannel.KeyFrames[Indices[0]].Time*2.0)+AnimationChannel.KeyFrames[Indices[1]].Time)/3.0;
+            Values[1].Value:=((AnimationChannel.KeyFrames[Indices[0]].Values[ValueIndex]*2.0)+AnimationChannel.KeyFrames[Indices[1]].Values[ValueIndex])/3.0;
+            Values[2].Time:=(AnimationChannel.KeyFrames[Indices[0]].Time+(AnimationChannel.KeyFrames[Indices[1]].Time*2.0))/3.0;
+            Values[2].Value:=(AnimationChannel.KeyFrames[Indices[0]].Values[ValueIndex]+(AnimationChannel.KeyFrames[Indices[1]].Values[ValueIndex]*2.0))/3.0;
+           end;
+           Values[3].Time:=AnimationChannel.KeyFrames[Indices[1]].Time;
+           Values[3].Value:=AnimationChannel.KeyFrames[Indices[1]].Values[ValueIndex];
+           s:=InverseParametericCubic(CurrentTime,Values[0].Time,Values[1].Time,Values[2].Time,Values[3].Time);
+           c:=3.0*(Values[1].Value-Values[0].Value);
+           e:=3.0*(Values[2].Value-Values[1].Value);
+           AnimationChannel.LinearKeyFrames[TimeStepIndex,ValueIndex]:=((((((((Values[3].Value-Values[0].Value)-e)*s)+e)-c)*s)+c)*s)+Values[0].Value;
+          end;
+          TpvDAEInterpolationType.Cardinal:begin
+           Values[0].Time:=AnimationChannel.KeyFrames[Indices[0]].Time;
+           Values[0].Value:=AnimationChannel.KeyFrames[Indices[0]].Values[ValueIndex];
+           if (AnimationChannel.KeyFrames[Indices[1]].InTangentStride=AnimationChannel.KeyFrames[Indices[0]].OutTangentStride) and
+              (AnimationChannel.KeyFrames[Indices[1]].InTangentParams=AnimationChannel.KeyFrames[Indices[0]].OutTangentParams) then begin
+            case AnimationChannel.KeyFrames[Indices[0]].OutTangentParams of
+             1:begin
+              Values[1].Time:=((AnimationChannel.KeyFrames[Indices[0]].Time*2.0)+AnimationChannel.KeyFrames[Indices[1]].Time)/3.0;
+              Values[1].Value:=AnimationChannel.KeyFrames[Indices[0]].OutTangents[ValueIndex];
+              Values[2].Time:=(AnimationChannel.KeyFrames[Indices[0]].Time+(AnimationChannel.KeyFrames[Indices[1]].Time*2.0))/3.0;
+              Values[2].Value:=AnimationChannel.KeyFrames[Indices[1]].InTangents[ValueIndex];
+             end;
+             2:begin
+              Values[1].Time:=AnimationChannel.KeyFrames[Indices[0]].Time+AnimationChannel.KeyFrames[Indices[0]].OutTangents[(ValueIndex*2)+0];
+              Values[1].Value:=AnimationChannel.KeyFrames[Indices[1]].Values[ValueIndex]-AnimationChannel.KeyFrames[Indices[0]].OutTangents[(ValueIndex*2)+1];
+              Values[2].Time:=AnimationChannel.KeyFrames[Indices[0]].Time+AnimationChannel.KeyFrames[Indices[1]].InTangents[(ValueIndex*2)+0];
+              Values[2].Value:=AnimationChannel.KeyFrames[Indices[1]].Time-AnimationChannel.KeyFrames[Indices[1]].InTangents[(ValueIndex*2)+1];
+              Values[1].Time:=AnimationChannel.KeyFrames[Indices[0]].OutTangents[(ValueIndex*2)+0];
+              Values[1].Value:=AnimationChannel.KeyFrames[Indices[0]].OutTangents[(ValueIndex*2)+1];
+              Values[2].Time:=AnimationChannel.KeyFrames[Indices[1]].InTangents[(ValueIndex*2)+0];
+              Values[2].Value:=AnimationChannel.KeyFrames[Indices[1]].InTangents[(ValueIndex*2)+1];
+             end;
+             else begin
+              Values[1].Time:=((AnimationChannel.KeyFrames[Indices[0]].Time*2.0)+AnimationChannel.KeyFrames[Indices[1]].Time)/3.0;
+              Values[1].Value:=((AnimationChannel.KeyFrames[Indices[0]].Values[ValueIndex]*2.0)+AnimationChannel.KeyFrames[Indices[1]].Values[ValueIndex])/3.0;
+              Values[2].Time:=(AnimationChannel.KeyFrames[Indices[0]].Time+(AnimationChannel.KeyFrames[Indices[1]].Time*2.0))/3.0;
+              Values[2].Value:=(AnimationChannel.KeyFrames[Indices[0]].Values[ValueIndex]+(AnimationChannel.KeyFrames[Indices[1]].Values[ValueIndex]*2.0))/3.0;
+             end;
+            end;
+           end else begin
+            Values[1].Time:=((AnimationChannel.KeyFrames[Indices[0]].Time*2.0)+AnimationChannel.KeyFrames[Indices[1]].Time)/3.0;
+            Values[1].Value:=((AnimationChannel.KeyFrames[Indices[0]].Values[ValueIndex]*2.0)+AnimationChannel.KeyFrames[Indices[1]].Values[ValueIndex])/3.0;
+            Values[2].Time:=(AnimationChannel.KeyFrames[Indices[0]].Time+(AnimationChannel.KeyFrames[Indices[1]].Time*2.0))/3.0;
+            Values[2].Value:=(AnimationChannel.KeyFrames[Indices[0]].Values[ValueIndex]+(AnimationChannel.KeyFrames[Indices[1]].Values[ValueIndex]*2.0))/3.0;
+           end;
+           Values[3].Time:=AnimationChannel.KeyFrames[Indices[1]].Time;
+           Values[3].Value:=AnimationChannel.KeyFrames[Indices[1]].Values[ValueIndex];
+           s:=InverseParametericCubic(CurrentTime,Values[0].Time,Values[1].Time,Values[2].Time,Values[3].Time);
+           c:=3.0*(Values[1].Value-Values[0].Value);
+           e:=3.0*(Values[2].Value-Values[1].Value);
+           AnimationChannel.LinearKeyFrames[TimeStepIndex,ValueIndex]:=((((((((Values[3].Value-Values[0].Value)-e)*s)+e)-c)*s)+c)*s)+Values[0].Value;
+          end;
+          TpvDAEInterpolationType.Hermite:begin
+           Values[0].Time:=AnimationChannel.KeyFrames[Indices[0]].Time;
+           Values[0].Value:=AnimationChannel.KeyFrames[Indices[0]].Values[ValueIndex];
+           if (AnimationChannel.KeyFrames[Indices[1]].InTangentStride=AnimationChannel.KeyFrames[Indices[0]].OutTangentStride) and
+              (AnimationChannel.KeyFrames[Indices[1]].InTangentParams=AnimationChannel.KeyFrames[Indices[0]].OutTangentParams) then begin
+            case AnimationChannel.KeyFrames[Indices[0]].OutTangentParams of
+             1:begin
+              Values[1].Time:=((AnimationChannel.KeyFrames[Indices[0]].Time*2.0)+AnimationChannel.KeyFrames[Indices[1]].Time)/3.0;
+              Values[1].Value:=AnimationChannel.KeyFrames[Indices[0]].OutTangents[ValueIndex];
+              Values[2].Time:=(AnimationChannel.KeyFrames[Indices[0]].Time+(AnimationChannel.KeyFrames[Indices[1]].Time*2.0))/3.0;
+              Values[2].Value:=AnimationChannel.KeyFrames[Indices[1]].InTangents[ValueIndex];
+             end;
+             2:begin
+              Values[1].Time:=AnimationChannel.KeyFrames[Indices[0]].Time+AnimationChannel.KeyFrames[Indices[0]].OutTangents[(ValueIndex*2)+0];
+              Values[1].Value:=AnimationChannel.KeyFrames[Indices[1]].Values[ValueIndex]-AnimationChannel.KeyFrames[Indices[0]].OutTangents[(ValueIndex*2)+1];
+              Values[2].Time:=AnimationChannel.KeyFrames[Indices[0]].Time+AnimationChannel.KeyFrames[Indices[1]].InTangents[(ValueIndex*2)+0];
+              Values[2].Value:=AnimationChannel.KeyFrames[Indices[1]].Time-AnimationChannel.KeyFrames[Indices[1]].InTangents[(ValueIndex*2)+1];
+              Values[1].Time:=AnimationChannel.KeyFrames[Indices[0]].OutTangents[(ValueIndex*2)+0];
+              Values[1].Value:=AnimationChannel.KeyFrames[Indices[0]].OutTangents[(ValueIndex*2)+1];
+              Values[2].Time:=AnimationChannel.KeyFrames[Indices[1]].InTangents[(ValueIndex*2)+0];
+              Values[2].Value:=AnimationChannel.KeyFrames[Indices[1]].InTangents[(ValueIndex*2)+1];
+             end;
+             else begin
+              Values[1].Time:=((AnimationChannel.KeyFrames[Indices[0]].Time*2.0)+AnimationChannel.KeyFrames[Indices[1]].Time)/3.0;
+              Values[1].Value:=((AnimationChannel.KeyFrames[Indices[0]].Values[ValueIndex]*2.0)+AnimationChannel.KeyFrames[Indices[1]].Values[ValueIndex])/3.0;
+              Values[2].Time:=(AnimationChannel.KeyFrames[Indices[0]].Time+(AnimationChannel.KeyFrames[Indices[1]].Time*2.0))/3.0;
+              Values[2].Value:=(AnimationChannel.KeyFrames[Indices[0]].Values[ValueIndex]+(AnimationChannel.KeyFrames[Indices[1]].Values[ValueIndex]*2.0))/3.0;
+             end;
+            end;
+           end else begin
+            Values[1].Time:=((AnimationChannel.KeyFrames[Indices[0]].Time*2.0)+AnimationChannel.KeyFrames[Indices[1]].Time)/3.0;
+            Values[1].Value:=((AnimationChannel.KeyFrames[Indices[0]].Values[ValueIndex]*2.0)+AnimationChannel.KeyFrames[Indices[1]].Values[ValueIndex])/3.0;
+            Values[2].Time:=(AnimationChannel.KeyFrames[Indices[0]].Time+(AnimationChannel.KeyFrames[Indices[1]].Time*2.0))/3.0;
+            Values[2].Value:=(AnimationChannel.KeyFrames[Indices[0]].Values[ValueIndex]+(AnimationChannel.KeyFrames[Indices[1]].Values[ValueIndex]*2.0))/3.0;
+           end;
+           Values[3].Time:=AnimationChannel.KeyFrames[Indices[1]].Time;
+           Values[3].Value:=AnimationChannel.KeyFrames[Indices[1]].Values[ValueIndex];
+           s:=InverseParametericCubic(CurrentTime,Values[0].Time,Values[1].Time,Values[2].Time,Values[3].Time);
+           c:=3.0*(Values[1].Value-Values[0].Value);
+           e:=3.0*(Values[2].Value-Values[1].Value);
+           AnimationChannel.LinearKeyFrames[TimeStepIndex,ValueIndex]:=((((((((Values[3].Value-Values[0].Value)-e)*s)+e)-c)*s)+c)*s)+Values[0].Value;
+          end;
+          TpvDAEInterpolationType.BSpline:begin
+           for SubValueIndex:=0 to 3 do begin
+            Values[SubValueIndex].Time:=AnimationChannel.KeyFrames[Indices[SubValueIndex]].Time;
+            Values[SubValueIndex].Value:=AnimationChannel.KeyFrames[Indices[SubValueIndex]].Values[ValueIndex];
+           end;
+           if (Indices[0]=Indices[1]) or (Values[0].Time>=Values[1].Time) then begin
+            Values[0].Time:=Values[1].Time+(Values[1].Time-Values[2].Time);
+            Values[0].Value:=Values[1].Value+(Values[1].Value-Values[2].Value);
+           end;
+           if (Indices[2]=Indices[3]) or (Values[2].Time>=Values[3].Time) then begin
+            Values[3].Time:=Values[2].Time+(Values[2].Time-Values[1].Time);
+            Values[3].Value:=Values[2].Value+(Values[2].Value-Values[1].Value);
+           end;
+           s:=InverseParametericCubic(CurrentTime,Values[0].Time,Values[1].Time,Values[2].Time,Values[3].Time);
+           c:=3.0*(Values[1].Value-Values[0].Value);
+           e:=3.0*(Values[2].Value-Values[1].Value);
+           AnimationChannel.LinearKeyFrames[TimeStepIndex,ValueIndex]:=((((((((Values[3].Value-Values[0].Value)-e)*s)+e)-c)*s)+c)*s)+Values[0].Value;
+          end
+          else {TpvDAEInterpolationType.Step:}begin
+           if CurrentTime<AnimationChannel.KeyFrames[Indices[1]].Time then begin
+            AnimationChannel.LinearKeyFrames[TimeStepIndex,ValueIndex]:=AnimationChannel.KeyFrames[Indices[0]].Values[ValueIndex];
+           end else begin
+            AnimationChannel.LinearKeyFrames[TimeStepIndex,ValueIndex]:=AnimationChannel.KeyFrames[Indices[1]].Values[ValueIndex];
+           end;
+          end;
+         end;
+        end;
+       end;
+       CurrentTime:=Min(Max(CurrentTime+TimeStep,StartTime),EndTime);
+      end;
+     end;
+    end;
    end;
   end;
   procedure CollectJointNodesAndSetupSkeleton;
@@ -6733,12 +7193,255 @@ var IDStringHashMap:TpvDAEStringHashMap;
   ConvertVisualScenes;
   ConvertAnimations;
   ConvertAnimationClips;
+  ConvertAnimationKeyframes;
   CollectJointNodesAndSetupSkeleton;
+ end;
+ procedure ConstructStaticAABB;
+ var KeyFrameIndex,MaxKeyFrameCount:TpvInt32;
+  procedure GetMaxAnimationKeyCount;
+  var AnimationIndex,AnimationChannelIndex,x,y:TpvInt32;
+      Animation:TpvDAEAnimation;
+      AnimationChannel:TpvDAEAnimationChannel;
+  begin
+   MaxKeyFrameCount:=0;
+   for AnimationIndex:=0 to Animations.Count-1 do begin
+    Animation:=Animations[AnimationIndex];
+    for AnimationChannelIndex:=0 to Animation.Channels.Count-1 do begin
+     AnimationChannel:=Animation.Channels[AnimationChannelIndex];
+     if assigned(AnimationChannel.DestinationObject) then begin
+      MaxKeyFrameCount:=Max(MaxKeyFrameCount,AnimationChannel.KeyFrames.Count);
+     end;
+    end;
+   end;
+  end;
+  procedure UpdateAnimation;
+  var AnimationIndex,AnimationChannelIndex,x,y:TpvInt32;
+      Animation:TpvDAEAnimation;
+      AnimationChannel:TpvDAEAnimationChannel;
+      AnimationChannelKeyFrame:TpvDAEAnimationChannelKeyFrame;
+  begin
+   for AnimationIndex:=0 to Animations.Count-1 do begin
+    Animation:=Animations[AnimationIndex];
+    for AnimationChannelIndex:=0 to Animation.Channels.Count-1 do begin
+     AnimationChannel:=Animation.Channels[AnimationChannelIndex];
+     if assigned(AnimationChannel.DestinationObject) then begin
+      AnimationChannelKeyFrame:=AnimationChannel.KeyFrames[KeyFrameIndex mod AnimationChannel.KeyFrames.Count];
+      if AnimationChannel.DestinationObject is TpvDAEGeometry then begin
+       if (AnimationChannel.DestinationElement>=0) and (AnimationChannel.DestinationElement<length(TpvDAEGeometry(AnimationChannel.DestinationObject).MorphTargetWeights)) then begin
+        case length(AnimationChannelKeyFrame.Values) of
+         1:begin
+          TpvDAEGeometry(AnimationChannel.DestinationObject).MorphTargetWeights[AnimationChannel.DestinationElement]:=AnimationChannelKeyFrame.Values[0];
+         end;
+        end;
+       end;
+      end else if AnimationChannel.DestinationObject is TpvDAETransformRotate then begin
+       case length(AnimationChannelKeyFrame.Values) of
+        1:begin
+         case AnimationChannel.DestinationElement of
+          dlacdeX:begin
+           TpvDAETransformRotate(AnimationChannel.DestinationObject).Axis.x:=AnimationChannelKeyFrame.Values[0];
+          end;
+          dlacdeY:begin
+           TpvDAETransformRotate(AnimationChannel.DestinationObject).Axis.y:=AnimationChannelKeyFrame.Values[0];
+          end;
+          dlacdeZ:begin
+           TpvDAETransformRotate(AnimationChannel.DestinationObject).Axis.z:=AnimationChannelKeyFrame.Values[0];
+          end;
+          dlacdeANGLE:begin
+           TpvDAETransformRotate(AnimationChannel.DestinationObject).Angle:=AnimationChannelKeyFrame.Values[0];
+          end;
+         end;
+        end;
+        4:begin
+         TpvDAETransformRotate(AnimationChannel.DestinationObject).Axis.x:=AnimationChannelKeyFrame.Values[0];
+         TpvDAETransformRotate(AnimationChannel.DestinationObject).Axis.y:=AnimationChannelKeyFrame.Values[1];
+         TpvDAETransformRotate(AnimationChannel.DestinationObject).Axis.z:=AnimationChannelKeyFrame.Values[2];
+         TpvDAETransformRotate(AnimationChannel.DestinationObject).Angle:=AnimationChannelKeyFrame.Values[3];
+        end;
+       end;
+      end else if AnimationChannel.DestinationObject is TpvDAETransformScale then begin
+       case length(AnimationChannelKeyFrame.Values) of
+        1:begin
+         case AnimationChannel.DestinationElement of
+          dlacdeX:begin
+           TpvDAETransformScale(AnimationChannel.DestinationObject).Scale.x:=AnimationChannelKeyFrame.Values[0];
+          end;
+          dlacdeY:begin
+           TpvDAETransformScale(AnimationChannel.DestinationObject).Scale.y:=AnimationChannelKeyFrame.Values[0];
+          end;
+          dlacdeZ:begin
+           TpvDAETransformScale(AnimationChannel.DestinationObject).Scale.z:=AnimationChannelKeyFrame.Values[0];
+          end;
+         end;
+        end;
+        3:begin
+         TpvDAETransformScale(AnimationChannel.DestinationObject).Scale.x:=AnimationChannelKeyFrame.Values[0];
+         TpvDAETransformScale(AnimationChannel.DestinationObject).Scale.y:=AnimationChannelKeyFrame.Values[1];
+         TpvDAETransformScale(AnimationChannel.DestinationObject).Scale.z:=AnimationChannelKeyFrame.Values[2];
+        end;
+       end;
+      end else if AnimationChannel.DestinationObject is TpvDAETransformTranslate then begin
+       case length(AnimationChannelKeyFrame.Values) of
+        1:begin
+         case AnimationChannel.DestinationElement of
+          dlacdeX:begin
+           TpvDAETransformTranslate(AnimationChannel.DestinationObject).Offset.x:=AnimationChannelKeyFrame.Values[0];
+          end;
+          dlacdeY:begin
+           TpvDAETransformTranslate(AnimationChannel.DestinationObject).Offset.y:=AnimationChannelKeyFrame.Values[0];
+          end;
+          dlacdeZ:begin
+           TpvDAETransformTranslate(AnimationChannel.DestinationObject).Offset.z:=AnimationChannelKeyFrame.Values[0];
+          end;
+         end;
+        end;
+        3:begin
+         TpvDAETransformTranslate(AnimationChannel.DestinationObject).Offset.x:=AnimationChannelKeyFrame.Values[0];
+         TpvDAETransformTranslate(AnimationChannel.DestinationObject).Offset.y:=AnimationChannelKeyFrame.Values[1];
+         TpvDAETransformTranslate(AnimationChannel.DestinationObject).Offset.z:=AnimationChannelKeyFrame.Values[2];
+        end;
+       end;
+      end else if AnimationChannel.DestinationObject is TpvDAETransformMatrix then begin
+       case length(AnimationChannelKeyFrame.Values) of
+        1:begin
+         x:=AnimationChannel.DestinationElement and 3;
+         y:=AnimationChannel.DestinationElement shr 2;
+         TpvDAETransformMatrix(AnimationChannel.DestinationObject).Matrix[x,y]:=AnimationChannelKeyFrame.Values[0];
+        end;
+        4:begin
+         y:=AnimationChannel.DestinationElement shr 2;
+         TpvDAETransformMatrix(AnimationChannel.DestinationObject).Matrix[0,y]:=AnimationChannelKeyFrame.Values[0];
+         TpvDAETransformMatrix(AnimationChannel.DestinationObject).Matrix[1,y]:=AnimationChannelKeyFrame.Values[1];
+         TpvDAETransformMatrix(AnimationChannel.DestinationObject).Matrix[2,y]:=AnimationChannelKeyFrame.Values[2];
+         TpvDAETransformMatrix(AnimationChannel.DestinationObject).Matrix[3,y]:=AnimationChannelKeyFrame.Values[3];
+        end;
+        16:begin
+         TpvDAETransformMatrix(AnimationChannel.DestinationObject).Matrix:=TpvMatrix4x4(pointer(@AnimationChannelKeyFrame.Values[0])^);
+        end;
+       end;
+      end;
+     end;
+    end;
+   end;
+  end;
+  procedure UpdateSkeleton(VisualScene:TpvDAEVisualScene;const Matrix:TpvMatrix4x4);
+   procedure UpdateNode(Node:TpvDAENode;Matrix:TpvMatrix4x4);
+   var i:TpvInt32;
+       Transform:TpvDAETransform;
+   begin
+    for i:=0 to Node.Transforms.Count-1 do begin
+     Transform:=Node.Transforms[i];
+     if Transform is TpvDAETransformMatrix then begin
+      Transform.Matrix[3,3]:=1;
+     end;
+     Transform.Convert;
+     Matrix:=Transform.Matrix*Matrix;
+    end;
+    Node.Matrix:=Matrix;
+    for i:=0 to Node.Nodes.Count-1 do begin
+     UpdateNode(Node.Nodes[i],Matrix);
+    end;
+    for i:=0 to Node.Cameras.Count-1 do begin
+     Node.Cameras[i].Matrix:=Matrix;
+    end;
+   end;
+  begin
+   if assigned(VisualScene.Root) then begin
+    UpdateNode(VisualScene.Root,Matrix);
+   end;
+  end;
+  procedure ProcessNode(Node:TpvDAENode;Matrix:TpvMatrix4x4);
+   procedure ProcessGeometry(Geometry:TpvDAEGeometry;Matrix:TpvMatrix4x4);
+    procedure ProcessMesh(Mesh:TpvDAEMesh;Matrix:TpvMatrix4x4);
+    const Black:array[0..3] of TpvFloat=(0.0,0.0,0.0,0.0);
+    var i,j:TpvInt32;
+        v,ov:PpvDAEVertex;
+        n,p,no,po:TpvVector3;
+        m:TpvMatrix4x4;
+        m3:TpvMatrix3x3;
+    begin
+     for i:=0 to length(Mesh.Indices)-1 do begin
+      v:=@Mesh.Vertices[Mesh.Indices[i]];
+      n:=v^.Normal;
+      p:=v^.Position;
+      for j:=0 to length(Mesh.MorphTargetVertices)-1 do begin
+       ov:=@Mesh.MorphTargetVertices[j,Mesh.Indices[i]];
+       n:=n.Lerp(ov^.Normal,Geometry.MorphTargetWeights[j]);
+       p:=p.Lerp(ov^.Position,Geometry.MorphTargetWeights[j]);
+      end;
+      if v^.CountBlendWeights<=0 then begin
+       no:=n;
+       po:=p;
+       m:=Matrix;
+       no:=m.Inverse.MulTransposedBasis(no);
+       po:=m*po;
+      end else begin
+       m:=Geometry.BindShapeMatrix;
+       n:=m.Inverse.MulTransposedBasis(n);
+       p:=m*p;
+       no:=TpvVector3.Create(0.0,0.0,0.0);
+       po:=TpvVector3.Create(0.0,0.0,0.0);
+       for j:=0 to v^.CountBlendWeights-1 do begin
+        if v^.BlendIndices[j]<0 then begin
+         m:=Geometry.InverseBindMatrices[v^.BlendIndices[j]]*Matrix;
+        end else begin
+         m:=Geometry.InverseBindMatrices[v^.BlendIndices[j]]*TpvDAENode(Geometry.JointNodes[v^.BlendIndices[j]]).Matrix;
+        end;
+        no:=no+((m.ToMatrix3x3.Inverse.Transpose*n)*v.BlendWeights[j]);
+        po:=po+((m*p)*v.BlendWeights[j]);
+       end;
+      end;
+      StaticAABB.Min.x:=Min(StaticAABB.Min.x,po.x);
+      StaticAABB.Min.y:=Min(StaticAABB.Min.y,po.y);
+      StaticAABB.Min.z:=Min(StaticAABB.Min.z,po.z);
+      StaticAABB.Max.x:=Max(StaticAABB.Max.x,po.x);
+      StaticAABB.Max.y:=Max(StaticAABB.Max.y,po.y);
+      StaticAABB.Max.z:=Max(StaticAABB.Max.z,po.z);
+     end;
+    end;
+   var i:TpvInt32;
+   begin
+    for i:=0 to Geometry.Count-1 do begin
+     ProcessMesh(Geometry[i],Matrix);
+    end;
+   end;
+  var i:TpvInt32;
+      Transform:TpvDAETransform;
+  begin
+   for i:=0 to Node.Transforms.Count-1 do begin
+    Transform:=Node.Transforms[i];
+    Matrix:=Transform.Matrix*Matrix;
+   end;
+   for i:=0 to Node.Geometries.Count-1 do begin
+    ProcessGeometry(Node.Geometries[i],Matrix);
+   end;
+   for i:=0 to Node.Nodes.Count-1 do begin
+    ProcessNode(Node.Nodes[i],Matrix);
+   end;
+  end;
+ begin
+  StaticAABB.Min.x:=MaxSingle;
+  StaticAABB.Min.y:=MaxSingle;
+  StaticAABB.Min.z:=MaxSingle;
+  StaticAABB.Max.x:=-MaxSingle;
+  StaticAABB.Max.y:=-MaxSingle;
+  StaticAABB.Max.z:=-MaxSingle;
+  if assigned(MainVisualScene) and assigned(MainVisualScene.Root) then begin
+   UpdateSkeleton(MainVisualScene,TpvMatrix4x4.Identity);
+   ProcessNode(MainVisualScene.Root,TpvMatrix4x4.Identity);
+   MaxKeyFrameCount:=0;
+   GetMaxAnimationKeyCount;
+   for KeyFrameIndex:=0 to MaxKeyFrameCount-1 do begin
+    UpdateSkeleton(MainVisualScene,TpvMatrix4x4.Identity);
+    ProcessNode(MainVisualScene.Root,TpvMatrix4x4.Identity);
+   end;
+  end;
  end;
  function Convert:boolean;
  begin
   ConvertMaterials;
   ConvertContent;
+  ConstructStaticAABB;
   result:=assigned(MainLibraryVisualScene);
  end;
 var Index:TpvInt32;
@@ -7017,18 +7720,3 @@ begin
 end;
 
 end.
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
