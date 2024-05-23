@@ -549,6 +549,8 @@ begin
  
  ConvertModel(InputFileName,OutputFileName);
 
+ WriteLn('Done!');
+
  BaseColorTextureData:=nil;
  NormalTextureData:=nil;
  MetallicRoughnessTextureData:=nil;

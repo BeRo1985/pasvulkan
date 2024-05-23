@@ -72,7 +72,7 @@ type EpvPPM=class(Exception);
       public
        const CountFrames=16;
              CountPresetAnimations=4;
-             MaximalCountVertices=16384;
+             MaximalCountVertices=32768;
              MaximalCountIndices=65536;
              Version=1;
        type TVertex=packed record
