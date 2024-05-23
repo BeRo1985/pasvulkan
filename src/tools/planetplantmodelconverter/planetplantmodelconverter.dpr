@@ -260,6 +260,10 @@ begin
 
  result:=true;
 
+{$if declared(SetExceptionMask)}
+ SetExceptionMask([exInvalidOp,exDenormalized,exZeroDivide,exOverflow,exUnderflow,exPrecision]);
+{$ifend}
+
  FillChar(Animations,SizeOf(TpvPPM.TAnimations),#0);
 
  GLTF:=TpvGLTF.Create;
@@ -267,8 +271,12 @@ begin
 
   GLTF.LoadFromFile(aInputFileName);
 
+  GLTF.Upload;
+
   GLTFInstance:=GLTF.AcquireInstance;
   try
+
+   GLTFInstance.Upload;
 
    if length(GLTF.Animations)>0 then begin
 

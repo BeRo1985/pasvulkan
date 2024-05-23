@@ -3468,6 +3468,8 @@ begin
   end else begin
    result:=nil;
   end;
+ end else begin
+  result:=nil;
  end;
 end;
 
