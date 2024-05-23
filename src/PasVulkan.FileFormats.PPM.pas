@@ -113,7 +113,7 @@ type EpvPPM=class(Exception);
             TMaterialHeader=packed record
              BaseColorFactor:TpvVector4;
              EmissiveFactorOcclusionStrength:TpvVector4; // xyz = EmissiveFactor, w = OcclusionStrength
-             MetallicRoughnessFactor:TpvVector4; // x = MetallicFactor, y = RoughnessFactor, zw = Reserved
+             MetallicRoughnessFactorNormalScale:TpvVector4; // x = MetallicFactor, y = RoughnessFactor, zw = Reserved
              BaseColorTextureSize:TpvUInt32;
              NormalTextureSize:TpvUInt32;
              MetallicRoughnessTextureSize:TpvUInt32;

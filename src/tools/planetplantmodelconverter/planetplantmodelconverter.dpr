@@ -253,7 +253,7 @@ var Index,FrameIndex,OtherIndex,FoundPresetAnimation,VertexIndex,
     Stream:TMemoryStream;
     BaseColorFactor:TpvVector4;
     MetallicRoughnessFactor:TpvVector2;
-    OcclusionStrength:TpvFloat;
+    NormalScale,OcclusionStrength:TpvFloat;
     EmissiveFactor:TpvVector3;
     First:boolean;
 begin
@@ -320,6 +320,7 @@ begin
      EmissiveTextureIndex:=-1;
      BaseColorFactor:=TpvVector4.Create(1.0,1.0,1.0,1.0);
      MetallicRoughnessFactor:=TpvVector2.Create(1.0,1.0);
+     NormalScale:=1.0;
      OcclusionStrength:=1.0;
      EmissiveFactor:=TpvVector3.Create(1.0,1.0,1.0);
      if length(GLTF.Materials)>0 then begin
@@ -331,6 +332,7 @@ begin
        MetallicRoughnessFactor:=TpvVector2.Create(Material^.PBRMetallicRoughness.MetallicFactor,Material^.PBRMetallicRoughness.RoughnessFactor);
        MetallicRoughnessTextureIndex:=Material^.PBRMetallicRoughness.MetallicRoughnessTexture.Index;
        OcclusionTextureIndex:=Material^.OcclusionTexture.Index;
+       NormalScale:=Material^.NormalTextureScale;
        OcclusionStrength:=Material^.OcclusionTextureStrength;
        EmissiveTextureIndex:=Material^.EmissiveTexture.Index;
        EmissiveFactor:=TpvVector3(Pointer(@Material^.EmissiveFactor)^);
@@ -430,7 +432,7 @@ begin
 
       FileHeader.MaterialHeader.BaseColorFactor:=BaseColorFactor;
       FileHeader.MaterialHeader.EmissiveFactorOcclusionStrength:=TpvVector4.Create(EmissiveFactor.x,EmissiveFactor.y,EmissiveFactor.z,OcclusionStrength);
-      FileHeader.MaterialHeader.MetallicRoughnessFactor:=TpvVector4.Create(MetallicRoughnessFactor.x,MetallicRoughnessFactor.y,0.0,0.0);
+      FileHeader.MaterialHeader.MetallicRoughnessFactorNormalScale:=TpvVector4.Create(MetallicRoughnessFactor.x,MetallicRoughnessFactor.y,NormalScale,0.0);
       FileHeader.MaterialHeader.BaseColorTextureSize:=length(BaseColorTextureData);
       FileHeader.MaterialHeader.NormalTextureSize:=length(NormalTextureData);
       FileHeader.MaterialHeader.MetallicRoughnessTextureSize:=length(MetallicRoughnessTextureData);

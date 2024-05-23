@@ -15079,6 +15079,14 @@ begin
 
  Material:=TpvScene3D.TMaterial.Create(nil,self,nil);
 
+ Material.fData.ShadingModel:=TpvScene3D.TMaterial.TShadingModel.PBRMetallicRoughness;
+ Material.fData.PBRMetallicRoughness.BaseColorFactor:=aSourceModel.FileHeader.MaterialHeader.BaseColorFactor;
+ Material.fData.PBRMetallicRoughness.MetallicFactor:=aSourceModel.FileHeader.MaterialHeader.MetallicRoughnessFactorNormalScale.x;
+ Material.fData.PBRMetallicRoughness.RoughnessFactor:=aSourceModel.FileHeader.MaterialHeader.MetallicRoughnessFactorNormalScale.y;
+ Material.fData.EmissiveFactor:=TpvVector4.InlineableCreate(aSourceModel.FileHeader.MaterialHeader.EmissiveFactorOcclusionStrength.xyz,1.0);
+ Material.fData.OcclusionTextureStrength:=aSourceModel.FileHeader.MaterialHeader.EmissiveFactorOcclusionStrength.w;
+ Material.fData.NormalTextureScale:=aSourceModel.FileHeader.MaterialHeader.MetallicRoughnessFactorNormalScale.z;
+
  Scene:=CreateScene('plant');
 
  Node:=CreateNode('plant');
