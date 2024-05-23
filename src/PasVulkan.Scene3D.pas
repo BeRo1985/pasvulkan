@@ -15067,6 +15067,9 @@ end;
 
 procedure TpvScene3D.TGroup.AssignFromPPM(const aSourceModel:TpvPPM.TModel);
 var VertexIndex,IndexIndex:TpvSizeInt;
+    Material:TpvScene3D.TMaterial;
+    Scene:TpvScene3D.TGroup.TScene;
+    Node:TpvScene3D.TGroup.TNode;
     Mesh:TpvScene3D.TGroup.TMesh;
     MeshPrimitive:TpvScene3D.TGroup.TMesh.TPrimitive;
     MeshVertex:TpvScene3D.PVertex;
@@ -15074,10 +15077,22 @@ var VertexIndex,IndexIndex:TpvSizeInt;
     Tangent,Bitangent,Normal:TpvVector3;
 begin
 
+ Material:=TpvScene3D.TMaterial.Create(nil,self,nil);
+
+ Scene:=CreateScene('plant');
+
+ Node:=CreateNode('plant');
+
+ Scene.Nodes.Add(Node);
+
  Mesh:=CreateMesh('plant');
 
  MeshPrimitive:=Mesh.CreatePrimitive;
  try
+
+  MeshPrimitive.MaterialID:=AddMaterial(Material);
+  MeshPrimitive.Material:=Material;
+
   for IndexIndex:=0 to TpvSizeInt(aSourceModel.FileHeader.CountVertices)-1 do begin
    PPMVertex:=@aSourceModel.Animations[0].Frames[0].Vertices[0];
    MeshVertex:=MeshPrimitive.AddIndirectVertex;
@@ -15105,6 +15120,14 @@ begin
  finally
   MeshPrimitive.Finish;
  end;
+
+ Mesh.Finish;
+
+ Node.Mesh:=Mesh;
+
+ Node.Finish;
+
+//Scene.Finish;
 
 end;
 
