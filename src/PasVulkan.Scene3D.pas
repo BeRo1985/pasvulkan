@@ -15341,9 +15341,6 @@ begin
 
   end;
 
-  // Finalize the morph target vertices array to its final size  
-  fMorphTargetVertices.Finish;
-
   // Create indices
   for IndexIndex:=0 to TpvSizeInt(aSourceModel.FileHeader.CountIndices)-1 do begin
    MeshPrimitive.AddIndex(aSourceModel.Indices[IndexIndex]);
