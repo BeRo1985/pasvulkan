@@ -15125,7 +15125,7 @@ begin
 end;
 
 procedure TpvScene3D.TGroup.AssignFromPPM(const aSourceModel:TpvPPM.TModel);
-var VertexIndex,IndexIndex,AnimationIndex,FrameIndex,
+var VertexIndex,IndexIndex,AnimationIndex,FrameIndex,GlobalFrameIndex,
     MorphTargetVertexIndex,LastMorphTargetVertexIndex,
     MorphWeightIndex,WeightIndex:TpvSizeInt;
     Material:TpvScene3D.TMaterial;
@@ -15346,6 +15346,8 @@ begin
 
 //Scene.Finish;
 
+ GlobalFrameIndex:=0;
+
  for AnimationIndex:=0 to length(aSourceModel.Animations)-1 do begin
 
   Animation:=CreateAnimation(Name);
@@ -15360,8 +15362,9 @@ begin
   for FrameIndex:=0 to length(aSourceModel.Animations[AnimationIndex].Frames)-1 do begin
    AnimationChannel.fInputTimeArray[FrameIndex]:=aSourceModel.Animations[AnimationIndex].Frames[FrameIndex].Time;
    for WeightIndex:=0 to Node.fWeights.Count-1 do begin
-    AnimationChannel.fOutputScalarArray[(FrameIndex*Node.fWeights.Count)+WeightIndex]:=IfThen(WeightIndex=FrameIndex,1.0,0.0);
+    AnimationChannel.fOutputScalarArray[(FrameIndex*Node.fWeights.Count)+WeightIndex]:=IfThen(WeightIndex=GlobalFrameIndex,1.0,0.0);
    end;
+   inc(GlobalFrameIndex);
   end;
 
   Animation.Finish;
