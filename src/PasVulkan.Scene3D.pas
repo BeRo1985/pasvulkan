@@ -2751,6 +2751,8 @@ type EpvScene3D=class(Exception);
               fInstances:TInstances;
               fMaximumCountInstances:TpvSizeint;
               fBoundingBox:TpvAABB;
+              fHasStaticBoundingBox:boolean;
+              fStaticBoundingBox:TpvAABB;
               fUsedVisibleDrawNodes:TUsedVisibleDrawNodes;
               fDrawChoreographyBatchItems:TDrawChoreographyBatchItems;
               fDrawChoreographyBatchUniqueItems:TDrawChoreographyBatchItems;
@@ -2843,6 +2845,9 @@ type EpvScene3D=class(Exception);
               function CreateInstance(const aHeadless:Boolean=false):TpvScene3D.TGroup.TInstance;
              public
               property BoundingBox:TpvAABB read fBoundingBox;
+             public
+              property HasStaticBoundingBox:boolean read fHasStaticBoundingBox write fHasStaticBoundingBox;
+              property StaticBoundingBox:TpvAABB read fStaticBoundingBox write fStaticBoundingBox;
              public
               property Vertices:TpvScene3D.TGroup.TGroupVertices read fVertices;
               property FrameVertices:TpvScene3D.TGroup.TFrameGroupVertices read fFrameVertices;
@@ -12712,6 +12717,8 @@ begin
 
  fLock:=TPasMPSpinLock.Create;
 
+ fHasStaticBoundingBox:=false;
+              
  fObjects:=TBaseObjects.Create;
  fObjects.OwnsObjects:=false;
 
@@ -15146,6 +15153,11 @@ begin
 
  Name:=#0+IntToStr(TpvPtrUInt(self))+'_'+IntToStr(TpvPtrUInt(aSourceModel));
 
+ // Set bounding box
+ fHasStaticBoundingBox:=true;
+ fStaticBoundingBox.Min:=aSourceModel.FileHeader.BoundingBoxMin;
+ fStaticBoundingBox.Max:=aSourceModel.FileHeader.BoundingBoxMax;
+
  // Create material
  Material:=TpvScene3D.TMaterial.Create(ResourceManager,self,nil);
  Material.AssignFromEmpty;
@@ -15300,7 +15312,7 @@ begin
    MeshVertex^.NodeIndex:=0;
    MeshVertex^.MaterialID:=0;
    MeshVertex^.Flags:=0;
-   case VertexIndex of
+{  case VertexIndex of
 
     // Ensure that the first and last vertices are the bounding box min and max vertices, so that the bounding box is correct, and
     // it will be overwritten with the correct values in the mesh compute shader later anyway, where the morph target vertices are 
@@ -15315,7 +15327,8 @@ begin
     else begin
      MeshVertex^.Position:=PPMVertex^.Position;
     end;
-   end;
+   end;}
+   MeshVertex^.Position:=PPMVertex^.Position;
    UnpackUInt16QTangentSpace(PPMVertex^.TangentSpace,Tangent,Bitangent,Normal);
    MeshVertex^.SetTangentSpaceVectors(Tangent,Bitangent,Normal);
    MeshVertex^.TexCoord0:=TpvVector2.Create(aSourceModel.TexCoords[VertexIndex].x/16384.0,aSourceModel.TexCoords[VertexIndex].y/16384.0);
@@ -19944,6 +19957,9 @@ begin
   end;
 
   fBoundingBox:=fGroup.fBoundingBox.HomogenTransform(fModelMatrix);
+  if fGroup.fHasStaticBoundingBox then begin
+   fBoundingBox.DirectCombine(fGroup.fStaticBoundingBox.HomogenTransform(fModelMatrix));
+  end;
   if assigned(Scene) and (aInFlightFrameIndex>=-1) then begin
    for Index:=0 to Scene.fNodes.Count-1 do begin
     InstanceNode:=@fNodes[Scene.fNodes[Index].fIndex];
