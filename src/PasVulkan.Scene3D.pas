@@ -1805,6 +1805,7 @@ type EpvScene3D=class(Exception);
                     public
                      constructor Create(const aGroup:TGroup;const aIndex:TpvSizeInt=-1); reintroduce;
                      destructor Destroy; override;
+                     function CreateChannel(const aName:TpvUTF8String=''):TpvScene3D.TGroup.TAnimation.TChannel;
                      procedure Finish;
                      procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceAnimation:TPasGLTF.TAnimation);
                      function GetAnimationBeginTime:TpvDouble;
@@ -10168,6 +10169,16 @@ begin
  inherited Destroy;
 end;
 
+function TpvScene3D.TGroup.TAnimation.CreateChannel(const aName:TpvUTF8String):TpvScene3D.TGroup.TAnimation.TChannel;
+begin
+ result:=TpvScene3D.TGroup.TAnimation.TChannel.Create;
+ try
+  result.fName:=aName;
+ finally
+  fChannels.Add(result);
+ end;
+end;
+
 procedure TpvScene3D.TGroup.TAnimation.Finish;
 var Index:TpvSizeInt;
     Channel:TpvScene3D.TGroup.TAnimation.TChannel;
@@ -15115,7 +15126,7 @@ end;
 
 procedure TpvScene3D.TGroup.AssignFromPPM(const aSourceModel:TpvPPM.TModel);
 var VertexIndex,IndexIndex,AnimationIndex,FrameIndex,
-    MorphTargetVertexIndex,MorphWeightIndex:TpvSizeInt;
+    MorphTargetVertexIndex,MorphWeightIndex,WeightIndex:TpvSizeInt;
     Material:TpvScene3D.TMaterial;
     Scene:TpvScene3D.TGroup.TScene;
     Node:TpvScene3D.TGroup.TNode;
@@ -15128,6 +15139,8 @@ var VertexIndex,IndexIndex,AnimationIndex,FrameIndex,
     Image:TpvScene3D.TImage;
     Texture:TpvScene3D.TTexture;
     Name:TpvUTF8String;
+    Animation:TpvScene3D.TGroup.TAnimation;
+    AnimationChannel:TpvScene3D.TGroup.TAnimation.TChannel;
 begin
 
  Name:=#0+IntToStr(TpvPtrUInt(self))+'_'+IntToStr(TpvPtrUInt(aSourceModel));
@@ -15321,12 +15334,6 @@ begin
 
  end;
 
- // TODO: Add animation data for morph targets 
- for AnimationIndex:=0 to length(aSourceModel.Animations)-1 do begin
-  for FrameIndex:=0 to length(aSourceModel.Animations[AnimationIndex].Frames)-1 do begin
-  end;
- end;
-
  // Finalize the mesh
  Mesh.Finish;
 
@@ -15337,6 +15344,28 @@ begin
  Node.Finish;
 
 //Scene.Finish;
+
+ for AnimationIndex:=0 to length(aSourceModel.Animations)-1 do begin
+
+  Animation:=CreateAnimation(Name);
+
+  AnimationChannel:=Animation.CreateChannel(Name);
+  AnimationChannel.fInterpolation:=TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.Linear;
+  AnimationChannel.fTarget:=TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Weights;
+  AnimationChannel.fTargetIndex:=Node.Index;
+  SetLength(AnimationChannel.fInputTimeArray,length(aSourceModel.Animations[AnimationIndex].Frames));
+  SetLength(AnimationChannel.fOutputScalarArray,length(aSourceModel.Animations[AnimationIndex].Frames)*Node.fWeights.Count);
+
+  for FrameIndex:=0 to length(aSourceModel.Animations[AnimationIndex].Frames)-1 do begin
+   AnimationChannel.fInputTimeArray[FrameIndex]:=aSourceModel.Animations[AnimationIndex].Frames[FrameIndex].Time;
+   for WeightIndex:=0 to Node.fWeights.Count-1 do begin
+    AnimationChannel.fOutputScalarArray[(FrameIndex*Node.fWeights.Count)+WeightIndex]:=IfThen(WeightIndex=FrameIndex,1.0,0.0);
+   end;
+  end;
+
+  Animation.Finish;
+
+ end;
 
 end;
 
