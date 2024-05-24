@@ -15150,6 +15150,7 @@ begin
  Material:=TpvScene3D.TMaterial.Create(ResourceManager,self,nil);
  Material.AssignFromEmpty;
  Material.fData.ShadingModel:=TpvScene3D.TMaterial.TShadingModel.PBRMetallicRoughness;
+ Material.fData.AlphaMode:=TpvScene3D.TMaterial.TAlphaMode.Opaque;
  Material.fData.DoubleSided:=true;
  Material.fData.PBRMetallicRoughness.BaseColorFactor:=aSourceModel.FileHeader.MaterialHeader.BaseColorFactor;
  Material.fData.PBRMetallicRoughness.MetallicFactor:=aSourceModel.FileHeader.MaterialHeader.MetallicRoughnessFactorNormalScale.x;
@@ -15238,6 +15239,8 @@ begin
   Material.fData.EmissiveTexture.Transform.AssignDefault;
 
  end;
+
+ Material.FillShaderData;
 
  // Create scene
  Scene:=CreateScene('plant');
