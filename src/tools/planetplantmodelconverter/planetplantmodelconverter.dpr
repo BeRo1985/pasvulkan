@@ -273,7 +273,7 @@ var Index,FrameIndex,OtherIndex,FoundPresetAnimation,VertexIndex,
     BaseColorTextureIndex,NormalTextureIndex,MetallicRoughnessTextureIndex,
     OcclusionTextureIndex,EmissiveTextureIndex,
     ImageIndex:TpvSizeInt;
-    UI32:TpvUInt32;
+    CountFrames:TpvUInt32;
     GLTFBakedVertexIndexedMesh:TpvGLTF.TBakedVertexIndexedMesh;
     ta,tb,t:TpvDouble;
     AnimationName:TpvUTF8String;
@@ -479,8 +479,8 @@ begin
 
       // Write vertices from all animations
       for Index:=0 to length(Animations)-1 do begin
-       UI32:=length(Animations[Index].Frames);
-       Stream.WriteBuffer(UI32,SizeOf(TpvUInt32));
+       CountFrames:=length(Animations[Index].Frames);
+       Stream.WriteBuffer(CountFrames,SizeOf(TpvUInt32));
        for FrameIndex:=0 to length(Animations[Index].Frames)-1 do begin
         Stream.WriteBuffer(Animations[Index].Frames[FrameIndex].Time,SizeOf(TpvDouble));
         if CountUsedVertices>0 then begin
