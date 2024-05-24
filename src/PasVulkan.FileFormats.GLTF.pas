@@ -3418,7 +3418,7 @@ begin
   // Remove duplicates
   Index:=0;
   while Index<(Count-1) do begin
-   if result[Index]=result[Index+1] then begin
+   if SameValue(result[Index],result[Index+1]) then begin
     for TimeIndex:=Index to (Count-2) do begin
      result[TimeIndex]:=result[TimeIndex+1];
     end;
