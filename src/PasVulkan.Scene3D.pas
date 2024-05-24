@@ -15312,22 +15312,6 @@ begin
    MeshVertex^.NodeIndex:=0;
    MeshVertex^.MaterialID:=0;
    MeshVertex^.Flags:=0;
-{  case VertexIndex of
-
-    // Ensure that the first and last vertices are the bounding box min and max vertices, so that the bounding box is correct, and
-    // it will be overwritten with the correct values in the mesh compute shader later anyway, where the morph target vertices are 
-    // applied. Thus it doesn't hurt to do this here.
-    0:begin
-     MeshVertex^.Position:=aSourceModel.FileHeader.BoundingBoxMin;
-    end;
-    1:begin
-     MeshVertex^.Position:=aSourceModel.FileHeader.BoundingBoxMax;
-    end;
-
-    else begin
-     MeshVertex^.Position:=PPMVertex^.Position;
-    end;
-   end;}
    MeshVertex^.Position:=PPMVertex^.Position;
    UnpackUInt16QTangentSpace(PPMVertex^.TangentSpace,Tangent,Bitangent,Normal);
    MeshVertex^.SetTangentSpaceVectors(Tangent,Bitangent,Normal);
