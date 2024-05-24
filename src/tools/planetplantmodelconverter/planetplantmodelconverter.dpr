@@ -21,6 +21,8 @@ uses Classes,
 
 var Animations:TpvPPM.TAnimations;
 
+    TexCoords:TpvPPM.TTexCoords;
+
     Indices:TpvPPM.TIndices;
 
     CountUsedVertices:TpvSizeInt;
@@ -108,9 +110,9 @@ begin
    
    InterpolatedVertex^.Position:=CurrentVertex^.Position.Lerp(NextVertex^.Position,InterpolationFactor);
 
-   InterpolatedVertex^.TexCoordU:=Min(Max(round((CurrentVertex^.TexCoordU*(1.0-InterpolationFactor))+(NextVertex^.TexCoordU*InterpolationFactor)),0),65535);
-   InterpolatedVertex^.TexCoordV:=Min(Max(round((CurrentVertex^.TexCoordV*(1.0-InterpolationFactor))+(NextVertex^.TexCoordV*InterpolationFactor)),0),65535);
-   
+{  InterpolatedVertex^.TexCoordU:=Min(Max(round((CurrentVertex^.TexCoordU*(1.0-InterpolationFactor))+(NextVertex^.TexCoordU*InterpolationFactor)),0),65535);
+   InterpolatedVertex^.TexCoordV:=Min(Max(round((CurrentVertex^.TexCoordV*(1.0-InterpolationFactor))+(NextVertex^.TexCoordV*InterpolationFactor)),0),65535);}
+
    UnpackUInt16QTangentSpace(CurrentVertex^.TangentSpace,CurrentTangent,CurrentBitangent,CurrentNormal);
    CurrentTangentSpace:=TpvMatrix3x3.Create(CurrentTangent,CurrentBitangent,CurrentNormal);
    
@@ -216,8 +218,8 @@ begin
 
             Vertex^.Position:=TpvVector3.Create(GLTFBakedVertexIndexedMeshVertex^.Position[0],GLTFBakedVertexIndexedMeshVertex^.Position[1],GLTFBakedVertexIndexedMeshVertex^.Position[2]);
 
-            Vertex^.TexCoordU:=Min(Max(round(GLTFBakedVertexIndexedMeshVertex^.TexCoord0[0]*16384.0),0),65535);
-            Vertex^.TexCoordV:=Min(Max(round(GLTFBakedVertexIndexedMeshVertex^.TexCoord0[1]*16384.0),0),65535);
+{           Vertex^.TexCoordU:=Min(Max(round(GLTFBakedVertexIndexedMeshVertex^.TexCoord0[0]*16384.0),0),65535);
+            Vertex^.TexCoordV:=Min(Max(round(GLTFBakedVertexIndexedMeshVertex^.TexCoord0[1]*16384.0),0),65535);}
 
             Vertex^.TangentSpace:=PackUInt16QTangentSpace(
                                    TpvVector3.Create(GLTFBakedVertexIndexedMeshVertex^.Tangent[0],GLTFBakedVertexIndexedMeshVertex^.Tangent[1],GLTFBakedVertexIndexedMeshVertex^.Tangent[2]),
@@ -285,6 +287,7 @@ var Index,FrameIndex,OtherIndex,FoundPresetAnimation,VertexIndex,
     NormalScale,OcclusionStrength:TpvFloat;
     EmissiveFactor:TpvVector3;
     First:boolean;
+    GLTFBakedVertexIndexedMeshVertex:TpvGLTF.PVertex;
 begin
 
  result:=true;
@@ -318,16 +321,27 @@ begin
 
      GLTFBakedVertexIndexedMesh:=GLTFInstance.GetBakedVertexIndexedMesh(false,true,-1,[TPasGLTF.TMaterial.TAlphaMode.Opaque,TPasGLTF.TMaterial.TAlphaMode.Blend,TPasGLTF.TMaterial.TAlphaMode.Mask]);
      if assigned(GLTFBakedVertexIndexedMesh) then begin
+
       try
+
        CountUsedVertices:=GLTFBakedVertexIndexedMesh.Vertices.Count;
+       SetLength(TexCoords,CountUsedVertices);
+       for VertexIndex:=0 to GLTFBakedVertexIndexedMesh.Vertices.Count-1 do begin
+        GLTFBakedVertexIndexedMeshVertex:=@GLTFBakedVertexIndexedMesh.Vertices.ItemArray[VertexIndex];
+        TexCoords[VertexIndex].x:=Min(Max(round(GLTFBakedVertexIndexedMeshVertex^.TexCoord0[0]*16384.0),0),65535);
+        TexCoords[VertexIndex].y:=Min(Max(round(GLTFBakedVertexIndexedMeshVertex^.TexCoord0[1]*16384.0),0),65535);
+       end;
+
        CountUsedIndices:=GLTFBakedVertexIndexedMesh.Indices.Count;
        SetLength(Indices,GLTFBakedVertexIndexedMesh.Indices.Count);
        for Index:=0 to GLTFBakedVertexIndexedMesh.Indices.Count-1 do begin
         Indices[Index]:=GLTFBakedVertexIndexedMesh.Indices.ItemArray[Index];
        end;
+
       finally
        FreeAndNil(GLTFBakedVertexIndexedMesh);
       end;
+
      end else begin
       WriteLn('Error: No vertex indexed mesh found!');
       result:=false;
@@ -476,6 +490,9 @@ begin
 
       // Write indices globally
       Stream.WriteBuffer(Indices[0],SizeOf(TpvPPM.TIndex)*CountUsedIndices);
+
+      // Write texcoords globally
+      Stream.WriteBuffer(TexCoords[0],SizeOf(TpvUInt16Vector2)*CountUsedVertices);
 
       // Write vertices from all animations
       for Index:=0 to length(Animations)-1 do begin

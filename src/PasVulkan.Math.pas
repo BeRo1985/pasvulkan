@@ -151,6 +151,13 @@ type PpvScalar=^TpvScalar;
        x,y:TpvInt16;
      end;
 
+     PPpvUInt16Vector2=^PpvUInt16Vector2;
+     PpvUInt16Vector2=^TpvUInt16Vector2;
+     TpvUInt16Vector2=packed record
+      public
+       x,y:TpvUInt16;
+     end;
+
      PpvVector2=^TpvVector2;
      TpvVector2=record
       public

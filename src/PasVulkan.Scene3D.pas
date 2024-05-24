@@ -15283,7 +15283,7 @@ begin
    MeshVertex^.Position:=PPMVertex^.Position;
    UnpackUInt16QTangentSpace(PPMVertex^.TangentSpace,Tangent,Bitangent,Normal);
    MeshVertex^.SetTangentSpaceVectors(Tangent,Bitangent,Normal);
-   MeshVertex^.TexCoord0:=TpvVector2.Create(PPMVertex^.TexCoordU/16384.0,PPMVertex^.TexCoordV/16384.0);
+   MeshVertex^.TexCoord0:=TpvVector2.Create(aSourceModel.TexCoords[VertexIndex].x/16384.0,aSourceModel.TexCoords[VertexIndex].y/16384.0);
    MeshVertex^.TexCoord1:=TpvVector2.Origin;
    MeshVertex^.Color0.r:=1.0;
    MeshVertex^.Color0.g:=1.0;

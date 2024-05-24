@@ -74,12 +74,11 @@ type EpvPPM=class(Exception);
              Version=1;
        type TVertex=packed record
              Position:TpvVector3; // 12 bytes (must be non-quantized and non-compressed for direct use with hardware raytracing)
-             TexCoordU:TpvUInt16; // 2 bytes
-             TexCoordV:TpvUInt16; // 2 bytes
              TangentSpace:TpvUInt16PackedTangentSpace; // 8 bytes
-            end; // 12+2+2+8 = 24 bytes
+            end; // 12+8 = 20 bytes
             PVertex=^TVertex;
             TVertices=array of TVertex;
+            TTexCoords=array of TpvUInt16Vector2;
             TIndex=TpvUInt32;
             PIndex=^TIndex;
             TIndices=array of TIndex;
@@ -134,6 +133,7 @@ type EpvPPM=class(Exception);
             TModel=class
              public
               FileHeader:TFileHeader;
+              TexCoords:TTexCoords;
               Indices:TIndices;
               Animations:TAnimations;
               BaseColorTextureStream:TMemoryStream;
@@ -158,10 +158,10 @@ implementation
 { TpvPPM.TModel }
 
 constructor TpvPPM.TModel.Create;
-var Index:TpvSizeInt; 
 begin
  inherited Create;
  FillChar(FileHeader,SizeOf(TpvPPM.TFileHeader),#0);
+ TexCoords:=nil;
  Indices:=nil;
  Animations:=nil;
  BaseColorTextureStream:=TMemoryStream.Create;
@@ -173,6 +173,7 @@ end;
 
 destructor TpvPPM.TModel.Destroy;
 begin
+ TexCoords:=nil;
  Indices:=nil;
  Animations:=nil;
  FreeAndNil(EmissiveTextureStream);
@@ -188,6 +189,7 @@ var AnimationIndex,FramesIndex:TpvSizeInt;
     CountFrames:TpvInt32;
 begin
 
+ TexCoords:=nil;
  Indices:=nil;
  Animations:=nil;
 
@@ -206,6 +208,11 @@ begin
  if FileHeader.CountIndices>0 then begin
   SetLength(Indices,FileHeader.CountIndices);
   aStream.ReadBuffer(Indices[0],SizeOf(TpvPPM.TIndex)*FileHeader.CountIndices);
+ end;
+
+ if FileHeader.CountVertices>0 then begin
+  SetLength(TexCoords,FileHeader.CountVertices);
+  aStream.ReadBuffer(TexCoords[0],SizeOf(TpvUInt16Vector2)*FileHeader.CountVertices);
  end;
 
  SetLength(Animations,FileHeader.CountAnimations);
@@ -273,6 +280,7 @@ begin
  FileHeader.CountAnimations:=length(Animations);
  aStream.WriteBuffer(FileHeader,SizeOf(TpvPPM.TFileHeader));
  aStream.WriteBuffer(Indices[0],SizeOf(TpvPPM.TIndex)*FileHeader.CountIndices);
+ aStream.WriteBuffer(TexCoords[0],SizeOf(TpvUInt16Vector2)*FileHeader.CountVertices);
  for AnimationIndex:=0 to length(Animations)-1 do begin
   CountFrames:=length(Animations[AnimationIndex].Frames);
   aStream.WriteBuffer(CountFrames,SizeOf(TpvInt32));
