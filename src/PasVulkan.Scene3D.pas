@@ -15126,7 +15126,8 @@ end;
 
 procedure TpvScene3D.TGroup.AssignFromPPM(const aSourceModel:TpvPPM.TModel);
 var VertexIndex,IndexIndex,AnimationIndex,FrameIndex,
-    MorphTargetVertexIndex,MorphWeightIndex,WeightIndex:TpvSizeInt;
+    MorphTargetVertexIndex,LastMorphTargetVertexIndex,
+    MorphWeightIndex,WeightIndex:TpvSizeInt;
     Material:TpvScene3D.TMaterial;
     Scene:TpvScene3D.TGroup.TScene;
     Node:TpvScene3D.TGroup.TNode;
@@ -15135,7 +15136,7 @@ var VertexIndex,IndexIndex,AnimationIndex,FrameIndex,
     MeshVertex:TpvScene3D.PVertex;
     PPMVertex:TpvPPM.PVertex;
     Tangent,Bitangent,Normal:TpvVector3;
-    LastMorphTargetVertex,MorphTargetVertex:PMorphTargetVertex;
+    MorphTargetVertex:PMorphTargetVertex;
     Image:TpvScene3D.TImage;
     Texture:TpvScene3D.TTexture;
     Name:TpvUTF8String;
@@ -15146,7 +15147,7 @@ begin
  Name:=#0+IntToStr(TpvPtrUInt(self))+'_'+IntToStr(TpvPtrUInt(aSourceModel));
 
  // Create material
- Material:=TpvScene3D.TMaterial.Create(nil,self,nil);
+ Material:=TpvScene3D.TMaterial.Create(ResourceManager,self,nil);
  Material.AssignFromEmpty;
  Material.fData.ShadingModel:=TpvScene3D.TMaterial.TShadingModel.PBRMetallicRoughness;
  Material.fData.PBRMetallicRoughness.BaseColorFactor:=aSourceModel.FileHeader.MaterialHeader.BaseColorFactor;
@@ -15294,19 +15295,19 @@ begin
    MeshVertex^.CountJointBlocks:=0;
 
    // Create morph target vertices for this vertex
-   LastMorphTargetVertex:=nil;
+   LastMorphTargetVertexIndex:=-1;
    MorphWeightIndex:=0;
    for AnimationIndex:=0 to length(aSourceModel.Animations)-1 do begin
     for FrameIndex:=0 to length(aSourceModel.Animations[AnimationIndex].Frames)-1 do begin
      PPMVertex:=@aSourceModel.Animations[AnimationIndex].Frames[FrameIndex].Vertices[VertexIndex];
      MorphTargetVertexIndex:=fMorphTargetVertices.AddNewIndex;
      MorphTargetVertex:=@fMorphTargetVertices.ItemArray[MorphTargetVertexIndex];
-     if assigned(LastMorphTargetVertex) then begin
-      LastMorphTargetVertex^.Next:=MorphTargetVertexIndex;
+     if LastMorphTargetVertexIndex>=0 then begin
+      fMorphTargetVertices.ItemArray[LastMorphTargetVertexIndex].Next:=MorphTargetVertexIndex;
      end else begin
       MeshVertex^.MorphTargetVertexBaseIndex:=MorphTargetVertexIndex;
      end;
-     LastMorphTargetVertex:=MorphTargetVertex;
+     LastMorphTargetVertexIndex:=MorphTargetVertexIndex;
      MorphTargetVertex^.Index:=MorphWeightIndex;
      MorphTargetVertex^.Position:=TpvVector4.InlineableCreate(PPMVertex^.Position-MeshVertex^.Position,0.0);
      UnpackUInt16QTangentSpace(PPMVertex^.TangentSpace,Tangent,Bitangent,Normal);
@@ -15366,6 +15367,8 @@ begin
   Animation.Finish;
 
  end;
+
+ Finish;
 
 end;
 
