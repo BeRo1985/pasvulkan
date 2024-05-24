@@ -15126,7 +15126,6 @@ end;
 
 procedure TpvScene3D.TGroup.AssignFromPPM(const aSourceModel:TpvPPM.TModel);
 var VertexIndex,IndexIndex,AnimationIndex,FrameIndex,GlobalFrameIndex,
-    MorphTargetVertexIndex,LastMorphTargetVertexIndex,
     MorphWeightIndex,WeightIndex:TpvSizeInt;
     Material:TpvScene3D.TMaterial;
     Scene:TpvScene3D.TGroup.TScene;
@@ -15136,12 +15135,13 @@ var VertexIndex,IndexIndex,AnimationIndex,FrameIndex,GlobalFrameIndex,
     MeshVertex:TpvScene3D.PVertex;
     PPMVertex:TpvPPM.PVertex;
     Tangent,Bitangent,Normal:TpvVector3;
-    MorphTargetVertex:PMorphTargetVertex;
     Image:TpvScene3D.TImage;
     Texture:TpvScene3D.TTexture;
     Name:TpvUTF8String;
     Animation:TpvScene3D.TGroup.TAnimation;
     AnimationChannel:TpvScene3D.TGroup.TAnimation.TChannel;
+    Target:TpvScene3D.TGroup.TMesh.TPrimitive.TTarget;
+    TargetVertex:TpvScene3D.TGroup.TMesh.TPrimitive.TTarget.PTargetVertex;
 begin
 
  Name:=#0+IntToStr(TpvPtrUInt(self))+'_'+IntToStr(TpvPtrUInt(aSourceModel));
@@ -15150,6 +15150,7 @@ begin
  Material:=TpvScene3D.TMaterial.Create(ResourceManager,self,nil);
  Material.AssignFromEmpty;
  Material.fData.ShadingModel:=TpvScene3D.TMaterial.TShadingModel.PBRMetallicRoughness;
+ Material.fData.DoubleSided:=true;
  Material.fData.PBRMetallicRoughness.BaseColorFactor:=aSourceModel.FileHeader.MaterialHeader.BaseColorFactor;
  Material.fData.PBRMetallicRoughness.MetallicFactor:=aSourceModel.FileHeader.MaterialHeader.MetallicRoughnessFactorNormalScale.x;
  Material.fData.PBRMetallicRoughness.RoughnessFactor:=aSourceModel.FileHeader.MaterialHeader.MetallicRoughnessFactorNormalScale.y;
@@ -15256,6 +15257,9 @@ begin
   MeshPrimitive.MaterialID:=AddMaterial(Material);
   MeshPrimitive.Material:=Material;
 
+  // Triangles
+  MeshPrimitive.PrimitiveTopology:=TpvScene3D.TPrimitiveTopology.Triangles;
+
   // Create initial morph target weights and calculate count of morph targets
   Mesh.fCountMorphTargets:=0;
   MorphWeightIndex:=0;
@@ -15271,6 +15275,18 @@ begin
 
   // Clear morph target vertices
   fMorphTargetVertices.ClearNoFree;
+
+  // Create morph targets
+  for AnimationIndex:=0 to length(aSourceModel.Animations)-1 do begin
+   for FrameIndex:=0 to length(aSourceModel.Animations[AnimationIndex].Frames)-1 do begin
+    Target:=TpvScene3D.TGroup.TMesh.TPrimitive.TTarget.Create;
+    try
+     Target.fVertices.Resize(aSourceModel.FileHeader.CountVertices);
+    finally
+     MeshPrimitive.fTargets.Add(Target);
+    end;
+   end;
+  end;
 
   // Create vertices
   for VertexIndex:=0 to TpvSizeInt(aSourceModel.FileHeader.CountVertices)-1 do begin
@@ -15310,25 +15326,15 @@ begin
    MeshVertex^.CountJointBlocks:=0;
 
    // Create morph target vertices for this vertex
-   LastMorphTargetVertexIndex:=-1;
    MorphWeightIndex:=0;
    for AnimationIndex:=0 to length(aSourceModel.Animations)-1 do begin
     for FrameIndex:=0 to length(aSourceModel.Animations[AnimationIndex].Frames)-1 do begin
      PPMVertex:=@aSourceModel.Animations[AnimationIndex].Frames[FrameIndex].Vertices[VertexIndex];
-     MorphTargetVertexIndex:=fMorphTargetVertices.AddNewIndex;
-     MorphTargetVertex:=@fMorphTargetVertices.ItemArray[MorphTargetVertexIndex];
-     if LastMorphTargetVertexIndex>=0 then begin
-      fMorphTargetVertices.ItemArray[LastMorphTargetVertexIndex].Next:=MorphTargetVertexIndex;
-     end else begin
-      MeshVertex^.MorphTargetVertexBaseIndex:=MorphTargetVertexIndex;
-     end;
-     LastMorphTargetVertexIndex:=MorphTargetVertexIndex;
-     MorphTargetVertex^.Index:=MorphWeightIndex;
-     MorphTargetVertex^.Position:=TpvVector4.InlineableCreate(PPMVertex^.Position-MeshVertex^.Position,0.0);
+     TargetVertex:=@MeshPrimitive.fTargets[MorphWeightIndex].fVertices.ItemArray[VertexIndex];
+     TargetVertex^.Position:=PPMVertex^.Position-MeshVertex^.Position;
      UnpackUInt16QTangentSpace(PPMVertex^.TangentSpace,Tangent,Bitangent,Normal);
-     MorphTargetVertex^.Normal:=TpvVector4.InlineableCreate(Normal-OctDecode(MeshVertex^.Normal),0.0);
-     MorphTargetVertex^.Tangent:=TpvVector4.InlineableCreate(Tangent-OctDecode(MeshVertex^.Tangent),0.0);
-     MorphTargetVertex^.Next:=TpvUInt32($ffffffff);
+     TargetVertex^.Normal:=Normal-OctDecode(MeshVertex^.Normal);
+     TargetVertex^.Tangent:=Tangent-OctDecode(MeshVertex^.Tangent);
      inc(MorphWeightIndex);
     end;
    end;
