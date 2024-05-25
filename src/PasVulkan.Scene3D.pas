@@ -95,6 +95,7 @@ uses {$ifdef Windows}
      PasVulkan.TimerQuery,
      PasVulkan.VirtualReality,
      PasVulkan.Raytracing,
+     PasVulkan.FileFormats.OBJ,
      PasVulkan.FileFormats.DAE,
      PasVulkan.FileFormats.FBX,
      PasVulkan.FileFormats.PPM,
