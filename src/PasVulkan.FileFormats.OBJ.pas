@@ -107,9 +107,18 @@ type PpvOBJColor=^TpvOBJColor;
       Ambient:TpvOBJColor;
       Diffuse:TpvOBJColor;
       Specular:TpvOBJColor;
+      Emissive:TpvOBJColor;
       Shininess:TpvFloat;
+      Metallic:TpvFloat;
+      Roughness:TpvFloat;
+      Sheen:TpvFloat;
+      ClearcoatThickness:TpvFloat;
+      ClearcoatRoughness:TpvFloat;
+      Anisotropy:TpvFloat;
+      AnisotropyRotation:TpvFloat;
       TextureFileName:TpvRawByteString;
       ExternalTexture:longbool;
+      PBR:longbool;
      end;
 
      TpvOBJIndices=array of TpvInt32;
@@ -183,6 +192,7 @@ type PpvOBJColor=^TpvOBJColor;
        procedure GetMaterialName(s:TpvRawByteString);
        procedure CreateMaterial(s:TpvRawByteString);
        procedure ParseMaterial(s:TpvRawByteString);
+       procedure ParsePBRMaterial(s:TpvRawByteString);
        procedure ParseShininess(s:TpvRawByteString);
        procedure ParseTexture(s:TpvRawByteString);
        function LoadMaterials(s:TpvRawByteString):boolean;
@@ -208,7 +218,6 @@ type PpvOBJColor=^TpvOBJColor;
        constructor Create;
        destructor Destroy; override;
        function LoadModel(FileName:TpvRawByteString):boolean;
-       function ExportJSON:TpvRawByteString;
      end;
 
 implementation
@@ -874,7 +883,16 @@ begin
  FillChar(Materials[Index].Ambient,sizeof(TpvOBJColor),#0);
  FillChar(Materials[Index].Diffuse,sizeof(TpvOBJColor),#0);
  FillChar(Materials[Index].Specular,sizeof(TpvOBJColor),#0);
+ FillChar(Materials[Index].Emissive,sizeof(TpvOBJColor),#0);
  Materials[Index].Shininess:=60;
+ Materials[Index].PBR:=false;
+ Materials[Index].Metallic:=0.0;
+ Materials[Index].Roughness:=0.5;
+ Materials[Index].Sheen:=0.0;
+ Materials[Index].ClearcoatThickness:=0.0;
+ Materials[Index].ClearcoatRoughness:=0.0;
+ Materials[Index].Anisotropy:=0.0;
+ Materials[Index].AnisotropyRotation:=0.0;
 //Materials[Index].Texture:=0;
  Materials[Index].ExternalTexture:=false;
  Materials[Index].Name:=s;
@@ -904,6 +922,54 @@ begin
    end;
    'S':begin
     Materials[Index].Specular:=c;
+   end;
+   'E':begin
+    Materials[Index].Emissive:=c;
+    Materials[Index].PBR:=true;
+   end;
+  end;
+ end;
+end;
+
+procedure TpvOBJModel.ParsePBRMaterial(s:TpvRawByteString);
+var Index:TpvSizeInt;
+    c:TpvFloat;
+    AChar,AChar2:ansichar;
+begin
+ AChar:=s[2];
+ if (AChar='C') and ((length(s)>3) and (s[3]='R')) then begin
+  Delete(s,3,1);
+  AChar2:='R';
+ end else begin
+  AChar2:=#0;
+ end;
+ s:=Trim(Copy(s,3,length(s)));
+
+ c:=StrToFloat(GetToken(s,' '));
+
+ Index:=length(Materials);
+ if Index>0 then begin
+  dec(Index);
+  case AChar of
+   'M':begin
+    Materials[Index].Metallic:=c;
+    Materials[Index].PBR:=true;
+   end;
+   'R':begin
+    Materials[Index].Roughness:=c;
+    Materials[Index].PBR:=true;
+   end;
+   'S':begin
+    Materials[Index].Sheen:=c;
+    Materials[Index].PBR:=true;
+   end;
+   'C':begin
+    if AChar2='R' then begin
+     Materials[Index].ClearcoatRoughness:=c;
+    end else begin
+     Materials[Index].ClearcoatThickness:=c;
+    end;
+    Materials[Index].PBR:=true;
    end;
   end;
  end;
@@ -975,6 +1041,9 @@ begin
      end;
      'K':begin
       ParseMaterial(s);
+     end;
+     'P':begin
+      ParsePBRMaterial(s);
      end;
      'M':begin
       ParseTexture(s);
@@ -1394,73 +1463,6 @@ begin
   result:=true;
  end;
  FileStream.Destroy;
-end;
-
-function TpvOBJModel.ExportJSON:TpvRawByteString;
-var Parts,GroupIndex,ObjectIndex,PartIndex,TriangleIndex,IndicesIndex,Material:TpvSizeInt;
-begin
- result:='';
- if CountTriangleVertices>0 then begin
-  Parts:=0;
-  result:=result+'{"vertexPositions":[';
-  for TriangleIndex:=0 to length(TriangleVertices)-1 do begin
-   if TriangleIndex>0 then begin
-    result:=result+',';
-   end;
-   result:=result+FloatToStr(TriangleVertices[TriangleIndex].Vertex.x)+','+FloatToStr(TriangleVertices[TriangleIndex].Vertex.y)+','+FloatToStr(TriangleVertices[TriangleIndex].Vertex.z);
-  end;
-  result:=result+'],"vertexNormals":[';
-  for TriangleIndex:=0 to length(TriangleVertices)-1 do begin
-   if TriangleIndex>0 then begin
-    result:=result+',';
-   end;
-   result:=result+FloatToStr(TriangleVertices[TriangleIndex].Normal.x)+','+FloatToStr(TriangleVertices[TriangleIndex].Normal.y)+','+FloatToStr(TriangleVertices[TriangleIndex].Normal.z);
-  end;
-  result:=result+'],"vertexTextureCoords":[';
-  for TriangleIndex:=0 to length(TriangleVertices)-1 do begin
-   if TriangleIndex>0 then begin
-    result:=result+',';
-   end;
-   result:=result+FloatToStr(TriangleVertices[TriangleIndex].TexCoord.u)+','+FloatToStr(TriangleVertices[TriangleIndex].TexCoord.v);
-  end;
-  result:=result+'],"parts":[';
-  for GroupIndex:=0 to length(Groups)-1 do begin
-   for ObjectIndex:=0 to length(Groups[GroupIndex].Objects)-1 do begin
-    for PartIndex:=0 to length(Groups[GroupIndex].Objects[ObjectIndex].Parts)-1 do begin
-     if Groups[GroupIndex].Objects[ObjectIndex].Parts[PartIndex].CountIndices>0 then begin
-      if Parts>0 then begin
-       result:=result+',';
-      end;
-      result:=result+'{';
-      Material:=Groups[GroupIndex].Objects[ObjectIndex].Parts[PartIndex].MaterialIndex;
-      if (Material>=0) and (Material<length(Materials)) then begin
-       result:=result+'"ambient":['+FloatToStr(Materials[Material].Ambient.r)+','+FloatToStr(Materials[Material].Ambient.g)+','+FloatToStr(Materials[Material].Ambient.b)+'],';
-       result:=result+'"diffuse":['+FloatToStr(Materials[Material].Diffuse.r)+','+FloatToStr(Materials[Material].Diffuse.g)+','+FloatToStr(Materials[Material].Diffuse.b)+'],';
-       result:=result+'"specular":['+FloatToStr(Materials[Material].Specular.r)+','+FloatToStr(Materials[Material].Specular.g)+','+FloatToStr(Materials[Material].Specular.b)+'],';
-       result:=result+'"shininess":'+FloatToStr(Materials[Material].Shininess)+',';
-       result:=result+'"texture":"'+Materials[Material].TextureFileName+'",';
-      end else begin
-       result:=result+'"ambient":[0.2,0.2,0.2],';
-       result:=result+'"diffuse":[0.8,0.8,0.8],';
-       result:=result+'"specular":[0.25,0.25,0.25],';
-       result:=result+'"shininess":0.25,';
-       result:=result+'"texture":"",';
-      end;
-      result:=result+'"indices":[';
-      for IndicesIndex:=0 to Groups[GroupIndex].Objects[ObjectIndex].Parts[PartIndex].CountIndices-1 do begin
-       if IndicesIndex>0 then begin
-        result:=result+',';
-       end;
-       result:=result+IntToStr(Groups[GroupIndex].Objects[ObjectIndex].Parts[PartIndex].Indices[IndicesIndex]);
-      end;
-      result:=result+']}';
-      inc(Parts);
-     end;
-    end;
-   end;
-  end;
-  result:=result+']}';
- end;
 end;
 
 end.
