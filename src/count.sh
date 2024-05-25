@@ -18,6 +18,8 @@ wc -l *.pas *.inc *.dpr ../externals/kraft/src/kraft.pas \
                         ./assets/shaders/scene3d/*.frag \
                         ./assets/shaders/scene3d/*.vert \
                         ./assets/shaders/scene3d/*.geom \
+                        ./assets/shaders/scene3d/*.mesh \
+                        ./assets/shaders/scene3d/*.task \
                         ./assets/shaders/scene3d/*.tesc \
                         ./assets/shaders/scene3d/*.tese \
                         ./assets/shaders/scene3d/*.comp \
@@ -25,4 +27,11 @@ wc -l *.pas *.inc *.dpr ../externals/kraft/src/kraft.pas \
                         ./assets/shaders/scene3d/*.c \
                         ./assets/shaders/scene3d/*.poca \
                         ./assets/shaders/scene3d/compileshaders.bat \
-                        ./assets/shaders/scene3d/compileshaders.sh
+                        ./assets/shaders/scene3d/compileshaders.sh \
+                        ./tools/bin2pas/bin2pas.dpr \
+                        ./tools/brdflookuptexturegenerator/brdflookuptexturegenerator.dpr \
+                        ./tools/dfaoittrain/dfaoittrain.cpp \
+                        ./tools/dfaoittrain/dfaoittrain.py \
+                        ./tools/planetplantmodelconverter/planetplantmodelconverter.dpr \
+                        ./tools/projectmanager/projectmanager.dpr \
+                        ./tools/projectmanager/*.pas                        
