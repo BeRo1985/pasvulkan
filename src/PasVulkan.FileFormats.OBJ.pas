@@ -67,31 +67,23 @@ uses SysUtils,Classes,Math,PasJSON,PasVulkan.Types,PasVulkan.Math,PasVulkan.Coll
      PasGLTF,PasDblStrUtils;
 
 type PpvOBJColor=^TpvOBJColor;
-     TpvOBJColor=packed record
-      r,g,b:TpvFloat;
-     end;
+     TpvOBJColor=TpvVector3;
 
-     PpvOBJVertex=^TpvOBJVertex;
-     TpvOBJVertex=packed record
-      x,y,z:TpvFloat;
-     end;
+     PpvOBJVector3=^TpvOBJVector3;
+     TpvOBJVector3=TpvVector3;
 
      PpvOBJVector4=^TpvOBJVector4;
-     TpvOBJVector4=packed record
-      x,y,z,w:TpvFloat;
-     end;
+     TpvOBJVector4=TpvVector4;
 
      PpvOBJTexCoord=^TpvOBJTexCoord;
-     TpvOBJTexCoord=packed record
-      u,v:TpvFloat;
-     end;
+     TpvOBJTexCoord=TpvVector2;
 
      PpvOBJTriangleVertex=^TpvOBJTriangleVertex;
      TpvOBJTriangleVertex=record
-      Vertex:TpvOBJVertex;
-      Normal:TpvOBJVertex;
-      Tangent:TpvOBJVertex;
-      Bitangent:TpvOBJVertex;
+      Vertex:TpvOBJVector3;
+      Normal:TpvOBJVector3;
+      Tangent:TpvOBJVector3;
+      Bitangent:TpvOBJVector3;
       TexCoord:TpvOBJTexCoord;
       VertexIndex:TpvSizeInt;
       NormalIndex:TpvSizeInt;
@@ -102,10 +94,10 @@ type PpvOBJColor=^TpvOBJColor;
 
      PpvOBJTriangleVertexForHashing=^TpvOBJTriangleVertexForHashing;
      TpvOBJTriangleVertexForHashing=record
-      Vertex:TpvOBJVertex;
-      Normal:TpvOBJVertex;
-      Tangent:TpvOBJVertex;
-      Bitangent:TpvOBJVertex;
+      Vertex:TpvOBJVector3;
+      Normal:TpvOBJVector3;
+      Tangent:TpvOBJVector3;
+      Bitangent:TpvOBJVector3;
       TexCoord:TpvOBJTexCoord;
      end;
 
@@ -130,7 +122,7 @@ type PpvOBJColor=^TpvOBJColor;
       NormalIndices:TpvOBJIndices;
       TangentIndices:TpvOBJIndices;
       BitangentIndices:TpvOBJIndices;
-      FaceNormal:TpvOBJVertex;
+      FaceNormal:TpvOBJVector3;
      end;
 
      PpvOBJLine=^TpvOBJLine;
@@ -140,7 +132,7 @@ type PpvOBJColor=^TpvOBJColor;
      end;
 
      TpvOBJEdgeTriangle=record
-      v,n,t:array[0..2] of TpvOBJVertex;
+      v,n,t:array[0..2] of TpvOBJVector3;
       uv:array[0..2] of TpvOBJTexCoord;
      end;
 
@@ -183,7 +175,7 @@ type PpvOBJColor=^TpvOBJColor;
       private
        function GetToken(var InputString:TpvRawByteString;const Divider:ansichar):TpvRawByteString;
        procedure Clear;
-       function ParseXYZ(s:TpvRawByteString):TpvOBJVertex;
+       function ParseXYZ(s:TpvRawByteString):TpvOBJVector3;
        function ParseUV(s:TpvRawByteString):TpvOBJTexCoord;
        procedure ParseVertices(s:TpvRawByteString);
        procedure ParseFaces(v:TpvRawByteString);
@@ -200,10 +192,10 @@ type PpvOBJColor=^TpvOBJColor;
        MaterialIndex,VertexCount,NormalCount,TangentCount,BitangentCount,TexCoordCount,
        GroupCount,MaterialCount,CurrentGroup:TpvSizeInt;
        Name,MaterialFile:TpvRawByteString;
-       Vertices:array of TpvOBJVertex;
-       Normals:array of TpvOBJVertex;
-       Tangents:array of TpvOBJVertex;
-       Bitangents:array of TpvOBJVertex;
+       Vertices:array of TpvOBJVector3;
+       Normals:array of TpvOBJVector3;
+       Tangents:array of TpvOBJVector3;
+       Bitangents:array of TpvOBJVector3;
        TexCoords:array of TpvOBJTexCoord;
        Groups:array of TpvOBJGroup;
        Materials:array of TpvOBJMaterial;
@@ -482,36 +474,36 @@ begin
  result.v:=v.v*l;
 end;
 
-function VectorAdd(V1,V2:TpvOBJVertex):TpvOBJVertex;
+function VectorAdd(V1,V2:TpvOBJVector3):TpvOBJVector3;
 begin
  result.x:=V1.x+V2.x;
  result.y:=V1.y+V2.y;
  result.z:=V1.z+V2.z;
 end;
 
-function VectorSub(V1,V2:TpvOBJVertex):TpvOBJVertex;
+function VectorSub(V1,V2:TpvOBJVector3):TpvOBJVector3;
 begin
  result.x:=V1.x-V2.x;
  result.y:=V1.y-V2.y;
  result.z:=V1.z-V2.z;
 end;
 
-function VectorDiv(V1:TpvOBJVertex;D:TpvFloat):TpvOBJVertex;
+function VectorDiv(V1:TpvOBJVector3;D:TpvFloat):TpvOBJVector3;
 begin
  result.x:=V1.x/D;
  result.y:=V1.y/D;
  result.z:=V1.z/D;
 end;
 
-function VectorMul(V1:TpvOBJVertex;f:TpvFloat):TpvOBJVertex;
+function VectorMul(V1:TpvOBJVector3;f:TpvFloat):TpvOBJVector3;
 begin
  result.x:=V1.x*f;
  result.y:=V1.y*f;
  result.z:=V1.z*f;
 end;
 
-function VectorCrossProduct(V1,V2:TpvOBJVertex):TpvOBJVertex;
-var Temp:TpvOBJVertex;
+function VectorCrossProduct(V1,V2:TpvOBJVector3):TpvOBJVector3;
+var Temp:TpvOBJVector3;
 begin
  Temp.x:=V1.y*V2.z-V1.z*V2.y;
  Temp.y:=V1.z*V2.x-V1.x*V2.z;
@@ -519,17 +511,17 @@ begin
  result:=Temp;
 end;
 
-function VectorDot(V1,V2:TpvOBJVertex):TpvFloat;
+function VectorDot(V1,V2:TpvOBJVector3):TpvFloat;
 begin
  result:=(v1.x*v2.x)+(v1.y*v2.y)+(v1.z*v2.z);
 end;
 
-function VectorLength(v:TpvOBJVertex):TpvFloat;
+function VectorLength(v:TpvOBJVector3):TpvFloat;
 begin
  result:=sqrt(sqr(v.x)+sqr(v.y)+sqr(v.z));
 end;
 
-function VectorNorm(v:TpvOBJVertex):TpvOBJVertex;
+function VectorNorm(v:TpvOBJVector3):TpvOBJVector3;
 var l:TpvFloat;
 begin
  l:=VectorLength(v);
@@ -542,7 +534,7 @@ begin
  result.z:=v.z*l;
 end;
 
-function GetFaceNormal(V1,V2,V3:TpvOBJVertex):TpvOBJVertex;
+function GetFaceNormal(V1,V2,V3:TpvOBJVector3):TpvOBJVector3;
 begin
  result:=VectorNorm(VectorCrossProduct(VectorSub(V1,V2),VectorSub(V3,V2)));
 end;
@@ -592,8 +584,8 @@ begin
  MaterialCount:=0;
 end;
 
-function TpvOBJModel.ParseXYZ(s:TpvRawByteString):TpvOBJVertex;
-var c:TpvOBJVertex;
+function TpvOBJModel.ParseXYZ(s:TpvRawByteString):TpvOBJVector3;
+var c:TpvOBJVector3;
 begin
  s:=Trim(Copy(s,3,length(s)));
  c.x:=StrToFloat(GetToken(s,' '));
@@ -612,7 +604,7 @@ begin
 end;
 
 procedure TpvOBJModel.ParseVertices(s:TpvRawByteString);
-var c:TpvOBJVertex;
+var c:TpvOBJVector3;
     t:TpvOBJTexCoord;
 begin
  if length(s)>1 then begin
@@ -998,15 +990,15 @@ end;
 procedure TpvOBJModel.FixUpVerticesNormals;
 const f1d3=1.0/3.0;
 var Counter,GroupIndex,ObjectIndex,PartIndex,FaceIndex,VertexIndex,VertexCount:TpvSizeInt;
-    Min,Max,Center,Size,Normal,Tangent,Bitangent:TpvOBJVertex;
-    stv:array[0..1] of TpvOBJVertex;
+    Min,Max,Center,Size,Normal,Tangent,Bitangent:TpvOBJVector3;
+    stv:array[0..1] of TpvOBJVector3;
     Scale,t1,t2,t3,t4,f:TpvFloat;
     VerticesCounts:array of TpvSizeInt;
-    VerticesNormals,VerticesTangents,VerticesBitangents:array of TpvOBJVertex;
+    VerticesNormals,VerticesTangents,VerticesBitangents:array of TpvOBJVector3;
     DoCalculateNormals:boolean;
 begin
- FillChar(Min,sizeof(TpvOBJVertex),#0);
- FillChar(Max,sizeof(TpvOBJVertex),#0);
+ FillChar(Min,sizeof(TpvOBJVector3),#0);
+ FillChar(Max,sizeof(TpvOBJVector3),#0);
  for Counter:=0 to length(Vertices)-1 do begin
   if Counter=0 then begin
    Min.x:=Vertices[Counter].x;
@@ -1076,9 +1068,9 @@ begin
   SetLength(VerticesBitangents,length(Vertices));
   for Counter:=0 to length(Vertices)-1 do begin
    VerticesCounts[Counter]:=0;
-   FillChar(VerticesNormals[Counter],sizeof(TpvOBJVertex),#0);
-   FillChar(VerticesTangents[Counter],sizeof(TpvOBJVertex),#0);
-   FillChar(VerticesBitangents[Counter],sizeof(TpvOBJVertex),#0);
+   FillChar(VerticesNormals[Counter],sizeof(TpvOBJVector3),#0);
+   FillChar(VerticesTangents[Counter],sizeof(TpvOBJVector3),#0);
+   FillChar(VerticesBitangents[Counter],sizeof(TpvOBJVector3),#0);
   end;
   for GroupIndex:=0 to length(Groups)-1 do begin
    for ObjectIndex:=0 to length(Groups[GroupIndex].Objects)-1 do begin
