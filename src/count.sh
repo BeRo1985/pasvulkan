@@ -12,6 +12,8 @@ wc -l *.pas *.inc *.dpr ../externals/kraft/src/kraft.pas \
                         ./assets/shaders/canvas/*.glsl \
                         ./assets/shaders/canvas/*.frag \
                         ./assets/shaders/canvas/*.vert \
+                        ./assets/shaders/canvas/compileshaders.bat \
+                        ./assets/shaders/canvas/compileshaders.sh \
                         ./assets/shaders/scene3d/*.glsl \
                         ./assets/shaders/scene3d/*.frag \
                         ./assets/shaders/scene3d/*.vert \
@@ -21,4 +23,6 @@ wc -l *.pas *.inc *.dpr ../externals/kraft/src/kraft.pas \
                         ./assets/shaders/scene3d/*.comp \
                         ./assets/shaders/scene3d/*.cpp \
                         ./assets/shaders/scene3d/*.c \
-                        ./assets/shaders/scene3d/*.poca
+                        ./assets/shaders/scene3d/*.poca \
+                        ./assets/shaders/scene3d/compileshaders.bat \
+                        ./assets/shaders/scene3d/compileshaders.sh
