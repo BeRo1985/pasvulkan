@@ -116,8 +116,14 @@ type PpvOBJColor=^TpvOBJColor;
       ClearcoatRoughness:TpvFloat;
       Anisotropy:TpvFloat;
       AnisotropyRotation:TpvFloat;
+      MetallicTextureFileName:TpvRawByteString;
+      RoughnessTextureFileName:TpvRawByteString;
+      SheenTextureFileName:TpvRawByteString;
+      EmissiveTextureFileName:TpvRawByteString;
+      NormalTextureFileName:TpvRawByteString;
+      RoughnessMetallicAmbientOcclusionTextureFileName:TpvRawByteString;
+      OcclusionRoughnessMetallicTextureFileName:TpvRawByteString;
       TextureFileName:TpvRawByteString;
-      ExternalTexture:longbool;
       PBR:longbool;
      end;
 
@@ -893,8 +899,14 @@ begin
  Materials[Index].ClearcoatRoughness:=0.0;
  Materials[Index].Anisotropy:=0.0;
  Materials[Index].AnisotropyRotation:=0.0;
-//Materials[Index].Texture:=0;
- Materials[Index].ExternalTexture:=false;
+ Materials[Index].MetallicTextureFileName:='';
+ Materials[Index].RoughnessTextureFileName:='';
+ Materials[Index].SheenTextureFileName:='';
+ Materials[Index].EmissiveTextureFileName:='';
+ Materials[Index].NormalTextureFileName:='';
+ Materials[Index].RoughnessMetallicAmbientOcclusionTextureFileName:='';
+ Materials[Index].OcclusionRoughnessMetallicTextureFileName:='';
+ Materials[Index].TextureFileName:='';
  Materials[Index].Name:=s;
 end;
 
@@ -993,18 +1005,25 @@ begin
   t:=UpperCase(GetToken(s,' '));
   if t='MAP_PR' then begin
    // Roughness
+   Materials[Index-1].RoughnessTextureFileName:=s;
   end else if t='MAP_PM' then begin
    // Metallic
+   Materials[Index-1].MetallicTextureFileName:=s;
   end else if t='MAP_PS' then begin
    // Sheen
+   Materials[Index-1].SheenTextureFileName:=s;
   end else if t='MAP_KE' then begin
    // Emissive
+   Materials[Index-1].EmissiveTextureFileName:=s;
   end else if t='NORM' then begin
    // Normal map
+   Materials[Index-1].NormalTextureFileName:=s;
   end else if t='MAP_RMA' then begin
    // Roughness, metalness, ambient occlusion
+   Materials[Index-1].RoughnessMetallicAmbientOcclusionTextureFileName:=s;
   end else if t='MAP_ORM' then begin
    // Occlusion, Roughness, metalness
+   Materials[Index-1].OcclusionRoughnessMetallicTextureFileName:=s;
   end else begin
    Materials[Index-1].TextureFileName:=S;
   end;
