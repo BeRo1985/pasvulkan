@@ -903,7 +903,7 @@ var Index:TpvSizeInt;
     c:TpvOBJColor;
     AChar:ansichar;
 begin
- AChar:=s[2];
+ AChar:=Upcase(s[2]);
  s:=Trim(Copy(s,3,length(s)));
 
  c.r:=StrToFloat(GetToken(s,' '));
@@ -936,8 +936,8 @@ var Index:TpvSizeInt;
     c:TpvFloat;
     AChar,AChar2:ansichar;
 begin
- AChar:=s[2];
- if (AChar='C') and ((length(s)>3) and (s[3]='R')) then begin
+ AChar:=Upcase(s[2]);
+ if (AChar='C') and ((length(s)>3) and (Upcase(s[3])='R')) then begin
   Delete(s,3,1);
   AChar2:='R';
  end else begin
@@ -986,21 +986,28 @@ end;
 
 procedure TpvOBJModel.ParseTexture(s:TpvRawByteString);
 var Index:TpvSizeInt;
+    t:TpvRawByteString;
 begin
  Index:=length(Materials);
  if Index>0 then begin
-  GetToken(s,' ');
-  s:=StringReplace(s,'/','\',[rfReplaceAll]);
-// s:='models\'+s;
-  Materials[Index-1].TextureFileName:=S;
-  Materials[Index-1].ExternalTexture:=true;
-{ if LoadTexture(s,Materials[Index-1].Texture) then begin
-   Materials[Index-1].TextureFileName:=S;
-   Materials[Index-1].ExternalTexture:=true;
+  t:=UpperCase(GetToken(s,' '));
+  if t='MAP_PR' then begin
+   // Roughness
+  end else if t='MAP_PM' then begin
+   // Metallic
+  end else if t='MAP_PS' then begin
+   // Sheen
+  end else if t='MAP_KE' then begin
+   // Emissive
+  end else if t='NORM' then begin
+   // Normal map
+  end else if t='MAP_RMA' then begin
+   // Roughness, metalness, ambient occlusion
+  end else if t='MAP_ORM' then begin
+   // Occlusion, Roughness, metalness
   end else begin
-   Materials[Index-1].TextureFileName:='';
-   Materials[Index-1].ExternalTexture:=false;
-  end;}
+   Materials[Index-1].TextureFileName:=S;
+  end;
  end;
 end;
 
@@ -1035,6 +1042,9 @@ begin
         end;
         'E':begin
          CreateMaterial(s);
+        end;
+        'O':begin // norm
+         ParseTexture(s);
         end;
        end;
       end;
