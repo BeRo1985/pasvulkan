@@ -7,4 +7,5 @@ wc -l *.pas *.inc *.dpr ../externals/kraft/src/kraft.pas \
                         ../externals/pasjson/src/PasJSON.pas \
                         ../externals/pasmp/src/PasMP.pas \
                         ../externals/pucu/src/PUCU.pas \
+                        ../externals/poca/src/POCA.pas \
                         ../externals/rnl/src/RNL.pas
