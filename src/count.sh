@@ -23,7 +23,6 @@ wc -l *.pas *.inc *.dpr ../externals/kraft/src/kraft.pas \
                         ./assets/shaders/scene3d/*.tesc \
                         ./assets/shaders/scene3d/*.tese \
                         ./assets/shaders/scene3d/*.comp \
-                        ./assets/shaders/scene3d/*.cpp \
                         ./assets/shaders/scene3d/*.c \
                         ./assets/shaders/scene3d/*.poca \
                         ./assets/shaders/scene3d/compileshaders.bat \
