@@ -66,7 +66,9 @@ interface
 uses SysUtils,Classes,Math,PasJSON,PasVulkan.Types,PasVulkan.Math,PasVulkan.Collections,
      PasGLTF,PasDblStrUtils;
 
-type PpvOBJColor=^TpvOBJColor;
+type EpvOBJModel=class(Exception);
+     
+     PpvOBJColor=^TpvOBJColor;
      TpvOBJColor=TpvVector3;
 
      PpvOBJVector3=^TpvOBJVector3;
@@ -207,7 +209,7 @@ type PpvOBJColor=^TpvOBJColor;
       public
        MaterialIndex,VertexCount,NormalCount,TangentCount,BitangentCount,TexCoordCount,
        GroupCount,MaterialCount,CurrentGroup:TpvSizeInt;
-       Name,MaterialFile:TpvRawByteString;
+       Name,Path,MaterialFile:TpvRawByteString;
        Vertices:array of TpvOBJVector3;
        Normals:array of TpvOBJVector3;
        Tangents:array of TpvOBJVector3;
@@ -223,10 +225,13 @@ type PpvOBJColor=^TpvOBJColor;
        CalculateNormals:boolean;
        constructor Create;
        destructor Destroy; override;
+       function LoadFromStream(Stream:TStream;const FileName:TpvRawByteString=''):boolean;
        function LoadModel(FileName:TpvRawByteString):boolean;
      end;
 
 implementation
+
+uses PasVulkan.Application;
 
 const MemoryThreshold=16;
 
@@ -234,6 +239,25 @@ const MemoryThreshold=16;
       HashMask=65535;
 
       EPSILON=1e-8;
+
+procedure FillStreamWithFile(Stream:TMemoryStream;const FileName:TpvRawByteString);
+var TemporaryStream:TStream;
+begin
+ if FileExists(FileName) then begin
+  Stream.LoadFromFile(FileName);
+ end else if assigned(pvApplication) and pvApplication.Assets.ExistAsset(FileName) then begin
+  Stream.Clear;
+  TemporaryStream:=pvApplication.Assets.GetAssetStream(FileName);
+  try
+   Stream.CopyFrom(TemporaryStream,0);
+  finally
+   TemporaryStream.Free;
+  end;
+ end else begin
+  Stream.Clear;
+  //raise EpvOBJModel.Create('File not found "'+FileName+'"');
+ end; 
+end; 
 
 function NextPowerOfTwo(i,MinThreshold:TpvInt32):TpvInt32;
 begin
@@ -582,6 +606,7 @@ end;
 procedure TpvOBJModel.Clear;
 begin
  Name:='';
+ Path:='';
  MaterialFile:='';
  SetLength(Vertices,0);
  SetLength(Normals,0);
@@ -1031,7 +1056,7 @@ begin
 end;
 
 function TpvOBJModel.LoadMaterials(s:TpvRawByteString):boolean;
-var FileStream:TMemoryStream;
+var Stream:TMemoryStream;
 begin
  result:=false;
  s:=Trim(s);
@@ -1039,49 +1064,47 @@ begin
   exit;
  end;
  Delete(s,1,pos(' ',s));
- S:=Trim(S);
- if FileExists(s) then begin
-  FileStream:=TMemoryStream.Create;
-  try
-   FileStream.LoadFromFile(s);
-   FileStream.Seek(0,soFromBeginning);
-   while FileStream.Position<FileStream.Size do begin
-    s:=Trim(ReadLine(FileStream));
-    if (length(s)<>0) and (s[1]<>'#') then begin
-     s[1]:=upcase(s[1]);
-     case s[1] of
-      'N':begin
-       if length(s)>1 then begin
-        s[2]:=upcase(s[2]);
-        case s[2] of
-         'S':begin
-          ParseShininess(s);
-         end;
-         'E':begin
-          CreateMaterial(s);
-         end;
-         'O':begin // norm
-          ParseTexture(s);
-         end;
+ MaterialFile:=Path+'/'+Trim(S);
+ Stream:=TMemoryStream.Create;
+ try
+  FillStreamWithFile(Stream,MaterialFile);
+  Stream.Seek(0,soFromBeginning);
+  while Stream.Position<Stream.Size do begin
+   s:=Trim(ReadLine(Stream));
+   if (length(s)<>0) and (s[1]<>'#') then begin
+    s[1]:=upcase(s[1]);
+    case s[1] of
+     'N':begin
+      if length(s)>1 then begin
+       s[2]:=upcase(s[2]);
+       case s[2] of
+        'S':begin
+         ParseShininess(s);
+        end;
+        'E':begin
+         CreateMaterial(s);
+        end;
+        'O':begin // norm
+         ParseTexture(s);
         end;
        end;
       end;
-      'K':begin
-       ParseMaterial(s);
-      end;
-      'P':begin
-       ParsePBRMaterial(s);
-      end;
-      'M':begin
-       ParseTexture(s);
-      end;
+     end;
+     'K':begin
+      ParseMaterial(s);
+     end;
+     'P':begin
+      ParsePBRMaterial(s);
+     end;
+     'M':begin
+      ParseTexture(s);
      end;
     end;
    end;
-   result:=true;
-  finally
-   FreeAndNil(FileStream);
-  end; 
+  end;
+  result:=true;
+ finally
+  FreeAndNil(Stream);
  end;
 end;
 
@@ -1396,16 +1419,15 @@ begin
  end;
 end;
 
-function TpvOBJModel.LoadModel(FileName:TpvRawByteString):boolean;
-var FileStream:TMemoryStream;
-    s:TpvRawByteString;
+function TpvOBJModel.LoadFromStream(Stream:TStream;const FileName:TpvRawByteString=''):boolean;
+var s:TpvRawByteString;
     ObjectIndex,Index,SubIndex,SubSubIndex:TpvSizeInt;
 begin
  result:=false;
  Clear;
  MaterialIndex:=-1;
  Name:=ChangeFileExt(FileName,'');
- if FileExists(FileName) then begin
+ if assigned(Stream) then begin
   if GroupCount>=length(Groups) then begin
    SetLength(Groups,NextPowerOfTwo(GroupCount+1,MemoryThreshold));
   end;
@@ -1415,82 +1437,93 @@ begin
   FillChar(Groups[Index],sizeof(TpvOBJGroup),#0);
   Groups[Index].Name:='';
   Groups[Index].Draw:=true;
-  FileStream:=TMemoryStream.Create;
-  try
-   FileStream.LoadFromFile(FileName);
-   FileStream.Seek(0,soBeginning);
-   while FileStream.Position<FileStream.Size do begin
-    s:=Trim(ReadLine(FileStream));
-    if (length(s)<>0) and (s[1]<>'#') then begin
-     s[1]:=upcase(s[1]);
-     case s[1] of 
-      'G':begin
-       if (length(Groups[CurrentGroup].Name)=0) and (length(Groups[CurrentGroup].Objects)=0) then begin
-        Index:=CurrentGroup;
-       end else begin
-        if GroupCount>=length(Groups) then begin
-         SetLength(Groups,NextPowerOfTwo(GroupCount+1,MemoryThreshold));
-        end;
-        Index:=GroupCount;
-        CurrentGroup:=GroupCount;
-        inc(GroupCount);
+  Stream.Seek(0,soBeginning);
+  while Stream.Position<Stream.Size do begin
+   s:=Trim(ReadLine(Stream));
+   if (length(s)<>0) and (s[1]<>'#') then begin
+    s[1]:=upcase(s[1]);
+    case s[1] of 
+     'G':begin
+      if (length(Groups[CurrentGroup].Name)=0) and (length(Groups[CurrentGroup].Objects)=0) then begin
+       Index:=CurrentGroup;
+      end else begin
+       if GroupCount>=length(Groups) then begin
+        SetLength(Groups,NextPowerOfTwo(GroupCount+1,MemoryThreshold));
        end;
-       FillChar(Groups[Index],sizeof(TpvOBJGroup),#0);
-       Groups[Index].Name:=Trim(Copy(s,2,length(s)));
-       Groups[Index].Draw:=true;
+       Index:=GroupCount;
+       CurrentGroup:=GroupCount;
+       inc(GroupCount);
       end;
-      'O':begin
-       if Groups[Index].CountObjects>=length(Groups[Index].Objects) then begin
-        SetLength(Groups[Index].Objects,NextPowerOfTwo(Groups[Index].CountObjects+1,MemoryThreshold));
-       end;
-       ObjectIndex:=Groups[Index].CountObjects;
-       inc(Groups[Index].CountObjects);
-       FillChar(Groups[Index].Objects[ObjectIndex],sizeof(TpvOBJObject),#0);
-       Groups[Index].Objects[ObjectIndex].Name:=Trim(Copy(s,2,length(s)));
-       Groups[Index].Objects[ObjectIndex].Draw:=true;
+      FillChar(Groups[Index],sizeof(TpvOBJGroup),#0);
+      Groups[Index].Name:=Trim(Copy(s,2,length(s)));
+      Groups[Index].Draw:=true;
+     end;
+     'O':begin
+      if Groups[Index].CountObjects>=length(Groups[Index].Objects) then begin
+       SetLength(Groups[Index].Objects,NextPowerOfTwo(Groups[Index].CountObjects+1,MemoryThreshold));
       end;
-      'V':begin
-       ParseVertices(s);
+      ObjectIndex:=Groups[Index].CountObjects;
+      inc(Groups[Index].CountObjects);
+      FillChar(Groups[Index].Objects[ObjectIndex],sizeof(TpvOBJObject),#0);
+      Groups[Index].Objects[ObjectIndex].Name:=Trim(Copy(s,2,length(s)));
+      Groups[Index].Objects[ObjectIndex].Draw:=true;
+     end;
+     'V':begin
+      ParseVertices(s);
+     end;
+     'F':begin
+      ParseFaces(s);
+     end;
+     'L':begin
+      ParseLines(s);
+     end;
+     'U':begin
+      if Copy(uppercase(s),1,6)='USEMTL' then begin
+       GetMaterialName(s);
       end;
-      'F':begin
-       ParseFaces(s);
-      end;
-      'L':begin
-       ParseLines(s);
-      end;
-      'U':begin
-       if Copy(uppercase(s),1,6)='USEMTL' then begin
-        GetMaterialName(s);
-       end;
-      end;
-      'M':begin
-       if Copy(uppercase(s),1,6)='MTLLIB' then begin
-        LoadMaterials(s);
-       end;
+     end;
+     'M':begin
+      if Copy(uppercase(s),1,6)='MTLLIB' then begin
+       LoadMaterials(s);
       end;
      end;
     end;
    end;
-   SetLength(Groups,GroupCount);
-   for Index:=0 to length(Groups)-1 do begin
-    SetLength(Groups[Index].Objects,Groups[Index].CountObjects);
-    for SubIndex:=0 to length(Groups[Index].Objects)-1 do begin
-     SetLength(Groups[Index].Objects[SubIndex].Parts,Groups[Index].Objects[SubIndex].CountParts);
-     for SubSubIndex:=0 to length(Groups[Index].Objects[SubIndex].Parts)-1 do begin
-      SetLength(Groups[Index].Objects[SubIndex].Parts[SubSubIndex].Faces,Groups[Index].Objects[SubIndex].Parts[SubSubIndex].CountFaces);
-      SetLength(Groups[Index].Objects[SubIndex].Parts[SubSubIndex].Lines,Groups[Index].Objects[SubIndex].Parts[SubSubIndex].CountLines);
-     end;
+  end;
+  SetLength(Groups,GroupCount);
+  for Index:=0 to length(Groups)-1 do begin
+   SetLength(Groups[Index].Objects,Groups[Index].CountObjects);
+   for SubIndex:=0 to length(Groups[Index].Objects)-1 do begin
+    SetLength(Groups[Index].Objects[SubIndex].Parts,Groups[Index].Objects[SubIndex].CountParts);
+    for SubSubIndex:=0 to length(Groups[Index].Objects[SubIndex].Parts)-1 do begin
+     SetLength(Groups[Index].Objects[SubIndex].Parts[SubSubIndex].Faces,Groups[Index].Objects[SubIndex].Parts[SubSubIndex].CountFaces);
+     SetLength(Groups[Index].Objects[SubIndex].Parts[SubSubIndex].Lines,Groups[Index].Objects[SubIndex].Parts[SubSubIndex].CountLines);
     end;
    end;
-   SetLength(Vertices,VertexCount);
-   SetLength(Normals,NormalCount);
-   SetLength(TexCoords,TexCoordCount);
-   FixUpVerticesNormals;
-   FixUpParts;
-   result:=true;
-  finally
-   FreeAndNil(FileStream);
-  end; 
+  end;
+  SetLength(Vertices,VertexCount);
+  SetLength(Normals,NormalCount);
+  SetLength(TexCoords,TexCoordCount);
+  FixUpVerticesNormals;
+  FixUpParts;
+  result:=true;
+ end;
+end;
+
+function TpvOBJModel.LoadModel(FileName:TpvRawByteString):boolean;
+var Stream:TMemoryStream;
+begin
+ Clear;
+ MaterialIndex:=-1;
+ Name:=ChangeFileExt(FileName,'');
+ Path:=ExtractFilePath(FileName);
+ Stream:=TMemoryStream.Create;
+ try
+  FillStreamWithFile(Stream,FileName);
+  Stream.Seek(0,soBeginning);
+  result:=LoadFromStream(Stream,FileName);
+ finally
+  FreeAndNil(Stream);
  end;
 end;
 
