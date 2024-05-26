@@ -1896,7 +1896,7 @@ type EpvScene3D=class(Exception);
                             destructor Destroy; override;
                             function AddDirectVertex(const aVertex:TpvScene3D.TVertex):TpvSizeInt;
                             function AddDirectIndex(const aIndex:TpvUInt32):TpvSizeInt;
-                            function AddIndirectVertex:TpvScene3D.PVertex;
+                            function AddIndirectVertex(const aIndex:PpvSizeInt=nil):TpvScene3D.PVertex;
                             function AddVertex(const aVertex:TpvScene3D.TVertex):TpvSizeInt;
                             function AddIndex(const aIndex:TpvUInt32):TpvSizeInt;
                             procedure Finish;
@@ -2842,6 +2842,8 @@ type EpvScene3D=class(Exception);
               procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument);
              public
               procedure AssignFromPPM(const aSourceModel:TpvPPM.TModel);
+             public
+              procedure AssignFromOBJ(const aSourceModel:TpvOBJModel);
              public
               function CreateInstance(const aHeadless:Boolean=false):TpvScene3D.TGroup.TInstance;
              public
@@ -10523,12 +10525,17 @@ begin
  inc(fCountIndices);
 end;
 
-function TpvScene3D.TGroup.TMesh.TPrimitive.AddIndirectVertex:TpvScene3D.PVertex;
+function TpvScene3D.TGroup.TMesh.TPrimitive.AddIndirectVertex(const aIndex:PpvSizeInt):TpvScene3D.PVertex;
 begin
  if not assigned(fTemporaryVertices) then begin
   fTemporaryVertices:=TpvScene3D.TGroup.TGroupVertices.Create;
  end;
- result:=Pointer(fTemporaryVertices.AddNew);
+ if assigned(aIndex) then begin
+  aIndex^:=fTemporaryVertices.AddNewIndex;
+  result:=Pointer(@fTemporaryVertices.ItemArray[aIndex^]);
+ end else begin
+  result:=Pointer(fTemporaryVertices.AddNew);
+ end;
 end;
 
 function TpvScene3D.TGroup.TMesh.TPrimitive.AddVertex(const aVertex:TpvScene3D.TVertex):TpvSizeInt;
@@ -15395,10 +15402,199 @@ begin
 
 end;
 
+procedure TpvScene3D.TGroup.AssignFromOBJ(const aSourceModel:TpvOBJModel);
+type TVertexIndexRemapHashMap=TpvHashMap<TpvSizeInt,TpvSizeInt>;
+var GroupIndex,MaterialIndex,ObjectIndex,PartIndex,IndexIndex,VertexIndex,
+    DestVertexIndex:TpvSizeInt;
+    Materials:TpvScene3D.TMaterials;
+    Material:TpvScene3D.TMaterial;
+    OBJMaterial:PpvOBJMaterial;
+    Scene:TpvScene3D.TGroup.TScene;
+    GroupNode:TpvScene3D.TGroup.TNode;
+    ObjectNode:TpvScene3D.TGroup.TNode;
+    PartNode:TpvScene3D.TGroup.TNode;
+    Mesh:TpvScene3D.TGroup.TMesh;
+    MeshPrimitive:TpvScene3D.TGroup.TMesh.TPrimitive;
+    MeshVertex:TpvScene3D.PVertex;
+    OBJTriangleVertex:PpvOBJTriangleVertex;
+    Name:TpvUTF8String;
+    DestinationMaterial:TpvScene3D.TMaterial;
+    VertexIndexRemapHashMap:TVertexIndexRemapHashMap;
+begin
+
+ Name:=#0+IntToStr(TpvPtrUInt(self))+'_'+IntToStr(TpvPtrUInt(aSourceModel));
+
+ Materials:=TpvScene3D.TMaterials.Create(false);
+ try
+
+  // TODO: Complete this
+  for MaterialIndex:=0 to length(aSourceModel.Materials)-1 do begin
+   Material:=TpvScene3D.TMaterial.Create(ResourceManager,fSceneInstance,nil);
+   try
+    Material.AssignFromEmpty;
+    Material.fData.ShadingModel:=TpvScene3D.TMaterial.TShadingModel.PBRMetallicRoughness;
+    Material.fData.AlphaMode:=TpvScene3D.TMaterial.TAlphaMode.Opaque;
+    Material.fData.DoubleSided:=true;
+    OBJMaterial:=@aSourceModel.Materials[MaterialIndex];
+    Material.fData.PBRMetallicRoughness.BaseColorFactor:=TpvVector4.InlineableCreate(OBJMaterial^.Diffuse,1.0);
+    if OBJMaterial^.PBR then begin
+     Material.fData.PBRMetallicRoughness.MetallicFactor:=OBJMaterial^.Metallic;
+     Material.fData.PBRMetallicRoughness.RoughnessFactor:=OBJMaterial^.Roughness;
+    end else begin
+     Material.fData.PBRMetallicRoughness.MetallicFactor:=0.0;
+     Material.fData.PBRMetallicRoughness.RoughnessFactor:=0.5;
+    end;
+    Material.FillShaderData;
+   finally
+    Materials.Add(Material);
+   end;
+  end;
+
+  Scene:=CreateScene(Name);
+
+  for GroupIndex:=0 to length(aSourceModel.Groups)-1 do begin
+
+   GroupNode:=CreateNode(aSourceModel.Groups[GroupIndex].Name);
+
+   try
+
+    for ObjectIndex:=0 to length(aSourceModel.Groups[GroupIndex].Objects)-1 do begin
+
+     ObjectNode:=CreateNode(aSourceModel.Groups[GroupIndex].Objects[ObjectIndex].Name);
+
+     try
+
+      for PartIndex:=0 to length(aSourceModel.Groups[GroupIndex].Objects[ObjectIndex].Parts)-1 do begin
+
+       if aSourceModel.Groups[GroupIndex].Objects[ObjectIndex].Parts[PartIndex].CountIndices>0 then begin
+
+        MaterialIndex:=aSourceModel.Groups[GroupIndex].Objects[ObjectIndex].Parts[PartIndex].MaterialIndex;
+        if (MaterialIndex>=0) and (MaterialIndex<Materials.Count) then begin
+         DestinationMaterial:=Materials[MaterialIndex];
+        end else begin
+         DestinationMaterial:=fSceneInstance.EmptyMaterial;
+        end;
+
+        PartNode:=CreateNode('');
+        try
+
+         Mesh:=CreateMesh('');
+         try
+
+          MeshPrimitive:=Mesh.CreatePrimitive;
+          try
+
+           MeshPrimitive.MaterialID:=AddMaterial(DestinationMaterial);
+           MeshPrimitive.Material:=DestinationMaterial;
+           MeshPrimitive.PrimitiveTopology:=TpvScene3D.TPrimitiveTopology.Triangles;
+
+           VertexIndexRemapHashMap:=TVertexIndexRemapHashMap.Create(-1);
+           try
+
+            for IndexIndex:=0 to aSourceModel.Groups[GroupIndex].Objects[ObjectIndex].Parts[PartIndex].CountIndices-1 do begin
+
+             VertexIndex:=aSourceModel.Groups[GroupIndex].Objects[ObjectIndex].Parts[PartIndex].Indices[IndexIndex];
+
+             if not VertexIndexRemapHashMap.TryGet(VertexIndex,DestVertexIndex) then begin
+
+              DestVertexIndex:=-1;
+              MeshVertex:=MeshPrimitive.AddIndirectVertex(@DestVertexIndex);
+              VertexIndexRemapHashMap.Add(VertexIndex,DestVertexIndex);
+
+              OBJTriangleVertex:=@aSourceModel.TriangleVertices[VertexIndex];
+
+              MeshVertex:=MeshPrimitive.AddIndirectVertex;
+              MeshVertex^.NodeIndex:=0;
+              MeshVertex^.MaterialID:=0;
+              MeshVertex^.Flags:=0;
+              MeshVertex^.Position:=OBJTriangleVertex^.Vertex;
+              MeshVertex^.SetTangentSpaceVectors(OBJTriangleVertex^.Tangent,OBJTriangleVertex^.Bitangent,OBJTriangleVertex^.Normal);
+              MeshVertex^.TexCoord0:=OBJTriangleVertex^.TexCoord;
+              MeshVertex^.TexCoord1:=TpvVector2.Origin;
+              MeshVertex^.Color0.r:=1.0;
+              MeshVertex^.Color0.g:=1.0;
+              MeshVertex^.Color0.b:=1.0;
+              MeshVertex^.Color0.a:=1.0;
+              MeshVertex^.MorphTargetVertexBaseIndex:=TpvUInt32($ffffffff);
+              MeshVertex^.JointBlockBaseIndex:=0;
+              MeshVertex^.CountJointBlocks:=0;
+
+             end;
+
+             MeshPrimitive.AddIndex(DestVertexIndex);
+
+            end;
+
+           finally
+            FreeAndNil(VertexIndexRemapHashMap);
+           end;
+
+          finally
+           MeshPrimitive.Finish;
+          end;
+
+         finally
+
+          try
+           Mesh.Finish;
+          finally
+           PartNode.Mesh:=Mesh;
+           ObjectNode.Children.Add(PartNode);
+          end;
+
+         end;
+
+        finally
+
+         try
+          PartNode.Finish;
+         finally
+          ObjectNode.Children.Add(PartNode);
+         end;
+
+        end;
+
+       end;
+
+      end;
+
+     finally
+
+      try
+       GroupNode.Children.Add(ObjectNode);
+      finally
+       ObjectNode.Finish;
+      end; 
+
+     end;
+
+    end;
+
+   finally
+
+    try
+     Scene.Nodes.Add(GroupNode);
+    finally
+     GroupNode.Finish;
+    end;
+
+   end;
+
+  end;
+
+  Finish;
+
+ finally
+  FreeAndNil(Materials);
+ end;
+
+end;
+
 function TpvScene3D.TGroup.BeginLoad(const aStream:TStream):boolean;
 var GLTF:TPasGLTF.TDocument;
     FBX:TpvFBXLoader;
     PPM:TpvPPM.TModel;
+    OBJ:TpvOBJModel;
 begin
  result:=false;
  fSceneInstance.fLoadLock.Acquire;
@@ -15441,6 +15637,16 @@ begin
       finally
        FreeAndNil(PPM);
       end;
+      result:=true;
+     end;
+     TpvScene3D.TFileType.WavefrontOBJ:begin
+      OBJ:=TpvOBJModel.Create;
+      try
+       OBJ.LoadFromStream(aStream);
+       AssignFromOBJ(OBJ);
+      finally
+       FreeAndNil(OBJ);
+      end; 
       result:=true;
      end;
      else begin
