@@ -25437,6 +25437,7 @@ var InstanceIndex,GeometryIndex,CountBLASInstances,CountBLASGeometries,
     Planet:TpvScene3DPlanet;
     PlanetTile:TpvScene3DPlanet.TRaytracingTile;
     PlanetTileLODLevel:TpvScene3DPlanet.TRaytracingTile.TLODLevel;
+    PlanetTileLODLevels:TpvScene3DPlanet.TTileLODLevels;
     MemoryBarrier:TVkMemoryBarrier;
     BufferMemoryBarriers:array[0..1] of TVkBufferMemoryBarrier; 
     BufferCopy:TVkBufferCopy;
@@ -25842,12 +25843,14 @@ begin
         Planet:=TpvScene3DPlanets(fPlanets).Items[PlanetIndex];
         if assigned(Planet) and Planet.Ready then begin
 
+         PlanetTileLODLevels:=Planet.PerInFlightFrameTileLODLevels[aInFlightFrameIndex];
+
          for PlanetTileIndex:=0 to (Planet.TileMapResolution*Planet.TileMapResolution)-1 do begin
 
           PlanetTile:=Planet.RaytracingTiles[PlanetTileIndex];
 
           //for PlanetTileLODLevelIndex:=0 to PlanetTile.LODLevels.Count-1 do
-          PlanetTileLODLevelIndex:=Min(Max(Planet.TileLODLevels[PlanetTileIndex],0),Max(0,PlanetTile.LODLevels.Count-1));
+          PlanetTileLODLevelIndex:=Min(Max(PlanetTileLODLevels.ItemArray[PlanetTileIndex],0),Max(0,PlanetTile.LODLevels.Count-1));
           begin
 
            PlanetTileLODLevel:=PlanetTile.LODLevels[PlanetTileLODLevelIndex];

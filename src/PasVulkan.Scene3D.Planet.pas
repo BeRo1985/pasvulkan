@@ -232,6 +232,7 @@ type TpvScene3DPlanets=class;
               fWaterVisibilityBuffer:TpvVulkanBuffer;
               fTileDirtyMap:TpvScene3DPlanet.TData.TTileDirtyMap;
               fTileExpandedDirtyMap:TpvScene3DPlanet.TData.TTileDirtyMap;
+              fTileLODMapBuffer:TpvVulkanBuffer;
               fTileDirtyMapBuffer:TpvVulkanBuffer;
               fTileExpandedDirtyMapBuffer:TpvVulkanBuffer;
               fTileDirtyQueueBuffer:TpvVulkanBuffer;
@@ -297,6 +298,7 @@ type TpvScene3DPlanets=class;
               property HeightMapImage:TpvScene3DRendererMipmapImage2D read fHeightMapImage;
               property NormalMapImage:TpvScene3DRendererMipmapImage2D read fNormalMapImage;
               property BlendMapImage:TpvScene3DRendererImage2D read fBlendMapImage;
+              property TileLODMapBuffer:TpvVulkanBuffer read fTileLODMapBuffer;
               property TileDirtyMapBuffer:TpvVulkanBuffer read fTileDirtyMapBuffer;
               property TileExpandedDirtyMapBuffer:TpvVulkanBuffer read fTileExpandedDirtyMapBuffer;
               property TileDirtyQueueBuffer:TpvVulkanBuffer read fTileDirtyQueueBuffer;
@@ -1364,6 +1366,8 @@ type TpvScene3DPlanets=class;
             TRendererViewInstanceHashMap=TpvHashMap<TRendererViewInstance.TKey,TRendererViewInstance>;
             { TTileLODLevels }
             TTileLODLevels=TpvDynamicArrayList<TpvUInt32>;
+            { TPerInFlightFrameTileLODLevels }
+            TPerInFlightFrameTileLODLevels=TpvObjectGenericList<TTileLODLevels>;
       private
        fScene3D:TObject;
        fVulkanDevice:TpvVulkanDevice;
@@ -1421,7 +1425,7 @@ type TpvScene3DPlanets=class;
        fTiledMeshBoundingVolumesGeneration:TTiledMeshBoundingVolumesGeneration;
        fTileDirtyExpansion:TTileDirtyExpansion;
        fTileDirtyQueueGeneration:TTileDirtyQueueGeneration;
-       fTileLODLevels:TTileLODLevels;
+       fPerInFlightFrameTileLODLevels:TPerInFlightFrameTileLODLevels;
        fNormalMapGeneration:TNormalMapGeneration;
        fHeightMapMipMapGeneration:THeightMapMipMapGeneration;
        fNormalMapMipMapGeneration:TNormalMapMipMapGeneration;
@@ -1540,7 +1544,7 @@ type TpvScene3DPlanets=class;
        property TiledVisualMeshIndexGroups:TTiledMeshIndexGroups read fTiledVisualMeshIndexGroups;
        property TiledPhysicsMeshIndices:TMeshIndices read fTiledPhysicsMeshIndices;
        property TiledPhysicsMeshIndexGroups:TTiledMeshIndexGroups read fTiledPhysicsMeshIndexGroups;
-       property TileLODLevels:TTileLODLevels read fTileLODLevels;
+       property PerInFlightFrameTileLODLevels:TPerInFlightFrameTileLODLevels read fPerInFlightFrameTileLODLevels;
        property RaytracingTiles:TRaytracingTiles read fRaytracingTiles;
        property RaytracingTileQueue:TRaytracingTiles read fRaytracingTileQueue;
        property RaytracingTileQueues:TRaytracingTileQueues read fRaytracingTileQueues;
@@ -1635,6 +1639,8 @@ begin
  fTileDirtyMap:=nil;
 
  fTileExpandedDirtyMap:=nil;
+
+ fTileLODMapBuffer:=nil;
 
  fTileDirtyMapBuffer:=nil;
 
@@ -1830,6 +1836,25 @@ begin
    if length(fTileExpandedDirtyMap)>0 then begin
     FillChar(fTileExpandedDirtyMap[0],length(fTileExpandedDirtyMap)*SizeOf(TpvUInt32),#0);
    end;
+
+   fTileLODMapBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
+                                             fPlanet.fTileMapResolution*fPlanet.fTileMapResolution*SizeOf(TpvUInt32),
+                                             TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
+                                             fPlanet.fGlobalBufferSharingMode,
+                                             fPlanet.fGlobalBufferQueueFamilyIndices,
+                                             0,
+                                             TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                             0,
+                                             0,
+                                             0,
+                                             0,
+                                             0,
+                                             0,
+                                             [],
+                                             0,
+                                             pvAllocationGroupIDScene3DPlanetStatic
+                                            );
+   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fTileLODMapBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fTileLODMapBuffer');
 
    fTileDirtyMapBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
                                                (((fPlanet.fTileMapResolution*fPlanet.fTileMapResolution)+31) shr 5)*SizeOf(TpvUInt32),
@@ -2248,6 +2273,8 @@ begin
 
  fTileExpandedDirtyMap:=nil;
 
+ FreeAndNil(fTileLODMapBuffer);
+ 
  FreeAndNil(fTileDirtyMapBuffer);
 
  FreeAndNil(fTileExpandedDirtyMapBuffer);
@@ -12597,6 +12624,7 @@ constructor TpvScene3DPlanet.Create(const aScene3D:TObject;
                                     const aTopRadius:TpvFloat);
 var InFlightFrameIndex,Index,Resolution:TpvSizeInt;
 //  ta,tb:TpvHighResolutionTime;
+    TileLODLevels:TTileLODLevels;
 begin
 
  inherited Create;
@@ -12926,9 +12954,16 @@ begin
 
  fRendererViewInstanceHashMap:=TRendererViewInstanceHashMap.Create(nil);
 
- fTileLODLevels:=TTileLODLevels.Create;
- for Index:=0 to (fTileMapResolution*fTileMapResolution)-1 do begin
-  fTileLODLevels.Add(0);
+ fPerInFlightFrameTileLODLevels:=TPerInFlightFrameTileLODLevels.Create(true);
+ for InFlightFrameIndex:=0 to TpvScene3D(fScene3D).CountInFlightFrames-1 do begin
+  TileLODLevels:=TTileLODLevels.Create;
+  try
+   for Index:=0 to (fTileMapResolution*fTileMapResolution)-1 do begin
+    TileLODLevels.Add(0);
+   end;
+  finally
+   fPerInFlightFrameTileLODLevels.Add(TileLODLevels);
+  end;
  end;
 
  if assigned(fVulkanDevice) and TpvScene3D(fScene3D).RaytracingActive then begin
@@ -12997,7 +13032,7 @@ begin
 
  FreeAndNil(fRaytracingLock);
 
- FreeAndNil(fTileLODLevels);
+ FreeAndNil(fPerInFlightFrameTileLODLevels);
 
  fRendererViewInstanceListLock.Acquire;
  try
@@ -14503,6 +14538,8 @@ begin
        RendererInstance.fMinimumLODLevel:=0;//Ceil(Clamp(Log2(Sphere.Center.Length/Sphere.Radius),0.0,Max(0.0,fTileMapBits-1)));
       end;
 //     RendererInstance.fMinimumLODLevel:=2;
+
+//PlanetTile.LODLevels.Count-1
 
      end;
 
