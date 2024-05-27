@@ -1362,6 +1362,8 @@ type TpvScene3DPlanets=class;
             TRendererViewInstances=TpvObjectGenericList<TRendererViewInstance>;
             { TRendererViewInstances }
             TRendererViewInstanceHashMap=TpvHashMap<TRendererViewInstance.TKey,TRendererViewInstance>;
+            { TTileLODLevels }
+            TTileLODLevels=TpvDynamicArrayList<TpvUInt32>;
       private
        fScene3D:TObject;
        fVulkanDevice:TpvVulkanDevice;
@@ -1419,6 +1421,7 @@ type TpvScene3DPlanets=class;
        fTiledMeshBoundingVolumesGeneration:TTiledMeshBoundingVolumesGeneration;
        fTileDirtyExpansion:TTileDirtyExpansion;
        fTileDirtyQueueGeneration:TTileDirtyQueueGeneration;
+       fTileLODLevels:TTileLODLevels;
        fNormalMapGeneration:TNormalMapGeneration;
        fHeightMapMipMapGeneration:THeightMapMipMapGeneration;
        fNormalMapMipMapGeneration:TNormalMapMipMapGeneration;
@@ -1537,6 +1540,7 @@ type TpvScene3DPlanets=class;
        property TiledVisualMeshIndexGroups:TTiledMeshIndexGroups read fTiledVisualMeshIndexGroups;
        property TiledPhysicsMeshIndices:TMeshIndices read fTiledPhysicsMeshIndices;
        property TiledPhysicsMeshIndexGroups:TTiledMeshIndexGroups read fTiledPhysicsMeshIndexGroups;
+       property TileLODLevels:TTileLODLevels read fTileLODLevels;
        property RaytracingTiles:TRaytracingTiles read fRaytracingTiles;
        property RaytracingTileQueue:TRaytracingTiles read fRaytracingTileQueue;
        property RaytracingTileQueues:TRaytracingTileQueues read fRaytracingTileQueues;
@@ -12922,6 +12926,11 @@ begin
 
  fRendererViewInstanceHashMap:=TRendererViewInstanceHashMap.Create(nil);
 
+ fTileLODLevels:=TTileLODLevels.Create;
+ for Index:=0 to (fTileMapResolution*fTileMapResolution)-1 do begin
+  fTileLODLevels.Add(0);
+ end;
+
  if assigned(fVulkanDevice) and TpvScene3D(fScene3D).RaytracingActive then begin
 
   fRaytracingLock:=TPasMPCriticalSection.Create;
@@ -12987,6 +12996,8 @@ begin
  end;
 
  FreeAndNil(fRaytracingLock);
+
+ FreeAndNil(fTileLODLevels);
 
  fRendererViewInstanceListLock.Acquire;
  try

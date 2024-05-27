@@ -25847,7 +25847,7 @@ begin
           PlanetTile:=Planet.RaytracingTiles[PlanetTileIndex];
 
           //for PlanetTileLODLevelIndex:=0 to PlanetTile.LODLevels.Count-1 do
-          PlanetTileLODLevelIndex:=0;
+          PlanetTileLODLevelIndex:=Min(Max(Planet.TileLODLevels[PlanetTileIndex],0),Max(0,PlanetTile.LODLevels.Count-1));
           begin
 
            PlanetTileLODLevel:=PlanetTile.LODLevels[PlanetTileLODLevelIndex];
