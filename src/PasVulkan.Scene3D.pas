@@ -25435,6 +25435,7 @@ var InstanceIndex,GeometryIndex,CountBLASInstances,CountBLASGeometries,
     FrameDoneMask:TPasMPUInt32;
     Planet:TpvScene3DPlanet;
     PlanetTile:TpvScene3DPlanet.TRaytracingTile;
+    PlanetTileLODLevel:TpvScene3DPlanet.TRaytracingTile.TLODLevel;
     MemoryBarrier:TVkMemoryBarrier;
     BufferMemoryBarriers:array[0..1] of TVkBufferMemoryBarrier; 
     BufferCopy:TVkBufferCopy;
@@ -25844,8 +25845,10 @@ begin
 
           PlanetTile:=Planet.RaytracingTiles[PlanetTileIndex];
 
-          Assert(Assigned(PlanetTile.LODLevels[0].BLASInstance));
-          fRaytracingBLASInstances.Add(PlanetTile.LODLevels[0].BLASInstance);
+          PlanetTileLODLevel:=PlanetTile.LODLevels[0];
+
+          Assert(Assigned(PlanetTileLODLevel.BLASInstance));
+          fRaytracingBLASInstances.Add(PlanetTileLODLevel.BLASInstance);
 
           Assert(RaytracingBLASGeometryInfoOffsetBufferItemIndex<length(fRaytracingBLASGeometryInfoOffsetBufferItems));
           fRaytracingBLASGeometryInfoOffsetBufferItems[RaytracingBLASGeometryInfoOffsetBufferItemIndex]:=RaytracingBLASGeometryInfoBufferItemIndex;
@@ -26011,14 +26014,16 @@ begin
 
         for PlanetTile in Planet.RaytracingTileQueue do begin
 
-         if assigned(PlanetTile.LODLevels[0].fBLASGeometry) and assigned(PlanetTile.LODLevels[0].fBLAS) then begin
+         PlanetTileLODLevel:=PlanetTile.LODLevels[0];
 
-          PlanetTile.LODLevels[0].ScratchOffset:=ScratchPassSize;
-          PlanetTile.LODLevels[0].ScratchPass:=ScratchPass;
-          if PlanetTile.LODLevels[0].fBLAS.BuildSizesInfo.buildScratchSize<PlanetTile.LODLevels[0].fBLAS.BuildSizesInfo.updateScratchSize then begin
-           inc(ScratchPassSize,PlanetTile.LODLevels[0].fBLAS.BuildSizesInfo.updateScratchSize); // Update scratch size is bigger than build scratch size
+         if assigned(PlanetTileLODLevel.fBLASGeometry) and assigned(PlanetTileLODLevel.fBLAS) then begin
+
+          PlanetTileLODLevel.ScratchOffset:=ScratchPassSize;
+          PlanetTileLODLevel.ScratchPass:=ScratchPass;
+          if PlanetTileLODLevel.fBLAS.BuildSizesInfo.buildScratchSize<PlanetTileLODLevel.fBLAS.BuildSizesInfo.updateScratchSize then begin
+           inc(ScratchPassSize,PlanetTileLODLevel.fBLAS.BuildSizesInfo.updateScratchSize); // Update scratch size is bigger than build scratch size
           end else begin
-           inc(ScratchPassSize,PlanetTile.LODLevels[0].fBLAS.BuildSizesInfo.buildScratchSize); // Build scratch size is bigger than update scratch size
+           inc(ScratchPassSize,PlanetTileLODLevel.fBLAS.BuildSizesInfo.buildScratchSize); // Build scratch size is bigger than update scratch size
           end;
           if ScratchSize<ScratchPassSize then begin
            ScratchSize:=ScratchPassSize;
@@ -26142,22 +26147,24 @@ begin
 
         for PlanetTile in Planet.RaytracingTileQueue do begin
 
-         if assigned(PlanetTile.LODLevels[0].fBLASGeometry) and assigned(PlanetTile.LODLevels[0].fBLAS) then begin
+         PlanetTileLODLevel:=PlanetTile.LODLevels[0];
 
-          if ScratchPass<>PlanetTile.LODLevels[0].ScratchPass then begin
+         if assigned(PlanetTileLODLevel.fBLASGeometry) and assigned(PlanetTileLODLevel.fBLAS) then begin
+
+          if ScratchPass<>PlanetTileLODLevel.ScratchPass then begin
            if not fRaytracingAccelerationStructureBuildQueue.Empty then begin
             fRaytracingAccelerationStructureBuildQueue.Execute(aCommandBuffer);
             TpvRaytracingAccelerationStructure.MemoryBarrier(aCommandBuffer);
             fRaytracingAccelerationStructureBuildQueue.Clear;
            end;
-           ScratchPass:=PlanetTile.LODLevels[0].fScratchPass;
+           ScratchPass:=PlanetTileLODLevel.fScratchPass;
           end;
-          PlanetTile.LODLevels[0].fBLAS.Build(aCommandBuffer,
-                                              fRaytracingBLASScratchBuffer,
-                                              PlanetTile.LODLevels[0].fScratchOffset,
-                                              false,
-                                              nil,
-                                              fRaytracingAccelerationStructureBuildQueue);
+          PlanetTileLODLevel.fBLAS.Build(aCommandBuffer,
+                                         fRaytracingBLASScratchBuffer,
+                                         PlanetTile.LODLevels[0].fScratchOffset,
+                                         false,
+                                         nil,
+                                         fRaytracingAccelerationStructureBuildQueue);
 
          end;
 
