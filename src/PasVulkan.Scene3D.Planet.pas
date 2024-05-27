@@ -919,6 +919,7 @@ type TpvScene3DPlanets=class;
                      fPlanet:TpvScene3DPlanet;
                      fLODIndex:TpvSizeInt;
                      fTileIndex:TpvSizeInt;
+                     fRaytracingBLASGeometryInfoBufferItemIndex:TpvSizeInt;
                      fRaytracingTile:TRaytracingTile;
                      fBLASGeometry:TpvRaytracingBottomLevelAccelerationStructureGeometry;
                      fBLAS:TpvRaytracingBottomLevelAccelerationStructure;
@@ -935,6 +936,8 @@ type TpvScene3DPlanets=class;
                      function CheckAndUpdateGeneration(const aInFlightFrameIndex:TpvSizeInt):Boolean;
                      function Update(const aInFlightFrameIndex:TpvSizeInt):Boolean;
                     public
+                     property TileIndex:TpvSizeInt read fTileIndex;
+                     property RaytracingBLASGeometryInfoBufferItemIndex:TpvSizeInt read fRaytracingBLASGeometryInfoBufferItemIndex write fRaytracingBLASGeometryInfoBufferItemIndex;
                      property BLASGeometry:TpvRaytracingBottomLevelAccelerationStructureGeometry read fBLASGeometry;
                      property BLAS:TpvRaytracingBottomLevelAccelerationStructure read fBLAS;
                      property BLASScratchSize:TVkDeviceSize read fBLASScratchSize;
@@ -8388,6 +8391,8 @@ begin
 
  fTileIndex:=fRaytracingTile.fTileIndex+(fLODIndex*fPlanet.fTileMapResolution*fPlanet.fTileMapResolution);
 
+ fRaytracingBLASGeometryInfoBufferItemIndex:=-1;
+
  fBLASGeometry:=nil;
 
  fBLAS:=nil;
@@ -8395,7 +8400,6 @@ begin
  fBLASBuffer:=nil;
 
  fBLASInstance:=nil;
-
 
 end;
 

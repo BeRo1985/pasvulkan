@@ -3035,7 +3035,7 @@ begin
 
  if Renderer.GPUCulling and Renderer.GPUShadowCulling then begin
 
-  TpvScene3DRendererInstancePasses(fPasses).fCascadedShadowMapMeshCullPass0ComputePass:=TpvScene3DRendererPassesMeshCullPass0ComputePass.Create(fFrameGraph,self,TpvScene3DRendererCullRenderPass.CascadedShadowMap);
+  TpvScene3DRendererInstancePasses(fPasses).fCascadedShadowMapMeshCullPass0ComputePass:=TpvScene3DRendererPassesMeshCullPass0ComputePass.Create(fFrameGraph,self,TpvScene3DRendererCullRenderPass.CascadedShadowMap) ;
 { TpvScene3DRendererInstancePasses(fPasses).fCascadedShadowMapMeshCullPass0ComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fMeshComputePass);
   if assigned(TpvScene3DRendererInstancePasses(fPasses).fRaytracingBuildUpdatePass) then begin
    TpvScene3DRendererInstancePasses(fPasses).fCascadedShadowMapMeshCullPass0ComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fRaytracingBuildUpdatePass);

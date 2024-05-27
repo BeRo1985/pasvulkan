@@ -25423,7 +25423,7 @@ var InstanceIndex,GeometryIndex,CountBLASInstances,CountBLASGeometries,
     RaytracingBLASGeometryInfoOffsetBufferItemIndex,
     RaytracingGroupInstanceNodeIndex,
     PlanetIndex,CountPlanetTiles,PlanetTileIndex,
-    PlanetTileLODLevelIndex,Count:TpvSizeInt;
+    PlanetTileLODLevelIndex,FirstIndex,Count:TpvSizeInt;
     MustWaitForPreviousFrame,BLASListChanged,MustUpdateTLAS,MustHandlePlanets,
     UseEmptyBLASInstance,MustTLASUpdate:Boolean;
     RaytracingGroupInstanceNodeQueueItem:TRaytracingGroupInstanceNodeQueueItem;
@@ -25863,10 +25863,11 @@ begin
            inc(RaytracingBLASGeometryInfoOffsetBufferItemIndex);
 
            Assert(RaytracingBLASGeometryInfoBufferItemIndex<length(fRaytracingBLASGeometryInfoBufferItems));
+           PlanetTile.LODLevels[0].RaytracingBLASGeometryInfoBufferItemIndex:=RaytracingBLASGeometryInfoBufferItemIndex;
            fRaytracingBLASGeometryInfoBufferItems[RaytracingBLASGeometryInfoBufferItemIndex]:=TpvRaytracingBLASGeometryInfoBufferItem.Create(TpvRaytracingBLASGeometryInfoBufferItem.TypePlanet,
                                                                                                                                              PlanetIndex,
                                                                                                                                              0,
-                                                                                                                                             Planet.TiledVisualMeshIndexGroups[PlanetTileIndex].FirstIndex);
+                                                                                                                                             Planet.TiledVisualMeshIndexGroups[PlanetTileLODLevel.TileIndex].FirstIndex);
            inc(RaytracingBLASGeometryInfoBufferItemIndex);
 
           end;
@@ -25999,6 +26000,55 @@ begin
                                          0,
                                          length(fRaytracingBLASGeometryInfoBufferItems)*SizeOf(TpvRaytracingBLASGeometryInfoBufferItem));
      end;
+
+    end else begin
+
+     if fRaytracingCountPlanetTiles>0 then begin
+
+      TpvScene3DPlanets(fPlanets).Lock.AcquireRead;
+      try
+
+       for PlanetIndex:=0 to TpvScene3DPlanets(fPlanets).Count-1 do begin
+
+        Planet:=TpvScene3DPlanets(fPlanets).Items[PlanetIndex];
+        if assigned(Planet) and Planet.Ready then begin
+
+         PlanetTileLODLevels:=Planet.PerInFlightFrameTileLODLevels[aInFlightFrameIndex];
+
+         for PlanetTileIndex:=0 to (Planet.TileMapResolution*Planet.TileMapResolution)-1 do begin
+
+          PlanetTile:=Planet.RaytracingTiles[PlanetTileIndex];
+
+          //for PlanetTileLODLevelIndex:=0 to PlanetTile.LODLevels.Count-1 do
+          PlanetTileLODLevelIndex:=Min(Max(PlanetTileLODLevels.ItemArray[PlanetTileIndex],0),Max(0,PlanetTile.LODLevels.Count-1));
+          begin
+
+           PlanetTileLODLevel:=PlanetTile.LODLevels[PlanetTileLODLevelIndex];
+
+           Assert(Assigned(PlanetTileLODLevel.BLASInstance));
+
+           RaytracingBLASGeometryInfoBufferItemIndex:=PlanetTile.LODLevels[0].RaytracingBLASGeometryInfoBufferItemIndex;
+           if RaytracingBLASGeometryInfoBufferItemIndex>=0 then begin
+            FirstIndex:=Planet.TiledVisualMeshIndexGroups[PlanetTileLODLevel.TileIndex].FirstIndex;
+            if fRaytracingBLASGeometryInfoBufferItems[RaytracingBLASGeometryInfoBufferItemIndex].IndexOffset<>FirstIndex then begin
+             fRaytracingBLASGeometryInfoBufferItems[RaytracingBLASGeometryInfoBufferItemIndex].IndexOffset:=FirstIndex;
+             MustUpdateTLAS:=true;
+            end;
+           end;
+
+          end;
+
+         end;
+
+        end;
+
+       end;
+
+      finally
+       TpvScene3DPlanets(fPlanets).Lock.ReleaseRead;
+      end;
+
+     end;//}
 
     end;
 
