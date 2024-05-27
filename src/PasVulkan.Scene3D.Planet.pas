@@ -1837,24 +1837,7 @@ begin
     FillChar(fTileExpandedDirtyMap[0],length(fTileExpandedDirtyMap)*SizeOf(TpvUInt32),#0);
    end;
 
-   fTileLODMapBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
-                                             fPlanet.fTileMapResolution*fPlanet.fTileMapResolution*SizeOf(TpvUInt32),
-                                             TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
-                                             fPlanet.fGlobalBufferSharingMode,
-                                             fPlanet.fGlobalBufferQueueFamilyIndices,
-                                             0,
-                                             TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
-                                             0,
-                                             0,
-                                             0,
-                                             0,
-                                             0,
-                                             0,
-                                             [],
-                                             0,
-                                             pvAllocationGroupIDScene3DPlanetStatic
-                                            );
-   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fTileLODMapBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fTileLODMapBuffer');
+   fTileLODMapBuffer:=nil;
 
    fTileDirtyMapBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
                                                (((fPlanet.fTileMapResolution*fPlanet.fTileMapResolution)+31) shr 5)*SizeOf(TpvUInt32),
@@ -1987,6 +1970,27 @@ begin
                                                              pvAllocationGroupIDScene3DPlanetStatic
                                                             );
    fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fTiledVisualMeshIndexGroupsBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.MeshIndexGroupsBuffer['+IntToStr(fInFlightFrameIndex)+']');
+
+  end else begin
+
+   fTileLODMapBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
+                                             fPlanet.fTileMapResolution*fPlanet.fTileMapResolution*SizeOf(TpvUInt32),
+                                             TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
+                                             fPlanet.fGlobalBufferSharingMode,
+                                             fPlanet.fGlobalBufferQueueFamilyIndices,
+                                             0,
+                                             TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                             0,
+                                             0,
+                                             0,
+                                             0,
+                                             0,
+                                             0,
+                                             [TpvVulkanBufferFlag.PersistentMappedIfPossibe],
+                                             0,
+                                             pvAllocationGroupIDScene3DPlanetStatic
+                                            );
+   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fTileLODMapBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fTileLODMapBuffer');
 
   end;
 
@@ -12924,6 +12928,14 @@ begin
                                                             [fPlanetDataVulkanBuffers[InFlightFrameIndex].DescriptorBufferInfo],
                                                             [],
                                                             false);
+   fDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(2,
+                                                            0,
+                                                            1,
+                                                            TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                            [],
+                                                            [InFlightFrameDataList[InFlightFrameIndex].fTileLODMapBuffer.DescriptorBufferInfo],
+                                                            [],
+                                                            false);
    fDescriptorSets[InFlightFrameIndex].Flush;
 
   end;
@@ -13707,6 +13719,14 @@ begin
                    [],
                    0);
 
+ // Planet LOD map
+ result.AddBinding(2,
+                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                   1,
+                   ShaderStageFlags,
+                   [],
+                   0);
+
  result.Initialize;
 
  aVulkanDevice.DebugUtils.SetObjectName(result.Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT,'TpvScene3DPlanet.PlanetDescriptorSetLayout');
@@ -13719,7 +13739,7 @@ begin
                                         TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
                                         aCountInFlightFrames);
  result.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),5*aCountInFlightFrames);
- result.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),3*aCountInFlightFrames);
+ result.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),2*aCountInFlightFrames);
  result.Initialize;
  aVulkanDevice.DebugUtils.SetObjectName(result.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'TpvScene3DPlanet.PlanetDescriptorPool');
 end;
@@ -14623,6 +14643,14 @@ begin
                                       fPlanetDataVulkanBuffers[aInFlightFrameIndex],
                                       0,
                                       SizeOf(TpvScene3DPlanet.TPlanetData));
+
+   fVulkanDevice.MemoryStaging.Upload(fVulkanUniversalQueue,
+                                      fVulkanUniversalCommandBuffer,
+                                      fVulkanUniversalFence,
+                                      fPerInFlightFrameTileLODLevels[aInFlightFrameIndex].ItemArray[0],
+                                      InFlightFrameData.fTileLODMapBuffer,
+                                      0,
+                                      InFlightFrameData.fTileLODMapBuffer.Size);
 
   end;
 
