@@ -12370,6 +12370,15 @@ begin
                                                                       [],
                                                                       false);
 
+   fPlanetCullDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(7,
+                                                                      0,
+                                                                      1,
+                                                                      TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                                      [],
+                                                                      [fPlanet.fInFlightFrameDataList[InFlightFrameIndex].fTileLODMapBuffer.DescriptorBufferInfo],
+                                                                      [],
+                                                                      false);
+
    fPlanetCullDescriptorSets[InFlightFrameIndex].Flush;
 
    fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fPlanetCullDescriptorSets[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET,'TpvScene3DPlanet.TRendererViewInstance.fPlanetCullDescriptorSets['+IntToStr(InFlightFrameIndex)+']');
@@ -12926,14 +12935,6 @@ begin
                                                             TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
                                                             [],
                                                             [fPlanetDataVulkanBuffers[InFlightFrameIndex].DescriptorBufferInfo],
-                                                            [],
-                                                            false);
-   fDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(2,
-                                                            0,
-                                                            1,
-                                                            TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
-                                                            [],
-                                                            [InFlightFrameDataList[InFlightFrameIndex].fTileLODMapBuffer.DescriptorBufferInfo],
                                                             [],
                                                             false);
    fDescriptorSets[InFlightFrameIndex].Flush;
@@ -13719,14 +13720,6 @@ begin
                    [],
                    0);
 
- // Planet LOD map
- result.AddBinding(2,
-                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
-                   1,
-                   ShaderStageFlags,
-                   [],
-                   0);
-
  result.Initialize;
 
  aVulkanDevice.DebugUtils.SetObjectName(result.Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT,'TpvScene3DPlanet.PlanetDescriptorSetLayout');
@@ -13739,7 +13732,7 @@ begin
                                         TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
                                         aCountInFlightFrames);
  result.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),5*aCountInFlightFrames);
- result.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),2*aCountInFlightFrames);
+ result.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),1*aCountInFlightFrames);
  result.Initialize;
  aVulkanDevice.DebugUtils.SetObjectName(result.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'TpvScene3DPlanet.PlanetDescriptorPool');
 end;
@@ -13789,6 +13782,12 @@ begin
                    TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                    [],
                    0);
+ result.AddBinding(7,
+                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                   1,
+                   TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                   [],
+                   0);
  result.Initialize;
  aVulkanDevice.DebugUtils.SetObjectName(result.Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT,'TpvScene3DPlanet.PlanetCullDescriptorSetLayout');
 end;
@@ -13798,7 +13797,7 @@ begin
  result:=TpvVulkanDescriptorPool.Create(aVulkanDevice,
                                         TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
                                         aCountInFlightFrames);
- result.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),7*aCountInFlightFrames);
+ result.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),8*aCountInFlightFrames);
  result.Initialize;
  aVulkanDevice.DebugUtils.SetObjectName(result.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'TpvScene3DPlanet.PlanetCullDescriptorPool');
 end;
