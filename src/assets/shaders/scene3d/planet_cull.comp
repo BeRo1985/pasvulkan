@@ -85,6 +85,10 @@ layout(set = 1, binding = 6, std430) buffer VisibleTileList {
   uint data[]; // first item = count of visible tiles, then after index 2 the tile indices follow, since the first three items are indirect compute dispatch arguments
 } visibleTileList;
 
+layout(set = 1, binding = 7, std430) buffer TileLODMap {
+  uint data[]; // tile map size * 4 bytes, each 4 bytes for a single tile LOD level as 32-bit unsigned integer
+} tileLODMap;
+
 #include "frustum.glsl"
 
 #include "aabb.glsl"
@@ -327,7 +331,9 @@ void main(){
 
 #else  
 
-      const uint lod = min(pushConstants.minimumLODLevel, max(1u, countLODLevels) - 1u);
+//    const uint lod = min(pushConstants.minimumLODLevel, max(1u, countLODLevels) - 1u);      
+      
+      const uint lod = min(max(tileLODMap.data[tileMapIndex], pushConstants.minimumLODLevel), max(1u, countLODLevels) - 1u);
 
 #endif
 
