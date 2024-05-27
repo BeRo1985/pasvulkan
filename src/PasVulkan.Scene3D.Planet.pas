@@ -14584,7 +14584,7 @@ begin
        if Distance<1.0 then begin
         LODLevel:=0;
        end else begin
-        LODLevel:=Min(Max(Ceil(Clamp(Log2(Distance),0.0,Max(0.0,fTileMapBits-1))),0),CountVisualMeshLODLevels-1);
+        LODLevel:=Min(Max(Ceil(Clamp(Log2(Distance/Sphere.Radius),0.0,Max(0.0,fTileMapBits-1))),0),CountVisualMeshLODLevels-1);
        end;
        TileLODLevels.ItemArray[TileIndex]:=LODLevel;
       end;
