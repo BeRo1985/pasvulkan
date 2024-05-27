@@ -14530,6 +14530,8 @@ procedure TpvScene3DPlanet.Prepare(const aInFlightFrameIndex:TpvSizeInt;const aR
 var RendererInstance:TpvScene3DPlanet.TRendererInstance;
     RendererViewInstance:TpvScene3DPlanet.TRendererViewInstance;
     Sphere:TpvSphere;
+    TileIndex,LODLevel:TpvSizeInt;
+    TileLODLevels:TTileLODLevels;
 begin
 
  if assigned(fVulkanDevice) and (aInFlightFrameIndex>=0) then begin
@@ -14558,7 +14560,11 @@ begin
       end;
 //     RendererInstance.fMinimumLODLevel:=2;
 
-//PlanetTile.LODLevels.Count-1
+      TileLODLevels:=fPerInFlightFrameTileLODLevels[aInFlightFrameIndex];
+      for TileIndex:=0 to (TileMapResolution*TileMapResolution)-1 do begin
+       LODLevel:=0;
+       TileLODLevels.ItemArray[TileIndex]:=Min(Max(LODLevel,0),CountVisualMeshLODLevels-1);
+      end;
 
      end;
 
