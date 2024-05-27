@@ -14580,11 +14580,11 @@ begin
       TileLODLevels:=fPerInFlightFrameTileLODLevels[aInFlightFrameIndex];
       for TileIndex:=0 to (TileMapResolution*TileMapResolution)-1 do begin
        Sphere:=TpvSphere.Create(fData.fTiledMeshBoundingSpheres[TileIndex]);
-       Distance:=Sphere.DistanceTo(RelativeCameraPosition);
+       Distance:=Sphere.DistanceTo(RelativeCameraPosition)/8.0;
        if Distance<1.0 then begin
         LODLevel:=0;
        end else begin
-        LODLevel:=Min(Max(Ceil(Clamp(Log2(Distance/Sphere.Radius),0.0,Max(0.0,fTileMapBits-1))),0),CountVisualMeshLODLevels-1);
+        LODLevel:=Min(Max(Ceil(Clamp(Log2(Distance),0.0,Max(0.0,fTileMapBits-1))),0),CountVisualMeshLODLevels-1);
        end;
        TileLODLevels.ItemArray[TileIndex]:=LODLevel;
       end;
