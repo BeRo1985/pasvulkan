@@ -1748,6 +1748,12 @@ function Float32ToFloat10(const pValue:TpvFloat):TpvUInt32;
 function ConvertRGB32FToRGB9E5(r,g,b:TpvFloat):TpvUInt32;
 function ConvertRGB32FToR11FG11FB10F(const r,g,b:TpvFloat):TpvUInt32; {$ifdef CAN_INLINE}inline;{$endif}
 
+function EncodeAsRGB10A2UNorm(const aVector:TpvVector4):TpvUInt32;
+function DecodeFromRGB10A2UNorm(const aValue:TpvUInt32):TpvVector4;
+
+function EncodeAsRGB10A2SNorm(const aVector:TpvVector4):TpvUInt32;
+function DecodeFromRGB10A2SNorm(const aValue:TpvUInt32):TpvVector4;
+
 function PackUInt8TangentSpace(const aTangent,aBitangent,aNormal:TpvVector3):TpvUInt8PackedTangentSpace;
 procedure UnpackUInt8TangentSpace(const aPackedTangentSpace:TpvUInt8PackedTangentSpace;out aTangent,aBitangent,aNormal:TpvVector3);
 
@@ -18494,6 +18500,99 @@ function ConvertRGB32FToR11FG11FB10F(const r,g,b:TpvFloat):TpvUInt32; {$ifdef CA
 begin
 //result:=(PackFP32FloatToM6E5Float(r) and $7ff) or ((PackFP32FloatToM6E5Float(g) and $7ff) shl 11) or ((PackFP32FloatToM5E5Float(b) and $3ff) shl 22);
  result:=(Float32ToFloat11(r) and $7ff) or ((Float32ToFloat11(g) and $7ff) shl 11) or ((Float32ToFloat10(b) and $3ff) shl 22);
+end;
+
+function EncodeAsRGB10A2UNorm(const aVector:TpvVector4):TpvUInt32;
+var r,g,b,a:TpvUInt32;
+begin
+ r:=round(Min(Max(aVector.r,0.0),1.0)*1023.0);
+ g:=round(Min(Max(aVector.g,0.0),1.0)*1023.0);
+ b:=round(Min(Max(aVector.b,0.0),1.0)*1023.0);
+ a:=round(Min(Max(aVector.a,0.0),1.0)*3.0);
+ result:=(r and $3ff) or ((g and $3ff) shl 10) or ((b and $3ff) shl 20) or ((a and 3) shl 30);
+end;
+
+function DecodeFromRGB10A2UNorm(const aValue:TpvUInt32):TpvVector4;
+var r,g,b,a:TpvUInt32;
+begin
+ r:=(aValue shr 0) and $3ff;
+ g:=(aValue shr 10) and $3ff;
+ b:=(aValue shr 20) and $3ff;
+ a:=(aValue shr 30) and 3;
+ result.r:=r/1023.0;
+ result.g:=g/1023.0;
+ result.b:=b/1023.0;
+ result.a:=a/3.0;
+end;
+
+function EncodeAsRGB10A2SNorm(const aVector:TpvVector4):TpvUInt32;
+var r,g,b,a:TpvUInt32;
+begin
+ r:=TpvUInt32(TpvInt32(round(Min(Max(aVector.r,-1.0),1.0)*511.0)));
+ g:=TpvUInt32(TpvInt32(round(Min(Max(aVector.g,-1.0),1.0)*511.0)));
+ b:=TpvUInt32(TpvInt32(round(Min(Max(aVector.b,-1.0),1.0)*511.0)));
+ a:=TpvUInt32(TpvInt32(round(Min(Max(aVector.a,-1.0),1.0)*1.0)));
+ result:=(r and $3ff) or ((g and $3ff) shl 10) or ((b and $3ff) shl 20) or ((a and 3) shl 30);
+end;
+
+function DecodeFromRGB10A2SNorm(const aValue:TpvUInt32):TpvVector4;
+var r,g,b,a:TpvUInt32;
+begin
+{$if declared(SARLongint)}
+{$if true}
+ 
+ // More efficient version
+
+ // Extract the red, green, blue and alpha components, together with sign extension
+ r:=TpvUInt32(TpvInt32(SARLongint(TpvInt32(TpvUInt32(aValue shl 22)),22)));
+ g:=TpvUInt32(TpvInt32(SARLongint(TpvInt32(TpvUInt32(aValue shl 12)),22)));
+ b:=TpvUInt32(TpvInt32(SARLongint(TpvInt32(TpvUInt32(aValue shl 2)),22)));
+ a:=TpvUInt32(TpvInt32(SARLongint(TpvInt32(TpvUInt32(aValue shl 0)),30)));
+
+{$else}
+
+ // More readable version (slower), which is equivalent to the above version, but which shows more what is happening    
+
+ // Extract the red, green, blue and alpha components, together with sign extension
+ r:=TpvUInt32(TpvInt32(SARLongint(TpvInt32(TpvUInt32((aValue shr 0) and $3ff)) shl 22,22)));
+ g:=TpvUInt32(TpvInt32(SARLongint(TpvInt32(TpvUInt32((aValue shr 10) and $3ff)) shl 22,22)));
+ b:=TpvUInt32(TpvInt32(SARLongint(TpvInt32(TpvUInt32((aValue shr 20) and $3ff)) shl 22,22)));
+ a:=TpvUInt32(TpvInt32(SARLongint(TpvInt32(TpvUInt32((aValue shr 30) and 3)) shl 30,30)));
+
+{$ifend} 
+{$else}
+ 
+ // Fallback version when SARLongint is not available for artithmetic right shiftings, and it is the even more readable 
+ // reference version at the same time.
+
+ // Extract the red, green, blue and alpha components
+ r:=(aValue shr 0) and $3ff;
+ g:=(aValue shr 10) and $3ff;
+ b:=(aValue shr 20) and $3ff;
+ a:=(aValue shr 30) and 3;
+
+ // Sign extend the red, green and blue components
+ if (r and $200)<>0 then begin
+  r:=r or $fffffc00;
+ end;
+ if (g and $200)<>0 then begin
+  g:=g or $fffffc00;
+ end;
+ if (b and $200)<>0 then begin
+  b:=b or $fffffc00;
+ end;
+ if (a and 2)<>0 then begin
+  a:=a or $fffffffc;
+ end;
+
+{$ifend} 
+
+ // Normalize the red, green, blue and alpha components
+ result.r:=TpvInt32(r)/511.0;
+ result.g:=TpvInt32(g)/511.0;
+ result.b:=TpvInt32(b)/511.0;
+ result.a:=TpvInt32(a){/1.0}; // No need to normalize the alpha component, because it is already normalized
+
 end;
 
 function PackUInt8TangentSpace(const aTangent,aBitangent,aNormal:TpvVector3):TpvUInt8PackedTangentSpace;
