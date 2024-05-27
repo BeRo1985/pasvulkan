@@ -25856,14 +25856,14 @@ begin
            PlanetTileLODLevel:=PlanetTile.LODLevels[PlanetTileLODLevelIndex];
 
            Assert(Assigned(PlanetTileLODLevel.BLASInstance));
-           fRaytracingBLASInstances.Add(PlanetTileLODLevel.BLASInstance);
+           PlanetTile.RaytracingBLASInstanceIndex:=fRaytracingBLASInstances.Add(PlanetTileLODLevel.BLASInstance);
 
            Assert(RaytracingBLASGeometryInfoOffsetBufferItemIndex<length(fRaytracingBLASGeometryInfoOffsetBufferItems));
            fRaytracingBLASGeometryInfoOffsetBufferItems[RaytracingBLASGeometryInfoOffsetBufferItemIndex]:=RaytracingBLASGeometryInfoBufferItemIndex;
            inc(RaytracingBLASGeometryInfoOffsetBufferItemIndex);
 
            Assert(RaytracingBLASGeometryInfoBufferItemIndex<length(fRaytracingBLASGeometryInfoBufferItems));
-           PlanetTile.LODLevels[0].RaytracingBLASGeometryInfoBufferItemIndex:=RaytracingBLASGeometryInfoBufferItemIndex;
+           PlanetTile.RaytracingBLASGeometryInfoBufferItemIndex:=RaytracingBLASGeometryInfoBufferItemIndex;
            fRaytracingBLASGeometryInfoBufferItems[RaytracingBLASGeometryInfoBufferItemIndex]:=TpvRaytracingBLASGeometryInfoBufferItem.Create(TpvRaytracingBLASGeometryInfoBufferItem.TypePlanet,
                                                                                                                                              PlanetIndex,
                                                                                                                                              0,
@@ -26027,7 +26027,13 @@ begin
 
            Assert(Assigned(PlanetTileLODLevel.BLASInstance));
 
-           RaytracingBLASGeometryInfoBufferItemIndex:=PlanetTile.LODLevels[0].RaytracingBLASGeometryInfoBufferItemIndex;
+           if (PlanetTile.RaytracingBLASInstanceIndex>=0) and
+              (fRaytracingBLASInstances[PlanetTile.RaytracingBLASInstanceIndex]<>PlanetTileLODLevel.BLASInstance) then begin
+            fRaytracingBLASInstances[PlanetTile.RaytracingBLASInstanceIndex]:=PlanetTileLODLevel.BLASInstance;
+            MustUpdateTLAS:=true;
+           end;
+
+           RaytracingBLASGeometryInfoBufferItemIndex:=PlanetTile.RaytracingBLASGeometryInfoBufferItemIndex;
            if RaytracingBLASGeometryInfoBufferItemIndex>=0 then begin
             FirstIndex:=Planet.TiledVisualMeshIndexGroups[PlanetTileLODLevel.TileIndex].FirstIndex;
             if fRaytracingBLASGeometryInfoBufferItems[RaytracingBLASGeometryInfoBufferItemIndex].IndexOffset<>FirstIndex then begin

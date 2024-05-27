@@ -919,7 +919,6 @@ type TpvScene3DPlanets=class;
                      fPlanet:TpvScene3DPlanet;
                      fLODIndex:TpvSizeInt;
                      fTileIndex:TpvSizeInt;
-                     fRaytracingBLASGeometryInfoBufferItemIndex:TpvSizeInt;
                      fRaytracingTile:TRaytracingTile;
                      fBLASGeometry:TpvRaytracingBottomLevelAccelerationStructureGeometry;
                      fBLAS:TpvRaytracingBottomLevelAccelerationStructure;
@@ -937,7 +936,6 @@ type TpvScene3DPlanets=class;
                      function Update(const aInFlightFrameIndex:TpvSizeInt):Boolean;
                     public
                      property TileIndex:TpvSizeInt read fTileIndex;
-                     property RaytracingBLASGeometryInfoBufferItemIndex:TpvSizeInt read fRaytracingBLASGeometryInfoBufferItemIndex write fRaytracingBLASGeometryInfoBufferItemIndex;
                      property BLASGeometry:TpvRaytracingBottomLevelAccelerationStructureGeometry read fBLASGeometry;
                      property BLAS:TpvRaytracingBottomLevelAccelerationStructure read fBLAS;
                      property BLASScratchSize:TVkDeviceSize read fBLASScratchSize;
@@ -953,6 +951,8 @@ type TpvScene3DPlanets=class;
               fNewGenerations:array[0..MaxInFlightFrames-1] of TpvUInt64;
               fGeneration:TpvUInt64;
               fMustUpdate:Boolean;
+              fRaytracingBLASInstanceIndex:TpvSizeInt;
+              fRaytracingBLASGeometryInfoBufferItemIndex:TpvSizeInt;
               fLODLevels:TLODLevels;
              private
              public
@@ -963,6 +963,8 @@ type TpvScene3DPlanets=class;
              public
               property Planet:TpvScene3DPlanet read fPlanet;
               property TileIndex:TpvSizeInt read fTileIndex;
+              property RaytracingBLASInstanceIndex:TpvSizeInt read fRaytracingBLASInstanceIndex write fRaytracingBLASInstanceIndex;
+              property RaytracingBLASGeometryInfoBufferItemIndex:TpvSizeInt read fRaytracingBLASGeometryInfoBufferItemIndex write fRaytracingBLASGeometryInfoBufferItemIndex;
               property Generation:TpvUInt64 read fGeneration write fGeneration;
               property MustUpdate:Boolean read fMustUpdate write fMustUpdate;
               property LODLevels:TLODLevels read fLODLevels;
@@ -8391,8 +8393,6 @@ begin
 
  fTileIndex:=fRaytracingTile.fTileIndex+(fLODIndex*fPlanet.fTileMapResolution*fPlanet.fTileMapResolution);
 
- fRaytracingBLASGeometryInfoBufferItemIndex:=-1;
-
  fBLASGeometry:=nil;
 
  fBLAS:=nil;
@@ -8554,6 +8554,10 @@ begin
  FillChar(fNewGenerations,SizeOf(fNewGenerations),#$ff);
 
  fMustUpdate:=false;
+
+ fRaytracingBLASInstanceIndex:=-1;
+
+ fRaytracingBLASGeometryInfoBufferItemIndex:=-1;
 
  fLODLevels:=TLODLevels.Create(true);
 
