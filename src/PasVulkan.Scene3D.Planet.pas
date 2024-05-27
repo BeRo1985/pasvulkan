@@ -14529,9 +14529,12 @@ end;
 procedure TpvScene3DPlanet.Prepare(const aInFlightFrameIndex:TpvSizeInt;const aRendererInstance:TObject;const aRenderPassIndex:TpvSizeInt;const aViewPortWidth,aViewPortHeight:TpvInt32;const aMainViewPort:Boolean);
 var RendererInstance:TpvScene3DPlanet.TRendererInstance;
     RendererViewInstance:TpvScene3DPlanet.TRendererViewInstance;
+    RelativeCameraPosition:TpvVector3;
     Sphere:TpvSphere;
     TileIndex,LODLevel:TpvSizeInt;
     TileLODLevels:TTileLODLevels;
+    Distance:TpvFloat;
+    m:TpvMatrix4x4;
 begin
 
  if assigned(fVulkanDevice) and (aInFlightFrameIndex>=0) then begin
@@ -14550,7 +14553,13 @@ begin
 
      if aMainViewPort then begin
 
-      Sphere.Center:=(fPlanetData.ModelMatrix*TpvScene3DRendererInstance(aRendererInstance).InFlightFrameStates[aInFlightFrameIndex].MainViewMatrix).MulHomogen(TpvVector3.Origin);
+      m:=(fPlanetData.ModelMatrix*TpvScene3DRendererInstance(aRendererInstance).InFlightFrameStates[aInFlightFrameIndex].MainViewMatrix).Inverse;
+
+      RelativeCameraPosition:=m.RawVectors[3].xyz;
+
+//RelativeCameraPosition:=(fPlanetData.ModelMatrix*TpvScene3DRendererInstance(aRendererInstance).InFlightFrameStates[aInFlightFrameIndex].MainViewMatrix).MulHomogen(TpvVector3.Origin);
+
+      Sphere.Center:=RelativeCameraPosition;
       Sphere.Radius:=fTopRadius;
 
       if Sphere.Center.Length<Sphere.Radius then begin
@@ -14558,12 +14567,18 @@ begin
       end else begin
        RendererInstance.fMinimumLODLevel:=0;//Ceil(Clamp(Log2(Sphere.Center.Length/Sphere.Radius),0.0,Max(0.0,fTileMapBits-1)));
       end;
-//     RendererInstance.fMinimumLODLevel:=2;
+//    RendererInstance.fMinimumLODLevel:=2;
 
       TileLODLevels:=fPerInFlightFrameTileLODLevels[aInFlightFrameIndex];
       for TileIndex:=0 to (TileMapResolution*TileMapResolution)-1 do begin
-       LODLevel:=0;
-       TileLODLevels.ItemArray[TileIndex]:=Min(Max(LODLevel,0),CountVisualMeshLODLevels-1);
+       Sphere:=TpvSphere.Create(fData.fTiledMeshBoundingSpheres[TileIndex]);
+       Distance:=Sphere.DistanceTo(RelativeCameraPosition);
+       if Distance<1.0 then begin
+        LODLevel:=0;
+       end else begin
+        LODLevel:=Min(Max(Ceil(Clamp(Log2(Distance),0.0,Max(0.0,fTileMapBits-1))),0),CountVisualMeshLODLevels-1);
+       end;
+       TileLODLevels.ItemArray[TileIndex]:=LODLevel;
       end;
 
      end;
