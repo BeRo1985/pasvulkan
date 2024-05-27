@@ -25844,8 +25844,8 @@ begin
 
           PlanetTile:=Planet.RaytracingTiles[PlanetTileIndex];
 
-          Assert(Assigned(PlanetTile.BLASInstance));
-          fRaytracingBLASInstances.Add(PlanetTile.BLASInstance);
+          Assert(Assigned(PlanetTile.LODLevels[0].BLASInstance));
+          fRaytracingBLASInstances.Add(PlanetTile.LODLevels[0].BLASInstance);
 
           Assert(RaytracingBLASGeometryInfoOffsetBufferItemIndex<length(fRaytracingBLASGeometryInfoOffsetBufferItems));
           fRaytracingBLASGeometryInfoOffsetBufferItems[RaytracingBLASGeometryInfoOffsetBufferItemIndex]:=RaytracingBLASGeometryInfoBufferItemIndex;
@@ -26011,14 +26011,14 @@ begin
 
         for PlanetTile in Planet.RaytracingTileQueue do begin
 
-         if assigned(PlanetTile.fBLASGeometry) and assigned(PlanetTile.fBLAS) then begin
+         if assigned(PlanetTile.LODLevels[0].fBLASGeometry) and assigned(PlanetTile.LODLevels[0].fBLAS) then begin
 
-          PlanetTile.ScratchOffset:=ScratchPassSize;
-          PlanetTile.ScratchPass:=ScratchPass;
-          if PlanetTile.fBLAS.BuildSizesInfo.buildScratchSize<PlanetTile.fBLAS.BuildSizesInfo.updateScratchSize then begin
-           inc(ScratchPassSize,PlanetTile.fBLAS.BuildSizesInfo.updateScratchSize); // Update scratch size is bigger than build scratch size
+          PlanetTile.LODLevels[0].ScratchOffset:=ScratchPassSize;
+          PlanetTile.LODLevels[0].ScratchPass:=ScratchPass;
+          if PlanetTile.LODLevels[0].fBLAS.BuildSizesInfo.buildScratchSize<PlanetTile.LODLevels[0].fBLAS.BuildSizesInfo.updateScratchSize then begin
+           inc(ScratchPassSize,PlanetTile.LODLevels[0].fBLAS.BuildSizesInfo.updateScratchSize); // Update scratch size is bigger than build scratch size
           end else begin
-           inc(ScratchPassSize,PlanetTile.fBLAS.BuildSizesInfo.buildScratchSize); // Build scratch size is bigger than update scratch size
+           inc(ScratchPassSize,PlanetTile.LODLevels[0].fBLAS.BuildSizesInfo.buildScratchSize); // Build scratch size is bigger than update scratch size
           end;
           if ScratchSize<ScratchPassSize then begin
            ScratchSize:=ScratchPassSize;
@@ -26142,22 +26142,22 @@ begin
 
         for PlanetTile in Planet.RaytracingTileQueue do begin
 
-         if assigned(PlanetTile.fBLASGeometry) and assigned(PlanetTile.fBLAS) then begin
+         if assigned(PlanetTile.LODLevels[0].fBLASGeometry) and assigned(PlanetTile.LODLevels[0].fBLAS) then begin
 
-          if ScratchPass<>PlanetTile.ScratchPass then begin
+          if ScratchPass<>PlanetTile.LODLevels[0].ScratchPass then begin
            if not fRaytracingAccelerationStructureBuildQueue.Empty then begin
             fRaytracingAccelerationStructureBuildQueue.Execute(aCommandBuffer);
             TpvRaytracingAccelerationStructure.MemoryBarrier(aCommandBuffer);
             fRaytracingAccelerationStructureBuildQueue.Clear;
            end;
-           ScratchPass:=PlanetTile.fScratchPass;
+           ScratchPass:=PlanetTile.LODLevels[0].fScratchPass;
           end;
-          PlanetTile.fBLAS.Build(aCommandBuffer,
-                                 fRaytracingBLASScratchBuffer,
-                                 PlanetTile.fScratchOffset,
-                                 false,
-                                 nil,
-                                 fRaytracingAccelerationStructureBuildQueue);
+          PlanetTile.LODLevels[0].fBLAS.Build(aCommandBuffer,
+                                              fRaytracingBLASScratchBuffer,
+                                              PlanetTile.LODLevels[0].fScratchOffset,
+                                              false,
+                                              nil,
+                                              fRaytracingAccelerationStructureBuildQueue);
 
          end;
 
