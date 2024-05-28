@@ -445,6 +445,16 @@ type PpvScalar=^TpvScalar;
         6:(Vector3:TpvHalfFloatVector3);
      end;
 
+     PpvInt8PackedTangentSpace=^TpvInt8PackedTangentSpace;
+     TpvInt8PackedTangentSpace=record
+      x,y,z,w:TpvInt8;
+     end;
+
+     PpvInt16PackedTangentSpace=^TpvInt16PackedTangentSpace;
+     TpvInt16PackedTangentSpace=record
+      x,y,z,w:TpvInt16;
+     end;
+
      PpvUInt8PackedTangentSpace=^TpvUInt8PackedTangentSpace;
      TpvUInt8PackedTangentSpace=record
       x,y,z,w:TpvUInt8;
@@ -1754,6 +1764,18 @@ function DecodeFromRGB10A2UNorm(const aValue:TpvUInt32):TpvVector4;
 function EncodeAsRGB10A2SNorm(const aVector:TpvVector4):TpvUInt32;
 function DecodeFromRGB10A2SNorm(const aValue:TpvUInt32):TpvVector4;
 
+function PackInt8TangentSpace(const aTangent,aBitangent,aNormal:TpvVector3):TpvInt8PackedTangentSpace;
+procedure UnpackInt8TangentSpace(const aPackedTangentSpace:TpvInt8PackedTangentSpace;out aTangent,aBitangent,aNormal:TpvVector3);
+
+function PackInt16TangentSpace(const aTangent,aBitangent,aNormal:TpvVector3):TpvInt16PackedTangentSpace;
+procedure UnpackInt16TangentSpace(const aPackedTangentSpace:TpvInt16PackedTangentSpace;out aTangent,aBitangent,aNormal:TpvVector3);
+
+function PackInt8QTangentSpace(const aTangent,aBitangent,aNormal:TpvVector3):TpvInt8PackedTangentSpace;
+procedure UnpackInt8QTangentSpace(const aPackedTangentSpace:TpvInt8PackedTangentSpace;out aTangent,aBitangent,aNormal:TpvVector3);
+
+function PackInt16QTangentSpace(const aTangent,aBitangent,aNormal:TpvVector3):TpvInt16PackedTangentSpace;
+procedure UnpackInt16QTangentSpace(const aPackedTangentSpace:TpvInt16PackedTangentSpace;out aTangent,aBitangent,aNormal:TpvVector3);
+
 function PackUInt8TangentSpace(const aTangent,aBitangent,aNormal:TpvVector3):TpvUInt8PackedTangentSpace;
 procedure UnpackUInt8TangentSpace(const aPackedTangentSpace:TpvUInt8PackedTangentSpace;out aTangent,aBitangent,aNormal:TpvVector3);
 
@@ -1787,9 +1809,21 @@ function DecodeNormalFromUInt32(const aNormal:TpvUInt32):TpvVector3;
 function OctahedralProjectionMappingEncode(const aVector:TpvVector3):TpvVector2;
 function OctahedralProjectionMappingDecode(const aVector:TpvVector2):TpvVector3;
 
+function OctahedralProjectionMappingSignedEncode(const aVector:TpvVector3):TpvVector2;
+function OctahedralProjectionMappingSignedDecode(const aVector:TpvVector2):TpvVector3;
+
 function OctEncode(const aVector:TpvVector3;const aFloorX,aFloorY:Boolean):TpvInt16Vector2; overload;
 function OctDecode(const aOct:TpvInt16Vector2):TpvVector3;
 function OctEncode(const aVector:TpvVector3):TpvInt16Vector2; overload;
+
+function EncodeDiamond(const aVector:TpvVector2):TpvScalar;
+function DecodeDiamond(const aValue:TpvScalar):TpvVector2;
+
+function EncodeTangentSpaceAsRGB10A2SNorm(const aTangent,aBitangent,aNormal:TpvVector3):TpvUInt32; overload;
+function EncodeTangentSpaceAsRGB10A2SNorm(const aMatrix:TpvMatrix3x3):TpvUInt32; overload;
+
+procedure DecodeTangentSpaceFromRGB10A2SNorm(const aValue:TpvUInt32;out aTangent,aBitangent,aNormal:TpvVector3); overload;
+procedure DecodeTangentSpaceFromRGB10A2SNorm(const aValue:TpvUInt32;out aMatrix3x3:TpvMatrix3x3); overload;
 
 implementation
 
@@ -18595,6 +18629,114 @@ begin
 
 end;
 
+function PackInt8TangentSpace(const aTangent,aBitangent,aNormal:TpvVector3):TpvInt8PackedTangentSpace;
+begin
+ result.x:=Min(Max(round((ArcSin(aNormal.z)/PI)*127.0),-128),127);
+ result.y:=Min(Max(round((ArcTan2(aNormal.y,aNormal.x)/PI)*127.0),-128),127);
+ result.z:=Min(Max(round((ArcSin(aTangent.z)/PI)*127.0),-128),127);
+ result.w:=Min(Max(round((ArcTan2(aTangent.y,aTangent.x)/PI)*127.0),-128),127);
+end;
+
+procedure UnpackInt8TangentSpace(const aPackedTangentSpace:TpvInt8PackedTangentSpace;out aTangent,aBitangent,aNormal:TpvVector3);
+var Latitude,Longitude:TpvScalar;
+begin
+ Latitude:=(aPackedTangentSpace.x/127.0)*PI;
+ Longitude:=(aPackedTangentSpace.y/127.0)*PI;
+ aNormal.x:=cos(Latitude)*cos(Longitude);
+ aNormal.y:=cos(Latitude)*sin(Longitude);
+ aNormal.z:=sin(Latitude);
+ Latitude:=(aPackedTangentSpace.z/127.0)*PI;
+ Longitude:=(aPackedTangentSpace.w/127.0)*PI;
+ aTangent.x:=cos(Latitude)*cos(Longitude);
+ aTangent.y:=cos(Latitude)*sin(Longitude);
+ aTangent.z:=sin(Latitude);
+ aBitangent:=(aNormal.Cross(aTangent)).Normalize;
+end;
+
+function PackInt16TangentSpace(const aTangent,aBitangent,aNormal:TpvVector3):TpvInt16PackedTangentSpace;
+begin
+ result.x:=Min(Max(round((ArcSin(aNormal.z)/PI)*32767.0),-32768),32767);
+ result.y:=Min(Max(round((ArcTan2(aNormal.y,aNormal.x)/PI)*32767.0),-32768),32767);
+ result.z:=Min(Max(round((ArcSin(aTangent.z)/PI)*32767.0),-32768),32767);
+ result.w:=Min(Max(round((ArcTan2(aTangent.y,aTangent.x)/PI)*32767.0),-32768),32767);
+end;
+
+procedure UnpackInt16TangentSpace(const aPackedTangentSpace:TpvInt16PackedTangentSpace;out aTangent,aBitangent,aNormal:TpvVector3);
+var Latitude,Longitude:TpvScalar;
+begin
+ Latitude:=(aPackedTangentSpace.x/32767.0)*PI;
+ Longitude:=(aPackedTangentSpace.y/32767.0)*PI;
+ aNormal.x:=cos(Latitude)*cos(Longitude);
+ aNormal.y:=cos(Latitude)*sin(Longitude);
+ aNormal.z:=sin(Latitude);
+ Latitude:=(aPackedTangentSpace.z/32767.0)*PI;
+ Longitude:=(aPackedTangentSpace.w/32767.0)*PI;
+ aTangent.x:=cos(Latitude)*cos(Longitude);
+ aTangent.y:=cos(Latitude)*sin(Longitude);
+ aTangent.z:=sin(Latitude);
+ aBitangent:=(aNormal.Cross(aTangent)).Normalize;
+end;
+
+function PackInt8QTangentSpace(const aTangent,aBitangent,aNormal:TpvVector3):TpvInt8PackedTangentSpace;
+var q:TpvQuaternion;
+begin
+ q:=TpvMatrix3x3.Create(aTangent,aBitangent,aNormal).ToQTangent(QTangentThreshold8Bit);
+ result.x:=Min(Max(round(q.x*127.0),-128),127);
+ result.y:=Min(Max(round(q.y*127.0),-128),127);
+ result.z:=Min(Max(round(q.z*127.0),-128),127);
+ result.w:=Min(Max(round(q.w*127.0),-128),127);
+end;
+
+procedure UnpackInt8QTangentSpace(const aPackedTangentSpace:TpvInt8PackedTangentSpace;out aTangent,aBitangent,aNormal:TpvVector3);
+var q:TpvQuaternion;
+    m:TpvMatrix3x3;
+begin
+ q.x:=aPackedTangentSpace.x/127.0;
+ q.y:=aPackedTangentSpace.y/127.0;
+ q.z:=aPackedTangentSpace.z/127.0;
+ q.w:=aPackedTangentSpace.w/127.0;
+ m:=TpvMatrix3x3.CreateFromQTangent(q);
+ aTangent.x:=m[0,0];
+ aTangent.y:=m[0,1];
+ aTangent.z:=m[0,2];
+ aBitangent.x:=m[1,0];
+ aBitangent.y:=m[1,1];
+ aBitangent.z:=m[1,2];
+ aNormal.x:=m[2,0];
+ aNormal.y:=m[2,1];
+ aNormal.z:=m[2,2];
+end;
+
+function PackInt16QTangentSpace(const aTangent,aBitangent,aNormal:TpvVector3):TpvInt16PackedTangentSpace;
+var q:TpvQuaternion;
+begin
+ q:=TpvMatrix3x3.Create(aTangent,aBitangent,aNormal).ToQTangent(QTangentThreshold16Bit);
+ result.x:=Min(Max(round(q.x*32767.0),-32768),32767);
+ result.y:=Min(Max(round(q.y*32767.0),-32768),32767);
+ result.z:=Min(Max(round(q.z*32767.0),-32768),32767);
+ result.w:=Min(Max(round(q.w*32767.0),-32768),32767);
+end;
+
+procedure UnpackInt16QTangentSpace(const aPackedTangentSpace:TpvInt16PackedTangentSpace;out aTangent,aBitangent,aNormal:TpvVector3);
+var q:TpvQuaternion;
+    m:TpvMatrix3x3;
+begin
+ q.x:=aPackedTangentSpace.x/32767.0;
+ q.y:=aPackedTangentSpace.y/32767.0;
+ q.z:=aPackedTangentSpace.z/32767.0;
+ q.w:=aPackedTangentSpace.w/32767.0;
+ m:=TpvMatrix3x3.CreateFromQTangent(q);
+ aTangent.x:=m[0,0];
+ aTangent.y:=m[0,1];
+ aTangent.z:=m[0,2];
+ aBitangent.x:=m[1,0];
+ aBitangent.y:=m[1,1];
+ aBitangent.z:=m[1,2];
+ aNormal.x:=m[2,0];
+ aNormal.y:=m[2,1];
+ aNormal.z:=m[2,2];
+end;
+
 function PackUInt8TangentSpace(const aTangent,aBitangent,aNormal:TpvVector3):TpvUInt8PackedTangentSpace;
 begin
  result.x:=Min(Max((round((ArcSin(aNormal.z)/PI)*127.0)+128),0),255);
@@ -20142,6 +20284,26 @@ begin
  result:=result.Normalize;
 end;
 
+function OctahedralProjectionMappingSignedEncode(const aVector:TpvVector3):TpvVector2;
+var Vector:TpvVector3;
+begin
+ Vector:=aVector.Normalize;
+ result:=Vector.xy/(abs(Vector.x)+abs(Vector.y)+abs(Vector.z));
+ if Vector.z<0.0 then begin
+  result:=(TpvVector2.InlineableCreate(1.0,1.0)-result.yx.Abs)*
+           TpvVector2.InlineableCreate(SignNonZero(result.x),SignNonZero(result.y));
+ end;
+end;
+
+function OctahedralProjectionMappingSignedDecode(const aVector:TpvVector2):TpvVector3;
+begin
+ result.z:=(1.0-abs(result.x))-abs(result.y);
+ if result.z<0 then begin
+  result.xy:=(TpvVector2.InlineableCreate(1.0,1.0)-result.yx.Abs)*TpvVector2.InlineableCreate(SignNonZero(result.x),SignNonZero(result.y));
+ end;
+ result:=result.Normalize;
+end;
+
 function OctEncode(const aVector:TpvVector3;const aFloorX,aFloorY:Boolean):TpvInt16Vector2; overload;
 var Vector:TpvVector3;
     x,y,s,tx,ty:TpvScalar;
@@ -20227,6 +20389,99 @@ begin
   BestDot:=Dot;
  end;
 
+end;
+
+function EncodeDiamond(const aVector:TpvVector2):TpvScalar;
+var SignYOver4:TpvScalar;
+begin
+ SignYOver4:=SignNonZero(aVector.y)*0.25;
+ result:=(0.5+SignYOver4)-(SignYOver4*(aVector.x/(abs(aVector.x)+abs(aVector.y))));
+end;
+
+function DecodeDiamond(const aValue:TpvScalar):TpvVector2;
+var SignPMinusHalf,x,y:TpvScalar;
+begin
+ SignPMinusHalf:=SignNonZero(aValue-0.5);
+ x:=(1.0+(SignPMinusHalf*2.0))-(SignPMinusHalf*4.0*aValue);
+ y:=SignPMinusHalf*(1.0-abs(x));
+ result:=TpvVector2.InlineableCreate(x,y).Normalize;
+end;
+
+function EncodeTangentSpaceAsRGB10A2SNorm(const aTangent,aBitangent,aNormal:TpvVector3):TpvUInt32;
+var OctahedronNormal,TangentInCanonicalSpace:TpvVector2;
+    Normal,Tangent,CanonicalDirectionA,CanonicalDirectionB:TpvVector3;
+    TangentDiamond,BitangentSign:TpvScalar;
+    TemporaryVector4:TpvVector4;
+begin
+
+ Normal:=aNormal.Normalize;
+ Tangent:=aTangent.Normalize;
+
+ // Encode the normal as octahedron normal
+ OctahedronNormal:=OctahedralProjectionMappingSignedEncode(Normal);
+
+ // Find the canonical directions
+ if abs(Normal.y)>abs(Normal.z) then begin
+  CanonicalDirectionA:=TpvVector3.Create(-Normal.y,Normal.x,0.0).Normalize;
+ end else begin
+  CanonicalDirectionA:=TpvVector3.Create(Normal.z,0.0,-Normal.x).Normalize;
+ end;
+ CanonicalDirectionB:=Normal.Cross(CanonicalDirectionA).Normalize;
+
+ TangentInCanonicalSpace:=TpvVector2.InlineableCreate(Tangent.Dot(CanonicalDirectionA),Tangent.Dot(CanonicalDirectionB));
+
+ TangentDiamond:=(EncodeDiamond(TangentInCanonicalSpace)*2.0)-1.0;
+
+ BitangentSign:=SignNonZero(Normal.Cross(Tangent).Dot(aBitangent));
+
+ TemporaryVector4:=TpvVector4.InlineableCreate(OctahedronNormal.x,OctahedronNormal.y,TangentDiamond,BitangentSign);
+
+ result:=EncodeAsRGB10A2SNorm(TemporaryVector4);
+
+end;
+
+function EncodeTangentSpaceAsRGB10A2SNorm(const aMatrix:TpvMatrix3x3):TpvUInt32;
+begin
+ result:=EncodeTangentSpaceAsRGB10A2SNorm(aMatrix.Tangent,aMatrix.Bitangent,aMatrix.Normal);
+end;
+
+procedure DecodeTangentSpaceFromRGB10A2SNorm(const aValue:TpvUInt32;out aTangent,aBitangent,aNormal:TpvVector3);
+var TemporaryVector4:TpvVector4;
+    OctahedronNormal,TangentInCanonicalSpace:TpvVector2;
+    Normal,Tangent,CanonicalDirectionA,CanonicalDirectionB:TpvVector3;
+begin
+
+ TemporaryVector4:=DecodeFromRGB10A2SNorm(aValue);
+
+ OctahedronNormal:=TemporaryVector4.xy;
+
+ Normal:=OctahedralProjectionMappingSignedDecode(OctahedronNormal);
+
+ // Find the canonical directions
+ if abs(Normal.y)>abs(Normal.z) then begin
+  CanonicalDirectionA:=TpvVector3.Create(-Normal.y,Normal.x,0.0).Normalize;
+ end else begin
+  CanonicalDirectionA:=TpvVector3.Create(Normal.z,0.0,-Normal.x).Normalize;
+ end;
+ CanonicalDirectionB:=Normal.Cross(CanonicalDirectionA).Normalize;
+
+ TangentInCanonicalSpace:=DecodeDiamond(TemporaryVector4.z);
+
+ Tangent:=((CanonicalDirectionA*TangentInCanonicalSpace.x)+(CanonicalDirectionB*TangentInCanonicalSpace.y)).Normalize;
+
+ aTangent:=Tangent;
+ aBitangent:=Normal.Cross(Tangent).Normalize*TemporaryVector4.w;
+ aNormal:=Normal;
+
+end;
+
+procedure DecodeTangentSpaceFromRGB10A2SNorm(const aValue:TpvUInt32;out aMatrix3x3:TpvMatrix3x3);
+var Tangent,Bitangent,Normal:TpvVector3;
+begin
+ DecodeTangentSpaceFromRGB10A2SNorm(aValue,Tangent,Bitangent,Normal);
+ aMatrix3x3.Tangent:=Tangent;
+ aMatrix3x3.Bitangent:=Bitangent;
+ aMatrix3x3.Normal:=Normal;
 end;
 
 initialization
