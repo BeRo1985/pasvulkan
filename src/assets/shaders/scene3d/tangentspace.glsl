@@ -4,8 +4,8 @@
 // Copyright 2024, Benjamin 'BeRo' Rosseaux - zlib licensed
 
 /*
-** Tangent space encoding and decoding functions from tangent space vectors to a single 32-bit unsigned
-** integer in RGB10A2 snorm format and back.
+** Encoding and decoding functions from tangent space vectors to a single 32-bit unsigned integer (four bytes) in
+** RGB10A2_SNORM format and back.
 ** 
 ** These functions are used to encode and decode tangent space vectors into a single 32-bit unsigned integer.
 ** The encoding is done using the RGB10A2 snorm format, which allows to store the tangent space in a single integer.
