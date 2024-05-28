@@ -499,7 +499,7 @@ begin
        CountFrames:=length(Animations[Index].Frames);
        Stream.WriteBuffer(CountFrames,SizeOf(TpvUInt32));
        for FrameIndex:=0 to length(Animations[Index].Frames)-1 do begin
-        Animations[Index].Frames[FoundPresetAnimation].Pack;
+        Animations[Index].Frames[FrameIndex].Pack;
         Stream.WriteBuffer(Animations[Index].Frames[FrameIndex].Time,SizeOf(TpvDouble));
         if CountUsedVertices>0 then begin
          Stream.WriteBuffer(Animations[Index].Frames[FrameIndex].Vertices[0],SizeOf(TpvPPM.TVertex)*CountUsedVertices);
