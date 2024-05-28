@@ -549,7 +549,30 @@ end;
 
 var Index:TpvSizeInt;
     Parameter,InputFileName,OutputFileName:String;
+{   m0,m1:TpvMatrix3x3;
+    u0:TpvUInt32;}
 begin
+
+{m0:=TpvMatrix3x3.Create(TpvVector3.InlineableCreate(0.3162,0.9487,0.0).Normalize,
+                         TpvVector3.InlineableCreate(0.9494,-0.3140,0.0).Normalize,
+                         TpvVector3.InlineableCreate(0.0,0.0,1.0).Normalize);
+
+ u0:=EncodeTangentSpaceAsRGB10A2SNorm(m0);
+ 
+ DecodeTangentSpaceFromRGB10A2SNorm(u0,m1);
+
+ WriteLn('m0 Tangent: ',m0.Tangent.x:7:4,' ',m0.Tangent.y:7:4,' ',m0.Tangent.z:7:4);
+ WriteLn('m0 Bitangent: ',m0.Bitangent.x:7:4,' ',m0.Bitangent.y:7:4,' ',m0.Bitangent.z:7:4);
+ WriteLn('m0 Normal: ',m0.Normal.x:7:4,' ',m0.Normal.y:7:4,' ',m0.Normal.z:7:4);
+ WriteLn;
+ WriteLn('u0: ',u0);
+ WriteLn;
+ WriteLn('m1 Tangent: ',m1.Tangent.x:7:4,' ',m1.Tangent.y:7:4,' ',m1.Tangent.z:7:4);
+ WriteLn('m1 Bitangent: ',m1.Bitangent.x:7:4,' ',m1.Bitangent.y:7:4,' ',m1.Bitangent.z:7:4);
+ WriteLn('m1 Normal: ',m1.Normal.x:7:4,' ',m1.Normal.y:7:4,' ',m1.Normal.z:7:4);
+
+ exit;}
+
 
  if ParamCount=0 then begin
   writeln('Usage: ',ExtractFileName(ParamStr(0)),' <input file name> <output file name>');

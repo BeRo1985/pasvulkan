@@ -1816,8 +1816,11 @@ function OctEncode(const aVector:TpvVector3;const aFloorX,aFloorY:Boolean):TpvIn
 function OctDecode(const aOct:TpvInt16Vector2):TpvVector3;
 function OctEncode(const aVector:TpvVector3):TpvInt16Vector2; overload;
 
-function EncodeDiamond(const aVector:TpvVector2):TpvScalar;
-function DecodeDiamond(const aValue:TpvScalar):TpvVector2;
+function EncodeDiamondUnsigned(const aVector:TpvVector2):TpvScalar;
+function DecodeDiamondUnsigned(const aValue:TpvScalar):TpvVector2;
+
+function EncodeDiamondSigned(const aVector:TpvVector2):TpvScalar;
+function DecodeDiamondSigned(const aValue:TpvScalar):TpvVector2;
 
 function EncodeTangentSpaceAsRGB10A2SNorm(const aTangent,aBitangent,aNormal:TpvVector3):TpvUInt32; overload;
 function EncodeTangentSpaceAsRGB10A2SNorm(const aMatrix:TpvMatrix3x3):TpvUInt32; overload;
@@ -20297,7 +20300,7 @@ end;
 
 function OctahedralProjectionMappingSignedDecode(const aVector:TpvVector2):TpvVector3;
 begin
- result.z:=(1.0-abs(result.x))-abs(result.y);
+ result:=TpvVector3.InlineableCreate(aVector.xy,(1.0-abs(aVector.x))-abs(aVector.y));
  if result.z<0 then begin
   result.xy:=(TpvVector2.InlineableCreate(1.0,1.0)-result.yx.Abs)*TpvVector2.InlineableCreate(SignNonZero(result.x),SignNonZero(result.y));
  end;
@@ -20391,18 +20394,32 @@ begin
 
 end;
 
-function EncodeDiamond(const aVector:TpvVector2):TpvScalar;
+function EncodeDiamondUnsigned(const aVector:TpvVector2):TpvScalar;
 var SignYOver4:TpvScalar;
 begin
  SignYOver4:=SignNonZero(aVector.y)*0.25;
  result:=(0.5+SignYOver4)-(SignYOver4*(aVector.x/(abs(aVector.x)+abs(aVector.y))));
 end;
 
-function DecodeDiamond(const aValue:TpvScalar):TpvVector2;
+function DecodeDiamondUnsigned(const aValue:TpvScalar):TpvVector2;
 var SignPMinusHalf,x,y:TpvScalar;
 begin
  SignPMinusHalf:=SignNonZero(aValue-0.5);
  x:=(1.0+(SignPMinusHalf*2.0))-(SignPMinusHalf*4.0*aValue);
+ y:=SignPMinusHalf*(1.0-abs(x));
+ result:=TpvVector2.InlineableCreate(x,y).Normalize;
+end;
+
+function EncodeDiamondSigned(const aVector:TpvVector2):TpvScalar;
+begin
+ result:=(1.0-(aVector.x/(abs(aVector.x)+abs(aVector.y))))*SignNonZero(aVector.y)*0.5;
+end;
+
+function DecodeDiamondSigned(const aValue:TpvScalar):TpvVector2;
+var SignPMinusHalf,x,y:TpvScalar;
+begin
+ SignPMinusHalf:=SignNonZero(aValue);
+ x:=1.0-(aValue*SignPMinusHalf*2.0);
  y:=SignPMinusHalf*(1.0-abs(x));
  result:=TpvVector2.InlineableCreate(x,y).Normalize;
 end;
@@ -20430,7 +20447,7 @@ begin
 
  TangentInCanonicalSpace:=TpvVector2.InlineableCreate(Tangent.Dot(CanonicalDirectionA),Tangent.Dot(CanonicalDirectionB));
 
- TangentDiamond:=(EncodeDiamond(TangentInCanonicalSpace)*2.0)-1.0;
+ TangentDiamond:=EncodeDiamondSigned(TangentInCanonicalSpace);
 
  BitangentSign:=SignNonZero(Normal.Cross(Tangent).Dot(aBitangent));
 
@@ -20465,7 +20482,7 @@ begin
  end;
  CanonicalDirectionB:=Normal.Cross(CanonicalDirectionA).Normalize;
 
- TangentInCanonicalSpace:=DecodeDiamond(TemporaryVector4.z);
+ TangentInCanonicalSpace:=DecodeDiamondSigned(TemporaryVector4.z);
 
  Tangent:=((CanonicalDirectionA*TangentInCanonicalSpace.x)+(CanonicalDirectionB*TangentInCanonicalSpace.y)).Normalize;
 
