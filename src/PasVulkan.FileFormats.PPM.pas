@@ -176,7 +176,7 @@ var Index:TpvSizeInt;
     Vertex:PVertex;
 begin
  if length(Vertices)<>length(FullVertices) then begin
-  SetLength(FullVertices,length(Vertices));
+  SetLength(Vertices,length(FullVertices));
  end;
  for Index:=0 to length(Vertices)-1 do begin
   Vertex:=@Vertices[Index];
@@ -191,8 +191,8 @@ var Index:TpvSizeInt;
     FullVertex:PFullVertex;
     Vertex:PVertex;
 begin
- if length(Vertices)<>length(FullVertices) then begin
-  SetLength(Vertices,length(FullVertices));
+ if length(FullVertices)<>length(Vertices) then begin
+  SetLength(FullVertices,length(Vertices));
  end;
  for Index:=0 to length(FullVertices)-1 do begin
   Vertex:=@Vertices[Index];
