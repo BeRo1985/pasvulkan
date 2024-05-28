@@ -23,6 +23,9 @@
 ** 5. The tangent is found using the canonical directions and the tangent diamond.
 ** 6. The bitangent is found using the normal, the tangent and the bitangent sign. 
 ** 
+** Idea based on https://www.jeremyong.com/graphics/2023/01/09/tangent-spaces-and-diamond-encoding/ but with improvements for
+** packing into RGB10A2 snorm to a 32-bit unsigned integer.
+**
 **/
 
 uint encodeTangentSpaceAsRGB10A2SNorm(mat3 tbn){
