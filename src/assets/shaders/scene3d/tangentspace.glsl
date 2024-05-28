@@ -1,6 +1,30 @@
 #ifndef TANGENTSPACE_GLSL
 #define TANGENTSPACE_GLSL
 
+/*
+** Tangent space encoding and decoding functions
+** 
+** These functions are used to encode and decode tangent space vectors into a single 32-bit unsigned integer.
+** The encoding is done using the RGB10A2 snorm format, which allows to store the tangent space in a single integer.
+** The encoding is lossy, but the loss is very small and the precision is enough for most use cases.
+** 
+** The encoding is done as follows:
+** 1. The normal is projected onto the octahedron, which is a 2D shape that represents the normal in a more efficient way.
+** 2. The tangent is projected onto the canonical diamond space, which is a 2D space that is aligned with the normal.
+** 3. The tangent is projected onto the tangent diamond, which is a 1D space that represents the tangent in a more efficient way.
+** 4. The bitangent sign is stored in signed 2 bits as -1.0 or 1.0.
+** 5. The values are packed into a single 32-bit unsigned integer using the RGB10A2 snorm format.
+** 
+** The decoding is done as follows:
+** 1. The values are unpacked from the RGB10A2 snorm format.
+** 2. The normal is decoded from the octahedron.
+** 3. The canonical directions are found.
+** 4. The tangent diamond is decoded.
+** 5. The tangent is found using the canonical directions and the tangent diamond.
+** 6. The bitangent is found using the normal, the tangent and the bitangent sign. 
+** 
+**/
+
 uint encodeTangentSpaceAsRGB10A2SNorm(mat3 tbn){
 
   // Normalized tangent space vectors,just for the sake of clarity and to be sure
@@ -78,4 +102,5 @@ mat3 decodeTangentSpaceFromRGB10A2SNorm(const in uint encodedTangentSpace){
   return mat3(tangent, bitangent, normal);
 
 }
+
 #endif
