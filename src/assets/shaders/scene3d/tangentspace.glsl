@@ -1,6 +1,8 @@
 #ifndef TANGENTSPACE_GLSL
 #define TANGENTSPACE_GLSL
 
+// Copyright 2024, Benjamin 'BeRo' Rosseaux - zlib licensed
+
 /*
 ** Tangent space encoding and decoding functions
 ** 
