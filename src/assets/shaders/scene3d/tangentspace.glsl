@@ -44,10 +44,8 @@ uint encodeTangentSpaceAsRGB10A2SNorm(mat3 tbn){
   // Project the tangent into the canonical space 
   const vec2 tangentInCanonicalSpace = vec2(dot(tbn[0], canonicalDirectionA), dot(tbn[0], canonicalDirectionB));
 
-  // Find the tangent diamond direction
-  const float tangentDiamondX = tangentInCanonicalSpace.x / (abs(tangentInCanonicalSpace.x) + abs(tangentInCanonicalSpace.y));
-  const float tangentDiamondSignYOver4 = sign(tangentInCanonicalSpace.y) * 0.25;
-  const float tangentDiamond = fma((0.5 + tangentDiamondSignYOver4) - (tangentDiamondSignYOver4 * tangentDiamondX), 2.0, -1.0);
+  // Find the tangent diamond direction (a diamond is more or less the 2D equivalent of the 3D octahedron here in this case)
+  const float tangentDiamond = (1.0 - (tangentInCanonicalSpace.x / (abs(tangentInCanonicalSpace.x) + abs(tangentInCanonicalSpace.y)))) * ((tangentInCanonicalSpace.y < 0.0) ? -1.0 : 1.0) * 0.5;
 
   // Find the bitangent sign
   const float bittangentSign = (dot(cross(tbn[0], tbn[1]), tbn[2]) < 0.0) ? -1.0 : 1.0; 
@@ -87,10 +85,10 @@ mat3 decodeTangentSpaceFromRGB10A2SNorm(const in uint encodedTangentSpace){
   const vec3 canonicalDirectionB = cross(normal, canonicalDirectionA);
 
   // Decode the tangent diamond direction
-  const float tangentDiamond = fma(float(encodedTangentSpaceUnpacked.z) / 511.0, 0.5, 0.5);
-  const float tangentDiamondSign = sign(tangentDiamond - 0.5);
+  const float tangentDiamond = float(encodedTangentSpaceUnpacked.z);
+  const float tangentDiamondSign = (tangentDiamond < 0.0) ? -1.0 : 1.0; // No sign() because for 0.0 in => 1.0 out
   vec2 tangentInCanonicalSpace;
-  tangentInCanonicalSpace.x = (1.0 + (tangentDiamondSign * 2.0)) - (tangentDiamondSign * 4.0 * tangentDiamond);
+  tangentInCanonicalSpace.x = 1.0 - (tangentDiamond * tangentDiamondSign * 2.0);
   tangentInCanonicalSpace.y = tangentDiamondSign * (1.0 - abs(tangentInCanonicalSpace.x));
 
   // Decode the tangent
