@@ -113,10 +113,12 @@ begin
 {  InterpolatedVertex^.TexCoordU:=Min(Max(round((CurrentVertex^.TexCoordU*(1.0-InterpolationFactor))+(NextVertex^.TexCoordU*InterpolationFactor)),0),65535);
    InterpolatedVertex^.TexCoordV:=Min(Max(round((CurrentVertex^.TexCoordV*(1.0-InterpolationFactor))+(NextVertex^.TexCoordV*InterpolationFactor)),0),65535);}
 
-   UnpackUInt16QTangentSpace(CurrentVertex^.TangentSpace,CurrentTangent,CurrentBitangent,CurrentNormal);
+// UnpackUInt16QTangentSpace(CurrentVertex^.TangentSpace,CurrentTangent,CurrentBitangent,CurrentNormal);
+   DecodeTangentSpaceFromRGB10A2SNorm(CurrentVertex^.TangentSpace,CurrentTangent,CurrentBitangent,CurrentNormal);
    CurrentTangentSpace:=TpvMatrix3x3.Create(CurrentTangent,CurrentBitangent,CurrentNormal);
    
-   UnpackUInt16QTangentSpace(NextVertex^.TangentSpace,NextTangent,NextBitangent,NextNormal);
+// UnpackUInt16QTangentSpace(NextVertex^.TangentSpace,NextTangent,NextBitangent,NextNormal);
+   DecodeTangentSpaceFromRGB10A2SNorm(NextVertex^.TangentSpace,NextTangent,NextBitangent,NextNormal);
    NextTangentSpace:=TpvMatrix3x3.Create(NextTangent,NextBitangent,NextNormal);
 
    InterpolatedTangentSpace:=CurrentTangentSpace.Slerp(NextTangentSpace,InterpolationFactor);
@@ -125,8 +127,9 @@ begin
    InterpolatedBitangent:=InterpolatedTangentSpace.Bitangent;
    InterpolatedNormal:=InterpolatedTangentSpace.Normal;
 
-   InterpolatedVertex^.TangentSpace:=PackUInt16QTangentSpace(InterpolatedTangent,InterpolatedBitangent,InterpolatedNormal);
-   
+   InterpolatedVertex^.TangentSpace:=EncodeTangentSpaceAsRGB10A2SNorm(InterpolatedTangent,InterpolatedBitangent,InterpolatedNormal);
+// InterpolatedVertex^.TangentSpace:=PackUInt16QTangentSpace(InterpolatedTangent,InterpolatedBitangent,InterpolatedNormal);
+
   end; 
 
   Time:=Time+TimeStep; 
@@ -221,7 +224,7 @@ begin
 {           Vertex^.TexCoordU:=Min(Max(round(GLTFBakedVertexIndexedMeshVertex^.TexCoord0[0]*16384.0),0),65535);
             Vertex^.TexCoordV:=Min(Max(round(GLTFBakedVertexIndexedMeshVertex^.TexCoord0[1]*16384.0),0),65535);}
 
-            Vertex^.TangentSpace:=PackUInt16QTangentSpace(
+            Vertex^.TangentSpace:=EncodeTangentSpaceAsRGB10A2SNorm(
                                    TpvVector3.Create(GLTFBakedVertexIndexedMeshVertex^.Tangent[0],GLTFBakedVertexIndexedMeshVertex^.Tangent[1],GLTFBakedVertexIndexedMeshVertex^.Tangent[2]),
                                    (TpvVector3.Create(GLTFBakedVertexIndexedMeshVertex^.Normal[0],GLTFBakedVertexIndexedMeshVertex^.Normal[1],GLTFBakedVertexIndexedMeshVertex^.Normal[2]).Cross(TpvVector3.Create(GLTFBakedVertexIndexedMeshVertex^.Tangent[0],GLTFBakedVertexIndexedMeshVertex^.Tangent[1],GLTFBakedVertexIndexedMeshVertex^.Tangent[2])))*GLTFBakedVertexIndexedMeshVertex^.Tangent[3],
                                    TpvVector3.Create(GLTFBakedVertexIndexedMeshVertex^.Normal[0],GLTFBakedVertexIndexedMeshVertex^.Normal[1],GLTFBakedVertexIndexedMeshVertex^.Normal[2])

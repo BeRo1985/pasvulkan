@@ -74,8 +74,9 @@ type EpvPPM=class(Exception);
              Version=1;
        type TVertex=packed record
              Position:TpvVector3; // 12 bytes (must be non-quantized and non-compressed for direct use with hardware raytracing)
-             TangentSpace:TpvUInt16PackedTangentSpace; // 8 bytes
-            end; // 12+8 = 20 bytes
+             TangentSpace:TpvUInt32; // 4 bytes (RGB10A2 snorm)
+//           TangentSpace:TpvUInt16PackedTangentSpace; // 8 bytes
+            end; // 12+4 = 16 bytes
             PVertex=^TVertex;
             TVertices=array of TVertex;
             TTexCoords=array of TpvUInt16Vector2;

@@ -15321,7 +15321,8 @@ begin
    MeshVertex^.MaterialID:=0;
    MeshVertex^.Flags:=0;
    MeshVertex^.Position:=PPMVertex^.Position;
-   UnpackUInt16QTangentSpace(PPMVertex^.TangentSpace,Tangent,Bitangent,Normal);
+// UnpackUInt16QTangentSpace(PPMVertex^.TangentSpace,Tangent,Bitangent,Normal);
+   DecodeTangentSpaceFromRGB10A2SNorm(PPMVertex^.TangentSpace,Tangent,Bitangent,Normal);
    MeshVertex^.SetTangentSpaceVectors(Tangent,Bitangent,Normal);
    MeshVertex^.TexCoord0:=TpvVector2.Create(aSourceModel.TexCoords[VertexIndex].x/16384.0,aSourceModel.TexCoords[VertexIndex].y/16384.0);
    MeshVertex^.TexCoord1:=TpvVector2.Origin;
@@ -15340,7 +15341,8 @@ begin
      PPMVertex:=@aSourceModel.Animations[AnimationIndex].Frames[FrameIndex].Vertices[VertexIndex];
      TargetVertex:=@MeshPrimitive.fTargets[MorphWeightIndex].fVertices.ItemArray[VertexIndex];
      TargetVertex^.Position:=PPMVertex^.Position-MeshVertex^.Position;
-     UnpackUInt16QTangentSpace(PPMVertex^.TangentSpace,Tangent,Bitangent,Normal);
+   //UnpackUInt16QTangentSpace(PPMVertex^.TangentSpace,Tangent,Bitangent,Normal);
+     DecodeTangentSpaceFromRGB10A2SNorm(PPMVertex^.TangentSpace,Tangent,Bitangent,Normal);
      TargetVertex^.Normal:=Normal-OctDecode(MeshVertex^.Normal);
      TargetVertex^.Tangent:=Tangent-OctDecode(MeshVertex^.Tangent);
      inc(MorphWeightIndex);
