@@ -52,7 +52,7 @@ function OptimizeFrames(var aTimeFrames:TpvPPM.TFrames;out aFrames:TpvPPM.TFrame
 var FrameIndex,CurrentFrameIndex,NextFrameIndex,OutFrameIndex,VertexIndex:TpvSizeInt;
     StartTime,EndTime,Time,TimeStep,InterpolationFactor:TpvDouble;
     CurrentFrame,NextFrame:TpvPPM.PFrame;
-    CurrentVertex,NextVertex,InterpolatedVertex:TpvPPM.PVertex;
+    CurrentVertex,NextVertex,InterpolatedVertex:TpvPPM.PFullVertex;
     CurrentTangent,CurrentBitangent,CurrentNormal,
     NextTangent,NextBitangent,NextNormal,
     InterpolatedTangent,InterpolatedBitangent,InterpolatedNormal:TpvVector3;
@@ -84,7 +84,9 @@ begin
 
   aFrames[OutFrameIndex].Time:=Time;
   aFrames[OutFrameIndex].Vertices:=nil;
+  aFrames[OutFrameIndex].FullVertices:=nil;
   SetLength(aFrames[OutFrameIndex].Vertices,CountUsedVertices);
+  SetLength(aFrames[OutFrameIndex].FullVertices,CountUsedVertices);
 
   // Advance to next frame
   while (FrameIndex<length(aTimeFrames)) and (aTimeFrames[FrameIndex].Time<Time) do begin
@@ -103,32 +105,25 @@ begin
   InterpolationFactor:=(Time-aTimeFrames[CurrentFrameIndex].Time)/(aTimeFrames[NextFrameIndex].Time-aTimeFrames[CurrentFrameIndex].Time);
   for VertexIndex:=0 to CountUsedVertices-1 do begin
    
-   CurrentVertex:=@CurrentFrame^.Vertices[VertexIndex];
-   NextVertex:=@NextFrame^.Vertices[VertexIndex];
+   CurrentVertex:=@CurrentFrame^.FullVertices[VertexIndex];
+   NextVertex:=@NextFrame^.FullVertices[VertexIndex];
 
-   InterpolatedVertex:=@aFrames[OutFrameIndex].Vertices[VertexIndex];
+   InterpolatedVertex:=@aFrames[OutFrameIndex].FullVertices[VertexIndex];
    
    InterpolatedVertex^.Position:=CurrentVertex^.Position.Lerp(NextVertex^.Position,InterpolationFactor);
 
 {  InterpolatedVertex^.TexCoordU:=Min(Max(round((CurrentVertex^.TexCoordU*(1.0-InterpolationFactor))+(NextVertex^.TexCoordU*InterpolationFactor)),0),65535);
    InterpolatedVertex^.TexCoordV:=Min(Max(round((CurrentVertex^.TexCoordV*(1.0-InterpolationFactor))+(NextVertex^.TexCoordV*InterpolationFactor)),0),65535);}
 
-// UnpackUInt16QTangentSpace(CurrentVertex^.TangentSpace,CurrentTangent,CurrentBitangent,CurrentNormal);
-   DecodeTangentSpaceFromRGB10A2SNorm(CurrentVertex^.TangentSpace,CurrentTangent,CurrentBitangent,CurrentNormal);
-   CurrentTangentSpace:=TpvMatrix3x3.Create(CurrentTangent,CurrentBitangent,CurrentNormal);
+   CurrentTangentSpace:=TpvMatrix3x3.Create(CurrentVertex^.Tangent,CurrentVertex^.Bitangent,CurrentVertex^.Normal);
    
-// UnpackUInt16QTangentSpace(NextVertex^.TangentSpace,NextTangent,NextBitangent,NextNormal);
-   DecodeTangentSpaceFromRGB10A2SNorm(NextVertex^.TangentSpace,NextTangent,NextBitangent,NextNormal);
-   NextTangentSpace:=TpvMatrix3x3.Create(NextTangent,NextBitangent,NextNormal);
+   NextTangentSpace:=TpvMatrix3x3.Create(NextVertex^.Tangent,NextVertex^.Bitangent,NextVertex^.Normal);
 
    InterpolatedTangentSpace:=CurrentTangentSpace.Slerp(NextTangentSpace,InterpolationFactor);
 
-   InterpolatedTangent:=InterpolatedTangentSpace.Tangent;
-   InterpolatedBitangent:=InterpolatedTangentSpace.Bitangent;
-   InterpolatedNormal:=InterpolatedTangentSpace.Normal;
-
-   InterpolatedVertex^.TangentSpace:=EncodeTangentSpaceAsRGB10A2SNorm(InterpolatedTangent,InterpolatedBitangent,InterpolatedNormal);
-// InterpolatedVertex^.TangentSpace:=PackUInt16QTangentSpace(InterpolatedTangent,InterpolatedBitangent,InterpolatedNormal);
+   InterpolatedVertex^.Tangent:=InterpolatedTangentSpace.Tangent;
+   InterpolatedVertex^.Bitangent:=InterpolatedTangentSpace.Bitangent;
+   InterpolatedVertex^.Normal:=InterpolatedTangentSpace.Normal;
 
   end; 
 
@@ -150,7 +145,7 @@ var AnimationPart,Index,FrameIndex,OtherIndex,FoundPresetAnimation,BaseIndex,
     GLTFBakedVertexIndexedMesh:TpvGLTF.TBakedVertexIndexedMesh;
     GLTFBakedVertexIndexedMeshVertex:TpvGLTF.PVertex;
     PartFrames:TpvPPM.TFrames;
-    Vertex:TpvPPM.PVertex;
+    Vertex:TpvPPM.PFullVertex;
 begin
 
  result:=nil; // Nothing yet
@@ -213,22 +208,24 @@ begin
             SetLength(PartFrames[FrameIndex].Vertices,GLTFBakedVertexIndexedMesh.Vertices.Count);
            end;
 
+           if length(PartFrames[FrameIndex].FullVertices)<>GLTFBakedVertexIndexedMesh.Vertices.Count then begin
+            SetLength(PartFrames[FrameIndex].FullVertices,GLTFBakedVertexIndexedMesh.Vertices.Count);
+           end;
+
            for VertexIndex:=0 to GLTFBakedVertexIndexedMesh.Vertices.Count-1 do begin
 
             GLTFBakedVertexIndexedMeshVertex:=@GLTFBakedVertexIndexedMesh.Vertices.ItemArray[VertexIndex];
 
-            Vertex:=@PartFrames[FrameIndex].Vertices[VertexIndex];
+            Vertex:=@PartFrames[FrameIndex].FullVertices[VertexIndex];
 
             Vertex^.Position:=TpvVector3.Create(GLTFBakedVertexIndexedMeshVertex^.Position[0],GLTFBakedVertexIndexedMeshVertex^.Position[1],GLTFBakedVertexIndexedMeshVertex^.Position[2]);
 
 {           Vertex^.TexCoordU:=Min(Max(round(GLTFBakedVertexIndexedMeshVertex^.TexCoord0[0]*16384.0),0),65535);
             Vertex^.TexCoordV:=Min(Max(round(GLTFBakedVertexIndexedMeshVertex^.TexCoord0[1]*16384.0),0),65535);}
 
-            Vertex^.TangentSpace:=EncodeTangentSpaceAsRGB10A2SNorm(
-                                   TpvVector3.Create(GLTFBakedVertexIndexedMeshVertex^.Tangent[0],GLTFBakedVertexIndexedMeshVertex^.Tangent[1],GLTFBakedVertexIndexedMeshVertex^.Tangent[2]),
-                                   (TpvVector3.Create(GLTFBakedVertexIndexedMeshVertex^.Normal[0],GLTFBakedVertexIndexedMeshVertex^.Normal[1],GLTFBakedVertexIndexedMeshVertex^.Normal[2]).Cross(TpvVector3.Create(GLTFBakedVertexIndexedMeshVertex^.Tangent[0],GLTFBakedVertexIndexedMeshVertex^.Tangent[1],GLTFBakedVertexIndexedMeshVertex^.Tangent[2])))*GLTFBakedVertexIndexedMeshVertex^.Tangent[3],
-                                   TpvVector3.Create(GLTFBakedVertexIndexedMeshVertex^.Normal[0],GLTFBakedVertexIndexedMeshVertex^.Normal[1],GLTFBakedVertexIndexedMeshVertex^.Normal[2])
-                                  );
+            Vertex^.Tangent:=TpvVector3.Create(GLTFBakedVertexIndexedMeshVertex^.Tangent[0],GLTFBakedVertexIndexedMeshVertex^.Tangent[1],GLTFBakedVertexIndexedMeshVertex^.Tangent[2]);
+            Vertex^.Bitangent:=(TpvVector3.Create(GLTFBakedVertexIndexedMeshVertex^.Normal[0],GLTFBakedVertexIndexedMeshVertex^.Normal[1],GLTFBakedVertexIndexedMeshVertex^.Normal[2]).Cross(TpvVector3.Create(GLTFBakedVertexIndexedMeshVertex^.Tangent[0],GLTFBakedVertexIndexedMeshVertex^.Tangent[1],GLTFBakedVertexIndexedMeshVertex^.Tangent[2])))*GLTFBakedVertexIndexedMeshVertex^.Tangent[3];
+            Vertex^.Normal:=TpvVector3.Create(GLTFBakedVertexIndexedMeshVertex^.Normal[0],GLTFBakedVertexIndexedMeshVertex^.Normal[1],GLTFBakedVertexIndexedMeshVertex^.Normal[2]);
 
            end;
 
@@ -453,10 +450,10 @@ begin
        for VertexIndex:=0 to CountUsedVertices-1 do begin
         if First then begin
          First:=false;
-         BoundingBox.Min:=Animations[Index].Frames[FrameIndex].Vertices[VertexIndex].Position;
-         BoundingBox.Max:=Animations[Index].Frames[FrameIndex].Vertices[VertexIndex].Position;
+         BoundingBox.Min:=Animations[Index].Frames[FrameIndex].FullVertices[VertexIndex].Position;
+         BoundingBox.Max:=Animations[Index].Frames[FrameIndex].FullVertices[VertexIndex].Position;
         end else begin
-         BoundingBox.DirectCombineVector3(Animations[Index].Frames[FrameIndex].Vertices[VertexIndex].Position);
+         BoundingBox.DirectCombineVector3(Animations[Index].Frames[FrameIndex].FullVertices[VertexIndex].Position);
         end;
        end;
       end;
@@ -502,6 +499,7 @@ begin
        CountFrames:=length(Animations[Index].Frames);
        Stream.WriteBuffer(CountFrames,SizeOf(TpvUInt32));
        for FrameIndex:=0 to length(Animations[Index].Frames)-1 do begin
+        Animations[Index].Frames[FoundPresetAnimation].Pack;
         Stream.WriteBuffer(Animations[Index].Frames[FrameIndex].Time,SizeOf(TpvDouble));
         if CountUsedVertices>0 then begin
          Stream.WriteBuffer(Animations[Index].Frames[FrameIndex].Vertices[0],SizeOf(TpvPPM.TVertex)*CountUsedVertices);

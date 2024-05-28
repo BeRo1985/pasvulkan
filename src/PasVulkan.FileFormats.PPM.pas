@@ -79,13 +79,25 @@ type EpvPPM=class(Exception);
             end; // 12+4 = 16 bytes
             PVertex=^TVertex;
             TVertices=array of TVertex;
+            TFullVertex=record
+             Position:TpvVector3;
+             Tangent:TpvVector3; 
+             Bitangent:TpvVector3;
+             Normal:TpvVector3;
+            end; // 12+12+12+12 = 48 bytes
+            PFullVertex=^TFullVertex;
+            TFullVertices=array of TFullVertex;
             TTexCoords=array of TpvUInt16Vector2;
             TIndex=TpvUInt32;
             PIndex=^TIndex;
             TIndices=array of TIndex;
+            { TFrame }
             TFrame=record
              Time:TpvDouble;
              Vertices:TVertices;
+             FullVertices:TFullVertices;
+             procedure Pack;
+             procedure Unpack;
             end;
             PFrame=^TFrame;
             TFrames=array of TFrame;
@@ -155,6 +167,40 @@ type EpvPPM=class(Exception);
     end;
 
 implementation
+
+{ TpvPPM.TFrame }
+
+procedure TpvPPM.TFrame.Pack;
+var Index:TpvSizeInt;
+    FullVertex:PFullVertex;
+    Vertex:PVertex;
+begin
+ if length(Vertices)<>length(FullVertices) then begin
+  SetLength(FullVertices,length(Vertices));
+ end;
+ for Index:=0 to length(Vertices)-1 do begin
+  Vertex:=@Vertices[Index];
+  FullVertex:=@FullVertices[Index];
+  Vertex^.Position:=FullVertex^.Position;
+  Vertex^.TangentSpace:=EncodeTangentSpaceAsRGB10A2SNorm(FullVertex^.Tangent,FullVertex^.Bitangent,FullVertex^.Normal);
+ end;
+end;
+
+procedure TpvPPM.TFrame.Unpack;
+var Index:TpvSizeInt;
+    FullVertex:PFullVertex;
+    Vertex:PVertex;
+begin
+ if length(Vertices)<>length(FullVertices) then begin
+  SetLength(Vertices,length(FullVertices));
+ end;
+ for Index:=0 to length(FullVertices)-1 do begin
+  Vertex:=@Vertices[Index];
+  FullVertex:=@FullVertices[Index];
+  FullVertex^.Position:=Vertex^.Position;
+  DecodeTangentSpaceFromRGB10A2SNorm(Vertex^.TangentSpace,FullVertex^.Tangent,FullVertex^.Bitangent,FullVertex^.Normal);
+ end;
+end;
 
 { TpvPPM.TModel }
 
