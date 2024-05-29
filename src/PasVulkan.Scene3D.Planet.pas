@@ -2835,7 +2835,269 @@ end;
 procedure TpvScene3DPlanet.TData.Download(const aCommandBuffer:TpvVulkanCommandBuffer;
                                           const aTransferHeightMap:Boolean;
                                           const aTransferGrass:Boolean);                                          
+var CountImageMemoryBarriers,CountBufferMemoryBarriers:TpvSizeInt;
+    ImageSubresourceRange:TVkImageSubresourceRange;
+    ImageMemoryBarriers:array[0..9] of TVkImageMemoryBarrier;
+    BufferMemoryBarriers:array[0..1] of TVkBufferMemoryBarrier;
+    ImageCopies:array[0..31] of TVkImageCopy;
+    ImageCopy:PVkImageCopy;
+    BufferCopy:TVkBufferCopy;             
+    BufferImageCopy:TVkBufferImageCopy;                             
 begin
+
+ if assigned(fPlanet.fVulkanDevice) then begin
+
+  fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'Planet Download',[0.25,0.75,0.5,1.0]);
+
+  ////////////////////////////
+
+  ImageSubresourceRange:=TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                         0,
+                                                         1,
+                                                         0,
+                                                         1);
+
+  ////////////////////////////
+
+  CountImageMemoryBarriers:=0;
+
+  if aTransferHeightMap then begin
+
+   ImageMemoryBarriers[CountImageMemoryBarriers]:=TVkImageMemoryBarrier.Create(0,//TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                                               TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT),
+                                                                               VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                                               VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                                                                               VK_QUEUE_FAMILY_IGNORED,
+                                                                               VK_QUEUE_FAMILY_IGNORED,
+                                                                               fHeightMapImage.VulkanImage.Handle,
+                                                                               TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                                               0,
+                                                                                                               1,
+                                                                                                               0,
+                                                                                                               1));
+   inc(CountImageMemoryBarriers);
+
+   ImageMemoryBarriers[CountImageMemoryBarriers]:=TVkImageMemoryBarrier.Create(0,//TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                                               TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT),
+                                                                               VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                                               VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                                                                               VK_QUEUE_FAMILY_IGNORED,
+                                                                               VK_QUEUE_FAMILY_IGNORED,
+                                                                               fNormalMapImage.VulkanImage.Handle,
+                                                                               TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                                               0,
+                                                                                                               1,
+                                                                                                               0,
+                                                                                                               1));
+   inc(CountImageMemoryBarriers);
+
+  end;
+
+  if aTransferGrass then begin 
+
+   ImageMemoryBarriers[CountImageMemoryBarriers]:=TVkImageMemoryBarrier.Create(0,//TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                                               TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT),
+                                                                               VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                                               VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                                                                               VK_QUEUE_FAMILY_IGNORED,
+                                                                               VK_QUEUE_FAMILY_IGNORED,
+                                                                               fGrassMapImage.VulkanImage.Handle,
+                                                                               ImageSubresourceRange);
+   inc(CountImageMemoryBarriers);
+
+  end;
+
+  CountBufferMemoryBarriers:=0;
+
+  if aTransferHeightMap then begin
+
+   BufferMemoryBarriers[CountBufferMemoryBarriers]:=TVkBufferMemoryBarrier.Create(0,//TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT) or TVkAccessFlags(VK_ACCESS_MEMORY_WRITE_BIT),
+                                                                                  TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                                                                                  VK_QUEUE_FAMILY_IGNORED,
+                                                                                  VK_QUEUE_FAMILY_IGNORED,
+                                                                                  fHeightMapBuffer.Handle,
+                                                                                  0,
+                                                                                  fHeightMapBuffer.Size);
+   inc(CountBufferMemoryBarriers);
+
+   BufferMemoryBarriers[CountBufferMemoryBarriers]:=TVkBufferMemoryBarrier.Create(0,//TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT) or TVkAccessFlags(VK_ACCESS_MEMORY_WRITE_BIT),
+                                                                                  TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                                                                                  VK_QUEUE_FAMILY_IGNORED,
+                                                                                  VK_QUEUE_FAMILY_IGNORED,
+                                                                                  fNormalMapBuffer.Handle,
+                                                                                  0,
+                                                                                  fNormalMapBuffer.Size);
+   inc(CountBufferMemoryBarriers);
+
+  end;
+
+  if aTransferGrass then begin
+
+   BufferMemoryBarriers[CountBufferMemoryBarriers]:=TVkBufferMemoryBarrier.Create(0,//TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT) or TVkAccessFlags(VK_ACCESS_MEMORY_WRITE_BIT),
+                                                                                  TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                                                                                  VK_QUEUE_FAMILY_IGNORED,
+                                                                                  VK_QUEUE_FAMILY_IGNORED,
+                                                                                  fGrassMapBuffer.Handle,
+                                                                                  0,
+                                                                                  fGrassMapBuffer.Size);
+   inc(CountBufferMemoryBarriers);
+
+  end; 
+
+  if (CountImageMemoryBarriers>0) or (CountBufferMemoryBarriers>0) then begin
+
+   aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
+                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                     0,
+                                     0,nil,
+                                     CountBufferMemoryBarriers,@BufferMemoryBarriers[0],
+                                     CountImageMemoryBarriers,@ImageMemoryBarriers[0]);
+
+  end;
+
+  ////////////////////////////
+
+  if aTransferHeightMap then begin
+
+    BufferImageCopy:=TVkBufferImageCopy.Create(0,
+                                               fPlanet.fHeightMapResolution,
+                                               fPlanet.fHeightMapResolution,
+                                               TVkImageSubresourceLayers.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),0,0,1),
+                                               TVkOffset3D.Create(0,0,0),
+                                               TVkExtent3D.Create(fPlanet.fHeightMapResolution,fPlanet.fHeightMapResolution,1));
+
+    aCommandBuffer.CmdCopyImageToBuffer(fHeightMapImage.VulkanImage.Handle,
+                                        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                                        fHeightMapBuffer.Handle,
+                                        1,
+                                        @BufferImageCopy);
+
+    aCommandBuffer.CmdCopyImageToBuffer(fNormalMapImage.VulkanImage.Handle,
+                                        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                                        fNormalMapBuffer.Handle,
+                                        1,
+                                        @BufferImageCopy);
+   
+  end;                                                                                 
+
+  if aTransferGrass then begin
+
+    BufferImageCopy:=TVkBufferImageCopy.Create(0,
+                                               fPlanet.fGrassMapResolution,
+                                               fPlanet.fGrassMapResolution,
+                                               TVkImageSubresourceLayers.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),0,0,1),
+                                               TVkOffset3D.Create(0,0,0),
+                                               TVkExtent3D.Create(fPlanet.fGrassMapResolution,fPlanet.fGrassMapResolution,1));
+
+    aCommandBuffer.CmdCopyImageToBuffer(fGrassMapImage.VulkanImage.Handle,
+                                        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                                        fGrassMapBuffer.Handle,
+                                        1,
+                                        @BufferImageCopy);
+
+  end;
+
+  ////////////////////////////
+
+  CountImageMemoryBarriers:=0;
+
+  if aTransferHeightMap then begin
+
+   ImageMemoryBarriers[CountImageMemoryBarriers]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT),
+                                                                               0, //TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                                               VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                                                                               VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                                               VK_QUEUE_FAMILY_IGNORED,
+                                                                               VK_QUEUE_FAMILY_IGNORED,
+                                                                               fHeightMapImage.VulkanImage.Handle,
+                                                                               TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                                               0,
+                                                                                                               1,
+                                                                                                               0,
+                                                                                                               1));
+   inc(CountImageMemoryBarriers);
+
+   ImageMemoryBarriers[CountImageMemoryBarriers]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT),
+                                                                               0,//TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                                               VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                                                                               VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                                               VK_QUEUE_FAMILY_IGNORED,
+                                                                               VK_QUEUE_FAMILY_IGNORED,
+                                                                               fNormalMapImage.VulkanImage.Handle,
+                                                                               TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                                               0,
+                                                                                                               1,
+                                                                                                               0,
+                                                                                                               1));
+   inc(CountImageMemoryBarriers);
+
+  end;
+
+  if aTransferGrass then begin
+
+   ImageMemoryBarriers[CountImageMemoryBarriers]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT),
+                                                                               0,//TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                                               VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                                                                               VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                                               VK_QUEUE_FAMILY_IGNORED,
+                                                                               VK_QUEUE_FAMILY_IGNORED,
+                                                                               fGrassMapImage.VulkanImage.Handle,
+                                                                               ImageSubresourceRange);
+   inc(CountImageMemoryBarriers);
+
+  end;
+
+  CountBufferMemoryBarriers:=0;
+
+  if aTransferHeightMap then begin
+
+   BufferMemoryBarriers[CountBufferMemoryBarriers]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                                                                                  0,//TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT) or TVkAccessFlags(VK_ACCESS_MEMORY_WRITE_BIT),
+                                                                                  VK_QUEUE_FAMILY_IGNORED,
+                                                                                  VK_QUEUE_FAMILY_IGNORED,
+                                                                                  fHeightMapBuffer.Handle,
+                                                                                  0,
+                                                                                  fHeightMapBuffer.Size);
+   inc(CountBufferMemoryBarriers);
+
+   BufferMemoryBarriers[CountBufferMemoryBarriers]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                                                                                  0,//TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT) or TVkAccessFlags(VK_ACCESS_MEMORY_WRITE_BIT),
+                                                                                  VK_QUEUE_FAMILY_IGNORED,
+                                                                                  VK_QUEUE_FAMILY_IGNORED,
+                                                                                  fNormalMapBuffer.Handle,
+                                                                                  0,
+                                                                                  fNormalMapBuffer.Size);
+   inc(CountBufferMemoryBarriers);
+
+  end;
+
+  if aTransferGrass then begin
+
+   BufferMemoryBarriers[CountBufferMemoryBarriers]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                                                                                  0,//TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT) or TVkAccessFlags(VK_ACCESS_MEMORY_WRITE_BIT),
+                                                                                  VK_QUEUE_FAMILY_IGNORED,
+                                                                                  VK_QUEUE_FAMILY_IGNORED,
+                                                                                  fGrassMapBuffer.Handle,
+                                                                                  0,
+                                                                                  fGrassMapBuffer.Size);
+   inc(CountBufferMemoryBarriers);
+
+  end;
+
+  if (CountImageMemoryBarriers>0) or (CountBufferMemoryBarriers>0) then begin
+
+   aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
+                                     0,
+                                     0,nil,
+                                     CountBufferMemoryBarriers,@BufferMemoryBarriers[0],
+                                     CountImageMemoryBarriers,@ImageMemoryBarriers[0]);
+
+  end;
+
+  ////////////////////////////
+
+ end; 
 
 end;
 
