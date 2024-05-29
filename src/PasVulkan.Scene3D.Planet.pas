@@ -216,6 +216,9 @@ type TpvScene3DPlanets=class;
                    TTiledMeshBoundingSpheres=TpvDynamicArrayList<TTiledMeshBoundingSphere>;
                    TDoubleBufferedVulkanBuffers=array[0..1] of TpvVulkanBuffer;
                    TVisualMeshVertexBufferCopies=TpvDynamicArrayList<TVkBufferCopy>;
+                   THeightMapData=array of TpvFloat;
+                   TNormalMapData=array of TpvHalfFloatVector4;
+                   TGrassMapData=array of TpvFloat;
              private    // All 2D maps are octahedral projected maps in this implementation (not equirectangular projected maps or cube maps)
               fPlanet:TpvScene3DPlanet;
               fInFlightFrameIndex:TpvInt32; // -1 is the ground truth instance, >=0 are the in-flight frame instances
@@ -225,13 +228,17 @@ type TpvScene3DPlanets=class;
               fHeightMapBuffer:TpvVulkanBuffer;
               fNormalMapBuffer:TpvVulkanBuffer;
               fBlendMapImage:TpvScene3DRendererImage2D; // A2B10G10R10_UNORM_PACK32
-              fGrassMapImage:TpvScene3DRendererImage2D; // R8G8B8A8_UNORM
+              fGrassMapImage:TpvScene3DRendererImage2D; // R32_FLOAR
+              fGrassMapBuffer:TpvVulkanBuffer;
               fWaterHeightMapImage:TpvScene3DRendererImage2D; // R32_SFLOAT
               fWaterHeightMapBuffers:array[0..1] of TpvVulkanBuffer; // Double-buffered
               fWaterFlowMapBuffer:TpvVulkanBuffer;
               fWaterBufferIndex:TpvUInt32;
               fWaterFrameIndex:TpvUInt32;
               fWaterVisibilityBuffer:TpvVulkanBuffer;
+              fHeightMapData:THeightMapData;
+              fNormalMapData:TNormalMapData;
+              fGrassMapData:TGrassMapData;
               fTileDirtyMap:TpvScene3DPlanet.TData.TTileDirtyMap;
               fTileExpandedDirtyMap:TpvScene3DPlanet.TData.TTileDirtyMap;
               fTileLODMapBuffer:TpvVulkanBuffer;
@@ -288,6 +295,9 @@ type TpvScene3DPlanets=class;
               procedure AcquireOnComputeQueue(const aCommandBuffer:TpvVulkanCommandBuffer);
               procedure ReleaseOnComputeQueue(const aCommandBuffer:TpvVulkanCommandBuffer);
               procedure CheckDirtyMap;
+              procedure Download(const aCommandBuffer:TpvVulkanCommandBuffer;
+                                 const aTransferHeightMap:Boolean;
+                                 const aTransferGrass:Boolean);
               procedure TransferTo(const aCommandBuffer:TpvVulkanCommandBuffer;
                                    const aInFlightFrameData:TData;
                                    const aTransferHeightMap:Boolean;
@@ -308,8 +318,12 @@ type TpvScene3DPlanets=class;
               property TiledMeshBoundingSpheresBuffer:TpvVulkanBuffer read fTiledMeshBoundingSpheresBuffer;
               property TiledVisualMeshIndexGroupsBuffer:TpvVulkanBuffer read fTiledVisualMeshIndexGroupsBuffer;
              public
+              property HeightMapData:THeightMapData read fHeightMapData;
+              property NormalMapData:TNormalMapData read fNormalMapData;
+              property GrassMapData:TGrassMapData read fGrassMapData;
+             public
               property VisualMeshVertexBuffers:TDoubleBufferedVulkanBuffers read fVisualMeshVertexBuffers;
-              property VisualMeshDistanceBuffers:TDoubleBufferedVulkanBuffers read fVisualMeshDistanceBuffers;
+              property VisualMeshDistanceBuffers:TDoubleBufferedVulkanBuffers read fVisualMeshDistanceBuffers;              
              published
               property VisualMeshVertexBufferUpdateIndex:TPasMPInt32 read fVisualMeshVertexBufferUpdateIndex;
               property VisualMeshVertexBufferRenderIndex:TPasMPInt32 read fVisualMeshVertexBufferRenderIndex;
@@ -1636,6 +1650,8 @@ begin
 
  fGrassMapImage:=nil;
 
+ fGrassMapBuffer:=nil;
+
  fWaterHeightMapImage:=nil;
 
  fWaterHeightMapBuffers[0]:=nil;
@@ -1648,6 +1664,12 @@ begin
  fWaterFrameIndex:=0;
 
  fWaterVisibilityBuffer:=nil;
+
+ fHeightMapData:=nil;
+
+ fNormalMapData:=nil;
+
+ fGrassMapData:=nil;
 
  fTileDirtyMap:=nil;
 
@@ -1784,6 +1806,28 @@ begin
                                                    pvAllocationGroupIDScene3DPlanetStatic);
   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fGrassMapImage.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fGrassMapImage.Image');
   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fGrassMapImage.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fGrassMapImage.ImageView');
+
+  if fInFlightFrameIndex<0 then begin
+    
+   fGrassMapBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
+                                           fPlanet.fGrassMapResolution*fPlanet.fGrassMapResolution*SizeOf(TpvFloat),
+                                           TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
+                                           fPlanet.fGlobalBufferSharingMode,
+                                           fPlanet.fGlobalBufferQueueFamilyIndices,
+                                           0,
+                                           TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_CACHED_BIT),
+                                           0,
+                                           0,
+                                           0,
+                                           0,
+                                           0,
+                                           0,
+                                           [TpvVulkanBufferFlag.PersistentMappedIfPossible],
+                                           0,
+                                           pvAllocationGroupIDScene3DPlanetStatic);
+   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fGrassMapBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fGrassMapBuffer');
+   
+  end; 
 
   if fInFlightFrameIndex<0 then begin
 
@@ -2309,6 +2353,8 @@ begin
 
  FreeAndNil(fGrassMapImage);
 
+ FreeAndNil(fGrassMapBuffer);
+
  FreeAndNil(fWaterHeightMapImage);
 
  FreeAndNil(fWaterHeightMapBuffers[0]);
@@ -2321,6 +2367,12 @@ begin
  FreeAndNil(fMeshVertices);
 
  FreeAndNil(fMeshIndices);
+
+ fHeightMapData:=nil;
+
+ fNormalMapData:=nil;
+
+ fGrassMapData:=nil;
 
  fTileGenerations:=nil;
 
@@ -2774,6 +2826,16 @@ begin
   end;//}
 
  end;
+
+end;
+
+// Transfer fHeightMapImage to fHeightMapBuffer, download fHeightMapBuffer to local fHeightMapData
+// Transfer fNormalMapImage to fNormalMapBuffer, download fNormalMapBuffer to local fNormalMapData
+// Transfer fGrassMapImage to fGrassMapBuffer, download fGrassMapBuffer to local fGrassMapData
+procedure TpvScene3DPlanet.TData.Download(const aCommandBuffer:TpvVulkanCommandBuffer;
+                                          const aTransferHeightMap:Boolean;
+                                          const aTransferGrass:Boolean);                                          
+begin
 
 end;
 
