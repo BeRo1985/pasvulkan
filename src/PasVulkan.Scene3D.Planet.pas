@@ -4136,6 +4136,12 @@ begin
 
     Upload(Queue,CommandBuffer,Fence);
 
+    fPlanet.fData.Download(Queue,
+                           CommandBuffer,
+                           Fence,
+                           true,
+                           true);
+
    finally
     FreeAndNil(Fence);
    end;
