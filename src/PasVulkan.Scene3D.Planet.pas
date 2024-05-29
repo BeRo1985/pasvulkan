@@ -14693,6 +14693,7 @@ var QueueTileIndex:TpvSizeInt;
     UpdateRenderIndex,UpdateWaterVisibility:Boolean;
     RaytracingTile:TRaytracingTile;
     CurrentRaytracingTileQueue:TRaytracingTiles;
+    UpdatedHeightMap,UpdatedGrass:Boolean;
 begin
 
  fData.fCountDirtyTiles:=0;
@@ -14700,6 +14701,10 @@ begin
  UpdateRenderIndex:=false;
 
  UpdateWaterVisibility:=false;
+
+ UpdatedHeightMap:=false;
+
+ UpdatedGrass:=false;
 
  if fData.fModifyGrassMapActive then begin
 
@@ -14716,6 +14721,8 @@ begin
     EndUpdate;
    end;
 
+   UpdatedGrass:=true;
+
   end;
 
  end;
@@ -14724,6 +14731,8 @@ begin
     fData.fModifyHeightMapActive then begin
 
   if assigned(fVulkanDevice) then begin
+
+   UpdatedHeightMap:=true;
 
    BeginUpdate;
    try
@@ -14907,6 +14916,14 @@ begin
 
   end;
 
+ end;
+
+ if assigned(fVulkanDevice) and (UpdatedHeightMap or UpdatedGrass) then begin
+  fData.Download(fVulkanComputeQueue,
+                 fVulkanComputeCommandBuffer,
+                 fVulkanComputeFence,
+                 UpdatedHeightMap,
+                 UpdatedGrass);
  end;
 
 {if assigned(fVulkanDevice) and UpdateWaterVisibility then begin
