@@ -20438,12 +20438,8 @@ begin
  OctahedronNormal:=OctahedralProjectionMappingSignedEncode(Normal);
 
  // Find the canonical directions
- if abs(Normal.y)>abs(Normal.z) then begin
-  CanonicalDirectionA:=TpvVector3.Create(-Normal.y,Normal.x,0.0).Normalize;
- end else begin
-  CanonicalDirectionA:=TpvVector3.Create(Normal.z,0.0,-Normal.x).Normalize;
- end;
- CanonicalDirectionB:=Normal.Cross(CanonicalDirectionA).Normalize;
+ CanonicalDirectionA:=(Normal.zxy-(Normal.zxy.Dot(Normal))).Normalize.Cross(Normal);
+ CanonicalDirectionB:=Normal.Cross(CanonicalDirectionA);
 
  TangentInCanonicalSpace:=TpvVector2.InlineableCreate(Tangent.Dot(CanonicalDirectionA),Tangent.Dot(CanonicalDirectionB));
 
@@ -20475,12 +20471,8 @@ begin
  Normal:=OctahedralProjectionMappingSignedDecode(OctahedronNormal);
 
  // Find the canonical directions
- if abs(Normal.y)>abs(Normal.z) then begin
-  CanonicalDirectionA:=TpvVector3.Create(-Normal.y,Normal.x,0.0).Normalize;
- end else begin
-  CanonicalDirectionA:=TpvVector3.Create(Normal.z,0.0,-Normal.x).Normalize;
- end;
- CanonicalDirectionB:=Normal.Cross(CanonicalDirectionA).Normalize;
+ CanonicalDirectionA:=(Normal.zxy-(Normal.zxy.Dot(Normal))).Normalize.Cross(Normal);
+ CanonicalDirectionB:=Normal.Cross(CanonicalDirectionA);
 
  TangentInCanonicalSpace:=DecodeDiamondSigned(TemporaryVector4.z);
 

@@ -44,7 +44,7 @@ uint encodeTangentSpaceAsRGB10A2SNorm(mat3 tbn){
   octahedronalNormal = (normal.z < 0.0) ? ((1.0 - abs(octahedronalNormal.yx)) * fma(step(vec2(0.0), octahedronalNormal.xy), vec2(2.0), vec2(-1.0))) : octahedronalNormal;
   
   // Find the canonical directions
-  const vec3 canonicalDirectionA = normalize((abs(normal.y) > abs(normal.z)) ? vec3(normal.y, -normal.x, 0.0) : vec3(normal.z, 0.0, -normal.x));
+  const vec3 canonicalDirectionA = cross(normalize(normal.zxy - dot(normal.zxy, normal)), normal);
   const vec3 canonicalDirectionB = cross(normal, canonicalDirectionA);
 
   // Project the tangent into the canonical space 
@@ -87,7 +87,7 @@ mat3 decodeTangentSpaceFromRGB10A2SNorm(const in uint encodedTangentSpace){
   normal = normalize((normal.z < 0.0) ? vec3((1.0 - abs(normal.yx)) * fma(step(vec2(0.0), normal.xy), vec2(2.0), vec2(-1.0)), normal.z) : normal);
 
   // Find the canonical directions
-  const vec3 canonicalDirectionA = normalize((abs(normal.y) > abs(normal.z)) ? vec3(normal.y, -normal.x, 0.0) : vec3(normal.z, 0.0, -normal.x));
+  const vec3 canonicalDirectionA = cross(normalize(normal.zxy - dot(normal.zxy, normal)), normal);
   const vec3 canonicalDirectionB = cross(normal, canonicalDirectionA);
 
   // Decode the tangent diamond direction
