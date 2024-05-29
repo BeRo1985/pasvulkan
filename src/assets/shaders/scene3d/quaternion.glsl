@@ -1,25 +1,25 @@
 #ifndef QUATERNION_GLSL
 #define QUATERNION_GLSL
 
-vec4 matrixToQuaternion(mat3 m){  
+vec4 matrixToQuaternion(const in mat3 m){  
   float t = m[0][0] + (m[1][1] + m[2][2]);
-  vec4 r;
+  vec4 q;
   if(t > 2.9999999){
-    r = vec4(0.0, 0.0, 0.0, 1.0);
+    q = vec4(0.0, 0.0, 0.0, 1.0);
   }else if(t > 0.0000001){
     float s = sqrt(1.0 + t) * 2.0;
-    r = vec4(vec3(m[1][2] - m[2][1], m[2][0] - m[0][2], m[0][1] - m[1][0]) / s, s * 0.25);
+    q = vec4(vec3(m[1][2] - m[2][1], m[2][0] - m[0][2], m[0][1] - m[1][0]) / s, s * 0.25);
   }else if((m[0][0] > m[1][1]) && (m[0][0] > m[2][2])){
     float s = sqrt(1.0 + (m[0][0] - (m[1][1] + m[2][2]))) * 2.0;
-    r = vec4(s * 0.25, vec3(m[1][0] - m[0][1], m[2][0] - m[0][2], m[0][2] - m[2][1]) / s);
+    q = vec4(s * 0.25, vec3(m[1][0] + m[0][1], m[2][0] + m[0][2], m[1][2] - m[2][1]) / s);    
   }else if(m[1][1] > m[2][2]){
     float s = sqrt(1.0 + (m[1][1] - (m[0][0] + m[2][2]))) * 2.0;
-    r = vec4(vec3(m[1][0] + m[0][1], m[2][1] + m[1][2], m[2][0] - m[0][2]) / s, s * 0.25).xwyz;     
+    q = vec4(vec3(m[1][0] + m[0][1], m[2][1] + m[1][2], m[2][0] - m[0][2]) / s, s * 0.25).xwyz;
   }else{
     float s = sqrt(1.0 + (m[2][2] - (m[0][0] + m[1][1]))) * 2.0;
-    r = vec4(vec3(m[2][0] + m[0][2], m[2][1] + m[1][2], m[0][1] - m[1][0]) / s, s * 0.25).xywz;     
+    q = vec4(vec3(m[2][0] + m[0][2], m[2][1] + m[1][2], m[0][1] - m[1][0]) / s, s * 0.25).xywz; 
   }
-  return normalize(r); 
+  return normalize(q); 
 }
 
 mat3 quaternionToMatrix(vec4 q){  
@@ -161,6 +161,52 @@ vec4 unpackQuaternionFromRGB10A2(vec4 q){
   return normalize(vec4[4](r.wxyz, r.xwyz, r.xywz, r.xyzw)[int(q.w * 3.0)]);
 }
 
+vec4 packQTangent(mat3 m, const in float threshold){
+  //const float threshold = 1.0 / 127.0; 
+  const float renormalization = sqrt(1.0 - (threshold * threshold));
+  float t = m[0][0] + (m[1][1] + m[2][2]);
+  vec4 q;
+  if(t > 2.9999999){
+    q = vec4(0.0, 0.0, 0.0, 1.0);
+  }else if(t > 0.0000001){
+    float s = sqrt(1.0 + t) * 2.0;
+    q = vec4(vec3(m[1][2] - m[2][1], m[2][0] - m[0][2], m[0][1] - m[1][0]) / s, s * 0.25);
+  }else if((m[0][0] > m[1][1]) && (m[0][0] > m[2][2])){
+    float s = sqrt(1.0 + (m[0][0] - (m[1][1] + m[2][2]))) * 2.0;
+    q = vec4(s * 0.25, vec3(m[1][0] + m[0][1], m[2][0] + m[0][2], m[1][2] - m[2][1]) / s);    
+  }else if(m[1][1] > m[2][2]){
+    float s = sqrt(1.0 + (m[1][1] - (m[0][0] + m[2][2]))) * 2.0;
+    q = vec4(vec3(m[1][0] + m[0][1], m[2][1] + m[1][2], m[2][0] - m[0][2]) / s, s * 0.25).xwyz;
+  }else{
+    float s = sqrt(1.0 + (m[2][2] - (m[0][0] + m[1][1]))) * 2.0;
+    q = vec4(vec3(m[2][0] + m[0][2], m[2][1] + m[1][2], m[0][1] - m[1][0]) / s, s * 0.25).xywz; 
+  }
+  q = normalize(q); 
+  q = mix(q, -q, float(q.w < 0.0));
+  q = mix(q, vec4(q.xyz * renormalization, threshold), float(q.w < threshold));
+  return mix(q, -q, float(dot(cross(m[0], m[2]), m[1]) <= 0.0)); 
+}
+
+mat3 unpackQTangent(vec4 q){
+  q = normalize(q); 
+  float qx2 = q.x + q.x,
+        qy2 = q.y + q.y,
+        qz2 = q.z + q.z,
+        qxqx2 = q.x * qx2,
+        qxqy2 = q.x * qy2,
+        qxqz2 = q.x * qz2,
+        qxqw2 = q.w * qx2,
+        qyqy2 = q.y * qy2,
+        qyqz2 = q.y * qz2,
+        qyqw2 = q.w * qy2,
+        qzqz2 = q.z * qz2,
+        qzqw2 = q.w * qz2;
+  vec3 tangent = vec3(1.0 - (qyqy2 + qzqz2), qxqy2 + qzqw2, qxqz2 - qyqw2);
+  vec3 normal = vec3(qxqz2 + qyqw2, qyqz2 - qxqw2, 1.0 - (qxqx2 + qyqy2));
+  return mat3(tangent, cross(tangent, normal) * sign(q.w), normal);
+} 
+
+/*
 vec4 packQTangent(mat3 tbn){
   vec4 q = matrixToQuaternion(tbn);
   q = mix(q, -q, float(q.w < 0.0));
@@ -178,5 +224,6 @@ mat3 unpackQTangent(vec4 q){
   vec3 tangent = vec3(txy - twz, 1.0 - (txx + tzz), tyz + twx);
   return mat3(tangent, cross(normal, tangent) * sign(q.w), normal);
 } 
+*/
 
 #endif
