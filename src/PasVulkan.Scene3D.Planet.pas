@@ -222,6 +222,8 @@ type TpvScene3DPlanets=class;
               fHeightMap:THeightMap; // only on the ground truth instance, otherwise nil
               fHeightMapImage:TpvScene3DRendererMipmapImage2D; // R32_SFLOAT (at least for now, just for the sake of simplicity, later maybe R16_UNORM or R16_SNORM)
               fNormalMapImage:TpvScene3DRendererMipmapImage2D; // R16G16B16A16_SNORM (at least for now, just for the sake of simplicity, later maybe RGBA8_SNORM)
+              fHeightMapBuffer:TpvVulkanBuffer;
+              fNormalMapBuffer:TpvVulkanBuffer;
               fBlendMapImage:TpvScene3DRendererImage2D; // A2B10G10R10_UNORM_PACK32
               fGrassMapImage:TpvScene3DRendererImage2D; // R8G8B8A8_UNORM
               fWaterHeightMapImage:TpvScene3DRendererImage2D; // R32_SFLOAT
@@ -1469,6 +1471,8 @@ type TpvScene3DPlanets=class;
        fRendererViewInstanceListLock:TPasMPCriticalSection;
        fRendererViewInstances:TRendererViewInstances;
        fRendererViewInstanceHashMap:TRendererViewInstanceHashMap;
+       fImageRowChanged:array[0..16384-1] of boolean; // 16k is overkill anyway, better too much than too less
+       fImageRowBufferCopy:array[0..8192-1] of TVkBufferImageCopy; // 16k / 2, since contiguous rows are merged into one copy operation
       private
        procedure GenerateMeshIndices(const aTiledMeshIndices:TpvScene3DPlanet.TMeshIndices;
                                      const aTiledMeshIndexGroups:TpvScene3DPlanet.TTiledMeshIndexGroups;
@@ -1624,6 +1628,10 @@ begin
 
  fNormalMapImage:=nil;
 
+ fHeightMapBuffer:=nil;
+
+ fNormalMapBuffer:=nil;
+
  fBlendMapImage:=nil;
 
  fGrassMapImage:=nil;
@@ -1710,6 +1718,46 @@ begin
                                                           pvAllocationGroupIDScene3DPlanetStatic);
   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fNormalMapImage.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fNormalMapImage.Image');
   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fNormalMapImage.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fNormalMapImage.ImageView');
+
+  if InFlightFrameIndex<0 then begin
+    
+   fHeightMapBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
+                                            fPlanet.fHeightMapResolution*fPlanet.fHeightMapResolution*SizeOf(TpvFloat),
+                                            TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
+                                            fPlanet.fGlobalBufferSharingMode,
+                                            fPlanet.fGlobalBufferQueueFamilyIndices,
+                                            0,
+                                            TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_CACHED_BIT),
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            [TpvVulkanBufferFlag.PersistentMappedIfPossible],
+                                            0,
+                                            pvAllocationGroupIDScene3DPlanetStatic); 
+   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fHeightMapBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fHeightMapBuffer');                                         
+
+   fNormalMapBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
+                                            fPlanet.fHeightMapResolution*fPlanet.fHeightMapResolution*SizeOf(TpvHalfFloatVector4),
+                                            TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
+                                            fPlanet.fGlobalBufferSharingMode,
+                                            fPlanet.fGlobalBufferQueueFamilyIndices,
+                                            0,
+                                            TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_CACHED_BIT),
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            [TpvVulkanBufferFlag.PersistentMappedIfPossible],
+                                            0,
+                                            pvAllocationGroupIDScene3DPlanetStatic);
+   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fNormalMapBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fNormalMapBuffer');
+
+  end;
 
   fBlendMapImage:=TpvScene3DRendererImage2D.Create(fPlanet.fVulkanDevice,
                                                    fPlanet.fHeightMapResolution,
@@ -1857,7 +1905,7 @@ begin
                                                0,
                                                0,
                                                0,
-                                               [TpvVulkanBufferFlag.PersistentMappedIfPossibe],
+                                               [TpvVulkanBufferFlag.PersistentMappedIfPossible],
                                                0,
                                                pvAllocationGroupIDScene3DPlanetStatic
                                               );
@@ -1882,7 +1930,7 @@ begin
                                                        0,
                                                        0,
                                                        0,
-                                                       [TpvVulkanBufferFlag.PersistentMappedIfPossibe],
+                                                       [TpvVulkanBufferFlag.PersistentMappedIfPossible],
                                                        0,
                                                        pvAllocationGroupIDScene3DPlanetStatic
                                                       );
@@ -1907,7 +1955,7 @@ begin
                                                  0,
                                                  0,
                                                  0,
-                                                 [TpvVulkanBufferFlag.PersistentMappedIfPossibe],
+                                                 [TpvVulkanBufferFlag.PersistentMappedIfPossible],
                                                  0,
                                                  pvAllocationGroupIDScene3DPlanetStatic
                                                 );
@@ -1991,7 +2039,7 @@ begin
                                              0,
                                              0,
                                              0,
-                                             [TpvVulkanBufferFlag.PersistentMappedIfPossibe],
+                                             [TpvVulkanBufferFlag.PersistentMappedIfPossible],
                                              0,
                                              pvAllocationGroupIDScene3DPlanetStatic
                                             );
@@ -2131,7 +2179,7 @@ begin
                                                     0,
                                                     0,
                                                     0,
-                                                    [TpvVulkanBufferFlag.PersistentMappedIfPossibe],
+                                                    [TpvVulkanBufferFlag.PersistentMappedIfPossible],
                                                     0,
                                                     pvAllocationGroupIDScene3DPlanetStatic
                                                    );
@@ -2173,7 +2221,7 @@ begin
                                                         0,
                                                         0,
                                                         0,
-                                                        [TpvVulkanBufferFlag.PersistentMappedIfPossibe],
+                                                        [TpvVulkanBufferFlag.PersistentMappedIfPossible],
                                                         0,
                                                         pvAllocationGroupIDScene3DPlanetStatic
                                                        );
@@ -2252,6 +2300,10 @@ begin
  FreeAndNil(fHeightMapImage);
 
  FreeAndNil(fNormalMapImage);
+
+ FreeAndNil(fHeightMapBuffer);
+
+ FreeAndNil(fNormalMapBuffer);
 
  FreeAndNil(fBlendMapImage);
 
@@ -3147,7 +3199,7 @@ begin
                                          0,
                                          0,
                                          0,
-                                         [TpvVulkanBufferFlag.PersistentMappedIfPossibe],
+                                         [TpvVulkanBufferFlag.PersistentMappedIfPossible],
                                          0,
                                          pvAllocationGroupIDScene3DPlanetDynamic
                                         );
@@ -3395,7 +3447,7 @@ begin
                                          0,
                                          0,
                                          0,
-                                         [TpvVulkanBufferFlag.PersistentMappedIfPossibe],
+                                         [TpvVulkanBufferFlag.PersistentMappedIfPossible],
                                          0,
                                          pvAllocationGroupIDScene3DPlanetDynamic
                                         );
@@ -12904,7 +12956,7 @@ begin
                                                                         0,
                                                                         0,
                                                                         0,
-                                                                        [TpvVulkanBufferFlag.PersistentMappedIfPossibe],
+                                                                        [TpvVulkanBufferFlag.PersistentMappedIfPossible],
                                                                         0,
                                                                         pvAllocationGroupIDScene3DPlanetStatic
                                                                        );

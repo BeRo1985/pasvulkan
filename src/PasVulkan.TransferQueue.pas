@@ -151,7 +151,7 @@ begin
                                  0,
                                  0,
                                  0,
-                                 [TpvVulkanBufferFlag.PersistentMappedIfPossibe]);
+                                 [TpvVulkanBufferFlag.PersistentMappedIfPossible]);
  fTransferQueue.fDevice.DebugUtils.SetObjectName(fBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvTransferQueue.TBlock.fBuffer');
 end;
 

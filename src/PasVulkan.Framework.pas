@@ -1317,7 +1317,7 @@ type EpvVulkanException=class(Exception);
      TpvVulkanBufferFlag=
       (
        PersistentMapped,
-       PersistentMappedIfPossibe,
+       PersistentMappedIfPossible,
        OwnSingleMemoryChunk,
        DedicatedAllocation,
        BufferDeviceAddress
@@ -13693,7 +13693,7 @@ begin
    Include(MemoryBlockFlags,TpvVulkanDeviceMemoryBlockFlag.PersistentMapped);
   end;
 
-  if TpvVulkanBufferFlag.PersistentMappedIfPossibe in fBufferFlags then begin
+  if TpvVulkanBufferFlag.PersistentMappedIfPossible in fBufferFlags then begin
    Include(MemoryBlockFlags,TpvVulkanDeviceMemoryBlockFlag.PersistentMappedIfPossibe);
   end;
 
@@ -13735,7 +13735,7 @@ begin
 
   Bind;
 
-  Exclude(fBufferFlags,TpvVulkanBufferFlag.PersistentMappedIfPossibe);
+  Exclude(fBufferFlags,TpvVulkanBufferFlag.PersistentMappedIfPossible);
 
   if TpvVulkanDeviceMemoryChunkFlag.PersistentMapped in fMemoryBlock.MemoryChunk.fMemoryChunkFlags then begin
    Include(fBufferFlags,TpvVulkanBufferFlag.PersistentMapped);
@@ -14604,7 +14604,7 @@ begin
    Include(BufferFlags,TpvVulkanBufferFlag.PersistentMapped);
   end;
   if TpvVulkanDeviceMemoryStagingFlag.PersistentMappedIfPossibe in fFlags then begin
-   Include(BufferFlags,TpvVulkanBufferFlag.PersistentMappedIfPossibe);
+   Include(BufferFlags,TpvVulkanBufferFlag.PersistentMappedIfPossible);
   end;
 
   fBuffer:=TpvVulkanBuffer.Create(fDevice,

@@ -1765,7 +1765,7 @@ begin
                                                                                      0,
                                                                                      0,
                                                                                      0,
-                                                                                     [TpvVulkanBufferFlag.PersistentMappedIfPossibe],
+                                                                                     [TpvVulkanBufferFlag.PersistentMappedIfPossible],
                                                                                      0,
                                                                                      pvAllocationGroupIDScene3DStatic);
   Renderer.VulkanDevice.DebugUtils.SetObjectName(fCascadedShadowMapVulkanUniformBuffers[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DRendererInstance.fCascadedShadowMapVulkanUniformBuffers['+IntToStr(InFlightFrameIndex)+']');
@@ -1905,7 +1905,7 @@ begin
                                                                                  0,
                                                                                  0,
                                                                                  0,
-                                                                                 [TpvVulkanBufferFlag.PersistentMappedIfPossibe],
+                                                                                 [TpvVulkanBufferFlag.PersistentMappedIfPossible],
                                                                                  0,
                                                                                  pvAllocationGroupIDScene3DStatic);
   Renderer.VulkanDevice.DebugUtils.SetObjectName(fColorGradingSettingUniformBuffers[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DRendererInstance.fColorGradingSettingUniformBuffers['+IntToStr(InFlightFrameIndex)+']');
@@ -2138,7 +2138,7 @@ begin
                                                                                                0,
                                                                                                0,
                                                                                                0,
-                                                                                               [TpvVulkanBufferFlag.PersistentMappedIfPossibe],
+                                                                                               [TpvVulkanBufferFlag.PersistentMappedIfPossible],
                                                                                                0,
                                                                                                pvAllocationGroupIDScene3DStatic);
     Renderer.VulkanDevice.DebugUtils.SetObjectName(fGlobalIlluminationRadianceHintsUniformBuffers[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DRendererInstance.fGlobalIlluminationRadianceHintsUniformBuffers['+IntToStr(InFlightFrameIndex)+']');
@@ -2156,7 +2156,7 @@ begin
                                                                                                   0,
                                                                                                   0,
                                                                                                   0,
-                                                                                                  [TpvVulkanBufferFlag.PersistentMappedIfPossibe],
+                                                                                                  [TpvVulkanBufferFlag.PersistentMappedIfPossible],
                                                                                                   0,
                                                                                                   pvAllocationGroupIDScene3DStatic);
     Renderer.VulkanDevice.DebugUtils.SetObjectName(fGlobalIlluminationRadianceHintsRSMUniformBuffers[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DRendererInstance.fGlobalIlluminationRadianceHintsRSMUniformBuffers['+IntToStr(InFlightFrameIndex)+']');
@@ -2302,7 +2302,7 @@ begin
                                                                                        0,
                                                                                        0,
                                                                                        0,
-                                                                                       [TpvVulkanBufferFlag.PersistentMappedIfPossibe],
+                                                                                       [TpvVulkanBufferFlag.PersistentMappedIfPossible],
                                                                                        0,
                                                                                        pvAllocationGroupIDScene3DStatic);
     Renderer.VulkanDevice.DebugUtils.SetObjectName(fGlobalIlluminationCascadedVoxelConeTracingUniformBuffers[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DRendererInstance.fGlobalIlluminationCascadedVoxelConeTracingUniformBuffers['+IntToStr(InFlightFrameIndex)+']');

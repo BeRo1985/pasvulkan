@@ -25961,7 +25961,7 @@ begin
                                                                                 0,
                                                                                 0,
                                                                                 0,
-                                                                                [TpvVulkanBufferFlag.PersistentMappedIfPossibe],
+                                                                                [TpvVulkanBufferFlag.PersistentMappedIfPossible],
                                                                                 0,
                                                                                 pvAllocationGroupIDScene3DRaytracing
                                                                                );
@@ -25993,7 +25993,7 @@ begin
                                                                           0,
                                                                           0,
                                                                           0,
-                                                                          [TpvVulkanBufferFlag.PersistentMappedIfPossibe],
+                                                                          [TpvVulkanBufferFlag.PersistentMappedIfPossible],
                                                                           0,
                                                                           pvAllocationGroupIDScene3DRaytracing
                                                                          );
@@ -26330,7 +26330,7 @@ begin
                                                                 0,
                                                                 0,
                                                                 0,
-                                                                [TpvVulkanBufferFlag.PersistentMappedIfPossibe],
+                                                                [TpvVulkanBufferFlag.PersistentMappedIfPossible],
                                                                 0,
                                                                 pvAllocationGroupIDScene3DRaytracingScratch
                                                                );
@@ -26362,7 +26362,7 @@ begin
                                                                                       0,
                                                                                       0,
                                                                                       0,
-                                                                                      [TpvVulkanBufferFlag.PersistentMappedIfPossibe],
+                                                                                      [TpvVulkanBufferFlag.PersistentMappedIfPossible],
                                                                                       0,
                                                                                       pvAllocationGroupIDScene3DRaytracingScratch
                                                                                      );
