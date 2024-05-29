@@ -206,24 +206,4 @@ mat3 unpackQTangent(vec4 q){
   return mat3(tangent, cross(tangent, normal) * sign(q.w), normal);
 } 
 
-/*
-vec4 packQTangent(mat3 tbn){
-  vec4 q = matrixToQuaternion(tbn);
-  q = mix(q, -q, float(q.w < 0.0));
-  q = mix(q, vec4(q.xyz * 0.9999999995343103, 0.00003051850947599719), float(q.w < 0.00003051850947599719));
-  return mix(q, -q, float(dot(cross(tbn[0], tbn[2]), tbn[1]) <= 0.0)); 
-}
-
-mat3 unpackQTangent(vec4 q){
-  q = normalize(q); 
-  float tx = 2.0 * q.x, ty = 2.0 * q.y, tz = 2.0 * q.z;
-  float twx = tx * q.w, twy = ty * q.w, twz = tz * q.w;
-  float txx = tx * q.x, txy = ty * q.x, txz = tz * q.x;
-  float tyy = ty * q.y, tyz = tz * q.y, tzz = tz * q.z;
-  vec3 normal = vec3(1.0 - (tyy + tzz), txy + twz, txz - twy);
-  vec3 tangent = vec3(txy - twz, 1.0 - (txx + tzz), tyz + twx);
-  return mat3(tangent, cross(normal, tangent) * sign(q.w), normal);
-} 
-*/
-
 #endif
