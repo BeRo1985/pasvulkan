@@ -2838,8 +2838,8 @@ procedure TpvScene3DPlanet.TData.Download(const aQueue:TpvVulkanQueue;
                                           const aTransferGrass:Boolean);                                          
 var CountImageMemoryBarriers,CountBufferMemoryBarriers:TpvSizeInt;
     ImageSubresourceRange:TVkImageSubresourceRange;
-    ImageMemoryBarriers:array[0..9] of TVkImageMemoryBarrier;
-    BufferMemoryBarriers:array[0..1] of TVkBufferMemoryBarrier;
+    ImageMemoryBarriers:array[0..5] of TVkImageMemoryBarrier;
+    BufferMemoryBarriers:array[0..5] of TVkBufferMemoryBarrier;
     ImageCopies:array[0..31] of TVkImageCopy;
     ImageCopy:PVkImageCopy;
     BufferCopy:TVkBufferCopy;             
@@ -3113,6 +3113,14 @@ begin
 
    if aTransferHeightMap then begin
 
+    if length(fHeightMapData)<>(fPlanet.fHeightMapResolution*fPlanet.fHeightMapResolution) then begin
+     SetLength(fHeightMapData,fPlanet.fHeightMapResolution*fPlanet.fHeightMapResolution);
+    end;
+
+    if length(fNormalMapData)<>(fPlanet.fHeightMapResolution*fPlanet.fHeightMapResolution) then begin
+     SetLength(fNormalMapData,fPlanet.fHeightMapResolution*fPlanet.fHeightMapResolution);
+    end; 
+
     fPlanet.fVulkanDevice.MemoryStaging.Download(aQueue,
                                                  aCommandBuffer,
                                                  aFence,
@@ -3132,6 +3140,10 @@ begin
    end;
 
    if aTransferGrass then begin
+
+    if length(fGrassMapData)<>(fPlanet.fGrassMapResolution*fPlanet.fGrassMapResolution) then begin
+     SetLength(fGrassMapData,fPlanet.fGrassMapResolution*fPlanet.fGrassMapResolution);
+    end;
 
     fPlanet.fVulkanDevice.MemoryStaging.Download(aQueue,
                                                  aCommandBuffer,
@@ -14573,6 +14585,16 @@ begin
                                          0,
                                          fData.fTiledMeshBoundingSpheres.ItemArray[0],
                                          fTileMapResolution*fTileMapResolution*SizeOf(TpvScene3DPlanet.TData.TTiledMeshBoundingSphere));
+
+   end;
+
+   begin
+
+    fData.Download(fVulkanComputeQueue,
+                   fVulkanComputeCommandBuffer,
+                   fVulkanComputeFence,
+                   true,
+                   true);
 
    end;
 
