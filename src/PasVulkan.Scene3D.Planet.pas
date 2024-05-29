@@ -295,7 +295,9 @@ type TpvScene3DPlanets=class;
               procedure AcquireOnComputeQueue(const aCommandBuffer:TpvVulkanCommandBuffer);
               procedure ReleaseOnComputeQueue(const aCommandBuffer:TpvVulkanCommandBuffer);
               procedure CheckDirtyMap;
-              procedure Download(const aCommandBuffer:TpvVulkanCommandBuffer;
+              procedure Download(const aQueue:TpvVulkanQueue;
+                                 const aCommandBuffer:TpvVulkanCommandBuffer;
+                                 const aFence:TpvVulkanFence;
                                  const aTransferHeightMap:Boolean;
                                  const aTransferGrass:Boolean);
               procedure TransferTo(const aCommandBuffer:TpvVulkanCommandBuffer;
@@ -2829,10 +2831,9 @@ begin
 
 end;
 
-// Transfer fHeightMapImage to fHeightMapBuffer, download fHeightMapBuffer to local fHeightMapData
-// Transfer fNormalMapImage to fNormalMapBuffer, download fNormalMapBuffer to local fNormalMapData
-// Transfer fGrassMapImage to fGrassMapBuffer, download fGrassMapBuffer to local fGrassMapData
-procedure TpvScene3DPlanet.TData.Download(const aCommandBuffer:TpvVulkanCommandBuffer;
+procedure TpvScene3DPlanet.TData.Download(const aQueue:TpvVulkanQueue;
+                                          const aCommandBuffer:TpvVulkanCommandBuffer;
+                                          const aFence:TpvVulkanFence;
                                           const aTransferHeightMap:Boolean;
                                           const aTransferGrass:Boolean);                                          
 var CountImageMemoryBarriers,CountBufferMemoryBarriers:TpvSizeInt;
@@ -2846,6 +2847,13 @@ var CountImageMemoryBarriers,CountBufferMemoryBarriers:TpvSizeInt;
 begin
 
  if assigned(fPlanet.fVulkanDevice) then begin
+
+  if assigned(aQueue) and assigned(aFence) then begin
+   
+   aCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+   aCommandBuffer.BeginRecording;
+
+  end;
 
   fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'Planet Download',[0.25,0.75,0.5,1.0]);
 
@@ -3096,6 +3104,46 @@ begin
   end;
 
   ////////////////////////////
+
+  if assigned(aQueue) and assigned(aFence) then begin
+
+   aCommandBuffer.EndRecording;
+
+   aCommandBuffer.Execute(aQueue,TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),nil,nil,aFence,true);
+
+   if aTransferHeightMap then begin
+
+    fPlanet.fVulkanDevice.MemoryStaging.Download(aQueue,
+                                                 aCommandBuffer,
+                                                 aFence,
+                                                 fHeightMapBuffer,
+                                                 0,
+                                                 fHeightMapData[0],
+                                                 fHeightMapBuffer.Size);
+
+    fPlanet.fVulkanDevice.MemoryStaging.Download(aQueue,
+                                                 aCommandBuffer,
+                                                 aFence,
+                                                 fNormalMapBuffer,
+                                                 0,
+                                                 fNormalMapData[0],
+                                                 fNormalMapBuffer.Size);
+
+   end;
+
+   if aTransferGrass then begin
+
+    fPlanet.fVulkanDevice.MemoryStaging.Download(aQueue,
+                                                 aCommandBuffer,
+                                                 aFence,
+                                                 fGrassMapBuffer,
+                                                 0,
+                                                 fGrassMapData[0],
+                                                 fGrassMapBuffer.Size);
+
+   end;
+
+  end;
 
  end; 
 
