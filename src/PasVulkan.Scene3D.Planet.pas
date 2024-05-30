@@ -15398,7 +15398,53 @@ begin
 end;
 
 function TpvScene3DPlanet.GetHeight(const aUV:TpvVector2;const aAbsolute:boolean):TpvScalar;
+var UV:TpvVector2;
+    TexelX,TexelY:TpvFloat;
+    xi,yi,tx,ty:TpvInt32;
+    xf,yf,ixf:TpvFloat;
+    v00,v01,v10,v11:TpvScalar;
 begin
+
+ if length(fData.fHeightMapData)>0 then begin
+
+  UV:=WrapOctahedralCoordinates(aUV);
+
+  TexelX:=UV.x*fHeightMapResolution;
+  TexelY:=UV.y*fHeightMapResolution;
+
+  xi:=Floor(TexelX);
+  yi:=Floor(TexelY);
+
+  xf:=TexelX-xi;
+  yf:=TexelY-yi;
+
+  xi:=Min(Max(xi,0),fHeightMapResolution-1);
+  yi:=Min(Max(yi,0),fHeightMapResolution-1);
+
+  v00:=fData.fHeightMapData[(yi*fHeightMapResolution)+xi];
+
+  WrapOctahedralTexelCoordinatesEx(xi+1,yi,fHeightMapResolution,fHeightMapResolution,tx,ty);
+  v01:=fData.fHeightMapData[(ty*fHeightMapResolution)+tx];
+
+  WrapOctahedralTexelCoordinatesEx(xi,yi+1,fHeightMapResolution,fHeightMapResolution,tx,ty);
+  v10:=fData.fHeightMapData[(ty*fHeightMapResolution)+tx];
+
+  WrapOctahedralTexelCoordinatesEx(xi+1,yi+1,fHeightMapResolution,fHeightMapResolution,tx,ty);
+  v11:=fData.fHeightMapData[(ty*fHeightMapResolution)+tx];
+
+  ixf:=1.0-xf;
+  result:=(((v00*ixf)+(v01*xf))*(1.0-yf))+(((v10*ixf)+(v11*xf))*yf);
+
+  if aAbsolute then begin
+   result:=(result*fTopRadius)+((1.0-result)*fBottomRadius);
+  end;
+
+ end else begin
+
+  result:=fBottomRadius;
+
+ end;
+
 end;
 
 function TpvScene3DPlanet.GetHeight(const aNormal:TpvVector3;const aAbsolute:boolean):TpvScalar;
