@@ -1588,6 +1588,10 @@ type TpvScene3DPlanets=class;
        property Lock:TPasMPMultipleReaderSingleWriterLock read fLock;
      end;
 
+function WrapOctahedralCoordinates(const aUV:TpvVector2):TpvVector2;
+function WrapOctahedralTexelCoordinates(const aTexel,aTexSize:TpvInt32Vector2):TpvInt32Vector2;
+procedure WrapOctahedralTexelCoordinatesEx(const aTexelX,aTexelY,aTexSizeX,aTexSizeY:TpvInt32;out aWrappedTexelX,aWrappedTexelY:TpvInt32);
+
 implementation
 
 uses PasVulkan.Scene3D,
@@ -1597,6 +1601,39 @@ uses PasVulkan.Scene3D,
 
 type TVector3Array=TpvDynamicArray<TpvVector3>;
      TIndexArray=TpvDynamicArray<TpvUInt32>;
+
+function WrapOctahedralCoordinates(const aUV:TpvVector2):TpvVector2;
+begin
+ if ((((Trunc(Abs(aUV.x))+Ord(aUV.x<0.0)) xor (Trunc(Abs(aUV.y))+Ord(aUV.y<0.0))) and 1)<>0) then begin
+  result:=TpvVector2.InlineableCreate(1.0-Frac(aUV.x),1.0-Frac(aUV.y));
+ end else begin
+  result:=TpvVector2.InlineableCreate(Frac(aUV.x),Frac(aUV.y));
+ end;
+end; 
+
+function WrapOctahedralTexelCoordinates(const aTexel,aTexSize:TpvInt32Vector2):TpvInt32Vector2;
+begin
+ result.x:=((aTexel.x mod aTexSize.x)+aTexSize.x) mod aTexSize.x;
+ result.y:=((aTexel.y mod aTexSize.y)+aTexSize.y) mod aTexSize.y;
+ if ((((Abs(aTexel.x div aTexSize.x)+Ord(aTexel.x<0)) xor (Abs(aTexel.y div aTexSize.y)+Ord(aTexel.y<0))) and 1)<>0) then begin
+  result.x:=aTexSize.x-(result.x+1);
+  result.y:=aTexSize.y-(result.y+1);
+ end;
+end;
+
+procedure WrapOctahedralTexelCoordinatesEx(const aTexelX,aTexelY,aTexSizeX,aTexSizeY:TpvInt32;out aWrappedTexelX,aWrappedTexelY:TpvInt32);
+var Texel,TexSize,WrappedTexel:TpvInt32Vector2;
+begin
+ Texel.x:=aTexelX;
+ Texel.y:=aTexelY;
+ TexSize.x:=aTexSizeX;
+ TexSize.y:=aTexSizeY;
+ WrappedTexel:=WrapOctahedralTexelCoordinates(Texel,TexSize);
+ aWrappedTexelX:=WrappedTexel.x;
+ aWrappedTexelY:=WrappedTexel.y;
+end;
+
+{ TpvScene3DPlanet.TData.TOwnershipHolderState }
 
 { TpvScene3DPlanet.TData }
 

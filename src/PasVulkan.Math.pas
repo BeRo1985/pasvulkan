@@ -158,6 +158,13 @@ type PpvScalar=^TpvScalar;
        x,y:TpvUInt16;
      end;
 
+     PPpvInt32Vector2=^PpvInt32Vector2;
+     PpvInt32Vector2=^TpvInt32Vector2;
+     TpvInt32Vector2=packed record
+      public
+       x,y:TpvInt32;
+     end;
+
      PpvVector2=^TpvVector2;
      TpvVector2=record
       public
