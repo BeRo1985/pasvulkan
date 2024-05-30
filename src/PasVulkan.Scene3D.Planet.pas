@@ -1538,6 +1538,12 @@ type TpvScene3DPlanets=class;
        procedure EndFrame(const aInFlightFrameIndex:TpvSizeInt;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil);
        procedure ExportPhysicsMeshToOBJ(const aStream:TStream); overload;
        procedure ExportPhysicsMeshToOBJ(const aFileName:TpvUTF8String); overload;
+       function GetHeight(const aUV:TpvVector2;const aAbsolute:boolean=true):TpvScalar; overload;
+       function GetHeight(const aNormal:TpvVector3;const aAbsolute:boolean=true):TpvScalar; overload;
+       function GetNormal(const aUV:TpvVector2):TpvVector3; overload;
+       function GetNormal(const aNormal:TpvVector3):TpvVector3; overload;
+       function GetGrass(const aUV:TpvVector2):TpvScalar; overload;
+       function GetGrass(const aNormal:TpvVector3):TpvScalar; overload;
       published
        property Scene3D:TObject read fScene3D;
        property HeightMapResolution:TpvInt32 read fHeightMapResolution;
@@ -15389,6 +15395,33 @@ begin
  finally
   FreeAndNil(FileStream);
  end;
+end;
+
+function TpvScene3DPlanet.GetHeight(const aUV:TpvVector2;const aAbsolute:boolean):TpvScalar;
+begin
+end;
+
+function TpvScene3DPlanet.GetHeight(const aNormal:TpvVector3;const aAbsolute:boolean):TpvScalar;
+begin
+ result:=GetHeight(OctEqualAreaUnsignedEncode(aNormal),aAbsolute);
+end;
+
+function TpvScene3DPlanet.GetNormal(const aUV:TpvVector2):TpvVector3;
+begin
+end;
+
+function TpvScene3DPlanet.GetNormal(const aNormal:TpvVector3):TpvVector3;
+begin
+ result:=GetNormal(OctEqualAreaUnsignedEncode(aNormal));
+end;
+
+function TpvScene3DPlanet.GetGrass(const aUV:TpvVector2):TpvScalar;
+begin
+end;
+
+function TpvScene3DPlanet.GetGrass(const aNormal:TpvVector3):TpvScalar;
+begin
+ result:=GetGrass(OctEqualAreaUnsignedEncode(aNormal));
 end;
 
 { TpvScene3DPlanets }
