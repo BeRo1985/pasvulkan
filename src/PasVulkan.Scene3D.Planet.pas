@@ -1633,15 +1633,13 @@ begin
 end;
 
 procedure WrapOctahedralTexelCoordinatesEx(const aTexelX,aTexelY,aTexSizeX,aTexSizeY:TpvInt32;out aWrappedTexelX,aWrappedTexelY:TpvInt32);
-var Texel,TexSize,WrappedTexel:TpvInt32Vector2;
 begin
- Texel.x:=aTexelX;
- Texel.y:=aTexelY;
- TexSize.x:=aTexSizeX;
- TexSize.y:=aTexSizeY;
- WrappedTexel:=WrapOctahedralTexelCoordinates(Texel,TexSize);
- aWrappedTexelX:=WrappedTexel.x;
- aWrappedTexelY:=WrappedTexel.y;
+ aWrappedTexelX:=((aTexelX mod aTexSizeX)+aTexSizeX) mod aTexSizeX;
+ aWrappedTexelY:=((aTexelY mod aTexSizeY)+aTexSizeY) mod aTexSizeY;
+ if ((((Abs(aTexelX div aTexSizeX)+Ord(aTexelX<0)) xor (Abs(aTexelY div aTexSizeY)+Ord(aTexelY<0))) and 1)<>0) then begin
+  aWrappedTexelX:=aTexSizeX-(aWrappedTexelX+1);
+  aWrappedTexelY:=aTexSizeY-(aWrappedTexelY+1);
+ end;
 end;
 
 function OctEqualAreaSignedEncode(const aVector:TpvVector3):TpvVector2;
@@ -15510,7 +15508,49 @@ begin
 end;
 
 function TpvScene3DPlanet.GetGrass(const aUV:TpvVector2):TpvScalar;
+var UV:TpvVector2;
+    TexelX,TexelY:TpvFloat;
+    xi,yi,tx,ty:TpvInt32;
+    xf,yf,ixf:TpvFloat;
+    v00,v01,v10,v11:TpvScalar;
 begin
+ 
+ if length(fData.fGrassMapData)>0 then begin
+
+  UV:=WrapOctahedralCoordinates(aUV);
+
+  TexelX:=UV.x*fGrassMapResolution;
+  TexelY:=UV.y*fGrassMapResolution;
+
+  xi:=Floor(TexelX);
+  yi:=Floor(TexelY);
+
+  xf:=TexelX-xi;
+  yf:=TexelY-yi;
+
+  xi:=Min(Max(xi,0),fGrassMapResolution-1);
+  yi:=Min(Max(yi,0),fGrassMapResolution-1);
+
+  v00:=fData.fGrassMapData[(yi*fGrassMapResolution)+xi];
+
+  WrapOctahedralTexelCoordinatesEx(xi+1,yi,fGrassMapResolution,fGrassMapResolution,tx,ty);
+  v01:=fData.fGrassMapData[(ty*fGrassMapResolution)+tx];
+
+  WrapOctahedralTexelCoordinatesEx(xi,yi+1,fGrassMapResolution,fGrassMapResolution,tx,ty);
+  v10:=fData.fGrassMapData[(ty*fGrassMapResolution)+tx];
+
+  WrapOctahedralTexelCoordinatesEx(xi+1,yi+1,fGrassMapResolution,fGrassMapResolution,tx,ty);
+  v11:=fData.fGrassMapData[(ty*fGrassMapResolution)+tx];
+
+  ixf:=1.0-xf;
+  result:=(((v00*ixf)+(v01*xf))*(1.0-yf))+(((v10*ixf)+(v11*xf))*yf);
+
+ end else begin
+
+  result:=0.0;
+
+ end;
+
 end;
 
 function TpvScene3DPlanet.GetGrass(const aNormal:TpvVector3):TpvScalar;
