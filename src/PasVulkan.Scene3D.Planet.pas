@@ -1592,6 +1592,11 @@ function WrapOctahedralCoordinates(const aUV:TpvVector2):TpvVector2;
 function WrapOctahedralTexelCoordinates(const aTexel,aTexSize:TpvInt32Vector2):TpvInt32Vector2;
 procedure WrapOctahedralTexelCoordinatesEx(const aTexelX,aTexelY,aTexSizeX,aTexSizeY:TpvInt32;out aWrappedTexelX,aWrappedTexelY:TpvInt32);
 
+function OctEqualAreaSignedEncode(const aVector:TpvVector3):TpvVector2;
+function OctEqualAreaUnsignedEncode(const aVector:TpvVector3):TpvVector2;
+function OctEqualAreaSignedDecode(const aUV:TpvVector2):TpvVector3;
+function OctEqualAreaUnsignedDecode(const aUV:TpvVector2):TpvVector3;
+
 implementation
 
 uses PasVulkan.Scene3D,
@@ -1631,6 +1636,56 @@ begin
  WrappedTexel:=WrapOctahedralTexelCoordinates(Texel,TexSize);
  aWrappedTexelX:=WrappedTexel.x;
  aWrappedTexelY:=WrappedTexel.y;
+end;
+
+function OctEqualAreaSignedEncode(const aVector:TpvVector3):TpvVector2;
+const OneOverHalfPi=0.6366197723675814;
+      Vec2OneOne:TpvVector2=(x:1.0;y:1.0);
+var uv:TpvVector2;
+begin
+ uv.x:=sqrt(1.0-Abs(aVector.z));
+ uv.y:=ArcTan2(abs(aVector.y),max(1e-17,abs(aVector.x)))*OneOverHalfPi;
+ uv.x:=uv.x-uv.y;
+ if aVector.z<0.0 then begin
+  result:=Vec2OneOne-uv.yx;
+ end else begin
+  result:=uv.xy;
+ end;
+ result.x:=result.x*((ord(aVector.x>=0.0)*2.0)-1.0);
+ result.y:=result.y*((ord(aVector.y>=0.0)*2.0)-1.0);
+end;
+
+function OctEqualAreaUnsignedEncode(const aVector:TpvVector3):TpvVector2;
+const Vec2ZeroFive:TpvVector2=(x:0.5;y:0.5);
+begin
+ result:=(OctEqualAreaSignedEncode(aVector)*0.5)+Vec2ZeroFive;
+end;
+
+function OctEqualAreaSignedDecode(const aUV:TpvVector2):TpvVector3;
+const HalfPI=1.5707963267948966;
+      PIover4=0.7853981633974483;
+var AbsUV:TpvVector2;
+    d,r,f,Phi,PhiSin,PhiCos:TpvScalar;
+begin
+ AbsUV.x:=abs(aUV.x);
+ AbsUV.y:=abs(aUV.y);
+ d:=1.0-(AbsUV.x+AbsUV.y);
+ r:=1.0-abs(d);
+ if IsZero(r) then begin
+  Phi:=0.0;
+ end else begin
+  Phi:=(((AbsUV.y-AbsUV.x)/Max(1e-17,r))+1.0)*PIover4;
+ end;
+ SinCos(Phi,PhiSin,PhiCos);
+ f:=r*sqrt(2.0-sqr(r));
+ result:=TpvVector3.InlineableCreate(abs(PhiCos*f)*((ord(aUV.x>=0.0)*2.0)-1.0),
+                                     abs(PhiSin*f)*((ord(aUV.y>=0.0)*2.0)-1.0),
+                                     (1.0-sqr(r))*((ord(d>=0.0)*2.0)-1.0)).Normalize;
+end;
+
+function OctEqualAreaUnsignedDecode(const aUV:TpvVector2):TpvVector3;
+begin
+ result:=OctEqualAreaSignedDecode(TpvVector2.InlineableCreate((aUV.x*2.0)-1.0,(aUV.y*2.0)-1.0));
 end;
 
 { TpvScene3DPlanet.TData.TOwnershipHolderState }
