@@ -1615,7 +1615,7 @@ type TVector3Array=TpvDynamicArray<TpvVector3>;
 
 function WrapOctahedralCoordinates(const aUV:TpvVector2):TpvVector2;
 begin
- if ((((Trunc(Abs(aUV.x))+Ord(aUV.x<0.0)) xor (Trunc(Abs(aUV.y))+Ord(aUV.y<0.0))) and 1)<>0) then begin
+ if ((((Trunc(Abs(aUV.x))+(Ord(aUV.x<0.0) and 1)) xor (Trunc(Abs(aUV.y))+(Ord(aUV.y<0.0) and 1))) and 1)<>0) then begin
   result:=TpvVector2.InlineableCreate(1.0-Frac(aUV.x),1.0-Frac(aUV.y));
  end else begin
   result:=TpvVector2.InlineableCreate(Frac(aUV.x),Frac(aUV.y));
@@ -1626,7 +1626,7 @@ function WrapOctahedralTexelCoordinates(const aTexel,aTexSize:TpvInt32Vector2):T
 begin
  result.x:=((aTexel.x mod aTexSize.x)+aTexSize.x) mod aTexSize.x;
  result.y:=((aTexel.y mod aTexSize.y)+aTexSize.y) mod aTexSize.y;
- if ((((Abs(aTexel.x div aTexSize.x)+Ord(aTexel.x<0)) xor (Abs(aTexel.y div aTexSize.y)+Ord(aTexel.y<0))) and 1)<>0) then begin
+ if ((((Abs(aTexel.x div aTexSize.x)+(Ord(aTexel.x<0) and 1)) xor (Abs(aTexel.y div aTexSize.y)+(Ord(aTexel.y<0) and 1))) and 1)<>0) then begin
   result.x:=aTexSize.x-(result.x+1);
   result.y:=aTexSize.y-(result.y+1);
  end;
@@ -1636,7 +1636,7 @@ procedure WrapOctahedralTexelCoordinatesEx(const aTexelX,aTexelY,aTexSizeX,aTexS
 begin
  aWrappedTexelX:=((aTexelX mod aTexSizeX)+aTexSizeX) mod aTexSizeX;
  aWrappedTexelY:=((aTexelY mod aTexSizeY)+aTexSizeY) mod aTexSizeY;
- if ((((Abs(aTexelX div aTexSizeX)+Ord(aTexelX<0)) xor (Abs(aTexelY div aTexSizeY)+Ord(aTexelY<0))) and 1)<>0) then begin
+ if ((((Abs(aTexelX div aTexSizeX)+(Ord(aTexelX<0) and 1)) xor (Abs(aTexelY div aTexSizeY)+(Ord(aTexelY<0) and 1))) and 1)<>0) then begin
   aWrappedTexelX:=aTexSizeX-(aWrappedTexelX+1);
   aWrappedTexelY:=aTexSizeY-(aWrappedTexelY+1);
  end;
@@ -1655,8 +1655,8 @@ begin
  end else begin
   result:=uv.xy;
  end;
- result.x:=result.x*((ord(aVector.x>=0.0)*2.0)-1.0);
- result.y:=result.y*((ord(aVector.y>=0.0)*2.0)-1.0);
+ result.x:=result.x*(((ord(aVector.x>=0.0) and 1) shl 1)-1);
+ result.y:=result.y*(((ord(aVector.y>=0.0) and 1) shl 1)-1);
 end;
 
 function OctEqualAreaUnsignedEncode(const aVector:TpvVector3):TpvVector2;
@@ -1682,9 +1682,9 @@ begin
  end;
  SinCos(Phi,PhiSin,PhiCos);
  f:=r*sqrt(2.0-sqr(r));
- result:=TpvVector3.InlineableCreate(abs(PhiCos*f)*((ord(aUV.x>=0.0)*2.0)-1.0),
-                                     abs(PhiSin*f)*((ord(aUV.y>=0.0)*2.0)-1.0),
-                                     (1.0-sqr(r))*((ord(d>=0.0)*2.0)-1.0)).Normalize;
+ result:=TpvVector3.InlineableCreate(abs(PhiCos*f)*(((ord(aUV.x>=0.0) and 1) shl 1)-1),
+                                     abs(PhiSin*f)*(((ord(aUV.y>=0.0) and 1) shl 1)-1),
+                                     (1.0-sqr(r))*(((ord(d>=0.0) and 1) shl 1)-1)).Normalize;
 end;
 
 function OctEqualAreaUnsignedDecode(const aUV:TpvVector2):TpvVector3;
