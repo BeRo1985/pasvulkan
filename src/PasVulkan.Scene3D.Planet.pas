@@ -1542,6 +1542,8 @@ type TpvScene3DPlanets=class;
        function GetHeight(const aNormal:TpvVector3;const aAbsolute:boolean=true):TpvScalar; overload;
        function GetNormal(const aUV:TpvVector2):TpvVector3; overload;
        function GetNormal(const aNormal:TpvVector3):TpvVector3; overload;
+       function GetPosition(const aUV:TpvVector2):TpvVector3; overload;
+       function GetPosition(const aNormal:TpvVector3):TpvVector3; overload;
        function GetGrass(const aUV:TpvVector2):TpvScalar; overload;
        function GetGrass(const aNormal:TpvVector3):TpvScalar; overload;
       published
@@ -15505,6 +15507,16 @@ end;
 function TpvScene3DPlanet.GetNormal(const aNormal:TpvVector3):TpvVector3;
 begin
  result:=GetNormal(OctEqualAreaUnsignedEncode(aNormal));
+end;
+
+function TpvScene3DPlanet.GetPosition(const aUV:TpvVector2):TpvVector3;
+begin
+ result:=GetHeight(aUV,true)*OctEqualAreaUnsignedDecode(aUV);
+end;
+
+function TpvScene3DPlanet.GetPosition(const aNormal:TpvVector3):TpvVector3;
+begin
+ result:=GetHeight(aNormal,true)*aNormal;
 end;
 
 function TpvScene3DPlanet.GetGrass(const aUV:TpvVector2):TpvScalar;
