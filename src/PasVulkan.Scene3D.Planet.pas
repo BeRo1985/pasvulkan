@@ -15453,7 +15453,55 @@ begin
 end;
 
 function TpvScene3DPlanet.GetNormal(const aUV:TpvVector2):TpvVector3;
+var UV:TpvVector2;
+    TexelX,TexelY:TpvFloat;
+    xi,yi,tx,ty:TpvInt32;
+    xf,yf,ixf:TpvFloat;
+    h00,h01,h10,h11:TpvHalfFloatVector4;
+    v00,v01,v10,v11:TpvVector3;
 begin
+ 
+ if length(fData.fNormalMapData)>0 then begin
+
+  UV:=WrapOctahedralCoordinates(aUV);
+
+  TexelX:=UV.x*fHeightMapResolution;
+  TexelY:=UV.y*fHeightMapResolution;
+
+  xi:=Floor(TexelX);
+  yi:=Floor(TexelY);
+
+  xf:=TexelX-xi;
+  yf:=TexelY-yi;
+
+  xi:=Min(Max(xi,0),fHeightMapResolution-1);
+  yi:=Min(Max(yi,0),fHeightMapResolution-1);
+
+  h00:=fData.fNormalMapData[(yi*fHeightMapResolution)+xi];
+
+  WrapOctahedralTexelCoordinatesEx(xi+1,yi,fHeightMapResolution,fHeightMapResolution,tx,ty);
+  h01:=fData.fNormalMapData[(ty*fHeightMapResolution)+tx];
+
+  WrapOctahedralTexelCoordinatesEx(xi,yi+1,fHeightMapResolution,fHeightMapResolution,tx,ty);
+  h10:=fData.fNormalMapData[(ty*fHeightMapResolution)+tx];
+
+  WrapOctahedralTexelCoordinatesEx(xi+1,yi+1,fHeightMapResolution,fHeightMapResolution,tx,ty);
+  h11:=fData.fNormalMapData[(ty*fHeightMapResolution)+tx];
+
+  v00:=TpvVector3.InlineableCreate(h00.x,h00.y,h00.z);
+  v01:=TpvVector3.InlineableCreate(h01.x,h01.y,h01.z);
+  v10:=TpvVector3.InlineableCreate(h10.x,h10.y,h10.z);
+  v11:=TpvVector3.InlineableCreate(h11.x,h11.y,h11.z);
+
+  ixf:=1.0-xf;
+  result:=((((v00*ixf)+(v01*xf))*(1.0-yf))+(((v10*ixf)+(v11*xf))*yf)).Normalize;
+
+ end else begin
+
+  result:=TpvVector3.Null;
+
+ end;
+
 end;
 
 function TpvScene3DPlanet.GetNormal(const aNormal:TpvVector3):TpvVector3;
