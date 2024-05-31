@@ -31,6 +31,23 @@
 **
 **/
 
+#ifdef WEBGL
+uint packSnorm4x8(vec4 v){
+  uvec4 e = (uvec4(ivec4(round(clamp(v, -1.0, 1.0) * 127.0))) & uvec4(0xffu)) << uvec4(0u, 8u, 16u, 24u);
+  return e.x | e.y | e.z | e.w;
+}
+
+vec4 unpackSnorm4x8(uint v){
+  ivec4 e = ivec4(
+    int(uint(v << 24u)) >> 24,
+    int(uint(v << 16u)) >> 24,
+    int(uint(v << 8u)) >> 24,
+    int(uint(v)) >> 24
+  );
+  return vec4(e) / 127.0;
+}
+#endif
+
 mat2x3 getCanonicalSpaceFromNormal(in vec3 n){
   vec3 t = n.yzx - n.zxy, b = normalize(cross(n, t = normalize(t - dot(t, n))));
   return mat2x3(t, b); 
@@ -119,5 +136,84 @@ uint encodeTangentSpaceAsRGB10A2SNorm(mat3 tbn){
   return t;
 
 }
+
+// 10bit 10bit 9bit for the 3 smaller components of the quaternion and 1bit for the sign of the bitangent and 2bit for the 
+// largest component index for the reconstruction of the largest component of the quaternion
+uint encodeQTangentUI32(mat3 m){
+  float r = (determinant(m) < 0.0) ? -1.0 : 1.0; // Reflection matrix handling 
+  m[2] *= r;
+  float t = m[0][0] + (m[1][1] + m[2][2]);
+  vec4 q;
+  if(t > 2.9999999){
+    q = vec4(0.0, 0.0, 0.0, 1.0);
+  }else if(t > 0.0000001){
+    float s = sqrt(1.0 + t) * 2.0;
+    q = vec4(vec3(m[1][2] - m[2][1], m[2][0] - m[0][2], m[0][1] - m[1][0]) / s, s * 0.25);
+  }else if((m[0][0] > m[1][1]) && (m[0][0] > m[2][2])){
+    float s = sqrt(1.0 + (m[0][0] - (m[1][1] + m[2][2]))) * 2.0;
+    q = vec4(s * 0.25, vec3(m[1][0] + m[0][1], m[2][0] + m[0][2], m[1][2] - m[2][1]) / s);    
+  }else if(m[1][1] > m[2][2]){
+    float s = sqrt(1.0 + (m[1][1] - (m[0][0] + m[2][2]))) * 2.0;
+    q = vec4(vec3(m[1][0] + m[0][1], m[2][1] + m[1][2], m[2][0] - m[0][2]) / s, s * 0.25).xwyz;
+  }else{
+    float s = sqrt(1.0 + (m[2][2] - (m[0][0] + m[1][1]))) * 2.0;
+    q = vec4(vec3(m[2][0] + m[0][2], m[2][1] + m[1][2], m[0][1] - m[1][0]) / s, s * 0.25).xywz; 
+  }
+  vec4 qAbs = abs(q = normalize(q));
+  int maxComponentIndex = (qAbs.x > qAbs.y) ? ((qAbs.x > qAbs.z) ? ((qAbs.x > qAbs.w) ? 0 : 3) : ((qAbs.z > qAbs.w) ? 2 : 3)) : ((qAbs.y > qAbs.z) ? ((qAbs.y > qAbs.w) ? 1 : 3) : ((qAbs.z > qAbs.w) ? 2 : 3)); 
+  q = vec4(vec3[4](q.yzw, q.xzw, q.xyw, q.xyz)[maxComponentIndex] * ((q[maxComponentIndex] < 0.0) ? -1.0 : 1.0), float(maxComponentIndex));
+  return ((uint(round(clamp(q.x * 511.0, -511.0, 511.0) + 512.0)) & 0x3ffu) << 0u) | 
+         ((uint(round(clamp(q.y * 511.0, -511.0, 511.0) + 512.0)) & 0x3ffu) << 10u) | 
+         ((uint(round(clamp(q.z * 255.0, -255.0, 255.0) + 256.0)) & 0x1ffu) << 20u) |
+         ((uint(((dot(cross(m[0], m[2]), m[1]) * r) <= 0.0) ? 1u : 0u) & 0x1u) << 29u) | 
+         ((uint(round(clamp(q.w, 0.0, 3.0))) & 0x3u) << 30u);
+}
+
+mat3 decodeQTangentUI32(uint v){
+  vec4 r = vec4(((vec3(ivec3(uvec3((uvec3(v) >> uvec3(0u, 10u, 20u)) & uvec2(0x3ffu, 0x1ffu).xxy)) - ivec2(512, 256).xxy)) / vec2(511.0, 255.0).xxy), 0.0);
+  r = normalize(vec4(r.xyz, sqrt(1.0 - clamp(dot(r.xyz, r.xyz), 0.0, 1.0))));
+  vec4 q = normalize(vec4[4](r.wxyz, r.xwyz, r.xywz, r.xyzw)[uint((v >> 30u) & 0x3u)]);
+  vec3 t2 = q.xyz * 2.0, tx = q.xxx * t2.xyz, ty = q.yyy * t2.xyz, tz = q.www * t2.xyz;
+  vec3 tangent = vec3(1.0 - (ty.y + (q.z * t2.z)), tx.y + tz.z, tx.z - tz.y);
+  vec3 normal = vec3(tx.z + tz.y, ty.z - tz.x, 1.0 - (tx.x + ty.y));
+  return mat3(tangent, cross(tangent, normal) * (((v & (1u << 29u)) != 0u) ? -1.0 : 1.0), normal);
+}
+
+// Just 8bit per component of the quaternion and sign of the bitangent is stored in the sign of the quaternion in the w component
+uint encodeQTangentRGBA8(mat3 m){
+  const float threshold = 1.0 / 127.0; 
+  const float renormalization = sqrt(1.0 - (threshold * threshold));
+  float r = (determinant(m) < 0.0) ? -1.0 : 1.0; // Reflection matrix handling 
+  m[2] *= r;
+  float t = m[0][0] + (m[1][1] + m[2][2]);
+  vec4 q;
+  if(t > 2.9999999){
+    q = vec4(0.0, 0.0, 0.0, 1.0);
+  }else if(t > 0.0000001){
+    float s = sqrt(1.0 + t) * 2.0;
+    q = vec4(vec3(m[1][2] - m[2][1], m[2][0] - m[0][2], m[0][1] - m[1][0]) / s, s * 0.25);
+  }else if((m[0][0] > m[1][1]) && (m[0][0] > m[2][2])){
+    float s = sqrt(1.0 + (m[0][0] - (m[1][1] + m[2][2]))) * 2.0;
+    q = vec4(s * 0.25, vec3(m[1][0] + m[0][1], m[2][0] + m[0][2], m[1][2] - m[2][1]) / s);    
+  }else if(m[1][1] > m[2][2]){
+    float s = sqrt(1.0 + (m[1][1] - (m[0][0] + m[2][2]))) * 2.0;
+    q = vec4(vec3(m[1][0] + m[0][1], m[2][1] + m[1][2], m[2][0] - m[0][2]) / s, s * 0.25).xwyz;
+  }else{
+    float s = sqrt(1.0 + (m[2][2] - (m[0][0] + m[1][1]))) * 2.0;
+    q = vec4(vec3(m[2][0] + m[0][2], m[2][1] + m[1][2], m[0][1] - m[1][0]) / s, s * 0.25).xywz; 
+  }
+  q = normalize(q); 
+  q = mix(q, -q, float(q.w < 0.0));
+  q = mix(q, vec4(q.xyz * renormalization, threshold), float(q.w < threshold));
+  return packSnorm4x8(mix(q, -q, float((dot(cross(m[0], m[2]), m[1]) * r) <= 0.0)));
+}
+
+mat3 decodeQTangentRGBA8(uint v){
+  vec4 q = normalize(unpackSnorm4x8(v)); 
+  vec3 t2 = q.xyz * 2.0, tx = q.xxx * t2.xyz, ty = q.yyy * t2.xyz, tz = q.www * t2.xyz;
+  vec3 tangent = vec3(1.0 - (ty.y + (q.z * t2.z)), tx.y + tz.z, tx.z - tz.y);
+  vec3 normal = vec3(tx.z + tz.y, ty.z - tz.x, 1.0 - (tx.x + ty.y));
+  return mat3(tangent, cross(tangent, normal) * sign(q.w), normal);
+} 
 
 #endif
