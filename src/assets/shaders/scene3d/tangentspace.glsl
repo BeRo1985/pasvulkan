@@ -171,7 +171,7 @@ uint encodeQTangentUI32(mat3 m){
 
 mat3 decodeQTangentUI32(uint v){
   vec4 r = vec4(((vec3(ivec3(uvec3((uvec3(v) >> uvec3(0u, 10u, 20u)) & uvec2(0x3ffu, 0x1ffu).xxy)) - ivec2(512, 256).xxy)) / vec2(511.0, 255.0).xxy), 0.0);
-  r = normalize(vec4(r.xyz, sqrt(1.0 - clamp(dot(r.xyz, r.xyz), 0.0, 1.0))));
+  r = vec4(r.xyz, sqrt(1.0 - clamp(dot(r.xyz, r.xyz), 0.0, 1.0)));
   vec4 q = normalize(vec4[4](r.wxyz, r.xwyz, r.xywz, r.xyzw)[uint((v >> 30u) & 0x3u)]);
   vec3 t2 = q.xyz * 2.0, tx = q.xxx * t2.xyz, ty = q.yyy * t2.xyz, tz = q.www * t2.xyz;
   vec3 tangent = vec3(1.0 - (ty.y + (q.z * t2.z)), tx.y + tz.z, tx.z - tz.y);
