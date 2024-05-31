@@ -31,46 +31,6 @@
 **
 **/
 
-uint encodeTangentSpaceAsRGB10A2SNorm(mat3 tbn){
-
-  // Normalize tangent space vectors, just for the sake of clarity and for to be sure
-  tbn[0] = normalize(tbn[0]);
-  tbn[1] = normalize(tbn[1]);
-  tbn[2] = normalize(tbn[2]);
-
-  // Get the octahedron normal
-  const vec3 normal = tbn[2];
-  vec2 octahedronalNormal = normal.xy / (abs(normal.x) + abs(normal.y) + abs(normal.z)); 
-  octahedronalNormal = (normal.z < 0.0) ? ((1.0 - abs(octahedronalNormal.yx)) * fma(step(vec2(0.0), octahedronalNormal.xy), vec2(2.0), vec2(-1.0))) : octahedronalNormal;
-  
-  // Find the canonical directions
-  const vec3 canonicalDirectionA = cross(normalize(normal.zxy - dot(normal.zxy, normal)), normal);
-  const vec3 canonicalDirectionB = cross(normal, canonicalDirectionA);
-
-  // Project the tangent into the canonical space 
-  const vec2 tangentInCanonicalSpace = vec2(dot(tbn[0], canonicalDirectionA), dot(tbn[0], canonicalDirectionB));
-
-  // Find the tangent diamond direction (a diamond is more or less the 2D equivalent of the 3D octahedron here in this case)
-  const float tangentDiamond = (1.0 - (tangentInCanonicalSpace.x / (abs(tangentInCanonicalSpace.x) + abs(tangentInCanonicalSpace.y)))) * ((tangentInCanonicalSpace.y < 0.0) ? -1.0 : 1.0) * 0.5;
-
-  // Find the bitangent sign
-  const float bittangentSign = (dot(cross(tbn[0], tbn[1]), tbn[2]) < 0.0) ? -1.0 : 1.0; 
-
-  // Encode the tangent space as signed values
-  const ivec4 encodedTangentSpace = ivec4(
-    ivec2(clamp(octahedronalNormal, vec2(-1.0), vec2(1.0)) * 511.0), // 10 bits including sign
-    int(clamp(tangentDiamond, -1.0, 1.0) * 511.0), // 10 bits including sign
-    int(clamp(bittangentSign, -1.0, 1.0)) // 2 bits
-  );
-  
-  // Pack the values into RGB10A2 snorm
-  return ((uint(encodedTangentSpace.x) & 0x3ffu) << 0u) | 
-         ((uint(encodedTangentSpace.y) & 0x3ffu) << 10u) | 
-         ((uint(encodedTangentSpace.z) & 0x3ffu) << 20u) | 
-         ((uint(encodedTangentSpace.w) & 0x3u) << 30u);
-
-}
-  
 mat3 decodeTangentSpaceFromRGB10A2SNorm(const in uint encodedTangentSpace){
 
   // Unpack the values from RGB10A2 snorm
@@ -87,7 +47,7 @@ mat3 decodeTangentSpaceFromRGB10A2SNorm(const in uint encodedTangentSpace){
   normal = normalize((normal.z < 0.0) ? vec3((1.0 - abs(normal.yx)) * fma(step(vec2(0.0), normal.xy), vec2(2.0), vec2(-1.0)), normal.z) : normal);
 
   // Find the canonical directions
-  const vec3 canonicalDirectionA = cross(normalize(normal.zxy - dot(normal.zxy, normal)), normal);
+  const vec3 canonicalDirectionA = cross(normalize((normal.yzx - normal.zxy) - dot(normal.yzx - normal.zxy, normal)), normal);
   const vec3 canonicalDirectionB = cross(normal, canonicalDirectionA);
 
   // Decode the tangent diamond direction
@@ -105,6 +65,61 @@ mat3 decodeTangentSpaceFromRGB10A2SNorm(const in uint encodedTangentSpace){
 
   return mat3(tangent, bitangent, normal);
 
+}
+
+uint encodeTangentSpaceAsRGB10A2SNorm(mat3 tbn){
+
+  // Normalize tangent space vectors, just for the sake of clarity and for to be sure
+  tbn[0] = normalize(tbn[0]);
+  tbn[1] = normalize(tbn[1]);
+  tbn[2] = normalize(tbn[2]);
+
+  // Get the octahedron normal
+  const vec3 normal = tbn[2];
+  vec2 octahedronalNormal = normal.xy / (abs(normal.x) + abs(normal.y) + abs(normal.z)); 
+  octahedronalNormal = (normal.z < 0.0) ? ((1.0 - abs(octahedronalNormal.yx)) * fma(step(vec2(0.0), octahedronalNormal.xy), vec2(2.0), vec2(-1.0))) : octahedronalNormal;
+  
+  // Find the canonical directions
+  const vec3 canonicalDirectionA = cross(normalize((normal.yzx - normal.zxy) - dot(normal.yzx - normal.zxy, normal)), normal);
+  const vec3 canonicalDirectionB = cross(normal, canonicalDirectionA);
+
+  // Project the tangent into the canonical space 
+  const vec2 tangentInCanonicalSpace = vec2(dot(tbn[0], canonicalDirectionA), dot(tbn[0], canonicalDirectionB));
+
+  // Find the tangent diamond direction (a diamond is more or less the 2D equivalent of the 3D octahedron here in this case)
+  const float tangentDiamond = (1.0 - (tangentInCanonicalSpace.x / (abs(tangentInCanonicalSpace.x) + abs(tangentInCanonicalSpace.y)))) * ((tangentInCanonicalSpace.y < 0.0) ? -1.0 : 1.0) * 0.5;
+
+  // Find the bitangent sign
+  const float bittangentSign = (dot(cross(tbn[0], tbn[1]), tbn[2]) < 0.0) ? -1.0 : 1.0; 
+
+  // Encode the tangent space as signed values
+  ivec4 encodedTangentSpace = ivec4(
+    ivec2(clamp(octahedronalNormal, vec2(-1.0), vec2(1.0)) * 511.0), // 10 bits including sign
+    int(clamp(tangentDiamond, -1.0, 1.0) * 511.0), // 10 bits including sign
+    int(clamp(bittangentSign, -1.0, 1.0)) // 2 bits
+  );
+  
+  // Pack the values into RGB10A2 snorm
+  uint t = ((uint(encodedTangentSpace.x) & 0x3ffu) << 0u) | 
+           ((uint(encodedTangentSpace.y) & 0x3ffu) << 10u) | 
+           ((uint(encodedTangentSpace.z) & 0x3ffu) << 20u) | 
+           ((uint(encodedTangentSpace.w) & 0x3u) << 30u);
+
+#if 1
+  // Optional step for ensure that the bitangent sign is correct 
+  mat3 r = decodeTangentSpaceFromRGB10A2SNorm(t);
+  
+  if(dot(r[1], tbn[1]) < 0.0){
+    encodedTangentSpace.w = -encodedTangentSpace.w;
+    t = ((uint(encodedTangentSpace.x) & 0x3ffu) << 0u) | 
+        ((uint(encodedTangentSpace.y) & 0x3ffu) << 10u) | 
+        ((uint(encodedTangentSpace.z) & 0x3ffu) << 20u) | 
+        ((uint(encodedTangentSpace.w) & 0x3u) << 30u);
+  }
+#endif 
+
+  return t;
+ 
 }
 
 #endif
