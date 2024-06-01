@@ -161,12 +161,12 @@ uint encodeQTangentUI32(mat3 m){
   }
   vec4 qAbs = abs(q = normalize(q));
   int maxComponentIndex = (qAbs.x > qAbs.y) ? ((qAbs.x > qAbs.z) ? ((qAbs.x > qAbs.w) ? 0 : 3) : ((qAbs.z > qAbs.w) ? 2 : 3)) : ((qAbs.y > qAbs.z) ? ((qAbs.y > qAbs.w) ? 1 : 3) : ((qAbs.z > qAbs.w) ? 2 : 3)); 
-  q = vec4(vec3[4](q.yzw, q.xzw, q.xyw, q.xyz)[maxComponentIndex] * ((q[maxComponentIndex] < 0.0) ? -1.0 : 1.0), float(maxComponentIndex));
+  q.xyz = vec3[4](q.yzw, q.xzw, q.xyw, q.xyz)[maxComponentIndex] * ((q[maxComponentIndex] < 0.0) ? -1.0 : 1.0);
   return ((uint(round(clamp(q.x * 511.0, -511.0, 511.0) + 512.0)) & 0x3ffu) << 0u) | 
          ((uint(round(clamp(q.y * 511.0, -511.0, 511.0) + 512.0)) & 0x3ffu) << 10u) | 
          ((uint(round(clamp(q.z * 255.0, -255.0, 255.0) + 256.0)) & 0x1ffu) << 20u) |
          ((uint(((dot(cross(m[0], m[2]), m[1]) * r) < 0.0) ? 1u : 0u) & 0x1u) << 29u) | 
-         ((uint(round(clamp(q.w, 0.0, 3.0))) & 0x3u) << 30u);
+         ((uint(maxComponentIndex) & 0x3u) << 30u);
 }
 
 mat3 decodeQTangentUI32(uint v){
