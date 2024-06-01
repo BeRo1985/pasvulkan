@@ -1835,6 +1835,12 @@ function EncodeTangentSpaceAsRGB10A2SNorm(const aMatrix:TpvMatrix3x3):TpvUInt32;
 procedure DecodeTangentSpaceFromRGB10A2SNorm(const aValue:TpvUInt32;out aTangent,aBitangent,aNormal:TpvVector3); overload;
 procedure DecodeTangentSpaceFromRGB10A2SNorm(const aValue:TpvUInt32;out aMatrix3x3:TpvMatrix3x3); overload;
 
+function EncodeQTangentUI32(const aTangent,aBitangent:TpvVector3;aNormal:TpvVector3):TpvUInt32; overload;
+function EncodeQTangentUI32(const aMatrix:TpvMatrix3x3):TpvUInt32; overload;
+function EncodeQTangentUI32(const aMatrix:TpvMatrix4x4):TpvUInt32; overload;
+
+function DecodeQTangentUI32(const aValue:TpvUInt32):TpvMatrix3x3;
+
 implementation
 
 function RoundDownToPowerOfTwo(x:TpvUInt32):TpvUInt32;
@@ -20498,6 +20504,149 @@ begin
  aMatrix3x3.Tangent:=Tangent;
  aMatrix3x3.Bitangent:=Bitangent;
  aMatrix3x3.Normal:=Normal;
+end;
+
+function EncodeQTangentUI32(const aTangent,aBitangent:TpvVector3;aNormal:TpvVector3):TpvUInt32;
+var Scale,t,s:TpvScalar;
+    q:TpvVector4;
+    AbsQ:TpvVector4;
+    MaxComponentIndex:TpvInt32;
+begin
+ if ((((((aTangent.x*aBitangent.y*aNormal.z)+
+         (aTangent.y*aBitangent.z*aNormal.x)
+        )+
+        (aTangent.z*aBitangent.x*aNormal.y)
+       )-
+       (aTangent.z*aBitangent.y*aNormal.x)
+      )-
+      (aTangent.y*aBitangent.x*aNormal.z)
+     )-
+     (aTangent.x*aBitangent.z*aNormal.y)
+    )<0.0 then begin
+  // Reflection matrix, so flip y axis in case the tangent frame encodes a reflection
+  Scale:=-1.0;
+  aNormal:=-aNormal;
+ end else begin
+  // Rotation matrix, so nothing is doing to do
+  Scale:=1.0;
+ end;
+ t:=aTangent.x+(aBitangent.y+aNormal.z);
+ if t>2.9999999 then begin
+  q:=TpvVector4.InlineableCreate(0.0,0.0,0.0,1.0);
+ end else if t>0.0000001 then begin
+  s:=sqrt(1.0+t)*2.0;
+  q:=TpvVector4.InlineableCreate(TpvVector3.InlineableCreate(aBitangent.z-aNormal.y,aNormal.x-aTangent.z,aTangent.y-aBitangent.x)/s,s*0.25).Normalize;
+ end else if (aTangent.x>aBitangent.y) and (aTangent.x>aNormal.z) then begin
+  s:=sqrt(1.0+(aTangent.x-(aBitangent.y+aNormal.z)))*2.0;
+  q:=TpvVector4.InlineableCreate(TpvVector3.InlineableCreate(aBitangent.x+aTangent.y,aNormal.x+aTangent.z,aBitangent.z-aNormal.y)/s,s*0.25).wxyz.Normalize;
+ end else if aBitangent.y>aNormal.z then begin
+  s:=sqrt(1.0+(aBitangent.y-(aTangent.x+aNormal.z)))*2.0;
+  q:=TpvVector4.InlineableCreate(TpvVector3.InlineableCreate(aBitangent.x+aTangent.y,aNormal.y+aBitangent.z,aNormal.x-aTangent.z)/s,s*0.25).xwyz.Normalize;
+ end else begin
+  s:=sqrt(1.0+(aNormal.z-(aTangent.x+aBitangent.y)))*2.0;
+  q:=TpvVector4.InlineableCreate(TpvVector3.InlineableCreate(aNormal.x+aTangent.z,aNormal.y+aBitangent.z,aTangent.y-aBitangent.x)/s,s*0.25).xywz.Normalize;
+ end;
+ AbsQ:=q.Abs;
+ if AbsQ.x>AbsQ.y then begin
+  if AbsQ.x>AbsQ.z then begin
+   if AbsQ.x>AbsQ.w then begin
+    MaxComponentIndex:=0;
+   end else begin
+    MaxComponentIndex:=3;
+   end;
+  end else begin
+   if AbsQ.z>AbsQ.w then begin
+    MaxComponentIndex:=2;
+   end else begin
+    MaxComponentIndex:=3;
+   end;
+  end;
+ end else begin
+  if AbsQ.y>AbsQ.z then begin
+   if AbsQ.y>AbsQ.w then begin
+    MaxComponentIndex:=1;
+   end else begin
+    MaxComponentIndex:=3;
+   end;
+  end else begin
+   if AbsQ.z>AbsQ.w then begin
+    MaxComponentIndex:=2;
+   end else begin
+    MaxComponentIndex:=3;
+   end;
+  end;
+ end;
+ case MaxComponentIndex of
+  0:begin
+   q:=q.yzwx;
+  end;
+  1:begin
+   q:=q.xzwy;
+  end; 
+  2:begin
+   q:=q.xywz;
+  end;
+  else {3:}begin
+   q:=q.xyzw;
+  end;
+ end;
+ if q.w<0.0 then begin
+  q:=-q;
+ end;
+ result:=((TpvUInt32(round(clamp(q.x*511.0,-511.0,511.0)+512.0)) and $3ff) shl 0) or
+         ((TpvUInt32(round(clamp(q.y*511.0,-511.0,511.0)+512.0)) and $3ff) shl 10) or
+         ((TpvUInt32(round(clamp(q.z*255.0,-255.0,255.0)+256.0)) and $1ff) shl 20) or
+         (TpvUInt32(Ord((aTangent.Cross(aNormal).Dot(aBitangent)*Scale)<0.0) and 1) shl 29) or
+         ((TpvUInt32(round(clamp(q.w,0.0,3.0)) and 3) shl 30));
+end;
+
+function EncodeQTangentUI32(const aMatrix:TpvMatrix3x3):TpvUInt32;
+begin
+ result:=EncodeQTangentUI32(aMatrix.Tangent,aMatrix.Bitangent,aMatrix.Normal);
+end;
+
+function EncodeQTangentUI32(const aMatrix:TpvMatrix4x4):TpvUInt32;
+begin
+ result:=EncodeQTangentUI32(aMatrix.Tangent.xyz,aMatrix.Bitangent.xyz,aMatrix.Normal.xyz);
+end;
+
+function DecodeQTangentUI32(const aValue:TpvUInt32):TpvMatrix3x3;
+const DivVector3:TpvVector3=(x:511.0;y:511.0;z:255.0);
+var q:TpvVector4;
+    t2,tx,ty,tz:TpvVector3;
+    Tangent,Normal:TpvVector3;
+begin
+ q:=TpvVector4.InlineableCreate(TpvVector3.InlineableCreate(
+                                 TpvInt32((aValue shr 0) and $3ff)-512,
+                                 TpvInt32((aValue shr 10) and $3ff)-512,
+                                 TpvInt32((aValue shr 20) and $1ff)-256
+                                )/DivVector3,0.0);
+ q.w:=sqrt(1.0-Clamp(q.xyz.Dot(q.xyz),0.0,1.0));
+ case (aValue shr 30) and 3 of
+  0:begin
+   q:=q.wxyz.Normalize;
+  end;
+  1:begin
+   q:=q.xwyz.Normalize;
+  end;
+  2:begin
+   q:=q.xywz.Normalize;
+  end;
+  else {3:}begin
+   q:=q.xyzw.Normalize;
+  end;
+ end;
+ t2:=q.xyz*2.0;
+ tx:=q.xxx*t2.xyz;
+ ty:=q.yyy*t2.xyz;
+ tz:=q.www*t2.xyz;
+ Tangent:=TpvVector3.InlineableCreate(1.0-(ty.y+(q.z*t2.z)),tx.y+tz.z,tx.z-tz.y);
+ Normal:=TpvVector3.InlineableCreate(tx.z+tz.y,ty.z-tz.x,1.0-(tx.x+ty.y));
+ result:=TpvMatrix3x3.Create(
+          Tangent,
+          Tangent.Cross(Normal)*TpvScalar(TpvInt32(1-((Ord((aValue and (TpvUInt32(1) shl 29))<>0) and 1) shl 1))),
+          Normal
+         );
 end;
 
 initialization

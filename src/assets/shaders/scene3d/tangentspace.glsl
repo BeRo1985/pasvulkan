@@ -165,7 +165,7 @@ uint encodeQTangentUI32(mat3 m){
   return ((uint(round(clamp(q.x * 511.0, -511.0, 511.0) + 512.0)) & 0x3ffu) << 0u) | 
          ((uint(round(clamp(q.y * 511.0, -511.0, 511.0) + 512.0)) & 0x3ffu) << 10u) | 
          ((uint(round(clamp(q.z * 255.0, -255.0, 255.0) + 256.0)) & 0x1ffu) << 20u) |
-         ((uint(((dot(cross(m[0], m[2]), m[1]) * r) <= 0.0) ? 1u : 0u) & 0x1u) << 29u) | 
+         ((uint(((dot(cross(m[0], m[2]), m[1]) * r) < 0.0) ? 1u : 0u) & 0x1u) << 29u) | 
          ((uint(round(clamp(q.w, 0.0, 3.0))) & 0x3u) << 30u);
 }
 
