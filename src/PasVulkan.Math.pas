@@ -20599,7 +20599,7 @@ begin
          ((TpvUInt32(round(clamp(q.y*511.0,-511.0,511.0)+512.0)) and $3ff) shl 10) or
          ((TpvUInt32(round(clamp(q.z*255.0,-255.0,255.0)+256.0)) and $1ff) shl 20) or
          (TpvUInt32(Ord((aTangent.Cross(aNormal).Dot(aBitangent)*Scale)<0.0) and 1) shl 29) or
-         ((TpvUInt32(round(clamp(q.w,0.0,3.0)) and 3) shl 30));
+         ((TpvUInt32(MaxComponentIndex and 3) shl 30));
 end;
 
 function EncodeQTangentUI32(const aMatrix:TpvMatrix3x3):TpvUInt32;
