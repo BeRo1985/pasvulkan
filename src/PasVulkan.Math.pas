@@ -20622,7 +20622,7 @@ begin
                                  TpvInt32((aValue shr 10) and $3ff)-512,
                                  TpvInt32((aValue shr 20) and $1ff)-256
                                 )/DivVector3,0.0);
- q.w:=sqrt(1.0-Clamp(q.xyz.Dot(q.xyz),0.0,1.0));
+ q.w:=sqrt(1.0-Clamp(q.xyz.SquaredLength,0.0,1.0));
  case (aValue shr 30) and 3 of
   0:begin
    q:=q.wxyz.Normalize;
