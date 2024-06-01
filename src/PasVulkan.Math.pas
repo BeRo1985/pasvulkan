@@ -8073,16 +8073,13 @@ begin
     )<0.0 then begin
   // Reflection matrix, so flip y axis in case the tangent frame encodes a reflection
   Scale:=-1.0;
-  RawComponents[2,0]:=-RawComponents[2,0];
-  RawComponents[2,1]:=-RawComponents[2,1];
-  RawComponents[2,2]:=-RawComponents[2,2];
  end else begin
   // Rotation matrix, so nothing is doing to do
   Scale:=1.0;
  end;
  begin
   // Convert to quaternion
-  t:=RawComponents[0,0]+(RawComponents[1,1]+RawComponents[2,2]);
+  t:=RawComponents[0,0]+(RawComponents[1,1]+(RawComponents[2,2]*Scale));
   if t>2.9999999 then begin
    result.x:=0.0;
    result.y:=0.0;
@@ -8090,26 +8087,26 @@ begin
    result.w:=1.0;
   end else if t>0.0000001 then begin
    s:=sqrt(1.0+t)*2.0;
-   result.x:=(RawComponents[1,2]-RawComponents[2,1])/s;
-   result.y:=(RawComponents[2,0]-RawComponents[0,2])/s;
+   result.x:=(RawComponents[1,2]-(RawComponents[2,1]*Scale))/s;
+   result.y:=((RawComponents[2,0]*Scale)-RawComponents[0,2])/s;
    result.z:=(RawComponents[0,1]-RawComponents[1,0])/s;
    result.w:=s*0.25;
-  end else if (RawComponents[0,0]>RawComponents[1,1]) and (RawComponents[0,0]>RawComponents[2,2]) then begin
-   s:=sqrt(1.0+(RawComponents[0,0]-(RawComponents[1,1]+RawComponents[2,2])))*2.0;
+  end else if (RawComponents[0,0]>RawComponents[1,1]) and (RawComponents[0,0]>(RawComponents[2,2]*Scale)) then begin
+   s:=sqrt(1.0+(RawComponents[0,0]-(RawComponents[1,1]+(RawComponents[2,2]*Scale))))*2.0;
    result.x:=s*0.25;
    result.y:=(RawComponents[1,0]+RawComponents[0,1])/s;
-   result.z:=(RawComponents[2,0]+RawComponents[0,2])/s;
-   result.w:=(RawComponents[1,2]-RawComponents[2,1])/s;
-  end else if RawComponents[1,1]>RawComponents[2,2] then begin
-   s:=sqrt(1.0+(RawComponents[1,1]-(RawComponents[0,0]+RawComponents[2,2])))*2.0;
+   result.z:=((RawComponents[2,0]*Scale)+RawComponents[0,2])/s;
+   result.w:=(RawComponents[1,2]-(RawComponents[2,1]*Scale))/s;
+  end else if RawComponents[1,1]>(RawComponents[2,2]*Scale) then begin
+   s:=sqrt(1.0+(RawComponents[1,1]-(RawComponents[0,0]+(RawComponents[2,2]*Scale))))*2.0;
    result.x:=(RawComponents[1,0]+RawComponents[0,1])/s;
    result.y:=s*0.25;
-   result.z:=(RawComponents[2,1]+RawComponents[1,2])/s;
-   result.w:=(RawComponents[2,0]-RawComponents[0,2])/s;
+   result.z:=((RawComponents[2,1]*Scale)+RawComponents[1,2])/s;
+   result.w:=((RawComponents[2,0]*Scale)-RawComponents[0,2])/s;
   end else begin
-   s:=sqrt(1.0+(RawComponents[2,2]-(RawComponents[0,0]+RawComponents[1,1])))*2.0;
-   result.x:=(RawComponents[2,0]+RawComponents[0,2])/s;
-   result.y:=(RawComponents[2,1]+RawComponents[1,2])/s;
+   s:=sqrt(1.0+((RawComponents[2,2]*Scale)-(RawComponents[0,0]+RawComponents[1,1])))*2.0;
+   result.x:=((RawComponents[2,0]*Scale)+RawComponents[0,2])/s;
+   result.y:=((RawComponents[2,1]*Scale)+RawComponents[1,2])/s;
    result.z:=s*0.25;
    result.w:=(RawComponents[0,1]-RawComponents[1,0])/s;
   end;
@@ -12209,16 +12206,13 @@ begin
     )<0.0 then begin
   // Reflection matrix, so flip y axis in case the tangent frame encodes a reflection
   Scale:=-1.0;
-  RawComponents[2,0]:=-RawComponents[2,0];
-  RawComponents[2,1]:=-RawComponents[2,1];
-  RawComponents[2,2]:=-RawComponents[2,2];
  end else begin
   // Rotation matrix, so nothing is doing to do
   Scale:=1.0;
  end;
  begin
   // Convert to quaternion
-  t:=RawComponents[0,0]+(RawComponents[1,1]+RawComponents[2,2]);
+  t:=RawComponents[0,0]+(RawComponents[1,1]+(RawComponents[2,2]*Scale));
   if t>2.9999999 then begin
    result.x:=0.0;
    result.y:=0.0;
@@ -12226,26 +12220,26 @@ begin
    result.w:=1.0;
   end else if t>0.0000001 then begin
    s:=sqrt(1.0+t)*2.0;
-   result.x:=(RawComponents[1,2]-RawComponents[2,1])/s;
-   result.y:=(RawComponents[2,0]-RawComponents[0,2])/s;
+   result.x:=(RawComponents[1,2]-(RawComponents[2,1]*Scale))/s;
+   result.y:=((RawComponents[2,0]*Scale)-RawComponents[0,2])/s;
    result.z:=(RawComponents[0,1]-RawComponents[1,0])/s;
    result.w:=s*0.25;
-  end else if (RawComponents[0,0]>RawComponents[1,1]) and (RawComponents[0,0]>RawComponents[2,2]) then begin
-   s:=sqrt(1.0+(RawComponents[0,0]-(RawComponents[1,1]+RawComponents[2,2])))*2.0;
+  end else if (RawComponents[0,0]>RawComponents[1,1]) and (RawComponents[0,0]>(RawComponents[2,2]*Scale)) then begin
+   s:=sqrt(1.0+(RawComponents[0,0]-(RawComponents[1,1]+(RawComponents[2,2]*Scale))))*2.0;
    result.x:=s*0.25;
    result.y:=(RawComponents[1,0]+RawComponents[0,1])/s;
-   result.z:=(RawComponents[2,0]+RawComponents[0,2])/s;
-   result.w:=(RawComponents[1,2]-RawComponents[2,1])/s;
-  end else if RawComponents[1,1]>RawComponents[2,2] then begin
-   s:=sqrt(1.0+(RawComponents[1,1]-(RawComponents[0,0]+RawComponents[2,2])))*2.0;
+   result.z:=((RawComponents[2,0]*Scale)+RawComponents[0,2])/s;
+   result.w:=(RawComponents[1,2]-(RawComponents[2,1]*Scale))/s;
+  end else if RawComponents[1,1]>(RawComponents[2,2]*Scale) then begin
+   s:=sqrt(1.0+(RawComponents[1,1]-(RawComponents[0,0]+(RawComponents[2,2]*Scale))))*2.0;
    result.x:=(RawComponents[1,0]+RawComponents[0,1])/s;
    result.y:=s*0.25;
-   result.z:=(RawComponents[2,1]+RawComponents[1,2])/s;
-   result.w:=(RawComponents[2,0]-RawComponents[0,2])/s;
+   result.z:=((RawComponents[2,1]*Scale)+RawComponents[1,2])/s;
+   result.w:=((RawComponents[2,0]*Scale)-RawComponents[0,2])/s;
   end else begin
-   s:=sqrt(1.0+(RawComponents[2,2]-(RawComponents[0,0]+RawComponents[1,1])))*2.0;
-   result.x:=(RawComponents[2,0]+RawComponents[0,2])/s;
-   result.y:=(RawComponents[2,1]+RawComponents[1,2])/s;
+   s:=sqrt(1.0+((RawComponents[2,2]*Scale)-(RawComponents[0,0]+RawComponents[1,1])))*2.0;
+   result.x:=((RawComponents[2,0]*Scale)+RawComponents[0,2])/s;
+   result.y:=((RawComponents[2,1]*Scale)+RawComponents[1,2])/s;
    result.z:=s*0.25;
    result.w:=(RawComponents[0,1]-RawComponents[1,0])/s;
   end;
