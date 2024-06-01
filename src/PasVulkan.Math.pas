@@ -20641,9 +20641,9 @@ begin
  tx:=q.xxx*t2.xyz;
  ty:=q.yyy*t2.xyz;
  tz:=q.www*t2.xyz;
- aTangent:=TpvVector3.InlineableCreate(1.0-(ty.y+(q.z*t2.z)),tx.y+tz.z,tx.z-tz.y);
- aNormal:=TpvVector3.InlineableCreate(tx.z+tz.y,ty.z-tz.x,1.0-(tx.x+ty.y));
- aBitangent:=aTangent.Cross(aNormal)*TpvScalar(TpvInt32(1-((Ord((aValue and (TpvUInt32(1) shl 29))<>0) and 1) shl 1)));
+ aTangent:=TpvVector3.InlineableCreate(1.0-(ty.y+(q.z*t2.z)),tx.y+tz.z,tx.z-tz.y).Normalize;
+ aNormal:=TpvVector3.InlineableCreate(tx.z+tz.y,ty.z-tz.x,1.0-(tx.x+ty.y)).Normalize;
+ aBitangent:=aTangent.Cross(aNormal).Normalize*TpvScalar(TpvInt32(1-((Ord((aValue and (TpvUInt32(1) shl 29))<>0) and 1) shl 1)));
 end;
 
 function DecodeQTangentUI32(const aValue:TpvUInt32):TpvMatrix3x3;
