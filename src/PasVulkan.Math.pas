@@ -1839,6 +1839,8 @@ function EncodeQTangentUI32(const aTangent,aBitangent:TpvVector3;aNormal:TpvVect
 function EncodeQTangentUI32(const aMatrix:TpvMatrix3x3):TpvUInt32; overload;
 function EncodeQTangentUI32(const aMatrix:TpvMatrix4x4):TpvUInt32; overload;
 
+procedure DecodeQTangentUI32Vectors(const aValue:TpvUInt32;out aTangent,aBitangent,aNormal:TpvVector3);
+
 function DecodeQTangentUI32(const aValue:TpvUInt32):TpvMatrix3x3;
 
 implementation
@@ -20610,11 +20612,10 @@ begin
  result:=EncodeQTangentUI32(aMatrix.Tangent.xyz,aMatrix.Bitangent.xyz,aMatrix.Normal.xyz);
 end;
 
-function DecodeQTangentUI32(const aValue:TpvUInt32):TpvMatrix3x3;
+procedure DecodeQTangentUI32Vectors(const aValue:TpvUInt32;out aTangent,aBitangent,aNormal:TpvVector3);
 const DivVector3:TpvVector3=(x:511.0;y:511.0;z:255.0);
 var q:TpvVector4;
     t2,tx,ty,tz:TpvVector3;
-    Tangent,Normal:TpvVector3;
 begin
  q:=TpvVector4.InlineableCreate(TpvVector3.InlineableCreate(
                                  TpvInt32((aValue shr 0) and $3ff)-512,
@@ -20640,13 +20641,14 @@ begin
  tx:=q.xxx*t2.xyz;
  ty:=q.yyy*t2.xyz;
  tz:=q.www*t2.xyz;
- Tangent:=TpvVector3.InlineableCreate(1.0-(ty.y+(q.z*t2.z)),tx.y+tz.z,tx.z-tz.y);
- Normal:=TpvVector3.InlineableCreate(tx.z+tz.y,ty.z-tz.x,1.0-(tx.x+ty.y));
- result:=TpvMatrix3x3.Create(
-          Tangent,
-          Tangent.Cross(Normal)*TpvScalar(TpvInt32(1-((Ord((aValue and (TpvUInt32(1) shl 29))<>0) and 1) shl 1))),
-          Normal
-         );
+ aTangent:=TpvVector3.InlineableCreate(1.0-(ty.y+(q.z*t2.z)),tx.y+tz.z,tx.z-tz.y);
+ aNormal:=TpvVector3.InlineableCreate(tx.z+tz.y,ty.z-tz.x,1.0-(tx.x+ty.y));
+ aBitangent:=aTangent.Cross(aNormal)*TpvScalar(TpvInt32(1-((Ord((aValue and (TpvUInt32(1) shl 29))<>0) and 1) shl 1)));
+end;
+
+function DecodeQTangentUI32(const aValue:TpvUInt32):TpvMatrix3x3;
+begin
+ DecodeQTangentUI32Vectors(aValue,result.Tangent,result.Bitangent,result.Normal);
 end;
 
 initialization

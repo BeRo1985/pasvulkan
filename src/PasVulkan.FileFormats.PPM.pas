@@ -181,7 +181,7 @@ begin
   Vertex:=@Vertices[Index];
   FullVertex:=@FullVertices[Index];
   Vertex^.Position:=FullVertex^.Position;
-  Vertex^.TangentSpace:=EncodeTangentSpaceAsRGB10A2SNorm(FullVertex^.Tangent,FullVertex^.Bitangent,FullVertex^.Normal);
+  Vertex^.TangentSpace:=EncodeQTangentUI32(FullVertex^.Tangent,FullVertex^.Bitangent,FullVertex^.Normal);
  end;
 end;
 
@@ -197,7 +197,7 @@ begin
   Vertex:=@Vertices[Index];
   FullVertex:=@FullVertices[Index];
   FullVertex^.Position:=Vertex^.Position;
-  DecodeTangentSpaceFromRGB10A2SNorm(Vertex^.TangentSpace,FullVertex^.Tangent,FullVertex^.Bitangent,FullVertex^.Normal);
+  DecodeQTangentUI32Vectors(Vertex^.TangentSpace,FullVertex^.Tangent,FullVertex^.Bitangent,FullVertex^.Normal);
  end;
 end;
 
