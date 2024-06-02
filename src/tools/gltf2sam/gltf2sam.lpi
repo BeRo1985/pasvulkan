@@ -65,7 +65,7 @@
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
-        <Filename Value="../../PasVulkan.FileFormats.PPM.pas"/>
+        <Filename Value="../../PasVulkan.FileFormats.SAM.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>
     </Units>
