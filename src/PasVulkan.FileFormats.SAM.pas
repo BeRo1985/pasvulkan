@@ -110,14 +110,19 @@ type EpvSAM=class(Exception);
             TAnimations=array of TAnimation;
             TSignature=array[0..3] of AnsiChar;
             TMaterialHeader=packed record
-             BaseColorFactor:TpvVector4;
-             EmissiveFactorOcclusionStrength:TpvVector4; // xyz = EmissiveFactor, w = OcclusionStrength
-             MetallicRoughnessFactorNormalScale:TpvVector4; // x = MetallicFactor, y = RoughnessFactor, zw = Reserved
-             BaseColorTextureSize:TpvUInt32;
-             NormalTextureSize:TpvUInt32;
-             MetallicRoughnessTextureSize:TpvUInt32;
-             OcclusionTextureSize:TpvUInt32;
-             EmissiveTextureSize:TpvUInt32; 
+             public
+              const MaterialTypeUnlit=0;
+                    MaterialTypeMetallicRoughness=1;
+             public
+              MaterialType:TpvUInt32;
+              BaseColorFactor:TpvVector4;
+              EmissiveFactorOcclusionStrength:TpvVector4; // xyz = EmissiveFactor, w = OcclusionStrength
+              MetallicRoughnessFactorNormalScale:TpvVector4; // x = MetallicFactor, y = RoughnessFactor, zw = Reversed
+              BaseColorTextureSize:TpvUInt32;
+              NormalTextureSize:TpvUInt32;
+              MetallicRoughnessTextureSize:TpvUInt32;
+              OcclusionTextureSize:TpvUInt32;
+              EmissiveTextureSize:TpvUInt32;
             end;
             TFileHeader=packed record
              Signature:TSignature;

@@ -15169,7 +15169,14 @@ begin
  // Create material
  Material:=TpvScene3D.TMaterial.Create(ResourceManager,self,nil);
  Material.AssignFromEmpty;
- Material.fData.ShadingModel:=TpvScene3D.TMaterial.TShadingModel.PBRMetallicRoughness;
+ case aSourceModel.FileHeader.MaterialHeader.MaterialType of
+  TpvSAM.TMaterialHeader.MaterialTypeMetallicRoughness:begin
+   Material.fData.ShadingModel:=TpvScene3D.TMaterial.TShadingModel.PBRMetallicRoughness;
+  end;
+  else begin
+   Material.fData.ShadingModel:=TpvScene3D.TMaterial.TShadingModel.Unlit;
+  end;
+ end;
  Material.fData.AlphaMode:=TpvScene3D.TMaterial.TAlphaMode.Opaque;
  Material.fData.DoubleSided:=true;
  Material.fData.PBRMetallicRoughness.BaseColorFactor:=aSourceModel.FileHeader.MaterialHeader.BaseColorFactor;

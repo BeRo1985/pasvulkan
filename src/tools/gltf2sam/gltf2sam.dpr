@@ -471,6 +471,7 @@ begin
       FileHeader.BoundingBoxMax:=BoundingBox.Max;
       FileHeader.BoundingSphere:=TpvVector4.InlineableCreate(BoundingSphere.Center,BoundingSphere.Radius);
 
+      FileHeader.MaterialHeader.MaterialType:=TpvSAM.TMaterialHeader.MaterialTypeMetallicRoughness;
       FileHeader.MaterialHeader.BaseColorFactor:=BaseColorFactor;
       FileHeader.MaterialHeader.EmissiveFactorOcclusionStrength:=TpvVector4.Create(EmissiveFactor.x,EmissiveFactor.y,EmissiveFactor.z,OcclusionStrength);
       FileHeader.MaterialHeader.MetallicRoughnessFactorNormalScale:=TpvVector4.Create(MetallicRoughnessFactor.x,MetallicRoughnessFactor.y,NormalScale,0.0);
