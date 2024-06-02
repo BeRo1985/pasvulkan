@@ -49,7 +49,7 @@
  * 11. Make sure the code runs on all platforms with Vulkan support           *
  *                                                                            *
  ******************************************************************************)
-unit PasVulkan.FileFormats.PPM;
+unit PasVulkan.FileFormats.SAM;
 {$i PasVulkan.inc}
 {$ifndef fpc}
  {$ifdef conditionalexpressions}
@@ -65,10 +65,10 @@ interface
 
 uses SysUtils,Classes,Math,PasJSON,PasVulkan.Types,PasVulkan.Math,PasVulkan.Collections;
 
-type EpvPPM=class(Exception);
+type EpvSAM=class(Exception);
 
-     { TpvPPM }
-     TpvPPM=class
+     { TpvSAM }
+     TpvSAM=class
       public
        const CountPresetAnimations=4;
              Version=1;
@@ -134,13 +134,7 @@ type EpvPPM=class(Exception);
              MaterialHeader:TMaterialHeader;
             end;
             PFileHeader=^TFileHeader;            
-       const Signature:TSignature=('P','P','M','F'); // Planet Plant Model File
-             PresetAnimations:TPresetAnimations=(
-              (Index:0;Name:'grow'),
-              (Index:1;Name:'blossoms'),
-              (Index:2;Name:'falloff'),
-              (Index:3;Name:'wither')
-             );
+       const Signature:TSignature=('S','A','M','F'); // Simple Animated Model File
        type { TModel }
             TModel=class
              public
@@ -167,9 +161,9 @@ type EpvPPM=class(Exception);
 
 implementation
 
-{ TpvPPM.TFrame }
+{ TpvSAM.TFrame }
 
-procedure TpvPPM.TFrame.Pack;
+procedure TpvSAM.TFrame.Pack;
 var Index:TpvSizeInt;
     FullVertex:PFullVertex;
     Vertex:PVertex;
@@ -185,7 +179,7 @@ begin
  end;
 end;
 
-procedure TpvPPM.TFrame.Unpack;
+procedure TpvSAM.TFrame.Unpack;
 var Index:TpvSizeInt;
     FullVertex:PFullVertex;
     Vertex:PVertex;
@@ -201,12 +195,12 @@ begin
  end;
 end;
 
-{ TpvPPM.TModel }
+{ TpvSAM.TModel }
 
-constructor TpvPPM.TModel.Create;
+constructor TpvSAM.TModel.Create;
 begin
  inherited Create;
- FillChar(FileHeader,SizeOf(TpvPPM.TFileHeader),#0);
+ FillChar(FileHeader,SizeOf(TpvSAM.TFileHeader),#0);
  TexCoords:=nil;
  Indices:=nil;
  Animations:=nil;
@@ -217,7 +211,7 @@ begin
  EmissiveTextureStream:=TMemoryStream.Create;
 end;
 
-destructor TpvPPM.TModel.Destroy;
+destructor TpvSAM.TModel.Destroy;
 begin
  TexCoords:=nil;
  Indices:=nil;
@@ -230,7 +224,7 @@ begin
  inherited Destroy;
 end;
 
-procedure TpvPPM.TModel.LoadFromStream(const aStream:TStream);
+procedure TpvSAM.TModel.LoadFromStream(const aStream:TStream);
 var AnimationIndex,FramesIndex:TpvSizeInt;
     CountFrames:TpvInt32;
 begin
@@ -239,21 +233,21 @@ begin
  Indices:=nil;
  Animations:=nil;
 
- FillChar(FileHeader,SizeOf(TpvPPM.TFileHeader),#0);
+ FillChar(FileHeader,SizeOf(TpvSAM.TFileHeader),#0);
 
- aStream.ReadBuffer(FileHeader,SizeOf(TpvPPM.TFileHeader));
+ aStream.ReadBuffer(FileHeader,SizeOf(TpvSAM.TFileHeader));
  
- if FileHeader.Signature<>TpvPPM.Signature then begin
-  raise EpvPPM.Create('Invalid PPM signature');
+ if FileHeader.Signature<>TpvSAM.Signature then begin
+  raise EpvSAM.Create('Invalid SAM signature');
  end;
 
- if FileHeader.Version<>TpvPPM.Version then begin
-  raise EpvPPM.Create('Invalid or not supported PPM version');
+ if FileHeader.Version<>TpvSAM.Version then begin
+  raise EpvSAM.Create('Invalid or not supported SAM version');
  end;
 
  if FileHeader.CountIndices>0 then begin
   SetLength(Indices,FileHeader.CountIndices);
-  aStream.ReadBuffer(Indices[0],SizeOf(TpvPPM.TIndex)*FileHeader.CountIndices);
+  aStream.ReadBuffer(Indices[0],SizeOf(TpvSAM.TIndex)*FileHeader.CountIndices);
  end;
 
  if FileHeader.CountVertices>0 then begin
@@ -271,7 +265,7 @@ begin
     aStream.ReadBuffer(Animations[AnimationIndex].Frames[FramesIndex].Time,SizeOf(TpvDouble));
     SetLength(Animations[AnimationIndex].Frames[FramesIndex].Vertices,FileHeader.CountVertices);
     if FileHeader.CountVertices>0 then begin
-     aStream.ReadBuffer(Animations[AnimationIndex].Frames[FramesIndex].Vertices[0],SizeOf(TpvPPM.TVertex)*FileHeader.CountVertices);
+     aStream.ReadBuffer(Animations[AnimationIndex].Frames[FramesIndex].Vertices[0],SizeOf(TpvSAM.TVertex)*FileHeader.CountVertices);
     end;
    end;
   end;
@@ -304,7 +298,7 @@ begin
 
 end;
 
-procedure TpvPPM.TModel.LoadFromFile(const aFileName:TpvUTF8String);
+procedure TpvSAM.TModel.LoadFromFile(const aFileName:TpvUTF8String);
 var Stream:TMemoryStream;
 begin
  Stream:=TMemoryStream.Create;
@@ -317,22 +311,22 @@ begin
  end;
 end;
 
-procedure TpvPPM.TModel.SaveToStream(const aStream:TStream);
+procedure TpvSAM.TModel.SaveToStream(const aStream:TStream);
 var AnimationIndex,FramesIndex:TpvSizeInt;
     CountFrames:TpvInt32;
 begin
- FileHeader.Signature:=TpvPPM.Signature;
- FileHeader.Version:=TpvPPM.Version;
+ FileHeader.Signature:=TpvSAM.Signature;
+ FileHeader.Version:=TpvSAM.Version;
  FileHeader.CountAnimations:=length(Animations);
- aStream.WriteBuffer(FileHeader,SizeOf(TpvPPM.TFileHeader));
- aStream.WriteBuffer(Indices[0],SizeOf(TpvPPM.TIndex)*FileHeader.CountIndices);
+ aStream.WriteBuffer(FileHeader,SizeOf(TpvSAM.TFileHeader));
+ aStream.WriteBuffer(Indices[0],SizeOf(TpvSAM.TIndex)*FileHeader.CountIndices);
  aStream.WriteBuffer(TexCoords[0],SizeOf(TpvUInt16Vector2)*FileHeader.CountVertices);
  for AnimationIndex:=0 to length(Animations)-1 do begin
   CountFrames:=length(Animations[AnimationIndex].Frames);
   aStream.WriteBuffer(CountFrames,SizeOf(TpvInt32));
   for FramesIndex:=0 to CountFrames-1 do begin
    aStream.WriteBuffer(Animations[AnimationIndex].Frames[FramesIndex].Time,SizeOf(TpvDouble));
-   aStream.WriteBuffer(Animations[AnimationIndex].Frames[FramesIndex].Vertices[0],SizeOf(TpvPPM.TVertex)*FileHeader.CountVertices);
+   aStream.WriteBuffer(Animations[AnimationIndex].Frames[FramesIndex].Vertices[0],SizeOf(TpvSAM.TVertex)*FileHeader.CountVertices);
   end;
  end;
  if BaseColorTextureStream.Size>0 then begin
@@ -357,7 +351,7 @@ begin
  end;
 end;
 
-procedure TpvPPM.TModel.SaveToFile(const aFileName:TpvUTF8String);
+procedure TpvSAM.TModel.SaveToFile(const aFileName:TpvUTF8String);
 var Stream:TMemoryStream;
 begin
  Stream:=TMemoryStream.Create;

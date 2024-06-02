@@ -98,7 +98,7 @@ uses {$ifdef Windows}
      PasVulkan.FileFormats.OBJ,
      PasVulkan.FileFormats.DAE,
      PasVulkan.FileFormats.FBX,
-     PasVulkan.FileFormats.PPM,
+     PasVulkan.FileFormats.SAM,
      POCA;
 
 type EpvScene3D=class(Exception);
@@ -250,7 +250,7 @@ type EpvScene3D=class(Exception);
              (
               Unknown, 
               GLTF,
-              PPM,
+              SAM,
               WavefrontOBJ,
               ColladaDAE, 
               FBX
@@ -2841,7 +2841,7 @@ type EpvScene3D=class(Exception);
              public
               procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument);
              public
-              procedure AssignFromPPM(const aSourceModel:TpvPPM.TModel);
+              procedure AssignFromSAM(const aSourceModel:TpvSAM.TModel);
              public
               procedure AssignFromOBJ(const aSourceModel:TpvOBJModel);
              public
@@ -15139,7 +15139,7 @@ begin
 
 end;
 
-procedure TpvScene3D.TGroup.AssignFromPPM(const aSourceModel:TpvPPM.TModel);
+procedure TpvScene3D.TGroup.AssignFromSAM(const aSourceModel:TpvSAM.TModel);
 var VertexIndex,IndexIndex,AnimationIndex,FrameIndex,GlobalFrameIndex,
     MorphWeightIndex,WeightIndex:TpvSizeInt;
     Material:TpvScene3D.TMaterial;
@@ -15148,7 +15148,7 @@ var VertexIndex,IndexIndex,AnimationIndex,FrameIndex,GlobalFrameIndex,
     Mesh:TpvScene3D.TGroup.TMesh;
     MeshPrimitive:TpvScene3D.TGroup.TMesh.TPrimitive;
     MeshVertex:TpvScene3D.PVertex;
-    PPMVertex:TpvPPM.PFullVertex;
+    SAMVertex:TpvSAM.PFullVertex;
     Tangent,Bitangent,Normal:TpvVector3;
     Image:TpvScene3D.TImage;
     Texture:TpvScene3D.TTexture;
@@ -15320,16 +15320,16 @@ begin
   // Create vertices
   for VertexIndex:=0 to TpvSizeInt(aSourceModel.FileHeader.CountVertices)-1 do begin
 
-   PPMVertex:=@aSourceModel.Animations[0].Frames[0].FullVertices[VertexIndex];
+   SAMVertex:=@aSourceModel.Animations[0].Frames[0].FullVertices[VertexIndex];
   
    MeshVertex:=MeshPrimitive.AddIndirectVertex;
    MeshVertex^.NodeIndex:=0;
    MeshVertex^.MaterialID:=0;
    MeshVertex^.Flags:=0;
-   MeshVertex^.Position:=PPMVertex^.Position;
-// UnpackUInt16QTangentSpace(PPMVertex^.TangentSpace,Tangent,Bitangent,Normal);
-// DecodeTangentSpaceFromRGB10A2SNorm(PPMVertex^.TangentSpace,Tangent,Bitangent,Normal);
-   MeshVertex^.SetTangentSpaceVectors(PPMVertex^.Tangent,PPMVertex^.Bitangent,PPMVertex^.Normal);
+   MeshVertex^.Position:=SAMVertex^.Position;
+// UnpackUInt16QTangentSpace(SAMVertex^.TangentSpace,Tangent,Bitangent,Normal);
+// DecodeTangentSpaceFromRGB10A2SNorm(SAMVertex^.TangentSpace,Tangent,Bitangent,Normal);
+   MeshVertex^.SetTangentSpaceVectors(SAMVertex^.Tangent,SAMVertex^.Bitangent,SAMVertex^.Normal);
    MeshVertex^.TexCoord0:=TpvVector2.Create(aSourceModel.TexCoords[VertexIndex].x/16384.0,aSourceModel.TexCoords[VertexIndex].y/16384.0);
    MeshVertex^.TexCoord1:=TpvVector2.Origin;
    MeshVertex^.Color0.r:=1.0;
@@ -15344,13 +15344,13 @@ begin
    MorphWeightIndex:=0;
    for AnimationIndex:=0 to length(aSourceModel.Animations)-1 do begin
     for FrameIndex:=0 to length(aSourceModel.Animations[AnimationIndex].Frames)-1 do begin
-     PPMVertex:=@aSourceModel.Animations[AnimationIndex].Frames[FrameIndex].FullVertices[VertexIndex];
+     SAMVertex:=@aSourceModel.Animations[AnimationIndex].Frames[FrameIndex].FullVertices[VertexIndex];
      TargetVertex:=@MeshPrimitive.fTargets[MorphWeightIndex].fVertices.ItemArray[VertexIndex];
-     TargetVertex^.Position:=PPMVertex^.Position-MeshVertex^.Position;
-   //UnpackUInt16QTangentSpace(PPMVertex^.TangentSpace,Tangent,Bitangent,Normal);
-   //DecodeTangentSpaceFromRGB10A2SNorm(PPMVertex^.TangentSpace,Tangent,Bitangent,Normal);
-     TargetVertex^.Normal:=PPMVertex^.Normal-OctDecode(MeshVertex^.Normal);
-     TargetVertex^.Tangent:=PPMVertex^.Tangent-OctDecode(MeshVertex^.Tangent);
+     TargetVertex^.Position:=SAMVertex^.Position-MeshVertex^.Position;
+   //UnpackUInt16QTangentSpace(SAMVertex^.TangentSpace,Tangent,Bitangent,Normal);
+   //DecodeTangentSpaceFromRGB10A2SNorm(SAMVertex^.TangentSpace,Tangent,Bitangent,Normal);
+     TargetVertex^.Normal:=SAMVertex^.Normal-OctDecode(MeshVertex^.Normal);
+     TargetVertex^.Tangent:=SAMVertex^.Tangent-OctDecode(MeshVertex^.Tangent);
      inc(MorphWeightIndex);
     end;
    end;
@@ -15601,7 +15601,7 @@ end;
 function TpvScene3D.TGroup.BeginLoad(const aStream:TStream):boolean;
 var GLTF:TPasGLTF.TDocument;
     FBX:TpvFBXLoader;
-    PPM:TpvPPM.TModel;
+    SAM:TpvSAM.TModel;
     OBJ:TpvOBJModel;
 begin
  result:=false;
@@ -15637,13 +15637,13 @@ begin
       end;
       result:=true;
      end;
-     TpvScene3D.TFileType.PPM:begin
-      PPM:=TpvPPM.TModel.Create;
+     TpvScene3D.TFileType.SAM:begin
+      SAM:=TpvSAM.TModel.Create;
       try
-       PPM.LoadFromStream(aStream);
-       AssignFromPPM(PPM);
+       SAM.LoadFromStream(aStream);
+       AssignFromSAM(SAM);
       finally
-       FreeAndNil(PPM);
+       FreeAndNil(SAM);
       end;
       result:=true;
      end;
@@ -22552,12 +22552,12 @@ class function TpvScene3D.DetectFileType(const aMemory:pointer;const aSize:TpvSi
    result:=false;
   end;
  end;
- function IsPPM(aMemory:pointer;const aSize:TpvSizeInt):boolean;
+ function IsSAM(aMemory:pointer;const aSize:TpvSizeInt):boolean;
  begin
   if assigned(aMemory) and 
      (aSize>=4) and
-     ((PpvUInt8Array(aMemory)^[0]=ord('P')) and
-      (PpvUInt8Array(aMemory)^[1]=ord('P')) and
+     ((PpvUInt8Array(aMemory)^[0]=ord('S')) and
+      (PpvUInt8Array(aMemory)^[1]=ord('A')) and
       (PpvUInt8Array(aMemory)^[2]=ord('M')) and
       (PpvUInt8Array(aMemory)^[3]=ord('F'))) then begin
    result:=true;
@@ -22706,8 +22706,8 @@ begin
    result:=TpvScene3D.TFileType.ColladaDAE;
   end else if (aSize>=23) and IsFBX(aMemory,Size) then begin // FBX, which can be either binary or ASCII
    result:=TpvScene3D.TFileType.FBX; 
-  end else if (aSize>=4) and IsPPM(aMemory,Size) then begin // PPM, which is binary
-   result:=TpvScene3D.TFileType.PPM;
+  end else if (aSize>=4) and IsSAM(aMemory,Size) then begin // SAM, which is binary
+   result:=TpvScene3D.TFileType.SAM;
   end else if (aSize>=2) and IsMaybeWavefrontOBJ(aMemory,Size) then begin // Wavefront OBJ, which is ASCII
    result:=TpvScene3D.TFileType.WavefrontOBJ;
   end else begin // Unable to detect
