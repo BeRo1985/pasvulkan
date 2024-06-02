@@ -3162,6 +3162,10 @@ type EpvScene3D=class(Exception);
        fCountInFlightFrames:TpvSizeInt;
        fUseBufferDeviceAddress:boolean;
        fHasTransmission:boolean;
+       fInitialCountVertices:TpvSizeInt;
+       fInitialCountIndices:TpvSizeInt;
+       fInitialCountMorphTargetVertices:TpvSizeInt;
+       fInitialCountJointBlocks:TpvSizeInt;
        fImageInfos:TpvScene3D.TImageInfos;
        fInFlightFrameImageInfos:array[0..MaxInFlightFrames-1] of TpvScene3D.TImageInfos;
        fInFlightFrameImageInfoImageDescriptorGenerations:array[0..MaxInFlightFrames-1] of TpvUInt64;
@@ -3322,6 +3326,7 @@ type EpvScene3D=class(Exception);
       public
        constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil;const aMetaResource:TpvMetaResource=nil;const aVulkanDevice:TpvVulkanDevice=nil;const aUseBufferDeviceAddress:boolean=true;const aCountInFlightFrames:TpvSizeInt=MaxInFlightFrames;const aVulkanPipelineCache:TpvVulkanPipelineCache=nil;const aVirtualReality:TpvVirtualReality=nil); reintroduce;
        destructor Destroy; override;
+       procedure Initialize;
        procedure AddToFreeQueue(const aObject:TObject;const aFrameDelay:TpvInt32=-1);
        procedure Upload;
        procedure Unload;
@@ -3464,6 +3469,11 @@ type EpvScene3D=class(Exception);
        property MaxCullObjectID:TpvUInt32 read fMaxCullObjectID;
       public
        property InFlightFrameDataTransferQueues:TpvInFlightFrameTransferQueues read fInFlightFrameDataTransferQueues;
+      public
+       property InitialCountVertices:TpvSizeInt read fInitialCountVertices write fInitialCountVertices;
+       property InitialCountIndices:TpvSizeInt read fInitialCountIndices write fInitialCountIndices;
+       property InitialCountMorphTargetVertices:TpvSizeInt read fInitialCountMorphTargetVertices write fInitialCountMorphTargetVertices;
+       property InitialCountJointBlocks:TpvSizeInt read fInitialCountJointBlocks write fInitialCountJointBlocks;
       public
        property MeshCompute:TObject read fMeshCompute;
       public
@@ -21586,7 +21596,7 @@ begin
 
  fVulkanDynamicVertexBufferData.Initialize;
  fVulkanStaticVertexBufferData.Initialize;
-//fVulkanIndexBufferData.Initialize;
+ //fVulkanIndexBufferData.Initialize;
  fVulkanDrawIndexBufferData.Initialize;
  fVulkanDrawUniqueIndexBufferData.Initialize;
  fVulkanMorphTargetVertexBufferData.Initialize;
@@ -21630,6 +21640,11 @@ begin
  fInUpload:=false;
 
  fHasTransmission:=false;
+
+ fInitialCountVertices:=65536;
+ fInitialCountIndices:=fInitialCountVertices div 3;
+ fInitialCountMorphTargetVertices:=fInitialCountVertices div 16;
+ fInitialCountJointBlocks:=fInitialCountVertices div 16;
 
  fPotentiallyVisibleSet:=TpvScene3D.TPotentiallyVisibleSet.Create;
 
@@ -22489,6 +22504,17 @@ begin
  end;
 
  inherited Destroy;
+end;
+
+procedure TpvScene3D.Initialize;
+begin
+ fVulkanDynamicVertexBufferData.Resize(fInitialCountVertices);
+ fVulkanStaticVertexBufferData.Resize(fInitialCountVertices);
+ //fVulkanIndexBufferData.Resize(fInitialCountIndices);
+ fVulkanDrawIndexBufferData.Resize(fInitialCountIndices);
+ fVulkanDrawUniqueIndexBufferData.Resize(fInitialCountIndices);
+ fVulkanMorphTargetVertexBufferData.Resize(fInitialCountMorphTargetVertices);
+ fVulkanJointBlockBufferData.Resize(fInitialCountJointBlocks);
 end;
 
 class function TpvScene3D.DetectFileType(const aMemory:pointer;const aSize:TpvSizeInt):TpvScene3D.TFileType; 

@@ -184,6 +184,13 @@ begin
 
  fScene3D:=TpvScene3D.Create(pvApplication.ResourceManager,nil,nil,pvApplication.VulkanDevice,TpvScene3DRenderer.CheckBufferDeviceAddress(pvApplication.VulkanDevice),fCountInFlightFrames,nil,UnitApplication.Application.VirtualReality);
 
+ fScene3D.InitialCountVertices:=65536;
+ fScene3D.InitialCountIndices:=65536;
+ fScene3D.InitialCountMorphTargetVertices:=65536;
+ fScene3D.InitialCountJointBlocks:=65536;
+
+ fScene3D.Initialize;
+
  fScene3D.EnvironmentMode:=TpvScene3DEnvironmentMode.Texture;
 
  if pvApplication.Assets.ExistAsset('envmap.hdr') then begin
