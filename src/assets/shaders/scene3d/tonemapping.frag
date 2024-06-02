@@ -43,6 +43,7 @@ layout(set = 0, binding = 1) uniform ColorGradingSettingsBuffer {
 #define MODE_AGX_REC2020 14
 #define MODE_AGX_REC2020_GOLDEN 15
 #define MODE_AGX_REC2020_PUNCHY 16
+#define MODE_KHRONOS_PBR_NEUTRAL 17
 
 vec3 linear(const in vec3 color) { 
   return color; 
@@ -272,6 +273,28 @@ vec3 agxPunchy(vec3 color) {
   return fma(pow(fma(color, slope, offset), power) - vec3(luma), vec3(sat), vec3(luma));
 }
 
+vec3 khronosPBRNeutral(vec3 color){
+
+  const float startCompression = 0.8 - 0.04;
+  const float desaturation = 0.15;
+
+  float x = min(color.r, min(color.g, color.b));
+  float offset = x < 0.08 ? x - 6.25 * x * x : 0.04;
+  color -= offset;
+
+  float peak = max(color.r, max(color.g, color.b));
+  if(peak < startCompression){
+    return color;
+  }
+
+  float d = 1.0 - startCompression;
+  float newPeak = 1.0 - ((d * d) / ((peak + d) - startCompression));
+  color *= newPeak / peak;
+
+  float g = 1.0 - (1.0 / ((desaturation * (peak - newPeak)) + 1.0));
+  return mix(color, vec3(1.0, 1.0, 1.0), g);
+}
+
 vec3 doToneMapping(vec3 color){
   switch(pushConstants.mode){
     case MODE_LINEAR:{
@@ -338,6 +361,10 @@ vec3 doToneMapping(vec3 color){
     }
     case MODE_AGX_REC2020_PUNCHY:{
       color = clamp(AgXRec2020EOTF(agxPunchy(AgXRec2020(color.xyz))), vec3(0.0), vec3(1.0));  
+      break;
+    }
+    case MODE_KHRONOS_PBR_NEUTRAL:{
+      color = clamp(khronosPBRNeutral(color.xyz), vec3(0.0), vec3(1.0));
       break;
     }
     default:{

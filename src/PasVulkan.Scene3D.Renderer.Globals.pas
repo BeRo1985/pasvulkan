@@ -199,7 +199,8 @@ type TpvScene3DRendererAntialiasingMode=
        AGXRec709Punchy=13,
        AGXRec2020=14,
        AGXRec2020Golden=15,
-       AGXRec2020Punchy=16
+       AGXRec2020Punchy=16,
+       KhronosPBRNeutral=17
       );
      PpvScene3DRendererToneMappingMode=^TpvScene3DRendererToneMappingMode;
 
