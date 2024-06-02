@@ -551,6 +551,7 @@ end;
 
 var Index:TpvSizeInt;
     Parameter,InputFileName,OutputFileName:String;
+    OK:TPasDblStrUtilsBoolean;
 {   m0,m1:TpvMatrix3x3;
     u0:TpvUInt32;//}
 begin
@@ -583,13 +584,26 @@ begin
  InputFileName:='';
  OutputFileName:='';
 
- for Index:=1 to ParamCount do begin
+ Index:=1;
+ while Index<ParamCount do begin
   Parameter:=ParamStr(Index);
+  inc(Index);
   if length(Parameter)>0 then begin
    case Parameter[1] of
-    '-':begin
-    end;
-    '/':begin
+    '-','/':begin
+     if (Parameter[1]='-') and ((length(Parameter)>1) and (Parameter[2]='-')) then begin
+      Delete(Parameter,1,2);
+     end else begin
+      Delete(Parameter,1,1);
+     end;
+     if (Parameter='framerate') or (Parameter='fps') then begin
+      Parameter:=ParamStr(Index);
+      inc(Index);
+      FrameRate:=ConvertStringToDouble(Parameter,rmNearest,@OK,-1);
+      if not OK then begin
+       FrameRate:=10;
+      end;
+     end;
     end;
     else begin
      if length(InputFileName)=0 then begin
