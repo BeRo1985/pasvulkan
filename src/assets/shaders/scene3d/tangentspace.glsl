@@ -181,6 +181,22 @@ mat3 decodeQTangentUI32(uint v){
   return mat3(tangent, cross(tangent, normal) * (((v & (1u << 29u)) != 0u) ? -1.0 : 1.0), normal);
 }
 
+// Decodes the UI32 encoded qtangent into a unpacked qtangent for further processing like vertex interpolation and so on
+vec4 decodeQTangentUI32Raw(uint v){
+  vec4 q = vec4(((vec3(ivec3(uvec3((uvec3(v) >> uvec3(0u, 10u, 20u)) & uvec2(0x3ffu, 0x1ffu).xxy)) - ivec2(512, 256).xxy)) / vec2(511.0, 255.0).xxy) * 0.7071067811865475, 0.0);
+  q.w = sqrt(1.0 - clamp(dot(q.xyz, q.xyz), 0.0, 1.0)); 
+  return normalize(vec4[4](q.wxyz, q.xwyz, q.xywz, q.xyzw)[uint((v >> 30u) & 0x3u)]) * (((v & (1u << 29u)) != 0u) ? -1.0 : 1.0);
+}
+
+// Constructs a TBN matrix from a unpacked qtangent for example for after vertex interpolation in the fragment shader
+mat3 constructTBNFromQTangent(vec4 q){
+  q = normalize(q); // Ensure that the quaternion is normalized in case it is not, for example after interpolation and so on 
+  vec3 t2 = q.xyz * 2.0, tx = q.xxx * t2.xyz, ty = q.yyy * t2.xyz, tz = q.www * t2.xyz;
+  vec3 tangent = vec3(1.0 - (ty.y + (q.z * t2.z)), tx.y + tz.z, tx.z - tz.y);
+  vec3 normal = vec3(tx.z + tz.y, ty.z - tz.x, 1.0 - (tx.x + ty.y));
+  return mat3(tangent, cross(tangent, normal) * ((q.w < 0.0) ? -1.0 : 1.0), normal);
+}
+
 // Just 8bit per component of the quaternion and sign of the bitangent is stored in the sign of the quaternion in the w component
 uint encodeQTangentRGBA8(mat3 m){
   const float threshold = 1.0 / 127.0; 
