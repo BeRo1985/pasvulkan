@@ -101,16 +101,13 @@ type EpvSAM=class(Exception);
             PFrame=^TFrame;
             TFrames=array of TFrame;
             TAnimation=record
+             Name:TpvUTF8String;
+             StartTime:TpvDouble;
+             EndTime:TpvDouble;
              Frames:TFrames;
             end;
             PAnimation=^TAnimation;
             TAnimations=array of TAnimation;
-            TPresetAnimation=record
-             Index:TpvSizeInt;
-             Name:TpvUTF8String; 
-            end;
-            PPresetAnimation=^TPresetAnimation;
-            TPresetAnimations=array[0..CountPresetAnimations-1] of TPresetAnimation;
             TSignature=array[0..3] of AnsiChar;
             TMaterialHeader=packed record
              BaseColorFactor:TpvVector4;
@@ -128,6 +125,7 @@ type EpvSAM=class(Exception);
              CountVertices:TpvUInt32;
              CountIndices:TpvUInt32;
              CountAnimations:TpvUInt32;
+             FrameRate:TpvUInt32;
              BoundingBoxMin:TpvVector3;
              BoundingBoxMax:TpvVector3;
              BoundingSphere:TpvVector4;
@@ -227,6 +225,7 @@ end;
 procedure TpvSAM.TModel.LoadFromStream(const aStream:TStream);
 var AnimationIndex,FramesIndex:TpvSizeInt;
     CountFrames:TpvInt32;
+    ui32:TpvUInt32;
 begin
 
  TexCoords:=nil;
@@ -257,6 +256,14 @@ begin
 
  SetLength(Animations,FileHeader.CountAnimations);
  for AnimationIndex:=0 to FileHeader.CountAnimations-1 do begin
+  aStream.ReadBuffer(ui32,SizeOf(TpvUInt32));
+  Animations[AnimationIndex].Name:='';
+  if ui32>0 then begin
+   SetLength(Animations[AnimationIndex].Name,ui32);
+   aStream.ReadBuffer(Animations[AnimationIndex].Name[1],ui32);
+  end;
+  aStream.ReadBuffer(Animations[AnimationIndex].StartTime,SizeOf(TpvDouble));
+  aStream.ReadBuffer(Animations[AnimationIndex].EndTime,SizeOf(TpvDouble));
   aStream.ReadBuffer(CountFrames,SizeOf(TpvInt32));
   Animations[AnimationIndex].Frames:=nil;
   if CountFrames>0 then begin
@@ -314,6 +321,7 @@ end;
 procedure TpvSAM.TModel.SaveToStream(const aStream:TStream);
 var AnimationIndex,FramesIndex:TpvSizeInt;
     CountFrames:TpvInt32;
+    ui32:TpvUInt32;
 begin
  FileHeader.Signature:=TpvSAM.Signature;
  FileHeader.Version:=TpvSAM.Version;
@@ -322,6 +330,13 @@ begin
  aStream.WriteBuffer(Indices[0],SizeOf(TpvSAM.TIndex)*FileHeader.CountIndices);
  aStream.WriteBuffer(TexCoords[0],SizeOf(TpvUInt16Vector2)*FileHeader.CountVertices);
  for AnimationIndex:=0 to length(Animations)-1 do begin
+  ui32:=length(Animations[AnimationIndex].Name);
+  aStream.WriteBuffer(ui32,SizeOf(TpvUInt32));
+  if ui32>0 then begin
+   aStream.WriteBuffer(Animations[AnimationIndex].Name[1],ui32);
+  end;
+  aStream.WriteBuffer(Animations[AnimationIndex].StartTime,SizeOf(TpvDouble));
+  aStream.WriteBuffer(Animations[AnimationIndex].EndTime,SizeOf(TpvDouble));
   CountFrames:=length(Animations[AnimationIndex].Frames);
   aStream.WriteBuffer(CountFrames,SizeOf(TpvInt32));
   for FramesIndex:=0 to CountFrames-1 do begin
