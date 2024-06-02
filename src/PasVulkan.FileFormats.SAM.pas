@@ -125,7 +125,7 @@ type EpvSAM=class(Exception);
              CountVertices:TpvUInt32;
              CountIndices:TpvUInt32;
              CountAnimations:TpvUInt32;
-             FrameRate:TpvUInt32;
+             FrameRate:TpvDouble;
              BoundingBoxMin:TpvVector3;
              BoundingBoxMax:TpvVector3;
              BoundingSphere:TpvVector4;

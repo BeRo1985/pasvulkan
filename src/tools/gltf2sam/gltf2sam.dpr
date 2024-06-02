@@ -28,6 +28,8 @@ var Animations:TpvSAM.TAnimations;
     CountUsedVertices:TpvSizeInt;
     CountUsedIndices:TpvSizeInt;
 
+    FrameRate:TpvDouble=10.0;
+
     GLTF:TpvGLTF;
     GLTFInstance:TpvGLTF.TInstance;
 
@@ -48,8 +50,9 @@ begin
  result:=Sign(a.Time-b.Time);
 end;
 
-function OptimizeFrames(var aTimeFrames:TpvSAM.TFrames;out aFrames:TpvSAM.TFrames;const aCountTargetFrames:TpvSizeInt):boolean;
-var FrameIndex,CurrentFrameIndex,NextFrameIndex,OutFrameIndex,VertexIndex:TpvSizeInt;
+function OptimizeFrames(var aTimeFrames:TpvSAM.TFrames;out aFrames:TpvSAM.TFrames;const aFrameRate:TpvDouble):boolean;
+var FrameIndex,CurrentFrameIndex,NextFrameIndex,OutFrameIndex,VertexIndex,
+    CountTargetFrames:TpvSizeInt;
     StartTime,EndTime,Time,TimeStep,InterpolationFactor:TpvDouble;
     CurrentFrame,NextFrame:TpvSAM.PFrame;
     CurrentVertex,NextVertex,InterpolatedVertex:TpvSAM.PFullVertex;
@@ -72,15 +75,18 @@ begin
  EndTime:=aTimeFrames[length(aTimeFrames)-1].Time;
 
  // Calculate time step
- TimeStep:=(EndTime-StartTime)/aCountTargetFrames;
+ TimeStep:=1.0/aFrameRate;
+
+ // Calculate count of frames
+ CountTargetFrames:=Ceil((EndTime-StartTime)/TimeStep);
 
  // Normalize time frames
  aFrames:=nil;
- SetLength(aFrames,aCountTargetFrames);
+ SetLength(aFrames,CountTargetFrames);
  Time:=StartTime;
  FrameIndex:=0;
  OutFrameIndex:=0;
- while (Time<(EndTime+TimeStep)) and (OutFrameIndex<aCountTargetFrames) do begin
+ while (Time<(EndTime+TimeStep)) and (OutFrameIndex<CountTargetFrames) do begin
 
   aFrames[OutFrameIndex].Time:=Time;
   aFrames[OutFrameIndex].Vertices:=nil;
@@ -136,11 +142,12 @@ begin
 end;
 
 function GetAnimation(const aAnimationIndex:TpvSizeInt):TpvSAM.TAnimation;
-var FrameIndex,OtherIndex,TriangleIndex,VertexIndex,CountFrames:TpvSizeInt;
+var FrameIndex,VertexIndex,CountFrames:TpvSizeInt;
     KeyTimes:TPasGLTFDoubleDynamicArray;
     GLTFBakedVertexIndexedMesh:TpvGLTF.TBakedVertexIndexedMesh;
     GLTFBakedVertexIndexedMeshVertex:TpvGLTF.PVertex;
     Vertex:TpvSAM.PFullVertex;
+    Frames:TpvSAM.TFrames;
 begin
 
  result.Name:='';
@@ -150,73 +157,129 @@ begin
 
  if aAnimationIndex<0 then begin
 
- end else if (aAnimationIndex>=0) and (aAnimationIndex<length(GLTF.Animations)) then begin
+  SetLength(result.Frames,1);
 
-  result.Name:=GLTF.Animations[aAnimationIndex].Name;
+  GLTFInstance.Animation:=-1;
 
-  KeyTimes:=GLTF.GetAnimationTimes(aAnimationIndex);
-  if length(KeyTimes)>0 then begin
+  GLTFInstance.AnimationTime:=0.0;
+
+  GLTFInstance.Update;
+
+  FrameIndex:=0;
+
+  result.Frames[FrameIndex].Time:=0.0;
+
+  GLTFBakedVertexIndexedMesh:=GLTFInstance.GetBakedVertexIndexedMesh(false,true,-1,[TPasGLTF.TMaterial.TAlphaMode.Opaque,TPasGLTF.TMaterial.TAlphaMode.Blend,TPasGLTF.TMaterial.TAlphaMode.Mask]);
+  if assigned(GLTFBakedVertexIndexedMesh) then begin
 
    try
 
-    CountFrames:=length(KeyTimes);
+    if length(result.Frames[FrameIndex].Vertices)<>GLTFBakedVertexIndexedMesh.Vertices.Count then begin
+     SetLength(result.Frames[FrameIndex].Vertices,GLTFBakedVertexIndexedMesh.Vertices.Count);
+    end;
 
-    result.StartTime:=KeyTimes[0];
-    result.EndTime:=KeyTimes[length(KeyTimes)-1];
+    if length(result.Frames[FrameIndex].FullVertices)<>GLTFBakedVertexIndexedMesh.Vertices.Count then begin
+     SetLength(result.Frames[FrameIndex].FullVertices,GLTFBakedVertexIndexedMesh.Vertices.Count);
+    end;
 
-    SetLength(result.Frames,CountFrames);
+    for VertexIndex:=0 to GLTFBakedVertexIndexedMesh.Vertices.Count-1 do begin
 
-    for FrameIndex:=0 to CountFrames-1 do begin
+     GLTFBakedVertexIndexedMeshVertex:=@GLTFBakedVertexIndexedMesh.Vertices.ItemArray[VertexIndex];
 
-     GLTFInstance.Animation:=aAnimationIndex;
+     Vertex:=@result.Frames[FrameIndex].FullVertices[VertexIndex];
 
-     GLTFInstance.AnimationTime:=KeyTimes[FrameIndex];
+     Vertex^.Position:=TpvVector3.Create(GLTFBakedVertexIndexedMeshVertex^.Position[0],GLTFBakedVertexIndexedMeshVertex^.Position[1],GLTFBakedVertexIndexedMeshVertex^.Position[2]);
 
-     GLTFInstance.Update;
+{    Vertex^.TexCoordU:=Min(Max(round(GLTFBakedVertexIndexedMeshVertex^.TexCoord0[0]*16384.0),0),65535);
+     Vertex^.TexCoordV:=Min(Max(round(GLTFBakedVertexIndexedMeshVertex^.TexCoord0[1]*16384.0),0),65535);}
 
-     result.Frames[FrameIndex].Time:=GLTFInstance.AnimationTime;
-
-     GLTFBakedVertexIndexedMesh:=GLTFInstance.GetBakedVertexIndexedMesh(false,true,-1,[TPasGLTF.TMaterial.TAlphaMode.Opaque,TPasGLTF.TMaterial.TAlphaMode.Blend,TPasGLTF.TMaterial.TAlphaMode.Mask]);
-     if assigned(GLTFBakedVertexIndexedMesh) then begin
-
-      try
-
-       if length(result.Frames[FrameIndex].Vertices)<>GLTFBakedVertexIndexedMesh.Vertices.Count then begin
-        SetLength(result.Frames[FrameIndex].Vertices,GLTFBakedVertexIndexedMesh.Vertices.Count);
-       end;
-
-       if length(result.Frames[FrameIndex].FullVertices)<>GLTFBakedVertexIndexedMesh.Vertices.Count then begin
-        SetLength(result.Frames[FrameIndex].FullVertices,GLTFBakedVertexIndexedMesh.Vertices.Count);
-       end;
-
-       for VertexIndex:=0 to GLTFBakedVertexIndexedMesh.Vertices.Count-1 do begin
-
-        GLTFBakedVertexIndexedMeshVertex:=@GLTFBakedVertexIndexedMesh.Vertices.ItemArray[VertexIndex];
-
-        Vertex:=@result.Frames[FrameIndex].FullVertices[VertexIndex];
-
-        Vertex^.Position:=TpvVector3.Create(GLTFBakedVertexIndexedMeshVertex^.Position[0],GLTFBakedVertexIndexedMeshVertex^.Position[1],GLTFBakedVertexIndexedMeshVertex^.Position[2]);
-
-{       Vertex^.TexCoordU:=Min(Max(round(GLTFBakedVertexIndexedMeshVertex^.TexCoord0[0]*16384.0),0),65535);
-        Vertex^.TexCoordV:=Min(Max(round(GLTFBakedVertexIndexedMeshVertex^.TexCoord0[1]*16384.0),0),65535);}
-
-        Vertex^.Tangent:=TpvVector3.Create(GLTFBakedVertexIndexedMeshVertex^.Tangent[0],GLTFBakedVertexIndexedMeshVertex^.Tangent[1],GLTFBakedVertexIndexedMeshVertex^.Tangent[2]);
-        Vertex^.Bitangent:=(TpvVector3.Create(GLTFBakedVertexIndexedMeshVertex^.Normal[0],GLTFBakedVertexIndexedMeshVertex^.Normal[1],GLTFBakedVertexIndexedMeshVertex^.Normal[2]).Cross(TpvVector3.Create(GLTFBakedVertexIndexedMeshVertex^.Tangent[0],GLTFBakedVertexIndexedMeshVertex^.Tangent[1],GLTFBakedVertexIndexedMeshVertex^.Tangent[2])))*GLTFBakedVertexIndexedMeshVertex^.Tangent[3];
-        Vertex^.Normal:=TpvVector3.Create(GLTFBakedVertexIndexedMeshVertex^.Normal[0],GLTFBakedVertexIndexedMeshVertex^.Normal[1],GLTFBakedVertexIndexedMeshVertex^.Normal[2]);
-
-       end;
-
-      finally
-       FreeAndNil(GLTFBakedVertexIndexedMesh);
-      end;
-     end;
+     Vertex^.Tangent:=TpvVector3.Create(GLTFBakedVertexIndexedMeshVertex^.Tangent[0],GLTFBakedVertexIndexedMeshVertex^.Tangent[1],GLTFBakedVertexIndexedMeshVertex^.Tangent[2]);
+     Vertex^.Bitangent:=(TpvVector3.Create(GLTFBakedVertexIndexedMeshVertex^.Normal[0],GLTFBakedVertexIndexedMeshVertex^.Normal[1],GLTFBakedVertexIndexedMeshVertex^.Normal[2]).Cross(TpvVector3.Create(GLTFBakedVertexIndexedMeshVertex^.Tangent[0],GLTFBakedVertexIndexedMeshVertex^.Tangent[1],GLTFBakedVertexIndexedMeshVertex^.Tangent[2])))*GLTFBakedVertexIndexedMeshVertex^.Tangent[3];
+     Vertex^.Normal:=TpvVector3.Create(GLTFBakedVertexIndexedMeshVertex^.Normal[0],GLTFBakedVertexIndexedMeshVertex^.Normal[1],GLTFBakedVertexIndexedMeshVertex^.Normal[2]);
 
     end;
 
    finally
-    KeyTimes:=nil;
+    FreeAndNil(GLTFBakedVertexIndexedMesh);
+   end;
+  end;
+
+ end else if (aAnimationIndex>=0) and (aAnimationIndex<length(GLTF.Animations)) then begin
+
+  Frames:=nil;
+  try
+
+   result.Name:=GLTF.Animations[aAnimationIndex].Name;
+
+   KeyTimes:=GLTF.GetAnimationTimes(aAnimationIndex);
+   if length(KeyTimes)>0 then begin
+
+    try
+
+     CountFrames:=length(KeyTimes);
+
+     result.StartTime:=KeyTimes[0];
+     result.EndTime:=KeyTimes[length(KeyTimes)-1];
+
+     SetLength(Frames,CountFrames);
+
+     for FrameIndex:=0 to CountFrames-1 do begin
+
+      GLTFInstance.Animation:=aAnimationIndex;
+
+      GLTFInstance.AnimationTime:=KeyTimes[FrameIndex];
+
+      GLTFInstance.Update;
+
+      Frames[FrameIndex].Time:=GLTFInstance.AnimationTime;
+
+      GLTFBakedVertexIndexedMesh:=GLTFInstance.GetBakedVertexIndexedMesh(false,true,-1,[TPasGLTF.TMaterial.TAlphaMode.Opaque,TPasGLTF.TMaterial.TAlphaMode.Blend,TPasGLTF.TMaterial.TAlphaMode.Mask]);
+      if assigned(GLTFBakedVertexIndexedMesh) then begin
+
+       try
+
+        if length(Frames[FrameIndex].Vertices)<>GLTFBakedVertexIndexedMesh.Vertices.Count then begin
+         SetLength(Frames[FrameIndex].Vertices,GLTFBakedVertexIndexedMesh.Vertices.Count);
+        end;
+
+        if length(Frames[FrameIndex].FullVertices)<>GLTFBakedVertexIndexedMesh.Vertices.Count then begin
+         SetLength(Frames[FrameIndex].FullVertices,GLTFBakedVertexIndexedMesh.Vertices.Count);
+        end;
+
+        for VertexIndex:=0 to GLTFBakedVertexIndexedMesh.Vertices.Count-1 do begin
+
+         GLTFBakedVertexIndexedMeshVertex:=@GLTFBakedVertexIndexedMesh.Vertices.ItemArray[VertexIndex];
+
+         Vertex:=@Frames[FrameIndex].FullVertices[VertexIndex];
+
+         Vertex^.Position:=TpvVector3.Create(GLTFBakedVertexIndexedMeshVertex^.Position[0],GLTFBakedVertexIndexedMeshVertex^.Position[1],GLTFBakedVertexIndexedMeshVertex^.Position[2]);
+
+ {       Vertex^.TexCoordU:=Min(Max(round(GLTFBakedVertexIndexedMeshVertex^.TexCoord0[0]*16384.0),0),65535);
+         Vertex^.TexCoordV:=Min(Max(round(GLTFBakedVertexIndexedMeshVertex^.TexCoord0[1]*16384.0),0),65535);}
+
+         Vertex^.Tangent:=TpvVector3.Create(GLTFBakedVertexIndexedMeshVertex^.Tangent[0],GLTFBakedVertexIndexedMeshVertex^.Tangent[1],GLTFBakedVertexIndexedMeshVertex^.Tangent[2]);
+         Vertex^.Bitangent:=(TpvVector3.Create(GLTFBakedVertexIndexedMeshVertex^.Normal[0],GLTFBakedVertexIndexedMeshVertex^.Normal[1],GLTFBakedVertexIndexedMeshVertex^.Normal[2]).Cross(TpvVector3.Create(GLTFBakedVertexIndexedMeshVertex^.Tangent[0],GLTFBakedVertexIndexedMeshVertex^.Tangent[1],GLTFBakedVertexIndexedMeshVertex^.Tangent[2])))*GLTFBakedVertexIndexedMeshVertex^.Tangent[3];
+         Vertex^.Normal:=TpvVector3.Create(GLTFBakedVertexIndexedMeshVertex^.Normal[0],GLTFBakedVertexIndexedMeshVertex^.Normal[1],GLTFBakedVertexIndexedMeshVertex^.Normal[2]);
+
+        end;
+
+       finally
+        FreeAndNil(GLTFBakedVertexIndexedMesh);
+       end;
+      end;
+
+     end;
+
+    finally
+     KeyTimes:=nil;
+    end;
+
    end;
 
+   OptimizeFrames(Frames,result.Frames,FrameRate);
+
+  finally
+   Frames:=nil;
   end;
 
  end;    
@@ -224,15 +287,11 @@ begin
 end;
 
 function ConvertModel(const aInputFileName,aOutputFileName:String):boolean;
-var Index,FrameIndex,OtherIndex,FoundPresetAnimation,VertexIndex,
-    BaseColorTextureIndex,NormalTextureIndex,MetallicRoughnessTextureIndex,
-    OcclusionTextureIndex,EmissiveTextureIndex,
+var Index,FrameIndex,VertexIndex,BaseColorTextureIndex,NormalTextureIndex,
+    MetallicRoughnessTextureIndex,OcclusionTextureIndex,EmissiveTextureIndex,
     ImageIndex:TpvSizeInt;
     CountFrames,ui32:TpvUInt32;
     GLTFBakedVertexIndexedMesh:TpvGLTF.TBakedVertexIndexedMesh;
-    ta,tb,t:TpvDouble;
-    AnimationName:TpvUTF8String;
-    Frames:TpvSAM.TFrames;
     Material:TpvGLTF.PMaterial;
     Stream:TMemoryStream;
     BaseColorFactor:TpvVector4;
@@ -374,13 +433,8 @@ begin
      // Get all animations
      SetLength(Animations,length(GLTF.Animations)+1);
      Animations[0]:=GetAnimation(-1);
-     for Index:=0 to length(Animations)-1 do begin
+     for Index:=0 to length(GLTF.Animations)-1 do begin
       Animations[Index+1]:=GetAnimation(Index);
-      if length(Animations[Index+1].Frames)>40 then begin
-       Frames:=Animations[Index+1].Frames;
-       Animations[Index+1].Frames:=nil;
-       OptimizeFrames(Frames,Animations[Index+1].Frames,40);
-      end;
      end;
 
      // Get bounding box
@@ -411,6 +465,7 @@ begin
       FileHeader.CountVertices:=CountUsedVertices;
       FileHeader.CountIndices:=CountUsedIndices;
       FileHeader.CountAnimations:=length(Animations);
+      FileHeader.FrameRate:=FrameRate;
 
       FileHeader.BoundingBoxMin:=BoundingBox.Min;
       FileHeader.BoundingBoxMax:=BoundingBox.Max;
