@@ -246,7 +246,7 @@ begin
  fRenderer.MaxShadowMSAA:=UnitApplication.Application.MaxShadowMSAA;
  fRenderer.ShadowMapSize:=UnitApplication.Application.ShadowMapSize;
  fRenderer.GlobalIlluminationCaching:=false;
- fRenderer.ToneMappingMode:=TpvScene3DRendererToneMappingMode.AGXRec2020Punchy;
+ fRenderer.ToneMappingMode:=TpvScene3DRendererToneMappingMode.AGXRec2020Punchy; //.KhronosPBRNeutral;
  fRenderer.Prepare;
 
  fRenderer.MinLogLuminance:=-3.5;
