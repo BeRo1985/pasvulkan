@@ -138,7 +138,9 @@ uint encodeTangentSpaceAsRGB10A2SNorm(mat3 tbn){
 }
 
 // 10bit 10bit 9bit for the 3 smaller components of the quaternion and 1bit for the sign of the bitangent and 2bit for the 
-// largest component index for the reconstruction of the largest component of the quaternion
+// largest component index for the reconstruction of the largest component of the quaternion.
+// Since the three smallest components of a quaternion are between -1/sqrt(2) and 1/sqrt(2), we can rescale them to -1 .. 1
+// while encoding, and then rescale them back to -1/sqrt(2) .. 1/sqrt(2) while decoding, for a better precision.
 uint encodeQTangentUI32(mat3 m){
   float r = (determinant(m) < 0.0) ? -1.0 : 1.0; // Reflection matrix handling 
   m[2] *= r;
@@ -161,7 +163,7 @@ uint encodeQTangentUI32(mat3 m){
   }
   vec4 qAbs = abs(q = normalize(q));
   int maxComponentIndex = (qAbs.x > qAbs.y) ? ((qAbs.x > qAbs.z) ? ((qAbs.x > qAbs.w) ? 0 : 3) : ((qAbs.z > qAbs.w) ? 2 : 3)) : ((qAbs.y > qAbs.z) ? ((qAbs.y > qAbs.w) ? 1 : 3) : ((qAbs.z > qAbs.w) ? 2 : 3)); 
-  q.xyz = vec3[4](q.yzw, q.xzw, q.xyw, q.xyz)[maxComponentIndex] * ((q[maxComponentIndex] < 0.0) ? -1.0 : 1.0);
+  q.xyz = vec3[4](q.yzw, q.xzw, q.xyw, q.xyz)[maxComponentIndex] * ((q[maxComponentIndex] < 0.0) ? -1.0 : 1.0) * 1.4142135623730951;
   return ((uint(round(clamp(q.x * 511.0, -511.0, 511.0) + 512.0)) & 0x3ffu) << 0u) | 
          ((uint(round(clamp(q.y * 511.0, -511.0, 511.0) + 512.0)) & 0x3ffu) << 10u) | 
          ((uint(round(clamp(q.z * 255.0, -255.0, 255.0) + 256.0)) & 0x1ffu) << 20u) |
@@ -170,7 +172,7 @@ uint encodeQTangentUI32(mat3 m){
 }
 
 mat3 decodeQTangentUI32(uint v){
-  vec4 q = vec4(((vec3(ivec3(uvec3((uvec3(v) >> uvec3(0u, 10u, 20u)) & uvec2(0x3ffu, 0x1ffu).xxy)) - ivec2(512, 256).xxy)) / vec2(511.0, 255.0).xxy), 0.0);
+  vec4 q = vec4(((vec3(ivec3(uvec3((uvec3(v) >> uvec3(0u, 10u, 20u)) & uvec2(0x3ffu, 0x1ffu).xxy)) - ivec2(512, 256).xxy)) / vec2(511.0, 255.0).xxy) * 0.7071067811865475, 0.0);
   q.w = sqrt(1.0 - clamp(dot(q.xyz, q.xyz), 0.0, 1.0)); 
   q = normalize(vec4[4](q.wxyz, q.xwyz, q.xywz, q.xyzw)[uint((v >> 30u) & 0x3u)]);
   vec3 t2 = q.xyz * 2.0, tx = q.xxx * t2.xyz, ty = q.yyy * t2.xyz, tz = q.www * t2.xyz;
