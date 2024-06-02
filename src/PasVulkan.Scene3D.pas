@@ -15297,14 +15297,14 @@ begin
   end;
 
   // Create scene
-  Scene:=CreateScene('plant');
+  Scene:=CreateScene('');
 
   // Create node and add it to the scene
-  Node:=CreateNode('plant');
+  Node:=CreateNode('');
   Scene.Nodes.Add(Node);
 
   // Create mesh
-  Mesh:=CreateMesh('plant');
+  Mesh:=CreateMesh('');
 
   // Create mesh primitives
   MeshPrimitives:=nil;
