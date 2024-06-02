@@ -20502,6 +20502,10 @@ begin
  aMatrix3x3.Normal:=Normal;
 end;
 
+// 10bit 10bit 9bit for the 3 smaller components of the quaternion and 1bit for the sign of the bitangent and 2bit for the
+// largest component index for the reconstruction of the largest component of the quaternion.
+// Since the three smallest components of a quaternion are between -1/sqrt(2) and 1/sqrt(2), we can rescale them to -1 .. 1
+// while encoding, and then rescale them back to -1/sqrt(2) .. 1/sqrt(2) while decoding, for a better precision.
 function EncodeQTangentUI32(const aTangent,aBitangent:TpvVector3;aNormal:TpvVector3):TpvUInt32;
 var Scale,t,s:TpvScalar;
     q:TpvVector4;
@@ -20586,6 +20590,7 @@ begin
    q:=q.xyzw;
   end;
  end;
+ q.xyz:=q.xyz*1.4142135623730951;
  if q.w<0.0 then begin
   q:=-q;
  end;
@@ -20611,11 +20616,11 @@ const DivVector3:TpvVector3=(x:511.0;y:511.0;z:255.0);
 var q:TpvVector4;
     t2,tx,ty,tz:TpvVector3;
 begin
- q:=TpvVector4.InlineableCreate(TpvVector3.InlineableCreate(
-                                 TpvInt32((aValue shr 0) and $3ff)-512,
-                                 TpvInt32((aValue shr 10) and $3ff)-512,
-                                 TpvInt32((aValue shr 20) and $1ff)-256
-                                )/DivVector3,0.0);
+ q:=TpvVector4.InlineableCreate((TpvVector3.InlineableCreate(
+                                  TpvInt32((aValue shr 0) and $3ff)-512,
+                                  TpvInt32((aValue shr 10) and $3ff)-512,
+                                  TpvInt32((aValue shr 20) and $1ff)-256
+                                 )/DivVector3)*0.7071067811865475,0.0);
  q.w:=sqrt(1.0-Clamp(q.xyz.SquaredLength,0.0,1.0));
  case (aValue shr 30) and 3 of
   0:begin
