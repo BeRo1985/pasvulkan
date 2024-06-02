@@ -19,12 +19,8 @@ uses Classes,
      PasVulkan.FileFormats.GLTF in '../../PasVulkan.FileFormats.GLTF.pas',
      PasVulkan.FileFormats.SAM in '../../PasVulkan.FileFormats.SAM.pas';
 
-var Animations:TpvSAM.TAnimations;
-
-    TexCoords:TpvSAM.TTexCoords;
-
-    Indices:TpvSAM.TIndices;
-
+var SAM:TpvSAM.TModel;
+    
     CountUsedVertices:TpvSizeInt;
     CountUsedIndices:TpvSizeInt;
 
@@ -289,10 +285,11 @@ end;
 function ConvertModel(const aInputFileName,aOutputFileName:String):boolean;
 var Index,FrameIndex,VertexIndex,BaseColorTextureIndex,NormalTextureIndex,
     MetallicRoughnessTextureIndex,OcclusionTextureIndex,EmissiveTextureIndex,
-    ImageIndex:TpvSizeInt;
+    ImageIndex,MaterialIndex:TpvSizeInt;
     CountFrames,ui32:TpvUInt32;
     GLTFBakedVertexIndexedMesh:TpvGLTF.TBakedVertexIndexedMesh;
-    Material:TpvGLTF.PMaterial;
+    GLTFMaterial:TpvGLTF.PMaterial;
+    SAMMaterial:TpvSAM.TMaterial;
     Stream:TMemoryStream;
     BaseColorFactor:TpvVector4;
     MetallicRoughnessFactor:TpvVector2;
@@ -308,245 +305,275 @@ begin
  SetExceptionMask([exInvalidOp,exDenormalized,exZeroDivide,exOverflow,exUnderflow,exPrecision]);
 {$ifend}
 
- FillChar(Animations,SizeOf(TpvSAM.TAnimations),#0);
-
- GLTF:=TpvGLTF.Create;
+ SAM:=TpvSAM.TModel.Create;
  try
-
-  GLTF.LoadFromFile(aInputFileName);
-
-  GLTF.Upload;
-
-  GLTFInstance:=GLTF.AcquireInstance;
+ 
+  GLTF:=TpvGLTF.Create;
   try
 
-   GLTFInstance.Upload;
+   GLTF.LoadFromFile(aInputFileName);
 
-   if length(GLTF.Animations)>0 then begin
+   GLTF.Upload;
 
-    // Get indices for all animations once for all in advance
-    begin
+   GLTFInstance:=GLTF.AcquireInstance;
+   try
 
-     GLTFInstance.Animation:=-1;
-     GLTFInstance.AnimationTime:=0;
-     GLTFInstance.Update;
+    GLTFInstance.Upload;
 
-     GLTFBakedVertexIndexedMesh:=GLTFInstance.GetBakedVertexIndexedMesh(false,true,-1,[TPasGLTF.TMaterial.TAlphaMode.Opaque,TPasGLTF.TMaterial.TAlphaMode.Blend,TPasGLTF.TMaterial.TAlphaMode.Mask]);
-     if assigned(GLTFBakedVertexIndexedMesh) then begin
+    if length(GLTF.Animations)>0 then begin
 
-      try
+     // Get indices for all animations once for all in advance
+     begin
 
-       CountUsedVertices:=GLTFBakedVertexIndexedMesh.Vertices.Count;
-       SetLength(TexCoords,CountUsedVertices);
-       for VertexIndex:=0 to GLTFBakedVertexIndexedMesh.Vertices.Count-1 do begin
-        GLTFBakedVertexIndexedMeshVertex:=@GLTFBakedVertexIndexedMesh.Vertices.ItemArray[VertexIndex];
-        TexCoords[VertexIndex].x:=Min(Max(round(GLTFBakedVertexIndexedMeshVertex^.TexCoord0[0]*16384.0),0),65535);
-        TexCoords[VertexIndex].y:=Min(Max(round(GLTFBakedVertexIndexedMeshVertex^.TexCoord0[1]*16384.0),0),65535);
-       end;
+      GLTFInstance.Animation:=-1;
+      GLTFInstance.AnimationTime:=0;
+      GLTFInstance.Update;
 
-       CountUsedIndices:=GLTFBakedVertexIndexedMesh.Indices.Count;
-       SetLength(Indices,GLTFBakedVertexIndexedMesh.Indices.Count);
-       for Index:=0 to GLTFBakedVertexIndexedMesh.Indices.Count-1 do begin
-        Indices[Index]:=GLTFBakedVertexIndexedMesh.Indices.ItemArray[Index];
-       end;
+      GLTFBakedVertexIndexedMesh:=GLTFInstance.GetBakedVertexIndexedMesh(false,true,-1,[TPasGLTF.TMaterial.TAlphaMode.Opaque,TPasGLTF.TMaterial.TAlphaMode.Blend,TPasGLTF.TMaterial.TAlphaMode.Mask]);
+      if assigned(GLTFBakedVertexIndexedMesh) then begin
 
-      finally
-       FreeAndNil(GLTFBakedVertexIndexedMesh);
-      end;
+       try
 
-     end else begin
-      WriteLn('Error: No vertex indexed mesh found!');
-      result:=false;
-     end;
-
-    end;
-
-    if result then begin
-
-     // Get PBR textures
-     BaseColorTextureIndex:=-1;
-     NormalTextureIndex:=-1;
-     MetallicRoughnessTextureIndex:=-1;
-     OcclusionTextureIndex:=-1;
-     EmissiveTextureIndex:=-1;
-     BaseColorFactor:=TpvVector4.Create(1.0,1.0,1.0,1.0);
-     MetallicRoughnessFactor:=TpvVector2.Create(1.0,1.0);
-     NormalScale:=1.0;
-     OcclusionStrength:=1.0;
-     EmissiveFactor:=TpvVector3.Create(1.0,1.0,1.0);
-     if length(GLTF.Materials)>0 then begin
-      Material:=@GLTF.Materials[0];
-      if Material^.ShadingModel=TpvGLTF.TMaterial.TShadingModel.PBRMetallicRoughness then begin
-       BaseColorFactor:=TpvVector4(Pointer(@Material^.PBRMetallicRoughness.BaseColorFactor)^);
-       BaseColorTextureIndex:=Material^.PBRMetallicRoughness.BaseColorTexture.Index;
-       NormalTextureIndex:=Material^.NormalTexture.Index;
-       MetallicRoughnessFactor:=TpvVector2.Create(Material^.PBRMetallicRoughness.MetallicFactor,Material^.PBRMetallicRoughness.RoughnessFactor);
-       MetallicRoughnessTextureIndex:=Material^.PBRMetallicRoughness.MetallicRoughnessTexture.Index;
-       OcclusionTextureIndex:=Material^.OcclusionTexture.Index;
-       NormalScale:=Material^.NormalTextureScale;
-       OcclusionStrength:=Material^.OcclusionTextureStrength;
-       EmissiveTextureIndex:=Material^.EmissiveTexture.Index;
-       EmissiveFactor:=TpvVector3(Pointer(@Material^.EmissiveFactor)^);
-       if BaseColorTextureIndex>=0 then begin
-        ImageIndex:=GLTF.Textures[BaseColorTextureIndex].Image;
-        if ImageIndex>=0 then begin
-         BaseColorTextureData:=GLTF.Images[ImageIndex].Data;
+        CountUsedVertices:=GLTFBakedVertexIndexedMesh.Vertices.Count;
+        SetLength(SAM.VertexTexCoords,CountUsedVertices);
+        SetLength(SAM.VertexMaterials,CountUsedVertices);
+        for VertexIndex:=0 to GLTFBakedVertexIndexedMesh.Vertices.Count-1 do begin
+         GLTFBakedVertexIndexedMeshVertex:=@GLTFBakedVertexIndexedMesh.Vertices.ItemArray[VertexIndex];
+         SAM.VertexTexCoords[VertexIndex].x:=Min(Max(round(GLTFBakedVertexIndexedMeshVertex^.TexCoord0[0]*16384.0),0),65535);
+         SAM.VertexTexCoords[VertexIndex].y:=Min(Max(round(GLTFBakedVertexIndexedMeshVertex^.TexCoord0[1]*16384.0),0),65535);
+         SAM.VertexMaterials[VertexIndex]:=GLTFBakedVertexIndexedMesh.Materials.ItemArray[VertexIndex];
         end;
-       end;
-       if NormalTextureIndex>=0 then begin
-        ImageIndex:=GLTF.Textures[NormalTextureIndex].Image;
-        if ImageIndex>=0 then begin
-         NormalTextureData:=GLTF.Images[ImageIndex].Data;
+
+        CountUsedIndices:=GLTFBakedVertexIndexedMesh.Indices.Count;
+        SetLength(SAM.Indices,GLTFBakedVertexIndexedMesh.Indices.Count);
+        for Index:=0 to GLTFBakedVertexIndexedMesh.Indices.Count-1 do begin
+         SAM.Indices[Index]:=GLTFBakedVertexIndexedMesh.Indices.ItemArray[Index];
         end;
+
+       finally
+        FreeAndNil(GLTFBakedVertexIndexedMesh);
        end;
-       if MetallicRoughnessTextureIndex>=0 then begin
-        ImageIndex:=GLTF.Textures[MetallicRoughnessTextureIndex].Image;
-        if ImageIndex>=0 then begin
-         MetallicRoughnessTextureData:=GLTF.Images[ImageIndex].Data;
-        end;
-       end;
-       if OcclusionTextureIndex>=0 then begin
-        ImageIndex:=GLTF.Textures[OcclusionTextureIndex].Image;
-        if ImageIndex>=0 then begin
-         OcclusionTextureData:=GLTF.Images[ImageIndex].Data;
-        end;
-       end;
-       if EmissiveTextureIndex>=0 then begin
-        ImageIndex:=GLTF.Textures[EmissiveTextureIndex].Image;
-        if ImageIndex>=0 then begin
-         EmissiveTextureData:=GLTF.Images[ImageIndex].Data;
-        end;
-       end;
+
       end else begin
-       WriteLn('Error: No PBR metallic roughness material found!');
+       WriteLn('Error: No vertex indexed mesh found!');
        result:=false;
       end;
-     end else begin
-      WriteLn('Error: No material found!');
-      result:=false;
+
      end;
 
-    end;
+     if result then begin
+     
+      // Get materials
+      for MaterialIndex:=0 to length(GLTF.Materials)-1 do begin
+       SAMMaterial:=TpvSAM.TMaterial.Create;
+       try
 
-    if result then begin
+        SAMMaterial.Name:=GLTF.Materials[MaterialIndex].Name;
 
-     // Get all animations
-     SetLength(Animations,length(GLTF.Animations)+1);
-     Animations[0]:=GetAnimation(-1);
-     for Index:=0 to length(GLTF.Animations)-1 do begin
-      Animations[Index+1]:=GetAnimation(Index);
-     end;
+        BaseColorTextureIndex:=-1;
+        NormalTextureIndex:=-1;
+        MetallicRoughnessTextureIndex:=-1;
+        OcclusionTextureIndex:=-1;
+        EmissiveTextureIndex:=-1;
+        BaseColorFactor:=TpvVector4.Create(1.0,1.0,1.0,1.0);
+        MetallicRoughnessFactor:=TpvVector2.Create(1.0,1.0);
+        NormalScale:=1.0;
+        OcclusionStrength:=1.0;
+        EmissiveFactor:=TpvVector3.Create(1.0,1.0,1.0);
 
-     // Get bounding box
-     First:=true;
-     for Index:=0 to length(Animations)-1 do begin
-      for FrameIndex:=0 to length(Animations[Index].Frames)-1 do begin
-       for VertexIndex:=0 to CountUsedVertices-1 do begin
-        if First then begin
-         First:=false;
-         BoundingBox.Min:=Animations[Index].Frames[FrameIndex].FullVertices[VertexIndex].Position;
-         BoundingBox.Max:=Animations[Index].Frames[FrameIndex].FullVertices[VertexIndex].Position;
-        end else begin
-         BoundingBox.DirectCombineVector3(Animations[Index].Frames[FrameIndex].FullVertices[VertexIndex].Position);
+        GLTFMaterial:=@GLTF.Materials[MaterialIndex];
+
+        BaseColorFactor:=TpvVector4(Pointer(@GLTFMaterial^.PBRMetallicRoughness.BaseColorFactor)^);
+        BaseColorTextureIndex:=GLTFMaterial^.PBRMetallicRoughness.BaseColorTexture.Index;
+        NormalTextureIndex:=GLTFMaterial^.NormalTexture.Index;
+        MetallicRoughnessFactor:=TpvVector2.Create(GLTFMaterial^.PBRMetallicRoughness.MetallicFactor,GLTFMaterial^.PBRMetallicRoughness.RoughnessFactor);
+        MetallicRoughnessTextureIndex:=GLTFMaterial^.PBRMetallicRoughness.MetallicRoughnessTexture.Index;
+        OcclusionTextureIndex:=GLTFMaterial^.OcclusionTexture.Index;
+        NormalScale:=GLTFMaterial^.NormalTextureScale;
+        OcclusionStrength:=GLTFMaterial^.OcclusionTextureStrength;
+        EmissiveTextureIndex:=GLTFMaterial^.EmissiveTexture.Index;
+        EmissiveFactor:=TpvVector3(Pointer(@GLTFMaterial^.EmissiveFactor)^);
+
+        SAMMaterial.MaterialHeader.BaseColorTextureSize:=0;
+        if BaseColorTextureIndex>=0 then begin
+         ImageIndex:=GLTF.Textures[BaseColorTextureIndex].Image;
+         if ImageIndex>=0 then begin
+          BaseColorTextureData:=GLTF.Images[ImageIndex].Data;
+          SAMMaterial.BaseColorTextureStream.Clear;
+          SAMMaterial.BaseColorTextureStream.WriteBuffer(BaseColorTextureData[0],length(BaseColorTextureData));
+          SAMMaterial.MaterialHeader.BaseColorTextureSize:=length(BaseColorTextureData);
+         end;
+        end;
+
+        SAMMaterial.MaterialHeader.NormalTextureSize:=0;
+        if NormalTextureIndex>=0 then begin
+         ImageIndex:=GLTF.Textures[NormalTextureIndex].Image;
+         if ImageIndex>=0 then begin
+          NormalTextureData:=GLTF.Images[ImageIndex].Data;
+          SAMMaterial.NormalTextureStream.Clear;
+          SAMMaterial.NormalTextureStream.WriteBuffer(NormalTextureData[0],length(NormalTextureData));
+          SAMMaterial.MaterialHeader.NormalTextureSize:=length(NormalTextureData);
+         end;
+        end;
+
+        SAMMaterial.MaterialHeader.MetallicRoughnessTextureSize:=0;
+        if MetallicRoughnessTextureIndex>=0 then begin
+         ImageIndex:=GLTF.Textures[MetallicRoughnessTextureIndex].Image;
+         if ImageIndex>=0 then begin
+          MetallicRoughnessTextureData:=GLTF.Images[ImageIndex].Data;
+          SAMMaterial.MetallicRoughnessTextureStream.Clear;
+          SAMMaterial.MetallicRoughnessTextureStream.WriteBuffer(MetallicRoughnessTextureData[0],length(MetallicRoughnessTextureData));
+          SAMMaterial.MaterialHeader.MetallicRoughnessTextureSize:=length(MetallicRoughnessTextureData);
+         end;
+        end;
+
+        SAMMaterial.MaterialHeader.OcclusionTextureSize:=0;
+        if OcclusionTextureIndex>=0 then begin
+         ImageIndex:=GLTF.Textures[OcclusionTextureIndex].Image;
+         if ImageIndex>=0 then begin
+          OcclusionTextureData:=GLTF.Images[ImageIndex].Data;
+          SAMMaterial.OcclusionTextureStream.Clear;
+          SAMMaterial.OcclusionTextureStream.WriteBuffer(OcclusionTextureData[0],length(OcclusionTextureData));
+          SAMMaterial.MaterialHeader.OcclusionTextureSize:=length(OcclusionTextureData);
+         end;
+        end;
+
+        SAMMaterial.MaterialHeader.EmissiveTextureSize:=0;
+        if EmissiveTextureIndex>=0 then begin
+         ImageIndex:=GLTF.Textures[EmissiveTextureIndex].Image;
+         if ImageIndex>=0 then begin
+          EmissiveTextureData:=GLTF.Images[ImageIndex].Data;
+          SAMMaterial.EmissiveTextureStream.Clear;
+          SAMMaterial.EmissiveTextureStream.WriteBuffer(EmissiveTextureData[0],length(EmissiveTextureData));
+          SAMMaterial.MaterialHeader.EmissiveTextureSize:=length(EmissiveTextureData);
+         end;
+        end;
+
+        SAMMaterial.MaterialHeader.MaterialType:=TpvSAM.TMaterialHeader.MaterialTypeMetallicRoughness;
+        SAMMaterial.MaterialHeader.BaseColorFactor:=BaseColorFactor;
+        SAMMaterial.MaterialHeader.EmissiveFactorOcclusionStrength:=TpvVector4.Create(EmissiveFactor.x,EmissiveFactor.y,EmissiveFactor.z,OcclusionStrength);
+        SAMMaterial.MaterialHeader.MetallicRoughnessFactorNormalScale:=TpvVector4.Create(MetallicRoughnessFactor.x,MetallicRoughnessFactor.y,NormalScale,0.0);
+
+       finally
+        SAM.Materials.Add(SAMMaterial);
+       end;
+      end;
+
+      if SAM.Materials.Count=0 then begin
+       WriteLn('Error: No materials found!');
+       result:=false;
+      end;
+
+     end; 
+
+     if result then begin
+
+      // Get all animations
+      SetLength(SAM.Animations,length(GLTF.Animations)+1);
+      SAM.Animations[0]:=GetAnimation(-1);
+      for Index:=0 to length(GLTF.Animations)-1 do begin
+       SAM.Animations[Index+1]:=GetAnimation(Index);
+      end;
+
+      // Get bounding box
+      First:=true;
+      for Index:=0 to length(SAM.Animations)-1 do begin
+       for FrameIndex:=0 to length(SAM.Animations[Index].Frames)-1 do begin
+        for VertexIndex:=0 to CountUsedVertices-1 do begin
+         if First then begin
+          First:=false;
+          BoundingBox.Min:=SAM.Animations[Index].Frames[FrameIndex].FullVertices[VertexIndex].Position;
+          BoundingBox.Max:=SAM.Animations[Index].Frames[FrameIndex].FullVertices[VertexIndex].Position;
+         end else begin
+          BoundingBox.DirectCombineVector3(SAM.Animations[Index].Frames[FrameIndex].FullVertices[VertexIndex].Position);
+         end;
         end;
        end;
       end;
-     end;
 
-     // Get bounding sphere
-     BoundingSphere:=TpvSphere.CreateFromAABB(BoundingBox);
+      // Get bounding sphere
+      BoundingSphere:=TpvSphere.CreateFromAABB(BoundingBox);
 
-     // Save
-     Stream:=TMemoryStream.Create;
-     try
+      // Save
+      Stream:=TMemoryStream.Create;
+      try
 
-      FileHeader.Signature:=TpvSAM.Signature;
-      FileHeader.Version:=TpvSAM.Version;
-      FileHeader.CountVertices:=CountUsedVertices;
-      FileHeader.CountIndices:=CountUsedIndices;
-      FileHeader.CountAnimations:=length(Animations);
-      FileHeader.FrameRate:=FrameRate;
+       SAM.FileHeader.Signature:=TpvSAM.Signature;
+       SAM.FileHeader.Version:=TpvSAM.Version;
+       SAM.FileHeader.CountVertices:=CountUsedVertices;
+       SAM.FileHeader.CountIndices:=CountUsedIndices;
+       SAM.FileHeader.CountAnimations:=length(SAM.Animations);
+       SAM.FileHeader.FrameRate:=FrameRate;
 
-      FileHeader.BoundingBoxMin:=BoundingBox.Min;
-      FileHeader.BoundingBoxMax:=BoundingBox.Max;
-      FileHeader.BoundingSphere:=TpvVector4.InlineableCreate(BoundingSphere.Center,BoundingSphere.Radius);
+       SAM.FileHeader.BoundingBoxMin:=BoundingBox.Min;
+       SAM.FileHeader.BoundingBoxMax:=BoundingBox.Max;
+       SAM.FileHeader.BoundingSphere:=TpvVector4.InlineableCreate(BoundingSphere.Center,BoundingSphere.Radius);
 
-      FileHeader.MaterialHeader.MaterialType:=TpvSAM.TMaterialHeader.MaterialTypeMetallicRoughness;
-      FileHeader.MaterialHeader.BaseColorFactor:=BaseColorFactor;
-      FileHeader.MaterialHeader.EmissiveFactorOcclusionStrength:=TpvVector4.Create(EmissiveFactor.x,EmissiveFactor.y,EmissiveFactor.z,OcclusionStrength);
-      FileHeader.MaterialHeader.MetallicRoughnessFactorNormalScale:=TpvVector4.Create(MetallicRoughnessFactor.x,MetallicRoughnessFactor.y,NormalScale,0.0);
-      FileHeader.MaterialHeader.BaseColorTextureSize:=length(BaseColorTextureData);
-      FileHeader.MaterialHeader.NormalTextureSize:=length(NormalTextureData);
-      FileHeader.MaterialHeader.MetallicRoughnessTextureSize:=length(MetallicRoughnessTextureData);
-      FileHeader.MaterialHeader.OcclusionTextureSize:=length(OcclusionTextureData);
-      FileHeader.MaterialHeader.EmissiveTextureSize:=length(EmissiveTextureData);
+{      FileHeader.MaterialHeader.MaterialType:=TpvSAM.TMaterialHeader.MaterialTypeMetallicRoughness;
+       FileHeader.MaterialHeader.BaseColorFactor:=BaseColorFactor;
+       FileHeader.MaterialHeader.EmissiveFactorOcclusionStrength:=TpvVector4.Create(EmissiveFactor.x,EmissiveFactor.y,EmissiveFactor.z,OcclusionStrength);
+       FileHeader.MaterialHeader.MetallicRoughnessFactorNormalScale:=TpvVector4.Create(MetallicRoughnessFactor.x,MetallicRoughnessFactor.y,NormalScale,0.0);
+       FileHeader.MaterialHeader.BaseColorTextureSize:=length(BaseColorTextureData);
+       FileHeader.MaterialHeader.NormalTextureSize:=length(NormalTextureData);
+       FileHeader.MaterialHeader.MetallicRoughnessTextureSize:=length(MetallicRoughnessTextureData);
+       FileHeader.MaterialHeader.OcclusionTextureSize:=length(OcclusionTextureData);
+       FileHeader.MaterialHeader.EmissiveTextureSize:=length(EmissiveTextureData);
 
-      // Write file header
-      Stream.WriteBuffer(FileHeader,SizeOf(TpvSAM.TFileHeader));
+       // Write file header
+       Stream.WriteBuffer(FileHeader,SizeOf(TpvSAM.TFileHeader));
 
-      // Write indices globally
-      Stream.WriteBuffer(Indices[0],SizeOf(TpvSAM.TIndex)*CountUsedIndices);
+       // Write indices globally
+       Stream.WriteBuffer(Indices[0],SizeOf(TpvSAM.TIndex)*CountUsedIndices);
 
-      // Write texcoords globally
-      Stream.WriteBuffer(TexCoords[0],SizeOf(TpvUInt16Vector2)*CountUsedVertices);
+       // Write texcoords globally
+       Stream.WriteBuffer(TexCoords[0],SizeOf(TpvUInt16Vector2)*CountUsedVertices);
 
-      // Write vertices from all animations
-      for Index:=0 to length(Animations)-1 do begin
-       ui32:=length(Animations[Index].Name);
-       Stream.WriteBuffer(ui32,SizeOf(TpvUInt32));
-       if ui32>0 then begin
-        Stream.WriteBuffer(Animations[Index].Name[1],ui32);
-       end;
-       Stream.WriteBuffer(Animations[Index].StartTime,SizeOf(TpvDouble));
-       Stream.WriteBuffer(Animations[Index].EndTime,SizeOf(TpvDouble));
-       CountFrames:=length(Animations[Index].Frames);
-       Stream.WriteBuffer(CountFrames,SizeOf(TpvUInt32));
-       for FrameIndex:=0 to length(Animations[Index].Frames)-1 do begin
-        Animations[Index].Frames[FrameIndex].Pack;
-        Stream.WriteBuffer(Animations[Index].Frames[FrameIndex].Time,SizeOf(TpvDouble));
-        if CountUsedVertices>0 then begin
-         Stream.WriteBuffer(Animations[Index].Frames[FrameIndex].Vertices[0],SizeOf(TpvSAM.TVertex)*CountUsedVertices);
+       // Write vertices from all animations
+       for Index:=0 to length(Animations)-1 do begin
+        ui32:=length(Animations[Index].Name);
+        Stream.WriteBuffer(ui32,SizeOf(TpvUInt32));
+        if ui32>0 then begin
+         Stream.WriteBuffer(Animations[Index].Name[1],ui32);
+        end;
+        Stream.WriteBuffer(Animations[Index].StartTime,SizeOf(TpvDouble));
+        Stream.WriteBuffer(Animations[Index].EndTime,SizeOf(TpvDouble));
+        CountFrames:=length(Animations[Index].Frames);
+        Stream.WriteBuffer(CountFrames,SizeOf(TpvUInt32));
+        for FrameIndex:=0 to length(Animations[Index].Frames)-1 do begin
+         Animations[Index].Frames[FrameIndex].Pack;
+         Stream.WriteBuffer(Animations[Index].Frames[FrameIndex].Time,SizeOf(TpvDouble));
+         if CountUsedVertices>0 then begin
+          Stream.WriteBuffer(Animations[Index].Frames[FrameIndex].Vertices[0],SizeOf(TpvSAM.TVertex)*CountUsedVertices);
+         end;
         end;
        end;
-      end;
-      
-      // Write textures
-      if length(BaseColorTextureData)>0 then begin
-       Stream.WriteBuffer(BaseColorTextureData[0],length(BaseColorTextureData));
-      end;
-      if length(NormalTextureData)>0 then begin
-       Stream.WriteBuffer(NormalTextureData[0],length(NormalTextureData));
-      end;
-      if length(MetallicRoughnessTextureData)>0 then begin
-       Stream.WriteBuffer(MetallicRoughnessTextureData[0],length(MetallicRoughnessTextureData));
-      end;
-      if length(OcclusionTextureData)>0 then begin
-       Stream.WriteBuffer(OcclusionTextureData[0],length(OcclusionTextureData));
-      end;
-      if length(EmissiveTextureData)>0 then begin
-       Stream.WriteBuffer(EmissiveTextureData[0],length(EmissiveTextureData));
+//}
+       SAM.SaveToStream(Stream);
+
+       // Save to file
+       Stream.SaveToFile(aOutputFileName);
+
+       // Done!
+
+      finally
+       FreeAndNil(Stream);
       end;
 
-      // Save to file
-      Stream.SaveToFile(aOutputFileName);
-
-      // Done!
-
-     finally
-      FreeAndNil(Stream);
      end;
-
+    
     end;
-   
+
+   finally
+    FreeAndNil(GLTFInstance);
    end;
 
   finally
-   FreeAndNil(GLTFInstance);
+   FreeAndNil(GLTF);
   end;
 
  finally
-  FreeAndNil(GLTF);
- end;
+  FreeAndNil(SAM);
+ end; 
 
 end;
 

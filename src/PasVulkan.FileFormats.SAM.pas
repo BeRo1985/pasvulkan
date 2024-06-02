@@ -87,9 +87,51 @@ type EpvSAM=class(Exception);
             PFullVertex=^TFullVertex;
             TFullVertices=array of TFullVertex;
             TTexCoords=array of TpvUInt16Vector2;
+            TVertexMaterials=array of TpvUInt32;
             TIndex=TpvUInt32;
             PIndex=^TIndex;
             TIndices=array of TIndex;
+            TMaterialHeader=packed record
+             public
+              const MaterialTypeUnlit=0;
+                    MaterialTypeMetallicRoughness=1;
+             public
+              MaterialType:TpvUInt32;
+              BaseColorFactor:TpvVector4;
+              EmissiveFactorOcclusionStrength:TpvVector4; // xyz = EmissiveFactor, w = OcclusionStrength
+              MetallicRoughnessFactorNormalScale:TpvVector4; // x = MetallicFactor, y = RoughnessFactor, zw = Reversed
+              BaseColorTextureSize:TpvUInt32;
+              NormalTextureSize:TpvUInt32;
+              MetallicRoughnessTextureSize:TpvUInt32;
+              OcclusionTextureSize:TpvUInt32;
+              EmissiveTextureSize:TpvUInt32;
+            end;
+            PMaterialHeader=^TMaterialHeader;
+            { TMaterial }
+            TMaterial=class
+             private
+              fName:TpvUTF8String;
+              fMaterialHeader:TMaterialHeader;
+              fPointerToMaterialHeader:PMaterialHeader;
+              fBaseColorTextureStream:TMemoryStream;
+              fNormalTextureStream:TMemoryStream;
+              fMetallicRoughnessTextureStream:TMemoryStream;
+              fOcclusionTextureStream:TMemoryStream;
+              fEmissiveTextureStream:TMemoryStream;
+             public
+              constructor Create;
+              destructor Destroy; override;
+             public 
+              property MaterialHeader:PMaterialHeader read fPointerToMaterialHeader;
+             published 
+              property Name:TpvUTF8String read fName write fName;
+              property BaseColorTextureStream:TMemoryStream read fBaseColorTextureStream;
+              property NormalTextureStream:TMemoryStream read fNormalTextureStream;
+              property MetallicRoughnessTextureStream:TMemoryStream read fMetallicRoughnessTextureStream;
+              property OcclusionTextureStream:TMemoryStream read fOcclusionTextureStream;
+              property EmissiveTextureStream:TMemoryStream read fEmissiveTextureStream;
+            end;
+            TMaterials=TpvObjectGenericList<TMaterial>;
             { TFrame }
             TFrame=record
              Time:TpvDouble;
@@ -109,24 +151,10 @@ type EpvSAM=class(Exception);
             PAnimation=^TAnimation;
             TAnimations=array of TAnimation;
             TSignature=array[0..3] of AnsiChar;
-            TMaterialHeader=packed record
-             public
-              const MaterialTypeUnlit=0;
-                    MaterialTypeMetallicRoughness=1;
-             public
-              MaterialType:TpvUInt32;
-              BaseColorFactor:TpvVector4;
-              EmissiveFactorOcclusionStrength:TpvVector4; // xyz = EmissiveFactor, w = OcclusionStrength
-              MetallicRoughnessFactorNormalScale:TpvVector4; // x = MetallicFactor, y = RoughnessFactor, zw = Reversed
-              BaseColorTextureSize:TpvUInt32;
-              NormalTextureSize:TpvUInt32;
-              MetallicRoughnessTextureSize:TpvUInt32;
-              OcclusionTextureSize:TpvUInt32;
-              EmissiveTextureSize:TpvUInt32;
-            end;
             TFileHeader=packed record
              Signature:TSignature;
              Version:TpvUInt32;
+             CountMaterials:TpvUInt32;
              CountVertices:TpvUInt32;
              CountIndices:TpvUInt32;
              CountAnimations:TpvUInt32;
@@ -134,7 +162,6 @@ type EpvSAM=class(Exception);
              BoundingBoxMin:TpvVector3;
              BoundingBoxMax:TpvVector3;
              BoundingSphere:TpvVector4;
-             MaterialHeader:TMaterialHeader;
             end;
             PFileHeader=^TFileHeader;            
        const Signature:TSignature=('S','A','M','F'); // Simple Animated Model File
@@ -142,14 +169,11 @@ type EpvSAM=class(Exception);
             TModel=class
              public
               FileHeader:TFileHeader;
-              TexCoords:TTexCoords;
+              VertexTexCoords:TTexCoords;
+              VertexMaterials:TVertexMaterials;
               Indices:TIndices;
               Animations:TAnimations;
-              BaseColorTextureStream:TMemoryStream;
-              NormalTextureStream:TMemoryStream;
-              MetallicRoughnessTextureStream:TMemoryStream;
-              OcclusionTextureStream:TMemoryStream;
-              EmissiveTextureStream:TMemoryStream;
+              Materials:TMaterials;
              public
               constructor Create; reintroduce;
               destructor Destroy; override;
@@ -163,6 +187,32 @@ type EpvSAM=class(Exception);
     end;
 
 implementation
+
+{ TpvSAM.TMaterial }
+
+constructor TpvSAM.TMaterial.Create;
+begin
+ inherited Create;
+ fName:='';
+ FillChar(fMaterialHeader,SizeOf(TMaterialHeader),#0);
+ fPointerToMaterialHeader:=@fMaterialHeader;
+ fBaseColorTextureStream:=TMemoryStream.Create;
+ fNormalTextureStream:=TMemoryStream.Create;
+ fMetallicRoughnessTextureStream:=TMemoryStream.Create;
+ fOcclusionTextureStream:=TMemoryStream.Create;
+ fEmissiveTextureStream:=TMemoryStream.Create;
+end;
+
+destructor TpvSAM.TMaterial.Destroy;
+begin
+ FreeAndNil(fEmissiveTextureStream);
+ FreeAndNil(fOcclusionTextureStream);
+ FreeAndNil(fMetallicRoughnessTextureStream);
+ FreeAndNil(fNormalTextureStream);
+ FreeAndNil(fBaseColorTextureStream);
+ fName:='';
+ inherited Destroy;
+end;
 
 { TpvSAM.TFrame }
 
@@ -204,38 +254,35 @@ constructor TpvSAM.TModel.Create;
 begin
  inherited Create;
  FillChar(FileHeader,SizeOf(TpvSAM.TFileHeader),#0);
- TexCoords:=nil;
+ VertexTexCoords:=nil;
+ VertexMaterials:=nil;
  Indices:=nil;
  Animations:=nil;
- BaseColorTextureStream:=TMemoryStream.Create;
- NormalTextureStream:=TMemoryStream.Create;
- MetallicRoughnessTextureStream:=TMemoryStream.Create;
- OcclusionTextureStream:=TMemoryStream.Create;
- EmissiveTextureStream:=TMemoryStream.Create;
+ Materials:=TMaterials.Create;
 end;
 
 destructor TpvSAM.TModel.Destroy;
 begin
- TexCoords:=nil;
+ VertexTexCoords:=nil;
+ VertexMaterials:=nil;
  Indices:=nil;
  Animations:=nil;
- FreeAndNil(EmissiveTextureStream);
- FreeAndNil(OcclusionTextureStream);
- FreeAndNil(MetallicRoughnessTextureStream);
- FreeAndNil(NormalTextureStream);
- FreeAndNil(BaseColorTextureStream);
+ FreeAndNil(Materials);
  inherited Destroy;
 end;
 
 procedure TpvSAM.TModel.LoadFromStream(const aStream:TStream);
-var AnimationIndex,FramesIndex:TpvSizeInt;
+var MaterialIndex,AnimationIndex,FramesIndex:TpvSizeInt;
     CountFrames:TpvInt32;
     ui32:TpvUInt32;
+    Material:TMaterial;
 begin
 
- TexCoords:=nil;
+ VertexTexCoords:=nil;
+ VertexMaterials:=nil;
  Indices:=nil;
  Animations:=nil;
+ Materials.Clear;
 
  FillChar(FileHeader,SizeOf(TpvSAM.TFileHeader),#0);
 
@@ -249,14 +296,51 @@ begin
   raise EpvSAM.Create('Invalid or not supported SAM version');
  end;
 
+ if FileHeader.CountMaterials>0 then begin
+  for MaterialIndex:=0 to TpvSizeInt(FileHeader.CountMaterials)-1 do begin
+   Material:=TMaterial.Create;
+   try
+    aStream.ReadBuffer(ui32,SizeOf(TpvUInt32));
+    Material.Name:='';
+    if ui32>0 then begin
+     SetLength(Material.fName,ui32);
+     aStream.ReadBuffer(Material.fName[1],ui32);
+    end;
+    aStream.ReadBuffer(Material.fMaterialHeader,SizeOf(TpvSAM.TMaterialHeader));
+    if Material.MaterialHeader.BaseColorTextureSize>0 then begin
+     Material.BaseColorTextureStream.CopyFrom(aStream,Material.MaterialHeader.BaseColorTextureSize);
+    end;
+    if Material.MaterialHeader.NormalTextureSize>0 then begin
+     Material.NormalTextureStream.CopyFrom(aStream,Material.MaterialHeader.NormalTextureSize);
+    end;
+    if Material.MaterialHeader.MetallicRoughnessTextureSize>0 then begin
+     Material.MetallicRoughnessTextureStream.CopyFrom(aStream,Material.MaterialHeader.MetallicRoughnessTextureSize);
+    end;
+    if Material.MaterialHeader.OcclusionTextureSize>0 then begin
+     Material.OcclusionTextureStream.CopyFrom(aStream,Material.MaterialHeader.OcclusionTextureSize);
+    end;
+    if Material.MaterialHeader.EmissiveTextureSize>0 then begin
+     Material.EmissiveTextureStream.CopyFrom(aStream,Material.MaterialHeader.EmissiveTextureSize);
+    end;
+   finally
+    Materials.Add(Material);
+   end;
+  end;
+ end;
+
  if FileHeader.CountIndices>0 then begin
   SetLength(Indices,FileHeader.CountIndices);
   aStream.ReadBuffer(Indices[0],SizeOf(TpvSAM.TIndex)*FileHeader.CountIndices);
  end;
 
  if FileHeader.CountVertices>0 then begin
-  SetLength(TexCoords,FileHeader.CountVertices);
-  aStream.ReadBuffer(TexCoords[0],SizeOf(TpvUInt16Vector2)*FileHeader.CountVertices);
+  
+  SetLength(VertexTexCoords,FileHeader.CountVertices);
+  aStream.ReadBuffer(VertexTexCoords[0],SizeOf(TpvUInt16Vector2)*FileHeader.CountVertices);
+
+  SetLength(VertexMaterials,FileHeader.CountVertices);
+  aStream.ReadBuffer(VertexMaterials[0],SizeOf(TpvUInt32)*FileHeader.CountVertices);
+  
  end;
 
  SetLength(Animations,FileHeader.CountAnimations);
@@ -283,31 +367,6 @@ begin
   end;
  end;
 
- BaseColorTextureStream.Clear;
- if FileHeader.MaterialHeader.BaseColorTextureSize>0 then begin
-  BaseColorTextureStream.CopyFrom(aStream,FileHeader.MaterialHeader.BaseColorTextureSize);
- end;
-
- NormalTextureStream.Clear;
- if FileHeader.MaterialHeader.NormalTextureSize>0 then begin
-  NormalTextureStream.CopyFrom(aStream,FileHeader.MaterialHeader.NormalTextureSize);
- end;
-
- MetallicRoughnessTextureStream.Clear;
- if FileHeader.MaterialHeader.MetallicRoughnessTextureSize>0 then begin
-  MetallicRoughnessTextureStream.CopyFrom(aStream,FileHeader.MaterialHeader.MetallicRoughnessTextureSize);
- end;
-
- OcclusionTextureStream.Clear;
- if FileHeader.MaterialHeader.OcclusionTextureSize>0 then begin
-  OcclusionTextureStream.CopyFrom(aStream,FileHeader.MaterialHeader.OcclusionTextureSize);
- end;
-
- EmissiveTextureStream.Clear;
- if FileHeader.MaterialHeader.EmissiveTextureSize>0 then begin
-  EmissiveTextureStream.CopyFrom(aStream,FileHeader.MaterialHeader.EmissiveTextureSize);
- end;
-
 end;
 
 procedure TpvSAM.TModel.LoadFromFile(const aFileName:TpvUTF8String);
@@ -324,16 +383,55 @@ begin
 end;
 
 procedure TpvSAM.TModel.SaveToStream(const aStream:TStream);
-var AnimationIndex,FramesIndex:TpvSizeInt;
+var MaterialIndex,AnimationIndex,FramesIndex:TpvSizeInt;
     CountFrames:TpvInt32;
     ui32:TpvUInt32;
+    Material:TMaterial;
 begin
+
  FileHeader.Signature:=TpvSAM.Signature;
  FileHeader.Version:=TpvSAM.Version;
+ FileHeader.CountMaterials:=Materials.Count;
  FileHeader.CountAnimations:=length(Animations);
+
  aStream.WriteBuffer(FileHeader,SizeOf(TpvSAM.TFileHeader));
+
+ for MaterialIndex:=0 to Materials.Count-1 do begin
+  Material:=Materials[MaterialIndex];
+  ui32:=length(Material.fName);
+  aStream.WriteBuffer(ui32,SizeOf(TpvUInt32));
+  if ui32>0 then begin
+   aStream.WriteBuffer(Material.fName[1],ui32);
+  end;
+  aStream.WriteBuffer(Material.fMaterialHeader,SizeOf(TpvSAM.TMaterialHeader));
+  if Material.MaterialHeader.BaseColorTextureSize>0 then begin
+   Material.BaseColorTextureStream.Seek(0,soBeginning);
+   aStream.CopyFrom(Material.BaseColorTextureStream,Material.MaterialHeader.BaseColorTextureSize);
+  end;
+  if Material.MaterialHeader.NormalTextureSize>0 then begin
+   Material.NormalTextureStream.Seek(0,soBeginning);
+   aStream.CopyFrom(Material.NormalTextureStream,Material.MaterialHeader.NormalTextureSize);
+  end;
+  if Material.MaterialHeader.MetallicRoughnessTextureSize>0 then begin
+   Material.MetallicRoughnessTextureStream.Seek(0,soBeginning);
+   aStream.CopyFrom(Material.MetallicRoughnessTextureStream,Material.MaterialHeader.MetallicRoughnessTextureSize);
+  end;
+  if Material.MaterialHeader.OcclusionTextureSize>0 then begin
+   Material.OcclusionTextureStream.Seek(0,soBeginning);
+   aStream.CopyFrom(Material.OcclusionTextureStream,Material.MaterialHeader.OcclusionTextureSize);
+  end;
+  if Material.MaterialHeader.EmissiveTextureSize>0 then begin
+   Material.EmissiveTextureStream.Seek(0,soBeginning);
+   aStream.CopyFrom(Material.EmissiveTextureStream,Material.MaterialHeader.EmissiveTextureSize);
+  end;
+ end;
+ 
  aStream.WriteBuffer(Indices[0],SizeOf(TpvSAM.TIndex)*FileHeader.CountIndices);
- aStream.WriteBuffer(TexCoords[0],SizeOf(TpvUInt16Vector2)*FileHeader.CountVertices);
+ 
+ aStream.WriteBuffer(VertexTexCoords[0],SizeOf(TpvUInt16Vector2)*FileHeader.CountVertices);
+ 
+ aStream.WriteBuffer(VertexMaterials[0],SizeOf(TpvUInt32)*FileHeader.CountVertices);
+ 
  for AnimationIndex:=0 to length(Animations)-1 do begin
   ui32:=length(Animations[AnimationIndex].Name);
   aStream.WriteBuffer(ui32,SizeOf(TpvUInt32));
@@ -349,26 +447,7 @@ begin
    aStream.WriteBuffer(Animations[AnimationIndex].Frames[FramesIndex].Vertices[0],SizeOf(TpvSAM.TVertex)*FileHeader.CountVertices);
   end;
  end;
- if BaseColorTextureStream.Size>0 then begin
-  BaseColorTextureStream.Seek(0,soBeginning);
-  aStream.CopyFrom(BaseColorTextureStream,BaseColorTextureStream.Size);
- end;
- if NormalTextureStream.Size>0 then begin
-  NormalTextureStream.Seek(0,soBeginning);
-  aStream.CopyFrom(NormalTextureStream,NormalTextureStream.Size);
- end;
- if MetallicRoughnessTextureStream.Size>0 then begin
-  MetallicRoughnessTextureStream.Seek(0,soBeginning);
-  aStream.CopyFrom(MetallicRoughnessTextureStream,MetallicRoughnessTextureStream.Size);
- end;
- if OcclusionTextureStream.Size>0 then begin
-  OcclusionTextureStream.Seek(0,soBeginning);
-  aStream.CopyFrom(OcclusionTextureStream,OcclusionTextureStream.Size);
- end;
- if EmissiveTextureStream.Size>0 then begin
-  EmissiveTextureStream.Seek(0,soBeginning);
-  aStream.CopyFrom(EmissiveTextureStream,EmissiveTextureStream.Size);
- end;
+
 end;
 
 procedure TpvSAM.TModel.SaveToFile(const aFileName:TpvUTF8String);

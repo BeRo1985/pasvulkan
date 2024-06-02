@@ -166,22 +166,23 @@ type EpvGLTF=class(Exception);
                    TIndex=TpvUInt32;
                    PIndex=^TIndex;
                    TIndices=TpvDynamicArrayList<TpvGLTF.TBakedVertexIndexedMesh.TIndex>;
-                   TVertexRemapHashMap=TpvHashMap<TpvUInt32,TpvSizeInt>;
+                   TVertexRemapHashMap=TpvHashMap<TpvUInt64,TpvSizeInt>;
              private
               fVertices:TVertices;
               fIndices:TIndices;
+              fMaterials:TIndices;
               fVertexRemapHashMap:TVertexRemapHashMap;
              public
               constructor Create; reintroduce;
               destructor Destroy; override;
               procedure Clear;
-              function ExistOriginalVertexIndex(const aVertexIndex:TpvUInt32):boolean;
-              function AddOriginalVertexIndex(const aVertexIndex:TpvUInt32;const aVertex:TpvGLTF.TVertex;const aAddIndex:boolean=true):TpvUInt32;
-              procedure AddIndex(const aIndex:TpvGLTF.TBakedVertexIndexedMesh.TIndex);
+              function ExistOriginalVertexIndex(const aVertexIndex,aMaterial:TpvUInt32):boolean;
+              function AddOriginalVertexIndex(const aVertexIndex:TpvUInt32;const aVertex:TpvGLTF.TVertex;const aMaterial:TpvUInt32=0;const aAddIndex:boolean=true):TpvUInt32;
               procedure Finish;
              published
               property Vertices:TVertices read fVertices;
               property Indices:TIndices read fIndices;
+              property Materials:TIndices read fMaterials;
               property VertexRemapHashMap:TVertexRemapHashMap read fVertexRemapHashMap;              
             end;
             { TInstance }
@@ -1570,6 +1571,7 @@ begin
  inherited Create;
  fVertices:=TVertices.Create;
  fIndices:=TIndices.Create;
+ fMaterials:=TIndices.Create;
  fVertexRemapHashMap:=TVertexRemapHashMap.Create(-1);
 end;
 
@@ -1577,6 +1579,7 @@ destructor TpvGLTF.TBakedVertexIndexedMesh.Destroy;
 begin
  FreeAndNil(fVertices);
  FreeAndNil(fIndices);
+ FreeAndNil(fMaterials);
  FreeAndNil(fVertexRemapHashMap);
  inherited Destroy;
 end;
@@ -1585,21 +1588,23 @@ procedure TpvGLTF.TBakedVertexIndexedMesh.Clear;
 begin
  fVertices.Clear;
  fIndices.Clear;
+ fMaterials.Clear;
  fVertexRemapHashMap.Clear;
 end;
 
-function TpvGLTF.TBakedVertexIndexedMesh.ExistOriginalVertexIndex(const aVertexIndex:TpvUInt32):boolean;
+function TpvGLTF.TBakedVertexIndexedMesh.ExistOriginalVertexIndex(const aVertexIndex,aMaterial:TpvUInt32):boolean;
 begin
- result:=fVertexRemapHashMap.ExistKey(aVertexIndex);
+ result:=fVertexRemapHashMap.ExistKey(TpvUInt64(aVertexIndex) or (TpvUInt64(aMaterial) shl 32));
 end;
 
-function TpvGLTF.TBakedVertexIndexedMesh.AddOriginalVertexIndex(const aVertexIndex:TpvUInt32;const aVertex:TpvGLTF.TVertex;const aAddIndex:boolean):TpvUInt32;
+function TpvGLTF.TBakedVertexIndexedMesh.AddOriginalVertexIndex(const aVertexIndex:TpvUInt32;const aVertex:TpvGLTF.TVertex;const aMaterial:TpvUInt32;const aAddIndex:boolean):TpvUInt32;
 var RemappedVertexIndex:TpvSizeInt;
 begin
- RemappedVertexIndex:=fVertexRemapHashMap[aVertexIndex];
+ RemappedVertexIndex:=fVertexRemapHashMap[TpvUInt64(aVertexIndex) or (TpvUInt64(aMaterial) shl 32)];
  if RemappedVertexIndex<0 then begin
-  fVertexRemapHashMap[aVertexIndex]:=RemappedVertexIndex;
+  fVertexRemapHashMap[TpvUInt64(aVertexIndex) or (TpvUInt64(aMaterial) shl 32)]:=RemappedVertexIndex;
   RemappedVertexIndex:=fVertices.Add(aVertex);
+  fMaterials.Add(aMaterial);
  end;
  if aAddIndex then begin
   fIndices.Add(RemappedVertexIndex);
@@ -1607,16 +1612,12 @@ begin
  result:=RemappedVertexIndex;
 end;
 
-procedure TpvGLTF.TBakedVertexIndexedMesh.AddIndex(const aIndex:TpvGLTF.TBakedVertexIndexedMesh.TIndex);
-begin
- fIndices.Add(aIndex);
-end;
-
 procedure TpvGLTF.TBakedVertexIndexedMesh.Finish;
 begin
  fVertices.Finish; // Finalize the array size
- fIndices.Finish; // Finalize the array size 
- fVertexRemapHashMap.Clear; // Because no more needed 
+ fMaterials.Finish; // Finalize the array size
+ fIndices.Finish; // Finalize the array size
+ fVertexRemapHashMap.Clear; // Because no more needed
 end;
 
 { TpvGLTF }
@@ -4929,7 +4930,7 @@ var BakedVertexIndexedMesh:TpvGLTF.TBakedVertexIndexedMesh;
           OutVertex.Tangent[0]:=BakedVertex^.Tangent.x;
           OutVertex.Tangent[1]:=BakedVertex^.Tangent.y;
           OutVertex.Tangent[2]:=BakedVertex^.Tangent.z;
-          BakedVertexIndexedMesh.AddOriginalVertexIndex(TemporaryTriangleIndices[IndexIndex],OutVertex,true);
+          BakedVertexIndexedMesh.AddOriginalVertexIndex(TemporaryTriangleIndices[IndexIndex],OutVertex,Max(0,Primitive^.Material),true);
          end;
         finally
          TemporaryTriangleIndices:=nil;

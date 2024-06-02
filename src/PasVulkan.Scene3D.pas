@@ -15140,12 +15140,15 @@ begin
 end;
 
 procedure TpvScene3D.TGroup.AssignFromSAM(const aSourceModel:TpvSAM.TModel);
-var VertexIndex,IndexIndex,AnimationIndex,FrameIndex,GlobalFrameIndex,
+var MaterialIndex,VertexIndex,IndexIndex,AnimationIndex,FrameIndex,GlobalFrameIndex,
     MorphWeightIndex,WeightIndex:TpvSizeInt;
+    SourceMaterial:TpvSAM.TMaterial;
     Material:TpvScene3D.TMaterial;
+    Materials:array of TpvScene3D.TMaterial;
     Scene:TpvScene3D.TGroup.TScene;
     Node:TpvScene3D.TGroup.TNode;
     Mesh:TpvScene3D.TGroup.TMesh;
+    MeshPrimitives:array of TpvScene3D.TGroup.TMesh.TPrimitive;
     MeshPrimitive:TpvScene3D.TGroup.TMesh.TPrimitive;
     MeshVertex:TpvScene3D.PVertex;
     SAMVertex:TpvSAM.PFullVertex;
@@ -15159,261 +15162,290 @@ var VertexIndex,IndexIndex,AnimationIndex,FrameIndex,GlobalFrameIndex,
     TargetVertex:TpvScene3D.TGroup.TMesh.TPrimitive.TTarget.PTargetVertex;
 begin
 
- Name:=#0+IntToStr(TpvPtrUInt(self))+'_'+IntToStr(TpvPtrUInt(aSourceModel));
-
- // Set bounding box
- fHasStaticBoundingBox:=true;
- fStaticBoundingBox.Min:=aSourceModel.FileHeader.BoundingBoxMin;
- fStaticBoundingBox.Max:=aSourceModel.FileHeader.BoundingBoxMax;
-
- // Create material
- Material:=TpvScene3D.TMaterial.Create(ResourceManager,self,nil);
- Material.AssignFromEmpty;
- case aSourceModel.FileHeader.MaterialHeader.MaterialType of
-  TpvSAM.TMaterialHeader.MaterialTypeMetallicRoughness:begin
-   Material.fData.ShadingModel:=TpvScene3D.TMaterial.TShadingModel.PBRMetallicRoughness;
-  end;
-  else begin
-   Material.fData.ShadingModel:=TpvScene3D.TMaterial.TShadingModel.Unlit;
-  end;
- end;
- Material.fData.AlphaMode:=TpvScene3D.TMaterial.TAlphaMode.Opaque;
- Material.fData.DoubleSided:=true;
- Material.fData.PBRMetallicRoughness.BaseColorFactor:=aSourceModel.FileHeader.MaterialHeader.BaseColorFactor;
- Material.fData.PBRMetallicRoughness.MetallicFactor:=aSourceModel.FileHeader.MaterialHeader.MetallicRoughnessFactorNormalScale.x;
- Material.fData.PBRMetallicRoughness.RoughnessFactor:=aSourceModel.FileHeader.MaterialHeader.MetallicRoughnessFactorNormalScale.y;
- Material.fData.EmissiveFactor:=TpvVector4.InlineableCreate(aSourceModel.FileHeader.MaterialHeader.EmissiveFactorOcclusionStrength.xyz,1.0);
- Material.fData.OcclusionTextureStrength:=aSourceModel.FileHeader.MaterialHeader.EmissiveFactorOcclusionStrength.w;
- Material.fData.NormalTextureScale:=aSourceModel.FileHeader.MaterialHeader.MetallicRoughnessFactorNormalScale.z;
-
- // Load textures if these exist
- if aSourceModel.BaseColorTextureStream.Size>0 then begin
-
-  Image:=TpvScene3D.TImage.Create(ResourceManager,fSceneInstance,nil);
-  aSourceModel.BaseColorTextureStream.Seek(0,soBeginning);
-  Image.AssignFromStream(Name,aSourceModel.BaseColorTextureStream);
-
-  Texture:=TpvScene3D.TTexture.Create(ResourceManager,fSceneInstance,nil);
-  Texture.AssignForImage(Name,Image);
-  Texture.IncRef;
-
-  Material.fData.PBRMetallicRoughness.BaseColorTexture.Texture:=Texture;
-  Material.fData.PBRMetallicRoughness.BaseColorTexture.TexCoord:=0;
-  Material.fData.PBRMetallicRoughness.BaseColorTexture.Transform.AssignDefault;
-
- end;
-
- if aSourceModel.MetallicRoughnessTextureStream.Size>0 then begin
-
-  Image:=TpvScene3D.TImage.Create(ResourceManager,fSceneInstance,nil);
-  aSourceModel.MetallicRoughnessTextureStream.Seek(0,soBeginning);
-  Image.AssignFromStream(Name,aSourceModel.MetallicRoughnessTextureStream);
-
-  Texture:=TpvScene3D.TTexture.Create(ResourceManager,fSceneInstance,nil);
-  Texture.AssignForImage(Name,Image);
-  Texture.IncRef;
-
-  Material.fData.PBRMetallicRoughness.MetallicRoughnessTexture.Texture:=Texture;
-  Material.fData.PBRMetallicRoughness.MetallicRoughnessTexture.TexCoord:=0;
-  Material.fData.PBRMetallicRoughness.MetallicRoughnessTexture.Transform.AssignDefault;
-
- end;
-
- if aSourceModel.NormalTextureStream.Size>0 then begin
-
-  Image:=TpvScene3D.TImage.Create(ResourceManager,fSceneInstance,nil);
-  aSourceModel.NormalTextureStream.Seek(0,soBeginning);
-  Image.AssignFromStream(Name,aSourceModel.NormalTextureStream);
-
-  Texture:=TpvScene3D.TTexture.Create(ResourceManager,fSceneInstance,nil);
-  Texture.AssignForImage(Name,Image);
-  Texture.IncRef;
-
-  Material.fData.NormalTexture.Texture:=Texture;
-  Material.fData.NormalTexture.TexCoord:=0;
-  Material.fData.NormalTexture.Transform.AssignDefault;
-
- end;
-
- if aSourceModel.OcclusionTextureStream.Size>0 then begin
-
-  Image:=TpvScene3D.TImage.Create(ResourceManager,fSceneInstance,nil);
-  aSourceModel.OcclusionTextureStream.Seek(0,soBeginning);
-  Image.AssignFromStream(Name,aSourceModel.OcclusionTextureStream);
-
-  Texture:=TpvScene3D.TTexture.Create(ResourceManager,fSceneInstance,nil);
-  Texture.AssignForImage(Name,Image);
-  Texture.IncRef;
-
-  Material.fData.OcclusionTexture.Texture:=Texture;
-  Material.fData.OcclusionTexture.TexCoord:=0;
-  Material.fData.OcclusionTexture.Transform.AssignDefault;
-
- end;
-
- if aSourceModel.EmissiveTextureStream.Size>0 then begin
-
-  Image:=TpvScene3D.TImage.Create(ResourceManager,fSceneInstance,nil);
-  aSourceModel.EmissiveTextureStream.Seek(0,soBeginning);
-  Image.AssignFromStream(Name,aSourceModel.EmissiveTextureStream);
-
-  Texture:=TpvScene3D.TTexture.Create(ResourceManager,fSceneInstance,nil);
-  Texture.AssignForImage(Name,Image);
-  Texture.IncRef;
-
-  Material.fData.EmissiveTexture.Texture:=Texture;
-  Material.fData.EmissiveTexture.TexCoord:=0;
-  Material.fData.EmissiveTexture.Transform.AssignDefault;
-
- end;
-
- Material.FillShaderData;
-
- // Create scene
- Scene:=CreateScene('plant');
-
- // Create node and add it to the scene
- Node:=CreateNode('plant');
- Scene.Nodes.Add(Node);
-
- // Create mesh 
- Mesh:=CreateMesh('plant');
-
- // Create mesh primitive
- MeshPrimitive:=Mesh.CreatePrimitive;
+ Materials:=nil;
  try
 
-  // Set material to mesh primitive
-  MeshPrimitive.MaterialID:=AddMaterial(Material);
-  MeshPrimitive.Material:=Material;
+  Name:=#0+IntToStr(TpvPtrUInt(self))+'_'+IntToStr(TpvPtrUInt(aSourceModel));
 
-  // Triangles
-  MeshPrimitive.PrimitiveTopology:=TpvScene3D.TPrimitiveTopology.Triangles;
+  // Set bounding box
+  fHasStaticBoundingBox:=true;
+  fStaticBoundingBox.Min:=aSourceModel.FileHeader.BoundingBoxMin;
+  fStaticBoundingBox.Max:=aSourceModel.FileHeader.BoundingBoxMax;
 
-  // Create initial morph target weights and calculate count of morph targets
-  Mesh.fCountMorphTargets:=0;
-  MorphWeightIndex:=0;
-  Node.fWeights.ClearNoFree;
-  for AnimationIndex:=0 to length(aSourceModel.Animations)-1 do begin
-   for FrameIndex:=0 to length(aSourceModel.Animations[AnimationIndex].Frames)-1 do begin
-    Node.fWeights.Add(0.0);
-    inc(MorphWeightIndex);
-    inc(Mesh.fCountMorphTargets);
-   end;
-  end;
-  Node.fWeights.Finish;
-
-  // Clear morph target vertices
-  fMorphTargetVertices.ClearNoFree;
-
-  // Create morph targets
-  for AnimationIndex:=0 to length(aSourceModel.Animations)-1 do begin
-   for FrameIndex:=0 to length(aSourceModel.Animations[AnimationIndex].Frames)-1 do begin
-    Target:=TpvScene3D.TGroup.TMesh.TPrimitive.TTarget.Create;
-    try
-     Target.fVertices.Resize(aSourceModel.FileHeader.CountVertices);
-    finally
-     MeshPrimitive.fTargets.Add(Target);
+  // Create materials
+  SetLength(Materials,aSourceModel.Materials.Count);
+  for MaterialIndex:=0 to aSourceModel.Materials.Count-1 do begin
+   SourceMaterial:=aSourceModel.Materials[MaterialIndex];
+   Material:=TpvScene3D.TMaterial.Create(ResourceManager,self,nil);
+   Material.AssignFromEmpty;
+   case SourceMaterial.MaterialHeader.MaterialType of
+    TpvSAM.TMaterialHeader.MaterialTypeMetallicRoughness:begin
+     Material.fData.ShadingModel:=TpvScene3D.TMaterial.TShadingModel.PBRMetallicRoughness;
+    end;
+    else begin
+     Material.fData.ShadingModel:=TpvScene3D.TMaterial.TShadingModel.Unlit;
     end;
    end;
-  end;
+   Material.fData.AlphaMode:=TpvScene3D.TMaterial.TAlphaMode.Opaque;
+   Material.fData.DoubleSided:=true;
+   Material.fData.PBRMetallicRoughness.BaseColorFactor:=SourceMaterial.MaterialHeader.BaseColorFactor;
+   Material.fData.PBRMetallicRoughness.MetallicFactor:=SourceMaterial.MaterialHeader.MetallicRoughnessFactorNormalScale.x;
+   Material.fData.PBRMetallicRoughness.RoughnessFactor:=SourceMaterial.MaterialHeader.MetallicRoughnessFactorNormalScale.y;
+   Material.fData.EmissiveFactor:=TpvVector4.InlineableCreate(SourceMaterial.MaterialHeader.EmissiveFactorOcclusionStrength.xyz,1.0);
+   Material.fData.OcclusionTextureStrength:=SourceMaterial.MaterialHeader.EmissiveFactorOcclusionStrength.w;
+   Material.fData.NormalTextureScale:=SourceMaterial.MaterialHeader.MetallicRoughnessFactorNormalScale.z;
 
-  for AnimationIndex:=0 to length(aSourceModel.Animations)-1 do begin
-   for FrameIndex:=0 to length(aSourceModel.Animations[AnimationIndex].Frames)-1 do begin
-    aSourceModel.Animations[AnimationIndex].Frames[FrameIndex].Unpack;
+   // Load textures if these exist
+   if SourceMaterial.BaseColorTextureStream.Size>0 then begin
+
+    Image:=TpvScene3D.TImage.Create(ResourceManager,fSceneInstance,nil);
+    SourceMaterial.BaseColorTextureStream.Seek(0,soBeginning);
+    Image.AssignFromStream(Name,SourceMaterial.BaseColorTextureStream);
+
+    Texture:=TpvScene3D.TTexture.Create(ResourceManager,fSceneInstance,nil);
+    Texture.AssignForImage(Name,Image);
+    Texture.IncRef;
+
+    Material.fData.PBRMetallicRoughness.BaseColorTexture.Texture:=Texture;
+    Material.fData.PBRMetallicRoughness.BaseColorTexture.TexCoord:=0;
+    Material.fData.PBRMetallicRoughness.BaseColorTexture.Transform.AssignDefault;
+
    end;
+
+   if SourceMaterial.MetallicRoughnessTextureStream.Size>0 then begin
+
+    Image:=TpvScene3D.TImage.Create(ResourceManager,fSceneInstance,nil);
+    SourceMaterial.MetallicRoughnessTextureStream.Seek(0,soBeginning);
+    Image.AssignFromStream(Name,SourceMaterial.MetallicRoughnessTextureStream);
+
+    Texture:=TpvScene3D.TTexture.Create(ResourceManager,fSceneInstance,nil);
+    Texture.AssignForImage(Name,Image);
+    Texture.IncRef;
+
+    Material.fData.PBRMetallicRoughness.MetallicRoughnessTexture.Texture:=Texture;
+    Material.fData.PBRMetallicRoughness.MetallicRoughnessTexture.TexCoord:=0;
+    Material.fData.PBRMetallicRoughness.MetallicRoughnessTexture.Transform.AssignDefault;
+
+   end;
+
+   if SourceMaterial.NormalTextureStream.Size>0 then begin
+
+    Image:=TpvScene3D.TImage.Create(ResourceManager,fSceneInstance,nil);
+    SourceMaterial.NormalTextureStream.Seek(0,soBeginning);
+    Image.AssignFromStream(Name,SourceMaterial.NormalTextureStream);
+
+    Texture:=TpvScene3D.TTexture.Create(ResourceManager,fSceneInstance,nil);
+    Texture.AssignForImage(Name,Image);
+    Texture.IncRef;
+
+    Material.fData.NormalTexture.Texture:=Texture;
+    Material.fData.NormalTexture.TexCoord:=0;
+    Material.fData.NormalTexture.Transform.AssignDefault;
+
+   end;
+
+   if SourceMaterial.OcclusionTextureStream.Size>0 then begin
+
+    Image:=TpvScene3D.TImage.Create(ResourceManager,fSceneInstance,nil);
+    SourceMaterial.OcclusionTextureStream.Seek(0,soBeginning);
+    Image.AssignFromStream(Name,SourceMaterial.OcclusionTextureStream);
+
+    Texture:=TpvScene3D.TTexture.Create(ResourceManager,fSceneInstance,nil);
+    Texture.AssignForImage(Name,Image);
+    Texture.IncRef;
+
+    Material.fData.OcclusionTexture.Texture:=Texture;
+    Material.fData.OcclusionTexture.TexCoord:=0;
+    Material.fData.OcclusionTexture.Transform.AssignDefault;
+
+   end;
+
+   if SourceMaterial.EmissiveTextureStream.Size>0 then begin
+
+    Image:=TpvScene3D.TImage.Create(ResourceManager,fSceneInstance,nil);
+    SourceMaterial.EmissiveTextureStream.Seek(0,soBeginning);
+    Image.AssignFromStream(Name,SourceMaterial.EmissiveTextureStream);
+
+    Texture:=TpvScene3D.TTexture.Create(ResourceManager,fSceneInstance,nil);
+    Texture.AssignForImage(Name,Image);
+    Texture.IncRef;
+
+    Material.fData.EmissiveTexture.Texture:=Texture;
+    Material.fData.EmissiveTexture.TexCoord:=0;
+    Material.fData.EmissiveTexture.Transform.AssignDefault;
+
+   end;
+
+   Material.FillShaderData;
+
+   Materials[MaterialIndex]:=Material;
+
   end;
 
-  // Create vertices
-  for VertexIndex:=0 to TpvSizeInt(aSourceModel.FileHeader.CountVertices)-1 do begin
+  // Create scene
+  Scene:=CreateScene('plant');
 
-   SAMVertex:=@aSourceModel.Animations[0].Frames[0].FullVertices[VertexIndex];
-  
-   MeshVertex:=MeshPrimitive.AddIndirectVertex;
-   MeshVertex^.NodeIndex:=0;
-   MeshVertex^.MaterialID:=0;
-   MeshVertex^.Flags:=0;
-   MeshVertex^.Position:=SAMVertex^.Position;
-// UnpackUInt16QTangentSpace(SAMVertex^.TangentSpace,Tangent,Bitangent,Normal);
-// DecodeTangentSpaceFromRGB10A2SNorm(SAMVertex^.TangentSpace,Tangent,Bitangent,Normal);
-   MeshVertex^.SetTangentSpaceVectors(SAMVertex^.Tangent,SAMVertex^.Bitangent,SAMVertex^.Normal);
-   MeshVertex^.TexCoord0:=TpvVector2.Create(aSourceModel.TexCoords[VertexIndex].x/16384.0,aSourceModel.TexCoords[VertexIndex].y/16384.0);
-   MeshVertex^.TexCoord1:=TpvVector2.Origin;
-   MeshVertex^.Color0.r:=1.0;
-   MeshVertex^.Color0.g:=1.0;
-   MeshVertex^.Color0.b:=1.0;
-   MeshVertex^.Color0.a:=1.0;
-   MeshVertex^.MorphTargetVertexBaseIndex:=TpvUInt32($ffffffff);
-   MeshVertex^.JointBlockBaseIndex:=0;
-   MeshVertex^.CountJointBlocks:=0;
+  // Create node and add it to the scene
+  Node:=CreateNode('plant');
+  Scene.Nodes.Add(Node);
 
-   // Create morph target vertices for this vertex
+  // Create mesh
+  Mesh:=CreateMesh('plant');
+
+  // Create mesh primitives
+  MeshPrimitives:=nil;
+  try
+
+   // Create mesh primities and set material to mesh primitives
+   SetLength(MeshPrimitives,aSourceModel.Materials.Count);
+   for MaterialIndex:=0 to aSourceModel.Materials.Count-1 do begin
+
+    MeshPrimitive:=Mesh.CreatePrimitive;
+
+    MeshPrimitives[MaterialIndex]:=MeshPrimitive;
+
+    Material:=Materials[MaterialIndex];
+
+    MeshPrimitive.MaterialID:=AddMaterial(Material);
+    MeshPrimitive.Material:=Material;
+
+    // Triangles
+    MeshPrimitive.PrimitiveTopology:=TpvScene3D.TPrimitiveTopology.Triangles;
+   end;
+
+   // Create initial morph target weights and calculate count of morph targets
+   Mesh.fCountMorphTargets:=0;
    MorphWeightIndex:=0;
+   Node.fWeights.ClearNoFree;
    for AnimationIndex:=0 to length(aSourceModel.Animations)-1 do begin
     for FrameIndex:=0 to length(aSourceModel.Animations[AnimationIndex].Frames)-1 do begin
-     SAMVertex:=@aSourceModel.Animations[AnimationIndex].Frames[FrameIndex].FullVertices[VertexIndex];
-     TargetVertex:=@MeshPrimitive.fTargets[MorphWeightIndex].fVertices.ItemArray[VertexIndex];
-     TargetVertex^.Position:=SAMVertex^.Position-MeshVertex^.Position;
-   //UnpackUInt16QTangentSpace(SAMVertex^.TangentSpace,Tangent,Bitangent,Normal);
-   //DecodeTangentSpaceFromRGB10A2SNorm(SAMVertex^.TangentSpace,Tangent,Bitangent,Normal);
-     TargetVertex^.Normal:=SAMVertex^.Normal-OctDecode(MeshVertex^.Normal);
-     TargetVertex^.Tangent:=SAMVertex^.Tangent-OctDecode(MeshVertex^.Tangent);
+     Node.fWeights.Add(0.0);
      inc(MorphWeightIndex);
+     inc(Mesh.fCountMorphTargets);
+    end;
+   end;
+   Node.fWeights.Finish;
+
+   // Clear morph target vertices
+   fMorphTargetVertices.ClearNoFree;
+
+   // Create morph targets
+   for AnimationIndex:=0 to length(aSourceModel.Animations)-1 do begin
+    for FrameIndex:=0 to length(aSourceModel.Animations[AnimationIndex].Frames)-1 do begin
+     Target:=TpvScene3D.TGroup.TMesh.TPrimitive.TTarget.Create;
+     try
+      Target.fVertices.Resize(aSourceModel.FileHeader.CountVertices);
+     finally
+      MeshPrimitive.fTargets.Add(Target);
+     end;
     end;
    end;
 
+   for AnimationIndex:=0 to length(aSourceModel.Animations)-1 do begin
+    for FrameIndex:=0 to length(aSourceModel.Animations[AnimationIndex].Frames)-1 do begin
+     aSourceModel.Animations[AnimationIndex].Frames[FrameIndex].Unpack;
+    end;
+   end;
+
+   // Create vertices
+   for VertexIndex:=0 to TpvSizeInt(aSourceModel.FileHeader.CountVertices)-1 do begin
+
+    SAMVertex:=@aSourceModel.Animations[0].Frames[0].FullVertices[VertexIndex];
+
+    MeshVertex:=MeshPrimitive.AddIndirectVertex;
+    MeshVertex^.NodeIndex:=0;
+    MeshVertex^.MaterialID:=0;
+    MeshVertex^.Flags:=0;
+    MeshVertex^.Position:=SAMVertex^.Position;
+ // UnpackUInt16QTangentSpace(SAMVertex^.TangentSpace,Tangent,Bitangent,Normal);
+ // DecodeTangentSpaceFromRGB10A2SNorm(SAMVertex^.TangentSpace,Tangent,Bitangent,Normal);
+    MeshVertex^.SetTangentSpaceVectors(SAMVertex^.Tangent,SAMVertex^.Bitangent,SAMVertex^.Normal);
+    MeshVertex^.TexCoord0:=TpvVector2.Create(aSourceModel.VertexTexCoords[VertexIndex].x/16384.0,aSourceModel.VertexTexCoords[VertexIndex].y/16384.0);
+    MeshVertex^.TexCoord1:=TpvVector2.Origin;
+    MeshVertex^.Color0.r:=1.0;
+    MeshVertex^.Color0.g:=1.0;
+    MeshVertex^.Color0.b:=1.0;
+    MeshVertex^.Color0.a:=1.0;
+    MeshVertex^.MorphTargetVertexBaseIndex:=TpvUInt32($ffffffff);
+    MeshVertex^.JointBlockBaseIndex:=0;
+    MeshVertex^.CountJointBlocks:=0;
+
+    // Create morph target vertices for this vertex
+    MorphWeightIndex:=0;
+    for AnimationIndex:=0 to length(aSourceModel.Animations)-1 do begin
+     for FrameIndex:=0 to length(aSourceModel.Animations[AnimationIndex].Frames)-1 do begin
+      SAMVertex:=@aSourceModel.Animations[AnimationIndex].Frames[FrameIndex].FullVertices[VertexIndex];
+      TargetVertex:=@MeshPrimitive.fTargets[MorphWeightIndex].fVertices.ItemArray[VertexIndex];
+      TargetVertex^.Position:=SAMVertex^.Position-MeshVertex^.Position;
+    //UnpackUInt16QTangentSpace(SAMVertex^.TangentSpace,Tangent,Bitangent,Normal);
+    //DecodeTangentSpaceFromRGB10A2SNorm(SAMVertex^.TangentSpace,Tangent,Bitangent,Normal);
+      TargetVertex^.Normal:=SAMVertex^.Normal-OctDecode(MeshVertex^.Normal);
+      TargetVertex^.Tangent:=SAMVertex^.Tangent-OctDecode(MeshVertex^.Tangent);
+      inc(MorphWeightIndex);
+     end;
+    end;
+
+   end;
+
+   // Create indices
+   for IndexIndex:=0 to TpvSizeInt(aSourceModel.FileHeader.CountIndices)-1 do begin
+    MeshPrimitive:=MeshPrimitives[aSourceModel.VertexMaterials[aSourceModel.Indices[IndexIndex]]];
+    MeshPrimitive.AddIndex(aSourceModel.Indices[IndexIndex]);
+   end;
+
+   for MaterialIndex:=0 to aSourceModel.Materials.Count-1 do begin
+    MeshPrimitive:=MeshPrimitives[MaterialIndex];
+    MeshPrimitive.Finish;
+   end;
+
+  finally
+
+   MeshPrimitives:=nil;
+
   end;
 
-  // Create indices
-  for IndexIndex:=0 to TpvSizeInt(aSourceModel.FileHeader.CountIndices)-1 do begin
-   MeshPrimitive.AddIndex(aSourceModel.Indices[IndexIndex]);
+  // Finalize the mesh
+  Mesh.Finish;
+
+  // Set the mesh as the node's mesh
+  Node.Mesh:=Mesh;
+
+  // Finalize the node
+  Node.Finish;
+
+ //Scene.Finish;
+  fScene:=Scene;
+
+  GlobalFrameIndex:=0;
+
+  for AnimationIndex:=0 to length(aSourceModel.Animations)-1 do begin
+
+   Animation:=CreateAnimation(Name);
+
+   AnimationChannel:=Animation.CreateChannel(Name);
+   AnimationChannel.fInterpolation:=TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.Linear;
+   AnimationChannel.fTarget:=TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Weights;
+   AnimationChannel.fTargetIndex:=Node.Index;
+   SetLength(AnimationChannel.fInputTimeArray,length(aSourceModel.Animations[AnimationIndex].Frames));
+   SetLength(AnimationChannel.fOutputScalarArray,length(aSourceModel.Animations[AnimationIndex].Frames)*Node.fWeights.Count);
+
+   for FrameIndex:=0 to length(aSourceModel.Animations[AnimationIndex].Frames)-1 do begin
+    AnimationChannel.fInputTimeArray[FrameIndex]:=aSourceModel.Animations[AnimationIndex].Frames[FrameIndex].Time;
+    for WeightIndex:=0 to Node.fWeights.Count-1 do begin
+     AnimationChannel.fOutputScalarArray[(FrameIndex*Node.fWeights.Count)+WeightIndex]:=IfThen(WeightIndex=GlobalFrameIndex,1.0,0.0);
+    end;
+    inc(GlobalFrameIndex);
+   end;
+
+   Animation.Finish;
+
   end;
+
+  Finish;
 
  finally
-
-  // Finalize the mesh primitive 
-  MeshPrimitive.Finish;
-
+  Materials:=nil;
  end;
-
- // Finalize the mesh
- Mesh.Finish;
-
- // Set the mesh as the node's mesh
- Node.Mesh:=Mesh;
-
- // Finalize the node
- Node.Finish;
-
-//Scene.Finish;
- fScene:=Scene;
-
- GlobalFrameIndex:=0;
-
- for AnimationIndex:=0 to length(aSourceModel.Animations)-1 do begin
-
-  Animation:=CreateAnimation(Name);
-
-  AnimationChannel:=Animation.CreateChannel(Name);
-  AnimationChannel.fInterpolation:=TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.Linear;
-  AnimationChannel.fTarget:=TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Weights;
-  AnimationChannel.fTargetIndex:=Node.Index;
-  SetLength(AnimationChannel.fInputTimeArray,length(aSourceModel.Animations[AnimationIndex].Frames));
-  SetLength(AnimationChannel.fOutputScalarArray,length(aSourceModel.Animations[AnimationIndex].Frames)*Node.fWeights.Count);
-
-  for FrameIndex:=0 to length(aSourceModel.Animations[AnimationIndex].Frames)-1 do begin
-   AnimationChannel.fInputTimeArray[FrameIndex]:=aSourceModel.Animations[AnimationIndex].Frames[FrameIndex].Time;
-   for WeightIndex:=0 to Node.fWeights.Count-1 do begin
-    AnimationChannel.fOutputScalarArray[(FrameIndex*Node.fWeights.Count)+WeightIndex]:=IfThen(WeightIndex=GlobalFrameIndex,1.0,0.0);
-   end;
-   inc(GlobalFrameIndex);
-  end;
-
-  Animation.Finish;
-
- end;
-
- Finish;
 
 end;
 
