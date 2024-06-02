@@ -585,7 +585,7 @@ begin
  OutputFileName:='';
 
  Index:=1;
- while Index<ParamCount do begin
+ while Index<=ParamCount do begin
   Parameter:=ParamStr(Index);
   inc(Index);
   if length(Parameter)>0 then begin
