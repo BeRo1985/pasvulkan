@@ -293,7 +293,7 @@ var Index,FrameIndex,VertexIndex,BaseColorTextureIndex,NormalTextureIndex,
     Stream:TMemoryStream;
     BaseColorFactor:TpvVector4;
     MetallicRoughnessFactor:TpvVector2;
-    NormalScale,OcclusionStrength:TpvFloat;
+    NormalScale,OcclusionStrength,AlphaCutOff:TpvFloat;
     EmissiveFactor:TpvVector3;
     First:boolean;
     GLTFBakedVertexIndexedMeshVertex:TpvGLTF.PVertex;
@@ -379,6 +379,7 @@ begin
         MetallicRoughnessFactor:=TpvVector2.Create(1.0,1.0);
         NormalScale:=1.0;
         OcclusionStrength:=1.0;
+        AlphaCutOff:=1.0;
         EmissiveFactor:=TpvVector3.Create(1.0,1.0,1.0);
 
         GLTFMaterial:=@GLTF.Materials[MaterialIndex];
@@ -391,6 +392,7 @@ begin
         OcclusionTextureIndex:=GLTFMaterial^.OcclusionTexture.Index;
         NormalScale:=GLTFMaterial^.NormalTextureScale;
         OcclusionStrength:=GLTFMaterial^.OcclusionTextureStrength;
+        AlphaCutOff:=GLTFMaterial^.AlphaCutOff;
         EmissiveTextureIndex:=GLTFMaterial^.EmissiveTexture.Index;
         EmissiveFactor:=TpvVector3(Pointer(@GLTFMaterial^.EmissiveFactor)^);
 
@@ -449,10 +451,34 @@ begin
          end;
         end;
 
-        SAMMaterial.MaterialHeader.MaterialType:=TpvSAM.TMaterialHeader.MaterialTypeMetallicRoughness;
+        case GLTFMaterial^.ShadingModel of
+         TpvGLTF.TMaterial.TShadingModel.PBRMetallicRoughness:begin
+          SAMMaterial.MaterialHeader.MaterialType:=TpvSAM.TMaterialHeader.MaterialTypeMetallicRoughness;
+         end;
+         else begin
+          SAMMaterial.MaterialHeader.MaterialType:=TpvSAM.TMaterialHeader.MaterialTypeUnlit;
+         end;
+        end;
+
+        case GLTFMaterial^.AlphaMode of
+         TPasGLTF.TMaterial.TAlphaMode.Mask:begin
+          SAMMaterial.MaterialHeader.AlphaModeFlags:=TpvSAM.TMaterialHeader.AlphaModeMask;
+         end;
+         TPasGLTF.TMaterial.TAlphaMode.Blend:begin
+          SAMMaterial.MaterialHeader.AlphaModeFlags:=TpvSAM.TMaterialHeader.AlphaModeBlend;
+         end;
+         else begin
+          SAMMaterial.MaterialHeader.AlphaModeFlags:=TpvSAM.TMaterialHeader.AlphaModeOpaque;
+         end;
+        end;
+
+        if GLTFMaterial^.DoubleSided then begin
+         SAMMaterial.MaterialHeader.AlphaModeFlags:=SAMMaterial.MaterialHeader.AlphaModeFlags or TpvSAM.TMaterialHeader.FlagDoubleSided;
+        end;
+
         SAMMaterial.MaterialHeader.BaseColorFactor:=BaseColorFactor;
         SAMMaterial.MaterialHeader.EmissiveFactorOcclusionStrength:=TpvVector4.Create(EmissiveFactor.x,EmissiveFactor.y,EmissiveFactor.z,OcclusionStrength);
-        SAMMaterial.MaterialHeader.MetallicRoughnessFactorNormalScale:=TpvVector4.Create(MetallicRoughnessFactor.x,MetallicRoughnessFactor.y,NormalScale,0.0);
+        SAMMaterial.MaterialHeader.MetallicRoughnessFactorNormalScaleAlphaCutOff:=TpvVector4.Create(MetallicRoughnessFactor.x,MetallicRoughnessFactor.y,NormalScale,AlphaCutOff);
 
        finally
         SAM.Materials.Add(SAMMaterial);

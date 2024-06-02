@@ -95,11 +95,17 @@ type EpvSAM=class(Exception);
              public
               const MaterialTypeUnlit=0;
                     MaterialTypeMetallicRoughness=1;
+                    AlphaModeOpaque=0;
+                    AlphaModeMask=1;
+                    AlphaModeBlend=2;
+                    FlagAlphaModeMask=3;
+                    FlagDoubleSided=1 shl 3;
              public
               MaterialType:TpvUInt32;
+              AlphaModeFlags:TpvUInt32; // 2 bits Alpha mode, 1 bit double side
               BaseColorFactor:TpvVector4;
               EmissiveFactorOcclusionStrength:TpvVector4; // xyz = EmissiveFactor, w = OcclusionStrength
-              MetallicRoughnessFactorNormalScale:TpvVector4; // x = MetallicFactor, y = RoughnessFactor, zw = Reversed
+              MetallicRoughnessFactorNormalScaleAlphaCutOff:TpvVector4; // x = MetallicFactor, y = RoughnessFactor, z = normal scale, w = alpha cutoff
               BaseColorTextureSize:TpvUInt32;
               NormalTextureSize:TpvUInt32;
               MetallicRoughnessTextureSize:TpvUInt32;
