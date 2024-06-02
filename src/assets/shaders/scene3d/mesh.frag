@@ -68,21 +68,20 @@ layout(location = 0) in vec3 inWorldSpacePosition;
 #endif
 layout(location = 1) in vec3 inViewSpacePosition;
 layout(location = 2) in vec3 inCameraRelativePosition;
-layout(location = 3) in vec3 inTangent;
-layout(location = 4) in vec3 inBitangent;
-layout(location = 5) in vec3 inNormal;
-layout(location = 6) in vec2 inTexCoord0;
-layout(location = 7) in vec2 inTexCoord1;
-layout(location = 8) in vec4 inColor0;
-layout(location = 9) in vec3 inModelScale;
-layout(location = 10) flat in uint inMaterialID;
-layout(location = 11) flat in vec3 inAABBMin;
-layout(location = 12) flat in vec3 inAABBMax;
-layout(location = 13) flat in uint inCascadeIndex; 
-layout(location = 14) in vec3 inVoxelPosition; 
-layout(location = 15) flat in vec3 inVertex0;
-layout(location = 16) flat in vec3 inVertex1;
-layout(location = 17) flat in vec3 inVertex2;
+layout(location = 3) in vec4 inTangentSign;
+layout(location = 4) in vec3 inNormal;
+layout(location = 5) in vec2 inTexCoord0;
+layout(location = 6) in vec2 inTexCoord1;
+layout(location = 7) in vec4 inColor0;
+layout(location = 8) in vec3 inModelScale;
+layout(location = 9) flat in uint inMaterialID;
+layout(location = 10) flat in vec3 inAABBMin;
+layout(location = 11) flat in vec3 inAABBMax;
+layout(location = 12) flat in uint inCascadeIndex; 
+layout(location = 13) in vec3 inVoxelPosition; 
+layout(location = 14) flat in vec3 inVertex0;
+layout(location = 15) flat in vec3 inVertex1;
+layout(location = 16) flat in vec3 inVertex2;
 #else
 #ifdef HAVE_PERVERTEX
 layout(location = 0) pervertexEXT in vec3 inWorldSpacePositionPerVertex[];
@@ -91,23 +90,22 @@ layout(location = 0) in vec3 inWorldSpacePosition;
 #endif
 layout(location = 1) in vec3 inViewSpacePosition;
 layout(location = 2) in vec3 inCameraRelativePosition;
-layout(location = 3) in vec3 inTangent;
-layout(location = 4) in vec3 inBitangent;
-layout(location = 5) in vec3 inNormal;
-layout(location = 6) in vec2 inTexCoord0;
-layout(location = 7) in vec2 inTexCoord1;
-layout(location = 8) in vec4 inColor0;
-layout(location = 9) in vec3 inModelScale;
-layout(location = 10) flat in uint inMaterialID;
-layout(location = 11) flat in int inViewIndex;
-layout(location = 12) flat in uint inFrameIndex;
+layout(location = 3) in vec4 inTangentSign;
+layout(location = 4) in vec3 inNormal;
+layout(location = 5) in vec2 inTexCoord0;
+layout(location = 6) in vec2 inTexCoord1;
+layout(location = 7) in vec4 inColor0;
+layout(location = 8) in vec3 inModelScale;
+layout(location = 9) flat in uint inMaterialID;
+layout(location = 10) flat in int inViewIndex;
+layout(location = 11) flat in uint inFrameIndex;
 
 #ifdef VELOCITY
-layout(location = 13) flat in vec4 inJitter;
-layout(location = 14) in vec4 inPreviousClipSpace;
-layout(location = 15) in vec4 inCurrentClipSpace;
+layout(location = 12) flat in vec4 inJitter;
+layout(location = 13) in vec4 inPreviousClipSpace;
+layout(location = 14) in vec4 inCurrentClipSpace;
 #else
-layout(location = 13) flat in vec2 inJitter;
+layout(location = 12) flat in vec2 inJitter;
 #endif // VELOCITY
 
 #endif // VOXELIZATION
@@ -443,9 +441,18 @@ void main() {
   {
     // For double sided triangles in the back-facing case, the normal, tangent and bitangent vectors need to be flipped.
     float frontFacingSign = gl_FrontFacing ? 1.0 : -1.0;   
-    workTangent = inTangent * frontFacingSign;
-    workBitangent = inBitangent * frontFacingSign;
-    workNormal = inNormal * frontFacingSign;
+
+    // After vertex interpolation, the normal vector may not be normalized anymore, so it needs to be normalized. 
+    vec3 normalizedNormal = normalize(inNormal); 
+
+    // After vertex interpolation, the tangent vector may not be orthogonal to the normal vector anymore, so it needs to be orthonormalized in 
+    // a quick&dirty but often good enough way.
+    vec3 orthonormalizedTangent = normalize(inTangentSign.xyz - (normalizedNormal * dot(normalizedNormal, inTangentSign.xyz))); 
+
+    workTangent = orthonormalizedTangent * frontFacingSign;
+    workBitangent = cross(normalizedNormal, orthonormalizedTangent) * inTangentSign.w * frontFacingSign;
+    workNormal = normalizedNormal * frontFacingSign;
+
   }
 #ifdef RAYTRACING
   // The geometric normal is needed for raytracing ray offseting 

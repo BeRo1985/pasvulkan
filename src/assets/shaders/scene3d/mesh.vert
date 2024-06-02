@@ -33,23 +33,22 @@ layout(location = 10) in uint inPreviousGeneration;
 layout(location = 0) out vec3 outWorldSpacePosition;
 layout(location = 1) out vec3 outViewSpacePosition;
 layout(location = 2) out vec3 outCameraRelativePosition;
-layout(location = 3) out vec3 outTangent;
-layout(location = 4) out vec3 outBitangent;
-layout(location = 5) out vec3 outNormal;
-layout(location = 6) out vec2 outTexCoord0;
-layout(location = 7) out vec2 outTexCoord1;
-layout(location = 8) out vec4 outColor0;
-layout(location = 9) out vec3 outModelScale;
-layout(location = 10) flat out uint outMaterialID;
+layout(location = 3) out vec4 outTangentSign;
+layout(location = 4) out vec3 outNormal;
+layout(location = 5) out vec2 outTexCoord0;
+layout(location = 6) out vec2 outTexCoord1;
+layout(location = 7) out vec4 outColor0;
+layout(location = 8) out vec3 outModelScale;
+layout(location = 9) flat out uint outMaterialID;
 #ifndef VOXELIZATION
-layout(location = 11) flat out int outViewIndex;
-layout(location = 12) flat out uint outFrameIndex;
+layout(location = 10) flat out int outViewIndex;
+layout(location = 11) flat out uint outFrameIndex;
 #ifdef VELOCITY
-layout(location = 13) flat out vec4 outJitter;
-layout(location = 14) out vec4 outPreviousClipSpace;
-layout(location = 15) out vec4 outCurrentClipSpace;
+layout(location = 12) flat out vec4 outJitter;
+layout(location = 13) out vec4 outPreviousClipSpace;
+layout(location = 14) out vec4 outCurrentClipSpace;
 #else
-layout(location = 13) flat out vec2 outJitter;
+layout(location = 12) flat out vec2 outJitter;
 #endif // VELOCITY
 #endif // VOXELIZATION
 
@@ -105,12 +104,8 @@ void main() {
   {
     vec3 tangent = inTangent.xyz;
     vec3 normal = inNormalSign.xyz;
-    tangentSpace = mat3(tangent, normalize(cross(normal, tangent)) * inNormalSign.w, normal);
+    tangentSpace = mat3(normalize(tangent), normalize(cross(normal, tangent)) * inNormalSign.w, normalize(normal));
   }
-
-  tangentSpace[0] = normalize(tangentSpace[0]);
-  tangentSpace[1] = normalize(tangentSpace[1]);
-  tangentSpace[2] = normalize(tangentSpace[2]);
 
   View view = uView.views[viewIndex];
 
@@ -175,8 +170,8 @@ void main() {
   outWorldSpacePosition = worldSpacePosition;
   outViewSpacePosition = viewSpacePosition.xyz;
   outCameraRelativePosition = worldSpacePosition - cameraPosition;
-  outTangent = tangentSpace[0];
-  outBitangent = tangentSpace[1];
+  outTangentSign = vec4(tangentSpace[0], inNormalSign.w);
+  //outBitangent = tangentSpace[1];
   outNormal = tangentSpace[2];
   outTexCoord0 = inTexCoord0;
   outTexCoord1 = inTexCoord1;

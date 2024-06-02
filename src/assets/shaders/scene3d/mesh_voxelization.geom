@@ -11,33 +11,31 @@ layout(triangle_strip, max_vertices = 3) out;
 layout(location = 0) in vec3 inWorldSpacePosition[];
 layout(location = 1) in vec3 inViewSpacePosition[];
 layout(location = 2) in vec3 inCameraRelativePosition[];
-layout(location = 3) in vec3 inTangent[];
-layout(location = 4) in vec3 inBitangent[];
-layout(location = 5) in vec3 inNormal[];
-layout(location = 6) in vec2 inTexCoord0[];
-layout(location = 7) in vec2 inTexCoord1[];
-layout(location = 8) in vec4 inColor0[];
-layout(location = 9) in vec3 intModelScale[];
-layout(location = 10) flat in uint inMaterialID[];
+layout(location = 3) in vec4 inTangentSign[];
+layout(location = 4) in vec3 inNormal[];
+layout(location = 5) in vec2 inTexCoord0[];
+layout(location = 6) in vec2 inTexCoord1[];
+layout(location = 7) in vec4 inColor0[];
+layout(location = 8) in vec3 intModelScale[];
+layout(location = 9) flat in uint inMaterialID[];
 
 layout(location = 0) out vec3 outWorldSpacePosition;
 layout(location = 1) out vec3 outViewSpacePosition;
 layout(location = 2) out vec3 outCameraRelativePosition;
-layout(location = 3) out vec3 outTangent;
-layout(location = 4) out vec3 outBitangent;
-layout(location = 5) out vec3 outNormal;
-layout(location = 6) out vec2 outTexCoord0;
-layout(location = 7) out vec2 outTexCoord1;
-layout(location = 8) out vec4 outColor0;
-layout(location = 9) out vec3 outModelScale;
-layout(location = 10) flat out uint outMaterialID;
-layout(location = 11) flat out vec3 outAABBMin;
-layout(location = 12) flat out vec3 outAABBMax;
-layout(location = 13) flat out uint outCascadeIndex;
-layout(location = 14) out vec3 outVoxelPosition;
-layout(location = 15) flat out vec3 outVertex0;
-layout(location = 16) flat out vec3 outVertex1;
-layout(location = 17) flat out vec3 outVertex2;
+layout(location = 3) out vec4 outTangentSign;
+layout(location = 4) out vec3 outNormal;
+layout(location = 5) out vec2 outTexCoord0;
+layout(location = 6) out vec2 outTexCoord1;
+layout(location = 7) out vec4 outColor0;
+layout(location = 8) out vec3 outModelScale;
+layout(location = 9) flat out uint outMaterialID;
+layout(location = 10) flat out vec3 outAABBMin;
+layout(location = 11) flat out vec3 outAABBMax;
+layout(location = 12) flat out uint outCascadeIndex;
+layout(location = 13) out vec3 outVoxelPosition;
+layout(location = 14) flat out vec3 outVertex0;
+layout(location = 15) flat out vec3 outVertex1;
+layout(location = 16) flat out vec3 outVertex2;
 
 /*layout(location = 11) flat out vec3 outVertex0;
 layout(location = 12) flat out vec3 outVertex1;
@@ -127,8 +125,7 @@ void main(){
 
       outCameraRelativePosition = inCameraRelativePosition[currentVertexIndex];
           
-      outTangent = inTangent[currentVertexIndex];
-      outBitangent = inBitangent[currentVertexIndex];
+      outTangentSign = inTangentSign[currentVertexIndex];
       outNormal = inNormal[currentVertexIndex];
 
       outTexCoord0 = inTexCoord0[currentVertexIndex];

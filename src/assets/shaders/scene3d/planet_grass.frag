@@ -150,9 +150,31 @@ void main(){
 
   float sideSign = gl_FrontFacing ? 1.0 : -1.0;
 
-  vec3 workNormal = inBlock.normal.xyz * sideSign;
-  vec3 workTangent = inBlock.tangentSign.xyz;
-  vec3 workBitangent = cross(workNormal, workTangent) * inBlock.tangentSign.w;
+/*
+    // After vertex interpolation, the normal vector may not be normalized anymore, so it needs to be normalized. 
+    vec3 normalizedNormal = normalize(inNormal); 
+
+    // After vertex interpolation, the tangent vector may not be orthogonal to the normal vector anymore, so it needs to be orthonormalized in 
+    // a quick&dirty but often good enough way.
+    vec3 orthonormalizedTangent = normalize(inTangentSign.xyz - (normalizedNormal * dot(normalizedNormal, inTangentSign.xyz))); 
+
+    workTangent = orthonormalizedTangent * frontFacingSign;
+    workBitangent = cross(normalizedNormal, orthonormalizedTangent) * inTangentSign.w * frontFacingSign;
+    workNormal = normalizedNormal * frontFacingSign;
+
+*/
+
+  // After vertex interpolation, the normal vector may not be normalized anymore, so it needs to be normalized. 
+  vec3 normalizedNormal = normalize(inBlock.normal);
+
+  // After vertex interpolation, the tangent vector may not be orthogonal to the normal vector anymore, so it needs to be orthonormalized in
+  // a quick&dirty but often good enough way.
+  vec3 orthonormalizedTangent = normalize(inBlock.tangentSign.xyz - (normalizedNormal * dot(normalizedNormal, inBlock.tangentSign.xyz)));
+
+  vec3 workTangent = orthonormalizedTangent * sideSign;
+  vec3 workBitangent = cross(normalizedNormal, orthonormalizedTangent) * inBlock.tangentSign.w * sideSign;
+  vec3 workNormal = normalizedNormal * sideSign;
+
 //workNormal = normalize(cross(dFdyFine(inBlock.cameraRelativePosition), dFdxFine(inBlock.cameraRelativePosition))); // * sideSign;
 /*vec3 workTangent = normalize(cross((abs(workNormal.y) < 0.999999) ? vec3(0.0, 1.0, 0.0) : vec3(0.0, 0.0, 1.0), workNormal));
   vec3 workBitangent = normalize(cross(workNormal, workTangent));*/
