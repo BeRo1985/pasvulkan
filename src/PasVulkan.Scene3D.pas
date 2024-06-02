@@ -15311,6 +15311,7 @@ begin
 
     // Triangles
     MeshPrimitive.PrimitiveTopology:=TpvScene3D.TPrimitiveTopology.Triangles;
+
    end;
 
    // Create initial morph target weights and calculate count of morph targets
@@ -15420,7 +15421,7 @@ begin
 
   for AnimationIndex:=0 to length(aSourceModel.Animations)-1 do begin
 
-   Animation:=CreateAnimation(Name);
+   Animation:=CreateAnimation(aSourceModel.Animations[AnimationIndex].Name);
 
    AnimationChannel:=Animation.CreateChannel(Name);
    AnimationChannel.fInterpolation:=TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.Linear;

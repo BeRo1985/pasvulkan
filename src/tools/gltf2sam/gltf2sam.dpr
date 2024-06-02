@@ -491,6 +491,13 @@ begin
        end;
       end;
 
+      // Pack animations
+      for Index:=0 to length(SAM.Animations)-1 do begin
+       for FrameIndex:=0 to length(SAM.Animations[Index].Frames)-1 do begin
+        SAM.Animations[Index].Frames[FrameIndex].Pack;
+       end;
+      end;
+
       // Get bounding sphere
       BoundingSphere:=TpvSphere.CreateFromAABB(BoundingBox);
 
@@ -509,45 +516,6 @@ begin
        SAM.FileHeader.BoundingBoxMax:=BoundingBox.Max;
        SAM.FileHeader.BoundingSphere:=TpvVector4.InlineableCreate(BoundingSphere.Center,BoundingSphere.Radius);
 
-{      FileHeader.MaterialHeader.MaterialType:=TpvSAM.TMaterialHeader.MaterialTypeMetallicRoughness;
-       FileHeader.MaterialHeader.BaseColorFactor:=BaseColorFactor;
-       FileHeader.MaterialHeader.EmissiveFactorOcclusionStrength:=TpvVector4.Create(EmissiveFactor.x,EmissiveFactor.y,EmissiveFactor.z,OcclusionStrength);
-       FileHeader.MaterialHeader.MetallicRoughnessFactorNormalScale:=TpvVector4.Create(MetallicRoughnessFactor.x,MetallicRoughnessFactor.y,NormalScale,0.0);
-       FileHeader.MaterialHeader.BaseColorTextureSize:=length(BaseColorTextureData);
-       FileHeader.MaterialHeader.NormalTextureSize:=length(NormalTextureData);
-       FileHeader.MaterialHeader.MetallicRoughnessTextureSize:=length(MetallicRoughnessTextureData);
-       FileHeader.MaterialHeader.OcclusionTextureSize:=length(OcclusionTextureData);
-       FileHeader.MaterialHeader.EmissiveTextureSize:=length(EmissiveTextureData);
-
-       // Write file header
-       Stream.WriteBuffer(FileHeader,SizeOf(TpvSAM.TFileHeader));
-
-       // Write indices globally
-       Stream.WriteBuffer(Indices[0],SizeOf(TpvSAM.TIndex)*CountUsedIndices);
-
-       // Write texcoords globally
-       Stream.WriteBuffer(TexCoords[0],SizeOf(TpvUInt16Vector2)*CountUsedVertices);
-
-       // Write vertices from all animations
-       for Index:=0 to length(Animations)-1 do begin
-        ui32:=length(Animations[Index].Name);
-        Stream.WriteBuffer(ui32,SizeOf(TpvUInt32));
-        if ui32>0 then begin
-         Stream.WriteBuffer(Animations[Index].Name[1],ui32);
-        end;
-        Stream.WriteBuffer(Animations[Index].StartTime,SizeOf(TpvDouble));
-        Stream.WriteBuffer(Animations[Index].EndTime,SizeOf(TpvDouble));
-        CountFrames:=length(Animations[Index].Frames);
-        Stream.WriteBuffer(CountFrames,SizeOf(TpvUInt32));
-        for FrameIndex:=0 to length(Animations[Index].Frames)-1 do begin
-         Animations[Index].Frames[FrameIndex].Pack;
-         Stream.WriteBuffer(Animations[Index].Frames[FrameIndex].Time,SizeOf(TpvDouble));
-         if CountUsedVertices>0 then begin
-          Stream.WriteBuffer(Animations[Index].Frames[FrameIndex].Vertices[0],SizeOf(TpvSAM.TVertex)*CountUsedVertices);
-         end;
-        end;
-       end;
-//}
        SAM.SaveToStream(Stream);
 
        // Save to file

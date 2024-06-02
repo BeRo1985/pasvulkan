@@ -296,38 +296,6 @@ begin
   raise EpvSAM.Create('Invalid or not supported SAM version');
  end;
 
- if FileHeader.CountMaterials>0 then begin
-  for MaterialIndex:=0 to TpvSizeInt(FileHeader.CountMaterials)-1 do begin
-   Material:=TMaterial.Create;
-   try
-    aStream.ReadBuffer(ui32,SizeOf(TpvUInt32));
-    Material.Name:='';
-    if ui32>0 then begin
-     SetLength(Material.fName,ui32);
-     aStream.ReadBuffer(Material.fName[1],ui32);
-    end;
-    aStream.ReadBuffer(Material.fMaterialHeader,SizeOf(TpvSAM.TMaterialHeader));
-    if Material.MaterialHeader.BaseColorTextureSize>0 then begin
-     Material.BaseColorTextureStream.CopyFrom(aStream,Material.MaterialHeader.BaseColorTextureSize);
-    end;
-    if Material.MaterialHeader.NormalTextureSize>0 then begin
-     Material.NormalTextureStream.CopyFrom(aStream,Material.MaterialHeader.NormalTextureSize);
-    end;
-    if Material.MaterialHeader.MetallicRoughnessTextureSize>0 then begin
-     Material.MetallicRoughnessTextureStream.CopyFrom(aStream,Material.MaterialHeader.MetallicRoughnessTextureSize);
-    end;
-    if Material.MaterialHeader.OcclusionTextureSize>0 then begin
-     Material.OcclusionTextureStream.CopyFrom(aStream,Material.MaterialHeader.OcclusionTextureSize);
-    end;
-    if Material.MaterialHeader.EmissiveTextureSize>0 then begin
-     Material.EmissiveTextureStream.CopyFrom(aStream,Material.MaterialHeader.EmissiveTextureSize);
-    end;
-   finally
-    Materials.Add(Material);
-   end;
-  end;
- end;
-
  if FileHeader.CountIndices>0 then begin
   SetLength(Indices,FileHeader.CountIndices);
   aStream.ReadBuffer(Indices[0],SizeOf(TpvSAM.TIndex)*FileHeader.CountIndices);
@@ -367,6 +335,38 @@ begin
   end;
  end;
 
+ if FileHeader.CountMaterials>0 then begin
+  for MaterialIndex:=0 to TpvSizeInt(FileHeader.CountMaterials)-1 do begin
+   Material:=TMaterial.Create;
+   try
+    aStream.ReadBuffer(ui32,SizeOf(TpvUInt32));
+    Material.Name:='';
+    if ui32>0 then begin
+     SetLength(Material.fName,ui32);
+     aStream.ReadBuffer(Material.fName[1],ui32);
+    end;
+    aStream.ReadBuffer(Material.fMaterialHeader,SizeOf(TpvSAM.TMaterialHeader));
+    if Material.MaterialHeader.BaseColorTextureSize>0 then begin
+     Material.BaseColorTextureStream.CopyFrom(aStream,Material.MaterialHeader.BaseColorTextureSize);
+    end;
+    if Material.MaterialHeader.NormalTextureSize>0 then begin
+     Material.NormalTextureStream.CopyFrom(aStream,Material.MaterialHeader.NormalTextureSize);
+    end;
+    if Material.MaterialHeader.MetallicRoughnessTextureSize>0 then begin
+     Material.MetallicRoughnessTextureStream.CopyFrom(aStream,Material.MaterialHeader.MetallicRoughnessTextureSize);
+    end;
+    if Material.MaterialHeader.OcclusionTextureSize>0 then begin
+     Material.OcclusionTextureStream.CopyFrom(aStream,Material.MaterialHeader.OcclusionTextureSize);
+    end;
+    if Material.MaterialHeader.EmissiveTextureSize>0 then begin
+     Material.EmissiveTextureStream.CopyFrom(aStream,Material.MaterialHeader.EmissiveTextureSize);
+    end;
+   finally
+    Materials.Add(Material);
+   end;
+  end;
+ end;
+
 end;
 
 procedure TpvSAM.TModel.LoadFromFile(const aFileName:TpvUTF8String);
@@ -396,6 +396,28 @@ begin
 
  aStream.WriteBuffer(FileHeader,SizeOf(TpvSAM.TFileHeader));
 
+ aStream.WriteBuffer(Indices[0],SizeOf(TpvSAM.TIndex)*FileHeader.CountIndices);
+ 
+ aStream.WriteBuffer(VertexTexCoords[0],SizeOf(TpvUInt16Vector2)*FileHeader.CountVertices);
+ 
+ aStream.WriteBuffer(VertexMaterials[0],SizeOf(TpvUInt32)*FileHeader.CountVertices);
+ 
+ for AnimationIndex:=0 to length(Animations)-1 do begin
+  ui32:=length(Animations[AnimationIndex].Name);
+  aStream.WriteBuffer(ui32,SizeOf(TpvUInt32));
+  if ui32>0 then begin
+   aStream.WriteBuffer(Animations[AnimationIndex].Name[1],ui32);
+  end;
+  aStream.WriteBuffer(Animations[AnimationIndex].StartTime,SizeOf(TpvDouble));
+  aStream.WriteBuffer(Animations[AnimationIndex].EndTime,SizeOf(TpvDouble));
+  CountFrames:=length(Animations[AnimationIndex].Frames);
+  aStream.WriteBuffer(CountFrames,SizeOf(TpvInt32));
+  for FramesIndex:=0 to CountFrames-1 do begin
+   aStream.WriteBuffer(Animations[AnimationIndex].Frames[FramesIndex].Time,SizeOf(TpvDouble));
+   aStream.WriteBuffer(Animations[AnimationIndex].Frames[FramesIndex].Vertices[0],SizeOf(TpvSAM.TVertex)*FileHeader.CountVertices);
+  end;
+ end;
+
  for MaterialIndex:=0 to Materials.Count-1 do begin
   Material:=Materials[MaterialIndex];
   ui32:=length(Material.fName);
@@ -423,28 +445,6 @@ begin
   if Material.MaterialHeader.EmissiveTextureSize>0 then begin
    Material.EmissiveTextureStream.Seek(0,soBeginning);
    aStream.CopyFrom(Material.EmissiveTextureStream,Material.MaterialHeader.EmissiveTextureSize);
-  end;
- end;
- 
- aStream.WriteBuffer(Indices[0],SizeOf(TpvSAM.TIndex)*FileHeader.CountIndices);
- 
- aStream.WriteBuffer(VertexTexCoords[0],SizeOf(TpvUInt16Vector2)*FileHeader.CountVertices);
- 
- aStream.WriteBuffer(VertexMaterials[0],SizeOf(TpvUInt32)*FileHeader.CountVertices);
- 
- for AnimationIndex:=0 to length(Animations)-1 do begin
-  ui32:=length(Animations[AnimationIndex].Name);
-  aStream.WriteBuffer(ui32,SizeOf(TpvUInt32));
-  if ui32>0 then begin
-   aStream.WriteBuffer(Animations[AnimationIndex].Name[1],ui32);
-  end;
-  aStream.WriteBuffer(Animations[AnimationIndex].StartTime,SizeOf(TpvDouble));
-  aStream.WriteBuffer(Animations[AnimationIndex].EndTime,SizeOf(TpvDouble));
-  CountFrames:=length(Animations[AnimationIndex].Frames);
-  aStream.WriteBuffer(CountFrames,SizeOf(TpvInt32));
-  for FramesIndex:=0 to CountFrames-1 do begin
-   aStream.WriteBuffer(Animations[AnimationIndex].Frames[FramesIndex].Time,SizeOf(TpvDouble));
-   aStream.WriteBuffer(Animations[AnimationIndex].Frames[FramesIndex].Vertices[0],SizeOf(TpvSAM.TVertex)*FileHeader.CountVertices);
   end;
  end;
 
