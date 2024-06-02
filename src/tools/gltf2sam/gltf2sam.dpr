@@ -1,4 +1,4 @@
-program planetplantmodelconverter;
+program gltf2sam;
 {$ifdef fpc}
  {$mode delphi}
 {$endif}

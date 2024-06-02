@@ -9,7 +9,7 @@
         <MainUnitHasScaledStatement Value="False"/>
       </Flags>
       <SessionStorage Value="InProjectDir"/>
-      <Title Value="planetplantmodelconverter"/>
+      <Title Value="gltf2sam"/>
       <UseAppBundle Value="False"/>
       <ResourceType Value="res"/>
     </General>
@@ -25,7 +25,7 @@
     </RunParams>
     <Units>
       <Unit>
-        <Filename Value="planetplantmodelconverter.dpr"/>
+        <Filename Value="gltf2sam.dpr"/>
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
@@ -73,7 +73,7 @@
   <CompilerOptions>
     <Version Value="11"/>
     <Target>
-      <Filename Value="planetplantmodelconverter"/>
+      <Filename Value="gltf2sam"/>
     </Target>
     <SearchPaths>
       <IncludeFiles Value="$(ProjOutDir)"/>
