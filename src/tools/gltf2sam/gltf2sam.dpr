@@ -294,7 +294,7 @@ var Index,FrameIndex,VertexIndex,BaseColorTextureIndex,NormalTextureIndex,
     BaseColorFactor:TpvVector4;
     MetallicRoughnessFactor:TpvVector2;
     NormalScale,OcclusionStrength,AlphaCutOff:TpvFloat;
-    EmissiveFactor:TpvVector3;
+    EmissiveFactor:TpvVector4;
     First:boolean;
     GLTFBakedVertexIndexedMeshVertex:TpvGLTF.PVertex;
 begin
@@ -380,7 +380,7 @@ begin
         NormalScale:=1.0;
         OcclusionStrength:=1.0;
         AlphaCutOff:=1.0;
-        EmissiveFactor:=TpvVector3.Create(1.0,1.0,1.0);
+        EmissiveFactor:=TpvVector4.Create(0.0,0.0,0.0,1.0);
 
         GLTFMaterial:=@GLTF.Materials[MaterialIndex];
 
@@ -394,7 +394,7 @@ begin
         OcclusionStrength:=GLTFMaterial^.OcclusionTextureStrength;
         AlphaCutOff:=GLTFMaterial^.AlphaCutOff;
         EmissiveTextureIndex:=GLTFMaterial^.EmissiveTexture.Index;
-        EmissiveFactor:=TpvVector3(Pointer(@GLTFMaterial^.EmissiveFactor)^);
+        EmissiveFactor:=TpvVector4(Pointer(@GLTFMaterial^.EmissiveFactor)^);
 
         SAMMaterial.MaterialHeader.BaseColorTextureSize:=0;
         if BaseColorTextureIndex>=0 then begin
@@ -477,8 +477,12 @@ begin
         end;
 
         SAMMaterial.MaterialHeader.BaseColorFactor:=BaseColorFactor;
-        SAMMaterial.MaterialHeader.EmissiveFactorOcclusionStrength:=TpvVector4.Create(EmissiveFactor.x,EmissiveFactor.y,EmissiveFactor.z,OcclusionStrength);
-        SAMMaterial.MaterialHeader.MetallicRoughnessFactorNormalScaleAlphaCutOff:=TpvVector4.Create(MetallicRoughnessFactor.x,MetallicRoughnessFactor.y,NormalScale,AlphaCutOff);
+        SAMMaterial.MaterialHeader.EmissiveFactor:=TpvVector4.Create(EmissiveFactor.x,EmissiveFactor.y,EmissiveFactor.z,EmissiveFactor.w);
+        SAMMaterial.MaterialHeader.OcclusionStrength:=OcclusionStrength;
+        SAMMaterial.MaterialHeader.MetallicFactor:=MetallicRoughnessFactor.x;
+        SAMMaterial.MaterialHeader.RoughnessFactor:=MetallicRoughnessFactor.y;
+        SAMMaterial.MaterialHeader.NormalScale:=NormalScale;
+        SAMMaterial.MaterialHeader.AlphaCutOff:=AlphaCutOff;
 
        finally
         SAM.Materials.Add(SAMMaterial);

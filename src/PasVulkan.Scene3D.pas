@@ -15212,12 +15212,12 @@ begin
 
    Material.fData.DoubleSided:=(SourceMaterial.MaterialHeader.AlphaModeFlags and TpvSAM.TMaterialHeader.FlagDoubleSided)<>0;
    Material.fData.PBRMetallicRoughness.BaseColorFactor:=SourceMaterial.MaterialHeader.BaseColorFactor;
-   Material.fData.PBRMetallicRoughness.MetallicFactor:=SourceMaterial.MaterialHeader.MetallicRoughnessFactorNormalScaleAlphaCutOff.x;
-   Material.fData.PBRMetallicRoughness.RoughnessFactor:=SourceMaterial.MaterialHeader.MetallicRoughnessFactorNormalScaleAlphaCutOff.y;
-   Material.fData.EmissiveFactor:=TpvVector4.InlineableCreate(SourceMaterial.MaterialHeader.EmissiveFactorOcclusionStrength.xyz,1.0);
-   Material.fData.OcclusionTextureStrength:=SourceMaterial.MaterialHeader.EmissiveFactorOcclusionStrength.w;
-   Material.fData.NormalTextureScale:=SourceMaterial.MaterialHeader.MetallicRoughnessFactorNormalScaleAlphaCutOff.z;
-   Material.fData.AlphaCutOff:=SourceMaterial.MaterialHeader.MetallicRoughnessFactorNormalScaleAlphaCutOff.w;
+   Material.fData.PBRMetallicRoughness.MetallicFactor:=SourceMaterial.MaterialHeader.MetallicFactor;
+   Material.fData.PBRMetallicRoughness.RoughnessFactor:=SourceMaterial.MaterialHeader.RoughnessFactor;
+   Material.fData.EmissiveFactor:=SourceMaterial.MaterialHeader.EmissiveFactor;
+   Material.fData.OcclusionTextureStrength:=SourceMaterial.MaterialHeader.OcclusionStrength;
+   Material.fData.NormalTextureScale:=SourceMaterial.MaterialHeader.NormalScale;
+   Material.fData.AlphaCutOff:=SourceMaterial.MaterialHeader.AlphaCutOff;
 
    // Load textures if these exist
    if SourceMaterial.BaseColorTextureStream.Size>0 then begin

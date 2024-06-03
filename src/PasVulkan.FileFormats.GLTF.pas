@@ -438,7 +438,7 @@ type EpvGLTF=class(Exception);
               NormalTextureScale:TPasGLTFFloat;
               OcclusionTexture:TTexture;
               OcclusionTextureStrength:TPasGLTFFloat;
-              EmissiveFactor:TPasGLTF.TVector3;
+              EmissiveFactor:TPasGLTF.TVector4;
               EmissiveTexture:TTexture;
               PBRMetallicRoughness:TPBRMetallicRoughness;
               PBRSpecularGlossiness:TPBRSpecularGlossiness;
@@ -1944,7 +1944,10 @@ var HasLights:boolean;
     DestinationMaterial^.AlphaCutOff:=SourceMaterial.AlphaCutOff;
     DestinationMaterial^.AlphaMode:=SourceMaterial.AlphaMode;
     DestinationMaterial^.DoubleSided:=SourceMaterial.DoubleSided;
-    DestinationMaterial^.EmissiveFactor:=SourceMaterial.EmissiveFactor;
+    DestinationMaterial^.EmissiveFactor[0]:=SourceMaterial.EmissiveFactor[0];
+    DestinationMaterial^.EmissiveFactor[1]:=SourceMaterial.EmissiveFactor[1];
+    DestinationMaterial^.EmissiveFactor[2]:=SourceMaterial.EmissiveFactor[2];
+    DestinationMaterial^.EmissiveFactor[3]:=1.0;
     DestinationMaterial^.EmissiveTexture.Index:=SourceMaterial.EmissiveTexture.Index;
     DestinationMaterial^.EmissiveTexture.TexCoord:=SourceMaterial.EmissiveTexture.TexCoord;
     LoadTextureTransform(SourceMaterial.EmissiveTexture.Extensions,DestinationMaterial^.EmissiveTexture);
@@ -2086,6 +2089,12 @@ var HasLights:boolean;
     end;
    end;
 
+   JSONItem:=SourceMaterial.Extensions.Properties['KHR_materials_emissive_strength'];
+   if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
+    JSONObject:=TPasJSONItemObject(JSONItem);
+    DestinationMaterial^.EmissiveFactor[3]:=TPasJSON.GetNumber(JSONObject.Properties['emissiveStrength'],1.0);
+   end;
+
    begin
     UniformBufferObjectData:=@DestinationMaterial^.UniformBufferObjectData;
     UniformBufferObjectData^.Flags:=0;
@@ -2171,10 +2180,10 @@ var HasLights:boolean;
      UniformBufferObjectData^.Textures0:=(UniformBufferObjectData^.Textures0 and not ($f shl (4 shl 2))) or ((SourceMaterial.EmissiveTexture.TexCoord and $f) shl (4 shl 2));
      UniformBufferObjectData^.TextureTransforms[4]:=ConvertTextureTransformToMatrix(DestinationMaterial^.EmissiveTexture.TextureTransform);
     end;
-    UniformBufferObjectData^.EmissiveFactor[0]:=SourceMaterial.EmissiveFactor[0];
-    UniformBufferObjectData^.EmissiveFactor[1]:=SourceMaterial.EmissiveFactor[1];
-    UniformBufferObjectData^.EmissiveFactor[2]:=SourceMaterial.EmissiveFactor[2];
-    UniformBufferObjectData^.EmissiveFactor[3]:=0.0;
+    UniformBufferObjectData^.EmissiveFactor[0]:=DestinationMaterial^.EmissiveFactor[0];
+    UniformBufferObjectData^.EmissiveFactor[1]:=DestinationMaterial^.EmissiveFactor[1];
+    UniformBufferObjectData^.EmissiveFactor[2]:=DestinationMaterial^.EmissiveFactor[2];
+    UniformBufferObjectData^.EmissiveFactor[3]:=DestinationMaterial^.EmissiveFactor[3];
 
     if DestinationMaterial^.PBRSheen.Active then begin
      UniformBufferObjectData^.Flags:=UniformBufferObjectData^.Flags or (1 shl 6);

@@ -104,8 +104,12 @@ type EpvSAM=class(Exception);
               MaterialType:TpvUInt32;
               AlphaModeFlags:TpvUInt32; // 2 bits Alpha mode, 1 bit double side
               BaseColorFactor:TpvVector4;
-              EmissiveFactorOcclusionStrength:TpvVector4; // xyz = EmissiveFactor, w = OcclusionStrength
-              MetallicRoughnessFactorNormalScaleAlphaCutOff:TpvVector4; // x = MetallicFactor, y = RoughnessFactor, z = normal scale, w = alpha cutoff
+              EmissiveFactor:TpvVector4; // xyz = EmissiveFactor, w = OcclusionStrength
+              OcclusionStrength:TpvFloat;
+              MetallicFactor:TpvFloat;
+              RoughnessFactor:TpvFloat;
+              NormalScale:TpvFloat;
+              AlphaCutOff:TpvFloat;
               BaseColorTextureSize:TpvUInt32;
               NormalTextureSize:TpvUInt32;
               MetallicRoughnessTextureSize:TpvUInt32;
