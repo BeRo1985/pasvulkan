@@ -280,8 +280,8 @@ type TpvScene3DPlanets=class;
               fWireframeActive:Boolean;
               fDisplacementMappingActive:Boolean;
               fParallaxMappingActive:Boolean;
-              fMeshVertices:TMeshVertices;
-              fMeshIndices:TMeshIndices;
+              fPhysicsMeshVertices:TMeshVertices;
+              fPhysicsMeshIndices:TMeshIndices;
               fTileDirtyQueueItems:TTileDirtyQueueItems;
               fTileGenerations:TTileGenerations;
               fTiledMeshBoundingBoxes:TTiledMeshBoundingBoxes;
@@ -333,8 +333,8 @@ type TpvScene3DPlanets=class;
               property PhysicsMeshVertexBuffer:TpvVulkanBuffer read fPhysicsMeshVertexBuffer;
               property PhysicsMeshIndexBuffer:TpvVulkanBuffer read fPhysicsMeshIndexBuffer;
               property RayIntersectionResultBuffer:TpvVulkanBuffer read fRayIntersectionResultBuffer;
-              property MeshVertices:TMeshVertices read fMeshVertices;
-//            property MeshIndices:TMeshIndices read fMeshIndices;
+              property PhysicsMeshVertices:TMeshVertices read fPhysicsMeshVertices;
+//            property PhysicsMeshIndices:TMeshIndices read fPhysicsMeshIndices;
               property TileDirtyQueueItems:TTileDirtyQueueItems read fTileDirtyQueueItems;
               property CountDirtyTiles:TpvUInt32 read fCountDirtyTiles;
              public
@@ -2377,11 +2377,11 @@ begin
 
  if aInFlightFrameIndex<0 then begin
 
-  fMeshVertices:=TMeshVertices.Create;
-  fMeshVertices.Resize(fPlanet.fTileMapResolution*fPlanet.fTileMapResolution*fPlanet.fPhysicsTileResolution*fPlanet.fPhysicsTileResolution);
+  fPhysicsMeshVertices:=TMeshVertices.Create;
+  fPhysicsMeshVertices.Resize(fPlanet.fTileMapResolution*fPlanet.fTileMapResolution*fPlanet.fPhysicsTileResolution*fPlanet.fPhysicsTileResolution);
 
-  fMeshIndices:=TMeshIndices.Create;
-  fMeshIndices.Resize(fPlanet.fTileMapResolution*fPlanet.fTileMapResolution*fPlanet.fPhysicsTileResolution*fPlanet.fPhysicsTileResolution*6);
+  fPhysicsMeshIndices:=TMeshIndices.Create;
+  fPhysicsMeshIndices.Resize(fPlanet.fTileMapResolution*fPlanet.fTileMapResolution*fPlanet.fPhysicsTileResolution*fPlanet.fPhysicsTileResolution*6);
 
   fTileDirtyQueueItems:=TTileDirtyQueueItems.Create;
   fTileDirtyQueueItems.Resize((fPlanet.fTileMapResolution*fPlanet.fTileMapResolution)+6);
@@ -2398,9 +2398,9 @@ begin
 
  end else begin
 
-  fMeshVertices:=nil;
+  fPhysicsMeshVertices:=nil;
 
-  fMeshIndices:=nil;
+  fPhysicsMeshIndices:=nil;
 
   fTileDirtyQueueItems:=nil;
 
@@ -2464,9 +2464,9 @@ begin
 
  FreeAndNil(fWaterVisibilityBuffer);
 
- FreeAndNil(fMeshVertices);
+ FreeAndNil(fPhysicsMeshVertices);
 
- FreeAndNil(fMeshIndices);
+ FreeAndNil(fPhysicsMeshIndices);
 
  fHeightMapData:=nil;
 
@@ -14671,7 +14671,7 @@ begin
                                          fVulkanComputeFence,
                                          fData.fPhysicsMeshIndexBuffer,
                                          0,
-                                         fData.fMeshIndices.ItemArray[0],
+                                         fData.fPhysicsMeshIndices.ItemArray[0],
                                          fTileMapResolution*fTileMapResolution*fPhysicsTileResolution*fPhysicsTileResolution*6*SizeOf(TpvUInt32));}
 
     fVulkanDevice.MemoryStaging.Download(fVulkanComputeQueue,
@@ -14959,7 +14959,7 @@ begin
                                           fVulkanComputeFence,
                                           fData.fPhysicsMeshVertexBuffer,
                                           0,
-                                          fData.fMeshVertices.ItemArray[0],
+                                          fData.fPhysicsMeshVertices.ItemArray[0],
                                           fTileMapResolution*fTileMapResolution*fPhysicsTileResolution*fPhysicsTileResolution*SizeOf(TMeshVertex));
 
     end else begin
@@ -14974,7 +14974,7 @@ begin
         for QueueTileIndex:=0 to TpvSizeInt(fData.fCountDirtyTiles)-1 do begin
          TileIndex:=fData.fTileDirtyQueueItems.ItemArray[QueueTileIndex];
          Move(Pointer(TpvPtrUInt(TpvPtrUInt(Source)+TpvPtrUInt(TileIndex*fPhysicsTileResolution*fPhysicsTileResolution*SizeOf(TMeshVertex))))^,
-              fData.fMeshVertices.ItemArray[TileIndex*fPhysicsTileResolution*fPhysicsTileResolution],
+              fData.fPhysicsMeshVertices.ItemArray[TileIndex*fPhysicsTileResolution*fPhysicsTileResolution],
               fPhysicsTileResolution*fPhysicsTileResolution*SizeOf(TMeshVertex));
         end;
        finally
@@ -14992,7 +14992,7 @@ begin
         TileIndex:=fData.fTileDirtyQueueItems.ItemArray[QueueTileIndex];
         fVulkanMemoryStagingQueue.EnqueueDownload(fData.fPhysicsMeshVertexBuffer,
                                                   TileIndex*fPhysicsTileResolution*fPhysicsTileResolution*SizeOf(TMeshVertex),
-                                                  fData.fMeshVertices.ItemArray[TileIndex*fPhysicsTileResolution*fPhysicsTileResolution],
+                                                  fData.fPhysicsMeshVertices.ItemArray[TileIndex*fPhysicsTileResolution*fPhysicsTileResolution],
                                                   fPhysicsTileResolution*fPhysicsTileResolution*SizeOf(TMeshVertex));
        end;
       finally
@@ -15371,17 +15371,17 @@ var Index:TpvSizeInt;
 begin
  WriteLine('# Exported physics mesh from TpvScene3DPlanet');
  WriteLine('o Planet');
- for Index:=0 to fData.fMeshVertices.Count-1 do begin
-  Vertex:=@fData.fMeshVertices.ItemArray[Index];
+ for Index:=0 to fData.fPhysicsMeshVertices.Count-1 do begin
+  Vertex:=@fData.fPhysicsMeshVertices.ItemArray[Index];
   WriteLine('v '+ConvertDoubleToString(Vertex^.Position.x)+' '+ConvertDoubleToString(Vertex^.Position.y)+' '+ConvertDoubleToString(Vertex^.Position.z));
   Normal:=OctDecode(Vertex^.OctahedralEncodedNormal);
   WriteLine('vn '+ConvertDoubleToString(Normal.x)+' '+ConvertDoubleToString(Normal.y)+' '+ConvertDoubleToString(Normal.z));
  end;
  Index:=0;
- while (Index+2)<fData.fMeshIndices.Count do begin
-  WriteLine('f '+IntToStr(fData.fMeshIndices.ItemArray[Index+0]+1)+'//'+IntToStr(fData.fMeshIndices.ItemArray[Index+0]+1)+' '+
-                 IntToStr(fData.fMeshIndices.ItemArray[Index+1]+1)+'//'+IntToStr(fData.fMeshIndices.ItemArray[Index+1]+1)+' '+
-                 IntToStr(fData.fMeshIndices.ItemArray[Index+2]+1)+'//'+IntToStr(fData.fMeshIndices.ItemArray[Index+2]+1));
+ while (Index+2)<fData.fPhysicsMeshIndices.Count do begin
+  WriteLine('f '+IntToStr(fData.fPhysicsMeshIndices.ItemArray[Index+0]+1)+'//'+IntToStr(fData.fPhysicsMeshIndices.ItemArray[Index+0]+1)+' '+
+                 IntToStr(fData.fPhysicsMeshIndices.ItemArray[Index+1]+1)+'//'+IntToStr(fData.fPhysicsMeshIndices.ItemArray[Index+1]+1)+' '+
+                 IntToStr(fData.fPhysicsMeshIndices.ItemArray[Index+2]+1)+'//'+IntToStr(fData.fPhysicsMeshIndices.ItemArray[Index+2]+1));
   inc(Index,3);
  end;
 end;
