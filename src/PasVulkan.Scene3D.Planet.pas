@@ -15420,7 +15420,6 @@ begin
 end;
 
 function TpvScene3DPlanet.GetHeight(const aUV:TpvVector2;const aAbsolute:boolean):TpvScalar;
-{$if true}
 var x,y,fx,fxi,fy:TpvDouble;
     ix,iy:TpvInt32;
     v0,v1,v2,v3:TpvScene3DPlanet.PMeshVertex;
@@ -15451,8 +15450,7 @@ begin
  result:=(((h0*fxi)+(h1*fx))*(1.0-fy))+(((h2*fxi)+(h3*fx))*fy);
 
 end;
-{$else}
-var UV:TpvVector2;
+{var UV:TpvVector2;
     TexelX,TexelY:TpvFloat;
     xi,yi,tx,ty:TpvInt32;
     xf,yf,ixf:TpvFloat;
@@ -15499,8 +15497,7 @@ begin
 
  end;
 
-end;
-{$ifend}
+end;//}
 
 function TpvScene3DPlanet.GetHeight(const aNormal:TpvVector3;const aAbsolute:boolean):TpvScalar;
 begin
@@ -15508,7 +15505,6 @@ begin
 end;
 
 function TpvScene3DPlanet.GetNormal(const aUV:TpvVector2):TpvVector3;
-{$if true}
 var x,y,fx,fy:TpvDouble;
     ix,iy:TpvInt32;
     v0,v1,v2,v3:TpvScene3DPlanet.PMeshVertex;
@@ -15537,8 +15533,7 @@ begin
  result:=(n0.Slerp(n1,fx)).Slerp(n2.Slerp(n3,fx),fy);
 
 end;
-{$else}
-var UV:TpvVector2;
+{var UV:TpvVector2;
     TexelX,TexelY:TpvFloat;
     xi,yi,tx,ty:TpvInt32;
     xf,yf,ixf:TpvFloat;
@@ -15587,8 +15582,7 @@ begin
 
  end;
 
-end;
-{$ifend}
+end;//}
 
 function TpvScene3DPlanet.GetNormal(const aNormal:TpvVector3):TpvVector3;
 begin
