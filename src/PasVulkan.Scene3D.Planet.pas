@@ -1538,6 +1538,7 @@ type TpvScene3DPlanets=class;
        procedure EndFrame(const aInFlightFrameIndex:TpvSizeInt;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil);
        procedure ExportPhysicsMeshToOBJ(const aStream:TStream); overload;
        procedure ExportPhysicsMeshToOBJ(const aFileName:TpvUTF8String); overload;
+       function GetPhysicsVertex(const aX,aY:TpvInt32):TpvScene3DPlanet.PMeshVertex;
        function GetHeight(const aUV:TpvVector2;const aAbsolute:boolean=true):TpvScalar; overload;
        function GetHeight(const aNormal:TpvVector3;const aAbsolute:boolean=true):TpvScalar; overload;
        function GetNormal(const aUV:TpvVector2):TpvVector3; overload;
@@ -15397,7 +15398,60 @@ begin
  end;
 end;
 
+function TpvScene3DPlanet.GetPhysicsVertex(const aX,aY:TpvInt32):TpvScene3DPlanet.PMeshVertex;
+var TileIndex,VertexIndex:TpvSizeInt;
+    GlobalX,GlobalY,TileMapX,TileMapY,TileX,TileY:TpvInt32;
+begin
+
+ WrapOctahedralTexelCoordinatesEx(aX,aY,fPhysicsResolution,fPhysicsResolution,GlobalX,GlobalY);
+
+ TileMapX:=GlobalX div fPhysicsTileResolution;
+ TileMapY:=GlobalY div fPhysicsTileResolution;
+
+ TileX:=GlobalX-(TileMapX*fPhysicsTileResolution);
+ TileY:=GlobalY-(TileMapY*fPhysicsTileResolution);
+
+ TileIndex:=(TileMapY*fTileMapResolution)+TileMapX;
+
+ VertexIndex:=(((TileIndex*fPhysicsTileResolution)+TileY)*fPhysicsTileResolution)+TileX;
+
+ result:=@fData.fPhysicsMeshVertices.ItemArray[VertexIndex];
+
+end;
+
 function TpvScene3DPlanet.GetHeight(const aUV:TpvVector2;const aAbsolute:boolean):TpvScalar;
+{$if true}
+var x,y,fx,fxi,fy:TpvFloat;
+    ix,iy:TpvInt32;
+    v0,v1,v2,v3:TpvScene3DPlanet.PMeshVertex;
+    h0,h1,h2,h3:TpvScalar;
+begin
+
+ x:=aUV.x*fPhysicsResolution;
+ y:=aUV.y*fPhysicsResolution;
+
+ ix:=Floor(x);
+ iy:=Floor(y);
+
+ fx:=x-ix;
+ fy:=y-iy;
+
+ v0:=GetPhysicsVertex(ix,iy);
+ v1:=GetPhysicsVertex(ix+1,iy);
+ v2:=GetPhysicsVertex(ix,iy+1);
+ v3:=GetPhysicsVertex(ix+1,iy+1);
+
+ h0:=v0^.Position.Length;
+ h1:=v1^.Position.Length;
+ h2:=v2^.Position.Length;
+ h3:=v3^.Position.Length;
+
+ fxi:=1.0-fx;
+
+ result:=(((h0*fxi)+(h1*fx))*(1.0-fy))+(((h2*fxi)+(h3*fx))*fy);
+
+end;
+{$else}
 var UV:TpvVector2;
     TexelX,TexelY:TpvFloat;
     xi,yi,tx,ty:TpvInt32;
@@ -15446,6 +15500,7 @@ begin
  end;
 
 end;
+{$ifend}
 
 function TpvScene3DPlanet.GetHeight(const aNormal:TpvVector3;const aAbsolute:boolean):TpvScalar;
 begin
@@ -15453,6 +15508,36 @@ begin
 end;
 
 function TpvScene3DPlanet.GetNormal(const aUV:TpvVector2):TpvVector3;
+{$if true}
+var x,y,fx,fy:TpvFloat;
+    ix,iy:TpvInt32;
+    v0,v1,v2,v3:TpvScene3DPlanet.PMeshVertex;
+    n0,n1,n2,n3:TpvVector3;
+begin
+
+ x:=aUV.x*fPhysicsResolution;
+ y:=aUV.y*fPhysicsResolution;
+
+ ix:=Floor(x);
+ iy:=Floor(y);
+
+ fx:=x-ix;
+ fy:=y-iy;
+
+ v0:=GetPhysicsVertex(ix,iy);
+ v1:=GetPhysicsVertex(ix+1,iy);
+ v2:=GetPhysicsVertex(ix,iy+1);
+ v3:=GetPhysicsVertex(ix+1,iy+1);
+
+ n0:=OctDecode(v0^.OctahedralEncodedNormal);
+ n1:=OctDecode(v1^.OctahedralEncodedNormal);
+ n2:=OctDecode(v2^.OctahedralEncodedNormal);
+ n3:=OctDecode(v3^.OctahedralEncodedNormal);
+ 
+ result:=(n0.Slerp(n1,fx)).Slerp(n2.Slerp(n3,fx),fy);
+
+end;
+{$else}
 var UV:TpvVector2;
     TexelX,TexelY:TpvFloat;
     xi,yi,tx,ty:TpvInt32;
@@ -15503,6 +15588,7 @@ begin
  end;
 
 end;
+{$ifend}
 
 function TpvScene3DPlanet.GetNormal(const aNormal:TpvVector3):TpvVector3;
 begin
