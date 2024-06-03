@@ -103,6 +103,9 @@ WaitForLoaded waits until the scene graph or node is loaded, and should be only 
 
 IsLoaded returns true, if the scene graph or node is loaded.
 
+Check is called for checking outside and before the Update and Render functions in parallel lock-step, for doing stuff which needs to be 
+done sequentially in serial order, like creating or destroying of objects, or checking stuff, etc.
+
 Store and Interpolate are used for interpolation of the scene graph for the "Fix your timestep" pattern, which means, that the scene graph
 is updated with a fixed timestep, but rendered with a variable timestep, which is interpolated between the last and the current scene graph
 state for smooth rendering. Where Store is called for storing the scene graph state, Interpolate is called for interpolating the scene graph
