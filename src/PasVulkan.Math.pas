@@ -1714,6 +1714,7 @@ function TriangleTriangleIntersection(const v0,v1,v2,u0,u1,u2:TpvVector3):boolea
 
 function UnclampedClosestPointToLine(const LineStartPoint,LineEndPoint,Point:TpvVector3;const ClosestPointOnLine:PpvVector3=nil;const Time:PpvScalar=nil):TpvScalar;
 function ClosestPointToLine(const LineStartPoint,LineEndPoint,Point:TpvVector3;const ClosestPointOnLine:PpvVector3=nil;const Time:PpvScalar=nil):TpvScalar;
+function ClosestPointToRect(const Rect:TpvRect;const Point:TpvVector2;const ClosestPointOnRect:PpvVector2=nil):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
 function ClosestPointToAABB(const AABB:TpvAABB;const Point:TpvVector3;const ClosestPointOnAABB:PpvVector3=nil):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
 function ClosestPointToOBB(const OBB:TpvOBB;const Point:TpvVector3;out ClosestPoint:TpvVector3):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
 function ClosestPointToSphere(const Sphere:TpvSphere;const Point:TpvVector3;out ClosestPoint:TpvVector3):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
@@ -17634,7 +17635,18 @@ begin
  result:=Point.DistanceTo(ClosestPoint);
 end;
 
-function ClosestPointToAABB(const AABB:TpvAABB;const Point:TpvVector3;const ClosestPointOnAABB:PpvVector3=nil):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
+function ClosestPointToRect(const Rect:TpvRect;const Point:TpvVector2;const ClosestPointOnRect:PpvVector2):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
+var ClosestPoint:TpvVector2;
+begin
+ ClosestPoint.x:=Min(Max(Point.x,Rect.Min.x),Rect.Max.x);
+ ClosestPoint.y:=Min(Max(Point.y,Rect.Min.y),Rect.Max.y);
+ if assigned(ClosestPointOnRect) then begin
+  ClosestPointOnRect^:=ClosestPoint;
+ end;
+ result:=ClosestPoint.DistanceTo(Point);
+end;
+
+function ClosestPointToAABB(const AABB:TpvAABB;const Point:TpvVector3;const ClosestPointOnAABB:PpvVector3):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
 var ClosestPoint:TpvVector3;
 begin
  ClosestPoint.x:=Min(Max(Point.x,AABB.Min.x),AABB.Max.x);

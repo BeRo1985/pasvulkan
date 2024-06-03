@@ -102,15 +102,20 @@ type TpvDynamicArray<T>=record
        property ItemArray:TItemArray read Items;
      end;
 
+     { TpvDynamicStack }
+
      TpvDynamicStack<T>=record
       public
        Items:array of T;
        Count:TpvSizeInt;
        procedure Initialize;
        procedure Finalize;
+       procedure Clear;
        procedure Push(const aItem:T);
        function Pop(out aItem:T):boolean;
      end;
+
+     { TpvDynamicFastStack }
 
      TpvDynamicFastStack<T>=record
       public
@@ -123,6 +128,7 @@ type TpvDynamicArray<T>=record
       public
        procedure Initialize;
        procedure Finalize;
+       procedure Clear;
        procedure Push(const aItem:T);
        function PushIndirect:PT;
        function Pop(out aItem:T):boolean;
@@ -957,6 +963,11 @@ begin
  Count:=0;
 end;
 
+procedure TpvDynamicStack<T>.Clear;
+begin
+ Count:=0;
+end;
+
 procedure TpvDynamicStack<T>.Push(const aItem:T);
 begin
  if length(Items)<(Count+1) then begin
@@ -988,6 +999,11 @@ procedure TpvDynamicFastStack<T>.Finalize;
 begin
  System.Finalize(fLocalItems);
  fItems:=nil;
+ fCount:=0;
+end;
+
+procedure TpvDynamicFastStack<T>.Clear;
+begin
  fCount:=0;
 end;
 
