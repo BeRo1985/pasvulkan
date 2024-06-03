@@ -207,8 +207,10 @@ type TpvScene=class;
        
        function IsLoaded:boolean; virtual;
               
+       procedure Check; virtual;
+
        procedure Store; virtual;
-       
+
        procedure BeginUpdate(const aDeltaTime:TpvDouble); virtual;
        procedure Update(const aDeltaTime:TpvDouble); virtual;
        procedure EndUpdate(const aDeltaTime:TpvDouble); virtual;
@@ -268,6 +270,7 @@ type TpvScene=class;
        procedure WaitForLoaded; virtual;
        function IsLoaded:boolean; virtual;
        procedure LoadSynchronizationPoint; virtual;
+       procedure Check; virtual;
        procedure Store; virtual;
        procedure BeginUpdate(const aDeltaTime:TpvDouble); virtual;
        procedure Update(const aDeltaTime:TpvDouble); virtual;
@@ -697,6 +700,20 @@ begin
   end;
  end;
  result:=TPasMPInterlocked.Read(fState)>=TpvSceneNodeState.Loaded;
+end;
+
+procedure TpvSceneNode.Check;
+var ChildNodeIndex:TpvSizeInt;
+    ChildNode:TpvSceneNode;
+begin
+ if fState=TpvSceneNodeState.Loaded then begin
+  for ChildNodeIndex:=0 to fChildren.Count-1 do begin
+   ChildNode:=fChildren[ChildNodeIndex];
+   if assigned(ChildNode) and (ChildNode.fState=TpvSceneNodeState.Loaded) then begin
+    ChildNode.Check;
+   end;
+  end;
+ end;
 end;
 
 procedure TpvSceneNode.Store;
@@ -1188,6 +1205,11 @@ begin
   fBackgroundLoadThread.WakeUp;
   FinishLoad;
  end;
+end;
+
+procedure TpvScene.Check;
+begin
+ fRootNode.Check;
 end;
 
 procedure TpvScene.Store;
