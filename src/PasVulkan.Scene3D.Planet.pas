@@ -15421,7 +15421,7 @@ end;
 
 function TpvScene3DPlanet.GetHeight(const aUV:TpvVector2;const aAbsolute:boolean):TpvScalar;
 {$if true}
-var x,y,fx,fxi,fy:TpvFloat;
+var x,y,fx,fxi,fy:TpvDouble;
     ix,iy:TpvInt32;
     v0,v1,v2,v3:TpvScene3DPlanet.PMeshVertex;
     h0,h1,h2,h3:TpvScalar;
@@ -15509,7 +15509,7 @@ end;
 
 function TpvScene3DPlanet.GetNormal(const aUV:TpvVector2):TpvVector3;
 {$if true}
-var x,y,fx,fy:TpvFloat;
+var x,y,fx,fy:TpvDouble;
     ix,iy:TpvInt32;
     v0,v1,v2,v3:TpvScene3DPlanet.PMeshVertex;
     n0,n1,n2,n3:TpvVector3;
