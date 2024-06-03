@@ -225,8 +225,8 @@ type TpvScene3DPlanets=class;
               fHeightMap:THeightMap; // only on the ground truth instance, otherwise nil
               fHeightMapImage:TpvScene3DRendererMipmapImage2D; // R32_SFLOAT (at least for now, just for the sake of simplicity, later maybe R16_UNORM or R16_SNORM)
               fNormalMapImage:TpvScene3DRendererMipmapImage2D; // R16G16B16A16_SNORM (at least for now, just for the sake of simplicity, later maybe RGBA8_SNORM)
-              fHeightMapBuffer:TpvVulkanBuffer;
-              fNormalMapBuffer:TpvVulkanBuffer;
+//            fHeightMapBuffer:TpvVulkanBuffer;
+//            fNormalMapBuffer:TpvVulkanBuffer;
               fBlendMapImage:TpvScene3DRendererImage2D; // A2B10G10R10_UNORM_PACK32
               fGrassMapImage:TpvScene3DRendererImage2D; // R32_FLOAR
               fGrassMapBuffer:TpvVulkanBuffer;
@@ -236,8 +236,8 @@ type TpvScene3DPlanets=class;
               fWaterBufferIndex:TpvUInt32;
               fWaterFrameIndex:TpvUInt32;
               fWaterVisibilityBuffer:TpvVulkanBuffer;
-              fHeightMapData:THeightMapData;
-              fNormalMapData:TNormalMapData;
+//            fHeightMapData:THeightMapData;
+//            fNormalMapData:TNormalMapData;
               fGrassMapData:TGrassMapData;
               fTileDirtyMap:TpvScene3DPlanet.TData.TTileDirtyMap;
               fTileExpandedDirtyMap:TpvScene3DPlanet.TData.TTileDirtyMap;
@@ -320,8 +320,8 @@ type TpvScene3DPlanets=class;
               property TiledMeshBoundingSpheresBuffer:TpvVulkanBuffer read fTiledMeshBoundingSpheresBuffer;
               property TiledVisualMeshIndexGroupsBuffer:TpvVulkanBuffer read fTiledVisualMeshIndexGroupsBuffer;
              public
-              property HeightMapData:THeightMapData read fHeightMapData;
-              property NormalMapData:TNormalMapData read fNormalMapData;
+{             property HeightMapData:THeightMapData read fHeightMapData;
+              property NormalMapData:TNormalMapData read fNormalMapData;}
               property GrassMapData:TGrassMapData read fGrassMapData;
              public
               property VisualMeshVertexBuffers:TDoubleBufferedVulkanBuffers read fVisualMeshVertexBuffers;
@@ -1743,9 +1743,9 @@ begin
 
  fNormalMapImage:=nil;
 
- fHeightMapBuffer:=nil;
+{fHeightMapBuffer:=nil;
 
- fNormalMapBuffer:=nil;
+ fNormalMapBuffer:=nil;}
 
  fBlendMapImage:=nil;
 
@@ -1766,9 +1766,9 @@ begin
 
  fWaterVisibilityBuffer:=nil;
 
- fHeightMapData:=nil;
+{fHeightMapData:=nil;
 
- fNormalMapData:=nil;
+ fNormalMapData:=nil;}
 
  fGrassMapData:=nil;
 
@@ -1842,7 +1842,7 @@ begin
   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fNormalMapImage.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fNormalMapImage.Image');
   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fNormalMapImage.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fNormalMapImage.ImageView');
 
-  if InFlightFrameIndex<0 then begin
+{ if InFlightFrameIndex<0 then begin
     
    fHeightMapBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
                                             fPlanet.fHeightMapResolution*fPlanet.fHeightMapResolution*SizeOf(TpvFloat),
@@ -1880,7 +1880,7 @@ begin
                                             pvAllocationGroupIDScene3DPlanetStatic);
    fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fNormalMapBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fNormalMapBuffer');
 
-  end;
+  end;//}
 
   fBlendMapImage:=TpvScene3DRendererImage2D.Create(fPlanet.fVulkanDevice,
                                                    fPlanet.fHeightMapResolution,
@@ -2446,9 +2446,9 @@ begin
 
  FreeAndNil(fNormalMapImage);
 
- FreeAndNil(fHeightMapBuffer);
+{FreeAndNil(fHeightMapBuffer);
 
- FreeAndNil(fNormalMapBuffer);
+ FreeAndNil(fNormalMapBuffer);//}
 
  FreeAndNil(fBlendMapImage);
 
@@ -2469,9 +2469,9 @@ begin
 
  FreeAndNil(fPhysicsMeshIndices);
 
- fHeightMapData:=nil;
+{fHeightMapData:=nil;
 
- fNormalMapData:=nil;
+ fNormalMapData:=nil;//}
 
  fGrassMapData:=nil;
 
@@ -2968,7 +2968,7 @@ begin
 
   CountImageMemoryBarriers:=0;
 
-  if aTransferHeightMap then begin
+{ if aTransferHeightMap then begin
 
    ImageMemoryBarriers[CountImageMemoryBarriers]:=TVkImageMemoryBarrier.Create(0,//TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                                                TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT),
@@ -2998,7 +2998,7 @@ begin
                                                                                                                1));
    inc(CountImageMemoryBarriers);
 
-  end;
+  end;  //}
 
   if aTransferGrass then begin 
 
@@ -3016,7 +3016,7 @@ begin
 
   CountBufferMemoryBarriers:=0;
 
-  if aTransferHeightMap then begin
+{ if aTransferHeightMap then begin
 
    BufferMemoryBarriers[CountBufferMemoryBarriers]:=TVkBufferMemoryBarrier.Create(0,//TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT) or TVkAccessFlags(VK_ACCESS_MEMORY_WRITE_BIT),
                                                                                   TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
@@ -3036,7 +3036,7 @@ begin
                                                                                   fNormalMapBuffer.Size);
    inc(CountBufferMemoryBarriers);
 
-  end;
+  end;//}
 
   if aTransferGrass then begin
 
@@ -3063,7 +3063,7 @@ begin
   end;
 
   ////////////////////////////
-
+{
   if aTransferHeightMap then begin
 
     BufferImageCopy:=TVkBufferImageCopy.Create(0,
@@ -3085,7 +3085,7 @@ begin
                                         1,
                                         @BufferImageCopy);
    
-  end;                                                                                 
+  end;//}
 
   if aTransferGrass then begin
 
@@ -3108,7 +3108,7 @@ begin
 
   CountImageMemoryBarriers:=0;
 
-  if aTransferHeightMap then begin
+{ if aTransferHeightMap then begin
 
    ImageMemoryBarriers[CountImageMemoryBarriers]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT),
                                                                                0, //TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
@@ -3138,7 +3138,7 @@ begin
                                                                                                                1));
    inc(CountImageMemoryBarriers);
 
-  end;
+  end;  //}
 
   if aTransferGrass then begin
 
@@ -3156,7 +3156,7 @@ begin
 
   CountBufferMemoryBarriers:=0;
 
-  if aTransferHeightMap then begin
+{ if aTransferHeightMap then begin
 
    BufferMemoryBarriers[CountBufferMemoryBarriers]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
                                                                                   0,//TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT) or TVkAccessFlags(VK_ACCESS_MEMORY_WRITE_BIT),
@@ -3176,7 +3176,7 @@ begin
                                                                                   fNormalMapBuffer.Size);
    inc(CountBufferMemoryBarriers);
 
-  end;
+  end;//}
 
   if aTransferGrass then begin
 
@@ -3210,7 +3210,7 @@ begin
 
    aCommandBuffer.Execute(aQueue,TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),nil,nil,aFence,true);
 
-   if aTransferHeightMap then begin
+{  if aTransferHeightMap then begin
 
     if length(fHeightMapData)<>(fPlanet.fHeightMapResolution*fPlanet.fHeightMapResolution) then begin
      SetLength(fHeightMapData,fPlanet.fHeightMapResolution*fPlanet.fHeightMapResolution);
@@ -3236,7 +3236,7 @@ begin
                                                  fNormalMapData[0],
                                                  fNormalMapBuffer.Size);
 
-   end;
+   end;//}
 
    if aTransferGrass then begin
 
