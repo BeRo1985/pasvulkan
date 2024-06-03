@@ -354,6 +354,8 @@ type EpvResource=class(Exception);
 
 var AllowExternalResources:boolean=false;
 
+procedure DeferredFreeAndNil(var aObject);
+
 implementation
 
 uses PasVulkan.Application;
@@ -1925,6 +1927,21 @@ begin
  repeat
   result:=TpvUUID.Create;
  until not assigned(GetMetaResourceByUUID(result));
+end;
+
+procedure DeferredFreeAndNil(var aObject);
+begin
+ if assigned(pointer(aObject)) then begin
+  try
+   if TObject(aObject) is TpvResource then begin
+    TpvResource(AObject).DeferredFree;
+   end else begin
+    TObject(AObject).Free;
+   end;
+  finally
+   TObject(aObject):=nil;
+  end;
+ end;
 end;
 
 initialization
