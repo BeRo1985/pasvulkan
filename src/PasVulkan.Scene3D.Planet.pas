@@ -15706,10 +15706,15 @@ begin
 
 end;
 
+function TpvScene3DPlanet.GetGrass(const aNormal:TpvVector3):TpvScalar;
+begin
+ result:=GetGrass(OctEqualAreaUnsignedEncode(aNormal));
+end;
+
 function TpvScene3DPlanet.GetUV(const aPosition:TpvVector3):TpvVector2;
 begin
- result:=WrapOctahedralCoordinates(aPosition.Normalize);
-end; 
+ result:=WrapOctahedralCoordinates(OctEqualAreaUnsignedEncode(aPosition.Normalize));
+end;  
 
 { TpvScene3DPlanets }
 
