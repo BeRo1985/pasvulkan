@@ -1549,6 +1549,7 @@ type TpvScene3DPlanets=class;
        procedure GetPositionAndNormal(const aNormal:TpvVector3;out aOutPosition,aOutNormal:TpvVector3); overload;
        function GetGrass(const aUV:TpvVector2):TpvScalar; overload;
        function GetGrass(const aNormal:TpvVector3):TpvScalar; overload;
+       function GetUV(const aPosition:TpvVector3):TpvVector2;
       published
        property Scene3D:TObject read fScene3D;
        property HeightMapResolution:TpvInt32 read fHeightMapResolution;
@@ -15705,10 +15706,10 @@ begin
 
 end;
 
-function TpvScene3DPlanet.GetGrass(const aNormal:TpvVector3):TpvScalar;
+function TpvScene3DPlanet.GetUV(const aPosition:TpvVector3):TpvVector2;
 begin
- result:=GetGrass(OctEqualAreaUnsignedEncode(aNormal));
-end;
+ result:=WrapOctahedralCoordinates(aPosition.Normalize);
+end; 
 
 { TpvScene3DPlanets }
 
