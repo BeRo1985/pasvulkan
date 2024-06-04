@@ -3218,7 +3218,7 @@ var t:TpvVector3;
 begin
  t.x:=self.y-self.z;
  t.y:=self.z-self.x;
- t.t:=self.x-self.y;
+ t.z:=self.x-self.y;
  result:=(t-(self*self.Dot(t))).Normalize;
 end;
 
