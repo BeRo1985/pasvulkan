@@ -401,7 +401,7 @@ type PpvScalar=^TpvScalar;
              YAxis:TpvVector3=(x:0.0;y:1.0;z:0.0);
              ZAxis:TpvVector3=(x:0.0;y:0.0;z:1.0);
              AllAxis:TpvVector3=(x:1.0;y:1.0;z:1.0);
-             AllMaxAxis:TpvVector3=(x:3.4e+28;y:3.4e+28;z:3.4e+28);
+             AllMaxAxis:TpvVector3=(x:16777215.0;y:16777215.0;z:16777215.0);
       public
        {$i PasVulkan.Math.TpvVector3Helper.Swizzle.Definitions.inc}
      end;
@@ -415,7 +415,7 @@ type PpvScalar=^TpvScalar;
              ZAxis:TpvVector4=(x:0.0;y:0.0;z:1.0;w:0.0);
              WAxis:TpvVector4=(x:0.0;y:0.0;z:0.0;w:1.0);
              AllAxis:TpvVector4=(x:1.0;y:1.0;z:1.0;w:1.0);
-             AllMaxAxis:TpvVector4=(x:3.4e+28;y:3.4e+28;z:3.4e+28;w:3.4e+28);
+             AllMaxAxis:TpvVector4=(x:16777215.0;y:16777215.0;z:16777215.0;w:16777215.0);
       public
        {$i PasVulkan.Math.TpvVector4Helper.Swizzle.Definitions.inc}
      end;
