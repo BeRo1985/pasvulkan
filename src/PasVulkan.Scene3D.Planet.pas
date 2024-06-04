@@ -1545,6 +1545,8 @@ type TpvScene3DPlanets=class;
        function GetNormal(const aNormal:TpvVector3):TpvVector3; overload;
        function GetPosition(const aUV:TpvVector2):TpvVector3; overload;
        function GetPosition(const aNormal:TpvVector3):TpvVector3; overload;
+       procedure GetPositionAndNormal(const aUV:TpvVector2;out aOutPosition,aOutNormal:TpvVector3); overload;
+       procedure GetPositionAndNormal(const aNormal:TpvVector3;out aOutPosition,aOutNormal:TpvVector3); overload;
        function GetGrass(const aUV:TpvVector2):TpvScalar; overload;
        function GetGrass(const aNormal:TpvVector3):TpvScalar; overload;
       published
@@ -15590,13 +15592,71 @@ begin
 end;
 
 function TpvScene3DPlanet.GetPosition(const aUV:TpvVector2):TpvVector3;
+var x,y,fx,fy:TpvDouble;
+    ix,iy:TpvInt32;
+    v0,v1,v2,v3:TpvScene3DPlanet.PMeshVertex;
+    p0,p1,p2,p3:TpvVector3;
 begin
- result:=GetHeight(aUV,true)*OctEqualAreaUnsignedDecode(aUV);
+
+ x:=aUV.x*fPhysicsResolution;
+ y:=aUV.y*fPhysicsResolution;
+
+ ix:=Floor(x);
+ iy:=Floor(y);
+
+ fx:=x-ix;
+ fy:=y-iy;
+
+ v0:=GetPhysicsVertex(ix,iy);
+ v1:=GetPhysicsVertex(ix+1,iy);
+ v2:=GetPhysicsVertex(ix,iy+1);
+ v3:=GetPhysicsVertex(ix+1,iy+1);
+
+ result:=(v0^.Position.Lerp(v1^.Position,fx)).Lerp(v2^.Position.Lerp(v3^.Position,fx),fy);
+ 
 end;
 
 function TpvScene3DPlanet.GetPosition(const aNormal:TpvVector3):TpvVector3;
 begin
- result:=GetHeight(aNormal,true)*aNormal;
+ result:=GetPosition(OctEqualAreaUnsignedEncode(aNormal));
+end;
+
+procedure TpvScene3DPlanet.GetPositionAndNormal(const aUV:TpvVector2;out aOutPosition,aOutNormal:TpvVector3);
+var x,y,fx,fy:TpvDouble;
+    ix,iy:TpvInt32;
+    v0,v1,v2,v3:TpvScene3DPlanet.PMeshVertex;
+    p0,p1,p2,p3:TpvVector3;
+    n0,n1,n2,n3:TpvVector3;
+begin
+
+ x:=aUV.x*fPhysicsResolution;
+ y:=aUV.y*fPhysicsResolution;
+
+ ix:=Floor(x);
+ iy:=Floor(y);
+
+ fx:=x-ix;
+ fy:=y-iy;
+
+ v0:=GetPhysicsVertex(ix,iy);
+ v1:=GetPhysicsVertex(ix+1,iy);
+ v2:=GetPhysicsVertex(ix,iy+1);
+ v3:=GetPhysicsVertex(ix+1,iy+1);
+
+ aOutPosition:=(v0^.Position.Lerp(v1^.Position,fx)).Lerp(v2^.Position.Lerp(v3^.Position,fx),fy);
+
+ n0:=OctDecode(v0^.OctahedralEncodedNormal);
+ n1:=OctDecode(v1^.OctahedralEncodedNormal);
+ n2:=OctDecode(v2^.OctahedralEncodedNormal);
+ n3:=OctDecode(v3^.OctahedralEncodedNormal);
+ 
+ aOutNormal:=(n0.Slerp(n1,fx)).Slerp(n2.Slerp(n3,fx),fy);
+
+end;
+
+procedure TpvScene3DPlanet.GetPositionAndNormal(const aNormal:TpvVector3;out aOutPosition,aOutNormal:TpvVector3);
+begin
+ GetPositionAndNormal(OctEqualAreaUnsignedEncode(aNormal),aOutPosition,aOutNormal);
 end;
 
 function TpvScene3DPlanet.GetGrass(const aUV:TpvVector2):TpvScalar;
