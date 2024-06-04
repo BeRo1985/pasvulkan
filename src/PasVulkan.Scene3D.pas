@@ -19999,13 +19999,14 @@ var Index,OtherIndex,PerInFlightFrameRenderInstanceIndex:TpvSizeInt;
     Node:TpvScene3D.TGroup.TNode;
     InstanceNode:TpvScene3D.TGroup.TInstance.PNode;
     InstanceMaterial:TpvScene3D.TGroup.TInstance.TMaterial;
-    HasMaterialUpdate,Dirty:boolean;
+    HasMaterialUpdate,Dirty,First:boolean;
     RenderInstance:TpvScene3D.TGroup.TInstance.TRenderInstance;
     PerInFlightFrameRenderInstance:TpvScene3D.TGroup.TInstance.PPerInFlightFrameRenderInstance;
     AABBTreeState:TpvBVHDynamicAABBTree.PState;
     AABBTreeNode:TpvBVHDynamicAABBTree.PTreeNode;
     AABBTreeNodePotentiallyVisibleSet:TpvScene3D.TPotentiallyVisibleSet.TNodeIndex;
     StartCPUTime,EndCPUTime:TpvHighResolutionTime;
+    TemporaryBoundingBox:TpvAABB;
 begin
 
  if assigned(fAppendageInstance) and assigned(fAppendageNode) then begin
@@ -20228,19 +20229,23 @@ begin
     end;
    end;
   end;
-  if aInFlightFrameIndex>=0 then begin
-   fBoundingBoxes[aInFlightFrameIndex]:=fBoundingBox;
-   fBoundingSpheres[aInFlightFrameIndex]:=TpvSphere.CreateFromAABB(fBoundingBox);
-  end;
 
   if aInFlightFrameIndex>=0 then begin
    fPerInFlightFrameRenderInstances[aInFlightFrameIndex].Count:=0;
    if fUseRenderInstances then begin
+    TemporaryBoundingBox:=fBoundingBox;
+    First:=true;
     for Index:=0 to fRenderInstances.Count-1 do begin
      RenderInstance:=fRenderInstances[Index];
      if RenderInstance.fActive then begin
       RenderInstance.fModelMatrices[aInFlightFrameIndex]:=RenderInstance.fModelMatrix;
-      RenderInstance.fBoundingBox:=fBoundingBox.HomogenTransform(RenderInstance.fModelMatrix);
+      RenderInstance.fBoundingBox:=TemporaryBoundingBox.HomogenTransform(RenderInstance.fModelMatrix);
+      if First then begin
+       First:=false;
+       fBoundingBox:=RenderInstance.fBoundingBox;
+      end else begin
+       fBoundingBox.DirectCombine(RenderInstance.fBoundingBox);
+      end;
       if assigned(fGroup.fSceneInstance.fPotentiallyVisibleSet) and
          ((RenderInstance.fPotentiallyVisibleSetNodeIndex=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex) or
           ((RenderInstance.fPotentiallyVisibleSetNodeIndex<>TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex) and not
@@ -20265,6 +20270,11 @@ begin
      end;
     end;
    end;
+  end;
+
+  if aInFlightFrameIndex>=0 then begin
+   fBoundingBoxes[aInFlightFrameIndex]:=fBoundingBox;
+   fBoundingSpheres[aInFlightFrameIndex]:=TpvSphere.CreateFromAABB(fBoundingBox);
   end;
 
   if aInFlightFrameIndex>=0 then begin
