@@ -1654,7 +1654,7 @@ const OneOverHalfPi=0.6366197723675814;
 var uv:TpvVector2;
 begin
  uv.x:=sqrt(1.0-Abs(aVector.z));
- uv.y:=ArcTan2(abs(aVector.y),max(1e-17,abs(aVector.x)))*OneOverHalfPi;
+ uv.y:=uv.x*ArcTan2(abs(aVector.y),max(1e-17,abs(aVector.x)))*OneOverHalfPi;
  uv.x:=uv.x-uv.y;
  if aVector.z<0.0 then begin
   result:=Vec2OneOne-uv.yx;
