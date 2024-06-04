@@ -15416,7 +15416,8 @@ begin
 
  TileIndex:=(TileMapY*fTileMapResolution)+TileMapX;
 
- VertexIndex:=(((TileIndex*fPhysicsTileResolution)+TileY)*fPhysicsTileResolution)+TileX;
+ VertexIndex:=(TileIndex*fPhysicsTileResolution*fPhysicsTileResolution)+
+              ((TileY*fPhysicsTileResolution)+TileX);
 
  result:=@fData.fPhysicsMeshVertices.ItemArray[VertexIndex];
 
