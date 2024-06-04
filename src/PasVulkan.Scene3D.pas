@@ -2458,6 +2458,7 @@ type EpvScene3D=class(Exception);
                             fPreviousModelMatrix:TpvMatrix4x4;
                             fModelMatrices:array[-1..MaxInFlightFrames-1] of TpvMatrix4x4;
                             fBoundingBox:TpvAABB;
+                            fActiveMask:TPasMPUInt32;
                            public
                             constructor Create(const aInstance:TpvScene3D.TGroup.TInstance); reintroduce;
                             destructor Destroy; override;
@@ -2468,6 +2469,7 @@ type EpvScene3D=class(Exception);
                             property ModelMatrix:TpvMatrix4x4 read fModelMatrix write fModelMatrix;
                            published
                             property Active:Boolean read fActive write fActive;
+                            property ActiveMask:TPasMPUInt32 read fActiveMask write fActiveMask;
                           end;
                           TRenderInstances=TpvObjectGenericList<TRenderInstance>;
                           TPerInFlightFrameRenderInstance=record
@@ -5669,7 +5671,7 @@ begin
      if fInstance.fUseRenderInstances then begin
       CountRenderInstances:=0;
       for RendererInstanceIndex:=0 to fInstance.fRenderInstances.Count-1 do begin
-       if fInstance.fRenderInstances[RendererInstanceIndex].fActive then begin
+       if (fInstance.fRenderInstances[RendererInstanceIndex].fActiveMask and (TpvUInt32(1) shl aInFlightFrameIndex))<>0 then begin
         inc(CountRenderInstances);
        end;
       end;
@@ -5723,7 +5725,7 @@ begin
      BLASInstanceIndex:=0;
 
      for RendererInstanceIndex:=0 to fInstance.fRenderInstances.Count-1 do begin
-      if fInstance.fRenderInstances[RendererInstanceIndex].Active then begin
+      if (fInstance.fRenderInstances[RendererInstanceIndex].fActiveMask and (TpvUInt32(1) shl aInFlightFrameIndex))<>0 then begin
        BLASGroup^.fBLASInstances[BLASInstanceIndex].Transform:=Matrix*fInstance.fRenderInstances[RendererInstanceIndex].fModelMatrices[aInFlightFrameIndex];
        inc(BLASInstanceIndex);
       end;
@@ -16604,6 +16606,7 @@ begin
  for Index:=-1 to MaxInFlightFrames-1 do begin
   fModelMatrices[Index]:=TpvMatrix4x4.Identity;
  end;
+ fActiveMask:=0;
 end;
 
 destructor TpvScene3D.TGroup.TInstance.TRenderInstance.Destroy;
@@ -16660,6 +16663,7 @@ end;
 
 procedure TpvScene3D.TGroup.TInstance.TRenderInstance.Remove;
 begin
+ fActiveMask:=0;
  Free;
 end;
 
@@ -20238,6 +20242,7 @@ begin
     for Index:=0 to fRenderInstances.Count-1 do begin
      RenderInstance:=fRenderInstances[Index];
      if RenderInstance.fActive then begin
+      TPasMPInterlocked.BitwiseOr(RenderInstance.fActiveMask,TpvUInt32(1) shl aInFlightFrameIndex);
       RenderInstance.fModelMatrices[aInFlightFrameIndex]:=RenderInstance.fModelMatrix;
       RenderInstance.fBoundingBox:=TemporaryBoundingBox.HomogenTransform(RenderInstance.fModelMatrix);
       if First then begin
@@ -20267,6 +20272,7 @@ begin
      end else begin
       RenderInstance.fFirst:=true;
       RenderInstance.fPotentiallyVisibleSetNodeIndex:=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex;
+      TPasMPInterlocked.BitwiseAnd(RenderInstance.fActiveMask,not (TpvUInt32(1) shl aInFlightFrameIndex));
      end;
     end;
    end;
