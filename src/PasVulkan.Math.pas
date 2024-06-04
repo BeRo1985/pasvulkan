@@ -273,6 +273,7 @@ type PpvScalar=^TpvScalar;
        function Flip:TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
        function Perpendicular:TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
        function OneUnitOrthogonalVector:TpvVector3;
+       function OneUnitSmoothOrthogonalVector:TpvVector3;
        function Length:TpvScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
        function SquaredLength:TpvScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
        function Normalize:TpvVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
@@ -3210,6 +3211,15 @@ begin
    result.z:=0.0;
   end;
  end;
+end;
+
+function TpvVector3.OneUnitSmoothOrthogonalVector:TpvVector3;
+var t:TpvVector3;
+begin
+ t.x:=self.y-self.z;
+ t.y:=self.z-self.x;
+ t.t:=self.x-self.y;
+ result:=(t-(self*self.Dot(t))).Normalize;
 end;
 
 function TpvVector3.Length:TpvScalar;
