@@ -2516,6 +2516,7 @@ type EpvScene3D=class(Exception);
                      fAppendageNode:TpvScene3D.TGroup.TNode;
                      fAppendageTransform:TpvMatrix4x4;
                      fActive:boolean;
+                     fUpdateDynamic:TPasMPBool32;
                      fOrder:TpvInt64;
                      fHeadless:boolean;
                      fPreviousActive:boolean;
@@ -2672,6 +2673,7 @@ type EpvScene3D=class(Exception);
                     published
                      property Group:TGroup read fGroup write fGroup;
                      property Active:boolean read fActive write fActive;
+                     property UpdateDynamic:TPasMPBool32 read fUpdateDynamic write fUpdateDynamic;
                      property Order:TpvInt64 read fOrder write fOrder;
                      property UseRenderInstances:boolean read fUseRenderInstances write fUseRenderInstances;
                      property UseSortedRenderInstances:boolean read fUseSortedRenderInstances write fUseSortedRenderInstances;
@@ -16762,6 +16764,8 @@ begin
 
  fActive:=true;
 
+ fUpdateDynamic:=true;
+
  fHeadless:=aHeadless;
 
  fOrder:=-1;
@@ -19634,7 +19638,7 @@ procedure TpvScene3D.TGroup.TInstance.Update(const aInFlightFrameIndex:TpvSizeIn
     fSkins[Node.fSkin.Index].Used:=true;
    end;
   end;
-  Dirty:=Dirty or (assigned(Node.fSkin) or (Node.fWeights.Count>0));
+  Dirty:=fUpdateDynamic and (Dirty or (assigned(Node.fSkin) or (Node.fWeights.Count>0)));
   if aInFlightFrameIndex>=0 then begin
    if assigned(Node.fLight) then begin
     LightMatrix:=Matrix*fModelMatrix;
