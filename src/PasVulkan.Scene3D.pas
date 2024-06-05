@@ -2520,6 +2520,7 @@ type EpvScene3D=class(Exception);
                      fHeadless:boolean;
                      fPreviousActive:boolean;
                      fUseRenderInstances:boolean;
+                     fUseSortedRenderInstances:boolean;
                      fIsNewInstance:TPasMPBool32;
                      fScene:TPasGLTFSizeInt;
                      fMaterialMap:TpvScene3D.TGroup.TMaterialMap;
@@ -2673,6 +2674,7 @@ type EpvScene3D=class(Exception);
                      property Active:boolean read fActive write fActive;
                      property Order:TpvInt64 read fOrder write fOrder;
                      property UseRenderInstances:boolean read fUseRenderInstances write fUseRenderInstances;
+                     property UseSortedRenderInstances:boolean read fUseSortedRenderInstances write fUseSortedRenderInstances;
                      property Scene:TpvSizeInt read fScene write SetScene;
                      property Cameras:TpvScene3D.TGroup.TInstance.TCameras read fCameras;
                      property Lights:TpvScene3D.TGroup.TInstance.TLights read fLights;
@@ -5673,6 +5675,8 @@ begin
       for RendererInstanceIndex:=0 to fInstance.fRenderInstances.Count-1 do begin
        if (fInstance.fRenderInstances[RendererInstanceIndex].fActiveMask and (TpvUInt32(1) shl aInFlightFrameIndex))<>0 then begin
         inc(CountRenderInstances);
+       end else if fInstance.fUseSortedRenderInstances then begin
+        break;
        end;
       end;
      end else begin
@@ -5728,6 +5732,8 @@ begin
       if (fInstance.fRenderInstances[RendererInstanceIndex].fActiveMask and (TpvUInt32(1) shl aInFlightFrameIndex))<>0 then begin
        BLASGroup^.fBLASInstances[BLASInstanceIndex].Transform:=Matrix*fInstance.fRenderInstances[RendererInstanceIndex].fModelMatrices[aInFlightFrameIndex];
        inc(BLASInstanceIndex);
+      end else if fInstance.fUseSortedRenderInstances then begin
+       break;
       end;
      end;
 
@@ -16778,6 +16784,8 @@ begin
 
  fUseRenderInstances:=false;
 
+ fUseSortedRenderInstances:=false;
+
  fPreviousActive:=false;
 
  fUploaded:=false;
@@ -20270,9 +20278,16 @@ begin
       end;
       RenderInstance.fPreviousModelMatrix:=RenderInstance.fModelMatrix;
      end else begin
-      RenderInstance.fFirst:=true;
-      RenderInstance.fPotentiallyVisibleSetNodeIndex:=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex;
-      TPasMPInterlocked.BitwiseAnd(RenderInstance.fActiveMask,not (TpvUInt32(1) shl aInFlightFrameIndex));
+      if fUseSortedRenderInstances and
+         (not RenderInstance.fFirst) and
+         (RenderInstance.fPotentiallyVisibleSetNodeIndex=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex) and
+         ((RenderInstance.fActiveMask and (TpvUInt32(1) shl aInFlightFrameIndex))=0) then begin
+       break;
+      end else begin
+       RenderInstance.fFirst:=true;
+       RenderInstance.fPotentiallyVisibleSetNodeIndex:=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex;
+       TPasMPInterlocked.BitwiseAnd(RenderInstance.fActiveMask,not (TpvUInt32(1) shl aInFlightFrameIndex));
+      end;
      end;
     end;
    end;

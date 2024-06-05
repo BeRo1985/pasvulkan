@@ -478,7 +478,7 @@ type TpvDynamicArray<T>=record
       public
        constructor Create(const aDefaultValue:TpvHashMapValue);
        destructor Destroy; override;
-       procedure Clear;
+       procedure Clear(const aCanFree:Boolean=true);
        function Add(const aKey:TpvHashMapKey;const aValue:TpvHashMapValue):PEntity;
        function Get(const aKey:TpvHashMapKey;const aCreateIfNotExist:boolean=false):PEntity;
        function TryGet(const aKey:TpvHashMapKey;out aValue:TpvHashMapValue):boolean;
@@ -583,7 +583,7 @@ type TpvDynamicArray<T>=record
       public
        constructor Create(const aDefaultValue:TpvHashMapValue);
        destructor Destroy; override;
-       procedure Clear;
+       procedure Clear(const aCanFree:Boolean=true);
        function Add(const aKey:TpvHashMapKey;const aValue:TpvHashMapValue):PEntity;
        function Get(const aKey:TpvHashMapKey;const aCreateIfNotExist:boolean=false):PEntity;
        function TryGet(const aKey:TpvHashMapKey;out aValue:TpvHashMapValue):boolean;
@@ -2876,7 +2876,7 @@ begin
  inherited Destroy;
 end;
 
-procedure TpvHashMap<TpvHashMapKey,TpvHashMapValue>.Clear;
+procedure TpvHashMap<TpvHashMapKey,TpvHashMapValue>.Clear(const aCanFree:Boolean);
 var Index:TpvSizeInt;
 begin
  for Index:=0 to length(fEntities)-1 do begin
@@ -2885,7 +2885,7 @@ begin
  end;
  fCountNonEmptyEntites:=0;
  fCountDeletedEntites:=0;
- if fCanShrink then begin
+ if fCanShrink and aCanFree then begin
   fSize:=0;
   fLogSize:=0;
   fEntities:=nil;
@@ -3469,7 +3469,7 @@ begin
  inherited Destroy;
 end;
 
-procedure TpvStringHashMap<TpvHashMapValue>.Clear;
+procedure TpvStringHashMap<TpvHashMapValue>.Clear(const aCanFree:Boolean);
 var Index:TpvSizeInt;
 begin
  for Index:=0 to length(fEntities)-1 do begin
@@ -3478,7 +3478,7 @@ begin
  end;
  fCountNonEmptyEntites:=0;
  fCountDeletedEntites:=0;
- if fCanShrink then begin
+ if fCanShrink and aCanFree then begin
   fSize:=0;
   fLogSize:=0;
   fEntities:=nil;
