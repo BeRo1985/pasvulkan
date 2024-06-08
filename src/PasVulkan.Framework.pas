@@ -3720,6 +3720,26 @@ type EpvVulkanException=class(Exception);
                         const aDDSStructure:boolean=true;
                         const aStagingBuffer:TpvVulkanBuffer=nil;
                         const aCommandBufferResetAndExecute:boolean=true);
+       procedure CopyFrom(const aQueue:TpvVulkanQueue;
+                          const aCommandBuffer:TpvVulkanCommandBuffer;
+                          const aFence:TpvVulkanFence;
+                          const aSource:TVkImage;
+                          const aSourceLayout:TVkImageLayout;
+                          const aSourceAspectMask:TVkImageAspectFlags;
+                          const aSourceMipLevel:TVkUInt32;
+                          const aSourceArrayLayer:TVkUInt32;
+                          const aSourceOffsetX:TpvInt32;
+                          const aSourceOffsetY:TpvInt32;
+                          const aSourceOffsetZ:TpvInt32;
+                          const aSourceWidth:TpvInt32;
+                          const aSourceHeight:TpvInt32;
+                          const aSourceDepth:TpvInt32;
+                          const aSourceCountArrayLayers:TpvInt32;
+                          const aSourceCountFaces:TpvInt32;
+                          const aSourceCountMipMaps:TpvInt32;
+                          const aGenerateMipMaps:boolean;
+                          const aGenerateMipMapsFilter:TVkFilter;
+                          const aCommandBufferResetAndExecute:boolean);
        procedure UpdateSampler;
        property DescriptorImageInfo:TVkDescriptorImageInfo read fDescriptorImageInfo;
       published
@@ -27822,6 +27842,315 @@ begin
     aGraphicsCommandBuffer.Execute(aGraphicsQueue,0,nil,nil,aGraphicsFence,true);
    end;
 
+  end;
+
+ end;
+
+end;
+
+procedure TpvVulkanTexture.CopyFrom(const aQueue:TpvVulkanQueue;
+                                    const aCommandBuffer:TpvVulkanCommandBuffer;
+                                    const aFence:TpvVulkanFence;
+                                    const aSource:TVkImage;
+                                    const aSourceLayout:TVkImageLayout;
+                                    const aSourceAspectMask:TVkImageAspectFlags;
+                                    const aSourceMipLevel:TVkUInt32;
+                                    const aSourceArrayLayer:TVkUInt32;
+                                    const aSourceOffsetX:TpvInt32;
+                                    const aSourceOffsetY:TpvInt32;
+                                    const aSourceOffsetZ:TpvInt32;
+                                    const aSourceWidth:TpvInt32;
+                                    const aSourceHeight:TpvInt32;
+                                    const aSourceDepth:TpvInt32;
+                                    const aSourceCountArrayLayers:TpvInt32;
+                                    const aSourceCountFaces:TpvInt32;
+                                    const aSourceCountMipMaps:TpvInt32;
+                                    const aGenerateMipMaps:boolean;
+                                    const aGenerateMipMapsFilter:TVkFilter;
+                                    const aCommandBufferResetAndExecute:boolean);
+var CountImageMemoryBarriers,MipMapLevelIndex:TpvSizeInt;
+    ImageMemoryBarriers:array[0..1] of TVkImageMemoryBarrier;
+    ImageMemoryBarrier:PVkImageMemoryBarrier;
+    ImageBlit:TVkImageBlit;
+begin
+ 
+ // Reset and begin recording command buffer if requested
+ if aCommandBufferResetAndExecute then begin
+  aCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+  aCommandBuffer.BeginRecording;
+ end;
+ 
+ try
+
+  // First the image memory barriers including transitions for synchronization purposes
+  begin
+
+   CountImageMemoryBarriers:=0;
+
+   ImageMemoryBarrier:=@ImageMemoryBarriers[CountImageMemoryBarriers];
+   inc(CountImageMemoryBarriers);
+   FillChar(ImageMemoryBarrier^,SizeOf(TVkImageMemoryBarrier),#0);
+   ImageMemoryBarrier^.sType:=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+   ImageMemoryBarrier^.srcAccessMask:=0;
+   ImageMemoryBarrier^.dstAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT);
+   ImageMemoryBarrier^.oldLayout:=VK_IMAGE_LAYOUT_UNDEFINED;
+   ImageMemoryBarrier^.newLayout:=VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+   ImageMemoryBarrier^.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+   ImageMemoryBarrier^.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+   ImageMemoryBarrier^.image:=fImage.fImageHandle;
+   ImageMemoryBarrier^.subresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
+   ImageMemoryBarrier^.subresourceRange.baseMipLevel:=0;
+   ImageMemoryBarrier^.subresourceRange.levelCount:=fCountStorageLevels;
+   ImageMemoryBarrier^.subresourceRange.baseArrayLayer:=0;
+   ImageMemoryBarrier^.subresourceRange.layerCount:=Max(1,fTotalCountArrayLayers);
+
+   ImageMemoryBarrier:=@ImageMemoryBarriers[CountImageMemoryBarriers];
+   inc(CountImageMemoryBarriers);
+   FillChar(ImageMemoryBarrier^,SizeOf(TVkImageMemoryBarrier),#0);
+   ImageMemoryBarrier^.sType:=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+   ImageMemoryBarrier^.srcAccessMask:=0;
+   ImageMemoryBarrier^.dstAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT);
+   ImageMemoryBarrier^.oldLayout:=aSourceLayout;
+   ImageMemoryBarrier^.newLayout:=VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+   ImageMemoryBarrier^.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+   ImageMemoryBarrier^.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+   ImageMemoryBarrier^.image:=aSource;
+   ImageMemoryBarrier^.subresourceRange.aspectMask:=aSourceAspectMask;
+   ImageMemoryBarrier^.subresourceRange.baseMipLevel:=aSourceMipLevel;
+   ImageMemoryBarrier^.subresourceRange.levelCount:=1;
+   ImageMemoryBarrier^.subresourceRange.baseArrayLayer:=aSourceArrayLayer;
+   ImageMemoryBarrier^.subresourceRange.layerCount:=Max(1,aSourceCountArrayLayers);
+
+   aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
+                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                     0,
+                                     0,nil,
+                                     0,nil,
+                                     CountImageMemoryBarriers,@ImageMemoryBarriers);
+   
+  end;
+
+  // Then copy the image data
+  begin
+
+   if aSourceCountFaces>0 then begin
+
+    for MipMapLevelIndex:=0 to aSourceCountMipMaps-1 do begin
+
+     FillChar(ImageBlit,SizeOf(TVkImageBlit),#0);
+     ImageBlit.srcSubresource.aspectMask:=aSourceAspectMask;
+     ImageBlit.srcSubresource.mipLevel:=aSourceMipLevel+MipMapLevelIndex;
+     ImageBlit.srcSubresource.baseArrayLayer:=aSourceArrayLayer;
+     ImageBlit.srcSubresource.layerCount:=Max(1,aSourceCountArrayLayers);
+     ImageBlit.srcOffsets[0].x:=aSourceOffsetX;
+     ImageBlit.srcOffsets[0].y:=aSourceOffsetY;
+     ImageBlit.srcOffsets[0].z:=aSourceOffsetZ;
+     ImageBlit.srcOffsets[1].x:=aSourceOffsetX+Max(1,(aSourceWidth shr (aSourceMipLevel+MipMapLevelIndex)));
+     ImageBlit.srcOffsets[1].y:=aSourceOffsetY+Max(1,(aSourceHeight shr (aSourceMipLevel+MipMapLevelIndex)));
+     ImageBlit.srcOffsets[1].z:=aSourceOffsetZ+Max(1,(aSourceDepth shr (aSourceMipLevel+MipMapLevelIndex)));
+     ImageBlit.dstSubresource.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
+     ImageBlit.dstSubresource.mipLevel:=MipMapLevelIndex;
+     ImageBlit.dstSubresource.baseArrayLayer:=0;
+     ImageBlit.dstSubresource.layerCount:=Max(1,fTotalCountArrayLayers);
+     ImageBlit.dstOffsets[0].x:=0;
+     ImageBlit.dstOffsets[0].y:=0;
+     ImageBlit.dstOffsets[0].z:=0;
+     ImageBlit.dstOffsets[1].x:=Max(1,Max(1,fWidth) shr MipMapLevelIndex);
+     ImageBlit.dstOffsets[1].y:=Max(1,Max(1,fHeight) shr MipMapLevelIndex);
+     ImageBlit.dstOffsets[1].z:=Max(1,Max(1,fDepth) shr MipMapLevelIndex);
+
+     aCommandBuffer.CmdBlitImage(aSource,
+                                 VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                                 fImage.fImageHandle,
+                                 VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                 1,
+                                 @ImageBlit,
+                                 VK_FILTER_LINEAR);
+
+    end;
+
+   end;
+
+  end;
+
+  // Check if we need to generate mip maps at all
+  if aGenerateMipMaps and (aSourceCountMipMaps>0) and (aSourceCountMipMaps<fCountStorageLevels) then begin
+
+   // When generating mip maps, image memory barriers including transitions for synchronization purposes
+   begin
+
+     CountImageMemoryBarriers:=0;
+
+     // The first mip map levels were copied from the source image, so VK_ACCESS_TRANSFER_READ_BIT
+     ImageMemoryBarrier:=@ImageMemoryBarriers[CountImageMemoryBarriers];
+     inc(CountImageMemoryBarriers);
+     FillChar(ImageMemoryBarrier^,SizeOf(TVkImageMemoryBarrier),#0);
+     ImageMemoryBarrier^.sType:=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+     ImageMemoryBarrier^.srcAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT);
+     ImageMemoryBarrier^.dstAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT);
+     ImageMemoryBarrier^.oldLayout:=VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+     ImageMemoryBarrier^.newLayout:=VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+     ImageMemoryBarrier^.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+     ImageMemoryBarrier^.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+     ImageMemoryBarrier^.image:=fImage.fImageHandle;
+     ImageMemoryBarrier^.subresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
+     ImageMemoryBarrier^.subresourceRange.baseMipLevel:=0;
+     ImageMemoryBarrier^.subresourceRange.levelCount:=Max(1,aSourceCountMipMaps); 
+     ImageMemoryBarrier^.subresourceRange.baseArrayLayer:=0;
+     ImageMemoryBarrier^.subresourceRange.layerCount:=Max(1,fTotalCountArrayLayers);
+
+     // The remaining mip map levels are generated automatically, so VK_ACCESS_TRANSFER_WRITE_BIT  
+     ImageMemoryBarrier:=@ImageMemoryBarriers[CountImageMemoryBarriers];
+     inc(CountImageMemoryBarriers);
+     FillChar(ImageMemoryBarrier^,SizeOf(TVkImageMemoryBarrier),#0);
+     ImageMemoryBarrier^.sType:=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+     ImageMemoryBarrier^.srcAccessMask:=0;
+     ImageMemoryBarrier^.dstAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT);
+     ImageMemoryBarrier^.oldLayout:=VK_IMAGE_LAYOUT_UNDEFINED;
+     ImageMemoryBarrier^.newLayout:=VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+     ImageMemoryBarrier^.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+     ImageMemoryBarrier^.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+     ImageMemoryBarrier^.image:=fImage.fImageHandle;
+     ImageMemoryBarrier^.subresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
+     ImageMemoryBarrier^.subresourceRange.baseMipLevel:=aSourceCountMipMaps;
+     ImageMemoryBarrier^.subresourceRange.levelCount:=fCountStorageLevels-aSourceCountMipMaps;
+     ImageMemoryBarrier^.subresourceRange.baseArrayLayer:=0;
+     ImageMemoryBarrier^.subresourceRange.layerCount:=Max(1,fTotalCountArrayLayers);
+
+     aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                       TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                       0,
+                                       0,nil,
+                                       0,nil,
+                                       CountImageMemoryBarriers,@ImageMemoryBarriers);
+
+   end;
+
+   // Generate the mip maps including transitions for synchronization purposes after every generated mip map level
+   begin
+     
+    for MipMapLevelIndex:=aSourceCountMipMaps to fCountStorageLevels-1 do begin
+
+     FillChar(ImageBlit,SizeOf(TVkImageBlit),#0);
+     ImageBlit.srcSubresource.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
+     ImageBlit.srcSubresource.mipLevel:=MipMapLevelIndex-1;
+     ImageBlit.srcSubresource.baseArrayLayer:=0;
+     ImageBlit.srcSubresource.layerCount:=Max(1,fTotalCountArrayLayers);
+     ImageBlit.srcOffsets[0].x:=0;
+     ImageBlit.srcOffsets[0].y:=0;
+     ImageBlit.srcOffsets[0].z:=0;
+     ImageBlit.srcOffsets[1].x:=Max(1,Max(1,fWidth) shr (MipMapLevelIndex-1));
+     ImageBlit.srcOffsets[1].y:=Max(1,Max(1,fHeight) shr (MipMapLevelIndex-1));
+     ImageBlit.srcOffsets[1].z:=Max(1,Max(1,fDepth) shr (MipMapLevelIndex-1));
+     ImageBlit.dstSubresource.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
+     ImageBlit.dstSubresource.mipLevel:=MipMapLevelIndex;
+     ImageBlit.dstSubresource.baseArrayLayer:=0;
+     ImageBlit.dstSubresource.layerCount:=Max(1,fTotalCountArrayLayers);
+     ImageBlit.dstOffsets[0].x:=0;
+     ImageBlit.dstOffsets[0].y:=0;
+     ImageBlit.dstOffsets[0].z:=0;
+     ImageBlit.dstOffsets[1].x:=Max(1,Max(1,fWidth) shr MipMapLevelIndex);
+     ImageBlit.dstOffsets[1].y:=Max(1,Max(1,fHeight) shr MipMapLevelIndex);
+     ImageBlit.dstOffsets[1].z:=Max(1,Max(1,fDepth) shr MipMapLevelIndex);
+
+     aCommandBuffer.CmdBlitImage(fImage.fImageHandle,
+                                 VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                                 fImage.fImageHandle,
+                                 VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                 1,
+                                 @ImageBlit,
+                                 aGenerateMipMapsFilter);
+     
+     ImageMemoryBarrier:=@ImageMemoryBarriers[0];
+     FillChar(ImageMemoryBarrier^,SizeOf(TVkImageMemoryBarrier),#0);
+     ImageMemoryBarrier^.sType:=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+     ImageMemoryBarrier^.srcAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT);
+     ImageMemoryBarrier^.dstAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT);
+     ImageMemoryBarrier^.oldLayout:=VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+     ImageMemoryBarrier^.newLayout:=VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+     ImageMemoryBarrier^.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+     ImageMemoryBarrier^.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+     ImageMemoryBarrier^.image:=fImage.fImageHandle;
+     ImageMemoryBarrier^.subresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
+     ImageMemoryBarrier^.subresourceRange.baseMipLevel:=MipMapLevelIndex;
+     ImageMemoryBarrier^.subresourceRange.levelCount:=1;
+     ImageMemoryBarrier^.subresourceRange.baseArrayLayer:=0;
+     ImageMemoryBarrier^.subresourceRange.layerCount:=Max(1,fTotalCountArrayLayers);
+
+     aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                       TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                       0,
+                                       0,nil,
+                                       0,nil,
+                                       1,@ImageMemoryBarriers);
+
+    end;                                   
+
+   end;
+
+   // After generating mip maps, transition the image to shader read only optimal layout as final step
+   begin
+
+    ImageMemoryBarrier:=@ImageMemoryBarriers[0];
+    FillChar(ImageMemoryBarrier^,SizeOf(TVkImageMemoryBarrier),#0);
+    ImageMemoryBarrier^.sType:=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    ImageMemoryBarrier^.srcAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT) or TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT);
+    ImageMemoryBarrier^.dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_INPUT_ATTACHMENT_READ_BIT);
+    ImageMemoryBarrier^.oldLayout:=VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+    ImageMemoryBarrier^.newLayout:=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    ImageMemoryBarrier^.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+    ImageMemoryBarrier^.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+    ImageMemoryBarrier^.image:=fImage.fImageHandle;
+    ImageMemoryBarrier^.subresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
+    ImageMemoryBarrier^.subresourceRange.baseMipLevel:=0;
+    ImageMemoryBarrier^.subresourceRange.levelCount:=fCountStorageLevels;
+    ImageMemoryBarrier^.subresourceRange.baseArrayLayer:=0;
+    ImageMemoryBarrier^.subresourceRange.layerCount:=Max(1,fTotalCountArrayLayers);
+
+    aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                      fDevice.fPhysicalDevice.fPipelineStageAllShaderBits,
+                                      0,
+                                      0,nil,
+                                      0,nil,
+                                      1,@ImageMemoryBarriers); 
+
+   end;
+
+  end else begin
+
+   // When not generating mip maps, transition the image directly to shader read only optimal layout
+
+   ImageMemoryBarrier:=@ImageMemoryBarriers[0];
+   FillChar(ImageMemoryBarrier^,SizeOf(TVkImageMemoryBarrier),#0);
+   ImageMemoryBarrier^.sType:=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+   ImageMemoryBarrier^.srcAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT);
+   ImageMemoryBarrier^.dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_INPUT_ATTACHMENT_READ_BIT);
+   ImageMemoryBarrier^.oldLayout:=VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+   ImageMemoryBarrier^.newLayout:=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+   ImageMemoryBarrier^.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+   ImageMemoryBarrier^.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+   ImageMemoryBarrier^.image:=fImage.fImageHandle;
+   ImageMemoryBarrier^.subresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
+   ImageMemoryBarrier^.subresourceRange.baseMipLevel:=0;
+   ImageMemoryBarrier^.subresourceRange.levelCount:=fCountStorageLevels;
+   ImageMemoryBarrier^.subresourceRange.baseArrayLayer:=0;
+   ImageMemoryBarrier^.subresourceRange.layerCount:=Max(1,fTotalCountArrayLayers);
+
+   aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                     fDevice.fPhysicalDevice.fPipelineStageAllShaderBits,
+                                     0,
+                                     0,nil,
+                                     0,nil,
+                                     1,@ImageMemoryBarriers);
+
+  end;
+
+ finally
+
+  // Finally execute the command buffer if requested
+  if aCommandBufferResetAndExecute then begin
+   aCommandBuffer.EndRecording;
+   aCommandBuffer.Execute(aQueue,0,nil,nil,aFence,true);
   end;
 
  end;
