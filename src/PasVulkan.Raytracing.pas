@@ -81,6 +81,7 @@ type EpvRaytracing=class(Exception);
      TpvRaytracingCompactedSizeQueryPool=class
       public
        type TCompactedSizes=TpvDynamicArrayList<TVkDeviceSize>;
+            TAccelerationStructureList=TpvDynamicArrayList<TVkAccelerationStructureKHR>;
             TAccelerationStructureIndexHashMap=TpvHashMap<TVkAccelerationStructureKHR,TpvSizeInt>;
       private
        fDevice:TpvVulkanDevice;
@@ -88,7 +89,9 @@ type EpvRaytracing=class(Exception);
        fQueryPoolCreateInfo:TVkQueryPoolCreateInfo;
        fCount:TVkUInt32;
        fAccelerationStructures:TpvRaytracingAccelerationStructureList;
+       fAccelerationStructureList:TAccelerationStructureList;
        fAccelerationStructureIndexHashMap:TAccelerationStructureIndexHashMap;
+       fResultAccelerationStructureIndexHashMap:TAccelerationStructureIndexHashMap;
        fCompactedSizes:TCompactedSizes;
       public
        constructor Create(const aDevice:TpvVulkanDevice);
@@ -99,7 +102,7 @@ type EpvRaytracing=class(Exception);
        procedure AddAccelerationStructure(const aAccelerationStructure:TpvRaytracingAccelerationStructure);
        procedure Query(const aCommandBuffer:TpvVulkanCommandBuffer);
        procedure GetResults;
-       function GetCompactedSizeByIndex(const aIndex:TVkUInt32):TVkDeviceSize; 
+       function GetCompactedSizeByIndex(const aIndex:TpvSizeInt):TVkDeviceSize;
        function GetCompactedSizeByAccelerationStructure(const aAccelerationStructure:TpvRaytracingAccelerationStructure):TVkDeviceSize;
       published
        property Device:TpvVulkanDevice read fDevice;
@@ -389,7 +392,11 @@ begin
 
  fAccelerationStructures:=TpvRaytracingAccelerationStructureList.Create;
 
+ fAccelerationStructureList:=TAccelerationStructureList.Create;
+
  fAccelerationStructureIndexHashMap:=TAccelerationStructureIndexHashMap.Create(-1);
+
+ fResultAccelerationStructureIndexHashMap:=TAccelerationStructureIndexHashMap.Create(-1);
 
  fCompactedSizes:=TCompactedSizes.Create;
 
@@ -401,6 +408,10 @@ begin
  FreeAndNil(fCompactedSizes);
 
  FreeAndNil(fAccelerationStructureIndexHashMap);
+
+ FreeAndNil(fResultAccelerationStructureIndexHashMap);
+
+ FreeAndNil(fAccelerationStructureList);
 
  FreeAndNil(fAccelerationStructures);
 
@@ -428,24 +439,16 @@ end;
 
 procedure TpvRaytracingCompactedSizeQueryPool.Reset;
 begin
- if fQueryPool<>VK_NULL_HANDLE then begin
-
-  // Destroy query pool, because we want to reset it, but maybe with different query count, so we need to recreate it later again
-  try
-   fDevice.Commands.DestroyQueryPool(fDevice.Handle,fQueryPool,nil);
-  finally 
-   fQueryPool:=VK_NULL_HANDLE;
-  end; 
  
-  fCount:=0;
+ fCount:=0;
 
-  fAccelerationStructures.ClearNoFree;
+ fAccelerationStructures.ClearNoFree;
 
-  fAccelerationStructureIndexHashMap.Clear;
+ fAccelerationStructureList.ClearNoFree;
 
-  fCompactedSizes.ClearNoFree;
+ fAccelerationStructureIndexHashMap.Clear;
 
- end;
+ fCompactedSizes.ClearNoFree;
 
 end;
 
@@ -453,6 +456,7 @@ procedure TpvRaytracingCompactedSizeQueryPool.AddAccelerationStructure(const aAc
 begin
  if not fAccelerationStructureIndexHashMap.ExistKey(aAccelerationStructure.AccelerationStructure) then begin
   fAccelerationStructures.Add(aAccelerationStructure);
+  fAccelerationStructureList.Add(aAccelerationStructure.fAccelerationStructure);
   fAccelerationStructureIndexHashMap[aAccelerationStructure.AccelerationStructure]:=fCount;
   inc(fCount);
  end; 
@@ -462,54 +466,100 @@ procedure TpvRaytracingCompactedSizeQueryPool.Query(const aCommandBuffer:TpvVulk
 var MemoryBarrier:TVkMemoryBarrier;
 begin
  
- if fQueryPool=VK_NULL_HANDLE then begin
-  fQueryPoolCreateInfo.queryCount:=fCount;
-  VulkanCheckResult(fDevice.Commands.CreateQueryPool(fDevice.Handle,@fQueryPoolCreateInfo,nil,@fQueryPool));
+ if fCount>0 then begin 
+
+  // Create acceleration structure compacted size query pool, if it's not created yet or recreate if the count of acceleration 
+  // structures has changed, because we need to query the compacted size of each acceleration structure
+  if (fQueryPool=VK_NULL_HANDLE) or (fCount>fQueryPoolCreateInfo.queryCount) then begin
+
+   fQueryPoolCreateInfo.queryCount:=fCount;
+
+   // If query pool is already created, destroy it first, in the case that there are more acceleration structures than before 
+   if fQueryPool<>VK_NULL_HANDLE then begin
+    try
+     fDevice.Commands.DestroyQueryPool(fDevice.Handle,fQueryPool,nil);
+    finally
+     fQueryPool:=VK_NULL_HANDLE;
+    end;
+   end;
+
+   // Create or re-create query pool
+   VulkanCheckResult(fDevice.Commands.CreateQueryPool(fDevice.Handle,@fQueryPoolCreateInfo,nil,@fQueryPool));
+    
+  end;
+
+  // Memory barrier for acceleration structure compacted size query for to be sure that the acceleration structure is in a valid state beforehand
+  FillChar(MemoryBarrier,SizeOf(TVkMemoryBarrier),#0);
+  MemoryBarrier.sType:=VK_STRUCTURE_TYPE_MEMORY_BARRIER;
+  MemoryBarrier.pNext:=nil;
+  MemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_KHR) or TVkAccessFlags(VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_KHR);
+  MemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_KHR) or TVkAccessFlags(VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_KHR);
+  fDevice.Commands.CmdPipelineBarrier(aCommandBuffer.Handle,
+                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR),
+                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR),
+                                      0,
+                                      1,@MemoryBarrier,
+                                      0,nil,
+                                      0,nil);
+
+  // Reset query pool
+  fDevice.Commands.CmdResetQueryPool(aCommandBuffer.Handle,fQueryPool,0,fCount);
+
+  // Write acceleration structure compacted size queries 
+  fDevice.Commands.CmdWriteAccelerationStructuresPropertiesKHR(aCommandBuffer.Handle,
+                                                               fCount,
+                                                               @fAccelerationStructureList.ItemArray[0],
+                                                               VK_QUERY_TYPE_ACCELERATION_STRUCTURE_COMPACTED_SIZE_KHR,
+                                                               fQueryPool,
+                                                               0);
+
  end;
 
- // Memory barrier for acceleration structure compacted size query for to be sure that the acceleration structure is in a valid state beforehand
- FillChar(MemoryBarrier,SizeOf(TVkMemoryBarrier),#0);
- MemoryBarrier.sType:=VK_STRUCTURE_TYPE_MEMORY_BARRIER;
- MemoryBarrier.pNext:=nil;
- MemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_KHR) or TVkAccessFlags(VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_KHR);
- MemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_KHR) or TVkAccessFlags(VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_KHR);
- fDevice.Commands.CmdPipelineBarrier(aCommandBuffer.Handle,
-                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR),
-                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR),
-                                     0,
-                                     1,@MemoryBarrier,
-                                     0,nil,
-                                     0,nil);
-
- // Reset query pool
- fDevice.Commands.CmdResetQueryPool(aCommandBuffer.Handle,fQueryPool,0,fCount);
-
- // Write acceleration structure compacted size queries 
- fDevice.Commands.CmdWriteAccelerationStructuresPropertiesKHR(aCommandBuffer.Handle,
-                                                              fCount,
-                                                              @fAccelerationStructures.Items[0].AccelerationStructure,
-                                                              VK_QUERY_TYPE_ACCELERATION_STRUCTURE_COMPACTED_SIZE_KHR,
-                                                              fQueryPool,
-                                                              0);
 end;
 
 procedure TpvRaytracingCompactedSizeQueryPool.GetResults;
+var TemporaryAccelerationStructureIndexHashMap:TAccelerationStructureIndexHashMap;
 begin
+ 
+ // Get results of acceleration structure compacted size queries
  if fCount>0 then begin
-  fCompactedSizes.ClearNoFree;
-  fCompactedSizes.Resize(fCount);
-  VulkanCheckResult(fDevice.Commands.GetQueryPoolResults(fDevice.Handle,
-                                                         fQueryPool,
-                                                         0,
-                                                         fCount,
-                                                         fCount*SizeOf(TVkDeviceSize),
-                                                         @fCompactedSizes.ItemArray[0],
-                                                         SizeOf(TVkDeviceSize),
-                                                         TVkQueryResultFlags(VK_QUERY_RESULT_64_BIT) or TVkQueryResultFlags(VK_QUERY_RESULT_WAIT_BIT)));
+
+  try 
+ 
+   fCompactedSizes.ClearNoFree;
+ 
+   fCompactedSizes.Resize(fCount);
+ 
+   VulkanCheckResult(fDevice.Commands.GetQueryPoolResults(fDevice.Handle,
+                                                          fQueryPool,
+                                                          0,
+                                                          fCount,
+                                                          fCount*SizeOf(TVkDeviceSize),
+                                                          @fCompactedSizes.ItemArray[0],
+                                                          SizeOf(TVkDeviceSize),
+                                                          TVkQueryResultFlags(VK_QUERY_RESULT_64_BIT) or TVkQueryResultFlags(VK_QUERY_RESULT_WAIT_BIT)));
+
+   // Swap acceleration structure index hash maps
+   TemporaryAccelerationStructureIndexHashMap:=fAccelerationStructureIndexHashMap;
+   fAccelerationStructureIndexHashMap:=fResultAccelerationStructureIndexHashMap;
+   fResultAccelerationStructureIndexHashMap:=TemporaryAccelerationStructureIndexHashMap;
+
+   // Clear acceleration structure index hash map
+   fAccelerationStructureIndexHashMap.Clear(false);
+
+   // Clear acceleration structures
+   fAccelerationStructures.ClearNoFree;
+   fAccelerationStructureList.ClearNoFree;
+
+  finally   
+   fCount:=0; // Reset count, but don't clear the result list, since these will queried later after this function call
+  end;                                                         
+
  end;
+
 end;
 
-function TpvRaytracingCompactedSizeQueryPool.GetCompactedSizeByIndex(const aIndex:TVkUInt32):TVkDeviceSize;
+function TpvRaytracingCompactedSizeQueryPool.GetCompactedSizeByIndex(const aIndex:TpvSizeInt):TVkDeviceSize;
 begin
  if (aIndex>=0) and (aIndex<fCompactedSizes.Count) then begin
   result:=fCompactedSizes[aIndex];
@@ -521,7 +571,7 @@ end;
 function TpvRaytracingCompactedSizeQueryPool.GetCompactedSizeByAccelerationStructure(const aAccelerationStructure:TpvRaytracingAccelerationStructure):TVkDeviceSize;
 var Index:TpvSizeInt;
 begin
- Index:=fAccelerationStructureIndexHashMap[aAccelerationStructure.AccelerationStructure];
+ Index:=fResultAccelerationStructureIndexHashMap[aAccelerationStructure.AccelerationStructure];
  if (Index>=0) and (Index<fCompactedSizes.Count) then begin
   result:=fCompactedSizes[Index];
  end else begin
