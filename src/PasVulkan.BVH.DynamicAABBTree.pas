@@ -1738,9 +1738,9 @@ begin
 
     // Add the children to the stack in the order of the closest one first
     if Node^.Children[0]>=0 then begin
-     DistanceA:=aGetDistance(@Nodes[Node^.Children[0]].AABB,aPoint);
+     DistanceA:=aGetDistance(@Nodes[Node^.Children[0]],aPoint);
      if Node^.Children[1]>=0 then begin
-      DistanceB:=aGetDistance(@Nodes[Node^.Children[1]].AABB,aPoint);
+      DistanceB:=aGetDistance(@Nodes[Node^.Children[1]],aPoint);
       if DistanceA<DistanceB then begin
        if DistanceB<=aMaxDistance then begin
         NewStackItem:=Pointer(Stack.PushIndirect);
@@ -1772,7 +1772,7 @@ begin
       end; 
      end;
     end else if Node^.Children[1]>=0 then begin
-     DistanceB:=aGetDistance(@Nodes[Node^.Children[1]].AABB,aPoint);
+     DistanceB:=aGetDistance(@Nodes[Node^.Children[1]],aPoint);
      if DistanceB<=aMaxDistance then begin
       NewStackItem:=Pointer(Stack.PushIndirect);
       NewStackItem^.NodeID:=Node^.Children[1];
