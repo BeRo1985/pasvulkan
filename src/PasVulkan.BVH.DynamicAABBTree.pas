@@ -1703,7 +1703,7 @@ begin
       (not ((ResultItemArray.Count=aMaxCount) and (ResultItemArray.Items[ResultItemArray.Count-1].Distance<StackItem.Distance))) then begin
 
     Node:=@Nodes[StackItem.NodeID];
-    if (Node^.UserData>0) and assigned(Pointer(Node^.UserData)) then begin
+    if Node^.UserData<>0 then begin
 
      // Add the node to the result list in a sorted way
      ResultItem.Node:=Node;
