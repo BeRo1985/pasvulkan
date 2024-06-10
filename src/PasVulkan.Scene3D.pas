@@ -5470,8 +5470,20 @@ begin
 
  if fDynamicGeometry then begin
   AllocationGroupID:=pvAllocationGroupIDScene3DRaytracingBLASDynamic;
+  fBLASState:=TBLASState.Noncompacted;
  end else begin
-  AllocationGroupID:=pvAllocationGroupIDScene3DRaytracingBLASStatic;
+  case fBLASState of
+   TBLASState.Noncompacted:begin
+    fBLASState:=TBLASState.NeedToBeCompacted;
+    AllocationGroupID:=pvAllocationGroupIDScene3DRaytracingBLASStatic;
+   end;
+   TBLASState.NeedToBeCompacted:begin
+    AllocationGroupID:=pvAllocationGroupIDScene3DRaytracingBLASStatic;
+   end;
+   else begin
+    AllocationGroupID:=pvAllocationGroupIDScene3DRaytracingBLASStaticCompacted;
+   end;
+  end;
  end;
 
  for BLASGroupVariant:=Low(TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroupVariant) to High(TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroupVariant) do begin
