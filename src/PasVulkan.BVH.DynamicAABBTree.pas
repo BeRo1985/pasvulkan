@@ -1670,7 +1670,7 @@ var Stack:TStack;
     NewStackItem:PStackItem;
     StackItem:TStackItem;
     Node:TpvBVHDynamicAABBTree.PTreeNode;
-    Index:TpvSizeInt;
+    Index,LowIndex,MidIndex,HighIndex,Difference:TpvSizeInt;
     ResultItemArray:TResultItemArray;
     ResultItem:TResultItem;
     DistanceA,DistanceB:TpvScalar;
@@ -1705,14 +1705,37 @@ begin
     Node:=@Nodes[StackItem.NodeID];
     if (Node^.UserData>0) and assigned(Pointer(Node^.UserData)) then begin
 
-     // TODO: Sorted insert
-
-     // Add the node to the result list
+     // Add the node to the result list in a sorted way
      ResultItem.Node:=Node;
      ResultItem.Distance:=StackItem.Distance; 
-     ResultItemArray.Add(ResultItem);
-
-     // Sort the list so that the closest is first
+     if ResultItemArray.Count>0 then begin
+      LowIndex:=0;
+      HighIndex:=ResultItemArray.Count-1;
+      while LowIndex<=HighIndex do begin
+       MidIndex:=LowIndex+((HighIndex-LowIndex) shr 1);
+       case TpvInt32(Sign(ResultItemArray.Items[MidIndex].Distance-StackItem.Distance)) of
+        0:begin // =0
+         LowIndex:=MidIndex;
+         break;
+        end;
+        TpvInt32($00000001)..TpvInt32($7fffffff):begin // >0
+         HighIndex:=MidIndex-1;
+        end;
+        else begin // <0
+         LowIndex:=MidIndex+1;
+        end;
+       end;
+      end;
+      if (Index>=0) and (Index<ResultItemArray.Count) then begin
+       ResultItemArray.Insert(LowIndex,ResultItem);
+      end else begin
+       ResultItemArray.Add(ResultItem);
+      end;
+     end else begin
+      ResultItemArray.Add(ResultItem);
+     end;
+     
+     // Sort the list so that the closest is first for just to be sure
      Index:=0;
      while (Index+1)<ResultItemArray.Count do begin
       if ResultItemArray.Items[Index].Distance>ResultItemArray.Items[Index+1].Distance then begin
