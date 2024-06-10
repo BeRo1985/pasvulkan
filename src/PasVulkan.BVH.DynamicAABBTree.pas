@@ -1699,7 +1699,7 @@ begin
 
    // If this subtree is further away than we care about, or if we've already found enough locations, and the furthest one is closer
    // than this subtree possibly could be, then skip it.
-   if (StackItem.Distance<=aMaxDistance) or
+   if (StackItem.Distance<=aMaxDistance) and
       (not ((ResultItemArray.Count=aMaxCount) and (ResultItemArray.Items[ResultItemArray.Count-1].Distance<StackItem.Distance))) then begin
 
     Node:=@Nodes[StackItem.NodeID];
