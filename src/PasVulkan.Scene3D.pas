@@ -2927,23 +2927,26 @@ type EpvScene3D=class(Exception);
                      DoubleSided
                     );
                    PBLASGroupVariant=^TBLASGroupVariant;
-                   TBLASState=
-                    (
-                     Noncompacted,
-                     NeedToBeCompacted,
-                     Compacted
-                    );
-                   PBLASState=^TBLASState;
                    { TBLASGroup }
                    TBLASGroup=record
                     public
                      type TUInt32Array=TpvDynamicArray<TpvUInt32>;
+                          TBLASGroupState=
+                           (
+                            Noncompacted,
+                            NeedToBeCompacted,
+                            QueryCompactSize,
+                            Compact,
+                            Compacted
+                           );
+                          PBLASGroupState=^TBLASGroupState;
                     private
                      fRaytracingGroupInstanceNode:TRaytracingGroupInstanceNode;
                      fBLASGeometry:TpvRaytracingBottomLevelAccelerationStructureGeometry;
                      fBLAS:TpvRaytracingBottomLevelAccelerationStructure;
                      fBLASInstances:TpvRaytracingBottomLevelAccelerationStructureInstanceList;
                      fBLASBuffer:TpvVulkanBuffer;
+                     fBLASGroupState:TBLASGroupState;
                      fMaterialIDs:TUInt32Array;
                      fIndexOffsets:TUInt32Array;
                      fAccelerationStructureSize:TVkDeviceSize;
@@ -2957,6 +2960,7 @@ type EpvScene3D=class(Exception);
                      property BLASGeometry:TpvRaytracingBottomLevelAccelerationStructureGeometry read fBLASGeometry;
                      property BLAS:TpvRaytracingBottomLevelAccelerationStructure read fBLAS;
                      property BLASInstances:TpvRaytracingBottomLevelAccelerationStructureInstanceList read fBLASInstances;
+                     property BLASGroupState:TBLASGroupState read fBLASGroupState;
                      property ScratchOffset:TVkDeviceSize read fScratchOffset;
                    end;
                    PBLASGroup=^TBLASGroup;
@@ -2975,7 +2979,6 @@ type EpvScene3D=class(Exception);
               fVulkanLongTermStaticBufferData:TVulkanLongTermStaticBufferData;
               fDynamicGeometry:Boolean;
               fGeometryChanged:Boolean;
-              fBLASState:TBLASState;
               fDirty:TPasMPBool32;
               fUpdateCounter:TpvUInt64;
               fUpdateDirty:TPasMPBool32;
@@ -5336,6 +5339,8 @@ begin
 
  fBLASBuffer:=nil;
 
+ fBLASGroupState:=TBLASGroupState.Noncompacted;
+
  fMaterialIDs.Initialize;
 
  fIndexOffsets.Initialize;
@@ -5398,8 +5403,6 @@ begin
  fVulkanLongTermStaticBufferData:=nil;
 
  fDirty:=false;
-
- fBLASState:=TBLASState.Noncompacted;
 
  fUpdateCounter:=0;
 
@@ -5470,20 +5473,8 @@ begin
 
  if fDynamicGeometry then begin
   AllocationGroupID:=pvAllocationGroupIDScene3DRaytracingBLASDynamic;
-  fBLASState:=TBLASState.Noncompacted;
  end else begin
-  case fBLASState of
-   TBLASState.Noncompacted:begin
-    fBLASState:=TBLASState.NeedToBeCompacted;
-    AllocationGroupID:=pvAllocationGroupIDScene3DRaytracingBLASStatic;
-   end;
-   TBLASState.NeedToBeCompacted:begin
-    AllocationGroupID:=pvAllocationGroupIDScene3DRaytracingBLASStatic;
-   end;
-   else begin
-    AllocationGroupID:=pvAllocationGroupIDScene3DRaytracingBLASStaticCompacted;
-   end;
-  end;
+  AllocationGroupID:=pvAllocationGroupIDScene3DRaytracingBLASStatic;
  end;
 
  for BLASGroupVariant:=Low(TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroupVariant) to High(TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroupVariant) do begin
