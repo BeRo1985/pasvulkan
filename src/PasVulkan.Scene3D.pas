@@ -2927,6 +2927,13 @@ type EpvScene3D=class(Exception);
                      DoubleSided
                     );
                    PBLASGroupVariant=^TBLASGroupVariant;
+                   TBLASState=
+                    (
+                     Noncompacted,
+                     NeedToBeCompacted,
+                     Compacted
+                    );
+                   PBLASState=^TBLASState;
                    { TBLASGroup }
                    TBLASGroup=record
                     public
@@ -2968,6 +2975,7 @@ type EpvScene3D=class(Exception);
               fVulkanLongTermStaticBufferData:TVulkanLongTermStaticBufferData;
               fDynamicGeometry:Boolean;
               fGeometryChanged:Boolean;
+              fBLASState:TBLASState;
               fDirty:TPasMPBool32;
               fUpdateCounter:TpvUInt64;
               fUpdateDirty:TPasMPBool32;
@@ -5390,6 +5398,8 @@ begin
  fVulkanLongTermStaticBufferData:=nil;
 
  fDirty:=false;
+
+ fBLASState:=TBLASState.Noncompacted;
 
  fUpdateCounter:=0;
 
