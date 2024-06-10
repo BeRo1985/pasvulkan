@@ -5635,8 +5635,8 @@ begin
                                                                            IfThen(fDynamicGeometry,
                                                                                   TVkBuildAccelerationStructureFlagsKHR(VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_BUILD_BIT_KHR) or
                                                                                   TVkBuildAccelerationStructureFlagsKHR(VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_UPDATE_BIT_KHR),
-                                                                                  TVkBuildAccelerationStructureFlagsKHR(VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR){or
-                                                                                  TVkBuildAccelerationStructureFlagsKHR(VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_UPDATE_BIT_KHR)}),
+                                                                                  TVkBuildAccelerationStructureFlagsKHR(VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR) or
+                                                                                  TVkBuildAccelerationStructureFlagsKHR(VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_COMPACTION_BIT_KHR)),
                                                                            fDynamicGeometry);
     BLASGroup^.fAccelerationStructureSize:=BLASGroup^.fBLAS.BuildSizesInfo.accelerationStructureSize;
     fDirty:=true;
