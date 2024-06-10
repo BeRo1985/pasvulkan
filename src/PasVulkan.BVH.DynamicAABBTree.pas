@@ -1708,54 +1708,59 @@ begin
      // Add the node to the result list in a sorted way
      ResultItem.Node:=Node;
      ResultItem.Distance:=aGetDistance(Node,aPoint);
-     if ResultItemArray.Count>0 then begin
-      LowIndex:=0;
-      HighIndex:=ResultItemArray.Count-1;
-      while LowIndex<=HighIndex do begin
-       MidIndex:=LowIndex+((HighIndex-LowIndex) shr 1);
-       case TpvInt32(Sign(ResultItemArray.Items[MidIndex].Distance-ResultItem.Distance)) of
-        0:begin // =0
-         LowIndex:=MidIndex;
-         break;
-        end;
-        TpvInt32($00000001)..TpvInt32($7fffffff):begin // >0
-         HighIndex:=MidIndex-1;
-        end;
-        else begin // <0
-         LowIndex:=MidIndex+1;
+     if ResultItem.Distance<=aMaxDistance then begin
+      
+      if ResultItemArray.Count>0 then begin
+
+       LowIndex:=0;
+       HighIndex:=ResultItemArray.Count-1;
+       while LowIndex<=HighIndex do begin
+        MidIndex:=LowIndex+((HighIndex-LowIndex) shr 1);
+        case TpvInt32(Sign(ResultItemArray.Items[MidIndex].Distance-ResultItem.Distance)) of
+         0:begin // =0
+          LowIndex:=MidIndex;
+          break;
+         end;
+         TpvInt32($00000001)..TpvInt32($7fffffff):begin // >0
+          HighIndex:=MidIndex-1;
+         end;
+         else begin // <0
+          LowIndex:=MidIndex+1;
+         end;
         end;
        end;
-      end;
-      if (Index>=0) and (Index<ResultItemArray.Count) then begin
-       ResultItemArray.Insert(LowIndex,ResultItem);
+       if (Index>=0) and (Index<ResultItemArray.Count) then begin
+        ResultItemArray.Insert(LowIndex,ResultItem);
+       end else begin
+        ResultItemArray.Add(ResultItem);
+       end;
       end else begin
        ResultItemArray.Add(ResultItem);
       end;
-     end else begin
-      ResultItemArray.Add(ResultItem);
-     end;
-     
-     // Sort the list so that the closest is first for just to be sure
-     Index:=0;
-     while (Index+1)<ResultItemArray.Count do begin
-      if ResultItemArray.Items[Index].Distance>ResultItemArray.Items[Index+1].Distance then begin
-       ResultItemArray.Exchange(Index,Index+1);
-       if Index>0 then begin
-        dec(Index);
+
+      // Sort the list so that the closest is first for just to be sure
+      Index:=0;
+      while (Index+1)<ResultItemArray.Count do begin
+       if ResultItemArray.Items[Index].Distance>ResultItemArray.Items[Index+1].Distance then begin
+        ResultItemArray.Exchange(Index,Index+1);
+        if Index>0 then begin
+         dec(Index);
+        end else begin
+         inc(Index);
+        end;
        end else begin
         inc(Index);
        end;
-      end else begin
-       inc(Index);
+      end;     
+
+      // Remove all too many and too far away nodes from the list when we have reached the maximum count 
+      while ResultItemArray.Count>aMaxCount do begin
+       ResultItemArray.Delete(ResultItemArray.Count-1);
       end;
-     end;     
 
-     // Remove all too many and too far away nodes from the list when we have reached the maximum count 
-     while ResultItemArray.Count>aMaxCount do begin
-      ResultItemArray.Delete(ResultItemArray.Count-1);
+      result:=true;
+
      end;
-
-     result:=true;
 
     end;
 
