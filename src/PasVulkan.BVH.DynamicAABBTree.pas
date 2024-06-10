@@ -1693,7 +1693,7 @@ begin
 
   NewStackItem:=Pointer(Stack.PushIndirect);
   NewStackItem^.NodeID:=Root;
-  NewStackItem^.Distance:=aGetDistance(@Nodes[Root],aPoint);
+  NewStackItem^.Distance:=ClosestPointToAABB(Nodes[Root].AABB,aPoint);
 
   while Stack.Pop(StackItem) do begin
 
@@ -1707,13 +1707,13 @@ begin
 
      // Add the node to the result list in a sorted way
      ResultItem.Node:=Node;
-     ResultItem.Distance:=StackItem.Distance; 
+     ResultItem.Distance:=aGetDistance(Node,aPoint);
      if ResultItemArray.Count>0 then begin
       LowIndex:=0;
       HighIndex:=ResultItemArray.Count-1;
       while LowIndex<=HighIndex do begin
        MidIndex:=LowIndex+((HighIndex-LowIndex) shr 1);
-       case TpvInt32(Sign(ResultItemArray.Items[MidIndex].Distance-StackItem.Distance)) of
+       case TpvInt32(Sign(ResultItemArray.Items[MidIndex].Distance-ResultItem.Distance)) of
         0:begin // =0
          LowIndex:=MidIndex;
          break;
@@ -1761,9 +1761,9 @@ begin
 
     // Add the children to the stack in the order of the closest one first
     if Node^.Children[0]>=0 then begin
-     DistanceA:=aGetDistance(@Nodes[Node^.Children[0]],aPoint);
+     DistanceA:=ClosestPointToAABB(Nodes[Node^.Children[0]].AABB,aPoint);
      if Node^.Children[1]>=0 then begin
-      DistanceB:=aGetDistance(@Nodes[Node^.Children[1]],aPoint);
+      DistanceB:=ClosestPointToAABB(Nodes[Node^.Children[1]].AABB,aPoint);
       if DistanceA<DistanceB then begin
        if DistanceB<=aMaxDistance then begin
         NewStackItem:=Pointer(Stack.PushIndirect);
@@ -1795,7 +1795,7 @@ begin
       end; 
      end;
     end else if Node^.Children[1]>=0 then begin
-     DistanceB:=aGetDistance(@Nodes[Node^.Children[1]],aPoint);
+     DistanceB:=ClosestPointToAABB(Nodes[Node^.Children[1]].AABB,aPoint);
      if DistanceB<=aMaxDistance then begin
       NewStackItem:=Pointer(Stack.PushIndirect);
       NewStackItem^.NodeID:=Node^.Children[1];
