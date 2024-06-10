@@ -73,6 +73,42 @@ uses SysUtils,
 
 type EpvRaytracing=class(Exception);
 
+     TpvRaytracingAccelerationStructure=class;
+
+     TpvRaytracingAccelerationStructureList=TpvObjectGenericList<TpvRaytracingAccelerationStructure>;
+
+     { TpvRaytracingCompactedSizeQueryPool }
+     TpvRaytracingCompactedSizeQueryPool=class
+      public
+       type TCompactedSizes=TpvDynamicArrayList<TVkDeviceSize>;
+            TAccelerationStructureIndexHashMap=TpvHashMap<TVkAccelerationStructureKHR,TpvSizeInt>;
+      private
+       fDevice:TpvVulkanDevice;
+       fQueryPool:TVkQueryPool;
+       fQueryPoolCreateInfo:TVkQueryPoolCreateInfo;
+       fCount:TVkUInt32;
+       fAccelerationStructures:TpvRaytracingAccelerationStructureList;
+       fAccelerationStructureIndexHashMap:TAccelerationStructureIndexHashMap;
+       fCompactedSizes:TCompactedSizes;
+      public
+       constructor Create(const aDevice:TpvVulkanDevice);
+       destructor Destroy; override;
+       function Empty:boolean;
+       function Ready:boolean;
+       procedure Reset;
+       procedure AddAccelerationStructure(const aAccelerationStructure:TpvRaytracingAccelerationStructure);
+       procedure Query(const aCommandBuffer:TpvVulkanCommandBuffer);
+       procedure GetResults;
+       function GetCompactedSizeByIndex(const aIndex:TVkUInt32):TVkDeviceSize; 
+       function GetCompactedSizeByAccelerationStructure(const aAccelerationStructure:TpvRaytracingAccelerationStructure):TVkDeviceSize;
+      published
+       property Device:TpvVulkanDevice read fDevice;
+       property QueryPool:TVkQueryPool read fQueryPool;
+       property Count:TVkUInt32 read fCount;
+       property CompactedSizes:TCompactedSizes read fCompactedSizes;
+       property AccelerationStructures:TpvRaytracingAccelerationStructureList read fAccelerationStructures;
+     end;
+
      { TpvRaytracingBLASGeometryInfoBufferItem } 
      TpvRaytracingBLASGeometryInfoBufferItem=packed record // per gl_InstanceCustomIndexEXT or gl_InstanceID wise, depending on the usage
       public
@@ -165,10 +201,6 @@ type EpvRaytracing=class(Exception);
       published
        property Device:TpvVulkanDevice read fDevice;
      end;
-
-     TpvRaytracingAccelerationStructure=class;
-
-     TpvRaytracingAccelerationStructureList=TpvObjectGenericList<TpvRaytracingAccelerationStructure>;
 
      { TpvRaytracingAccelerationStructure }
      TpvRaytracingAccelerationStructure=class
@@ -334,6 +366,168 @@ type EpvRaytracing=class(Exception);
      end;
 
 implementation
+
+{ TpvRaytracingCompactedSizeQueryPool }
+
+constructor TpvRaytracingCompactedSizeQueryPool.Create(const aDevice:TpvVulkanDevice);
+begin
+
+ inherited Create;
+
+ fDevice:=aDevice;
+
+ FillChar(fQueryPoolCreateInfo,SizeOf(TVkQueryPoolCreateInfo),#0);
+ fQueryPoolCreateInfo.sType:=VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
+ fQueryPoolCreateInfo.pNext:=nil;
+ fQueryPoolCreateInfo.flags:=0;
+ fQueryPoolCreateInfo.queryType:=VK_QUERY_TYPE_ACCELERATION_STRUCTURE_COMPACTED_SIZE_KHR;
+ fQueryPoolCreateInfo.queryCount:=0;
+
+ fQueryPool:=VK_NULL_HANDLE; // Not created yet
+
+ fCount:=0;
+
+ fAccelerationStructures:=TpvRaytracingAccelerationStructureList.Create;
+
+ fAccelerationStructureIndexHashMap:=TAccelerationStructureIndexHashMap.Create(-1);
+
+ fCompactedSizes:=TCompactedSizes.Create;
+
+end;
+
+destructor TpvRaytracingCompactedSizeQueryPool.Destroy;
+begin
+
+ FreeAndNil(fCompactedSizes);
+
+ FreeAndNil(fAccelerationStructureIndexHashMap);
+
+ FreeAndNil(fAccelerationStructures);
+
+ if fQueryPool<>VK_NULL_HANDLE then begin
+  try
+   fDevice.Commands.DestroyQueryPool(fDevice.Handle,fQueryPool,nil);
+  finally 
+   fQueryPool:=VK_NULL_HANDLE;
+  end; 
+ end;
+
+ inherited Destroy;
+
+end;
+
+function TpvRaytracingCompactedSizeQueryPool.Empty:boolean;
+begin
+ result:=fCount=0;
+end;
+
+function TpvRaytracingCompactedSizeQueryPool.Ready:boolean;
+begin
+ result:=(fCount>0) and (fCount=fAccelerationStructures.Count);
+end;
+
+procedure TpvRaytracingCompactedSizeQueryPool.Reset;
+begin
+ if fQueryPool<>VK_NULL_HANDLE then begin
+
+  // Destroy query pool, because we want to reset it, but maybe with different query count, so we need to recreate it later again
+  try
+   fDevice.Commands.DestroyQueryPool(fDevice.Handle,fQueryPool,nil);
+  finally 
+   fQueryPool:=VK_NULL_HANDLE;
+  end; 
+ 
+  fCount:=0;
+
+  fAccelerationStructures.ClearNoFree;
+
+  fAccelerationStructureIndexHashMap.Clear;
+
+  fCompactedSizes.ClearNoFree;
+
+ end;
+
+end;
+
+procedure TpvRaytracingCompactedSizeQueryPool.AddAccelerationStructure(const aAccelerationStructure:TpvRaytracingAccelerationStructure);
+begin
+ if not fAccelerationStructureIndexHashMap.ExistKey(aAccelerationStructure.AccelerationStructure) then begin
+  fAccelerationStructures.Add(aAccelerationStructure);
+  fAccelerationStructureIndexHashMap[aAccelerationStructure.AccelerationStructure]:=fCount;
+  inc(fCount);
+ end; 
+end;
+
+procedure TpvRaytracingCompactedSizeQueryPool.Query(const aCommandBuffer:TpvVulkanCommandBuffer);
+var MemoryBarrier:TVkMemoryBarrier;
+begin
+ 
+ if fQueryPool=VK_NULL_HANDLE then begin
+  fQueryPoolCreateInfo.queryCount:=fCount;
+  VulkanCheckResult(fDevice.Commands.CreateQueryPool(fDevice.Handle,@fQueryPoolCreateInfo,nil,@fQueryPool));
+ end;
+
+ // Memory barrier for acceleration structure compacted size query for to be sure that the acceleration structure is in a valid state beforehand
+ FillChar(MemoryBarrier,SizeOf(TVkMemoryBarrier),#0);
+ MemoryBarrier.sType:=VK_STRUCTURE_TYPE_MEMORY_BARRIER;
+ MemoryBarrier.pNext:=nil;
+ MemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_KHR) or TVkAccessFlags(VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_KHR);
+ MemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_KHR) or TVkAccessFlags(VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_KHR);
+ fDevice.Commands.CmdPipelineBarrier(aCommandBuffer.Handle,
+                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR),
+                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR),
+                                     0,
+                                     1,@MemoryBarrier,
+                                     0,nil,
+                                     0,nil);
+
+ // Reset query pool
+ fDevice.Commands.CmdResetQueryPool(aCommandBuffer.Handle,fQueryPool,0,fCount);
+
+ // Write acceleration structure compacted size queries 
+ fDevice.Commands.CmdWriteAccelerationStructuresPropertiesKHR(aCommandBuffer.Handle,
+                                                              fCount,
+                                                              @fAccelerationStructures.Items[0].AccelerationStructure,
+                                                              VK_QUERY_TYPE_ACCELERATION_STRUCTURE_COMPACTED_SIZE_KHR,
+                                                              fQueryPool,
+                                                              0);
+end;
+
+procedure TpvRaytracingCompactedSizeQueryPool.GetResults;
+begin
+ if fCount>0 then begin
+  fCompactedSizes.ClearNoFree;
+  fCompactedSizes.Resize(fCount);
+  VulkanCheckResult(fDevice.Commands.GetQueryPoolResults(fDevice.Handle,
+                                                         fQueryPool,
+                                                         0,
+                                                         fCount,
+                                                         fCount*sizeof(TVkDeviceSize),
+                                                         @fCompactedSizes.ItemArray[0],
+                                                         SizeOf(TVkDeviceSize),
+                                                         TVkQueryResultFlags(VK_QUERY_RESULT_64_BIT) or TVkQueryResultFlags(VK_QUERY_RESULT_WAIT_BIT)));
+ end;
+end;
+
+function TpvRaytracingCompactedSizeQueryPool.GetCompactedSizeByIndex(const aIndex:TVkUInt32):TVkDeviceSize;
+begin
+ if (aIndex>=0) and (aIndex<fCompactedSizes.Count) then begin
+  result:=fCompactedSizes[aIndex];
+ end else begin
+  result:=0;
+ end;
+end;
+
+function TpvRaytracingCompactedSizeQueryPool.GetCompactedSizeByAccelerationStructure(const aAccelerationStructure:TpvRaytracingAccelerationStructure):TVkDeviceSize;
+var Index:TpvSizeInt;
+begin
+ Index:=fAccelerationStructureIndexHashMap[aAccelerationStructure.AccelerationStructure];
+ if (Index>=0) and (Index<fCompactedSizes.Count) then begin
+  result:=fCompactedSizes[Index];
+ end else begin
+  result:=0;
+ end;
+end;
 
 { TpvRaytracingBLASGeometryInfoBufferItem }
 
