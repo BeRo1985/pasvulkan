@@ -1493,7 +1493,7 @@ begin
 
   NewStackItem:=Pointer(Stack.PushIndirect);
   NewStackItem^.NodeID:=Root;
-  NewStackItem^.Distance:=aGetDistance(@Nodes[Root],aPoint);
+  NewStackItem^.Distance:=ClosestPointToRect(Nodes[Root].Rect,aPoint);
 
   while Stack.Pop(StackItem) do begin
 
@@ -1507,63 +1507,68 @@ begin
 
      // Add the node to the result list in a sorted way
      ResultItem.Node:=Node;
-     ResultItem.Distance:=StackItem.Distance;
-     if ResultItemArray.Count>0 then begin
-      LowIndex:=0;
-      HighIndex:=ResultItemArray.Count-1;
-      while LowIndex<=HighIndex do begin
-       MidIndex:=LowIndex+((HighIndex-LowIndex) shr 1);
-       case TpvInt32(Sign(ResultItemArray.Items[MidIndex].Distance-StackItem.Distance)) of
-        0:begin // =0
-         LowIndex:=MidIndex;
-         break;
-        end;
-        TpvInt32($00000001)..TpvInt32($7fffffff):begin // >0
-         HighIndex:=MidIndex-1;
-        end;
-        else begin // <0
-         LowIndex:=MidIndex+1;
+     ResultItem.Distance:=aGetDistance(Node,aPoint);
+     if ResultItem.Distance<=aMaxDistance then begin
+
+      if ResultItemArray.Count>0 then begin
+
+       LowIndex:=0;
+       HighIndex:=ResultItemArray.Count-1;
+       while LowIndex<=HighIndex do begin
+        MidIndex:=LowIndex+((HighIndex-LowIndex) shr 1);
+        case TpvInt32(Sign(ResultItemArray.Items[MidIndex].Distance-ResultItem.Distance)) of
+         0:begin // =0
+          LowIndex:=MidIndex;
+          break;
+         end;
+         TpvInt32($00000001)..TpvInt32($7fffffff):begin // >0
+          HighIndex:=MidIndex-1;
+         end;
+         else begin // <0
+          LowIndex:=MidIndex+1;
+         end;
         end;
        end;
-      end;
-      if (Index>=0) and (Index<ResultItemArray.Count) then begin
-       ResultItemArray.Insert(LowIndex,ResultItem);
+       if (Index>=0) and (Index<ResultItemArray.Count) then begin
+        ResultItemArray.Insert(LowIndex,ResultItem);
+       end else begin
+        ResultItemArray.Add(ResultItem);
+       end;
       end else begin
        ResultItemArray.Add(ResultItem);
       end;
-     end else begin
-      ResultItemArray.Add(ResultItem);
-     end;
 
-     // Sort the list so that the closest is first for just to be sure
-     Index:=0;
-     while (Index+1)<ResultItemArray.Count do begin
-      if ResultItemArray.Items[Index].Distance>ResultItemArray.Items[Index+1].Distance then begin
-       ResultItemArray.Exchange(Index,Index+1);
-       if Index>0 then begin
-        dec(Index);
+      // Sort the list so that the closest is first for just to be sure
+      Index:=0;
+      while (Index+1)<ResultItemArray.Count do begin
+       if ResultItemArray.Items[Index].Distance>ResultItemArray.Items[Index+1].Distance then begin
+        ResultItemArray.Exchange(Index,Index+1);
+        if Index>0 then begin
+         dec(Index);
+        end else begin
+         inc(Index);
+        end;
        end else begin
         inc(Index);
        end;
-      end else begin
-       inc(Index);
       end;
-     end;
 
-     // Remove all too many and too far away nodes from the list when we have reached the maximum count
-     while ResultItemArray.Count>aMaxCount do begin
-      ResultItemArray.Delete(ResultItemArray.Count-1);
-     end;
+      // Remove all too many and too far away nodes from the list when we have reached the maximum count
+      while ResultItemArray.Count>aMaxCount do begin
+       ResultItemArray.Delete(ResultItemArray.Count-1);
+      end;
 
-     result:=true;
+      result:=true;
+
+     end;
 
     end;
 
     // Add the children to the stack in the order of the closest one first
     if Node^.Children[0]>=0 then begin
-     DistanceA:=aGetDistance(@Nodes[Node^.Children[0]],aPoint);
+     DistanceA:=ClosestPointToRect(Nodes[Node^.Children[0]].Rect,aPoint);
      if Node^.Children[1]>=0 then begin
-      DistanceB:=aGetDistance(@Nodes[Node^.Children[1]],aPoint);
+      DistanceB:=ClosestPointToRect(Nodes[Node^.Children[1]].Rect,aPoint);
       if DistanceA<DistanceB then begin
        if DistanceB<=aMaxDistance then begin
         NewStackItem:=Pointer(Stack.PushIndirect);
@@ -1595,7 +1600,7 @@ begin
       end;
      end;
     end else if Node^.Children[1]>=0 then begin
-     DistanceB:=aGetDistance(@Nodes[Node^.Children[1]],aPoint);
+     DistanceB:=ClosestPointToRect(Nodes[Node^.Children[1]].Rect,aPoint);
      if DistanceB<=aMaxDistance then begin
       NewStackItem:=Pointer(Stack.PushIndirect);
       NewStackItem^.NodeID:=Node^.Children[1];
