@@ -169,10 +169,12 @@ type { TpvBVHDynamicRectTree }
              public
               property NodeArray:TSkipListNodeArray read fNodeArray;
             end;
+            TGetDistance=function(const aTreeNode:PTreeNode;const aPoint:TpvVector2):TpvFloat of object;
       private
        fSkipListNodeLock:TPasMPSpinLock;
        fSkipListNodeMap:TSkipListNodeMap;
        fSkipListNodeStack:TSkipListNodeStack;
+       function GetDistance(const aTreeNode:PTreeNode;const aPoint:TpvVector2):TpvFloat;
       public
        Root:TpvSizeInt;
        Nodes:TTreeNodes;
@@ -209,6 +211,7 @@ type { TpvBVHDynamicRectTree }
        function ContainQuery(const aPoint:TpvVector2):TpvBVHDynamicRectTree.TUserDataArray; overload;
        function ContainQuery(const aPoint:TpvVector2;const aTreeNodeList:TTreeNodeList):boolean; overload;
        function FindClosest(const aPoint:TpvVector2):TpvBVHDynamicRectTree.PTreeNode;
+       function LookupClosest(const aPoint:TpvVector2;const aTreeNodeList:TTreeNodeList;aGetDistance:TGetDistance=nil;const aMaxCount:TpvSizeInt=1;aMaxDistance:TpvFloat=-1.0):boolean;
        procedure GetSkipListNodes(var aSkipListNodeArray:TSkipListNodeArray;const aGetUserDataIndex:TpvBVHDynamicRectTree.TGetUserDataIndex);
      end;
 
@@ -669,7 +672,7 @@ var Count,IndexA,IndexB,IndexAMin,IndexBMin,Index1,Index2,ParentIndex:TpvSizeint
     NewNodes:array of TpvSizeInt;
     Children:array[0..1] of TpvBVHDynamicRectTree.PTreeNode;
     Parent:TpvBVHDynamicRectTree.PTreeNode;
-    MinCost,Cost:TpvScalar;
+    MinCost,Cost:TpvFloat;
     Recta,Rectb:PpvRect;
     Rect:TpvRect;
     First:boolean;
@@ -752,7 +755,7 @@ type TLeafNodes=array of TpvSizeInt;
 var Count,Index,MinPerSubTree,ParentIndex,NodeIndex,SplitAxis,TempIndex,
     LeftIndex,RightIndex,LeftCount,RightCount:TpvSizeint;
     LeafNodes:TLeafNodes;
-    SplitValue:TpvScalar;
+    SplitValue:TpvFloat;
     Rect:TpvRect;
     Center:TpvVector2;
     VarianceX,VarianceY,MeanX,MeanY:Double;
@@ -1382,9 +1385,9 @@ function TpvBVHDynamicRectTree.FindClosest(const aPoint:TpvVector2):TpvBVHDynami
 type TStack=TpvDynamicFastStack<TpvSizeInt>;
 var Stack:TStack;
     NodeIndex:TpvSizeInt;
-    BestDistance,Distance:TpvScalar;
+    BestDistance,Distance:TpvFloat;
     TreeNode:TpvBVHDynamicRectTree.PTreeNode;
-    ChildDistances:array[0..1] of TpvScalar;
+    ChildDistances:array[0..1] of TpvFloat;
 begin
  result:=nil;
  if Root>=0 then begin
@@ -1443,6 +1446,177 @@ begin
    Stack.Finalize;
   end;
  end;
+end;
+
+function TpvBVHDynamicRectTree.GetDistance(const aTreeNode:PTreeNode;const aPoint:TpvVector2):TpvFloat;
+begin
+ result:=ClosestPointToRect(aTreeNode^.Rect,aPoint);
+end;
+
+function TpvBVHDynamicRectTree.LookupClosest(const aPoint:TpvVector2;const aTreeNodeList:TTreeNodeList;aGetDistance:TGetDistance;const aMaxCount:TpvSizeInt;aMaxDistance:TpvFloat):boolean;
+type TStackItem=record
+      NodeID:TpvSizeInt;
+      Distance:TpvFloat;
+     end;
+     PStackItem=^TStackItem;
+     TStack=TpvDynamicFastStack<TStackItem>;
+     TResultItem=record
+      Node:TpvBVHDynamicRectTree.PTreeNode;
+      Distance:TpvFloat;
+     end;
+     PResultItem=^TResultItem;
+     TResultItemArray=TpvDynamicArray<TResultItem>;
+var Stack:TStack;
+    NewStackItem:PStackItem;
+    StackItem:TStackItem;
+    Node:TpvBVHDynamicRectTree.PTreeNode;
+    Index,LowIndex,MidIndex,HighIndex:TpvSizeInt;
+    ResultItemArray:TResultItemArray;
+    ResultItem:TResultItem;
+    DistanceA,DistanceB:TpvFloat;
+begin
+
+ // If aMaxDistance is less than or equal to zero, then set it to infinity as default
+ if aMaxDistance<=0.0 then begin
+  aMaxDistance:=Infinity;
+ end;
+
+ // If the GetDistance function is not assigned, then assign the default one
+ if not assigned(aGetDistance) then begin
+  aGetDistance:=GetDistance;
+ end;
+
+ result:=false;
+
+ ResultItemArray.Initialize;
+ try
+
+  NewStackItem:=Pointer(Stack.PushIndirect);
+  NewStackItem^.NodeID:=Root;
+  NewStackItem^.Distance:=aGetDistance(@Nodes[Root],aPoint);
+
+  while Stack.Pop(StackItem) do begin
+
+   // If this subtree is further away than we care about, or if we've already found enough locations, and the furthest one is closer
+   // than this subtree possibly could be, then skip it.
+   if (StackItem.Distance<=aMaxDistance) and
+      (not ((ResultItemArray.Count=aMaxCount) and (ResultItemArray.Items[ResultItemArray.Count-1].Distance<StackItem.Distance))) then begin
+
+    Node:=@Nodes[StackItem.NodeID];
+    if (Node^.UserData>0) and assigned(Pointer(Node^.UserData)) then begin
+
+     // Add the node to the result list in a sorted way
+     ResultItem.Node:=Node;
+     ResultItem.Distance:=StackItem.Distance;
+     if ResultItemArray.Count>0 then begin
+      LowIndex:=0;
+      HighIndex:=ResultItemArray.Count-1;
+      while LowIndex<=HighIndex do begin
+       MidIndex:=LowIndex+((HighIndex-LowIndex) shr 1);
+       case TpvInt32(Sign(ResultItemArray.Items[MidIndex].Distance-StackItem.Distance)) of
+        0:begin // =0
+         LowIndex:=MidIndex;
+         break;
+        end;
+        TpvInt32($00000001)..TpvInt32($7fffffff):begin // >0
+         HighIndex:=MidIndex-1;
+        end;
+        else begin // <0
+         LowIndex:=MidIndex+1;
+        end;
+       end;
+      end;
+      if (Index>=0) and (Index<ResultItemArray.Count) then begin
+       ResultItemArray.Insert(LowIndex,ResultItem);
+      end else begin
+       ResultItemArray.Add(ResultItem);
+      end;
+     end else begin
+      ResultItemArray.Add(ResultItem);
+     end;
+
+     // Sort the list so that the closest is first for just to be sure
+     Index:=0;
+     while (Index+1)<ResultItemArray.Count do begin
+      if ResultItemArray.Items[Index].Distance>ResultItemArray.Items[Index+1].Distance then begin
+       ResultItemArray.Exchange(Index,Index+1);
+       if Index>0 then begin
+        dec(Index);
+       end else begin
+        inc(Index);
+       end;
+      end else begin
+       inc(Index);
+      end;
+     end;
+
+     // Remove all too many and too far away nodes from the list when we have reached the maximum count
+     while ResultItemArray.Count>aMaxCount do begin
+      ResultItemArray.Delete(ResultItemArray.Count-1);
+     end;
+
+     result:=true;
+
+    end;
+
+    // Add the children to the stack in the order of the closest one first
+    if Node^.Children[0]>=0 then begin
+     DistanceA:=aGetDistance(@Nodes[Node^.Children[0]],aPoint);
+     if Node^.Children[1]>=0 then begin
+      DistanceB:=aGetDistance(@Nodes[Node^.Children[1]],aPoint);
+      if DistanceA<DistanceB then begin
+       if DistanceB<=aMaxDistance then begin
+        NewStackItem:=Pointer(Stack.PushIndirect);
+        NewStackItem^.NodeID:=Node^.Children[1];
+        NewStackItem^.Distance:=DistanceB;
+       end;
+       if DistanceA<=aMaxDistance then begin
+        NewStackItem:=Pointer(Stack.PushIndirect);
+        NewStackItem^.NodeID:=Node^.Children[0];
+        NewStackItem^.Distance:=DistanceA;
+       end;
+      end else begin
+       if DistanceA<=aMaxDistance then begin
+        NewStackItem:=Pointer(Stack.PushIndirect);
+        NewStackItem^.NodeID:=Node^.Children[0];
+        NewStackItem^.Distance:=DistanceA;
+       end;
+       if DistanceB<=aMaxDistance then begin
+        NewStackItem:=Pointer(Stack.PushIndirect);
+        NewStackItem^.NodeID:=Node^.Children[1];
+        NewStackItem^.Distance:=DistanceB;
+       end;
+      end;
+     end else begin
+      if DistanceA<=aMaxDistance then begin
+       NewStackItem:=Pointer(Stack.PushIndirect);
+       NewStackItem^.NodeID:=Node^.Children[0];
+       NewStackItem^.Distance:=DistanceA;
+      end;
+     end;
+    end else if Node^.Children[1]>=0 then begin
+     DistanceB:=aGetDistance(@Nodes[Node^.Children[1]],aPoint);
+     if DistanceB<=aMaxDistance then begin
+      NewStackItem:=Pointer(Stack.PushIndirect);
+      NewStackItem^.NodeID:=Node^.Children[1];
+      NewStackItem^.Distance:=DistanceB;
+     end;
+    end;
+
+   end;
+
+  end;
+
+  // Copy the result items to the output list
+  aTreeNodeList.Clear;
+  for Index:=0 to ResultItemArray.Count-1 do begin
+   aTreeNodeList.Add(ResultItemArray.Items[Index].Node);
+  end;
+
+ finally
+  ResultItemArray.Finalize;
+ end;
+
 end;
 
 procedure TpvBVHDynamicRectTree.GetSkipListNodes(var aSkipListNodeArray:TSkipListNodeArray;const aGetUserDataIndex:TpvBVHDynamicRectTree.TGetUserDataIndex);

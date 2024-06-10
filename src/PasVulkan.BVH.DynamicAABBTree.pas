@@ -186,12 +186,12 @@ type EpvBVHDynamicAABBTree=class(Exception);
              public
               property NodeArray:TSkipListNodeArray read fNodeArray;
             end;
-            TGetDistance=function(const aTreeNode:PTreeNode;const aPoint:TpvVector3):TpvScalar of object; 
+            TGetDistance=function(const aTreeNode:PTreeNode;const aPoint:TpvVector3):TpvFloat of object;
       private
        fSkipListNodeLock:TPasMPSpinLock;
        fSkipListNodeMap:TSkipListNodeMap;
        fSkipListNodeStack:TSkipListNodeStack;
-       function GetDistance(const aTreeNode:PTreeNode;const aPoint:TpvVector3):TpvScalar;
+       function GetDistance(const aTreeNode:PTreeNode;const aPoint:TpvVector3):TpvFloat;
       public
        Root:TpvSizeInt;
        Nodes:TTreeNodes;
@@ -232,7 +232,7 @@ type EpvBVHDynamicAABBTree=class(Exception);
        function ContainQuery(const aPoint:TpvVector3):TpvBVHDynamicAABBTree.TUserDataArray; overload;
        function ContainQuery(const aPoint:TpvVector3;const aTreeNodeList:TTreeNodeList):boolean; overload;
        function FindClosest(const aPoint:TpvVector3):TpvBVHDynamicAABBTree.PTreeNode;
-       function LookupClosest(const aPoint:TpvVector3;const aTreeNodeList:TTreeNodeList;aGetDistance:TGetDistance=nil;const aMaxCount:TpvSizeInt=1;aMaxDistance:TpvScalar=-1.0):boolean;
+       function LookupClosest(const aPoint:TpvVector3;const aTreeNodeList:TTreeNodeList;aGetDistance:TGetDistance=nil;const aMaxCount:TpvSizeInt=1;aMaxDistance:TpvFloat=-1.0):boolean;
        function RayCast(const aRayOrigin,aRayDirection:TpvVector3;out aTime:TpvFloat;out aUserData:TpvUInt32;const aStopAtFirstHit:boolean;const aRayCastUserData:TpvBVHDynamicAABBTree.TRayCastUserData):boolean;
        function RayCastLine(const aFrom,aTo:TpvVector3;out aTime:TpvFloat;out aUserData:TpvUInt32;const aStopAtFirstHit:boolean;const aRayCastUserData:TpvBVHDynamicAABBTree.TRayCastUserData):boolean;
        procedure GetSkipListNodes(var aSkipListNodeArray:TSkipListNodeArray;const aGetUserDataIndex:TpvBVHDynamicAABBTree.TGetUserDataIndex);
@@ -338,7 +338,7 @@ function TpvBVHDynamicAABBTree.TSkipList.RayCast(const aRayOrigin,aRayDirection:
 var Index,Count:TpvSizeInt;
     Node:TpvBVHDynamicAABBTree.PSkipListNode;
     RayEnd:TpvVector3;
-    Time:TpvScalar;
+    Time:TpvFloat;
     Stop:boolean;
 begin
  result:=false;
@@ -883,7 +883,7 @@ var Count,IndexA,IndexB,IndexAMin,IndexBMin,Index1,Index2,ParentIndex:TpvSizeint
     NewNodes:array of TpvSizeInt;
     Children:array[0..1] of TpvBVHDynamicAABBTree.PTreeNode;
     Parent:TpvBVHDynamicAABBTree.PTreeNode;
-    MinCost,Cost:TpvScalar;
+    MinCost,Cost:TpvFloat;
     AABBa,AABBb:PpvAABB;
     AABB:TpvAABB;
     First:boolean;
@@ -967,7 +967,7 @@ type TLeafNodes=array of TpvSizeInt;
 var Count,Index,MinPerSubTree,ParentIndex,NodeIndex,SplitAxis,TempIndex,
     LeftIndex,RightIndex,LeftCount,RightCount:TpvSizeint;
     LeafNodes:TLeafNodes;
-    SplitValue:TpvScalar;
+    SplitValue:TpvFloat;
     AABB:TpvAABB;
     Center:TpvVector3;
     VarianceX,VarianceY,VarianceZ,MeanX,MeanY,MeanZ:Double;
@@ -1585,9 +1585,9 @@ function TpvBVHDynamicAABBTree.FindClosest(const aPoint:TpvVector3):TpvBVHDynami
 type TStack=TpvDynamicFastStack<TpvSizeInt>;
 var Stack:TStack;
     NodeIndex:TpvSizeInt;
-    BestDistance,Distance:TpvScalar;
+    BestDistance,Distance:TpvFloat;
     TreeNode:TpvBVHDynamicAABBTree.PTreeNode;
-    ChildDistances:array[0..1] of TpvScalar;
+    ChildDistances:array[0..1] of TpvFloat;
 begin
  result:=nil;
  if Root>=0 then begin
@@ -1648,21 +1648,21 @@ begin
  end;
 end;
 
-function TpvBVHDynamicAABBTree.GetDistance(const aTreeNode:PTreeNode;const aPoint:TpvVector3):TpvScalar;
+function TpvBVHDynamicAABBTree.GetDistance(const aTreeNode:PTreeNode;const aPoint:TpvVector3):TpvFloat;
 begin
  result:=ClosestPointToAABB(aTreeNode^.AABB,aPoint);
 end;
 
-function TpvBVHDynamicAABBTree.LookupClosest(const aPoint:TpvVector3;const aTreeNodeList:TTreeNodeList;aGetDistance:TGetDistance;const aMaxCount:TpvSizeInt;aMaxDistance:TpvScalar):boolean;
+function TpvBVHDynamicAABBTree.LookupClosest(const aPoint:TpvVector3;const aTreeNodeList:TTreeNodeList;aGetDistance:TGetDistance;const aMaxCount:TpvSizeInt;aMaxDistance:TpvFloat):boolean;
 type TStackItem=record
       NodeID:TpvSizeInt;
-      Distance:TpvScalar;
+      Distance:TpvFloat;
      end;
      PStackItem=^TStackItem;
      TStack=TpvDynamicFastStack<TStackItem>;
      TResultItem=record
       Node:TpvBVHDynamicAABBTree.PTreeNode;
-      Distance:TpvScalar;
+      Distance:TpvFloat;
      end;
      PResultItem=^TResultItem;
      TResultItemArray=TpvDynamicArray<TResultItem>;
@@ -1670,10 +1670,10 @@ var Stack:TStack;
     NewStackItem:PStackItem;
     StackItem:TStackItem;
     Node:TpvBVHDynamicAABBTree.PTreeNode;
-    Index,LowIndex,MidIndex,HighIndex,Difference:TpvSizeInt;
+    Index,LowIndex,MidIndex,HighIndex:TpvSizeInt;
     ResultItemArray:TResultItemArray;
     ResultItem:TResultItem;
-    DistanceA,DistanceB:TpvScalar;
+    DistanceA,DistanceB:TpvFloat;
 begin
  
  // If aMaxDistance is less than or equal to zero, then set it to infinity as default
