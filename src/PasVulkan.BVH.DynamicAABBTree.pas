@@ -1676,8 +1676,14 @@ var Stack:TStack;
     DistanceA,DistanceB:TpvScalar;
 begin
  
+ // If aMaxDistance is less than or equal to zero, then set it to infinity as default
  if aMaxDistance<=0.0 then begin
   aMaxDistance:=Infinity;
+ end;
+ 
+ // If the GetDistance function is not assigned, then assign the default one 
+ if not assigned(aGetDistance) then begin
+  aGetDistance:=GetDistance;
  end;
 
  result:=false;
@@ -1687,7 +1693,7 @@ begin
 
   NewStackItem:=Pointer(Stack.PushIndirect);
   NewStackItem^.NodeID:=Root;
-  NewStackItem^.Distance:=ClosestPointToAABB(Nodes[Root].AABB,aPoint);
+  NewStackItem^.Distance:=aGetDistance(@Nodes[Root],aPoint);
 
   while Stack.Pop(StackItem) do begin
 
@@ -1699,6 +1705,9 @@ begin
     Node:=@Nodes[StackItem.NodeID];
     if (Node^.UserData>0) and assigned(Pointer(Node^.UserData)) then begin
 
+     // TODO: Sorted insert
+
+     // Add the node to the result list
      ResultItem.Node:=Node;
      ResultItem.Distance:=StackItem.Distance; 
      ResultItemArray.Add(ResultItem);
@@ -1728,46 +1737,46 @@ begin
     end;
 
     // Add the children to the stack in the order of the closest one first
-    if Nodes[StackItem.NodeID].Children[0]>=0 then begin
-     DistanceA:=ClosestPointToAABB(Nodes[Nodes[StackItem.NodeID].Children[0]].AABB,aPoint);
-     if Nodes[StackItem.NodeID].Children[1]>=0 then begin
-      DistanceB:=ClosestPointToAABB(Nodes[Nodes[StackItem.NodeID].Children[1]].AABB,aPoint);
+    if Node^.Children[0]>=0 then begin
+     DistanceA:=aGetDistance(@Nodes[Node^.Children[0]].AABB,aPoint);
+     if Node^.Children[1]>=0 then begin
+      DistanceB:=aGetDistance(@Nodes[Node^.Children[1]].AABB,aPoint);
       if DistanceA<DistanceB then begin
        if DistanceB<=aMaxDistance then begin
         NewStackItem:=Pointer(Stack.PushIndirect);
-        NewStackItem^.NodeID:=Nodes[StackItem.NodeID].Children[1];
-        NewStackItem^.Distance:=ClosestPointToAABB(Nodes[NewStackItem^.NodeID].AABB,aPoint);
+        NewStackItem^.NodeID:=Node^.Children[1];
+        NewStackItem^.Distance:=DistanceB;
        end;
        if DistanceA<=aMaxDistance then begin
         NewStackItem:=Pointer(Stack.PushIndirect);
-        NewStackItem^.NodeID:=Nodes[StackItem.NodeID].Children[0];
-        NewStackItem^.Distance:=ClosestPointToAABB(Nodes[NewStackItem^.NodeID].AABB,aPoint);
+        NewStackItem^.NodeID:=Node^.Children[0];
+        NewStackItem^.Distance:=DistanceA;
        end; 
       end else begin
        if DistanceA<=aMaxDistance then begin
         NewStackItem:=Pointer(Stack.PushIndirect);
-        NewStackItem^.NodeID:=Nodes[StackItem.NodeID].Children[0];
-        NewStackItem^.Distance:=ClosestPointToAABB(Nodes[NewStackItem^.NodeID].AABB,aPoint);
+        NewStackItem^.NodeID:=Node^.Children[0];
+        NewStackItem^.Distance:=DistanceA;
        end; 
        if DistanceB<=aMaxDistance then begin
         NewStackItem:=Pointer(Stack.PushIndirect);
-        NewStackItem^.NodeID:=Nodes[StackItem.NodeID].Children[1];
-        NewStackItem^.Distance:=ClosestPointToAABB(Nodes[NewStackItem^.NodeID].AABB,aPoint);
+        NewStackItem^.NodeID:=Node^.Children[1];
+        NewStackItem^.Distance:=DistanceB;
        end;
       end; 
      end else begin
       if DistanceA<=aMaxDistance then begin
        NewStackItem:=Pointer(Stack.PushIndirect);
-       NewStackItem^.NodeID:=Nodes[StackItem.NodeID].Children[0];
-       NewStackItem^.Distance:=ClosestPointToAABB(Nodes[NewStackItem^.NodeID].AABB,aPoint);
+       NewStackItem^.NodeID:=Node^.Children[0];
+       NewStackItem^.Distance:=DistanceA;
       end; 
      end;
-    end else if Nodes[StackItem.NodeID].Children[1]>=0 then begin
-     DistanceB:=ClosestPointToAABB(Nodes[Nodes[StackItem.NodeID].Children[1]].AABB,aPoint);
+    end else if Node^.Children[1]>=0 then begin
+     DistanceB:=aGetDistance(@Nodes[Node^.Children[1]].AABB,aPoint);
      if DistanceB<=aMaxDistance then begin
       NewStackItem:=Pointer(Stack.PushIndirect);
-      NewStackItem^.NodeID:=Nodes[StackItem.NodeID].Children[1];
-      NewStackItem^.Distance:=ClosestPointToAABB(Nodes[NewStackItem^.NodeID].AABB,aPoint);
+      NewStackItem^.NodeID:=Node^.Children[1];
+      NewStackItem^.Distance:=DistanceB;
      end;
     end;
 
