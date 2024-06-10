@@ -186,10 +186,12 @@ type EpvBVHDynamicAABBTree=class(Exception);
              public
               property NodeArray:TSkipListNodeArray read fNodeArray;
             end;
+            TGetDistance=function(const aTreeNode:PTreeNode;const aPoint:TpvVector3):TpvScalar of object; 
       private
        fSkipListNodeLock:TPasMPSpinLock;
        fSkipListNodeMap:TSkipListNodeMap;
        fSkipListNodeStack:TSkipListNodeStack;
+       function GetDistance(const aTreeNode:PTreeNode;const aPoint:TpvVector3):TpvScalar;
       public
        Root:TpvSizeInt;
        Nodes:TTreeNodes;
@@ -230,6 +232,7 @@ type EpvBVHDynamicAABBTree=class(Exception);
        function ContainQuery(const aPoint:TpvVector3):TpvBVHDynamicAABBTree.TUserDataArray; overload;
        function ContainQuery(const aPoint:TpvVector3;const aTreeNodeList:TTreeNodeList):boolean; overload;
        function FindClosest(const aPoint:TpvVector3):TpvBVHDynamicAABBTree.PTreeNode;
+       function LookupClosest(const aPoint:TpvVector3;const aTreeNodeList:TTreeNodeList;aGetDistance:TGetDistance=nil;const aMaxCount:TpvSizeInt=1;aMaxDistance:TpvScalar=-1.0):boolean;
        function RayCast(const aRayOrigin,aRayDirection:TpvVector3;out aTime:TpvFloat;out aUserData:TpvUInt32;const aStopAtFirstHit:boolean;const aRayCastUserData:TpvBVHDynamicAABBTree.TRayCastUserData):boolean;
        function RayCastLine(const aFrom,aTo:TpvVector3;out aTime:TpvFloat;out aUserData:TpvUInt32;const aStopAtFirstHit:boolean;const aRayCastUserData:TpvBVHDynamicAABBTree.TRayCastUserData):boolean;
        procedure GetSkipListNodes(var aSkipListNodeArray:TSkipListNodeArray;const aGetUserDataIndex:TpvBVHDynamicAABBTree.TGetUserDataIndex);
@@ -1643,6 +1646,145 @@ begin
    Stack.Finalize;
   end;
  end;
+end;
+
+function TpvBVHDynamicAABBTree.GetDistance(const aTreeNode:PTreeNode;const aPoint:TpvVector3):TpvScalar;
+begin
+ result:=ClosestPointToAABB(aTreeNode^.AABB,aPoint);
+end;
+
+function TpvBVHDynamicAABBTree.LookupClosest(const aPoint:TpvVector3;const aTreeNodeList:TTreeNodeList;aGetDistance:TGetDistance=nil;const aMaxCount:TpvSizeInt=1;aMaxDistance:TpvScalar=-1.0):boolean;
+type TStackItem=record
+      NodeID:TpvSizeInt;
+      Distance:TpvScalar;
+     end;
+     PStackItem=^TStackItem;
+     TStack=TpvDynamicFastStack<TStackItem>;
+     TResultItem=record
+      Node:TpvBVHDynamicAABBTree.PTreeNode;
+      Distance:TpvScalar;
+     end;
+     PResultItem=^TResultItem;
+     TResultItemArray=TpvDynamicArray<TResultItem>;
+var Stack:TStack;
+    NewStackItem:PStackItem;
+    StackItem:TStackItem;
+    Node:TpvBVHDynamicAABBTree.PTreeNode;
+    Index:TpvSizeInt;
+    ResultItemArray:TResultItemArray;
+    ResultItem:TResultItem;
+    DistanceA,DistanceB:TpvScalar;
+begin
+ 
+ if aMaxDistance<=0.0 then begin
+  aMaxDistance:=Infinity;
+ end;
+
+ result:=false;
+
+ ResultItemArray.Initialize;
+ try
+
+  NewStackItem:=Pointer(Stack.PushIndirect);
+  NewStackItem^.NodeID:=Root;
+  NewStackItem^.Distance:=ClosestPointToAABB(Nodes[Root].AABB,aPoint);
+
+  while Stack.Pop(StackItem) do begin
+
+   // If this subtree is further away than we care about, or if we've already found enough locations, and the furthest one is closer
+   // than this subtree possibly could be, then skip it.
+   if (StackItem.Distance<=aMaxDistance) or
+      (not ((ResultItemArray.Count=aMaxCount) and (ResultItemArray.Items[ResultItemArray.Count-1].Distance<sqr(StackItem.Distance)))) then begin
+
+    Node:=@Nodes[StackItem.NodeID];
+    if (Node^.UserData>0) and assigned(Pointer(Node^.UserData)) then begin
+
+     ResultItem.Node:=Node;
+     ResultItem.Distance:=StackItem.Distance; 
+     ResultItemArray.Add(ResultItem);
+
+     // Sort the list so that the closest is first
+     Index:=0;
+     while (Index+1)<ResultItemArray.Count do begin
+      if ResultItemArray.Items[Index].Distance>ResultItemArray.Items[Index+1].Distance then begin
+       ResultItemArray.Exchange(Index,Index+1);
+       if Index>0 then begin
+        dec(Index);
+       end else begin
+        inc(Index);
+       end;
+      end else begin
+       inc(Index);
+      end;
+     end;     
+
+     // Remove all too many and too far away nodes from the list when we have reached the maximum count 
+     while ResultItemArray.Count>aMaxCount do begin
+      ResultItemArray.Delete(ResultItemArray.Count-1);
+     end;
+
+     result:=true;
+
+    end;
+
+    // Add the children to the stack in the order of the closest one first
+    if Nodes[StackItem.NodeID].Children[0]>=0 then begin
+     DistanceA:=ClosestPointToAABB(Nodes[Nodes[StackItem.NodeID].Children[0]].AABB,aPoint);
+     if Nodes[StackItem.NodeID].Children[1]>=0 then begin
+      DistanceB:=ClosestPointToAABB(Nodes[Nodes[StackItem.NodeID].Children[1]].AABB,aPoint);
+      if DistanceA<DistanceB then begin
+       if DistanceB<=aMaxDistance then begin
+        NewStackItem:=Pointer(Stack.PushIndirect);
+        NewStackItem^.NodeID:=Nodes[StackItem.NodeID].Children[1];
+        NewStackItem^.Distance:=ClosestPointToAABB(Nodes[NewStackItem^.NodeID].AABB,aPoint);
+       end;
+       if DistanceA<=aMaxDistance then begin
+        NewStackItem:=Pointer(Stack.PushIndirect);
+        NewStackItem^.NodeID:=Nodes[StackItem.NodeID].Children[0];
+        NewStackItem^.Distance:=ClosestPointToAABB(Nodes[NewStackItem^.NodeID].AABB,aPoint);
+       end; 
+      end else begin
+       if DistanceA<=aMaxDistance then begin
+        NewStackItem:=Pointer(Stack.PushIndirect);
+        NewStackItem^.NodeID:=Nodes[StackItem.NodeID].Children[0];
+        NewStackItem^.Distance:=ClosestPointToAABB(Nodes[NewStackItem^.NodeID].AABB,aPoint);
+       end; 
+       if DistanceB<=aMaxDistance then begin
+        NewStackItem:=Pointer(Stack.PushIndirect);
+        NewStackItem^.NodeID:=Nodes[StackItem.NodeID].Children[1];
+        NewStackItem^.Distance:=ClosestPointToAABB(Nodes[NewStackItem^.NodeID].AABB,aPoint);
+       end;
+      end; 
+     end else begin
+      if DistanceA<=aMaxDistance then begin
+       NewStackItem:=Pointer(Stack.PushIndirect);
+       NewStackItem^.NodeID:=Nodes[StackItem.NodeID].Children[0];
+       NewStackItem^.Distance:=ClosestPointToAABB(Nodes[NewStackItem^.NodeID].AABB,aPoint);
+      end; 
+     end;
+    end else if Nodes[StackItem.NodeID].Children[1]>=0 then begin
+     DistanceB:=ClosestPointToAABB(Nodes[Nodes[StackItem.NodeID].Children[1]].AABB,aPoint);
+     if DistanceB<=aMaxDistance then begin
+      NewStackItem:=Pointer(Stack.PushIndirect);
+      NewStackItem^.NodeID:=Nodes[StackItem.NodeID].Children[1];
+      NewStackItem^.Distance:=ClosestPointToAABB(Nodes[NewStackItem^.NodeID].AABB,aPoint);
+     end;
+    end;
+
+   end;
+
+  end;
+
+  // Copy the result items to the output list
+  aTreeNodeList.Clear;
+  for Index:=0 to ResultItemArray.Count-1 do begin
+   aTreeNodeList.Add(ResultItemArray.Items[Index].Node);
+  end;
+
+ finally
+  ResultItemArray.Finalize;
+ end;
+
 end;
 
 function TpvBVHDynamicAABBTree.RayCast(const aRayOrigin,aRayDirection:TpvVector3;out aTime:TpvFloat;out aUserData:TpvUInt32;const aStopAtFirstHit:boolean;const aRayCastUserData:TpvBVHDynamicAABBTree.TRayCastUserData):boolean;
