@@ -502,7 +502,7 @@ begin
                                                          fQueryPool,
                                                          0,
                                                          fCount,
-                                                         fCount*sizeof(TVkDeviceSize),
+                                                         fCount*SizeOf(TVkDeviceSize),
                                                          @fCompactedSizes.ItemArray[0],
                                                          SizeOf(TVkDeviceSize),
                                                          TVkQueryResultFlags(VK_QUERY_RESULT_64_BIT) or TVkQueryResultFlags(VK_QUERY_RESULT_WAIT_BIT)));
