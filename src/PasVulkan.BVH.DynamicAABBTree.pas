@@ -1653,7 +1653,7 @@ begin
  result:=ClosestPointToAABB(aTreeNode^.AABB,aPoint);
 end;
 
-function TpvBVHDynamicAABBTree.LookupClosest(const aPoint:TpvVector3;const aTreeNodeList:TTreeNodeList;aGetDistance:TGetDistance=nil;const aMaxCount:TpvSizeInt=1;aMaxDistance:TpvScalar=-1.0):boolean;
+function TpvBVHDynamicAABBTree.LookupClosest(const aPoint:TpvVector3;const aTreeNodeList:TTreeNodeList;aGetDistance:TGetDistance;const aMaxCount:TpvSizeInt;aMaxDistance:TpvScalar):boolean;
 type TStackItem=record
       NodeID:TpvSizeInt;
       Distance:TpvScalar;
