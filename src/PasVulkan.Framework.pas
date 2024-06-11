@@ -13257,8 +13257,16 @@ begin
 
  if assigned(aMemoryDedicatedAllocationDataHandle) and
     ((TpvVulkanDeviceMemoryBlockFlag.DedicatedAllocation in aMemoryBlockFlags) or
-     ((aMemoryBlockSize>=(VulkanDefaultLargeHeapChunkSize shr 1)) and
-      (fCountAllocations<=((fDevice.fPhysicalDevice.fProperties.limits.maxMemoryAllocationCount*3) shr 2)))) and
+     (
+      // Heuristics: Allocate dedicated memory if requested size if greater than half of preferred block size.
+      (aMemoryBlockSize>=(VulkanDefaultLargeHeapChunkSize shr 1)) and
+
+      // Protection against creating each allocation as dedicated when we reach or exceed heap size/budget,
+      // which can quickly deplete maxMemoryAllocationCount: Don't prefer dedicated allocations when above
+      // 3/4 of the maximum allocation count.
+      (fCountAllocations<=((fDevice.fPhysicalDevice.fProperties.limits.maxMemoryAllocationCount*3) shr 2))
+     )
+    ) and
     (fDedicatedAllocationSupport<>TDedicatedAllocationSupport.None) and
     (aMemoryAllocationType in [TpvVulkanDeviceMemoryAllocationType.Buffer,
                                TpvVulkanDeviceMemoryAllocationType.ImageLinear,
