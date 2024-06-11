@@ -16688,7 +16688,6 @@ begin
  Free;
 end;
 
-
 { TpvScene3D.TGroup.TInstances }
 
 procedure TpvScene3D.TGroup.TInstances.Sort;
