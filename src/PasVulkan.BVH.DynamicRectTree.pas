@@ -1517,20 +1517,13 @@ begin
        HighIndex:=ResultItemArray.Count-1;
        while LowIndex<=HighIndex do begin
         MidIndex:=LowIndex+((HighIndex-LowIndex) shr 1);
-        case TpvInt32(Sign(ResultItemArray.Items[MidIndex].Distance-ResultItem.Distance)) of
-         0:begin // =0
-          LowIndex:=MidIndex;
-          break;
-         end;
-         TpvInt32($00000001)..TpvInt32($7fffffff):begin // >0
-          HighIndex:=MidIndex-1;
-         end;
-         else begin // <0
-          LowIndex:=MidIndex+1;
-         end;
+        if ResultItem.Distance<ResultItemArray.Items[MidIndex].Distance then begin
+         HighIndex:=MidIndex-1;
+        end else begin
+         LowIndex:=MidIndex+1;
         end;
        end;
-       if (Index>=0) and (Index<ResultItemArray.Count) then begin
+       if (LowIndex>=0) and (LowIndex<ResultItemArray.Count) then begin
         ResultItemArray.Insert(LowIndex,ResultItem);
        end else begin
         ResultItemArray.Add(ResultItem);
@@ -1543,7 +1536,7 @@ begin
 
       end;
 
-      // Sort the list so that the closest is first for just to be sure. It should just a linear search check, when the binary search based
+{     // Sort the list so that the closest is first for just to be sure. It should just a linear search check, when the binary search based
       // insertion is working correctly
       Index:=0;
       while (Index+1)<ResultItemArray.Count do begin
@@ -1557,7 +1550,7 @@ begin
        end else begin
         inc(Index);
        end;
-      end;
+      end;//}
 
       // Maintain the sorted list within the max count
       while ResultItemArray.Count>aMaxCount do begin
