@@ -1712,6 +1712,7 @@ begin
       
       if ResultItemArray.Count>0 then begin
 
+       // Binary insertion into the sorted list
        LowIndex:=0;
        HighIndex:=ResultItemArray.Count-1;
        while LowIndex<=HighIndex do begin
@@ -1734,11 +1735,16 @@ begin
        end else begin
         ResultItemArray.Add(ResultItem);
        end;
+
       end else begin
+
+       // Add the node to the result list directly if the list is empty
        ResultItemArray.Add(ResultItem);
+
       end;
 
-      // Sort the list so that the closest is first for just to be sure
+      // Sort the list so that the closest is first for just to be sure. It should just a linear search check, when the binary search based
+      // insertion is working correctly
       Index:=0;
       while (Index+1)<ResultItemArray.Count do begin
        if ResultItemArray.Items[Index].Distance>ResultItemArray.Items[Index+1].Distance then begin
@@ -1753,7 +1759,7 @@ begin
        end;
       end;     
 
-      // Remove all too many and too far away nodes from the list when we have reached the maximum count 
+      // Maintain the sorted list within the max count
       while ResultItemArray.Count>aMaxCount do begin
        ResultItemArray.Delete(ResultItemArray.Count-1);
       end;
