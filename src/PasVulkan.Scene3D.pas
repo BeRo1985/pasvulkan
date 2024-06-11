@@ -20290,7 +20290,7 @@ begin
        RenderInstance.fFirst:=false;
        PerInFlightFrameRenderInstance^.PreviousModelMatrix:=RenderInstance.fModelMatrix;
       end else begin
-       PerInFlightFrameRenderInstance^.ModelMatrix:=RenderInstance.fPreviousModelMatrix;
+       PerInFlightFrameRenderInstance^.PreviousModelMatrix:=RenderInstance.fPreviousModelMatrix;
       end;
       RenderInstance.fPreviousModelMatrix:=RenderInstance.fModelMatrix;
      end else begin
