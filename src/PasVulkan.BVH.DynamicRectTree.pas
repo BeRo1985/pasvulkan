@@ -1517,10 +1517,10 @@ begin
        HighIndex:=ResultItemArray.Count-1;
        while LowIndex<=HighIndex do begin
         MidIndex:=LowIndex+((HighIndex-LowIndex) shr 1);
-        if ResultItem.Distance<ResultItemArray.Items[MidIndex].Distance then begin
-         HighIndex:=MidIndex-1;
-        end else begin
+        if ResultItemArray.Items[MidIndex].Distance<ResultItem.Distance then begin
          LowIndex:=MidIndex+1;
+        end else begin
+         HighIndex:=MidIndex-1;
         end;
        end;
        if (LowIndex>=0) and (LowIndex<ResultItemArray.Count) then begin
