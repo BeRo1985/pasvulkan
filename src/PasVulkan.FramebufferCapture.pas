@@ -213,8 +213,10 @@ begin
 
   MemoryBlockFlags:=[];
 
-  if RequiresDedicatedAllocation or PrefersDedicatedAllocation then begin
+  if RequiresDedicatedAllocation then begin
    Include(MemoryBlockFlags,TpvVulkanDeviceMemoryBlockFlag.DedicatedAllocation);
+  end else if PrefersDedicatedAllocation then begin
+   Include(MemoryBlockFlags,TpvVulkanDeviceMemoryBlockFlag.PreferDedicatedAllocation);
   end;
 
   if fNeedTwoSteps then begin

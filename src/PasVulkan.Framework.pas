@@ -1137,6 +1137,7 @@ type EpvVulkanException=class(Exception);
        PersistentMapped,
        PersistentMappedIfPossibe,
        OwnSingleMemoryChunk,
+       PreferDedicatedAllocation,
        DedicatedAllocation,
        BufferDeviceAddress
       );
@@ -1320,6 +1321,7 @@ type EpvVulkanException=class(Exception);
        PersistentMapped,
        PersistentMappedIfPossible,
        OwnSingleMemoryChunk,
+       PreferDedicatedAllocation,
        DedicatedAllocation,
        BufferDeviceAddress
       );
@@ -13258,8 +13260,11 @@ begin
  if assigned(aMemoryDedicatedAllocationDataHandle) and
     ((TpvVulkanDeviceMemoryBlockFlag.DedicatedAllocation in aMemoryBlockFlags) or
      (
-      // Heuristics: Allocate dedicated memory if requested size if greater than half of preferred block size.
-      (aMemoryBlockSize>=(VulkanDefaultLargeHeapChunkSize shr 1)) and
+      (
+       (TpvVulkanDeviceMemoryBlockFlag.PreferDedicatedAllocation in aMemoryBlockFlags) or
+       // Heuristics: Allocate dedicated memory if requested size if greater than half of preferred block size.
+       (aMemoryBlockSize>=(VulkanDefaultLargeHeapChunkSize shr 1))
+      ) and
 
       // Protection against creating each allocation as dedicated when we reach or exceed heap size/budget,
       // which can quickly deplete maxMemoryAllocationCount: Don't prefer dedicated allocations when above
@@ -13731,12 +13736,15 @@ begin
   end;
 
   if RequiresDedicatedAllocation or
-     (PrefersDedicatedAllocation and
-      (TpvVulkanBufferFlag.DedicatedAllocation in fBufferFlags)) then begin
+    (TpvVulkanBufferFlag.DedicatedAllocation in fBufferFlags) then begin
    Include(fBufferFlags,TpvVulkanBufferFlag.DedicatedAllocation);
    Include(MemoryBlockFlags,TpvVulkanDeviceMemoryBlockFlag.DedicatedAllocation);
+  end else if PrefersDedicatedAllocation or
+              (TpvVulkanBufferFlag.PreferDedicatedAllocation in fBufferFlags) then begin
+   Include(fBufferFlags,TpvVulkanBufferFlag.PreferDedicatedAllocation);
+   Include(MemoryBlockFlags,TpvVulkanDeviceMemoryBlockFlag.PreferDedicatedAllocation);
   end else begin
-   Exclude(fBufferFlags,TpvVulkanBufferFlag.DedicatedAllocation);
+   fBufferFlags:=fBufferFlags-[TpvVulkanBufferFlag.DedicatedAllocation,TpvVulkanBufferFlag.PreferDedicatedAllocation];
   end;
 
   if (aUsage and TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT_KHR))<>0 then begin
@@ -17408,8 +17416,10 @@ begin
 
   MemoryBlockFlags:=[];
 
-  if RequiresDedicatedAllocation or PrefersDedicatedAllocation then begin
+  if RequiresDedicatedAllocation then begin
    Include(MemoryBlockFlags,TpvVulkanDeviceMemoryBlockFlag.DedicatedAllocation);
+  end else if PrefersDedicatedAllocation then begin
+   Include(MemoryBlockFlags,TpvVulkanDeviceMemoryBlockFlag.PreferDedicatedAllocation);
   end;
 
   fMemoryBlock:=fDevice.fMemoryManager.AllocateMemoryBlock(MemoryBlockFlags,
@@ -18404,8 +18414,10 @@ begin
 
   MemoryBlockFlags:=[];
 
-  if RequiresDedicatedAllocation or PrefersDedicatedAllocation then begin
+  if RequiresDedicatedAllocation then begin
    Include(MemoryBlockFlags,TpvVulkanDeviceMemoryBlockFlag.DedicatedAllocation);
+  end else if PrefersDedicatedAllocation then begin
+   Include(MemoryBlockFlags,TpvVulkanDeviceMemoryBlockFlag.PreferDedicatedAllocation);
   end;
 
   if NeedTwoSteps then begin
@@ -18480,8 +18492,10 @@ begin
 
      MemoryBlockFlags:=[TpvVulkanDeviceMemoryBlockFlag.PersistentMapped];
 
-     if RequiresDedicatedAllocation or PrefersDedicatedAllocation then begin
+     if RequiresDedicatedAllocation then begin
       Include(MemoryBlockFlags,TpvVulkanDeviceMemoryBlockFlag.DedicatedAllocation);
+     end else if PrefersDedicatedAllocation then begin
+      Include(MemoryBlockFlags,TpvVulkanDeviceMemoryBlockFlag.PreferDedicatedAllocation);
      end;
 
      SecondMemoryBlock:=fDevice.fMemoryManager.AllocateMemoryBlock(MemoryBlockFlags,
@@ -24700,8 +24714,10 @@ begin
 
   MemoryBlockFlags:=[];
 
-  if RequiresDedicatedAllocation or PrefersDedicatedAllocation then begin
+  if RequiresDedicatedAllocation then begin
    Include(MemoryBlockFlags,TpvVulkanDeviceMemoryBlockFlag.DedicatedAllocation);
+  end else if PrefersDedicatedAllocation then begin
+   Include(MemoryBlockFlags,TpvVulkanDeviceMemoryBlockFlag.PreferDedicatedAllocation);
   end;
 
   fMemoryBlock:=fDevice.fMemoryManager.AllocateMemoryBlock(MemoryBlockFlags,
