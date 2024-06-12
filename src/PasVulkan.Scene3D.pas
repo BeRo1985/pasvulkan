@@ -3452,7 +3452,7 @@ type EpvScene3D=class(Exception);
       public
        function CreateGroup(const aName:TpvUTF8String=''):TpvScene3D.TGroup;
       public
-       function GetImageByName(const aName:TpvUTF8String=''):TpvScene3D.TImage;
+       function GetImageByName(const aName:TpvUTF8String='';const aIgnoreCase:boolean=true):TpvScene3D.TImage;
       public
        procedure GetProfilerTimes(out aCPUTime,aGPUTime:TpvDouble);
        procedure DumpProfiler(const aStringList:TStringList=nil);
@@ -27232,14 +27232,25 @@ begin
  result.fName:=aName;
 end;
 
-function TpvScene3D.GetImageByName(const aName:TpvUTF8String):TpvScene3D.TImage;
+function TpvScene3D.GetImageByName(const aName:TpvUTF8String;const aIgnoreCase:boolean):TpvScene3D.TImage;
 var Index:TpvSizeInt;
+    Name:TpvUTF8String;
 begin
  result:=nil;
- for Index:=0 to fImages.Count-1 do begin
-  if fImages.Items[Index].fName=aName then begin
-   result:=fImages.Items[Index];
-   break;
+ if aIgnoreCase then begin
+  Name:=LowerCase(aName);
+  for Index:=0 to fImages.Count-1 do begin
+   if LowerCase(fImages.Items[Index].fName)=Name then begin
+    result:=fImages.Items[Index];
+    break;
+   end;
+  end;
+ end else begin
+  for Index:=0 to fImages.Count-1 do begin
+   if fImages.Items[Index].fName=aName then begin
+    result:=fImages.Items[Index];
+    break;
+   end;
   end;
  end;
 end;
