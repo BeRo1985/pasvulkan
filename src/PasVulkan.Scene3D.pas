@@ -3452,6 +3452,8 @@ type EpvScene3D=class(Exception);
       public
        function CreateGroup(const aName:TpvUTF8String=''):TpvScene3D.TGroup;
       public
+       function GetImageByName(const aName:TpvUTF8String=''):TpvScene3D.TImage;
+      public
        procedure GetProfilerTimes(out aCPUTime,aGPUTime:TpvDouble);
        procedure DumpProfiler(const aStringList:TStringList=nil);
       public
@@ -27228,6 +27230,18 @@ function TpvScene3D.CreateGroup(const aName:TpvUTF8String):TpvScene3D.TGroup;
 begin
  result:=TpvScene3D.TGroup.Create(ResourceManager,self,nil);
  result.fName:=aName;
+end;
+
+function TpvScene3D.GetImageByName(const aName:TpvUTF8String):TpvScene3D.TImage;
+var Index:TpvSizeInt;
+begin
+ result:=nil;
+ for Index:=0 to fImages.Count-1 do begin
+  if fImages.Items[Index].fName=aName then begin
+   result:=fImages.Items[Index];
+   break;
+  end;
+ end;
 end;
 
 procedure TpvScene3D.GetProfilerTimes(out aCPUTime,aGPUTime:TpvDouble);
