@@ -283,6 +283,7 @@ type TpvDynamicArray<T>=record
        procedure Remove(const pItem:T);
        procedure RemoveWithoutFree(const pItem:T);
        procedure Exchange(const pIndex,pWithIndex:TpvSizeInt);
+       procedure Sort(const aCompareFunction:TpvTypedSort<T>.TpvTypedSortCompareFunction); overload;
        function GetEnumerator:TValueEnumerator;
        property Count:TpvSizeInt read fCount write SetCount;
        property Allocated:TpvSizeInt read fAllocated;
@@ -2231,6 +2232,13 @@ end;
 function TpvObjectGenericList<T>.GetEnumerator:TValueEnumerator;
 begin
  result:=TValueEnumerator.Create(self);
+end;
+
+procedure TpvObjectGenericList<T>.Sort(const aCompareFunction:TpvTypedSort<T>.TpvTypedSortCompareFunction);
+begin
+ if fCount>1 then begin
+  TpvTypedSort<T>.IntroSort(@fItems[0],0,fCount-1,aCompareFunction);
+ end;
 end;
 
 constructor TpvGenericList<T>.TValueEnumerator.Create(const aGenericList:TpvGenericList<T>);
