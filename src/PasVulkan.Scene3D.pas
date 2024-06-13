@@ -2482,6 +2482,7 @@ type EpvScene3D=class(Exception);
                           TPerInFlightFrameRenderInstanceDynamicArray=TpvDynamicArray<TPerInFlightFrameRenderInstance>;
                           PPerInFlightFrameRenderInstanceDynamicArray=^TPerInFlightFrameRenderInstanceDynamicArray;
                           TPerInFlightFrameRenderInstances=array[0..MaxInFlightFrames-1] of TPerInFlightFrameRenderInstanceDynamicArray;
+                          PPerInFlightFrameRenderInstances=^TPerInFlightFrameRenderInstances;
                           TCullVisibleBitmap=array of TpvUInt32;
                           TCullVisibleBitmaps=array[0..MaxInFlightFrames-1] of TCullVisibleBitmap;
                           TCullVisibleNodePath=array of TpvSizeInt;
@@ -2558,6 +2559,7 @@ type EpvScene3D=class(Exception);
                      fDrawChoreographyBatchItems:TDrawChoreographyBatchItems;
                      fDrawChoreographyBatchUniqueItems:TDrawChoreographyBatchItems;
                      fPerInFlightFrameRenderInstances:TPerInFlightFrameRenderInstances;
+                     fPointerToPerInFlightFrameRenderInstances:PPerInFlightFrameRenderInstances;
                     public
                      fVulkanPerInFlightFrameFirstInstances:array[0..MaxInFlightFrames-1,0..MaxRendererInstances-1,0..MaxRenderPassIndices-1] of TpvSizeInt;
                      fVulkanPerInFlightFrameInstancesCounts:array[0..MaxInFlightFrames-1,0..MaxRendererInstances-1,0..MaxRenderPassIndices-1] of TpvSizeInt;
@@ -2686,6 +2688,7 @@ type EpvScene3D=class(Exception);
                      property UserData:pointer read fUserData write fUserData;
                      property ModelMatrix:TpvMatrix4x4 read fModelMatrix write SetModelMatrix;
                      property RenderInstances:TRenderInstances read fRenderInstances;
+                     property PerInFlightFrameRenderInstances:PPerInFlightFrameRenderInstances read fPointerToPerInFlightFrameRenderInstances;
                      property BoundingBox:TpvAABB read fBoundingBox;
                      property BoundingSpheres:TBoundingSpheres read fBoundingSpheres;
                     public
@@ -16848,6 +16851,8 @@ begin
  for Index:=0 to fSceneInstance.fCountInFlightFrames-1 do begin
   fPerInFlightFrameRenderInstances[Index].Initialize;
  end;
+
+ fPointerToPerInFlightFrameRenderInstances:=@fPerInFlightFrameRenderInstances;
 
  FillChar(fVulkanPerInFlightFrameFirstInstances,SizeOf(fVulkanPerInFlightFrameFirstInstances),#0);
 
