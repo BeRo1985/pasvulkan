@@ -320,6 +320,13 @@ vec3 getWaterNormal(vec3 position){
 #endif
 }
 
+float fresnelGet(float costheta, float ior){
+  float r0 = (1.0f - ior) / (1.0f + ior);
+  r0 *= r0;
+  float x = 1.0 - costheta;
+  return r0 + ((1.0 - r0) * (x * x * x));
+}
+
 float fresnelDielectric(vec3 Incoming, vec3 Normal, float eta){
   // compute fresnel reflectance without explicitly computing the refracted direction 
   float c = abs(dot(Incoming, Normal));
@@ -329,11 +336,23 @@ float fresnelDielectric(vec3 Incoming, vec3 Normal, float eta){
     g = sqrt(g);
     float A = (g - c) / (g + c);
     float B = ((c * (g + c)) - 1.0) / ((c * (g - c)) + 1.0);
-    result = 0.5 * A * A *(1.0 + B * B);
+    result = (0.5 * A * A) * (1.0 + (B * B));
   }else{
     result = 1.0;  /* TIR (no refracted component) */
   }
   return result;
+}
+
+float getFresnel(vec3 incident, vec3 normal, float iorIn, float iorOut){
+  vec2 cosit = vec2(clamp(dot(incident, normal), -1.0, 1.0), 0.0);
+  vec2 etait = (cosit.x > 0.0) ? vec2(iorIn, iorOut) : vec2(iorOut, iorIn);
+  float sint = (etait.x / etait.y) * sqrt(max(0.0, 1.0 - (cosit.x * cosit.x)));
+  if(sint >= 1.0){
+    return 1.0;
+  }else{
+    cosit = vec2(abs(cosit.x), sqrt(max(0.0, 1.0 - (sint * sint))));
+    return length(vec2((etait.y * cosit.x) - (etait.x * cosit.y), (etait.x * cosit.x) - (etait.y * cosit.y)) / vec2((etait.y * cosit.x) + (etait.x * cosit.y), (etait.x * cosit.x) + (etait.y * cosit.y))) * 0.5;
+  }
 }
 
 float HenyeyGreenstein(float mu, float inG){
@@ -458,8 +477,18 @@ vec4 doShade(float opaqueDepth, float surfaceDepth, bool underWater){
   //vec3(0.015625) * edgeFactor() * fma(clamp(dot(normal, vec3(0.0, 1.0, 0.0)), 0.0, 1.0), 1.0, 0.0), 1.0);
   vec4 color = vec4(0.0, 0.0, 0.0, 1.0);
   
-  float fresnel = clamp(fresnelDielectric(-viewDirection, normal, underWater ? waterIOR / airIOR : airIOR / waterIOR), 0.0, 1.0);
-  //float fresnel = pow(1.0 - max(dot(normal, -viewDirection), 0.0), 3.0) * 1.0;
+  float fresnel = clamp(fresnelDielectric(-viewDirection, normal, underWater ? airIOR / waterIOR : waterIOR / airIOR), 0.0, 1.0);
+  //float fresnel = pow(1.0 - max(dot(normal, viewDirection), 0.0), 3.0) * 1.0;
+
+  //float fresnel = clamp(fresnelGet(max(0.0, dot(viewDirection, normal)), underWater ? airIOR / waterIOR : waterIOR / airIOR), 0.0, 1.0);
+ /*float fresnel;
+  {
+    float ior = underWater ? airIOR / waterIOR : waterIOR / airIOR;
+    float r0 = (1.0 - ior) / (1.0 + ior);
+    float x = 1.0 - max(0.0, dot(viewDirection, normal));
+    fresnel = mix(x * x * x, 1.0, r0 * r0);
+  }*/
+  //float fresnel = clamp(getFresnel(-viewDirection, normal, underWater ? airIOR : waterIOR, underWater ? waterIOR : airIOR), 0.0, 1.0);
   
 /*if(underWater){
     
