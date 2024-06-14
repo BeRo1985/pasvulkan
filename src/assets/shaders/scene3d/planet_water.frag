@@ -405,21 +405,25 @@ vec4 doShade(float hitTime, bool underWater){
 
   vec4 color = vec2(0.0, 1.0).xxxy; 		
 
-  vec3 reflection = vec3(0.001); 		
+  vec3 reflection = vec3(0.1); 		
   
   vec3 refraction = getIBLVolumeRefraction(normal.xyz, 
                                            viewDirection,
-                                           perceptualRoughness,
+                                                 clamp(hitTime * 0.1, 0.0, 0.25),//perceptualRoughness,
+                                                 vec3(1.0), //diffuseColorAlpha.xyz, 
+                                                 vec3(0.04), //F0, 
+                                                 vec3(1.0), //F90,
+                                                 inWorldSpacePosition,
+/*                                          perceptualRoughness,
                                            diffuseColorAlpha.xyz, F0, F90,
-                                           inWorldSpacePosition,
+                                           inWorldSpacePosition,*/
                                            ior, 
                                            volumeThickness, 
                                            volumeAttenuationColor, 
                                            volumeAttenuationDistance,
                                            volumeDispersion);      
 
-  color.xyz = mix(reflection, refraction, clamp(dot(viewDirection, normal), 0.0, 1.0));
-  
+  color.xyz = mix(refraction, reflection, fresnel) * waterBaseColor;  
 
   return color;
 
@@ -430,8 +434,8 @@ vec4 doShade(float hitTime, bool underWater){
   //vec3(0.015625) * edgeFactor() * fma(clamp(dot(normal, vec3(0.0, 1.0, 0.0)), 0.0, 1.0), 1.0, 0.0), 1.0);
   vec4 color = vec4(0.0, 0.0, 0.0, 1.0);
   
-  //float fresnel = clamp(fresnelDielectric(-viewDirection, normal, 1.0 / ior), 0.0, 1.0);
-  float fresnel = pow(1.0 - max(dot(normal, -viewDirection), 0.0), 3.0) * 1.0;
+  float fresnel = clamp(fresnelDielectric(-viewDirection, normal, ior), 0.0, 1.0);
+  //float fresnel = 0.0;//pow(1.0 - max(dot(normal, -viewDirection), 0.0), 3.0) * 1.0;
   
 /*if(underWater){
     
@@ -439,6 +443,12 @@ vec4 doShade(float hitTime, bool underWater){
     color = vec4(r, 1.0);
 
   }else*/{
+
+    vec4 hitPosition = vec4(viewDirection * hitTime, 1.0);
+    hitPosition = inverseViewMatrix * hitPosition;
+    hitPosition /= hitPosition.w;
+
+    float waterDepth = underWater ? hitTime : distance(hitPosition.xyz, inWorldSpacePosition);
 
 #define LIGHTING_INITIALIZATION
 #include "lighting.glsl"
@@ -455,7 +465,7 @@ vec4 doShade(float hitTime, bool underWater){
 
     transmissionOutput += getIBLVolumeRefraction(normal.xyz, 
                                                  viewDirection,
-                                                 clamp(hitTime * 0.1, 0.0, 0.25),//perceptualRoughness,
+                                                 clamp(waterDepth * 0.01, 0.0, 1.0),//perceptualRoughness,
                                                  vec3(1.0), //diffuseColorAlpha.xyz, 
                                                  vec3(0.04), //F0, 
                                                  vec3(1.0), //F90,
@@ -479,6 +489,8 @@ vec4 doShade(float hitTime, bool underWater){
        diffuseOutput +
 #endif
       specularOutput;
+ 
+  // reflection = vec3(0.1);
 
 #if defined(TRANSMISSION) 
     vec3 refraction = transmissionOutput;
