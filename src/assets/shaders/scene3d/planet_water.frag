@@ -368,7 +368,7 @@ vec4 doShade(float opaqueDepth, float surfaceDepth, bool underWater){
   waterDepth = opaqueDepth - surfaceDepth;
 
   vec4 albedo = vec4(1.0);  
-  vec4 occlusionRoughnessMetallic = vec4(1.0, 0.0, 0.0, 0.0);
+  vec4 occlusionRoughnessMetallic = vec4(1.0, 0.0, 0.9, 0.0);
 
   // The blade normal is rotated slightly to the left or right depending on the x texture coordinate for
   // to fake roundness of the blade without real more complex geometry
@@ -528,7 +528,7 @@ vec4 doShade(float opaqueDepth, float surfaceDepth, bool underWater){
     color.xyz = mix(
       texelFetch(uPassTextures[1], ivec3(gl_FragCoord.xy, gl_ViewIndex), 0).xyz,
       mix(refraction * waterColor, reflection * waterColor, fresnel), 
-      clamp(waterDepth * 1.0, 0.0, 1.0)
+      clamp(waterDepth * 10.0, 0.0, 1.0)
     );
 
     //color.x =  waterDepth;
