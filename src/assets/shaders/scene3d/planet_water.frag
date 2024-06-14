@@ -143,7 +143,7 @@ const float waterIOR = 1.3325;
 
 #define IOR_TO_F0(ior) ((ior - 1.0) * (ior - 1.0)) / ((ior + 1.0) * (ior + 1.0))
 
-const float waterF0 = IOR_TO_F0(waterIOR);
+const float waterF0 = IOR_TO_F0(waterIOR) * IOR_TO_F0(waterIOR);
 
 const vec3 inModelScale = vec3(1.0); 
 
@@ -361,7 +361,7 @@ float HenyeyGreenstein(float mu, float inG){
 
 #define PROCESSLIGHT processLight 
 
-const vec3 waterBaseColor = vec3(0.5, 0.7, 0.9);
+const vec3 waterBaseColor = pow(vec3(0.555555, 0.777777, 1.0), vec3(2.5));//vec3(0.5, 0.7, 0.9);
 
 vec3 waterDiffuseColor = vec3(0.0);
 vec3 waterSpecularColor = vec3(0.0);
@@ -376,9 +376,11 @@ void processLight(const in vec3 lightColor,
                   const in vec3 lightLit, 
                   const in vec3 lightDirection){
 
-  float mu = dot(lightDirection, viewDirection);
+  float mu = dot(lightDirection, -viewDirection);
 
-  waterSubscattering += HenyeyGreenstein(mu, 0.5) * waterColor * lightColor * max(0.0, waterDepth * 0.01);  
+  waterSubscattering += HenyeyGreenstein(mu, 0.5) * waterColor * lightColor * (1.0 - clamp(exp(-waterDepth * 0.01), 0.0, 1.0));  
+
+//waterSubscattering += HenyeyGreenstein(mu, 0.5) * waterColor * lightColor * max(0.0, waterDepth * 0.01);
 
 } 
 
@@ -505,7 +507,8 @@ vec4 doShade(float opaqueDepth, float surfaceDepth, bool underWater){
 
     waterDepth = getWaterHeightData(octPlanetUnsignedEncode(normalize(inWorldSpacePosition)));*/
 
-    waterColor = pow(waterBaseColor, vec3(mix(1.0, 2.0, clamp(waterDepth * 0.1, 0.0, 1.0))));
+// waterColor = pow(vec3(0.6862, 0.8823, 0.9411), vec3(2.2));//pow(waterBaseColor, vec3(mix(1.0, 2.0, clamp(waterDepth * 0.1, 0.0, 1.0))));
+    waterColor = waterBaseColor;//pow(waterBaseColor, vec3(mix(1.0, 2.0, clamp(waterDepth * 0.1, 0.0, 1.0))));
     
 #define LIGHTING_INITIALIZATION
 #include "lighting.glsl"
@@ -549,15 +552,13 @@ vec4 doShade(float opaqueDepth, float surfaceDepth, bool underWater){
     vec3 refraction = vec3(0.0);
 #endif
 
-    refraction = mix(refraction, vec3(waterF0), clamp(pow(waterDepth * 0.1, 1.0), 0.0, 1.0)); 
+    refraction = mix(refraction, vec3(waterF0), clamp(1.0 - exp(-waterDepth * 1.0), 0.0, 1.0)); 
 
     color.xyz = mix(
       texelFetch(uPassTextures[1], ivec3(gl_FragCoord.xy, gl_ViewIndex), 0).xyz,
-      mix(refraction * waterColor, reflection * waterColor, fresnel), 
-      clamp(waterDepth * 10.0, 0.0, 1.0)
+      mix(refraction * waterColor, reflection * waterColor, fresnel) + waterSubscattering, 
+      clamp(1.0 - exp(-waterDepth * 64.0), 0.0, 1.0)
     );
-
-    color.xyz += waterSubscattering; 
 
   //  color.xyz = vec3(waterDepth * 0.01);
     
