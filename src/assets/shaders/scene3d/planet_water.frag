@@ -505,7 +505,7 @@ vec4 doShade(float opaqueDepth, float surfaceDepth, bool underWater){
 
     waterDepth = getWaterHeightData(octPlanetUnsignedEncode(normalize(inWorldSpacePosition)));*/
 
-    waterColor = pow(waterBaseColor, vec3(mix(1.0, 10.0, clamp(waterDepth * 0.1, 0.0, 1.0))));
+    waterColor = pow(waterBaseColor, vec3(mix(1.0, 2.0, clamp(waterDepth * 0.1, 0.0, 1.0))));
     
 #define LIGHTING_INITIALIZATION
 #include "lighting.glsl"
@@ -549,7 +549,7 @@ vec4 doShade(float opaqueDepth, float surfaceDepth, bool underWater){
     vec3 refraction = vec3(0.0);
 #endif
 
-    refraction = mix(refraction, vec3(waterF0), clamp(pow(waterDepth * 0.1, 2.0), 0.0, 1.0)); 
+    refraction = mix(refraction, vec3(waterF0), clamp(pow(waterDepth * 0.1, 1.0), 0.0, 1.0)); 
 
     color.xyz = mix(
       texelFetch(uPassTextures[1], ivec3(gl_FragCoord.xy, gl_ViewIndex), 0).xyz,
