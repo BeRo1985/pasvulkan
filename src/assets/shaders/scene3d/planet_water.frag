@@ -464,7 +464,7 @@ vec4 doShade(float opaqueDepth, float surfaceDepth, bool underWater){
     hitWaterDepth = underWater ? hitTime : distance(hitPosition.xyz, inWorldSpacePosition);
 
     waterDepth = getWaterHeightData(octPlanetUnsignedEncode(normalize(inWorldSpacePosition)));*/
-
+    
 #define LIGHTING_INITIALIZATION
 #include "lighting.glsl"
 #undef LIGHTING_INITIALIZATION
@@ -480,7 +480,7 @@ vec4 doShade(float opaqueDepth, float surfaceDepth, bool underWater){
 
     transmissionOutput += getIBLVolumeRefraction(normal.xyz, 
                                                  viewDirection,
-                                                 clamp(waterDepth * 0.01, 0.0, 1.0),//perceptualRoughness,
+                                                 clamp(waterDepth * 0.01, 0.0, 1.0), //perceptualRoughness,
                                                  vec3(1.0), //diffuseColorAlpha.xyz, 
                                                  vec3(0.04), //F0, 
                                                  vec3(1.0), //F90,
@@ -508,14 +508,18 @@ vec4 doShade(float opaqueDepth, float surfaceDepth, bool underWater){
   // reflection = vec3(0.1);
 
 #if defined(TRANSMISSION) 
-    vec3 refraction = transmissionOutput * waterBaseColor;
+    vec3 refraction = transmissionOutput;
 #else
     vec3 refraction = vec3(0.0);
 #endif
 
-    color.xyz = mix(refraction, mix(refraction, reflection, fresnel), 1.0 - clamp(waterDepth * 1.0, 0.0, 1.0));
+    color.xyz = mix(
+      texelFetch(uPassTextures[1], ivec3(gl_FragCoord.xy, gl_ViewIndex), 0).xyz,
+      mix(refraction, reflection, fresnel) * waterBaseColor, 
+      clamp(waterDepth * 1.0, 0.0, 1.0)
+    );
   
-    color.xyz += waterSubscattering; 
+    //color.xyz += waterSubscattering; 
 
 //  color.xyz = mix(refraction, mix(refraction, reflection + diffuse + specularOutput, fresnel), clamp(hitTime * 0.1, 0.0, 1.0));
 
