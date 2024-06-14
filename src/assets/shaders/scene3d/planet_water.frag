@@ -515,7 +515,7 @@ vec4 doShade(float opaqueDepth, float surfaceDepth, bool underWater){
 
     color.xyz = mix(
       texelFetch(uPassTextures[1], ivec3(gl_FragCoord.xy, gl_ViewIndex), 0).xyz,
-      mix(mix(refraction, reflection, fresnel), vec3(1.0), clamp(waterDepth * 0.001, 0.0, 1.0)) * waterBaseColor, 
+      mix(mix(refraction, reflection, fresnel) * waterBaseColor, waterBaseColor * waterBaseColor * waterBaseColor, clamp(waterDepth * 0.001, 0.0, 1.0)), 
       clamp(waterDepth * 1.0, 0.0, 1.0)
     );
   
