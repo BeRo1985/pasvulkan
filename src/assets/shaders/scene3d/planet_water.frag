@@ -328,6 +328,10 @@ float fresnelDielectric(vec3 Incoming, vec3 Normal, float eta){
   return result;
 }
 
+float HenyeyGreenstein(float mu, float inG){
+  return (1.0 - (inG * inG)) / (pow((1.0 + (inG * inG)) - (2.0 * inG * mu), 1.5) * 12.5663706144);
+}
+
 #define PROCESSLIGHT processLight 
 
 const vec3 waterBaseColor = vec3(0.5, 0.7, 0.9);
@@ -335,13 +339,23 @@ const vec3 waterBaseColor = vec3(0.5, 0.7, 0.9);
 vec3 waterDiffuseColor = vec3(0.0);
 vec3 waterSpecularColor = vec3(0.0);
 
+vec3 waterSubscattering = vec3(0.0);
+
+float waterDepth;
+
 void processLight(const in vec3 lightColor, 
                   const in vec3 lightLit, 
                   const in vec3 lightDirection){
 
+  float mu = dot(lightDirection, viewDirection);
+
+  waterSubscattering += HenyeyGreenstein(mu, 0.75) * waterBaseColor * max(0.0, waterDepth * 0.001);  
+
 } 
 
-vec4 doShade(float hitTime, bool underWater){
+vec4 doShade(float opaqueDepth, float surfaceDepth, bool underWater){
+
+  waterDepth = opaqueDepth - surfaceDepth;
 
   vec4 albedo = vec4(1.0);  
   vec4 occlusionRoughnessMetallic = underWater ? vec4(1.0, 0.0, 0.9, 0.0) :  vec4(1.0, 0.0, 0.9, 0.0);
@@ -409,7 +423,7 @@ vec4 doShade(float hitTime, bool underWater){
   
   vec3 refraction = getIBLVolumeRefraction(normal.xyz, 
                                            viewDirection,
-                                                 clamp(hitTime * 0.1, 0.0, 0.25),//perceptualRoughness,
+                                                 clamp(waterDepth * 0.1, 0.0, 0.25),//perceptualRoughness,
                                                  vec3(1.0), //diffuseColorAlpha.xyz, 
                                                  vec3(0.04), //F0, 
                                                  vec3(1.0), //F90,
@@ -434,8 +448,7 @@ vec4 doShade(float hitTime, bool underWater){
   //vec3(0.015625) * edgeFactor() * fma(clamp(dot(normal, vec3(0.0, 1.0, 0.0)), 0.0, 1.0), 1.0, 0.0), 1.0);
   vec4 color = vec4(0.0, 0.0, 0.0, 1.0);
   
-  float fresnel = clamp(fresnelDielectric(-viewDirection, normal, ior), 0.0, 1.0);
-  //float fresnel = 0.0;//pow(1.0 - max(dot(normal, -viewDirection), 0.0), 3.0) * 1.0;
+  float fresnel = clamp(fresnelDielectric(-viewDirection, normal, underWater ? ior : 1.0 / ior), 0.0, 1.0);
   
 /*if(underWater){
     
@@ -444,11 +457,13 @@ vec4 doShade(float hitTime, bool underWater){
 
   }else*/{
 
-    vec4 hitPosition = vec4(viewDirection * hitTime, 1.0);
+   /*vec4 hitPosition = vec4(viewDirection * hitTime, 1.0);
     hitPosition = inverseViewMatrix * hitPosition;
     hitPosition /= hitPosition.w;
 
-    float waterDepth = underWater ? hitTime : distance(hitPosition.xyz, inWorldSpacePosition);
+    hitWaterDepth = underWater ? hitTime : distance(hitPosition.xyz, inWorldSpacePosition);
+
+    waterDepth = getWaterHeightData(octPlanetUnsignedEncode(normalize(inWorldSpacePosition)));*/
 
 #define LIGHTING_INITIALIZATION
 #include "lighting.glsl"
@@ -493,12 +508,14 @@ vec4 doShade(float hitTime, bool underWater){
   // reflection = vec3(0.1);
 
 #if defined(TRANSMISSION) 
-    vec3 refraction = transmissionOutput;
+    vec3 refraction = transmissionOutput * waterBaseColor;
 #else
     vec3 refraction = vec3(0.0);
 #endif
 
-    color.xyz = mix(refraction, reflection, fresnel) * waterBaseColor;
+    color.xyz = mix(refraction, mix(refraction, reflection, fresnel), 1.0 - clamp(waterDepth * 1.0, 0.0, 1.0));
+  
+    color.xyz += waterSubscattering; 
 
 //  color.xyz = mix(refraction, mix(refraction, reflection + diffuse + specularOutput, fresnel), clamp(hitTime * 0.1, 0.0, 1.0));
 
@@ -522,12 +539,27 @@ void main(){
 
   viewDirection = normalize(-inCameraRelativePosition);
 
-  vec4 finalColor = doShade(abs(inBlock.viewSpacePosition.z), inBlock.underWater > 0.0);
+  float opaqueDepth = texelFetch(uPassTextures[2], ivec3(gl_FragCoord.xy, gl_ViewIndex), 0).x;
+  {
+#if 0
+    vec2 uv = (vec2(gl_FragCoord.xy) + vec2(0.5)) / vec2(textureSize(uPassTextures[2], 0).xy);
+    vec4 opaqueViewSpace = inverseProjectionMatrix * vec4(fma(uv, vec2(2.0), vec2(-1.0)), opaqueDepth, 1.0);
+    opaqueViewSpace /= opaqueViewSpace.w;
+    opaqueDepth = -opaqueViewSpace.z; 
+#else
+    vec2 v = fma(inverseProjectionMatrix[2].zw, vec2(opaqueDepth), inverseProjectionMatrix[3].zw);
+    opaqueDepth = -(v.x / v.y);
+#endif
+  }
+
+  float surfaceDepth = -inBlock.viewSpacePosition.z;
+
+  vec4 finalColor = vec4(0.0, 0.0, 0.0, 1.0);//doShade(abs(inBlock.viewSpacePosition.z), inBlock.underWater > 0.0);
   
   if((inBlock.underWater > 0.0) /*&& (inBlock.mapValue < 0.0)*/){
     finalColor = vec4(textureLod(uPassTextures[1], vec3((vec2(gl_FragCoord.xy) + vec2(0.5)) / vec2(float(uint(pushConstants.resolutionXY & 0xffffu)), float(uint(pushConstants.resolutionXY >> 16u))), gl_ViewIndex), 1.0).xyz * waterBaseColor * waterBaseColor, 1.0);
   }else{
-    finalColor = doShade(abs(inBlock.viewSpacePosition.z), inBlock.underWater > 0.0);
+    finalColor = doShade(opaqueDepth, surfaceDepth, inBlock.underWater > 0.0);
   }
 
   outFragColor = vec4(clamp(finalColor.xyz * finalColor.w, vec3(-65504.0), vec3(65504.0)), finalColor.w);
@@ -668,7 +700,7 @@ void main(){
 
       cameraRelativePosition = worldSpacePosition - cameraPosition.xyz;
 
-      finalColor = doShade(maxTime - hitTime, underWater);
+      finalColor = doShade(maxTime, hitTime, underWater);
 
 //    finalColor = vec4(workNormal.xyz * 0.1, 1.0);//doShade();
   
