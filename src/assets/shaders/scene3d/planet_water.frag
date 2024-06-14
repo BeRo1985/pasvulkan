@@ -137,10 +137,18 @@ float volumeAttenuationDistance = 1.0 / 0.0; // +INF
 vec3 volumeAttenuationColor = vec3(1.0); 
 float volumeDispersion = 0.0;
 
-float ior = 1.33; // 1.33 = water
+const float airIOR = 1.0; 
+
+const float waterIOR = 1.3325; 
+
+#define IOR_TO_F0(ior) ((ior - 1.0) * (ior - 1.0)) / ((ior + 1.0) * (ior + 1.0))
+
+const float waterF0 = IOR_TO_F0(waterIOR);
 
 const vec3 inModelScale = vec3(1.0); 
 
+float ior = waterIOR / airIOR;
+ 
 int inViewIndex = int(gl_ViewIndex);
 
 #define LIGHTING_GLOBALS
@@ -341,6 +349,8 @@ vec3 waterSpecularColor = vec3(0.0);
 
 vec3 waterSubscattering = vec3(0.0);
 
+vec3 waterColor; //vec3(0.090195, 0.115685, 0.12745);
+
 float waterDepth;
 
 void processLight(const in vec3 lightColor, 
@@ -349,7 +359,7 @@ void processLight(const in vec3 lightColor,
 
   float mu = dot(lightDirection, viewDirection);
 
-  waterSubscattering += HenyeyGreenstein(mu, 0.75) * waterBaseColor * max(0.0, waterDepth * 0.001);  
+  waterSubscattering += HenyeyGreenstein(mu, 0.5) * waterColor * lightColor * max(0.0, waterDepth * 0.01);  
 
 } 
 
@@ -358,7 +368,7 @@ vec4 doShade(float opaqueDepth, float surfaceDepth, bool underWater){
   waterDepth = opaqueDepth - surfaceDepth;
 
   vec4 albedo = vec4(1.0);  
-  vec4 occlusionRoughnessMetallic = underWater ? vec4(1.0, 0.0, 0.9, 0.0) :  vec4(1.0, 0.0, 0.9, 0.0);
+  vec4 occlusionRoughnessMetallic = vec4(1.0, 0.0, 0.0, 0.0);
 
   // The blade normal is rotated slightly to the left or right depending on the x texture coordinate for
   // to fake roundness of the blade without real more complex geometry
@@ -370,7 +380,7 @@ vec4 doShade(float opaqueDepth, float surfaceDepth, bool underWater){
 
   vec4 diffuseColorAlpha = vec4(max(vec3(0.0), albedo.xyz * (1.0 - metallicRoughness.x)), albedo.w);
 
-  vec3 F0 = mix(vec3(0.04), albedo.xyz, metallicRoughness.x);
+  vec3 F0 = mix(vec3(waterF0), albedo.xyz, metallicRoughness.x);
 
   vec3 F90 = vec3(1.0);
 
@@ -403,7 +413,7 @@ vec4 doShade(float opaqueDepth, float surfaceDepth, bool underWater){
 
   float litIntensity = 1.0;
 
-  const float specularWeight = 1.0;
+  const float specularWeight = 1.0;//0.255;
 
   const float iblWeight = 1.0;
 
@@ -411,7 +421,7 @@ vec4 doShade(float opaqueDepth, float surfaceDepth, bool underWater){
 
 #if 0
 
-  ior = underWater ? 0.66 : 1.33;
+  float ior = underWater ? 0.66 : 1.33;
   float eta = max(ior, 1e-5);
   
   float fresnel = clamp(fresnelDielectric(-viewDirection, normal, eta), 0.0, 1.0);
@@ -448,7 +458,7 @@ vec4 doShade(float opaqueDepth, float surfaceDepth, bool underWater){
   //vec3(0.015625) * edgeFactor() * fma(clamp(dot(normal, vec3(0.0, 1.0, 0.0)), 0.0, 1.0), 1.0, 0.0), 1.0);
   vec4 color = vec4(0.0, 0.0, 0.0, 1.0);
   
-  float fresnel = clamp(fresnelDielectric(-viewDirection, normal, underWater ? ior : 1.0 / ior), 0.0, 1.0);
+  float fresnel = clamp(fresnelDielectric(-viewDirection, normal, underWater ? waterIOR / airIOR : airIOR / waterIOR), 0.0, 1.0);
   
 /*if(underWater){
     
@@ -464,6 +474,8 @@ vec4 doShade(float opaqueDepth, float surfaceDepth, bool underWater){
     hitWaterDepth = underWater ? hitTime : distance(hitPosition.xyz, inWorldSpacePosition);
 
     waterDepth = getWaterHeightData(octPlanetUnsignedEncode(normalize(inWorldSpacePosition)));*/
+
+    waterColor = pow(waterBaseColor, vec3(1.0 + (waterDepth * 0.5)));
     
 #define LIGHTING_INITIALIZATION
 #include "lighting.glsl"
@@ -482,10 +494,10 @@ vec4 doShade(float opaqueDepth, float surfaceDepth, bool underWater){
                                                  viewDirection,
                                                  clamp(waterDepth * 0.01, 0.0, 1.0), //perceptualRoughness,
                                                  vec3(1.0), //diffuseColorAlpha.xyz, 
-                                                 vec3(0.04), //F0, 
+                                                 vec3(waterF0), //F0, 
                                                  vec3(1.0), //F90,
                                                  inWorldSpacePosition,
-                                                 ior, 
+                                                 waterIOR, 
                                                  volumeThickness, 
                                                  volumeAttenuationColor, 
                                                  volumeAttenuationDistance,
@@ -515,11 +527,13 @@ vec4 doShade(float opaqueDepth, float surfaceDepth, bool underWater){
 
     color.xyz = mix(
       texelFetch(uPassTextures[1], ivec3(gl_FragCoord.xy, gl_ViewIndex), 0).xyz,
-      mix(mix(refraction, reflection, fresnel) * waterBaseColor, waterBaseColor * waterBaseColor * waterBaseColor, clamp(waterDepth * 0.001, 0.0, 1.0)), 
+      mix(refraction * waterColor, reflection * waterColor, fresnel), 
       clamp(waterDepth * 1.0, 0.0, 1.0)
     );
+
+    //color.x =  waterDepth;
   
-    //color.xyz += waterSubscattering; 
+    color.xyz += waterSubscattering; 
 
 //  color.xyz = mix(refraction, mix(refraction, reflection + diffuse + specularOutput, fresnel), clamp(hitTime * 0.1, 0.0, 1.0));
 
