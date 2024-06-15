@@ -8862,7 +8862,10 @@ begin
 
  if fAvailableExtensionNames.IndexOf(VK_EXT_TOOLING_INFO_EXTENSION_NAME)>=0 then begin
 
-  if assigned(fInstance.Commands.Commands.GetPhysicalDeviceToolProperties) then begin
+  if assigned(fInstance.Commands.Commands.GetPhysicalDeviceToolPropertiesEXT) then begin
+   GetPhysicalDeviceToolPropertiesEXT:=fInstance.Commands.Commands.GetPhysicalDeviceToolPropertiesEXT;
+  end else if ((fInstance.APIVersion and VK_API_VERSION_WITHOUT_PATCH_MASK)>=VK_API_VERSION_1_3) and
+              assigned(fInstance.Commands.Commands.GetPhysicalDeviceToolProperties) then begin
    GetPhysicalDeviceToolPropertiesEXT:=fInstance.Commands.Commands.GetPhysicalDeviceToolProperties;
   end else begin
    GetPhysicalDeviceToolPropertiesEXT:=fInstance.Commands.Commands.GetPhysicalDeviceToolPropertiesEXT;
