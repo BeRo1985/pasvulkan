@@ -189,6 +189,10 @@ type TpvSwap<T>=class
      
 procedure DebugBreakPoint;
 
+{$ifdef fpc}
+function DumpCallStack:string;
+{$endif}
+
 function DumpExceptionCallStack(e:Exception):string;
 
 function CombineTwoUInt32IntoOneUInt64(const a,b:TpvUInt32):TpvUInt64; {$ifdef caninline}inline;{$endif}
@@ -231,6 +235,25 @@ end;
 begin
 end;
 {$ifend}
+
+{$ifdef fpc}
+function DumpCallStack:string;
+const LineEnding={$if defined(Windows) or defined(Win32) or defined(Win64)}#13#10{$else}#10{$ifend};
+var bp,Address,OldBP:Pointer;
+begin
+ result:='';
+ bp:=get_caller_frame(get_frame);
+ while assigned(bp) do begin
+  Address:=get_caller_addr(bp);
+  Result:=Result+BackTraceStrFunc(Address)+LineEnding;
+  OldBP:=bp;
+  bp:=get_caller_frame(bp);
+  if (TpvPtrUInt(bp)<=TpvPtrUInt(OldBP)) or (TpvPtrUInt(bp)>(TpvPtrUInt(StackBottom)+TpvPtrUInt(StackLength))) then begin
+   bp:=nil;
+  end;
+ end;
+end;
+{$endif}
 
 function DumpExceptionCallStack(e:Exception):string;
 const LineEnding={$if defined(Windows) or defined(Win32) or defined(Win64)}#13#10{$else}#10{$ifend};

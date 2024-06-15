@@ -7575,6 +7575,9 @@ begin
   s:='Vulkan error ['+IntToStr(TpvInt64(ResultCode))+']: '+VulkanErrorToString(ResultCode);
   __android_log_write(ANDROID_LOG_ERROR,'PasVulkanApplication',PAnsiChar(s));
 {$ifend}
+{$if defined(fpc) and not defined(Release)}
+//WriteLn(DumpCallStack);
+{$endif}
   raise EpvVulkanResultException.Create(ResultCode);
  end;
 end;
