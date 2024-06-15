@@ -729,6 +729,20 @@ end;
 procedure SafeStringClean(var aSafeString:TSafeString); // Clean non-ascii characters to spaces
 var Index:TpvSizeInt;
 begin
+
+ // Trim the string
+ for Index:=Min(TpvUInt8(aSafeString[0]),SizeOf(TSafeString)-2) downto 1 do begin
+  case aSafeString[Index] of
+   #0..#31,#127..#255:begin
+    aSafeString[Index]:=#0;
+    TpvUInt8(aSafeString[0]):=Index-1;
+   end else begin
+    break;
+   end;
+  end;
+ end;
+
+ // Replace remaining non-ascii characters with spaces
  for Index:=1 to Min(TpvUInt8(aSafeString[0]),SizeOf(TSafeString)-2) do begin
   case aSafeString[Index] of
    #0..#31,#127..#255:begin
@@ -736,6 +750,7 @@ begin
    end;
   end;
  end;
+
 end;
 
 procedure SafeStringSet(out aSafeString:TSafeString;const aString:ShortString);
@@ -1140,14 +1155,16 @@ var decoder:TGFSDK_Aftermath_GpuCrashDump_Decoder;
 {$endif}
 begin
 
- applicationName:='';
+//applicationName:='';
 
- try
+//try
+ begin
 
   GFSDK_Aftermath_CriticalSection.Acquire;
   try
 
    // Create a GPU crash dump decoder object for the GPU crash dump.
+   writeln('1');
    FillChar(decoder,SizeOf(TGFSDK_Aftermath_GpuCrashDump_Decoder),#0);
    AFTERMATH_CHECK_ERROR(
     GFSDK_Aftermath_GpuCrashDump_CreateDecoder(
@@ -1162,11 +1179,13 @@ begin
 
     // Use the decoder object to read basic information, like application
     // name, PID, etc. from the GPU crash dump.
+    writeln('2');
     FillChar(baseInfo,SizeOf(TGFSDK_Aftermath_GpuCrashDump_BaseInfo),#0);
     AFTERMATH_CHECK_ERROR(GFSDK_Aftermath_GpuCrashDump_GetBaseInfo(decoder,@baseInfo));
 
     // Use the decoder object to query the application name that was set
     // in the GPU crash dump description.
+    writeln('3');
     applicationNameLength:=0;
     AFTERMATH_CHECK_ERROR(
      GFSDK_Aftermath_GpuCrashDump_GetDescriptionSize(
@@ -1176,10 +1195,12 @@ begin
      )
     );
 
+    writeln('4');
     SafeStringClear(applicationName);
     TpvUInt8(applicationName[0]):=Min(applicationNameLength,SizeOf(TSafeString)-2);
 //  SetLength(applicationName,applicationNameLength+1);
 
+    writeln('5');
     AFTERMATH_CHECK_ERROR(
      GFSDK_Aftermath_GpuCrashDump_GetDescription(
       decoder,
@@ -1190,17 +1211,21 @@ begin
      )
     );
 
+    writeln('6');
     //applicationName:=Trim(applicationName);
     SafeStringClean(applicationName); // Clean non-ascii characters to spaces for to avoid problems with file names
     
+    writeln('7');
     // Limit the application name to 32 characters for have space for the thread id, the counter and possible file extensions
     if TpvUInt8(applicationName[0])>32 then begin
      TpvUInt8(applicationName[0]):=32;
     end;
 
+    writeln('8');
     // Place a null terminator at the end of the application name, just in case.
     applicationName[TpvUInt8(applicationName[0])+1]:=#0; // Null terminator at the end
 
+    writeln('9');
     // Create a unique file name for writing the crash dump data to a file.
     // Note: due to an Nsight Aftermath bug (will be fixed in an upcoming
     // driver release) we may see redundant crash dumps. As a workaround,
@@ -1213,11 +1238,12 @@ begin
 //  baseFileName:=applicationName+'-'+IntToStr(UInt64(MainThreadID))+'-'+IntToStr(GPUCrashDumpCallbackCounter);
     inc(GPUCrashDumpCallbackCounter);
 
+    writeln('10');
     // Write the the crash dumShaderSourceDebugInfoLookupCallbackp data to a file using the .nv-gpudmp extension
     // registered with Nsight Graphics.
     if gpuCrashDumpSize>0 then begin
      crashDumpFileName:=baseFileName;
-     SafeStringAppend(baseFileName,'.nv-gpudmp');
+     SafeStringAppend(crashDumpFileName,'.nv-gpudmp');
      //crashDumpFileName:=baseFileName+'.nv-gpudmp';
 {$ifdef Windows}
      dumpFileHandle:=CreateFileA(SafeStringToPAnsiChar(crashDumpFileName),GENERIC_WRITE,0,nil,CREATE_ALWAYS,FILE_ATTRIBUTE_NORMAL,0);
@@ -1238,6 +1264,7 @@ begin
 {$endif}
     end; 
 
+    writeln('11');
     // Decode the crash dump to a JSON string.
     // Step 1: Generate the JSON and get the size.
     jsonSize:=0;
@@ -1298,6 +1325,8 @@ begin
      end;
     end;
 
+    writeln('12');
+
    finally
 
     // Destroy the GPU crash dump decoder object.
@@ -1309,8 +1338,8 @@ begin
    GFSDK_Aftermath_CriticalSection.Release;
   end;
 
- finally
-  applicationName:='';
+{finally
+  //applicationName:='';}
  end;
 
 end;
