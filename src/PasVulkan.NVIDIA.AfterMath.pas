@@ -1057,9 +1057,20 @@ begin
 end;
 
 procedure ShaderDebugInfoCallback(pShaderDebugInfo:Pointer;shaderDebugInfoSize:TpvUInt32;pUserData:Pointer); cdecl;
+{$ifdef Windows}
+const HexChars:array[0..15] of AnsiChar=('0','1','2','3','4','5','6','7','8','9','a','b','c','d','e','f'); 
+{$endif}
 var identifier:TGFSDK_Aftermath_ShaderDebugInfoIdentifier;
     Bytes:TBytes;
+{$ifdef Windows}
+    FileName:array[0..256] of AnsiChar;
+    FileCharIndex,Index:TpvSizeInt;
+    FileHandle:THandle;
+    Value:TpvUInt64;
+    Written:DWORD;
+{$else}
     FileStream:TFileStream;
+{$endif}
 begin
  GFSDK_Aftermath_CriticalSection.Acquire;
  try
@@ -1078,12 +1089,50 @@ begin
     SetLength(Bytes,shaderDebugInfoSize);
     Move(pShaderDebugInfo^,Bytes[0],shaderDebugInfoSize);
     ShaderDebugInfoHashMap[identifier]:=Bytes;
+{$ifdef Windows}
+    FileName[0]:='s';
+    FileName[1]:='h';
+    FileName[2]:='a';
+    FileName[3]:='d';
+    FileName[4]:='e';
+    FileName[5]:='r';
+    FileName[6]:='-';
+    Value:=identifier.ID[0];
+    FileCharIndex:=7;
+    for Index:=0 to 15 do begin
+     FileName[FileCharIndex]:=HexChars[(Value shr (Index shl 2)) and $f];
+     inc(FileCharIndex);
+    end;
+    FileName[FileCharIndex]:='-';
+    inc(FileCharIndex);
+    Value:=identifier.ID[1];
+    for Index:=0 to 15 do begin
+     FileName[FileCharIndex]:=HexChars[(Value shr (Index shl 2)) and $f];
+     inc(FileCharIndex);
+    end;
+    FileName[FileCharIndex]:='.';
+    FileName[FileCharIndex+1]:='n';
+    FileName[FileCharIndex+2]:='v';
+    FileName[FileCharIndex+3]:='d';
+    FileName[FileCharIndex+4]:='b';
+    FileName[FileCharIndex+5]:='g';
+    FileName[FileCharIndex+6]:=#0;
+    FileHandle:=CreateFileA(Pointer(@FileName[0]),GENERIC_WRITE,0,nil,CREATE_ALWAYS,FILE_ATTRIBUTE_NORMAL,0);
+    if FileHandle<>INVALID_HANDLE_VALUE then begin
+     try
+      WriteFile(FileHandle,Bytes[0],shaderDebugInfoSize,Written,nil);
+     finally
+      CloseHandle(FileHandle);
+     end;
+    end;
+{$else}
     FileStream:=FileStream.Create('shader-'+IntToStr(identifier.ID[0])+IntToStr(identifier.ID[1])+'.nvdbg',fmCreate or fmShareDenyWrite);
     try
      FileStream.Write(Bytes[0],shaderDebugInfoSize);
     finally
      FreeAndNil(FileStream);
     end;
+{$endif}   
    finally
     Bytes:=nil;
    end;
