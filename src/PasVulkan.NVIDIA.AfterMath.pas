@@ -67,6 +67,7 @@ uses {$if defined(Windows)}
      {$elseif defined(Unix)}
       BaseUnix,UnixType,dl,
      {$ifend}
+     Math,
      SysUtils,
      Classes,
      PasMP,

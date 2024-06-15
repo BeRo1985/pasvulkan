@@ -881,7 +881,8 @@ begin
     if (fSurfaceSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT)) and
        (fVulkanDevice.EnabledExtensionNames.IndexOf(VK_EXT_POST_DEPTH_COVERAGE_EXTENSION_NAME)>0) then begin
      // >= RDNA, since VK_EXT_post_depth_coverage exists just from RDNA on.
-     fTransparencyMode:=TpvScene3DRendererTransparencyMode.SPINLOCKOIT;
+//   fTransparencyMode:=TpvScene3DRendererTransparencyMode.SPINLOCKOIT;
+     fTransparencyMode:=TpvScene3DRendererTransparencyMode.MBOIT;
     end else begin
      if fVulkanDevice.PhysicalDevice.Properties.deviceType=VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU then begin
       fTransparencyMode:=TpvScene3DRendererTransparencyMode.WBOIT;
@@ -891,7 +892,7 @@ begin
     end;
    end;
    TpvVulkanVendorID.NVIDIA:begin
-    if fVulkanDevice.EnabledExtensionNames.IndexOf(VK_EXT_POST_DEPTH_COVERAGE_EXTENSION_NAME)>0 then begin
+(*  if fVulkanDevice.EnabledExtensionNames.IndexOf(VK_EXT_POST_DEPTH_COVERAGE_EXTENSION_NAME)>0 then begin
      if fVulkanDevice.FragmentShaderPixelInterlock and (fCountSurfaceMSAASamples=1) then begin
       fTransparencyMode:=TpvScene3DRendererTransparencyMode.INTERLOCKOIT;
 {    end else if fVulkanDevice.FragmentShaderSampleInterlock and (fCountSurfaceMSAASamples<>1) then begin
@@ -899,7 +900,7 @@ begin
      end else begin
       fTransparencyMode:=TpvScene3DRendererTransparencyMode.SPINLOCKOIT;
      end;
-    end else begin
+    end else*)begin
      if fVulkanDevice.PhysicalDevice.Properties.deviceType=VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU then begin
       fTransparencyMode:=TpvScene3DRendererTransparencyMode.WBOIT;
      end else begin
@@ -908,11 +909,11 @@ begin
     end;
    end;
    TpvVulkanVendorID.Intel:begin
-    if (fSurfaceSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT)) and
+{   if (fSurfaceSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT)) and
        (fVulkanDevice.EnabledExtensionNames.IndexOf(VK_EXT_FRAGMENT_SHADER_INTERLOCK_EXTENSION_NAME)>0) and
        fVulkanDevice.PhysicalDevice.FragmentShaderPixelInterlock then begin
      fTransparencyMode:=TpvScene3DRendererTransparencyMode.INTERLOCKOIT;
-    end else begin
+    end else}begin
      if fVulkanDevice.PhysicalDevice.Properties.deviceType=VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU then begin
       fTransparencyMode:=TpvScene3DRendererTransparencyMode.WBOIT;
      end else begin
