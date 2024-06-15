@@ -712,11 +712,199 @@ type TShaderDebugInfoHashMap=TpvHashMap<TGFSDK_Aftermath_ShaderDebugInfoIdentifi
 
      TShaderSourceDatabase=TpvHashMap<TGFSDK_Aftermath_ShaderDebugName,TBytes>;
 
+     TSafeString=array[0..255] of AnsiChar;
+     PSafeString=^TSafeString;
+
 var ShaderDebugInfoHashMap:TShaderDebugInfoHashMap=nil;
 
     ShaderDatabase:TShaderDatabase=nil;
 
     ShaderSourceDatabase:TShaderSourceDatabase=nil;
+
+procedure SafeStringClear(out aSafeString:TSafeString);
+begin
+ FillChar(aSafeString,SizeOf(TSafeString),#0);
+end;
+
+procedure SafeStringClean(var aSafeString:TSafeString); // Clean non-ascii characters to spaces
+var Index:TpvSizeInt;
+begin
+ for Index:=1 to Min(TpvUInt8(aSafeString[0]),SizeOf(TSafeString)-2) do begin
+  case aSafeString[Index] of
+   #0..#31,#127..#255:begin
+    aSafeString[Index]:=#32;
+   end;
+  end;
+ end;
+end;
+
+procedure SafeStringSet(out aSafeString:TSafeString;const aString:ShortString);
+begin
+ SafeStringClear(aSafeString);
+ Move(aString[0],aSafeString[0],Min(TpvUInt8(aString[0]),SizeOf(TSafeString)-2)+1); // Just 1:1 copy including length byte at the beginning
+ aSafeString[TpvUInt8(aString[0])+1]:=#0; // Null terminator at the end
+end;
+
+procedure SafeStringSetPtr(out aSafeString:TSafeString;const aString:PAnsiChar);
+var Len:TpvSizeInt;
+begin
+ SafeStringClear(aSafeString);
+ if assigned(aString) then begin
+  Len:=Length(aString);
+  if Len>(SizeOf(TSafeString)-2) then begin
+   Len:=SizeOf(TSafeString)-2; // -2 because of the length byte at the beginning and the null terminator at the end
+  end;
+  Move(aString^,aSafeString[1],Len);
+  aSafeString[Len+1]:=#0;
+  TpvUInt8(aSafeString[0]):=Len;
+ end;
+end;
+
+procedure SafeStringAppend(var aSafeString:TSafeString;const aString:ShortString); 
+var Len,NewLen,ToCopy:TpvSizeInt;
+begin
+ Len:=TpvUInt8(aSafeString[0]);
+ NewLen:=Len+TpvUInt8(aString[0]);
+ if Len<>NewLen then begin
+  if NewLen>(SizeOf(TSafeString)-2) then begin
+   NewLen:=SizeOf(TSafeString)-2; // -2 because of the length byte at the beginning and the null terminator at the end
+  end;
+  ToCopy:=NewLen-Len;
+  Move(aString[0],aSafeString[Len+1],ToCopy);
+  aSafeString[NewLen+1]:=#0;
+  TpvUInt8(aSafeString[0]):=NewLen;
+ end; 
+end;
+
+procedure SafeStringAppendChar(var aSafeString:TSafeString;const aChar:AnsiChar);
+var Len,NewLen:TpvSizeInt;
+begin
+ Len:=TpvUInt8(aSafeString[0]);
+ NewLen:=Len+1;
+ if Len<>NewLen then begin
+  if NewLen>(SizeOf(TSafeString)-2) then begin
+   NewLen:=SizeOf(TSafeString)-2; // -2 because of the length byte at the beginning and the null terminator at the end
+  end;
+  aSafeString[Len+1]:=aChar;
+  aSafeString[NewLen+1]:=#0;
+  TpvUInt8(aSafeString[0]):=NewLen;
+ end;
+end;
+
+procedure SafeStringAppendPtr(var aSafeString:TSafeString;const aString:PAnsiChar);
+var Len,NewLen,ToCopy:TpvSizeInt;
+begin
+ Len:=TpvUInt8(aSafeString[0]);
+ NewLen:=Len+Length(aString);
+ if Len<>NewLen then begin
+  if NewLen>(SizeOf(TSafeString)-2) then begin
+   NewLen:=SizeOf(TSafeString)-2; // -2 because of the length byte at the beginning and the null terminator at the end
+  end;
+  ToCopy:=NewLen-Len;
+  Move(aString^,aSafeString[Len+1],ToCopy);
+  aSafeString[NewLen+1]:=#0;
+  TpvUInt8(aSafeString[0]):=NewLen;
+ end;
+end;
+
+procedure SafeStringAppendInt64(var aSafeString:TSafeString;const aValue:TpvInt64);
+var Index,Len,NewLen,Digits:TpvSizeInt;
+    Value,Digit:TpvInt64;
+begin
+ Value:=aValue;
+ Digits:=0;
+ if Value<0 then begin
+  inc(Digits);
+  Value:=-Value;
+ end;
+ if Value=0 then begin
+  inc(Digits);
+ end else begin
+  while Value<>0 do begin
+   inc(Digits);
+   Value:=Value div 10;
+  end;
+ end;
+ Len:=TpvUInt8(aSafeString[0]);
+ NewLen:=Len+Digits;
+ if Len<>NewLen then begin
+  if NewLen>(SizeOf(TSafeString)-2) then begin
+   NewLen:=SizeOf(TSafeString)-2; // -2 because of the length byte at the beginning and the null terminator at the end
+  end;
+  Index:=NewLen;
+  aSafeString[Index]:=#0;
+  dec(Index);
+  if Value<0 then begin
+   aSafeString[Index]:='-';
+   Value:=-Value;
+  end;
+  if Value=0 then begin
+   aSafeString[Index]:='0';
+   dec(Index);
+  end else begin
+   while Value<>0 do begin
+    Digit:=Value mod 10;
+    aSafeString[Index]:=AnsiChar(Digit+Ord('0'));
+    dec(Index);
+    Value:=Value div 10;
+   end;
+  end;
+  TpvUInt8(aSafeString[0]):=NewLen;
+ end;
+end;
+
+procedure SafeStringAppendUInt64(var aSafeString:TSafeString;const aValue:TpvUInt64);
+var Index,Len,NewLen,Digits:TpvSizeInt;
+    Value,Digit:TpvUInt64;
+begin
+ Value:=aValue;
+ Digits:=0;
+ if Value=0 then begin
+  inc(Digits);
+ end else begin
+  while Value<>0 do begin
+   inc(Digits);
+   Value:=Value div 10;
+  end;
+ end;
+ Len:=TpvUInt8(aSafeString[0]);
+ NewLen:=Len+Digits;
+ if Len<>NewLen then begin
+  if NewLen>(SizeOf(TSafeString)-2) then begin
+   NewLen:=SizeOf(TSafeString)-2; // -2 because of the length byte at the beginning and the null terminator at the end
+  end;
+  Index:=NewLen;
+  aSafeString[Index]:=#0;
+  dec(Index);
+  if Value=0 then begin
+   aSafeString[Index]:='0';
+   dec(Index);
+  end else begin
+   while Value<>0 do begin
+    Digit:=Value mod 10;
+    aSafeString[Index]:=AnsiChar(Digit+Ord('0'));
+    dec(Index);
+    Value:=Value div 10;
+   end;
+  end;
+  TpvUInt8(aSafeString[0]):=NewLen;
+ end;
+end;
+
+function SafeStringToString(const aSafeString:TSafeString):string; {$ifdef CAN_INLINE}inline;{$endif}
+begin
+ result:=PAnsiChar(@aSafeString[1]);
+end;
+
+function SafeStringToAnsiString(const aSafeString:TSafeString):AnsiString; {$ifdef CAN_INLINE}inline;{$endif}
+begin
+ result:=AnsiString(PAnsiChar(@aSafeString[1]));
+end;
+
+function SafeStringToPAnsiChar(const aSafeString:TSafeString):PAnsiChar; {$ifdef CAN_INLINE}inline;{$endif}
+begin
+ result:=PAnsiChar(@aSafeString[1]);
+end;
 
 procedure AFTERMATH_CHECK_ERROR(const aResult:TGFSDK_Aftermath_Result);
 begin
@@ -926,14 +1114,23 @@ procedure GPUCrashDumpCallback(pGpuCrashDump:Pointer;gpuCrashDumpSize:TpvUInt32;
 var decoder:TGFSDK_Aftermath_GpuCrashDump_Decoder;
     baseInfo:TGFSDK_Aftermath_GpuCrashDump_BaseInfo;
     applicationNameLength:TpvUInt32;
-    applicationName:RawByteString;
-    baseFileName:RawByteString;
-    crashDumpFileName:RawByteString;
+    applicationName:TSafeString;
+    baseFileName:TSafeString;
+    crashDumpFileName:TSafeString;
+{$ifdef Windows}
+    dummy:DWORD;
+    dumpFileHandle:THandle;
+{$else}    
     dumpFile:TFileStream;
+{$endif}
     jsonSize:TpvUInt32;
-    json:RawByteString;
-    jsonDumpFileName:RawByteString;
+    json:Pointer;    
+    jsonDumpFileName:TSafeString;
+{$ifdef Windows}
+    jsonFileHandle:THandle;
+{$else}    
     jsonFile:TFileStream;
+{$endif}
 begin
 
  applicationName:='';
@@ -972,33 +1169,67 @@ begin
      )
     );
 
-    SetLength(applicationName,applicationNameLength+1);
+    SafeStringClear(applicationName);
+    TpvUInt8(applicationName[0]):=Min(applicationNameLength,SizeOf(TSafeString)-2);
+//  SetLength(applicationName,applicationNameLength+1);
 
     AFTERMATH_CHECK_ERROR(
      GFSDK_Aftermath_GpuCrashDump_GetDescription(
       decoder,
       GFSDK_Aftermath_GpuCrashDumpDescriptionKey_ApplicationName,
-      length(applicationName)-1,
+      TpvUInt8(applicationName[0])-1,
+      //length(applicationName)-1,
       @applicationName[1]
      )
     );
+
+    //applicationName:=Trim(applicationName);
+    SafeStringClean(applicationName); // Clean non-ascii characters to spaces for to avoid problems with file names
+    
+    // Limit the application name to 32 characters for have space for the thread id, the counter and possible file extensions
+    if TpvUInt8(applicationName[0])>32 then begin
+     TpvUInt8(applicationName[0]):=32;
+    end;
+
+    // Place a null terminator at the end of the application name, just in case.
+    applicationName[TpvUInt8(applicationName[0])+1]:=#0; // Null terminator at the end
 
     // Create a unique file name for writing the crash dump data to a file.
     // Note: due to an Nsight Aftermath bug (will be fixed in an upcoming
     // driver release) we may see redundant crash dumps. As a workaround,
     // attach a unique count to each generated file name.
-    baseFileName:=applicationName+'-'+IntToStr(UInt64(MainThreadID))+'-'+IntToStr(GPUCrashDumpCallbackCounter);
+    baseFileName:=applicationName;
+    SafeStringAppendChar(baseFileName,'-');
+    SafeStringAppendInt64(baseFileName,TpvInt64(UInt64(MainThreadID)));
+    SafeStringAppendChar(baseFileName,'-');
+    SafeStringAppendInt64(baseFileName,TpvInt64(GPUCrashDumpCallbackCounter));
+//  baseFileName:=applicationName+'-'+IntToStr(UInt64(MainThreadID))+'-'+IntToStr(GPUCrashDumpCallbackCounter);
     inc(GPUCrashDumpCallbackCounter);
 
     // Write the the crash dumShaderSourceDebugInfoLookupCallbackp data to a file using the .nv-gpudmp extension
     // registered with Nsight Graphics.
-    crashDumpFileName:=baseFileName+'.nv-gpudmp';
-    dumpFile:=TFileStream.Create(crashDumpFileName,fmCreate or fmShareDenyWrite);
-    try
-     dumpFile.Write(pGpuCrashDump^,gpuCrashDumpSize);
-    finally
-     FreeAndNil(dumpFile);
-    end;
+    if gpuCrashDumpSize>0 then begin
+     crashDumpFileName:=baseFileName;
+     SafeStringAppend(baseFileName,'.nv-gpudmp');
+     //crashDumpFileName:=baseFileName+'.nv-gpudmp';
+{$ifdef Windows}
+     dumpFileHandle:=CreateFileA(SafeStringToPAnsiChar(crashDumpFileName),GENERIC_WRITE,0,nil,CREATE_ALWAYS,FILE_ATTRIBUTE_NORMAL,0);
+     if dumpFileHandle<>INVALID_HANDLE_VALUE then begin
+      try
+       WriteFile(dumpFileHandle,pGpuCrashDump^,gpuCrashDumpSize,dummy,nil);
+      finally
+       CloseHandle(dumpFileHandle);
+      end;
+     end;
+{$else}
+     dumpFile:=TFileStream.Create(SafeStringToString(crashDumpFileName),fmCreate or fmShareDenyWrite);
+     try
+      dumpFile.Write(pGpuCrashDump^,gpuCrashDumpSize);
+     finally
+      FreeAndNil(dumpFile);
+     end;
+{$endif}
+    end; 
 
     // Decode the crash dump to a JSON string.
     // Step 1: Generate the JSON and get the size.
@@ -1017,26 +1248,47 @@ begin
     );
 
     // Step 2: Allocate a buffer and fetch the generated JSON.
-    json:='';
-    try
-     SetLength(json,jsonSize+1);
-     AFTERMATH_CHECK_ERROR(
-      GFSDK_Aftermath_GpuCrashDump_GetJSON(
-       decoder,
-       length(json)-1,
-       @json[1]
-      )
-     );
-     // Write the the crash dump data as JSON to a file.
-     jsonDumpFileName:=crashDumpFileName+'.json';
-     jsonFile:=TFileStream.Create(jsonDumpFileName,fmCreate or fmShareDenyWrite);
+    if jsonSize>0 then begin
+     json:=nil;
      try
-      jsonFile.Write(json[1],length(json)-1);
+      GetMem(json,jsonSize+1);
+      AFTERMATH_CHECK_ERROR(
+       GFSDK_Aftermath_GpuCrashDump_GetJSON(
+        decoder,
+        jsonSize,
+        json
+       )
+      );
+      // Write the the crash dump data as JSON to a file.
+      jsonDumpFileName:=crashDumpFileName;
+      SafeStringAppend(jsonDumpFileName,'.json');
+      //jsonDumpFileName:=crashDumpFileName+'.json';
+{$ifdef Windows}
+      jsonFileHandle:=CreateFileA(SafeStringToPAnsiChar(jsonDumpFileName),GENERIC_WRITE,0,nil,CREATE_ALWAYS,FILE_ATTRIBUTE_NORMAL,0);
+      if jsonFileHandle<>INVALID_HANDLE_VALUE then begin
+       try
+        WriteFile(jsonFileHandle,json^,jsonSize,dummy,nil);
+       finally
+        CloseHandle(jsonFileHandle);
+       end;
+      end;
+{$else}      
+      jsonFile:=TFileStream.Create(SafeStringToString(jsonDumpFileName),fmCreate or fmShareDenyWrite);
+      try
+       jsonFile.Write(json^,jsonSize);
+      finally
+       FreeAndNil(jsonFile);
+      end;
+{$endif}
      finally
-      FreeAndNil(jsonFile);
+      if assigned(json) then begin
+       try
+        FreeMem(json);
+       finally 
+        json:=nil;
+       end; 
+      end;
      end;
-    finally
-     json:='';
     end;
 
    finally
