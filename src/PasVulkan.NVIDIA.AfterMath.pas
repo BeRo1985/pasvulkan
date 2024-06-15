@@ -739,10 +739,15 @@ begin
 end;
 
 procedure SafeStringSet(out aSafeString:TSafeString;const aString:ShortString);
+var Len:TpvSizeInt;
 begin
  SafeStringClear(aSafeString);
- Move(aString[0],aSafeString[0],Min(TpvUInt8(aString[0]),SizeOf(TSafeString)-2)+1); // Just 1:1 copy including length byte at the beginning
- aSafeString[TpvUInt8(aString[0])+1]:=#0; // Null terminator at the end
+ Len:=Max(Min(TpvUInt8(aString[0]),SizeOf(TSafeString)-2),0);
+ if Len>0 then begin
+  Move(aString[1],aSafeString[1],Len); 
+  aSafeString[Len+1]:=#0; // Null terminator at the end
+ end;
+ TpvUInt8(aSafeString[0]):=Len;
 end;
 
 procedure SafeStringSetPtr(out aSafeString:TSafeString;const aString:PAnsiChar);
@@ -770,7 +775,7 @@ begin
    NewLen:=SizeOf(TSafeString)-2; // -2 because of the length byte at the beginning and the null terminator at the end
   end;
   ToCopy:=NewLen-Len;
-  Move(aString[0],aSafeString[Len+1],ToCopy);
+  Move(aString[1],aSafeString[Len+1],ToCopy);
   aSafeString[NewLen+1]:=#0;
   TpvUInt8(aSafeString[0]):=NewLen;
  end; 
@@ -808,9 +813,12 @@ begin
 end;
 
 procedure SafeStringAppendInt64(var aSafeString:TSafeString;const aValue:TpvInt64);
-var Index,Len,NewLen,Digits:TpvSizeInt;
+var Index,Digits:TpvSizeInt;
     Value,Digit:TpvInt64;
+    DigitBuffer:array[0..31] of AnsiChar;
 begin
+ 
+ // Calculate the number of digits 
  Value:=aValue;
  Digits:=0;
  if Value<0 then begin
@@ -825,39 +833,40 @@ begin
    Value:=Value div 10;
   end;
  end;
- Len:=TpvUInt8(aSafeString[0]);
- NewLen:=Len+Digits;
- if Len<>NewLen then begin
-  if NewLen>(SizeOf(TSafeString)-2) then begin
-   NewLen:=SizeOf(TSafeString)-2; // -2 because of the length byte at the beginning and the null terminator at the end
-  end;
-  Index:=NewLen;
-  aSafeString[Index]:=#0;
-  dec(Index);
-  if Value<0 then begin
-   aSafeString[Index]:='-';
-   Value:=-Value;
-  end;
-  if Value=0 then begin
-   aSafeString[Index]:='0';
-   dec(Index);
-  end else begin
-   while Value<>0 do begin
-    Digit:=Value mod 10;
-    aSafeString[Index]:=AnsiChar(Digit+Ord('0'));
-    dec(Index);
-    Value:=Value div 10;
-   end;
-  end;
-  TpvUInt8(aSafeString[0]):=NewLen;
+
+ // Fill the digit buffer
+ FillChar(DigitBuffer,SizeOf(DigitBuffer),#0);
+ Index:=Digits;
+ Value:=aValue;
+ if Value<0 then begin
+  DigitBuffer[0]:='-';
+  Value:=-Value;
  end;
+ if Value=0 then begin
+  dec(Index);
+  DigitBuffer[Index]:='0';
+ end else begin
+  while (Value<>0) and (Index>0) do begin
+   Digit:=Value mod 10;
+   dec(Index);
+   DigitBuffer[Index]:=AnsiChar(Digit+Ord('0'));
+   Value:=Value div 10;
+  end;
+ end;
+
+ // Append the digit buffer to the safe string
+ SafeStringAppendPtr(aSafeString,@DigitBuffer[0]);
+ 
 end;
 
 procedure SafeStringAppendUInt64(var aSafeString:TSafeString;const aValue:TpvUInt64);
-var Index,Len,NewLen,Digits:TpvSizeInt;
+var Index,Digits:TpvSizeInt;
     Value,Digit:TpvUInt64;
+    DigitBuffer:array[0..31] of AnsiChar;
 begin
- Value:=aValue;
+
+ // Calculate the number of digits
+ Value:=aValue; 
  Digits:=0;
  if Value=0 then begin
   inc(Digits);
@@ -867,28 +876,26 @@ begin
    Value:=Value div 10;
   end;
  end;
- Len:=TpvUInt8(aSafeString[0]);
- NewLen:=Len+Digits;
- if Len<>NewLen then begin
-  if NewLen>(SizeOf(TSafeString)-2) then begin
-   NewLen:=SizeOf(TSafeString)-2; // -2 because of the length byte at the beginning and the null terminator at the end
-  end;
-  Index:=NewLen;
-  aSafeString[Index]:=#0;
+
+ // Fill the digit buffer
+ FillChar(DigitBuffer,SizeOf(DigitBuffer),#0);
+ Index:=Digits;
+ Value:=aValue;
+ if Value=0 then begin
   dec(Index);
-  if Value=0 then begin
-   aSafeString[Index]:='0';
+  DigitBuffer[Index]:='0';
+ end else begin
+  while (Value<>0) and (Index>0) do begin
+   Digit:=Value mod 10;
    dec(Index);
-  end else begin
-   while Value<>0 do begin
-    Digit:=Value mod 10;
-    aSafeString[Index]:=AnsiChar(Digit+Ord('0'));
-    dec(Index);
-    Value:=Value div 10;
-   end;
+   DigitBuffer[Index]:=AnsiChar(Digit+Ord('0'));
+   Value:=Value div 10;
   end;
-  TpvUInt8(aSafeString[0]):=NewLen;
  end;
+
+ // Append the digit buffer to the safe string
+ SafeStringAppendPtr(aSafeString,@DigitBuffer[0]);
+ 
 end;
 
 function SafeStringToString(const aSafeString:TSafeString):string; {$ifdef CAN_INLINE}inline;{$endif}
@@ -1177,7 +1184,7 @@ begin
      GFSDK_Aftermath_GpuCrashDump_GetDescription(
       decoder,
       GFSDK_Aftermath_GpuCrashDumpDescriptionKey_ApplicationName,
-      TpvUInt8(applicationName[0])-1,
+      TpvUInt8(applicationName[0]),
       //length(applicationName)-1,
       @applicationName[1]
      )
@@ -1441,7 +1448,34 @@ begin
  end;
 end;
 
+procedure SafeStringUnitTests;
+var SafeString,OtherSafeString:TSafeString;
+begin
+
+ SafeStringClear(SafeString);
+ SafeStringSet(SafeString,'Hello, World!');
+ SafeStringAppend(SafeString,' This is a test');
+ SafeStringAppendChar(SafeString,'!');
+ SafeStringAppendPtr(SafeString,' This is a test.');
+ SafeStringAppendInt64(SafeString,1234567890);
+ SafeStringAppendUInt64(SafeString,1234567890);
+ SafeStringAppendInt64(SafeString,-1234567890);
+ WriteLn(SafeStringToString(SafeString));
+
+ SafeStringClear(OtherSafeString);
+ SafeStringSet(OtherSafeString,'Hello, World!');
+ SafeStringAppend(OtherSafeString,' This is a test');
+ SafeStringAppendChar(OtherSafeString,'!');
+ SafeStringAppendPtr(OtherSafeString,' This is a test.');
+ SafeStringAppendInt64(OtherSafeString,1234567890);
+ SafeStringAppendUInt64(OtherSafeString,1234567890);
+ SafeStringAppendInt64(OtherSafeString,-1234567890);
+ WriteLn(SafeStringToString(OtherSafeString));
+
+end; 
+ 
 initialization
+//SafeStringUnitTests;
 finalization
  FinalizeNVIDIAAfterMath;
  FreeNVIDIAAfterMath;
