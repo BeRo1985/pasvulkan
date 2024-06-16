@@ -345,6 +345,7 @@ type TpvDynamicArray<T>=record
        property Data:pointer read GetData;
      end;
 
+{$ifdef fpc}
      TpvNativeComparableGenericList<T>=class
       private
        type PT=^T;
@@ -392,6 +393,7 @@ type TpvDynamicArray<T>=record
        property Sorted:boolean read fSorted write fSorted;
        property Data:pointer read GetData;
      end;
+{$endif}
 
      EpvHandleMap=class(Exception);
 
@@ -2569,6 +2571,7 @@ begin
  end;
 end;
 
+{$ifdef fpc}
 constructor TpvNativeComparableGenericList<T>.TValueEnumerator.Create(const aGenericList:TpvNativeComparableGenericList<T>);
 begin
  fGenericList:=aGenericList;
@@ -2887,6 +2890,7 @@ begin
   fSorted:=true;
  end;
 end;
+{$endif}
 
 constructor TpvCustomHandleMap.Create(const pDataSize:TpvSizeUInt);
 begin

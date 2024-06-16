@@ -2508,7 +2508,7 @@ begin
  end;
 end;
 {$else}
-function DumpException(e:Exception):string;
+function DumpExceptionCallStack(e:Exception):string;
 const LineEnding={$ifdef Unix}#10{$else}#13#10{$endif};
 var s:string;
 begin
