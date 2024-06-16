@@ -372,10 +372,9 @@
      finalColor.xyz = clamp(finalColor.xyz, vec3(-65504.0), vec3(65504.0));
 
 #ifdef SPINLOCK
-    bool oitDone = gl_HelperInvocation || (oitStoreMask == 0);
-    while(!oitDone){
-      uint oitOld = imageAtomicExchange(uOITImgSpinLock, oitCoord, 1u);
-      if(oitOld == 0u){
+    for(bool oitDone = gl_HelperInvocation || (oitStoreMask == 0); !oitDone; ){
+      if(imageAtomicExchange(uOITImgSpinLock, oitCoord, 1u) == 0u){
+      //if(imageAtomicCompSwap(uOITImgSpinLock, oitCoord, 0u, 1u) == 0u){
 #endif
 
 #ifdef MSAA
@@ -508,10 +507,9 @@
     uvec4 oitStoreValue = uvec4(packHalf2x16(finalColor.xy), packHalf2x16(finalColor.zw), oitCurrentDepth, oitStoreMask);
 
 #ifdef SPINLOCK
-    bool oitDone = gl_HelperInvocation || (oitStoreMask == 0);
-    while(!oitDone){
-      uint oitOld = imageAtomicExchange(uOITImgSpinLock, oitCoord, 1u);
-      if(oitOld == 0u){
+    for(bool oitDone = gl_HelperInvocation || (oitStoreMask == 0); !oitDone; ){
+      if(imageAtomicExchange(uOITImgSpinLock, oitCoord, 1u) == 0u){
+      //if(imageAtomicCompSwap(uOITImgSpinLock, oitCoord, 0u, 1u) == 0u){
 #endif
        const uint oitAuxCounter = imageLoad(uOITImgAux, oitCoord).x;
 #if defined(MSAA)
