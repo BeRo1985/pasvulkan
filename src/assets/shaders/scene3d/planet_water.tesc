@@ -171,14 +171,14 @@ void main(){
       }else{
         // Otherwise, it is visible if all vertices are inside the screen space bounds, as quick&dirty cheap frustum-like culling. 
         [[unroll]] for(int i = 0; i < COUNT_VERTICES; i++){
-          vertices[i].xy = (vertices[i].xy / (vertices[i].w * 2.0)) + vec2(0.5);  
+          vertices[i].xy /= vertices[i].w;
         }
 #ifdef TRIANGLES
-        visible = all(lessThanEqual(min(min(vertices[0].xy, vertices[1].xy), vertices[2].xy), vec2(1.25))) && 
-                  all(greaterThanEqual(max(max(vertices[0].xy, vertices[1].xy), vertices[2].xy), vec2(-0.25));
+        visible = all(lessThanEqual(min(min(vertices[0].xy, vertices[1].xy), vertices[2].xy), vec2(2.0))) && 
+                  all(greaterThanEqual(max(max(vertices[0].xy, vertices[1].xy), vertices[2].xy), vec2(-2.0)));
 #else
-        visible = all(lessThanEqual(min(min(min(vertices[0].xy, vertices[1].xy), vertices[2].xy), vertices[3].xy), vec2(1.25))) && 
-                  all(greaterThanEqual(max(max(max(vertices[0].xy, vertices[1].xy), vertices[2].xy), vertices[3].xy), vec2(-0.25)));
+        visible = all(lessThanEqual(min(min(min(vertices[0].xy, vertices[1].xy), vertices[2].xy), vertices[3].xy), vec2(2.0))) && 
+                  all(greaterThanEqual(max(max(max(vertices[0].xy, vertices[1].xy), vertices[2].xy), vertices[3].xy), vec2(-2.0)));
 #endif        
       }
 #endif   
