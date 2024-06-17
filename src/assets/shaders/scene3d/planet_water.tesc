@@ -175,10 +175,10 @@ void main(){
         }
 #ifdef TRIANGLES
         visible = all(lessThanEqual(min(min(vertices[0].xy, vertices[1].xy), vertices[2].xy), vec2(1.25))) && 
-                  all(greaterThanEqual(max(max(vertices[0].xy, vertices[1].xy), vertices[2].xy), vec2(0.0)));
+                  all(greaterThanEqual(max(max(vertices[0].xy, vertices[1].xy), vertices[2].xy), vec2(-0.25));
 #else
         visible = all(lessThanEqual(min(min(min(vertices[0].xy, vertices[1].xy), vertices[2].xy), vertices[3].xy), vec2(1.25))) && 
-                  all(greaterThanEqual(max(max(max(vertices[0].xy, vertices[1].xy), vertices[2].xy), vertices[3].xy), vec2(0.0)));
+                  all(greaterThanEqual(max(max(max(vertices[0].xy, vertices[1].xy), vertices[2].xy), vertices[3].xy), vec2(-0.25)));
 #endif        
       }
 #endif   
