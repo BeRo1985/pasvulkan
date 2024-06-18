@@ -1,4 +1,4 @@
-(******************************************************************************
+﻿(******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
  *                       Version see PasVulkan.Framework.pas                  *
@@ -10729,7 +10729,11 @@ asm
  movups xmm1,dqword ptr [a+16]
  movups xmm2,dqword ptr [a+32]
  movups xmm3,dqword ptr [a+48]
+{$ifdef fpc}
  movss xmm4,dword ptr [b]
+{$else}
+ movss xmm4,dword ptr [rdx] // workaround for Delphi, where it puts [edx] for [b], instead [rdx], at a 64-bit x86 build
+{$endif}
  shufps xmm4,xmm4,$00
  mulps xmm0,xmm4
  mulps xmm1,xmm4

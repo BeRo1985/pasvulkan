@@ -11723,7 +11723,7 @@ begin
 end;
 
 procedure TpvScene3DPlanet.TRenderPass.Draw(const aInFlightFrameIndex,aFrameIndex,aRenderPassIndex,aViewBaseIndex,aCountViews:TpvSizeInt;const aCommandBuffer:TpvVulkanCommandBuffer);
-const Offsets:array[0..0] of TVkUInt32=(0);
+const Offsets:array[0..0] of TVkDeviceSize=(0);
 var PlanetIndex,Level:TpvSizeInt;
     Planet:TpvScene3DPlanet;
     First:Boolean;
@@ -11863,7 +11863,7 @@ begin
        TpvScene3DPlanet.TSourcePrimitiveMode.VisualMeshTriangles:begin
  {      aCommandBuffer.CmdBindIndexBuffer(Planet.fData.fVisualMeshIndexBuffer.Handle,0,VK_INDEX_TYPE_UINT32);
         aCommandBuffer.CmdBindVertexBuffers(0,1,@Planet.fData.fVisualMeshVertexBuffer.Handle,@Offsets);}
-        aCommandBuffer.CmdBindIndexBuffer(Planet.fData.fVisualMeshIndexBuffer.Handle,0,VK_INDEX_TYPE_UINT32);
+        aCommandBuffer.CmdBindIndexBuffer(Planet.fData.fVisualMeshIndexBuffer.Handle,0,VK_INDEX_TYPE_UINT32);                                                                                g
         aCommandBuffer.CmdBindVertexBuffers(0,1,@Planet.fData.fVisualMeshVertexBuffers[Planet.fInFlightFrameDataList[aInFlightFrameIndex].fVisualMeshVertexBufferRenderIndex and 1].Handle,@Offsets);
  ///    aCommandBuffer.CmdBindIndexBuffer(Planet.fInFlightFrameDataList[aInFlightFrameIndex].fVisualMeshIndexBuffer.Handle,0,VK_INDEX_TYPE_UINT32);
  //      aCommandBuffer.CmdBindVertexBuffers(0,1,@Planet.fInFlightFrameDataList[aInFlightFrameIndex].fVisualMeshVertexBuffer.Handle,@Offsets);{}
