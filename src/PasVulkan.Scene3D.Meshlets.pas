@@ -128,7 +128,7 @@ asm
  mov eax,255
 @Done:
 end;
-{$endif}
+{$ifend}
 {$ifend}
 
 function FindMSB(const aValue:TpvUInt32):TpvUInt32;

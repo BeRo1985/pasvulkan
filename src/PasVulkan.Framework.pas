@@ -4297,12 +4297,12 @@ begin
 end;
 
 const KTXVulkanSubAllocatorCallbacks:TktxVulkanTexture_subAllocatorCallbacks=(
-       allocMemFuncPtr:@ktxVulkanTexture_subAllocatorAllocMemFunc;
-       bindBufferFuncPtr:@ktxVulkanTexture_subAllocatorBindBufferFunc;
-       bindImageFuncPtr:@ktxVulkanTexture_subAllocatorBindImageFunc;
-       memoryMapFuncPtr:@ktxVulkanTexture_subAllocatorMemoryMapFunc;
-       memoryUnmapFuncPtr:@ktxVulkanTexture_subAllocatorMemoryUnmapFunc;
-       freeMemFuncPtr:@ktxVulkanTexture_subAllocatorFreeMemFunc;
+       allocMemFuncPtr:{$ifdef fpc}@ktxVulkanTexture_subAllocatorAllocMemFunc{$else}ktxVulkanTexture_subAllocatorAllocMemFunc{$endif};
+       bindBufferFuncPtr:{$ifdef fpc}@ktxVulkanTexture_subAllocatorBindBufferFunc{$else}ktxVulkanTexture_subAllocatorBindBufferFunc{$endif};
+       bindImageFuncPtr:{$ifdef fpc}@ktxVulkanTexture_subAllocatorBindImageFunc{$else}ktxVulkanTexture_subAllocatorBindImageFunc{$endif};
+       memoryMapFuncPtr:{$ifdef fpc}@ktxVulkanTexture_subAllocatorMemoryMapFunc{$else}ktxVulkanTexture_subAllocatorMemoryMapFunc{$endif};
+       memoryUnmapFuncPtr:{$ifdef fpc}@ktxVulkanTexture_subAllocatorMemoryUnmapFunc{$else}ktxVulkanTexture_subAllocatorMemoryUnmapFunc{$endif};
+       freeMemFuncPtr:{$ifdef fpc}@ktxVulkanTexture_subAllocatorFreeMemFunc{$else}ktxVulkanTexture_subAllocatorFreeMemFunc{$endif};
       );
 
 function KTXErrorCodeToString(const aErrorCode:TKTX_error_code):TpvRawByteString;
@@ -7577,7 +7577,7 @@ begin
 {$ifend}
 {$if defined(fpc) and not defined(Release)}
 //WriteLn(DumpCallStack);
-{$endif}
+{$ifend}
   raise EpvVulkanResultException.Create(ResultCode);
  end;
 end;

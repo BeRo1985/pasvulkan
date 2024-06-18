@@ -5535,7 +5535,7 @@ begin
   fPushConstants.Evaporation:=0.0;//0.015;
   fPushConstants.CompensationFactor:=Ln(1.0/60)/Ln(fTimeStep);//600.0;
   fPushConstants.DeltaTime:=1.0;
-{$endif}
+{$ifend}
 
   ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                    TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),

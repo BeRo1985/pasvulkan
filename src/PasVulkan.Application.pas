@@ -7055,7 +7055,7 @@ begin
   end;
  except
   on e:Exception do begin
-   ExceptionString:={$ifdef fpc}DumpExceptionCallStack{$else}DumpException{$endif}(e);
+   ExceptionString:=DumpExceptionCallStack(e);
 {$if defined(fpc) and defined(android) and (defined(Release) or not defined(Debug))}
    __android_log_write(ANDROID_LOG_ERROR,'PasVulkanApplication',PAnsiChar(TpvApplicationRawByteString(ExceptionString)));
 {$ifend}
@@ -13421,7 +13421,7 @@ begin
 
          except
           on e:Exception do begin
-           ExceptionString:={$ifdef fpc}DumpExceptionCallStack{$else}DumpException{$endif}(e);
+           ExceptionString:=DumpExceptionCallStack(e);
 {$if defined(fpc) and defined(android) and (defined(Release) or not defined(Debug))}
            __android_log_write(ANDROID_LOG_ERROR,'PasVulkanApplication',PAnsiChar(TpvApplicationRawByteString(ExceptionString)));
 {$ifend}

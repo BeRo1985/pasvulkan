@@ -87,6 +87,7 @@ type TpvSwap<T>=class
        class procedure IntroSort(const pItems:TpvPointer;const pLeft,pRight:TpvInt32;const pCompareFunc:TpvTypedSortCompareFunction); overload;
      end;
 
+{$ifdef fpc}
      TpvNativeComparableTypedSort<T>=class
       private
        type PStackItem=^TStackItem;
@@ -99,6 +100,7 @@ type TpvSwap<T>=class
        class procedure IntroSort(const pItems:TpvPointer;const pLeft,pRight:TpvInt32); overload;
        class procedure IntroSort(const pItems:TpvPointer;const pLeft,pRight:TpvInt32;const pCompareFunc:TpvNativeComparableTypedSortCompareFunction); overload;
      end;
+{$endif}
 
      TpvTopologicalSortNodeDependsOnKeys=array of TpvInt32;
 
@@ -852,6 +854,7 @@ begin
  end;
 end;
 
+{$ifdef fpc}
 class procedure TpvNativeComparableTypedSort<T>.IntroSort(const pItems:TpvPointer;const pLeft,pRight:TpvInt32);
 type PItem=^TItem;
      TItem=T;
@@ -1131,6 +1134,7 @@ begin
   end;
  end;
 end;
+{$endif}
 
 function MatchPattern(Input,Pattern:PAnsiChar):boolean;
 begin

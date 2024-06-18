@@ -911,14 +911,14 @@ const CELL_EMPTY=-1;
       ENT_DELETED=-2;
 
 function HashString(const Str:ansistring):TpvUInt32;
-var b:PUInt8;
+var b:PpvUInt8;
     len,h,i:TpvUInt32;
 begin
  result:=2166136261;
  len:=length(Str);
  h:=len;
  if len>0 then begin
-  b:=PUInt8(pansichar(Str));
+  b:=PpvUInt8(pansichar(Str));
   while len>3 do begin
    i:=TpvUInt32(TpvPointer(b)^);
    h:=(h xor i) xor $2e63823a;
