@@ -81,6 +81,9 @@ unit PasVulkan.Math;
  {$ifdef cpux64}
   {$define SIMD}
  {$endif}
+ {$ifndef fpc}
+  {$undef SIMD} // Due to inline assembler bugs in Delphi
+ {$endif}
 {$endif}
 
 {$warnings off}
