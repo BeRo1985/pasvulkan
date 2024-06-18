@@ -1327,6 +1327,9 @@ fi
 # Wait for all compilation jobs to finish
 wait
 
+# Compiling .res file
+windres -J rc -O res scene3dshaders.rc scene3dshaders.res
+ 
 # Delete the temporary directory
 rm -rf "${tempPath}" # what actually deletes also the files in it
 
