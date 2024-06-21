@@ -82,9 +82,13 @@ unit PasVulkan.Math;
   {$define SIMD}
  {$endif}
  {$ifndef fpc}
-  {$undef SIMD} // Due to inline assembler bugs in Delphi
+//  {$undef SIMD} // Due to inline assembler bugs in Delphi
  {$endif}
 {$endif}
+
+{$if defined(cpux64) and defined(Windows)}
+ {$define ExplicitX64SIMDRegs}
+{$ifend}
 
 {$warnings off}
 
@@ -2859,9 +2863,15 @@ class operator TpvVector3.Inc({$ifdef fpc}constref{$else}const{$endif} a:TpvVect
 {$if defined(SIMD) and (defined(cpu386) or defined(cpux64))}
 const One:TpvFloat=1.0;
 asm
+{$if defined(ExplicitX64SIMDRegs)}
+ movss xmm0,dword ptr [rdx+0]
+ movss xmm1,dword ptr [rdx+4]
+ movss xmm2,dword ptr [rdx+8]
+{$else}
  movss xmm0,dword ptr [a+0]
  movss xmm1,dword ptr [a+4]
  movss xmm2,dword ptr [a+8]
+{$ifend}
 {$if defined(cpu386)}
  movss xmm3,dword ptr [One]
 {$elseif defined(fpc)}
@@ -2872,9 +2882,15 @@ asm
  addss xmm0,xmm3
  addss xmm1,xmm3
  addss xmm2,xmm3
+{$if defined(ExplicitX64SIMDRegs)}
+ movss dword ptr [rcx+0],xmm0
+ movss dword ptr [rcx+4],xmm1
+ movss dword ptr [rcx+8],xmm2
+{$else}
  movss dword ptr [result+0],xmm0
  movss dword ptr [result+4],xmm1
  movss dword ptr [result+8],xmm2
+{$ifend}
 end;
 {$else}
 begin
@@ -2888,9 +2904,15 @@ class operator TpvVector3.Dec({$ifdef fpc}constref{$else}const{$endif} a:TpvVect
 {$if defined(SIMD) and (defined(cpu386) or defined(cpux64))}
 const One:TpvFloat=1.0;
 asm
+{$if defined(ExplicitX64SIMDRegs)}
+ movss xmm0,dword ptr [rdx+0]
+ movss xmm1,dword ptr [rdx+4]
+ movss xmm2,dword ptr [rdx+8]
+{$else}
  movss xmm0,dword ptr [a+0]
  movss xmm1,dword ptr [a+4]
  movss xmm2,dword ptr [a+8]
+{$ifend}
 {$if defined(cpu386)}
  movss xmm3,dword ptr [One]
 {$elseif defined(fpc)}
@@ -2901,9 +2923,15 @@ asm
  subss xmm0,xmm3
  subss xmm1,xmm3
  subss xmm2,xmm3
+{$if defined(ExplicitX64SIMDRegs)}
+ movss dword ptr [rcx+0],xmm0
+ movss dword ptr [rcx+4],xmm1
+ movss dword ptr [rcx+8],xmm2
+{$else}
  movss dword ptr [result+0],xmm0
  movss dword ptr [result+4],xmm1
  movss dword ptr [result+8],xmm2
+{$ifend}
 end;
 {$else}
 begin
@@ -2916,6 +2944,17 @@ end;
 class operator TpvVector3.Add({$ifdef fpc}constref{$else}const{$endif} a,b:TpvVector3):TpvVector3;
 {$if defined(SIMD) and (defined(cpu386) or defined(cpux64))}
 asm
+{$if defined(ExplicitX64SIMDRegs)}
+ movss xmm0,dword ptr [rdx+0]
+ movss xmm1,dword ptr [rdx+4]
+ movss xmm2,dword ptr [rdx+8]
+ addss xmm0,dword ptr [r8+0]
+ addss xmm1,dword ptr [r8+4]
+ addss xmm2,dword ptr [r8+8]
+ movss dword ptr [rcx+0],xmm0
+ movss dword ptr [rcx+4],xmm1
+ movss dword ptr [rcx+8],xmm2
+{$else}
  movss xmm0,dword ptr [a+0]
  movss xmm1,dword ptr [a+4]
  movss xmm2,dword ptr [a+8]
@@ -2925,6 +2964,7 @@ asm
  movss dword ptr [result+0],xmm0
  movss dword ptr [result+4],xmm1
  movss dword ptr [result+8],xmm2
+{$ifend}
 end;
 {$else}
 begin
@@ -2951,6 +2991,17 @@ end;
 class operator TpvVector3.Subtract({$ifdef fpc}constref{$else}const{$endif} a,b:TpvVector3):TpvVector3;
 {$if defined(SIMD) and (defined(cpu386) or defined(cpux64))}
 asm
+{$if defined(ExplicitX64SIMDRegs)}
+ movss xmm0,dword ptr [rdx+0]
+ movss xmm1,dword ptr [rdx+4]
+ movss xmm2,dword ptr [rdx+8]
+ subss xmm0,dword ptr [r8+0]
+ subss xmm1,dword ptr [r8+4]
+ subss xmm2,dword ptr [r8+8]
+ movss dword ptr [rcx+0],xmm0
+ movss dword ptr [rcx+4],xmm1
+ movss dword ptr [rcx+8],xmm2
+{$else}
  movss xmm0,dword ptr [a+0]
  movss xmm1,dword ptr [a+4]
  movss xmm2,dword ptr [a+8]
@@ -2960,6 +3011,7 @@ asm
  movss dword ptr [result+0],xmm0
  movss dword ptr [result+4],xmm1
  movss dword ptr [result+8],xmm2
+{$ifend}
 end;
 {$else}
 begin
@@ -2986,6 +3038,17 @@ end;
 class operator TpvVector3.Multiply({$ifdef fpc}constref{$else}const{$endif} a,b:TpvVector3):TpvVector3;
 {$if defined(SIMD) and (defined(cpu386) or defined(cpux64))}
 asm
+{$if defined(ExplicitX64SIMDRegs)}
+ movss xmm0,dword ptr [rdx+0]
+ movss xmm1,dword ptr [rdx+4]
+ movss xmm2,dword ptr [rdx+8]
+ mulss xmm0,dword ptr [r8+0]
+ mulss xmm1,dword ptr [r8+4]
+ mulss xmm2,dword ptr [r8+8]
+ movss dword ptr [rcx+0],xmm0
+ movss dword ptr [rcx+4],xmm1
+ movss dword ptr [rcx+8],xmm2
+{$else}
  movss xmm0,dword ptr [a+0]
  movss xmm1,dword ptr [a+4]
  movss xmm2,dword ptr [a+8]
@@ -2995,6 +3058,7 @@ asm
  movss dword ptr [result+0],xmm0
  movss dword ptr [result+4],xmm1
  movss dword ptr [result+8],xmm2
+{$ifend}
 end;
 {$else}
 begin
@@ -3021,6 +3085,17 @@ end;
 class operator TpvVector3.Divide({$ifdef fpc}constref{$else}const{$endif} a,b:TpvVector3):TpvVector3;
 {$if defined(SIMD) and (defined(cpu386) or defined(cpux64))}
 asm
+{$if defined(ExplicitX64SIMDRegs)}
+ movss xmm0,dword ptr [rdx+0]
+ movss xmm1,dword ptr [rdx+4]
+ movss xmm2,dword ptr [rdx+8]
+ divss xmm0,dword ptr [r8+0]
+ divss xmm1,dword ptr [r8+4]
+ divss xmm2,dword ptr [r8+8]
+ movss dword ptr [rcx+0],xmm0
+ movss dword ptr [rcx+4],xmm1
+ movss dword ptr [rcx+8],xmm2
+{$else}
  movss xmm0,dword ptr [a+0]
  movss xmm1,dword ptr [a+4]
  movss xmm2,dword ptr [a+8]
@@ -3030,6 +3105,7 @@ asm
  movss dword ptr [result+0],xmm0
  movss dword ptr [result+4],xmm1
  movss dword ptr [result+8],xmm2
+{$ifend}
 end;
 {$else}
 begin
@@ -3056,6 +3132,17 @@ end;
 class operator TpvVector3.IntDivide({$ifdef fpc}constref{$else}const{$endif} a,b:TpvVector3):TpvVector3;
 {$if defined(SIMD) and (defined(cpu386) or defined(cpux64))}
 asm
+{$if defined(ExplicitX64SIMDRegs)}
+ movss xmm0,dword ptr [rdx+0]
+ movss xmm1,dword ptr [rdx+4]
+ movss xmm2,dword ptr [rdx+8]
+ divss xmm0,dword ptr [r8+0]
+ divss xmm1,dword ptr [r8+4]
+ divss xmm2,dword ptr [r8+8]
+ movss dword ptr [rcx+0],xmm0
+ movss dword ptr [rcx+4],xmm1
+ movss dword ptr [rcx+8],xmm2
+{$else}
  movss xmm0,dword ptr [a+0]
  movss xmm1,dword ptr [a+4]
  movss xmm2,dword ptr [a+8]
@@ -3065,6 +3152,7 @@ asm
  movss dword ptr [result+0],xmm0
  movss dword ptr [result+4],xmm1
  movss dword ptr [result+8],xmm2
+{$ifend}
 end;
 {$else}
 begin
@@ -3115,12 +3203,21 @@ asm
  xorps xmm0,xmm0
  xorps xmm1,xmm1
  xorps xmm2,xmm2
+{$if defined(ExplicitX64SIMDRegs)}
+ subss xmm0,dword ptr [rdx+0]
+ subss xmm1,dword ptr [rdx+4]
+ subss xmm2,dword ptr [rdx+8]
+ movss dword ptr [rcx+0],xmm0
+ movss dword ptr [rcx+4],xmm1
+ movss dword ptr [rcx+8],xmm2
+{$else}
  subss xmm0,dword ptr [a+0]
  subss xmm1,dword ptr [a+4]
  subss xmm2,dword ptr [a+8]
  movss dword ptr [result+0],xmm0
  movss dword ptr [result+4],xmm1
  movss dword ptr [result+8],xmm2
+{$ifend}
 end;
 {$else}
 begin
@@ -4169,14 +4266,22 @@ end;
 {$elseif defined(SIMD) and defined(cpux64)}
 const One:TpvVector4=(x:1.0;y:1.0;z:1.0;w:1.0);
 asm
+{$if defined(ExplicitX64SIMDRegs)}
+ movups xmm0,dqword ptr [rdx]
+{$else}
  movups xmm0,dqword ptr [a]
+{$ifend}
 {$ifdef fpc}
  movups xmm1,dqword ptr [rip+One]
 {$else}
  movups xmm1,dqword ptr [rel One]
 {$endif}
  addps xmm0,xmm1
+{$if defined(ExplicitX64SIMDRegs)}
+ movups dqword ptr [rcx],xmm0
+{$else}
  movups dqword ptr [result],xmm0
+{$ifend}
 end;
 {$else}
 begin
@@ -4199,14 +4304,22 @@ end;
 {$elseif defined(SIMD) and defined(cpux64)}
 const One:TpvVector4=(x:1.0;y:1.0;z:1.0;w:1.0);
 asm
+{$if defined(ExplicitX64SIMDRegs)}
+ movups xmm0,dqword ptr [rdx]
+{$else}
  movups xmm0,dqword ptr [a]
+{$ifend}
 {$ifdef fpc}
  movups xmm1,dqword ptr [rip+One]
 {$else}
  movups xmm1,dqword ptr [rel One]
 {$endif}
  subps xmm0,xmm1
+{$if defined(ExplicitX64SIMDRegs)}
+ movups dqword ptr [rcx],xmm0
+{$else}
  movups dqword ptr [result],xmm0
+{$ifend}
 end;
 {$else}
 begin
@@ -4220,8 +4333,13 @@ end;
 class operator TpvVector4.Add({$ifdef fpc}constref{$else}const{$endif} a,b:TpvVector4):TpvVector4;
 {$if defined(SIMD) and (defined(cpu386) or defined(cpux64))}
 asm
+{$if defined(ExplicitX64SIMDRegs)}
+ movups xmm0,dqword ptr [rdx]
+ movups xmm1,dqword ptr [r8]
+{$else}
  movups xmm0,dqword ptr [a]
  movups xmm1,dqword ptr [b]
+{$ifend}
  addps xmm0,xmm1
  movups dqword ptr [result],xmm0
 end;
@@ -4253,8 +4371,13 @@ end;
 class operator TpvVector4.Subtract({$ifdef fpc}constref{$else}const{$endif} a,b:TpvVector4):TpvVector4;
 {$if defined(SIMD) and (defined(cpu386) or defined(cpux64))}
 asm
+{$if defined(ExplicitX64SIMDRegs)}
+ movups xmm0,dqword ptr [rdx]
+ movups xmm1,dqword ptr [r8]
+{$else}
  movups xmm0,dqword ptr [a]
  movups xmm1,dqword ptr [b]
+{$ifend}
  subps xmm0,xmm1
  movups dqword ptr [result],xmm0
 end;
@@ -4286,8 +4409,13 @@ end;
 class operator TpvVector4.Multiply({$ifdef fpc}constref{$else}const{$endif} a,b:TpvVector4):TpvVector4;
 {$if defined(SIMD) and (defined(cpu386) or defined(cpux64))}
 asm
+{$if defined(ExplicitX64SIMDRegs)}
+ movups xmm0,dqword ptr [rdx]
+ movups xmm1,dqword ptr [r8]
+{$else}
  movups xmm0,dqword ptr [a]
  movups xmm1,dqword ptr [b]
+{$ifend}
  mulps xmm0,xmm1
  movups dqword ptr [result],xmm0
 end;
@@ -4319,8 +4447,13 @@ end;
 class operator TpvVector4.Divide({$ifdef fpc}constref{$else}const{$endif} a,b:TpvVector4):TpvVector4;
 {$if defined(SIMD) and (defined(cpu386) or defined(cpux64))}
 asm
+{$if defined(ExplicitX64SIMDRegs)}
+ movups xmm0,dqword ptr [rdx]
+ movups xmm1,dqword ptr [r8]
+{$else}
  movups xmm0,dqword ptr [a]
  movups xmm1,dqword ptr [b]
+{$ifend}
  divps xmm0,xmm1
  movups dqword ptr [result],xmm0
 end;
@@ -4352,8 +4485,13 @@ end;
 class operator TpvVector4.IntDivide({$ifdef fpc}constref{$else}const{$endif} a,b:TpvVector4):TpvVector4;
 {$if defined(SIMD) and (defined(cpu386) or defined(cpux64))}
 asm
+{$if defined(ExplicitX64SIMDRegs)}
+ movups xmm0,dqword ptr [rdx]
+ movups xmm1,dqword ptr [r8]
+{$else}
  movups xmm0,dqword ptr [a]
  movups xmm1,dqword ptr [b]
+{$ifend}
  divps xmm0,xmm1
  movups dqword ptr [result],xmm0
 end;
@@ -4410,7 +4548,11 @@ class operator TpvVector4.Negative({$ifdef fpc}constref{$else}const{$endif} a:Tp
 {$if defined(SIMD) and (defined(cpu386) or defined(cpux64))}
 asm
  xorps xmm0,xmm0
+{$if defined(ExplicitX64SIMDRegs)}
+ movups xmm1,dqword ptr [rdx]
+{$else}
  movups xmm1,dqword ptr [a]
+{$ifend}
  subps xmm0,xmm1
  movups dqword ptr [result],xmm0
 end;
@@ -5402,7 +5544,11 @@ end;
 {$elseif defined(SIMD) and defined(cpux64)}
 const One:TpvQuaternion=(x:1.0;y:1.0;z:1.0;w:1.0);
 asm
+{$if defined(ExplicitX64SIMDRegs)}
+ movups xmm0,dqword ptr [rdx]
+{$else}
  movups xmm0,dqword ptr [a]
+{$ifend}
 {$ifdef fpc}
  movups xmm1,dqword ptr [rip+One]
 {$else}
@@ -5432,7 +5578,11 @@ end;
 {$elseif defined(SIMD) and defined(cpux64)}
 const One:TpvQuaternion=(x:1.0;y:1.0;z:1.0;w:1.0);
 asm
+{$if defined(ExplicitX64SIMDRegs)}
+ movups xmm0,dqword ptr [rdx]
+{$else}
  movups xmm0,dqword ptr [a]
+{$ifend}
 {$ifdef fpc}
  movups xmm1,dqword ptr [rip+One]
 {$else}
@@ -5453,8 +5603,13 @@ end;
 class operator TpvQuaternion.Add({$ifdef fpc}constref{$else}const{$endif} a,b:TpvQuaternion):TpvQuaternion;
 {$if defined(SIMD) and (defined(cpu386) or defined(cpux64))}
 asm
+{$if defined(ExplicitX64SIMDRegs)}
+ movups xmm0,dqword ptr [rdx]
+ movups xmm1,dqword ptr [r8]
+{$else}
  movups xmm0,dqword ptr [a]
  movups xmm1,dqword ptr [b]
+{$ifend}
  addps xmm0,xmm1
  movups dqword ptr [result],xmm0
 end;
@@ -5486,8 +5641,13 @@ end;
 class operator TpvQuaternion.Subtract({$ifdef fpc}constref{$else}const{$endif} a,b:TpvQuaternion):TpvQuaternion;
 {$if defined(SIMD) and (defined(cpu386) or defined(cpux64))}
 asm
+{$if defined(ExplicitX64SIMDRegs)}
+ movups xmm0,dqword ptr [rdx]
+ movups xmm1,dqword ptr [r8]
+{$else}
  movups xmm0,dqword ptr [a]
  movups xmm1,dqword ptr [b]
+{$ifend}
  subps xmm0,xmm1
  movups dqword ptr [result],xmm0
 end;
@@ -5520,10 +5680,18 @@ class operator TpvQuaternion.Multiply({$ifdef fpc}constref{$else}const{$endif} a
 {$if defined(SIMD) and (defined(cpu386) or defined(cpux64))}
 const XORMaskW:array[0..3] of TpvUInt32=($00000000,$00000000,$00000000,$80000000);
 asm
+{$if defined(ExplicitX64SIMDRegs)}
+ movups xmm4,dqword ptr [rdx]
+{$else}
  movups xmm4,dqword ptr [a]
+{$ifend}
  movaps xmm0,xmm4
  shufps xmm0,xmm4,$49
+{$if defined(ExplicitX64SIMDRegs)}
+ movups xmm2,dqword ptr [r8]
+{$else}
  movups xmm2,dqword ptr [b]
+{$ifend}
  movaps xmm3,xmm2
  movaps xmm1,xmm2
  shufps xmm3,xmm2,$52 // 001010010b
@@ -5594,12 +5762,22 @@ asm
  // q = a
  // v = b
 
+{$if defined(ExplicitX64SIMDRegs)}
+ movups xmm4,dqword ptr [rdx] // xmm4 = q.xyzw
+{$else}
  movups xmm4,dqword ptr [a] // xmm4 = q.xyzw
+{$ifend}
 
  xorps xmm7,xmm7
+{$if defined(ExplicitX64SIMDRegs)}
+ movss xmm5,dword ptr [r8+0]
+ movss xmm6,dword ptr [r8+4]
+ movss xmm7,dword ptr [r8+8]
+{$else}
  movss xmm5,dword ptr [b+0]
  movss xmm6,dword ptr [b+4]
  movss xmm7,dword ptr [b+8]
+{$ifend}
  movlhps xmm5,xmm6
  shufps xmm5,xmm7,$88
 //movups xmm5,dqword ptr [b] // xmm5 = v.xyz?
@@ -5701,9 +5879,15 @@ asm
  // q = a
  // v = b
 
+{$if defined(ExplicitX64SIMDRegs)}
+ movups xmm4,dqword ptr [rdx] // xmm4 = q.xyzw
+
+ movups xmm5,dqword ptr [r8] // xmm5 = v.xyz?
+{$else}
  movups xmm4,dqword ptr [a] // xmm4 = q.xyzw
 
  movups xmm5,dqword ptr [b] // xmm5 = v.xyz?
+{$ifend}
 
  movaps xmm6,xmm4
  shufps xmm6,xmm6,$ff // xmm6 = q.wwww
@@ -5796,8 +5980,13 @@ end;
 class operator TpvQuaternion.Divide({$ifdef fpc}constref{$else}const{$endif} a,b:TpvQuaternion):TpvQuaternion;
 {$if defined(SIMD) and (defined(cpu386) or defined(cpux64))}
 asm
+{$if defined(ExplicitX64SIMDRegs)}
+ movups xmm0,dqword ptr [rdx]
+ movups xmm1,dqword ptr [r8]
+{$else}
  movups xmm0,dqword ptr [a]
  movups xmm1,dqword ptr [b]
+{$ifend}
  divps xmm0,xmm1
  movups dqword ptr [result],xmm0
 end;
@@ -5829,8 +6018,13 @@ end;
 class operator TpvQuaternion.IntDivide({$ifdef fpc}constref{$else}const{$endif} a,b:TpvQuaternion):TpvQuaternion;
 {$if defined(SIMD) and (defined(cpu386) or defined(cpux64))}
 asm
+{$if defined(ExplicitX64SIMDRegs)}
+ movups xmm0,dqword ptr [rdx]
+ movups xmm1,dqword ptr [r8]
+{$else}
  movups xmm0,dqword ptr [a]
  movups xmm1,dqword ptr [b]
+{$ifend}
  divps xmm0,xmm1
  movups dqword ptr [result],xmm0
 end;
@@ -5887,7 +6081,11 @@ class operator TpvQuaternion.Negative({$ifdef fpc}constref{$else}const{$endif} a
 {$if defined(SIMD) and (defined(cpu386) or defined(cpux64))}
 asm
  xorps xmm0,xmm0
+{$if defined(ExplicitX64SIMDRegs)}
+ movups xmm1,dqword ptr [rdx]
+{$else}
  movups xmm1,dqword ptr [a]
+{$ifend}
  subps xmm0,xmm1
  movups dqword ptr [result],xmm0
 end;
@@ -10393,11 +10591,23 @@ end;
 class operator TpvMatrix4x4.Add({$ifdef fpc}constref{$else}const{$endif} a:TpvMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TpvScalar):TpvMatrix4x4;
 {$if defined(SIMD) and (defined(cpu386) or defined(cpux64))}
 asm
+{$if defined(ExplicitX64SIMDRegs)}
+{$ifdef fpc}
+ movss xmm4,dword ptr [r8] // FreePascal: load from memory (constref)
+{$else}
+ movss xmm4,xmm2 // Delphi: otherwise from another xmm register
+{$endif}
+ movups xmm0,dqword ptr [rdx+0]
+ movups xmm1,dqword ptr [rdx+16]
+ movups xmm2,dqword ptr [rdx+32]
+ movups xmm3,dqword ptr [rdx+48]
+{$else}
  movups xmm0,dqword ptr [a+0]
  movups xmm1,dqword ptr [a+16]
  movups xmm2,dqword ptr [a+32]
  movups xmm3,dqword ptr [a+48]
  movss xmm4,dword ptr [b]
+{$ifend}
  shufps xmm4,xmm4,$00
  addps xmm0,xmm4
  addps xmm1,xmm4
@@ -10439,15 +10649,37 @@ asm
  movups dqword ptr [StackSave0],xmm6
  movups dqword ptr [StackSave1],xmm7
 {-$endif}
+{$if defined(ExplicitX64SIMDRegs)}
+{$ifdef fpc}
+ movss xmm0,dword ptr [rdx] // FreePascal: load from memory (constref)
+{$else}
+ movss xmm0,xmm2 // Delphi: otherwise from another xmm register
+{$endif}
+{$else}
  movss xmm0,dword ptr [a]
+{$ifend}
  shufps xmm0,xmm0,$00
  movaps xmm1,xmm0
  movaps xmm2,xmm0
  movaps xmm3,xmm0
+{$if defined(ExplicitX64SIMDRegs)}
+{$ifdef fpc}
+ movups xmm4,dqword ptr [r8+0]
+ movups xmm5,dqword ptr [r8+16]
+ movups xmm6,dqword ptr [r8+32]
+ movups xmm7,dqword ptr [r8+48]
+{$else}
+ movups xmm4,dqword ptr [rdx+0]
+ movups xmm5,dqword ptr [rdx+16]
+ movups xmm6,dqword ptr [rdx+32]
+ movups xmm7,dqword ptr [rdx+48]
+{$endif}
+{$else}
  movups xmm4,dqword ptr [b+0]
  movups xmm5,dqword ptr [b+16]
  movups xmm6,dqword ptr [b+32]
  movups xmm7,dqword ptr [b+48]
+{$ifend}
  addps xmm0,xmm4
  addps xmm1,xmm5
  addps xmm2,xmm6
@@ -10537,11 +10769,23 @@ end;
 class operator TpvMatrix4x4.Subtract({$ifdef fpc}constref{$else}const{$endif} a:TpvMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TpvScalar):TpvMatrix4x4;
 {$if defined(SIMD) and (defined(cpu386) or defined(cpux64))}
 asm
+{$if defined(ExplicitX64SIMDRegs)}
+{$ifdef fpc}
+ movss xmm4,dword ptr [r8] // FreePascal: load from memory (constref)
+{$else}
+ movss xmm4,xmm2 // Delphi: otherwise from another xmm register
+{$endif}
+ movups xmm0,dqword ptr [rdx+0]
+ movups xmm1,dqword ptr [rdx+16]
+ movups xmm2,dqword ptr [rdx+32]
+ movups xmm3,dqword ptr [rdx+48]
+{$else}
  movups xmm0,dqword ptr [a+0]
  movups xmm1,dqword ptr [a+16]
  movups xmm2,dqword ptr [a+32]
  movups xmm3,dqword ptr [a+48]
  movss xmm4,dword ptr [b]
+{$ifend}
  shufps xmm4,xmm4,$00
  subps xmm0,xmm4
  subps xmm1,xmm4
@@ -10583,15 +10827,37 @@ asm
  movups dqword ptr [StackSave0],xmm6
  movups dqword ptr [StackSave1],xmm7
 {-$endif}
+{$if defined(ExplicitX64SIMDRegs)}
+{$ifdef fpc}
+ movss xmm0,dword ptr [rdx] // FreePascal: load from memory (constref)
+{$else}
+ movss xmm0,xmm2 // Delphi: otherwise from another xmm register
+{$endif}
+{$else}
  movss xmm0,dword ptr [a]
+{$ifend}
  shufps xmm0,xmm0,$00
  movaps xmm1,xmm0
  movaps xmm2,xmm0
  movaps xmm3,xmm0
+{$if defined(ExplicitX64SIMDRegs)}
+{$ifdef fpc}
+ movups xmm4,dqword ptr [r8+0]
+ movups xmm5,dqword ptr [r8+16]
+ movups xmm6,dqword ptr [r8+32]
+ movups xmm7,dqword ptr [r8+48]
+{$else}
+ movups xmm4,dqword ptr [rdx+0]
+ movups xmm5,dqword ptr [rdx+16]
+ movups xmm6,dqword ptr [rdx+32]
+ movups xmm7,dqword ptr [rdx+48]
+{$endif}
+{$else}
  movups xmm4,dqword ptr [b+0]
  movups xmm5,dqword ptr [b+16]
  movups xmm6,dqword ptr [b+32]
  movups xmm7,dqword ptr [b+48]
+{$ifend}
  subps xmm0,xmm4
  subps xmm1,xmm5
  subps xmm2,xmm6
@@ -10637,12 +10903,21 @@ asm
  movups dqword ptr [StackSave1],xmm7
 {-$endif}
 
+{$if defined(ExplicitX64SIMDRegs)}
+ movups xmm0,dqword ptr [r8+0]
+ movups xmm1,dqword ptr [r8+16]
+ movups xmm2,dqword ptr [r8+32]
+ movups xmm3,dqword ptr [r8+48]
+
+ movups xmm7,dqword ptr [rdx+0]
+{$else}
  movups xmm0,dqword ptr [b+0]
  movups xmm1,dqword ptr [b+16]
  movups xmm2,dqword ptr [b+32]
  movups xmm3,dqword ptr [b+48]
 
  movups xmm7,dqword ptr [a+0]
+{$ifend}
  pshufd xmm4,xmm7,$00
  pshufd xmm5,xmm7,$55
  pshufd xmm6,xmm7,$aa
@@ -10656,7 +10931,11 @@ asm
  addps xmm4,xmm6
  movups dqword ptr [result+0],xmm4
 
+{$if defined(ExplicitX64SIMDRegs)}
+ movups xmm7,dqword ptr [rdx+16]
+{$else}
  movups xmm7,dqword ptr [a+16]
+{$ifend}
  pshufd xmm4,xmm7,$00
  pshufd xmm5,xmm7,$55
  pshufd xmm6,xmm7,$aa
@@ -10670,7 +10949,11 @@ asm
  addps xmm4,xmm6
  movups dqword ptr [result+16],xmm4
 
+{$if defined(ExplicitX64SIMDRegs)}
+ movups xmm7,dqword ptr [rdx+32]
+{$else}
  movups xmm7,dqword ptr [a+32]
+{$ifend}
  pshufd xmm4,xmm7,$00
  pshufd xmm5,xmm7,$55
  pshufd xmm6,xmm7,$aa
@@ -10684,7 +10967,11 @@ asm
  addps xmm4,xmm6
  movups dqword ptr [result+32],xmm4
 
+{$if defined(ExplicitX64SIMDRegs)}
+ movups xmm7,dqword ptr [rdx+48]
+{$else}
  movups xmm7,dqword ptr [a+48]
+{$ifend}
  pshufd xmm4,xmm7,$00
  pshufd xmm5,xmm7,$55
  pshufd xmm6,xmm7,$aa
@@ -10728,15 +11015,23 @@ end;
 class operator TpvMatrix4x4.Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TpvScalar):TpvMatrix4x4;
 {$if defined(SIMD) and (defined(cpu386) or defined(cpux64))}
 asm
+{$if defined(ExplicitX64SIMDRegs)}
+{$ifdef fpc}
+ movss xmm4,dword ptr [r8] // FreePascal: load from memory (constref)
+{$else}
+ movss xmm4,xmm2 // Delphi: otherwise from another xmm register
+{$endif}
+ movups xmm0,dqword ptr [rdx+0]
+ movups xmm1,dqword ptr [rdx+16]
+ movups xmm2,dqword ptr [rdx+32]
+ movups xmm3,dqword ptr [rdx+48]
+{$else}
  movups xmm0,dqword ptr [a+0]
  movups xmm1,dqword ptr [a+16]
  movups xmm2,dqword ptr [a+32]
  movups xmm3,dqword ptr [a+48]
-{$ifdef fpc}
  movss xmm4,dword ptr [b]
-{$else}
- movss xmm4,dword ptr [rdx] // workaround for Delphi, where it puts [edx] for [b], instead [rdx], at a 64-bit x86 build
-{$endif}
+{$ifend}
  shufps xmm4,xmm4,$00
  mulps xmm0,xmm4
  mulps xmm1,xmm4
@@ -10778,15 +11073,37 @@ asm
  movups dqword ptr [StackSave0],xmm6
  movups dqword ptr [StackSave1],xmm7
 {-$endif}
+{$if defined(ExplicitX64SIMDRegs)}
+{$ifdef fpc}
+ movss xmm0,dword ptr [rdx] // FreePascal: load from memory (constref)
+{$else}
+ movss xmm0,xmm2 // Delphi: otherwise from another xmm register
+{$endif}
+{$else}
  movss xmm0,dword ptr [a]
+{$ifend}
  shufps xmm0,xmm0,$00
  movaps xmm1,xmm0
  movaps xmm2,xmm0
  movaps xmm3,xmm0
+{$if defined(ExplicitX64SIMDRegs)}
+{$ifdef fpc}
+ movups xmm4,dqword ptr [r8+0]
+ movups xmm5,dqword ptr [r8+16]
+ movups xmm6,dqword ptr [r8+32]
+ movups xmm7,dqword ptr [r8+48]
+{$else}
+ movups xmm4,dqword ptr [rdx+0]
+ movups xmm5,dqword ptr [rdx+16]
+ movups xmm6,dqword ptr [rdx+32]
+ movups xmm7,dqword ptr [rdx+48]
+{$endif}
+{$else}
  movups xmm4,dqword ptr [b+0]
  movups xmm5,dqword ptr [b+16]
  movups xmm6,dqword ptr [b+32]
  movups xmm7,dqword ptr [b+48]
+{$ifend}
  mulps xmm0,xmm4
  mulps xmm1,xmm5
  mulps xmm2,xmm6
@@ -10846,9 +11163,15 @@ asm
  movups dqword ptr [StackSave1],xmm7
 {-$endif}
  xorps xmm2,xmm2
+{$if defined(ExplicitX64SIMDRegs)}
+ movss xmm0,dword ptr [r8+0]
+ movss xmm1,dword ptr [r8+4]
+ movss xmm2,dword ptr [r8+8]
+{$else}
  movss xmm0,dword ptr [b+0]
  movss xmm1,dword ptr [b+4]
  movss xmm2,dword ptr [b+8]
+{$ifend}
  movlhps xmm0,xmm1
  shufps xmm0,xmm2,$88
 //movups xmm0,dqword ptr [b]     // d c b a
@@ -10873,10 +11196,17 @@ asm
  shufps xmm1,xmm1,$55           // b b b b 01010101b
  shufps xmm2,xmm2,$aa           // c c c c 10101010b
  shufps xmm3,xmm3,$ff           // d d d d 11111111b
+{$if defined(ExplicitX64SIMDRegs)}
+ movups xmm4,dqword ptr [rdx+0]
+ movups xmm5,dqword ptr [rdx+16]
+ movups xmm6,dqword ptr [rdx+32]
+ movups xmm7,dqword ptr [rdx+48]
+{$else}
  movups xmm4,dqword ptr [a+0]
  movups xmm5,dqword ptr [a+16]
  movups xmm6,dqword ptr [a+32]
  movups xmm7,dqword ptr [a+48]
+{$ifend}
  mulps xmm0,xmm4
  mulps xmm1,xmm5
  mulps xmm2,xmm6
@@ -10918,9 +11248,15 @@ asm
  movups dqword ptr [StackSave1],xmm7
 {-$endif}
  xorps xmm2,xmm2
+{$if defined(ExplicitX64SIMDRegs)}
+ movss xmm0,dword ptr [rdx+0]
+ movss xmm1,dword ptr [rdx+4]
+ movss xmm2,dword ptr [rdx+8]
+{$else}
  movss xmm0,dword ptr [a+0]
  movss xmm1,dword ptr [a+4]
  movss xmm2,dword ptr [a+8]
+{$ifend}
  movlhps xmm0,xmm1
  shufps xmm0,xmm2,$88
 //movups xmm0,dqword ptr [a]     // d c b a
@@ -10941,10 +11277,17 @@ asm
  movaps xmm1,xmm0               // d c b a
  movaps xmm2,xmm0               // d c b a
  movaps xmm3,xmm0               // d c b a
+{$if defined(ExplicitX64SIMDRegs)}
+ movups xmm4,dqword ptr [r8+0]
+ movups xmm5,dqword ptr [r8+16]
+ movups xmm6,dqword ptr [r8+32]
+ movups xmm7,dqword ptr [r8+48]
+{$else}
  movups xmm4,dqword ptr [b+0]
  movups xmm5,dqword ptr [b+16]
  movups xmm6,dqword ptr [b+32]
  movups xmm7,dqword ptr [b+48]
+{$ifend}
  mulps xmm0,xmm4
  mulps xmm1,xmm5
  mulps xmm2,xmm6
@@ -10983,7 +11326,11 @@ asm
  movups dqword ptr [StackSave0],xmm6
  movups dqword ptr [StackSave1],xmm7
 {-$endif}
+{$if defined(ExplicitX64SIMDRegs)}
+ movups xmm0,dqword ptr [r8]   // d c b a
+{$else}
  movups xmm0,dqword ptr [b]     // d c b a
+{$ifend}
  movaps xmm1,xmm0               // d c b a
  movaps xmm2,xmm0               // d c b a
  movaps xmm3,xmm0               // d c b a
@@ -10991,10 +11338,17 @@ asm
  shufps xmm1,xmm1,$55           // b b b b 01010101b
  shufps xmm2,xmm2,$aa           // c c c c 10101010b
  shufps xmm3,xmm3,$ff           // d d d d 11111111b
+{$if defined(ExplicitX64SIMDRegs)}
+ movups xmm4,dqword ptr [rdx+0]
+ movups xmm5,dqword ptr [rdx+16]
+ movups xmm6,dqword ptr [rdx+32]
+ movups xmm7,dqword ptr [rdx+48]
+{$else}
  movups xmm4,dqword ptr [a+0]
  movups xmm5,dqword ptr [a+16]
  movups xmm6,dqword ptr [a+32]
  movups xmm7,dqword ptr [a+48]
+{$ifend}
  mulps xmm0,xmm4
  mulps xmm1,xmm5
  mulps xmm2,xmm6
@@ -11027,14 +11381,25 @@ asm
  movups dqword ptr [StackSave0],xmm6
  movups dqword ptr [StackSave1],xmm7
 {-$endif}
+{$if defined(ExplicitX64SIMDRegs)}
+ movups xmm0,dqword ptr [rdx]   // d c b a
+{$else}
  movups xmm0,dqword ptr [a]     // d c b a
+{$ifend}
  movaps xmm1,xmm0               // d c b a
  movaps xmm2,xmm0               // d c b a
  movaps xmm3,xmm0               // d c b a
+{$if defined(ExplicitX64SIMDRegs)}
+ movups xmm4,dqword ptr [r8+0]
+ movups xmm5,dqword ptr [r8+16]
+ movups xmm6,dqword ptr [r8+32]
+ movups xmm7,dqword ptr [r8+48]
+{$else}
  movups xmm4,dqword ptr [b+0]
  movups xmm5,dqword ptr [b+16]
  movups xmm6,dqword ptr [b+32]
  movups xmm7,dqword ptr [b+48]
+{$ifend}
  mulps xmm0,xmm4
  mulps xmm1,xmm5
  mulps xmm2,xmm6
@@ -11076,11 +11441,23 @@ end;
 class operator TpvMatrix4x4.Divide({$ifdef fpc}constref{$else}const{$endif} a:TpvMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TpvScalar):TpvMatrix4x4;
 {$if defined(SIMD) and (defined(cpu386) or defined(cpux64))}
 asm
+{$if defined(ExplicitX64SIMDRegs)}
+{$ifdef fpc}
+ movss xmm4,dword ptr [r8] // FreePascal: load from memory (constref)
+{$else}
+ movss xmm4,xmm2 // Delphi: otherwise from another xmm register
+{$endif}
+ movups xmm0,dqword ptr [rdx+0]
+ movups xmm1,dqword ptr [rdx+16]
+ movups xmm2,dqword ptr [rdx+32]
+ movups xmm3,dqword ptr [rdx+48]
+{$else}
  movups xmm0,dqword ptr [a+0]
  movups xmm1,dqword ptr [a+16]
  movups xmm2,dqword ptr [a+32]
  movups xmm3,dqword ptr [a+48]
  movss xmm4,dword ptr [b]
+{$ifend}
  shufps xmm4,xmm4,$00
  divps xmm0,xmm4
  divps xmm1,xmm4
@@ -11122,15 +11499,37 @@ asm
  movups dqword ptr [StackSave0],xmm6
  movups dqword ptr [StackSave1],xmm7
 {-$endif}
+{$if defined(ExplicitX64SIMDRegs)}
+{$ifdef fpc}
+ movss xmm0,dword ptr [rdx] // FreePascal: load from memory (constref)
+{$else}
+ movss xmm0,xmm2 // Delphi: otherwise from another xmm register
+{$endif}
+{$else}
  movss xmm0,dword ptr [a]
+{$ifend}
  shufps xmm0,xmm0,$00
  movaps xmm1,xmm0
  movaps xmm2,xmm0
  movaps xmm3,xmm0
+{$if defined(ExplicitX64SIMDRegs)}
+{$ifdef fpc}
+ movups xmm4,dqword ptr [r8+0]
+ movups xmm5,dqword ptr [r8+16]
+ movups xmm6,dqword ptr [r8+32]
+ movups xmm7,dqword ptr [r8+48]
+{$else}
+ movups xmm4,dqword ptr [rdx+0]
+ movups xmm5,dqword ptr [rdx+16]
+ movups xmm6,dqword ptr [rdx+32]
+ movups xmm7,dqword ptr [rdx+48]
+{$endif}
+{$else}
  movups xmm4,dqword ptr [b+0]
  movups xmm5,dqword ptr [b+16]
  movups xmm6,dqword ptr [b+32]
  movups xmm7,dqword ptr [b+48]
+{$ifend}
  divps xmm0,xmm4
  divps xmm1,xmm5
  divps xmm2,xmm6
@@ -11173,11 +11572,23 @@ end;
 class operator TpvMatrix4x4.IntDivide({$ifdef fpc}constref{$else}const{$endif} a:TpvMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TpvScalar):TpvMatrix4x4;
 {$if defined(SIMD) and (defined(cpu386) or defined(cpux64))}
 asm
+{$if defined(ExplicitX64SIMDRegs)}
+{$ifdef fpc}
+ movss xmm4,dword ptr [r8] // FreePascal: load from memory (constref)
+{$else}
+ movss xmm4,xmm2 // Delphi: otherwise from another xmm register
+{$endif}
+ movups xmm0,dqword ptr [rdx+0]
+ movups xmm1,dqword ptr [rdx+16]
+ movups xmm2,dqword ptr [rdx+32]
+ movups xmm3,dqword ptr [rdx+48]
+{$else}
  movups xmm0,dqword ptr [a+0]
  movups xmm1,dqword ptr [a+16]
  movups xmm2,dqword ptr [a+32]
  movups xmm3,dqword ptr [a+48]
  movss xmm4,dword ptr [b]
+{$ifend}
  shufps xmm4,xmm4,$00
  divps xmm0,xmm4
  divps xmm1,xmm4
@@ -11219,15 +11630,37 @@ asm
  movups dqword ptr [StackSave0],xmm6
  movups dqword ptr [StackSave1],xmm7
 {-$endif}
+{$if defined(ExplicitX64SIMDRegs)}
+{$ifdef fpc}
+ movss xmm0,dword ptr [rdx] // FreePascal: load from memory (constref)
+{$else}
+ movss xmm0,xmm2 // Delphi: otherwise from another xmm register
+{$endif}
+{$else}
  movss xmm0,dword ptr [a]
+{$ifend}
  shufps xmm0,xmm0,$00
  movaps xmm1,xmm0
  movaps xmm2,xmm0
  movaps xmm3,xmm0
+{$if defined(ExplicitX64SIMDRegs)}
+{$ifdef fpc}
+ movups xmm4,dqword ptr [r8+0]
+ movups xmm5,dqword ptr [r8+16]
+ movups xmm6,dqword ptr [r8+32]
+ movups xmm7,dqword ptr [r8+48]
+{$else}
+ movups xmm4,dqword ptr [rdx+0]
+ movups xmm5,dqword ptr [rdx+16]
+ movups xmm6,dqword ptr [rdx+32]
+ movups xmm7,dqword ptr [rdx+48]
+{$endif}
+{$else}
  movups xmm4,dqword ptr [b+0]
  movups xmm5,dqword ptr [b+16]
  movups xmm6,dqword ptr [b+32]
  movups xmm7,dqword ptr [b+48]
+{$ifend}
  divps xmm0,xmm4
  divps xmm1,xmm5
  divps xmm2,xmm6
@@ -11336,10 +11769,17 @@ asm
  xorps xmm1,xmm1
  xorps xmm2,xmm2
  xorps xmm3,xmm3
+{$if defined(ExplicitX64SIMDRegs)}
+ movups xmm4,dqword ptr [rdx+0]
+ movups xmm5,dqword ptr [rdx+16]
+ movups xmm6,dqword ptr [rdx+32]
+ movups xmm7,dqword ptr [rdx+48]
+{$else}
  movups xmm4,dqword ptr [a+0]
  movups xmm5,dqword ptr [a+16]
  movups xmm6,dqword ptr [a+32]
  movups xmm7,dqword ptr [a+48]
+{$ifend}
  subps xmm0,xmm4
  subps xmm1,xmm5
  subps xmm2,xmm6
