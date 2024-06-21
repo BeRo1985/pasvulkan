@@ -10653,7 +10653,7 @@ asm
 {$ifdef fpc}
  movss xmm0,dword ptr [rdx] // FreePascal: load from memory (constref)
 {$else}
- movss xmm0,xmm2 // Delphi: otherwise from another xmm register
+ movss xmm0,xmm1 // Delphi: otherwise from another xmm register
 {$endif}
 {$else}
  movss xmm0,dword ptr [a]
@@ -10831,7 +10831,7 @@ asm
 {$ifdef fpc}
  movss xmm0,dword ptr [rdx] // FreePascal: load from memory (constref)
 {$else}
- movss xmm0,xmm2 // Delphi: otherwise from another xmm register
+ movss xmm0,xmm1 // Delphi: otherwise from another xmm register
 {$endif}
 {$else}
  movss xmm0,dword ptr [a]
@@ -11077,7 +11077,7 @@ asm
 {$ifdef fpc}
  movss xmm0,dword ptr [rdx] // FreePascal: load from memory (constref)
 {$else}
- movss xmm0,xmm2 // Delphi: otherwise from another xmm register
+ movss xmm0,xmm1 // Delphi: otherwise from another xmm register
 {$endif}
 {$else}
  movss xmm0,dword ptr [a]
@@ -11503,7 +11503,7 @@ asm
 {$ifdef fpc}
  movss xmm0,dword ptr [rdx] // FreePascal: load from memory (constref)
 {$else}
- movss xmm0,xmm2 // Delphi: otherwise from another xmm register
+ movss xmm0,xmm1 // Delphi: otherwise from another xmm register
 {$endif}
 {$else}
  movss xmm0,dword ptr [a]
@@ -11634,7 +11634,7 @@ asm
 {$ifdef fpc}
  movss xmm0,dword ptr [rdx] // FreePascal: load from memory (constref)
 {$else}
- movss xmm0,xmm2 // Delphi: otherwise from another xmm register
+ movss xmm0,xmm1 // Delphi: otherwise from another xmm register
 {$endif}
 {$else}
  movss xmm0,dword ptr [a]
