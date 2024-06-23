@@ -248,7 +248,8 @@ type TpvDynamicArray<T>=record
 
      TpvObjectGenericList<T:class>=class
       private
-       type TValueEnumerator=record
+       type TItemArray=array of T;
+            TValueEnumerator=record
              private
               fObjectList:TpvObjectGenericList<T>;
               fIndex:TpvSizeInt;
@@ -259,7 +260,7 @@ type TpvDynamicArray<T>=record
               property Current:T read GetCurrent;
             end;
       private
-       fItems:array of T;
+       fItems:TItemArray;
        fCount:TpvSizeInt;
        fAllocated:TpvSizeInt;
        fOwnsObjects:boolean;
@@ -291,6 +292,7 @@ type TpvDynamicArray<T>=record
        property OwnsObjects:boolean read fOwnsObjects write fOwnsObjects;
        property PointerToItems:pointer read GetPointerToItems;
        property Generation:TpvUInt64 read fGeneration;
+       property RawItems:TItemArray read fItems;
      end;
 
      TpvObjectList=TpvObjectGenericList<TObject>;
