@@ -2185,7 +2185,7 @@ type EpvScene3D=class(Exception);
                            public
                             function InverseFrontFaces:boolean; inline;
                            published
-//                            property RaytracingMask:TpvUInt8 read fRaytracingMask write fRaytracingMask;
+                            property RaytracingMask:TpvUInt8 read fRaytracingMask write fRaytracingMask;
                           end;
                           TInstanceNode=TpvScene3D.TGroup.TInstance.TNode;
                           //PNode=^TInstanceNode;
