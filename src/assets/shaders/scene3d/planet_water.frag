@@ -38,6 +38,7 @@ layout(location = 0) in InBlock {
   vec3 cameraRelativePosition;
   vec2 jitter;
   float mapValue;
+  float waterOverSurface;
   float underWater;
 } inBlock;
 #elif defined(UNDERWATER)
@@ -506,6 +507,8 @@ vec4 doShade(float opaqueDepth, float surfaceDepth, bool underWater){
     hitWaterDepth = underWater ? hitTime : distance(hitPosition.xyz, inWorldSpacePosition);
 
     waterDepth = getWaterHeightData(octPlanetUnsignedEncode(normalize(inWorldSpacePosition)));*/
+    
+    float waterHeight = getWaterHeightData(octPlanetUnsignedEncode(normalize(inWorldSpacePosition)));
 
 // waterColor = pow(vec3(0.6862, 0.8823, 0.9411), vec3(2.2));//pow(waterBaseColor, vec3(mix(1.0, 2.0, clamp(waterDepth * 0.1, 0.0, 1.0))));
     waterColor = waterBaseColor;//pow(waterBaseColor, vec3(mix(1.0, 2.0, clamp(waterDepth * 0.1, 0.0, 1.0))));
@@ -557,7 +560,8 @@ vec4 doShade(float opaqueDepth, float surfaceDepth, bool underWater){
     color.xyz = mix(
       texelFetch(uPassTextures[1], ivec3(gl_FragCoord.xy, gl_ViewIndex), 0).xyz,
       mix(refraction * waterColor, reflection * waterColor, fresnel) + waterSubscattering, 
-      clamp(1.0 - exp(-waterDepth * 64.0), 0.0, 1.0)
+      clamp(1.0 - exp(-max(waterHeight, waterDepth) * 6.0), 0.0, 1.0)
+      //clamp(1.0 - exp(-mix(waterHeight, waterDepth, max(0.0, dot(normal, viewDirection))) * 6.0), 0.0, 1.0)
     );
 
   //  color.xyz = vec3(waterDepth * 0.01);

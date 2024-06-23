@@ -2032,6 +2032,7 @@ type EpvScene3D=class(Exception);
                      fDrawChoreographyBatchItemIndices:TSizeIntDynamicArray;
                      fDrawChoreographyBatchUniqueItemIndices:TSizeIntDynamicArray;
                      fUsedJoints:TpvScene3D.TGroup.TNode.TUsedJoints;
+                     fRaytracingMask:TpvUInt8;
                      procedure Finish;
                     public
                      constructor Create(const aGroup:TGroup;const aIndex:TpvSizeInt=-1); reintroduce;
@@ -2046,6 +2047,7 @@ type EpvScene3D=class(Exception);
                      property NodeMeshInstanceIndex:TPasGLTFSizeInt read fNodeMeshInstanceIndex;
                      property Skin:TSkin read fSkin write fSkin;
                      property Light:TpvScene3D.TGroup.TLight read fLight write fLight;
+                     property RaytracingMask:TpvUInt8 read fRaytracingMask write fRaytracingMask;
                    end;
                    { TUsedVisibleDrawNodes }
                    TUsedVisibleDrawNodes=TpvObjectGenericList<TpvScene3D.TGroup.TNode>;
@@ -2179,6 +2181,7 @@ type EpvScene3D=class(Exception);
                             CullVisibleIDs:array[0..MaxInFlightFrames-1] of TpvSizeInt;
                             CullObjectID:TpvUInt32;
                             RaytracingGroupInstanceNodeID:TpvUInt64;
+                            RaytracingMask:TpvUInt8;
                            public
                             function InverseFrontFaces:boolean; inline;
                           end;
@@ -2592,6 +2595,7 @@ type EpvScene3D=class(Exception);
                      fVulkanMorphTargetVertexWeightsBufferOffset:TpvInt64;
                      fVulkanMorphTargetVertexWeightsBufferCount:TpvInt64;
                      fCacheVerticesNodeDirtyBitmap:array of TpvUInt32;
+                     fRaytracingMask:TpvUInt8;
                      function GetAutomation(const aIndex:TPasGLTFSizeInt):TpvScene3D.TGroup.TInstance.TAnimation;
                      procedure SetScene(const aScene:TpvSizeInt);
                      function GetScene:TpvScene3D.TGroup.TScene;
@@ -2682,6 +2686,7 @@ type EpvScene3D=class(Exception);
                      property Scene:TpvSizeInt read fScene write SetScene;
                      property Cameras:TpvScene3D.TGroup.TInstance.TCameras read fCameras;
                      property Lights:TpvScene3D.TGroup.TInstance.TLights read fLights;
+                     property RaytracingMask:TpvUInt8 read fRaytracingMask write fRaytracingMask;
                     public
                      property Nodes:TpvScene3D.TGroup.TInstance.TNodes read fNodes;
                      property Skins:TpvScene3D.TGroup.TInstance.TSkins read fSkins;
@@ -2768,6 +2773,7 @@ type EpvScene3D=class(Exception);
               fDrawChoreographyBatchUniqueItems:TDrawChoreographyBatchItems;
               fCameraNodeIndices:TpvScene3D.TGroup.TCameraNodeIndices;
               fCachedVertexBufferMemoryBarriers:TVkBufferMemoryBarrierArray;
+              fRaytracingMask:TpvUInt8;
               fOnNodeFilter:TpvScene3D.TGroup.TInstance.TOnNodeFilter;
               fNewLightMap:TpvScene3D.TGroup.TLights;
               fNewImageMap:TpvScene3D.TImages;
@@ -2887,6 +2893,7 @@ type EpvScene3D=class(Exception);
               property Scene:TScene read fScene;
               property MaximumCountInstances:TpvSizeint read fMaximumCountInstances write fMaximumCountInstances;
               property OnNodeFilter:TpvScene3D.TGroup.TInstance.TOnNodeFilter read fOnNodeFilter write fOnNodeFilter;
+              property RaytracingMask:TpvUInt8 read fRaytracingMask write fRaytracingMask;
             end;
             TGroups=TpvObjectGenericList<TpvScene3D.TGroup>;
             TImageIDHashMap=TpvHashMap<TID,TImage>;
@@ -2986,6 +2993,7 @@ type EpvScene3D=class(Exception);
               fUpdateCounter:TpvUInt64;
               fUpdateDirty:TPasMPBool32;
               fInitialized:TPasMPBool32;
+              fRaytracingMask:TpvUInt32;
              public
               constructor Create(const aSceneInstance:TpvScene3D;
                                  const aGroup:TpvScene3D.TGroup;
@@ -5415,6 +5423,8 @@ begin
 
  fInitialized:=false;
 
+ fRaytracingMask:=High(TpvUInt32);
+
 end;
 
 destructor TpvScene3D.TRaytracingGroupInstanceNode.Destroy;
@@ -5440,6 +5450,7 @@ var CountRenderInstances,CountPrimitives,RaytracingPrimitiveIndex,RendererInstan
     VulkanLongTermStaticBufferData:TVulkanLongTermStaticBufferData;
     AccelerationStructureGeometry:PVkAccelerationStructureGeometryKHR;
     AllocationGroupID:TpvUInt64;
+    RaytracingMask:TpvUInt8;
     Matrix:TpvMatrix4x4;
     MatricesDynamicArray:PMatricesDynamicArray;
     PerInFlightFrameRenderInstanceDynamicArray:TpvScene3D.TGroup.TInstance.PPerInFlightFrameRenderInstanceDynamicArray;
@@ -5484,6 +5495,11 @@ begin
  end else begin
   AllocationGroupID:=pvAllocationGroupIDScene3DRaytracingBLASStatic;
  end;
+
+ RaytracingMask:=fNode.fRaytracingMask and
+                 fInstanceNode^.RaytracingMask and
+                 fGroup.fRaytracingMask and
+                 fInstance.fRaytracingMask;
 
  for BLASGroupVariant:=Low(TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroupVariant) to High(TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroupVariant) do begin
 
@@ -5714,11 +5730,18 @@ begin
     result:=true;
    end;
 
+   if fRaytracingMask<>RaytracingMask then begin
+    fRaytracingMask:=RaytracingMask;
+    for BLASInstanceIndex:=0 to BLASGroup^.fBLASInstances.Count-1 do begin
+     BLASGroup^.fBLASInstances[BLASInstanceIndex].Mask:=RaytracingMask;
+    end;
+   end;
+
    while BLASGroup^.fBLASInstances.Count<CountRenderInstances do begin
     RaytracingBottomLevelAccelerationStructureInstance:=TpvRaytracingBottomLevelAccelerationStructureInstance.Create(fSceneInstance.fVulkanDevice,
                                                                                                                      fInstance.ModelMatrix,
                                                                                                                      0,
-                                                                                                                     $ff,
+                                                                                                                     RaytracingMask,
                                                                                                                      0,
                                                                                                                      GeometryInstanceFlags,
                                                                                                                      BLASGroup^.fBLAS);
@@ -12444,6 +12467,8 @@ begin
 
  fScale:=TpvVector3.InlineableCreate(1.0,1.0,1.0);
 
+ fRaytracingMask:=$ff;
+
  fDrawChoreographyBatchItemIndices.Initialize;
 
  fDrawChoreographyBatchUniqueItemIndices.Initialize;
@@ -12881,6 +12906,8 @@ begin
  fCameraNodeIndices:=TpvScene3D.TGroup.TCameraNodeIndices.Create;
 
  fOnNodeFilter:=nil;
+
+ fRaytracingMask:=$ff;
 
  fNewLightMap:=TpvScene3D.TGroup.TLights.Create;
  fNewLightMap.OwnsObjects:=false;
@@ -16807,6 +16834,8 @@ begin
 
  fDirtyCounter:=1;
 
+ fRaytracingMask:=$ff;
+
  fScene:=-1;
 
  fNodes:=nil;
@@ -16956,6 +16985,7 @@ begin
   InstanceNode^.CacheVerticesDirtyCounter:=1;
   InstanceNode^.AABBTreeProxy:=-1;
   InstanceNode^.RaytracingGroupInstanceNodeID:=0;
+  InstanceNode^.RaytracingMask:=$ff;
  end;
 
  fSceneInstance.fCullObjectIDLock.Acquire;

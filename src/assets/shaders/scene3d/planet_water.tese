@@ -33,6 +33,7 @@ layout(location = 0) out OutBlock {
   vec3 cameraRelativePosition;
   vec2 jitter;
   float mapValue;
+  float waterOverSurface;
   float underWater;
 } outBlock;
 
@@ -130,7 +131,9 @@ void main(){
  
   //position += sphereNormal * textureCatmullRomPlanetOctahedralMap(uTextures[0], sphereNormal).x * pushConstants.heightMapScale;
  
-  float sphereHeight = getSphereHeight(sphereNormal);
+  vec2 sphereHeightData = getSphereHeightData(sphereNormal);
+
+  float sphereHeight = dot(sphereHeightData, vec2(1.0));
 
   vec3 localPosition = sphereNormal * ((sphereHeight > 1e-6) ? clamp(sphereHeight, planetData.bottomRadiusTopRadiusHeightMapScale.x * 0.5, planetData.bottomRadiusTopRadiusHeightMapScale.y) : 1e-6);
 
@@ -152,6 +155,7 @@ void main(){
   outBlock.cameraRelativePosition = worldSpacePosition - cameraPosition;
   outBlock.jitter = pushConstants.jitter;
   outBlock.mapValue = mapHeight(localPosition, sphereHeight);
+  outBlock.waterOverSurface = (sphereHeightData.y > 1e-6) ? 1.0 : 0.0;
   outBlock.underWater = ((inBlocks[0].flags & (1u << 0u)) != 0u) ? 1.0 : 0.0;
 
 	gl_Position = viewProjectionMatrix * vec4(position, 1.0);
