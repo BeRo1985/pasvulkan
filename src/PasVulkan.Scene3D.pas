@@ -2160,30 +2160,32 @@ type EpvScene3D=class(Exception);
                                   );
                                  PInstanceNodeFlag=^TInstanceNodeFlag;
                                  TInstanceNodeFlags=set of TInstanceNodeFlag;
-                           public
-                            Processed:LongBool;
-                            Flags:TInstanceNodeFlags;
-                            Overwrites:TNodeOverwrites;
-                            CountOverwrites:TpvSizeInt;
-                            OverwriteWeightsSum:TpvDoubleDynamicArray;
-                            WorkWeights:TpvFloatDynamicArray;
-                            WorkMatrix:TpvMatrix4x4;
-                            Light:TpvScene3D.TLight;
-//                          WorkMatrices:array[-1..MaxInFlightFrames-1] of TpvMatrix4x4;
-                            BoundingBoxes:array[-1..MaxInFlightFrames-1] of TpvAABB;
-                            BoundingBoxFilled:array[-1..MaxInFlightFrames-1] of boolean;
-                            PotentiallyVisibleSetNodeIndices:array[0..MaxInFlightFrames-1] of TpvScene3D.TPotentiallyVisibleSet.TNodeIndex;
-                            CacheVerticesGenerations:array[0..MaxInFlightFrames-1] of TpvUInt64;
-                            CacheVerticesGeneration:TpvUInt64;
-                            CacheVerticesDirtyCounter:TpvUInt32;
-                            AABBTreeProxy:TpvSizeInt;
-                            Parents:array[0..MaxInFlightFrames-1] of TpvSizeInt;
-                            CullVisibleIDs:array[0..MaxInFlightFrames-1] of TpvSizeInt;
-                            CullObjectID:TpvUInt32;
-                            RaytracingGroupInstanceNodeID:TpvUInt64;
-                            RaytracingMask:TpvUInt8;
+                           private
+                            fProcessed:LongBool;
+                            fFlags:TInstanceNodeFlags;
+                            fOverwrites:TNodeOverwrites;
+                            fCountOverwrites:TpvSizeInt;
+                            fOverwriteWeightsSum:TpvDoubleDynamicArray;
+                            fWorkWeights:TpvFloatDynamicArray;
+                            fWorkMatrix:TpvMatrix4x4;
+                            fLight:TpvScene3D.TLight;
+//                          fWorkMatrices:array[-1..MaxInFlightFrames-1] of TpvMatrix4x4;
+                            fBoundingBoxes:array[-1..MaxInFlightFrames-1] of TpvAABB;
+                            fBoundingBoxFilled:array[-1..MaxInFlightFrames-1] of boolean;
+                            fPotentiallyVisibleSetNodeIndices:array[0..MaxInFlightFrames-1] of TpvScene3D.TPotentiallyVisibleSet.TNodeIndex;
+                            fCacheVerticesGenerations:array[0..MaxInFlightFrames-1] of TpvUInt64;
+                            fCacheVerticesGeneration:TpvUInt64;
+                            fCacheVerticesDirtyCounter:TpvUInt32;
+                            fAABBTreeProxy:TpvSizeInt;
+                            fParents:array[0..MaxInFlightFrames-1] of TpvSizeInt;
+                            fCullVisibleIDs:array[0..MaxInFlightFrames-1] of TpvSizeInt;
+                            fCullObjectID:TpvUInt32;
+                            fRaytracingGroupInstanceNodeID:TpvUInt64;
+                            fRaytracingMask:TpvUInt8;
                            public
                             function InverseFrontFaces:boolean; inline;
+                           published
+//                            property RaytracingMask:TpvUInt8 read fRaytracingMask write fRaytracingMask;
                           end;
                           TInstanceNode=TpvScene3D.TGroup.TInstance.TNode;
                           //PNode=^TInstanceNode;
@@ -5463,7 +5465,7 @@ begin
  // the vertices yet, so we have to wait until the geometry is processed, and then we can generate the BLASes for the first time.
  // Otherwise the BLASes would contain empty or even random data (when using uninitialized memory), which would cause incorrect 
  // raytracing results.
- if (not fInitialized) and not (fInstance.fActives[aInFlightFrameIndex] and fInstanceNode.BoundingBoxFilled[aInFlightFrameIndex]) then begin
+ if (not fInitialized) and not (fInstance.fActives[aInFlightFrameIndex] and fInstanceNode.fBoundingBoxFilled[aInFlightFrameIndex]) then begin
   exit;
  end;
 
@@ -5497,7 +5499,7 @@ begin
  end;
 
  RaytracingMask:=fNode.fRaytracingMask and
-                 fInstanceNode.RaytracingMask and
+                 fInstanceNode.fRaytracingMask and
                  fGroup.fRaytracingMask and
                  fInstance.fRaytracingMask;
 
@@ -5536,8 +5538,8 @@ begin
 
     MustUpdate:=MustUpdateAll;
 
-    if fCacheVerticesGeneration<>fInstanceNode.CacheVerticesGenerations[aInFlightFrameIndex] then begin
-     fCacheVerticesGeneration:=fInstanceNode.CacheVerticesGenerations[aInFlightFrameIndex];
+    if fCacheVerticesGeneration<>fInstanceNode.fCacheVerticesGenerations[aInFlightFrameIndex] then begin
+     fCacheVerticesGeneration:=fInstanceNode.fCacheVerticesGenerations[aInFlightFrameIndex];
      fGeometryChanged:=true;
      if fDynamicGeometry then begin
       MustUpdate:=true;
@@ -5572,7 +5574,7 @@ begin
 
    end else begin
 
-    fCacheVerticesGeneration:=fInstanceNode.CacheVerticesGenerations[aInFlightFrameIndex];
+    fCacheVerticesGeneration:=fInstanceNode.fCacheVerticesGenerations[aInFlightFrameIndex];
 
     BLASGroup^.fBLASGeometry:=TpvRaytracingBottomLevelAccelerationStructureGeometry.Create(fSceneInstance.fVulkanDevice);
 
@@ -5708,7 +5710,7 @@ begin
    end;
 
    if CountPrimitives>0 then begin
-    if fInstance.fActives[aInFlightFrameIndex] and fInstanceNode.BoundingBoxFilled[aInFlightFrameIndex] then begin
+    if fInstance.fActives[aInFlightFrameIndex] and fInstanceNode.fBoundingBoxFilled[aInFlightFrameIndex] then begin
      if fInstance.fUseRenderInstances then begin
       CountRenderInstances:=PerInFlightFrameRenderInstanceDynamicArray^.Count;
      end else begin
@@ -5759,7 +5761,7 @@ begin
 
      Matrix:=MatricesDynamicArray^.Items[fInstance.fVulkanNodeMatricesBufferOffset+(fNode.Index+1)]*
              MatricesDynamicArray^.Items[fInstance.fVulkanNodeMatricesBufferOffset];
- //  Matrix:=fInstanceNode.WorkMatrices[aInFlightFrameIndex]*fInstance.fModelMatrices[aInFlightFrameIndex];
+ //  Matrix:=fInstanceNode.fWorkMatrices[aInFlightFrameIndex]*fInstance.fModelMatrices[aInFlightFrameIndex];
 
     end;
 
@@ -8793,7 +8795,7 @@ begin
    NewDrawChoreographyBatchItem.fGroupInstance:=aGroupInstance;
    if assigned(aGroupInstance) then begin
     if assigned(DrawChoreographyBatchItem.Node) then begin
-     NewDrawChoreographyBatchItem.fObjectIndex:=TpvScene3D.TGroup.TInstance(aGroupInstance).Nodes[TpvScene3D.TGroup.TNode(DrawChoreographyBatchItem.Node).fIndex].CullObjectID;
+     NewDrawChoreographyBatchItem.fObjectIndex:=TpvScene3D.TGroup.TInstance(aGroupInstance).Nodes[TpvScene3D.TGroup.TNode(DrawChoreographyBatchItem.Node).fIndex].fCullObjectID;
     end else begin
      NewDrawChoreographyBatchItem.fObjectIndex:=0;
     end;
@@ -9487,8 +9489,8 @@ begin
      for GroupInstance in Group.fInstances do begin
       for GroupInstanceNodeIndex:=0 to GroupInstance.fNodes.Count-1 do begin
        GroupInstanceNode:=GroupInstance.fNodes[GroupInstanceNodeIndex];
-       if GroupInstanceNode.CacheVerticesDirtyCounter<=fSceneInstance.fCountInFlightFrames then begin
-        GroupInstanceNode.CacheVerticesDirtyCounter:=fSceneInstance.fCountInFlightFrames;
+       if GroupInstanceNode.fCacheVerticesDirtyCounter<=fSceneInstance.fCountInFlightFrames then begin
+        GroupInstanceNode.fCacheVerticesDirtyCounter:=fSceneInstance.fCountInFlightFrames;
        end;
       end;
      end;
@@ -15830,7 +15832,7 @@ begin
   if Updated then begin
    for Instance in fInstances do begin
     for NodeIndex:=0 to Instance.fNodes.Count-1 do begin
-     inc(Instance.fNodes.RawItems[NodeIndex].CacheVerticesGeneration);
+     inc(Instance.fNodes.RawItems[NodeIndex].fCacheVerticesGeneration);
     end;
    end;
   end;
@@ -15934,7 +15936,7 @@ end;
 
 function TpvScene3D.TGroup.TInstance.TNode.InverseFrontFaces:boolean;
 begin
- result:=TpvScene3D.TGroup.TInstance.TNode.TInstanceNodeFlag.InverseFrontFaces in Flags;
+ result:=TpvScene3D.TGroup.TInstance.TNode.TInstanceNodeFlag.InverseFrontFaces in fFlags;
 end;
 
 { TpvScene3D.TGroup.TInstance.TLight }
@@ -16972,23 +16974,23 @@ begin
  for Index:=0 to fGroup.fNodes.Count-1 do begin
   InstanceNode:=fNodes.RawItems[Index];
   Node:=fGroup.fNodes[Index];
-  InstanceNode.Processed:=false;
-  InstanceNode.Flags:=[];
-  SetLength(InstanceNode.WorkWeights,Node.fWeights.Count);
-  SetLength(InstanceNode.OverwriteWeightsSum,Node.fWeights.Count);
-  SetLength(InstanceNode.Overwrites,fGroup.fAnimations.Count+1);
+  InstanceNode.fProcessed:=false;
+  InstanceNode.fFlags:=[];
+  SetLength(InstanceNode.fWorkWeights,Node.fWeights.Count);
+  SetLength(InstanceNode.fOverwriteWeightsSum,Node.fWeights.Count);
+  SetLength(InstanceNode.fOverwrites,fGroup.fAnimations.Count+1);
   for OtherIndex:=0 to fGroup.fAnimations.Count do begin
-   SetLength(InstanceNode.Overwrites[OtherIndex].Weights,Node.fWeights.Count);
+   SetLength(InstanceNode.fOverwrites[OtherIndex].Weights,Node.fWeights.Count);
   end;
   for OtherIndex:=0 to fSceneInstance.fCountInFlightFrames-1 do begin
-   InstanceNode.PotentiallyVisibleSetNodeIndices[OtherIndex]:=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex;
-   InstanceNode.CacheVerticesGenerations[OtherIndex]:=0;
+   InstanceNode.fPotentiallyVisibleSetNodeIndices[OtherIndex]:=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex;
+   InstanceNode.fCacheVerticesGenerations[OtherIndex]:=0;
   end;
-  InstanceNode.CacheVerticesGeneration:=1;
-  InstanceNode.CacheVerticesDirtyCounter:=1;
-  InstanceNode.AABBTreeProxy:=-1;
-  InstanceNode.RaytracingGroupInstanceNodeID:=0;
-  InstanceNode.RaytracingMask:=$ff;
+  InstanceNode.fCacheVerticesGeneration:=1;
+  InstanceNode.fCacheVerticesDirtyCounter:=1;
+  InstanceNode.fAABBTreeProxy:=-1;
+  InstanceNode.fRaytracingGroupInstanceNodeID:=0;
+  InstanceNode.fRaytracingMask:=$ff;
  end;
 
  fSceneInstance.fCullObjectIDLock.Acquire;
@@ -16997,12 +16999,12 @@ begin
    Node:=fGroup.fNodes[Index];
    InstanceNode:=fNodes.RawItems[Index];
    if assigned(Node.Mesh) then begin
-    InstanceNode.CullObjectID:=fSceneInstance.fCullObjectIDManager.AllocateID;
-    if fSceneInstance.fMaxCullObjectID<InstanceNode.CullObjectID then begin
-     fSceneInstance.fMaxCullObjectID:=InstanceNode.CullObjectID;
+    InstanceNode.fCullObjectID:=fSceneInstance.fCullObjectIDManager.AllocateID;
+    if fSceneInstance.fMaxCullObjectID<InstanceNode.fCullObjectID then begin
+     fSceneInstance.fMaxCullObjectID:=InstanceNode.fCullObjectID;
     end;
    end else begin
-    InstanceNode.CullObjectID:=0;
+    InstanceNode.fCullObjectID:=0;
    end;
   end;
  finally
@@ -17208,9 +17210,9 @@ begin
      Node:=fGroup.fNodes[Index];
      InstanceNode:=fNodes.RawItems[Index];
      if assigned(Node.Mesh) and (Node.Mesh.fRaytracingPrimitives.Count>0) then begin
-      InstanceNode.RaytracingGroupInstanceNodeID:=fSceneInstance.fRaytracingGroupInstanceNodeIDCounter+1;
+      InstanceNode.fRaytracingGroupInstanceNodeID:=fSceneInstance.fRaytracingGroupInstanceNodeIDCounter+1;
       inc(fSceneInstance.fRaytracingGroupInstanceNodeIDCounter);
-      fSceneInstance.fRaytracingGroupInstanceNodeAddQueue.Enqueue(TRaytracingGroupInstanceNodeQueueItem.Create(self,Index,InstanceNode.RaytracingGroupInstanceNodeID));
+      fSceneInstance.fRaytracingGroupInstanceNodeAddQueue.Enqueue(TRaytracingGroupInstanceNodeQueueItem.Create(self,Index,InstanceNode.fRaytracingGroupInstanceNodeID));
      end;
     end;
    finally
@@ -17346,8 +17348,8 @@ begin
    try
     for Index:=0 to fNodes.Count-1 do begin
      InstanceNode:=fNodes.RawItems[Index];
-     if InstanceNode.RaytracingGroupInstanceNodeID>0 then begin
-      fSceneInstance.fRaytracingGroupInstanceNodeRemoveQueue.Enqueue(TRaytracingGroupInstanceNodeQueueItem.Create(self,Index,InstanceNode.RaytracingGroupInstanceNodeID));
+     if InstanceNode.fRaytracingGroupInstanceNodeID>0 then begin
+      fSceneInstance.fRaytracingGroupInstanceNodeRemoveQueue.Enqueue(TRaytracingGroupInstanceNodeQueueItem.Create(self,Index,InstanceNode.fRaytracingGroupInstanceNodeID));
      end;
     end;
    finally
@@ -17383,11 +17385,11 @@ begin
  try
   for Index:=0 to fNodes.Count-1 do begin
    InstanceNode:=fNodes.RawItems[Index];
-   if InstanceNode.CullObjectID>0 then begin
+   if InstanceNode.fCullObjectID>0 then begin
     try
-     fSceneInstance.fCullObjectIDManager.FreeID(InstanceNode.CullObjectID);
+     fSceneInstance.fCullObjectIDManager.FreeID(InstanceNode.fCullObjectID);
     finally
-     InstanceNode.CullObjectID:=0;
+     InstanceNode.fCullObjectID:=0;
     end;
    end;
   end;
@@ -17397,8 +17399,8 @@ begin
 
  for Index:=0 to fNodes.Count-1 do begin
   InstanceNode:=fNodes.RawItems[Index];
-  if assigned(InstanceNode.Light) then begin
-   FreeAndNil(InstanceNode.Light);
+  if assigned(InstanceNode.fLight) then begin
+   FreeAndNil(InstanceNode.fLight);
   end;
  end;
 
@@ -17768,8 +17770,8 @@ var Index:TPasGLTFSizeInt;
 begin
  for Index:=0 to fNodes.Count-1 do begin
   Node:=fNodes.RawItems[Index];
-  if assigned(Node.Light) then begin
-   FreeAndNil(Node.Light);
+  if assigned(Node.fLight) then begin
+   FreeAndNil(Node.fLight);
   end;
  end;
 end;
@@ -18033,8 +18035,8 @@ procedure TpvScene3D.TGroup.TInstance.Update(const aInFlightFrameIndex:TpvSizeIn
  begin
   for Index:=0 to fNodes.Count-1 do begin
    InstanceNode:=fNodes.RawItems[Index];
-   InstanceNode.Processed:=false;
-   InstanceNode.CountOverwrites:=0;
+   InstanceNode.fProcessed:=false;
+   InstanceNode.fCountOverwrites:=0;
   end;
  end;
  procedure ProcessBaseOverwrite(const aFactor:TPasGLTFFloat);
@@ -18067,11 +18069,11 @@ procedure TpvScene3D.TGroup.TInstance.Update(const aInFlightFrameIndex:TpvSizeIn
    end;
    for Index:=0 to fGroup.fNodes.Count-1 do begin
     InstanceNode:=fNodes.RawItems[Index];
-    if InstanceNode.CountOverwrites<length(InstanceNode.Overwrites) then begin
-     NodeOverwrite:=@InstanceNode.Overwrites[InstanceNode.CountOverwrites];
+    if InstanceNode.fCountOverwrites<length(InstanceNode.fOverwrites) then begin
+     NodeOverwrite:=@InstanceNode.fOverwrites[InstanceNode.fCountOverwrites];
      NodeOverwrite^.Flags:=[TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.Defaults];
      NodeOverwrite^.Factor:=Max(aFactor,0.0);
-     inc(InstanceNode.CountOverwrites);
+     inc(InstanceNode.fCountOverwrites);
     end;
    end;
   end;
@@ -18226,7 +18228,7 @@ procedure TpvScene3D.TGroup.TInstance.Update(const aInFlightFrameIndex:TpvSizeIn
   var CountWeights,WeightIndex:TpvSizeInt;
       InvFactor,SqrFactor,CubeFactor:TpvDouble;
   begin
-   CountWeights:=length(aNode.WorkWeights);
+   CountWeights:=length(aNode.fWorkWeights);
    Include(aNodeOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.Weights);
    case aAnimationChannel.fInterpolation of
     TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.Linear:begin
@@ -18495,11 +18497,11 @@ procedure TpvScene3D.TGroup.TInstance.Update(const aInFlightFrameIndex:TpvSizeIn
 
           InstanceAnimationChannelOverwrite:=@InstanceAnimation.fChannelOverwrites[InstanceChannelIndex];
           if InstanceAnimationChannelOverwrite^<0 then begin
-           if Node.CountOverwrites<length(Node.Overwrites) then begin
-            InstanceAnimationChannelOverwrite^:=Node.CountOverwrites;
-            inc(Node.CountOverwrites);
-            if (InstanceAnimationChannelOverwrite^>=0) and (InstanceAnimationChannelOverwrite^<length(Node.Overwrites)) then begin
-             NodeOverwrite:=@Node.Overwrites[InstanceAnimationChannelOverwrite^];
+           if Node.fCountOverwrites<length(Node.fOverwrites) then begin
+            InstanceAnimationChannelOverwrite^:=Node.fCountOverwrites;
+            inc(Node.fCountOverwrites);
+            if (InstanceAnimationChannelOverwrite^>=0) and (InstanceAnimationChannelOverwrite^<length(Node.fOverwrites)) then begin
+             NodeOverwrite:=@Node.fOverwrites[InstanceAnimationChannelOverwrite^];
              NodeOverwrite^.Flags:=[];
              if InstanceAnimation.fAdditive then begin
               Include(NodeOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.Additive);
@@ -18512,8 +18514,8 @@ procedure TpvScene3D.TGroup.TInstance.Update(const aInFlightFrameIndex:TpvSizeIn
             NodeOverwrite:=nil;
            end;
           end else begin
-           if (InstanceAnimationChannelOverwrite^>=0) and (InstanceAnimationChannelOverwrite^<length(Node.Overwrites)) then begin
-            NodeOverwrite:=@Node.Overwrites[InstanceAnimationChannelOverwrite^];
+           if (InstanceAnimationChannelOverwrite^>=0) and (InstanceAnimationChannelOverwrite^<length(Node.fOverwrites)) then begin
+            NodeOverwrite:=@Node.fOverwrites[InstanceAnimationChannelOverwrite^];
            end else begin
             NodeOverwrite:=nil;
            end;
@@ -18595,11 +18597,11 @@ procedure TpvScene3D.TGroup.TInstance.Update(const aInFlightFrameIndex:TpvSizeIn
 
             InstanceAnimationChannelOverwrite:=@InstanceAnimation.fChannelOverwrites[InstanceChannelIndex];
             if InstanceAnimationChannelOverwrite^<0 then begin
-             if Node.CountOverwrites<length(Node.Overwrites) then begin
-              InstanceAnimationChannelOverwrite^:=Node.CountOverwrites;
-              inc(Node.CountOverwrites);
-              if (InstanceAnimationChannelOverwrite^>=0) and (InstanceAnimationChannelOverwrite^<length(Node.Overwrites)) then begin
-               NodeOverwrite:=@Node.Overwrites[InstanceAnimationChannelOverwrite^];
+             if Node.fCountOverwrites<length(Node.fOverwrites) then begin
+              InstanceAnimationChannelOverwrite^:=Node.fCountOverwrites;
+              inc(Node.fCountOverwrites);
+              if (InstanceAnimationChannelOverwrite^>=0) and (InstanceAnimationChannelOverwrite^<length(Node.fOverwrites)) then begin
+               NodeOverwrite:=@Node.fOverwrites[InstanceAnimationChannelOverwrite^];
                NodeOverwrite^.Flags:=[];
                if InstanceAnimation.fAdditive then begin
                 Include(NodeOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.Additive);
@@ -18612,8 +18614,8 @@ procedure TpvScene3D.TGroup.TInstance.Update(const aInFlightFrameIndex:TpvSizeIn
               NodeOverwrite:=nil;
              end;
             end else begin
-             if (InstanceAnimationChannelOverwrite^>=0) and (InstanceAnimationChannelOverwrite^<length(Node.Overwrites)) then begin
-              NodeOverwrite:=@Node.Overwrites[InstanceAnimationChannelOverwrite^];
+             if (InstanceAnimationChannelOverwrite^>=0) and (InstanceAnimationChannelOverwrite^<length(Node.fOverwrites)) then begin
+              NodeOverwrite:=@Node.fOverwrites[InstanceAnimationChannelOverwrite^];
              end else begin
               NodeOverwrite:=nil;
              end;
@@ -19093,11 +19095,11 @@ procedure TpvScene3D.TGroup.TInstance.Update(const aInFlightFrameIndex:TpvSizeIn
          if (InstanceChannelIndex>=0) and (InstanceChannelIndex<length(InstanceAnimation.fChannelOverwrites)) then begin
           InstanceAnimationChannelOverwrite:=@InstanceAnimation.fChannelOverwrites[InstanceChannelIndex];
           if InstanceAnimationChannelOverwrite^<0 then begin
-           if Node.CountOverwrites<length(Node.Overwrites) then begin
-            InstanceAnimationChannelOverwrite^:=Node.CountOverwrites;
-            inc(Node.CountOverwrites);
-            if (InstanceAnimationChannelOverwrite^>=0) and (InstanceAnimationChannelOverwrite^<length(Node.Overwrites)) then begin
-             NodeOverwrite:=@Node.Overwrites[InstanceAnimationChannelOverwrite^];
+           if Node.fCountOverwrites<length(Node.fOverwrites) then begin
+            InstanceAnimationChannelOverwrite^:=Node.fCountOverwrites;
+            inc(Node.fCountOverwrites);
+            if (InstanceAnimationChannelOverwrite^>=0) and (InstanceAnimationChannelOverwrite^<length(Node.fOverwrites)) then begin
+             NodeOverwrite:=@Node.fOverwrites[InstanceAnimationChannelOverwrite^];
              NodeOverwrite^.Flags:=[];
              if InstanceAnimation.fAdditive then begin
               Include(NodeOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.Additive);
@@ -19110,8 +19112,8 @@ procedure TpvScene3D.TGroup.TInstance.Update(const aInFlightFrameIndex:TpvSizeIn
             NodeOverwrite:=nil;
            end;
           end else begin
-           if (InstanceAnimationChannelOverwrite^>=0) and (InstanceAnimationChannelOverwrite^<length(Node.Overwrites)) then begin
-            NodeOverwrite:=@Node.Overwrites[InstanceAnimationChannelOverwrite^];
+           if (InstanceAnimationChannelOverwrite^>=0) and (InstanceAnimationChannelOverwrite^<length(Node.fOverwrites)) then begin
+            NodeOverwrite:=@Node.fOverwrites[InstanceAnimationChannelOverwrite^];
            end else begin
             NodeOverwrite:=nil;
            end;
@@ -19552,9 +19554,9 @@ procedure TpvScene3D.TGroup.TInstance.Update(const aInFlightFrameIndex:TpvSizeIn
   SkinUsed:=false;
   InstanceNode:=fNodes.RawItems[aNodeIndex];
   Node:=fGroup.fNodes[aNodeIndex];
-  InstanceNode.Processed:=true;
+  InstanceNode.fProcessed:=true;
   Dirty:=aDirty;
-  if (InstanceNode.CountOverwrites>0) and (Node.Flags<>[]) then begin
+  if (InstanceNode.fCountOverwrites>0) and (Node.Flags<>[]) then begin
    Dirty:=true;
    SkinUsed:=true;
    TranslationSum.Clear;
@@ -19566,8 +19568,8 @@ procedure TpvScene3D.TGroup.TInstance.Update(const aInFlightFrameIndex:TpvSizeIn
    AdditiveRotation:=TpvQuaternion.Identity;
    HasAdditiveRotation:=false;
    RotationCounter:=0;
-   for Index:=0 to InstanceNode.CountOverwrites-1 do begin
-    Overwrite:=@InstanceNode.Overwrites[Index];
+   for Index:=0 to InstanceNode.fCountOverwrites-1 do begin
+    Overwrite:=@InstanceNode.fOverwrites[Index];
     Factor:=Overwrite^.Factor;
     Additive:=TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.Additive in Overwrite^.Flags;
     if not IsZero(Factor) then begin
@@ -19578,12 +19580,12 @@ procedure TpvScene3D.TGroup.TInstance.Update(const aInFlightFrameIndex:TpvSizeIn
       if Node.fWeights.Count>0 then begin
        if FirstWeights then begin
         FirstWeights:=false;
-        for OtherIndex:=0 to length(InstanceNode.OverwriteWeightsSum)-1 do begin
-         InstanceNode.OverwriteWeightsSum[OtherIndex]:=0.0;
+        for OtherIndex:=0 to length(InstanceNode.fOverwriteWeightsSum)-1 do begin
+         InstanceNode.fOverwriteWeightsSum[OtherIndex]:=0.0;
         end;
        end;
-       for OtherIndex:=0 to Min(length(InstanceNode.OverwriteWeightsSum),Node.fWeights.Count)-1 do begin
-        InstanceNode.OverwriteWeightsSum[OtherIndex]:=InstanceNode.OverwriteWeightsSum[OtherIndex]+(Node.fWeights.Items[OtherIndex]*Factor);
+       for OtherIndex:=0 to Min(length(InstanceNode.fOverwriteWeightsSum),Node.fWeights.Count)-1 do begin
+        InstanceNode.fOverwriteWeightsSum[OtherIndex]:=InstanceNode.fOverwriteWeightsSum[OtherIndex]+(Node.fWeights.Items[OtherIndex]*Factor);
        end;
        WeightsFactorSum:=WeightsFactorSum+Factor;
       end;
@@ -19612,17 +19614,17 @@ procedure TpvScene3D.TGroup.TInstance.Update(const aInFlightFrameIndex:TpvSizeIn
       if TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.Weights in Overwrite^.Flags then begin
        if FirstWeights then begin
         FirstWeights:=false;
-        for OtherIndex:=0 to length(InstanceNode.OverwriteWeightsSum)-1 do begin
-         InstanceNode.OverwriteWeightsSum[OtherIndex]:=0.0;
+        for OtherIndex:=0 to length(InstanceNode.fOverwriteWeightsSum)-1 do begin
+         InstanceNode.fOverwriteWeightsSum[OtherIndex]:=0.0;
         end;
        end;
        if TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.DefaultWeights in Overwrite^.Flags then begin
-        for OtherIndex:=0 to Min(length(InstanceNode.OverwriteWeightsSum),Node.fWeights.Count)-1 do begin
-         InstanceNode.OverwriteWeightsSum[OtherIndex]:=InstanceNode.OverwriteWeightsSum[OtherIndex]+(Node.fWeights.Items[OtherIndex]*Factor);
+        for OtherIndex:=0 to Min(length(InstanceNode.fOverwriteWeightsSum),Node.fWeights.Count)-1 do begin
+         InstanceNode.fOverwriteWeightsSum[OtherIndex]:=InstanceNode.fOverwriteWeightsSum[OtherIndex]+(Node.fWeights.Items[OtherIndex]*Factor);
         end;
        end else begin
-        for OtherIndex:=0 to Min(length(InstanceNode.OverwriteWeightsSum),length(Overwrite^.Weights))-1 do begin
-         InstanceNode.OverwriteWeightsSum[OtherIndex]:=InstanceNode.OverwriteWeightsSum[OtherIndex]+(Overwrite^.Weights[OtherIndex]*Factor);
+        for OtherIndex:=0 to Min(length(InstanceNode.fOverwriteWeightsSum),length(Overwrite^.Weights))-1 do begin
+         InstanceNode.fOverwriteWeightsSum[OtherIndex]:=InstanceNode.fOverwriteWeightsSum[OtherIndex]+(Overwrite^.Weights[OtherIndex]*Factor);
         end;
        end;
        WeightsFactorSum:=WeightsFactorSum+Factor;
@@ -19642,20 +19644,20 @@ procedure TpvScene3D.TGroup.TInstance.Update(const aInFlightFrameIndex:TpvSizeIn
    end;
    if WeightsFactorSum>0.0 then begin
     Factor:=1.0/WeightsFactorSum;
-    for Index:=0 to Min(length(InstanceNode.WorkWeights),Node.fWeights.Count)-1 do begin
-     InstanceNode.WorkWeights[Index]:=InstanceNode.OverwriteWeightsSum[Index]*Factor;
+    for Index:=0 to Min(length(InstanceNode.fWorkWeights),Node.fWeights.Count)-1 do begin
+     InstanceNode.fWorkWeights[Index]:=InstanceNode.fOverwriteWeightsSum[Index]*Factor;
     end;
    end else begin
-    for Index:=0 to Min(length(InstanceNode.WorkWeights),Node.fWeights.Count)-1 do begin
-     InstanceNode.WorkWeights[Index]:=Node.fWeights.Items[Index];
+    for Index:=0 to Min(length(InstanceNode.fWorkWeights),Node.fWeights.Count)-1 do begin
+     InstanceNode.fWorkWeights[Index]:=Node.fWeights.Items[Index];
     end;
    end;
   end else begin
    Translation:=Node.fTranslation;
    Scale:=Node.fScale;
    WeightedRotation:=Node.fRotation;
-   for Index:=0 to Min(length(InstanceNode.WorkWeights),Node.fWeights.Count)-1 do begin
-    InstanceNode.WorkWeights[Index]:=Node.fWeights.Items[Index];
+   for Index:=0 to Min(length(InstanceNode.fWorkWeights),Node.fWeights.Count)-1 do begin
+    InstanceNode.fWorkWeights[Index]:=Node.fWeights.Items[Index];
    end;
   end;
   Matrix:=TpvMatrix4x4.CreateScale(Scale)*
@@ -19673,13 +19675,13 @@ procedure TpvScene3D.TGroup.TInstance.Update(const aInFlightFrameIndex:TpvSizeIn
    end;
   end;
   Matrix:=Matrix*aMatrix;
-  InstanceNode.WorkMatrix:=Matrix;
-//InstanceNode.WorkMatrices[aInFlightFrameIndex]:=Matrix;
+  InstanceNode.fWorkMatrix:=Matrix;
+//InstanceNode.fWorkMatrices[aInFlightFrameIndex]:=Matrix;
   if assigned(Node.fMesh) then begin
    if Matrix.Determinant<0.0 then begin
-    Include(InstanceNode.Flags,TpvScene3D.TGroup.TInstance.TNode.TInstanceNodeFlag.InverseFrontFaces);
+    Include(InstanceNode.fFlags,TpvScene3D.TGroup.TInstance.TNode.TInstanceNodeFlag.InverseFrontFaces);
    end else begin
-    Exclude(InstanceNode.Flags,TpvScene3D.TGroup.TInstance.TNode.TInstanceNodeFlag.InverseFrontFaces);
+    Exclude(InstanceNode.fFlags,TpvScene3D.TGroup.TInstance.TNode.TInstanceNodeFlag.InverseFrontFaces);
    end;
    if {SkinUsed and} assigned(Node.fSkin) then begin
     fSkins[Node.fSkin.Index].Used:=true;
@@ -19690,8 +19692,8 @@ procedure TpvScene3D.TGroup.TInstance.Update(const aInFlightFrameIndex:TpvSizeIn
    if assigned(Node.fLight) then begin
     LightMatrix:=Matrix*fModelMatrix;
     InstanceLight:=fLights[Node.fLight.fIndex];
-    if assigned(InstanceNode.Light) then begin
-     Light:=InstanceNode.Light;
+    if assigned(InstanceNode.fLight) then begin
+     Light:=InstanceNode.fLight;
      if (Light.fMatrix<>LightMatrix) or
         (Light.fDataPointer<>InstanceLight.fEffectiveData) or
         (Light.fGeneration<>InstanceLight.fEffectiveData.fGeneration) then begin
@@ -19711,13 +19713,13 @@ procedure TpvScene3D.TGroup.TInstance.Update(const aInFlightFrameIndex:TpvSizeIn
       Light.fMatrix:=LightMatrix;
       Light.Update;
      finally
-      InstanceNode.Light:=Light;
+      InstanceNode.fLight:=Light;
      end;
     end;
    end;
   end;
-  if Dirty and (InstanceNode.CacheVerticesDirtyCounter<2) then begin
-   InstanceNode.CacheVerticesDirtyCounter:=2;
+  if Dirty and (InstanceNode.fCacheVerticesDirtyCounter<2) then begin
+   InstanceNode.fCacheVerticesDirtyCounter:=2;
   end;
   for Index:=0 to Node.Children.Count-1 do begin
    ProcessNode(Node.Children[Index].Index,Matrix,Dirty);
@@ -19734,7 +19736,7 @@ procedure TpvScene3D.TGroup.TInstance.Update(const aInFlightFrameIndex:TpvSizeIn
    if InstanceSkin^.Used and (Skin.fJoints.Count>0) then begin
     for Index:=0 to Skin.fJoints.Count-1 do begin
      Assert(fGroup.fNodes[Skin.fJoints.ItemArray[Index]].Index=Skin.fJoints.ItemArray[Index]);
-     fNodeMatrices[Skin.fJointMatrixOffset+Index]:=Skin.fInverseBindMatrices.ItemArray[Index]*fNodes[Skin.fJoints.ItemArray[Index]].WorkMatrix;
+     fNodeMatrices[Skin.fJointMatrixOffset+Index]:=Skin.fInverseBindMatrices.ItemArray[Index]*fNodes[Skin.fJoints.ItemArray[Index]].fWorkMatrix;
     end;
    end;
   end;
@@ -19748,13 +19750,13 @@ procedure TpvScene3D.TGroup.TInstance.Update(const aInFlightFrameIndex:TpvSizeIn
  begin
   InstanceNode:=fNodes.RawItems[aNodeIndex];
   Node:=fGroup.fNodes[aNodeIndex];
-  AABB:=@InstanceNode.BoundingBoxes[aInFlightFrameIndex];
-  Filled:=@InstanceNode.BoundingBoxFilled[aInFlightFrameIndex];
+  AABB:=@InstanceNode.fBoundingBoxes[aInFlightFrameIndex];
+  Filled:=@InstanceNode.fBoundingBoxFilled[aInFlightFrameIndex];
   for Index:=0 to Node.Children.Count-1 do begin
    ProcessBoundingBoxNodeRecursive(Node.Children[Index].Index);
    OtherInstanceNode:=fNodes.RawItems[Node.Children[Index].Index];
-   if OtherInstanceNode.BoundingBoxFilled[aInFlightFrameIndex] then begin
-    OtherAABB:=@OtherInstanceNode.BoundingBoxes[aInFlightFrameIndex];
+   if OtherInstanceNode.fBoundingBoxFilled[aInFlightFrameIndex] then begin
+    OtherAABB:=@OtherInstanceNode.fBoundingBoxes[aInFlightFrameIndex];
     if Filled^ then begin
      AABB^:=AABB^.Combine(OtherAABB^);
     end else begin
@@ -19805,16 +19807,16 @@ procedure TpvScene3D.TGroup.TInstance.Update(const aInFlightFrameIndex:TpvSizeIn
       end;  
       1:begin 
        InstanceNode:=fNodes.RawItems[StackItem.NodeIndex];
-       AABB:=@InstanceNode.BoundingBoxes[aInFlightFrameIndex];
-       Filled:=@InstanceNode.BoundingBoxFilled[aInFlightFrameIndex];
+       AABB:=@InstanceNode.fBoundingBoxes[aInFlightFrameIndex];
+       Filled:=@InstanceNode.fBoundingBoxFilled[aInFlightFrameIndex];
        for Index:=0 to Node.Children.Count-1 do begin
         OtherInstanceNode:=fNodes.RawItems[Node.Children[Index].Index];
-        if OtherInstanceNode.BoundingBoxFilled[aInFlightFrameIndex] then begin
+        if OtherInstanceNode.fBoundingBoxFilled[aInFlightFrameIndex] then begin
          if Filled^ then begin
-          AABB^:=AABB^.Combine(OtherInstanceNode.BoundingBoxes[aInFlightFrameIndex]);
+          AABB^:=AABB^.Combine(OtherInstanceNode.fBoundingBoxes[aInFlightFrameIndex]);
          end else begin
           Filled^:=true;
-          AABB^:=OtherInstanceNode.BoundingBoxes[aInFlightFrameIndex];
+          AABB^:=OtherInstanceNode.fBoundingBoxes[aInFlightFrameIndex];
          end;
         end;
        end;
@@ -19856,11 +19858,11 @@ procedure TpvScene3D.TGroup.TInstance.Update(const aInFlightFrameIndex:TpvSizeIn
    OK:=false;
    Skin:=aNode.fSkin;
    if assigned(Skin) then begin
-    InverseMatrix:=aInstanceNode.WorkMatrix.Inverse;
+    InverseMatrix:=aInstanceNode.fWorkMatrix.Inverse;
    end else begin
     InverseMatrix:=TpvMatrix4x4.Identity;
    end;
-   ModelNodeMatrixEx:=aInstanceNode.WorkMatrix*fModelMatrix;
+   ModelNodeMatrixEx:=aInstanceNode.fWorkMatrix*fModelMatrix;
    DynamicBoundingBox.Min:=TpvVector3.InlineableCreate(Infinity,Infinity,Infinity);
    DynamicBoundingBox.Max:=TpvVector3.InlineableCreate(-Infinity,-Infinity,-Infinity);
    for PrimitiveIndex:=0 to Mesh.fPrimitives.Count-1 do begin
@@ -19896,11 +19898,11 @@ procedure TpvScene3D.TGroup.TInstance.Update(const aInFlightFrameIndex:TpvSizeIn
     end;
    end;
    if OK then begin
-    aInstanceNode.BoundingBoxes[aInFlightFrameIndex]:=DynamicBoundingBox;
+    aInstanceNode.fBoundingBoxes[aInFlightFrameIndex]:=DynamicBoundingBox;
    end else begin
-    aInstanceNode.BoundingBoxes[aInFlightFrameIndex]:=Mesh.fBoundingBox.HomogenTransform(aInstanceNode.WorkMatrix*fModelMatrix);
+    aInstanceNode.fBoundingBoxes[aInFlightFrameIndex]:=Mesh.fBoundingBox.HomogenTransform(aInstanceNode.fWorkMatrix*fModelMatrix);
    end;
-   aInstanceNode.BoundingBoxFilled[aInFlightFrameIndex]:=true;
+   aInstanceNode.fBoundingBoxFilled[aInFlightFrameIndex]:=true;
   end;
  end;
  procedure ProcessSkinNode(const aNode:TpvScene3D.TGroup.TNode;const aInstanceNode:TpvScene3D.TGroup.TInstance.TNode);
@@ -19923,7 +19925,7 @@ procedure TpvScene3D.TGroup.TInstance.Update(const aInFlightFrameIndex:TpvSizeIn
 
    // Obtain the inverse of the node's world matrix, if it is needed.
    if assigned(Skin) then begin
-    InverseMatrix:=aInstanceNode.WorkMatrix.Inverse;
+    InverseMatrix:=aInstanceNode.fWorkMatrix.Inverse;
    end else begin
     InverseMatrix:=TpvMatrix4x4.Identity;
    end;
@@ -19943,10 +19945,10 @@ procedure TpvScene3D.TGroup.TInstance.Update(const aInFlightFrameIndex:TpvSizeIn
    end;
 
    // Transform the final bounding box using the node and model matrices and store it in the instance node.
-   aInstanceNode.BoundingBoxes[aInFlightFrameIndex]:=BoundingBox.HomogenTransform(aInstanceNode.WorkMatrix*fModelMatrix);
+   aInstanceNode.fBoundingBoxes[aInFlightFrameIndex]:=BoundingBox.HomogenTransform(aInstanceNode.fWorkMatrix*fModelMatrix);
 
    // Indicate that the bounding box has been calculated for the instance node.
-   aInstanceNode.BoundingBoxFilled[aInFlightFrameIndex]:=true;
+   aInstanceNode.fBoundingBoxFilled[aInFlightFrameIndex]:=true;
 
   end;
 
@@ -20074,7 +20076,7 @@ begin
 
  if assigned(fAppendageInstance) and assigned(fAppendageNode) then begin
   fModelMatrix:=(fAppendageTransform*
-                 fAppendageInstance.fNodes[fAppendageNode.fIndex].WorkMatrix)*
+                 fAppendageInstance.fNodes[fAppendageNode.fIndex].fWorkMatrix)*
                  fAppendageInstance.fModelMatrix;
   SetDirty;
  end;
@@ -20182,15 +20184,15 @@ begin
    if aInFlightFrameIndex>=0 then begin
     for Index:=0 to fNodes.Count-1 do begin
      InstanceNode:=fNodes.RawItems[Index];
-     if not InstanceNode.Processed then begin
-      if assigned(InstanceNode.Light) then begin
-       FreeAndNil(InstanceNode.Light);
+     if not InstanceNode.fProcessed then begin
+      if assigned(InstanceNode.fLight) then begin
+       FreeAndNil(InstanceNode.fLight);
       end;
-      if assigned(fAABBTree) and (InstanceNode.AABBTreeProxy>=0) then begin
+      if assigned(fAABBTree) and (InstanceNode.fAABBTreeProxy>=0) then begin
        try
-        fAABBTree.DestroyProxy(InstanceNode.AABBTreeProxy);
+        fAABBTree.DestroyProxy(InstanceNode.fAABBTreeProxy);
        finally
-        InstanceNode.AABBTreeProxy:=-1;
+        InstanceNode.fAABBTreeProxy:=-1;
        end;
       end;
      end;
@@ -20204,9 +20206,9 @@ begin
    for Index:=0 to fGroup.fNodes.Count-1 do begin
     Node:=fGroup.fNodes[Index];
     InstanceNode:=fNodes.RawItems[Index];
-    fNodeMatrices[Node.Index+1]:=InstanceNode.WorkMatrix;
-    if length(InstanceNode.WorkWeights)>0 then begin
-     Move(InstanceNode.WorkWeights[0],fMorphTargetVertexWeights[Node.fWeightsOffset],length(InstanceNode.WorkWeights)*SizeOf(TpvFloat));
+    fNodeMatrices[Node.Index+1]:=InstanceNode.fWorkMatrix;
+    if length(InstanceNode.fWorkWeights)>0 then begin
+     Move(InstanceNode.fWorkWeights[0],fMorphTargetVertexWeights[Node.fWeightsOffset],length(InstanceNode.fWorkWeights)*SizeOf(TpvFloat));
     end;
    end;
 
@@ -20214,8 +20216,8 @@ begin
 
     for Index:=0 to fGroup.fNodes.Count-1 do begin
      InstanceNode:=fNodes.RawItems[Node.Index];
-     InstanceNode.BoundingBoxes[aInFlightFrameIndex]:=TpvAABB.Create(TpvVector3.Origin,TpvVector3.Origin);
-     InstanceNode.BoundingBoxFilled[aInFlightFrameIndex]:=false;
+     InstanceNode.fBoundingBoxes[aInFlightFrameIndex]:=TpvAABB.Create(TpvVector3.Origin,TpvVector3.Origin);
+     InstanceNode.fBoundingBoxFilled[aInFlightFrameIndex]:=false;
     end;
 
     for Index:=0 to Scene.fAllNodes.Count-1 do begin
@@ -20229,12 +20231,12 @@ begin
       if assigned(Node.fSkin) then begin
        ProcessSkinNode(Node,InstanceNode);
       end else begin
-       InstanceNode.BoundingBoxes[aInFlightFrameIndex]:=Node.fMesh.fBoundingBox.HomogenTransform(InstanceNode.WorkMatrix*fModelMatrix);
-       InstanceNode.BoundingBoxFilled[aInFlightFrameIndex]:=true;
+       InstanceNode.fBoundingBoxes[aInFlightFrameIndex]:=Node.fMesh.fBoundingBox.HomogenTransform(InstanceNode.fWorkMatrix*fModelMatrix);
+       InstanceNode.fBoundingBoxFilled[aInFlightFrameIndex]:=true;
       end;
      end else begin
-      InstanceNode.BoundingBoxes[aInFlightFrameIndex]:=TpvAABB.Create(TpvVector3.Origin,TpvVector3.Origin);
-      InstanceNode.BoundingBoxFilled[aInFlightFrameIndex]:=false;
+      InstanceNode.fBoundingBoxes[aInFlightFrameIndex]:=TpvAABB.Create(TpvVector3.Origin,TpvVector3.Origin);
+      InstanceNode.fBoundingBoxFilled[aInFlightFrameIndex]:=false;
      end;
     end;
 
@@ -20247,15 +20249,15 @@ begin
     for Index:=0 to Scene.fAllNodes.Count-1 do begin
      Node:=Scene.fAllNodes[Index];
      InstanceNode:=fNodes.RawItems[Node.Index];
-     if InstanceNode.BoundingBoxFilled[aInFlightFrameIndex] then begin
+     if InstanceNode.fBoundingBoxFilled[aInFlightFrameIndex] then begin
       if assigned(fGroup.fSceneInstance.fPotentiallyVisibleSet) and
-         ((InstanceNode.PotentiallyVisibleSetNodeIndices[aInFlightFrameIndex]=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex) or
-          ((InstanceNode.PotentiallyVisibleSetNodeIndices[aInFlightFrameIndex]<>TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex) and not
-           fSceneInstance.fPotentiallyVisibleSet.fNodes[InstanceNode.PotentiallyVisibleSetNodeIndices[aInFlightFrameIndex]].fAABB.Contains(InstanceNode.BoundingBoxes[aInFlightFrameIndex]))) then begin
-       InstanceNode.PotentiallyVisibleSetNodeIndices[aInFlightFrameIndex]:=fGroup.fSceneInstance.fPotentiallyVisibleSet.GetNodeIndexByAABB(InstanceNode.BoundingBoxes[aInFlightFrameIndex]);
+         ((InstanceNode.fPotentiallyVisibleSetNodeIndices[aInFlightFrameIndex]=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex) or
+          ((InstanceNode.fPotentiallyVisibleSetNodeIndices[aInFlightFrameIndex]<>TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex) and not
+           fSceneInstance.fPotentiallyVisibleSet.fNodes[InstanceNode.fPotentiallyVisibleSetNodeIndices[aInFlightFrameIndex]].fAABB.Contains(InstanceNode.fBoundingBoxes[aInFlightFrameIndex]))) then begin
+       InstanceNode.fPotentiallyVisibleSetNodeIndices[aInFlightFrameIndex]:=fGroup.fSceneInstance.fPotentiallyVisibleSet.GetNodeIndexByAABB(InstanceNode.fBoundingBoxes[aInFlightFrameIndex]);
       end;
      end else begin
-      InstanceNode.PotentiallyVisibleSetNodeIndices[aInFlightFrameIndex]:=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex;
+      InstanceNode.fPotentiallyVisibleSetNodeIndices[aInFlightFrameIndex]:=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex;
      end;
     end;
 
@@ -20263,15 +20265,15 @@ begin
      for Index:=0 to Scene.fAllNodes.Count-1 do begin
       Node:=Scene.fAllNodes[Index];
       InstanceNode:=fNodes.RawItems[Node.Index];
-      if InstanceNode.BoundingBoxFilled[aInFlightFrameIndex] and assigned(Node.Mesh) then begin
-       if InstanceNode.AABBTreeProxy<0 then begin
-        InstanceNode.AABBTreeProxy:=fAABBTree.CreateProxy(InstanceNode.BoundingBoxes[aInFlightFrameIndex],TpvPtrInt(Node.fIndex)+1);
+      if InstanceNode.fBoundingBoxFilled[aInFlightFrameIndex] and assigned(Node.Mesh) then begin
+       if InstanceNode.fAABBTreeProxy<0 then begin
+        InstanceNode.fAABBTreeProxy:=fAABBTree.CreateProxy(InstanceNode.fBoundingBoxes[aInFlightFrameIndex],TpvPtrInt(Node.fIndex)+1);
        end else begin
-        fAABBTree.MoveProxy(InstanceNode.AABBTreeProxy,InstanceNode.BoundingBoxes[aInFlightFrameIndex],TpvVector3.Null,TpvVector3.AllAxis);
+        fAABBTree.MoveProxy(InstanceNode.fAABBTreeProxy,InstanceNode.fBoundingBoxes[aInFlightFrameIndex],TpvVector3.Null,TpvVector3.AllAxis);
        end;
-      end else if InstanceNode.AABBTreeProxy>=0 then begin
-       fAABBTree.DestroyProxy(InstanceNode.AABBTreeProxy);
-       InstanceNode.AABBTreeProxy:=-1;
+      end else if InstanceNode.fAABBTreeProxy>=0 then begin
+       fAABBTree.DestroyProxy(InstanceNode.fAABBTreeProxy);
+       InstanceNode.fAABBTreeProxy:=-1;
       end;
      end;
     end;
@@ -20287,8 +20289,8 @@ begin
   if assigned(Scene) and (aInFlightFrameIndex>=-1) then begin
    for Index:=0 to Scene.fNodes.Count-1 do begin
     InstanceNode:=fNodes.RawItems[Scene.fNodes[Index].fIndex];
-    if InstanceNode.BoundingBoxFilled[aInFlightFrameIndex] then begin
-     fBoundingBox.DirectCombine(InstanceNode.BoundingBoxes[aInFlightFrameIndex]);
+    if InstanceNode.fBoundingBoxFilled[aInFlightFrameIndex] then begin
+     fBoundingBox.DirectCombine(InstanceNode.fBoundingBoxes[aInFlightFrameIndex]);
     end;
    end;
   end;
@@ -20397,14 +20399,14 @@ begin
 
   for Index:=0 to fNodes.Count-1 do begin
    InstanceNode:=fNodes.RawItems[Index];
-   if assigned(InstanceNode.Light) then begin
-    FreeAndNil(InstanceNode.Light);
+   if assigned(InstanceNode.fLight) then begin
+    FreeAndNil(InstanceNode.fLight);
    end;
-   if assigned(fAABBTree) and (InstanceNode.AABBTreeProxy>=0) then begin
+   if assigned(fAABBTree) and (InstanceNode.fAABBTreeProxy>=0) then begin
     try
-     fAABBTree.DestroyProxy(InstanceNode.AABBTreeProxy);
+     fAABBTree.DestroyProxy(InstanceNode.fAABBTreeProxy);
     finally
-     InstanceNode.AABBTreeProxy:=-1;
+     InstanceNode.fAABBTreeProxy:=-1;
     end;
    end;
   end;
@@ -20610,11 +20612,11 @@ begin
   if assigned(Mesh) then begin
    Skin:=aNode.fSkin;
    if assigned(Skin) then begin
-    InverseMatrix:=aInstanceNode.WorkMatrix.Inverse;
+    InverseMatrix:=aInstanceNode.fWorkMatrix.Inverse;
    end else begin
     InverseMatrix:=TpvMatrix4x4.Identity;
    end;
-   ModelNodeMatrixEx:=aInstanceNode.WorkMatrix;
+   ModelNodeMatrixEx:=aInstanceNode.fWorkMatrix;
    if not aRelative then begin
     ModelNodeMatrixEx:=ModelNodeMatrixEx*fModelMatrix;
    end;
@@ -20798,9 +20800,9 @@ begin
        (NodeIndex=aRootNodeIndex)) or
       (aWithDynamicMeshs or
        ((not aWithDynamicMeshs) and
-        ((GroupInstanceNode.CountOverwrites=0) or
-         ((GroupInstanceNode.CountOverwrites=1) and
-          ((GroupInstanceNode.Overwrites[0].Flags=[TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.Defaults])))))) then begin
+        ((GroupInstanceNode.fCountOverwrites=0) or
+         ((GroupInstanceNode.fCountOverwrites=1) and
+          ((GroupInstanceNode.fOverwrites[0].Flags=[TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.Defaults])))))) then begin
     for Index:=GroupNode.fChildren.Count-1 downto 0 do begin
      NodeStack.Push(GroupNode.fChildren[Index].fIndex);
     end;
@@ -20809,9 +20811,9 @@ begin
          ((not aWithDynamicMeshs) and
           ((not assigned(GroupNode.Skin)) and
            (GroupNode.fWeights.Count=0) and
-           ((GroupInstanceNode.CountOverwrites=0) or
-            ((GroupInstanceNode.CountOverwrites=1) and
-             ((GroupInstanceNode.Overwrites[0].Flags=[TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.Defaults]))))))) and
+           ((GroupInstanceNode.fCountOverwrites=0) or
+            ((GroupInstanceNode.fCountOverwrites=1) and
+             ((GroupInstanceNode.fOverwrites[0].Flags=[TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.Defaults]))))))) and
          ((not assigned(aNodeFilter)) or aNodeFilter(-1,nil,-1,fGroup,self,GroupNode,GroupInstanceNode)) then begin
      GetBakedMeshProcessMorphSkinNode(result,
                                       GroupNode,
@@ -20842,8 +20844,8 @@ var NodeMatrix:TpvMatrix4x4;
 begin
  result:=((aNodeIndex>=0) and (aNodeIndex<fGroup.fNodes.Count)) and assigned(fGroup.fNodes[aNodeIndex].Camera);
  if result then begin
-  Camera:=fCameras[fGroup.fNodes[aNodeIndex].Camera.Index];
-  NodeMatrix:=fNodes[aNodeIndex].WorkMatrix;
+  Camera:=fCameras[fGroup.fNodes.RawItems[aNodeIndex].Camera.Index];
+  NodeMatrix:=fNodes.RawItems[aNodeIndex].fWorkMatrix;
   aCameraMatrix:=NodeMatrix;
   aViewMatrix:=NodeMatrix.Inverse;
   case Camera.EffectiveData^.Type_ of
@@ -21162,7 +21164,7 @@ begin
 
          end else if (AABBTreeSkipListItem^.UserData>=1) and (AABBTreeSkipListItem^.UserData<=TpvUInt32($7fffffff)) then begin
 
-          PotentiallyVisibleSetNodeIndex:=fNodes[AABBTreeSkipListItem^.UserData-1].PotentiallyVisibleSetNodeIndices[aInFlightFrameIndex];
+          PotentiallyVisibleSetNodeIndex:=fNodes.RawItems[AABBTreeSkipListItem^.UserData-1].fPotentiallyVisibleSetNodeIndices[aInFlightFrameIndex];
           if PotentiallyVisibleSetNodeIndex<>TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex then begin
            PotentiallyVisible:=false;
            for ViewIndex:=aViewBaseIndex to (aViewBaseIndex+aCountViews)-1 do begin
@@ -21184,14 +21186,14 @@ begin
           InstanceNode:=fNodes.RawItems[AABBTreeSkipListItem^.UserData-1];
           if length(aFrustums)=1 then begin
            if AABBTreeSkipListItem^.Level<=High(Masks) then begin
-            PotentiallyVisible:=(Masks[AABBTreeSkipListItem^.Level-1]=$40000000) or not ((((Masks[AABBTreeSkipListItem^.Level] and $80000000)<>0) and (aFrustums[0].AABBInFrustum(InstanceNode.BoundingBoxes[aInFlightFrameIndex],Masks[AABBTreeSkipListItem^.Level])=TpvFrustum.COMPLETE_OUT)));
+            PotentiallyVisible:=(Masks[AABBTreeSkipListItem^.Level-1]=$40000000) or not ((((Masks[AABBTreeSkipListItem^.Level] and $80000000)<>0) and (aFrustums[0].AABBInFrustum(InstanceNode.fBoundingBoxes[aInFlightFrameIndex],Masks[AABBTreeSkipListItem^.Level])=TpvFrustum.COMPLETE_OUT)));
            end else begin
-            PotentiallyVisible:=aFrustums[0].AABBInFrustum(InstanceNode.BoundingBoxes[aInFlightFrameIndex])<>TpvFrustum.COMPLETE_OUT;
+            PotentiallyVisible:=aFrustums[0].AABBInFrustum(InstanceNode.fBoundingBoxes[aInFlightFrameIndex])<>TpvFrustum.COMPLETE_OUT;
            end;
           end else begin
            PotentiallyVisible:=false;
            for FrustumIndex:=0 to length(aFrustums)-1 do begin
-            if aFrustums[FrustumIndex].AABBInFrustum(InstanceNode.BoundingBoxes[aInFlightFrameIndex])<>TpvFrustum.COMPLETE_OUT then begin
+            if aFrustums[FrustumIndex].AABBInFrustum(InstanceNode.fBoundingBoxes[aInFlightFrameIndex])<>TpvFrustum.COMPLETE_OUT then begin
              PotentiallyVisible:=true;
              break;
             end;
@@ -21294,7 +21296,7 @@ begin
       end;
 
       if aPotentiallyVisibleSetCulling then begin
-       PotentiallyVisibleSetNodeIndex:=InstanceNode.PotentiallyVisibleSetNodeIndices[aInFlightFrameIndex];
+       PotentiallyVisibleSetNodeIndex:=InstanceNode.fPotentiallyVisibleSetNodeIndices[aInFlightFrameIndex];
        if PotentiallyVisibleSetNodeIndex<>TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex then begin
         PotentiallyVisible:=false;
         for ViewIndex:=aViewBaseIndex to (aViewBaseIndex+aCountViews)-1 do begin
@@ -21309,18 +21311,18 @@ begin
       end;
 
       if PotentiallyVisible then begin
-       if InstanceNode.BoundingBoxFilled[aInFlightFrameIndex] then begin
+       if InstanceNode.fBoundingBoxFilled[aInFlightFrameIndex] then begin
         if length(aFrustums)>0 then begin
          if length(aFrustums)=1 then begin
           if SkipListItem^.Level<=High(Masks) then begin
-           PotentiallyVisible:=(Masks[SkipListItem^.Level-1]=$40000000) or not ((((Masks[SkipListItem^.Level] and $80000000)<>0) and (aFrustums[0].AABBInFrustum(InstanceNode.BoundingBoxes[aInFlightFrameIndex],Masks[SkipListItem^.Level])=TpvFrustum.COMPLETE_OUT)));
+           PotentiallyVisible:=(Masks[SkipListItem^.Level-1]=$40000000) or not ((((Masks[SkipListItem^.Level] and $80000000)<>0) and (aFrustums[0].AABBInFrustum(InstanceNode.fBoundingBoxes[aInFlightFrameIndex],Masks[SkipListItem^.Level])=TpvFrustum.COMPLETE_OUT)));
           end else begin
-           PotentiallyVisible:=aFrustums[0].AABBInFrustum(InstanceNode.BoundingBoxes[aInFlightFrameIndex])<>TpvFrustum.COMPLETE_OUT;
+           PotentiallyVisible:=aFrustums[0].AABBInFrustum(InstanceNode.fBoundingBoxes[aInFlightFrameIndex])<>TpvFrustum.COMPLETE_OUT;
           end;
          end else begin
           PotentiallyVisible:=false;
           for FrustumIndex:=0 to length(aFrustums)-1 do begin
-           if aFrustums[FrustumIndex].AABBInFrustum(InstanceNode.BoundingBoxes[aInFlightFrameIndex])<>TpvFrustum.COMPLETE_OUT then begin
+           if aFrustums[FrustumIndex].AABBInFrustum(InstanceNode.fBoundingBoxes[aInFlightFrameIndex])<>TpvFrustum.COMPLETE_OUT then begin
             PotentiallyVisible:=true;
             break;
            end;
@@ -21410,27 +21412,27 @@ begin
 
     InstanceNode:=fNodes.RawItems[NodeIndex];
 
-    if InstanceNode.CacheVerticesDirtyCounter>0 then begin
+    if InstanceNode.fCacheVerticesDirtyCounter>0 then begin
 
-     dec(InstanceNode.CacheVerticesDirtyCounter);
+     dec(InstanceNode.fCacheVerticesDirtyCounter);
 
-     inc(InstanceNode.CacheVerticesGeneration);
+     inc(InstanceNode.fCacheVerticesGeneration);
 
-     if InstanceNode.CacheVerticesGeneration=0 then begin
+     if InstanceNode.fCacheVerticesGeneration=0 then begin
 
       // Handle generation value overflow
-      InstanceNode.CacheVerticesGeneration:=1;
+      InstanceNode.fCacheVerticesGeneration:=1;
 
       for InFlightFrameIndex:=0 to fSceneInstance.fCountInFlightFrames-1 do begin
-       InstanceNode.CacheVerticesGenerations[aInFlightFrameIndex]:=0;
+       InstanceNode.fCacheVerticesGenerations[aInFlightFrameIndex]:=0;
       end;
 
      end;
 
     end;
 
-    if InstanceNode.CacheVerticesGenerations[aInFlightFrameIndex]<>InstanceNode.CacheVerticesGeneration then begin
-     InstanceNode.CacheVerticesGenerations[aInFlightFrameIndex]:=InstanceNode.CacheVerticesGeneration;
+    if InstanceNode.fCacheVerticesGenerations[aInFlightFrameIndex]<>InstanceNode.fCacheVerticesGeneration then begin
+     InstanceNode.fCacheVerticesGenerations[aInFlightFrameIndex]:=InstanceNode.fCacheVerticesGeneration;
      fCacheVerticesNodeDirtyBitmap[NodeIndex shr 5]:=fCacheVerticesNodeDirtyBitmap[NodeIndex shr 5] or (TpvUInt32(1) shl (NodeIndex and 31));
     end;
 
