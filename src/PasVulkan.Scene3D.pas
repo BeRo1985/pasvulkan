@@ -2126,6 +2126,9 @@ type EpvScene3D=class(Exception);
                             property Complete:LongBool read fComplete write fComplete;
                           end;
                           TAnimations=array of TpvScene3D.TGroup.TInstance.TAnimation;
+
+                          { TNode }
+
                           TNode=class
                            public
                             type TNodeOverwriteFlag=
@@ -2161,6 +2164,9 @@ type EpvScene3D=class(Exception);
                                  PInstanceNodeFlag=^TInstanceNodeFlag;
                                  TInstanceNodeFlags=set of TInstanceNodeFlag;
                            private
+                            fGroup:TpvScene3D.TGroup;
+                            fGroupNode:TpvScene3D.TGroup.TNode;
+                            fGroupInstance:TpvScene3D.TGroup.TInstance;
                             fProcessed:LongBool;
                             fFlags:TInstanceNodeFlags;
                             fOverwrites:TNodeOverwrites;
@@ -2182,8 +2188,14 @@ type EpvScene3D=class(Exception);
                             fCullObjectID:TpvUInt32;
                             fRaytracingGroupInstanceNodeID:TpvUInt64;
                             fRaytracingMask:TpvUInt8;
+                            fInFlightFrameRaytracingMasks:array[0..MaxInFlightFrames-1] of TpvUInt32;
                            public
+                            constructor Create(const aGroup:TpvScene3D.TGroup;
+                                               const aGroupNode:TpvScene3D.TGroup.TNode;
+                                               const aGroupInstance:TpvScene3D.TGroup.TInstance); reintroduce;
+                            destructor Destroy; override;
                             function InverseFrontFaces:boolean; inline;
+                            procedure Update(const aInFlightFrameIndex:TpvSizeInt);
                            published
                             property RaytracingMask:TpvUInt8 read fRaytracingMask write fRaytracingMask;
                           end;
@@ -15934,9 +15946,32 @@ end;
 
 { TpvScene3D.TGroup.TInstance.TNode }
 
+constructor TpvScene3D.TGroup.TInstance.TNode.Create(const aGroup:TpvScene3D.TGroup;
+                                                     const aGroupNode:TpvScene3D.TGroup.TNode;
+                                                     const aGroupInstance:TpvScene3D.TGroup.TInstance);
+begin
+ inherited Create;
+ fGroup:=aGroup;
+ fGroupNode:=aGroupNode;
+ fGroupInstance:=aGroupInstance;
+end;
+
+destructor TpvScene3D.TGroup.TInstance.TNode.Destroy;
+begin
+ inherited Destroy;
+end;
+
 function TpvScene3D.TGroup.TInstance.TNode.InverseFrontFaces:boolean;
 begin
  result:=TpvScene3D.TGroup.TInstance.TNode.TInstanceNodeFlag.InverseFrontFaces in fFlags;
+end;
+
+procedure TpvScene3D.TGroup.TInstance.TNode.Update(const aInFlightFrameIndex:TpvSizeInt);
+begin
+ fInFlightFrameRaytracingMasks[aInFlightFrameIndex]:=fGroup.fRaytracingMask and
+                                                     fGroupNode.fRaytracingMask and
+                                                     fGroupInstance.fRaytracingMask and
+                                                     fRaytracingMask;
 end;
 
 { TpvScene3D.TGroup.TInstance.TLight }
@@ -16933,7 +16968,7 @@ begin
 
  fNodes:=TpvScene3D.TGroup.TInstance.TNodes.Create(true);
  for Index:=0 to fGroup.fNodes.Count-1 do begin
-  fNodes.Add(TpvScene3D.TGroup.TInstance.TNode.Create);
+  fNodes.Add(TpvScene3D.TGroup.TInstance.TNode.Create(fGroup,fGroup.fNodes.RawItems[Index],self));
  end;
 
  SetLength(fSkins,fGroup.fSkins.Count);
