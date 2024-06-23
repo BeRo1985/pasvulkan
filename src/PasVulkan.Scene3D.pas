@@ -2197,6 +2197,9 @@ type EpvScene3D=class(Exception);
                             function InverseFrontFaces:boolean; inline;
                             procedure Update(const aInFlightFrameIndex:TpvSizeInt);
                            published
+                            property Group:TpvScene3D.TGroup read fGroup;
+                            property GroupNode:TpvScene3D.TGroup.TNode read fGroupNode;
+                            property GroupInstance:TpvScene3D.TGroup.TInstance read fGroupInstance;
                             property RaytracingMask:TpvUInt8 read fRaytracingMask write fRaytracingMask;
                           end;
                           TInstanceNode=TpvScene3D.TGroup.TInstance.TNode;
