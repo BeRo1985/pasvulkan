@@ -2201,6 +2201,8 @@ type EpvScene3D=class(Exception);
                             property GroupNode:TpvScene3D.TGroup.TNode read fGroupNode;
                             property GroupInstance:TpvScene3D.TGroup.TInstance read fGroupInstance;
                             property RaytracingMask:TpvUInt8 read fRaytracingMask write fRaytracingMask;
+                           public
+                            property WorkMatrix:TpvMatrix4x4 read fWorkMatrix;
                           end;
                           TInstanceNode=TpvScene3D.TGroup.TInstance.TNode;
                           //PNode=^TInstanceNode;
