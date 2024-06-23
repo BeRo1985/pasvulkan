@@ -5513,10 +5513,7 @@ begin
   AllocationGroupID:=pvAllocationGroupIDScene3DRaytracingBLASStatic;
  end;
 
- RaytracingMask:=fNode.fRaytracingMask and
-                 fInstanceNode.fRaytracingMask and
-                 fGroup.fRaytracingMask and
-                 fInstance.fRaytracingMask;
+ RaytracingMask:=fInstanceNode.fInFlightFrameRaytracingMasks[aInFlightFrameIndex];
 
  for BLASGroupVariant:=Low(TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroupVariant) to High(TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroupVariant) do begin
 
@@ -20412,6 +20409,12 @@ begin
     fGroup.fSceneInstance.fAABBTree.MoveProxy(fAABBTreeProxy,TpvAABB.Create(-TpvVector3.AllMaxAxis,TpvVector3.AllMaxAxis),TpvVector3.Null,TpvVector3.AllAxis);
    end else begin
     fGroup.fSceneInstance.fAABBTree.MoveProxy(fAABBTreeProxy,fBoundingBox,TpvVector3.Null,TpvVector3.AllAxis);
+   end;
+  end;
+
+  if aInFlightFrameIndex>=0 then begin
+   for Index:=0 to fNodes.Count-1 do begin
+    fNodes.RawItems[Index].Update(aInFlightFrameIndex);
    end;
   end;
 
