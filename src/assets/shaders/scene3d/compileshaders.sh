@@ -5,6 +5,18 @@
 ###################################################################################################################
 
 #############################################
+#            Configuration code            #
+#############################################
+
+# No ZIP, since SPK has been introduced and has better compression due to no sliding window dictionary but instead full window dictionary,
+# where repeated data is stored only once and referenced by pointers in a better way than inflate/deflate's sliding window dictionary
+USEZIP=0 
+
+# No bin2c, since raw resources are now used (Windows resource files, even for Linux and other *nix platforms with the help of
+# FPC'S RTL-side Windows resource file support and API emulation)   
+USEBIN2C=0 
+
+#############################################
 #            Initialization code            #
 #############################################
 
@@ -1125,8 +1137,6 @@ echo "Packing . . ."
 rm -f scene3dshaders.zip
 rm -f scene3dshaders.spk
 
-USEZIP=0
-
 cd ../../../
 
 # Build the packscene3dshaders tool if it does not exist
@@ -1213,122 +1223,132 @@ if [ $USEZIP -eq 1 ]; then
 
 fi
 
-# Compile bin2c
-clang ./bin2c.c -o "${tempPath}/bin2c"
+if [ $USEBIN2C -eq 1 ]; then
 
-if [ $USEZIP -eq 1 ]; then
+  # Compile bin2c
+  clang ./bin2c.c -o "${tempPath}/bin2c"
 
-  # ZIP code path
+  if [ $USEZIP -eq 1 ]; then
 
-  # Convert the zip archive to a C header file
-  "$tempPath/bin2c" scene3dshaders.zip pasvulkan_scene3dshaders_zip "${tempPath}/scene3dshaders_zip.c"
+    # ZIP code path
 
-  # Compile the C header file for all platforms in parallel
+    # Convert the zip archive to a C header file
+    "$tempPath/bin2c" scene3dshaders.zip pasvulkan_scene3dshaders_zip "${tempPath}/scene3dshaders_zip.c"
 
-  # Compile for x86-32 Linux
-  clang -c -target i386-linux -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 "${tempPath}/scene3dshaders_zip.c" -o scene3dshaders_zip_x86_32_linux.o &
-  throttleWait
+    # Compile the C header file for all platforms in parallel
 
-  # Compile for x86-64 Linux
-  clang -c -target x86_64-linux -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 "${tempPath}/scene3dshaders_zip.c" -o scene3dshaders_zip_x86_64_linux.o & 
-  throttleWait
+    # Compile for x86-32 Linux
+    clang -c -target i386-linux -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 "${tempPath}/scene3dshaders_zip.c" -o scene3dshaders_zip_x86_32_linux.o &
+    throttleWait
 
-  # Compile for x86-32 Windows
-  clang -c -target i386-windows -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 "${tempPath}/scene3dshaders_zip.c" -o scene3dshaders_zip_x86_32_windows.o &
-  throttleWait
+    # Compile for x86-64 Linux
+    clang -c -target x86_64-linux -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 "${tempPath}/scene3dshaders_zip.c" -o scene3dshaders_zip_x86_64_linux.o & 
+    throttleWait
 
-  # Compile for x86-64 Windows
-  clang -c -target x86_64-windows -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 "${tempPath}/scene3dshaders_zip.c" -o scene3dshaders_zip_x86_64_windows.o &
-  throttleWait
+    # Compile for x86-32 Windows
+    clang -c -target i386-windows -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 "${tempPath}/scene3dshaders_zip.c" -o scene3dshaders_zip_x86_32_windows.o &
+    throttleWait
 
-  # Compile for AArch64 Windows
-  clang -c -target aarch64-windows -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 "${tempPath}/scene3dshaders_zip.c" -o scene3dshaders_zip_aarch64_windows.o &
-  throttleWait
+    # Compile for x86-64 Windows
+    clang -c -target x86_64-windows -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 "${tempPath}/scene3dshaders_zip.c" -o scene3dshaders_zip_x86_64_windows.o &
+    throttleWait
 
-  # Compile for ARM32 Linux
-  clang -c -target armv7-linux -mfloat-abi=hard -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 "${tempPath}/scene3dshaders_zip.c" -o scene3dshaders_zip_arm32_linux.o &
-  throttleWait
+    # Compile for AArch64 Windows
+    clang -c -target aarch64-windows -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 "${tempPath}/scene3dshaders_zip.c" -o scene3dshaders_zip_aarch64_windows.o &
+    throttleWait
 
-  # Compile for AArch64 Linux
-  clang -c -target aarch64-linux -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 "${tempPath}/scene3dshaders_zip.c" -o scene3dshaders_zip_aarch64_linux.o &
-  throttleWait
+    # Compile for ARM32 Linux
+    clang -c -target armv7-linux -mfloat-abi=hard -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 "${tempPath}/scene3dshaders_zip.c" -o scene3dshaders_zip_arm32_linux.o &
+    throttleWait
 
-  # Compile for x86-32 Android
-  clang -c -target i386-linux-android -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 "${tempPath}/scene3dshaders_zip.c" -o scene3dshaders_zip_x86_32_android.o &
-  throttleWait
+    # Compile for AArch64 Linux
+    clang -c -target aarch64-linux -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 "${tempPath}/scene3dshaders_zip.c" -o scene3dshaders_zip_aarch64_linux.o &
+    throttleWait
 
-  # Compile for x86-64 Android
-  clang -c -target x86_64-linux-android -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 "${tempPath}/scene3dshaders_zip.c" -o scene3dshaders_zip_x86_64_android.o &
-  throttleWait
+    # Compile for x86-32 Android
+    clang -c -target i386-linux-android -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 "${tempPath}/scene3dshaders_zip.c" -o scene3dshaders_zip_x86_32_android.o &
+    throttleWait
 
-  # Compile for ARM32 Android
-  clang -c -target armv7-linux-android -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 "${tempPath}/scene3dshaders_zip.c" -o scene3dshaders_zip_arm32_android.o &
-  throttleWait
+    # Compile for x86-64 Android
+    clang -c -target x86_64-linux-android -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 "${tempPath}/scene3dshaders_zip.c" -o scene3dshaders_zip_x86_64_android.o &
+    throttleWait
 
-  # Compile for AArch64 Android
-  clang -c -target aarch64-linux-android -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 "${tempPath}/scene3dshaders_zip.c" -o scene3dshaders_zip_aarch64_android.o &
-  throttleWait
+    # Compile for ARM32 Android
+    clang -c -target armv7-linux-android -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 "${tempPath}/scene3dshaders_zip.c" -o scene3dshaders_zip_arm32_android.o &
+    throttleWait
+
+    # Compile for AArch64 Android
+    clang -c -target aarch64-linux-android -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 "${tempPath}/scene3dshaders_zip.c" -o scene3dshaders_zip_aarch64_android.o &
+    throttleWait
+
+  else
+
+    # SPK code path
+
+    # Convert the spk archive to a C header file
+    "$tempPath/bin2c" scene3dshaders.spk pasvulkan_scene3dshaders_spk "${tempPath}/scene3dshaders_spk.c"
+
+    # Compile the C header file for all platforms in parallel
+
+    # Compile for x86-32 Linux
+    clang -c -target i386-linux -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 "${tempPath}/scene3dshaders_spk.c" -o scene3dshaders_spk_x86_32_linux.o &
+    throttleWait
+
+    # Compile for x86-64 Linux
+    clang -c -target x86_64-linux -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 "${tempPath}/scene3dshaders_spk.c" -o scene3dshaders_spk_x86_64_linux.o & 
+    throttleWait
+
+    # Compile for x86-32 Windows
+    clang -c -target i386-windows -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 "${tempPath}/scene3dshaders_spk.c" -o scene3dshaders_spk_x86_32_windows.o &
+    throttleWait
+
+    # Compile for x86-64 Windows
+    clang -c -target x86_64-windows -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 "${tempPath}/scene3dshaders_spk.c" -o scene3dshaders_spk_x86_64_windows.o &
+    throttleWait
+
+    # Compile for AArch64 Windows
+    clang -c -target aarch64-windows -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 "${tempPath}/scene3dshaders_spk.c" -o scene3dshaders_spk_aarch64_windows.o &
+    throttleWait
+
+    # Compile for ARM32 Linux
+    clang -c -target armv7-linux -mfloat-abi=hard -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 "${tempPath}/scene3dshaders_spk.c" -o scene3dshaders_spk_arm32_linux.o &
+    throttleWait
+
+    # Compile for AArch64 Linux
+    clang -c -target aarch64-linux -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 "${tempPath}/scene3dshaders_spk.c" -o scene3dshaders_spk_aarch64_linux.o &
+    throttleWait
+
+    # Compile for x86-32 Android
+    clang -c -target i386-linux-android -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 "${tempPath}/scene3dshaders_spk.c" -o scene3dshaders_spk_x86_32_android.o &
+    throttleWait
+
+    # Compile for x86-64 Android
+    clang -c -target x86_64-linux-android -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 "${tempPath}/scene3dshaders_spk.c" -o scene3dshaders_spk_x86_64_android.o &
+    throttleWait
+
+    # Compile for ARM32 Android
+    clang -c -target armv7-linux-android -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 "${tempPath}/scene3dshaders_spk.c" -o scene3dshaders_spk_arm32_android.o &
+    throttleWait
+
+    # Compile for AArch64 Android
+    clang -c -target aarch64-linux-android -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 "${tempPath}/scene3dshaders_spk.c" -o scene3dshaders_spk_aarch64_android.o &
+    throttleWait
+    
+  fi  
+
+  # Wait for all compilation jobs to finish
+  wait
 
 else
 
-  # SPK code path
+  # If the bin2c tool is not used, just compile the scene3dshaders.spk as windows resource file with scene3dshaders.rc as the resource script.
+  # This is the default case now, for all the platforms, not only for Windows. Since Free Pascal does support the resource files on all
+  # unix-like platforms as well, it is better to use this method for all platforms for to reduce the disk space usage of unnecessary .o files.
 
-  # Convert the spk archive to a C header file
-  "$tempPath/bin2c" scene3dshaders.spk pasvulkan_scene3dshaders_spk "${tempPath}/scene3dshaders_spk.c"
+  # Compiling .res file
+  windres -J rc -O res scene3dshaders.rc scene3dshaders.res
 
-  # Compile the C header file for all platforms in parallel
-
-  # Compile for x86-32 Linux
-  clang -c -target i386-linux -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 "${tempPath}/scene3dshaders_spk.c" -o scene3dshaders_spk_x86_32_linux.o &
-  throttleWait
-
-  # Compile for x86-64 Linux
-  clang -c -target x86_64-linux -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 "${tempPath}/scene3dshaders_spk.c" -o scene3dshaders_spk_x86_64_linux.o & 
-  throttleWait
-
-  # Compile for x86-32 Windows
-  clang -c -target i386-windows -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 "${tempPath}/scene3dshaders_spk.c" -o scene3dshaders_spk_x86_32_windows.o &
-  throttleWait
-
-  # Compile for x86-64 Windows
-  clang -c -target x86_64-windows -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 "${tempPath}/scene3dshaders_spk.c" -o scene3dshaders_spk_x86_64_windows.o &
-  throttleWait
-
-  # Compile for AArch64 Windows
-  clang -c -target aarch64-windows -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 "${tempPath}/scene3dshaders_spk.c" -o scene3dshaders_spk_aarch64_windows.o &
-  throttleWait
-
-  # Compile for ARM32 Linux
-  clang -c -target armv7-linux -mfloat-abi=hard -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 "${tempPath}/scene3dshaders_spk.c" -o scene3dshaders_spk_arm32_linux.o &
-  throttleWait
-
-  # Compile for AArch64 Linux
-  clang -c -target aarch64-linux -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 "${tempPath}/scene3dshaders_spk.c" -o scene3dshaders_spk_aarch64_linux.o &
-  throttleWait
-
-  # Compile for x86-32 Android
-  clang -c -target i386-linux-android -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 "${tempPath}/scene3dshaders_spk.c" -o scene3dshaders_spk_x86_32_android.o &
-  throttleWait
-
-  # Compile for x86-64 Android
-  clang -c -target x86_64-linux-android -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 "${tempPath}/scene3dshaders_spk.c" -o scene3dshaders_spk_x86_64_android.o &
-  throttleWait
-
-  # Compile for ARM32 Android
-  clang -c -target armv7-linux-android -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 "${tempPath}/scene3dshaders_spk.c" -o scene3dshaders_spk_arm32_android.o &
-  throttleWait
-
-  # Compile for AArch64 Android
-  clang -c -target aarch64-linux-android -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 "${tempPath}/scene3dshaders_spk.c" -o scene3dshaders_spk_aarch64_android.o &
-  throttleWait
-  
-fi  
-
-# Wait for all compilation jobs to finish
-wait
-
-# Compiling .res file
-windres -J rc -O res scene3dshaders.rc scene3dshaders.res
+fi
  
 # Delete the temporary directory
 rm -rf "${tempPath}" # what actually deletes also the files in it
