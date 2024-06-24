@@ -556,7 +556,7 @@ void main() {
  
   vec3 rayOrigin, worldNormal, worldFlatNormal;
   
-  if(tracePrimaryBasicGeometryRay(primaryRayOrigin.xyz, primaryRayDirection.xyz, 0.0, 1000000.0, rayOrigin, worldFlatNormal, worldNormal)){
+  if(tracePrimaryBasicGeometryRay(primaryRayOrigin.xyz, primaryRayDirection.xyz, 0.0, 1000000.0, CULLMASK_OCCLUSION, rayOrigin, worldFlatNormal, worldNormal)){
   
 #if 1
     vec3 randomVector = normalize(hash33(vec3(gl_FragCoord.xy, float(uint(pushConstants.frameIndex & 0xfffu)))) - vec3(0.5));

@@ -71,7 +71,17 @@ uses SysUtils,
      PasVulkan.Collections,
      PasVulkan.Framework;
 
+
 type EpvRaytracing=class(Exception);
+
+     TpvRaytracingCullMask=class
+      public
+       const Shadows=$01;     // All objects that should cast shadows should have this cull mask set
+             CameraView=$02;  // All objects that should be visible in the camera view should have this cull mask set, so for example the player in first person view should not have this cull mask set, but still CULLMASK_REFLECTION for reflections and so on
+             Reflection=$04;  // All objects that should be visible in reflections should have this cull mask set
+             Occlusion=$08;   // All objects that should be considered for ambient occlusion as occluders should have this cull mask set
+             All=$ff;       // Just everything
+     end; 
 
      TpvRaytracingAccelerationStructure=class;
 

@@ -10,6 +10,12 @@
 
 // All routines in this files consider meters as units for distances and positions, keep this in mind when reading the code
 
+#define CULLMASK_SHADOWS 0x01    // All objects that should cast shadows should have this cull mask set
+#define CULLMASK_CAMERAVIEW 0x02 // All objects that should be visible in the camera view should have this cull mask set, so for example the player in first person view should not have this cull mask set, but still CULLMASK_REFLECTION for reflections and so on
+#define CULLMASK_REFLECTION 0x04 // All objects that should be visible in reflections should have this cull mask set
+#define CULLMASK_OCCLUSION 0x08  // All objects that should be considered for ambient occlusion as occluders should have this cull mask set
+#define CULLMASK_ALL 0xff        // Just everything
+
 #include "octahedralmap.glsl"
 
 void raytracingCorrectSmoothNormal(inout vec3 smoothNormal, const in vec3 geometricNormal, const in vec3 worldSpacePosition, const in vec3 objectRayOrigin){
@@ -272,7 +278,14 @@ void rayProceedEXTAlphaHandlingBasedLoop(in rayQueryEXT rayQuery, const in bool 
 
 }
 
-bool tracePrimaryBasicGeometryRay(vec3 position, vec3 direction, float minDistance, float maxDistance, out vec3 hitPosition, out vec3 hitFlatNormal, out vec3 hitNormal){
+bool tracePrimaryBasicGeometryRay(vec3 position, 
+                                  vec3 direction, 
+                                  float minDistance, 
+                                  float maxDistance, 
+                                  uint cullMask, 
+                                  out vec3 hitPosition, 
+                                  out vec3 hitFlatNormal, 
+                                  out vec3 hitNormal){
 
   const uint flags = 0u | 
                      //gl_RayFlagsCullFrontFacingTrianglesEXT |
@@ -283,7 +296,7 @@ bool tracePrimaryBasicGeometryRay(vec3 position, vec3 direction, float minDistan
 
   rayQueryEXT rayQuery;
 
-  rayQueryInitializeEXT(rayQuery, uRaytracingTopLevelAccelerationStructure, flags, 0xff, position, minDistance, direction, maxDistance);
+  rayQueryInitializeEXT(rayQuery, uRaytracingTopLevelAccelerationStructure, flags, cullMask, position, minDistance, direction, maxDistance);
 
   float temporaryAlpha;
   rayProceedEXTAlphaHandlingBasedLoop(rayQuery, true, temporaryAlpha);
@@ -467,7 +480,7 @@ bool tracePrimaryBasicGeometryRay(vec3 position, vec3 direction, float minDistan
 float getRaytracedFastHardShadow(vec3 position, vec3 normal, vec3 direction, float minDistance, float maxDistance){
   const uint flags = gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsCullNoOpaqueEXT | gl_RayFlagsSkipAABBEXT;
   rayQueryEXT rayQuery;
-  rayQueryInitializeEXT(rayQuery, uRaytracingTopLevelAccelerationStructure, flags, 0xff, raytracingOffsetRay(position, normal, direction), minDistance, direction, maxDistance);
+  rayQueryInitializeEXT(rayQuery, uRaytracingTopLevelAccelerationStructure, flags, CULLMASK_SHADOWS, raytracingOffsetRay(position, normal, direction), minDistance, direction, maxDistance);
   rayQueryProceedEXT(rayQuery); // No loop needed here, since we are only interested in the first hit (terminate on first hit flag is set above)
   float result = (rayQueryGetIntersectionTypeEXT(rayQuery, true) == gl_RayQueryCommittedIntersectionTriangleEXT) ? 0.0 : 1.0; 
   rayQueryTerminateEXT(rayQuery);
@@ -477,7 +490,7 @@ float getRaytracedFastHardShadow(vec3 position, vec3 normal, vec3 direction, flo
 float getRaytracedFastOcclusion(vec3 position, vec3 normal, vec3 direction, float minDistance, float maxDistance, bool offsetRay, bool useDistanceBasedCutOff){
   const uint flags = gl_RayFlagsCullNoOpaqueEXT | gl_RayFlagsSkipAABBEXT;
   rayQueryEXT rayQuery;
-  rayQueryInitializeEXT(rayQuery, uRaytracingTopLevelAccelerationStructure, flags, 0xff, offsetRay ? raytracingOffsetRay(position, normal, direction) : position, minDistance, direction, maxDistance);
+  rayQueryInitializeEXT(rayQuery, uRaytracingTopLevelAccelerationStructure, flags, CULLMASK_OCCLUSION, offsetRay ? raytracingOffsetRay(position, normal, direction) : position, minDistance, direction, maxDistance);
   while(rayQueryProceedEXT(rayQuery)){}; // Loop until the ray is terminated, so we get the closest hit, which we are interested in for occulsion
   float result = (rayQueryGetIntersectionTypeEXT(rayQuery, true) == gl_RayQueryCommittedIntersectionTriangleEXT) 
                    ? (useDistanceBasedCutOff 
@@ -499,7 +512,7 @@ float getRaytracedHardShadow(vec3 position, vec3 normal, vec3 direction, float m
                      0u;
 
   rayQueryEXT rayQuery;
-  rayQueryInitializeEXT(rayQuery, uRaytracingTopLevelAccelerationStructure, flags, 0xff, raytracingOffsetRay(position, normal, direction), minDistance, direction, maxDistance);
+  rayQueryInitializeEXT(rayQuery, uRaytracingTopLevelAccelerationStructure, flags, CULLMASK_SHADOWS, raytracingOffsetRay(position, normal, direction), minDistance, direction, maxDistance);
 
   float result;
 
