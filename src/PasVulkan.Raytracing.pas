@@ -71,7 +71,6 @@ uses SysUtils,
      PasVulkan.Collections,
      PasVulkan.Framework;
 
-
 type EpvRaytracing=class(Exception);
 
      TpvRaytracingCullMask=class
