@@ -253,6 +253,7 @@ end;
 
 function TpvScene3DRendererCameraPreset.GetFieldOfViewAngleRadians:TpvFloat;
 begin
+ // Original formula source: http://research.tri-ace.com/Data/S2015/05_ImplementationBokeh-S2015.pptx on slide 25
  result:=2.0*ArcTan((fSensorSize.x*(fFocalPlaneDistance-fFocalLength))/(2.0*fFocalPlaneDistance*fFocalLength));
 end;
 

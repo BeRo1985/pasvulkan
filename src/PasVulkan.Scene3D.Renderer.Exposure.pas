@@ -290,6 +290,8 @@ end;
 
 procedure TpvScene3DRendererExposure.SetFromCamera(const aFlangeFocalDistance,aFocalLength,aFNumber:TpvFloat);
 begin
+ // Original formula source: http://research.tri-ace.com/Data/S2015/05_ImplementationBokeh-S2015.pptx on slide 25
+ // Hint: Flange focal distance is the distance from lens to sensor
  fExposure:=((aFlangeFocalDistance/aFocalLength)*aFNumber)/(PI*4.0);
  fEV100:=Log2(1.0/(1.2*fExposure));
  fLuminance:=0.1041666666667/fExposure;
