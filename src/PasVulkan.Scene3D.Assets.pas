@@ -63,11 +63,17 @@ unit PasVulkan.Scene3D.Assets;
  {$define Windows}
 {$ifend}
 
+{$if defined(Windows) or defined(fpc)}
+ {$define UseResources}
+{$else}
+ {$undef UseResources}
+{$ifend}
+
 interface
 
 uses PasVulkan.Types,PasVulkan.Archive.SPK;
 
-{$if defined(Windows)}
+{$if defined(UseResources)}
 function get_pasvulkan_scene3dshaders_spk_data:pointer;
 function get_pasvulkan_scene3dshaders_spk_size:TpvUInt32;
 {$else}
@@ -77,8 +83,13 @@ function get_pasvulkan_scene3dshaders_spk_size:TpvUInt32; cdecl; external name '
 
 implementation
 
+{$if defined(UseResources)}
+
 {$if defined(Windows)}
 uses Windows;
+{$else}
+type HRSRC=TFPResourceHMODULE;
+{$ifend}
 
 {$r assets\shaders\scene3d\scene3dshaders.res}
 
@@ -163,11 +174,11 @@ end;
 {$ifend}
 
 initialization
-{$if defined(Windows)}
+{$if defined(UseResources)}
  InitializeScene3DShaders;
 {$ifend}
 finalization
-{$if defined(Windows)}
+{$if defined(UseResources)}
  FinalizeScene3DShaders;
 {$ifend}
 end.
