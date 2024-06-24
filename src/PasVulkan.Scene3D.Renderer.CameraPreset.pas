@@ -113,6 +113,7 @@ type { TpvScene3DRendererCameraPreset }
        fHighlightThreshold:TpvFloat;
        fHighlightGain:TpvFloat;
        fBokehChromaticAberration:TpvFloat;
+       fDepthOfField:boolean;
        fAutoFocus:boolean;
        fExposureMode:TExposureMode;
        fExposure:TpvScene3DRendererExposure;
@@ -174,6 +175,9 @@ type { TpvScene3DRendererCameraPreset }
        // Aspect ratio
        property AspectRatio:TpvFloat read GetAspectRatio;
 
+       // Depth of field
+       property DepthOfField:boolean read fDepthOfField write fDepthOfField;
+
        // Auto-Focus
        property AutoFocus:boolean read fAutoFocus write fAutoFocus;
 
@@ -210,6 +214,7 @@ begin
  fHighlightThreshold:=0.25;
  fHighlightGain:=1.0;
  fBokehChromaticAberration:=0.7;
+ fDepthOfField:=true;
  fAutoFocus:=true;
  fExposureMode:=TExposureMode.Auto;
  fExposure:=TpvScene3DRendererExposure.Create;
@@ -239,6 +244,7 @@ begin
  fHighlightThreshold:=aFrom.fHighlightThreshold;
  fHighlightGain:=aFrom.fHighlightGain;
  fBokehChromaticAberration:=aFrom.fBokehChromaticAberration;
+ fDepthOfField:=aFrom.fDepthOfField;
  fAutoFocus:=aFrom.fAutoFocus;
  fExposureMode:=aFrom.fExposureMode;
  fExposure.Assign(aFrom.fExposure);

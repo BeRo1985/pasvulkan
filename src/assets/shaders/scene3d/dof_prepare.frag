@@ -14,7 +14,7 @@ layout(push_constant) uniform PushConstants {
   float focalPlaneDistance; 
   float fNumber;
   float sensorSizeY;
-  uint useAutoFocus;
+  uint mode; // 0 = off, 1 = on (manual-focus), 2 = on (auto-focus)  
 } pushConstants;
 
 struct View {
@@ -48,10 +48,14 @@ float linearizeDepth(float z) {
 }
 
 void main(){
+  
   vec4 color = subpassLoad(uSubpassColor);
   color.xyz = clamp(color.xyz, vec3(0.0), vec3(65504.0));
+  
   float rawDepth = texelFetch(uTextureDepth, ivec3(gl_FragCoord.xy, gl_ViewIndex), 0).x;
+  
   float depth = clamp(linearizeDepth(rawDepth), 0.0, 4096.0);
+
 #if 0
   {
     float luminance = dot(color.xyz, vec3(0.299, 0.587, 0.114));
@@ -62,8 +66,17 @@ void main(){
     }
   }
 #endif
-  float CoC = 0.0;
-  {
+  
+  if(pushConstants.mode == 0u){
+    
+    // DoF is off
+    
+    outFragColor = vec4(color.xyz, 0.0);
+
+  }else{  
+
+    // DoF is on
+
     // f = Focal length (where light starts getting in focus)
     // d0 = Focus distance (aka as plane in focus or camera focal distance) 
     // z = Distance from the lens to the object
@@ -82,14 +95,17 @@ void main(){
     //             z * ( d0 - f ) 
     //
     float z = depth * 1000.0, // distance in mm
-          d0 = (pushConstants.useAutoFocus != 0) ? (autoFocusDepth * 1000.0) : pushConstants.focalPlaneDistance, // focal plane in mm 
+          d0 = (pushConstants.mode == 2u) ? (autoFocusDepth * 1000.0) : pushConstants.focalPlaneDistance, // focal plane in mm 
           f = pushConstants.focalLength, // focal length in mm
-          D = f / pushConstants.fNumber; // Aperture diameter in mm
+          D = f / pushConstants.fNumber, // Aperture diameter in mm
 #if 1         
-    CoC = ((D * f) * (z - d0)) / (z * (d0 - f));
+          CoC = ((D * f) * (z - d0)) / (z * (d0 - f));
 #else
-    CoC = (((d0 * f) / (d0 - f)) - ((z * f) / (z - f))) * (D * ((z - f) / (z * f)));
+          CoC = (((d0 * f) / (d0 - f)) - ((z * f) / (z - f))) * (D * ((z - f) / (z * f)));
 #endif
+    
+    outFragColor = vec4(color.xyz, clamp(CoC / pushConstants.sensorSizeY, -1.0, 1.0));
+
   }
-  outFragColor = vec4(color.xyz, clamp(CoC / pushConstants.sensorSizeY, -1.0, 1.0));
+
 }

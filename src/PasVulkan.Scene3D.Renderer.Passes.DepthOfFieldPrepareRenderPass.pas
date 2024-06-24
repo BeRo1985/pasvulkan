@@ -86,7 +86,7 @@ type { TpvScene3DRendererPassesDepthOfFieldPrepareRenderPass }
              FocalPlaneDistance:TpvFloat;
              FNumber:TpvFloat;
              SensorSizeY:TpvFloat;
-             UseAutoFocus:TpvUInt32;
+             Mode:TpvUInt32;
             end;
       private
        fInstance:TpvScene3DRendererInstance;
@@ -401,7 +401,11 @@ begin
  PushConstants.FocalPlaneDistance:=CameraPreset.FocalPlaneDistance;
  PushConstants.FNumber:=CameraPreset.FNumber;
  PushConstants.SensorSizeY:=CameraPreset.SensorSize.y;
- PushConstants.UseAutoFocus:=ord(CameraPreset.AutoFocus) and 1;
+ if CameraPreset.DepthOfField then begin
+  PushConstants.Mode:=1+(ord(CameraPreset.AutoFocus) and 1);
+ end else begin
+  PushConstants.Mode:=0;
+ end;
  aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
                                       fVulkanPipelineLayout.Handle,
                                       0,
