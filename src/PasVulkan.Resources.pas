@@ -323,6 +323,7 @@ type EpvResource=class(Exception);
        fMetaResourceUUIDMap:TMetaResourceUUIDMap;
        fMetaResourceFileNameMap:TMetaResourceFileNameMap;
        fMetaResourceAssetNameMap:TMetaResourceAssetNameMap;
+       fDelayedToFreeResourcesLock:TPasMPCriticalSection;
        fDelayedToFreeResources:TResourceList;
        fBackgroundLoader:TpvResourceBackgroundLoader;
        fBaseDataPath:TpvUTF8String;
@@ -626,9 +627,14 @@ begin
 
    if fIsOnDelayedToFreeResourcesList and assigned(fResourceManager.fDelayedToFreeResources) then begin
     try
-     Index:=fResourceManager.fDelayedToFreeResources.IndexOf(self);
-     if Index>=0 then begin
-      fResourceManager.fDelayedToFreeResources.Extract(Index);
+     fResourceManager.fDelayedToFreeResourcesLock.Acquire;
+     try
+      Index:=fResourceManager.fDelayedToFreeResources.IndexOf(self);
+      if Index>=0 then begin
+       fResourceManager.fDelayedToFreeResources.Extract(Index);
+      end;
+     finally
+      fResourceManager.fDelayedToFreeResourcesLock.Release;
      end;
     finally
      fIsOnDelayedToFreeResourcesList:=false;
@@ -678,7 +684,12 @@ begin
     PrepareDeferredFree;
    finally
     try
-     fResourceManager.fDelayedToFreeResources.Add(self);
+     fResourceManager.fDelayedToFreeResourcesLock.Acquire;
+     try
+      fResourceManager.fDelayedToFreeResources.Add(self);
+     finally
+      fResourceManager.fDelayedToFreeResourcesLock.Release;
+     end;
     finally
      fIsOnDelayedToFreeResourcesList:=true;
     end;
@@ -753,7 +764,12 @@ begin
      PrepareDeferredFree;
     finally
      try
-      fResourceManager.fDelayedToFreeResources.Add(self);
+      fResourceManager.fDelayedToFreeResourcesLock.Acquire;
+      try
+       fResourceManager.fDelayedToFreeResources.Add(self);
+      finally
+       fResourceManager.fDelayedToFreeResourcesLock.Release;
+      end;
      finally
       fIsOnDelayedToFreeResourcesList:=true;
      end;
@@ -1531,6 +1547,8 @@ begin
   fBaseDataPath:=TpvUTF8String(pvApplication.Assets.BasePath);
  end;
 
+ fDelayedToFreeResourcesLock:=TPasMPCriticalSection.Create;
+
  fDelayedToFreeResources:=TResourceList.Create;
  fDelayedToFreeResources.OwnsObjects:=true;
 
@@ -1555,6 +1573,8 @@ begin
  FreeAndNil(fBackgroundLoader);
 
  FreeAndNil(fDelayedToFreeResources);
+
+ FreeAndNil(fDelayedToFreeResourcesLock);
 
  FreeAndNil(fResourceHandleManager);
 
@@ -1680,8 +1700,13 @@ begin
    fBackgroundLoader.WaitFor;
   end;
 
-  while fDelayedToFreeResources.Count>0 do begin
-   fDelayedToFreeResources.Delete(fDelayedToFreeResources.Count-1);
+  fDelayedToFreeResourcesLock.Acquire;
+  try
+   while fDelayedToFreeResources.Count>0 do begin
+    fDelayedToFreeResources.Delete(fDelayedToFreeResources.Count-1);
+   end;
+  finally
+   fDelayedToFreeResourcesLock.Release;
   end;
   FreeAndNil(fDelayedToFreeResources);
 
@@ -1767,26 +1792,31 @@ var Index:TpvSizeInt;
     Resource,Current:TpvResource;
     OK:boolean;
 begin
- Index:=0;
- while Index<fDelayedToFreeResources.Count do begin
-  OK:=false;
-  Resource:=fDelayedToFreeResources[Index];
-  Current:=Resource.fParent;
-  while assigned(Current) do begin
-   if Current=aObject then begin
-    OK:=true;
-    break;
+ fDelayedToFreeResourcesLock.Acquire;
+ try
+  Index:=0;
+  while Index<fDelayedToFreeResources.Count do begin
+   OK:=false;
+   Resource:=fDelayedToFreeResources[Index];
+   Current:=Resource.fParent;
+   while assigned(Current) do begin
+    if Current=aObject then begin
+     OK:=true;
+     break;
+    end;
+    Current:=Current.fParent;
    end;
-   Current:=Current.fParent;
-  end;
-  if OK then begin
-   Resource:=fDelayedToFreeResources.Extract(Index);
-   if assigned(Resource) then begin
-    FreeAndNil(Resource);
+   if OK then begin
+    Resource:=fDelayedToFreeResources.Extract(Index);
+    if assigned(Resource) then begin
+     FreeAndNil(Resource);
+    end;
+   end else begin
+    inc(Index);
    end;
-  end else begin
-   inc(Index);
   end;
+ finally
+  fDelayedToFreeResourcesLock.Release;
  end;
 end;
 
@@ -1909,9 +1939,16 @@ end;
 function TpvResourceManager.FinishResources(const aTimeout:TpvInt64=5):boolean;
 var Index:TpvSizeInt;
 begin
- for Index:=fDelayedToFreeResources.Count-1 downto 0 do begin
-  if TPasMPInterlocked.Decrement(fDelayedToFreeResources[Index].fReleaseFrameDelay)=0 then begin
-   fDelayedToFreeResources.Delete(Index);
+ if fDelayedToFreeResources.Count>0 then begin
+  fDelayedToFreeResourcesLock.Acquire;
+  try
+   for Index:=fDelayedToFreeResources.Count-1 downto 0 do begin
+    if TPasMPInterlocked.Decrement(fDelayedToFreeResources[Index].fReleaseFrameDelay)=0 then begin
+     fDelayedToFreeResources.Delete(Index);
+    end;
+   end;
+  finally
+   fDelayedToFreeResourcesLock.Release;
   end;
  end;
  result:=fBackgroundLoader.Process(aTimeout);
