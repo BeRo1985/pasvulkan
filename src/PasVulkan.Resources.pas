@@ -1809,6 +1809,7 @@ begin
    if OK then begin
     Resource:=fDelayedToFreeResources.Extract(Index);
     if assigned(Resource) then begin
+     Resource.fIsOnDelayedToFreeResourcesList:=false;
      FreeAndNil(Resource);
     end;
    end else begin
