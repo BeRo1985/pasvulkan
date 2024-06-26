@@ -17418,20 +17418,22 @@ begin
 
  FreeAndNil(fLights);
 
- fSceneInstance.fCullObjectIDLock.Acquire;
- try
-  for Index:=0 to fNodes.Count-1 do begin
-   InstanceNode:=fNodes.RawItems[Index];
-   if InstanceNode.fCullObjectID>0 then begin
-    try
-     fSceneInstance.fCullObjectIDManager.FreeID(InstanceNode.fCullObjectID);
-    finally
-     InstanceNode.fCullObjectID:=0;
+ if assigned(fSceneInstance.fCullObjectIDLock) then begin
+  fSceneInstance.fCullObjectIDLock.Acquire;
+  try
+   for Index:=0 to fNodes.Count-1 do begin
+    InstanceNode:=fNodes.RawItems[Index];
+    if InstanceNode.fCullObjectID>0 then begin
+     try
+      fSceneInstance.fCullObjectIDManager.FreeID(InstanceNode.fCullObjectID);
+     finally
+      InstanceNode.fCullObjectID:=0;
+     end;
     end;
    end;
+  finally
+   fSceneInstance.fCullObjectIDLock.Release;
   end;
- finally
-  fSceneInstance.fCullObjectIDLock.Release;
  end;
 
  for Index:=0 to fNodes.Count-1 do begin

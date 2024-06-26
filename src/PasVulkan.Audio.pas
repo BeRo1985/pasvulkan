@@ -312,6 +312,7 @@ type PpvAudioInt32=^TpvInt32;
        Next:TpvAudioSoundSampleVoice;
        NextFree:TpvAudioSoundSampleVoice;
        IsOnList:LongBool;
+       ActiveVoiceIndex:TpvInt32;
        AudioEngine:TpvAudio;
        Sample:TpvAudioSoundSample;
        Index:TpvInt32;
@@ -489,6 +490,8 @@ type PpvAudioInt32=^TpvInt32;
        Loop:TpvAudioSoundSampleLoop;
        SustainLoop:TpvAudioSoundSampleLoop;
        Voices:TpvAudioSoundSampleVoices;
+       ActiveVoices:TpvAudioSoundSampleVoices;
+       CountActiveVoices:TpvInt32;
        ReferenceCounter:TpvInt32;
        SamplePolyphony:TpvInt32;
        ReservedVoiceIDCounter:TPasMPInt32;
@@ -1342,6 +1345,7 @@ begin
  Next:=nil;
  NextFree:=nil;
  IsOnList:=false;
+ ActiveVoiceIndex:=-1;
  AudioEngine:=AAudioEngine;
  Sample:=ASample;
  Index:=AIndex;
@@ -1438,10 +1442,24 @@ begin
   Next:=nil;
   IsOnList:=true;
  end;
+ if (ActiveVoiceIndex<0) and (Sample.CountActiveVoices<length(Sample.ActiveVoices)) then begin
+  ActiveVoiceIndex:=Sample.CountActiveVoices;
+  inc(Sample.CountActiveVoices);
+  Sample.ActiveVoices[ActiveVoiceIndex]:=self;
+ end;
 end;
 
 procedure TpvAudioSoundSampleVoice.Dequeue;
 begin
+ if ActiveVoiceIndex>=0 then begin
+  // Swap with last active voice when needed and remove from list 
+  if ((ActiveVoiceIndex+1)<Sample.CountActiveVoices) and (Sample.CountActiveVoices>1) then begin
+   Sample.ActiveVoices[ActiveVoiceIndex]:=Sample.ActiveVoices[Sample.CountActiveVoices-1];
+   Sample.ActiveVoices[ActiveVoiceIndex].ActiveVoiceIndex:=ActiveVoiceIndex;
+  end;
+  dec(Sample.CountActiveVoices);
+  ActiveVoiceIndex:=-1;
+ end;
  if IsOnList then begin
   if assigned(Previous) then begin
    Previous.Next:=Next;
@@ -2950,6 +2968,8 @@ begin
  Loop.Mode:=SoundLoopModeNONE;
  SustainLoop.Mode:=SoundLoopModeNONE;
  Voices:=nil;
+ ActiveVoices:=nil;
+ CountActiveVoices:=0;
  ReferenceCounter:=0;
  SamplePolyphony:=0;
  ReservedVoiceIDCounter:=0;
@@ -2975,7 +2995,8 @@ begin
    Voices[i]:=nil;
   end;
  end;
- SetLength(Voices,0);
+ Voices:=nil;
+ ActiveVoices:=nil;
  if assigned(Data) then begin
   dec(PpvAudioInt32(Data),2*SampleFixUp);
   FreeMem(Data);
@@ -3075,6 +3096,11 @@ begin
   Voices[i].NextFree:=FreeVoice;
   FreeVoice:=Voices[i];
  end;
+ SetLength(ActiveVoices,Polyphony);
+ for i:=0 to length(ActiveVoices)-1 do begin
+  ActiveVoices[i]:=nil;
+ end;
+ CountActiveVoices:=0;
 end;
 
 function TpvAudioSoundSample.Play(Volume,Panning,Rate:TpvFloat;VoiceIndexPointer:TpvPointer=nil;PerreservedGlobalVoiceID:TpvID=0):TpvInt32;
@@ -5976,12 +6002,13 @@ procedure TpvAudio.FillBuffer;
 type pbyte=^TpvUInt8;
      psmallint=^smallint;
      PpvAudioInt32=^TpvInt32;
-var i,jl,jr,Sample,HighPass,Samples,ToDo,LowPassCoef,Coef:TpvInt32;
+var i,jl,jr,SampleValue,HighPass,CountSamples,ToDo,LowPassCoef,Coef,SampleIndex,VoiceIndex:TpvInt32;
     p:TpvPointer;
     pl,pll,plr:PpvAudioInt32;
     ps:psmallint;
     pb:pbyte;
     Voice,NextVoice:TpvAudioSoundSampleVoice;
+    Sample:TpvAudioSoundSample;
 begin
  CriticalSection.Enter;
  try
@@ -5998,7 +6025,19 @@ begin
   FillChar(EffectMixingBuffer^,MixingBufferSize,AnsiChar(#0));
 
   // Mixing all sample voices
-  Voice:=VoiceFirst;
+  for SampleIndex:=0 to Samples.Count-1 do begin
+   Sample:=Samples.Items[SampleIndex];
+   for VoiceIndex:=0 to Sample.CountActiveVoices-1 do begin
+    Voice:=Sample.ActiveVoices[VoiceIndex];
+    if Voice.MixToEffect then begin
+     p:=EffectMixingBuffer;
+    end else begin
+     p:=MixingBuffer;
+    end;
+    Voice.MixTo(p,SampleVolume);
+   end;
+  end;
+{ Voice:=VoiceFirst;
   while assigned(Voice) do begin
    NextVoice:=Voice.Next;
    if Voice.MixToEffect then begin
@@ -6008,7 +6047,7 @@ begin
    end;
    Voice.MixTo(p,SampleVolume);
    Voice:=NextVoice;
-  end;
+  end;}
   if assigned(WAVStreamDumpSample) then begin
    WAVStreamDumpSample.Dump(MixingBuffer,MixingBufferSize);
   end; 
@@ -6036,12 +6075,12 @@ begin
    pl:=TpvPointer(EffectMixingBuffer);
    for i:=1 to BufferSamples do begin
 {$ifdef UseDIV}
-    Sample:=pl^;
-    inc(WaterBoostLowPassLeft[0],((Sample-WaterBoostLowPassLeft[0])*SpatializationWaterWaterBoostLowPassCW) div 4096);
+    SampleValue:=pl^;
+    inc(WaterBoostLowPassLeft[0],((SampleValue-WaterBoostLowPassLeft[0])*SpatializationWaterWaterBoostLowPassCW) div 4096);
     inc(WaterBoostLowPassLeft[1],((WaterBoostLowPassLeft[0]-WaterBoostLowPassLeft[1])*SpatializationWaterWaterBoostLowPassCW) div 4096);
     inc(WaterBoostLowPassLeft[2],((WaterBoostLowPassLeft[1]-WaterBoostLowPassLeft[2])*SpatializationWaterWaterBoostLowPassCW) div 4096);
     inc(WaterBoostLowPassLeft[3],((WaterBoostLowPassLeft[2]-WaterBoostLowPassLeft[3])*SpatializationWaterWaterBoostLowPassCW) div 4096);
-    inc(WaterBoostHighPassLeft[0],((Sample-WaterBoostHighPassLeft[0])*SpatializationWaterWaterBoostHighPassCW) div 4096);
+    inc(WaterBoostHighPassLeft[0],((SampleValue-WaterBoostHighPassLeft[0])*SpatializationWaterWaterBoostHighPassCW) div 4096);
     inc(WaterBoostHighPassLeft[1],((WaterBoostHighPassLeft[0]-WaterBoostHighPassLeft[1])*SpatializationWaterWaterBoostHighPassCW) div 4096);
     inc(WaterBoostHighPassLeft[2],((WaterBoostHighPassLeft[1]-WaterBoostHighPassLeft[2])*SpatializationWaterWaterBoostHighPassCW) div 4096);
     inc(WaterBoostHighPassLeft[3],((WaterBoostHighPassLeft[2]-WaterBoostHighPassLeft[3])*SpatializationWaterWaterBoostHighPassCW) div 4096);
@@ -6049,15 +6088,15 @@ begin
     WaterBoostMiddlePassLeft:=WaterBoostHistoryLeft[3]-(WaterBoostLowPassLeft[3]+HighPass);
     WaterBoostHistoryLeft[3]:=WaterBoostHistoryLeft[2];
     WaterBoostHistoryLeft[2]:=WaterBoostHistoryLeft[1];
-    WaterBoostHistoryLeft[1]:=Sample;
+    WaterBoostHistoryLeft[1]:=SampleValue;
     pl^:=WaterBoostLowPassLeft[3]+((WaterBoostMiddlePassLeft*SpatializationWaterWaterBoost) div 4096)+HighPass;
     inc(pl);
-    Sample:=pl^;
-    inc(WaterBoostLowPassRight[0],((Sample-WaterBoostLowPassRight[0])*SpatializationWaterWaterBoostLowPassCW) div 4096);
+    SampleValue:=pl^;
+    inc(WaterBoostLowPassRight[0],((SampleValue-WaterBoostLowPassRight[0])*SpatializationWaterWaterBoostLowPassCW) div 4096);
     inc(WaterBoostLowPassRight[1],((WaterBoostLowPassRight[0]-WaterBoostLowPassRight[1])*SpatializationWaterWaterBoostLowPassCW) div 4096);
     inc(WaterBoostLowPassRight[2],((WaterBoostLowPassRight[1]-WaterBoostLowPassRight[2])*SpatializationWaterWaterBoostLowPassCW) div 4096);
     inc(WaterBoostLowPassRight[3],((WaterBoostLowPassRight[2]-WaterBoostLowPassRight[3])*SpatializationWaterWaterBoostLowPassCW) div 4096);
-    inc(WaterBoostHighPassRight[0],((Sample-WaterBoostHighPassRight[0])*SpatializationWaterWaterBoostHighPassCW) div 4096);
+    inc(WaterBoostHighPassRight[0],((SampleValue-WaterBoostHighPassRight[0])*SpatializationWaterWaterBoostHighPassCW) div 4096);
     inc(WaterBoostHighPassRight[1],((WaterBoostHighPassRight[0]-WaterBoostHighPassRight[1])*SpatializationWaterWaterBoostHighPassCW) div 4096);
     inc(WaterBoostHighPassRight[2],((WaterBoostHighPassRight[1]-WaterBoostHighPassRight[2])*SpatializationWaterWaterBoostHighPassCW) div 4096);
     inc(WaterBoostHighPassRight[3],((WaterBoostHighPassRight[2]-WaterBoostHighPassRight[3])*SpatializationWaterWaterBoostHighPassCW) div 4096);
@@ -6065,16 +6104,16 @@ begin
     WaterBoostMiddlePassRight:=WaterBoostHistoryRight[3]-(WaterBoostLowPassRight[3]+HighPass);
     WaterBoostHistoryRight[3]:=WaterBoostHistoryRight[2];
     WaterBoostHistoryRight[2]:=WaterBoostHistoryRight[1];
-    WaterBoostHistoryRight[1]:=Sample;
+    WaterBoostHistoryRight[1]:=SampleValue;
     pl^:=WaterBoostLowPassRight[3]+((WaterBoostMiddlePassRight*SpatializationWaterWaterBoost) div 4096)+HighPass;
     inc(pl);
 {$else}
-    Sample:=pl^;
-    inc(WaterBoostLowPassLeft[0],SARLongint((Sample-WaterBoostLowPassLeft[0])*SpatializationWaterWaterBoostLowPassCW,12));
+    SampleValue:=pl^;
+    inc(WaterBoostLowPassLeft[0],SARLongint((SampleValue-WaterBoostLowPassLeft[0])*SpatializationWaterWaterBoostLowPassCW,12));
     inc(WaterBoostLowPassLeft[1],SARLongint((WaterBoostLowPassLeft[0]-WaterBoostLowPassLeft[1])*SpatializationWaterWaterBoostLowPassCW,12));
     inc(WaterBoostLowPassLeft[2],SARLongint((WaterBoostLowPassLeft[1]-WaterBoostLowPassLeft[2])*SpatializationWaterWaterBoostLowPassCW,12));
     inc(WaterBoostLowPassLeft[3],SARLongint((WaterBoostLowPassLeft[2]-WaterBoostLowPassLeft[3])*SpatializationWaterWaterBoostLowPassCW,12));
-    inc(WaterBoostHighPassLeft[0],SARLongint((Sample-WaterBoostHighPassLeft[0])*SpatializationWaterWaterBoostHighPassCW,12));
+    inc(WaterBoostHighPassLeft[0],SARLongint((SampleValue-WaterBoostHighPassLeft[0])*SpatializationWaterWaterBoostHighPassCW,12));
     inc(WaterBoostHighPassLeft[1],SARLongint((WaterBoostHighPassLeft[0]-WaterBoostHighPassLeft[1])*SpatializationWaterWaterBoostHighPassCW,12));
     inc(WaterBoostHighPassLeft[2],SARLongint((WaterBoostHighPassLeft[1]-WaterBoostHighPassLeft[2])*SpatializationWaterWaterBoostHighPassCW,12));
     inc(WaterBoostHighPassLeft[3],SARLongint((WaterBoostHighPassLeft[2]-WaterBoostHighPassLeft[3])*SpatializationWaterWaterBoostHighPassCW,12));
@@ -6082,15 +6121,15 @@ begin
     WaterBoostMiddlePassLeft:=WaterBoostHistoryLeft[3]-(WaterBoostLowPassLeft[3]+HighPass);
     WaterBoostHistoryLeft[3]:=WaterBoostHistoryLeft[2];
     WaterBoostHistoryLeft[2]:=WaterBoostHistoryLeft[1];
-    WaterBoostHistoryLeft[1]:=Sample;                                   
+    WaterBoostHistoryLeft[1]:=SampleValue;
     pl^:=WaterBoostLowPassLeft[3]+SARLongint(WaterBoostMiddlePassLeft*SpatializationWaterWaterBoost,12)+HighPass;
     inc(pl);
-    Sample:=pl^;
-    inc(WaterBoostLowPassRight[0],SARLongint((Sample-WaterBoostLowPassRight[0])*SpatializationWaterWaterBoostLowPassCW,12));
+    SampleValue:=pl^;
+    inc(WaterBoostLowPassRight[0],SARLongint((SampleValue-WaterBoostLowPassRight[0])*SpatializationWaterWaterBoostLowPassCW,12));
     inc(WaterBoostLowPassRight[1],SARLongint((WaterBoostLowPassRight[0]-WaterBoostLowPassRight[1])*SpatializationWaterWaterBoostLowPassCW,12));
     inc(WaterBoostLowPassRight[2],SARLongint((WaterBoostLowPassRight[1]-WaterBoostLowPassRight[2])*SpatializationWaterWaterBoostLowPassCW,12));
     inc(WaterBoostLowPassRight[3],SARLongint((WaterBoostLowPassRight[2]-WaterBoostLowPassRight[3])*SpatializationWaterWaterBoostLowPassCW,12));
-    inc(WaterBoostHighPassRight[0],SARLongint((Sample-WaterBoostHighPassRight[0])*SpatializationWaterWaterBoostHighPassCW,12));
+    inc(WaterBoostHighPassRight[0],SARLongint((SampleValue-WaterBoostHighPassRight[0])*SpatializationWaterWaterBoostHighPassCW,12));
     inc(WaterBoostHighPassRight[1],SARLongint((WaterBoostHighPassRight[0]-WaterBoostHighPassRight[1])*SpatializationWaterWaterBoostHighPassCW,12));
     inc(WaterBoostHighPassRight[2],SARLongint((WaterBoostHighPassRight[1]-WaterBoostHighPassRight[2])*SpatializationWaterWaterBoostHighPassCW,12));
     inc(WaterBoostHighPassRight[3],SARLongint((WaterBoostHighPassRight[2]-WaterBoostHighPassRight[3])*SpatializationWaterWaterBoostHighPassCW,12));
@@ -6098,7 +6137,7 @@ begin
     WaterBoostMiddlePassRight:=WaterBoostHistoryRight[3]-(WaterBoostLowPassRight[3]+HighPass);
     WaterBoostHistoryRight[3]:=WaterBoostHistoryRight[2];
     WaterBoostHistoryRight[2]:=WaterBoostHistoryRight[1];
-    WaterBoostHistoryRight[1]:=Sample;
+    WaterBoostHistoryRight[1]:=SampleValue;
     pl^:=WaterBoostLowPassRight[3]+SARLongint(WaterBoostMiddlePassRight*SpatializationWaterWaterBoost,12)+HighPass;
     inc(pl);
 {$endif}
@@ -6129,13 +6168,13 @@ begin
   end;
   pl:=TpvPointer(EffectMixingBuffer);
   if (LowPassRampingLength>0) or (LowPassCoef<>(LowPassLength shl LowPassShift)) then begin
-   Samples:=BufferSamples;
-   while Samples>0 do begin
-    ToDo:=Samples;
+   CountSamples:=BufferSamples;
+   while CountSamples>0 do begin
+    ToDo:=CountSamples;
     if (LowPassRampingLength>0) and (ToDo>LowPassRampingLength) then begin
      ToDo:=LowPassRampingLength;
     end;
-    dec(Samples,ToDo);
+    dec(CountSamples,ToDo);
 {$ifdef UseDIV}
     if LowPassRampingLength>0 then begin
      dec(LowPassRampingLength,ToDo);

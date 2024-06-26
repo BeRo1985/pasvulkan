@@ -74,6 +74,7 @@ uses {$ifdef Windows}
      {$endif}
      SysUtils,
      Classes,
+     Math,
      PasMP,
      PasJSON,
      PasVulkan.PooledObject,
@@ -93,6 +94,8 @@ type EpvResource=class(Exception);
      TpvResourceManager=class;
 
      TpvResource=class;
+
+     TpvResourceArray=array of TpvResource;
 
      TpvResourceHandle=TpvInt32;
 
@@ -172,8 +175,10 @@ type EpvResource=class(Exception);
       private
        fResourceManager:TpvResourceManager;
        fParent:TpvResource;
+       fParents:TpvResourceArray;
        fResourceClassType:TpvResourceClassType;
        fHandle:TpvResourceHandle;
+       fCreationIndex:TpvUInt64;
        fFileName:TpvUTF8String;
        fAsyncLoadState:TAsyncLoadState;
        fLoaded:boolean;
@@ -307,11 +312,13 @@ type EpvResource=class(Exception);
        function AllocateHandle(const aResource:TpvResource):TpvResourceHandle;
        procedure FreeHandle(const aHandle:TpvResourceHandle);
        function GetResourceByHandle(const aHandle:TpvResourceHandle):IpvResource;
+       procedure SortDelayedToFreeResourcesByCreationIndices(const aLock:Boolean);
       private
        fLock:TPasMPMultipleReaderSingleWriterSpinLock;
        fLocked:TPasMPBool32;
        fActive:TPasMPBool32;
        fLoadLock:TPasMPCriticalSection;
+       fCreationIndexCounter:TpvUInt64;
        fResourceClassTypeList:TResourceClassTypeList;
        fResourceClassTypeListLock:TPasMPMultipleReaderSingleWriterSpinLock;
        fResourceClassTypeMap:TResourceClassTypeMap;
@@ -359,7 +366,7 @@ procedure DeferredFreeAndNil(var aObject);
 
 implementation
 
-uses PasVulkan.Application;
+uses PasVulkan.Application,PasVulkan.Utils;
 
 { TpvMetaResource }
 
@@ -551,12 +558,33 @@ end;
 
 constructor TpvResource.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil;const aMetaResource:TpvMetaResource=nil);
 var OldReferenceCounter:TpvInt32;
+    CountParents:TpvSizeInt;
+    Current:TpvResource;
 begin
  inherited Create;
 
  fResourceManager:=aResourceManager;
 
  fParent:=aParent;
+
+ CountParents:=0;
+ Current:=fParent;
+ while assigned(Current) do begin
+  inc(CountParents);
+  Current:=Current.fParent;
+ end;
+
+ fParents:=nil;
+ if CountParents>0 then begin
+  SetLength(fParents,CountParents);
+  CountParents:=0;
+  Current:=fParent;
+  while assigned(Current) do begin
+   fParents[CountParents]:=Current;
+   inc(CountParents);
+   Current:=Current.fParent;
+  end;
+ end;
 
  fHandle:=fResourceManager.AllocateHandle(self);
 
@@ -590,6 +618,20 @@ begin
  end;
 
  fResourceClassType:=fResourceManager.GetResourceClassType(TpvResourceClass(ClassType));
+
+ if assigned(fResourceManager) then begin
+  if not fResourceManager.fLocked then begin
+   fResourceManager.fLock.AcquireWrite;
+  end;
+  try
+   fCreationIndex:=fResourceManager.fCreationIndexCounter;
+   inc(fResourceManager.fCreationIndexCounter);
+  finally
+   if not fResourceManager.fLocked then begin
+    fResourceManager.fLock.ReleaseWrite;
+   end;
+  end;
+ end;
 
  if assigned(fResourceManager) and assigned(fResourceClassType) then begin
   if not fResourceManager.fLocked then begin
@@ -655,13 +697,17 @@ begin
   TPasMPInterlocked.Write(TObject(fMetaResource.fResource),nil);
  end;
 
- fResourceManager.FreeHandle(fHandle);
+ if assigned(fResourceManager) then begin
+  fResourceManager.FreeHandle(fHandle);
+ end;
 
  fHandle:=0;
 
  if assigned(fMetaResource) and fMetaResource.fTemporary then begin
   FreeAndNil(fMetaResource);
  end;
+
+ fParents:=nil;
 
  FillChar(fInstanceInterface,SizeOf(IpvResource),0);
 
@@ -1530,6 +1576,8 @@ begin
 
  fLoadLock:=TPasMPCriticalSection.Create;
 
+ fCreationIndexCounter:=0;
+
  fResourceClassTypeList:=TResourceClassTypeList.Create;
  fResourceClassTypeList.OwnsObjects:=true;
 
@@ -1702,6 +1750,7 @@ begin
 
   fDelayedToFreeResourcesLock.Acquire;
   try
+   SortDelayedToFreeResourcesByCreationIndices(false);
    while fDelayedToFreeResources.Count>0 do begin
     fDelayedToFreeResources.Delete(fDelayedToFreeResources.Count-1);
    end;
@@ -1787,24 +1836,59 @@ begin
 
 end;
 
+function TpvResourceManagerSortDelayedToFreeResourcesByCreationIndicesCompare(const a,b:Pointer):TpvInt32;
+begin
+ if TpvResource(a).fCreationIndex<TpvResource(b).fCreationIndex then begin
+  result:=-1;
+ end else if TpvResource(a).fCreationIndex>TpvResource(b).fCreationIndex then begin
+  result:=1;
+ end else begin
+  result:=0;
+ end;
+end;
+
+procedure TpvResourceManager.SortDelayedToFreeResourcesByCreationIndices(const aLock:Boolean);
+begin
+ if aLock then begin
+  fDelayedToFreeResourcesLock.Acquire;
+ end;
+ try
+  if fDelayedToFreeResources.Count>1 then begin
+   IndirectIntroSort(@fDelayedToFreeResources.RawItems[0],0,fDelayedToFreeResources.Count-1,TpvResourceManagerSortDelayedToFreeResourcesByCreationIndicesCompare);
+  end;
+ finally
+  if aLock then begin
+   fDelayedToFreeResourcesLock.Release;
+  end;
+ end;
+end;
+
 procedure TpvResourceManager.DestroyDelayedFreeingObjectsWithParent(const aObject:TObject);
-var Index:TpvSizeInt;
+var Index,OtherIndex:TpvSizeInt;
     Resource,Current:TpvResource;
     OK:boolean;
 begin
+
  fDelayedToFreeResourcesLock.Acquire;
  try
-  Index:=0;
-  while Index<fDelayedToFreeResources.Count do begin
+
+  SortDelayedToFreeResourcesByCreationIndices(false);
+
+  for Index:=fDelayedToFreeResources.Count-1 downto 0 do begin
    OK:=false;
    Resource:=fDelayedToFreeResources[Index];
-   Current:=Resource.fParent;
-   while assigned(Current) do begin
-    if Current=aObject then begin
+   if assigned(Resource) then begin
+    if Resource.fParent=aObject then begin
      OK:=true;
-     break;
+    end else begin
+     for OtherIndex:=0 to length(Resource.fParents)-1 do begin
+      Current:=Resource.fParents[OtherIndex];
+      if Current=aObject then begin
+       OK:=true;
+       break;
+      end;
+     end;
     end;
-    Current:=Current.fParent;
    end;
    if OK then begin
     Resource:=fDelayedToFreeResources.Extract(Index);
@@ -1812,13 +1896,13 @@ begin
      Resource.fIsOnDelayedToFreeResourcesList:=false;
      FreeAndNil(Resource);
     end;
-   end else begin
-    inc(Index);
    end;
   end;
+
  finally
   fDelayedToFreeResourcesLock.Release;
  end;
+
 end;
 
 function TpvResourceManager.GetResourceClassType(const aResourceClass:TpvResourceClass):TpvResourceClassType;
@@ -1943,6 +2027,7 @@ begin
  if fDelayedToFreeResources.Count>0 then begin
   fDelayedToFreeResourcesLock.Acquire;
   try
+   SortDelayedToFreeResourcesByCreationIndices(false);
    for Index:=fDelayedToFreeResources.Count-1 downto 0 do begin
     if TPasMPInterlocked.Decrement(fDelayedToFreeResources[Index].fReleaseFrameDelay)=0 then begin
      fDelayedToFreeResources.Delete(Index);
