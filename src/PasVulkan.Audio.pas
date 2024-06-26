@@ -58,6 +58,7 @@
   {$ifend}
  {$endif}
 {$endif}
+{$scopedenums on}
 
 interface
 
