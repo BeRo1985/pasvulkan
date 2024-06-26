@@ -1601,23 +1601,23 @@ begin
    end;
   end;
   TpvAudioDistanceModel.LinearDistance:begin
-   AttenuationDistance:=1.0-(Sample.AttenuationRollOff*((Distance-Sample.MinDistance)/(Sample.MaxDistance-Sample.MinDistance)));
+   Attenuation:=1.0-(Sample.AttenuationRollOff*((Distance-Sample.MinDistance)/(Sample.MaxDistance-Sample.MinDistance)));
   end;
   TpvAudioDistanceModel.LinearDistanceClamped:begin
-   AttenuationDistance:=1.0-(Sample.AttenuationRollOff*((ClampedDistance-Sample.MinDistance)/(Sample.MaxDistance-Sample.MinDistance)));
+   Attenuation:=1.0-(Sample.AttenuationRollOff*((ClampedDistance-Sample.MinDistance)/(Sample.MaxDistance-Sample.MinDistance)));
   end;
   TpvAudioDistanceModel.ExponentDistance:begin
-   AttenuationDistance:=Power(Distance/Sample.MinDistance,-Sample.AttenuationRollOff);
+   Attenuation:=Power(Distance/Sample.MinDistance,-Sample.AttenuationRollOff);
   end;
   TpvAudioDistanceModel.ExponentDistanceClamped:begin
-   AttenuationDistance:=Power(ClampedDistance/Sample.MinDistance,-Sample.AttenuationRollOff);
+   Attenuation:=Power(ClampedDistance/Sample.MinDistance,-Sample.AttenuationRollOff);
   end;
   else {TpvAudioDistanceModel.NoAttenuation:}begin
    Attenuation:=1.0;
   end;
  end;
- if AttenuationDistance<0.0 then begin
-  AttenuationDistance:=0.0;
+ if Attenuation<0.0 then begin
+  Attenuation:=0.0;
  end;
 
  if AudioEngine.InnerAngle<360.0 then begin
