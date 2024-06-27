@@ -306,6 +306,8 @@ type PpvAudioInt32=^TpvInt32;
        
      TpvAudioSoundSampleVoiceLowPassHistory=array[0..1] of TpvInt32;
 
+     { TpvAudioSoundSampleVoice }
+
      TpvAudioSoundSampleVoice=class
       private
        Previous:TpvAudioSoundSampleVoice;
@@ -424,6 +426,7 @@ type PpvAudioInt32=^TpvInt32;
        procedure Enqueue;
        procedure Dequeue;
        procedure Init(AVolume,APanning,ARate:TpvFloat);
+       procedure Prepare;
        procedure MixTo(Buffer:PpvAudioSoundSampleValues;MixVolume:TpvInt32);
      end;
 
@@ -547,7 +550,8 @@ type PpvAudioInt32=^TpvInt32;
        ActiveVoices:TpvAudioSoundSampleVoices;
        CountActiveVoices:TpvInt32;
        ReferenceCounter:TpvInt32;
-       SamplePolyphony:TpvInt32;
+       SampleVirtualVoices:TpvInt32;
+       SampleRealVoices:TpvInt32;
        ReservedVoiceIDCounter:TPasMPInt32;
        DistanceModel:TpvAudioDistanceModel;
        MinDistance:TpvFloat;
@@ -564,9 +568,10 @@ type PpvAudioInt32=^TpvInt32;
        procedure IncRef;
        procedure DecRef;
        function GetReservedVoiceID:TpvInt32;
-       procedure CorrectPolyphony;
+       procedure CorrectVoices;
        procedure FixUp;
-       procedure SetPolyphony(Polyphony:TpvInt32);
+       procedure SetVirtualVoices(VirtualVoices:TpvInt32);
+       procedure SetRealVoices(RealVoices:TpvInt32);
        function Play(Volume,Panning,Rate:TpvFloat;VoiceIndexPointer:TpvPointer=nil;PerreservedGlobalVoiceID:TpvID=0):TpvInt32;
        function PlaySpatialization(Volume,Panning,Rate:TpvFloat;Spatialization:LongBool;const Position,Velocity:TpvVector3;const Local:LongBool=false;const VoiceIndexPointer:TpvPointer=nil;PerreservedGlobalVoiceID:TpvID=0):TpvInt32;
        procedure Stop(VoiceNumber:TpvInt32);
@@ -662,7 +667,8 @@ type PpvAudioInt32=^TpvInt32;
 
      IpvAudioSoundSampleResource=interface(IpvResource)['{9E4ABC9F-7EBE-49D8-BD78-146A875F44FF}']
        procedure FixUp;
-       procedure SetPolyphony(Polyphony:TpvInt32);
+       procedure SetVirtualVoices(VirtualVoices:TpvInt32);
+       procedure SetRealVoices(RealVoices:TpvInt32);
        function Play(Volume,Panning,Rate:TpvFloat;VoiceIndexPointer:TpvPointer=nil;PerreservedGlobalVoiceID:TpvID=0):TpvInt32;
        function PlaySpatialization(Volume,Panning,Rate:TpvFloat;Spatialization:LongBool;const Position,Velocity:TpvVector3;const Local:LongBool=false;const VoiceIndexPointer:TpvPointer=nil;PerreservedGlobalVoiceID:TpvID=0):TpvInt32;
        procedure Stop(VoiceNumber:TpvInt32);
@@ -684,8 +690,9 @@ type PpvAudioInt32=^TpvInt32;
        destructor Destroy; override;
        function BeginLoad(const aStream:TStream):boolean; override;
        procedure FixUp;
-       procedure SetPolyphony(Polyphony:TpvInt32);
-       function Play(Volume,Panning,Rate:TpvFloat;VoiceIndexPointer:TpvPointer=nil;PerreservedGlobalVoiceID:TpvID=0):TpvInt32; 
+       procedure SetVirtualVoices(VirtualVoices:TpvInt32);
+       procedure SetRealVoices(RealVoices:TpvInt32);
+       function Play(Volume,Panning,Rate:TpvFloat;VoiceIndexPointer:TpvPointer=nil;PerreservedGlobalVoiceID:TpvID=0):TpvInt32;
        function PlaySpatialization(Volume,Panning,Rate:TpvFloat;Spatialization:LongBool;const Position,Velocity:TpvVector3;const Local:LongBool=false;const VoiceIndexPointer:TpvPointer=nil;PerreservedGlobalVoiceID:TpvID=0):TpvInt32;
        procedure Stop(VoiceNumber:TpvInt32);
        procedure KeyOff(VoiceNumber:TpvInt32);
@@ -735,7 +742,7 @@ type PpvAudioInt32=^TpvInt32;
        HashMap:TpvAudioStringHashMap;
        constructor Create(AAudioEngine:TpvAudio);
        destructor Destroy; override;
-       function Load(Name:TpvRawByteString;Stream:TStream;DoFree:boolean=true;Polyphony:TpvInt32=1;Loop:TpvUInt32=1):TpvAudioSoundSample;
+       function Load(Name:TpvRawByteString;Stream:TStream;DoFree:boolean=true;VirtualVoices:TpvInt32=1;Loop:TpvUInt32=1;RealVoices:TpvInt32=-1):TpvAudioSoundSample;
        property Items[Index:TpvInt32]:TpvAudioSoundSample read GetItem write SetItem; default;
      end;
 
@@ -2628,14 +2635,10 @@ begin
  end;
 end;
 
-procedure TpvAudioSoundSampleVoice.MixTo(Buffer:PpvAudioSoundSampleValues;MixVolume:TpvInt32);
-var Remain,ToDo,Counter:TpvInt32;
-    Buf:PpvAudioInt32;
-    BufEx:PpvAudioInt32s;
+procedure TpvAudioSoundSampleVoice.Prepare;
 begin
- PreClickRemoval(Buffer);
+
  if Active then begin
-  Buf:=TpvPointer(Buffer);
 
   if ListenerGeneration<>AudioEngine.ListenerGeneration then begin
    ListenerGeneration:=AudioEngine.ListenerGeneration;
@@ -2645,6 +2648,19 @@ begin
   if Spatialization then begin
    UpdateSpatialization;
   end;
+
+ end;
+
+end;
+
+procedure TpvAudioSoundSampleVoice.MixTo(Buffer:PpvAudioSoundSampleValues;MixVolume:TpvInt32);
+var Remain,ToDo,Counter:TpvInt32;
+    Buf:PpvAudioInt32;
+    BufEx:PpvAudioInt32s;
+begin
+ PreClickRemoval(Buffer);
+ if Active then begin
+  Buf:=TpvPointer(Buffer);
 
   UpdateIncrementRamping;
 
@@ -3292,7 +3308,8 @@ begin
  ActiveVoices:=nil;
  CountActiveVoices:=0;
  ReferenceCounter:=0;
- SamplePolyphony:=0;
+ SampleVirtualVoices:=0;
+ SampleRealVoices:=0;
  ReservedVoiceIDCounter:=0;
  DistanceModel:=TpvAudioDistanceModel.InverseDistanceClamped;
  MinDistance:=8.0;
@@ -3360,10 +3377,13 @@ begin
  until result<=(-2); // May not be 0 or -1, because 0 is voice #0 and -1 is invalid/unused
 end;
 
-procedure TpvAudioSoundSample.CorrectPolyphony;
+procedure TpvAudioSoundSample.CorrectVoices;
 begin
- if (ReferenceCounter>0) and (SamplePolyphony>0) then begin
-  SetPolyphony(SamplePolyphony*ReferenceCounter);
+ if (ReferenceCounter>0) and (SampleVirtualVoices>0) then begin
+  SetVirtualVoices(SampleVirtualVoices*ReferenceCounter);
+ end;
+ if (ReferenceCounter>0) and (SampleRealVoices>0) then begin
+  SetRealVoices(SampleRealVoices*ReferenceCounter);
  end;
 end;
 
@@ -3412,7 +3432,7 @@ begin
  end;
 end;
 
-procedure TpvAudioSoundSample.SetPolyphony(Polyphony:TpvInt32);
+procedure TpvAudioSoundSample.SetVirtualVoices(VirtualVoices:TpvInt32);
 var i:TpvInt32;
 begin
  for i:=0 to length(Voices)-1 do begin
@@ -3422,17 +3442,22 @@ begin
   end;
  end;
  FreeVoice:=nil;
- SetLength(Voices,Polyphony);
+ SetLength(Voices,VirtualVoices);
  for i:=0 to length(Voices)-1 do begin
   Voices[i]:=TpvAudioSoundSampleVoice.Create(AudioEngine,self,i);
   Voices[i].NextFree:=FreeVoice;
   FreeVoice:=Voices[i];
  end;
- SetLength(ActiveVoices,Polyphony);
+ SetLength(ActiveVoices,VirtualVoices);
  for i:=0 to length(ActiveVoices)-1 do begin
   ActiveVoices[i]:=nil;
  end;
  CountActiveVoices:=0;
+end;
+
+procedure TpvAudioSoundSample.SetRealVoices(RealVoices:TpvInt32);
+begin
+
 end;
 
 function TpvAudioSoundSample.Play(Volume,Panning,Rate:TpvFloat;VoiceIndexPointer:TpvPointer=nil;PerreservedGlobalVoiceID:TpvID=0):TpvInt32;
@@ -4047,8 +4072,9 @@ begin
   fSample:=AudioInstance.Samples.Load(TPasJSON.GetString(TPasJSONItemObject(MetaData).Properties['name'],FileName),
                                       aStream,
                                       false,
-                                      TPasJSON.GetInt64(TPasJSONItemObject(MetaData).Properties['polyphony'],1),
-                                      TPasJSON.GetInt64(TPasJSONItemObject(MetaData).Properties['loop'],1));
+                                      TPasJSON.GetInt64(TPasJSONItemObject(MetaData).Properties['virtualvoices'],1),
+                                      TPasJSON.GetInt64(TPasJSONItemObject(MetaData).Properties['loop'],1),
+                                      TPasJSON.GetInt64(TPasJSONItemObject(MetaData).Properties['realvoices'],TPasJSON.GetInt64(TPasJSONItemObject(MetaData).Properties['virtualvoices'],1)));
  end else begin
   fSample:=AudioInstance.Samples.Load(FileName,
                                       aStream,
@@ -4064,9 +4090,14 @@ begin
  fSample.FixUp;
 end;
 
-procedure TpvAudioSoundSampleResource.SetPolyphony(Polyphony:TpvInt32);
+procedure TpvAudioSoundSampleResource.SetVirtualVoices(VirtualVoices:TpvInt32);
 begin
- fSample.SetPolyphony(Polyphony);
+ fSample.SetVirtualVoices(VirtualVoices);
+end;
+
+procedure TpvAudioSoundSampleResource.SetRealVoices(RealVoices:TpvInt32);
+begin
+ fSample.SetVirtualVoices(RealVoices);
 end;
 
 function TpvAudioSoundSampleResource.Play(Volume,Panning,Rate:TpvFloat;VoiceIndexPointer:TpvPointer=nil;PerreservedGlobalVoiceID:TpvID=0):TpvInt32;
@@ -4246,7 +4277,7 @@ end;
 
 const _ov_open_callbacks:ov_callbacks=(read_func:oggread;seek_func:oggseek;close_func:oggclose;tell_func:oggtell);
 
-function TpvAudioSoundSamples.Load(Name:TpvRawByteString;Stream:TStream;DoFree:boolean=true;Polyphony:TpvInt32=1;Loop:TpvUInt32=1):TpvAudioSoundSample;
+function TpvAudioSoundSamples.Load(Name:TpvRawByteString;Stream:TStream;DoFree:boolean;VirtualVoices:TpvInt32;Loop:TpvUInt32;RealVoices:TpvInt32):TpvAudioSoundSample;
 var DataStream:TMemoryStream;
 //  WSMPOffset:TpvUInt32;
     DestSample:TpvAudioSoundSample;
@@ -4934,8 +4965,14 @@ begin
     DestSample:=TpvAudioSoundSample.Create(AudioEngine,self);
     try
      if assigned(Stream) and (Stream.Size>4) then begin
-      DestSample.SamplePolyphony:=Polyphony;
-      DestSample.SetPolyphony(Polyphony);
+      DestSample.SampleVirtualVoices:=VirtualVoices;
+      if RealVoices<=0 then begin
+       DestSample.SampleRealVoices:=VirtualVoices;
+      end else begin
+       DestSample.SampleRealVoices:=RealVoices;
+      end;
+      DestSample.SetVirtualVoices(VirtualVoices);
+      DestSample.SetRealVoices(RealVoices);
       DataStream:=TMemoryStream.Create;
       try
        if Stream.Seek(0,soFromBeginning)=0 then begin
@@ -6297,7 +6334,7 @@ procedure TpvAudio.Setup;
 var i:TpvInt32;
 begin
  for i:=0 to Samples.Count-1 do begin
-  Samples[i].CorrectPolyphony;
+  Samples[i].CorrectVoices;
  end;
 end;
 
@@ -6376,6 +6413,7 @@ begin
      MixToEffect:=Sample.MixToEffect;
      for VoiceIndex:=0 to Sample.CountActiveVoices-1 do begin
       Voice:=Sample.ActiveVoices[VoiceIndex];
+      Voice.Prepare;
       Voice.MixTo(Sample.MixingBuffer,32768);
       MixToEffect:=MixToEffect or Voice.MixToEffect;
      end;
@@ -6429,6 +6467,7 @@ begin
       end else begin
        p:=MixingBuffer;
       end;
+      Voice.Prepare;
       Voice.MixTo(p,SampleVolume);
      end;
 
@@ -6445,6 +6484,7 @@ begin
    end else begin
     p:=MixingBuffer;
    end;
+   Voice.Prepare;
    Voice.MixTo(p,SampleVolume);
    Voice:=NextVoice;
   end;}
