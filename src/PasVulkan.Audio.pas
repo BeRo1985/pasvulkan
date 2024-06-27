@@ -6383,6 +6383,7 @@ begin
      // Limit sample mixing buffer
      StereoSampleValue:=TpvPointer(Sample.MixingBuffer);
      Sample.Compressor.fSettings.Assign(Sample.CompressorSettings);
+     Sample.Compressor.Setup(Sample.Compressor.fSettings);
      for i:=1 to BufferSamples do begin
       Factor:=Sample.Compressor.Process(Max(abs(StereoSampleValue^[0]),abs(StereoSampleValue[1]))*OneDiv32768);
       StereoSampleValue[0]:=round(StereoSampleValue[0]*Factor);
