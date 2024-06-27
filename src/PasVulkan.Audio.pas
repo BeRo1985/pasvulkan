@@ -501,6 +501,7 @@ type PpvAudioInt32=^TpvInt32;
        AttenuationRollOff:TpvFloat;
        FreeVoice:TpvAudioSoundSampleVoice;
        MixingBuffer:PpvAudioSoundSampleValues;
+       Limiter:Boolean;
        constructor Create(AAudioEngine:TpvAudio;ASoundSamples:TpvAudioSoundSamples);
        destructor Destroy; override;
        procedure IncRef;
@@ -2979,6 +2980,7 @@ begin
  MaxDistance:=65536.0;
  AttenuationRollOff:=1.0;
  GetMem(MixingBuffer,AudioEngine.MixingBufferSize);
+ Limiter:=false;
 end;
 
 destructor TpvAudioSoundSample.Destroy;
@@ -6038,7 +6040,7 @@ begin
 
    if Sample.CountActiveVoices>0 then begin
 
-    if true then begin
+    if Sample.Limiter then begin
 
      FillChar(Sample.MixingBuffer^,MixingBufferSize,AnsiChar(#0));
      MixToEffect:=false;
