@@ -3222,7 +3222,7 @@ begin
  GetMem(MixingBuffer,AudioEngine.MixingBufferSize);
  MixToEffect:=false;
  Limiter:=false;
- Compressor:=TpvAudioCompressor.Create;
+ Compressor:=TpvAudioCompressor.Create(AudioEngine);
  CompressorSettings:=TpvAudioCompressor.TSettings.Create;
 end;
 
@@ -6305,9 +6305,9 @@ begin
      StereoSampleValue:=TpvPointer(Sample.MixingBuffer);
      Sample.Compressor.fSettings.Assign(Sample.CompressorSettings);
      for i:=1 to BufferSamples do begin
-      Factor:=Sample.Compressor.Process(Max(abs(StereoSampleValue^.Left),abs(StereoSampleValue^.Right))*OneDiv32768);
-      StereoSampleValue^.Left:=round(StereoSampleValue^.Left*Factor);
-      StereoSampleValue^.Right:=round(StereoSampleValue^.Right*Factor);      
+      Factor:=Sample.Compressor.Process(Max(abs(StereoSampleValue^[0]),abs(StereoSampleValue[1]))*OneDiv32768);
+      StereoSampleValue[0]:=round(StereoSampleValue[0]*Factor);
+      StereoSampleValue[1]:=round(StereoSampleValue[1]*Factor);
       inc(StereoSampleValue);
      end;
      
