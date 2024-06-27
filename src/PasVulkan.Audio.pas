@@ -6568,8 +6568,12 @@ begin
      MixToEffect:=Sample.MixToEffect;
      for VoiceIndex:=0 to Sample.CountActiveVoices-1 do begin
       Voice:=Sample.ActiveVoices[VoiceIndex];
-      Voice.MixTo(Sample.MixingBuffer,32768,VoiceIndex<Sample.SampleRealVoices);
-      MixToEffect:=MixToEffect or Voice.MixToEffect;
+      if (VoiceIndex>=Sample.SampleRealVoices) and Voice.ReadyToPutIntoSleep then begin
+       break;
+      end else begin
+       Voice.MixTo(Sample.MixingBuffer,32768,VoiceIndex<Sample.SampleRealVoices);
+       MixToEffect:=MixToEffect or Voice.MixToEffect;
+      end;
      end;
 
      // Limit sample mixing buffer
@@ -6616,12 +6620,16 @@ begin
 
      for VoiceIndex:=0 to Sample.CountActiveVoices-1 do begin
       Voice:=Sample.ActiveVoices[VoiceIndex];
-      if Sample.MixToEffect or Voice.MixToEffect then begin
-       p:=EffectMixingBuffer;
+      if (VoiceIndex>=Sample.SampleRealVoices) and Voice.ReadyToPutIntoSleep then begin
+       break;
       end else begin
-       p:=MixingBuffer;
+       if Sample.MixToEffect or Voice.MixToEffect then begin
+        p:=EffectMixingBuffer;
+       end else begin
+        p:=MixingBuffer;
+       end;
+       Voice.MixTo(p,SampleVolume,VoiceIndex<Sample.SampleRealVoices);
       end;
-      Voice.MixTo(p,SampleVolume,VoiceIndex<Sample.SampleRealVoices);
      end;
 
     end;
