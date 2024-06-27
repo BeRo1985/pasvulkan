@@ -468,6 +468,60 @@ type PpvAudioInt32=^TpvInt32;
        function CheckGlobalVoiceID(const aGlobalVoiceID:TpvID):Boolean;
      end;
 
+     { TpvAudioCompressor }
+     TpvAudioCompressor=class
+      public
+       type TSettings=class
+             private
+              fThreshold:TpvDouble;
+              fAttackTime:TpvDouble;
+              fHoldTime:TpvDouble;
+              fReleaseTime:TpvDouble;
+              fRatio:TpvDouble;
+              fKnee:TpvDouble;
+              fMakeUpGain:TpvDouble;
+              fAutoGain:Boolean;
+             public 
+              constructor Create; reintroduce;
+              destructor Destroy; override;
+              procedure AssignFromJSON(const aJSON:TPasJSONItem);
+              procedure Assign(const aSettings:TSettings);              
+             public
+              property Threshold:TpvDouble read fThreshold write fThreshold;
+              property AttackTime:TpvDouble read fAttackTime write fAttackTime;
+              property HoldTime:TpvDouble read fHoldTime write fHoldTime;
+              property ReleaseTime:TpvDouble read fReleaseTime write fReleaseTime;
+              property Ratio:TpvDouble read fRatio write fRatio;
+              property Knee:TpvDouble read fKnee write fKnee;
+              property MakeUpGain:TpvDouble read fMakeUpGain write fMakeUpGain;
+              property AutoGain:Boolean read fAutoGain write fAutoGain;
+            end;
+      private
+       fAudioEngine:TpvAudio;
+       fHoldTimeSampleCounter:TpvInt32;
+       fState:TpvFloat;
+       fPeakState:TpvFloat;
+       fThreshold:TpvFloat;
+       fAttackCoefficient:TpvFloat;
+       fHoldTimeSampleDuration:TpvInt32;
+       fReleaseCoefficient:TpvFloat;
+       fRatio:TpvFloat;
+       fOneMinusRatio:TpvFloat;
+       fRatioFactor:TpvFloat;
+       fKneedB:TpvFloat;
+       fKneeFactor:TpvFloat;
+       fKneeSign:TpvFloat;
+       fThresholddBFactor:TpvFloat;
+       fOutputGainFactor:TpvFloat;
+       fFirst:LongBool;
+       fSettings:TSettings;
+      public
+       constructor Create(aAudioEngine:TpvAudio); reintroduce;
+       destructor Destroy; override; 
+       procedure Setup(const aSettings:TSettings);
+       function Process(const aInput:TpvFloat):TpvFloat;
+     end;
+
      TpvAudioDistanceModel=
       (
        NoAttenuation,
@@ -501,7 +555,9 @@ type PpvAudioInt32=^TpvInt32;
        AttenuationRollOff:TpvFloat;
        FreeVoice:TpvAudioSoundSampleVoice;
        MixingBuffer:PpvAudioSoundSampleValues;
-       Limiter:Boolean;
+       MixToEffect:LongBool;
+       Limiter:LongBool;
+       Compressor:TpvAudioCompressor.TSettings;
        constructor Create(AAudioEngine:TpvAudio;ASoundSamples:TpvAudioSoundSamples);
        destructor Destroy; override;
        procedure IncRef;
@@ -2954,6 +3010,245 @@ begin
  end;
 end;
 
+(*
+
+     TpvAudioCompressor=class
+      public
+       type TSettings=class
+             private
+              fThreshold:TpvDouble;
+              fAttackTime:TpvDouble;
+              fHoldTime:TpvDouble;
+              fReleaseTime:TpvDouble;
+              fRatio:TpvDouble;
+              fKnee:TpvDouble;
+              fMakeUpGain:TpvDouble;
+              fAutoGain:Boolean;
+             public 
+              constructor Create; reintroduce;
+              destructor Destroy; override;
+              procedure AssignFromJSON(const aJSON:TPasJSONItem);
+              procedure Assign(const aSettings:TSettings);
+             public
+              property Threshold:TpvDouble read fThreshold write fThreshold;
+              property AttackTime:TpvDouble read fAttackTime write fAttackTime;
+              property HoldTime:TpvDouble read fHoldTime write fHoldTime;
+              property ReleaseTime:TpvDouble read fReleaseTime write fReleaseTime;
+              property Ratio:TpvDouble read fRatio write fRatio;
+              property Knee:TpvDouble read fKnee write fKnee;
+              property MakeUpGain:TpvDouble read fMakeUpGain write fMakeUpGain;
+              property AutoGain:Boolean read fAutoGain write fAutoGain;
+            end;
+      private
+       fAudioEngine:TpvAudio;
+       fHoldTimeSampleCounter:TpvInt32;
+       fState:TpvFloat;
+       fPeakState:TpvFloat;
+       fThreshold:TpvFloat;
+       fAttackCoefficient:TpvFloat;
+       fHoldTimeSampleDuration:TpvInt32;
+       fReleaseCoefficient:TpvFloat;
+       fRatio:TpvFloat;
+       fOneMinusRatio:TpvFloat;
+       fRatioFactor:TpvFloat;
+       fKneedB:TpvFloat;
+       fKneeFactor:TpvFloat;
+       fKneeSign:TpvFloat;
+       fThresholddBFactor:TpvFloat;
+       fOutputGainFactor:TpvFloat;
+       fFirst:LongBool;
+       fSettings:TSettings;
+      public
+       constructor Create(aAudioEngine:TpvAudio); reintroduce;
+       destructor Destroy; override; 
+       procedure Setup(const aSettings:TSettings);
+       function Process(const aInput:TpvFloat):TpvFloat;
+     end;
+*)
+
+{ TpvAudioCompressor.TSettings }
+
+constructor TpvAudioCompressor.TSettings.Create;
+begin
+ inherited Create;
+ fThreshold:=-6.0;
+ fAttackTime:=3.0;
+ fHoldTime:=0.0;
+ fReleaseTime:=100.0;
+ fRatio:=2.0;
+ fKnee:=0.0;
+ fMakeUpGain:=0.0;
+ fAutoGain:=false;
+end;
+
+destructor TpvAudioCompressor.TSettings.Destroy;
+begin
+ inherited Destroy;
+end;
+
+procedure TpvAudioCompressor.TSettings.AssignFromJSON(const aJSON:TPasJSONItem);
+begin
+ if assigned(aJSON) and (aJSON is TPasJSONItemObject) then begin
+  fThreshold:=TPasJSON.GetNumber(TPasJSONItemObject(aJSON).Properties['threshold'],fThreshold); 
+  fAttackTime:=TPasJSON.GetNumber(TPasJSONItemObject(aJSON).Properties['attack'],fAttackTime);
+  fHoldTime:=TPasJSON.GetNumber(TPasJSONItemObject(aJSON).Properties['hold'],fHoldTime);
+  fReleaseTime:=TPasJSON.GetNumber(TPasJSONItemObject(aJSON).Properties['release'],fReleaseTime);
+  fRatio:=TPasJSON.GetNumber(TPasJSONItemObject(aJSON).Properties['ratio'],fRatio);
+  fKnee:=TPasJSON.GetNumber(TPasJSONItemObject(aJSON).Properties['knee'],fKnee);
+  fMakeUpGain:=TPasJSON.GetNumber(TPasJSONItemObject(aJSON).Properties['makeupgain'],fMakeUpGain);
+  fAutoGain:=TPasJSON.GetBoolean(TPasJSONItemObject(aJSON).Properties['autogain'],fAutoGain);
+ end;
+end;
+
+procedure TpvAudioCompressor.TSettings.Assign(const aSettings:TSettings);
+begin
+ fThreshold:=aSettings.fThreshold;
+ fAttackTime:=aSettings.fAttackTime;
+ fHoldTime:=aSettings.fHoldTime;
+ fReleaseTime:=aSettings.fReleaseTime;
+ fRatio:=aSettings.fRatio;
+ fKnee:=aSettings.fKnee;
+ fMakeUpGain:=aSettings.fMakeUpGain;
+ fAutoGain:=aSettings.fAutoGain;
+end;
+
+{ TpvAudioCompressor }
+
+constructor TpvAudioCompressor.Create(aAudioEngine:TpvAudio);
+begin
+ inherited Create;
+ fAudioEngine:=aAudioEngine;
+ fHoldTimeSampleCounter:=0;
+ fState:=1.0;
+ fPeakState:=0.0;
+ fThreshold:=0.0;
+ fAttackCoefficient:=0.0;
+ fHoldTimeSampleDuration:=0;
+ fReleaseCoefficient:=0.0;
+ fRatio:=0.0;
+ fOneMinusRatio:=0.0;
+ fRatioFactor:=0.0;
+ fFirst:=true;
+ fSettings:=TSettings.Create;
+end;
+
+destructor TpvAudioCompressor.Destroy;
+begin
+ FreeAndNil(fSettings);
+ inherited Destroy;
+end;
+
+procedure TpvAudioCompressor.Setup(const aSettings:TSettings);
+const Log10DivLog2Div20=0.16609640474436811739351597147447; // (log(10.0)/log(2.0))/20.0
+ function dBToLinear(const aDB:TpvDouble):TpvDouble;
+ begin
+  result:=Power(10.0,aDB*0.05);
+ end;
+begin
+
+ fSettings.Assign(aSettings);
+
+ fThreshold:=dBToLinear(fSettings.fThreshold);
+
+ if IsZero(fSettings.fAttackTime) or (fSettings.fAttackTime<=0.0) then begin
+  fAttackCoefficient:=1.0;
+ end else begin
+  fAttackCoefficient:=exp(-1.0/(fAudioEngine.SampleRate*fSettings.fAttackTime));
+ end;
+
+ if IsZero(fSettings.fHoldTime) or (fSettings.fHoldTime<0.0) then begin
+  fHoldTimeSampleDuration:=-1;
+ end else begin
+  fHoldTimeSampleDuration:=round(fSettings.fHoldTime*0.001*fAudioEngine.SampleRate);
+ end;
+
+ if IsZero(fSettings.fReleaseTime) or (fSettings.fReleaseTime<=0.0) then begin
+  fReleaseCoefficient:=1.0;
+ end else begin
+  fReleaseCoefficient:=exp(-1.0/(fAudioEngine.SampleRate*fSettings.fReleaseTime));
+ end;
+
+ if SameValue(fSettings.fRatio,0.0) then begin
+  fRatio:=0.0; // Limiter mode  
+ end else begin
+  fRatio:=1.0/fSettings.fRatio;
+ end;
+
+ fOneMinusRatio:=1.0-fRatio;
+
+ fRatioFactor:=0.5*(fRatio-1.0);
+
+ fKneedB:=fSettings.fKnee;
+
+ fKneeFactor:=sqr(fKneedB*Log10DivLog2Div20);
+
+ if fKneedB<0 then begin
+  fKneeSign:=-1.0;
+ end else begin
+  fKneeSign:=1.0;
+ end;
+
+ fThresholddBFactor:=fSettings.fThreshold*Log10DivLog2Div20;
+
+ fOutputGainFactor:=dBToLinear(fSettings.fMakeUpGain);
+
+ if fSettings.fAutoGain then begin
+  fOutputGainFactor:=fOutputGainFactor/Power(fThreshold,fOneMinusRatio);
+ end;
+
+end;
+
+function TpvAudioCompressor.Process(const aInput:TpvFloat):TpvFloat;
+var Target,TargetSquared,Coefficient:TpvFloat; 
+begin
+
+ Target:=abs(aInput);
+
+ if fFirst then begin
+  fFirst:=false;
+  fState:=Target;
+ end; 
+
+ if fState<Target then begin
+  Coefficient:=fAttackCoefficient;
+  fHoldTimeSampleCounter:=0;
+ end else begin
+  if fHoldTimeSampleCounter<fHoldTimeSampleDuration then begin
+   inc(fHoldTimeSampleCounter);
+   Coefficient:=0.0;
+  end else begin
+   Coefficient:=fReleaseCoefficient;
+  end;  
+ end; 
+
+ fState:=(fState*(1.0-Coefficient))+(Target*Coefficient);
+ if abs(fState)>1e+16 then begin
+  fState:=1.0;
+ end;       
+
+ if abs(fKneedB)>1e-10 then begin
+  // Soft knee
+  result:=(Log2(fState)-fThresholddBFactor)*fRatioFactor;
+  result:=Exp2(result+sqrt(sqr(result)+fKneeFactor));
+//result:=FastExp2(result+(FastSQRT(sqr(result)+fKneeFactor)*fKneeSign));
+ end else begin
+  // Hard knee
+  if (abs(fState)>1e-10) and (fState>fThreshold) then begin
+   if SameValue(fOneMinusRatio,1.0) then begin
+    result:=fThreshold;
+   end else begin
+    result:=Power(fThreshold/fState,fOneMinusRatio);
+   end;
+  end else begin
+   result:=1.0;
+  end;
+ end;
+
+ result:=result*fOutputGainFactor;
+                          
+
+end;
+
 { TpvAudioSoundSample }
 
 constructor TpvAudioSoundSample.Create(AAudioEngine:TpvAudio;ASoundSamples:TpvAudioSoundSamples);
@@ -2980,7 +3275,9 @@ begin
  MaxDistance:=65536.0;
  AttenuationRollOff:=1.0;
  GetMem(MixingBuffer,AudioEngine.MixingBufferSize);
+ MixToEffect:=false;
  Limiter:=false;
+ Compressor:=TpvAudioCompressor.TSettings.Create;
 end;
 
 destructor TpvAudioSoundSample.Destroy;
@@ -3010,6 +3307,7 @@ begin
   FreeMem(MixingBuffer);
   MixingBuffer:=nil;
  end;
+ FreeAndNil(Compressor);
  Name:='';
  inherited Destroy;
 end;
@@ -6007,6 +6305,7 @@ begin
 end;
 
 procedure TpvAudio.FillBuffer;
+const OneDiv32768=1.0/32768.0;
 type pbyte=^TpvUInt8;
      psmallint=^smallint;
      PpvAudioInt32=^TpvInt32;
@@ -6016,8 +6315,10 @@ var i,jl,jr,SampleValue,HighPass,CountSamples,ToDo,LowPassCoef,Coef,SampleIndex,
     ps:psmallint;
     pb:pbyte;
     Voice,NextVoice:TpvAudioSoundSampleVoice;
+    StereoSampleValue:PpvAudioSoundSampleStereoValue;
     Sample:TpvAudioSoundSample;
     MixToEffect:Boolean;
+    LimiterValue,LimiterThreshold,LimiterState,LimiterAttackCoef,LimiterReleaseCoef:TpvFloat;
 begin
  CriticalSection.Enter;
  try
@@ -6042,14 +6343,44 @@ begin
 
     if Sample.Limiter then begin
 
+     // Clear mixing buffer
      FillChar(Sample.MixingBuffer^,MixingBufferSize,AnsiChar(#0));
-     MixToEffect:=false;
+
+     // Mix all voices to sample mixing buffer
+     MixToEffect:=Sample.MixToEffect;
      for VoiceIndex:=0 to Sample.CountActiveVoices-1 do begin
       Voice:=Sample.ActiveVoices[VoiceIndex];
       Voice.MixTo(Sample.MixingBuffer,32768);
       MixToEffect:=MixToEffect or Voice.MixToEffect;
      end;
 
+     // Limit sample mixing buffer
+{    LimiterThreshold:=0.5;
+     LimiterAttackCoef:=0.999;
+     LimiterReleaseCoef:=0.9999;
+     LimiterState:=1.0;
+     StereoSampleValue:=TpvPointer(Sample.MixingBuffer);
+     for i:=1 to BufferSamples do begin
+      LimiterValue:=Max(abs(StereoSampleValue^.Left),abs(StereoSampleValue^.Right))*OneDiv32768;
+      if LimiterValue>LimiterThreshold then begin
+       LimiterState:=LimiterThreshold/LimiterValue;
+      end;
+      if LimiterValue>LimiterState then begin
+       LimiterState:=LimiterState*LimiterAttackCoef;
+      end else begin
+       LimiterState:=LimiterState*LimiterReleaseCoef;
+      end;
+      if LimiterState<LimiterThreshold then begin
+       LimiterState:=LimiterThreshold;
+      end;
+      StereoSampleValue^.Left:=round(StereoSampleValue^.Left*LimiterState);
+      StereoSampleValue^.Right:=round(StereoSampleValue^.Right*LimiterState);      
+      inc(StereoSampleValue);
+     end;}
+
+
+
+     // Mix to target buffer
      if MixToEffect then begin
       p:=EffectMixingBuffer;
      end else begin
@@ -6058,11 +6389,22 @@ begin
      pl:=TpvPointer(p);
      pll:=TpvPointer(Sample.MixingBuffer);
      for i:=1 to BufferSamples do begin
-      SampleValue:=SARLongint(pll^*SampleVolume,15);
+      SampleValue:=pll^;
+      if SampleValue<-524288 then begin
+       SampleValue:=-524288;
+      end else if SampleValue>524287 then begin
+       SampleValue:=524287;
+      end;
+      SampleValue:=SARLongint(SampleValue*((SampleVolume+4) shr 5),12);
       inc(pl^,SampleValue);
       inc(pl);
       inc(pll);
-      SampleValue:=SARLongint(pll^*SampleVolume,15);
+      SampleValue:=pll^;
+      if SampleValue<-524288 then begin
+       SampleValue:=-524288;
+      end else if SampleValue>524287 then begin
+       SampleValue:=524287;
+      end;
       inc(pl^,SampleValue);
       inc(pl);
       inc(pll);
@@ -6072,7 +6414,7 @@ begin
 
      for VoiceIndex:=0 to Sample.CountActiveVoices-1 do begin
       Voice:=Sample.ActiveVoices[VoiceIndex];
-      if Voice.MixToEffect then begin
+      if Sample.MixToEffect or Voice.MixToEffect then begin
        p:=EffectMixingBuffer;
       end else begin
        p:=MixingBuffer;
