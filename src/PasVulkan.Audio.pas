@@ -371,6 +371,7 @@ type PpvAudioInt32=^TpvInt32;
        HRTFMask:TpvInt32;
        Spatialization:LongBool;
        SpatializationLocal:LongBool;
+       SpatializationHasContent:LongBool;
        SpatializationOrigin:TpvVector3;
        SpatializationVelocity:TpvVector3;
        SpatializationVolumeLast:TpvFloat;
@@ -1529,6 +1530,7 @@ begin
  HRTFRampingRemain:=0;
  HRTFRampingStepRemain:=0;
  LastDirection:=TpvVector3.Null;
+ SpatializationHasContent:=false;
  SpatializationVolumeLast:=0;
  SpatializationDelayLeft:=0;
  SpatializationDelayRight:=0;
@@ -1682,6 +1684,7 @@ begin
  NewLastLeft:=0;
  NewLastRight:=0;
  if AudioEngine.SpatializationMode in [SPATIALIZATION_PSEUDO,SPATIALIZATION_HRTF] then begin
+  SpatializationHasContent:=false;
   SpatializationDelayLeft:=0;
   SpatializationDelayRight:=0;
   SpatializationDelayLeftLast:=SpatializationDelayLeft;
@@ -2768,16 +2771,19 @@ begin
      SpatializationLowPassRightHistory[1]:=0;
      inc(SpatializationDelayLeftCurrent,SpatializationDelayLeftIncrement*ToDo);
      inc(SpatializationDelayRightCurrent,SpatializationDelayRightIncrement*ToDo);
-     Counter:=ToDo;
-     if Counter>AudioEngine.SpatializationDelayPowerOfTwo then begin
-      Counter:=AudioEngine.SpatializationDelayPowerOfTwo;
-     end;
-     while Counter>0 do begin
-      dec(Counter);
-      SpatializationDelayLeftLine[SpatializationDelayLeftIndex]:=0;
-      SpatializationDelayLeftIndex:=(SpatializationDelayLeftIndex+1) and AudioEngine.SpatializationDelayMask;
-      SpatializationDelayRightLine[SpatializationDelayRightIndex]:=0;
-      SpatializationDelayRightIndex:=(SpatializationDelayRightIndex+1) and AudioEngine.SpatializationDelayMask;
+     if SpatializationHasContent then begin
+      SpatializationHasContent:=false;
+      Counter:=ToDo;
+      if Counter>AudioEngine.SpatializationDelayPowerOfTwo then begin
+       Counter:=AudioEngine.SpatializationDelayPowerOfTwo;
+      end;
+      while Counter>0 do begin
+       dec(Counter);
+       SpatializationDelayLeftLine[SpatializationDelayLeftIndex]:=0;
+       SpatializationDelayLeftIndex:=(SpatializationDelayLeftIndex+1) and AudioEngine.SpatializationDelayMask;
+       SpatializationDelayRightLine[SpatializationDelayRightIndex]:=0;
+       SpatializationDelayRightIndex:=(SpatializationDelayRightIndex+1) and AudioEngine.SpatializationDelayMask;
+      end;
      end;
     end;
     NewLastLeft:=0;
@@ -2803,6 +2809,7 @@ begin
       MixProcNormal(Buf,ToDo);
      end;
     end;
+    SpatializationHasContent:=true;
     NewLastLeft:=(BufEx^[0]-NewLastLeft) shl 12;
     NewLastRight:=(BufEx^[1]-NewLastRight) shl 12;
    end;
