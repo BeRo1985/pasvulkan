@@ -556,7 +556,7 @@ type PpvAudioInt32=^TpvInt32;
        FreeVoice:TpvAudioSoundSampleVoice;
        MixingBuffer:PpvAudioSoundSampleValues;
        MixToEffect:LongBool;
-       Limiter:LongBool;
+       CompressorActive:LongBool;
        Compressor:TpvAudioCompressor;
        CompressorSettings:TpvAudioCompressor.TSettings;
        constructor Create(AAudioEngine:TpvAudio;ASoundSamples:TpvAudioSoundSamples);
@@ -3300,7 +3300,7 @@ begin
  AttenuationRollOff:=1.0;
  GetMem(MixingBuffer,AudioEngine.MixingBufferSize);
  MixToEffect:=false;
- Limiter:=false;
+ CompressorActive:=false;
  Compressor:=TpvAudioCompressor.Create(AudioEngine);
  CompressorSettings:=TpvAudioCompressor.TSettings.Create;
 end;
@@ -6367,7 +6367,7 @@ begin
 
    if Sample.CountActiveVoices>0 then begin
 
-    if Sample.Limiter then begin
+    if Sample.CompressorActive then begin
 
      // Clear mixing buffer
      FillChar(Sample.MixingBuffer^,MixingBufferSize,AnsiChar(#0));
