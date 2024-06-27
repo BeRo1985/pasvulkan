@@ -500,6 +500,7 @@ type PpvAudioInt32=^TpvInt32;
        MaxDistance:TpvFloat;
        AttenuationRollOff:TpvFloat;
        FreeVoice:TpvAudioSoundSampleVoice;
+       MixingBuffer:PpvAudioSoundSampleValues;
        constructor Create(AAudioEngine:TpvAudio;ASoundSamples:TpvAudioSoundSamples);
        destructor Destroy; override;
        procedure IncRef;
@@ -2977,6 +2978,7 @@ begin
  MinDistance:=8.0;
  MaxDistance:=65536.0;
  AttenuationRollOff:=1.0;
+ GetMem(MixingBuffer,AudioEngine.MixingBufferSize);
 end;
 
 destructor TpvAudioSoundSample.Destroy;
@@ -3001,6 +3003,10 @@ begin
   dec(PpvAudioInt32(Data),2*SampleFixUp);
   FreeMem(Data);
   Data:=nil;
+ end;
+ if assigned(MixingBuffer) then begin
+  FreeMem(MixingBuffer);
+  MixingBuffer:=nil;
  end;
  Name:='';
  inherited Destroy;
@@ -6009,6 +6015,7 @@ var i,jl,jr,SampleValue,HighPass,CountSamples,ToDo,LowPassCoef,Coef,SampleIndex,
     pb:pbyte;
     Voice,NextVoice:TpvAudioSoundSampleVoice;
     Sample:TpvAudioSoundSample;
+    MixToEffect:Boolean;
 begin
  CriticalSection.Enter;
  try
@@ -6026,16 +6033,55 @@ begin
 
   // Mixing all sample voices
   for SampleIndex:=0 to Samples.Count-1 do begin
+
    Sample:=Samples.Items[SampleIndex];
-   for VoiceIndex:=0 to Sample.CountActiveVoices-1 do begin
-    Voice:=Sample.ActiveVoices[VoiceIndex];
-    if Voice.MixToEffect then begin
-     p:=EffectMixingBuffer;
+
+   if Sample.CountActiveVoices>0 then begin
+
+    if true then begin
+
+     FillChar(Sample.MixingBuffer^,MixingBufferSize,AnsiChar(#0));
+     MixToEffect:=false;
+     for VoiceIndex:=0 to Sample.CountActiveVoices-1 do begin
+      Voice:=Sample.ActiveVoices[VoiceIndex];
+      Voice.MixTo(Sample.MixingBuffer,32768);
+      MixToEffect:=MixToEffect or Voice.MixToEffect;
+     end;
+
+     if MixToEffect then begin
+      p:=EffectMixingBuffer;
+     end else begin
+      p:=MixingBuffer;
+     end;
+     pl:=TpvPointer(p);
+     pll:=TpvPointer(Sample.MixingBuffer);
+     for i:=1 to BufferSamples do begin
+      SampleValue:=SARLongint(pll^*SampleVolume,15);
+      inc(pl^,SampleValue);
+      inc(pl);
+      inc(pll);
+      SampleValue:=SARLongint(pll^*SampleVolume,15);
+      inc(pl^,SampleValue);
+      inc(pl);
+      inc(pll);
+     end;
+
     end else begin
-     p:=MixingBuffer;
+
+     for VoiceIndex:=0 to Sample.CountActiveVoices-1 do begin
+      Voice:=Sample.ActiveVoices[VoiceIndex];
+      if Voice.MixToEffect then begin
+       p:=EffectMixingBuffer;
+      end else begin
+       p:=MixingBuffer;
+      end;
+      Voice.MixTo(p,SampleVolume);
+     end;
+
     end;
-    Voice.MixTo(p,SampleVolume);
+
    end;
+
   end;
 { Voice:=VoiceFirst;
   while assigned(Voice) do begin
