@@ -6497,7 +6497,7 @@ function CompareVoiceByVolumeSquaredMagnitudes(const a,b:Pointer):TpvInt32;
 begin
  result:=Sign(TpvAudioSoundSampleVoice(b).VolumeSquaredMagnitude-TpvAudioSoundSampleVoice(a).VolumeSquaredMagnitude);
  if result=0 then begin
-  result:=Sign(TpvInt32(Ord(TpvAudioSoundSampleVoice(b).ReadyToPutIntoSleep) and 1)-TpvInt32(Ord(TpvAudioSoundSampleVoice(a).ReadyToPutIntoSleep) and 1));
+  result:=Sign(TpvInt32(Ord(TpvAudioSoundSampleVoice(a).ReadyToPutIntoSleep) and 1)-TpvInt32(Ord(TpvAudioSoundSampleVoice(b).ReadyToPutIntoSleep) and 1));
   if result=0 then begin
    result:=Sign(TpvPtrInt(a)-TpvPtrInt(b));
   end;
