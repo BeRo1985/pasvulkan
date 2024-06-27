@@ -72,6 +72,7 @@ uses {$ifdef windows}Windows,{$endif}SysUtils,Classes,Math,SyncObjs,
       PasVulkan.Audio.OGGVorbisTremor,
      {$endif}
      PasVulkan.Collections,
+     PasVulkan.RandomGenerator,
      PasVulkan.Math,
      PasVulkan.Utils,
      PasVulkan.Audio.HRTFTables,
@@ -578,6 +579,7 @@ type PpvAudioInt32=^TpvInt32;
        procedure SetRealVoices(RealVoices:TpvInt32);
        function Play(Volume,Panning,Rate:TpvFloat;VoiceIndexPointer:TpvPointer=nil;PerreservedGlobalVoiceID:TpvID=0):TpvInt32;
        function PlaySpatialization(Volume,Panning,Rate:TpvFloat;Spatialization:LongBool;const Position,Velocity:TpvVector3;const Local:LongBool=false;const VoiceIndexPointer:TpvPointer=nil;PerreservedGlobalVoiceID:TpvID=0):TpvInt32;
+       procedure RandomReseek(VoiceNumber:TpvInt32);
        procedure Stop(VoiceNumber:TpvInt32);
        procedure KeyOff(VoiceNumber:TpvInt32);
        function SetVolume(VoiceNumber:TpvInt32;Volume:TpvFloat):TpvInt32;
@@ -675,6 +677,7 @@ type PpvAudioInt32=^TpvInt32;
        procedure SetRealVoices(RealVoices:TpvInt32);
        function Play(Volume,Panning,Rate:TpvFloat;VoiceIndexPointer:TpvPointer=nil;PerreservedGlobalVoiceID:TpvID=0):TpvInt32;
        function PlaySpatialization(Volume,Panning,Rate:TpvFloat;Spatialization:LongBool;const Position,Velocity:TpvVector3;const Local:LongBool=false;const VoiceIndexPointer:TpvPointer=nil;PerreservedGlobalVoiceID:TpvID=0):TpvInt32;
+       procedure RandomReseek(VoiceNumber:TpvInt32);
        procedure Stop(VoiceNumber:TpvInt32);
        procedure KeyOff(VoiceNumber:TpvInt32);
        function SetVolume(VoiceNumber:TpvInt32;Volume:TpvFloat):TpvInt32;
@@ -698,6 +701,7 @@ type PpvAudioInt32=^TpvInt32;
        procedure SetRealVoices(RealVoices:TpvInt32);
        function Play(Volume,Panning,Rate:TpvFloat;VoiceIndexPointer:TpvPointer=nil;PerreservedGlobalVoiceID:TpvID=0):TpvInt32;
        function PlaySpatialization(Volume,Panning,Rate:TpvFloat;Spatialization:LongBool;const Position,Velocity:TpvVector3;const Local:LongBool=false;const VoiceIndexPointer:TpvPointer=nil;PerreservedGlobalVoiceID:TpvID=0):TpvInt32;
+       procedure RandomReseek(VoiceNumber:TpvInt32);
        procedure Stop(VoiceNumber:TpvInt32);
        procedure KeyOff(VoiceNumber:TpvInt32);
        function SetVolume(VoiceNumber:TpvInt32;Volume:TpvFloat):TpvInt32;
@@ -856,6 +860,7 @@ type PpvAudioInt32=^TpvInt32;
                     (
                      SampleVoicePlay,
                      SampleVoicePlaySpatialization,
+                     SampleVoiceRandomReseek,
                      SampleVoiceStop,
                      SampleVoiceKeyOff,
                      SampleVoiceSetVolume,
@@ -904,6 +909,8 @@ type PpvAudioInt32=^TpvInt32;
        procedure Unlock;
        function SampleVoicePlay(const aSample:TpvAudioSoundSample;const aVolume,aPanning,aRate:TpvFloat;const aVoiceIndexPointer:TpvPointer=nil):TpvID;
        function SampleVoicePlaySpatialization(const aSample:TpvAudioSoundSample;const aVolume,aPanning,aRate:TpvFloat;const aSpatialization:LongBool;const aPosition,aVelocity:TpvVector3;const aLocal:LongBool=false;const aVoiceIndexPointer:TpvPointer=nil):TpvID;
+       procedure SampleVoiceRandomReseek(const aSample:TpvAudioSoundSample;const aVoiceNumber:TpvInt32); overload;
+       procedure SampleVoiceRandomReseek(const aGlobalVoiceID:TpvID); overload;
        procedure SampleVoiceStop(const aSample:TpvAudioSoundSample;const aVoiceNumber:TpvInt32); overload;
        procedure SampleVoiceStop(const aGlobalVoiceID:TpvID); overload;
        procedure SampleVoiceKeyOff(const aSample:TpvAudioSoundSample;const aVoiceNumber:TpvInt32); overload;
@@ -1009,6 +1016,7 @@ type PpvAudioInt32=^TpvInt32;
        WAVStreamDumpMusic:TpvAudioWAVStreamDump;
        WAVStreamDumpSample:TpvAudioWAVStreamDump;
        WAVStreamDumpFinalMix:TpvAudioWAVStreamDump;
+       PCG32:TpvPCG32;
        constructor Create(ASampleRate,AChannels,ABits,ABufferSamples:TpvInt32);
        destructor Destroy; override;
        procedure SetMixerMasterVolume(NewVolume:TpvFloat);
@@ -3544,6 +3552,33 @@ begin
  SetPosition(result,Spatialization,Position,Velocity,Local);
 end;
 
+procedure TpvAudioSoundSample.RandomReseek(VoiceNumber:TpvInt32);
+var Voice:TpvAudioSoundSampleVoice;
+    SmpInc,SmpLen,SmpLoopStart,SmpLoopEnd:TpvInt64;
+    LoopMode:TpvInt32;
+begin
+ if (VoiceNumber>=0) and (VoiceNumber<length(Voices)) then begin
+  Voice:=Voices[VoiceNumber];
+  SmpLen:=TpvInt64(SampleLength);
+  if (SustainLoop.Mode<>SoundLoopModeNONE) and not Voice.KeyOff then begin
+   LoopMode:=SustainLoop.Mode;
+   SmpLoopStart:=TpvInt64(SustainLoop.StartSample);
+   SmpLoopEnd:=TpvInt64(SustainLoop.EndSample);
+  end else if Loop.Mode<>SoundLoopModeNONE then begin
+   LoopMode:=Loop.Mode;
+   SmpLoopStart:=TpvInt64(Loop.StartSample);
+   SmpLoopEnd:=TpvInt64(Loop.EndSample);
+  end else begin
+   LoopMode:=SoundLoopModeNONE;
+   SmpLoopStart:=0;
+   SmpLoopEnd:=SmpLen;
+  end;
+  if LoopMode<>SoundLoopModeNONE then begin
+   Voice.Position:=(SmpLoopStart shl 32)+((SmpLoopEnd-SmpLoopStart)*TpvInt64(AudioEngine.PCG32.Get32));
+  end;
+ end;
+end;
+
 procedure TpvAudioSoundSample.Stop(VoiceNumber:TpvInt32);
 var Voice:TpvAudioSoundSampleVoice;
 begin
@@ -4134,6 +4169,11 @@ end;
 function TpvAudioSoundSampleResource.PlaySpatialization(Volume,Panning,Rate:TpvFloat;Spatialization:LongBool;const Position,Velocity:TpvVector3;const Local:LongBool=false;const VoiceIndexPointer:TpvPointer=nil;PerreservedGlobalVoiceID:TpvID=0):TpvInt32;
 begin
  result:=fSample.PlaySpatialization(Volume,Panning,Rate,Spatialization,Position,Velocity,Local,VoiceIndexPointer,PerreservedGlobalVoiceID);
+end;
+
+procedure TpvAudioSoundSampleResource.RandomReseek(VoiceNumber:TpvInt32);
+begin
+ fSample.RandomReseek(VoiceNumber);
 end;
 
 procedure TpvAudioSoundSampleResource.Stop(VoiceNumber:TpvInt32);
@@ -5559,6 +5599,44 @@ begin
  end;
 end;
 
+procedure TpvAudioCommandQueue.SampleVoiceRandomReseek(const aSample:TpvAudioSoundSample;const aVoiceNumber:TpvInt32);
+var QueueItem:TQueueItem;
+begin
+ if assigned(aSample) then begin
+  fLock.Acquire;
+  try
+   QueueItem:=AcquireQueueItem;
+   try
+    QueueItem.fCommandType:=TQueueItem.TCommandType.SampleVoiceRandomReseek;
+    QueueItem.fSample:=aSample;
+    QueueItem.fVoiceNumber:=aVoiceNumber;
+    QueueItem.fGlobalVoiceID:=fAudioEngine.GlobalVoiceManager.GetGlobalVoiceID(aSample,aVoiceNumber);
+   finally
+    fQueue.Enqueue(QueueItem);
+   end;
+  finally
+   fLock.Release;
+  end;
+ end;
+end;
+
+procedure TpvAudioCommandQueue.SampleVoiceRandomReseek(const aGlobalVoiceID:TpvID);
+var QueueItem:TQueueItem;
+begin
+ fLock.Acquire;
+ try
+  QueueItem:=AcquireQueueItem;
+  try
+   QueueItem.fCommandType:=TQueueItem.TCommandType.SampleVoiceRandomReseek;
+   QueueItem.fGlobalVoiceID:=aGlobalVoiceID;
+  finally
+   fQueue.Enqueue(QueueItem);
+  end;
+ finally
+  fLock.Release;
+ end;
+end;
+
 procedure TpvAudioCommandQueue.SampleVoiceStop(const aSample:TpvAudioSoundSample;const aVoiceNumber:TpvInt32);
 var QueueItem:TQueueItem;
 begin
@@ -5981,6 +6059,17 @@ begin
         QueueItem.fSample.PlaySpatialization(QueueItem.fVolume,QueueItem.fPanning,QueueItem.fRate,QueueItem.fSpatialization,QueueItem.fPosition,QueueItem.fVelocity,QueueItem.fLocal,QueueItem.fVoiceIndexPointer);
        end;
       end;
+      TQueueItem.TCommandType.SampleVoiceRandomReseek:begin
+       GlobalVoiceID:=QueueItem.fGlobalVoiceID;
+       if GlobalVoiceID<>0 then begin
+        GlobalVoice:=fAudioEngine.GlobalVoiceManager.GetGlobalVoice(GlobalVoiceID);
+        if assigned(GlobalVoice.SoundSample) then begin
+         GlobalVoice.SoundSample.RandomReseek(GlobalVoice.VoiceNumber);
+        end;
+       end else if assigned(QueueItem.fSample) then begin
+        QueueItem.fSample.RandomReseek(QueueItem.fVoiceNumber);
+       end;
+      end;
       TQueueItem.TCommandType.SampleVoiceStop:begin
        GlobalVoiceID:=QueueItem.fGlobalVoiceID;
        if GlobalVoiceID<>0 then begin
@@ -6216,6 +6305,7 @@ begin
   WAVStreamDumpSample:=nil;
   WAVStreamDumpFinalMix:=nil; 
  end; 
+ PCG32.Init(TpvPtrUInt(self));
 end;
 
 destructor TpvAudio.Destroy;
