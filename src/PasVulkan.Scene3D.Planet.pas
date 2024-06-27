@@ -1051,6 +1051,7 @@ type TpvScene3DPlanets=class;
                     MaximumCountTaskIndices:TpvUInt32;
                     MaximumCountVertices:TpvUInt32;
                     MaximumCountIndices:TpvUInt32;
+                    InvocationVariants:TpvUInt32;
                    end;
                    PGrassPushConstants=^TGrassPushConstants;
               private
@@ -1195,6 +1196,8 @@ type TpvScene3DPlanets=class;
                     FrameIndex:TpvUInt32;
 
                     Jitter:TpvVector2;
+                    InvocationVariants:TpvUInt32;
+
                    end;
                    PGrassPushConstants=^TGrassPushConstants;
              private
@@ -1421,6 +1424,7 @@ type TpvScene3DPlanets=class;
        fBottomRadius:TpvFloat; // Start of the lowest planet ground
        fTopRadius:TpvFloat; // End of the atmosphere
        fHeightMapScale:TpvFloat; // Scale factor for the height map
+       fGrassInvocationVariants:TpvUInt32;
        fMaxGrassVertices:TpvSizeInt;
        fMaxGrassIndices:TpvSizeInt;
        fCountVisualMeshIndices:TpvSizeInt;
@@ -10134,6 +10138,7 @@ begin
          fGrassPushConstants.MaximumCountTaskIndices:=Planet.fVisualResolution*Planet.fVisualResolution;
          fGrassPushConstants.MaximumCountVertices:=Planet.fMaxGrassVertices;
          fGrassPushConstants.MaximumCountIndices:=Planet.fMaxGrassIndices;
+         fGrassPushConstants.InvocationVariants:=Planet.fGrassInvocationVariants;
 
          begin
 
@@ -11993,6 +11998,7 @@ begin
       end else begin
        fGrassPushConstants.Jitter:=TpvVector2.Null;
       end;
+      fGrassPushConstants.InvocationVariants:=Planet.fGrassInvocationVariants;
       fGrassPushConstants.FrameIndex:=aFrameIndex;
 {     if TpvScene3D(fScene3D).UseBufferDeviceAddress then begin
        fGrassPushConstants.PlanetData:=Planet.fPlanetDataVulkanBuffers[aInFlightFrameIndex].DeviceAddress;
@@ -13217,6 +13223,8 @@ begin
  fVisualResolution:=fTileMapResolution*fVisualTileResolution;
 
  fPhysicsResolution:=fTileMapResolution*fPhysicsTileResolution;
+
+ fGrassInvocationVariants:=1;//Max(1,fHeightMapResolution div fVisualTileResolution);
 
 {fMaxGrassVertices:=Max(65536,((fVisualResolution*fVisualResolution)+15) shr 3)*(4*2);
 

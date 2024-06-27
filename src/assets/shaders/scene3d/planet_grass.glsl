@@ -24,8 +24,10 @@ layout(push_constant) uniform PushConstants {
   uint maximalCountTaskIndices;
   uint maximalCountVertices;
   uint maximalCountIndices;
+  uint invocationVariants;
 #else  
   vec2 jitter;
+  uint invocationVariants;
 #endif
 
 } pushConstants;
