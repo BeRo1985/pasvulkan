@@ -1266,6 +1266,85 @@ begin
  end;}
 end;
 
+function FastLog2(const aValue:TpvFloat):TpvFloat;
+{$if false}
+var ValueCasted:TpvInt32 absolute aValue;
+    ResultCasted:TpvUInt32 absolute result;
+begin
+ ResultCasted:=(TpvUInt32(ValueCasted) and TpvUInt32($807fffff))+TpvUInt32($3f800000);
+ result:=(((ValueCasted shr 23) and $ff)-$80)+((((((((-0.0821343513178931783)*result)+0.649732456739820052)*result)-2.13417801862571777)*result)+4.08642207062728868)*result)-1.51984215742349793;
+end;
+{$else}
+const OneDiv23Bit=1.0/(1 shl 23);
+var Temporary,OtherTemporary:TpvFloat;
+    ValueCasted:TpvUInt32 absolute aValue;
+    OtherTemporaryCasted:TpvUInt32 absolute OtherTemporary;
+begin
+ Temporary:=ValueCasted*OneDiv23Bit;
+ OtherTemporaryCasted:=(ValueCasted and $007fffff) or ($7e shl 23);
+ result:=((Temporary-124.22544637)-(OtherTemporary*1.498030302))-(1.72587999/(0.3520887068+OtherTemporary));
+end;
+{$ifend}
+
+function FastLog(const aValue:TpvFloat):TpvFloat;
+begin
+ result:=FastLog2(aValue)*0.6931471805599453;
+end;
+
+function FastExp2(const aValue:TpvFloat):TpvFloat;
+{$if false}
+var Value:TpvFloat;
+    ValueCasted:TpvInt32 absolute aValue;
+    ResultCasted:TpvUInt32 absolute result;
+begin
+ ResultCasted:=round(aValue);
+ Value:=aValue-ResultCasted;
+ ResultCasted:=($7f+ResultCasted) shl 23;
+ result:=result*(1.0+(Value*(0.693292707161004662+(Value*(0.242162975514835621+(Value*0.548668824216034384))))));
+end;
+{$else}
+var w:TpvInt32;
+    Offset,Clip,z:TpvFloat;
+    ValueCasted:TpvUInt32 absolute aValue;
+    ResultCasted:TpvUInt32 absolute result;
+begin
+ Offset:=ValueCasted shr 31;
+ if aValue<-126.0 then begin
+  Clip:=-126.0;
+ end else begin
+  Clip:=aValue;
+ end;
+ w:=trunc(Clip);
+ z:=(Clip-w)+Offset;
+ ResultCasted:=trunc((TpvUInt32($800000)*(((Clip+121.2740838)+(27.7280233/(4.84252568-z)))-(1.49012907*z))));
+end;
+{$ifend}
+
+function FastExp(const aValue:TpvFloat):TpvFloat;
+begin
+ result:=FastExp2(aValue*1.4426950408889634);
+end;
+
+function FastPower(const aBase,aExponent:TpvFloat):TpvFloat;
+begin
+ result:=FastExp2(aExponent*FastLog2(aBase));
+end;
+
+function FastArcTan(const aValue:TpvFloat):TpvFloat;
+const PIOverFour=PI/4.0;
+begin
+ result:=(aValue*PIOverFour)-(aValue*(abs(aValue)-1.0)*(0.2447+(0.0663*abs(aValue))));
+end;
+
+function FastSQRT(const aValue:TpvFloat):TpvFloat;
+var ResultCasted:UInt32 absolute result;
+begin
+ result:=aValue;
+ ResultCasted:=((ResultCasted-$800000) shr 1)+$20000000;
+ result:=result+(aValue/result);
+ result:=(result*0.25)+(aValue/result);
+end;                                                                          
+
 constructor TpvAudioWAVStreamDump.Create(const aAudioEngine:TpvAudio;const aStream:TStream;const aDoFreeStream:boolean=true);
 begin
  inherited Create;
@@ -3173,8 +3252,8 @@ begin
 
  if abs(fKneedB)>1e-10 then begin
   // Soft knee
-  result:=(Log2(fState)-fThresholddBFactor)*fRatioFactor;
-  result:=Exp2(result+sqrt(sqr(result)+fKneeFactor));
+  result:=(FastLog2(fState)-fThresholddBFactor)*fRatioFactor;
+  result:=FastExp2(result+sqrt(sqr(result)+fKneeFactor));
 //result:=FastExp2(result+(FastSQRT(sqr(result)+fKneeFactor)*fKneeSign));
  end else begin
   // Hard knee
@@ -3182,7 +3261,7 @@ begin
    if SameValue(fOneMinusRatio,1.0) then begin
     result:=fThreshold;
    end else begin
-    result:=Power(fThreshold/fState,fOneMinusRatio);
+    result:=FastPower(fThreshold/fState,fOneMinusRatio);
    end;
   end else begin
    result:=1.0;
