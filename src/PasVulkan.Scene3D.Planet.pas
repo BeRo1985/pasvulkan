@@ -13224,7 +13224,8 @@ begin
 
  fPhysicsResolution:=fTileMapResolution*fPhysicsTileResolution;
 
- fGrassInvocationVariants:=1;//Max(1,fHeightMapResolution div fVisualTileResolution);
+ fGrassInvocationVariants:=Max(1,fHeightMapResolution div fVisualResolution);
+ fGrassInvocationVariants:=fGrassInvocationVariants*fGrassInvocationVariants;
 
 {fMaxGrassVertices:=Max(65536,((fVisualResolution*fVisualResolution)+15) shr 3)*(4*2);
 

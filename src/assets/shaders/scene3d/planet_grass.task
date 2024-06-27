@@ -393,7 +393,7 @@ void main() {
   barrier();
 
   // Emit the mesh tasks for the mesh shader invocations  
-  EmitMeshTasksEXT(taskData.count, pushConstants.invocationVariants, 1); // serves as an OpControlBarrier instruction, so it should and must be outside of any conditional block 
+  EmitMeshTasksEXT(taskData.count, pushConstants.invocationVariants, 1u); // serves as an OpControlBarrier instruction, so it should and must be outside of any conditional block 
 
 #endif
 
