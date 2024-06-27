@@ -427,7 +427,7 @@ type PpvAudioInt32=^TpvInt32;
        procedure Dequeue;
        procedure Init(AVolume,APanning,ARate:TpvFloat);
        procedure Prepare;
-       procedure MixTo(Buffer:PpvAudioSoundSampleValues;MixVolume:TpvInt32);
+       procedure MixTo(Buffer:PpvAudioSoundSampleValues;MixVolume:TpvInt32;const RealVoice:Boolean);
      end;
 
      TpvAudioSoundSampleVoices=array of TpvAudioSoundSampleVoice;
@@ -2653,7 +2653,7 @@ begin
 
 end;
 
-procedure TpvAudioSoundSampleVoice.MixTo(Buffer:PpvAudioSoundSampleValues;MixVolume:TpvInt32);
+procedure TpvAudioSoundSampleVoice.MixTo(Buffer:PpvAudioSoundSampleValues;MixVolume:TpvInt32;const RealVoice:Boolean);
 var Remain,ToDo,Counter:TpvInt32;
     Buf:PpvAudioInt32;
     BufEx:PpvAudioInt32s;
@@ -2664,7 +2664,11 @@ begin
 
   UpdateIncrementRamping;
 
-  UpdateVolumeRamping(MixVolume);
+  if RealVoice then begin
+   UpdateVolumeRamping(MixVolume);
+  end else begin
+   UpdateVolumeRamping(0);
+  end;
 
   if Spatialization and (AudioEngine.SpatializationMode in [SPATIALIZATION_PSEUDO,SPATIALIZATION_HRTF]) then begin
    UpdateSpatializationDelayRamping;
@@ -6404,6 +6408,17 @@ begin
 
    if Sample.CountActiveVoices>0 then begin
 
+    // Prepare all voived
+    for VoiceIndex:=0 to Sample.CountActiveVoices-1 do begin
+     Voice:=Sample.ActiveVoices[VoiceIndex];
+     Voice.Prepare;
+    end;
+
+    // Reassigned active voice indices, since they could be in different order after volume sorting
+    for VoiceIndex:=0 to Sample.CountActiveVoices-1 do begin
+     Sample.ActiveVoices[VoiceIndex].ActiveVoiceIndex:=VoiceIndex;
+    end;
+
     if Sample.CompressorActive then begin
 
      // Clear mixing buffer
@@ -6413,8 +6428,7 @@ begin
      MixToEffect:=Sample.MixToEffect;
      for VoiceIndex:=0 to Sample.CountActiveVoices-1 do begin
       Voice:=Sample.ActiveVoices[VoiceIndex];
-      Voice.Prepare;
-      Voice.MixTo(Sample.MixingBuffer,32768);
+      Voice.MixTo(Sample.MixingBuffer,32768,VoiceIndex<Sample.SampleRealVoices);
       MixToEffect:=MixToEffect or Voice.MixToEffect;
      end;
 
@@ -6467,8 +6481,7 @@ begin
       end else begin
        p:=MixingBuffer;
       end;
-      Voice.Prepare;
-      Voice.MixTo(p,SampleVolume);
+      Voice.MixTo(p,SampleVolume,VoiceIndex<Sample.SampleRealVoices);
      end;
 
     end;
