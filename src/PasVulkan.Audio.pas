@@ -3213,7 +3213,7 @@ begin
  if IsZero(fSettings.fAttackTime) or (fSettings.fAttackTime<=0.0) then begin
   fAttackCoefficient:=1.0;
  end else begin
-  fAttackCoefficient:=exp(-1.0/(fSettings.fAttackTime*0.001*fAudioEngine.SampleRate));
+  fAttackCoefficient:=1.0-exp(-1.0/(fSettings.fAttackTime*0.001*fAudioEngine.SampleRate));
  end;
 
  if IsZero(fSettings.fHoldTime) or (fSettings.fHoldTime<0.0) then begin
@@ -3225,7 +3225,7 @@ begin
  if IsZero(fSettings.fReleaseTime) or (fSettings.fReleaseTime<=0.0) then begin
   fReleaseCoefficient:=1.0;
  end else begin
-  fReleaseCoefficient:=exp(-1.0/(fSettings.fReleaseTime*0.001*fAudioEngine.SampleRate));
+  fReleaseCoefficient:=1.0-exp(-1.0/(fSettings.fReleaseTime*0.001*fAudioEngine.SampleRate));
  end;
 
  if SameValue(fSettings.fRatio,0.0) then begin
@@ -3281,7 +3281,7 @@ begin
   end;  
  end; 
 
- fState:=(fState*(1.0-Coefficient))+(Target*Coefficient);
+  fState:=(fState*(1.0-Coefficient))+(Target*Coefficient);
  if abs(fState)>1e+16 then begin
   fState:=1.0;
  end;       
@@ -3305,7 +3305,6 @@ begin
  end;
 
  result:=result*fOutputGainFactor;
-                          
 
 end;
 
