@@ -73,6 +73,7 @@ uses {$ifdef windows}Windows,{$endif}SysUtils,Classes,Math,SyncObjs,
      {$endif}
      PasVulkan.Collections,
      PasVulkan.Math,
+     PasVulkan.Utils,
      PasVulkan.Audio.HRTFTables,
      PasVulkan.IDManager,
      PasVulkan.Resources;
@@ -408,6 +409,7 @@ type PpvAudioInt32=^TpvInt32;
        LastAzimuth:TpvFloat;
        VoiceIndexPointer:TpvPointer;
        GlobalVoiceID:TpvID;
+       VolumeSquaredMagnitude:TpvFloat;
        procedure UpdateSpatialization;
        function GetSampleLength(CountSamplesValue:TpvInt32):TpvInt32;
        procedure PreClickRemoval(Buffer:TpvPointer);
@@ -417,6 +419,7 @@ type PpvAudioInt32=^TpvInt32;
        procedure MixProcVolumeRamping(Buffer:TpvPointer;ToDo:TpvInt32);
        procedure MixProcNormal(Buffer:TpvPointer;ToDo:TpvInt32);
        procedure UpdateIncrementRamping;
+       procedure UpdateTargetVolumes(MixVolume:TpvInt32);
        procedure UpdateVolumeRamping(MixVolume:TpvInt32);
        procedure UpdateSpatializationDelayRamping;
        procedure UpdateSpatializationLowPassRamping;
@@ -2533,10 +2536,9 @@ begin
  end;
 end;
 
-procedure TpvAudioSoundSampleVoice.UpdateVolumeRamping(MixVolume:TpvInt32);
+procedure TpvAudioSoundSampleVoice.UpdateTargetVolumes(MixVolume:TpvInt32);
 var Pan:TpvInt32;
 begin
- MixVolume:=SARLongint(SARLongint(Volume,1)*MixVolume,15);
  if Spatialization then begin
   VolumeLeft:=SARLongint(MixVolume*MulLeft,15);
   VolumeRight:=SARLongint(MixVolume*MulRight,15);
@@ -2556,7 +2558,7 @@ begin
    Pan:=0;
   end else if Pan>=131072 then begin
    Pan:=131072;
-  end;                                    
+  end;
   VolumeLeft:=SARLongint(AudioEngine.PanningLUT[SARLongint(131072-Pan,1)]*MixVolume,15);
   VolumeRight:=SARLongint(AudioEngine.PanningLUT[SARLongint(Pan,1)]*MixVolume,15);
   if VolumeLeft<0 then begin
@@ -2572,6 +2574,11 @@ begin
  end;
  VolumeLeft:=VolumeLeft shl 15;
  VolumeRight:=VolumeRight shl 15;
+end;
+
+procedure TpvAudioSoundSampleVoice.UpdateVolumeRamping(MixVolume:TpvInt32);
+begin
+ UpdateTargetVolumes(MixVolume);
  if Age=0 then begin
   VolumeRampingRemain:=0;
   VolumeLeftLast:=VolumeLeft;
@@ -2636,6 +2643,7 @@ begin
 end;
 
 procedure TpvAudioSoundSampleVoice.Prepare;
+const OneDivVolume=1.0/1073741824.0;
 begin
 
  if Active then begin
@@ -2648,6 +2656,14 @@ begin
   if Spatialization then begin
    UpdateSpatialization;
   end;
+
+  UpdateTargetVolumes(32768);
+
+  VolumeSquaredMagnitude:=sqr(VolumeLeft*OneDivVolume)+sqr(VolumeRight*OneDivVolume);
+
+ end else begin
+
+  VolumeSquaredMagnitude:=0.0;
 
  end;
 
@@ -3279,7 +3295,7 @@ begin
   // Hard knee
   if (abs(fState)>1e-10) and (fState>fThreshold) then begin
    if SameValue(fOneMinusRatio,1.0) then begin
-    result:=fThreshold;
+    result:=fThreshold/fState;
    end else begin
     result:=FastPower(fThreshold/fState,fOneMinusRatio);
    end;
@@ -6371,6 +6387,14 @@ begin
 {$endif}
 end;
 
+function CompareVoiceByVolumeSquaredMagnitudes(const a,b:Pointer):TpvInt32;
+begin
+ result:=Sign(TpvAudioSoundSampleVoice(b).VolumeSquaredMagnitude-TpvAudioSoundSampleVoice(a).VolumeSquaredMagnitude);
+ if result=0 then begin
+  result:=Sign(TpvPtrInt(a)-TpvPtrInt(b));
+ end;
+end;
+
 procedure TpvAudio.FillBuffer;
 const OneDiv32768=1.0/32768.0;
 type pbyte=^TpvUInt8;
@@ -6414,9 +6438,16 @@ begin
      Voice.Prepare;
     end;
 
-    // Reassigned active voice indices, since they could be in different order after volume sorting
-    for VoiceIndex:=0 to Sample.CountActiveVoices-1 do begin
-     Sample.ActiveVoices[VoiceIndex].ActiveVoiceIndex:=VoiceIndex;
+    if (Sample.CountActiveVoices>1) and (Sample.CountActiveVoices>Sample.SampleRealVoices) and (Sample.SampleRealVoices<Sample.SampleVirtualVoices) then begin
+
+     // Sort voices by volume magnitudes
+     IndirectIntroSort(@Sample.ActiveVoices[0],0,Sample.CountActiveVoices-1,CompareVoiceByVolumeSquaredMagnitudes);
+
+     // Reassigned active voice indices, since they could be in different order after volume sorting
+     for VoiceIndex:=0 to Sample.CountActiveVoices-1 do begin
+      Sample.ActiveVoices[VoiceIndex].ActiveVoiceIndex:=VoiceIndex;
+     end;
+
     end;
 
     if Sample.CompressorActive then begin
