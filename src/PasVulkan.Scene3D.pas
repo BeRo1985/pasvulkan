@@ -850,7 +850,9 @@ type EpvScene3D=class(Exception);
               procedure Unload; override;
               function GetHashData:THashData;
               procedure AssignFromDefault;
+              procedure AssignFromDefaultNonRepeat;
               procedure AssignFromDefaultMipMap;
+              procedure AssignFromDefaultMipMapNonRepeat;
               procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceSampler:TPasGLTF.TSampler);
              published
               property MinFilter:TVkFilter read fMinFilter write fMinFilter;
@@ -3107,7 +3109,9 @@ type EpvScene3D=class(Exception);
        fRaytracingActive:Boolean;
        fAccelerationStructureInputBufferUsageFlags:TVkBufferUsageFlags;
        fDefaultSampler:TSampler;
+       fDefaultNonRepeatSampler:TSampler;
        fDefaultMipMapSampler:TSampler;
+       fDefaultMipMapNonRepeatSampler:TSampler;
        fWhiteImage:TImage;
        fWhiteTexture:TTexture;
        fDefaultNormalMapImage:TImage;
@@ -3501,7 +3505,9 @@ type EpvScene3D=class(Exception);
        property EmissiveIntensityFactor:TpvScalar read fEmissiveIntensityFactor write fEmissiveIntensityFactor;
       public
        property DefaultSampler:TSampler read fDefaultSampler;
+       property DefaultNonRepeatSampler:TSampler read fDefaultNonRepeatSampler;
        property DefaultMipMapSampler:TSampler read fDefaultMipMapSampler;
+       property DefaultMipMapNonRepeatSampler:TSampler read fDefaultMipMapNonRepeatSampler;
        property WhiteImage:TImage read fWhiteImage;
        property WhiteTexture:TTexture read fWhiteTexture;
        property DefaultParticleImage:TImage read fDefaultParticleImage;
@@ -6356,6 +6362,17 @@ begin
  fAddressModeT:=VK_SAMPLER_ADDRESS_MODE_REPEAT;
 end;
 
+procedure TpvScene3D.TSampler.AssignFromDefaultNonRepeat;
+begin
+ fName:='';
+ fMinFilter:=VK_FILTER_LINEAR;
+ fMagFilter:=VK_FILTER_LINEAR;
+ fMipmapMode:=VK_SAMPLER_MIPMAP_MODE_NEAREST;
+ fMipmapActive:=false;
+ fAddressModeS:=VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+ fAddressModeT:=VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+end;
+
 procedure TpvScene3D.TSampler.AssignFromDefaultMipMap;
 begin
  fName:='';
@@ -6365,6 +6382,17 @@ begin
  fMipmapActive:=true;
  fAddressModeS:=VK_SAMPLER_ADDRESS_MODE_REPEAT;
  fAddressModeT:=VK_SAMPLER_ADDRESS_MODE_REPEAT;
+end;
+
+procedure TpvScene3D.TSampler.AssignFromDefaultMipMapNonRepeat;
+begin
+ fName:='';
+ fMinFilter:=VK_FILTER_LINEAR;
+ fMagFilter:=VK_FILTER_LINEAR;
+ fMipmapMode:=VK_SAMPLER_MIPMAP_MODE_LINEAR;
+ fMipmapActive:=true;
+ fAddressModeS:=VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+ fAddressModeT:=VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
 end;
 
 procedure TpvScene3D.TSampler.AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceSampler:TPasGLTF.TSampler);
@@ -21892,9 +21920,17 @@ begin
  fDefaultSampler.AssignFromDefault;
  fDefaultSampler.IncRef;
 
+ fDefaultNonRepeatSampler:=TSampler.Create(ResourceManager,self);
+ fDefaultNonRepeatSampler.AssignFromDefaultNonRepeat;
+ fDefaultNonRepeatSampler.IncRef;
+
  fDefaultMipMapSampler:=TSampler.Create(ResourceManager,self);
  fDefaultMipMapSampler.AssignFromDefaultMipMap;
  fDefaultMipMapSampler.IncRef;
+
+ fDefaultMipMapNonRepeatSampler:=TSampler.Create(ResourceManager,self);
+ fDefaultMipMapNonRepeatSampler.AssignFromDefaultMipMapNonRepeat;
+ fDefaultMipMapNonRepeatSampler.IncRef;
 
  fWhiteImage:=TpvScene3D.TImage.Create(ResourceManager,self);
  fWhiteImage.AssignFromWhiteTexture;
@@ -22457,6 +22493,10 @@ begin
  FreeAndNil(fTextureListLock);
 
  FreeAndNil(fDefaultMipMapSampler);
+
+ FreeAndNil(fDefaultMipMapNonRepeatSampler);
+
+ FreeAndNil(fDefaultNonRepeatSampler);
 
  FreeAndNil(fDefaultSampler);
 
@@ -23097,7 +23137,11 @@ begin
 
         fDefaultSampler.Upload;
 
+        fDefaultNonRepeatSampler.Upload;
+
         fDefaultMipMapSampler.Upload;
+
+        fDefaultMipMapNonRepeatSampler.Upload;
 
         fWhiteTexture.Upload;
 
@@ -23821,7 +23865,11 @@ begin
 
      fDefaultSampler.Unload;
 
+     fDefaultNonRepeatSampler.Unload;
+
      fDefaultMipMapSampler.Unload;
+
+     fDefaultMipMapNonRepeatSampler.Unload;
 
      FreeAndNil(fVulkanStagingFence);
 
