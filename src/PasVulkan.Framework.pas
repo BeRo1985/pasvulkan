@@ -3440,6 +3440,7 @@ type EpvVulkanException=class(Exception);
        fData:Pointer;
        fDataSize:TpvSizeInt;
        fDoFreeDataAfterFinish:boolean;
+       fExternal:boolean;
        fKTXTexture:pointer;
        fKTXVulkanTexture:pointer;
        fAllocationGroupID:TpvUInt64;
@@ -3447,7 +3448,7 @@ type EpvVulkanException=class(Exception);
        procedure SetSampler(const aSampler:TpvVulkanSampler);
       public
        constructor Create; overload;
-       constructor Create(const aDevice:TpvVulkanDevice); overload;
+       constructor Create(const aDevice:TpvVulkanDevice;const aExternal:boolean=false); overload;
        constructor CreateFromMemory(const aDevice:TpvVulkanDevice;
                                     const aGraphicsQueue:TpvVulkanQueue;
                                     const aGraphicsCommandBuffer:TpvVulkanCommandBuffer;
@@ -3751,9 +3752,9 @@ type EpvVulkanException=class(Exception);
        property Format:TVkFormat read fFormat;
        property SRGBFormat:TVkFormat read fSRGBFormat;
        property ImageLayout:TVkImageLayout read fImageLayout;
-       property Image:TpvVulkanImage read fImage;
-       property ImageView:TpvVulkanImageView read fImageView;
-       property SRGBImageView:TpvVulkanImageView read fSRGBImageView;
+       property Image:TpvVulkanImage read fImage write fImage;
+       property ImageView:TpvVulkanImageView read fImageView write fImageView;
+       property SRGBImageView:TpvVulkanImageView read fSRGBImageView write fSRGBImageView;
        property ImageViewType:TVkImageViewType read fImageViewType;
        property Sampler:TpvVulkanSampler read fSampler write SetSampler;
        property ExternalSampler:Boolean read fExternalSampler;
@@ -23261,7 +23262,7 @@ begin
  raise EpvVulkanTextureException.Create('Invalid constructor');
 end;
 
-constructor TpvVulkanTexture.Create(const aDevice:TpvVulkanDevice);
+constructor TpvVulkanTexture.Create(const aDevice:TpvVulkanDevice;const aExternal:boolean=false);
 begin
 
  inherited Create;
@@ -23269,6 +23270,8 @@ begin
  fDevice:=aDevice;
 
  fStreaming:=false;
+
+ fExternal:=aExternal;
 
  fFormat:=VK_FORMAT_UNDEFINED;
 
@@ -23658,8 +23661,10 @@ begin
  if not fExternalSampler then begin
   FreeAndNil(fSampler);
  end;
- FreeAndNil(fSRGBImageView);
- FreeAndNil(fImageView);
+ if not fExternal then begin
+  FreeAndNil(fSRGBImageView);
+  FreeAndNil(fImageView);
+ end;
  if assigned(fMemoryBlock) then begin
   try
    fMemoryBlock.fAssociatedObject:=nil;
@@ -23675,7 +23680,9 @@ begin
    fDeviceMemory:=VK_NULL_HANDLE;
   end;
  end;
- FreeAndNil(fImage);
+ if not fExternal then begin
+  FreeAndNil(fImage);
+ end;
  FreeAndNil(fStagingBuffer);
 end;
 
