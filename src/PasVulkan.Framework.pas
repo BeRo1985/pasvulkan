@@ -28325,7 +28325,7 @@ end;
 procedure TpvVulkanTexture.UpdateDescriptorImageInfo;
 begin
  if assigned(fImageView) then begin
-  fDescriptorImageInfo.imageView:=fImageView;
+  fDescriptorImageInfo.imageView:=fImageView.Handle;
  end else begin
   fDescriptorImageInfo.imageView:=VK_NULL_HANDLE;
  end;
