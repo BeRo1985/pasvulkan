@@ -1910,8 +1910,8 @@ type EpvVulkanException=class(Exception);
                            const aQueue:TpvVulkanQueue=nil;
                            const aFence:TpvVulkanFence=nil;
                            const aBeginAndExecuteCommandBuffer:boolean=false;
-                           const aSrcQueueFamilyIndex:TVkQueue=TVkQueue(VK_QUEUE_FAMILY_IGNORED);
-                           const aDstQueueFamilyIndex:TVkQueue=TVkQueue(VK_QUEUE_FAMILY_IGNORED)); overload;
+                           const aSrcQueueFamilyIndex:TVkUInt32=TVkUInt32(VK_QUEUE_FAMILY_IGNORED);
+                           const aDstQueueFamilyIndex:TVkUInt32=TVkUInt32(VK_QUEUE_FAMILY_IGNORED)); overload;
        procedure SetLayout(const aAspectMask:TVkImageAspectFlags;
                            const aOldImageLayout:TVkImageLayout;
                            const aNewImageLayout:TVkImageLayout;
@@ -1924,8 +1924,8 @@ type EpvVulkanException=class(Exception);
                            const aQueue:TpvVulkanQueue=nil;
                            const aFence:TpvVulkanFence=nil;
                            const aBeginAndExecuteCommandBuffer:boolean=false;
-                           const aSrcQueueFamilyIndex:TVkQueue=TVkQueue(VK_QUEUE_FAMILY_IGNORED);
-                           const aDstQueueFamilyIndex:TVkQueue=TVkQueue(VK_QUEUE_FAMILY_IGNORED)); overload;
+                           const aSrcQueueFamilyIndex:TVkUInt32=TVkUInt32(VK_QUEUE_FAMILY_IGNORED);
+                           const aDstQueueFamilyIndex:TVkUInt32=TVkUInt32(VK_QUEUE_FAMILY_IGNORED)); overload;
        procedure GenerateMipMaps(const aSrcImageLayout:TVkImageLayout;
                                  const aDstImageLayout:TVkImageLayout;
                                  const aWidth:TpvSizeInt;
@@ -1939,8 +1939,8 @@ type EpvVulkanException=class(Exception);
                                  const aQueue:TpvVulkanQueue=nil;
                                  const aFence:TpvVulkanFence=nil;
                                  const aBeginAndExecuteCommandBuffer:boolean=false;
-                                 const aSrcQueueFamilyIndex:TVkQueue=TVkQueue(VK_QUEUE_FAMILY_IGNORED);
-                                 const aDstQueueFamilyIndex:TVkQueue=TVkQueue(VK_QUEUE_FAMILY_IGNORED);
+                                 const aSrcQueueFamilyIndex:TVkUInt32=TVkUInt32(VK_QUEUE_FAMILY_IGNORED);
+                                 const aDstQueueFamilyIndex:TVkUInt32=TVkUInt32(VK_QUEUE_FAMILY_IGNORED);
                                  const aFilterLinear:boolean=true;
                                  const aAspectMask:TVkImageAspectFlags=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT));
        procedure Blit(const aDestination:TpvVulkanImage;
@@ -1962,8 +1962,8 @@ type EpvVulkanException=class(Exception);
                       const aQueue:TpvVulkanQueue=nil;
                       const aFence:TpvVulkanFence=nil;
                       const aBeginAndExecuteCommandBuffer:boolean=false;
-                      const aSrcQueueFamilyIndex:TVkQueue=TVkQueue(VK_QUEUE_FAMILY_IGNORED);
-                      const aDstQueueFamilyIndex:TVkQueue=TVkQueue(VK_QUEUE_FAMILY_IGNORED);
+                      const aSrcQueueFamilyIndex:TVkUInt32=TVkUInt32(VK_QUEUE_FAMILY_IGNORED);
+                      const aDstQueueFamilyIndex:TVkUInt32=TVkUInt32(VK_QUEUE_FAMILY_IGNORED);
                       const aFilterLinear:boolean=true;
                       const aAspectMask:TVkImageAspectFlags=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT));
       published
@@ -3830,8 +3830,8 @@ procedure VulkanSetImageLayout(const aImage:TVkImage;
                                const aQueue:TpvVulkanQueue=nil;
                                const aFence:TpvVulkanFence=nil;
                                const aBeginAndExecuteCommandBuffer:boolean=false;
-                               const aSrcQueueFamilyIndex:TVkQueue=TVkQueue(VK_QUEUE_FAMILY_IGNORED);
-                               const aDstQueueFamilyIndex:TVkQueue=TVkQueue(VK_QUEUE_FAMILY_IGNORED)); overload;
+                               const aSrcQueueFamilyIndex:TVkUInt32=TVkUInt32(VK_QUEUE_FAMILY_IGNORED);
+                               const aDstQueueFamilyIndex:TVkUInt32=TVkUInt32(VK_QUEUE_FAMILY_IGNORED)); overload;
 
 procedure VulkanSetImageLayout(const aImage:TVkImage;
                                const aAspectMask:TVkImageAspectFlags;
@@ -3846,8 +3846,8 @@ procedure VulkanSetImageLayout(const aImage:TVkImage;
                                const aQueue:TpvVulkanQueue=nil;
                                const aFence:TpvVulkanFence=nil;
                                const aBeginAndExecuteCommandBuffer:boolean=false;
-                               const aSrcQueueFamilyIndex:TVkQueue=TVkQueue(VK_QUEUE_FAMILY_IGNORED);
-                               const aDstQueueFamilyIndex:TVkQueue=TVkQueue(VK_QUEUE_FAMILY_IGNORED)); overload;
+                               const aSrcQueueFamilyIndex:TVkUInt32=TVkUInt32(VK_QUEUE_FAMILY_IGNORED);
+                               const aDstQueueFamilyIndex:TVkUInt32=TVkUInt32(VK_QUEUE_FAMILY_IGNORED)); overload;
 
 procedure VulkanDisableFloatingPointExceptions;
 
@@ -7647,8 +7647,8 @@ procedure VulkanSetImageLayout(const aImage:TVkImage;
                                const aQueue:TpvVulkanQueue=nil;
                                const aFence:TpvVulkanFence=nil;
                                const aBeginAndExecuteCommandBuffer:boolean=false;
-                               const aSrcQueueFamilyIndex:TVkQueue=TVkQueue(VK_QUEUE_FAMILY_IGNORED);
-                               const aDstQueueFamilyIndex:TVkQueue=TVkQueue(VK_QUEUE_FAMILY_IGNORED));
+                               const aSrcQueueFamilyIndex:TVkUInt32=TVkUInt32(VK_QUEUE_FAMILY_IGNORED);
+                               const aDstQueueFamilyIndex:TVkUInt32=TVkUInt32(VK_QUEUE_FAMILY_IGNORED));
 var ImageMemoryBarrier:TVkImageMemoryBarrier;
     SrcPipelineStageFlags,DstPipelineStageFlags:TVkPipelineStageFlags;
 begin
@@ -7784,8 +7784,8 @@ procedure VulkanSetImageLayout(const aImage:TVkImage;
                                const aQueue:TpvVulkanQueue=nil;
                                const aFence:TpvVulkanFence=nil;
                                const aBeginAndExecuteCommandBuffer:boolean=false;
-                               const aSrcQueueFamilyIndex:TVkQueue=TVkQueue(VK_QUEUE_FAMILY_IGNORED);
-                               const aDstQueueFamilyIndex:TVkQueue=TVkQueue(VK_QUEUE_FAMILY_IGNORED)); overload;
+                               const aSrcQueueFamilyIndex:TVkUInt32=TVkUInt32(VK_QUEUE_FAMILY_IGNORED);
+                               const aDstQueueFamilyIndex:TVkUInt32=TVkUInt32(VK_QUEUE_FAMILY_IGNORED)); overload;
 var ImageMemoryBarrier:TVkImageMemoryBarrier;
 begin
 
@@ -16917,8 +16917,8 @@ procedure TpvVulkanImage.SetLayout(const aAspectMask:TVkImageAspectFlags;
                                    const aQueue:TpvVulkanQueue=nil;
                                    const aFence:TpvVulkanFence=nil;
                                    const aBeginAndExecuteCommandBuffer:boolean=false;
-                                   const aSrcQueueFamilyIndex:TVkQueue=TVkQueue(VK_QUEUE_FAMILY_IGNORED);
-                                   const aDstQueueFamilyIndex:TVkQueue=TVkQueue(VK_QUEUE_FAMILY_IGNORED));
+                                   const aSrcQueueFamilyIndex:TVkUInt32=TVkUInt32(VK_QUEUE_FAMILY_IGNORED);
+                                   const aDstQueueFamilyIndex:TVkUInt32=TVkUInt32(VK_QUEUE_FAMILY_IGNORED));
 begin
  VulkanSetImageLayout(fImageHandle,
                       aAspectMask,
@@ -16945,8 +16945,8 @@ procedure TpvVulkanImage.SetLayout(const aAspectMask:TVkImageAspectFlags;
                                    const aQueue:TpvVulkanQueue=nil;
                                    const aFence:TpvVulkanFence=nil;
                                    const aBeginAndExecuteCommandBuffer:boolean=false;
-                                   const aSrcQueueFamilyIndex:TVkQueue=TVkQueue(VK_QUEUE_FAMILY_IGNORED);
-                                   const aDstQueueFamilyIndex:TVkQueue=TVkQueue(VK_QUEUE_FAMILY_IGNORED));
+                                   const aSrcQueueFamilyIndex:TVkUInt32=TVkUInt32(VK_QUEUE_FAMILY_IGNORED);
+                                   const aDstQueueFamilyIndex:TVkUInt32=TVkUInt32(VK_QUEUE_FAMILY_IGNORED));
 begin
  VulkanSetImageLayout(fImageHandle,
                       aAspectMask,
@@ -16978,8 +16978,8 @@ procedure TpvVulkanImage.GenerateMipMaps(const aSrcImageLayout:TVkImageLayout;
                                          const aQueue:TpvVulkanQueue=nil;
                                          const aFence:TpvVulkanFence=nil;
                                          const aBeginAndExecuteCommandBuffer:boolean=false;
-                                         const aSrcQueueFamilyIndex:TVkQueue=TVkQueue(VK_QUEUE_FAMILY_IGNORED);
-                                         const aDstQueueFamilyIndex:TVkQueue=TVkQueue(VK_QUEUE_FAMILY_IGNORED);
+                                         const aSrcQueueFamilyIndex:TVkUInt32=TVkUInt32(VK_QUEUE_FAMILY_IGNORED);
+                                         const aDstQueueFamilyIndex:TVkUInt32=TVkUInt32(VK_QUEUE_FAMILY_IGNORED);
                                          const aFilterLinear:boolean=true;
                                          const aAspectMask:TVkImageAspectFlags=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT));
 var CountMipMaps,MipMapIndex:TpvSizeInt;
@@ -17121,8 +17121,8 @@ procedure TpvVulkanImage.Blit(const aDestination:TpvVulkanImage;
                               const aQueue:TpvVulkanQueue=nil;
                               const aFence:TpvVulkanFence=nil;
                               const aBeginAndExecuteCommandBuffer:boolean=false;
-                              const aSrcQueueFamilyIndex:TVkQueue=TVkQueue(VK_QUEUE_FAMILY_IGNORED);
-                              const aDstQueueFamilyIndex:TVkQueue=TVkQueue(VK_QUEUE_FAMILY_IGNORED);
+                              const aSrcQueueFamilyIndex:TVkUInt32=TVkUInt32(VK_QUEUE_FAMILY_IGNORED);
+                              const aDstQueueFamilyIndex:TVkUInt32=TVkUInt32(VK_QUEUE_FAMILY_IGNORED);
                               const aFilterLinear:boolean=true;
                               const aAspectMask:TVkImageAspectFlags=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT));
 var ImageSubresourceRange:TVkImageSubresourceRange;
