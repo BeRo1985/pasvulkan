@@ -3397,6 +3397,8 @@ type EpvVulkanException=class(Exception);
        Circles
       );
 
+     { TpvVulkanTexture }
+
      TpvVulkanTexture=class(TpvVulkanObject)
       private
        fDevice:TpvVulkanDevice;
@@ -3746,12 +3748,13 @@ type EpvVulkanException=class(Exception);
                           const aSRGB:boolean;
                           const aCommandBufferResetAndExecute:boolean);
        procedure UpdateSampler;
+       procedure UpdateDescriptorImageInfo;
        property DescriptorImageInfo:TVkDescriptorImageInfo read fDescriptorImageInfo;
       published
        property Device:TpvVulkanDevice read fDevice;
-       property Format:TVkFormat read fFormat;
-       property SRGBFormat:TVkFormat read fSRGBFormat;
-       property ImageLayout:TVkImageLayout read fImageLayout;
+       property Format:TVkFormat read fFormat write fFormat;
+       property SRGBFormat:TVkFormat read fSRGBFormat write fSRGBFormat;
+       property ImageLayout:TVkImageLayout read fImageLayout write fImageLayout;
        property Image:TpvVulkanImage read fImage write fImage;
        property ImageView:TpvVulkanImageView read fImageView write fImageView;
        property SRGBImageView:TpvVulkanImageView read fSRGBImageView write fSRGBImageView;
@@ -3759,7 +3762,7 @@ type EpvVulkanException=class(Exception);
        property Sampler:TpvVulkanSampler read fSampler write SetSampler;
        property ExternalSampler:Boolean read fExternalSampler;
        property MemoryBlock:TpvVulkanDeviceMemoryBlock read fMemoryBlock;
-       property Width:TpvInt32 read fWidth;
+       property Width:TpvInt32 read fWidth write fWidth;
        property Height:TpvInt32 read fHeight;
        property Depth:TpvInt32 read fDepth;
        property CountFaces:TpvInt32 read fCountFaces;
@@ -28312,6 +28315,21 @@ begin
                                    fCountStorageLevels,
                                    fBorderColor,
                                    false);
+ if assigned(fSampler) then begin
+  fDescriptorImageInfo.sampler:=fSampler.fSamplerHandle;
+ end else begin
+  fDescriptorImageInfo.sampler:=VK_NULL_HANDLE;
+ end;
+end;
+
+procedure TpvVulkanTexture.UpdateDescriptorImageInfo;
+begin
+ if assigned(fImageView) then begin
+  fDescriptorImageInfo.imageView:=fImageView;
+ end else begin
+  fDescriptorImageInfo.imageView:=VK_NULL_HANDLE;
+ end;
+ fDescriptorImageInfo.imageLayout:=fImageLayout;
  if assigned(fSampler) then begin
   fDescriptorImageInfo.sampler:=fSampler.fSamplerHandle;
  end else begin
