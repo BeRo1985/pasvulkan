@@ -3730,6 +3730,7 @@ type EpvVulkanException=class(Exception);
                           const aCommandBuffer:TpvVulkanCommandBuffer;
                           const aFence:TpvVulkanFence;
                           const aSource:TVkImage;
+                          const aCopyFilter:TVkFilter;
                           const aSourceLayout:TVkImageLayout;
                           const aSourceAspectMask:TVkImageAspectFlags;
                           const aSourceMipLevel:TVkUInt32;
@@ -27894,6 +27895,7 @@ procedure TpvVulkanTexture.CopyFrom(const aQueue:TpvVulkanQueue;
                                     const aCommandBuffer:TpvVulkanCommandBuffer;
                                     const aFence:TpvVulkanFence;
                                     const aSource:TVkImage;
+                                    const aCopyFilter:TVkFilter;
                                     const aSourceLayout:TVkImageLayout;
                                     const aSourceAspectMask:TVkImageAspectFlags;
                                     const aSourceMipLevel:TVkUInt32;
@@ -28008,7 +28010,7 @@ begin
                                  VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                                  1,
                                  @ImageBlit,
-                                 VK_FILTER_LINEAR);
+                                 aCopyFilter);
 
     end;
 
