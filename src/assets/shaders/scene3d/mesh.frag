@@ -521,6 +521,7 @@ void main() {
 
 #elif defined(DEPTHONLY)
 #if defined(ALPHATEST) || defined(LOOPOIT) || defined(LOCKOIT) || defined(WBOIT) || defined(MBOIT) || defined(DFAOIT)
+  uint flags = material.alphaCutOffFlagsTex0Tex1.y;
   float alpha = ((flags & (1u << 31u)) != 0u) ? 1.0 : (textureFetch(0, vec4(1.0), true).w * material.baseColorFactor.w * inColor0.w);
 #endif
 #else
