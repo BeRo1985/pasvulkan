@@ -906,6 +906,7 @@ begin
      end else begin
       fTransparencyMode:=TpvScene3DRendererTransparencyMode.MBOIT;
      end;
+     fTransparencyMode:=TpvScene3DRendererTransparencyMode.LOOPOIT;
     end;
    end;
    TpvVulkanVendorID.Intel:begin

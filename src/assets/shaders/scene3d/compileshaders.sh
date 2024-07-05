@@ -659,7 +659,7 @@ addParticleFragmentShadingTransparencyVariants(){
   addParticleFragmentShader "${1}_mboit_pass2" "$2 -DMBOIT -DMBOITPASS2"
 
   # LoopOIT (Multi-pass order independent transparency)
-  addParticleFragmentShader "${1}_loopoit_pass1" "$2 -DLOOPOIT -DLOOPOIT_PASS1"
+  addParticleFragmentShader "${1}_loopoit_pass1" "$2 -DLOOPOIT -DLOOPOIT_PASS1 -DDEPTHONLY"
   addParticleFragmentShader "${1}_loopoit_pass2" "$2 -DLOOPOIT -DLOOPOIT_PASS2"
 
   # LockOIT (Order independent transparency with spinlock/interlock, depending on the GPU capabilities)
@@ -831,7 +831,7 @@ addMeshFragmentShadingTransparencyVariants(){
     addMeshFragmentShadingOITAlphaTestVariants "${1}_mboit_pass2" "$2 -DMBOIT -DMBOITPASS2" 
 
     # LoopOIT (Multi-pass order independent transparency)
-    addMeshFragmentShadingOITAlphaTestVariants "${1}_loopoit_pass1" "$2 -DLOOPOIT -DLOOPOIT_PASS1"
+    addMeshFragmentShadingOITAlphaTestVariants "${1}_loopoit_pass1" "$2 -DLOOPOIT -DLOOPOIT_PASS1 -DDEPTHONLY"
     addMeshFragmentShadingOITAlphaTestVariants "${1}_loopoit_pass2" "$2 -DLOOPOIT -DLOOPOIT_PASS2"
 
     # LockOIT (Order independent transparency with spinlock/interlock, depending on the GPU capabilities)  
