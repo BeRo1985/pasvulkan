@@ -892,7 +892,7 @@ begin
     end;
    end;
    TpvVulkanVendorID.NVIDIA:begin
-    if fVulkanDevice.EnabledExtensionNames.IndexOf(VK_EXT_POST_DEPTH_COVERAGE_EXTENSION_NAME)>0 then begin
+(*  if fVulkanDevice.EnabledExtensionNames.IndexOf(VK_EXT_POST_DEPTH_COVERAGE_EXTENSION_NAME)>0 then begin
      if fVulkanDevice.FragmentShaderPixelInterlock and (fCountSurfaceMSAASamples=1) then begin
       fTransparencyMode:=TpvScene3DRendererTransparencyMode.INTERLOCKOIT;
 {    end else if fVulkanDevice.FragmentShaderSampleInterlock and (fCountSurfaceMSAASamples<>1) then begin
@@ -900,7 +900,7 @@ begin
      end else begin
       fTransparencyMode:=TpvScene3DRendererTransparencyMode.SPINLOCKOIT;
      end;
-    end else begin
+    end else*)begin
      if fVulkanDevice.PhysicalDevice.Properties.deviceType=VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU then begin
       fTransparencyMode:=TpvScene3DRendererTransparencyMode.WBOIT;
      end else begin

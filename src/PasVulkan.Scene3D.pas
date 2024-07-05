@@ -8046,7 +8046,7 @@ begin
     fSceneInstance.fHasTransmission:=true;
     fData.Transmission.Active:=true;
     if fData.AlphaMode=TpvScene3D.TMaterial.TAlphaMode.Opaque then begin
-     fData.AlphaMode:=TpvScene3D.TMaterial.TAlphaMode.Mask;
+     fData.AlphaMode:=TpvScene3D.TMaterial.TAlphaMode.Blend;
      fData.AlphaCutOff:=-1e-4;
     end;
     fData.Transmission.Factor:=TPasJSON.GetNumber(JSONObject.Properties['transmissionFactor'],0.0);
