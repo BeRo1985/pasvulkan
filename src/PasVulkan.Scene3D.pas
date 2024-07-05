@@ -989,6 +989,7 @@ type EpvScene3D=class(Exception);
                    end;
                    TTransmission=record
                     Active:boolean;
+                    Opaque:boolean;
                     Factor:TpvFloat;
                     Texture:TTextureReference;
                    end;
@@ -1134,6 +1135,7 @@ type EpvScene3D=class(Exception);
                      );
                      Transmission:(
                       Active:false;
+                      Opaque:false;
                       Factor:0.0;
                       Texture:(Texture:nil;TexCoord:0;Transform:(Active:false;Offset:(x:0.0;y:0.0);Rotation:0.0;Scale:(x:1.0;y:1.0)));
                      );
@@ -8047,7 +8049,9 @@ begin
     fData.Transmission.Active:=true;
     if fData.AlphaMode=TpvScene3D.TMaterial.TAlphaMode.Opaque then begin
      fData.AlphaMode:=TpvScene3D.TMaterial.TAlphaMode.Blend;
-     fData.AlphaCutOff:=-1e-4;
+     fData.Transmission.Opaque:=true;
+    end else begin
+     fData.Transmission.Opaque:=false;
     end;
     fData.Transmission.Factor:=TPasJSON.GetNumber(JSONObject.Properties['transmissionFactor'],0.0);
     JSONItem:=JSONObject.Properties['transmissionTexture'];
@@ -8156,6 +8160,9 @@ begin
   TpvScene3D.TMaterial.TAlphaMode.Blend:begin
    fShaderData.AlphaCutOff:=0.0;
    fShaderData.Flags:=fShaderData.Flags or (1 shl 5);
+   if fData.Transmission.Active and fData.Transmission.Opaque then begin
+    fShaderData.Flags:=fShaderData.Flags or (TpvUInt32(1) shl 31);
+   end;
   end;
   else begin
    Assert(false);

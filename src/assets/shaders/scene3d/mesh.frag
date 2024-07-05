@@ -505,7 +505,7 @@ void main() {
   
   vec4 emissionColor = vec4(textureFetch(4, vec4(1.0), true).xyz * material.emissiveFactor.xyz * material.emissiveFactor.w * inColor0.xyz, baseColor.w);
   
-  float alpha = baseColor.w;
+  float alpha = ((flags & (1u << 31u)) != 0u) ? 1.0 : baseColor.w;
   
   vec3 normal;
   if ((textureFlags.x & (1 << 2)) != 0) {
@@ -521,7 +521,7 @@ void main() {
 
 #elif defined(DEPTHONLY)
 #if defined(ALPHATEST) || defined(LOOPOIT) || defined(LOCKOIT) || defined(WBOIT) || defined(MBOIT) || defined(DFAOIT)
-  float alpha = textureFetch(0, vec4(1.0), true).w * material.baseColorFactor.w * inColor0.w;
+  float alpha = ((flags & (1u << 31u)) != 0u) ? 1.0 : (textureFetch(0, vec4(1.0), true).w * material.baseColorFactor.w * inColor0.w);
 #endif
 #else
   
@@ -870,7 +870,10 @@ void main() {
     }
   }
 #endif
-  float alpha = color.w * inColor0.w, outputAlpha = ((flags & 32) != 0) ? (color.w * inColor0.w) : 1.0; // AMD GPUs under Linux doesn't like mix(1.0, color.w * inColor0.w, float(int(uint((flags >> 5u) & 1u)))); due to the unsigned int stuff
+  float alpha = ((flags & (1u << 31u)) != 0u) 
+                   ? 1.0 // Force alpha to 1.0, if actually a opaque material is used, but with transmission in the transparency pass
+                   : color.w * inColor0.w, 
+        outputAlpha = ((flags & 32u) != 0) ? alpha : 1.0; // AMD GPUs under Linux doesn't like mix(1.0, alpha, float(int(uint((flags >> 5u) & 1u)))); due to the unsigned int stuff
   vec4 finalColor = vec4(color.xyz * inColor0.xyz, outputAlpha);
 #if !(defined(WBOIT) || defined(MBOIT) || defined(VOXELIZATION))
 #ifndef BLEND 
