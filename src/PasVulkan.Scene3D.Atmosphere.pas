@@ -103,4 +103,15 @@ type { TpvScene3DAtmosphere }
 
 implementation
 
+{ TpvScene3DAtmosphere.TDensityProfileLayer }
+
+constructor TpvScene3DAtmosphere.TDensityProfileLayer.Create(const aWidth,aExpTerm,aExpScale,aLinearTerm,aConstantTerm:TpvFloat);
+begin
+ Width:=aWidth;
+ ExpTerm:=aExpTerm;
+ ExpScale:=aExpScale;
+ LinearTerm:=aLinearTerm;
+ ConstantTerm:=aConstantTerm;
+end;
+
 end.
