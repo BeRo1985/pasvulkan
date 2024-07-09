@@ -122,8 +122,14 @@ type { TpvScene3DAtmosphere }
                MuSMin:TpvFloat;
                procedure InitializeEarthAtmosphere;
              end;
+             PAtmosphereParameters=^TAtmosphereParameters;
       private
+       fAtmosphereParameters:TAtmosphereParameters; 
+       fPointerToAtmosphereParameters:PAtmosphereParameters;
       public
+       constructor Create;
+       destructor Destroy; override;
+       property AtmosphereParameters:PAtmosphereParameters read fAtmosphereParameters;
      end; 
 
 implementation
@@ -176,6 +182,20 @@ begin
 
  MuSMin:=cos(PI*120.0/180.0);
 
+end;
+
+{ TpvScene3DAtmosphere }
+
+constructor TpvScene3DAtmosphere.Create;
+begin
+ inherited Create;
+ fAtmosphereParameters.InitializeEarthAtmosphere;
+ fPointerToAtmosphereParameters:=@fAtmosphereParameters;
+end;
+
+destructor TpvScene3DAtmosphere.Destroy;
+begin
+ inherited Destroy;
 end;
 
 end.
