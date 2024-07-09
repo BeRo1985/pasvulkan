@@ -84,19 +84,44 @@ type { TpvScene3DAtmosphere }
              IRRADIANCE_TEXTURE_HEIGHT=16;
              ScatteringOrders=4; 
         type { TDensityProfileLayer }
-             TDensityProfileLayer=record
+             TDensityProfileLayer=packed record
               public
                Width:TpvFloat;
                ExpTerm:TpvFloat;
                ExpScale:TpvFloat;
                LinearTerm:TpvFloat;
                ConstantTerm:TpvFloat;
+               Unused0:TpvFloat;
+               Unused1:TpvFloat;
+               Unused2:TpvFloat;
                constructor Create(const aWidth,aExpTerm,aExpScale,aLinearTerm,aConstantTerm:TpvFloat);
              end;
              PDensityProfileLayer=^TDensityProfileLayer;
              { TDensityProfile }
-             TDensityProfile=array of TDensityProfileLayer;
-             { TAtmosphereModel }
+             TDensityProfile=packed record
+              public
+               Layers:array[0..1] of TDensityProfileLayer;
+             end; 
+             { TAtmosphereParameters }
+             TAtmosphereParameters=packed record             
+              public
+               Center:TpvVector4; // w is unused, for alignment
+               SolarIrradiance:TpvVector4; // w is unused, for alignment
+               RayleighScattering:TpvVector4; // w is unused, for alignment
+               MieScattering:TpvVector4; // w is unused, for alignment
+               MieExtinction:TpvVector4; // w is unused, for alignment
+               AbsorptionExtinction:TpvVector4; // w is unused, for alignment
+               GroundAlbedo:TpvVector4; // w is unused, for alignment
+               RayleighDensity:TDensityProfile;
+               MieDensity:TDensityProfile;
+               MiePhaseFunctionG:TpvFloat;
+               AbsorptionDensity:TDensityProfile;
+               SunAngularRadius:TpvFloat;
+               BottomRadius:TpvFloat;
+               TopRadius:TpvFloat;
+               MuSMin:TpvFloat;
+               procedure InitializeEarthAtmosphere;
+             end;
       private
       public
      end; 
@@ -112,6 +137,45 @@ begin
  ExpScale:=aExpScale;
  LinearTerm:=aLinearTerm;
  ConstantTerm:=aConstantTerm;
+end;
+
+{ TpvScene3DAtmosphere.TAtmosphereParameters }
+
+procedure TpvScene3DAtmosphere.TAtmosphereParameters.InitializeEarthAtmosphere;
+const EarthBottomRadius=6360.0;
+      EarthTopRadius=6460.0;
+      EarthRayleighScaleHeight=8.0;
+      EarthMieScaleHeight=1.2;
+begin
+ 
+ // Sun
+ SolarIrradiance:=TpvVector4.InlineableCreate(1.0,1.0,1.0,0.0);
+ SunAngularRadius:=0.004675;
+
+ // Planet
+ BottomRadius:=EarthBottomRadius;
+ TopRadius:=EarthTopRadius;
+ GroundAlbedo:=TpvVector4.InlineableCreate(0.0,0.0,0.0,0.0);
+
+ // Rayleigh scattering
+ RayleighDensity.Layers[0]:=TDensityProfileLayer.Create(0.0,0.0,0.0,0.0,0.0);
+ RayleighDensity.Layers[1]:=TDensityProfileLayer.Create(0.0,1.0,-1.0/EarthRayleighScaleHeight,0.0,0.0);
+ RayleighScattering:=TpvVector4.InlineableCreate(0.005802,0.013558,0.033100,0.0);
+
+ // Mie scattering
+ MieDensity.Layers[0]:=TDensityProfileLayer.Create(0.0,0.0,0.0,0.0,0.0);
+ MieDensity.Layers[1]:=TDensityProfileLayer.Create(0.0,1.0,-1.0/EarthMieScaleHeight,0.0,0.0);
+ MieScattering:=TpvVector4.InlineableCreate(0.003996,0.003996,0.003996,0.0);
+ MieExtinction:=TpvVector4.InlineableCreate(0.004440,0.004440,0.004440,0.0);
+ MiePhaseFunctionG:=0.8;
+
+ // Absorption extinction / Ozone layer
+ AbsorptionDensity.Layers[0]:=TDensityProfileLayer.Create(25.0,0.0,0.0,1.0/15.0,-2.0/3.0);
+ AbsorptionDensity.Layers[1]:=TDensityProfileLayer.Create(0.0,0.0,0.0,-1.0/15.0,8.0/3.0);
+ AbsorptionExtinction:=TpvVector4.InlineableCreate(0.000650,0.001881,0.000085,0.0);
+
+ MuSMin:=cos(PI*120.0/180.0);
+
 end;
 
 end.
