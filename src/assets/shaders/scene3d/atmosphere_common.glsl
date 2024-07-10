@@ -1,6 +1,8 @@
 #ifndef ATMOSPHERE_COMMON_GLSL
 #define ATMOSPHERE_COMMON_GLSL
 
+// Based on: https://github.com/sebh/UnrealEngineSkyAtmosphere
+
 #define ILLUMINANCE_IS_ONE
 
 const float PI = 3.1415926535897932384626433832795;
