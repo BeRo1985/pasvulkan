@@ -1,6 +1,8 @@
 #ifndef ATMOSPHERE_COMMON_GLSL
 #define ATMOSPHERE_COMMON_GLSL
 
+#define ILLUMINANCE_IS_ONE
+
 const float PI = 3.1415926535897932384626433832795;
 
 struct DensityProfileLayer {
@@ -88,6 +90,28 @@ void LutTransmittanceParamsToUv(const in AtmosphereParameters Atmosphere, in flo
 	//uv = vec2(fromUnitToSubUvs(uv.x, TRANSMITTANCE_TEXTURE_WIDTH), fromUnitToSubUvs(uv.y, TRANSMITTANCE_TEXTURE_HEIGHT)); // No real impact so off
 }
 
+float RayleighPhase(float cosTheta){
+	float factor = 3.0 / (16.0 * PI);
+	return factor * (1.0 + (cosTheta * cosTheta));
+}
+
+float CornetteShanksMiePhaseFunction(float g, float cosTheta){
+	float k = ((3.0 / (8.0 * PI)) * (1.0 - (g * g))) / (2.0 + (g * g));
+	return (k * (1.0 + (cosTheta * cosTheta))) / pow((1.0 + (g * g)) - (2.0 * g * -cosTheta), 1.5);
+}
+
+float hgPhase(float g, float cosTheta){
+#ifdef USE_CornetteShanks
+	return CornetteShanksMiePhaseFunction(g, cosTheta);
+#else
+	// Reference implementation (i.e. not schlick approximation). 
+	// See http://www.pbr-book.org/3ed-2018/Volume_Scattering/Phase_Functions.html
+	float numer = 1.0 - (g * g);
+	float denom = 1.0 + (g * g) + (2.0 * g * cosTheta);
+	return numer / (4.0 * PI * denom * sqrt(denom));
+#endif
+}
+
 SingleScatteringResult IntegrateScatteredLuminance(in vec2 pixPos, 
                                                    in vec3 WorldPos, 
                                                    in vec3 WorldDir, 
@@ -140,7 +164,21 @@ SingleScatteringResult IntegrateScatteredLuminance(in vec2 pixPos,
 	}
 	tMax = min(tMax, tMaxMax);
 
+	// Phase functions
+	const float uniformPhase = 1.0 / (4.0 * PI);
+	const vec3 wi = SunDir;
+	const vec3 wo = WorldDir;
+	float cosTheta = dot(wi, wo);
+	float MiePhaseValue = hgPhase(Atmosphere.MiePhaseFunctionG, -cosTheta);	// mnegate cosTheta because due to WorldDir being a "in" direction. 
+	float RayleighPhaseValue = RayleighPhase(cosTheta);
 
+#ifdef ILLUMINANCE_IS_ONE
+	// When building the scattering factor, we assume light illuminance is 1 to compute a transfert function relative to identity illuminance of 1.
+	// This make the scattering factor independent of the light. It is now only linked to the atmosphere properties.
+	vec3 globalL = vec3(1.0);
+#else
+	vec3 globalL = gSunIlluminance;
+#endif
 
   return result;
 
