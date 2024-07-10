@@ -105,6 +105,9 @@ type { TpvScene3DAtmosphere }
              { TAtmosphereParameters }
              TAtmosphereParameters=packed record             
               public
+               RayleighDensity:TDensityProfile;
+               MieDensity:TDensityProfile;
+               AbsorptionDensity:TDensityProfile;
                Center:TpvVector4; // w is unused, for alignment
                SolarIrradiance:TpvVector4; // w is unused, for alignment
                RayleighScattering:TpvVector4; // w is unused, for alignment
@@ -112,10 +115,7 @@ type { TpvScene3DAtmosphere }
                MieExtinction:TpvVector4; // w is unused, for alignment
                AbsorptionExtinction:TpvVector4; // w is unused, for alignment
                GroundAlbedo:TpvVector4; // w is unused, for alignment
-               RayleighDensity:TDensityProfile;
-               MieDensity:TDensityProfile;
                MiePhaseFunctionG:TpvFloat;
-               AbsorptionDensity:TDensityProfile;
                SunAngularRadius:TpvFloat;
                BottomRadius:TpvFloat;
                TopRadius:TpvFloat;
@@ -126,6 +126,7 @@ type { TpvScene3DAtmosphere }
       private
        fAtmosphereParameters:TAtmosphereParameters; 
        fPointerToAtmosphereParameters:PAtmosphereParameters;
+
       public
        constructor Create;
        destructor Destroy; override;
