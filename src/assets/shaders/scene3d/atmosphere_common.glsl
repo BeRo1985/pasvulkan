@@ -1,37 +1,149 @@
 #ifndef ATMOSPHERE_COMMON_GLSL
 #define ATMOSPHERE_COMMON_GLSL
 
+const float PI = 3.1415926535897932384626433832795;
+
 struct DensityProfileLayer {
-  float width;
-  float expTerm;
-  float expScale;
-  float linearTerm;
-  float constantTerm;
-  float unused0;
-  float unused1;
-  float unused2;
+  float Width;
+  float ExpTerm;
+  float ExpScale;
+  float LinearTerm;
+  float ConstantTerm;
+  float Unused0;
+  float Unused1;
+  float Unused2;
 };
 
 struct DensityProfile {
-  DensityProfileLayer layers[2];
+  DensityProfileLayer Layers[2];
 };
 
 struct AtmosphereParameters {
-  DensityProfile rayleighDensity;
-  DensityProfile mieDensity;
-  DensityProfile absorptionDensity;
-  vec4 center;
-  vec4 solarIrradiance;
-  vec4 rayleighScattering;
-  vec4 mieScattering;
-  vec4 mieExtinction;
-  vec4 absorptionExtinction;
-  vec4 groundAlbedo;
-  float miePhaseFunctionG;
-  float sunAngularRadius;
-  float bottomRadius;
-  float topRadius;
-  float muSMin;
+  DensityProfile RayleighDensity;
+  DensityProfile MieDensity;
+  DensityProfile AbsorptionDensity;
+  vec4 Center;
+  vec4 SolarIrradiance;
+  vec4 RayleighScattering;
+  vec4 MieScattering;
+  vec4 MieExtinction;
+  vec4 AbsorptionExtinction;
+  vec4 GroundAlbedo;
+  float MiePhaseFunctionG;
+  float SunAngularRadius;
+  float BottomRadius;
+  float TopRadius;
+  float MuSMin;
 };
+
+struct SingleScatteringResult {
+	vec3 L;						// Scattered light (luminance)
+	vec3 OpticalDepth;			// Optical depth (1/m)
+	vec3 Transmittance;			// Transmittance in [0,1] (unitless)
+	vec3 MultiScatAs1;
+	vec3 NewMultiScatStep0Out;
+	vec3 NewMultiScatStep1Out;
+};
+
+vec2 gResolution;
+
+mat4 gSkyInvViewProjMat;
+
+float raySphereIntersectNearest(vec3 r0, vec3 rd, vec3 s0, float sR){
+  float a = dot(rd, rd);
+	vec3 s0_r0 = r0 - s0;
+	float b = 2.0 * dot(rd, s0_r0);
+	float c = dot(s0_r0, s0_r0) - (sR * sR);
+	float delta = (b * b) - (4.0 * a * c);
+	if((delta < 0.0) || (a == 0.0)){
+		return -1.0;
+	}else{
+    vec2 sol01 = (vec2(-b) + (vec2(sqrt(delta)) * vec2(-1.0, 1.0))) / vec2(2.0 * a);
+    if(all(lessThan(sol01, vec2(0.0)))){
+      return -1.0;
+    }else if(sol01.x < 0.0){
+      return max(0.0, sol01.y);
+    }else if(sol01.y < 0.0){
+      return max(0.0, sol01.x);
+    }else{
+      return max(0.0, min(sol01.x, sol01.y));
+    }
+  }
+}
+
+void LutTransmittanceParamsToUv(const in AtmosphereParameters Atmosphere, in float viewHeight, in float viewZenithCosAngle, out vec2 uv){
+	
+  float H = sqrt(max(0.0, Atmosphere.TopRadius * Atmosphere.TopRadius - Atmosphere.BottomRadius * Atmosphere.BottomRadius));
+	float rho = sqrt(max(0.0, viewHeight * viewHeight - Atmosphere.BottomRadius * Atmosphere.BottomRadius));
+
+	float discriminant = viewHeight * viewHeight * (viewZenithCosAngle * viewZenithCosAngle - 1.0) + Atmosphere.TopRadius * Atmosphere.TopRadius;
+	float d = max(0.0, (-viewHeight * viewZenithCosAngle + sqrt(discriminant))); // Distance to atmosphere boundary
+
+	float d_min = Atmosphere.TopRadius - viewHeight;
+	float d_max = rho + H;
+	float x_mu = (d - d_min) / (d_max - d_min);
+	float x_r = rho / H;
+
+	uv = vec2(x_mu, x_r);
+	//uv = vec2(fromUnitToSubUvs(uv.x, TRANSMITTANCE_TEXTURE_WIDTH), fromUnitToSubUvs(uv.y, TRANSMITTANCE_TEXTURE_HEIGHT)); // No real impact so off
+}
+
+SingleScatteringResult IntegrateScatteredLuminance(in vec2 pixPos, 
+                                                   in vec3 WorldPos, 
+                                                   in vec3 WorldDir, 
+                                                   in vec3 SunDir, 
+                                                   const in AtmosphereParameters Atmosphere,
+                                                   in bool ground, 
+                                                   in float SampleCountIni, 
+                                                   in float DepthBufferValue, 
+                                                   in bool VariableSampleCount,
+                                                   in bool MieRayPhase, 
+                                                   in float tMaxMax){
+
+  SingleScatteringResult result;
+
+  vec3 ClipSpace = vec3(fma(vec2(pixPos) / vec2(gResolution), vec2(2.0, -2.0), vec2(1.0, -1.0)), 1.0);
+
+  // Compute next intersection with atmosphere or ground 
+  vec3 earthO = vec3(0.0);
+  float tBottom = raySphereIntersectNearest(WorldPos, WorldDir, earthO, Atmosphere.BottomRadius);
+	float tTop = raySphereIntersectNearest(WorldPos, WorldDir, earthO, Atmosphere.TopRadius);
+	float tMax = 0.0;
+	if(tBottom < 0.0){
+		if (tTop < 0.0){
+			tMax = 0.0; // No intersection with earth nor atmosphere: stop right away  
+			return result;
+		}else{
+			tMax = tTop;
+		}
+	}else{
+		if(tTop > 0.0){
+			tMax = min(tTop, tBottom);
+		}
+	}  
+
+	if(DepthBufferValue >= 0.0){
+		ClipSpace.z = DepthBufferValue;
+		if(ClipSpace.z < 1.0){
+			vec4 DepthBufferWorldPos = gSkyInvViewProjMat * vec4(ClipSpace, 1.0);
+			DepthBufferWorldPos /= DepthBufferWorldPos.w;
+
+			float tDepth = length(DepthBufferWorldPos.xyz - (WorldPos + vec3(0.0, 0.0, -Atmosphere.BottomRadius))); // apply earth offset to go back to origin as top of earth mode. 
+			if(tDepth < tMax){
+				tMax = tDepth;
+			}
+		}
+		/*
+    if (VariableSampleCount && (ClipSpace.z == 1.0)){
+		  return result;
+    }*/
+	}
+	tMax = min(tMax, tMaxMax);
+
+
+
+  return result;
+
+}
 
 #endif
