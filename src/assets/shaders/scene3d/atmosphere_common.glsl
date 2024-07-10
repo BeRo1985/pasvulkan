@@ -53,6 +53,102 @@ mat4 gSkyInvViewProjMat;
 
 vec2 RayMarchMinMaxSPP;
 
+#define PLANET_RADIUS_OFFSET 0.01f
+
+struct Ray{
+	vec3 o;
+	vec3 d;
+};
+
+Ray createRay(in vec3 p, in vec3 d){
+	Ray r;
+	r.o = p;
+	r.d = d;
+	return r;
+}
+
+float fromUnitToSubUvs(float u, float resolution){ return ((u + 0.5) / resolution) * (resolution / (resolution + 1.0)); }
+float fromSubUvsToUnit(float u, float resolution){ return ((u - 0.5) / resolution) * (resolution / (resolution - 1.0)); }
+
+void UvToLutTransmittanceParams(AtmosphereParameters Atmosphere, out float viewHeight, out float viewZenithCosAngle, in vec2 uv){
+	//uv = vec2(fromSubUvsToUnit(uv.x, TRANSMITTANCE_TEXTURE_WIDTH), fromSubUvsToUnit(uv.y, TRANSMITTANCE_TEXTURE_HEIGHT)); // No real impact so off
+	float x_mu = uv.x;
+	float x_r = uv.y;
+
+	float H = sqrt((Atmosphere.TopRadius * Atmosphere.TopRadius) - (Atmosphere.BottomRadius * Atmosphere.BottomRadius));
+	float rho = H * x_r;
+	viewHeight = sqrt((rho * rho) + (Atmosphere.BottomRadius * Atmosphere.BottomRadius));
+
+	float d_min = Atmosphere.TopRadius - viewHeight;
+	float d_max = rho + H;
+	float d = d_min + x_mu * (d_max - d_min);
+	viewZenithCosAngle = (d == 0.0) ? 1.0 : (((H * H) - (rho * rho)) - (d * d)) / (2.0 * viewHeight * d);
+	viewZenithCosAngle = clamp(viewZenithCosAngle, -1.0, 1.0);
+}
+
+#define NONLINEARSKYVIEWLUT 1
+void UvToSkyViewLutParams(AtmosphereParameters Atmosphere, out float viewZenithCosAngle, out float lightViewCosAngle, in float viewHeight, in vec2 uv){
+	// Constrain uvs to valid sub texel range (avoid zenith derivative issue making LUT usage visible)
+	uv = vec2(fromSubUvsToUnit(uv.x, 192.0), fromSubUvsToUnit(uv.y, 108.0));
+
+	float Vhorizon = sqrt((viewHeight * viewHeight) - (Atmosphere.BottomRadius * Atmosphere.BottomRadius));
+	float CosBeta = Vhorizon / viewHeight;				// GroundToHorizonCos
+	float Beta = acos(CosBeta);
+	float ZenithHorizonAngle = PI - Beta;
+
+	if(uv.y < 0.5){
+		float coord = 2.0 * uv.y;
+		coord = 1.0 - coord;
+#if NONLINEARSKYVIEWLUT
+		coord *= coord;
+#endif
+		coord = 1.0 - coord;
+		viewZenithCosAngle = cos(ZenithHorizonAngle * coord);
+	}else{
+		float coord = fma(uv.y, 2.0, -1.0);
+#if NONLINEARSKYVIEWLUT
+		coord *= coord;
+#endif
+		viewZenithCosAngle = cos(ZenithHorizonAngle + Beta * coord);
+	}
+
+	float coord = uv.x;
+	coord *= coord;
+	lightViewCosAngle = -fma(coord, 2.0, -1.0);
+}
+
+void SkyViewLutParamsToUv(AtmosphereParameters Atmosphere, in bool IntersectGround, in float viewZenithCosAngle, in float lightViewCosAngle, in float viewHeight, out vec2 uv){
+	float Vhorizon = sqrt((viewHeight * viewHeight) - (Atmosphere.BottomRadius * Atmosphere.BottomRadius));
+	float CosBeta = Vhorizon / viewHeight;				// GroundToHorizonCos
+	float Beta = acos(CosBeta);
+	float ZenithHorizonAngle = PI - Beta;
+
+	if(!IntersectGround){
+		float coord = acos(viewZenithCosAngle) / ZenithHorizonAngle;
+		coord = 1.0 - coord;
+#if NONLINEARSKYVIEWLUT
+		coord = sqrt(coord);
+#endif
+		coord = 1.0 - coord;
+		uv.y = coord * 0.5;
+	}else{
+		float coord = (acos(viewZenithCosAngle) - ZenithHorizonAngle) / Beta;
+#if NONLINEARSKYVIEWLUT
+		coord = sqrt(coord);
+#endif
+		uv.y = fma(coord, 0.5, 0.5);
+	}
+
+	{
+		float coord = fma(lightViewCosAngle, -0.5, 0.5);
+		coord = sqrt(coord);
+		uv.x = coord;
+	}
+
+	// Constrain uvs to valid sub texel range (avoid zenith derivative issue making LUT usage visible)
+	uv = vec2(fromUnitToSubUvs(uv.x, 192.0), fromUnitToSubUvs(uv.y, 108.0));
+}
+
 float raySphereIntersectNearest(vec3 r0, vec3 rd, vec3 s0, float sR){
   float a = dot(rd, rd);
 	vec3 s0_r0 = r0 - s0;
