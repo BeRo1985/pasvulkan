@@ -51,6 +51,8 @@ vec2 gResolution;
 
 mat4 gSkyInvViewProjMat;
 
+vec2 RayMarchMinMaxSPP;
+
 float raySphereIntersectNearest(vec3 r0, vec3 rd, vec3 s0, float sR){
   float a = dot(rd, rd);
 	vec3 s0_r0 = r0 - s0;
@@ -164,6 +166,17 @@ SingleScatteringResult IntegrateScatteredLuminance(in vec2 pixPos,
 	}
 	tMax = min(tMax, tMaxMax);
 
+	// Sample count 
+	float SampleCount = SampleCountIni;
+	float SampleCountFloor = SampleCountIni;
+	float tMaxFloor = tMax;
+	if(VariableSampleCount){
+		SampleCount = mix(RayMarchMinMaxSPP.x, RayMarchMinMaxSPP.y, clamp(tMax * 0.01, 0.0, 1.0));
+		SampleCountFloor = floor(SampleCount);
+		tMaxFloor = tMax * SampleCountFloor / SampleCount;	// rescale tMax to map to the last entire step segment.
+	}
+	float dt = tMax / SampleCount;
+
 	// Phase functions
 	const float uniformPhase = 1.0 / (4.0 * PI);
 	const vec3 wi = SunDir;
@@ -179,6 +192,43 @@ SingleScatteringResult IntegrateScatteredLuminance(in vec2 pixPos,
 #else
 	vec3 globalL = gSunIlluminance;
 #endif
+
+	// Ray march the atmosphere to integrate optical depth
+	vec3 L = vec3(0.0);
+	vec3 throughput = vec3(1.0);
+	vec3 OpticalDepth = vec3(0.0);
+	float t = 0.0;
+	float tPrev = 0.0;
+	const float SampleSegmentT = 0.3;
+	for (float s = 0.0; s < SampleCount; s += 1.0){
+		if (VariableSampleCount){
+			// More expenssive but artefact free
+			float t0 = (s) / SampleCountFloor;
+			float t1 = (s + 1.0) / SampleCountFloor;
+			// Non linear distribution of sample within the range.
+			t0 = t0 * t0;
+			t1 = t1 * t1;
+			// Make t0 and t1 world space distances.
+			t0 = tMaxFloor * t0;
+			if(t1 > 1.0){
+				t1 = tMax;
+		  //t1 = tMaxFloor;	// this reveal depth slices
+			}else{
+				t1 = tMaxFloor * t1;
+			}
+			//t = t0 + (t1 - t0) * (whangHashNoise(pixPos.x, pixPos.y, gFrameId * 1920 * 1080)); // With dithering required to hide some sampling artefact relying on TAA later? This may even allow volumetric shadow?
+			t = t0 + ((t1 - t0) * SampleSegmentT);
+			dt = t1 - t0;
+		}else{
+			//t = tMax * (s + SampleSegmentT) / SampleCount;
+			// Exact difference, important for accuracy of multiple scattering
+			float NewT = tMax * (s + SampleSegmentT) / SampleCount;
+			dt = NewT - t;
+			t = NewT;
+		}
+		vec3 P = WorldPos + t * WorldDir;
+
+  }
 
   return result;
 
