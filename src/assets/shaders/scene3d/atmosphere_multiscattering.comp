@@ -174,7 +174,7 @@ void main() {
 
 #if MULTI_SCATTERING_POWER_SERIE == 0
   vec3 MultiScatAs1SQR = MultiScatAs1 * MultiScatAs1;
-  vec3 L = InScatteredLuminance * (1.0 + MultiScatAs1 + MultiScatAs1SQR + MultiScatAs1 * MultiScatAs1SQR + MultiScatAs1SQR * MultiScatAs1SQR);
+  vec3 L = InScatteredLuminance * ((((1.0 + MultiScatAs1) + MultiScatAs1SQR) + (MultiScatAs1 * MultiScatAs1SQR)) + (MultiScatAs1SQR * MultiScatAs1SQR));
 #else
   const vec3 r = MultiScatAs1;
   const vec3 SumOfAllMultiScatteringEventsContribution = 1.0 / (1.0 - r);
