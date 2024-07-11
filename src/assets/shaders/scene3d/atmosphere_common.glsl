@@ -22,7 +22,7 @@ struct DensityProfile {
   DensityProfileLayer Layers[2];
 };
 
-struct AtmosphereParameters {
+struct InAtmosphereParameters {
   DensityProfile RayleighDensity;
   DensityProfile MieDensity;
   DensityProfile AbsorptionDensity;
@@ -39,6 +39,53 @@ struct AtmosphereParameters {
   float TopRadius;
   float MuSMin;
 };
+
+struct AtmosphereParameters {
+  float BottomRadius;
+	float TopRadius;
+	float RayleighDensityExpScale;
+	vec3 RayleighScattering;
+
+	float MieDensityExpScale;
+	vec3 MieScattering;
+	vec3 MieExtinction;
+	vec3 MieAbsorption;
+	float MiePhaseG;
+
+	float AbsorptionDensity0LayerWidth;
+	float AbsorptionDensity0ConstantTerm;
+	float AbsorptionDensity0LinearTerm;
+	float AbsorptionDensity1ConstantTerm;
+	float AbsorptionDensity1LinearTerm;
+	vec3 AbsorptionExtinction;
+
+	vec3 GroundAlbedo;
+};
+
+AtmosphereParameters getAtmosphereParameters(const in InAtmosphereParameters inAtmosphereParameters){
+  AtmosphereParameters atmosphereParameters;
+  atmosphereParameters.BottomRadius = inAtmosphereParameters.BottomRadius;
+  atmosphereParameters.TopRadius = inAtmosphereParameters.TopRadius;
+  atmosphereParameters.RayleighDensityExpScale = inAtmosphereParameters.RayleighDensity.Layers[0].ExpScale;
+  atmosphereParameters.RayleighScattering = inAtmosphereParameters.RayleighScattering.xyz;
+
+  atmosphereParameters.MieDensityExpScale = inAtmosphereParameters.MieDensity.Layers[0].ExpScale;
+  atmosphereParameters.MieScattering = inAtmosphereParameters.MieScattering.xyz;
+  atmosphereParameters.MieExtinction = inAtmosphereParameters.MieExtinction.xyz;
+  atmosphereParameters.MieAbsorption = inAtmosphereParameters.AbsorptionExtinction.xyz;
+  atmosphereParameters.MiePhaseG = inAtmosphereParameters.MiePhaseFunctionG;
+
+  atmosphereParameters.AbsorptionDensity0LayerWidth = inAtmosphereParameters.AbsorptionDensity.Layers[0].Width;
+  atmosphereParameters.AbsorptionDensity0ConstantTerm = inAtmosphereParameters.AbsorptionDensity.Layers[0].ConstantTerm;
+  atmosphereParameters.AbsorptionDensity0LinearTerm = inAtmosphereParameters.AbsorptionDensity.Layers[0].LinearTerm;
+  atmosphereParameters.AbsorptionDensity1ConstantTerm = inAtmosphereParameters.AbsorptionDensity.Layers[1].ConstantTerm;
+  atmosphereParameters.AbsorptionDensity1LinearTerm = inAtmosphereParameters.AbsorptionDensity.Layers[1].LinearTerm;
+  atmosphereParameters.AbsorptionExtinction = inAtmosphereParameters.AbsorptionExtinction.xyz;
+
+  atmosphereParameters.GroundAlbedo = inAtmosphereParameters.GroundAlbedo.xyz;
+
+  return atmosphereParameters;
+}
 
 struct SingleScatteringResult {
 	vec3 L;						// Scattered light (luminance)
@@ -212,7 +259,69 @@ float hgPhase(float g, float cosTheta){
 #endif
 }
 
-SingleScatteringResult IntegrateScatteredLuminance(in vec2 pixPos, 
+float getAlbedo(float scattering, float extinction){
+	return scattering / max(0.001, extinction);
+}
+
+vec3 getAlbedo(vec3 scattering, vec3 extinction){
+	return scattering / max(vec3(0.001), extinction);
+}
+
+struct MediumSampleRGB {
+  vec3 scattering;
+	vec3 absorption;
+	vec3 extinction;
+
+	vec3 scatteringMie;
+	vec3 absorptionMie;
+	vec3 extinctionMie;
+
+	vec3 scatteringRay;
+	vec3 absorptionRay;
+	vec3 extinctionRay;
+
+	vec3 scatteringOzo;
+	vec3 absorptionOzo;
+	vec3 extinctionOzo;
+
+	vec3 albedo;
+};
+
+MediumSampleRGB sampleMediumRGB(in vec3 WorldPos, in AtmosphereParameters Atmosphere){
+
+	const float viewHeight = length(WorldPos) - Atmosphere.BottomRadius;
+
+	const float densityMie = exp(Atmosphere.MieDensityExpScale * viewHeight);
+	const float densityRay = exp(Atmosphere.RayleighDensityExpScale * viewHeight);
+	const float densityOzo = clamp(viewHeight < Atmosphere.AbsorptionDensity0LayerWidth ?
+		Atmosphere.AbsorptionDensity0LinearTerm * viewHeight + Atmosphere.AbsorptionDensity0ConstantTerm :
+		Atmosphere.AbsorptionDensity1LinearTerm * viewHeight + Atmosphere.AbsorptionDensity1ConstantTerm, 
+    0.0, 1.0);
+
+	MediumSampleRGB s;
+
+	s.scatteringMie = densityMie * Atmosphere.MieScattering;
+	s.absorptionMie = densityMie * Atmosphere.MieAbsorption;
+	s.extinctionMie = densityMie * Atmosphere.MieExtinction;
+
+	s.scatteringRay = densityRay * Atmosphere.RayleighScattering;
+	s.absorptionRay = vec3(0.0);
+	s.extinctionRay = s.scatteringRay + s.absorptionRay;
+
+	s.scatteringOzo = vec3(0.0);
+	s.absorptionOzo = densityOzo * Atmosphere.AbsorptionExtinction;
+	s.extinctionOzo = s.scatteringOzo + s.absorptionOzo;
+
+	s.scattering = s.scatteringMie + s.scatteringRay + s.scatteringOzo;
+	s.absorption = s.absorptionMie + s.absorptionRay + s.absorptionOzo;
+	s.extinction = s.extinctionMie + s.extinctionRay + s.extinctionOzo;
+	s.albedo = getAlbedo(s.scattering, s.extinction);
+
+	return s;
+}
+
+SingleScatteringResult IntegrateScatteredLuminance(const in sampler2D TransmittanceLutTexture,
+                                                   in vec2 pixPos, 
                                                    in vec3 WorldPos, 
                                                    in vec3 WorldDir, 
                                                    in vec3 SunDir, 
@@ -280,7 +389,7 @@ SingleScatteringResult IntegrateScatteredLuminance(in vec2 pixPos,
 	const vec3 wi = SunDir;
 	const vec3 wo = WorldDir;
 	float cosTheta = dot(wi, wo);
-	float MiePhaseValue = hgPhase(Atmosphere.MiePhaseFunctionG, -cosTheta);	// mnegate cosTheta because due to WorldDir being a "in" direction. 
+	float MiePhaseValue = hgPhase(Atmosphere.MiePhaseG, -cosTheta);	// mnegate cosTheta because due to WorldDir being a "in" direction. 
 	float RayleighPhaseValue = RayleighPhase(cosTheta);
 
 #ifdef ILLUMINANCE_IS_ONE
@@ -326,8 +435,106 @@ SingleScatteringResult IntegrateScatteredLuminance(in vec2 pixPos,
 		}
 		vec3 P = WorldPos + t * WorldDir;
 
+	  MediumSampleRGB medium = sampleMediumRGB(P, Atmosphere);
+		const vec3 SampleOpticalDepth = medium.extinction * dt;
+		const vec3 SampleTransmittance = exp(-SampleOpticalDepth);
+		OpticalDepth += SampleOpticalDepth;
+
+		float pHeight = length(P);
+		const vec3 UpVector = P / pHeight;
+		float SunZenithCosAngle = dot(SunDir, UpVector);
+		vec2 uv;
+		LutTransmittanceParamsToUv(Atmosphere, pHeight, SunZenithCosAngle, uv);
+		vec3 TransmittanceToSun = textureLod(TransmittanceLutTexture, uv, 0.0).xyz;
+
+		vec3 PhaseTimesScattering;
+		if(MieRayPhase){
+			PhaseTimesScattering = medium.scatteringMie * MiePhaseValue + medium.scatteringRay * RayleighPhaseValue;
+		}else{
+			PhaseTimesScattering = medium.scattering * uniformPhase;
+		}
+
+		// Earth shadow 
+		float tEarth = raySphereIntersectNearest(P, SunDir, earthO + PLANET_RADIUS_OFFSET * UpVector, Atmosphere.BottomRadius);
+		float earthShadow = tEarth >= 0.0 ? 0.0 : 1.0;
+
+		// Dual scattering for multi scattering 
+
+		vec3 multiScatteredLuminance = vec3(0.0);
+#if MULTISCATAPPROX_ENABLED
+		multiScatteredLuminance = GetMultipleScattering(Atmosphere, medium.scattering, medium.extinction, P, SunZenithCosAngle);
+#endif
+
+		float shadow = 1.0f;
+#if SHADOWMAP_ENABLED
+		// First evaluate opaque shadow
+		shadow = getShadow(Atmosphere, P);
+#endif
+
+		vec3 S = globalL * (earthShadow * shadow * TransmittanceToSun * PhaseTimesScattering + multiScatteredLuminance * medium.scattering);
+
+		// When using the power serie to accumulate all sattering order, serie r must be <1 for a serie to converge.
+		// Under extreme coefficient, MultiScatAs1 can grow larger and thus result in broken visuals.
+		// The way to fix that is to use a proper analytical integration as proposed in slide 28 of http://www.frostbite.com/2015/08/physically-based-unified-volumetric-rendering-in-frostbite/
+		// However, it is possible to disable as it can also work using simple power serie sum unroll up to 5th order. The rest of the orders has a really low contribution.
+#define MULTI_SCATTERING_POWER_SERIE 1
+
+#if MULTI_SCATTERING_POWER_SERIE==0
+		// 1 is the integration of luminance over the 4pi of a sphere, and assuming an isotropic phase function of 1.0/(4*PI)
+		result.MultiScatAs1 += throughput * medium.scattering * 1 * dt;
+#else
+		vec3 MS = medium.scattering * 1;
+		vec3 MSint = (MS - MS * SampleTransmittance) / medium.extinction;
+		result.MultiScatAs1 += throughput * MSint;
+#endif
+
+		// Evaluate input to multi scattering 
+		{
+			vec3 newMS;
+
+			newMS = earthShadow * TransmittanceToSun * medium.scattering * uniformPhase * 1;
+			result.NewMultiScatStep0Out += throughput * (newMS - newMS * SampleTransmittance) / medium.extinction;
+			//	result.NewMultiScatStep0Out += SampleTransmittance * throughput * newMS * dt;
+
+			newMS = medium.scattering * uniformPhase * multiScatteredLuminance;
+			result.NewMultiScatStep1Out += throughput * (newMS - newMS * SampleTransmittance) / medium.extinction;
+			//	result.NewMultiScatStep1Out += SampleTransmittance * throughput * newMS * dt;
+		}
+
+#if 0
+		L += throughput * S * dt;
+		throughput *= SampleTransmittance;
+#else
+		// See slide 28 at http://www.frostbite.com/2015/08/physically-based-unified-volumetric-rendering-in-frostbite/ 
+		vec3 Sint = (S - S * SampleTransmittance) / medium.extinction;	// integrate along the current step segment 
+		L += throughput * Sint;														// accumulate and also take into account the transmittance from previous steps
+		throughput *= SampleTransmittance;
+#endif
+
+		tPrev = t;
+
   }
 
+	if(ground && (tMax == tBottom) && (tBottom > 0.0)){
+
+		// Account for bounced light off the earth
+		vec3 P = WorldPos + (tBottom * WorldDir);
+		float pHeight = length(P);
+
+		const vec3 UpVector = P / pHeight;
+		float SunZenithCosAngle = dot(SunDir, UpVector);
+		vec2 uv;
+		LutTransmittanceParamsToUv(Atmosphere, pHeight, SunZenithCosAngle, uv);
+		vec3 TransmittanceToSun = textureLod(TransmittanceLutTexture, uv, 0.0).xyz;
+
+		const float NdotL = clamp(dot(normalize(UpVector), normalize(SunDir)), 0.0, 1.0);
+		L += globalL * TransmittanceToSun * throughput * NdotL * Atmosphere.GroundAlbedo / PI;
+
+	}
+
+	result.L = L;
+	result.OpticalDepth = OpticalDepth;
+	result.Transmittance = throughput;
   return result;
 
 }
