@@ -16,6 +16,8 @@ layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
 layout(push_constant, std140) uniform PushConstants {
   int baseViewIndex;
   int countViews;
+  int dummy0;
+  int dummy1;
   vec4 sunDirection;
   vec2 resolution;
 } pushConstants;
