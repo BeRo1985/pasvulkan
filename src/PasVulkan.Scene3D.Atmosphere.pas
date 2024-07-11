@@ -82,6 +82,7 @@ type { TpvScene3DAtmosphere }
              SCATTERING_TEXTURE_DEPTH=SCATTERING_TEXTURE_R_SIZE;
              IRRADIANCE_TEXTURE_WIDTH=64;
              IRRADIANCE_TEXTURE_HEIGHT=16;
+             MultiScatteringLUTRes=32;
              ScatteringOrders=4; 
         type { TDensityProfileLayer }
              TDensityProfileLayer=packed record

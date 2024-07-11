@@ -5,6 +5,8 @@
 
 #define ILLUMINANCE_IS_ONE
 
+#define MultiScatteringLUTRes 32
+
 const float PI = 3.1415926535897932384626433832795;
 
 struct DensityProfileLayer {
@@ -320,7 +322,22 @@ MediumSampleRGB sampleMediumRGB(in vec3 WorldPos, in AtmosphereParameters Atmosp
 	return s;
 }
 
+#if MULTISCATAPPROX_ENABLED
+vec3 GetMultipleScattering(const in sampler2D MultiScatTexture, AtmosphereParameters Atmosphere, vec3 scattering, vec3 extinction, vec3 worlPos, float viewZenithCosAngle){
+	vec2 uv = clamp(vec2(fma(viewZenithCosAngle, 0.5, 0.5), (length(worlPos) - Atmosphere.BottomRadius) / (Atmosphere.TopRadius - Atmosphere.BottomRadius)), vec2(0.0), vec2(1.0));
+	uv = vec2(fromUnitToSubUvs(uv.x, MultiScatteringLUTRes), fromUnitToSubUvs(uv.y, MultiScatteringLUTRes));
+	vec3 multiScatteredLuminance = textureLod(MultiScatTexture, uv, 0).xyz;
+	return multiScatteredLuminance;
+}
+#endif
+
+float getShadow(in AtmosphereParameters Atmosphere, vec3 P){
+  // TODO
+	return 1.0;
+}
+
 SingleScatteringResult IntegrateScatteredLuminance(const in sampler2D TransmittanceLutTexture,
+                                                   const in sampler2D MultiScatTexture, 
                                                    in vec2 pixPos, 
                                                    in vec3 WorldPos, 
                                                    in vec3 WorldDir, 
@@ -462,7 +479,7 @@ SingleScatteringResult IntegrateScatteredLuminance(const in sampler2D Transmitta
 
 		vec3 multiScatteredLuminance = vec3(0.0);
 #if MULTISCATAPPROX_ENABLED
-		multiScatteredLuminance = GetMultipleScattering(Atmosphere, medium.scattering, medium.extinction, P, SunZenithCosAngle);
+		multiScatteredLuminance = GetMultipleScattering(MultiScatTexture, Atmosphere, medium.scattering, medium.extinction, P, SunZenithCosAngle);
 #endif
 
 		float shadow = 1.0f;
