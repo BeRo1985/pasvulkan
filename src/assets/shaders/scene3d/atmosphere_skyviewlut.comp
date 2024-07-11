@@ -12,22 +12,106 @@ layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
 
 #include "atmosphere_common.glsl"
 
-layout(set = 0, binding = 0, rgba32f) uniform image2D uDestinationTexture;
+// Push constants
+layout(push_constant, std140) uniform PushConstants {
+  int baseViewIndex;
+  int countViews;
+} pushConstants;
 
-layout(set = 0, binding = 1, std430) buffer AtmosphereParametersBuffer {
-  AtmosphereParameters atmosphereParameters;
+layout(set = 0, binding = 0, rgba32f) uniform image2DArray uDestinationTexture;
+
+layout(set = 0, binding = 1) uniform sampler2DArray uTransmittanceLutTexture;
+
+layout(set = 0, binding = 2) uniform sampler2DArray uMultiScatTexture;
+
+layout(set = 0, binding = 3, std430) buffer AtmosphereParametersBuffer {
+  InAtmosphereParameters inAtmosphereParameters;
+} uAtmosphereParameters;
+
+struct View {
+  mat4 viewMatrix;
+  mat4 projectionMatrix;
+  mat4 inverseViewMatrix;
+  mat4 inverseProjectionMatrix;
 };
+
+layout(set = 1, binding = 0, std140) uniform uboViews {
+  View views[256]; // 65536 / (64 * 4) = 256
+} uView;
+
+AtmosphereParameters atmosphereParameters;
 
 void main() {
 
   ivec2 size = imageSize(uDestinationTexture).xy;
 
   ivec2 coord = ivec2(gl_GlobalInvocationID.xy);
-  
-  if(all(greaterThanEqual(coord, ivec2(0))) && all(lessThan(coord, size))) {
 
+  int viewIndex = pushConstants.baseViewIndex + int(gl_GlobalInvocationID.z);
+  
+  if(all(greaterThanEqual(coord, ivec2(0))) && all(lessThan(coord, size)) && (viewIndex < pushConstants.countViews)) {
+
+    atmosphereParameters = getAtmosphereParameters(uAtmosphereParameters.inAtmosphereParameters);
+
+    mat4 inverseViewMatrix = uView.views[viewIndex].inverseViewMatrix;
+    mat4 inverseProjectionMatrix = uView.views[viewIndex].inverseProjectionMatrix;
+
+    const vec2 size = vec2(192.0, 108.0);
+
+    vec3 clipSpace = vec3(fma(vec2(coord) / vec2(size), vec2(2.0, -2.0), vec2(1.0, -1.0)), 1.0);     
+    vec4 hViewPos = inverseProjectionMatrix * vec4(clipSpace, 1.0);
+    vec3 worldDir = normalize(mat3(inverseViewMatrix) * (hViewPos.xyz / hViewPos.w));
+    vec3 worldPos = vec3(0.0, 0.0, atmosphereParameters.BottomRadius);
+  
+    vec2 uv = vec2(coord) / vec2(size);
+
+    float viewHeight = length(worldPos);
+
+    float viewZenithCosAngle;
+    float lightViewCosAngle;
+    UvToSkyViewLutParams(atmosphereParameters, viewZenithCosAngle, lightViewCosAngle, viewHeight, uv);
+
+    vec3 sunDir = vec3(0.0, 0.0, 1.0);
+    {
+      vec3 upVector = worldPos / viewHeight;
+      float sunZenithCosAngle = dot(upVector, sunDir);
+      sunDir = normalize(vec3(sqrt(1.0 - (sunZenithCosAngle * sunZenithCosAngle)), 0.0, sunZenithCosAngle));
+    }
+
+    worldPos = vec3(0.0, 0.0, viewHeight);
+
+    float viewZenithSinAngle = sqrt(1.0 - (viewZenithCosAngle * viewZenithCosAngle));
+    worldDir = vec3(viewZenithSinAngle * lightViewCosAngle, viewZenithSinAngle * sqrt(1.0 - (lightViewCosAngle * lightViewCosAngle)), viewZenithCosAngle);
+
+    if(!MoveToTopAtmosphere(worldPos, worldDir, atmosphereParameters.TopRadius)) {
+      imageStore(uDestinationTexture, ivec3(coord, viewIndex), vec4(0.0, 0.0, 0.0, 1.0));
+    } else {
+      const bool ground = false;
+      const float sampleCountIni = 30.0;
+      const float depthBufferValue = -1.0;
+      const bool variableSampleCount = true;
+      const bool mieRayPhase = true;
+      SingleScatteringResult ss = IntegrateScatteredLuminance(
+        uTransmittanceLutTexture,
+        uMultiScatTexture,
+        viewIndex,
+        coord, 
+        worldPos, 
+        worldDir, 
+        sunDir, 
+        atmosphereParameters, 
+        ground, 
+        sampleCountIni, 
+        depthBufferValue, 
+        variableSampleCount, 
+        mieRayPhase,
+        -1.0
+      ); 
+      vec3 L = ss.L;
+      imageStore(uDestinationTexture, ivec3(coord, viewIndex), vec4(L, 1.0));
+    }
 
   }
-  
+
 }
 

@@ -322,22 +322,21 @@ MediumSampleRGB sampleMediumRGB(in vec3 WorldPos, in AtmosphereParameters Atmosp
 	return s;
 }
 
-#if MULTISCATAPPROX_ENABLED
-vec3 GetMultipleScattering(const in sampler2D MultiScatTexture, AtmosphereParameters Atmosphere, vec3 scattering, vec3 extinction, vec3 worlPos, float viewZenithCosAngle){
+vec3 GetMultipleScattering(const in sampler2DArray MultiScatTexture, int viewIndex, AtmosphereParameters Atmosphere, vec3 scattering, vec3 extinction, vec3 worlPos, float viewZenithCosAngle){
 	vec2 uv = clamp(vec2(fma(viewZenithCosAngle, 0.5, 0.5), (length(worlPos) - Atmosphere.BottomRadius) / (Atmosphere.TopRadius - Atmosphere.BottomRadius)), vec2(0.0), vec2(1.0));
 	uv = vec2(fromUnitToSubUvs(uv.x, MultiScatteringLUTRes), fromUnitToSubUvs(uv.y, MultiScatteringLUTRes));
-	vec3 multiScatteredLuminance = textureLod(MultiScatTexture, uv, 0).xyz;
+	vec3 multiScatteredLuminance = textureLod(MultiScatTexture, vec3(uv, float(viewIndex)), 0).xyz;
 	return multiScatteredLuminance;
 }
-#endif
 
 float getShadow(in AtmosphereParameters Atmosphere, vec3 P){
   // TODO
 	return 1.0;
 }
 
-SingleScatteringResult IntegrateScatteredLuminance(const in sampler2D TransmittanceLutTexture,
-                                                   const in sampler2D MultiScatTexture, 
+SingleScatteringResult IntegrateScatteredLuminance(const in sampler2DArray TransmittanceLutTexture,
+                                                   const in sampler2DArray MultiScatTexture, 
+                                                   int viewIndex,
                                                    in vec2 pixPos, 
                                                    in vec3 WorldPos, 
                                                    in vec3 WorldDir, 
@@ -348,7 +347,11 @@ SingleScatteringResult IntegrateScatteredLuminance(const in sampler2D Transmitta
                                                    in float DepthBufferValue, 
                                                    in bool VariableSampleCount,
                                                    in bool MieRayPhase, 
-                                                   in float tMaxMax){
+                                                   float tMaxMax){
+
+  if(tMaxMax < 0.0){
+    tMaxMax = 9000000.0;
+  } 
 
   SingleScatteringResult result;
 
@@ -462,7 +465,7 @@ SingleScatteringResult IntegrateScatteredLuminance(const in sampler2D Transmitta
 		float SunZenithCosAngle = dot(SunDir, UpVector);
 		vec2 uv;
 		LutTransmittanceParamsToUv(Atmosphere, pHeight, SunZenithCosAngle, uv);
-		vec3 TransmittanceToSun = textureLod(TransmittanceLutTexture, uv, 0.0).xyz;
+		vec3 TransmittanceToSun = textureLod(TransmittanceLutTexture, vec3(uv, float(viewIndex)), 0.0).xyz;
 
 		vec3 PhaseTimesScattering;
 		if(MieRayPhase){
@@ -479,7 +482,7 @@ SingleScatteringResult IntegrateScatteredLuminance(const in sampler2D Transmitta
 
 		vec3 multiScatteredLuminance = vec3(0.0);
 #if MULTISCATAPPROX_ENABLED
-		multiScatteredLuminance = GetMultipleScattering(MultiScatTexture, Atmosphere, medium.scattering, medium.extinction, P, SunZenithCosAngle);
+		multiScatteredLuminance = GetMultipleScattering(MultiScatTexture, viewIndex, Atmosphere, medium.scattering, medium.extinction, P, SunZenithCosAngle);
 #endif
 
 		float shadow = 1.0f;
@@ -542,7 +545,7 @@ SingleScatteringResult IntegrateScatteredLuminance(const in sampler2D Transmitta
 		float SunZenithCosAngle = dot(SunDir, UpVector);
 		vec2 uv;
 		LutTransmittanceParamsToUv(Atmosphere, pHeight, SunZenithCosAngle, uv);
-		vec3 TransmittanceToSun = textureLod(TransmittanceLutTexture, uv, 0.0).xyz;
+		vec3 TransmittanceToSun = textureLod(TransmittanceLutTexture, vec3(uv, float(viewIndex)), 0.0).xyz;
 
 		const float NdotL = clamp(dot(normalize(UpVector), normalize(SunDir)), 0.0, 1.0);
 		L += globalL * TransmittanceToSun * throughput * NdotL * Atmosphere.GroundAlbedo / PI;
@@ -554,6 +557,22 @@ SingleScatteringResult IntegrateScatteredLuminance(const in sampler2D Transmitta
 	result.Transmittance = throughput;
   return result;
 
+}
+
+bool MoveToTopAtmosphere(inout vec3 WorldPos, in vec3 WorldDir, in float AtmosphereTopRadius){
+	float viewHeight = length(WorldPos);
+	if(viewHeight > AtmosphereTopRadius){
+		float tTop = raySphereIntersectNearest(WorldPos, WorldDir, vec3(0.0), AtmosphereTopRadius);
+		if(tTop >= 0.0){
+			vec3 UpVector = WorldPos / viewHeight;
+			vec3 UpOffset = UpVector * -PLANET_RADIUS_OFFSET;
+			WorldPos = WorldPos + (WorldDir * tTop) + UpOffset;
+		}else{
+			// Ray is not intersecting the atmosphere
+			return false;
+		}
+	}
+	return true; // ok to start tracing
 }
 
 #endif
