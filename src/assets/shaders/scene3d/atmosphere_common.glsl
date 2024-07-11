@@ -102,7 +102,7 @@ vec2 gResolution;
 
 mat4 gSkyInvViewProjMat;
 
-vec2 RayMarchMinMaxSPP;
+vec2 RayMarchMinMaxSPP = vec2(4.0, 14.0);
 
 #define PLANET_RADIUS_OFFSET 0.01f
 
