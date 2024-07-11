@@ -1,0 +1,100 @@
+#version 450 core
+
+#extension GL_ARB_separate_shader_objects : enable
+#extension GL_ARB_shading_language_420pack : enable
+#extension GL_GOOGLE_include_directive : enable
+
+/* clang-format off */
+
+layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+
+/* clang-format on */
+
+#include "atmosphere_common.glsl"
+
+// Push constants
+layout(push_constant, std140) uniform PushConstants {
+  int baseViewIndex;
+  int countViews;
+  vec4 sunDirection;
+  vec2 resolution;
+} pushConstants;
+
+layout(set = 0, binding = 0, rgba32f) uniform image2DArray uDestinationTexture;
+
+layout(set = 0, binding = 1) uniform sampler2DArray uTransmittanceLutTexture;
+
+layout(set = 0, binding = 2) uniform sampler2DArray uMultiScatTexture;
+
+layout(set = 0, binding = 3, std430) buffer AtmosphereParametersBuffer {
+  InAtmosphereParameters inAtmosphereParameters;
+} uAtmosphereParameters;
+
+struct View {
+  mat4 viewMatrix;
+  mat4 projectionMatrix;
+  mat4 inverseViewMatrix;
+  mat4 inverseProjectionMatrix;
+};
+
+layout(set = 1, binding = 0, std140) uniform uboViews {
+  View views[256]; // 65536 / (64 * 4) = 256
+} uView;
+
+AtmosphereParameters atmosphereParameters;
+
+void main() {
+
+  ivec2 size = imageSize(uDestinationTexture).xy;
+
+  ivec2 coord = ivec2(gl_GlobalInvocationID.xy);
+
+  int viewIndex = pushConstants.baseViewIndex + int(gl_GlobalInvocationID.z);
+  
+  if(all(greaterThanEqual(coord, ivec2(0))) && all(lessThan(coord, size)) && (viewIndex < pushConstants.countViews)) {
+
+    atmosphereParameters = getAtmosphereParameters(uAtmosphereParameters.inAtmosphereParameters);
+
+    mat4 inverseViewMatrix = uView.views[viewIndex].inverseViewMatrix;
+    mat4 inverseProjectionMatrix = uView.views[viewIndex].inverseProjectionMatrix;
+
+    gSkyInvViewProjMat = inverseProjectionMatrix * inverseViewMatrix;
+
+    gResolution = pushConstants.resolution;
+
+    vec2 uv = vec2(coord) / vec2(TRANSMITTANCE_TEXTURE_WIDTH, TRANSMITTANCE_TEXTURE_HEIGHT);
+    float viewHeight;
+    float viewZenithCosAngle;
+    UvToLutTransmittanceParams(atmosphereParameters, viewHeight, viewZenithCosAngle, uv);
+
+    vec3 worldPos = vec3(0.0, 0.0, viewHeight);
+    vec3 worldDir = vec3(0.0, sqrt(1.0 - (viewZenithCosAngle * viewZenithCosAngle)), viewZenithCosAngle);
+
+    const bool ground = false;
+    const float SampleCountIni = 40.0;
+    const float DepthBufferValue = -1.0;
+    const bool VariableSampleCount = false;
+    const bool MieRayPhase = false;
+    vec3 transmittance = exp(-IntegrateScatteredLuminance(
+      uTransmittanceLutTexture,
+      uMultiScatTexture,
+      viewIndex,
+      coord, 
+      worldPos, 
+      worldDir, 
+      pushConstants.sunDirection.xyz,
+      atmosphereParameters, 
+      ground, 
+      SampleCountIni, 
+      DepthBufferValue, 
+      VariableSampleCount, 
+      MieRayPhase,
+      -1.0
+    ).OpticalDepth);
+
+    imageStore(uDestinationTexture, ivec3(coord, viewIndex), vec4(transmittance, 1.0));
+
+  }
+
+}
+
