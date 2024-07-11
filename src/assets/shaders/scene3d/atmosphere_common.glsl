@@ -355,7 +355,7 @@ SingleScatteringResult IntegrateScatteredLuminance(const in sampler2DArray Trans
 
   SingleScatteringResult result;
 
-  vec3 ClipSpace = vec3(fma(vec2(pixPos) / vec2(gResolution), vec2(2.0, -2.0), vec2(1.0, -1.0)), 1.0);
+  vec3 ClipSpace = vec3(fma(vec2(pixPos) / vec2(gResolution), vec2(2.0), vec2(1.0)), 1.0);
 
   // Compute next intersection with atmosphere or ground 
   vec3 earthO = vec3(0.0);
