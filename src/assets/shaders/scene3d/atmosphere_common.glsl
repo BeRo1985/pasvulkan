@@ -18,6 +18,9 @@
 #define IRRADIANCE_TEXTURE_HEIGHT 16
 #define MultiScatteringLUTRes 32
 
+#define AP_SLICE_COUNT 32.0
+#define AP_KM_PER_SLICE 4.0
+
 const float PI = 3.1415926535897932384626433832795;
 
 struct DensityProfileLayer {
@@ -585,5 +588,15 @@ bool MoveToTopAtmosphere(inout vec3 WorldPos, in vec3 WorldDir, in float Atmosph
 	}
 	return true; // ok to start tracing
 }
+
+
+float AerialPerspectiveDepthToSlice(float depth){
+	return depth * (1.0 / AP_KM_PER_SLICE);
+}
+
+float AerialPerspectiveSliceToDepth(float slice){
+	return slice * AP_KM_PER_SLICE;
+}
+
 
 #endif
