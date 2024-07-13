@@ -105,10 +105,26 @@ void main() {
       1.0
     );
 
-		return;
-	}
+	}else{
 
+    mat4 inverseViewProjectionMatrix = view.inverseProjectionMatrix * view.inverseViewMatrix;
 
+    ClipSpace = vec3(fma(vec2(uv), vec2(2.0), vec2(-1.0)), DepthBufferValue);
+    vec4 DepthBufferWorldPos = inverseViewProjectionMatrix * vec4(ClipSpace, 1.0);
+    DepthBufferWorldPos /= DepthBufferWorldPos.w;
+
+    float tDepth = length(DepthBufferWorldPos.xyz - (WorldPos + vec3(0.0, 0.0, -atmosphereParameters.BottomRadius)));
+    float Slice = AerialPerspectiveDepthToSlice(tDepth);
+    float Weight = 1.0;
+    if(Slice < 0.5){
+      Weight = clamp(Slice * 2.0, 0.0, 1.0);
+      Slice = 0.5;
+    } 
+    float w = sqrt(Slice / AP_SLICE_COUNT); // squared distribution
+
+    vec4 AP = Weight * textureLod(uCameraVolume[0], vec3(pixPos / pushConstants.resolution, w), 0.0);
+    outLuminance = vec4(AP.xyz, AP.w); 
+
+  }
   
 }
-
