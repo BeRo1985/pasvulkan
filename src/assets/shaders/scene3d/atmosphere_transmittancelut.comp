@@ -64,7 +64,7 @@ void main() {
 
     gResolution = pushConstants.resolution;
 
-    vec2 uv = vec2(coord) / vec2(TRANSMITTANCE_TEXTURE_WIDTH, TRANSMITTANCE_TEXTURE_HEIGHT);
+    vec2 uv = (vec2(coord) + vec2(0.5)) / vec2(TRANSMITTANCE_TEXTURE_WIDTH, TRANSMITTANCE_TEXTURE_HEIGHT);
     float viewHeight;
     float viewZenithCosAngle;
     UvToLutTransmittanceParams(atmosphereParameters, viewHeight, viewZenithCosAngle, uv);

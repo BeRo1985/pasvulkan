@@ -599,4 +599,15 @@ float AerialPerspectiveSliceToDepth(float slice){
 }
 
 
+vec3 GetSunLuminance(vec3 WorldPos, vec3 WorldDir, vec3 sunDirection, float PlanetRadius){
+	if (dot(WorldDir, sunDirection) > cos(0.5*0.505*3.14159 / 180.0)){
+		float t = raySphereIntersectNearest(WorldPos, WorldDir, vec3(0.0), PlanetRadius);
+		if(t < 0.0){ // no intersection
+			const vec3 SunLuminance = vec3(1000000.0); // arbitrary. But fine, not use when comparing the models
+			return SunLuminance;
+		}
+	}
+	return vec3(0.0);
+}
+
 #endif

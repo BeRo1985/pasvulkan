@@ -49,7 +49,7 @@ AtmosphereParameters Atmosphere;
 
 void main() {
   
-  vec2 pixPos = vec2(gl_GlobalInvocationID.xy) + 0.5;
+  vec2 pixPos = vec2(gl_GlobalInvocationID.xy) + vec2(0.5);
   vec2 uv = pixPos / vec2(MultiScatteringLUTRes);
 
   int viewIndex = pushConstants.baseViewIndex + int(gl_WorkGroupID.z);
