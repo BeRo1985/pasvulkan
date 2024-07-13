@@ -20,7 +20,7 @@ layout(push_constant, std140) uniform PushConstants {
   int baseViewIndex;
   int countViews;
   float noHitDepthValue;
-  int dummy1;
+  float startDepth;
   vec4 sunDirection;
   vec2 resolution;
 } pushConstants;
@@ -62,7 +62,7 @@ void main() {
   vec2 pixPos = vec2(gl_FragCoord.xy) + vec2(0.5);
   vec2 uv = pixPos / pushConstants.resolution;
 
-  vec3 ClipSpace = vec3(fma(vec2(uv), vec2(2.0), vec2(-1.0)), 1.0);
+  vec3 ClipSpace = vec3(fma(vec2(uv), vec2(2.0), vec2(-1.0)), pushConstants.startDepth);
   vec4 HViewPos = view.inverseProjectionMatrix * vec4(ClipSpace, 1.0);
   vec3 WorldDir = normalize(mat3(view.inverseViewMatrix) * HViewPos.xyz / HViewPos.w);
   vec3 WorldPos = vec3(0.0, 0.0, atmosphereParameters.BottomRadius);
