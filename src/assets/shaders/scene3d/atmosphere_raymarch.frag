@@ -19,7 +19,7 @@ layout(location = 0) out vec4 outLuminance;
 layout(push_constant, std140) uniform PushConstants {
   int baseViewIndex;
   int countViews;
-  int sliceID;
+  float noHitDepthValue;
   int dummy1;
   vec4 sunDirection;
   vec2 resolution;
@@ -73,19 +73,17 @@ void main() {
   vec3 WorldDir = normalize(mat3(view.inverseViewMatrix) * HViewPos.xyz / HViewPos.w);
   vec3 WorldPos = vec3(0.0, 0.0, atmosphereParameters.BottomRadius);
 
-  float DepthBufferValue = -1.0;
-
   float viewHeight = length(WorldPos);
 	vec3 L = vec3(0.0);
 #ifdef MSAA
-	DepthBufferValue = subpassLoad(uSubpassDepth, gl_SampleID).x;
+	float DepthBufferValue = subpassLoad(uSubpassDepth, gl_SampleID).x;
 #else  
-	DepthBufferValue = subpassLoad(uSubpassDepth).x;
+	float DepthBufferValue = subpassLoad(uSubpassDepth).x;
 #endif
 
   vec3 sunDirection = normalize(pushConstants.sunDirection.xyz);
 
-	if((viewHeight < atmosphereParameters.TopRadius) && (DepthBufferValue == 1.0)){
+	if((viewHeight < atmosphereParameters.TopRadius) && (DepthBufferValue == pushConstants.noHitDepthValue)){
 
 		vec2 uv;
 		vec3 UpVector = normalize(WorldPos);
@@ -109,6 +107,8 @@ void main() {
 
 		return;
 	}
+
+
   
 }
 
