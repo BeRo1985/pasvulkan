@@ -18,6 +18,7 @@
 #define IRRADIANCE_TEXTURE_HEIGHT 16
 #define MultiScatteringLUTRes 32
 
+#define AP_SLICE_COUNT_INT 32
 #define AP_SLICE_COUNT 32.0
 #define AP_KM_PER_SLICE 4.0
 

@@ -51,7 +51,11 @@ void main() {
 
   ivec2 coord = ivec2(gl_GlobalInvocationID.xy);
 
-  int viewIndex = pushConstants.baseViewIndex + int(gl_GlobalInvocationID.z);
+  int globalZ = int(gl_GlobalInvocationID.z);
+
+  int viewIndex = pushConstants.baseViewIndex + int(globalZ / AP_SLICE_COUNT_INT);
+
+  int sliceIndex = globalZ % AP_SLICE_COUNT_INT;
   
   if(all(greaterThanEqual(coord, ivec2(0))) && all(lessThan(coord, size)) && (viewIndex < pushConstants.countViews)) {
 
@@ -64,7 +68,7 @@ void main() {
 
     gResolution = pushConstants.resolution;
 
-    int sliceID = pushConstants.sliceID;
+    int sliceID = sliceIndex;
 
     vec3 ClipSpace = vec3(fma(vec2(coord) / vec2(gResolution), vec2(2.0), vec2(-1.0)), 0.5);
     vec4 HViewPos = inverseProjectionMatrix * vec4(ClipSpace, 1.0);
@@ -140,7 +144,7 @@ void main() {
 
     vec3 L = ss.L;
     const float Transmittance = dot(ss.Transmittance, vec3(1.0 / 3.0));
-    imageStore(uDestinationTexture, ivec3(coord, viewIndex), vec4(L, 1.0 - Transmittance));
+    imageStore(uDestinationTexture, ivec3(coord, (viewIndex * AP_SLICE_COUNT_INT) + sliceID), vec4(L, 1.0 - Transmittance));
 
   }
 
