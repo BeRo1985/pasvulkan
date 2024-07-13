@@ -64,7 +64,7 @@ void main() {
 
   vec3 ClipSpace = vec3(fma(vec2(uv), vec2(2.0), vec2(-1.0)), pushConstants.startDepth);
   vec4 HViewPos = view.inverseProjectionMatrix * vec4(ClipSpace, 1.0);
-  vec3 WorldDir = normalize(mat3(view.inverseViewMatrix) * HViewPos.xyz / HViewPos.w);
+  vec3 WorldDir = normalize(mat3(view.inverseViewMatrix) * (HViewPos.xyz / HViewPos.w));
   vec3 WorldPos = vec3(0.0, 0.0, atmosphereParameters.BottomRadius);
 
   float viewHeight = length(WorldPos);
