@@ -39,7 +39,7 @@ layout(input_attachment_index = 1, set = 0, binding = 1) uniform subpassInput uS
 
 layout(set = 0, binding = 2) uniform sampler2DArray uSkyViewLUT;
 
-layout(set = 0, binding = 3) uniform sampler2DArray uCameraVolume[2];
+layout(set = 0, binding = 3) uniform sampler2DArray uCameraVolume;
 
 layout(set = 0, binding = 4, std430) buffer AtmosphereParametersBuffer {
   InAtmosphereParameters inAtmosphereParameters;
@@ -122,7 +122,19 @@ void main() {
     } 
     float w = sqrt(Slice / AP_SLICE_COUNT); // squared distribution
 
-    vec4 AP = Weight * textureLod(uCameraVolume[0], vec3(pixPos / pushConstants.resolution, w), 0.0);
+    float baseSlice = w * AP_SLICE_COUNT;
+    int sliceIndex = int(floor(baseSlice));
+    float sliceWeight = baseSlice - float(sliceIndex);
+    int nextSliceIndex = clamp(sliceIndex + 1, 0, AP_SLICE_COUNT_INT - 1);
+    sliceIndex = clamp(sliceIndex, 0, AP_SLICE_COUNT_INT - 1);
+
+    // Manual 3D texture lookup from a 2D array texture, since multiview is not supported for 3D textures (no 3D array textures) 
+    vec4 AP = mix(
+                textureLod(uCameraVolume, vec3(pixPos / pushConstants.resolution, sliceIndex + (viewIndex * AP_SLICE_COUNT_INT)), 0.0),
+                textureLod(uCameraVolume, vec3(pixPos / pushConstants.resolution, nextSliceIndex + (viewIndex * AP_SLICE_COUNT_INT)), 0.0),
+                sliceWeight
+              ) * Weight;
+
     outLuminance = vec4(AP.xyz, AP.w); 
 
   }
