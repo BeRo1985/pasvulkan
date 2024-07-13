@@ -26,22 +26,16 @@ layout(push_constant, std140) uniform PushConstants {
 } pushConstants;
 
 #ifdef MSAA
-layout(input_attachment_index = 0, set = 0, binding = 0) uniform subpassInputMS uSubpassInput;
+layout(input_attachment_index = 0, set = 0, binding = 0) uniform subpassInputMS uSubpassDepth;
 #else  
-layout(input_attachment_index = 0, set = 0, binding = 0) uniform subpassInput uSubpassInput;
+layout(input_attachment_index = 0, set = 0, binding = 0) uniform subpassInput uSubpassDepth;
 #endif
 
-#ifdef MSAA
-layout(input_attachment_index = 1, set = 0, binding = 1) uniform subpassInputMS uSubpassDepth;
-#else  
-layout(input_attachment_index = 1, set = 0, binding = 1) uniform subpassInput uSubpassDepth;
-#endif
+layout(set = 0, binding = 1) uniform sampler2DArray uSkyViewLUT;
 
-layout(set = 0, binding = 2) uniform sampler2DArray uSkyViewLUT;
+layout(set = 0, binding = 2) uniform sampler2DArray uCameraVolume;
 
-layout(set = 0, binding = 3) uniform sampler2DArray uCameraVolume;
-
-layout(set = 0, binding = 4, std430) buffer AtmosphereParametersBuffer {
+layout(set = 0, binding = 3, std430) buffer AtmosphereParametersBuffer {
   InAtmosphereParameters inAtmosphereParameters;
 } uAtmosphereParameters;
 
