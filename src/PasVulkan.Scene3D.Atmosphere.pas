@@ -80,7 +80,7 @@ type TpvScene3DAtmosphere=class;
       public
        constructor Create(const aScene3D:TObject); reintroduce;
        destructor Destroy; override;
-       procedure ProcessDeferredDestroy;
+       procedure ProcessReleases;
       published
        property Scene3D:TObject read fScene3D;
        property Lock:TPasMPMultipleReaderSingleWriterLock read fLock;
@@ -392,7 +392,7 @@ begin
  inherited Destroy;
 end;
 
-procedure TpvScene3DAtmospheres.ProcessDeferredDestroy;
+procedure TpvScene3DAtmospheres.ProcessReleases;
 var Index:TpvInt32;
     Atmosphere:TpvScene3DAtmosphere;
 begin

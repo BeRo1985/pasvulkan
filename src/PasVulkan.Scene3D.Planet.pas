@@ -1592,6 +1592,8 @@ type TpvScene3DPlanets=class;
        property RaytracingTileQueueUpdateIndex:TPasMPUInt32 read fRaytracingTileQueueUpdateIndex;
      end;
 
+     { TpvScene3DPlanets }
+
      TpvScene3DPlanets=class(TpvObjectGenericList<TpvScene3DPlanet>)
       private
        fScene3D:TObject;
@@ -1599,6 +1601,7 @@ type TpvScene3DPlanets=class;
       public
        constructor Create(const aScene3D:TObject); reintroduce;
        destructor Destroy; override;
+       procedure ProcessReleases;
       published
        property Scene3D:TObject read fScene3D;
        property Lock:TPasMPMultipleReaderSingleWriterLock read fLock;
@@ -15739,6 +15742,21 @@ destructor TpvScene3DPlanets.Destroy;
 begin
  FreeAndNil(fLock);
  inherited Destroy;
+end;
+
+procedure TpvScene3DPlanets.ProcessReleases;
+var Index:TpvInt32;
+    Planet:TpvScene3DPlanet;
+begin
+ // Going backwards through the list, because we will remove items from the list
+ Index:=Count;
+ while Index>0 do begin
+  dec(Index);
+  Planet:=Items[Index];
+  if assigned(Planet) then begin
+   Planet.HandleRelease;
+  end;
+ end;
 end;
 
 end.
