@@ -40,6 +40,7 @@ struct DensityProfile {
 };
 
 struct InAtmosphereParameters {
+  mat4 transform;
   DensityProfile RayleighDensity;
   DensityProfile MieDensity;
   DensityProfile AbsorptionDensity;

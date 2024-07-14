@@ -124,6 +124,7 @@ type TpvScene3DAtmosphere=class;
             { TAtmosphereParameters }
             TAtmosphereParameters=packed record             
              public
+              Transform:TpvMatrix4x4; // Transform of the atmosphere for the case that the atmosphere is not centered at the origin (e.g. multiple planets)
               RayleighDensity:TDensityProfile;
               MieDensity:TDensityProfile;
               AbsorptionDensity:TDensityProfile;
