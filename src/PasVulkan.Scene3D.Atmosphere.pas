@@ -396,15 +396,24 @@ procedure TpvScene3DAtmospheres.ProcessReleases;
 var Index:TpvInt32;
     Atmosphere:TpvScene3DAtmosphere;
 begin
- // Going backwards through the list, because we will remove items from the list
- Index:=Count;
- while Index>0 do begin
-  dec(Index);
-  Atmosphere:=Items[Index];
-  if assigned(Atmosphere) then begin
-   Atmosphere.HandleRelease;
+ fLock.AcquireRead;
+ try
+  Index:=Count;
+  while Index>0 do begin
+   dec(Index);
+   Atmosphere:=Items[Index];
+   if assigned(Atmosphere) then begin
+    fLock.ReleaseRead;
+    try
+     Atmosphere.HandleRelease;
+    finally
+     fLock.AcquireRead;
+    end;
+   end;
   end;
- end;
+ finally
+  fLock.ReleaseRead;
+ end; 
 end;
 
 end.
