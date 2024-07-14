@@ -279,10 +279,22 @@ begin
  fAtmosphere:=aAtmosphere;
  fRendererInstance:=aRendererInstance;
  fKey:=TKey.Create(fRendererInstance);
+{fTransmittanceTexture:TpvScene3DRendererArray2DImage;
+ fScatteringTexture:TpvScene3DRendererArray2DImage;
+ fIrradianceTexture:TpvScene3DRendererArray2DImage;
+ fMultiScatteringTexture:TpvScene3DRendererArray2DImage;
+ fSkyViewLUTTexture:TpvScene3DRendererArray2DImage;
+ fCameraVolumeTexture:TpvScene3DRendererArray2DImage;}
 end;
 
 destructor TpvScene3DAtmosphere.TRendererInstance.Destroy;
 begin
+ FreeAndNil(fTransmittanceTexture);
+ FreeAndNil(fScatteringTexture);
+ FreeAndNil(fIrradianceTexture);
+ FreeAndNil(fMultiScatteringTexture);
+ FreeAndNil(fSkyViewLUTTexture);
+ FreeAndNil(fCameraVolumeTexture);
  inherited Destroy;
 end;
 
