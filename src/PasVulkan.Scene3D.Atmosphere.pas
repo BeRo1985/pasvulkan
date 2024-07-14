@@ -168,18 +168,22 @@ type TpvScene3DAtmosphere=class;
             { TRendererInstanceHashMap }
             TRendererInstanceHashMap=TpvHashMap<TRendererInstance.TKey,TRendererInstance>;
       private
+       fScene3D:TObject;
        fAtmosphereParameters:TAtmosphereParameters;
        fPointerToAtmosphereParameters:PAtmosphereParameters;
        fRendererInstances:TRendererInstances;
        fRendererInstanceHashMap:TRendererInstanceHashMap;
        fRendererInstanceListLock:TPasMPSlimReaderWriterLock;
        fToDestroy:boolean;
-       fDestroyDelayCounter:TpvInt32;
+       fReleaseFrameCounter:TpvInt32;
        fReady:Boolean;
       public
-       constructor Create;
+       constructor Create(const aScene3D:TObject);
        destructor Destroy; override;
-       procedure DeferredDestroy;
+       procedure AfterConstruction; override;
+       procedure BeforeDestruction; override;
+       procedure Release;
+       function HandleRelease:boolean;
        procedure Update(const aInFlightFrameIndex:TpvSizeInt);
       public  
        property AtmosphereParameters:PAtmosphereParameters read fPointerToAtmosphereParameters;
@@ -207,19 +211,13 @@ procedure TpvScene3DAtmospheres.ProcessDeferredDestroy;
 var Index:TpvInt32;
     Atmosphere:TpvScene3DAtmosphere;
 begin
- Index:=0;
- while Index<Count do begin
-  Atmosphere:=fItems[Index];
-  if Atmosphere.fToDestroy then begin
-   dec(Atmosphere.fDestroyDelayCounter);
-   if Atmosphere.fDestroyDelayCounter<=0 then begin
-    ExtractIndex(Index);
-    Atmosphere.Free;
-   end else begin
-    inc(Index);
-   end;
-  end else begin
-   inc(Index);
+ // Going backwards through the list, because we will remove items from the list
+ Index:=Count;
+ while Index>0 do begin
+  dec(Index);
+  Atmosphere:=Items[Index];
+  if assigned(Atmosphere) then begin
+   Atmosphere.HandleRelease;   
   end;
  end;
 end;
@@ -326,15 +324,22 @@ end;
 
 { TpvScene3DAtmosphere }
 
-constructor TpvScene3DAtmosphere.Create;
+constructor TpvScene3DAtmosphere.Create(const aScene3D:TObject);
 begin
+ 
  inherited Create;
+
+ fScene3D:=aScene3D;
+ 
  fAtmosphereParameters.InitializeEarthAtmosphere;
  fPointerToAtmosphereParameters:=@fAtmosphereParameters;
+ 
  fRendererInstances:=TRendererInstances.Create(true);
  fRendererInstanceHashMap:=TRendererInstanceHashMap.Create(nil);
  fRendererInstanceListLock:=TPasMPSlimReaderWriterLock.Create;
+ 
  fReady:=false;
+
 end;
 
 destructor TpvScene3DAtmosphere.Destroy;
@@ -345,11 +350,54 @@ begin
  inherited Destroy;
 end;
 
-procedure TpvScene3DAtmosphere.DeferredDestroy;
+procedure TpvScene3DAtmosphere.AfterConstruction;
 begin
- fToDestroy:=true;
- fDestroyDelayCounter:=4; // 4 frames to ensure that all references are gone, even on the GPU
- fReady:=false;
+ inherited AfterConstruction;
+ if assigned(fScene3D) then begin
+  TpvScene3DAtmospheres(TpvScene3D(fScene3D).Atmospheres).Lock.AcquireWrite;
+  try
+   TpvScene3DAtmospheres(TpvScene3D(fScene3D).Atmospheres).Add(self);
+  finally
+   TpvScene3DAtmospheres(TpvScene3D(fScene3D).Atmospheres).Lock.ReleaseWrite;
+  end;
+ end;
+end;
+
+procedure TpvScene3DAtmosphere.BeforeDestruction;
+var Index:TpvSizeInt;
+begin
+ if assigned(fScene3D) then begin
+  TpvScene3DAtmospheres(TpvScene3D(fScene3D).Atmospheres).Lock.AcquireWrite;
+  try
+   Index:=TpvScene3DAtmospheres(TpvScene3D(fScene3D).Atmospheres).IndexOf(self);
+   if Index>=0 then begin
+    TpvScene3DAtmospheres(TpvScene3D(fScene3D).Atmospheres).Extract(Index); // not delete or remove, since we don't want to free ourself here already.
+   end;
+  finally
+   TpvScene3DAtmospheres(TpvScene3D(fScene3D).Atmospheres).Lock.ReleaseWrite;
+  end;
+ end;
+ inherited BeforeDestruction;
+end;
+
+procedure TpvScene3DAtmosphere.Release;
+begin
+ if fReleaseFrameCounter<0 then begin
+  fReleaseFrameCounter:=TpvScene3D(fScene3D).CountInFlightFrames;
+  fReady:=false;
+ end;
+end;
+
+function TpvScene3DAtmosphere.HandleRelease:boolean;
+begin
+ if fReleaseFrameCounter>0 then begin
+  result:=TPasMPInterlocked.Decrement(fReleaseFrameCounter)=0;
+  if result then begin
+   Free;
+  end;
+ end else begin
+  result:=false;
+ end;
 end;
 
 procedure TpvScene3DAtmosphere.Update(const aInFlightFrameIndex:TpvSizeInt);
