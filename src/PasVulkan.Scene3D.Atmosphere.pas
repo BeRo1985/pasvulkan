@@ -66,9 +66,18 @@ uses SysUtils,
      Math,
      Vulkan,
      PasVulkan.Types,
-     PasVulkan.Math;
+     PasVulkan.Math,
+     PasVulkan.Collections;
 
-type { TpvScene3DAtmosphere } 
+type TpvScene3DAtmosphere=class;
+
+     { TpvScene3DAtmospheres }
+     TpvScene3DAtmospheres=class(TpvObjectGenericList<TpvScene3DAtmosphere>)
+      public
+       procedure ProcessDeferredDestroy;
+     end;  
+
+     { TpvScene3DAtmosphere } 
      TpvScene3DAtmosphere=class
       public
        const TRANSMITTANCE_TEXTURE_WIDTH=256;
@@ -127,7 +136,8 @@ type { TpvScene3DAtmosphere }
       private
        fAtmosphereParameters:TAtmosphereParameters; 
        fPointerToAtmosphereParameters:PAtmosphereParameters;
-
+       fToDestroy:boolean;
+       fDestroyDelayCounter:TpvInt32;
       public
        constructor Create;
        destructor Destroy; override;
@@ -135,6 +145,29 @@ type { TpvScene3DAtmosphere }
      end; 
 
 implementation
+
+{ TpvScene3DAtmospheres }
+
+procedure TpvScene3DAtmospheres.ProcessDeferredDestroy;
+var Index:TpvInt32;
+    Atmosphere:TpvScene3DAtmosphere;
+begin
+ Index:=0;
+ while Index<fItems.Count do begin
+  Atmosphere:=fItems[Index];
+  if Atmosphere.fToDestroy then begin
+   dec(Atmosphere.fDestroyDelayCounter);
+   if Atmosphere.fDestroyDelayCounter<=0 then begin
+    fItems.Delete(Index);
+    Atmosphere.Free;
+   end else begin
+    inc(Index);
+   end;
+  end else begin
+   inc(Index);
+  end;
+ end;
+end;
 
 { TpvScene3DAtmosphere.TDensityProfileLayer }
 
