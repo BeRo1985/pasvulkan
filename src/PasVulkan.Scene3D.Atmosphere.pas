@@ -141,6 +141,8 @@ type TpvScene3DAtmosphere=class;
       public
        constructor Create;
        destructor Destroy; override;
+       procedure DeferredDestroy;
+      public  
        property AtmosphereParameters:PAtmosphereParameters read fAtmosphereParameters;
      end; 
 
@@ -232,5 +234,13 @@ destructor TpvScene3DAtmosphere.Destroy;
 begin
  inherited Destroy;
 end;
+
+procedure TpvScene3DAtmosphere.DeferredDestroy;
+begin
+ fToDestroy:=true;
+ fDestroyDelayCounter:=4; // 4 frames to ensure that all references are gone, even on the GPU
+end;
+
+
 
 end.
