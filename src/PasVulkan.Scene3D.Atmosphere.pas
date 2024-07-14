@@ -192,35 +192,7 @@ type TpvScene3DAtmosphere=class;
 
 implementation
 
-{ TpvScene3DAtmospheres }
-
-constructor TpvScene3DAtmospheres.Create(const aScene3D:TObject);
-begin
- inherited Create(true);
- fScene3D:=aScene3D;
- fLock:=TPasMPMultipleReaderSingleWriterLock.Create;
-end;
-
-destructor TpvScene3DAtmospheres.Destroy;
-begin
- FreeAndNil(fLock);
- inherited Destroy;
-end;
-
-procedure TpvScene3DAtmospheres.ProcessDeferredDestroy;
-var Index:TpvInt32;
-    Atmosphere:TpvScene3DAtmosphere;
-begin
- // Going backwards through the list, because we will remove items from the list
- Index:=Count;
- while Index>0 do begin
-  dec(Index);
-  Atmosphere:=Items[Index];
-  if assigned(Atmosphere) then begin
-   Atmosphere.HandleRelease;   
-  end;
- end;
-end;
+uses PasVulkan.Scene3D;
 
 { TpvScene3DAtmosphere.TDensityProfileLayer }
 
@@ -405,5 +377,34 @@ begin
 
 end;
 
+{ TpvScene3DAtmospheres }
+
+constructor TpvScene3DAtmospheres.Create(const aScene3D:TObject);
+begin
+ inherited Create(true);
+ fScene3D:=aScene3D;
+ fLock:=TPasMPMultipleReaderSingleWriterLock.Create;
+end;
+
+destructor TpvScene3DAtmospheres.Destroy;
+begin
+ FreeAndNil(fLock);
+ inherited Destroy;
+end;
+
+procedure TpvScene3DAtmospheres.ProcessDeferredDestroy;
+var Index:TpvInt32;
+    Atmosphere:TpvScene3DAtmosphere;
+begin
+ // Going backwards through the list, because we will remove items from the list
+ Index:=Count;
+ while Index>0 do begin
+  dec(Index);
+  Atmosphere:=Items[Index];
+  if assigned(Atmosphere) then begin
+   Atmosphere.HandleRelease;
+  end;
+ end;
+end;
 
 end.
