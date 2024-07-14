@@ -15749,13 +15749,23 @@ var Index:TpvInt32;
     Planet:TpvScene3DPlanet;
 begin
  // Going backwards through the list, because we will remove items from the list
- Index:=Count;
- while Index>0 do begin
-  dec(Index);
-  Planet:=Items[Index];
-  if assigned(Planet) then begin
-   Planet.HandleRelease;
+ fLock.AcquireRead;
+ try
+  Index:=Count;
+  while Index>0 do begin
+   dec(Index);
+   Planet:=Items[Index];
+   if assigned(Planet) then begin
+    fLock.ReleaseRead;
+    try
+     Planet.HandleRelease;
+    finally
+     fLock.AcquireRead;
+    end;
+   end;
   end;
+ finally
+  fLock.ReleaseRead;
  end;
 end;
 
