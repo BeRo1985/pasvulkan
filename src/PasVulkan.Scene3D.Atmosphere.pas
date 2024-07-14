@@ -65,6 +65,7 @@ uses SysUtils,
      Classes,
      Math,
      Vulkan,
+     PasMP,
      PasVulkan.Types,
      PasVulkan.Math,
      PasVulkan.Collections;
@@ -90,52 +91,80 @@ type TpvScene3DAtmosphere=class;
              SCATTERING_TEXTURE_HEIGHT=SCATTERING_TEXTURE_MU_SIZE;
              SCATTERING_TEXTURE_DEPTH=SCATTERING_TEXTURE_R_SIZE;
              IRRADIANCE_TEXTURE_WIDTH=64;
-             IRRADIANCE_TEXTURE_HEIGHT=16;
-             MultiScatteringLUTRes=32;
-             ScatteringOrders=4; 
-        type { TDensityProfileLayer }
-             TDensityProfileLayer=packed record
-              public
-               Width:TpvFloat;
-               ExpTerm:TpvFloat;
-               ExpScale:TpvFloat;
-               LinearTerm:TpvFloat;
-               ConstantTerm:TpvFloat;
-               Unused0:TpvFloat;
-               Unused1:TpvFloat;
-               Unused2:TpvFloat;
-               constructor Create(const aWidth,aExpTerm,aExpScale,aLinearTerm,aConstantTerm:TpvFloat);
-             end;
-             PDensityProfileLayer=^TDensityProfileLayer;
-             { TDensityProfile }
-             TDensityProfile=packed record
-              public
-               Layers:array[0..1] of TDensityProfileLayer;
-             end; 
-             { TAtmosphereParameters }
-             TAtmosphereParameters=packed record             
-              public
-               RayleighDensity:TDensityProfile;
-               MieDensity:TDensityProfile;
-               AbsorptionDensity:TDensityProfile;
-               Center:TpvVector4; // w is unused, for alignment
-               SolarIrradiance:TpvVector4; // w is unused, for alignment
-               RayleighScattering:TpvVector4; // w is unused, for alignment
-               MieScattering:TpvVector4; // w is unused, for alignment
-               MieExtinction:TpvVector4; // w is unused, for alignment
-               AbsorptionExtinction:TpvVector4; // w is unused, for alignment
-               GroundAlbedo:TpvVector4; // w is unused, for alignment
-               MiePhaseFunctionG:TpvFloat;
-               SunAngularRadius:TpvFloat;
-               BottomRadius:TpvFloat;
-               TopRadius:TpvFloat;
-               MuSMin:TpvFloat;
-               procedure InitializeEarthAtmosphere;
-             end;
-             PAtmosphereParameters=^TAtmosphereParameters;
+            IRRADIANCE_TEXTURE_HEIGHT=16;
+            MultiScatteringLUTRes=32;
+            ScatteringOrders=4; 
+       type { TDensityProfileLayer }
+            TDensityProfileLayer=packed record
+             public
+              Width:TpvFloat;
+              ExpTerm:TpvFloat;
+              ExpScale:TpvFloat;
+              LinearTerm:TpvFloat;
+              ConstantTerm:TpvFloat;
+              Unused0:TpvFloat;
+              Unused1:TpvFloat;
+              Unused2:TpvFloat;
+              constructor Create(const aWidth,aExpTerm,aExpScale,aLinearTerm,aConstantTerm:TpvFloat);
+            end;
+            PDensityProfileLayer=^TDensityProfileLayer;
+            { TDensityProfile }
+            TDensityProfile=packed record
+             public
+              Layers:array[0..1] of TDensityProfileLayer;
+            end; 
+            { TAtmosphereParameters }
+            TAtmosphereParameters=packed record             
+             public
+              RayleighDensity:TDensityProfile;
+              MieDensity:TDensityProfile;
+              AbsorptionDensity:TDensityProfile;
+              Center:TpvVector4; // w is unused, for alignment
+              SolarIrradiance:TpvVector4; // w is unused, for alignment
+              RayleighScattering:TpvVector4; // w is unused, for alignment
+              MieScattering:TpvVector4; // w is unused, for alignment
+              MieExtinction:TpvVector4; // w is unused, for alignment
+              AbsorptionExtinction:TpvVector4; // w is unused, for alignment
+              GroundAlbedo:TpvVector4; // w is unused, for alignment
+              MiePhaseFunctionG:TpvFloat;
+              SunAngularRadius:TpvFloat;
+              BottomRadius:TpvFloat;
+              TopRadius:TpvFloat;
+              MuSMin:TpvFloat;
+              procedure InitializeEarthAtmosphere;
+            end;
+            PAtmosphereParameters=^TAtmosphereParameters;
+            { TRendererInstance }
+            TRendererInstance=class
+             public
+              type { TKey }
+                   TKey=record
+                    public
+                     fRendererInstance:TObject;
+                    public
+                     constructor Create(const aRendererInstance:TObject);
+                   end;
+                   PKey=^TKey;
+             private
+              fAtmosphere:TpvScene3DAtmosphere;
+              fRendererInstance:TObject;
+              fKey:TKey;
+             public
+              constructor Create(const aAtmosphere:TpvScene3DAtmosphere;const aRendererInstance:TObject);
+              destructor Destroy; override;
+              procedure AfterConstruction; override;
+              procedure BeforeDestruction; override;
+            end;
+            { TRendererInstances }
+            TRendererInstances=TpvObjectGenericList<TRendererInstance>;
+            { TRendererInstanceHashMap }
+            TRendererInstanceHashMap=TpvHashMap<TRendererInstance.TKey,TRendererInstance>;
       private
        fAtmosphereParameters:TAtmosphereParameters; 
        fPointerToAtmosphereParameters:PAtmosphereParameters;
+       fRendererInstances:TRendererInstances;
+       fRendererInstanceHashMap:TRendererInstanceHashMap;
+       fRendererInstanceListLock:TPasMPSlimReaderWriterLock;
        fToDestroy:boolean;
        fDestroyDelayCounter:TpvInt32;
       public
@@ -221,6 +250,57 @@ begin
 
 end;
 
+{ TpvScene3DAtmosphere.TRendererInstance.TKey }
+
+constructor TpvScene3DAtmosphere.TRendererInstance.TKey.Create(const aRendererInstance:TObject);
+begin
+ fRendererInstance:=aRendererInstance;
+end;
+
+{ TpvScene3DAtmosphere.TRendererInstance }
+
+constructor TpvScene3DAtmosphere.TRendererInstance.Create(const aAtmosphere:TpvScene3DAtmosphere;const aRendererInstance:TObject);
+begin
+ inherited Create;
+ fAtmosphere:=aAtmosphere;
+ fRendererInstance:=aRendererInstance;
+ fKey:=TKey.Create(fRendererInstance);
+end;
+
+destructor TpvScene3DAtmosphere.TRendererInstance.Destroy;
+begin
+ fKey.Free;
+ inherited Destroy;
+end;
+
+procedure TpvScene3DAtmosphere.TRendererInstance.AfterConstruction;
+begin
+ inherited AfterConstruction;
+ if assigned(fAtmosphere) and assigned(fAtmosphere.fRendererInstanceListLock) then begin
+  fAtmosphere.fRendererInstanceListLock.Acquire;
+  try
+   fAtmosphere.fRendererInstances.Add(self);
+   fPlfAtmosphereanet.fRendererInstanceHashMap.Add(fKey,self);
+  finally
+   fAtmosphere.fRendererInstanceListLock.Release;
+  end;
+ end;
+end;
+
+procedure TpvScene3DAtmosphere.TRendererInstance.BeforeDestruction;
+begin
+ if assigned(fAtmosphere) and assigned(fAtmosphere.fRendererInstanceListLock) then begin
+  fAtmosphere.fRendererInstanceListLock.Acquire;
+  try
+   fAtmosphere.fRendererInstanceHashMap.Delete(fKey);
+   fAtmosphere.fRendererInstances.RemoveWithoutFree(self);
+  finally
+   fAtmosphere.fRendererInstanceListLock.Release;
+  end;
+ end;
+ inherited BeforeDestruction;
+end;
+
 { TpvScene3DAtmosphere }
 
 constructor TpvScene3DAtmosphere.Create;
@@ -228,10 +308,16 @@ begin
  inherited Create;
  fAtmosphereParameters.InitializeEarthAtmosphere;
  fPointerToAtmosphereParameters:=@fAtmosphereParameters;
+ fRendererInstances:=TRendererInstances.Create(true);
+ fRendererInstanceHashMap:=TRendererInstanceHashMap.Create(nil);
+ fRendererInstanceListLock:=TPasMPSlimReaderWriterLock.Create;
 end;
 
 destructor TpvScene3DAtmosphere.Destroy;
 begin
+ FreeAndNil(fRendererInstances);
+ FreeAndNil(fRendererInstanceHashMap);
+ FreeAndNil(fRendererInstanceListLock);
  inherited Destroy;
 end;
 
