@@ -3306,6 +3306,8 @@ type EpvScene3D=class(Exception);
       private
        fPlanets:TObject;
       private
+       fAtmospheres:TObject;
+      private
        fSkyBoxTextureImage:TpvScene3D.TImage;
        fSkyBoxMode:TpvScene3DEnvironmentMode;
        fSkyBoxIntensityFactor:TpvFloat;
@@ -3538,6 +3540,8 @@ type EpvScene3D=class(Exception);
       public
        property Planets:TObject read fPlanets;
       public
+       property Atmospheres:TObject read fAtmospheres; 
+      public
        property LastProcessFrameTimerQueryResults:TpvTimerQuery.TResults read fLastProcessFrameTimerQueryResults;
       public
        property SceneTimes:PSceneTimes read fPointerToSceneTimes;
@@ -3584,6 +3588,7 @@ implementation
 
 uses PasVulkan.Scene3D.Renderer.Instance,
      PasVulkan.Scene3D.Planet,
+     PasVulkan.Scene3D.Atmosphere,
      PasVulkan.Scene3D.MeshCompute,
      PasVulkan.Scene3D.Tipsify,
      PasVulkan.Scene3D.Meshlets;
@@ -21665,6 +21670,8 @@ begin
 
  fPlanets:=TpvScene3DPlanets.Create(self);
 
+ fAtmospheres:=TpvScene3DAtmospheres.Create(self);
+
  fNewInstanceListLock:=TPasMPSlimReaderWriterLock.Create;
 
  fNewInstances:=TpvScene3D.TGroup.TInstances.Create;
@@ -22455,6 +22462,8 @@ begin
  FreeAndNil(fGlobalVulkanDescriptorSetLayout);
 
  FreeAndNil(fPlanets);
+
+ FreeAndNil(fAtmospheres);
 
  while fGroupInstances.Count>0 do begin
   fGroupInstances[fGroupInstances.Count-1].Free;
@@ -23952,6 +23961,7 @@ var Index,OtherIndex,MaterialBufferDataOffset,MaterialBufferDataSize:TpvSizeInt;
     Texture:TpvScene3D.TTexture;
     Material:TpvScene3D.TMaterial;
     Planet:TpvScene3DPlanet;
+    Atmosphere:TpvScene3DAtmosphere;
     GroupInstanceStack:TGroupInstanceStack;
     Sphere:TpvSphere;
     StartCPUTime,EndCPUTime:TpvHighResolutionTime;
@@ -23969,6 +23979,18 @@ begin
   end;
  finally
   TpvScene3DPlanets(fPlanets).Lock.ReleaseRead;
+ end;
+ 
+ TpvScene3DAtmospheres(fAtmospheres).Lock.AcquireRead;
+ try
+  for Index:=0 to TpvScene3DAtmospheres(fAtmospheres).Count-1 do begin
+   Atmosphere:=TpvScene3DAtmospheres(fAtmospheres).Items[Index];
+   if Atmosphere.Ready then begin
+    Atmosphere.Update(aInFlightFrameIndex);
+   end;
+  end;
+ finally
+  TpvScene3DAtmospheres(fAtmospheres).Lock.ReleaseRead;
  end;
 
  fGroupListLock.Acquire;

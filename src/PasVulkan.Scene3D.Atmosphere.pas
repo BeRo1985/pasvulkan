@@ -74,9 +74,17 @@ type TpvScene3DAtmosphere=class;
 
      { TpvScene3DAtmospheres }
      TpvScene3DAtmospheres=class(TpvObjectGenericList<TpvScene3DAtmosphere>)
+      private
+       fScene3D:TObject;
+       fLock:TPasMPMultipleReaderSingleWriterLock;
       public
+       constructor Create(const aScene3D:TObject); reintroduce;
+       destructor Destroy; override;
        procedure ProcessDeferredDestroy;
-     end;  
+      published
+       property Scene3D:TObject read fScene3D;
+       property Lock:TPasMPMultipleReaderSingleWriterLock read fLock;
+     end;
 
      { TpvScene3DAtmosphere } 
      TpvScene3DAtmosphere=class
@@ -160,36 +168,52 @@ type TpvScene3DAtmosphere=class;
             { TRendererInstanceHashMap }
             TRendererInstanceHashMap=TpvHashMap<TRendererInstance.TKey,TRendererInstance>;
       private
-       fAtmosphereParameters:TAtmosphereParameters; 
+       fAtmosphereParameters:TAtmosphereParameters;
        fPointerToAtmosphereParameters:PAtmosphereParameters;
        fRendererInstances:TRendererInstances;
        fRendererInstanceHashMap:TRendererInstanceHashMap;
        fRendererInstanceListLock:TPasMPSlimReaderWriterLock;
        fToDestroy:boolean;
        fDestroyDelayCounter:TpvInt32;
+       fReady:Boolean;
       public
        constructor Create;
        destructor Destroy; override;
        procedure DeferredDestroy;
+       procedure Update(const aInFlightFrameIndex:TpvSizeInt);
       public  
-       property AtmosphereParameters:PAtmosphereParameters read fAtmosphereParameters;
+       property AtmosphereParameters:PAtmosphereParameters read fPointerToAtmosphereParameters;
+       property Ready:Boolean read fReady;
      end; 
 
 implementation
 
 { TpvScene3DAtmospheres }
 
+constructor TpvScene3DAtmospheres.Create(const aScene3D:TObject);
+begin
+ inherited Create(true);
+ fScene3D:=aScene3D;
+ fLock:=TPasMPMultipleReaderSingleWriterLock.Create;
+end;
+
+destructor TpvScene3DAtmospheres.Destroy;
+begin
+ FreeAndNil(fLock);
+ inherited Destroy;
+end;
+
 procedure TpvScene3DAtmospheres.ProcessDeferredDestroy;
 var Index:TpvInt32;
     Atmosphere:TpvScene3DAtmosphere;
 begin
  Index:=0;
- while Index<fItems.Count do begin
+ while Index<Count do begin
   Atmosphere:=fItems[Index];
   if Atmosphere.fToDestroy then begin
    dec(Atmosphere.fDestroyDelayCounter);
    if Atmosphere.fDestroyDelayCounter<=0 then begin
-    fItems.Delete(Index);
+    ExtractIndex(Index);
     Atmosphere.Free;
    end else begin
     inc(Index);
@@ -269,7 +293,6 @@ end;
 
 destructor TpvScene3DAtmosphere.TRendererInstance.Destroy;
 begin
- fKey.Free;
  inherited Destroy;
 end;
 
@@ -280,7 +303,7 @@ begin
   fAtmosphere.fRendererInstanceListLock.Acquire;
   try
    fAtmosphere.fRendererInstances.Add(self);
-   fPlfAtmosphereanet.fRendererInstanceHashMap.Add(fKey,self);
+   fAtmosphere.fRendererInstanceHashMap.Add(fKey,self);
   finally
    fAtmosphere.fRendererInstanceListLock.Release;
   end;
@@ -311,6 +334,7 @@ begin
  fRendererInstances:=TRendererInstances.Create(true);
  fRendererInstanceHashMap:=TRendererInstanceHashMap.Create(nil);
  fRendererInstanceListLock:=TPasMPSlimReaderWriterLock.Create;
+ fReady:=false;
 end;
 
 destructor TpvScene3DAtmosphere.Destroy;
@@ -325,8 +349,13 @@ procedure TpvScene3DAtmosphere.DeferredDestroy;
 begin
  fToDestroy:=true;
  fDestroyDelayCounter:=4; // 4 frames to ensure that all references are gone, even on the GPU
+ fReady:=false;
 end;
 
+procedure TpvScene3DAtmosphere.Update(const aInFlightFrameIndex:TpvSizeInt);
+begin
+
+end;
 
 
 end.
