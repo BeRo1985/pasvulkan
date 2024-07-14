@@ -396,6 +396,7 @@ procedure TpvScene3DAtmospheres.ProcessReleases;
 var Index:TpvInt32;
     Atmosphere:TpvScene3DAtmosphere;
 begin
+ // Going backwards through the list, because we will remove items from the list
  fLock.AcquireRead;
  try
   Index:=Count;
