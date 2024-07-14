@@ -215,6 +215,9 @@ const EarthBottomRadius=6360.0;
       EarthMieScaleHeight=1.2;
 begin
  
+ // Transform
+ Transform:=TpvMatrix4x4.Identity;
+ 
  // Sun
  SolarIrradiance:=TpvVector4.InlineableCreate(1.0,1.0,1.0,0.0);
  SunAngularRadius:=0.004675;
