@@ -68,7 +68,8 @@ uses SysUtils,
      PasMP,
      PasVulkan.Types,
      PasVulkan.Math,
-     PasVulkan.Collections;
+     PasVulkan.Collections,
+     PasVulkan.Scene3D.Renderer.Array2DImage;
 
 type TpvScene3DAtmosphere=class;
 
@@ -99,9 +100,9 @@ type TpvScene3DAtmosphere=class;
              SCATTERING_TEXTURE_HEIGHT=SCATTERING_TEXTURE_MU_SIZE;
              SCATTERING_TEXTURE_DEPTH=SCATTERING_TEXTURE_R_SIZE;
              IRRADIANCE_TEXTURE_WIDTH=64;
-            IRRADIANCE_TEXTURE_HEIGHT=16;
-            MultiScatteringLUTRes=32;
-            ScatteringOrders=4; 
+             IRRADIANCE_TEXTURE_HEIGHT=16;
+             MultiScatteringLUTRes=32;
+             ScatteringOrders=4; 
        type { TDensityProfileLayer }
             TDensityProfileLayer=packed record
              public
@@ -158,11 +159,26 @@ type TpvScene3DAtmosphere=class;
               fAtmosphere:TpvScene3DAtmosphere;
               fRendererInstance:TObject;
               fKey:TKey;
+              fTransmittanceTexture:TpvScene3DRendererArray2DImage;
+              fScatteringTexture:TpvScene3DRendererArray2DImage;
+              fIrradianceTexture:TpvScene3DRendererArray2DImage;
+              fMultiScatteringTexture:TpvScene3DRendererArray2DImage;
+              fSkyViewLUTTexture:TpvScene3DRendererArray2DImage;
+              fCameraVolumeTexture:TpvScene3DRendererArray2DImage;
              public
               constructor Create(const aAtmosphere:TpvScene3DAtmosphere;const aRendererInstance:TObject);
               destructor Destroy; override;
               procedure AfterConstruction; override;
               procedure BeforeDestruction; override;
+             published
+              property Atmosphere:TpvScene3DAtmosphere read fAtmosphere;
+              property RendererInstance:TObject read fRendererInstance;
+              property TransmittanceTexture:TpvScene3DRendererArray2DImage read fTransmittanceTexture;
+              property ScatteringTexture:TpvScene3DRendererArray2DImage read fScatteringTexture;
+              property IrradianceTexture:TpvScene3DRendererArray2DImage read fIrradianceTexture;
+              property MultiScatteringTexture:TpvScene3DRendererArray2DImage read fMultiScatteringTexture;
+              property SkyViewLUTTexture:TpvScene3DRendererArray2DImage read fSkyViewLUTTexture;
+              property CameraVolumeTexture:TpvScene3DRendererArray2DImage read fCameraVolumeTexture; 
             end;
             { TRendererInstances }
             TRendererInstances=TpvObjectGenericList<TRendererInstance>;
@@ -217,7 +233,7 @@ begin
  
  // Transform
  Transform:=TpvMatrix4x4.Identity;
- 
+
  // Sun
  SolarIrradiance:=TpvVector4.InlineableCreate(1.0,1.0,1.0,0.0);
  SunAngularRadius:=0.004675;
