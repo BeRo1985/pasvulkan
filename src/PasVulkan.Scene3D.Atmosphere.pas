@@ -209,7 +209,9 @@ type TpvScene3DAtmosphere=class;
 
 implementation
 
-uses PasVulkan.Scene3D;
+uses PasVulkan.Scene3D,
+     PasVulkan.Scene3D.Renderer,
+     PasVulkan.Scene3D.Renderer.Instance;
 
 { TpvScene3DAtmosphere.TDensityProfileLayer }
 
@@ -275,10 +277,44 @@ end;
 
 constructor TpvScene3DAtmosphere.TRendererInstance.Create(const aAtmosphere:TpvScene3DAtmosphere;const aRendererInstance:TObject);
 begin
+
  inherited Create;
+
  fAtmosphere:=aAtmosphere;
+
  fRendererInstance:=aRendererInstance;
+
  fKey:=TKey.Create(fRendererInstance);
+
+ fTransmittanceTexture:=TpvScene3DRendererArray2DImage.Create(TpvScene3D(fAtmosphere.fScene3D).VulkanDevice,
+                                                              TRANSMITTANCE_TEXTURE_WIDTH,
+                                                              TRANSMITTANCE_TEXTURE_HEIGHT,
+                                                              TpvScene3DRendererInstance(aRendererInstance).CountSurfaceViews,
+                                                              VK_FORMAT_R32G32B32A32_SFLOAT,
+                                                              VK_SAMPLE_COUNT_1_BIT,
+                                                              VK_IMAGE_LAYOUT_GENERAL,
+                                                              true,
+                                                              0);
+
+ fScatteringTexture:=TpvScene3DRendererArray2DImage.Create(TpvScene3D(fAtmosphere.fScene3D).VulkanDevice,
+                                                           SCATTERING_TEXTURE_WIDTH,
+                                                           SCATTERING_TEXTURE_HEIGHT,
+                                                           SCATTERING_TEXTURE_DEPTH*TpvScene3DRendererInstance(aRendererInstance).CountSurfaceViews,
+                                                           VK_FORMAT_R32G32B32A32_SFLOAT,
+                                                           VK_SAMPLE_COUNT_1_BIT,
+                                                           VK_IMAGE_LAYOUT_GENERAL,
+                                                           true,
+                                                           0);
+
+ fIrradianceTexture:=TpvScene3DRendererArray2DImage.Create(TpvScene3D(fAtmosphere.fScene3D).VulkanDevice,
+                                                           IRRADIANCE_TEXTURE_WIDTH,
+                                                           IRRADIANCE_TEXTURE_HEIGHT,
+                                                           TpvScene3DRendererInstance(aRendererInstance).CountSurfaceViews,
+                                                           VK_FORMAT_R32G32B32A32_SFLOAT,
+                                                           VK_SAMPLE_COUNT_1_BIT,
+                                                           VK_IMAGE_LAYOUT_GENERAL,
+                                                           true,
+                                                           0);
 {fTransmittanceTexture:TpvScene3DRendererArray2DImage;
  fScatteringTexture:TpvScene3DRendererArray2DImage;
  fIrradianceTexture:TpvScene3DRendererArray2DImage;
