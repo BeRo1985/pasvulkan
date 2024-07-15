@@ -3307,6 +3307,7 @@ type EpvScene3D=class(Exception);
        fPlanets:TObject;
       private
        fAtmospheres:TObject;
+       fAtmosphereGlobals:TObject;
       private
        fSkyBoxTextureImage:TpvScene3D.TImage;
        fSkyBoxMode:TpvScene3DEnvironmentMode;
@@ -3540,7 +3541,8 @@ type EpvScene3D=class(Exception);
       public
        property Planets:TObject read fPlanets;
       public
-       property Atmospheres:TObject read fAtmospheres; 
+       property Atmospheres:TObject read fAtmospheres;
+       property AtmosphereGlobals:TObject read fAtmosphereGlobals;
       public
        property LastProcessFrameTimerQueryResults:TpvTimerQuery.TResults read fLastProcessFrameTimerQueryResults;
       public
@@ -21672,6 +21674,8 @@ begin
 
  fAtmospheres:=TpvScene3DAtmospheres.Create(self);
 
+ fAtmosphereGlobals:=TpvScene3DAtmosphereGlobals.Create(self);
+
  fNewInstanceListLock:=TPasMPSlimReaderWriterLock.Create;
 
  fNewInstances:=TpvScene3D.TGroup.TInstances.Create;
@@ -22367,6 +22371,10 @@ begin
 
  end;
 
+ if assigned(fVulkanDevice) then begin
+  TpvScene3DAtmosphereGlobals(fAtmosphereGlobals).AllocateResources;
+ end;
+
 end;
 
 destructor TpvScene3D.Destroy;
@@ -22376,6 +22384,10 @@ var Index,InFlightFrameIndex,RenderPassIndex:TpvSizeInt;
     FaceCullingMode:TFaceCullingMode;
     CurrentObject:TObject;
 begin
+
+ if assigned(fVulkanDevice) then begin
+  TpvScene3DAtmosphereGlobals(fAtmosphereGlobals).DeallocateResources;
+ end;
 
  FreeAndNil(fMeshCompute);
 
@@ -22462,6 +22474,8 @@ begin
  FreeAndNil(fGlobalVulkanDescriptorSetLayout);
 
  FreeAndNil(fPlanets);
+
+ FreeAndNil(fAtmosphereGlobals);
 
  FreeAndNil(fAtmospheres);
 
