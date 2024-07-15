@@ -68,24 +68,11 @@ uses SysUtils,
      PasMP,
      PasVulkan.Types,
      PasVulkan.Math,
+     PasVulkan.Framework,
      PasVulkan.Collections,
      PasVulkan.Scene3D.Renderer.Array2DImage;
 
 type TpvScene3DAtmosphere=class;
-
-     { TpvScene3DAtmospheres }
-     TpvScene3DAtmospheres=class(TpvObjectGenericList<TpvScene3DAtmosphere>)
-      private
-       fScene3D:TObject;
-       fLock:TPasMPMultipleReaderSingleWriterLock;
-      public
-       constructor Create(const aScene3D:TObject); reintroduce;
-       destructor Destroy; override;
-       procedure ProcessReleases;
-      published
-       property Scene3D:TObject read fScene3D;
-       property Lock:TPasMPMultipleReaderSingleWriterLock read fLock;
-     end;
 
      { TpvScene3DAtmosphere } 
      TpvScene3DAtmosphere=class
@@ -206,6 +193,66 @@ type TpvScene3DAtmosphere=class;
        property AtmosphereParameters:PAtmosphereParameters read fPointerToAtmosphereParameters;
        property Ready:Boolean read fReady;
      end; 
+
+     { TpvScene3DAtmospheres }
+     TpvScene3DAtmospheres=class(TpvObjectGenericList<TpvScene3DAtmosphere>)
+      private
+       fScene3D:TObject;
+       fLock:TPasMPMultipleReaderSingleWriterLock;
+      public
+       constructor Create(const aScene3D:TObject); reintroduce;
+       destructor Destroy; override;
+       procedure ProcessReleases;
+      published
+       property Scene3D:TObject read fScene3D;
+       property Lock:TPasMPMultipleReaderSingleWriterLock read fLock;
+     end;
+
+     { TpvScene3DAtmosphereGlobals }
+     TpvScene3DAtmosphereGlobals=class
+      private
+       fScene3D:TObject;
+       fAtmospheres:TpvScene3DAtmospheres;
+       fTransmittanceLUTPassDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
+       fSkyViewLUTPassDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
+       fCameraVolumePassDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
+       fRaymarchingPassDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
+      public
+       constructor Create(const aScene3D:TObject);
+       destructor Destroy; override;
+       procedure AllocateResources;
+       procedure DeallocateResources;
+      published
+       property Scene3D:TObject read fScene3D;
+       property Atmospheres:TpvScene3DAtmospheres read fAtmospheres;
+     end;
+
+     { TpvScene3DAtmosphereRendererInstance }
+     TpvScene3DAtmosphereRendererInstance=class
+      public
+       type TransmittanceLUTPass=class
+             private
+              fAtmosphereRendererInstance:TpvScene3DAtmosphereRendererInstance;
+              fDescriptorSet:TpvVulkanDescriptorSet;
+
+             public
+            end; 
+      private
+       fScene3D:TObject;
+       fRenderer:TObject;
+       fRendererInstance:TObject;
+       fVulkanComputeQueue:TpvVulkanQueue;
+       fVulkanComputeCommandPool:TpvVulkanCommandPool;
+       fVulkanComputeCommandBuffer:TpvVulkanCommandBuffer;       
+      public
+       constructor Create(const aScene3D,aRenderer,aRendererInstance:TObject);
+       destructor Destroy; override;
+       procedure AfterConstruction; override;
+       procedure BeforeDestruction; override;
+       procedure AllocateResources;
+       procedure DeallocateResources;
+      published
+     end;
 
 implementation
 
@@ -483,6 +530,224 @@ begin
  finally
   fLock.ReleaseRead;
  end; 
+end;
+
+{ TpvScene3DAtmosphereGlobals }
+
+constructor TpvScene3DAtmosphereGlobals.Create(const aScene3D:TObject);
+begin
+ inherited Create;
+ fScene3D:=aScene3D;
+ fAtmospheres:=TpvScene3DAtmospheres(TpvScene3D(fScene3D).Atmospheres);
+ fTransmittanceLUTPassDescriptorSetLayout:=nil;
+ fSkyViewLUTPassDescriptorSetLayout:=nil;
+ fCameraVolumePassDescriptorSetLayout:=nil;
+ fRaymarchingPassDescriptorSetLayout:=nil;
+end;
+
+destructor TpvScene3DAtmosphereGlobals.Destroy;
+begin
+ DeallocateResources;
+ inherited Destroy;
+end;
+
+procedure TpvScene3DAtmosphereGlobals.AllocateResources;
+begin
+
+ // Transmittance LUT pass descriptor set layout 
+ begin
+
+  fTransmittanceLUTPassDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(TpvScene3D(fScene3D).VulkanDevice);
+
+  // Destination texture
+  fTransmittanceLUTPassDescriptorSetLayout.AddBinding(0,
+                                                      VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+                                                      1,
+                                                      TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                                      []);
+
+  // Transmittance LUT texture (previous)
+  fTransmittanceLUTPassDescriptorSetLayout.AddBinding(1,
+                                                      VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                                      1,
+                                                      TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                                      []);
+
+  // Multi scattering LUT texture (previous)
+  fTransmittanceLUTPassDescriptorSetLayout.AddBinding(2,
+                                                      VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                                      1,
+                                                      TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                                      []);
+
+  // Atmosphere parameters
+  fTransmittanceLUTPassDescriptorSetLayout.AddBinding(3,
+                                                      VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                                                      1,
+                                                      TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                                      []);
+
+  fTransmittanceLUTPassDescriptorSetLayout.Initialize;
+  TpvScene3D(fScene3D).VulkanDevice.DebugUtils.SetObjectName(fTransmittanceLUTPassDescriptorSetLayout.Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT,'TpvScene3DAtmosphereGlobals.fTransmittanceLUTPassDescriptorSetLayout');
+
+ end;
+
+ // Sky view LUT pass descriptor set layout
+ begin
+
+  fSkyViewLUTPassDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(TpvScene3D(fScene3D).VulkanDevice);
+
+  // Destination texture
+  fSkyViewLUTPassDescriptorSetLayout.AddBinding(0,
+                                                VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+                                                1,
+                                                TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                                []);
+
+  // Transmittance LUT texture (previous)
+  fSkyViewLUTPassDescriptorSetLayout.AddBinding(1,
+                                                VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                                1,
+                                                TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                                []);
+
+  // Multi scattering LUT texture (previous)
+  fSkyViewLUTPassDescriptorSetLayout.AddBinding(2,
+                                                VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                                1,
+                                                TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                                []);
+
+  // Atmosphere parameters
+  fSkyViewLUTPassDescriptorSetLayout.AddBinding(3,
+                                                VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                                                1,
+                                                TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                                []);
+
+  fSkyViewLUTPassDescriptorSetLayout.Initialize;
+  TpvScene3D(fScene3D).VulkanDevice.DebugUtils.SetObjectName(fSkyViewLUTPassDescriptorSetLayout.Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT,'TpvScene3DAtmosphereGlobals.fSkyViewLUTPassDescriptorSetLayout');
+
+ end;
+
+ // Camera volume pass descriptor set layout
+ begin
+
+  fCameraVolumePassDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(TpvScene3D(fScene3D).VulkanDevice);
+
+  // Destination texture
+  fCameraVolumePassDescriptorSetLayout.AddBinding(0,
+                                                  VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+                                                  1,
+                                                  TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                                  []);
+
+  // Transmittance LUT texture (previous)
+  fCameraVolumePassDescriptorSetLayout.AddBinding(1,
+                                                  VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                                  1,
+                                                  TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                                  []);
+
+  // Multi scattering LUT texture (previous)
+  fCameraVolumePassDescriptorSetLayout.AddBinding(2,
+                                                  VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                                  1,
+                                                  TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                                  []);
+
+  // Atmosphere parameters
+  fCameraVolumePassDescriptorSetLayout.AddBinding(3,
+                                                  VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                                                  1,
+                                                  TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                                  []);
+
+  fCameraVolumePassDescriptorSetLayout.Initialize;
+  TpvScene3D(fScene3D).VulkanDevice.DebugUtils.SetObjectName(fCameraVolumePassDescriptorSetLayout.Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT,'TpvScene3DAtmosphereGlobals.fCameraVolumePassDescriptorSetLayout');
+
+ end;
+
+ // Raymarching pass descriptor set layout
+ begin
+  
+  fRaymarchingPassDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(TpvScene3D(fScene3D).VulkanDevice);
+
+  // Subpass depth
+  fRaymarchingPassDescriptorSetLayout.AddBinding(0,
+                                                 VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,
+                                                 1,
+                                                 TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                                 []);
+
+  // Sky view LUT texture
+  fRaymarchingPassDescriptorSetLayout.AddBinding(1,
+                                                 VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                                 1,
+                                                 TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                                 []);
+
+  // Camera volume texture
+  fRaymarchingPassDescriptorSetLayout.AddBinding(2,
+                                                 VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                                 1,
+                                                 TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                                 []);
+
+  // Atmosphere parameters
+  fRaymarchingPassDescriptorSetLayout.AddBinding(3,
+                                                 VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                                                 1,
+                                                 TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                                 []);
+
+  fRaymarchingPassDescriptorSetLayout.Initialize;
+  TpvScene3D(fScene3D).VulkanDevice.DebugUtils.SetObjectName(fRaymarchingPassDescriptorSetLayout.Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT,'TpvScene3DAtmosphereGlobals.fRaymarchingPassDescriptorSetLayout');
+
+ end; 
+
+
+end;
+
+procedure TpvScene3DAtmosphereGlobals.DeallocateResources;
+begin
+ FreeAndNil(fRaymarchingPassDescriptorSetLayout);
+ FreeAndNil(fCameraVolumePassDescriptorSetLayout);
+ FreeAndNil(fSkyViewLUTPassDescriptorSetLayout);
+ FreeAndNil(fTransmittanceLUTPassDescriptorSetLayout);
+end;
+
+{ TpvScene3DAtmosphereRendererInstance }
+
+constructor TpvScene3DAtmosphereRendererInstance.Create(const aScene3D,aRenderer,aRendererInstance:TObject);
+begin
+ inherited Create;
+ fScene3D:=aScene3D;
+ fRenderer:=aRenderer;
+ fRendererInstance:=aRendererInstance;
+end;
+
+destructor TpvScene3DAtmosphereRendererInstance.Destroy;
+begin
+ inherited Destroy;
+end;
+
+procedure TpvScene3DAtmosphereRendererInstance.AfterConstruction;
+begin
+ inherited AfterConstruction;
+end;
+
+procedure TpvScene3DAtmosphereRendererInstance.BeforeDestruction;
+begin
+ inherited BeforeDestruction;
+end;
+
+procedure TpvScene3DAtmosphereRendererInstance.AllocateResources;
+begin
+end;
+
+procedure TpvScene3DAtmosphereRendererInstance.DeallocateResources;
+begin
 end;
 
 end.
