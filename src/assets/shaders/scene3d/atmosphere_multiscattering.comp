@@ -19,7 +19,6 @@ layout(push_constant, std140) uniform PushConstants {
   int countViews;
   int viewIndex;
   float MultipleScatteringFactor;
-  vec2 resolution;
 } pushConstants;
 
 shared vec3 MultiScatAs1SharedMem[64];
@@ -48,10 +47,18 @@ AtmosphereParameters Atmosphere;
 
 void main() {
   
-  vec2 pixPos = vec2(gl_GlobalInvocationID.xy) + vec2(0.5);
-  vec2 uv = pixPos / vec2(MultiScatteringLUTRes);
+  ivec2 xy = ivec2(gl_GlobalInvocationID.xy);
+
+  ivec2 size = imageSize(uDestinationTexture).xy;
 
   int viewIndex = pushConstants.baseViewIndex + int(gl_WorkGroupID.z);
+
+  if(any(lessThan(xy, ivec2(0))) || any(greaterThanEqual(xy, size)) && (viewIndex >= pushConstants.countViews)){
+    return;
+  }
+
+  vec2 pixPos = vec2(gl_GlobalInvocationID.xy) + vec2(0.5);
+  vec2 uv = pixPos / vec2(MultiScatteringLUTRes);
 
   uv = vec2(fromSubUvsToUnit(uv.x, MultiScatteringLUTRes), fromSubUvsToUnit(uv.y, MultiScatteringLUTRes));
 
@@ -62,7 +69,7 @@ void main() {
 
   gSkyInvViewProjMat = inverseProjectionMatrix * inverseViewMatrix;
 
-  gResolution = pushConstants.resolution;
+  gResolution = size;
 
   float cosSunZenithAngle = fma(uv.x, 2.0, 1.0);
   vec3 sunDir = vec3(0.0, sqrt(clamp(1.0 - (cosSunZenithAngle * cosSunZenithAngle), 0.0, 1.0)), cosSunZenithAngle);

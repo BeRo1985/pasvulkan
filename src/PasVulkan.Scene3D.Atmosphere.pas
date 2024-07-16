@@ -227,6 +227,37 @@ type TpvScene3DAtmosphere=class;
 
      { TpvScene3DAtmosphereGlobals }
      TpvScene3DAtmosphereGlobals=class
+      public
+       type TTransmittanceLUTPushConstants=packed record
+             BaseViewIndex:TpvInt32;
+             CountViews:TpvInt32;
+             Dummy0:TpvInt32;
+             Dummy1:TpvInt32;
+             SunDirection:TpvVector4;
+            end;
+            PTransmittanceLUTPushConstants=^TTransmittanceLUTPushConstants;
+            TMultipleScatteringLUTPushConstants=packed record
+             BaseViewIndex:TpvInt32;
+             CountViews:TpvInt32;
+             ViewIndex:TpvInt32;
+             MultipleScatteringFactor:TpvFloat;
+            end;            
+            PMultipleScatteringLUTPushConstants=^TMultipleScatteringLUTPushConstants;
+            TSkyViewLUTPushConstants=packed record
+             BaseViewIndex:TpvInt32;
+             CountViews:TpvInt32;
+             Dummy0:TpvInt32;
+             Dummy1:TpvInt32;
+             SunDirection:TpvVector4;
+            end;
+            PSkyViewLUTPushConstants=^TSkyViewLUTPushConstants;
+            TCameraVolumePushConstants=packed record
+             BaseViewIndex:TpvInt32;
+             CountViews:TpvInt32;
+             Dummy0:TpvInt32;
+             Dummy1:TpvInt32;
+             SunDirection:TpvVector4;
+            end;
       private
        fScene3D:TObject;
        fAtmospheres:TpvScene3DAtmospheres;
@@ -235,6 +266,22 @@ type TpvScene3DAtmosphere=class;
        fSkyViewLUTPassDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fCameraVolumePassDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fRaymarchingPassDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
+       fTransmittanceLUTComputeShaderModule:TpvVulkanShaderModule;
+       fTransmittanceLUTComputeShaderStage:TpvVulkanPipelineShaderStage;
+       fTransmittanceLUTComputePipelineLayout:TpvVulkanPipelineLayout;
+       fTransmittanceLUTComputePipeline:TpvVulkanComputePipeline;
+       fMultiScatteringLUTComputeShaderModule:TpvVulkanShaderModule;
+       fMultiScatteringLUTComputeShaderStage:TpvVulkanPipelineShaderStage;
+       fMultiScatteringLUTComputePipelineLayout:TpvVulkanPipelineLayout;
+       fMultiScatteringLUTComputePipeline:TpvVulkanComputePipeline;
+       fSkyViewLUTComputeShaderModule:TpvVulkanShaderModule;
+       fSkyViewLUTComputeShaderStage:TpvVulkanPipelineShaderStage;
+       fSkyViewLUTComputePipelineLayout:TpvVulkanPipelineLayout;
+       fSkyViewLUTComputePipeline:TpvVulkanComputePipeline;
+       fCameraVolumeComputeShaderModule:TpvVulkanShaderModule;
+       fCameraVolumeComputeShaderStage:TpvVulkanPipelineShaderStage;
+       fCameraVolumeComputePipelineLayout:TpvVulkanPipelineLayout;
+       fCameraVolumeComputePipeline:TpvVulkanComputePipeline;
       public
        constructor Create(const aScene3D:TObject);
        destructor Destroy; override;
@@ -280,7 +327,9 @@ type TpvScene3DAtmosphere=class;
 implementation
 
 uses PasVulkan.Scene3D,
+     PasVulkan.Scene3D.Assets,
      PasVulkan.Scene3D.Renderer,
+     PasVulkan.Scene3D.Renderer.Globals,
      PasVulkan.Scene3D.Renderer.Instance;
 
 { TpvScene3DAtmosphere.TDensityProfileLayer }
@@ -945,6 +994,7 @@ begin
 end;
 
 procedure TpvScene3DAtmosphereGlobals.AllocateResources;
+var Stream:TStream;
 begin
 
  // Transmittance LUT pass descriptor set layout 
@@ -1115,16 +1165,147 @@ begin
   TpvScene3D(fScene3D).VulkanDevice.DebugUtils.SetObjectName(fRaymarchingPassDescriptorSetLayout.Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT,'TpvScene3DAtmosphereGlobals.fRaymarchingPassDescriptorSetLayout');
 
  end; 
+ 
+ begin
+
+  // Transmittance LUT compute pipeline
+
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('atmosphere_transmittancelut_comp.spv');
+  try
+   fTransmittanceLUTComputeShaderModule:=TpvVulkanShaderModule.Create(TpvScene3D(fScene3D).VulkanDevice,Stream);
+  finally
+   Stream.Free;
+  end;
+  TpvScene3D(fScene3D).VulkanDevice.DebugUtils.SetObjectName(fTransmittanceLUTComputeShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DAtmosphereGlobals.fTransmittanceLUTComputeShaderModule');
+
+  fTransmittanceLUTComputeShaderStage:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_COMPUTE_BIT,fTransmittanceLUTComputeShaderModule,'main');
+
+  fTransmittanceLUTComputePipelineLayout:=TpvVulkanPipelineLayout.Create(TpvScene3D(fScene3D).VulkanDevice);
+  fTransmittanceLUTComputePipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),0,SizeOf(TTransmittanceLUTPushConstants));
+  fTransmittanceLUTComputePipelineLayout.AddDescriptorSetLayout(fTransmittanceLUTPassDescriptorSetLayout);
+  fTransmittanceLUTComputePipelineLayout.Initialize;
+  TpvScene3D(fScene3D).VulkanDevice.DebugUtils.SetObjectName(fTransmittanceLUTComputePipelineLayout.Handle,VK_OBJECT_TYPE_PIPELINE_LAYOUT,'TpvScene3DAtmosphereGlobals.fTransmittanceLUTComputePipelineLayout');
+
+  fTransmittanceLUTComputePipeline:=TpvVulkanComputePipeline.Create(TpvScene3D(fScene3D).VulkanDevice,
+                                                                    TpvScene3D(fScene3D).VulkanPipelineCache,
+                                                                    0,
+                                                                    fTransmittanceLUTComputeShaderStage,
+                                                                    fTransmittanceLUTComputePipelineLayout,
+                                                                    nil,
+                                                                    0);
+ end;
+
+ begin
+
+  // Multi scattering LUT compute pipeline
+
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('atmosphere_multiscattering_comp.spv');
+  try
+   fMultiScatteringLUTComputeShaderModule:=TpvVulkanShaderModule.Create(TpvScene3D(fScene3D).VulkanDevice,Stream);
+  finally
+   Stream.Free;
+  end;
+  TpvScene3D(fScene3D).VulkanDevice.DebugUtils.SetObjectName(fMultiScatteringLUTComputeShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DAtmosphereGlobals.fMultiScatteringLUTComputeShaderModule');
+
+  fMultiScatteringLUTComputeShaderStage:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_COMPUTE_BIT,fMultiScatteringLUTComputeShaderModule,'main');
+
+  fMultiScatteringLUTComputePipelineLayout:=TpvVulkanPipelineLayout.Create(TpvScene3D(fScene3D).VulkanDevice);
+  fMultiScatteringLUTComputePipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),0,SizeOf(TMultipleScatteringLUTPushConstants));
+  fMultiScatteringLUTComputePipelineLayout.AddDescriptorSetLayout(fMultiScatteringLUTPassDescriptorSetLayout);
+  fMultiScatteringLUTComputePipelineLayout.Initialize;
+  TpvScene3D(fScene3D).VulkanDevice.DebugUtils.SetObjectName(fMultiScatteringLUTComputePipelineLayout.Handle,VK_OBJECT_TYPE_PIPELINE_LAYOUT,'TpvScene3DAtmosphereGlobals.fMultiScatteringLUTComputePipelineLayout');
+
+  fMultiScatteringLUTComputePipeline:=TpvVulkanComputePipeline.Create(TpvScene3D(fScene3D).VulkanDevice,
+                                                                      TpvScene3D(fScene3D).VulkanPipelineCache,
+                                                                      0,
+                                                                      fMultiScatteringLUTComputeShaderStage,
+                                                                      fMultiScatteringLUTComputePipelineLayout,
+                                                                      nil,
+                                                                      0);
+ end;
+
+ begin
+
+  // Sky view LUT compute pipeline
+
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('atmosphere_skyviewlut_comp.spv');
+  try
+   fSkyViewLUTComputeShaderModule:=TpvVulkanShaderModule.Create(TpvScene3D(fScene3D).VulkanDevice,Stream);
+  finally
+   Stream.Free;
+  end;
+  TpvScene3D(fScene3D).VulkanDevice.DebugUtils.SetObjectName(fSkyViewLUTComputeShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DAtmosphereGlobals.fSkyViewLUTComputeShaderModule');
+
+  fSkyViewLUTComputeShaderStage:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_COMPUTE_BIT,fSkyViewLUTComputeShaderModule,'main');
+
+  fSkyViewLUTComputePipelineLayout:=TpvVulkanPipelineLayout.Create(TpvScene3D(fScene3D).VulkanDevice);
+  fSkyViewLUTComputePipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),0,SizeOf(TSkyViewLUTPushConstants));
+  fSkyViewLUTComputePipelineLayout.AddDescriptorSetLayout(fSkyViewLUTPassDescriptorSetLayout);
+  fSkyViewLUTComputePipelineLayout.Initialize;
+
+  fSkyViewLUTComputePipeline:=TpvVulkanComputePipeline.Create(TpvScene3D(fScene3D).VulkanDevice,
+                                                              TpvScene3D(fScene3D).VulkanPipelineCache,
+                                                              0,
+                                                              fSkyViewLUTComputeShaderStage,
+                                                              fSkyViewLUTComputePipelineLayout,
+                                                              nil,
+                                                              0);
+ end;
+
+ begin
+
+  // Camera volume compute pipeline
+
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('atmosphere_cameravolume_comp.spv');
+  try
+   fCameraVolumeComputeShaderModule:=TpvVulkanShaderModule.Create(TpvScene3D(fScene3D).VulkanDevice,Stream);
+  finally
+   Stream.Free;
+  end;
+  TpvScene3D(fScene3D).VulkanDevice.DebugUtils.SetObjectName(fCameraVolumeComputeShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DAtmosphereGlobals.fCameraVolumeComputeShaderModule');
+
+  fCameraVolumeComputeShaderStage:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_COMPUTE_BIT,fCameraVolumeComputeShaderModule,'main');
+  
+  fCameraVolumeComputePipelineLayout:=TpvVulkanPipelineLayout.Create(TpvScene3D(fScene3D).VulkanDevice);
+  fCameraVolumeComputePipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),0,SizeOf(TCameraVolumePushConstants));
+  fCameraVolumeComputePipelineLayout.AddDescriptorSetLayout(fCameraVolumePassDescriptorSetLayout);
+  fCameraVolumeComputePipelineLayout.Initialize;
+
+  fCameraVolumeComputePipeline:=TpvVulkanComputePipeline.Create(TpvScene3D(fScene3D).VulkanDevice,
+                                                                TpvScene3D(fScene3D).VulkanPipelineCache,
+                                                                0,
+                                                                fCameraVolumeComputeShaderStage,
+                                                                fCameraVolumeComputePipelineLayout,
+                                                                nil,
+                                                                0);
+ end;
+
 
 end;
 
 procedure TpvScene3DAtmosphereGlobals.DeallocateResources;
 begin
+ FreeAndNil(fTransmittanceLUTComputePipeline);
+ FreeAndNil(fTransmittanceLUTComputePipelineLayout);
+ FreeAndNil(fTransmittanceLUTComputeShaderStage);
+ FreeAndNil(fTransmittanceLUTComputeShaderModule);
+ FreeAndNil(fMultiScatteringLUTComputePipeline);
+ FreeAndNil(fMultiScatteringLUTComputePipelineLayout);
+ FreeAndNil(fMultiScatteringLUTComputeShaderStage);
+ FreeAndNil(fMultiScatteringLUTComputeShaderModule);
+ FreeAndNil(fSkyViewLUTComputePipeline);
+ FreeAndNil(fSkyViewLUTComputePipelineLayout);
+ FreeAndNil(fSkyViewLUTComputeShaderStage);
+ FreeAndNil(fSkyViewLUTComputeShaderModule);
+ FreeAndNil(fCameraVolumeComputePipeline);
+ FreeAndNil(fCameraVolumeComputePipelineLayout);
+ FreeAndNil(fCameraVolumeComputeShaderStage);
+ FreeAndNil(fCameraVolumeComputeShaderModule);
  FreeAndNil(fRaymarchingPassDescriptorSetLayout);
  FreeAndNil(fCameraVolumePassDescriptorSetLayout);
  FreeAndNil(fSkyViewLUTPassDescriptorSetLayout);
  FreeAndNil(fMultiScatteringLUTPassDescriptorSetLayout);
- FreeAndNil(fTransmittanceLUTPassDescriptorSetLayout);
+ FreeAndNil(fTransmittanceLUTPassDescriptorSetLayout); 
 end;
 
 { TpvScene3DAtmosphereRendererInstance.TTransmittanceLUTPass }

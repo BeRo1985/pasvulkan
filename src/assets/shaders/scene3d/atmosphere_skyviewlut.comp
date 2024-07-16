@@ -22,7 +22,6 @@ layout(push_constant, std140) uniform PushConstants {
   int dummy0;
   int dummy1;
   vec4 sunDirection;
-  vec2 resolution;
 } pushConstants;
 
 layout(set = 0, binding = 0, rgba32f) uniform image2DArray uDestinationTexture;
@@ -65,7 +64,7 @@ void main() {
 
     gSkyInvViewProjMat = inverseProjectionMatrix * inverseViewMatrix;
 
-    gResolution = pushConstants.resolution;
+    gResolution = size;
 
     const vec2 size = vec2(192.0, 108.0);
 

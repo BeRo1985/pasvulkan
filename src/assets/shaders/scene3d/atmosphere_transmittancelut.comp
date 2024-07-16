@@ -22,7 +22,6 @@ layout(push_constant, std140) uniform PushConstants {
   int dummy0;
   int dummy1;
   vec4 sunDirection;
-  vec2 resolution;
 } pushConstants;
 
 layout(set = 0, binding = 0, rgba32f) uniform image2DArray uDestinationTexture;
@@ -61,9 +60,9 @@ void main() {
 
     gSkyInvViewProjMat = inverseProjectionMatrix * inverseViewMatrix;
 
-    gResolution = pushConstants.resolution;
+    gResolution = size;
 
-    vec2 uv = (vec2(coord) + vec2(0.5)) / vec2(TRANSMITTANCE_TEXTURE_WIDTH, TRANSMITTANCE_TEXTURE_HEIGHT);
+    vec2 uv = (vec2(coord) + vec2(0.5)) / vec2(size);
     float viewHeight;
     float viewZenithCosAngle;
     UvToLutTransmittanceParams(atmosphereParameters, viewHeight, viewZenithCosAngle, uv);

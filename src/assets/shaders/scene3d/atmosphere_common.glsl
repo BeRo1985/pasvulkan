@@ -114,7 +114,7 @@ struct SingleScatteringResult {
 	vec3 NewMultiScatStep1Out;
 };
 
-vec2 gResolution;
+ivec2 gResolution;
 
 mat4 gSkyInvViewProjMat;
 
