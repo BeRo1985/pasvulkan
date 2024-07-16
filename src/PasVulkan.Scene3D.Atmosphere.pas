@@ -230,6 +230,7 @@ type TpvScene3DAtmosphere=class;
        fScene3D:TObject;
        fAtmospheres:TpvScene3DAtmospheres;
        fTransmittanceLUTPassDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
+       fMultiScatteringLUTPassDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fSkyViewLUTPassDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fCameraVolumePassDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fRaymarchingPassDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
@@ -686,6 +687,7 @@ begin
  fScene3D:=aScene3D;
  fAtmospheres:=TpvScene3DAtmospheres(TpvScene3D(fScene3D).Atmospheres);
  fTransmittanceLUTPassDescriptorSetLayout:=nil;
+ fMultiScatteringLUTPassDescriptorSetLayout:=nil;
  fSkyViewLUTPassDescriptorSetLayout:=nil;
  fCameraVolumePassDescriptorSetLayout:=nil;
  fRaymarchingPassDescriptorSetLayout:=nil;
@@ -712,22 +714,8 @@ begin
                                                       TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                                                       []);
 
-  // Transmittance LUT texture (previous)
-  fTransmittanceLUTPassDescriptorSetLayout.AddBinding(1,
-                                                      VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                                                      1,
-                                                      TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
-                                                      []);
-
-  // Multi scattering LUT texture (previous)
-  fTransmittanceLUTPassDescriptorSetLayout.AddBinding(2,
-                                                      VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                                                      1,
-                                                      TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
-                                                      []);
-
   // Atmosphere parameters
-  fTransmittanceLUTPassDescriptorSetLayout.AddBinding(3,
+  fTransmittanceLUTPassDescriptorSetLayout.AddBinding(1,
                                                       VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
                                                       1,
                                                       TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
@@ -738,6 +726,37 @@ begin
 
  end;
 
+ // Multi scattering LUT pass descriptor set layout
+ begin
+
+  fMultiScatteringLUTPassDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(TpvScene3D(fScene3D).VulkanDevice);
+
+  // Destination texture
+  fMultiScatteringLUTPassDescriptorSetLayout.AddBinding(0,
+                                                        VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+                                                        1,
+                                                        TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                                        []);
+
+  // Transmittance LUT texture (previous)
+  fMultiScatteringLUTPassDescriptorSetLayout.AddBinding(1,
+                                                        VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                                        1,
+                                                        TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                                        []);
+
+  // Atmosphere parameters
+  fMultiScatteringLUTPassDescriptorSetLayout.AddBinding(2,
+                                                        VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                                                        1,
+                                                        TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                                        []);
+
+  fMultiScatteringLUTPassDescriptorSetLayout.Initialize;
+  TpvScene3D(fScene3D).VulkanDevice.DebugUtils.SetObjectName(fMultiScatteringLUTPassDescriptorSetLayout.Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT,'TpvScene3DAtmosphereGlobals.fMultiScatteringLUTPassDescriptorSetLayout');
+
+ end;
+ 
  // Sky view LUT pass descriptor set layout
  begin
 
@@ -852,7 +871,6 @@ begin
 
  end; 
 
-
 end;
 
 procedure TpvScene3DAtmosphereGlobals.DeallocateResources;
@@ -860,6 +878,7 @@ begin
  FreeAndNil(fRaymarchingPassDescriptorSetLayout);
  FreeAndNil(fCameraVolumePassDescriptorSetLayout);
  FreeAndNil(fSkyViewLUTPassDescriptorSetLayout);
+ FreeAndNil(fMultiScatteringLUTPassDescriptorSetLayout);
  FreeAndNil(fTransmittanceLUTPassDescriptorSetLayout);
 end;
 
