@@ -21,7 +21,6 @@ layout(push_constant, std140) uniform PushConstants {
   int countViews;
   int dummy0;
   int dummy1;
-  vec4 sunDirection;
 } pushConstants;
 
 layout(set = 0, binding = 0, rgba32f) uniform image2DArray uDestinationTexture;
@@ -79,7 +78,7 @@ void main() {
     float earthR = atmosphereParameters.BottomRadius;
     vec3 earthO = vec3(0.0, 0.0, -earthR);
     vec3 camPos = vec3(0, 0, earthR);
-    vec3 SunDir = pushConstants.sunDirection.xyz;
+    vec3 SunDir = uAtmosphereParameters.inAtmosphereParameters.SunDirection.xyz;
     vec3 SunLuminance = vec3(0.0);
 
     float Slice = ((float(sliceID) + 0.5) / float(AP_SLICE_COUNT));

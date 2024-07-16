@@ -123,6 +123,7 @@ type TpvScene3DAtmosphere=class;
               MieDensity:TDensityProfile;
               AbsorptionDensity:TDensityProfile;
               Center:TpvVector4; // w is unused, for alignment
+              SunDirection:TpvVector4; // w is unused, for alignment
               SolarIrradiance:TpvVector4; // w is unused, for alignment
               RayleighScattering:TpvVector4; // w is unused, for alignment
               MieScattering:TpvVector4; // w is unused, for alignment
@@ -247,7 +248,6 @@ type TpvScene3DAtmosphere=class;
              CountViews:TpvInt32;
              Dummy0:TpvInt32;
              Dummy1:TpvInt32;
-             SunDirection:TpvVector4;
             end;
             PTransmittanceLUTPushConstants=^TTransmittanceLUTPushConstants;
             TMultiScatteringLUTPushConstants=packed record
@@ -262,7 +262,6 @@ type TpvScene3DAtmosphere=class;
              CountViews:TpvInt32;
              Dummy0:TpvInt32;
              Dummy1:TpvInt32;
-             SunDirection:TpvVector4;
             end;
             PSkyViewLUTPushConstants=^TSkyViewLUTPushConstants;
             TCameraVolumePushConstants=packed record
@@ -270,7 +269,6 @@ type TpvScene3DAtmosphere=class;
              CountViews:TpvInt32;
              Dummy0:TpvInt32;
              Dummy1:TpvInt32;
-             SunDirection:TpvVector4;
             end;
       private
        fScene3D:TObject;
@@ -898,7 +896,6 @@ begin
   TransmittanceLUTPushConstants.CountViews:=CountViews;
   TransmittanceLUTPushConstants.Dummy0:=1;
   TransmittanceLUTPushConstants.Dummy1:=1;
-  TransmittanceLUTPushConstants.SunDirection:=TpvVector4.InlineableCreate(TpvVector3.Origin,1.0);
 
   aCommandBuffer.CmdPushConstants(AtmosphereGlobals.fTransmittanceLUTComputePipelineLayout.Handle,
                                   TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_COMPUTE_BIT),
@@ -1066,7 +1063,6 @@ begin
   SkyViewLUTPushConstants.CountViews:=CountViews;
   SkyViewLUTPushConstants.Dummy0:=0;
   SkyViewLUTPushConstants.Dummy1:=0;
-  SkyViewLUTPushConstants.SunDirection:=TpvVector4.InlineableCreate(TpvVector3.Origin,1.0);
 
   aCommandBuffer.CmdPushConstants(AtmosphereGlobals.fSkyViewLUTComputePipelineLayout.Handle,
                                   TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_COMPUTE_BIT),
@@ -1150,7 +1146,6 @@ begin
   CameraVolumePushConstants.CountViews:=CountViews;
   CameraVolumePushConstants.Dummy0:=0;
   CameraVolumePushConstants.Dummy1:=0;
-  CameraVolumePushConstants.SunDirection:=TpvVector4.InlineableCreate(TpvVector3.Origin,1.0);
 
   aCommandBuffer.CmdPushConstants(AtmosphereGlobals.fCameraVolumeComputePipelineLayout.Handle,
                                   TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_COMPUTE_BIT),

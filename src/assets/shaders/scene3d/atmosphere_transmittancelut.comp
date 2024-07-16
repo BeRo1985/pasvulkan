@@ -21,7 +21,6 @@ layout(push_constant, std140) uniform PushConstants {
   int countViews;
   int dummy0;
   int dummy1;
-  vec4 sunDirection;
 } pushConstants;
 
 layout(set = 0, binding = 0, rgba32f) uniform image2DArray uDestinationTexture;
@@ -79,7 +78,7 @@ void main() {
     vec3 transmittance = exp(-IntegrateOpticalDepth(
       worldPos, 
       worldDir, 
-      pushConstants.sunDirection.xyz,
+      uAtmosphereParameters.inAtmosphereParameters.SunDirection.xyz,
       atmosphereParameters, 
       ground, 
       SampleCountIni, 

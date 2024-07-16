@@ -45,6 +45,7 @@ struct InAtmosphereParameters {
   DensityProfile MieDensity;
   DensityProfile AbsorptionDensity;
   vec4 Center;
+	vec4 SunDirection;
   vec4 SolarIrradiance;
   vec4 RayleighScattering;
   vec4 MieScattering;

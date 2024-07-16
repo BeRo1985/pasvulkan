@@ -24,7 +24,6 @@ layout(push_constant, std140) uniform PushConstants {
   int countViews;
   float noHitDepthValue;
   float startDepth;
-  vec4 sunDirection;
   vec2 resolution;
 } pushConstants;
 
@@ -78,7 +77,7 @@ void main() {
 	float DepthBufferValue = subpassLoad(uSubpassDepth).x;
 #endif
 
-  vec3 sunDirection = normalize(pushConstants.sunDirection.xyz);
+  vec3 sunDirection = normalize(uAtmosphereParameters.inAtmosphereParameters.SunDirection.xyz);
 
 	if((viewHeight < atmosphereParameters.TopRadius) && (DepthBufferValue == pushConstants.noHitDepthValue)){
 
