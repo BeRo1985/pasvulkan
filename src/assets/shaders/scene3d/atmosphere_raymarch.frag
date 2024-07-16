@@ -11,6 +11,9 @@
 
 /* clang-format on */
 
+#undef MULTISCATAPPROX_ENABLED
+#undef SHADOWS_ENABLED
+
 #include "atmosphere_common.glsl"
 
 layout(location = 0) out vec4 outLuminance;

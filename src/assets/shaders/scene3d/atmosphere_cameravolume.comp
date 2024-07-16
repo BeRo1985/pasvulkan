@@ -10,6 +10,9 @@ layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
 
 /* clang-format on */
 
+#define MULTISCATAPPROX_ENABLED
+#undef SHADOWS_ENABLED
+
 #include "atmosphere_common.glsl"
 
 // Push constants

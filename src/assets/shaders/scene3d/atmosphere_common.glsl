@@ -345,13 +345,122 @@ vec3 GetMultipleScattering(const in sampler2DArray MultiScatTexture, int viewInd
 	return multiScatteredLuminance;
 }
 
+#ifdef SHADOWS_ENABLED
 float getShadow(in AtmosphereParameters Atmosphere, vec3 P){
   // TODO
 	return 1.0;
 }
+#endif
+
+vec3 IntegrateOpticalDepth(in vec3 WorldPos,
+                           in vec3 WorldDir, 
+													 in vec3 SunDir, 
+													 const in AtmosphereParameters Atmosphere,
+													 in bool ground, 
+													 in float SampleCountIni, 
+													 in float tMaxMax, 
+													 in bool VariableSampleCount){
+	
+	// Compute next intersection with atmosphere or ground 
+	// TODO:gs another empirical finding. This removes a white pixel stripe in the Transmittance LUT.
+	vec3 earthO = vec3(0.0, 0.0, -0.001);
+  float tBottom = raySphereIntersectNearest(WorldPos, WorldDir, earthO, Atmosphere.BottomRadius);
+	float tTop = raySphereIntersectNearest(WorldPos, WorldDir, earthO, Atmosphere.TopRadius);
+	float tMax = 0.0;
+	if(tBottom < 0.0){
+		if (tTop < 0.0){
+			tMax = 0.0; // No intersection with earth nor atmosphere: stop right away  
+			return vec3(0.0);
+		}else{
+			tMax = tTop;
+		}
+	}else{
+		if(tTop > 0.0){
+			tMax = min(tTop, tBottom);
+		}
+	}  
+	
+	tMax = min(tMax, tMaxMax);
+
+	// Sample count 
+	float SampleCount = SampleCountIni;
+	float SampleCountFloor = SampleCountIni;
+	float tMaxFloor = tMax;
+	if(VariableSampleCount){
+		SampleCount = mix(RayMarchMinMaxSPP.x, RayMarchMinMaxSPP.y, clamp(tMax * 0.01, 0.0, 1.0));
+		SampleCountFloor = floor(SampleCount);
+		tMaxFloor = tMax * SampleCountFloor / SampleCount;	// rescale tMax to map to the last entire step segment.
+	}
+	float dt = tMax / SampleCount;
+
+	// Phase functions
+	const float uniformPhase = 1.0 / (4.0 * PI);
+	const vec3 wi = SunDir;
+	const vec3 wo = WorldDir;
+	float cosTheta = dot(wi, wo);
+	float MiePhaseValue = hgPhase(Atmosphere.MiePhaseG, -cosTheta);	// mnegate cosTheta because due to WorldDir being a "in" direction. 
+	float RayleighPhaseValue = RayleighPhase(cosTheta);
+
+#ifdef ILLUMINANCE_IS_ONE
+	// When building the scattering factor, we assume light illuminance is 1 to compute a transfert function relative to identity illuminance of 1.
+	// This make the scattering factor independent of the light. It is now only linked to the atmosphere properties.
+	vec3 globalL = vec3(1.0);
+#else
+	vec3 globalL = gSunIlluminance;
+#endif
+
+	// Ray march the atmosphere to integrate optical depth
+	vec3 L = vec3(0.0);
+	vec3 throughput = vec3(1.0);
+	vec3 OpticalDepth = vec3(0.0);
+	float t = 0.0;
+	float tPrev = 0.0;
+	const float SampleSegmentT = 0.3;
+	for (float s = 0.0; s < SampleCount; s += 1.0){
+		if (VariableSampleCount){
+			// More expenssive but artefact free
+			float t0 = (s) / SampleCountFloor;
+			float t1 = (s + 1.0) / SampleCountFloor;
+			// Non linear distribution of sample within the range.
+			t0 = t0 * t0;
+			t1 = t1 * t1;
+			// Make t0 and t1 world space distances.
+			t0 = tMaxFloor * t0;
+			if(t1 > 1.0){
+				t1 = tMax;
+		  //t1 = tMaxFloor;	// this reveal depth slices
+			}else{
+				t1 = tMaxFloor * t1;
+			}
+			//t = t0 + (t1 - t0) * (whangHashNoise(pixPos.x, pixPos.y, gFrameId * 1920 * 1080)); // With dithering required to hide some sampling artefact relying on TAA later? This may even allow volumetric shadow?
+			t = t0 + ((t1 - t0) * SampleSegmentT);
+			dt = t1 - t0;
+		}else{
+			//t = tMax * (s + SampleSegmentT) / SampleCount;
+			// Exact difference, important for accuracy of multiple scattering
+			float NewT = tMax * (s + SampleSegmentT) / SampleCount;
+			dt = NewT - t;
+			t = NewT;
+		}
+		vec3 P = WorldPos + t * WorldDir;
+
+	  MediumSampleRGB medium = sampleMediumRGB(P, Atmosphere);
+		const vec3 SampleOpticalDepth = medium.extinction * dt;
+		const vec3 SampleTransmittance = exp(-SampleOpticalDepth);
+		OpticalDepth += SampleOpticalDepth;
+
+		tPrev = t;
+
+  }
+
+	return OpticalDepth;
+	
+}
 
 SingleScatteringResult IntegrateScatteredLuminance(const in sampler2DArray TransmittanceLutTexture,
+#ifdef MULTISCATAPPROX_ENABLED
                                                    const in sampler2DArray MultiScatTexture, 
+#endif
                                                    int viewIndex,
                                                    in vec2 pixPos, 
                                                    in vec3 WorldPos, 
@@ -374,7 +483,7 @@ SingleScatteringResult IntegrateScatteredLuminance(const in sampler2DArray Trans
   vec3 ClipSpace = vec3(fma(vec2(pixPos) / vec2(gResolution), vec2(2.0), vec2(1.0)), 1.0);
 
   // Compute next intersection with atmosphere or ground 
-  vec3 earthO = vec3(0.0);
+  vec3 earthO = vec3(0.0, 0.0, -0.001);
   float tBottom = raySphereIntersectNearest(WorldPos, WorldDir, earthO, Atmosphere.BottomRadius);
 	float tTop = raySphereIntersectNearest(WorldPos, WorldDir, earthO, Atmosphere.TopRadius);
 	float tMax = 0.0;
@@ -497,12 +606,12 @@ SingleScatteringResult IntegrateScatteredLuminance(const in sampler2DArray Trans
 		// Dual scattering for multi scattering 
 
 		vec3 multiScatteredLuminance = vec3(0.0);
-#if MULTISCATAPPROX_ENABLED
+#ifdef MULTISCATAPPROX_ENABLED
 		multiScatteredLuminance = GetMultipleScattering(MultiScatTexture, viewIndex, Atmosphere, medium.scattering, medium.extinction, P, SunZenithCosAngle);
 #endif
 
-		float shadow = 1.0f;
-#if SHADOWMAP_ENABLED
+		float shadow = 1.0;
+#ifdef SHADOWS_ENABLED
 		// First evaluate opaque shadow
 		shadow = getShadow(Atmosphere, P);
 #endif

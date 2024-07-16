@@ -86,9 +86,14 @@ type TpvScene3DAtmosphere=class;
              SCATTERING_TEXTURE_NU_SIZE=8;
              SCATTERING_TEXTURE_WIDTH=SCATTERING_TEXTURE_NU_SIZE*SCATTERING_TEXTURE_MU_S_SIZE;
              SCATTERING_TEXTURE_HEIGHT=SCATTERING_TEXTURE_MU_SIZE;
-             SCATTERING_TEXTURE_DEPTH=SCATTERING_TEXTURE_R_SIZE;
+             SCATTERING_TEXTURE_DEPTH=SCATTERING_TEXTURE_R_SIZE;             
              IRRADIANCE_TEXTURE_WIDTH=64;
              IRRADIANCE_TEXTURE_HEIGHT=16;
+             SkyViewLUTTextureWidth=192;
+             SkyViewLUTTextureHeight=108;     
+             CameraVolumeTextureWidth=32;
+             CameraVolumeTextureHeight=32;
+             CameraVolumeTextureDepth=32;
              MultiScatteringLUTRes=32;
              ScatteringOrders=4; 
        type { TDensityProfileLayer }
@@ -148,8 +153,6 @@ type TpvScene3DAtmosphere=class;
               fRendererInstance:TObject;
               fKey:TKey;
               fTransmittanceTexture:TpvScene3DRendererArray2DImage;
-              fScatteringTexture:TpvScene3DRendererArray2DImage;
-              fIrradianceTexture:TpvScene3DRendererArray2DImage;
               fMultiScatteringTexture:TpvScene3DRendererArray2DImage;
               fSkyViewLUTTexture:TpvScene3DRendererArray2DImage;
               fCameraVolumeTexture:TpvScene3DRendererArray2DImage;
@@ -164,8 +167,6 @@ type TpvScene3DAtmosphere=class;
               property Atmosphere:TpvScene3DAtmosphere read fAtmosphere;
               property RendererInstance:TObject read fRendererInstance;
               property TransmittanceTexture:TpvScene3DRendererArray2DImage read fTransmittanceTexture;
-              property ScatteringTexture:TpvScene3DRendererArray2DImage read fScatteringTexture;
-              property IrradianceTexture:TpvScene3DRendererArray2DImage read fIrradianceTexture;
               property MultiScatteringTexture:TpvScene3DRendererArray2DImage read fMultiScatteringTexture;
               property SkyViewLUTTexture:TpvScene3DRendererArray2DImage read fSkyViewLUTTexture;
               property CameraVolumeTexture:TpvScene3DRendererArray2DImage read fCameraVolumeTexture; 
@@ -358,129 +359,43 @@ begin
                                                               true,
                                                               0);
 
- fScatteringTexture:=TpvScene3DRendererArray2DImage.Create(TpvScene3D(fAtmosphere.fScene3D).VulkanDevice,
-                                                           SCATTERING_TEXTURE_WIDTH,
-                                                           SCATTERING_TEXTURE_HEIGHT,
-                                                           SCATTERING_TEXTURE_DEPTH*TpvScene3DRendererInstance(aRendererInstance).CountSurfaceViews,
-                                                           VK_FORMAT_R32G32B32A32_SFLOAT,
-                                                           VK_SAMPLE_COUNT_1_BIT,
-                                                           VK_IMAGE_LAYOUT_GENERAL,
-                                                           true,
-                                                           0);
+ fMultiScatteringTexture:=TpvScene3DRendererArray2DImage.Create(TpvScene3D(fAtmosphere.fScene3D).VulkanDevice,
+                                                                MultiScatteringLUTRes,
+                                                                MultiScatteringLUTRes,
+                                                                TpvScene3DRendererInstance(aRendererInstance).CountSurfaceViews,
+                                                                VK_FORMAT_R32G32B32A32_SFLOAT,
+                                                                VK_SAMPLE_COUNT_1_BIT,
+                                                                VK_IMAGE_LAYOUT_GENERAL,
+                                                                true,
+                                                                0);  
 
- fIrradianceTexture:=TpvScene3DRendererArray2DImage.Create(TpvScene3D(fAtmosphere.fScene3D).VulkanDevice,
-                                                           IRRADIANCE_TEXTURE_WIDTH,
-                                                           IRRADIANCE_TEXTURE_HEIGHT,
+ fSkyViewLUTTexture:=TpvScene3DRendererArray2DImage.Create(TpvScene3D(fAtmosphere.fScene3D).VulkanDevice,
+                                                           SkyViewLUTTextureWidth,
+                                                           SkyViewLUTTextureHeight, 
                                                            TpvScene3DRendererInstance(aRendererInstance).CountSurfaceViews,
                                                            VK_FORMAT_R32G32B32A32_SFLOAT,
                                                            VK_SAMPLE_COUNT_1_BIT,
                                                            VK_IMAGE_LAYOUT_GENERAL,
                                                            true,
-                                                           0);
-{fTransmittanceTexture:TpvScene3DRendererArray2DImage;
- fScatteringTexture:TpvScene3DRendererArray2DImage;
- fIrradianceTexture:TpvScene3DRendererArray2DImage;
- fMultiScatteringTexture:TpvScene3DRendererArray2DImage;
- fSkyViewLUTTexture:TpvScene3DRendererArray2DImage;
- fCameraVolumeTexture:TpvScene3DRendererArray2DImage;}
+                                                           0);                                                            
 
-(*
-(*
-        fGlobalVulkanDescriptorPool:=TpvVulkanDescriptorPool.Create(fVulkanDevice,
-                                                                    TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT) or
-                                                                    TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT_EXT),
-                                                                    length(fImageInfos)*length(fGlobalVulkanDescriptorSets));
-        if fRaytracingActive then begin
-         fGlobalVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR,length(fGlobalVulkanDescriptorSets)*1);
-        end;
-        fGlobalVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,length(fGlobalVulkanDescriptorSets)*IfThen(fRaytracingActive,4,3));
-        fGlobalVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,length(fGlobalVulkanDescriptorSets)*5);
-        fGlobalVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,length(fGlobalVulkanDescriptorSets)*length(fImageInfos));
-        fGlobalVulkanDescriptorPool.Initialize;
-
-         fGlobalVulkanDescriptorSets[Index]:=TpvVulkanDescriptorSet.Create(fGlobalVulkanDescriptorPool,
-                                                                           fGlobalVulkanDescriptorSetLayout);
-         fGlobalVulkanDescriptorSets[Index].WriteToDescriptorSet(0,
-                                                                 0,
-                                                                 1,
-                                                                 TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
-                                                                 [],
-                                                                 [fGlobalVulkanInstanceMatrixBuffers[Index].DescriptorBufferInfo],
-                                                                 [],
-                                                                 false);
-         fGlobalVulkanDescriptorSets[Index].WriteToDescriptorSet(1,
-                                                                 0,
-                                                                 1,
-                                                                 TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
-                                                                 [],
-                                                                 [fLightBuffers[Index].fLightItemsVulkanBuffer.DescriptorBufferInfo],
-                                                                 [],
-                                                                 false);
-         fGlobalVulkanDescriptorSets[Index].WriteToDescriptorSet(2,
-                                                                 0,
-                                                                 1,
-                                                                 TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
-                                                                 [],
-                                                                 [fLightBuffers[Index].fLightTreeVulkanBuffer.DescriptorBufferInfo],
-                                                                 [],
-                                                                 false);
-         if fUseBufferDeviceAddress then begin
-          fGlobalVulkanDescriptorSets[Index].WriteToDescriptorSet(3,
-                                                                  0,
-                                                                  1,
-                                                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
-                                                                  [],
-                                                                  [fVulkanMaterialUniformBuffers[Index].DescriptorBufferInfo],
-                                                                  [],
-                                                                  false);
-         end else begin
-          fGlobalVulkanDescriptorSets[Index].WriteToDescriptorSet(3,
-                                                                  0,
-                                                                  1,
-                                                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
-                                                                  [],
-                                                                  [fVulkanMaterialDataBuffers[Index].DescriptorBufferInfo],
-                                                                  [],
-                                                                  false);
-         end;
-         if fRaytracingActive then begin
-          if assigned(fRaytracingTLAS) then begin
-           fGlobalVulkanDescriptorSets[Index].WriteToDescriptorSet(4,
-                                                                   0,
-                                                                   1,
-                                                                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR),
-                                                                   [],
-                                                                   [],
-                                                                   [],
-                                                                   [fRaytracingTLAS.AccelerationStructure],
-                                                                   false);
-          end;
-          if assigned(fGPURaytracingDataVulkanBuffers[Index]) then begin
-           fGlobalVulkanDescriptorSets[Index].WriteToDescriptorSet(5,
-                                                                   0,
-                                                                   1,
-                                                                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
-                                                                   [],
-                                                                   [fGPURaytracingDataVulkanBuffers[Index].DescriptorBufferInfo],
-                                                                   [],
-                                                                   false);
-          end;
-         end;
-         fGlobalVulkanDescriptorSets[Index].WriteToDescriptorSet(fGlobalVulkanDescriptorSetTextureBindingIndex,
-                                                                 0,
-                                                                 length(fImageInfos),
-                                                                 TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                                                                 fImageInfos,
-                                                                 [],
-                                                                 [],
-                                                                 false);
-         fGlobalVulkanDescriptorSets[Index].Flush;
-*)
+ fCameraVolumeTexture:=TpvScene3DRendererArray2DImage.Create(TpvScene3D(fAtmosphere.fScene3D).VulkanDevice,
+                                                            CameraVolumeTextureWidth,
+                                                            CameraVolumeTextureHeight,
+                                                            CameraVolumeTextureDepth*TpvScene3DRendererInstance(aRendererInstance).CountSurfaceViews,
+                                                            VK_FORMAT_R32G32B32A32_SFLOAT,
+                                                            VK_SAMPLE_COUNT_1_BIT,
+                                                            VK_IMAGE_LAYOUT_GENERAL,
+                                                            true,
+                                                            0);
 
  fTransmittanceLUTPassDescriptorPool:=TpvVulkanDescriptorPool.Create(TpvScene3D(fAtmosphere.fScene3D).VulkanDevice,
                                                                      TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT) or
                                                                      TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT_EXT),
                                                                      TpvScene3D(fAtmosphere.fScene3D).CountInFlightFrames*1);
+ fTransmittanceLUTPassDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,TpvScene3D(fAtmosphere.fScene3D).CountInFlightFrames*1);
+ fTransmittanceLUTPassDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,TpvScene3D(fAtmosphere.fScene3D).CountInFlightFrames*1);
+ fTransmittanceLUTPassDescriptorPool.Initialize;
 
  for InFlightFrameIndex:=0 to TpvScene3D(fAtmosphere.fScene3D).CountInFlightFrames-1 do begin
 
@@ -498,7 +413,7 @@ begin
                                                                                [],
                                                                                false);
 
-  fTransmittanceLUTPassDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(1,
+ {fTransmittanceLUTPassDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(1,
                                                                                0,
                                                                                1,
                                                                                TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
@@ -518,9 +433,9 @@ begin
                                                                                                               VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
                                                                                [],
                                                                                [],
-                                                                               false);       
+                                                                               false);       }
 
-  fTransmittanceLUTPassDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(3,
+  fTransmittanceLUTPassDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(1,
                                                                                0,
                                                                                1,
                                                                                TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
@@ -547,14 +462,12 @@ begin
  FreeAndNil(fTransmittanceLUTPassDescriptorPool);
 
  FreeAndNil(fTransmittanceTexture);
- FreeAndNil(fScatteringTexture);
- FreeAndNil(fIrradianceTexture);
  FreeAndNil(fMultiScatteringTexture);
  FreeAndNil(fSkyViewLUTTexture);
  FreeAndNil(fCameraVolumeTexture);
 
  inherited Destroy;
- 
+
 end;
 
 procedure TpvScene3DAtmosphere.TRendererInstance.AfterConstruction;
