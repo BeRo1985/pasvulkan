@@ -1011,7 +1011,7 @@ begin
 
   // Atmosphere parameters
   fTransmittanceLUTPassDescriptorSetLayout.AddBinding(1,
-                                                      VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                                                      VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
                                                       1,
                                                       TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                                                       []);
@@ -1042,7 +1042,7 @@ begin
 
   // Atmosphere parameters
   fMultiScatteringLUTPassDescriptorSetLayout.AddBinding(2,
-                                                        VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                                                        VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
                                                         1,
                                                         TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                                                         []);
@@ -1080,7 +1080,7 @@ begin
 
   // Atmosphere parameters
   fSkyViewLUTPassDescriptorSetLayout.AddBinding(3,
-                                                VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                                                VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
                                                 1,
                                                 TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                                                 []);
@@ -1118,7 +1118,7 @@ begin
 
   // Atmosphere parameters
   fCameraVolumePassDescriptorSetLayout.AddBinding(3,
-                                                  VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                                                  VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
                                                   1,
                                                   TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                                                   []);
@@ -1156,7 +1156,7 @@ begin
 
   // Atmosphere parameters
   fRaymarchingPassDescriptorSetLayout.AddBinding(3,
-                                                 VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                                                 VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
                                                  1,
                                                  TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                                  []);
