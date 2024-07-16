@@ -250,13 +250,13 @@ type TpvScene3DAtmosphere=class;
              SunDirection:TpvVector4;
             end;
             PTransmittanceLUTPushConstants=^TTransmittanceLUTPushConstants;
-            TMultipleScatteringLUTPushConstants=packed record
+            TMultiScatteringLUTPushConstants=packed record
              BaseViewIndex:TpvInt32;
              CountViews:TpvInt32;
-             ViewIndex:TpvInt32;
              MultipleScatteringFactor:TpvFloat;
+             Dummy:TpvInt32;
             end;            
-            PMultipleScatteringLUTPushConstants=^TMultipleScatteringLUTPushConstants;
+            PMultiScatteringLUTPushConstants=^TMultiScatteringLUTPushConstants;
             TSkyViewLUTPushConstants=packed record
              BaseViewIndex:TpvInt32;
              CountViews:TpvInt32;
@@ -836,6 +836,9 @@ var AtmosphereGlobals:TpvScene3DAtmosphereGlobals;
     ImageSubresourceRange:TVkImageSubresourceRange;
     ImageMemoryBarriers:array[0..3] of TVkImageMemoryBarrier;
     TransmittanceLUTPushConstants:TpvScene3DAtmosphereGlobals.TTransmittanceLUTPushConstants;
+    MultiScatteringLUTPushConstants:TpvScene3DAtmosphereGlobals.TMultiScatteringLUTPushConstants;
+    SkyViewLUTPushConstants:TpvScene3DAtmosphereGlobals.TSkyViewLUTPushConstants;
+    CameraVolumePushConstants:TpvScene3DAtmosphereGlobals.TCameraVolumePushConstants;
 begin
 
  AtmosphereGlobals:=TpvScene3DAtmosphereGlobals(TpvScene3D(fAtmosphere.fScene3D).AtmosphereGlobals);
@@ -924,6 +927,89 @@ begin
   TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
 
  end;
+
+ begin
+
+  // Multi scattering LUT
+
+  TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'TpvScene3DAtmosphere.MultiScatteringLUT',[0.0,1.0,0.0,1.0]);
+
+  ImageMemoryBarriers[0]:=TVkImageMemoryBarrier.Create(0,
+                                                       TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                       VK_IMAGE_LAYOUT_UNDEFINED,
+                                                       VK_IMAGE_LAYOUT_GENERAL,
+                                                       VK_QUEUE_FAMILY_IGNORED,
+                                                       VK_QUEUE_FAMILY_IGNORED,
+                                                       fMultiScatteringTexture.VulkanImage.Handle,
+                                                       TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                       0,
+                                                                                       1,
+                                                                                       0,
+                                                                                       TpvScene3DRendererInstance(fRendererInstance).CountSurfaceViews));
+
+  aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
+                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                    0,
+                                    0,nil,
+                                    0,nil,
+                                    1,@ImageMemoryBarriers[0]);      
+
+  aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,AtmosphereGlobals.fMultiScatteringLUTComputePipeline.Handle);
+
+  aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE,
+                                       AtmosphereGlobals.fMultiScatteringLUTComputePipelineLayout.Handle,
+                                       0,
+                                       1,
+                                       @fMultiScatteringLUTPassDescriptorSets[aInFlightFrameIndex].Handle,
+                                       0,
+                                       nil); 
+
+  aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE,
+                                       AtmosphereGlobals.fMultiScatteringLUTComputePipelineLayout.Handle,
+                                       1,
+                                       1,
+                                       @fGlobalDescriptorSets[aInFlightFrameIndex].Handle,
+                                       0,
+                                       nil);    
+
+  MultiScatteringLUTPushConstants.BaseViewIndex:=0;
+  MultiScatteringLUTPushConstants.CountViews:=1;
+  MultiScatteringLUTPushConstants.MultipleScatteringFactor:=1;
+  MultiScatteringLUTPushConstants.Dummy:=0;
+
+  aCommandBuffer.CmdPushConstants(AtmosphereGlobals.fMultiScatteringLUTComputePipelineLayout.Handle,
+                                  TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_COMPUTE_BIT),
+                                  0,
+                                  SizeOf(TpvScene3DAtmosphereGlobals.TMultiScatteringLUTPushConstants),
+                                  @MultiScatteringLUTPushConstants);
+
+  aCommandBuffer.CmdDispatch(fMultiScatteringTexture.Width,
+                             fMultiScatteringTexture.Height,
+                             TpvScene3DRendererInstance(fRendererInstance).CountSurfaceViews);   
+
+  ImageMemoryBarriers[0]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                       TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT),
+                                                       VK_IMAGE_LAYOUT_GENERAL,
+                                                       VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                       VK_QUEUE_FAMILY_IGNORED,
+                                                       VK_QUEUE_FAMILY_IGNORED,
+                                                       fMultiScatteringTexture.VulkanImage.Handle,
+                                                       TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                       0,
+                                                                                       1,
+                                                                                       0,
+                                                                                       TpvScene3DRendererInstance(fRendererInstance).CountSurfaceViews));
+
+  aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                    0,
+                                    0,nil,
+                                    0,nil,
+                                    1,@ImageMemoryBarriers[0]);      
+
+  TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
+
+ end; 
 
 end;
 
@@ -1407,7 +1493,7 @@ begin
   fMultiScatteringLUTComputeShaderStage:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_COMPUTE_BIT,fMultiScatteringLUTComputeShaderModule,'main');
 
   fMultiScatteringLUTComputePipelineLayout:=TpvVulkanPipelineLayout.Create(TpvScene3D(fScene3D).VulkanDevice);
-  fMultiScatteringLUTComputePipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),0,SizeOf(TMultipleScatteringLUTPushConstants));
+  fMultiScatteringLUTComputePipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),0,SizeOf(TMultiScatteringLUTPushConstants));
   fMultiScatteringLUTComputePipelineLayout.AddDescriptorSetLayout(fMultiScatteringLUTPassDescriptorSetLayout);
   fMultiScatteringLUTComputePipelineLayout.AddDescriptorSetLayout(fGlobalVulkanDescriptorSetLayout);
   fMultiScatteringLUTComputePipelineLayout.Initialize;

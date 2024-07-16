@@ -6,6 +6,8 @@
 
 /* clang-format off */
 
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 64) in;
+
 /* clang-format on */
 
 #undef MULTISCATAPPROX_ENABLED
@@ -17,8 +19,8 @@
 layout(push_constant, std140) uniform PushConstants {
   int baseViewIndex;
   int countViews;
-  int viewIndex;
   float MultipleScatteringFactor;
+  int dummy;
 } pushConstants;
 
 shared vec3 MultiScatAs1SharedMem[64];
