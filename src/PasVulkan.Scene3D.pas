@@ -24000,7 +24000,10 @@ begin
   for Index:=0 to TpvScene3DAtmospheres(fAtmospheres).Count-1 do begin
    Atmosphere:=TpvScene3DAtmospheres(fAtmospheres).Items[Index];
    if Atmosphere.Ready then begin
-    Atmosphere.Update(aInFlightFrameIndex);
+    Atmosphere.Update(aInFlightFrameIndex,
+                      fVulkanStagingQueue,
+                      fVulkanStagingCommandBuffer,
+                      fVulkanStagingFence);
    end;
   end;
  finally

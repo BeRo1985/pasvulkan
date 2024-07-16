@@ -198,6 +198,8 @@ type TpvScene3DAtmosphere=class;
        fReleaseFrameCounter:TpvInt32;
        fReady:Boolean;
        fUploaded:LongBool;
+       fVisible:Boolean;
+       fInFlightFrameVisible:array[0..MaxInFlightFrames-1] of boolean;
       public
        constructor Create(const aScene3D:TObject);
        destructor Destroy; override;
@@ -207,10 +209,15 @@ type TpvScene3DAtmosphere=class;
        function HandleRelease:boolean;
        procedure Upload;
        procedure Unload;
-       procedure Update(const aInFlightFrameIndex:TpvSizeInt);
+       procedure Update(const aInFlightFrameIndex:TpvSizeInt;
+                        const aTransferQueue:TpvVulkanQueue;
+                        const aTransferCommandBuffer:TpvVulkanCommandBuffer;
+                        const aTransferFence:TpvVulkanFence);
       public  
        property AtmosphereParameters:PAtmosphereParameters read fPointerToAtmosphereParameters;
        property Ready:Boolean read fReady;
+       property Uploaded:LongBool read fUploaded;
+       property Visible:Boolean read fVisible;
      end; 
 
      { TpvScene3DAtmospheres }
@@ -840,6 +847,10 @@ begin
 
  fUploaded:=false;
 
+ fVisible:=true;
+
+ FillChar(fInFlightFrameVisible,SizeOf(fInFlightFrameVisible),#0);
+
 end;
 
 destructor TpvScene3DAtmosphere.Destroy;
@@ -923,7 +934,7 @@ begin
                                                                             0,
                                                                             0,
                                                                             0,
-                                                                            [],//[TpvVulkanBufferFlag.PersistentMapped,TpvVulkanBufferFlag.OwnSingleMemoryChunk,TpvVulkanBufferFlag.DedicatedAllocation],
+                                                                            [TpvVulkanBufferFlag.PersistentMappedIfPossible,TpvVulkanBufferFlag.OwnSingleMemoryChunk,TpvVulkanBufferFlag.DedicatedAllocation],
                                                                             0,
                                                                             pvAllocationGroupIDScene3DDynamic);
    TpvScene3D(fScene3D).VulkanDevice.DebugUtils.SetObjectName(fAtmosphereParametersBuffers[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DAtmosphere.fAtmosphereParametersBuffers['+IntToStr(InFlightFrameIndex)+']');
@@ -947,9 +958,30 @@ begin
  end;
 end;
 
-procedure TpvScene3DAtmosphere.Update(const aInFlightFrameIndex:TpvSizeInt);
+procedure TpvScene3DAtmosphere.Update(const aInFlightFrameIndex:TpvSizeInt;
+                                      const aTransferQueue:TpvVulkanQueue;
+                                      const aTransferCommandBuffer:TpvVulkanCommandBuffer;
+                                      const aTransferFence:TpvVulkanFence);
+var IsVisible:boolean;
 begin
 
+ IsVisible:=fReady and fUploaded;
+
+ if IsVisible then begin
+
+  fAtmosphereParametersBuffers[aInFlightFrameIndex].UploadData(aTransferQueue,
+                                                               aTransferCommandBuffer,
+                                                               aTransferFence,
+                                                               fAtmosphereParameters,
+                                                               0,
+                                                               SizeOf(TAtmosphereParameters),
+                                                               TpvVulkanBufferUseTemporaryStagingBufferMode.Automatic,
+                                                               false);
+
+ end;
+
+ fInFlightFrameVisible[aInFlightFrameIndex]:=IsVisible;
+ 
 end;
 
 { TpvScene3DAtmospheres }
