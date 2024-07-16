@@ -832,8 +832,50 @@ end;
 
 procedure TpvScene3DAtmosphere.TRendererInstance.Execute(const aInFlightFrameIndex:TpvSizeInt;
                                                          const aCommandBuffer:TpvVulkanCommandBuffer);
+var AtmosphereGlobals:TpvScene3DAtmosphereGlobals;
+    TransmittanceLUTPushConstants:TpvScene3DAtmosphereGlobals.TTransmittanceLUTPushConstants;
 begin
 
+ AtmosphereGlobals:=TpvScene3DAtmosphereGlobals(TpvScene3D(fAtmosphere.fScene3D).AtmosphereGlobals);
+
+ begin
+
+  aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,AtmosphereGlobals.fTransmittanceLUTComputePipeline.Handle);
+
+  aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE,
+                                       AtmosphereGlobals.fTransmittanceLUTComputePipelineLayout.Handle,
+                                       0,
+                                       1,
+                                       @fTransmittanceLUTPassDescriptorSets[aInFlightFrameIndex].Handle,
+                                       0,
+                                       nil);
+
+  aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE,
+                                       AtmosphereGlobals.fTransmittanceLUTComputePipelineLayout.Handle,
+                                       1,
+                                       1,
+                                       @fGlobalDescriptorSets[aInFlightFrameIndex].Handle,
+                                       0,
+                                       nil);
+
+  TransmittanceLUTPushConstants.BaseViewIndex:=0;
+  TransmittanceLUTPushConstants.CountViews:=1;
+  TransmittanceLUTPushConstants.Dummy0:=1;
+  TransmittanceLUTPushConstants.Dummy1:=1;
+  TransmittanceLUTPushConstants.SunDirection:=TpvVector4.InlineableCreate(TpvVector3.Origin,1.0);
+
+  aCommandBuffer.CmdPushConstants(AtmosphereGlobals.fTransmittanceLUTComputePipelineLayout.Handle,
+                                  TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_COMPUTE_BIT),
+                                  0,
+                                  SizeOf(TpvScene3DAtmosphereGlobals.TTransmittanceLUTPushConstants),
+                                  @TransmittanceLUTPushConstants);
+
+  aCommandBuffer.CmdDispatch((fTransmittanceTexture.Width+15) shr 4,
+                             (fTransmittanceTexture.Height+15) shr 4,
+                             TpvScene3DRendererInstance(fRendererInstance).CountSurfaceViews);
+
+
+ end;
 
 end;
 
