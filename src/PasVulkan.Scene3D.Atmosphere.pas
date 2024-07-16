@@ -1389,7 +1389,9 @@ end;
 
 constructor TpvScene3DAtmosphereRendererInstance.TTransmittanceLUTPass.Create(const aAtmosphereRendererInstance:TpvScene3DAtmosphereRendererInstance);
 begin
+
  inherited Create;
+
  fAtmosphereRendererInstance:=aAtmosphereRendererInstance;
  
  fPipeline:=nil;
