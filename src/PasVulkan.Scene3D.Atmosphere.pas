@@ -1119,7 +1119,7 @@ begin
                                                                                        0,
                                                                                        1,
                                                                                        0,
-                                                                                       fCameraVolumeTexture.Depth));
+                                                                                       fCameraVolumeTexture.Layers));
 
   aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
@@ -1160,7 +1160,7 @@ begin
 
   aCommandBuffer.CmdDispatch((fCameraVolumeTexture.Width+15) shr 4,
                              (fCameraVolumeTexture.Height+15) shr 4,
-                             fCameraVolumeTexture.Depth); // includes CountSurfaceViews already    
+                             fCameraVolumeTexture.Layers); // includes CountSurfaceViews already    
 
   ImageMemoryBarriers[0]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                        TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT),
@@ -1173,7 +1173,7 @@ begin
                                                                                        0,
                                                                                        1,
                                                                                        0,
-                                                                                       fCameraVolumeTexture.Depth));
+                                                                                       fCameraVolumeTexture.Layers));
 
   aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
