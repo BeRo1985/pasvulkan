@@ -657,7 +657,7 @@ begin
                                                                           TVkDescriptorType(VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT),
                                                                           [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,
                                                                                                          fCameraVolumeTexture.VulkanImage.Handle, // Dummy, will be replaced with the actual depth texture attachment
-                                                                                                         VK_IMAGE_LAYOUT_GENERAL)],
+                                                                                                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
                                                                           [],
                                                                           [],
                                                                           false);
