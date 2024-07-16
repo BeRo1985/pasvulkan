@@ -403,6 +403,7 @@ begin
  fTransmittanceLUTPassDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,TpvScene3D(fAtmosphere.fScene3D).CountInFlightFrames*1);
  fTransmittanceLUTPassDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,TpvScene3D(fAtmosphere.fScene3D).CountInFlightFrames*1);
  fTransmittanceLUTPassDescriptorPool.Initialize;
+ TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.DebugUtils.SetObjectName(fTransmittanceLUTPassDescriptorPool.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'TransmittanceLUTPassDescriptorPool');
 
  for InFlightFrameIndex:=0 to TpvScene3D(fAtmosphere.fScene3D).CountInFlightFrames-1 do begin
 
@@ -456,6 +457,125 @@ begin
   TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.DebugUtils.SetObjectName(fTransmittanceLUTPassDescriptorSets[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET,'TransmittanceLUTPassDescriptorSets['+IntToStr(InFlightFrameIndex)+']');
 
  end; 
+
+ fMultiScatteringLUTPassDescriptorPool:=TpvVulkanDescriptorPool.Create(TpvScene3D(fAtmosphere.fScene3D).VulkanDevice,
+                                                                      TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT) or
+                                                                      TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT_EXT),
+                                                                      TpvScene3D(fAtmosphere.fScene3D).CountInFlightFrames*1);
+ fMultiScatteringLUTPassDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,TpvScene3D(fAtmosphere.fScene3D).CountInFlightFrames*1);
+ fMultiScatteringLUTPassDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,TpvScene3D(fAtmosphere.fScene3D).CountInFlightFrames*1);
+ fMultiScatteringLUTPassDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,TpvScene3D(fAtmosphere.fScene3D).CountInFlightFrames*1);
+ fMultiScatteringLUTPassDescriptorPool.Initialize;
+ TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.DebugUtils.SetObjectName(fMultiScatteringLUTPassDescriptorPool.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'MultiScatteringLUTPassDescriptorPool');
+
+ for InFlightFrameIndex:=0 to TpvScene3D(fAtmosphere.fScene3D).CountInFlightFrames-1 do begin
+
+  fMultiScatteringLUTPassDescriptorSets[InFlightFrameIndex]:=TpvVulkanDescriptorSet.Create(fMultiScatteringLUTPassDescriptorPool,
+                                                                                         TpvScene3DAtmosphereGlobals(TpvScene3D(fAtmosphere.fScene3D).Atmospheres).fMultiScatteringLUTPassDescriptorSetLayout);
+
+  fMultiScatteringLUTPassDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(0,
+                                                                                 0,
+                                                                                 1,
+                                                                                 TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
+                                                                                 [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,
+                                                                                                                fMultiScatteringTexture.VulkanImage.Handle,
+                                                                                                                VK_IMAGE_LAYOUT_GENERAL)],
+                                                                                 [],
+                                                                                 [],
+                                                                                 false);
+
+  fMultiScatteringLUTPassDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(1,
+                                                                                 0,
+                                                                                 1,
+                                                                                 TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                                                                 [TVkDescriptorImageInfo.Create(TpvScene3DRenderer(fRendererInstance).Renderer.ClampedSampler.Handle,
+                                                                                                                fTransmittanceTexture.VulkanImageView.Handle,
+                                                                                                                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
+                                                                                 [],
+                                                                                 [],
+                                                                                 false);
+
+  fMultiScatteringLUTPassDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(2,
+                                                                                 0,
+                                                                                 1,
+                                                                                 TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                                                 [],
+                                                                                 [fAtmosphere.fAtmosphereParametersBuffers[InFlightFrameIndex].DescriptorBufferInfo],
+                                                                                 [],
+                                                                                 false);                                                             
+
+  fMultiScatteringLUTPassDescriptorSets[InFlightFrameIndex].Flush;
+
+  TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.DebugUtils.SetObjectName(fMultiScatteringLUTPassDescriptorSets[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET,'MultiScatteringLUTPassDescriptorSets['+IntToStr(InFlightFrameIndex)+']');
+
+ end;
+
+ fSkyViewLUTPassDescriptorPool:=TpvVulkanDescriptorPool.Create(TpvScene3D(fAtmosphere.fScene3D).VulkanDevice,
+                                                              TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT) or
+                                                              TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT_EXT),
+                                                              TpvScene3D(fAtmosphere.fScene3D).CountInFlightFrames*1);
+ fSkyViewLUTPassDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,TpvScene3D(fAtmosphere.fScene3D).CountInFlightFrames*1);
+ fSkyViewLUTPassDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,TpvScene3D(fAtmosphere.fScene3D).CountInFlightFrames*2);
+ fSkyViewLUTPassDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,TpvScene3D(fAtmosphere.fScene3D).CountInFlightFrames*1);
+ fSkyViewLUTPassDescriptorPool.Initialize;
+ TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.DebugUtils.SetObjectName(fSkyViewLUTPassDescriptorPool.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'SkyViewLUTPassDescriptorPool');
+
+ for InFlightFrameIndex:=0 to TpvScene3D(fAtmosphere.fScene3D).CountInFlightFrames-1 do begin
+
+  fSkyViewLUTPassDescriptorSets[InFlightFrameIndex]:=TpvVulkanDescriptorSet.Create(fSkyViewLUTPassDescriptorPool,
+                                                                                   TpvScene3DAtmosphereGlobals(TpvScene3D(fAtmosphere.fScene3D).Atmospheres).fSkyViewLUTPassDescriptorSetLayout);
+
+  fSkyViewLUTPassDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(0,
+                                                                         0,
+                                                                         1,
+                                                                         TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
+                                                                         [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,
+                                                                                                        fSkyViewLUTTexture.VulkanImage.Handle,
+                                                                                                        VK_IMAGE_LAYOUT_GENERAL)],
+                                                                         [],
+                                                                         [],
+                                                                         false);
+
+  fSkyViewLUTPassDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(1,
+                                                                         0,
+                                                                         1,
+                                                                         TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                                                         [TVkDescriptorImageInfo.Create(TpvScene3DRenderer(fRendererInstance).Renderer.ClampedSampler.Handle,
+                                                                                                        fTransmittanceTexture.VulkanImageView.Handle,
+                                                                                                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
+                                                                         [],
+                                                                         [],
+                                                                         false);
+
+  fSkyViewLUTPassDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(2,
+                                                                         0,
+                                                                         1,
+                                                                         TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                                                         [TVkDescriptorImageInfo.Create(TpvScene3DRenderer(fRendererInstance).Renderer.ClampedSampler.Handle,
+                                                                                                        fMultiScatteringTexture.VulkanImageView.Handle,
+                                                                                                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
+                                                                         [],
+                                                                         [],
+                                                                         false);
+
+  fSkyViewLUTPassDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(3,
+                                                                         0,
+                                                                         1,
+                                                                         TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                                         [],
+                                                                         [fAtmosphere.fAtmosphereParametersBuffers[InFlightFrameIndex].DescriptorBufferInfo],
+                                                                         [],
+                                                                         false);                                                             
+
+  fSkyViewLUTPassDescriptorSets[InFlightFrameIndex].Flush;
+
+  TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.DebugUtils.SetObjectName(fSkyViewLUTPassDescriptorSets[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET,'SkyViewLUTPassDescriptorSets['+IntToStr(InFlightFrameIndex)+']');
+
+ end; 
+ 
+
+
+
 
 end;
 
