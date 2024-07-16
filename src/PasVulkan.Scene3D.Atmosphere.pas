@@ -158,6 +158,14 @@ type TpvScene3DAtmosphere=class;
               fCameraVolumeTexture:TpvScene3DRendererArray2DImage;
               fTransmittanceLUTPassDescriptorPool:TpvVulkanDescriptorPool;
               fTransmittanceLUTPassDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
+              fMultiScatteringLUTPassDescriptorPool:TpvVulkanDescriptorPool;
+              fMultiScatteringLUTPassDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
+              fSkyViewLUTPassDescriptorPool:TpvVulkanDescriptorPool;
+              fSkyViewLUTPassDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
+              fCameraVolumePassDescriptorPool:TpvVulkanDescriptorPool;
+              fCameraVolumePassDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
+              fRaymarchingPassDescriptorPool:TpvVulkanDescriptorPool;
+              fRaymarchingPassDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
              public
               constructor Create(const aAtmosphere:TpvScene3DAtmosphere;const aRendererInstance:TObject);
               destructor Destroy; override;
@@ -170,8 +178,6 @@ type TpvScene3DAtmosphere=class;
               property MultiScatteringTexture:TpvScene3DRendererArray2DImage read fMultiScatteringTexture;
               property SkyViewLUTTexture:TpvScene3DRendererArray2DImage read fSkyViewLUTTexture;
               property CameraVolumeTexture:TpvScene3DRendererArray2DImage read fCameraVolumeTexture; 
-              property TransmittanceLUTPassDescriptorPool:TpvVulkanDescriptorPool read fTransmittanceLUTPassDescriptorPool;
-//            property TransmittanceLUTPassDescriptorSets:TpvVulkanDescriptorSet read fTransmittanceLUTPassDescriptorSets;
             end;
             { TRendererInstances }
             TRendererInstances=TpvObjectGenericList<TRendererInstance>;
