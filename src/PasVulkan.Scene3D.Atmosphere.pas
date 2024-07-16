@@ -915,7 +915,7 @@ procedure TpvScene3DAtmosphere.Upload;
 var InFlightFrameIndex:TpvSizeInt;
 begin
  
- if not fUploaded then begin
+ if assigned(TpvScene3D(fScene3D).VulkanDevice) and not fUploaded then begin
  
   for InFlightFrameIndex:=0 to TpvScene3D(fScene3D).CountInFlightFrames-1 do begin
 
@@ -969,14 +969,16 @@ begin
 
  if IsVisible then begin
 
-  fAtmosphereParametersBuffers[aInFlightFrameIndex].UploadData(aTransferQueue,
-                                                               aTransferCommandBuffer,
-                                                               aTransferFence,
-                                                               fAtmosphereParameters,
-                                                               0,
-                                                               SizeOf(TAtmosphereParameters),
-                                                               TpvVulkanBufferUseTemporaryStagingBufferMode.Automatic,
-                                                               false);
+  if assigned(fAtmosphereParametersBuffers[aInFlightFrameIndex]) then begin
+   fAtmosphereParametersBuffers[aInFlightFrameIndex].UploadData(aTransferQueue,
+                                                                aTransferCommandBuffer,
+                                                                aTransferFence,
+                                                                fAtmosphereParameters,
+                                                                0,
+                                                                SizeOf(TAtmosphereParameters),
+                                                                TpvVulkanBufferUseTemporaryStagingBufferMode.Automatic,
+                                                                false);
+  end;
 
  end;
 
