@@ -832,7 +832,9 @@ end;
 
 procedure TpvScene3DAtmosphere.TRendererInstance.Execute(const aInFlightFrameIndex:TpvSizeInt;
                                                          const aCommandBuffer:TpvVulkanCommandBuffer);
-var AtmosphereGlobals:TpvScene3DAtmosphereGlobals;
+var BaseViewIndex,CountViews:TpvSizeInt;
+    InFlightFrameState:TpvScene3DRendererInstance.PInFlightFrameState;
+    AtmosphereGlobals:TpvScene3DAtmosphereGlobals;
     ImageSubresourceRange:TVkImageSubresourceRange;
     ImageMemoryBarriers:array[0..3] of TVkImageMemoryBarrier;
     TransmittanceLUTPushConstants:TpvScene3DAtmosphereGlobals.TTransmittanceLUTPushConstants;
@@ -842,6 +844,11 @@ var AtmosphereGlobals:TpvScene3DAtmosphereGlobals;
 begin
 
  AtmosphereGlobals:=TpvScene3DAtmosphereGlobals(TpvScene3D(fAtmosphere.fScene3D).AtmosphereGlobals);
+
+ InFlightFrameState:=@TpvScene3DRendererInstance(fRendererInstance).InFlightFrameStates[aInFlightFrameIndex];
+
+ BaseViewIndex:=InFlightFrameState^.FinalViewIndex;
+ CountViews:=InFlightFrameState^.CountFinalViews;
 
  begin
 
@@ -887,8 +894,8 @@ begin
                                        0,
                                        nil);
 
-  TransmittanceLUTPushConstants.BaseViewIndex:=0;
-  TransmittanceLUTPushConstants.CountViews:=1;
+  TransmittanceLUTPushConstants.BaseViewIndex:=BaseViewIndex;
+  TransmittanceLUTPushConstants.CountViews:=CountViews;
   TransmittanceLUTPushConstants.Dummy0:=1;
   TransmittanceLUTPushConstants.Dummy1:=1;
   TransmittanceLUTPushConstants.SunDirection:=TpvVector4.InlineableCreate(TpvVector3.Origin,1.0);
@@ -972,8 +979,8 @@ begin
                                        0,
                                        nil);    
 
-  MultiScatteringLUTPushConstants.BaseViewIndex:=0;
-  MultiScatteringLUTPushConstants.CountViews:=1;
+  MultiScatteringLUTPushConstants.BaseViewIndex:=BaseViewIndex;
+  MultiScatteringLUTPushConstants.CountViews:=CountViews;
   MultiScatteringLUTPushConstants.MultipleScatteringFactor:=1;
   MultiScatteringLUTPushConstants.Dummy:=0;
 
