@@ -165,6 +165,7 @@ type TpvScene3DAtmosphere=class;
               fCameraVolumePassDescriptorPool:TpvVulkanDescriptorPool;
               fCameraVolumePassDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
               fRaymarchingPassDescriptorPool:TpvVulkanDescriptorPool;
+              fRaymarchingPassDepthImageViews:array[0..MaxInFlightFrames-1] of TVkImageView;
               fRaymarchingPassDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
              public
               constructor Create(const aAtmosphere:TpvScene3DAtmosphere;const aRendererInstance:TObject);
@@ -647,6 +648,8 @@ begin
  TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.DebugUtils.SetObjectName(fRaymarchingPassDescriptorPool.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'RaymarchingPassDescriptorPool');
 
  for InFlightFrameIndex:=0 to TpvScene3D(fAtmosphere.fScene3D).CountInFlightFrames-1 do begin
+
+  fRaymarchingPassDepthImageViews[InFlightFrameIndex]:=VK_NULL_HANDLE;
 
   fRaymarchingPassDescriptorSets[InFlightFrameIndex]:=TpvVulkanDescriptorSet.Create(fRaymarchingPassDescriptorPool,
                                                                                      TpvScene3DAtmosphereGlobals(TpvScene3D(fAtmosphere.fScene3D).Atmospheres).fRaymarchingPassDescriptorSetLayout);
