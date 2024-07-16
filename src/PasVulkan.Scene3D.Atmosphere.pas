@@ -474,28 +474,6 @@ begin
                                                                                [],
                                                                                false);
 
- {fTransmittanceLUTPassDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(1,
-                                                                               0,
-                                                                               1,
-                                                                               TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
-                                                                               [TVkDescriptorImageInfo.Create(TpvScene3DRenderer(fRendererInstance).Renderer.ClampedSampler.Handle,
-                                                                                                              fTransmittanceTexture.VulkanImageView.Handle,
-                                                                                                              VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
-                                                                               [],
-                                                                               [],
-                                                                               false);
-                                                                      
-  fTransmittanceLUTPassDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(2,
-                                                                               0,
-                                                                               1,
-                                                                               TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
-                                                                               [TVkDescriptorImageInfo.Create(TpvScene3DRenderer(fRendererInstance).Renderer.ClampedSampler.Handle,
-                                                                                                              fMultiScatteringTexture.VulkanImageView.Handle,
-                                                                                                              VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
-                                                                               [],
-                                                                               [],
-                                                                               false);       }
-
   fTransmittanceLUTPassDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(1,
                                                                                0,
                                                                                1,
