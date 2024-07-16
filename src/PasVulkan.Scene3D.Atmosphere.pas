@@ -970,14 +970,13 @@ begin
  if IsVisible then begin
 
   if assigned(fAtmosphereParametersBuffers[aInFlightFrameIndex]) then begin
-   fAtmosphereParametersBuffers[aInFlightFrameIndex].UploadData(aTransferQueue,
-                                                                aTransferCommandBuffer,
-                                                                aTransferFence,
-                                                                fAtmosphereParameters,
-                                                                0,
-                                                                SizeOf(TAtmosphereParameters),
-                                                                TpvVulkanBufferUseTemporaryStagingBufferMode.Automatic,
-                                                                false);
+   TpvScene3D(fScene3D).VulkanDevice.MemoryStaging.Upload(aTransferQueue,
+                                                          aTransferCommandBuffer,
+                                                          aTransferFence,
+                                                          fAtmosphereParameters,
+                                                          fAtmosphereParametersBuffers[aInFlightFrameIndex],
+                                                          0,
+                                                          SizeOf(TAtmosphereParameters));
   end;
 
  end;
