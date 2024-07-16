@@ -23994,7 +23994,9 @@ begin
  finally
   TpvScene3DPlanets(fPlanets).Lock.ReleaseRead;
  end;
- 
+
+ TpvScene3DAtmospheres(fAtmospheres).ProcessReleases;
+
  TpvScene3DAtmospheres(fAtmospheres).Lock.AcquireRead;
  try
   for Index:=0 to TpvScene3DAtmospheres(fAtmospheres).Count-1 do begin
