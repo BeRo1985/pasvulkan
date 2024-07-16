@@ -174,6 +174,8 @@ type TpvScene3DAtmosphere=class;
               destructor Destroy; override;
               procedure AfterConstruction; override;
               procedure BeforeDestruction; override;
+              procedure Execute(const aInFlightFrameIndex:TpvSizeInt;
+                                const aCommandBuffer:TpvVulkanCommandBuffer);
              published
               property Atmosphere:TpvScene3DAtmosphere read fAtmosphere;
               property RendererInstance:TObject read fRendererInstance;
@@ -213,7 +215,10 @@ type TpvScene3DAtmosphere=class;
                         const aTransferQueue:TpvVulkanQueue;
                         const aTransferCommandBuffer:TpvVulkanCommandBuffer;
                         const aTransferFence:TpvVulkanFence);
-      public  
+       procedure Execute(const aInFlightFrameIndex:TpvSizeInt;
+                         const aCommandBuffer:TpvVulkanCommandBuffer;
+                         const aRendererInstance:TObject);
+      public
        property AtmosphereParameters:PAtmosphereParameters read fPointerToAtmosphereParameters;
        property Ready:Boolean read fReady;
        property Uploaded:LongBool read fUploaded;
@@ -825,6 +830,13 @@ begin
  inherited BeforeDestruction;
 end;
 
+procedure TpvScene3DAtmosphere.TRendererInstance.Execute(const aInFlightFrameIndex:TpvSizeInt;
+                                                         const aCommandBuffer:TpvVulkanCommandBuffer);
+begin
+
+
+end;
+
 { TpvScene3DAtmosphere }
 
 constructor TpvScene3DAtmosphere.Create(const aScene3D:TObject);
@@ -983,6 +995,29 @@ begin
 
  fInFlightFrameVisible[aInFlightFrameIndex]:=IsVisible;
  
+end;
+
+procedure TpvScene3DAtmosphere.Execute(const aInFlightFrameIndex:TpvSizeInt;
+                                       const aCommandBuffer:TpvVulkanCommandBuffer;
+                                       const aRendererInstance:TObject);
+var AtmosphereRendererInstance:TpvScene3DAtmosphere.TRendererInstance;
+    AtmosphereRendererInstanceKey:TpvScene3DAtmosphere.TRendererInstance.TKey;
+begin
+
+ if fInFlightFrameVisible[aInFlightFrameIndex] then begin
+
+  AtmosphereRendererInstanceKey:=TpvScene3DAtmosphere.TRendererInstance.TKey.Create(aRendererInstance);
+  AtmosphereRendererInstance:=fRendererInstanceHashMap[AtmosphereRendererInstanceKey];
+  if not assigned(AtmosphereRendererInstance) then begin
+   AtmosphereRendererInstance:=TpvScene3DAtmosphere.TRendererInstance.Create(self,aRendererInstance);
+  end;
+
+  if assigned(AtmosphereRendererInstance) then begin
+   AtmosphereRendererInstance.Execute(aInFlightFrameIndex,aCommandBuffer);
+  end;
+   
+ end;
+
 end;
 
 { TpvScene3DAtmospheres }
