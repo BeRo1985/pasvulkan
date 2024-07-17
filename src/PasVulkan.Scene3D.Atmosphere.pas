@@ -478,7 +478,7 @@ begin
                                                                                1,
                                                                                TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
                                                                                [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,
-                                                                                                              fTransmittanceTexture.VulkanImageView.Handle,
+                                                                                                              fTransmittanceTexture.VulkanArrayImageView.Handle,
                                                                                                               VK_IMAGE_LAYOUT_GENERAL)],
                                                                                [],
                                                                                [],
@@ -519,7 +519,7 @@ begin
                                                                                  1,
                                                                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
                                                                                  [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,
-                                                                                                                fMultiScatteringTexture.VulkanImageView.Handle,
+                                                                                                                fMultiScatteringTexture.VulkanArrayImageView.Handle,
                                                                                                                 VK_IMAGE_LAYOUT_GENERAL)],
                                                                                  [],
                                                                                  [],
@@ -530,7 +530,7 @@ begin
                                                                                  1,
                                                                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
                                                                                  [TVkDescriptorImageInfo.Create(TpvScene3DRenderer(fRendererInstance).Renderer.ClampedSampler.Handle,
-                                                                                                                fTransmittanceTexture.VulkanImageView.Handle,
+                                                                                                                fTransmittanceTexture.VulkanArrayImageView.Handle,
                                                                                                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
                                                                                  [],
                                                                                  [],
@@ -571,7 +571,7 @@ begin
                                                                          1,
                                                                          TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
                                                                          [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,
-                                                                                                        fSkyViewLUTTexture.VulkanImageView.Handle,
+                                                                                                        fSkyViewLUTTexture.VulkanArrayImageView.Handle,
                                                                                                         VK_IMAGE_LAYOUT_GENERAL)],
                                                                          [],
                                                                          [],
@@ -582,7 +582,7 @@ begin
                                                                          1,
                                                                          TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
                                                                          [TVkDescriptorImageInfo.Create(TpvScene3DRenderer(fRendererInstance).Renderer.ClampedSampler.Handle,
-                                                                                                        fTransmittanceTexture.VulkanImageView.Handle,
+                                                                                                        fTransmittanceTexture.VulkanArrayImageView.Handle,
                                                                                                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
                                                                          [],
                                                                          [],
@@ -593,7 +593,7 @@ begin
                                                                          1,
                                                                          TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
                                                                          [TVkDescriptorImageInfo.Create(TpvScene3DRenderer(fRendererInstance).Renderer.ClampedSampler.Handle,
-                                                                                                        fMultiScatteringTexture.VulkanImageView.Handle,
+                                                                                                        fMultiScatteringTexture.VulkanArrayImageView.Handle,
                                                                                                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
                                                                          [],
                                                                          [],
@@ -634,7 +634,7 @@ begin
                                                                            1,
                                                                            TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
                                                                            [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,
-                                                                                                          fCameraVolumeTexture.VulkanImageView.Handle,
+                                                                                                          fCameraVolumeTexture.VulkanArrayImageView.Handle,
                                                                                                           VK_IMAGE_LAYOUT_GENERAL)],
                                                                            [],
                                                                            [],
@@ -645,7 +645,7 @@ begin
                                                                            1,
                                                                            TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
                                                                            [TVkDescriptorImageInfo.Create(TpvScene3DRenderer(fRendererInstance).Renderer.ClampedSampler.Handle,
-                                                                                                          fTransmittanceTexture.VulkanImageView.Handle,
+                                                                                                          fTransmittanceTexture.VulkanArrayImageView.Handle,
                                                                                                           VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
                                                                            [],
                                                                            [],
@@ -656,7 +656,7 @@ begin
                                                                            1,
                                                                            TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
                                                                            [TVkDescriptorImageInfo.Create(TpvScene3DRenderer(fRendererInstance).Renderer.ClampedSampler.Handle,
-                                                                                                          fMultiScatteringTexture.VulkanImageView.Handle,
+                                                                                                          fMultiScatteringTexture.VulkanArrayImageView.Handle,
                                                                                                           VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
                                                                            [],
                                                                            [],
@@ -699,7 +699,7 @@ begin
                                                                           1,
                                                                           TVkDescriptorType(VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT),
                                                                           [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,
-                                                                                                         fCameraVolumeTexture.VulkanImageView.Handle, // Dummy, will be replaced with the actual depth texture attachment
+                                                                                                         VK_NULL_HANDLE, //fCameraVolumeTexture.VulkanArrayImageView.Handle, // Dummy, will be replaced with the actual depth texture attachment
                                                                                                          VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
                                                                           [],
                                                                           [],
@@ -710,7 +710,7 @@ begin
                                                                           1,
                                                                           TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
                                                                           [TVkDescriptorImageInfo.Create(TpvScene3DRenderer(fRendererInstance).Renderer.ClampedSampler.Handle,
-                                                                                                         fSkyViewLUTTexture.VulkanImageView.Handle,
+                                                                                                         fSkyViewLUTTexture.VulkanArrayImageView.Handle,
                                                                                                          VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
                                                                           [],
                                                                           [],
@@ -721,7 +721,7 @@ begin
                                                                           1,
                                                                           TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
                                                                           [TVkDescriptorImageInfo.Create(TpvScene3DRenderer(fRendererInstance).Renderer.ClampedSampler.Handle,
-                                                                                                         fCameraVolumeTexture.VulkanImageView.Handle,
+                                                                                                         fCameraVolumeTexture.VulkanArrayImageView.Handle,
                                                                                                          VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
                                                                           [],
                                                                           [],
@@ -1213,10 +1213,18 @@ end;
 
 destructor TpvScene3DAtmosphere.Destroy;
 begin
+
+ while fRendererInstances.Count>0 do begin
+  fRendererInstances.Items[fRendererInstances.Count-1].Free;
+ end;
  FreeAndNil(fRendererInstances);
+
  FreeAndNil(fRendererInstanceHashMap);
+
  FreeAndNil(fRendererInstanceListLock);
+
  inherited Destroy;
+
 end;
 
 procedure TpvScene3DAtmosphere.AfterConstruction;
