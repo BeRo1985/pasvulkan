@@ -568,8 +568,8 @@ SingleScatteringResult IntegrateScatteredLuminance(const in sampler2D Transmitta
 		}
 
 		// Earth shadow 
-		float tEarth = raySphereIntersectNearest(P, SunDir, earthO + PLANET_RADIUS_OFFSET * UpVector, Atmosphere.BottomRadius);
-		float earthShadow = tEarth >= 0.0 ? 0.0 : 1.0;
+		float tEarth = raySphereIntersectNearest(P, SunDir, earthO + (PLANET_RADIUS_OFFSET * UpVector), Atmosphere.BottomRadius);
+		float earthShadow = (tEarth >= 0.0) ? 0.0 : 1.0;
 
 		// Dual scattering for multi scattering 
 
@@ -594,10 +594,10 @@ SingleScatteringResult IntegrateScatteredLuminance(const in sampler2D Transmitta
 
 #if MULTI_SCATTERING_POWER_SERIE==0
 		// 1 is the integration of luminance over the 4pi of a sphere, and assuming an isotropic phase function of 1.0/(4*PI)
-		result.MultiScatAs1 += throughput * medium.scattering * 1 * dt;
+		result.MultiScatAs1 += throughput * medium.scattering * 1.0 * dt;
 #else
-		vec3 MS = medium.scattering * 1;
-		vec3 MSint = (MS - MS * SampleTransmittance) / medium.extinction;
+		vec3 MS = medium.scattering * 1.0;
+		vec3 MSint = (MS - (MS * SampleTransmittance)) / medium.extinction;
 		result.MultiScatAs1 += throughput * MSint;
 #endif
 
@@ -687,6 +687,32 @@ vec3 GetSunLuminance(vec3 WorldPos, vec3 WorldDir, vec3 sunDirection, float Plan
 		}
 	}
 	return vec3(0.0);
+}
+
+
+void getCameraPositionDirection(out vec3 origin, 
+                                out vec3 direction,
+																const in mat4 viewMatrix,
+																const in mat4 projectionMatrix,
+																const in mat4 inverseViewMatrix,
+																const in mat4 inverseProjectionMatrix,
+																const in vec2 uv){ 
+
+  bool reversedZ = projectionMatrix[2][3] < -1e-7;
+  
+  //bool infiniteFarPlane = reversedZ && ((abs(projectionMatrix[2][2]) < 1e-7) && (abs(projectionMatrix[3][2]) > 1e-7));
+
+  vec4 nearPlane = vec4(fma(uv, vec2(2.0), vec2(-1.0)), reversedZ ? 1.0 : 0.0, 1.0);
+
+  vec4 cameraDirection = vec4((inverseProjectionMatrix * nearPlane).xyz, 0.0); 
+      
+/*vec4 primaryRayOrigin = inverseViewProjectionMatrix * vec4(fma(uv, vec2(2.0), vec2(-1.0)), reversedZ ? 1.0 : 0.0, 1.0);
+  primaryRayOrigin /= primaryRayOrigin.w;*/
+
+  origin = inverseViewMatrix[3].xyz;
+
+  direction = normalize((inverseViewMatrix * cameraDirection).xyz);
+
 }
 
 #endif

@@ -64,10 +64,10 @@ void main() {
   vec2 pixPos = vec2(gl_FragCoord.xy) + vec2(0.5);
   vec2 uv = pixPos / pushConstants.resolution;
 
-  vec3 ClipSpace = vec3(fma(vec2(uv), vec2(2.0), vec2(-1.0)), pushConstants.startDepth);
-  vec4 HViewPos = view.inverseProjectionMatrix * vec4(ClipSpace, 1.0);
-  vec3 WorldDir = normalize(mat3(view.inverseViewMatrix) * (HViewPos.xyz / HViewPos.w));
-  vec3 WorldPos = vec3(0.0, 0.0, atmosphereParameters.BottomRadius);
+  vec3 WorldPos, WorldDir;
+  getCameraPositionDirection(WorldPos, WorldDir, view.viewMatrix, view.projectionMatrix, view.inverseViewMatrix, view.inverseProjectionMatrix, uv);
+
+  WorldPos += vec3(0.0, atmosphereParameters.BottomRadius, 0.0);
 
   float viewHeight = length(WorldPos);
 	vec3 L = vec3(0.0);
@@ -105,8 +105,7 @@ void main() {
 
     mat4 inverseViewProjectionMatrix = view.inverseProjectionMatrix * view.inverseViewMatrix;
 
-    ClipSpace = vec3(fma(vec2(uv), vec2(2.0), vec2(-1.0)), DepthBufferValue);
-    vec4 DepthBufferWorldPos = inverseViewProjectionMatrix * vec4(ClipSpace, 1.0);
+    vec4 DepthBufferWorldPos = inverseViewProjectionMatrix * vec4(fma(vec2(uv), vec2(2.0), vec2(-1.0)), DepthBufferValue, 1.0);
     DepthBufferWorldPos /= DepthBufferWorldPos.w;
 
     float tDepth = length(DepthBufferWorldPos.xyz - (WorldPos + vec3(0.0, 0.0, -atmosphereParameters.BottomRadius)));
