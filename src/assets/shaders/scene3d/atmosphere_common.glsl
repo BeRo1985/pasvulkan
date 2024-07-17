@@ -488,7 +488,7 @@ SingleScatteringResult IntegrateScatteredLuminance(const in sampler2D Transmitta
     tMaxMax = 9000000.0;
   } 
 
-  SingleScatteringResult result;
+  SingleScatteringResult result = SingleScatteringResult( vec3(0.0), vec3(0.0), vec3(0.0), vec3(0.0), vec3(0.0), vec3(0.0) );
 
   vec3 ClipSpace = vec3(fma(uv, vec2(2.0), vec2(-1.0)), 1.0);
 
