@@ -694,7 +694,7 @@ begin
   fRaymarchingPassDescriptorSets[InFlightFrameIndex]:=TpvVulkanDescriptorSet.Create(fRaymarchingPassDescriptorPool,
                                                                                      TpvScene3DAtmosphereGlobals(TpvScene3D(fAtmosphere.fScene3D).AtmosphereGlobals).fRaymarchingPassDescriptorSetLayout);
 
-  fRaymarchingPassDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(0,
+{ fRaymarchingPassDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(0,
                                                                           0,
                                                                           1,
                                                                           TVkDescriptorType(VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT),
@@ -703,7 +703,7 @@ begin
                                                                                                          VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
                                                                           [],
                                                                           [],
-                                                                          false);
+                                                                          false);}
 
   fRaymarchingPassDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(1,
                                                                           0,
@@ -736,7 +736,7 @@ begin
                                                                           [],
                                                                           false);                                                             
 
-  fRaymarchingPassDescriptorSets[InFlightFrameIndex].Flush;
+//fRaymarchingPassDescriptorSets[InFlightFrameIndex].Flush; // Will be flushed later
 
   TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.DebugUtils.SetObjectName(fRaymarchingPassDescriptorSets[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET,'RaymarchingPassDescriptorSets['+IntToStr(InFlightFrameIndex)+']');
 
@@ -1439,7 +1439,7 @@ procedure TpvScene3DAtmosphereGlobals.AllocateResources;
 var Stream:TStream;
 begin
 
- // Transmittance LUT pass descriptor set layout 
+ // Transmittance LUT pass descriptor set layout
  begin
 
   fTransmittanceLUTPassDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(TpvScene3D(fScene3D).VulkanDevice);
