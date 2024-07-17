@@ -135,23 +135,30 @@ Ray createRay(in vec3 p, in vec3 d){
 	return r;
 }
 
-float fromUnitToSubUvs(float u, float resolution){ return ((u + 0.5) / resolution) * (resolution / (resolution + 1.0)); }
-float fromSubUvsToUnit(float u, float resolution){ return ((u - 0.5) / resolution) * (resolution / (resolution - 1.0)); }
+float safeSqrt(float x){
+  return sqrt(max(0.0, x));
+}
+
+float fromUnitToSubUvs(float u, float resolution){ return (u + (0.5 / resolution)) * (resolution / (resolution + 1.0)); }
+float fromSubUvsToUnit(float u, float resolution){ return (u - (0.5 / resolution)) * (resolution / (resolution - 1.0)); }
 
 void UvToLutTransmittanceParams(AtmosphereParameters Atmosphere, out float viewHeight, out float viewZenithCosAngle, in vec2 uv){
 	//uv = vec2(fromSubUvsToUnit(uv.x, TRANSMITTANCE_TEXTURE_WIDTH), fromSubUvsToUnit(uv.y, TRANSMITTANCE_TEXTURE_HEIGHT)); // No real impact so off
 	float x_mu = uv.x;
 	float x_r = uv.y;
 
-	float H = sqrt((Atmosphere.TopRadius * Atmosphere.TopRadius) - (Atmosphere.BottomRadius * Atmosphere.BottomRadius));
+	float H = safeSqrt((Atmosphere.TopRadius * Atmosphere.TopRadius) - (Atmosphere.BottomRadius * Atmosphere.BottomRadius));
 	float rho = H * x_r;
-	viewHeight = sqrt((rho * rho) + (Atmosphere.BottomRadius * Atmosphere.BottomRadius));
+  float localViewHeight = (rho * rho) + (Atmosphere.BottomRadius * Atmosphere.BottomRadius);
+	localViewHeight = safeSqrt(localViewHeight);
+  viewHeight = localViewHeight;
 
-	float d_min = Atmosphere.TopRadius - viewHeight;
+	float d_min = Atmosphere.TopRadius - localViewHeight;
 	float d_max = rho + H;
-	float d = d_min + x_mu * (d_max - d_min);
-	viewZenithCosAngle = (d == 0.0) ? 1.0 : (((H * H) - (rho * rho)) - (d * d)) / (2.0 * viewHeight * d);
-	viewZenithCosAngle = clamp(viewZenithCosAngle, -1.0, 1.0);
+	float d = d_min + (x_mu * (d_max - d_min));
+	float localViewZenithCosAngle = (d == 0.0) ? 1.0 : (((H * H) - (rho * rho)) - (d * d)) / (2.0 * localViewHeight * d);
+	localViewZenithCosAngle = clamp(localViewZenithCosAngle, -1.0, 1.0);
+	viewZenithCosAngle = localViewZenithCosAngle;
 }
 
 #define NONLINEARSKYVIEWLUT 1
@@ -308,7 +315,7 @@ struct MediumSampleRGB {
 
 MediumSampleRGB sampleMediumRGB(in vec3 WorldPos, in AtmosphereParameters Atmosphere){
 
-	const float viewHeight = length(WorldPos) - Atmosphere.BottomRadius;
+	const float viewHeight = max(1e-4, length(WorldPos) - Atmosphere.BottomRadius);
 
 	const float densityMie = exp(Atmosphere.MieDensityExpScale * viewHeight);
 	const float densityRay = exp(Atmosphere.RayleighDensityExpScale * viewHeight);
@@ -362,6 +369,10 @@ vec3 IntegrateOpticalDepth(in vec3 WorldPos,
 													 in float tMaxMax, 
 													 in bool VariableSampleCount){
 	
+  if(tMaxMax < 0.0){
+    tMaxMax = 9000000.0;
+  } 
+
 	// Compute next intersection with atmosphere or ground 
 	// TODO:gs another empirical finding. This removes a white pixel stripe in the Transmittance LUT.
 	vec3 earthO = vec3(0.0, 0.0, -0.001);
@@ -445,9 +456,8 @@ vec3 IntegrateOpticalDepth(in vec3 WorldPos,
 		}
 		vec3 P = WorldPos + t * WorldDir;
 
-	  MediumSampleRGB medium = sampleMediumRGB(P, Atmosphere);
+	    MediumSampleRGB medium = sampleMediumRGB(P, Atmosphere);
 		const vec3 SampleOpticalDepth = medium.extinction * dt;
-		const vec3 SampleTransmittance = exp(-SampleOpticalDepth);
 		OpticalDepth += SampleOpticalDepth;
 
 		tPrev = t;

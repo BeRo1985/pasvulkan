@@ -75,7 +75,7 @@ void main() {
     const bool VariableSampleCount = false;
     const bool MieRayPhase = false;
 #if 1
-    vec3 transmittance = exp(-IntegrateOpticalDepth(
+    vec3 opticalDepth = IntegrateOpticalDepth(
       worldPos, 
       worldDir, 
       uAtmosphereParameters.inAtmosphereParameters.SunDirection.xyz,
@@ -84,9 +84,9 @@ void main() {
       SampleCountIni, 
       DepthBufferValue, 
       VariableSampleCount
-    ));
+    );
 #else
-    vec3 transmittance = exp(-IntegrateScatteredLuminance(
+    vec3 opticalDepth = IntegrateScatteredLuminance(
       uTransmittanceLutTexture,
       uMultiScatTexture,
       viewIndex,
@@ -101,9 +101,10 @@ void main() {
       VariableSampleCount, 
       MieRayPhase,
       -1.0
-    ).OpticalDepth);
+    ).OpticalDepth;
 #endif
 
+    vec3 transmittance = exp(-opticalDepth);
 
     imageStore(uDestinationTexture, ivec3(coord, viewIndex), vec4(transmittance, 1.0));
 
