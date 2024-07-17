@@ -368,6 +368,12 @@ begin
  // Transform
  Transform:=TpvMatrix4x4.Identity;
 
+ // Center
+ Center:=TpvVector4.Origin;
+
+ // Sun direction
+ SunDirection:=TpvVector4.InlineableCreate(0.0,0.90045,0.43497,0.0).Normalize;
+
  // Sun
  SolarIrradiance:=TpvVector4.InlineableCreate(1.0,1.0,1.0,0.0);
  SunAngularRadius:=0.004675;
