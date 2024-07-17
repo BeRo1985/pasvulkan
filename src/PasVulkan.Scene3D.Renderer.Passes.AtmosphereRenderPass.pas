@@ -96,8 +96,8 @@ type { TpvScene3DRendererPassesAtmosphereRenderPass }
 {      fVulkanDescriptorPool:TpvVulkanDescriptorPool;
        fVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fVulkanDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
-       fVulkanPipelineLayout:TpvVulkanPipelineLayout;
-       fPushConstants:TpvScene3DAtmosphereGlobals.TRaymarchingPushConstants;}
+       fVulkanPipelineLayout:TpvVulkanPipelineLayout;}
+       fPushConstants:TpvScene3DAtmosphereGlobals.TRaymarchingPushConstants;
       public
        constructor Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance); reintroduce;
        destructor Destroy; override;
@@ -404,15 +404,32 @@ begin
 end;
 
 procedure TpvScene3DRendererPassesAtmosphereRenderPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
+var InFlightFrameState:TpvScene3DRendererInstance.PInFlightFrameState;
 begin
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
 
- //aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanGraphicsPipeline.Handle);
+ aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanGraphicsPipeline.Handle);
 
-{TpvScene3DAtmospheres(fInstance.Scene3D.Atmospheres).Draw(aInFlightFrameIndex,
+ InFlightFrameState:=@TpvScene3DRendererInstance(fInstance).InFlightFrameStates[aInFlightFrameIndex];
+
+ fPushConstants.BaseViewIndex:=InFlightFrameState^.FinalViewIndex;
+ fPushConstants.CountViews:=InFlightFrameState^.CountFinalViews;
+ if fInstance.ZFar<0.0 then begin
+  fPushConstants.NoHitDepthValue:=0.0;
+ end else begin
+  fPushConstants.NoHitDepthValue:=1.0;
+ end;
+
+ aCommandBuffer.CmdPushConstants(TpvScene3DAtmosphereGlobals(fInstance.Scene3D.AtmosphereGlobals).RaymarchingPipelineLayout.Handle,
+                                 TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_COMPUTE_BIT),
+                                 0,
+                                 SizeOf(TpvScene3DAtmosphereGlobals.TRaymarchingPushConstants),
+                                 @fPushConstants);
+
+ TpvScene3DAtmospheres(fInstance.Scene3D.Atmospheres).Draw(aInFlightFrameIndex,
                                                            aCommandBuffer,
                                                            fResourceDepth.VulkanImageViews[aInFlightFrameIndex].Handle,
-                                                           fInstance);  }
+                                                           fInstance);
 
 end;
 
