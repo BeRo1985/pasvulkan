@@ -4,6 +4,7 @@
 // Based on: https://github.com/sebh/UnrealEngineSkyAtmosphere
 
 #define ILLUMINANCE_IS_ONE
+#define USE_CornetteShanks
 
 #define TRANSMITTANCE_TEXTURE_WIDTH 256
 #define TRANSMITTANCE_TEXTURE_HEIGHT 64
