@@ -61,9 +61,7 @@ void main() {
     mat4 inverseViewMatrix = uView.views[viewIndex].inverseViewMatrix;
     mat4 inverseProjectionMatrix = uView.views[viewIndex].inverseProjectionMatrix;
 
-    gSkyInvViewProjMat = inverseProjectionMatrix * inverseViewMatrix;
-
-    gResolution = size;
+    mat4 SkyInvViewProjMat = inverseProjectionMatrix * inverseViewMatrix;
 
     const vec2 size = vec2(192.0, 108.0);
 
@@ -104,7 +102,7 @@ void main() {
         uTransmittanceLutTexture,
         uMultiScatTexture,
         viewIndex,
-        coord, 
+        uv, 
         worldPos, 
         worldDir, 
         sunDir, 
@@ -114,6 +112,7 @@ void main() {
         depthBufferValue, 
         variableSampleCount, 
         mieRayPhase,
+        SkyInvViewProjMat,
         -1.0
       ); 
       vec3 L = ss.L;

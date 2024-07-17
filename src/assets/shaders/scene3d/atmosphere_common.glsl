@@ -5,6 +5,7 @@
 
 #define ILLUMINANCE_IS_ONE
 #define USE_CornetteShanks
+#define MULTI_SCATTERING_POWER_SERIE 1
 
 #define TRANSMITTANCE_TEXTURE_WIDTH 256
 #define TRANSMITTANCE_TEXTURE_HEIGHT 64
@@ -116,13 +117,9 @@ struct SingleScatteringResult {
 	vec3 NewMultiScatStep1Out;
 };
 
-ivec2 gResolution;
-
-mat4 gSkyInvViewProjMat;
-
 vec2 RayMarchMinMaxSPP = vec2(4.0, 14.0);
 
-#define PLANET_RADIUS_OFFSET 0.01f
+#define PLANET_RADIUS_OFFSET 0.01
 
 struct Ray{
 	vec3 o;
@@ -474,7 +471,7 @@ SingleScatteringResult IntegrateScatteredLuminance(const in sampler2DArray Trans
                                                    const in sampler2DArray MultiScatTexture, 
 #endif
                                                    int viewIndex,
-                                                   in vec2 pixPos, 
+                                                   in vec2 uv, 
                                                    in vec3 WorldPos, 
                                                    in vec3 WorldDir, 
                                                    in vec3 SunDir, 
@@ -484,6 +481,7 @@ SingleScatteringResult IntegrateScatteredLuminance(const in sampler2DArray Trans
                                                    in float DepthBufferValue, 
                                                    in bool VariableSampleCount,
                                                    in bool MieRayPhase, 
+																									 in mat4 SkyInvViewProjMat,
                                                    float tMaxMax){
 
   if(tMaxMax < 0.0){
@@ -492,7 +490,7 @@ SingleScatteringResult IntegrateScatteredLuminance(const in sampler2DArray Trans
 
   SingleScatteringResult result;
 
-  vec3 ClipSpace = vec3(fma(vec2(pixPos) / vec2(gResolution), vec2(2.0), vec2(1.0)), 1.0);
+  vec3 ClipSpace = vec3(fma(uv, vec2(2.0), vec2(-1.0)), 1.0);
 
   // Compute next intersection with atmosphere or ground 
   vec3 earthO = vec3(0.0, 0.0, -0.001);
@@ -515,7 +513,7 @@ SingleScatteringResult IntegrateScatteredLuminance(const in sampler2DArray Trans
 	if(DepthBufferValue >= 0.0){
 		ClipSpace.z = DepthBufferValue;
 		if(ClipSpace.z < 1.0){
-			vec4 DepthBufferWorldPos = gSkyInvViewProjMat * vec4(ClipSpace, 1.0);
+			vec4 DepthBufferWorldPos = SkyInvViewProjMat * vec4(ClipSpace, 1.0);
 			DepthBufferWorldPos /= DepthBufferWorldPos.w;
 
 			float tDepth = length(DepthBufferWorldPos.xyz - (WorldPos + vec3(0.0, 0.0, -Atmosphere.BottomRadius))); // apply earth offset to go back to origin as top of earth mode. 
