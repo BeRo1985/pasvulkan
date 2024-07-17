@@ -798,7 +798,7 @@ begin
 { fRaymarchingPassDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(0,
                                                                           0,
                                                                           1,
-                                                                          TVkDescriptorType(VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT),
+                                                                          TVkDescriptorType(VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE),
                                                                           [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,
                                                                                                          VK_NULL_HANDLE, //fCameraVolumeTexture.VulkanArrayImageView.Handle, // Dummy, will be replaced with the actual depth texture attachment
                                                                                                          VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
@@ -946,7 +946,7 @@ begin
   fRaymarchingPassDescriptorSets[aInFlightFrameIndex].WriteToDescriptorSet(0,
                                                                            0,
                                                                            1,
-                                                                           TVkDescriptorType(VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT),
+                                                                           TVkDescriptorType(VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE),
                                                                            [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,
                                                                                                           aDepthImageView,
                                                                                                           VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
@@ -1875,7 +1875,7 @@ begin
 
   // Subpass depth
   fRaymarchingPassDescriptorSetLayout.AddBinding(0,
-                                                 VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,
+                                                 VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
                                                  1,
                                                  TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                                  []);

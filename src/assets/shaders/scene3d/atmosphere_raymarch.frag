@@ -4,6 +4,7 @@
 #extension GL_ARB_shading_language_420pack : enable
 #extension GL_GOOGLE_include_directive : enable
 #extension GL_EXT_multiview : enable
+#extension GL_EXT_samplerless_texture_functions : enable
 
 /* clang-format off */
 
@@ -28,10 +29,30 @@ layout(push_constant, std140) uniform PushConstants {
 } pushConstants;
 
 #ifdef MSAA
+
+#ifdef MULTIVIEW
+layout(set = 0, binding = 0) uniform texture2DMSArray uDepthTexture;
+#else
+layout(set = 0, binding = 0) uniform texture2DMS uDepthTexture;
+#endif
+
+#else
+
+#ifdef MULTIVIEW
+layout(set = 0, binding = 0) uniform texture2DArray uDepthTexture; 
+#else
+layout(set = 0, binding = 0) uniform texture2D uDepthTexture;
+#endif
+
+#endif
+
+/*
+#ifdef MSAA
 layout(input_attachment_index = 0, set = 0, binding = 0) uniform subpassInputMS uSubpassDepth;
 #else  
 layout(input_attachment_index = 0, set = 0, binding = 0) uniform subpassInput uSubpassDepth;
 #endif
+*/
 
 layout(set = 0, binding = 1) uniform sampler2DArray uSkyViewLUT;
 
@@ -73,10 +94,24 @@ void main() {
 
   float viewHeight = length(WorldPos);
 	vec3 L = vec3(0.0);
+/*  
 #ifdef MSAA
 	float DepthBufferValue = subpassLoad(uSubpassDepth, gl_SampleID).x;
 #else  
 	float DepthBufferValue = subpassLoad(uSubpassDepth).x;
+#endif*/
+#ifdef MSAA
+#ifdef MULTIVIEW
+  float DepthBufferValue = texelFetch(uDepthTexture, ivec3(ivec2(gl_FragCoord.xy), int(gl_ViewIndex)), gl_SampleID).x;
+#else
+  float DepthBufferValue = texelFetch(uDepthTexture, ivec2(gl_FragCoord.xy), gl_SampleID).x;
+#endif
+#else
+#ifdef MULTIVIEW
+  float DepthBufferValue = texelFetch(uDepthTexture, ivec3(ivec2(gl_FragCoord.xy), int(gl_ViewIndex)), 0).x;
+#else
+  float DepthBufferValue = texelFetch(uDepthTexture, ivec2(gl_FragCoord.xy), 0).x;
+#endif
 #endif
 
   vec3 sunDirection = normalize(getSunDirection(uAtmosphereParameters.atmosphereParameters));

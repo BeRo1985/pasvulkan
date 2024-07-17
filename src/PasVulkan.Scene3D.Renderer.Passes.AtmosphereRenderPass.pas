@@ -140,8 +140,8 @@ begin
 
   fResourceDepth:=AddImageDepthInput('resourcetype_depth',
                                      'resource_depth_data',
-                                     VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,
-                                     [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
+                                     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                     []
                                     );
 
   fResourceOutput:=AddImageInput('resourcetype_color_optimized_non_alpha',
@@ -154,10 +154,10 @@ begin
  end else begin
 
   fResourceDepth:=AddImageDepthInput('resourcetype_msaa_depth',
-                                    'resource_msaa_depth_data',
-                                     VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,
-                                     [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
-                                    );
+                                     'resource_msaa_depth_data',
+                                      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                      []
+                                     );
 
   fResourceOutput:=AddImageInput('resourcetype_msaa_color_optimized_non_alpha',
                                  'resource_forwardrendering_msaa_color',
@@ -193,10 +193,18 @@ begin
   Stream.Free;
  end;
 
- if fInstance.Renderer.SurfaceSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
-  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('atmosphere_raymarch_frag.spv');
+ if fInstance.CountSurfaceViews>1 then begin
+  if fInstance.Renderer.SurfaceSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('atmosphere_raymarch_multiview_frag.spv');
+  end else begin
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('atmosphere_raymarch_multiview_msaa_frag.spv');
+  end;
  end else begin
-  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('atmosphere_raymarch_msaa_frag.spv');
+  if fInstance.Renderer.SurfaceSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('atmosphere_raymarch_frag.spv');
+  end else begin
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('atmosphere_raymarch_msaa_frag.spv');
+  end;
  end;
  try
   fVulkanFragmentShaderModule:=TpvVulkanShaderModule.Create(fInstance.Renderer.VulkanDevice,Stream);
