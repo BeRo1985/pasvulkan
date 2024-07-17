@@ -26,7 +26,7 @@ layout(push_constant, std140) uniform PushConstants {
 layout(set = 0, binding = 0, rgba32f) uniform image2D uDestinationTexture;
  
 layout(set = 0, binding = 1, std430) buffer AtmosphereParametersBuffer {
-  InAtmosphereParameters inAtmosphereParameters;
+  AtmosphereParameters atmosphereParameters;
 } uAtmosphereParameters;
 
 struct View {
@@ -52,7 +52,7 @@ void main() {
   
   if(all(greaterThanEqual(coord, ivec2(0))) && all(lessThan(coord, size)) && (viewIndex < pushConstants.countViews)) {
 
-    atmosphereParameters = getAtmosphereParameters(uAtmosphereParameters.inAtmosphereParameters);
+    atmosphereParameters = uAtmosphereParameters.atmosphereParameters;
 
     vec2 uv = (vec2(coord) + vec2(0.5)) / vec2(size);
     float viewHeight;
@@ -71,7 +71,7 @@ void main() {
     vec3 opticalDepth = IntegrateOpticalDepth(
       worldPos, 
       worldDir, 
-      uAtmosphereParameters.inAtmosphereParameters.SunDirection.xyz,
+      getSunDirection(atmosphereParameters),
       atmosphereParameters, 
       ground, 
       SampleCountIni, 
@@ -86,7 +86,7 @@ void main() {
       coord, 
       worldPos, 
       worldDir, 
-      pushConstants.sunDirection.xyz,
+      getSunDirection(atmosphereParameters),
       atmosphereParameters, 
       ground, 
       SampleCountIni, 

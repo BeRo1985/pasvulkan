@@ -42,10 +42,12 @@ struct DensityProfile {
 };
 
 struct AtmosphereParameters {
-	vec4 RayleighScattering;
-	vec4 MieScattering;
-	vec4 MieExtinction;
-	vec4 MieAbsorption;
+	mat4 transform;
+	mat4 inverseTransform;
+	vec4 RayleighScattering; // w = Mu_S_min
+	vec4 MieScattering; // w = sun direction X
+	vec4 MieExtinction; // w = sun direction Y
+	vec4 MieAbsorption; // w = sun direction Z
 	vec4 AbsorptionExtinction;
 	vec4 GroundAlbedo;
   float BottomRadius;
@@ -60,49 +62,8 @@ struct AtmosphereParameters {
 	float AbsorptionDensity1LinearTerm;
 };
 
-struct InAtmosphereParameters {
-  mat4 transform;
-  DensityProfile RayleighDensity;
-  DensityProfile MieDensity;
-  DensityProfile AbsorptionDensity;
-  vec4 Center;
-	vec4 SunDirection;
-  vec4 SolarIrradiance;
-  vec4 RayleighScattering;
-  vec4 MieScattering;
-  vec4 MieExtinction;
-  vec4 AbsorptionExtinction;
-  vec4 GroundAlbedo;
-  float MiePhaseFunctionG;
-  float SunAngularRadius;
-  float BottomRadius;
-  float TopRadius;
-  float MuSMin;
-};
-
-AtmosphereParameters getAtmosphereParameters(const in InAtmosphereParameters inAtmosphereParameters){
-  AtmosphereParameters atmosphereParameters;
-  atmosphereParameters.BottomRadius = inAtmosphereParameters.BottomRadius;
-  atmosphereParameters.TopRadius = inAtmosphereParameters.TopRadius;
-  atmosphereParameters.RayleighDensityExpScale = inAtmosphereParameters.RayleighDensity.Layers[1].ExpScale;
-  atmosphereParameters.RayleighScattering = inAtmosphereParameters.RayleighScattering;
-
-  atmosphereParameters.MieDensityExpScale = inAtmosphereParameters.MieDensity.Layers[1].ExpScale;
-  atmosphereParameters.MieScattering = inAtmosphereParameters.MieScattering;
-  atmosphereParameters.MieExtinction = inAtmosphereParameters.MieExtinction;
-  atmosphereParameters.MieAbsorption = inAtmosphereParameters.AbsorptionExtinction;
-  atmosphereParameters.MiePhaseG = inAtmosphereParameters.MiePhaseFunctionG;
-
-  atmosphereParameters.AbsorptionDensity0LayerWidth = inAtmosphereParameters.AbsorptionDensity.Layers[0].Width;
-  atmosphereParameters.AbsorptionDensity0ConstantTerm = inAtmosphereParameters.AbsorptionDensity.Layers[0].ConstantTerm;
-  atmosphereParameters.AbsorptionDensity0LinearTerm = inAtmosphereParameters.AbsorptionDensity.Layers[0].LinearTerm;
-  atmosphereParameters.AbsorptionDensity1ConstantTerm = inAtmosphereParameters.AbsorptionDensity.Layers[1].ConstantTerm;
-  atmosphereParameters.AbsorptionDensity1LinearTerm = inAtmosphereParameters.AbsorptionDensity.Layers[1].LinearTerm;
-  atmosphereParameters.AbsorptionExtinction = inAtmosphereParameters.AbsorptionExtinction;
-
-  atmosphereParameters.GroundAlbedo = inAtmosphereParameters.GroundAlbedo;
-
-  return atmosphereParameters;
+vec3 getSunDirection(const in AtmosphereParameters atmosphereParameters){
+	return vec3(atmosphereParameters.MieScattering.w, atmosphereParameters.MieExtinction.w, atmosphereParameters.MieAbsorption.w);
 }
 
 struct SingleScatteringResult {

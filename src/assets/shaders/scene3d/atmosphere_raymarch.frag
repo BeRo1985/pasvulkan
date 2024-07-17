@@ -38,7 +38,7 @@ layout(set = 0, binding = 1) uniform sampler2DArray uSkyViewLUT;
 layout(set = 0, binding = 2) uniform sampler2DArray uCameraVolume;
 
 layout(set = 0, binding = 3, std430) buffer AtmosphereParametersBuffer {
-  InAtmosphereParameters inAtmosphereParameters;
+  AtmosphereParameters atmosphereParameters;
 } uAtmosphereParameters;
 
 struct View {
@@ -56,7 +56,7 @@ AtmosphereParameters atmosphereParameters;
  
 void main() {
 
-  atmosphereParameters = getAtmosphereParameters(uAtmosphereParameters.inAtmosphereParameters);
+  atmosphereParameters = uAtmosphereParameters.atmosphereParameters;
 
   int viewIndex = pushConstants.baseViewIndex + int(gl_ViewIndex);
   View view = uView.views[viewIndex];
@@ -77,7 +77,7 @@ void main() {
 	float DepthBufferValue = subpassLoad(uSubpassDepth).x;
 #endif
 
-  vec3 sunDirection = normalize(uAtmosphereParameters.inAtmosphereParameters.SunDirection.xyz);
+  vec3 sunDirection = normalize(getSunDirection(uAtmosphereParameters.atmosphereParameters));
 
 	if((viewHeight < atmosphereParameters.TopRadius) && (DepthBufferValue == pushConstants.noHitDepthValue)){
 

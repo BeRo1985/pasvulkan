@@ -30,7 +30,7 @@ layout(set = 0, binding = 1) uniform sampler2D uTransmittanceLutTexture;
 layout(set = 0, binding = 2) uniform sampler2DArray uMultiScatTexture;
 
 layout(set = 0, binding = 3, std430) buffer AtmosphereParametersBuffer {
-  InAtmosphereParameters inAtmosphereParameters;
+  AtmosphereParameters atmosphereParameters;
 } uAtmosphereParameters;
 
 struct View {
@@ -56,7 +56,7 @@ void main() {
   
   if(all(greaterThanEqual(coord, ivec2(0))) && all(lessThan(coord, size)) && (viewIndex < pushConstants.countViews)) {
 
-    atmosphereParameters = getAtmosphereParameters(uAtmosphereParameters.inAtmosphereParameters);
+    atmosphereParameters = uAtmosphereParameters.atmosphereParameters;
 
     mat4 inverseViewMatrix = uView.views[viewIndex].inverseViewMatrix;
     mat4 inverseProjectionMatrix = uView.views[viewIndex].inverseProjectionMatrix;

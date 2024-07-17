@@ -139,6 +139,30 @@ type TpvScene3DAtmosphere=class;
               procedure InitializeEarthAtmosphere;
             end;
             PAtmosphereParameters=^TAtmosphereParameters;
+            { TGPUAtmosphereParameters }
+            TGPUAtmosphereParameters=packed record
+             public
+              Transform:TpvMatrix4x4; // Transform of the atmosphere for the case that the atmosphere is not centered at the origin (e.g. multiple planets)
+              InverseTransform:TpvMatrix4x4; // Transform of the atmosphere for the case that the atmosphere is not centered at the origin (e.g. multiple planets)
+              RayleighScattering:TpvVector4; // w = Mu_S_min
+              MieScattering:TpvVector4; // w = sun direction X
+              MieExtinction:TpvVector4; // w = sun direction Y
+              MieAbsorption:TpvVector4; // w = sun direction Z
+              AbsorptionExtinction:TpvVector4;
+              GroundAlbedo:TpvVector4;
+              BottomRadius:TpvFloat;
+              TopRadius:TpvFloat;
+              RayleighDensityExpScale:TpvFloat;
+              MieDensityExpScale:TpvFloat;
+              MiePhaseG:TpvFloat;
+              AbsorptionDensity0LayerWidth:TpvFloat;
+              AbsorptionDensity0ConstantTerm:TpvFloat;
+              AbsorptionDensity0LinearTerm:TpvFloat;
+              AbsorptionDensity1ConstantTerm:TpvFloat;
+              AbsorptionDensity1LinearTerm:TpvFloat;              
+              procedure Assign(const aAtmosphereParameters:TAtmosphereParameters);
+            end;
+            PGPUAtmosphereParameters=^TGPUAtmosphereParameters;
             { TRendererInstance }
             TRendererInstance=class
              public
@@ -194,6 +218,7 @@ type TpvScene3DAtmosphere=class;
        fScene3D:TObject;
        fAtmosphereParameters:TAtmosphereParameters;
        fPointerToAtmosphereParameters:PAtmosphereParameters;
+       fGPUAtmosphereParameters:TGPUAtmosphereParameters;
        fAtmosphereParametersBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
        fRendererInstances:TRendererInstances;
        fRendererInstanceHashMap:TRendererInstanceHashMap;
@@ -404,6 +429,37 @@ begin
  MuSMin:=cos(PI*120.0/180.0);
 
 end;
+
+{ TpvScene3DAtmosphere.TGPUAtmosphereParameters }
+
+procedure TpvScene3DAtmosphere.TGPUAtmosphereParameters.Assign(const aAtmosphereParameters:TAtmosphereParameters);
+begin
+
+ Transform:=aAtmosphereParameters.Transform;
+ InverseTransform:=Transform.Inverse;
+
+ BottomRadius:=aAtmosphereParameters.BottomRadius;
+ TopRadius:=aAtmosphereParameters.TopRadius;
+ RayleighDensityExpScale:=aAtmosphereParameters.RayleighDensity.Layers[1].ExpScale;
+ RayleighScattering:=TpvVector4.InlineableCreate(aAtmosphereParameters.RayleighScattering.xyz,aAtmosphereParameters.MuSMin);
+
+ MieDensityExpScale:=aAtmosphereParameters.MieDensity.Layers[1].ExpScale;
+ MieScattering:=TpvVector4.InlineableCreate(aAtmosphereParameters.MieScattering.xyz,aAtmosphereParameters.SunDirection.x);
+ MieExtinction:=TpvVector4.InlineableCreate(aAtmosphereParameters.MieExtinction.xyz,aAtmosphereParameters.SunDirection.y);
+ MieAbsorption:=TpvVector4.InlineableCreate(aAtmosphereParameters.AbsorptionExtinction.xyz,aAtmosphereParameters.SunDirection.z);
+ MiePhaseG:=aAtmosphereParameters.MiePhaseFunctionG;
+
+ AbsorptionDensity0LayerWidth:=aAtmosphereParameters.AbsorptionDensity.Layers[0].Width;
+ AbsorptionDensity0ConstantTerm:=aAtmosphereParameters.AbsorptionDensity.Layers[0].ConstantTerm;
+ AbsorptionDensity0LinearTerm:=aAtmosphereParameters.AbsorptionDensity.Layers[0].LinearTerm;
+ AbsorptionDensity1ConstantTerm:=aAtmosphereParameters.AbsorptionDensity.Layers[1].ConstantTerm;
+ AbsorptionDensity1LinearTerm:=aAtmosphereParameters.AbsorptionDensity.Layers[1].LinearTerm;
+ AbsorptionExtinction:=aAtmosphereParameters.AbsorptionExtinction;
+
+ GroundAlbedo:=aAtmosphereParameters.GroundAlbedo;
+ 
+end;
+
 
 { TpvScene3DAtmosphere.TRendererInstance.TKey }
 
@@ -1293,7 +1349,7 @@ begin
   for InFlightFrameIndex:=0 to TpvScene3D(fScene3D).CountInFlightFrames-1 do begin
 
    fAtmosphereParametersBuffers[InFlightFrameIndex]:=TpvVulkanBuffer.Create(TpvScene3D(fScene3D).VulkanDevice,
-                                                                            SizeOf(TAtmosphereParameters),
+                                                                            SizeOf(TGPUAtmosphereParameters),
                                                                             TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or
                                                                             TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or
                                                                             TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT_KHR),
@@ -1343,13 +1399,17 @@ begin
  if IsVisible then begin
 
   if assigned(fAtmosphereParametersBuffers[aInFlightFrameIndex]) then begin
+   
+   fGPUAtmosphereParameters.Assign(fAtmosphereParameters);
+
    TpvScene3D(fScene3D).VulkanDevice.MemoryStaging.Upload(aTransferQueue,
                                                           aTransferCommandBuffer,
                                                           aTransferFence,
-                                                          fAtmosphereParameters,
+                                                          fGPUAtmosphereParameters,
                                                           fAtmosphereParametersBuffers[aInFlightFrameIndex],
                                                           0,
-                                                          SizeOf(TAtmosphereParameters));
+                                                          SizeOf(TGPUAtmosphereParameters));
+
   end;
 
  end;
