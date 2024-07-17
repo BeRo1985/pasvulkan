@@ -72,6 +72,7 @@ uses SysUtils,
      PasVulkan.Application,
      PasVulkan.FrameGraph,
      PasVulkan.Scene3D,
+     PasVulkan.Scene3D.Atmosphere,
      PasVulkan.Scene3D.Renderer.Globals,
      PasVulkan.Scene3D.Renderer,
      PasVulkan.Scene3D.Renderer.Instance,
@@ -80,11 +81,6 @@ uses SysUtils,
 type { TpvScene3DRendererPassesAtmosphereRenderPass }
      TpvScene3DRendererPassesAtmosphereRenderPass=class(TpvFrameGraph.TRenderPass)
       public
-       type TPushConstants=record
-             BaseViewIndex:TpvInt32;
-             CountViews:TpvInt32;
-             NoHitDepthValue:TpvFloat;
-            end;
       private
        fInstance:TpvScene3DRendererInstance;
        fVulkanRenderPass:TpvVulkanRenderPass;
@@ -97,12 +93,11 @@ type { TpvScene3DRendererPassesAtmosphereRenderPass }
        fVulkanPipelineShaderStageVertex:TpvVulkanPipelineShaderStage;
        fVulkanPipelineShaderStageFragment:TpvVulkanPipelineShaderStage;
        fVulkanGraphicsPipeline:TpvVulkanGraphicsPipeline;
-       fVulkanDescriptorPool:TpvVulkanDescriptorPool;
+{      fVulkanDescriptorPool:TpvVulkanDescriptorPool;
        fVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fVulkanDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
        fVulkanPipelineLayout:TpvVulkanPipelineLayout;
-       fFactor:TpvScalar;
-       fPushConstants:TpvScene3DRendererPassesAtmosphereRenderPass.TPushConstants;
+       fPushConstants:TpvScene3DAtmosphereGlobals.TRaymarchingPushConstants;}
       public
        constructor Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance); reintroduce;
        destructor Destroy; override;
@@ -231,33 +226,13 @@ begin
 end;
 
 procedure TpvScene3DRendererPassesAtmosphereRenderPass.AcquireVolatileResources;
-const MinusLog1d25OverLog2=-0.32192809488736235;
 var InFlightFrameIndex:TpvSizeInt;
 begin
  inherited AcquireVolatileResources;
 
-(*
-  // fFactor:=1.0/pow(1.25,Log2(Min(fResourceOutput.Width,fResourceOutput.Height)));
- // optimized to:
- // fFactor:=pow(Min(fResourceOutput.Width,fResourceOutput.Height),MinusLog1d25OverLog2);
- // optimized to:
- fFactor:=exp(ln(Min(fResourceOutput.Width,fResourceOutput.Height))*MinusLog1d25OverLog2);
-
- fPushConstants.Factor:=fFactor*0.4;
- fPushConstants.BloomFactor:=0.9;
- fPushConstants.LensflaresFactor:=1.0-fPushConstants.BloomFactor;
- fPushConstants.BloomLensflaresFactor:=1.0;
- fPushConstants.CountGhosts:=8;
- fPushConstants.LensStarRotationAngle:=0.0;
- fPushConstants.AspectRatio:=fResourceOutput.Width/fResourceOutput.Height;
- fPushConstants.InverseAspectRatio:=fResourceOutput.Height/fResourceOutput.Width;
- fPushConstants.Dispersal:=0.3;
- fPushConstants.HaloWidth:=0.5;
- fPushConstants.Distortion:=1.5;
-
  fVulkanRenderPass:=VulkanRenderPass;
 
- fVulkanDescriptorPool:=TpvVulkanDescriptorPool.Create(fInstance.Renderer.VulkanDevice,
+{fVulkanDescriptorPool:=TpvVulkanDescriptorPool.Create(fInstance.Renderer.VulkanDevice,
                                                        TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
                                                        fInstance.Renderer.CountInFlightFrames);
  fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,1*fInstance.Renderer.CountInFlightFrames);
@@ -324,13 +299,13 @@ begin
  fVulkanPipelineLayout:=TpvVulkanPipelineLayout.Create(fInstance.Renderer.VulkanDevice);
  fVulkanPipelineLayout.AddDescriptorSetLayout(fVulkanDescriptorSetLayout);
  fVulkanPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),0,SizeOf(TpvScene3DRendererPassesAtmosphereRenderPass.TPushConstants));
- fVulkanPipelineLayout.Initialize;
+ fVulkanPipelineLayout.Initialize;}
 
  fVulkanGraphicsPipeline:=TpvVulkanGraphicsPipeline.Create(fInstance.Renderer.VulkanDevice,
                                                            fInstance.Renderer.VulkanPipelineCache,
                                                            0,
                                                            [],
-                                                           fVulkanPipelineLayout,
+                                                           TpvScene3DAtmosphereGlobals(fInstance.Scene3D.AtmosphereGlobals).RaymarchingPipelineLayout,
                                                            fVulkanRenderPass,
                                                            VulkanRenderPassSubpassIndex,
                                                            nil,
@@ -356,7 +331,7 @@ begin
  fVulkanGraphicsPipeline.RasterizationState.DepthBiasSlopeFactor:=0.0;
  fVulkanGraphicsPipeline.RasterizationState.LineWidth:=1.0;
 
- fVulkanGraphicsPipeline.MultisampleState.RasterizationSamples:=VK_SAMPLE_COUNT_1_BIT;
+ fVulkanGraphicsPipeline.MultisampleState.RasterizationSamples:=fInstance.Renderer.SurfaceSampleCountFlagBits;
  fVulkanGraphicsPipeline.MultisampleState.SampleShadingEnable:=false;
  fVulkanGraphicsPipeline.MultisampleState.MinSampleShading:=0.0;
  fVulkanGraphicsPipeline.MultisampleState.CountSampleMasks:=0;
@@ -369,7 +344,7 @@ begin
  fVulkanGraphicsPipeline.ColorBlendState.BlendConstants[1]:=0.0;
  fVulkanGraphicsPipeline.ColorBlendState.BlendConstants[2]:=0.0;
  fVulkanGraphicsPipeline.ColorBlendState.BlendConstants[3]:=0.0;
- fVulkanGraphicsPipeline.ColorBlendState.AddColorBlendAttachmentState(false,
+ fVulkanGraphicsPipeline.ColorBlendState.AddColorBlendAttachmentState(true,
                                                                       VK_BLEND_FACTOR_SRC_ALPHA,
                                                                       VK_BLEND_FACTOR_DST_ALPHA,
                                                                       VK_BLEND_OP_ADD,
@@ -389,13 +364,15 @@ begin
 
  fVulkanGraphicsPipeline.Initialize;
 
- fVulkanGraphicsPipeline.FreeMemory;   *)
+ fVulkanGraphicsPipeline.FreeMemory;
 
 end;
 
 procedure TpvScene3DRendererPassesAtmosphereRenderPass.ReleaseVolatileResources;
 var InFlightFrameIndex:TpvSizeInt;
 begin
+
+ FreeAndNil(fVulkanGraphicsPipeline);
 (*
  FreeAndNil(fVulkanGraphicsPipeline);
 
@@ -409,8 +386,10 @@ begin
 
  FreeAndNil(fVulkanDescriptorPool);
 
- fVulkanRenderPass:=nil;
   *)
+
+ fVulkanRenderPass:=nil;
+
  inherited ReleaseVolatileResources;
 end;
 

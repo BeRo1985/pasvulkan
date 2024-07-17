@@ -350,6 +350,14 @@ type TpvScene3DAtmosphere=class;
       published
        property Scene3D:TObject read fScene3D;
        property Atmospheres:TpvScene3DAtmospheres read fAtmospheres;
+      public
+       property TransmittanceLUTPassDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fTransmittanceLUTPassDescriptorSetLayout;
+       property MultiScatteringLUTPassDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fMultiScatteringLUTPassDescriptorSetLayout;
+       property SkyViewLUTPassDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fSkyViewLUTPassDescriptorSetLayout;
+       property CameraVolumePassDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fCameraVolumePassDescriptorSetLayout;
+       property RaymarchingPassDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fRaymarchingPassDescriptorSetLayout;
+       property GlobalVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fGlobalVulkanDescriptorSetLayout;
+       property RaymarchingPipelineLayout:TpvVulkanPipelineLayout read fRaymarchingPipelineLayout;
      end;
 
      { TpvScene3DAtmosphereRendererInstance }
