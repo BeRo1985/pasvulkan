@@ -22473,11 +22473,17 @@ begin
 
  FreeAndNil(fGlobalVulkanDescriptorSetLayout);
 
+ while TpvScene3DPlanets(fPlanets).Count>0 do begin
+  TpvScene3DPlanets(fPlanets)[TpvScene3DPlanets(fPlanets).Count-1].Free;
+ end;
  FreeAndNil(fPlanets);
 
- FreeAndNil(fAtmosphereGlobals);
-
+ while TpvScene3DAtmospheres(fAtmospheres).Count>0 do begin
+  TpvScene3DAtmospheres(fAtmospheres)[TpvScene3DAtmospheres(fAtmospheres).Count-1].Free;
+ end;
  FreeAndNil(fAtmospheres);
+
+ FreeAndNil(fAtmosphereGlobals);
 
  while fGroupInstances.Count>0 do begin
   fGroupInstances[fGroupInstances.Count-1].Free;

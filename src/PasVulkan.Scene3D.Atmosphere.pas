@@ -1235,7 +1235,7 @@ end;
 procedure TpvScene3DAtmosphere.BeforeDestruction;
 var Index:TpvSizeInt;
 begin
- if assigned(fScene3D) then begin
+ if assigned(fScene3D) and assigned(TpvScene3D(fScene3D).Atmospheres) then begin
   TpvScene3DAtmospheres(TpvScene3D(fScene3D).Atmospheres).Lock.AcquireWrite;
   try
    Index:=TpvScene3DAtmospheres(TpvScene3D(fScene3D).Atmospheres).IndexOf(self);
