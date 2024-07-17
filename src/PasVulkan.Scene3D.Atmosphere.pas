@@ -212,6 +212,9 @@ type TpvScene3DAtmosphere=class;
               procedure ReleaseGraphicsPipeline;
               procedure Execute(const aInFlightFrameIndex:TpvSizeInt;
                                 const aCommandBuffer:TpvVulkanCommandBuffer);
+              procedure Draw(const aInFlightFrameIndex:TpvSizeInt;
+                             const aCommandBuffer:TpvVulkanCommandBuffer;
+                             const aDepthImageView:TVkImageView);
              published
               property Atmosphere:TpvScene3DAtmosphere read fAtmosphere;
               property RendererInstance:TObject read fRendererInstance;
@@ -255,6 +258,10 @@ type TpvScene3DAtmosphere=class;
        procedure Execute(const aInFlightFrameIndex:TpvSizeInt;
                          const aCommandBuffer:TpvVulkanCommandBuffer;
                          const aRendererInstance:TObject);
+       procedure Draw(const aInFlightFrameIndex:TpvSizeInt;
+                      const aCommandBuffer:TpvVulkanCommandBuffer;
+                      const aDepthImageView:TVkImageView; 
+                      const aRendererInstance:TObject);
       public
        property AtmosphereParameters:PAtmosphereParameters read fPointerToAtmosphereParameters;
        property Ready:TPasMPBool32 read fReady;
@@ -271,6 +278,10 @@ type TpvScene3DAtmosphere=class;
        constructor Create(const aScene3D:TObject); reintroduce;
        destructor Destroy; override;
        procedure ProcessReleases;
+       procedure Draw(const aInFlightFrameIndex:TpvSizeInt;
+                      const aCommandBuffer:TpvVulkanCommandBuffer;
+                      const aDepthImageView:TVkImageView;
+                      const aRendererInstance:TObject);
       published
        property Scene3D:TObject read fScene3D;
        property Lock:TPasMPMultipleReaderSingleWriterLock read fLock;
@@ -1391,6 +1402,29 @@ begin
 
 end;
 
+procedure TpvScene3DAtmosphere.TRendererInstance.Draw(const aInFlightFrameIndex:TpvSizeInt;
+                                                      const aCommandBuffer:TpvVulkanCommandBuffer;
+                                                      const aDepthImageView:TVkImageView);
+var DescriptorSets:array[0..1] of TVkDescriptorSet;
+begin
+
+ SetDepthImageView(aInFlightFrameIndex,aDepthImageView);
+
+ DescriptorSets[0]:=fRaymarchingPassDescriptorSets[aInFlightFrameIndex].Handle;
+ DescriptorSets[1]:=fGlobalDescriptorSets[aInFlightFrameIndex].Handle;
+
+ aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS, 
+                                      TpvScene3DAtmosphereGlobals(TpvScene3D(fAtmosphere.fScene3D).AtmosphereGlobals).fRaymarchingPipelineLayout.Handle,
+                                      0,
+                                      2,
+                                      @DescriptorSets,
+                                      0,
+                                      nil);
+
+ aCommandBuffer.CmdDraw(3,1,0,0);
+
+end;
+
 { TpvScene3DAtmosphere }
 
 constructor TpvScene3DAtmosphere.Create(const aScene3D:TObject);
@@ -1588,6 +1622,30 @@ begin
 
 end;
 
+procedure TpvScene3DAtmosphere.Draw(const aInFlightFrameIndex:TpvSizeInt;
+                                    const aCommandBuffer:TpvVulkanCommandBuffer;
+                                    const aDepthImageView:TVkImageView;
+                                    const aRendererInstance:TObject);
+var AtmosphereRendererInstance:TpvScene3DAtmosphere.TRendererInstance;
+    AtmosphereRendererInstanceKey:TpvScene3DAtmosphere.TRendererInstance.TKey;
+begin
+
+ if fInFlightFrameVisible[aInFlightFrameIndex] then begin
+
+  AtmosphereRendererInstanceKey:=TpvScene3DAtmosphere.TRendererInstance.TKey.Create(aRendererInstance);
+  AtmosphereRendererInstance:=fRendererInstanceHashMap[AtmosphereRendererInstanceKey];
+  if not assigned(AtmosphereRendererInstance) then begin
+   AtmosphereRendererInstance:=TpvScene3DAtmosphere.TRendererInstance.Create(self,aRendererInstance);
+  end;
+
+  if assigned(AtmosphereRendererInstance) then begin
+   AtmosphereRendererInstance.Draw(aInFlightFrameIndex,aCommandBuffer,aDepthImageView);
+  end;
+
+ end;
+
+end;
+
 { TpvScene3DAtmospheres }
 
 constructor TpvScene3DAtmospheres.Create(const aScene3D:TObject);
@@ -1627,6 +1685,32 @@ begin
   fLock.ReleaseRead;
  end; 
 end;
+
+procedure TpvScene3DAtmospheres.Draw(const aInFlightFrameIndex:TpvSizeInt;
+                                     const aCommandBuffer:TpvVulkanCommandBuffer;
+                                     const aDepthImageView:TVkImageView;
+                                     const aRendererInstance:TObject);
+var Index:TpvSizeInt;
+    Atmosphere:TpvScene3DAtmosphere;
+begin
+ fLock.AcquireRead;
+ try
+
+  if Count>0 then begin
+
+   for Index:=0 to Count-1 do begin
+    Atmosphere:=Items[Index];
+    if assigned(Atmosphere) then begin
+     Atmosphere.Draw(aInFlightFrameIndex,aCommandBuffer,aDepthImageView,aRendererInstance);
+    end;
+   end;
+
+  end;
+
+ finally
+  fLock.ReleaseRead;
+ end;
+end; 
 
 { TpvScene3DAtmosphereGlobals }
 

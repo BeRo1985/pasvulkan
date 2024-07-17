@@ -374,7 +374,6 @@ begin
 
  FreeAndNil(fVulkanGraphicsPipeline);
 (*
- FreeAndNil(fVulkanGraphicsPipeline);
 
  FreeAndNil(fVulkanPipelineLayout);
 
@@ -399,9 +398,11 @@ begin
 end;
 
 procedure TpvScene3DRendererPassesAtmosphereRenderPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
-var Matrix:TpvMatrix4x4;
 begin
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
+
+ aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanGraphicsPipeline.Handle);
+
 (*Matrix:=fInstance.Views[aInFlightFrameIndex].Items[fInstance.InFlightFrameStates[aInFlightFrameIndex].FinalViewIndex].ViewMatrix;
  fPushConstants.LensStarRotationAngle:=(Matrix.RawComponents[0,0]+Matrix.RawComponents[1,1]+Matrix.RawComponents[2,2])*(pi/3.0);
  aCommandBuffer.CmdPushConstants(fVulkanPipelineLayout.Handle,
@@ -414,7 +415,6 @@ begin
                                       0,
                                       1,
                                       @fVulkanDescriptorSets[aInFlightFrameIndex].Handle,0,nil);
- aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanGraphicsPipeline.Handle);
  aCommandBuffer.CmdDraw(3,1,0,0);
 
  *)
