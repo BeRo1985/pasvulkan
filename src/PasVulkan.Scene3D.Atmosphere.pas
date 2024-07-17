@@ -1214,6 +1214,8 @@ end;
 destructor TpvScene3DAtmosphere.Destroy;
 begin
 
+ Unload;
+
  while fRendererInstances.Count>0 do begin
   fRendererInstances.Items[fRendererInstances.Count-1].Free;
  end;
