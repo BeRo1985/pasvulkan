@@ -892,6 +892,7 @@ uses PasVulkan.Scene3D.Atmosphere,
      PasVulkan.Scene3D.Renderer.Passes.ReflectionProbeComputePass,
 //   PasVulkan.Scene3D.Renderer.Passes.PlanetWaterPrepassComputePass,
      PasVulkan.Scene3D.Renderer.Passes.ForwardRenderPass,
+     PasVulkan.Scene3D.Renderer.Passes.AtmosphereRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.ForwardResolveRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.ForwardRenderMipMapComputePass,
      PasVulkan.Scene3D.Renderer.Passes.WaterRenderPass,
@@ -999,6 +1000,7 @@ type TpvScene3DRendererInstancePasses=class
        fReflectionProbeComputePassLambertian:TpvScene3DRendererPassesReflectionProbeComputePass;
 //     fPlanetWaterPrepassComputePass:TpvScene3DRendererPassesPlanetWaterPrepassComputePass;
        fForwardRenderPass:TpvScene3DRendererPassesForwardRenderPass;
+       fAtmosphereRenderPass:TpvScene3DRendererPassesAtmosphereRenderPass;
        fForwardResolveRenderPass:TpvScene3DRendererPassesForwardResolveRenderPass;
        fWaterRenderPass:TpvScene3DRendererPassesWaterRenderPass;
        fForwardRenderMipMapComputePass:TpvScene3DRendererPassesForwardRenderMipMapComputePass;
@@ -3436,12 +3438,17 @@ begin
   TpvScene3DRendererInstancePasses(fPasses).fDepthMipMapComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fForwardRenderPass);
  end;
 
+ TpvScene3DRendererInstancePasses(fPasses).fAtmosphereRenderPass:=TpvScene3DRendererPassesAtmosphereRenderPass.Create(fFrameGraph,self);
+ TpvScene3DRendererInstancePasses(fPasses).fAtmosphereRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fForwardRenderPass);
+
  if Renderer.SurfaceSampleCountFlagBits<>TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
   TpvScene3DRendererInstancePasses(fPasses).fForwardResolveRenderPass:=TpvScene3DRendererPassesForwardResolveRenderPass.Create(fFrameGraph,self);
+  TpvScene3DRendererInstancePasses(fPasses).fForwardResolveRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fAtmosphereRenderPass);
  end;
 
  TpvScene3DRendererInstancePasses(fPasses).fForwardRenderMipMapComputePass:=TpvScene3DRendererPassesForwardRenderMipMapComputePass.Create(fFrameGraph,self);
  TpvScene3DRendererInstancePasses(fPasses).fForwardRenderMipMapComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fForwardRenderPass);
+ TpvScene3DRendererInstancePasses(fPasses).fForwardRenderMipMapComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fAtmosphereRenderPass);
  if Renderer.SurfaceSampleCountFlagBits<>TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
   TpvScene3DRendererInstancePasses(fPasses).fForwardRenderMipMapComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fForwardResolveRenderPass);
  end;
