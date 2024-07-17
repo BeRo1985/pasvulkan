@@ -6641,7 +6641,25 @@ type TEventBeforeAfter=(Event,Before,After);
              VK_IMAGE_LAYOUT_STENCIL_READ_ONLY_OPTIMAL,
              VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL:begin
               if TResourceTransition.TFlag.ExplicitOutputAttachment in ResourceTransition.fFlags then begin
-               AddAttachmentReference(PhysicalRenderPass,AttachmentIndex,ResourceTransition.fLayout);
+               Subpass.fColorAttachments.Add(AddAttachmentReference(PhysicalRenderPass,AttachmentIndex,ResourceTransition.fLayout));
+               for OtherResourceTransition in RenderPass.fResourceTransitions do begin
+                if (ResourceTransition<>OtherResourceTransition) and
+                   (OtherResourceTransition.fResolveSourceResource=ResourceTransition.fResource) then begin
+                 Found:=false;
+                 for OtherAttachmentIndex:=0 to PhysicalRenderPass.fAttachments.Count-1 do begin
+                  if PhysicalRenderPass.fAttachments.Items[OtherAttachmentIndex].Resource=OtherResourceTransition.fResource then begin
+                   Subpass.fResolveAttachments.Add(AddAttachmentReference(PhysicalRenderPass,OtherAttachmentIndex,OtherResourceTransition.fLayout));
+                   Found:=true;
+                   break;
+                  end;
+                 end;
+                 if not Found then begin
+                  Subpass.fResolveAttachments.Add(AddAttachmentReference(PhysicalRenderPass,VK_ATTACHMENT_UNUSED,VK_IMAGE_LAYOUT_UNDEFINED));
+                 end;
+                 break;
+                end;
+               end;
+               break;
               end else begin
                Subpass.fInputAttachments.Add(AddAttachmentReference(PhysicalRenderPass,AttachmentIndex,ResourceTransition.fLayout));
               end;
@@ -6650,7 +6668,25 @@ type TEventBeforeAfter=(Event,Before,After);
               if TResourceTransition.TFlag.ExplicitInputAttachment in ResourceTransition.fFlags then begin
                Subpass.fInputAttachments.Add(AddAttachmentReference(PhysicalRenderPass,AttachmentIndex,ResourceTransition.fLayout));
               end else begin
-               AddAttachmentReference(PhysicalRenderPass,AttachmentIndex,ResourceTransition.fLayout);
+               Subpass.fColorAttachments.Add(AddAttachmentReference(PhysicalRenderPass,AttachmentIndex,ResourceTransition.fLayout));
+               for OtherResourceTransition in RenderPass.fResourceTransitions do begin
+                if (ResourceTransition<>OtherResourceTransition) and
+                   (OtherResourceTransition.fResolveSourceResource=ResourceTransition.fResource) then begin
+                 Found:=false;
+                 for OtherAttachmentIndex:=0 to PhysicalRenderPass.fAttachments.Count-1 do begin
+                  if PhysicalRenderPass.fAttachments.Items[OtherAttachmentIndex].Resource=OtherResourceTransition.fResource then begin
+                   Subpass.fResolveAttachments.Add(AddAttachmentReference(PhysicalRenderPass,OtherAttachmentIndex,OtherResourceTransition.fLayout));
+                   Found:=true;
+                   break;
+                  end;
+                 end;
+                 if not Found then begin
+                  Subpass.fResolveAttachments.Add(AddAttachmentReference(PhysicalRenderPass,VK_ATTACHMENT_UNUSED,VK_IMAGE_LAYOUT_UNDEFINED));
+                 end;
+                 break;
+                end;
+               end;
+               break;
               end;
              end;
             end;

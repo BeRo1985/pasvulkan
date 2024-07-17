@@ -140,8 +140,7 @@ begin
 
   fResourceDepth:=AddImageDepthInput('resourcetype_depth',
                                      'resource_depth_data',
-//                                   VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL,//VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,//VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-                                     VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+                                     VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,
                                      [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                     );
 
@@ -156,8 +155,7 @@ begin
 
   fResourceDepth:=AddImageDepthInput('resourcetype_msaa_depth',
                                     'resource_msaa_depth_data',
-//                                   VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL,//VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,//VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-                                     VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+                                     VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,
                                      [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                     );
 
@@ -401,23 +399,12 @@ procedure TpvScene3DRendererPassesAtmosphereRenderPass.Execute(const aCommandBuf
 begin
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
 
- aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanGraphicsPipeline.Handle);
+ //aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanGraphicsPipeline.Handle);
 
-(*Matrix:=fInstance.Views[aInFlightFrameIndex].Items[fInstance.InFlightFrameStates[aInFlightFrameIndex].FinalViewIndex].ViewMatrix;
- fPushConstants.LensStarRotationAngle:=(Matrix.RawComponents[0,0]+Matrix.RawComponents[1,1]+Matrix.RawComponents[2,2])*(pi/3.0);
- aCommandBuffer.CmdPushConstants(fVulkanPipelineLayout.Handle,
-                                 TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_FRAGMENT_BIT),
-                                 0,
-                                 SizeOf(TpvScene3DRendererPassesAtmosphereRenderPass.TPushConstants),
-                                 @fPushConstants);
- aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                      fVulkanPipelineLayout.Handle,
-                                      0,
-                                      1,
-                                      @fVulkanDescriptorSets[aInFlightFrameIndex].Handle,0,nil);
- aCommandBuffer.CmdDraw(3,1,0,0);
-
- *)
+{TpvScene3DAtmospheres(fInstance.Scene3D.Atmospheres).Draw(aInFlightFrameIndex,
+                                                           aCommandBuffer,
+                                                           fResourceDepth.VulkanImageViews[aInFlightFrameIndex].Handle,
+                                                           fInstance);  }
 
 end;
 
