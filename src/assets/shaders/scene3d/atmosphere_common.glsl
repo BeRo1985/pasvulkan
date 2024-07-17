@@ -466,7 +466,7 @@ vec3 IntegrateOpticalDepth(in vec3 WorldPos,
 	
 }
 
-SingleScatteringResult IntegrateScatteredLuminance(const in sampler2DArray TransmittanceLutTexture,
+SingleScatteringResult IntegrateScatteredLuminance(const in sampler2D TransmittanceLutTexture,
 #ifdef MULTISCATAPPROX_ENABLED
                                                    const in sampler2DArray MultiScatTexture, 
 #endif
@@ -600,7 +600,7 @@ SingleScatteringResult IntegrateScatteredLuminance(const in sampler2DArray Trans
 		float SunZenithCosAngle = dot(SunDir, UpVector);
 		vec2 uv;
 		LutTransmittanceParamsToUv(Atmosphere, pHeight, SunZenithCosAngle, uv);
-		vec3 TransmittanceToSun = textureLod(TransmittanceLutTexture, vec3(uv, float(viewIndex)), 0.0).xyz;
+		vec3 TransmittanceToSun = textureLod(TransmittanceLutTexture, vec2(uv), 0.0).xyz;
 
 		vec3 PhaseTimesScattering;
 		if(MieRayPhase){
@@ -680,7 +680,7 @@ SingleScatteringResult IntegrateScatteredLuminance(const in sampler2DArray Trans
 		float SunZenithCosAngle = dot(SunDir, UpVector);
 		vec2 uv;
 		LutTransmittanceParamsToUv(Atmosphere, pHeight, SunZenithCosAngle, uv);
-		vec3 TransmittanceToSun = textureLod(TransmittanceLutTexture, vec3(uv, float(viewIndex)), 0.0).xyz;
+		vec3 TransmittanceToSun = textureLod(TransmittanceLutTexture, vec2(uv), 0.0).xyz;
 
 		const float NdotL = clamp(dot(normalize(UpVector), normalize(SunDir)), 0.0, 1.0);
 		L += globalL * TransmittanceToSun * throughput * NdotL * Atmosphere.GroundAlbedo / PI;
