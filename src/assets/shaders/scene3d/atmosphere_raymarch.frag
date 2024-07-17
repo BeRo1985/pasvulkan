@@ -16,6 +16,8 @@
 
 #include "atmosphere_common.glsl"
 
+layout(location = 0) in vec2 inTexCoord;
+
 layout(location = 0) out vec4 outLuminance;
 
 // Push constants
@@ -23,8 +25,6 @@ layout(push_constant, std140) uniform PushConstants {
   int baseViewIndex;
   int countViews;
   float noHitDepthValue;
-  float startDepth;
-  vec2 resolution;
 } pushConstants;
 
 #ifdef MSAA
@@ -61,8 +61,10 @@ void main() {
   int viewIndex = pushConstants.baseViewIndex + int(gl_ViewIndex);
   View view = uView.views[viewIndex];
 
-  vec2 pixPos = vec2(gl_FragCoord.xy) + vec2(0.5);
-  vec2 uv = pixPos / pushConstants.resolution;
+/*vec2 pixPos = vec2(gl_FragCoord.xy) + vec2(0.5);
+  vec2 uv = pixPos / pushConstants.resolution;*/
+
+  vec2 uv = inTexCoord; 
 
   vec3 WorldPos, WorldDir;
   getCameraPositionDirection(WorldPos, WorldDir, view.viewMatrix, view.projectionMatrix, view.inverseViewMatrix, view.inverseProjectionMatrix, uv);
@@ -81,7 +83,7 @@ void main() {
 
 	if((viewHeight < atmosphereParameters.TopRadius) && (DepthBufferValue == pushConstants.noHitDepthValue)){
 
-		vec2 uv;
+		vec2 localUV;
 		vec3 UpVector = normalize(WorldPos);
 		float viewZenithCosAngle = dot(WorldDir, UpVector);
 
@@ -93,10 +95,10 @@ void main() {
 
 		bool IntersectGround = raySphereIntersectNearest(WorldPos, WorldDir, vec3(0.0), atmosphereParameters.BottomRadius) >= 0.0;
 
-		SkyViewLutParamsToUv(atmosphereParameters, IntersectGround, viewZenithCosAngle, lightViewCosAngle, viewHeight, uv);
+		SkyViewLutParamsToUv(atmosphereParameters, IntersectGround, viewZenithCosAngle, lightViewCosAngle, viewHeight, localUV);
 
 		outLuminance = vec4(
-      textureLod(uSkyViewLUT, vec3(uv, float(viewIndex)), 0.0).xyz +
+      textureLod(uSkyViewLUT, vec3(localUV, float(viewIndex)), 0.0).xyz +
       GetSunLuminance(WorldPos, WorldDir, sunDirection, atmosphereParameters.BottomRadius), 
       1.0
     );
@@ -125,8 +127,8 @@ void main() {
 
     // Manual 3D texture lookup from a 2D array texture, since multiview is not supported for 3D textures (no 3D array textures) 
     vec4 AP = mix(
-                textureLod(uCameraVolume, vec3(pixPos / pushConstants.resolution, sliceIndex + (viewIndex * AP_SLICE_COUNT_INT)), 0.0),
-                textureLod(uCameraVolume, vec3(pixPos / pushConstants.resolution, nextSliceIndex + (viewIndex * AP_SLICE_COUNT_INT)), 0.0),
+                textureLod(uCameraVolume, vec3(uv, sliceIndex + (viewIndex * AP_SLICE_COUNT_INT)), 0.0),
+                textureLod(uCameraVolume, vec3(uv, nextSliceIndex + (viewIndex * AP_SLICE_COUNT_INT)), 0.0),
                 sliceWeight
               ) * Weight;
 

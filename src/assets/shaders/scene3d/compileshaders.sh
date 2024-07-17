@@ -633,6 +633,7 @@ compileshaderarguments=(
   "-V atmosphere_skyviewlut.comp -o ${tempPath}/atmosphere_skyviewlut_comp.spv"
   "-V atmosphere_cameravolume.comp -o ${tempPath}/atmosphere_cameravolume_comp.spv"
   "-V atmosphere_raymarch.frag -o ${tempPath}/atmosphere_raymarch_frag.spv"
+  "-V atmosphere_raymarch.frag -DMSAA -o ${tempPath}/atmosphere_raymarch_msaa_frag.spv"
 
 )
 
