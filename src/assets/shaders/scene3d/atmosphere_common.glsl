@@ -41,6 +41,25 @@ struct DensityProfile {
   DensityProfileLayer Layers[2];
 };
 
+struct AtmosphereParameters {
+	vec4 RayleighScattering;
+	vec4 MieScattering;
+	vec4 MieExtinction;
+	vec4 MieAbsorption;
+	vec4 AbsorptionExtinction;
+	vec4 GroundAlbedo;
+  float BottomRadius;
+	float TopRadius;
+	float RayleighDensityExpScale;
+	float MieDensityExpScale;
+	float MiePhaseG;
+	float AbsorptionDensity0LayerWidth;
+	float AbsorptionDensity0ConstantTerm;
+	float AbsorptionDensity0LinearTerm;
+	float AbsorptionDensity1ConstantTerm;
+	float AbsorptionDensity1LinearTerm;
+};
+
 struct InAtmosphereParameters {
   mat4 transform;
   DensityProfile RayleighDensity;
@@ -61,39 +80,17 @@ struct InAtmosphereParameters {
   float MuSMin;
 };
 
-struct AtmosphereParameters {
-  float BottomRadius;
-	float TopRadius;
-	float RayleighDensityExpScale;
-	vec3 RayleighScattering;
-
-	float MieDensityExpScale;
-	vec3 MieScattering;
-	vec3 MieExtinction;
-	vec3 MieAbsorption;
-	float MiePhaseG;
-
-	float AbsorptionDensity0LayerWidth;
-	float AbsorptionDensity0ConstantTerm;
-	float AbsorptionDensity0LinearTerm;
-	float AbsorptionDensity1ConstantTerm;
-	float AbsorptionDensity1LinearTerm;
-	vec3 AbsorptionExtinction;
-
-	vec3 GroundAlbedo;
-};
-
 AtmosphereParameters getAtmosphereParameters(const in InAtmosphereParameters inAtmosphereParameters){
   AtmosphereParameters atmosphereParameters;
   atmosphereParameters.BottomRadius = inAtmosphereParameters.BottomRadius;
   atmosphereParameters.TopRadius = inAtmosphereParameters.TopRadius;
   atmosphereParameters.RayleighDensityExpScale = inAtmosphereParameters.RayleighDensity.Layers[1].ExpScale;
-  atmosphereParameters.RayleighScattering = inAtmosphereParameters.RayleighScattering.xyz;
+  atmosphereParameters.RayleighScattering = inAtmosphereParameters.RayleighScattering;
 
   atmosphereParameters.MieDensityExpScale = inAtmosphereParameters.MieDensity.Layers[1].ExpScale;
-  atmosphereParameters.MieScattering = inAtmosphereParameters.MieScattering.xyz;
-  atmosphereParameters.MieExtinction = inAtmosphereParameters.MieExtinction.xyz;
-  atmosphereParameters.MieAbsorption = inAtmosphereParameters.AbsorptionExtinction.xyz;
+  atmosphereParameters.MieScattering = inAtmosphereParameters.MieScattering;
+  atmosphereParameters.MieExtinction = inAtmosphereParameters.MieExtinction;
+  atmosphereParameters.MieAbsorption = inAtmosphereParameters.AbsorptionExtinction;
   atmosphereParameters.MiePhaseG = inAtmosphereParameters.MiePhaseFunctionG;
 
   atmosphereParameters.AbsorptionDensity0LayerWidth = inAtmosphereParameters.AbsorptionDensity.Layers[0].Width;
@@ -101,9 +98,9 @@ AtmosphereParameters getAtmosphereParameters(const in InAtmosphereParameters inA
   atmosphereParameters.AbsorptionDensity0LinearTerm = inAtmosphereParameters.AbsorptionDensity.Layers[0].LinearTerm;
   atmosphereParameters.AbsorptionDensity1ConstantTerm = inAtmosphereParameters.AbsorptionDensity.Layers[1].ConstantTerm;
   atmosphereParameters.AbsorptionDensity1LinearTerm = inAtmosphereParameters.AbsorptionDensity.Layers[1].LinearTerm;
-  atmosphereParameters.AbsorptionExtinction = inAtmosphereParameters.AbsorptionExtinction.xyz;
+  atmosphereParameters.AbsorptionExtinction = inAtmosphereParameters.AbsorptionExtinction;
 
-  atmosphereParameters.GroundAlbedo = inAtmosphereParameters.GroundAlbedo.xyz;
+  atmosphereParameters.GroundAlbedo = inAtmosphereParameters.GroundAlbedo;
 
   return atmosphereParameters;
 }
@@ -318,22 +315,22 @@ MediumSampleRGB sampleMediumRGB(in vec3 WorldPos, in AtmosphereParameters Atmosp
 	const float densityMie = exp(Atmosphere.MieDensityExpScale * viewHeight);
 	const float densityRay = exp(Atmosphere.RayleighDensityExpScale * viewHeight);
 	const float densityOzo = clamp(viewHeight < Atmosphere.AbsorptionDensity0LayerWidth ?
-		Atmosphere.AbsorptionDensity0LinearTerm * viewHeight + Atmosphere.AbsorptionDensity0ConstantTerm :
-		Atmosphere.AbsorptionDensity1LinearTerm * viewHeight + Atmosphere.AbsorptionDensity1ConstantTerm, 
+		fma(Atmosphere.AbsorptionDensity0LinearTerm, viewHeight, Atmosphere.AbsorptionDensity0ConstantTerm) :
+		fma(Atmosphere.AbsorptionDensity1LinearTerm, viewHeight, Atmosphere.AbsorptionDensity1ConstantTerm), 
     0.0, 1.0);
 
 	MediumSampleRGB s;
 
-	s.scatteringMie = densityMie * Atmosphere.MieScattering;
-	s.absorptionMie = densityMie * Atmosphere.MieAbsorption;
-	s.extinctionMie = densityMie * Atmosphere.MieExtinction;
+	s.scatteringMie = densityMie * Atmosphere.MieScattering.xyz;
+	s.absorptionMie = densityMie * Atmosphere.MieAbsorption.xyz;
+	s.extinctionMie = densityMie * Atmosphere.MieExtinction.xyz;
 
-	s.scatteringRay = densityRay * Atmosphere.RayleighScattering;
+	s.scatteringRay = densityRay * Atmosphere.RayleighScattering.xyz;
 	s.absorptionRay = vec3(0.0);
 	s.extinctionRay = s.scatteringRay + s.absorptionRay;
 
 	s.scatteringOzo = vec3(0.0);
-	s.absorptionOzo = densityOzo * Atmosphere.AbsorptionExtinction;
+	s.absorptionOzo = densityOzo * Atmosphere.AbsorptionExtinction.xyz;
 	s.extinctionOzo = s.scatteringOzo + s.absorptionOzo;
 
 	s.scattering = s.scatteringMie + s.scatteringRay + s.scatteringOzo;
@@ -683,7 +680,7 @@ SingleScatteringResult IntegrateScatteredLuminance(const in sampler2D Transmitta
 		vec3 TransmittanceToSun = textureLod(TransmittanceLutTexture, vec2(uv), 0.0).xyz;
 
 		const float NdotL = clamp(dot(normalize(UpVector), normalize(SunDir)), 0.0, 1.0);
-		L += globalL * TransmittanceToSun * throughput * NdotL * Atmosphere.GroundAlbedo / PI;
+		L += globalL * TransmittanceToSun * throughput * NdotL * Atmosphere.GroundAlbedo.xyz / PI;
 
 	}
 
