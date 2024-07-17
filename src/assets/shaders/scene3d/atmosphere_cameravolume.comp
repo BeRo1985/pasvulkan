@@ -76,9 +76,11 @@ void main() {
     vec3 WorldPos, WorldDir;
     getCameraPositionDirection(WorldPos, WorldDir, view.viewMatrix, view.projectionMatrix, view.inverseViewMatrix, view.inverseProjectionMatrix, uv);
 
+    WorldPos = (atmosphereParameters.inverseTransform * vec4(WorldPos, 1.0)).xyz;
+
     float earthR = atmosphereParameters.BottomRadius;
     vec3 earthO = vec3(0.0, -earthR, 0.0);
-    vec3 camPos = WorldPos + vec3(0.0, earthR, 0.0);
+    vec3 camPos = WorldPos;// + vec3(0.0, earthR, 0.0);
     vec3 SunDir = getSunDirection(atmosphereParameters);
     vec3 SunLuminance = vec3(0.0);
 

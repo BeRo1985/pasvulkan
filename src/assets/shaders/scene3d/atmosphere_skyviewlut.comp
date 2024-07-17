@@ -72,7 +72,9 @@ void main() {
     vec3 worldPos, worldDir;
     getCameraPositionDirection(worldPos, worldDir, view.viewMatrix, view.projectionMatrix, view.inverseViewMatrix, view.inverseProjectionMatrix, uv);
 
-    worldPos += vec3(0.0, atmosphereParameters.BottomRadius, 0.0);
+    worldPos = (atmosphereParameters.inverseTransform * vec4(worldPos, 1.0)).xyz;
+
+//  worldPos += vec3(0.0, atmosphereParameters.BottomRadius, 0.0);
   
     uv = vec2(coord) / vec2(size);
 
