@@ -86,10 +86,10 @@ AtmosphereParameters getAtmosphereParameters(const in InAtmosphereParameters inA
   AtmosphereParameters atmosphereParameters;
   atmosphereParameters.BottomRadius = inAtmosphereParameters.BottomRadius;
   atmosphereParameters.TopRadius = inAtmosphereParameters.TopRadius;
-  atmosphereParameters.RayleighDensityExpScale = inAtmosphereParameters.RayleighDensity.Layers[0].ExpScale;
+  atmosphereParameters.RayleighDensityExpScale = inAtmosphereParameters.RayleighDensity.Layers[1].ExpScale;
   atmosphereParameters.RayleighScattering = inAtmosphereParameters.RayleighScattering.xyz;
 
-  atmosphereParameters.MieDensityExpScale = inAtmosphereParameters.MieDensity.Layers[0].ExpScale;
+  atmosphereParameters.MieDensityExpScale = inAtmosphereParameters.MieDensity.Layers[1].ExpScale;
   atmosphereParameters.MieScattering = inAtmosphereParameters.MieScattering.xyz;
   atmosphereParameters.MieExtinction = inAtmosphereParameters.MieExtinction.xyz;
   atmosphereParameters.MieAbsorption = inAtmosphereParameters.AbsorptionExtinction.xyz;
