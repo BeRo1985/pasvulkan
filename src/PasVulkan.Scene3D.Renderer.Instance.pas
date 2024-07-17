@@ -848,7 +848,8 @@ type { TpvScene3DRendererInstance }
 
 implementation
 
-uses{PasVulkan.Scene3D.Renderer.Passes.DataTransferPass,
+uses PasVulkan.Scene3D.Atmosphere,
+    {PasVulkan.Scene3D.Renderer.Passes.DataTransferPass,
      PasVulkan.Scene3D.Renderer.Passes.MeshComputePass,
      PasVulkan.Scene3D.Renderer.Passes.RaytracingBuildUpdatePass,}
      PasVulkan.Scene3D.Renderer.Passes.MeshCullPass0ComputePass,
@@ -6482,6 +6483,8 @@ const MinDeltaTime=1.0/480.0; // 480 Hz
       LN2=0.6931471805599453;
 var t:TpvDouble;
     CameraPreset:TpvScene3DRendererCameraPreset;
+    AtmosphereIndex:TpvSizeInt;
+    Atmosphere:TpvScene3DAtmosphere;
 begin
 
  CameraPreset:=CameraPresets[aInFlightFrameIndex];
@@ -6553,6 +6556,20 @@ begin
   else begin
   end;
 
+ end;
+
+ TpvScene3DAtmospheres(fScene3D.Atmospheres).Lock.AcquireRead;
+ try
+  if TpvScene3DAtmospheres(fScene3D.Atmospheres).Count>0 then begin
+   for AtmosphereIndex:=0 to TpvScene3DAtmospheres(fScene3D.Atmospheres).Count-1 do begin
+    Atmosphere:=TpvScene3DAtmospheres(fScene3D.Atmospheres).Items[AtmosphereIndex];
+    if assigned(Atmosphere) then begin
+    // Atmosphere.Execute(aInFlightFrameIndex,,self);
+    end;
+   end;
+  end;
+ finally
+  TpvScene3DAtmospheres(fScene3D.Atmospheres).Lock.ReleaseRead;
  end;
 
  fFrameGraph.Draw(aSwapChainImageIndex,
