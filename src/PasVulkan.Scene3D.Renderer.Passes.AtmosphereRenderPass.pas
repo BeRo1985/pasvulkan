@@ -193,7 +193,7 @@ begin
   Stream.Free;
  end;
 
- if fInstance.CountSurfaceViews>1 then begin
+ if fResourceDepth.CountArrayLayers>0 {fInstance.CountSurfaceViews>1} then begin
   if fInstance.Renderer.SurfaceSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('atmosphere_raymarch_multiview_frag.spv');
   end else begin
@@ -421,7 +421,7 @@ begin
  end;
 
  aCommandBuffer.CmdPushConstants(TpvScene3DAtmosphereGlobals(fInstance.Scene3D.AtmosphereGlobals).RaymarchingPipelineLayout.Handle,
-                                 TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_COMPUTE_BIT),
+                                 TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_FRAGMENT_BIT),
                                  0,
                                  SizeOf(TpvScene3DAtmosphereGlobals.TRaymarchingPushConstants),
                                  @fPushConstants);
