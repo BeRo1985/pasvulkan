@@ -680,6 +680,7 @@ type { TpvScene3DRendererInstance }
                              const aDisocclusions:boolean);
        procedure PrepareFrame(const aInFlightFrameIndex:TpvInt32;const aFrameCounter:TpvInt64);
        procedure UploadFrame(const aInFlightFrameIndex:TpvInt32);
+       procedure ProcessFrame(const aInFlightFrameIndex:TpvInt32;const aCommandBuffer:TpvVulkanCommandBuffer);
        procedure DrawFrame(const aSwapChainImageIndex,aInFlightFrameIndex:TpvInt32;const aFrameCounter:TpvInt64;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil);
       public
        property VulkanViewUniformBuffers:TpvScene3D.TVulkanViewUniformBuffers read fVulkanViewUniformBuffers;
@@ -1702,9 +1703,7 @@ begin
  end;
 
  for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
-
   fVulkanRenderSemaphores[InFlightFrameIndex]:=TpvVulkanSemaphore.Create(Renderer.VulkanDevice);
-
  end;
 
  FillChar(fCascadedShadowMapVulkanUniformBuffers,SizeOf(TCascadedShadowMapVulkanUniformBuffers),#0);
@@ -6477,14 +6476,37 @@ begin
 
 end;
 
+procedure TpvScene3DRendererInstance.ProcessFrame(const aInFlightFrameIndex:TpvInt32;const aCommandBuffer:TpvVulkanCommandBuffer);
+var AtmosphereIndex:TpvSizeInt;
+    Atmosphere:TpvScene3DAtmosphere;
+begin
+
+ TpvScene3DAtmospheres(fScene3D.Atmospheres).Lock.AcquireRead;
+ try
+
+  if TpvScene3DAtmospheres(fScene3D.Atmospheres).Count>0 then begin
+
+   for AtmosphereIndex:=0 to TpvScene3DAtmospheres(fScene3D.Atmospheres).Count-1 do begin
+    Atmosphere:=TpvScene3DAtmospheres(fScene3D.Atmospheres).Items[AtmosphereIndex];
+    if assigned(Atmosphere) then begin
+     Atmosphere.Execute(aInFlightFrameIndex,aCommandBuffer,self);
+    end;
+   end;
+
+  end;
+
+ finally
+  TpvScene3DAtmospheres(fScene3D.Atmospheres).Lock.ReleaseRead;
+ end;
+
+end;
+
 procedure TpvScene3DRendererInstance.DrawFrame(const aSwapChainImageIndex,aInFlightFrameIndex:TpvInt32;const aFrameCounter:TpvInt64;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil);
 const MinDeltaTime=1.0/480.0; // 480 Hz
       MaxDeltaTime=1.0/1.0; // 1 Hz
       LN2=0.6931471805599453;
 var t:TpvDouble;
     CameraPreset:TpvScene3DRendererCameraPreset;
-    AtmosphereIndex:TpvSizeInt;
-    Atmosphere:TpvScene3DAtmosphere;
 begin
 
  CameraPreset:=CameraPresets[aInFlightFrameIndex];
@@ -6556,20 +6578,6 @@ begin
   else begin
   end;
 
- end;
-
- TpvScene3DAtmospheres(fScene3D.Atmospheres).Lock.AcquireRead;
- try
-  if TpvScene3DAtmospheres(fScene3D.Atmospheres).Count>0 then begin
-   for AtmosphereIndex:=0 to TpvScene3DAtmospheres(fScene3D.Atmospheres).Count-1 do begin
-    Atmosphere:=TpvScene3DAtmospheres(fScene3D.Atmospheres).Items[AtmosphereIndex];
-    if assigned(Atmosphere) then begin
-    // Atmosphere.Execute(aInFlightFrameIndex,,self);
-    end;
-   end;
-  end;
- finally
-  TpvScene3DAtmospheres(fScene3D.Atmospheres).Lock.ReleaseRead;
  end;
 
  fFrameGraph.Draw(aSwapChainImageIndex,

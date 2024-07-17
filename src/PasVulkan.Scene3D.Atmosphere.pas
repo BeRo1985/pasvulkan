@@ -852,7 +852,7 @@ begin
 
   // Transmittance LUT
 
-  TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'TpvScene3DAtmosphere.TransmittanceLUT',[1.0,0.0,0.0,1.0]);
+  TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.DebugUtils.CmdBufLabelInsert(aCommandBuffer,'TpvScene3DAtmosphere.TransmittanceLUT',[1.0,0.0,0.0,1.0]);
 
   ImageMemoryBarriers[0]:=TVkImageMemoryBarrier.Create(0,
                                                        TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
@@ -928,7 +928,7 @@ begin
                                     0,nil,
                                     1,@ImageMemoryBarriers[0]);
 
-  TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
+//TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
 
  end;
 
@@ -936,7 +936,7 @@ begin
 
   // Multi scattering LUT
 
-  TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'TpvScene3DAtmosphere.MultiScatteringLUT',[0.0,1.0,0.0,1.0]);
+  TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.DebugUtils.CmdBufLabelInsert(aCommandBuffer,'TpvScene3DAtmosphere.MultiScatteringLUT',[0.0,1.0,0.0,1.0]);
 
   ImageMemoryBarriers[0]:=TVkImageMemoryBarrier.Create(0,
                                                        TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
@@ -1011,7 +1011,7 @@ begin
                                     0,nil,
                                     1,@ImageMemoryBarriers[0]);      
 
-  TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
+//TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
 
  end; 
 
@@ -1019,7 +1019,7 @@ begin
 
   // Sky view LUT
 
-  TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'TpvScene3DAtmosphere.SkyViewLUT',[0.0,0.0,1.0,1.0]);
+  TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.DebugUtils.CmdBufLabelInsert(aCommandBuffer,'TpvScene3DAtmosphere.SkyViewLUT',[0.0,0.0,1.0,1.0]);
 
   ImageMemoryBarriers[0]:=TVkImageMemoryBarrier.Create(0,
                                                        TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
@@ -1094,7 +1094,7 @@ begin
                                     0,nil,
                                     1,@ImageMemoryBarriers[0]);   
 
-  TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
+//TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
 
  end; 
 
@@ -1102,7 +1102,7 @@ begin
 
   // Camera volume
 
-  TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'TpvScene3DAtmosphere.CameraVolume',[1.0,1.0,0.0,1.0]);
+  TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.DebugUtils.CmdBufLabelInsert(aCommandBuffer,'TpvScene3DAtmosphere.CameraVolume',[1.0,1.0,0.0,1.0]);
 
   ImageMemoryBarriers[0]:=TVkImageMemoryBarrier.Create(0,
                                                        TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
@@ -1177,7 +1177,7 @@ begin
                                     0,nil,
                                     1,@ImageMemoryBarriers[0]);    
 
-  TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
+//TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
 
  end; 
 
