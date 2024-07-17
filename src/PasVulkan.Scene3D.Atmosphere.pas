@@ -199,7 +199,7 @@ type TpvScene3DAtmosphere=class;
        fRendererInstanceListLock:TPasMPSlimReaderWriterLock;
        fToDestroy:boolean;
        fReleaseFrameCounter:TpvInt32;
-       fReady:Boolean;
+       fReady:TPasMPBool32;
        fUploaded:LongBool;
        fVisible:Boolean;
        fInFlightFrameVisible:array[0..MaxInFlightFrames-1] of boolean;
@@ -221,7 +221,7 @@ type TpvScene3DAtmosphere=class;
                          const aRendererInstance:TObject);
       public
        property AtmosphereParameters:PAtmosphereParameters read fPointerToAtmosphereParameters;
-       property Ready:Boolean read fReady;
+       property Ready:TPasMPBool32 read fReady;
        property Uploaded:LongBool read fUploaded;
        property Visible:Boolean read fVisible;
      end; 
@@ -471,7 +471,7 @@ begin
  for InFlightFrameIndex:=0 to TpvScene3D(fAtmosphere.fScene3D).CountInFlightFrames-1 do begin
 
   fTransmittanceLUTPassDescriptorSets[InFlightFrameIndex]:=TpvVulkanDescriptorSet.Create(fTransmittanceLUTPassDescriptorPool,
-                                                                                         TpvScene3DAtmosphereGlobals(TpvScene3D(fAtmosphere.fScene3D).Atmospheres).fTransmittanceLUTPassDescriptorSetLayout);
+                                                                                         TpvScene3DAtmosphereGlobals(TpvScene3D(fAtmosphere.fScene3D).AtmosphereGlobals).fTransmittanceLUTPassDescriptorSetLayout);
 
   fTransmittanceLUTPassDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(0,
                                                                                0,
@@ -512,7 +512,7 @@ begin
  for InFlightFrameIndex:=0 to TpvScene3D(fAtmosphere.fScene3D).CountInFlightFrames-1 do begin
 
   fMultiScatteringLUTPassDescriptorSets[InFlightFrameIndex]:=TpvVulkanDescriptorSet.Create(fMultiScatteringLUTPassDescriptorPool,
-                                                                                         TpvScene3DAtmosphereGlobals(TpvScene3D(fAtmosphere.fScene3D).Atmospheres).fMultiScatteringLUTPassDescriptorSetLayout);
+                                                                                         TpvScene3DAtmosphereGlobals(TpvScene3D(fAtmosphere.fScene3D).AtmosphereGlobals).fMultiScatteringLUTPassDescriptorSetLayout);
 
   fMultiScatteringLUTPassDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(0,
                                                                                  0,
@@ -564,7 +564,7 @@ begin
  for InFlightFrameIndex:=0 to TpvScene3D(fAtmosphere.fScene3D).CountInFlightFrames-1 do begin
 
   fSkyViewLUTPassDescriptorSets[InFlightFrameIndex]:=TpvVulkanDescriptorSet.Create(fSkyViewLUTPassDescriptorPool,
-                                                                                   TpvScene3DAtmosphereGlobals(TpvScene3D(fAtmosphere.fScene3D).Atmospheres).fSkyViewLUTPassDescriptorSetLayout);
+                                                                                   TpvScene3DAtmosphereGlobals(TpvScene3D(fAtmosphere.fScene3D).AtmosphereGlobals).fSkyViewLUTPassDescriptorSetLayout);
 
   fSkyViewLUTPassDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(0,
                                                                          0,
@@ -627,7 +627,7 @@ begin
  for InFlightFrameIndex:=0 to TpvScene3D(fAtmosphere.fScene3D).CountInFlightFrames-1 do begin
 
   fCameraVolumePassDescriptorSets[InFlightFrameIndex]:=TpvVulkanDescriptorSet.Create(fCameraVolumePassDescriptorPool,
-                                                                                      TpvScene3DAtmosphereGlobals(TpvScene3D(fAtmosphere.fScene3D).Atmospheres).fCameraVolumePassDescriptorSetLayout);
+                                                                                      TpvScene3DAtmosphereGlobals(TpvScene3D(fAtmosphere.fScene3D).AtmosphereGlobals).fCameraVolumePassDescriptorSetLayout);
 
   fCameraVolumePassDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(0,
                                                                            0,
@@ -692,7 +692,7 @@ begin
   fRaymarchingPassDepthImageViews[InFlightFrameIndex]:=VK_NULL_HANDLE;
 
   fRaymarchingPassDescriptorSets[InFlightFrameIndex]:=TpvVulkanDescriptorSet.Create(fRaymarchingPassDescriptorPool,
-                                                                                     TpvScene3DAtmosphereGlobals(TpvScene3D(fAtmosphere.fScene3D).Atmospheres).fRaymarchingPassDescriptorSetLayout);
+                                                                                     TpvScene3DAtmosphereGlobals(TpvScene3D(fAtmosphere.fScene3D).AtmosphereGlobals).fRaymarchingPassDescriptorSetLayout);
 
   fRaymarchingPassDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(0,
                                                                           0,
@@ -752,7 +752,7 @@ begin
  for InFlightFrameIndex:=0 to TpvScene3D(fAtmosphere.fScene3D).CountInFlightFrames-1 do begin
 
   fGlobalDescriptorSets[InFlightFrameIndex]:=TpvVulkanDescriptorSet.Create(fGlobalDescriptorPool,
-                                                                           TpvScene3DAtmosphereGlobals(TpvScene3D(fAtmosphere.fScene3D).Atmospheres).fGlobalVulkanDescriptorSetLayout);
+                                                                           TpvScene3DAtmosphereGlobals(TpvScene3D(fAtmosphere.fScene3D).AtmosphereGlobals).fGlobalVulkanDescriptorSetLayout);
 
   fGlobalDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(0,
                                                                  0,
@@ -1201,13 +1201,13 @@ begin
  fRendererInstanceHashMap:=TRendererInstanceHashMap.Create(nil);
  fRendererInstanceListLock:=TPasMPSlimReaderWriterLock.Create;
  
- fReady:=false;
-
  fUploaded:=false;
 
  fVisible:=true;
 
  FillChar(fInFlightFrameVisible,SizeOf(fInFlightFrameVisible),#0);
+
+ fReady:=true;
 
 end;
 

@@ -24008,6 +24008,9 @@ begin
   for Index:=0 to TpvScene3DAtmospheres(fAtmospheres).Count-1 do begin
    Atmosphere:=TpvScene3DAtmospheres(fAtmospheres).Items[Index];
    if Atmosphere.Ready then begin
+    if not Atmosphere.Uploaded then begin
+     Atmosphere.Upload;
+    end;
     Atmosphere.Update(aInFlightFrameIndex,
                       fVulkanStagingQueue,
                       fVulkanStagingCommandBuffer,
