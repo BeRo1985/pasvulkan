@@ -142,7 +142,7 @@ void main() {
 
 	}else{
 
-    mat4 inverseViewProjectionMatrix = view.inverseProjectionMatrix * view.inverseViewMatrix;
+    mat4 inverseViewProjectionMatrix = view.inverseViewMatrix * view.inverseProjectionMatrix;
 
     vec4 DepthBufferWorldPos = inverseViewProjectionMatrix * vec4(fma(vec2(uv), vec2(2.0), vec2(-1.0)), DepthBufferValue, 1.0);
     DepthBufferWorldPos /= DepthBufferWorldPos.w;

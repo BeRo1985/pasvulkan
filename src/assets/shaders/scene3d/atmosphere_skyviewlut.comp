@@ -63,7 +63,7 @@ void main() {
     mat4 inverseViewMatrix = view.inverseViewMatrix;
     mat4 inverseProjectionMatrix = view.inverseProjectionMatrix;
 
-    mat4 SkyInvViewProjMat = inverseProjectionMatrix * inverseViewMatrix;
+    mat4 SkyInvViewProjMat = inverseViewMatrix * inverseProjectionMatrix;
 
     const vec2 size = vec2(192.0, 108.0);
 

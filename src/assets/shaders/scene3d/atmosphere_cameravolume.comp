@@ -67,11 +67,11 @@ void main() {
     mat4 inverseViewMatrix = view.inverseViewMatrix;
     mat4 inverseProjectionMatrix = view.inverseProjectionMatrix;
 
-    mat4 SkyInvViewProjMat = inverseProjectionMatrix * inverseViewMatrix;
+    mat4 SkyInvViewProjMat = inverseViewMatrix * inverseProjectionMatrix;
 
     int sliceID = sliceIndex;
 
-    vec2 uv = vec2(coord) / vec2(size);
+    vec2 uv = (vec2(coord) + vec2(0.5)) / vec2(size);
 
     vec3 WorldPos, WorldDir;
     getCameraPositionDirection(WorldPos, WorldDir, view.viewMatrix, view.projectionMatrix, view.inverseViewMatrix, view.inverseProjectionMatrix, uv);
@@ -87,17 +87,13 @@ void main() {
     float Slice = ((float(sliceID) + 0.5) / float(AP_SLICE_COUNT));
     Slice *= Slice;	// squared distribution
     Slice *= AP_SLICE_COUNT;
-
-    //vec3
-    WorldPos = camPos;
-    float viewHeight;
-
+    
     // Compute position from froxel information
     float tMax = AerialPerspectiveSliceToDepth(Slice);
     vec3 newWorldPos = WorldPos + (tMax * WorldDir);
 
     // If the voxel is under the ground, make sure to offset it out on the ground.
-    viewHeight = length(newWorldPos);
+    float viewHeight = length(newWorldPos);
     if(viewHeight <= (atmosphereParameters.BottomRadius + PLANET_RADIUS_OFFSET)){
       // Apply a position offset to make sure no artefact are visible close to the earth boundaries for large voxel.
       newWorldPos = normalize(newWorldPos) * (atmosphereParameters.BottomRadius + PLANET_RADIUS_OFFSET + 0.001);

@@ -67,7 +67,7 @@ void main() {
   mat4 inverseViewMatrix = uView.views[pushConstants.baseViewIndex + viewIndex].inverseViewMatrix;
   mat4 inverseProjectionMatrix = uView.views[pushConstants.baseViewIndex + viewIndex].inverseProjectionMatrix;
 
-  mat4 SkyInvViewProjMat = inverseProjectionMatrix * inverseViewMatrix;
+  mat4 SkyInvViewProjMat = inverseViewMatrix * inverseProjectionMatrix;
 
   Atmosphere = uAtmosphereParameters.atmosphereParameters;
  
