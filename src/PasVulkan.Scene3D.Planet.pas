@@ -60,6 +60,10 @@ unit PasVulkan.Scene3D.Planet;
 {$endif}
 {$m+}
 
+{$ifdef fpc}
+ {$optimization level1}
+{$endif}
+
 interface
 
 uses Classes,
