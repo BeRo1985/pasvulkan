@@ -3037,12 +3037,9 @@ begin
 
  end;}
 
- TpvScene3DRendererInstancePasses(fPasses).fAtmosphereProcessCustomPass:=TpvScene3DRendererPassesAtmosphereProcessCustomPass.Create(fFrameGraph,self);
-
  if Renderer.GPUCulling and Renderer.GPUShadowCulling then begin
 
   TpvScene3DRendererInstancePasses(fPasses).fCascadedShadowMapMeshCullPass0ComputePass:=TpvScene3DRendererPassesMeshCullPass0ComputePass.Create(fFrameGraph,self,TpvScene3DRendererCullRenderPass.CascadedShadowMap);
-  TpvScene3DRendererInstancePasses(fPasses).fCascadedShadowMapMeshCullPass0ComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fAtmosphereProcessCustomPass);
 { TpvScene3DRendererInstancePasses(fPasses).fCascadedShadowMapMeshCullPass0ComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fMeshComputePass);
   if assigned(TpvScene3DRendererInstancePasses(fPasses).fRaytracingBuildUpdatePass) then begin
    TpvScene3DRendererInstancePasses(fPasses).fCascadedShadowMapMeshCullPass0ComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fRaytracingBuildUpdatePass);
@@ -3083,7 +3080,6 @@ begin
   TpvScene3DRendererShadowMode.PCF,TpvScene3DRendererShadowMode.DPCF,TpvScene3DRendererShadowMode.PCSS:begin
 
    TpvScene3DRendererInstancePasses(fPasses).fCascadedShadowMapRenderPass:=TpvScene3DRendererPassesCascadedShadowMapRenderPass.Create(fFrameGraph,self);
-   TpvScene3DRendererInstancePasses(fPasses).fCascadedShadowMapRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fAtmosphereProcessCustomPass);
 {  TpvScene3DRendererInstancePasses(fPasses).fCascadedShadowMapRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fMeshComputePass);
    if assigned(TpvScene3DRendererInstancePasses(fPasses).fRaytracingBuildUpdatePass) then begin
     TpvScene3DRendererInstancePasses(fPasses).fCascadedShadowMapRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fRaytracingBuildUpdatePass);
@@ -3104,7 +3100,6 @@ begin
   TpvScene3DRendererShadowMode.MSM:begin
 
    TpvScene3DRendererInstancePasses(fPasses).fCascadedShadowMapRenderPass:=TpvScene3DRendererPassesCascadedShadowMapRenderPass.Create(fFrameGraph,self);
-   TpvScene3DRendererInstancePasses(fPasses).fCascadedShadowMapRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fAtmosphereProcessCustomPass);
 {  TpvScene3DRendererInstancePasses(fPasses).fCascadedShadowMapRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fMeshComputePass);
    if assigned(TpvScene3DRendererInstancePasses(fPasses).fRaytracingBuildUpdatePass) then begin
     TpvScene3DRendererInstancePasses(fPasses).fCascadedShadowMapRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fRaytracingBuildUpdatePass);
@@ -3135,6 +3130,18 @@ begin
 
   end;
 
+ end;
+
+ TpvScene3DRendererInstancePasses(fPasses).fAtmosphereProcessCustomPass:=TpvScene3DRendererPassesAtmosphereProcessCustomPass.Create(fFrameGraph,self);
+ case Renderer.ShadowMode of
+  TpvScene3DRendererShadowMode.PCF,TpvScene3DRendererShadowMode.DPCF,TpvScene3DRendererShadowMode.PCSS:begin
+   TpvScene3DRendererInstancePasses(fPasses).fAtmosphereProcessCustomPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fCascadedShadowMapRenderPass);
+  end;
+  TpvScene3DRendererShadowMode.MSM:begin
+   TpvScene3DRendererInstancePasses(fPasses).fAtmosphereProcessCustomPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fCascadedShadowMapBlurRenderPasses[1]);
+  end;
+  else begin
+  end;
  end;
 
  if Renderer.GPUCulling then begin
