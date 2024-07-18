@@ -147,7 +147,7 @@ void main() {
     vec4 DepthBufferWorldPos = inverseViewProjectionMatrix * vec4(fma(vec2(uv), vec2(2.0), vec2(-1.0)), DepthBufferValue, 1.0);
     DepthBufferWorldPos /= DepthBufferWorldPos.w;
 
-    float tDepth = length(DepthBufferWorldPos.xyz - (WorldPos + vec3(0.0, 0.0, -atmosphereParameters.BottomRadius)));
+    float tDepth = length((atmosphereParameters.inverseTransform * vec4(DepthBufferWorldPos.xyz, 1.0)).xyz - WorldPos);
     float Slice = AerialPerspectiveDepthToSlice(tDepth);
     float Weight = 1.0;
     if(Slice < 0.5){
