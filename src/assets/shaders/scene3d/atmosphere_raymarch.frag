@@ -94,7 +94,7 @@ void main() {
 
   //WorldPos += vec3(0.0, atmosphereParameters.BottomRadius, 0.0);
 
-  float viewHeight = length(WorldPos);
+  float viewHeight = max(length(WorldPos), atmosphereParameters.BottomRadius + 1e-4);  
 	vec3 L = vec3(0.0);
 /*  
 #ifdef MSAA

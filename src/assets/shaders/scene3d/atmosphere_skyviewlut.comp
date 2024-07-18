@@ -78,7 +78,7 @@ void main() {
   
     uv = vec2(coord) / vec2(size);
 
-    float viewHeight = length(worldPos);
+    float viewHeight = max(length(worldPos), atmosphereParameters.BottomRadius + 1e-4);  
 
     float viewZenithCosAngle;
     float lightViewCosAngle;
