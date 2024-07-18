@@ -136,7 +136,10 @@ type TpvScene3DAtmosphere=class;
               BottomRadius:TpvFloat;
               TopRadius:TpvFloat;
               MuSMin:TpvFloat;
-              procedure InitializeEarthAtmosphere;
+              procedure InitializeEarthAtmosphere(const aEarthBottomRadius:TpvFloat=6360.0;
+                                                  const aEarthTopRadius:TpvFloat=6460.0;
+                                                  const aEarthRayleighScaleHeight:TpvFloat=8.0;
+                                                  const aEarthMieScaleHeight:TpvFloat=1.2);
             end;
             PAtmosphereParameters=^TAtmosphereParameters;
             { TGPUAtmosphereParameters }
@@ -424,11 +427,10 @@ end;
 
 { TpvScene3DAtmosphere.TAtmosphereParameters }
 
-procedure TpvScene3DAtmosphere.TAtmosphereParameters.InitializeEarthAtmosphere;
-const EarthBottomRadius=6360.0;
-      EarthTopRadius=6460.0;
-      EarthRayleighScaleHeight=8.0;
-      EarthMieScaleHeight=1.2;
+procedure TpvScene3DAtmosphere.TAtmosphereParameters.InitializeEarthAtmosphere(const aEarthBottomRadius:TpvFloat;
+                                                                               const aEarthTopRadius:TpvFloat;
+                                                                               const aEarthRayleighScaleHeight:TpvFloat;
+                                                                               const aEarthMieScaleHeight:TpvFloat);
 begin
  
  // Transform
@@ -445,18 +447,18 @@ begin
  SunAngularRadius:=0.004675;
 
  // Planet
- BottomRadius:=EarthBottomRadius;
- TopRadius:=EarthTopRadius;
+ BottomRadius:=aEarthBottomRadius;
+ TopRadius:=aEarthTopRadius;
  GroundAlbedo:=TpvVector4.InlineableCreate(0.0,0.0,0.0,0.0);
 
  // Rayleigh scattering
  RayleighDensity.Layers[0]:=TDensityProfileLayer.Create(0.0,0.0,0.0,0.0,0.0);
- RayleighDensity.Layers[1]:=TDensityProfileLayer.Create(0.0,1.0,-1.0/EarthRayleighScaleHeight,0.0,0.0);
+ RayleighDensity.Layers[1]:=TDensityProfileLayer.Create(0.0,1.0,-1.0/aEarthRayleighScaleHeight,0.0,0.0);
  RayleighScattering:=TpvVector4.InlineableCreate(0.005802,0.013558,0.033100,0.0);
 
  // Mie scattering
  MieDensity.Layers[0]:=TDensityProfileLayer.Create(0.0,0.0,0.0,0.0,0.0);
- MieDensity.Layers[1]:=TDensityProfileLayer.Create(0.0,1.0,-1.0/EarthMieScaleHeight,0.0,0.0);
+ MieDensity.Layers[1]:=TDensityProfileLayer.Create(0.0,1.0,-1.0/aEarthMieScaleHeight,0.0,0.0);
  MieScattering:=TpvVector4.InlineableCreate(0.003996,0.003996,0.003996,0.0);
  MieExtinction:=TpvVector4.InlineableCreate(0.004440,0.004440,0.004440,0.0);
  MiePhaseFunctionG:=0.8;
