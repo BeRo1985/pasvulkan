@@ -52,13 +52,13 @@ void main() {
 
   ivec2 coord = ivec2(gl_GlobalInvocationID.xy);
 
-  int viewIndex = pushConstants.baseViewIndex + int(gl_GlobalInvocationID.z);
+  int viewIndex = int(gl_GlobalInvocationID.z);
   
   if(all(greaterThanEqual(coord, ivec2(0))) && all(lessThan(coord, size)) && (viewIndex < pushConstants.countViews)) {
 
     atmosphereParameters = uAtmosphereParameters.atmosphereParameters;
 
-    View view = uView.views[viewIndex];
+    View view = uView.views[pushConstants.baseViewIndex + viewIndex];
 
     mat4 inverseViewMatrix = view.inverseViewMatrix;
     mat4 inverseProjectionMatrix = view.inverseProjectionMatrix;

@@ -53,7 +53,7 @@ void main() {
 
   ivec2 size = imageSize(uDestinationTexture).xy;
 
-  int viewIndex = pushConstants.baseViewIndex + int(gl_WorkGroupID.z);
+  int viewIndex = int(gl_WorkGroupID.z);
 
   if(any(lessThan(xy, ivec2(0))) || any(greaterThanEqual(xy, size)) && (viewIndex >= pushConstants.countViews)){
     return;
@@ -64,8 +64,8 @@ void main() {
 
   uv = vec2(fromSubUvsToUnit(uv.x, size.x), fromSubUvsToUnit(uv.y, size.y));
 
-  mat4 inverseViewMatrix = uView.views[viewIndex].inverseViewMatrix;
-  mat4 inverseProjectionMatrix = uView.views[viewIndex].inverseProjectionMatrix;
+  mat4 inverseViewMatrix = uView.views[pushConstants.baseViewIndex + viewIndex].inverseViewMatrix;
+  mat4 inverseProjectionMatrix = uView.views[pushConstants.baseViewIndex + viewIndex].inverseProjectionMatrix;
 
   mat4 SkyInvViewProjMat = inverseProjectionMatrix * inverseViewMatrix;
 
