@@ -109,7 +109,7 @@ void UvToLutTransmittanceParams(AtmosphereParameters Atmosphere, out float viewH
 #define NONLINEARSKYVIEWLUT 1
 void UvToSkyViewLutParams(AtmosphereParameters Atmosphere, out float viewZenithCosAngle, out float lightViewCosAngle, in float viewHeight, in vec2 uv){
 	// Constrain uvs to valid sub texel range (avoid zenith derivative issue making LUT usage visible)
-	uv = vec2(fromSubUvsToUnit(uv.x, 192.0), fromSubUvsToUnit(uv.y, 108.0));
+	uv = vec2(fromSubUvsToUnit(uv.x, 256.0), fromSubUvsToUnit(uv.y, 128.0));
 
 	float Vhorizon = sqrt((viewHeight * viewHeight) - (Atmosphere.BottomRadius * Atmosphere.BottomRadius));
 	float CosBeta = Vhorizon / viewHeight;				// GroundToHorizonCos
@@ -166,7 +166,7 @@ void SkyViewLutParamsToUv(AtmosphereParameters Atmosphere, in bool IntersectGrou
 	}
 
 	// Constrain uvs to valid sub texel range (avoid zenith derivative issue making LUT usage visible)
-	uv = vec2(fromUnitToSubUvs(uv.x, 192.0), fromUnitToSubUvs(uv.y, 108.0));
+	uv = vec2(fromUnitToSubUvs(uv.x, 256.0), fromUnitToSubUvs(uv.y, 128.0));
 }
 
 float raySphereIntersectNearest(vec3 r0, vec3 rd, vec3 s0, float sR){
