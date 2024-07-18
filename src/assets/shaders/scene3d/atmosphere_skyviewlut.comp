@@ -126,7 +126,7 @@ void main() {
         -1.0
       ); 
       vec3 L = ss.L;
-      imageStore(uDestinationTexture, ivec3(coord, viewIndex), vec4(L, mix(1.0, exp(-dot(ss.Transmittance, vec3(1.0 / 3.0))), smoothstep(atmosphereParameters.TopRadius, atmosphereParameters.TopRadius * 1.5, viewHeight))));
+      imageStore(uDestinationTexture, ivec3(coord, viewIndex), vec4(L, 1.0 - dot(ss.Transmittance, vec3(1.0 / 3.0))));
     }
 
   }
