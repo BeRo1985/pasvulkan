@@ -11,6 +11,7 @@ unit PasVulkan.Compression.LZMA;
 {$overflowchecks off}
 
 {$ifdef fpc}
+ {$optimization off}
  {$optimization level1}
 {$endif}
 

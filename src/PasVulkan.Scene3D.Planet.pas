@@ -61,6 +61,7 @@ unit PasVulkan.Scene3D.Planet;
 {$m+}
 
 {$ifdef fpc}
+ {$optimization off}
  {$optimization level1}
 {$endif}
 

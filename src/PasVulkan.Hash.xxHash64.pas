@@ -60,6 +60,7 @@ unit PasVulkan.Hash.xxHash64;
 {$endif}
 
 {$ifdef fpc}
+ {$optimization off}
  {$optimization level1}
 {$endif}
 

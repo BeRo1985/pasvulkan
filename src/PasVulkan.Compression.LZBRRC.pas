@@ -62,6 +62,7 @@ unit PasVulkan.Compression.LZBRRC;
 {$overflowchecks off}
 
 {$ifdef fpc}
+ {$optimization off}
  {$optimization level1}
 {$endif}
 

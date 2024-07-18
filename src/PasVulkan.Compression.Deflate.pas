@@ -62,6 +62,7 @@ unit PasVulkan.Compression.Deflate;
 {$overflowchecks off}
 
 {$ifdef fpc}
+ {$optimization off}
  {$optimization level1}
 {$endif}
 
