@@ -118,7 +118,7 @@ void main() {
 
   vec3 sunDirection = normalize(getSunDirection(uAtmosphereParameters.atmosphereParameters));
 
-	if((viewHeight < atmosphereParameters.TopRadius) && (DepthBufferValue == pushConstants.noHitDepthValue)){
+	if(/*(viewHeight < atmosphereParameters.TopRadius) &&*/ (DepthBufferValue == pushConstants.noHitDepthValue)){
 
 		vec2 localUV;
 		vec3 UpVector = normalize(WorldPos);
@@ -136,7 +136,7 @@ void main() {
 
 		outLuminance = vec4(
       textureLod(uSkyViewLUT, vec3(localUV, float(viewIndex)), 0.0).xyz +
-      GetSunLuminance(WorldPos, WorldDir, sunDirection, atmosphereParameters.BottomRadius), 
+      (IntersectGround ? vec3(0.0) : GetSunLuminance(WorldPos, WorldDir, sunDirection, atmosphereParameters.BottomRadius)), 
       1.0
     );
 

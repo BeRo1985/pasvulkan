@@ -72,10 +72,10 @@ void main() {
   Atmosphere = uAtmosphereParameters.atmosphereParameters;
 
   float cosSunZenithAngle = fma(uv.x, 2.0, -1.0);
-  vec3 sunDir = vec3(0.0, sqrt(clamp(1.0 - (cosSunZenithAngle * cosSunZenithAngle), 0.0, 1.0)), cosSunZenithAngle);
+  vec3 sunDir = vec3(0.0, cosSunZenithAngle, sqrt(clamp(1.0 - (cosSunZenithAngle * cosSunZenithAngle), 0.0, 1.0)));
   float viewHeight = Atmosphere.BottomRadius + clamp(uv.y + PLANET_RADIUS_OFFSET, 0.0, 1.0) * ((Atmosphere.TopRadius - Atmosphere.BottomRadius) - PLANET_RADIUS_OFFSET);
 
-  vec3 WorldPos = vec3(0.0, 0.0, viewHeight);
+  vec3 WorldPos = vec3(0.0, viewHeight, 0.0);
   vec3 WorldDir = vec3(0.0, 0.0, 1.0);
 
   const bool ground = true;
