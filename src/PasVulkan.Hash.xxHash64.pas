@@ -59,6 +59,10 @@ unit PasVulkan.Hash.xxHash64;
  {$endif}
 {$endif}
 
+{$ifdef fpc}
+ {$optimization level1}
+{$endif}
+
 interface
 
 uses SysUtils,

@@ -10,6 +10,10 @@ unit PasVulkan.Compression.LZMA;
 {$rangechecks off}
 {$overflowchecks off}
 
+{$ifdef fpc}
+ {$optimization level1}
+{$endif}
+
 interface
 
 uses SysUtils,

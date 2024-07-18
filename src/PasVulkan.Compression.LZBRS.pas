@@ -61,6 +61,10 @@ unit PasVulkan.Compression.LZBRS;
 {$rangechecks off}
 {$overflowchecks off}
 
+{$ifdef fpc}
+ {$optimization level1}
+{$endif}
+
 interface
 
 uses SysUtils,
