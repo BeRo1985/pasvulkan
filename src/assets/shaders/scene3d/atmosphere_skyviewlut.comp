@@ -65,7 +65,7 @@ void main() {
 
     mat4 SkyInvViewProjMat = inverseViewMatrix * inverseProjectionMatrix;
 
-    const vec2 size = vec2(192.0, 108.0);
+    const vec2 size = vec2(256.0, 128.0);
 
     vec2 uv = (vec2(coord) + vec2(0.5)) / vec2(size);
 
