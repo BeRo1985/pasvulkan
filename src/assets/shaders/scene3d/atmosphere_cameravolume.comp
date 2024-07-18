@@ -108,13 +108,13 @@ void main() {
       vec3 prevWorlPos = WorldPos;
       if(!MoveToTopAtmosphere(WorldPos, WorldDir, atmosphereParameters.TopRadius)){
         // Ray is not intersecting the atmosphere
-        imageStore(uDestinationTexture, ivec3(coord, (viewIndex * AP_SLICE_COUNT_INT) + sliceID), vec4(0.0, 0.0, 0.0, 1.0));
+        imageStore(uDestinationTexture, ivec3(coord, (viewIndex * AP_SLICE_COUNT_INT) + sliceID), vec4(0.0, 0.0, 0.0, 0.0));
         return;
       }
       float LengthToAtmosphere = length(prevWorlPos - WorldPos);
       if(tMaxMax < LengthToAtmosphere){
         // tMaxMax for this voxel is not within earth
-        imageStore(uDestinationTexture, ivec3(coord, (viewIndex * AP_SLICE_COUNT_INT) + sliceID), vec4(0.0, 0.0, 0.0, 1.0));
+        imageStore(uDestinationTexture, ivec3(coord, (viewIndex * AP_SLICE_COUNT_INT) + sliceID), vec4(0.0, 0.0, 0.0, 0.0));
         return;
       }
       // Now world position has been moved to the atmosphere boundary: we need to reduce tMaxMax accordingly.

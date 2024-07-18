@@ -134,11 +134,11 @@ void main() {
  
 		SkyViewLutParamsToUv(atmosphereParameters, IntersectGround, viewZenithCosAngle, lightViewCosAngle, viewHeight, localUV);
 
-		outLuminance = vec4(
-      textureLod(uSkyViewLUT, vec3(localUV, float(viewIndex)), 0.0).xyz +
-      (IntersectGround ? vec3(0.0) : GetSunLuminance(WorldPos, WorldDir, sunDirection, atmosphereParameters.BottomRadius)), 
-      1.0
-    );
+		outLuminance = 
+      textureLod(uSkyViewLUT, vec3(localUV, float(viewIndex)), 0.0).xyzw +
+      (IntersectGround ? vec4(0.0) : GetSunLuminance(WorldPos, WorldDir, sunDirection, atmosphereParameters.BottomRadius));
+
+    outLuminance.w = min(outLuminance.w, 1.0);
 
 	}else{
 
