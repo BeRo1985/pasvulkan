@@ -652,7 +652,7 @@ begin
   fOptimizedNonAlphaFormat:=VK_FORMAT_R16G16B16A16_SFLOAT;
  end;
 
-//fOptimizedNonAlphaFormat:=VK_FORMAT_R16G16B16A16_SFLOAT;
+ fOptimizedNonAlphaFormat:=VK_FORMAT_R16G16B16A16_SFLOAT;
 
 {FormatProperties:=fVulkanDevice.PhysicalDevice.GetFormatProperties(VK_FORMAT_E5B9G9R9_UFLOAT_PACK32);
  if //(fVulkanDevice.PhysicalDevice.Properties.deviceType=VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU) and
