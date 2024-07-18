@@ -146,7 +146,7 @@ void main() {
       MieRayPhase,
       SkyInvViewProjMat,
       tMaxMax
-    );
+    ); 
 
     vec3 L = ss.L;
     const float Transmittance = dot(ss.Transmittance, vec3(1.0 / 3.0));

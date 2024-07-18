@@ -131,7 +131,7 @@ void main() {
 		float lightViewCosAngle = lightOnPlane.x;
 
 		bool IntersectGround = raySphereIntersectNearest(WorldPos, WorldDir, vec3(0.0), atmosphereParameters.BottomRadius) >= 0.0;
-
+ 
 		SkyViewLutParamsToUv(atmosphereParameters, IntersectGround, viewZenithCosAngle, lightViewCosAngle, viewHeight, localUV);
 
 		outLuminance = vec4(
