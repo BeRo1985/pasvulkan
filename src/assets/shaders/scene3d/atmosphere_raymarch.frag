@@ -103,6 +103,8 @@ void main() {
 
   worldPos = (atmosphereParameters.inverseTransform * vec4(worldPos, 1.0)).xyz;
 
+  vec3 originalWorldPos = worldPos; 
+
   //worldPos += vec3(0.0, atmosphereParameters.BottomRadius, 0.0);
 
   float viewHeight = max(length(worldPos), atmosphereParameters.BottomRadius + 1e-4);  
@@ -156,7 +158,7 @@ void main() {
       vec4 value = textureLod(uSkyViewLUT, vec3(localUV, float(viewIndex)), 0.0).xyzw; // xyz = inscatter, w = transmittance (monochromatic)
 
       if(!IntersectGround){
-        value.xyz += GetSunLuminance(worldPos, worldDir, sunDirection, atmosphereParameters.BottomRadius).xyz * value.w;
+        value.xyz += GetSunLuminance(originalWorldPos, worldDir, sunDirection, atmosphereParameters.BottomRadius).xyz * value.w;
       }
 
       outLuminance = vec4(value);
@@ -238,7 +240,7 @@ void main() {
 
 
         if(depthIsZFar){
-          AP.xyz += GetSunLuminance(worldPos, worldDir, sunDirection, atmosphereParameters.BottomRadius).xyz;  
+          AP.xyz += GetSunLuminance(originalWorldPos, worldDir, sunDirection, atmosphereParameters.BottomRadius).xyz;  
         }
 
         outLuminance = vec4(AP.xyz, AP.w); 
@@ -263,7 +265,7 @@ void main() {
     if(!MoveToTopAtmosphere(worldPos, worldDir, atmosphereParameters.TopRadius)){
       
       // Ray is not intersecting the atmosphere       
-      inscattering = GetSunLuminance(worldPos, worldDir, sunDirection, atmosphereParameters.BottomRadius).xyz;
+      inscattering = GetSunLuminance(originalWorldPos, worldDir, sunDirection, atmosphereParameters.BottomRadius).xyz;
       transmittance = 1.0;
 
     }else {
@@ -295,7 +297,7 @@ void main() {
       inscattering = ss.L;
 
       if(depthIsZFar){
-        inscattering += GetSunLuminance(worldPos, worldDir, sunDirection, atmosphereParameters.BottomRadius).xyz * ss.Transmittance;
+        inscattering += GetSunLuminance(originalWorldPos, worldDir, sunDirection, atmosphereParameters.BottomRadius).xyz * ss.Transmittance;
       }
 
       transmittance = clamp(dot(ss.Transmittance, vec3(1.0 / 3.0)), 0.0, 1.0);
