@@ -66,6 +66,7 @@ uses SysUtils,
      Math,
      Vulkan,
      PasMP,
+     PasJSON,
      PasVulkan.Types,
      PasVulkan.Math,
      PasVulkan.Application,
@@ -140,6 +141,12 @@ type TpvScene3DAtmosphere=class;
                                                   const aEarthTopRadius:TpvFloat=6460.0;
                                                   const aEarthRayleighScaleHeight:TpvFloat=8.0;
                                                   const aEarthMieScaleHeight:TpvFloat=1.2);
+              procedure LoadFromJSON(const aJSON:TPasJSONItem);
+              procedure LoadFromJSONStream(const aStream:TStream);
+              procedure LoadFromJSONFile(const aFileName:string);
+              function SaveToJSON:TPasJSONItem;
+              procedure SaveToJSONStream(const aStream:TStream);
+              procedure SaveToJSONFile(const aFileName:string);
             end;
             PAtmosphereParameters=^TAtmosphereParameters;
             { TGPUAtmosphereParameters }
@@ -470,6 +477,73 @@ begin
 
  MuSMin:=cos(PI*120.0/180.0);
 
+end;
+
+(*
+              procedure LoadFromJSON(const aJSON:TPasJSONItem);
+              procedure LoadFromJSONStream(const aStream:TStream);
+              procedure LoadFromJSONFile(const aFileName:string);
+              function SaveToJSON:TPasJSONItem;
+              procedure SaveToJSONStream(const aStream:TStream);
+              procedure SaveToJSONFile(const aFileName:string);
+*)
+
+procedure TpvScene3DAtmosphere.TAtmosphereParameters.LoadFromJSON(const aJSON:TPasJSONItem);
+begin
+end;
+
+procedure TpvScene3DAtmosphere.TAtmosphereParameters.LoadFromJSONStream(const aStream:TStream);
+var JSON:TPasJSONItem;
+begin
+ JSON:=TPasJSON.Parse(aStream);
+ if assigned(JSON) then begin
+  try
+   LoadFromJSON(JSON);
+  finally
+   FreeAndNil(JSON);
+  end;
+ end;
+end;
+
+procedure TpvScene3DAtmosphere.TAtmosphereParameters.LoadFromJSONFile(const aFileName:string);
+var Stream:TMemoryStream;
+begin
+ Stream:=TMemoryStream.Create;
+ try
+  Stream.LoadFromFile(aFileName);
+  LoadFromJSONStream(Stream);
+ finally
+  FreeAndNil(Stream);
+ end;
+end;
+
+function TpvScene3DAtmosphere.TAtmosphereParameters.SaveToJSON:TPasJSONItem;
+begin
+end;
+
+procedure TpvScene3DAtmosphere.TAtmosphereParameters.SaveToJSONStream(const aStream:TStream);
+var JSON:TPasJSONItem;
+begin
+ JSON:=SaveToJSON;
+ if assigned(JSON) then begin
+  try
+   TPasJSON.StringifyToStream(aStream,JSON);
+  finally
+   FreeAndNil(JSON);
+  end;
+ end;
+end;
+
+procedure TpvScene3DAtmosphere.TAtmosphereParameters.SaveToJSONFile(const aFileName:string);
+var Stream:TMemoryStream;
+begin
+ Stream:=TMemoryStream.Create;
+ try
+  SaveToJSONStream(Stream);
+  Stream.SaveToFile(aFileName);
+ finally
+  FreeAndNil(Stream);
+ end;
 end;
 
 { TpvScene3DAtmosphere.TGPUAtmosphereParameters }
