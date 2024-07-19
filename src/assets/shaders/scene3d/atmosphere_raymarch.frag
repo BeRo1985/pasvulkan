@@ -149,7 +149,9 @@ void main() {
   
       SkyViewLutParamsToUv(atmosphereParameters, IntersectGround, viewZenithCosAngle, lightViewCosAngle, viewHeight, localUV);
 
+#if 0
       localUV = getNiceTextureUV(localUV, vec2(textureSize(uSkyViewLUT, 0).xy));
+#endif      
 
       vec4 value = textureLod(uSkyViewLUT, vec3(localUV, float(viewIndex)), 0.0).xyzw; // xyz = inscatter, w = transmittance (monochromatic)
 
@@ -214,10 +216,12 @@ void main() {
         } 
         float w = sqrt(slice / AP_SLICE_COUNT); // squared distribution
 
+#if 0
         vec3 uvw = getNiceTextureUVW(vec3(uv, w), vec3(textureSize(uCameraVolume, 0).xy, float(AP_SLICE_COUNT)));
 
         uv = uvw.xy;
         w = uvw.z;
+#endif
 
         float baseSlice = w * AP_SLICE_COUNT;
         int sliceIndex = int(floor(baseSlice));
@@ -232,8 +236,13 @@ void main() {
                     sliceWeight
                   ) * Weight;
 
-        outLuminance = vec4(AP.xyz, AP.w); 
 
+        if(depthIsZFar){
+          AP.xyz += GetSunLuminance(worldPos, worldDir, sunDirection, atmosphereParameters.BottomRadius).xyz;  
+        }
+
+        outLuminance = vec4(AP.xyz, AP.w); 
+      
         return; // Early out, for avoiding the code path of the more accurate and more bruteforce ray marching approach
 
       }  
