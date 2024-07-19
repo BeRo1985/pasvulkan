@@ -82,6 +82,8 @@ layout(set = 1, binding = 0, std140) uniform uboViews {
 
 AtmosphereParameters atmosphereParameters;
  
+#include "projectsphere.glsl"
+
 void main() {
 
   atmosphereParameters = uAtmosphereParameters.atmosphereParameters;
@@ -162,47 +164,70 @@ void main() {
     if((pushConstants.flags & FLAGS_USE_FAST_AERIAL_PERSPECTIVE) != 0u){
 
       // Fast aerial perspective approximation using a 3D texture
-  
-      // (BeRo): Move ray marching start up to top atmosphere, for to avoid missing the atmosphere in the special case of the camera being
-      // far outside the atmosphere.
-      //if(length(worldPos) >= atmosphereParameters.TopRadius)
-      {
-        vec2 t = raySphereIntersect(worldPos, worldDir, vec3(0.0), atmosphereParameters.TopRadius);
-        if(all(greaterThanEqual(t, vec2(0.0)))){
-          worldPos += worldDir * min(t.x, t.y);
+
+      // (BeRo): Check if we can use the fast aerial perspective approximation, given the camera volume constraints the planet in a way that
+      // the voxel resolution is not too inaccurate
+      bool fitsInCameraVolume = true;
+      if(length(worldPos) >= atmosphereParameters.TopRadius){
+
+        vec4 aabb;     
+        vec3 transformedCenter = ((view.viewMatrix * atmosphereParameters.transform) * vec4(vec3(0.0), 1.0)).xyz;
+        if(projectSphere(transformedCenter, atmosphereParameters.TopRadius, 0.01, view.projectionMatrix, aabb, false)){
+
+          // camera volume is 32x32 by width and height and 32 by depth, by default
+
+          vec2 aabbSize = (aabb.zw - aabb.xy) * vec2(textureSize(uCameraVolume, 0).xy);
+
+          fitsInCameraVolume = all(greaterThanEqual(aabbSize, vec2(4.0))); // 4x4 pixels minimum, otherwise the voxel resolution is too inaccurate
+
         }
-      }
 
-      mat4 inverseViewProjectionMatrix = view.inverseViewMatrix * view.inverseProjectionMatrix;
+      }  
+  
+      if(fitsInCameraVolume){
 
-      vec4 depthBufferWorldPos = inverseViewProjectionMatrix * vec4(fma(vec2(uv), vec2(2.0), vec2(-1.0)), depthBufferValue, 1.0);
-      depthBufferWorldPos /= depthBufferWorldPos.w;
+        // (BeRo): Move ray marching start up to top atmosphere, for to avoid missing the atmosphere in the special case of the camera being
+        // far outside the atmosphere.
+        //if(length(worldPos) >= atmosphereParameters.TopRadius)
+        {
+          vec2 t = raySphereIntersect(worldPos, worldDir, vec3(0.0), atmosphereParameters.TopRadius);
+          if(all(greaterThanEqual(t, vec2(0.0)))){
+            worldPos += worldDir * min(t.x, t.y);
+          }
+        }
 
-      float tDepth = length((atmosphereParameters.inverseTransform * vec4(depthBufferWorldPos.xyz, 1.0)).xyz - worldPos);
-      float slice = AerialPerspectiveDepthToSlice(tDepth);
-      float Weight = 1.0;
-      if(slice < 0.5){
-        Weight = clamp(slice * 2.0, 0.0, 1.0);
-        slice = 0.5;
-      } 
-      float w = sqrt(slice / AP_SLICE_COUNT); // squared distribution
+        mat4 inverseViewProjectionMatrix = view.inverseViewMatrix * view.inverseProjectionMatrix;
 
-      float baseSlice = w * AP_SLICE_COUNT;
-      int sliceIndex = int(floor(baseSlice));
-      float sliceWeight = baseSlice - float(sliceIndex);
-      int nextSliceIndex = clamp(sliceIndex + 1, 0, AP_SLICE_COUNT_INT - 1);
-      sliceIndex = clamp(sliceIndex, 0, AP_SLICE_COUNT_INT - 1);
+        vec4 depthBufferWorldPos = inverseViewProjectionMatrix * vec4(fma(vec2(uv), vec2(2.0), vec2(-1.0)), depthBufferValue, 1.0);
+        depthBufferWorldPos /= depthBufferWorldPos.w;
 
-      // Manual 3D texture lookup from a 2D array texture, since multiview is not supported for 3D textures (no 3D array textures) 
-      vec4 AP = mix(
-                  textureLod(uCameraVolume, vec3(uv, sliceIndex + (viewIndex * AP_SLICE_COUNT_INT)), 0.0),
-                  textureLod(uCameraVolume, vec3(uv, nextSliceIndex + (viewIndex * AP_SLICE_COUNT_INT)), 0.0),
-                  sliceWeight
-                ) * Weight;
+        float tDepth = length((atmosphereParameters.inverseTransform * vec4(depthBufferWorldPos.xyz, 1.0)).xyz - worldPos);
+        float slice = AerialPerspectiveDepthToSlice(tDepth);
+        float Weight = 1.0;
+        if(slice < 0.5){
+          Weight = clamp(slice * 2.0, 0.0, 1.0);
+          slice = 0.5;
+        } 
+        float w = sqrt(slice / AP_SLICE_COUNT); // squared distribution
 
-      outLuminance = vec4(AP.xyz, AP.w); 
+        float baseSlice = w * AP_SLICE_COUNT;
+        int sliceIndex = int(floor(baseSlice));
+        float sliceWeight = baseSlice - float(sliceIndex);
+        int nextSliceIndex = clamp(sliceIndex + 1, 0, AP_SLICE_COUNT_INT - 1);
+        sliceIndex = clamp(sliceIndex, 0, AP_SLICE_COUNT_INT - 1);
 
-      return; // Early out, for avoiding the code path of the more accurate and more bruteforce ray marching approach
+        // Manual 3D texture lookup from a 2D array texture, since multiview is not supported for 3D textures (no 3D array textures) 
+        vec4 AP = mix(
+                    textureLod(uCameraVolume, vec3(uv, sliceIndex + (viewIndex * AP_SLICE_COUNT_INT)), 0.0),
+                    textureLod(uCameraVolume, vec3(uv, nextSliceIndex + (viewIndex * AP_SLICE_COUNT_INT)), 0.0),
+                    sliceWeight
+                  ) * Weight;
+
+        outLuminance = vec4(AP.xyz, AP.w); 
+
+        return; // Early out, for avoiding the code path of the more accurate and more bruteforce ray marching approach
+
+      }  
 
     }
 
