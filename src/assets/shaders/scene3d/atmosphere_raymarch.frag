@@ -162,7 +162,17 @@ void main() {
     if((pushConstants.flags & FLAGS_USE_FAST_AERIAL_PERSPECTIVE) != 0u){
 
       // Fast aerial perspective approximation using a 3D texture
-   
+  
+      // (BeRo): Move ray marching start up to top atmosphere, for to avoid missing the atmosphere in the special case of the camera being
+      // far outside the atmosphere.
+      //if(length(worldPos) >= atmosphereParameters.TopRadius)
+      {
+        vec2 t = raySphereIntersect(worldPos, worldDir, vec3(0.0), atmosphereParameters.TopRadius);
+        if(all(greaterThanEqual(t, vec2(0.0)))){
+          worldPos += worldDir * min(t.x, t.y);
+        }
+      }
+
       mat4 inverseViewProjectionMatrix = view.inverseViewMatrix * view.inverseProjectionMatrix;
 
       vec4 depthBufferWorldPos = inverseViewProjectionMatrix * vec4(fma(vec2(uv), vec2(2.0), vec2(-1.0)), depthBufferValue, 1.0);

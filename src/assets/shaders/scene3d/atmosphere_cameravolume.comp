@@ -88,6 +88,16 @@ void main() {
     Slice *= Slice;	// squared distribution
     Slice *= AP_SLICE_COUNT;
     
+    // (BeRo): Move ray marching start up to top atmosphere, for to avoid missing the atmosphere in the special case of the camera being
+    // far outside the atmosphere.
+    //if(length(worldPos) >= atmosphereParameters.TopRadius)
+    {
+      vec2 t = raySphereIntersect(worldPos, worldDir, vec3(0.0), atmosphereParameters.TopRadius);
+      if(all(greaterThanEqual(t, vec2(0.0)))){
+        worldPos += worldDir * min(t.x, t.y);
+      }
+    }
+
     // Compute position from froxel information
     float tMax = AerialPerspectiveSliceToDepth(Slice);
     vec3 newWorldPos = worldPos + (tMax * worldDir);
