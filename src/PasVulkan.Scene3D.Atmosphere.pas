@@ -615,7 +615,7 @@ var JSONRootObject:TPasJSONItemObject;
     JSON:TPasJSONItem;
     aIndex:TpvInt32;
     aLayerIndex:TpvInt32;
- procedure LoadDensityProfileLayer(const aJSON:TPasJSONItemObject;var aLayer:TDensityProfileLayer); 
+ procedure LoadDensityProfileLayer(const aJSON:TPasJSONItem;var aLayer:TDensityProfileLayer);
  var JSONLayer:TPasJSONItemObject;
  begin
   if assigned(aJSON) and (aJSON is TPasJSONItemObject) then begin
@@ -635,9 +635,29 @@ begin
 
   SolarIrradiance.xyz:=JSONToVector3(JSONRootObject.Properties['solarirradiance'],SolarIrradiance.xyz);
   SunAngularRadius:=TPasJSON.GetNumber(JSONRootObject.Properties['sunangularradius'],SunAngularRadius);
+  
   BottomRadius:=TPasJSON.GetNumber(JSONRootObject.Properties['bottomradius'],BottomRadius);
   TopRadius:=TPasJSON.GetNumber(JSONRootObject.Properties['topradius'],TopRadius);
+  GroundAlbedo.xyz:=JSONToVector3(JSONRootObject.Properties['groundalbedo'],GroundAlbedo.xyz);
   
+  LoadDensityProfileLayer(JSONRootObject.Properties['rayleighdensity0'],RayleighDensity.Layers[0]);
+  LoadDensityProfileLayer(JSONRootObject.Properties['rayleighdensity1'],RayleighDensity.Layers[1]);
+  RayleighScattering.xyz:=JSONToVector3(JSONRootObject.Properties['rayleighscattering'],RayleighScattering.xyz);
+  
+  LoadDensityProfileLayer(JSONRootObject.Properties['miedensity0'],MieDensity.Layers[0]);
+  LoadDensityProfileLayer(JSONRootObject.Properties['miedensity1'],MieDensity.Layers[1]);
+  MieScattering.xyz:=JSONToVector3(JSONRootObject.Properties['miescattering'],MieScattering.xyz);
+  MieExtinction.xyz:=JSONToVector3(JSONRootObject.Properties['mieextinction'],MieExtinction.xyz);
+  MiePhaseFunctionG:=TPasJSON.GetNumber(JSONRootObject.Properties['miephasefunctiong'],MiePhaseFunctionG);
+
+  LoadDensityProfileLayer(JSONRootObject.Properties['absorptiondensity0'],AbsorptionDensity.Layers[0]);
+  LoadDensityProfileLayer(JSONRootObject.Properties['absorptiondensity1'],AbsorptionDensity.Layers[1]);
+  AbsorptionExtinction.xyz:=JSONToVector3(JSONRootObject.Properties['absorptionextinction'],AbsorptionExtinction.xyz);
+
+  //SunDirection.xyz:=JSONToVector3(JSONRootObject.Properties['sundirection'],SunDirection.xyz);
+
+  MuSMin:=TPasJSON.GetNumber(JSONRootObject.Properties['musmin'],MuSMin);
+
  end;
 
 end;
