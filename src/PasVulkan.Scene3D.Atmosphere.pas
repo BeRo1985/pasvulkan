@@ -633,6 +633,8 @@ begin
   
   JSONRootObject:=TPasJSONItemObject(aJSON);
 
+  Transform:=JSONToMatrix4x4(JSONRootObject.Properties['transform'],Transform);
+
   SolarIrradiance.xyz:=JSONToVector3(JSONRootObject.Properties['solarirradiance'],SolarIrradiance.xyz);
   SunAngularRadius:=TPasJSON.GetNumber(JSONRootObject.Properties['sunangularradius'],SunAngularRadius);
   
@@ -699,6 +701,7 @@ function TpvScene3DAtmosphere.TAtmosphereParameters.SaveToJSON:TPasJSONItemObjec
  end;
 begin
  result:=TPasJSONItemObject.Create;
+ result.Add('transform',Matrix4x4ToJSON(Transform));
  result.Add('solarirradiance',Vector3ToJSON(SolarIrradiance.xyz));
  result.Add('sunangularradius',TPasJSONItemNumber.Create(SunAngularRadius));
  result.Add('bottomradius',TPasJSONItemNumber.Create(BottomRadius));
