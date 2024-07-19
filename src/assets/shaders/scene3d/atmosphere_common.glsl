@@ -3,7 +3,7 @@
 
 // Based on: https://github.com/sebh/UnrealEngineSkyAtmosphere
 
-#define ILLUMINANCE_IS_ONE
+#undef ILLUMINANCE_IS_ONE
 #define USE_CornetteShanks
 #define MULTI_SCATTERING_POWER_SERIE 1
 
@@ -39,6 +39,7 @@ struct AtmosphereParameters {
   vec4 MieAbsorption; // w = sun direction Z
   vec4 AbsorptionExtinction;
   vec4 GroundAlbedo;
+  vec4 SolarIlluminance;
   float BottomRadius;
   float TopRadius;
   float RayleighDensityExpScale;
@@ -49,6 +50,8 @@ struct AtmosphereParameters {
   float AbsorptionDensity0LinearTerm;
   float AbsorptionDensity1ConstantTerm;
   float AbsorptionDensity1LinearTerm;
+  int RaymarchingMinSteps;
+  int RaymarchingMaxSteps;
 };
 
 vec3 getSunDirection(const in AtmosphereParameters atmosphereParameters){
@@ -64,7 +67,7 @@ struct SingleScatteringResult {
   vec3 NewMultiScatStep1Out;
 };
 
-vec2 RayMarchMinMaxSPP = vec2(4.0, 14.0);
+//vec2 RayMarchMinMaxSPP = vec2(4.0, 14.0);
 
 #define PLANET_RADIUS_OFFSET 0.01
 
@@ -413,7 +416,8 @@ vec3 IntegrateOpticalDepth(in vec3 WorldPos,
   float SampleCountFloor = SampleCountIni;
   float tMaxFloor = tMax;
   if(VariableSampleCount){
-    SampleCount = mix(RayMarchMinMaxSPP.x, RayMarchMinMaxSPP.y, clamp(tMax * 0.01, 0.0, 1.0));
+//  SampleCount = mix(RayMarchMinMaxSPP.x, RayMarchMinMaxSPP.y, clamp(tMax * 0.01, 0.0, 1.0));
+    SampleCount = clamp(mix(float(Atmosphere.RaymarchingMinSteps), float(Atmosphere.RaymarchingMaxSteps), clamp(tMax * 0.01, 0.0, 1.0)), 0.0, 256.0);
     SampleCountFloor = floor(SampleCount);
     tMaxFloor = tMax * SampleCountFloor / SampleCount;	// rescale tMax to map to the last entire step segment.
   }
@@ -432,7 +436,7 @@ vec3 IntegrateOpticalDepth(in vec3 WorldPos,
   // This make the scattering factor independent of the light. It is now only linked to the atmosphere properties.
   vec3 globalL = vec3(1.0);
 #else
-  vec3 globalL = gSunIlluminance;
+  vec3 globalL = Atmosphere.SolarIlluminance.xyz * Atmosphere.SolarIlluminance.w; // w = intensity
 #endif
 
   // Ray march the atmosphere to integrate optical depth
@@ -574,7 +578,8 @@ SingleScatteringResult IntegrateScatteredLuminance(const in sampler2D Transmitta
   float SampleCountFloor = SampleCountIni;
   float tMaxFloor = tMax;
   if(VariableSampleCount){
-    SampleCount = mix(RayMarchMinMaxSPP.x, RayMarchMinMaxSPP.y, clamp(tMax * 0.01, 0.0, 1.0));
+//  SampleCount = mix(RayMarchMinMaxSPP.x, RayMarchMinMaxSPP.y, clamp(tMax * 0.01, 0.0, 1.0));
+    SampleCount = clamp(mix(float(Atmosphere.RaymarchingMinSteps), float(Atmosphere.RaymarchingMaxSteps), clamp(tMax * 0.01, 0.0, 1.0)), 0.0, 256.0);
     SampleCountFloor = floor(SampleCount);
     tMaxFloor = tMax * SampleCountFloor / SampleCount;	// rescale tMax to map to the last entire step segment.
   }
@@ -593,7 +598,7 @@ SingleScatteringResult IntegrateScatteredLuminance(const in sampler2D Transmitta
   // This make the scattering factor independent of the light. It is now only linked to the atmosphere properties.
   vec3 globalL = vec3(1.0);
 #else
-  vec3 globalL = gSunIlluminance;
+  vec3 globalL = Atmosphere.SolarIlluminance.xyz * Atmosphere.SolarIlluminance.w; // w = intensity
 #endif
 
   // Ray march the atmosphere to integrate optical depth
@@ -728,7 +733,7 @@ SingleScatteringResult IntegrateScatteredLuminance(const in sampler2D Transmitta
 
   }
 
-  result.L = L;
+  result.L = L * Atmosphere.GroundAlbedo.w; // w = intensity
   result.OpticalDepth = OpticalDepth;
   result.Transmittance = throughput;
   return result;

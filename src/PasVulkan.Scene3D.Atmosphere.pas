@@ -132,11 +132,14 @@ type TpvScene3DAtmosphere=class;
               MieExtinction:TpvVector4; // w is unused, for alignment
               AbsorptionExtinction:TpvVector4; // w is unused, for alignment
               GroundAlbedo:TpvVector4; // w is unused, for alignment
+              Intensity:TpvFloat;
               MiePhaseFunctionG:TpvFloat;
               SunAngularRadius:TpvFloat;
               BottomRadius:TpvFloat;
               TopRadius:TpvFloat;
               MuSMin:TpvFloat;
+              RaymarchingMinSteps:TpvInt32;
+              RaymarchingMaxSteps:TpvInt32;
               procedure InitializeEarthAtmosphere(const aEarthBottomRadius:TpvFloat=6360.0;
                                                   const aEarthTopRadius:TpvFloat=6460.0;
                                                   const aEarthRayleighScaleHeight:TpvFloat=8.0;
@@ -159,7 +162,8 @@ type TpvScene3DAtmosphere=class;
               MieExtinction:TpvVector4; // w = sun direction Y
               MieAbsorption:TpvVector4; // w = sun direction Z
               AbsorptionExtinction:TpvVector4;
-              GroundAlbedo:TpvVector4;
+              GroundAlbedo:TpvVector4; // w = intensity
+              SolarIrradiance:TpvVector4;
               BottomRadius:TpvFloat;
               TopRadius:TpvFloat;
               RayleighDensityExpScale:TpvFloat;
@@ -170,6 +174,8 @@ type TpvScene3DAtmosphere=class;
               AbsorptionDensity0LinearTerm:TpvFloat;
               AbsorptionDensity1ConstantTerm:TpvFloat;
               AbsorptionDensity1LinearTerm:TpvFloat;              
+              RaymarchingMinSteps:TpvInt32;
+              RaymarchingMaxSteps:TpvInt32;
               procedure Assign(const aAtmosphereParameters:TAtmosphereParameters);
             end;
             PGPUAtmosphereParameters=^TGPUAtmosphereParameters;
@@ -581,13 +587,16 @@ begin
  SunDirection:=TpvVector4.InlineableCreate(0.0,0.90045,0.43497,0.0).Normalize;
 
  // Sun
- SolarIrradiance:=TpvVector4.InlineableCreate(1.0,1.0,1.0,0.0);
+ SolarIrradiance:=TpvVector4.InlineableCreate(1.0,1.0,1.0,1.0);
  SunAngularRadius:=0.004675;
 
  // Planet
  BottomRadius:=aEarthBottomRadius;
  TopRadius:=aEarthTopRadius;
  GroundAlbedo:=TpvVector4.InlineableCreate(0.0,0.0,0.0,0.0);
+
+ // Intensity 
+ Intensity:=1.0;
 
  // Rayleigh scattering
  RayleighDensity.Layers[0]:=TDensityProfileLayer.Create(0.0,0.0,0.0,0.0,0.0);
@@ -606,7 +615,12 @@ begin
  AbsorptionDensity.Layers[1]:=TDensityProfileLayer.Create(0.0,0.0,0.0,-1.0/15.0,8.0/3.0);
  AbsorptionExtinction:=TpvVector4.InlineableCreate(0.000650,0.001881,0.000085,0.0);
 
+ // MuSMin
  MuSMin:=cos(PI*120.0/180.0);
+
+ // Raymarching min/max steps
+ RaymarchingMinSteps:=4;
+ RaymarchingMaxSteps:=14;
 
 end;
 
@@ -625,7 +639,16 @@ var JSONRootObject:TPasJSONItemObject;
    aLayer.LinearTerm:=TPasJSON.GetNumber(JSONLayer.Properties['linearterm'],aLayer.LinearTerm);
    aLayer.ConstantTerm:=TPasJSON.GetNumber(JSONLayer.Properties['constantterm'],aLayer.ConstantTerm);
   end;  
- end;   
+ end;
+ procedure LoadRaymarching(const aJSON:TPasJSONItem);
+ var JSONObject:TPasJSONItemObject;
+ begin
+  if assigned(aJSON) and (aJSON is TPasJSONItemObject) then begin
+   JSONObject:=TPasJSONItemObject(aJSON);
+   RaymarchingMinSteps:=Min(Max(TPasJSON.GetInt64(JSONObject.Properties['minsteps'],RaymarchingMinSteps),1),256);
+   RaymarchingMaxSteps:=Min(Max(TPasJSON.GetInt64(JSONObject.Properties['maxsteps'],RaymarchingMaxSteps),1),256);
+  end;
+ end; 
 begin
  
  if assigned(aJSON) and (aJSON is TPasJSONItemObject) then begin
@@ -636,12 +659,13 @@ begin
 
   Factor:=TPasJSON.GetNumber(JSONRootObject.Properties['scatteringcoefficientscale'],1.0);
 
-  SolarIrradiance.xyz:=JSONToVector3(JSONRootObject.Properties['solarirradiance'],SolarIrradiance.xyz);
+  SolarIrradiance:=JSONToVector4(JSONRootObject.Properties['solarirradiance'],SolarIrradiance);
   SunAngularRadius:=TPasJSON.GetNumber(JSONRootObject.Properties['sunangularradius'],SunAngularRadius);
   
   BottomRadius:=TPasJSON.GetNumber(JSONRootObject.Properties['bottomradius'],BottomRadius);
   TopRadius:=TPasJSON.GetNumber(JSONRootObject.Properties['topradius'],TopRadius);
   GroundAlbedo.xyz:=JSONToVector3(JSONRootObject.Properties['groundalbedo'],GroundAlbedo.xyz);
+  Intensity:=TPasJSON.GetNumber(JSONRootObject.Properties['intensity'],Intensity);
   
   LoadDensityProfileLayer(JSONRootObject.Properties['rayleighdensity0'],RayleighDensity.Layers[0]);
   LoadDensityProfileLayer(JSONRootObject.Properties['rayleighdensity1'],RayleighDensity.Layers[1]);
@@ -660,6 +684,8 @@ begin
   //SunDirection.xyz:=JSONToVector3(JSONRootObject.Properties['sundirection'],SunDirection.xyz);
 
   //MuSMin:=TPasJSON.GetNumber(JSONRootObject.Properties['musmin'],MuSMin);
+
+  LoadRaymarching(JSONRootObject.Properties['raymarching']);
 
  end;
 
@@ -700,15 +726,22 @@ function TpvScene3DAtmosphere.TAtmosphereParameters.SaveToJSON:TPasJSONItemObjec
   result.Add('linearterm',TPasJSONItemNumber.Create(aLayer.LinearTerm));
   result.Add('constantterm',TPasJSONItemNumber.Create(aLayer.ConstantTerm));
  end;
+ function SaveRaymarching:TPasJSONItemObject;
+ begin
+  result:=TPasJSONItemObject.Create;
+  result.Add('minsteps',TPasJSONItemNumber.Create(RaymarchingMinSteps));
+  result.Add('maxsteps',TPasJSONItemNumber.Create(RaymarchingMaxSteps));
+ end;
 begin
  result:=TPasJSONItemObject.Create;
  result.Add('transform',Matrix4x4ToJSON(Transform));
  result.Add('scatteringcoefficientscale',TPasJSONItemNumber.Create(1.0));
- result.Add('solarirradiance',Vector3ToJSON(SolarIrradiance.xyz));
+ result.Add('solarirradiance',Vector4ToJSON(SolarIrradiance));
  result.Add('sunangularradius',TPasJSONItemNumber.Create(SunAngularRadius));
  result.Add('bottomradius',TPasJSONItemNumber.Create(BottomRadius));
  result.Add('topradius',TPasJSONItemNumber.Create(TopRadius));
  result.Add('groundalbedo',Vector3ToJSON(GroundAlbedo.xyz));
+ result.Add('intensity',TPasJSONItemNumber.Create(Intensity));
  result.Add('rayleighdensity0',SaveDensityLayer(RayleighDensity.Layers[0]));
  result.Add('rayleighdensity1',SaveDensityLayer(RayleighDensity.Layers[1]));
  result.Add('rayleighscattering',Vector3ToJSON(RayleighScattering.xyz));
@@ -722,6 +755,7 @@ begin
  result.Add('absorptionextinction',Vector3ToJSON(AbsorptionExtinction.xyz));
  //result.Add('sundirection',Vector3ToJSON(SunDirection.xyz));
  //result.Add('musmin',TPasJSONItemNumber.Create(MuSMin));
+ result.Add('raymarching',SaveRaymarching); 
 end;
 
 procedure TpvScene3DAtmosphere.TAtmosphereParameters.SaveToJSONStream(const aStream:TStream);
@@ -757,6 +791,8 @@ begin
  Transform:=aAtmosphereParameters.Transform;
  InverseTransform:=Transform.Inverse;
 
+ SolarIrradiance:=aAtmosphereParameters.SolarIrradiance;
+
  BottomRadius:=aAtmosphereParameters.BottomRadius;
  TopRadius:=aAtmosphereParameters.TopRadius;
  RayleighDensityExpScale:=aAtmosphereParameters.RayleighDensity.Layers[1].ExpScale;
@@ -775,10 +811,9 @@ begin
  AbsorptionDensity1LinearTerm:=aAtmosphereParameters.AbsorptionDensity.Layers[1].LinearTerm;
  AbsorptionExtinction:=aAtmosphereParameters.AbsorptionExtinction;
 
- GroundAlbedo:=aAtmosphereParameters.GroundAlbedo;
+ GroundAlbedo:=TpvVector4.InlineableCreate(aAtmosphereParameters.GroundAlbedo.xyz,aAtmosphereParameters.Intensity);
 
 end;
-
 
 { TpvScene3DAtmosphere.TRendererInstance.TKey }
 
