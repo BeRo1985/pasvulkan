@@ -545,14 +545,14 @@ SingleScatteringResult IntegrateScatteredLuminance(const in sampler2D Transmitta
 
     if((reversedZ && (ClipSpace.z > 0.0)) || (!reversedZ && (ClipSpace.z < 1.0))){
 
-      vec4 DepthBufferWorldPos = SkyInvViewProjMat * vec4(ClipSpace, reversedZ ? 0.0 : 1.0);
+      vec4 DepthBufferWorldPos = SkyInvViewProjMat * vec4(ClipSpace, 1.0);
       DepthBufferWorldPos /= DepthBufferWorldPos.w;
 
       // Check if the result is valid, because for example in a case of a reverse infinite far Z plane, the depth value can be infinite,
       // where we just ignore this case then, since it is infinite far away anyway. 
       if(!(any(isinf(DepthBufferWorldPos)) || any(isnan(DepthBufferWorldPos)))){
 
-        DepthBufferWorldPos = Atmosphere.inverseTransform * DepthBufferWorldPos;
+        DepthBufferWorldPos.xyz = (Atmosphere.inverseTransform * vec4(DepthBufferWorldPos.xyz, 1.0)).xyz;
 
         float tDepth = length(DepthBufferWorldPos.xyz - WorldPos); // apply earth offset to go back to origin as top of earth mode. 
         if(!(isinf(tDepth) || isnan(tDepth))){

@@ -103,15 +103,15 @@ void main() {
     float tMaxMax = tMax;
 
     // Move ray marching start up to top atmosphere.
-    viewHeight = length(worldPos);
+    viewHeight = length(worldPos);  
     if(viewHeight >= atmosphereParameters.TopRadius){
-      vec3 prevWorlPos = worldPos;
+      vec3 previousWorldPosition = worldPos;
       if(!MoveToTopAtmosphere(worldPos, worldDir, atmosphereParameters.TopRadius)){
         // Ray is not intersecting the atmosphere
         imageStore(uDestinationTexture, ivec3(coord, (viewIndex * AP_SLICE_COUNT_INT) + sliceID), vec4(0.0, 0.0, 0.0, 0.0));
         return;
       }
-      float LengthToAtmosphere = length(prevWorlPos - worldPos);
+      float LengthToAtmosphere = length(previousWorldPosition - worldPos);
       if(tMaxMax < LengthToAtmosphere){
         // tMaxMax for this voxel is not within earth
         imageStore(uDestinationTexture, ivec3(coord, (viewIndex * AP_SLICE_COUNT_INT) + sliceID), vec4(0.0, 0.0, 0.0, 0.0));
