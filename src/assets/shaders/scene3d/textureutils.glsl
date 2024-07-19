@@ -92,4 +92,32 @@ vec4 textureTriplanar(const in sampler2D t, const in vec3 p, const in vec3 n, co
           (textureGrad(t, p.xy, gx.xy, gy.xy) * m.z)) / (m.x + m.y + m.z);
 }           
 
+vec2 getNiceTextureUV(vec2 uv, vec2 textureResolution){
+  uv = fma(uv, textureResolution, vec2(0.5));
+  vec2 iuv = floor(uv);
+  vec2 fuv = fract(uv);
+  uv = iuv + ((fuv * fuv) * fma(fuv, vec2(-2.0), vec2(3.0)));
+  uv = (uv - vec2(0.5)) / textureResolution;
+  return uv;
+}
+
+vec3 getNiceTextureUVW(vec3 uvw, vec3 textureResolution){
+  uvw = fma(uvw, textureResolution, vec3(0.5));
+  vec3 iuvw = floor(uvw);
+  vec3 fuvw = fract(uvw);
+  uvw = iuvw + ((fuvw * fuvw) * fma(fuvw, vec3(-2.0), vec3(3.0)));
+  uvw = (uvw - vec3(0.5)) / textureResolution;
+  return uvw;
+}
+
+vec4 textureNice(const sampler2D t, vec2 uv, float lod){
+  vec2 textureResolution = vec2(textureSize(t, int(lod)).xy);
+  uv = fma(uv, textureResolution, vec2(0.5));
+  vec2 iuv = floor(uv);
+  vec2 fuv = fract(uv);
+  uv = iuv + ((fuv * fuv) * fma(fuv, vec2(-2.0), vec2(3.0)));
+  uv = (uv - vec2(0.5)) / textureResolution;
+  return textureLod(t, uv, lod);
+}
+
 #endif

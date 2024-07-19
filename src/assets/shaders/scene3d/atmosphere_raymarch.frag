@@ -84,6 +84,8 @@ AtmosphereParameters atmosphereParameters;
  
 #include "projectsphere.glsl"
 
+#include "textureutils.glsl"
+
 void main() {
 
   atmosphereParameters = uAtmosphereParameters.atmosphereParameters;
@@ -147,6 +149,8 @@ void main() {
   
       SkyViewLutParamsToUv(atmosphereParameters, IntersectGround, viewZenithCosAngle, lightViewCosAngle, viewHeight, localUV);
 
+      localUV = getNiceTextureUV(localUV, vec2(textureSize(uSkyViewLUT, 0).xy));
+
       vec4 value = textureLod(uSkyViewLUT, vec3(localUV, float(viewIndex)), 0.0).xyzw; // xyz = inscatter, w = transmittance (monochromatic)
 
       if(!IntersectGround){
@@ -209,6 +213,11 @@ void main() {
           slice = 0.5;
         } 
         float w = sqrt(slice / AP_SLICE_COUNT); // squared distribution
+
+        vec3 uvw = getNiceTextureUVW(vec3(uv, w), vec3(textureSize(uCameraVolume, 0).xy, float(AP_SLICE_COUNT)));
+
+        uv = uvw.xy;
+        w = uvw.z;
 
         float baseSlice = w * AP_SLICE_COUNT;
         int sliceIndex = int(floor(baseSlice));
