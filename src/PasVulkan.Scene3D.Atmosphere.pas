@@ -813,6 +813,9 @@ begin
 
  GroundAlbedo:=TpvVector4.InlineableCreate(aAtmosphereParameters.GroundAlbedo.xyz,aAtmosphereParameters.Intensity);
 
+ RaymarchingMinSteps:=aAtmosphereParameters.RaymarchingMinSteps;
+ RaymarchingMaxSteps:=aAtmosphereParameters.RaymarchingMaxSteps;
+
 end;
 
 { TpvScene3DAtmosphere.TRendererInstance.TKey }
