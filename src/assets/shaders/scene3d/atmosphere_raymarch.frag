@@ -53,11 +53,15 @@ layout(input_attachment_index = 0, set = 0, binding = 0) uniform subpassInput uS
 #endif
 */
 
-layout(set = 0, binding = 1) uniform sampler2DArray uSkyViewLUT;
+layout(set = 0, binding = 1) uniform sampler2D uTransmittanceLutTexture;
 
-layout(set = 0, binding = 2) uniform sampler2DArray uCameraVolume;
+layout(set = 0, binding = 2) uniform sampler2DArray uMultiScatTexture;
 
-layout(set = 0, binding = 3, std430) buffer AtmosphereParametersBuffer {
+layout(set = 0, binding = 3) uniform sampler2DArray uSkyViewLUT;
+
+layout(set = 0, binding = 4) uniform sampler2DArray uCameraVolume;
+
+layout(set = 0, binding = 5, std430) buffer AtmosphereParametersBuffer {
   AtmosphereParameters atmosphereParameters;
 } uAtmosphereParameters;
 
