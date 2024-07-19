@@ -169,6 +169,35 @@ void SkyViewLutParamsToUv(AtmosphereParameters Atmosphere, in bool IntersectGrou
 	uv = vec2(fromUnitToSubUvs(uv.x, 256.0), fromUnitToSubUvs(uv.y, 128.0));
 }
 
+vec2 raySphereIntersect(vec3 r0, vec3 rd, vec3 s0, float sR){
+#if 1
+  vec3 sphereCenterToRayOrigin = r0 - s0;
+  float a = dot(rd, rd),
+        b = dot(rd, sphereCenterToRayOrigin) * 2.0,
+        c = dot(sphereCenterToRayOrigin, sphereCenterToRayOrigin) - (sR * sR); 
+  float discriminant = (b * b) - ((a * c) * 4.0);
+  if(discriminant < 0.0){
+    return vec2(-1.0);
+  }else if(discriminant == 0.0){
+    return vec2((-0.5 * b) / a);
+  }else{
+    float q = (b + (sqrt(discriminant) * ((b > 0.0) ? 1.0 : -1.0))) * (-0.5);
+    return vec2(q / a, c / q);
+  }  
+#else
+  float a = dot(rd, rd);
+	vec3 s0_r0 = r0 - s0;
+	float b = 2.0 * dot(rd, s0_r0);
+	float c = dot(s0_r0, s0_r0) - (sR * sR);
+	float delta = (b * b) - (4.0 * a * c);
+	if((delta < 0.0) || (a == 0.0)){
+		return vec2(-1.0);
+	}else{
+    return (vec2(-b) + (vec2(sqrt(delta)) * vec2(-1.0, 1.0))) / vec2(2.0 * a);
+  }
+#endif
+}
+
 float raySphereIntersectNearest(vec3 r0, vec3 rd, vec3 s0, float sR){
 #if 1
   vec3 sphereCenterToRayOrigin = r0 - s0;
@@ -346,9 +375,10 @@ vec3 IntegrateOpticalDepth(in vec3 WorldPos,
 	// Compute next intersection with atmosphere or ground 
 	// TODO:gs another empirical finding. This removes a white pixel stripe in the Transmittance LUT.
 	vec3 earthO = vec3(0.0, 0.0, -0.001);
+	float tMax = 0.0;
+#if 0	
   float tBottom = raySphereIntersectNearest(WorldPos, WorldDir, earthO, Atmosphere.BottomRadius);
 	float tTop = raySphereIntersectNearest(WorldPos, WorldDir, earthO, Atmosphere.TopRadius);
-	float tMax = 0.0;
 	if(tBottom < 0.0){
 		if (tTop < 0.0){
 			tMax = 0.0; // No intersection with earth nor atmosphere: stop right away  
@@ -361,6 +391,20 @@ vec3 IntegrateOpticalDepth(in vec3 WorldPos,
 			tMax = min(tTop, tBottom);
 		}
 	}  
+#else
+	vec2 SolT = raySphereIntersect(WorldDir, WorldPos, earthO, Atmosphere.TopRadius);
+	if(all(lessThan(SolT, vec2(0.0)))){
+		tMax = 0.0; // No intersection with earth nor atmosphere: stop right away  
+		return vec3(0.0);
+  }
+  float tBottom = 0.0;
+	vec2 SolB = raySphereIntersect(WorldDir, WorldPos, earthO, Atmosphere.BottomRadius);
+	if(all(lessThan(SolB, vec2(0.0)))){
+		tMax = max(SolT.x, SolT.y);
+	}else{
+		tMax = tBottom = max(0.0, max(SolB.x, SolB.y));	
+	}
+#endif
 	
 	tMax = min(tMax, tMaxMax);
 
@@ -464,9 +508,10 @@ SingleScatteringResult IntegrateScatteredLuminance(const in sampler2D Transmitta
 
   // Compute next intersection with atmosphere or ground 
   vec3 earthO = vec3(0.0, 0.0, -0.001);
+	float tMax = 0.0;
+#if 0	
   float tBottom = raySphereIntersectNearest(WorldPos, WorldDir, earthO, Atmosphere.BottomRadius);
 	float tTop = raySphereIntersectNearest(WorldPos, WorldDir, earthO, Atmosphere.TopRadius);
-	float tMax = 0.0;
 	if(tBottom < 0.0){
 		if (tTop < 0.0){
 			tMax = 0.0; // No intersection with earth nor atmosphere: stop right away  
@@ -479,6 +524,20 @@ SingleScatteringResult IntegrateScatteredLuminance(const in sampler2D Transmitta
 			tMax = min(tTop, tBottom);
 		}
 	}  
+#else
+	vec2 SolT = raySphereIntersect(WorldDir, WorldPos, earthO, Atmosphere.TopRadius);
+	if(all(lessThan(SolT, vec2(0.0)))){
+		tMax = 0.0; // No intersection with earth nor atmosphere: stop right away  
+		return result;
+  }
+  float tBottom = 0.0;
+	vec2 SolB = raySphereIntersect(WorldDir, WorldPos, earthO, Atmosphere.BottomRadius);
+	if(all(lessThan(SolB, vec2(0.0)))){
+		tMax = max(SolT.x, SolT.y);
+	}else{
+		tMax = tBottom = max(0.0, max(SolB.x, SolB.y));	
+	}
+#endif
 
 	if(DepthBufferValue >= 0.0){
 
@@ -501,7 +560,7 @@ SingleScatteringResult IntegrateScatteredLuminance(const in sampler2D Transmitta
 				}
 
 			}
-			
+
 		}
 		/*
     if (VariableSampleCount && ((reversedZ && (ClipSpace.z == 0.0)) || (!reversedZ && (ClipSpace.z == 1.0))){
