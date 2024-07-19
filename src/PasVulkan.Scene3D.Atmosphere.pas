@@ -611,7 +611,35 @@ begin
 end;
 
 procedure TpvScene3DAtmosphere.TAtmosphereParameters.LoadFromJSON(const aJSON:TPasJSONItem);
+var JSONRootObject:TPasJSONItemObject;
+    JSON:TPasJSONItem;
+    aIndex:TpvInt32;
+    aLayerIndex:TpvInt32;
+ procedure LoadDensityProfileLayer(const aJSON:TPasJSONItemObject;var aLayer:TDensityProfileLayer); 
+ var JSONLayer:TPasJSONItemObject;
+ begin
+  if assigned(aJSON) and (aJSON is TPasJSONItemObject) then begin
+   JSONLayer:=TPasJSONItemObject(aJSON);
+   aLayer.Width:=TPasJSON.GetNumber(JSONLayer.Properties['width'],aLayer.Width);
+   aLayer.ExpTerm:=TPasJSON.GetNumber(JSONLayer.Properties['expterm'],aLayer.ExpTerm);
+   aLayer.ExpScale:=TPasJSON.GetNumber(JSONLayer.Properties['expscale'],aLayer.ExpScale);
+   aLayer.LinearTerm:=TPasJSON.GetNumber(JSONLayer.Properties['linearterm'],aLayer.LinearTerm);
+   aLayer.ConstantTerm:=TPasJSON.GetNumber(JSONLayer.Properties['constantterm'],aLayer.ConstantTerm);
+  end;  
+ end;   
 begin
+ 
+ if assigned(aJSON) and (aJSON is TPasJSONItemObject) then begin
+  
+  JSONRootObject:=TPasJSONItemObject(aJSON);
+
+  SolarIrradiance.xyz:=JSONToVector3(JSONRootObject.Properties['solarirradiance'],SolarIrradiance.xyz);
+  SunAngularRadius:=TPasJSON.GetNumber(JSONRootObject.Properties['sunangularradius'],SunAngularRadius);
+  BottomRadius:=TPasJSON.GetNumber(JSONRootObject.Properties['bottomradius'],BottomRadius);
+  TopRadius:=TPasJSON.GetNumber(JSONRootObject.Properties['topradius'],TopRadius);
+  
+ end;
+
 end;
 
 procedure TpvScene3DAtmosphere.TAtmosphereParameters.LoadFromJSONStream(const aStream:TStream);
