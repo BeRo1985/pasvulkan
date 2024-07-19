@@ -21,7 +21,8 @@ layout(location = 0) in vec2 inTexCoord;
 
 layout(location = 0) out vec4 outLuminance;
 
-#define FLAGS_USE_FAST_AERIAL_PERSPECTIVE 1u
+#define FLAGS_USE_FAST_SKY 1u
+#define FLAGS_USE_FAST_AERIAL_PERSPECTIVE 2u
 
 // Push constants
 layout(push_constant, std140) uniform PushConstants {
@@ -124,29 +125,37 @@ void main() {
 
   vec3 sunDirection = normalize(getSunDirection(uAtmosphereParameters.atmosphereParameters));
 
-  if(/*(viewHeight < atmosphereParameters.TopRadius) &&*/ (depthBufferValue == GetZFarDepthValue(view.projectionMatrix))){
+  bool depthIsZFar = depthBufferValue == GetZFarDepthValue(view.projectionMatrix);
 
-		vec2 localUV;
-		vec3 UpVector = normalize(worldPos);
-		float viewZenithCosAngle = dot(worldDir, UpVector);
+  if(/*(viewHeight < atmosphereParameters.TopRadius) &&*/ depthIsZFar){
 
-		vec3 sideVector = normalize(cross(UpVector, worldDir));		// assumes non parallel vectors
-		vec3 forwardVector = normalize(cross(sideVector, UpVector));	// aligns toward the sun light but perpendicular to up vector
-		vec2 lightOnPlane = vec2(dot(sunDirection, forwardVector), dot(sunDirection, sideVector));
-		lightOnPlane = normalize(lightOnPlane);
-		float lightViewCosAngle = lightOnPlane.x;
+    if((pushConstants.flags & FLAGS_USE_FAST_SKY) != 0u){
 
-		bool IntersectGround = raySphereIntersectNearest(worldPos, worldDir, vec3(0.0), atmosphereParameters.BottomRadius) >= 0.0;
- 
-		SkyViewLutParamsToUv(atmosphereParameters, IntersectGround, viewZenithCosAngle, lightViewCosAngle, viewHeight, localUV);
+      vec2 localUV;
+      vec3 UpVector = normalize(worldPos);
+      float viewZenithCosAngle = dot(worldDir, UpVector);
 
-		vec4 value = textureLod(uSkyViewLUT, vec3(localUV, float(viewIndex)), 0.0).xyzw; // xyz = inscatter, w = transmittance (monochromatic)
+      vec3 sideVector = normalize(cross(UpVector, worldDir));		// assumes non parallel vectors
+      vec3 forwardVector = normalize(cross(sideVector, UpVector));	// aligns toward the sun light but perpendicular to up vector
+      vec2 lightOnPlane = vec2(dot(sunDirection, forwardVector), dot(sunDirection, sideVector));
+      lightOnPlane = normalize(lightOnPlane);
+      float lightViewCosAngle = lightOnPlane.x;
 
-    if(!IntersectGround){
-      value.xyz += GetSunLuminance(worldPos, worldDir, sunDirection, atmosphereParameters.BottomRadius).xyz * value.w;
+      bool IntersectGround = raySphereIntersectNearest(worldPos, worldDir, vec3(0.0), atmosphereParameters.BottomRadius) >= 0.0;
+  
+      SkyViewLutParamsToUv(atmosphereParameters, IntersectGround, viewZenithCosAngle, lightViewCosAngle, viewHeight, localUV);
+
+      vec4 value = textureLod(uSkyViewLUT, vec3(localUV, float(viewIndex)), 0.0).xyzw; // xyz = inscatter, w = transmittance (monochromatic)
+
+      if(!IntersectGround){
+        value.xyz += GetSunLuminance(worldPos, worldDir, sunDirection, atmosphereParameters.BottomRadius).xyz * value.w;
+      }
+
+      outLuminance = vec4(value);
+
+      return; // Early out, for avoiding the code path of the more accurate and more bruteforce ray marching approach
+
     }
-
-    outLuminance = vec4(value);
 
 	}else{
    
@@ -183,56 +192,64 @@ void main() {
 
       outLuminance = vec4(AP.xyz, AP.w); 
 
-    }else{
-
-      // The more accurate and more bruteforce ray marching approach  
-
-      vec3 inscattering;
-      float transmittance;
-
-      // Move to top atmosphere as the starting point for ray marching.
-      // This is critical to be after the above to not disrupt above atmosphere tests and voxel selection.
-      if(!MoveToTopAtmosphere(worldPos, worldDir, atmosphereParameters.TopRadius)){
-        
-        // Ray is not intersecting the atmosphere       
-        inscattering = GetSunLuminance(worldPos, worldDir, sunDirection, atmosphereParameters.BottomRadius).xyz;
-        transmittance = 0.0;
-
-      }else {
-
-        mat4 skyInvViewProjMat = view.inverseViewMatrix * view.inverseProjectionMatrix; 
-        const bool ground = false;
-        const float sampleCountIni = 0.0;
-        const bool variableSampleCount = true;
-        const bool mieRayPhase = true;
-        SingleScatteringResult ss = IntegrateScatteredLuminance(
-          uTransmittanceLutTexture,
-          uMultiScatTexture,
-          viewIndex,
-          uv, 
-          worldPos, 
-          worldDir, 
-          sunDirection, 
-          atmosphereParameters, 
-          ground, 
-          sampleCountIni, 
-          depthBufferValue, 
-          variableSampleCount,  
-          mieRayPhase,
-          skyInvViewProjMat,
-          -1.0,
-          ProjectionMatrixIsReversedZ(view.projectionMatrix)
-        );
-
-        inscattering = ss.L;
-
-        transmittance = clamp(dot(ss.Transmittance, vec3(1.0 / 3.0)), 0.0, 1.0);
-
-      }
-
-      outLuminance = vec4(inscattering, 1.0 - transmittance);
+      return; // Early out, for avoiding the code path of the more accurate and more bruteforce ray marching approach
 
     }
+
+  }
+
+  {
+
+    // The more accurate and more bruteforce ray marching approach  
+
+    vec3 inscattering;
+    float transmittance;
+
+    // Move to top atmosphere as the starting point for ray marching.
+    // This is critical to be after the above to not disrupt above atmosphere tests and voxel selection.
+    if(!MoveToTopAtmosphere(worldPos, worldDir, atmosphereParameters.TopRadius)){
+      
+      // Ray is not intersecting the atmosphere       
+      inscattering = GetSunLuminance(worldPos, worldDir, sunDirection, atmosphereParameters.BottomRadius).xyz;
+      transmittance = 0.0;
+
+    }else {
+
+      mat4 skyInvViewProjMat = view.inverseViewMatrix * view.inverseProjectionMatrix; 
+      const bool ground = false;
+      const float sampleCountIni = 0.0;
+      const bool variableSampleCount = true;
+      const bool mieRayPhase = true;
+      SingleScatteringResult ss = IntegrateScatteredLuminance(
+        uTransmittanceLutTexture,
+        uMultiScatTexture,
+        viewIndex,
+        uv, 
+        worldPos, 
+        worldDir, 
+        sunDirection, 
+        atmosphereParameters, 
+        ground, 
+        sampleCountIni, 
+        depthBufferValue, 
+        variableSampleCount,  
+        mieRayPhase,
+        skyInvViewProjMat,
+        -1.0,
+        ProjectionMatrixIsReversedZ(view.projectionMatrix)
+      );
+
+      inscattering = ss.L;
+
+      if(depthIsZFar){
+        inscattering += GetSunLuminance(worldPos, worldDir, sunDirection, atmosphereParameters.BottomRadius).xyz * ss.Transmittance;
+      }
+
+      transmittance = clamp(dot(ss.Transmittance, vec3(1.0 / 3.0)), 0.0, 1.0);
+
+    }
+
+    outLuminance = vec4(inscattering, 1.0 - transmittance);
 
   }
   
