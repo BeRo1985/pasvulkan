@@ -102,12 +102,12 @@ void main() {
   //worldPos += vec3(0.0, atmosphereParameters.BottomRadius, 0.0);
 
   float viewHeight = max(length(worldPos), atmosphereParameters.BottomRadius + 1e-4);  
-	vec3 L = vec3(0.0);
+  vec3 L = vec3(0.0);
 /*  
 #ifdef MSAA
-	float depthBufferValue = subpassLoad(uSubpassDepth, gl_SampleID).x;
+  float depthBufferValue = subpassLoad(uSubpassDepth, gl_SampleID).x;
 #else  
-	float depthBufferValue = subpassLoad(uSubpassDepth).x;
+  float depthBufferValue = subpassLoad(uSubpassDepth).x;
 #endif*/
 #ifdef MSAA
 #ifdef MULTIVIEW
@@ -157,7 +157,7 @@ void main() {
 
     }
 
-	}else{
+  }else{
    
     if((pushConstants.flags & FLAGS_USE_FAST_AERIAL_PERSPECTIVE) != 0u){
 
