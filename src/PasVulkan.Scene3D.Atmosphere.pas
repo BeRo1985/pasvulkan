@@ -730,7 +730,7 @@ begin
  JSON:=SaveToJSON;
  if assigned(JSON) then begin
   try
-   TPasJSON.StringifyToStream(aStream,JSON);
+   TPasJSON.StringifyToStream(aStream,JSON,true);
   finally
    FreeAndNil(JSON);
   end;
