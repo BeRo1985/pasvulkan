@@ -405,7 +405,7 @@ vec3 IntegrateOpticalDepth(in vec3 WorldPos,
   if(all(lessThan(SolB, vec2(0.0)))){
     tMax = max(SolT.x, SolT.y);
   }else{
-    tMax = tBottom = max(0.0, min(SolB.x, SolB.y));	
+    tMax = tBottom = max(0.0, all(greaterThanEqual(SolB, vec2(0.0))) ? min(SolB.x, SolB.y) : max(SolB.x, SolB.y));	
   }
 #endif
   
@@ -539,7 +539,7 @@ SingleScatteringResult IntegrateScatteredLuminance(const in sampler2D Transmitta
   if(all(lessThan(SolB, vec2(0.0)))){
     tMax = max(SolT.x, SolT.y);
   }else{
-    tMax = tBottom = max(0.0, min(SolB.x, SolB.y));	
+    tMax = tBottom = max(0.0, all(greaterThanEqual(SolB, vec2(0.0))) ? min(SolB.x, SolB.y) : max(SolB.x, SolB.y));	
   }
 #endif
 
