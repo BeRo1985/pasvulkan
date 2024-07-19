@@ -70,7 +70,7 @@ void main() {
     vec2 uv = (vec2(coord) + vec2(0.5)) / vec2(size);
 
     vec3 worldPos, worldDir;
-    getCameraPositionDirection(worldPos, worldDir, view.viewMatrix, view.projectionMatrix, view.inverseViewMatrix, view.inverseProjectionMatrix, uv);
+    GetCameraPositionDirection(worldPos, worldDir, view.viewMatrix, view.projectionMatrix, view.inverseViewMatrix, view.inverseProjectionMatrix, uv);
 
     worldPos = (atmosphereParameters.inverseTransform * vec4(worldPos, 1.0)).xyz;
 
@@ -120,10 +120,11 @@ void main() {
         ground, 
         sampleCountIni, 
         depthBufferValue, 
-        variableSampleCount, 
+        variableSampleCount,  
         mieRayPhase,
         SkyInvViewProjMat,
-        -1.0
+        -1.0,
+        false
       ); 
       vec3 L = ss.L;
       float f = clamp((1.0 - dot(ss.Transmittance, vec3(1.0 / 3.0))) * 1.0, 0.0, 1.0);

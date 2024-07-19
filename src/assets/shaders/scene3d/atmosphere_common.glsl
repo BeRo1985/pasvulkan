@@ -454,15 +454,13 @@ SingleScatteringResult IntegrateScatteredLuminance(const in sampler2D Transmitta
                                                    in bool VariableSampleCount,
                                                    in bool MieRayPhase, 
 																									 in mat4 SkyInvViewProjMat,
-                                                   float tMaxMax){
-
+                                                   float tMaxMax,
+																									 in bool reversedZ){
   if(tMaxMax < 0.0){
     tMaxMax = 9000000.0;
   } 
 
   SingleScatteringResult result = SingleScatteringResult( vec3(0.0), vec3(0.0), vec3(0.0), vec3(0.0), vec3(0.0), vec3(0.0) );
-
-  vec3 ClipSpace = vec3(fma(uv, vec2(2.0), vec2(-1.0)), 1.0);
 
   // Compute next intersection with atmosphere or ground 
   vec3 earthO = vec3(0.0, 0.0, -0.001);
@@ -483,18 +481,25 @@ SingleScatteringResult IntegrateScatteredLuminance(const in sampler2D Transmitta
 	}  
 
 	if(DepthBufferValue >= 0.0){
-		ClipSpace.z = DepthBufferValue;
-		if(ClipSpace.z < 1.0){
-			vec4 DepthBufferWorldPos = SkyInvViewProjMat * vec4(ClipSpace, 1.0);
+
+    vec3 ClipSpace = vec3(fma(uv, vec2(2.0), vec2(-1.0)), DepthBufferValue);
+
+		if((reversedZ && (ClipSpace.z > 0.0)) || (!reversedZ && (ClipSpace.z < 1.0))){
+
+			vec4 DepthBufferWorldPos = SkyInvViewProjMat * vec4(ClipSpace, reversedZ ? 0.0 : 1.0);
 			DepthBufferWorldPos /= DepthBufferWorldPos.w;
 
-			float tDepth = length(DepthBufferWorldPos.xyz - (WorldPos + vec3(0.0, 0.0, -Atmosphere.BottomRadius))); // apply earth offset to go back to origin as top of earth mode. 
-			if(tDepth < tMax){
-				tMax = tDepth;
+      // Check if the result is valid, because for example in a case of a reverse infinite far Z plane, the depth value can be infinite,
+			// where we just ignore this case then, since it is infinite far away anyway. 
+			if(!(any(isinf(DepthBufferWorldPos)) || any(isnan(DepthBufferWorldPos)))){
+				float tDepth = length(DepthBufferWorldPos.xyz - (WorldPos + vec3(0.0, 0.0, -Atmosphere.BottomRadius))); // apply earth offset to go back to origin as top of earth mode. 
+				if(!(isinf(tDepth) || isnan(tDepth))){
+					tMax = min(tMax, tDepth);
+				}
 			}
 		}
 		/*
-    if (VariableSampleCount && (ClipSpace.z == 1.0)){
+    if (VariableSampleCount && ((reversedZ && (ClipSpace.z == 0.0)) || (!reversedZ && (ClipSpace.z == 1.0))){
 		  return result;
     }*/
 	}
@@ -702,7 +707,21 @@ vec4 GetSunLuminance(vec3 WorldPos, vec3 WorldDir, vec3 sunDirection, float Plan
 	return vec4(0.0);
 }
 
-void getCameraPositionDirection(out vec3 origin, 
+// Code by me (Benjamin Rosseaux):
+
+bool ProjectionMatrixIsReversedZ(const in mat4 projectionMatrix){
+	return projectionMatrix[2][3] < -1e-7;
+}
+
+bool ProjectionMatrixIsInfiniteFarPlane(const in mat4 projectionMatrix){
+	return ProjectionMatrixIsReversedZ(projectionMatrix) && ((abs(projectionMatrix[2][2]) < 1e-7) && (abs(projectionMatrix[3][2]) > 1e-7));
+}
+
+float GetZFarDepthValue(const in mat4 projectionMatrix){
+	return ProjectionMatrixIsReversedZ(projectionMatrix) ? 0.0 : 1.0;
+}
+
+void GetCameraPositionDirection(out vec3 origin, 
                                 out vec3 direction,
 																const in mat4 viewMatrix,
 																const in mat4 projectionMatrix,
@@ -710,18 +729,28 @@ void getCameraPositionDirection(out vec3 origin,
 																const in mat4 inverseProjectionMatrix,
 																const in vec2 uv){ 
 
-  bool reversedZ = projectionMatrix[2][3] < -1e-7;
-  
-  //bool infiniteFarPlane = reversedZ && ((abs(projectionMatrix[2][2]) < 1e-7) && (abs(projectionMatrix[3][2]) > 1e-7));
+  bool reversedZ = ProjectionMatrixIsReversedZ(projectionMatrix);
 
   vec4 nearPlane = vec4(fma(uv, vec2(2.0), vec2(-1.0)), reversedZ ? 1.0 : 0.0, 1.0);
 
   vec4 cameraDirection = vec4((inverseProjectionMatrix * nearPlane).xyz, 0.0); 
-      
-/*vec4 primaryRayOrigin = inverseViewProjectionMatrix * vec4(fma(uv, vec2(2.0), vec2(-1.0)), reversedZ ? 1.0 : 0.0, 1.0);
-  primaryRayOrigin /= primaryRayOrigin.w;*/
+
+#if 0    
+  
+	// Works also for orthographic projection (and for all projection types)
+	
+	vec4 primaryRayOrigin = inverseViewProjectionMatrix * nearPlane;
+  primaryRayOrigin /= primaryRayOrigin.w;
+
+	origin = primaryRayOrigin.xyz;
+
+#else
+
+  // Works only for perspective projection, not for orthographic projection, but is faster
 
   origin = inverseViewMatrix[3].xyz;
+
+#endif
 
   direction = normalize((inverseViewMatrix * cameraDirection).xyz);
 

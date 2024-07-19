@@ -323,7 +323,6 @@ type TpvScene3DAtmosphere=class;
             TRaymarchingPushConstants=packed record
              BaseViewIndex:TpvInt32;
              CountViews:TpvInt32;
-             NoHitDepthValue:TpvFloat;
             end;
             PRaymarchingPushConstants=^TRaymarchingPushConstants;
       private

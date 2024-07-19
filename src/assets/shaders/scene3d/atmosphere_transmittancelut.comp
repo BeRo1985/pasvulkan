@@ -93,9 +93,10 @@ void main() {
       DepthBufferValue, 
       VariableSampleCount, 
       MieRayPhase,
-      -1.0
+      -1.0,
+      false
     ).OpticalDepth;
-#endif
+#endif 
 
     vec3 transmittance = exp(-opticalDepth);
 

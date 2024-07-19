@@ -109,7 +109,7 @@ void main() {
       uv, 
       WorldPos, 
       WorldDir, 
-      sunDir, 
+      sunDir,  
       Atmosphere, 
       ground, 
       SampleCountIni, 
@@ -117,7 +117,8 @@ void main() {
       VariableSampleCount, 
       MieRayPhase,
       SkyInvViewProjMat,
-      -1.0
+      -1.0,
+      false
     );
     MultiScatAs1SharedMem[localInvocationIndex] = result.MultiScatAs1 * SphereSolidAngle / (sqrtSample * sqrtSample);
     LSharedMem[localInvocationIndex] = result.L * SphereSolidAngle / (sqrtSample * sqrtSample);

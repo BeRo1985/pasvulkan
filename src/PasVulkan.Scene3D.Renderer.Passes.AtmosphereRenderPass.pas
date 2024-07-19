@@ -414,11 +414,6 @@ begin
 
  fPushConstants.BaseViewIndex:=InFlightFrameState^.FinalViewIndex;
  fPushConstants.CountViews:=InFlightFrameState^.CountFinalViews;
- if fInstance.ZFar<0.0 then begin
-  fPushConstants.NoHitDepthValue:=0.0;
- end else begin
-  fPushConstants.NoHitDepthValue:=1.0;
- end;
 
  aCommandBuffer.CmdPushConstants(TpvScene3DAtmosphereGlobals(fInstance.Scene3D.AtmosphereGlobals).RaymarchingPipelineLayout.Handle,
                                  TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_FRAGMENT_BIT),

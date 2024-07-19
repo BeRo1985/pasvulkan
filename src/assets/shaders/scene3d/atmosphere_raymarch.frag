@@ -25,7 +25,6 @@ layout(location = 0) out vec4 outLuminance;
 layout(push_constant, std140) uniform PushConstants {
   int baseViewIndex;
   int countViews;
-  float noHitDepthValue;
 } pushConstants;
 
 #ifdef MSAA
@@ -88,7 +87,7 @@ void main() {
   vec2 uv = inTexCoord; 
 
   vec3 WorldPos, WorldDir;
-  getCameraPositionDirection(WorldPos, WorldDir, view.viewMatrix, view.projectionMatrix, view.inverseViewMatrix, view.inverseProjectionMatrix, uv);
+  GetCameraPositionDirection(WorldPos, WorldDir, view.viewMatrix, view.projectionMatrix, view.inverseViewMatrix, view.inverseProjectionMatrix, uv);
 
   WorldPos = (atmosphereParameters.inverseTransform * vec4(WorldPos, 1.0)).xyz;
 
@@ -118,7 +117,7 @@ void main() {
 
   vec3 sunDirection = normalize(getSunDirection(uAtmosphereParameters.atmosphereParameters));
 
-	if(/*(viewHeight < atmosphereParameters.TopRadius) &&*/ (DepthBufferValue == pushConstants.noHitDepthValue)){
+  if(/*(viewHeight < atmosphereParameters.TopRadius) &&*/ (DepthBufferValue == GetZFarDepthValue(view.projectionMatrix))){
 
 		vec2 localUV;
 		vec3 UpVector = normalize(WorldPos);
