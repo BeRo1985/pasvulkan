@@ -401,7 +401,7 @@ vec3 IntegrateOpticalDepth(in vec3 WorldPos,
 		}
 		vec3 P = WorldPos + t * WorldDir;
 
-	    MediumSampleRGB medium = sampleMediumRGB(P, Atmosphere);
+	  MediumSampleRGB medium = sampleMediumRGB(P, Atmosphere);
 		const vec3 SampleOpticalDepth = medium.extinction * dt;
 		OpticalDepth += SampleOpticalDepth;
 
@@ -666,7 +666,6 @@ float AerialPerspectiveSliceToDepth(float slice){
 	return slice * AP_KM_PER_SLICE;
 }
 
-
 vec4 GetSunLuminance(vec3 WorldPos, vec3 WorldDir, vec3 sunDirection, float PlanetRadius){
 	if (dot(WorldDir, sunDirection) > cos(0.5*0.505*3.14159 / 180.0)){
 		float t = raySphereIntersectNearest(WorldPos, WorldDir, vec3(0.0), PlanetRadius);
@@ -677,7 +676,6 @@ vec4 GetSunLuminance(vec3 WorldPos, vec3 WorldDir, vec3 sunDirection, float Plan
 	}
 	return vec4(0.0);
 }
-
 
 void getCameraPositionDirection(out vec3 origin, 
                                 out vec3 direction,
