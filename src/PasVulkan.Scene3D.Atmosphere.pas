@@ -144,7 +144,7 @@ type TpvScene3DAtmosphere=class;
               procedure LoadFromJSON(const aJSON:TPasJSONItem);
               procedure LoadFromJSONStream(const aStream:TStream);
               procedure LoadFromJSONFile(const aFileName:string);
-              function SaveToJSON:TPasJSONItem;
+              function SaveToJSON:TPasJSONItemObject;
               procedure SaveToJSONStream(const aStream:TStream);
               procedure SaveToJSONFile(const aFileName:string);
             end;
@@ -656,7 +656,7 @@ begin
 
   //SunDirection.xyz:=JSONToVector3(JSONRootObject.Properties['sundirection'],SunDirection.xyz);
 
-  MuSMin:=TPasJSON.GetNumber(JSONRootObject.Properties['musmin'],MuSMin);
+  //MuSMin:=TPasJSON.GetNumber(JSONRootObject.Properties['musmin'],MuSMin);
 
  end;
 
@@ -687,8 +687,36 @@ begin
  end;
 end;
 
-function TpvScene3DAtmosphere.TAtmosphereParameters.SaveToJSON:TPasJSONItem;
+function TpvScene3DAtmosphere.TAtmosphereParameters.SaveToJSON:TPasJSONItemObject;
+ function SaveDensityLayer(const aLayer:TDensityProfileLayer):TPasJSONItemObject;
+ begin
+  result:=TPasJSONItemObject.Create;
+  result.Add('width',TPasJSONItemNumber.Create(aLayer.Width));
+  result.Add('expterm',TPasJSONItemNumber.Create(aLayer.ExpTerm));
+  result.Add('expscale',TPasJSONItemNumber.Create(aLayer.ExpScale));
+  result.Add('linearterm',TPasJSONItemNumber.Create(aLayer.LinearTerm));
+  result.Add('constantterm',TPasJSONItemNumber.Create(aLayer.ConstantTerm));
+ end;
 begin
+ result:=TPasJSONItemObject.Create;
+ result.Add('solarirradiance',Vector3ToJSON(SolarIrradiance.xyz));
+ result.Add('sunangularradius',TPasJSONItemNumber.Create(SunAngularRadius));
+ result.Add('bottomradius',TPasJSONItemNumber.Create(BottomRadius));
+ result.Add('topradius',TPasJSONItemNumber.Create(TopRadius));
+ result.Add('groundalbedo',Vector3ToJSON(GroundAlbedo.xyz));
+ result.Add('rayleighdensity0',SaveDensityLayer(RayleighDensity.Layers[0]));
+ result.Add('rayleighdensity1',SaveDensityLayer(RayleighDensity.Layers[1]));
+ result.Add('rayleighscattering',Vector3ToJSON(RayleighScattering.xyz));
+ result.Add('miedensity0',SaveDensityLayer(MieDensity.Layers[0]));
+ result.Add('miedensity1',SaveDensityLayer(MieDensity.Layers[1]));
+ result.Add('miescattering',Vector3ToJSON(MieScattering.xyz));
+ result.Add('mieextinction',Vector3ToJSON(MieExtinction.xyz));
+ result.Add('miephasefunctiong',TPasJSONItemNumber.Create(MiePhaseFunctionG));
+ result.Add('absorptiondensity0',SaveDensityLayer(AbsorptionDensity.Layers[0]));
+ result.Add('absorptiondensity1',SaveDensityLayer(AbsorptionDensity.Layers[1]));
+ result.Add('absorptionextinction',Vector3ToJSON(AbsorptionExtinction.xyz));
+ //result.Add('sundirection',Vector3ToJSON(SunDirection.xyz));
+ //result.Add('musmin',TPasJSONItemNumber.Create(MuSMin));
 end;
 
 procedure TpvScene3DAtmosphere.TAtmosphereParameters.SaveToJSONStream(const aStream:TStream);
