@@ -211,7 +211,7 @@ void main() {
       
       // Ray is not intersecting the atmosphere       
       inscattering = GetSunLuminance(worldPos, worldDir, sunDirection, atmosphereParameters.BottomRadius).xyz;
-      transmittance = 0.0;
+      transmittance = 1.0;
 
     }else {
 
