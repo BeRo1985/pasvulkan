@@ -133,7 +133,9 @@ void main() {
 
   bool depthIsZFar = depthBufferValue == GetZFarDepthValue(view.projectionMatrix);
 
-  if(/*(viewHeight < atmosphereParameters.TopRadius) &&*/ depthIsZFar){
+  //bool rayHitsAtmosphere = any(greaterThanEqual(raySphereIntersect(worldPos, worldDir, vec3(0.0), atmosphereParameters.TopRadius), vec2(0.0)));
+
+  if(/*rayHitsAtmosphere &&*/ depthIsZFar){
 
     if((pushConstants.flags & FLAGS_USE_FAST_SKY) != 0u){
 
@@ -158,7 +160,7 @@ void main() {
       vec4 value = textureLod(uSkyViewLUT, vec3(localUV, float(viewIndex)), 0.0).xyzw; // xyz = inscatter, w = transmittance (monochromatic)
 
       if(!IntersectGround){
-        value.xyz += GetSunLuminance(originalWorldPos, worldDir, sunDirection, atmosphereParameters.BottomRadius).xyz * value.w;
+        value.xyz += GetSunLuminance(originalWorldPos, worldDir, sunDirection, atmosphereParameters.BottomRadius).xyz * (1.0 - value.w);
       }
 
       outLuminance = vec4(value);
@@ -240,7 +242,7 @@ void main() {
 
 
         if(depthIsZFar){
-          AP.xyz += GetSunLuminance(originalWorldPos, worldDir, sunDirection, atmosphereParameters.BottomRadius).xyz;  
+          AP.xyz += GetSunLuminance(originalWorldPos, worldDir, sunDirection, atmosphereParameters.BottomRadius).xyz * (1.0 - AP.w);  
         }
 
         outLuminance = vec4(AP.xyz, AP.w); 
