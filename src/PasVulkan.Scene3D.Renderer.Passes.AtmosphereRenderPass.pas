@@ -414,6 +414,7 @@ begin
 
  fPushConstants.BaseViewIndex:=InFlightFrameState^.FinalViewIndex;
  fPushConstants.CountViews:=InFlightFrameState^.CountFinalViews;
+ fPushConstants.Flags:=0;
 
  aCommandBuffer.CmdPushConstants(TpvScene3DAtmosphereGlobals(fInstance.Scene3D.AtmosphereGlobals).RaymarchingPipelineLayout.Handle,
                                  TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_FRAGMENT_BIT),

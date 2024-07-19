@@ -12,7 +12,7 @@
 
 /* clang-format on */
 
-#undef MULTISCATAPPROX_ENABLED
+#define MULTISCATAPPROX_ENABLED
 #undef SHADOWS_ENABLED
 
 #include "atmosphere_common.glsl"
@@ -21,10 +21,13 @@ layout(location = 0) in vec2 inTexCoord;
 
 layout(location = 0) out vec4 outLuminance;
 
+#define FLAGS_USE_FAST_AERIAL_PERSPECTIVE 1u
+
 // Push constants
 layout(push_constant, std140) uniform PushConstants {
   int baseViewIndex;
   int countViews;
+  uint flags;
 } pushConstants;
 
 #ifdef MSAA
@@ -90,91 +93,146 @@ void main() {
 
   vec2 uv = inTexCoord; 
 
-  vec3 WorldPos, WorldDir;
-  GetCameraPositionDirection(WorldPos, WorldDir, view.viewMatrix, view.projectionMatrix, view.inverseViewMatrix, view.inverseProjectionMatrix, uv);
+  vec3 worldPos, worldDir;
+  GetCameraPositionDirection(worldPos, worldDir, view.viewMatrix, view.projectionMatrix, view.inverseViewMatrix, view.inverseProjectionMatrix, uv);
 
-  WorldPos = (atmosphereParameters.inverseTransform * vec4(WorldPos, 1.0)).xyz;
+  worldPos = (atmosphereParameters.inverseTransform * vec4(worldPos, 1.0)).xyz;
 
-  //WorldPos += vec3(0.0, atmosphereParameters.BottomRadius, 0.0);
+  //worldPos += vec3(0.0, atmosphereParameters.BottomRadius, 0.0);
 
-  float viewHeight = max(length(WorldPos), atmosphereParameters.BottomRadius + 1e-4);  
+  float viewHeight = max(length(worldPos), atmosphereParameters.BottomRadius + 1e-4);  
 	vec3 L = vec3(0.0);
 /*  
 #ifdef MSAA
-	float DepthBufferValue = subpassLoad(uSubpassDepth, gl_SampleID).x;
+	float depthBufferValue = subpassLoad(uSubpassDepth, gl_SampleID).x;
 #else  
-	float DepthBufferValue = subpassLoad(uSubpassDepth).x;
+	float depthBufferValue = subpassLoad(uSubpassDepth).x;
 #endif*/
 #ifdef MSAA
 #ifdef MULTIVIEW
-  float DepthBufferValue = texelFetch(uDepthTexture, ivec3(ivec2(gl_FragCoord.xy), int(gl_ViewIndex)), gl_SampleID).x;
+  float depthBufferValue = texelFetch(uDepthTexture, ivec3(ivec2(gl_FragCoord.xy), int(gl_ViewIndex)), gl_SampleID).x;
 #else
-  float DepthBufferValue = texelFetch(uDepthTexture, ivec2(gl_FragCoord.xy), gl_SampleID).x;
+  float depthBufferValue = texelFetch(uDepthTexture, ivec2(gl_FragCoord.xy), gl_SampleID).x;
 #endif
 #else
 #ifdef MULTIVIEW
-  float DepthBufferValue = texelFetch(uDepthTexture, ivec3(ivec2(gl_FragCoord.xy), int(gl_ViewIndex)), 0).x;
+  float depthBufferValue = texelFetch(uDepthTexture, ivec3(ivec2(gl_FragCoord.xy), int(gl_ViewIndex)), 0).x;
 #else
-  float DepthBufferValue = texelFetch(uDepthTexture, ivec2(gl_FragCoord.xy), 0).x;
+  float depthBufferValue = texelFetch(uDepthTexture, ivec2(gl_FragCoord.xy), 0).x;
 #endif
 #endif
 
   vec3 sunDirection = normalize(getSunDirection(uAtmosphereParameters.atmosphereParameters));
 
-  if(/*(viewHeight < atmosphereParameters.TopRadius) &&*/ (DepthBufferValue == GetZFarDepthValue(view.projectionMatrix))){
+  if(/*(viewHeight < atmosphereParameters.TopRadius) &&*/ (depthBufferValue == GetZFarDepthValue(view.projectionMatrix))){
 
 		vec2 localUV;
-		vec3 UpVector = normalize(WorldPos);
-		float viewZenithCosAngle = dot(WorldDir, UpVector);
+		vec3 UpVector = normalize(worldPos);
+		float viewZenithCosAngle = dot(worldDir, UpVector);
 
-		vec3 sideVector = normalize(cross(UpVector, WorldDir));		// assumes non parallel vectors
+		vec3 sideVector = normalize(cross(UpVector, worldDir));		// assumes non parallel vectors
 		vec3 forwardVector = normalize(cross(sideVector, UpVector));	// aligns toward the sun light but perpendicular to up vector
 		vec2 lightOnPlane = vec2(dot(sunDirection, forwardVector), dot(sunDirection, sideVector));
 		lightOnPlane = normalize(lightOnPlane);
 		float lightViewCosAngle = lightOnPlane.x;
 
-		bool IntersectGround = raySphereIntersectNearest(WorldPos, WorldDir, vec3(0.0), atmosphereParameters.BottomRadius) >= 0.0;
+		bool IntersectGround = raySphereIntersectNearest(worldPos, worldDir, vec3(0.0), atmosphereParameters.BottomRadius) >= 0.0;
  
 		SkyViewLutParamsToUv(atmosphereParameters, IntersectGround, viewZenithCosAngle, lightViewCosAngle, viewHeight, localUV);
 
 		vec4 value = textureLod(uSkyViewLUT, vec3(localUV, float(viewIndex)), 0.0).xyzw; // xyz = inscatter, w = transmittance (monochromatic)
 
     if(!IntersectGround){
-      value.xyz += GetSunLuminance(WorldPos, WorldDir, sunDirection, atmosphereParameters.BottomRadius).xyz * value.w;
+      value.xyz += GetSunLuminance(worldPos, worldDir, sunDirection, atmosphereParameters.BottomRadius).xyz * value.w;
     }
 
     outLuminance = vec4(value);
 
 	}else{
+   
+    if((pushConstants.flags & FLAGS_USE_FAST_AERIAL_PERSPECTIVE) != 0u){
 
-    mat4 inverseViewProjectionMatrix = view.inverseViewMatrix * view.inverseProjectionMatrix;
+      // Fast aerial perspective approximation using a 3D texture
+   
+      mat4 inverseViewProjectionMatrix = view.inverseViewMatrix * view.inverseProjectionMatrix;
 
-    vec4 DepthBufferWorldPos = inverseViewProjectionMatrix * vec4(fma(vec2(uv), vec2(2.0), vec2(-1.0)), DepthBufferValue, 1.0);
-    DepthBufferWorldPos /= DepthBufferWorldPos.w;
+      vec4 depthBufferWorldPos = inverseViewProjectionMatrix * vec4(fma(vec2(uv), vec2(2.0), vec2(-1.0)), depthBufferValue, 1.0);
+      depthBufferWorldPos /= depthBufferWorldPos.w;
 
-    float tDepth = length((atmosphereParameters.inverseTransform * vec4(DepthBufferWorldPos.xyz, 1.0)).xyz - WorldPos);
-    float Slice = AerialPerspectiveDepthToSlice(tDepth);
-    float Weight = 1.0;
-    if(Slice < 0.5){
-      Weight = clamp(Slice * 2.0, 0.0, 1.0);
-      Slice = 0.5;
-    } 
-    float w = sqrt(Slice / AP_SLICE_COUNT); // squared distribution
+      float tDepth = length((atmosphereParameters.inverseTransform * vec4(depthBufferWorldPos.xyz, 1.0)).xyz - worldPos);
+      float slice = AerialPerspectiveDepthToSlice(tDepth);
+      float Weight = 1.0;
+      if(slice < 0.5){
+        Weight = clamp(slice * 2.0, 0.0, 1.0);
+        slice = 0.5;
+      } 
+      float w = sqrt(slice / AP_SLICE_COUNT); // squared distribution
 
-    float baseSlice = w * AP_SLICE_COUNT;
-    int sliceIndex = int(floor(baseSlice));
-    float sliceWeight = baseSlice - float(sliceIndex);
-    int nextSliceIndex = clamp(sliceIndex + 1, 0, AP_SLICE_COUNT_INT - 1);
-    sliceIndex = clamp(sliceIndex, 0, AP_SLICE_COUNT_INT - 1);
+      float baseSlice = w * AP_SLICE_COUNT;
+      int sliceIndex = int(floor(baseSlice));
+      float sliceWeight = baseSlice - float(sliceIndex);
+      int nextSliceIndex = clamp(sliceIndex + 1, 0, AP_SLICE_COUNT_INT - 1);
+      sliceIndex = clamp(sliceIndex, 0, AP_SLICE_COUNT_INT - 1);
 
-    // Manual 3D texture lookup from a 2D array texture, since multiview is not supported for 3D textures (no 3D array textures) 
-    vec4 AP = mix(
-                textureLod(uCameraVolume, vec3(uv, sliceIndex + (viewIndex * AP_SLICE_COUNT_INT)), 0.0),
-                textureLod(uCameraVolume, vec3(uv, nextSliceIndex + (viewIndex * AP_SLICE_COUNT_INT)), 0.0),
-                sliceWeight
-              ) * Weight;
+      // Manual 3D texture lookup from a 2D array texture, since multiview is not supported for 3D textures (no 3D array textures) 
+      vec4 AP = mix(
+                  textureLod(uCameraVolume, vec3(uv, sliceIndex + (viewIndex * AP_SLICE_COUNT_INT)), 0.0),
+                  textureLod(uCameraVolume, vec3(uv, nextSliceIndex + (viewIndex * AP_SLICE_COUNT_INT)), 0.0),
+                  sliceWeight
+                ) * Weight;
 
-    outLuminance = vec4(AP.xyz, AP.w); 
+      outLuminance = vec4(AP.xyz, AP.w); 
+
+    }else{
+
+      // The more accurate and more bruteforce ray marching approach  
+
+      vec3 inscattering;
+      float transmittance;
+
+      // Move to top atmosphere as the starting point for ray marching.
+      // This is critical to be after the above to not disrupt above atmosphere tests and voxel selection.
+      if(!MoveToTopAtmosphere(worldPos, worldDir, atmosphereParameters.TopRadius)){
+        
+        // Ray is not intersecting the atmosphere       
+        inscattering = GetSunLuminance(worldPos, worldDir, sunDirection, atmosphereParameters.BottomRadius).xyz;
+        transmittance = 0.0;
+
+      }else {
+
+        mat4 skyInvViewProjMat = view.inverseViewMatrix * view.inverseProjectionMatrix; 
+        const bool ground = false;
+        const float sampleCountIni = 0.0;
+        const bool variableSampleCount = true;
+        const bool mieRayPhase = true;
+        SingleScatteringResult ss = IntegrateScatteredLuminance(
+          uTransmittanceLutTexture,
+          uMultiScatTexture,
+          viewIndex,
+          uv, 
+          worldPos, 
+          worldDir, 
+          sunDirection, 
+          atmosphereParameters, 
+          ground, 
+          sampleCountIni, 
+          depthBufferValue, 
+          variableSampleCount,  
+          mieRayPhase,
+          skyInvViewProjMat,
+          -1.0,
+          ProjectionMatrixIsReversedZ(view.projectionMatrix)
+        );
+
+        inscattering = ss.L;
+
+        transmittance = clamp(dot(ss.Transmittance, vec3(1.0 / 3.0)), 0.0, 1.0);
+
+      }
+
+      outLuminance = vec4(inscattering, 1.0 - transmittance);
+
+    }
 
   }
   
