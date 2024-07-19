@@ -613,8 +613,7 @@ end;
 procedure TpvScene3DAtmosphere.TAtmosphereParameters.LoadFromJSON(const aJSON:TPasJSONItem);
 var JSONRootObject:TPasJSONItemObject;
     JSON:TPasJSONItem;
-    aIndex:TpvInt32;
-    aLayerIndex:TpvInt32;
+    Factor:TpvFloat;
  procedure LoadDensityProfileLayer(const aJSON:TPasJSONItem;var aLayer:TDensityProfileLayer);
  var JSONLayer:TPasJSONItemObject;
  begin
@@ -635,6 +634,8 @@ begin
 
   Transform:=JSONToMatrix4x4(JSONRootObject.Properties['transform'],Transform);
 
+  Factor:=TPasJSON.GetNumber(JSONRootObject.Properties['scatteringcoefficientscale'],1.0);
+
   SolarIrradiance.xyz:=JSONToVector3(JSONRootObject.Properties['solarirradiance'],SolarIrradiance.xyz);
   SunAngularRadius:=TPasJSON.GetNumber(JSONRootObject.Properties['sunangularradius'],SunAngularRadius);
   
@@ -644,17 +645,17 @@ begin
   
   LoadDensityProfileLayer(JSONRootObject.Properties['rayleighdensity0'],RayleighDensity.Layers[0]);
   LoadDensityProfileLayer(JSONRootObject.Properties['rayleighdensity1'],RayleighDensity.Layers[1]);
-  RayleighScattering.xyz:=JSONToVector3(JSONRootObject.Properties['rayleighscattering'],RayleighScattering.xyz);
+  RayleighScattering.xyz:=JSONToVector3(JSONRootObject.Properties['rayleighscattering'],RayleighScattering.xyz/Factor)*Factor;
   
   LoadDensityProfileLayer(JSONRootObject.Properties['miedensity0'],MieDensity.Layers[0]);
   LoadDensityProfileLayer(JSONRootObject.Properties['miedensity1'],MieDensity.Layers[1]);
-  MieScattering.xyz:=JSONToVector3(JSONRootObject.Properties['miescattering'],MieScattering.xyz);
-  MieExtinction.xyz:=JSONToVector3(JSONRootObject.Properties['mieextinction'],MieExtinction.xyz);
+  MieScattering.xyz:=JSONToVector3(JSONRootObject.Properties['miescattering'],MieScattering.xyz/Factor)*Factor;
+  MieExtinction.xyz:=JSONToVector3(JSONRootObject.Properties['mieextinction'],MieExtinction.xyz/Factor)*Factor;
   MiePhaseFunctionG:=TPasJSON.GetNumber(JSONRootObject.Properties['miephasefunctiong'],MiePhaseFunctionG);
 
   LoadDensityProfileLayer(JSONRootObject.Properties['absorptiondensity0'],AbsorptionDensity.Layers[0]);
   LoadDensityProfileLayer(JSONRootObject.Properties['absorptiondensity1'],AbsorptionDensity.Layers[1]);
-  AbsorptionExtinction.xyz:=JSONToVector3(JSONRootObject.Properties['absorptionextinction'],AbsorptionExtinction.xyz);
+  AbsorptionExtinction.xyz:=JSONToVector3(JSONRootObject.Properties['absorptionextinction'],AbsorptionExtinction.xyz/Factor)*Factor;
 
   //SunDirection.xyz:=JSONToVector3(JSONRootObject.Properties['sundirection'],SunDirection.xyz);
 
@@ -702,6 +703,7 @@ function TpvScene3DAtmosphere.TAtmosphereParameters.SaveToJSON:TPasJSONItemObjec
 begin
  result:=TPasJSONItemObject.Create;
  result.Add('transform',Matrix4x4ToJSON(Transform));
+ result.Add('scatteringcoefficientscale',TPasJSONItemNumber.Create(1.0));
  result.Add('solarirradiance',Vector3ToJSON(SolarIrradiance.xyz));
  result.Add('sunangularradius',TPasJSONItemNumber.Create(SunAngularRadius));
  result.Add('bottomradius',TPasJSONItemNumber.Create(BottomRadius));
