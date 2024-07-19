@@ -157,6 +157,8 @@ type TpvScene3DRenderer=class;
        fMeshFragShadowTypeName:TpvUTF8String;
        fOptimizedNonAlphaFormat:TVkFormat;
        fOptimizedCubeMapFormat:TVkFormat;
+       fFastSky:boolean;
+       fFastAerialPerspective:boolean;
        fUseDepthPrepass:boolean;
        fUseDemote:boolean;
        fUseNoDiscard:boolean;
@@ -241,6 +243,8 @@ type TpvScene3DRenderer=class;
        property MeshFragShadowTypeName:TpvUTF8String read fMeshFragShadowTypeName;
        property OptimizedNonAlphaFormat:TVkFormat read fOptimizedNonAlphaFormat;
        property OptimizedCubeMapFormat:TVkFormat read fOptimizedCubeMapFormat;
+       property FastSky:boolean read fFastSky;
+       property FastAerialPerspective:boolean read fFastAerialPerspective; 
        property UseDepthPrepass:boolean read fUseDepthPrepass;
        property UseDemote:boolean read fUseDemote;
        property UseNoDiscard:boolean read fUseNoDiscard;
@@ -435,6 +439,9 @@ begin
  fGlobalIlluminationVoxelCountCascades:=8;
 
  fGlobalIlluminationVoxelCountBounces:=2;
+
+ fFastSky:=true;
+ fFastAerialPerspective:=true;
 
 end;
 

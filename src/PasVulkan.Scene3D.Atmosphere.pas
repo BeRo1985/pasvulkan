@@ -1258,7 +1258,7 @@ begin
 
  end; 
 
- begin
+ if TpvScene3DRenderer(TpvScene3DRendererInstance(fRendererInstance).Renderer).FastSky then begin
 
   // Sky view LUT
 
@@ -1341,7 +1341,7 @@ begin
 
  end; 
 
- begin
+ if TpvScene3DRenderer(TpvScene3DRendererInstance(fRendererInstance).Renderer).FastAerialPerspective then begin
 
   // Camera volume
 
