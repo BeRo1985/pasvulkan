@@ -170,6 +170,30 @@ void SkyViewLutParamsToUv(AtmosphereParameters Atmosphere, in bool IntersectGrou
 }
 
 float raySphereIntersectNearest(vec3 r0, vec3 rd, vec3 s0, float sR){
+#if 1
+  vec3 sphereCenterToRayOrigin = r0 - s0;
+  float a = dot(rd, rd),
+        b = dot(rd, sphereCenterToRayOrigin) * 2.0,
+        c = dot(sphereCenterToRayOrigin, sphereCenterToRayOrigin) - (sR * sR); 
+  float discriminant = (b * b) - ((a * c) * 4.0);
+  if(discriminant < 0.0){
+    return -1.0;
+  }else if(discriminant == 0.0){
+    return (-0.5 * b) / a;
+  }else{
+    float q = (b + (sqrt(discriminant) * ((b > 0.0) ? 1.0 : -1.0))) * (-0.5);
+    vec2 t = vec2(q / a, c / q);
+    if(all(lessThan(t, vec2(0.0)))){
+      return -1.0;
+    }else if(t.x < 0.0){
+      return max(0.0, t.y);
+    }else if(t.y < 0.0){
+      return max(0.0, t.x);
+    }else{
+      return max(0.0, min(t.x, t.y));
+    }		
+  }  
+#else
   float a = dot(rd, rd);
 	vec3 s0_r0 = r0 - s0;
 	float b = 2.0 * dot(rd, s0_r0);
@@ -187,8 +211,9 @@ float raySphereIntersectNearest(vec3 r0, vec3 rd, vec3 s0, float sR){
       return max(0.0, sol01.x);
     }else{
       return max(0.0, min(sol01.x, sol01.y));
-    }
+    }		
   }
+#endif
 }
 
 void LutTransmittanceParamsToUv(const in AtmosphereParameters Atmosphere, in float viewHeight, in float viewZenithCosAngle, out vec2 uv){
