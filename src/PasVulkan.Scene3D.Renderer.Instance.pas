@@ -624,8 +624,10 @@ type { TpvScene3DRendererInstance }
        fDrawChoreographyBatchRangeFrameBuckets:TpvScene3D.TDrawChoreographyBatchRangeFrameBuckets;
        fDrawChoreographyBatchRangeFrameRenderPassBuckets:TpvScene3D.TDrawChoreographyBatchRangeFrameRenderPassBuckets;
       private
-       fColorGradingSettings:TpvScene3DRendererInstanceColorGradingSettingsArray;
-       fPointerToColorGradingSettings:PpvScene3DRendererInstanceColorGradingSettingsArray; 
+       fColorGradingSettings:TpvScene3DRendererInstanceColorGradingSettings;
+       fPointerToColorGradingSettings:PpvScene3DRendererInstanceColorGradingSettings;
+       fPerInFlightFrameColorGradingSettings:TpvScene3DRendererInstanceColorGradingSettingsArray;
+       fPointerToPerInFlightFrameColorGradingSettings:PpvScene3DRendererInstanceColorGradingSettingsArray;
        fColorGradingSettingUniformBuffers:TColorGradingSettingUniformBuffers;
       private
        function AcquireRenderPassIndex(const aInFlightFrameIndex:TpvSizeInt):TpvSizeInt;
@@ -812,7 +814,8 @@ type { TpvScene3DRendererInstance }
        property DrawChoreographyBatchRangeFrameBuckets:TpvScene3D.TDrawChoreographyBatchRangeFrameBuckets read fDrawChoreographyBatchRangeFrameBuckets write fDrawChoreographyBatchRangeFrameBuckets;
        property DrawChoreographyBatchRangeFrameRenderPassBuckets:TpvScene3D.TDrawChoreographyBatchRangeFrameRenderPassBuckets read fDrawChoreographyBatchRangeFrameRenderPassBuckets write fDrawChoreographyBatchRangeFrameRenderPassBuckets;
       public
-       property ColorGradingSettings:PpvScene3DRendererInstanceColorGradingSettingsArray read fPointerToColorGradingSettings; 
+       property ColorGradingSettings:PpvScene3DRendererInstanceColorGradingSettings read fPointerToColorGradingSettings;
+       property PerInFlightFrameColorGradingSettings:PpvScene3DRendererInstanceColorGradingSettingsArray read fPointerToPerInFlightFrameColorGradingSettings;
        property ColorGradingSettingUniformBuffers:TColorGradingSettingUniformBuffers read fColorGradingSettingUniformBuffers;
       published
        property Scene3D:TpvScene3D read fScene3D;
@@ -1694,11 +1697,15 @@ begin
 
  fFrameGraph.DefaultResourceInstanceType:=TpvFrameGraph.TResourceInstanceType.SingleInstance;
 
- for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
-  fColorGradingSettings[InFlightFrameIndex]:=DefaultColorGradingSettings;
- end;
+ fColorGradingSettings:=DefaultColorGradingSettings;
 
  fPointerToColorGradingSettings:=@fColorGradingSettings;
+
+ for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
+  fPerInFlightFrameColorGradingSettings[InFlightFrameIndex]:=DefaultColorGradingSettings;
+ end;
+
+ fPointerToPerInFlightFrameColorGradingSettings:=@fPerInFlightFrameColorGradingSettings;
 
  FillChar(fInFlightFrameStates,SizeOf(TInFlightFrameStates),#0);
 
@@ -6221,7 +6228,7 @@ begin
  Renderer.VulkanDevice.MemoryStaging.Upload(fScene3D.VulkanStagingQueue,
                                             fScene3D.VulkanStagingCommandBuffer,
                                             fScene3D.VulkanStagingFence,
-                                            fColorGradingSettings[aInFlightFrameIndex],
+                                            fPerInFlightFrameColorGradingSettings[aInFlightFrameIndex],
                                             fColorGradingSettingUniformBuffers[aInFlightFrameIndex],
                                             0,
                                             SizeOf(TpvScene3DRendererInstanceColorGradingSettings));
