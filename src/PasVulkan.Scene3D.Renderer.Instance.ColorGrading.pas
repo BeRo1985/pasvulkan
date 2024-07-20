@@ -65,8 +65,10 @@ uses SysUtils,
      Classes,
      Math,
      Vulkan,
+     PasJSON,
      PasVulkan.Types,
-     PasVulkan.Math;
+     PasVulkan.Math,
+     PasVulkan.JSON;
 
 type { TpvScene3DRendererInstanceColorGradingSettings }
      TpvScene3DRendererInstanceColorGradingSettings=packed record
@@ -103,6 +105,12 @@ type { TpvScene3DRendererInstanceColorGradingSettings }
 
       public
        procedure SetLiftGammaGain(const aLift,aGamma,aGain:TpvVector3);
+       procedure LoadFromJSON(const aJSON:TPasJSONItem);
+       procedure LoadFromJSONStream(const aStream:TStream);
+       procedure LoadFromJSONFile(const aFileName:string);
+       function SaveToJSON:TPasJSONItemObject;
+       procedure SaveToJSONStream(const aStream:TStream);
+       procedure SaveToJSONFile(const aFileName:string);
      end;
      PpvScene3DRendererInstanceColorGradingSettings=^TpvScene3DRendererInstanceColorGradingSettings;
 
@@ -164,6 +172,111 @@ begin
   ASCCDLPower.z:=3.402823466e+38;
  end else begin
   ASCCDLPower.z:=1.0/aGamma.z;
+ end;
+end;
+
+procedure TpvScene3DRendererInstanceColorGradingSettings.LoadFromJSON(const aJSON:TPasJSONItem);
+begin
+ if assigned(aJSON) and (aJSON is TPasJSONItemObject) then begin
+  Exposure:=TPasJSON.GetNumber(TPasJSONItemObject(aJSON).Properties['exposure'],Exposure);
+  NightAdaptiation:=TPasJSON.GetNumber(TPasJSONItemObject(aJSON).Properties['nightadaptiation'],NightAdaptiation);
+  WhiteBalanceTemperature:=TPasJSON.GetNumber(TPasJSONItemObject(aJSON).Properties['whitebalancetemperature'],WhiteBalanceTemperature);
+  WhiteBalanceTint:=TPasJSON.GetNumber(TPasJSONItemObject(aJSON).Properties['whitebalancetint'],WhiteBalanceTint);
+  ChannelMixerRed:=JSONToVector4(TPasJSONItemObject(aJSON).Properties['channelmixerred'],ChannelMixerRed);
+  ChannelMixerGreen:=JSONToVector4(TPasJSONItemObject(aJSON).Properties['channelmixergreen'],ChannelMixerGreen);
+  ChannelMixerBlue:=JSONToVector4(TPasJSONItemObject(aJSON).Properties['channelmixerblue'],ChannelMixerBlue);
+  Shadows:=JSONToVector4(TPasJSONItemObject(aJSON).Properties['shadows'],Shadows);
+  Midtones:=JSONToVector4(TPasJSONItemObject(aJSON).Properties['midtones'],Midtones);
+  Highlights:=JSONToVector4(TPasJSONItemObject(aJSON).Properties['highlights'],Highlights);
+  TonalRanges:=JSONToVector4(TPasJSONItemObject(aJSON).Properties['tonalranges'],TonalRanges);
+  ASCCDLSlope:=JSONToVector4(TPasJSONItemObject(aJSON).Properties['asccdlslope'],ASCCDLSlope);
+  ASCCDLOffset:=JSONToVector4(TPasJSONItemObject(aJSON).Properties['asccdloffset'],ASCCDLOffset);
+  ASCCDLPower:=JSONToVector4(TPasJSONItemObject(aJSON).Properties['asccdlpower'],ASCCDLPower);
+  Offset:=JSONToVector4(TPasJSONItemObject(aJSON).Properties['offset'],Offset);
+  Contrast:=TPasJSON.GetNumber(TPasJSONItemObject(aJSON).Properties['contrast'],Contrast);
+  Vibrance:=TPasJSON.GetNumber(TPasJSONItemObject(aJSON).Properties['vibrance'],Vibrance);
+  Saturation:=TPasJSON.GetNumber(TPasJSONItemObject(aJSON).Properties['saturation'],Saturation);
+  Hue:=TPasJSON.GetNumber(TPasJSONItemObject(aJSON).Properties['hue'],Hue);
+  CurvesGamma:=JSONToVector4(TPasJSONItemObject(aJSON).Properties['curvesgamma'],CurvesGamma);
+  CurvesMidPoint:=JSONToVector4(TPasJSONItemObject(aJSON).Properties['curvesmidpoint'],CurvesMidPoint);
+  CurvesScale:=JSONToVector4(TPasJSONItemObject(aJSON).Properties['curvesscale'],CurvesScale);
+ end;
+end;
+
+procedure TpvScene3DRendererInstanceColorGradingSettings.LoadFromJSONStream(const aStream:TStream);
+var JSON:TPasJSONItem;
+begin
+ JSON:=TPasJSON.Parse(aStream);
+ if assigned(JSON) then begin
+  try
+   LoadFromJSON(JSON);
+  finally
+   FreeAndNil(JSON);
+  end;
+ end;
+end;
+
+procedure TpvScene3DRendererInstanceColorGradingSettings.LoadFromJSONFile(const aFileName:string);
+var Stream:TMemoryStream;
+begin
+ Stream:=TMemoryStream.Create;
+ try
+  Stream.LoadFromFile(aFileName);
+  LoadFromJSONStream(Stream);
+ finally
+  FreeAndNil(Stream);
+ end;
+end;
+
+function TpvScene3DRendererInstanceColorGradingSettings.SaveToJSON:TPasJSONItemObject;
+begin
+ result:=TPasJSONItemObject.Create;
+ result.Add('exposure',TPasJSONItemNumber.Create(Exposure));
+ result.Add('nightadaptiation',TPasJSONItemNumber.Create(NightAdaptiation));
+ result.Add('whitebalancetemperature',TPasJSONItemNumber.Create(WhiteBalanceTemperature));
+ result.Add('whitebalancetint',TPasJSONItemNumber.Create(WhiteBalanceTint));
+ result.Add('channelmixerred',Vector4ToJSON(ChannelMixerRed));
+ result.Add('channelmixergreen',Vector4ToJSON(ChannelMixerGreen));
+ result.Add('channelmixerblue',Vector4ToJSON(ChannelMixerBlue));
+ result.Add('shadows',Vector4ToJSON(Shadows));
+ result.Add('midtones',Vector4ToJSON(Midtones));
+ result.Add('highlights',Vector4ToJSON(Highlights));
+ result.Add('tonalranges',Vector4ToJSON(TonalRanges));
+ result.Add('asccdlslope',Vector4ToJSON(ASCCDLSlope));
+ result.Add('asccdloffset',Vector4ToJSON(ASCCDLOffset));
+ result.Add('asccdlpower',Vector4ToJSON(ASCCDLPower));
+ result.Add('offset',Vector4ToJSON(Offset));
+ result.Add('contrast',TPasJSONItemNumber.Create(Contrast));
+ result.Add('vibrance',TPasJSONItemNumber.Create(Vibrance));
+ result.Add('saturation',TPasJSONItemNumber.Create(Saturation));
+ result.Add('hue',TPasJSONItemNumber.Create(Hue));
+ result.Add('curvesgamma',Vector4ToJSON(CurvesGamma));
+ result.Add('curvesmidpoint',Vector4ToJSON(CurvesMidPoint));
+ result.Add('curvesscale',Vector4ToJSON(CurvesScale));
+end;
+
+procedure TpvScene3DRendererInstanceColorGradingSettings.SaveToJSONStream(const aStream:TStream);
+var JSON:TPasJSONItem;
+begin
+ JSON:=SaveToJSON;
+ if assigned(JSON) then begin
+  try
+   TPasJSON.StringifyToStream(aStream,JSON,true);
+  finally
+   FreeAndNil(JSON);
+  end;
+ end;
+end;
+
+procedure TpvScene3DRendererInstanceColorGradingSettings.SaveToJSONFile(const aFileName:string);
+var Stream:TMemoryStream;
+begin
+ Stream:=TMemoryStream.Create;
+ try
+  SaveToJSONStream(Stream);
+  Stream.SaveToFile(aFileName);
+ finally
+  FreeAndNil(Stream);
  end;
 end;
 
