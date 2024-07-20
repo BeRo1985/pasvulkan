@@ -65,6 +65,7 @@ uses SysUtils,
      Classes,
      Math,
      Vulkan,
+     POCA,
      PasMP,
      PasJSON,
      PasVulkan.Types,
@@ -150,6 +151,9 @@ type TpvScene3DAtmosphere=class;
               function SaveToJSON:TPasJSONItemObject;
               procedure SaveToJSONStream(const aStream:TStream);
               procedure SaveToJSONFile(const aFileName:string);
+              procedure LoadFromPOCA(const aPOCACode:TpvUTF8String);
+              procedure LoadFromPOCAStream(const aStream:TStream);
+              procedure LoadFromPOCAFile(const aFileName:string);
             end;
             PAtmosphereParameters=^TAtmosphereParameters;
             { TGPUAtmosphereParameters }
@@ -648,6 +652,38 @@ begin
  try
   SaveToJSONStream(Stream);
   Stream.SaveToFile(aFileName);
+ finally
+  FreeAndNil(Stream);
+ end;
+end;
+
+procedure TpvScene3DAtmosphere.TAtmosphereParameters.LoadFromPOCA(const aPOCACode:TpvUTF8String);
+begin
+end;
+
+procedure TpvScene3DAtmosphere.TAtmosphereParameters.LoadFromPOCAStream(const aStream:TStream);
+var POCACode:TpvUTF8String;
+begin
+ if assigned(aStream) and (aStream.Size>0) then begin
+  POCACode:='';
+  try
+   SetLength(POCACode,aStream.Size);
+   aStream.Seek(0,soBeginning);
+   aStream.ReadBuffer(POCACode[1],aStream.Size);
+   LoadFromPOCA(POCACode);
+  finally
+   POCACode:='';
+  end;
+ end; 
+end;
+
+procedure TpvScene3DAtmosphere.TAtmosphereParameters.LoadFromPOCAFile(const aFileName:string);
+var Stream:TMemoryStream;
+begin
+ Stream:=TMemoryStream.Create;
+ try
+  Stream.LoadFromFile(aFileName);
+  LoadFromPOCAStream(Stream);
  finally
   FreeAndNil(Stream);
  end;
