@@ -6568,8 +6568,8 @@ begin
  fLuminancePushConstants.MinMaxLuminanceFactorExponent.y:=fMaximumLuminance;
  fLuminancePushConstants.MinMaxLuminanceFactorExponent.z:=fLuminanceFactor;
  fLuminancePushConstants.MinMaxLuminanceFactorExponent.w:=fLuminanceExponent;
- fLuminancePushConstants.MinLogLuminance:=Renderer.MinLogLuminance;
- fLuminancePushConstants.LogLuminanceRange:=Renderer.MaxLogLuminance-Renderer.MinLogLuminance;
+ fLuminancePushConstants.MinLogLuminance:=CameraPreset.MinLogLuminance;
+ fLuminancePushConstants.LogLuminanceRange:=CameraPreset.MaxLogLuminance-CameraPreset.MinLogLuminance;
  fLuminancePushConstants.InverseLogLuminanceRange:=1.0/fLuminancePushConstants.LogLuminanceRange;
  t:=pvApplication.DeltaTime;
  if t<=MinDeltaTime then begin
@@ -6578,8 +6578,8 @@ begin
   t:=MaxDeltaTime;
  end;
  fLuminancePushConstants.TimeCoefficient:=Clamp(1.0-exp(t*(-TwoPI)),0.025,1.0);
- fLuminancePushConstants.MinLuminance:=exp(LN2*Renderer.MinLogLuminance);
- fLuminancePushConstants.MaxLuminance:=exp(LN2*Renderer.MaxLogLuminance);
+ fLuminancePushConstants.MinLuminance:=exp(LN2*CameraPreset.MinLogLuminance);
+ fLuminancePushConstants.MaxLuminance:=exp(LN2*CameraPreset.MaxLogLuminance);
  case CameraPreset.ExposureMode of
   TpvScene3DRendererCameraPreset.TExposureMode.Camera:begin
    CameraPreset.UpdateExposure;

@@ -143,8 +143,8 @@ type TpvScene3DRenderer=class;
        fLensMode:TpvScene3DRendererLensMode;
        fGlobalIlluminationMode:TpvScene3DRendererGlobalIlluminationMode;
        fToneMappingMode:TpvScene3DRendererToneMappingMode;
-       fMinLogLuminance:TpvFloat;
-       fMaxLogLuminance:TpvFloat;
+{      fMinLogLuminance:TpvFloat;
+       fMaxLogLuminance:TpvFloat;}
        fMaxMSAA:TpvInt32;
        fMaxShadowMSAA:TpvInt32;
        fShadowMapSize:TpvInt32;
@@ -229,8 +229,8 @@ type TpvScene3DRenderer=class;
        property LensMode:TpvScene3DRendererLensMode read fLensMode write fLensMode;
        property GlobalIlluminationMode:TpvScene3DRendererGlobalIlluminationMode read fGlobalIlluminationMode write fGlobalIlluminationMode;
        property ToneMappingMode:TpvScene3DRendererToneMappingMode read fToneMappingMode write fToneMappingMode;
-       property MinLogLuminance:TpvFloat read fMinLogLuminance write fMinLogLuminance;
-       property MaxLogLuminance:TpvFloat read fMaxLogLuminance write fMaxLogLuminance;
+{      property MinLogLuminance:TpvFloat read fMinLogLuminance write fMinLogLuminance;
+       property MaxLogLuminance:TpvFloat read fMaxLogLuminance write fMaxLogLuminance;}
        property MaxMSAA:TpvInt32 read fMaxMSAA write fMaxMSAA;
        property MaxShadowMSAA:TpvInt32 read fMaxShadowMSAA write fMaxShadowMSAA;
        property ShadowMapSize:TpvInt32 read fShadowMapSize write fShadowMapSize;
@@ -415,9 +415,9 @@ begin
 
  fToneMappingMode:=TpvScene3DRendererToneMappingMode.Auto;
 
- fMinLogLuminance:=-8.0;
+{fMinLogLuminance:=-8.0;
 
- fMaxLogLuminance:=6.0;
+ fMaxLogLuminance:=6.0;}
 
  fMaxMSAA:=0;
 

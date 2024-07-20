@@ -267,6 +267,8 @@ begin
  fAutoFocus:=aFrom.fAutoFocus;
  fExposureMode:=aFrom.fExposureMode;
  fExposure.Assign(aFrom.fExposure);
+ fMinLogLuminance:=aFrom.fMinLogLuminance;
+ fMaxLogLuminance:=aFrom.fMaxLogLuminance;
  fReset:=aFrom.fReset;
 end;
 

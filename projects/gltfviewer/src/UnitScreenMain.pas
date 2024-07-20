@@ -256,9 +256,6 @@ begin
  fRenderer.ToneMappingMode:=TpvScene3DRendererToneMappingMode.AGXRec2020Punchy; //.KhronosPBRNeutral;
  fRenderer.Prepare;
 
- fRenderer.MinLogLuminance:=-3.5;
- fRenderer.MaxLogLuminance:=8.0;
-
  fRenderer.AcquirePersistentResources;
 
  fRendererInstance:=TpvScene3DRendererInstance.Create(fRenderer,UnitApplication.Application.VirtualReality);
@@ -269,6 +266,9 @@ begin
 
  fRendererInstance.LuminanceExponent:=1.0;
  fRendererInstance.LuminanceFactor:=4.0;
+
+ fRendererInstance.CameraPreset.MinLogLuminance:=-3.5;
+ fRendererInstance.CameraPreset.MaxLogLuminance:=8.0;
 
  fRendererInstance.Prepare;
 
