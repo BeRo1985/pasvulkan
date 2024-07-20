@@ -118,6 +118,8 @@ type { TpvScene3DRendererCameraPreset }
        fAutoFocus:boolean;
        fExposureMode:TExposureMode;
        fExposure:TpvScene3DRendererExposure;
+       fMinLogLuminance:TpvFloat;
+       fMaxLogLuminance:TpvFloat;
        fReset:boolean;
        function GetFieldOfViewAngleRadians:TpvFloat;
        function GetAspectRatio:TpvFloat;
@@ -227,6 +229,8 @@ begin
  fAutoFocus:=true;
  fExposureMode:=TExposureMode.Auto;
  fExposure:=TpvScene3DRendererExposure.Create;
+ fMinLogLuminance:=-8.0;
+ fMaxLogLuminance:=6.0;
  fReset:=false;
 end;
 
