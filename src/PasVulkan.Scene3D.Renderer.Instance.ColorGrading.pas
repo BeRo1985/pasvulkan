@@ -180,8 +180,8 @@ begin
  if assigned(aJSON) and (aJSON is TPasJSONItemObject) then begin
   Exposure:=TPasJSON.GetNumber(TPasJSONItemObject(aJSON).Properties['exposure'],Exposure);
   NightAdaptiation:=TPasJSON.GetNumber(TPasJSONItemObject(aJSON).Properties['nightadaptiation'],NightAdaptiation);
-  WhiteBalanceTemperature:=TPasJSON.GetNumber(TPasJSONItemObject(aJSON).Properties['whitebalancetemperature'],WhiteBalanceTemperature);
-  WhiteBalanceTint:=TPasJSON.GetNumber(TPasJSONItemObject(aJSON).Properties['whitebalancetint'],WhiteBalanceTint);
+  WhiteBalanceTemperature:=TPasJSON.GetNumber(TPasJSONItemObject(aJSON).Properties['whitebalancetemperature'],WhiteBalanceTemperature*100.0)*0.01;
+  WhiteBalanceTint:=TPasJSON.GetNumber(TPasJSONItemObject(aJSON).Properties['whitebalancetint'],WhiteBalanceTint*100.0)*0.01;
   ChannelMixerRed:=JSONToVector4(TPasJSONItemObject(aJSON).Properties['channelmixerred'],ChannelMixerRed);
   ChannelMixerGreen:=JSONToVector4(TPasJSONItemObject(aJSON).Properties['channelmixergreen'],ChannelMixerGreen);
   ChannelMixerBlue:=JSONToVector4(TPasJSONItemObject(aJSON).Properties['channelmixerblue'],ChannelMixerBlue);
@@ -233,8 +233,8 @@ begin
  result:=TPasJSONItemObject.Create;
  result.Add('exposure',TPasJSONItemNumber.Create(Exposure));
  result.Add('nightadaptiation',TPasJSONItemNumber.Create(NightAdaptiation));
- result.Add('whitebalancetemperature',TPasJSONItemNumber.Create(WhiteBalanceTemperature));
- result.Add('whitebalancetint',TPasJSONItemNumber.Create(WhiteBalanceTint));
+ result.Add('whitebalancetemperature',TPasJSONItemNumber.Create(WhiteBalanceTemperature*100.0));
+ result.Add('whitebalancetint',TPasJSONItemNumber.Create(WhiteBalanceTint*100.0));
  result.Add('channelmixerred',Vector4ToJSON(ChannelMixerRed));
  result.Add('channelmixergreen',Vector4ToJSON(ChannelMixerGreen));
  result.Add('channelmixerblue',Vector4ToJSON(ChannelMixerBlue));
