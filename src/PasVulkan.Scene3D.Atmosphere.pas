@@ -66,6 +66,7 @@ uses SysUtils,
      Math,
      Vulkan,
      POCA,
+     PUCU,
      PasMP,
      PasJSON,
      PasVulkan.Types,
@@ -658,7 +659,47 @@ begin
 end;
 
 procedure TpvScene3DAtmosphere.TAtmosphereParameters.LoadFromPOCA(const aPOCACode:TpvUTF8String);
+var POCAInstance:PPOCAInstance;
+    POCAContext:PPOCAContext;
+    POCACode:TPOCAValue;
+    Code:TpvUTF8String;
 begin
+ if length(aPOCACode)>0 then begin
+  Code:=PUCUUTF8Trim(PUCUUTF8Correct(aPOCACode));
+  if length(Code)>0 then begin
+   POCAInstance:=POCAInstanceCreate;
+   try
+    POCAContext:=POCAContextCreate(POCAInstance);
+    try
+     try
+{     POCAHashSet(POCAContext,
+                  POCAInstance.Globals.Namespace,
+                  POCANewUniqueString(POCAContext,'Group'),
+                  POCANewNativeObject(POCAContext,POCAScene3DGroup));}
+      POCACode:=POCACompile(POCAInstance,POCAContext,Code,'<CODE>');
+      POCACall(POCAContext,POCACode,nil,0,POCAValueNull,POCAInstance^.Globals.Namespace);
+     except
+      on e:EPOCASyntaxError do begin
+       // Ignore
+      end;
+      on e:EPOCARuntimeError do begin
+       // Ignore
+      end;
+      on e:EPOCAScriptError do begin
+       // Ignore
+      end;
+      on e:Exception do begin
+       raise;
+      end;
+     end;
+    finally
+     POCAContextDestroy(POCAContext);
+    end;
+   finally
+    POCAInstanceDestroy(POCAInstance);
+   end;
+  end;
+ end;
 end;
 
 procedure TpvScene3DAtmosphere.TAtmosphereParameters.LoadFromPOCAStream(const aStream:TStream);
