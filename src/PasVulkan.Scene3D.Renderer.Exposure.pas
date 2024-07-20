@@ -59,6 +59,7 @@ unit PasVulkan.Scene3D.Renderer.Exposure;
  {$endif}
 {$endif}
 {$m+}
+{$scopedenums on}
 
 interface
 
@@ -66,6 +67,7 @@ uses SysUtils,
      Classes,
      Math,
      Vulkan,
+     PasJSON,
      PasVulkan.Types,
      PasVulkan.Math,
      PasVulkan.Framework,
@@ -74,7 +76,15 @@ uses SysUtils,
      PasVulkan.VirtualFileSystem;
 
 type TpvScene3DRendererExposure=class
+      public
+       type TUnitKind=(
+             Exposure,
+             EV100,
+             Luminance,
+             Illuminance
+            );
       private
+       fUnitKind:TUnitKind;
        fExposure:TpvFloat;
        fEV100:TpvFloat;
        fLuminance:TpvFloat;
@@ -92,7 +102,10 @@ type TpvScene3DRendererExposure=class
        procedure Assign(const aFrom:TpvScene3DRendererExposure);
        procedure SetFromCameraProperties(const aAperture,aShutterSpeed,aISOSensitivity:TpvFloat);
        procedure SetFromCamera(const aFlangeFocalDistance,aFocalLength,aFNumber:TpvFloat);
+       procedure LoadFromJSON(const aJSONItem:TPasJSONItem);
+       function SaveToJSON:TPasJSONItemObject;
       public 
+       property UnitKind:TUnitKind read fUnitKind write fUnitKind;
        property Exposure:TpvFloat read fExposure write SetExposure;
        property EV100:TpvFloat read fEV100 write SetEV100;
        property Luminance:TpvFloat read fLuminance write SetLuminance;
@@ -215,6 +228,7 @@ implementation
 constructor TpvScene3DRendererExposure.Create;
 begin
  inherited Create;
+ fUnitKind:=TUnitKind.Exposure;
  fExposure:=1.0;
  fEV100:=0.0;
  fLuminance:=0.0;
@@ -240,6 +254,7 @@ end;
 
 procedure TpvScene3DRendererExposure.Assign(const aFrom:TpvScene3DRendererExposure);
 begin
+ fUnitKind:=aFrom.fUnitKind;
  fExposure:=aFrom.fExposure;
  fEV100:=aFrom.fEV100;
  fLuminance:=aFrom.fLuminance;
@@ -248,6 +263,7 @@ end;
 
 procedure TpvScene3DRendererExposure.SetExposure(const aExposure:TpvFloat);
 begin
+ fUnitKind:=TUnitKind.Exposure;
  fExposure:=aExposure;
  fEV100:=Log2(1.0/(1.2*fExposure));
  fLuminance:=0.1041666666667/fExposure; // Power(2.0,fEV100-3.0); 1/96
@@ -256,6 +272,7 @@ end;
 
 procedure TpvScene3DRendererExposure.SetEV100(const aEV100:TpvFloat);
 begin
+ fUnitKind:=TUnitKind.EV100;
  fExposure:=1.0/(1.2*Power(2.0,aEV100));
  fEV100:=aEV100; 
  fLuminance:=Exp2(fEV100-3.0);
@@ -264,6 +281,7 @@ end;
 
 procedure TpvScene3DRendererExposure.SetLuminance(const aLuminance:TpvFloat);
 begin
+ fUnitKind:=TUnitKind.Luminance;
  fExposure:=0.1041666666667/aLuminance; // 1.0/(1.2*aLuminance*(100.0/12.5));
  fEV100:=Log2(aLuminance*(100.0/12.5));
  fLuminance:=aLuminance;
@@ -272,6 +290,7 @@ end;
 
 procedure TpvScene3DRendererExposure.SetIlluminace(const aIlluminace:TpvFloat);
 begin
+ fUnitKind:=TUnitKind.Illuminance;
  fExposure:=2.08333333333333/aIlluminace; // 1.0/(1.2*aIlluminace*(100.0/250.0));
  fEV100:=Log2(aIlluminace*(100.0/250.0));
  fLuminance:=aIlluminace*0.05; // Power(2.0,Log2(aIlluminace*(100.0/250.0))-3.0);
@@ -281,6 +300,7 @@ end;
 procedure TpvScene3DRendererExposure.SetFromCameraProperties(const aAperture,aShutterSpeed,aISOSensitivity:TpvFloat);
 var e:TpvFloat;
 begin
+ fUnitKind:=TUnitKind.Exposure;
  e:=(sqr(aAperture)*100.0)/(aShutterSpeed*aISOSensitivity);
  fExposure:=1.0/(1.2*e);
  fEV100:=Log2(e);
@@ -292,6 +312,7 @@ procedure TpvScene3DRendererExposure.SetFromCamera(const aFlangeFocalDistance,aF
 begin
  // Original formula source: http://research.tri-ace.com/Data/S2015/05_ImplementationBokeh-S2015.pptx on slide 25
  // Hint: Flange focal distance is the distance from lens to sensor
+ fUnitKind:=TUnitKind.Exposure;
  fExposure:=((aFlangeFocalDistance/aFocalLength)*aFNumber)/(PI*4.0);
  fEV100:=Log2(1.0/(1.2*fExposure));
  fLuminance:=0.1041666666667/fExposure;
@@ -301,6 +322,54 @@ end;
 function TpvScene3DRendererExposure.GetLMax:TpvFloat;
 begin
  result:=1.2*Exp2(fEV100);
+end;
+
+procedure TpvScene3DRendererExposure.LoadFromJSON(const aJSONItem:TPasJSONItem);
+var Item:TPasJSONItem;
+begin
+ if assigned(aJSONItem) and (aJSONItem is TPasJSONItemObject) then begin
+  Item:=TPasJSONItemObject(aJSONItem).Properties['exposure'];
+  if assigned(Item) and (Item is TPasJSONItemNumber) then begin
+   SetExposure(TPasJSON.GetNumber(Item,fExposure));
+  end else begin 
+   Item:=TPasJSONItemObject(aJSONItem).Properties['ev100'];
+   if assigned(Item) and (Item is TPasJSONItemNumber) then begin
+    SetEV100(TPasJSON.GetNumber(Item,fEV100));
+   end else begin 
+    Item:=TPasJSONItemObject(aJSONItem).Properties['luminance'];
+    if assigned(Item) and (Item is TPasJSONItemNumber) then begin
+     SetLuminance(TPasJSON.GetNumber(Item,fLuminance));
+    end else begin 
+     Item:=TPasJSONItemObject(aJSONItem).Properties['illuminace'];
+     if assigned(Item) and (Item is TPasJSONItemNumber) then begin
+      SetIlluminace(TPasJSON.GetNumber(Item,fIlluminace));
+     end;
+    end;
+   end;
+  end;
+ end;
+end;
+
+function TpvScene3DRendererExposure.SaveToJSON:TPasJSONItemObject;
+begin
+ result:=TPasJSONItemObject.Create;
+ case fUnitKind of
+  TUnitKind.Exposure:begin
+   result.Add('exposure',TPasJSONItemNumber.Create(fExposure));
+  end;
+  TUnitKind.EV100:begin
+   result.Add('ev100',TPasJSONItemNumber.Create(fEV100));
+  end;
+  TUnitKind.Luminance:begin
+   result.Add('luminance',TPasJSONItemNumber.Create(fLuminance));
+  end;
+  TUnitKind.Illuminance:begin
+   result.Add('illuminace',TPasJSONItemNumber.Create(fIlluminace));
+  end;
+  else begin
+   result.Add('exposure',TPasJSONItemNumber.Create(fExposure));
+  end;
+ end; 
 end;
 
 end.

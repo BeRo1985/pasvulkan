@@ -66,6 +66,7 @@ uses SysUtils,
      Classes,
      Math,
      Vulkan,
+     PasJSON,
      PasVulkan.Types,
      PasVulkan.Math,
      PasVulkan.Framework,
@@ -125,6 +126,8 @@ type { TpvScene3DRendererCameraPreset }
        destructor Destroy; override;
        procedure Assign(const aFrom:TpvScene3DRendererCameraPreset);
        procedure UpdateExposure;
+       procedure LoadFromJSON(const aJSONItem:TPasJSONItem);
+       function SaveToJSON:TPasJSONItemObject;
       published
 
        // Field of view, > 0.0 = horizontal and < 0.0 = vertical
@@ -193,6 +196,8 @@ type { TpvScene3DRendererCameraPreset }
     end;
 
 implementation
+
+uses PasVulkan.JSON;
 
 { TpvScene3DRendererCameraPreset }
 
@@ -265,6 +270,75 @@ end;
 procedure TpvScene3DRendererCameraPreset.UpdateExposure;
 begin
  fExposure.SetFromCamera(fFlangeFocalDistance,fFocalLength,fFNumber); 
+end;
+
+procedure TpvScene3DRendererCameraPreset.LoadFromJSON(const aJSONItem:TPasJSONItem);
+var s:TpvUTF8String;
+begin
+ if assigned(aJSONItem) and (aJSONItem is TPasJSONItemObject) then begin
+  fFieldOfView:=TPasJSON.GetNumber(TPasJSONItemObject(aJSONItem).Properties['fieldofview'],fFieldOfView);
+  fSensorSize:=JSONToVector2(TPasJSONItemObject(aJSONItem).Properties['sensorsize'],fSensorSize);
+  fFocalLength:=TPasJSON.GetNumber(TPasJSONItemObject(aJSONItem).Properties['focallength'],fFocalLength);
+  fFlangeFocalDistance:=TPasJSON.GetNumber(TPasJSONItemObject(aJSONItem).Properties['flangefocaldistance'],fFlangeFocalDistance);
+  fFocalPlaneDistance:=TPasJSON.GetNumber(TPasJSONItemObject(aJSONItem).Properties['focalplanedistance'],fFocalPlaneDistance);
+  fFNumber:=TPasJSON.GetNumber(TPasJSONItemObject(aJSONItem).Properties['fnumber'],fFNumber);
+  fFNumberMin:=TPasJSON.GetNumber(TPasJSONItemObject(aJSONItem).Properties['fnumbermin'],fFNumberMin);
+  fFNumberMax:=TPasJSON.GetNumber(TPasJSONItemObject(aJSONItem).Properties['fnumbermax'],fFNumberMax);
+  fBlurKernelSize:=TPasJSON.GetInt64(TPasJSONItemObject(aJSONItem).Properties['blurkernelsize'],fBlurKernelSize);
+  fNgon:=TPasJSON.GetNumber(TPasJSONItemObject(aJSONItem).Properties['ngon'],fNgon);
+  fMaxCoC:=TPasJSON.GetNumber(TPasJSONItemObject(aJSONItem).Properties['maxcoc'],fMaxCoC);
+  fHighlightThreshold:=TPasJSON.GetNumber(TPasJSONItemObject(aJSONItem).Properties['highlightthreshold'],fHighlightThreshold);
+  fHighlightGain:=TPasJSON.GetNumber(TPasJSONItemObject(aJSONItem).Properties['highlightgain'],fHighlightGain);
+  fBokehChromaticAberration:=TPasJSON.GetNumber(TPasJSONItemObject(aJSONItem).Properties['bokehchromaticaberration'],fBokehChromaticAberration);
+  fDepthOfField:=TPasJSON.GetBoolean(TPasJSONItemObject(aJSONItem).Properties['depthoffield'],fDepthOfField);
+  fAutoFocus:=TPasJSON.GetBoolean(TPasJSONItemObject(aJSONItem).Properties['autofocus'],fAutoFocus);
+  s:=LowerCase(TPasJSON.GetString(TPasJSONItemObject(aJSONItem).Properties['exposuremode'],'auto'));
+  if s='auto' then begin
+   fExposureMode:=TExposureMode.Auto;
+  end else if s='camera' then begin
+   fExposureMode:=TExposureMode.Camera;
+  end else if s='manual' then begin
+   fExposureMode:=TExposureMode.Manual;
+  end else begin
+   fExposureMode:=TExposureMode.Auto;
+  end; 
+  fExposure.LoadFromJSON(TPasJSONItemObject(aJSONItem).Properties['exposure']);
+  fReset:=TPasJSON.GetBoolean(TPasJSONItemObject(aJSONItem).Properties['reset'],fReset);
+ end;
+end;
+
+function TpvScene3DRendererCameraPreset.SaveToJSON:TPasJSONItemObject;
+begin
+ result:=TPasJSONItemObject.Create;
+ result.Add('fieldofview',TPasJSONItemNumber.Create(fFieldOfView));
+ result.Add('sensorsize',Vector2ToJSON(fSensorSize));
+ result.Add('focallength',TPasJSONItemNumber.Create(fFocalLength));
+ result.Add('flangefocaldistance',TPasJSONItemNumber.Create(fFlangeFocalDistance));
+ result.Add('focalplanedistance',TPasJSONItemNumber.Create(fFocalPlaneDistance));
+ result.Add('fnumber',TPasJSONItemNumber.Create(fFNumber));
+ result.Add('fnumbermin',TPasJSONItemNumber.Create(fFNumberMin));
+ result.Add('fnumbermax',TPasJSONItemNumber.Create(fFNumberMax));
+ result.Add('blurkernelsize',TPasJSONItemNumber.Create(fBlurKernelSize));
+ result.Add('ngon',TPasJSONItemNumber.Create(fNgon));
+ result.Add('maxcoc',TPasJSONItemNumber.Create(fMaxCoC));
+ result.Add('highlightthreshold',TPasJSONItemNumber.Create(fHighlightThreshold));
+ result.Add('highlightgain',TPasJSONItemNumber.Create(fHighlightGain));
+ result.Add('bokehchromaticaberration',TPasJSONItemNumber.Create(fBokehChromaticAberration));
+ result.Add('depthoffield',TPasJSONItemBoolean.Create(fDepthOfField));
+ result.Add('autofocus',TPasJSONItemBoolean.Create(fAutoFocus));
+ case fExposureMode of
+  TExposureMode.Auto:begin
+   result.Add('exposuremode',TPasJSONItemString.Create('auto'));
+  end;
+  TExposureMode.Camera:begin
+   result.Add('exposuremode',TPasJSONItemString.Create('camera'));
+  end;
+  TExposureMode.Manual:begin
+   result.Add('exposuremode',TPasJSONItemString.Create('manual'));
+  end;
+ end;
+ result.Add('exposure',fExposure.SaveToJSON);
+ result.Add('reset',TPasJSONItemBoolean.Create(fReset));
 end;
 
 initialization

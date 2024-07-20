@@ -66,6 +66,7 @@ uses SysUtils,
      Math,
      PasJSON,
      PasVulkan.Types,
+     PasVulkan.Math,
      PasVulkan.Collections,
      PasVulkan.Utils;
 
@@ -74,7 +75,150 @@ type TpvJSONUtils=class
       class procedure ResolveInheritances(const aJSONItem:TPasJSONItem); static;
      end;
 
+function JSONToVector2(const aVectorJSONItem:TPasJSONItem;const aDefault:TpvVector2):TpvVector2;
+function Vector2ToJSON(const aVector:TpvVector2):TPasJSONItemArray;
+
+function JSONToVector3(const aVectorJSONItem:TPasJSONItem;const aDefault:TpvVector3):TpvVector3;
+function Vector3ToJSON(const aVector:TpvVector3):TPasJSONItemArray;
+
+function JSONToVector4(const aVectorJSONItem:TPasJSONItem;const aDefault:TpvVector4):TpvVector4;
+function Vector4ToJSON(const aVector:TpvVector4):TPasJSONItemArray;
+
+function JSONToMatrix4x4(const aMatrixJSONItem:TPasJSONItem;const aDefault:TpvMatrix4x4):TpvMatrix4x4;
+function Matrix4x4ToJSON(const aMatrix:TpvMatrix4x4):TPasJSONItemArray;
+
 implementation
+
+function JSONToVector2(const aVectorJSONItem:TPasJSONItem;const aDefault:TpvVector2):TpvVector2;
+begin
+ if assigned(aVectorJSONItem) and (aVectorJSONItem is TPasJSONItemArray) and (TPasJSONItemArray(aVectorJSONItem).Count=2) then begin
+  result.x:=TPasJSON.GetNumber(TPasJSONItemArray(aVectorJSONItem).Items[0],0.0);
+  result.y:=TPasJSON.GetNumber(TPasJSONItemArray(aVectorJSONItem).Items[1],0.0);
+ end else if assigned(aVectorJSONItem) and (aVectorJSONItem is TPasJSONItemObject) then begin
+  result.x:=TPasJSON.GetNumber(TPasJSONItemObject(aVectorJSONItem).Properties['x'],0.0);
+  result.y:=TPasJSON.GetNumber(TPasJSONItemObject(aVectorJSONItem).Properties['y'],0.0);
+ end else begin
+  result:=aDefault;
+ end;
+end;
+
+function Vector2ToJSON(const aVector:TpvVector2):TPasJSONItemArray;
+begin
+ result:=TPasJSONItemArray.Create;
+ result.Add(TPasJSONItemNumber.Create(aVector.x));
+ result.Add(TPasJSONItemNumber.Create(aVector.y));
+end;
+
+function JSONToVector3(const aVectorJSONItem:TPasJSONItem;const aDefault:TpvVector3):TpvVector3;
+begin
+ if assigned(aVectorJSONItem) and (aVectorJSONItem is TPasJSONItemArray) and (TPasJSONItemArray(aVectorJSONItem).Count=3) then begin
+  result.x:=TPasJSON.GetNumber(TPasJSONItemArray(aVectorJSONItem).Items[0],0.0);
+  result.y:=TPasJSON.GetNumber(TPasJSONItemArray(aVectorJSONItem).Items[1],0.0);
+  result.z:=TPasJSON.GetNumber(TPasJSONItemArray(aVectorJSONItem).Items[2],0.0);
+ end else if assigned(aVectorJSONItem) and (aVectorJSONItem is TPasJSONItemObject) then begin
+  result.x:=TPasJSON.GetNumber(TPasJSONItemObject(aVectorJSONItem).Properties['x'],0.0);
+  result.y:=TPasJSON.GetNumber(TPasJSONItemObject(aVectorJSONItem).Properties['y'],0.0);
+  result.z:=TPasJSON.GetNumber(TPasJSONItemObject(aVectorJSONItem).Properties['z'],0.0);
+ end else begin
+  result:=aDefault;
+ end;
+end;
+
+function Vector3ToJSON(const aVector:TpvVector3):TPasJSONItemArray;
+begin
+ result:=TPasJSONItemArray.Create;
+ result.Add(TPasJSONItemNumber.Create(aVector.x));
+ result.Add(TPasJSONItemNumber.Create(aVector.y));
+ result.Add(TPasJSONItemNumber.Create(aVector.z));
+end;
+
+function JSONToVector4(const aVectorJSONItem:TPasJSONItem;const aDefault:TpvVector4):TpvVector4;
+begin
+ if assigned(aVectorJSONItem) and (aVectorJSONItem is TPasJSONItemArray) and (TPasJSONItemArray(aVectorJSONItem).Count=4) then begin
+  result.x:=TPasJSON.GetNumber(TPasJSONItemArray(aVectorJSONItem).Items[0],0.0);
+  result.y:=TPasJSON.GetNumber(TPasJSONItemArray(aVectorJSONItem).Items[1],0.0);
+  result.z:=TPasJSON.GetNumber(TPasJSONItemArray(aVectorJSONItem).Items[2],0.0);
+  result.w:=TPasJSON.GetNumber(TPasJSONItemArray(aVectorJSONItem).Items[3],0.0);
+ end else if assigned(aVectorJSONItem) and (aVectorJSONItem is TPasJSONItemObject) then begin
+  result.x:=TPasJSON.GetNumber(TPasJSONItemObject(aVectorJSONItem).Properties['x'],0.0);
+  result.y:=TPasJSON.GetNumber(TPasJSONItemObject(aVectorJSONItem).Properties['y'],0.0);
+  result.z:=TPasJSON.GetNumber(TPasJSONItemObject(aVectorJSONItem).Properties['z'],0.0);
+  result.w:=TPasJSON.GetNumber(TPasJSONItemObject(aVectorJSONItem).Properties['w'],0.0);
+ end else begin
+  result:=aDefault;
+ end;
+end;
+
+function Vector4ToJSON(const aVector:TpvVector4):TPasJSONItemArray;
+begin
+ result:=TPasJSONItemArray.Create;
+ result.Add(TPasJSONItemNumber.Create(aVector.x));
+ result.Add(TPasJSONItemNumber.Create(aVector.y));
+ result.Add(TPasJSONItemNumber.Create(aVector.z));
+ result.Add(TPasJSONItemNumber.Create(aVector.w));
+end;
+
+function JSONToMatrix4x4(const aMatrixJSONItem:TPasJSONItem;const aDefault:TpvMatrix4x4):TpvMatrix4x4;
+begin
+ if assigned(aMatrixJSONItem) and (aMatrixJSONItem is TPasJSONItemArray) and (TPasJSONItemArray(aMatrixJSONItem).Count=16) then begin
+  result.RawComponents[0,0]:=TPasJSON.GetNumber(TPasJSONItemArray(aMatrixJSONItem).Items[0],1.0);
+  result.RawComponents[0,1]:=TPasJSON.GetNumber(TPasJSONItemArray(aMatrixJSONItem).Items[1],0.0);
+  result.RawComponents[0,2]:=TPasJSON.GetNumber(TPasJSONItemArray(aMatrixJSONItem).Items[2],0.0);
+  result.RawComponents[0,3]:=TPasJSON.GetNumber(TPasJSONItemArray(aMatrixJSONItem).Items[3],0.0);
+  result.RawComponents[1,0]:=TPasJSON.GetNumber(TPasJSONItemArray(aMatrixJSONItem).Items[4],0.0);
+  result.RawComponents[1,1]:=TPasJSON.GetNumber(TPasJSONItemArray(aMatrixJSONItem).Items[5],1.0);
+  result.RawComponents[1,2]:=TPasJSON.GetNumber(TPasJSONItemArray(aMatrixJSONItem).Items[6],0.0);
+  result.RawComponents[1,3]:=TPasJSON.GetNumber(TPasJSONItemArray(aMatrixJSONItem).Items[7],0.0);
+  result.RawComponents[2,0]:=TPasJSON.GetNumber(TPasJSONItemArray(aMatrixJSONItem).Items[8],0.0);
+  result.RawComponents[2,1]:=TPasJSON.GetNumber(TPasJSONItemArray(aMatrixJSONItem).Items[9],0.0);
+  result.RawComponents[2,2]:=TPasJSON.GetNumber(TPasJSONItemArray(aMatrixJSONItem).Items[10],1.0);
+  result.RawComponents[2,3]:=TPasJSON.GetNumber(TPasJSONItemArray(aMatrixJSONItem).Items[11],0.0);
+  result.RawComponents[3,0]:=TPasJSON.GetNumber(TPasJSONItemArray(aMatrixJSONItem).Items[12],0.0);
+  result.RawComponents[3,1]:=TPasJSON.GetNumber(TPasJSONItemArray(aMatrixJSONItem).Items[13],0.0);
+  result.RawComponents[3,2]:=TPasJSON.GetNumber(TPasJSONItemArray(aMatrixJSONItem).Items[14],0.0);
+  result.RawComponents[3,3]:=TPasJSON.GetNumber(TPasJSONItemArray(aMatrixJSONItem).Items[15],1.0);
+ end else if assigned(aMatrixJSONItem) and (aMatrixJSONItem is TPasJSONItemObject) then begin
+  result.RawComponents[0,0]:=TPasJSON.GetNumber(TPasJSONItemObject(aMatrixJSONItem).Properties['m00'],1.0);
+  result.RawComponents[0,1]:=TPasJSON.GetNumber(TPasJSONItemObject(aMatrixJSONItem).Properties['m01'],0.0);
+  result.RawComponents[0,2]:=TPasJSON.GetNumber(TPasJSONItemObject(aMatrixJSONItem).Properties['m02'],0.0);
+  result.RawComponents[0,3]:=TPasJSON.GetNumber(TPasJSONItemObject(aMatrixJSONItem).Properties['m03'],0.0);
+  result.RawComponents[1,0]:=TPasJSON.GetNumber(TPasJSONItemObject(aMatrixJSONItem).Properties['m10'],0.0);
+  result.RawComponents[1,1]:=TPasJSON.GetNumber(TPasJSONItemObject(aMatrixJSONItem).Properties['m11'],1.0);
+  result.RawComponents[1,2]:=TPasJSON.GetNumber(TPasJSONItemObject(aMatrixJSONItem).Properties['m12'],0.0);
+  result.RawComponents[1,3]:=TPasJSON.GetNumber(TPasJSONItemObject(aMatrixJSONItem).Properties['m13'],0.0);
+  result.RawComponents[2,0]:=TPasJSON.GetNumber(TPasJSONItemObject(aMatrixJSONItem).Properties['m20'],0.0);
+  result.RawComponents[2,1]:=TPasJSON.GetNumber(TPasJSONItemObject(aMatrixJSONItem).Properties['m21'],0.0);
+  result.RawComponents[2,2]:=TPasJSON.GetNumber(TPasJSONItemObject(aMatrixJSONItem).Properties['m22'],1.0);
+  result.RawComponents[2,3]:=TPasJSON.GetNumber(TPasJSONItemObject(aMatrixJSONItem).Properties['m23'],0.0);
+  result.RawComponents[3,0]:=TPasJSON.GetNumber(TPasJSONItemObject(aMatrixJSONItem).Properties['m30'],0.0);
+  result.RawComponents[3,1]:=TPasJSON.GetNumber(TPasJSONItemObject(aMatrixJSONItem).Properties['m31'],0.0);
+  result.RawComponents[3,2]:=TPasJSON.GetNumber(TPasJSONItemObject(aMatrixJSONItem).Properties['m32'],0.0);
+  result.RawComponents[3,3]:=TPasJSON.GetNumber(TPasJSONItemObject(aMatrixJSONItem).Properties['m33'],1.0);
+ end else begin
+  result:=aDefault;
+ end;
+end;
+
+function Matrix4x4ToJSON(const aMatrix:TpvMatrix4x4):TPasJSONItemArray;
+begin
+ result:=TPasJSONItemArray.Create;
+ result.Add(TPasJSONItemNumber.Create(aMatrix.RawComponents[0,0]));
+ result.Add(TPasJSONItemNumber.Create(aMatrix.RawComponents[0,1]));
+ result.Add(TPasJSONItemNumber.Create(aMatrix.RawComponents[0,2]));
+ result.Add(TPasJSONItemNumber.Create(aMatrix.RawComponents[0,3]));
+ result.Add(TPasJSONItemNumber.Create(aMatrix.RawComponents[1,0]));
+ result.Add(TPasJSONItemNumber.Create(aMatrix.RawComponents[1,1]));
+ result.Add(TPasJSONItemNumber.Create(aMatrix.RawComponents[1,2]));
+ result.Add(TPasJSONItemNumber.Create(aMatrix.RawComponents[1,3]));
+ result.Add(TPasJSONItemNumber.Create(aMatrix.RawComponents[2,0]));
+ result.Add(TPasJSONItemNumber.Create(aMatrix.RawComponents[2,1]));
+ result.Add(TPasJSONItemNumber.Create(aMatrix.RawComponents[2,2]));
+ result.Add(TPasJSONItemNumber.Create(aMatrix.RawComponents[2,3]));
+ result.Add(TPasJSONItemNumber.Create(aMatrix.RawComponents[3,0]));
+ result.Add(TPasJSONItemNumber.Create(aMatrix.RawComponents[3,1]));
+ result.Add(TPasJSONItemNumber.Create(aMatrix.RawComponents[3,2]));
+ result.Add(TPasJSONItemNumber.Create(aMatrix.RawComponents[3,3]));
+end;
 
 { TpvJSONUtils }
 
