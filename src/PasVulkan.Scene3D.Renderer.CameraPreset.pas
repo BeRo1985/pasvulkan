@@ -336,6 +336,9 @@ begin
   TExposureMode.Manual:begin
    result.Add('exposuremode',TPasJSONItemString.Create('manual'));
   end;
+  else begin
+   result.Add('exposuremode',TPasJSONItemString.Create('auto'));
+  end;
  end;
  result.Add('exposure',fExposure.SaveToJSON);
  result.Add('reset',TPasJSONItemBoolean.Create(fReset));
