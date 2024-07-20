@@ -196,6 +196,12 @@ type { TpvScene3DRendererCameraPreset }
        // Exposure
        property Exposure:TpvScene3DRendererExposure read fExposure;
 
+       // Minimum log luminance
+       property MinLogLuminance:TpvFloat read fMinLogLuminance write fMinLogLuminance;
+
+       // Maximum log luminance
+       property MaxLogLuminance:TpvFloat read fMaxLogLuminance write fMaxLogLuminance;
+
        // Reset, when completely new view
        property Reset:boolean read fReset write fReset;
 
