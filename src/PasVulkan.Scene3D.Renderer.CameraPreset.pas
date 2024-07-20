@@ -127,7 +127,11 @@ type { TpvScene3DRendererCameraPreset }
        procedure Assign(const aFrom:TpvScene3DRendererCameraPreset);
        procedure UpdateExposure;
        procedure LoadFromJSON(const aJSONItem:TPasJSONItem);
+       procedure LoadFromJSONStream(const aStream:TStream);
+       procedure LoadFromJSONFile(const aFileName:string);
        function SaveToJSON:TPasJSONItemObject;
+       procedure SaveToJSONStream(const aStream:TStream);
+       procedure SaveToJSONFile(const aFileName:string);
       published
 
        // Field of view, > 0.0 = horizontal and < 0.0 = vertical
@@ -307,6 +311,31 @@ begin
  end;
 end;
 
+procedure TpvScene3DRendererCameraPreset.LoadFromJSONStream(const aStream:TStream);
+var JSON:TPasJSONItem;
+begin
+ JSON:=TPasJSON.Parse(aStream);
+ if assigned(JSON) then begin
+  try
+   LoadFromJSON(JSON);
+  finally
+   FreeAndNil(JSON);
+  end;
+ end;
+end;
+
+procedure TpvScene3DRendererCameraPreset.LoadFromJSONFile(const aFileName:string);
+var Stream:TMemoryStream;
+begin
+ Stream:=TMemoryStream.Create;
+ try
+  Stream.LoadFromFile(aFileName);
+  LoadFromJSONStream(Stream);
+ finally
+  FreeAndNil(Stream);
+ end;
+end;
+
 function TpvScene3DRendererCameraPreset.SaveToJSON:TPasJSONItemObject;
 begin
  result:=TPasJSONItemObject.Create;
@@ -343,6 +372,32 @@ begin
  result.Add('exposure',fExposure.SaveToJSON);
  result.Add('reset',TPasJSONItemBoolean.Create(fReset));
 end;
+
+procedure TpvScene3DRendererCameraPreset.SaveToJSONStream(const aStream:TStream);
+var JSON:TPasJSONItem;
+begin
+ JSON:=SaveToJSON;
+ if assigned(JSON) then begin
+  try
+   TPasJSON.StringifyToStream(aStream,JSON,true);
+  finally
+   FreeAndNil(JSON);
+  end;
+ end;
+end;
+
+procedure TpvScene3DRendererCameraPreset.SaveToJSONFile(const aFileName:string);
+var Stream:TMemoryStream;
+begin
+ Stream:=TMemoryStream.Create;
+ try
+  SaveToJSONStream(Stream);
+  Stream.SaveToFile(aFileName);
+ finally
+  FreeAndNil(Stream);
+ end;
+end;
+
 
 initialization
 finalization
