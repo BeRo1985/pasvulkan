@@ -658,6 +658,24 @@ begin
  end;
 end;
 
+function TpvScene3DAtmosphere_TAtmosphereParameters_POCASetAtmosphere(Context:PPOCAContext;const This:TPOCAValue;const Arguments:PPOCAValues;const CountArguments:longint;const UserData:pointer):TPOCAValue;
+var JSONString:TpvUTF8String;
+    JSON:TPasJSONItem;
+begin
+ if CountArguments>0 then begin
+  JSONString:=POCAStringDump(Context,Arguments^[0]);
+  JSON:=TPasJSON.Parse(JSONString);
+  if assigned(JSON) then begin
+   try
+    TpvScene3DAtmosphere.PAtmosphereParameters(UserData)^.LoadFromJSON(JSON);
+   finally
+    FreeAndNil(JSON);
+   end;
+  end;
+ end;
+ result:=POCAValueNull;
+end;
+
 procedure TpvScene3DAtmosphere.TAtmosphereParameters.LoadFromPOCA(const aPOCACode:TpvUTF8String);
 var POCAInstance:PPOCAInstance;
     POCAContext:PPOCAContext;
@@ -672,10 +690,7 @@ begin
     POCAContext:=POCAContextCreate(POCAInstance);
     try
      try
-{     POCAHashSet(POCAContext,
-                  POCAInstance.Globals.Namespace,
-                  POCANewUniqueString(POCAContext,'Group'),
-                  POCANewNativeObject(POCAContext,POCAScene3DGroup));}
+      POCAAddNativeFunction(POCAContext,POCAInstance.Globals.Namespace,'setAtmosphere',@TpvScene3DAtmosphere_TAtmosphereParameters_POCASetAtmosphere,nil,@self);
       POCACode:=POCACompile(POCAInstance,POCAContext,Code,'<CODE>');
       POCACall(POCAContext,POCACode,nil,0,POCAValueNull,POCAInstance^.Globals.Namespace);
      except
