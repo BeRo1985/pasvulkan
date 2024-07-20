@@ -66,6 +66,7 @@ uses SysUtils,
      Classes,
      Math,
      Vulkan,
+     PasJSON,
      PasVulkan.Types,
      PasVulkan.Math,
      PasVulkan.Framework,
@@ -204,6 +205,13 @@ type TpvScene3DRendererAntialiasingMode=
       );
      PpvScene3DRendererToneMappingMode=^TpvScene3DRendererToneMappingMode;
 
+     { TpvScene3DRendererToneMappingModeHelper }
+
+     TpvScene3DRendererToneMappingModeHelper=record helper for TpvScene3DRendererToneMappingMode
+      function ToString:TpvUTF8String;
+      procedure FromString(const aValue:TpvUTF8String);
+     end;
+
      TpvScene3DRendererCullRenderPass=
       (
        None=0,
@@ -219,6 +227,116 @@ var pvScene3DShaderVirtualFileSystem:TpvVirtualFileSystem=nil;
 implementation
 
 uses PasVulkan.Scene3D.Assets;
+
+{ TpvScene3DRendererToneMappingModeHelper }
+
+function TpvScene3DRendererToneMappingModeHelper.ToString:TpvUTF8String;
+begin
+ case self of
+  TpvScene3DRendererToneMappingMode.Auto:begin
+   result:='auto';
+  end;
+  TpvScene3DRendererToneMappingMode.Linear:begin
+   result:='linear';
+  end;
+  TpvScene3DRendererToneMappingMode.Reinhard:begin
+   result:='reinhard';
+  end;
+  TpvScene3DRendererToneMappingMode.Hejl:begin
+   result:='hejl';
+  end;
+  TpvScene3DRendererToneMappingMode.Hejl2015:begin
+   result:='hejl2015';
+  end;
+  TpvScene3DRendererToneMappingMode.ACESFilm:begin
+   result:='acesfilm';
+  end;
+  TpvScene3DRendererToneMappingMode.ACESFilm2:begin
+   result:='acesfilm2';
+  end;
+  TpvScene3DRendererToneMappingMode.Uncharted2:begin
+   result:='uncharted2';
+  end;
+  TpvScene3DRendererToneMappingMode.Uchimura:begin
+   result:='uchimura';
+  end;
+  TpvScene3DRendererToneMappingMode.Lottes:begin
+   result:='lottes';
+  end;
+  TpvScene3DRendererToneMappingMode.AMD:begin
+   result:='amd';
+  end;
+  TpvScene3DRendererToneMappingMode.AGXRec709:begin
+   result:='agxrec709';
+  end;
+  TpvScene3DRendererToneMappingMode.AGXRec709Golden:begin
+   result:='agxrec709golden';
+  end;
+  TpvScene3DRendererToneMappingMode.AGXRec709Punchy:begin
+   result:='agxrec709punchy';
+  end;
+  TpvScene3DRendererToneMappingMode.AGXRec2020:begin
+   result:='agxrec2020';
+  end;
+  TpvScene3DRendererToneMappingMode.AGXRec2020Golden:begin
+   result:='agxrec2020golden';
+  end;
+  TpvScene3DRendererToneMappingMode.AGXRec2020Punchy:begin
+   result:='agxrec2020punchy';
+  end;
+  TpvScene3DRendererToneMappingMode.KhronosPBRNeutral:begin
+   result:='khronospbrneutral';
+  end;
+  else begin
+   result:='auto';
+  end;
+ end;
+end;
+
+procedure TpvScene3DRendererToneMappingModeHelper.FromString(const aValue:TpvUTF8String);
+var Value:TpvUTF8String;
+begin
+ Value:=LowerCase(Trim(aValue));
+ if Value='auto' then begin
+  self:=TpvScene3DRendererToneMappingMode.Auto;
+ end else if Value='linear' then begin
+  self:=TpvScene3DRendererToneMappingMode.Linear;
+ end else if Value='reinhard' then begin
+  self:=TpvScene3DRendererToneMappingMode.Reinhard;
+ end else if Value='hejl' then begin
+  self:=TpvScene3DRendererToneMappingMode.Hejl;
+ end else if Value='hejl2015' then begin
+  self:=TpvScene3DRendererToneMappingMode.Hejl2015;
+ end else if Value='acesfilm' then begin
+  self:=TpvScene3DRendererToneMappingMode.ACESFilm;
+ end else if Value='acesfilm2' then begin
+  self:=TpvScene3DRendererToneMappingMode.ACESFilm2;
+ end else if Value='uncharted2' then begin
+  self:=TpvScene3DRendererToneMappingMode.Uncharted2;
+ end else if Value='uchimura' then begin
+  self:=TpvScene3DRendererToneMappingMode.Uchimura;
+ end else if Value='lottes' then begin
+  self:=TpvScene3DRendererToneMappingMode.Lottes;
+ end else if Value='amd' then begin
+  self:=TpvScene3DRendererToneMappingMode.AMD;
+ end else if Value='agxrec709' then begin
+  self:=TpvScene3DRendererToneMappingMode.AGXRec709;
+ end else if Value='agxrec709golden' then begin
+  self:=TpvScene3DRendererToneMappingMode.AGXRec709Golden;
+ end else if Value='agxrec709punchy' then begin
+  self:=TpvScene3DRendererToneMappingMode.AGXRec709Punchy;
+ end else if Value='agxrec2020' then begin
+  self:=TpvScene3DRendererToneMappingMode.AGXRec2020;
+ end else if Value='agxrec2020golden' then begin
+  self:=TpvScene3DRendererToneMappingMode.AGXRec2020Golden;
+ end else if Value='agxrec2020punchy' then begin
+  self:=TpvScene3DRendererToneMappingMode.AGXRec2020Punchy;
+ end else if Value='khronospbrneutral' then begin
+  self:=TpvScene3DRendererToneMappingMode.KhronosPBRNeutral;
+ end else begin
+  self:=TpvScene3DRendererToneMappingMode.Auto;
+ end;
+end;
 
 initialization
 {$if declared(get_pasvulkan_scene3dshaders_spk_data) and declared(get_pasvulkan_scene3dshaders_spk_size)}
