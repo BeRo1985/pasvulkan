@@ -317,6 +317,8 @@ begin
    fExposureMode:=TExposureMode.Auto;
   end; 
   fExposure.LoadFromJSON(TPasJSONItemObject(aJSONItem).Properties['exposure']);
+  fMinLogLuminance:=TPasJSON.GetNumber(TPasJSONItemObject(aJSONItem).Properties['minlogluminance'],fMinLogLuminance);
+  fMaxLogLuminance:=TPasJSON.GetNumber(TPasJSONItemObject(aJSONItem).Properties['maxlogluminance'],fMaxLogLuminance);
   fReset:=TPasJSON.GetBoolean(TPasJSONItemObject(aJSONItem).Properties['reset'],fReset);
  end;
 end;
@@ -380,6 +382,8 @@ begin
   end;
  end;
  result.Add('exposure',fExposure.SaveToJSON);
+ result.Add('minlogluminance',TPasJSONItemNumber.Create(fMinLogLuminance));
+ result.Add('maxlogluminance',TPasJSONItemNumber.Create(fMaxLogLuminance));
  result.Add('reset',TPasJSONItemBoolean.Create(fReset));
 end;
 
