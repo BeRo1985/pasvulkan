@@ -5845,6 +5845,8 @@ var Index:TpvSizeInt;
     FieldOfView:TpvFloat;
 begin
 
+ fPerInFlightFrameColorGradingSettings[aInFlightFrameIndex]:=fColorGradingSettings;
+
  fCameraPresets[aInFlightFrameIndex].Assign(fCameraPreset);
 
  InFlightFrameState:=@fInFlightFrameStates[aInFlightFrameIndex];
