@@ -142,7 +142,9 @@ type { TpvScene3DRendererInstance }
              TopDownSkyOcclusionMapViewProjectionMatrix:TpvMatrix4x4;
              ReflectiveShadowMapMatrix:TpvMatrix4x4;
              MainViewMatrix:TpvMatrix4x4;
+             MainInverseViewMatrix:TpvMatrix4x4;
              MainViewProjectionMatrix:TpvMatrix4x4;
+             MainCameraPosition:TpvVector3;
 
              ReflectiveShadowMapLightDirection:TpvVector3;
              ReflectiveShadowMapScale:TpvVector3;
@@ -1417,7 +1419,7 @@ begin
 
  InFlightFrameState:=@fRendererInstance.fInFlightFrameStates[aInFlightFrameIndex];
 
- m:=InFlightFrameState^.MainViewMatrix.Inverse;
+ m:=InFlightFrameState^.MainInverseViewMatrix;
 
  ViewPosition:=TpvVector3.InlineableCreate(m.RawComponents[3,0],
                                            m.RawComponents[3,1],
@@ -5890,6 +5892,8 @@ begin
    InFlightFrameState^.CountHUDViews:=2;
 
    InFlightFrameState^.MainViewMatrix:=ViewLeft.ViewMatrix;
+   InFlightFrameState^.MainInverseViewMatrix:=ViewLeft.ViewMatrix.Inverse;
+   InFlightFrameState^.MainCameraPosition:=InFlightFrameState^.MainInverseViewMatrix.Translation.xyz;
 
    InFlightFrameState^.MainViewProjectionMatrix:=ViewLeft.ViewMatrix*ViewLeft.ProjectionMatrix;
 
@@ -5944,6 +5948,8 @@ begin
    InFlightFrameState^.FinalViewIndex:=fViews[aInFlightFrameIndex].Add(ViewLeft);
 
    InFlightFrameState^.MainViewMatrix:=ViewLeft.ViewMatrix;
+   InFlightFrameState^.MainInverseViewMatrix:=ViewLeft.ViewMatrix.Inverse;
+   InFlightFrameState^.MainCameraPosition:=InFlightFrameState^.MainInverseViewMatrix.Translation.xyz;
 
    InFlightFrameState^.MainViewProjectionMatrix:=ViewLeft.ViewMatrix*ViewLeft.ProjectionMatrix;
 
