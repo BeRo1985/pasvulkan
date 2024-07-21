@@ -157,7 +157,7 @@ begin
   end;
  end;
 
- ImageViewType:=TVkImageViewType(VK_IMAGE_VIEW_TYPE_2D);
+ ImageViewType:=TVkImageViewType(VK_IMAGE_VIEW_TYPE_CUBE);
 
  if length(aQueueFamilyIndices)>0 then begin
   p:=@aQueueFamilyIndices[0];
