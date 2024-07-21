@@ -19,7 +19,7 @@
 
 layout(location = 0) in vec2 inTexCoord;
 
-layout(location = 0) out vec4 outLuminance;
+layout(location = 0) out vec4 outInscattering;
 
 #ifdef DUALBLEND
 layout(location = 1) out vec4 outTransmittance; // component-wise transmittance
@@ -161,24 +161,24 @@ void main() {
       localUV = getNiceTextureUV(localUV, vec2(textureSize(uSkyViewLUT, 0).xy));
 #endif      
 
-      vec4 value = textureLod(uSkyViewLUT, vec3(localUV, float(viewIndex)), 0.0).xyzw; // xyz = inscatter, w = transmittance (monochromatic)
+      vec4 inscattering = textureLod(uSkyViewLUT, vec3(localUV, float(viewIndex)), 0.0).xyzw; // xyz = inscatter, w = transmittance (monochromatic)
 
 #ifdef DUALBLEND
-      vec4 transmittance = vec4(vec3(value.w), 1.0);
-
-      if(!IntersectGround){
-        value.xyz += GetSunLuminance(originalWorldPos, worldDir, sunDirection, atmosphereParameters.BottomRadius).xyz * value.w;
-      }
-
-      outTransmittance = transmittance;
-
-      outLuminance = vec4(value.xyz, 1.0);
+      vec3 transmittance = textureLod(uSkyViewLUT, vec3(localUV, float(int(viewIndex + pushConstants.countViews))), 0.0).xyz; // xyz = transmittance, w = non-used
 #else
+      vec3 transmittance = vec3(inscattering.w); // convert from monochromatic transmittance, not optimal but better than nothing 
+#endif
+
       if(!IntersectGround){
-        value.xyz += GetSunLuminance(originalWorldPos, worldDir, sunDirection, atmosphereParameters.BottomRadius).xyz * value.w;
+        inscattering.xyz += GetSunLuminance(originalWorldPos, worldDir, sunDirection, atmosphereParameters.BottomRadius).xyz * transmittance.xyz;
       }
 
-      outLuminance = vec4(value.xyz, 1.0 - value.w);
+#ifdef DUALBLEND
+      outInscattering = vec4(inscattering.xyz, 1.0);
+
+      outTransmittance = vec4(transmittance.xyz, 1.0);
+#else      
+      outInscattering = vec4(inscattering.xyz, 1.0 - inscattering.w); // alpha = 1.0 - transmittance 
 #endif
 
       return; // Early out, for avoiding the code path of the more accurate and more bruteforce ray marching approach
@@ -250,30 +250,32 @@ void main() {
         sliceIndex = clamp(sliceIndex, 0, AP_SLICE_COUNT_INT - 1);
 
         // Manual 3D texture lookup from a 2D array texture, since multiview is not supported for 3D textures (no 3D array textures) 
-        vec4 AP = mix(
-                    textureLod(uCameraVolume, vec3(uv, sliceIndex + (viewIndex * AP_SLICE_COUNT_INT)), 0.0),
-                    textureLod(uCameraVolume, vec3(uv, nextSliceIndex + (viewIndex * AP_SLICE_COUNT_INT)), 0.0),
-                    sliceWeight
-                  ) * Weight;
-
+        vec4 inscattering = mix(
+                          textureLod(uCameraVolume, vec3(uv, sliceIndex + (viewIndex * AP_SLICE_COUNT_INT)), 0.0),
+                          textureLod(uCameraVolume, vec3(uv, nextSliceIndex + (viewIndex * AP_SLICE_COUNT_INT)), 0.0),
+                          sliceWeight
+                        ) * Weight;
 
 #ifdef DUALBLEND
-        vec4 transmittance = vec4(vec3(AP.w), 1.0);
-
-        if(depthIsZFar){
-          AP.xyz += GetSunLuminance(originalWorldPos, worldDir, sunDirection, atmosphereParameters.BottomRadius).xyz * AP.w;  
-        }
-
-        outTransmittance = transmittance;
-
-        outLuminance = vec4(AP.xyz, 1.0 - AP.w);
+        vec3 transmittance = mix(
+                              textureLod(uCameraVolume, vec3(uv, sliceIndex + ((viewIndex + pushConstants.countViews) * AP_SLICE_COUNT_INT)), 0.0).xyz,
+                              textureLod(uCameraVolume, vec3(uv, nextSliceIndex + ((viewIndex + pushConstants.countViews) * AP_SLICE_COUNT_INT)), 0.0).xyz,
+                              sliceWeight
+                             ) * Weight;
 #else
+        vec3 transmittance = vec3(inscattering.w); // convert from monochromatic transmittance, not optimal but better than nothing
+#endif
 
         if(depthIsZFar){
-          AP.xyz += GetSunLuminance(originalWorldPos, worldDir, sunDirection, atmosphereParameters.BottomRadius).xyz * AP.w;  
+          inscattering.xyz += GetSunLuminance(originalWorldPos, worldDir, sunDirection, atmosphereParameters.BottomRadius).xyz * transmittance.xyz;  
         }
 
-        outLuminance = vec4(AP.xyz, 1.0 - AP.w); 
+#ifdef DUALBLEND
+        outInscattering = vec4(inscattering.xyz, 1.0);
+
+        outTransmittance = vec4(transmittance, 1.0);
+#else
+        outInscattering = vec4(inscattering.xyz, 1.0 - inscattering.w); // alpha = 1.0 - transmittance 
 #endif
       
         return; // Early out, for avoiding the code path of the more accurate and more bruteforce ray marching approach
@@ -336,10 +338,10 @@ void main() {
     }
 
 #ifdef DUALBLEND
-    outLuminance = vec4(inscattering, 1.0);
+    outInscattering = vec4(inscattering, 1.0);
     outTransmittance = vec4(vec3(clamp(transmittance, vec3(0.0), vec3(1.0))), 1.0);
 #else
-    outLuminance = vec4(inscattering, 1.0 - clamp(dot(transmittance, vec3(1.0 / 3.0)), 0.0, 1.0));
+    outInscattering = vec4(inscattering, 1.0 - clamp(dot(transmittance, vec3(1.0 / 3.0)), 0.0, 1.0)); // alpha = 1.0 - transmittance 
 #endif
 
   }
