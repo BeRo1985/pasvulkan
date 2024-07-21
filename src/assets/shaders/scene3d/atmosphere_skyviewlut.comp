@@ -127,8 +127,12 @@ void main() {
         false
       ); 
       
+      // Store the luminance and monochromatic transmittance in the first slice (monochromatic transmittance for GPUs without dual source blending support)
       imageStore(uDestinationTexture, ivec3(coord, viewIndex), vec4(ss.L, clamp(dot(ss.Transmittance, vec3(1.0 / 3.0)) * 1.0, 0.0, 1.0)));
-      
+
+      // Store the transmittance in the second slices part after all luminance slices (for GPUs with dual source blending support)
+      imageStore(uDestinationTexture, ivec3(coord, int(viewIndex + pushConstants.countViews)), vec4(ss.Transmittance, 1.0));
+
     }
 
   }

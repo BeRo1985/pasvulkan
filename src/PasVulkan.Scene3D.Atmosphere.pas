@@ -822,7 +822,7 @@ begin
  fSkyViewLUTTexture:=TpvScene3DRendererArray2DImage.Create(TpvScene3D(fAtmosphere.fScene3D).VulkanDevice,
                                                            SkyViewLUTTextureWidth,
                                                            SkyViewLUTTextureHeight, 
-                                                           TpvScene3DRendererInstance(aRendererInstance).CountSurfaceViews,
+                                                           TpvScene3DRendererInstance(aRendererInstance).CountSurfaceViews*2,
                                                            VK_FORMAT_R32G32B32A32_SFLOAT,
                                                            VK_SAMPLE_COUNT_1_BIT,
                                                            VK_IMAGE_LAYOUT_GENERAL,
@@ -832,7 +832,7 @@ begin
  fCameraVolumeTexture:=TpvScene3DRendererArray2DImage.Create(TpvScene3D(fAtmosphere.fScene3D).VulkanDevice,
                                                             CameraVolumeTextureWidth,
                                                             CameraVolumeTextureHeight,
-                                                            CameraVolumeTextureDepth*TpvScene3DRendererInstance(aRendererInstance).CountSurfaceViews,
+                                                            CameraVolumeTextureDepth*TpvScene3DRendererInstance(aRendererInstance).CountSurfaceViews*2,
                                                             VK_FORMAT_R32G32B32A32_SFLOAT,
                                                             VK_SAMPLE_COUNT_1_BIT,
                                                             VK_IMAGE_LAYOUT_GENERAL,
@@ -1552,7 +1552,7 @@ begin
                                                                                        0,
                                                                                        1,
                                                                                        0,
-                                                                                       TpvScene3DRendererInstance(fRendererInstance).CountSurfaceViews));
+                                                                                       fSkyViewLUTTexture.Layers));
 
   aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
@@ -1605,7 +1605,7 @@ begin
                                                                                        0,
                                                                                        1,
                                                                                        0,
-                                                                                       TpvScene3DRendererInstance(fRendererInstance).CountSurfaceViews));
+                                                                                       fSkyViewLUTTexture.Layers));
 
   aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
