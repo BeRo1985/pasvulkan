@@ -366,6 +366,7 @@ type TpvScene3DAtmosphere=class;
        fMultiScatteringLUTPassDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fSkyViewLUTPassDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fCameraVolumePassDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
+       fCubeMapPassDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fRaymarchingPassDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fGlobalVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fTransmittanceLUTComputeShaderModule:TpvVulkanShaderModule;
@@ -406,6 +407,7 @@ type TpvScene3DAtmosphere=class;
        property MultiScatteringLUTPassDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fMultiScatteringLUTPassDescriptorSetLayout;
        property SkyViewLUTPassDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fSkyViewLUTPassDescriptorSetLayout;
        property CameraVolumePassDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fCameraVolumePassDescriptorSetLayout;
+       property CubeMapPassDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fCubeMapPassDescriptorSetLayout;
        property RaymarchingPassDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fRaymarchingPassDescriptorSetLayout;
        property GlobalVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fGlobalVulkanDescriptorSetLayout;
        property RaymarchingPipelineLayout:TpvVulkanPipelineLayout read fRaymarchingPipelineLayout;
@@ -2120,6 +2122,7 @@ begin
  fMultiScatteringLUTPassDescriptorSetLayout:=nil;
  fSkyViewLUTPassDescriptorSetLayout:=nil;
  fCameraVolumePassDescriptorSetLayout:=nil;
+ fCubeMapPassDescriptorSetLayout:=nil;
  fRaymarchingPassDescriptorSetLayout:=nil;
  fGlobalVulkanDescriptorSetLayout:=nil;
 end;
@@ -2262,6 +2265,44 @@ begin
 
   fCameraVolumePassDescriptorSetLayout.Initialize;
   TpvScene3D(fScene3D).VulkanDevice.DebugUtils.SetObjectName(fCameraVolumePassDescriptorSetLayout.Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT,'TpvScene3DAtmosphereGlobals.fCameraVolumePassDescriptorSetLayout');
+
+ end;
+
+ // Cube map pass descriptor set layout
+ begin
+
+  fCubeMapPassDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(TpvScene3D(fScene3D).VulkanDevice);
+
+  // Destination texture
+  fCubeMapPassDescriptorSetLayout.AddBinding(0,
+                                             VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+                                             1,
+                                             TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                             []);
+
+  // Transmittance LUT texture
+  fCubeMapPassDescriptorSetLayout.AddBinding(1,
+                                             VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                             1,
+                                             TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                             []);
+
+  // Multi scattering LUT texture
+  fCubeMapPassDescriptorSetLayout.AddBinding(2,
+                                             VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                             1,
+                                             TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                             []);
+
+  // Atmosphere parameters
+  fCubeMapPassDescriptorSetLayout.AddBinding(3,
+                                             VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                                             1,
+                                             TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                             []);
+
+  fCubeMapPassDescriptorSetLayout.Initialize;
+  TpvScene3D(fScene3D).VulkanDevice.DebugUtils.SetObjectName(fCubeMapPassDescriptorSetLayout.Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT,'TpvScene3DAtmosphereGlobals.fCubeMapPassDescriptorSetLayout');
 
  end;
 
@@ -2454,6 +2495,35 @@ begin
  end;
 
  begin
+
+  // Cube map compute pipeline
+
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('atmosphere_cubemap_comp.spv');
+  try
+   fCubeMapComputeShaderModule:=TpvVulkanShaderModule.Create(TpvScene3D(fScene3D).VulkanDevice,Stream);
+  finally
+   Stream.Free;
+  end;
+  TpvScene3D(fScene3D).VulkanDevice.DebugUtils.SetObjectName(fCubeMapComputeShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DAtmosphereGlobals.fCubeMapComputeShaderModule'); 
+
+  fCubeMapComputeShaderStage:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_COMPUTE_BIT,fCubeMapComputeShaderModule,'main');
+
+  fCubeMapComputePipelineLayout:=TpvVulkanPipelineLayout.Create(TpvScene3D(fScene3D).VulkanDevice);
+  fCubeMapComputePipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),0,SizeOf(TCubeMapPushConstants));
+  fCubeMapComputePipelineLayout.AddDescriptorSetLayout(fCubeMapPassDescriptorSetLayout);
+  fCubeMapComputePipelineLayout.Initialize;
+
+  fCubeMapComputePipeline:=TpvVulkanComputePipeline.Create(TpvScene3D(fScene3D).VulkanDevice,
+                                                           TpvScene3D(fScene3D).VulkanPipelineCache,
+                                                           0,
+                                                           fCubeMapComputeShaderStage,
+                                                           fCubeMapComputePipelineLayout,
+                                                           nil,
+                                                           0);
+
+ end;
+
+ begin
    
   // Raymarching graphics pipeline
 
@@ -2521,6 +2591,11 @@ begin
  FreeAndNil(fCameraVolumeComputePipelineLayout);
  FreeAndNil(fCameraVolumeComputeShaderStage);
  FreeAndNil(fCameraVolumeComputeShaderModule);
+
+ FreeAndNil(fCubeMapComputePipeline);
+ FreeAndNil(fCubeMapComputePipelineLayout);
+ FreeAndNil(fCubeMapComputeShaderStage);
+ FreeAndNil(fCubeMapComputeShaderModule);
  
  FreeAndNil(fRaymarchingPipelineLayout);
  FreeAndNil(fRaymarchingPipelineShaderStageVertex);
@@ -2532,6 +2607,7 @@ begin
 
  FreeAndNil(fGlobalVulkanDescriptorSetLayout);
  FreeAndNil(fRaymarchingPassDescriptorSetLayout);
+ FreeAndNil(fCubeMapPassDescriptorSetLayout);
  FreeAndNil(fCameraVolumePassDescriptorSetLayout);
  FreeAndNil(fSkyViewLUTPassDescriptorSetLayout);
  FreeAndNil(fMultiScatteringLUTPassDescriptorSetLayout);

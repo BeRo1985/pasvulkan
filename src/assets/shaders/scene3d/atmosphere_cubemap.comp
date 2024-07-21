@@ -37,7 +37,6 @@ AtmosphereParameters atmosphereParameters;
  
 ivec2 destinationTextureSize = imageSize(uDestinationTexture);
 
-
 #include "cubemap.glsl"
 
 #ifdef USE_RGB9E5
