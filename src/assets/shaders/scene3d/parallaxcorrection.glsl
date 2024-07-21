@@ -1,7 +1,7 @@
 #ifndef PARALLAXCORRECTION_GLSL
 #define PARALLAXCORRECTION_GLSL
 
-vec3 parallaxCorrectedReflection(vec3 reflectionDirection, vec3 fragmentWorldPosition, vec3 cameraWorldPosition){
+vec3 getParallaxCorrectReflectionDirection(vec3 reflectionDirection, vec3 fragmentWorldPosition, vec3 cameraWorldPosition){
     
 #ifndef PARALLAX_CORRECTION_METHOD
 #define PARALLAX_CORRECTION_METHOD 0 // 0 = None, 1 = Offset, 2 = Vector, 3 = Halfway (all without proxy geometry, at the moment) 
