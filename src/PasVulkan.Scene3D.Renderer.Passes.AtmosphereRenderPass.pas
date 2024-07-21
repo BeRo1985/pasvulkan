@@ -86,6 +86,7 @@ type { TpvScene3DRendererPassesAtmosphereRenderPass }
        fVulkanRenderPass:TpvVulkanRenderPass;
        fResourceDepth:TpvFrameGraph.TPass.TUsedImageResource;
        fResourceOutput:TpvFrameGraph.TPass.TUsedImageResource;
+       fResourceTransmittance:TpvFrameGraph.TPass.TUsedImageResource;
        fVulkanTransferCommandBuffer:TpvVulkanCommandBuffer;
        fVulkanTransferCommandBufferFence:TpvVulkanFence;
        fVulkanVertexShaderModule:TpvVulkanShaderModule;
@@ -97,6 +98,7 @@ type { TpvScene3DRendererPassesAtmosphereRenderPass }
        fVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fVulkanDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
        fVulkanPipelineLayout:TpvVulkanPipelineLayout;}
+       fDualBlendSupport:Boolean;
        fPushConstants:TpvScene3DAtmosphereGlobals.TRaymarchingPushConstants;
       public
        constructor Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance); reintroduce;
@@ -136,6 +138,8 @@ begin
                                        1.0,
                                        fInstance.CountSurfaceViews);
 
+ fDualBlendSupport:=fInstance.Renderer.VulkanDevice.PhysicalDevice.Features.dualSrcBlend<>VK_FALSE;
+
  if fInstance.Renderer.SurfaceSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
 
   fResourceDepth:=AddImageDepthInput('resourcetype_depth',
@@ -151,6 +155,18 @@ begin
                                   TpvFrameGraph.TResourceTransition.TFlag.ExplicitOutputAttachment]
                                 );
 
+  if fDualBlendSupport then begin
+   fResourceTransmittance:=AddImageOutput('resourcetype_color_optimized_non_alpha',
+                                          'resource_forwardrendering_atmosphere_transmittance',
+                                          VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                                          TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
+                                                                       TpvVector4.InlineableCreate(0.0,0.0,0.0,0.0)),
+                                          [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
+                                         );
+  end else begin
+   fResourceTransmittance:=nil;
+  end;
+
  end else begin
 
   fResourceDepth:=AddImageDepthInput('resourcetype_msaa_depth',
@@ -165,6 +181,19 @@ begin
                                  [TpvFrameGraph.TResourceTransition.TFlag.Attachment,
                                   TpvFrameGraph.TResourceTransition.TFlag.ExplicitOutputAttachment]
                                 );
+
+  if fDualBlendSupport then begin
+   fResourceTransmittance:=AddImageOutput('resourcetype_msaa_color_optimized_non_alpha',
+                                          'resource_forwardrendering_atmosphere_transmittance',
+                                          VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                                          TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
+                                                                       TpvVector4.InlineableCreate(0.0,0.0,0.0,0.0)),
+                                          [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
+                                         );
+  end else begin
+   fResourceTransmittance:=nil;
+  end;
+
  end;
 
  fInstance.LastOutputResource:=fResourceOutput;
@@ -193,17 +222,33 @@ begin
   Stream.Free;
  end;
 
- if fResourceDepth.CountArrayLayers>0 {fInstance.CountSurfaceViews>1} then begin
-  if fInstance.Renderer.SurfaceSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
-   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('atmosphere_raymarch_multiview_frag.spv');
+ if fDualBlendSupport then begin
+  if fResourceDepth.CountArrayLayers>0 {fInstance.CountSurfaceViews>1} then begin
+   if fInstance.Renderer.SurfaceSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
+    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('atmosphere_raymarch_dualblend_multiview_frag.spv');
+   end else begin
+    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('atmosphere_raymarch_dualblend_multiview_msaa_frag.spv');
+   end;
   end else begin
-   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('atmosphere_raymarch_multiview_msaa_frag.spv');
+   if fInstance.Renderer.SurfaceSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
+    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('atmosphere_raymarch_dualblend_frag.spv');
+   end else begin
+    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('atmosphere_raymarch_dualblend_msaa_frag.spv');
+   end;
   end;
  end else begin
-  if fInstance.Renderer.SurfaceSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
-   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('atmosphere_raymarch_frag.spv');
+  if fResourceDepth.CountArrayLayers>0 {fInstance.CountSurfaceViews>1} then begin
+   if fInstance.Renderer.SurfaceSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
+    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('atmosphere_raymarch_multiview_frag.spv');
+   end else begin
+    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('atmosphere_raymarch_multiview_msaa_frag.spv');
+   end;
   end else begin
-   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('atmosphere_raymarch_msaa_frag.spv');
+   if fInstance.Renderer.SurfaceSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
+    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('atmosphere_raymarch_frag.spv');
+   end else begin
+    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('atmosphere_raymarch_msaa_frag.spv');
+   end;
   end;
  end;
  try
@@ -350,17 +395,42 @@ begin
  fVulkanGraphicsPipeline.ColorBlendState.BlendConstants[1]:=0.0;
  fVulkanGraphicsPipeline.ColorBlendState.BlendConstants[2]:=0.0;
  fVulkanGraphicsPipeline.ColorBlendState.BlendConstants[3]:=0.0;
- fVulkanGraphicsPipeline.ColorBlendState.AddColorBlendAttachmentState(true,
-                                                                      VK_BLEND_FACTOR_ONE,
-                                                                      VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
-                                                                      VK_BLEND_OP_ADD,
-                                                                      VK_BLEND_FACTOR_ONE,
-                                                                      VK_BLEND_FACTOR_ZERO,
-                                                                      VK_BLEND_OP_ADD,
-                                                                      TVkColorComponentFlags(VK_COLOR_COMPONENT_R_BIT) or
-                                                                      TVkColorComponentFlags(VK_COLOR_COMPONENT_G_BIT) or
-                                                                      TVkColorComponentFlags(VK_COLOR_COMPONENT_B_BIT) or
-                                                                      TVkColorComponentFlags(VK_COLOR_COMPONENT_A_BIT));
+ if fDualBlendSupport then begin
+  fVulkanGraphicsPipeline.ColorBlendState.AddColorBlendAttachmentState(true,
+                                                                       VK_BLEND_FACTOR_ONE,
+                                                                       VK_BLEND_FACTOR_SRC1_COLOR,
+                                                                       VK_BLEND_OP_ADD,
+                                                                       VK_BLEND_FACTOR_ZERO,
+                                                                       VK_BLEND_FACTOR_ONE,
+                                                                       VK_BLEND_OP_ADD,
+                                                                       TVkColorComponentFlags(VK_COLOR_COMPONENT_R_BIT) or
+                                                                       TVkColorComponentFlags(VK_COLOR_COMPONENT_G_BIT) or
+                                                                       TVkColorComponentFlags(VK_COLOR_COMPONENT_B_BIT) or
+                                                                       TVkColorComponentFlags(VK_COLOR_COMPONENT_A_BIT));
+  fVulkanGraphicsPipeline.ColorBlendState.AddColorBlendAttachmentState(false,
+                                                                       VK_BLEND_FACTOR_ONE,
+                                                                       VK_BLEND_FACTOR_ONE,
+                                                                       VK_BLEND_OP_ADD,
+                                                                       VK_BLEND_FACTOR_ONE,
+                                                                       VK_BLEND_FACTOR_ZERO,
+                                                                       VK_BLEND_OP_ADD,
+                                                                       0{TVkColorComponentFlags(VK_COLOR_COMPONENT_R_BIT) or
+                                                                       TVkColorComponentFlags(VK_COLOR_COMPONENT_G_BIT) or
+                                                                       TVkColorComponentFlags(VK_COLOR_COMPONENT_B_BIT) or
+                                                                       TVkColorComponentFlags(VK_COLOR_COMPONENT_A_BIT)});
+ end else begin
+  fVulkanGraphicsPipeline.ColorBlendState.AddColorBlendAttachmentState(true,
+                                                                       VK_BLEND_FACTOR_ONE,
+                                                                       VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+                                                                       VK_BLEND_OP_ADD,
+                                                                       VK_BLEND_FACTOR_ONE,
+                                                                       VK_BLEND_FACTOR_ZERO,
+                                                                       VK_BLEND_OP_ADD,
+                                                                       TVkColorComponentFlags(VK_COLOR_COMPONENT_R_BIT) or
+                                                                       TVkColorComponentFlags(VK_COLOR_COMPONENT_G_BIT) or
+                                                                       TVkColorComponentFlags(VK_COLOR_COMPONENT_B_BIT) or
+                                                                       TVkColorComponentFlags(VK_COLOR_COMPONENT_A_BIT));
+ end;
 
  fVulkanGraphicsPipeline.DepthStencilState.DepthTestEnable:=true;
  fVulkanGraphicsPipeline.DepthStencilState.DepthWriteEnable:=true;
