@@ -1,14 +1,12 @@
 #ifndef PARALLAXCORRECTION_GLSL
 #define PARALLAXCORRECTION_GLSL
 
-vec3 getParallaxCorrectReflectionDirection(vec3 reflectionDirection, vec3 fragmentWorldPosition, vec3 cameraWorldPosition){
+vec3 getParallaxCorrectReflectionDirectionMethod0(vec3 reflectionDirection, vec3 fragmentWorldPosition, vec3 cameraWorldPosition){
+  return reflectionDirection;
+}
+
+vec3 getParallaxCorrectReflectionDirectionMethod1(vec3 reflectionDirection, vec3 fragmentWorldPosition, vec3 cameraWorldPosition){
     
-#ifndef PARALLAX_CORRECTION_METHOD
-#define PARALLAX_CORRECTION_METHOD 0 // 0 = None, 1 = Offset, 2 = Vector, 3 = Halfway (all without proxy geometry, at the moment) 
-#endif
-
-#if PARALLAX_CORRECTION_METHOD == 1
-
   // The most straightforward way to do parallax correction is to adjust the reflection vector based on the relative positions of the 
   // fragment and the camera. This adjustment will be based on how the view direction intersects with the virtual "bounding box" of the cubemap.
   // Given that a cubemap is, conceptually, a bounding box surrounding the scene, we can think of the parallax correction as finding the intersection 
@@ -26,7 +24,9 @@ vec3 getParallaxCorrectReflectionDirection(vec3 reflectionDirection, vec3 fragme
 
   return normalize(parallaxCorrectedReflectionDirection);
 
-#elif PARALLAX_CORRECTION_METHOD == 2
+}
+
+vec3 getParallaxCorrectReflectionDirectionMethod2(vec3 reflectionDirection, vec3 fragmentWorldPosition, vec3 cameraWorldPosition){
 
   // Another approach to parallax correction is to compute the reflection direction as usual and then adjust it based on the relative positions of the
   // fragment and the camera. This adjustment will be based on how the reflection direction intersects with the virtual "bounding box" of the cubemap.
@@ -54,10 +54,10 @@ vec3 getParallaxCorrectReflectionDirection(vec3 reflectionDirection, vec3 fragme
 
   return normalize(parallaxCorrectedReflectionDirection);
 
-#elif PARALLAX_CORRECTION_METHOD == 3
+}
 
-  vec3 localSurfaceNormal = inNormal;
-
+vec3 getParallaxCorrectReflectionDirectionMethod3(vec3 reflectionDirection, vec3 fragmentWorldPosition, vec3 cameraWorldPosition, vec3 localSurfaceNormal){
+  
   // Normalize the input reflection direction
   vec3 normalizedReflectionDirection = normalize(reflectionDirection);
   
@@ -83,12 +83,6 @@ vec3 getParallaxCorrectReflectionDirection(vec3 reflectionDirection, vec3 fragme
   
   // Return the normalized parallax-corrected reflection direction.
   return normalize(parallaxCorrectedReflectionDirection);
-
-#else
-
-  return reflectionDirection;
-
-#endif
 
 }
 
