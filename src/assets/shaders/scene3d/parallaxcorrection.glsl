@@ -86,12 +86,25 @@ vec3 getParallaxCorrectedRayDirectionMethod3(vec3 rayDirection, vec3 fragmentWor
 
 }
 
-vec3 getUnitCubeParallaxCorrectedRayDirection(vec3 rayDirection, vec3 fragmentWorldPosition, vec3 probeCenterWorldPosition){
+vec3 getUnitCubeParallaxCorrectedRayDirection(const in vec3 rayDirection, const in vec3 fragmentWorldPosition, const in vec3 probeCenterWorldPosition, const in mat4 probeCorrectionMatrix){
+  vec3 localWorldPosition = (probeCorrectionMatrix * vec4(fragmentWorldPosition, 1.0)).xyz;
+  vec3 localRayDirection = (probeCorrectionMatrix * vec4(rayDirection, 0.0)).xyz;  
   vec3 furthestPlane = max(
-    (vec3(1.0) - fragmentWorldPosition) / rayDirection, 
-    (vec3(-1.0) - fragmentWorldPosition) / rayDirection
+    (vec3(1.0) - localWorldPosition) / localRayDirection, 
+    (vec3(-1.0) - localWorldPosition) / localRayDirection
   );
   return normalize(fma(rayDirection, vec3(min(furthestPlane.x, min(furthestPlane.y, furthestPlane.z))), fragmentWorldPosition) - probeCenterWorldPosition);
+}
+
+vec3 getUnitSphereParallaxCorrectedRayDirection(const in vec3 rayDirection, const in vec3 fragmentWorldPosition, const in vec3 probeCenterWorldPosition, const in mat4 probeCorrectionMatrix){
+  vec3 localWorldPosition = (probeCorrectionMatrix * vec4(fragmentWorldPosition, 1.0)).xyz;
+  vec3 localRayDirection = (probeCorrectionMatrix * vec4(rayDirection, 0.0)).xyz;  
+  float a = dot(localRayDirection, localRayDirection), 
+        b = dot(localRayDirection, localWorldPosition),
+        c = dot(localWorldPosition, localWorldPosition) - 1.0,
+        determinant = (b * b) - (a * c),
+        dist = (determinant >= 0.0) ? ((sqrt(determinant) - b) / a) : 1e15;
+  return normalize(fma(rayDirection, vec3(dist), fragmentWorldPosition) - probeCenterWorldPosition);
 }
 
 #endif
