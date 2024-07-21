@@ -46,6 +46,8 @@ layout(set = 1, binding = 0, std140) uniform uboViews {
 
 AtmosphereParameters atmosphereParameters;
  
+const float aerialPerspectiveStartDepthKM = 0.0; 
+
 void main() {
 
   ivec2 size = imageSize(uDestinationTexture).xy;
@@ -87,41 +89,76 @@ void main() {
     float Slice = ((float(sliceID) + 0.5) / float(AP_SLICE_COUNT));
     Slice *= Slice;	// squared distribution
     Slice *= AP_SLICE_COUNT;
-    
+
+    vec3 rayOrigin = fma(worldDir, vec3(aerialPerspectiveStartDepthKM), camPos); 
+
     // (BeRo): Move ray marching start up to top atmosphere, for to avoid missing the atmosphere in the special case of the camera being
     // far outside the atmosphere.
-    //if(length(worldPos) >= atmosphereParameters.TopRadius)
+    //if(length(rayOrigin) >= atmosphereParameters.TopRadius)
     {
-      vec2 t = raySphereIntersect(worldPos, worldDir, vec3(0.0), atmosphereParameters.TopRadius);
+      vec2 t = raySphereIntersect(rayOrigin, worldDir, vec3(0.0), atmosphereParameters.TopRadius);
       if(all(greaterThanEqual(t, vec2(0.0)))){
-        worldPos += worldDir * min(t.x, t.y);
+        rayOrigin += worldDir * min(t.x, t.y);
       }
     }
 
     // Compute position from froxel information
     float tMax = AerialPerspectiveSliceToDepth(Slice);
-    vec3 newWorldPos = worldPos + (tMax * worldDir);
+    vec3 voxelWorldPos = rayOrigin + (tMax * worldDir);
+    float voxelHeight = length(voxelWorldPos);
 
-    // If the voxel is under the ground, make sure to offset it out on the ground.
-    float viewHeight = length(newWorldPos);
-    if(viewHeight <= (atmosphereParameters.BottomRadius + PLANET_RADIUS_OFFSET)){
-      // Apply a position offset to make sure no artefact are visible close to the earth boundaries for large voxel.
-      newWorldPos = normalize(newWorldPos) * (atmosphereParameters.BottomRadius + PLANET_RADIUS_OFFSET + 0.001);
-      worldDir = normalize(newWorldPos - camPos);
-      tMax = length(newWorldPos - camPos);
+#if 1
+    vec3 cameraToVoxel = voxelWorldPos - camPos;
+    float cameraToVoxelLength = length(cameraToVoxel);
+    vec3 cameraToVoxelDir = cameraToVoxel / cameraToVoxelLength;    
+    float planetNearT = raySphereIntersectNearest(camPos, cameraToVoxelDir, vec3(0.0), atmosphereParameters.BottomRadius);
+    bool belowHorizon = (planetNearT > 0.0) && (planetNearT < cameraToVoxelLength);
+    bool underGround = voxelHeight <= atmosphereParameters.BottomRadius;
+    if(belowHorizon || underGround){
+      camPos += normalize(cameraToVoxel) * 2e-2; 
+
+      vec3 normalizedVoxelWorldPos = normalize(voxelWorldPos);
+      vec3 camProjectedOnGround = normalize(camPos) * atmosphereParameters.BottomRadius; // camPos - dot(camPos, normalizedVoxelWorldPos) * normalizedVoxelWorldPos; 
+      vec3 voxelWorldPosProjectedOnGround = normalizedVoxelWorldPos * atmosphereParameters.BottomRadius; // voxelWorldPos - dot(voxelWorldPos, normalizedVoxelWorldPos) * normalizedVoxelWorldPos;
+      vec3 voxelGroundToRayStart = camPos - voxelWorldPosProjectedOnGround;
+      if(belowHorizon && (dot(normalize(voxelGroundToRayStart), normalizedVoxelWorldPos) < 1e-4)){
+        vec3 midPoint = mix(camProjectedOnGround, voxelWorldPosProjectedOnGround, 0.5);
+        float midPointLength = length(midPoint);
+        vec3 midPointOnGround = normalize(midPoint) * atmosphereParameters.BottomRadius;
+        voxelWorldPos = fma(midPointOnGround - camPos, vec3(2.0), camPos);
+      }else{
+        voxelWorldPos = normalize(voxelWorldPos) * atmosphereParameters.BottomRadius;
+      }
+
+      vec3 rayOrigin = fma(worldDir, vec3(aerialPerspectiveStartDepthKM), camPos); 
+      
+      worldDir = normalize(voxelWorldPos - camPos);
+      tMax = length(voxelWorldPos - rayOrigin);
+
     }
+#else
+    // If the voxel is under the ground, make sure to offset it out on the ground.
+    if(voxelHeight <= (atmosphereParameters.BottomRadius + PLANET_RADIUS_OFFSET)){
+      // Apply a position offset to make sure no artefact are visible close to the earth boundaries for large voxel.
+      voxelWorldPos = normalize(voxelWorldPos) * (atmosphereParameters.BottomRadius + PLANET_RADIUS_OFFSET + 0.001);
+      worldDir = normalize(voxelWorldPos - camPos);
+      tMax = length(voxelWorldPos - rayOrigin);
+    }
+#endif
+
     float tMaxMax = tMax;
 
+    float viewHeight = length(rayOrigin);
+
     // Move ray marching start up to top atmosphere.
-    viewHeight = length(worldPos);  
     if(viewHeight >= atmosphereParameters.TopRadius){
-      vec3 previousWorldPosition = worldPos;
-      if(!MoveToTopAtmosphere(worldPos, worldDir, atmosphereParameters.TopRadius)){
+      vec3 previousWorldPosition = rayOrigin;
+      if(!MoveToTopAtmosphere(rayOrigin, worldDir, atmosphereParameters.TopRadius)){
         // Ray is not intersecting the atmosphere
         imageStore(uDestinationTexture, ivec3(coord, (viewIndex * AP_SLICE_COUNT_INT) + sliceID), vec4(0.0, 0.0, 0.0, 0.0));
         return;
       }
-      float LengthToAtmosphere = length(previousWorldPosition - worldPos);
+      float LengthToAtmosphere = length(previousWorldPosition - rayOrigin);
       if(tMaxMax < LengthToAtmosphere){
         // tMaxMax for this voxel is not within earth
         imageStore(uDestinationTexture, ivec3(coord, (viewIndex * AP_SLICE_COUNT_INT) + sliceID), vec4(0.0, 0.0, 0.0, 0.0));
@@ -141,7 +178,7 @@ void main() {
       uMultiScatTexture,
       viewIndex,
       uv, 
-      worldPos, 
+      rayOrigin, 
       worldDir, 
       SunDir, 
       atmosphereParameters, 
