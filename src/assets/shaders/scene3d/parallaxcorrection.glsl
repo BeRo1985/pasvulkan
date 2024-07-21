@@ -7,11 +7,6 @@ vec3 parallaxCorrectedReflection(vec3 reflectionDirection, vec3 fragmentWorldPos
 #define PARALLAX_CORRECTION_METHOD 0 // 0 = None, 1 = Offset, 2 = Vector, 3 = Halfway (all without proxy geometry, at the moment) 
 #endif
 
-#if PARALLAX_CORRECTION_METHOD != 0
-//vec3 fragmentWorldPosition = inWorldSpacePosition;
-//vec3 cameraWorldPosition = uView.views[inViewIndex].inverseViewMatrix[3].xyz;
-#endif
-
 #if PARALLAX_CORRECTION_METHOD == 1
 
   // The most straightforward way to do parallax correction is to adjust the reflection vector based on the relative positions of the 
