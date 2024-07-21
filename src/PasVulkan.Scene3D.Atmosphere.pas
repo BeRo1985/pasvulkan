@@ -348,6 +348,11 @@ type TpvScene3DAtmosphere=class;
              Dummy0:TpvInt32;
              Dummy1:TpvInt32;
             end;
+            TCubeMapPushConstants=packed record
+             CameraPosition:TpvVector4; // w = unused, for alignment
+             UpVector:TpvVector4; // w = unused, for alignment
+            end;
+            PCubeMapPushConstants=^TCubeMapPushConstants;
             TRaymarchingPushConstants=packed record
              BaseViewIndex:TpvInt32;
              CountViews:TpvInt32;
@@ -379,6 +384,10 @@ type TpvScene3DAtmosphere=class;
        fCameraVolumeComputeShaderStage:TpvVulkanPipelineShaderStage;
        fCameraVolumeComputePipelineLayout:TpvVulkanPipelineLayout;
        fCameraVolumeComputePipeline:TpvVulkanComputePipeline;
+       fCubeMapComputeShaderModule:TpvVulkanShaderModule;
+       fCubeMapComputeShaderStage:TpvVulkanPipelineShaderStage;
+       fCubeMapComputePipelineLayout:TpvVulkanPipelineLayout;
+       fCubeMapComputePipeline:TpvVulkanComputePipeline;
        fRaymarchingVertexShaderModule:TpvVulkanShaderModule;
        fRaymarchingFragmentShaderModules:array[boolean] of TpvVulkanShaderModule; // false = Non-MSAA, true = MSAA
        fRaymarchingPipelineShaderStageVertex:TpvVulkanPipelineShaderStage;
