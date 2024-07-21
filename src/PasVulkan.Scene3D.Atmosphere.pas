@@ -75,7 +75,8 @@ uses SysUtils,
      PasVulkan.Framework,
      PasVulkan.Collections,
      PasVulkan.Scene3D.Renderer.Image2D,
-     PasVulkan.Scene3D.Renderer.Array2DImage;
+     PasVulkan.Scene3D.Renderer.Array2DImage,
+     PasVulkan.Scene3D.Renderer.MipmapImageCubeMap;
 
 type TpvScene3DAtmosphere=class;
 
@@ -98,8 +99,9 @@ type TpvScene3DAtmosphere=class;
              CameraVolumeTextureWidth=32;
              CameraVolumeTextureHeight=32;
              CameraVolumeTextureDepth=32;
+             CubeMapTextureSize=32;
              MultiScatteringLUTRes=32;
-             ScatteringOrders=4; 
+             ScatteringOrders=4;
        type { TDensityProfileLayer }
             TDensityProfileLayer=packed record
              public
@@ -203,6 +205,10 @@ type TpvScene3DAtmosphere=class;
               fMultiScatteringTexture:TpvScene3DRendererArray2DImage;
               fSkyViewLUTTexture:TpvScene3DRendererArray2DImage;
               fCameraVolumeTexture:TpvScene3DRendererArray2DImage;
+              fCubeMapTexture:TpvScene3DRendererMipmapImageCubeMap;
+              fGGXCubeMapTexture:TpvScene3DRendererMipmapImageCubeMap;
+              fCharlieCubeMapTexture:TpvScene3DRendererMipmapImageCubeMap;
+              fLambertianCubeMapTexture:TpvScene3DRendererMipmapImageCubeMap;
               fTransmittanceLUTPassDescriptorPool:TpvVulkanDescriptorPool;
               fTransmittanceLUTPassDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
               fMultiScatteringLUTPassDescriptorPool:TpvVulkanDescriptorPool;
@@ -243,6 +249,10 @@ type TpvScene3DAtmosphere=class;
               property MultiScatteringTexture:TpvScene3DRendererArray2DImage read fMultiScatteringTexture;
               property SkyViewLUTTexture:TpvScene3DRendererArray2DImage read fSkyViewLUTTexture;
               property CameraVolumeTexture:TpvScene3DRendererArray2DImage read fCameraVolumeTexture; 
+              property CubeMapTexture:TpvScene3DRendererMipmapImageCubeMap read fCubeMapTexture;
+              property GGXCubeMapTexture:TpvScene3DRendererMipmapImageCubeMap read fGGXCubeMapTexture;
+              property CharlieCubeMapTexture:TpvScene3DRendererMipmapImageCubeMap read fCharlieCubeMapTexture;
+              property LambertianCubeMapTexture:TpvScene3DRendererMipmapImageCubeMap read fLambertianCubeMapTexture;
             end;
             { TRendererInstances }
             TRendererInstances=TpvObjectGenericList<TRendererInstance>;
@@ -830,14 +840,58 @@ begin
                                                            0);                                                            
 
  fCameraVolumeTexture:=TpvScene3DRendererArray2DImage.Create(TpvScene3D(fAtmosphere.fScene3D).VulkanDevice,
-                                                            CameraVolumeTextureWidth,
-                                                            CameraVolumeTextureHeight,
-                                                            CameraVolumeTextureDepth*TpvScene3DRendererInstance(aRendererInstance).CountSurfaceViews*2,
-                                                            VK_FORMAT_R32G32B32A32_SFLOAT,
-                                                            VK_SAMPLE_COUNT_1_BIT,
-                                                            VK_IMAGE_LAYOUT_GENERAL,
-                                                            true,
-                                                            0);
+                                                             CameraVolumeTextureWidth,
+                                                             CameraVolumeTextureHeight,
+                                                             CameraVolumeTextureDepth*TpvScene3DRendererInstance(aRendererInstance).CountSurfaceViews*2,
+                                                             VK_FORMAT_R32G32B32A32_SFLOAT,
+                                                             VK_SAMPLE_COUNT_1_BIT,
+                                                             VK_IMAGE_LAYOUT_GENERAL,
+                                                             true,
+                                                             0);
+
+ fCubeMapTexture:=TpvScene3DRendererMipmapImageCubeMap.Create(TpvScene3D(fAtmosphere.fScene3D).VulkanDevice,
+                                                              CubeMapTextureSize,
+                                                              CubeMapTextureSize,
+                                                              VK_FORMAT_R16G16B16A16_SFLOAT,
+                                                              true,                                                              
+                                                              VK_SAMPLE_COUNT_1_BIT,                                                              
+                                                              VK_IMAGE_LAYOUT_GENERAL,
+                                                              TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                              nil,
+                                                              0);
+  
+ fGGXCubeMapTexture:=TpvScene3DRendererMipmapImageCubeMap.Create(TpvScene3D(fAtmosphere.fScene3D).VulkanDevice,
+                                                                 CubeMapTextureSize,
+                                                                 CubeMapTextureSize,
+                                                                 VK_FORMAT_R16G16B16A16_SFLOAT,
+                                                                 true,                                                              
+                                                                 VK_SAMPLE_COUNT_1_BIT,                                                              
+                                                                 VK_IMAGE_LAYOUT_GENERAL,
+                                                                 TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                                 nil,
+                                                                 0);
+ 
+ fCharlieCubeMapTexture:=TpvScene3DRendererMipmapImageCubeMap.Create(TpvScene3D(fAtmosphere.fScene3D).VulkanDevice,
+                                                                     CubeMapTextureSize,
+                                                                     CubeMapTextureSize,
+                                                                     VK_FORMAT_R16G16B16A16_SFLOAT,
+                                                                     true,                                                              
+                                                                     VK_SAMPLE_COUNT_1_BIT,                                                              
+                                                                     VK_IMAGE_LAYOUT_GENERAL,
+                                                                     TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                                     nil,
+                                                                     0);
+   
+ fLambertianCubeMapTexture:=TpvScene3DRendererMipmapImageCubeMap.Create(TpvScene3D(fAtmosphere.fScene3D).VulkanDevice,
+                                                                        CubeMapTextureSize,
+                                                                        CubeMapTextureSize,
+                                                                        VK_FORMAT_R16G16B16A16_SFLOAT,
+                                                                        true,                                                              
+                                                                        VK_SAMPLE_COUNT_1_BIT,                                                              
+                                                                        VK_IMAGE_LAYOUT_GENERAL,
+                                                                        TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                                        nil,
+                                                                        0);
 
  fTransmittanceLUTPassDescriptorPool:=TpvVulkanDescriptorPool.Create(TpvScene3D(fAtmosphere.fScene3D).VulkanDevice,
                                                                      TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT) or
@@ -1198,6 +1252,11 @@ begin
  FreeAndNil(fCameraVolumePassDescriptorPool);
  FreeAndNil(fRaymarchingPassDescriptorPool);
  FreeAndNil(fGlobalDescriptorPool);
+
+ FreeAndNil(fCubeMapTexture);
+ FreeAndNil(fGGXCubeMapTexture);
+ FreeAndNil(fCharlieCubeMapTexture);
+ FreeAndNil(fLambertianCubeMapTexture);
 
  FreeAndNil(fTransmittanceTexture);
  FreeAndNil(fMultiScatteringTexture);
