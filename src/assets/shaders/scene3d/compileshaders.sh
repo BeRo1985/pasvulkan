@@ -636,6 +636,10 @@ compileshaderarguments=(
   "-V atmosphere_raymarch.frag -DMSAA -o ${tempPath}/atmosphere_raymarch_msaa_frag.spv"
   "-V atmosphere_raymarch.frag -DMULTIVIEW -o ${tempPath}/atmosphere_raymarch_multiview_frag.spv"
   "-V atmosphere_raymarch.frag -DMULTIVIEW -DMSAA -o ${tempPath}/atmosphere_raymarch_multiview_msaa_frag.spv"
+  "-V atmosphere_raymarch.frag -DDUALBLEND -o ${tempPath}/atmosphere_raymarch_dualblend_frag.spv"
+  "-V atmosphere_raymarch.frag -DDUALBLEND -DMSAA -o ${tempPath}/atmosphere_raymarch_dualblend_msaa_frag.spv"
+  "-V atmosphere_raymarch.frag -DDUALBLEND -DMULTIVIEW -o ${tempPath}/atmosphere_raymarch_dualblend_multiview_frag.spv"
+  "-V atmosphere_raymarch.frag -DDUALBLEND -DMULTIVIEW -DMSAA -o ${tempPath}/atmosphere_raymarch_dualblend_multiview_msaa_frag.spv"
 
 )
 

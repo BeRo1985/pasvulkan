@@ -21,6 +21,10 @@ layout(location = 0) in vec2 inTexCoord;
 
 layout(location = 0) out vec4 outLuminance;
 
+#ifdef DUALBLEND
+layout(location = 1) out vec4 outTransmittance; // component-wise transmittance
+#endif
+
 #define FLAGS_USE_FAST_SKY 1u
 #define FLAGS_USE_FAST_AERIAL_PERSPECTIVE 2u
 
@@ -159,11 +163,23 @@ void main() {
 
       vec4 value = textureLod(uSkyViewLUT, vec3(localUV, float(viewIndex)), 0.0).xyzw; // xyz = inscatter, w = transmittance (monochromatic)
 
+#ifdef DUALBLEND
+      vec4 transmittance = vec4(vec3(1.0 - value.w), 1.0);
+
+      if(!IntersectGround){
+        value.xyz += GetSunLuminance(originalWorldPos, worldDir, sunDirection, atmosphereParameters.BottomRadius).xyz * (1.0 - value.w);
+      }
+
+      outTransmittance = transmittance;
+
+      outLuminance = vec4(value.xyz, 1.0);
+#else
       if(!IntersectGround){
         value.xyz += GetSunLuminance(originalWorldPos, worldDir, sunDirection, atmosphereParameters.BottomRadius).xyz * (1.0 - value.w);
       }
 
       outLuminance = vec4(value);
+#endif
 
       return; // Early out, for avoiding the code path of the more accurate and more bruteforce ray marching approach
 
@@ -241,11 +257,24 @@ void main() {
                   ) * Weight;
 
 
+#ifdef DUALBLEND
+        vec4 transmittance = vec4(vec3(1.0 - AP.w), 1.0);
+
+        if(depthIsZFar){
+          AP.xyz += GetSunLuminance(originalWorldPos, worldDir, sunDirection, atmosphereParameters.BottomRadius).xyz * (1.0 - AP.w);  
+        }
+
+        outTransmittance = transmittance;
+
+        outLuminance = vec4(AP.xyz, AP.w);
+#else
+
         if(depthIsZFar){
           AP.xyz += GetSunLuminance(originalWorldPos, worldDir, sunDirection, atmosphereParameters.BottomRadius).xyz * (1.0 - AP.w);  
         }
 
         outLuminance = vec4(AP.xyz, AP.w); 
+#endif
       
         return; // Early out, for avoiding the code path of the more accurate and more bruteforce ray marching approach
 
@@ -260,7 +289,7 @@ void main() {
     // The more accurate and more bruteforce ray marching approach  
 
     vec3 inscattering;
-    float transmittance;
+    vec3 transmittance; 
 
     // Move to top atmosphere as the starting point for ray marching.
     // This is critical to be after the above to not disrupt above atmosphere tests and voxel selection.
@@ -268,7 +297,7 @@ void main() {
       
       // Ray is not intersecting the atmosphere       
       inscattering = GetSunLuminance(originalWorldPos, worldDir, sunDirection, atmosphereParameters.BottomRadius).xyz;
-      transmittance = 1.0;
+      transmittance = vec3(1.0);
 
     }else {
 
@@ -302,11 +331,16 @@ void main() {
         inscattering += GetSunLuminance(originalWorldPos, worldDir, sunDirection, atmosphereParameters.BottomRadius).xyz * ss.Transmittance;
       }
 
-      transmittance = clamp(dot(ss.Transmittance, vec3(1.0 / 3.0)), 0.0, 1.0);
+      transmittance = ss.Transmittance;
 
     }
 
-    outLuminance = vec4(inscattering, 1.0 - transmittance);
+#ifdef DUALBLEND
+    outLuminance = vec4(inscattering, 1.0);
+    outTransmittance = vec4(vec3(clamp(vec3(1.0) - transmittance, vec3(0.0), vec3(1.0))), 1.0);
+#else
+    outLuminance = vec4(inscattering, 1.0 - clamp(dot(transmittance, vec3(1.0 / 3.0)), 0.0, 1.0));
+#endif
 
   }
   
