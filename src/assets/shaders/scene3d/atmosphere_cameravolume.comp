@@ -192,9 +192,7 @@ void main() {
       false
     ); 
 
-    vec3 L = ss.L;
-    const float Transmittance = dot(ss.Transmittance, vec3(1.0 / 3.0));
-    imageStore(uDestinationTexture, ivec3(coord, (viewIndex * AP_SLICE_COUNT_INT) + sliceID), vec4(L, 1.0 - Transmittance));
+    imageStore(uDestinationTexture, ivec3(coord, (viewIndex * AP_SLICE_COUNT_INT) + sliceID), vec4(ss.L, clamp(dot(ss.Transmittance, vec3(1.0 / 3.0)), 0.0, 1.0)));
 
   }
 

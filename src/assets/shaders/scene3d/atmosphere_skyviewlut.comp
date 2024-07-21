@@ -126,9 +126,9 @@ void main() {
         -1.0,
         false
       ); 
-      vec3 L = ss.L;
-      float f = clamp((1.0 - dot(ss.Transmittance, vec3(1.0 / 3.0))) * 1.0, 0.0, 1.0);
-      imageStore(uDestinationTexture, ivec3(coord, viewIndex), vec4(L, f));
+      
+      imageStore(uDestinationTexture, ivec3(coord, viewIndex), vec4(ss.L, clamp(dot(ss.Transmittance, vec3(1.0 / 3.0)) * 1.0, 0.0, 1.0)));
+      
     }
 
   }
