@@ -23,7 +23,7 @@ layout(push_constant, std140) uniform PushConstants {
   vec4 upVector; 
 } pushConstants;
 
-layout(set = 0, binding = 0, rgba32f) uniform image2D uDestinationTexture;
+layout(set = 0, binding = 0, rgba32f) uniform imageCube uDestinationTexture;
 
 layout(set = 0, binding = 1) uniform sampler2D uTransmittanceLutTexture;
 
@@ -37,7 +37,12 @@ AtmosphereParameters atmosphereParameters;
  
 ivec2 destinationTextureSize = imageSize(uDestinationTexture);
 
+
 #include "cubemap.glsl"
+
+#ifdef USE_RGB9E5
+#include "rgb9e5.glsl"
+#endif
 
 #include "textureutils.glsl"
 
@@ -112,6 +117,14 @@ void main() {
       transmittance = ss.Transmittance;
 
     }
+
+    vec4 outputColor = vec4(inscattering, 1.0 - clamp(dot(transmittance, vec3(1.0 / 3.0)), 0.0, 1.0));
+
+#ifdef USE_RGB9E5
+    imageStore(uDestinationTexture, uvw, uvec4(encodeRGB9E5(outputColor.xyz)));
+#else    
+    imageStore(uDestinationTexture, uvw, clamp(outputColor, vec4(-65504.0), vec4(65504.0))); // Clamp to the range of 16-bit floating point numbers.
+#endif
 
   }
  
