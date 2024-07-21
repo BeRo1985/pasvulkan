@@ -58,7 +58,11 @@ void main() {
 
     vec3 worldDir = direction; 
 
-    worldPos = normalize(worldPos) * (atmosphereParameters.BottomRadius + PLANET_RADIUS_OFFSET + 0.001);
+    float viewHeight = length(worldPos);
+
+    worldPos = normalize(worldPos) * clamp(viewHeight, atmosphereParameters.BottomRadius + PLANET_RADIUS_OFFSET + 0.001, atmosphereParameters.TopRadius - (0.001 + PLANET_RADIUS_OFFSET));
+
+    viewHeight = length(worldPos) - atmosphereParameters.BottomRadius;
 
     vec3 sunDirection = normalize(getSunDirection(uAtmosphereParameters.atmosphereParameters));
 
