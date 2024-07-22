@@ -76,7 +76,8 @@ uses SysUtils,
      PasVulkan.Collections,
      PasVulkan.Scene3D.Renderer.Image2D,
      PasVulkan.Scene3D.Renderer.Array2DImage,
-     PasVulkan.Scene3D.Renderer.MipmapImageCubeMap;
+     PasVulkan.Scene3D.Renderer.MipmapImageCubeMap,
+     PasVulkan.Scene3D.Renderer.CubeMapMipMapGenerator;
 
 type TpvScene3DAtmosphere=class;
 
