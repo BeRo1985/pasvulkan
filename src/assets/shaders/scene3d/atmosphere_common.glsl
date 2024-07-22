@@ -15,6 +15,8 @@
 
 const float PI = 3.1415926535897932384626433832795;
 
+const float GoldenRatioConjugate = 0.61803398875; // also just fract(GoldenRatio)
+
 float SampleSegmentT = 0.3;
 
 struct DensityProfileLayer {
