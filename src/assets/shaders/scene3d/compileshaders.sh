@@ -1000,6 +1000,12 @@ addMeshFragmentMaterialSourceVariants(){
 addMeshFragmentMaterialSourceVariants "mesh" ""
 
 #############################################
+#              Resource files               #
+#############################################
+
+cp -f "${originalDirectory}/bluenoise_1024x1024_rgba8.raw" "${tempPath}/bluenoise_1024x1024_rgba8.raw" || exit 1
+
+#############################################
 #   Deduplication code for shader binaries  # 
 #############################################
 
