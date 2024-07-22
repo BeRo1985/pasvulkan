@@ -64,7 +64,7 @@ void main() {
   vec2 pixPos = vec2(gl_GlobalInvocationID.xy) + vec2(0.5);
   vec2 uv = pixPos / vec2(size);
 
-  seedSampleSeedT(uBlueNoise, uv, pushConstants.frameIndex);
+  //seedSampleSeedT(uBlueNoise, ivec2(gl_GlobalInvocationID.xy), pushConstants.frameIndex);
 
   uv = vec2(fromSubUvsToUnit(uv.x, size.x), fromSubUvsToUnit(uv.y, size.y));
 

@@ -91,8 +91,8 @@ float safeSqrt(float x){
   return sqrt(max(0.0, x));
 }
 
-void seedSampleSeedT(const in sampler2D bluenoise, const in vec2 uv, const in int frame){
-  SampleSegmentT = fract(textureLod(bluenoise, uv, 0.0).x + (float(frame) * GoldenRatioConjugate));
+void seedSampleSeedT(const in sampler2D bluenoise, const in ivec2 p, const in int frame){
+  SampleSegmentT = fract(texelFetch(bluenoise, ivec2(p) & ivec2(1023), 0).x + (float(frame) * GoldenRatioConjugate));
 }
 
 float fromUnitToSubUvs(float u, float resolution){ return (u + (0.5 / resolution)) * (resolution / (resolution + 1.0)); }

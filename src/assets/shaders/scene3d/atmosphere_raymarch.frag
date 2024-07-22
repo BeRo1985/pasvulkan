@@ -105,7 +105,7 @@ void main() {
 
   vec2 uv = inTexCoord; 
 
-  seedSampleSeedT(uBlueNoise, uv, pushConstants.frameIndex);
+  seedSampleSeedT(uBlueNoise, ivec2(gl_FragCoord.xy), pushConstants.frameIndex);
 
   vec3 worldPos, worldDir;
   GetCameraPositionDirection(worldPos, worldDir, view.viewMatrix, view.projectionMatrix, view.inverseViewMatrix, view.inverseProjectionMatrix, uv);
