@@ -64,7 +64,8 @@ void main() {
 
     float viewHeight = length(worldPos);
 
-    worldPos = normalize(worldPos) * clamp(viewHeight, atmosphereParameters.BottomRadius + PLANET_RADIUS_OFFSET + 0.001, atmosphereParameters.TopRadius - (0.001 + PLANET_RADIUS_OFFSET));
+    //worldPos = normalize(worldPos) * clamp(viewHeight, atmosphereParameters.BottomRadius + PLANET_RADIUS_OFFSET + 0.001, atmosphereParameters.TopRadius - (0.001 + PLANET_RADIUS_OFFSET));
+    worldPos = normalize(worldPos) * (atmosphereParameters.BottomRadius + PLANET_RADIUS_OFFSET + 0.001);
 
     viewHeight = length(worldPos) - atmosphereParameters.BottomRadius;
 
@@ -84,6 +85,11 @@ void main() {
       transmittance = vec3(1.0);
 
     }else {
+
+      bool IntersectGround = raySphereIntersectNearest(worldPos, worldDir, vec3(0.0), atmosphereParameters.BottomRadius) >= 0.0;
+      if(IntersectGround){
+        worldDir = normalize(worldPos); // For a very rough quick and dirty ambient lighting term, by sampling the sky just straight upwards.
+      }
 
       const bool ground = false;
       const float sampleCountIni = 0.0;
