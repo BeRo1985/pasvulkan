@@ -159,6 +159,7 @@ type TpvScene3DRenderer=class;
        fOptimizedCubeMapFormat:TVkFormat;
        fFastSky:boolean;
        fFastAerialPerspective:boolean;
+       fAtmosphereBlueNoise:boolean;
        fUseDepthPrepass:boolean;
        fUseDemote:boolean;
        fUseNoDiscard:boolean;
@@ -245,6 +246,7 @@ type TpvScene3DRenderer=class;
        property OptimizedCubeMapFormat:TVkFormat read fOptimizedCubeMapFormat;
        property FastSky:boolean read fFastSky write fFastSky;
        property FastAerialPerspective:boolean read fFastAerialPerspective write fFastAerialPerspective;
+       property AtmosphereBlueNoise:boolean read fAtmosphereBlueNoise write fAtmosphereBlueNoise;
        property UseDepthPrepass:boolean read fUseDepthPrepass;
        property UseDemote:boolean read fUseDemote;
        property UseNoDiscard:boolean read fUseNoDiscard;
@@ -442,6 +444,7 @@ begin
 
  fFastSky:=true;
  fFastAerialPerspective:=true;
+ fAtmosphereBlueNoise:=false;
 
 end;
 

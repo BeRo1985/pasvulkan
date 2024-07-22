@@ -494,6 +494,9 @@ begin
  if TpvScene3DRenderer(TpvScene3DRendererInstance(fInstance).Renderer).FastAerialPerspective then begin
   fPushConstants.Flags:=fPushConstants.Flags or (TpvUInt32(1) shl 1);
  end;
+ if TpvScene3DRenderer(TpvScene3DRendererInstance(fInstance).Renderer).AtmosphereBlueNoise then begin
+  fPushConstants.Flags:=fPushConstants.Flags or (TpvUInt32(1) shl 2);
+ end;
 
  aCommandBuffer.CmdPushConstants(TpvScene3DAtmosphereGlobals(fInstance.Scene3D.AtmosphereGlobals).RaymarchingPipelineLayout.Handle,
                                  TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_FRAGMENT_BIT),
