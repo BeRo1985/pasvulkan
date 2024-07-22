@@ -3337,6 +3337,7 @@ type EpvScene3D=class(Exception);
        fDeltaTimes:TDeltaTimes;
        fPointerToDeltaTimes:PDeltaTimes;
        fVirtualReality:TpvVirtualReality;
+       fBlueNoise2DTexture:TpvVulkanTexture;
        procedure NewImageDescriptorGeneration;
        procedure NewMaterialDataGeneration;
        procedure CullLights(const aInFlightFrameIndex:TpvSizeInt;
@@ -3558,6 +3559,8 @@ type EpvScene3D=class(Exception);
       published
        property RendererInstanceLock:TPasMPCriticalSection read fRendererInstanceLock;
        property RendererInstanceList:TpvObjectList read fRendererInstanceList;
+      public
+       property BlueNoise2DTexture:TpvVulkanTexture read fBlueNoise2DTexture;
       published
        property RendererInstanceIDManager:TRendererInstanceIDManager read fRendererInstanceIDManager;
        property PotentiallyVisibleSet:TpvScene3D.TPotentiallyVisibleSet read fPotentiallyVisibleSet;
@@ -3588,7 +3591,8 @@ type EpvScene3D=class(Exception);
 
 implementation
 
-uses PasVulkan.Scene3D.Renderer.Instance,
+uses PasVulkan.Scene3D.Renderer.Globals,
+     PasVulkan.Scene3D.Renderer.Instance,
      PasVulkan.Scene3D.Planet,
      PasVulkan.Scene3D.Atmosphere,
      PasVulkan.Scene3D.MeshCompute,
@@ -21591,6 +21595,8 @@ var Index,InFlightFrameIndex,RenderPassIndex,Count:TpvSizeInt;
     UniversalCommandPool:TpvVulkanCommandPool;
     UniversalCommandBuffer:TpvVulkanCommandBuffer;
     UniversalFence:TpvVulkanFence;
+    Stream:TStream;
+    Memory:Pointer;
 begin
 
  inherited Create(aResourceManager,aParent,aMetaResource);
@@ -21669,6 +21675,8 @@ begin
  end;
 
  fMeshGenerationCounter:=1;
+
+ fBlueNoise2DTexture:=nil;
 
  fPlanets:=TpvScene3DPlanets.Create(self);
 
@@ -22372,6 +22380,82 @@ begin
  end;
 
  if assigned(fVulkanDevice) then begin
+
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('bluenoise_1024x1024_rgba8.raw');
+  try
+
+   GetMem(Memory,Stream.Size);
+   try
+
+    Stream.Seek(0,soBeginning);
+    Stream.ReadBuffer(Memory^,Stream.Size);
+
+    UniversalQueue:=fVulkanDevice.UniversalQueue;
+    try
+     UniversalCommandPool:=TpvVulkanCommandPool.Create(fVulkanDevice,
+                                                       fVulkanDevice.UniversalQueueFamilyIndex,
+                                                       TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
+     try
+      UniversalCommandBuffer:=TpvVulkanCommandBuffer.Create(UniversalCommandPool,
+                                                            VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+      try
+       UniversalFence:=TpvVulkanFence.Create(fVulkanDevice);
+       try
+
+        fBlueNoise2DTexture:=TpvVulkanTexture.CreateFromMemory(fVulkanDevice,
+                                                               UniversalQueue,
+                                                               UniversalCommandBuffer,
+                                                               UniversalFence,
+                                                               UniversalQueue,
+                                                               UniversalCommandBuffer,
+                                                               UniversalFence,
+                                                               VK_FORMAT_R8G8B8A8_UNORM,
+                                                               VK_SAMPLE_COUNT_1_BIT,
+                                                               1024,
+                                                               1024,
+                                                               0,
+                                                               0,
+                                                               1,
+                                                               0,
+                                                               [TpvVulkanTextureUsageFlag.General,
+                                                                TpvVulkanTextureUsageFlag.TransferDst,
+                                                                TpvVulkanTextureUsageFlag.TransferSrc,
+                                                                TpvVulkanTextureUsageFlag.Sampled],
+                                                               Memory,
+                                                               1024*1024*4,
+                                                               false,
+                                                               false,
+                                                               0,
+                                                               true,
+                                                               false,
+                                                               false,
+                                                               0
+                                                              );
+
+       finally
+        FreeAndNil(UniversalFence);
+       end;
+      finally
+       FreeAndNil(UniversalCommandBuffer);
+      end;
+     finally
+      FreeAndNil(UniversalCommandPool);
+     end;
+    finally
+     UniversalQueue:=nil;
+    end;
+
+   finally
+    FreeMem(Memory);
+   end;
+
+  finally
+   FreeAndNil(Stream);
+  end;
+
+ end;
+
+ if assigned(fVulkanDevice) then begin
   TpvScene3DAtmosphereGlobals(fAtmosphereGlobals).AllocateResources;
  end;
 
@@ -22710,6 +22794,8 @@ begin
  FreeAndNil(fRendererInstanceList);
 
  FreeAndNil(fRendererInstanceLock);
+
+ FreeAndNil(fBlueNoise2DTexture);
 
  fLastProcessFrameTimerQueryResults:=nil;
 
