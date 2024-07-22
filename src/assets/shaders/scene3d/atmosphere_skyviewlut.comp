@@ -105,8 +105,9 @@ void main() {
     );
 
     if(!MoveToTopAtmosphere(worldPos, worldDir, atmosphereParameters.TopRadius)) {
-      imageStore(uDestinationTexture, ivec3(coord, viewIndex), vec4(0.0, 0.0, 0.0, 0.0));
-    } else {
+      imageStore(uDestinationTexture, ivec3(coord, viewIndex), vec4(0.0, 0.0, 0.0, 1.0));
+      imageStore(uDestinationTexture, ivec3(coord, int(viewIndex + pushConstants.countViews)), vec4(1.0));
+    }else{
       const bool ground = false;
       const float sampleCountIni = 30.0;
       const float depthBufferValue = -1.0;

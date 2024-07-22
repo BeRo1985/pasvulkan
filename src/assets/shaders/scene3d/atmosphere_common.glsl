@@ -614,7 +614,6 @@ SingleScatteringResult IntegrateScatteredLuminance(const in sampler2D Transmitta
   vec3 OpticalDepth = vec3(0.0);
   float t = 0.0;
   float tPrev = 0.0;
-  const float SampleSegmentT = 0.3;
   for (float s = 0.0; s < SampleCount; s += 1.0){
     if (VariableSampleCount){
       // More expenssive but artefact free
