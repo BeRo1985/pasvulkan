@@ -334,8 +334,8 @@ type TpvScene3DAtmosphere=class;
              BaseViewIndex:TpvInt32;
              CountViews:TpvInt32;
              MultipleScatteringFactor:TpvFloat;
-             Dummy:TpvInt32;
-            end;            
+             FrameIndex:TpvUInt32;
+            end;
             PMultiScatteringLUTPushConstants=^TMultiScatteringLUTPushConstants;
             TSkyViewLUTPushConstants=packed record
              BaseViewIndex:TpvInt32;
@@ -1710,7 +1710,7 @@ begin
   MultiScatteringLUTPushConstants.BaseViewIndex:=BaseViewIndex;
   MultiScatteringLUTPushConstants.CountViews:=CountViews;
   MultiScatteringLUTPushConstants.MultipleScatteringFactor:=1;
-  MultiScatteringLUTPushConstants.Dummy:=0;
+  MultiScatteringLUTPushConstants.FrameIndex:=pvApplication.DrawFrameCounter;
 
   aCommandBuffer.CmdPushConstants(AtmosphereGlobals.fMultiScatteringLUTComputePipelineLayout.Handle,
                                   TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_COMPUTE_BIT),

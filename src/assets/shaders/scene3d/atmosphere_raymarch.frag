@@ -27,6 +27,7 @@ layout(location = 1) out vec4 outTransmittance; // component-wise transmittance
 
 #define FLAGS_USE_FAST_SKY 1u
 #define FLAGS_USE_FAST_AERIAL_PERSPECTIVE 2u
+#define FLAGS_USE_BLUE_NOISE 4u
 
 // Push constants
 layout(push_constant, std140) uniform PushConstants {
@@ -105,7 +106,9 @@ void main() {
 
   vec2 uv = inTexCoord; 
 
-  seedSampleSeedT(uBlueNoise, ivec2(gl_FragCoord.xy), pushConstants.frameIndex);
+  if((pushConstants.flags & FLAGS_USE_BLUE_NOISE) != 0u){
+    seedSampleSeedT(uBlueNoise, ivec2(gl_FragCoord.xy), pushConstants.frameIndex);
+  }
 
   vec3 worldPos, worldDir;
   GetCameraPositionDirection(worldPos, worldDir, view.viewMatrix, view.projectionMatrix, view.inverseViewMatrix, view.inverseProjectionMatrix, uv);
