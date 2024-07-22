@@ -73,6 +73,8 @@ layout(set = 0, binding = 5, std430) buffer AtmosphereParametersBuffer {
   AtmosphereParameters atmosphereParameters;
 } uAtmosphereParameters;
 
+layout(set = 0, binding = 6) uniform sampler2D uBlueNoise;
+
 struct View {
   mat4 viewMatrix;
   mat4 projectionMatrix;
@@ -101,6 +103,8 @@ void main() {
   vec2 uv = pixPos / pushConstants.resolution;*/
 
   vec2 uv = inTexCoord; 
+
+  seedSampleSeedT(uBlueNoise, uv, 0);
 
   vec3 worldPos, worldDir;
   GetCameraPositionDirection(worldPos, worldDir, view.viewMatrix, view.projectionMatrix, view.inverseViewMatrix, view.inverseProjectionMatrix, uv);
