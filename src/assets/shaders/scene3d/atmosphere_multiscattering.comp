@@ -34,6 +34,8 @@ layout(set = 0, binding = 2, std430) buffer AtmosphereParametersBuffer {
   AtmosphereParameters atmosphereParameters;
 } uAtmosphereParameters;
 
+layout(set = 0, binding = 3) uniform sampler2D uBlueNoise;
+
 struct View {
   mat4 viewMatrix;
   mat4 projectionMatrix;
@@ -61,6 +63,8 @@ void main() {
 
   vec2 pixPos = vec2(gl_GlobalInvocationID.xy) + vec2(0.5);
   vec2 uv = pixPos / vec2(size);
+
+  seedSampleSeedT(uBlueNoise, uv, pushConstants.frameIndex);
 
   uv = vec2(fromSubUvsToUnit(uv.x, size.x), fromSubUvsToUnit(uv.y, size.y));
 

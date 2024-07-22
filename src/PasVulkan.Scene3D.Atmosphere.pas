@@ -980,7 +980,7 @@ begin
                                                                       TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT_EXT),
                                                                       TpvScene3D(fAtmosphere.fScene3D).CountInFlightFrames*1);
  fMultiScatteringLUTPassDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,TpvScene3D(fAtmosphere.fScene3D).CountInFlightFrames*1);
- fMultiScatteringLUTPassDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,TpvScene3D(fAtmosphere.fScene3D).CountInFlightFrames*1);
+ fMultiScatteringLUTPassDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,TpvScene3D(fAtmosphere.fScene3D).CountInFlightFrames*2);
  fMultiScatteringLUTPassDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,TpvScene3D(fAtmosphere.fScene3D).CountInFlightFrames*1);
  fMultiScatteringLUTPassDescriptorPool.Initialize;
  TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.DebugUtils.SetObjectName(fMultiScatteringLUTPassDescriptorPool.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'MultiScatteringLUTPassDescriptorPool');
@@ -1019,7 +1019,18 @@ begin
                                                                                  [],
                                                                                  [fAtmosphere.fAtmosphereParametersBuffers[InFlightFrameIndex].DescriptorBufferInfo],
                                                                                  [],
-                                                                                 false);                                                             
+                                                                                 false);     
+
+  fMultiScatteringLUTPassDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(3,
+                                                                                 0,
+                                                                                 1,
+                                                                                 TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                                                                 [TVkDescriptorImageInfo.Create(TpvScene3DRenderer(fRendererInstance).Renderer.ClampedSampler.Handle,
+                                                                                                                TpvScene3D(fAtmosphere.fScene3D).BlueNoise2DTexture.ImageView.Handle,
+                                                                                                                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
+                                                                                 [],
+                                                                                 [],
+                                                                                 false);                                                                                                                                          
 
   fMultiScatteringLUTPassDescriptorSets[InFlightFrameIndex].Flush;
 
@@ -2361,6 +2372,13 @@ begin
                                                         1,
                                                         TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                                                         []);
+
+  // Blue noise texture
+  fMultiScatteringLUTPassDescriptorSetLayout.AddBinding(3,
+                                                        VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                                        1,
+                                                        TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                                        []);                                                      
 
   fMultiScatteringLUTPassDescriptorSetLayout.Initialize;
   TpvScene3D(fScene3D).VulkanDevice.DebugUtils.SetObjectName(fMultiScatteringLUTPassDescriptorSetLayout.Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT,'TpvScene3DAtmosphereGlobals.fMultiScatteringLUTPassDescriptorSetLayout');
