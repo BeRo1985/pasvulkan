@@ -33,6 +33,8 @@ layout(set = 0, binding = 3, std430) buffer AtmosphereParametersBuffer {
   AtmosphereParameters atmosphereParameters;
 } uAtmosphereParameters;
 
+layout(set = 0, binding = 4) uniform sampler2D uBlueNoise;
+
 struct View {
   mat4 viewMatrix;
   mat4 projectionMatrix;
@@ -68,6 +70,8 @@ void main() {
     const vec2 size = vec2(256.0, 128.0);
 
     vec2 uv = (vec2(coord) + vec2(0.5)) / vec2(size);
+
+    seedSampleSeedT(uBlueNoise, uv, 0);
 
     vec3 worldPos, worldDir;
     GetCameraPositionDirection(worldPos, worldDir, view.viewMatrix, view.projectionMatrix, view.inverseViewMatrix, view.inverseProjectionMatrix, uv);
