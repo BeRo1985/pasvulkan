@@ -1995,6 +1995,18 @@ begin
 
  end;
 
+ begin
+
+  // Cube map mip ma generation pass
+
+  TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'TpvScene3DAtmosphere.CubeMapPass',[1.0,1.0,0.25,1.0]);
+
+  fCubeMapMipMapGenerator.Execute(aCommandBuffer);
+
+  TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
+
+ end;
+
 end;
 
 procedure TpvScene3DAtmosphere.TRendererInstance.Draw(const aInFlightFrameIndex:TpvSizeInt;
