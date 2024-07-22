@@ -15,6 +15,8 @@
 
 const float PI = 3.1415926535897932384626433832795;
 
+float SampleSegmentT = 0.3;
+
 struct DensityProfileLayer {
   float Width;
   float ExpTerm;
@@ -445,7 +447,6 @@ vec3 IntegrateOpticalDepth(in vec3 WorldPos,
   vec3 OpticalDepth = vec3(0.0);
   float t = 0.0;
   float tPrev = 0.0;
-  const float SampleSegmentT = 0.3;
   for (float s = 0.0; s < SampleCount; s += 1.0){
     if (VariableSampleCount){
       // More expenssive but artefact free
