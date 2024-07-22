@@ -19,8 +19,8 @@ layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
 layout(push_constant, std140) uniform PushConstants {
   int baseViewIndex;
   int countViews;
-  int dummy0; 
-  int dummy1;
+  int frameIndex;
+  int dummy;
 } pushConstants;  
 
 layout(set = 0, binding = 0, rgba32f) uniform image2DArray uDestinationTexture;
@@ -71,7 +71,7 @@ void main() {
 
     vec2 uv = (vec2(coord) + vec2(0.5)) / vec2(size);
 
-    seedSampleSeedT(uBlueNoise, uv, 0);
+    seedSampleSeedT(uBlueNoise, uv, pushConstants.frameIndex);
 
     vec3 worldPos, worldDir;
     GetCameraPositionDirection(worldPos, worldDir, view.viewMatrix, view.projectionMatrix, view.inverseViewMatrix, view.inverseProjectionMatrix, uv);

@@ -340,14 +340,14 @@ type TpvScene3DAtmosphere=class;
             TSkyViewLUTPushConstants=packed record
              BaseViewIndex:TpvInt32;
              CountViews:TpvInt32;
-             Dummy0:TpvInt32;
+             FrameIndex:TpvUInt32;
              Dummy1:TpvInt32;
             end;
             PSkyViewLUTPushConstants=^TSkyViewLUTPushConstants;
             TCameraVolumePushConstants=packed record
              BaseViewIndex:TpvInt32;
              CountViews:TpvInt32;
-             Dummy0:TpvInt32;
+             FrameIndex:TpvUInt32;
              Dummy1:TpvInt32;
             end;
             TCubeMapPushConstants=packed record
@@ -358,6 +358,7 @@ type TpvScene3DAtmosphere=class;
             TRaymarchingPushConstants=packed record
              BaseViewIndex:TpvInt32;
              CountViews:TpvInt32;
+             FrameIndex:TpvUInt32;
              Flags:TpvUInt32;
             end;
             PRaymarchingPushConstants=^TRaymarchingPushConstants;
@@ -1780,7 +1781,7 @@ begin
 
   SkyViewLUTPushConstants.BaseViewIndex:=BaseViewIndex;
   SkyViewLUTPushConstants.CountViews:=CountViews;
-  SkyViewLUTPushConstants.Dummy0:=0;
+  SkyViewLUTPushConstants.FrameIndex:=pvApplication.DrawFrameCounter;
   SkyViewLUTPushConstants.Dummy1:=0;
 
   aCommandBuffer.CmdPushConstants(AtmosphereGlobals.fSkyViewLUTComputePipelineLayout.Handle,
@@ -1863,7 +1864,7 @@ begin
 
   CameraVolumePushConstants.BaseViewIndex:=BaseViewIndex;
   CameraVolumePushConstants.CountViews:=CountViews;
-  CameraVolumePushConstants.Dummy0:=0;
+  CameraVolumePushConstants.FrameIndex:=pvApplication.DrawFrameCounter;
   CameraVolumePushConstants.Dummy1:=0;
 
   aCommandBuffer.CmdPushConstants(AtmosphereGlobals.fCameraVolumeComputePipelineLayout.Handle,

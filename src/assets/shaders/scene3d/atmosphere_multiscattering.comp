@@ -20,7 +20,7 @@ layout(push_constant, std140) uniform PushConstants {
   int baseViewIndex;
   int countViews;
   float MultipleScatteringFactor;
-  int dummy;
+  int frameIndex;
 } pushConstants;
 
 shared vec3 MultiScatAs1SharedMem[64];

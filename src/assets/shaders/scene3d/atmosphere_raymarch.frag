@@ -32,6 +32,7 @@ layout(location = 1) out vec4 outTransmittance; // component-wise transmittance
 layout(push_constant, std140) uniform PushConstants {
   int baseViewIndex;
   int countViews;
+  int frameIndex;
   uint flags;
 } pushConstants;
 
@@ -104,7 +105,7 @@ void main() {
 
   vec2 uv = inTexCoord; 
 
-  seedSampleSeedT(uBlueNoise, uv, 0);
+  seedSampleSeedT(uBlueNoise, uv, pushConstants.frameIndex);
 
   vec3 worldPos, worldDir;
   GetCameraPositionDirection(worldPos, worldDir, view.viewMatrix, view.projectionMatrix, view.inverseViewMatrix, view.inverseProjectionMatrix, uv);
