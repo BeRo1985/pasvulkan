@@ -227,6 +227,7 @@ type TpvScene3DAtmosphere=class;
               fGlobalDescriptorPool:TpvVulkanDescriptorPool;
               fGlobalDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
               fRaymarchingGraphicsPipeline:TpvVulkanGraphicsPipeline;
+              fCubeMapMipMapGenerator:TpvScene3DRendererCubeMapMipMapGenerator;
              public
               constructor Create(const aAtmosphere:TpvScene3DAtmosphere;const aRendererInstance:TObject);
               destructor Destroy; override;
@@ -1379,11 +1380,19 @@ begin
 
  fRaymarchingGraphicsPipeline:=nil;
 
+ fCubeMapMipMapGenerator:=TpvScene3DRendererCubeMapMipMapGenerator.Create(TpvScene3D(fAtmosphere.fScene3D),fCubeMapTexture);
+ fCubeMapMipMapGenerator.AcquirePersistentResources;
+ fCubeMapMipMapGenerator.AcquireVolatileResources;
+
 end;
 
 destructor TpvScene3DAtmosphere.TRendererInstance.Destroy;
 var InFlightFrameIndex:TpvSizeInt;
 begin
+
+ fCubeMapMipMapGenerator.ReleaseVolatileResources;
+ fCubeMapMipMapGenerator.ReleasePersistentResources;
+ FreeAndNil(fCubeMapMipMapGenerator);
 
  FreeAndNil(fRaymarchingGraphicsPipeline);
 
