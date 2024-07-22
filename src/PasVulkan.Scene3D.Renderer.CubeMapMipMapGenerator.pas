@@ -81,7 +81,6 @@ type { TpvScene3DRendererCubeMapMipMapGenerator }
       private
        fScene3D:TpvScene3D;
        fVulkanDevice:TpvVulkanDevice;
-       fRenderer:TpvScene3DRenderer;
        fCubeMap:TpvScene3DRendererMipmapImageCubeMap;
        fReductionComputeShaderModule:TpvVulkanShaderModule;
        fVulkanImageView:TpvVulkanImageView;
@@ -222,7 +221,7 @@ begin
  fReductionPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),0,SizeOf(TpvInt32));
  fReductionPipelineLayout.AddDescriptorSetLayout(fReductionVulkanDescriptorSetLayout);
  fReductionPipelineLayout.Initialize;
- fRenderer.VulkanDevice.DebugUtils.SetObjectName(fReductionPipelineLayout.Handle,VK_OBJECT_TYPE_PIPELINE_LAYOUT,'TpvScene3DRendererCubeMapMipMapGenerator.fReductionPipelineLayout');
+ fVulkanDevice.DebugUtils.SetObjectName(fReductionPipelineLayout.Handle,VK_OBJECT_TYPE_PIPELINE_LAYOUT,'TpvScene3DRendererCubeMapMipMapGenerator.fReductionPipelineLayout');
 
  fReductionPipeline:=TpvVulkanComputePipeline.Create(fVulkanDevice,
                                                      fScene3D.VulkanPipelineCache,
