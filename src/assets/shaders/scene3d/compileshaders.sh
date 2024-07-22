@@ -1172,8 +1172,8 @@ cp packscene3dshaders "${tempPath}/packscene3dshaders"
 # Go to the temporary directory
 cd "${tempPath}"
 
-# Get a sorted list of .spv files and virtualsymlinks.json without their full paths
-toCompressFiles=( $((ls *.spv; echo virtualsymlinks.json) | sort) )
+# Get a sorted list of .spv files, bluenoise_1024x1024_rgba8.raw and virtualsymlinks.json without their full paths
+toCompressFiles=( $((ls *.spv; echo virtualsymlinks.json; echo bluenoise_1024x1024_rgba8.raw) | sort) )
 
 if [ $USEZIP -eq 1 ]; then
 
