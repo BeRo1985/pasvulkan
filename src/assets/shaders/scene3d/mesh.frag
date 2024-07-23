@@ -250,8 +250,11 @@ vec3 cartesianToBarycentric(vec3 p, vec3 a, vec3 b, vec3 c) {
 
 #include "roughness.glsl"
 
-float envMapMaxLevelGGX, envMapMaxLevelCharlie;
- 
+#define UseEnvMap
+#define UseEnvMapGGX
+#define UseEnvMapCharlie
+#define UseEnvMapLambertian
+
 uint flags, shadingModel;
 
 #if defined(BLEND) || defined(LOOPOIT) || defined(LOCKOIT) || defined(MBOIT) || defined(WBOIT) || defined(DFAOIT)
@@ -394,8 +397,6 @@ void main() {
 #endif
 #endif
 #if !(defined(DEPTHONLY) || defined(VOXELIZATION))
-  envMapMaxLevelGGX = max(0.0, textureQueryLevels(uImageBasedLightingEnvMaps[0]) - 1.0);
-  envMapMaxLevelCharlie = max(0.0, textureQueryLevels(uImageBasedLightingEnvMaps[1]) - 1.0);
   flags = material.alphaCutOffFlagsTex0Tex1.y;
   shadingModel = (flags >> 0u) & 0xfu;
 #endif

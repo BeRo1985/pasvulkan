@@ -1,7 +1,46 @@
 #ifndef PBR_GLSL
 #define PBR_GLSL
 
+#ifdef UseEnvMap
+
 #define DUALENVMAP
+
+#ifdef UseEnvMapGGX
+float envMapMaxLevelGGX = max(0.0, textureQueryLevels(uImageBasedLightingEnvMaps[0]) - 1.0);
+#else
+float envMapMaxLevelGGX; 
+#endif
+
+#ifdef UseEnvMapCharlie
+float envMapMaxLevelCharlie = max(0.0, textureQueryLevels(uImageBasedLightingEnvMaps[1]) - 1.0);
+#else 
+float envMapMaxLevelCharlie;
+#endif
+
+#ifdef DUALENVMAP
+
+#ifdef UseEnvMapGGX
+float envMapMaxLevelGGX2 = max(0.0, textureQueryLevels(uImageBasedLightingEnvMaps[3]) - 1.0);
+#else
+float envMapMaxLevelGGX2;
+#endif
+
+#ifdef UseEnvMapCharlie
+float envMapMaxLevelCharlie2 = max(0.0, textureQueryLevels(uImageBasedLightingEnvMaps[4]) - 1.0);
+#else
+float envMapMaxLevelCharlie2;
+#endif
+
+const bool enableDualEnvMap = true;
+
+#endif
+
+#else
+
+// Just dummy definitions, so that the shader compiles without errors.
+float envMapMaxLevelGGX, envMapMaxLevelCharlie;
+
+#endif
 
 #include "math.glsl"
 
@@ -240,16 +279,17 @@ vec4 getEnvMap(sampler2D texEnvMap, vec3 rayDirection, float texLOD) {
 }
 
 vec3 getIBLRadianceLambertian(const in vec3 normal, const in vec3 viewDirection, const in float roughness, const in vec3 diffuseColor, const in vec3 F0, const in float specularWeight) {
+#ifdef UseEnvMap
   float ao = cavity * ambientOcclusion;
   float NdotV = clamp(dot(normal, viewDirection), 0.0, 1.0);
   vec2 brdfSamplePoint = clamp(vec2(NdotV, roughness), vec2(0.0), vec2(1.0));
   vec2 f_ab = textureLod(uImageBasedLightingBRDFTextures[0], brdfSamplePoint, 0.0).xy;
-#ifdef DUALENVMAP
-  vec4 envA = textureLod(uImageBasedLightingEnvMaps[2], normal.xyz, 0.0),
-       envB = textureLod(uImageBasedLightingEnvMaps[5], normal.xyz, 0.0),
-  vec3 irradiance = mix(envA.xyz, envB.xyz, envB.w);
-#else  
   vec3 irradiance = textureLod(uImageBasedLightingEnvMaps[2], normal.xyz, 0.0).xyz;
+#ifdef DUALENVMAP
+  if(enableDualEnvMap){
+    vec4 envB = textureLod(uImageBasedLightingEnvMaps[5], normal.xyz, 0.0);
+    irradiance = mix(irradiance, envB.xyz, envB.w); 
+  }
 #endif  
   vec3 mixedF0 = mix(F0, vec3(max(max(iridescenceF0.x, iridescenceF0.y), iridescenceF0.z)), iridescenceFactor);
   vec3 Fr = max(vec3(1.0 - roughness), mixedF0) - mixedF0;
@@ -260,9 +300,13 @@ vec3 getIBLRadianceLambertian(const in vec3 normal, const in vec3 viewDirection,
   vec3 FmsEms = (Ems * FssEss * F_avg) / (vec3(1.0) - (F_avg * Ems));
   vec3 k_D = (diffuseColor * ((1.0 - FssEss) + FmsEms) * ao);
   return (FmsEms + k_D) * irradiance;
+#else
+  return vec3(0.0);
+#endif
 }
 
 vec3 getIBLRadianceGGX(in vec3 normal, const in float roughness, const in vec3 F0, const in float specularWeight, const in vec3 viewDirection, const in float litIntensity, const in vec3 imageLightBasedLightDirection) {
+#ifdef UseEnvMap
   float NdotV = clamp(dot(normal, viewDirection), 0.0, 1.0);
 #ifdef ENABLE_ANISOTROPIC
   if(anisotropyActive){
@@ -275,12 +319,12 @@ vec3 getIBLRadianceGGX(in vec3 normal, const in float roughness, const in vec3 F
       lit = mix(1.0, litIntensity, max(0.0, dot(reflectionVector, -imageLightBasedLightDirection) * (1.0 - (roughness * roughness)))),  //
       specularOcclusion = getSpecularOcclusion(NdotV, ao * lit, roughness);
   vec2 brdf = textureLod(uImageBasedLightingBRDFTextures[0], clamp(vec2(NdotV, roughness), vec2(0.0), vec2(1.0)), 0.0).xy;
-#ifdef DUALENVMAP
-  vec4 envA = textureLod(uImageBasedLightingEnvMaps[0], reflectionVector, roughnessToMipMapLevel(roughness, envMapMaxLevelGGX)),
-       envB = textureLod(uImageBasedLightingEnvMaps[3], reflectionVector, roughnessToMipMapLevel(roughness, max(0.0, textureQueryLevels(uImageBasedLightingEnvMaps[3]) - 1.0)));
-  vec3 irradiance = mix(envA.xyz, envB.xyz, envB.w);
-#else
   vec3 irradiance = textureLod(uImageBasedLightingEnvMaps[0], reflectionVector, roughnessToMipMapLevel(roughness, envMapMaxLevelGGX)).xyz;
+#ifdef DUALENVMAP
+  if(enableDualEnvMap){
+    vec4 envB = textureLod(uImageBasedLightingEnvMaps[3], reflectionVector, roughnessToMipMapLevel(roughness, envMapMaxLevelGGX2));
+    irradiance = mix(irradiance, envB.xyz, envB.w); 
+  } 
 #endif
   return (irradiance *                                                                   //
           fma(mix(F0 + ((max(vec3(1.0 - roughness), F0) - F0) * pow(1.0 - NdotV, 5.0)),  //
@@ -291,23 +335,30 @@ vec3 getIBLRadianceGGX(in vec3 normal, const in float roughness, const in vec3 F
           specularWeight *                                                               //
           specularOcclusion *                                                            //
           1.0);
+#else
+  return vec3(0.0); 
+#endif
 }
 
 vec3 getIBLRadianceCharlie(vec3 normal, vec3 viewDirection, float sheenRoughness, vec3 sheenColor) {
+#ifdef UseEnvMap
   float ao = cavity * ambientOcclusion;
   float NdotV = clamp(dot(normal.xyz, viewDirection), 0.0, 1.0);
   vec3 reflectionVector = normalize(reflect(-viewDirection, normal));
-#ifdef DUALENVMAP
-  vec3 envA = textureLod(uImageBasedLightingEnvMaps[1], reflectionVector, roughnessToMipMapLevel(sheenRoughness, envMapMaxLevelCharlie)).xyz,
-       envB = textureLod(uImageBasedLightingEnvMaps[4], reflectionVector, roughnessToMipMapLevel(sheenRoughness, max(0.0, textureQueryLevels(uImageBasedLightingEnvMaps[4]) - 1.0))).xyz;
-  vec3 irradiance = mix(envA, envB, envB.w);
-#else
   vec3 irradiance = textureLod(uImageBasedLightingEnvMaps[1], reflectionVector, roughnessToMipMapLevel(sheenRoughness, envMapMaxLevelCharlie)).xyz;
+#ifdef DUALENVMAP
+  if(enableDualEnvMap){
+    vec4 envB = textureLod(uImageBasedLightingEnvMaps[4], reflectionVector, roughnessToMipMapLevel(sheenRoughness, envMapMaxLevelCharlie2));
+    irradiance = mix(irradiance, envB.xyz, envB.w); 
+  }
 #endif
   return irradiance * //
          sheenColor * //
          textureLod(uImageBasedLightingBRDFTextures[1], clamp(vec2(NdotV, sheenRoughness), vec2(0.0), vec2(1.0)), 0.0).x *
          ao;
+#else
+  return vec3(0.0);
+#endif
 }
 
 vec3 getPunctualRadianceTransmission(vec3 normal, vec3 view, vec3 pointToLight, float alphaRoughness, vec3 f0, vec3 f90, vec3 baseColor, float ior) {
@@ -868,25 +919,28 @@ vec4 getScreenSpaceReflection(vec3 worldSpacePosition,
 #endif
 
   // No reflection found, so fall back to the environment map (in the GGX variant, since it is also used for IBL specular lighting).
+  if(fallbackColor.w >= 0.99999){
+    return vec4(fallbackColor.xyz, 0.0);
+  }else{
 
+#ifdef UseEnvMap
+    vec3 env = textureLod(uImageBasedLightingEnvMaps[0], worldSpaceReflectionVector, roughnessToMipMapLevel(roughness, envMapMaxLevelGGX)).xyz;
 #ifdef DUALENVMAP
-  vec3 envA = textureLod(uImageBasedLightingEnvMaps[0], worldSpaceReflectionVector, roughnessToMipMapLevel(roughness, envMapMaxLevelGGX)).xyz,
-       envB = textureLod(uImageBasedLightingEnvMaps[3], worldSpaceReflectionVector, roughnessToMipMapLevel(roughness, max(0.0, textureQueryLevels(uImageBasedLightingEnvMaps[3]) - 1.0))).xyz;
-  vec4 env = mix(envA, envB, envB.w);
-#else
-  vec4 env = textureLod(uImageBasedLightingEnvMaps[0], worldSpaceReflectionVector, roughnessToMipMapLevel(roughness, envMapMaxLevelGGX));
+    if(enableDualEnvMap){
+      vec4 envB = textureLod(uImageBasedLightingEnvMaps[3], worldSpaceReflectionVector, roughnessToMipMapLevel(roughness, envMapMaxLevelGGX2));
+      env = mix(env, envB.xyz, envB.w);
+    }
 #endif
+ 
+    return vec4(mix(env.xyz, fallbackColor.xyz, fallbackColor.w), 0.0);
 
-  return vec4(
-    (fallbackColor.w >= 0.99999) 
-    ? fallbackColor.xyz
-    : mix(
-        env.xyz,
-        fallbackColor.xyz,
-        fallbackColor.w
-      ),
-    0.0
-  );
+  }
+
+#else
+
+  return vec4(fallbackColor.xyz, 0.0);
+
+#endif
 
 }
 

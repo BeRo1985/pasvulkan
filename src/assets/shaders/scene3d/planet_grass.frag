@@ -114,8 +114,10 @@ layout(set = 2, binding = 0) uniform sampler2D uTextures[]; // 0 = height map, 1
 #include "lighting.glsl"
 #undef LIGHTING_GLOBALS
 
-float envMapMaxLevelGGX = max(0.0, textureQueryLevels(uImageBasedLightingEnvMaps[0]) - 1.0);
-float envMapMaxLevelCharlie = 0.0;//max(0.0, textureQueryLevels(uImageBasedLightingEnvMaps[1]) - 1.0);
+#define UseEnvMap
+#define UseEnvMapGGX
+#undef UseEnvMapCharlie
+#undef UseEnvMapLambertian
 
 #include "roughness.glsl"
 

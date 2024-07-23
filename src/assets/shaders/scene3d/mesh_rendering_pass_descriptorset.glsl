@@ -18,7 +18,7 @@ layout(set = 1, binding = 0, std140) uniform uboViews {
 
 layout(set = 1, binding = 1) uniform sampler2D uImageBasedLightingBRDFTextures[];  // 0 = GGX, 1 = Charlie, 2 = Sheen E
 
-layout(set = 1, binding = 2) uniform samplerCube uImageBasedLightingEnvMaps[];  // 0 = GGX, 1 = Charlie, 2 = Lambertian
+layout(set = 1, binding = 2) uniform samplerCube uImageBasedLightingEnvMaps[];  // 0 = GGX(1), 1 = Charlie(1), 2 = Lambertian (1), 3 = GGX(2), 4 = Charlie(2), 5 = Lambertian(2)
 
 #ifdef SHADOWS
 const uint SHADOWMAP_MODE_NONE = 1;
