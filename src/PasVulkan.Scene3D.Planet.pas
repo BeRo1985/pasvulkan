@@ -90,6 +90,7 @@ uses Classes,
      PasVulkan.Scene3D.Renderer.Image2D,
      PasVulkan.Scene3D.Renderer.Array2DImage,
      PasVulkan.Scene3D.Renderer.MipmapImage2D,
+     PasVulkan.Scene3D.Renderer.IBLDescriptor,
      PasVulkan.Image.Utils,
      PasVulkan.Compression,
      PasVulkan.Hash.xxHash64;
@@ -1227,6 +1228,7 @@ type TpvScene3DPlanets=class;
               fDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
               fDescriptorPool:TpvVulkanDescriptorPool;
               fDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
+              fIBLDescriptors:array[0..MaxInFlightFrames-1] of TpvScene3DRendererIBLDescriptor;
               fPlanetPipelineLayout:TpvVulkanPipelineLayout;
               fPlanetPipeline:TpvVulkanGraphicsPipeline;
               fPlanetPushConstants:TPlanetPushConstants;
@@ -11478,6 +11480,10 @@ begin
   end;
   fDescriptorSets[InFlightFrameIndex].Flush;
   fVulkanDevice.DebugUtils.SetObjectName(fDescriptorSets[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET,'TpvScene3DPlanet.TRenderPass.fDescriptorSets['+IntToStr(InFlightFrameIndex)+']');
+  fIBLDescriptors[InFlightFrameIndex]:=TpvScene3DRendererIBLDescriptor.Create(TpvScene3DRenderer(fRenderer).VulkanDevice,
+                                                                              fDescriptorSets[InFlightFrameIndex],
+                                                                              2,
+                                                                              TpvScene3DRenderer(fRenderer).Renderer.ClampedSampler.Handle);
  end;
 
  begin
@@ -11732,6 +11738,7 @@ begin
 
  for InFlightFrameIndex:=0 to TpvScene3D(fScene3D).CountInFlightFrames-1 do begin
   FreeAndNil(fDescriptorSets[InFlightFrameIndex]);
+  FreeAndNil(fIBLDescriptors[InFlightFrameIndex]);
  end;
 
  FreeAndNil(fDescriptorPool);
@@ -11756,6 +11763,9 @@ var PlanetIndex,Level:TpvSizeInt;
     RendererViewInstance:TpvScene3DPlanet.TRendererViewInstance;
     vkCmdDrawIndexedIndirectCount:TvkCmdDrawIndexedIndirectCount;
 begin
+
+ fIBLDescriptors[aInFlightFrameIndex].SetFrom(TpvScene3D(fScene3D),TpvScene3DRendererInstance(fRendererInstance),aInFlightFrameIndex);
+ fIBLDescriptors[aInFlightFrameIndex].Update(true);
 
  if assigned(TpvScene3D(fScene3D).VulkanDevice.Commands.Commands.CmdDrawIndexedIndirectCount) then begin
   vkCmdDrawIndexedIndirectCount:=TpvScene3D(fScene3D).VulkanDevice.Commands.Commands.CmdDrawIndexedIndirectCount;

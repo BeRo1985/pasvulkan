@@ -1122,6 +1122,7 @@ begin
  FreeAndNil(fVulkanPipelineLayout);
  for Index:=0 to fInstance.Renderer.CountInFlightFrames-1 do begin
   FreeAndNil(fPassVulkanDescriptorSets[Index]);
+  FreeAndNil(fIBLDescriptors[Index]);
  end;
  FreeAndNil(fPassVulkanDescriptorPool);
  FreeAndNil(fPassVulkanDescriptorSetLayout);
