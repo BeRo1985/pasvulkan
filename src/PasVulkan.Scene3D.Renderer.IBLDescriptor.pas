@@ -89,7 +89,7 @@ type { TpvScene3DRendererIBLDescriptor }
        constructor Create(const aVulkanDevice:TpvVulkanDevice;const aDescriptorSet:TpvVulkanDescriptorSet;const aBinding:TpvSizeInt;const aSampler:TVkSampler);
        destructor Destroy; override;
        procedure Update(const aInstant:Boolean=false);
-       procedure SetFrom(const aScene3D,aRendererInstance:TObject);
+       procedure SetFrom(const aScene3D,aRendererInstance:TObject;const aInFlightFrameIndex:TpvSizeInt);
       public
        property VulkanDevice:TpvVulkanDevice read fVulkanDevice;
        property DescriptorSet:TpvVulkanDescriptorSet read fDescriptorSet;
@@ -175,8 +175,26 @@ begin
  end;
 end;
 
-procedure TpvScene3DRendererIBLDescriptor.SetFrom(const aScene3D,aRendererInstance:TObject);
+procedure TpvScene3DRendererIBLDescriptor.SetFrom(const aScene3D,aRendererInstance:TObject;const aInFlightFrameIndex:TpvSizeInt);
 begin
+
+ if assigned(aRendererInstance) then begin
+
+  if assigned(TpvScene3DRendererInstance(aRendererInstance).ImageBasedLightingReflectionProbeCubeMaps) then begin
+   SetGGXImageView(TpvScene3DRendererInstance(aRendererInstance).ImageBasedLightingReflectionProbeCubeMaps.GGXDescriptorImageInfos[aInFlightFrameIndex].imageView);
+   SetCharlieImageView(TpvScene3DRendererInstance(aRendererInstance).ImageBasedLightingReflectionProbeCubeMaps.CharlieDescriptorImageInfos[aInFlightFrameIndex].imageView);
+   SetLambertianImageView(TpvScene3DRendererInstance(aRendererInstance).ImageBasedLightingReflectionProbeCubeMaps.LambertianDescriptorImageInfos[aInFlightFrameIndex].imageView);
+   exit;
+  end;
+
+  if assigned(TpvScene3DRendererInstance(aRendererInstance).Renderer) then begin
+   SetGGXImageView(TpvScene3DRendererInstance(aRendererInstance).Renderer.ImageBasedLightingEnvMapCubeMaps.GGXDescriptorImageInfo.imageView);
+   SetCharlieImageView(TpvScene3DRendererInstance(aRendererInstance).Renderer.ImageBasedLightingEnvMapCubeMaps.CharlieDescriptorImageInfo.imageView);
+   SetLambertianImageView(TpvScene3DRendererInstance(aRendererInstance).Renderer.ImageBasedLightingEnvMapCubeMaps.LambertianDescriptorImageInfo.imageView);
+   exit;
+  end;
+
+ end;
 
 end;
 
