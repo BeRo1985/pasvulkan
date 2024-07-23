@@ -1,6 +1,8 @@
 #ifndef PBR_GLSL
 #define PBR_GLSL
 
+#define DUALENVMAP
+
 #include "math.glsl"
 
 float cavity = 1.0;
@@ -242,7 +244,13 @@ vec3 getIBLRadianceLambertian(const in vec3 normal, const in vec3 viewDirection,
   float NdotV = clamp(dot(normal, viewDirection), 0.0, 1.0);
   vec2 brdfSamplePoint = clamp(vec2(NdotV, roughness), vec2(0.0), vec2(1.0));
   vec2 f_ab = textureLod(uImageBasedLightingBRDFTextures[0], brdfSamplePoint, 0.0).xy;
+#ifdef DUALENVMAP
+  vec4 envA = textureLod(uImageBasedLightingEnvMaps[2], normal.xyz, 0.0),
+       envB = textureLod(uImageBasedLightingEnvMaps[5], normal.xyz, 0.0),
+  vec3 irradiance = mix(envA.xyz, envB.xyz, envB.w);
+#else  
   vec3 irradiance = textureLod(uImageBasedLightingEnvMaps[2], normal.xyz, 0.0).xyz;
+#endif  
   vec3 mixedF0 = mix(F0, vec3(max(max(iridescenceF0.x, iridescenceF0.y), iridescenceF0.z)), iridescenceFactor);
   vec3 Fr = max(vec3(1.0 - roughness), mixedF0) - mixedF0;
   vec3 k_S = mixedF0 + (Fr * pow(1.0 - NdotV, 5.0));
@@ -267,10 +275,14 @@ vec3 getIBLRadianceGGX(in vec3 normal, const in float roughness, const in vec3 F
       lit = mix(1.0, litIntensity, max(0.0, dot(reflectionVector, -imageLightBasedLightDirection) * (1.0 - (roughness * roughness)))),  //
       specularOcclusion = getSpecularOcclusion(NdotV, ao * lit, roughness);
   vec2 brdf = textureLod(uImageBasedLightingBRDFTextures[0], clamp(vec2(NdotV, roughness), vec2(0.0), vec2(1.0)), 0.0).xy;
-  return (textureLod(uImageBasedLightingEnvMaps[0],  //
-                     reflectionVector,               //
-                     roughnessToMipMapLevel(roughness, envMapMaxLevelGGX))
-              .xyz *                                                                     //
+#ifdef DUALENVMAP
+  vec4 envA = textureLod(uImageBasedLightingEnvMaps[0], reflectionVector, roughnessToMipMapLevel(roughness, envMapMaxLevelGGX)),
+       envB = textureLod(uImageBasedLightingEnvMaps[3], reflectionVector, roughnessToMipMapLevel(roughness, max(0.0, textureQueryLevels(uImageBasedLightingEnvMaps[3]) - 1.0)));
+  vec3 irradiance = mix(envA.xyz, envB.xyz, envB.w);
+#else
+  vec3 irradiance = textureLod(uImageBasedLightingEnvMaps[0], reflectionVector, roughnessToMipMapLevel(roughness, envMapMaxLevelGGX)).xyz;
+#endif
+  return (irradiance *                                                                   //
           fma(mix(F0 + ((max(vec3(1.0 - roughness), F0) - F0) * pow(1.0 - NdotV, 5.0)),  //
                   iridescenceFresnel,                                                    //
                   iridescenceFactor),                                                    //
@@ -285,11 +297,15 @@ vec3 getIBLRadianceCharlie(vec3 normal, vec3 viewDirection, float sheenRoughness
   float ao = cavity * ambientOcclusion;
   float NdotV = clamp(dot(normal.xyz, viewDirection), 0.0, 1.0);
   vec3 reflectionVector = normalize(reflect(-viewDirection, normal));
-  return texture(uImageBasedLightingEnvMaps[1],  //
-                 reflectionVector,               //
-                 roughnessToMipMapLevel(sheenRoughness, envMapMaxLevelCharlie))
-             .xyz *    //
-         sheenColor *  //
+#ifdef DUALENVMAP
+  vec3 envA = textureLod(uImageBasedLightingEnvMaps[1], reflectionVector, roughnessToMipMapLevel(sheenRoughness, envMapMaxLevelCharlie)).xyz,
+       envB = textureLod(uImageBasedLightingEnvMaps[4], reflectionVector, roughnessToMipMapLevel(sheenRoughness, max(0.0, textureQueryLevels(uImageBasedLightingEnvMaps[4]) - 1.0))).xyz;
+  vec3 irradiance = mix(envA, envB, envB.w);
+#else
+  vec3 irradiance = textureLod(uImageBasedLightingEnvMaps[1], reflectionVector, roughnessToMipMapLevel(sheenRoughness, envMapMaxLevelCharlie)).xyz;
+#endif
+  return irradiance * //
+         sheenColor * //
          textureLod(uImageBasedLightingBRDFTextures[1], clamp(vec2(NdotV, sheenRoughness), vec2(0.0), vec2(1.0)), 0.0).x *
          ao;
 }
@@ -853,11 +869,19 @@ vec4 getScreenSpaceReflection(vec3 worldSpacePosition,
 
   // No reflection found, so fall back to the environment map (in the GGX variant, since it is also used for IBL specular lighting).
 
+#ifdef DUALENVMAP
+  vec3 envA = textureLod(uImageBasedLightingEnvMaps[0], worldSpaceReflectionVector, roughnessToMipMapLevel(roughness, envMapMaxLevelGGX)).xyz,
+       envB = textureLod(uImageBasedLightingEnvMaps[3], worldSpaceReflectionVector, roughnessToMipMapLevel(roughness, max(0.0, textureQueryLevels(uImageBasedLightingEnvMaps[3]) - 1.0))).xyz;
+  vec4 env = mix(envA, envB, envB.w);
+#else
+  vec4 env = textureLod(uImageBasedLightingEnvMaps[0], worldSpaceReflectionVector, roughnessToMipMapLevel(roughness, envMapMaxLevelGGX));
+#endif
+
   return vec4(
     (fallbackColor.w >= 0.99999) 
     ? fallbackColor.xyz
     : mix(
-        textureLod(uImageBasedLightingEnvMaps[0], worldSpaceReflectionVector, roughnessToMipMapLevel(roughness, envMapMaxLevelGGX)).xyz,
+        env.xyz,
         fallbackColor.xyz,
         fallbackColor.w
       ),
