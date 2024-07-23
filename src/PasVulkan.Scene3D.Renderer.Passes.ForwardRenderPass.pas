@@ -78,6 +78,7 @@ uses SysUtils,
      PasVulkan.Scene3D.Renderer.SkyBox,
      PasVulkan.Scene3D.Renderer.VoxelVisualization,
      PasVulkan.Scene3D.Renderer.VoxelMeshVisualization,
+     PasVulkan.Scene3D.Renderer.IBLDescriptor,
      PasVulkan.Scene3D.Planet;
 
 type { TpvScene3DRendererPassesForwardRenderPass }
