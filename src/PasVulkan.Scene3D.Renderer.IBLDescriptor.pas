@@ -180,6 +180,7 @@ procedure TpvScene3DRendererIBLDescriptor.SetFrom(const aScene3D,aRendererInstan
 var Index:TpvSizeInt;
     Atmosphere:TpvScene3DAtmosphere;
     AtmosphereRendererInstance:TpvScene3DAtmosphere.TRendererInstance;
+    OK:Boolean;
 begin
 
  if assigned(aRendererInstance) then begin
@@ -191,6 +192,7 @@ begin
    exit;
   end;
 
+  OK:=false;
   TpvScene3DAtmospheres(TpvScene3D(aScene3D).Atmospheres).Lock.AcquireRead;
   try
    for Index:=0 to TpvScene3DAtmospheres(TpvScene3D(aScene3D).Atmospheres).Count-1 do begin
@@ -198,12 +200,19 @@ begin
     if assigned(Atmosphere) and Atmosphere.IsInFlightFrameVisible(aInFlightFrameIndex) then begin
      AtmosphereRendererInstance:=Atmosphere.GetRenderInstance(TpvScene3DRendererInstance(aRendererInstance));
      if assigned(AtmosphereRendererInstance) then begin
-
+      SetGGXImageView(AtmosphereRendererInstance.GGXCubeMapTexture.VulkanImageView.Handle);
+      SetCharlieImageView(AtmosphereRendererInstance.CharlieCubeMapTexture.VulkanImageView.Handle);
+      SetLambertianImageView(AtmosphereRendererInstance.LambertianCubeMapTexture.VulkanImageView.Handle);
+      OK:=true;
+      break;
      end;
     end;
    end;
   finally
    TpvScene3DAtmospheres(TpvScene3D(aScene3D).Atmospheres).Lock.ReleaseRead;
+  end;
+  if OK then begin
+   exit;
   end;
 
   if assigned(TpvScene3DRendererInstance(aRendererInstance).Renderer) then begin
