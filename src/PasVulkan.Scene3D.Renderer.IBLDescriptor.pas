@@ -78,13 +78,22 @@ type { TpvScene3DRendererIBLDescriptor }
        fGGXDescriptorImageInfo:TVkDescriptorImageInfo;
        fCharlieDescriptorImageInfo:TVkDescriptorImageInfo;
        fLambertianDescriptorImageInfo:TVkDescriptorImageInfo;
+       fGGX2DescriptorImageInfo:TVkDescriptorImageInfo;
+       fCharlie2DescriptorImageInfo:TVkDescriptorImageInfo;
+       fLambertian2DescriptorImageInfo:TVkDescriptorImageInfo;
        fPointerToGGXDescriptorImageInfo:PVkDescriptorImageInfo;
        fPointerToCharlieDescriptorImageInfo:PVkDescriptorImageInfo;
        fPointerToLambertianDescriptorImageInfo:PVkDescriptorImageInfo;
+       fPointerToGGX2DescriptorImageInfo:PVkDescriptorImageInfo;
+       fPointerToCharlie2DescriptorImageInfo:PVkDescriptorImageInfo;
+       fPointerToLambertian2DescriptorImageInfo:PVkDescriptorImageInfo;
        fDirty:Boolean;
        procedure SetGGXImageView(const aGGXImageView:TVkImageView);
        procedure SetCharlieImageView(const aCharlieImageView:TVkImageView);
        procedure SetLambertianImageView(const aLambertianImageView:TVkImageView);
+       procedure SetGGX2ImageView(const aGGX2ImageView:TVkImageView);
+       procedure SetCharlie2ImageView(const aCharlie2ImageView:TVkImageView);
+       procedure SetLambertian2ImageView(const aLambertian2ImageView:TVkImageView);
       public
        constructor Create(const aVulkanDevice:TpvVulkanDevice;const aDescriptorSet:TpvVulkanDescriptorSet;const aBinding:TpvSizeInt;const aSampler:TVkSampler);
        destructor Destroy; override;
@@ -97,9 +106,15 @@ type { TpvScene3DRendererIBLDescriptor }
        property GGXImageView:TVkImageView read fGGXDescriptorImageInfo.ImageView write SetGGXImageView;
        property CharlieImageView:TVkImageView read fCharlieDescriptorImageInfo.ImageView write SetCharlieImageView;
        property LambertianImageView:TVkImageView read fLambertianDescriptorImageInfo.ImageView write SetLambertianImageView;
+       property GGX2ImageView:TVkImageView read fGGX2DescriptorImageInfo.ImageView write SetGGX2ImageView;
+       property Charlie2ImageView:TVkImageView read fCharlie2DescriptorImageInfo.ImageView write SetCharlie2ImageView;
+       property Lambertian2ImageView:TVkImageView read fLambertian2DescriptorImageInfo.ImageView write SetLambertian2ImageView;
        property GGXDescriptorImageInfo:PVkDescriptorImageInfo read fPointerToGGXDescriptorImageInfo;
        property CharlieDescriptorImageInfo:PVkDescriptorImageInfo read fPointerToCharlieDescriptorImageInfo;
        property LambertianDescriptorImageInfo:PVkDescriptorImageInfo read fPointerToLambertianDescriptorImageInfo;
+       property GGX2DescriptorImageInfo:PVkDescriptorImageInfo read fPointerToGGX2DescriptorImageInfo;
+       property Charlie2DescriptorImageInfo:PVkDescriptorImageInfo read fPointerToCharlie2DescriptorImageInfo;
+       property Lambertian2DescriptorImageInfo:PVkDescriptorImageInfo read fPointerToLambertian2DescriptorImageInfo;
      end; 
 
 implementation
@@ -122,9 +137,17 @@ begin
  fCharlieDescriptorImageInfo:=TVkDescriptorImageInfo.Create(aSampler,VK_NULL_HANDLE,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
  fLambertianDescriptorImageInfo:=TVkDescriptorImageInfo.Create(aSampler,VK_NULL_HANDLE,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
+ fGGX2DescriptorImageInfo:=TVkDescriptorImageInfo.Create(aSampler,VK_NULL_HANDLE,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+ fCharlie2DescriptorImageInfo:=TVkDescriptorImageInfo.Create(aSampler,VK_NULL_HANDLE,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+ fLambertian2DescriptorImageInfo:=TVkDescriptorImageInfo.Create(aSampler,VK_NULL_HANDLE,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
  fPointerToGGXDescriptorImageInfo:=@fGGXDescriptorImageInfo;
  fPointerToCharlieDescriptorImageInfo:=@fCharlieDescriptorImageInfo;
  fPointerToLambertianDescriptorImageInfo:=@fLambertianDescriptorImageInfo;
+
+ fPointerToGGX2DescriptorImageInfo:=@fGGX2DescriptorImageInfo;
+ fPointerToCharlie2DescriptorImageInfo:=@fCharlie2DescriptorImageInfo;
+ fPointerToLambertian2DescriptorImageInfo:=@fLambertian2DescriptorImageInfo;
 
  fDirty:=true;
 
@@ -159,17 +182,44 @@ begin
  end;
 end;
 
+procedure TpvScene3DRendererIBLDescriptor.SetGGX2ImageView(const aGGX2ImageView:TVkImageView);
+begin
+ if fGGX2DescriptorImageInfo.ImageView<>aGGX2ImageView then begin
+  fGGX2DescriptorImageInfo.ImageView:=aGGX2ImageView;
+  fDirty:=true;
+ end;
+end;
+
+procedure TpvScene3DRendererIBLDescriptor.SetCharlie2ImageView(const aCharlie2ImageView:TVkImageView);
+begin
+ if fCharlie2DescriptorImageInfo.ImageView<>aCharlie2ImageView then begin
+  fCharlie2DescriptorImageInfo.ImageView:=aCharlie2ImageView;
+  fDirty:=true;
+ end;
+end;
+
+procedure TpvScene3DRendererIBLDescriptor.SetLambertian2ImageView(const aLambertian2ImageView:TVkImageView);
+begin
+ if fLambertian2DescriptorImageInfo.ImageView<>aLambertian2ImageView then begin
+  fLambertian2DescriptorImageInfo.ImageView:=aLambertian2ImageView;
+  fDirty:=true;
+ end;
+end;
+
 procedure TpvScene3DRendererIBLDescriptor.Update(const aInstant:Boolean=false);
 begin
  if fDirty then begin
   fDirty:=false;
   fDescriptorSet.WriteToDescriptorSet(fBinding,
                                       0,
-                                      3,
+                                      6,
                                       TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
                                       [fGGXDescriptorImageInfo,
                                        fCharlieDescriptorImageInfo,
-                                       fLambertianDescriptorImageInfo],
+                                       fLambertianDescriptorImageInfo,
+                                       fGGX2DescriptorImageInfo,
+                                       fCharlie2DescriptorImageInfo,
+                                       fLambertian2DescriptorImageInfo],
                                       [],
                                       [],
                                       aInstant);
@@ -189,6 +239,16 @@ begin
    SetGGXImageView(TpvScene3DRendererInstance(aRendererInstance).ImageBasedLightingReflectionProbeCubeMaps.GGXDescriptorImageInfos[aInFlightFrameIndex].imageView);
    SetCharlieImageView(TpvScene3DRendererInstance(aRendererInstance).ImageBasedLightingReflectionProbeCubeMaps.CharlieDescriptorImageInfos[aInFlightFrameIndex].imageView);
    SetLambertianImageView(TpvScene3DRendererInstance(aRendererInstance).ImageBasedLightingReflectionProbeCubeMaps.LambertianDescriptorImageInfos[aInFlightFrameIndex].imageView);
+  end else if assigned(TpvScene3DRendererInstance(aRendererInstance).Renderer) then begin
+   SetGGXImageView(TpvScene3DRendererInstance(aRendererInstance).Renderer.ImageBasedLightingEnvMapCubeMaps.GGXDescriptorImageInfo.imageView);
+   SetCharlieImageView(TpvScene3DRendererInstance(aRendererInstance).Renderer.ImageBasedLightingEnvMapCubeMaps.CharlieDescriptorImageInfo.imageView);
+   SetLambertianImageView(TpvScene3DRendererInstance(aRendererInstance).Renderer.ImageBasedLightingEnvMapCubeMaps.LambertianDescriptorImageInfo.imageView);
+  end;
+
+  if assigned(TpvScene3DRendererInstance(aRendererInstance).ImageBasedLightingReflectionProbeCubeMaps) then begin
+   SetGGX2ImageView(TpvScene3DRendererInstance(aRendererInstance).ImageBasedLightingReflectionProbeCubeMaps.GGXDescriptorImageInfos[aInFlightFrameIndex].imageView);
+   SetCharlie2ImageView(TpvScene3DRendererInstance(aRendererInstance).ImageBasedLightingReflectionProbeCubeMaps.CharlieDescriptorImageInfos[aInFlightFrameIndex].imageView);
+   SetLambertian2ImageView(TpvScene3DRendererInstance(aRendererInstance).ImageBasedLightingReflectionProbeCubeMaps.LambertianDescriptorImageInfos[aInFlightFrameIndex].imageView);
    exit;
   end;
 
@@ -200,9 +260,9 @@ begin
     if assigned(Atmosphere) and Atmosphere.IsInFlightFrameVisible(aInFlightFrameIndex) then begin
      AtmosphereRendererInstance:=Atmosphere.GetRenderInstance(TpvScene3DRendererInstance(aRendererInstance));
      if assigned(AtmosphereRendererInstance) then begin
-      SetGGXImageView(AtmosphereRendererInstance.GGXCubeMapTexture.VulkanImageView.Handle);
-      SetCharlieImageView(AtmosphereRendererInstance.CharlieCubeMapTexture.VulkanImageView.Handle);
-      SetLambertianImageView(AtmosphereRendererInstance.LambertianCubeMapTexture.VulkanImageView.Handle);
+      SetGGX2ImageView(AtmosphereRendererInstance.GGXCubeMapTexture.VulkanImageView.Handle);
+      SetCharlie2ImageView(AtmosphereRendererInstance.CharlieCubeMapTexture.VulkanImageView.Handle);
+      SetLambertian2ImageView(AtmosphereRendererInstance.LambertianCubeMapTexture.VulkanImageView.Handle);
       OK:=true;
       break;
      end;
@@ -216,9 +276,9 @@ begin
   end;
 
   if assigned(TpvScene3DRendererInstance(aRendererInstance).Renderer) then begin
-   SetGGXImageView(TpvScene3DRendererInstance(aRendererInstance).Renderer.ImageBasedLightingEnvMapCubeMaps.GGXDescriptorImageInfo.imageView);
-   SetCharlieImageView(TpvScene3DRendererInstance(aRendererInstance).Renderer.ImageBasedLightingEnvMapCubeMaps.CharlieDescriptorImageInfo.imageView);
-   SetLambertianImageView(TpvScene3DRendererInstance(aRendererInstance).Renderer.ImageBasedLightingEnvMapCubeMaps.LambertianDescriptorImageInfo.imageView);
+   SetGGX2ImageView(TpvScene3DRendererInstance(aRendererInstance).Renderer.ImageBasedLightingEnvMapCubeMaps.GGXDescriptorImageInfo.imageView);
+   SetCharlie2ImageView(TpvScene3DRendererInstance(aRendererInstance).Renderer.ImageBasedLightingEnvMapCubeMaps.CharlieDescriptorImageInfo.imageView);
+   SetLambertian2ImageView(TpvScene3DRendererInstance(aRendererInstance).Renderer.ImageBasedLightingEnvMapCubeMaps.LambertianDescriptorImageInfo.imageView);
    exit;
   end;
 
