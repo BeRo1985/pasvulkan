@@ -79,6 +79,9 @@ uses SysUtils,
 type { TpvScene3DRendererCubeMapIBLFilter }
      TpvScene3DRendererCubeMapIBLFilter=class
       public
+       const GGX=0;
+             Charlie=1;
+             Lambertian=2;
        type TPushConstants=record
              MipMapLevel:TpvInt32;
              MaxMipMapLevel:TpvInt32;

@@ -229,6 +229,9 @@ type TpvScene3DAtmosphere=class;
               fGlobalDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
               fRaymarchingGraphicsPipeline:TpvVulkanGraphicsPipeline;
               fCubeMapMipMapGenerator:TpvScene3DRendererCubeMapMipMapGenerator;
+              fGGXCubeMapIBLFilter:TpvScene3DRendererCubeMapIBLFilter;
+              fCharlieCubeMapIBLFilter:TpvScene3DRendererCubeMapIBLFilter;
+              fLambertianCubeMapIBLFilter:TpvScene3DRendererCubeMapIBLFilter;
              public
               constructor Create(const aAtmosphere:TpvScene3DAtmosphere;const aRendererInstance:TObject);
               destructor Destroy; override;
