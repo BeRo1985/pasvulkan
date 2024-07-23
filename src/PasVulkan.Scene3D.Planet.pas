@@ -1498,6 +1498,7 @@ type TpvScene3DPlanets=class;
        fRendererViewInstanceHashMap:TRendererViewInstanceHashMap;
        fImageRowChanged:array[0..16384-1] of boolean; // 16k is overkill anyway, better too much than too less
        fImageRowBufferCopy:array[0..8192-1] of TVkBufferImageCopy; // 16k / 2, since contiguous rows are merged into one copy operation
+       fAtmosphere:TObject;
       private
        procedure GenerateMeshIndices(const aTiledMeshIndices:TpvScene3DPlanet.TMeshIndices;
                                      const aTiledMeshIndexGroups:TpvScene3DPlanet.TTiledMeshIndexGroups;
@@ -1591,6 +1592,7 @@ type TpvScene3DPlanets=class;
        property TiledPhysicsMeshIndices:TMeshIndices read fTiledPhysicsMeshIndices;
        property TiledPhysicsMeshIndexGroups:TTiledMeshIndexGroups read fTiledPhysicsMeshIndexGroups;
        property PerInFlightFrameTileLODLevels:TPerInFlightFrameTileLODLevels read fPerInFlightFrameTileLODLevels;
+       property Atmosphere:TObject read fAtmosphere write fAtmosphere;
        property RaytracingTiles:TRaytracingTiles read fRaytracingTiles;
        property RaytracingTileQueue:TRaytracingTiles read fRaytracingTileQueue;
        property RaytracingTileQueues:TRaytracingTileQueues read fRaytracingTileQueues;
@@ -1626,6 +1628,7 @@ implementation
 uses PasVulkan.Scene3D,
      PasVulkan.Scene3D.Renderer,
      PasVulkan.Scene3D.Renderer.Instance,
+     PasVulkan.Scene3D.Atmosphere,
      PasVulkan.VirtualFileSystem;
 
 type TVector3Array=TpvDynamicArray<TpvVector3>;
@@ -13211,6 +13214,8 @@ begin
  fScene3D:=aScene3D;
 
  fVulkanDevice:=TpvScene3D(fScene3D).VulkanDevice;
+
+ fAtmosphere:=nil;
 
  fHeightMapResolution:=RoundUpToPowerOfTwo(Min(Max(aHeightMapResolution,128),8192));
 
