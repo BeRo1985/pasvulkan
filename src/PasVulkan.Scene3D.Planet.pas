@@ -234,7 +234,7 @@ type TpvScene3DPlanets=class;
 //            fHeightMapBuffer:TpvVulkanBuffer;
 //            fNormalMapBuffer:TpvVulkanBuffer;
               fBlendMapImage:TpvScene3DRendererImage2D; // A2B10G10R10_UNORM_PACK32
-              fGrassMapImage:TpvScene3DRendererImage2D; // R32_FLOAR
+              fGrassMapImage:TpvScene3DRendererImage2D; // R32_FLOAT
               fGrassMapBuffer:TpvVulkanBuffer;
               fWaterHeightMapImage:TpvScene3DRendererImage2D; // R32_SFLOAT
               fWaterHeightMapBuffers:array[0..1] of TpvVulkanBuffer; // Double-buffered

@@ -259,6 +259,7 @@ void main(){
   vec4 occlusionRoughnessMetallic = vec4(0.0);
 
   {
+
     float weightSum = 0.0;
     [[unroll]] for(int layerIndex = 0; layerIndex < 4; layerIndex++){
       const float weight = layerMaterialWeights[layerIndex];
@@ -269,10 +270,40 @@ void main(){
         weightSum += weight;
       }
     }
-    float factor = 1.0 / max(1e-7, weightSum);
-    albedo *= factor;
-    normalHeight *= factor;
-    occlusionRoughnessMetallic *= factor;
+
+    float grass = clamp(texturePlanetOctahedralMap(uTextures[PLANET_TEXTURE_GRASSMAP], sphereNormal).x, 0.0, 1.0);
+    if(grass > 0.0){
+
+      {
+        float factor = 1.0 / max(1e-7, weightSum);
+        albedo *= factor;
+        normalHeight *= factor;
+        occlusionRoughnessMetallic *= factor;
+        weightSum *= factor;
+      } 
+
+      float f = pow(1.0 - grass, 16.0);     
+      albedo *= f;
+      normalHeight *= f;
+      occlusionRoughnessMetallic *= f;
+      weightSum *= f;
+ 
+      const float weight = grass;
+      const PlanetMaterial grassMaterial = layerMaterials[1];
+      albedo += multiplanarTexture(u2DTextures[(GetPlanetMaterialAlbedoTextureIndex(grassMaterial) << 1) | 1], GetPlanetMaterialScale(grassMaterial) * 10.0) * weight;
+      normalHeight += multiplanarTexture(u2DTextures[(GetPlanetMaterialNormalHeightTextureIndex(grassMaterial) << 1) | 0], GetPlanetMaterialScale(grassMaterial) * 10.0) * weight;
+      occlusionRoughnessMetallic += multiplanarTexture(u2DTextures[(GetPlanetMaterialOcclusionRoughnessMetallicTextureIndex(grassMaterial) << 1) | 0], GetPlanetMaterialScale(grassMaterial) * 10.0) * weight;
+      weightSum += weight;
+
+    }
+
+    {
+      float factor = 1.0 / max(1e-7, weightSum);
+      albedo *= factor;
+      normalHeight *= factor;
+      occlusionRoughnessMetallic *= factor;
+    } 
+
   }
 
   vec3 normal = normalize(mat3(workTangent, workBitangent, workNormal) * normalize(fma(normalHeight.xyz, vec3(2.0), vec3(-1.0))));
