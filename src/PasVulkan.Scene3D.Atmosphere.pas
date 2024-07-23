@@ -1388,11 +1388,35 @@ begin
  fCubeMapMipMapGenerator.AcquirePersistentResources;
  fCubeMapMipMapGenerator.AcquireVolatileResources;
 
+ fGGXCubeMapIBLFilter:=TpvScene3DRendererCubeMapIBLFilter.Create(TpvScene3D(fAtmosphere.fScene3D),TpvScene3DRendererInstance(fRendererInstance).Renderer,fCubeMapTexture,fGGXCubeMapTexture,TpvScene3DRendererCubeMapIBLFilter.GGX);
+ fGGXCubeMapIBLFilter.AcquirePersistentResources;
+ fGGXCubeMapIBLFilter.AcquireVolatileResources;
+
+ fCharlieCubeMapIBLFilter:=TpvScene3DRendererCubeMapIBLFilter.Create(TpvScene3D(fAtmosphere.fScene3D),TpvScene3DRendererInstance(fRendererInstance).Renderer,fCubeMapTexture,fCharlieCubeMapTexture,TpvScene3DRendererCubeMapIBLFilter.Charlie);
+ fCharlieCubeMapIBLFilter.AcquirePersistentResources;
+ fCharlieCubeMapIBLFilter.AcquireVolatileResources;
+
+ fLambertianCubeMapIBLFilter:=TpvScene3DRendererCubeMapIBLFilter.Create(TpvScene3D(fAtmosphere.fScene3D),TpvScene3DRendererInstance(fRendererInstance).Renderer,fCubeMapTexture,fLambertianCubeMapTexture,TpvScene3DRendererCubeMapIBLFilter.Lambertian);
+ fLambertianCubeMapIBLFilter.AcquirePersistentResources;
+ fLambertianCubeMapIBLFilter.AcquireVolatileResources;
+ 
 end;
 
 destructor TpvScene3DAtmosphere.TRendererInstance.Destroy;
 var InFlightFrameIndex:TpvSizeInt;
 begin
+
+ fLambertianCubeMapIBLFilter.ReleaseVolatileResources;
+ fLambertianCubeMapIBLFilter.ReleasePersistentResources;
+ FreeAndNil(fLambertianCubeMapIBLFilter);
+
+ fCharlieCubeMapIBLFilter.ReleaseVolatileResources;
+ fCharlieCubeMapIBLFilter.ReleasePersistentResources;
+ FreeAndNil(fCharlieCubeMapIBLFilter);
+
+ fGGXCubeMapIBLFilter.ReleaseVolatileResources;
+ fGGXCubeMapIBLFilter.ReleasePersistentResources;
+ FreeAndNil(fGGXCubeMapIBLFilter);
 
  fCubeMapMipMapGenerator.ReleaseVolatileResources;
  fCubeMapMipMapGenerator.ReleasePersistentResources;
@@ -2001,11 +2025,47 @@ begin
 
  begin
 
-  // Cube map mip ma generation pass
+  // Cube map mip map generation pass
 
   TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'TpvScene3DAtmosphere.CubeMapMipMapPass',[1.0,0.5,0.75,1.0]);
 
   fCubeMapMipMapGenerator.Execute(aCommandBuffer);
+
+  TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
+
+ end;
+
+ begin
+  
+  // GGX cube map IBL filter pass 
+
+  TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'TpvScene3DAtmosphere.GGXCubeMapIBLFilterPass',[0.5,1.0,0.75,1.0]);
+
+  fGGXCubeMapIBLFilter.Execute(aCommandBuffer);
+
+  TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
+
+ end;
+
+ begin
+
+  // Charlie cube map IBL filter pass 
+
+  TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'TpvScene3DAtmosphere.CharlieCubeMapIBLFilterPass',[0.5,0.75,1.0,1.0]);
+
+  fCharlieCubeMapIBLFilter.Execute(aCommandBuffer);
+
+  TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
+
+ end;
+
+ begin
+
+  // Lambertian cube map IBL filter pass 
+
+  TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'TpvScene3DAtmosphere.LambertianCubeMapIBLFilterPass',[0.75,1.0,0.5,1.0]);
+
+  fLambertianCubeMapIBLFilter.Execute(aCommandBuffer);
 
   TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
 
