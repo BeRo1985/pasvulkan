@@ -75,6 +75,7 @@ uses SysUtils,
      PasVulkan.Scene3D.Renderer.Globals,
      PasVulkan.Scene3D.Renderer,
      PasVulkan.Scene3D.Renderer.Instance,
+     PasVulkan.Scene3D.Renderer.IBLDescriptor,
      PasVulkan.Scene3D.Planet;
 
 type { TpvScene3DRendererPassesWaterRenderPass }
@@ -97,6 +98,7 @@ type { TpvScene3DRendererPassesWaterRenderPass }
        fPassVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fPassVulkanDescriptorPool:TpvVulkanDescriptorPool;
        fPassVulkanDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
+       fIBLDescriptors:array[0..MaxInFlightFrames-1] of TpvScene3DRendererIBLDescriptor;
        fVulkanPipelineLayout:TpvVulkanPipelineLayout;
        fPlanetWaterRenderPass:TpvScene3DPlanet.TWaterRenderPass;
        fMSAA:Boolean;
@@ -481,6 +483,10 @@ begin
                                                                       false);
   end;}
   fPassVulkanDescriptorSets[InFlightFrameIndex].Flush;
+  fIBLDescriptors[InFlightFrameIndex]:=TpvScene3DRendererIBLDescriptor.Create(fInstance.Renderer.VulkanDevice,
+                                                                              fPassVulkanDescriptorSets[InFlightFrameIndex],
+                                                                              2,
+                                                                              fInstance.Renderer.ClampedSampler.Handle);
  end;
 
  fVulkanPipelineLayout:=TpvVulkanPipelineLayout.Create(fInstance.Renderer.VulkanDevice);
@@ -517,6 +523,7 @@ begin
  FreeAndNil(fVulkanPipelineLayout);
  for Index:=0 to fInstance.Renderer.CountInFlightFrames-1 do begin
   FreeAndNil(fPassVulkanDescriptorSets[Index]);
+  FreeAndNil(fIBLDescriptors[Index]);
  end;
  FreeAndNil(fPassVulkanDescriptorPool);
  FreeAndNil(fPassVulkanDescriptorSetLayout);
@@ -583,6 +590,9 @@ begin
  InFlightFrameState:=@fInstance.InFlightFrameStates^[aInFlightFrameIndex];
 
  if InFlightFrameState^.Ready then begin
+
+  fIBLDescriptors[aInFlightFrameIndex].SetFrom(fInstance.Renderer.Scene3D,fInstance,aInFlightFrameIndex);
+  fIBLDescriptors[aInFlightFrameIndex].Update(true);
 
   fPlanetWaterRenderPass.Draw(aInFlightFrameIndex,
                               aFrameIndex,
