@@ -74,6 +74,7 @@ type { TpvScene3DRendererIBLDescriptor }
        fVulkanDevice:TpvVulkanDevice;
        fDescriptorSet:TpvVulkanDescriptorSet;
        fBinding:TpvVulkanSizeInt;
+       fSampler:TVkSampler;
        fGGXImageView:TpvVulkanImageView;
        fCharlieImageView:TpvVulkanImageView;
        fLambertianImageView:TpvVulkanImageView;
@@ -88,7 +89,7 @@ type { TpvScene3DRendererIBLDescriptor }
        procedure SetCharlieImageView(const aCharlieImageView:TpvVulkanImageView);
        procedure SetLambertianImageView(const aLambertianImageView:TpvVulkanImageView);
       public
-       constructor Create(const aVulkanDevice:TpvVulkanDevice;const aDescriptorSet:TpvVulkanDescriptorSet;const aBinding:TpvVulkanSizeInt); 
+       constructor Create(const aVulkanDevice:TpvVulkanDevice;const aDescriptorSet:TpvVulkanDescriptorSet;const aBinding:TpvVulkanSizeInt;const aSampler:TVkSampler);
        destructor Destroy; override;
        procedure Update(const aInstant:Boolean=false);
       public
@@ -105,7 +106,7 @@ type { TpvScene3DRendererIBLDescriptor }
 
 implementation
 
-constructor TpvScene3DRendererIBLDescriptor.Create(const aVulkanDevice:TpvVulkanDevice;const aDescriptorSet:TpvVulkanDescriptorSet;const aBinding:TpvVulkanSizeInt);
+constructor TpvScene3DRendererIBLDescriptor.Create(const aVulkanDevice:TpvVulkanDevice;const aDescriptorSet:TpvVulkanDescriptorSet;const aBinding:TpvVulkanSizeInt;const aSampler:TVkSampler);
 begin
  inherited Create;
  fVulkanDevice:=aVulkanDevice;
@@ -114,9 +115,9 @@ begin
  fGGXImageView:=VK_NULL_HANDLE;
  fCharlieImageView:=VK_NULL_HANDLE;
  fLambertianImageView:=VK_NULL_HANDLE;
- FillChar(fGGXImageDescriptor,SizeOf(TpvVulkanImageDescriptor),#0);
- FillChar(fCharlieImageDescriptor,SizeOf(TpvVulkanImageDescriptor),#0);
- FillChar(fLambertianImageDescriptor,SizeOf(TpvVulkanImageDescriptor),#0);
+ fGGXImageDescriptor:=TpvVulkanImageDescriptor.Create(aSampler,VK_NULL_HANDLE,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+ fCharlieImageDescriptor:=TpvVulkanImageDescriptor.Create(aSampler,VK_NULL_HANDLE,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+ fLambertianImageDescriptor:=TpvVulkanImageDescriptor.Create(aSampler,VK_NULL_HANDLE,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
  fPointerToGGXImageDescriptor:=@fGGXImageDescriptor;
  fPointerToCharlieImageDescriptor:=@fCharlieImageDescriptor;
  fPointerToLambertianImageDescriptor:=@fLambertianImageDescriptor;
@@ -159,7 +160,16 @@ procedure TpvScene3DRendererIBLDescriptor.Update(const aInstant:Boolean=false);
 begin
  if fDirty then begin
   fDirty:=false;
-  fDescriptorSet.WriteToDescriptorSet(0,fBinding,1,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,false,@fGGXImageDescriptor);
+  fDescriptorSet.WriteToDescriptorSet(fBinding,
+                                      0,
+                                      3,
+                                      TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                      [fGGXImageDescriptor,
+                                       fCharlieImageDescriptor,
+                                       fLambertianImageDescriptor],
+                                      [],
+                                      [],
+                                      aInstant);
  end;
 end;
 
