@@ -75,9 +75,6 @@ type { TpvScene3DRendererIBLDescriptor }
        fDescriptorSet:TpvVulkanDescriptorSet;
        fBinding:TpvSizeInt;
        fSampler:TVkSampler;
-       fGGXImageView:TVkImageView;
-       fCharlieImageView:TVkImageView;
-       fLambertianImageView:TVkImageView;
        fGGXDescriptorImageInfo:TVkDescriptorImageInfo;
        fCharlieDescriptorImageInfo:TVkDescriptorImageInfo;
        fLambertianDescriptorImageInfo:TVkDescriptorImageInfo;
@@ -96,9 +93,9 @@ type { TpvScene3DRendererIBLDescriptor }
        property VulkanDevice:TpvVulkanDevice read fVulkanDevice;
        property DescriptorSet:TpvVulkanDescriptorSet read fDescriptorSet;
        property Binding:TpvSizeInt read fBinding;
-       property GGXImageView:TVkImageView read fGGXImageView write SetGGXImageView;
-       property CharlieImageView:TVkImageView read fCharlieImageView write SetCharlieImageView;
-       property LambertianImageView:TVkImageView read fLambertianImageView write SetLambertianImageView; 
+       property GGXImageView:TVkImageView read fGGXDescriptorImageInfo.ImageView write SetGGXImageView;
+       property CharlieImageView:TVkImageView read fCharlieDescriptorImageInfo.ImageView write SetCharlieImageView;
+       property LambertianImageView:TVkImageView read fLambertianDescriptorImageInfo.ImageView write SetLambertianImageView;
        property GGXDescriptorImageInfo:PVkDescriptorImageInfo read fPointerToGGXDescriptorImageInfo;
        property CharlieDescriptorImageInfo:PVkDescriptorImageInfo read fPointerToCharlieDescriptorImageInfo;
        property LambertianDescriptorImageInfo:PVkDescriptorImageInfo read fPointerToLambertianDescriptorImageInfo;
@@ -109,19 +106,22 @@ implementation
 constructor TpvScene3DRendererIBLDescriptor.Create(const aVulkanDevice:TpvVulkanDevice;const aDescriptorSet:TpvVulkanDescriptorSet;const aBinding:TpvSizeInt;const aSampler:TVkSampler);
 begin
  inherited Create;
+
  fVulkanDevice:=aVulkanDevice;
  fDescriptorSet:=aDescriptorSet;
+
  fBinding:=aBinding;
- fGGXImageView:=VK_NULL_HANDLE;
- fCharlieImageView:=VK_NULL_HANDLE;
- fLambertianImageView:=VK_NULL_HANDLE;
+
  fGGXDescriptorImageInfo:=TVkDescriptorImageInfo.Create(aSampler,VK_NULL_HANDLE,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
  fCharlieDescriptorImageInfo:=TVkDescriptorImageInfo.Create(aSampler,VK_NULL_HANDLE,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
  fLambertianDescriptorImageInfo:=TVkDescriptorImageInfo.Create(aSampler,VK_NULL_HANDLE,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
  fPointerToGGXDescriptorImageInfo:=@fGGXDescriptorImageInfo;
  fPointerToCharlieDescriptorImageInfo:=@fCharlieDescriptorImageInfo;
  fPointerToLambertianDescriptorImageInfo:=@fLambertianDescriptorImageInfo;
+
  fDirty:=true;
+
 end;
 
 destructor TpvScene3DRendererIBLDescriptor.Destroy;
@@ -131,27 +131,24 @@ end;
 
 procedure TpvScene3DRendererIBLDescriptor.SetGGXImageView(const aGGXImageView:TVkImageView);
 begin
- if fGGXImageView<>aGGXImageView then begin
-  fGGXImageView:=aGGXImageView;
-  fGGXDescriptorImageInfo.ImageView:=fGGXImageView;
+ if fGGXDescriptorImageInfo.ImageView<>aGGXImageView then begin
+  fGGXDescriptorImageInfo.ImageView:=aGGXImageView;
   fDirty:=true;
  end;
 end;
 
 procedure TpvScene3DRendererIBLDescriptor.SetCharlieImageView(const aCharlieImageView:TVkImageView);
 begin
- if fCharlieImageView<>aCharlieImageView then begin
-  fCharlieImageView:=aCharlieImageView;
-  fCharlieDescriptorImageInfo.ImageView:=fCharlieImageView;
+ if fCharlieDescriptorImageInfo.ImageView<>aCharlieImageView then begin
+  fCharlieDescriptorImageInfo.ImageView:=aCharlieImageView;
   fDirty:=true;
  end;
 end;
 
 procedure TpvScene3DRendererIBLDescriptor.SetLambertianImageView(const aLambertianImageView:TVkImageView);
 begin
- if fLambertianImageView<>aLambertianImageView then begin
-  fLambertianImageView:=aLambertianImageView;
-  fLambertianDescriptorImageInfo.ImageView:=fLambertianImageView;
+ if fLambertianDescriptorImageInfo.ImageView<>aLambertianImageView then begin
+  fLambertianDescriptorImageInfo.ImageView:=aLambertianImageView;
   fDirty:=true;
  end;
 end;
