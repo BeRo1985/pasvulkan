@@ -5702,7 +5702,7 @@ begin
    OutputPAS.Add('');
    OutputPAS.AddStrings(AllCommandType);
    OutputPAS.Add('');
-   OutputPAS.Add('     PPVkNegotiateLayerStructType=^PVkNegotiateLayerStructType;');
+{  OutputPAS.Add('     PPVkNegotiateLayerStructType=^PVkNegotiateLayerStructType;');
    OutputPAS.Add('     PVkNegotiateLayerStructType=^TVkNegotiateLayerStructType;');
    OutputPAS.Add('     TVkNegotiateLayerStructType=');
    OutputPAS.Add('      (');
@@ -5719,7 +5719,7 @@ begin
    OutputPAS.Add('      pfnGetDeviceProcAddr:TvkGetDeviceProcAddr;');
    OutputPAS.Add('      pfnGetPhysicalDeviceProcAddr:TGetPhysicalDeviceProcAddr;');
    OutputPAS.Add('     end;');
-   OutputPAS.Add('');
+   OutputPAS.Add(''); //}
    OutputPAS.Add('     TVulkan=class');
    OutputPAS.Add('      private');
    OutputPAS.Add('       fCommands:TVulkanCommands;');
