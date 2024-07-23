@@ -112,6 +112,7 @@ type { TpvScene3DRendererPassesForwardRenderPass }
        fPassVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fPassVulkanDescriptorPool:TpvVulkanDescriptorPool;
        fPassVulkanDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
+       fIBLDescriptors:array[0..MaxInFlightFrames-1] of TpvScene3DRendererIBLDescriptor;
        fVulkanPipelineShaderStageMeshVertex:TpvVulkanPipelineShaderStage;
        fVulkanPipelineShaderStageMeshVelocityVertex:TpvVulkanPipelineShaderStage;
        fVulkanPipelineShaderStageMeshFragment:TpvVulkanPipelineShaderStage;
@@ -752,6 +753,10 @@ begin
                                                                      [],
                                                                      false);
   fPassVulkanDescriptorSets[InFlightFrameIndex].Flush;
+  fIBLDescriptors[InFlightFrameIndex]:=TpvScene3DRendererIBLDescriptor.Create(fInstance.Renderer.VulkanDevice,
+                                                                              fPassVulkanDescriptorSets[InFlightFrameIndex],
+                                                                              2,
+                                                                              fInstance.Renderer.ClampedSampler.Handle);
  end;
 
  fVulkanPipelineLayout:=TpvVulkanPipelineLayout.Create(fInstance.Renderer.VulkanDevice);
@@ -1186,6 +1191,9 @@ begin
  if InFlightFrameState^.Ready then begin
 
   fOnSetRenderPassResourcesDone:=false;
+
+  fIBLDescriptors[aInFlightFrameIndex].SetFrom(fInstance.Renderer.Scene3D,fInstance,aInFlightFrameIndex);
+  fIBLDescriptors[aInFlightFrameIndex].Update(true);
 
   if fInstance.Renderer.VelocityBufferNeeded then begin
    PreviousInFlightFrameIndex:=IfThen(aFrameIndex=0,aInFlightFrameIndex,FrameGraph.DrawPreviousInFlightFrameIndex);
