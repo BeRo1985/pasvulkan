@@ -179,6 +179,7 @@ end;
 procedure TpvScene3DRendererIBLDescriptor.SetFrom(const aScene3D,aRendererInstance:TObject;const aInFlightFrameIndex:TpvSizeInt);
 var Index:TpvSizeInt;
     Atmosphere:TpvScene3DAtmosphere;
+    AtmosphereRendererInstance:TpvScene3DAtmosphere.TRendererInstance;
 begin
 
  if assigned(aRendererInstance) then begin
@@ -194,9 +195,11 @@ begin
   try
    for Index:=0 to TpvScene3DAtmospheres(TpvScene3D(aScene3D).Atmospheres).Count-1 do begin
     Atmosphere:=TpvScene3DAtmospheres(TpvScene3D(aScene3D).Atmospheres).Items[Index];
-    if assigned(Atmosphere) and Atmosphere.Visible then begin
-//     Atmosphere.
+    if assigned(Atmosphere) and Atmosphere.IsInFlightFrameVisible(aInFlightFrameIndex) then begin
+     AtmosphereRendererInstance:=Atmosphere.GetRenderInstance(TpvScene3DRendererInstance(aRendererInstance));
+     if assigned(AtmosphereRendererInstance) then begin
 
+     end;
     end;
    end;
   finally

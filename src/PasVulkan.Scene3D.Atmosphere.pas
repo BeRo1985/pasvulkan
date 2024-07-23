@@ -294,6 +294,7 @@ type TpvScene3DAtmosphere=class;
                         const aTransferQueue:TpvVulkanQueue;
                         const aTransferCommandBuffer:TpvVulkanCommandBuffer;
                         const aTransferFence:TpvVulkanFence);
+       function IsInFlightFrameVisible(const aInFlightFrameIndex:TpvSizeInt):Boolean;
        function GetRenderInstance(const aRendererInstance:TObject):TpvScene3DAtmosphere.TRendererInstance;
        procedure Execute(const aInFlightFrameIndex:TpvSizeInt;
                          const aCommandBuffer:TpvVulkanCommandBuffer;
@@ -2269,6 +2270,11 @@ begin
 
  fInFlightFrameVisible[aInFlightFrameIndex]:=IsVisible;
  
+end;
+
+function TpvScene3DAtmosphere.IsInFlightFrameVisible(const aInFlightFrameIndex:TpvSizeInt):Boolean;
+begin
+ result:=fInFlightFrameVisible[aInFlightFrameIndex];
 end;
 
 function TpvScene3DAtmosphere.GetRenderInstance(const aRendererInstance:TObject):TpvScene3DAtmosphere.TRendererInstance;
