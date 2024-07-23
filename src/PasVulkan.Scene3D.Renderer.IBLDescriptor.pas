@@ -89,6 +89,7 @@ type { TpvScene3DRendererIBLDescriptor }
        constructor Create(const aVulkanDevice:TpvVulkanDevice;const aDescriptorSet:TpvVulkanDescriptorSet;const aBinding:TpvSizeInt;const aSampler:TVkSampler);
        destructor Destroy; override;
        procedure Update(const aInstant:Boolean=false);
+       procedure SetFrom(const aScene3D,aRendererInstance:TObject);
       public
        property VulkanDevice:TpvVulkanDevice read fVulkanDevice;
        property DescriptorSet:TpvVulkanDescriptorSet read fDescriptorSet;
@@ -102,6 +103,10 @@ type { TpvScene3DRendererIBLDescriptor }
      end; 
 
 implementation
+
+uses PasVulkan.Scene3D,
+     PasVulkan.Scene3D.Renderer,
+     PasVulkan.Scene3D.Renderer.Instance;
 
 constructor TpvScene3DRendererIBLDescriptor.Create(const aVulkanDevice:TpvVulkanDevice;const aDescriptorSet:TpvVulkanDescriptorSet;const aBinding:TpvSizeInt;const aSampler:TVkSampler);
 begin
@@ -168,6 +173,11 @@ begin
                                       [],
                                       aInstant);
  end;
+end;
+
+procedure TpvScene3DRendererIBLDescriptor.SetFrom(const aScene3D,aRendererInstance:TObject);
+begin
+
 end;
 
 end.
