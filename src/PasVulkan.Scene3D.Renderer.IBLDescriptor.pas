@@ -105,6 +105,7 @@ type { TpvScene3DRendererIBLDescriptor }
 implementation
 
 uses PasVulkan.Scene3D,
+     PasVulkan.Scene3D.Atmosphere,
      PasVulkan.Scene3D.Renderer,
      PasVulkan.Scene3D.Renderer.Instance;
 
@@ -176,6 +177,8 @@ begin
 end;
 
 procedure TpvScene3DRendererIBLDescriptor.SetFrom(const aScene3D,aRendererInstance:TObject;const aInFlightFrameIndex:TpvSizeInt);
+var Index:TpvSizeInt;
+    Atmosphere:TpvScene3DAtmosphere;
 begin
 
  if assigned(aRendererInstance) then begin
@@ -185,6 +188,19 @@ begin
    SetCharlieImageView(TpvScene3DRendererInstance(aRendererInstance).ImageBasedLightingReflectionProbeCubeMaps.CharlieDescriptorImageInfos[aInFlightFrameIndex].imageView);
    SetLambertianImageView(TpvScene3DRendererInstance(aRendererInstance).ImageBasedLightingReflectionProbeCubeMaps.LambertianDescriptorImageInfos[aInFlightFrameIndex].imageView);
    exit;
+  end;
+
+  TpvScene3DAtmospheres(TpvScene3D(aScene3D).Atmospheres).Lock.AcquireRead;
+  try
+   for Index:=0 to TpvScene3DAtmospheres(TpvScene3D(aScene3D).Atmospheres).Count-1 do begin
+    Atmosphere:=TpvScene3DAtmospheres(TpvScene3D(aScene3D).Atmospheres).Items[Index];
+    if assigned(Atmosphere) and Atmosphere.Visible then begin
+//     Atmosphere.
+
+    end;
+   end;
+  finally
+   TpvScene3DAtmospheres(TpvScene3D(aScene3D).Atmospheres).Lock.ReleaseRead;
   end;
 
   if assigned(TpvScene3DRendererInstance(aRendererInstance).Renderer) then begin
