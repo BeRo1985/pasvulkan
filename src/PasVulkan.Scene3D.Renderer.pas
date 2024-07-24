@@ -160,6 +160,7 @@ type TpvScene3DRenderer=class;
        fFastSky:boolean;
        fFastAerialPerspective:boolean;
        fAtmosphereBlueNoise:boolean;
+       fAtmosphereShadows:boolean;
        fUseDepthPrepass:boolean;
        fUseDemote:boolean;
        fUseNoDiscard:boolean;
@@ -247,6 +248,7 @@ type TpvScene3DRenderer=class;
        property FastSky:boolean read fFastSky write fFastSky;
        property FastAerialPerspective:boolean read fFastAerialPerspective write fFastAerialPerspective;
        property AtmosphereBlueNoise:boolean read fAtmosphereBlueNoise write fAtmosphereBlueNoise;
+       property AtmosphereShadows:boolean read fAtmosphereShadows write fAtmosphereShadows;
        property UseDepthPrepass:boolean read fUseDepthPrepass;
        property UseDemote:boolean read fUseDemote;
        property UseNoDiscard:boolean read fUseNoDiscard;
@@ -445,6 +447,7 @@ begin
  fFastSky:=true;
  fFastAerialPerspective:=true;
  fAtmosphereBlueNoise:=false;
+ fAtmosphereShadows:=false;
 
 end;
 
