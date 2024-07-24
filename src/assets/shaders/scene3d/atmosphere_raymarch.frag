@@ -203,7 +203,7 @@ void main() {
   vec3 sunDirection = normalize(getSunDirection(uAtmosphereParameters.atmosphereParameters));
 
 #ifdef SHADOWS
-  lightDirection = sunDirection;
+  lightDirection = -sunDirection;
 #endif
 
   bool depthIsZFar = depthBufferValue == GetZFarDepthValue(view.projectionMatrix);
