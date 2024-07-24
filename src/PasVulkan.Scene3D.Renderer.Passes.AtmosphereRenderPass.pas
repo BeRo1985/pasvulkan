@@ -213,7 +213,8 @@ begin
 end;
 
 procedure TpvScene3DRendererPassesAtmosphereRenderPass.AcquirePersistentResources;
-var Stream:TStream;
+var ShadowType:String;
+    Stream:TStream;
 begin
 
  inherited AcquirePersistentResources;
@@ -229,32 +230,48 @@ begin
   Stream.Free;
  end;
 
+ if fInstance.Renderer.RaytracingActive then begin
+  ShadowType:='shadows_raytracing_';
+ end else begin
+  case fInstance.Renderer.ShadowMode of
+   TpvScene3DRendererShadowMode.PCF,TpvScene3DRendererShadowMode.DPCF,TpvScene3DRendererShadowMode.PCSS:begin
+    ShadowType:='shadows_pcfpcss_';
+   end;
+   TpvScene3DRendererShadowMode.MSM:begin
+    ShadowType:='shadows_msm_';
+   end;
+   else begin
+    ShadowType:='';
+   end;
+  end;
+ end;
+
  if fDualBlendSupport then begin
   if fResourceDepth.CountArrayLayers>0 {fInstance.CountSurfaceViews>1} then begin
    if fInstance.Renderer.SurfaceSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
-    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('atmosphere_raymarch_dualblend_multiview_frag.spv');
+    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('atmosphere_raymarch_'+ShadowType+'dualblend_multiview_frag.spv');
    end else begin
-    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('atmosphere_raymarch_dualblend_multiview_msaa_frag.spv');
+    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('atmosphere_raymarch_'+ShadowType+'dualblend_multiview_msaa_frag.spv');
    end;
   end else begin
    if fInstance.Renderer.SurfaceSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
-    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('atmosphere_raymarch_dualblend_frag.spv');
+    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('atmosphere_raymarch_'+ShadowType+'dualblend_frag.spv');
    end else begin
-    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('atmosphere_raymarch_dualblend_msaa_frag.spv');
+    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('atmosphere_raymarch_'+ShadowType+'dualblend_msaa_frag.spv');
    end;
   end;
  end else begin
   if fResourceDepth.CountArrayLayers>0 {fInstance.CountSurfaceViews>1} then begin
    if fInstance.Renderer.SurfaceSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
-    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('atmosphere_raymarch_multiview_frag.spv');
+    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('atmosphere_raymarch_'+ShadowType+'multiview_frag.spv');
    end else begin
-    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('atmosphere_raymarch_multiview_msaa_frag.spv');
+    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('atmosphere_raymarch_'+ShadowType+'multiview_msaa_frag.spv');
    end;
   end else begin
    if fInstance.Renderer.SurfaceSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
-    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('atmosphere_raymarch_frag.spv');
+    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('atmosphere_raymarch_'+ShadowType+'frag.spv');
    end else begin
-    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('atmosphere_raymarch_msaa_frag.spv');
+    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('atmosphere_raymarch_'+ShadowType+'msaa_frag.spv');
    end;
   end;
  end;
