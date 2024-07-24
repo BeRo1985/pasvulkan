@@ -643,8 +643,38 @@ float getFastCascadedShadow(){
   }
 #endif
 
+  float shadow = 1.0;
+
   vec3 shadowUVW;
-  float shadow = doCascadedShadowMapShadow(NUM_SHADOW_CASCADES - 1, -lightDirection, shadowUVW);
+
+  // Find the first cascaded shadow map slice, which is responsible for the current fragment.
+  int cascadedShadowMapIndex = 0;
+  while(cascadedShadowMapIndex < NUM_SHADOW_CASCADES) {
+    shadow = doCascadedShadowMapShadow(cascadedShadowMapIndex, -lightDirection, shadowUVW);
+    if (shadow < 0.0){
+      // The current fragment is outside of the current cascaded shadow map slice, so try the next one.
+      cascadedShadowMapIndex++;
+    }else{
+      // The current fragment is inside of the current cascaded shadow map slice, so use it.
+      break;
+    }
+  }
+
+  if((cascadedShadowMapIndex + 1) < NUM_SHADOW_CASCADES){
+    // Calculate the factor by fading out the shadow map at the edges itself, with 20% corner threshold.
+    // This gives better results than fading by view depth, which is used often elsewhere, where each 
+    // cascaded shadow map slice has a different depth range.
+    vec3 edgeFactor = clamp((clamp(abs(shadowUVW), vec3(0.0), vec3(1.0)) - vec3(0.8)) * 5.0, vec3(0.0), vec3(1.0)); 
+    float factor = clamp(max(edgeFactor.x, max(edgeFactor.y, edgeFactor.z)) * 1.05, 0.0, 1.0); // 5% over the edgeFactor for reducing the shadow map transition artefacts at the cascaded shadow map slice borders.
+    if(factor > 0.0){
+      // The current fragment is inside of the current cascaded shadow map slice, but also inside of the next one.
+      // So fade between the two shadow map slices. But notice that nextShadow can also -1.0, when the current fragment
+      // is outside of the next cascaded shadow map slice. In this case we fade into the no shadow case for smooth
+      // shadow map transitions even at the whole cascaded shadow map slice border.
+      float nextShadow = doCascadedShadowMapShadow(cascadedShadowMapIndex + 1, -lightDirection, shadowUVW);
+      shadow = mix(shadow, (nextShadow < 0.0) ? 1.0 : nextShadow, factor); 
+    }
+  }
 
   if(shadow < 0.0){
     shadow = 1.0; // The current fragment is outside of the cascaded shadow map range, so use no shadow then instead.
