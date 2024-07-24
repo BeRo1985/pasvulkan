@@ -15,6 +15,8 @@
 #define MULTISCATAPPROX_ENABLED
 #undef SHADOWS_ENABLED
 
+#include "globaldescriptorset.glsl"
+
 #include "atmosphere_common.glsl"
 
 layout(location = 0) in vec2 inTexCoord;
@@ -37,46 +39,6 @@ layout(push_constant, std140) uniform PushConstants {
   uint flags;
 } pushConstants;
 
-#ifdef MSAA
-
-#ifdef MULTIVIEW
-layout(set = 0, binding = 0) uniform texture2DMSArray uDepthTexture;
-#else
-layout(set = 0, binding = 0) uniform texture2DMS uDepthTexture;
-#endif
-
-#else
-
-#ifdef MULTIVIEW
-layout(set = 0, binding = 0) uniform texture2DArray uDepthTexture; 
-#else
-layout(set = 0, binding = 0) uniform texture2D uDepthTexture;
-#endif
-
-#endif
-
-/*
-#ifdef MSAA
-layout(input_attachment_index = 0, set = 0, binding = 0) uniform subpassInputMS uSubpassDepth;
-#else  
-layout(input_attachment_index = 0, set = 0, binding = 0) uniform subpassInput uSubpassDepth;
-#endif
-*/
-
-layout(set = 0, binding = 1) uniform sampler2D uTransmittanceLutTexture;
-
-layout(set = 0, binding = 2) uniform sampler2DArray uMultiScatTexture;
-
-layout(set = 0, binding = 3) uniform sampler2DArray uSkyViewLUT;
-
-layout(set = 0, binding = 4) uniform sampler2DArray uCameraVolume;
-
-layout(set = 0, binding = 5, std430) buffer AtmosphereParametersBuffer {
-  AtmosphereParameters atmosphereParameters;
-} uAtmosphereParameters;
-
-layout(set = 0, binding = 6) uniform sampler2D uBlueNoise;
-
 struct View {
   mat4 viewMatrix;
   mat4 projectionMatrix;
@@ -87,6 +49,46 @@ struct View {
 layout(set = 1, binding = 0, std140) uniform uboViews {
   View views[256]; // 65536 / (64 * 4) = 256
 } uView;
+
+#ifdef MSAA
+
+#ifdef MULTIVIEW
+layout(set = 2, binding = 0) uniform texture2DMSArray uDepthTexture;
+#else
+layout(set = 2, binding = 0) uniform texture2DMS uDepthTexture;
+#endif
+
+#else
+
+#ifdef MULTIVIEW
+layout(set = 2, binding = 0) uniform texture2DArray uDepthTexture; 
+#else
+layout(set = 2, binding = 0) uniform texture2D uDepthTexture;
+#endif
+
+#endif
+
+/*
+#ifdef MSAA
+layout(input_attachment_index = 0, set = 2, binding = 0) uniform subpassInputMS uSubpassDepth;
+#else  
+layout(input_attachment_index = 0, set = 2, binding = 0) uniform subpassInput uSubpassDepth;
+#endif
+*/
+
+layout(set = 2, binding = 1) uniform sampler2D uTransmittanceLutTexture;
+
+layout(set = 2, binding = 2) uniform sampler2DArray uMultiScatTexture;
+
+layout(set = 2, binding = 3) uniform sampler2DArray uSkyViewLUT;
+
+layout(set = 2, binding = 4) uniform sampler2DArray uCameraVolume;
+
+layout(set = 2, binding = 5) uniform sampler2D uBlueNoise;
+
+layout(set = 2, binding = 6, std430) buffer AtmosphereParametersBuffer {
+  AtmosphereParameters atmosphereParameters;
+} uAtmosphereParameters;
 
 AtmosphereParameters atmosphereParameters;
  

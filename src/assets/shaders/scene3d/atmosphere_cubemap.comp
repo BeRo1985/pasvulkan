@@ -15,6 +15,8 @@ layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
 #define MULTISCATAPPROX_ENABLED
 #undef SHADOWS_ENABLED
 
+#include "globaldescriptorset.glsl"
+
 #include "atmosphere_common.glsl"
 
 // Push constants
@@ -23,13 +25,24 @@ layout(push_constant, std140) uniform PushConstants {
   vec4 upVector; 
 } pushConstants;
 
-layout(set = 0, binding = 0, rgba32f) uniform imageCube uDestinationTexture;
+struct View {
+  mat4 viewMatrix;
+  mat4 projectionMatrix;
+  mat4 inverseViewMatrix;
+  mat4 inverseProjectionMatrix;
+};
 
-layout(set = 0, binding = 1) uniform sampler2D uTransmittanceLutTexture;
+layout(set = 1, binding = 0, std140) uniform uboViews {
+  View views[256]; // 65536 / (64 * 4) = 256
+} uView;
 
-layout(set = 0, binding = 2) uniform sampler2DArray uMultiScatTexture;
+layout(set = 2, binding = 0, rgba32f) uniform imageCube uDestinationTexture;
 
-layout(set = 0, binding = 3, std430) buffer AtmosphereParametersBuffer {
+layout(set = 2, binding = 1) uniform sampler2D uTransmittanceLutTexture;
+
+layout(set = 2, binding = 2) uniform sampler2DArray uMultiScatTexture;
+
+layout(set = 2, binding = 3, std430) buffer AtmosphereParametersBuffer {
   AtmosphereParameters atmosphereParameters;
 } uAtmosphereParameters;
 

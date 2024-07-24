@@ -13,6 +13,8 @@ layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
 #undef MULTISCATAPPROX_ENABLED
 #undef SHADOWS_ENABLED
 
+#include "globaldescriptorset.glsl"
+
 #include "atmosphere_common.glsl"
 
 // Push constants
@@ -23,12 +25,6 @@ layout(push_constant, std140) uniform PushConstants {
   int dummy1;
 } pushConstants;
 
-layout(set = 0, binding = 0, rgba32f) uniform image2D uDestinationTexture;
- 
-layout(set = 0, binding = 1, std430) buffer AtmosphereParametersBuffer {
-  AtmosphereParameters atmosphereParameters;
-} uAtmosphereParameters;
-
 struct View {
   mat4 viewMatrix;
   mat4 projectionMatrix;
@@ -38,7 +34,13 @@ struct View {
 
 layout(set = 1, binding = 0, std140) uniform uboViews {
   View views[256]; // 65536 / (64 * 4) = 256
-} uView;
+} uView; 
+
+layout(set = 2, binding = 0, rgba32f) uniform image2D uDestinationTexture;
+ 
+layout(set = 2, binding = 1, std430) buffer AtmosphereParametersBuffer {
+  AtmosphereParameters atmosphereParameters;
+} uAtmosphereParameters;
 
 AtmosphereParameters atmosphereParameters;
 
