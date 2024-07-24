@@ -369,7 +369,7 @@ float getShadow(in AtmosphereParameters Atmosphere, vec3 p){
     p = (Atmosphere.transform * vec4(p, 1.0)).xyz;
     inWorldSpacePosition = p;
     workNormal = normalize(p);
-    return getCascadedShadow();
+    return getFastCascadedShadow();
   }else{
     return 1.0;
   }

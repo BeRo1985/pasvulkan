@@ -534,7 +534,9 @@ vec4 shadowCascadeVisualizationColor(){
 }
 
 #ifdef SPECIAL_SHADOWS
+
 vec3 lightDirection;
+
 float getCascadedShadow(){
 #if defined(RAYTRACING)
   vec3 rayOrigin = inWorldSpacePosition, rayNormal = workNormal;
@@ -617,6 +619,43 @@ float getCascadedShadow(){
   return clamp(shadow, 0.0, 1.0); // Clamp just for safety, should not be necessary, but don't hurt either.
 #endif // RAYTRACING
 } 
+
+
+float getFastCascadedShadow(){
+#if defined(RAYTRACING)
+  vec3 rayOrigin = inWorldSpacePosition, rayNormal = workNormal;
+  float rayOffset = 0.0;
+  return getRaytracedFastHardShadow(rayOrigin, rayNormal, normalize(-lightDirection), rayOffset, 10000000.0);
+#else
+#ifdef UseReceiverPlaneDepthBias
+  // Outside of doCascadedShadowMapShadow as an own loop, for the reason, that the partial derivative based
+  // computeReceiverPlaneDepthBias function can work correctly then, when all cascaded shadow map slice
+  // position are already known in advance, and always at any time and at any real current cascaded shadow 
+  // map slice. Because otherwise one can see dFdx/dFdy caused artefacts on cascaded shadow map border
+  // transitions.  
+  {
+    for(int cascadedShadowMapIndex = 0; cascadedShadowMapIndex < NUM_SHADOW_CASCADES; cascadedShadowMapIndex++){
+      vec3 worldSpacePosition = getOffsetedBiasedWorldPositionForShadowMapping(uCascadedShadowMaps.constantBiasNormalBiasSlopeBiasClamp[cascadedShadowMapIndex], -lightDirection);
+      vec4 shadowPosition = uCascadedShadowMaps.shadowMapMatrices[cascadedShadowMapIndex] * vec4(worldSpacePosition, 1.0);
+      shadowPosition = fma(shadowPosition / shadowPosition.w, vec2(0.5, 1.0).xxyy, vec2(0.5, 0.0).xxyy);
+      cascadedShadowMapPositions[cascadedShadowMapIndex] = shadowPosition;
+    }
+  }
+#endif
+
+  vec3 shadowUVW;
+  float shadow = doCascadedShadowMapShadow(NUM_SHADOW_CASCADES - 1, -lightDirection, shadowUVW);
+
+  if(shadow < 0.0){
+    shadow = 1.0; // The current fragment is outside of the cascaded shadow map range, so use no shadow then instead.
+  } 
+
+  return clamp(shadow, 0.0, 1.0); // Clamp just for safety, should not be necessary, but don't hurt either.
+
+#endif // RAYTRACING
+
+} 
+
 #endif // ATMOSPHERE_SHADOWS
 
 #endif // SHADOWS
