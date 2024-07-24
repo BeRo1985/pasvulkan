@@ -533,6 +533,92 @@ vec4 shadowCascadeVisualizationColor(){
          (vec4(0.125, 0.125, 0.0, 1.0) * weights.w);
 }
 
+#ifdef SPECIAL_SHADOWS
+vec3 lightDirection;
+float getCascadedShadow(){
+#if defined(RAYTRACING)
+  vec3 rayOrigin = inWorldSpacePosition, rayNormal = workNormal;
+  float rayOffset = 0.0;
+#ifdef RAYTRACED_SOFT_SHADOWS
+  if(true){
+    // Soft shadow
+    const int countSamples = 8;
+    vec3 lightNormal = normalize(-lightDirection);
+    vec3 lightTangent = normalize(cross(lightNormal, getPerpendicularVector(lightNormal)));
+    vec3 lightBitangent = cross(lightNormal, lightTangent);
+    float shadow = 0.0;
+    for(int i = 0; i < countSamples; i++){
+      vec2 sampleXY = (shadowDiscRotationMatrix * BlueNoise2DDisc[(i + int(shadowDiscRandomValues.y)) & BlueNoise2DDiscMask]) * 1e-2;
+      vec3 sampleDirection = normalize(lightNormal + (sampleXY.x * lightTangent) + (sampleXY.y * lightBitangent));
+      shadow += getRaytracedHardShadow(rayOrigin, rayNormal, sampleDirection, rayOffset, 10000000.0);
+    }
+    return shadow / float(countSamples);                    
+  }else{
+    // Hard shadow 
+    return getRaytracedHardShadow(rayOrigin, rayNormal, normalize(-lightDirection), rayOffset, 10000000.0);
+  }
+#else
+  return getRaytracedHardShadow(rayOrigin, rayNormal, normalize(-lightDirection), rayOffset, 10000000.0);
+#endif
+#else
+#ifdef UseReceiverPlaneDepthBias
+  // Outside of doCascadedShadowMapShadow as an own loop, for the reason, that the partial derivative based
+  // computeReceiverPlaneDepthBias function can work correctly then, when all cascaded shadow map slice
+  // position are already known in advance, and always at any time and at any real current cascaded shadow 
+  // map slice. Because otherwise one can see dFdx/dFdy caused artefacts on cascaded shadow map border
+  // transitions.  
+  {
+    for(int cascadedShadowMapIndex = 0; cascadedShadowMapIndex < NUM_SHADOW_CASCADES; cascadedShadowMapIndex++){
+      vec3 worldSpacePosition = getOffsetedBiasedWorldPositionForShadowMapping(uCascadedShadowMaps.constantBiasNormalBiasSlopeBiasClamp[cascadedShadowMapIndex], -lightDirection);
+      vec4 shadowPosition = uCascadedShadowMaps.shadowMapMatrices[cascadedShadowMapIndex] * vec4(worldSpacePosition, 1.0);
+      shadowPosition = fma(shadowPosition / shadowPosition.w, vec2(0.5, 1.0).xxyy, vec2(0.5, 0.0).xxyy);
+      cascadedShadowMapPositions[cascadedShadowMapIndex] = shadowPosition;
+    }
+  }
+#endif
+
+  float shadow = 1.0;
+
+  vec3 shadowUVW;
+
+  // Find the first cascaded shadow map slice, which is responsible for the current fragment.
+  int cascadedShadowMapIndex = 0;
+  while(cascadedShadowMapIndex < NUM_SHADOW_CASCADES) {
+    shadow = doCascadedShadowMapShadow(cascadedShadowMapIndex, -lightDirection, shadowUVW);
+    if (shadow < 0.0){
+      // The current fragment is outside of the current cascaded shadow map slice, so try the next one.
+      cascadedShadowMapIndex++;
+    }else{
+      // The current fragment is inside of the current cascaded shadow map slice, so use it.
+      break;
+    }
+  }
+
+  if((cascadedShadowMapIndex + 1) < NUM_SHADOW_CASCADES){
+    // Calculate the factor by fading out the shadow map at the edges itself, with 20% corner threshold.
+    // This gives better results than fading by view depth, which is used often elsewhere, where each 
+    // cascaded shadow map slice has a different depth range.
+    vec3 edgeFactor = clamp((clamp(abs(shadowUVW), vec3(0.0), vec3(1.0)) - vec3(0.8)) * 5.0, vec3(0.0), vec3(1.0)); 
+    float factor = clamp(max(edgeFactor.x, max(edgeFactor.y, edgeFactor.z)) * 1.05, 0.0, 1.0); // 5% over the edgeFactor for reducing the shadow map transition artefacts at the cascaded shadow map slice borders.
+    if(factor > 0.0){
+      // The current fragment is inside of the current cascaded shadow map slice, but also inside of the next one.
+      // So fade between the two shadow map slices. But notice that nextShadow can also -1.0, when the current fragment
+      // is outside of the next cascaded shadow map slice. In this case we fade into the no shadow case for smooth
+      // shadow map transitions even at the whole cascaded shadow map slice border.
+      float nextShadow = doCascadedShadowMapShadow(cascadedShadowMapIndex + 1, -lightDirection, shadowUVW);
+      shadow = mix(shadow, (nextShadow < 0.0) ? 1.0 : nextShadow, factor); 
+    }
+  }
+
+  if(shadow < 0.0){
+    shadow = 1.0; // The current fragment is outside of the cascaded shadow map range, so use no shadow then instead.
+  } 
+
+  return clamp(shadow, 0.0, 1.0); // Clamp just for safety, should not be necessary, but don't hurt either.
+#endif // RAYTRACING
+} 
+#endif // ATMOSPHERE_SHADOWS
+
 #endif // SHADOWS
 
 #endif // SHADOWS_GLSL

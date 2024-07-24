@@ -364,9 +364,14 @@ vec3 GetMultipleScattering(const in sampler2DArray MultiScatTexture, int viewInd
 }
 
 #ifdef SHADOWS_ENABLED
-float getShadow(in AtmosphereParameters Atmosphere, vec3 P){
-  // TODO
-  return 1.0;
+float getShadow(in AtmosphereParameters Atmosphere, vec3 p){
+  if((pushConstants.flags & FLAGS_SHADOWS) != 0u){
+    inWorldSpacePosition = p;
+    workNormal = normalize(p);
+    return getCascadedShadow();
+  }else{
+    return 1.0;
+  }
 }
 #endif
 

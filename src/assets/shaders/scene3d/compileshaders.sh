@@ -641,7 +641,31 @@ compileshaderarguments=(
   "-V atmosphere_raymarch.frag -DDUALBLEND -DMSAA -o ${tempPath}/atmosphere_raymarch_dualblend_msaa_frag.spv"
   "-V atmosphere_raymarch.frag -DDUALBLEND -DMULTIVIEW -o ${tempPath}/atmosphere_raymarch_dualblend_multiview_frag.spv"
   "-V atmosphere_raymarch.frag -DDUALBLEND -DMULTIVIEW -DMSAA -o ${tempPath}/atmosphere_raymarch_dualblend_multiview_msaa_frag.spv"
-
+  "-V atmosphere_raymarch.frag -DSHADOWS -DMSM -o ${tempPath}/atmosphere_raymarch_shadows_msm_frag.spv"
+  "-V atmosphere_raymarch.frag -DSHADOWS -DMSM -DMSAA -o ${tempPath}/atmosphere_raymarch_shadows_msm_msaa_frag.spv"
+  "-V atmosphere_raymarch.frag -DSHADOWS -DMSM -DMULTIVIEW -o ${tempPath}/atmosphere_raymarch_shadows_msm_multiview_frag.spv"
+  "-V atmosphere_raymarch.frag -DSHADOWS -DMSM -DMULTIVIEW -DMSAA -o ${tempPath}/atmosphere_raymarch_shadows_msm_multiview_msaa_frag.spv"
+  "-V atmosphere_raymarch.frag -DSHADOWS -DMSM -DDUALBLEND -o ${tempPath}/atmosphere_raymarch_shadows_msm_dualblend_frag.spv"
+  "-V atmosphere_raymarch.frag -DSHADOWS -DMSM -DDUALBLEND -DMSAA -o ${tempPath}/atmosphere_raymarch_shadows_msm_dualblend_msaa_frag.spv"
+  "-V atmosphere_raymarch.frag -DSHADOWS -DMSM -DDUALBLEND -DMULTIVIEW -o ${tempPath}/atmosphere_raymarch_shadows_msm_dualblend_multiview_frag.spv"
+  "-V atmosphere_raymarch.frag -DSHADOWS -DMSM -DDUALBLEND -DMULTIVIEW -DMSAA -o ${tempPath}/atmosphere_raymarch_shadows_msm_dualblend_multiview_msaa_frag.spv"
+  "-V atmosphere_raymarch.frag -DSHADOWS -DPCFPCSS -o ${tempPath}/atmosphere_raymarch_shadows_pcfpcss_frag.spv"
+  "-V atmosphere_raymarch.frag -DSHADOWS -DPCFPCSS -DMSAA -o ${tempPath}/atmosphere_raymarch_shadows_pcfpcss_msaa_frag.spv"
+  "-V atmosphere_raymarch.frag -DSHADOWS -DPCFPCSS -DMULTIVIEW -o ${tempPath}/atmosphere_raymarch_shadows_pcfpcss_multiview_frag.spv"
+  "-V atmosphere_raymarch.frag -DSHADOWS -DPCFPCSS -DMULTIVIEW -DMSAA -o ${tempPath}/atmosphere_raymarch_shadows_pcfpcss_multiview_msaa_frag.spv"
+  "-V atmosphere_raymarch.frag -DSHADOWS -DPCFPCSS -DDUALBLEND -o ${tempPath}/atmosphere_raymarch_shadows_pcfpcss_dualblend_frag.spv"
+  "-V atmosphere_raymarch.frag -DSHADOWS -DPCFPCSS -DDUALBLEND -DMSAA -o ${tempPath}/atmosphere_raymarch_shadows_pcfpcss_dualblend_msaa_frag.spv"
+  "-V atmosphere_raymarch.frag -DSHADOWS -DPCFPCSS -DDUALBLEND -DMULTIVIEW -o ${tempPath}/atmosphere_raymarch_shadows_pcfpcss_dualblend_multiview_frag.spv"
+  "-V atmosphere_raymarch.frag -DSHADOWS -DPCFPCSS -DDUALBLEND -DMULTIVIEW -DMSAA -o ${tempPath}/atmosphere_raymarch_shadows_pcfpcss_dualblend_multiview_msaa_frag.spv"
+  "-V atmosphere_raymarch.frag --target-env vulkan1.2 -DSHADOWS -DRAYTRACING -o ${tempPath}/atmosphere_raymarch_shadows_raytracing_frag.spv"
+  "-V atmosphere_raymarch.frag --target-env vulkan1.2 -DSHADOWS -DRAYTRACING -DMSAA -o ${tempPath}/atmosphere_raymarch_shadows_raytracing_msaa_frag.spv"
+  "-V atmosphere_raymarch.frag --target-env vulkan1.2 -DSHADOWS -DRAYTRACING -DMULTIVIEW -o ${tempPath}/atmosphere_raymarch_shadows_raytracing_multiview_frag.spv"
+  "-V atmosphere_raymarch.frag --target-env vulkan1.2 -DSHADOWS -DRAYTRACING -DMULTIVIEW -DMSAA -o ${tempPath}/atmosphere_raymarch_shadows_raytracing_multiview_msaa_frag.spv"
+  "-V atmosphere_raymarch.frag --target-env vulkan1.2 -DSHADOWS -DRAYTRACING -DDUALBLEND -o ${tempPath}/atmosphere_raymarch_shadows_raytracing_dualblend_frag.spv"
+  "-V atmosphere_raymarch.frag --target-env vulkan1.2 -DSHADOWS -DRAYTRACING -DDUALBLEND -DMSAA -o ${tempPath}/atmosphere_raymarch_shadows_raytracing_dualblend_msaa_frag.spv"
+  "-V atmosphere_raymarch.frag --target-env vulkan1.2 -DSHADOWS -DRAYTRACING -DDUALBLEND -DMULTIVIEW -o ${tempPath}/atmosphere_raymarch_shadows_raytracing_dualblend_multiview_frag.spv"
+  "-V atmosphere_raymarch.frag --target-env vulkan1.2 -DSHADOWS -DRAYTRACING -DDUALBLEND -DMULTIVIEW -DMSAA -o ${tempPath}/atmosphere_raymarch_shadows_raytracing_dualblend_multiview_msaa_frag.spv"
+  
 )
 
 #############################################

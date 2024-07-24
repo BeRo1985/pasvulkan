@@ -1,10 +1,18 @@
-#version 450 core
+#version 460 core
 
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_ARB_shading_language_420pack : enable
 #extension GL_GOOGLE_include_directive : enable
 #extension GL_EXT_multiview : enable
 #extension GL_EXT_samplerless_texture_functions : enable
+#extension GL_EXT_nonuniform_qualifier : enable
+#ifdef RAYTRACING
+  #extension GL_EXT_buffer_reference : enable
+  #define USE_BUFFER_REFERENCE
+  #define USE_MATERIAL_BUFFER_REFERENCE
+#endif
+
+#include "bufferreference_definitions.glsl"
 
 /* clang-format off */
 
@@ -13,9 +21,70 @@
 /* clang-format on */
 
 #define MULTISCATAPPROX_ENABLED
-#undef SHADOWS_ENABLED
+#ifdef SHADOWS
+ #define SHADOWS_ENABLED
+ #define NOTEXCOORDS
+#else
+ #undef SHADOWS_ENABLED
+#endif
+
+#define FLAGS_USE_FAST_SKY 1u
+#define FLAGS_USE_FAST_AERIAL_PERSPECTIVE 2u
+#define FLAGS_USE_BLUE_NOISE 4u
+#define FLAGS_SHADOWS 8u
+
+// Push constants
+layout(push_constant, std140) uniform PushConstants {
+  int baseViewIndex;
+  int countViews;
+  int frameIndex;
+  uint flags;
+} pushConstants;
 
 #include "globaldescriptorset.glsl"
+
+#define PI PII
+#include "math.glsl"
+#undef PI
+
+#ifdef SHADOWS
+#define SPECIAL_SHADOWS
+
+#if defined(RAYTRACING)
+  #include "raytracing.glsl"
+#endif
+
+#if 1 //!defined(RAYTRACING)
+#define NUM_SHADOW_CASCADES 4
+const uint SHADOWMAP_MODE_NONE = 1;
+const uint SHADOWMAP_MODE_PCF = 2;
+const uint SHADOWMAP_MODE_DPCF = 3;
+const uint SHADOWMAP_MODE_PCSS = 4;
+const uint SHADOWMAP_MODE_MSM = 5;
+
+#define inFrameIndex pushConstants.frameIndex
+
+layout(set = 2, binding = 7, std140) uniform uboCascadedShadowMaps {
+  mat4 shadowMapMatrices[NUM_SHADOW_CASCADES];
+  vec4 shadowMapSplitDepthsScales[NUM_SHADOW_CASCADES];
+  vec4 constantBiasNormalBiasSlopeBiasClamp[NUM_SHADOW_CASCADES];
+  uvec4 metaData; // x = type
+} uCascadedShadowMaps;
+
+layout(set = 2, binding = 8) uniform sampler2DArray uCascadedShadowMapTexture;
+
+#ifdef PCFPCSS
+
+// Yay! Binding Aliasing! :-)
+layout(set = 2, binding = 8) uniform sampler2DArrayShadow uCascadedShadowMapTextureShadow;
+
+#endif // PCFPCSS
+#endif // !RAYTRACING 
+
+vec3 inWorldSpacePosition, workNormal;
+#endif // SHADOWS
+
+#include "shadows.glsl"
 
 #include "atmosphere_common.glsl"
 
@@ -26,18 +95,6 @@ layout(location = 0) out vec4 outInscattering;
 #ifdef DUALBLEND
 layout(location = 1) out vec4 outTransmittance; // component-wise transmittance
 #endif
-
-#define FLAGS_USE_FAST_SKY 1u
-#define FLAGS_USE_FAST_AERIAL_PERSPECTIVE 2u
-#define FLAGS_USE_BLUE_NOISE 4u
-
-// Push constants
-layout(push_constant, std140) uniform PushConstants {
-  int baseViewIndex;
-  int countViews;
-  int frameIndex;
-  uint flags;
-} pushConstants;
 
 struct View {
   mat4 viewMatrix;
@@ -144,6 +201,10 @@ void main() {
 #endif
 
   vec3 sunDirection = normalize(getSunDirection(uAtmosphereParameters.atmosphereParameters));
+
+#ifdef SHADOWS
+  lightDirection = sunDirection;
+#endif
 
   bool depthIsZFar = depthBufferValue == GetZFarDepthValue(view.projectionMatrix);
 
