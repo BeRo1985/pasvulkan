@@ -84,6 +84,7 @@ type { TpvScene3DRendererPassesAtmosphereRenderPass }
       private
        fInstance:TpvScene3DRendererInstance;
        fVulkanRenderPass:TpvVulkanRenderPass;
+       fResourceCascadedShadowMap:TpvFrameGraph.TPass.TUsedImageResource;
        fResourceDepth:TpvFrameGraph.TPass.TUsedImageResource;
        fResourceOutput:TpvFrameGraph.TPass.TUsedImageResource;
        fResourceTransmittance:TpvFrameGraph.TPass.TUsedImageResource;
@@ -139,6 +140,12 @@ begin
                                        fInstance.CountSurfaceViews);
 
  fDualBlendSupport:=fInstance.Renderer.VulkanDevice.PhysicalDevice.Features.dualSrcBlend<>VK_FALSE;
+
+ fResourceCascadedShadowMap:=AddImageInput('resourcetype_cascadedshadowmap_data',
+                                           'resource_cascadedshadowmap_data_final',
+                                           VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                           []
+                                          );
 
  if fInstance.Renderer.SurfaceSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
 
@@ -507,6 +514,7 @@ begin
  TpvScene3DAtmospheres(fInstance.Scene3D.Atmospheres).Draw(aInFlightFrameIndex,
                                                            aCommandBuffer,
                                                            fResourceDepth.VulkanImageViews[aInFlightFrameIndex].Handle,
+                                                           fResourceCascadedShadowMap.VulkanImageViews[aInFlightFrameIndex].Handle,
                                                            fInstance);
 
 end;
