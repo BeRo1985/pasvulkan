@@ -3381,7 +3381,7 @@ type EpvScene3D=class(Exception);
                                        out aPrimitiveTopology:TpvScene3D.TPrimitiveTopology;
                                        out aFaceCullingMode:TpvScene3D.TFaceCullingMode); static;
       public
-       constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil;const aMetaResource:TpvMetaResource=nil;const aVulkanDevice:TpvVulkanDevice=nil;const aUseBufferDeviceAddress:boolean=true;const aCountInFlightFrames:TpvSizeInt=MaxInFlightFrames;const aVulkanPipelineCache:TpvVulkanPipelineCache=nil;const aVirtualReality:TpvVirtualReality=nil); reintroduce;
+       constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil;const aMetaResource:TpvMetaResource=nil;const aVulkanDevice:TpvVulkanDevice=nil;const aUseBufferDeviceAddress:boolean=true;const aCountInFlightFrames:TpvSizeInt=MaxInFlightFrames;const aVulkanPipelineCache:TpvVulkanPipelineCache=nil;const aVirtualReality:TpvVirtualReality=nil;const aRaytracing:Boolean=false); reintroduce;
        destructor Destroy; override;
        procedure Initialize;
        procedure AddToFreeQueue(const aObject:TObject;const aFrameDelay:TpvInt32=-1);
@@ -21586,7 +21586,7 @@ end;
 
 { TpvScene3D }
 
-constructor TpvScene3D.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource;const aMetaResource:TpvMetaResource;const aVulkanDevice:TpvVulkanDevice;const aUseBufferDeviceAddress:boolean;const aCountInFlightFrames:TpvSizeInt;const aVulkanPipelineCache:TpvVulkanPipelineCache;const aVirtualReality:TpvVirtualReality);
+constructor TpvScene3D.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource;const aMetaResource:TpvMetaResource;const aVulkanDevice:TpvVulkanDevice;const aUseBufferDeviceAddress:boolean;const aCountInFlightFrames:TpvSizeInt;const aVulkanPipelineCache:TpvVulkanPipelineCache;const aVirtualReality:TpvVirtualReality;const aRaytracing:Boolean);
 var Index,InFlightFrameIndex,RenderPassIndex,Count:TpvSizeInt;
     MaterialAlphaMode:TpvScene3D.TMaterial.TAlphaMode;
     PrimitiveTopology:TPrimitiveTopology;
@@ -21665,7 +21665,7 @@ begin
                              (fVulkanDevice.RayTracingPipelineFeaturesKHR.rayTracingPipeline<>VK_FALSE) and
                              (fVulkanDevice.RayQueryFeaturesKHR.rayQuery<>VK_FALSE);
 
- fRaytracingActive:=fHardwareRaytracingSupport;
+ fRaytracingActive:=fHardwareRaytracingSupport and aRaytracing;
 
  if fRaytracingActive then begin
   fAccelerationStructureInputBufferUsageFlags:=TVkBufferUsageFlags(VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR) or
