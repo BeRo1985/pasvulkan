@@ -13202,6 +13202,7 @@ var SizeVRAM,SizeRAM:TpvUInt64;
 begin
 
  WriteLine('- Group "'+fName+'"');
+ WriteLine('');
 
  SizeVRAM:=0;
  SizeRAM:=fVertices.Count*SizeOf(TVertex);
@@ -17959,6 +17960,7 @@ begin
  GroupName:=fGroup.fName;
  
  WriteLine('- Group Instance of Group "'+GroupName+'"');
+ WriteLine('');
 
  SizeVRAM:=fVulkanVertexBufferCount*(SizeOf(TGPUDynamicVertex)+SizeOf(TGPUStaticVertex)+SizeOf(TGPUCachedVertex)+SizeOf(TGPUCachedRaytracingVertex));
  SizeRAM:=fVulkanVertexBufferCount*SizeOf(TVertex);
