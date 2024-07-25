@@ -23369,8 +23369,8 @@ begin
   fGroupInstanceListLock.Release;
  end;
 
- aStringList.Add(' VRAM total size: '+ToSize(aTotalSizeVRAM));
- aStringList.Add('  RAM total size: '+ToSize(aTotalSizeRAM));
+ aStringList.Add(' VRAM total size: '+ToSize(TotalSizeVRAM));
+ aStringList.Add('  RAM total size: '+ToSize(TotalSizeRAM));
 
 end;
 
