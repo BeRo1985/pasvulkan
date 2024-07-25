@@ -11585,6 +11585,7 @@ var Index,
     t1t0,t2t0:TpvVector2;
     t0,t1,t2:PpvVector2;
     TangentSpaceMatrix:TpvMatrix3x3;
+    TempTangentSpaceMatrices:TpvMatrix3x3DynamicArray;
     TangentSpaceQuaternion:TpvQuaternion;
     Vertex:PVertex;
     Area:TPasGLTFFloat;
@@ -11649,582 +11650,244 @@ begin
      DestinationMeshPrimitiveVertices:=nil;
      try
 
-      DestinationMeshPrimitiveIndices:=nil;
+      TempTangentSpaceMatrices:=nil;
       try
 
-       SourceMeshPrimitive:=aSourceMesh.Primitives.Items[PrimitiveIndex];
-
-       DestinationMeshPrimitive:=TMesh.TPrimitive.Create(self);
-       DestinationMeshPrimitive.fPrimitiveIndex:=fPrimitives.Add(DestinationMeshPrimitive);
-
-       fGroup.fSceneInstance.fMaterialListLock.Acquire;
+       DestinationMeshPrimitiveIndices:=nil;
        try
-        if (SourceMeshPrimitive.Material>=0) and (SourceMeshPrimitive.Material<aMaterialMap.Count) then begin
-         DestinationMeshPrimitive.fMaterialID:=SourceMeshPrimitive.Material;
-         DestinationMeshPrimitive.fMaterial:=aMaterialMap[SourceMeshPrimitive.Material];
-         if assigned(DestinationMeshPrimitive.fMaterial) then begin
-          DestinationMeshPrimitive.fMaterial.IncRef;
-         end;
-        end else begin
-         DestinationMeshPrimitive.fMaterialID:=-1;
-         DestinationMeshPrimitive.fMaterial:=fGroup.fSceneInstance.fEmptyMaterial;
-        end;
-       finally
-        fGroup.fSceneInstance.fMaterialListLock.Release;
-       end;
 
-       HasJoints:=false;
+        SourceMeshPrimitive:=aSourceMesh.Primitives.Items[PrimitiveIndex];
 
-       CountJointBlocks:=0;
+        DestinationMeshPrimitive:=TMesh.TPrimitive.Create(self);
+        DestinationMeshPrimitive.fPrimitiveIndex:=fPrimitives.Add(DestinationMeshPrimitive);
 
-       begin
-        // Load accessor data
-        begin
-         AccessorIndex:=SourceMeshPrimitive.Attributes['POSITION'];
-         if AccessorIndex>=0 then begin
-          TemporaryPositions:=aSourceDocument.Accessors[AccessorIndex].DecodeAsVector3Array(true);
+        fGroup.fSceneInstance.fMaterialListLock.Acquire;
+        try
+         if (SourceMeshPrimitive.Material>=0) and (SourceMeshPrimitive.Material<aMaterialMap.Count) then begin
+          DestinationMeshPrimitive.fMaterialID:=SourceMeshPrimitive.Material;
+          DestinationMeshPrimitive.fMaterial:=aMaterialMap[SourceMeshPrimitive.Material];
+          if assigned(DestinationMeshPrimitive.fMaterial) then begin
+           DestinationMeshPrimitive.fMaterial.IncRef;
+          end;
          end else begin
-          raise EPasGLTF.Create('Missing position data');
+          DestinationMeshPrimitive.fMaterialID:=-1;
+          DestinationMeshPrimitive.fMaterial:=fGroup.fSceneInstance.fEmptyMaterial;
          end;
+        finally
+         fGroup.fSceneInstance.fMaterialListLock.Release;
         end;
+
+        HasJoints:=false;
+
+        CountJointBlocks:=0;
+
         begin
-         AccessorIndex:=SourceMeshPrimitive.Attributes['NORMAL'];
-         if AccessorIndex>=0 then begin
-          TemporaryNormals:=aSourceDocument.Accessors[AccessorIndex].DecodeAsVector3Array(true);
-         end else begin
-          TemporaryNormals:=nil;
-         end;
-        end;
-        begin
-         AccessorIndex:=SourceMeshPrimitive.Attributes['TANGENT'];
-         if AccessorIndex>=0 then begin
-          TemporaryTangents:=aSourceDocument.Accessors[AccessorIndex].DecodeAsVector4Array(true);
-         end else begin
-          TemporaryTangents:=nil;
-         end;
-        end;
-        begin
-         AccessorIndex:=SourceMeshPrimitive.Attributes['TEXCOORD_0'];
-         if AccessorIndex>=0 then begin
-          TemporaryTexCoord0:=aSourceDocument.Accessors[AccessorIndex].DecodeAsVector2Array(true);
-         end else begin
-          TemporaryTexCoord0:=nil;
-         end;
-        end;
-        begin
-         AccessorIndex:=SourceMeshPrimitive.Attributes['TEXCOORD_1'];
-         if AccessorIndex>=0 then begin
-          TemporaryTexCoord1:=aSourceDocument.Accessors[AccessorIndex].DecodeAsVector2Array(true);
-         end else begin
-          TemporaryTexCoord1:=nil;
-         end;
-        end;
-        begin
-         AccessorIndex:=SourceMeshPrimitive.Attributes['COLOR_0'];
-         if AccessorIndex>=0 then begin
-          TemporaryColor0:=aSourceDocument.Accessors[AccessorIndex].DecodeAsColorArray(true);
-         end else begin
-          TemporaryColor0:=nil;
-         end;
-        end;
-        for JointBlockIndex:=0 to 9 do begin
+         // Load accessor data
          begin
-          AccessorIndex:=SourceMeshPrimitive.Attributes['JOINTS_'+IntToStr(JointBlockIndex)];
+          AccessorIndex:=SourceMeshPrimitive.Attributes['POSITION'];
           if AccessorIndex>=0 then begin
-           TemporaryJoints[JointBlockIndex]:=aSourceDocument.Accessors[AccessorIndex].DecodeAsUInt32Vector4Array(true);
-           HasJoints:=true;
-           CountJointBlocks:=Max(CountJointBlocks,JointBlockIndex+1);
+           TemporaryPositions:=aSourceDocument.Accessors[AccessorIndex].DecodeAsVector3Array(true);
           end else begin
-           TemporaryJoints[JointBlockIndex]:=nil;
+           raise EPasGLTF.Create('Missing position data');
           end;
          end;
          begin
-          AccessorIndex:=SourceMeshPrimitive.Attributes['WEIGHTS_'+IntToStr(JointBlockIndex)];
+          AccessorIndex:=SourceMeshPrimitive.Attributes['NORMAL'];
           if AccessorIndex>=0 then begin
-           TemporaryWeights[JointBlockIndex]:=aSourceDocument.Accessors[AccessorIndex].DecodeAsVector4Array(true);
-           HasJoints:=true;
-           CountJointBlocks:=Max(CountJointBlocks,JointBlockIndex+1);
+           TemporaryNormals:=aSourceDocument.Accessors[AccessorIndex].DecodeAsVector3Array(true);
           end else begin
-           TemporaryWeights[JointBlockIndex]:=nil;
+           TemporaryNormals:=nil;
           end;
          end;
-        end;
-       end;
-
-       begin
-        // load or generate vertex indices
-        if SourceMeshPrimitive.Indices>=0 then begin
-         TemporaryLoadedIndices:=aSourceDocument.Accessors[SourceMeshPrimitive.Indices].DecodeAsUInt32Array(false);
-        end else begin
-         SetLength(TemporaryLoadedIndices,length(TemporaryPositions));
-         for IndexIndex:=0 to length(TemporaryLoadedIndices)-1 do begin
-          TemporaryLoadedIndices[IndexIndex]:=IndexIndex;
-         end;
-        end;
-        // Convert loops, strips and fans to pure list variants
-        case SourceMeshPrimitive.Mode of
-         TPasGLTF.TMesh.TPrimitive.TMode.Points:begin
-          SourceMeshPrimitiveMode:=TPasGLTF.TMesh.TPrimitive.TMode.Points;
-          TemporaryIndices:=TemporaryLoadedIndices;
-          TemporaryTriangleIndices:=nil;
-         end;
-         TPasGLTF.TMesh.TPrimitive.TMode.Lines:begin
-          SourceMeshPrimitiveMode:=TPasGLTF.TMesh.TPrimitive.TMode.Lines;
-          TemporaryIndices:=TemporaryLoadedIndices;
-          TemporaryTriangleIndices:=nil;
-         end;
-         TPasGLTF.TMesh.TPrimitive.TMode.LineLoop:begin
-          SourceMeshPrimitiveMode:=TPasGLTF.TMesh.TPrimitive.TMode.Lines;
-          TemporaryIndices:=nil;
-          SetLength(TemporaryIndices,length(TemporaryLoadedIndices)*2);
-          for IndexIndex:=0 to length(TemporaryLoadedIndices)-2 do begin
-           TemporaryIndices[(IndexIndex*2)+0]:=TemporaryLoadedIndices[IndexIndex+0];
-           TemporaryIndices[(IndexIndex*2)+1]:=TemporaryLoadedIndices[IndexIndex+1];
+         begin
+          AccessorIndex:=SourceMeshPrimitive.Attributes['TANGENT'];
+          if AccessorIndex>=0 then begin
+           TemporaryTangents:=aSourceDocument.Accessors[AccessorIndex].DecodeAsVector4Array(true);
+          end else begin
+           TemporaryTangents:=nil;
           end;
-          if length(TemporaryLoadedIndices)>0 then begin
-           TemporaryIndices[((length(TemporaryLoadedIndices)-1)*2)+0]:=TemporaryLoadedIndices[length(TemporaryLoadedIndices)-1];
-           TemporaryIndices[((length(TemporaryLoadedIndices)-1)*2)+1]:=0;
+         end;
+         begin
+          AccessorIndex:=SourceMeshPrimitive.Attributes['TEXCOORD_0'];
+          if AccessorIndex>=0 then begin
+           TemporaryTexCoord0:=aSourceDocument.Accessors[AccessorIndex].DecodeAsVector2Array(true);
+          end else begin
+           TemporaryTexCoord0:=nil;
           end;
-          TemporaryTriangleIndices:=nil;
          end;
-         TPasGLTF.TMesh.TPrimitive.TMode.LineStrip:begin
-          SourceMeshPrimitiveMode:=TPasGLTF.TMesh.TPrimitive.TMode.Lines;
-          TemporaryIndices:=nil;
-          SetLength(TemporaryIndices,(length(TemporaryLoadedIndices)-1)*2);
-          for IndexIndex:=0 to length(TemporaryLoadedIndices)-2 do begin
-           TemporaryIndices[(IndexIndex*2)+0]:=TemporaryLoadedIndices[IndexIndex+0];
-           TemporaryIndices[(IndexIndex*2)+1]:=TemporaryLoadedIndices[IndexIndex+1];
+         begin
+          AccessorIndex:=SourceMeshPrimitive.Attributes['TEXCOORD_1'];
+          if AccessorIndex>=0 then begin
+           TemporaryTexCoord1:=aSourceDocument.Accessors[AccessorIndex].DecodeAsVector2Array(true);
+          end else begin
+           TemporaryTexCoord1:=nil;
           end;
-          TemporaryTriangleIndices:=nil;
          end;
-         TPasGLTF.TMesh.TPrimitive.TMode.Triangles:begin
-          SourceMeshPrimitiveMode:=TPasGLTF.TMesh.TPrimitive.TMode.Triangles;
-          TemporaryIndices:=TemporaryLoadedIndices;
-          TemporaryTriangleIndices:=TemporaryIndices;
+         begin
+          AccessorIndex:=SourceMeshPrimitive.Attributes['COLOR_0'];
+          if AccessorIndex>=0 then begin
+           TemporaryColor0:=aSourceDocument.Accessors[AccessorIndex].DecodeAsColorArray(true);
+          end else begin
+           TemporaryColor0:=nil;
+          end;
          end;
-         TPasGLTF.TMesh.TPrimitive.TMode.TriangleStrip:begin
-          SourceMeshPrimitiveMode:=TPasGLTF.TMesh.TPrimitive.TMode.Triangles;
-          TemporaryIndices:=nil;
-          SetLength(TemporaryIndices,(length(TemporaryLoadedIndices)-2)*3);
-          for IndexIndex:=0 to length(TemporaryLoadedIndices)-3 do begin
-           if (IndexIndex and 1)<>0 then begin
-            TemporaryIndices[(IndexIndex*3)+0]:=TemporaryLoadedIndices[IndexIndex+0];
-            TemporaryIndices[(IndexIndex*3)+1]:=TemporaryLoadedIndices[IndexIndex+1];
-            TemporaryIndices[(IndexIndex*3)+2]:=TemporaryLoadedIndices[IndexIndex+2];
+         for JointBlockIndex:=0 to 9 do begin
+          begin
+           AccessorIndex:=SourceMeshPrimitive.Attributes['JOINTS_'+IntToStr(JointBlockIndex)];
+           if AccessorIndex>=0 then begin
+            TemporaryJoints[JointBlockIndex]:=aSourceDocument.Accessors[AccessorIndex].DecodeAsUInt32Vector4Array(true);
+            HasJoints:=true;
+            CountJointBlocks:=Max(CountJointBlocks,JointBlockIndex+1);
            end else begin
-            TemporaryIndices[(IndexIndex*3)+0]:=TemporaryLoadedIndices[IndexIndex+0];
-            TemporaryIndices[(IndexIndex*3)+1]:=TemporaryLoadedIndices[IndexIndex+2];
-            TemporaryIndices[(IndexIndex*3)+2]:=TemporaryLoadedIndices[IndexIndex+1];
+            TemporaryJoints[JointBlockIndex]:=nil;
            end;
           end;
-          TemporaryTriangleIndices:=TemporaryIndices;
-         end;
-         TPasGLTF.TMesh.TPrimitive.TMode.TriangleFan:begin
-          SourceMeshPrimitiveMode:=TPasGLTF.TMesh.TPrimitive.TMode.Triangles;
-          TemporaryIndices:=nil;
-          SetLength(TemporaryIndices,(length(TemporaryLoadedIndices)-2)*3);
-          for IndexIndex:=2 to length(TemporaryLoadedIndices)-1 do begin
-           TemporaryIndices[((IndexIndex-1)*3)+0]:=TemporaryLoadedIndices[0];
-           TemporaryIndices[((IndexIndex-1)*3)+1]:=TemporaryLoadedIndices[IndexIndex-1];
-           TemporaryIndices[((IndexIndex-1)*3)+2]:=TemporaryLoadedIndices[IndexIndex];
-          end;
-          TemporaryTriangleIndices:=TemporaryIndices;
-         end;
-         else begin
-          SourceMeshPrimitiveMode:=SourceMeshPrimitive.Mode;
-          TemporaryIndices:=TemporaryLoadedIndices;
-          TemporaryTriangleIndices:=nil;
-         end;
-        end;
-       end;
-
-       begin
-        // Generate missing data
-        if length(TemporaryNormals)<>length(TemporaryPositions) then begin
-         SetLength(TemporaryNormals,length(TemporaryPositions));
-         for VertexIndex:=0 to length(TemporaryNormals)-1 do begin
-          TemporaryNormals[VertexIndex]:=TPasGLTF.TDefaults.NullVector3;
-         end;
-         if length(TemporaryTriangleIndices)>0 then begin
-          IndexIndex:=0;
-          while (IndexIndex+2)<length(TemporaryTriangleIndices) do begin
-           p0:=@TemporaryPositions[TemporaryTriangleIndices[IndexIndex+0]];
-           p1:=@TemporaryPositions[TemporaryTriangleIndices[IndexIndex+1]];
-           p2:=@TemporaryPositions[TemporaryTriangleIndices[IndexIndex+2]];
-           Normal:=(p1^-p0^).Cross(p2^-p0^); // non-normalized weighted normal
-           PpvVector3(pointer(@TemporaryNormals[TemporaryTriangleIndices[IndexIndex+0]]))^:=PpvVector3(pointer(@TemporaryNormals[TemporaryTriangleIndices[IndexIndex+0]]))^+Normal;
-           PpvVector3(pointer(@TemporaryNormals[TemporaryTriangleIndices[IndexIndex+1]]))^:=PpvVector3(pointer(@TemporaryNormals[TemporaryTriangleIndices[IndexIndex+1]]))^+Normal;
-           PpvVector3(pointer(@TemporaryNormals[TemporaryTriangleIndices[IndexIndex+2]]))^:=PpvVector3(pointer(@TemporaryNormals[TemporaryTriangleIndices[IndexIndex+2]]))^+Normal;
-           inc(IndexIndex,3);
-          end;
-          for VertexIndex:=0 to length(TemporaryNormals)-1 do begin
-           PpvVector3(pointer(@TemporaryNormals[VertexIndex]))^:=PpvVector3(pointer(@TemporaryNormals[VertexIndex]))^.Normalize;
-          end;
-         end;
-        end;
-        if length(TemporaryTexCoord0)<>length(TemporaryPositions) then begin
-         SetLength(TemporaryTexCoord0,length(TemporaryPositions));
-         for VertexIndex:=0 to length(TemporaryNormals)-1 do begin
-          PpvVector2(pointer(@TemporaryTexCoord0[VertexIndex]))^:=PpvVector2(pointer(@TPasGLTF.TDefaults.NullVector3))^;
-         end;
-        end;
-        if length(TemporaryTangents)<>length(TemporaryPositions) then begin
-         SetLength(TemporaryTangents,length(TemporaryPositions));
-         SetLength(TemporaryBitangents,length(TemporaryPositions));
-         for VertexIndex:=0 to length(TemporaryTangents)-1 do begin
-          PpvVector3(pointer(@TemporaryTangents[VertexIndex]))^:=PpvVector3(pointer(@TPasGLTF.TDefaults.NullVector3))^;
-          TemporaryBitangents[VertexIndex]:=TPasGLTF.TDefaults.NullVector3;
-         end;
-         if length(TemporaryTriangleIndices)>0 then begin
-          IndexIndex:=0;
-          while (IndexIndex+2)<length(TemporaryTriangleIndices) do begin
-           p0:=pointer(@TemporaryPositions[TemporaryTriangleIndices[IndexIndex+0]]);
-           p1:=pointer(@TemporaryPositions[TemporaryTriangleIndices[IndexIndex+1]]);
-           p2:=pointer(@TemporaryPositions[TemporaryTriangleIndices[IndexIndex+2]]);
-           t0:=pointer(@TemporaryTexCoord0[TemporaryTriangleIndices[IndexIndex+0]]);
-           t1:=pointer(@TemporaryTexCoord0[TemporaryTriangleIndices[IndexIndex+1]]);
-           t2:=pointer(@TemporaryTexCoord0[TemporaryTriangleIndices[IndexIndex+2]]);
-           p1p0:=p1^-p0^;
-           p2p0:=p2^-p0^;
-           t1t0:=t1^-t0^;
-           t2t0:=t2^-t0^;
-           Normal:=(p1p0.Cross(p2p0)).Normalize;
-           if PpvVector3(pointer(@TemporaryNormals[TemporaryTriangleIndices[IndexIndex+0]]))^.Dot(Normal)<0.0 then begin
-            Normal:=-Normal;
-           end;
-     {$if true}
-           Area:=(t2t0[0]*t1t0[1])-(t1t0[0]*t2t0[1]);
-           if IsZero(Area) then begin
-            Tangent[0]:=((t1t0[1]*p2p0[0])-(t2t0[1]*p1p0[0]));
-            Tangent[1]:=((t1t0[1]*p2p0[1])-(t2t0[1]*p1p0[1]));
-            Tangent[2]:=((t1t0[1]*p2p0[2])-(t2t0[1]*p1p0[2]));
-            Bitangent[0]:=((t1t0[0]*p2p0[0])-(t2t0[0]*p1p0[0]));
-            Bitangent[1]:=((t1t0[0]*p2p0[1])-(t2t0[0]*p1p0[1]));
-            Bitangent[2]:=((t1t0[0]*p2p0[2])-(t2t0[0]*p1p0[2]));
-            Tangent:=Tangent.Normalize;
-            Bitangent:=Bitangent.Normalize;
+          begin
+           AccessorIndex:=SourceMeshPrimitive.Attributes['WEIGHTS_'+IntToStr(JointBlockIndex)];
+           if AccessorIndex>=0 then begin
+            TemporaryWeights[JointBlockIndex]:=aSourceDocument.Accessors[AccessorIndex].DecodeAsVector4Array(true);
+            HasJoints:=true;
+            CountJointBlocks:=Max(CountJointBlocks,JointBlockIndex+1);
            end else begin
-            Tangent[0]:=((t1t0[1]*p2p0[0])-(t2t0[1]*p1p0[0]))/Area;
-            Tangent[1]:=((t1t0[1]*p2p0[1])-(t2t0[1]*p1p0[1]))/Area;
-            Tangent[2]:=((t1t0[1]*p2p0[2])-(t2t0[1]*p1p0[2]))/Area;
-            Bitangent[0]:=((t1t0[0]*p2p0[0])-(t2t0[0]*p1p0[0]))/Area;
-            Bitangent[1]:=((t1t0[0]*p2p0[1])-(t2t0[0]*p1p0[1]))/Area;
-            Bitangent[2]:=((t1t0[0]*p2p0[2])-(t2t0[0]*p1p0[2]))/Area;
-           end;
-           if (Tangent.Cross(Bitangent)).Dot(Normal)<0.0 then begin
-            Tangent:=-Tangent;
-            Bitangent:=-Bitangent;
-           end;
-     {$else}
-           Tangent[0]:=(t1t0[1]*p2p0[0])-(t2t0[1]*p1p0[0]);
-           Tangent[1]:=(t1t0[1]*p2p0[1])-(t2t0[1]*p1p0[1]);
-           Tangent[2]:=(t1t0[1]*p2p0[2])-(t2t0[1]*p1p0[2]);
-           Bitangent[0]:=(t1t0[0]*p2p0[0])-(t2t0[0]*p1p0[0]);
-           Bitangent[1]:=(t1t0[0]*p2p0[1])-(t2t0[0]*p1p0[1]);
-           Bitangent[2]:=(t1t0[0]*p2p0[2])-(t2t0[0]*p1p0[2]);
-           if (Tangent.Cross(Bitangent)).Dot(Normal)<0.0 then begin
-            Tangent:=-Tangent;
-            Bitangent:=-Bitangent;
-           end;
-     {$ifend}
-           PpvVector3(pointer(@TemporaryTangents[TemporaryTriangleIndices[IndexIndex+0]]))^:=PpvVector3(pointer(@TemporaryTangents[TemporaryTriangleIndices[IndexIndex+0]]))^+Tangent;
-           PpvVector3(pointer(@TemporaryTangents[TemporaryTriangleIndices[IndexIndex+1]]))^:=PpvVector3(pointer(@TemporaryTangents[TemporaryTriangleIndices[IndexIndex+1]]))^+Tangent;
-           PpvVector3(pointer(@TemporaryTangents[TemporaryTriangleIndices[IndexIndex+2]]))^:=PpvVector3(pointer(@TemporaryTangents[TemporaryTriangleIndices[IndexIndex+2]]))^+Tangent;
-           PpvVector3(pointer(@TemporaryBitangents[TemporaryTriangleIndices[IndexIndex+0]]))^:=PpvVector3(pointer(@TemporaryBitangents[TemporaryTriangleIndices[IndexIndex+0]]))^+Bitangent;
-           PpvVector3(pointer(@TemporaryBitangents[TemporaryTriangleIndices[IndexIndex+1]]))^:=PpvVector3(pointer(@TemporaryBitangents[TemporaryTriangleIndices[IndexIndex+1]]))^+Bitangent;
-           PpvVector3(pointer(@TemporaryBitangents[TemporaryTriangleIndices[IndexIndex+2]]))^:=PpvVector3(pointer(@TemporaryBitangents[TemporaryTriangleIndices[IndexIndex+2]]))^+Bitangent;
-           inc(IndexIndex,3);
-          end;
-          for VertexIndex:=0 to length(TemporaryTangents)-1 do begin
-           Normal:=PpvVector3(pointer(@TemporaryNormals[VertexIndex]))^;
-           Tangent:=PpvVector3(pointer(@TemporaryTangents[VertexIndex]))^.Normalize;
-           Tangent:=(Tangent-(Normal*Tangent.Dot(Normal))).Normalize;
-           Bitangent:=PpvVector3(pointer(@TemporaryBitangents[VertexIndex]))^.Normalize;
-           Bitangent:=(Bitangent-(Normal*Bitangent.Dot(Normal))).Normalize;
-           PpvVector3(pointer(@TemporaryTangents[VertexIndex]))^:=Tangent;
-           PpvVector3(pointer(@TemporaryBitangents[VertexIndex]))^:=Bitangent;
-           if (PpvVector3(pointer(@TemporaryNormals[VertexIndex]))^.Cross(Tangent)).Dot(Bitangent)<0.0 then begin
-            TemporaryTangents[VertexIndex,3]:=-1.0;
-           end else begin
-            TemporaryTangents[VertexIndex,3]:=1.0;
-           end;
-          end;
-         end;
-        end else begin
-         SetLength(TemporaryBitangents,length(TemporaryPositions));
-         for VertexIndex:=0 to length(TemporaryBitangents)-1 do begin
-          Normal:=PpvVector3(pointer(@TemporaryNormals[VertexIndex]))^.Normalize;
-          Tangent:=PpvVector3(pointer(@TemporaryTangents[VertexIndex]))^.Normalize;
-          Bitangent:=Normal.Cross(Tangent).Normalize;
-          PpvVector3(pointer(@TemporaryBitangents[VertexIndex]))^:=Bitangent*TemporaryTangents[VertexIndex,3];
-         end;
-        end;
-       end;
-
-       begin
-        // Primitive mode
-        case SourceMeshPrimitiveMode of
-         TPasGLTF.TMesh.TPrimitive.TMode.Points:begin
-          DestinationMeshPrimitive.fPrimitiveTopology:=TpvScene3D.TPrimitiveTopology.Points;
-         end;
-         TPasGLTF.TMesh.TPrimitive.TMode.Lines,
-         TPasGLTF.TMesh.TPrimitive.TMode.LineLoop,
-         TPasGLTF.TMesh.TPrimitive.TMode.LineStrip:begin
-          DestinationMeshPrimitive.fPrimitiveTopology:=TpvScene3D.TPrimitiveTopology.Lines;
-         end;
-         TPasGLTF.TMesh.TPrimitive.TMode.Triangles,
-         TPasGLTF.TMesh.TPrimitive.TMode.TriangleStrip,
-         TPasGLTF.TMesh.TPrimitive.TMode.TriangleFan:begin
-          DestinationMeshPrimitive.fPrimitiveTopology:=TpvScene3D.TPrimitiveTopology.Triangles;
-         end;
-         else begin
-          raise EPasGLTF.Create('Invalid primitive mode');
-         end;
-        end;
-       end;
-
-       HasMorphVertexTargets:=SourceMeshPrimitive.Targets.Count>0;
-
-       begin
-        // Generate vertex array buffer
-        SetLength(DestinationMeshPrimitiveVertices,length(TemporaryPositions));
-        for VertexIndex:=0 to length(TemporaryPositions)-1 do begin
-
-         Vertex:=@DestinationMeshPrimitiveVertices[VertexIndex];
-         FillChar(Vertex^,SizeOf(TVertex),#0);
-         Vertex^.Position:=TpvVector3(pointer(@TemporaryPositions[VertexIndex])^);
-         Vertex^.NodeIndex:=TpvUInt32($ffffffff);
-
-         if VertexIndex<length(TemporaryNormals) then begin
-          TangentSpaceMatrix.Normal:=TpvVector3(pointer(@TemporaryNormals[VertexIndex])^);
-         end else begin
-          TangentSpaceMatrix.Normal:=TpvVector3.ZAxis;
-         end;
-         if VertexIndex<length(TemporaryTangents) then begin
-          TangentSpaceMatrix.Tangent:=TpvVector3(pointer(@TemporaryTangents[VertexIndex])^);
-         end else begin
-          TangentSpaceMatrix.Tangent:=TpvVector3.XAxis;
-         end;
-         if VertexIndex<length(TemporaryBitangents) then begin
-          TangentSpaceMatrix.Bitangent:=TpvVector3(pointer(@TemporaryBitangents[VertexIndex])^);
-         end else begin
-          TangentSpaceMatrix.Bitangent:=TpvVector3.YAxis;
-         end;
-
-         Vertex^.Normal:=OctEncode(TangentSpaceMatrix.Normal);
-         Vertex^.Tangent:=OctEncode(TangentSpaceMatrix.Tangent);
-
- {$if true}
-         if (OctDecode(Vertex^.Normal).Cross(OctDecode(Vertex^.Tangent))).Dot(TangentSpaceMatrix.Bitangent)<0.0 then begin
-          Vertex^.Flags:=Vertex^.Flags or (1 shl 0);
-         end;
- {$else}
-         if (VertexIndex<length(TemporaryTangents)) and (TpvVector4(pointer(@TemporaryTangents[VertexIndex])^).w<0) then begin
-          Vertex^.Flags:=Vertex^.Flags or (1 shl 0);
-         end;
- {$ifend}
-         if VertexIndex<length(TemporaryTexCoord0) then begin
-          Vertex^.TexCoord0:=TpvVector2(pointer(@TemporaryTexCoord0[VertexIndex])^);
-         end;
-         if VertexIndex<length(TemporaryTexCoord1) then begin
-          Vertex^.TexCoord1:=TpvVector2(pointer(@TemporaryTexCoord1[VertexIndex])^);
-         end;
-         if VertexIndex<length(TemporaryColor0) then begin
-          Vertex^.Color0.x:=TemporaryColor0[VertexIndex][0];
-          Vertex^.Color0.y:=TemporaryColor0[VertexIndex][1];
-          Vertex^.Color0.z:=TemporaryColor0[VertexIndex][2];
-          Vertex^.Color0.w:=TemporaryColor0[VertexIndex][3];
-         end else begin
-          Vertex^.Color0.x:=TPasGLTF.TDefaults.IdentityVector4[0];
-          Vertex^.Color0.y:=TPasGLTF.TDefaults.IdentityVector4[1];
-          Vertex^.Color0.z:=TPasGLTF.TDefaults.IdentityVector4[2];
-          Vertex^.Color0.w:=TPasGLTF.TDefaults.IdentityVector4[3];
-         end;
-         if HasMorphVertexTargets then begin
-          Vertex^.MorphTargetVertexBaseIndex:=fGroup.fMorphTargetVertices.Count+(VertexIndex*SourceMeshPrimitive.Targets.Count);
-         end else begin
-          Vertex^.MorphTargetVertexBaseIndex:=TpvUInt32($ffffffff);
-         end;
-         if CountJointBlocks>0 then begin
-          FillChar(MaxJointBlocks^,SizeOf(TMaxJointBlocks),#0);
-          for JointBlockIndex:=0 to CountJointBlocks-1 do begin
-           if VertexIndex<length(TemporaryJoints[JointBlockIndex]) then begin
-            MaxJointBlocks^[JointBlockIndex].Joints[0]:=TemporaryJoints[JointBlockIndex][VertexIndex][0];
-            MaxJointBlocks^[JointBlockIndex].Joints[1]:=TemporaryJoints[JointBlockIndex][VertexIndex][1];
-            MaxJointBlocks^[JointBlockIndex].Joints[2]:=TemporaryJoints[JointBlockIndex][VertexIndex][2];
-            MaxJointBlocks^[JointBlockIndex].Joints[3]:=TemporaryJoints[JointBlockIndex][VertexIndex][3];
-           end;
-           if VertexIndex<length(TemporaryWeights[JointBlockIndex]) then begin
-            MaxJointBlocks^[JointBlockIndex].Weights.x:=TemporaryWeights[JointBlockIndex][VertexIndex][0];
-            MaxJointBlocks^[JointBlockIndex].Weights.y:=TemporaryWeights[JointBlockIndex][VertexIndex][1];
-            MaxJointBlocks^[JointBlockIndex].Weights.z:=TemporaryWeights[JointBlockIndex][VertexIndex][2];
-            MaxJointBlocks^[JointBlockIndex].Weights.w:=TemporaryWeights[JointBlockIndex][VertexIndex][3];
-           end;
-          end;
-          {if not MaxJointBlocksHashMap.TryGet(MaxJointBlocks^,Vertex^.JointBlockBaseIndex) then }begin
-           Vertex^.JointBlockBaseIndex:=fGroup.fJointBlocks.Count;
-           for JointBlockIndex:=0 to CountJointBlocks-1 do begin
-            fGroup.fJointBlocks.Add(MaxJointBlocks^[JointBlockIndex]);
-           end;
-           MaxJointBlocksHashMap.Add(MaxJointBlocks^,Vertex^.JointBlockBaseIndex);
-          end;
-          Vertex^.CountJointBlocks:=CountJointBlocks;
-         end else begin
-          Vertex^.JointBlockBaseIndex:=TpvUInt32($ffffffff);
-          Vertex^.CountJointBlocks:=0;
-         end;
-        end;
-       end;
-
-       begin
-        // Generate vertex index array buffer
-        SetLength(DestinationMeshPrimitiveIndices,length(TemporaryIndices));
-        if length(TemporaryIndices)>0 then begin
-         Move(TemporaryIndices[0],DestinationMeshPrimitiveIndices[0],length(TemporaryIndices)*SizeOf(TpvUInt32));
-        end;
-        if length(TemporaryIndices)>0 then begin
-         for IndexIndex:=0 to length(TemporaryIndices)-1 do begin
-          VertexIndex:=TemporaryIndices[IndexIndex];
-          if (VertexIndex>=0) and (VertexIndex<length(TemporaryPositions)) then begin
-           if BoundingBoxFirst then begin
-            BoundingBoxFirst:=false;
-            fBoundingBox.Min[0]:=TemporaryPositions[VertexIndex,0];
-            fBoundingBox.Min[1]:=TemporaryPositions[VertexIndex,1];
-            fBoundingBox.Min[2]:=TemporaryPositions[VertexIndex,2];
-            fBoundingBox.Max[0]:=TemporaryPositions[VertexIndex,0];
-            fBoundingBox.Max[1]:=TemporaryPositions[VertexIndex,1];
-            fBoundingBox.Max[2]:=TemporaryPositions[VertexIndex,2];
-           end else begin
-            fBoundingBox.Min[0]:=Min(fBoundingBox.Min[0],TemporaryPositions[VertexIndex,0]);
-            fBoundingBox.Min[1]:=Min(fBoundingBox.Min[1],TemporaryPositions[VertexIndex,1]);
-            fBoundingBox.Min[2]:=Min(fBoundingBox.Min[2],TemporaryPositions[VertexIndex,2]);
-            fBoundingBox.Max[0]:=Max(fBoundingBox.Max[0],TemporaryPositions[VertexIndex,0]);
-            fBoundingBox.Max[1]:=Max(fBoundingBox.Max[1],TemporaryPositions[VertexIndex,1]);
-            fBoundingBox.Max[2]:=Max(fBoundingBox.Max[2],TemporaryPositions[VertexIndex,2]);
+            TemporaryWeights[JointBlockIndex]:=nil;
            end;
           end;
          end;
         end;
-       end;
 
-       begin
-
-        // Load morph target data
-
-        DestinationMeshPrimitive.fTargets.Clear;
-
-        MaxCountTargets:=Max(MaxCountTargets,SourceMeshPrimitive.Targets.Count);
-
-        for TargetIndex:=0 to SourceMeshPrimitive.Targets.Count-1 do begin
-
-         SourceMeshPrimitiveTarget:=SourceMeshPrimitive.Targets[TargetIndex];
-
-         DestinationMeshPrimitiveTarget:=TpvScene3D.TGroup.TMesh.TPrimitive.TTarget.Create;
-         DestinationMeshPrimitiveTarget.fName:=IntToStr(DestinationMeshPrimitive.fTargets.Add(DestinationMeshPrimitiveTarget));
-         if TargetIndex<length(TargetNames) then begin
-          DestinationMeshPrimitiveTarget.fName:=TargetNames[TargetIndex];
-         end;
-
-         AccessorIndex:=SourceMeshPrimitiveTarget['POSITION'];
-         if AccessorIndex>=0 then begin
-          TemporaryPositions:=aSourceDocument.Accessors[AccessorIndex].DecodeAsVector3Array(true);
-          if length(TemporaryPositions)<>length(DestinationMeshPrimitiveVertices) then begin
-           raise EPasGLTF.Create('Vertex count mismatch');
-          end;
+        begin
+         // load or generate vertex indices
+         if SourceMeshPrimitive.Indices>=0 then begin
+          TemporaryLoadedIndices:=aSourceDocument.Accessors[SourceMeshPrimitive.Indices].DecodeAsUInt32Array(false);
          end else begin
-          SetLength(TemporaryPositions,length(DestinationMeshPrimitiveVertices));
-          for VertexIndex:=0 to length(TemporaryPositions)-1 do begin
-           TemporaryPositions[VertexIndex]:=TPasGLTF.TDefaults.NullVector3;
+          SetLength(TemporaryLoadedIndices,length(TemporaryPositions));
+          for IndexIndex:=0 to length(TemporaryLoadedIndices)-1 do begin
+           TemporaryLoadedIndices[IndexIndex]:=IndexIndex;
           end;
          end;
-
-         AccessorIndex:=SourceMeshPrimitiveTarget['NORMAL'];
-         if AccessorIndex>=0 then begin
-          TemporaryNormals:=aSourceDocument.Accessors[AccessorIndex].DecodeAsVector3Array(true);
-          if length(TemporaryNormals)<>length(DestinationMeshPrimitiveVertices) then begin
-           raise EPasGLTF.Create('Vertex count mismatch');
+         // Convert loops, strips and fans to pure list variants
+         case SourceMeshPrimitive.Mode of
+          TPasGLTF.TMesh.TPrimitive.TMode.Points:begin
+           SourceMeshPrimitiveMode:=TPasGLTF.TMesh.TPrimitive.TMode.Points;
+           TemporaryIndices:=TemporaryLoadedIndices;
+           TemporaryTriangleIndices:=nil;
           end;
-         end else begin
-          SetLength(TemporaryNormals,length(DestinationMeshPrimitiveVertices));
+          TPasGLTF.TMesh.TPrimitive.TMode.Lines:begin
+           SourceMeshPrimitiveMode:=TPasGLTF.TMesh.TPrimitive.TMode.Lines;
+           TemporaryIndices:=TemporaryLoadedIndices;
+           TemporaryTriangleIndices:=nil;
+          end;
+          TPasGLTF.TMesh.TPrimitive.TMode.LineLoop:begin
+           SourceMeshPrimitiveMode:=TPasGLTF.TMesh.TPrimitive.TMode.Lines;
+           TemporaryIndices:=nil;
+           SetLength(TemporaryIndices,length(TemporaryLoadedIndices)*2);
+           for IndexIndex:=0 to length(TemporaryLoadedIndices)-2 do begin
+            TemporaryIndices[(IndexIndex*2)+0]:=TemporaryLoadedIndices[IndexIndex+0];
+            TemporaryIndices[(IndexIndex*2)+1]:=TemporaryLoadedIndices[IndexIndex+1];
+           end;
+           if length(TemporaryLoadedIndices)>0 then begin
+            TemporaryIndices[((length(TemporaryLoadedIndices)-1)*2)+0]:=TemporaryLoadedIndices[length(TemporaryLoadedIndices)-1];
+            TemporaryIndices[((length(TemporaryLoadedIndices)-1)*2)+1]:=0;
+           end;
+           TemporaryTriangleIndices:=nil;
+          end;
+          TPasGLTF.TMesh.TPrimitive.TMode.LineStrip:begin
+           SourceMeshPrimitiveMode:=TPasGLTF.TMesh.TPrimitive.TMode.Lines;
+           TemporaryIndices:=nil;
+           SetLength(TemporaryIndices,(length(TemporaryLoadedIndices)-1)*2);
+           for IndexIndex:=0 to length(TemporaryLoadedIndices)-2 do begin
+            TemporaryIndices[(IndexIndex*2)+0]:=TemporaryLoadedIndices[IndexIndex+0];
+            TemporaryIndices[(IndexIndex*2)+1]:=TemporaryLoadedIndices[IndexIndex+1];
+           end;
+           TemporaryTriangleIndices:=nil;
+          end;
+          TPasGLTF.TMesh.TPrimitive.TMode.Triangles:begin
+           SourceMeshPrimitiveMode:=TPasGLTF.TMesh.TPrimitive.TMode.Triangles;
+           TemporaryIndices:=TemporaryLoadedIndices;
+           TemporaryTriangleIndices:=TemporaryIndices;
+          end;
+          TPasGLTF.TMesh.TPrimitive.TMode.TriangleStrip:begin
+           SourceMeshPrimitiveMode:=TPasGLTF.TMesh.TPrimitive.TMode.Triangles;
+           TemporaryIndices:=nil;
+           SetLength(TemporaryIndices,(length(TemporaryLoadedIndices)-2)*3);
+           for IndexIndex:=0 to length(TemporaryLoadedIndices)-3 do begin
+            if (IndexIndex and 1)<>0 then begin
+             TemporaryIndices[(IndexIndex*3)+0]:=TemporaryLoadedIndices[IndexIndex+0];
+             TemporaryIndices[(IndexIndex*3)+1]:=TemporaryLoadedIndices[IndexIndex+1];
+             TemporaryIndices[(IndexIndex*3)+2]:=TemporaryLoadedIndices[IndexIndex+2];
+            end else begin
+             TemporaryIndices[(IndexIndex*3)+0]:=TemporaryLoadedIndices[IndexIndex+0];
+             TemporaryIndices[(IndexIndex*3)+1]:=TemporaryLoadedIndices[IndexIndex+2];
+             TemporaryIndices[(IndexIndex*3)+2]:=TemporaryLoadedIndices[IndexIndex+1];
+            end;
+           end;
+           TemporaryTriangleIndices:=TemporaryIndices;
+          end;
+          TPasGLTF.TMesh.TPrimitive.TMode.TriangleFan:begin
+           SourceMeshPrimitiveMode:=TPasGLTF.TMesh.TPrimitive.TMode.Triangles;
+           TemporaryIndices:=nil;
+           SetLength(TemporaryIndices,(length(TemporaryLoadedIndices)-2)*3);
+           for IndexIndex:=2 to length(TemporaryLoadedIndices)-1 do begin
+            TemporaryIndices[((IndexIndex-1)*3)+0]:=TemporaryLoadedIndices[0];
+            TemporaryIndices[((IndexIndex-1)*3)+1]:=TemporaryLoadedIndices[IndexIndex-1];
+            TemporaryIndices[((IndexIndex-1)*3)+2]:=TemporaryLoadedIndices[IndexIndex];
+           end;
+           TemporaryTriangleIndices:=TemporaryIndices;
+          end;
+          else begin
+           SourceMeshPrimitiveMode:=SourceMeshPrimitive.Mode;
+           TemporaryIndices:=TemporaryLoadedIndices;
+           TemporaryTriangleIndices:=nil;
+          end;
+         end;
+        end;
+
+        begin
+         // Generate missing data
+         if length(TemporaryNormals)<>length(TemporaryPositions) then begin
+          SetLength(TemporaryNormals,length(TemporaryPositions));
           for VertexIndex:=0 to length(TemporaryNormals)-1 do begin
            TemporaryNormals[VertexIndex]:=TPasGLTF.TDefaults.NullVector3;
           end;
-         end;
-
-         AccessorIndex:=SourceMeshPrimitiveTarget['TANGENT'];
-         if AccessorIndex>=0 then begin
-          TemporaryTargetTangents:=aSourceDocument.Accessors[AccessorIndex].DecodeAsVector3Array(true);
-          if length(TemporaryTargetTangents)<>length(DestinationMeshPrimitiveVertices) then begin
-           raise EPasGLTF.Create('Vertex count mismatch');
-          end;
-          DoNeedCalculateTangents:=false;
-         end else begin
-          SetLength(TemporaryTargetTangents,length(DestinationMeshPrimitiveVertices));
-          for VertexIndex:=0 to length(TemporaryTargetTangents)-1 do begin
-           TemporaryTargetTangents[VertexIndex]:=TPasGLTF.TDefaults.NullVector3;
-          end;
-          DoNeedCalculateTangents:=true;
-         end;
-
-         // Construct morph target vertex array
-         DestinationMeshPrimitiveTarget.fVertices.Resize(length(DestinationMeshPrimitiveVertices));
-         for VertexIndex:=0 to DestinationMeshPrimitiveTarget.fVertices.Count-1 do begin
-          DestinationMeshPrimitiveTargetVertex:=@DestinationMeshPrimitiveTarget.fVertices.ItemArray[VertexIndex];
-          Vertex:=@DestinationMeshPrimitiveVertices[VertexIndex];
-          TangentSpaceMatrix.Normal:=OctDecode(Vertex^.Normal);
-          TangentSpaceMatrix.Tangent:=OctDecode(Vertex^.Tangent);
-          DestinationMeshPrimitiveTargetVertex^.Position:=TpvVector3(pointer(@TemporaryPositions[VertexIndex])^);
-          DestinationMeshPrimitiveTargetVertex^.Normal.x:=TangentSpaceMatrix.Normal.x+TemporaryNormals[VertexIndex][0];
-          DestinationMeshPrimitiveTargetVertex^.Normal.y:=TangentSpaceMatrix.Normal.y+TemporaryNormals[VertexIndex][1];
-          DestinationMeshPrimitiveTargetVertex^.Normal.z:=TangentSpaceMatrix.Normal.z+TemporaryNormals[VertexIndex][2];
-          DestinationMeshPrimitiveTargetVertex^.Tangent.x:=TangentSpaceMatrix.Tangent.x+TemporaryTargetTangents[VertexIndex][0];
-          DestinationMeshPrimitiveTargetVertex^.Tangent.y:=TangentSpaceMatrix.Tangent.y+TemporaryTargetTangents[VertexIndex][1];
-          DestinationMeshPrimitiveTargetVertex^.Tangent.z:=TangentSpaceMatrix.Tangent.z+TemporaryTargetTangents[VertexIndex][2];
-         end;
-
-         if not BoundingBoxFirst then begin
-          for VertexIndex:=0 to length(TemporaryPositions)-1 do begin
-           DestinationMeshPrimitiveTargetVertex:=@DestinationMeshPrimitiveTarget.fVertices.ItemArray[VertexIndex];
-           Vertex:=@DestinationMeshPrimitiveVertices[VertexIndex];
-           TemporaryPosition.x:=Vertex^.Position[0]+DestinationMeshPrimitiveTargetVertex^.Position[0];
-           TemporaryPosition.y:=Vertex^.Position[1]+DestinationMeshPrimitiveTargetVertex^.Position[1];
-           TemporaryPosition.z:=Vertex^.Position[2]+DestinationMeshPrimitiveTargetVertex^.Position[2];
-           fBoundingBox.Min.x:=Min(fBoundingBox.Min.x,TemporaryPosition.x);
-           fBoundingBox.Min.y:=Min(fBoundingBox.Min.y,TemporaryPosition.y);
-           fBoundingBox.Min.z:=Min(fBoundingBox.Min.z,TemporaryPosition.z);
-           fBoundingBox.Max.x:=Max(fBoundingBox.Max.x,TemporaryPosition.x);
-           fBoundingBox.Max.y:=Max(fBoundingBox.Max.y,TemporaryPosition.y);
-           fBoundingBox.Max.z:=Max(fBoundingBox.Max.z,TemporaryPosition.z);
-          end;
-         end;
-
-         if DoNeedCalculateTangents then begin
-          SetLength(TemporaryTangents,length(TemporaryPositions));
-          SetLength(TemporaryBitangents,length(TemporaryPositions));
-          for VertexIndex:=0 to length(TemporaryTangents)-1 do begin
-           PpvVector3(pointer(@TemporaryTangents[VertexIndex]))^:=PpvVector3(pointer(@TPasGLTF.TDefaults.NullVector3))^;
-           PpvVector3(pointer(@TemporaryBitangents[VertexIndex]))^:=PpvVector3(pointer(@TPasGLTF.TDefaults.NullVector3))^;
-          end;
           if length(TemporaryTriangleIndices)>0 then begin
-           for VertexIndex:=0 to length(TemporaryTangents)-1 do begin
-            DestinationMeshPrimitiveTargetVertex:=@DestinationMeshPrimitiveTarget.fVertices.ItemArray[VertexIndex];
-            Vertex:=@DestinationMeshPrimitiveVertices[VertexIndex];
-            TemporaryPositions[VertexIndex,0]:=Vertex^.Position[0]+DestinationMeshPrimitiveTargetVertex^.Position[0];
-            TemporaryPositions[VertexIndex,1]:=Vertex^.Position[1]+DestinationMeshPrimitiveTargetVertex^.Position[1];
-            TemporaryPositions[VertexIndex,2]:=Vertex^.Position[2]+DestinationMeshPrimitiveTargetVertex^.Position[2];
-            //TangentSpaceMatrix.Normal:=OctDecode(Vertex^.Normal);
-            TemporaryNormals[VertexIndex,0]:={TangentSpaceMatrix.Normal.x+}DestinationMeshPrimitiveTargetVertex^.Normal.x;
-            TemporaryNormals[VertexIndex,1]:={TangentSpaceMatrix.Normal.y+}DestinationMeshPrimitiveTargetVertex^.Normal.y;
-            TemporaryNormals[VertexIndex,2]:={TangentSpaceMatrix.Normal.z+}DestinationMeshPrimitiveTargetVertex^.Normal.z;
-           end;
            IndexIndex:=0;
            while (IndexIndex+2)<length(TemporaryTriangleIndices) do begin
             p0:=@TemporaryPositions[TemporaryTriangleIndices[IndexIndex+0]];
             p1:=@TemporaryPositions[TemporaryTriangleIndices[IndexIndex+1]];
             p2:=@TemporaryPositions[TemporaryTriangleIndices[IndexIndex+2]];
-            t0:=@TemporaryTexCoord0[TemporaryTriangleIndices[IndexIndex+0]];
-            t1:=@TemporaryTexCoord0[TemporaryTriangleIndices[IndexIndex+1]];
-            t2:=@TemporaryTexCoord0[TemporaryTriangleIndices[IndexIndex+2]];
+            Normal:=(p1^-p0^).Cross(p2^-p0^); // non-normalized weighted normal
+            PpvVector3(pointer(@TemporaryNormals[TemporaryTriangleIndices[IndexIndex+0]]))^:=PpvVector3(pointer(@TemporaryNormals[TemporaryTriangleIndices[IndexIndex+0]]))^+Normal;
+            PpvVector3(pointer(@TemporaryNormals[TemporaryTriangleIndices[IndexIndex+1]]))^:=PpvVector3(pointer(@TemporaryNormals[TemporaryTriangleIndices[IndexIndex+1]]))^+Normal;
+            PpvVector3(pointer(@TemporaryNormals[TemporaryTriangleIndices[IndexIndex+2]]))^:=PpvVector3(pointer(@TemporaryNormals[TemporaryTriangleIndices[IndexIndex+2]]))^+Normal;
+            inc(IndexIndex,3);
+           end;
+           for VertexIndex:=0 to length(TemporaryNormals)-1 do begin
+            PpvVector3(pointer(@TemporaryNormals[VertexIndex]))^:=PpvVector3(pointer(@TemporaryNormals[VertexIndex]))^.Normalize;
+           end;
+          end;
+         end;
+         if length(TemporaryTexCoord0)<>length(TemporaryPositions) then begin
+          SetLength(TemporaryTexCoord0,length(TemporaryPositions));
+          for VertexIndex:=0 to length(TemporaryNormals)-1 do begin
+           PpvVector2(pointer(@TemporaryTexCoord0[VertexIndex]))^:=PpvVector2(pointer(@TPasGLTF.TDefaults.NullVector3))^;
+          end;
+         end;
+         if length(TemporaryTangents)<>length(TemporaryPositions) then begin
+          SetLength(TemporaryTangents,length(TemporaryPositions));
+          SetLength(TemporaryBitangents,length(TemporaryPositions));
+          for VertexIndex:=0 to length(TemporaryTangents)-1 do begin
+           PpvVector3(pointer(@TemporaryTangents[VertexIndex]))^:=PpvVector3(pointer(@TPasGLTF.TDefaults.NullVector3))^;
+           TemporaryBitangents[VertexIndex]:=TPasGLTF.TDefaults.NullVector3;
+          end;
+          if length(TemporaryTriangleIndices)>0 then begin
+           IndexIndex:=0;
+           while (IndexIndex+2)<length(TemporaryTriangleIndices) do begin
+            p0:=pointer(@TemporaryPositions[TemporaryTriangleIndices[IndexIndex+0]]);
+            p1:=pointer(@TemporaryPositions[TemporaryTriangleIndices[IndexIndex+1]]);
+            p2:=pointer(@TemporaryPositions[TemporaryTriangleIndices[IndexIndex+2]]);
+            t0:=pointer(@TemporaryTexCoord0[TemporaryTriangleIndices[IndexIndex+0]]);
+            t1:=pointer(@TemporaryTexCoord0[TemporaryTriangleIndices[IndexIndex+1]]);
+            t2:=pointer(@TemporaryTexCoord0[TemporaryTriangleIndices[IndexIndex+2]]);
             p1p0:=p1^-p0^;
             p2p0:=p2^-p0^;
             t1t0:=t1^-t0^;
@@ -12233,15 +11896,17 @@ begin
             if PpvVector3(pointer(@TemporaryNormals[TemporaryTriangleIndices[IndexIndex+0]]))^.Dot(Normal)<0.0 then begin
              Normal:=-Normal;
             end;
-     {$if true}
+      {$if true}
             Area:=(t2t0[0]*t1t0[1])-(t1t0[0]*t2t0[1]);
             if IsZero(Area) then begin
-             Tangent[0]:=0.0;
-             Tangent[1]:=1.0;
-             Tangent[2]:=0.0;
-             Bitangent[0]:=1.0;
-             Bitangent[1]:=0.0;
-             Bitangent[2]:=0.0;
+             Tangent[0]:=((t1t0[1]*p2p0[0])-(t2t0[1]*p1p0[0]));
+             Tangent[1]:=((t1t0[1]*p2p0[1])-(t2t0[1]*p1p0[1]));
+             Tangent[2]:=((t1t0[1]*p2p0[2])-(t2t0[1]*p1p0[2]));
+             Bitangent[0]:=((t1t0[0]*p2p0[0])-(t2t0[0]*p1p0[0]));
+             Bitangent[1]:=((t1t0[0]*p2p0[1])-(t2t0[0]*p1p0[1]));
+             Bitangent[2]:=((t1t0[0]*p2p0[2])-(t2t0[0]*p1p0[2]));
+             Tangent:=Tangent.Normalize;
+             Bitangent:=Bitangent.Normalize;
             end else begin
              Tangent[0]:=((t1t0[1]*p2p0[0])-(t2t0[1]*p1p0[0]))/Area;
              Tangent[1]:=((t1t0[1]*p2p0[1])-(t2t0[1]*p1p0[1]))/Area;
@@ -12254,7 +11919,7 @@ begin
              Tangent:=-Tangent;
              Bitangent:=-Bitangent;
             end;
-     {$else}
+      {$else}
             Tangent[0]:=(t1t0[1]*p2p0[0])-(t2t0[1]*p1p0[0]);
             Tangent[1]:=(t1t0[1]*p2p0[1])-(t2t0[1]*p1p0[1]);
             Tangent[2]:=(t1t0[1]*p2p0[2])-(t2t0[1]*p1p0[2]);
@@ -12265,7 +11930,7 @@ begin
              Tangent:=-Tangent;
              Bitangent:=-Bitangent;
             end;
-     {$ifend}
+      {$ifend}
             PpvVector3(pointer(@TemporaryTangents[TemporaryTriangleIndices[IndexIndex+0]]))^:=PpvVector3(pointer(@TemporaryTangents[TemporaryTriangleIndices[IndexIndex+0]]))^+Tangent;
             PpvVector3(pointer(@TemporaryTangents[TemporaryTriangleIndices[IndexIndex+1]]))^:=PpvVector3(pointer(@TemporaryTangents[TemporaryTriangleIndices[IndexIndex+1]]))^+Tangent;
             PpvVector3(pointer(@TemporaryTangents[TemporaryTriangleIndices[IndexIndex+2]]))^:=PpvVector3(pointer(@TemporaryTangents[TemporaryTriangleIndices[IndexIndex+2]]))^+Tangent;
@@ -12281,6 +11946,7 @@ begin
             Bitangent:=PpvVector3(pointer(@TemporaryBitangents[VertexIndex]))^.Normalize;
             Bitangent:=(Bitangent-(Normal*Bitangent.Dot(Normal))).Normalize;
             PpvVector3(pointer(@TemporaryTangents[VertexIndex]))^:=Tangent;
+            PpvVector3(pointer(@TemporaryBitangents[VertexIndex]))^:=Bitangent;
             if (PpvVector3(pointer(@TemporaryNormals[VertexIndex]))^.Cross(Tangent)).Dot(Bitangent)<0.0 then begin
              TemporaryTangents[VertexIndex,3]:=-1.0;
             end else begin
@@ -12288,64 +11954,408 @@ begin
             end;
            end;
           end;
+         end else begin
+          SetLength(TemporaryBitangents,length(TemporaryPositions));
+          for VertexIndex:=0 to length(TemporaryBitangents)-1 do begin
+           Normal:=PpvVector3(pointer(@TemporaryNormals[VertexIndex]))^.Normalize;
+           Tangent:=PpvVector3(pointer(@TemporaryTangents[VertexIndex]))^.Normalize;
+           Bitangent:=Normal.Cross(Tangent).Normalize;
+           PpvVector3(pointer(@TemporaryBitangents[VertexIndex]))^:=Bitangent*TemporaryTangents[VertexIndex,3];
+          end;
+         end;
+        end;
+
+        begin
+         // Primitive mode
+         case SourceMeshPrimitiveMode of
+          TPasGLTF.TMesh.TPrimitive.TMode.Points:begin
+           DestinationMeshPrimitive.fPrimitiveTopology:=TpvScene3D.TPrimitiveTopology.Points;
+          end;
+          TPasGLTF.TMesh.TPrimitive.TMode.Lines,
+          TPasGLTF.TMesh.TPrimitive.TMode.LineLoop,
+          TPasGLTF.TMesh.TPrimitive.TMode.LineStrip:begin
+           DestinationMeshPrimitive.fPrimitiveTopology:=TpvScene3D.TPrimitiveTopology.Lines;
+          end;
+          TPasGLTF.TMesh.TPrimitive.TMode.Triangles,
+          TPasGLTF.TMesh.TPrimitive.TMode.TriangleStrip,
+          TPasGLTF.TMesh.TPrimitive.TMode.TriangleFan:begin
+           DestinationMeshPrimitive.fPrimitiveTopology:=TpvScene3D.TPrimitiveTopology.Triangles;
+          end;
+          else begin
+           raise EPasGLTF.Create('Invalid primitive mode');
+          end;
+         end;
+        end;
+
+        HasMorphVertexTargets:=SourceMeshPrimitive.Targets.Count>0;
+
+        begin
+         // Generate vertex array buffer
+         SetLength(DestinationMeshPrimitiveVertices,length(TemporaryPositions));
+         SetLength(TempTangentSpaceMatrices,length(TemporaryPositions));
+         for VertexIndex:=0 to length(TemporaryPositions)-1 do begin
+
+          Vertex:=@DestinationMeshPrimitiveVertices[VertexIndex];
+          FillChar(Vertex^,SizeOf(TVertex),#0);
+          Vertex^.Position:=TpvVector3(pointer(@TemporaryPositions[VertexIndex])^);
+          Vertex^.NodeIndex:=TpvUInt32($ffffffff);
+
+          if VertexIndex<length(TemporaryNormals) then begin
+           TangentSpaceMatrix.Normal:=TpvVector3(pointer(@TemporaryNormals[VertexIndex])^);
+          end else begin
+           TangentSpaceMatrix.Normal:=TpvVector3.ZAxis;
+          end;
+          if VertexIndex<length(TemporaryTangents) then begin
+           TangentSpaceMatrix.Tangent:=TpvVector3(pointer(@TemporaryTangents[VertexIndex])^);
+          end else begin
+           TangentSpaceMatrix.Tangent:=TpvVector3.XAxis;
+          end;
+          if VertexIndex<length(TemporaryBitangents) then begin
+           TangentSpaceMatrix.Bitangent:=TpvVector3(pointer(@TemporaryBitangents[VertexIndex])^);
+          end else begin
+           TangentSpaceMatrix.Bitangent:=TpvVector3.YAxis;
+          end;
+
+          TempTangentSpaceMatrices[VertexIndex]:=TangentSpaceMatrix;
+
+          Vertex^.Normal:=OctEncode(TangentSpaceMatrix.Normal);
+          Vertex^.Tangent:=OctEncode(TangentSpaceMatrix.Tangent);
+
+  {$if true}
+          if (OctDecode(Vertex^.Normal).Cross(OctDecode(Vertex^.Tangent))).Dot(TangentSpaceMatrix.Bitangent)<0.0 then begin
+           Vertex^.Flags:=Vertex^.Flags or (1 shl 0);
+          end;
+  {$else}
+          if (VertexIndex<length(TemporaryTangents)) and (TpvVector4(pointer(@TemporaryTangents[VertexIndex])^).w<0) then begin
+           Vertex^.Flags:=Vertex^.Flags or (1 shl 0);
+          end;
+  {$ifend}
+          if VertexIndex<length(TemporaryTexCoord0) then begin
+           Vertex^.TexCoord0:=TpvVector2(pointer(@TemporaryTexCoord0[VertexIndex])^);
+          end;
+          if VertexIndex<length(TemporaryTexCoord1) then begin
+           Vertex^.TexCoord1:=TpvVector2(pointer(@TemporaryTexCoord1[VertexIndex])^);
+          end;
+          if VertexIndex<length(TemporaryColor0) then begin
+           Vertex^.Color0.x:=TemporaryColor0[VertexIndex][0];
+           Vertex^.Color0.y:=TemporaryColor0[VertexIndex][1];
+           Vertex^.Color0.z:=TemporaryColor0[VertexIndex][2];
+           Vertex^.Color0.w:=TemporaryColor0[VertexIndex][3];
+          end else begin
+           Vertex^.Color0.x:=TPasGLTF.TDefaults.IdentityVector4[0];
+           Vertex^.Color0.y:=TPasGLTF.TDefaults.IdentityVector4[1];
+           Vertex^.Color0.z:=TPasGLTF.TDefaults.IdentityVector4[2];
+           Vertex^.Color0.w:=TPasGLTF.TDefaults.IdentityVector4[3];
+          end;
+          if HasMorphVertexTargets then begin
+           Vertex^.MorphTargetVertexBaseIndex:=fGroup.fMorphTargetVertices.Count+(VertexIndex*SourceMeshPrimitive.Targets.Count);
+          end else begin
+           Vertex^.MorphTargetVertexBaseIndex:=TpvUInt32($ffffffff);
+          end;
+          if CountJointBlocks>0 then begin
+           FillChar(MaxJointBlocks^,SizeOf(TMaxJointBlocks),#0);
+           for JointBlockIndex:=0 to CountJointBlocks-1 do begin
+            if VertexIndex<length(TemporaryJoints[JointBlockIndex]) then begin
+             MaxJointBlocks^[JointBlockIndex].Joints[0]:=TemporaryJoints[JointBlockIndex][VertexIndex][0];
+             MaxJointBlocks^[JointBlockIndex].Joints[1]:=TemporaryJoints[JointBlockIndex][VertexIndex][1];
+             MaxJointBlocks^[JointBlockIndex].Joints[2]:=TemporaryJoints[JointBlockIndex][VertexIndex][2];
+             MaxJointBlocks^[JointBlockIndex].Joints[3]:=TemporaryJoints[JointBlockIndex][VertexIndex][3];
+            end;
+            if VertexIndex<length(TemporaryWeights[JointBlockIndex]) then begin
+             MaxJointBlocks^[JointBlockIndex].Weights.x:=TemporaryWeights[JointBlockIndex][VertexIndex][0];
+             MaxJointBlocks^[JointBlockIndex].Weights.y:=TemporaryWeights[JointBlockIndex][VertexIndex][1];
+             MaxJointBlocks^[JointBlockIndex].Weights.z:=TemporaryWeights[JointBlockIndex][VertexIndex][2];
+             MaxJointBlocks^[JointBlockIndex].Weights.w:=TemporaryWeights[JointBlockIndex][VertexIndex][3];
+            end;
+           end;
+           {if not MaxJointBlocksHashMap.TryGet(MaxJointBlocks^,Vertex^.JointBlockBaseIndex) then }begin
+            Vertex^.JointBlockBaseIndex:=fGroup.fJointBlocks.Count;
+            for JointBlockIndex:=0 to CountJointBlocks-1 do begin
+             fGroup.fJointBlocks.Add(MaxJointBlocks^[JointBlockIndex]);
+            end;
+            MaxJointBlocksHashMap.Add(MaxJointBlocks^,Vertex^.JointBlockBaseIndex);
+           end;
+           Vertex^.CountJointBlocks:=CountJointBlocks;
+          end else begin
+           Vertex^.JointBlockBaseIndex:=TpvUInt32($ffffffff);
+           Vertex^.CountJointBlocks:=0;
+          end;
+         end;
+        end;
+
+        begin
+         // Generate vertex index array buffer
+         SetLength(DestinationMeshPrimitiveIndices,length(TemporaryIndices));
+         if length(TemporaryIndices)>0 then begin
+          Move(TemporaryIndices[0],DestinationMeshPrimitiveIndices[0],length(TemporaryIndices)*SizeOf(TpvUInt32));
+         end;
+         if length(TemporaryIndices)>0 then begin
+          for IndexIndex:=0 to length(TemporaryIndices)-1 do begin
+           VertexIndex:=TemporaryIndices[IndexIndex];
+           if (VertexIndex>=0) and (VertexIndex<length(TemporaryPositions)) then begin
+            if BoundingBoxFirst then begin
+             BoundingBoxFirst:=false;
+             fBoundingBox.Min[0]:=TemporaryPositions[VertexIndex,0];
+             fBoundingBox.Min[1]:=TemporaryPositions[VertexIndex,1];
+             fBoundingBox.Min[2]:=TemporaryPositions[VertexIndex,2];
+             fBoundingBox.Max[0]:=TemporaryPositions[VertexIndex,0];
+             fBoundingBox.Max[1]:=TemporaryPositions[VertexIndex,1];
+             fBoundingBox.Max[2]:=TemporaryPositions[VertexIndex,2];
+            end else begin
+             fBoundingBox.Min[0]:=Min(fBoundingBox.Min[0],TemporaryPositions[VertexIndex,0]);
+             fBoundingBox.Min[1]:=Min(fBoundingBox.Min[1],TemporaryPositions[VertexIndex,1]);
+             fBoundingBox.Min[2]:=Min(fBoundingBox.Min[2],TemporaryPositions[VertexIndex,2]);
+             fBoundingBox.Max[0]:=Max(fBoundingBox.Max[0],TemporaryPositions[VertexIndex,0]);
+             fBoundingBox.Max[1]:=Max(fBoundingBox.Max[1],TemporaryPositions[VertexIndex,1]);
+             fBoundingBox.Max[2]:=Max(fBoundingBox.Max[2],TemporaryPositions[VertexIndex,2]);
+            end;
+           end;
+          end;
+         end;
+        end;
+
+        begin
+
+         // Load morph target data
+
+         DestinationMeshPrimitive.fTargets.Clear;
+
+         MaxCountTargets:=Max(MaxCountTargets,SourceMeshPrimitive.Targets.Count);
+
+         for TargetIndex:=0 to SourceMeshPrimitive.Targets.Count-1 do begin
+
+          SourceMeshPrimitiveTarget:=SourceMeshPrimitive.Targets[TargetIndex];
+
+          DestinationMeshPrimitiveTarget:=TpvScene3D.TGroup.TMesh.TPrimitive.TTarget.Create;
+          DestinationMeshPrimitiveTarget.fName:=IntToStr(DestinationMeshPrimitive.fTargets.Add(DestinationMeshPrimitiveTarget));
+          if TargetIndex<length(TargetNames) then begin
+           DestinationMeshPrimitiveTarget.fName:=TargetNames[TargetIndex];
+          end;
+
+          AccessorIndex:=SourceMeshPrimitiveTarget['POSITION'];
+          if AccessorIndex>=0 then begin
+           TemporaryPositions:=aSourceDocument.Accessors[AccessorIndex].DecodeAsVector3Array(true);
+           if length(TemporaryPositions)<>length(DestinationMeshPrimitiveVertices) then begin
+            raise EPasGLTF.Create('Vertex count mismatch');
+           end;
+          end else begin
+           SetLength(TemporaryPositions,length(DestinationMeshPrimitiveVertices));
+           for VertexIndex:=0 to length(TemporaryPositions)-1 do begin
+            TemporaryPositions[VertexIndex]:=TPasGLTF.TDefaults.NullVector3;
+           end;
+          end;
+
+          AccessorIndex:=SourceMeshPrimitiveTarget['NORMAL'];
+          if AccessorIndex>=0 then begin
+           TemporaryNormals:=aSourceDocument.Accessors[AccessorIndex].DecodeAsVector3Array(true);
+           if length(TemporaryNormals)<>length(DestinationMeshPrimitiveVertices) then begin
+            raise EPasGLTF.Create('Vertex count mismatch');
+           end;
+          end else begin
+           SetLength(TemporaryNormals,length(DestinationMeshPrimitiveVertices));
+           for VertexIndex:=0 to length(TemporaryNormals)-1 do begin
+            TemporaryNormals[VertexIndex]:=TPasGLTF.TDefaults.NullVector3;
+           end;
+          end;
+
+          AccessorIndex:=SourceMeshPrimitiveTarget['TANGENT'];
+          if AccessorIndex>=0 then begin
+           TemporaryTargetTangents:=aSourceDocument.Accessors[AccessorIndex].DecodeAsVector3Array(true);
+           if length(TemporaryTargetTangents)<>length(DestinationMeshPrimitiveVertices) then begin
+            raise EPasGLTF.Create('Vertex count mismatch');
+           end;
+           DoNeedCalculateTangents:=false;
+          end else begin
+           SetLength(TemporaryTargetTangents,length(DestinationMeshPrimitiveVertices));
+           for VertexIndex:=0 to length(TemporaryTargetTangents)-1 do begin
+            TemporaryTargetTangents[VertexIndex]:=TPasGLTF.TDefaults.NullVector3;
+           end;
+           DoNeedCalculateTangents:=true;
+          end;
+
+          // Construct morph target vertex array
           DestinationMeshPrimitiveTarget.fVertices.Resize(length(DestinationMeshPrimitiveVertices));
           for VertexIndex:=0 to DestinationMeshPrimitiveTarget.fVertices.Count-1 do begin
            DestinationMeshPrimitiveTargetVertex:=@DestinationMeshPrimitiveTarget.fVertices.ItemArray[VertexIndex];
            Vertex:=@DestinationMeshPrimitiveVertices[VertexIndex];
-           //TangentSpaceMatrix.Tangent:=OctDecode(Vertex^.Tangent);
-           DestinationMeshPrimitiveTargetVertex^.Tangent.x:=TemporaryTangents[VertexIndex,0];//-TangentSpaceMatrix.Tangent.x;
-           DestinationMeshPrimitiveTargetVertex^.Tangent.y:=TemporaryTangents[VertexIndex,1];//-TangentSpaceMatrix.Tangent.y;
-           DestinationMeshPrimitiveTargetVertex^.Tangent.z:=TemporaryTangents[VertexIndex,2];//-TangentSpaceMatrix.Tangent.z;
+           TangentSpaceMatrix:=TempTangentSpaceMatrices[VertexIndex];
+           DestinationMeshPrimitiveTargetVertex^.Position:=TpvVector3(pointer(@TemporaryPositions[VertexIndex])^);
+           DestinationMeshPrimitiveTargetVertex^.Normal.x:=TangentSpaceMatrix.Normal.x+TemporaryNormals[VertexIndex][0];
+           DestinationMeshPrimitiveTargetVertex^.Normal.y:=TangentSpaceMatrix.Normal.y+TemporaryNormals[VertexIndex][1];
+           DestinationMeshPrimitiveTargetVertex^.Normal.z:=TangentSpaceMatrix.Normal.z+TemporaryNormals[VertexIndex][2];
+           DestinationMeshPrimitiveTargetVertex^.Tangent.x:=TangentSpaceMatrix.Tangent.x+TemporaryTargetTangents[VertexIndex][0];
+           DestinationMeshPrimitiveTargetVertex^.Tangent.y:=TangentSpaceMatrix.Tangent.y+TemporaryTargetTangents[VertexIndex][1];
+           DestinationMeshPrimitiveTargetVertex^.Tangent.z:=TangentSpaceMatrix.Tangent.z+TemporaryTargetTangents[VertexIndex][2];
           end;
+
+          if not BoundingBoxFirst then begin
+           for VertexIndex:=0 to length(TemporaryPositions)-1 do begin
+            DestinationMeshPrimitiveTargetVertex:=@DestinationMeshPrimitiveTarget.fVertices.ItemArray[VertexIndex];
+            Vertex:=@DestinationMeshPrimitiveVertices[VertexIndex];
+            TemporaryPosition.x:=Vertex^.Position[0]+DestinationMeshPrimitiveTargetVertex^.Position[0];
+            TemporaryPosition.y:=Vertex^.Position[1]+DestinationMeshPrimitiveTargetVertex^.Position[1];
+            TemporaryPosition.z:=Vertex^.Position[2]+DestinationMeshPrimitiveTargetVertex^.Position[2];
+            fBoundingBox.Min.x:=Min(fBoundingBox.Min.x,TemporaryPosition.x);
+            fBoundingBox.Min.y:=Min(fBoundingBox.Min.y,TemporaryPosition.y);
+            fBoundingBox.Min.z:=Min(fBoundingBox.Min.z,TemporaryPosition.z);
+            fBoundingBox.Max.x:=Max(fBoundingBox.Max.x,TemporaryPosition.x);
+            fBoundingBox.Max.y:=Max(fBoundingBox.Max.y,TemporaryPosition.y);
+            fBoundingBox.Max.z:=Max(fBoundingBox.Max.z,TemporaryPosition.z);
+           end;
+          end;
+
+          if DoNeedCalculateTangents then begin
+           SetLength(TemporaryTangents,length(TemporaryPositions));
+           SetLength(TemporaryBitangents,length(TemporaryPositions));
+           for VertexIndex:=0 to length(TemporaryTangents)-1 do begin
+            PpvVector3(pointer(@TemporaryTangents[VertexIndex]))^:=PpvVector3(pointer(@TPasGLTF.TDefaults.NullVector3))^;
+            PpvVector3(pointer(@TemporaryBitangents[VertexIndex]))^:=PpvVector3(pointer(@TPasGLTF.TDefaults.NullVector3))^;
+           end;
+           if length(TemporaryTriangleIndices)>0 then begin
+            for VertexIndex:=0 to length(TemporaryTangents)-1 do begin
+             DestinationMeshPrimitiveTargetVertex:=@DestinationMeshPrimitiveTarget.fVertices.ItemArray[VertexIndex];
+             Vertex:=@DestinationMeshPrimitiveVertices[VertexIndex];
+             TemporaryPositions[VertexIndex,0]:=Vertex^.Position[0]+DestinationMeshPrimitiveTargetVertex^.Position[0];
+             TemporaryPositions[VertexIndex,1]:=Vertex^.Position[1]+DestinationMeshPrimitiveTargetVertex^.Position[1];
+             TemporaryPositions[VertexIndex,2]:=Vertex^.Position[2]+DestinationMeshPrimitiveTargetVertex^.Position[2];
+             //TangentSpaceMatrix.Normal:=OctDecode(Vertex^.Normal);
+             TemporaryNormals[VertexIndex,0]:={TangentSpaceMatrix.Normal.x+}DestinationMeshPrimitiveTargetVertex^.Normal.x;
+             TemporaryNormals[VertexIndex,1]:={TangentSpaceMatrix.Normal.y+}DestinationMeshPrimitiveTargetVertex^.Normal.y;
+             TemporaryNormals[VertexIndex,2]:={TangentSpaceMatrix.Normal.z+}DestinationMeshPrimitiveTargetVertex^.Normal.z;
+            end;
+            IndexIndex:=0;
+            while (IndexIndex+2)<length(TemporaryTriangleIndices) do begin
+             p0:=@TemporaryPositions[TemporaryTriangleIndices[IndexIndex+0]];
+             p1:=@TemporaryPositions[TemporaryTriangleIndices[IndexIndex+1]];
+             p2:=@TemporaryPositions[TemporaryTriangleIndices[IndexIndex+2]];
+             t0:=@TemporaryTexCoord0[TemporaryTriangleIndices[IndexIndex+0]];
+             t1:=@TemporaryTexCoord0[TemporaryTriangleIndices[IndexIndex+1]];
+             t2:=@TemporaryTexCoord0[TemporaryTriangleIndices[IndexIndex+2]];
+             p1p0:=p1^-p0^;
+             p2p0:=p2^-p0^;
+             t1t0:=t1^-t0^;
+             t2t0:=t2^-t0^;
+             Normal:=(p1p0.Cross(p2p0)).Normalize;
+             if PpvVector3(pointer(@TemporaryNormals[TemporaryTriangleIndices[IndexIndex+0]]))^.Dot(Normal)<0.0 then begin
+              Normal:=-Normal;
+             end;
+      {$if true}
+             Area:=(t2t0[0]*t1t0[1])-(t1t0[0]*t2t0[1]);
+             if IsZero(Area) then begin
+              Tangent[0]:=0.0;
+              Tangent[1]:=1.0;
+              Tangent[2]:=0.0;
+              Bitangent[0]:=1.0;
+              Bitangent[1]:=0.0;
+              Bitangent[2]:=0.0;
+             end else begin
+              Tangent[0]:=((t1t0[1]*p2p0[0])-(t2t0[1]*p1p0[0]))/Area;
+              Tangent[1]:=((t1t0[1]*p2p0[1])-(t2t0[1]*p1p0[1]))/Area;
+              Tangent[2]:=((t1t0[1]*p2p0[2])-(t2t0[1]*p1p0[2]))/Area;
+              Bitangent[0]:=((t1t0[0]*p2p0[0])-(t2t0[0]*p1p0[0]))/Area;
+              Bitangent[1]:=((t1t0[0]*p2p0[1])-(t2t0[0]*p1p0[1]))/Area;
+              Bitangent[2]:=((t1t0[0]*p2p0[2])-(t2t0[0]*p1p0[2]))/Area;
+             end;
+             if (Tangent.Cross(Bitangent)).Dot(Normal)<0.0 then begin
+              Tangent:=-Tangent;
+              Bitangent:=-Bitangent;
+             end;
+      {$else}
+             Tangent[0]:=(t1t0[1]*p2p0[0])-(t2t0[1]*p1p0[0]);
+             Tangent[1]:=(t1t0[1]*p2p0[1])-(t2t0[1]*p1p0[1]);
+             Tangent[2]:=(t1t0[1]*p2p0[2])-(t2t0[1]*p1p0[2]);
+             Bitangent[0]:=(t1t0[0]*p2p0[0])-(t2t0[0]*p1p0[0]);
+             Bitangent[1]:=(t1t0[0]*p2p0[1])-(t2t0[0]*p1p0[1]);
+             Bitangent[2]:=(t1t0[0]*p2p0[2])-(t2t0[0]*p1p0[2]);
+             if (Tangent.Cross(Bitangent)).Dot(Normal)<0.0 then begin
+              Tangent:=-Tangent;
+              Bitangent:=-Bitangent;
+             end;
+      {$ifend}
+             PpvVector3(pointer(@TemporaryTangents[TemporaryTriangleIndices[IndexIndex+0]]))^:=PpvVector3(pointer(@TemporaryTangents[TemporaryTriangleIndices[IndexIndex+0]]))^+Tangent;
+             PpvVector3(pointer(@TemporaryTangents[TemporaryTriangleIndices[IndexIndex+1]]))^:=PpvVector3(pointer(@TemporaryTangents[TemporaryTriangleIndices[IndexIndex+1]]))^+Tangent;
+             PpvVector3(pointer(@TemporaryTangents[TemporaryTriangleIndices[IndexIndex+2]]))^:=PpvVector3(pointer(@TemporaryTangents[TemporaryTriangleIndices[IndexIndex+2]]))^+Tangent;
+             PpvVector3(pointer(@TemporaryBitangents[TemporaryTriangleIndices[IndexIndex+0]]))^:=PpvVector3(pointer(@TemporaryBitangents[TemporaryTriangleIndices[IndexIndex+0]]))^+Bitangent;
+             PpvVector3(pointer(@TemporaryBitangents[TemporaryTriangleIndices[IndexIndex+1]]))^:=PpvVector3(pointer(@TemporaryBitangents[TemporaryTriangleIndices[IndexIndex+1]]))^+Bitangent;
+             PpvVector3(pointer(@TemporaryBitangents[TemporaryTriangleIndices[IndexIndex+2]]))^:=PpvVector3(pointer(@TemporaryBitangents[TemporaryTriangleIndices[IndexIndex+2]]))^+Bitangent;
+             inc(IndexIndex,3);
+            end;
+            for VertexIndex:=0 to length(TemporaryTangents)-1 do begin
+             Normal:=PpvVector3(pointer(@TemporaryNormals[VertexIndex]))^;
+             Tangent:=PpvVector3(pointer(@TemporaryTangents[VertexIndex]))^.Normalize;
+             Tangent:=(Tangent-(Normal*Tangent.Dot(Normal))).Normalize;
+             Bitangent:=PpvVector3(pointer(@TemporaryBitangents[VertexIndex]))^.Normalize;
+             Bitangent:=(Bitangent-(Normal*Bitangent.Dot(Normal))).Normalize;
+             PpvVector3(pointer(@TemporaryTangents[VertexIndex]))^:=Tangent;
+             if (PpvVector3(pointer(@TemporaryNormals[VertexIndex]))^.Cross(Tangent)).Dot(Bitangent)<0.0 then begin
+              TemporaryTangents[VertexIndex,3]:=-1.0;
+             end else begin
+              TemporaryTangents[VertexIndex,3]:=1.0;
+             end;
+            end;
+           end;
+           DestinationMeshPrimitiveTarget.fVertices.Resize(length(DestinationMeshPrimitiveVertices));
+           for VertexIndex:=0 to DestinationMeshPrimitiveTarget.fVertices.Count-1 do begin
+            DestinationMeshPrimitiveTargetVertex:=@DestinationMeshPrimitiveTarget.fVertices.ItemArray[VertexIndex];
+            Vertex:=@DestinationMeshPrimitiveVertices[VertexIndex];
+            //TangentSpaceMatrix.Tangent:=OctDecode(Vertex^.Tangent);
+            DestinationMeshPrimitiveTargetVertex^.Tangent.x:=TemporaryTangents[VertexIndex,0];//-TangentSpaceMatrix.Tangent.x;
+            DestinationMeshPrimitiveTargetVertex^.Tangent.y:=TemporaryTangents[VertexIndex,1];//-TangentSpaceMatrix.Tangent.y;
+            DestinationMeshPrimitiveTargetVertex^.Tangent.z:=TemporaryTangents[VertexIndex,2];//-TangentSpaceMatrix.Tangent.z;
+           end;
+          end;
+
          end;
 
         end;
 
-       end;
+        //DestinationMeshPrimitive.fTargets.Finish;
 
-       //DestinationMeshPrimitive.fTargets.Finish;
+        DestinationMeshPrimitive.fStartBufferVertexOffset:=fGroup.fVertices.Count;
+        fGroup.fVertices.Add(DestinationMeshPrimitiveVertices);
+        DestinationMeshPrimitive.fCountVertices:=TpvSizeUInt(fGroup.fVertices.Count)-DestinationMeshPrimitive.fStartBufferVertexOffset;
 
-       DestinationMeshPrimitive.fStartBufferVertexOffset:=fGroup.fVertices.Count;
-       fGroup.fVertices.Add(DestinationMeshPrimitiveVertices);
-       DestinationMeshPrimitive.fCountVertices:=TpvSizeUInt(fGroup.fVertices.Count)-DestinationMeshPrimitive.fStartBufferVertexOffset;
+        DestinationMeshPrimitive.fStartBufferIndexOffset:=fGroup.fIndices.Count;
+        fGroup.fIndices.Add(DestinationMeshPrimitiveIndices);
+        for IndexIndex:=TpvSizeInt(DestinationMeshPrimitive.fStartBufferIndexOffset) to fGroup.fIndices.Count-1 do begin
+         inc(fGroup.fIndices.ItemArray[IndexIndex],DestinationMeshPrimitive.fStartBufferVertexOffset);
+        end;
+        DestinationMeshPrimitive.fCountIndices:=TpvSizeUInt(fGroup.fIndices.Count)-DestinationMeshPrimitive.fStartBufferIndexOffset;
 
-       DestinationMeshPrimitive.fStartBufferIndexOffset:=fGroup.fIndices.Count;
-       fGroup.fIndices.Add(DestinationMeshPrimitiveIndices);
-       for IndexIndex:=TpvSizeInt(DestinationMeshPrimitive.fStartBufferIndexOffset) to fGroup.fIndices.Count-1 do begin
-        inc(fGroup.fIndices.ItemArray[IndexIndex],DestinationMeshPrimitive.fStartBufferVertexOffset);
-       end;
-       DestinationMeshPrimitive.fCountIndices:=TpvSizeUInt(fGroup.fIndices.Count)-DestinationMeshPrimitive.fStartBufferIndexOffset;
+        DestinationMeshPrimitive.fMorphTargetBaseIndex:=fMorphTargetBaseIndex;
 
-       DestinationMeshPrimitive.fMorphTargetBaseIndex:=fMorphTargetBaseIndex;
+        if DestinationMeshPrimitive.fTargets.Count>0 then begin
 
-       if DestinationMeshPrimitive.fTargets.Count>0 then begin
-
-        for VertexIndex:=TpvSizeInt(DestinationMeshPrimitive.fStartBufferVertexOffset) to TpvSizeInt(DestinationMeshPrimitive.fStartBufferVertexOffset+DestinationMeshPrimitive.fCountVertices)-1 do begin
-         Vertex:=@fGroup.fVertices.ItemArray[VertexIndex];
-         Vertex^.MorphTargetVertexBaseIndex:=fGroup.fMorphTargetVertices.Count;
-         for TargetIndex:=0 to DestinationMeshPrimitive.fTargets.Count-1 do begin
-          DestinationMeshPrimitiveTarget:=DestinationMeshPrimitive.fTargets[TargetIndex];
-          DestinationMeshPrimitiveTargetVertex:=@DestinationMeshPrimitiveTarget.fVertices.ItemArray[VertexIndex-DestinationMeshPrimitive.fStartBufferVertexOffset];
-          MorphTargetVertexIndex:=fGroup.fMorphTargetVertices.AddNewIndex;
-          MorphTargetVertex:=@fGroup.fMorphTargetVertices.ItemArray[MorphTargetVertexIndex];
-          MorphTargetVertex^.Position:=DestinationMeshPrimitiveTargetVertex^.Position;
-          MorphTargetVertex^.Index:=DestinationMeshPrimitive.fMorphTargetBaseIndex+TargetIndex;
-          MorphTargetVertex^.SetNormal(DestinationMeshPrimitiveTargetVertex^.Normal);
-          MorphTargetVertex^.SetTangent(DestinationMeshPrimitiveTargetVertex^.Tangent);
-          if (TargetIndex+1)<DestinationMeshPrimitive.fTargets.Count then begin
-           MorphTargetVertex^.Next:=MorphTargetVertexIndex+1;
-          end else begin
-           MorphTargetVertex^.Next:=TpvUInt32($ffffffff);
+         for VertexIndex:=TpvSizeInt(DestinationMeshPrimitive.fStartBufferVertexOffset) to TpvSizeInt(DestinationMeshPrimitive.fStartBufferVertexOffset+DestinationMeshPrimitive.fCountVertices)-1 do begin
+          Vertex:=@fGroup.fVertices.ItemArray[VertexIndex];
+          Vertex^.MorphTargetVertexBaseIndex:=fGroup.fMorphTargetVertices.Count;
+          for TargetIndex:=0 to DestinationMeshPrimitive.fTargets.Count-1 do begin
+           DestinationMeshPrimitiveTarget:=DestinationMeshPrimitive.fTargets[TargetIndex];
+           DestinationMeshPrimitiveTargetVertex:=@DestinationMeshPrimitiveTarget.fVertices.ItemArray[VertexIndex-DestinationMeshPrimitive.fStartBufferVertexOffset];
+           MorphTargetVertexIndex:=fGroup.fMorphTargetVertices.AddNewIndex;
+           MorphTargetVertex:=@fGroup.fMorphTargetVertices.ItemArray[MorphTargetVertexIndex];
+           MorphTargetVertex^.Position:=DestinationMeshPrimitiveTargetVertex^.Position;
+           MorphTargetVertex^.Index:=DestinationMeshPrimitive.fMorphTargetBaseIndex+TargetIndex;
+           MorphTargetVertex^.SetNormal(DestinationMeshPrimitiveTargetVertex^.Normal);
+           MorphTargetVertex^.SetTangent(DestinationMeshPrimitiveTargetVertex^.Tangent);
+           if (TargetIndex+1)<DestinationMeshPrimitive.fTargets.Count then begin
+            MorphTargetVertex^.Next:=MorphTargetVertexIndex+1;
+           end else begin
+            MorphTargetVertex^.Next:=TpvUInt32($ffffffff);
+           end;
+           MorphTargetVertex^.Reserved:=0;
           end;
-          MorphTargetVertex^.Reserved:=0;
          end;
         end;
-       end;
 
-       DestinationMeshPrimitive.fNodeMeshPrimitiveInstances.Clear;
+        DestinationMeshPrimitive.fNodeMeshPrimitiveInstances.Clear;
+
+       finally
+        DestinationMeshPrimitiveIndices:=nil;
+       end;
 
       finally
-       DestinationMeshPrimitiveIndices:=nil;
+       TempTangentSpaceMatrices:=nil;
       end;
 
      finally

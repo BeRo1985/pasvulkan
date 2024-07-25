@@ -800,7 +800,9 @@ type PpvScalar=^TpvScalar;
         3:(Tangent,Bitangent,Normal:TpvVector3);
         4:(Right,Up,Forwards:TpvVector3);
         5:(RawVectors:array[0..2] of TpvVector3);
-       end;
+     end;
+
+     TpvMatrix3x3DynamicArray=array of TpvMatrix3x3;
 
      PpvDecomposedMatrix4x4=^TpvDecomposedMatrix4x4;
      TpvDecomposedMatrix4x4=record
@@ -986,6 +988,8 @@ type PpvScalar=^TpvScalar;
         4:(Right,Up,Forwards,Offset:TpvVector4);
         5:(RawVectors:array[0..3] of TpvVector4);
      end;
+
+     TpvMatrix4x4DynamicArray=array of TpvMatrix4x4;
 
      // Dual quaternion with uniform scaling support
      PpvDualQuaternion=^TpvDualQuaternion;
