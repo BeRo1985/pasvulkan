@@ -2658,6 +2658,7 @@ type EpvScene3D=class(Exception);
                      procedure Upload; override;
                      procedure Unload; override;
                      procedure UpdateInvisible;
+                     procedure DumpMemoryUsage(const aStringList:TStringList;var aTotalSizeVRAM,aTotalSizeRAM:TpvUInt64);
                     public
                      function HasProvidedDependency(const aInstance:TpvScene3D.TGroup.TInstance):Boolean;
                      function AddProvidedDependency(const aInstance:TpvScene3D.TGroup.TInstance):Boolean;
@@ -15783,6 +15784,7 @@ begin
   pvApplication.Log(LOG_DEBUG,'TpvScene3D.TGroup.BeginLoad','Entering...');
   try
    if assigned(aStream) then begin
+    fName:=FileName;
     case TpvScene3D.DetectFileType(aStream) of
      TpvScene3D.TFileType.GLTF:begin
       GLTF:=TPasGLTF.TDocument.Create;
@@ -17859,6 +17861,84 @@ begin
    FreeAndNil(Node.fLight);
   end;
  end;
+end;
+
+procedure TpvScene3D.TGroup.TInstance.DumpMemoryUsage(const aStringList:TStringList;var aTotalSizeVRAM,aTotalSizeRAM:TpvUInt64);
+var GroupName:TpvUTF8String;
+ function ToFixed(const aValue:TpvDouble;const aDecimalPlaces:TpvInt32):TpvUTF8String;
+ begin
+  Str(aValue:1:aDecimalPlaces,result);
+ end;
+ function ToSize(const aSize:TpvUInt64):TpvUTF8String;
+ begin
+  if aSize<TpvUInt64(1024) then begin
+   result:=IntToStr(aSize)+' B';
+  end else if aSize<TpvUInt64(1048576) then begin
+   result:=ToFixed(aSize/1024.0,2)+' KiB';
+  end else if aSize<TpvUInt64(1073741824) then begin
+   result:=ToFixed(aSize/1048576.0,2)+' MiB';
+  end else begin
+   result:=ToFixed(aSize/1073741824.0,2)+' GiB';
+  end;
+ end;
+ procedure WriteLine(const s:String);
+ begin
+  aStringList.Add(s);
+ end;
+var SizeVRAM,SizeRAM:TpvUInt64;
+begin
+ GroupName:=fGroup.fName;
+ 
+ WriteLine('- Group Instance of Group "'+GroupName+'"');
+
+ SizeVRAM:=fVulkanVertexBufferCount*(SizeOf(TGPUDynamicVertex)+SizeOf(TGPUStaticVertex)+SizeOf(TGPUCachedVertex)+SizeOf(TGPUCachedRaytracingVertex));
+ SizeRAM:=fVulkanVertexBufferCount*SizeOf(TVertex);
+ WriteLine('                              Vertices: '+IntToStr(fGroup.fVertices.Count)+' ('+ToSize(SizeVRAM)+' on vRAM, '+ToSize(SizeRAM)+' on RAM)');
+ inc(aTotalSizeVRAM,SizeVRAM);
+ inc(aTotalSizeRAM,SizeRAM);
+
+ SizeVRAM:=fGroup.fIndices.Count*SizeOf(TpvUInt32);
+ SizeRAM:=fGroup.fIndices.Count*SizeOf(TpvUInt32);
+ WriteLine('                    Raytracing indices: '+IntToStr(fGroup.fIndices.Count)+' ('+ToSize(SizeVRAM)+' on vRAM, '+ToSize(SizeRAM)+' on RAM)');
+ inc(aTotalSizeVRAM,SizeVRAM);
+ inc(aTotalSizeRAM,SizeRAM);
+
+ SizeVRAM:=fVulkanDrawIndexBufferCount*SizeOf(TpvUInt32);
+ SizeRAM:=fVulkanDrawIndexBufferCount*SizeOf(TpvUInt32);
+ WriteLine('             Draw index buffer indices: '+IntToStr(fVulkanDrawIndexBufferCount)+' ('+ToSize(SizeVRAM)+' on vRAM, '+ToSize(SizeRAM)+' on RAM)');
+ inc(aTotalSizeVRAM,SizeVRAM);
+ inc(aTotalSizeRAM,SizeRAM);
+
+ SizeVRAM:=fVulkanDrawUniqueIndexBufferCount*SizeOf(TpvUInt32);
+ SizeRAM:=fVulkanDrawUniqueIndexBufferCount*SizeOf(TpvUInt32);
+ WriteLine('      Draw unique index buffer indices: '+IntToStr(fVulkanDrawUniqueIndexBufferCount)+' ('+ToSize(SizeVRAM)+' on vRAM, '+ToSize(SizeRAM)+' on RAM)');
+ inc(aTotalSizeVRAM,SizeVRAM);
+ inc(aTotalSizeRAM,SizeRAM);
+
+ SizeVRAM:=fVulkanMorphTargetVertexBufferCount*SizeOf(TpvScene3D.TMorphTargetVertex);
+ SizeRAM:=fGroup.fMorphTargetVertices.Count*SizeOf(TpvScene3D.TMorphTargetVertex);
+ WriteLine('                 Morph target vertices: '+IntToStr(fGroup.fMorphTargetVertices.Count)+' ('+ToSize(SizeVRAM)+' on vRAM, '+ToSize(SizeRAM)+' on RAM)');
+ inc(aTotalSizeVRAM,SizeVRAM);
+ inc(aTotalSizeRAM,SizeRAM);
+
+ SizeVRAM:=fVulkanJointBlockBufferCount*SizeOf(TpvScene3D.TJointBlock);
+ SizeRAM:=fGroup.fJointBlocks.Count*SizeOf(TpvScene3D.TJointBlock);
+ WriteLine('                         Joint blocks: '+IntToStr(fGroup.fJointBlocks.Count)+' ('+ToSize(SizeVRAM)+' on vRAM, '+ToSize(SizeRAM)+' on RAM)');
+ inc(aTotalSizeVRAM,SizeVRAM);
+ inc(aTotalSizeRAM,SizeRAM);
+
+ SizeVRAM:=fVulkanNodeMatricesBufferCount*SizeOf(TpvMatrix4x4)*fSceneInstance.CountInFlightFrames;
+ SizeRAM:=length(fNodeMatrices)*SizeOf(TpvMatrix4x4);
+ WriteLine('                        Node matrices: '+IntToStr(length(fNodeMatrices))+' ('+ToSize(SizeVRAM)+' on vRAM, '+ToSize(SizeRAM)+' on RAM)');
+ inc(aTotalSizeVRAM,SizeVRAM);
+ inc(aTotalSizeRAM,SizeRAM);
+
+ SizeVRAM:=fVulkanMorphTargetVertexWeightsBufferCount*SizeOf(TpvFloat)*fSceneInstance.CountInFlightFrames;
+ SizeRAM:=length(fMorphTargetVertexWeights)*SizeOf(TpvFloat);
+ WriteLine('          Morph target vertex weights: '+IntToStr(length(fMorphTargetVertexWeights))+' ('+ToSize(SizeVRAM)+' on vRAM, '+ToSize(SizeRAM)+' on RAM)');
+ inc(aTotalSizeVRAM,SizeVRAM);
+ inc(aTotalSizeRAM,SizeRAM);
+
 end;
 
 function TpvScene3D.TGroup.TInstance.HasProvidedDependency(const aInstance:TpvScene3D.TGroup.TInstance):Boolean;
