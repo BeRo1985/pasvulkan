@@ -13198,12 +13198,15 @@ procedure TpvScene3D.TGroup.DumpMemoryUsage(const aStringList:TStringList;var aT
  begin
   aStringList.Add(s);
  end;
-var SizeVRAM,SizeRAM:TpvUInt64;
+var SizeVRAM,SizeRAM,LastSizeVRAM,LastSizeRAM:TpvUInt64;
 begin
+
+ LastSizeVRAM:=aTotalSizeVRAM;
+ LastSizeRAM:=aTotalSizeRAM;
 
  WriteLine('- Group "'+fName+'"');
  WriteLine('');
-
+ 
  SizeVRAM:=0;
  SizeRAM:=fVertices.Count*SizeOf(TVertex);
  WriteLine('                              Vertices: '+IntToStr(fVertices.Count)+' ('+ToSize(SizeVRAM)+' on vRAM, '+ToSize(SizeRAM)+' on RAM)');
@@ -13251,8 +13254,11 @@ begin
  WriteLine('           Morph target vertex weights: '+IntToStr(Max(Max(fMorphTargetCount,fCountNodeWeights),1))+' ('+ToSize(SizeVRAM)+' on vRAM, '+ToSize(SizeRAM)+' on RAM)');
  inc(aTotalSizeVRAM,SizeVRAM);
  inc(aTotalSizeRAM,SizeRAM);
-
  WriteLine('');
+
+ WriteLine('  Total size: '+ToSize(aTotalSizeVRAM-LastSizeVRAM)+' on vRAM, '+ToSize(aTotalSizeRAM-LastSizeRAM)+' on RAM');
+ WriteLine('');
+
  WriteLine('===============================================================');
  WriteLine('');
 
@@ -17954,10 +17960,13 @@ var GroupName:TpvUTF8String;
  begin
   aStringList.Add(s);
  end;
-var SizeVRAM,SizeRAM:TpvUInt64;
+var SizeVRAM,SizeRAM,LastSizeVRAM,LastSizeRAM:TpvUInt64;
 begin
 
  GroupName:=fGroup.fName;
+
+ LastSizeVRAM:=aTotalSizeVRAM;
+ LastSizeRAM:=aTotalSizeRAM;
  
  WriteLine('- Group Instance of Group "'+GroupName+'"');
  WriteLine('');
@@ -18010,6 +18019,10 @@ begin
  inc(aTotalSizeVRAM,SizeVRAM);
  inc(aTotalSizeRAM,SizeRAM);
  WriteLine('');
+
+ WriteLine('  Total size: '+ToSize(aTotalSizeVRAM-LastSizeVRAM)+' on vRAM, '+ToSize(aTotalSizeRAM-LastSizeRAM)+' on RAM');
+ WriteLine('');
+
  WriteLine('===============================================================');
  WriteLine('');
 
