@@ -1393,22 +1393,27 @@ type EpvScene3D=class(Exception);
             TVertexDynamicArray=TpvDynamicArray<TVertex>;
             TGPUDynamicVertexDynamicArray=TpvDynamicArray<TGPUDynamicVertex>;
             TGPUStaticVertexDynamicArray=TpvDynamicArray<TGPUStaticVertex>;
+            { TMorphTargetVertex }
             TMorphTargetVertex=packed record
-             case boolean of
-              false:(
-               Position:TpvVector4;               //  16   16
-               Normal:TpvVector4;                 // +16   32
-               Tangent:TpvVector4;                // +16   48
-               // uvec4 metaData begin
-                Index:TpvUInt32;                  // + 4   52
-                Next:TpvUInt32;                   // + 4   56
-                Reserved0:TpvUInt32;              // + 4   60
-                Reserved1:TpvUInt32;              // + 4   64
-               // uvec4 metaData end
-              );                                  //  ==   ==
-              true:(                              //  64   64 per vertex
-               Padding:array[0..63] of TpvUInt8;
-              );
+             public
+              procedure SetNormal(const aNormal:TpvVector3); inline;
+              procedure SetTangent(const aTangent:TpvVector3); inline;
+              procedure SetNormalTangent(const aNormal,aTangent:TpvVector3); inline;
+              function GetNormal:TpvVector3; inline;
+              function GetTangent:TpvVector3; inline;
+             public
+              case boolean of
+               false:(
+                Position:TpvVector3;               //  12   12
+                Index:TpvUInt32;                   // + 4   16
+                Normal:TpvInt16Vector2;            // + 4   20 (signed 16-bit oct-encoded normal)
+                Tangent:TpvInt16Vector2;           // + 4   24 (signed 16-bit oct-encoded tangent)
+                Next:TpvUInt32;                    // + 4   28
+                Reserved:TpvUInt32;                // + 4   32 (for alignment)
+               );                                  //  ==   ==
+               true:(                              //  32   32 per vertex
+                Padding:array[0..31] of TpvUInt8;
+               );
             end;
             PMorphTargetVertex=^TMorphTargetVertex;
             TMorphTargetVertexDynamicArray=TpvDynamicArray<TMorphTargetVertex>;
@@ -4524,6 +4529,34 @@ begin
  result.Tangent:=OctDecode(Tangent);
  result.Normal:=OctDecode(Normal);
  result.Bitangent:=result.Normal.Cross(result.Tangent)*IfThen((Flags and (1 shl 0))<>0,-1.0,0.0);
+end;
+
+{ TpvScene3D.TMorphTargetVertex }
+
+procedure TpvScene3D.TMorphTargetVertex.SetNormal(const aNormal:TpvVector3);
+begin
+ Normal:=OctEncode(aNormal);
+end;
+
+procedure TpvScene3D.TMorphTargetVertex.SetTangent(const aTangent:TpvVector3);
+begin
+ Tangent:=OctEncode(aTangent);
+end;
+
+procedure TpvScene3D.TMorphTargetVertex.SetNormalTangent(const aNormal,aTangent:TpvVector3);
+begin
+ Normal:=OctEncode(aNormal);
+ Tangent:=OctEncode(aTangent);
+end;
+
+function TpvScene3D.TMorphTargetVertex.GetNormal:TpvVector3;
+begin
+ result:=OctDecode(Normal);
+end;
+
+function TpvScene3D.TMorphTargetVertex.GetTangent:TpvVector3;
+begin
+ result:=OctDecode(Tangent);
 end;
 
 { TpvScene3D.TDebugPrimitiveVertex }
@@ -11088,10 +11121,10 @@ begin
      for VertexIndex:=0 to PrimitiveTarget.fVertices.Count-1 do begin
       Vertex:=@Group.Vertices.ItemArray[Primitive.StartBufferVertexOffset+VertexIndex];
       PrimitiveTargetVertex:=@PrimitiveTarget.fVertices.ItemArray[VertexIndex];
-      PrimitiveTargetVertex^.Normal:=TargetNormals[VertexIndex]-OctDecode(Vertex^.Normal);
+      PrimitiveTargetVertex^.Normal:=TargetNormals[VertexIndex];//-OctDecode(Vertex^.Normal);
       Tangent:=TargetTangents[VertexIndex].Normalize;
       Tangent:=(Tangent-(Normal*Tangent.Dot(Normal))).Normalize;
-      PrimitiveTargetVertex^.Tangent:=Tangent-OctDecode(Vertex^.Tangent);
+      PrimitiveTargetVertex^.Tangent:=Tangent;//-OctDecode(Vertex^.Tangent);
      end;
 
     end;
@@ -11188,15 +11221,16 @@ begin
        MorphTargetVertexIndex:=fGroup.fMorphTargetVertices.AddNewIndex;
       end;
       MorphTargetVertex:=@fGroup.fMorphTargetVertices.ItemArray[MorphTargetVertexIndex];
-      MorphTargetVertex^.Position:=TpvVector4.InlineableCreate(PrimitiveTargetVertex^.Position,0.0);
-      MorphTargetVertex^.Normal:=TpvVector4.InlineableCreate(PrimitiveTargetVertex^.Normal,0.0);
-      MorphTargetVertex^.Tangent:=TpvVector4.InlineableCreate(PrimitiveTargetVertex^.Tangent,0.0);
+      MorphTargetVertex^.Position:=PrimitiveTargetVertex^.Position;
       MorphTargetVertex^.Index:=Primitive.fMorphTargetBaseIndex+TargetIndex;
+      MorphTargetVertex^.SetNormal(PrimitiveTargetVertex^.Normal);
+      MorphTargetVertex^.SetTangent(PrimitiveTargetVertex^.Tangent);
       if (TargetIndex+1)<Primitive.fTargets.Count then begin
        MorphTargetVertex^.Next:=MorphTargetVertexIndex+1;
       end else begin
        MorphTargetVertex^.Next:=TpvUInt32($ffffffff);
       end;
+      MorphTargetVertex^.Reserved:=0;
      end;
     end;
 
@@ -12136,13 +12170,16 @@ begin
          DestinationMeshPrimitiveTarget.fVertices.Resize(length(DestinationMeshPrimitiveVertices));
          for VertexIndex:=0 to DestinationMeshPrimitiveTarget.fVertices.Count-1 do begin
           DestinationMeshPrimitiveTargetVertex:=@DestinationMeshPrimitiveTarget.fVertices.ItemArray[VertexIndex];
-          DestinationMeshPrimitiveTargetVertex.Position:=TpvVector3(pointer(@TemporaryPositions[VertexIndex])^);
-          DestinationMeshPrimitiveTargetVertex.Normal.x:=TemporaryNormals[VertexIndex][0];
-          DestinationMeshPrimitiveTargetVertex.Normal.y:=TemporaryNormals[VertexIndex][1];
-          DestinationMeshPrimitiveTargetVertex.Normal.z:=TemporaryNormals[VertexIndex][2];
-          DestinationMeshPrimitiveTargetVertex.Tangent.x:=TemporaryTargetTangents[VertexIndex][0];
-          DestinationMeshPrimitiveTargetVertex.Tangent.y:=TemporaryTargetTangents[VertexIndex][1];
-          DestinationMeshPrimitiveTargetVertex.Tangent.z:=TemporaryTargetTangents[VertexIndex][2];
+          Vertex:=@DestinationMeshPrimitiveVertices[VertexIndex];
+          TangentSpaceMatrix.Normal:=OctDecode(Vertex^.Normal);
+          TangentSpaceMatrix.Tangent:=OctDecode(Vertex^.Tangent);
+          DestinationMeshPrimitiveTargetVertex^.Position:=TpvVector3(pointer(@TemporaryPositions[VertexIndex])^);
+          DestinationMeshPrimitiveTargetVertex^.Normal.x:=TangentSpaceMatrix.Normal.x+TemporaryNormals[VertexIndex][0];
+          DestinationMeshPrimitiveTargetVertex^.Normal.y:=TangentSpaceMatrix.Normal.y+TemporaryNormals[VertexIndex][1];
+          DestinationMeshPrimitiveTargetVertex^.Normal.z:=TangentSpaceMatrix.Normal.z+TemporaryNormals[VertexIndex][2];
+          DestinationMeshPrimitiveTargetVertex^.Tangent.x:=TangentSpaceMatrix.Tangent.x+TemporaryTargetTangents[VertexIndex][0];
+          DestinationMeshPrimitiveTargetVertex^.Tangent.y:=TangentSpaceMatrix.Tangent.y+TemporaryTargetTangents[VertexIndex][1];
+          DestinationMeshPrimitiveTargetVertex^.Tangent.z:=TangentSpaceMatrix.Tangent.z+TemporaryTargetTangents[VertexIndex][2];
          end;
 
          if not BoundingBoxFirst then begin
@@ -12175,10 +12212,10 @@ begin
             TemporaryPositions[VertexIndex,0]:=Vertex^.Position[0]+DestinationMeshPrimitiveTargetVertex^.Position[0];
             TemporaryPositions[VertexIndex,1]:=Vertex^.Position[1]+DestinationMeshPrimitiveTargetVertex^.Position[1];
             TemporaryPositions[VertexIndex,2]:=Vertex^.Position[2]+DestinationMeshPrimitiveTargetVertex^.Position[2];
-            TangentSpaceMatrix.Normal:=OctDecode(Vertex^.Normal);
-            TemporaryNormals[VertexIndex,0]:=TangentSpaceMatrix.Normal.x+DestinationMeshPrimitiveTargetVertex^.Normal.x;
-            TemporaryNormals[VertexIndex,1]:=TangentSpaceMatrix.Normal.y+DestinationMeshPrimitiveTargetVertex^.Normal.y;
-            TemporaryNormals[VertexIndex,2]:=TangentSpaceMatrix.Normal.z+DestinationMeshPrimitiveTargetVertex^.Normal.z;
+            //TangentSpaceMatrix.Normal:=OctDecode(Vertex^.Normal);
+            TemporaryNormals[VertexIndex,0]:={TangentSpaceMatrix.Normal.x+}DestinationMeshPrimitiveTargetVertex^.Normal.x;
+            TemporaryNormals[VertexIndex,1]:={TangentSpaceMatrix.Normal.y+}DestinationMeshPrimitiveTargetVertex^.Normal.y;
+            TemporaryNormals[VertexIndex,2]:={TangentSpaceMatrix.Normal.z+}DestinationMeshPrimitiveTargetVertex^.Normal.z;
            end;
            IndexIndex:=0;
            while (IndexIndex+2)<length(TemporaryTriangleIndices) do begin
@@ -12255,10 +12292,10 @@ begin
           for VertexIndex:=0 to DestinationMeshPrimitiveTarget.fVertices.Count-1 do begin
            DestinationMeshPrimitiveTargetVertex:=@DestinationMeshPrimitiveTarget.fVertices.ItemArray[VertexIndex];
            Vertex:=@DestinationMeshPrimitiveVertices[VertexIndex];
-           TangentSpaceMatrix.Tangent:=OctDecode(Vertex^.Tangent);
-           DestinationMeshPrimitiveTargetVertex^.Tangent.x:=TemporaryTangents[VertexIndex,0]-TangentSpaceMatrix.Tangent.x;
-           DestinationMeshPrimitiveTargetVertex^.Tangent.y:=TemporaryTangents[VertexIndex,1]-TangentSpaceMatrix.Tangent.y;
-           DestinationMeshPrimitiveTargetVertex^.Tangent.z:=TemporaryTangents[VertexIndex,2]-TangentSpaceMatrix.Tangent.z;
+           //TangentSpaceMatrix.Tangent:=OctDecode(Vertex^.Tangent);
+           DestinationMeshPrimitiveTargetVertex^.Tangent.x:=TemporaryTangents[VertexIndex,0];//-TangentSpaceMatrix.Tangent.x;
+           DestinationMeshPrimitiveTargetVertex^.Tangent.y:=TemporaryTangents[VertexIndex,1];//-TangentSpaceMatrix.Tangent.y;
+           DestinationMeshPrimitiveTargetVertex^.Tangent.z:=TemporaryTangents[VertexIndex,2];//-TangentSpaceMatrix.Tangent.z;
           end;
          end;
 
@@ -12291,15 +12328,16 @@ begin
           DestinationMeshPrimitiveTargetVertex:=@DestinationMeshPrimitiveTarget.fVertices.ItemArray[VertexIndex-DestinationMeshPrimitive.fStartBufferVertexOffset];
           MorphTargetVertexIndex:=fGroup.fMorphTargetVertices.AddNewIndex;
           MorphTargetVertex:=@fGroup.fMorphTargetVertices.ItemArray[MorphTargetVertexIndex];
-          MorphTargetVertex^.Position:=TpvVector4.Create(DestinationMeshPrimitiveTargetVertex^.Position,0.0);
-          MorphTargetVertex^.Normal:=TpvVector4.Create(DestinationMeshPrimitiveTargetVertex^.Normal,0.0);
-          MorphTargetVertex^.Tangent:=TpvVector4.Create(DestinationMeshPrimitiveTargetVertex^.Tangent,0.0);
+          MorphTargetVertex^.Position:=DestinationMeshPrimitiveTargetVertex^.Position;
           MorphTargetVertex^.Index:=DestinationMeshPrimitive.fMorphTargetBaseIndex+TargetIndex;
+          MorphTargetVertex^.SetNormal(DestinationMeshPrimitiveTargetVertex^.Normal);
+          MorphTargetVertex^.SetTangent(DestinationMeshPrimitiveTargetVertex^.Tangent);
           if (TargetIndex+1)<DestinationMeshPrimitive.fTargets.Count then begin
            MorphTargetVertex^.Next:=MorphTargetVertexIndex+1;
           end else begin
            MorphTargetVertex^.Next:=TpvUInt32($ffffffff);
           end;
+          MorphTargetVertex^.Reserved:=0;
          end;
         end;
        end;
@@ -15605,8 +15643,8 @@ begin
       TargetVertex^.Position:=SAMVertex^.Position-MeshVertex^.Position;
     //UnpackUInt16QTangentSpace(SAMVertex^.TangentSpace,Tangent,Bitangent,Normal);
     //DecodeTangentSpaceFromRGB10A2SNorm(SAMVertex^.TangentSpace,Tangent,Bitangent,Normal);
-      TargetVertex^.Normal:=SAMVertex^.Normal-OctDecode(MeshVertex^.Normal);
-      TargetVertex^.Tangent:=SAMVertex^.Tangent-OctDecode(MeshVertex^.Tangent);
+      TargetVertex^.Normal:=SAMVertex^.Normal;//-OctDecode(MeshVertex^.Normal);
+      TargetVertex^.Tangent:=SAMVertex^.Tangent;//-OctDecode(MeshVertex^.Tangent);
       inc(MorphWeightIndex);
      end;
     end;
@@ -20856,7 +20894,7 @@ var PrimitiveIndex,VertexIndex,JointBlockIndex,JointIndex,IndexIndex,SideIndex:T
     InverseMatrix,Matrix,ModelNodeMatrix,ModelNodeMatrixEx:TpvMatrix4x4;
     Primitive:TpvScene3D.TGroup.TMesh.TPrimitive;
     Vertex:TpvScene3D.PVertex;
-    Position,Normal:TpvVector3;
+    Position,Normal,OriginalNormal:TpvVector3;
     JointBlock:PJointBlock;
     MorphTargetVertex:TpvScene3D.PMorphTargetVertex;
     BakedVertices:TBakedVertices;
@@ -20890,11 +20928,12 @@ begin
         BakedVertex:=@BakedVertices[VertexIndex-Primitive.fStartBufferVertexOffset];
         Position:=Vertex^.Position;
         Normal:=OctDecode(Vertex^.Normal);
+        OriginalNormal:=Normal;
         MorphTargetVertexIndex:=Vertex^.MorphTargetVertexBaseIndex;
         while MorphTargetVertexIndex<>TpvUInt32($ffffffff) do begin
          MorphTargetVertex:=@Group.fMorphTargetVertices.ItemArray[MorphTargetVertexIndex];
          Position:=Position+(MorphTargetVertex^.Position.xyz*fMorphTargetVertexWeights[MorphTargetVertex^.Index]);
-         Normal:=Normal+(MorphTargetVertex^.Normal.xyz*fMorphTargetVertexWeights[MorphTargetVertex^.Index]);
+         Normal:=Normal+((MorphTargetVertex^.GetNormal-OriginalNormal)*fMorphTargetVertexWeights[MorphTargetVertex^.Index]);
          MorphTargetVertexIndex:=MorphTargetVertex^.Next;
         end;
         Normal:=Normal.Normalize;
