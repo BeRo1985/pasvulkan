@@ -13235,19 +13235,19 @@ begin
 
  SizeVRAM:=0;
  SizeRAM:=fJointBlocks.Count*SizeOf(TpvScene3D.TJointBlock);
- WriteLine('                         Joint blocks: '+IntToStr(fJointBlocks.Count)+' ('+ToSize(SizeVRAM)+' on vRAM, '+ToSize(SizeRAM)+' on RAM)');
+ WriteLine('                          Joint blocks: '+IntToStr(fJointBlocks.Count)+' ('+ToSize(SizeVRAM)+' on vRAM, '+ToSize(SizeRAM)+' on RAM)');
  inc(aTotalSizeVRAM,SizeVRAM);
  inc(aTotalSizeRAM,SizeRAM);
 
  SizeVRAM:=0;
  SizeRAM:=(fNodes.Count+fCountJointNodeMatrices)*SizeOf(TpvMatrix4x4);
- WriteLine('                        Node matrices: '+IntToStr(fNodes.Count+fCountJointNodeMatrices)+' ('+ToSize(SizeVRAM)+' on vRAM, '+ToSize(SizeRAM)+' on RAM)');
+ WriteLine('                         Node matrices: '+IntToStr(fNodes.Count+fCountJointNodeMatrices)+' ('+ToSize(SizeVRAM)+' on vRAM, '+ToSize(SizeRAM)+' on RAM)');
  inc(aTotalSizeVRAM,SizeVRAM);
  inc(aTotalSizeRAM,SizeRAM);
 
  SizeVRAM:=0;
  SizeRAM:=Max(Max(fMorphTargetCount,fCountNodeWeights),1)*SizeOf(TpvFloat);
- WriteLine('          Morph target vertex weights: '+IntToStr(Max(Max(fMorphTargetCount,fCountNodeWeights),1))+' ('+ToSize(SizeVRAM)+' on vRAM, '+ToSize(SizeRAM)+' on RAM)');
+ WriteLine('           Morph target vertex weights: '+IntToStr(Max(Max(fMorphTargetCount,fCountNodeWeights),1))+' ('+ToSize(SizeVRAM)+' on vRAM, '+ToSize(SizeRAM)+' on RAM)');
  inc(aTotalSizeVRAM,SizeVRAM);
  inc(aTotalSizeRAM,SizeRAM);
 
@@ -17992,19 +17992,19 @@ begin
 
  SizeVRAM:=fVulkanJointBlockBufferCount*SizeOf(TpvScene3D.TJointBlock);
  SizeRAM:=fGroup.fJointBlocks.Count*SizeOf(TpvScene3D.TJointBlock);
- WriteLine('                         Joint blocks: '+IntToStr(fGroup.fJointBlocks.Count)+' ('+ToSize(SizeVRAM)+' on vRAM, '+ToSize(SizeRAM)+' on RAM)');
+ WriteLine('                          Joint blocks: '+IntToStr(fGroup.fJointBlocks.Count)+' ('+ToSize(SizeVRAM)+' on vRAM, '+ToSize(SizeRAM)+' on RAM)');
  inc(aTotalSizeVRAM,SizeVRAM);
  inc(aTotalSizeRAM,SizeRAM);
 
  SizeVRAM:=fVulkanNodeMatricesBufferCount*SizeOf(TpvMatrix4x4)*fSceneInstance.CountInFlightFrames;
  SizeRAM:=length(fNodeMatrices)*SizeOf(TpvMatrix4x4);
- WriteLine('                        Node matrices: '+IntToStr(length(fNodeMatrices))+' ('+ToSize(SizeVRAM)+' on vRAM, '+ToSize(SizeRAM)+' on RAM)');
+ WriteLine('                         Node matrices: '+IntToStr(length(fNodeMatrices))+' ('+ToSize(SizeVRAM)+' on vRAM, '+ToSize(SizeRAM)+' on RAM)');
  inc(aTotalSizeVRAM,SizeVRAM);
  inc(aTotalSizeRAM,SizeRAM);
 
  SizeVRAM:=fVulkanMorphTargetVertexWeightsBufferCount*SizeOf(TpvFloat)*fSceneInstance.CountInFlightFrames;
  SizeRAM:=length(fMorphTargetVertexWeights)*SizeOf(TpvFloat);
- WriteLine('          Morph target vertex weights: '+IntToStr(length(fMorphTargetVertexWeights))+' ('+ToSize(SizeVRAM)+' on vRAM, '+ToSize(SizeRAM)+' on RAM)');
+ WriteLine('           Morph target vertex weights: '+IntToStr(length(fMorphTargetVertexWeights))+' ('+ToSize(SizeVRAM)+' on vRAM, '+ToSize(SizeRAM)+' on RAM)');
  inc(aTotalSizeVRAM,SizeVRAM);
  inc(aTotalSizeRAM,SizeRAM);
  WriteLine('');
