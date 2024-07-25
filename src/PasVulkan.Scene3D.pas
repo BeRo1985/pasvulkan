@@ -13215,7 +13215,7 @@ begin
 
  SizeVRAM:=0;
  SizeRAM:=fIndices.Count*SizeOf(TpvUInt32);
- WriteLine('                             Indices: '+IntToStr(fIndices.Count)+' ('+ToSize(SizeVRAM)+' on vRAM, '+ToSize(SizeRAM)+' on RAM)');
+ WriteLine('                               Indices: '+IntToStr(fIndices.Count)+' ('+ToSize(SizeVRAM)+' on vRAM, '+ToSize(SizeRAM)+' on RAM)');
  inc(aTotalSizeVRAM,SizeVRAM);
  inc(aTotalSizeRAM,SizeRAM);
 
