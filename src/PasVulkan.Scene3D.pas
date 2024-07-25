@@ -2833,6 +2833,7 @@ type EpvScene3D=class(Exception);
               procedure LoadData; override;
               procedure Upload; override;
               procedure Unload; override;
+              procedure DumpMemoryUsage(const aStringList:TStringList;var aTotalSizeVRAM,aTotalSizeRAM:TpvUInt64);
              public
               function BeginLoad(const aStream:TStream):boolean; override;
               function EndLoad:boolean; override;
@@ -3606,6 +3607,24 @@ const FlushUpdateData=false;
 type TAnimationChannelTargetOverwriteGroupMap=array[TpvScene3D.TGroup.TAnimation.TChannel.TTarget] of TpvUInt64;
 
 var AnimationChannelTargetOverwriteGroupMap:TAnimationChannelTargetOverwriteGroupMap;
+
+function ToFixed(const aValue:TpvDouble;const aDecimalPlaces:TpvInt32):TpvUTF8String;
+begin
+ Str(aValue:1:aDecimalPlaces,result);
+end;
+
+function ToSize(const aSize:TpvUInt64):TpvUTF8String;
+begin
+ if aSize<TpvUInt64(1024) then begin
+  result:=IntToStr(aSize)+' B';
+ end else if aSize<TpvUInt64(1048576) then begin
+  result:=ToFixed(aSize/1024.0,2)+' KiB';
+ end else if aSize<TpvUInt64(1073741824) then begin
+  result:=ToFixed(aSize/1048576.0,2)+' MiB';
+ end else begin
+  result:=ToFixed(aSize/1073741824.0,2)+' GiB';
+ end;
+end;
 
 {function OctEncode(const aVector:TpvVector3;const aFloorX,aFloorY:Boolean):TpvScene3D.TInt16Vector2; overload;
 var Vector:TpvVector3;
@@ -13174,6 +13193,70 @@ begin
  result:=AsyncLoadState in [TpvResource.TAsyncLoadState.None,TpvResource.TAsyncLoadState.Done];
 end;
 
+procedure TpvScene3D.TGroup.DumpMemoryUsage(const aStringList:TStringList;var aTotalSizeVRAM,aTotalSizeRAM:TpvUInt64);
+ procedure WriteLine(const s:String);
+ begin
+  aStringList.Add(s);
+ end;
+var SizeVRAM,SizeRAM:TpvUInt64;
+begin
+
+ WriteLine('- Group "'+fName+'"');
+
+ SizeVRAM:=0;
+ SizeRAM:=fVertices.Count*SizeOf(TVertex);
+ WriteLine('                              Vertices: '+IntToStr(fVertices.Count)+' ('+ToSize(SizeVRAM)+' on vRAM, '+ToSize(SizeRAM)+' on RAM)');
+ inc(aTotalSizeVRAM,SizeVRAM);
+ inc(aTotalSizeRAM,SizeRAM);
+
+ SizeVRAM:=0;
+ SizeRAM:=fIndices.Count*SizeOf(TpvUInt32);
+ WriteLine('                             Indices: '+IntToStr(fIndices.Count)+' ('+ToSize(SizeVRAM)+' on vRAM, '+ToSize(SizeRAM)+' on RAM)');
+ inc(aTotalSizeVRAM,SizeVRAM);
+ inc(aTotalSizeRAM,SizeRAM);
+
+ SizeVRAM:=0;
+ SizeRAM:=fDrawChoreographyBatchCondensedIndices.Count*SizeOf(TpvUInt32);
+ WriteLine('             Draw index buffer indices: '+IntToStr(fDrawChoreographyBatchCondensedIndices.Count)+' ('+ToSize(SizeVRAM)+' on vRAM, '+ToSize(SizeRAM)+' on RAM)');
+ inc(aTotalSizeVRAM,SizeVRAM);
+ inc(aTotalSizeRAM,SizeRAM);
+
+ SizeVRAM:=0;
+ SizeRAM:=fDrawChoreographyBatchCondensedUniqueIndices.Count*SizeOf(TpvUInt32);
+ WriteLine('      Draw unique index buffer indices: '+IntToStr(fDrawChoreographyBatchCondensedUniqueIndices.Count)+' ('+ToSize(SizeVRAM)+' on vRAM, '+ToSize(SizeRAM)+' on RAM)');
+ inc(aTotalSizeVRAM,SizeVRAM);
+ inc(aTotalSizeRAM,SizeRAM);
+
+ SizeVRAM:=0;
+ SizeRAM:=fMorphTargetVertices.Count*SizeOf(TpvScene3D.TMorphTargetVertex);
+ WriteLine('                 Morph target vertices: '+IntToStr(fMorphTargetVertices.Count)+' ('+ToSize(SizeVRAM)+' on vRAM, '+ToSize(SizeRAM)+' on RAM)');
+ inc(aTotalSizeVRAM,SizeVRAM);
+ inc(aTotalSizeRAM,SizeRAM);
+
+ SizeVRAM:=0;
+ SizeRAM:=fJointBlocks.Count*SizeOf(TpvScene3D.TJointBlock);
+ WriteLine('                         Joint blocks: '+IntToStr(fJointBlocks.Count)+' ('+ToSize(SizeVRAM)+' on vRAM, '+ToSize(SizeRAM)+' on RAM)');
+ inc(aTotalSizeVRAM,SizeVRAM);
+ inc(aTotalSizeRAM,SizeRAM);
+
+ SizeVRAM:=0;
+ SizeRAM:=(fNodes.Count+fCountJointNodeMatrices)*SizeOf(TpvMatrix4x4);
+ WriteLine('                        Node matrices: '+IntToStr(fNodes.Count+fCountJointNodeMatrices)+' ('+ToSize(SizeVRAM)+' on vRAM, '+ToSize(SizeRAM)+' on RAM)');
+ inc(aTotalSizeVRAM,SizeVRAM);
+ inc(aTotalSizeRAM,SizeRAM);
+
+ SizeVRAM:=0;
+ SizeRAM:=Max(Max(fMorphTargetCount,fCountNodeWeights),1)*SizeOf(TpvFloat);
+ WriteLine('          Morph target vertex weights: '+IntToStr(Max(Max(fMorphTargetCount,fCountNodeWeights),1))+' ('+ToSize(SizeVRAM)+' on vRAM, '+ToSize(SizeRAM)+' on RAM)');
+ inc(aTotalSizeVRAM,SizeVRAM);
+ inc(aTotalSizeRAM,SizeRAM);
+
+ WriteLine('');
+ WriteLine('===============================================================');
+ WriteLine('');
+
+end;
+
 function TpvScene3D.TGroup.GetLightID(const aName:TpvUTF8String;const aIgnoreCase:Boolean):TpvSizeInt;
 begin
  if aIgnoreCase then begin
@@ -17866,28 +17949,13 @@ end;
 
 procedure TpvScene3D.TGroup.TInstance.DumpMemoryUsage(const aStringList:TStringList;var aTotalSizeVRAM,aTotalSizeRAM:TpvUInt64);
 var GroupName:TpvUTF8String;
- function ToFixed(const aValue:TpvDouble;const aDecimalPlaces:TpvInt32):TpvUTF8String;
- begin
-  Str(aValue:1:aDecimalPlaces,result);
- end;
- function ToSize(const aSize:TpvUInt64):TpvUTF8String;
- begin
-  if aSize<TpvUInt64(1024) then begin
-   result:=IntToStr(aSize)+' B';
-  end else if aSize<TpvUInt64(1048576) then begin
-   result:=ToFixed(aSize/1024.0,2)+' KiB';
-  end else if aSize<TpvUInt64(1073741824) then begin
-   result:=ToFixed(aSize/1048576.0,2)+' MiB';
-  end else begin
-   result:=ToFixed(aSize/1073741824.0,2)+' GiB';
-  end;
- end;
  procedure WriteLine(const s:String);
  begin
   aStringList.Add(s);
  end;
 var SizeVRAM,SizeRAM:TpvUInt64;
 begin
+
  GroupName:=fGroup.fName;
  
  WriteLine('- Group Instance of Group "'+GroupName+'"');
@@ -23275,8 +23343,19 @@ begin
 end;
 
 procedure TpvScene3D.DumpMemoryUsage(const aStringList:TStringList;var aTotalSizeVRAM,aTotalSizeRAM:TpvUInt64);
-var GroupInstance:TGroup.TInstance;
+var Group:TGroup;
+    GroupInstance:TGroup.TInstance;
 begin
+
+ fGroupListLock.Acquire;
+ try
+  for Group in fGroups do begin
+   Group.DumpMemoryUsage(aStringList,aTotalSizeVRAM,aTotalSizeRAM);
+  end;
+ finally
+  fGroupListLock.Release;
+ end;
+
  fGroupInstanceListLock.Acquire;
  try
   for GroupInstance in fGroupInstances do begin
@@ -23285,6 +23364,7 @@ begin
  finally
   fGroupInstanceListLock.Release;
  end;
+
 end;
 
 procedure TpvScene3D.NewImageDescriptorGeneration;
