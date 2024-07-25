@@ -11584,9 +11584,9 @@ var Index,
     p0,p1,p2:PpvVector3;
     t1t0,t2t0:TpvVector2;
     t0,t1,t2:PpvVector2;
-    TangentSpaceMatrix:TpvMatrix3x3;
+    TangentSpaceMatrix:PpvMatrix3x3;
     TempTangentSpaceMatrices:TpvMatrix3x3DynamicArray;
-    TangentSpaceQuaternion:TpvQuaternion;
+//  TangentSpaceQuaternion:TpvQuaternion;
     Vertex:PVertex;
     Area:TPasGLTFFloat;
     HasMorphVertexTargets,
@@ -12000,36 +12000,36 @@ begin
           Vertex^.Position:=TpvVector3(pointer(@TemporaryPositions[VertexIndex])^);
           Vertex^.NodeIndex:=TpvUInt32($ffffffff);
 
+          TangentSpaceMatrix:=@TempTangentSpaceMatrices[VertexIndex];
+
           if VertexIndex<length(TemporaryNormals) then begin
-           TangentSpaceMatrix.Normal:=TpvVector3(pointer(@TemporaryNormals[VertexIndex])^);
+           TangentSpaceMatrix^.Normal:=TpvVector3(pointer(@TemporaryNormals[VertexIndex])^);
           end else begin
-           TangentSpaceMatrix.Normal:=TpvVector3.ZAxis;
+           TangentSpaceMatrix^.Normal:=TpvVector3.ZAxis;
           end;
           if VertexIndex<length(TemporaryTangents) then begin
-           TangentSpaceMatrix.Tangent:=TpvVector3(pointer(@TemporaryTangents[VertexIndex])^);
+           TangentSpaceMatrix^.Tangent:=TpvVector3(pointer(@TemporaryTangents[VertexIndex])^);
           end else begin
-           TangentSpaceMatrix.Tangent:=TpvVector3.XAxis;
+           TangentSpaceMatrix^.Tangent:=TpvVector3.XAxis;
           end;
           if VertexIndex<length(TemporaryBitangents) then begin
-           TangentSpaceMatrix.Bitangent:=TpvVector3(pointer(@TemporaryBitangents[VertexIndex])^);
+           TangentSpaceMatrix^.Bitangent:=TpvVector3(pointer(@TemporaryBitangents[VertexIndex])^);
           end else begin
-           TangentSpaceMatrix.Bitangent:=TpvVector3.YAxis;
+           TangentSpaceMatrix^.Bitangent:=TpvVector3.YAxis;
           end;
 
-          TempTangentSpaceMatrices[VertexIndex]:=TangentSpaceMatrix;
+          Vertex^.Normal:=OctEncode(TangentSpaceMatrix^.Normal);
+          Vertex^.Tangent:=OctEncode(TangentSpaceMatrix^.Tangent);
 
-          Vertex^.Normal:=OctEncode(TangentSpaceMatrix.Normal);
-          Vertex^.Tangent:=OctEncode(TangentSpaceMatrix.Tangent);
-
-  {$if true}
-          if (OctDecode(Vertex^.Normal).Cross(OctDecode(Vertex^.Tangent))).Dot(TangentSpaceMatrix.Bitangent)<0.0 then begin
+{$if true}
+          if (OctDecode(Vertex^.Normal).Cross(OctDecode(Vertex^.Tangent))).Dot(TangentSpaceMatrix^.Bitangent)<0.0 then begin
            Vertex^.Flags:=Vertex^.Flags or (1 shl 0);
           end;
-  {$else}
+{$else}
           if (VertexIndex<length(TemporaryTangents)) and (TpvVector4(pointer(@TemporaryTangents[VertexIndex])^).w<0) then begin
            Vertex^.Flags:=Vertex^.Flags or (1 shl 0);
           end;
-  {$ifend}
+{$ifend}
           if VertexIndex<length(TemporaryTexCoord0) then begin
            Vertex^.TexCoord0:=TpvVector2(pointer(@TemporaryTexCoord0[VertexIndex])^);
           end;
@@ -12178,14 +12178,14 @@ begin
           for VertexIndex:=0 to DestinationMeshPrimitiveTarget.fVertices.Count-1 do begin
            DestinationMeshPrimitiveTargetVertex:=@DestinationMeshPrimitiveTarget.fVertices.ItemArray[VertexIndex];
            Vertex:=@DestinationMeshPrimitiveVertices[VertexIndex];
-           TangentSpaceMatrix:=TempTangentSpaceMatrices[VertexIndex];
+           TangentSpaceMatrix:=@TempTangentSpaceMatrices[VertexIndex];
            DestinationMeshPrimitiveTargetVertex^.Position:=TpvVector3(pointer(@TemporaryPositions[VertexIndex])^);
-           DestinationMeshPrimitiveTargetVertex^.Normal.x:=TangentSpaceMatrix.Normal.x+TemporaryNormals[VertexIndex][0];
-           DestinationMeshPrimitiveTargetVertex^.Normal.y:=TangentSpaceMatrix.Normal.y+TemporaryNormals[VertexIndex][1];
-           DestinationMeshPrimitiveTargetVertex^.Normal.z:=TangentSpaceMatrix.Normal.z+TemporaryNormals[VertexIndex][2];
-           DestinationMeshPrimitiveTargetVertex^.Tangent.x:=TangentSpaceMatrix.Tangent.x+TemporaryTargetTangents[VertexIndex][0];
-           DestinationMeshPrimitiveTargetVertex^.Tangent.y:=TangentSpaceMatrix.Tangent.y+TemporaryTargetTangents[VertexIndex][1];
-           DestinationMeshPrimitiveTargetVertex^.Tangent.z:=TangentSpaceMatrix.Tangent.z+TemporaryTargetTangents[VertexIndex][2];
+           DestinationMeshPrimitiveTargetVertex^.Normal.x:=TangentSpaceMatrix^.Normal.x+TemporaryNormals[VertexIndex][0];
+           DestinationMeshPrimitiveTargetVertex^.Normal.y:=TangentSpaceMatrix^.Normal.y+TemporaryNormals[VertexIndex][1];
+           DestinationMeshPrimitiveTargetVertex^.Normal.z:=TangentSpaceMatrix^.Normal.z+TemporaryNormals[VertexIndex][2];
+           DestinationMeshPrimitiveTargetVertex^.Tangent.x:=TangentSpaceMatrix^.Tangent.x+TemporaryTargetTangents[VertexIndex][0];
+           DestinationMeshPrimitiveTargetVertex^.Tangent.y:=TangentSpaceMatrix^.Tangent.y+TemporaryTargetTangents[VertexIndex][1];
+           DestinationMeshPrimitiveTargetVertex^.Tangent.z:=TangentSpaceMatrix^.Tangent.z+TemporaryTargetTangents[VertexIndex][2];
           end;
 
           if not BoundingBoxFirst then begin
