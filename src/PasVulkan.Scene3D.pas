@@ -3386,6 +3386,7 @@ type EpvScene3D=class(Exception);
        destructor Destroy; override;
        procedure Initialize;
        procedure AddToFreeQueue(const aObject:TObject;const aFrameDelay:TpvInt32=-1);
+       procedure DumpMemoryUsage(const aStringList:TStringList;var aTotalSizeVRAM,aTotalSizeRAM:TpvUInt64);
        procedure Upload;
        procedure Unload;
        procedure ResetSurface;
@@ -23270,6 +23271,19 @@ begin
   finally
    fFreeQueueLock.Release;
   end;
+ end;
+end;
+
+procedure TpvScene3D.DumpMemoryUsage(const aStringList:TStringList;var aTotalSizeVRAM,aTotalSizeRAM:TpvUInt64);
+var GroupInstance:TGroup.TInstance;
+begin
+ fGroupInstanceListLock.Acquire;
+ try
+  for GroupInstance in fGroupInstances do begin
+   GroupInstance.DumpMemoryUsage(aStringList,aTotalSizeVRAM,aTotalSizeRAM);
+  end;
+ finally
+  fGroupInstanceListLock.Release;
  end;
 end;
 
