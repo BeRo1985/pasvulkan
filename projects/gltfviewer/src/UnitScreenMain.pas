@@ -669,6 +669,8 @@ begin
 end;
 
 function TScreenMain.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+var Index:TpvSizeInt;
+    StringList:TStringList;
 begin
  result:=inherited KeyEvent(aKeyEvent);
  if aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Down then begin
@@ -679,6 +681,19 @@ begin
    KEYCODE_F8:begin
     if TpvApplicationInputKeyModifier.CTRL in aKeyEvent.KeyModifiers then begin
      pvApplication.DumpVulkanMemoryManager;
+    end else if TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers then begin
+     if assigned(fScene3D) then begin
+      StringList:=TStringList.Create;
+      try
+       fScene3D.DumpMemoryUsage(StringList);
+       StringList.SaveToFile(IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0)))+'scene3dmemoryusage.log');
+       for Index:=0 to StringList.Count-1 do begin
+        pvApplication.Log(LOG_VERBOSE,'TpvScene3D',StringList.Strings[Index]);
+       end;
+      finally
+       FreeAndNil(StringList);
+      end;
+     end;
     end else begin
      if assigned(fScene3D) then begin
       fScene3D.DumpProfiler;
