@@ -23372,6 +23372,8 @@ begin
  aStringList.Add(' VRAM total size: '+ToSize(TotalSizeVRAM));
  aStringList.Add('  RAM total size: '+ToSize(TotalSizeRAM));
 
+ aStringList.Add('');
+
 end;
 
 procedure TpvScene3D.NewImageDescriptorGeneration;
