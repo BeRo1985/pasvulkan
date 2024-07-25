@@ -17938,6 +17938,9 @@ begin
  WriteLine('          Morph target vertex weights: '+IntToStr(length(fMorphTargetVertexWeights))+' ('+ToSize(SizeVRAM)+' on vRAM, '+ToSize(SizeRAM)+' on RAM)');
  inc(aTotalSizeVRAM,SizeVRAM);
  inc(aTotalSizeRAM,SizeRAM);
+ WriteLine('');
+ WriteLine('===============================================================');
+ WriteLine('');
 
 end;
 
