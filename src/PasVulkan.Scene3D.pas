@@ -3387,7 +3387,7 @@ type EpvScene3D=class(Exception);
        destructor Destroy; override;
        procedure Initialize;
        procedure AddToFreeQueue(const aObject:TObject;const aFrameDelay:TpvInt32=-1);
-       procedure DumpMemoryUsage(const aStringList:TStringList;var aTotalSizeVRAM,aTotalSizeRAM:TpvUInt64);
+       procedure DumpMemoryUsage(const aStringList:TStringList);
        procedure Upload;
        procedure Unload;
        procedure ResetSurface;
@@ -23342,15 +23342,19 @@ begin
  end;
 end;
 
-procedure TpvScene3D.DumpMemoryUsage(const aStringList:TStringList;var aTotalSizeVRAM,aTotalSizeRAM:TpvUInt64);
+procedure TpvScene3D.DumpMemoryUsage(const aStringList:TStringList);
 var Group:TGroup;
     GroupInstance:TGroup.TInstance;
+    TotalSizeVRAM,TotalSizeRAM:TpvUInt64;
 begin
+
+ TotalSizeVRAM:=0;
+ TotalSizeRAM:=0;
 
  fGroupListLock.Acquire;
  try
   for Group in fGroups do begin
-   Group.DumpMemoryUsage(aStringList,aTotalSizeVRAM,aTotalSizeRAM);
+   Group.DumpMemoryUsage(aStringList,TotalSizeVRAM,TotalSizeRAM);
   end;
  finally
   fGroupListLock.Release;
@@ -23359,11 +23363,14 @@ begin
  fGroupInstanceListLock.Acquire;
  try
   for GroupInstance in fGroupInstances do begin
-   GroupInstance.DumpMemoryUsage(aStringList,aTotalSizeVRAM,aTotalSizeRAM);
+   GroupInstance.DumpMemoryUsage(aStringList,TotalSizeVRAM,TotalSizeRAM);
   end;
  finally
   fGroupInstanceListLock.Release;
  end;
+
+ aStringList.Add(' VRAM total size: '+ToSize(aTotalSizeVRAM));
+ aStringList.Add('  RAM total size: '+ToSize(aTotalSizeRAM));
 
 end;
 
