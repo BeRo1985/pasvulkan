@@ -8246,6 +8246,15 @@ begin
  fShaderData:=DefaultShaderData;
 
  fShaderData.Flags:=0;
+
+ if fData.CastingShadows then begin
+  fShaderData.Flags:=fShaderData.Flags or (TpvUInt32(1) shl 29);
+ end;
+
+ if fData.ReceiveShadows then begin
+  fShaderData.Flags:=fShaderData.Flags or (TpvUInt32(1) shl 30);
+ end;
+
  case fData.AlphaMode of
   TpvScene3D.TMaterial.TAlphaMode.Opaque:begin
    fShaderData.AlphaCutOff:=0.0;
