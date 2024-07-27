@@ -1053,6 +1053,8 @@ type EpvScene3D=class(Exception);
                      AlphaCutOff:TpvFloat;
                      AlphaMode:TpvScene3D.TMaterial.TAlphaMode;
                      DoubleSided:boolean;
+                     CastingShadows:boolean;
+                     ReceiveShadows:boolean;
                      NormalTexture:TTextureReference;
                      NormalTextureScale:TpvFloat;
                      OcclusionTexture:TTextureReference;
@@ -1081,6 +1083,8 @@ type EpvScene3D=class(Exception);
                      AlphaCutOff:1.0;
                      AlphaMode:TpvScene3D.TMaterial.TAlphaMode.Opaque;
                      DoubleSided:false;
+                     CastingShadows:true;
+                     ReceiveShadows:true;
                      NormalTexture:(Texture:nil;TexCoord:0;Transform:(Active:false;Offset:(x:0.0;y:0.0);Rotation:0.0;Scale:(x:1.0;y:1.0)));
                      NormalTextureScale:1.0;
                      OcclusionTexture:(Texture:nil;TexCoord:0;Transform:(Active:false;Offset:(x:0.0;y:0.0);Rotation:0.0;Scale:(x:1.0;y:1.0)));
@@ -2968,7 +2972,9 @@ type EpvScene3D=class(Exception);
               type TBLASGroupVariant=
                     (
                      SingleSided,
-                     DoubleSided
+                     DoubleSided,
+                     SingleSidedNoShadowCasting,
+                     DoubleSidedNoShadowCasting
                     );
                    PBLASGroupVariant=^TBLASGroupVariant;
                    { TBLASGroup }
@@ -5540,7 +5546,7 @@ var CountRenderInstances,CountPrimitives,RaytracingPrimitiveIndex,RendererInstan
     RaytracingBottomLevelAccelerationStructureInstance:TpvRaytracingBottomLevelAccelerationStructureInstance;
     GeometryInstanceFlags:TVkGeometryInstanceFlagsKHR;
     RaytracingPrimitive:TpvScene3D.TGroup.TMesh.TPrimitive;
-    DoubleSided,MustUpdate,MustUpdateAll,Opaque,
+    DoubleSided,MustUpdate,MustUpdateAll,Opaque,CastingShadows,
     UsePretransformedVerticesForRaytracing:Boolean;
     VulkanShortTermDynamicBufferData:TVulkanShortTermDynamicBufferData;
     VulkanLongTermStaticBufferData:TVulkanLongTermStaticBufferData;
@@ -5592,8 +5598,6 @@ begin
   AllocationGroupID:=pvAllocationGroupIDScene3DRaytracingBLASStatic;
  end;
 
- RaytracingMask:=fInstanceNode.fInFlightFrameRaytracingMasks[aInFlightFrameIndex];
-
  for BLASGroupVariant:=Low(TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroupVariant) to High(TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroupVariant) do begin
 
   BLASGroup:=@fBLASGroups[BLASGroupVariant];
@@ -5601,13 +5605,25 @@ begin
   GeometryInstanceFlags:=0;
 
   case BLASGroupVariant of
-   TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroupVariant.SingleSided:begin
+   TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroupVariant.SingleSided,
+   TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroupVariant.SingleSidedNoShadowCasting:begin
     GeometryInstanceFlags:=GeometryInstanceFlags and not TVkGeometryInstanceFlagsKHR(VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR);
     DoubleSided:=false;
    end;
-   else {TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroupVariant.DoubleSided:}begin
+   else {TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroupVariant.DoubleSided,
+         TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroupVariant.DoubleSidedNoShadowCasting:}begin
     GeometryInstanceFlags:=GeometryInstanceFlags or TVkGeometryInstanceFlagsKHR(VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR);
     DoubleSided:=true;
+   end;
+  end;
+
+  case BLASGroupVariant of
+   TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroupVariant.SingleSidedNoShadowCasting,
+   TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroupVariant.DoubleSidedNoShadowCasting:begin
+    CastingShadows:=false;
+   end;
+   else begin
+    CastingShadows:=true;
    end;
   end;
 
@@ -5679,6 +5695,7 @@ begin
 
      if assigned(RaytracingPrimitive.Material) and
         (RaytracingPrimitive.Material.Data.DoubleSided=DoubleSided) and
+        (RaytracingPrimitive.Material.Data.CastingShadows=CastingShadows) and
         (fNode.fNodeMeshInstanceIndex>=0) and
         (fNode.fNodeMeshInstanceIndex<RaytracingPrimitive.fNodeMeshPrimitiveInstances.Count) then begin
 
@@ -5821,6 +5838,14 @@ begin
    while BLASGroup^.fBLASInstances.Count>CountRenderInstances do begin
     BLASGroup^.fBLASInstances.Delete(BLASGroup^.fBLASInstances.Count-1);
     result:=true;
+   end;
+
+   RaytracingMask:=fInstanceNode.fInFlightFrameRaytracingMasks[aInFlightFrameIndex];
+
+   if CastingShadows then begin
+    RaytracingMask:=RaytracingMask or (1 shl 0);
+   end else begin
+    RaytracingMask:=RaytracingMask and not (1 shl 0);
    end;
 
    if fRaytracingMask<>RaytracingMask then begin
