@@ -681,7 +681,8 @@ type { TpvScene3DRendererInstance }
                              const aPipelineLayout:TpvVulkanPipelineLayout;
                              const aOnSetRenderPassResources:TpvScene3D.TOnSetRenderPassResources;
                              const aJitter:PpvVector4;
-                             const aDisocclusions:boolean);
+                             const aDisocclusions:boolean;
+                             const aShadowPass:boolean);
        procedure PrepareFrame(const aInFlightFrameIndex:TpvInt32;const aFrameCounter:TpvInt64);
        procedure UploadFrame(const aInFlightFrameIndex:TpvInt32);
        procedure ProcessAtmospheresForFrame(const aInFlightFrameIndex:TpvInt32;const aCommandBuffer:TpvVulkanCommandBuffer);
@@ -6115,7 +6116,6 @@ begin
                    false);
  end;
 
-
  // Reflection probe viewport(s)
  if InFlightFrameState^.CountTopDownSkyOcclusionMapViews>0 then begin
   fScene3D.Prepare(aInFlightFrameIndex,
@@ -6170,7 +6170,8 @@ begin
                    false,
                    true,
                    true,
-                   Renderer.GPUCulling and Renderer.GPUShadowCulling);
+                   Renderer.GPUCulling and Renderer.GPUShadowCulling,
+                   true);
  end;
 
  TPasMPInterlocked.Write(InFlightFrameState^.Ready,true);
