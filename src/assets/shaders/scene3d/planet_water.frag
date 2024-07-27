@@ -519,6 +519,8 @@ vec4 doShade(float opaqueDepth, float surfaceDepth, bool underWater){
 #include "lighting.glsl"
 #undef LIGHTING_INITIALIZATION
 
+   const bool receiveShadows = true; 
+   
 #define LIGHTING_IMPLEMENTATION
 #include "lighting.glsl"
 #undef LIGHTING_IMPLEMENTATION

@@ -355,6 +355,8 @@ void main(){
 #include "lighting.glsl"
 #undef LIGHTING_INITIALIZATION
 
+  const bool receiveShadows = true; 
+
 #define LIGHTING_IMPLEMENTATION
 #include "lighting.glsl"
 #undef LIGHTING_IMPLEMENTATION

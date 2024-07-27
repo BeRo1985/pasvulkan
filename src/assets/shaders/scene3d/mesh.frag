@@ -661,6 +661,8 @@ void main() {
 #include "lighting.glsl"
 #undef LIGHTING_INITIALIZATION
 
+      const bool receiveShadows = (flags & (1u << 30u)) != 0u; 
+
 #define LIGHTING_IMPLEMENTATION
 #include "lighting.glsl"
 #undef LIGHTING_IMPLEMENTATION
