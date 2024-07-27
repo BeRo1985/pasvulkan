@@ -7794,6 +7794,9 @@ begin
  fSceneInstance.fTextureListLock.Acquire;
  try
 
+  fData.CastingShadows:=pos('_noshadowcasting',LowerCase(fName))=0;
+  fData.ReceiveShadows:=pos('_noshadowreceive',LowerCase(fName))=0;
+
   begin
    fData.AlphaCutOff:=aSourceMaterial.AlphaCutOff;
    case aSourceMaterial.AlphaMode of
