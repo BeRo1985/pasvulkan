@@ -681,8 +681,7 @@ type { TpvScene3DRendererInstance }
                              const aPipelineLayout:TpvVulkanPipelineLayout;
                              const aOnSetRenderPassResources:TpvScene3D.TOnSetRenderPassResources;
                              const aJitter:PpvVector4;
-                             const aDisocclusions:boolean;
-                             const aShadowPass:boolean);
+                             const aDisocclusions:boolean);
        procedure PrepareFrame(const aInFlightFrameIndex:TpvInt32;const aFrameCounter:TpvInt64);
        procedure UploadFrame(const aInFlightFrameIndex:TpvInt32);
        procedure ProcessAtmospheresForFrame(const aInFlightFrameIndex:TpvInt32;const aCommandBuffer:TpvVulkanCommandBuffer);
