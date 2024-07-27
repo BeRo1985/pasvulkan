@@ -2654,7 +2654,8 @@ type EpvScene3D=class(Exception);
                                        const aFrustums:TpvFrustumDynamicArray;
                                        const aPotentiallyVisibleSetCulling:boolean;
                                        const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes;
-                                       const aFrustumCullMask:TpvUInt32);
+                                       const aFrustumCullMask:TpvUInt32;
+                                       const aShadowPass:Boolean);
                      procedure GetBakedMeshProcessMorphSkinNode(const aBakedMesh:TpvScene3D.TBakedMesh;
                                                                 const aNode:TpvScene3D.TGroup.TNode;
                                                                 const aInstanceNode:TpvScene3D.TGroup.TInstance.TNode;
@@ -3376,7 +3377,8 @@ type EpvScene3D=class(Exception);
                                               const aPotentiallyVisibleSetCulling:boolean;
                                               const aFrustums:TpvFrustumDynamicArray;
                                               const aTreeNodes:TpvBVHDynamicAABBTree.TTreeNodes;
-                                              const aRoot:TpvSizeInt);
+                                              const aRoot:TpvSizeInt;
+                                              const aShadowPass:boolean);
        function GetLightUserDataIndex(const aUserData:TpvPtrInt):TpvUInt32;
       public
        procedure SetGlobalResources(const aCommandBuffer:TpvVulkanCommandBuffer;
@@ -3436,7 +3438,8 @@ type EpvScene3D=class(Exception);
                          const aLights:boolean=true;
                          const aFrustumCulling:boolean=true;
                          const aPotentiallyVisibleSetCulling:boolean=true;
-                         const aGPUCulling:boolean=true);
+                         const aGPUCulling:boolean=true;
+                         const aShadowPass:boolean=false);
        procedure UpdateCachedVertices(const aPipeline:TpvVulkanPipeline;
                                       const aInFlightFrameIndex:TpvSizeInt;
                                       const aCommandBuffer:TpvVulkanCommandBuffer;
@@ -21520,7 +21523,8 @@ procedure TpvScene3D.TGroup.TInstance.Prepare(const aInFlightFrameIndex:TpvSizeI
                                               const aFrustums:TpvFrustumDynamicArray;
                                               const aPotentiallyVisibleSetCulling:boolean;
                                               const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes;
-                                              const aFrustumCullMask:TpvUInt32);
+                                              const aFrustumCullMask:TpvUInt32;
+                                              const aShadowPass:Boolean);
 var ViewIndex,FrustumIndex,SkipListItemIndex,SkipListItemCount,DrawChoreographyBatchItemIndex,
     DrawChoreographyBatchItemElementIndex,FirstInstance,InstancesCount:TpvSizeInt;
     PotentiallyVisibleSetNodeIndex,
@@ -21709,6 +21713,7 @@ begin
            DrawChoreographyBatchItem:=fDrawChoreographyBatchItems[DrawChoreographyBatchItemElementIndex];
            if DrawChoreographyBatchItem.fMaterial.fVisible and
               (DrawChoreographyBatchItem.fAlphaMode in aMaterialAlphaModes) and
+              ((not aShadowPass) or (aShadowPass and DrawChoreographyBatchItem.fMaterial.fData.CastingShadows)) and
              (DrawChoreographyBatchItem.fCountIndices>0) then begin
             DrawChoreographyBatchItemMaterialAlphaModeBuckets^[DrawChoreographyBatchItem.fAlphaMode,
                                                                DrawChoreographyBatchItem.fPrimitiveTopology,
@@ -21817,6 +21822,7 @@ begin
        DrawChoreographyBatchItem:=fDrawChoreographyBatchItems[DrawChoreographyBatchItemElementIndex];
        if DrawChoreographyBatchItem.fMaterial.fVisible and
           (DrawChoreographyBatchItem.fAlphaMode in aMaterialAlphaModes) and
+          ((not aShadowPass) or (aShadowPass and DrawChoreographyBatchItem.fMaterial.fData.CastingShadows)) and
          (DrawChoreographyBatchItem.fCountIndices>0) then begin
         DrawChoreographyBatchItemMaterialAlphaModeBuckets^[DrawChoreographyBatchItem.fAlphaMode,
                                                            DrawChoreographyBatchItem.fPrimitiveTopology,
@@ -25662,7 +25668,8 @@ procedure TpvScene3D.CullAndPrepareGroupInstances(const aInFlightFrameIndex:TpvS
                                                   const aPotentiallyVisibleSetCulling:boolean;
                                                   const aFrustums:TpvFrustumDynamicArray;
                                                   const aTreeNodes:TpvBVHDynamicAABBTree.TTreeNodes;
-                                                  const aRoot:TpvSizeInt);
+                                                  const aRoot:TpvSizeInt;
+                                                  const aShadowPass:boolean);
 type TStackItem=record
       NodeIndex:TpvSizeInt;
       Mask:TpvUInt32;
@@ -25763,7 +25770,8 @@ begin
                                aFrustums,
                                aPotentiallyVisibleSetCulling,
                                aMaterialAlphaModes,
-                               Mask);
+                               Mask,
+                               aShadowPass);
         end;
 
        end;
@@ -25815,7 +25823,8 @@ procedure TpvScene3D.Prepare(const aInFlightFrameIndex:TpvSizeInt;
                              const aLights:boolean;
                              const aFrustumCulling:boolean;
                              const aPotentiallyVisibleSetCulling:boolean;
-                             const aGPUCulling:boolean);
+                             const aGPUCulling:boolean;
+                             const aShadowPass:boolean);
 var Index:TpvSizeInt;
     MaterialAlphaMode:TpvScene3D.TMaterial.TAlphaMode;
     PrimitiveTopology:TpvScene3D.TPrimitiveTopology;
@@ -25865,7 +25874,8 @@ begin
                                  aPotentiallyVisibleSetCulling,
                                  Frustums,
                                  AABBTreeState^.TreeNodes,
-                                 AABBTreeState^.Root
+                                 AABBTreeState^.Root,
+                                 aShadowPass
                                 );
 
    end else begin
@@ -25882,7 +25892,8 @@ begin
                              Frustums,
                              aPotentiallyVisibleSetCulling,
                              aMaterialAlphaModes,
-                             TpvUInt32($ffffffff));
+                             TpvUInt32($ffffffff),
+                             aShadowPass);
       end;
      end;
     end;
