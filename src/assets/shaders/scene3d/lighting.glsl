@@ -75,7 +75,7 @@
                   // Fall-through, because same raytracing attempt as for spot lights. 
                 }
                 case 3u: {  // Spot
-                  lightAttenuation *= getRaytracedHardShadow(rayOrigin, rayNormal, normalizedLightVector, rayOffset, 10000000.0);
+                  lightAttenuation *= getRaytracedHardShadow(rayOrigin, rayNormal, normalizedLightVector, rayOffset, min(10000000.0, length(lightVector)));
                   break;
                 }
 #elif 0
