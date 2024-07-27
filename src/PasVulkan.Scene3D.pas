@@ -1369,7 +1369,8 @@ type EpvScene3D=class(Exception);
              public
               constructor Create(const aSceneInstance:TpvScene3D); reintroduce;
               destructor Destroy; override;
-              procedure Assign(const aFrom:TpvScene3D.TLightData);
+              procedure Assign(const aFrom:TpvScene3D.TLightData); overload;
+              procedure Assign(const aFrom:TpvScene3D.TLight); overload;
               procedure Update;
              public
               property Data:TpvScene3D.TLightData read fData write fData;
@@ -2135,9 +2136,7 @@ type EpvScene3D=class(Exception);
                             property Complete:LongBool read fComplete write fComplete;
                           end;
                           TAnimations=array of TpvScene3D.TGroup.TInstance.TAnimation;
-
                           { TNode }
-
                           TNode=class
                            public
                             type TNodeOverwriteFlag=
@@ -2490,12 +2489,15 @@ type EpvScene3D=class(Exception);
                             //fModelMatrices:array[-1..MaxInFlightFrames-1] of TpvMatrix4x4;
                             fBoundingBox:TpvAABB;
                             fActiveMask:TPasMPUInt32;
+                            fLights:TpvScene3D.TLights;
                            public
                             constructor Create(const aInstance:TpvScene3D.TGroup.TInstance); reintroduce;
                             destructor Destroy; override;
                             procedure AfterConstruction; override;
                             procedure BeforeDestruction; override;
                             procedure Remove;
+                            procedure UpdateLights;
+                            procedure RemoveLights;
                            public
                             property ModelMatrix:TpvMatrix4x4 read fModelMatrix write fModelMatrix;
                            published
@@ -8468,6 +8470,11 @@ end;
 procedure TpvScene3D.TLight.Assign(const aFrom:TpvScene3D.TLightData);
 begin
  fData:=aFrom;
+end;
+
+procedure TpvScene3D.TLight.Assign(const aFrom:TpvScene3D.TLight);
+begin
+ Assign(aFrom.fData);
 end;
 
 procedure TpvScene3D.TLight.Update;
@@ -16864,24 +16871,65 @@ end;
 { TpvScene3D.TGroup.TInstance.TRenderInstance }
 
 constructor TpvScene3D.TGroup.TInstance.TRenderInstance.Create(const aInstance:TpvScene3D.TGroup.TInstance);
-//var Index:TpvSizeInt;
+var Index:TpvSizeInt;
+    Light:TpvScene3D.TLight;
 begin
+
  inherited Create;
+
  fInstance:=aInstance;
+
+ fSceneInstance:=fInstance.fGroup.fSceneInstance;
+
  fActive:=true;
+
  fFirst:=true;
+
  fIndex:=-1;
+
  fPotentiallyVisibleSetNodeIndex:=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex;
+
  fModelMatrix:=TpvMatrix4x4.Identity;
+
  fPreviousModelMatrix:=TpvMatrix4x4.Identity;
+
 {for Index:=-1 to MaxInFlightFrames-1 do begin
   fModelMatrices[Index]:=TpvMatrix4x4.Identity;
  end;}
+
  fActiveMask:=0;
+
+ if length(fInstance.fLightNodes)>0 then begin
+  fLights:=TpvScene3D.TLights.Create(true);
+  for Index:=0 to length(fInstance.fLightNodes)-1 do begin
+   Light:=TpvScene3D.TLight.Create(fSceneInstance);
+   try
+    Light.fData.fVisible:=false;
+    Light.fDataPointer:=@Light.fData;
+    Light.fVisible:=false;
+   finally
+    fLights.Add(Light);
+   end;
+  end;
+ end else begin
+  fLights:=nil;
+ end;
+
 end;
 
 destructor TpvScene3D.TGroup.TInstance.TRenderInstance.Destroy;
+var Index:TpvSizeInt;
+    Light:TpvScene3D.TLight;
 begin
+ if assigned(fLights) and (length(fInstance.fLightNodes)>0) then begin
+  RemoveLights;
+  for Index:=0 to fLights.Count-1 do begin
+   Light:=fLights[Index];
+   if assigned(Light) then begin
+   end;
+  end;
+ end;
+ FreeAndNil(fLights);
  inherited Destroy;
 end;
 
@@ -16907,6 +16955,7 @@ var LastIndex:TpvSizeInt;
     OtherRenderInstance:TpvScene3D.TGroup.TInstance.TRenderInstance;
 begin
  if (fIndex>=0) and assigned(fInstance) then begin
+  RemoveLights;
   TPasMPMultipleReaderSingleWriterSpinLock.AcquireWrite(fInstance.fRenderInstanceLock);
   try
    try
@@ -16935,7 +16984,59 @@ end;
 procedure TpvScene3D.TGroup.TInstance.TRenderInstance.Remove;
 begin
  fActiveMask:=0;
+ RemoveLights;
  Free;
+end;
+
+procedure TpvScene3D.TGroup.TInstance.TRenderInstance.UpdateLights;
+var Index:TpvSizeInt;
+    Light:TpvScene3D.TLight;
+    InstanceNode:TpvScene3D.TGroup.TInstance.TNode;
+    LightMatrix:TpvMatrix4x4;
+begin
+ if assigned(fLights) and (length(fInstance.fLightNodes)>0) then begin
+  for Index:=0 to fLights.Count-1 do begin
+   Light:=fLights[Index];
+   if assigned(Light) then begin
+    InstanceNode:=fInstance.fNodes[fInstance.fLightNodes[Index]];
+    if fInstance.fActive and fActive and assigned(InstanceNode) and assigned(InstanceNode.fLight) then begin
+     LightMatrix:=fModelMatrix*InstanceNode.fLight.Matrix;
+     if (Light.fMatrix<>LightMatrix) or
+        (Light.fDataPointer<>InstanceNode.fLight.fDataPointer) or
+        (Light.fGeneration<>InstanceNode.fLight.fGeneration) then begin
+      Light.fMatrix:=LightMatrix;
+      Light.fDataPointer:=InstanceNode.fLight.fDataPointer;
+      Light.fGeneration:=InstanceNode.fLight.fGeneration;
+      Light.Update;
+     end;
+    end else begin
+     if Light.fDataPointer^.fVisible or (Light.fDataPointer<>@Light.fData) then begin
+      Light.fData.fVisible:=false;
+      Light.fDataPointer:=@Light.fData;
+      Light.fVisible:=false;
+      Light.Update;
+     end;
+    end;
+   end;
+  end;
+ end;
+end;
+
+procedure TpvScene3D.TGroup.TInstance.TRenderInstance.RemoveLights;
+var Index:TpvSizeInt;
+    Light:TpvScene3D.TLight;
+begin
+ if assigned(fLights) and (length(fInstance.fLightNodes)>0) then begin
+  for Index:=0 to fLights.Count-1 do begin
+   Light:=fLights[Index];
+   if assigned(Light) and (Light.fDataPointer^.fVisible or (Light.fDataPointer<>@Light.fData)) then begin
+    Light.fData.fVisible:=false;
+    Light.fDataPointer:=@Light.fData;
+    Light.fVisible:=false;
+    Light.Update;
+   end;
+  end;
+ end;
 end;
 
 { TpvScene3D.TGroup.TInstances }
@@ -16997,7 +17098,7 @@ end;
 { TpvScene3D.TGroup.TInstance }
 
 constructor TpvScene3D.TGroup.TInstance.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil;const aMetaResource:TpvMetaResource=nil;const aHeadless:Boolean=false);
-var Index,OtherIndex,MaterialIndex,MaterialIDMapArrayIndex:TpvSizeInt;
+var Index,OtherIndex,MaterialIndex,MaterialIDMapArrayIndex,CountLightNodes:TpvSizeInt;
     InstanceNode:TpvScene3D.TGroup.TInstance.TNode;
     Node:TpvScene3D.TGroup.TNode;
     //MeshPrimitive:TpvScene3D.TGroup.TMesh.TPrimitive;
@@ -17020,6 +17121,10 @@ begin
   fGroup:=TpvScene3D.TGroup(aParent);
  end else begin
   fGroup:=nil;
+ end;
+
+ if assigned(fGroup) then begin
+  fSceneInstance:=fGroup.fSceneInstance;
  end;
 
  fLock:=TPasMPSpinLock.Create;
@@ -17195,26 +17300,43 @@ begin
   fLightNodes[Index]:=-1;
  end;}
 
- for Index:=0 to fGroup.fNodes.Count-1 do begin
-  InstanceNode:=fNodes.RawItems[Index];
-  Node:=fGroup.fNodes[Index];
-  InstanceNode.fProcessed:=false;
-  InstanceNode.fFlags:=[];
-  SetLength(InstanceNode.fWorkWeights,Node.fWeights.Count);
-  SetLength(InstanceNode.fOverwriteWeightsSum,Node.fWeights.Count);
-  SetLength(InstanceNode.fOverwrites,fGroup.fAnimations.Count+1);
-  for OtherIndex:=0 to fGroup.fAnimations.Count do begin
-   SetLength(InstanceNode.fOverwrites[OtherIndex].Weights,Node.fWeights.Count);
+ fLightNodes:=nil;
+ CountLightNodes:=0;
+ try
+  for Index:=0 to fGroup.fNodes.Count-1 do begin
+   InstanceNode:=fNodes.RawItems[Index];
+   Node:=fGroup.fNodes[Index];
+   InstanceNode.fProcessed:=false;
+   InstanceNode.fFlags:=[];
+   SetLength(InstanceNode.fWorkWeights,Node.fWeights.Count);
+   SetLength(InstanceNode.fOverwriteWeightsSum,Node.fWeights.Count);
+   SetLength(InstanceNode.fOverwrites,fGroup.fAnimations.Count+1);
+   for OtherIndex:=0 to fGroup.fAnimations.Count do begin
+    SetLength(InstanceNode.fOverwrites[OtherIndex].Weights,Node.fWeights.Count);
+   end;
+   for OtherIndex:=0 to fSceneInstance.fCountInFlightFrames-1 do begin
+    InstanceNode.fPotentiallyVisibleSetNodeIndices[OtherIndex]:=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex;
+    InstanceNode.fCacheVerticesGenerations[OtherIndex]:=0;
+   end;
+   InstanceNode.fCacheVerticesGeneration:=1;
+   InstanceNode.fCacheVerticesDirtyCounter:=1;
+   InstanceNode.fAABBTreeProxy:=-1;
+   InstanceNode.fRaytracingGroupInstanceNodeID:=0;
+   InstanceNode.fRaytracingMask:=$ff;
+   if assigned(Node.fLight) then begin
+    if (CountLightNodes+1)>Length(fLightNodes) then begin
+     SetLength(fLightNodes,(CountLightNodes+1)+((CountLightNodes+2) shr 1));
+    end;
+    fLightNodes[CountLightNodes]:=Index;
+    inc(CountLightNodes);
+   end;
   end;
-  for OtherIndex:=0 to fSceneInstance.fCountInFlightFrames-1 do begin
-   InstanceNode.fPotentiallyVisibleSetNodeIndices[OtherIndex]:=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex;
-   InstanceNode.fCacheVerticesGenerations[OtherIndex]:=0;
+ finally
+  if CountLightNodes>0 then begin
+   SetLength(fLightNodes,CountLightNodes);
+  end else begin
+   fLightNodes:=nil;
   end;
-  InstanceNode.fCacheVerticesGeneration:=1;
-  InstanceNode.fCacheVerticesDirtyCounter:=1;
-  InstanceNode.fAABBTreeProxy:=-1;
-  InstanceNode.fRaytracingGroupInstanceNodeID:=0;
-  InstanceNode.fRaytracingMask:=$ff;
  end;
 
  fSceneInstance.fCullObjectIDLock.Acquire;
@@ -20401,9 +20523,9 @@ begin
 
    //CurrentSkinShaderStorageBufferObjectHandle:=0;
 
-   for Index:=0 to length(fLightNodes)-1 do begin
+{  for Index:=0 to length(fLightNodes)-1 do begin
     fLightNodes[Index]:=-1;
-   end;
+   end;}
 
    ResetLights;
 
@@ -20632,6 +20754,7 @@ begin
         PerInFlightFrameRenderInstance^.PreviousModelMatrix:=RenderInstance.fPreviousModelMatrix;
        end;
        RenderInstance.fPreviousModelMatrix:=RenderInstance.fModelMatrix;
+       RenderInstance.UpdateLights;
       end else begin
        if fUseSortedRenderInstances and
           (not RenderInstance.fFirst) and
@@ -20642,6 +20765,7 @@ begin
         RenderInstance.fFirst:=true;
         RenderInstance.fPotentiallyVisibleSetNodeIndex:=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex;
         TPasMPInterlocked.BitwiseAnd(RenderInstance.fActiveMask,not (TpvUInt32(1) shl aInFlightFrameIndex));
+        RenderInstance.RemoveLights;
        end;
       end;
      end;
