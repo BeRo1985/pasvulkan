@@ -7788,6 +7788,7 @@ procedure TpvScene3D.TMaterial.AssignFromGLTF(const aSourceDocument:TPasGLTF.TDo
 var Index:TpvSizeInt;
     JSONItem:TPasJSONItem;
     JSONObject:TPasJSONItemObject;
+    LowerCaseName:TpvUTF8String;
 begin
 
  fName:=aSourceMaterial.Name;
@@ -7797,8 +7798,10 @@ begin
  fSceneInstance.fTextureListLock.Acquire;
  try
 
-  fData.CastingShadows:=pos('_noshadowcasting',LowerCase(fName))=0;
-  fData.ReceiveShadows:=pos('_noshadowreceive',LowerCase(fName))=0;
+  LowerCaseName:=PUCUUTF8LowerCase(fName);
+
+  fData.CastingShadows:=pos('_noshadowcasting',LowerCaseName)=0;
+  fData.ReceiveShadows:=pos('_noshadowreceive',LowerCaseName)=0;
 
   begin
    fData.AlphaCutOff:=aSourceMaterial.AlphaCutOff;
