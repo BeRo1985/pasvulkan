@@ -1351,6 +1351,7 @@ type EpvScene3D=class(Exception);
              private
               fSceneInstance:TpvScene3D;
               fVisible:boolean;
+              fIgnore:boolean;
               fData:TpvScene3D.TLightData;
               fDataPointer:TpvScene3D.PLightData;
               fLight:pointer;
@@ -8449,6 +8450,7 @@ begin
  fInstanceLight:=nil;
  fDataPointer:=@fData;
  fGeneration:=0;
+ fIgnore:=false;
 end;
 
 destructor TpvScene3D.TLight.Destroy;
@@ -8494,7 +8496,7 @@ var Position,Direction:TpvVector3;
 begin
  Data:=fDataPointer;
  fGeneration:=Data^.fGeneration;
- if Data^.fVisible then begin
+ if Data^.fVisible and not fIgnore then begin
   Position:=(fMatrix*TpvVector3.Origin).xyz;
   Direction:=(((fMatrix*DownZ).xyz)-Position).Normalize;
   fPosition:=Position;
@@ -20123,6 +20125,7 @@ procedure TpvScene3D.TGroup.TInstance.Update(const aInFlightFrameIndex:TpvSizeIn
       Light.fMatrix:=LightMatrix;
       Light.fDataPointer:=InstanceLight.fEffectiveData;
       Light.fGeneration:=InstanceLight.fEffectiveData.fGeneration;
+      Light.fIgnore:=fUseRenderInstances;
       Light.Update;
      end;
     end else begin
