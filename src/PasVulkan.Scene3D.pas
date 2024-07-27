@@ -2480,6 +2480,7 @@ type EpvScene3D=class(Exception);
                           TRenderInstance=class
                            private
                             fInstance:TpvScene3D.TGroup.TInstance;
+                            fSceneInstance:TpvScene3D;
                             fActive:Boolean;
                             fFirst:Boolean;
                             fIndex:TpvSizeInt;
