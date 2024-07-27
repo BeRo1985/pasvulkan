@@ -17001,7 +17001,7 @@ begin
    if assigned(Light) then begin
     InstanceNode:=fInstance.fNodes[fInstance.fLightNodes[Index]];
     if fInstance.fActive and fActive and assigned(InstanceNode) and assigned(InstanceNode.fLight) then begin
-     LightMatrix:=fModelMatrix*InstanceNode.fLight.Matrix;
+     LightMatrix:=InstanceNode.fLight.Matrix*fModelMatrix;
      if (Light.fMatrix<>LightMatrix) or
         (Light.fDataPointer<>InstanceNode.fLight.fDataPointer) or
         (Light.fGeneration<>InstanceNode.fLight.fGeneration) then begin
