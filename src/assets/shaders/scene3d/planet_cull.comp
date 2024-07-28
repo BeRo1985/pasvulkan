@@ -22,6 +22,7 @@ layout(push_constant) uniform PushConstants {
   float bottomRadius;
   float topRadius;
   uint minimumLODLevel;
+  uint flags;
 } pushConstants;
 
 struct View {
@@ -203,44 +204,48 @@ void main(){
 
 #endif
 
-          if(visible){
-
-            uvec2 tileMapXY;
-            tileMapXY.y = tileMapIndex / pushConstants.tileMapResolution;
-            tileMapXY.x = tileMapIndex - (tileMapXY.y * pushConstants.tileMapResolution);
-
-            vec3 sphereNormal = octPlanetUnsignedDecode((vec2(tileMapXY) + vec2(0.5)) / float(pushConstants.tileMapResolution));
-
-            // Based on: https://cesium.com/blog/2013/04/25/horizon-culling/
-
-            // V = viewer position
-            // C = center of unit sphere
-            // H = horizon point
-            // T = target point to test against horizon plane
-            // P = projection of VH onto VC
-            // Q = projection of VT onto VC
+          if(visible && ((pushConstants.flags & ((1u << 0u) | (1u << 1u))) != 0u)){
 
             vec3 cameraPosition = uView.views[pushConstants.baseViewIndex + viewIndex].inverseViewMatrix[3].xyz;
 
-            vec3 cv = cameraPosition / pushConstants.bottomRadius;
+            if((pushConstants.flags & (1u << 0u)) != 0u){
 
-            vec3 t = ((sphereNormal * pushConstants.topRadius) + planetPosition.xyz) / pushConstants.bottomRadius;
-//          vec3 t = boundingSphere.xyz / pushConstants.bottomRadius;
+              uvec2 tileMapXY;
+              tileMapXY.y = tileMapIndex / pushConstants.tileMapResolution;
+              tileMapXY.x = tileMapIndex - (tileMapXY.y * pushConstants.tileMapResolution);
 
-            float vhMagnitudeSquared = dot(cv, cv) - 1.0;
+              vec3 sphereNormal = octPlanetUnsignedDecode((vec2(tileMapXY) + vec2(0.5)) / float(pushConstants.tileMapResolution));
 
-            vec3 vt = t - cv;
-            float vtMagnitudeSquared = dot(vt, vt);
+              // Based on: https://cesium.com/blog/2013/04/25/horizon-culling/
 
-            float vtDotVc = -dot(vt, cv);
-            
-            // If vhMagnitudeSquared < 0.0 then we are below the surface of the ellipsoid and in this case, set the culling 
-            // plane to be on V.
-            bool isOccluded = (vhMagnitudeSquared < 0.0) 
-                                ? (vtDotVc > 0.0) 
-                                : (((vtDotVc > vhMagnitudeSquared) && ((vtDotVc * vtDotVc) > (vhMagnitudeSquared * vtMagnitudeSquared))));
+              // V = viewer position
+              // C = center of unit sphere
+              // H = horizon point
+              // T = target point to test against horizon plane
+              // P = projection of VH onto VC
+              // Q = projection of VT onto VC
 
-            visible = !isOccluded;
+              vec3 cv = cameraPosition / pushConstants.bottomRadius;
+
+              vec3 t = ((sphereNormal * pushConstants.topRadius) + planetPosition.xyz) / pushConstants.bottomRadius;
+  //          vec3 t = boundingSphere.xyz / pushConstants.bottomRadius;
+
+              float vhMagnitudeSquared = dot(cv, cv) - 1.0;
+
+              vec3 vt = t - cv;
+              float vtMagnitudeSquared = dot(vt, vt);
+
+              float vtDotVc = -dot(vt, cv);
+              
+              // If vhMagnitudeSquared < 0.0 then we are below the surface of the ellipsoid and in this case, set the culling 
+              // plane to be on V.
+              bool isOccluded = (vhMagnitudeSquared < 0.0) 
+                                  ? (vtDotVc > 0.0) 
+                                  : (((vtDotVc > vhMagnitudeSquared) && ((vtDotVc * vtDotVc) > (vhMagnitudeSquared * vtMagnitudeSquared))));
+
+              visible = !isOccluded;
+
+            }  
 
             if(visible && (distance(cameraPosition, boundingSphere.xyz) < (boundingSphere.w * 2.0))){
               notFurtherCull = true;
@@ -257,7 +262,7 @@ void main(){
     }
     
     // Additional views for example for tightly culled shadow maps to the camera frustum in addition to the shadow frustum
-    if(visible && (pushConstants.countAdditionalViews > 0u) && !notFurtherCull){
+    if(visible && (pushConstants.countAdditionalViews > 0u) && ((pushConstants.flags & (1u << 1u)) != 0u) && !notFurtherCull){
       visible = false;
       for(uint viewIndex = 0u; viewIndex < pushConstants.countAdditionalViews; viewIndex++){
         mat4 viewMatrix = uView.views[pushConstants.additionalViewIndex + viewIndex].viewMatrix;

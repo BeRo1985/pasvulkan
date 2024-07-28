@@ -1038,6 +1038,7 @@ type TpvScene3DPlanets=class;
                     BottomRadius:TpvFloat;
                     TopRadius:TpvFloat;
                     MinimumLODLevel:TpvUInt32;
+                    Flags:TpvUInt32;
                    end;
                    PPlanetPushConstants=^TPlanetPushConstants;
                    TGrassPushConstants=packed record
@@ -9838,6 +9839,7 @@ begin
          fPlanetPushConstants.BottomRadius:=Planet.fBottomRadius;
          fPlanetPushConstants.TopRadius:=Planet.fTopRadius;
          fPlanetPushConstants.MinimumLODLevel:=RendererInstance.fMinimumLODLevel;
+         fPlanetPushConstants.Flags:=(1 shl 0);
 
          begin
 
