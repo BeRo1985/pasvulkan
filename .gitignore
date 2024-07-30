@@ -64,5 +64,9 @@ __history/
 # Castalia statistics file (since XE7 Castalia is distributed with Delphi)
 *.stat
 
-# Binaries
+# Unix binaries
 projectmanager
+examples_x86_64-linux
+
+FPCOutput
+*.spv
