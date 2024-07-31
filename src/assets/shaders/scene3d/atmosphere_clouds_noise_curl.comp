@@ -30,7 +30,7 @@ void main(){
 
     imageStore(uDestinationTexture, 
                p,
-               vec4(encodeCURL(linearStep(vec3(curlLow), vec3(curlHigh), curlNoise(o * curlScale))), 1.0));  
+               vec4(encodeCURL(remap01Unclamped(curlNoise(o * curlScale), vec3(curlLow), vec3(curlHigh))), 1.0));  
    
   }
   

@@ -471,6 +471,10 @@ float remap01(const in float x, const in float l, const in float h){
   return clamp((x - l) / (h - l), 0.0, 1.0);
 }
 
+vec3 remap01Unclamped(const in vec3 x, const in vec3 l, const in vec3 h){
+  return (x - l) / (h - l);
+}
+
 float dilatePerlinWorley(float p, float w, float x) {
 	float curve = 0.75;
 	if(x < 0.5){
