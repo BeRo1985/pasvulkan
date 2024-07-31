@@ -666,6 +666,12 @@ compileshaderarguments=(
   "-V atmosphere_raymarch.frag --target-env vulkan1.2 -DSHADOWS -DRAYTRACING -DDUALBLEND -DMULTIVIEW -o ${tempPath}/atmosphere_raymarch_shadows_raytracing_dualblend_multiview_frag.spv"
   "-V atmosphere_raymarch.frag --target-env vulkan1.2 -DSHADOWS -DRAYTRACING -DDUALBLEND -DMULTIVIEW -DMSAA -o ${tempPath}/atmosphere_raymarch_shadows_raytracing_dualblend_multiview_msaa_frag.spv"
   
+  # Clouds noise
+  "-V atmosphere_clouds_noise_curl.comp -o ${tempPath}/atmosphere_clouds_noise_curl_comp.spv"
+  "-V atmosphere_clouds_noise_detail.comp -o ${tempPath}/atmosphere_clouds_noise_detail_comp.spv"
+  "-V atmosphere_clouds_noise_shape.comp -o ${tempPath}/atmosphere_clouds_noise_shape_comp.spv"
+  #"-V atmosphere_clouds_noise_weather.comp -o ${tempPath}/atmosphere_clouds_noise_weather_comp.spv"
+
 )
 
 #############################################
