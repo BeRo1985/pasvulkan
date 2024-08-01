@@ -46,8 +46,6 @@ layout(set = 2, binding = 3, std430) buffer AtmosphereParametersBuffer {
   AtmosphereParameters atmosphereParameters;
 } uAtmosphereParameters;
 
-AtmosphereParameters atmosphereParameters;
- 
 ivec2 destinationTextureSize = imageSize(uDestinationTexture);
 
 #include "cubemap.glsl"
@@ -60,7 +58,7 @@ ivec2 destinationTextureSize = imageSize(uDestinationTexture);
 
 void main() {
 
-  atmosphereParameters = uAtmosphereParameters.atmosphereParameters;
+  #define atmosphereParameters uAtmosphereParameters.atmosphereParameters
 
   ivec3 uvw = ivec3(gl_GlobalInvocationID.xyz);
   if (all(greaterThanEqual(uvw, ivec3(0))) && all(lessThan(uvw, ivec3(destinationTextureSize, 6)))) {
@@ -82,7 +80,7 @@ void main() {
 
     viewHeight = length(worldPos) - atmosphereParameters.BottomRadius;
 
-    vec3 sunDirection = normalize(getSunDirection(uAtmosphereParameters.atmosphereParameters));
+    vec3 sunDirection = normalize(getSunDirection(atmosphereParameters));
 
     // The more accurate and more bruteforce ray marching approach  
 

@@ -46,8 +46,6 @@ layout(set = 2, binding = 3, std430) buffer AtmosphereParametersBuffer {
   AtmosphereParameters atmosphereParameters;
 } uAtmosphereParameters;
 
-AtmosphereParameters atmosphereParameters;
- 
 const float aerialPerspectiveStartDepthKM = 0.0; 
 
 void main() {
@@ -64,7 +62,7 @@ void main() {
   
   if(all(greaterThanEqual(coord, ivec2(0))) && all(lessThan(coord, size)) && (viewIndex < pushConstants.countViews)) {
 
-    atmosphereParameters = uAtmosphereParameters.atmosphereParameters;
+    #define atmosphereParameters uAtmosphereParameters.atmosphereParameters
 
     View view = uView.views[pushConstants.baseViewIndex + viewIndex];
 

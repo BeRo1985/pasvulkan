@@ -147,15 +147,11 @@ layout(set = 2, binding = 6, std430) buffer AtmosphereParametersBuffer {
   AtmosphereParameters atmosphereParameters;
 } uAtmosphereParameters;
 
-AtmosphereParameters atmosphereParameters;
- 
 #include "projectsphere.glsl"
 
 #include "textureutils.glsl"
 
 void main() {
-
-  atmosphereParameters = uAtmosphereParameters.atmosphereParameters;
 
   int viewIndex = pushConstants.baseViewIndex + int(gl_ViewIndex);
   View view = uView.views[viewIndex];
@@ -171,6 +167,8 @@ void main() {
 
   vec3 worldPos, worldDir;
   GetCameraPositionDirection(worldPos, worldDir, view.viewMatrix, view.projectionMatrix, view.inverseViewMatrix, view.inverseProjectionMatrix, uv);
+
+  #define atmosphereParameters uAtmosphereParameters.atmosphereParameters
 
   worldPos = (atmosphereParameters.inverseTransform * vec4(worldPos, 1.0)).xyz;
 
@@ -200,7 +198,7 @@ void main() {
 #endif
 #endif
 
-  vec3 sunDirection = normalize(getSunDirection(uAtmosphereParameters.atmosphereParameters));
+  vec3 sunDirection = normalize(getSunDirection(atmosphereParameters));
 
 #ifdef SHADOWS
   lightDirection = -sunDirection;
