@@ -1158,7 +1158,8 @@ begin
  result.Add('absorptionextinction',Vector3ToJSON(AbsorptionExtinction.xyz));
  //result.Add('sundirection',Vector3ToJSON(SunDirection.xyz));
  //result.Add('musmin',TPasJSONItemNumber.Create(MuSMin));
- result.Add('raymarching',SaveRaymarching); 
+ result.Add('raymarching',SaveRaymarching);
+ result.Add('volumetricclouds',VolumetricClouds.SaveToJSON);
 end;
 
 procedure TpvScene3DAtmosphere.TAtmosphereParameters.SaveToJSONStream(const aStream:TStream);
