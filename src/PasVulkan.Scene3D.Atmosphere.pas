@@ -507,6 +507,9 @@ type TpvScene3DAtmosphere=class;
        fRaymarchingPipelineShaderStageVertex:TpvVulkanPipelineShaderStage;
        fRaymarchingPipelineShaderStageFragments:array[boolean] of TpvVulkanPipelineShaderStage; // false = Non-MSAA, true = MSAA
        fRaymarchingPipelineLayout:TpvVulkanPipelineLayout;
+       fCloudCurlTexture:TpvScene3DRendererMipmapImage3D;
+       fCloudDetailTexture:TpvScene3DRendererMipmapImage3D;
+       fCloudShapeTexture:TpvScene3DRendererMipmapImage3D;
       public
        constructor Create(const aScene3D:TObject);
        destructor Destroy; override;
@@ -3430,11 +3433,55 @@ begin
 
  end;
 
+ begin
+
+  fCloudCurlTexture:=TpvScene3DRendererMipmapImage3D.Create(TpvScene3D(fScene3D).VulkanDevice,
+                                                            128,
+                                                            128,
+                                                            128,
+                                                            VK_FORMAT_R8G8B8A8_UNORM,
+                                                            true,
+                                                            VK_SAMPLE_COUNT_1_BIT,
+                                                            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                            VK_SHARING_MODE_EXCLUSIVE,
+                                                            [],
+                                                            0);
+
+  fCloudDetailTexture:=TpvScene3DRendererMipmapImage3D.Create(TpvScene3D(fScene3D).VulkanDevice,
+                                                              32,
+                                                              32,
+                                                              32,
+                                                              VK_FORMAT_R8G8B8A8_UNORM,
+                                                              true,
+                                                              VK_SAMPLE_COUNT_1_BIT,
+                                                              VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                              VK_SHARING_MODE_EXCLUSIVE,
+                                                              [],
+                                                              0);
+
+  fCloudShapeTexture:=TpvScene3DRendererMipmapImage3D.Create(TpvScene3D(fScene3D).VulkanDevice,
+                                                             64,
+                                                             64,
+                                                             64,
+                                                             VK_FORMAT_R8G8B8A8_UNORM,
+                                                             true,
+                                                             VK_SAMPLE_COUNT_1_BIT,
+                                                             VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                             VK_SHARING_MODE_EXCLUSIVE,
+                                                             [],
+                                                             0);
+
+ end;
+
 end;
 
 procedure TpvScene3DAtmosphereGlobals.DeallocateResources;
 begin
- 
+
+ FreeAndNil(fCloudCurlTexture);
+ FreeAndNil(fCloudDetailTexture);
+ FreeAndNil(fCloudShapeTexture);
+  
  FreeAndNil(fTransmittanceLUTComputePipeline);
  FreeAndNil(fTransmittanceLUTComputePipelineLayout);
  FreeAndNil(fTransmittanceLUTComputeShaderStage);
