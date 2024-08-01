@@ -34,28 +34,131 @@ struct DensityProfile {
   DensityProfileLayer Layers[2];
 };
 
+struct VolumetricCloudLayer {
+  
+  vec4 Albedo; // w = unused 
+
+  vec4 ExtinctionCoefficient; // w = CoverageWindAngle
+	
+  float SkewAlongWindDirection;
+	float TotalNoiseScale;
+	float CurlScale;
+	float CurlNoiseHeightFraction;
+	
+  float CurlNoiseModifier;
+	float DetailScale;
+	float DetailNoiseHeightFraction;
+	float DetailNoiseModifier;
+	
+  float SkewAlongCoverageWindDirection;
+	float WeatherScale;
+	float CoverageAmount;
+	float CoverageMinimum;
+	
+  float TypeAmount;
+	float TypeMinimum;
+	float RainAmount;
+	float RainMinimum;
+	
+  vec4 GradientSmall;
+	
+  vec4 GradientMedium;
+	
+  vec4 gradientLarge;
+	
+  vec4 AnvilDeformationSmall;
+	
+  vec4 AnvilDeformationMedium;
+	
+  vec4 AnvilDeformationLarge;
+	
+  float WindSpeed;
+	float WindAngle;
+	float WindUpAmount;
+	float CoverageWindSpeed;
+	
+  //float CoverageWindAngle; // in ExtinctionCoefficient.w  
+
+};
+
+struct VolumetricCloudParameters {
+
+	float BeerPowder;
+	float BeerPowderPower;
+	float AmbientGroundMultiplier; 	
+  float PhaseG;
+
+	float PhaseG2;
+	float PhaseBlend; 
+	float MultiScatteringScattering;	
+  float MultiScatteringExtinction;
+
+	float MultiScatteringEccentricity;
+	float ShadowStepLength;
+	float HorizonBlendAmount;
+	float HorizonBlendPower;
+
+	float CloudStartHeight;
+	float CloudThickness;
+	float AnimationMultiplier;
+	float Padding0;
+
+	int MaxStepCount; 
+	float MaxMarchingDistance; 
+	float InverseDistanceStepCount; 
+	float RenderDistance;
+
+	float LODDistance; 
+	float LODMin; 
+	float BigStepMarch; 
+	float TransmittanceThreshold; 
+
+	float ShadowSampleCount;
+	float GroundContributionSampleCount;
+	float Padding1;
+	float Padding2;
+  
+	VolumetricCloudLayer Layers[2];
+
+};
+
 struct AtmosphereParameters {
+
   mat4 transform;
+ 
   mat4 inverseTransform;
+ 
   vec4 RayleighScattering; // w = Mu_S_min
+ 
   vec4 MieScattering; // w = sun direction X
+ 
   vec4 MieExtinction; // w = sun direction Y
+ 
   vec4 MieAbsorption; // w = sun direction Z
+  
   vec4 AbsorptionExtinction;
+ 
   vec4 GroundAlbedo;
+ 
   vec4 SolarIlluminance;
+ 
   float BottomRadius;
   float TopRadius;
   float RayleighDensityExpScale;
   float MieDensityExpScale;
+ 
   float MiePhaseG;
   float AbsorptionDensity0LayerWidth;
   float AbsorptionDensity0ConstantTerm;
   float AbsorptionDensity0LinearTerm;
+ 
   float AbsorptionDensity1ConstantTerm;
   float AbsorptionDensity1LinearTerm;
   int RaymarchingMinSteps;
   int RaymarchingMaxSteps;
+
+  VolumetricCloudParameters VolumetricClouds;
+
 };
 
 vec3 getSunDirection(const in AtmosphereParameters atmosphereParameters){
