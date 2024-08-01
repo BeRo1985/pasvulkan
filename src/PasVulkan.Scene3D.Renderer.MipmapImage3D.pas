@@ -74,6 +74,7 @@ uses SysUtils,
 type { TpvScene3DRendererMipmapImage3D }
      TpvScene3DRendererMipmapImage3D=class
       private
+       fVulkanDevice:TpvVulkanDevice;
        fVulkanImage:TpvVulkanImage;
        fVulkanImageView:TpvVulkanImageView;
        fMemoryBlock:TpvVulkanDeviceMemoryBlock;
@@ -89,6 +90,10 @@ type { TpvScene3DRendererMipmapImage3D }
        constructor Create(const aDevice:TpvVulkanDevice;const aWidth,aHeight,aDepth:TpvInt32;const aFormat:TVkFormat;const aStorage:Boolean;const aSampleBits:TVkSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT);const aImageLayout:TVkImageLayout=TVkImageLayout(VK_IMAGE_LAYOUT_GENERAL);const aSharingMode:TVkSharingMode=TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE);const aQueueFamilyIndices:TpvVulkanQueueFamilyIndices=nil;const aAllocationGroupID:TpvUInt64=0);
 
        destructor Destroy; override;
+
+       procedure GenerateMipMaps(const aQueue:TpvVulkanQueue;
+                                 const aCommandBuffer:TpvVulkanCommandBuffer;
+                                 const aFence:TpvVulkanFence);
 
       published
 
@@ -110,6 +115,9 @@ type { TpvScene3DRendererMipmapImage3D }
 
 implementation
 
+uses PasVulkan.Scene3D.Assets,
+     PasVulkan.Scene3D.Renderer.Globals;
+
 { TpvScene3DRendererMipmapImage3D }
 
 constructor TpvScene3DRendererMipmapImage3D.Create(const aDevice:TpvVulkanDevice;const aWidth,aHeight,aDepth:TpvInt32;const aFormat:TVkFormat;const aStorage:Boolean;const aSampleBits:TVkSampleCountFlagBits;const aImageLayout:TVkImageLayout;const aSharingMode:TVkSharingMode;const aQueueFamilyIndices:TpvVulkanQueueFamilyIndices;const aAllocationGroupID:TpvUInt64);
@@ -125,9 +133,11 @@ var MipMapLevelIndex:TpvSizeInt;
     Fence:TpvVulkanFence;
     ImageViewType:TVkImageViewType;
     ImageAspectMask:TVkImageAspectFlags;
-    p:pointer;    
+    p:pointer;
 begin
  inherited Create;
+
+ fVulkanDevice:=aDevice;
 
  fWidth:=aWidth;
 
@@ -304,4 +314,256 @@ begin
  inherited Destroy;
 end;
 
+procedure TpvScene3DRendererMipmapImage3D.GenerateMipMaps(const aQueue:TpvVulkanQueue;
+                                                          const aCommandBuffer:TpvVulkanCommandBuffer;
+                                                          const aFence:TpvVulkanFence);
+var MipMapLevelIndex:TpvSizeInt;
+    ImageSubresourceRange:TVkImageSubresourceRange;
+    ImageMemoryBarriers:array[0..1] of TVkImageMemoryBarrier;
+    ComputeShader:TpvVulkanShaderModule;
+    ComputeShaderStage:TpvVulkanPipelineShaderStage;
+    PipelineLayout:TpvVulkanPipelineLayout;
+    ComputePipeline:TpvVulkanComputePipeline;
+    DescriptorSetLayout:TpvVulkanDescriptorSetLayout;
+    DescriptorPool:TpvVulkanDescriptorPool;
+    DescriptorSets:array[1..15] of TpvVulkanDescriptorSet;
+    Stream:TStream;
+    FormatType:string;
+begin
+
+ case fFormat of
+  VK_FORMAT_R8G8B8A8_UNORM:begin
+   FormatType:='rgba8';
+  end;
+  VK_FORMAT_R16G16B16A16_SFLOAT:begin
+   FormatType:='rgba16f';
+  end;
+  VK_FORMAT_R32G32B32A32_SFLOAT:begin
+   FormatType:='rgba32f';
+  end;
+  VK_FORMAT_B10G11R11_UFLOAT_PACK32:begin
+   FormatType:='r11g11b10f';
+  end;
+  VK_FORMAT_E5B9G9R9_UFLOAT_PACK32:begin
+   FormatType:='rgb9e5';
+  end;
+  else begin
+   FormatType:=''; // To suppress uninitialized warning at some compilers
+   raise EpvVulkanException.Create('Unsupported format');
+  end;
+ end;
+
+ Stream:=pvApplication.Assets.GetAssetStream('downsample_3d_'+FormatType+'_comp.spv');
+ try
+  ComputeShader:=TpvVulkanShaderModule.Create(fVulkanImage.Device,Stream);
+ finally
+  Stream.Free;
+ end;
+ fVulkanImage.Device.DebugUtils.SetObjectName(ComputeShader.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DRendererMipmapImage3D.ComputeShader');
+
+ try
+
+  ComputeShaderStage:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_COMPUTE_BIT,ComputeShader,'main');
+  try
+
+   DescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(fVulkanImage.Device);
+   try
+
+    DescriptorSetLayout.AddBinding(0,TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),1,TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),[]);
+    DescriptorSetLayout.AddBinding(1,TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),1,TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),[]);
+    DescriptorSetLayout.Initialize;
+
+    DescriptorPool:=TpvVulkanDescriptorPool.Create(fVulkanImage.Device,
+                                                   TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
+                                                   fMipMapLevels);
+    try
+
+     DescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,fMipMapLevels*2);
+     DescriptorPool.Initialize;
+
+     PipelineLayout:=TpvVulkanPipelineLayout.Create(fVulkanImage.Device);
+     PipelineLayout.AddDescriptorSetLayout(DescriptorSetLayout);
+     PipelineLayout.Initialize;
+
+     ComputePipeline:=TpvVulkanComputePipeline.Create(fVulkanDevice,
+                                                      pvApplication.VulkanPipelineCache,
+                                                      0,
+                                                      ComputeShaderStage,
+                                                      PipelineLayout,
+                                                      nil,
+                                                      0);
+     try
+
+      for MipMapLevelIndex:=1 to fMipMapLevels-1 do begin
+
+       DescriptorSets[MipMapLevelIndex]:=TpvVulkanDescriptorSet.Create(DescriptorPool,
+                                                                       DescriptorSetLayout);
+       DescriptorSets[MipMapLevelIndex].WriteToDescriptorSet(0,
+                                                             0,
+                                                             1,
+                                                             TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
+                                                             [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,
+                                                                                            VulkanImageViews[MipMapLevelIndex-1].Handle,
+                                                                                            VK_IMAGE_LAYOUT_GENERAL)],
+                                                             [],
+                                                             [],
+                                                             false);
+       DescriptorSets[MipMapLevelIndex].WriteToDescriptorSet(1,
+                                                             0,
+                                                             1,
+                                                             TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
+                                                             [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,
+                                                                                            VulkanImageViews[MipMapLevelIndex].Handle,
+                                                                                            VK_IMAGE_LAYOUT_GENERAL)],
+                                                             [],
+                                                             [],
+                                                             false);
+       DescriptorSets[MipMapLevelIndex].Flush;
+
+      end;
+
+      try
+
+       aCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+
+       aCommandBuffer.BeginRecording(TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT));
+
+       FillChar(ImageMemoryBarriers[0],SizeOf(TVkImageMemoryBarrier),#0);
+       ImageMemoryBarriers[0].sType:=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+       ImageMemoryBarriers[0].pNext:=nil;
+       ImageMemoryBarriers[0].srcAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT);
+       ImageMemoryBarriers[0].dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
+       ImageMemoryBarriers[0].oldLayout:=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+       ImageMemoryBarriers[0].newLayout:=VK_IMAGE_LAYOUT_GENERAL;
+       ImageMemoryBarriers[0].srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+       ImageMemoryBarriers[0].dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+       ImageMemoryBarriers[0].image:=fVulkanImage.Handle;
+       ImageMemoryBarriers[0].subresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
+       ImageMemoryBarriers[0].subresourceRange.baseMipLevel:=0;
+       ImageMemoryBarriers[0].subresourceRange.levelCount:=1;
+       ImageMemoryBarriers[0].subresourceRange.baseArrayLayer:=0;
+       ImageMemoryBarriers[0].subresourceRange.layerCount:=1;
+
+       FillChar(ImageMemoryBarriers[1],SizeOf(TVkImageMemoryBarrier),#0);
+       ImageMemoryBarriers[1].sType:=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+       ImageMemoryBarriers[1].pNext:=nil;
+       ImageMemoryBarriers[1].srcAccessMask:=0;//TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT);
+       ImageMemoryBarriers[1].dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
+       ImageMemoryBarriers[1].oldLayout:=VK_IMAGE_LAYOUT_UNDEFINED;
+       ImageMemoryBarriers[1].newLayout:=VK_IMAGE_LAYOUT_GENERAL;
+       ImageMemoryBarriers[1].srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+       ImageMemoryBarriers[1].dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+       ImageMemoryBarriers[1].image:=fVulkanImage.Handle;
+       ImageMemoryBarriers[1].subresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
+       ImageMemoryBarriers[1].subresourceRange.baseMipLevel:=1;
+       ImageMemoryBarriers[1].subresourceRange.levelCount:=fMipMapLevels-1;
+       ImageMemoryBarriers[1].subresourceRange.baseArrayLayer:=0;
+       ImageMemoryBarriers[1].subresourceRange.layerCount:=1;
+
+       aCommandBuffer.CmdPipelineBarrier(fVulkanDevice.PhysicalDevice.PipelineStageAllShaderBits,
+                                         TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                         0,
+                                         0,nil,
+                                         0,nil,
+                                         2,@ImageMemoryBarriers[0]);
+
+       for MipMapLevelIndex:=1 to fMipMapLevels-1 do begin
+
+        aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,ComputePipeline.Handle);
+
+        aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE,
+                                             PipelineLayout.Handle,
+                                             0,
+                                             1,
+                                             @DescriptorSets[MipMapLevelIndex].Handle,
+                                             0,
+                                             nil);
+
+        aCommandBuffer.CmdDispatch(((fWidth shr MipMapLevelIndex)+7) shr 3,
+                                   ((fHeight shr MipMapLevelIndex)+7) shr 3,
+                                   ((fDepth shr MipMapLevelIndex)+7) shr 3);
+
+        if MipMapLevelIndex<(fMipMapLevels-1) then begin
+
+         FillChar(ImageMemoryBarriers[0],SizeOf(TVkImageMemoryBarrier),#0);
+         ImageMemoryBarriers[0].sType:=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+         ImageMemoryBarriers[0].pNext:=nil;
+         ImageMemoryBarriers[0].srcAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
+         ImageMemoryBarriers[0].dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT);
+         ImageMemoryBarriers[0].oldLayout:=VK_IMAGE_LAYOUT_GENERAL;
+         ImageMemoryBarriers[0].newLayout:=VK_IMAGE_LAYOUT_GENERAL;
+         ImageMemoryBarriers[0].srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+         ImageMemoryBarriers[0].dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+         ImageMemoryBarriers[0].image:=fVulkanImage.Handle;
+         ImageMemoryBarriers[0].subresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
+         ImageMemoryBarriers[0].subresourceRange.baseMipLevel:=MipMapLevelIndex;
+         ImageMemoryBarriers[0].subresourceRange.levelCount:=1;
+         ImageMemoryBarriers[0].subresourceRange.baseArrayLayer:=0;
+         ImageMemoryBarriers[0].subresourceRange.layerCount:=1;
+         aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                           TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                           0,
+                                           0,nil,
+                                           0,nil,
+                                           1,@ImageMemoryBarriers[0]);
+
+        end;
+
+       end;
+
+       FillChar(ImageMemoryBarriers[0],SizeOf(TVkImageMemoryBarrier),#0);
+       ImageMemoryBarriers[0].sType:=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+       ImageMemoryBarriers[0].pNext:=nil;
+       ImageMemoryBarriers[0].srcAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
+       ImageMemoryBarriers[0].dstAccessMask:=0;//TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT);
+       ImageMemoryBarriers[0].oldLayout:=VK_IMAGE_LAYOUT_GENERAL;
+       ImageMemoryBarriers[0].newLayout:=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+       ImageMemoryBarriers[0].srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+       ImageMemoryBarriers[0].dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+       ImageMemoryBarriers[0].image:=fVulkanImage.Handle;
+       ImageMemoryBarriers[0].subresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
+       ImageMemoryBarriers[0].subresourceRange.baseMipLevel:=0;
+       ImageMemoryBarriers[0].subresourceRange.levelCount:=fMipMapLevels;
+       ImageMemoryBarriers[0].subresourceRange.baseArrayLayer:=0;
+       ImageMemoryBarriers[0].subresourceRange.layerCount:=1;
+       aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                         fVulkanDevice.PhysicalDevice.PipelineStageAllShaderBits,
+                                         0,
+                                         0,nil,
+                                         0,nil,
+                                         1,@ImageMemoryBarriers[0]);
+
+       aCommandBuffer.EndRecording;
+
+       aCommandBuffer.Execute(aQueue,TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),nil,nil,aFence,true);
+
+      finally
+       for MipMapLevelIndex:=1 to fMipMapLevels-1 do begin
+        FreeAndNil(DescriptorSets[MipMapLevelIndex]);
+       end;
+      end;
+
+     finally
+      FreeAndNil(ComputePipeline);
+     end;
+
+    finally
+     FreeAndNil(DescriptorPool);
+    end;
+
+   finally
+    FreeAndNil(DescriptorSetLayout);
+   end;
+
+  finally
+   FreeAndNil(ComputeShaderStage);
+  end;
+
+ finally
+  FreeAndNil(ComputeShader);
+ end;
+
+end;
+
 end.
+

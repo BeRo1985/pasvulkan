@@ -133,6 +133,12 @@ compileshaderarguments=(
   "-V downsample_cubemap.comp -DUSE_R11G11B10F -o ${tempPath}/downsample_cubemap_r11g11b10f_comp.spv" 
   "-V downsample_cubemap.comp -DUSE_RGBA16F -o ${tempPath}/downsample_cubemap_rgba16f_comp.spv"
   "-V downsample_cubemap.comp -DUSE_RGBA32F -o ${tempPath}/downsample_cubemap_rgba32f_comp.spv"  
+
+  "-V downsample_3d.comp -o ${tempPath}/downsample_3d_rgba8_comp.spv"
+  "-V downsample_3d.comp -DUSE_RGB9E5 -o ${tempPath}/downsample_3d_rgb9e5_comp.spv"
+  "-V downsample_3d.comp -DUSE_R11G11B10F -o ${tempPath}/downsample_3d_r11g11b10f_comp.spv" 
+  "-V downsample_3d.comp -DUSE_RGBA16F -o ${tempPath}/downsample_3d_rgba16f_comp.spv"
+  "-V downsample_3d.comp -DUSE_RGBA32F -o ${tempPath}/downsample_3d_rgba32f_comp.spv"  
     
   "-V dof_autofocus.comp -o ${tempPath}/dof_autofocus_comp.spv"
   "-V dof_bokeh.comp -o ${tempPath}/dof_bokeh_comp.spv"
