@@ -12,7 +12,7 @@ layout(local_size_x = 8, local_size_y = 8, local_size_z = 8) in;
 
 /* clang-format on */
 
-layout(set = 0, binding = 0, rgba32f) uniform image3D uDestinationTexture;
+layout(set = 0, binding = 0, rgba8) uniform image3D uDestinationTexture;
 
 #include "atmosphere_clouds_noise.glsl"
 
@@ -30,7 +30,7 @@ void main(){
 
     imageStore(uDestinationTexture, 
                p,
-               vec4(encodeCURL(remap01Unclamped(curlNoise(o * curlScale), vec3(curlLow), vec3(curlHigh))), 1.0));  
+               vec4(clamp(encodeCURL(remap01Unclamped(curlNoise(o * curlScale), vec3(curlLow), vec3(curlHigh))), vec3(0.0), vec3(1.0)), 1.0));
    
   }
   

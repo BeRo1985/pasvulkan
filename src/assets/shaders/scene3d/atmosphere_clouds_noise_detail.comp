@@ -12,7 +12,7 @@ layout(local_size_x = 8, local_size_y = 8, local_size_z = 8) in;
 
 /* clang-format on */
 
-layout(set = 0, binding = 0, rgba32f) uniform writeonly image3D uDestinationTexture;
+layout(set = 0, binding = 0, rgba8) uniform image3D uDestinationTexture;
 
 #include "atmosphere_clouds_noise.glsl"
 
@@ -27,13 +27,13 @@ void main(){
     const float detailNoiseLowRemap = -1.0,
                 detailNoiseHighRemap = 1.0,
                 totalSize = 0.5;           
-                     
+
     imageStore(uDestinationTexture, 
                p,
-               vec4(remap01(getWorley3Octaves(o, 10.0 * totalSize), detailNoiseLowRemap, detailNoiseHighRemap),
-                    remap01(getWorley3Octaves(o, 16.0 * totalSize), detailNoiseLowRemap, detailNoiseHighRemap),
-                    remap01(getWorley3Octaves(o, 20.0 * totalSize), detailNoiseLowRemap, detailNoiseHighRemap),
-                    remap01(getWorley3Octaves(o, 30.0 * totalSize), detailNoiseLowRemap, detailNoiseHighRemap)));
+               clamp(vec4(remap01(getWorley3Octaves(o, 10.0 * totalSize), detailNoiseLowRemap, detailNoiseHighRemap),
+                          remap01(getWorley3Octaves(o, 16.0 * totalSize), detailNoiseLowRemap, detailNoiseHighRemap),
+                          remap01(getWorley3Octaves(o, 20.0 * totalSize), detailNoiseLowRemap, detailNoiseHighRemap),
+                          remap01(getWorley3Octaves(o, 30.0 * totalSize), detailNoiseLowRemap, detailNoiseHighRemap)), vec4(0.0), vec4(1.0)));
 
   }
 

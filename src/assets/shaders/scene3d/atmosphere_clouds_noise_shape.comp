@@ -12,7 +12,7 @@ layout(local_size_x = 8, local_size_y = 8, local_size_z = 8) in;
 
 /* clang-format on */
 
-layout(set = 0, binding = 0, rgba32f) uniform writeonly image3D uDestinationTexture;
+layout(set = 0, binding = 0, rgba8) uniform writeonly image3D uDestinationTexture;
 
 #include "atmosphere_clouds_noise.glsl"
 
@@ -35,12 +35,12 @@ void main(){
 
     imageStore(uDestinationTexture, 
                 p,
-                vec4(dilatePerlinWorley(remap01(getPerlin7Octaves(o, totalSize * 4.0, true), perlinDilateLowRemap, perlinDilateHighRemap), 
-                                        remap01(getWorley3Octaves(o, totalSize * 6.0), worleyDilateLowRemap, worleyDilateHighRemap), 
-                                        perlinWorleyDifference), 
-                     vec3(remap01(getWorley3Octaves(o, totalSize * 6.0), totalWorleyLowRemap, totalWorleyHighRemap), 
-                          remap01(getWorley3Octaves(o, totalSize * 12.0), totalWorleyLowRemap, totalWorleyHighRemap), 
-                          remap01(getWorley3Octaves(o, totalSize * 24.0), totalWorleyLowRemap, totalWorleyHighRemap))));
+                clamp(vec4(dilatePerlinWorley(remap01(getPerlin7Octaves(o, totalSize * 4.0, true), perlinDilateLowRemap, perlinDilateHighRemap), 
+                                              remap01(getWorley3Octaves(o, totalSize * 6.0), worleyDilateLowRemap, worleyDilateHighRemap), 
+                                              perlinWorleyDifference), 
+                           vec3(remap01(getWorley3Octaves(o, totalSize * 6.0), totalWorleyLowRemap, totalWorleyHighRemap), 
+                                remap01(getWorley3Octaves(o, totalSize * 12.0), totalWorleyLowRemap, totalWorleyHighRemap), 
+                                remap01(getWorley3Octaves(o, totalSize * 24.0), totalWorleyLowRemap, totalWorleyHighRemap))), vec4(0.0), vec4(1.0)));
 
   }
   
