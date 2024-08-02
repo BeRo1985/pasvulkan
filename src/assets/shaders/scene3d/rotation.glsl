@@ -34,4 +34,14 @@ vec3 rotateZ(const in vec3 p, const in float a){
   return vec3((sc.y * p.x) + (sc.x * p.y), (sc.y * p.y) - (sc.x * p.x), p.z);
 }
 
+mat3 getVectorAlignmentMatrix(const in vec3 fromVector, const in vec3 toVector, inout float inversion){
+	float c = dot(fromVector, toVector);
+  inversion *= (c < 0.0) ? -1.0 : 1.0;
+	vec3 v = cross(fromVector, toVector);
+	mat3 m = mat3(0.0, v.z, -v.y, -v.z, 0.0, v.x, v.y, -v.x, 0.0);	
+	float s = length(v);
+  s *= s;
+	return (mat3(1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0) + m) + ((m * m) * ((1.0 - c) / (s * s)));
+}
+
 #endif
