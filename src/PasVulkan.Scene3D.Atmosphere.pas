@@ -76,6 +76,7 @@ uses SysUtils,
      PasVulkan.Collections,
      PasVulkan.Scene3D.Renderer.Image2D,
      PasVulkan.Scene3D.Renderer.Array2DImage,
+     PasVulkan.Scene3D.Renderer.ImageCubeMap,
      PasVulkan.Scene3D.Renderer.MipmapImageCubeMap,
      PasVulkan.Scene3D.Renderer.MipmapImage3D,
      PasVulkan.Scene3D.Renderer.CubeMapMipMapGenerator,
@@ -372,6 +373,7 @@ type TpvScene3DAtmosphere=class;
        fPointerToAtmosphereParameters:PAtmosphereParameters;
        fGPUAtmosphereParameters:TGPUAtmosphereParameters;
        fAtmosphereParametersBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
+       fWeatherMapTexture:TpvScene3DRendererImageCubeMap;
        fRendererInstances:TRendererInstances;
        fRendererInstanceHashMap:TRendererInstanceHashMap;
        fRendererInstanceListLock:TPasMPSlimReaderWriterLock;
@@ -2759,6 +2761,18 @@ begin
  
   end;
 
+  fWeatherMapTexture:=TpvScene3DRendererImageCubeMap.Create(TpvScene3D(fScene3D).VulkanDevice,
+                                                            1024,
+                                                            1024,
+                                                            VK_FORMAT_R8G8B8A8_UNORM,
+                                                            true,
+                                                            VK_SAMPLE_COUNT_1_BIT,
+                                                            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                            VK_SHARING_MODE_EXCLUSIVE,
+                                                            nil,
+                                                            0);
+
+
   fUploaded:=true;
  
  end;
@@ -2772,6 +2786,7 @@ begin
   for InFlightFrameIndex:=0 to TpvScene3D(fScene3D).CountInFlightFrames-1 do begin
    FreeAndNil(fAtmosphereParametersBuffers[InFlightFrameIndex]);
   end;
+  FreeAndNil(fWeatherMapTexture);
   fUploaded:=false;
  end;
 end;

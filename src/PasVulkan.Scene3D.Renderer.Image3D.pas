@@ -259,9 +259,9 @@ end;
 
 destructor TpvScene3DRendererImage3D.Destroy;
 begin
- FreeAndNil(fMemoryBlock);
  FreeAndNil(fVulkanImageView);
  FreeAndNil(fVulkanImage);
+ FreeAndNil(fMemoryBlock);
  inherited Destroy;
 end;
 

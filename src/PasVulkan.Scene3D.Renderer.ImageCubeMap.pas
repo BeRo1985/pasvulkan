@@ -49,7 +49,7 @@
  * 11. Make sure the code runs on all platforms with Vulkan support           *
  *                                                                            *
  ******************************************************************************)
-unit PasVulkan.Scene3D.Renderer.MipmapImageCubeMap;
+unit PasVulkan.Scene3D.Renderer.ImageCubeMap;
 {$i PasVulkan.inc}
 {$ifndef fpc}
  {$ifdef conditionalexpressions}
@@ -71,15 +71,14 @@ uses SysUtils,
      PasVulkan.Framework,
      PasVulkan.Application;
 
-type { TpvScene3DRendererMipmapImageCubeMap }
-     TpvScene3DRendererMipmapImageCubeMap=class
+type { TpvScene3DRendererImageCubeMap }
+     TpvScene3DRendererImageCubeMap=class
       private
        fVulkanImage:TpvVulkanImage;
        fVulkanImageView:TpvVulkanImageView;
        fMemoryBlock:TpvVulkanDeviceMemoryBlock;
        fWidth:TpvInt32;
        fHeight:TpvInt32;
-       fMipMapLevels:TpvInt32;
        fFormat:TVkFormat;
        fAdditionalImageFormat:TVkFormat;
       public
@@ -100,8 +99,6 @@ type { TpvScene3DRendererMipmapImageCubeMap }
 
        property Height:TpvInt32 read fHeight;
 
-       property MipMapLevels:TpvInt32 read fMipMapLevels;
-
        property Format:TVkFormat read fFormat;
 
        property AdditionalImageFormat:TVkFormat read fAdditionalImageFormat; 
@@ -110,11 +107,10 @@ type { TpvScene3DRendererMipmapImageCubeMap }
 
 implementation
 
-{ TpvScene3DRendererMipmapImageCubeMap }
+{ TpvScene3DRendererImageCubeMap }
 
-constructor TpvScene3DRendererMipmapImageCubeMap.Create(const aDevice:TpvVulkanDevice;const aWidth,aHeight:TpvInt32;const aFormat:TVkFormat;const aStorage:Boolean;const aSampleBits:TVkSampleCountFlagBits;const aImageLayout:TVkImageLayout;const aSharingMode:TVkSharingMode;const aQueueFamilyIndices:TpvVulkanQueueFamilyIndices;const aAllocationGroupID:TpvUInt64);
-var MipMapLevelIndex:TpvSizeInt;
-    MemoryRequirements:TVkMemoryRequirements;
+constructor TpvScene3DRendererImageCubeMap.Create(const aDevice:TpvVulkanDevice;const aWidth,aHeight:TpvInt32;const aFormat:TVkFormat;const aStorage:Boolean;const aSampleBits:TVkSampleCountFlagBits;const aImageLayout:TVkImageLayout;const aSharingMode:TVkSharingMode;const aQueueFamilyIndices:TpvVulkanQueueFamilyIndices;const aAllocationGroupID:TpvUInt64);
+var MemoryRequirements:TVkMemoryRequirements;
     RequiresDedicatedAllocation,
     PrefersDedicatedAllocation:boolean;
     MemoryBlockFlags:TpvVulkanDeviceMemoryBlockFlags;
@@ -132,8 +128,6 @@ begin
  fWidth:=aWidth;
 
  fHeight:=aHeight;
-
- fMipMapLevels:=Max(1,IntLog2(Max(aWidth,aHeight))+1);
 
  fFormat:=aFormat;
 
@@ -173,7 +167,7 @@ begin
                                      aWidth,
                                      aHeight,
                                      1,
-                                     fMipMapLevels,
+                                     1,
                                      6,
                                      aSampleBits,
                                      VK_IMAGE_TILING_OPTIMAL,
@@ -240,7 +234,7 @@ begin
     FillChar(ImageSubresourceRange,SizeOf(TVkImageSubresourceRange),#0);
     ImageSubresourceRange.aspectMask:=ImageAspectMask;
     ImageSubresourceRange.baseMipLevel:=0;
-    ImageSubresourceRange.levelCount:=fMipMapLevels;
+    ImageSubresourceRange.levelCount:=1;
     ImageSubresourceRange.baseArrayLayer:=0;
     ImageSubresourceRange.layerCount:=6;
     fVulkanImage.SetLayout(ImageAspectMask,
@@ -262,27 +256,9 @@ begin
                                                 TVkComponentSwizzle(VK_COMPONENT_SWIZZLE_IDENTITY),
                                                 ImageAspectMask,
                                                 0,
-                                                fMipMapLevels,
+                                                1,
                                                 0,
                                                 6);
-
-    SetLength(VulkanImageViews,fMipMapLevels);
-
-    for MipMapLevelIndex:=0 to fMipMapLevels-1 do begin
-     VulkanImageViews[MipMapLevelIndex]:=TpvVulkanImageView.Create(aDevice,
-                                                                   fVulkanImage,
-                                                                   ImageViewType,
-                                                                   aFormat,
-                                                                   TVkComponentSwizzle(VK_COMPONENT_SWIZZLE_IDENTITY),
-                                                                   TVkComponentSwizzle(VK_COMPONENT_SWIZZLE_IDENTITY),
-                                                                   TVkComponentSwizzle(VK_COMPONENT_SWIZZLE_IDENTITY),
-                                                                   TVkComponentSwizzle(VK_COMPONENT_SWIZZLE_IDENTITY),
-                                                                   TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
-                                                                   MipMapLevelIndex,
-                                                                   1,
-                                                                   0,
-                                                                   6);
-    end;
 
    finally
     FreeAndNil(Fence);
@@ -298,12 +274,8 @@ begin
 
 end;
 
-destructor TpvScene3DRendererMipmapImageCubeMap.Destroy;
-var MipMapLevelIndex:TpvSizeInt;
+destructor TpvScene3DRendererImageCubeMap.Destroy;
 begin
- for MipMapLevelIndex:=0 to fMipMapLevels-1 do begin
-  FreeAndNil(VulkanImageViews[MipMapLevelIndex]);
- end;
  VulkanImageViews:=nil;
  FreeAndNil(fVulkanImageView);
  FreeAndNil(fVulkanImage);

@@ -279,13 +279,13 @@ end;
 destructor TpvScene3DRendererMipmappedArray3DImage.Destroy;
 var MipMapLevelIndex:TpvInt32;
 begin
- FreeAndNil(fMemoryBlock);
  for MipMapLevelIndex:=0 to fMipMapLevels-1 do begin
   FreeAndNil(VulkanImageViews[MipMapLevelIndex]);
  end;
  VulkanImageViews:=nil;
  FreeAndNil(fVulkanImageView);
  FreeAndNil(fVulkanImage);
+ FreeAndNil(fMemoryBlock);
  inherited Destroy;
 end;
 
