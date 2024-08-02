@@ -16,16 +16,12 @@ layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
 
 // Push constants
 layout(push_constant, std140) uniform PushConstants {
+  vec4 coverageRotation; // xyz = axis, w = angle
+  vec4 typeRotation; // xyz = axis, w = angle
+  vec4 wetnessRotation; // xyz = axis, w = angle
+  float coveragePerlinWorleyDifference;
   float totalSize;
-  float worleySeed;
-  float weatherMapScale; 
-  float speedScale;
-  float timeScale;
-  float cloudsTime;
-  float cloudsWindSpeed;
-  float cloudsAdvanceCoverageSpeed;
-  float cloudsAdvanceTypeSpeed;
-  float cloudsAdvanceWetnessSpeed;
+  float worleySeed; 
 } pushConstants;
 
 #ifdef EQUIRECTANGULAR_MAP
@@ -38,24 +34,7 @@ layout(set = 0, binding = 0, rgba8) uniform writeonly imageCube uDestinationText
 
 #include "cubemap.glsl"
 
-vec3 rotateX(const in vec3 p, const in float a){
-  vec2 cs = vec2(sin(vec2(a) + vec2(1.57079632679, 0.0))); 
-  return vec3(p.x, (cs.x * p.y) - (cs.y * p.z), (cs.y * p.y) + (cs.x * p.z));
-}
-
-vec3 rotateY(const in vec3 p, const in float a){
-  vec2 cs = vec2(sin(vec2(a) + vec2(1.57079632679, 0.0))); 
-  return vec3((cs.x * p.x) + (cs.y * p.z), p.y, (cs. x * p.z) - (cs.y * p.x));
-}
-
-vec3 rotateZ(const in vec3 p, const in float a){
-  vec2 cs = vec2(sin(vec2(a) + vec2(1.57079632679, 0.0))); 
-  return vec3((cs.x * p.x) + (cs.y * p.y), (cs.x * p.y) - (cs.y * p.x), p.z);
-}
-
-float getTime(float cloudTime, float cloudWindSpeed){
-		return cloudTime * cloudWindSpeed * pushConstants.timeScale;
-}
+#include "rotation.glsl" 
 
 void main(){
 
@@ -112,15 +91,11 @@ void main(){
     const float perlinNoise4LowRemap = 1.0;
     const float perlinNoise4HighRemap = 1.4;
       
-    const float coveragePerlinWorleyDifference = 0.5;
-    
-    float moveOffset = (getTime(pushConstants.cloudsTime, pushConstants.cloudsWindSpeed * pushConstants.weatherMapScale) * pushConstants.cloudsWindSpeed) + pushConstants.cloudsTime;
-    
-    float speedScale = pushConstants.cloudsWindSpeed * pushConstants.speedScale;
+    const float coveragePerlinWorleyDifference = clamp(pushConstants.coveragePerlinWorleyDifference, 0.0, 1.0);
 
-    vec3 pc = fma(rotateX(rayDirection, moveOffset * pushConstants.cloudsAdvanceCoverageSpeed * speedScale), vec3(0.5), vec3(0.5));
-    vec3 pt = fma(rotateY(rayDirection, moveOffset * pushConstants.cloudsAdvanceTypeSpeed * speedScale), vec3(0.5), vec3(0.5));
-    vec3 pw = fma(rotateZ(rayDirection, moveOffset * pushConstants.cloudsAdvanceWetnessSpeed * speedScale), vec3(0.5), vec3(0.5));
+    vec3 pc = fma(rotate(rayDirection, pushConstants.coverageRotation), vec3(0.5), vec3(0.5));
+    vec3 pt = fma(rotate(rayDirection, pushConstants.typeRotation), vec3(0.5), vec3(0.5));
+    vec3 pw = fma(rotate(rayDirection, pushConstants.wetnessRotation), vec3(0.5), vec3(0.5));
   #if 1
     float perlinNoise1 = getPerlin7Octaves(pc + vec3(0.0, 0.0, depthOffset1), 3.0 * totalSize, false);
     float worleyNoise1 = getWorley2Octaves(pc + vec3(0.0, 0.0, depthOffset1), 3.0 * totalSize, worleySeed);
