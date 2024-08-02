@@ -3449,7 +3449,8 @@ begin
                                                             VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                                             VK_SHARING_MODE_EXCLUSIVE,
                                                             [],
-                                                            0);
+                                                            0,
+                                                            'CloudCurlTexture');
 
   fCloudDetailTexture:=TpvScene3DRendererMipmapImage3D.Create(TpvScene3D(fScene3D).VulkanDevice,
                                                               32,
@@ -3461,7 +3462,8 @@ begin
                                                               VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                                               VK_SHARING_MODE_EXCLUSIVE,
                                                               [],
-                                                              0);
+                                                              0,
+                                                              'CloudDetailTexture');
 
   fCloudShapeTexture:=TpvScene3DRendererMipmapImage3D.Create(TpvScene3D(fScene3D).VulkanDevice,
                                                              64,
@@ -3473,7 +3475,8 @@ begin
                                                              VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                                              VK_SHARING_MODE_EXCLUSIVE,
                                                              [],
-                                                             0);
+                                                             0,
+                                                             'CloudShapeTexture');
 
   Queue:=TpvScene3D(fScene3D).VulkanDevice.UniversalQueue;
 
