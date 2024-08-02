@@ -2952,6 +2952,10 @@ end;
 
 procedure TpvScene3DAtmosphereGlobals.AllocateResources;
 var Stream:TStream;
+    Queue:TpvVulkanQueue;
+    CommandPool:TpvVulkanCommandPool;
+    CommandBuffer:TpvVulkanCommandBuffer;
+    Fence:TpvVulkanFence;
 begin
 
  // Transmittance LUT pass descriptor set layout
@@ -3470,6 +3474,67 @@ begin
                                                              VK_SHARING_MODE_EXCLUSIVE,
                                                              [],
                                                              0);
+
+  Queue:=TpvScene3D(fScene3D).VulkanDevice.UniversalQueue;
+
+  CommandPool:=TpvVulkanCommandPool.Create(TpvScene3D(fScene3D).VulkanDevice,
+                                           TpvScene3D(fScene3D).VulkanDevice.UniversalQueueFamilyIndex,
+                                           TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
+  try                                         
+
+   CommandBuffer:=TpvVulkanCommandBuffer.Create(CommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+   try
+  
+    Fence:=TpvVulkanFence.Create(TpvScene3D(fScene3D).VulkanDevice);                                                           
+    try
+
+     fCloudCurlTexture.Generate(Queue,
+                                CommandBuffer,
+                                Fence,
+                                'atmosphere_clouds_noise_curl_comp.spv',
+                                8,
+                                8,
+                                8);
+
+     fCloudDetailTexture.Generate(Queue,
+                                  CommandBuffer,
+                                  Fence,
+                                  'atmosphere_clouds_noise_detail_comp.spv',
+                                  8,
+                                  8,
+                                  8);
+
+     fCloudShapeTexture.Generate(Queue,
+                                 CommandBuffer,
+                                 Fence,
+                                 'atmosphere_clouds_noise_shape_comp.spv',
+                                 8,
+                                 8,
+                                 8);      
+
+     fCloudCurlTexture.GenerateMipMaps(Queue,
+                                       CommandBuffer,
+                                       Fence);
+
+     fCloudDetailTexture.GenerateMipMaps(Queue,
+                                         CommandBuffer,
+                                         Fence);
+
+     fCloudShapeTexture.GenerateMipMaps(Queue,
+                                        CommandBuffer,
+                                        Fence);  
+
+    finally
+     FreeAndNil(Fence);
+    end;
+
+   finally
+    FreeAndNil(CommandBuffer);
+   end;
+
+  finally 
+   FreeAndNil(CommandPool);
+  end;
 
  end;
 
