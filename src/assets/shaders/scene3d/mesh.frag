@@ -9,6 +9,9 @@
   #undef SHADOWS
 #endif
 
+#define LIGHTCLUSTERS
+#define FRUSTUMCLUSTERGRID
+
 #ifdef USE_MATERIAL_BUFFER_REFERENCE
 #elif defined(USE_MATERIAL_SSBO)
 #endif

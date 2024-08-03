@@ -22,6 +22,9 @@ layout(early_fragment_tests) in;
       
 // MSAA_FAST = MSAA input but not MSAA output, so that the water isn't multisampled then.
 
+#define LIGHTCLUSTERS
+#define FRUSTUMCLUSTERGRID
+
 #define LIGHTS 
 #define SHADOWS
 
@@ -100,6 +103,24 @@ vec3 cameraRelativePosition;
   vec4 dominantLightColor;
   vec4 ambientLightColor;
 } imageBasedSphericalHarmonicsMetaData;*/
+
+#ifdef FRUSTUMCLUSTERGRID
+layout (set = 1, binding = 6, std140) readonly uniform FrustumClusterGridGlobals {
+  uvec4 tileSizeZNearZFar; 
+  vec4 viewRect;
+  uvec4 countLightsViewIndexSizeOffsetedViewIndex;
+  uvec4 clusterSize;
+  vec4 scaleBiasMax;
+} uFrustumClusterGridGlobals;
+
+layout (set = 1, binding = 7, std430) readonly buffer FrustumClusterGridIndexList {
+   uint frustumClusterGridIndexList[];
+};
+
+layout (set = 1, binding = 8, std430) readonly buffer FrustumClusterGridData {
+  uvec4 frustumClusterGridData[]; // x = start light index, y = count lights, z = start decal index, w = count decals
+};
+#endif
 
 // Per planet descriptor set
 

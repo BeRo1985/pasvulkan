@@ -16,6 +16,9 @@
 #define LIGHTS 
 #define SHADOWS
 
+#define LIGHTCLUSTERS
+#define FRUSTUMCLUSTERGRID
+
 #include "bufferreference_definitions.glsl"
 
 #if defined(RAYTRACING)
@@ -89,6 +92,24 @@ layout(set = 1, binding = 6, std430) readonly buffer ImageBasedSphericalHarmonic
   vec4 dominantLightColor;
   vec4 ambientLightColor;
 } imageBasedSphericalHarmonicsMetaData;
+
+#ifdef FRUSTUMCLUSTERGRID
+layout (set = 1, binding = 8, std140) readonly uniform FrustumClusterGridGlobals {
+  uvec4 tileSizeZNearZFar; 
+  vec4 viewRect;
+  uvec4 countLightsViewIndexSizeOffsetedViewIndex;
+  uvec4 clusterSize;
+  vec4 scaleBiasMax;
+} uFrustumClusterGridGlobals;
+
+layout (set = 1, binding = 9, std430) readonly buffer FrustumClusterGridIndexList {
+   uint frustumClusterGridIndexList[];
+};
+
+layout (set = 1, binding = 10, std430) readonly buffer FrustumClusterGridData {
+  uvec4 frustumClusterGridData[]; // x = start light index, y = count lights, z = start decal index, w = count decals
+};
+#endif
 
 // Per planet descriptor set
 

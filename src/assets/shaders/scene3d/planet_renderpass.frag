@@ -16,6 +16,9 @@
 #define LIGHTS 
 #define SHADOWS
 
+#define LIGHTCLUSTERS
+#define FRUSTUMCLUSTERGRID
+
 #include "bufferreference_definitions.glsl"
 
 #if defined(RAYTRACING)
@@ -88,6 +91,24 @@ layout(set = 1, binding = 6, std430) readonly buffer ImageBasedSphericalHarmonic
   vec4 ambientLightColor;
 } imageBasedSphericalHarmonicsMetaData;
 
+#ifdef FRUSTUMCLUSTERGRID
+layout (set = 1, binding = 8, std140) readonly uniform FrustumClusterGridGlobals {
+  uvec4 tileSizeZNearZFar; 
+  vec4 viewRect;
+  uvec4 countLightsViewIndexSizeOffsetedViewIndex;
+  uvec4 clusterSize;
+  vec4 scaleBiasMax;
+} uFrustumClusterGridGlobals;
+
+layout (set = 1, binding = 9, std430) readonly buffer FrustumClusterGridIndexList {
+   uint frustumClusterGridIndexList[];
+};
+
+layout (set = 1, binding = 10, std430) readonly buffer FrustumClusterGridData {
+  uvec4 frustumClusterGridData[]; // x = start light index, y = count lights, z = start decal index, w = count decals
+};
+#endif
+
 // Per planet descriptor set
 
 layout(set = 2, binding = 0) uniform sampler2D uTextures[]; // 0 = height map, 1 = normal map, 2 = tangent bitangent map
@@ -120,7 +141,7 @@ const vec3 inModelScale = vec3(1.0);
 
 #include "roughness.glsl"
 
-vec3 imageLightBasedLightDirection = imageBasedSphericalHarmonicsMetaData.dominantLightDirection.xyz;
+vec3 imageLightBasedLightDirection = vec3(0.0, 0.0, -1.0); // imageBasedSphericalHarmonicsMetaData.dominantLightDirection.xyz;
 
 vec3 sphereNormal = normalize(inBlock.sphereNormal.xyz); // re-normalize, because of vertex interpolation
 

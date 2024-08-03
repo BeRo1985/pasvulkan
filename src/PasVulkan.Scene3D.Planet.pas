@@ -11268,6 +11268,27 @@ begin
                                   [],
                                   0);
 
+  fDescriptorSetLayout.AddBinding(8,
+                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
+                                  1,
+                                  fShaderStageFlags,
+                                  [],
+                                  0);
+
+  fDescriptorSetLayout.AddBinding(9,
+                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                  1,
+                                  fShaderStageFlags,
+                                  [],
+                                  0);
+
+  fDescriptorSetLayout.AddBinding(10,
+                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                  1,
+                                  fShaderStageFlags,
+                                  [],
+                                  0);
+
   // TODO: Add more bindings for other stuff like material textures, etc.
 
   fDescriptorSetLayout.Initialize;
@@ -11351,9 +11372,9 @@ begin
  fDescriptorPool:=TpvVulkanDescriptorPool.Create(fVulkanDevice,
                                                  TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
                                                  TpvScene3D(fScene3D).CountInFlightFrames);
- fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),2*TpvScene3D(fScene3D).CountInFlightFrames);
+ fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),3*TpvScene3D(fScene3D).CountInFlightFrames);
  fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),13*TpvScene3D(fScene3D).CountInFlightFrames);
- fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),1*TpvScene3D(fScene3D).CountInFlightFrames);
+ fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),3*TpvScene3D(fScene3D).CountInFlightFrames);
  fDescriptorPool.Initialize;
  fVulkanDevice.DebugUtils.SetObjectName(fDescriptorPool.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'TpvScene3DPlanet.TRenderPass.fDescriptorPool');
 
@@ -11504,6 +11525,30 @@ begin
     end;
    end;
   end;
+  fDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(8,
+                                                           0,
+                                                           1,
+                                                           TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
+                                                           [],
+                                                           [TpvScene3DRendererInstance(fRendererInstance).FrustumClusterGridGlobalsVulkanBuffers[InFlightFrameIndex].DescriptorBufferInfo],
+                                                           [],
+                                                           false);
+  fDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(9,
+                                                           0,
+                                                           1,
+                                                           TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                           [],
+                                                           [TpvScene3DRendererInstance(fRendererInstance).FrustumClusterGridIndexListVulkanBuffers[InFlightFrameIndex].DescriptorBufferInfo],
+                                                           [],
+                                                           false);
+  fDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(10,
+                                                           0,
+                                                           1,
+                                                           TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                           [],
+                                                           [TpvScene3DRendererInstance(fRendererInstance).FrustumClusterGridDataVulkanBuffers[InFlightFrameIndex].DescriptorBufferInfo],
+                                                           [],
+                                                           false);
   fDescriptorSets[InFlightFrameIndex].Flush;
   fVulkanDevice.DebugUtils.SetObjectName(fDescriptorSets[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET,'TpvScene3DPlanet.TRenderPass.fDescriptorSets['+IntToStr(InFlightFrameIndex)+']');
   fIBLDescriptors[InFlightFrameIndex]:=TpvScene3DRendererIBLDescriptor.Create(TpvScene3DRenderer(fRenderer).VulkanDevice,
