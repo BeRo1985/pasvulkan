@@ -35,7 +35,7 @@ struct DensityProfile {
 };
 
 struct VolumetricCloudLayer {
-  
+
   vec4 Albedo; // w = unused 
 
   vec4 ExtinctionCoefficient; // w = CoverageWindAngle
@@ -930,7 +930,7 @@ void GetCameraPositionDirection(out vec3 origin,
 
 #else
 
-  // Works only for perspect  ive projection, not for orthographic projection, but is faster
+  // Works only for perspective projection, not for orthographic projection, but is faster
 
   origin = inverseViewMatrix[3].xyz;
 

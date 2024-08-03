@@ -18,13 +18,15 @@ layout(location = 1) in vec2 inOctahedralEncodedNormal;
 
 layout(location = 0) out vec3 outWorldSpacePosition;
 
-layout(location = 1) out OutBlock {
+layout(location = 1) flat out vec3 outCameraPosition;
+
+layout(location = 2) out OutBlock {
   vec3 position;
   vec3 sphereNormal;
   vec3 normal;
-  vec3 worldSpacePosition;
+//vec3 worldSpacePosition;
   vec3 viewSpacePosition;
-  vec3 cameraRelativePosition;
+//vec3 cameraRelativePosition;
   vec2 jitter;
 #ifdef VELOCITY
   vec4 previousClipSpace;
@@ -116,9 +118,13 @@ void main(){
   outBlock.position = position;         
   outBlock.sphereNormal = sphereNormal;
   outBlock.normal = normalize((planetData.normalMatrix * vec4(normal, 0.0)).xyz);
+#if !defined(RAYTRACING)
   outBlock.worldSpacePosition = worldSpacePosition;
+#endif
   outBlock.viewSpacePosition = viewSpacePosition.xyz;  
+#if !defined(RAYTRACING)
   outBlock.cameraRelativePosition = worldSpacePosition - cameraPosition;
+#endif
   outBlock.jitter = pushConstants.jitter;
 #ifdef VELOCITY
   outBlock.currentClipSpace = (projectionMatrix * viewMatrix) * vec4(position, 1.0);
@@ -127,6 +133,7 @@ void main(){
 
 #if defined(RAYTRACING)
   outWorldSpacePosition = worldSpacePosition;
+  outCameraPosition = cameraPosition;
 #endif
 
   gl_Position = viewProjectionMatrix * vec4(position, 1.0);

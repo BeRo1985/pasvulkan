@@ -31,19 +31,31 @@ layout(location = 0) pervertexEXT in vec3 inWorldSpacePositionPerVertex[];
 layout(location = 0) in vec3 inWorldSpacePosition;
 #endif
 
-layout(location = 1) in InBlock {
+layout(location = 1) flat in vec3 inCameraPosition;
+
+layout(location = 2) in InBlock {
   vec3 position;
   vec3 sphereNormal;
   vec3 normal;
-  vec3 worldSpacePosition;
+//vec3 worldSpacePosition;
   vec3 viewSpacePosition;
-  vec3 cameraRelativePosition;
+//vec3 cameraRelativePosition;
   vec2 jitter;
 #ifdef VELOCITY
   vec4 previousClipSpace;
   vec4 currentClipSpace;
 #endif  
 } inBlock;
+
+#define inViewSpacePosition inBlock.viewSpacePosition
+
+//#define inWorldSpacePosition inBlock.worldSpacePosition
+
+#if defined(WIREFRAME) 
+vec3 inWorldSpacePosition = (inWorldSpacePositionPerVertex[0] * gl_BaryCoordEXT.x) + (inWorldSpacePositionPerVertex[1] * gl_BaryCoordEXT.y) + (inWorldSpacePositionPerVertex[2] * gl_BaryCoordEXT.z);
+#endif
+
+vec3 inCameraRelativePosition = inWorldSpacePosition - inCameraPosition;
 
 #else
 
@@ -61,6 +73,10 @@ layout(location = 0) in InBlock {
 #endif  
 } inBlock;
 
+#define inViewSpacePosition inBlock.viewSpacePosition
+#define inWorldSpacePosition inBlock.worldSpacePosition
+#define inCameraRelativePosition inBlock.cameraRelativePosition
+
 #endif
 
 layout(location = 0) out vec4 outFragColor;
@@ -69,10 +85,6 @@ layout(location = 0) out vec4 outFragColor;
 #elif defined(REFLECTIVESHADOWMAPOUTPUT)
   layout(location = 1) out vec4 outFragNormalUsed; // xyz = normal, w = 1.0 if normal was used, 0.0 otherwise (by clearing the normal buffer to vec4(0.0))
 #endif
-
-#define inViewSpacePosition inBlock.viewSpacePosition
-#define inWorldSpacePosition inBlock.worldSpacePosition
-#define inCameraRelativePosition inBlock.cameraRelativePosition
 
 // Global descriptor set
 
@@ -147,7 +159,7 @@ vec3 imageLightBasedLightDirection = vec3(0.0, 0.0, -1.0); // imageBasedSpherica
 
 vec3 sphereNormal = normalize(inBlock.sphereNormal.xyz); // re-normalize, because of vertex interpolation
 
-vec3 viewDirection = normalize(-inBlock.cameraRelativePosition);
+vec3 viewDirection = normalize(-inCameraRelativePosition);
 
 mat3 tangentSpaceBasis; // tangent, bitangent, normal
 vec3 tangentSpaceViewDirection;
@@ -177,7 +189,7 @@ void parallaxMapping(){
   const int COUNT_FIRST_ITERATIONS = 12;
   const int COUNT_SECOND_ITERATIONS = 4; 
 
-  vec3 rayDirection = normalize(inBlock.cameraRelativePosition);
+  vec3 rayDirection = normalize(inCameraRelativePosition);
 
 #if 1 
   vec3 displacementVector = rayDirection - (tangentSpaceBasis[2] * dot(tangentSpaceBasis[2], rayDirection));
@@ -262,7 +274,7 @@ void main(){
                           )
                         );
 #else
-  vec3 triangleNormal = normalize(cross(dFdyFine(inBlock.cameraRelativePosition), dFdxFine(inBlock.cameraRelativePosition)));
+  vec3 triangleNormal = normalize(cross(dFdyFine(inCameraRelativePosition), dFdxFine(inCameraRelativePosition)));
 #endif
 #endif
 
