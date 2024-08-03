@@ -24783,16 +24783,6 @@ begin
      if TreeNode^.UserData<>0 then begin
       Light:=TpvScene3D.TLight(Pointer(TreeNode^.UserData));
       if (aLightItemArray.Count<MaxVisibleLights) and (Light.DataPointer^.fVisible and not Light.fIgnore) then begin
-       Light.fLightItemIndex:=aLightItemArray.AddNewIndex;
-       LightItem:=@aLightItemArray.Items[Light.fLightItemIndex];
-       LightItem^.Type_:=TpvUInt32(Light.fDataPointer^.Type_);
-       LightItem^.ShadowMapIndex:=0;
-       InnerConeAngleCosinus:=cos(Light.fDataPointer^.InnerConeAngle);
-       OuterConeAngleCosinus:=cos(Light.fDataPointer^.OuterConeAngle);
-      {LightItem^.InnerConeCosinus:=InnerConeAngleCosinus;
-       LightItem^.OuterConeCosinus:=OuterConeAngleCosinus;}
-       LightItem^.LightAngleScale:=1.0/Max(1e-5,InnerConeAngleCosinus-OuterConeAngleCosinus);
-       LightItem^.LightAngleOffset:=-(OuterConeAngleCosinus*LightItem^.LightAngleScale);
        case Light.fDataPointer^.Type_ of
         TpvScene3D.TLightData.TType.Directional,
         TpvScene3D.TLightData.TType.PrimaryDirectional:begin
@@ -24825,13 +24815,27 @@ begin
         // instead of 120000 lux.
         Intensity:=Intensity*0.5;
        end;}
-       LightItem^.ColorIntensity:=TpvVector4.InlineableCreate(Light.fDataPointer^.fColor,Intensity);
-       LightItem^.PositionRange:=TpvVector4.InlineableCreate(Light.fPosition,Light.fDataPointer^.fRange);
-       LightItem^.DirectionZFar:=TpvVector4.InlineableCreate(Light.fDirection,0.0);
-       LightItem^.ShadowMapMatrix:=TpvMatrix4x4.Identity;
-       LightMetaInfo:=@aLightMetaInfoArray[Light.fLightItemIndex];
-       LightMetaInfo^.MinBounds:=TpvVector4.Create(Light.fBoundingBox.Min,TpvUInt32(Light.fDataPointer^.Type_));
-       LightMetaInfo^.MaxBounds:=TpvVector4.Create(Light.fBoundingBox.Max,Light.fBoundingBox.Radius);
+       if (Intensity>0.0) and (Light.fDataPointer^.fRange>0.0) then begin
+        Light.fLightItemIndex:=aLightItemArray.AddNewIndex;
+        LightItem:=@aLightItemArray.Items[Light.fLightItemIndex];
+        LightItem^.Type_:=TpvUInt32(Light.fDataPointer^.Type_);
+        LightItem^.ShadowMapIndex:=0;
+        InnerConeAngleCosinus:=cos(Light.fDataPointer^.InnerConeAngle);
+        OuterConeAngleCosinus:=cos(Light.fDataPointer^.OuterConeAngle);
+       {LightItem^.InnerConeCosinus:=InnerConeAngleCosinus;
+        LightItem^.OuterConeCosinus:=OuterConeAngleCosinus;}
+        LightItem^.LightAngleScale:=1.0/Max(1e-5,InnerConeAngleCosinus-OuterConeAngleCosinus);
+        LightItem^.LightAngleOffset:=-(OuterConeAngleCosinus*LightItem^.LightAngleScale);
+        LightItem^.ColorIntensity:=TpvVector4.InlineableCreate(Light.fDataPointer^.fColor,Intensity);
+        LightItem^.PositionRange:=TpvVector4.InlineableCreate(Light.fPosition,Light.fDataPointer^.fRange);
+        LightItem^.DirectionZFar:=TpvVector4.InlineableCreate(Light.fDirection,0.0);
+        LightItem^.ShadowMapMatrix:=TpvMatrix4x4.Identity;
+        LightMetaInfo:=@aLightMetaInfoArray[Light.fLightItemIndex];
+        LightMetaInfo^.MinBounds:=TpvVector4.Create(Light.fBoundingBox.Min,TpvUInt32(Light.fDataPointer^.Type_));
+        LightMetaInfo^.MaxBounds:=TpvVector4.Create(Light.fBoundingBox.Max,Light.fBoundingBox.Radius);
+       end else begin
+        Light.fLightItemIndex:=-1;
+       end;
       end else begin
        Light.fLightItemIndex:=-1;
       end;
