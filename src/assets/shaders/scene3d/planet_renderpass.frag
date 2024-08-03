@@ -23,6 +23,8 @@
 
 #if defined(RAYTRACING)
 
+#define MSAA_RAYOFFSET_WORKAROUND
+
 #if defined(WIREFRAME) 
 layout(location = 0) pervertexEXT in vec3 inWorldSpacePositionPerVertex[];
 #else

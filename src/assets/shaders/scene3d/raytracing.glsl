@@ -28,12 +28,21 @@ void raytracingCorrectSmoothNormal(inout vec3 smoothNormal, const in vec3 geomet
 }
 
 vec3 raytracingOffsetRay(const in vec3 position, const in vec3 normal, const in vec3 direction){
+#ifdef MSAA_RAYOFFSET_WORKAROUND
+  // With MSAA, there is a issue at the edges of geometry, where the offset seems to need to be increased with the distance to the camera
+  // This is a workaround for this issue, but it might not be the best solution, so it might need some further tweaking and therefore it.
+  // TODO: Investigate this further and maybe find a better solution.
+  const float factor = (gl_SampleID != 0) ? clamp(log2(length(position - (inWorldSpacePosition - inCameraRelativePosition)) / 8.0), 0.0, 1.0) : 1.0;
+  #define fixRayOffset(a,b) (a * mix(1.0, b, factor))
+#else  
+  #define fixRayOffset(a,b) (a)
+#endif  
 #if 0
   // A simple offset to avoid self-intersections by moving the ray's starting point slightly along the normal direction
-  return fma(normal, vec3(1e-3), position);
+  return fma(normal, vec3(fixRayOffset(1e-3, 10.0)), position);
 #elif 0
   // A simple offset to avoid self-intersections by moving the ray's starting point slightly along the normal direction and the ray direction
-  return fma(mix(normal, direction, abs(dot(normal, direction))), vec3(1e-3), position);
+  return fma(mix(normal, direction, abs(dot(normal, direction))), vec3(fixRayOffset(1e-3, 10.0)), position);
 #elif 1
   /*
   ** 
@@ -77,7 +86,7 @@ vec3 raytracingOffsetRay(const in vec3 position, const in vec3 normal, const in 
   ** 
   **                                                Slope Basis                                                                                    Normal Bias
   */
-  const float slopeBiasOffset = 1e-4, normalBiasScale = 5e-3, slopeBiasScale = 5e-3, maxOffset = 0.0;
+  const float slopeBiasOffset = fixRayOffset(1e-4, 10.0), normalBiasScale = fixRayOffset(5e-3, 32.0), slopeBiasScale = fixRayOffset(5e-3, 32.0), maxOffset = 0.0;
   float cosAlpha = clamp(dot(normal, direction), 0.0, 1.0);
   float offsetScaleN = sqrt(1.0 - (cosAlpha * cosAlpha));  // sin(acos(D·N))
   float offsetScaleD = offsetScaleN / max(5e-4, cosAlpha); // tan(acos(D·N))
@@ -91,13 +100,14 @@ vec3 raytracingOffsetRay(const in vec3 position, const in vec3 normal, const in 
   // Implementation as optimized GLSL code by Benjamin Rosseaux - 2024
   // But it seems still to have some issues with a bit far away geometry, so it might need some further tweaking and therefore it 
   // is not used here for now
-  const float origin = 1.0 / 16.0, floatScale = 3.0 / 65536.0, intScale = 3.0 * 256.0, directionScale = 0.0;
+  const float origin = 1.0 / 16.0, floatScale = 3.0 / 65536.0, intScale = fixRayOffset(3.0 * 256.0, 32.0), directionScale = 0.0;
   return mix(
     intBitsToFloat(floatBitsToInt(position) + (ivec3(normal * mix(vec3(intScale), vec3(-intScale), vec3(lessThanEqual(position, vec3(0.0))))))), 
     fma(normal, vec3(floatScale), position), 
     vec3(lessThan(abs(position), vec3(origin)))
   ) + (direction * directionScale); // and for additional safety a small offset in the direction of the ray
 #endif
+#undef fixRayOffset
 }
 
 vec4 raytracingTextureFetch(const in Material material, const in int textureIndex, const in vec4 defaultValue, const bool sRGB, const in vec2 texCoords[2]){
