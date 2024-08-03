@@ -2794,7 +2794,7 @@ begin
                                                                              TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
                                                                              [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,
                                                                                                             fWeatherMapTexture.VulkanImageView.Handle,
-                                                                                                            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
+                                                                                                            VK_IMAGE_LAYOUT_GENERAL)],
                                                                              [],
                                                                              [],
                                                                              false);
