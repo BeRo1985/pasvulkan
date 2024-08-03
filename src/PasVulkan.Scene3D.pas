@@ -8556,9 +8556,9 @@ begin
      // lightAttenuation *= 1.0 / (currentDistance * currentDistance);
      Luminance:=Data^.fColor.Dot(LinearRGBLuminance)*Data^.fIntensity;
      if Luminance>1e-7 then begin
-      Radius:=Threshold/Luminance;
+      Radius:=Luminance/Threshold;
       if Radius>1e-7 then begin
-       Radius:=1.0/sqrt(Radius);
+       Radius:=sqrt(Radius);
       end else begin
        Radius:=EPSILON;
       end;
