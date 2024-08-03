@@ -20180,6 +20180,7 @@ procedure TpvScene3D.TGroup.TInstance.Update(const aInFlightFrameIndex:TpvSizeIn
       Light.fDataPointer:=InstanceLight.fEffectiveData;
       Light.fGeneration:=InstanceLight.fEffectiveData.fGeneration;
       Light.fMatrix:=LightMatrix;
+      Light.fIgnore:=fUseRenderInstances;
       Light.Update;
      finally
       InstanceNode.fLight:=Light;
