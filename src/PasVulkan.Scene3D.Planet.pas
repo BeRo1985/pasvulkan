@@ -241,6 +241,8 @@ type TpvScene3DPlanets=class;
               fWaterFlowMapBuffer:TpvVulkanBuffer;
               fWaterBufferIndex:TpvUInt32;
               fWaterFrameIndex:TpvUInt32;
+              fWaterFirst:TPasMPBool32;
+              fWaterActive:TPasMPBool32;
               fWaterVisibilityBuffer:TpvVulkanBuffer;
 //            fHeightMapData:THeightMapData;
 //            fNormalMapData:TNormalMapData;
@@ -1784,6 +1786,10 @@ begin
  fWaterBufferIndex:=0;
 
  fWaterFrameIndex:=0;
+
+ fWaterFirst:=true;
+
+ fWaterActive:=false;
 
  fWaterVisibilityBuffer:=nil;
 
@@ -4289,6 +4295,10 @@ var Header:TpvScene3DPlanet.TSerializedData.THeader;
     UncompressedStream:TMemoryStream;
 begin
 
+ fPlanet.fData.fWaterFirst:=true;
+
+ fPlanet.fData.fWaterActive:=true;
+
  StartPosition:=aStream.Position;
 
  aStream.ReadBuffer(Header.Signature,SizeOf(TpvScene3DPlanet.TSerializedData.TSignature));
@@ -5522,9 +5532,16 @@ begin
 
   end;
 
+  fPlanet.fData.fWaterActive:=true;
+
  end;
 
- fTimeAccumulator:=Min(fTimeAccumulator+aDeltaTime,0.1); // Limit to 100ms for avoid too long frame times
+ if fPlanet.fData.fWaterFirst or fPlanet.fData.fWaterActive then begin
+  fPlanet.fData.fWaterFirst:=false;
+  fTimeAccumulator:=Min(fTimeAccumulator+aDeltaTime,0.1); // Limit to 100ms for avoid too long frame times
+ end else begin
+  fTimeAccumulator:=0.0; // Limit to 100ms for avoid too long frame times
+ end;
  while fTimeAccumulator>=fTimeStep do begin
  
   fTimeAccumulator:=fTimeAccumulator-fTimeStep;
