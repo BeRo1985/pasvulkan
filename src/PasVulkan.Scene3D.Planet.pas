@@ -5536,12 +5536,16 @@ begin
 
  end;
 
- if fPlanet.fData.fWaterFirst or fPlanet.fData.fWaterActive then begin
-  fPlanet.fData.fWaterFirst:=false;
+ if fPlanet.fData.fWaterActive then begin
   fTimeAccumulator:=Min(fTimeAccumulator+aDeltaTime,0.1); // Limit to 100ms for avoid too long frame times
+ end else if fPlanet.fData.fWaterFirst then begin
+  fTimeAccumulator:=Min(Max(fTimeStep,fTimeAccumulator+aDeltaTime),0.1); // Limit to 100ms for avoid too long frame times
  end else begin
-  fTimeAccumulator:=0.0; // Limit to 100ms for avoid too long frame times
+  fTimeAccumulator:=0.0;
  end;
+
+ fPlanet.fData.fWaterFirst:=false;
+
  while fTimeAccumulator>=fTimeStep do begin
  
   fTimeAccumulator:=fTimeAccumulator-fTimeStep;
