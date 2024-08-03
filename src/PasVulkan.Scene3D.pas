@@ -24781,7 +24781,7 @@ begin
      TreeNode:=@aTreeNodes[Node];
      if TreeNode^.UserData<>0 then begin
       Light:=TpvScene3D.TLight(Pointer(TreeNode^.UserData));
-      if (aLightItemArray.Count<MaxVisibleLights) and (Light.fVisible and not Light.fIgnore) then begin
+      if (aLightItemArray.Count<MaxVisibleLights) and (Light.DataPointer^.fVisible and not Light.fIgnore) then begin
        Light.fLightItemIndex:=aLightItemArray.AddNewIndex;
        LightItem:=@aLightItemArray.Items[Light.fLightItemIndex];
        LightItem^.Type_:=TpvUInt32(Light.fDataPointer^.Type_);
