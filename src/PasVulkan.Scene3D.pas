@@ -1311,8 +1311,8 @@ type EpvScene3D=class(Exception);
               LightAngleOffset:TpvFloat;
              // uvec4 MetaData; end
              ColorIntensity:TpvVector4; // XYZ = Color RGB, W = Intensity
-             PositionRange:TpvVector4; // XYZ = Position, W = Range
-             DirectionZFar:TpvVector4; // XYZ = Direction, W = Unused
+             PositionRadius:TpvVector4; // XYZ = Position, W = Radius
+             DirectionRange:TpvVector4; // XYZ = Direction, W = Range
              ShadowMapMatrix:TpvMatrix4x4;
             end;
             PLightItem=^TLightItem;
@@ -24830,8 +24830,8 @@ begin
         LightItem^.LightAngleScale:=1.0/Max(1e-5,InnerConeAngleCosinus-OuterConeAngleCosinus);
         LightItem^.LightAngleOffset:=-(OuterConeAngleCosinus*LightItem^.LightAngleScale);
         LightItem^.ColorIntensity:=TpvVector4.InlineableCreate(Light.fDataPointer^.fColor,Intensity);
-        LightItem^.PositionRange:=TpvVector4.InlineableCreate(Light.fPosition,Light.fDataPointer^.fRange);
-        LightItem^.DirectionZFar:=TpvVector4.InlineableCreate(Light.fDirection,0.0);
+        LightItem^.PositionRadius:=TpvVector4.InlineableCreate(Light.fPosition,Light.fRadius);
+        LightItem^.DirectionRange:=TpvVector4.InlineableCreate(Light.fDirection,Light.fDataPointer^.fRange);
         LightItem^.ShadowMapMatrix:=TpvMatrix4x4.Identity;
         LightMetaInfo:=@aLightMetaInfoArray[Light.fLightItemIndex];
         LightMetaInfo^.MinBounds:=TpvVector4.Create(Light.fBoundingBox.Min,TpvUInt32(Light.fDataPointer^.Type_));

@@ -35,8 +35,8 @@ layout(set = 0, binding = 0, std430) readonly buffer InstanceMatrices {
 struct Light {
   uvec4 metaData;
   vec4 colorIntensity;
-  vec4 positionRange;
-  vec4 directionZFar;
+  vec4 positionRadius;
+  vec4 directionRange;
   mat4 shadowMapMatrix;
 };
 

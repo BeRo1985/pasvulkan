@@ -37,8 +37,8 @@
       uvec2 clusterData = frustumClusterGridData[clusterIndex].xy; // x = index, y = count and ignore decal data for now  
       for(uint clusterLightIndex = clusterData.x, clusterCountLights = clusterData.y; clusterCountLights > 0u; clusterLightIndex++, clusterCountLights--){
         {
-          {
-            Light light = lights[frustumClusterGridIndexList[clusterLightIndex]];
+          Light light = lights[frustumClusterGridIndexList[clusterLightIndex]];
+          if(distance(light.positionRadius.xyz, inWorldSpacePosition.xyz) <= light.positionRadius.w){
 #else
       // Light BVH
       uint lightTreeNodeIndex = 0;
@@ -53,7 +53,7 @@
 #endif
             float lightAttenuation = 1.0;
             vec3 lightDirection;
-            vec3 lightPosition = light.positionRange.xyz; 
+            vec3 lightPosition = light.positionRadius.xyz; 
             vec3 lightVector = lightPosition - inWorldSpacePosition.xyz;
             vec3 normalizedLightVector = normalize(lightVector);
 #ifdef SHADOWS
@@ -68,7 +68,7 @@
 #if !defined(REFLECTIVESHADOWMAPOUTPUT)
 #if defined(RAYTRACING)
                 case 1u: { // Directional 
-                  lightAttenuation *= getRaytracedHardShadow(rayOrigin, rayNormal, normalize(-light.directionZFar.xyz), rayOffset, 10000000.0);
+                  lightAttenuation *= getRaytracedHardShadow(rayOrigin, rayNormal, normalize(-light.directionRange.xyz), rayOffset, 10000000.0);
                   break;
                 }
                 case 2u: {  // Point
@@ -80,7 +80,7 @@
                 }
 #elif 0
                 case 1u: { // Directional 
-                  // imageLightBasedLightDirection = light.directionZFar.xyz;
+                  // imageLightBasedLightDirection = light.directionRange.xyz;
                   // fall-through
                 }
                 case 3u: {  // Spot
@@ -94,8 +94,8 @@
                   break;
                 }
                 case 2u: {  // Point
-                  float znear = 1e-2, zfar = max(1.0, light.directionZFar.w);
-                  vec3 vector = light.positionRange.xyz - inWorldSpacePosition;
+                  float znear = 1e-2, zfar = 0.0; // TODO
+                  vec3 vector = light.positionRadius.xyz - inWorldSpacePosition;
                   vec4 moments = (textureLod(uCubeMapShadowMapArrayTexture, vec4(vec3(normalize(vector)), float(int(light.metaData.y))), 0.0) + vec2(-0.035955884801, 0.0).xyyy) * mat4(0.2227744146, 0.0771972861, 0.7926986636, 0.0319417555, 0.1549679261, 0.1394629426, 0.7963415838, -0.172282317, 0.1451988946, 0.2120202157, 0.7258694464, -0.2758014811, 0.163127443, 0.2591432266, 0.6539092497, -0.3376131734);
                   lightAttenuation *= reduceLightBleeding(getMSMShadowIntensity(moments, clamp((length(vector) - znear) / (zfar - znear), 0.0, 1.0), 5e-3, 1e-2), 0.0);
                   break;
@@ -103,14 +103,14 @@
 #endif
 #endif
                 case 4u: {  // Primary directional
-                  imageLightBasedLightDirection = light.directionZFar.xyz;
+                  imageLightBasedLightDirection = light.directionRange.xyz;
                   litIntensity = lightAttenuation;
 #if defined(RAYTRACING)
 #ifdef RAYTRACED_SOFT_SHADOWS
                   if(true){
                     // Soft shadow
                     const int countSamples = 8;
-                    vec3 lightNormal = normalize(-light.directionZFar.xyz);
+                    vec3 lightNormal = normalize(-light.directionRange.xyz);
                     vec3 lightTangent = normalize(cross(lightNormal, getPerpendicularVector(lightNormal)));
                     vec3 lightBitangent = cross(lightNormal, lightTangent);
                     float shadow = 0.0;
@@ -122,10 +122,10 @@
                     lightAttenuation *= shadow / float(countSamples);                    
                   }else{
                     // Hard shadow 
-                    lightAttenuation *= getRaytracedHardShadow(rayOrigin, rayNormal, normalize(-light.directionZFar.xyz), rayOffset, 10000000.0);
+                    lightAttenuation *= getRaytracedHardShadow(rayOrigin, rayNormal, normalize(-light.directionRange.xyz), rayOffset, 10000000.0);
                   }
 #else
-                  lightAttenuation *= getRaytracedHardShadow(rayOrigin, rayNormal, normalize(-light.directionZFar.xyz), rayOffset, 10000000.0);
+                  lightAttenuation *= getRaytracedHardShadow(rayOrigin, rayNormal, normalize(-light.directionRange.xyz), rayOffset, 10000000.0);
 #endif
 #else
                   float viewSpaceDepth = -inViewSpacePosition.z;
@@ -136,7 +136,7 @@
                   // map slice. Because otherwise one can see dFdx/dFdy caused artefacts on cascaded shadow map border
                   // transitions.  
                   {
-                    const vec3 lightDirection = -light.directionZFar.xyz;
+                    const vec3 lightDirection = -light.directionRange.xyz;
                     for(int cascadedShadowMapIndex = 0; cascadedShadowMapIndex < NUM_SHADOW_CASCADES; cascadedShadowMapIndex++){
                       vec3 worldSpacePosition = getOffsetedBiasedWorldPositionForShadowMapping(uCascadedShadowMaps.constantBiasNormalBiasSlopeBiasClamp[cascadedShadowMapIndex], lightDirection);
                       vec4 shadowPosition = uCascadedShadowMaps.shadowMapMatrices[cascadedShadowMapIndex] * vec4(worldSpacePosition, 1.0);
@@ -153,7 +153,7 @@
                   // Find the first cascaded shadow map slice, which is responsible for the current fragment.
                   int cascadedShadowMapIndex = 0;
                   while(cascadedShadowMapIndex < NUM_SHADOW_CASCADES) {
-                    shadow = doCascadedShadowMapShadow(cascadedShadowMapIndex, -light.directionZFar.xyz, shadowUVW);
+                    shadow = doCascadedShadowMapShadow(cascadedShadowMapIndex, -light.directionRange.xyz, shadowUVW);
                     if (shadow < 0.0){
                       // The current fragment is outside of the current cascaded shadow map slice, so try the next one.
                       cascadedShadowMapIndex++;
@@ -174,7 +174,7 @@
                       // So fade between the two shadow map slices. But notice that nextShadow can also -1.0, when the current fragment
                       // is outside of the next cascaded shadow map slice. In this case we fade into the no shadow case for smooth
                       // shadow map transitions even at the whole cascaded shadow map slice border.
-                      float nextShadow = doCascadedShadowMapShadow(cascadedShadowMapIndex + 1, -light.directionZFar.xyz, shadowUVW);
+                      float nextShadow = doCascadedShadowMapShadow(cascadedShadowMapIndex + 1, -light.directionRange.xyz, shadowUVW);
                       shadow = mix(shadow, (nextShadow < 0.0) ? 1.0 : nextShadow, factor); 
                     }
                   }
@@ -200,7 +200,7 @@
             switch (light.metaData.x) {
 #if !defined(REFLECTIVESHADOWMAPOUTPUT)
               case 1u: {  // Directional
-                lightDirection = -light.directionZFar.xyz;
+                lightDirection = -light.directionRange.xyz;
                 break;
               }
               case 2u: {  // Point
@@ -209,12 +209,12 @@
               }
               case 3u: {  // Spot
 #if 1
-                float angularAttenuation = clamp(fma(dot(normalize(light.directionZFar.xyz), -normalizedLightVector), uintBitsToFloat(light.metaData.z), uintBitsToFloat(light.metaData.w)), 0.0, 1.0);
+                float angularAttenuation = clamp(fma(dot(normalize(light.directionRange.xyz), -normalizedLightVector), uintBitsToFloat(light.metaData.z), uintBitsToFloat(light.metaData.w)), 0.0, 1.0);
 #else
                 // Just for as reference
                 float innerConeCosinus = uintBitsToFloat(light.metaData.z);
                 float outerConeCosinus = uintBitsToFloat(light.metaData.w);
-                float actualCosinus = dot(normalize(light.directionZFar.xyz), -normalizedLightVector);                
+                float actualCosinus = dot(normalize(light.directionRange.xyz), -normalizedLightVector);                
                 float angularAttenuation = (actualCosinus > outerConeCosinus) ? 0.0 : ((actualCosinus < innerConeCosinus) ? ((actualCosinus - outerConeCosinus) / (innerConeCosinus - outerConeCosinus))) : 1.0;
 //              float angularAttenuation = mix(0.0, mix((actualCosinus - outerConeCosinus) / (innerConeCosinus - outerConeCosinus), 1.0, step(innerConeCosinus, actualCosinus)), step(outerConeCosinus, actualCosinus));
 //              float angularAttenuation = mix(0.0, mix(smoothstep(outerConeCosinus, innerConeCosinus, actualCosinus), 1.0, step(innerConeCosinus, actualCosinus)), step(outerConeCosinus, actualCosinus));
@@ -225,7 +225,7 @@
               }
 #endif // !defined(REFLECTIVESHADOWMAPOUTPUT)
               case 4u: {  // Primary directional
-                imageLightBasedLightDirection = lightDirection = -light.directionZFar.xyz;
+                imageLightBasedLightDirection = lightDirection = -light.directionRange.xyz;
                 break;
               }
               default: {
@@ -236,12 +236,12 @@
             switch (light.metaData.x) {
               case 2u:    // Point
               case 3u: {  // Spot
-                if (light.positionRange.w >= 0.0) {
+                if (light.directionRange.w >= 0.0) {
                   float currentDistance = length(lightVector);
                   if (currentDistance > 0.0) {
                     lightAttenuation *= 1.0 / (currentDistance * currentDistance);
-                    if (light.positionRange.w > 0.0) {
-                      float distanceByRange = currentDistance / light.positionRange.w;
+                    if (light.directionRange.w > 0.0) {
+                      float distanceByRange = currentDistance / light.directionRange.w;
                       distanceByRange *= distanceByRange;
                       lightAttenuation *= clamp(1.0 - (distanceByRange * distanceByRange), 0.0, 1.0);
                     }
@@ -301,12 +301,12 @@
                     switch (light.metaData.x) {
                       case 3u: {  // Spot 
     #if 1
-                        float angularAttenuation = clamp(fma(dot(normalize(light.directionZFar.xyz), -normalizedLightVector), uintBitsToFloat(light.metaData.z), uintBitsToFloat(light.metaData.w)), 0.0, 1.0);
+                        float angularAttenuation = clamp(fma(dot(normalize(light.directionRange.xyz), -normalizedLightVector), uintBitsToFloat(light.metaData.z), uintBitsToFloat(light.metaData.w)), 0.0, 1.0);
     #else
                         // Just for as reference
                         float innerConeCosinus = uintBitsToFloat(light.metaData.z);
                         float outerConeCosinus = uintBitsToFloat(light.metaData.w);
-                        float actualCosinus = dot(normalize(light.directionZFar.xyz), -normalizedLightVector);
+                        float actualCosinus = dot(normalize(light.directionRange.xyz), -normalizedLightVector);
                         float angularAttenuation = (actualCosinus > outerConeCosinus) ? 0.0 : ((actualCosinus < innerConeCosinus) ? ((actualCosinus - outerConeCosinus) / (innerConeCosinus - outerConeCosinus))) : 1.0;
     //                  float angularAttenuation = mix(0.0, mix((actualCosinus - outerConeCosinus) / (innerConeCosinus - outerConeCosinus), 1.0, step(innerConeCosinus, actualCosinus)), step(outerConeCosinus, actualCosinus));
     //                  float angularAttenuation = mix(0.0, mix(smoothstep(outerConeCosinus, innerConeCosinus, actualCosinus), 1.0, step(innerConeCosinus, actualCosinus)), step(outerConeCosinus, actualCosinus));
@@ -319,12 +319,12 @@
                     switch (light.metaData.x) {
                       case 2u:    // Point
                       case 3u: {  // Spot
-                        if (light.positionRange.w >= 0.0) {
+                        if (light.directionRange.w >= 0.0) {
                           float currentDistance = length(pointToLight);
                           if (currentDistance > 0.0) {
                             lightAttenuation *= 1.0 / (currentDistance * currentDistance);
-                            if (light.positionRange.w > 0.0) {
-                              float distanceByRange = currentDistance / light.positionRange.w;
+                            if (light.directionRange.w > 0.0) {
+                              float distanceByRange = currentDistance / light.directionRange.w;
                               lightAttenuation *= clamp(1.0 - (distanceByRange * distanceByRange * distanceByRange * distanceByRange), 0.0, 1.0);
                             }
                           }
@@ -349,12 +349,12 @@
                   switch (light.metaData.x) {
                     case 3u: {  // Spot
   #if 1
-                      float angularAttenuation = clamp(fma(dot(normalize(light.directionZFar.xyz), -normalizedLightVector), uintBitsToFloat(light.metaData.z), uintBitsToFloat(light.metaData.w)), 0.0, 1.0);
+                      float angularAttenuation = clamp(fma(dot(normalize(light.directionRange.xyz), -normalizedLightVector), uintBitsToFloat(light.metaData.z), uintBitsToFloat(light.metaData.w)), 0.0, 1.0);
   #else
                       // Just for as reference
                       float innerConeCosinus = uintBitsToFloat(light.metaData.z);
                       float outerConeCosinus = uintBitsToFloat(light.metaData.w);
-                      float actualCosinus = dot(normalize(light.directionZFar.xyz), -normalizedLightVector);
+                      float actualCosinus = dot(normalize(light.directionRange.xyz), -normalizedLightVector);
                       float angularAttenuation = (actualCosinus > outerConeCosinus) ? 0.0 : ((actualCosinus < innerConeCosinus) ? ((actualCosinus - outerConeCosinus) / (innerConeCosinus - outerConeCosinus))) : 1.0;
   //                  float angularAttenuation = mix(0.0, mix((actualCosinus - outerConeCosinus) / (innerConeCosinus - outerConeCosinus), 1.0, step(innerConeCosinus, actualCosinus)), step(outerConeCosinus, actualCosinus));
   //                  float angularAttenuation = mix(0.0, mix(smoothstep(outerConeCosinus, innerConeCosinus, actualCosinus), 1.0, step(innerConeCosinus, actualCosinus)), step(outerConeCosinus, actualCosinus));
@@ -367,12 +367,12 @@
                   switch (light.metaData.x) {
                     case 2u:    // Point
                     case 3u: {  // Spot
-                      if (light.positionRange.w >= 0.0) {
+                      if (light.directionRange.w >= 0.0) {
                         float currentDistance = length(pointToLight);
                         if (currentDistance > 0.0) {
                           lightAttenuation *= 1.0 / (currentDistance * currentDistance);
-                          if (light.positionRange.w > 0.0) {
-                            float distanceByRange = currentDistance / light.positionRange.w;
+                          if (light.directionRange.w > 0.0) {
+                            float distanceByRange = currentDistance / light.directionRange.w;
                             lightAttenuation *= clamp(1.0 - (distanceByRange * distanceByRange * distanceByRange * distanceByRange), 0.0, 1.0);
                           }
                         }
