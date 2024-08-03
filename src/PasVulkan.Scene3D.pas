@@ -1363,6 +1363,7 @@ type EpvScene3D=class(Exception);
               fShadowMapIndex:TpvInt32;
               fPosition:TpvVector3;
               fDirection:TpvVector3;
+              fRadius:TpvScalar;
               fMatrix:TpvMatrix4x4;
               fViewSpacePosition:TpvVector3;
               fBoundingBox:TpvAABB;
@@ -8570,6 +8571,7 @@ begin
     Radius:=Infinity;
    end;
   end;
+  fRadius:=Radius;
   if Data^.Type_=TpvScene3D.TLightData.TLightType.PrimaryDirectional then begin
    fSceneInstance.fPrimaryShadowMapLightDirection:=Direction;
   end;
@@ -8605,6 +8607,7 @@ begin
   TPasMPInterlocked.Increment(fSceneInstance.fLightAABBTreeGeneration);
  end else begin
   if fAABBTreeProxy>=0 then begin
+   fRadius:=0.0;
    try
     if assigned(fSceneInstance) then begin
      if assigned(fSceneInstance.fLightAABBTree) then begin
@@ -24815,7 +24818,7 @@ begin
         // instead of 120000 lux.
         Intensity:=Intensity*0.5;
        end;}
-       if (Intensity>0.0) and (Light.fDataPointer^.fRange>0.0) then begin
+       if (Intensity>0.0) and (Light.fRadius>0.0) then begin
         Light.fLightItemIndex:=aLightItemArray.AddNewIndex;
         LightItem:=@aLightItemArray.Items[Light.fLightItemIndex];
         LightItem^.Type_:=TpvUInt32(Light.fDataPointer^.Type_);
