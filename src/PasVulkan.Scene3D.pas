@@ -8527,7 +8527,7 @@ end;
 procedure TpvScene3D.TLight.Update;
 const DownZ:TpvVector3=(x:0.0;y:0.0;z:-1.0);
       LinearRGBLuminance:TpvVector3=(x:0.2126;y:0.7152;z:0.0722);
-      MinLuminance=1e-3;
+      MinLuminance=1e-4;
       Constant=0.0;
       Linear=0.0;
       Threshold=1e-3;
