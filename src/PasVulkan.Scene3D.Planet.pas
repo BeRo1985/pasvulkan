@@ -552,6 +552,7 @@ type TpvScene3DPlanets=class;
               fInterpolationPushConstants:TInterpolationPushConstants;
               fModificationPushConstants:TModificationPushConstants;
               fTimeAccumulator:TpvDouble;
+              fLastTimeAccumulator:TpvDouble;
               fTimeStep:TpvDouble;
              public
               constructor Create(const aPlanet:TpvScene3DPlanet); reintroduce;
@@ -5386,6 +5387,8 @@ begin
 
  fTimeAccumulator:=0.0;
 
+ fLastTimeAccumulator:=-1.0;
+
  fTimeStep:=1.0/60.0;
 
 end;
@@ -5460,9 +5463,10 @@ var SourceBufferIndex,DestinationBufferIndex:TpvSizeInt;
     ImageMemoryBarrier:TVkImageMemoryBarrier;
     BufferMemoryBarriers:array[0..2] of TVkBufferMemoryBarrier;
     WaterModification:PWaterModification;
+    DoInterpolate:Boolean;
 begin
 
- //fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'Planet WaterSimulation',[0.5,0.5,0.5,1.0]);
+ fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'Planet WaterSimulation',[0.5,0.5,0.5,1.0]);
 
  WaterModification:=@fPlanet.fWaterModifications[aInFlightFrameIndex];
  if abs(WaterModification^.Value)>1e-7 then begin
@@ -5544,7 +5548,7 @@ begin
   fTimeAccumulator:=0.0;
  end;
 
- fPlanet.fData.fWaterFirst:=false;
+ DoInterpolate:=false;
 
  while fTimeAccumulator>=fTimeStep do begin
  
@@ -5683,9 +5687,16 @@ begin
    inc(fPlanet.fData.fWaterFrameIndex);
   end;
 
- end; 
+  DoInterpolate:=true;
 
- begin
+ end;
+
+ if fTimeAccumulator<>fLastTimeAccumulator then begin
+  DoInterpolate:=true;
+ end;
+ fLastTimeAccumulator:=fTimeAccumulator;
+
+ if DoInterpolate then begin
    
   fInterpolationPushConstants.BottomRadius:=fPlanet.fBottomRadius;
   fInterpolationPushConstants.TopRadius:=fPlanet.fTopRadius;
@@ -5755,7 +5766,9 @@ begin
 
  end;
 
- //fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
+ fPlanet.fData.fWaterFirst:=false;
+
+ fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
 
 end;
 
