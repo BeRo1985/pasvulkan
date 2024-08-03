@@ -32,7 +32,8 @@ vec3 raytracingOffsetRay(const in vec3 position, const in vec3 normal, const in 
   // With MSAA, there is a issue at the edges of geometry, where the offset seems to need to be increased with the distance to the camera
   // This is a workaround for this issue, but it might not be the best solution, so it might need some further tweaking and therefore it.
   // TODO: Investigate this further and maybe find a better solution.
-  const float factor = (gl_SampleID != 0) ? clamp(log2(length(position - (inWorldSpacePosition - inCameraRelativePosition)) / 8.0), 0.0, 1.0) : 1.0;
+  const float positionCameraDistance = length(position - (inWorldSpacePosition - inCameraRelativePosition)); 
+  const float factor = (gl_SampleID != 0) ? (clamp(log2(positionCameraDistance / 8.0), 0.0, 1.0) * smoothstep(50.0, 100.0, positionCameraDistance)) : 1.0;
   #define fixRayOffset(a,b) (a * mix(1.0, b, factor))
 #else  
   #define fixRayOffset(a,b) (a)
