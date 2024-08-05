@@ -2634,6 +2634,8 @@ procedure TpvScene3DAtmosphere.TRendererInstance.Draw(const aInFlightFrameIndex:
 var DescriptorSets:array[0..2] of TVkDescriptorSet;
 begin
 
+ TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'Atmosphere.Draw',[1.0,0.0,0.0,1.0]);
+
  SetDepthImageViewCascadedShadowMapImageView(aInFlightFrameIndex,aDepthImageView,aCascadedShadowMapImageView);
 
  DescriptorSets[0]:=TpvScene3D(fAtmosphere.fScene3D).GlobalVulkanDescriptorSets[aInFlightFrameIndex].Handle;
@@ -2649,6 +2651,8 @@ begin
                                       nil);
 
  aCommandBuffer.CmdDraw(3,1,0,0);
+
+ TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
 
 end;
 

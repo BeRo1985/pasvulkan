@@ -9427,6 +9427,8 @@ var BufferMemoryBarrier:TVkBufferMemoryBarrier;
     ImageMemoryBarrier:TVkImageMemoryBarrier;
 begin
 
+ fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'TpvScene3DPlanet.TRayIntersection.Execute',[0.75,0.5,0.75,1.0]);
+
  BufferMemoryBarrier:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT) or TVkAccessFlags(VK_ACCESS_HOST_READ_BIT),
                                                     TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                     VK_QUEUE_FAMILY_IGNORED,
@@ -9504,6 +9506,8 @@ begin
                                    0,nil,
                                    1,@BufferMemoryBarrier,
                                    1,@ImageMemoryBarrier);
+
+ fVulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);                                  
 
 end;
 
@@ -9798,8 +9802,12 @@ begin
 
  InFlightFrameState:=@TpvScene3DRendererInstance(fRendererInstance).InFlightFrameStates[aInFlightFrameIndex];
 
+ fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'TpvScene3DPlanet.TCullPass.Execute',[0.75,0.75,0.5,1.0]);
+
  TpvScene3DPlanets(TpvScene3D(fScene3D).Planets).Lock.AcquireRead;
  try
+
+  fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'Mesh',[0.5,0.75,0.75,1.0]);
 
   First:=true;
 
@@ -10119,8 +10127,12 @@ begin
 
   end;
 
+  fVulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
+
   if assigned(fGrassTaskPipeline) and assigned(fGrassMeshPipeline) and (fPass=1) and (fCullRenderPass=TpvScene3DRendererCullRenderPass.FinalView) then begin
 
+   fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'Grass',[0.75,0.5,0.5,1.0]);
+   
    First:=true;
 
    for PlanetIndex:=0 to TpvScene3DPlanets(TpvScene3D(fScene3D).Planets).Count-1 do begin
@@ -10401,11 +10413,15 @@ begin
 
    end;
 
+   fVulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
+ 
   end;
 
  finally
   TpvScene3DPlanets(TpvScene3D(fScene3D).Planets).Lock.ReleaseRead;
  end;
+
+ fVulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
 
 end;
 
@@ -11835,6 +11851,8 @@ var PlanetIndex,Level:TpvSizeInt;
     vkCmdDrawIndexedIndirectCount:TvkCmdDrawIndexedIndirectCount;
 begin
 
+ TpvScene3D(fScene3D).VulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'TpvScene3DPlanet.TRenderPass.Draw',[0.25,0.5,0.75,1.0]);
+
  fIBLDescriptors[aInFlightFrameIndex].SetFrom(TpvScene3D(fScene3D),TpvScene3DRendererInstance(fRendererInstance),aInFlightFrameIndex);
  fIBLDescriptors[aInFlightFrameIndex].Update(true);
 
@@ -11850,6 +11868,8 @@ begin
  try
 
   begin
+
+   TpvScene3D(fScene3D).VulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'Mesh',[0.75,0.5,0.25,1.0]);
 
    First:=true;
 
@@ -12016,6 +12036,8 @@ begin
 
    end;
 
+   TpvScene3D(fScene3D).VulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
+
   end;
 
   if assigned(fGrassPipeline) and
@@ -12023,6 +12045,8 @@ begin
                     //TpvScene3DPlanet.TRenderPass.TMode.DepthPrepassDisocclusion,
                     TpvScene3DPlanet.TRenderPass.TMode.ShadowMap,
                     TpvScene3DPlanet.TRenderPass.TMode.ShadowMapDisocclusion]) then begin
+
+   TpvScene3D(fScene3D).VulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'Grass',[0.5,0.25,0.75,1.0]);
 
    First:=true;
 
@@ -12150,11 +12174,15 @@ begin
 
    end;
 
+   TpvScene3D(fScene3D).VulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
+
   end;
 
  finally
   TpvScene3DPlanets(TpvScene3D(fScene3D).Planets).Lock.ReleaseRead;
  end;
+
+ TpvScene3D(fScene3D).VulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
 
 end;
 
