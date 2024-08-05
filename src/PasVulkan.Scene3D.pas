@@ -27563,19 +27563,19 @@ procedure TpvScene3D.Draw(const aRendererInstance:TObject;
 begin
 
  if aMaterialAlphaModes=[TpvScene3D.TMaterial.TAlphaMode.Blend] then begin
-  fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'TpvScene3D.Draw(Blend)',[0.75,0.5,0.25,1.0]);
+  fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'TpvScene3D.Draw(Blend)',[0.25,1.0,0.25,1.0]);
  end else if aMaterialAlphaModes=[TpvScene3D.TMaterial.TAlphaMode.Mask] then begin
-  fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'TpvScene3D.Draw(Mask)',[0.75,0.5,0.25,1.0]);
+  fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'TpvScene3D.Draw(Mask)',[0.25,0.25,1.0,1.0]);
  end else if aMaterialAlphaModes=[TpvScene3D.TMaterial.TAlphaMode.Opaque] then begin
-  fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'TpvScene3D.Draw(Opaque)',[0.75,0.5,0.25,1.0]);
+  fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'TpvScene3D.Draw(Opaque)',[0.1,0.25,0.25,1.0]);
  end else if aMaterialAlphaModes=[TpvScene3D.TMaterial.TAlphaMode.Blend,TpvScene3D.TMaterial.TAlphaMode.Mask] then begin
-  fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'TpvScene3D.Draw(Blend,Mask)',[0.75,0.5,0.25,1.0]);
+  fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'TpvScene3D.Draw(Blend,Mask)',[0.25,1.0,1.0,1.0]);
  end else if aMaterialAlphaModes=[TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Mask] then begin
-  fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'TpvScene3D.Draw(Opaque,Mask)',[0.75,0.5,0.25,1.0]);
+  fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'TpvScene3D.Draw(Opaque,Mask)',[1.0,0.25,1.0,1.0]);
  end else if aMaterialAlphaModes=[TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Blend] then begin
-  fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'TpvScene3D.Draw(Opaque,Blend)',[0.75,0.5,0.25,1.0]);
+  fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'TpvScene3D.Draw(Opaque,Blend)',[1.0,1.0,0.25,1.0]);
  end else if aMaterialAlphaModes=[TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Blend,TpvScene3D.TMaterial.TAlphaMode.Mask] then begin
-  fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'TpvScene3D.Draw(Opaque,Blend,Mask)',[0.75,0.5,0.25,1.0]);
+  fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'TpvScene3D.Draw(Opaque,Blend,Mask)',[1.0,1.0,1.0,1.0]);
  end else begin
   fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'TpvScene3D.Draw(Other)',[0.75,0.5,0.25,1.0]);
  end;
