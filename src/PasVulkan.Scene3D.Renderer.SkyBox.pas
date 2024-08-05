@@ -315,6 +315,8 @@ procedure TpvScene3DRendererSkyBox.Draw(const aInFlightFrameIndex,aViewBaseIndex
 var PushConstants:TpvScene3DRendererSkyBox.TPushConstants;
 begin
 
+ fScene3D.VulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'Skybox',[0.25,0.75,0.75,1.0]);
+
  PushConstants.LightDirection:=TpvVector4.InlineableCreate(fScene3D.PrimaryLightDirection,0.0);
 
  PushConstants.ViewBaseIndex:=aViewBaseIndex;
@@ -352,6 +354,8 @@ begin
                                       nil);
 
  aCommandBuffer.CmdDraw(36,1,0,0);
+
+ fScene3D.VulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
 
 end;
 

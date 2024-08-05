@@ -261,6 +261,8 @@ begin
 
 //fPlanetCullPass2.Execute(aCommandBuffer,aInFlightFrameIndex);
 
+  fInstance.Renderer.VulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'TpvScene3D.Mesh',[0.5,0.25,0.75,1.0]);
+
   BufferMemoryBarriers[0]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_HOST_WRITE_BIT) or TVkAccessFlags(VK_ACCESS_INDIRECT_COMMAND_READ_BIT),
                                                          TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                          VK_QUEUE_FAMILY_IGNORED,
@@ -458,6 +460,8 @@ begin
                                     0,nil,
                                     4,@BufferMemoryBarriers[0],
                                     0,nil);
+
+  fInstance.Renderer.VulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
 
  end;
 

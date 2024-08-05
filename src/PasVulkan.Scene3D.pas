@@ -27520,6 +27520,8 @@ begin
 
  if (aViewBaseIndex>=0) and (aCountViews>0) and (fCountInFlightFrameParticleVertices[aInFlightFrameIndex]>0) then begin
 
+  fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'TpvScene3D.DrawParticles',[0.5,0.75,0.25,1.0]);
+
 { VertexStagePushConstants:=@fVertexStagePushConstants[aRenderPassIndex];
   VertexStagePushConstants^.ViewBaseIndex:=aViewBaseIndex;
   VertexStagePushConstants^.CountViews:=aCountViews;
@@ -27537,6 +27539,8 @@ begin
   aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,aGraphicsPipeline.Handle);
   aCommandBuffer.CmdBindVertexBuffers(0,1,@fVulkanParticleVertexBuffers[aInFlightFrameIndex].Handle,@Offsets);
   aCommandBuffer.CmdDraw(Min(fCountInFlightFrameParticleVertices[aInFlightFrameIndex],TpvScene3D.MaxParticleVertices),1,0,0);
+
+  fVulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
 
  end;
 
@@ -27557,6 +27561,25 @@ procedure TpvScene3D.Draw(const aRendererInstance:TObject;
                           const aJitter:PpvVector4;
                           const aDisocclusions:Boolean);
 begin
+
+ if aMaterialAlphaModes=[TpvScene3D.TMaterial.TAlphaMode.Blend] then begin
+  fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'TpvScene3D.Draw(Blend)',[0.75,0.5,0.25,1.0]);
+ end else if aMaterialAlphaModes=[TpvScene3D.TMaterial.TAlphaMode.Mask] then begin
+  fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'TpvScene3D.Draw(Mask)',[0.75,0.5,0.25,1.0]);
+ end else if aMaterialAlphaModes=[TpvScene3D.TMaterial.TAlphaMode.Opaque] then begin
+  fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'TpvScene3D.Draw(Opaque)',[0.75,0.5,0.25,1.0]);
+ end else if aMaterialAlphaModes=[TpvScene3D.TMaterial.TAlphaMode.Blend,TpvScene3D.TMaterial.TAlphaMode.Mask] then begin
+  fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'TpvScene3D.Draw(Blend,Mask)',[0.75,0.5,0.25,1.0]);
+ end else if aMaterialAlphaModes=[TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Mask] then begin
+  fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'TpvScene3D.Draw(Opaque,Mask)',[0.75,0.5,0.25,1.0]);
+ end else if aMaterialAlphaModes=[TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Blend] then begin
+  fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'TpvScene3D.Draw(Opaque,Blend)',[0.75,0.5,0.25,1.0]);
+ end else if aMaterialAlphaModes=[TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Blend,TpvScene3D.TMaterial.TAlphaMode.Mask] then begin
+  fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'TpvScene3D.Draw(Opaque,Blend,Mask)',[0.75,0.5,0.25,1.0]);
+ end else begin
+  fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'TpvScene3D.Draw(Other)',[0.75,0.5,0.25,1.0]);
+ end;
+
  TpvScene3DRendererInstance(aRendererInstance).ExecuteDraw(aPreviousInFlightFrameIndex,
                                                            aInFlightFrameIndex,
                                                            aRenderPassIndex,
@@ -27570,6 +27593,8 @@ begin
                                                            aOnSetRenderPassResources,
                                                            aJitter,
                                                            aDisocclusions);
+
+  fVulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
 end;
 
 procedure TpvScene3D.GetZNearZFar(const aViewMatrix:TpvMatrix4x4;
