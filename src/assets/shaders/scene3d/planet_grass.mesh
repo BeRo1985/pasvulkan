@@ -386,12 +386,37 @@ void main() {
 
   }
 
+  const float grassHeight = pushConstants.grassHeight;
+  const float grassThickness = pushConstants.grassThickness;
+  const float grassLeaning = 0.5;//min(0.5, grassOffsetRadius); // TODO: Make it configurable
+
+  ////////////////////////////////////////////////////////////////////////////
+
+  vec4 boundingSphere = vec4(
+    (pushConstants.modelMatrix * vec4(patchPosition, 1.0)).xyz,
+    max(max(grassHeight, grassThickness) + grassOffsetRadius, grassOffsetRadius) * 2.0
+  );  
+
+  vec4 frustumSphere = vec4(
+    inverseViewMatrix[3].xyz,
+    pushConstants.maximumDistance
+  );
+
+  // Calculate fade out factor based on the distance to the camera
+  float distanceToCamera = distance(boundingSphere.xyz, cameraPosition) + boundingSphere.w; // Add the radius of the bounding sphere for a more smooth transition
+  float fadeOutFactor = smoothstep(pushConstants.maximumDistance * 1.0, pushConstants.maximumDistance * 0.5, distanceToCamera);
+ 
+  ////////////////////////////////////////////////////////////////////////////
+
   const float countBladesFloat = mix(
     1.0, 
     float(maxCountBlades), 
     min(
-      pow(clamp(1.0 / (1.0 + max(0.0, log2(distance(patchPosition, inverseViewMatrix[3].xyz)) - 2.0)), 0.0, 1.0), 1.0),
-      pow(1.0 - clamp(distance(patchPosition, inverseViewMatrix[3].xyz) / pushConstants.maximumDistance, 0.0, 1.0), 2.0)
+      min(
+        pow(clamp(1.0 / (1.0 + max(0.0, log2(distance(patchPosition, inverseViewMatrix[3].xyz)) - 2.0)), 0.0, 1.0), 1.0),
+        pow(1.0 - clamp(distance(patchPosition, inverseViewMatrix[3].xyz) / pushConstants.maximumDistance, 0.0, 1.0), 2.0)
+      ),
+      fadeOutFactor
     )
   );
 
@@ -401,10 +426,6 @@ void main() {
 
   const uint countVertices = countVerticesPerBlade * countBlades;
   const uint countTriangles = countTrianglesPerBlade * countBlades;
-
-  const float grassHeight = pushConstants.grassHeight;
-  const float grassThickness = pushConstants.grassThickness;
-  const float grassLeaning = 0.5;//min(0.5, grassOffsetRadius); // TODO: Make it configurable
 
   ////////////////////////////////////////////////////////////////////////////////
       
@@ -508,7 +529,7 @@ void main() {
 
       vec3 bladeOffset = vec3(offsetDirection.xy, 0.0) * offsetRadius; 
 
-      float bladeHeight = grassHeight * mix(0.25, 1.0, randomFloatData[0].w);
+      float bladeHeight = grassHeight * mix(0.25, 1.0, randomFloatData[0].w) * fadeOutFactor;
       float bladeLeaning = grassLeaning * mix(0.1, 1.0, randomFloatData[1].x);
 
       vec3 p0 = bladeOffset;

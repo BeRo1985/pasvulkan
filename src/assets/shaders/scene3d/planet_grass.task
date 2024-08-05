@@ -221,7 +221,7 @@ void main() {
 
     const float grassHeight = pushConstants.grassHeight;
     const float grassThickness = pushConstants.grassThickness;
-    const float grassLeaning = 0.3;
+    const float grassLeaning = 0.5;
 
     /////////////////////////////////////////////////////////////////////////
 
