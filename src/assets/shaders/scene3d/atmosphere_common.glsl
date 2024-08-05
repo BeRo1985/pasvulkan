@@ -76,7 +76,7 @@ struct VolumetricCloudLayer {
 	float WindAngle;
 	float WindUpAmount;
 	float CoverageWindSpeed;
-	
+  
   //float CoverageWindAngle; // in ExtinctionCoefficient.w  
 
 };

@@ -476,6 +476,15 @@ type TpvScene3DAtmosphere=class;
              Flags:TpvUInt32;
             end;
             PRaymarchingPushConstants=^TRaymarchingPushConstants;
+            TCloudWeatherMapPushConstants=packed record
+             CoverageRotation:TpvVector4;
+             TypeRotation:TpvVector4;
+             WetnessRotation:TpvVector4;
+             CoveragePerlinWorleyDifference:TpvFloat;
+             TotalSize:TpvFloat;
+             WorleySeed:TpvFloat;
+	           end;
+            PCloudWeatherMapPushConstants=^TCloudWeatherMapPushConstants;
       private
        fScene3D:TObject;
        fAtmospheres:TpvScene3DAtmospheres;
@@ -512,6 +521,10 @@ type TpvScene3DAtmosphere=class;
        fRaymarchingPipelineShaderStageVertex:TpvVulkanPipelineShaderStage;
        fRaymarchingPipelineShaderStageFragments:array[boolean] of TpvVulkanPipelineShaderStage; // false = Non-MSAA, true = MSAA
        fRaymarchingPipelineLayout:TpvVulkanPipelineLayout;
+       fCloudWeatherMapComputeShaderModule:TpvVulkanShaderModule;
+       fCloudWeatherMapComputeShaderStage:TpvVulkanPipelineShaderStage;
+       fCloudWeatherMapComputePipelineLayout:TpvVulkanPipelineLayout;
+       fCloudWeatherMapComputePipeline:TpvVulkanComputePipeline;
        fCloudCurlTexture:TpvScene3DRendererMipmapImage3D;
        fCloudDetailTexture:TpvScene3DRendererMipmapImage3D;
        fCloudShapeTexture:TpvScene3DRendererMipmapImage3D;
@@ -3339,6 +3352,8 @@ begin
                                                                     fTransmittanceLUTComputePipelineLayout,
                                                                     nil,
                                                                     0);
+  TpvScene3D(fScene3D).VulkanDevice.DebugUtils.SetObjectName(fTransmittanceLUTComputePipeline.Handle,VK_OBJECT_TYPE_PIPELINE,'TpvScene3DAtmosphereGlobals.fTransmittanceLUTComputePipeline'); 
+ 
  end;
 
  begin
@@ -3368,8 +3383,10 @@ begin
                                                                       0,
                                                                       fMultiScatteringLUTComputeShaderStage,
                                                                       fMultiScatteringLUTComputePipelineLayout,
-                                                                      nil,
+                                                                      nil,  
                                                                       0);
+  TpvScene3D(fScene3D).VulkanDevice.DebugUtils.SetObjectName(fMultiScatteringLUTComputePipeline.Handle,VK_OBJECT_TYPE_PIPELINE,'TpvScene3DAtmosphereGlobals.fMultiScatteringLUTComputePipeline');
+
  end;
 
  begin
@@ -3392,6 +3409,7 @@ begin
   fSkyViewLUTComputePipelineLayout.AddDescriptorSetLayout(fGlobalVulkanDescriptorSetLayout);
   fSkyViewLUTComputePipelineLayout.AddDescriptorSetLayout(fSkyViewLUTPassDescriptorSetLayout);
   fSkyViewLUTComputePipelineLayout.Initialize;
+  TpvScene3D(fScene3D).VulkanDevice.DebugUtils.SetObjectName(fSkyViewLUTComputePipelineLayout.Handle,VK_OBJECT_TYPE_PIPELINE_LAYOUT,'TpvScene3DAtmosphereGlobals.fSkyViewLUTComputePipelineLayout');
 
   fSkyViewLUTComputePipeline:=TpvVulkanComputePipeline.Create(TpvScene3D(fScene3D).VulkanDevice,
                                                               TpvScene3D(fScene3D).VulkanPipelineCache,
@@ -3400,6 +3418,8 @@ begin
                                                               fSkyViewLUTComputePipelineLayout,
                                                               nil,
                                                               0);
+  TpvScene3D(fScene3D).VulkanDevice.DebugUtils.SetObjectName(fSkyViewLUTComputePipeline.Handle,VK_OBJECT_TYPE_PIPELINE,'TpvScene3DAtmosphereGlobals.fSkyViewLUTComputePipeline');                                                            
+
  end;
 
  begin
@@ -3422,6 +3442,7 @@ begin
   fCameraVolumeComputePipelineLayout.AddDescriptorSetLayout(fGlobalVulkanDescriptorSetLayout);
   fCameraVolumeComputePipelineLayout.AddDescriptorSetLayout(fCameraVolumePassDescriptorSetLayout);
   fCameraVolumeComputePipelineLayout.Initialize;
+  TpvScene3D(fScene3D).VulkanDevice.DebugUtils.SetObjectName(fCameraVolumeComputePipelineLayout.Handle,VK_OBJECT_TYPE_PIPELINE_LAYOUT,'TpvScene3DAtmosphereGlobals.fCameraVolumeComputePipelineLayout');
 
   fCameraVolumeComputePipeline:=TpvVulkanComputePipeline.Create(TpvScene3D(fScene3D).VulkanDevice,
                                                                 TpvScene3D(fScene3D).VulkanPipelineCache,
@@ -3430,6 +3451,8 @@ begin
                                                                 fCameraVolumeComputePipelineLayout,
                                                                 nil,
                                                                 0);
+  TpvScene3D(fScene3D).VulkanDevice.DebugUtils.SetObjectName(fCameraVolumeComputePipeline.Handle,VK_OBJECT_TYPE_PIPELINE,'TpvScene3DAtmosphereGlobals.fCameraVolumeComputePipeline');
+
  end;
 
  begin
@@ -3452,14 +3475,16 @@ begin
   fCubeMapComputePipelineLayout.AddDescriptorSetLayout(fGlobalVulkanDescriptorSetLayout);
   fCubeMapComputePipelineLayout.AddDescriptorSetLayout(fCubeMapPassDescriptorSetLayout);
   fCubeMapComputePipelineLayout.Initialize;
+  TpvScene3D(fScene3D).VulkanDevice.DebugUtils.SetObjectName(fCubeMapComputePipelineLayout.Handle,VK_OBJECT_TYPE_PIPELINE_LAYOUT,'TpvScene3DAtmosphereGlobals.fCubeMapComputePipelineLayout');
 
   fCubeMapComputePipeline:=TpvVulkanComputePipeline.Create(TpvScene3D(fScene3D).VulkanDevice,
                                                            TpvScene3D(fScene3D).VulkanPipelineCache,
                                                            0,
                                                            fCubeMapComputeShaderStage,
                                                            fCubeMapComputePipelineLayout,
-                                                           nil,
+                                                           nil,                                                           
                                                            0);
+  TpvScene3D(fScene3D).VulkanDevice.DebugUtils.SetObjectName(fCubeMapComputePipeline.Handle,VK_OBJECT_TYPE_PIPELINE,'TpvScene3DAtmosphereGlobals.fCubeMapComputePipeline');                                                         
 
  end;
 
@@ -3503,12 +3528,46 @@ begin
   fRaymarchingPipelineLayout.AddDescriptorSetLayout(fGlobalVulkanDescriptorSetLayout);
   fRaymarchingPipelineLayout.AddDescriptorSetLayout(fRaymarchingPassDescriptorSetLayout);
   fRaymarchingPipelineLayout.Initialize;
+  TpvScene3D(fScene3D).VulkanDevice.DebugUtils.SetObjectName(fRaymarchingPipelineLayout.Handle,VK_OBJECT_TYPE_PIPELINE_LAYOUT,'TpvScene3DAtmosphereGlobals.fRaymarchingPipelineLayout');
 
   // fRaymarchingGraphicsPipeline will be created by the renderer instances when needed, because it depends on the render pass and so on.
 
  end;
 
  begin
+
+  // Cloud weather map compute pipeline
+ 
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('atmosphere_clouds_weathermap_comp.spv');
+  try
+   fCloudWeatherMapComputeShaderModule:=TpvVulkanShaderModule.Create(TpvScene3D(fScene3D).VulkanDevice,Stream);
+  finally
+   Stream.Free;
+  end;
+
+  fCloudWeatherMapComputeShaderStage:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_COMPUTE_BIT,fCloudWeatherMapComputeShaderModule,'main');
+  TpvScene3D(fScene3D).VulkanDevice.DebugUtils.SetObjectName(fCloudWeatherMapComputeShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DAtmosphereGlobals.fCloudWeatherMapComputeShaderModule');
+
+  fCloudWeatherMapComputePipelineLayout:=TpvVulkanPipelineLayout.Create(TpvScene3D(fScene3D).VulkanDevice);
+  fCloudWeatherMapComputePipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),0,SizeOf(TCloudWeatherMapPushConstants));
+  fCloudWeatherMapComputePipelineLayout.AddDescriptorSetLayout(fWeatherMapTextureDescriptorSetLayout);
+  fCloudWeatherMapComputePipelineLayout.Initialize;
+  TpvScene3D(fScene3D).VulkanDevice.DebugUtils.SetObjectName(fCloudWeatherMapComputePipelineLayout.Handle,VK_OBJECT_TYPE_PIPELINE_LAYOUT,'TpvScene3DAtmosphereGlobals.fCloudWeatherMapComputePipelineLayout');
+
+  fCloudWeatherMapComputePipeline:=TpvVulkanComputePipeline.Create(TpvScene3D(fScene3D).VulkanDevice,
+                                                                   TpvScene3D(fScene3D).VulkanPipelineCache,
+                                                                   0,
+                                                                   fCloudWeatherMapComputeShaderStage,
+                                                                   fCloudWeatherMapComputePipelineLayout,
+                                                                   nil,
+                                                                   0);
+  TpvScene3D(fScene3D).VulkanDevice.DebugUtils.SetObjectName(fCloudWeatherMapComputePipeline.Handle,VK_OBJECT_TYPE_PIPELINE,'TpvScene3DAtmosphereGlobals.fCloudWeatherMapComputePipeline');
+
+ end;
+
+ begin
+
+  // Allocate resources for cloud textures
 
   fCloudCurlTexture:=TpvScene3DRendererMipmapImage3D.Create(TpvScene3D(fScene3D).VulkanDevice,
                                                             128,
@@ -3653,6 +3712,11 @@ begin
  FreeAndNil(fRaymarchingVertexShaderModule);
  FreeAndNil(fRaymarchingFragmentShaderModules[false]);
  FreeAndNil(fRaymarchingFragmentShaderModules[true]);
+
+ FreeAndNil(fCloudWeatherMapComputePipeline);
+ FreeAndNil(fCloudWeatherMapComputePipelineLayout);
+ FreeAndNil(fCloudWeatherMapComputeShaderStage);
+ FreeAndNil(fCloudWeatherMapComputeShaderModule);
 
  FreeAndNil(fWeatherMapTextureDescriptorSetLayout);
  FreeAndNil(fGlobalVulkanDescriptorSetLayout);
