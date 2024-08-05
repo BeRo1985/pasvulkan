@@ -488,8 +488,8 @@ void main() {
       // Generate some random data for the grass blade to make it look more natural, but keep it deterministic, based on the global position
       // and the linear global index of the grass blade
       const uvec4 randomUIntData[2] = uvec4[2](
-        pcgHash44(uvec4(globalXY, globalIndex, bladeID + (invocationVariantIndex * maxCountBlades))),
-        pcgHash44(uvec4(bladeID + (invocationVariantIndex * maxCountBlades), globalIndex, globalXY))
+        pcgHash44(uvec4(globalXY, globalIndex, bladeID + (invocationVariantIndex << 16u))),
+        pcgHash44(uvec4(bladeID + (invocationVariantIndex << 16u), globalIndex, globalXY))
       );
   
       // The following line generates a random float value in the range of [0.0, 1.0] for each component through bittwiddling tricks 
