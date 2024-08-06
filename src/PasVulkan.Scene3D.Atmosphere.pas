@@ -84,7 +84,123 @@ uses SysUtils,
 
 type TpvScene3DAtmosphere=class;
 
-     { TpvScene3DAtmosphere } 
+     TpvScene3DAtmospheres=class;
+
+     { TpvScene3DAtmosphereGlobals }
+     TpvScene3DAtmosphereGlobals=class
+      public
+       type TTransmittanceLUTPushConstants=packed record
+             BaseViewIndex:TpvInt32;
+             CountViews:TpvInt32;
+             Dummy0:TpvInt32;
+             Dummy1:TpvInt32;
+            end;
+            PTransmittanceLUTPushConstants=^TTransmittanceLUTPushConstants;
+            TMultiScatteringLUTPushConstants=packed record
+             BaseViewIndex:TpvInt32;
+             CountViews:TpvInt32;
+             MultipleScatteringFactor:TpvFloat;
+             FrameIndex:TpvUInt32;
+            end;
+            PMultiScatteringLUTPushConstants=^TMultiScatteringLUTPushConstants;
+            TSkyViewLUTPushConstants=packed record
+             BaseViewIndex:TpvInt32;
+             CountViews:TpvInt32;
+             FrameIndex:TpvUInt32;
+             Dummy1:TpvInt32;
+            end;
+            PSkyViewLUTPushConstants=^TSkyViewLUTPushConstants;
+            TCameraVolumePushConstants=packed record
+             BaseViewIndex:TpvInt32;
+             CountViews:TpvInt32;
+             FrameIndex:TpvUInt32;
+             Dummy1:TpvInt32;
+            end;
+            TCubeMapPushConstants=packed record
+             CameraPosition:TpvVector4; // w = unused, for alignment
+             UpVector:TpvVector4; // w = unused, for alignment
+            end;
+            PCubeMapPushConstants=^TCubeMapPushConstants;
+            TRaymarchingPushConstants=packed record
+             BaseViewIndex:TpvInt32;
+             CountViews:TpvInt32;
+             FrameIndex:TpvUInt32;
+             Flags:TpvUInt32;
+            end;
+            PRaymarchingPushConstants=^TRaymarchingPushConstants;
+            TCloudWeatherMapPushConstants=packed record
+             CoverageRotation:TpvVector4;
+             TypeRotation:TpvVector4;
+             WetnessRotation:TpvVector4;
+             CoveragePerlinWorleyDifference:TpvFloat;
+             TotalSize:TpvFloat;
+             WorleySeed:TpvFloat;
+            end;
+            PCloudWeatherMapPushConstants=^TCloudWeatherMapPushConstants;
+      private
+       fScene3D:TObject;
+       fAtmospheres:TpvScene3DAtmospheres;
+       fTransmittanceLUTPassDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
+       fMultiScatteringLUTPassDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
+       fSkyViewLUTPassDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
+       fCameraVolumePassDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
+       fCubeMapPassDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
+       fRaymarchingPassDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
+       fGlobalVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
+       fWeatherMapTextureDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
+       fTransmittanceLUTComputeShaderModule:TpvVulkanShaderModule;
+       fTransmittanceLUTComputeShaderStage:TpvVulkanPipelineShaderStage;
+       fTransmittanceLUTComputePipelineLayout:TpvVulkanPipelineLayout;
+       fTransmittanceLUTComputePipeline:TpvVulkanComputePipeline;
+       fMultiScatteringLUTComputeShaderModule:TpvVulkanShaderModule;
+       fMultiScatteringLUTComputeShaderStage:TpvVulkanPipelineShaderStage;
+       fMultiScatteringLUTComputePipelineLayout:TpvVulkanPipelineLayout;
+       fMultiScatteringLUTComputePipeline:TpvVulkanComputePipeline;
+       fSkyViewLUTComputeShaderModule:TpvVulkanShaderModule;
+       fSkyViewLUTComputeShaderStage:TpvVulkanPipelineShaderStage;
+       fSkyViewLUTComputePipelineLayout:TpvVulkanPipelineLayout;
+       fSkyViewLUTComputePipeline:TpvVulkanComputePipeline;
+       fCameraVolumeComputeShaderModule:TpvVulkanShaderModule;
+       fCameraVolumeComputeShaderStage:TpvVulkanPipelineShaderStage;
+       fCameraVolumeComputePipelineLayout:TpvVulkanPipelineLayout;
+       fCameraVolumeComputePipeline:TpvVulkanComputePipeline;
+       fCubeMapComputeShaderModule:TpvVulkanShaderModule;
+       fCubeMapComputeShaderStage:TpvVulkanPipelineShaderStage;
+       fCubeMapComputePipelineLayout:TpvVulkanPipelineLayout;
+       fCubeMapComputePipeline:TpvVulkanComputePipeline;
+       fRaymarchingVertexShaderModule:TpvVulkanShaderModule;
+       fRaymarchingFragmentShaderModules:array[boolean] of TpvVulkanShaderModule; // false = Non-MSAA, true = MSAA
+       fRaymarchingPipelineShaderStageVertex:TpvVulkanPipelineShaderStage;
+       fRaymarchingPipelineShaderStageFragments:array[boolean] of TpvVulkanPipelineShaderStage; // false = Non-MSAA, true = MSAA
+       fRaymarchingPipelineLayout:TpvVulkanPipelineLayout;
+       fCloudWeatherMapComputeShaderModule:TpvVulkanShaderModule;
+       fCloudWeatherMapComputeShaderStage:TpvVulkanPipelineShaderStage;
+       fCloudWeatherMapComputePipelineLayout:TpvVulkanPipelineLayout;
+       fCloudWeatherMapComputePipeline:TpvVulkanComputePipeline;
+       fCloudCurlTexture:TpvScene3DRendererMipmapImage3D;
+       fCloudDetailTexture:TpvScene3DRendererMipmapImage3D;
+       fCloudShapeTexture:TpvScene3DRendererMipmapImage3D;
+      public
+       constructor Create(const aScene3D:TObject);
+       destructor Destroy; override;
+       procedure AllocateResources;
+       procedure DeallocateResources;
+      published
+       property Scene3D:TObject read fScene3D;
+       property Atmospheres:TpvScene3DAtmospheres read fAtmospheres;
+      public
+       property TransmittanceLUTPassDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fTransmittanceLUTPassDescriptorSetLayout;
+       property MultiScatteringLUTPassDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fMultiScatteringLUTPassDescriptorSetLayout;
+       property SkyViewLUTPassDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fSkyViewLUTPassDescriptorSetLayout;
+       property CameraVolumePassDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fCameraVolumePassDescriptorSetLayout;
+       property CubeMapPassDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fCubeMapPassDescriptorSetLayout;
+       property RaymarchingPassDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fRaymarchingPassDescriptorSetLayout;
+       property GlobalVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fGlobalVulkanDescriptorSetLayout;
+       property WeatherMapTextureDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fWeatherMapTextureDescriptorSetLayout;
+       property RaymarchingPipelineLayout:TpvVulkanPipelineLayout read fRaymarchingPipelineLayout;
+     end;
+
+     { TpvScene3DAtmosphere }
      TpvScene3DAtmosphere=class
       public
        const TRANSMITTANCE_TEXTURE_WIDTH=256;
@@ -376,6 +492,9 @@ type TpvScene3DAtmosphere=class;
        fWeatherMapTexture:TpvScene3DRendererImageCubeMap;
        fWeatherMapTextureDescriptorPool:TpvVulkanDescriptorPool;
        fWeatherMapTextureDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
+       fWeatherMapTextureGeneration:TpvUInt64;
+       fWeatherMapTextureLastGeneration:TpvUInt64;
+       fCloudWeatherMapPushConstants:TpvScene3DAtmosphereGlobals.TCloudWeatherMapPushConstants;
        fRendererInstances:TRendererInstances;
        fRendererInstanceHashMap:TRendererInstanceHashMap;
        fRendererInstanceListLock:TPasMPSlimReaderWriterLock;
@@ -434,120 +553,6 @@ type TpvScene3DAtmosphere=class;
       published
        property Scene3D:TObject read fScene3D;
        property Lock:TPasMPMultipleReaderSingleWriterLock read fLock;
-     end;
-
-     { TpvScene3DAtmosphereGlobals }
-     TpvScene3DAtmosphereGlobals=class
-      public
-       type TTransmittanceLUTPushConstants=packed record
-             BaseViewIndex:TpvInt32;
-             CountViews:TpvInt32;
-             Dummy0:TpvInt32;
-             Dummy1:TpvInt32;
-            end;
-            PTransmittanceLUTPushConstants=^TTransmittanceLUTPushConstants;
-            TMultiScatteringLUTPushConstants=packed record
-             BaseViewIndex:TpvInt32;
-             CountViews:TpvInt32;
-             MultipleScatteringFactor:TpvFloat;
-             FrameIndex:TpvUInt32;
-            end;
-            PMultiScatteringLUTPushConstants=^TMultiScatteringLUTPushConstants;
-            TSkyViewLUTPushConstants=packed record
-             BaseViewIndex:TpvInt32;
-             CountViews:TpvInt32;
-             FrameIndex:TpvUInt32;
-             Dummy1:TpvInt32;
-            end;
-            PSkyViewLUTPushConstants=^TSkyViewLUTPushConstants;
-            TCameraVolumePushConstants=packed record
-             BaseViewIndex:TpvInt32;
-             CountViews:TpvInt32;
-             FrameIndex:TpvUInt32;
-             Dummy1:TpvInt32;
-            end;
-            TCubeMapPushConstants=packed record
-             CameraPosition:TpvVector4; // w = unused, for alignment
-             UpVector:TpvVector4; // w = unused, for alignment
-            end;
-            PCubeMapPushConstants=^TCubeMapPushConstants;
-            TRaymarchingPushConstants=packed record
-             BaseViewIndex:TpvInt32;
-             CountViews:TpvInt32;
-             FrameIndex:TpvUInt32;
-             Flags:TpvUInt32;
-            end;
-            PRaymarchingPushConstants=^TRaymarchingPushConstants;
-            TCloudWeatherMapPushConstants=packed record
-             CoverageRotation:TpvVector4;
-             TypeRotation:TpvVector4;
-             WetnessRotation:TpvVector4;
-             CoveragePerlinWorleyDifference:TpvFloat;
-             TotalSize:TpvFloat;
-             WorleySeed:TpvFloat;
-            end;
-            PCloudWeatherMapPushConstants=^TCloudWeatherMapPushConstants;
-      private
-       fScene3D:TObject;
-       fAtmospheres:TpvScene3DAtmospheres;
-       fTransmittanceLUTPassDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
-       fMultiScatteringLUTPassDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
-       fSkyViewLUTPassDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
-       fCameraVolumePassDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
-       fCubeMapPassDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
-       fRaymarchingPassDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
-       fGlobalVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
-       fWeatherMapTextureDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
-       fTransmittanceLUTComputeShaderModule:TpvVulkanShaderModule;
-       fTransmittanceLUTComputeShaderStage:TpvVulkanPipelineShaderStage;
-       fTransmittanceLUTComputePipelineLayout:TpvVulkanPipelineLayout;
-       fTransmittanceLUTComputePipeline:TpvVulkanComputePipeline;
-       fMultiScatteringLUTComputeShaderModule:TpvVulkanShaderModule;
-       fMultiScatteringLUTComputeShaderStage:TpvVulkanPipelineShaderStage;
-       fMultiScatteringLUTComputePipelineLayout:TpvVulkanPipelineLayout;
-       fMultiScatteringLUTComputePipeline:TpvVulkanComputePipeline;
-       fSkyViewLUTComputeShaderModule:TpvVulkanShaderModule;
-       fSkyViewLUTComputeShaderStage:TpvVulkanPipelineShaderStage;
-       fSkyViewLUTComputePipelineLayout:TpvVulkanPipelineLayout;
-       fSkyViewLUTComputePipeline:TpvVulkanComputePipeline;
-       fCameraVolumeComputeShaderModule:TpvVulkanShaderModule;
-       fCameraVolumeComputeShaderStage:TpvVulkanPipelineShaderStage;
-       fCameraVolumeComputePipelineLayout:TpvVulkanPipelineLayout;
-       fCameraVolumeComputePipeline:TpvVulkanComputePipeline;
-       fCubeMapComputeShaderModule:TpvVulkanShaderModule;
-       fCubeMapComputeShaderStage:TpvVulkanPipelineShaderStage;
-       fCubeMapComputePipelineLayout:TpvVulkanPipelineLayout;
-       fCubeMapComputePipeline:TpvVulkanComputePipeline;
-       fRaymarchingVertexShaderModule:TpvVulkanShaderModule;
-       fRaymarchingFragmentShaderModules:array[boolean] of TpvVulkanShaderModule; // false = Non-MSAA, true = MSAA
-       fRaymarchingPipelineShaderStageVertex:TpvVulkanPipelineShaderStage;
-       fRaymarchingPipelineShaderStageFragments:array[boolean] of TpvVulkanPipelineShaderStage; // false = Non-MSAA, true = MSAA
-       fRaymarchingPipelineLayout:TpvVulkanPipelineLayout;
-       fCloudWeatherMapComputeShaderModule:TpvVulkanShaderModule;
-       fCloudWeatherMapComputeShaderStage:TpvVulkanPipelineShaderStage;
-       fCloudWeatherMapComputePipelineLayout:TpvVulkanPipelineLayout;
-       fCloudWeatherMapComputePipeline:TpvVulkanComputePipeline;
-       fCloudCurlTexture:TpvScene3DRendererMipmapImage3D;
-       fCloudDetailTexture:TpvScene3DRendererMipmapImage3D;
-       fCloudShapeTexture:TpvScene3DRendererMipmapImage3D;
-      public
-       constructor Create(const aScene3D:TObject);
-       destructor Destroy; override;
-       procedure AllocateResources;
-       procedure DeallocateResources;
-      published
-       property Scene3D:TObject read fScene3D;
-       property Atmospheres:TpvScene3DAtmospheres read fAtmospheres;
-      public
-       property TransmittanceLUTPassDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fTransmittanceLUTPassDescriptorSetLayout;
-       property MultiScatteringLUTPassDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fMultiScatteringLUTPassDescriptorSetLayout;
-       property SkyViewLUTPassDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fSkyViewLUTPassDescriptorSetLayout;
-       property CameraVolumePassDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fCameraVolumePassDescriptorSetLayout;
-       property CubeMapPassDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fCubeMapPassDescriptorSetLayout;
-       property RaymarchingPassDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fRaymarchingPassDescriptorSetLayout;
-       property GlobalVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fGlobalVulkanDescriptorSetLayout;
-       property WeatherMapTextureDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fWeatherMapTextureDescriptorSetLayout;
-       property RaymarchingPipelineLayout:TpvVulkanPipelineLayout read fRaymarchingPipelineLayout;
      end;
 
      { TpvScene3DAtmosphereRendererInstance }
@@ -2824,6 +2829,12 @@ begin
 
   end;
 
+  fWeatherMapTextureGeneration:=1;
+
+  fWeatherMapTextureLastGeneration:=0;
+
+  FillChar(fCloudWeatherMapPushConstants,SizeOf(TpvScene3DAtmosphereGlobals.TCloudWeatherMapPushConstants),#0);
+
   fUploaded:=true;
  
  end;
@@ -2901,8 +2912,6 @@ begin
 
  if fInFlightFrameVisible[aInFlightFrameIndex] then begin
 
-  AtmosphereGlobals:=TpvScene3DAtmosphereGlobals(TpvScene3D(fScene3D).AtmosphereGlobals);
-
   FillChar(PushConstants,SizeOf(TpvScene3DAtmosphereGlobals.TCloudWeatherMapPushConstants),#0);
   PushConstants.CoverageRotation:=TpvVector4.InlineableCreate(1.0,0.0,0.0,0.0);
   PushConstants.TypeRotation:=TpvVector4.InlineableCreate(1.0,0.0,0.0,0.0);
@@ -2911,70 +2920,83 @@ begin
   PushConstants.TotalSize:=4.0;
   PushConstants.WorleySeed:=10.0;
 
-  ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(0,
-                                                   TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
-                                                   VK_IMAGE_LAYOUT_UNDEFINED,
-                                                   VK_IMAGE_LAYOUT_GENERAL,
-                                                   VK_QUEUE_FAMILY_IGNORED,
-                                                   VK_QUEUE_FAMILY_IGNORED,
-                                                   fWeatherMapTexture.VulkanImage.Handle,
-                                                   TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
-                                                                                   0,
-                                                                                   1,
-                                                                                   0,
-                                                                                   6));
+  if (fWeatherMapTextureLastGeneration=fWeatherMapTextureGeneration) and not CompareMem(@PushConstants,@fCloudWeatherMapPushConstants,SizeOf(TpvScene3DAtmosphereGlobals.TCloudWeatherMapPushConstants)) then begin
+   inc(fWeatherMapTextureGeneration);
+  end;
 
-  aCommandBuffer.CmdPipelineBarrier(TpvScene3D(fScene3D).VulkanDevice.PhysicalDevice.PipelineStageAllShaderBits,
-                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
-                                    0,
-                                    0,nil,
-                                    0,nil,
-                                    1,@ImageMemoryBarrier);
+  fCloudWeatherMapPushConstants:=PushConstants;
 
-  aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,AtmosphereGlobals.fCloudWeatherMapComputePipeline.Handle);
+  if fWeatherMapTextureLastGeneration<>fWeatherMapTextureGeneration then begin
 
-  aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE,
-                                       AtmosphereGlobals.fCloudWeatherMapComputePipelineLayout.Handle,
-                                       0,
-                                       1,
-                                       @fWeatherMapTextureDescriptorSets[aInFlightFrameIndex].Handle,
-                                       0,
-                                       nil);
+   fWeatherMapTextureLastGeneration:=fWeatherMapTextureGeneration;
 
-  aCommandBuffer.CmdPushConstants(AtmosphereGlobals.fCloudWeatherMapComputePipelineLayout.Handle,
-                                  TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_COMPUTE_BIT),
-                                  0,
-                                  SizeOf(TpvScene3DAtmosphereGlobals.TCloudWeatherMapPushConstants),
-                                  @PushConstants);     
+   AtmosphereGlobals:=TpvScene3DAtmosphereGlobals(TpvScene3D(fScene3D).AtmosphereGlobals);
 
-  aCommandBuffer.CmdDispatch((fWeatherMapTexture.Width+15) shr 4,
-                             (fWeatherMapTexture.Height+15) shr 4,
-                             6);
+   ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(0,
+                                                    TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                    VK_IMAGE_LAYOUT_UNDEFINED,
+                                                    VK_IMAGE_LAYOUT_GENERAL,
+                                                    VK_QUEUE_FAMILY_IGNORED,
+                                                    VK_QUEUE_FAMILY_IGNORED,
+                                                    fWeatherMapTexture.VulkanImage.Handle,
+                                                    TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                    0,
+                                                                                    1,
+                                                                                    0,
+                                                                                    6));
 
-  ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
-                                                   TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT),
-                                                   VK_IMAGE_LAYOUT_GENERAL,
-                                                   VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                                   VK_QUEUE_FAMILY_IGNORED,
-                                                   VK_QUEUE_FAMILY_IGNORED,
-                                                   fWeatherMapTexture.VulkanImage.Handle,
-                                                   TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
-                                                                                   0,
-                                                                                   1,
-                                                                                   0,
-                                                                                   6));
+   aCommandBuffer.CmdPipelineBarrier(TpvScene3D(fScene3D).VulkanDevice.PhysicalDevice.PipelineStageAllShaderBits,
+                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                     0,
+                                     0,nil,
+                                     0,nil,
+                                     1,@ImageMemoryBarrier);
 
-  aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
-                                    TpvScene3D(fScene3D).VulkanDevice.PhysicalDevice.PipelineStageAllShaderBits,
-                                    0,
-                                    0,nil,
-                                    0,nil,
-                                    1,@ImageMemoryBarrier);
+   aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,AtmosphereGlobals.fCloudWeatherMapComputePipeline.Handle);
+
+   aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE,
+                                        AtmosphereGlobals.fCloudWeatherMapComputePipelineLayout.Handle,
+                                        0,
+                                        1,
+                                        @fWeatherMapTextureDescriptorSets[aInFlightFrameIndex].Handle,
+                                        0,
+                                        nil);
+
+   aCommandBuffer.CmdPushConstants(AtmosphereGlobals.fCloudWeatherMapComputePipelineLayout.Handle,
+                                   TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_COMPUTE_BIT),
+                                   0,
+                                   SizeOf(TpvScene3DAtmosphereGlobals.TCloudWeatherMapPushConstants),
+                                   @PushConstants);
+
+   aCommandBuffer.CmdDispatch((fWeatherMapTexture.Width+15) shr 4,
+                              (fWeatherMapTexture.Height+15) shr 4,
+                              6);
+
+   ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                    TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT),
+                                                    VK_IMAGE_LAYOUT_GENERAL,
+                                                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                    VK_QUEUE_FAMILY_IGNORED,
+                                                    VK_QUEUE_FAMILY_IGNORED,
+                                                    fWeatherMapTexture.VulkanImage.Handle,
+                                                    TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                    0,
+                                                                                    1,
+                                                                                    0,
+                                                                                    6));
+
+   aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                     TpvScene3D(fScene3D).VulkanDevice.PhysicalDevice.PipelineStageAllShaderBits,
+                                     0,
+                                     0,nil,
+                                     0,nil,
+                                     1,@ImageMemoryBarrier);
+
+  end;
 
  end;
 
 end;
-
 
 procedure TpvScene3DAtmosphere.Execute(const aInFlightFrameIndex:TpvSizeInt;
                                        const aCommandBuffer:TpvVulkanCommandBuffer;
