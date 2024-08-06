@@ -695,7 +695,7 @@ type PpvAudioInt32=^TpvInt32;
       private
        fSample:TpvAudioSoundSample;
       public
-       constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil;const aMetaResource:TpvMetaResource=nil); override;
+       constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil;const aMetaResource:TpvMetaResource=nil;const aParallelLoadable:TpvResource.TParallelLoadable=TpvResource.TParallelLoadable.None); override;
        destructor Destroy; override;
        function BeginLoad(const aStream:TStream):boolean; override;
        procedure FixUp;
@@ -730,7 +730,7 @@ type PpvAudioInt32=^TpvInt32;
       private
        fMusic:TpvAudioSoundMusic;
       public
-       constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil;const aMetaResource:TpvMetaResource=nil); override;
+       constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil;const aMetaResource:TpvMetaResource=nil;const aParallelLoadable:TpvResource.TParallelLoadable=TpvResource.TParallelLoadable.None); override;
        destructor Destroy; override;
        function BeginLoad(const aStream:TStream):boolean; override;
        procedure Play(AVolume,APanning,ARate:TpvFloat;ALoop:boolean);
@@ -4125,9 +4125,9 @@ begin
  result:=Active;
 end;
 
-constructor TpvAudioSoundSampleResource.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil;const aMetaResource:TpvMetaResource=nil);
+constructor TpvAudioSoundSampleResource.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource;const aMetaResource:TpvMetaResource;const aParallelLoadable:TpvResource.TParallelLoadable);
 begin
- inherited Create(aResourceManager,aParent,aMetaResource);
+ inherited Create(aResourceManager,aParent,aMetaResource,aParallelLoadable);
  fSample:=nil;
 end;
 
@@ -4231,9 +4231,9 @@ begin
  result:=fSample.IsVoicePlaying(VoiceNumber);
 end;
 
-constructor TpvAudioSoundMusicResource.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil;const aMetaResource:TpvMetaResource=nil);
+constructor TpvAudioSoundMusicResource.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource;const aMetaResource:TpvMetaResource;const aParallelLoadable:TpvResource.TParallelLoadable);
 begin
- inherited Create(aResourceManager,aParent,aMetaResource);
+ inherited Create(aResourceManager,aParent,aMetaResource,aParallelLoadable);
  fMusic:=nil;
 end;
 

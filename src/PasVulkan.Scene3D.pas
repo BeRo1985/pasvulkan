@@ -567,7 +567,7 @@ type EpvScene3D=class(Exception);
               fInUpload:TPasMPBool32;
               fAdded:TPasMPBool32;
              public
-              constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil;const aMetaResource:TpvMetaResource=nil); override;
+              constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil;const aMetaResource:TpvMetaResource=nil;const aParallelLoadable:TpvResource.TParallelLoadable=TpvResource.TParallelLoadable.None); override;
               destructor Destroy; override;
               procedure AfterConstruction; override;
               procedure BeforeDestruction; override;
@@ -795,7 +795,7 @@ type EpvScene3D=class(Exception);
               fTexture:TpvVulkanTexture;
               fLock:TPasMPSpinLock;
              public
-              constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil;const aMetaResource:TpvMetaResource=nil); override;
+              constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil;const aMetaResource:TpvMetaResource=nil;const aParallelLoadable:TpvResource.TParallelLoadable=TpvResource.TParallelLoadable.None); override;
               destructor Destroy; override;
               procedure AfterConstruction; override;
               procedure BeforeDestruction; override;
@@ -840,7 +840,7 @@ type EpvScene3D=class(Exception);
               fLock:TPasMPSpinLock;
               fSampler:TpvVulkanSampler;
              public
-              constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil;const aMetaResource:TpvMetaResource=nil); override;
+              constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil;const aMetaResource:TpvMetaResource=nil;const aParallelLoadable:TpvResource.TParallelLoadable=TpvResource.TParallelLoadable.None); override;
               destructor Destroy; override;
               procedure AfterConstruction; override;
               procedure BeforeDestruction; override;
@@ -876,7 +876,7 @@ type EpvScene3D=class(Exception);
               fImage:TImage;
               fSampler:TSampler;
              public
-              constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil;const aMetaResource:TpvMetaResource=nil); override;
+              constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil;const aMetaResource:TpvMetaResource=nil;const aParallelLoadable:TpvResource.TParallelLoadable=TpvResource.TParallelLoadable.None); override;
               destructor Destroy; override;
               procedure AfterConstruction; override;
               procedure BeforeDestruction; override;
@@ -1216,7 +1216,7 @@ type EpvScene3D=class(Exception);
               fGeneration:TpvUInt64;
               fVisible:boolean;
              public
-              constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil;const aMetaResource:TpvMetaResource=nil); override;
+              constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil;const aMetaResource:TpvMetaResource=nil;const aParallelLoadable:TpvResource.TParallelLoadable=TpvResource.TParallelLoadable.None); override;
               destructor Destroy; override;
               procedure AfterConstruction; override;
               procedure BeforeDestruction; override;
@@ -2840,7 +2840,7 @@ type EpvScene3D=class(Exception);
               function GetNodeByIgnoreCaseName(const aNodeName:TpvUTF8String):TpvScene3D.TGroup.TNode;
               function AssetGetURI(const aURI:TPasGLTFUTF8String):TStream;
              public
-              constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil;const aMetaResource:TpvMetaResource=nil); override;
+              constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil;const aMetaResource:TpvMetaResource=nil;const aParallelLoadable:TpvResource.TParallelLoadable=TpvResource.TParallelLoadable.None); override;
               destructor Destroy; override;
               procedure AfterConstruction; override;
               procedure BeforeDestruction; override;
@@ -3358,6 +3358,8 @@ type EpvScene3D=class(Exception);
        fPointerToDeltaTimes:PDeltaTimes;
        fVirtualReality:TpvVirtualReality;
        fBlueNoise2DTexture:TpvVulkanTexture;
+       fLoadGLTFTimeDurationLock:TPasMPInt32;
+       fLoadGLTFTimeDuration:TpvDouble;
        procedure NewImageDescriptorGeneration;
        procedure NewMaterialDataGeneration;
        procedure CullLights(const aInFlightFrameIndex:TpvSizeInt;
@@ -3612,6 +3614,7 @@ type EpvScene3D=class(Exception);
        property RaytracingActive:Boolean read fRaytracingActive;
        property AccelerationStructureInputBufferUsageFlags:TVkBufferUsageFlags read fAccelerationStructureInputBufferUsageFlags;
        property OnNodeFilter:TpvScene3D.TGroup.TInstance.TOnNodeFilter read fOnNodeFilter write fOnNodeFilter;
+       property LoadGLTFTimeDuration:TpvDouble read fLoadGLTFTimeDuration;
      end;
 
 implementation
@@ -4589,10 +4592,11 @@ end;
 
 { TpvScene3D.TBaseObject }
 
-constructor TpvScene3D.TBaseObject.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil;const aMetaResource:TpvMetaResource=nil);
+constructor TpvScene3D.TBaseObject.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource;const aMetaResource:TpvMetaResource;const aParallelLoadable:TpvResource.TParallelLoadable);
 var Current:TpvResource;
 begin
- inherited Create(aResourceManager,aParent,aMetaResource);
+
+ inherited Create(aResourceManager,aParent,aMetaResource,aParallelLoadable);
 
  if assigned(Parent) then begin
   Current:=Parent;
@@ -5998,9 +6002,9 @@ end;
 
 { TpvScene3D.TImage }
 
-constructor TpvScene3D.TImage.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil;const aMetaResource:TpvMetaResource=nil);
+constructor TpvScene3D.TImage.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource;const aMetaResource:TpvMetaResource;const aParallelLoadable:TpvResource.TParallelLoadable);
 begin
- inherited Create(aResourceManager,aParent,aMetaResource);
+ inherited Create(aResourceManager,aParent,aMetaResource,aParallelLoadable);
  fResourceDataStream:=TMemoryStream.Create;
  fLock:=TPasMPSpinLock.Create;
  fTexture:=nil;
@@ -6379,9 +6383,9 @@ end;
 
 { TpvScene3D.TSampler }
 
-constructor TpvScene3D.TSampler.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil;const aMetaResource:TpvMetaResource=nil);
+constructor TpvScene3D.TSampler.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource;const aMetaResource:TpvMetaResource;const aParallelLoadable:TpvResource.TParallelLoadable);
 begin
- inherited Create(aResourceManager,aParent,aMetaResource);
+ inherited Create(aResourceManager,aParent,aMetaResource,aParallelLoadable);
  fLock:=TPasMPSpinLock.Create;
 end;
 
@@ -6654,9 +6658,10 @@ end;
 
 { TpvScene3D.TTexture }
 
-constructor TpvScene3D.TTexture.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil;const aMetaResource:TpvMetaResource=nil);
+constructor TpvScene3D.TTexture.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource;const aMetaResource:TpvMetaResource;const aParallelLoadable:TpvResource.TParallelLoadable);
 begin
- inherited Create(aResourceManager,aParent,aMetaResource);
+
+ inherited Create(aResourceManager,aParent,aMetaResource,aParallelLoadable);
 
  fImage:=nil;
 
@@ -7159,9 +7164,10 @@ end;
 
 { TpvScene3D.TMaterial }
 
-constructor TpvScene3D.TMaterial.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil;const aMetaResource:TpvMetaResource=nil);
+constructor TpvScene3D.TMaterial.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource;const aMetaResource:TpvMetaResource;const aParallelLoadable:TpvResource.TParallelLoadable);
 begin
- inherited Create(aResourceManager,aParent,aMetaResource);
+
+ inherited Create(aResourceManager,aParent,aMetaResource,aParallelLoadable);
 
  fData:=DefaultData;
 
@@ -12954,11 +12960,11 @@ end;
 
 { TpvScene3D.TGroup }
 
-constructor TpvScene3D.TGroup.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil;const aMetaResource:TpvMetaResource=nil);
+constructor TpvScene3D.TGroup.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource;const aMetaResource:TpvMetaResource;const aParallelLoadable:TpvResource.TParallelLoadable);
 var InFlightFrameIndex:TpvSizeInt;
 begin
 
- inherited Create(aResourceManager,aParent,aMetaResource);
+ inherited Create(aResourceManager,aParent,aMetaResource,aParallelLoadable);
 
  fReady:=false;
 
@@ -15409,7 +15415,15 @@ var POCACodeString:TpvUTF8String;
    end;
   end;
  end;
+var StartTime,EndTime,
+    ImagesStartTime,ImagesEndTime,
+    AnimationsStartTime,AnimationsEndTime,
+    MeshesStartTime,MeshesEndTime:TpvHighResolutionTime;
+    TimeDuration:TpvDouble;
+    TimeDurationString:TpvUTF8String;
 begin
+ 
+ StartTime:=pvApplication.HighResolutionTimer.GetTime;
 
  POCACodeString:='';
 
@@ -15419,7 +15433,9 @@ begin
    ProcessLights;
   end;
 
+  ImagesStartTime:=pvApplication.HighResolutionTimer.GetTime;
   ProcessImages;
+  ImagesEndTime:=pvApplication.HighResolutionTimer.GetTime;
 
   ProcessSamplers;
 
@@ -15429,7 +15445,9 @@ begin
 
   ProcessCameras;
 
+  MeshesStartTime:=pvApplication.HighResolutionTimer.GetTime;
   ProcessMeshes;
+  MeshesEndTime:=pvApplication.HighResolutionTimer.GetTime;
 
   ProcessSkins;
 
@@ -15437,7 +15455,9 @@ begin
 
   ProcessScenes;
 
+  AnimationsStartTime:=pvApplication.HighResolutionTimer.GetTime;
   ProcessAnimations;
+  AnimationsEndTime:=pvApplication.HighResolutionTimer.GetTime;
 
   ExecuteCode;
 
@@ -15454,6 +15474,32 @@ begin
  end;
 
  Finish;
+
+ EndTime:=pvApplication.HighResolutionTimer.GetTime;
+
+ TPasMPMultipleReaderSingleWriterSpinLock.AcquireWrite(fSceneInstance.fLoadGLTFTimeDurationLock);
+ try
+
+  TimeDuration:=pvApplication.HighResolutionTimer.ToFloatSeconds(ImagesEndTime-ImagesStartTime);
+  Str(TimeDuration*1000.0:1:2,TimeDurationString);
+  pvApplication.Log(LOG_DEBUG,'TpvScene3D.TGroup.AssignFromGLTF("'+FileName+'")','Images duration: '+TimeDurationString+' ms');
+
+  TimeDuration:=pvApplication.HighResolutionTimer.ToFloatSeconds(MeshesEndTime-MeshesStartTime);
+  Str(TimeDuration*1000.0:1:2,TimeDurationString);
+  pvApplication.Log(LOG_DEBUG,'TpvScene3D.TGroup.AssignFromGLTF("'+FileName+'")','Meshes duration: '+TimeDurationString+' ms');
+
+  TimeDuration:=pvApplication.HighResolutionTimer.ToFloatSeconds(AnimationsEndTime-AnimationsStartTime);
+  Str(TimeDuration*1000.0:1:2,TimeDurationString);
+  pvApplication.Log(LOG_DEBUG,'TpvScene3D.TGroup.AssignFromGLTF("'+FileName+'")','Animations duration: '+TimeDurationString+' ms');
+
+  TimeDuration:=pvApplication.HighResolutionTimer.ToFloatSeconds(EndTime-StartTime);
+  Str(TimeDuration*1000.0:1:2,TimeDurationString);
+  pvApplication.Log(LOG_DEBUG,'TpvScene3D.TGroup.AssignFromGLTF("'+FileName+'")','Total duration: '+TimeDurationString+' ms');
+  fSceneInstance.fLoadGLTFTimeDuration:=fSceneInstance.fLoadGLTFTimeDuration+TimeDuration;
+
+ finally
+  TPasMPMultipleReaderSingleWriterSpinLock.ReleaseWrite(fSceneInstance.fLoadGLTFTimeDurationLock);
+ end;
 
 end;
 
@@ -21999,6 +22045,10 @@ begin
  inherited Create(aResourceManager,aParent,aMetaResource);
 
  fLoadLock:=TPasMPSpinLock.Create;
+
+ fLoadGLTFTimeDurationLock:=0;
+
+ fLoadGLTFTimeDuration:=0;
 
  if assigned(aVulkanDevice) then begin
   fVulkanDevice:=aVulkanDevice;

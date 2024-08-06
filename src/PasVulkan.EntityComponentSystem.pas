@@ -657,7 +657,7 @@ type EpvSystemCircularDependency=class(Exception);
        function CreateEntity(const aEntityID:TpvEntityID;const aEntityUUID:TpvUUID):TpvEntityID; overload;
       protected
       public
-       constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil;const aMetaResource:TpvMetaResource=nil); override;
+       constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil;const aMetaResource:TpvMetaResource=nil;const aParallelLoadable:TpvResource.TParallelLoadable=TpvResource.TParallelLoadable.None); override;
        destructor Destroy; override;
        class function GetMetaResourceClass:TpvMetaResourceClass; override;
        procedure Kill;
@@ -3221,9 +3221,9 @@ begin
 end;
 
 { TpvWorld }
-constructor TpvWorld.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource;const aMetaResource:TpvMetaResource);
+constructor TpvWorld.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource;const aMetaResource:TpvMetaResource;const aParallelLoadable:TpvResource.TParallelLoadable);
 begin
- inherited Create(aResourceManager,aParent,aMetaResource);
+ inherited Create(aResourceManager,aParent,aMetaResource,aParallelLoadable);
  fUniverse:=TpvUniverse(pvApplication.Universe);
  fID:=fUniverse.fWorldIDManager.AllocateID;
  fUniverse.fWorlds.Add(self);

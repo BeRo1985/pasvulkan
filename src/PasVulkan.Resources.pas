@@ -171,6 +171,13 @@ type EpvResource=class(Exception);
               Fail
              );
             PAsyncLoadState=^TAsyncLoadState;
+            TParallelLoadable=
+             (
+              None,
+              SameType,
+              Always
+             );
+            PParallelLoadable=^TParallelLoadable;
        const VirtualFileNamePrefix:TpvUTF8String='virtual://';
       private
        fResourceManager:TpvResourceManager;
@@ -191,12 +198,13 @@ type EpvResource=class(Exception);
        fReleaseFrameDelay:TPasMPInt32; // for resources with frame-wise in-flight data stuff
        fIsAsset:boolean;
        fAssetBasePath:TpvUTF8String;
+       fParallelLoadable:TParallelLoadable;
        procedure SetFileName(const aFileName:TpvUTF8String);
       protected
        function _AddRef:TpvInt32; override; {$ifdef Windows}stdcall{$else}cdecl{$endif};
        function _Release:TpvInt32; override; {$ifdef Windows}stdcall{$else}cdecl{$endif};
       public
-       constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil;const aMetaResource:TpvMetaResource=nil); reintroduce; virtual;
+       constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil;const aMetaResource:TpvMetaResource=nil;const aParallelLoadable:TpvResource.TParallelLoadable=TpvResource.TParallelLoadable.None); reintroduce; virtual;
        destructor Destroy; override;
        procedure PrepareDeferredFree; virtual;
        procedure DeferredFree; virtual;
@@ -556,7 +564,7 @@ end;
 
 { TpvResource }
 
-constructor TpvResource.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil;const aMetaResource:TpvMetaResource=nil);
+constructor TpvResource.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource;const aMetaResource:TpvMetaResource;const aParallelLoadable:TpvResource.TParallelLoadable);
 var OldReferenceCounter:TpvInt32;
     CountParents:TpvSizeInt;
     Current:TpvResource;
@@ -566,6 +574,8 @@ begin
  fResourceManager:=aResourceManager;
 
  fParent:=aParent;
+
+ fParallelLoadable:=aParallelLoadable;
 
  CountParents:=0;
  Current:=fParent;
