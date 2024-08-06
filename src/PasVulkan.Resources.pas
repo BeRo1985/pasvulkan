@@ -1346,6 +1346,8 @@ begin
         fLoadThreads[Index].Signal;
        end;
 
+       HandleToProcessQueueItems;
+
        repeat
         fToProcessQueueItemsEvent.WaitFor(10);
        until (fCountToProcessQueueItems<=0) and (fCountProcessedQueueItems>=fToProcessQueueItems.Count);
