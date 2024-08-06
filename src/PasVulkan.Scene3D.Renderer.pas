@@ -1291,7 +1291,7 @@ begin
   EnvironmentTexture:=nil;
  end;
 
- fEnvironmentCubeMap:=TpvScene3DRendererEnvironmentCubeMap.Create(fVulkanDevice,fVulkanPipelineCache,fScene3D.PrimaryLightDirection,fScene3D.EnvironmentIntensityFactor,fOptimizedCubeMapFormat,EnvironmentTexture,fScene3D.EnvironmentMode);
+ fEnvironmentCubeMap:=TpvScene3DRendererEnvironmentCubeMap.Create(fVulkanDevice,fVulkanPipelineCache,fGeneralSampler,fScene3D.PrimaryLightDirection,fScene3D.EnvironmentIntensityFactor,fOptimizedCubeMapFormat,EnvironmentTexture,fScene3D.EnvironmentMode);
  fVulkanDevice.DebugUtils.SetObjectName(fEnvironmentCubeMap.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DRenderer.fEnvironmentCubeMap.Image');
  fVulkanDevice.DebugUtils.SetObjectName(fEnvironmentCubeMap.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRenderer.fEnvironmentCubeMap.ImageView');
 
@@ -1315,7 +1315,7 @@ begin
    IntensityFactor:=fScene3D.SkyBoxIntensityFactor;
   end;
 
-  fSkyBoxCubeMap:=TpvScene3DRendererEnvironmentCubeMap.Create(fVulkanDevice,fVulkanPipelineCache,fScene3D.PrimaryLightDirection,IntensityFactor,fOptimizedCubeMapFormat,SkyBoxTexture,fScene3D.SkyBoxMode);
+  fSkyBoxCubeMap:=TpvScene3DRendererEnvironmentCubeMap.Create(fVulkanDevice,fVulkanPipelineCache,fGeneralSampler,fScene3D.PrimaryLightDirection,IntensityFactor,fOptimizedCubeMapFormat,SkyBoxTexture,fScene3D.SkyBoxMode);
   fVulkanDevice.DebugUtils.SetObjectName(fSkyBoxCubeMap.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DRenderer.fSkyBoxCubeMap.Image');
   fVulkanDevice.DebugUtils.SetObjectName(fSkyBoxCubeMap.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRenderer.fSkyBoxCubeMap.ImageView');
 
@@ -1369,15 +1369,15 @@ begin
 
  fEnvironmentSphericalHarmonics:=TpvScene3DRendererImageBasedLightingSphericalHarmonics.Create(fVulkanDevice,fVulkanPipelineCache,fEnvironmentCubeMap.DescriptorImageInfo,fEnvironmentSphericalHarmonicsBuffer,fEnvironmentSphericalHarmonicsMetaDataBuffer,fEnvironmentCubeMap.Width,fEnvironmentCubeMap.Height,true);
 
- fGGXBRDF:=TpvScene3DRendererGGXBRDF.Create(fVulkanDevice,fVulkanPipelineCache);
+ fGGXBRDF:=TpvScene3DRendererGGXBRDF.Create(fVulkanDevice,fVulkanPipelineCache,fGeneralSampler);
  fVulkanDevice.DebugUtils.SetObjectName(fGGXBRDF.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DRenderer.fGGXBRDF.Image');
  fVulkanDevice.DebugUtils.SetObjectName(fGGXBRDF.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRenderer.fGGXBRDF.ImageView');
 
- fCharlieBRDF:=TpvScene3DRendererCharlieBRDF.Create(fVulkanDevice,fVulkanPipelineCache);
+ fCharlieBRDF:=TpvScene3DRendererCharlieBRDF.Create(fVulkanDevice,fVulkanPipelineCache,fGeneralSampler);
  fVulkanDevice.DebugUtils.SetObjectName(fCharlieBRDF.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DRenderer.fCharlieBRDF.Image');
  fVulkanDevice.DebugUtils.SetObjectName(fCharlieBRDF.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRenderer.fCharlieBRDF.ImageView');
 
- fSheenEBRDF:=TpvScene3DRendererSheenEBRDF.Create(fVulkanDevice,fVulkanPipelineCache);
+ fSheenEBRDF:=TpvScene3DRendererSheenEBRDF.Create(fVulkanDevice,fVulkanPipelineCache,fGeneralSampler);
  fVulkanDevice.DebugUtils.SetObjectName(fSheenEBRDF.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DRenderer.fSheenEBRDF.Image');
  fVulkanDevice.DebugUtils.SetObjectName(fSheenEBRDF.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRenderer.fSheenEBRDF.ImageView');
 

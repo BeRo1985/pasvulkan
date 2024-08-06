@@ -89,7 +89,7 @@ type { TpvScene3DRendererGGXBRDF }
        fDescriptorImageInfo:TVkDescriptorImageInfo;
       public
 
-       constructor Create(const aVulkanDevice:TpvVulkanDevice;const aVulkanPipelineCache:TpvVulkanPipelineCache);
+       constructor Create(const aVulkanDevice:TpvVulkanDevice;const aVulkanPipelineCache:TpvVulkanPipelineCache;const aSampler:TpvVulkanSampler);
 
        destructor Destroy; override;
 
@@ -111,7 +111,7 @@ implementation
 
 { TpvScene3DRendererGGXBRDF }
 
-constructor TpvScene3DRendererGGXBRDF.Create(const aVulkanDevice:TpvVulkanDevice;const aVulkanPipelineCache:TpvVulkanPipelineCache);
+constructor TpvScene3DRendererGGXBRDF.Create(const aVulkanDevice:TpvVulkanDevice;const aVulkanPipelineCache:TpvVulkanPipelineCache;const aSampler:TpvVulkanSampler);
 var Index:TpvSizeInt;
     Stream:TStream;
     MemoryRequirements:TVkMemoryRequirements;
@@ -232,22 +232,7 @@ begin
                            Fence,
                            true);
 
-    fVulkanSampler:=TpvVulkanSampler.Create(aVulkanDevice,
-                                            TVkFilter(VK_FILTER_LINEAR),
-                                            TVkFilter(VK_FILTER_LINEAR),
-                                            TVkSamplerMipmapMode(VK_SAMPLER_MIPMAP_MODE_LINEAR),
-                                            TVkSamplerAddressMode(VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE),
-                                            TVkSamplerAddressMode(VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE),
-                                            TVkSamplerAddressMode(VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE),
-                                            0.0,
-                                            false,
-                                            1.0,
-                                            false,
-                                            TVkCompareOp(VK_COMPARE_OP_NEVER),
-                                            0.0,
-                                            1.0,
-                                            TVkBorderColor(VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK),
-                                            false);
+    fVulkanSampler:=aSampler;
 
     fVulkanImageView:=TpvVulkanImageView.Create(aVulkanDevice,
                                                 fVulkanImage,
@@ -471,7 +456,6 @@ destructor TpvScene3DRendererGGXBRDF.Destroy;
 begin
  FreeAndNil(fMemoryBlock);
  FreeAndNil(fVulkanImageView);
- FreeAndNil(fVulkanSampler);
  FreeAndNil(fVulkanImage);
  FreeAndNil(fVulkanPipelineShaderStageVertex);
  FreeAndNil(fVulkanPipelineShaderStageFragment);

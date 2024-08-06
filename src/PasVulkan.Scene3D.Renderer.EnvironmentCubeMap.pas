@@ -95,7 +95,7 @@ type { TpvScene3DRendererEnvironmentCubeMap }
        fHeight:TpvInt32;
       public
 
-       constructor Create(const aVulkanDevice:TpvVulkanDevice;const aVulkanPipelineCache:TpvVulkanPipelineCache;const aLightDirection:TpvVector3;const aIntensityFactor:TpvFloat;const aImageFormat:TVkFormat=TVkFormat(VK_FORMAT_R16G16B16A16_SFLOAT);const aTexture:TpvVulkanTexture=nil;const aEnvironmentMode:TpvScene3DEnvironmentMode=TpvScene3DEnvironmentMode.Sky);
+       constructor Create(const aVulkanDevice:TpvVulkanDevice;const aVulkanPipelineCache:TpvVulkanPipelineCache;const aSampler:TpvVulkanSampler;const aLightDirection:TpvVector3;const aIntensityFactor:TpvFloat;const aImageFormat:TVkFormat=TVkFormat(VK_FORMAT_R16G16B16A16_SFLOAT);const aTexture:TpvVulkanTexture=nil;const aEnvironmentMode:TpvScene3DEnvironmentMode=TpvScene3DEnvironmentMode.Sky);
 
        destructor Destroy; override;
 
@@ -123,7 +123,7 @@ implementation
 
 { TpvScene3DRendererEnvironmentCubeMap }
 
-constructor TpvScene3DRendererEnvironmentCubeMap.Create(const aVulkanDevice:TpvVulkanDevice;const aVulkanPipelineCache:TpvVulkanPipelineCache;const aLightDirection:TpvVector3;const aIntensityFactor:TpvFloat;const aImageFormat:TVkFormat;const aTexture:TpvVulkanTexture;const aEnvironmentMode:TpvScene3DEnvironmentMode);
+constructor TpvScene3DRendererEnvironmentCubeMap.Create(const aVulkanDevice:TpvVulkanDevice;const aVulkanPipelineCache:TpvVulkanPipelineCache;const aSampler:TpvVulkanSampler;const aLightDirection:TpvVector3;const aIntensityFactor:TpvFloat;const aImageFormat:TVkFormat;const aTexture:TpvVulkanTexture;const aEnvironmentMode:TpvScene3DEnvironmentMode);
 var Index,FaceIndex,MipMaps,CountMipMapLevelSets,MipMapLevelSetIndex:TpvSizeInt;
     Stream:TStream;
     MemoryRequirements:TVkMemoryRequirements;
@@ -357,22 +357,7 @@ begin
                               GraphicsFence,
                               true);
 
-       fVulkanSampler:=TpvVulkanSampler.Create(pvApplication.VulkanDevice,
-                                               TVkFilter(VK_FILTER_LINEAR),
-                                               TVkFilter(VK_FILTER_LINEAR),
-                                               TVkSamplerMipmapMode(VK_SAMPLER_MIPMAP_MODE_LINEAR),
-                                               TVkSamplerAddressMode(VK_SAMPLER_ADDRESS_MODE_REPEAT),
-                                               TVkSamplerAddressMode(VK_SAMPLER_ADDRESS_MODE_REPEAT),
-                                               TVkSamplerAddressMode(VK_SAMPLER_ADDRESS_MODE_REPEAT),
-                                               0.0,
-                                               false,
-                                               1.0,
-                                               false,
-                                               TVkCompareOp(VK_COMPARE_OP_NEVER),
-                                               0.0,
-                                               MipMaps,
-                                               TVkBorderColor(VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK),
-                                               false);
+       fVulkanSampler:=aSampler;
 
        fVulkanImageView:=TpvVulkanImageView.Create(pvApplication.VulkanDevice,
                                                    fVulkanImage,
@@ -1014,7 +999,6 @@ begin
  end;}
  FreeAndNil(fMemoryBlock);
  FreeAndNil(fVulkanImageView);
- FreeAndNil(fVulkanSampler);
  FreeAndNil(fVulkanImage);
  FreeAndNil(fVulkanPipelineShaderStageCompute);
  FreeAndNil(fComputeShaderModule);
