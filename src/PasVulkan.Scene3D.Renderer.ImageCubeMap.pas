@@ -131,7 +131,6 @@ begin
 
  fFormat:=aFormat;
 
-// For generation
  if fFormat=VK_FORMAT_E5B9G9R9_UFLOAT_PACK32 then begin
   fAdditionalImageFormat:=VK_FORMAT_R32_UINT;
  end else begin
