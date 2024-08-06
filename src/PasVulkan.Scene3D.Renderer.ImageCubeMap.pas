@@ -85,7 +85,7 @@ type { TpvScene3DRendererImageCubeMap }
 
        VulkanImageViews:array of TpvVulkanImageView;
 
-       constructor Create(const aDevice:TpvVulkanDevice;const aWidth,aHeight:TpvInt32;const aFormat:TVkFormat;const aStorage:Boolean;const aSampleBits:TVkSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT);const aImageLayout:TVkImageLayout=TVkImageLayout(VK_IMAGE_LAYOUT_GENERAL);const aSharingMode:TVkSharingMode=TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE);const aQueueFamilyIndices:TpvVulkanQueueFamilyIndices=nil;const aAllocationGroupID:TpvUInt64=0);
+       constructor Create(const aDevice:TpvVulkanDevice;const aWidth,aHeight:TpvInt32;const aFormat:TVkFormat;const aStorage:Boolean;const aSampleBits:TVkSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT);const aImageLayout:TVkImageLayout=TVkImageLayout(VK_IMAGE_LAYOUT_GENERAL);const aSharingMode:TVkSharingMode=TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE);const aQueueFamilyIndices:TpvVulkanQueueFamilyIndices=nil;const aAllocationGroupID:TpvUInt64=0;const aName:TpvUTF8String='');
 
        destructor Destroy; override;
 
@@ -109,7 +109,7 @@ implementation
 
 { TpvScene3DRendererImageCubeMap }
 
-constructor TpvScene3DRendererImageCubeMap.Create(const aDevice:TpvVulkanDevice;const aWidth,aHeight:TpvInt32;const aFormat:TVkFormat;const aStorage:Boolean;const aSampleBits:TVkSampleCountFlagBits;const aImageLayout:TVkImageLayout;const aSharingMode:TVkSharingMode;const aQueueFamilyIndices:TpvVulkanQueueFamilyIndices;const aAllocationGroupID:TpvUInt64);
+constructor TpvScene3DRendererImageCubeMap.Create(const aDevice:TpvVulkanDevice;const aWidth,aHeight:TpvInt32;const aFormat:TVkFormat;const aStorage:Boolean;const aSampleBits:TVkSampleCountFlagBits;const aImageLayout:TVkImageLayout;const aSharingMode:TVkSharingMode;const aQueueFamilyIndices:TpvVulkanQueueFamilyIndices;const aAllocationGroupID:TpvUInt64;const aName:TpvUTF8String);
 var MemoryRequirements:TVkMemoryRequirements;
     RequiresDedicatedAllocation,
     PrefersDedicatedAllocation:boolean;
@@ -180,6 +180,9 @@ begin
                                      VK_IMAGE_LAYOUT_UNDEFINED,
                                      fAdditionalImageFormat
                                     );
+ if length(aName)>0 then begin
+  aDevice.DebugUtils.SetObjectName(fVulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,aName+'.Image');
+ end;
 
  MemoryRequirements:=aDevice.MemoryManager.GetImageMemoryRequirements(fVulkanImage.Handle,
                                                                       RequiresDedicatedAllocation,
@@ -258,6 +261,9 @@ begin
                                                 1,
                                                 0,
                                                 6);
+     if length(aName)>0 then begin
+      aDevice.DebugUtils.SetObjectName(fVulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,aName+'.ImageView');
+     end;
 
    finally
     FreeAndNil(Fence);

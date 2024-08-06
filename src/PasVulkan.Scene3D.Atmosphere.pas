@@ -2798,7 +2798,8 @@ begin
                                                             VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                                             VK_SHARING_MODE_EXCLUSIVE,
                                                             nil,
-                                                            0);
+                                                            0,
+                                                            'WeatherMap');
 
   fWeatherMapTextureDescriptorPool:=TpvVulkanDescriptorPool.Create(TpvScene3D(fScene3D).VulkanDevice,
                                                                    TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
