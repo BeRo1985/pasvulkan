@@ -10800,6 +10800,8 @@ begin
 
  InFlightFrameState:=@TpvScene3DRendererInstance(fRendererInstance).InFlightFrameStates[aInFlightFrameIndex];
 
+ TpvScene3D(fScene3D).VulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'Planet Water Cull',[0.75,0.75,0.75,1.0]);
+
  TpvScene3DPlanets(TpvScene3D(fScene3D).Planets).Lock.AcquireRead;
  try
 
@@ -10967,6 +10969,8 @@ begin
  finally
   TpvScene3DPlanets(TpvScene3D(fScene3D).Planets).Lock.ReleaseRead;
  end;
+
+ TpvScene3D(fScene3D).VulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
 
 end;
 
