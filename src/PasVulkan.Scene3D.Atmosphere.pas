@@ -1427,10 +1427,9 @@ begin
                                                               VK_IMAGE_LAYOUT_GENERAL,
                                                               TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
                                                               nil,
-                                                              0);
- TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.DebugUtils.SetObjectName(fCubeMapTexture.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'AtmosphereCubeMapTexture');
- TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.DebugUtils.SetObjectName(fCubeMapTexture.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'AtmosphereCubeMapTexture');
-  
+                                                              0,
+                                                              'AtmosphereCubeMap');
+
  fGGXCubeMapTexture:=TpvScene3DRendererMipmapImageCubeMap.Create(TpvScene3D(fAtmosphere.fScene3D).VulkanDevice,
                                                                  CubeMapTextureSize,
                                                                  CubeMapTextureSize,
@@ -1440,10 +1439,9 @@ begin
                                                                  VK_IMAGE_LAYOUT_GENERAL,
                                                                  TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
                                                                  nil,
-                                                                 0);
- TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.DebugUtils.SetObjectName(fGGXCubeMapTexture.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'AtmosphereGGXCubeMapTexture');
- TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.DebugUtils.SetObjectName(fGGXCubeMapTexture.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'AtmosphereGGXCubeMapTexture');
- 
+                                                                 0,
+                                                                 'GGXCubeMap');
+
  fCharlieCubeMapTexture:=TpvScene3DRendererMipmapImageCubeMap.Create(TpvScene3D(fAtmosphere.fScene3D).VulkanDevice,
                                                                      CubeMapTextureSize,
                                                                      CubeMapTextureSize,
@@ -1453,10 +1451,9 @@ begin
                                                                      VK_IMAGE_LAYOUT_GENERAL,
                                                                      TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
                                                                      nil,
-                                                                     0);
- TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.DebugUtils.SetObjectName(fCharlieCubeMapTexture.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'AtmosphereCharlieCubeMapTexture');
- TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.DebugUtils.SetObjectName(fCharlieCubeMapTexture.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'AtmosphereCharlieCubeMapTexture');
-   
+                                                                     0,
+                                                                     'CharlieCubeMap');
+
  fLambertianCubeMapTexture:=TpvScene3DRendererMipmapImageCubeMap.Create(TpvScene3D(fAtmosphere.fScene3D).VulkanDevice,
                                                                         CubeMapTextureSize,
                                                                         CubeMapTextureSize,
@@ -1466,9 +1463,8 @@ begin
                                                                         VK_IMAGE_LAYOUT_GENERAL,
                                                                         TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
                                                                         nil,
-                                                                        0);
- TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.DebugUtils.SetObjectName(fLambertianCubeMapTexture.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'AtmosphereLambertianCubeMapTexture');
- TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.DebugUtils.SetObjectName(fLambertianCubeMapTexture.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'AtmosphereLambertianCubeMapTexture');
+                                                                        0,
+                                                                        'LambertianCubeMap');
 
  fTransmittanceLUTPassDescriptorPool:=TpvVulkanDescriptorPool.Create(TpvScene3D(fAtmosphere.fScene3D).VulkanDevice,
                                                                      TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT) or
