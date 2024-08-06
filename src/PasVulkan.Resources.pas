@@ -1146,6 +1146,7 @@ end;
 
 constructor TpvResourceBackgroundLoader.Create(const aResourceManager:TpvResourceManager);
 var Index:TpvSizeInt;
+    AvailableCPUCores:TPasMPAvailableCPUCores;
 begin
 
  fResourceManager:=aResourceManager;
@@ -1171,7 +1172,12 @@ begin
  fToProcessQueueItemsEvent:=TPasMPEvent.Create(nil,false,false,'');
 
  fLoadThreads:=nil;
- SetLength(fLoadThreads,4);
+ AvailableCPUCores:=nil;
+ try
+  SetLength(fLoadThreads,Max(2,TPasMP.GetCountOfHardwareThreads(AvailableCPUCores)-1));
+ finally
+  AvailableCPUCores:=nil;
+ end;
  for Index:=0 to length(fLoadThreads)-1 do begin
   fLoadThreads[Index]:=TLoadThread.Create(self);
  end;
@@ -1227,12 +1233,13 @@ begin
     QueueItem:=fToProcessQueueItems.Items[Index];
     Resource:=QueueItem.fResource.GetResource;
     if assigned(QueueItem.fStream) then begin
-     fResourceManager.fLoadLock.Acquire;
+     QueueItem.fSuccess:=Resource.BeginLoad(QueueItem.fStream);
+{    fResourceManager.fLoadLock.Acquire;
      try
       QueueItem.fSuccess:=Resource.BeginLoad(QueueItem.fStream);
      finally
       fResourceManager.fLoadLock.Release;
-     end;
+     end;}
     end;
    finally
     TPasMPInterlocked.Increment(fCountProcessedQueueItems);
@@ -1340,17 +1347,24 @@ begin
         QueueItem.fStream:=Resource.GetStreamFromFileName(Resource.fFileName);
        end;
 
-       fCountToProcessQueueItems:=fToProcessQueueItems.Count;
-       fCountProcessedQueueItems:=0;
-       for Index:=0 to length(fLoadThreads)-1 do begin
-        fLoadThreads[Index].Signal;
+       fResourceManager.fLoadLock.Acquire;
+       try
+
+        fCountToProcessQueueItems:=fToProcessQueueItems.Count;
+        fCountProcessedQueueItems:=0;
+        for Index:=0 to length(fLoadThreads)-1 do begin
+         fLoadThreads[Index].Signal;
+        end;
+
+        HandleToProcessQueueItems;
+
+        repeat
+         fToProcessQueueItemsEvent.WaitFor(10);
+        until (fCountToProcessQueueItems<=0) and (fCountProcessedQueueItems>=fToProcessQueueItems.Count);
+
+       finally
+        fResourceManager.fLoadLock.Release;
        end;
-
-       HandleToProcessQueueItems;
-
-       repeat
-        fToProcessQueueItemsEvent.WaitFor(10);
-       until (fCountToProcessQueueItems<=0) and (fCountProcessedQueueItems>=fToProcessQueueItems.Count);
 
        for Index:=0 to fToProcessQueueItems.Count-1 do begin
         QueueItem:=fToProcessQueueItems.Items[Index];
