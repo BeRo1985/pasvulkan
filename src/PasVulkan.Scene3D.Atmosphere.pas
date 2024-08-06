@@ -400,6 +400,8 @@ type TpvScene3DAtmosphere=class;
                         const aTransferFence:TpvVulkanFence);
        function IsInFlightFrameVisible(const aInFlightFrameIndex:TpvSizeInt):Boolean;
        function GetRenderInstance(const aRendererInstance:TObject):TpvScene3DAtmosphere.TRendererInstance;
+       procedure ProcessSimulation(const aCommandBuffer:TpvVulkanCommandBuffer;
+                                   const aInFlightFrameIndex:TpvSizeInt);
        procedure Execute(const aInFlightFrameIndex:TpvSizeInt;
                          const aCommandBuffer:TpvVulkanCommandBuffer;
                          const aRendererInstance:TObject);
@@ -2888,6 +2890,16 @@ begin
  if not assigned(result) then begin
   result:=TpvScene3DAtmosphere.TRendererInstance.Create(self,aRendererInstance);
  end;
+end;
+
+procedure TpvScene3DAtmosphere.ProcessSimulation(const aCommandBuffer:TpvVulkanCommandBuffer;
+                                                 const aInFlightFrameIndex:TpvSizeInt);
+begin
+
+ if fInFlightFrameVisible[aInFlightFrameIndex] then begin
+
+ end;
+
 end;
 
 
