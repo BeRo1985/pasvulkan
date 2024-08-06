@@ -64,7 +64,7 @@ struct VolumetricCloudLayer {
 	
   vec4 GradientMedium;
 	
-  vec4 gradientLarge;
+  vec4 GradientLarge;
 	
   vec4 AnvilDeformationSmall;
 	

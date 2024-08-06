@@ -1,6 +1,6 @@
 #ifndef ATMOSPHERE_CLOUDS_NOISE_GLSL
 #define ATMOSPHERE_CLOUDS_NOISE_GLSL
-
+ 
 vec3 interpolationC2(vec3 x){ 
   return ((x * x) * x) * (x * ((x * 6.0) - vec3(15.0)) + vec3(10.0)); 
 }

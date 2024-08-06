@@ -686,6 +686,23 @@ float getFastCascadedShadow(){
 
 } 
 
+float getFastFurthestCascadedShadow(){
+#if defined(RAYTRACING)
+  vec3 rayOrigin = inWorldSpacePosition, rayNormal = workNormal;
+  float rayOffset = 0.0;
+  return getRaytracedFastHardShadow(rayOrigin, rayNormal, normalize(-lightDirection), rayOffset, 10000000.0);
+#else
+  // Check just the furthest cascaded shadow map slice as requested.
+  int cascadedShadowMapIndex = NUM_SHADOW_CASCADES - 1;
+  vec3 shadowUVW;
+  float shadow = doCascadedShadowMapShadow(cascadedShadowMapIndex, -lightDirection, shadowUVW);
+  if(shadow < 0.0){
+    shadow = 1.0; // The current fragment is outside of the cascaded shadow map range, so use no shadow then instead.
+  }
+  return clamp(shadow, 0.0, 1.0); // Clamp just for safety, should not be necessary, but don't hurt either.
+#endif
+}
+
 #endif // ATMOSPHERE_SHADOWS
 
 #endif // SHADOWS
