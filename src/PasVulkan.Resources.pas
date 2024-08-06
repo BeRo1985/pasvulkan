@@ -1347,7 +1347,7 @@ begin
        end;
 
        repeat
-        fToProcessQueueItemsEvent.WaitFor;
+        fToProcessQueueItemsEvent.WaitFor(10);
        until (fCountToProcessQueueItems<=0) and (fCountProcessedQueueItems>=fToProcessQueueItems.Count);
 
        for Index:=0 to fToProcessQueueItems.Count-1 do begin
