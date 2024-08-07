@@ -135,7 +135,7 @@ layout(input_attachment_index = 0, set = 2, binding = 0) uniform subpassInput uS
 
 layout(set = 2, binding = 1) uniform sampler2D uTransmittanceLutTexture;
 
-layout(set = 2, binding = 2) uniform sampler2DArray uMultiScatTexture;
+layout(set = 2, binding = 2) uniform sampler2D uMultiScatTexture;
 
 layout(set = 2, binding = 3) uniform sampler2DArray uSkyViewLUT;
 
@@ -167,16 +167,14 @@ void main() {
 
   vec3 worldPos, worldDir;
   GetCameraPositionDirection(worldPos, worldDir, view.viewMatrix, view.projectionMatrix, view.inverseViewMatrix, view.inverseProjectionMatrix, uv);
-
-  #define atmosphereParameters uAtmosphereParameters.atmosphereParameters
-
-  worldPos = (atmosphereParameters.inverseTransform * vec4(worldPos, 1.0)).xyz;
+  
+  worldPos = (uAtmosphereParameters.atmosphereParameters.inverseTransform * vec4(worldPos, 1.0)).xyz;
 
   vec3 originalWorldPos = worldPos; 
 
-  //worldPos += vec3(0.0, atmosphereParameters.BottomRadius, 0.0);
+  //worldPos += vec3(0.0, uAtmosphereParameters.atmosphereParameters.BottomRadius, 0.0);
 
-  float viewHeight = max(length(worldPos), atmosphereParameters.BottomRadius + 1e-4);  
+  float viewHeight = max(length(worldPos), uAtmosphereParameters.atmosphereParameters.BottomRadius + 1e-4);  
   vec3 L = vec3(0.0);
 /*  
 #ifdef MSAA
@@ -198,7 +196,7 @@ void main() {
 #endif
 #endif
 
-  vec3 sunDirection = normalize(getSunDirection(atmosphereParameters));
+  vec3 sunDirection = normalize(getSunDirection(uAtmosphereParameters.atmosphereParameters));
 
 #ifdef SHADOWS
   lightDirection = -sunDirection;
@@ -222,9 +220,9 @@ void main() {
       lightOnPlane = normalize(lightOnPlane);
       float lightViewCosAngle = lightOnPlane.x;
 
-      bool IntersectGround = raySphereIntersectNearest(worldPos, worldDir, vec3(0.0), atmosphereParameters.BottomRadius) >= 0.0;
+      bool IntersectGround = raySphereIntersectNearest(worldPos, worldDir, vec3(0.0), uAtmosphereParameters.atmosphereParameters.BottomRadius) >= 0.0;
   
-      SkyViewLutParamsToUv(atmosphereParameters, IntersectGround, viewZenithCosAngle, lightViewCosAngle, viewHeight, localUV);
+      SkyViewLutParamsToUv(uAtmosphereParameters.atmosphereParameters, IntersectGround, viewZenithCosAngle, lightViewCosAngle, viewHeight, localUV);
 
 #if 0
       localUV = getNiceTextureUV(localUV, vec2(textureSize(uSkyViewLUT, 0).xy));
@@ -239,7 +237,7 @@ void main() {
 #endif
 
       if(!IntersectGround){
-        inscattering.xyz += GetSunLuminance(originalWorldPos, worldDir, sunDirection, atmosphereParameters.BottomRadius).xyz * transmittance.xyz;
+        inscattering.xyz += GetSunLuminance(originalWorldPos, worldDir, sunDirection, uAtmosphereParameters.atmosphereParameters.BottomRadius).xyz * transmittance.xyz;
       }
 
 #ifdef DUALBLEND
@@ -263,11 +261,11 @@ void main() {
       // (BeRo): Check if we can use the fast aerial perspective approximation, given the camera volume constraints the planet in a way that
       // the voxel resolution is not too inaccurate
       bool fitsInCameraVolume = true;
-      if(length(worldPos) >= atmosphereParameters.TopRadius){
+      if(length(worldPos) >= uAtmosphereParameters.atmosphereParameters.TopRadius){
 
         vec4 aabb;     
-        vec3 transformedCenter = ((view.viewMatrix * atmosphereParameters.transform) * vec4(vec3(0.0), 1.0)).xyz;
-        if(projectSphere(transformedCenter, atmosphereParameters.TopRadius, 0.01, view.projectionMatrix, aabb, false)){
+        vec3 transformedCenter = ((view.viewMatrix * uAtmosphereParameters.atmosphereParameters.transform) * vec4(vec3(0.0), 1.0)).xyz;
+        if(projectSphere(transformedCenter, uAtmosphereParameters.atmosphereParameters.TopRadius, 0.01, view.projectionMatrix, aabb, false)){
 
           // camera volume is 32x32 by width and height and 32 by depth, by default
 
@@ -283,9 +281,9 @@ void main() {
 
         // (BeRo): Move ray marching start up to top atmosphere, for to avoid missing the atmosphere in the special case of the camera being
         // far outside the atmosphere.
-        //if(length(worldPos) >= atmosphereParameters.TopRadius)
+        //if(length(worldPos) >= uAtmosphereParameters.atmosphereParameters.TopRadius)
         {
-          vec2 t = raySphereIntersect(worldPos, worldDir, vec3(0.0), atmosphereParameters.TopRadius);
+          vec2 t = raySphereIntersect(worldPos, worldDir, vec3(0.0), uAtmosphereParameters.atmosphereParameters.TopRadius);
           if(all(greaterThanEqual(t, vec2(0.0)))){
             worldPos += worldDir * min(t.x, t.y);
           }
@@ -296,7 +294,7 @@ void main() {
         vec4 depthBufferWorldPos = inverseViewProjectionMatrix * vec4(fma(vec2(uv), vec2(2.0), vec2(-1.0)), depthBufferValue, 1.0);
         depthBufferWorldPos /= depthBufferWorldPos.w;
 
-        float tDepth = length((atmosphereParameters.inverseTransform * vec4(depthBufferWorldPos.xyz, 1.0)).xyz - worldPos);
+        float tDepth = length((uAtmosphereParameters.atmosphereParameters.inverseTransform * vec4(depthBufferWorldPos.xyz, 1.0)).xyz - worldPos);
         float slice = AerialPerspectiveDepthToSlice(tDepth);
         float Weight = 1.0;
         if(slice < 0.5){
@@ -336,7 +334,7 @@ void main() {
 #endif
 
         if(depthIsZFar){
-          inscattering.xyz += GetSunLuminance(originalWorldPos, worldDir, sunDirection, atmosphereParameters.BottomRadius).xyz * transmittance.xyz;  
+          inscattering.xyz += GetSunLuminance(originalWorldPos, worldDir, sunDirection, uAtmosphereParameters.atmosphereParameters.BottomRadius).xyz * transmittance.xyz;  
         }
 
 #ifdef DUALBLEND
@@ -364,10 +362,10 @@ void main() {
 
     // Move to top atmosphere as the starting point for ray marching.
     // This is critical to be after the above to not disrupt above atmosphere tests and voxel selection.
-    if(!MoveToTopAtmosphere(worldPos, worldDir, atmosphereParameters.TopRadius)){
+    if(!MoveToTopAtmosphere(worldPos, worldDir, uAtmosphereParameters.atmosphereParameters.TopRadius)){
       
       // Ray is not intersecting the atmosphere       
-      inscattering = GetSunLuminance(originalWorldPos, worldDir, sunDirection, atmosphereParameters.BottomRadius).xyz;
+      inscattering = GetSunLuminance(originalWorldPos, worldDir, sunDirection, uAtmosphereParameters.atmosphereParameters.BottomRadius).xyz;
       transmittance = vec3(1.0);
 
     }else {
@@ -380,12 +378,11 @@ void main() {
       SingleScatteringResult ss = IntegrateScatteredLuminance(
         uTransmittanceLutTexture,
         uMultiScatTexture,
-        viewIndex,
         uv, 
         worldPos, 
         worldDir, 
         sunDirection, 
-        atmosphereParameters, 
+        uAtmosphereParameters.atmosphereParameters, 
         ground, 
         sampleCountIni, 
         depthBufferValue, 
@@ -399,7 +396,7 @@ void main() {
       inscattering = ss.L;
 
       if(depthIsZFar){
-        inscattering += GetSunLuminance(originalWorldPos, worldDir, sunDirection, atmosphereParameters.BottomRadius).xyz * ss.Transmittance;
+        inscattering += GetSunLuminance(originalWorldPos, worldDir, sunDirection, uAtmosphereParameters.atmosphereParameters.BottomRadius).xyz * ss.Transmittance;
       }
 
       transmittance = ss.Transmittance;

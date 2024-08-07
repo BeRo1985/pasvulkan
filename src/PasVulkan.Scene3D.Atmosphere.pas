@@ -142,6 +142,7 @@ type TpvScene3DAtmosphere=class;
        fAtmospheres:TpvScene3DAtmospheres;
        fTransmittanceLUTPassDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fMultiScatteringLUTPassDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
+       fSkyLuminanceLUTPassDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fSkyViewLUTPassDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fCameraVolumePassDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fCubeMapPassDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
@@ -191,6 +192,7 @@ type TpvScene3DAtmosphere=class;
       public
        property TransmittanceLUTPassDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fTransmittanceLUTPassDescriptorSetLayout;
        property MultiScatteringLUTPassDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fMultiScatteringLUTPassDescriptorSetLayout;
+       property SkyLuminanceLUTPassDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fSkyLuminanceLUTPassDescriptorSetLayout;
        property SkyViewLUTPassDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fSkyViewLUTPassDescriptorSetLayout;
        property CameraVolumePassDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fCameraVolumePassDescriptorSetLayout;
        property CubeMapPassDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fCubeMapPassDescriptorSetLayout;
@@ -419,7 +421,7 @@ type TpvScene3DAtmosphere=class;
               fRendererInstance:TObject;
               fKey:TKey;
               fTransmittanceTexture:TpvScene3DRendererImage2D;
-              fMultiScatteringTexture:TpvScene3DRendererArray2DImage;
+              fMultiScatteringTexture:TpvScene3DRendererImage2D;
               fSkyLuminanceLUTTexture:TpvScene3DRendererImage2D;
               fSkyViewLUTTexture:TpvScene3DRendererArray2DImage;
               fCameraVolumeTexture:TpvScene3DRendererArray2DImage;
@@ -473,7 +475,7 @@ type TpvScene3DAtmosphere=class;
               property Atmosphere:TpvScene3DAtmosphere read fAtmosphere;
               property RendererInstance:TObject read fRendererInstance;
               property TransmittanceTexture:TpvScene3DRendererImage2D read fTransmittanceTexture;
-              property MultiScatteringTexture:TpvScene3DRendererArray2DImage read fMultiScatteringTexture;
+              property MultiScatteringTexture:TpvScene3DRendererImage2D read fMultiScatteringTexture;
               property SkyLuminanceLUTTexture:TpvScene3DRendererImage2D read fSkyLuminanceLUTTexture;
               property SkyViewLUTTexture:TpvScene3DRendererArray2DImage read fSkyViewLUTTexture;
               property CameraVolumeTexture:TpvScene3DRendererArray2DImage read fCameraVolumeTexture; 
@@ -1373,21 +1375,18 @@ begin
  TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.DebugUtils.SetObjectName(fTransmittanceTexture.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TransmittanceTexture');
  TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.DebugUtils.SetObjectName(fTransmittanceTexture.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TransmittanceTexture');
 
- fMultiScatteringTexture:=TpvScene3DRendererArray2DImage.Create(TpvScene3D(fAtmosphere.fScene3D).VulkanDevice,
-                                                                MultiScatteringLUTRes,
-                                                                MultiScatteringLUTRes,
-                                                                TpvScene3DRendererInstance(aRendererInstance).CountSurfaceViews,
-                                                                VK_FORMAT_R32G32B32A32_SFLOAT,
-                                                                VK_SAMPLE_COUNT_1_BIT,
-                                                                VK_IMAGE_LAYOUT_GENERAL,
-                                                                true,
-                                                                0);
+ fMultiScatteringTexture:=TpvScene3DRendererImage2D.Create(TpvScene3D(fAtmosphere.fScene3D).VulkanDevice,
+                                                           MultiScatteringLUTRes,
+                                                           MultiScatteringLUTRes,
+                                                           VK_FORMAT_R32G32B32A32_SFLOAT,
+                                                           true,
+                                                           VK_SAMPLE_COUNT_1_BIT,
+                                                           VK_IMAGE_LAYOUT_GENERAL,
+                                                           VK_SHARING_MODE_EXCLUSIVE,
+                                                           [],
+                                                           0);
  TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.DebugUtils.SetObjectName(fMultiScatteringTexture.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'MultiScatteringTexture');
  TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.DebugUtils.SetObjectName(fMultiScatteringTexture.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'MultiScatteringTexture');
- TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.DebugUtils.SetObjectName(fMultiScatteringTexture.VulkanArrayImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'MultiScatteringTexture');
- if assigned(fMultiScatteringTexture.VulkanOtherArrayImageView) then begin
-  TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.DebugUtils.SetObjectName(fMultiScatteringTexture.VulkanOtherArrayImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'MultiScatteringTexture');
- end;
 
  fSkyLuminanceLUTTexture:=TpvScene3DRendererImage2D.Create(TpvScene3D(fAtmosphere.fScene3D).VulkanDevice,
                                                            SkyLuminanceLUTRes,
@@ -1542,7 +1541,7 @@ begin
                                                                                  1,
                                                                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
                                                                                  [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,
-                                                                                                                fMultiScatteringTexture.VulkanArrayImageView.Handle,
+                                                                                                                fMultiScatteringTexture.VulkanImageView.Handle,
                                                                                                                 VK_IMAGE_LAYOUT_GENERAL)],
                                                                                  [],
                                                                                  [],
@@ -1627,7 +1626,7 @@ begin
                                                                          1,
                                                                          TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
                                                                          [TVkDescriptorImageInfo.Create(TpvScene3DRenderer(fRendererInstance).Renderer.ClampedSampler.Handle,
-                                                                                                        fMultiScatteringTexture.VulkanArrayImageView.Handle,
+                                                                                                        fMultiScatteringTexture.VulkanImageView.Handle,
                                                                                                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
                                                                          [],
                                                                          [],
@@ -1701,7 +1700,7 @@ begin
                                                                            1,
                                                                            TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
                                                                            [TVkDescriptorImageInfo.Create(TpvScene3DRenderer(fRendererInstance).Renderer.ClampedSampler.Handle,
-                                                                                                          fMultiScatteringTexture.VulkanArrayImageView.Handle,
+                                                                                                          fMultiScatteringTexture.VulkanImageView.Handle,
                                                                                                           VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
                                                                            [],
                                                                            [],
@@ -1775,7 +1774,7 @@ begin
                                                                       1,
                                                                       TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
                                                                       [TVkDescriptorImageInfo.Create(TpvScene3DRenderer(fRendererInstance).Renderer.ClampedSampler.Handle,
-                                                                                                     fMultiScatteringTexture.VulkanArrayImageView.Handle,
+                                                                                                     fMultiScatteringTexture.VulkanImageView.Handle,
                                                                                                      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
                                                                       [],
                                                                       [],
@@ -1843,7 +1842,7 @@ begin
                                                                           1,
                                                                           TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
                                                                           [TVkDescriptorImageInfo.Create(TpvScene3DRenderer(fRendererInstance).Renderer.ClampedSampler.Handle,
-                                                                                                         fMultiScatteringTexture.VulkanArrayImageView.Handle,
+                                                                                                         fMultiScatteringTexture.VulkanImageView.Handle,
                                                                                                          VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
                                                                           [],
                                                                           [],
@@ -2300,7 +2299,7 @@ begin
                                                                                        0,
                                                                                        1,
                                                                                        0,
-                                                                                       TpvScene3DRendererInstance(fRendererInstance).CountSurfaceViews));
+                                                                                       1{TpvScene3DRendererInstance(fRendererInstance).CountSurfaceViews}));
 
   aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
@@ -2349,7 +2348,7 @@ begin
                                                                                        0,
                                                                                        1,
                                                                                        0,
-                                                                                       TpvScene3DRendererInstance(fRendererInstance).CountSurfaceViews));
+                                                                                       1{TpvScene3DRendererInstance(fRendererInstance).CountSurfaceViews}));
 
   aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
@@ -3141,6 +3140,7 @@ begin
  fAtmospheres:=TpvScene3DAtmospheres(TpvScene3D(fScene3D).Atmospheres);
  fTransmittanceLUTPassDescriptorSetLayout:=nil;
  fMultiScatteringLUTPassDescriptorSetLayout:=nil;
+ fSkyLuminanceLUTPassDescriptorSetLayout:=nil;
  fSkyViewLUTPassDescriptorSetLayout:=nil;
  fCameraVolumePassDescriptorSetLayout:=nil;
  fCubeMapPassDescriptorSetLayout:=nil;
@@ -3218,13 +3218,51 @@ begin
                                                         VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
                                                         1,
                                                         TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
-                                                        []);                                                      
+                                                        []);
 
   fMultiScatteringLUTPassDescriptorSetLayout.Initialize;
   TpvScene3D(fScene3D).VulkanDevice.DebugUtils.SetObjectName(fMultiScatteringLUTPassDescriptorSetLayout.Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT,'TpvScene3DAtmosphereGlobals.fMultiScatteringLUTPassDescriptorSetLayout');
 
  end;
- 
+
+ // Sky luminance LUT pass descriptor set layout
+ begin
+
+  fSkyLuminanceLUTPassDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(TpvScene3D(fScene3D).VulkanDevice);
+
+  // Destination texture
+  fSkyLuminanceLUTPassDescriptorSetLayout.AddBinding(0,
+                                                     VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+                                                     1,
+                                                     TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                                     []);
+
+  // Transmittance LUT texture (previous)
+  fSkyLuminanceLUTPassDescriptorSetLayout.AddBinding(1,
+                                                     VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                                     1,
+                                                     TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                                     []);
+
+  // Atmosphere parameters
+  fSkyLuminanceLUTPassDescriptorSetLayout.AddBinding(2,
+                                                     VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                                                     1,
+                                                     TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                                     []);
+
+  // Blue noise texture
+  fSkyLuminanceLUTPassDescriptorSetLayout.AddBinding(3,
+                                                     VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                                     1,
+                                                     TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                                     []);
+
+  fSkyLuminanceLUTPassDescriptorSetLayout.Initialize;
+  TpvScene3D(fScene3D).VulkanDevice.DebugUtils.SetObjectName(fSkyLuminanceLUTPassDescriptorSetLayout.Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT,'TpvScene3DAtmosphereGlobals.fSkyLuminanceLUTPassDescriptorSetLayout');
+
+ end;
+
  // Sky view LUT pass descriptor set layout
  begin
 
@@ -3864,6 +3902,7 @@ begin
  FreeAndNil(fCubeMapPassDescriptorSetLayout);
  FreeAndNil(fCameraVolumePassDescriptorSetLayout);
  FreeAndNil(fSkyViewLUTPassDescriptorSetLayout);
+ FreeAndNil(fSkyLuminanceLUTPassDescriptorSetLayout);
  FreeAndNil(fMultiScatteringLUTPassDescriptorSetLayout);
  FreeAndNil(fTransmittanceLUTPassDescriptorSetLayout); 
 

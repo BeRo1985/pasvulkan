@@ -459,10 +459,10 @@ MediumSampleRGB sampleMediumRGB(in vec3 WorldPos, in AtmosphereParameters Atmosp
   return s;
 }
 
-vec3 GetMultipleScattering(const in sampler2DArray MultiScatTexture, int viewIndex, AtmosphereParameters Atmosphere, vec3 scattering, vec3 extinction, vec3 worlPos, float viewZenithCosAngle){
+vec3 GetMultipleScattering(const in sampler2D MultiScatTexture, AtmosphereParameters Atmosphere, vec3 scattering, vec3 extinction, vec3 worlPos, float viewZenithCosAngle){
   vec2 uv = clamp(vec2(fma(viewZenithCosAngle, 0.5, 0.5), (length(worlPos) - Atmosphere.BottomRadius) / (Atmosphere.TopRadius - Atmosphere.BottomRadius)), vec2(0.0), vec2(1.0));
   uv = vec2(fromUnitToSubUvs(uv.x, MultiScatteringLUTRes), fromUnitToSubUvs(uv.y, MultiScatteringLUTRes));
-  vec3 multiScatteredLuminance = textureLod(MultiScatTexture, vec3(uv, float(viewIndex)), 0).xyz;
+  vec3 multiScatteredLuminance = textureLod(MultiScatTexture, uv, 0).xyz;
   return multiScatteredLuminance;
 }
 
@@ -604,9 +604,8 @@ vec3 IntegrateOpticalDepth(in vec3 WorldPos,
 
 SingleScatteringResult IntegrateScatteredLuminance(const in sampler2D TransmittanceLutTexture,
 #ifdef MULTISCATAPPROX_ENABLED
-                                                   const in sampler2DArray MultiScatTexture, 
+                                                   const in sampler2D MultiScatTexture, 
 #endif
-                                                   int viewIndex,
                                                    in vec2 uv, 
                                                    in vec3 WorldPos, 
                                                    in vec3 WorldDir, 
@@ -778,7 +777,7 @@ SingleScatteringResult IntegrateScatteredLuminance(const in sampler2D Transmitta
 
     vec3 multiScatteredLuminance = vec3(0.0);
 #ifdef MULTISCATAPPROX_ENABLED
-    multiScatteredLuminance = GetMultipleScattering(MultiScatTexture, viewIndex, Atmosphere, medium.scattering, medium.extinction, P, SunZenithCosAngle);
+    multiScatteredLuminance = GetMultipleScattering(MultiScatTexture, Atmosphere, medium.scattering, medium.extinction, P, SunZenithCosAngle);
 #endif
 
     float shadow = 1.0;

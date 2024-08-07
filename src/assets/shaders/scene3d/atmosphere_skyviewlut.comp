@@ -40,7 +40,7 @@ layout(set = 2, binding = 0, rgba32f) uniform image2DArray uDestinationTexture;
 
 layout(set = 2, binding = 1) uniform sampler2D uTransmittanceLutTexture;
 
-layout(set = 2, binding = 2) uniform sampler2DArray uMultiScatTexture;
+layout(set = 2, binding = 2) uniform sampler2D uMultiScatTexture;
 
 layout(set = 2, binding = 3, std430) buffer AtmosphereParametersBuffer {
   AtmosphereParameters atmosphereParameters;
@@ -55,8 +55,6 @@ void main() {
   int viewIndex = int(gl_GlobalInvocationID.z);
   
   if(all(greaterThanEqual(coord, ivec2(0))) && all(lessThan(coord, size)) && (viewIndex < pushConstants.countViews)) {
-
-    #define atmosphereParameters uAtmosphereParameters.atmosphereParameters
 
     View view = uView.views[pushConstants.baseViewIndex + viewIndex];
 
@@ -74,19 +72,19 @@ void main() {
     vec3 worldPos, worldDir;
     GetCameraPositionDirection(worldPos, worldDir, view.viewMatrix, view.projectionMatrix, view.inverseViewMatrix, view.inverseProjectionMatrix, uv);
 
-    worldPos = (atmosphereParameters.inverseTransform * vec4(worldPos, 1.0)).xyz;
+    worldPos = (uAtmosphereParameters.atmosphereParameters.inverseTransform * vec4(worldPos, 1.0)).xyz;
 
-//  worldPos += vec3(0.0, atmosphereParameters.BottomRadius, 0.0);
+//  worldPos += vec3(0.0, uAtmosphereParameters.atmosphereParameters.BottomRadius, 0.0);
   
     uv = vec2(coord) / vec2(size);
 
-    float viewHeight = max(length(worldPos), atmosphereParameters.BottomRadius + 1e-4);  
+    float viewHeight = max(length(worldPos), uAtmosphereParameters.atmosphereParameters.BottomRadius + 1e-4);  
 
     float viewZenithCosAngle;
     float lightViewCosAngle;
-    UvToSkyViewLutParams(atmosphereParameters, viewZenithCosAngle, lightViewCosAngle, viewHeight, uv);
+    UvToSkyViewLutParams(uAtmosphereParameters.atmosphereParameters, viewZenithCosAngle, lightViewCosAngle, viewHeight, uv);
 
-    vec3 sunDir = getSunDirection(atmosphereParameters);
+    vec3 sunDir = getSunDirection(uAtmosphereParameters.atmosphereParameters);
     {
       vec3 upVector = worldPos / viewHeight;
       float sunZenithCosAngle = clamp(dot(upVector, normalize(sunDir)), -1.0, 1.0);
@@ -102,7 +100,7 @@ void main() {
       viewZenithSinAngle * sqrt(1.0 - (lightViewCosAngle * lightViewCosAngle))
     );
 
-    if(!MoveToTopAtmosphere(worldPos, worldDir, atmosphereParameters.TopRadius)) {
+    if(!MoveToTopAtmosphere(worldPos, worldDir, uAtmosphereParameters.atmosphereParameters.TopRadius)) {
       imageStore(uDestinationTexture, ivec3(coord, viewIndex), vec4(0.0, 0.0, 0.0, 1.0));
       imageStore(uDestinationTexture, ivec3(coord, int(viewIndex + pushConstants.countViews)), vec4(1.0));
     }else{
@@ -114,12 +112,11 @@ void main() {
       SingleScatteringResult ss = IntegrateScatteredLuminance(
         uTransmittanceLutTexture,
         uMultiScatTexture,
-        viewIndex,
         uv, 
         worldPos, 
         worldDir, 
         sunDir, 
-        atmosphereParameters, 
+        uAtmosphereParameters.atmosphereParameters, 
         ground, 
         sampleCountIni, 
         depthBufferValue, 

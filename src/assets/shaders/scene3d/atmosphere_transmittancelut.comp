@@ -50,12 +50,12 @@ void main() {
   
   if(all(greaterThanEqual(coord, ivec2(0))) && all(lessThan(coord, size))){
 
-    #define atmosphereParameters uAtmosphereParameters.atmosphereParameters
-
     vec2 uv = (vec2(coord) + vec2(0.5)) / vec2(size);
     float viewHeight;
     float viewZenithCosAngle;
-    UvToLutTransmittanceParams(atmosphereParameters, viewHeight, viewZenithCosAngle, uv);
+    UvToLutTransmittanceParams(uAtmosphereParameters.atmosphereParameters, viewHeight, viewZenithCosAngle, uv);
+
+    //vec3 worldPos = normalize(uView.views[pushConstants.baseViewIndex].inverseViewMatrix[3].xyz) * viewHeight;
 
     vec3 worldPos = vec3(0.0, viewHeight, 0.0);
     vec3 worldDir = vec3(0.0, viewZenithCosAngle, sqrt(1.0 - (viewZenithCosAngle * viewZenithCosAngle)));
@@ -69,8 +69,8 @@ void main() {
     vec3 opticalDepth = IntegrateOpticalDepth(
       worldPos, 
       worldDir, 
-      getSunDirection(atmosphereParameters),
-      atmosphereParameters, 
+      getSunDirection(uAtmosphereParameters.atmosphereParameters),
+      uAtmosphereParameters.atmosphereParameters, 
       ground, 
       SampleCountIni, 
       DepthBufferValue, 
@@ -80,12 +80,11 @@ void main() {
     vec3 opticalDepth = IntegrateScatteredLuminance(
       uTransmittanceLutTexture,
       uMultiScatTexture,
-      0,
       coord, 
       worldPos, 
       worldDir, 
-      getSunDirection(atmosphereParameters),
-      atmosphereParameters, 
+      getSunDirection(uAtmosphereParameters.atmosphereParameters),
+      uAtmosphereParameters.atmosphereParameters, 
       ground, 
       SampleCountIni, 
       DepthBufferValue, 
@@ -103,4 +102,3 @@ void main() {
   }
 
 }
-

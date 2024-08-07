@@ -39,7 +39,7 @@ layout(set = 1, binding = 0, std140) uniform uboViews {
   View views[256]; // 65536 / (64 * 4) = 256
 } uView;
 
-layout(set = 2, binding = 0, rgba32f) uniform image2DArray uDestinationTexture;
+layout(set = 2, binding = 0, rgba32f) uniform image2D uDestinationTexture;
 
 layout(set = 2, binding = 1) uniform sampler2D uTransmittanceLutTexture;
 
@@ -53,32 +53,21 @@ void main() {
 
   ivec2 size = imageSize(uDestinationTexture).xy;
 
-  int viewIndex = int(gl_WorkGroupID.z);
-
-  if(any(lessThan(xy, ivec2(0))) || any(greaterThanEqual(xy, size)) && (viewIndex >= pushConstants.countViews)){
+  if(any(lessThan(xy, ivec2(0))) || any(greaterThanEqual(xy, size))){
     return;
   }
 
   vec2 pixPos = vec2(gl_GlobalInvocationID.xy) + vec2(0.5);
   vec2 uv = pixPos / vec2(size);
 
-  //seedSampleSeedT(uBlueNoise, ivec2(gl_GlobalInvocationID.xy), pushConstants.frameIndex);
-
   uv = vec2(fromSubUvsToUnit(uv.x, size.x), fromSubUvsToUnit(uv.y, size.y));
 
-  mat4 inverseViewMatrix = uView.views[pushConstants.baseViewIndex + viewIndex].inverseViewMatrix;
-  mat4 inverseProjectionMatrix = uView.views[pushConstants.baseViewIndex + viewIndex].inverseProjectionMatrix;
-
-  mat4 SkyInvViewProjMat = inverseViewMatrix * inverseProjectionMatrix;
-
-  #define atmosphereParameters uAtmosphereParameters.atmosphereParameters
- 
   float cosSunZenithAngle = fma(uv.x, 2.0, -1.0);
   vec3 sunDir = vec3(0.0, cosSunZenithAngle, sqrt(clamp(1.0 - (cosSunZenithAngle * cosSunZenithAngle), 0.0, 1.0)));
-  float viewHeight = atmosphereParameters.BottomRadius + clamp(uv.y + PLANET_RADIUS_OFFSET, 0.0, 1.0) * ((atmosphereParameters.TopRadius - atmosphereParameters.BottomRadius) - PLANET_RADIUS_OFFSET);
+  float viewHeight = uAtmosphereParameters.atmosphereParameters.BottomRadius + clamp(uv.y + PLANET_RADIUS_OFFSET, 0.0, 1.0) * ((uAtmosphereParameters.atmosphereParameters.TopRadius - uAtmosphereParameters.atmosphereParameters.BottomRadius) - PLANET_RADIUS_OFFSET);
 
-  vec3 WorldPos = vec3(0.0, viewHeight, 0.0);
-  vec3 WorldDir = vec3(0.0, 0.0, 1.0);
+  vec3 WorldPos = normalize(uView.views[pushConstants.baseViewIndex].inverseViewMatrix[3].xyz) * viewHeight;
+//vec3 WorldPos = vec3(0.0, viewHeight, 0.0);
 
   const bool ground = true;
   const float SampleCountIni = 20;
@@ -104,21 +93,20 @@ void main() {
     float phi = acos(1.0 - (2.0 * randB));
     vec2 cosSinPhi = vec2(sin(vec2(phi) + vec2(PI * 0.5, 0.0)));
     vec2 cosSinTheta = vec2(sin(vec2(theta) + vec2(PI * 0.5, 0.0)));
-    WorldDir = vec3(cosSinTheta.xy * cosSinPhi.y, cosSinPhi.x);
+    vec3 WorldDir = vec3(cosSinTheta.xy * cosSinPhi.y, cosSinPhi.x);
     SingleScatteringResult result = IntegrateScatteredLuminance(
       uTransmittanceLutTexture,
-      viewIndex,
       uv, 
       WorldPos, 
       WorldDir, 
       sunDir,  
-      atmosphereParameters,
+      uAtmosphereParameters.atmosphereParameters,
       ground, 
       SampleCountIni, 
       DepthBufferValue, 
       VariableSampleCount, 
       MieRayPhase,
-      SkyInvViewProjMat,
+      mat4(1.0),
       -1.0,
       false
     );
@@ -206,6 +194,6 @@ void main() {
   vec3 L = InScatteredLuminance * SumOfAllMultiScatteringEventsContribution;
 #endif
 
-  imageStore(uDestinationTexture, ivec3(pixPos, viewIndex), vec4(pushConstants.MultipleScatteringFactor * L, 1.0));
+  imageStore(uDestinationTexture, ivec2(pixPos), vec4(pushConstants.MultipleScatteringFactor * L, 1.0));
 
 }

@@ -14,6 +14,13 @@ vec3 getPerpendicularVector(in vec3 v){
 #endif
 }
 
+mat3x3 getSimpleTangentSpaceBasisFromNormal(in vec3 n){
+  // A simple method to get a tangent space basis from a normal without any sudden changes in the basis, as it can be the case with other
+  // on-first-sight more better methods.
+  vec3 t = n.yzx - n.zxy, b = normalize(cross(n, t = normalize(t - dot(t, n))));
+  return mat3x3(t, b, n); 
+}
+
 #define TBN_METHOD 1
 void getTangentSpaceBasisFromNormal(in vec3 n, out vec3 t, out vec3 b){
 #if TBN_METHOD == 0
