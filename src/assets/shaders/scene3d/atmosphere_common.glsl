@@ -481,7 +481,6 @@ float getShadow(in AtmosphereParameters Atmosphere, vec3 p){
 
 vec3 IntegrateOpticalDepth(in vec3 WorldPos,
                            in vec3 WorldDir, 
-                           in vec3 SunDir, 
                            const in AtmosphereParameters Atmosphere,
                            in bool ground, 
                            in float SampleCountIni, 
@@ -539,14 +538,6 @@ vec3 IntegrateOpticalDepth(in vec3 WorldPos,
     tMaxFloor = tMax * SampleCountFloor / SampleCount;	// rescale tMax to map to the last entire step segment.
   }
   float dt = tMax / SampleCount;
-
-  // Phase functions
-  const float uniformPhase = 1.0 / (4.0 * PI);
-  const vec3 wi = SunDir;
-  const vec3 wo = WorldDir;
-  float cosTheta = dot(wi, wo);
-  float MiePhaseValue = hgPhase(Atmosphere.MiePhaseG, -cosTheta);	// mnegate cosTheta because due to WorldDir being a "in" direction. 
-  float RayleighPhaseValue = RayleighPhase(cosTheta);
 
 #ifdef ILLUMINANCE_IS_ONE
   // When building the scattering factor, we assume light illuminance is 1 to compute a transfert function relative to identity illuminance of 1.
