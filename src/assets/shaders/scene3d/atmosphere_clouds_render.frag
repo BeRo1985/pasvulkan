@@ -390,7 +390,43 @@ void VolumetricShadow(inout ParticipatingMedia participatingMedia, in Atmosphere
 
 }
 
+struct ParticipatingMediaPhase {
+	float phase[MS_COUNT];
+};
 
+
+ParticipatingMediaPhase SampleParticipatingMediaPhase(float basePhase, float baseMsPhaseFactor){
+	ParticipatingMediaPhase participatingMediaPhase;
+	participatingMediaPhase.phase[0] = basePhase;
+
+  // 1.0 / (4.0 * PI) = 0.07957747154594767
+	const float uniformPhase = 0.07957747154594767;
+
+	float MsPhaseFactor = baseMsPhaseFactor;
+	
+	[[unroll]]for(int ms = 1; ms < MS_COUNT; ms++){
+		participatingMediaPhase.phase[ms] = mix(uniformPhase, participatingMediaPhase.phase[0], MsPhaseFactor);
+		MsPhaseFactor *= MsPhaseFactor;
+	}
+
+	return participatingMediaPhase;
+}
+
+float ExponentialIntegral(float x){    
+	return 0.5772156649015328606065 + log(1e-4 + abs(x)) + x * (1.0 + x * (0.25 + x * ((1.0 / 18.0) + x * ((1.0 / 96.0) + x * (1.0 / 600.0)))));
+}
+
+vec3 SampleAmbientLight(float heightFraction){
+	//float ambientTerm = -cloudDensity * (1.0 - saturate(GetWeather().volumetric_clouds.CloudAmbientGroundMultiplier + heightFraction));
+	//float isotropicScatteringTopContribution = max(0.0, exp(ambientTerm) - ambientTerm * ExponentialIntegral(ambientTerm));
+	float isotropicScatteringTopContribution = clamp(uAtmosphereParameters.atmosphereParameters.VolumetricClouds.AmbientGroundMultiplier + heightFraction, 0.0, 1.0);
+	vec3 skyLuminance = vec3(1.0);
+  return isotropicScatteringTopContribution * skyLuminance;
+}
+
+vec3 SampleLocalLights(vec3 worldPosition){
+  return vec3(0.0);
+} 
 
 void main(){
 
