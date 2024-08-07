@@ -221,6 +221,7 @@ type TpvScene3DAtmosphere=class;
              CameraVolumeTextureDepth=32;
              CubeMapTextureSize=32;
              MultiScatteringLUTRes=32;
+             SkyLuminanceLUTRes=1;
              ScatteringOrders=4;
        type { TDensityProfileLayer }
             TDensityProfileLayer=packed record
@@ -419,6 +420,7 @@ type TpvScene3DAtmosphere=class;
               fKey:TKey;
               fTransmittanceTexture:TpvScene3DRendererImage2D;
               fMultiScatteringTexture:TpvScene3DRendererArray2DImage;
+              fSkyLuminanceLUTTexture:TpvScene3DRendererImage2D;
               fSkyViewLUTTexture:TpvScene3DRendererArray2DImage;
               fCameraVolumeTexture:TpvScene3DRendererArray2DImage;
               fCubeMapTexture:TpvScene3DRendererMipmapImageCubeMap;
@@ -472,6 +474,7 @@ type TpvScene3DAtmosphere=class;
               property RendererInstance:TObject read fRendererInstance;
               property TransmittanceTexture:TpvScene3DRendererImage2D read fTransmittanceTexture;
               property MultiScatteringTexture:TpvScene3DRendererArray2DImage read fMultiScatteringTexture;
+              property SkyLuminanceLUTTexture:TpvScene3DRendererImage2D read fSkyLuminanceLUTTexture;
               property SkyViewLUTTexture:TpvScene3DRendererArray2DImage read fSkyViewLUTTexture;
               property CameraVolumeTexture:TpvScene3DRendererArray2DImage read fCameraVolumeTexture; 
               property CubeMapTexture:TpvScene3DRendererMipmapImageCubeMap read fCubeMapTexture;
@@ -1378,13 +1381,26 @@ begin
                                                                 VK_SAMPLE_COUNT_1_BIT,
                                                                 VK_IMAGE_LAYOUT_GENERAL,
                                                                 true,
-                                                                0);  
+                                                                0);
  TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.DebugUtils.SetObjectName(fMultiScatteringTexture.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'MultiScatteringTexture');
  TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.DebugUtils.SetObjectName(fMultiScatteringTexture.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'MultiScatteringTexture');
  TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.DebugUtils.SetObjectName(fMultiScatteringTexture.VulkanArrayImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'MultiScatteringTexture');
  if assigned(fMultiScatteringTexture.VulkanOtherArrayImageView) then begin
   TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.DebugUtils.SetObjectName(fMultiScatteringTexture.VulkanOtherArrayImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'MultiScatteringTexture');
  end;
+
+ fSkyLuminanceLUTTexture:=TpvScene3DRendererImage2D.Create(TpvScene3D(fAtmosphere.fScene3D).VulkanDevice,
+                                                           SkyLuminanceLUTRes,
+                                                           SkyLuminanceLUTRes,
+                                                           VK_FORMAT_R32G32B32A32_SFLOAT,
+                                                           true,
+                                                           VK_SAMPLE_COUNT_1_BIT,
+                                                           VK_IMAGE_LAYOUT_GENERAL,
+                                                           VK_SHARING_MODE_EXCLUSIVE,
+                                                           [],
+                                                           0);
+ TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.DebugUtils.SetObjectName(fSkyLuminanceLUTTexture.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'SkyLuminanceLUTTexture.Image');
+ TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.DebugUtils.SetObjectName(fSkyLuminanceLUTTexture.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'SkyLuminanceLUTTexture.ImageView');
 
  fSkyViewLUTTexture:=TpvScene3DRendererArray2DImage.Create(TpvScene3D(fAtmosphere.fScene3D).VulkanDevice,
                                                            SkyViewLUTTextureWidth,
@@ -1995,6 +2011,7 @@ begin
 
  FreeAndNil(fTransmittanceTexture);
  FreeAndNil(fMultiScatteringTexture);
+ FreeAndNil(fSkyLuminanceLUTTexture);
  FreeAndNil(fSkyViewLUTTexture);
  FreeAndNil(fCameraVolumeTexture);
 

@@ -47,10 +47,8 @@ void main() {
   ivec2 size = imageSize(uDestinationTexture).xy;
 
   ivec2 coord = ivec2(gl_GlobalInvocationID.xy);
-
-  int viewIndex = pushConstants.baseViewIndex + int(gl_GlobalInvocationID.z);
   
-  if(all(greaterThanEqual(coord, ivec2(0))) && all(lessThan(coord, size)) && (viewIndex < pushConstants.countViews)) {
+  if(all(greaterThanEqual(coord, ivec2(0))) && all(lessThan(coord, size))){
 
     #define atmosphereParameters uAtmosphereParameters.atmosphereParameters
 
@@ -82,7 +80,7 @@ void main() {
     vec3 opticalDepth = IntegrateScatteredLuminance(
       uTransmittanceLutTexture,
       uMultiScatTexture,
-      viewIndex,
+      0,
       coord, 
       worldPos, 
       worldDir, 

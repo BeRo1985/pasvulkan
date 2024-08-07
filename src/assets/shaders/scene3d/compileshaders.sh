@@ -637,6 +637,7 @@ compileshaderarguments=(
   "-V atmosphere_transmittancelut.comp -o ${tempPath}/atmosphere_transmittancelut_comp.spv"
   "-V atmosphere_multiscattering.comp -o ${tempPath}/atmosphere_multiscattering_comp.spv"
   "-V atmosphere_skyviewlut.comp -o ${tempPath}/atmosphere_skyviewlut_comp.spv"
+  "-V atmosphere_skyluminancelut.comp -o ${tempPath}/atmosphere_skyluminancelut_comp.spv"
   "-V atmosphere_cameravolume.comp -o ${tempPath}/atmosphere_cameravolume_comp.spv"
   "-V atmosphere_cubemap.comp -o ${tempPath}/atmosphere_cubemap_comp.spv"
   "-V atmosphere_raymarch.frag -o ${tempPath}/atmosphere_raymarch_frag.spv"
