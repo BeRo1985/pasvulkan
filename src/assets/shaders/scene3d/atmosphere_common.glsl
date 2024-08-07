@@ -459,8 +459,8 @@ MediumSampleRGB sampleMediumRGB(in vec3 WorldPos, in AtmosphereParameters Atmosp
   return s;
 }
 
-vec3 GetMultipleScattering(const in sampler2D MultiScatTexture, AtmosphereParameters Atmosphere, vec3 scattering, vec3 extinction, vec3 worlPos, float viewZenithCosAngle){
-  vec2 uv = clamp(vec2(fma(viewZenithCosAngle, 0.5, 0.5), (length(worlPos) - Atmosphere.BottomRadius) / (Atmosphere.TopRadius - Atmosphere.BottomRadius)), vec2(0.0), vec2(1.0));
+vec3 GetMultipleScattering(const in sampler2D MultiScatTexture, AtmosphereParameters Atmosphere, vec3 scattering, vec3 extinction, vec3 worldPos, float viewZenithCosAngle){
+  vec2 uv = clamp(vec2(fma(viewZenithCosAngle, 0.5, 0.5), (length(worldPos) - Atmosphere.BottomRadius) / (Atmosphere.TopRadius - Atmosphere.BottomRadius)), vec2(0.0), vec2(1.0));
   uv = vec2(fromUnitToSubUvs(uv.x, MultiScatteringLUTRes), fromUnitToSubUvs(uv.y, MultiScatteringLUTRes));
   vec3 multiScatteredLuminance = textureLod(MultiScatTexture, uv, 0).xyz;
   return multiScatteredLuminance;
@@ -786,7 +786,7 @@ SingleScatteringResult IntegrateScatteredLuminance(const in sampler2D Transmitta
     shadow = getShadow(Atmosphere, P);
 #endif
 
-    vec3 S = globalL * (earthShadow * shadow * TransmittanceToSun * PhaseTimesScattering + multiScatteredLuminance * medium.scattering);
+    vec3 S = globalL * ((earthShadow * shadow * TransmittanceToSun * PhaseTimesScattering) + (multiScatteredLuminance * medium.scattering));
 
     // When using the power serie to accumulate all sattering order, serie r must be <1 for a serie to converge.
     // Under extreme coefficient, MultiScatAs1 can grow larger and thus result in broken visuals.
