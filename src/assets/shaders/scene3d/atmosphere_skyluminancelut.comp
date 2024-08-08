@@ -62,7 +62,9 @@ void main() {
   vec3 sunDir = getSunDirection(uAtmosphereParameters.atmosphereParameters);
   float viewHeight = mix(uAtmosphereParameters.atmosphereParameters.BottomRadius, uAtmosphereParameters.atmosphereParameters.TopRadius, 0.5);
 
-  vec3 WorldPos = normalize(uView.views[pushConstants.baseViewIndex].inverseViewMatrix[3].xyz) * viewHeight;
+  // Equirectangular projection of the sky for the sky luminance LUT
+  vec4 thetaPhiSinCos = sin(fma(uv, vec2(6.2831853071795864, -3.1415926535897932), vec2(-3.1415926535897932, 1.5707963267948966)).xxyy + vec2(0.0, 1.5707963267948966).xyxy);
+  vec3 WorldPos = vec3(thetaPhiSinCos.ww * thetaPhiSinCos.yx, thetaPhiSinCos.z).xzy * viewHeight;
 
   const bool ground = true;
   const float SampleCountIni = 20;

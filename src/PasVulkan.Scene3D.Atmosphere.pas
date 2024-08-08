@@ -223,7 +223,7 @@ type TpvScene3DAtmosphere=class;
              CameraVolumeTextureDepth=32;
              CubeMapTextureSize=32;
              MultiScatteringLUTRes=32;
-             SkyLuminanceLUTRes=1;
+             SkyLuminanceLUTRes=32;
              ScatteringOrders=4;
        type { TDensityProfileLayer }
             TDensityProfileLayer=packed record
