@@ -1,5 +1,19 @@
 #version 460 core
 
+// Based on:
+//
+// GPU Pro 7: Real-Time Volumetric Cloudscapes - A. Schneider
+//     Follow up presentation: http://advances.realtimerendering.com/s2017/Nubis%20-%20Authoring%20Realtime%20Volumetric%20Cloudscapes%20with%20the%20Decima%20Engine%20-%20Final%20.pdf
+// R. Hogfeldt, "Convincing Cloud Rendering An Implementation of Real-Time Dynamic Volumetric Clouds in Frostbite"
+// F. Bauer, "Creating the Atmospheric World of Red Dead Redemption 2: A Complete and Integrated Solution" in Advances in Real-Time Rendering in Games, Siggraph 2019.
+// 
+// Multi scattering approximation: http://magnuswrenninge.com/wp-content/uploads/2010/03/Wrenninge-OzTheGreatAndVolumetric.pdf
+// Participating media and volumetric integration: https://media.contentapi.ea.com/content/dam/eacom/frostbite/files/s2016-pbs-frostbite-sky-clouds-new.pdf
+//     Small example: https://www.shadertoy.com/view/XlBSRz
+// 
+// https://github.com/turanszkij/WickedEngine/blob/8f4f4e8649e34cf7f6b90d61674305ada4f4e2f0/WickedEngine/shaders/volumetricCloudHF.hlsl
+// https://github.com/turanszkij/WickedEngine/blob/8f4f4e8649e34cf7f6b90d61674305ada4f4e2f0/WickedEngine/shaders/volumetricCloud_renderCS.hlsl
+
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_ARB_shading_language_420pack : enable
 #extension GL_GOOGLE_include_directive : enable
@@ -65,19 +79,19 @@ const uint SHADOWMAP_MODE_MSM = 5;
 
 #define inFrameIndex pushConstants.frameIndex
 
-layout(set = 2, binding = 3, std140) uniform uboCascadedShadowMaps {
+layout(set = 2, binding = 4, std140) uniform uboCascadedShadowMaps {
   mat4 shadowMapMatrices[NUM_SHADOW_CASCADES];
   vec4 shadowMapSplitDepthsScales[NUM_SHADOW_CASCADES];
   vec4 constantBiasNormalBiasSlopeBiasClamp[NUM_SHADOW_CASCADES];
   uvec4 metaData; // x = type
 } uCascadedShadowMaps;
 
-layout(set = 2, binding = 4) uniform sampler2DArray uCascadedShadowMapTexture;
+layout(set = 2, binding = 5) uniform sampler2DArray uCascadedShadowMapTexture;
 
 #ifdef PCFPCSS
 
 // Yay! Binding Aliasing! :-)
-layout(set = 2, binding = 4) uniform sampler2DArrayShadow uCascadedShadowMapTextureShadow;
+layout(set = 2, binding = 5) uniform sampler2DArrayShadow uCascadedShadowMapTextureShadow;
 
 #endif // PCFPCSS
 #endif // !RAYTRACING 
@@ -117,13 +131,18 @@ layout(set = 2, binding = 0, std430) buffer AtmosphereParametersBuffer {
   AtmosphereParameters atmosphereParameters;
 } uAtmosphereParameters;
 
-layout(set = 2, binding = 1) uniform sampler3D uCloudTextures[];
+layout(set = 2, binding = 1) uniform sampler2D uCloud2DTextures[];
 
-#define uCloudTextureShapeNoise uCloudTextures[0]
-#define uCloudTextureDetailNoise uCloudTextures[1]
-#define uCloudTextureCurlNoise uCloudTextures[2]
+#define uCloudTextureSkyLuminance uCloud2DTextures[0]
+#define uCloudTextureTransmittanceLUT uCloud2DTextures[1]
 
-layout(set = 2, binding = 2) uniform samplerCube uCloudWeatherMapTextures[];
+layout(set = 2, binding = 2) uniform sampler3D uCloud3DTextures[];
+
+#define uCloudTextureShapeNoise uCloud3DTextures[0]
+#define uCloudTextureDetailNoise uCloud3DTextures[1]
+#define uCloudTextureCurlNoise uCloud3DTextures[2]
+
+layout(set = 2, binding = 3) uniform samplerCube uCloudWeatherMapTextures[];
 
 #define uCloudTextureWeatherMap0 uCloudWeatherMapTextures[0]
 #define uCloudTextureWeatherMap1 uCloudWeatherMapTextures[1]
@@ -326,7 +345,6 @@ vec3 SampleExtinction(float densityFirst, float densitySecond){
 	return clamp(extinctionFirst + extinctionSecond, vec3(0.0), vec3(1.0));
 }
 
-
 void VolumetricShadow(inout ParticipatingMedia participatingMedia, in AtmosphereParameters atmosphereParameters, vec3 worldPosition, vec3 sunDirection, const in VolumetricCloudLayer layerParametersFirst, const in VolumetricCloudLayer layerParametersSecond, float lod){
 	
 	vec3 extinctionAccumulation[MS_COUNT];
@@ -390,10 +408,72 @@ void VolumetricShadow(inout ParticipatingMedia participatingMedia, in Atmosphere
 
 }
 
+void VolumetricGroundContribution(inout vec3 environmentLuminance, const in AtmosphereParameters atmosphere, vec3 worldPosition, vec3 sunDirection, vec3 sunIlluminance, vec3 atmosphereTransmittanceToLight, const in VolumetricCloudLayer layerParametersFirst, const in VolumetricCloudLayer layerParametersSecond, float lod){
+	float planetRadius = atmosphere.BottomRadius;
+	vec3 planetCenterWorld = vec3(0.0);//atmosphere.inverseTransform[3].xyz;
+
+	float cloudBottomRadius = planetRadius + atmosphere.VolumetricClouds.CloudStartHeight;
+
+	float cloudSampleAltitudde = length(worldPosition - planetCenterWorld);
+	float cloudSampleHeightToBottom = cloudSampleAltitudde - cloudBottomRadius; 
+  
+	vec3 opticalDepth = vec3(0.0);
+	
+	const float contributionStepLength = min(4000.0, cloudSampleHeightToBottom);
+	const vec3 groundScatterDirection = vec3(0.0, -1.0, 0.0);
+	
+	const float sampleCount = GROUND_CONTRIBUTION_SAMPLE_COUNT;
+	const float sampleSegmentT = 0.5;
+	
+	float lodOffset = 0.5;
+	for(float s = 0.0f; s < sampleCount; s += 1.0){
+
+		float t0 = (s) / sampleCount;
+		float t1 = (s + 1.0) / sampleCount;
+
+		t0 *= t0;
+		t1 *= t1;
+
+		float delta = t1 - t0; 
+		float t = t0 + (t1 - t0) * sampleSegmentT; 
+
+		float contributionSampleT = contributionStepLength * t;
+		vec3 samplePoint = worldPosition + groundScatterDirection * contributionSampleT; 
+
+		float heightFraction = GetHeightFractionForPoint(atmosphere, samplePoint);
+		
+		vec3 weatherDataFirst = SampleWeather(uCloudWeatherMapTextures[0], samplePoint, heightFraction, layerParametersFirst);
+    vec3 weatherDataSecond = SampleWeather(uCloudWeatherMapTextures[1], samplePoint, heightFraction, layerParametersSecond);
+      
+		if (!ValidCloudDensityLayers(heightFraction, weatherDataFirst, weatherDataSecond, layerParametersFirst, layerParametersSecond))
+		{
+			continue;
+		}
+
+		float contributionCloudDensityFirst = SampleCloudDensity(uCloudTextureShapeNoise, uCloudTextureDetailNoise, uCloudTextureCurlNoise, samplePoint, heightFraction, layerParametersFirst, weatherDataFirst, lod + lodOffset, true);
+		float contributionCloudDensitySecond = SampleCloudDensity(uCloudTextureShapeNoise, uCloudTextureDetailNoise, uCloudTextureCurlNoise, samplePoint, heightFraction, layerParametersSecond, weatherDataSecond, lod + lodOffset, true);
+		vec3 contributionExtinction = SampleExtinction(contributionCloudDensityFirst, contributionCloudDensitySecond);
+
+		opticalDepth += contributionExtinction * contributionStepLength * delta;
+		
+		lodOffset += 0.5;
+	}
+	
+	const vec3 planetSurfaceNormal = vec3(0.0, 1.0, 0.0); 
+	const vec3 groundBrdfNdotL = clamp(dot(sunDirection, planetSurfaceNormal), 0.0, 1.0) * (atmosphere.GroundAlbedo.xyz / PI); 
+
+	const float uniformPhase = 1.0 / (4.0 * PI);
+	const float groundHemisphereLuminanceIsotropic = (2.0 * PI) * uniformPhase; 
+	const vec3 groundToCloudTransfertIsoScatter = groundBrdfNdotL * groundHemisphereLuminanceIsotropic;
+	
+	const vec3 scatteredLuminance = atmosphereTransmittanceToLight * sunIlluminance * groundToCloudTransfertIsoScatter;
+
+	environmentLuminance += scatteredLuminance * exp(-opticalDepth);
+}
+
 struct ParticipatingMediaPhase {
 	float phase[MS_COUNT];
 };
-
 
 ParticipatingMediaPhase SampleParticipatingMediaPhase(float basePhase, float baseMsPhaseFactor){
 	ParticipatingMediaPhase participatingMediaPhase;
@@ -416,17 +496,92 @@ float ExponentialIntegral(float x){
 	return 0.5772156649015328606065 + log(1e-4 + abs(x)) + x * (1.0 + x * (0.25 + x * ((1.0 / 18.0) + x * ((1.0 / 96.0) + x * (1.0 / 600.0)))));
 }
 
-vec3 SampleAmbientLight(float heightFraction){
-	//float ambientTerm = -cloudDensity * (1.0 - saturate(GetWeather().volumetric_clouds.CloudAmbientGroundMultiplier + heightFraction));
+vec3 SampleAmbientLight(vec3 worldPosition, float heightFraction){
+	//float ambientTerm = -cloudDensity * (1.0 - clamp(uAtmosphereParameters.atmosphereParameters.VolumetricClouds.AmbientGroundMultiplier + heightFraction, 0.0, 1.0));
 	//float isotropicScatteringTopContribution = max(0.0, exp(ambientTerm) - ambientTerm * ExponentialIntegral(ambientTerm));
+  vec3 p = normalize(worldPosition);
+	vec3 skyLuminance = textureLod(uCloudTextureSkyLuminance, fma(vec2(atan(p.z, p.x), acos(p.y)), vec2(0.15915494309189535, 0.3183098861837907), vec2(0.5, 0.0)), 0.0).xyz;
 	float isotropicScatteringTopContribution = clamp(uAtmosphereParameters.atmosphereParameters.VolumetricClouds.AmbientGroundMultiplier + heightFraction, 0.0, 1.0);
-	vec3 skyLuminance = vec3(1.0);
-  return isotropicScatteringTopContribution * skyLuminance;
+  return skyLuminance * isotropicScatteringTopContribution;
 }
 
 vec3 SampleLocalLights(vec3 worldPosition){
   return vec3(0.0);
 } 
+
+void VolumetricCloudLighting(const in AtmosphereParameters atmosphereParameters, 
+                             vec3 startPosition, 
+                             vec3 worldPosition, 
+                             vec3 sunDirection, 
+                             vec3 sunIlluminance, 
+                             float cosTheta, 
+                             float stepSize, 
+                             float heightFraction,
+                             float cloudDensityFirst, 
+                             float cloudDensitySecond, 
+                             vec3 weatherDataFirst, 
+                             vec3 weatherDataSecond,
+                             const in VolumetricCloudLayer layerParametersFirst, 
+                             const in VolumetricCloudLayer layerParametersSecond, 
+                             float lod,
+                             inout vec3 luminance, 
+                             inout vec3 transmittanceToView, 
+                             inout float depthWeightedSum, 
+                             inout float depthWeightsSum){
+	
+	vec3 albedo = SampleAlbedo(cloudDensityFirst, cloudDensitySecond, weatherDataFirst, weatherDataSecond);
+	vec3 extinction = SampleExtinction(cloudDensityFirst, cloudDensitySecond);
+	
+	vec3 atmosphereTransmittanceToLight = GetAtmosphereTransmittance(atmosphereParameters, uCloudTextureTransmittanceLUT, worldPosition, sunDirection); 
+	
+	ParticipatingMedia participatingMedia = SampleParticipatingMedia(albedo, extinction, atmosphereParameters.VolumetricClouds.MultiScatteringScattering, atmosphereParameters.VolumetricClouds.MultiScatteringExtinction, atmosphereTransmittanceToLight);
+	
+	vec3 environmentLuminance = SampleAmbientLight(worldPosition, heightFraction);
+
+	if(any(greaterThan(participatingMedia.scatteringCoefficients[0], vec3(0.0)))){
+  	OpaqueShadow(participatingMedia, worldPosition);
+		
+		// Calcualte volumetric shadow
+		VolumetricShadow(participatingMedia, atmosphereParameters, worldPosition, sunDirection, layerParametersFirst, layerParametersSecond, lod);
+
+		// Calculate bounced light from ground onto clouds
+		const float maxTransmittanceToView = max(max(transmittanceToView.x, transmittanceToView.y), transmittanceToView.z);
+		if(maxTransmittanceToView > 0.01){
+			VolumetricGroundContribution(environmentLuminance, atmosphereParameters, worldPosition, sunDirection, sunIlluminance, atmosphereTransmittanceToLight, layerParametersFirst, layerParametersSecond, lod);
+		}
+	}
+
+	float phaseFunction = DualLobPhase(atmosphereParameters.VolumetricClouds.PhaseG, atmosphereParameters.VolumetricClouds.PhaseG2, atmosphereParameters.VolumetricClouds.PhaseBlend, -cosTheta);
+  ParticipatingMediaPhase participatingMediaPhase = SampleParticipatingMediaPhase(phaseFunction, atmosphereParameters.VolumetricClouds.MultiScatteringEccentricity);
+
+	float depthWeight = min(transmittanceToView.x, min(transmittanceToView.y, transmittanceToView.z));
+	depthWeightedSum += depthWeight * length(worldPosition - startPosition);
+	depthWeightsSum += depthWeight;
+
+	vec3 localLightLuminance = SampleLocalLights(worldPosition);
+
+	[[unroll]] for (int ms = MS_COUNT - 1; ms >= 0; ms--){
+		const vec3 scatteringCoefficients = participatingMedia.scatteringCoefficients[ms];
+		const vec3 extinctionCoefficients = participatingMedia.extinctionCoefficients[ms];
+		const vec3 transmittanceToLight = participatingMedia.transmittanceToLight[ms];
+		
+		vec3 lightLuminance = transmittanceToLight * sunIlluminance * participatingMediaPhase.phase[ms];
+		lightLuminance += ((ms == 0) ? environmentLuminance : vec3(0.0)) + localLightLuminance;
+
+		const vec3 scatteredLuminance = lightLuminance * scatteringCoefficients;
+		
+		// See slide 28 at http://www.frostbite.com/2015/08/physically-based-unified-volumetric-rendering-in-frostbite/ 
+		const vec3 clampedExtinctionCoefficients = max(extinctionCoefficients, 1e-7);
+		const vec3 sampleTransmittance = exp(-clampedExtinctionCoefficients * stepSize);
+		vec3 luminanceIntegral = (scatteredLuminance - scatteredLuminance * sampleTransmittance) / clampedExtinctionCoefficients;
+		luminance += transmittanceToView * luminanceIntegral; 
+
+		if(ms == 0){
+			transmittanceToView *= sampleTransmittance;
+		}
+	}
+
+}
 
 void main(){
 

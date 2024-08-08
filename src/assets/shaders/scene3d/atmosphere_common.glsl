@@ -398,6 +398,10 @@ float hgPhase(float g, float cosTheta){
 #endif
 }
 
+float DualLobPhase(float g0, float g1, float w, float cosTheta){
+  return mix(hgPhase(g0, cosTheta), hgPhase(g1, cosTheta), w);
+}
+
 float getAlbedo(float scattering, float extinction){
   return scattering / max(0.001, extinction);
 }
@@ -868,6 +872,22 @@ float AerialPerspectiveDepthToSlice(float depth){
 
 float AerialPerspectiveSliceToDepth(float slice){
   return slice * AP_KM_PER_SLICE;
+}
+
+vec3 GetAtmosphereTransmittance(const in AtmosphereParameters Atmosphere, 
+                                const in sampler2D TransmittanceLutTexture,
+                                vec3 WorldPosition, 
+                                vec3 WorldDirection){
+  if(any(greaterThan(raySphereIntersect(WorldPosition, WorldDirection, vec3(0.0), Atmosphere.BottomRadius), vec2(0.0)))){
+    return vec3(0.0);
+  }else{
+    float pHeight = length(WorldPosition);
+    const vec3 UpVector = WorldPosition / pHeight;
+    float SunZenithCosAngle = dot(WorldDirection, UpVector);
+    vec2 uv;
+    LutTransmittanceParamsToUv(Atmosphere, pHeight, SunZenithCosAngle, uv);
+    return textureLod(TransmittanceLutTexture, vec2(uv), 0.0).xyz;
+  }
 }
 
 vec4 GetSunLuminance(vec3 WorldPos, vec3 WorldDir, vec3 sunDirection, float PlanetRadius){
