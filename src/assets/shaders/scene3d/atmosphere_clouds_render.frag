@@ -201,7 +201,7 @@ void OpaqueShadow(inout ParticipatingMedia participatingMedia, vec3 worldPositio
 
 float GetHeightFractionForPoint(const in AtmosphereParameters atmosphereParameters, vec3 pos){
 	float planetRadius = atmosphereParameters.BottomRadius;
-	vec3 planetCenterWorld = atmosphereParameters.inverseTransform[3].xyz;
+	vec3 planetCenterWorld = vec3(0.0); //atmosphereParameters.inverseTransform[3].xyz;
 	return clamp((distance(pos, planetCenterWorld) - (planetRadius + atmosphereParameters.VolumetricClouds.CloudStartHeight)) / atmosphereParameters.VolumetricClouds.CloudThickness, 0.0, 1.0);
 }
 
@@ -588,7 +588,7 @@ float CalculateAtmosphereBlend(float tDepth){
 	return clamp(smoothstep(0.0, 1.0, pow(fogDistance, uAtmosphereParameters.atmosphereParameters.VolumetricClouds.HorizonBlendPower)), 0.0, 1.0);        
 }
  
- 
+
 
 void main(){
 
