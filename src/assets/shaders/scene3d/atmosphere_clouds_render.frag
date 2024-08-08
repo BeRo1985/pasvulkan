@@ -583,6 +583,13 @@ void VolumetricCloudLighting(const in AtmosphereParameters atmosphereParameters,
 
 }
 
+float CalculateAtmosphereBlend(float tDepth){
+  float fogDistance = clamp(tDepth * uAtmosphereParameters.atmosphereParameters.VolumetricClouds.HorizonBlendAmount, 0.0, 1.0);
+	return clamp(smoothstep(0.0, 1.0, pow(fogDistance, uAtmosphereParameters.atmosphereParameters.VolumetricClouds.HorizonBlendPower)), 0.0, 1.0);        
+}
+ 
+ 
+
 void main(){
 
 }
