@@ -13,6 +13,11 @@
 #define AP_SLICE_COUNT 32.0
 #define AP_KM_PER_SLICE 4.0
 
+#define FLAGS_USE_FAST_SKY 1u
+#define FLAGS_USE_FAST_AERIAL_PERSPECTIVE 2u
+#define FLAGS_USE_BLUE_NOISE 4u
+#define FLAGS_SHADOWS 8u
+
 const float PI = 3.1415926535897932384626433832795;
 
 const float GoldenRatioConjugate = 0.61803398875; // also just fract(GoldenRatio)

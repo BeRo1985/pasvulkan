@@ -28,11 +28,6 @@
  #undef SHADOWS_ENABLED
 #endif
 
-#define FLAGS_USE_FAST_SKY 1u
-#define FLAGS_USE_FAST_AERIAL_PERSPECTIVE 2u
-#define FLAGS_USE_BLUE_NOISE 4u
-#define FLAGS_SHADOWS 8u
-
 // Push constants
 layout(push_constant, std140) uniform PushConstants {
   int baseViewIndex;

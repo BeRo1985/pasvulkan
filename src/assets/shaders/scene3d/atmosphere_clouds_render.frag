@@ -588,7 +588,238 @@ float CalculateAtmosphereBlend(float tDepth){
 	return clamp(smoothstep(0.0, 1.0, pow(fogDistance, uAtmosphereParameters.atmosphereParameters.VolumetricClouds.HorizonBlendPower)), 0.0, 1.0);        
 }
  
+void RenderClouds(const in AtmosphereParameters atmosphere,
+                  uvec3 DTid, 
+                  vec2 uv, 
+                  float depth, 
+                  float farDepth,
+                  vec3 depthWorldPosition, 
+                  vec3 cameraWorldPosition,
+                  vec3 rayOrigin, 
+                  vec3 rayDirection, 
+                  inout vec4 cloudColor, 
+                  inout vec2 cloudDepth){	
+	
+  const float FLT_MAX = 3.402823466e+38;
 
+	float tMin = -FLT_MAX;
+	float tMax = -FLT_MAX;
+	float t;
+	float tToDepthBuffer;
+	float steps;
+	float stepSize;
+  {
+		float planetRadius = atmosphere.BottomRadius;
+		vec3 planetCenterWorld = vec3(0.0); //atmosphere.inverseTransform[3].xyz;
+
+		const float cloudBottomRadius = planetRadius + atmosphere.VolumetricClouds.CloudStartHeight;
+		const float cloudTopRadius = planetRadius + atmosphere.VolumetricClouds.CloudStartHeight + atmosphere.VolumetricClouds.CloudThickness;
+        
+		vec2 tTopSolutions = raySphereIntersect(rayOrigin, rayDirection, planetCenterWorld, cloudTopRadius);
+		if(any(greaterThan(tTopSolutions, vec2(0.0)))){
+			vec2 tBottomSolutions = raySphereIntersect(rayOrigin, rayDirection, planetCenterWorld, cloudBottomRadius);
+  		if(any(greaterThan(tBottomSolutions, vec2(0.0)))){
+               
+				float tempTop = all(greaterThan(tTopSolutions, vec2(0.0))) ? min(tTopSolutions.x, tTopSolutions.y) : max(tTopSolutions.x, tTopSolutions.y);
+				float tempBottom = all(greaterThan(tBottomSolutions, vec2(0.0))) ? min(tBottomSolutions.x, tBottomSolutions.y) : max(tBottomSolutions.x, tBottomSolutions.y);
+                
+				if(all(greaterThan(tBottomSolutions, vec2(0.0)))){
+					tempTop = max(0.0f, min(tTopSolutions.x, tTopSolutions.y));
+				}
+
+				tMin = min(tempBottom, tempTop);
+				tMax = max(tempBottom, tempTop);
+      }else{
+				tMin = tTopSolutions.x;
+				tMax = tTopSolutions.y;
+			}
+            
+			tMin = max(0.0, tMin);
+			tMax = max(0.0, tMax);
+		}else{
+			cloudColor = vec4(0.0, 0.0, 0.0, 0.0);
+			cloudDepth = vec2(FLT_MAX);
+			return;
+		}
+
+		if((tMax <= tMin) || (tMin > atmosphere.VolumetricClouds.RenderDistance)){
+			cloudColor = vec4(0.0, 0.0, 0.0, 0.0);
+			cloudDepth = vec2(FLT_MAX);
+			return;
+		}
+		
+		tToDepthBuffer = length(depthWorldPosition - rayOrigin);
+
+		tMax = (depth == farDepth) ? tMax : min(tMax, tToDepthBuffer);
+
+		tToDepthBuffer = (depth == farDepth) ? FLT_MAX : tToDepthBuffer;
+		
+		const float marchingDistance = min(atmosphere.VolumetricClouds.MaxMarchingDistance, tMax - tMin);
+		tMax = tMin + marchingDistance;
+
+		steps = MAX_STEP_COUNT * clamp((tMax - tMin) * (1.0 / atmosphere.VolumetricClouds.InverseDistanceStepCount), 0.0, 1.0);
+		stepSize = (tMax - tMin) / steps;
+
+		float offset = 0.5; // blue-noise offset later
+
+		t = fma(offset, stepSize, tMin);
+	}
+	
+  const VolumetricCloudLayer layerParametersFirst = atmosphere.VolumetricClouds.Layers[0];
+	const VolumetricCloudLayer layerParametersSecond = atmosphere.VolumetricClouds.Layers[1];
+	
+	vec3 sunIlluminance = atmosphere.SolarIlluminance.xyz;
+  vec3 sunDirection = getSunDirection(atmosphere);
+	
+	float cosTheta = dot(rayDirection, sunDirection);
+	
+	vec3 luminance = vec3(0.0);
+	vec3 transmittanceToView = vec3(1.0);
+	float depthWeightedSum = 0.0;
+	float depthWeightsSum = 0.0;
+	
+	[[loop]] for (float i = 0.0; i < steps; i++){
+		
+    vec3 sampleWorldPosition = fma(rayDirection, vec3(t), rayOrigin);
+
+		float heightFraction = GetHeightFractionForPoint(atmosphere, sampleWorldPosition);
+		if((heightFraction < 0.0) || (heightFraction > 1.0)){
+			break;
+		}
+		
+		vec3 weatherDataFirst = SampleWeather(uCloudWeatherMapTextures[0], sampleWorldPosition, heightFraction, layerParametersFirst);
+    vec3 weatherDataSecond = SampleWeather(uCloudWeatherMapTextures[1], sampleWorldPosition, heightFraction, layerParametersSecond);
+      
+		if (!ValidCloudDensityLayers(heightFraction, weatherDataFirst, weatherDataSecond, layerParametersFirst, layerParametersSecond)){
+      int bigStepMarch = int(atmosphere.VolumetricClouds.BigStepMarch); 
+			i += bigStepMarch - 1;
+			t += float(bigStepMarch) * stepSize;			
+			continue;
+		}
+		
+		float tProgress = distance(rayOrigin, sampleWorldPosition);
+		float lod = round(tProgress / max(atmosphere.VolumetricClouds.LODDistance, 1e-5));
+		lod = clamp(lod, LOD_Min, LOD_Max);
+		
+		float cloudDensityFirst = SampleCloudDensity(uCloudTextureShapeNoise, uCloudTextureDetailNoise, uCloudTextureCurlNoise, sampleWorldPosition, heightFraction, layerParametersFirst, weatherDataFirst, lod, true);
+		float cloudDensitySecond = SampleCloudDensity(uCloudTextureShapeNoise, uCloudTextureDetailNoise, uCloudTextureCurlNoise, sampleWorldPosition, heightFraction, layerParametersSecond, weatherDataSecond, lod, true);
+
+		if (clamp(cloudDensityFirst + cloudDensitySecond, 0.0, 1.0) > CLOUD_DENSITY_THRESHOLD){
+
+			VolumetricCloudLighting(
+        atmosphere, 
+        rayOrigin, 
+        sampleWorldPosition, 
+        sunDirection, 
+        sunIlluminance, 
+        cosTheta, 
+        stepSize, 
+        heightFraction,
+				cloudDensityFirst, 
+        cloudDensitySecond, 
+        weatherDataFirst, 
+        weatherDataSecond,
+				layerParametersFirst, 
+        layerParametersSecond, 
+        lod,
+				luminance, 
+        transmittanceToView, 
+        depthWeightedSum, 
+        depthWeightsSum
+      );
+			
+			if (all(lessThan(transmittanceToView, vec3(atmosphere.VolumetricClouds.TransmittanceThreshold)))){
+				break;
+			}
+
+		}
+
+		t += stepSize;
+	}
+		
+	
+	float tDepth = (depthWeightsSum == 0.0) ? tMax : depthWeightedSum / max(depthWeightsSum, 1e-10);
+	vec3 sampleWorldPosition = fma(rayDirection, vec3(tDepth), rayOrigin);
+
+	float approxTransmittance = dot(transmittanceToView.xyz, vec3(1.0 / 3.0));
+	float grayScaleTransmittance = (approxTransmittance < atmosphere.VolumetricClouds.TransmittanceThreshold) ? 0.0 : approxTransmittance;
+	
+	// Apply aerial perspective if any clouds is detected (depthWeightsSum)
+	if(depthWeightsSum > 0.0){
+
+		vec4 aerialPerspective = vec4(0.0);
+		
+    if((pushConstants.flags & FLAGS_USE_FAST_AERIAL_PERSPECTIVE) == 0u){
+
+			vec3 worldPosition = (atmosphere.inverseTransform * vec4(sampleWorldPosition, 1.0)).xyz;
+			vec3 worldDirection = rayDirection;
+		
+			// Move to top atmosphere as the starting point for ray marching.
+			// This is critical to be after the above to not disrupt above atmosphere tests and voxel selection.
+			if(MoveToTopAtmosphere(worldPosition, worldDirection, atmosphere.TopRadius)){
+				const float sampleCountIni = 0.0;
+				const bool variableSampleCount = true;
+#ifdef VOLUMETRICCLOUD_CAPTURE
+				const bool perPixelNoise = false;
+#else
+				const bool perPixelNoise = true;
+#endif
+				const bool opaque = true;
+				const bool ground = false;
+				const bool mieRayPhase = true;
+				const bool multiScatteringApprox = true;
+				const bool volumetricCloudShadow = ((pushConstants.flags & FLAGS_SHADOWS) != 0u) && ((pushConstants.flags & FLAGS_USE_FAST_AERIAL_PERSPECTIVE) == 0u);
+				const bool opaqueShadow = (pushConstants.flags & FLAGS_SHADOWS) != 0u;
+				//const float opticalDepthScale = atmosphere.aerialPerspectiveScale;
+		 	 /*SingleScatteringResult ss = IntegrateScatteredLuminance(
+				  atmosphere, 
+          DTid.xy, 
+          worldPosition, 
+          worldDirection, 
+          sunDirection, 
+          sunIlluminance, 
+          tDepth, 
+          sampleCountIni, 
+          variableSampleCount,
+          perPixelNoise, 
+          opaque, 
+          ground, 
+          mieRayPhase, 
+          multiScatteringApprox, 
+          volumetricCloudShadow, 
+          opaqueShadow, 
+          texture_transmittancelut, 
+          texture_multiscatteringlut, 
+          opticalDepthScale
+        );
+				
+				float transmittance = 1.0 - dot(ss.transmittance, vec3(1.0 / 3.0));
+				aerialPerspective = vec4(ss.L, transmittance);*/
+			}
+		}else{
+		//	aerialPerspective = GetAerialPerspectiveTransmittance(uv, sampleWorldPosition, rayOrigin, texture_cameravolumelut);
+		}
+
+		luminance = (1.0 - aerialPerspective.a) * luminance + aerialPerspective.rgb * (1.0 - approxTransmittance);
+	}
+	
+/*if(depthWeightsSum > 0.0){
+		vec4 fog = GetFog(tDepth, rayOrigin, rayDirection);
+		//luminance = (1.0 - fog.w) * luminance + fog.xyz * (1.0 - approxTransmittance); 
+		luminance = mix(luminance, fog.xyz * (1.0 - approxTransmittance), fog.w);
+	}*/
+
+	vec4 color = vec4(luminance, 1.0 - grayScaleTransmittance);
+
+	if(depthWeightsSum > 0.0){
+		float atmosphereBlend = CalculateAtmosphereBlend(tDepth);
+		color *= 1.0 - atmosphereBlend;
+	}
+
+	// Output
+	cloudColor = color;
+	cloudDepth = vec2(tDepth, tToDepthBuffer); // Linear depth
+}
 
 void main(){
 
