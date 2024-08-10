@@ -44,4 +44,20 @@ mat3 getVectorAlignmentMatrix(const in vec3 fromVector, const in vec3 toVector, 
 	return (mat3(1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0) + m) + ((m * m) * ((1.0 - c) / (s * s)));
 }
 
+mat3 rotationMatrix(vec3 axis, float angle){
+  axis = normalize(axis);
+  vec3 scc = fma(sin(vec2(angle) + vec2(0.0, 1.57079632679)).xyy, vec2(1.0, -1.0).xxy, vec2(0.0, 1.0).xxy);
+  return mat3((scc.zzz * axis.xxz * axis.xyx) + vec3(scc.y, vec2(-axis.z, axis.y) * scc.x), 
+              (scc.zzz * axis.xyy * axis.yyz) + vec3(vec2(axis.z, -axis.x) * scc.x, scc.y).xzy,
+              (scc.zzz * axis.zyz * axis.xzz) + vec3(vec2(-axis.y, axis.x) * scc.x, scc.y));
+}
+
+mat3 rotationMatrixReference(vec3 axis, float angle){
+  axis = normalize(axis);
+  vec3 scc = fma(sin(vec2(angle) + vec2(0.0, 1.57079632679)).xyy, vec2(1.0, -1.0).xxy, vec2(0.0, 1.0).xxy);
+  return mat3((scc.z * axis.x * axis.x) + scc.y,            (scc.z * axis.x * axis.y) - (axis.z * scc.x), (scc.z * axis.z * axis.x) + (axis.y * scc.x), 
+              (scc.z * axis.x * axis.y) + (axis.z * scc.x), (scc.z * axis.y * axis.y) + scc.y,            (scc.z * axis.y * axis.z) - (axis.x * scc.x), 
+              (scc.z * axis.z * axis.x) - (axis.y * scc.x), (scc.z * axis.y * axis.z) + (axis.x * scc.x), (scc.z * axis.z * axis.z) + scc.y           );
+}
+
 #endif

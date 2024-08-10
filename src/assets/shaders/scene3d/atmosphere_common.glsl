@@ -127,6 +127,43 @@ struct VolumetricCloudParameters {
 
 };
 
+struct CloudPhaseParameters {
+  float G;
+  float G2;
+  float Offset;
+  float Blend;
+};
+
+struct CloudParameters {
+  
+  vec4 ShapeNoiseWeights;
+  
+  vec4 DetailNoiseWeights;
+  
+  vec4 /*CloudPhaseParameters*/PhaseParameters; // x = G, y = G2, z = Offset, w = Blend 
+  
+  float DetailNoiseMultiplier;
+  float StartHeight;
+  float EndHeight;
+  float CloudScale;
+  
+  float DetailScale;
+  float DensityOffset;
+  float DensityMultiplier;
+  float Padding0; 
+  
+  float LightAbsTowardsSun;
+  float LightAbsThroughCloud;
+  float DarknessThreshold;
+  float Padding1; 
+
+  uint Flags;
+  uint CountSamples;
+  uint CountSamplesToSun;
+  uint Padding2; 
+
+};
+
 struct AtmosphereParameters {
 
   mat4 transform;
