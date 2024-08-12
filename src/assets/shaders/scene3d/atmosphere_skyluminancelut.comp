@@ -23,6 +23,7 @@ layout(local_size_x = 1, local_size_y = 1, local_size_z = 64) in;
 layout(push_constant, std140) uniform PushConstants {
   int baseViewIndex;
   int countViews;
+  int frameIndex;
 } pushConstants;
 
 shared vec3 SkyLuminanceSharedMem[64];
@@ -38,13 +39,17 @@ layout(set = 1, binding = 0, std140) uniform uboViews {
   View views[256]; // 65536 / (64 * 4) = 256
 } uView;
 
-layout(set = 2, binding = 0, rgba32f) uniform image2D uDestinationTexture;
+layout(set = 2, binding = 0, rgba32f) uniform imageCube uDestinationTexture;
 
 layout(set = 2, binding = 1) uniform sampler2D uTransmittanceLutTexture;
 
-layout(set = 2, binding = 2, std430) buffer AtmosphereParametersBuffer {
+layout(set = 2, binding = 2) uniform sampler2D uMultiScatteringLutTexture;
+
+layout(set = 2, binding = 3, std430) buffer AtmosphereParametersBuffer {
   AtmosphereParameters atmosphereParameters;
 } uAtmosphereParameters;
+
+#include "cubemap.glsl"
 
 void main() {
   
@@ -52,7 +57,9 @@ void main() {
 
   ivec2 size = imageSize(uDestinationTexture).xy;
 
-  if(any(lessThan(xy, ivec2(0))) || any(greaterThanEqual(xy, size))){
+  int faceIndex = int(gl_WorkGroupID.z); 
+
+  if(any(lessThan(xy, ivec2(0))) || any(greaterThanEqual(xy, size)) || (faceIndex < 0) || (faceIndex >= 6)){
     return;
   }
 
@@ -62,9 +69,14 @@ void main() {
   vec3 sunDir = getSunDirection(uAtmosphereParameters.atmosphereParameters);
   float viewHeight = mix(uAtmosphereParameters.atmosphereParameters.BottomRadius, uAtmosphereParameters.atmosphereParameters.TopRadius, 0.5);
 
+#if 0
   // Equirectangular projection of the sky for the sky luminance LUT
   vec4 thetaPhiSinCos = sin(fma(uv, vec2(6.2831853071795864, -3.1415926535897932), vec2(-3.1415926535897932, 1.5707963267948966)).xxyy + vec2(0.0, 1.5707963267948966).xyxy);
   vec3 WorldPos = vec3(thetaPhiSinCos.ww * thetaPhiSinCos.yx, thetaPhiSinCos.z).xzy * viewHeight;
+#else
+  // Cube map projection of the sky for the sky luminance LUT
+  vec3 WorldPos = getCubeMapDirection(uv, faceIndex) * viewHeight;
+#endif
 
   const bool ground = true;
   const float SampleCountIni = 20;
@@ -173,6 +185,6 @@ void main() {
 
   vec3 InScatteredLuminance = SkyLuminanceSharedMem[0] * IsotropicPhase;
 
-  imageStore(uDestinationTexture, ivec2(pixPos), vec4(InScatteredLuminance, 1.0));
+  imageStore(uDestinationTexture, ivec3(pixPos, faceIndex), vec4(InScatteredLuminance, 1.0));
 
 }
