@@ -112,24 +112,53 @@ layout(location = 0) out vec4 outInscattering; // w = monochromatic transmittanc
 layout(location = 1) out float outDepth; // linear depth with infinite for far plane (requires 32-bit floating point target buffer)
 #endif
 
-layout(set = 2, binding = 0, std430) buffer AtmosphereParametersBuffer {
+struct View {
+  mat4 viewMatrix;
+  mat4 projectionMatrix;
+  mat4 inverseViewMatrix;
+  mat4 inverseProjectionMatrix;
+};
+
+layout(set = 1, binding = 0, std140) uniform uboViews {
+  View views[256]; // 65536 / (64 * 4) = 256
+} uView;
+
+#ifdef MSAA
+
+#ifdef MULTIVIEW
+layout(set = 2, binding = 0) uniform texture2DMSArray uDepthTexture;
+#else
+layout(set = 2, binding = 0) uniform texture2DMS uDepthTexture;
+#endif
+
+#else
+
+#ifdef MULTIVIEW
+layout(set = 2, binding = 0) uniform texture2DArray uDepthTexture; 
+#else
+layout(set = 2, binding = 0) uniform texture2D uDepthTexture;
+#endif
+
+#endif
+
+layout(set = 2, binding = 1, std430) buffer AtmosphereParametersBuffer {
   AtmosphereParameters atmosphereParameters;
 } uAtmosphereParameters;
 
-layout(set = 2, binding = 1) uniform sampler2D uTextureBlueNoise;
+layout(set = 2, binding = 2) uniform sampler2D uTextureBlueNoise;
 
-layout(set = 2, binding = 2) uniform sampler2D uCloud2DTextures[];
+layout(set = 2, binding = 3) uniform sampler2D uCloud2DTextures[];
 
 #define uCloudTextureSkyLuminance uCloud2DTextures[0]
 #define uCloudTextureTransmittanceLUT uCloud2DTextures[1]
 
-layout(set = 2, binding = 3) uniform sampler3D uCloud3DTextures[];
+layout(set = 2, binding = 4) uniform sampler3D uCloud3DTextures[];
 
 #define uCloudTextureShapeNoise uCloud3DTextures[0]
 #define uCloudTextureDetailNoise uCloud3DTextures[1]
 #define uCloudTextureCurlNoise uCloud3DTextures[2]
 
-layout(set = 2, binding = 4) uniform samplerCube uCloudCubeTextures[];
+layout(set = 2, binding = 5) uniform samplerCube uCloudCubeTextures[];
 
 #define uCloudTextureSkyLuminanceLUT uCloudCubeTextures[0]
 #define uCloudTextureWeatherMap uCloudCubeTextures[1]
@@ -717,6 +746,19 @@ void main(){
 
   layerLowWindRotation = layerLowCurlRotation = mat3(1.0);
 
+  int viewIndex = pushConstants.baseViewIndex + int(gl_ViewIndex);
+  View view = uView.views[viewIndex];
+
+/*vec2 pixPos = vec2(gl_FragCoord.xy) + vec2(0.5);
+  vec2 uv = pixPos / pushConstants.resolution;*/
+
+  vec2 uv = inTexCoord; 
+
+  vec3 worldPos, worldDir;
+  GetCameraPositionDirection(worldPos, worldDir, view.viewMatrix, view.projectionMatrix, view.inverseViewMatrix, view.inverseProjectionMatrix, uv);
+  
+  worldPos = (uAtmosphereParameters.atmosphereParameters.inverseTransform * vec4(worldPos, 1.0)).xyz;
+  worldDir = normalize((uAtmosphereParameters.atmosphereParameters.inverseTransform * vec4(worldDir, 0.0)).xyz);
 
 
 }

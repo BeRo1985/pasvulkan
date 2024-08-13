@@ -79,6 +79,7 @@ void main() {
     GetCameraPositionDirection(worldPos, worldDir, view.viewMatrix, view.projectionMatrix, view.inverseViewMatrix, view.inverseProjectionMatrix, uv);
 
     worldPos = (uAtmosphereParameters.atmosphereParameters.inverseTransform * vec4(worldPos, 1.0)).xyz;
+    worldDir = normalize((uAtmosphereParameters.atmosphereParameters.inverseTransform * vec4(worldDir, 0.0)).xyz);
 
     float earthR = uAtmosphereParameters.atmosphereParameters.BottomRadius;
     vec3 earthO = vec3(0.0, -earthR, 0.0);
