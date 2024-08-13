@@ -166,7 +166,17 @@ float bayer128(vec2 a){
 float bayer256(vec2 a){
    return fma(bayer128(a * 0.5), 0.25, bayer128(a));
 } 
-                        
+
+vec2 intersectSphere(vec3 rayOrigin, vec3 rayDirection, vec4 sphere){
+  vec3 v = rayOrigin - sphere.xyz;
+  float b = dot(v, rayDirection),
+        c = dot(v, v) - (sphere.w * sphere.w),
+        d = (b * b) - c;
+  return (d < 0.0) 
+             ? vec2(-1.0)                                // No intersection
+             : ((vec2(-1.0, 1.0) * sqrt(d)) - vec2(b));  // Intersection
+}        
+
 vec2 rayIntersectSphere(vec3 rayOrigin, vec3 rayDirection, vec4 sphere){
   vec3 sphereCenterToRayOrigin = rayOrigin - sphere.xyz;
   float a = dot(rayDirection, rayDirection),
@@ -289,7 +299,9 @@ float remap01(const in float x, const in float l, const in float h){
   return clamp((x - l) / (h - l), 0.0, 1.0);
 }
 
-float getLowResCloudDensity(const in vec3 position, const in vec3 offset, const in vec4 weatherData, const float mipMapLevel){
+mat3 layerLowWindRotation, layerLowCurlRotation;
+
+float getLowResCloudDensity(const in vec3 position, const in mat3 windRotation, const in vec4 weatherData, const float mipMapLevel){
             
   float height = length(position);
   
@@ -300,7 +312,7 @@ float getLowResCloudDensity(const in vec3 position, const in vec3 offset, const 
     float heightFraction = clamp((height - uAtmosphereParameters.atmosphereParameters.VolumetricClouds.LayerLow.StartHeight) / (uAtmosphereParameters.atmosphereParameters.VolumetricClouds.LayerLow.EndHeight - uAtmosphereParameters.atmosphereParameters.VolumetricClouds.LayerLow.StartHeight), 0.0, 1.0);
                        
     // Read the low-frequency Perlin-Worley and Worley noises
-    vec4 lowFrequencyNoises = textureLod(uCloudTextureShapeNoise, scaleLayerLowCloudPosition(position + offset) * uAtmosphereParameters.atmosphereParameters.VolumetricClouds.LayerLow.ShapeNoiseScale, mipMapLevel);
+    vec4 lowFrequencyNoises = textureLod(uCloudTextureShapeNoise, scaleLayerLowCloudPosition(windRotation * position) * uAtmosphereParameters.atmosphereParameters.VolumetricClouds.LayerLow.ShapeNoiseScale, mipMapLevel);
                                                                                                                       
     // Build an FBM out of the low frequency Worley noises that can be used to add detail to the low-frequency Perlin-Worley noise
     float lowFrequencyFBM = dot(lowFrequencyNoises.yzw, vec3(0.625, 0.25, 0.125));
@@ -340,7 +352,7 @@ float getLowResCloudDensity(const in vec3 position, const in vec3 offset, const 
   
 }     
 
-float getHighResCloudDensity(const in vec3 position, const in vec3 offset, const in vec3 curlOffset, const in vec4 weatherData, const float lowResDensity, const float mipMapLevel){
+float getHighResCloudDensity(const in vec3 position, const in mat3 windRotation, const in vec4 curlRotation, const in vec4 weatherData, const float lowResDensity, const float mipMapLevel){
                            
   float height = length(position);
   
@@ -354,12 +366,14 @@ float getHighResCloudDensity(const in vec3 position, const in vec3 offset, const
     vec3 highFrequencyNoises = textureLod(
       uCloudTextureDetailNoise,
       scaleLayerLowCloudPosition(
-        position + 
-        offset + 
-        (curlOffset *
+        rotate(
+          windRotation * position,
+          curlRotation.xyz,
+          curlRotation.w *
           (1.0 - heightFraction) * 
-          uAtmosphereParameters.atmosphereParameters.VolumetricClouds.LayerLow.CurlScale)
-        ) * 
+          uAtmosphereParameters.atmosphereParameters.VolumetricClouds.LayerLow.CurlScale
+         )
+      ) * 
       uAtmosphereParameters.atmosphereParameters.VolumetricClouds.LayerLow.DetailNoiseScale,
       mipMapLevel
     ).xyz;
@@ -384,8 +398,6 @@ float getHighResCloudDensity(const in vec3 position, const in vec3 offset, const
   }
 
 }
-
-mat3 windRotation, curlRotation;
 
 /*float scaleDensity(float density){
   return density;
@@ -428,10 +440,65 @@ const vec3 randomVectors[8] = vec3[](
 	vec3( 0.73454242, -0.17479357,  0.27376545)
 );
 
+float sampleShadow(const in vec3 rayOrigin,
+                   const in vec3 rayDirection,
+                   const in float rayLength,
+                   const in bool highResCloudDensity,
+                   const float mipMapLevel){
+                   
+  vec2 tTopSolutions = intersectSphere(rayOrigin, rayDirection, vec2(0.0, uAtmosphereParameters.atmosphereParameters.VolumetricClouds.LayerHigh.EndHeight).xxxy);
+  if(tTopSolutions.y >= 0.0){
+    
+    vec2 tMinMax = tTopSolutions;             
+
+    vec2 tGroundSolutions = intersectSphere(rayOrigin, rayDirection, vec2(0.0, uAtmosphereParameters.atmosphereParameters.BottomRadius).xxxy);
+    if(tGroundSolutions.x >= 0.0){
+      return 0.0; // Planet blocks all sun light
+    }
+
+    vec2 tBottomSolutions = intersectSphere(rayOrigin, rayDirection, vec2(0.0, uAtmosphereParameters.atmosphereParameters.VolumetricClouds.LayerLow.StartHeight).xxxy);
+
+    if((tBottomSolutions.x < 0.0) && (tBottomSolutions.y >= 0.0)){
+      // Below clouds
+      tMinMax.x = min(tMinMax.x, tBottomSolutions.y);
+    }
+    
+    tMinMax = clamp(tMinMax, vec2(0.0), vec2(rayLength));
+ 
+    if(tMinMax.x < tMinMax.y){
+                   
+      const int numSteps = 7; 
+      float r = 1.0, timeStep = rayLength / float(numSteps), time = timeStep * 0.5;         
+      for(int i = 0; i < numSteps; i++){
+        vec3 position = rayOrigin + (rayDirection * time);
+        if(length(position) > uAtmosphereParameters.atmosphereParameters.VolumetricClouds.LayerHigh.EndHeight){
+          break;
+        }else{
+          vec4 weatherData = getWeatherData(position, mipMapLevel + 1.0);
+          float density = getLowResCloudDensity(position, layerLowWindRotation, weatherData, mipMapLevel + 1.0);            
+          if(highResCloudDensity){
+            // If are ray march is hasn't absorbed too much light yet, we use the high res cloud data to calculate the self occlusion of the cloud 
+            density = getHighResCloudDensity(position, layerLowWindRotation, vec4(0.0), weatherData, density, mipMapLevel + 1.0);
+          }
+          r *= exp(-(density * uAtmosphereParameters.atmosphereParameters.VolumetricClouds.ShadowDensity * uAtmosphereParameters.atmosphereParameters.VolumetricClouds.DensityScale * timeStep));
+          time += timeStep;  
+        }
+      }
+      
+      return r;
+      
+    }
+    
+   }
+   
+   return 1.0;
+   
+}
+
 
 
 void main(){
 
-  windRotation = curlRotation = mat3(1.0);
+  layerLowWindRotation = layerLowCurlRotation = mat3(1.0);
 
 }
