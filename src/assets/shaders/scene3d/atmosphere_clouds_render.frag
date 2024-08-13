@@ -521,43 +521,14 @@ void traceVolumetricClouds(vec3 rayOrigin,
   vec3 absorption = vec3(0.0);//vec3(0.1, 0.15, 0.2);
   vec3 extinction = absorption + scattering;
   
-/*
-#if 0
-  vec3 sunColor;
-  vec3 Color; 
-  vec3 fogBottomColor = preethamsSky(toSunDirection, normalize(normalize(toSunDirection * vec2(-1.0, 0.0).xyx) + vec2(0.0, 0.0).xyx), 0.0, vec3(0.0), true, Color) * 1.0;  
-  vec3 fogTopColor = preethamsSky(toSunDirection, normalize(normalize(toSunDirection * vec2(1.0, 0.0).xyx) + vec2(0.0, 1.0).xyx), 0.0, vec3(0.0), false, sunColor) * 1.0; 
-  preethamsSky(toSunDirection, toSunDirection * 1e6, 0.0, vec3(0.0), true, sunColor); 
-#else    
-  vec3 fogBottomColor = vec3(0.51, 0.66, 0.81) * 0.5;//preethamsSky(toSunDirection, normalize(toSunDirection * vec2(-1e6, 0.0).xyx), 0.0, vec3(0.0), true, sunColor); 
-  vec3 fogTopColor = vec3(1.0) * 1.0;//preethamsSky(toSunDirection, normalize((toSunDirection * vec2(1e6, 0.0).xyx) + vec2(0.0, 1.0).xyx), 0.0, vec3(0.0), true, sunColor); 
-  //preethamsSky(toSunDirection, toSunDirection * 1e6, 0.0, vec3(0.0), true, sunColor); 
-#endif    */
-
-  vec3 skyLight = vec3(0.1, 0.15, 0.2);
-  vec3 sunColor = vec3(1.0, 1.5, 2.0);
+  vec3 sunColor = uAtmosphereParameters.atmosphereParameters.SolarIlluminance.xyz;
 
   vec2 weightedDepth = vec2(0.0);
-  
-//  vec3 fogBottomColor = vec3(0.51, 0.66, 0.81) * 0.0;//preethams_sky(toSunDirection, normalize(toSunDirection * vec2(-1e6, 0.0).xyx), 0.0, vec3(0.0), true, sunColor); 
- // vec3 fogTopColor = vec3(1.0);//preethams_sky(toSunDirection, normalize((toSunDirection * vec2(1e6, 0.0).xyx) + vec2(0.0, 1.0).xyx), 0.0, vec3(0.0), true, sunColor); 
-  //preethamsSky(toSunDirection, toSunDirection * 1e6, 0.0, vec3(0.0), true, sunColor); 
-  
+ 
   vec2 tTopSolutions = intersectSphere(rayOrigin, rayDirection, vec2(0.0, uAtmosphereParameters.atmosphereParameters.VolumetricClouds.LayerHigh.EndHeight).xxxy);
   if(tTopSolutions.y >= 0.0){
 
-/*float cloudTime = getTime(cloudsTime, cloudsWindSpeed) * 100.0;
-		vec3 windDirection = vec3(cos(-cloudsAngle), 0.0, sin(-cloudsAngle));
-		vec3 windVector = windDirection * vec2(cloudsWindSpeed, 1.0).xyx;
-		vec3 curlVector = windDirection * vec2(cloudsAdvanceCurlSpeed, 1.0).xyx;    
-    windOffset = (windVector * cloudTime) + (windDirection * cloudsTime * TIME_OFFSET_SCALAR); 
-    curlOffset = curlVector * cloudTime; */
-    
-/*   vec2 tMinMax = vec2(max(0.0, min(tTopSolutions.x, tTopSolutions.y)),
-                       max(tTopSolutions.x, tTopSolutions.y));*/
-//   vec2 tMinMax = vec2(0.0, 100000.0);
-    
-    float distanceToPlanetCenter = length(rayOrigin);
+   float distanceToPlanetCenter = length(rayOrigin);
     
     vec3 viewNormal = normalize(rayOrigin);
     
@@ -672,11 +643,11 @@ void traceVolumetricClouds(vec3 rayOrigin,
 #endif                                                                
                                 2.0;
                                 
-            vec3 directScatting = vec3(lightEnergy) * sunColor * 8.0;
+            vec3 directScatting = vec3(lightEnergy) * sunColor;
             
             // Fake multiple scattering 
             vec3 indirectScattering = clamp(pow(3.0 * scatteringCoefficient, 0.5), 0.7, 1.0) *
-                                      skyLight * 
+                                      textureLod(uCloudTextureSkyLuminanceLUT, normalize(position), 0.0).xyz * 
                                       beerTerm(density) *
                                       //sunLightTerm *
                                       vec3(1.0);
