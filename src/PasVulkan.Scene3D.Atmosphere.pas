@@ -449,6 +449,14 @@ type TpvScene3DAtmosphere=class;
           
               LayerHigh:TVolumetricCloudLayerHigh;
 
+              procedure Initialize;
+              procedure LoadFromJSON(const aJSON:TPasJSONItem);
+              procedure LoadFromJSONStream(const aStream:TStream);
+              procedure LoadFromJSONFile(const aFileName:string);
+              function SaveToJSON:TPasJSONItemObject;
+              procedure SaveToJSONStream(const aStream:TStream);
+              procedure SaveToJSONFile(const aFileName:string);
+
             end;
             PVolumetricCloudParameters=^TVolumetricCloudParameters;
             { TAtmosphereParameters }
@@ -1122,7 +1130,7 @@ procedure TpvScene3DAtmosphere.TVolumetricCloudLayerLow.Initialize;
 begin
  StartHeight:=6380.0;
  EndHeight:=6400.0;
- PositionScale:=1.0;
+ PositionScale:=0.0005;
  ShapeNoiseScale:=1.0;
  DetailNoiseScale:=1.0;
  CurlScale:=1.0;
@@ -1381,6 +1389,165 @@ end;
 
 { TpvScene3DAtmosphere.TVolumetricCloudParameters }
 
+(*
+            { TVolumetricCloudParameters }
+            TVolumetricCloudParameters=packed record
+             public
+          
+              CoverageTypeWetnessTopFactors:TpvVector4; // x = Coverage, y = Type, z = Wetness, w = Top
+          
+              CoverageTypeWetnessTopOffsets:TpvVector4; // x = Coverage, y = Type, z = Wetness, w = Top
+          
+              Scattering:TpvVector4; // w = unused
+          
+              Absorption:TpvVector4; // w = unused
+          
+              LightingDensity:TpvFloat;
+              ShadowDensity:TpvFloat;
+              ViewDensity:TpvFloat;
+              DensityScale:TpvFloat;
+          
+              Scale:TpvFloat;
+              ForwardScatteringG:TpvFloat;
+              BackwardScatteringG:TpvFloat;
+              ShadowRayLength:TpvFloat;
+          
+              DensityAlongConeLength:TpvFloat;
+              DensityAlongConeLengthFarMultiplier:TpvFloat;
+              Padding0:TpvFloat;
+              Padding1:TpvFloat;
+          
+              LayerLow:TVolumetricCloudLayerLow;
+          
+              LayerHigh:TVolumetricCloudLayerHigh;
+
+              procedure Initialize;
+              procedure LoadFromJSON(const aJSON:TPasJSONItem);
+              procedure LoadFromJSONStream(const aStream:TStream);
+              procedure LoadFromJSONFile(const aFileName:string);
+              function SaveToJSON:TPasJSONItemObject;
+              procedure SaveToJSONStream(const aStream:TStream);
+              procedure SaveToJSONFile(const aFileName:string);
+
+            end;
+*)
+
+procedure TpvScene3DAtmosphere.TVolumetricCloudParameters.Initialize;
+begin
+ CoverageTypeWetnessTopFactors:=TpvVector4.InlineableCreate(1.0,1.0,1.0,1.0);
+ CoverageTypeWetnessTopOffsets:=TpvVector4.InlineableCreate(0.0,0.0,0.0,0.0);
+ Scattering:=TpvVector4.InlineableCreate(1.0,1.0,1.0,0.0);
+ Absorption:=TpvVector4.InlineableCreate(0.0,0.0,0.0,0.0);
+ LightingDensity:=1.0;
+ ShadowDensity:=1.0;
+ ViewDensity:=1.0;
+ DensityScale:=1.0;
+ Scale:=1.0;
+ ForwardScatteringG:=0.5;
+ BackwardScatteringG:=-0.8;
+ ShadowRayLength:=1.0;
+ DensityAlongConeLength:=1.0;
+ DensityAlongConeLengthFarMultiplier:=3.0;
+ LayerLow.Initialize;
+ LayerHigh.Initialize;
+end;
+
+procedure TpvScene3DAtmosphere.TVolumetricCloudParameters.LoadFromJSON(const aJSON:TPasJSONItem);
+var JSONRootObject:TPasJSONItemObject;
+begin
+ if assigned(aJSON) and (aJSON is TPasJSONItemObject) then begin
+  JSONRootObject:=TPasJSONItemObject(aJSON);
+  CoverageTypeWetnessTopFactors:=JSONToVector4(JSONRootObject.Properties['coveragetypewetnesstopfactors'],CoverageTypeWetnessTopFactors);
+  CoverageTypeWetnessTopOffsets:=JSONToVector4(JSONRootObject.Properties['coveragetypewetnesstopoffsets'],CoverageTypeWetnessTopOffsets);
+  Scattering.xyz:=JSONToVector3(JSONRootObject.Properties['scattering'],Scattering.xyz);
+  Absorption.xyz:=JSONToVector3(JSONRootObject.Properties['absorption'],Absorption.xyz);
+  LightingDensity:=TPasJSON.GetNumber(JSONRootObject.Properties['lightingdensity'],LightingDensity);
+  ShadowDensity:=TPasJSON.GetNumber(JSONRootObject.Properties['shadowdensity'],ShadowDensity);
+  ViewDensity:=TPasJSON.GetNumber(JSONRootObject.Properties['viewdensity'],ViewDensity);
+  DensityScale:=TPasJSON.GetNumber(JSONRootObject.Properties['densityscale'],DensityScale);
+  Scale:=TPasJSON.GetNumber(JSONRootObject.Properties['scale'],Scale);
+  ForwardScatteringG:=TPasJSON.GetNumber(JSONRootObject.Properties['forwardscatteringg'],ForwardScatteringG);
+  BackwardScatteringG:=TPasJSON.GetNumber(JSONRootObject.Properties['backwardscatteringg'],BackwardScatteringG);
+  ShadowRayLength:=TPasJSON.GetNumber(JSONRootObject.Properties['shadowraylength'],ShadowRayLength);
+  DensityAlongConeLength:=TPasJSON.GetNumber(JSONRootObject.Properties['densityalongconelength'],DensityAlongConeLength);
+  DensityAlongConeLengthFarMultiplier:=TPasJSON.GetNumber(JSONRootObject.Properties['densityalongconelengthfarmultiplier'],DensityAlongConeLengthFarMultiplier);
+  LayerLow.LoadFromJSON(JSONRootObject.Properties['layerlow']);
+  LayerHigh.LoadFromJSON(JSONRootObject.Properties['layerhigh']);
+ end;
+end;
+
+procedure TpvScene3DAtmosphere.TVolumetricCloudParameters.LoadFromJSONStream(const aStream:TStream);
+var JSON:TPasJSONItem;
+begin
+ JSON:=TPasJSON.Parse(aStream);
+ if assigned(JSON) then begin
+  try
+   LoadFromJSON(JSON);
+  finally
+   FreeAndNil(JSON);
+  end;
+ end;
+end;
+
+procedure TpvScene3DAtmosphere.TVolumetricCloudParameters.LoadFromJSONFile(const aFileName:string);
+var Stream:TMemoryStream;
+begin
+ Stream:=TMemoryStream.Create;
+ try
+  Stream.LoadFromFile(aFileName);
+  Stream.Seek(0,soBeginning);
+  LoadFromJSONStream(Stream);
+ finally
+  Stream.Free;
+ end;
+end;
+
+function TpvScene3DAtmosphere.TVolumetricCloudParameters.SaveToJSON:TPasJSONItemObject;
+begin
+ result:=TPasJSONItemObject.Create;
+ result.Add('coveragetypewetnesstopfactors',Vector4ToJSON(CoverageTypeWetnessTopFactors));
+ result.Add('coveragetypewetnesstopoffsets',Vector4ToJSON(CoverageTypeWetnessTopOffsets));
+ result.Add('scattering',Vector3ToJSON(Scattering.xyz));
+ result.Add('absorption',Vector3ToJSON(Absorption.xyz));
+ result.Add('lightingdensity',TPasJSONItemNumber.Create(LightingDensity));
+ result.Add('shadowdensity',TPasJSONItemNumber.Create(ShadowDensity));
+ result.Add('viewdensity',TPasJSONItemNumber.Create(ViewDensity));
+ result.Add('densityscale',TPasJSONItemNumber.Create(DensityScale));
+ result.Add('scale',TPasJSONItemNumber.Create(Scale));
+ result.Add('forwardscatteringg',TPasJSONItemNumber.Create(ForwardScatteringG));
+ result.Add('backwardscatteringg',TPasJSONItemNumber.Create(BackwardScatteringG));
+ result.Add('shadowraylength',TPasJSONItemNumber.Create(ShadowRayLength));
+ result.Add('densityalongconelength',TPasJSONItemNumber.Create(DensityAlongConeLength));
+ result.Add('densityalongconelengthfarmultiplier',TPasJSONItemNumber.Create(DensityAlongConeLengthFarMultiplier));
+ result.Add('layerlow',LayerLow.SaveToJSON);
+ result.Add('layerhigh',LayerHigh.SaveToJSON);
+end;
+
+procedure TpvScene3DAtmosphere.TVolumetricCloudParameters.SaveToJSONStream(const aStream:TStream);
+var JSON:TPasJSONItem;
+begin
+ JSON:=SaveToJSON;
+ if assigned(JSON) then begin
+  try
+   TPasJSON.StringifyToStream(aStream,JSON,true);
+  finally
+   FreeAndNil(JSON);
+  end;
+ end;
+end;
+
+procedure TpvScene3DAtmosphere.TVolumetricCloudParameters.SaveToJSONFile(const aFileName:string);
+var Stream:TMemoryStream;
+begin
+ Stream:=TMemoryStream.Create;
+ try
+  SaveToJSONStream(Stream);
+  Stream.Seek(0,soBeginning);
+  Stream.SaveToFile(aFileName);
+ finally
+  Stream.Free;
+ end;
+end;
 
 { TpvScene3DAtmosphere.TAtmosphereParameters }
 
@@ -1436,7 +1603,7 @@ begin
  RaymarchingMaxSteps:=14;
 
  // Volumetric clouds
-//VolumetricClouds.Initialize;
+ VolumetricClouds.Initialize;
 
 end;
 
@@ -1503,7 +1670,7 @@ begin
 
   LoadRaymarching(JSONRootObject.Properties['raymarching']);
 
-//VolumetricClouds.LoadFromJSON(JSONRootObject.Properties['volumetricclouds']);
+  VolumetricClouds.LoadFromJSON(JSONRootObject.Properties['volumetricclouds']);
 
  end;
 
@@ -1573,8 +1740,8 @@ begin
  result.Add('absorptionextinction',Vector3ToJSON(AbsorptionExtinction.xyz));
  //result.Add('sundirection',Vector3ToJSON(SunDirection.xyz));
  //result.Add('musmin',TPasJSONItemNumber.Create(MuSMin));
- result.Add('raymarching',SaveRaymarching);
-//result.Add('volumetricclouds',VolumetricClouds.SaveToJSON);
+ result.Add('raymarching',SaveRaymarching); 
+ result.Add('volumetricclouds',VolumetricClouds.SaveToJSON);
 end;
 
 procedure TpvScene3DAtmosphere.TAtmosphereParameters.SaveToJSONStream(const aStream:TStream);
