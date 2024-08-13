@@ -1303,7 +1303,7 @@ begin
   Density:=TPasJSON.GetNumber(JSONRootObject.Properties['density'],Density);
   CoverMin:=TPasJSON.GetNumber(JSONRootObject.Properties['covermin'],CoverMin);
   CoverMax:=TPasJSON.GetNumber(JSONRootObject.Properties['covermax'],CoverMax);
-  FadeMin:=TPasJSON.GetNumber(JSONRootObject.Properties['fademax'],FadeMin);
+  FadeMin:=TPasJSON.GetNumber(JSONRootObject.Properties['fademin'],FadeMin);
   FadeMax:=TPasJSON.GetNumber(JSONRootObject.Properties['fademax'],FadeMax);
   Speed:=TPasJSON.GetNumber(JSONRootObject.Properties['speed'],Speed);
   RotationBase:=JSONToVector4(JSONRootObject.Properties['rotationbase'],RotationBase);
@@ -1350,7 +1350,7 @@ begin
  result.Add('density',TPasJSONItemNumber.Create(Density));
  result.Add('covermin',TPasJSONItemNumber.Create(CoverMin));
  result.Add('covermax',TPasJSONItemNumber.Create(CoverMax));
- result.Add('fademax',TPasJSONItemNumber.Create(FadeMin));
+ result.Add('fademin',TPasJSONItemNumber.Create(FadeMin));
  result.Add('fademax',TPasJSONItemNumber.Create(FadeMax));
  result.Add('speed',TPasJSONItemNumber.Create(Speed));
  result.Add('rotationbase',Vector4ToJSON(RotationBase));
