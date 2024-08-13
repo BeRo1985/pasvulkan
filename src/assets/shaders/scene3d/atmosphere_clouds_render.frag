@@ -760,5 +760,47 @@ void main(){
   worldPos = (uAtmosphereParameters.atmosphereParameters.inverseTransform * vec4(worldPos, 1.0)).xyz;
   worldDir = normalize((uAtmosphereParameters.atmosphereParameters.inverseTransform * vec4(worldDir, 0.0)).xyz);
 
+#ifdef MSAA
+#ifdef MULTIVIEW
+  float depthBufferValue = texelFetch(uDepthTexture, ivec3(ivec2(gl_FragCoord.xy), int(gl_ViewIndex)), gl_SampleID).x;
+#else
+  float depthBufferValue = texelFetch(uDepthTexture, ivec2(gl_FragCoord.xy), gl_SampleID).x;
+#endif
+#else
+#ifdef MULTIVIEW
+  float depthBufferValue = texelFetch(uDepthTexture, ivec3(ivec2(gl_FragCoord.xy), int(gl_ViewIndex)), 0).x;
+#else
+  float depthBufferValue = texelFetch(uDepthTexture, ivec2(gl_FragCoord.xy), 0).x;
+#endif
+#endif
+
+  vec3 sunDirection = normalize(getSunDirection(uAtmosphereParameters.atmosphereParameters));
+
+#ifdef SHADOWS
+  lightDirection = -sunDirection;
+#endif
+
+  bool depthIsZFar = depthBufferValue == GetZFarDepthValue(view.projectionMatrix);
+
+  if(depthIsZFar){
+    depthBufferValue = uintBitsToFloat(0x7f800000u); // +inf
+  }else{
+    vec4 t = view.inverseProjectionMatrix * vec4(fma(uv, vec2(2.0), vec2(-1.0)), depthBufferValue, 1.0);
+    depthBufferValue = t.z / t.w;
+  }
+
+  vec3 inscattering, transmittance;
+  float depth;
+  traceVolumetricClouds(worldPos, worldDir, depthBufferValue, ivec2(gl_FragCoord), inscattering, transmittance, depth);
+
+#ifdef DUALBLEND
+  outInscattering = vec4(inscattering, 1.0);
+  outTransmittance = vec4(transmittance, 1.0);
+#else
+  outInscattering = vec4(inscattering, dot(transmittance, vec3(1.0 / 3.0)));
+#endif
+
+  outDepth = depth;
+
 
 }
