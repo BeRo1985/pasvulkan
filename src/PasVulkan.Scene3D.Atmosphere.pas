@@ -408,6 +408,14 @@ type TpvScene3DAtmosphere=class;
           
               OctaveFactors:TpvVector4;
           
+              procedure Initialize;
+              procedure LoadFromJSON(const aJSON:TPasJSONItem);
+              procedure LoadFromJSONStream(const aStream:TStream);
+              procedure LoadFromJSONFile(const aFileName:string);
+              function SaveToJSON:TPasJSONItemObject;
+              procedure SaveToJSONStream(const aStream:TStream);
+              procedure SaveToJSONFile(const aFileName:string);
+
             end;
             PVolumetricCloudLayerHigh=^TVolumetricCloudLayerHigh;
             { TVolumetricCloudParameters }
@@ -1108,35 +1116,6 @@ begin
  end;
 end;
 
-
-(*
-            { TVolumetricCloudLayerLow }
-            TVolumetricCloudLayerLow=packed record
-             public
-          
-              StartHeight:TpvFloat;
-              EndHeight:TpvFloat;
-              PositionScale:TpvFloat;
-              ShapeNoiseScale:TpvFloat;
-          
-              DetailNoiseScale:TpvFloat;
-              CurlScale:TpvFloat;
-              AdvanceCurlScale:TpvFloat;
-              AdvanceCurlAmplitude:TpvFloat;
-          
-              HeightGradients:array[0..2] of TpvVector4; // mat3x4
-              AnvilDeformations:array[0..2] of TpvVector4; // mat3x4 unused for now
-          
-              procedure Initialize;
-              procedure LoadFromJSON(const aJSON:TPasJSONItem);
-              procedure LoadFromJSONStream(const aStream:TStream);
-              procedure LoadFromJSONFile(const aFileName:string);
-              function SaveToJSON:TPasJSONItemObject;
-              procedure SaveToJSONStream(const aStream:TStream);
-              procedure SaveToJSONFile(const aFileName:string);
-            end;
-*)
-
 { TpvScene3DAtmosphere.TVolumetricCloudLayerLow }
 
 procedure TpvScene3DAtmosphere.TVolumetricCloudLayerLow.Initialize;
@@ -1284,6 +1263,123 @@ begin
  end;
 end;
 
+{ TpvScene3DAtmosphere.TVolumetricCloudLayerHigh }
+
+procedure TpvScene3DAtmosphere.TVolumetricCloudLayerHigh.Initialize;
+begin
+ StartHeight:=6420.0;
+ EndHeight:=6440.0;
+ PositionScale:=0.1;
+ Density:=0.015625;
+ CoverMin:=0.5;
+ CoverMax:=0.7;
+ FadeMin:=0.01;
+ FadeMax:=0.01;
+ Speed:=0.0;
+ RotationBase:=TpvVector4.InlineableCreate(-1.0,0.0,1.0,1.0);
+ RotationOctave1:=TpvVector4.InlineableCreate(-1.0,0.0,1.0,0.125);
+ RotationOctave2:=TpvVector4.InlineableCreate(-1.0,0.0,1.0,-0.125);
+ RotationOctave3:=TpvVector4.InlineableCreate(-1.0,0.0,1.0,0.0625);
+ OctaveScales:=TpvVector4.InlineableCreate(1.0,2.0,7.0,16.0);
+ OctaveFactors:=TpvVector4.InlineableCreate(0.5,0.25,0.125,0.0625);
+end;
+
+procedure TpvScene3DAtmosphere.TVolumetricCloudLayerHigh.LoadFromJSON(const aJSON:TPasJSONItem);
+var JSONRootObject:TPasJSONItemObject;
+begin
+ if assigned(aJSON) and (aJSON is TPasJSONItemObject) then begin
+  JSONRootObject:=TPasJSONItemObject(aJSON);
+  StartHeight:=TPasJSON.GetNumber(JSONRootObject.Properties['startheight'],StartHeight);
+  EndHeight:=TPasJSON.GetNumber(JSONRootObject.Properties['endheight'],EndHeight);
+  PositionScale:=TPasJSON.GetNumber(JSONRootObject.Properties['positionscale'],PositionScale);
+  Density:=TPasJSON.GetNumber(JSONRootObject.Properties['density'],Density);
+  CoverMin:=TPasJSON.GetNumber(JSONRootObject.Properties['covermin'],CoverMin);
+  CoverMax:=TPasJSON.GetNumber(JSONRootObject.Properties['covermax'],CoverMax);
+  FadeMin:=TPasJSON.GetNumber(JSONRootObject.Properties['fademax'],FadeMin);
+  FadeMax:=TPasJSON.GetNumber(JSONRootObject.Properties['fademax'],FadeMax);
+  Speed:=TPasJSON.GetNumber(JSONRootObject.Properties['speed'],Speed);
+  RotationBase:=JSONToVector4(JSONRootObject.Properties['rotationbase'],RotationBase);
+  RotationOctave1:=JSONToVector4(JSONRootObject.Properties['rotationoctave1'],RotationOctave1);
+  RotationOctave2:=JSONToVector4(JSONRootObject.Properties['rotationoctave2'],RotationOctave2);
+  RotationOctave3:=JSONToVector4(JSONRootObject.Properties['rotationoctave3'],RotationOctave3);
+  OctaveScales:=JSONToVector4(JSONRootObject.Properties['octavescales'],OctaveScales);
+  OctaveFactors:=JSONToVector4(JSONRootObject.Properties['octavefactors'],OctaveFactors);
+ end;
+end;
+
+procedure TpvScene3DAtmosphere.TVolumetricCloudLayerHigh.LoadFromJSONStream(const aStream:TStream);
+var JSON:TPasJSONItem;
+begin
+ JSON:=TPasJSON.Parse(aStream);
+ if assigned(JSON) then begin
+  try
+   LoadFromJSON(JSON);
+  finally
+   FreeAndNil(JSON);
+  end;
+ end;
+end;
+
+procedure TpvScene3DAtmosphere.TVolumetricCloudLayerHigh.LoadFromJSONFile(const aFileName:string);
+var Stream:TMemoryStream;
+begin
+ Stream:=TMemoryStream.Create;
+ try
+  Stream.LoadFromFile(aFileName);
+  Stream.Seek(0,soBeginning);
+  LoadFromJSONStream(Stream);
+ finally
+  Stream.Free;
+ end;
+end;
+
+function TpvScene3DAtmosphere.TVolumetricCloudLayerHigh.SaveToJSON:TPasJSONItemObject;
+begin
+ result:=TPasJSONItemObject.Create;
+ result.Add('startheight',TPasJSONItemNumber.Create(StartHeight));
+ result.Add('endheight',TPasJSONItemNumber.Create(EndHeight));
+ result.Add('positionscale',TPasJSONItemNumber.Create(PositionScale));
+ result.Add('density',TPasJSONItemNumber.Create(Density));
+ result.Add('covermin',TPasJSONItemNumber.Create(CoverMin));
+ result.Add('covermax',TPasJSONItemNumber.Create(CoverMax));
+ result.Add('fademax',TPasJSONItemNumber.Create(FadeMin));
+ result.Add('fademax',TPasJSONItemNumber.Create(FadeMax));
+ result.Add('speed',TPasJSONItemNumber.Create(Speed));
+ result.Add('rotationbase',Vector4ToJSON(RotationBase));
+ result.Add('rotationoctave1',Vector4ToJSON(RotationOctave1));
+ result.Add('rotationoctave2',Vector4ToJSON(RotationOctave2));
+ result.Add('rotationoctave3',Vector4ToJSON(RotationOctave3));
+ result.Add('octavescales',Vector4ToJSON(OctaveScales));
+ result.Add('octavefactors',Vector4ToJSON(OctaveFactors));
+end;
+
+procedure TpvScene3DAtmosphere.TVolumetricCloudLayerHigh.SaveToJSONStream(const aStream:TStream);
+var JSON:TPasJSONItem;
+begin
+ JSON:=SaveToJSON;
+ if assigned(JSON) then begin
+  try
+   TPasJSON.StringifyToStream(aStream,JSON,true);
+  finally
+   FreeAndNil(JSON);
+  end;
+ end;
+end;
+
+procedure TpvScene3DAtmosphere.TVolumetricCloudLayerHigh.SaveToJSONFile(const aFileName:string);
+var Stream:TMemoryStream;
+begin
+ Stream:=TMemoryStream.Create;
+ try
+  SaveToJSONStream(Stream);
+  Stream.Seek(0,soBeginning);
+  Stream.SaveToFile(aFileName);
+ finally
+  Stream.Free;
+ end;
+end;
+
+{ TpvScene3DAtmosphere.TVolumetricCloudParameters }
 
 
 { TpvScene3DAtmosphere.TAtmosphereParameters }
