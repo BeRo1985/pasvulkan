@@ -228,13 +228,13 @@ struct VolumetricCloudParameters {
   float Scale;
   float ForwardScatteringG;
   float BackwardScatteringG;
-  float DensityAlongConeLength;
+  float ShadowRayLength;
 
+  float DensityAlongConeLength;
   float DensityAlongConeLengthFarMultiplier;
   float Padding0;
   float Padding1;
-  float Padding2;
-    
+
   VolumetricCloudLayerLow LayerLow;
   VolumetricCloudLayerHigh LayerHigh;
 
