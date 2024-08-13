@@ -1389,49 +1389,6 @@ end;
 
 { TpvScene3DAtmosphere.TVolumetricCloudParameters }
 
-(*
-            { TVolumetricCloudParameters }
-            TVolumetricCloudParameters=packed record
-             public
-          
-              CoverageTypeWetnessTopFactors:TpvVector4; // x = Coverage, y = Type, z = Wetness, w = Top
-          
-              CoverageTypeWetnessTopOffsets:TpvVector4; // x = Coverage, y = Type, z = Wetness, w = Top
-          
-              Scattering:TpvVector4; // w = unused
-          
-              Absorption:TpvVector4; // w = unused
-          
-              LightingDensity:TpvFloat;
-              ShadowDensity:TpvFloat;
-              ViewDensity:TpvFloat;
-              DensityScale:TpvFloat;
-          
-              Scale:TpvFloat;
-              ForwardScatteringG:TpvFloat;
-              BackwardScatteringG:TpvFloat;
-              ShadowRayLength:TpvFloat;
-          
-              DensityAlongConeLength:TpvFloat;
-              DensityAlongConeLengthFarMultiplier:TpvFloat;
-              Padding0:TpvFloat;
-              Padding1:TpvFloat;
-          
-              LayerLow:TVolumetricCloudLayerLow;
-          
-              LayerHigh:TVolumetricCloudLayerHigh;
-
-              procedure Initialize;
-              procedure LoadFromJSON(const aJSON:TPasJSONItem);
-              procedure LoadFromJSONStream(const aStream:TStream);
-              procedure LoadFromJSONFile(const aFileName:string);
-              function SaveToJSON:TPasJSONItemObject;
-              procedure SaveToJSONStream(const aStream:TStream);
-              procedure SaveToJSONFile(const aFileName:string);
-
-            end;
-*)
-
 procedure TpvScene3DAtmosphere.TVolumetricCloudParameters.Initialize;
 begin
  CoverageTypeWetnessTopFactors:=TpvVector4.InlineableCreate(1.0,1.0,1.0,1.0);
