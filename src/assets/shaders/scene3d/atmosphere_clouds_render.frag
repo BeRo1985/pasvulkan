@@ -200,7 +200,46 @@ float getDensityHeightGradientForPoint(const in vec3 position, const in float he
   return smoothstep(heightGradient.x, heightGradient.y, heightFraction) * smoothstep(heightGradient.w, heightGradient.z, heightFraction);
 }
                              
-                   
+vec3 scaleLayerLowCloudPosition(vec3 position){
+  return position * uAtmosphereParameters.atmosphereParameters.VolumetricClouds.LayerLow.PositionScale;
+}                                        
+
+vec3 scaleLayerHighCloudPosition(vec3 position){
+  return position * uAtmosphereParameters.atmosphereParameters.VolumetricClouds.LayerHigh.PositionScale;
+}
+
+float hash13(ivec3 p){
+  vec3 p3 = fract(vec3(p) * 0.1031);
+  p3 += dot(p3, p3.zyx + vec3(31.32));
+  return fract((p3.x + p3.y) * p3.z);
+}
+
+float get3DNoise(vec3 p){
+  ivec3 i = ivec3(floor(p));
+  vec3 f = fract(p);  
+  f *= f * (3.0 - (2.0 * f));  
+  ivec2 e = ivec2(0, 1);	
+  return mix(mix(mix(hash13(i + e.xxx), hash13(i + e.yxx), f.x),
+                 mix(hash13(i + e.xyx), hash13(i + e.yyx), f.x), f.y),
+             mix(mix(hash13(i + e.xxy), hash13(i + e.yxy), f.x),
+                 mix(hash13(i + e.xyy), hash13(i + e.yyy), f.x), f.y), f.z);
+}
+
+#include "rotation.glsl"
+
+vec4 getWeatherData(const in vec3 position, const float mipMapLevel){
+  return clamp(
+    fma(
+      textureLod(uCloudTextureWeatherMap, normalize(position), mipMapLevel),
+      uAtmosphereParameters.atmosphereParameters.VolumetricClouds.coverageTypeWetnessTopFactors, 
+      uAtmosphereParameters.atmosphereParameters.VolumetricClouds.coverageTypeWetnessTopOffsets
+    ),
+    vec4(0.0),
+    vec4(1.0)
+  );
+}                                       
+            
+                                                       
 
 void main(){
 

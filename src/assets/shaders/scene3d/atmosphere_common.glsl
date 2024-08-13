@@ -168,7 +168,7 @@ struct VolumetricCloudLayerLow {
    
   float StartHeight;
   float EndHeight;
-  float Padding0;
+  float PositionScale;
   float Padding1;
   
   mat3x4 heightGradients;
@@ -179,10 +179,15 @@ struct VolumetricCloudLayerLow {
 struct VolumetricCloudLayerHigh {
   float StartHeight;
   float EndHeight;
+  float PositionScale;
+  float Padding1;
 };
 
 struct VolumetricCloudParameters {
 
+  vec4 coverageTypeWetnessTopFactors; // x = Coverage, y = Type, z = Wetness, w = Top
+  vec4 coverageTypeWetnessTopOffsets; // x = Coverage, y = Type, z = Wetness, w = Top
+  
   VolumetricCloudLayerLow LayerLow;
   VolumetricCloudLayerHigh LayerHigh;
 
