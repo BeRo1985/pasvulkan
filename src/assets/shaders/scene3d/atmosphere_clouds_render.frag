@@ -385,7 +385,53 @@ float getHighResCloudDensity(const in vec3 position, const in vec3 offset, const
 
 }
 
+mat3 windRotation, curlRotation;
+
+/*float scaleDensity(float density){
+  return density;
+}*/
+
+float powderTerm(float density, float cosAngle){
+	return mix(1.0, clamp(1.0 - exp(-(density * 2.0)), 0.0, 1.0), clamp(fma(cosAngle, -0.5, 0.5), 0.0, 1.0));
+}                                 
+  
+float powderTerm(float density){
+  return clamp(1.0 - exp(-(density * 2.0)), 0.0, 1.0);
+}                                 
+ 
+float beerTerm(float density){
+  return exp(-density);
+}
+
+float beerLaw(float density){
+	return max(exp(-density), exp(-density * 0.5) * 0.7);
+}
+
+float henyeyGreensteinPhase(float cosAngle, float g){
+  float g2 = g * g;
+  return ((1.0 - g2) / pow((1.0 + g2) - (2.0 * g * cosAngle), 3.0 / 2.0)) / (4.0 * PI);
+}
+
+float getSunPhase(vec3 rayDirection, vec3 sunDirection, float g) {
+  float g2 = g * g;
+  return (1.0 - g2) / (pow((1.0 + g2) - ((2.0 * g) * dot(rayDirection, sunDirection)), 3.0 / 2.0) * (4.0 * PI));
+}
+
+const vec3 randomVectors[8] = vec3[](
+	vec3( 0.38051305,  0.92453449, -0.02111345),
+	vec3(-0.50625799, -0.03590792, -0.86163418),
+	vec3(-0.32509218, -0.94557439,  0.01428793),
+	vec3( 0.09026238, -0.27376545,  0.95755165),
+	vec3( 0.28128598,  0.42443639, -0.86065785),
+	vec3(-0.16852403,  0.14748697,  0.97460106),
+	vec3(-0.86065785,  0.28128598,  0.42443639),
+	vec3( 0.73454242, -0.17479357,  0.27376545)
+);
+
+
 
 void main(){
+
+  windRotation = curlRotation = mat3(1.0);
 
 }
