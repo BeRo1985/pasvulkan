@@ -138,6 +138,7 @@ type TpvScene3DAtmosphere=class;
              CoverageRotation:TpvVector4;
              TypeRotation:TpvVector4;
              WetnessRotation:TpvVector4;
+             TopRotation:TpvVector4;
              CoveragePerlinWorleyDifference:TpvFloat;
              TotalSize:TpvFloat;
              WorleySeed:TpvFloat;
@@ -3108,6 +3109,7 @@ begin
    PushConstants.CoverageRotation:=TpvVector4.InlineableCreate(1.0,0.0,0.0,Index*(PI*0.25));
    PushConstants.TypeRotation:=TpvVector4.InlineableCreate(1.0,0.0,0.0,Index*(PI*0.125));
    PushConstants.WetnessRotation:=TpvVector4.InlineableCreate(1.0,0.0,0.0,Index*(PI*0.5));
+   PushConstants.TopRotation:=TpvVector4.InlineableCreate(1.0,0.0,0.0,Index*(PI*0.75));
    PushConstants.CoveragePerlinWorleyDifference:=0.5;
    PushConstants.TotalSize:=4.0;
    PushConstants.WorleySeed:=10.0+(Index*10.0);
