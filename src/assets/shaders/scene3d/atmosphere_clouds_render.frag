@@ -627,11 +627,13 @@ void traceVolumetricClouds(vec3 rayOrigin,
         if(density > 1e-4){
         
           if(zeroDensitySampleCounter > 0){
-            zeroDensitySampleCounter = 0;            
+            // Go one step back so that we don't miss the cloud edge as much as possible, since we did 2x steps in the previous iterations
+            zeroDensitySampleCounter = 0;                        
             weatherData = getWeatherData(position = fma(rayDirection, vec3(time -= timeStep), rayOrigin), mipMapLevel);
             if(max(weatherData.x, weatherData.w) > 1e-4){
               density = getLowResCloudDensity(position, layerLowWindRotation, weatherData, mipMapLevel);
             }else{
+              // If we still have no density, we can skip this step and continue with the next hopefully real one
               time += timeStep;          
               continue;
             }
