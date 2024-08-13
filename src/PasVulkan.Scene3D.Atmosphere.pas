@@ -303,8 +303,8 @@ type TpvScene3DAtmosphere=class;
               property CoverageWindAngle:TpvFloat read GetCoverageWindAngle write SetCoverageWindAngle;
             end;
             PVolumetricCloudLayer=^TVolumetricCloudLayer;
-            { TVolumetricCloudParameters }
-            TVolumetricCloudParameters=packed record
+            { TVolumetricCloudParametersOld }
+            TVolumetricCloudParametersOld=packed record
              public
               BeerPowder:TpvFloat;
               BeerPowderPower:TpvFloat;
@@ -350,6 +350,92 @@ type TpvScene3DAtmosphere=class;
               procedure SaveToJSONStream(const aStream:TStream);
               procedure SaveToJSONFile(const aFileName:string);
             end;
+            PVolumetricCloudParametersOld=^TVolumetricCloudParametersOld;
+            { TVolumetricCloudLayerLow }
+            TVolumetricCloudLayerLow=packed record
+             public
+          
+              StartHeight:TpvFloat;
+              EndHeight:TpvFloat;
+              PositionScale:TpvFloat;
+              ShapeNoiseScale:TpvFloat;
+          
+              DetailNoiseScale:TpvFloat;
+              CurlScale:TpvFloat;
+              AdvanceCurlScale:TpvFloat;
+              AdvanceCurlAmplitude:TpvFloat;
+          
+              HeightGradients:array[0..2] of TpvVector4; // mat3x4
+              AnvilDeformations:array[0..2] of TpvVector4; // mat3x4 unused for now
+          
+            end;
+            PVolumetricCloudLayerLow=^TVolumetricCloudLayerLow;
+            { TVolumetricCloudLayerHigh }
+            TVolumetricCloudLayerHigh=packed record
+             public
+          
+              StartHeight:TpvFloat;
+              EndHeight:TpvFloat;
+              PositionScale:TpvFloat;
+              Density:TpvFloat;
+          
+              CoverMin:TpvFloat;
+              CoverMax:TpvFloat;
+              FadeMin:TpvFloat;
+              FadeMax:TpvFloat;
+          
+              Speed:TpvFloat;
+              Padding0:TpvFloat;
+              Padding1:TpvFloat;
+              Padding2:TpvFloat;
+          
+              RotationBase:TpvVector4;
+          
+              RotationOctave1:TpvVector4;
+          
+              RotationOctave2:TpvVector4;
+          
+              RotationOctave3:TpvVector4;
+          
+              OctaveScales:TpvVector4;
+          
+              OctaveFactors:TpvVector4;
+          
+            end;
+            PVolumetricCloudLayerHigh=^TVolumetricCloudLayerHigh;
+            { TVolumetricCloudParameters }
+            TVolumetricCloudParameters=packed record
+             public
+          
+              CoverageTypeWetnessTopFactors:TpvVector4; // x = Coverage, y = Type, z = Wetness, w = Top
+          
+              CoverageTypeWetnessTopOffsets:TpvVector4; // x = Coverage, y = Type, z = Wetness, w = Top
+          
+              Scattering:TpvVector4; // w = unused
+          
+              Absorption:TpvVector4; // w = unused
+          
+              LightingDensity:TpvFloat;
+              ShadowDensity:TpvFloat;
+              ViewDensity:TpvFloat;
+              DensityScale:TpvFloat;
+          
+              Scale:TpvFloat;
+              ForwardScatteringG:TpvFloat;
+              BackwardScatteringG:TpvFloat;
+              ShadowRayLength:TpvFloat;
+          
+              DensityAlongConeLength:TpvFloat;
+              DensityAlongConeLengthFarMultiplier:TpvFloat;
+              Padding0:TpvFloat;
+              Padding1:TpvFloat;
+          
+              LayerLow:TVolumetricCloudLayerLow;
+          
+              LayerHigh:TVolumetricCloudLayerHigh;
+
+            end;
+            PVolumetricCloudParameters=^TVolumetricCloudParameters;
             { TAtmosphereParameters }
             TAtmosphereParameters=packed record             
              public
@@ -761,9 +847,9 @@ begin
  end;
 end;
 
-{ TpvScene3DAtmosphere.TVolumetricCloudParameters }
+{ TpvScene3DAtmosphere.TVolumetricCloudParametersOld }
 
-procedure TpvScene3DAtmosphere.TVolumetricCloudParameters.Initialize;
+procedure TpvScene3DAtmosphere.TVolumetricCloudParametersOld.Initialize;
 begin
 
  BeerPowder:=20.0;
@@ -873,7 +959,7 @@ begin
 
 end;
 
-procedure TpvScene3DAtmosphere.TVolumetricCloudParameters.LoadFromJSON(const aJSON:TPasJSONItem);
+procedure TpvScene3DAtmosphere.TVolumetricCloudParametersOld.LoadFromJSON(const aJSON:TPasJSONItem);
 var JSONRootObject:TPasJSONItemObject;
     JSON:TPasJSONItem;
     Index:TpvInt32;
@@ -923,7 +1009,7 @@ begin
 
 end;
 
-procedure TpvScene3DAtmosphere.TVolumetricCloudParameters.LoadFromJSONStream(const aStream:TStream);
+procedure TpvScene3DAtmosphere.TVolumetricCloudParametersOld.LoadFromJSONStream(const aStream:TStream);
 var JSON:TPasJSONItem;
 begin
  JSON:=TPasJSON.Parse(aStream);
@@ -936,7 +1022,7 @@ begin
  end;
 end;
 
-procedure TpvScene3DAtmosphere.TVolumetricCloudParameters.LoadFromJSONFile(const aFileName:string);
+procedure TpvScene3DAtmosphere.TVolumetricCloudParametersOld.LoadFromJSONFile(const aFileName:string);
 var Stream:TMemoryStream;
 begin
  Stream:=TMemoryStream.Create;
@@ -949,7 +1035,7 @@ begin
  end;
 end;
 
-function TpvScene3DAtmosphere.TVolumetricCloudParameters.SaveToJSON:TPasJSONItemObject;
+function TpvScene3DAtmosphere.TVolumetricCloudParametersOld.SaveToJSON:TPasJSONItemObject;
 var JSONArray:TPasJSONItemArray;
     Index:TpvInt32;
 begin
@@ -989,7 +1075,7 @@ begin
  result.Add('groundcontributionsamplecount',TPasJSONItemNumber.Create(GroundContributionSampleCount));
 end;
 
-procedure TpvScene3DAtmosphere.TVolumetricCloudParameters.SaveToJSONStream(const aStream:TStream);
+procedure TpvScene3DAtmosphere.TVolumetricCloudParametersOld.SaveToJSONStream(const aStream:TStream);
 var JSON:TPasJSONItem;
 begin
  JSON:=SaveToJSON;
@@ -1002,7 +1088,7 @@ begin
  end;
 end;
 
-procedure TpvScene3DAtmosphere.TVolumetricCloudParameters.SaveToJSONFile(const aFileName:string);
+procedure TpvScene3DAtmosphere.TVolumetricCloudParametersOld.SaveToJSONFile(const aFileName:string);
 var Stream:TMemoryStream;
 begin
  Stream:=TMemoryStream.Create;
@@ -1069,7 +1155,7 @@ begin
  RaymarchingMaxSteps:=14;
 
  // Volumetric clouds
- VolumetricClouds.Initialize;
+//VolumetricClouds.Initialize;
 
 end;
 
@@ -1136,7 +1222,7 @@ begin
 
   LoadRaymarching(JSONRootObject.Properties['raymarching']);
 
-  VolumetricClouds.LoadFromJSON(JSONRootObject.Properties['volumetricclouds']);
+//VolumetricClouds.LoadFromJSON(JSONRootObject.Properties['volumetricclouds']);
 
  end;
 
@@ -1207,7 +1293,7 @@ begin
  //result.Add('sundirection',Vector3ToJSON(SunDirection.xyz));
  //result.Add('musmin',TPasJSONItemNumber.Create(MuSMin));
  result.Add('raymarching',SaveRaymarching);
- result.Add('volumetricclouds',VolumetricClouds.SaveToJSON);
+//result.Add('volumetricclouds',VolumetricClouds.SaveToJSON);
 end;
 
 procedure TpvScene3DAtmosphere.TAtmosphereParameters.SaveToJSONStream(const aStream:TStream);
