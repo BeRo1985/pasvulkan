@@ -517,8 +517,8 @@ void traceVolumetricClouds(vec3 rayOrigin,
   float forwardScatteringPhase = henyeyGreensteinPhase(cosAngle, uAtmosphereParameters.atmosphereParameters.VolumetricClouds.ForwardScatteringG);
   float backwardScatteringPhase = henyeyGreensteinPhase(cosAngle, uAtmosphereParameters.atmosphereParameters.VolumetricClouds.BackwardScatteringG);
 
-  vec3 scattering = vec3(1.0);//vec3(1.0, 1.5, 2.0);
-  vec3 absorption = vec3(0.0);//vec3(0.1, 0.15, 0.2);
+  vec3 scattering = uAtmosphereParameters.atmosphereParameters.VolumetricClouds.Scattering.xyz;
+  vec3 absorption = uAtmosphereParameters.atmosphereParameters.VolumetricClouds.Absorption.xyz;
   vec3 extinction = absorption + scattering;
   
   vec3 sunColor = uAtmosphereParameters.atmosphereParameters.SolarIlluminance.xyz;
@@ -630,7 +630,14 @@ void traceVolumetricClouds(vec3 rayOrigin,
      
             float sunLightTerm = max(0.0, dot(normalize(position), toSunDirection));
             
-            float densityAlongCone = sampleCloudDensityAlongCone(position, toSunDirection, 1.0, 3.0, any(greaterThan(transmittance, vec3(0.3))), mipMapLevel);  
+            float densityAlongCone = sampleCloudDensityAlongCone(
+              position, 
+              toSunDirection, 
+              uAtmosphereParameters.atmosphereParameters.VolumetricClouds.DensityAlongConeLength,
+              uAtmosphereParameters.atmosphereParameters.VolumetricClouds.DensityAlongConeLengthFarMultiplier, 
+              any(greaterThan(transmittance, vec3(0.3))), 
+              mipMapLevel
+            );  
 //          float shadowTowardsLight = sampleShadow(position, toSunDirection, any(greaterThan(transmittance, vec3(0.3))), mipMapLevel);  
   
             float lightEnergy = beerTerm(densityAlongCone * timeStep) * 
@@ -709,5 +716,7 @@ void traceVolumetricClouds(vec3 rayOrigin,
 void main(){
 
   layerLowWindRotation = layerLowCurlRotation = mat3(1.0);
+
+
 
 }

@@ -217,6 +217,9 @@ struct VolumetricCloudParameters {
   vec4 coverageTypeWetnessTopFactors; // x = Coverage, y = Type, z = Wetness, w = Top
   vec4 coverageTypeWetnessTopOffsets; // x = Coverage, y = Type, z = Wetness, w = Top
 
+  vec4 Scattering; 
+  vec4 Absorption;
+
   float LightingDensity;
   float ShadowDensity;
   float ViewDensity;
@@ -225,8 +228,13 @@ struct VolumetricCloudParameters {
   float Scale;
   float ForwardScatteringG;
   float BackwardScatteringG;
+  float DensityAlongConeLength;
+
+  float DensityAlongConeLengthFarMultiplier;
   float Padding0;
-  
+  float Padding1;
+  float Padding2;
+    
   VolumetricCloudLayerLow LayerLow;
   VolumetricCloudLayerHigh LayerHigh;
 
