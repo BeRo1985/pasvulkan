@@ -177,17 +177,41 @@ struct VolumetricCloudLayerLow {
 };
 
 struct VolumetricCloudLayerHigh {
+  
   float StartHeight;
   float EndHeight;
   float PositionScale;
+  float Density;
+
+  float CoverMin;
+  float CoverMax;
+  float FadeMin;
+  float FadeMax;
+
+  float Speed;
+  float Padding0;
   float Padding1;
+  float Padding2;             
+
+  vec4 RotationBase;
+
+  vec4 RotationOctave1;
+
+  vec4 RotationOctave2;
+
+  vec4 RotationOctave3;
+
+  vec4 OctaveScales;
+
+  vec4 OctaveFactors;
+  
 };
 
 struct VolumetricCloudParameters {
 
   vec4 coverageTypeWetnessTopFactors; // x = Coverage, y = Type, z = Wetness, w = Top
   vec4 coverageTypeWetnessTopOffsets; // x = Coverage, y = Type, z = Wetness, w = Top
-  
+
   VolumetricCloudLayerLow LayerLow;
   VolumetricCloudLayerHigh LayerHigh;
 

@@ -208,23 +208,6 @@ vec3 scaleLayerHighCloudPosition(vec3 position){
   return position * uAtmosphereParameters.atmosphereParameters.VolumetricClouds.LayerHigh.PositionScale;
 }
 
-float hash13(ivec3 p){
-  vec3 p3 = fract(vec3(p) * 0.1031);
-  p3 += dot(p3, p3.zyx + vec3(31.32));
-  return fract((p3.x + p3.y) * p3.z);
-}
-
-float get3DNoise(vec3 p){
-  ivec3 i = ivec3(floor(p));
-  vec3 f = fract(p);  
-  f *= f * (3.0 - (2.0 * f));  
-  ivec2 e = ivec2(0, 1);	
-  return mix(mix(mix(hash13(i + e.xxx), hash13(i + e.yxx), f.x),
-                 mix(hash13(i + e.xyx), hash13(i + e.yyx), f.x), f.y),
-             mix(mix(hash13(i + e.xxy), hash13(i + e.yxy), f.x),
-                 mix(hash13(i + e.xyy), hash13(i + e.yyy), f.x), f.y), f.z);
-}
-
 #include "rotation.glsl"
 
 vec4 getWeatherData(const in vec3 position, const float mipMapLevel){
@@ -237,9 +220,126 @@ vec4 getWeatherData(const in vec3 position, const float mipMapLevel){
     vec4(0.0),
     vec4(1.0)
   );
-}                                       
+}                                     
+
+//////////////////////////////////////////////////////////////////////////
             
+float getLayerHighCloudNoiseHash(ivec3 p){
+  vec3 p3 = fract(vec3(p) * 0.1031);
+  p3 += dot(p3, p3.zyx + vec3(31.32));
+  return fract((p3.x + p3.y) * p3.z);
+}
+
+float getLayerHighCloudNoise(vec3 p){
+  ivec3 i = ivec3(floor(p));
+  vec3 f = fract(p);  
+  f *= f * (3.0 - (2.0 * f));  
+  ivec2 e = ivec2(0, 1);	
+  return mix(mix(mix(getLayerHighCloudNoiseHash(i + e.xxx), getLayerHighCloudNoiseHash(i + e.yxx), f.x),
+                 mix(getLayerHighCloudNoiseHash(i + e.xyx), getLayerHighCloudNoiseHash(i + e.yyx), f.x), f.y),
+             mix(mix(getLayerHighCloudNoiseHash(i + e.xxy), getLayerHighCloudNoiseHash(i + e.yxy), f.x),
+                 mix(getLayerHighCloudNoiseHash(i + e.xyy), getLayerHighCloudNoiseHash(i + e.yyy), f.x), f.y), f.z);
+}
+
+float layerHighCloudRotationTime = uAtmosphereParameters.atmosphereParameters.VolumetricClouds.LayerHigh.Speed;
+mat3 layerHighCloudRotationBase = rotationMatrix(normalize(uAtmosphereParameters.atmosphereParameters.VolumetricClouds.LayerHigh.RotationBase.xyz), uAtmosphereParameters.atmosphereParameters.VolumetricClouds.LayerHigh.RotationBase.w * layerHighCloudRotationTime);
+mat3 layerHighCloudRotationOctave1 = rotationMatrix(normalize(uAtmosphereParameters.atmosphereParameters.VolumetricClouds.LayerHigh.RotationOctave1.xyz), uAtmosphereParameters.atmosphereParameters.VolumetricClouds.LayerHigh.RotationOctave1.w * layerHighCloudRotationTime);
+mat3 layerHighCloudRotationOctave2 = rotationMatrix(normalize(uAtmosphereParameters.atmosphereParameters.VolumetricClouds.LayerHigh.RotationOctave2.xyz), uAtmosphereParameters.atmosphereParameters.VolumetricClouds.LayerHigh.RotationOctave2.w * layerHighCloudRotationTime);
+mat3 layerHighCloudRotationOctave3 = rotationMatrix(normalize(uAtmosphereParameters.atmosphereParameters.VolumetricClouds.LayerHigh.RotationOctave3.xyz), uAtmosphereParameters.atmosphereParameters.VolumetricClouds.LayerHigh.RotationOctave3.w * layerHighCloudRotationTime);
+
+float getLayerHighClouds(const in vec3 p, const in VolumetricCloudLayerHigh cloudLayerParameters, const in vec4 weatherData){
+  float h = length(p);
+  if((weatherData.w > 1e-4) && (h >= cloudLayerParameters.StartHeight) && (h <= cloudLayerParameters.EndHeight)){
+    vec3 cloudCoord = layerHighCloudRotationBase * (p * cloudLayerParameters.PositionScale);
+    float noise = getLayerHighCloudNoise(cloudCoord * cloudLayerParameters.OctaveScales.x) * cloudLayerParameters.OctaveFactors.x;
+ 	  noise += getLayerHighCloudNoise((layerHighCloudRotationOctave1 * cloudCoord) * cloudLayerParameters.OctaveScales.y) * cloudLayerParameters.OctaveFactors.y;
+    noise += getLayerHighCloudNoise((layerHighCloudRotationOctave2 * cloudCoord) * cloudLayerParameters.OctaveScales.z) * cloudLayerParameters.OctaveFactors.z;
+    noise += getLayerHighCloudNoise((layerHighCloudRotationOctave3 * cloudCoord) * cloudLayerParameters.OctaveScales.w) * cloudLayerParameters.OctaveFactors.w;
+    float horizonHeightPercent = clamp((h - cloudLayerParameters.StartHeight) / (cloudLayerParameters.EndHeight - cloudLayerParameters.StartHeight), 0.0, 1.0);
+    return smoothstep(cloudLayerParameters.CoverMin, cloudLayerParameters.CoverMax, noise) *
+           (smoothstep(0.0, cloudLayerParameters.FadeMin, horizonHeightPercent) *
+            smoothstep(1.0, 1.0 - cloudLayerParameters.FadeMax, horizonHeightPercent)) *
+           cloudLayerParameters.Density *
+           weatherData.w;
+  }else{
+    return 0.0;    
+  }            
+}
                                                        
+//////////////////////////////////////////////////////////////////////////
+
+vec3 decodeCURL(vec3 c){
+	return fma(c, vec3(2.0), vec3(-1.0));
+}
+
+vec3 encodeCURL(vec3 c){
+	return fma(c, vec3(0.5), vec3(0.5));
+}
+
+float remap(const in float x, const in float a0, const in float a1, const in float b0, const in float b1){
+//return mix(b0, b1, (x - a0) / (a1 - a0));
+  return b0 + (((x - a0) / (a1 - a0)) * (b1 - b0));
+}
+
+float remapClamped(const in float x, const in float a0, const in float a1, const in float b0, const in float b1){
+  return mix(b0, b1, clamp((x - a0) / (a1 - a0), 0.0, 1.0));
+}
+
+float remap01(const in float x, const in float l, const in float h){
+  return clamp((x - l) / (h - l), 0.0, 1.0);
+}
+
+float getLowResCloudDensity(const in vec3 position, const in vec3 offset, const in vec4 weatherData, const float mipMapLevel){
+            
+  float height = length(position);
+  
+  if((weatherData.x > 1e-4) && (height >= uAtmosphereParameters.atmosphereParameters.VolumetricClouds.LayerLow.StartHeight) && (height <= uAtmosphereParameters.atmosphereParameters.VolumetricClouds.LayerLow.EndHeight)){
+
+    // Layer low clouds
+                       
+    float heightFraction = clamp((height - uAtmosphereParameters.atmosphereParameters.VolumetricClouds.LayerLow.StartHeight) / (uAtmosphereParameters.atmosphereParameters.VolumetricClouds.LayerLow.EndHeight - uAtmosphereParameters.atmosphereParameters.VolumetricClouds.LayerLow.StartHeight), 0.0, 1.0);
+                       
+    // Read the low-frequency Perlin-Worley and Worley noises
+    vec4 lowFrequencyNoises = textureLod(uCloudTextureShapeNoise, scaleLayerLowCloudPosition(position + offset), mipMapLevel);
+                                                                                                                     
+    // Build an FBM out of the low frequency Worley noises that can be used to add detail to the low-frequency Perlin-Worley noise
+    float lowFrequencyFBM = dot(lowFrequencyNoises.yzw, vec3(0.625, 0.25, 0.125));
+  
+    // Define the base cloud shape by dilating it with the low-frequency FBM made of Worley noise
+    float baseCloud = remap(lowFrequencyNoises.x, -(1.0 - lowFrequencyFBM), 1.0, 0.0, 1.0);
+    
+    // Get the density-height gradient using the density height function
+    float densityHeightGradient = getDensityHeightGradientForPoint(position, heightFraction, weatherData);
+    
+    // Apply the height funct ion to the base cloud shape .
+    baseCloud *= densityHeightGradient;
+    
+    // Cloud coverage is stored in weather data's red channel .
+    float cloudCoverage = weatherData.x;
+    
+    // Use remap to apply the cloud coverage attribute .
+    float baseCloudWithCoverage = remap(baseCloud, 1.0 - cloudCoverage, 1.0, 0.0, 1.0);
+  
+    // Multiply the result by the cloud coverage attribute so that smaller clouds are lighter and more aesthetically pleasing
+    baseCloudWithCoverage *= cloudCoverage;
+    
+    return clamp(baseCloudWithCoverage, 0.0, 1.0);
+    
+  }else if((weatherData.w > 1e-4) && (height >= uAtmosphereParameters.atmosphereParameters.VolumetricClouds.LayerHigh.StartHeight) && (height <= uAtmosphereParameters.atmosphereParameters.VolumetricClouds.LayerHigh.EndHeight)){
+
+    // Layer high clouds
+    
+    return getLayerHighClouds(position, uAtmosphereParameters.atmosphereParameters.VolumetricClouds.LayerHigh, weatherData);
+    
+  }else{
+  
+    return 0.0;
+    
+  } 
+  
+  
+}     
+
 
 void main(){
 
