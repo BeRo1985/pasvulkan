@@ -352,7 +352,7 @@ float getLowResCloudDensity(const in vec3 position, const in mat3 windRotation, 
   
 }     
 
-float getHighResCloudDensity(const in vec3 position, const in mat3 windRotation, const in vec4 curlRotation, const in vec4 weatherData, const float lowResDensity, const float mipMapLevel){
+float getHighResCloudDensity(const in vec3 position, const in mat3 windRotation, const in vec3 curlOffset, const in vec4 weatherData, const float lowResDensity, const float mipMapLevel){
                            
   float height = length(position);
   
@@ -366,13 +366,8 @@ float getHighResCloudDensity(const in vec3 position, const in mat3 windRotation,
     vec3 highFrequencyNoises = textureLod(
       uCloudTextureDetailNoise,
       scaleLayerLowCloudPosition(
-        rotate(
-          windRotation * position,
-          curlRotation.xyz,
-          curlRotation.w *
-          (1.0 - heightFraction) * 
-          uAtmosphereParameters.atmosphereParameters.VolumetricClouds.LayerLow.CurlScale
-         )
+        (windRotation * position) +
+        (curlOffset.xyz * (1.0 - heightFraction) * uAtmosphereParameters.atmosphereParameters.VolumetricClouds.LayerLow.CurlScale)
       ) * 
       uAtmosphereParameters.atmosphereParameters.VolumetricClouds.LayerLow.DetailNoiseScale,
       mipMapLevel
@@ -478,7 +473,7 @@ float sampleShadow(const in vec3 rayOrigin,
           float density = getLowResCloudDensity(position, layerLowWindRotation, weatherData, mipMapLevel + 1.0);            
           if(highResCloudDensity){
             // If are ray march is hasn't absorbed too much light yet, we use the high res cloud data to calculate the self occlusion of the cloud 
-            density = getHighResCloudDensity(position, layerLowWindRotation, vec4(0.0), weatherData, density, mipMapLevel + 1.0);
+            density = getHighResCloudDensity(position, layerLowWindRotation, vec3(0.0), weatherData, density, mipMapLevel + 1.0);
           }
           r *= exp(-(density * uAtmosphereParameters.atmosphereParameters.VolumetricClouds.ShadowDensity * uAtmosphereParameters.atmosphereParameters.VolumetricClouds.DensityScale * timeStep));
           time += timeStep;  
@@ -495,6 +490,34 @@ float sampleShadow(const in vec3 rayOrigin,
    
 }
 
+float sampleCloudDensityAlongCone(const in vec3 rayOrigin,
+                                  const in vec3 rayDirection,
+                                  const in float rayLength,
+                                  const in float rayLengthFarMultipler,
+                                  const in bool highResCloudDensity,
+                                  const float mipMapLevel){
+  const int numSteps = 7;
+  float coneSpreadMultipler = length(rayDirection) * (rayLength / float(numSteps + 1)),
+        densityAlongCone = 0.0;
+  vec3 position = rayOrigin;
+  for(int stepIndex = 0; stepIndex <= numSteps; stepIndex++){
+    position = (stepIndex == numSteps) 
+                 ? (rayOrigin + (rayDirection * (rayLength * rayLengthFarMultipler)))
+                 : (position + (rayDirection + (coneSpreadMultipler * randomVectors[stepIndex] * float(stepIndex))));
+    if(length(position) <= uAtmosphereParameters.atmosphereParameters.VolumetricClouds.LayerHigh.EndHeight){
+      vec4 weatherData = getWeatherData(position, mipMapLevel + 1.0);                    
+      float density = getLowResCloudDensity(position, layerLowWindRotation, weatherData, mipMapLevel); 
+      if(highResCloudDensity){
+        // If are ray march is hasn't absorbed too much light yet, 
+        // we use the high res cloud data to calculate the self occlusion of the cloud 
+        vec3 curlOffsetVector = decodeCURL(textureLod(uCloudTextureCurlNoise, scaleLayerLowCloudPosition(layerLowWindRotation * position), mipMapLevel).xyz) * (1.0 * uAtmosphereParameters.atmosphereParameters.VolumetricClouds.Scale);
+        density = getHighResCloudDensity(position, layerLowWindRotation, curlOffsetVector, weatherData, density, mipMapLevel); 
+      }
+      densityAlongCone += density * uAtmosphereParameters.atmosphereParameters.VolumetricClouds.LightingDensity * uAtmosphereParameters.atmosphereParameters.VolumetricClouds.DensityScale;
+    }
+  }                 
+  return densityAlongCone;
+} 
 
 
 void main(){
