@@ -288,7 +288,7 @@ mat3 layerHighCloudRotationOctave3 = rotationMatrix(normalize(uAtmosphereParamet
 
 float getLayerHighClouds(const in vec3 p, const in VolumetricCloudLayerHigh cloudLayerParameters, const in vec4 weatherData){
   float h = length(p);
-  if((weatherData.w > 1e-4) && (h >= cloudLayerParameters.StartHeight) && (h <= cloudLayerParameters.EndHeight)){
+  if((weatherData.w > 1e-4) && (cloudLayerParameters.Density > 1e-4) && (h >= cloudLayerParameters.StartHeight) && (h <= cloudLayerParameters.EndHeight)){
     vec3 cloudCoord = layerHighCloudRotationBase * (p * cloudLayerParameters.PositionScale);
     float noise = getLayerHighCloudNoise(cloudCoord * cloudLayerParameters.OctaveScales.x) * cloudLayerParameters.OctaveFactors.x;
  	  noise += getLayerHighCloudNoise((layerHighCloudRotationOctave1 * cloudCoord) * cloudLayerParameters.OctaveScales.y) * cloudLayerParameters.OctaveFactors.y;
