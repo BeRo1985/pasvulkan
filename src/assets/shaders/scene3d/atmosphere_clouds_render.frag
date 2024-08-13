@@ -340,6 +340,51 @@ float getLowResCloudDensity(const in vec3 position, const in vec3 offset, const 
   
 }     
 
+float getHighResCloudDensity(const in vec3 position, const in vec3 offset, const in vec3 curlOffset, const in vec4 weatherData, const float lowResDensity, const float mipMapLevel){
+                           
+  float height = length(position);
+  
+  if((weatherData.x > 1e-4) && (height >= uAtmosphereParameters.atmosphereParameters.VolumetricClouds.LayerLow.StartHeight) && (height <= uAtmosphereParameters.atmosphereParameters.VolumetricClouds.LayerLow.EndHeight)){
+
+    // Layer low clouds
+  
+    float heightFraction = clamp((height - uAtmosphereParameters.atmosphereParameters.VolumetricClouds.LayerLow.StartHeight) / (uAtmosphereParameters.atmosphereParameters.VolumetricClouds.LayerLow.EndHeight - uAtmosphereParameters.atmosphereParameters.VolumetricClouds.LayerLow.StartHeight), 0.0, 1.0);
+                                       
+    // Sample high-frequency noises
+    vec3 highFrequencyNoises = textureLod(
+      uCloudTextureDetailNoise,
+      scaleLayerLowCloudPosition(
+        position + 
+        offset + 
+        (curlOffset *
+          (1.0 - heightFraction) * 
+          uAtmosphereParameters.atmosphereParameters.VolumetricClouds.LayerLow.CurlScale)
+        ) * 
+      uAtmosphereParameters.atmosphereParameters.VolumetricClouds.LayerLow.DetailNoiseScale,
+      mipMapLevel
+    ).xyz;
+
+    // Build high frequency Worley noise FBM
+    float highFrequencyFBM = dot(highFrequencyNoises, vec3(0.625, 0.25, 0.125));
+  
+    // Transition from wispy shapes to billowy shapes over height 
+    float highFrequencyNoiseModifer = mix(highFrequencyFBM, 
+                                          1.0 - highFrequencyFBM, 
+                                          clamp(heightFraction * 10.0, 0.0, 1.0));
+  
+    // Erode the base cloud shape with the distorted high-frequency Worley noises
+    return clamp(remap(lowResDensity, highFrequencyNoiseModifer * 0.2, 1.0, 0.0, 1.0), 0.0, 1.0);
+    
+  }else{
+
+    // For other cloud layers, return just the low resolution density, as high resolution density is not needed or already included in the low resolution density
+
+    return clamp(lowResDensity, 0.0, 1.0);
+  
+  }
+
+}
+
 
 void main(){
 

@@ -171,6 +171,9 @@ struct VolumetricCloudLayerLow {
   float PositionScale;
   float ShapeNoiseScale;
   
+  float DetailNoiseScale;
+  float CurlScale;
+  
   mat3x4 heightGradients;
   mat3x4 anvilDeformations; // unused for now  
 
