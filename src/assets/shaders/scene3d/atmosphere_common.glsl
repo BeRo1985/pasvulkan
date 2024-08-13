@@ -86,7 +86,7 @@ struct VolumetricCloudLayer {
 
 };
 
-struct VolumetricCloudParameters {
+struct VolumetricCloudParametersOld {
 
 	float BeerPowder;
 	float BeerPowderPower;
@@ -161,6 +161,30 @@ struct CloudParameters {
   uint CountSamples;
   uint CountSamplesToSun;
   uint Padding2; 
+
+};
+
+struct VolumetricCloudLayerLow {
+   
+  float StartHeight;
+  float EndHeight;
+  float Padding0;
+  float Padding1;
+  
+  mat3x4 heightGradients;
+  mat3x4 anvilDeformations; // unused for now  
+
+};
+
+struct VolumetricCloudLayerHigh {
+  float StartHeight;
+  float EndHeight;
+};
+
+struct VolumetricCloudParameters {
+
+  VolumetricCloudLayerLow LayerLow;
+  VolumetricCloudLayerHigh LayerHigh;
 
 };
 
