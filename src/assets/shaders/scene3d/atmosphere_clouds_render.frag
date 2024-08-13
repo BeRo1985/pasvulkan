@@ -529,7 +529,7 @@ float sampleCloudDensityAlongCone(const in vec3 rayOrigin,
 
 void traceVolumetricClouds(vec3 rayOrigin, 
                            vec3 rayDirection, 
-                           float depthBufferValue,
+                           float rayLength, 
                            ivec2 threadPosition,
                            out vec3 inscattering,
                            out vec3 transmittance, 
@@ -587,7 +587,7 @@ void traceVolumetricClouds(vec3 rayOrigin,
       }
     }
     
-    tMinMax = max(vec2(0.0), tMinMax); 
+    tMinMax = clamp(tMinMax, vec2(0.0), vec2(rayLength));
     
     if(tMinMax.x < tMinMax.y){
 
@@ -605,8 +605,8 @@ void traceVolumetricClouds(vec3 rayOrigin,
       float offset = fract(bayer256(ivec2(threadPosition) & ivec2(1023)) + (float(pushConstants.frameIndex) * 0.61803398875)); 
 #endif
     
-      float rayLength = tMinMax.y - tMinMax.x,
-            timeStep = rayLength / float(countSteps),
+      float rayPartLength = tMinMax.y - tMinMax.x,
+            timeStep = rayPartLength / float(countSteps),
             time = fma(offset, timeStep, tMinMax.x);
                 
       //float sunPhase = getSunPhase(rayDirection, sunDirection, -cloudsForwardScatteringG);
