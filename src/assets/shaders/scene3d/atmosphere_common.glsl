@@ -173,7 +173,9 @@ struct VolumetricCloudLayerLow {
   
   float DetailNoiseScale;
   float CurlScale;
-  
+  float AdvanceCurlScale;
+  float AdvanceCurlAmplitude;
+    
   mat3x4 heightGradients;
   mat3x4 anvilDeformations; // unused for now  
 
@@ -217,9 +219,14 @@ struct VolumetricCloudParameters {
 
   float LightingDensity;
   float ShadowDensity;
+  float ViewDensity;
   float DensityScale;
-  float Scale;
 
+  float Scale;
+  float ForwardScatteringG;
+  float BackwardScatteringG;
+  float Padding0;
+  
   VolumetricCloudLayerLow LayerLow;
   VolumetricCloudLayerHigh LayerHigh;
 

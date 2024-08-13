@@ -116,18 +116,20 @@ layout(set = 2, binding = 0, std430) buffer AtmosphereParametersBuffer {
   AtmosphereParameters atmosphereParameters;
 } uAtmosphereParameters;
 
-layout(set = 2, binding = 1) uniform sampler2D uCloud2DTextures[];
+layout(set = 2, binding = 1) uniform sampler2D uTextureBlueNoise;
+
+layout(set = 2, binding = 2) uniform sampler2D uCloud2DTextures[];
 
 #define uCloudTextureSkyLuminance uCloud2DTextures[0]
 #define uCloudTextureTransmittanceLUT uCloud2DTextures[1]
 
-layout(set = 2, binding = 2) uniform sampler3D uCloud3DTextures[];
+layout(set = 2, binding = 3) uniform sampler3D uCloud3DTextures[];
 
 #define uCloudTextureShapeNoise uCloud3DTextures[0]
 #define uCloudTextureDetailNoise uCloud3DTextures[1]
 #define uCloudTextureCurlNoise uCloud3DTextures[2]
 
-layout(set = 2, binding = 3) uniform samplerCube uCloudCubeTextures[];
+layout(set = 2, binding = 4) uniform samplerCube uCloudCubeTextures[];
 
 #define uCloudTextureSkyLuminanceLUT uCloudCubeTextures[0]
 #define uCloudTextureWeatherMap uCloudCubeTextures[1]
@@ -275,27 +277,6 @@ float getLayerHighClouds(const in vec3 p, const in VolumetricCloudLayerHigh clou
 }
                                                        
 //////////////////////////////////////////////////////////////////////////
-
-vec3 decodeCURL(vec3 c){
-	return fma(c, vec3(2.0), vec3(-1.0));
-}
-
-vec3 encodeCURL(vec3 c){
-	return fma(c, vec3(0.5), vec3(0.5));
-}
-
-float remap(const in float x, const in float a0, const in float a1, const in float b0, const in float b1){
-//return mix(b0, b1, (x - a0) / (a1 - a0));
-  return b0 + (((x - a0) / (a1 - a0)) * (b1 - b0));
-}
-
-float remapClamped(const in float x, const in float a0, const in float a1, const in float b0, const in float b1){
-  return mix(b0, b1, clamp((x - a0) / (a1 - a0), 0.0, 1.0));
-}
-
-float remap01(const in float x, const in float l, const in float h){
-  return clamp((x - l) / (h - l), 0.0, 1.0);
-}
 
 mat3 layerLowWindRotation, layerLowCurlRotation;
 
@@ -516,6 +497,243 @@ float sampleCloudDensityAlongCone(const in vec3 rayOrigin,
   }                 
   return densityAlongCone;
 } 
+
+void traceVolumetricClouds(vec3 rayOrigin, 
+                           vec3 rayDirection, 
+                           float depthBufferValue,
+                           ivec2 threadPosition,
+                           out vec3 inscattering,
+                           out vec3 transmittance, 
+                           out float depth){
+
+  inscattering = vec3(0.0);
+  
+  transmittance = vec3(1.0);
+
+  vec3 toSunDirection = normalize(-getSunDirection(uAtmosphereParameters.atmosphereParameters));
+  
+  float cosAngle = dot(rayDirection, toSunDirection);
+
+  float forwardScatteringPhase = henyeyGreensteinPhase(cosAngle, uAtmosphereParameters.atmosphereParameters.VolumetricClouds.ForwardScatteringG);
+  float backwardScatteringPhase = henyeyGreensteinPhase(cosAngle, uAtmosphereParameters.atmosphereParameters.VolumetricClouds.BackwardScatteringG);
+
+  vec3 scattering = vec3(1.0);//vec3(1.0, 1.5, 2.0);
+  vec3 absorption = vec3(0.0);//vec3(0.1, 0.15, 0.2);
+  vec3 extinction = absorption + scattering;
+  
+/*
+#if 0
+  vec3 sunColor;
+  vec3 Color; 
+  vec3 fogBottomColor = preethamsSky(toSunDirection, normalize(normalize(toSunDirection * vec2(-1.0, 0.0).xyx) + vec2(0.0, 0.0).xyx), 0.0, vec3(0.0), true, Color) * 1.0;  
+  vec3 fogTopColor = preethamsSky(toSunDirection, normalize(normalize(toSunDirection * vec2(1.0, 0.0).xyx) + vec2(0.0, 1.0).xyx), 0.0, vec3(0.0), false, sunColor) * 1.0; 
+  preethamsSky(toSunDirection, toSunDirection * 1e6, 0.0, vec3(0.0), true, sunColor); 
+#else    
+  vec3 fogBottomColor = vec3(0.51, 0.66, 0.81) * 0.5;//preethamsSky(toSunDirection, normalize(toSunDirection * vec2(-1e6, 0.0).xyx), 0.0, vec3(0.0), true, sunColor); 
+  vec3 fogTopColor = vec3(1.0) * 1.0;//preethamsSky(toSunDirection, normalize((toSunDirection * vec2(1e6, 0.0).xyx) + vec2(0.0, 1.0).xyx), 0.0, vec3(0.0), true, sunColor); 
+  //preethamsSky(toSunDirection, toSunDirection * 1e6, 0.0, vec3(0.0), true, sunColor); 
+#endif    */
+
+  vec3 skyLight = vec3(0.1, 0.15, 0.2);
+  vec3 sunColor = vec3(1.0, 1.5, 2.0);
+
+  vec2 weightedDepth = vec2(0.0);
+  
+//  vec3 fogBottomColor = vec3(0.51, 0.66, 0.81) * 0.0;//preethams_sky(toSunDirection, normalize(toSunDirection * vec2(-1e6, 0.0).xyx), 0.0, vec3(0.0), true, sunColor); 
+ // vec3 fogTopColor = vec3(1.0);//preethams_sky(toSunDirection, normalize((toSunDirection * vec2(1e6, 0.0).xyx) + vec2(0.0, 1.0).xyx), 0.0, vec3(0.0), true, sunColor); 
+  //preethamsSky(toSunDirection, toSunDirection * 1e6, 0.0, vec3(0.0), true, sunColor); 
+  
+  vec2 tTopSolutions = intersectSphere(rayOrigin, rayDirection, vec2(0.0, uAtmosphereParameters.atmosphereParameters.VolumetricClouds.LayerHigh.EndHeight).xxxy);
+  if(tTopSolutions.y >= 0.0){
+
+/*float cloudTime = getTime(cloudsTime, cloudsWindSpeed) * 100.0;
+		vec3 windDirection = vec3(cos(-cloudsAngle), 0.0, sin(-cloudsAngle));
+		vec3 windVector = windDirection * vec2(cloudsWindSpeed, 1.0).xyx;
+		vec3 curlVector = windDirection * vec2(cloudsAdvanceCurlSpeed, 1.0).xyx;    
+    windOffset = (windVector * cloudTime) + (windDirection * cloudsTime * TIME_OFFSET_SCALAR); 
+    curlOffset = curlVector * cloudTime; */
+    
+/*   vec2 tMinMax = vec2(max(0.0, min(tTopSolutions.x, tTopSolutions.y)),
+                       max(tTopSolutions.x, tTopSolutions.y));*/
+//   vec2 tMinMax = vec2(0.0, 100000.0);
+    
+    float distanceToPlanetCenter = length(rayOrigin);
+    
+    vec3 viewNormal = normalize(rayOrigin);
+    
+    vec2 tMinMax = tTopSolutions;             
+
+    vec2 tBottomSolutions = intersectSphere(rayOrigin, rayDirection, vec2(0.0, uAtmosphereParameters.atmosphereParameters.VolumetricClouds.LayerLow.StartHeight).xxxy);
+
+    vec2 tGroundSolutions = intersectSphere(rayOrigin, rayDirection, vec2(0.0, uAtmosphereParameters.atmosphereParameters.BottomRadius).xxxy);
+
+    if((tBottomSolutions.x < 0.0) && (tBottomSolutions.y >= 0.0)){
+      // Below clouds
+      tMinMax.x = min(tMinMax.x, tBottomSolutions.y);
+    }else if(tBottomSolutions.x >= 0.0){
+      // Inside or above clouds
+      if(tGroundSolutions.x >= 0.0){
+        tMinMax.y = min(tMinMax.y, tBottomSolutions.x);
+      } 
+    }
+
+    if(tGroundSolutions.x >= 0.0){
+      // Above ground
+      tMinMax.y = min(tMinMax.y, tGroundSolutions.x);
+    }else if(tGroundSolutions.y >= 0.0){ 
+      // Below ground
+      if(dot(rayDirection, viewNormal) < 0.0){
+        tMinMax = vec2(1.0, 0.0);//min(tMinMax.y, tGroundSolutions.y);
+      }
+    }
+    
+    tMinMax = max(vec2(0.0), tMinMax); 
+    
+    if(tMinMax.x < tMinMax.y){
+
+      float mipMapLevel = 0.0;
+      int countSteps = int(mix(128.0, 64.0, smoothstep(0.0, 1.0, dot(rayDirection, viewNormal))));
+        
+      float density = 0.0;  
+      float cloudTestDensity = 0.0;
+      float previousSampledDensity = 0.0;
+      int zeroDensitySampleCounter = 0;
+
+#if 1
+      float offset = fract(texelFetch(uTextureBlueNoise, ivec2(threadPosition) & ivec2(1023), 0).x + (float(pushConstants.frameIndex) * 0.61803398875)); 
+#else
+      float offset = fract(bayer256(ivec2(threadPosition) & ivec2(1023)) + (float(pushConstants.frameIndex) * 0.61803398875)); 
+#endif
+    
+      float rayLength = tMinMax.y - tMinMax.x,
+            timeStep = rayLength / float(countSteps),
+            time = fma(offset, timeStep, tMinMax.x);
+                
+      //float sunPhase = getSunPhase(rayDirection, sunDirection, -cloudsForwardScatteringG);
+      
+      for(int stepIndex = 0; (stepIndex < countSteps) && (time < tMinMax.y); stepIndex++){
+    
+        vec3 position = fma(rayDirection, vec3(time), rayOrigin);
+  
+        vec4 weatherData = getWeatherData(position, mipMapLevel);
+        
+        float density;
+        if(max(weatherData.x, weatherData.w) > 1e-4){
+          density = getLowResCloudDensity(position, layerLowWindRotation, weatherData, mipMapLevel);
+        }else{
+          density = 0.0;
+        }
+        
+        if(density > 1e-4){
+        
+          if(zeroDensitySampleCounter > 0){
+            zeroDensitySampleCounter = 0;            
+            weatherData = getWeatherData(position = fma(rayDirection, vec3(time -= timeStep), rayOrigin), mipMapLevel);
+            if(max(weatherData.x, weatherData.w) > 1e-4){
+              density = getLowResCloudDensity(position, layerLowWindRotation, weatherData, mipMapLevel);
+            }else{
+              time += timeStep;          
+              continue;
+            }
+          }            
+        
+          vec3 curlOffsetVector = decodeCURL(
+            textureLod(
+              uCloudTextureCurlNoise,
+              scaleLayerLowCloudPosition((layerLowWindRotation * position) * uAtmosphereParameters.atmosphereParameters.VolumetricClouds.LayerLow.AdvanceCurlScale),
+              mipMapLevel).xyz
+          ) * 
+            (1.0 * uAtmosphereParameters.atmosphereParameters.VolumetricClouds.Scale) * 
+            uAtmosphereParameters.atmosphereParameters.VolumetricClouds.LayerLow.AdvanceCurlAmplitude *
+            1.0;
+                                                          
+          density = getHighResCloudDensity(position, layerLowWindRotation, curlOffsetVector, weatherData, density, mipMapLevel);                                                                                  
+          density *= uAtmosphereParameters.atmosphereParameters.VolumetricClouds.ViewDensity * uAtmosphereParameters.atmosphereParameters.VolumetricClouds.DensityScale;
+          
+          if(density > 1e-4){
+          
+            float heightFraction = getHeightFractionForPoint(position);
+          
+            float scatteringCoefficient = density;
+            float extinctionCoefficient = max(1e-10, density);
+     
+            float sunLightTerm = max(0.0, dot(normalize(position), toSunDirection));
+            
+            float densityAlongCone = sampleCloudDensityAlongCone(position, toSunDirection, 1.0, 3.0, any(greaterThan(transmittance, vec3(0.3))), mipMapLevel);  
+//          float shadowTowardsLight = sampleShadow(position, toSunDirection, any(greaterThan(transmittance, vec3(0.3))), mipMapLevel);  
+  
+            float lightEnergy = beerTerm(densityAlongCone * timeStep) * 
+                                powderTerm(density * timeStep, cosAngle) *             
+                                sunLightTerm *
+#if 0
+                                fma(max(forwardScatteringPhase, backwardScatteringPhase), 0.07, 0.8) *
+#else                                
+                                fma(mix(forwardScatteringPhase, backwardScatteringPhase, 0.5), 1.0, 0.0) *
+#endif                                                                
+                                2.0;
+                                
+            vec3 directScatting = vec3(lightEnergy) * sunColor * 8.0;
+            
+            // Fake multiple scattering 
+            vec3 indirectScattering = clamp(pow(3.0 * scatteringCoefficient, 0.5), 0.7, 1.0) *
+                                      skyLight * 
+                                      beerTerm(density) *
+                                      //sunLightTerm *
+                                      vec3(1.0);
+            
+            vec3 sampledScattering = (directScatting + indirectScattering) * scatteringCoefficient;
+             
+            weightedDepth += vec2(length(position - rayOrigin), 1.0) * min(transmittance.x, min(transmittance.y, transmittance.z)); 
+                                                             
+#if 1
+            // See slide 28 at http://www.frostbite.com/2015/08/physically-based-unified-volumetric-rendering-in-frostbite/
+            vec3 sampledExtinction = max(vec3(1e-10), density * extinction);
+            vec3 sampledTransmittance = exp(-sampledExtinction * timeStep);
+            vec3 integratedSampledScattering = (sampledScattering - (sampledScattering * sampledTransmittance)) / sampledExtinction;
+            inscattering += transmittance * integratedSampledScattering;
+            transmittance *= sampledTransmittance;     
+#else        
+            inscattering += transmittance * sampledScattering * ((1.0 - exp(-(extinctionCoefficient * timeStep))) / extinctionCoefficient);
+            transmittance *= exp(-extinctionCoefficient * timeStep * extinction);     
+#endif      
+              
+#if 0
+            inscattering += sampleScattering * 
+                            scatteringCoefficient *
+                            ((1.0 - exp(-(extinctionCoefficient * timeStep))) / extinctionCoefficient) *
+                            transmittance * 
+                            1.0;       
+            transmittance *= exp(-extinctionCoefficient * timeStep);
+#endif
+            
+            if(all(lessThan(transmittance, vec3(1e-4)))){
+              break;
+            }
+                   
+          }
+         
+          zeroDensitySampleCounter = 0;
+
+          time += timeStep;          
+         
+        }else{
+
+          zeroDensitySampleCounter++;
+          
+          time += timeStep * 2.0;  
+         
+        }                                                          
+        
+        
+      }  
+      
+    }
+    
+  }
+  
+  depth = (weightedDepth.y > 0.0) ? (weightedDepth.x / weightedDepth.y) : uintBitsToFloat(0x7f800000u); 
+
+}
 
 void main(){
 
