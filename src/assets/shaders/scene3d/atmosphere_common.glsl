@@ -169,7 +169,7 @@ struct VolumetricCloudLayerLow {
   float StartHeight;
   float EndHeight;
   float PositionScale;
-  float Padding1;
+  float ShapeNoiseScale;
   
   mat3x4 heightGradients;
   mat3x4 anvilDeformations; // unused for now  

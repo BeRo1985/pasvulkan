@@ -300,8 +300,8 @@ float getLowResCloudDensity(const in vec3 position, const in vec3 offset, const 
     float heightFraction = clamp((height - uAtmosphereParameters.atmosphereParameters.VolumetricClouds.LayerLow.StartHeight) / (uAtmosphereParameters.atmosphereParameters.VolumetricClouds.LayerLow.EndHeight - uAtmosphereParameters.atmosphereParameters.VolumetricClouds.LayerLow.StartHeight), 0.0, 1.0);
                        
     // Read the low-frequency Perlin-Worley and Worley noises
-    vec4 lowFrequencyNoises = textureLod(uCloudTextureShapeNoise, scaleLayerLowCloudPosition(position + offset), mipMapLevel);
-                                                                                                                     
+    vec4 lowFrequencyNoises = textureLod(uCloudTextureShapeNoise, scaleLayerLowCloudPosition(position + offset) * uAtmosphereParameters.atmosphereParameters.VolumetricClouds.LayerLow.ShapeNoiseScale, mipMapLevel);
+                                                                                                                      
     // Build an FBM out of the low frequency Worley noises that can be used to add detail to the low-frequency Perlin-Worley noise
     float lowFrequencyFBM = dot(lowFrequencyNoises.yzw, vec3(0.625, 0.25, 0.125));
   
