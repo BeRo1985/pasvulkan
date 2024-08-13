@@ -368,6 +368,13 @@ type TpvScene3DAtmosphere=class;
               HeightGradients:array[0..2] of TpvVector4; // mat3x4
               AnvilDeformations:array[0..2] of TpvVector4; // mat3x4 unused for now
           
+              procedure Initialize;
+              procedure LoadFromJSON(const aJSON:TPasJSONItem);
+              procedure LoadFromJSONStream(const aStream:TStream);
+              procedure LoadFromJSONFile(const aFileName:string);
+              function SaveToJSON:TPasJSONItemObject;
+              procedure SaveToJSONStream(const aStream:TStream);
+              procedure SaveToJSONFile(const aFileName:string);
             end;
             PVolumetricCloudLayerLow=^TVolumetricCloudLayerLow;
             { TVolumetricCloudLayerHigh }
@@ -1100,6 +1107,184 @@ begin
   Stream.Free;
  end;
 end;
+
+
+(*
+            { TVolumetricCloudLayerLow }
+            TVolumetricCloudLayerLow=packed record
+             public
+          
+              StartHeight:TpvFloat;
+              EndHeight:TpvFloat;
+              PositionScale:TpvFloat;
+              ShapeNoiseScale:TpvFloat;
+          
+              DetailNoiseScale:TpvFloat;
+              CurlScale:TpvFloat;
+              AdvanceCurlScale:TpvFloat;
+              AdvanceCurlAmplitude:TpvFloat;
+          
+              HeightGradients:array[0..2] of TpvVector4; // mat3x4
+              AnvilDeformations:array[0..2] of TpvVector4; // mat3x4 unused for now
+          
+              procedure Initialize;
+              procedure LoadFromJSON(const aJSON:TPasJSONItem);
+              procedure LoadFromJSONStream(const aStream:TStream);
+              procedure LoadFromJSONFile(const aFileName:string);
+              function SaveToJSON:TPasJSONItemObject;
+              procedure SaveToJSONStream(const aStream:TStream);
+              procedure SaveToJSONFile(const aFileName:string);
+            end;
+*)
+
+{ TpvScene3DAtmosphere.TVolumetricCloudLayerLow }
+
+procedure TpvScene3DAtmosphere.TVolumetricCloudLayerLow.Initialize;
+begin
+ StartHeight:=6380.0;
+ EndHeight:=6400.0;
+ PositionScale:=1.0;
+ ShapeNoiseScale:=1.0;
+ DetailNoiseScale:=1.0;
+ CurlScale:=1.0;
+ AdvanceCurlScale:=0.25;
+ AdvanceCurlAmplitude:=0.25;
+ HeightGradients[0]:=TpvVector4.InlineableCreate(0.0200,0.0500,0.0900,0.1100);  // Stratus
+ HeightGradients[1]:=TpvVector4.InlineableCreate(0.0199,0.2000,0.4800,0.6250);  // Cumulus
+ HeightGradients[2]:=TpvVector4.InlineableCreate(0.0100,0.0625,0.7500,1.0000); // Cumulonimbus
+ AnvilDeformations[0]:=TpvVector4.InlineableCreate(0.0,1.0,1.0,1.0);
+ AnvilDeformations[1]:=TpvVector4.InlineableCreate(0.0,1.0,1.0,1.0);
+ AnvilDeformations[2]:=TpvVector4.InlineableCreate(0.0,1.0,1.0,1.0);
+end;
+
+procedure TpvScene3DAtmosphere.TVolumetricCloudLayerLow.LoadFromJSON(const aJSON:TPasJSONItem);
+var JSONRootObject:TPasJSONItemObject;
+    JSONArray:TPasJSONItemArray;
+    JSONItem:TPasJSONItem;
+    Index:TpvSizeInt;
+begin
+
+ if assigned(aJSON) and (aJSON is TPasJSONItemObject) then begin
+  
+  JSONRootObject:=TPasJSONItemObject(aJSON);
+  
+  StartHeight:=TPasJSON.GetNumber(JSONRootObject.Properties['startheight'],StartHeight);
+  EndHeight:=TPasJSON.GetNumber(JSONRootObject.Properties['endheight'],EndHeight);
+  PositionScale:=TPasJSON.GetNumber(JSONRootObject.Properties['positionscale'],PositionScale);
+  ShapeNoiseScale:=TPasJSON.GetNumber(JSONRootObject.Properties['shapenoisescale'],ShapeNoiseScale);
+  DetailNoiseScale:=TPasJSON.GetNumber(JSONRootObject.Properties['detailnoisescale'],DetailNoiseScale);
+  CurlScale:=TPasJSON.GetNumber(JSONRootObject.Properties['curlscale'],CurlScale);
+  AdvanceCurlScale:=TPasJSON.GetNumber(JSONRootObject.Properties['advancecurlscale'],AdvanceCurlScale);
+  AdvanceCurlAmplitude:=TPasJSON.GetNumber(JSONRootObject.Properties['advancecurlamplitude'],AdvanceCurlAmplitude);
+  
+  JSONItem:=JSONRootObject.Properties['heightgradients'];
+  if assigned(JSONItem) and (JSONItem is TPasJSONItemArray) then begin
+   JSONArray:=TPasJSONItemArray(JSONItem);
+   for Index:=0 to Min(JSONArray.Count,3)-1 do begin
+    HeightGradients[Index]:=JSONToVector4(JSONArray.Items[Index],HeightGradients[Index]);
+   end;
+  end;
+
+  JSONItem:=JSONRootObject.Properties['anvildeformations'];
+  if assigned(JSONItem) and (JSONItem is TPasJSONItemArray) then begin
+   JSONArray:=TPasJSONItemArray(JSONItem);
+   for Index:=0 to Min(JSONArray.Count,3)-1 do begin
+    AnvilDeformations[Index]:=JSONToVector4(JSONArray.Items[Index],AnvilDeformations[Index]);
+   end;
+  end;
+  
+ end;
+ 
+end;
+
+procedure TpvScene3DAtmosphere.TVolumetricCloudLayerLow.LoadFromJSONStream(const aStream:TStream);
+var JSON:TPasJSONItem;
+begin
+ JSON:=TPasJSON.Parse(aStream);
+ if assigned(JSON) then begin
+  try
+   LoadFromJSON(JSON);
+  finally
+   FreeAndNil(JSON);
+  end;
+ end;
+end;
+
+procedure TpvScene3DAtmosphere.TVolumetricCloudLayerLow.LoadFromJSONFile(const aFileName:string);
+var Stream:TMemoryStream;
+begin
+ Stream:=TMemoryStream.Create;
+ try
+  Stream.LoadFromFile(aFileName);
+  Stream.Seek(0,soBeginning);
+  LoadFromJSONStream(Stream);
+ finally
+  Stream.Free;
+ end;
+end;
+
+function TpvScene3DAtmosphere.TVolumetricCloudLayerLow.SaveToJSON:TPasJSONItemObject;
+var JSONArray:TPasJSONItemArray;
+    Index:TpvInt32;
+begin
+
+ result:=TPasJSONItemObject.Create;
+ result.Add('startheight',TPasJSONItemNumber.Create(StartHeight));
+ result.Add('endheight',TPasJSONItemNumber.Create(EndHeight));
+ result.Add('positionscale',TPasJSONItemNumber.Create(PositionScale));
+ result.Add('shapenoisescale',TPasJSONItemNumber.Create(ShapeNoiseScale));
+ result.Add('detailnoisescale',TPasJSONItemNumber.Create(DetailNoiseScale));
+ result.Add('curlscale',TPasJSONItemNumber.Create(CurlScale));
+ result.Add('advancecurlscale',TPasJSONItemNumber.Create(AdvanceCurlScale));
+ result.Add('advancecurlamplitude',TPasJSONItemNumber.Create(AdvanceCurlAmplitude));
+
+ JSONArray:=TPasJSONItemArray.Create;
+ try
+  for Index:=0 to 2 do begin
+   JSONArray.Add(Vector4ToJSON(HeightGradients[Index]));
+  end;
+ finally
+  result.Add('heightgradients',JSONArray);
+ end;
+
+ JSONArray:=TPasJSONItemArray.Create;
+ try
+  for Index:=0 to 2 do begin
+   JSONArray.Add(Vector4ToJSON(AnvilDeformations[Index]));
+  end;
+ finally
+  result.Add('anvildeformations',JSONArray);
+ end;
+
+end;
+
+procedure TpvScene3DAtmosphere.TVolumetricCloudLayerLow.SaveToJSONStream(const aStream:TStream);
+var JSON:TPasJSONItem;
+begin
+ JSON:=SaveToJSON;
+ if assigned(JSON) then begin
+  try
+   TPasJSON.StringifyToStream(aStream,JSON,true);
+  finally
+   FreeAndNil(JSON);
+  end;
+ end;
+end;
+
+procedure TpvScene3DAtmosphere.TVolumetricCloudLayerLow.SaveToJSONFile(const aFileName:string);
+var Stream:TMemoryStream;
+begin
+ Stream:=TMemoryStream.Create;
+ try
+  SaveToJSONStream(Stream);
+  Stream.Seek(0,soBeginning);
+  Stream.SaveToFile(aFileName);
+ finally
+  Stream.Free;
+ end;
+end;
+
+
 
 { TpvScene3DAtmosphere.TAtmosphereParameters }
 
