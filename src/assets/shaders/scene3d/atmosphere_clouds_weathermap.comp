@@ -31,6 +31,8 @@ layout(set = 0, binding = 0, rgba8) uniform writeonly image2D uDestinationTextur
 layout(set = 0, binding = 0, rgba8) uniform writeonly imageCube uDestinationTexture;
 #endif
 
+#include "math.glsl"
+
 #include "atmosphere_clouds_noise.glsl"
 
 #include "cubemap.glsl"

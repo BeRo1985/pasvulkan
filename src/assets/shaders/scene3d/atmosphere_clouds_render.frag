@@ -58,9 +58,7 @@ layout(push_constant, std140) uniform PushConstants {
 
 #include "globaldescriptorset.glsl"
 
-#define PI PII
 #include "math.glsl"
-#undef PI
 
 #ifdef SHADOWS
 #define SPECIAL_SHADOWS
@@ -506,19 +504,18 @@ float sampleCloudDensityAlongCone(const in vec3 rayOrigin,
                  : (position + (rayDirection + (coneSpreadMultipler * randomVectors[stepIndex] * float(stepIndex))));
     if(length(position) <= uAtmosphereParameters.atmosphereParameters.VolumetricClouds.LayerHigh.EndHeight){
       vec4 weatherData = getWeatherData(position, mipMapLevel + 1.0);                    
-      float density = getLowResCloudDensity(position, layerLowWindRotation, weatherData, mipMapLevel); 
+      float density = getLowResCloudDensity(position, layerLowWindRotation, weatherData, mipMapLevel + 1.0); 
       if(highResCloudDensity){
         // If are ray march is hasn't absorbed too much light yet, 
         // we use the high res cloud data to calculate the self occlusion of the cloud 
-        vec3 curlOffsetVector = decodeCURL(textureLod(uCloudTextureCurlNoise, scaleLayerLowCloudPosition(layerLowWindRotation * position), mipMapLevel).xyz) * (1.0 * uAtmosphereParameters.atmosphereParameters.VolumetricClouds.Scale);
-        density = getHighResCloudDensity(position, layerLowWindRotation, curlOffsetVector, weatherData, density, mipMapLevel); 
+        vec3 curlOffsetVector = decodeCURL(textureLod(uCloudTextureCurlNoise, scaleLayerLowCloudPosition(layerLowWindRotation * position), mipMapLevel + 1.0).xyz) * (1.0 * uAtmosphereParameters.atmosphereParameters.VolumetricClouds.Scale);
+        density = getHighResCloudDensity(position, layerLowWindRotation, curlOffsetVector, weatherData, density, mipMapLevel + 1.0); 
       }
       densityAlongCone += density * uAtmosphereParameters.atmosphereParameters.VolumetricClouds.LightingDensity * uAtmosphereParameters.atmosphereParameters.VolumetricClouds.DensityScale;
     }
   }                 
   return densityAlongCone;
 } 
-
 
 void main(){
 

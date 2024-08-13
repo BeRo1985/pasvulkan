@@ -38,9 +38,7 @@ layout(push_constant, std140) uniform PushConstants {
 
 #include "globaldescriptorset.glsl"
 
-#define PI PII
 #include "math.glsl"
-#undef PI
 
 #ifdef SHADOWS
 #define SPECIAL_SHADOWS
@@ -270,7 +268,7 @@ void main() {
 
         }
 
-      }  
+      }   
   
       if(fitsInCameraVolume){
 

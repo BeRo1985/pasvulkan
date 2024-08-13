@@ -1,6 +1,8 @@
 #ifndef ATMOSPHERE_COMMON_GLSL
 #define ATMOSPHERE_COMMON_GLSL
 
+#extension GL_GOOGLE_include_directive : enable
+
 // Based on: https://github.com/sebh/UnrealEngineSkyAtmosphere
 
 #undef ILLUMINANCE_IS_ONE
@@ -18,9 +20,7 @@
 #define FLAGS_USE_BLUE_NOISE 4u
 #define FLAGS_SHADOWS 8u
 
-const float PI = 3.1415926535897932384626433832795;
-
-const float GoldenRatioConjugate = 0.61803398875; // also just fract(GoldenRatio)
+#include "math.glsl"
 
 float SampleSegmentT = 0.3;
 

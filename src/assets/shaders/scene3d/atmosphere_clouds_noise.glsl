@@ -115,8 +115,6 @@ void perlinHash(vec4 gridcell,
     z1w1_hash_3 = fract( hashval * ( 1.0 / SOMELARGEFLOATS.w ) );
 }
 
-
-
 float perlin(vec3 p, float s, const in bool t) {
   p *= s;
 	vec3 pt = floor(p),
@@ -440,39 +438,6 @@ vec3 curlNoise(vec4 p){
                 getPerlin5Octaves(p + e.xzxx, false) - getPerlin5Octaves(p + e.xyxx, false),
                 getPerlin5Octaves(p + e.xxzx, false) - getPerlin5Octaves(p + e.xxyx, false));
 	return (t.yzx - t.zxy) / e.w;
-}
-
-vec3 decodeCURL(vec3 c){
-	return fma(c, vec3(2.0), vec3(-1.0));
-}
-
-vec3 encodeCURL(vec3 c){
-	return fma(c, vec3(0.5), vec3(0.5));
-}
-
-float linearStep(float low, float high, float value){
-  return clamp((value - low) / (high - low), 0.0, 1.0);
-}
-
-vec3 linearStep(vec3 low, vec3 high, vec3 value){
-  return clamp((value - low) / (high - low), vec3(0.0), vec3(1.0));
-}
-
-float remap(const in float x, const in float a0, const in float a1, const in float b0, const in float b1){
-//return mix(b0, b1, (x - a0) / (a1 - a0));
-  return b0 + (((x - a0) / (a1 - a0)) * (b1 - b0));
-}
-
-float remapClamped(const in float x, const in float a0, const in float a1, const in float b0, const in float b1){
-  return mix(b0, b1, clamp((x - a0) / (a1 - a0), 0.0, 1.0));
-}
-
-float remap01(const in float x, const in float l, const in float h){
-  return clamp((x - l) / (h - l), 0.0, 1.0);
-}
-
-vec3 remap01Unclamped(const in vec3 x, const in vec3 l, const in vec3 h){
-  return (x - l) / (h - l);
 }
 
 float dilatePerlinWorley(float p, float w, float x) {
