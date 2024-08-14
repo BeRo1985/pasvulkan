@@ -3948,7 +3948,7 @@ begin
    PushConstants.TopRotation:=TpvVector4.InlineableCreate(1.0,0.0,0.0,1.0*(PI*0.75));
    PushConstants.CoveragePerlinWorleyDifference:=0.5;
    PushConstants.TotalSize:=4.0;
-   PushConstants.WorleySeed:=10.0+(Index*10.0);
+   PushConstants.WorleySeed:=10.0;
 
    if (fWeatherMapTextureLastGeneration=fWeatherMapTextureGeneration) and not CompareMem(@PushConstants,@fCloudWeatherMapPushConstants,SizeOf(TpvScene3DAtmosphereGlobals.TCloudWeatherMapPushConstants)) then begin
     inc(fWeatherMapTextureGeneration);
