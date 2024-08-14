@@ -527,7 +527,7 @@ float sampleCloudDensityAlongCone(const in vec3 rayOrigin,
   return densityAlongCone;
 } 
 
-void traceVolumetricClouds(vec3 rayOrigin, 
+bool traceVolumetricClouds(vec3 rayOrigin, 
                            vec3 rayDirection, 
                            float rayLength, 
                            ivec2 threadPosition,
@@ -742,6 +742,8 @@ void traceVolumetricClouds(vec3 rayOrigin,
   
   depth = (weightedDepth.y > 0.0) ? (weightedDepth.x / weightedDepth.y) : uintBitsToFloat(0x7f800000u); 
 
+  return weightedDepth.y > 0.0;
+
 }
 
 void main(){
@@ -793,13 +795,15 @@ void main(){
 
   vec3 inscattering, transmittance;
   float depth;
-  traceVolumetricClouds(worldPos, worldDir, depthBufferValue, ivec2(gl_FragCoord), inscattering, transmittance, depth);
+  if(!traceVolumetricClouds(worldPos, worldDir, depthBufferValue, ivec2(gl_FragCoord), inscattering, transmittance, depth)){
+    discard;
+  }
 
 #ifdef DUALBLEND
   outInscattering = vec4(inscattering, 1.0);
   outTransmittance = vec4(transmittance, 1.0);
 #else
-  outInscattering = vec4(inscattering, dot(transmittance, vec3(1.0 / 3.0)));
+  outInscattering = vec4(inscattering, clamp(1.0 - dot(transmittance, vec3(1.0 / 3.0)), 0.0, 1.0));
 #endif
 
   outDepth = depth;
