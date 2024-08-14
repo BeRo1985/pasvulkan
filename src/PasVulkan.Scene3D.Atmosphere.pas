@@ -3942,10 +3942,10 @@ begin
   begin
 
    FillChar(PushConstants,SizeOf(TpvScene3DAtmosphereGlobals.TCloudWeatherMapPushConstants),#0);
-   PushConstants.CoverageRotation:=TpvVector4.InlineableCreate(1.0,0.0,0.0,Index*(PI*0.25));
-   PushConstants.TypeRotation:=TpvVector4.InlineableCreate(1.0,0.0,0.0,Index*(PI*0.125));
-   PushConstants.WetnessRotation:=TpvVector4.InlineableCreate(1.0,0.0,0.0,Index*(PI*0.5));
-   PushConstants.TopRotation:=TpvVector4.InlineableCreate(1.0,0.0,0.0,Index*(PI*0.75));
+   PushConstants.CoverageRotation:=TpvVector4.InlineableCreate(1.0,0.0,0.0,1.0*(PI*0.25));
+   PushConstants.TypeRotation:=TpvVector4.InlineableCreate(1.0,0.0,0.0,1.0*(PI*0.125));
+   PushConstants.WetnessRotation:=TpvVector4.InlineableCreate(1.0,0.0,0.0,1.0*(PI*0.5));
+   PushConstants.TopRotation:=TpvVector4.InlineableCreate(1.0,0.0,0.0,1.0*(PI*0.75));
    PushConstants.CoveragePerlinWorleyDifference:=0.5;
    PushConstants.TotalSize:=4.0;
    PushConstants.WorleySeed:=10.0+(Index*10.0);
