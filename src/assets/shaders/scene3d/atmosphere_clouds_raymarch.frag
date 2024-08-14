@@ -141,7 +141,7 @@ layout(set = 2, binding = 0) uniform texture2D uDepthTexture;
 
 #endif
 
-layout(set = 2, binding = 1, std430) buffer AtmosphereParametersBuffer {
+layout(set = 2, binding = 1, std140) uniform AtmosphereParametersBuffer {
   AtmosphereParameters atmosphereParameters;
 } uAtmosphereParameters;
 
