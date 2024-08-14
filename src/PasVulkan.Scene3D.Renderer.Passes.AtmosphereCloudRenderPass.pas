@@ -443,19 +443,19 @@ begin
                                                                        VK_BLEND_FACTOR_ONE,
                                                                        VK_BLEND_FACTOR_SRC1_COLOR,
                                                                        VK_BLEND_OP_ADD,
-                                                                       VK_BLEND_FACTOR_ZERO,
                                                                        VK_BLEND_FACTOR_ONE,
+                                                                       VK_BLEND_FACTOR_ZERO,
                                                                        VK_BLEND_OP_ADD,
                                                                        TVkColorComponentFlags(VK_COLOR_COMPONENT_R_BIT) or
                                                                        TVkColorComponentFlags(VK_COLOR_COMPONENT_G_BIT) or
                                                                        TVkColorComponentFlags(VK_COLOR_COMPONENT_B_BIT) or
                                                                        TVkColorComponentFlags(VK_COLOR_COMPONENT_A_BIT));
   fVulkanGraphicsPipeline.ColorBlendState.AddColorBlendAttachmentState(true,
-                                                                       VK_BLEND_FACTOR_SRC_ALPHA,
-                                                                       VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+                                                                       VK_BLEND_FACTOR_DST_COLOR,
+                                                                       VK_BLEND_FACTOR_ZERO,
                                                                        VK_BLEND_OP_ADD,
                                                                        VK_BLEND_FACTOR_ONE,
-                                                                       VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+                                                                       VK_BLEND_FACTOR_ZERO,
                                                                        VK_BLEND_OP_ADD,
                                                                        TVkColorComponentFlags(VK_COLOR_COMPONENT_R_BIT) or
                                                                        TVkColorComponentFlags(VK_COLOR_COMPONENT_G_BIT) or
@@ -464,10 +464,10 @@ begin
  end else begin
   fVulkanGraphicsPipeline.ColorBlendState.AddColorBlendAttachmentState(true,
                                                                        VK_BLEND_FACTOR_ONE,
-                                                                       VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+                                                                       VK_BLEND_FACTOR_SRC_ALPHA,
                                                                        VK_BLEND_OP_ADD,
-                                                                       VK_BLEND_FACTOR_ONE,
-                                                                       VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+                                                                       VK_BLEND_FACTOR_DST_ALPHA,
+                                                                       VK_BLEND_FACTOR_ZERO,
                                                                        VK_BLEND_OP_ADD,
                                                                        TVkColorComponentFlags(VK_COLOR_COMPONENT_R_BIT) or
                                                                        TVkColorComponentFlags(VK_COLOR_COMPONENT_G_BIT) or

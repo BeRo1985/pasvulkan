@@ -799,9 +799,9 @@ void main(){
 
 #ifdef DUALBLEND
   outInscattering = vec4(clamp(inscattering, vec3(0.0), vec3(65504.0)), 1.0); // clamp to 16-bit floating point range
-  outTransmittance = vec4(clamp(transmittance, vec3(0.0), vec3(1.0)), 1.0);
+  outTransmittance = vec4(clamp(transmittance, vec3(0.0), vec3(1.0)), 1.0); // clamp to normalized range
 #else
-  outInscattering = vec4(max(vec3(0.0), inscattering), clamp(1.0 - dot(transmittance, vec3(1.0 / 3.0)), 0.0, 1.0));
+  outInscattering = vec4(max(vec3(0.0), inscattering), clamp(dot(transmittance, vec3(1.0 / 3.0)), 0.0, 1.0)); // alpha = monochromatic transmittance
 #endif
 
   outDepth = depth;
