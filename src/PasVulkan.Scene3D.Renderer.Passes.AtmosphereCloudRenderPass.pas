@@ -399,7 +399,7 @@ begin
                                                            fInstance.Renderer.VulkanPipelineCache,
                                                            0,
                                                            [],
-                                                           TpvScene3DAtmosphereGlobals(fInstance.Scene3D.AtmosphereGlobals).RaymarchingPipelineLayout,
+                                                           TpvScene3DAtmosphereGlobals(fInstance.Scene3D.AtmosphereGlobals).CloudRaymarchingPipelineLayout,
                                                            fVulkanRenderPass,
                                                            VulkanRenderPassSubpassIndex,
                                                            nil,
@@ -552,7 +552,7 @@ begin
   fPushConstants.Flags:=fPushConstants.Flags or (TpvUInt32(1) shl 3);
  end;
 
- aCommandBuffer.CmdPushConstants(TpvScene3DAtmosphereGlobals(fInstance.Scene3D.AtmosphereGlobals).RaymarchingPipelineLayout.Handle,
+ aCommandBuffer.CmdPushConstants(TpvScene3DAtmosphereGlobals(fInstance.Scene3D.AtmosphereGlobals).CloudRaymarchingPipelineLayout.Handle,
                                  TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_FRAGMENT_BIT),
                                  0,
                                  SizeOf(TpvScene3DAtmosphereGlobals.TCloudRaymarchingPushConstants),
