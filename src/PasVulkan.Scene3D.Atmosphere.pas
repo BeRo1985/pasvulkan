@@ -505,6 +505,93 @@ type TpvScene3DAtmosphere=class;
               procedure LoadFromPOCAFile(const aFileName:string);
             end;
             PAtmosphereParameters=^TAtmosphereParameters;
+            { TGPUVolumetricCloudLayerLow }
+            TGPUVolumetricCloudLayerLow=packed record
+             public
+
+              StartHeight:TpvFloat;
+              EndHeight:TpvFloat;
+              PositionScale:TpvFloat;
+              ShapeNoiseScale:TpvFloat;
+             
+              DetailNoiseScale:TpvFloat;
+              CurlScale:TpvFloat;
+              AdvanceCurlScale:TpvFloat;
+              AdvanceCurlAmplitude:TpvFloat;
+             
+              HeightGradients:array[0..2] of TpvVector4; // mat3x4
+              
+              AnvilDeformations:array[0..2] of TpvVector4; // mat3x4 unused for now
+
+              procedure Assign(const aVolumetricCloudLayerLow:TVolumetricCloudLayerLow);
+            end;
+            PGPUVolumetricCloudLayerLow=^TGPUVolumetricCloudLayerLow;
+            { TGPUVolumetricCloudLayerHigh }
+            TGPUVolumetricCloudLayerHigh=packed record
+             public
+              
+              StartHeight:TpvFloat;
+              EndHeight:TpvFloat;              
+              PositionScale:TpvFloat;
+              Density:TpvFloat;
+
+              CoverMin:TpvFloat;
+              CoverMax:TpvFloat;
+              FadeMin:TpvFloat;
+              FadeMax:TpvFloat;
+              
+              Speed:TpvFloat;
+              Padding0:TpvFloat;
+              Padding1:TpvFloat;
+              Padding2:TpvFloat;
+
+              RotationBase:TpvVector4;
+              
+              RotationOctave1:TpvVector4;
+              
+              RotationOctave2:TpvVector4;
+              
+              RotationOctave3:TpvVector4;
+              
+              OctaveScales:TpvVector4;
+              
+              OctaveFactors:TpvVector4;
+              
+              procedure Assign(const aVolumetricCloudLayerHigh:TVolumetricCloudLayerHigh);
+            end;
+            PGPUVolumetricCloudLayerHigh=^TGPUVolumetricCloudLayerHigh;
+            { TGPUVolumetricCloudParameters }
+            TGPUVolumetricCloudParameters=packed record
+             public
+             
+              CoverageTypeWetnessTopFactors:TpvVector4; // x = Coverage, y = Type, z = Wetness, w = Top
+             
+              CoverageTypeWetnessTopOffsets:TpvVector4; // x = Coverage, y = Type, z = Wetness, w = Top
+             
+              Scattering:TpvVector4; // w = unused
+             
+              Absorption:TpvVector4; // w = unused
+             
+              LightingDensity:TpvFloat;
+              ShadowDensity:TpvFloat;
+              ViewDensity:TpvFloat;
+              DensityScale:TpvFloat;
+             
+              Scale:TpvFloat;
+              ForwardScatteringG:TpvFloat;
+              BackwardScatteringG:TpvFloat;
+              ShadowRayLength:TpvFloat;
+             
+              DensityAlongConeLength:TpvFloat;
+              DensityAlongConeLengthFarMultiplier:TpvFloat;
+              Padding0:TpvFloat;
+              Padding1:TpvFloat;
+             
+              LayerLow:TGPUVolumetricCloudLayerLow;
+              LayerHigh:TGPUVolumetricCloudLayerHigh;
+             
+              procedure Assign(const aVolumetricCloudParameters:TVolumetricCloudParameters);
+            end;
             { TGPUAtmosphereParameters }
             TGPUAtmosphereParameters=packed record
              public
@@ -529,6 +616,7 @@ type TpvScene3DAtmosphere=class;
               AbsorptionDensity1LinearTerm:TpvFloat;              
               RaymarchingMinSteps:TpvInt32;
               RaymarchingMaxSteps:TpvInt32;
+              VolumetricClouds:TGPUVolumetricCloudParameters;
               procedure Assign(const aAtmosphereParameters:TAtmosphereParameters);
             end;
             PGPUAtmosphereParameters=^TGPUAtmosphereParameters;
@@ -1838,6 +1926,95 @@ begin
  end;
 end;
 
+{ TpvScene3DAtmosphere.TGPUVolumetricCloudLayerLow }
+
+procedure TpvScene3DAtmosphere.TGPUVolumetricCloudLayerLow.Assign(const aVolumetricCloudLayerLow:TVolumetricCloudLayerLow);
+begin
+
+ StartHeight:=aVolumetricCloudLayerLow.StartHeight;
+ EndHeight:=aVolumetricCloudLayerLow.EndHeight;
+
+ PositionScale:=aVolumetricCloudLayerLow.PositionScale;
+
+ ShapeNoiseScale:=aVolumetricCloudLayerLow.ShapeNoiseScale;
+ DetailNoiseScale:=aVolumetricCloudLayerLow.DetailNoiseScale;
+ CurlScale:=aVolumetricCloudLayerLow.CurlScale;
+
+ AdvanceCurlScale:=aVolumetricCloudLayerLow.AdvanceCurlScale;
+ AdvanceCurlAmplitude:=aVolumetricCloudLayerLow.AdvanceCurlAmplitude;
+
+ HeightGradients[0]:=aVolumetricCloudLayerLow.HeightGradients[0];
+ HeightGradients[1]:=aVolumetricCloudLayerLow.HeightGradients[1];
+ HeightGradients[2]:=aVolumetricCloudLayerLow.HeightGradients[2];
+
+ AnvilDeformations[0]:=aVolumetricCloudLayerLow.AnvilDeformations[0];
+ AnvilDeformations[1]:=aVolumetricCloudLayerLow.AnvilDeformations[1]; 
+ AnvilDeformations[2]:=aVolumetricCloudLayerLow.AnvilDeformations[2];
+
+end;
+
+{ TpvScene3DAtmosphere.TGPUVolumetricCloudLayerHigh }
+
+procedure TpvScene3DAtmosphere.TGPUVolumetricCloudLayerHigh.Assign(const aVolumetricCloudLayerHigh:TVolumetricCloudLayerHigh);
+begin
+ 
+ StartHeight:=aVolumetricCloudLayerHigh.StartHeight;
+ EndHeight:=aVolumetricCloudLayerHigh.EndHeight;
+ 
+ PositionScale:=aVolumetricCloudLayerHigh.PositionScale;
+ 
+ Density:=aVolumetricCloudLayerHigh.Density;
+ 
+ CoverMin:=aVolumetricCloudLayerHigh.CoverMin;
+ CoverMax:=aVolumetricCloudLayerHigh.CoverMax;
+ 
+ FadeMin:=aVolumetricCloudLayerHigh.FadeMin;
+ FadeMax:=aVolumetricCloudLayerHigh.FadeMax;
+ 
+ Speed:=aVolumetricCloudLayerHigh.Speed;
+ 
+ RotationBase:=aVolumetricCloudLayerHigh.RotationBase;
+ RotationOctave1:=aVolumetricCloudLayerHigh.RotationOctave1;
+ RotationOctave2:=aVolumetricCloudLayerHigh.RotationOctave2;
+ RotationOctave3:=aVolumetricCloudLayerHigh.RotationOctave3;
+ 
+ OctaveScales:=aVolumetricCloudLayerHigh.OctaveScales;
+ OctaveFactors:=aVolumetricCloudLayerHigh.OctaveFactors;
+
+end;
+
+{ TpvScene3DAtmosphere.TGPUVolumetricCloudParameters }
+
+procedure TpvScene3DAtmosphere.TGPUVolumetricCloudParameters.Assign(const aVolumetricCloudParameters:TVolumetricCloudParameters);
+begin
+ 
+ CoverageTypeWetnessTopFactors:=aVolumetricCloudParameters.CoverageTypeWetnessTopFactors; 
+ CoverageTypeWetnessTopOffsets:=aVolumetricCloudParameters.CoverageTypeWetnessTopOffsets;
+ 
+ Scattering:=aVolumetricCloudParameters.Scattering; 
+ Absorption:=aVolumetricCloudParameters.Absorption;
+ 
+ LightingDensity:=aVolumetricCloudParameters.LightingDensity; 
+ ShadowDensity:=aVolumetricCloudParameters.ShadowDensity;
+ ViewDensity:=aVolumetricCloudParameters.ViewDensity;
+ 
+ DensityScale:=aVolumetricCloudParameters.DensityScale;
+
+ Scale:=aVolumetricCloudParameters.Scale;
+
+ ForwardScatteringG:=aVolumetricCloudParameters.ForwardScatteringG;
+ BackwardScatteringG:=aVolumetricCloudParameters.BackwardScatteringG;
+ 
+ ShadowRayLength:=aVolumetricCloudParameters.ShadowRayLength;
+ 
+ DensityAlongConeLength:=aVolumetricCloudParameters.DensityAlongConeLength;
+ DensityAlongConeLengthFarMultiplier:=aVolumetricCloudParameters.DensityAlongConeLengthFarMultiplier;
+ 
+ LayerLow.Assign(aVolumetricCloudParameters.LayerLow); 
+ LayerHigh.Assign(aVolumetricCloudParameters.LayerHigh);
+
+end;
+
 { TpvScene3DAtmosphere.TGPUAtmosphereParameters }
 
 procedure TpvScene3DAtmosphere.TGPUAtmosphereParameters.Assign(const aAtmosphereParameters:TAtmosphereParameters);
@@ -1870,6 +2047,8 @@ begin
 
  RaymarchingMinSteps:=aAtmosphereParameters.RaymarchingMinSteps;
  RaymarchingMaxSteps:=aAtmosphereParameters.RaymarchingMaxSteps;
+
+ VolumetricClouds.Assign(aAtmosphereParameters.VolumetricClouds);
 
 end;
 
