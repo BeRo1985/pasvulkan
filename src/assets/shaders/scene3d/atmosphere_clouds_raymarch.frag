@@ -147,23 +147,21 @@ layout(set = 2, binding = 1, std430) buffer AtmosphereParametersBuffer {
 
 layout(set = 2, binding = 2) uniform sampler2D uTextureBlueNoise;
 
-layout(set = 2, binding = 3) uniform sampler2D uCloud2DTextures[];
+layout(set = 2, binding = 3) uniform sampler2D uTextureSkyLuminance;
 
-#define uCloudTextureSkyLuminance uCloud2DTextures[0]
-#define uCloudTextureTransmittanceLUT uCloud2DTextures[1]
+layout(set = 2, binding = 4) uniform sampler2D uTextureTransmittanceLUT;
 
-layout(set = 2, binding = 4) uniform sampler3D uCloud3DTextures[];
+layout(set = 2, binding = 5) uniform sampler3D uTextureShapeNoise;
 
-#define uCloudTextureShapeNoise uCloud3DTextures[0]
-#define uCloudTextureDetailNoise uCloud3DTextures[1]
-#define uCloudTextureCurlNoise uCloud3DTextures[2]
+layout(set = 2, binding = 6) uniform sampler3D uTextureDetailNoise;
 
-layout(set = 2, binding = 5) uniform samplerCube uCloudCubeTextures[];
+layout(set = 2, binding = 7) uniform sampler3D uTextureCurlNoise;
 
-#define uCloudTextureSkyLuminanceLUT uCloudCubeTextures[0]
-#define uCloudTextureWeatherMap uCloudCubeTextures[1]
+layout(set = 2, binding = 8) uniform samplerCube uTextureSkyLuminanceLUT;
 
-float bayer2(vec2 a){
+layout(set = 2, binding = 9) uniform samplerCube uTextureWeatherMap;
+
+float bayer2(vec2 a){ 
   a = floor(a);
   return fract(dot(a, vec2(0.5, a.y * 0.75)));
 }
@@ -252,7 +250,7 @@ vec3 scaleLayerHighCloudPosition(vec3 position){
 vec4 getWeatherData(const in vec3 position, const float mipMapLevel){
   return clamp(
     fma(
-      textureLod(uCloudTextureWeatherMap, normalize(position), mipMapLevel),
+      textureLod(uTextureWeatherMap, normalize(position), mipMapLevel),
       uAtmosphereParameters.atmosphereParameters.VolumetricClouds.coverageTypeWetnessTopFactors, 
       uAtmosphereParameters.atmosphereParameters.VolumetricClouds.coverageTypeWetnessTopOffsets
     ),
@@ -320,7 +318,7 @@ float getLowResCloudDensity(const in vec3 position, const in mat3 windRotation, 
     float heightFraction = clamp((height - uAtmosphereParameters.atmosphereParameters.VolumetricClouds.LayerLow.StartHeight) / (uAtmosphereParameters.atmosphereParameters.VolumetricClouds.LayerLow.EndHeight - uAtmosphereParameters.atmosphereParameters.VolumetricClouds.LayerLow.StartHeight), 0.0, 1.0);
                        
     // Read the low-frequency Perlin-Worley and Worley noises
-    vec4 lowFrequencyNoises = textureLod(uCloudTextureShapeNoise, scaleLayerLowCloudPosition(windRotation * position) * uAtmosphereParameters.atmosphereParameters.VolumetricClouds.LayerLow.ShapeNoiseScale, mipMapLevel);
+    vec4 lowFrequencyNoises = textureLod(uTextureShapeNoise, scaleLayerLowCloudPosition(windRotation * position) * uAtmosphereParameters.atmosphereParameters.VolumetricClouds.LayerLow.ShapeNoiseScale, mipMapLevel);
                                                                                                                       
     // Build an FBM out of the low frequency Worley noises that can be used to add detail to the low-frequency Perlin-Worley noise
     float lowFrequencyFBM = dot(lowFrequencyNoises.yzw, vec3(0.625, 0.25, 0.125));
@@ -372,7 +370,7 @@ float getHighResCloudDensity(const in vec3 position, const in mat3 windRotation,
                                        
     // Sample high-frequency noises
     vec3 highFrequencyNoises = textureLod(
-      uCloudTextureDetailNoise,
+      uTextureDetailNoise,
       scaleLayerLowCloudPosition(
         (windRotation * position) +
         (curlOffset.xyz * (1.0 - heightFraction) * uAtmosphereParameters.atmosphereParameters.VolumetricClouds.LayerLow.CurlScale)
@@ -518,7 +516,7 @@ float sampleCloudDensityAlongCone(const in vec3 rayOrigin,
       if(highResCloudDensity){
         // If are ray march is hasn't absorbed too much light yet, 
         // we use the high res cloud data to calculate the self occlusion of the cloud 
-        vec3 curlOffsetVector = decodeCURL(textureLod(uCloudTextureCurlNoise, scaleLayerLowCloudPosition(layerLowWindRotation * position), mipMapLevel + 1.0).xyz) * (1.0 * uAtmosphereParameters.atmosphereParameters.VolumetricClouds.Scale);
+        vec3 curlOffsetVector = decodeCURL(textureLod(uTextureCurlNoise, scaleLayerLowCloudPosition(layerLowWindRotation * position), mipMapLevel + 1.0).xyz) * (1.0 * uAtmosphereParameters.atmosphereParameters.VolumetricClouds.Scale);
         density = getHighResCloudDensity(position, layerLowWindRotation, curlOffsetVector, weatherData, density, mipMapLevel + 1.0); 
       }
       densityAlongCone += density * uAtmosphereParameters.atmosphereParameters.VolumetricClouds.LightingDensity * uAtmosphereParameters.atmosphereParameters.VolumetricClouds.DensityScale;
@@ -641,7 +639,7 @@ bool traceVolumetricClouds(vec3 rayOrigin,
         
           vec3 curlOffsetVector = decodeCURL(
             textureLod(
-              uCloudTextureCurlNoise,
+              uTextureCurlNoise,
               scaleLayerLowCloudPosition((layerLowWindRotation * position) * uAtmosphereParameters.atmosphereParameters.VolumetricClouds.LayerLow.AdvanceCurlScale),
               mipMapLevel).xyz
           ) * 
@@ -685,7 +683,7 @@ bool traceVolumetricClouds(vec3 rayOrigin,
             
             // Fake multiple scattering 
             vec3 indirectScattering = clamp(pow(3.0 * scatteringCoefficient, 0.5), 0.7, 1.0) *
-                                      textureLod(uCloudTextureSkyLuminanceLUT, normalize(position), 0.0).xyz * 
+                                      textureLod(uTextureSkyLuminanceLUT, normalize(position), 0.0).xyz * 
                                       beerTerm(density) *
                                       //sunLightTerm *
                                       vec3(1.0);
