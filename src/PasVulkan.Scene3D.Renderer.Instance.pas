@@ -2581,6 +2581,26 @@ begin
                                   1
                                  );
 
+ fFrameGraph.AddImageResourceType('resourcetype_msaa_transmittance',
+                                  false,
+                                  VK_FORMAT_R8G8B8A8_UNORM,
+                                  Renderer.SurfaceSampleCountFlagBits,
+                                  TpvFrameGraph.TImageType.Color,
+                                  TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,fSizeFactor,fSizeFactor,1.0,fCountSurfaceViews),
+                                  TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT),
+                                  1
+                                 );
+
+ fFrameGraph.AddImageResourceType('resourcetype_msaa_lineardepth',
+                                  false,
+                                  VK_FORMAT_R32_SFLOAT,
+                                  Renderer.SurfaceSampleCountFlagBits,
+                                  TpvFrameGraph.TImageType.Color,
+                                  TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,fSizeFactor,fSizeFactor,1.0,fCountSurfaceViews),
+                                  TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT),
+                                  1
+                                 );
+
  fFrameGraph.AddImageResourceType('resourcetype_msaa_depth',
                                   false,
                                   VK_FORMAT_D32_SFLOAT{pvApplication.VulkanDepthImageFormat},
@@ -2734,6 +2754,26 @@ begin
  fFrameGraph.AddImageResourceType('resourcetype_color_optimized_non_alpha',
                                   false,
                                   Renderer.OptimizedNonAlphaFormat,
+                                  TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
+                                  TpvFrameGraph.TImageType.Color,
+                                  TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,fSizeFactor,fSizeFactor,1.0,fCountSurfaceViews),
+                                  TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT),
+                                  1
+                                 );
+
+ fFrameGraph.AddImageResourceType('resourcetype_transmittance',
+                                  false,
+                                  VK_FORMAT_R8G8B8A8_UNORM,
+                                  TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
+                                  TpvFrameGraph.TImageType.Color,
+                                  TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,fSizeFactor,fSizeFactor,1.0,fCountSurfaceViews),
+                                  TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT),
+                                  1
+                                 );
+
+ fFrameGraph.AddImageResourceType('resourcetype_lineardepth',
+                                  false,
+                                  VK_FORMAT_R32_SFLOAT,
                                   TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
                                   TpvFrameGraph.TImageType.Color,
                                   TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,fSizeFactor,fSizeFactor,1.0,fCountSurfaceViews),

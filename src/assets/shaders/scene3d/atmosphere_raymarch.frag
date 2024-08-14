@@ -398,10 +398,10 @@ void main() {
     }
 
 #ifdef DUALBLEND
-    outInscattering = vec4(inscattering, 1.0);
+    outInscattering = vec4(clamp(inscattering, vec3(0.0), vec3(65504.0)), 1.0); // clamp to 16-bit floating point range
     outTransmittance = vec4(vec3(clamp(transmittance, vec3(0.0), vec3(1.0))), 1.0);
 #else
-    outInscattering = vec4(inscattering, 1.0 - clamp(dot(transmittance, vec3(1.0 / 3.0)), 0.0, 1.0)); // alpha = 1.0 - transmittance 
+    outInscattering = vec4(max(vec3(0.0), inscattering), 1.0 - clamp(dot(transmittance, vec3(1.0 / 3.0)), 0.0, 1.0)); // alpha = 1.0 - transmittance 
 #endif
 
   }

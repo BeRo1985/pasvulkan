@@ -163,7 +163,7 @@ begin
                                 );
 
   if fDualBlendSupport then begin
-   fResourceTransmittance:=AddImageOutput('resourcetype_color_optimized_non_alpha',
+   fResourceTransmittance:=AddImageOutput('resourcetype_transmittance',
                                           'resource_forwardrendering_atmosphere_transmittance',
                                           VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                           TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
@@ -190,7 +190,7 @@ begin
                                 );
 
   if fDualBlendSupport then begin
-   fResourceTransmittance:=AddImageOutput('resourcetype_msaa_color_optimized_non_alpha',
+   fResourceTransmittance:=AddImageOutput('resourcetype_msaa_transmittance',
                                           'resource_forwardrendering_atmosphere_transmittance',
                                           VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                           TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
