@@ -690,7 +690,7 @@ bool traceVolumetricClouds(vec3 rayOrigin,
             
             vec3 sampledScattering = (directScatting + indirectScattering) * scatteringCoefficient;
              
-            weightedDepth += vec2(length(position - rayOrigin), 1.0) * min(transmittance.x, min(transmittance.y, transmittance.z)); 
+            weightedDepth += vec2(length(position - rayOrigin), 1.0) * density;//min(transmittance.x, min(transmittance.y, transmittance.z)); 
                                                              
 #if 1
             // See slide 28 at http://www.frostbite.com/2015/08/physically-based-unified-volumetric-rendering-in-frostbite/
