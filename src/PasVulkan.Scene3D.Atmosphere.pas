@@ -600,6 +600,10 @@ type TpvScene3DAtmosphere=class;
               procedure ReleaseGraphicsPipeline;
               procedure Execute(const aInFlightFrameIndex:TpvSizeInt;
                                 const aCommandBuffer:TpvVulkanCommandBuffer);
+              procedure DrawClouds(const aInFlightFrameIndex:TpvSizeInt;
+                                   const aCommandBuffer:TpvVulkanCommandBuffer;
+                                   const aDepthImageView:TVkImageView;
+                                   const aCascadedShadowMapImageView:TVkImageView);
               procedure Draw(const aInFlightFrameIndex:TpvSizeInt;
                              const aCommandBuffer:TpvVulkanCommandBuffer;
                              const aDepthImageView:TVkImageView;
@@ -662,6 +666,11 @@ type TpvScene3DAtmosphere=class;
        procedure Execute(const aInFlightFrameIndex:TpvSizeInt;
                          const aCommandBuffer:TpvVulkanCommandBuffer;
                          const aRendererInstance:TObject);
+       procedure DrawClouds(const aInFlightFrameIndex:TpvSizeInt;
+                            const aCommandBuffer:TpvVulkanCommandBuffer;
+                            const aDepthImageView:TVkImageView;
+                            const aCascadedShadowMapImageView:TVkImageView;
+                            const aRendererInstance:TObject);
        procedure Draw(const aInFlightFrameIndex:TpvSizeInt;
                       const aCommandBuffer:TpvVulkanCommandBuffer;
                       const aDepthImageView:TVkImageView;
@@ -683,6 +692,11 @@ type TpvScene3DAtmosphere=class;
        constructor Create(const aScene3D:TObject); reintroduce;
        destructor Destroy; override;
        procedure ProcessReleases;
+       procedure DrawClouds(const aInFlightFrameIndex:TpvSizeInt;
+                            const aCommandBuffer:TpvVulkanCommandBuffer;
+                            const aDepthImageView:TVkImageView;
+                            const aCascadedShadowMapImageView:TVkImageView;
+                            const aRendererInstance:TObject);
        procedure Draw(const aInFlightFrameIndex:TpvSizeInt;
                       const aCommandBuffer:TpvVulkanCommandBuffer;
                       const aDepthImageView:TVkImageView;
@@ -3433,6 +3447,35 @@ begin
 
 end;
 
+procedure TpvScene3DAtmosphere.TRendererInstance.DrawClouds(const aInFlightFrameIndex:TpvSizeInt;
+                                                            const aCommandBuffer:TpvVulkanCommandBuffer;
+                                                            const aDepthImageView:TVkImageView;
+                                                            const aCascadedShadowMapImageView:TVkImageView);
+var DescriptorSets:array[0..2] of TVkDescriptorSet;
+begin
+
+ TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'Atmosphere.Clouds.Draw',[1.0,0.0,0.0,1.0]);
+
+ SetDepthImageViewCascadedShadowMapImageView(aInFlightFrameIndex,aDepthImageView,aCascadedShadowMapImageView);
+
+ DescriptorSets[0]:=TpvScene3D(fAtmosphere.fScene3D).GlobalVulkanDescriptorSets[aInFlightFrameIndex].Handle;
+ DescriptorSets[1]:=fGlobalDescriptorSets[aInFlightFrameIndex].Handle;
+ DescriptorSets[2]:=fCloudRaymarchingPassDescriptorSets[aInFlightFrameIndex].Handle;
+
+ aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                      TpvScene3DAtmosphereGlobals(TpvScene3D(fAtmosphere.fScene3D).AtmosphereGlobals).fCloudRaymarchingPipelineLayout.Handle,
+                                      0,
+                                      3,
+                                      @DescriptorSets,
+                                      0,
+                                      nil);
+
+ aCommandBuffer.CmdDraw(3,1,0,0);
+
+ TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
+
+end;
+
 procedure TpvScene3DAtmosphere.TRendererInstance.Draw(const aInFlightFrameIndex:TpvSizeInt;
                                                       const aCommandBuffer:TpvVulkanCommandBuffer;
                                                       const aDepthImageView:TVkImageView;
@@ -3826,6 +3869,26 @@ begin
 
 end;
 
+procedure TpvScene3DAtmosphere.DrawClouds(const aInFlightFrameIndex:TpvSizeInt;
+                                          const aCommandBuffer:TpvVulkanCommandBuffer;
+                                          const aDepthImageView:TVkImageView;
+                                          const aCascadedShadowMapImageView:TVkImageView;
+                                          const aRendererInstance:TObject);
+var AtmosphereRendererInstance:TpvScene3DAtmosphere.TRendererInstance;
+begin
+
+ if fInFlightFrameVisible[aInFlightFrameIndex] then begin
+
+  AtmosphereRendererInstance:=GetRenderInstance(aRendererInstance);
+
+  if assigned(AtmosphereRendererInstance) then begin
+   AtmosphereRendererInstance.DrawClouds(aInFlightFrameIndex,aCommandBuffer,aDepthImageView,aCascadedShadowMapImageView);
+  end;
+
+ end;
+
+end;
+
 procedure TpvScene3DAtmosphere.Draw(const aInFlightFrameIndex:TpvSizeInt;
                                     const aCommandBuffer:TpvVulkanCommandBuffer;
                                     const aDepthImageView:TVkImageView;
@@ -3886,6 +3949,33 @@ begin
  end; 
 end;
 
+procedure TpvScene3DAtmospheres.DrawClouds(const aInFlightFrameIndex:TpvSizeInt;
+                                           const aCommandBuffer:TpvVulkanCommandBuffer;
+                                           const aDepthImageView:TVkImageView;
+                                           const aCascadedShadowMapImageView:TVkImageView;
+                                           const aRendererInstance:TObject);
+var Index:TpvSizeInt;
+    Atmosphere:TpvScene3DAtmosphere;
+begin
+ fLock.AcquireRead;
+ try
+
+  if Count>0 then begin
+
+   for Index:=0 to Count-1 do begin
+    Atmosphere:=Items[Index];
+    if assigned(Atmosphere) then begin
+     Atmosphere.DrawClouds(aInFlightFrameIndex,aCommandBuffer,aDepthImageView,aCascadedShadowMapImageView,aRendererInstance);
+    end;
+   end;
+
+  end;
+
+ finally
+  fLock.ReleaseRead;
+ end;
+end;
+
 procedure TpvScene3DAtmospheres.Draw(const aInFlightFrameIndex:TpvSizeInt;
                                      const aCommandBuffer:TpvVulkanCommandBuffer;
                                      const aDepthImageView:TVkImageView;
@@ -3911,7 +4001,7 @@ begin
  finally
   fLock.ReleaseRead;
  end;
-end; 
+end;
 
 { TpvScene3DAtmosphereGlobals }
 
