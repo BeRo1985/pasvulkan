@@ -259,22 +259,16 @@ void main() {
 
   bool depthIsZFar = depthBufferValue == GetZFarDepthValue(view.projectionMatrix);
 
-  mat2x3 inscatteringTransmittance = mat2x3(
-    vec3(0.0), // inscattering, default to nothing, since there is nothing to inscatter at the beginning
-    vec3(1.0)  // transmittance, default to full transmittance
-  );
-
   //bool rayHitsAtmosphere = any(greaterThanEqual(raySphereIntersect(worldPos, worldDir, vec3(0.0), atmosphereParameters.TopRadius), vec2(0.0)));
 
-  bool needToRayMarch = false, needAerialPerspective = false;
+  bool needToRayMarch = false, needAerialPerspective = false, applyFastCloudIntegration = false;
 
   float targetDepth = uintBitsToFloat(0x7F800000u); // +inf
 
   if(/*rayHitsAtmosphere &&*/ depthIsZFar){
 
-    // When fast sky is used and no clouds are present at this fragment pixel, we can use a precomputed sky view LUT to get the 
-    // inscattering and transmittance values 
-    if(((pushConstants.flags & FLAGS_USE_FAST_SKY) != 0u) && !cloudsValid){
+    // When fast sky is used, we can use a precomputed sky view LUT to get the inscattering and transmittance values 
+    if((pushConstants.flags & FLAGS_USE_FAST_SKY) != 0u){
       
       vec2 localUV;
       vec3 UpVector = normalize(worldPos);
@@ -307,6 +301,8 @@ void main() {
       }
 
       addScatteringSample(inscattering.xyz, transmittance.xyz);
+
+      applyFastCloudIntegration = true;
 
     }else{
 
@@ -346,7 +342,7 @@ void main() {
 
     // When fast aerial perspective is used and no clouds are present at this fragment pixel, we can use a precomputed camera volume to get the
     // inscattering and transmittance values
-    if(((pushConstants.flags & FLAGS_USE_FAST_AERIAL_PERSPECTIVE) != 0u) && !cloudsValid){
+    if((pushConstants.flags & FLAGS_USE_FAST_AERIAL_PERSPECTIVE) != 0u){
 
       // Fast aerial perspective approximation using a 3D texture
 
@@ -427,6 +423,8 @@ void main() {
 
         addScatteringSample(inscattering.xyz, transmittance.xyz);
 
+        applyFastCloudIntegration = true;
+
         needToRayMarch = false;
 
       }  
@@ -437,6 +435,17 @@ void main() {
 
     }
 
+  }
+
+  // When fast cloud integration is used, we apply the precomputed cloud inscattering and transmittance values directly after the fast sky or
+  // fast aerial perspective, even when it isn't correct, since the clouds are not integrated inbetween the atmosphere slices when using fast sky
+  // or fast aerial perspective, but better than nothing 
+  if(applyFastCloudIntegration){
+    if(cloudsValid){
+      cloudsValid = false;
+      addScatteringSample(cloudsInscattering.xyz, cloudsTransmittance.xyz);
+    }
+    needToRayMarch = false;
   }
 
   if(needToRayMarch){
