@@ -159,10 +159,10 @@ begin
                                             );
 
   fResourceCloudsTransmittance:=AddImageInput('resourcetype_transmittance',
-                                             'resource_clouds_transmittance',
-                                             VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                             []
-                                            );
+                                              'resource_clouds_transmittance',
+                                              VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                              []
+                                             );
 
   fResourceCloudsDepth:=AddImageInput('resourcetype_lineardepth',
                                       'resource_clouds_lineardepth',

@@ -162,7 +162,7 @@ begin
                                  );
 
   fResourceTransmittance:=AddImageOutput('resourcetype_transmittance',
-                                         'resource_transmittance',
+                                         'resource_clouds_transmittance',
                                          VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                          TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
                                                                       TpvVector4.InlineableCreate(1.0,1.0,1.0,0.0)),
