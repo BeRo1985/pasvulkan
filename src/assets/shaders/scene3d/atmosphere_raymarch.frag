@@ -188,29 +188,46 @@ void main() {
 #else  
   float depthBufferValue = subpassLoad(uSubpassDepth).x;
 #endif*/
+  vec4 cloudsInscattering = vec4(0.0), cloudsTransmittance = vec4(1.0, 1.0, 1.0, 0.0);
 #ifdef MSAA
 #ifdef MULTIVIEW
   float depthBufferValue = texelFetch(uDepthTexture, ivec3(ivec2(gl_FragCoord.xy), int(gl_ViewIndex)), gl_SampleID).x;
-  vec4 cloudsInscattering = texelFetch(uCloudsInscatteringTexture, ivec3(ivec2(gl_FragCoord.xy), int(gl_ViewIndex)), gl_SampleID);
-  vec4 cloudsTransmittance = texelFetch(uCloudsTransmittanceTexture, ivec3(ivec2(gl_FragCoord.xy), int(gl_ViewIndex)), gl_SampleID);
+  
   float cloudsDepth = texelFetch(uCloudsDepthTexture, ivec3(ivec2(gl_FragCoord.xy), int(gl_ViewIndex)), gl_SampleID).x;
+  bool cloudsValid = !isinf(cloudsDepth);
+  if(cloudsValid){
+    cloudsInscattering = texelFetch(uCloudsInscatteringTexture, ivec3(ivec2(gl_FragCoord.xy), int(gl_ViewIndex)), gl_SampleID);
+    cloudsTransmittance = texelFetch(uCloudsTransmittanceTexture, ivec3(ivec2(gl_FragCoord.xy), int(gl_ViewIndex)), gl_SampleID);
+  }
 #else
   float depthBufferValue = texelFetch(uDepthTexture, ivec2(gl_FragCoord.xy), gl_SampleID).x;
-  vec4 cloudsInscattering = texelFetch(uCloudsInscatteringTexture, ivec2(gl_FragCoord.xy), gl_SampleID);
-  vec4 cloudsTransmittance = texelFetch(uCloudsTransmittanceTexture, ivec2(gl_FragCoord.xy), gl_SampleID);
+  
   float cloudsDepth = texelFetch(uCloudsDepthTexture, ivec2(gl_FragCoord.xy), gl_SampleID).x;
+  bool cloudsValid = !isinf(cloudsDepth);
+  if(cloudsValid){
+    cloudsInscattering = texelFetch(uCloudsInscatteringTexture, ivec2(gl_FragCoord.xy), gl_SampleID);   
+    cloudsTransmittance = texelFetch(uCloudsTransmittanceTexture, ivec2(gl_FragCoord.xy), gl_SampleID);
+  }
 #endif
 #else
 #ifdef MULTIVIEW
   float depthBufferValue = texelFetch(uDepthTexture, ivec3(ivec2(gl_FragCoord.xy), int(gl_ViewIndex)), 0).x;
-  vec4 cloudsInscattering = texelFetch(uCloudsInscatteringTexture, ivec3(ivec2(gl_FragCoord.xy), int(gl_ViewIndex)), 0);
-  vec4 cloudsTransmittance = texelFetch(uCloudsTransmittanceTexture, ivec3(ivec2(gl_FragCoord.xy), int(gl_ViewIndex)), 0);
+  
   float cloudsDepth = texelFetch(uCloudsDepthTexture, ivec3(ivec2(gl_FragCoord.xy), int(gl_ViewIndex)), 0).x;
+  bool cloudsValid = !isinf(cloudsDepth);
+  if(cloudsValid){
+    cloudsInscattering = texelFetch(uCloudsInscatteringTexture, ivec3(ivec2(gl_FragCoord.xy), int(gl_ViewIndex)), 0);
+    cloudsTransmittance = texelFetch(uCloudsTransmittanceTexture, ivec3(ivec2(gl_FragCoord.xy), int(gl_ViewIndex)), 0);
+  }
 #else
   float depthBufferValue = texelFetch(uDepthTexture, ivec2(gl_FragCoord.xy), 0).x;
-  vec4 cloudsInscattering = texelFetch(uCloudsInscatteringTexture, ivec2(gl_FragCoord.xy), 0);
-  vec4 cloudsTransmittance = texelFetch(uCloudsTransmittanceTexture, ivec2(gl_FragCoord.xy), 0);
+
   float cloudsDepth = texelFetch(uCloudsDepthTexture, ivec2(gl_FragCoord.xy), 0).x;
+  bool cloudsValid = !isinf(cloudsDepth);
+  if(cloudsValid){
+    cloudsInscattering = texelFetch(uCloudsInscatteringTexture, ivec2(gl_FragCoord.xy), 0);
+    cloudsTransmittance = texelFetch(uCloudsTransmittanceTexture, ivec2(gl_FragCoord.xy), 0);
+  }
 #endif
 #endif
 
@@ -258,7 +275,7 @@ void main() {
         inscattering.xyz += GetSunLuminance(originalWorldPos, worldDir, sunDirection, uAtmosphereParameters.atmosphereParameters.BottomRadius).xyz * transmittance.xyz;
       }
 
-      if(!isinf(cloudsDepth)){
+      if(cloudsValid){
         inscattering.xyz += cloudsInscattering.xyz;
 #ifdef DUALBLEND
         transmittance.xyz *= cloudsTransmittance.xyz;
@@ -364,7 +381,7 @@ void main() {
           inscattering.xyz += GetSunLuminance(originalWorldPos, worldDir, sunDirection, uAtmosphereParameters.atmosphereParameters.BottomRadius).xyz * transmittance.xyz;  
         }
 
-        if(!isinf(cloudsDepth)){
+        if(cloudsValid){
           inscattering.xyz += cloudsInscattering.xyz;
 #ifdef DUALBLEND
           transmittance.xyz *= cloudsTransmittance.xyz;
@@ -439,7 +456,7 @@ void main() {
 
     }
 
-    if(!isinf(cloudsDepth)){
+    if(cloudsValid){
       inscattering.xyz += cloudsInscattering.xyz;
       transmittance.xyz *= cloudsTransmittance.xyz;
     }

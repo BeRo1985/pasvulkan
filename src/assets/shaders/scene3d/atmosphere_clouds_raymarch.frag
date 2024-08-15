@@ -532,7 +532,7 @@ bool traceVolumetricClouds(vec3 rayOrigin,
   
   transmittance = vec3(1.0);
 
-  vec3 toSunDirection = normalize(-getSunDirection(uAtmosphereParameters.atmosphereParameters));
+  vec3 toSunDirection = normalize(getSunDirection(uAtmosphereParameters.atmosphereParameters));
   
   float cosAngle = dot(rayDirection, toSunDirection);
 
