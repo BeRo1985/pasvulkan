@@ -103,14 +103,9 @@ vec3 inWorldSpacePosition, workNormal;
 
 layout(location = 0) in vec2 inTexCoord;
 
-#ifdef DUALBLEND
-layout(location = 0) out vec4 outInscattering;
-layout(location = 1) out vec4 outTransmittance;
-layout(location = 2) out float outDepth; // linear depth with infinite for far plane (requires 32-bit floating point target buffer)
-#else
 layout(location = 0) out vec4 outInscattering; // w = monochromatic transmittance as alpha
-layout(location = 1) out float outDepth; // linear depth with infinite for far plane (requires 32-bit floating point target buffer)
-#endif
+layout(location = 1) out vec4 outTransmittance; // w = monochromatic transmittance as alpha
+layout(location = 2) out float outDepth; // linear depth with infinite for far plane (requires 32-bit floating point target buffer)
 
 struct View {
   mat4 viewMatrix;
@@ -797,14 +792,9 @@ void main(){
     discard;
   }
 
-#ifdef DUALBLEND
   float alpha = 1.0 - clamp(dot(transmittance, vec3(1.0 / 3.0)), 0.0, 1.0);
   outInscattering = vec4(clamp(inscattering, vec3(0.0), vec3(65504.0)), alpha); // clamp to 16-bit floating point range
   outTransmittance = vec4(clamp(transmittance, vec3(0.0), vec3(1.0)), alpha); // clamp to normalized range
-#else
-  outInscattering = vec4(max(vec3(0.0), inscattering), clamp(dot(transmittance, vec3(1.0 / 3.0)), 0.0, 1.0)); // alpha = monochromatic transmittance
-#endif
-
   outDepth = depth;
 
 
