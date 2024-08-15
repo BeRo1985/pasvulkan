@@ -272,7 +272,9 @@ void main() {
 
   if(/*rayHitsAtmosphere &&*/ depthIsZFar){
 
-    if((pushConstants.flags & FLAGS_USE_FAST_SKY) != 0u){
+    // When fast sky is used and no clouds are present at this fragment pixel, we can use a precomputed sky view LUT to get the 
+    // inscattering and transmittance values 
+    if(((pushConstants.flags & FLAGS_USE_FAST_SKY) != 0u) && !cloudsValid){
       
       vec2 localUV;
       vec3 UpVector = normalize(worldPos);
@@ -322,20 +324,29 @@ void main() {
 
   }
 
+#if 0 
+
+  // Not used currently, since there are yet some issues with the clouds integration inbetween the atmosphere slices when using fast sky and fast aerial perspective
+  // TODO: Fix the issues with the clouds integration inbetween the atmosphere slices when using fast sky and fast aerial perspective
+  
   // Integrate clouds if they are present and not already integrated and if either fast sky or fast aerial perspective is used, otherwise
   // they are integrated in the ray marching later on
   if(cloudsValid && 
      (!needToRayMarch) && // When ray marching, clouds are integrated inbetween the atmosphere slices
-     ((((pushConstants.flags & FLAGS_USE_FAST_SKY) != 0u) && !needAerialPerspective) ||
-      (((pushConstants.flags & FLAGS_USE_FAST_AERIAL_PERSPECTIVE) != 0u) && needAerialPerspective))){
+     ((((pushConstants.flags & FLAGS_USE_FAST_SKY) != 0u) && !needAerialPerspective) /*||
+      (((pushConstants.flags & FLAGS_USE_FAST_AERIAL_PERSPECTIVE) != 0u) && needAerialPerspective)*/)){
     addScatteringSample(cloudsInscattering.xyz, cloudsTransmittance.xyz);      
     targetDepth = cloudsDepth;  
     cloudsValid = false; // clouds are already integrated, so no need to do it again
   }
+
+#endif
   
   if(needAerialPerspective){
 
-    if((pushConstants.flags & FLAGS_USE_FAST_AERIAL_PERSPECTIVE) != 0u){
+    // When fast aerial perspective is used and no clouds are present at this fragment pixel, we can use a precomputed camera volume to get the
+    // inscattering and transmittance values
+    if(((pushConstants.flags & FLAGS_USE_FAST_AERIAL_PERSPECTIVE) != 0u) && !cloudsValid){
 
       // Fast aerial perspective approximation using a 3D texture
 
@@ -513,11 +524,23 @@ void main() {
     vec3 inscattering = vec3(0.0);
     vec3 transmittance = vec3(1.0);
 
+    // Important: The scatteringSamples array item order is from back to front
+
+#if 1
+    // Front to back
     for(int scatteringSampleIndex = countScatteringSamples - 1; scatteringSampleIndex >= 0; scatteringSampleIndex--){
       mat2x3 scatteringSample = scatteringSamples[scatteringSampleIndex];
       inscattering += scatteringSample[0] * transmittance;
       transmittance *= scatteringSample[1];
     }
+#else
+    // Back to front
+    for(int scatteringSampleIndex = 0; scatteringSampleIndex < countScatteringSamples; scatteringSampleIndex++){
+      mat2x3 scatteringSample = scatteringSamples[scatteringSampleIndex];
+        inscattering = (inscattering * scatteringSample[1]) + scatteringSample[0];
+        transmittance *= scatteringSample[1];
+    }
+#endif
 
 #ifdef DUALBLEND
     outInscattering = vec4(clamp(inscattering, vec3(0.0), vec3(65504.0)), 1.0 - clamp(dot(transmittance, vec3(1.0 / 3.0)), 0.0, 1.0)); // clamp to 16-bit floating point range, alpha = 1.0 - transmittance sine it is applied directly to the actual content, where alpha is used in its usual normal way and not as monochromatic transmittance
