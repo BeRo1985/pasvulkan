@@ -589,6 +589,8 @@ bool traceVolumetricClouds(vec3 rayOrigin,
       float previousSampledDensity = 0.0;
       int zeroDensitySampleCounter = 0;
 
+      // 0.61803398875 is the golden ratio conjugate for better distribution of the samples over time, since temporal aliasing is less noticeable than
+      // spatial aliasing 
 #if 1
       float offset = fract(texelFetch(uTextureBlueNoise, ivec2(threadPosition) & ivec2(1023), 0).x + (float(pushConstants.frameIndex) * 0.61803398875)); 
 #else
