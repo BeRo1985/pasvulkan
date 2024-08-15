@@ -156,69 +156,25 @@ layout(set = 2, binding = 6, std430) buffer AtmosphereParametersBuffer {
 
 #include "textureutils.glsl"
 
-struct ParticipatingMediaSample {
-  vec3 inscattering;
-  vec3 transmittance;
-  float depth;
-};
-
-struct ParticipatingMediaSamples {
-  ParticipatingMediaSample samples[4];
-  ivec4 sortedIndices;
-  int count;
-};
-
-struct ScatteredResult {
-  vec3 inscattering;
-  vec3 transmittance;
-};
-
-ParticipatingMediaSamples participatingMediaSamples = ParticipatingMediaSamples(
-  ParticipatingMediaSample[4](
-    ParticipatingMediaSample(vec3(0.0), vec3(1.0), 0.0),
-    ParticipatingMediaSample(vec3(0.0), vec3(1.0), 0.0),
-    ParticipatingMediaSample(vec3(0.0), vec3(1.0), 0.0),
-    ParticipatingMediaSample(vec3(0.0), vec3(1.0), 0.0)
-  ),
-  ivec4(0, 1, 2, 3),
-  0
+int countScatteringSamples = 0;
+mat2x3 scatteringSamples[8] = mat2x3[8](
+  mat2x3(vec3(0.0), vec3(1.0)),
+  mat2x3(vec3(0.0), vec3(1.0)),
+  mat2x3(vec3(0.0), vec3(1.0)),
+  mat2x3(vec3(0.0), vec3(1.0)),
+  mat2x3(vec3(0.0), vec3(1.0)),
+  mat2x3(vec3(0.0), vec3(1.0)),
+  mat2x3(vec3(0.0), vec3(1.0)),
+  mat2x3(vec3(0.0), vec3(1.0))
 );
-    
-void sortSamples(inout ParticipatingMediaSamples samples){
-  samples.sortedIndices = ivec4(0, 1, 2, 3);  // Initialize the sorted indices to the initial order
-  // Sorting by sorting networks
-  if(samples.count > 1){
-    if(samples.samples[samples.sortedIndices.x].depth > samples.samples[samples.sortedIndices.y].depth){
-      samples.sortedIndices.xy = samples.sortedIndices.yx;
-    }
-    if(samples.count > 2){
-      if(samples.samples[samples.sortedIndices.y].depth > samples.samples[samples.sortedIndices.z].depth){
-        samples.sortedIndices.yz = samples.sortedIndices.zy;
-        if(samples.samples[samples.sortedIndices.x].depth > samples.samples[samples.sortedIndices.y].depth){
-          samples.sortedIndices.xy = samples.sortedIndices.yx;
-        }
-      }
-      if((samples.count > 3) && (samples.samples[samples.sortedIndices.z].depth > samples.samples[samples.sortedIndices.w].depth)){
-        samples.sortedIndices.zw = samples.sortedIndices.wz;
-        if(samples.samples[samples.sortedIndices.y].depth > samples.samples[samples.sortedIndices.z].depth){
-          samples.sortedIndices.yz = samples.sortedIndices.zy;
-          if(samples.samples[samples.sortedIndices.x].depth > samples.samples[samples.sortedIndices.y].depth){
-            samples.sortedIndices.xy = samples.sortedIndices.yx;
-          }
-        }
-      }
-    }
+  
+void addScatteringSample(const in vec3 inscattering, const in vec3 transmittance){
+  int index = countScatteringSamples;
+  if(index < 8){
+    countScatteringSamples++;
+    scatteringSamples[index] = mat2x3(inscattering, transmittance);
   }
-}
-
-void getScatteredResult(const in ParticipatingMediaSamples samples, out ScatteredResult result){
-  result = ScatteredResult(vec3(0.0), vec3(1.0));
-  for(int sampleIndex = 0; sampleIndex < samples.count; sampleIndex++){
-    const ParticipatingMediaSample current = samples.samples[samples.sortedIndices[sampleIndex]];
-    result.inscattering = (result.inscattering * current.transmittance) + current.inscattering;
-    result.transmittance *= current.transmittance;
-  }
-}
+} 
 
 void main() {
 
@@ -303,12 +259,21 @@ void main() {
 
   bool depthIsZFar = depthBufferValue == GetZFarDepthValue(view.projectionMatrix);
 
+  mat2x3 inscatteringTransmittance = mat2x3(
+    vec3(0.0), // inscattering, default to nothing, since there is nothing to inscatter at the beginning
+    vec3(1.0)  // transmittance, default to full transmittance
+  );
+
   //bool rayHitsAtmosphere = any(greaterThanEqual(raySphereIntersect(worldPos, worldDir, vec3(0.0), atmosphereParameters.TopRadius), vec2(0.0)));
+
+  bool needToRayMarch = false, needAerialPerspective = false;
+
+  float targetDepth = uintBitsToFloat(0x7F800000u); // +inf
 
   if(/*rayHitsAtmosphere &&*/ depthIsZFar){
 
     if((pushConstants.flags & FLAGS_USE_FAST_SKY) != 0u){
-
+      
       vec2 localUV;
       vec3 UpVector = normalize(worldPos);
       float viewZenithCosAngle = dot(worldDir, UpVector);
@@ -336,32 +301,40 @@ void main() {
 #endif
 
       if(!IntersectGround){
-        inscattering.xyz += GetSunLuminance(originalWorldPos, worldDir, sunDirection, uAtmosphereParameters.atmosphereParameters.BottomRadius).xyz * transmittance.xyz;
+        addScatteringSample(GetSunLuminance(originalWorldPos, worldDir, sunDirection, uAtmosphereParameters.atmosphereParameters.BottomRadius).xyz, vec3(1.0));
       }
 
-      if(cloudsValid){
-        inscattering.xyz = (inscattering.xyz * cloudsTransmittance.xyz) + cloudsInscattering.xyz;
-#ifdef DUALBLEND
-        transmittance.xyz *= cloudsTransmittance.xyz;
-#else
-        inscattering.w *= clamp(dot(cloudsTransmittance.xyz, vec3(1.0 / 3.0)), 0.0, 1.0); // transmittance is monochromatic
-#endif
-      }
+      addScatteringSample(inscattering.xyz, transmittance.xyz);
 
-#ifdef DUALBLEND
-      outInscattering = vec4(inscattering.xyz, 1.0);
+    }else{
 
-      outTransmittance = vec4(transmittance.xyz, 1.0);
-#else      
-      outInscattering = vec4(inscattering.xyz, 1.0 - inscattering.w); // alpha = 1.0 - transmittance 
-#endif
+      addScatteringSample(GetSunLuminance(originalWorldPos, worldDir, sunDirection, uAtmosphereParameters.atmosphereParameters.BottomRadius).xyz, vec3(1.0));
 
-      return; // Early out, for avoiding the code path of the more accurate and more bruteforce ray marching approach
-
+      needToRayMarch = true;
+      
     }
 
-  }else{
-   
+    needAerialPerspective = false;
+
+  }else{ 
+
+    needAerialPerspective = true;
+
+  }
+
+  // Integrate clouds if they are present and not already integrated and if either fast sky or fast aerial perspective is used, otherwise
+  // they are integrated in the ray marching later on
+  if(cloudsValid && 
+     (!needToRayMarch) && // When ray marching, clouds are integrated inbetween the atmosphere slices
+     ((((pushConstants.flags & FLAGS_USE_FAST_SKY) != 0u) && !needAerialPerspective) ||
+      (((pushConstants.flags & FLAGS_USE_FAST_AERIAL_PERSPECTIVE) != 0u) && needAerialPerspective))){
+    addScatteringSample(cloudsInscattering.xyz, cloudsTransmittance.xyz);      
+    targetDepth = cloudsDepth;  
+    cloudsValid = false; // clouds are already integrated, so no need to do it again
+  }
+  
+  if(needAerialPerspective){
+
     if((pushConstants.flags & FLAGS_USE_FAST_AERIAL_PERSPECTIVE) != 0u){
 
       // Fast aerial perspective approximation using a 3D texture
@@ -402,7 +375,7 @@ void main() {
         vec4 depthBufferWorldPos = inverseViewProjectionMatrix * vec4(fma(vec2(uv), vec2(2.0), vec2(-1.0)), depthBufferValue, 1.0);
         depthBufferWorldPos /= depthBufferWorldPos.w;
 
-        float tDepth = length((uAtmosphereParameters.atmosphereParameters.inverseTransform * vec4(depthBufferWorldPos.xyz, 1.0)).xyz - worldPos);
+        float tDepth = min(length((uAtmosphereParameters.atmosphereParameters.inverseTransform * vec4(depthBufferWorldPos.xyz, 1.0)).xyz - worldPos), targetDepth);
         float slice = AerialPerspectiveDepthToSlice(tDepth);
         float Weight = 1.0;
         if(slice < 0.5){
@@ -441,51 +414,70 @@ void main() {
         vec3 transmittance = vec3(inscattering.w); // convert from monochromatic transmittance, not optimal but better than nothing
 #endif
 
-        if(depthIsZFar){
-          inscattering.xyz += GetSunLuminance(originalWorldPos, worldDir, sunDirection, uAtmosphereParameters.atmosphereParameters.BottomRadius).xyz * transmittance.xyz;  
-        }
+        addScatteringSample(inscattering.xyz, transmittance.xyz);
 
-        if(cloudsValid){
-          inscattering.xyz = (inscattering.xyz * cloudsTransmittance.xyz) + cloudsInscattering.xyz;
-#ifdef DUALBLEND
-          transmittance.xyz *= cloudsTransmittance.xyz;
-#else
-          inscattering.w *= clamp(dot(cloudsTransmittance.xyz, vec3(1.0 / 3.0)), 0.0, 1.0); // transmittance is monochromatic
-#endif
-        }
-
-#ifdef DUALBLEND
-        outInscattering = vec4(inscattering.xyz, 1.0);
-
-        outTransmittance = vec4(transmittance, 1.0);
-#else
-        outInscattering = vec4(inscattering.xyz, 1.0 - inscattering.w); // alpha = 1.0 - transmittance 
-#endif
-      
-        return; // Early out, for avoiding the code path of the more accurate and more bruteforce ray marching approach
+        needToRayMarch = false;
 
       }  
+
+    }else{
+
+      needToRayMarch = true;
 
     }
 
   }
 
-  {
+  if(needToRayMarch){
 
-    // The more accurate and more bruteforce ray marching approach  
+    if(cloudsValid){
 
-    vec3 inscattering;
-    vec3 transmittance; 
+      // When clouds are present, we need to handle them inbetween the atmosphere slices, so therefore we need to ray march the first
+      // part of the atmosphere before the clouds, then the clouds, then the rest of the atmosphere after the clouds. 
+
+      // Move to top atmosphere as the starting point for ray marching.
+      // This is critical to be after the above to not disrupt above atmosphere tests and voxel selection.      
+      vec3 localWorldPos = worldPos + (worldDir * cloudsDepth); // move to the clouds depth as starting point
+      if(MoveToTopAtmosphere(localWorldPos, worldDir, uAtmosphereParameters.atmosphereParameters.TopRadius)){
+
+        mat4 skyInvViewProjMat = view.inverseViewMatrix * view.inverseProjectionMatrix;
+        const bool ground = false;
+        const float sampleCountIni = 0.0;
+        const bool variableSampleCount = true;
+        const bool mieRayPhase = true;
+        SingleScatteringResult ss = IntegrateScatteredLuminance(
+          uTransmittanceLutTexture,
+          uMultiScatTexture,
+          uv, 
+          localWorldPos, 
+          worldDir, 
+          sunDirection, 
+          uAtmosphereParameters.atmosphereParameters, 
+          ground, 
+          sampleCountIni, 
+          depthBufferValue, 
+          variableSampleCount,  
+          mieRayPhase,
+          skyInvViewProjMat,
+          -1.0, // infinite depth for ray length threshold
+          ProjectionMatrixIsReversedZ(view.projectionMatrix)
+        );
+
+        addScatteringSample(ss.L, ss.Transmittance);
+
+      }
+
+      // Integrate clouds
+      addScatteringSample(cloudsInscattering.xyz, cloudsTransmittance.xyz);
+      targetDepth = cloudsDepth;
+
+      // And then continue with the rest of the atmosphere as usual as if the clouds were not there 
+
+    }
 
     // Move to top atmosphere as the starting point for ray marching.
     // This is critical to be after the above to not disrupt above atmosphere tests and voxel selection.
-    if(!MoveToTopAtmosphere(worldPos, worldDir, uAtmosphereParameters.atmosphereParameters.TopRadius)){
-      
-      // Ray is not intersecting the atmosphere       
-      inscattering = GetSunLuminance(originalWorldPos, worldDir, sunDirection, uAtmosphereParameters.atmosphereParameters.BottomRadius).xyz;
-      transmittance = vec3(1.0);
-
-    }else {
+    if(MoveToTopAtmosphere(worldPos, worldDir, uAtmosphereParameters.atmosphereParameters.TopRadius)){
 
       mat4 skyInvViewProjMat = view.inverseViewMatrix * view.inverseProjectionMatrix; 
       const bool ground = false;
@@ -506,23 +498,25 @@ void main() {
         variableSampleCount,  
         mieRayPhase,
         skyInvViewProjMat,
-        -1.0,
+        targetDepth,
         ProjectionMatrixIsReversedZ(view.projectionMatrix)
       );
 
-      inscattering = ss.L;
-
-      if(depthIsZFar){
-        inscattering += GetSunLuminance(originalWorldPos, worldDir, sunDirection, uAtmosphereParameters.atmosphereParameters.BottomRadius).xyz * ss.Transmittance;
-      }
-
-      transmittance = ss.Transmittance;
-
+      addScatteringSample(ss.L, ss.Transmittance);
+      
     }
 
-    if(cloudsValid){
-      inscattering.xyz = (inscattering.xyz * cloudsTransmittance.xyz) + cloudsInscattering.xyz;
-      transmittance.xyz *= cloudsTransmittance.xyz;
+  }
+
+  if(countScatteringSamples > 0){
+
+    vec3 inscattering = vec3(0.0);
+    vec3 transmittance = vec3(1.0);
+
+    for(int scatteringSampleIndex = countScatteringSamples - 1; scatteringSampleIndex >= 0; scatteringSampleIndex--){
+      mat2x3 scatteringSample = scatteringSamples[scatteringSampleIndex];
+      inscattering += scatteringSample[0] * transmittance;
+      transmittance *= scatteringSample[1];
     }
 
 #ifdef DUALBLEND
@@ -530,6 +524,13 @@ void main() {
     outTransmittance = vec4(vec3(clamp(transmittance, vec3(0.0), vec3(1.0))), 1.0); // clamp to normalized range
 #else
     outInscattering = vec4(max(vec3(0.0), inscattering), 1.0 - clamp(dot(transmittance, vec3(1.0 / 3.0)), 0.0, 1.0)); // alpha = 1.0 - transmittance sine it is applied directly to the actual content, where alpha is used in its usual normal way and not as monochromatic transmittance
+#endif
+
+  }else{
+
+    outInscattering = vec4(0.0, 0.0, 0.0, 1.0);
+#ifdef DUALBLEND
+    outTransmittance = vec4(1.0, 1.0, 1.0, 0.0);
 #endif
 
   }
