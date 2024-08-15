@@ -194,6 +194,8 @@ type TpvScene3DRenderer=class;
        fOrderIndependentTransparencySampler:TpvVulkanSampler;
        fMipMapMinFilterSampler:TpvVulkanSampler;
        fMipMapMaxFilterSampler:TpvVulkanSampler;
+       fRepeatedSampler:TpvVulkanSampler;
+       fMirrorRepeatedSampler:TpvVulkanSampler;
        fClampedSampler:TpvVulkanSampler;
        fClampedNearestSampler:TpvVulkanSampler;
        fAmbientOcclusionSampler:TpvVulkanSampler;
@@ -281,6 +283,8 @@ type TpvScene3DRenderer=class;
        property OrderIndependentTransparencySampler:TpvVulkanSampler read fOrderIndependentTransparencySampler;
        property MipMapMinFilterSampler:TpvVulkanSampler read fMipMapMinFilterSampler;
        property MipMapMaxFilterSampler:TpvVulkanSampler read fMipMapMaxFilterSampler;
+       property RepeatedSampler:TpvVulkanSampler read fRepeatedSampler;
+       property MirrorRepeatedSampler:TpvVulkanSampler read fMirrorRepeatedSampler;
        property ClampedSampler:TpvVulkanSampler read fClampedSampler;
        property ClampedNearestSampler:TpvVulkanSampler read fClampedNearestSampler;
        property AmbientOcclusionSampler:TpvVulkanSampler read fAmbientOcclusionSampler;
@@ -1230,7 +1234,43 @@ begin
                                                   TVkSamplerReductionMode.VK_SAMPLER_REDUCTION_MODE_MAX_EXT);
  fVulkanDevice.DebugUtils.SetObjectName(fMipMapMaxFilterSampler.Handle,VK_OBJECT_TYPE_SAMPLER,'TpvScene3DRenderer.fMipMapMaxFilterSampler');
 
- fClampedSampler:=TpvVulkanSampler.Create(fVulkanDevice,
+ fRepeatedSampler:=TpvVulkanSampler.Create(fVulkanDevice,
+                                           TVkFilter.VK_FILTER_LINEAR,
+                                           TVkFilter.VK_FILTER_LINEAR,
+                                           TVkSamplerMipmapMode.VK_SAMPLER_MIPMAP_MODE_LINEAR,
+                                           VK_SAMPLER_ADDRESS_MODE_REPEAT,
+                                           VK_SAMPLER_ADDRESS_MODE_REPEAT,
+                                           VK_SAMPLER_ADDRESS_MODE_REPEAT,
+                                           0.0,
+                                           false,
+                                           1.0,
+                                           false,
+                                           VK_COMPARE_OP_ALWAYS,
+                                           0.0,
+                                           1000.0,
+                                           VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK,
+                                           false);
+  fVulkanDevice.DebugUtils.SetObjectName(fRepeatedSampler.Handle,VK_OBJECT_TYPE_SAMPLER,'TpvScene3DRenderer.fRepeatedSampler');
+
+  fMirrorRepeatedSampler:=TpvVulkanSampler.Create(fVulkanDevice,
+                                                  TVkFilter.VK_FILTER_LINEAR,
+                                                  TVkFilter.VK_FILTER_LINEAR,
+                                                  TVkSamplerMipmapMode.VK_SAMPLER_MIPMAP_MODE_LINEAR,
+                                                  VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT,
+                                                  VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT,
+                                                  VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT,
+                                                  0.0,
+                                                  false,
+                                                  1.0,
+                                                  false,
+                                                  VK_COMPARE_OP_ALWAYS,
+                                                  0.0,
+                                                  1000.0,
+                                                  VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK,
+                                                  false);
+  fVulkanDevice.DebugUtils.SetObjectName(fMirrorRepeatedSampler.Handle,VK_OBJECT_TYPE_SAMPLER,'TpvScene3DRenderer.fMirrorRepeatedSampler');
+
+  fClampedSampler:=TpvVulkanSampler.Create(fVulkanDevice,
                                           TVkFilter.VK_FILTER_LINEAR,
                                           TVkFilter.VK_FILTER_LINEAR,
                                           TVkSamplerMipmapMode.VK_SAMPLER_MIPMAP_MODE_LINEAR,
@@ -1624,6 +1664,10 @@ begin
  FreeAndNil(fClampedNearestSampler);
 
  FreeAndNil(fClampedSampler);
+
+ FreeAndNil(fMirrorRepeatedSampler);
+
+ FreeAndNil(fRepeatedSampler);
 
  FreeAndNil(fMipMapMaxFilterSampler);
 
