@@ -783,7 +783,7 @@ void main(){
     depthBufferValue = uintBitsToFloat(0x7f800000u); // +inf
   }else{
     vec4 t = view.inverseProjectionMatrix * vec4(fma(uv, vec2(2.0), vec2(-1.0)), depthBufferValue, 1.0);
-    depthBufferValue = t.z / t.w;
+    depthBufferValue = -(t.z / t.w);
   }
 
   vec3 inscattering, transmittance;

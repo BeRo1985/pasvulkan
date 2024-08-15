@@ -276,7 +276,7 @@ void main() {
       }
 
       if(cloudsValid){
-        inscattering.xyz += cloudsInscattering.xyz;
+        inscattering.xyz = (inscattering.xyz * cloudsTransmittance.xyz) + cloudsInscattering.xyz;
 #ifdef DUALBLEND
         transmittance.xyz *= cloudsTransmittance.xyz;
 #else
@@ -382,7 +382,7 @@ void main() {
         }
 
         if(cloudsValid){
-          inscattering.xyz += cloudsInscattering.xyz;
+          inscattering.xyz = (inscattering.xyz * cloudsTransmittance.xyz) + cloudsInscattering.xyz;
 #ifdef DUALBLEND
           transmittance.xyz *= cloudsTransmittance.xyz;
 #else
@@ -457,7 +457,7 @@ void main() {
     }
 
     if(cloudsValid){
-      inscattering.xyz += cloudsInscattering.xyz;
+      inscattering.xyz = (inscattering.xyz * cloudsTransmittance.xyz) + cloudsInscattering.xyz;
       transmittance.xyz *= cloudsTransmittance.xyz;
     }
 
