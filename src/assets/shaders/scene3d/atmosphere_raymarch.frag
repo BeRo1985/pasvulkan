@@ -186,7 +186,9 @@ ParticipatingMediaSamples participatingMediaSamples = ParticipatingMediaSamples(
     
 void sortSamples(inout ParticipatingMediaSamples samples){
   samples.sortedIndices = ivec4(0, 1, 2, 3);  // Initialize the sorted indices to the initial order
-  switch(samples.count){ // Sorting by sorting networks
+  // Sorting by sorting networks
+#if 0
+  switch(samples.count){ 
     case 0:
     case 1:{
       // Nothing to do, the most two easy cases
@@ -239,6 +241,30 @@ void sortSamples(inout ParticipatingMediaSamples samples){
       break;
     }
   }
+#else
+  if(samples.count > 0){
+    if(samples.samples[samples.sortedIndices.x].depth > samples.samples[samples.sortedIndices.y].depth){
+      samples.sortedIndices.xy = samples.sortedIndices.yx;
+    }
+    if(samples.count > 1){
+      if(samples.samples[samples.sortedIndices.y].depth > samples.samples[samples.sortedIndices.z].depth){
+        samples.sortedIndices.yz = samples.sortedIndices.zy;
+        if(samples.samples[samples.sortedIndices.x].depth > samples.samples[samples.sortedIndices.y].depth){
+          samples.sortedIndices.xy = samples.sortedIndices.yx;
+        }
+      }
+      if((samples.count > 2) && (samples.samples[samples.sortedIndices.z].depth > samples.samples[samples.sortedIndices.w].depth)){
+        samples.sortedIndices.zw = samples.sortedIndices.wz;
+        if(samples.samples[samples.sortedIndices.y].depth > samples.samples[samples.sortedIndices.z].depth){
+          samples.sortedIndices.yz = samples.sortedIndices.zy;
+          if(samples.samples[samples.sortedIndices.x].depth > samples.samples[samples.sortedIndices.y].depth){
+            samples.sortedIndices.xy = samples.sortedIndices.yx;
+          }
+        }
+      }
+    }
+  }
+#endif
 }
 
 void getScatteredResult(const in ParticipatingMediaSamples samples, out ScatteredResult result){
