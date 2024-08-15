@@ -85,6 +85,9 @@ type { TpvScene3DRendererPassesAtmosphereRenderPass }
        fInstance:TpvScene3DRendererInstance;
        fVulkanRenderPass:TpvVulkanRenderPass;
        fResourceCascadedShadowMap:TpvFrameGraph.TPass.TUsedImageResource;
+       fResourceCloudsInscattering:TpvFrameGraph.TPass.TUsedImageResource;
+       fResourceCloudsTransmittance:TpvFrameGraph.TPass.TUsedImageResource;
+       fResourceCloudsDepth:TpvFrameGraph.TPass.TUsedImageResource;
        fResourceDepth:TpvFrameGraph.TPass.TUsedImageResource;
        fResourceOutput:TpvFrameGraph.TPass.TUsedImageResource;
        fResourceTransmittance:TpvFrameGraph.TPass.TUsedImageResource;
@@ -149,6 +152,24 @@ begin
 
  if fInstance.Renderer.SurfaceSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
 
+  fResourceCloudsInscattering:=AddImageInput('resourcetype_inscattering',
+                                             'resource_clouds_inscattering',
+                                             VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                             []
+                                            );
+
+  fResourceCloudsTransmittance:=AddImageInput('resourcetype_transmittance',
+                                             'resource_clouds_transmittance',
+                                             VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                             []
+                                            );
+
+  fResourceCloudsDepth:=AddImageInput('resourcetype_lineardepth',
+                                      'resource_clouds_lineardepth',
+                                      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                      []
+                                     );
+
   fResourceDepth:=AddImageDepthInput('resourcetype_depth',
                                      'resource_depth_data',
                                      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
@@ -175,6 +196,24 @@ begin
   end;
 
  end else begin
+
+  fResourceCloudsInscattering:=AddImageInput('resourcetype_msaa_inscattering',
+                                             'resource_clouds_inscattering',
+                                             VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                             []
+                                            );
+
+  fResourceCloudsTransmittance:=AddImageInput('resourcetype_msaa_transmittance',
+                                             'resource_clouds_transmittance',
+                                             VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                             []
+                                            );
+
+  fResourceCloudsDepth:=AddImageInput('resourcetype_msaa_lineardepth',
+                                      'resource_clouds_lineardepth',
+                                      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                      []
+                                     );
 
   fResourceDepth:=AddImageDepthInput('resourcetype_msaa_depth',
                                      'resource_msaa_depth_data',
@@ -203,7 +242,7 @@ begin
 
  end;
 
- fInstance.LastOutputResource:=fResourceOutput;
+//fInstance.LastOutputResource:=fResourceOutput;
 
 end;
 
@@ -535,6 +574,9 @@ begin
                                                            aCommandBuffer,
                                                            fResourceDepth.VulkanImageViews[aInFlightFrameIndex].Handle,
                                                            fResourceCascadedShadowMap.VulkanImageViews[aInFlightFrameIndex].Handle,
+                                                           fResourceCloudsInscattering.VulkanImageViews[aInFlightFrameIndex].Handle,
+                                                           fResourceCloudsTransmittance.VulkanImageViews[aInFlightFrameIndex].Handle,
+                                                           fResourceCloudsDepth.VulkanImageViews[aInFlightFrameIndex].Handle,
                                                            fInstance);
 
 end;

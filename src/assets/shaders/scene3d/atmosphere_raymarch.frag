@@ -104,16 +104,28 @@ layout(set = 1, binding = 0, std140) uniform uboViews {
 
 #ifdef MULTIVIEW
 layout(set = 2, binding = 0) uniform texture2DMSArray uDepthTexture;
+layout(set = 2, binding = 9) uniform texture2DMSArray uCloudsInscatteringTexture;
+layout(set = 2, binding = 10) uniform texture2DMSArray uCloudsTransmittanceTexture;
+layout(set = 2, binding = 11) uniform texture2DMSArray uCloudsDepthTexture;
 #else
 layout(set = 2, binding = 0) uniform texture2DMS uDepthTexture;
+layout(set = 2, binding = 9) uniform texture2DMS uCloudsInscatteringTexture;
+layout(set = 2, binding = 10) uniform texture2DMS uCloudsTransmittanceTexture;
+layout(set = 2, binding = 11) uniform texture2DMS uCloudsDepthTexture;
 #endif
 
 #else
 
 #ifdef MULTIVIEW
 layout(set = 2, binding = 0) uniform texture2DArray uDepthTexture; 
+layout(set = 2, binding = 9) uniform texture2DArray uCloudsInscatteringTexture;
+layout(set = 2, binding = 10) uniform texture2DArray uCloudsTransmittanceTexture;
+layout(set = 2, binding = 11) uniform texture2DArray uCloudsDepthTexture;
 #else
 layout(set = 2, binding = 0) uniform texture2D uDepthTexture;
+layout(set = 2, binding = 9) uniform texture2D uCloudsInscatteringTexture;
+layout(set = 2, binding = 10) uniform texture2D uCloudsTransmittanceTexture;
+layout(set = 2, binding = 11) uniform texture2D uCloudsDepthTexture;
 #endif
 
 #endif
@@ -179,14 +191,26 @@ void main() {
 #ifdef MSAA
 #ifdef MULTIVIEW
   float depthBufferValue = texelFetch(uDepthTexture, ivec3(ivec2(gl_FragCoord.xy), int(gl_ViewIndex)), gl_SampleID).x;
+  vec4 cloudsInscattering = texelFetch(uCloudsInscatteringTexture, ivec3(ivec2(gl_FragCoord.xy), int(gl_ViewIndex)), gl_SampleID);
+  vec4 cloudsTransmittance = texelFetch(uCloudsTransmittanceTexture, ivec3(ivec2(gl_FragCoord.xy), int(gl_ViewIndex)), gl_SampleID);
+  float cloudsDepth = texelFetch(uCloudsDepthTexture, ivec3(ivec2(gl_FragCoord.xy), int(gl_ViewIndex)), gl_SampleID).x;
 #else
   float depthBufferValue = texelFetch(uDepthTexture, ivec2(gl_FragCoord.xy), gl_SampleID).x;
+  vec4 cloudsInscattering = texelFetch(uCloudsInscatteringTexture, ivec2(gl_FragCoord.xy), gl_SampleID);
+  vec4 cloudsTransmittance = texelFetch(uCloudsTransmittanceTexture, ivec2(gl_FragCoord.xy), gl_SampleID);
+  float cloudsDepth = texelFetch(uCloudsDepthTexture, ivec2(gl_FragCoord.xy), gl_SampleID).x;
 #endif
 #else
 #ifdef MULTIVIEW
   float depthBufferValue = texelFetch(uDepthTexture, ivec3(ivec2(gl_FragCoord.xy), int(gl_ViewIndex)), 0).x;
+  vec4 cloudsInscattering = texelFetch(uCloudsInscatteringTexture, ivec3(ivec2(gl_FragCoord.xy), int(gl_ViewIndex)), 0);
+  vec4 cloudsTransmittance = texelFetch(uCloudsTransmittanceTexture, ivec3(ivec2(gl_FragCoord.xy), int(gl_ViewIndex)), 0);
+  float cloudsDepth = texelFetch(uCloudsDepthTexture, ivec3(ivec2(gl_FragCoord.xy), int(gl_ViewIndex)), 0).x;
 #else
   float depthBufferValue = texelFetch(uDepthTexture, ivec2(gl_FragCoord.xy), 0).x;
+  vec4 cloudsInscattering = texelFetch(uCloudsInscatteringTexture, ivec2(gl_FragCoord.xy), 0);
+  vec4 cloudsTransmittance = texelFetch(uCloudsTransmittanceTexture, ivec2(gl_FragCoord.xy), 0);
+  float cloudsDepth = texelFetch(uCloudsDepthTexture, ivec2(gl_FragCoord.xy), 0).x;
 #endif
 #endif
 
@@ -232,6 +256,15 @@ void main() {
 
       if(!IntersectGround){
         inscattering.xyz += GetSunLuminance(originalWorldPos, worldDir, sunDirection, uAtmosphereParameters.atmosphereParameters.BottomRadius).xyz * transmittance.xyz;
+      }
+
+      if(!isinf(cloudsDepth)){
+        inscattering.xyz += cloudsInscattering.xyz;
+#ifdef DUALBLEND
+        transmittance.xyz *= cloudsTransmittance.xyz;
+#else
+        inscattering.w *= clamp(dot(cloudsTransmittance.xyz, vec3(1.0 / 3.0)), 0.0, 1.0); // transmittance is monochromatic
+#endif
       }
 
 #ifdef DUALBLEND
@@ -331,6 +364,15 @@ void main() {
           inscattering.xyz += GetSunLuminance(originalWorldPos, worldDir, sunDirection, uAtmosphereParameters.atmosphereParameters.BottomRadius).xyz * transmittance.xyz;  
         }
 
+        if(!isinf(cloudsDepth)){
+          inscattering.xyz += cloudsInscattering.xyz;
+#ifdef DUALBLEND
+          transmittance.xyz *= cloudsTransmittance.xyz;
+#else
+          inscattering.w *= clamp(dot(cloudsTransmittance.xyz, vec3(1.0 / 3.0)), 0.0, 1.0); // transmittance is monochromatic
+#endif
+        }
+
 #ifdef DUALBLEND
         outInscattering = vec4(inscattering.xyz, 1.0);
 
@@ -395,6 +437,11 @@ void main() {
 
       transmittance = ss.Transmittance;
 
+    }
+
+    if(!isinf(cloudsDepth)){
+      inscattering.xyz += cloudsInscattering.xyz;
+      transmittance.xyz *= cloudsTransmittance.xyz;
     }
 
 #ifdef DUALBLEND
