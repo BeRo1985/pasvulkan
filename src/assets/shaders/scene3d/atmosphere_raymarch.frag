@@ -156,6 +156,100 @@ layout(set = 2, binding = 6, std430) buffer AtmosphereParametersBuffer {
 
 #include "textureutils.glsl"
 
+struct ParticipatingMediaSample {
+  vec3 inscattering;
+  vec3 transmittance;
+  float depth;
+};
+
+struct ParticipatingMediaSamples {
+  ParticipatingMediaSample samples[4];
+  ivec4 sortedIndices;
+  int count;
+};
+
+struct ScatteredResult {
+  vec3 inscattering;
+  vec3 transmittance;
+};
+
+ParticipatingMediaSamples participatingMediaSamples = ParticipatingMediaSamples(
+  ParticipatingMediaSample[4](
+    ParticipatingMediaSample(vec3(0.0), vec3(1.0), 0.0),
+    ParticipatingMediaSample(vec3(0.0), vec3(1.0), 0.0),
+    ParticipatingMediaSample(vec3(0.0), vec3(1.0), 0.0),
+    ParticipatingMediaSample(vec3(0.0), vec3(1.0), 0.0)
+  ),
+  ivec4(0, 1, 2, 3),
+  0
+);
+    
+void sortSamples(inout ParticipatingMediaSamples samples){
+  samples.sortedIndices = ivec4(0, 1, 2, 3);  // Initialize the sorted indices to the initial order
+  switch(samples.count){ // Sorting by sorting networks
+    case 0:
+    case 1:{
+      // Nothing to do, the most two easy cases
+      break;
+    }
+    case 2:{
+      // Sort two samples
+      if(samples.samples[samples.sortedIndices.x].depth > samples.samples[samples.sortedIndices.y].depth){
+        samples.sortedIndices.xy = samples.sortedIndices.yx;
+      }
+      break;
+    }
+    case 3:{
+      // Sort three samples
+      if(samples.samples[samples.sortedIndices.x].depth > samples.samples[samples.sortedIndices.y].depth){
+        samples.sortedIndices.xy = samples.sortedIndices.yx;
+      }
+      if(samples.samples[samples.sortedIndices.y].depth > samples.samples[samples.sortedIndices.z].depth){
+        samples.sortedIndices.yz = samples.sortedIndices.zy;
+        if(samples.samples[samples.sortedIndices.x].depth > samples.samples[samples.sortedIndices.y].depth){
+          samples.sortedIndices.xy = samples.sortedIndices.yx;
+        }
+      }
+      break;
+    }
+    case 4:{
+      // Sort four samples
+      if(samples.samples[samples.sortedIndices.x].depth > samples.samples[samples.sortedIndices.y].depth){
+        samples.sortedIndices.xy = samples.sortedIndices.yx;
+      }
+      if(samples.samples[samples.sortedIndices.y].depth > samples.samples[samples.sortedIndices.z].depth){
+        samples.sortedIndices.yz = samples.sortedIndices.zy;
+        if(samples.samples[samples.sortedIndices.x].depth > samples.samples[samples.sortedIndices.y].depth){
+          samples.sortedIndices.xy = samples.sortedIndices.yx;
+        }
+      }
+      if(samples.samples[samples.sortedIndices.z].depth > samples.samples[samples.sortedIndices.w].depth){
+        samples.sortedIndices.zw = samples.sortedIndices.wz;
+        if(samples.samples[samples.sortedIndices.y].depth > samples.samples[samples.sortedIndices.z].depth){
+          samples.sortedIndices.yz = samples.sortedIndices.zy;
+          if(samples.samples[samples.sortedIndices.x].depth > samples.samples[samples.sortedIndices.y].depth){
+            samples.sortedIndices.xy = samples.sortedIndices.yx;
+          }
+        }
+      }
+      break;
+    }
+    default:{
+      // Should not happen
+      break;
+    }
+  }
+}
+
+void getScatteredResult(const in ParticipatingMediaSamples samples, out ScatteredResult result){
+  result = ScatteredResult(vec3(0.0), vec3(1.0));
+  for(int sampleIndex = 0; sampleIndex < samples.count; sampleIndex++){
+    const ParticipatingMediaSample current = samples.samples[samples.sortedIndices[sampleIndex]];
+    result.inscattering = (result.inscattering * current.transmittance) + current.inscattering;
+    result.transmittance *= current.transmittance;
+  }
+}
+
 void main() {
 
   int viewIndex = pushConstants.baseViewIndex + int(gl_ViewIndex);
