@@ -49,6 +49,8 @@ vec4 Untonemap(vec4 color){
   //return vec4(color.xyz / max(1.0 - Luminance(color), 1e-4), color.w);
 }
 
+#define UseYCoCg 0
+#if UseYCoCg
 vec4 RGBToYCoCg(in vec4 c){
   return vec4(RGBToYCoCgMatrix * c.xyz, c.w);
 }
@@ -56,6 +58,15 @@ vec4 RGBToYCoCg(in vec4 c){
 vec4 YCoCgToRGB(in vec4 c){
   return vec4(YCoCgToRGBMatrix * c.xyz, c.w);
 }
+#else
+vec4 RGBToYCoCg(in vec4 c){
+  return c;
+}
+
+vec4 YCoCgToRGB(in vec4 c){
+  return c;
+}
+#endif
 
 #if 0
 
@@ -215,6 +226,7 @@ void main() {
         maximumColor = min(maximumColor, m0 + sigma);
       }            
 
+#if UseYCoCg
       { 
         vec2 chromaExtent = vec2(maximumColor.x - minimumColor.x) * 0.25;
         vec2 chromaCenter = current.yz;
@@ -222,13 +234,19 @@ void main() {
         maximumColor.yz = chromaCenter + chromaExtent;
         averageColor.yz = chromaCenter;
       }  
+#endif      
         
       vec4 historySample = RGBToYCoCg(Tonemap(texture(uHistoryColorTexture, historyUVW, 0.0)));
       
       historySample = ClipAABB(historySample, clamp(averageColor, minimumColor, maximumColor), minimumColor.xyz, maximumColor.xyz);
 
+#if UseYCoCg
       float currentLuminance = current.x;
       float historyLuminance = historySample.x;    
+#else
+      float currentLuminance = dot(current.xyz, vec3(0.2125, 0.7154, 0.0721));
+      float historyLuminance = dot(historySample.xyz, vec3(0.2125, 0.7154, 0.0721));
+#endif      
       float unbiasedWeight = 1.0 - (abs(currentLuminance - historyLuminance) / max(currentLuminance, max(historyLuminance, 0.2)));
       vec4 outSample = mix(current, historySample, mix(pushConstants.feedbackMin, pushConstants.feedbackMax, clamp(unbiasedWeight * unbiasedWeight, 0.0, 1.0)));
 
