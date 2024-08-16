@@ -288,6 +288,7 @@ type TpvScene3DPlanets=class;
               fWireframeActive:Boolean;
               fDisplacementMappingActive:Boolean;
               fParallaxMappingActive:Boolean;
+              fLODActive:Boolean;
               fPhysicsMeshVertices:TMeshVertices;
               fPhysicsMeshIndices:TMeshIndices;
               fTileDirtyQueueItems:TTileDirtyQueueItems;
@@ -361,6 +362,7 @@ type TpvScene3DPlanets=class;
               property WireframeActive:Boolean read fWireframeActive write fWireframeActive;
               property DisplacementMappingActive:Boolean read fDisplacementMappingActive write fDisplacementMappingActive;
               property ParallaxMappingActive:Boolean read fParallaxMappingActive write fParallaxMappingActive;
+              property LODActive:Boolean read fLODActive write fLODActive;
             end;
             TInFlightFrameDataList=TpvObjectGenericList<TData>;
             { TSerializedData }
@@ -2463,6 +2465,8 @@ begin
 
  fParallaxMappingActive:=false;
 
+ fLODActive:=true;
+
 end;
 
 destructor TpvScene3DPlanet.TData.Destroy;
@@ -3638,6 +3642,7 @@ begin
  fWireframeActive:=aData.fWireframeActive;
  fDisplacementMappingActive:=aData.fDisplacementMappingActive;
  fParallaxMappingActive:=aData.fParallaxMappingActive;
+ fLODActive:=aData.fLODActive;
  fVisualMeshVertexBufferRenderIndex:=aData.fVisualMeshVertexBufferRenderIndex;
 end;
 
@@ -15285,12 +15290,16 @@ begin
 
       TileLODLevels:=fPerInFlightFrameTileLODLevels[aInFlightFrameIndex];
       for TileIndex:=0 to (TileMapResolution*TileMapResolution)-1 do begin
-       Sphere:=TpvSphere.Create(fData.fTiledMeshBoundingSpheres[TileIndex]);
-       Distance:=Sphere.DistanceTo(RelativeCameraPosition)*0.125;
-       if Distance<1.0 then begin
-        LODLevel:=0;
+       if fData.fLODActive then begin
+        Sphere:=TpvSphere.Create(fData.fTiledMeshBoundingSpheres[TileIndex]);
+        Distance:=Sphere.DistanceTo(RelativeCameraPosition)*0.125;
+        if Distance<1.0 then begin
+         LODLevel:=0;
+        end else begin
+         LODLevel:=Min(Max(Ceil(Clamp(Log2(Distance),0.0,Max(0.0,fTileMapBits-1))),0),CountVisualMeshLODLevels-1);
+        end;
        end else begin
-        LODLevel:=Min(Max(Ceil(Clamp(Log2(Distance),0.0,Max(0.0,fTileMapBits-1))),0),CountVisualMeshLODLevels-1);
+        LODLevel:=0;
        end;
        TileLODLevels.ItemArray[TileIndex]:=LODLevel;
       end;
