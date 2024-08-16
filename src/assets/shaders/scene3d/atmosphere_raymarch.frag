@@ -288,10 +288,10 @@ void main() {
       localUV = getNiceTextureUV(localUV, vec2(textureSize(uSkyViewLUT, 0).xy));
 #endif      
 
-      vec4 inscattering = textureLod(uSkyViewLUT, vec3(localUV, float(viewIndex)), 0.0).xyzw; // xyz = inscatter, w = transmittance (monochromatic)
+      vec4 inscattering = textureLod(uSkyViewLUT, vec3(localUV, float(int(gl_ViewIndex))), 0.0).xyzw; // xyz = inscatter, w = transmittance (monochromatic)
 
 #ifdef DUALBLEND
-      vec3 transmittance = textureLod(uSkyViewLUT, vec3(localUV, float(int(viewIndex + pushConstants.countViews))), 0.0).xyz; // xyz = transmittance, w = non-used
+      vec3 transmittance = textureLod(uSkyViewLUT, vec3(localUV, float(int(int(gl_ViewIndex) + pushConstants.countViews))), 0.0).xyz; // xyz = transmittance, w = non-used
 #else
       vec3 transmittance = vec3(inscattering.w); // convert from monochromatic transmittance, not optimal but better than nothing 
 #endif
@@ -406,15 +406,15 @@ void main() {
 
         // Manual 3D texture lookup from a 2D array texture, since multiview is not supported for 3D textures (no 3D array textures) 
         vec4 inscattering = mix(
-                          textureLod(uCameraVolume, vec3(uv, sliceIndex + (viewIndex * AP_SLICE_COUNT_INT)), 0.0),
-                          textureLod(uCameraVolume, vec3(uv, nextSliceIndex + (viewIndex * AP_SLICE_COUNT_INT)), 0.0),
+                          textureLod(uCameraVolume, vec3(uv, sliceIndex + (int(gl_ViewIndex) * AP_SLICE_COUNT_INT)), 0.0),
+                          textureLod(uCameraVolume, vec3(uv, nextSliceIndex + (int(gl_ViewIndex) * AP_SLICE_COUNT_INT)), 0.0),
                           sliceWeight
                         ) * Weight;
 
 #ifdef DUALBLEND
         vec3 transmittance = mix(
-                              textureLod(uCameraVolume, vec3(uv, sliceIndex + ((viewIndex + pushConstants.countViews) * AP_SLICE_COUNT_INT)), 0.0).xyz,
-                              textureLod(uCameraVolume, vec3(uv, nextSliceIndex + ((viewIndex + pushConstants.countViews) * AP_SLICE_COUNT_INT)), 0.0).xyz,
+                              textureLod(uCameraVolume, vec3(uv, sliceIndex + ((int(gl_ViewIndex) + pushConstants.countViews) * AP_SLICE_COUNT_INT)), 0.0).xyz,
+                              textureLod(uCameraVolume, vec3(uv, nextSliceIndex + ((int(gl_ViewIndex) + pushConstants.countViews) * AP_SLICE_COUNT_INT)), 0.0).xyz,
                               sliceWeight
                              ) * Weight;
 #else
