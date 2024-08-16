@@ -28,6 +28,7 @@ layout(push_constant, std140, row_major) uniform PushConstants {
   vec2 jitterUV;
 } pushConstants;
 
+
 const mat3 RGBToYCoCgMatrix = mat3(0.25, 0.5, -0.25, 0.5, 0.0, 0.5, 0.25, -0.5, -0.25);
 
 const mat3 YCoCgToRGBMatrix = mat3(1.0, 1.0, 1.0, 1.0, 0.0, -1.0, -1.0, 1.0, -1.0);
@@ -55,6 +56,64 @@ vec4 RGBToYCoCg(in vec4 c){
 vec4 YCoCgToRGB(in vec4 c){
   return vec4(YCoCgToRGBMatrix * c.xyz, c.w);
 }
+
+#if 0
+
+void main() {
+
+  vec2 texSize = vec2(textureSize(uCurrentColorTexture, 0).xy);
+  vec2 invTexSize = vec2(1.0) / texSize;
+
+  vec4 color = vec4(0.0);
+
+  vec3 uvw = vec3(inTexCoord, float(gl_ViewIndex));
+
+  if(abs(1.0 - pushConstants.opaqueCoefficient) < 1e-5){
+
+    color = textureLod(uCurrentColorTexture, uvw, 0.0);
+
+  }else{
+
+    vec4 currentSamples[9];
+    currentSamples[0] = RGBToYCoCg(Tonemap(textureLodOffset(uCurrentColorTexture, uvw, 0, ivec2(-1, -1))));
+    currentSamples[1] = RGBToYCoCg(Tonemap(textureLodOffset(uCurrentColorTexture, uvw, 0, ivec2( 0, -1))));
+    currentSamples[2] = RGBToYCoCg(Tonemap(textureLodOffset(uCurrentColorTexture, uvw, 0, ivec2( 1, -1))));
+    currentSamples[3] = RGBToYCoCg(Tonemap(textureLodOffset(uCurrentColorTexture, uvw, 0, ivec2(-1,  0))));
+    currentSamples[4] = RGBToYCoCg(Tonemap(textureLodOffset(uCurrentColorTexture, uvw, 0, ivec2( 0,  0))));
+    currentSamples[5] = RGBToYCoCg(Tonemap(textureLodOffset(uCurrentColorTexture, uvw, 0, ivec2( 1,  0))));
+    currentSamples[6] = RGBToYCoCg(Tonemap(textureLodOffset(uCurrentColorTexture, uvw, 0, ivec2(-1,  1))));
+    currentSamples[7] = RGBToYCoCg(Tonemap(textureLodOffset(uCurrentColorTexture, uvw, 0, ivec2( 0,  1))));
+    currentSamples[8] = RGBToYCoCg(Tonemap(textureLodOffset(uCurrentColorTexture, uvw, 0, ivec2( 1,  1))));
+
+    vec4 minimumColor = currentSamples[0],
+         maximumColor = currentSamples[0];   
+    for(int i = 1; i < 9; i++){
+      minimumColor = min(minimumColor, currentSamples[i]);
+      maximumColor = max(maximumColor, currentSamples[i]);
+    }
+
+    vec3 historyUVW = uvw - vec3(textureLod(uVelocityTexture, uvw, 0.0).xy, 0);
+
+    vec4 historySample = clamp(RGBToYCoCg(Tonemap(texture(uHistoryColorTexture, historyUVW, 0.0))), minimumColor, maximumColor);
+
+    color = mix(historySample, 
+                currentSamples[4], 
+                vec4(mix(0.9,
+                         (any(lessThan(historyUVW.xy, vec2(0.0))) || 
+                          any(greaterThan(historyUVW.xy, vec2(1.0)))) 
+                          ? 1.0 
+                          : 0.1,//1.0 - pushConstants.mixCoefficient,
+                          currentSamples[4].w
+                        )
+                    )
+               );    
+
+  }
+
+  outFragColor = Untonemap(YCoCgToRGB(color));
+}
+
+#else
 
 vec4 ClipAABB(vec4 q, vec4 p, vec3 aabbMin, vec3 aabbMax){	
   vec3 p_clip = (aabbMin + aabbMax) * 0.5;
@@ -110,7 +169,7 @@ void main() {
       velocityUVWZ = vec4(fma(bestDepth.xy, invTexSize, uvw.xy), uvw.z, bestDepth.z);
     }
 
-    vec3 historyUVW = uvw + vec3(textureLod(uVelocityTexture, velocityUVWZ.xyz, 0.0).xy, 0.0);
+    vec3 historyUVW = uvw - vec3(textureLod(uVelocityTexture, velocityUVWZ.xyz, 0.0).xy, 0.0);
 
     if((velocityUVWZ.w < 1e-7) || any(lessThan(historyUVW.xy, vec2(0.0))) || any(greaterThan(historyUVW.xy, vec2(1.0)))){
       color = current;
@@ -186,3 +245,4 @@ void main() {
   outFragColor = color;
 
 }
+#endif

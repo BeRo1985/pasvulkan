@@ -5121,8 +5121,7 @@ begin
  result:=aProjectionMatrix;
  if Renderer.AntialiasingMode=TpvScene3DRendererAntialiasingMode.TAA then begin
   Offset:=GetJitterOffset(aFrameCounter);
-  result.RawComponents[0,3]:=result.RawComponents[0,3]+Offset.x;
-  result.RawComponents[1,3]:=result.RawComponents[1,3]+Offset.y;
+  result:=result*TpvMatrix4x4.CreateTranslation(Offset.x,Offset.y);
  end;
 end;
 
