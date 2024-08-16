@@ -582,7 +582,7 @@ bool traceVolumetricClouds(vec3 rayOrigin,
     if(tMinMax.x < tMinMax.y){
 
       float mipMapLevel = 0.0;
-      int countSteps = int(mix(128.0, 64.0, smoothstep(0.0, 1.0, dot(rayDirection, viewNormal))));
+      int countSteps = clamp(int(mix(float(uAtmosphereParameters.atmosphereParameters.VolumetricClouds.RayMaxSteps), float(uAtmosphereParameters.atmosphereParameters.VolumetricClouds.RayMinSteps), smoothstep(0.0, 1.0, dot(rayDirection, viewNormal)))), 8, 2048);
         
       float density = 0.0;  
       float cloudTestDensity = 0.0;

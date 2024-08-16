@@ -290,7 +290,7 @@ begin
                                                                    6);
      if length(aName)>0 then begin
       aDevice.DebugUtils.SetObjectName(VulkanImageViews[MipMapLevelIndex].Handle,VK_OBJECT_TYPE_IMAGE_VIEW,aName+'.ImageViews['+IntToStr(MipMapLevelIndex)+']');
-     end;
+     end; 
     end;
 
    finally

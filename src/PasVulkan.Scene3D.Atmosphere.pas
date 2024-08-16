@@ -449,9 +449,9 @@ type TpvScene3DAtmosphere=class;
           
               DensityAlongConeLength:TpvFloat;
               DensityAlongConeLengthFarMultiplier:TpvFloat;
-              Padding0:TpvFloat;
-              Padding1:TpvFloat;
-          
+              RayMinSteps:TpvUInt32;
+              RayMaxSteps:TpvUInt32;
+
               LayerLow:TVolumetricCloudLayerLow;
           
               LayerHigh:TVolumetricCloudLayerHigh;
@@ -584,8 +584,8 @@ type TpvScene3DAtmosphere=class;
              
               DensityAlongConeLength:TpvFloat;
               DensityAlongConeLengthFarMultiplier:TpvFloat;
-              Padding0:TpvFloat;
-              Padding1:TpvFloat;
+              RayMinSteps:TpvUInt32;
+              RayMaxSteps:TpvUInt32;
              
               LayerLow:TGPUVolumetricCloudLayerLow;
               LayerHigh:TGPUVolumetricCloudLayerHigh;
@@ -1536,6 +1536,8 @@ begin
  ShadowRayLength:=1.0;
  DensityAlongConeLength:=1.0;
  DensityAlongConeLengthFarMultiplier:=3.0;
+ RayMinSteps:=64;
+ RayMaxSteps:=128;
  LayerLow.Initialize;
  LayerHigh.Initialize;
 end;
@@ -1559,6 +1561,8 @@ begin
   ShadowRayLength:=TPasJSON.GetNumber(JSONRootObject.Properties['shadowraylength'],ShadowRayLength);
   DensityAlongConeLength:=TPasJSON.GetNumber(JSONRootObject.Properties['densityalongconelength'],DensityAlongConeLength);
   DensityAlongConeLengthFarMultiplier:=TPasJSON.GetNumber(JSONRootObject.Properties['densityalongconelengthfarmultiplier'],DensityAlongConeLengthFarMultiplier);
+  RayMinSteps:=TPasJSON.GetInt64(JSONRootObject.Properties['rayminsteps'],RayMinSteps);
+  RayMaxSteps:=TPasJSON.GetInt64(JSONRootObject.Properties['raymaxsteps'],RayMaxSteps);
   LayerLow.LoadFromJSON(JSONRootObject.Properties['layerlow']);
   LayerHigh.LoadFromJSON(JSONRootObject.Properties['layerhigh']);
  end;
@@ -1607,6 +1611,8 @@ begin
  result.Add('shadowraylength',TPasJSONItemNumber.Create(ShadowRayLength));
  result.Add('densityalongconelength',TPasJSONItemNumber.Create(DensityAlongConeLength));
  result.Add('densityalongconelengthfarmultiplier',TPasJSONItemNumber.Create(DensityAlongConeLengthFarMultiplier));
+ result.Add('rayminsteps',TPasJSONItemNumber.Create(RayMinSteps));
+ result.Add('raymaxsteps',TPasJSONItemNumber.Create(RayMaxSteps));
  result.Add('layerlow',LayerLow.SaveToJSON);
  result.Add('layerhigh',LayerHigh.SaveToJSON);
 end;
@@ -2027,7 +2033,10 @@ begin
  
  DensityAlongConeLength:=aVolumetricCloudParameters.DensityAlongConeLength;
  DensityAlongConeLengthFarMultiplier:=aVolumetricCloudParameters.DensityAlongConeLengthFarMultiplier;
- 
+
+ RayMinSteps:=aVolumetricCloudParameters.RayMinSteps;
+ RayMaxSteps:=aVolumetricCloudParameters.RayMaxSteps;
+
  LayerLow.Assign(aVolumetricCloudParameters.LayerLow); 
  LayerHigh.Assign(aVolumetricCloudParameters.LayerHigh);
 

@@ -232,8 +232,8 @@ struct VolumetricCloudParameters {
 
   float DensityAlongConeLength;
   float DensityAlongConeLengthFarMultiplier;
-  float Padding0;
-  float Padding1;
+  uint RayMinSteps;
+  uint RayMaxSteps;
 
   VolumetricCloudLayerLow LayerLow;
   VolumetricCloudLayerHigh LayerHigh;
