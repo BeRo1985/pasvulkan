@@ -5952,10 +5952,6 @@ begin
    fCountRealViews[aInFlightFrameIndex]:=fViews[aInFlightFrameIndex].Count;
    InFlightFrameState^.CountFinalViews:=2;
 
-   ViewLeft.ProjectionMatrix:=LeftProjectionMatrix;
-   ViewRight.ProjectionMatrix:=RightProjectionMatrix;
-   InFlightFrameState^.FinalUnjitteredViewIndex:=fViews[aInFlightFrameIndex].Add([ViewLeft,ViewRight]);
-
    ViewLeft.ViewMatrix:=fVirtualReality.GetPositionMatrix(0);
    ViewLeft.ProjectionMatrix:=AddTemporalAntialiasingJitter(fVirtualReality.GetProjectionMatrix(0),aFrameCounter);
    ViewLeft.InverseViewMatrix:=ViewLeft.ViewMatrix.Inverse;
@@ -5969,11 +5965,20 @@ begin
    InFlightFrameState^.HUDViewIndex:=fViews[aInFlightFrameIndex].Add([ViewLeft,ViewRight]);
    InFlightFrameState^.CountHUDViews:=2;
 
+   ViewLeft:=fViews[aInFlightFrameIndex].Items[InFlightFrameState^.FinalViewIndex];
    InFlightFrameState^.MainViewMatrix:=ViewLeft.ViewMatrix;
    InFlightFrameState^.MainInverseViewMatrix:=ViewLeft.ViewMatrix.Inverse;
    InFlightFrameState^.MainCameraPosition:=InFlightFrameState^.MainInverseViewMatrix.Translation.xyz;
 
    InFlightFrameState^.MainViewProjectionMatrix:=ViewLeft.ViewMatrix*ViewLeft.ProjectionMatrix;
+
+   ViewLeft:=fViews[aInFlightFrameIndex].Items[InFlightFrameState^.FinalViewIndex];
+   ViewRight:=fViews[aInFlightFrameIndex].Items[InFlightFrameState^.FinalViewIndex+1];
+   ViewLeft.ProjectionMatrix:=LeftProjectionMatrix;
+   ViewRight.ProjectionMatrix:=RightProjectionMatrix;
+   ViewLeft.InverseProjectionMatrix:=ViewLeft.ProjectionMatrix.Inverse;
+   ViewRight.InverseProjectionMatrix:=ViewRight.ProjectionMatrix.Inverse;
+   InFlightFrameState^.FinalUnjitteredViewIndex:=fViews[aInFlightFrameIndex].Add([ViewLeft,ViewRight]);
 
   end else begin
 
@@ -6035,9 +6040,6 @@ begin
    fCountRealViews[aInFlightFrameIndex]:=fViews[aInFlightFrameIndex].Count;
    InFlightFrameState^.CountFinalViews:=1;
 
-   ViewLeft.ProjectionMatrix:=LeftProjectionMatrix;
-   InFlightFrameState^.FinalUnjitteredViewIndex:=fViews[aInFlightFrameIndex].Add([ViewLeft]);
-
    ViewLeft.ViewMatrix:=TpvMatrix4x4.Identity;
    ViewLeft.ProjectionMatrix:=AddTemporalAntialiasingJitter(ViewLeft.ProjectionMatrix*TpvMatrix4x4.FlipYClipSpace,aFrameCounter);
    ViewLeft.InverseViewMatrix:=ViewLeft.ViewMatrix.Inverse;
@@ -6045,6 +6047,11 @@ begin
 
    InFlightFrameState^.HUDViewIndex:=fViews[aInFlightFrameIndex].Add(ViewLeft);
    InFlightFrameState^.CountHUDViews:=1;
+
+   ViewLeft:=fViews[aInFlightFrameIndex].Items[InFlightFrameState^.FinalViewIndex];
+   ViewLeft.ProjectionMatrix:=LeftProjectionMatrix;
+   ViewLeft.InverseProjectionMatrix:=ViewLeft.ProjectionMatrix.Inverse;
+   InFlightFrameState^.FinalUnjitteredViewIndex:=fViews[aInFlightFrameIndex].Add(ViewLeft);
 
   end;
 
