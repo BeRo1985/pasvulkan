@@ -5114,11 +5114,13 @@ begin
 end;
 
 function TpvScene3DRendererInstance.AddTemporalAntialiasingJitter(const aProjectionMatrix:TpvMatrix4x4;const aFrameCounter:TpvInt64):TpvMatrix4x4;
+var Offset:TpvVector2;
 begin
+ result:=aProjectionMatrix;
  if Renderer.AntialiasingMode=TpvScene3DRendererAntialiasingMode.TAA then begin
-  result:=aProjectionMatrix*TpvMatrix4x4.CreateTranslation(GetJitterOffset(aFrameCounter));
- end else begin
-  result:=aProjectionMatrix;
+  Offset:=GetJitterOffset(aFrameCounter);
+  result.RawComponents[0,3]:=result.RawComponents[0,3]+Offset.x;
+  result.RawComponents[1,3]:=result.RawComponents[1,3]+Offset.y;
  end;
 end;
 

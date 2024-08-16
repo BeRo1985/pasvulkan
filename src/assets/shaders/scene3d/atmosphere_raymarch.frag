@@ -250,7 +250,7 @@ void main() {
   }
 #endif
 #endif
-
+  
   vec3 sunDirection = normalize(getSunDirection(uAtmosphereParameters.atmosphereParameters));
 
 #ifdef SHADOWS
