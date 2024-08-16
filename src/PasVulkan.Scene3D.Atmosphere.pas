@@ -3207,7 +3207,7 @@ end;
 
 procedure TpvScene3DAtmosphere.TRendererInstance.Execute(const aInFlightFrameIndex:TpvSizeInt;
                                                          const aCommandBuffer:TpvVulkanCommandBuffer);
-var BaseViewIndex,CountViews:TpvSizeInt;
+var BaseViewIndex,UnjitteredBaseViewIndex,CountViews:TpvSizeInt;
     InFlightFrameState:TpvScene3DRendererInstance.PInFlightFrameState;
     AtmosphereGlobals:TpvScene3DAtmosphereGlobals;
     //ImageSubresourceRange:TVkImageSubresourceRange;
@@ -3226,6 +3226,7 @@ begin
  InFlightFrameState:=@TpvScene3DRendererInstance(fRendererInstance).InFlightFrameStates[aInFlightFrameIndex];
 
  BaseViewIndex:=InFlightFrameState^.FinalViewIndex;
+ UnjitteredBaseViewIndex:=InFlightFrameState^.FinalUnjitteredViewIndex;
  CountViews:=InFlightFrameState^.CountFinalViews;
 
  begin
@@ -3268,7 +3269,7 @@ begin
                                        0,
                                        nil);
 
-  TransmittanceLUTPushConstants.BaseViewIndex:=BaseViewIndex;
+  TransmittanceLUTPushConstants.BaseViewIndex:=UnjitteredBaseViewIndex;
   TransmittanceLUTPushConstants.CountViews:=CountViews;
   TransmittanceLUTPushConstants.Dummy0:=1;
   TransmittanceLUTPushConstants.Dummy1:=1;
@@ -3348,7 +3349,7 @@ begin
                                        0,
                                        nil);
 
-  MultiScatteringLUTPushConstants.BaseViewIndex:=BaseViewIndex;
+  MultiScatteringLUTPushConstants.BaseViewIndex:=UnjitteredBaseViewIndex;
   MultiScatteringLUTPushConstants.CountViews:=CountViews;
   MultiScatteringLUTPushConstants.MultipleScatteringFactor:=1;
   MultiScatteringLUTPushConstants.FrameIndex:=pvApplication.DrawFrameCounter;
@@ -3427,7 +3428,7 @@ begin
                                        0,
                                        nil);
 
-  SkyLuminanceLUTPushConstants.BaseViewIndex:=BaseViewIndex;
+  SkyLuminanceLUTPushConstants.BaseViewIndex:=UnjitteredBaseViewIndex;
   SkyLuminanceLUTPushConstants.CountViews:=CountViews;
   SkyLuminanceLUTPushConstants.FrameIndex:=pvApplication.DrawFrameCounter;
  
@@ -3506,7 +3507,7 @@ begin
                                        0,
                                        nil);
 
-  SkyViewLUTPushConstants.BaseViewIndex:=BaseViewIndex;
+  SkyViewLUTPushConstants.BaseViewIndex:=UnjitteredBaseViewIndex;
   SkyViewLUTPushConstants.CountViews:=CountViews;
   SkyViewLUTPushConstants.FrameIndex:=pvApplication.DrawFrameCounter;
   SkyViewLUTPushConstants.Dummy1:=0;
@@ -3585,7 +3586,7 @@ begin
                                        0,
                                        nil);
 
-  CameraVolumePushConstants.BaseViewIndex:=BaseViewIndex;
+  CameraVolumePushConstants.BaseViewIndex:=UnjitteredBaseViewIndex;
   CameraVolumePushConstants.CountViews:=CountViews;
   CameraVolumePushConstants.FrameIndex:=pvApplication.DrawFrameCounter;
   CameraVolumePushConstants.Dummy1:=0;

@@ -545,7 +545,7 @@ begin
 
  InFlightFrameState:=@TpvScene3DRendererInstance(fInstance).InFlightFrameStates[aInFlightFrameIndex];
 
- fPushConstants.BaseViewIndex:=InFlightFrameState^.FinalViewIndex;
+ fPushConstants.BaseViewIndex:=InFlightFrameState^.FinalUnjitteredViewIndex;
  fPushConstants.CountViews:=InFlightFrameState^.CountFinalViews;
 
  fPushConstants.FrameIndex:=aFrameIndex;
