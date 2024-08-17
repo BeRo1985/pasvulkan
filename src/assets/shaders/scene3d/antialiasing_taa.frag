@@ -250,7 +250,7 @@ void main() {
 
 #if (ColorSpace == ColorSpaceYCoCg) || (ColorSpace == ColorSpaceGdRdB) 
       { 
-        vec2 chromaExtent = vec2(maximumColor.x - minimumColor.x) * 0.25;
+        vec2 chromaExtent = vec2(maximumColor.x - minimumColor.x) * 0.125;
         vec2 chromaCenter = current.yz;
         minimumColor.yz = chromaCenter - chromaExtent;
         maximumColor.yz = chromaCenter + chromaExtent;
