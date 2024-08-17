@@ -1,5 +1,13 @@
 #version 450 core
 
+#define ColorSpaceRGB 0
+#define ColorSpaceYCoCg 1
+#define ColorSpaceGdRdB 2
+
+#define ColorSpace ColorSpaceRGB
+
+#define UseSimple 0
+
 #extension GL_EXT_multiview : enable
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_ARB_shading_language_420pack : enable
@@ -17,25 +25,24 @@ layout(set = 0, binding = 3) uniform sampler2DArray uHistoryDepthTexture;
 layout(set = 0, binding = 4) uniform sampler2DArray uVelocityTexture;
 
 layout(push_constant, std140, row_major) uniform PushConstants {
+  
   float translucentCoefficient;
   float opaqueCoefficient;
   float mixCoefficient;
   float varianceClipGamma;
+  
   float feedbackMin; 
   float feedbackMax; 
   float ZMul;
   float ZAdd;
+  
   vec2 jitterUV;
+
 } pushConstants;
 
-
-const mat3 RGBToYCoCgMatrix = mat3(0.25, 0.5, -0.25, 0.5, 0.0, 0.5, 0.25, -0.5, -0.25);
-
-const mat3 YCoCgToRGBMatrix = mat3(1.0, 1.0, 1.0, 1.0, 0.0, -1.0, -1.0, 1.0, -1.0);
-
-/*float Luminance(vec4 color){
+float Luminance(vec4 color){
     return dot(color.xyz, vec3(0.2125, 0.7154, 0.0721));
-}*/
+}
 
 #include "bidirectional_tonemapping.glsl"
 
@@ -49,26 +56,40 @@ vec4 Untonemap(vec4 color){
   //return vec4(color.xyz / max(1.0 - Luminance(color), 1e-4), color.w);
 }
 
-#define UseYCoCg 0
-#if UseYCoCg
+#if ColorSpace == ColorSpaceYCoCg
+
 vec4 RGBToYCoCg(in vec4 c){
-  return vec4(RGBToYCoCgMatrix * c.xyz, c.w);
+  return vec4(vec3(c.yy + ((c.x + c.z) * vec2(0.5, -0.5)), c.x - c.z).xzy * 0.5, 1.0);
 }
 
 vec4 YCoCgToRGB(in vec4 c){
-  return vec4(YCoCgToRGBMatrix * c.xyz, c.w);
+  return vec4(c.xxx + (vec2(c.y - c.z, c.z).xyx * vec2(1.0, -1.0).xxy), c.w);
 }
+
+#define ConvertFromRGB RGBToYCoCg
+#define ConvertToRGB YCoCgToRGB
+
+#elif ColorSpace == ColorSpaceGdRdB
+
+vec4 RGBToGdRdB(vec4 c){
+  return vec4(c.y, c.x - c.y, c.z - c.y, c.w);
+}
+
+vec4 GdRdBToRGB(vec4 c){
+  return vec4(c.y + c.x, c.x, c.z - c.x, c.w);
+}
+
+#define ConvertFromRGB RGBToGdRdB
+#define ConvertToRGB GdRdBToRGB
+
 #else
-vec4 RGBToYCoCg(in vec4 c){
-  return c;
-}
 
-vec4 YCoCgToRGB(in vec4 c){
-  return c;
-}
+#define ConvertFromRGB
+#define ConvertToRGB
+
 #endif
 
-#if 0
+#if UseSimple
 
 void main() {
 
@@ -86,15 +107,15 @@ void main() {
   }else{
 
     vec4 currentSamples[9];
-    currentSamples[0] = RGBToYCoCg(Tonemap(textureLodOffset(uCurrentColorTexture, uvw, 0, ivec2(-1, -1))));
-    currentSamples[1] = RGBToYCoCg(Tonemap(textureLodOffset(uCurrentColorTexture, uvw, 0, ivec2( 0, -1))));
-    currentSamples[2] = RGBToYCoCg(Tonemap(textureLodOffset(uCurrentColorTexture, uvw, 0, ivec2( 1, -1))));
-    currentSamples[3] = RGBToYCoCg(Tonemap(textureLodOffset(uCurrentColorTexture, uvw, 0, ivec2(-1,  0))));
-    currentSamples[4] = RGBToYCoCg(Tonemap(textureLodOffset(uCurrentColorTexture, uvw, 0, ivec2( 0,  0))));
-    currentSamples[5] = RGBToYCoCg(Tonemap(textureLodOffset(uCurrentColorTexture, uvw, 0, ivec2( 1,  0))));
-    currentSamples[6] = RGBToYCoCg(Tonemap(textureLodOffset(uCurrentColorTexture, uvw, 0, ivec2(-1,  1))));
-    currentSamples[7] = RGBToYCoCg(Tonemap(textureLodOffset(uCurrentColorTexture, uvw, 0, ivec2( 0,  1))));
-    currentSamples[8] = RGBToYCoCg(Tonemap(textureLodOffset(uCurrentColorTexture, uvw, 0, ivec2( 1,  1))));
+    currentSamples[0] = ConvertFromRGB(Tonemap(textureLodOffset(uCurrentColorTexture, uvw, 0, ivec2(-1, -1))));
+    currentSamples[1] = ConvertFromRGB(Tonemap(textureLodOffset(uCurrentColorTexture, uvw, 0, ivec2( 0, -1))));
+    currentSamples[2] = ConvertFromRGB(Tonemap(textureLodOffset(uCurrentColorTexture, uvw, 0, ivec2( 1, -1))));
+    currentSamples[3] = ConvertFromRGB(Tonemap(textureLodOffset(uCurrentColorTexture, uvw, 0, ivec2(-1,  0))));
+    currentSamples[4] = ConvertFromRGB(Tonemap(textureLodOffset(uCurrentColorTexture, uvw, 0, ivec2( 0,  0))));
+    currentSamples[5] = ConvertFromRGB(Tonemap(textureLodOffset(uCurrentColorTexture, uvw, 0, ivec2( 1,  0))));
+    currentSamples[6] = ConvertFromRGB(Tonemap(textureLodOffset(uCurrentColorTexture, uvw, 0, ivec2(-1,  1))));
+    currentSamples[7] = ConvertFromRGB(Tonemap(textureLodOffset(uCurrentColorTexture, uvw, 0, ivec2( 0,  1))));
+    currentSamples[8] = ConvertFromRGB(Tonemap(textureLodOffset(uCurrentColorTexture, uvw, 0, ivec2( 1,  1))));
 
     vec4 minimumColor = currentSamples[0],
          maximumColor = currentSamples[0];   
@@ -105,7 +126,7 @@ void main() {
 
     vec3 historyUVW = uvw - vec3(textureLod(uVelocityTexture, uvw, 0.0).xy, 0);
 
-    vec4 historySample = clamp(RGBToYCoCg(Tonemap(texture(uHistoryColorTexture, historyUVW, 0.0))), minimumColor, maximumColor);
+    vec4 historySample = clamp(ConvertFromRGB(Tonemap(texture(uHistoryColorTexture, historyUVW, 0.0))), minimumColor, maximumColor);
 
     color = mix(historySample, 
                 currentSamples[4], 
@@ -121,7 +142,8 @@ void main() {
 
   }
 
-  outFragColor = Untonemap(YCoCgToRGB(color));
+  outFragColor = Untonemap(ConvertToRGB(color));
+
 }
 
 #else
@@ -188,17 +210,17 @@ void main() {
 
      
       vec4 currentSamples[9];    
-      currentSamples[0] = RGBToYCoCg(Tonemap(textureLodOffset(uCurrentColorTexture, uvw, 0, ivec2(-1, -1)))); // a 0
-      currentSamples[1] = RGBToYCoCg(Tonemap(textureLodOffset(uCurrentColorTexture, uvw, 0, ivec2( 0, -1)))); // b 1
-      currentSamples[2] = RGBToYCoCg(Tonemap(textureLodOffset(uCurrentColorTexture, uvw, 0, ivec2( 1, -1)))); // c 2
-      currentSamples[3] = RGBToYCoCg(Tonemap(textureLodOffset(uCurrentColorTexture, uvw, 0, ivec2(-1,  0)))); // d 3
-      currentSamples[4] = RGBToYCoCg(Tonemap(textureLodOffset(uCurrentColorTexture, uvw, 0, ivec2( 0,  0)))); // e 4
-      currentSamples[5] = RGBToYCoCg(Tonemap(textureLodOffset(uCurrentColorTexture, uvw, 0, ivec2( 1,  0)))); // f 5
-      currentSamples[6] = RGBToYCoCg(Tonemap(textureLodOffset(uCurrentColorTexture, uvw, 0, ivec2(-1,  1)))); // g 6
-      currentSamples[7] = RGBToYCoCg(Tonemap(textureLodOffset(uCurrentColorTexture, uvw, 0, ivec2( 0,  1)))); // h 7
-      currentSamples[8] = RGBToYCoCg(Tonemap(textureLodOffset(uCurrentColorTexture, uvw, 0, ivec2( 1,  1)))); // i 8
-          
-      current = RGBToYCoCg(Tonemap(current));
+      currentSamples[0] = ConvertFromRGB(Tonemap(textureLodOffset(uCurrentColorTexture, uvw, 0, ivec2(-1, -1)))); // a 0
+      currentSamples[1] = ConvertFromRGB(Tonemap(textureLodOffset(uCurrentColorTexture, uvw, 0, ivec2( 0, -1)))); // b 1
+      currentSamples[2] = ConvertFromRGB(Tonemap(textureLodOffset(uCurrentColorTexture, uvw, 0, ivec2( 1, -1)))); // c 2
+      currentSamples[3] = ConvertFromRGB(Tonemap(textureLodOffset(uCurrentColorTexture, uvw, 0, ivec2(-1,  0)))); // d 3
+      currentSamples[4] = ConvertFromRGB(Tonemap(textureLodOffset(uCurrentColorTexture, uvw, 0, ivec2( 0,  0)))); // e 4
+      currentSamples[5] = ConvertFromRGB(Tonemap(textureLodOffset(uCurrentColorTexture, uvw, 0, ivec2( 1,  0)))); // f 5
+      currentSamples[6] = ConvertFromRGB(Tonemap(textureLodOffset(uCurrentColorTexture, uvw, 0, ivec2(-1,  1)))); // g 6
+      currentSamples[7] = ConvertFromRGB(Tonemap(textureLodOffset(uCurrentColorTexture, uvw, 0, ivec2( 0,  1)))); // h 7
+      currentSamples[8] = ConvertFromRGB(Tonemap(textureLodOffset(uCurrentColorTexture, uvw, 0, ivec2( 1,  1)))); // i 8
+
+      current = ConvertFromRGB(Tonemap(current));
 
       // Soft minimum and maximum ("Hybrid Reconstruction Antialiasing")
       //        1         0 1 2
@@ -226,7 +248,7 @@ void main() {
         maximumColor = min(maximumColor, m0 + sigma);
       }            
 
-#if UseYCoCg
+#if (ColorSpace == ColorSpaceYCoCg) || (ColorSpace == ColorSpaceGdRdB) 
       { 
         vec2 chromaExtent = vec2(maximumColor.x - minimumColor.x) * 0.25;
         vec2 chromaCenter = current.yz;
@@ -236,16 +258,16 @@ void main() {
       }  
 #endif      
         
-      vec4 historySample = RGBToYCoCg(Tonemap(texture(uHistoryColorTexture, historyUVW, 0.0)));
+      vec4 historySample = ConvertFromRGB(Tonemap(texture(uHistoryColorTexture, historyUVW, 0.0)));
       
       historySample = ClipAABB(historySample, clamp(averageColor, minimumColor, maximumColor), minimumColor.xyz, maximumColor.xyz);
 
-#if UseYCoCg
+#if (ColorSpace == ColorSpaceYCoCg) || (ColorSpace == ColorSpaceGdRdB)
       float currentLuminance = current.x;
       float historyLuminance = historySample.x;    
 #else
-      float currentLuminance = dot(current.xyz, vec3(0.2125, 0.7154, 0.0721));
-      float historyLuminance = dot(historySample.xyz, vec3(0.2125, 0.7154, 0.0721));
+      float currentLuminance = Luminance(current);
+      float historyLuminance = Luminance(historySample);
 #endif      
       float unbiasedWeight = 1.0 - (abs(currentLuminance - historyLuminance) / max(currentLuminance, max(historyLuminance, 0.2)));
       vec4 outSample = mix(current, historySample, mix(pushConstants.feedbackMin, pushConstants.feedbackMax, clamp(unbiasedWeight * unbiasedWeight, 0.0, 1.0)));
@@ -254,7 +276,7 @@ void main() {
                   mix(historySample, current, mix(pushConstants.translucentCoefficient, pushConstants.opaqueCoefficient, clamp(currentSamples[4].w, 0.0, 1.0))), 
                   clamp(pushConstants.mixCoefficient, 0.0, 1.0)); 
 
-      color = clamp(Untonemap(YCoCgToRGB(color)), vec4(0.0), vec4(65504.0));    
+      color = clamp(Untonemap(ConvertToRGB(color)), vec4(0.0), vec4(65504.0));    
 
     }
 
