@@ -4,7 +4,7 @@
 #define ColorSpaceYCoCg 1
 #define ColorSpaceGdRdB 2
 
-#define ColorSpace ColorSpaceRGB
+#define ColorSpace ColorSpaceYCoCg
 
 #define UseSimple 0
 
@@ -60,10 +60,12 @@ vec4 Untonemap(vec4 color){
 
 vec4 RGBToYCoCg(in vec4 c){
   return vec4(vec3(c.yy + ((c.x + c.z) * vec2(0.5, -0.5)), c.x - c.z).xzy * 0.5, 1.0);
+//return vec4(mat3(0.25, 0.5, -0.25, 0.5, 0, 0.5, 0.25, -0.5, -0.25) * c.xyz, c.w);
 }
 
 vec4 YCoCgToRGB(in vec4 c){
-  return vec4(c.xxx + (vec2(c.y - c.z, c.z).xyx * vec2(1.0, -1.0).xxy), c.w);
+  return vec4((c.xxx + vec3(c.yz, -c.y)) - vec2(c.z, 0.0).xyx, c.w);
+//return vec4(mat3(1.0, 1.0, 1.0, 1.0, 0.0, -1.0, -1.0, 1.0, -1.0) * c.xyz, c.w);
 }
 
 #define ConvertFromRGB RGBToYCoCg
@@ -222,6 +224,7 @@ void main() {
 
       current = ConvertFromRGB(Tonemap(current));
 
+#if 1
       // Soft minimum and maximum ("Hybrid Reconstruction Antialiasing")
       //        1         0 1 2
       // (min 3 4 5 + min 3 4 5) * 0.5
@@ -230,6 +233,12 @@ void main() {
            maximumColor = max(max(max(max(currentSamples[1], currentSamples[3]), currentSamples[4]), currentSamples[5]), currentSamples[7]);
       minimumColor = (minimumColor + min(min(min(min(minimumColor, currentSamples[0]), currentSamples[2]), currentSamples[6]), currentSamples[8])) * 0.5;
       maximumColor = (maximumColor + max(max(max(max(maximumColor, currentSamples[0]), currentSamples[2]), currentSamples[6]), currentSamples[8])) * 0.5;
+#else
+      // Simple minimum and maximum
+      vec4 minimumColor = min(min(min(min(min(min(min(min(currentSamples[0], currentSamples[1]), currentSamples[2]), currentSamples[3]), currentSamples[4]), currentSamples[5]), currentSamples[6]), currentSamples[7]), currentSamples[8]),
+           maximumColor = max(max(max(max(max(max(max(max(currentSamples[0], currentSamples[1]), currentSamples[2]), currentSamples[3]), currentSamples[4]), currentSamples[5]), currentSamples[6]), currentSamples[7]), currentSamples[8]);
+#endif
+
       vec4 averageColor = (currentSamples[0] + currentSamples[1] + currentSamples[2] + currentSamples[3] + currentSamples[4] + currentSamples[5] + currentSamples[6] + currentSamples[7] + currentSamples[8]) * (1.0 / 9.0);
       
       {
