@@ -770,9 +770,10 @@ void main(){
 #else
       float depthValue = texelFetch(uDepthTexture, ivec2(gl_FragCoord.xy), sampleIndex).x;
 #endif
-      if((depthValue > 0.0) && (depthValue < depthBufferValue)){
+/*    if((depthValue > 0.0) && (depthValue < depthBufferValue)){
         depthBufferValue = depthValue;
-      }
+      }*/
+      depthBufferValue = min(depthBufferValue, depthValue);
     }
     if(isinf(depthBufferValue)){
       // Replace +inf with 0.0 with the real farthest depth value 
@@ -786,9 +787,10 @@ void main(){
 #else
       float depthValue = texelFetch(uDepthTexture, ivec2(gl_FragCoord.xy), sampleIndex).x;
 #endif
-      if((depthValue < 1.0) && (depthValue > depthBufferValue)){
+/*    if((depthValue < 1.0) && (depthValue > depthBufferValue)){
         depthBufferValue = depthValue;
-      }
+      }*/
+      depthBufferValue = max(depthBufferValue, depthValue);
     }
     if(isinf(depthBufferValue)){
       // Replace -inf with 1.0 with the real farthest depth value

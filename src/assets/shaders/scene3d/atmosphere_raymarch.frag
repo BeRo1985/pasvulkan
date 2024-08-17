@@ -204,6 +204,8 @@ void main() {
 
   vec4 cloudsInscattering = vec4(0.0), cloudsTransmittance = vec4(1.0, 1.0, 1.0, 0.0);
 
+#if 0
+  // This seems not working correctly, so deactivated for now. Edge cases are not handled correctly yet.
 #ifdef MSAA
   // At MSAA we must find the farthest depth value, since clouds are rendered without MSAA but applied to the opaque pass content with MSAA,
   // so we must find the farthest depth value to avoid or at least minimize artifacts at the merging stage.
@@ -216,9 +218,10 @@ void main() {
 #else
       float depthValue = texelFetch(uDepthTexture, ivec2(gl_FragCoord.xy), sampleIndex).x;
 #endif
-      if((depthValue > 0.0) && (depthValue < depthBufferValue)){
+/*    if((depthValue > 0.0) && (depthValue < depthBufferValue)){
         depthBufferValue = depthValue;
-      }
+      }*/
+      depthBufferValue = min(depthBufferValue, depthValue);
     }
     if(isinf(depthBufferValue)){
       // Replace +inf with 0.0 with the real farthest depth value 
@@ -232,9 +235,10 @@ void main() {
 #else
       float depthValue = texelFetch(uDepthTexture, ivec2(gl_FragCoord.xy), sampleIndex).x;
 #endif
-      if((depthValue < 1.0) && (depthValue > depthBufferValue)){
+/*    if((depthValue < 1.0) && (depthValue > depthBufferValue)){
         depthBufferValue = depthValue;
-      }
+      }*/
+      depthBufferValue = max(depthBufferValue, depthValue);
     }
     if(isinf(depthBufferValue)){
       // Replace -inf with 1.0 with the real farthest depth value
@@ -250,7 +254,10 @@ void main() {
 #endif
 #endif
 
-/*
+#else
+
+  // The brute force way, since the above seems not working correctly, better safe than sorry.
+
 #ifdef MSAA
 #ifdef MULTIVIEW
   float depthBufferValue = texelFetch(uDepthTexture, ivec3(ivec2(gl_FragCoord.xy), int(gl_ViewIndex)), gl_SampleID).x;
@@ -264,7 +271,8 @@ void main() {
   float depthBufferValue = texelFetch(uDepthTexture, ivec2(gl_FragCoord.xy), 0).x;
 #endif
 #endif
-*/
+
+#endif
 
   // Clouds are always without MSAA for performance reasons. These are low-freuquent shapes anyway, so it should be fine.
 #ifdef MULTIVIEW
@@ -290,6 +298,19 @@ void main() {
 #endif
 
   bool depthIsZFar = depthBufferValue == GetZFarDepthValue(view.projectionMatrix);
+
+#ifdef MSAA
+  // When MSAA is used, we must check if the clouds are valid and if the depth value is less than the clouds depth value, otherwise 
+  // the clouds are not valid. This is necessary because clouds are rendered without MSAA but applied to the opaque pass content with 
+  // MSAA.
+  if(cloudsValid && !depthIsZFar){
+    vec4 t = view.inverseProjectionMatrix * vec4(fma(uv, vec2(2.0), vec2(-1.0)), depthBufferValue, 1.0);
+    float linearDepth = -(t.z / t.w);
+    if(cloudsDepth > linearDepth){
+      cloudsValid = false;
+    }
+  }
+#endif
 
   //bool rayHitsAtmosphere = any(greaterThanEqual(raySphereIntersect(worldPos, worldDir, vec3(0.0), atmosphereParameters.TopRadius), vec2(0.0)));
 
