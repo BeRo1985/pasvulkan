@@ -104,30 +104,28 @@ layout(set = 1, binding = 0, std140) uniform uboViews {
 
 #ifdef MULTIVIEW
 layout(set = 2, binding = 0) uniform texture2DMSArray uDepthTexture;
-layout(set = 2, binding = 9) uniform texture2DMSArray uCloudsInscatteringTexture;
-layout(set = 2, binding = 10) uniform texture2DMSArray uCloudsTransmittanceTexture;
-layout(set = 2, binding = 11) uniform texture2DMSArray uCloudsDepthTexture;
 #else
 layout(set = 2, binding = 0) uniform texture2DMS uDepthTexture;
-layout(set = 2, binding = 9) uniform texture2DMS uCloudsInscatteringTexture;
-layout(set = 2, binding = 10) uniform texture2DMS uCloudsTransmittanceTexture;
-layout(set = 2, binding = 11) uniform texture2DMS uCloudsDepthTexture;
 #endif
 
 #else
 
 #ifdef MULTIVIEW
 layout(set = 2, binding = 0) uniform texture2DArray uDepthTexture; 
+#else
+layout(set = 2, binding = 0) uniform texture2D uDepthTexture;
+#endif
+
+#endif
+
+#ifdef MULTIVIEW
 layout(set = 2, binding = 9) uniform texture2DArray uCloudsInscatteringTexture;
 layout(set = 2, binding = 10) uniform texture2DArray uCloudsTransmittanceTexture;
 layout(set = 2, binding = 11) uniform texture2DArray uCloudsDepthTexture;
 #else
-layout(set = 2, binding = 0) uniform texture2D uDepthTexture;
 layout(set = 2, binding = 9) uniform texture2D uCloudsInscatteringTexture;
 layout(set = 2, binding = 10) uniform texture2D uCloudsTransmittanceTexture;
 layout(set = 2, binding = 11) uniform texture2D uCloudsDepthTexture;
-#endif
-
 #endif
 
 /*
@@ -202,37 +200,25 @@ void main() {
 
   float viewHeight = max(length(worldPos), uAtmosphereParameters.atmosphereParameters.BottomRadius + 1e-4);  
   vec3 L = vec3(0.0);
-/*  
-#ifdef MSAA
-  float depthBufferValue = subpassLoad(uSubpassDepth, gl_SampleID).x;
-#else  
-  float depthBufferValue = subpassLoad(uSubpassDepth).x;
-#endif*/
+
   vec4 cloudsInscattering = vec4(0.0), cloudsTransmittance = vec4(1.0, 1.0, 1.0, 0.0);
+
 #ifdef MSAA
 #ifdef MULTIVIEW
   float depthBufferValue = texelFetch(uDepthTexture, ivec3(ivec2(gl_FragCoord.xy), int(gl_ViewIndex)), gl_SampleID).x;
-  
-  float cloudsDepth = texelFetch(uCloudsDepthTexture, ivec3(ivec2(gl_FragCoord.xy), int(gl_ViewIndex)), gl_SampleID).x;
-  bool cloudsValid = !isinf(cloudsDepth);
-  if(cloudsValid){
-    cloudsInscattering = texelFetch(uCloudsInscatteringTexture, ivec3(ivec2(gl_FragCoord.xy), int(gl_ViewIndex)), gl_SampleID);
-    cloudsTransmittance = texelFetch(uCloudsTransmittanceTexture, ivec3(ivec2(gl_FragCoord.xy), int(gl_ViewIndex)), gl_SampleID);
-  }
 #else
   float depthBufferValue = texelFetch(uDepthTexture, ivec2(gl_FragCoord.xy), gl_SampleID).x;
-  
-  float cloudsDepth = texelFetch(uCloudsDepthTexture, ivec2(gl_FragCoord.xy), gl_SampleID).x;
-  bool cloudsValid = !isinf(cloudsDepth);
-  if(cloudsValid){
-    cloudsInscattering = texelFetch(uCloudsInscatteringTexture, ivec2(gl_FragCoord.xy), gl_SampleID);   
-    cloudsTransmittance = texelFetch(uCloudsTransmittanceTexture, ivec2(gl_FragCoord.xy), gl_SampleID);
-  }
 #endif
 #else
 #ifdef MULTIVIEW
   float depthBufferValue = texelFetch(uDepthTexture, ivec3(ivec2(gl_FragCoord.xy), int(gl_ViewIndex)), 0).x;
-  
+#else
+  float depthBufferValue = texelFetch(uDepthTexture, ivec2(gl_FragCoord.xy), 0).x;
+#endif
+#endif
+
+  // Clouds are always without MSAA for performance reasons. These are low-freuquent shapes anyway, so it should be fine.
+#ifdef MULTIVIEW
   float cloudsDepth = texelFetch(uCloudsDepthTexture, ivec3(ivec2(gl_FragCoord.xy), int(gl_ViewIndex)), 0).x;
   bool cloudsValid = !isinf(cloudsDepth);
   if(cloudsValid){
@@ -240,8 +226,6 @@ void main() {
     cloudsTransmittance = texelFetch(uCloudsTransmittanceTexture, ivec3(ivec2(gl_FragCoord.xy), int(gl_ViewIndex)), 0);
   }
 #else
-  float depthBufferValue = texelFetch(uDepthTexture, ivec2(gl_FragCoord.xy), 0).x;
-
   float cloudsDepth = texelFetch(uCloudsDepthTexture, ivec2(gl_FragCoord.xy), 0).x;
   bool cloudsValid = !isinf(cloudsDepth);
   if(cloudsValid){
@@ -249,8 +233,7 @@ void main() {
     cloudsTransmittance = texelFetch(uCloudsTransmittanceTexture, ivec2(gl_FragCoord.xy), 0);
   }
 #endif
-#endif
-  
+
   vec3 sunDirection = normalize(getSunDirection(uAtmosphereParameters.atmosphereParameters));
 
 #ifdef SHADOWS

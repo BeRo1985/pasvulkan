@@ -197,19 +197,22 @@ begin
 
  end else begin
 
-  fResourceCloudsInscattering:=AddImageInput('resourcetype_msaa_inscattering',
+  fResourceCloudsInscattering:=AddImageInput('resourcetype_inscattering',
+//fResourceCloudsInscattering:=AddImageInput('resourcetype_msaa_inscattering',
                                              'resource_clouds_inscattering',
                                              VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                              []
                                             );
 
-  fResourceCloudsTransmittance:=AddImageInput('resourcetype_msaa_transmittance',
+  fResourceCloudsTransmittance:=AddImageInput('resourcetype_transmittance',
+//fResourceCloudsTransmittance:=AddImageInput('resourcetype_msaa_transmittance',
                                              'resource_clouds_transmittance',
                                              VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                              []
                                             );
 
-  fResourceCloudsDepth:=AddImageInput('resourcetype_msaa_lineardepth',
+  fResourceCloudsDepth:=AddImageInput('resourcetype_lineardepth',
+//fResourceCloudsDepth:=AddImageInput('resourcetype_msaa_lineardepth',
                                       'resource_clouds_lineardepth',
                                       VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                       []

@@ -125,7 +125,7 @@ begin
 
  Name:='AtmosphereCloudRenderPass';
 
- MultiviewMask:=fInstance.SurfaceMultiviewMask;
+ MultiviewMask:=0;//fInstance.SurfaceMultiviewMask;
 
  Queue:=aFrameGraph.UniversalQueue;
 
@@ -146,12 +146,20 @@ begin
                                           );
 
  if fInstance.Renderer.SurfaceSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
-
   fResourceDepth:=AddImageDepthInput('resourcetype_depth',
                                      'resource_depth_data',
                                      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                      []
                                     );
+ end else begin
+  fResourceDepth:=AddImageDepthInput('resourcetype_msaa_depth',
+                                     'resource_msaa_depth_data',
+                                      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                      []
+                                     );
+ end;
+
+ begin
 
   fResourceOutput:=AddImageOutput('resourcetype_inscattering',
                                   'resource_clouds_inscattering',
@@ -170,38 +178,6 @@ begin
                                         );
 
   fResourceLinearDepth:=AddImageOutput('resourcetype_lineardepth',
-                                       'resource_clouds_lineardepth',
-                                       VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                                       TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
-                                                                    TpvVector4.InlineableCreate(Infinity,0.0,0.0,0.0)),
-                                       [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
-                                      );
-
- end else begin
-
-  fResourceDepth:=AddImageDepthInput('resourcetype_msaa_depth',
-                                     'resource_msaa_depth_data',
-                                      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                      []
-                                     );
-
-  fResourceOutput:=AddImageOutput('resourcetype_msaa_inscattering',
-                                  'resource_clouds_inscattering',
-                                  VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                                  TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
-                                                               TpvVector4.InlineableCreate(0.0,0.0,0.0,0.0)),
-                                  [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
-                                 );
-
-  fResourceTransmittance:=AddImageOutput('resourcetype_msaa_transmittance',
-                                         'resource_clouds_transmittance',
-                                         VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                                         TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
-                                                                      TpvVector4.InlineableCreate(1.0,1.0,1.0,0.0)),
-                                         [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
-                                        );
-
-  fResourceLinearDepth:=AddImageOutput('resourcetype_msaa_lineardepth',
                                        'resource_clouds_lineardepth',
                                        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                        TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
@@ -400,7 +376,7 @@ begin
  fVulkanGraphicsPipeline.RasterizationState.DepthBiasSlopeFactor:=0.0;
  fVulkanGraphicsPipeline.RasterizationState.LineWidth:=1.0;
 
- fVulkanGraphicsPipeline.MultisampleState.RasterizationSamples:=fInstance.Renderer.SurfaceSampleCountFlagBits;
+ fVulkanGraphicsPipeline.MultisampleState.RasterizationSamples:=VK_SAMPLE_COUNT_1_BIT;//fInstance.Renderer.SurfaceSampleCountFlagBits;
  fVulkanGraphicsPipeline.MultisampleState.SampleShadingEnable:=false;
  fVulkanGraphicsPipeline.MultisampleState.MinSampleShading:=0.0;
  fVulkanGraphicsPipeline.MultisampleState.CountSampleMasks:=0;
@@ -514,6 +490,10 @@ begin
  if TpvScene3DRenderer(TpvScene3DRendererInstance(fInstance).Renderer).AtmosphereShadows then begin
   fPushConstants.Flags:=fPushConstants.Flags or (TpvUInt32(1) shl 3);
  end;
+ if TpvScene3DRendererInstance(fInstance).ZFar<0.0 then begin
+  fPushConstants.Flags:=fPushConstants.Flags or (TpvUInt32(1) shl 16);
+ end;
+ fPushConstants.CountSamples:=TpvScene3DRenderer(TpvScene3DRendererInstance(fInstance).Renderer).CountSurfaceMSAASamples;
 
  aCommandBuffer.CmdPushConstants(TpvScene3DAtmosphereGlobals(fInstance.Scene3D.AtmosphereGlobals).CloudRaymarchingPipelineLayout.Handle,
                                  TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_FRAGMENT_BIT),

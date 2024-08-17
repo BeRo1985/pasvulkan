@@ -1084,7 +1084,7 @@ const AudioSpeakerLayoutMono:TpvAudioSpeakerLayout=
        );
 
       AudioSpeakerLayoutSurround51:TpvAudioSpeakerLayout=
-       (
+       ( 
         Name:'surround51';
         CountChannels:6;
         Listeners:(
