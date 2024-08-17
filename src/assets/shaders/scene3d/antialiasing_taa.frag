@@ -207,7 +207,11 @@ void main() {
   
   vec3 uvw = vec3(inTexCoord, float(gl_ViewIndex));
 
-  vec4 current = textureLod(uCurrentColorTexture, uvw /*- vec3(pushConstants.jitterUV, 0.0)*/, 0.0);
+#if 0
+  vec4 current = textureLod(uCurrentColorTexture, uvw - vec3(pushConstants.jitterUV, 0.0), 0.0); // With unjittering
+#else
+  vec4 current = textureLod(uCurrentColorTexture, uvw, 0.0); // Without unjittering
+#endif
 
   if(abs(1.0 - pushConstants.opaqueCoefficient) < 1e-5){
 
