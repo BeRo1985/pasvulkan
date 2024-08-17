@@ -140,6 +140,7 @@ type TpvScene3DAtmosphere=class;
              CountViews:TpvInt32;
              FrameIndex:TpvUInt32;
              Flags:TpvUInt32;
+             CountSamples:TpvUInt32;
             end;
             PRaymarchingPushConstants=^TRaymarchingPushConstants;
             TCloudWeatherMapPushConstants=packed record

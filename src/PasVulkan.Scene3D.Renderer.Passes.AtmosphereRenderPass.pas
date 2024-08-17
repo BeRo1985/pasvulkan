@@ -566,12 +566,17 @@ begin
  if TpvScene3DRenderer(TpvScene3DRendererInstance(fInstance).Renderer).AtmosphereShadows then begin
   fPushConstants.Flags:=fPushConstants.Flags or (TpvUInt32(1) shl 3);
  end;
+ if TpvScene3DRendererInstance(fInstance).ZFar<0.0 then begin
+  fPushConstants.Flags:=fPushConstants.Flags or (TpvUInt32(1) shl 16);
+ end;
+ fPushConstants.CountSamples:=TpvScene3DRenderer(TpvScene3DRendererInstance(fInstance).Renderer).CountSurfaceMSAASamples;
 
  aCommandBuffer.CmdPushConstants(TpvScene3DAtmosphereGlobals(fInstance.Scene3D.AtmosphereGlobals).RaymarchingPipelineLayout.Handle,
                                  TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_FRAGMENT_BIT),
                                  0,
                                  SizeOf(TpvScene3DAtmosphereGlobals.TRaymarchingPushConstants),
                                  @fPushConstants);
+
 
  TpvScene3DAtmospheres(fInstance.Scene3D.Atmospheres).Draw(aInFlightFrameIndex,
                                                            aCommandBuffer,

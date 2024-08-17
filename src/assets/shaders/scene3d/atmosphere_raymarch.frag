@@ -34,6 +34,7 @@ layout(push_constant, std140) uniform PushConstants {
   int countViews;
   int frameIndex;
   uint flags;
+  uint countSamples;
 } pushConstants;
 
 #include "globaldescriptorset.glsl"
@@ -204,6 +205,53 @@ void main() {
   vec4 cloudsInscattering = vec4(0.0), cloudsTransmittance = vec4(1.0, 1.0, 1.0, 0.0);
 
 #ifdef MSAA
+  // At MSAA we must find the farthest depth value, since clouds are rendered without MSAA but applied to the opaque pass content with MSAA,
+  // so we must find the farthest depth value to avoid or at least minimize artifacts at the merging stage.
+  float depthBufferValue;
+  if((pushConstants.flags & PUSH_CONSTANT_FLAG_REVERSE_DEPTH) != 0u){
+    depthBufferValue = uintBitsToFloat(0x7f800000u); // +inf as marker for the farthest depth value, so the minimum value is always less than this
+    for(int sampleIndex = 0; sampleIndex < pushConstants.countSamples; sampleIndex++){
+#ifdef MULTIVIEW
+      float depthValue = texelFetch(uDepthTexture, ivec3(ivec2(gl_FragCoord.xy), int(gl_ViewIndex)), sampleIndex).x;
+#else
+      float depthValue = texelFetch(uDepthTexture, ivec2(gl_FragCoord.xy), sampleIndex).x;
+#endif
+      if((depthValue > 0.0) && (depthValue < depthBufferValue)){
+        depthBufferValue = depthValue;
+      }
+    }
+    if(isinf(depthBufferValue)){
+      // Replace +inf with 0.0 with the real farthest depth value 
+      depthBufferValue = 0.0;
+    }
+  }else{
+    depthBufferValue = uintBitsToFloat(0xff800000u); // -inf as marker for the farthest depth value, so the maximum value is always greater than this
+    for(int sampleIndex = 0; sampleIndex < pushConstants.countSamples; sampleIndex++){
+#ifdef MULTIVIEW
+      float depthValue = texelFetch(uDepthTexture, ivec3(ivec2(gl_FragCoord.xy), int(gl_ViewIndex)), sampleIndex).x;
+#else
+      float depthValue = texelFetch(uDepthTexture, ivec2(gl_FragCoord.xy), sampleIndex).x;
+#endif
+      if((depthValue < 1.0) && (depthValue > depthBufferValue)){
+        depthBufferValue = depthValue;
+      }
+    }
+    if(isinf(depthBufferValue)){
+      // Replace -inf with 1.0 with the real farthest depth value
+      depthBufferValue = 1.0;
+    }
+  }
+#else
+  // Without MSAA we can just use the depth value directly. Easy peasy. :-)
+#ifdef MULTIVIEW
+  float depthBufferValue = texelFetch(uDepthTexture, ivec3(ivec2(gl_FragCoord.xy), int(gl_ViewIndex)), 0).x;
+#else
+  float depthBufferValue = texelFetch(uDepthTexture, ivec2(gl_FragCoord.xy), 0).x;
+#endif
+#endif
+
+/*
+#ifdef MSAA
 #ifdef MULTIVIEW
   float depthBufferValue = texelFetch(uDepthTexture, ivec3(ivec2(gl_FragCoord.xy), int(gl_ViewIndex)), gl_SampleID).x;
 #else
@@ -216,6 +264,7 @@ void main() {
   float depthBufferValue = texelFetch(uDepthTexture, ivec2(gl_FragCoord.xy), 0).x;
 #endif
 #endif
+*/
 
   // Clouds are always without MSAA for performance reasons. These are low-freuquent shapes anyway, so it should be fine.
 #ifdef MULTIVIEW
