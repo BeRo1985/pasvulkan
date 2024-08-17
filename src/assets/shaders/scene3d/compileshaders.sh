@@ -698,6 +698,10 @@ compileshaderarguments=(
   "-V atmosphere_clouds_raymarch.frag --target-env vulkan1.2 -DSHADOWS -DRAYTRACING -DMSAA -o ${tempPath}/atmosphere_clouds_raymarch_shadows_raytracing_msaa_frag.spv"
   "-V atmosphere_clouds_raymarch.frag --target-env vulkan1.2 -DSHADOWS -DRAYTRACING -DMULTIVIEW -o ${tempPath}/atmosphere_clouds_raymarch_shadows_raytracing_multiview_frag.spv"
   "-V atmosphere_clouds_raymarch.frag --target-env vulkan1.2 -DSHADOWS -DRAYTRACING -DMULTIVIEW -DMSAA -o ${tempPath}/atmosphere_clouds_raymarch_shadows_raytracing_multiview_msaa_frag.spv"
+
+  # Clouds shadow map
+  "-V atmosphere_clouds_raymarch.frag -DSHADOWMAP -o ${tempPath}/atmosphere_clouds_raymarch_shadowmap_frag.spv"
+
 )
 
 #############################################
