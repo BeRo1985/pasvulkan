@@ -2,9 +2,8 @@
 
 #define ColorSpaceRGB 0
 #define ColorSpaceYCoCg 1
-#define ColorSpaceGdRdB 2
 
-#define ColorSpace ColorSpaceYCoCg
+#define ColorSpace ColorSpaceRGB 
 
 #define UseSimple 0
 
@@ -70,19 +69,6 @@ vec4 YCoCgToRGB(in vec4 c){
 
 #define ConvertFromRGB RGBToYCoCg
 #define ConvertToRGB YCoCgToRGB
-
-#elif ColorSpace == ColorSpaceGdRdB
-
-vec4 RGBToGdRdB(vec4 c){
-  return vec4(c.y, c.x - c.y, c.z - c.y, c.w);
-}
-
-vec4 GdRdBToRGB(vec4 c){
-  return vec4(c.y + c.x, c.x, c.z - c.x, c.w);
-}
-
-#define ConvertFromRGB RGBToGdRdB
-#define ConvertToRGB GdRdBToRGB
 
 #else
 
@@ -257,21 +243,21 @@ void main() {
         maximumColor = min(maximumColor, m0 + sigma);
       }            
 
-#if (ColorSpace == ColorSpaceYCoCg) || (ColorSpace == ColorSpaceGdRdB) 
-      { 
+#if ColorSpace == ColorSpaceYCoCg 
+    /*{ // TODO: Fix this for very bright colors (=> butterfly artifacts later at bloom) 
         vec2 chromaExtent = vec2(maximumColor.x - minimumColor.x) * 0.125;
         vec2 chromaCenter = current.yz;
         minimumColor.yz = chromaCenter - chromaExtent;
         maximumColor.yz = chromaCenter + chromaExtent;
         averageColor.yz = chromaCenter;
-      }  
+      }*/  
 #endif      
         
       vec4 historySample = ConvertFromRGB(Tonemap(texture(uHistoryColorTexture, historyUVW, 0.0)));
       
       historySample = ClipAABB(historySample, clamp(averageColor, minimumColor, maximumColor), minimumColor.xyz, maximumColor.xyz);
 
-#if (ColorSpace == ColorSpaceYCoCg) || (ColorSpace == ColorSpaceGdRdB)
+#if ColorSpace == ColorSpaceYCoCg
       float currentLuminance = current.x;
       float historyLuminance = historySample.x;    
 #else
