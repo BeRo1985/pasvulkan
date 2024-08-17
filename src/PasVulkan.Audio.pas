@@ -125,7 +125,7 @@ const SampleFixUp=1024;
       HalfPI=pi*0.5;
 
       TwoPI=pi*2.0;
-                            
+
       WorldUnitsToMeters=1.0;
 
       MetersToWorldUnits=1.0;
@@ -140,7 +140,7 @@ const SampleFixUp=1024;
 
       SpeedOfSoundAir=343.3;
       SpeedOfSoundUnderwater=1522.0; //(1484+1560)*0.5;
-      
+
       SpeedOfSoundAirToUnderwater=SpeedOfSoundAir/SpeedOfSoundUnderwater;
 
       HalfPanning=0.707106; // sin(HalfPI*0.5)
@@ -207,7 +207,7 @@ type PpvAudioInt32=^TpvInt32;
 
      TPpvAudioFloats=array[0..$ffff] of PpvAudioFloats;
      PPpvAudioFloats=^TPpvAudioFloats;
-     
+
      TpvAudioSoundSampleValue=TpvInt32;
      PpvAudioSoundSampleValue=^TpvAudioSoundSampleValue;
 
@@ -278,7 +278,7 @@ type PpvAudioInt32=^TpvInt32;
        const RIFFSignature:TWaveSignature=('R','I','F','F');
              WAVESignature:TWaveSignature=('W','A','V','E');
              FMTSignature:TWaveSignature=('f','m','t',' ');
-             DATASignature:TWaveSignature=('d','a','t','a'); 
+             DATASignature:TWaveSignature=('d','a','t','a');
      end;
 
      TpvAudioWAVStreamDump=class
@@ -304,8 +304,8 @@ type PpvAudioInt32=^TpvInt32;
        destructor Destroy; override;
        procedure Flush;
        procedure Dump(const aData:TpvPointer;const aDataSize:TpvSizeInt);
-     end;  
-       
+     end;
+
      TpvAudioSoundSampleVoiceLowPassHistory=array[0..1] of TpvInt32;
 
      { TpvAudioSoundSampleVoice }
@@ -453,7 +453,7 @@ type PpvAudioInt32=^TpvInt32;
      TpvAudioSoundSampleGlobalVoiceIDs=array of TpvID;
 
      TpvAudioSoundSampleGlobalVoiceHashMap=class(TpvHashMap<TpvAudioSoundSampleGlobalVoice,TpvID>);
-      
+
      { TpvAudioSoundSampleGlobalVoiceManager }
 
      TpvAudioSoundSampleGlobalVoiceManager=class
@@ -490,11 +490,11 @@ type PpvAudioInt32=^TpvInt32;
               fKnee:TpvDouble;
               fMakeUpGain:TpvDouble;
               fAutoGain:Boolean;
-             public 
+             public
               constructor Create; reintroduce;
               destructor Destroy; override;
               procedure AssignFromJSON(const aJSON:TPasJSONItem);
-              procedure Assign(const aSettings:TSettings);              
+              procedure Assign(const aSettings:TSettings);
              public
               property Threshold:TpvDouble read fThreshold write fThreshold;
               property AttackTime:TpvDouble read fAttackTime write fAttackTime;
@@ -526,7 +526,7 @@ type PpvAudioInt32=^TpvInt32;
        fSettings:TSettings;
       public
        constructor Create(aAudioEngine:TpvAudio); reintroduce;
-       destructor Destroy; override; 
+       destructor Destroy; override;
        procedure Setup(const aSettings:TSettings);
        function Process(const aInput:TpvFloat):TpvFloat;
      end;
@@ -1021,6 +1021,9 @@ type PpvAudioInt32=^TpvInt32;
        PCG32:TpvPCG32;
        constructor Create(ASampleRate,AChannels,ABits,ABufferSamples:TpvInt32);
        destructor Destroy; override;
+       function GetMixerMasterVolume:TpvFloat;
+       function GetMixerMusicVolume:TpvFloat;
+       function GetMixerSampleVolume:TpvFloat;
        procedure SetMixerMasterVolume(NewVolume:TpvFloat);
        procedure SetMixerMusicVolume(NewVolume:TpvFloat);
        procedure SetMixerSampleVolume(NewVolume:TpvFloat);
@@ -1033,6 +1036,9 @@ type PpvAudioInt32=^TpvInt32;
        procedure SetActive(Active:boolean);
        procedure Mute;
        procedure Unmute;
+       property MixerMasterVolume:TpvFloat read GetMixerMasterVolume write SetMixerMasterVolume;
+       property MixerMusicVolume:TpvFloat read GetMixerMusicVolume write SetMixerMusicVolume;
+       property MixerSampleVolume:TpvFloat read GetMixerSampleVolume write SetMixerSampleVolume;
      end;
 
 const AudioSpeakerLayoutMono:TpvAudioSpeakerLayout=
@@ -1084,7 +1090,7 @@ const AudioSpeakerLayoutMono:TpvAudioSpeakerLayout=
        );
 
       AudioSpeakerLayoutSurround51:TpvAudioSpeakerLayout=
-       ( 
+       (
         Name:'surround51';
         CountChannels:6;
         Listeners:(
@@ -1115,7 +1121,7 @@ const AudioSpeakerLayoutMono:TpvAudioSpeakerLayout=
         );
        );
 
-var pvAudioDump:Boolean=false;       
+var pvAudioDump:Boolean=false;
 
 implementation
 
@@ -1273,7 +1279,7 @@ begin
   result:=(a*(1.0-x))+(b*x);
  end;
 end;
- 
+
 function IntMod(x,y:TpvInt32):TpvInt32;
 begin
  result:=x mod y;
@@ -1364,7 +1370,7 @@ begin
  ResultCasted:=((ResultCasted-$800000) shr 1)+$20000000;
  result:=result+(aValue/result);
  result:=(result*0.25)+(aValue/result);
-end;                                                                          
+end;
 
 constructor TpvAudioWAVStreamDump.Create(const aAudioEngine:TpvAudio;const aStream:TStream;const aDoFreeStream:boolean=true);
 begin
@@ -1431,13 +1437,13 @@ end;
 
 procedure TpvAudioWAVStreamDump.Flush;
 begin
- 
+
  if assigned(fStream) and (fDataSize>0) then begin
-   
+
   fStream.Seek(fDataChunkHeaderOffset,soFromBeginning);
   fWaveDataChunkHeader.Size:=fDataSize;
   fStream.WriteBuffer(fWaveDataChunkHeader,SizeOf(TpvAudioWAVFormat.TWaveChunkHeader));
-  
+
   fStream.Seek(fFileHeaderOffset,soFromBeginning);
   fWaveFileHeader.Size:=SizeOf(TpvAudioWAVFormat.TWaveChunkHeader)+
                         SizeOf(TpvAudioWAVFormat.TWaveFormatHeader)+
@@ -1465,15 +1471,15 @@ begin
    SetLength(fBufferFloats,CountSamples*2);
   end;
 
-  // Convert 32 bit stereo samples to 32 bit float stereo samples 
+  // Convert 32 bit stereo samples to 32 bit float stereo samples
   for Index:=0 to CountSamples-1 do begin
    ValueInt32:=PpvAudioSoundSampleValues(aData)^[Index];
    fBufferFloats[Index]:=ValueInt32/32768.0;
   end;
 
-  fStream.Seek(fDataOffset+fDataSize,soFromBeginning);  
-  fStream.WriteBuffer(fBufferFloats[0],aDataSize); // same byte size as aDataSize since uint32 = 4 bytes like float32 as well 
-  
+  fStream.Seek(fDataOffset+fDataSize,soFromBeginning);
+  fStream.WriteBuffer(fBufferFloats[0],aDataSize); // same byte size as aDataSize since uint32 = 4 bytes like float32 as well
+
   inc(fDataSize,aDataSize);
 
   Flush; // Flush every time, because we can't know when the stream is closed, so that the header is valid anyway
@@ -1496,7 +1502,7 @@ begin
  end;
  result:=Min(Max(AngleChange*25.0,GainChange)*2.0,1.0);
 end;
- 
+
 constructor TpvAudioSoundSampleVoice.Create(AAudioEngine:TpvAudio;ASample:TpvAudioSoundSample;AIndex:TpvInt32);
 begin
  inherited Create;
@@ -1612,7 +1618,7 @@ end;
 procedure TpvAudioSoundSampleVoice.Dequeue;
 begin
  if ActiveVoiceIndex>=0 then begin
-  // Swap with last active voice when needed and remove from list 
+  // Swap with last active voice when needed and remove from list
   if ((ActiveVoiceIndex+1)<Sample.CountActiveVoices) and (Sample.CountActiveVoices>1) then begin
    Sample.ActiveVoices[ActiveVoiceIndex]:=Sample.ActiveVoices[Sample.CountActiveVoices-1];
    Sample.ActiveVoices[ActiveVoiceIndex].ActiveVoiceIndex:=ActiveVoiceIndex;
@@ -3040,7 +3046,7 @@ begin
     GlobalVoice^.VoiceNumber:=aVoiceNumber;
     fHashMap.Add(GlobalVoice^,aGlobalVoiceID);
    end;
-  end; 
+  end;
  finally
   fLock.ReleaseWrite;
  end;
@@ -3173,7 +3179,7 @@ end;
 procedure TpvAudioCompressor.TSettings.AssignFromJSON(const aJSON:TPasJSONItem);
 begin
  if assigned(aJSON) and (aJSON is TPasJSONItemObject) then begin
-  fThreshold:=TPasJSON.GetNumber(TPasJSONItemObject(aJSON).Properties['threshold'],fThreshold); 
+  fThreshold:=TPasJSON.GetNumber(TPasJSONItemObject(aJSON).Properties['threshold'],fThreshold);
   fAttackTime:=TPasJSON.GetNumber(TPasJSONItemObject(aJSON).Properties['attack'],fAttackTime);
   fHoldTime:=TPasJSON.GetNumber(TPasJSONItemObject(aJSON).Properties['hold'],fHoldTime);
   fReleaseTime:=TPasJSON.GetNumber(TPasJSONItemObject(aJSON).Properties['release'],fReleaseTime);
@@ -3253,7 +3259,7 @@ begin
  end;
 
  if SameValue(fSettings.fRatio,0.0) then begin
-  fRatio:=0.0; // Limiter mode  
+  fRatio:=0.0; // Limiter mode
  end else begin
   fRatio:=1.0/fSettings.fRatio;
  end;
@@ -3283,7 +3289,7 @@ begin
 end;
 
 function TpvAudioCompressor.Process(const aInput:TpvFloat):TpvFloat;
-var Target,TargetSquared,Coefficient:TpvFloat; 
+var Target,TargetSquared,Coefficient:TpvFloat;
 begin
 
  Target:=abs(aInput);
@@ -3291,7 +3297,7 @@ begin
  if fFirst then begin
   fFirst:=false;
   fState:=Target;
- end; 
+ end;
 
  if fState<Target then begin
   Coefficient:=fAttackCoefficient;
@@ -3302,13 +3308,13 @@ begin
    Coefficient:=0.0;
   end else begin
    Coefficient:=fReleaseCoefficient;
-  end;  
- end; 
+  end;
+ end;
 
   fState:=(fState*(1.0-Coefficient))+(Target*Coefficient);
  if abs(fState)>1e+16 then begin
   fState:=1.0;
- end;       
+ end;
 
  if abs(fKneedB)>1e-10 then begin
   // Soft knee
@@ -3869,7 +3875,7 @@ begin
     if InBufferSize=0 then begin
      InBufferSize:=length(InBuffer);
      FillChar(PCMBuffer[0],SizeOf(SmallInt)*length(PCMBuffer),AnsiChar(#0));
-    end; 
+    end;
     Active:=false;
    end;
    break;
@@ -5565,15 +5571,15 @@ begin
      QueueItem.fVoiceIndexPointer:=aVoiceIndexPointer;
     finally
      fQueue.Enqueue(QueueItem);
-    end; 
-   finally 
+    end;
+   finally
     fLock.Release;
    end;
   end;
  end else begin
-  result:=TpvID(0); 
+  result:=TpvID(0);
  end;
-end; 
+end;
 
 function TpvAudioCommandQueue.SampleVoicePlaySpatialization(const aSample:TpvAudioSoundSample;const aVolume,aPanning,aRate:TpvFloat;const aSpatialization:LongBool;const aPosition,aVelocity:TpvVector3;const aLocal:LongBool=false;const aVoiceIndexPointer:TpvPointer=nil):TpvID;
 var QueueItem:TQueueItem;
@@ -6313,8 +6319,8 @@ begin
  end else begin
   WAVStreamDumpMusic:=nil;
   WAVStreamDumpSample:=nil;
-  WAVStreamDumpFinalMix:=nil; 
- end; 
+  WAVStreamDumpFinalMix:=nil;
+ end;
  PCG32.Init(TpvPtrUInt(self));
 end;
 
@@ -6358,7 +6364,7 @@ begin
  azidx^[1]:=IntMod(azidx^[0]+1,PpvAudioInt32s(HRTFPreset^.azCount)^[evidx]);
  azmu:=az-floor(az);
 end;
-                                                                                                      
+
 procedure TpvAudio.GetLerpedHRTFCoefs(Elevation,Azimuth:TpvFloat;var LeftCoefs,RightCoefs:TpvAudioHRTFCoefs;var LeftDelay,RightDelay:TpvInt32);
 var evidx,azidx:array[0..1] of TpvInt32;
     mu:array[0..2] of TpvFloat;
@@ -6415,6 +6421,38 @@ begin
  end;
 end;
 
+function TpvAudio.GetMixerMasterVolume:TpvFloat;
+const OneOver4096=1.0/4096.0;
+begin
+ CriticalSection.Enter;
+ try
+  result:=Min(Max(MasterVolume*OneOver4096,0.0),1.0);
+ finally
+  CriticalSection.Leave;
+ end;
+end;
+
+function TpvAudio.GetMixerMusicVolume:TpvFloat;
+const OneOver4096=1.0/4096.0;
+begin
+ CriticalSection.Enter;
+ try
+  result:=Min(Max(MusicVolume*OneOver4096,0.0),1.0);
+ finally
+  CriticalSection.Leave;
+ end;
+end;
+
+function TpvAudio.GetMixerSampleVolume:TpvFloat;
+const OneOver32768=1.0/32768.0;
+begin
+ CriticalSection.Enter;
+ try
+  result:=Min(Max(SampleVolume*OneOver32768,0.0),1.0);
+ finally
+  CriticalSection.Leave;
+ end;
+end;
 
 procedure TpvAudio.SetMixerMasterVolume(NewVolume:TpvFloat);
 begin
@@ -6585,7 +6623,7 @@ begin
       StereoSampleValue[1]:=round(StereoSampleValue[1]*Factor);
       inc(StereoSampleValue);
      end;
-     
+
      // Mix to target buffer
      if MixToEffect then begin
       p:=EffectMixingBuffer;
@@ -6651,7 +6689,7 @@ begin
   end;}
   if assigned(WAVStreamDumpSample) then begin
    WAVStreamDumpSample.Dump(MixingBuffer,MixingBufferSize);
-  end; 
+  end;
 
   // Mixing all music streams
   for i:=0 to Musics.Count-1 do begin
@@ -6659,7 +6697,7 @@ begin
   end;
   for i:=0 to BufferChannelSamples-1 do begin
    inc(MixingBuffer[i],MusicMixingBuffer[i]);
-  end; 
+  end;
   if assigned(WAVStreamDumpMusic) then begin
    WAVStreamDumpMusic.Dump(MusicMixingBuffer,MixingBufferSize);
   end;
@@ -6937,7 +6975,7 @@ begin
 
   if assigned(WAVStreamDumpFinalMix) then begin
    WAVStreamDumpFinalMix.Dump(MixingBuffer,MixingBufferSize);
-  end; 
+  end;
 
   // Downmixing
   if Channels=1 then begin
@@ -7114,5 +7152,3 @@ end;
 initialization
  ParseCommandParameters;
 end.
-
-
