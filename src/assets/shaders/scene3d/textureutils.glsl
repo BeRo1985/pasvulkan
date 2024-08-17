@@ -50,6 +50,36 @@ vec4 textureCatmullRom(const in sampler2DArray tex, const in vec3 uvw, const in 
            (textureLod(tex, vec3(vec2(p33.x,  p33.y), uvw.z), float(lod)) * w3.x)) * w3.y);
 }
 
+/*
+vec4 textureCatmullRom(sampler2DArray sourceTexture, vec3 uvw, float lod){
+  vec2 texSize = vec2(textureSize(sourceTexture, int(lod)).xy),
+       xy = uvw.xy * texSize,
+       p1 = floor(xy - vec2(0.5)) + vec2(0.5),
+       f = xy - p1, 
+       f2 = f * f,
+       w0 = f * fma(f, fma(f, vec2(-0.5), vec2(1.0)), vec2(-0.5)),
+       w1 = fma(f2, fma(f, vec2(1.5), vec2(-2.5)), vec2(1.0)),
+       w2 = f * fma(f, fma(f, vec2(-1.5), vec2(2.0)), vec2(0.5)),
+       w3 = f2 * fma(f, vec2(0.5), vec2(-0.5)),
+       w12 = w1 + w2,
+       p0 = (p1 - vec2(1.0)) / texSize, 
+       p2 = (p1 + vec2(2.0)) / texSize, 
+       p3 = (p1 + (w2 / (w1 + w2))) / texSize;
+	return
+    (
+     (((textureLod(sourceTexture, vec3(p0.x, p0.y, uvw.z), float(lod)) * w0.x) +
+       (textureLod(sourceTexture, vec3(p3.x, p0.y, uvw.z), float(lod)) * w12.x) +
+       (textureLod(sourceTexture, vec3(p2.x, p0.y, uvw.z), float(lod)) * w3.x)) * w0.y) +
+     (((textureLod(sourceTexture, vec3(p0.x, p3.y, uvw.z), float(lod)) * w0.x) +
+       (textureLod(sourceTexture, vec3(p3.x, p3.y, uvw.z), float(lod)) * w12.x) +
+       (textureLod(sourceTexture, vec3(p2.x, p3.y, uvw.z), float(lod)) * w3.x)) * w12.y) +
+     (((textureLod(sourceTexture, vec3(p0.x, p2.y, uvw.z), float(lod)) * w0.x) +
+       (textureLod(sourceTexture, vec3(p3.x, p2.y, uvw.z), float(lod)) * w12.x) +
+       (textureLod(sourceTexture, vec3(p2.x, p2.y, uvw.z), float(lod)) * w3.x)) * w3.y)
+    );
+}
+*/
+
 #if 1
 #if 1
 // Catmull-Rom in 9 samples - the most correct one in comparison to the others visually 

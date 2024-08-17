@@ -137,12 +137,65 @@ void main() {
 #else
 
 vec4 ClipAABB(vec4 q, vec4 p, vec3 aabbMin, vec3 aabbMax){	
+#if 0  
   vec3 p_clip = (aabbMin + aabbMax) * 0.5;
 	vec3 e_clip = fma(aabbMax - aabbMin, vec3(0.5), vec3(1e-7));
 	vec4 v_clip = q - vec4(p_clip, p.w);
 	vec3 a_unit = abs(v_clip.xyz / e_clip);
 	float maxUnit = max(a_unit.x, max(a_unit.y, a_unit.z));
 	return (maxUnit > 1.0) ? vec4(vec4(p_clip, p.w) + (v_clip / maxUnit)) : q;
+#else
+  const float FLT_MIN = uintBitsToFloat(0x00800000u); // 1.17549435e-38
+//const float FLT_MAX = uintBitsToFloat(0x7f7fffffu); // 3.40282347e+38
+  vec4 r = q - p;
+  vec3 rmax = aabbMax - p.xyz, rmin = aabbMin - p.xyz;
+  if(r.x > (rmax.x + FLT_MIN)){
+    r *= rmax.x / r.x;
+  }
+  if(r.y > (rmax.y + FLT_MIN)){
+    r *= rmax.y / r.y;
+  }
+  if(r.z > (rmax.z + FLT_MIN)){
+    r *= rmax.z / r.z;
+  }
+  if(r.x < (rmin.x - FLT_MIN)){
+    r *= rmin.x / r.x;
+  }
+  if(r.y < (rmin.y - FLT_MIN)){
+    r *= rmin.y / r.y;
+  }
+  if(r.z < (rmin.z - FLT_MIN)){
+    r *= rmin.z / r.z;
+  }
+  return p + r;
+#endif
+}
+
+vec4 textureCatmullRom(const in sampler2DArray tex, const in vec3 uvw, const in float lod){
+  vec2 texSize = textureSize(tex, int(lod)).xy,
+       uv = uvw.xy,
+       samplePos = uv * texSize,
+       p11 = floor(samplePos - vec2(0.5)) + vec2(0.5),
+       t = samplePos - p11, 
+       tt = t * t, 
+       ttt = tt * t,
+       w0 = (tt - (ttt * 0.5)) - (0.5 * t),
+       w1 = ((ttt * 1.5) - (tt * 2.5)) + vec2(1.0),
+       w2 = ((tt * 2.0) - (ttt * 1.5)) + (t * 0.5),
+       w3 = (ttt * 0.5) - (tt * 0.5),
+       w4 = w1 + w2,
+       p00 = (p11 - vec2(1.0)) / texSize,
+       p33 = (p11 + vec2(2.0)) / texSize,
+       p12 = (p11 + (w2 / w4)) / texSize;
+  return (((textureLod(tex, vec3(vec2(p00.x,  p00.y), uvw.z), float(lod)) * w0.x) +
+           (textureLod(tex, vec3(vec2(p12.x, p00.y), uvw.z), float(lod)) * w4.x) +
+           (textureLod(tex, vec3(vec2(p33.x,  p00.y), uvw.z), float(lod)) * w3.x)) * w0.y) +
+         (((textureLod(tex, vec3(vec2(p00.x,  p12.y), uvw.z), float(lod)) * w0.x) +
+           (textureLod(tex, vec3(vec2(p12.x, p12.y), uvw.z), float(lod)) * w4.x) +
+           (textureLod(tex, vec3(vec2(p33.x,  p12.y), uvw.z), float(lod)) * w3.x)) * w4.y) +
+         (((textureLod(tex, vec3(vec2(p00.x,  p33.y), uvw.z), float(lod)) * w0.x) +
+           (textureLod(tex, vec3(vec2(p12.x, p33.y), uvw.z), float(lod)) * w4.x) +
+           (textureLod(tex, vec3(vec2(p33.x,  p33.y), uvw.z), float(lod)) * w3.x)) * w3.y);
 }
 
 void main() {
@@ -253,7 +306,7 @@ void main() {
       }*/  
 #endif      
         
-      vec4 historySample = ConvertFromRGB(Tonemap(texture(uHistoryColorTexture, historyUVW, 0.0)));
+      vec4 historySample = ConvertFromRGB(Tonemap(textureCatmullRom(uHistoryColorTexture, historyUVW, 0.0)));
       
       historySample = ClipAABB(historySample, clamp(averageColor, minimumColor, maximumColor), minimumColor.xyz, maximumColor.xyz);
 
