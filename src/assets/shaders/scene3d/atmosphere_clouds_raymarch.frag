@@ -584,8 +584,10 @@ bool traceVolumetricClouds(vec3 rayOrigin,
     if(tMinMax.x < tMinMax.y){
 
       float mipMapLevel = 0.0;
-      int countSteps = (isinf(rayLength) ? 2 : 1) *
-                       clamp(int(mix(float(uAtmosphereParameters.atmosphereParameters.VolumetricClouds.RayMaxSteps), float(uAtmosphereParameters.atmosphereParameters.VolumetricClouds.RayMinSteps), smoothstep(0.0, 1.0, dot(rayDirection, viewNormal)))), 8, 2048);
+      int countSteps = clamp(int(mix(float(uAtmosphereParameters.atmosphereParameters.VolumetricClouds.RayMaxSteps), float(uAtmosphereParameters.atmosphereParameters.VolumetricClouds.RayMinSteps), smoothstep(0.0, 1.0, dot(rayDirection, viewNormal)))), 8, 2048);
+      if(isinf(rayLength) && all(greaterThanEqual(tTopSolutions, vec2(0.0)))){
+        countSteps += countSteps; // Double the steps for infinite ray length at outer space to get better results
+      }
         
       float density = 0.0;  
       float cloudTestDensity = 0.0;
