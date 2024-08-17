@@ -274,23 +274,6 @@ void main() {
 
 #endif
 
-  // Clouds are always without MSAA for performance reasons. These are low-freuquent shapes anyway, so it should be fine.
-#ifdef MULTIVIEW
-  float cloudsDepth = texelFetch(uCloudsDepthTexture, ivec3(ivec2(gl_FragCoord.xy), int(gl_ViewIndex)), 0).x;
-  bool cloudsValid = !isinf(cloudsDepth);
-  if(cloudsValid){
-    cloudsInscattering = texelFetch(uCloudsInscatteringTexture, ivec3(ivec2(gl_FragCoord.xy), int(gl_ViewIndex)), 0);
-    cloudsTransmittance = texelFetch(uCloudsTransmittanceTexture, ivec3(ivec2(gl_FragCoord.xy), int(gl_ViewIndex)), 0);
-  }
-#else
-  float cloudsDepth = texelFetch(uCloudsDepthTexture, ivec2(gl_FragCoord.xy), 0).x;
-  bool cloudsValid = !isinf(cloudsDepth);
-  if(cloudsValid){
-    cloudsInscattering = texelFetch(uCloudsInscatteringTexture, ivec2(gl_FragCoord.xy), 0);
-    cloudsTransmittance = texelFetch(uCloudsTransmittanceTexture, ivec2(gl_FragCoord.xy), 0);
-  }
-#endif
-
   vec3 sunDirection = normalize(getSunDirection(uAtmosphereParameters.atmosphereParameters));
 
 #ifdef SHADOWS
@@ -298,6 +281,15 @@ void main() {
 #endif
 
   bool depthIsZFar = depthBufferValue == GetZFarDepthValue(view.projectionMatrix);
+
+  // Clouds are always without MSAA for performance reasons. These are low-freuquent shapes anyway, so it should be fine.
+#ifdef MULTIVIEW
+  float cloudsDepth = texelFetch(uCloudsDepthTexture, ivec3(ivec2(gl_FragCoord.xy), int(gl_ViewIndex)), 0).x;
+  bool cloudsValid = !isinf(cloudsDepth);
+#else
+  float cloudsDepth = texelFetch(uCloudsDepthTexture, ivec2(gl_FragCoord.xy), 0).x;
+  bool cloudsValid = !isinf(cloudsDepth);
+#endif
 
 #ifdef MSAA
   // When MSAA is used, we must check if the clouds are valid and if the depth value is less than the clouds depth value, otherwise 
@@ -309,6 +301,18 @@ void main() {
     if(cloudsDepth > linearDepth){
       cloudsValid = false;
     }
+  }
+#endif
+
+#ifdef MULTIVIEW
+  if(cloudsValid){
+    cloudsInscattering = texelFetch(uCloudsInscatteringTexture, ivec3(ivec2(gl_FragCoord.xy), int(gl_ViewIndex)), 0);
+    cloudsTransmittance = texelFetch(uCloudsTransmittanceTexture, ivec3(ivec2(gl_FragCoord.xy), int(gl_ViewIndex)), 0);
+  }
+#else
+  if(cloudsValid){
+    cloudsInscattering = texelFetch(uCloudsInscatteringTexture, ivec2(gl_FragCoord.xy), 0);
+    cloudsTransmittance = texelFetch(uCloudsTransmittanceTexture, ivec2(gl_FragCoord.xy), 0);
   }
 #endif
 
