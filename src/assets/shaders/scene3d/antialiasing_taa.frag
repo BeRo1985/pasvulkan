@@ -3,7 +3,7 @@
 #define ColorSpaceRGB 0
 #define ColorSpaceYCoCg 1
 
-#define ColorSpace ColorSpaceRGB 
+#define ColorSpace ColorSpaceYCoCg 
 
 #define UseSimple 0
 
@@ -58,13 +58,13 @@ vec4 Untonemap(vec4 color){
 #if ColorSpace == ColorSpaceYCoCg
 
 vec4 RGBToYCoCg(in vec4 c){
-  return vec4(vec3(c.yy + ((c.x + c.z) * vec2(0.5, -0.5)), c.x - c.z).xzy * 0.5, 1.0);
-//return vec4(mat3(0.25, 0.5, -0.25, 0.5, 0, 0.5, 0.25, -0.5, -0.25) * c.xyz, c.w);
+//return vec4(vec3(c.yy + ((c.x + c.z) * vec2(0.5, -0.5)), c.x - c.z).xzy * 0.5, 1.0);
+  return vec4(mat3(0.25, 0.5, -0.25, 0.5, 0, 0.5, 0.25, -0.5, -0.25) * c.xyz, c.w);
 }
 
 vec4 YCoCgToRGB(in vec4 c){
-  return vec4((c.xxx + vec3(c.yz, -c.y)) - vec2(c.z, 0.0).xyx, c.w);
-//return vec4(mat3(1.0, 1.0, 1.0, 1.0, 0.0, -1.0, -1.0, 1.0, -1.0) * c.xyz, c.w);
+//return vec4((c.xxx + vec3(c.yz, -c.y)) - vec2(c.z, 0.0).xyx, c.w);
+  return vec4(mat3(1.0, 1.0, 1.0, 1.0, 0.0, -1.0, -1.0, 1.0, -1.0) * c.xyz, c.w);
 }
 
 #define ConvertFromRGB RGBToYCoCg
