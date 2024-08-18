@@ -645,13 +645,13 @@ bool traceVolumetricClouds(vec3 rayOrigin,
         int(
           (isinf(rayLength) && all(greaterThanEqual(tTopSolutions, vec2(0.0))))
             ? mix(
-                float(uAtmosphereParameters.atmosphereParameters.VolumetricClouds.OuterSpaceRayMaxSteps),
-                float(uAtmosphereParameters.atmosphereParameters.VolumetricClouds.OuterSpaceRayMinSteps), 
+                float(uAtmosphereParameters.atmosphereParameters.VolumetricClouds.OuterSpaceRayMinSteps),
+                float(uAtmosphereParameters.atmosphereParameters.VolumetricClouds.OuterSpaceRayMaxSteps), 
                 clamp(max(abs(dot(rayDirection, sideVector)), abs(dot(rayDirection, upVector)) * projectionVectorScale), 0.0, 1.0)
               )
             : mix(
-                float(uAtmosphereParameters.atmosphereParameters.VolumetricClouds.RayMaxSteps), 
                 float(uAtmosphereParameters.atmosphereParameters.VolumetricClouds.RayMinSteps), 
+                float(uAtmosphereParameters.atmosphereParameters.VolumetricClouds.RayMaxSteps), 
                 clamp(max(abs(dot(rayDirection, sideVector)), abs(dot(rayDirection, upVector)) * projectionVectorScale), 0.0, 1.0)
               )
         ), 
