@@ -95,7 +95,7 @@ layout(set = 3, binding = 1) uniform sampler2DArray uCascadedShadowMapTexture;
 #ifdef PCFPCSS
 
 // Yay! Binding Aliasing! :-)
-layout(set = 2, binding = 2) uniform sampler2DArrayShadow uCascadedShadowMapTextureShadow;
+layout(set = 3, binding = 1) uniform sampler2DArrayShadow uCascadedShadowMapTextureShadow;
 
 #endif // PCFPCSS
 #endif // !RAYTRACING 
