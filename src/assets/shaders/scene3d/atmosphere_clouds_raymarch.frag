@@ -648,7 +648,7 @@ bool traceVolumetricClouds(vec3 rayOrigin,
                 ? uAtmosphereParameters.atmosphereParameters.VolumetricClouds.OuterSpaceStepFactor 
                 : 1.0
               )
-        ), 
+        ),  
         8, 
         2048
       );
