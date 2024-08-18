@@ -545,6 +545,8 @@ float sampleCloudDensityAlongCone(const in vec3 rayOrigin,
   return densityAlongCone;
 } 
 
+vec3 sideVector, upVector;
+
 bool traceVolumetricClouds(vec3 rayOrigin, 
                            vec3 rayDirection, 
 #ifndef SHADOWMAP
@@ -636,7 +638,7 @@ bool traceVolumetricClouds(vec3 rayOrigin,
       float mipMapLevel = 0.0;
 
 #ifdef SHADOWMAP    
-      int countSteps = clamp(int(mix(float(uAtmosphereParameters.atmosphereParameters.VolumetricClouds.RayMaxSteps), float(uAtmosphereParameters.atmosphereParameters.VolumetricClouds.RayMinSteps), smoothstep(0.0, 1.0, dot(rayDirection, viewNormal)))), 8, 2048);
+      int countSteps = clamp(int(uAtmosphereParameters.atmosphereParameters.VolumetricClouds.RayMinSteps), 8, 2048);
 #else
       int countSteps = clamp(
         int(
@@ -644,12 +646,12 @@ bool traceVolumetricClouds(vec3 rayOrigin,
             ? mix(
                 float(uAtmosphereParameters.atmosphereParameters.VolumetricClouds.OuterSpaceRayMaxSteps),
                 float(uAtmosphereParameters.atmosphereParameters.VolumetricClouds.OuterSpaceRayMinSteps), 
-                smoothstep(0.0, 1.0, dot(rayDirection, viewNormal))
+                clamp(max(abs(dot(rayDirection, sideVector)), abs(dot(rayDirection, upVector))), 0.0, 1.0)
               )
             : mix(
                 float(uAtmosphereParameters.atmosphereParameters.VolumetricClouds.RayMaxSteps), 
                 float(uAtmosphereParameters.atmosphereParameters.VolumetricClouds.RayMinSteps), 
-                smoothstep(0.0, 1.0, dot(rayDirection, viewNormal))
+                clamp(max(abs(dot(rayDirection, sideVector)), abs(dot(rayDirection, upVector))), 0.0, 1.0)
               )
         ), 
         8, 
@@ -843,6 +845,10 @@ void main(){
   
   worldPos = (uAtmosphereParameters.atmosphereParameters.inverseTransform * vec4(worldPos, 1.0)).xyz;
   worldDir = normalize((uAtmosphereParameters.atmosphereParameters.inverseTransform * vec4(worldDir, 0.0)).xyz);
+
+  sideVector = normalize(view.inverseViewMatrix[0].xyz); 
+
+  upVector = normalize(view.inverseViewMatrix[1].xyz); 
 
 #ifndef SHADOWMAP
 #ifdef MSAA
