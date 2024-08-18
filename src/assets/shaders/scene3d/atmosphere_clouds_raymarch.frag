@@ -638,10 +638,20 @@ bool traceVolumetricClouds(vec3 rayOrigin,
 #ifdef SHADOWMAP    
       int countSteps = clamp(int(mix(float(uAtmosphereParameters.atmosphereParameters.VolumetricClouds.RayMaxSteps), float(uAtmosphereParameters.atmosphereParameters.VolumetricClouds.RayMinSteps), smoothstep(0.0, 1.0, dot(rayDirection, viewNormal)))), 8, 2048);
 #else
-      int countSteps = clamp(int(mix(float(uAtmosphereParameters.atmosphereParameters.VolumetricClouds.RayMaxSteps), float(uAtmosphereParameters.atmosphereParameters.VolumetricClouds.RayMinSteps), smoothstep(0.0, 1.0, dot(rayDirection, viewNormal)))), 8, 2048);
-      if(isinf(rayLength) && all(greaterThanEqual(tTopSolutions, vec2(0.0)))){
-        countSteps += countSteps; // Double the steps for infinite ray length at outer space to get better results
-      }
+      int countSteps = clamp(
+        int(
+          mix(
+            float(uAtmosphereParameters.atmosphereParameters.VolumetricClouds.RayMaxSteps), 
+            float(uAtmosphereParameters.atmosphereParameters.VolumetricClouds.RayMinSteps), 
+            smoothstep(0.0, 1.0, dot(rayDirection, viewNormal))
+          ) * ((isinf(rayLength) && all(greaterThanEqual(tTopSolutions, vec2(0.0)))) 
+                ? uAtmosphereParameters.atmosphereParameters.VolumetricClouds.OuterSpaceStepFactor 
+                : 1.0
+              )
+        ), 
+        8, 
+        2048
+      );
 #endif
         
       float density = 0.0;  
