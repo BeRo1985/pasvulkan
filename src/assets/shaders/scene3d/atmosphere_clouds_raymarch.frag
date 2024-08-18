@@ -545,6 +545,7 @@ float sampleCloudDensityAlongCone(const in vec3 rayOrigin,
   return densityAlongCone;
 } 
 
+float projectionVectorScale;
 vec3 sideVector, upVector;
 
 bool traceVolumetricClouds(vec3 rayOrigin, 
@@ -646,12 +647,12 @@ bool traceVolumetricClouds(vec3 rayOrigin,
             ? mix(
                 float(uAtmosphereParameters.atmosphereParameters.VolumetricClouds.OuterSpaceRayMaxSteps),
                 float(uAtmosphereParameters.atmosphereParameters.VolumetricClouds.OuterSpaceRayMinSteps), 
-                clamp(max(abs(dot(rayDirection, sideVector)), abs(dot(rayDirection, upVector))), 0.0, 1.0)
+                clamp(max(abs(dot(rayDirection, sideVector)), abs(dot(rayDirection, upVector)) * projectionVectorScale), 0.0, 1.0)
               )
             : mix(
                 float(uAtmosphereParameters.atmosphereParameters.VolumetricClouds.RayMaxSteps), 
                 float(uAtmosphereParameters.atmosphereParameters.VolumetricClouds.RayMinSteps), 
-                clamp(max(abs(dot(rayDirection, sideVector)), abs(dot(rayDirection, upVector))), 0.0, 1.0)
+                clamp(max(abs(dot(rayDirection, sideVector)), abs(dot(rayDirection, upVector)) * projectionVectorScale), 0.0, 1.0)
               )
         ), 
         8, 
@@ -845,6 +846,8 @@ void main(){
   
   worldPos = (uAtmosphereParameters.atmosphereParameters.inverseTransform * vec4(worldPos, 1.0)).xyz;
   worldDir = normalize((uAtmosphereParameters.atmosphereParameters.inverseTransform * vec4(worldDir, 0.0)).xyz);
+
+  projectionVectorScale = length(vec2(length(view.projectionMatrix[0].xyz), length(view.projectionMatrix[1].xyz)));
 
   sideVector = normalize(view.inverseViewMatrix[0].xyz); 
 
