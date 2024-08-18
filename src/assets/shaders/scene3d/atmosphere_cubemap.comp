@@ -42,7 +42,9 @@ layout(set = 2, binding = 1) uniform sampler2D uTransmittanceLutTexture;
 
 layout(set = 2, binding = 2) uniform sampler2D uMultiScatTexture;
 
-layout(set = 2, binding = 3, std430) buffer AtmosphereParametersBuffer {
+layout(set = 2, binding = 3) uniform samplerCube uSkyLuminanceLUTTexture;
+
+layout(set = 2, binding = 4, std430) buffer AtmosphereParametersBuffer {
   AtmosphereParameters atmosphereParameters;
 } uAtmosphereParameters;
 
@@ -99,37 +101,51 @@ void main() {
 
       bool IntersectGround = raySphereIntersectNearest(worldPos, worldDir, vec3(0.0), atmosphereParameters.BottomRadius) >= 0.0;
       if(IntersectGround){
-        worldDir = normalize(worldPos); // For a very rough quick and dirty ambient lighting term, by sampling the sky just straight upwards.
+
+        // In the sky luminance LUT, the atmosphere sky ambient light is stored as atmosphere sphere position.
+
+        inscattering = textureLod(uSkyLuminanceLUTTexture, vec3(normalize(worldPos)), 0.0).xyz;
+
+        transmittance = vec3(0.0); // Ground is blocking the light, so no transmittance.
+      
+      }else{
+
+/*      if(IntersectGround){
+          worldDir = normalize(worldPos); // For a very rough quick and dirty ambient lighting term, by sampling the sky just straight upwards.
+        }*/
+
+        const bool ground = false;
+        const float sampleCountIni = 0.0;
+        const bool variableSampleCount = true;
+        const bool mieRayPhase = true;
+        const float depthBufferValue = -1.0;
+        SingleScatteringResult ss = IntegrateScatteredLuminance(
+          uTransmittanceLutTexture,
+          uMultiScatTexture,
+          vec2(0.0), 
+          worldPos, 
+          worldDir, 
+          sunDirection, 
+          atmosphereParameters, 
+          ground, 
+          sampleCountIni, 
+          depthBufferValue, 
+          variableSampleCount,  
+          mieRayPhase,
+          mat4(0.0),
+          -1.0,
+          false
+        );
+
+        inscattering = ss.L;
+
+        //if(!IntersectGround){
+          inscattering += GetSunLuminance(cameraPosition, worldDir, sunDirection, atmosphereParameters.BottomRadius).xyz * ss.Transmittance;
+        //}
+
+        transmittance = ss.Transmittance;
+
       }
-
-      const bool ground = false;
-      const float sampleCountIni = 0.0;
-      const bool variableSampleCount = true;
-      const bool mieRayPhase = true;
-      const float depthBufferValue = -1.0;
-      SingleScatteringResult ss = IntegrateScatteredLuminance(
-        uTransmittanceLutTexture,
-        uMultiScatTexture,
-        vec2(0.0), 
-        worldPos, 
-        worldDir, 
-        sunDirection, 
-        atmosphereParameters, 
-        ground, 
-        sampleCountIni, 
-        depthBufferValue, 
-        variableSampleCount,  
-        mieRayPhase,
-        mat4(0.0),
-        -1.0,
-        false
-      );
-
-      inscattering = ss.L;
-
-      inscattering += GetSunLuminance(cameraPosition, worldDir, sunDirection, atmosphereParameters.BottomRadius).xyz * ss.Transmittance;
-
-      transmittance = ss.Transmittance;
 
     }
 
