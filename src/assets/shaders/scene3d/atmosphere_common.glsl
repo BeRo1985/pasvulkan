@@ -236,6 +236,11 @@ struct VolumetricCloudParameters {
   uint RayMinSteps;
   uint RayMaxSteps;
 
+  float DirectScatteringIntensity;
+  float IndirectScatteringIntensity;
+  float AmbientLightIntensity;
+  float Padding0;
+
   VolumetricCloudLayerLow LayerLow;
   VolumetricCloudLayerHigh LayerHigh;
 

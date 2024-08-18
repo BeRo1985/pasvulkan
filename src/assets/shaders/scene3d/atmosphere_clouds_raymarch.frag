@@ -649,14 +649,14 @@ bool traceVolumetricClouds(vec3 rayOrigin,
       float previousSampledDensity = 0.0;
       int zeroDensitySampleCounter = 0;
 
+      const float directScatteringIntensity = uAtmosphereParameters.atmosphereParameters.VolumetricClouds.DirectScatteringIntensity;
+      const float indirectScatteringIntensity = uAtmosphereParameters.atmosphereParameters.VolumetricClouds.IndirectScatteringIntensity;
+      const float ambientLightIntensity = uAtmosphereParameters.atmosphereParameters.VolumetricClouds.AmbientLightIntensity;
+
       // 0.61803398875 is the golden ratio conjugate for better distribution of the samples over time, since temporal aliasing is less noticeable than
       // spatial aliasing 
 #if 1
-#if 0 
       float offset = fract(texelFetch(uTextureBlueNoise, ivec2(threadPosition) & ivec2(1023), 0).x + (float(pushConstants.frameIndex) * 0.61803398875)); 
-#else      
-      float offset = fract(texelFetch(uTextureBlueNoise, ivec2(threadPosition) & ivec2(1023), 0).x);
-#endif      
 #else
       float offset = fract(bayer256(ivec2(threadPosition) & ivec2(1023)) + (float(pushConstants.frameIndex) * 0.61803398875)); 
 #endif
@@ -745,13 +745,14 @@ bool traceVolumetricClouds(vec3 rayOrigin,
 #endif                                                                
                                 2.0;
                                 
-            vec3 directScatting = vec3(lightEnergy) * sunColor;
+            vec3 directScatting = vec3(lightEnergy) * sunColor * directScatteringIntensity;
             
             // Fake multiple scattering 
             vec3 indirectScattering = clamp(pow(3.0 * scatteringCoefficient, 0.5), 0.7, 1.0) *
-                                      textureLod(uTextureSkyLuminanceLUT, normalize(position), 0.0).xyz * 
+                                      (textureLod(uTextureSkyLuminanceLUT, normalize(position), 0.0).xyz * ambientLightIntensity) * 
                                       beerTerm(density) *
                                       //sunLightTerm *
+                                      indirectScatteringIntensity *
                                       vec3(1.0);
             
             vec3 sampledScattering = (directScatting + indirectScattering) * scatteringCoefficient;

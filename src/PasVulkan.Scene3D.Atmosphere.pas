@@ -454,6 +454,10 @@ type TpvScene3DAtmosphere=class;
               RayMinSteps:TpvUInt32;
               RayMaxSteps:TpvUInt32;
 
+              DirectScatteringIntensity:TpvFloat;
+              IndirectScatteringIntensity:TpvFloat;
+              AmbientLightIntensity:TpvFloat;
+
               LayerLow:TVolumetricCloudLayerLow;
           
               LayerHigh:TVolumetricCloudLayerHigh;
@@ -589,6 +593,11 @@ type TpvScene3DAtmosphere=class;
               RayMinSteps:TpvUInt32;
               RayMaxSteps:TpvUInt32;
              
+              DirectScatteringIntensity:TpvFloat;
+              IndirectScatteringIntensity:TpvFloat;
+              AmbientLightIntensity:TpvFloat;
+              Padding0:TpvFloat;
+
               LayerLow:TGPUVolumetricCloudLayerLow;
               LayerHigh:TGPUVolumetricCloudLayerHigh;
              
@@ -1540,6 +1549,9 @@ begin
  DensityAlongConeLengthFarMultiplier:=3.0;
  RayMinSteps:=64;
  RayMaxSteps:=128;
+ DirectScatteringIntensity:=1.0;
+ IndirectScatteringIntensity:=1.0;
+ AmbientLightIntensity:=1.0;
  LayerLow.Initialize;
  LayerHigh.Initialize;
 end;
@@ -1565,6 +1577,9 @@ begin
   DensityAlongConeLengthFarMultiplier:=TPasJSON.GetNumber(JSONRootObject.Properties['densityalongconelengthfarmultiplier'],DensityAlongConeLengthFarMultiplier);
   RayMinSteps:=TPasJSON.GetInt64(JSONRootObject.Properties['rayminsteps'],RayMinSteps);
   RayMaxSteps:=TPasJSON.GetInt64(JSONRootObject.Properties['raymaxsteps'],RayMaxSteps);
+  DirectScatteringIntensity:=TPasJSON.GetNumber(JSONRootObject.Properties['directscatteringintensity'],DirectScatteringIntensity);
+  IndirectScatteringIntensity:=TPasJSON.GetNumber(JSONRootObject.Properties['indirectscatteringintensity'],IndirectScatteringIntensity);
+  AmbientLightIntensity:=TPasJSON.GetNumber(JSONRootObject.Properties['ambientlightintensity'],AmbientLightIntensity);
   LayerLow.LoadFromJSON(JSONRootObject.Properties['layerlow']);
   LayerHigh.LoadFromJSON(JSONRootObject.Properties['layerhigh']);
  end;
@@ -1615,6 +1630,9 @@ begin
  result.Add('densityalongconelengthfarmultiplier',TPasJSONItemNumber.Create(DensityAlongConeLengthFarMultiplier));
  result.Add('rayminsteps',TPasJSONItemNumber.Create(RayMinSteps));
  result.Add('raymaxsteps',TPasJSONItemNumber.Create(RayMaxSteps));
+ result.Add('directscatteringintensity',TPasJSONItemNumber.Create(DirectScatteringIntensity));
+ result.Add('indirectscatteringintensity',TPasJSONItemNumber.Create(IndirectScatteringIntensity));
+ result.Add('ambientlightintensity',TPasJSONItemNumber.Create(AmbientLightIntensity));
  result.Add('layerlow',LayerLow.SaveToJSON);
  result.Add('layerhigh',LayerHigh.SaveToJSON);
 end;
@@ -2038,6 +2056,10 @@ begin
 
  RayMinSteps:=aVolumetricCloudParameters.RayMinSteps;
  RayMaxSteps:=aVolumetricCloudParameters.RayMaxSteps;
+
+ DirectScatteringIntensity:=aVolumetricCloudParameters.DirectScatteringIntensity;
+ IndirectScatteringIntensity:=aVolumetricCloudParameters.IndirectScatteringIntensity;
+ AmbientLightIntensity:=aVolumetricCloudParameters.AmbientLightIntensity;
 
  LayerLow.Assign(aVolumetricCloudParameters.LayerLow); 
  LayerHigh.Assign(aVolumetricCloudParameters.LayerHigh);
