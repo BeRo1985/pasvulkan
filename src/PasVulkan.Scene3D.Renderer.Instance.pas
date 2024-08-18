@@ -645,6 +645,7 @@ type { TpvScene3DRendererInstance }
        procedure AddCameraReflectionProbeViews(const aInFlightFrameIndex:TpvInt32);
        procedure AddTopDownSkyOcclusionMapView(const aInFlightFrameIndex:TpvInt32);
        procedure AddReflectiveShadowMapView(const aInFlightFrameIndex:TpvInt32);
+       function AddCloudsShadowMapView(const aInFlightFrameIndex:TpvInt32;const aAtmosphereSphere:TpvSphere):TpvSizeInt;
       private
        function GetCameraPreset(const aInFlightFrameIndex:TpvInt32):TpvScene3DRendererCameraPreset; inline;
       private
@@ -5664,6 +5665,108 @@ begin
 
  InFlightFrameState^.ReflectiveShadowMapViewIndex:=fViews[aInFlightFrameIndex].Add(View);
  InFlightFrameState^.CountReflectiveShadowMapViews:=1;
+
+end;
+
+function TpvScene3DRendererInstance.AddCloudsShadowMapView(const aInFlightFrameIndex:TpvInt32;const aAtmosphereSphere:TpvSphere):TpvSizeInt;
+var Index:TpvSizeInt;
+    InFlightFrameState:PInFlightFrameState;
+    Origin,
+    LightForwardVector,
+    LightSideVector,
+    LightUpVector,
+    Extents,
+    Scale:TpvVector3;
+    View:TpvScene3D.TView;
+    zNear,zFar,f:TpvScalar;
+    BoundingBox:TpvAABB;
+    LightViewMatrix,
+    LightProjectionMatrix,
+    LightViewProjectionMatrix:TpvMatrix4x4;
+begin
+
+ InFlightFrameState:=@fInFlightFrameStates[aInFlightFrameIndex];
+
+ BoundingBox:=aAtmosphereSphere.ToAABB;
+
+ BoundingBox.Min.x:=floor(BoundingBox.Min.x/1.0)*1.0;
+ BoundingBox.Min.y:=floor(BoundingBox.Min.y/1.0)*1.0;
+ BoxBounding.Min.z:=floor(BoundingBox.Min.z/1.0)*1.0;
+
+ BoundingBox.Max.x:=ceil(BoundingBox.Max.x/1.0)*1.0;
+ BoundingBox.Max.y:=ceil(BoundingBox.Max.y/1.0)*1.0;
+ BoundingBox.Max.z:=ceil(BoundingBox.Max.z/1.0)*1.0;
+
+ Origin:=(BoundingBox.Min+BoundingBox.Max)*0.5;
+
+ LightForwardVector:=-fScene3D.PrimaryShadowMapLightDirection.xyz.Normalize;
+//LightForwardVector:=-Renderer.EnvironmentCubeMap.LightDirection.xyz.Normalize;
+ LightSideVector:=LightForwardVector.Perpendicular;
+{LightSideVector:=TpvVector3.InlineableCreate(-fViews.Items[0].ViewMatrix.RawComponents[0,2],
+                                              -fViews.Items[0].ViewMatrix.RawComponents[1,2],
+                                              -fViews.Items[0].ViewMatrix.RawComponents[2,2]).Normalize;
+ if abs(LightForwardVector.Dot(LightSideVector))>0.5 then begin
+  if abs(LightForwardVector.Dot(TpvVector3.YAxis))<0.9 then begin
+   LightSideVector:=TpvVector3.YAxis;
+  end else begin
+   LightSideVector:=TpvVector3.ZAxis;
+  end;
+ end;}
+ LightUpVector:=(LightForwardVector.Cross(LightSideVector)).Normalize;
+ LightSideVector:=(LightUpVector.Cross(LightForwardVector)).Normalize;
+ LightViewMatrix.RawComponents[0,0]:=LightSideVector.x;
+ LightViewMatrix.RawComponents[0,1]:=LightUpVector.x;
+ LightViewMatrix.RawComponents[0,2]:=LightForwardVector.x;
+ LightViewMatrix.RawComponents[0,3]:=0.0;
+ LightViewMatrix.RawComponents[1,0]:=LightSideVector.y;
+ LightViewMatrix.RawComponents[1,1]:=LightUpVector.y;
+ LightViewMatrix.RawComponents[1,2]:=LightForwardVector.y;
+ LightViewMatrix.RawComponents[1,3]:=0.0;
+ LightViewMatrix.RawComponents[2,0]:=LightSideVector.z;
+ LightViewMatrix.RawComponents[2,1]:=LightUpVector.z;
+ LightViewMatrix.RawComponents[2,2]:=LightForwardVector.z;
+ LightViewMatrix.RawComponents[2,3]:=0.0;
+ LightViewMatrix.RawComponents[3,0]:=-LightSideVector.Dot(Origin);
+ LightViewMatrix.RawComponents[3,1]:=-LightUpVector.Dot(Origin);
+ LightViewMatrix.RawComponents[3,2]:=-LightForwardVector.Dot(Origin);
+ LightViewMatrix.RawComponents[3,3]:=1.0;
+
+ BoundingBox:=BoundingBox.Transform(LightViewMatrix);
+
+{f:=4.0;
+
+ BoundingBox.Min:=BoundingBox.Min*f;
+
+ BoundingBox.Max:=BoundingBox.Max*f;}
+
+ LightProjectionMatrix:=TpvMatrix4x4.CreateOrthoRightHandedZeroToOne(BoundingBox.Min.x,
+                                                                     BoundingBox.Max.x,
+                                                                     BoundingBox.Min.y,
+                                                                     BoundingBox.Max.y,
+                                                                     BoundingBox.Min.z,
+                                                                     BoundingBox.Max.z);
+
+ Extents:=BoundingBox.Max-BoundingBox.Min;
+
+ Scale:=TpvVector3.InlineableCreate(1.0,1.0,1.0)/Extents;
+
+ LightViewProjectionMatrix:=LightViewMatrix*LightProjectionMatrix;
+
+ View.ProjectionMatrix:=LightProjectionMatrix;
+ View.InverseProjectionMatrix:=View.ProjectionMatrix.Inverse;
+
+ View.ViewMatrix:=LightViewMatrix;
+ View.InverseViewMatrix:=View.ViewMatrix.Inverse;
+
+{InFlightFrameState^.ReflectiveShadowMapMatrix:=LightViewProjectionMatrix;
+ InFlightFrameState^.ReflectiveShadowMapLightDirection:=fScene3D.PrimaryShadowMapLightDirection.xyz.Normalize;
+ InFlightFrameState^.ReflectiveShadowMapScale:=Scale;
+ InFlightFrameState^.ReflectiveShadowMapExtents:=Extents;}
+
+{inFlightFrameState^.ReflectiveShadowMapViewIndex:=fViews[aInFlightFrameIndex].Add(View);
+ InFlightFrameState^.CountReflectiveShadowMapViews:=1;}
+
+ result:=:=fViews[aInFlightFrameIndex].Add(View);
 
 end;
 
