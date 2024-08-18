@@ -5691,7 +5691,7 @@ begin
 
  BoundingBox.Min.x:=floor(BoundingBox.Min.x/1.0)*1.0;
  BoundingBox.Min.y:=floor(BoundingBox.Min.y/1.0)*1.0;
- BoxBounding.Min.z:=floor(BoundingBox.Min.z/1.0)*1.0;
+ BoundingBox.Min.z:=floor(BoundingBox.Min.z/1.0)*1.0;
 
  BoundingBox.Max.x:=ceil(BoundingBox.Max.x/1.0)*1.0;
  BoundingBox.Max.y:=ceil(BoundingBox.Max.y/1.0)*1.0;
@@ -5766,7 +5766,7 @@ begin
 {inFlightFrameState^.ReflectiveShadowMapViewIndex:=fViews[aInFlightFrameIndex].Add(View);
  InFlightFrameState^.CountReflectiveShadowMapViews:=1;}
 
- result:=:=fViews[aInFlightFrameIndex].Add(View);
+ result:=Views[aInFlightFrameIndex].Add(View);
 
 end;
 
