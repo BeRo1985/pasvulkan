@@ -149,7 +149,7 @@ void main(){
         uv = uv * aspectCorrect;
         uv = fma(uv, vec2(0.5), vec2(0.5));
         vec4 s = texture(uTextureContent, uv);
-        c = mix(c, s, s.w);    
+        c = (c * (1.0 - s.w)) + s; // Pre-multiplied alpha blending
       }
     }
 
@@ -160,7 +160,7 @@ void main(){
   
     vec4 s = texture(uTextureContent, inTexCoord);
 
-    c = mix(c, s, s.w);
+    c = (c * (1.0 - s.w)) + s; // Pre-multiplied alpha blending
 
   }  
 
