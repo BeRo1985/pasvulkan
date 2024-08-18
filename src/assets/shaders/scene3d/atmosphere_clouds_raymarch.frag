@@ -643,7 +643,7 @@ bool traceVolumetricClouds(vec3 rayOrigin,
 #else
       int countSteps = clamp(
         int(
-          (isinf(rayLength) && all(greaterThanEqual(tTopSolutions, vec2(0.0))))
+          (isinf(rayLength) && all(greaterThanEqual(tTopSolutions, vec2(0.0))) && all(lessThan(tGroundSolutions, vec2(0.0))))
             ? mix(
                 float(uAtmosphereParameters.atmosphereParameters.VolumetricClouds.OuterSpaceRayMinSteps),
                 float(uAtmosphereParameters.atmosphereParameters.VolumetricClouds.OuterSpaceRayMaxSteps), 
