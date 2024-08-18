@@ -595,7 +595,7 @@ bool traceVolumetricClouds(vec3 rayOrigin,
   vec2 tTopSolutions = intersectSphere(rayOrigin, rayDirection, vec2(0.0, uAtmosphereParameters.atmosphereParameters.VolumetricClouds.LayerHigh.EndHeight).xxxy);
   if(tTopSolutions.y >= 0.0){
 
-   float distanceToPlanetCenter = length(rayOrigin);
+    float distanceToPlanetCenter = length(rayOrigin);
     
     vec3 viewNormal = normalize(rayOrigin);
     
