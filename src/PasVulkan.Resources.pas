@@ -1255,13 +1255,15 @@ procedure TpvResourceBackgroundLoader.Execute;
 var Index,
     OtherIndex,
     OtherOtherIndex,
-    OtherOtherOtherIndex:TpvSizeInt;
+    OtherOtherOtherIndex,
+    QueueItemIndex:TpvSizeInt;
     QueueItem,
     TemporaryQueueItem:TQueueItem;
     Resource,TemporaryResource:TpvResource;
     Stream:TStream;
     Success,
-    DoWait:boolean;
+    DoWait,
+    OK:boolean;
 begin
 
  DoWait:=true;
@@ -1302,160 +1304,37 @@ begin
 
     if assigned(QueueItem) then begin
 
-     Success:=false;
+     if fResourceManager.fLoadLock.TryEnter then begin
 
-     fToProcessQueueItems.ClearNoFree;
-
-     Resource:=QueueItem.fResource.GetResource;
-     Resource.fAsyncLoadState:=TpvResource.TAsyncLoadState.Loading;
-
-     if Resource.fParallelLoadable<>TpvResource.TParallelLoadable.None then begin
-
-      fQueueItemLock.Acquire;
-      try
-       fToProcessQueueItems.Add(QueueItem);
-       for Index:=0 to fQueueItems.Count-1 do begin
-        TemporaryQueueItem:=fQueueItems.Items[Index];
-        if TemporaryQueueItem<>QueueItem then begin
-         TemporaryResource:=TemporaryQueueItem.fResource.GetResource;
-         if (TemporaryResource.fAsyncLoadState=TpvResource.TAsyncLoadState.Queued) and
-            (TemporaryQueueItem.fDependencies.Count=0) and
-            (((Resource.fParallelLoadable=TpvResource.TParallelLoadable.Always) and
-              (TemporaryResource.fParallelLoadable=TpvResource.TParallelLoadable.Always)) or
-             (((Resource.fParallelLoadable=TpvResource.TParallelLoadable.SameType) and
-               (TemporaryResource.fParallelLoadable=TpvResource.TParallelLoadable.SameType)) and
-               (Resource.ClassType=TemporaryResource.ClassType))) then begin
-          try
-           TemporaryResource.fAsyncLoadState:=TpvResource.TAsyncLoadState.Loading;
-          finally
-           fToProcessQueueItems.Add(TemporaryQueueItem);
-          end;
-         end;
-        end;
-       end;
-      finally
-       fQueueItemLock.Release;
-      end;
-
-      fLock.Release;
       try
 
-       for Index:=0 to fToProcessQueueItems.Count-1 do begin
-        QueueItem:=fToProcessQueueItems.Items[Index];
-        Resource:=QueueItem.fResource.GetResource;
-        QueueItem.fSuccess:=false;
-        QueueItem.fStream:=Resource.GetStreamFromFileName(Resource.fFileName);
-       end;
+       Success:=false;
 
-       fResourceManager.fLoadLock.Acquire;
-       try
-
-        fCountToProcessQueueItems:=fToProcessQueueItems.Count;
-        fCountProcessedQueueItems:=0;
-        for Index:=0 to length(fLoadThreads)-1 do begin
-         fLoadThreads[Index].Signal;
-        end;
-
-        HandleToProcessQueueItems;
-
-        repeat
-         fToProcessQueueItemsEvent.WaitFor(10);
-        until (fCountToProcessQueueItems<=0) and (fCountProcessedQueueItems>=fToProcessQueueItems.Count);
-
-       finally
-        fResourceManager.fLoadLock.Release;
-       end;
-
-       for Index:=0 to fToProcessQueueItems.Count-1 do begin
-        QueueItem:=fToProcessQueueItems.Items[Index];
-        FreeAndNil(QueueItem.fStream);
-       end;
-
-      finally
-       fLock.Acquire;
-      end;
-
-      for Index:=0 to fToProcessQueueItems.Count-1 do begin
-
-       QueueItem:=fToProcessQueueItems.Items[Index];
+       fToProcessQueueItems.ClearNoFree;
 
        Resource:=QueueItem.fResource.GetResource;
+       Resource.fAsyncLoadState:=TpvResource.TAsyncLoadState.Loading;
 
-       if QueueItem.fDependents.Count>0 then begin
-        try
-         fQueueItemLock.Acquire;
-         try
-          for OtherIndex:=0 to QueueItem.fDependents.Count-1 do begin
-           for OtherOtherIndex:=0 to fQueueItems.Count-1 do begin
-            TemporaryQueueItem:=fQueueItems.Items[OtherOtherIndex];
-            for OtherOtherOtherIndex:=0 to TemporaryQueueItem.fDependencies.Count-1 do begin
-             if TemporaryQueueItem.fDependencies.Items[OtherOtherOtherIndex]=QueueItem.fDependents.Items[OtherIndex] then begin
-              TemporaryQueueItem.fDependencies.Delete(OtherOtherOtherIndex);
-              break;
-             end;
-            end;
-           end;
-          end;
-         finally
-          fQueueItemLock.Release;
-         end;
-        finally
-         QueueItem.fDependents.Clear;
-        end;
-       end;
+       if Resource.fParallelLoadable<>TpvResource.TParallelLoadable.None then begin
 
-       if QueueItem.fSuccess then begin
-        Resource.fAsyncLoadState:=TpvResource.TAsyncLoadState.Success;
-       end else begin
-        Resource.fAsyncLoadState:=TpvResource.TAsyncLoadState.Fail;
-       end;
-
-      end;
-
-     end else begin
-
-      Resource:=QueueItem.fResource.GetResource;
-      Resource.fAsyncLoadState:=TpvResource.TAsyncLoadState.Loading;
-
-      fLock.Release;
-      try
-
-       Stream:=Resource.GetStreamFromFileName(Resource.fFileName);
-
-       if assigned(Stream) then begin
-
-        try
-         try
-          Resource.LoadMetaData;
-         finally
-          fResourceManager.fLoadLock.Acquire;
-          try
-           Success:=Resource.BeginLoad(Stream);
-          finally
-           fResourceManager.fLoadLock.Release;
-          end;
-         end;
-        finally
-         FreeAndNil(Stream);
-        end;
-
-       end;
-
-      finally
-       fLock.Acquire;
-      end;
-
-      if QueueItem.fDependents.Count>0 then begin
-       try
         fQueueItemLock.Acquire;
         try
-         for OtherIndex:=0 to QueueItem.fDependents.Count-1 do begin
-          for OtherOtherIndex:=0 to fQueueItems.Count-1 do begin
-           TemporaryQueueItem:=fQueueItems.Items[OtherOtherIndex];
-           for OtherOtherOtherIndex:=0 to TemporaryQueueItem.fDependencies.Count-1 do begin
-            if TemporaryQueueItem.fDependencies.Items[OtherOtherOtherIndex]=QueueItem.fDependents.Items[OtherIndex] then begin
-             TemporaryQueueItem.fDependencies.Delete(OtherOtherOtherIndex);
-             break;
+         fToProcessQueueItems.Add(QueueItem);
+         for Index:=0 to fQueueItems.Count-1 do begin
+          TemporaryQueueItem:=fQueueItems.Items[Index];
+          if TemporaryQueueItem<>QueueItem then begin
+           TemporaryResource:=TemporaryQueueItem.fResource.GetResource;
+           if (TemporaryResource.fAsyncLoadState=TpvResource.TAsyncLoadState.Queued) and
+              (TemporaryQueueItem.fDependencies.Count=0) and
+              (((Resource.fParallelLoadable=TpvResource.TParallelLoadable.Always) and
+                (TemporaryResource.fParallelLoadable=TpvResource.TParallelLoadable.Always)) or
+               (((Resource.fParallelLoadable=TpvResource.TParallelLoadable.SameType) and
+                 (TemporaryResource.fParallelLoadable=TpvResource.TParallelLoadable.SameType)) and
+                 (Resource.ClassType=TemporaryResource.ClassType))) then begin
+            try
+             TemporaryResource.fAsyncLoadState:=TpvResource.TAsyncLoadState.Loading;
+            finally
+             fToProcessQueueItems.Add(TemporaryQueueItem);
             end;
            end;
           end;
@@ -1463,15 +1342,156 @@ begin
         finally
          fQueueItemLock.Release;
         end;
-       finally
-        QueueItem.fDependents.Clear;
+
+        fLock.Release;
+        try
+
+         for Index:=0 to fToProcessQueueItems.Count-1 do begin
+          QueueItem:=fToProcessQueueItems.Items[Index];
+          Resource:=QueueItem.fResource.GetResource;
+          QueueItem.fSuccess:=false;
+          QueueItem.fStream:=Resource.GetStreamFromFileName(Resource.fFileName);
+         end;
+
+         begin
+
+          fCountToProcessQueueItems:=fToProcessQueueItems.Count;
+          fCountProcessedQueueItems:=0;
+          for Index:=0 to length(fLoadThreads)-1 do begin
+           fLoadThreads[Index].Signal;
+          end;
+
+          HandleToProcessQueueItems;
+
+          repeat
+           fToProcessQueueItemsEvent.WaitFor(10);
+          until (fCountToProcessQueueItems<=0) and (fCountProcessedQueueItems>=fToProcessQueueItems.Count);
+
+         end;
+
+         for Index:=0 to fToProcessQueueItems.Count-1 do begin
+          QueueItem:=fToProcessQueueItems.Items[Index];
+          FreeAndNil(QueueItem.fStream);
+         end;
+
+        finally
+         fLock.Acquire;
+        end;
+
+        for Index:=0 to fToProcessQueueItems.Count-1 do begin
+
+         QueueItem:=fToProcessQueueItems.Items[Index];
+
+         Resource:=QueueItem.fResource.GetResource;
+
+         if QueueItem.fDependents.Count>0 then begin
+          try
+           fQueueItemLock.Acquire;
+           try
+            for OtherIndex:=0 to QueueItem.fDependents.Count-1 do begin
+             for OtherOtherIndex:=0 to fQueueItems.Count-1 do begin
+              TemporaryQueueItem:=fQueueItems.Items[OtherOtherIndex];
+              for OtherOtherOtherIndex:=0 to TemporaryQueueItem.fDependencies.Count-1 do begin
+               if TemporaryQueueItem.fDependencies.Items[OtherOtherOtherIndex]=QueueItem.fDependents.Items[OtherIndex] then begin
+                TemporaryQueueItem.fDependencies.Delete(OtherOtherOtherIndex);
+                break;
+               end;
+              end;
+             end;
+            end;
+           finally
+            fQueueItemLock.Release;
+           end;
+          finally
+           QueueItem.fDependents.Clear;
+          end;
+         end;
+
+         if QueueItem.fSuccess then begin
+          Resource.fAsyncLoadState:=TpvResource.TAsyncLoadState.Success;
+         end else begin
+          Resource.fAsyncLoadState:=TpvResource.TAsyncLoadState.Fail;
+         end;
+
+        end;
+
+       end else begin
+
+        fLock.Release;
+        try
+
+         Stream:=Resource.GetStreamFromFileName(Resource.fFileName);
+
+         if assigned(Stream) then begin
+
+          try
+           try
+            Resource.LoadMetaData;
+           finally
+            Success:=Resource.BeginLoad(Stream);
+           end;
+          finally
+           FreeAndNil(Stream);
+          end;
+
+         end;
+
+        finally
+         fLock.Acquire;
+        end;
+
+        if QueueItem.fDependents.Count>0 then begin
+         try
+          fQueueItemLock.Acquire;
+          try
+           for OtherIndex:=0 to QueueItem.fDependents.Count-1 do begin
+            for OtherOtherIndex:=0 to fQueueItems.Count-1 do begin
+             TemporaryQueueItem:=fQueueItems.Items[OtherOtherIndex];
+             for OtherOtherOtherIndex:=0 to TemporaryQueueItem.fDependencies.Count-1 do begin
+              if TemporaryQueueItem.fDependencies.Items[OtherOtherOtherIndex]=QueueItem.fDependents.Items[OtherIndex] then begin
+               TemporaryQueueItem.fDependencies.Delete(OtherOtherOtherIndex);
+               break;
+              end;
+             end;
+            end;
+           end;
+          finally
+           fQueueItemLock.Release;
+          end;
+         finally
+          QueueItem.fDependents.Clear;
+         end;
+        end;
+
+        if Success then begin
+         Resource.fAsyncLoadState:=TpvResource.TAsyncLoadState.Success;
+        end else begin
+         Resource.fAsyncLoadState:=TpvResource.TAsyncLoadState.Fail;
+        end;
+
        end;
+
+      finally
+       fResourceManager.fLoadLock.Leave;
       end;
 
-      if Success then begin
-       Resource.fAsyncLoadState:=TpvResource.TAsyncLoadState.Success;
-      end else begin
-       Resource.fAsyncLoadState:=TpvResource.TAsyncLoadState.Fail;
+     end else begin
+
+      fQueueItemLock.Acquire;
+      try
+       QueueItemIndex:=-1;
+       for Index:=0 to fQueueItems.Count-1 do begin
+        TemporaryQueueItem:=fQueueItems.Items[Index];
+        if TemporaryQueueItem=QueueItem then begin
+         QueueItemIndex:=Index;
+         break;
+        end;
+       end;
+       if (QueueItemIndex>=0) and ((QueueItemIndex+1)<fQueueItems.Count) then begin
+        fQueueItems.Exchange(QueueItemIndex,fQueueItems.Count-1);
+       end;
+      finally
+       fQueueItemLock.Release;
       end;
 
      end;
