@@ -381,7 +381,7 @@ type EpvResource=class(Exception);
        function LoadResource(const aResourceClass:TpvResourceClass;const aFileName:TpvUTF8String;const aOnFinish:TpvResourceOnFinish=nil;const aLoadInBackground:boolean=false;const aParent:TpvResource=nil;const aParallelLoadable:TpvResource.TParallelLoadable=TpvResource.TParallelLoadable.None):TpvResource;
        function GetResource(const aResourceClass:TpvResourceClass;const aFileName:TpvUTF8String;const aOnFinish:TpvResourceOnFinish=nil):TpvResource;
        function BackgroundLoadResource(const aResourceClass:TpvResourceClass;const aFileName:TpvUTF8String;const aOnFinish:TpvResourceOnFinish=nil;const aParent:TpvResource=nil;const aParallelLoadable:TpvResource.TParallelLoadable=TpvResource.TParallelLoadable.None):TpvResource;
-       function FinishResources(const aTimeout:TpvInt64=5):boolean;
+       function FinishResources(const aTimeout:TpvInt64=1):boolean;
        function WaitForResources(const aTimeout:TpvInt64=-1):boolean;
        function GetNewUUID:TpvUUID;
        property ResourceClassTypes[const aResourceClass:TpvResourceClass]:TpvResourceClassType read GetResourceClassType;
@@ -1674,6 +1674,7 @@ function TpvResourceBackgroundLoader.ProcessIteration(const aStartTime:TpvHighRe
 var Index:TpvSizeInt;
     QueueItem:TQueueItem;
     Resource:TpvResource;
+    OK:Boolean;
 begin
 
  result:=true;
@@ -1707,14 +1708,29 @@ begin
 
    end else begin
 
+    OK:=false;
+
     fLock.Release;
     try
-     FinalizeQueueItem(QueueItem);
+     if fResourceManager.fLoadLock.TryEnter then begin
+      pvApplication.Log(LOG_DEBUG,'TpvResourceBackgroundLoader.ProcessIteration','Processing "'+Resource.fFileName+'" ...');
+      try
+       FinalizeQueueItem(QueueItem);
+       OK:=true;
+      finally
+       fResourceManager.fLoadLock.Leave;
+      end;
+      pvApplication.Log(LOG_DEBUG,'TpvResourceBackgroundLoader.ProcessIteration','Processed "'+Resource.fFileName+'" ...');
+     end;
     finally
      fLock.Acquire;
     end;
 
-    FreeAndNil(QueueItem);
+    if OK then begin
+     FreeAndNil(QueueItem);
+    end else begin
+     inc(Index);
+    end;
 
    end;
 
@@ -2295,7 +2311,7 @@ begin
  result:=LoadResource(aResourceClass,aFileName,aOnFinish,true,aParent,aParallelLoadable);
 end;
 
-function TpvResourceManager.FinishResources(const aTimeout:TpvInt64=5):boolean;
+function TpvResourceManager.FinishResources(const aTimeout:TpvInt64=1):boolean;
 var Index:TpvSizeInt;
 begin
  if fDelayedToFreeResources.Count>0 then begin
