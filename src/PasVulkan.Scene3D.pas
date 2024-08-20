@@ -16025,7 +16025,7 @@ begin
  result:=false;
  fSceneInstance.fLoadLock.Acquire;
  try
-  pvApplication.Log(LOG_DEBUG,'TpvScene3D.TGroup.BeginLoad','Entering...');
+  pvApplication.Log(LOG_DEBUG,'TpvScene3D.TGroup.BeginLoad("'+FileName+'")','Entering...');
   try
    if assigned(aStream) then begin
     fName:=FileName;
@@ -16081,7 +16081,7 @@ begin
     end;
    end;
   finally
-   pvApplication.Log(LOG_DEBUG,'TpvScene3D.TGroup.BeginLoad','Leaving...');
+   pvApplication.Log(LOG_DEBUG,'TpvScene3D.TGroup.BeginLoad("'+FileName+'")','Leaving...');
   end;
  finally
   fSceneInstance.fLoadLock.Release;
@@ -16092,7 +16092,7 @@ function TpvScene3D.TGroup.EndLoad:boolean;
 begin
  fSceneInstance.fLoadLock.Acquire;
  try
-  pvApplication.Log(LOG_DEBUG,'TpvScene3D.TGroup.EndLoad','Entering...');
+  pvApplication.Log(LOG_DEBUG,'TpvScene3D.TGroup.EndLoad("'+FileName+'")','Entering...');
   try
    result:=inherited EndLoad;
    if result then begin
@@ -16103,7 +16103,7 @@ begin
     end;
    end;
   finally
-   pvApplication.Log(LOG_DEBUG,'TpvScene3D.TGroup.EndLoad','Leaving...');
+   pvApplication.Log(LOG_DEBUG,'TpvScene3D.TGroup.EndLoad("'+FileName+'")','Leaving...');
   end;
  finally
   fSceneInstance.fLoadLock.Release;
