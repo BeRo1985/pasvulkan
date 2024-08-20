@@ -1074,7 +1074,7 @@ type TpvScene3DRendererInstancePasses=class
        fFrameBufferBlitRenderPass:TpvScene3DRendererPassesFrameBufferBlitRenderPass;
      end;
 
-const CountJitterOffsets=128;
+const CountJitterOffsets=32;
       JitterOffsetMask=CountJitterOffsets-1;
 
 var JitterOffsets:array[0..CountJitterOffsets-1] of TpvVector2;
@@ -5129,6 +5129,8 @@ begin
  if Renderer.AntialiasingMode=TpvScene3DRendererAntialiasingMode.TAA then begin
   Offset:=GetJitterOffset(aFrameCounter);
   result:=result*TpvMatrix4x4.CreateTranslation(Offset.x,Offset.y);
+{ result.RawComponents[2,0]:=Offset.x*result.RawComponents[2,3];
+  result.RawComponents[2,1]:=Offset.y*result.RawComponents[2,3];}
  end;
 end;
 
@@ -6856,11 +6858,24 @@ begin
 
 end;
 
+// R² sequence as 2D variant - https://extremelearning.com.au/unreasonable-effectiveness-of-quasirandom-sequences/
+function Get2DR2Sequence(const aIndex:TpvInt32):TpvVector2;
+const g=TpvDouble(1.32471795724474602596); // The plastic constant, the 2D version of the golden ratio 
+      a1=TpvDouble(1.0/g); 
+      a2=TpvDouble(1.0/(g*g));
+var x,y:TpvDouble;
+begin
+ x:=frac((a1*aIndex)+0.5);
+ y:=frac((a2*aIndex)+0.5); 
+ result:=TpvVector2.InlineableCreate(x,y);
+end;
+  
 procedure InitializeJitterOffsets;
 var Index:TpvSizeInt;
 begin
  for Index:=0 to CountJitterOffsets-1 do begin
-  JitterOffsets[Index]:=TpvVector2.InlineableCreate(GetHaltonSequence(Index+1,2),GetHaltonSequence(Index+1,3));
+//JitterOffsets[Index]:=TpvVector2.InlineableCreate(GetHaltonSequence(Index+1,2),GetHaltonSequence(Index+1,3));
+  JitterOffsets[Index]:=Get2DR2Sequence(Index);
  end;
 end;
 
