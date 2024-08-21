@@ -893,6 +893,7 @@ type PpvScalar=^TpvScalar;
        constructor CreateHorizontalFOVPerspectiveRightHandedOneToZero(const fovx,Aspect,zNear,zFar:TpvScalar);
        constructor CreateHorizontalFOVPerspectiveReversedZ(const aFOVX,aAspectRatio,aZNear:TpvScalar);
        constructor CreateHorizontalFOVPerspective(const fovx,Aspect,zNear,zFar:TpvScalar);
+       constructor CreateInverseLookAt(const Eye,Center,Up:TpvVector3);
        constructor CreateLookAt(const Eye,Center,Up:TpvVector3);
        constructor CreateFill(const Eye,RightVector,UpVector,ForwardVector:TpvVector3);
        constructor CreateConstructX(const xAxis:TpvVector3);
@@ -10171,6 +10172,30 @@ begin
   RawComponents[3,2]:=(-(2.0*zNear*zFar))/ZDelta;
   RawComponents[3,3]:=0.0;
  end;
+end;
+
+constructor TpvMatrix4x4.CreateInverseLookAt(const Eye,Center,Up:TpvVector3);
+var RightVector,UpVector,ForwardVector:TpvVector3;
+begin
+ ForwardVector:=(Eye-Center).Normalize;
+ RightVector:=(Up.Cross(ForwardVector)).Normalize;
+ UpVector:=(ForwardVector.Cross(RightVector)).Normalize;
+ RawComponents[0,0]:=RightVector.x;
+ RawComponents[0,1]:=RightVector.y;
+ RawComponents[0,2]:=RightVector.z;
+ RawComponents[0,3]:=0.0;
+ RawComponents[1,0]:=UpVector.x;
+ RawComponents[1,1]:=UpVector.y;
+ RawComponents[1,2]:=UpVector.z;
+ RawComponents[1,3]:=0.0;
+ RawComponents[2,0]:=ForwardVector.x;
+ RawComponents[2,1]:=ForwardVector.y;
+ RawComponents[2,2]:=ForwardVector.z;
+ RawComponents[2,3]:=0.0;
+ RawComponents[0,3]:=Eye.x;
+ RawComponents[1,3]:=Eye.y;
+ RawComponents[2,3]:=Eye.z;
+ RawComponents[3,3]:=1.0;
 end;
 
 constructor TpvMatrix4x4.CreateLookAt(const Eye,Center,Up:TpvVector3);
