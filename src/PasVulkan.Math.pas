@@ -10192,9 +10192,9 @@ begin
  RawComponents[2,1]:=ForwardVector.y;
  RawComponents[2,2]:=ForwardVector.z;
  RawComponents[2,3]:=0.0;
- RawComponents[0,3]:=Eye.x;
- RawComponents[1,3]:=Eye.y;
- RawComponents[2,3]:=Eye.z;
+ RawComponents[3,0]:=Eye.x;
+ RawComponents[3,1]:=Eye.y;
+ RawComponents[3,2]:=Eye.z;
  RawComponents[3,3]:=1.0;
 end;
 
