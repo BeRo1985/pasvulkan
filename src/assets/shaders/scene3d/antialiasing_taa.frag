@@ -198,6 +198,38 @@ vec4 textureCatmullRom(const in sampler2DArray tex, const in vec3 uvw, const in 
            (textureLod(tex, vec3(vec2(p33.x,  p33.y), uvw.z), float(lod)) * w3.x)) * w3.y);
 }
 
+#define UseFallbackFXAA 1
+#if UseFallbackFXAA
+vec4 fallbackFXAA(const in vec2 invTexSize){
+  const vec2 fragCoordInvScale = invTexSize;
+  vec4 p = vec4(inTexCoord, vec2(inTexCoord - (fragCoordInvScale * (0.5 + (1.0 / 4.0)))));
+  const float FXAA_SPAN_MAX = 8.0,
+              FXAA_REDUCE_MUL = 1.0 / 8.0,
+              FXAA_REDUCE_MIN = 1.0 / 128.0;
+  vec3 rgbNW = ApplyToneMapping(textureLod(uCurrentColorTexture, vec3(p.zw, float(gl_ViewIndex)), 0.0).xyz),
+       rgbNE = ApplyToneMapping(textureLodOffset(uCurrentColorTexture, vec3(p.zw, float(gl_ViewIndex)), 0.0, ivec2(1, 0)).xyz),
+       rgbSW = ApplyToneMapping(textureLodOffset(uCurrentColorTexture, vec3(p.zw, float(gl_ViewIndex)), 0.0, ivec2(0, 1)).xyz),
+       rgbSE = ApplyToneMapping(textureLodOffset(uCurrentColorTexture, vec3(p.zw, float(gl_ViewIndex)), 0.0, ivec2(1, 1)).xyz),
+       rgbM = ApplyToneMapping(textureLod(uCurrentColorTexture, vec3(p.xy, float(gl_ViewIndex)), 0.0).xyz),
+       luma = vec3(0.2126, 0.7152, 0.0722);
+  float lumaNW = dot(rgbNW, luma),
+        lumaNE = dot(rgbNE, luma),
+        lumaSW = dot(rgbSW, luma),
+        lumaSE = dot(rgbSE, luma),
+        lumaM = dot(rgbM, luma),
+        lumaMin = min(lumaM, min(min(lumaNW, lumaNE), min(lumaSW, lumaSE))), 
+        lumaMax = max(lumaM, max(max(lumaNW, lumaNE), max(lumaSW, lumaSE)));
+  vec2 dir = vec2(-((lumaNW + lumaNE) - (lumaSW + lumaSE)), ((lumaNW + lumaSW) - (lumaNE + lumaSE)));
+  float dirReduce = max((lumaNW + lumaNE + lumaSW + lumaSE) * (0.25 * FXAA_REDUCE_MUL), FXAA_REDUCE_MIN), 
+  rcpDirMin = 1.0 / (min(abs(dir.x), abs(dir.y)) + dirReduce);
+  dir = min(vec2(FXAA_SPAN_MAX, FXAA_SPAN_MAX), max(vec2(-FXAA_SPAN_MAX, -FXAA_SPAN_MAX), dir * rcpDirMin)) * fragCoordInvScale;
+  vec4 rgbA = (1.0 / 2.0) * (ApplyToneMapping(textureLod(uCurrentColorTexture, vec3(p.xy + (dir * ((1.0 / 3.0) - 0.5)), float(gl_ViewIndex)), 0.0).xyzw) + ApplyToneMapping(textureLod(uCurrentColorTexture, vec3(p.xy + (dir * ((2.0 / 3.0) - 0.5)), float(gl_ViewIndex)), 0.0).xyzw)),
+       rgbB = (rgbA * (1.0 / 2.0)) + ((1.0 / 4.0) * (ApplyToneMapping(textureLod(uCurrentColorTexture, vec3(p.xy + (dir * ((0.0 / 3.0) - 0.5)), float(gl_ViewIndex)), 0.0).xyzw) + ApplyToneMapping(textureLod(uCurrentColorTexture, vec3(p.xy + (dir * ((3.0 / 3.0) - 0.5)), float(gl_ViewIndex)), 0.0).xyzw)));
+  float lumaB = dot(rgbB.xyz, luma);
+  return ApplyInverseToneMapping(((lumaB < lumaMin) || (lumaB > lumaMax)) ? rgbA : rgbB);  
+}
+#endif
+
 void main() {
     
   vec2 texSize = vec2(textureSize(uCurrentColorTexture, 0).xy);
@@ -213,11 +245,24 @@ void main() {
   vec4 current = textureLod(uCurrentColorTexture, uvw, 0.0); // Without unjittering
 #endif
 
-  if(abs(1.0 - pushConstants.opaqueCoefficient) < 1e-5){
+  if((abs(1.0 - pushConstants.opaqueCoefficient) < 1e-5) ||
+#if UseFallbackFXAA
+     // Use fallback FXAA on transparent or similar surfaces when translucentCoefficient is basically almost zero and mixCoefficient 
+     // is basically almost one.
+     ((current.w < 1e-7) && (pushConstants.mixCoefficient > 0.99999) && (pushConstants.translucentCoefficient < 1e-7))
+#endif  
+    ){
+
+#if UseFallbackFXAA
+    // Use fallback FXAA when temporal raster data doesn’t exist yet (for example, on the first frame) as it is also used at 
+    // NVIDIA's Adaptive Temporal Antialiasing (ATAA).
+    current = fallbackFXAA(invTexSize);
+#endif
 
     // First frame, so do nothing then.
 
     color = current;
+
 
   }else{
 
@@ -250,6 +295,11 @@ void main() {
     vec3 historyUVW = uvw - vec3(textureLod(uVelocityTexture, velocityUVWZ.xyz, 0.0).xy, 0.0);
 
     if((velocityUVWZ.w < 1e-7) || any(lessThan(historyUVW.xy, vec2(0.0))) || any(greaterThan(historyUVW.xy, vec2(1.0)))){
+#if UseFallbackFXAA
+      // Use fallback FXAA in areas of off-screen disocclusion (where temporal raster data doesn’t exist) as it is also used at 
+      // NVIDIA's Adaptive Temporal Antialiasing (ATAA).
+      current = fallbackFXAA(invTexSize);
+#endif
       color = current;
     }else{
 
