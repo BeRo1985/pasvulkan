@@ -461,6 +461,9 @@ type TpvScene3DAtmosphere=class;
               IndirectScatteringIntensity:TpvFloat;
 
               AmbientLightIntensity:TpvFloat;
+              RotationX:TpvFloat;
+              RotationY:TpvFloat;
+              RotationZ:TpvFloat;
 
               LayerLow:TVolumetricCloudLayerLow;
           
@@ -603,9 +606,9 @@ type TpvScene3DAtmosphere=class;
               IndirectScatteringIntensity:TpvFloat;
 
               AmbientLightIntensity:TpvFloat;
-              Padding0:TpvFloat;
-              Padding1:TpvFloat;
-              Padding2:TpvFloat;
+              RotationX:TpvFloat;
+              RotationY:TpvFloat;
+              RotationZ:TpvFloat;
 
               LayerLow:TGPUVolumetricCloudLayerLow;
               LayerHigh:TGPUVolumetricCloudLayerHigh;
@@ -1563,12 +1566,16 @@ begin
  DirectScatteringIntensity:=1.0;
  IndirectScatteringIntensity:=1.0;
  AmbientLightIntensity:=1.0;
+ RotationX:=0.0;
+ RotationY:=0.0;
+ RotationZ:=0.0;
  LayerLow.Initialize;
  LayerHigh.Initialize;
 end;
 
 procedure TpvScene3DAtmosphere.TVolumetricCloudParameters.LoadFromJSON(const aJSON:TPasJSONItem);
 var JSONRootObject:TPasJSONItemObject;
+    v:TpvVector3;
 begin
  if assigned(aJSON) and (aJSON is TPasJSONItemObject) then begin
   JSONRootObject:=TPasJSONItemObject(aJSON);
@@ -1593,6 +1600,12 @@ begin
   DirectScatteringIntensity:=TPasJSON.GetNumber(JSONRootObject.Properties['directscatteringintensity'],DirectScatteringIntensity);
   IndirectScatteringIntensity:=TPasJSON.GetNumber(JSONRootObject.Properties['indirectscatteringintensity'],IndirectScatteringIntensity);
   AmbientLightIntensity:=TPasJSON.GetNumber(JSONRootObject.Properties['ambientlightintensity'],AmbientLightIntensity);
+  begin
+   v:=JSONToVector3(JSONRootObject.Properties['rotation'],TpvVector3.InlineableCreate(RotationX,RotationY,RotationZ));
+   RotationX:=v.x;
+   RotationY:=v.y;
+   RotationZ:=v.z;
+  end;
   LayerLow.LoadFromJSON(JSONRootObject.Properties['layerlow']);
   LayerHigh.LoadFromJSON(JSONRootObject.Properties['layerhigh']);
  end;
@@ -1648,6 +1661,7 @@ begin
  result.Add('directscatteringintensity',TPasJSONItemNumber.Create(DirectScatteringIntensity));
  result.Add('indirectscatteringintensity',TPasJSONItemNumber.Create(IndirectScatteringIntensity));
  result.Add('ambientlightintensity',TPasJSONItemNumber.Create(AmbientLightIntensity));
+ result.Add('rotation',Vector3ToJSON(TpvVector3.InlineableCreate(RotationX,RotationY,RotationZ)));
  result.Add('layerlow',LayerLow.SaveToJSON);
  result.Add('layerhigh',LayerHigh.SaveToJSON);
 end;
@@ -2078,6 +2092,10 @@ begin
  DirectScatteringIntensity:=aVolumetricCloudParameters.DirectScatteringIntensity;
  IndirectScatteringIntensity:=aVolumetricCloudParameters.IndirectScatteringIntensity;
  AmbientLightIntensity:=aVolumetricCloudParameters.AmbientLightIntensity;
+
+ RotationX:=aVolumetricCloudParameters.RotationX;
+ RotationY:=aVolumetricCloudParameters.RotationY;
+ RotationZ:=aVolumetricCloudParameters.RotationZ;  
 
  LayerLow.Assign(aVolumetricCloudParameters.LayerLow); 
  LayerHigh.Assign(aVolumetricCloudParameters.LayerHigh);

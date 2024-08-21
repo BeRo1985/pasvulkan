@@ -242,9 +242,9 @@ struct VolumetricCloudParameters {
   float IndirectScatteringIntensity;
 
   float AmbientLightIntensity;
-  float Padding0;
-  float Padding1;
-  float Padding2;
+  float RotationX;
+  float RotationY;
+  float RotationZ;
   
   VolumetricCloudLayerLow LayerLow;
   VolumetricCloudLayerHigh LayerHigh;
