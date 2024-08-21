@@ -206,6 +206,62 @@ type EpvDataStream=class(Exception);
        function ReadMatrix4x4:TpvMatrix4x4;
      end;
 
+     EpvStreamIO=class(Exception);
+
+     TpvStreamIO=class
+      private
+       fStream:TStream;
+       fDoFreeStream:boolean;
+      public
+       constructor Create(const aStream:TStream;const aDoFreeStream:boolean=false); reintroduce;
+       destructor Destroy; override;
+       function ReadWithCheck(var aBuffer;const aCount:TpvSizeUInt):TpvSizeUInt;
+       function ReadStream(const aStream:TStream):TpvSizeUInt;
+       function ReadBytes(out aBytes:TpvUInt8DynamicArray):TpvSizeUInt;
+       function ReadString:TpvUTF8String;
+       function ReadInt8:TpvInt8;
+       function ReadUInt8:TpvUInt8;
+       function ReadInt16:TpvInt16;
+       function ReadUInt16:TpvUInt16;
+       function ReadInt32:TpvInt32;
+       function ReadUInt32:TpvUInt32;
+       function ReadInt64:TpvInt64;
+       function ReadUInt64:TpvUInt64;
+       function ReadFloat:TpvFloat;
+       function ReadDouble:TpvDouble;
+       function ReadVector2:TpvVector2;
+       function ReadVector3:TpvVector3;
+       function ReadVector4:TpvVector4;
+       function ReadPlane:TpvPlane;
+       function ReadMatrix3x3:TpvMatrix3x3;
+       function ReadMatrix4x4:TpvMatrix4x4;
+       function ReadQuaternion:TpvQuaternion;
+       function WriteWithCheck(const aBuffer;const aCount:TpvSizeUInt):TpvSizeUInt;
+       function WriteStream(const aStream:TStream):TpvSizeUInt;
+       function WriteString(const aString:TpvUTF8String):TpvSizeUInt;
+       function WriteBytes(const aBytes:TpvUInt8DynamicArray):TpvSizeUInt; overload;
+       function WriteBytes(const aBytes:array of TpvUInt8):TpvSizeUInt; overload;
+       function WriteInt8(const aValue:TpvInt8):TpvSizeUInt;
+       function WriteUInt8(const aValue:TpvUInt8):TpvSizeUInt;
+       function WriteInt16(const aValue:TpvInt16):TpvSizeUInt;
+       function WriteUInt16(const aValue:TpvUInt16):TpvSizeUInt;
+       function WriteInt32(const aValue:TpvInt32):TpvSizeUInt;
+       function WriteUInt32(const aValue:TpvUInt32):TpvSizeUInt;
+       function WriteInt64(const aValue:TpvInt64):TpvSizeUInt;
+       function WriteUInt64(const aValue:TpvUInt64):TpvSizeUInt;
+       function WriteFloat(const aValue:TpvFloat):TpvSizeUInt;
+       function WriteDouble(const aValue:TpvDouble):TpvSizeUInt;
+       function WriteVector2(const aValue:TpvVector2):TpvSizeUInt;
+       function WriteVector3(const aValue:TpvVector3):TpvSizeUInt;
+       function WriteVector4(const aValue:TpvVector4):TpvSizeUInt;
+       function WritePlane(const aValue:TpvPlane):TpvSizeUInt;
+       function WriteMatrix3x3(const aValue:TpvMatrix3x3):TpvSizeUInt;
+       function WriteMatrix4x4(const aValue:TpvMatrix4x4):TpvSizeUInt;
+       function WriteQuaternion(const aValue:TpvQuaternion):TpvSizeUInt;
+      published
+       property Stream:TStream read fStream; 
+     end;
+
 implementation
 
 type PpvBytes=^TpvBytes;
@@ -1082,6 +1138,487 @@ begin
  ReadWithCheck(result.RawComponents[3,1],SizeOf(TpvFloat));
  ReadWithCheck(result.RawComponents[3,2],SizeOf(TpvFloat));
  ReadWithCheck(result.RawComponents[3,3],SizeOf(TpvFloat));
+end;
+
+constructor TpvStreamIO.Create(const aStream:TStream;const aDoFreeStream:boolean);
+begin
+ inherited Create;
+ fStream:=aStream;
+ fDoFreeStream:=aDoFreeStream;
+end;
+
+destructor TpvStreamIO.Destroy;
+begin
+ if fDoFreeStream then begin
+  FreeAndNil(fStream);
+ end;
+ inherited Destroy;
+end;
+
+function TpvStreamIO.ReadWithCheck(var aBuffer;const aCount:TpvSizeUInt):TpvSizeUInt;
+begin
+ result:=fStream.Read(aBuffer,aCount);
+ if result<>aCount then begin
+  raise EpvStreamIO.Create('Stream read error');
+ end;
+end;
+
+function TpvStreamIO.ReadStream(const aStream:TStream):TpvSizeUInt;
+var Buffer:TpvPointer;
+    Size:TpvSizeUInt;
+begin
+ Size:=ReadUInt64;
+ if aStream.CopyFrom(fStream,Size)<>Size then begin
+  raise EpvStreamIO.Create('Stream copy error');
+ end;
+ result:=Size;
+end;
+
+function TpvStreamIO.ReadBytes(out aBytes:TpvUInt8DynamicArray):TpvSizeUInt;
+var Size:TpvSizeUInt;
+begin
+ Size:=ReadUInt64;
+ SetLength(aBytes,Size);
+ if Size>0 then begin
+  ReadWithCheck(aBytes[0],Size);
+ end;
+ result:=Size;
+end;
+
+function TpvStreamIO.ReadString:TpvUTF8String;
+var Len:TpvSizeUInt;
+begin
+ Len:=ReadUInt64;
+ SetLength(result,Len);
+ if Len>0 then begin
+  ReadWithCheck(result[1],Len);
+ end;
+end;
+
+function TpvStreamIO.ReadInt8:TpvInt8;
+begin
+ ReadWithCheck(result,SizeOf(TpvInt8));
+end;
+
+function TpvStreamIO.ReadUInt8:TpvUInt8;
+begin
+ ReadWithCheck(result,SizeOf(TpvUInt8));
+end;
+
+function TpvStreamIO.ReadInt16:TpvInt16;
+begin
+ ReadWithCheck(result,SizeOf(TpvInt16));
+{$ifdef BIG_ENDIAN}
+ result:=TpvInt16(TpvUInt16((TpvUInt16(result) shr 8) or (TpvUInt16(result) shl 8)));
+{$endif} 
+end;
+
+function TpvStreamIO.ReadUInt16:TpvUInt16;
+begin
+ ReadWithCheck(result,SizeOf(TpvUInt16));
+{$ifdef BIG_ENDIAN}
+ result:=TpvUInt16((TpvUInt16(result) shr 8) or (TpvUInt16(result) shl 8));
+{$endif} 
+end;
+
+function TpvStreamIO.ReadInt32:TpvInt32;
+begin
+ ReadWithCheck(result,SizeOf(TpvInt32));
+{$ifdef BIG_ENDIAN}
+ result:=TpvInt32(TpvUInt32(TpvUInt32((TpvUInt32(result) shr 24) and TpvUInt32($000000ff)) or
+                            TpvUInt32((TpvUInt32(result) shr 8) and TpvUInt32($0000ff00)) or
+                            TpvUInt32((TpvUInt32(result) shl 8) and TpvUInt32($00ff0000)) or
+                            TpvUInt32((TpvUInt32(result) shl 24) and TpvUInt32($ff000000))));
+{$endif} 
+end;
+
+function TpvStreamIO.ReadUInt32:TpvUInt32;
+begin
+ ReadWithCheck(result,SizeOf(TpvUInt32));
+{$ifdef BIG_ENDIAN}
+ result:=TpvUInt32(TpvUInt32((TpvUInt32(result) shr 24) and TpvUInt32($000000ff)) or
+                   TpvUInt32((TpvUInt32(result) shr 8) and TpvUInt32($0000ff00)) or
+                   TpvUInt32((TpvUInt32(result) shl 8) and TpvUInt32($00ff0000)) or
+                   TpvUInt32((TpvUInt32(result) shl 24) and TpvUInt32($ff000000)));
+{$endif} 
+end;
+
+function TpvStreamIO.ReadInt64:TpvInt64;
+begin
+ ReadWithCheck(result,SizeOf(TpvInt64));
+{$ifdef BIG_ENDIAN}
+ result:=TpvInt64(TpvUInt64(TpvUInt64(TpvUInt64(result shr 56) and TpvUInt64($00000000000000ff)) or
+                            TpvUInt64(TpvUInt64(result shr 40) and TpvUInt64($000000000000ff00)) or
+                            TpvUInt64(TpvUInt64(result shr 24) and TpvUInt64($0000000000ff0000)) or
+                            TpvUInt64(TpvUInt64(result shr 8) and TpvUInt64($00000000ff000000)) or
+                            TpvUInt64(TpvUInt64(result shl 8) and TpvUInt64($000000ff00000000)) or
+                            TpvUInt64(TpvUInt64(result shl 24) and TpvUInt64($0000ff0000000000)) or
+                            TpvUInt64(TpvUInt64(result shl 40) and TpvUInt64($00ff000000000000)) or
+                            TpvUInt64(TpvUInt64(result shl 56) and TpvUInt64($ff00000000000000))));
+{$endif} 
+end;
+
+function TpvStreamIO.ReadUInt64:TpvUInt64;
+begin
+ ReadWithCheck(result,SizeOf(TpvUInt64));
+{$ifdef BIG_ENDIAN}
+ result:=TpvUInt64(TpvUInt64(TpvUInt64(result shr 56) and TpvUInt64($00000000000000ff)) or
+                   TpvUInt64(TpvUInt64(result shr 40) and TpvUInt64($000000000000ff00)) or
+                   TpvUInt64(TpvUInt64(result shr 24) and TpvUInt64($0000000000ff0000)) or
+                   TpvUInt64(TpvUInt64(result shr 8) and TpvUInt64($00000000ff000000)) or
+                   TpvUInt64(TpvUInt64(result shl 8) and TpvUInt64($000000ff00000000)) or
+                   TpvUInt64(TpvUInt64(result shl 24) and TpvUInt64($0000ff0000000000)) or
+                   TpvUInt64(TpvUInt64(result shl 40) and TpvUInt64($00ff000000000000)) or
+                   TpvUInt64(TpvUInt64(result shl 56) and TpvUInt64($ff00000000000000)));
+{$endif} 
+end;
+
+function TpvStreamIO.ReadFloat:TpvFloat;
+{$ifdef BIG_ENDIAN}
+var Value:TpvUInt32;
+begin
+ Value:=ReadUInt32;
+ result:=TpvFloat(Pointer(@Value)^);
+{$else}
+begin
+ ReadWithCheck(result,SizeOf(TpvFloat));
+end;
+{$endif}
+
+function TpvStreamIO.ReadDouble:TpvDouble;
+{$ifdef BIG_ENDIAN}
+var Value:TpvUInt64;
+begin
+ Value:=ReadUInt64;
+ result:=TpvDouble(Pointer(@Value)^);
+{$else}
+begin
+ ReadWithCheck(result,SizeOf(TpvDouble));
+end;
+{$endif}
+
+function TpvStreamIO.ReadVector2:TpvVector2;
+begin
+ result.x:=ReadFloat;
+ result.y:=ReadFloat;
+end;
+
+function TpvStreamIO.ReadVector3:TpvVector3;
+begin
+ result.x:=ReadFloat;
+ result.y:=ReadFloat;
+ result.z:=ReadFloat;
+end;
+
+function TpvStreamIO.ReadVector4:TpvVector4;
+begin
+ result.x:=ReadFloat;
+ result.y:=ReadFloat;
+ result.z:=ReadFloat;
+ result.w:=ReadFloat;
+end;
+
+function TpvStreamIO.ReadPlane:TpvPlane;
+begin
+ result.RawComponents[0]:=ReadFloat;
+ result.RawComponents[1]:=ReadFloat;
+ result.RawComponents[2]:=ReadFloat;
+ result.RawComponents[3]:=ReadFloat;
+end;
+
+function TpvStreamIO.ReadMatrix3x3:TpvMatrix3x3;
+begin
+ result.RawComponents[0,0]:=ReadFloat;
+ result.RawComponents[0,1]:=ReadFloat;
+ result.RawComponents[0,2]:=ReadFloat;
+ result.RawComponents[1,0]:=ReadFloat;
+ result.RawComponents[1,1]:=ReadFloat;
+ result.RawComponents[1,2]:=ReadFloat;
+ result.RawComponents[2,0]:=ReadFloat;
+ result.RawComponents[2,1]:=ReadFloat;
+ result.RawComponents[2,2]:=ReadFloat;
+end;
+
+function TpvStreamIO.ReadMatrix4x4:TpvMatrix4x4;
+begin
+ result.RawComponents[0,0]:=ReadFloat;
+ result.RawComponents[0,1]:=ReadFloat;
+ result.RawComponents[0,2]:=ReadFloat;
+ result.RawComponents[0,3]:=ReadFloat;
+ result.RawComponents[1,0]:=ReadFloat;
+ result.RawComponents[1,1]:=ReadFloat;
+ result.RawComponents[1,2]:=ReadFloat;
+ result.RawComponents[1,3]:=ReadFloat;
+ result.RawComponents[2,0]:=ReadFloat;
+ result.RawComponents[2,1]:=ReadFloat;
+ result.RawComponents[2,2]:=ReadFloat;
+ result.RawComponents[2,3]:=ReadFloat;
+ result.RawComponents[3,0]:=ReadFloat;
+ result.RawComponents[3,1]:=ReadFloat;
+ result.RawComponents[3,2]:=ReadFloat;
+ result.RawComponents[3,3]:=ReadFloat;
+end;
+
+function TpvStreamIO.ReadQuaternion:TpvQuaternion;
+begin
+ result.x:=ReadFloat;
+ result.y:=ReadFloat;
+ result.z:=ReadFloat;
+ result.w:=ReadFloat;
+end;
+
+function TpvStreamIO.WriteWithCheck(const aBuffer;const aCount:TpvSizeUInt):TpvSizeUInt;
+begin
+ result:=fStream.Write(aBuffer,aCount);
+ if result<>aCount then begin
+  raise EpvStreamIO.Create('Stream write error');
+ end;
+end;
+
+function TpvStreamIO.WriteStream(const aStream:TStream):TpvSizeUInt;
+var Size:TpvSizeUInt;
+begin
+ Size:=aStream.Size;
+ WriteUInt64(Size);
+ if Size>0 then begin
+  if fStream.CopyFrom(aStream,Size)<>Size then begin
+   raise EpvStreamIO.Create('Stream copy error');
+  end;
+ end;
+ result:=Size;
+end;
+
+function TpvStreamIO.WriteBytes(const aBytes:TpvUInt8DynamicArray):TpvSizeUInt;
+var Size:TpvSizeUInt;
+begin
+ Size:=length(aBytes);
+ WriteUInt64(Size);
+ if Size>0 then begin
+  WriteWithCheck(aBytes[0],Size);
+ end;
+ result:=Size;
+end;
+
+function TpvStreamIO.WriteBytes(const aBytes:array of TpvUInt8):TpvSizeUInt;
+var Size:TpvSizeUInt;
+begin
+ Size:=length(aBytes);
+ WriteUInt64(Size);
+ if Size>0 then begin
+  WriteWithCheck(aBytes[0],Size);
+ end;
+ result:=Size;
+end;
+
+function TpvStreamIO.WriteString(const aString:TpvUTF8String):TpvSizeUInt;
+var Len:TpvSizeUInt;
+begin
+ Len:=length(aString);
+ WriteUInt64(Len);
+ if Len>0 then begin
+  WriteWithCheck(aString[1],Len);
+ end;
+ result:=Len;
+end;
+
+function TpvStreamIO.WriteInt8(const aValue:TpvInt8):TpvSizeUInt;
+begin
+ result:=WriteWithCheck(aValue,SizeOf(TpvInt8));
+end;
+
+function TpvStreamIO.WriteUInt8(const aValue:TpvUInt8):TpvSizeUInt;
+begin
+ result:=WriteWithCheck(aValue,SizeOf(TpvUInt8));
+end;
+
+function TpvStreamIO.WriteInt16(const aValue:TpvInt16):TpvSizeUInt;
+{$ifdef BIG_ENDIAN}
+var Value:TpvInt16;
+begin
+ Value:=TpvInt16(TpvUInt16((TpvUInt16(aValue) shr 8) or (TpvUInt16(aValue) shl 8));
+ result:=WriteWithCheck(Value,SizeOf(TpvInt16));
+end;
+{$else}
+begin
+ result:=WriteWithCheck(aValue,SizeOf(TpvInt16));
+end;
+{$endif}
+
+function TpvStreamIO.WriteUInt16(const aValue:TpvUInt16):TpvSizeUInt;
+{$ifdef BIG_ENDIAN}
+var Value:TpvUInt16;
+begin
+ Value:=TpvUInt16((TpvUInt16(aValue) shr 8) or (TpvUInt16(aValue) shl 8));
+ result:=WriteWithCheck(Value,SizeOf(TpvUInt16));
+end;
+{$else}
+begin
+ result:=WriteWithCheck(aValue,SizeOf(TpvUInt16));
+end;
+{$endif}
+
+function TpvStreamIO.WriteInt32(const aValue:TpvInt32):TpvSizeUInt;
+{$ifdef BIG_ENDIAN}
+var Value:TpvInt32;
+begin
+ Value:=TpvInt32(TpvUInt32(TpvUInt32((TpvUInt32(aValue) shr 24) and TpvUInt32($000000ff)) or
+                           TpvUInt32((TpvUInt32(aValue) shr 8) and TpvUInt32($0000ff00)) or
+                           TpvUInt32((TpvUInt32(aValue) shl 8) and TpvUInt32($00ff0000)) or
+                           TpvUInt32((TpvUInt32(aValue) shl 24) and TpvUInt32($ff000000))));
+ result:=WriteWithCheck(Value,SizeOf(TpvInt32));
+end;
+{$else}
+begin
+ result:=WriteWithCheck(aValue,SizeOf(TpvInt32));
+end;
+{$endif}
+
+function TpvStreamIO.WriteUInt32(const aValue:TpvUInt32):TpvSizeUInt;
+{$ifdef BIG_ENDIAN}
+var Value:TpvUInt32;
+begin
+ Value:=TpvUInt32(TpvUInt32((TpvUInt32(aValue) shr 24) and TpvUInt32($000000ff)) or
+                  TpvUInt32((TpvUInt32(aValue) shr 8) and TpvUInt32($0000ff00)) or
+                  TpvUInt32((TpvUInt32(aValue) shl 8) and TpvUInt32($00ff0000)) or
+                  TpvUInt32((TpvUInt32(aValue) shl 24) and TpvUInt32($ff000000)));
+ result:=WriteWithCheck(Value,SizeOf(TpvUInt32));
+end;
+{$else}
+begin
+ result:=WriteWithCheck(aValue,SizeOf(TpvUInt32));
+end;
+{$endif}
+
+function TpvStreamIO.WriteInt64(const aValue:TpvInt64):TpvSizeUInt;
+{$ifdef BIG_ENDIAN}
+var Value:TpvInt64;
+begin
+ Value:=TpvInt64(TpvUInt64(TpvUInt64(TpvUInt64(aValue shr 56) and TpvUInt64($00000000000000ff)) or
+                           TpvUInt64(TpvUInt64(aValue shr 40) and TpvUInt64($000000000000ff00)) or
+                           TpvUInt64(TpvUInt64(aValue shr 24) and TpvUInt64($0000000000ff0000)) or
+                           TpvUInt64(TpvUInt64(aValue shr 8) and TpvUInt64($00000000ff000000)) or
+                           TpvUInt64(TpvUInt64(aValue shl 8) and TpvUInt64($000000ff00000000)) or
+                           TpvUInt64(TpvUInt64(aValue shl 24) and TpvUInt64($0000ff0000000000)) or
+                           TpvUInt64(TpvUInt64(aValue shl 40) and TpvUInt64($00ff000000000000)) or
+                           TpvUInt64(TpvUInt64(aValue shl 56) and TpvUInt64($ff00000000000000))));
+ result:=WriteWithCheck(Value,SizeOf(TpvInt64));
+end;
+{$else}
+begin
+ result:=WriteWithCheck(aValue,SizeOf(TpvInt64));
+end;
+{$endif}
+
+function TpvStreamIO.WriteUInt64(const aValue:TpvUInt64):TpvSizeUInt;
+{$ifdef BIG_ENDIAN}
+var Value:TpvUInt64;
+begin
+ Value:=TpvUInt64(TpvUInt64(TpvUInt64(aValue shr 56) and TpvUInt64($00000000000000ff)) or
+                  TpvUInt64(TpvUInt64(aValue shr 40) and TpvUInt64($000000000000ff00)) or
+                  TpvUInt64(TpvUInt64(aValue shr 24) and TpvUInt64($0000000000ff0000)) or
+                  TpvUInt64(TpvUInt64(aValue shr 8) and TpvUInt64($00000000ff000000)) or
+                  TpvUInt64(TpvUInt64(aValue shl 8) and TpvUInt64($000000ff00000000)) or
+                  TpvUInt64(TpvUInt64(aValue shl 24) and TpvUInt64($0000ff0000000000)) or
+                  TpvUInt64(TpvUInt64(aValue shl 40) and TpvUInt64($00ff000000000000)) or
+                  TpvUInt64(TpvUInt64(aValue shl 56) and TpvUInt64($ff00000000000000)));
+ result:=WriteWithCheck(Value,SizeOf(TpvUInt64));
+end;
+{$else}
+begin
+ result:=WriteWithCheck(aValue,SizeOf(TpvUInt64));
+end;
+{$endif}
+
+function TpvStreamIO.WriteFloat(const aValue:TpvFloat):TpvSizeUInt;
+{$ifdef BIG_ENDIAN}
+begin
+ result:=WriteUInt32(TpvUInt32(Pointer(@aValue)^));
+end;
+{$else}
+begin
+ result:=WriteWithCheck(aValue,SizeOf(TpvFloat));
+end;
+{$endif}
+
+function TpvStreamIO.WriteDouble(const aValue:TpvDouble):TpvSizeUInt;
+{$ifdef BIG_ENDIAN}
+begin
+ result:=WriteUInt64(TpvUInt64(Pointer(@aValue)^));
+end;
+{$else}
+begin
+ result:=WriteWithCheck(aValue,SizeOf(TpvDouble));
+end;
+{$endif}
+
+function TpvStreamIO.WriteVector2(const aValue:TpvVector2):TpvSizeUInt;
+begin
+ result:=WriteFloat(aValue.x);
+ inc(result,WriteFloat(aValue.y));
+end;
+
+function TpvStreamIO.WriteVector3(const aValue:TpvVector3):TpvSizeUInt;
+begin
+ result:=WriteFloat(aValue.x);
+ inc(result,WriteFloat(aValue.y));
+ inc(result,WriteFloat(aValue.z));
+end;
+
+function TpvStreamIO.WriteVector4(const aValue:TpvVector4):TpvSizeUInt;
+begin
+ result:=WriteFloat(aValue.x);
+ inc(result,WriteFloat(aValue.y));
+ inc(result,WriteFloat(aValue.z));
+ inc(result,WriteFloat(aValue.w));
+end;
+
+function TpvStreamIO.WritePlane(const aValue:TpvPlane):TpvSizeUInt;
+begin
+ result:=WriteFloat(aValue.RawComponents[0]);
+ inc(result,WriteFloat(aValue.RawComponents[1]));
+ inc(result,WriteFloat(aValue.RawComponents[2]));
+ inc(result,WriteFloat(aValue.RawComponents[3]));
+end;
+
+function TpvStreamIO.WriteMatrix3x3(const aValue:TpvMatrix3x3):TpvSizeUInt;
+begin
+ result:=WriteFloat(aValue.RawComponents[0,0]);
+ inc(result,WriteFloat(aValue.RawComponents[0,1]));
+ inc(result,WriteFloat(aValue.RawComponents[0,2]));
+ inc(result,WriteFloat(aValue.RawComponents[1,0]));
+ inc(result,WriteFloat(aValue.RawComponents[1,1]));
+ inc(result,WriteFloat(aValue.RawComponents[1,2]));
+ inc(result,WriteFloat(aValue.RawComponents[2,0]));
+ inc(result,WriteFloat(aValue.RawComponents[2,1]));
+ inc(result,WriteFloat(aValue.RawComponents[2,2]));
+end;
+
+function TpvStreamIO.WriteMatrix4x4(const aValue:TpvMatrix4x4):TpvSizeUInt;
+begin
+ result:=WriteFloat(aValue.RawComponents[0,0]);
+ inc(result,WriteFloat(aValue.RawComponents[0,1]));
+ inc(result,WriteFloat(aValue.RawComponents[0,2]));
+ inc(result,WriteFloat(aValue.RawComponents[0,3]));
+ inc(result,WriteFloat(aValue.RawComponents[1,0]));
+ inc(result,WriteFloat(aValue.RawComponents[1,1]));
+ inc(result,WriteFloat(aValue.RawComponents[1,2]));
+ inc(result,WriteFloat(aValue.RawComponents[1,3]));
+ inc(result,WriteFloat(aValue.RawComponents[2,0]));
+ inc(result,WriteFloat(aValue.RawComponents[2,1]));
+ inc(result,WriteFloat(aValue.RawComponents[2,2]));
+ inc(result,WriteFloat(aValue.RawComponents[2,3]));
+ inc(result,WriteFloat(aValue.RawComponents[3,0]));
+ inc(result,WriteFloat(aValue.RawComponents[3,1]));
+ inc(result,WriteFloat(aValue.RawComponents[3,2]));
+ inc(result,WriteFloat(aValue.RawComponents[3,3]));
+end;
+
+function TpvStreamIO.WriteQuaternion(const aValue:TpvQuaternion):TpvSizeUInt;
+begin
+ result:=WriteFloat(aValue.x);
+ inc(result,WriteFloat(aValue.y));
+ inc(result,WriteFloat(aValue.z));
+ inc(result,WriteFloat(aValue.w));
 end;
 
 end.

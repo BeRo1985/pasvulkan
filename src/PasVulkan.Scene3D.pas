@@ -554,6 +554,31 @@ type EpvScene3D=class(Exception);
                                                 const aRenderPassIndex:TpvSizeInt;
                                                 const aPreviousInFlightFrameIndex:TpvSizeInt;
                                                 const aInFlightFrameIndex:TpvSizeInt) of object;
+            TPVMFSignature=array[0..3] of AnsiChar;
+            PPVMFSignature=^TPVMFSignature;
+            TPVMFHeader=packed record
+             Signature:TPVMFSignature;
+             Version:TpvUInt32;
+             Size:TpvUInt64;
+            end;
+            PPVMFHeader=^TPVMFHeader;
+            TPVMFChunk=packed record
+             Signature:TPVMFSignature;
+             Size:TpvUInt64;
+            end;
+            PPVMFChunk=^TPVMFChunk;
+            TPVMFString=ShortString; // 256 bytes, where 255 bytes are usable and the first byte is the length
+            PPVMFString=^TPVMFString;
+            TPVMFSampler=packed record
+             Name:TPVMFString; 
+             MinFilter:TVkFilter;
+             MagFilter:TVkFilter;
+             MipmapMode:TVkSamplerMipmapMode;
+             MipmapActive:TVkBool32;
+             AddressModeS:TVkSamplerAddressMode;
+             AddressModeT:TVkSamplerAddressMode; 
+            end; 
+            PPVMFSampler=^TPVMFSampler;
             { TBaseObject }
             TBaseObject=class(TpvResource)
              private
@@ -1955,6 +1980,8 @@ type EpvScene3D=class(Exception);
                      function CreatePrimitive:TpvScene3D.TGroup.TMesh.TPrimitive;
                      procedure CalculateTangentSpace;
                      procedure Finish;
+                     procedure LoadFromStream(const aStream:TStream);
+                     procedure SaveToStream(const aStream:TStream);
                      procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceMesh:TPasGLTF.TMesh;const aMaterialMap:TpvScene3D.TMaterials);
                     published
                      property Index:TpvSizeInt read fIndex;
@@ -11340,6 +11367,33 @@ begin
  TPasMPInterlocked.Increment(fGeneration);
 
  TPasMPInterlocked.Increment(fGroup.fMeshContentGeneration);
+
+end;
+
+procedure TpvScene3D.TGroup.TMesh.LoadFromStream(const aStream:TStream);
+begin
+
+end;
+
+
+(*
+                     fIndex:TpvSizeInt;
+                     fMorphTargetBaseIndex:TpvSizeUInt;
+                     fCountMorphTargets:TpvSizeInt;
+                     fNodeInstanceMorphTargetBaseIndices:TNodeInstanceMorphTargetBaseIndices;
+                     fPrimitives:TpvScene3D.TGroup.TMesh.TPrimitives;
+                     fRaytracingPrimitives:TpvScene3D.TGroup.TMesh.TPrimitives;
+                     fBoundingBox:TpvAABB;
+                     fWeights:TpvScene3D.TFloatDynamicArrayList;
+                     fReady:TPasMPBool32;
+                     fGeneration:TpvUInt64;
+                     fUpdatedGeneration:TpvUInt64;
+                     fNodeMeshInstances:TpvSizeInt;
+                     fReferencedByNodes:TpvScene3D.TGroup.TMesh.TReferencedByNodes;
+*)
+procedure TpvScene3D.TGroup.TMesh.SaveToStream(const aStream:TStream);
+begin
+
 
 end;
 
