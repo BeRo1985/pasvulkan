@@ -1575,7 +1575,7 @@ end;
 
 procedure TpvScene3DAtmosphere.TVolumetricCloudParameters.LoadFromJSON(const aJSON:TPasJSONItem);
 var JSONRootObject:TPasJSONItemObject;
-    v:TpvVector3;
+    Rotation:TpvVector3;
 begin
  if assigned(aJSON) and (aJSON is TPasJSONItemObject) then begin
   JSONRootObject:=TPasJSONItemObject(aJSON);
@@ -1601,10 +1601,10 @@ begin
   IndirectScatteringIntensity:=TPasJSON.GetNumber(JSONRootObject.Properties['indirectscatteringintensity'],IndirectScatteringIntensity);
   AmbientLightIntensity:=TPasJSON.GetNumber(JSONRootObject.Properties['ambientlightintensity'],AmbientLightIntensity);
   begin
-   v:=JSONToVector3(JSONRootObject.Properties['rotation'],TpvVector3.InlineableCreate(RotationX,RotationY,RotationZ));
-   RotationX:=v.x;
-   RotationY:=v.y;
-   RotationZ:=v.z;
+   Rotation:=JSONToVector3(JSONRootObject.Properties['rotation'],TpvVector3.InlineableCreate(RotationX,RotationY,RotationZ));
+   RotationX:=Rotation.x;
+   RotationY:=Rotation.y;
+   RotationZ:=Rotation.z;
   end;
   LayerLow.LoadFromJSON(JSONRootObject.Properties['layerlow']);
   LayerHigh.LoadFromJSON(JSONRootObject.Properties['layerhigh']);
