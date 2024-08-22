@@ -10846,12 +10846,127 @@ begin
 end;
 
 procedure TpvScene3D.TGroup.TMesh.TPrimitive.LoadFromStream(const aStream:TStream);
+var StreamIO:TpvStreamIO;
+    Index,OtherIndex:TpvSizeInt;
+    Count,OtherCount:TpvSizeInt;
+    Target:TpvScene3D.TGroup.TMesh.TPrimitive.TTarget;
+    TargetVertex:TpvScene3D.TGroup.TMesh.TPrimitive.TTarget.PTargetVertex;
+    NodeMeshPrimitiveInstance:TpvScene3D.TGroup.TMesh.TPrimitive.TNodeMeshPrimitiveInstance;
+    ui32:TpvUInt32;
 begin
+
+ StreamIO:=TpvStreamIO.Create(aStream);
+ try
+
+  fName:=StreamIO.ReadString;
+
+  fPrimitiveIndex:=StreamIO.ReadUInt32;
+
+  ui32:=StreamIO.ReadUInt32;
+  fPrimitiveTopology:=TpvScene3D.TPrimitiveTopology(ui32);
+
+  fMaterialID:=StreamIO.ReadInt64;
+
+  Count:=StreamIO.ReadInt64;
+  for Index:=0 to Count-1 do begin
+   Target:=TpvScene3D.TGroup.TMesh.TPrimitive.TTarget.Create;
+   try
+    Target.fName:=StreamIO.ReadString;
+    OtherCount:=StreamIO.ReadInt64;
+    for OtherIndex:=0 to OtherCount-1 do begin
+     TargetVertex:=Target.fVertices.AddNew;
+     TargetVertex^.Position:=StreamIO.ReadVector3;
+     TargetVertex^.Normal:=StreamIO.ReadVector3;
+     TargetVertex^.Tangent:=StreamIO.ReadVector3;
+    end;
+   finally
+    fTargets.Add(Target);
+   end; 
+  end;
+
+  fMorphTargetBaseIndex:=StreamIO.ReadInt64;
+  fStartBufferVertexOffset:=StreamIO.ReadInt64;
+  fStartBufferIndexOffset:=StreamIO.ReadInt64;
+  fCountVertices:=StreamIO.ReadInt64;
+  fCountIndices:=StreamIO.ReadInt64;
+
+  Count:=StreamIO.ReadInt64;
+  for Index:=0 to Count-1 do begin
+   NodeMeshPrimitiveInstance:=TpvScene3D.TGroup.TMesh.TPrimitive.TNodeMeshPrimitiveInstance.Create;
+   try
+    NodeMeshPrimitiveInstance.fMorphTargetBaseIndex:=StreamIO.ReadInt64;
+    NodeMeshPrimitiveInstance.fStartBufferVertexOffset:=StreamIO.ReadInt64;
+    NodeMeshPrimitiveInstance.fStartBufferIndexOffset:=StreamIO.ReadInt64;
+    NodeMeshPrimitiveInstance.fStartBufferDrawIndexOffset:=StreamIO.ReadInt64;
+   finally
+    fNodeMeshPrimitiveInstances.Add(NodeMeshPrimitiveInstance);
+   end;
+  end;
+
+  fRaytracingPrimitiveID:=StreamIO.ReadUInt64;
+ 
+ finally
+  StreamIO.Free;
+ end;
 
 end;
 
 procedure TpvScene3D.TGroup.TMesh.TPrimitive.SaveToStream(const aStream:TStream);
+var StreamIO:TpvStreamIO;
+    Index,OtherIndex:TpvSizeInt;
+    Count,OtherCount:TpvSizeInt;
+    Target:TpvScene3D.TGroup.TMesh.TPrimitive.TTarget;
+    TargetVertex:TpvScene3D.TGroup.TMesh.TPrimitive.TTarget.PTargetVertex;
+    NodeMeshPrimitiveInstance:TpvScene3D.TGroup.TMesh.TPrimitive.TNodeMeshPrimitiveInstance;
 begin
+
+ StreamIO:=TpvStreamIO.Create(aStream);
+ try
+
+  StreamIO.WriteString(fName);
+
+  StreamIO.WriteUInt32(fPrimitiveIndex);
+
+  StreamIO.WriteUInt32(TpvUInt32(fPrimitiveTopology));
+
+  StreamIO.WriteInt64(fMaterialID);
+
+  Count:=fTargets.Count;
+  StreamIO.WriteInt64(Count);
+  for Index:=0 to Count-1 do begin
+   Target:=fTargets[Index];
+   StreamIO.WriteString(Target.fName);
+   OtherCount:=Target.fVertices.Count;
+   StreamIO.WriteInt64(OtherCount);
+   for OtherIndex:=0 to OtherCount-1 do begin
+    TargetVertex:=@Target.fVertices.ItemArray[OtherIndex];
+    StreamIO.WriteVector3(TargetVertex^.Position);
+    StreamIO.WriteVector3(TargetVertex^.Normal);
+    StreamIO.WriteVector3(TargetVertex^.Tangent);
+   end;
+  end;
+
+  StreamIO.WriteInt64(fMorphTargetBaseIndex);
+  StreamIO.WriteInt64(fStartBufferVertexOffset);
+  StreamIO.WriteInt64(fStartBufferIndexOffset);
+  StreamIO.WriteInt64(fCountVertices);
+  StreamIO.WriteInt64(fCountIndices);
+
+  Count:=fNodeMeshPrimitiveInstances.Count;
+  StreamIO.WriteInt64(Count);
+  for Index:=0 to Count-1 do begin
+   NodeMeshPrimitiveInstance:=fNodeMeshPrimitiveInstances[Index];
+   StreamIO.WriteInt64(NodeMeshPrimitiveInstance.fMorphTargetBaseIndex);
+   StreamIO.WriteInt64(NodeMeshPrimitiveInstance.fStartBufferVertexOffset);
+   StreamIO.WriteInt64(NodeMeshPrimitiveInstance.fStartBufferIndexOffset);
+   StreamIO.WriteInt64(NodeMeshPrimitiveInstance.fStartBufferDrawIndexOffset);
+  end;
+
+  StreamIO.WriteUInt64(fRaytracingPrimitiveID);
+
+ finally
+  StreamIO.Free;
+ end;
 
 end;
 
@@ -11390,47 +11505,49 @@ var StreamIO:TpvStreamIO;
 begin
 
  StreamIO:=TpvStreamIO.Create(aStream);
-  try
+ try
+
+   fName:=StreamIO.ReadString;
+
+   fIndex:=StreamIO.ReadInt64;
   
-    fIndex:=StreamIO.ReadInt64;
+   fMorphTargetBaseIndex:=StreamIO.ReadUInt64;
+   fCountMorphTargets:=StreamIO.ReadInt64;
   
-    fMorphTargetBaseIndex:=StreamIO.ReadUInt64;
-    fCountMorphTargets:=StreamIO.ReadInt64;
-  
-    fNodeInstanceMorphTargetBaseIndices.Resize(StreamIO.ReadInt64);
-    for Index:=0 to fNodeInstanceMorphTargetBaseIndices.Count-1 do begin
+   fNodeInstanceMorphTargetBaseIndices.Resize(StreamIO.ReadInt64);
+   for Index:=0 to fNodeInstanceMorphTargetBaseIndices.Count-1 do begin
     fNodeInstanceMorphTargetBaseIndices[Index]:=StreamIO.ReadUInt64;
+   end;
+  
+   Count:=StreamIO.ReadInt64;
+   for Index:=0 to Count-1 do begin
+    Primitive:=TpvScene3D.TGroup.TMesh.TPrimitive.Create(self);
+    try
+     Primitive.LoadFromStream(aStream);
+    finally
+     fPrimitives.Add(Primitive);
     end;
+   end;
+
+   fBoundingBox:=StreamIO.ReadAABB;
+
+   Count:=StreamIO.ReadInt64;
+   fWeights.Resize(Count);
+   for Index:=0 to fWeights.Count-1 do begin
+    fWeights[Index]:=StreamIO.ReadFloat;
+   end;
+
+   fNodeMeshInstances:=StreamIO.ReadUInt64;
+
+   Count:=StreamIO.ReadUInt64;
+   fReferencedByNodes.Resize(Count);
+   for Index:=0 to fReferencedByNodes.Count-1 do begin
+    fReferencedByNodes[Index]:=StreamIO.ReadUInt64;
+   end;
   
-    Count:=StreamIO.ReadInt64;
-    for Index:=0 to Count-1 do begin
-     Primitive:=TpvScene3D.TGroup.TMesh.TPrimitive.Create(self);
-     try
-      Primitive.LoadFromStream(aStream);
-     finally
-      fPrimitives.Add(Primitive);
-     end; 
-    end;
-  
-    fBoundingBox:=StreamIO.ReadAABB;
-  
-    Count:=StreamIO.ReadInt64;
-    fWeights.Resize(Count);
-    for Index:=0 to fWeights.Count-1 do begin
-     fWeights[Index]:=StreamIO.ReadFloat;
-    end;
-  
-    fNodeMeshInstances:=StreamIO.ReadUInt64;
-  
-    Count:=StreamIO.ReadUInt64;
-    fReferencedByNodes.Resize(Count);
-    for Index:=0 to fReferencedByNodes.Count-1 do begin
-     fReferencedByNodes[Index]:=StreamIO.ReadUInt64;
-    end;
-  
-  finally
-    FreeAndNil(StreamIO);
-  end;
+ finally
+  FreeAndNil(StreamIO);
+ end;
 
 end;
 
@@ -11442,6 +11559,8 @@ begin
 
  StreamIO:=TpvStreamIO.Create(aStream);
  try
+
+  StreamIO.WriteString(fName);
 
   StreamIO.WriteInt64(fIndex);
 
