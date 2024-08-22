@@ -99,6 +99,8 @@ type { TpvScene3DRendererPassesAntialiasingTAARenderPass }
               JitterUV:TpvVector2;
               VelocityDisocclusionThresholdScale:TpvVector2;
 
+              DepthDisocclusionThresholdScale:TpvVector2;
+
              end;
        private
         fInstance:TpvScene3DRendererInstance;
@@ -500,6 +502,8 @@ begin
  PushConstants.JitterUV:=fInstance.InFlightFrameStates^[aInFlightFrameIndex].Jitter.xy;
  PushConstants.VelocityDisocclusionThresholdScale.x:=1e-2;//32.0/TpvVector2.InlineableCreate(fResourceCurrentColor.Width,fResourceCurrentColor.Height).Length;
  PushConstants.VelocityDisocclusionThresholdScale.y:=2000.0;
+ PushConstants.DepthDisocclusionThresholdScale.x:=1e-2;//32.0/TpvVector2.InlineableCreate(fResourceCurrentColor.Width,fResourceCurrentColor.Height).Length;
+ PushConstants.DepthDisocclusionThresholdScale.y:=2000.0;
  aCommandBuffer.CmdPushConstants(fVulkanPipelineLayout.Handle,
                                   TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_FRAGMENT_BIT),
                                   0,

@@ -44,6 +44,8 @@ layout(push_constant, std140, row_major) uniform PushConstants {
   vec2 jitterUV;
   vec2 velocityDisocclusionThresholdScale; // x = threshold, y = scale
 
+  vec2 depthDisocclusionThresholdScale; // x = threshold, y = scale
+
 } pushConstants;
 
 float Luminance(vec4 color){
@@ -254,192 +256,173 @@ void main() {
 
   vec2 depthTransform = vec2(pushConstants.ZMul, pushConstants.ZAdd);
 
-  if((abs(1.0 - pushConstants.opaqueCoefficient) < 1e-5) ||
-#if UseFallbackFXAA
-     // Use fallback FXAA on transparent or similar surfaces when translucentCoefficient is basically almost zero and mixCoefficient 
-     // is basically almost one.
-     ((current.w < 1e-7) && (pushConstants.mixCoefficient > 0.99999) && (pushConstants.translucentCoefficient < 1e-7))
-#endif  
-    ){
+  vec4 velocityUVWZ;
+  {
+    vec3 depthSamples[9];
+    depthSamples[0] = vec3(-1.0, -1.0, fma(textureLod(uCurrentDepthTexture, uvw + vec3(vec2(vec2(-1.0, -1.0) * invTexSize), 0), 0.0).x, depthTransform.x, depthTransform.y));
+    depthSamples[1] = vec3( 0.0, -1.0, fma(textureLod(uCurrentDepthTexture, uvw + vec3(vec2(vec2( 0.0, -1.0) * invTexSize), 0), 0.0).x, depthTransform.x, depthTransform.y));
+    depthSamples[2] = vec3( 1.0, -1.0, fma(textureLod(uCurrentDepthTexture, uvw + vec3(vec2(vec2( 1.0, -1.0) * invTexSize), 0), 0.0).x, depthTransform.x, depthTransform.y));
+    depthSamples[3] = vec3(-1.0,  0.0, fma(textureLod(uCurrentDepthTexture, uvw + vec3(vec2(vec2(-1.0,  0.0) * invTexSize), 0), 0.0).x, depthTransform.x, depthTransform.y));
+    depthSamples[4] = vec3( 0.0,  0.0, fma(textureLod(uCurrentDepthTexture, uvw + vec3(vec2(vec2( 0.0,  0.0) * invTexSize), 0), 0.0).x, depthTransform.x, depthTransform.y));
+    depthSamples[5] = vec3( 1.0,  0.0, fma(textureLod(uCurrentDepthTexture, uvw + vec3(vec2(vec2( 1.0,  0.0) * invTexSize), 0), 0.0).x, depthTransform.x, depthTransform.y));
+    depthSamples[6] = vec3(-1.0,  1.0, fma(textureLod(uCurrentDepthTexture, uvw + vec3(vec2(vec2(-1.0,  1.0) * invTexSize), 0), 0.0).x, depthTransform.x, depthTransform.y));
+    depthSamples[7] = vec3( 0.0,  1.0, fma(textureLod(uCurrentDepthTexture, uvw + vec3(vec2(vec2( 0.0,  1.0) * invTexSize), 0), 0.0).x, depthTransform.x, depthTransform.y));
+    depthSamples[8] = vec3( 1.0,  1.0, fma(textureLod(uCurrentDepthTexture, uvw + vec3(vec2(vec2( 1.0,  1.0) * invTexSize), 0), 0.0).x, depthTransform.x, depthTransform.y));
+    vec3 bestDepth = depthSamples[0];
+    if(bestDepth.z < depthSamples[1].z){ bestDepth = depthSamples[1]; }
+    if(bestDepth.z < depthSamples[2].z){ bestDepth = depthSamples[2]; }
+    if(bestDepth.z < depthSamples[3].z){ bestDepth = depthSamples[3]; }
+    if(bestDepth.z < depthSamples[4].z){ bestDepth = depthSamples[4]; }
+    if(bestDepth.z < depthSamples[5].z){ bestDepth = depthSamples[5]; }
+    if(bestDepth.z < depthSamples[6].z){ bestDepth = depthSamples[6]; }
+    if(bestDepth.z < depthSamples[7].z){ bestDepth = depthSamples[7]; }
+    if(bestDepth.z < depthSamples[8].z){ bestDepth = depthSamples[8]; }
+    velocityUVWZ = vec4(fma(bestDepth.xy, invTexSize, uvw.xy), uvw.z, bestDepth.z);
+  }
 
-#if UseFallbackFXAA
-
-    float depth = fma(textureLod(uCurrentDepthTexture, uvw, 0.0).x, depthTransform.x, depthTransform.y);
-
-    if(depth < 1e-7){
-
-      // Background and other similar stuff => No temporal antialiasing or similar, so that these things are always sharp.
-
-      // Do nothing then.
- 
-    }else{ 
-
-      // Use fallback FXAA when temporal raster data doesn’t exist yet (for example, on the first frame) as it is also used at 
-      // NVIDIA's Adaptive Temporal Antialiasing (ATAA).
-      current = fallbackFXAA(invTexSize);
-      
-    }
-
-#endif
-
-    // First frame, so do nothing then.
-
+  if(velocityUVWZ.w < 1e-7){
+    
+    // Background and other similar stuff => No temporal antialiasing or similar, so that these things are always sharp.
     color = current;
-
 
   }else{
 
-    vec4 velocityUVWZ;
-    {
-      vec3 depthSamples[9];
-      depthSamples[0] = vec3(-1.0, -1.0, fma(textureLod(uCurrentDepthTexture, uvw + vec3(vec2(vec2(-1.0, -1.0) * invTexSize), 0), 0.0).x, depthTransform.x, depthTransform.y));
-      depthSamples[1] = vec3( 0.0, -1.0, fma(textureLod(uCurrentDepthTexture, uvw + vec3(vec2(vec2( 0.0, -1.0) * invTexSize), 0), 0.0).x, depthTransform.x, depthTransform.y));
-      depthSamples[2] = vec3( 1.0, -1.0, fma(textureLod(uCurrentDepthTexture, uvw + vec3(vec2(vec2( 1.0, -1.0) * invTexSize), 0), 0.0).x, depthTransform.x, depthTransform.y));
-      depthSamples[3] = vec3(-1.0,  0.0, fma(textureLod(uCurrentDepthTexture, uvw + vec3(vec2(vec2(-1.0,  0.0) * invTexSize), 0), 0.0).x, depthTransform.x, depthTransform.y));
-      depthSamples[4] = vec3( 0.0,  0.0, fma(textureLod(uCurrentDepthTexture, uvw + vec3(vec2(vec2( 0.0,  0.0) * invTexSize), 0), 0.0).x, depthTransform.x, depthTransform.y));
-      depthSamples[5] = vec3( 1.0,  0.0, fma(textureLod(uCurrentDepthTexture, uvw + vec3(vec2(vec2( 1.0,  0.0) * invTexSize), 0), 0.0).x, depthTransform.x, depthTransform.y));
-      depthSamples[6] = vec3(-1.0,  1.0, fma(textureLod(uCurrentDepthTexture, uvw + vec3(vec2(vec2(-1.0,  1.0) * invTexSize), 0), 0.0).x, depthTransform.x, depthTransform.y));
-      depthSamples[7] = vec3( 0.0,  1.0, fma(textureLod(uCurrentDepthTexture, uvw + vec3(vec2(vec2( 0.0,  1.0) * invTexSize), 0), 0.0).x, depthTransform.x, depthTransform.y));
-      depthSamples[8] = vec3( 1.0,  1.0, fma(textureLod(uCurrentDepthTexture, uvw + vec3(vec2(vec2( 1.0,  1.0) * invTexSize), 0), 0.0).x, depthTransform.x, depthTransform.y));
-      vec3 bestDepth = depthSamples[0];
-      if(bestDepth.z < depthSamples[1].z){ bestDepth = depthSamples[1]; }
-      if(bestDepth.z < depthSamples[2].z){ bestDepth = depthSamples[2]; }
-      if(bestDepth.z < depthSamples[3].z){ bestDepth = depthSamples[3]; }
-      if(bestDepth.z < depthSamples[4].z){ bestDepth = depthSamples[4]; }
-      if(bestDepth.z < depthSamples[5].z){ bestDepth = depthSamples[5]; }
-      if(bestDepth.z < depthSamples[6].z){ bestDepth = depthSamples[6]; }
-      if(bestDepth.z < depthSamples[7].z){ bestDepth = depthSamples[7]; }
-      if(bestDepth.z < depthSamples[8].z){ bestDepth = depthSamples[8]; }
-      velocityUVWZ = vec4(fma(bestDepth.xy, invTexSize, uvw.xy), uvw.z, bestDepth.z);
-    }
+    // Otherwise do our job.
+   
+    // Get the current velocity 
+    vec2 currentVelocity = textureLod(uCurrentVelocityTexture, velocityUVWZ.xyz, 0.0).xy;  
 
-    if(velocityUVWZ.w < 1e-7){
-      
-      // Background and other similar stuff => No temporal antialiasing or similar, so that these things are always sharp.
-      color = current;
+    // Offset the history UVW by the current velocity
+    vec3 historyUVW = uvw - vec3(currentVelocity, 0.0);
 
+    // First frame disocclusion 
+    float firstFrameDisocclusion = (abs(1.0 - pushConstants.opaqueCoefficient) < 1e-5) ? 1.0 : 0.0;
+
+    // Optional translucency disocclusion, for optionally to force of different handling of translucent surfaces without temporal antialiasing,
+    // since these have no valid motion vector data. 
+    float translucentDisocclusion = ((current.w < 1e-7) && (pushConstants.mixCoefficient > 0.99999) && (pushConstants.translucentCoefficient < 1e-7)) ? 1.0 : 0.0;
+
+    // Screen disocclusion
+    float screenDisocclusion = (any(lessThan(historyUVW.xy, vec2(0.0))) || any(greaterThan(historyUVW.xy, vec2(1.0)))) ? 1.0 : 0.0;
+    
+    // Optional velocity disocclusion for further reducing ghosting artifacts.
+    float velocityDisocclusion = ((pushConstants.velocityDisocclusionThresholdScale.x > 1e-7) && ((firstFrameDisocclusion + translucentDisocclusion + screenDisocclusion) < 1e-7))
+                                  ? clamp((length(currentVelocity - textureLod(uHistoryVelocityTexture, historyUVW, 0.0).xy) - pushConstants.velocityDisocclusionThresholdScale.x) * pushConstants.velocityDisocclusionThresholdScale.y, 0.0, 1.0)
+                                  : 0.0;
+
+    // Optional depth disocclusion for further reducing ghosting artifacts.
+    float depthDisocclusion = ((pushConstants.depthDisocclusionThresholdScale.x > 1e-7) && ((firstFrameDisocclusion + translucentDisocclusion + screenDisocclusion + velocityDisocclusion) < 1e-7))
+                                ? clamp((abs(textureLod(uCurrentDepthTexture, uvw, 0.0).x - textureLod(uHistoryDepthTexture, historyUVW, 0.0).x) - pushConstants.depthDisocclusionThresholdScale.x) * pushConstants.depthDisocclusionThresholdScale.y, 0.0, 1.0)
+                                : 0.0;
+    
+    // Total disocclusion is the sum of all disocclusion factors
+    float totalDisocclusion = clamp(firstFrameDisocclusion + translucentDisocclusion + screenDisocclusion + velocityDisocclusion, 0.0, 1.0);
+
+    if(totalDisocclusion > 0.99999){
+#if UseFallbackFXAA
+      // Use fallback FXAA in areas of off-screen disocclusion (where temporal raster data doesn’t exist) as it is also used at 
+      // NVIDIA's Adaptive Temporal Antialiasing (ATAA).
+      current = fallbackFXAA(invTexSize);
+#endif
+      color = mix(current, vec4(1.0, 0.0, 0.0, 1.0), pushConstants.disocclusionDebugFactor);
     }else{
 
-      // Otherwise do our job.
+      // Get the current color samples    
+      vec4 currentSamples[9];    
+      currentSamples[0] = ConvertFromRGB(Tonemap(textureLodOffset(uCurrentColorTexture, uvw, 0, ivec2(-1, -1)))); // a 0
+      currentSamples[1] = ConvertFromRGB(Tonemap(textureLodOffset(uCurrentColorTexture, uvw, 0, ivec2( 0, -1)))); // b 1
+      currentSamples[2] = ConvertFromRGB(Tonemap(textureLodOffset(uCurrentColorTexture, uvw, 0, ivec2( 1, -1)))); // c 2
+      currentSamples[3] = ConvertFromRGB(Tonemap(textureLodOffset(uCurrentColorTexture, uvw, 0, ivec2(-1,  0)))); // d 3
+      currentSamples[4] = ConvertFromRGB(Tonemap(textureLodOffset(uCurrentColorTexture, uvw, 0, ivec2( 0,  0)))); // e 4
+      currentSamples[5] = ConvertFromRGB(Tonemap(textureLodOffset(uCurrentColorTexture, uvw, 0, ivec2( 1,  0)))); // f 5
+      currentSamples[6] = ConvertFromRGB(Tonemap(textureLodOffset(uCurrentColorTexture, uvw, 0, ivec2(-1,  1)))); // g 6
+      currentSamples[7] = ConvertFromRGB(Tonemap(textureLodOffset(uCurrentColorTexture, uvw, 0, ivec2( 0,  1)))); // h 7
+      currentSamples[8] = ConvertFromRGB(Tonemap(textureLodOffset(uCurrentColorTexture, uvw, 0, ivec2( 1,  1)))); // i 8
 
-      vec2 currentVelocity = textureLod(uCurrentVelocityTexture, velocityUVWZ.xyz, 0.0).xy;  
-      vec3 historyUVW = uvw - vec3(currentVelocity, 0.0);
+      // Convert the current color to YCoCg color space and apply tonemapping
+      current = ConvertFromRGB(Tonemap(current));
 
-      // Screen disocclusion
-      float screenDisocclusion = (any(lessThan(historyUVW.xy, vec2(0.0))) || any(greaterThan(historyUVW.xy, vec2(1.0)))) ? 1.0 : 0.0;
+#if 1
+      // Soft minimum and maximum ("Hybrid Reconstruction Antialiasing")
+      //        1         0 1 2
+      // (min 3 4 5 + min 3 4 5) * 0.5
+      //        7         6 7 8        
+      vec4 minimumColor = min(min(min(min(currentSamples[1], currentSamples[3]), currentSamples[4]), currentSamples[5]), currentSamples[7]),
+          maximumColor = max(max(max(max(currentSamples[1], currentSamples[3]), currentSamples[4]), currentSamples[5]), currentSamples[7]);
+      minimumColor = (minimumColor + min(min(min(min(minimumColor, currentSamples[0]), currentSamples[2]), currentSamples[6]), currentSamples[8])) * 0.5;
+      maximumColor = (maximumColor + max(max(max(max(maximumColor, currentSamples[0]), currentSamples[2]), currentSamples[6]), currentSamples[8])) * 0.5;
+#else
+      // Simple minimum and maximum
+      vec4 minimumColor = min(min(min(min(min(min(min(min(currentSamples[0], currentSamples[1]), currentSamples[2]), currentSamples[3]), currentSamples[4]), currentSamples[5]), currentSamples[6]), currentSamples[7]), currentSamples[8]),
+          maximumColor = max(max(max(max(max(max(max(max(currentSamples[0], currentSamples[1]), currentSamples[2]), currentSamples[3]), currentSamples[4]), currentSamples[5]), currentSamples[6]), currentSamples[7]), currentSamples[8]);
+#endif
+
+      // Average color
+      vec4 averageColor = (currentSamples[0] + currentSamples[1] + currentSamples[2] + currentSamples[3] + currentSamples[4] + currentSamples[5] + currentSamples[6] + currentSamples[7] + currentSamples[8]) * (1.0 / 9.0);
       
-      // Optional velocity disocclusion for further reducing ghosting artifacts.
-      float velocityDisocclusion;
-      if((pushConstants.velocityDisocclusionThresholdScale.x > 1e-7) && (screenDisocclusion < 1e-7)){
-        vec2 historyVelocity = textureLod(uHistoryVelocityTexture, historyUVW, 0.0).xy;
-        velocityDisocclusion = clamp((length(currentVelocity - historyVelocity) - pushConstants.velocityDisocclusionThresholdScale.x) * pushConstants.velocityDisocclusionThresholdScale.y, 0.0, 1.0);
-      }else{
-        velocityDisocclusion = 0.0;
-      }
+      {
+        // Variance clipping ("An Excursion in Temporal Supersampling")
+        vec4 m0 = currentSamples[0],
+            m1 = currentSamples[0] * currentSamples[0];   
+        for(int i = 1; i < 9; i++) {
+          vec4 currentSample = currentSamples[i]; 
+          m0 += currentSample;
+          m1 += currentSample * currentSample;
+        }
+        m0 *= 1.0 / 9.0;
+        m1 *= 1.0 / 9.0;
+        vec4 sigma = sqrt(m1 - (m0 * m0)) * pushConstants.varianceClipGamma;
+        minimumColor = max(minimumColor, m0 - sigma);
+        maximumColor = min(maximumColor, m0 + sigma);
+      }            
 
-      float totalDisocclusion = clamp(screenDisocclusion + velocityDisocclusion, 0.0, 1.0);
-
-      if(totalDisocclusion > 0.99999){
-  #if UseFallbackFXAA
-        // Use fallback FXAA in areas of off-screen disocclusion (where temporal raster data doesn’t exist) as it is also used at 
-        // NVIDIA's Adaptive Temporal Antialiasing (ATAA).
-        current = fallbackFXAA(invTexSize);
-  #endif
-        color = mix(current, vec4(1.0, 0.0, 0.0, 1.0), pushConstants.disocclusionDebugFactor);
-      }else{
+#if ColorSpace == ColorSpaceYCoCg 
+    /*{ // TODO: Fix this for very bright colors (=> butterfly artifacts later at bloom) 
+        vec2 chromaExtent = vec2(maximumColor.x - minimumColor.x) * 0.125;
+        vec2 chromaCenter = current.yz;
+        minimumColor.yz = chromaCenter - chromaExtent;
+        maximumColor.yz = chromaCenter + chromaExtent;
+        averageColor.yz = chromaCenter;
+      }*/  
+#endif      
       
-        vec4 currentSamples[9];    
-        currentSamples[0] = ConvertFromRGB(Tonemap(textureLodOffset(uCurrentColorTexture, uvw, 0, ivec2(-1, -1)))); // a 0
-        currentSamples[1] = ConvertFromRGB(Tonemap(textureLodOffset(uCurrentColorTexture, uvw, 0, ivec2( 0, -1)))); // b 1
-        currentSamples[2] = ConvertFromRGB(Tonemap(textureLodOffset(uCurrentColorTexture, uvw, 0, ivec2( 1, -1)))); // c 2
-        currentSamples[3] = ConvertFromRGB(Tonemap(textureLodOffset(uCurrentColorTexture, uvw, 0, ivec2(-1,  0)))); // d 3
-        currentSamples[4] = ConvertFromRGB(Tonemap(textureLodOffset(uCurrentColorTexture, uvw, 0, ivec2( 0,  0)))); // e 4
-        currentSamples[5] = ConvertFromRGB(Tonemap(textureLodOffset(uCurrentColorTexture, uvw, 0, ivec2( 1,  0)))); // f 5
-        currentSamples[6] = ConvertFromRGB(Tonemap(textureLodOffset(uCurrentColorTexture, uvw, 0, ivec2(-1,  1)))); // g 6
-        currentSamples[7] = ConvertFromRGB(Tonemap(textureLodOffset(uCurrentColorTexture, uvw, 0, ivec2( 0,  1)))); // h 7
-        currentSamples[8] = ConvertFromRGB(Tonemap(textureLodOffset(uCurrentColorTexture, uvw, 0, ivec2( 1,  1)))); // i 8
+      // Get the history color sample, convert it to YCoCg color space and apply tonemapping   
+      vec4 historySample = ConvertFromRGB(Tonemap(textureCatmullRom(uHistoryColorTexture, historyUVW, 0.0)));
+      
+      // Clip the history color sample to the current minimum and maximum color values
+      historySample = ClipAABB(historySample, clamp(averageColor, minimumColor, maximumColor), minimumColor.xyz, maximumColor.xyz);
 
-        current = ConvertFromRGB(Tonemap(current));
+      // Luminance disocclusion with different feedback coefficients for opaque and translucent surfaces
+#if ColorSpace == ColorSpaceYCoCg
+      float currentLuminance = current.x;
+      float historyLuminance = historySample.x;    
+#else
+      float currentLuminance = Luminance(current);
+      float historyLuminance = Luminance(historySample);
+#endif      
+      float unbiasedWeight = 1.0 - (abs(currentLuminance - historyLuminance) / max(currentLuminance, max(historyLuminance, 0.2)));
+      float unbiasedWeightSquaredClamped = clamp(unbiasedWeight * unbiasedWeight, 0.0, 1.0);
+      float luminanceDisocclusionBasedBlendFactor = mix(
+        mix(pushConstants.translucentFeedbackMin, pushConstants.translucentFeedbackMax, unbiasedWeightSquaredClamped),
+        mix(pushConstants.opaqueFeedbackMin, pushConstants.opaqueFeedbackMin, unbiasedWeightSquaredClamped),
+        clamp(currentSamples[4].w, 0.0, 1.0)
+      );
 
-  #if 1
-        // Soft minimum and maximum ("Hybrid Reconstruction Antialiasing")
-        //        1         0 1 2
-        // (min 3 4 5 + min 3 4 5) * 0.5
-        //        7         6 7 8        
-        vec4 minimumColor = min(min(min(min(currentSamples[1], currentSamples[3]), currentSamples[4]), currentSamples[5]), currentSamples[7]),
-            maximumColor = max(max(max(max(currentSamples[1], currentSamples[3]), currentSamples[4]), currentSamples[5]), currentSamples[7]);
-        minimumColor = (minimumColor + min(min(min(min(minimumColor, currentSamples[0]), currentSamples[2]), currentSamples[6]), currentSamples[8])) * 0.5;
-        maximumColor = (maximumColor + max(max(max(max(maximumColor, currentSamples[0]), currentSamples[2]), currentSamples[6]), currentSamples[8])) * 0.5;
-  #else
-        // Simple minimum and maximum
-        vec4 minimumColor = min(min(min(min(min(min(min(min(currentSamples[0], currentSamples[1]), currentSamples[2]), currentSamples[3]), currentSamples[4]), currentSamples[5]), currentSamples[6]), currentSamples[7]), currentSamples[8]),
-            maximumColor = max(max(max(max(max(max(max(max(currentSamples[0], currentSamples[1]), currentSamples[2]), currentSamples[3]), currentSamples[4]), currentSamples[5]), currentSamples[6]), currentSamples[7]), currentSamples[8]);
-  #endif
+      // Blend the current and history color samples based on luminance-based disocclusion
+      vec4 outSample = mix(current, historySample, luminanceDisocclusionBasedBlendFactor);
 
-        vec4 averageColor = (currentSamples[0] + currentSamples[1] + currentSamples[2] + currentSamples[3] + currentSamples[4] + currentSamples[5] + currentSamples[6] + currentSamples[7] + currentSamples[8]) * (1.0 / 9.0);
-        
-        {
-          // Variance clipping ("An Excursion in Temporal Supersampling")
-          vec4 m0 = currentSamples[0],
-              m1 = currentSamples[0] * currentSamples[0];   
-          for(int i = 1; i < 9; i++) {
-            vec4 currentSample = currentSamples[i]; 
-            m0 += currentSample;
-            m1 += currentSample * currentSample;
-          }
-          m0 *= 1.0 / 9.0;
-          m1 *= 1.0 / 9.0;
-          vec4 sigma = sqrt(m1 - (m0 * m0)) * pushConstants.varianceClipGamma;
-          minimumColor = max(minimumColor, m0 - sigma);
-          maximumColor = min(maximumColor, m0 + sigma);
-        }            
+      // Mix the luminance-based disocclusion with the other ootional blending approach, which is based on exptional time-based coefficients
+      color = mix(outSample, 
+                  mix(historySample, current, mix(pushConstants.translucentCoefficient, pushConstants.opaqueCoefficient, clamp(currentSamples[4].w, 0.0, 1.0))), 
+                  clamp(pushConstants.mixCoefficient, 0.0, 1.0)); 
 
-  #if ColorSpace == ColorSpaceYCoCg 
-      /*{ // TODO: Fix this for very bright colors (=> butterfly artifacts later at bloom) 
-          vec2 chromaExtent = vec2(maximumColor.x - minimumColor.x) * 0.125;
-          vec2 chromaCenter = current.yz;
-          minimumColor.yz = chromaCenter - chromaExtent;
-          maximumColor.yz = chromaCenter + chromaExtent;
-          averageColor.yz = chromaCenter;
-        }*/  
-  #endif      
-          
-        vec4 historySample = ConvertFromRGB(Tonemap(textureCatmullRom(uHistoryColorTexture, historyUVW, 0.0)));
-        
-        historySample = ClipAABB(historySample, clamp(averageColor, minimumColor, maximumColor), minimumColor.xyz, maximumColor.xyz);
-
-        // Luminance disocclusion with different feedback coefficients for opaque and translucent surfaces
-  #if ColorSpace == ColorSpaceYCoCg
-        float currentLuminance = current.x;
-        float historyLuminance = historySample.x;    
-  #else
-        float currentLuminance = Luminance(current);
-        float historyLuminance = Luminance(historySample);
-  #endif      
-        float unbiasedWeight = 1.0 - (abs(currentLuminance - historyLuminance) / max(currentLuminance, max(historyLuminance, 0.2)));
-        float unbiasedWeightSquaredClamped = clamp(unbiasedWeight * unbiasedWeight, 0.0, 1.0);
-        float luminanceDisocclusionBasedBlendFactor = mix(
-          mix(pushConstants.translucentFeedbackMin, pushConstants.translucentFeedbackMax, unbiasedWeightSquaredClamped),
-          mix(pushConstants.opaqueFeedbackMin, pushConstants.opaqueFeedbackMin, unbiasedWeightSquaredClamped),
-          clamp(currentSamples[4].w, 0.0, 1.0)
-        );
-
-        // Blend the current and history color samples based on luminance-based disocclusion
-        vec4 outSample = mix(current, historySample, luminanceDisocclusionBasedBlendFactor);
-
-        // Mix the luminance-based disocclusion with the other ootional blending approach, which is based on exptional time-based coefficients
-        color = mix(outSample, 
-                    mix(historySample, current, mix(pushConstants.translucentCoefficient, pushConstants.opaqueCoefficient, clamp(currentSamples[4].w, 0.0, 1.0))), 
-                    clamp(pushConstants.mixCoefficient, 0.0, 1.0)); 
-
-        color = clamp(Untonemap(ConvertToRGB(color)), vec4(0.0), vec4(65504.0));    
-
-      }
+      // Convert the color back to RGB color space and apply inverse tonemapping and clamp the color to 16-bit floating point range
+      color = clamp(Untonemap(ConvertToRGB(color)), vec4(0.0), vec4(65504.0));    
 
     }
-    
-  }
 
+  }
+ 
   outFragColor = color;
 
 }
