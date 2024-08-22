@@ -10554,24 +10554,167 @@ begin
 end;
 
 procedure TpvScene3D.TGroup.TAnimation.TChannel.LoadFromStream(const aStream:TStream);
+var StreamIO:TpvStreamIO;
+    Index,Count:TpvSizeInt;
 begin
+
+ StreamIO:=TpvStreamIO.Create(aStream);
+ try
+
+  fName:=StreamIO.ReadUTF8String; 
+
+  fTarget:=TpvScene3D.TGroup.TAnimation.TChannel.TTarget(TpvUInt32(StreamIO.ReadUInt32));
+
+  fTargetPointer:=StreamIO.ReadUTF8String;
+
+  fTargetIndex:=StreamIO.ReadInt64;
+
+  fTargetSubIndex:=StreamIO.ReadInt64;
+
+  fTargetInstanceIndex:=StreamIO.ReadInt64;
+
+  fInterpolation:=TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation(StreamIO.ReadUInt32);
+
+  fInputTimeArray:=nil;
+  Count:=StreamIO.ReadInt64;
+  if Count>0 then begin
+   SetLength(fInputTimeArray,Count);
+   StreamIO.ReadWithCheck(fInputTimeArray[0],Count*SizeOf(TpvDouble));
+  end;
+
+  fOutputScalarArray:=nil;
+  Count:=StreamIO.ReadInt64;
+  if Count>0 then begin
+   SetLength(fOutputScalarArray,Count);
+   StreamIO.ReadWithCheck(fOutputScalarArray[0],Count*SizeOf(TpvFloat));
+  end;
+
+  fOutputVector2Array:=nil;
+  Count:=StreamIO.ReadInt64;
+  if Count>0 then begin
+   SetLength(fOutputVector2Array,Count);
+   StreamIO.ReadWithCheck(fOutputVector2Array[0],Count*SizeOf(TpvVector2));
+  end;
+
+  fOutputVector3Array:=nil;
+  Count:=StreamIO.ReadInt64;
+  if Count>0 then begin
+   SetLength(fOutputVector3Array,Count);
+   StreamIO.ReadWithCheck(fOutputVector3Array[0],Count*SizeOf(TpvVector3));
+  end;
+
+  fOutputVector4Array:=nil;
+  Count:=StreamIO.ReadInt64;
+  if Count>0 then begin
+   SetLength(fOutputVector4Array,Count);
+   StreamIO.ReadWithCheck(fOutputVector4Array[0],Count*SizeOf(TpvVector4));
+  end;
+
+ finally
+  FreeAndNil(StreamIO);
+ end;
 
 end;
 
 procedure TpvScene3D.TGroup.TAnimation.TChannel.SaveToStream(const aStream:TStream);
+var StreamIO:TpvStreamIO;
+    Index,Count:TpvSizeInt;
 begin
+
+ StreamIO:=TpvStreamIO.Create(aStream);
+ try
+
+  StreamIO.WriteUTF8String(fName);
+
+  StreamIO.WriteUInt32(TpvUInt32(fTarget));
+
+  StreamIO.WriteUTF8String(fTargetPointer);
+
+  StreamIO.WriteInt64(fTargetIndex);
+
+  StreamIO.WriteInt64(fTargetSubIndex);
+
+  StreamIO.WriteInt64(fTargetInstanceIndex);
+
+  StreamIO.WriteUInt32(TpvUInt32(fInterpolation));
+
+  Count:=length(fInputTimeArray);
+  StreamIO.WriteInt64(Count);
+  if Count>0 then begin
+   StreamIO.WriteWithCheck(fInputTimeArray[0],Count*SizeOf(TpvDouble));
+  end;
+
+  Count:=length(fOutputScalarArray);
+  StreamIO.WriteInt64(Count);
+  if Count>0 then begin
+   StreamIO.WriteWithCheck(fOutputScalarArray[0],Count*SizeOf(TpvFloat));
+  end;
+
+  Count:=length(fOutputVector2Array);
+  StreamIO.WriteInt64(Count);
+  if Count>0 then begin
+   StreamIO.WriteWithCheck(fOutputVector2Array[0],Count*SizeOf(TpvVector2));
+  end;
+
+  Count:=length(fOutputVector3Array);
+  StreamIO.WriteInt64(Count);
+  if Count>0 then begin
+   StreamIO.WriteWithCheck(fOutputVector3Array[0],Count*SizeOf(TpvVector3));
+  end;
+
+  Count:=length(fOutputVector4Array);
+  StreamIO.WriteInt64(Count);
+  if Count>0 then begin
+   StreamIO.WriteWithCheck(fOutputVector4Array[0],Count*SizeOf(TpvVector4));
+  end;
+
+ finally
+  FreeAndNil(StreamIO);
+ end;
 
 end;
 
 { TpvScene3D.TGroup.TAnimation.TDefaultChannel }
 
 procedure TpvScene3D.TGroup.TAnimation.TDefaultChannel.LoadFromStream(const aStream:TStream);
+var StreamIO:TpvStreamIO;
 begin
+ 
+ StreamIO:=TpvStreamIO.Create(aStream);
+ try
+
+  fTarget:=TpvScene3D.TGroup.TAnimation.TChannel.TTarget(StreamIO.ReadUInt32);
+
+  fTargetIndex:=StreamIO.ReadInt64;
+
+  fTargetSubIndex:=StreamIO.ReadInt64;
+
+  fTargetInstanceIndex:=StreamIO.ReadInt64;
+
+ finally
+  FreeAndNil(StreamIO);
+ end;
 
 end;
 
 procedure TpvScene3D.TGroup.TAnimation.TDefaultChannel.SaveToStream(const aStream:TStream);
+var StreamIO:TpvStreamIO;
 begin
+
+ StreamIO:=TpvStreamIO.Create(aStream);
+ try
+
+  StreamIO.WriteUInt32(TpvUInt32(fTarget));
+
+  StreamIO.WriteInt64(fTargetIndex);
+
+  StreamIO.WriteInt64(fTargetSubIndex);
+
+  StreamIO.WriteInt64(fTargetInstanceIndex);
+
+ finally
+  FreeAndNil(StreamIO);
+ end;
 
 end;
 
@@ -10628,12 +10771,86 @@ begin
 end;
 
 procedure TpvScene3D.TGroup.TAnimation.LoadFromStream(const aStream:TStream);
+var StreamIO:TpvStreamIO;
+    Index,Count:TpvSizeInt;
+    Channel:TpvScene3D.TGroup.TAnimation.TChannel;
+    DefaultChannel:TpvScene3D.TGroup.TAnimation.TDefaultChannel;
 begin
+
+ StreamIO:=TpvStreamIO.Create(aStream);
+ try
+
+  fName:=StreamIO.ReadUTF8String;
+
+  fIndex:=StreamIO.ReadInt64;
+
+  fChannels.Clear;
+  Count:=StreamIO.ReadInt64;
+  for Index:=0 to Count-1 do begin
+   Channel:=TpvScene3D.TGroup.TAnimation.TChannel.Create;
+   try
+    Channel.LoadFromStream(aStream);
+    fChannels.Add(Channel);
+   except
+    FreeAndNil(Channel);
+    raise;
+   end;
+  end;
+
+  fDefaultChannels.Clear;
+  Count:=StreamIO.ReadInt64;
+  for Index:=0 to Count-1 do begin
+   DefaultChannel:=TpvScene3D.TGroup.TAnimation.TDefaultChannel.Create;
+   try
+    DefaultChannel.LoadFromStream(aStream);
+    fDefaultChannels.Add(DefaultChannel);
+   except
+    FreeAndNil(DefaultChannel);
+    raise;
+   end;
+  end;
+
+  fAnimationBeginTime:=StreamIO.ReadDouble;
+
+  fAnimationEndTime:=StreamIO.ReadDouble;
+
+ finally
+  FreeAndNil(StreamIO);
+ end;
 
 end;
 
 procedure TpvScene3D.TGroup.TAnimation.SaveToStream(const aStream:TStream);
+var StreamIO:TpvStreamIO;
+    Index,Count:TpvSizeInt;
 begin
+
+ StreamIO:=TpvStreamIO.Create(aStream);
+ try
+
+  StreamIO.WriteUTF8String(fName);
+
+  StreamIO.WriteInt64(fIndex);
+
+  Count:=fChannels.Count;
+  StreamIO.WriteInt64(Count);
+  for Index:=0 to Count-1 do begin
+   fChannels[Index].SaveToStream(aStream);
+  end;
+
+  Count:=fDefaultChannels.Count;
+  StreamIO.WriteInt64(Count);
+  for Index:=0 to Count-1 do begin
+   fDefaultChannels[Index].SaveToStream(aStream);
+  end;
+
+  StreamIO.WriteDouble(fAnimationBeginTime);
+
+  StreamIO.WriteDouble(fAnimationEndTime);
+
+ finally
+  FreeAndNil(StreamIO);
+ end;
 
 end;
 
@@ -10809,7 +11026,7 @@ begin
     end;
    end;
   end else begin
-   raise EPasGLTF.Create('Non-existent sampler');
+   raise EpvScene3D.Create('Non-existent sampler');
   end;
 
  end;
