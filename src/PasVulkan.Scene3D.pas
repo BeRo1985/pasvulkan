@@ -10858,7 +10858,7 @@ begin
  StreamIO:=TpvStreamIO.Create(aStream);
  try
 
-  fName:=StreamIO.ReadString;
+  fName:=StreamIO.ReadUTF8String;
 
   fPrimitiveIndex:=StreamIO.ReadUInt32;
 
@@ -10871,7 +10871,7 @@ begin
   for Index:=0 to Count-1 do begin
    Target:=TpvScene3D.TGroup.TMesh.TPrimitive.TTarget.Create;
    try
-    Target.fName:=StreamIO.ReadString;
+    Target.fName:=StreamIO.ReadUTF8String;
     OtherCount:=StreamIO.ReadInt64;
     for OtherIndex:=0 to OtherCount-1 do begin
      TargetVertex:=Target.fVertices.AddNew;
@@ -10923,7 +10923,7 @@ begin
  StreamIO:=TpvStreamIO.Create(aStream);
  try
 
-  StreamIO.WriteString(fName);
+  StreamIO.WriteUTF8String(fName);
 
   StreamIO.WriteUInt32(fPrimitiveIndex);
 
@@ -10935,7 +10935,7 @@ begin
   StreamIO.WriteInt64(Count);
   for Index:=0 to Count-1 do begin
    Target:=fTargets[Index];
-   StreamIO.WriteString(Target.fName);
+   StreamIO.WriteUTF8String(Target.fName);
    OtherCount:=Target.fVertices.Count;
    StreamIO.WriteInt64(OtherCount);
    for OtherIndex:=0 to OtherCount-1 do begin
@@ -11507,7 +11507,7 @@ begin
  StreamIO:=TpvStreamIO.Create(aStream);
  try
 
-   fName:=StreamIO.ReadString;
+   fName:=StreamIO.ReadUTF8String;
 
    fIndex:=StreamIO.ReadInt64;
   
@@ -11560,7 +11560,7 @@ begin
  StreamIO:=TpvStreamIO.Create(aStream);
  try
 
-  StreamIO.WriteString(fName);
+  StreamIO.WriteUTF8String(fName);
 
   StreamIO.WriteInt64(fIndex);
 

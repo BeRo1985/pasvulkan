@@ -218,7 +218,7 @@ type EpvDataStream=class(Exception);
        function ReadWithCheck(var aBuffer;const aCount:TpvSizeUInt):TpvSizeUInt;
        function ReadStream(const aStream:TStream):TpvSizeUInt;
        function ReadBytes(out aBytes:TpvUInt8DynamicArray):TpvSizeUInt;
-       function ReadString:TpvUTF8String;
+       function ReadUTF8String:TpvUTF8String;
        function ReadInt8:TpvInt8;
        function ReadUInt8:TpvUInt8;
        function ReadInt16:TpvInt16;
@@ -241,7 +241,7 @@ type EpvDataStream=class(Exception);
        function ReadOBB:TpvOBB;
        function WriteWithCheck(const aBuffer;const aCount:TpvSizeUInt):TpvSizeUInt;
        function WriteStream(const aStream:TStream):TpvSizeUInt;
-       function WriteString(const aString:TpvUTF8String):TpvSizeUInt;
+       function WriteUTF8String(const aString:TpvUTF8String):TpvSizeUInt;
        function WriteBytes(const aBytes:TpvUInt8DynamicArray):TpvSizeUInt; overload;
        function WriteBytes(const aBytes:array of TpvUInt8):TpvSizeUInt; overload;
        function WriteInt8(const aValue:TpvInt8):TpvSizeUInt;
@@ -1191,7 +1191,7 @@ begin
  result:=Size;
 end;
 
-function TpvStreamIO.ReadString:TpvUTF8String;
+function TpvStreamIO.ReadUTF8String:TpvUTF8String;
 var Len:TpvSizeUInt;
 begin
  Len:=ReadUInt64;
@@ -1445,7 +1445,7 @@ begin
  result:=Size;
 end;
 
-function TpvStreamIO.WriteString(const aString:TpvUTF8String):TpvSizeUInt;
+function TpvStreamIO.WriteUTF8String(const aString:TpvUTF8String):TpvSizeUInt;
 var Len:TpvSizeUInt;
 begin
  Len:=length(aString);
