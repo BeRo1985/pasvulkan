@@ -79,16 +79,26 @@ uses SysUtils,
 type { TpvScene3DRendererPassesAntialiasingTAARenderPass }
       TpvScene3DRendererPassesAntialiasingTAARenderPass=class(TpvFrameGraph.TRenderPass)
        public
-        type TPushConstants=record
+        type TPushConstants=packed record
+
               TranslucentCoefficient:TpvFloat;
               OpaqueCoefficient:TpvFloat;
               MixCoefficient:TpvFloat;
               VarianceClipGamma:TpvFloat;
-              FeedbackMin:TpvFloat;
-              FeedbackMax:TpvFloat;
+
+              TranslucentFeedbackMin:TpvFloat;
+              TranslucentFeedbackMax:TpvFloat;
+              OpaqueFeedbackMin:TpvFloat;
+              OpaqueFeedbackMax:TpvFloat;
+
               ZMul:TpvFloat;
               ZAdd:TpvFloat;
+              DisocclusionDebugFactor:TpvFloat;
+              Padding1:TpvFloat;
+
               JitterUV:TpvVector2;
+              VelocityDisocclusionThresholdScale:TpvVector2;
+
              end;
        private
         fInstance:TpvScene3DRendererInstance;
@@ -475,8 +485,10 @@ begin
  end;
  PushConstants.MixCoefficient:=0.0;
  PushConstants.VarianceClipGamma:=1.0;
- PushConstants.FeedbackMin:=0.88;
- PushConstants.FeedbackMax:=0.97;
+ PushConstants.TranslucentFeedbackMin:=0.5;
+ PushConstants.TranslucentFeedbackMax:=0.75;
+ PushConstants.OpaqueFeedbackMin:=0.88;
+ PushConstants.OpaqueFeedbackMax:=0.97;
  if fInstance.ZFar>0.0 then begin
   PushConstants.ZMul:=-1.0;
   PushConstants.ZAdd:=1.0;
@@ -484,7 +496,10 @@ begin
   PushConstants.ZMul:=1.0;
   PushConstants.ZAdd:=0.0;
  end;
+ PushConstants.DisocclusionDebugFactor:=0.0;
  PushConstants.JitterUV:=fInstance.InFlightFrameStates^[aInFlightFrameIndex].Jitter.xy;
+ PushConstants.VelocityDisocclusionThresholdScale.x:=1e-2;//32.0/TpvVector2.InlineableCreate(fResourceCurrentColor.Width,fResourceCurrentColor.Height).Length;
+ PushConstants.VelocityDisocclusionThresholdScale.y:=2000.0;
  aCommandBuffer.CmdPushConstants(fVulkanPipelineLayout.Handle,
                                   TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_FRAGMENT_BIT),
                                   0,
