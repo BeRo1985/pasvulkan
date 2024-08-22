@@ -1948,8 +1948,8 @@ type EpvScene3D=class(Exception);
                             function AddVertex(const aVertex:TpvScene3D.TVertex):TpvSizeInt;
                             function AddIndex(const aIndex:TpvUInt32):TpvSizeInt;
                             procedure Finish;
-                            procedure LoadFromStream(const aStream:TStream);
-                            procedure SaveToStream(const aStream:TStream);
+                            procedure LoadFromStream(const aStream:TStream;const aMaterials:TpvObjectList);
+                            procedure SaveToStream(const aStream:TStream;const aMaterials:TpvObjectList);
                            published
                             property PrimitiveTopology:TpvScene3D.TPrimitiveTopology read fPrimitiveTopology write fPrimitiveTopology;
                             property MaterialID:TpvInt64 read fMaterialID write fMaterialID;
@@ -1989,8 +1989,8 @@ type EpvScene3D=class(Exception);
                      function CreatePrimitive:TpvScene3D.TGroup.TMesh.TPrimitive;
                      procedure CalculateTangentSpace;
                      procedure Finish;
-                     procedure LoadFromStream(const aStream:TStream);
-                     procedure SaveToStream(const aStream:TStream);
+                     procedure LoadFromStream(const aStream:TStream;const aMaterials:TpvObjectList);
+                     procedure SaveToStream(const aStream:TStream;const aMaterials:TpvObjectList);
                      procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceMesh:TPasGLTF.TMesh;const aMaterialMap:TpvScene3D.TMaterials);
                     published
                      property Index:TpvSizeInt read fIndex;
@@ -12301,7 +12301,7 @@ begin
 
 end;
 
-procedure TpvScene3D.TGroup.TMesh.TPrimitive.LoadFromStream(const aStream:TStream);
+procedure TpvScene3D.TGroup.TMesh.TPrimitive.LoadFromStream(const aStream:TStream;const aMaterials:TpvObjectList);
 var StreamIO:TpvStreamIO;
     Index,OtherIndex:TpvSizeInt;
     Count,OtherCount:TpvSizeInt;
@@ -12367,7 +12367,7 @@ begin
 
 end;
 
-procedure TpvScene3D.TGroup.TMesh.TPrimitive.SaveToStream(const aStream:TStream);
+procedure TpvScene3D.TGroup.TMesh.TPrimitive.SaveToStream(const aStream:TStream;const aMaterials:TpvObjectList);
 var StreamIO:TpvStreamIO;
     Index,OtherIndex:TpvSizeInt;
     Count,OtherCount:TpvSizeInt;
@@ -12954,7 +12954,7 @@ begin
 
 end;
 
-procedure TpvScene3D.TGroup.TMesh.LoadFromStream(const aStream:TStream);
+procedure TpvScene3D.TGroup.TMesh.LoadFromStream(const aStream:TStream;const aMaterials:TpvObjectList);
 var StreamIO:TpvStreamIO;
     Index,Count:TpvSizeInt;
     Primitive:TpvScene3D.TGroup.TMesh.TPrimitive;
@@ -12979,7 +12979,7 @@ begin
    for Index:=0 to Count-1 do begin
     Primitive:=TpvScene3D.TGroup.TMesh.TPrimitive.Create(self);
     try
-     Primitive.LoadFromStream(aStream);
+     Primitive.LoadFromStream(aStream,aMaterials);
     finally
      fPrimitives.Add(Primitive);
      if Primitive.fRaytracingPrimitiveID>0 then begin
@@ -13010,7 +13010,7 @@ begin
 
 end;
 
-procedure TpvScene3D.TGroup.TMesh.SaveToStream(const aStream:TStream);
+procedure TpvScene3D.TGroup.TMesh.SaveToStream(const aStream:TStream;const aMaterials:TpvObjectList);
 var StreamIO:TpvStreamIO;
     Index:TpvSizeInt;
     Primitive:TpvScene3D.TGroup.TMesh.TPrimitive;
@@ -13034,7 +13034,7 @@ begin
   StreamIO.WriteInt64(fPrimitives.Count);
   for Index:=0 to fPrimitives.Count-1 do begin
    Primitive:=fPrimitives[Index];
-   Primitive.SaveToStream(aStream);  
+   Primitive.SaveToStream(aStream,aMaterials);  
   end;
    
   StreamIO.WriteAABB(fBoundingBox);
@@ -17464,6 +17464,20 @@ begin
        end;
       end; 
 
+      // Write cameras
+      Count:=fCameras.Count;
+      StreamIO.WriteInt64(Count);
+      for Index:=0 to Count-1 do begin
+       TpvScene3D.TGroup.TCamera(fCameras[Index]).SaveToStream(aStream);
+      end;
+
+      // Write lights
+      Count:=fLights.Count;
+      StreamIO.WriteInt64(Count);
+      for Index:=0 to Count-1 do begin
+       TpvScene3D.TGroup.TLight(fLights[Index]).SaveToStream(aStream);
+      end;
+
       // Write images
       Count:=CollectedImages.Count;
       StreamIO.WriteInt64(Count);
@@ -17492,25 +17506,11 @@ begin
        TpvScene3D.TMaterial(CollectedMaterials[Index]).SaveToStream(aStream,CollectedImages,CollectedSamplers,CollectedTextures);
       end;
 
-      // Write cameras
-      Count:=fCameras.Count;
-      StreamIO.WriteInt64(Count);
-      for Index:=0 to Count-1 do begin
-       TpvScene3D.TGroup.TCamera(fCameras[Index]).SaveToStream(aStream);
-      end;
-
-      // Write lights
-      Count:=fLights.Count;
-      StreamIO.WriteInt64(Count);
-      for Index:=0 to Count-1 do begin
-       TpvScene3D.TGroup.TLight(fLights[Index]).SaveToStream(aStream);
-      end;
-
       // Write meshes
       Count:=fMeshes.Count;
       StreamIO.WriteInt64(Count);
       for Index:=0 to Count-1 do begin
-       TpvScene3D.TGroup.TMesh(fMeshes[Index]).SaveToStream(aStream);
+       TpvScene3D.TGroup.TMesh(fMeshes[Index]).SaveToStream(aStream,CollectedMaterials);
       end;
 
       // Write skins
