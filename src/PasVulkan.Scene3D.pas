@@ -13432,7 +13432,7 @@ begin
 end;
 
 procedure TpvScene3D.TGroup.TNode.AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceNode:TPasGLTF.TNode;const aLightMap:TpvScene3D.TGroup.TLights);
-var WeightIndex,ChildrenIndex:TpvSizeInt;
+var WeightIndex{,ChildrenIndex}:TpvSizeInt;
     ExtensionObject:TPasJSONItemObject;
     KHRLightsPunctualItem:TPasJSONItem;
     KHRLightsPunctualObject:TPasJSONItemObject;
