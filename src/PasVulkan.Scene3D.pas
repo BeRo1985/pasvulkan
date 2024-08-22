@@ -14145,6 +14145,7 @@ begin
   for Index:=0 to Count-1 do begin
    DrawChoreographyBatchItem:=TDrawChoreographyBatchItem.Create;
    try
+    DrawChoreographyBatchItem.fGroup:=fGroup;
     DrawChoreographyBatchItem.LoadFromStream(aStream);
    finally 
     fDrawChoreographyBatchItems.Add(DrawChoreographyBatchItem);
@@ -14156,6 +14157,7 @@ begin
   for Index:=0 to Count-1 do begin
    DrawChoreographyBatchItem:=TDrawChoreographyBatchItem.Create;
    try
+    DrawChoreographyBatchItem.fGroup:=fGroup;
     DrawChoreographyBatchItem.LoadFromStream(aStream);
    finally 
     fDrawChoreographyBatchUniqueItems.Add(DrawChoreographyBatchItem);
