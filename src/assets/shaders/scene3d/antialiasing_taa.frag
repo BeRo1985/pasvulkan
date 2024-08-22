@@ -252,6 +252,8 @@ void main() {
   vec4 current = textureLod(uCurrentColorTexture, uvw, 0.0); // Without unjittering
 #endif
 
+  vec2 depthTransform = vec2(pushConstants.ZMul, pushConstants.ZAdd);
+
   if((abs(1.0 - pushConstants.opaqueCoefficient) < 1e-5) ||
 #if UseFallbackFXAA
      // Use fallback FXAA on transparent or similar surfaces when translucentCoefficient is basically almost zero and mixCoefficient 
@@ -261,9 +263,23 @@ void main() {
     ){
 
 #if UseFallbackFXAA
-    // Use fallback FXAA when temporal raster data doesn’t exist yet (for example, on the first frame) as it is also used at 
-    // NVIDIA's Adaptive Temporal Antialiasing (ATAA).
-    current = fallbackFXAA(invTexSize);
+
+    float depth = fma(textureLod(uCurrentDepthTexture, uvw, 0.0).x, depthTransform.x, depthTransform.y);
+
+    if(depth < 1e-7){
+
+      // Background and other similar stuff => No temporal antialiasing or similar, so that these things are always sharp.
+
+      // Do nothing then.
+ 
+    }else{ 
+
+      // Use fallback FXAA when temporal raster data doesn’t exist yet (for example, on the first frame) as it is also used at 
+      // NVIDIA's Adaptive Temporal Antialiasing (ATAA).
+      current = fallbackFXAA(invTexSize);
+      
+    }
+
 #endif
 
     // First frame, so do nothing then.
@@ -272,8 +288,6 @@ void main() {
 
 
   }else{
-
-    vec2 depthTransform = vec2(pushConstants.ZMul, pushConstants.ZAdd);
 
     vec4 velocityUVWZ;
     {
