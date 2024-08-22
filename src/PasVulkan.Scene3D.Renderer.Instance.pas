@@ -589,6 +589,7 @@ type { TpvScene3DRendererInstance }
       private
        fTAAHistoryColorImages:TArray2DImages;
        fTAAHistoryDepthImages:TArray2DImages;
+       fTAAHistoryVelocityImages:TArray2DImages;
       public
        fTAAEvents:array[0..MaxInFlightFrames-1] of TpvVulkanEvent;
        fTAAEventReady:array[0..MaxInFlightFrames-1] of boolean;
@@ -798,6 +799,7 @@ type { TpvScene3DRendererInstance }
       public
        property TAAHistoryColorImages:TArray2DImages read fTAAHistoryColorImages;
        property TAAHistoryDepthImages:TArray2DImages read fTAAHistoryDepthImages;
+       property TAAHistoryVelocityImages:TArray2DImages read fTAAHistoryVelocityImages;
       public
        property LastOutputResource:TpvFrameGraph.TPass.TUsedImageResource read fLastOutputResource write fLastOutputResource;
        property HUDSize:TpvFrameGraph.TImageSize read fHUDSize;
@@ -2647,7 +2649,7 @@ begin
                                   Renderer.SurfaceSampleCountFlagBits,
                                   TpvFrameGraph.TImageType.Color,
                                   TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,fSizeFactor,fSizeFactor,1.0,fCountSurfaceViews),
-                                  TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT),
+                                  TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_TRANSFER_SRC_BIT),
                                   1
                                  );
 
@@ -2973,7 +2975,7 @@ begin
                                   TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
                                   TpvFrameGraph.TImageType.Color,
                                   TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,fSizeFactor,fSizeFactor,1.0,fCountSurfaceViews),
-                                  TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT),
+                                  TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_TRANSFER_SRC_BIT),
                                   1
                                  );
 
@@ -4821,6 +4823,18 @@ begin
    Renderer.VulkanDevice.DebugUtils.SetObjectName(fTAAHistoryDepthImages[InFlightFrameIndex].VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DRendererInstance.fTAAHistoryDepthImages['+IntToStr(InFlightFrameIndex)+'].Image');
    Renderer.VulkanDevice.DebugUtils.SetObjectName(fTAAHistoryDepthImages[InFlightFrameIndex].VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRendererInstance.fTAAHistoryDepthImages['+IntToStr(InFlightFrameIndex)+'].ImageView');
 
+   fTAAHistoryVelocityImages[InFlightFrameIndex]:=TpvScene3DRendererArray2DImage.Create(fScene3D.VulkanDevice,
+                                                                                        fScaledWidth,
+                                                                                        fScaledHeight,
+                                                                                        fCountSurfaceViews,
+                                                                                        VK_FORMAT_R32G32_SFLOAT,
+                                                                                        TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
+                                                                                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                                                        false,
+                                                                                        pvAllocationGroupIDScene3DSurface);
+   Renderer.VulkanDevice.DebugUtils.SetObjectName(fTAAHistoryVelocityImages[InFlightFrameIndex].VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DRendererInstance.fTAAHistoryVelocityImages['+IntToStr(InFlightFrameIndex)+'].Image');
+   Renderer.VulkanDevice.DebugUtils.SetObjectName(fTAAHistoryVelocityImages[InFlightFrameIndex].VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRendererInstance.fTAAHistoryVelocityImages['+IntToStr(InFlightFrameIndex)+'].ImageView');
+
    fTAAEvents[InFlightFrameIndex]:=TpvVulkanEvent.Create(Renderer.VulkanDevice);
    Renderer.VulkanDevice.DebugUtils.SetObjectName(fTAAEvents[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_EVENT,'TpvScene3DRendererInstance.fTAAEvents['+IntToStr(InFlightFrameIndex)+']');
 
@@ -4977,6 +4991,7 @@ begin
   for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
    FreeAndNil(fTAAHistoryColorImages[InFlightFrameIndex]);
    FreeAndNil(fTAAHistoryDepthImages[InFlightFrameIndex]);
+   FreeAndNil(fTAAHistoryVelocityImages[InFlightFrameIndex]);
    FreeAndNil(fTAAEvents[InFlightFrameIndex]);
   end;
  end;

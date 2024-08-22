@@ -82,6 +82,7 @@ type { TpvScene3DRendererPassesAntialiasingTAAPostCustomPass }
        fInstance:TpvScene3DRendererInstance;
        fResourceColor:TpvFrameGraph.TPass.TUsedImageResource;
        fResourceDepth:TpvFrameGraph.TPass.TUsedImageResource;
+       fResourceVelocity:TpvFrameGraph.TPass.TUsedImageResource;
       public
        constructor Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance); reintroduce;
        destructor Destroy; override;
@@ -114,6 +115,12 @@ begin
                                VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
                                []
                               );
+
+ fResourceVelocity:=AddImageInput('resourcetype_velocity',
+                                  'resource_velocity_data',
+                                  VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                                  []
+                                 );
 
 end;
 
@@ -148,7 +155,7 @@ begin
 end;
 
 procedure TpvScene3DRendererPassesAntialiasingTAAPostCustomPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
-var ImageMemoryBarriers:array[0..1] of TVkImageMemoryBarrier;
+var ImageMemoryBarriers:array[0..2] of TVkImageMemoryBarrier;
     ImageSubresourceRange:TVkImageSubresourceRange;
     ImageBlit:TVkImageBlit;
 begin
@@ -182,6 +189,21 @@ begin
                                                                                       0,
                                                                                       fInstance.CountSurfaceViews));
 
+ ImageMemoryBarriers[2]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT) or
+                                                      TVkAccessFlags(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT) or
+                                                      TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT),
+                                                      TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                                                      TVkImageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
+                                                      TVkImageLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
+                                                      VK_QUEUE_FAMILY_IGNORED,
+                                                      VK_QUEUE_FAMILY_IGNORED,
+                                                      fInstance.TAAHistoryVelocityImages[aInFlightFrameIndex].VulkanImage.Handle,
+                                                      TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                      0,
+                                                                                      1,
+                                                                                      0,
+                                                                                      fInstance.CountSurfaceViews));
+
  aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT) or
                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT) or
                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT) or
@@ -192,7 +214,7 @@ begin
                                    nil,
                                    0,
                                    nil,
-                                   2,
+                                   3,
                                    @ImageMemoryBarriers[0]);
 
  FillChar(ImageBlit,SizeOf(TVkImageBlit),#0);
@@ -243,6 +265,31 @@ begin
                              @ImageBlit,
                              VK_FILTER_NEAREST);
 
+ FillChar(ImageBlit,SizeOf(TVkImageBlit),#0);
+ ImageBlit.srcSubresource:=TVkImageSubresourceLayers.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),0,0,1);
+ ImageBlit.srcOffsets[0].x:=0;
+ ImageBlit.srcOffsets[0].y:=0;
+ ImageBlit.srcOffsets[0].z:=0;
+ ImageBlit.srcOffsets[1].x:=fResourceColor.Width;
+ ImageBlit.srcOffsets[1].y:=fResourceColor.Height;
+ ImageBlit.srcOffsets[1].z:=1;
+ ImageBlit.dstSubresource:=TVkImageSubresourceLayers.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),0,0,1);
+ ImageBlit.dstOffsets[0].x:=0;
+ ImageBlit.dstOffsets[0].y:=0;
+ ImageBlit.dstOffsets[0].z:=0;
+ ImageBlit.dstOffsets[1].x:=fInstance.TAAHistoryVelocityImages[aInFlightFrameIndex].Width;
+ ImageBlit.dstOffsets[1].y:=fInstance.TAAHistoryVelocityImages[aInFlightFrameIndex].Height;
+ ImageBlit.dstOffsets[1].z:=1;
+
+ aCommandBuffer.CmdBlitImage(fResourceVelocity.VulkanImages[aInFlightFrameIndex].Handle,
+                             TVkImageLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL),
+                             fInstance.TAAHistoryVelocityImages[aInFlightFrameIndex].VulkanImage.Handle,
+                             TVkImageLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
+                             1,
+                             @ImageBlit,
+                             VK_FILTER_NEAREST);
+
+
  ImageMemoryBarriers[0]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
                                                       TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT) or
                                                       TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT) or
@@ -272,6 +319,22 @@ begin
                                                                                       0,
                                                                                       fInstance.CountSurfaceViews));
 
+ ImageMemoryBarriers[2]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT) or
+                                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT) or
+                                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT) or
+                                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT),
+                                                      TVkImageLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
+                                                      TVkImageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
+                                                      VK_QUEUE_FAMILY_IGNORED,
+                                                      VK_QUEUE_FAMILY_IGNORED,
+                                                      fInstance.TAAHistoryVelocityImages[aInFlightFrameIndex].VulkanImage.Handle,
+                                                      TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                      0,
+                                                                                      1,
+                                                                                      0,
+                                                                                      fInstance.CountSurfaceViews));
+
  aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT) or
                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT) or
@@ -282,7 +345,7 @@ begin
                                    nil,
                                    0,
                                    nil,
-                                   2,
+                                   3,
                                    @ImageMemoryBarriers[0]);
 
 

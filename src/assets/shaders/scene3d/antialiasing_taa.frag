@@ -19,9 +19,10 @@ layout(location = 0) out vec4 outFragColor;
 
 layout(set = 0, binding = 0) uniform sampler2DArray uCurrentColorTexture;
 layout(set = 0, binding = 1) uniform sampler2DArray uCurrentDepthTexture;
-layout(set = 0, binding = 2) uniform sampler2DArray uHistoryColorTexture;
-layout(set = 0, binding = 3) uniform sampler2DArray uHistoryDepthTexture;
-layout(set = 0, binding = 4) uniform sampler2DArray uVelocityTexture;
+layout(set = 0, binding = 2) uniform sampler2DArray uCurrentVelocityTexture;
+layout(set = 0, binding = 3) uniform sampler2DArray uHistoryColorTexture;
+layout(set = 0, binding = 4) uniform sampler2DArray uHistoryDepthTexture;
+layout(set = 0, binding = 5) uniform sampler2DArray uHistoryVelocityTexture;
 
 layout(push_constant, std140, row_major) uniform PushConstants {
   
@@ -112,7 +113,7 @@ void main() {
       maximumColor = max(maximumColor, currentSamples[i]);
     }
 
-    vec3 historyUVW = uvw - vec3(textureLod(uVelocityTexture, uvw, 0.0).xy, 0);
+    vec3 historyUVW = uvw - vec3(textureLod(uCurrentVelocityTexture, uvw, 0.0).xy, 0);
 
     vec4 historySample = clamp(ConvertFromRGB(Tonemap(texture(uHistoryColorTexture, historyUVW, 0.0))), minimumColor, maximumColor);
 
@@ -292,7 +293,7 @@ void main() {
       velocityUVWZ = vec4(fma(bestDepth.xy, invTexSize, uvw.xy), uvw.z, bestDepth.z);
     }
 
-    vec3 historyUVW = uvw - vec3(textureLod(uVelocityTexture, velocityUVWZ.xyz, 0.0).xy, 0.0);
+    vec3 historyUVW = uvw - vec3(textureLod(uCurrentVelocityTexture, velocityUVWZ.xyz, 0.0).xy, 0.0);
 
     if((velocityUVWZ.w < 1e-7) || any(lessThan(historyUVW.xy, vec2(0.0))) || any(greaterThan(historyUVW.xy, vec2(1.0)))){
 #if UseFallbackFXAA
