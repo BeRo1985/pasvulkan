@@ -920,7 +920,7 @@ type EpvScene3D=class(Exception);
               procedure AssignFromDefaultParticleTexture;
               procedure AssignForImage(const aName:TpvUTF8String;const aImage:TpvScene3D.TImage);
               procedure LoadFromStream(const aStream:TStream;const aImages,aSamplers:TpvObjectList);
-              procedure PrepareSaveToStream(const aStream:TStream;const aImages,aSamplers:TpvObjectList);
+              procedure PrepareSaveToStream(const aStream:TStream;const aImages,aSamplers,aTextures:TpvObjectList);
               procedure SaveToStream(const aStream:TStream;const aImages,aSamplers:TpvObjectList);
               procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceTexture:TPasGLTF.TTexture;const aImageMap:TImages;const aSamplerMap:TSamplers);
               function GetDescriptorImageInfo(const aSRGB:boolean):TVkDescriptorImageInfo;
@@ -7170,13 +7170,16 @@ end;
 
 // Ensure that the image and sampler are in linear lists for saving for later lookup at loading again, since they are
 // actually global resources and not part of the texture nor the model/group itself 
-procedure TpvScene3D.TTexture.PrepareSaveToStream(const aStream:TStream;const aImages,aSamplers:TpvObjectList);
+procedure TpvScene3D.TTexture.PrepareSaveToStream(const aStream:TStream;const aImages,aSamplers,aTextures:TpvObjectList);
 begin
  if aImages.IndexOf(fImage)<0 then begin
   aImages.Add(fImage);
  end;
  if aSamplers.IndexOf(fSampler)<0 then begin
   aSamplers.Add(fSampler);
+ end;
+ if aTextures.IndexOf(self)<0 then begin
+  aTextures.Add(self);
  end;
 end;
 
