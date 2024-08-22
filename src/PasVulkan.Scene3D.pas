@@ -1810,6 +1810,8 @@ type EpvScene3D=class(Exception);
                             destructor Destroy; override;
                             procedure SetTarget(const aTargetPath:TpvUTF8String;const aTargetNode:TpvSizeInt);
                             procedure SetInterpolation(const aInterpolation:TpvUTF8String);
+                            procedure LoadFromStream(const aStream:TStream);
+                            procedure SaveToStream(const aStream:TStream);
                            published
                             property Name:TpvUTF8String read fName write fName;
                             property Target:TpvScene3D.TGroup.TAnimation.TChannel.TTarget read fTarget write fTarget;
@@ -1834,6 +1836,8 @@ type EpvScene3D=class(Exception);
                             fTargetSubIndex:TpvSizeInt;
                             fTargetInstanceIndex:TpvSizeInt;
                            public
+                            procedure LoadFromStream(const aStream:TStream);
+                            procedure SaveToStream(const aStream:TStream);
                            published
                             property Target:TpvScene3D.TGroup.TAnimation.TChannel.TTarget read fTarget write fTarget;
                             property TargetIndex:TpvSizeInt read fTargetIndex write fTargetIndex;
@@ -1852,6 +1856,8 @@ type EpvScene3D=class(Exception);
                      destructor Destroy; override;
                      function CreateChannel(const aName:TpvUTF8String=''):TpvScene3D.TGroup.TAnimation.TChannel;
                      procedure Finish;
+                     procedure LoadFromStream(const aStream:TStream);
+                     procedure SaveToStream(const aStream:TStream);
                      procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceAnimation:TPasGLTF.TAnimation);
                      function GetAnimationBeginTime:TpvDouble;
                      function GetAnimationEndTime:TpvDouble;
@@ -10547,6 +10553,28 @@ begin
  end;
 end;
 
+procedure TpvScene3D.TGroup.TAnimation.TChannel.LoadFromStream(const aStream:TStream);
+begin
+
+end;
+
+procedure TpvScene3D.TGroup.TAnimation.TChannel.SaveToStream(const aStream:TStream);
+begin
+
+end;
+
+{ TpvScene3D.TGroup.TAnimation.TDefaultChannel }
+
+procedure TpvScene3D.TGroup.TAnimation.TDefaultChannel.LoadFromStream(const aStream:TStream);
+begin
+
+end;
+
+procedure TpvScene3D.TGroup.TAnimation.TDefaultChannel.SaveToStream(const aStream:TStream);
+begin
+
+end;
+
 { TpvScene3D.TGroup.TAnimation }
 
 constructor TpvScene3D.TGroup.TAnimation.Create(const aGroup:TGroup;const aIndex:TpvSizeInt);
@@ -10596,6 +10624,16 @@ begin
    end;
   end;
  end;
+
+end;
+
+procedure TpvScene3D.TGroup.TAnimation.LoadFromStream(const aStream:TStream);
+begin
+
+end;
+
+procedure TpvScene3D.TGroup.TAnimation.SaveToStream(const aStream:TStream);
+begin
 
 end;
 
