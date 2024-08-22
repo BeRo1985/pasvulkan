@@ -619,6 +619,11 @@ type { TpvScene3DRendererInstance }
        fMeshCullPass1ComputeVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fMeshCullPass1ComputeVulkanDescriptorPool:TpvVulkanDescriptorPool;
        fMeshCullPass1ComputeVulkanDescriptorSets:TPerInFlightFrameVulkanDescriptorSets;
+       fViewBuffersDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
+       fViewBuffersDescriptorPool:TpvVulkanDescriptorPool;
+       fViewBuffersDescriptorSets:TPerInFlightFrameVulkanDescriptorSets;
+      private
+       fDebugTAA:TPasMPBool32;
       private
        fPerInFlightFrameGPUDrawIndexedIndirectCommandDynamicArrays:TpvScene3D.TPerInFlightFrameGPUDrawIndexedIndirectCommandDynamicArrays;
        fPerInFlightFrameGPUDrawIndexedIndirectCommandBufferSizes:TpvScene3D.TPerInFlightFrameGPUDrawIndexedIndirectCommandSizeValues;
@@ -812,6 +817,10 @@ type { TpvScene3DRendererInstance }
        property MeshCullPass0ComputeVulkanDescriptorSets:TPerInFlightFrameVulkanDescriptorSets read fMeshCullPass0ComputeVulkanDescriptorSets;
        property MeshCullPass1ComputeVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fMeshCullPass1ComputeVulkanDescriptorSetLayout;
        property MeshCullPass1ComputeVulkanDescriptorSets:TPerInFlightFrameVulkanDescriptorSets read fMeshCullPass1ComputeVulkanDescriptorSets;
+       property ViewBuffersDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fViewBuffersDescriptorSetLayout;
+       property ViewBuffersDescriptorSets:TPerInFlightFrameVulkanDescriptorSets read fViewBuffersDescriptorSets;
+      public
+       property DebugTAA:TPasMPBool32 read fDebugTAA write fDebugTAA;
       public
        property PerInFlightFrameGPUDrawIndexedIndirectCommandDynamicArrays:TpvScene3D.TPerInFlightFrameGPUDrawIndexedIndirectCommandDynamicArrays read fPerInFlightFrameGPUDrawIndexedIndirectCommandDynamicArrays write fPerInFlightFrameGPUDrawIndexedIndirectCommandDynamicArrays;
        property PerInFlightFrameGPUDrawIndexedIndirectCommandBufferSizes:TpvScene3D.TPerInFlightFrameGPUDrawIndexedIndirectCommandSizeValues read fPerInFlightFrameGPUDrawIndexedIndirectCommandBufferSizes;
@@ -1613,6 +1622,8 @@ begin
  fCameraPreset:=TpvScene3DRendererCameraPreset.Create;
 
  fUseDebugBlit:=false;
+
+ fDebugTAA:=false;
 
  fFrustumClusterGridSizeX:=16;
  fFrustumClusterGridSizeY:=16;
@@ -4971,6 +4982,41 @@ begin
 
  end;
 
+ fViewBuffersDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(Renderer.VulkanDevice);
+ fViewBuffersDescriptorSetLayout.AddBinding(0,
+                                            VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                                            1,
+                                            TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or
+                                            TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT) or
+                                            TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                            []);
+ fViewBuffersDescriptorSetLayout.Initialize;
+ Renderer.VulkanDevice.DebugUtils.SetObjectName(fViewBuffersDescriptorSetLayout.Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT,'TpvScene3DRendererInstance.fViewBuffersDescriptorSetLayout');                                          
+
+ fViewBuffersDescriptorPool:=TpvVulkanDescriptorPool.Create(Renderer.VulkanDevice,
+                                                              TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
+                                                              Renderer.CountInFlightFrames);
+ fViewBuffersDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,Renderer.CountInFlightFrames);
+ fViewBuffersDescriptorPool.Initialize;
+ Renderer.VulkanDevice.DebugUtils.SetObjectName(fViewBuffersDescriptorPool.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'TpvScene3DRendererInstance.fViewBuffersDescriptorPool');
+
+ for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
+
+  fViewBuffersDescriptorSets[InFlightFrameIndex]:=TpvVulkanDescriptorSet.Create(fViewBuffersDescriptorPool,fViewBuffersDescriptorSetLayout);
+  fViewBuffersDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(0,
+                                                                      0,
+                                                                      1,
+                                                                      TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
+                                                                      [],
+                                                                      [fVulkanViewUniformBuffers[InFlightFrameIndex].DescriptorBufferInfo],
+                                                                      [],
+                                                                      false
+                                                                     );
+  fViewBuffersDescriptorSets[InFlightFrameIndex].Flush;
+  Renderer.VulkanDevice.DebugUtils.SetObjectName(fViewBuffersDescriptorSets[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET,'TpvScene3DRendererInstance.fViewBuffersDescriptorSets['+IntToStr(InFlightFrameIndex)+']');
+
+ end;
+
  fFrameGraph.AcquireVolatileResources;
 
 end;
@@ -4986,6 +5032,12 @@ begin
  end;
  FreeAndNil(fMeshCullPass1ComputeVulkanDescriptorPool);
  FreeAndNil(fMeshCullPass1ComputeVulkanDescriptorSetLayout);
+
+ for InFlightFrameIndex:=0 to fScene3D.CountInFlightFrames-1 do begin
+  FreeAndNil(fViewBuffersDescriptorSets[InFlightFrameIndex]);
+ end;
+ FreeAndNil(fViewBuffersDescriptorPool);
+ FreeAndNil(fViewBuffersDescriptorSetLayout);
 
  if Renderer.AntialiasingMode=TpvScene3DRendererAntialiasingMode.TAA then begin
   for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin

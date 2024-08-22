@@ -45,8 +45,31 @@ layout(push_constant, std140, row_major) uniform PushConstants {
   vec2 velocityDisocclusionThresholdScale; // x = threshold, y = scale
 
   vec2 depthDisocclusionThresholdScale; // x = threshold, y = scale
+  ivec2 baseViewIndexCountViews; // x = base view index, y = count views
 
 } pushConstants;
+
+struct View {
+  mat4 viewMatrix;
+  mat4 projectionMatrix;
+  mat4 inverseViewMatrix;
+  mat4 inverseProjectionMatrix;
+};
+
+layout(set = 1, binding = 0, std140) uniform uboViews {
+  View views[256]; // 65536 / (64 * 4) = 256
+} uView;
+
+mat4 inverseProjectionMatrix = uView.views[pushConstants.baseViewIndexCountViews.x + gl_ViewIndex].inverseProjectionMatrix;
+
+float LinearizeDepth(float depth, vec2 uv){
+#if 0
+  vec2 v = (inverseProjectionMatrix * vec4(vec3(fma(uv, vec2(2.0), vec2(-1.0)), depth), 1.0)).zw;
+#else
+  vec2 v = fma(inverseProjectionMatrix[2].zw, vec2(depth), inverseProjectionMatrix[3].zw);
+#endif
+  return -(v.x / v.y);
+}
 
 float Luminance(vec4 color){
     return dot(color.xyz, vec3(0.2125, 0.7154, 0.0721));
@@ -148,7 +171,7 @@ vec4 textureCatmullRom(const in sampler2DArray tex, const in vec3 uvw, const in 
            (textureLod(tex, vec3(vec2(p33.x,  p33.y), uvw.z), float(lod)) * w3.x)) * w3.y);
 }
 
-vec4 fallbackFXAA(const in vec2 invTexSize){
+vec4 FallbackFXAA(const in vec2 invTexSize){
   const vec2 fragCoordInvScale = invTexSize;
   vec4 p = vec4(inTexCoord, vec2(inTexCoord - (fragCoordInvScale * (0.5 + (1.0 / 4.0)))));
   const float FXAA_SPAN_MAX = 8.0,
@@ -234,33 +257,46 @@ void main() {
     vec3 historyUVW = uvw - vec3(currentVelocity, 0.0);
 
     // First frame disocclusion 
-    float firstFrameDisocclusion = (abs(1.0 - pushConstants.opaqueCoefficient) < 1e-5) ? 1.0 : 0.0;
+    bool disoccluded = abs(1.0 - pushConstants.opaqueCoefficient) < 1e-5;
+
+    // Screen disocclusion
+    disoccluded = disoccluded || (any(lessThan(historyUVW.xy, vec2(0.0))) || any(greaterThan(historyUVW.xy, vec2(1.0))));
 
     // Optional translucency disocclusion, for optionally to force of different handling of translucent surfaces without temporal antialiasing,
     // since these have no valid motion vector data. 
-    float translucentDisocclusion = ((current.w < 1e-7) && (pushConstants.mixCoefficient > 0.99999) && (pushConstants.translucentCoefficient < 1e-7)) ? 1.0 : 0.0;
+    disoccluded = disoccluded || ((current.w < 1e-7) && (pushConstants.translucentCoefficient < 1e-7));
 
-    // Screen disocclusion
-    float screenDisocclusion = (any(lessThan(historyUVW.xy, vec2(0.0))) || any(greaterThan(historyUVW.xy, vec2(1.0)))) ? 1.0 : 0.0;
-    
     // Optional velocity disocclusion for further reducing ghosting artifacts.
-    float velocityDisocclusion = ((pushConstants.velocityDisocclusionThresholdScale.x > 1e-7) && ((firstFrameDisocclusion + translucentDisocclusion + screenDisocclusion) < 1e-7))
-                                  ? clamp((length(currentVelocity - textureLod(uHistoryVelocityTexture, historyUVW, 0.0).xy) - pushConstants.velocityDisocclusionThresholdScale.x) * pushConstants.velocityDisocclusionThresholdScale.y, 0.0, 1.0)
-                                  : 0.0;
+    disoccluded = disoccluded || ((pushConstants.velocityDisocclusionThresholdScale.x > 1e-7)
+                                    ? (clamp((length(currentVelocity - textureLod(uHistoryVelocityTexture, historyUVW, 0.0).xy) - pushConstants.velocityDisocclusionThresholdScale.x) * pushConstants.velocityDisocclusionThresholdScale.y, 0.0, 2.0) >= 1.0)
+                                    : false);
 
     // Optional depth disocclusion for further reducing ghosting artifacts.
-    float depthDisocclusion = ((pushConstants.depthDisocclusionThresholdScale.x > 1e-7) && ((firstFrameDisocclusion + translucentDisocclusion + screenDisocclusion + velocityDisocclusion) < 1e-7))
-                                ? clamp((abs(textureLod(uCurrentDepthTexture, uvw, 0.0).x - textureLod(uHistoryDepthTexture, historyUVW, 0.0).x) - pushConstants.depthDisocclusionThresholdScale.x) * pushConstants.depthDisocclusionThresholdScale.y, 0.0, 1.0)
-                                : 0.0;
-    
-    // Total disocclusion is the sum of all disocclusion factors
-    float totalDisocclusion = clamp(firstFrameDisocclusion + translucentDisocclusion + screenDisocclusion + velocityDisocclusion, 0.0, 1.0);
+    if((!disoccluded) && (pushConstants.depthDisocclusionThresholdScale.x > 1e-7)){
 
-    if(totalDisocclusion > 0.99999){
+      // Get the current and history depth samples as raw values      
+      float currentDepth = textureLod(uCurrentDepthTexture, uvw, 0.0).x;
+      float historyDepth = textureLod(uHistoryDepthTexture, historyUVW, 0.0).x;
+      
+      // Check if we're not in the far plane for avoiding other unwanted artifacts than ghosting and so on.
+      if(all(greaterThan(vec2(fma(vec2(currentDepth, historyDepth), depthTransform.xx, depthTransform.yy)), vec2(1e-7)))){
+
+        // Linearize the current and history depth samples
+        float currentLinearDepth = LinearizeDepth(currentDepth, uvw.xy);
+        float historyLinearDepth = LinearizeDepth(historyDepth, historyUVW.xy); 
+
+        // Check if the current and history depth samples are candidates for disocclusion
+        disoccluded = clamp((abs(currentLinearDepth - historyLinearDepth) - pushConstants.depthDisocclusionThresholdScale.x) * pushConstants.depthDisocclusionThresholdScale.y, 0.0, 2.0) >= 1.0;
+
+      }
+
+    }
+
+    if(disoccluded){
       if(pushConstants.useFallbackFXAA > 0.5){
         // Use fallback FXAA in areas of off-screen disocclusion (where temporal raster data doesn’t exist) as it is also used at 
         // NVIDIA's Adaptive Temporal Antialiasing (ATAA).
-        current = fallbackFXAA(invTexSize);
+        current = FallbackFXAA(invTexSize);
       }
       color = mix(current, vec4(1.0, 0.0, 0.0, 1.0), pushConstants.disocclusionDebugFactor);
     }else{

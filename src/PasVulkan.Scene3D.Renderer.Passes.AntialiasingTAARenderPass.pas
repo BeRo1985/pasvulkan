@@ -100,6 +100,8 @@ type { TpvScene3DRendererPassesAntialiasingTAARenderPass }
               VelocityDisocclusionThresholdScale:TpvVector2;
 
               DepthDisocclusionThresholdScale:TpvVector2;
+              BaseViewIndex:TpvInt32;
+              CountViews:TpvInt32;
 
              end;
        private
@@ -378,6 +380,7 @@ begin
 
  fVulkanPipelineLayout:=TpvVulkanPipelineLayout.Create(fInstance.Renderer.VulkanDevice);
  fVulkanPipelineLayout.AddDescriptorSetLayout(fVulkanDescriptorSetLayout);
+ fVulkanPipelineLayout.AddDescriptorSetLayout(fInstance.ViewBuffersDescriptorSetLayout);
  fVulkanPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),0,SizeOf(TPushConstants));
  fVulkanPipelineLayout.Initialize;
 
@@ -476,8 +479,10 @@ end;
 
 procedure TpvScene3DRendererPassesAntialiasingTAARenderPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
 var PushConstants:TPushConstants;
+    DescriptorSets:array[0..1] of TVkDescriptorSet;
 begin
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
+ 
  if aFrameIndex=0 then begin
   PushConstants.TranslucentCoefficient:=1.0;
   PushConstants.OpaqueCoefficient:=1.0;
@@ -498,24 +503,37 @@ begin
   PushConstants.ZMul:=1.0;
   PushConstants.ZAdd:=0.0;
  end;
- PushConstants.DisocclusionDebugFactor:=0.0;
+ if fInstance.DebugTAA then begin
+  PushConstants.DisocclusionDebugFactor:=1.0;
+ end else begin
+  PushConstants.DisocclusionDebugFactor:=0.0;
+ end;
  PushConstants.UseFallbackFXAA:=1.0;
  PushConstants.JitterUV:=fInstance.InFlightFrameStates^[aInFlightFrameIndex].Jitter.xy;
  PushConstants.VelocityDisocclusionThresholdScale.x:=1e-2;//32.0/TpvVector2.InlineableCreate(fResourceCurrentColor.Width,fResourceCurrentColor.Height).Length;
  PushConstants.VelocityDisocclusionThresholdScale.y:=2000.0;
- PushConstants.DepthDisocclusionThresholdScale.x:=1e-2;//32.0/TpvVector2.InlineableCreate(fResourceCurrentColor.Width,fResourceCurrentColor.Height).Length;
+ PushConstants.DepthDisocclusionThresholdScale.x:=0.0;//32.0/TpvVector2.InlineableCreate(fResourceCurrentColor.Width,fResourceCurrentColor.Height).Length;
  PushConstants.DepthDisocclusionThresholdScale.y:=2000.0;
+ PushConstants.BaseViewIndex:=fInstance.InFlightFrameStates^[aInFlightFrameIndex].FinalViewIndex;
+ PushConstants.CountViews:=fInstance.InFlightFrameStates^[aInFlightFrameIndex].CountFinalViews;
+ 
+ aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanGraphicsPipeline.Handle);
+
  aCommandBuffer.CmdPushConstants(fVulkanPipelineLayout.Handle,
                                   TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_FRAGMENT_BIT),
                                   0,
                                   SizeOf(TPushConstants),
                                   @PushConstants);
+
+ DescriptorSets[0]:=fVulkanDescriptorSets[aInFlightFrameIndex].Handle;
+ DescriptorSets[1]:=fInstance.ViewBuffersDescriptorSets[aInFlightFrameIndex].Handle;
+ 
  aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
                                       fVulkanPipelineLayout.Handle,
                                       0,
-                                      1,
-                                      @fVulkanDescriptorSets[aInFlightFrameIndex].Handle,0,nil);
- aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanGraphicsPipeline.Handle);
+                                      2,@DescriptorSets,
+                                      0,nil);
+
  aCommandBuffer.CmdDraw(3,1,0,0);
 end;
 
