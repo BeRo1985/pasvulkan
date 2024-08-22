@@ -12321,6 +12321,13 @@ begin
   ui32:=StreamIO.ReadUInt32;
   fPrimitiveTopology:=TpvScene3D.TPrimitiveTopology(ui32);
 
+  Index:=StreamIO.ReadInt64;
+  if (Index>=0) and (Index<aMaterials.Count) then begin
+   fMaterial:=TpvScene3D.TMaterial(aMaterials[Index]);
+  end else begin
+   fMaterial:=nil;
+  end;
+
   fMaterialID:=StreamIO.ReadInt64;
 
   Count:=StreamIO.ReadInt64;
@@ -12384,6 +12391,12 @@ begin
   StreamIO.WriteUInt32(fPrimitiveIndex);
 
   StreamIO.WriteUInt32(TpvUInt32(fPrimitiveTopology));
+
+  if assigned(fMaterial) then begin
+   StreamIO.WriteInt64(aMaterials.IndexOf(fMaterial));
+  end else begin
+   StreamIO.WriteInt64(-1);
+  end;
 
   StreamIO.WriteInt64(fMaterialID);
 
