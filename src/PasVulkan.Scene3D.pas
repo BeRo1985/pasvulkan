@@ -2959,6 +2959,9 @@ type EpvScene3D=class(Exception);
              public
               procedure FinalizeMaterials(const aDoLock:Boolean=true);
              public
+              procedure LoadFromStream(const aStream:TStream);
+              procedure SaveToStream(const aStream:TStream);
+             public
               procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument);
              public
               procedure AssignFromSAM(const aSourceModel:TpvSAM.TModel);
@@ -17421,6 +17424,14 @@ begin
 
  end;
 
+end;
+
+procedure TpvScene3D.TGroup.LoadFromStream(const aStream:TStream);
+begin
+end;
+
+procedure TpvScene3D.TGroup.SaveToStream(const aStream:TStream);
+begin
 end;
 
 procedure TpvScene3D.TGroup.AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument);
