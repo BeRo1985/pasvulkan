@@ -2022,6 +2022,7 @@ type EpvScene3D=class(Exception);
                    TSkins=TpvObjectGenericList<TSkin>;
                    TSkinDynamicArray=TpvDynamicArray<TSkin>;
                    TNodes=TpvObjectGenericList<TNode>;
+                   { TLight }
                    TLight=class(TGroupObject)
                     private
                      fData:TLightData;
@@ -2030,6 +2031,8 @@ type EpvScene3D=class(Exception);
                     public
                      constructor Create(const aGroup:TGroup;const aIndex:TpvSizeInt=-1); reintroduce;
                      destructor Destroy; override;
+                     procedure LoadFromStream(const aStream:TStream);
+                     procedure SaveToStream(const aStream:TStream);
                      procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceLight:TPasJSONItemObject);
                     public
                      property Data:TLightData read fData write fData;
@@ -12787,7 +12790,6 @@ end;
 procedure TpvScene3D.TGroup.TSkin.SaveToStream(const aStream:TStream);
 var StreamIO:TpvStreamIO;
     Index,Count:TpvSizeInt;
-    Matrix:TpvMatrix4x4;
 begin
 
  StreamIO:=TpvStreamIO.Create(aStream);
@@ -12883,6 +12885,90 @@ destructor TpvScene3D.TGroup.TLight.Destroy;
 begin
  FreeAndNil(fNodes);
  inherited Destroy;
+end;
+
+procedure TpvScene3D.TGroup.TLight.LoadFromStream(const aStream:TStream);
+var StreamIO:TpvStreamIO;
+    Index,Count:TpvSizeInt;
+begin
+
+ StreamIO:=TpvStreamIO.Create(aStream);
+ try
+
+  fName:=StreamIO.ReadUTF8String;
+
+  fIndex:=StreamIO.ReadInt64;
+
+  fData.fType_:=TpvScene3D.TLightData.TLightType(StreamIO.ReadInt32);
+
+  fData.fIntensity:=StreamIO.ReadFloat;
+
+  fData.fRange:=StreamIO.ReadFloat;
+
+  fData.fInnerConeAngle:=StreamIO.ReadFloat;
+
+  fData.fOuterConeAngle:=StreamIO.ReadFloat;
+
+  fData.fColor:=StreamIO.ReadVector3;
+
+  fData.fCastShadows:=StreamIO.ReadBoolean;
+
+  fData.fVisible:=StreamIO.ReadBoolean;
+
+  fData.fAlways:=StreamIO.ReadBoolean;
+
+  Count:=StreamIO.ReadInt64;
+  fNodes.Clear;
+  for Index:=0 to Count-1 do begin
+   StreamIO.ReadInt64;
+  end;
+
+ finally
+  FreeAndNil(StreamIO);
+ end;
+
+end;
+
+procedure TpvScene3D.TGroup.TLight.SaveToStream(const aStream:TStream);
+var StreamIO:TpvStreamIO;
+    Index,Count:TpvSizeInt;
+begin
+
+ StreamIO:=TpvStreamIO.Create(aStream);
+ try
+
+  StreamIO.WriteUTF8String(fName);
+
+  StreamIO.WriteInt64(fIndex);
+
+  StreamIO.WriteInt32(TpvInt32(fData.fType_));
+
+  StreamIO.WriteFloat(fData.fIntensity);
+
+  StreamIO.WriteFloat(fData.fRange);
+
+  StreamIO.WriteFloat(fData.fInnerConeAngle);
+
+  StreamIO.WriteFloat(fData.fOuterConeAngle);
+
+  StreamIO.WriteVector3(fData.fColor);
+
+  StreamIO.WriteBoolean(fData.fCastShadows);
+
+  StreamIO.WriteBoolean(fData.fVisible);
+
+  StreamIO.WriteBoolean(fData.fAlways);
+
+  Count:=fNodes.Count;
+  StreamIO.WriteInt64(Count);
+  for Index:=0 to Count-1 do begin
+   StreamIO.WriteInt64(fNodes.Items[Index].fIndex);
+  end;
+
+ finally
+  FreeAndNil(StreamIO);
+ end;
+
 end;
 
 procedure TpvScene3D.TGroup.TLight.AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceLight:TPasJSONItemObject);

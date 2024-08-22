@@ -227,6 +227,7 @@ type EpvDataStream=class(Exception);
        function ReadUInt32:TpvUInt32;
        function ReadInt64:TpvInt64;
        function ReadUInt64:TpvUInt64;
+       function ReadBoolean:Boolean;
        function ReadFloat:TpvFloat;
        function ReadDouble:TpvDouble;
        function ReadVector2:TpvVector2;
@@ -252,6 +253,7 @@ type EpvDataStream=class(Exception);
        function WriteUInt32(const aValue:TpvUInt32):TpvSizeUInt;
        function WriteInt64(const aValue:TpvInt64):TpvSizeUInt;
        function WriteUInt64(const aValue:TpvUInt64):TpvSizeUInt;
+       function WriteBoolean(const aValue:Boolean):TpvSizeUInt;
        function WriteFloat(const aValue:TpvFloat):TpvSizeUInt;
        function WriteDouble(const aValue:TpvDouble):TpvSizeUInt;
        function WriteVector2(const aValue:TpvVector2):TpvSizeUInt;
@@ -1291,6 +1293,11 @@ begin
 end;
 {$endif}
 
+function TpvStreamIO.ReadBoolean:Boolean;
+begin
+ result:=ReadUInt8<>0;
+end;
+
 function TpvStreamIO.ReadDouble:TpvDouble;
 {$ifdef BIG_ENDIAN}
 var Value:TpvUInt64;
@@ -1563,6 +1570,15 @@ begin
  result:=WriteWithCheck(aValue,SizeOf(TpvUInt64));
 end;
 {$endif}
+
+function TpvStreamIO.WriteBoolean(const aValue:Boolean):TpvSizeUInt;
+begin
+ if aValue then begin
+  result:=WriteUInt8(1);
+ end else begin
+  result:=WriteUInt8(0);
+ end;
+end;
 
 function TpvStreamIO.WriteFloat(const aValue:TpvFloat):TpvSizeUInt;
 {$ifdef BIG_ENDIAN}
