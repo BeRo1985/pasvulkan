@@ -1997,17 +1997,20 @@ type EpvScene3D=class(Exception);
                      property ReferencedByNodes:TpvScene3D.TGroup.TMesh.TReferencedByNodes read fReferencedByNodes;
                    end;
                    TMeshes=TpvObjectGenericList<TMesh>;
+                   { TSkin }
                    TSkin=class(TGroupObject)
                     private
                      fIndex:TpvSizeInt;
                      fSkeleton:TpvSizeInt;
-                     fJointMatrixOffset:TPasGLTFSizeInt;
+                     fJointMatrixOffset:TpvSizeInt;
                      fInverseBindMatrices:TpvScene3D.TMatrix4x4DynamicArrayList;
                      fMatrices:TpvScene3D.TMatrix4x4DynamicArrayList;
                      fJoints:TpvScene3D.TSizeIntDynamicArrayList;
                     public
                      constructor Create(const aGroup:TGroup;const aIndex:TpvSizeInt=-1); reintroduce;
                      destructor Destroy; override;
+                     procedure LoadFromStream(const aStream:TStream);
+                     procedure SaveToStream(const aStream:TStream);
                      procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceSkin:TPasGLTF.TSkin);
                     published
                      property Index:TpvSizeInt read fIndex;
@@ -10906,7 +10909,7 @@ begin
   fRaytracingPrimitiveID:=StreamIO.ReadUInt64;
  
  finally
-  StreamIO.Free;
+  FreeAndNil(StreamIO);
  end;
 
 end;
@@ -10965,7 +10968,7 @@ begin
   StreamIO.WriteUInt64(fRaytracingPrimitiveID);
 
  finally
-  StreamIO.Free;
+  FreeAndNil(StreamIO);
  end;
 
 end;
@@ -12739,6 +12742,87 @@ begin
  FreeAndNil(fMatrices);
  FreeAndNil(fJoints);
  inherited Destroy;
+end;
+
+procedure TpvScene3D.TGroup.TSkin.LoadFromStream(const aStream:TStream);
+var StreamIO:TpvStreamIO;
+    Index,Count:TpvSizeInt;
+begin
+
+ StreamIO:=TpvStreamIO.Create(aStream);
+ try
+  
+  fName:=StreamIO.ReadUTF8String;
+
+  fIndex:=StreamIO.ReadInt64;
+
+  fSkeleton:=StreamIO.ReadInt64;
+
+  fJointMatrixOffset:=StreamIO.ReadInt64;
+
+  Count:=StreamIO.ReadInt64;
+  fInverseBindMatrices.Resize(Count);
+  for Index:=0 to Count-1 do begin
+   fInverseBindMatrices.Items[Index]:=StreamIO.ReadMatrix4x4;
+  end;
+
+  Count:=StreamIO.ReadInt64;
+  fMatrices.Resize(Count);
+  for Index:=0 to Count-1 do begin
+   fMatrices.Items[Index]:=StreamIO.ReadMatrix4x4;
+  end;
+
+  Count:=StreamIO.ReadInt64;
+  fJoints.Resize(Count);
+  for Index:=0 to Count-1 do begin
+   fJoints.Items[Index]:=StreamIO.ReadInt64;
+  end;
+
+ finally
+  FreeAndNil(StreamIO);
+ end;
+
+end;
+
+procedure TpvScene3D.TGroup.TSkin.SaveToStream(const aStream:TStream);
+var StreamIO:TpvStreamIO;
+    Index,Count:TpvSizeInt;
+    Matrix:TpvMatrix4x4;
+begin
+
+ StreamIO:=TpvStreamIO.Create(aStream);
+ try
+
+  StreamIO.WriteUTF8String(fName);
+
+  StreamIO.WriteInt64(fIndex);
+
+  StreamIO.WriteInt64(fSkeleton);
+
+  StreamIO.WriteInt64(fJointMatrixOffset);
+
+  Count:=fInverseBindMatrices.Count;
+  StreamIO.WriteInt64(Count);
+  for Index:=0 to Count-1 do begin
+   StreamIO.WriteMatrix4x4(fInverseBindMatrices.Items[Index]);
+  end;
+
+  Count:=fMatrices.Count;
+  StreamIO.WriteInt64(Count);
+  for Index:=0 to Count-1 do begin
+   StreamIO.WriteMatrix4x4(fMatrices.Items[Index]);
+  end;
+
+  Count:=fJoints.Count;
+  StreamIO.WriteInt64(Count);
+  for Index:=0 to Count-1 do begin
+   StreamIO.WriteInt64(fJoints.Items[Index]);
+  end;
+
+ finally
+  FreeAndNil(StreamIO);
+ end;
+
 end;
 
 procedure TpvScene3D.TGroup.TSkin.AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceSkin:TPasGLTF.TSkin);
