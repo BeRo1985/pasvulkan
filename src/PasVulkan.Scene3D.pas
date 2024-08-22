@@ -17491,6 +17491,61 @@ begin
       for Index:=0 to Count-1 do begin
        TpvScene3D.TMaterial(CollectedMaterials[Index]).SaveToStream(aStream,CollectedImages,CollectedSamplers,CollectedTextures);
       end;
+
+      // Write cameras
+      Count:=fCameras.Count;
+      StreamIO.WriteInt64(Count);
+      for Index:=0 to Count-1 do begin
+       TpvScene3D.TGroup.TCamera(fCameras[Index]).SaveToStream(aStream);
+      end;
+
+      // Write lights
+      Count:=fLights.Count;
+      StreamIO.WriteInt64(Count);
+      for Index:=0 to Count-1 do begin
+       TpvScene3D.TGroup.TLight(fLights[Index]).SaveToStream(aStream);
+      end;
+
+      // Write meshes
+      Count:=fMeshes.Count;
+      StreamIO.WriteInt64(Count);
+      for Index:=0 to Count-1 do begin
+       TpvScene3D.TGroup.TMesh(fMeshes[Index]).SaveToStream(aStream);
+      end;
+
+      // Write skins
+      Count:=fSkins.Count;
+      StreamIO.WriteInt64(Count);
+      for Index:=0 to Count-1 do begin
+       TpvScene3D.TGroup.TSkin(fSkins[Index]).SaveToStream(aStream);
+      end;
+
+      // Write animations
+      Count:=fAnimations.Count;
+      StreamIO.WriteInt64(Count);
+      for Index:=0 to Count-1 do begin
+       TpvScene3D.TGroup.TAnimation(fAnimations[Index]).SaveToStream(aStream);
+      end;
+
+      // Write nodes
+      Count:=fNodes.Count;
+      StreamIO.WriteInt64(Count);
+      for Index:=0 to Count-1 do begin
+       TpvScene3D.TGroup.TNode(fNodes[Index]).SaveToStream(aStream);
+      end;
+
+      // Write scenes
+      Count:=fScenes.Count;
+      StreamIO.WriteInt64(Count);
+      for Index:=0 to Count-1 do begin
+       TpvScene3D.TGroup.TScene(fScenes[Index]).SaveToStream(aStream);
+      end;
+
+      // Write final header
+      PMVFHeader.Size:=aStream.Position-HeaderPosition;
+      aStream.Seek(HeaderPosition,soBeginning);
+      StreamIO.WriteWithCheck(PMVFHeader,SizeOf(TpvScene3D.TPVMFHeader));
+      aStream.Seek(0,soEnd);
       
      finally
       FreeAndNil(CollectedMaterials);
