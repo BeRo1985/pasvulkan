@@ -1870,6 +1870,8 @@ type EpvScene3D=class(Exception);
                     public
                      constructor Create(const aGroup:TGroup;const aIndex:TpvSizeInt=-1); reintroduce;
                      destructor Destroy; override;
+                     procedure LoadFromStream(const aStream:TStream);
+                     procedure SaveToStream(const aStream:TStream);
                      procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceCamera:TPasGLTF.TCamera);
                     public
                      property CameraData:TpvScene3D.PCameraData read fPointerToCameraData;
@@ -10800,6 +10802,80 @@ end;
 destructor TpvScene3D.TGroup.TCamera.Destroy;
 begin
  inherited Destroy;
+end;
+
+procedure TpvScene3D.TGroup.TCamera.LoadFromStream(const aStream:TStream);
+var StreamIO:TpvStreamIO;
+begin
+
+ StreamIO:=TpvStreamIO.Create(aStream);
+ try
+  
+  fName:=StreamIO.ReadUTF8String;
+
+  fCameraData.Type_:=TCameraData.TCameraType(TpvUInt32(StreamIO.ReadUInt32));
+
+  case fCameraData.Type_ of
+   TCameraData.TCameraType.None:begin
+   end;
+   TCameraData.TCameraType.Orthographic:begin
+    fCameraData.Orthographic.XMag:=StreamIO.ReadFloat;
+    fCameraData.Orthographic.YMag:=StreamIO.ReadFloat;
+    fCameraData.Orthographic.ZNear:=StreamIO.ReadFloat;
+    fCameraData.Orthographic.ZFar:=StreamIO.ReadFloat;
+   end;
+   TCameraData.TCameraType.Perspective:begin
+    fCameraData.Perspective.AspectRatio:=StreamIO.ReadFloat;
+    fCameraData.Perspective.YFoV:=StreamIO.ReadFloat;
+    fCameraData.Perspective.ZNear:=StreamIO.ReadFloat;
+    fCameraData.Perspective.ZFar:=StreamIO.ReadFloat;
+   end;
+   else begin
+    Assert(false);
+   end;
+  end;
+
+ finally
+  FreeAndNil(StreamIO);
+ end; 
+
+end;
+
+procedure TpvScene3D.TGroup.TCamera.SaveToStream(const aStream:TStream);
+var StreamIO:TpvStreamIO;
+begin
+
+ StreamIO:=TpvStreamIO.Create(aStream);
+ try
+  
+  StreamIO.WriteUTF8String(fName);
+
+  StreamIO.WriteUInt32(TpvUInt32(fCameraData.Type_));
+
+  case fCameraData.Type_ of
+   TCameraData.TCameraType.None:begin
+   end;
+   TCameraData.TCameraType.Orthographic:begin
+    StreamIO.WriteFloat(fCameraData.Orthographic.XMag);
+    StreamIO.WriteFloat(fCameraData.Orthographic.YMag);
+    StreamIO.WriteFloat(fCameraData.Orthographic.ZNear);
+    StreamIO.WriteFloat(fCameraData.Orthographic.ZFar);
+   end;
+   TCameraData.TCameraType.Perspective:begin
+    StreamIO.WriteFloat(fCameraData.Perspective.AspectRatio);
+    StreamIO.WriteFloat(fCameraData.Perspective.YFoV);
+    StreamIO.WriteFloat(fCameraData.Perspective.ZNear);
+    StreamIO.WriteFloat(fCameraData.Perspective.ZFar);
+   end;
+   else begin
+    Assert(false);
+   end;
+  end;
+
+ finally
+  FreeAndNil(StreamIO);
+ end; 
+
 end;
 
 procedure TpvScene3D.TGroup.TCamera.AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceCamera:TPasGLTF.TCamera);
