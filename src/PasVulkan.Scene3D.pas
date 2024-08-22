@@ -919,6 +919,9 @@ type EpvScene3D=class(Exception);
               procedure AssignFromDefaultNormalMapTexture;
               procedure AssignFromDefaultParticleTexture;
               procedure AssignForImage(const aName:TpvUTF8String;const aImage:TpvScene3D.TImage);
+              procedure LoadFromStream(const aStream:TStream;const aImages,aSamplers:TpvObjectList);
+              procedure PrepareSaveToStream(const aStream:TStream;const aImages,aSamplers:TpvObjectList);
+              procedure SaveToStream(const aStream:TStream;const aImages,aSamplers:TpvObjectList);
               procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceTexture:TPasGLTF.TTexture;const aImageMap:TImages;const aSamplerMap:TSamplers);
               function GetDescriptorImageInfo(const aSRGB:boolean):TVkDescriptorImageInfo;
              published
@@ -7128,6 +7131,78 @@ begin
 
  finally
   fSceneInstance.fTextureListLock.Release;
+ end;
+
+end;
+
+procedure TpvScene3D.TTexture.LoadFromStream(const aStream:TStream;const aImages,aSamplers:TpvObjectList);
+var StreamIO:TpvStreamIO;
+    ImageIndex:TpvInt32;
+    SamplerIndex:TpvInt32;
+begin
+
+ StreamIO:=TpvStreamIO.Create(aStream);
+ try
+
+  ImageIndex:=StreamIO.ReadInt64;
+  if (ImageIndex>=0) and (ImageIndex<aImages.Count) then begin
+   fImage:=TpvScene3D.TImage(aImages[ImageIndex]);
+   fImage.IncRef;
+  end else begin
+   fImage:=nil;
+  end;
+
+  SamplerIndex:=StreamIO.ReadInt64;
+  if (SamplerIndex>=0) and (SamplerIndex<aSamplers.Count) then begin
+   fSampler:=TpvScene3D.TSampler(aSamplers[SamplerIndex]);
+   fSampler.IncRef;
+  end else begin
+   fSampler:=nil;
+  end; 
+
+
+ finally
+  FreeAndNil(StreamIO);
+ end;
+
+
+end;
+
+// Ensure that the image and sampler are in linear lists for saving for later lookup at loading again, since they are
+// actually global resources and not part of the texture nor the model/group itself 
+procedure TpvScene3D.TTexture.PrepareSaveToStream(const aStream:TStream;const aImages,aSamplers:TpvObjectList);
+begin
+ if aImages.IndexOf(fImage)<0 then begin
+  aImages.Add(fImage);
+ end;
+ if aSamplers.IndexOf(fSampler)<0 then begin
+  aSamplers.Add(fSampler);
+ end;
+end;
+
+procedure TpvScene3D.TTexture.SaveToStream(const aStream:TStream;const aImages,aSamplers:TpvObjectList);
+var StreamIO:TpvStreamIO;
+    ImageIndex:TpvInt32;
+    SamplerIndex:TpvInt32;
+begin
+
+ StreamIO:=TpvStreamIO.Create(aStream);
+ try
+
+  ImageIndex:=-1;
+  if assigned(fImage) then begin
+   ImageIndex:=aImages.IndexOf(fImage);
+  end;
+  StreamIO.WriteInt64(ImageIndex);
+
+  SamplerIndex:=-1;
+  if assigned(fSampler) then begin
+   SamplerIndex:=aSamplers.IndexOf(fSampler);
+  end;
+  StreamIO.WriteInt64(SamplerIndex);
+
+ finally
+  FreeAndNil(StreamIO);
  end;
 
 end;
