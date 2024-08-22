@@ -836,6 +836,8 @@ type EpvScene3D=class(Exception);
               procedure AssignFromDefaultNormalMapTexture;
               procedure AssignFromDefaultParticleTexture;
               procedure AssignFromStream(const aName:TpvUTF8String;const aStream:TStream);
+              procedure LoadFromStream(const aStream:TStream);
+              procedure SaveToStream(const aStream:TStream);
               procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceImage:TPasGLTF.TImage);
              published
               property Kind:TKind read fKind write fKind;
@@ -6426,6 +6428,55 @@ begin
  fResourceDataStream.Clear;
  aStream.Seek(0,soBeginning);
  fResourceDataStream.CopyFrom(aStream,aStream.Size);
+end;
+
+procedure TpvScene3D.TImage.LoadFromStream(const aStream:TStream);
+var StreamIO:TpvStreamIO;
+    Size:TpvUInt64;
+begin
+
+ StreamIO:=TpvStreamIO.Create(aStream);
+ try
+
+  fName:=StreamIO.ReadUTF8String;
+
+  fKind:=TpvScene3D.TImage.TKind(StreamIO.ReadUInt32);
+
+  Size:=StreamIO.ReadUInt64;
+  fResourceDataStream.Clear;
+  if Size>0 then begin
+   fResourceDataStream.CopyFrom(aStream,Size);
+  end; 
+
+ finally
+  FreeAndNil(StreamIO);
+ end;
+
+end;
+
+procedure TpvScene3D.TImage.SaveToStream(const aStream:TStream);
+var StreamIO:TpvStreamIO;
+    Size:TpvUInt64;
+begin
+
+ StreamIO:=TpvStreamIO.Create(aStream);
+ try
+
+  StreamIO.WriteUTF8String(fName);
+
+  StreamIO.WriteUInt32(TpvUInt32(fKind));
+
+  Size:=fResourceDataStream.Size;
+  StreamIO.WriteUInt64(Size);
+  if Size>0 then begin
+   fResourceDataStream.Seek(0,soBeginning);
+   aStream.CopyFrom(fResourceDataStream,Size);
+  end;
+
+ finally
+  FreeAndNil(StreamIO);
+ end;
+ 
 end;
 
 procedure TpvScene3D.TImage.AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceImage:TPasGLTF.TImage);
