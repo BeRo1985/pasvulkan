@@ -2066,8 +2066,11 @@ type EpvScene3D=class(Exception);
                      fIndex:TpvSizeInt;
                      fFlags:TNodeFlags;
                      fUsedByScenesList:TUsedByScenesList;
+                     fUsedByScenesListIndices:TpvScene3D.TSizeIntDynamicArrayList;
                      fChildren:TNodes;
+                     fChildrenIndices:TpvScene3D.TSizeIntDynamicArrayList;
                      fSplittedChildren:TNodes;
+                     fSplittedChildrenIndices:TpvScene3D.TSizeIntDynamicArrayList;
                      fMesh:TMesh;
                      fNodeMeshInstanceIndex:TPasGLTFSizeInt;
                      fCamera:TCamera;
@@ -2089,6 +2092,8 @@ type EpvScene3D=class(Exception);
                     public
                      constructor Create(const aGroup:TGroup;const aIndex:TpvSizeInt=-1); reintroduce;
                      destructor Destroy; override;
+                     procedure LoadFromStream(const aStream:TStream);
+                     procedure SaveToStream(const aStream:TStream);
                      procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceNode:TPasGLTF.TNode;const aLightMap:TpvScene3D.TGroup.TLights);
                     published
                      property Index:TpvSizeInt read fIndex;
@@ -13060,14 +13065,20 @@ begin
 
  fJoint:=-1;
 
+ fUsedByScenesList:=TUsedByScenesList.Create;
+ fUsedByScenesList.OwnsObjects:=false;
+
+ fUsedByScenesListIndices:=TpvScene3D.TSizeIntDynamicArrayList.Create;
+
  fChildren:=TNodes.Create;
  fChildren.OwnsObjects:=false;
+
+ fChildrenIndices:=TpvScene3D.TSizeIntDynamicArrayList.Create;
 
  fSplittedChildren:=TNodes.Create;
  fSplittedChildren.OwnsObjects:=false;
 
- fUsedByScenesList:=TUsedByScenesList.Create;
- fUsedByScenesList.OwnsObjects:=false;
+ fSplittedChildrenIndices:=TpvScene3D.TSizeIntDynamicArrayList.Create;
 
  fWeights:=TpvScene3D.TFloatDynamicArrayList.Create;
 
@@ -13114,7 +13125,13 @@ begin
 
  FreeAndNil(fUsedByScenesList);
 
+ FreeAndNil(fUsedByScenesListIndices);
+
+ FreeAndNil(fSplittedChildrenIndices);
+
  FreeAndNil(fSplittedChildren);
+
+ FreeAndNil(fChildrenIndices);
 
  FreeAndNil(fChildren);
 
@@ -13124,6 +13141,246 @@ begin
 
  inherited Destroy;
 
+end;
+
+procedure TpvScene3D.TGroup.TNode.LoadFromStream(const aStream:TStream);
+var StreamIO:TpvStreamIO;
+    Index,Count:TpvSizeInt;
+    Flags:TpvUInt32;
+begin
+
+ StreamIO:=TpvStreamIO.Create(aStream);
+ try
+
+  fName:=StreamIO.ReadUTF8String;
+
+  fIndex:=StreamIO.ReadInt64;
+
+  Flags:=StreamIO.ReadUInt32;
+  fFlags:=[];
+  if (Flags and 1)<>0 then begin
+   Include(fFlags,TpvScene3D.TGroup.TNode.TNodeFlag.TransformAnimated);
+  end;
+  if (Flags and 2)<>0 then begin
+   Include(fFlags,TpvScene3D.TGroup.TNode.TNodeFlag.SkinAnimated);
+  end;
+  if (Flags and 4)<>0 then begin
+   Include(fFlags,TpvScene3D.TGroup.TNode.TNodeFlag.WeightsAnimated);
+  end;
+
+  Count:=StreamIO.ReadInt64;
+  fUsedByScenesListIndices.Clear;
+  for Index:=0 to Count-1 do begin
+   fUsedByScenesListIndices.Add(StreamIO.ReadInt64);
+  end;
+
+  Count:=StreamIO.ReadInt64;
+  fChildrenIndices.Clear;
+  for Index:=0 to Count-1 do begin
+   fChildrenIndices.Add(StreamIO.ReadInt64);
+  end;
+
+  Count:=StreamIO.ReadInt64;
+  fSplittedChildrenIndices.Clear;
+  for Index:=0 to Count-1 do begin
+   fSplittedChildrenIndices.Add(StreamIO.ReadInt64);
+  end;
+
+  Index:=StreamIO.ReadInt64;
+  if (Index>=0) and (Index<fGroup.fMeshes.Count) then begin
+   fMesh:=fGroup.fMeshes[Index];
+  end else begin
+   fMesh:=nil;
+  end;
+
+  fNodeMeshInstanceIndex:=StreamIO.ReadInt64;
+
+  Index:=StreamIO.ReadInt64;
+  if (Index>=0) and (Index<fGroup.fCameras.Count) then begin
+   fCamera:=fGroup.fCameras[Index];
+  end else begin
+   fCamera:=nil;
+  end;
+
+  Index:=StreamIO.ReadInt64;
+  if (Index>=0) and (Index<fGroup.fSkins.Count) then begin
+   fSkin:=fGroup.fSkins[Index];
+  end else begin
+   fSkin:=nil;
+  end;
+  
+  fLightIndex:=StreamIO.ReadInt64;
+
+  Index:=StreamIO.ReadInt64;
+  if (Index>=0) and (Index<fGroup.fLights.Count) then begin
+   fLight:=fGroup.fLights[Index];
+  end else begin
+   fLight:=nil;
+  end;
+
+  fMatrix:=StreamIO.ReadMatrix4x4;
+
+  fTranslation:=StreamIO.ReadVector3;
+
+  fRotation:=StreamIO.ReadQuaternion;
+
+  fScale:=StreamIO.ReadVector3;
+
+  Count:=StreamIO.ReadInt64;
+  fWeights.Resize(Count);
+  for Index:=0 to Count-1 do begin
+   fWeights.Items[Index]:=StreamIO.ReadFloat;
+  end;
+
+  fWeightsOffset:=StreamIO.ReadInt64;
+
+  fJoint:=StreamIO.ReadInt64;
+
+  fRaytracingMask:=StreamIO.ReadUInt8;
+
+  Count:=StreamIO.ReadInt64;
+  fDrawChoreographyBatchItemIndices.Clear;
+  for Index:=0 to Count-1 do begin
+   fDrawChoreographyBatchItemIndices.Add(StreamIO.ReadInt64);
+  end;
+
+  Count:=StreamIO.ReadInt64;
+  fDrawChoreographyBatchUniqueItemIndices.Clear;
+  for Index:=0 to Count-1 do begin
+   fDrawChoreographyBatchUniqueItemIndices.Add(StreamIO.ReadInt64);
+  end;
+
+  Count:=StreamIO.ReadInt64;
+  fUsedJoints.Resize(Count);
+  for Index:=0 to Count-1 do begin
+   fUsedJoints.Items[Index].Joint:=StreamIO.ReadInt64;
+   fUsedJoints.Items[Index].Weight:=StreamIO.ReadFloat;
+   fUsedJoints.Items[Index].AABB.Min:=StreamIO.ReadVector3;
+   fUsedJoints.Items[Index].AABB.Max:=StreamIO.ReadVector3;
+  end;
+
+ finally
+  FreeAndNil(StreamIO);
+ end;
+
+end;
+
+procedure TpvScene3D.TGroup.TNode.SaveToStream(const aStream:TStream);
+var StreamIO:TpvStreamIO;
+    Index,Count:TpvSizeInt;
+    Flags:TpvUInt32;
+begin
+
+ StreamIO:=TpvStreamIO.Create(aStream);
+ try
+
+  StreamIO.WriteUTF8String(fName);
+
+  StreamIO.WriteInt64(fIndex);
+
+  Flags:=0;
+  if TpvScene3D.TGroup.TNode.TNodeFlag.TransformAnimated in fFlags then begin
+   Flags:=Flags or 1;
+  end;
+  if TpvScene3D.TGroup.TNode.TNodeFlag.SkinAnimated in fFlags then begin
+   Flags:=Flags or 2;
+  end;
+  if TpvScene3D.TGroup.TNode.TNodeFlag.WeightsAnimated in fFlags then begin
+   Flags:=Flags or 4;
+  end;
+  StreamIO.WriteUInt32(Flags);
+
+  Count:=fUsedByScenesList.Count;
+  StreamIO.WriteInt64(Count);
+  for Index:=0 to Count-1 do begin
+   StreamIO.WriteInt64(fUsedByScenesList.Items[Index].fIndex); 
+  end;
+
+  Count:=fChildren.Count;
+  StreamIO.WriteInt64(Count);
+  for Index:=0 to Count-1 do begin
+   StreamIO.WriteInt64(fChildren.Items[Index].fIndex);
+  end;
+
+  Count:=fSplittedChildren.Count;
+  StreamIO.WriteInt64(Count);
+  for Index:=0 to Count-1 do begin
+   StreamIO.WriteInt64(fSplittedChildren.Items[Index].fIndex);
+  end;
+
+  if assigned(fMesh) then begin
+   StreamIO.WriteInt64(fMesh.fIndex);
+  end else begin
+   StreamIO.WriteInt64(-1);
+  end;
+
+  StreamIO.WriteInt64(fNodeMeshInstanceIndex);
+
+  if assigned(fCamera) then begin
+   StreamIO.WriteInt64(fCamera.fIndex);
+  end else begin
+   StreamIO.WriteInt64(-1);
+  end;
+
+  if assigned(fSkin) then begin
+   StreamIO.WriteInt64(fSkin.fIndex);
+  end else begin
+   StreamIO.WriteInt64(-1);
+  end;
+
+  StreamIO.WriteInt64(fLightIndex);
+
+  if assigned(fLight) then begin
+   StreamIO.WriteInt64(fLight.fIndex);
+  end else begin
+   StreamIO.WriteInt64(-1);
+  end;
+
+  StreamIO.WriteMatrix4x4(fMatrix);
+
+  StreamIO.WriteVector3(fTranslation);
+
+  StreamIO.WriteQuaternion(fRotation);
+
+  StreamIO.WriteVector3(fScale);
+
+  Count:=fWeights.Count;
+  StreamIO.WriteInt64(Count);
+  for Index:=0 to Count-1 do begin
+   StreamIO.WriteFloat(fWeights.Items[Index]);
+  end;
+
+  StreamIO.WriteInt64(fWeightsOffset);
+
+  StreamIO.WriteInt64(fJoint);
+
+  StreamIO.WriteUInt8(fRaytracingMask);
+
+  Count:=fDrawChoreographyBatchItemIndices.Count;
+  StreamIO.WriteInt64(Count);
+  for Index:=0 to Count-1 do begin
+   StreamIO.WriteInt64(fDrawChoreographyBatchItemIndices[Index]);
+  end;
+
+  Count:=fDrawChoreographyBatchUniqueItemIndices.Count;
+  StreamIO.WriteInt64(Count);
+  for Index:=0 to Count-1 do begin
+   StreamIO.WriteInt64(fDrawChoreographyBatchUniqueItemIndices[Index]);
+  end;
+
+  Count:=fUsedJoints.Count;
+  StreamIO.WriteInt64(Count);
+  for Index:=0 to Count-1 do begin
+   StreamIO.WriteInt64(fUsedJoints.Items[Index].Joint);
+   StreamIO.WriteFloat(fUsedJoints.Items[Index].Weight);
+   StreamIO.WriteVector3(fUsedJoints.Items[Index].AABB.Min);
+   StreamIO.WriteVector3(fUsedJoints.Items[Index].AABB.Max);
+  end;
+
+ finally
+  FreeAndNil(StreamIO);
+ end;
+ 
 end;
 
 procedure TpvScene3D.TGroup.TNode.Finish;
