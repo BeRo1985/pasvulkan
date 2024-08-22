@@ -7283,30 +7283,45 @@ begin
  Scale[1]:=1.0;
 end;
 
-{
-                          TTransform=record
-                           public
-                            Active:boolean;
-                            Offset:TpvVector2;
-                            Rotation:TpvFloat;
-                            Scale:TpvVector2;
-                           public
-                            procedure AssignDefault;
-                            procedure LoadFromStream(const aStream:TStream);
-                            procedure SaveToStream(const aStream:TStream);
-                            procedure AssignFromGLTF(var aTextureReference:TTextureReference;const aExtensionsItem:TPasJSONItem);
-                            function ToMatrix4x4:TpvMatrix4x4;
-                            function ToAlignedMatrix3x2:TAlignedMatrix3x2;
-                          end;
-}
-
 procedure TpvScene3D.TMaterial.TTextureReference.TTransform.LoadFromStream(const aStream:TStream);
+var StreamIO:TpvStreamIO;
 begin
+
+ StreamIO:=TpvStreamIO.Create(aStream);
+ try
+
+  Active:=StreamIO.ReadBoolean;
+
+  Offset:=StreamIO.ReadVector2;
+
+  Rotation:=StreamIO.ReadFloat;
+
+  Scale:=StreamIO.ReadVector2;
+
+ finally
+  FreeAndNil(StreamIO);
+ end;
 
 end;
 
 procedure TpvScene3D.TMaterial.TTextureReference.TTransform.SaveToStream(const aStream:TStream);
+var StreamIO:TpvStreamIO;
 begin
+
+ StreamIO:=TpvStreamIO.Create(aStream);
+ try
+
+  StreamIO.WriteBoolean(Active);
+
+  StreamIO.WriteVector2(Offset);
+
+  StreamIO.WriteFloat(Rotation);
+
+  StreamIO.WriteVector2(Scale);
+
+ finally
+  FreeAndNil(StreamIO);
+ end;
 
 end;
 
