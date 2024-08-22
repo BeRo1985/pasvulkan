@@ -197,7 +197,7 @@ vec4 FallbackFXAA(const in vec2 invTexSize){
   vec4 rgbA = (1.0 / 2.0) * (ApplyToneMapping(textureLod(uCurrentColorTexture, vec3(p.xy + (dir * ((1.0 / 3.0) - 0.5)), float(gl_ViewIndex)), 0.0).xyzw) + ApplyToneMapping(textureLod(uCurrentColorTexture, vec3(p.xy + (dir * ((2.0 / 3.0) - 0.5)), float(gl_ViewIndex)), 0.0).xyzw)),
        rgbB = (rgbA * (1.0 / 2.0)) + ((1.0 / 4.0) * (ApplyToneMapping(textureLod(uCurrentColorTexture, vec3(p.xy + (dir * ((0.0 / 3.0) - 0.5)), float(gl_ViewIndex)), 0.0).xyzw) + ApplyToneMapping(textureLod(uCurrentColorTexture, vec3(p.xy + (dir * ((3.0 / 3.0) - 0.5)), float(gl_ViewIndex)), 0.0).xyzw)));
   float lumaB = dot(rgbB.xyz, luma);
-  return ApplyInverseToneMapping(((lumaB < lumaMin) || (lumaB > lumaMax)) ? rgbA : rgbB);  
+  return clamp(ApplyInverseToneMapping(((lumaB < lumaMin) || (lumaB > lumaMax)) ? rgbA : rgbB), vec4(0.0), vec4(65504.0));
 }
 
 void main() {
@@ -383,15 +383,18 @@ void main() {
       );
 
       // Blend the current and history color samples based on luminance-based disocclusion
-      vec4 outSample = mix(current, historySample, luminanceDisocclusionBasedBlendFactor);
-
-      // Mix the luminance-based disocclusion with the other ootional blending approach, which is based on exptional time-based coefficients
-      color = mix(outSample, 
-                  mix(historySample, current, mix(pushConstants.translucentCoefficient, pushConstants.opaqueCoefficient, clamp(currentSamples[4].w, 0.0, 1.0))), 
-                  clamp(pushConstants.mixCoefficient, 0.0, 1.0)); 
-
-      // Convert the color back to RGB color space and apply inverse tonemapping and clamp the color to 16-bit floating point range
-      color = clamp(Untonemap(ConvertToRGB(color)), vec4(0.0), vec4(65504.0));    
+      if(luminanceDisocclusionBasedBlendFactor > 1e-7){
+        color = clamp(Untonemap(ConvertToRGB(mix(current, historySample, luminanceDisocclusionBasedBlendFactor))), vec4(0.0), vec4(65504.0));   
+      }else{
+        if(pushConstants.useFallbackFXAA > 0.5){
+          // Use fallback FXAA in areas of off-screen disocclusion (where temporal raster data doesn’t exist) as it is also used at 
+          // NVIDIA's Adaptive Temporal Antialiasing (ATAA).
+          color = FallbackFXAA(invTexSize);
+        }else{
+          color = clamp(Untonemap(ConvertToRGB(current)), vec4(0.0), vec4(65504.0));   
+        }
+        color = mix(color, vec4(0.0, 1.0, 0.0, 1.0), pushConstants.disocclusionDebugFactor);
+      }
 
     }
 
