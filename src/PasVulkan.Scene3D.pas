@@ -11526,6 +11526,9 @@ begin
      Primitive.LoadFromStream(aStream);
     finally
      fPrimitives.Add(Primitive);
+     if Primitive.fRaytracingPrimitiveID>0 then begin
+      fRaytracingPrimitives.Add(Primitive);
+     end;
     end;
    end;
 
