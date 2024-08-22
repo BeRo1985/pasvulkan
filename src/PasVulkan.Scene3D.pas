@@ -17437,6 +17437,7 @@ var StreamIO:TpvStreamIO;
     CollectedImages,CollectedSamplers,CollectedTextures,CollectedMaterials:TpvObjectList;
     Mesh:TpvScene3D.TGroup.TMesh;
     MeshPrimitive:TpvScene3D.TGroup.TMesh.TPrimitive;
+    DrawChoreographyBatchItem:TDrawChoreographyBatchItem;
 begin
 
  StreamIO:=TpvStreamIO.Create(aStream);
@@ -17476,6 +17477,84 @@ begin
         end;
        end;
       end; 
+
+      // Write culling
+      StreamIO.WriteBoolean(fCulling);
+
+      // Write dynamic AABB tree culling
+      StreamIO.WriteBoolean(fDynamicAABBTreeCulling);
+
+      // Write morph target count 
+      StreamIO.WriteInt64(fMorphTargetCount);
+
+      // Write count node weights
+      StreamIO.WriteInt64(fCountNodeWeights);
+
+      // Write count joint node matrices
+      StreamIO.WriteInt64(fCountJointNodeMatrices);
+
+      // Write bounding box
+      StreamIO.WriteWithCheck(fBoundingBox,SizeOf(TpvAABB));
+
+      // Write has static bounding box
+      StreamIO.WriteBoolean(fHasStaticBoundingBox);
+
+      // Write static bounding box
+      StreamIO.WriteWithCheck(fStaticBoundingBox,SizeOf(TpvAABB));
+
+      // Write raytracing mask
+      StreamIO.WriteUInt8(fRaytracingMask);
+
+      // Write vertices
+      Count:=fVertices.Count;
+      StreamIO.WriteInt64(Count);
+      if Count>0 then begin
+       StreamIO.WriteWithCheck(fVertices.Memory^,Count*SizeOf(TpvScene3D.TVertex));
+      end;
+
+      // Write indices
+      Count:=fIndices.Count;
+      StreamIO.WriteInt64(Count);
+      if Count>0 then begin
+       StreamIO.WriteWithCheck(fIndices.Memory^,Count*SizeOf(TpvUInt32));
+      end;
+
+      // Write draw choreography batch condensed indices
+      Count:=fDrawChoreographyBatchCondensedIndices.Count;
+      StreamIO.WriteInt64(Count);
+      if Count>0 then begin
+       StreamIO.WriteWithCheck(fDrawChoreographyBatchCondensedIndices.Memory^,Count*SizeOf(TpvUInt32));
+      end;
+
+      // Write draw choreography batch condensed unique indices
+      Count:=fDrawChoreographyBatchCondensedUniqueIndices.Count;
+      StreamIO.WriteInt64(Count);
+      if Count>0 then begin
+       StreamIO.WriteWithCheck(fDrawChoreographyBatchCondensedUniqueIndices.Memory^,Count*SizeOf(TpvUInt32));
+      end;
+
+      // Write joint blocks
+      Count:=fJointBlocks.Count;
+      StreamIO.WriteInt64(Count);
+      for Index:=0 to Count-1 do begin
+       StreamIO.WriteWithCheck(fJointBlocks.Memory^,Count*SizeOf(TpvScene3D.TJointBlock));
+      end;
+
+      // Write joint block offsets
+      Count:=length(fJointBlockOffsets);
+      StreamIO.WriteInt64(Count);
+      if Count>0 then begin
+       for Index:=0 to Count-1 do begin
+        StreamIO.WriteInt64(fJointBlockOffsets[Index]);
+       end;
+      end;
+
+      // Write morph target vertices
+      Count:=fMorphTargetVertices.Count;
+      StreamIO.WriteInt64(Count);
+      if Count>0 then begin
+       StreamIO.WriteWithCheck(fMorphTargetVertices.Memory^,Count*SizeOf(TpvScene3D.TMorphTargetVertex));
+      end;
 
       // Write cameras
       Count:=fCameras.Count;
@@ -17553,6 +17632,33 @@ begin
       for Index:=0 to Count-1 do begin
        TpvScene3D.TGroup.TScene(fScenes[Index]).SaveToStream(aStream);
       end;
+
+      // Write draw choreography batch items
+      Count:=fDrawChoreographyBatchItems.Count;
+      StreamIO.WriteInt64(Count);
+      if Count>0 then begin
+       for Index:=0 to Count-1 do begin
+        fDrawChoreographyBatchItems[Index].SaveToStream(aStream);
+       end;
+      end;
+
+      // Write draw choreography batch unique items
+      Count:=fDrawChoreographyBatchUniqueItems.Count;
+      StreamIO.WriteInt64(Count);
+      if Count>0 then begin
+       for Index:=0 to Count-1 do begin
+        fDrawChoreographyBatchUniqueItems[Index].SaveToStream(aStream);
+       end;
+      end;
+
+      // Write camera node indices
+      Count:=fCameraNodeIndices.Count;
+      StreamIO.WriteInt64(Count);
+      if Count>0 then begin
+       for Index:=0 to Count-1 do begin
+        StreamIO.WriteInt64(fCameraNodeIndices[Index]);
+       end;
+      end; 
 
       // Write final header
       PMVFHeader.Size:=aStream.Position-HeaderPosition;
