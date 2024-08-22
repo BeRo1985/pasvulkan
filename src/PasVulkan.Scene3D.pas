@@ -2943,6 +2943,7 @@ type EpvScene3D=class(Exception);
              public
               procedure FinalizeMaterials(const aDoLock:Boolean=true);
              public
+              function LoadMetaDataFromStream(const aStream:TStream):TpvUInt64;
               procedure LoadFromStream(const aStream:TStream);
               procedure SaveToStream(const aStream:TStream;const aMetaData:TpvUInt64=0);
              public
@@ -16835,11 +16836,11 @@ begin
       fSceneInstance.fTextureListLock.Release;
      end;
     finally
-     FreeAndNil(fNewTextures);
+     fNewTextures.Clear;
     end;
    end;
   finally
-   FreeAndNil(fNewTextureMap);
+   fNewTextureMap.Clear;
   end;
 
  finally
@@ -16858,11 +16859,11 @@ begin
        fSceneInstance.fSamplerListLock.Release;
       end;
      finally
-      FreeAndNil(fNewSamplers);
+      fNewSamplers.Clear;
      end;
     end;
    finally
-    FreeAndNil(fNewSamplerMap);
+    fNewSamplerMap.Clear;
    end;
 
   finally
@@ -16881,15 +16882,15 @@ begin
         fSceneInstance.fImageListLock.Release;
        end;
       finally
-       FreeAndNil(fNewImages);
+       fNewImages.Clear;
       end;
      end;
     finally
-     FreeAndNil(fNewImageMap);
+     fNewImageMap.Clear;
     end;
 
    finally
-    FreeAndNil(fNewLightMap);
+    fNewLightMap.Clear;
    end;
 
   end;
@@ -17425,6 +17426,23 @@ begin
 
 end;
 
+function TpvScene3D.TGroup.LoadMetaDataFromStream(const aStream:TStream):TpvUInt64;
+var StreamIO:TpvStreamIO;
+    PMVFHeader:TpvScene3D.TPVMFHeader;
+begin
+ StreamIO:=TpvStreamIO.Create(aStream);
+ try
+  StreamIO.ReadWithCheck(PMVFHeader,SizeOf(TpvScene3D.TPVMFHeader));
+  if (PMVFHeader.Signature=PVMFSignature) and (PMVFHeader.Version=PVMFVersion) then begin
+   result:=PMVFHeader.MetaData;
+  end else begin
+   result:=0;
+  end;
+ finally
+  FreeAndNil(StreamIO);
+ end;
+end;
+
 procedure TpvScene3D.TGroup.LoadFromStream(const aStream:TStream);
 begin
 end;
@@ -17895,7 +17913,6 @@ var POCACodeString:TpvUTF8String;
      POCAFileHashMap:TPOCAFileHashMap;
      NodeChildNodeIndices:TNodeChildNodeIndices;
      ChildNodeIndices:PChildNodeIndices;
-
  begin
 
   NodeChildNodeIndices.Initialize;
