@@ -94,7 +94,7 @@ type { TpvScene3DRendererPassesAntialiasingTAARenderPass }
               ZMul:TpvFloat;
               ZAdd:TpvFloat;
               DisocclusionDebugFactor:TpvFloat;
-              Padding1:TpvFloat;
+              UseFallbackFXAA:TpvFloat;
 
               JitterUV:TpvVector2;
               VelocityDisocclusionThresholdScale:TpvVector2;
@@ -499,6 +499,7 @@ begin
   PushConstants.ZAdd:=0.0;
  end;
  PushConstants.DisocclusionDebugFactor:=0.0;
+ PushConstants.UseFallbackFXAA:=1.0;
  PushConstants.JitterUV:=fInstance.InFlightFrameStates^[aInFlightFrameIndex].Jitter.xy;
  PushConstants.VelocityDisocclusionThresholdScale.x:=1e-2;//32.0/TpvVector2.InlineableCreate(fResourceCurrentColor.Width,fResourceCurrentColor.Height).Length;
  PushConstants.VelocityDisocclusionThresholdScale.y:=2000.0;

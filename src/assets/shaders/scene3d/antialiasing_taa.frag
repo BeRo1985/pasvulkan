@@ -39,7 +39,7 @@ layout(push_constant, std140, row_major) uniform PushConstants {
   float ZMul;
   float ZAdd;
   float disocclusionDebugFactor;
-  float padding1; 
+  float useFallbackFXAA; 
   
   vec2 jitterUV;
   vec2 velocityDisocclusionThresholdScale; // x = threshold, y = scale
@@ -85,65 +85,6 @@ vec4 YCoCgToRGB(in vec4 c){
 #define ConvertToRGB
 
 #endif
-
-#if UseSimple
-
-void main() {
-
-  vec2 texSize = vec2(textureSize(uCurrentColorTexture, 0).xy);
-  vec2 invTexSize = vec2(1.0) / texSize;
-
-  vec4 color = vec4(0.0);
-
-  vec3 uvw = vec3(inTexCoord, float(gl_ViewIndex));
-
-  if(abs(1.0 - pushConstants.opaqueCoefficient) < 1e-5){
-
-    color = textureLod(uCurrentColorTexture, uvw, 0.0);
-
-  }else{
-
-    vec4 currentSamples[9];
-    currentSamples[0] = ConvertFromRGB(Tonemap(textureLodOffset(uCurrentColorTexture, uvw, 0, ivec2(-1, -1))));
-    currentSamples[1] = ConvertFromRGB(Tonemap(textureLodOffset(uCurrentColorTexture, uvw, 0, ivec2( 0, -1))));
-    currentSamples[2] = ConvertFromRGB(Tonemap(textureLodOffset(uCurrentColorTexture, uvw, 0, ivec2( 1, -1))));
-    currentSamples[3] = ConvertFromRGB(Tonemap(textureLodOffset(uCurrentColorTexture, uvw, 0, ivec2(-1,  0))));
-    currentSamples[4] = ConvertFromRGB(Tonemap(textureLodOffset(uCurrentColorTexture, uvw, 0, ivec2( 0,  0))));
-    currentSamples[5] = ConvertFromRGB(Tonemap(textureLodOffset(uCurrentColorTexture, uvw, 0, ivec2( 1,  0))));
-    currentSamples[6] = ConvertFromRGB(Tonemap(textureLodOffset(uCurrentColorTexture, uvw, 0, ivec2(-1,  1))));
-    currentSamples[7] = ConvertFromRGB(Tonemap(textureLodOffset(uCurrentColorTexture, uvw, 0, ivec2( 0,  1))));
-    currentSamples[8] = ConvertFromRGB(Tonemap(textureLodOffset(uCurrentColorTexture, uvw, 0, ivec2( 1,  1))));
-
-    vec4 minimumColor = currentSamples[0],
-         maximumColor = currentSamples[0];   
-    for(int i = 1; i < 9; i++){
-      minimumColor = min(minimumColor, currentSamples[i]);
-      maximumColor = max(maximumColor, currentSamples[i]);
-    }
-
-    vec3 historyUVW = uvw - vec3(textureLod(uCurrentVelocityTexture, uvw, 0.0).xy, 0);
-
-    vec4 historySample = clamp(ConvertFromRGB(Tonemap(texture(uHistoryColorTexture, historyUVW, 0.0))), minimumColor, maximumColor);
-
-    color = mix(historySample, 
-                currentSamples[4], 
-                vec4(mix(0.9,
-                         (any(lessThan(historyUVW.xy, vec2(0.0))) || 
-                          any(greaterThan(historyUVW.xy, vec2(1.0)))) 
-                          ? 1.0 
-                          : 1.0 - pushConstants.opaqueCoefficient,
-                          currentSamples[4].w
-                        )
-                    )
-               );    
-
-  }
-
-  outFragColor = Untonemap(ConvertToRGB(color));
-
-}
-
-#else
 
 vec4 ClipAABB(vec4 q, vec4 p, vec3 aabbMin, vec3 aabbMax){	
 #if 0  
@@ -207,8 +148,6 @@ vec4 textureCatmullRom(const in sampler2DArray tex, const in vec3 uvw, const in 
            (textureLod(tex, vec3(vec2(p33.x,  p33.y), uvw.z), float(lod)) * w3.x)) * w3.y);
 }
 
-#define UseFallbackFXAA 1
-#if UseFallbackFXAA
 vec4 fallbackFXAA(const in vec2 invTexSize){
   const vec2 fragCoordInvScale = invTexSize;
   vec4 p = vec4(inTexCoord, vec2(inTexCoord - (fragCoordInvScale * (0.5 + (1.0 / 4.0)))));
@@ -237,7 +176,6 @@ vec4 fallbackFXAA(const in vec2 invTexSize){
   float lumaB = dot(rgbB.xyz, luma);
   return ApplyInverseToneMapping(((lumaB < lumaMin) || (lumaB > lumaMax)) ? rgbA : rgbB);  
 }
-#endif
 
 void main() {
     
@@ -319,11 +257,11 @@ void main() {
     float totalDisocclusion = clamp(firstFrameDisocclusion + translucentDisocclusion + screenDisocclusion + velocityDisocclusion, 0.0, 1.0);
 
     if(totalDisocclusion > 0.99999){
-#if UseFallbackFXAA
-      // Use fallback FXAA in areas of off-screen disocclusion (where temporal raster data doesn’t exist) as it is also used at 
-      // NVIDIA's Adaptive Temporal Antialiasing (ATAA).
-      current = fallbackFXAA(invTexSize);
-#endif
+      if(pushConstants.useFallbackFXAA > 0.5){
+        // Use fallback FXAA in areas of off-screen disocclusion (where temporal raster data doesn’t exist) as it is also used at 
+        // NVIDIA's Adaptive Temporal Antialiasing (ATAA).
+        current = fallbackFXAA(invTexSize);
+      }
       color = mix(current, vec4(1.0, 0.0, 0.0, 1.0), pushConstants.disocclusionDebugFactor);
     }else{
 
@@ -426,4 +364,3 @@ void main() {
   outFragColor = color;
 
 }
-#endif
