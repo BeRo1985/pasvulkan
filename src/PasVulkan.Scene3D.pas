@@ -1477,6 +1477,8 @@ type EpvScene3D=class(Exception);
               function Clone:TDrawChoreographyBatchItem;
               class function CompareTo(const aCurrent,aOther:TpvScene3D.TDrawChoreographyBatchItem):TpvInt32; static;
               class function IndexOrderCompareTo(const aCurrent,aOther:TpvScene3D.TDrawChoreographyBatchItem):TpvInt32; static;
+              procedure LoadFromStream(const aStream:TStream);
+              procedure SaveToStream(const aStream:TStream);
              published
               property Group:TpvScene3D.TGroup read fGroup write fGroup;
               property GroupInstance:TObject read fGroupInstance write fGroupInstance;
@@ -2138,6 +2140,8 @@ type EpvScene3D=class(Exception);
                     public
                      constructor Create(const aGroup:TGroup;const aIndex:TpvSizeInt=-1); reintroduce;
                      destructor Destroy; override;
+                     procedure LoadFromStream(const aStream:TStream);
+                     procedure SaveToStream(const aStream:TStream);
                      procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceScene:TPasGLTF.TScene);
                     published
                      property Index:TpvSizeInt read fIndex;
@@ -9004,6 +9008,114 @@ begin
  end;
 end;
 
+procedure TpvScene3D.TDrawChoreographyBatchItem.LoadFromStream(const aStream:TStream);
+var StreamIO:TpvStreamIO;
+    Index:TpvSizeInt;
+begin
+
+ StreamIO:=TpvStreamIO.Create(aStream);
+ try
+
+  fGroupInstance:=nil;
+
+  fAlphaMode:=TpvScene3D.TMaterial.TAlphaMode(TpvUInt32(StreamIO.ReadUInt32));
+
+  fPrimitiveTopology:=TpvScene3D.TPrimitiveTopology(TpvUInt32(StreamIO.ReadUInt32));
+
+  fDoubleSided:=StreamIO.ReadBoolean;
+
+  Index:=StreamIO.ReadInt64;
+  if (Index>=0) and (Index<fGroup.fMaterials.Count) then begin
+   fMaterial:=fGroup.fMaterials[Index];
+  end else begin
+   fMaterial:=nil;
+  end;
+
+  if not assigned(fNode) then begin
+   Index:=StreamIO.ReadInt64;
+   if (Index>=0) and (Index<fGroup.fNodes.Count) then begin
+    fNode:=fGroup.fNodes[Index];
+   end else begin
+    fNode:=nil;
+   end;
+  end; 
+
+  fObjectIndex:=StreamIO.ReadUInt32;
+
+  Index:=StreamIO.ReadInt64;
+  if (Index>=0) and (Index<fGroup.fMeshes.Count) then begin
+   fMesh:=fGroup.fMeshes[Index];
+  end else begin
+   fMesh:=nil;
+  end;
+
+  fMeshPrimitive:=StreamIO.ReadInt64;
+
+  fStartIndex:=StreamIO.ReadInt64;
+
+  fCountIndices:=StreamIO.ReadInt64;
+  
+ finally
+  FreeAndNil(StreamIO);
+ end;
+
+end;
+
+procedure TpvScene3D.TDrawChoreographyBatchItem.SaveToStream(const aStream:TStream);
+var StreamIO:TpvStreamIO;
+    Index:TpvSizeInt;
+begin
+
+ StreamIO:=TpvStreamIO.Create(aStream);
+ try
+
+  StreamIO.WriteUInt32(TpvUInt32(fAlphaMode));
+
+  StreamIO.WriteUInt32(TpvUInt32(fPrimitiveTopology));
+
+  StreamIO.WriteBoolean(fDoubleSided);
+
+  if assigned(fMaterial) then begin
+   Index:=fGroup.fMaterials.IndexOf(fMaterial);
+  end else begin
+   Index:=-1;
+  end;
+  StreamIO.WriteInt64(Index);
+
+  if assigned(fNode) then begin
+   Index:=TpvScene3D.TGroup.TNode(fNode).fIndex;
+   if Index<0 then begin
+    Index:=fGroup.fNodes.IndexOf(TpvScene3D.TGroup.TNode(fNode));
+   end;
+  end else begin
+   Index:=-1;
+  end;
+  StreamIO.WriteInt64(Index);
+
+  StreamIO.WriteUInt32(fObjectIndex);
+
+  if assigned(fMesh) then begin
+   Index:=TpvScene3D.TGroup.TMesh(fMesh).fIndex;
+   if Index<0 then begin
+    Index:=fGroup.fMeshes.IndexOf(TpvScene3D.TGroup.TMesh(fMesh));
+   end;
+  end else begin
+   Index:=-1;
+  end;
+  StreamIO.WriteInt64(Index);
+
+  StreamIO.WriteInt64(fMeshPrimitive);
+
+  StreamIO.WriteInt64(fStartIndex);
+
+  StreamIO.WriteInt64(fCountIndices);
+
+ finally
+  FreeAndNil(StreamIO);
+ end;
+
+end;
+
 { TpvScene3D.TGroup.TDrawChoreographyBatchItems }
 
 procedure TpvScene3D.TDrawChoreographyBatchItems.GroupInstanceClone(const aFrom:TDrawChoreographyBatchItems;const aGroupInstance:TObject;const aIsUnique:Boolean);
@@ -13624,6 +13736,185 @@ begin
 
  finally
   Stack.Finalize;
+ end;
+
+end;
+
+procedure TpvScene3D.TGroup.TScene.LoadFromStream(const aStream:TStream);
+var StreamIO:TpvStreamIO;
+    Index,Count,NodeIndex:TpvSizeInt;    
+    DrawChoreographyBatchItem:TDrawChoreographyBatchItem;
+    SkipListItem:PSkipListItem;
+begin
+
+ StreamIO:=TpvStreamIO.Create(aStream);
+ try
+
+  fName:=StreamIO.ReadUTF8String;
+
+  fIndex:=StreamIO.ReadInt64;
+
+  Count:=StreamIO.ReadInt64;
+  fNodes.Clear;
+  for Index:=0 to Count-1 do begin
+   NodeIndex:=StreamIO.ReadInt64;
+   if (NodeIndex>=0) and (NodeIndex<fGroup.fNodes.Count) then begin
+    fNodes.Add(fGroup.fNodes[NodeIndex]);
+   end else begin
+    raise EpvScene3D.Create('Node index out of range');
+   end;
+  end;
+
+  Count:=StreamIO.ReadInt64;
+  fAllNodes.Clear;
+  for Index:=0 to Count-1 do begin
+   NodeIndex:=StreamIO.ReadInt64;
+   if (NodeIndex>=0) and (NodeIndex<fGroup.fNodes.Count) then begin
+    fAllNodes.Add(fGroup.fNodes[NodeIndex]);
+   end else begin
+    raise EpvScene3D.Create('Node index out of range');
+   end;
+  end;
+
+  Count:=StreamIO.ReadInt64;
+  fTransformAnimatedNodes.Clear;
+  for Index:=0 to Count-1 do begin
+   NodeIndex:=StreamIO.ReadInt64;
+   if (NodeIndex>=0) and (NodeIndex<fGroup.fNodes.Count) then begin
+    fTransformAnimatedNodes.Add(fGroup.fNodes[NodeIndex]);
+   end else begin
+    raise EpvScene3D.Create('Node index out of range');
+   end;
+  end;
+
+  Count:=StreamIO.ReadInt64;
+  fSkinOrWeightsAnimatedNodes.Clear;
+  for Index:=0 to Count-1 do begin
+   NodeIndex:=StreamIO.ReadInt64;
+   if (NodeIndex>=0) and (NodeIndex<fGroup.fNodes.Count) then begin
+    fSkinOrWeightsAnimatedNodes.Add(fGroup.fNodes[NodeIndex]);
+   end else begin
+    raise EpvScene3D.Create('Node index out of range');
+   end;
+  end;
+
+  Count:=StreamIO.ReadInt64;
+  fStaticNodes.Clear;
+  for Index:=0 to Count-1 do begin
+   NodeIndex:=StreamIO.ReadInt64;
+   if (NodeIndex>=0) and (NodeIndex<fGroup.fNodes.Count) then begin
+    fStaticNodes.Add(fGroup.fNodes[NodeIndex]);
+   end else begin
+    raise EpvScene3D.Create('Node index out of range');
+   end;
+  end;
+
+  Count:=StreamIO.ReadInt64;
+  fDrawChoreographyBatchItems.Clear;
+  for Index:=0 to Count-1 do begin
+   DrawChoreographyBatchItem:=TDrawChoreographyBatchItem.Create;
+   try
+    DrawChoreographyBatchItem.LoadFromStream(aStream);
+   finally 
+    fDrawChoreographyBatchItems.Add(DrawChoreographyBatchItem);
+   end; 
+  end;
+
+  Count:=StreamIO.ReadInt64;
+  fDrawChoreographyBatchUniqueItems.Clear;
+  for Index:=0 to Count-1 do begin
+   DrawChoreographyBatchItem:=TDrawChoreographyBatchItem.Create;
+   try
+    DrawChoreographyBatchItem.LoadFromStream(aStream);
+   finally 
+    fDrawChoreographyBatchUniqueItems.Add(DrawChoreographyBatchItem);
+   end; 
+  end;
+
+  Count:=StreamIO.ReadInt64;
+  SetLength(fSkipList,Count);
+  for Index:=0 to Count-1 do begin
+   SkipListItem:=@fSkipList[Index];
+   SkipListItem^.NodeIndex:=StreamIO.ReadInt64;
+   SkipListItem^.Level:=StreamIO.ReadInt64;
+   SkipListItem^.SkipCount:=StreamIO.ReadInt64;
+  end;
+
+ finally
+  FreeAndNil(StreamIO);
+ end;
+
+end;
+
+procedure TpvScene3D.TGroup.TScene.SaveToStream(const aStream:TStream);
+var StreamIO:TpvStreamIO;
+    Index,Count:TpvSizeInt;
+    DrawChoreographyBatchItem:TDrawChoreographyBatchItem;
+    SkipListItem:PSkipListItem;
+begin
+
+ StreamIO:=TpvStreamIO.Create(aStream);
+ try
+
+  StreamIO.WriteUTF8String(fName);
+
+  StreamIO.WriteInt64(fIndex);
+
+  Count:=fNodes.Count;
+  StreamIO.WriteInt64(Count);
+  for Index:=0 to Count-1 do begin
+   StreamIO.WriteInt64(fNodes[Index].fIndex);
+  end;
+
+  Count:=fAllNodes.Count;
+  StreamIO.WriteInt64(Count);
+  for Index:=0 to Count-1 do begin
+   StreamIO.WriteInt64(fAllNodes[Index].fIndex);
+  end;
+
+  Count:=fTransformAnimatedNodes.Count;
+  StreamIO.WriteInt64(Count);
+  for Index:=0 to Count-1 do begin
+   StreamIO.WriteInt64(fTransformAnimatedNodes[Index].fIndex);
+  end;
+
+  Count:=fSkinOrWeightsAnimatedNodes.Count;
+  StreamIO.WriteInt64(Count);
+  for Index:=0 to Count-1 do begin
+   StreamIO.WriteInt64(fSkinOrWeightsAnimatedNodes[Index].fIndex);
+  end;
+
+  Count:=fStaticNodes.Count;
+  StreamIO.WriteInt64(Count);
+  for Index:=0 to Count-1 do begin
+   StreamIO.WriteInt64(fStaticNodes[Index].fIndex);
+  end;
+
+  Count:=fDrawChoreographyBatchItems.Count;
+  StreamIO.WriteInt64(Count);
+  for Index:=0 to Count-1 do begin
+   DrawChoreographyBatchItem:=fDrawChoreographyBatchItems[Index];
+   DrawChoreographyBatchItem.SaveToStream(aStream);
+  end;
+
+  Count:=fDrawChoreographyBatchUniqueItems.Count;
+  StreamIO.WriteInt64(Count);
+  for Index:=0 to Count-1 do begin
+   DrawChoreographyBatchItem:=fDrawChoreographyBatchUniqueItems[Index];
+   DrawChoreographyBatchItem.SaveToStream(aStream);
+  end;
+
+  Count:=length(fSkipList);
+  StreamIO.WriteInt64(Count);
+  for Index:=0 to Count-1 do begin
+   SkipListItem:=@fSkipList[Index];
+   StreamIO.WriteInt64(SkipListItem^.NodeIndex);
+   StreamIO.WriteInt64(SkipListItem^.Level);
+   StreamIO.WriteInt64(SkipListItem^.SkipCount);
+  end;
+
+ finally
+  FreeAndNil(StreamIO);
  end;
 
 end;
