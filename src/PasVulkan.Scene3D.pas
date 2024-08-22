@@ -561,25 +561,9 @@ type EpvScene3D=class(Exception);
              Signature:TPVMFSignature;
              Version:TpvUInt32;
              Size:TpvUInt64;
+             MetaData:TpvUInt64;
             end;
             PPVMFHeader=^TPVMFHeader;
-            TPVMFChunk=packed record
-             Signature:TPVMFSignature;
-             Size:TpvUInt64;
-            end;
-            PPVMFChunk=^TPVMFChunk;
-            TPVMFString=ShortString; // 256 bytes, where 255 bytes are usable and the first byte is the length
-            PPVMFString=^TPVMFString;
-            TPVMFSampler=packed record
-             Name:TPVMFString; 
-             MinFilter:TVkFilter;
-             MagFilter:TVkFilter;
-             MipmapMode:TVkSamplerMipmapMode;
-             MipmapActive:TVkBool32;
-             AddressModeS:TVkSamplerAddressMode;
-             AddressModeT:TVkSamplerAddressMode; 
-            end; 
-            PPVMFSampler=^TPVMFSampler;
             { TBaseObject }
             TBaseObject=class(TpvResource)
              private
@@ -2960,7 +2944,7 @@ type EpvScene3D=class(Exception);
               procedure FinalizeMaterials(const aDoLock:Boolean=true);
              public
               procedure LoadFromStream(const aStream:TStream);
-              procedure SaveToStream(const aStream:TStream);
+              procedure SaveToStream(const aStream:TStream;const aMetaData:TpvUInt64=0);
              public
               procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument);
              public
@@ -3176,6 +3160,8 @@ type EpvScene3D=class(Exception);
                (TFaceCullingMode.Normal,TFaceCullingMode.Inversed),
                (TFaceCullingMode.None,TFaceCullingMode.None)
               );
+             PVMFSignature:TPVMFSignature=('P','V','M','F');
+             PVMFVersion=TpVUInt32($00000001);
       private
        fLock:TPasMPSpinLock;
        fLoadLock:TPasMPSpinLock;
@@ -17430,8 +17416,102 @@ procedure TpvScene3D.TGroup.LoadFromStream(const aStream:TStream);
 begin
 end;
 
-procedure TpvScene3D.TGroup.SaveToStream(const aStream:TStream);
+procedure TpvScene3D.TGroup.SaveToStream(const aStream:TStream;const aMetaData:TpvUInt64);
+var StreamIO:TpvStreamIO;
+    PMVFHeader:TpvScene3D.TPVMFHeader;
+    HeaderPosition:TpvInt64;
+    Index,OtherIndex,Count:TpvSizeInt;
+    CollectedImages,CollectedSamplers,CollectedTextures,CollectedMaterials:TpvObjectList;
+    Mesh:TpvScene3D.TGroup.TMesh;
+    MeshPrimitive:TpvScene3D.TGroup.TMesh.TPrimitive;
 begin
+
+ StreamIO:=TpvStreamIO.Create(aStream);
+ try
+
+  HeaderPosition:=aStream.Position;
+
+  // Write initial header
+  FillChar(PMVFHeader,SizeOf(TpvScene3D.TPVMFHeader),#0);
+  PMVFHeader.Signature:=PVMFSignature;
+  PMVFHeader.Version:=PVMFVersion;
+  PMVFHeader.Size:=0;
+  PMVFHeader.MetaData:=aMetaData;
+  StreamIO.WriteWithCheck(PMVFHeader,SizeOf(TpvScene3D.TPVMFHeader));
+
+  CollectedImages:=TpvObjectList.Create(false);
+  try
+
+   CollectedSamplers:=TpvObjectList.Create(false);
+   try
+
+    CollectedTextures:=TpvObjectList.Create(false);
+    try
+
+     CollectedMaterials:=TpvObjectList.Create(false);
+     try
+
+      // Collect all images, samplers, textures and materials
+      for Index:=0 to fMeshes.Count-1 do begin
+       Mesh:=fMeshes[Index];
+       if assigned(Mesh) then begin
+        for OtherIndex:=0 to Mesh.Primitives.Count-1 do begin
+         MeshPrimitive:=Mesh.Primitives[OtherIndex];
+         if assigned(MeshPrimitive) and assigned(MeshPrimitive.Material) then begin
+          MeshPrimitive.Material.PrepareSaveToStream(CollectedImages,CollectedSamplers,CollectedTextures,CollectedMaterials);
+         end;
+        end;
+       end;
+      end; 
+
+      // Write images
+      Count:=CollectedImages.Count;
+      StreamIO.WriteInt64(Count);
+      for Index:=0 to Count-1 do begin
+       TpvScene3D.TImage(CollectedImages[Index]).SaveToStream(aStream);
+      end;
+
+      // Write samplers
+      Count:=CollectedSamplers.Count;
+      StreamIO.WriteInt64(Count);
+      for Index:=0 to Count-1 do begin
+       TpvScene3D.TSampler(CollectedSamplers[Index]).SaveToStream(aStream);
+      end;
+
+      // Write textures
+      Count:=CollectedTextures.Count;
+      StreamIO.WriteInt64(Count);
+      for Index:=0 to Count-1 do begin
+       TpvScene3D.TTexture(CollectedTextures[Index]).SaveToStream(aStream,CollectedImages,CollectedSamplers);
+      end;
+
+      // Write materials
+      Count:=CollectedMaterials.Count;
+      StreamIO.WriteInt64(Count);
+      for Index:=0 to Count-1 do begin
+       TpvScene3D.TMaterial(CollectedMaterials[Index]).SaveToStream(aStream,CollectedImages,CollectedSamplers,CollectedTextures);
+      end;
+      
+     finally
+      FreeAndNil(CollectedMaterials);
+     end;
+
+    finally
+     FreeAndNil(CollectedTextures);
+    end;
+
+   finally
+    FreeAndNil(CollectedSamplers);
+   end;
+
+  finally
+   FreeAndNil(CollectedImages);
+  end;
+
+ finally
+  FreeAndNil(StreamIO);
+ end;  
+
 end;
 
 procedure TpvScene3D.TGroup.AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument);
