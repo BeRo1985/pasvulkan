@@ -17429,15 +17429,18 @@ end;
 function TpvScene3D.TGroup.LoadMetaDataFromStream(const aStream:TStream):TpvUInt64;
 var StreamIO:TpvStreamIO;
     PMVFHeader:TpvScene3D.TPVMFHeader;
+    HeaderPosition:TpvInt64;
 begin
  StreamIO:=TpvStreamIO.Create(aStream);
  try
+  HeaderPosition:=aStream.Position;
   StreamIO.ReadWithCheck(PMVFHeader,SizeOf(TpvScene3D.TPVMFHeader));
   if (PMVFHeader.Signature=PVMFSignature) and (PMVFHeader.Version=PVMFVersion) then begin
    result:=PMVFHeader.MetaData;
   end else begin
    result:=0;
   end;
+  aStream.Seek(HeaderPosition,soBeginning);
  finally
   FreeAndNil(StreamIO);
  end;
