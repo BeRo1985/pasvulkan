@@ -879,6 +879,8 @@ type EpvScene3D=class(Exception);
               procedure AssignFromDefaultNonRepeat;
               procedure AssignFromDefaultMipMap;
               procedure AssignFromDefaultMipMapNonRepeat;
+              procedure LoadFromStream(const aStream:TStream);
+              procedure SaveToStream(const aStream:TStream);
               procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceSampler:TPasGLTF.TSampler);
              published
               property MinFilter:TVkFilter read fMinFilter write fMinFilter;
@@ -6553,6 +6555,60 @@ begin
  fMipmapActive:=true;
  fAddressModeS:=VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
  fAddressModeT:=VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+end;
+
+procedure TpvScene3D.TSampler.LoadFromStream(const aStream:TStream);
+var StreamIO:TpvStreamIO;
+begin
+
+ StreamIO:=TpvStreamIO.Create(aStream);
+ try
+
+  fName:=StreamIO.ReadUTF8String;
+
+  fMinFilter:=TVkFilter(StreamIO.ReadUInt32);
+
+  fMagFilter:=TVkFilter(StreamIO.ReadUInt32);
+
+  fMipmapMode:=TVkSamplerMipmapMode(StreamIO.ReadUInt32);
+
+  fMipmapActive:=StreamIO.ReadBoolean;
+
+  fAddressModeS:=TVkSamplerAddressMode(StreamIO.ReadUInt32);
+
+  fAddressModeT:=TVkSamplerAddressMode(StreamIO.ReadUInt32);
+
+ finally
+  FreeAndNil(StreamIO);
+ end;
+
+end; 
+
+procedure TpvScene3D.TSampler.SaveToStream(const aStream:TStream);
+var StreamIO:TpvStreamIO;
+begin
+
+ StreamIO:=TpvStreamIO.Create(aStream);
+ try
+
+  StreamIO.WriteUTF8String(fName);
+
+  StreamIO.WriteUInt32(TpvUInt32(fMinFilter));
+
+  StreamIO.WriteUInt32(TpvUInt32(fMagFilter));
+
+  StreamIO.WriteUInt32(TpvUInt32(fMipmapMode));
+
+  StreamIO.WriteBoolean(fMipmapActive);
+
+  StreamIO.WriteUInt32(TpvUInt32(fAddressModeS));
+
+  StreamIO.WriteUInt32(TpvUInt32(fAddressModeT));
+
+ finally
+  FreeAndNil(StreamIO);
+ end;
+
 end;
 
 procedure TpvScene3D.TSampler.AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceSampler:TPasGLTF.TSampler);
