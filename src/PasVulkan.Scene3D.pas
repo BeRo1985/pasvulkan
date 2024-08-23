@@ -8124,378 +8124,387 @@ begin
 
   fName:=StreamIO.ReadUTF8String;
 
-  fData.ShadingModel:=TpvScene3D.TMaterial.TShadingModel(TpvUInt32(StreamIO.ReadUInt32));
+  fSceneInstance.fTextureListLock.Acquire;
+  try
 
-  fData.CastingShadows:=StreamIO.ReadBoolean;
-  fData.ReceiveShadows:=StreamIO.ReadBoolean;
+   fData:=TpvScene3D.TMaterial.DefaultData;
 
-  fData.AlphaCutOff:=StreamIO.ReadFloat;
+   fData.ShadingModel:=TpvScene3D.TMaterial.TShadingModel(TpvUInt32(StreamIO.ReadUInt32));
 
-  fData.AlphaMode:=TpvScene3D.TMaterial.TAlphaMode(TpvUInt32(StreamIO.ReadUInt32));
+   fData.CastingShadows:=StreamIO.ReadBoolean;
+   fData.ReceiveShadows:=StreamIO.ReadBoolean;
 
-  fData.DoubleSided:=StreamIO.ReadBoolean;
-  
-  TextureIndex:=StreamIO.ReadInt64;
-  if TextureIndex>=0 then begin
-   fData.NormalTexture.Texture:=TpvScene3D.TTexture(aTextures[TextureIndex]);
-   if assigned(fData.NormalTexture.Texture) then begin
-    fData.NormalTexture.Texture.IncRef;
+   fData.AlphaCutOff:=StreamIO.ReadFloat;
+
+   fData.AlphaMode:=TpvScene3D.TMaterial.TAlphaMode(TpvUInt32(StreamIO.ReadUInt32));
+
+   fData.DoubleSided:=StreamIO.ReadBoolean;
+
+   TextureIndex:=StreamIO.ReadInt64;
+   if TextureIndex>=0 then begin
+    fData.NormalTexture.Texture:=TpvScene3D.TTexture(aTextures[TextureIndex]);
+    if assigned(fData.NormalTexture.Texture) then begin
+     fData.NormalTexture.Texture.IncRef;
+    end;
+   end else begin
+    fData.NormalTexture.Texture:=nil;
    end;
-  end else begin
-   fData.NormalTexture.Texture:=nil;
+   fData.NormalTexture.TexCoord:=StreamIO.ReadInt64;
+   fData.NormalTexture.Transform.LoadFromStream(aStream);
+
+   fData.NormalTextureScale:=StreamIO.ReadFloat;
+
+   TextureIndex:=StreamIO.ReadInt64;
+   if TextureIndex>=0 then begin
+    fData.OcclusionTexture.Texture:=TpvScene3D.TTexture(aTextures[TextureIndex]);
+    if assigned(fData.OcclusionTexture.Texture) then begin
+     fData.OcclusionTexture.Texture.IncRef;
+    end;
+   end else begin
+    fData.OcclusionTexture.Texture:=nil;
+   end;
+   fData.OcclusionTexture.TexCoord:=StreamIO.ReadInt64;
+   fData.OcclusionTexture.Transform.LoadFromStream(aStream);
+
+   fData.OcclusionTextureStrength:=StreamIO.ReadFloat;
+
+   fData.EmissiveFactor:=StreamIO.ReadVector4;
+
+   TextureIndex:=StreamIO.ReadInt64;
+   if TextureIndex>=0 then begin
+    fData.EmissiveTexture.Texture:=TpvScene3D.TTexture(aTextures[TextureIndex]);
+    if assigned(fData.EmissiveTexture.Texture) then begin
+     fData.EmissiveTexture.Texture.IncRef;
+    end;
+   end else begin
+    fData.EmissiveTexture.Texture:=nil;
+   end;
+   fData.EmissiveTexture.TexCoord:=StreamIO.ReadInt64;
+   fData.EmissiveTexture.Transform.LoadFromStream(aStream);
+
+   begin
+
+    // PBRMetallicRoughness
+
+    fData.PBRMetallicRoughness.BaseColorFactor:=StreamIO.ReadVector4;
+
+    TextureIndex:=StreamIO.ReadInt64;
+    if TextureIndex>=0 then begin
+     fData.PBRMetallicRoughness.BaseColorTexture.Texture:=TpvScene3D.TTexture(aTextures[TextureIndex]);
+     if assigned(fData.PBRMetallicRoughness.BaseColorTexture.Texture) then begin
+      fData.PBRMetallicRoughness.BaseColorTexture.Texture.IncRef;
+     end;
+    end else begin
+     fData.PBRMetallicRoughness.BaseColorTexture.Texture:=nil;
+    end;
+    fData.PBRMetallicRoughness.BaseColorTexture.TexCoord:=StreamIO.ReadInt64;
+    fData.PBRMetallicRoughness.BaseColorTexture.Transform.LoadFromStream(aStream);
+
+    fData.PBRMetallicRoughness.RoughnessFactor:=StreamIO.ReadFloat;
+
+    fData.PBRMetallicRoughness.MetallicFactor:=StreamIO.ReadFloat;
+
+    TextureIndex:=StreamIO.ReadInt64;
+    if TextureIndex>=0 then begin
+     fData.PBRMetallicRoughness.MetallicRoughnessTexture.Texture:=TpvScene3D.TTexture(aTextures[TextureIndex]);
+     if assigned(fData.PBRMetallicRoughness.MetallicRoughnessTexture.Texture) then begin
+      fData.PBRMetallicRoughness.MetallicRoughnessTexture.Texture.IncRef;
+     end;
+    end else begin
+     fData.PBRMetallicRoughness.MetallicRoughnessTexture.Texture:=nil;
+    end;
+    fData.PBRMetallicRoughness.MetallicRoughnessTexture.TexCoord:=StreamIO.ReadInt64;
+    fData.PBRMetallicRoughness.MetallicRoughnessTexture.Transform.LoadFromStream(aStream);
+
+    fData.PBRMetallicRoughness.SpecularFactor:=StreamIO.ReadFloat;
+
+    TextureIndex:=StreamIO.ReadInt64;
+    if TextureIndex>=0 then begin
+     fData.PBRMetallicRoughness.SpecularTexture.Texture:=TpvScene3D.TTexture(aTextures[TextureIndex]);
+     if assigned(fData.PBRMetallicRoughness.SpecularTexture.Texture) then begin
+      fData.PBRMetallicRoughness.SpecularTexture.Texture.IncRef;
+     end;
+    end else begin
+     fData.PBRMetallicRoughness.SpecularTexture.Texture:=nil;
+    end;
+    fData.PBRMetallicRoughness.SpecularTexture.TexCoord:=StreamIO.ReadInt64;
+    fData.PBRMetallicRoughness.SpecularTexture.Transform.LoadFromStream(aStream);
+
+    fData.PBRMetallicRoughness.SpecularColorFactor:=StreamIO.ReadVector3;
+
+    TextureIndex:=StreamIO.ReadInt64;
+    if TextureIndex>=0 then begin
+     fData.PBRMetallicRoughness.SpecularColorTexture.Texture:=TpvScene3D.TTexture(aTextures[TextureIndex]);
+     if assigned(fData.PBRMetallicRoughness.SpecularColorTexture.Texture) then begin
+      fData.PBRMetallicRoughness.SpecularColorTexture.Texture.IncRef;
+     end;
+    end else begin
+     fData.PBRMetallicRoughness.SpecularColorTexture.Texture:=nil;
+    end;
+    fData.PBRMetallicRoughness.SpecularColorTexture.TexCoord:=StreamIO.ReadInt64;
+    fData.PBRMetallicRoughness.SpecularColorTexture.Transform.LoadFromStream(aStream);
+
+   end;
+
+   begin
+
+    // PBRSpecularGlossiness
+
+    fData.PBRSpecularGlossiness.DiffuseFactor:=StreamIO.ReadVector4;
+
+    TextureIndex:=StreamIO.ReadInt64;
+    if TextureIndex>=0 then begin
+     fData.PBRSpecularGlossiness.DiffuseTexture.Texture:=TpvScene3D.TTexture(aTextures[TextureIndex]);
+     if assigned(fData.PBRSpecularGlossiness.DiffuseTexture.Texture) then begin
+      fData.PBRSpecularGlossiness.DiffuseTexture.Texture.IncRef;
+     end;
+    end else begin
+     fData.PBRSpecularGlossiness.DiffuseTexture.Texture:=nil;
+    end;
+    fData.PBRSpecularGlossiness.DiffuseTexture.TexCoord:=StreamIO.ReadInt64;
+    fData.PBRSpecularGlossiness.DiffuseTexture.Transform.LoadFromStream(aStream);
+
+    fData.PBRSpecularGlossiness.GlossinessFactor:=StreamIO.ReadFloat;
+
+    fData.PBRSpecularGlossiness.SpecularFactor:=StreamIO.ReadVector3;
+
+    TextureIndex:=StreamIO.ReadInt64;
+    if TextureIndex>=0 then begin
+     fData.PBRSpecularGlossiness.SpecularGlossinessTexture.Texture:=TpvScene3D.TTexture(aTextures[TextureIndex]);
+     if assigned(fData.PBRSpecularGlossiness.SpecularGlossinessTexture.Texture) then begin
+      fData.PBRSpecularGlossiness.SpecularGlossinessTexture.Texture.IncRef;
+     end;
+    end else begin
+     fData.PBRSpecularGlossiness.SpecularGlossinessTexture.Texture:=nil;
+    end;
+    fData.PBRSpecularGlossiness.SpecularGlossinessTexture.TexCoord:=StreamIO.ReadInt64;
+    fData.PBRSpecularGlossiness.SpecularGlossinessTexture.Transform.LoadFromStream(aStream);
+
+   end;
+
+   begin
+
+    // PBRSheen
+
+    fData.PBRSheen.Active:=StreamIO.ReadBoolean;
+
+    fData.PBRSheen.ColorFactor:=StreamIO.ReadVector3;
+
+    TextureIndex:=StreamIO.ReadInt64;
+    if TextureIndex>=0 then begin
+     fData.PBRSheen.ColorTexture.Texture:=TpvScene3D.TTexture(aTextures[TextureIndex]);
+     if assigned(fData.PBRSheen.ColorTexture.Texture) then begin
+      fData.PBRSheen.ColorTexture.Texture.IncRef;
+     end;
+    end else begin
+     fData.PBRSheen.ColorTexture.Texture:=nil;
+    end;
+    fData.PBRSheen.ColorTexture.TexCoord:=StreamIO.ReadInt64;
+    fData.PBRSheen.ColorTexture.Transform.LoadFromStream(aStream);
+
+    fData.PBRSheen.RoughnessFactor:=StreamIO.ReadFloat;
+
+    TextureIndex:=StreamIO.ReadInt64;
+    if TextureIndex>=0 then begin
+     fData.PBRSheen.RoughnessTexture.Texture:=TpvScene3D.TTexture(aTextures[TextureIndex]);
+     if assigned(fData.PBRSheen.RoughnessTexture.Texture) then begin
+      fData.PBRSheen.RoughnessTexture.Texture.IncRef;
+     end;
+    end else begin
+     fData.PBRSheen.RoughnessTexture.Texture:=nil;
+    end;
+    fData.PBRSheen.RoughnessTexture.TexCoord:=StreamIO.ReadInt64;
+    fData.PBRSheen.RoughnessTexture.Transform.LoadFromStream(aStream);
+
+   end;
+
+   begin
+
+    // PBRClearCoat
+
+    fData.PBRClearCoat.Active:=StreamIO.ReadBoolean;
+
+    fData.PBRClearCoat.Factor:=StreamIO.ReadFloat;
+
+    TextureIndex:=StreamIO.ReadInt64;
+    if TextureIndex>=0 then begin
+     fData.PBRClearCoat.Texture.Texture:=TpvScene3D.TTexture(aTextures[TextureIndex]);
+     if assigned(fData.PBRClearCoat.Texture.Texture) then begin
+      fData.PBRClearCoat.Texture.Texture.IncRef;
+     end;
+    end else begin
+     fData.PBRClearCoat.Texture.Texture:=nil;
+    end;
+    fData.PBRClearCoat.Texture.TexCoord:=StreamIO.ReadInt64;
+    fData.PBRClearCoat.Texture.Transform.LoadFromStream(aStream);
+
+    fData.PBRClearCoat.RoughnessFactor:=StreamIO.ReadFloat;
+
+    TextureIndex:=StreamIO.ReadInt64;
+    if TextureIndex>=0 then begin
+     fData.PBRClearCoat.RoughnessTexture.Texture:=TpvScene3D.TTexture(aTextures[TextureIndex]);
+     if assigned(fData.PBRClearCoat.RoughnessTexture.Texture) then begin
+      fData.PBRClearCoat.RoughnessTexture.Texture.IncRef;
+     end;
+    end else begin
+     fData.PBRClearCoat.RoughnessTexture.Texture:=nil;
+    end;
+    fData.PBRClearCoat.RoughnessTexture.TexCoord:=StreamIO.ReadInt64;
+    fData.PBRClearCoat.RoughnessTexture.Transform.LoadFromStream(aStream);
+
+    TextureIndex:=StreamIO.ReadInt64;
+    if TextureIndex>=0 then begin
+     fData.PBRClearCoat.NormalTexture.Texture:=TpvScene3D.TTexture(aTextures[TextureIndex]);
+     if assigned(fData.PBRClearCoat.NormalTexture.Texture) then begin
+      fData.PBRClearCoat.NormalTexture.Texture.IncRef;
+     end;
+    end else begin
+     fData.PBRClearCoat.NormalTexture.Texture:=nil;
+    end;
+    fData.PBRClearCoat.NormalTexture.TexCoord:=StreamIO.ReadInt64;
+    fData.PBRClearCoat.NormalTexture.Transform.LoadFromStream(aStream);
+
+   end;
+
+   begin
+
+    // Unlit
+
+    // nothing to do
+
+   end;
+
+   begin
+
+    // Iridescence
+
+    fData.IOR:=StreamIO.ReadFloat;
+
+    fData.Iridescence.Active:=StreamIO.ReadBoolean;
+
+    fData.Iridescence.Factor:=StreamIO.ReadFloat;
+
+    TextureIndex:=StreamIO.ReadInt64;
+    if TextureIndex>=0 then begin
+     fData.Iridescence.Texture.Texture:=TpvScene3D.TTexture(aTextures[TextureIndex]);
+     if assigned(fData.Iridescence.Texture.Texture) then begin
+      fData.Iridescence.Texture.Texture.IncRef;
+     end;
+    end else begin
+     fData.Iridescence.Texture.Texture:=nil;
+    end;
+    fData.Iridescence.Texture.TexCoord:=StreamIO.ReadInt64;
+    fData.Iridescence.Texture.Transform.LoadFromStream(aStream);
+
+    fData.Iridescence.Ior:=StreamIO.ReadFloat;
+
+    fData.Iridescence.ThicknessMinimum:=StreamIO.ReadFloat;
+
+    fData.Iridescence.ThicknessMaximum:=StreamIO.ReadFloat;
+
+    TextureIndex:=StreamIO.ReadInt64;
+    if TextureIndex>=0 then begin
+     fData.Iridescence.ThicknessTexture.Texture:=TpvScene3D.TTexture(aTextures[TextureIndex]);
+     if assigned(fData.Iridescence.ThicknessTexture.Texture) then begin
+      fData.Iridescence.ThicknessTexture.Texture.IncRef;
+     end;
+    end else begin
+     fData.Iridescence.ThicknessTexture.Texture:=nil;
+    end;
+    fData.Iridescence.ThicknessTexture.TexCoord:=StreamIO.ReadInt64;
+    fData.Iridescence.ThicknessTexture.Transform.LoadFromStream(aStream);
+
+   end;
+
+   begin
+
+    // Transmission
+
+    fData.Transmission.Active:=StreamIO.ReadBoolean;
+
+    fData.Transmission.Opaque:=StreamIO.ReadBoolean;
+
+    fData.Transmission.Factor:=StreamIO.ReadFloat;
+
+    TextureIndex:=StreamIO.ReadInt64;
+    if TextureIndex>=0 then begin
+     fData.Transmission.Texture.Texture:=TpvScene3D.TTexture(aTextures[TextureIndex]);
+     if assigned(fData.Transmission.Texture.Texture) then begin
+      fData.Transmission.Texture.Texture.IncRef;
+     end;
+    end else begin
+     fData.Transmission.Texture.Texture:=nil;
+    end;
+    fData.Transmission.Texture.TexCoord:=StreamIO.ReadInt64;
+    fData.Transmission.Texture.Transform.LoadFromStream(aStream);
+
+   end;
+
+   begin
+
+    // Volume
+
+    fData.Volume.Active:=StreamIO.ReadBoolean;
+
+    fData.Volume.ThicknessFactor:=StreamIO.ReadFloat;
+
+    TextureIndex:=StreamIO.ReadInt64;
+    if TextureIndex>=0 then begin
+     fData.Volume.ThicknessTexture.Texture:=TpvScene3D.TTexture(aTextures[TextureIndex]);
+     if assigned(fData.Volume.ThicknessTexture.Texture) then begin
+      fData.Volume.ThicknessTexture.Texture.IncRef;
+     end;
+    end else begin
+     fData.Volume.ThicknessTexture.Texture:=nil;
+    end;
+    fData.Volume.ThicknessTexture.TexCoord:=StreamIO.ReadInt64;
+    fData.Volume.ThicknessTexture.Transform.LoadFromStream(aStream);
+
+    fData.Volume.AttenuationColor:=StreamIO.ReadVector3;
+
+    fData.Volume.AttenuationDistance:=StreamIO.ReadFloat;
+
+   end;
+
+   begin
+
+    // Anisotropy
+
+    fData.Anisotropy.Active:=StreamIO.ReadBoolean;
+
+    fData.Anisotropy.AnisotropyStrength:=StreamIO.ReadFloat;
+
+    fData.Anisotropy.AnisotropyRotation:=StreamIO.ReadFloat;
+
+    TextureIndex:=StreamIO.ReadInt64;
+    if TextureIndex>=0 then begin
+     fData.Anisotropy.AnisotropyTexture.Texture:=TpvScene3D.TTexture(aTextures[TextureIndex]);
+     if assigned(fData.Anisotropy.AnisotropyTexture.Texture) then begin
+      fData.Anisotropy.AnisotropyTexture.Texture.IncRef;
+     end;
+    end else begin
+     fData.Anisotropy.AnisotropyTexture.Texture:=nil;
+    end;
+    fData.Anisotropy.AnisotropyTexture.TexCoord:=StreamIO.ReadInt64;
+    fData.Anisotropy.AnisotropyTexture.Transform.LoadFromStream(aStream);
+
+   end;
+
+   begin
+
+    // Dispersion
+
+    fData.Dispersion.Active:=StreamIO.ReadBoolean;
+
+    fData.Dispersion.Dispersion:=StreamIO.ReadFloat;
+
+   end;
+
+   fData.AnimatedTextureMask:=StreamIO.ReadUInt64;
+
+  finally
+   fSceneInstance.fTextureListLock.Release;
   end;
-  fData.NormalTexture.TexCoord:=StreamIO.ReadInt64;
-  fData.NormalTexture.Transform.LoadFromStream(aStream);
-
-  fData.NormalTextureScale:=StreamIO.ReadFloat;
-
-  TextureIndex:=StreamIO.ReadInt64;
-  if TextureIndex>=0 then begin
-   fData.OcclusionTexture.Texture:=TpvScene3D.TTexture(aTextures[TextureIndex]);
-   if assigned(fData.OcclusionTexture.Texture) then begin
-    fData.OcclusionTexture.Texture.IncRef;
-   end;
-  end else begin
-   fData.OcclusionTexture.Texture:=nil;
-  end;
-  fData.OcclusionTexture.TexCoord:=StreamIO.ReadInt64;
-  fData.OcclusionTexture.Transform.LoadFromStream(aStream);
-
-  fData.OcclusionTextureStrength:=StreamIO.ReadFloat;
-
-  fData.EmissiveFactor:=StreamIO.ReadVector4;
-
-  TextureIndex:=StreamIO.ReadInt64;
-  if TextureIndex>=0 then begin
-   fData.EmissiveTexture.Texture:=TpvScene3D.TTexture(aTextures[TextureIndex]);
-   if assigned(fData.EmissiveTexture.Texture) then begin
-    fData.EmissiveTexture.Texture.IncRef;
-   end;
-  end else begin
-   fData.EmissiveTexture.Texture:=nil;
-  end;
-  fData.EmissiveTexture.TexCoord:=StreamIO.ReadInt64;
-  fData.EmissiveTexture.Transform.LoadFromStream(aStream);
-
-  begin
-
-   // PBRMetallicRoughness
-
-   fData.PBRMetallicRoughness.BaseColorFactor:=StreamIO.ReadVector4;
-
-   TextureIndex:=StreamIO.ReadInt64;
-   if TextureIndex>=0 then begin
-    fData.PBRMetallicRoughness.BaseColorTexture.Texture:=TpvScene3D.TTexture(aTextures[TextureIndex]);
-    if assigned(fData.PBRMetallicRoughness.BaseColorTexture.Texture) then begin
-     fData.PBRMetallicRoughness.BaseColorTexture.Texture.IncRef;
-    end;
-   end else begin
-    fData.PBRMetallicRoughness.BaseColorTexture.Texture:=nil;
-   end;
-   fData.PBRMetallicRoughness.BaseColorTexture.TexCoord:=StreamIO.ReadInt64;
-   fData.PBRMetallicRoughness.BaseColorTexture.Transform.LoadFromStream(aStream);
-  
-   fData.PBRMetallicRoughness.RoughnessFactor:=StreamIO.ReadFloat;
-
-   fData.PBRMetallicRoughness.MetallicFactor:=StreamIO.ReadFloat;   
-
-   TextureIndex:=StreamIO.ReadInt64;
-   if TextureIndex>=0 then begin
-    fData.PBRMetallicRoughness.MetallicRoughnessTexture.Texture:=TpvScene3D.TTexture(aTextures[TextureIndex]);
-    if assigned(fData.PBRMetallicRoughness.MetallicRoughnessTexture.Texture) then begin
-     fData.PBRMetallicRoughness.MetallicRoughnessTexture.Texture.IncRef;
-    end;
-   end else begin
-    fData.PBRMetallicRoughness.MetallicRoughnessTexture.Texture:=nil;
-   end;
-   fData.PBRMetallicRoughness.MetallicRoughnessTexture.TexCoord:=StreamIO.ReadInt64;
-   fData.PBRMetallicRoughness.MetallicRoughnessTexture.Transform.LoadFromStream(aStream);
-
-   fData.PBRMetallicRoughness.SpecularFactor:=StreamIO.ReadFloat;
-
-   TextureIndex:=StreamIO.ReadInt64;
-   if TextureIndex>=0 then begin
-    fData.PBRMetallicRoughness.SpecularTexture.Texture:=TpvScene3D.TTexture(aTextures[TextureIndex]);
-    if assigned(fData.PBRMetallicRoughness.SpecularTexture.Texture) then begin
-     fData.PBRMetallicRoughness.SpecularTexture.Texture.IncRef;
-    end;
-   end else begin
-    fData.PBRMetallicRoughness.SpecularTexture.Texture:=nil;
-   end;
-   fData.PBRMetallicRoughness.SpecularTexture.TexCoord:=StreamIO.ReadInt64;
-   fData.PBRMetallicRoughness.SpecularTexture.Transform.LoadFromStream(aStream);
-
-   fData.PBRMetallicRoughness.SpecularColorFactor:=StreamIO.ReadVector3;
-
-   TextureIndex:=StreamIO.ReadInt64;
-   if TextureIndex>=0 then begin
-    fData.PBRMetallicRoughness.SpecularColorTexture.Texture:=TpvScene3D.TTexture(aTextures[TextureIndex]);
-    if assigned(fData.PBRMetallicRoughness.SpecularColorTexture.Texture) then begin
-     fData.PBRMetallicRoughness.SpecularColorTexture.Texture.IncRef;
-    end;
-   end else begin
-    fData.PBRMetallicRoughness.SpecularColorTexture.Texture:=nil;
-   end;
-   fData.PBRMetallicRoughness.SpecularColorTexture.TexCoord:=StreamIO.ReadInt64;
-   fData.PBRMetallicRoughness.SpecularColorTexture.Transform.LoadFromStream(aStream);
-
-  end;
-
-  begin
-
-   // PBRSpecularGlossiness
-
-   fData.PBRSpecularGlossiness.DiffuseFactor:=StreamIO.ReadVector4;
-
-   TextureIndex:=StreamIO.ReadInt64;
-   if TextureIndex>=0 then begin
-    fData.PBRSpecularGlossiness.DiffuseTexture.Texture:=TpvScene3D.TTexture(aTextures[TextureIndex]);
-    if assigned(fData.PBRSpecularGlossiness.DiffuseTexture.Texture) then begin
-     fData.PBRSpecularGlossiness.DiffuseTexture.Texture.IncRef;
-    end;
-   end else begin
-    fData.PBRSpecularGlossiness.DiffuseTexture.Texture:=nil;
-   end;
-   fData.PBRSpecularGlossiness.DiffuseTexture.TexCoord:=StreamIO.ReadInt64;
-   fData.PBRSpecularGlossiness.DiffuseTexture.Transform.LoadFromStream(aStream);
-
-   fData.PBRSpecularGlossiness.GlossinessFactor:=StreamIO.ReadFloat;
-
-   fData.PBRSpecularGlossiness.SpecularFactor:=StreamIO.ReadVector3;
-
-   TextureIndex:=StreamIO.ReadInt64;
-   if TextureIndex>=0 then begin
-    fData.PBRSpecularGlossiness.SpecularGlossinessTexture.Texture:=TpvScene3D.TTexture(aTextures[TextureIndex]);
-    if assigned(fData.PBRSpecularGlossiness.SpecularGlossinessTexture.Texture) then begin
-     fData.PBRSpecularGlossiness.SpecularGlossinessTexture.Texture.IncRef;
-    end;
-   end else begin
-    fData.PBRSpecularGlossiness.SpecularGlossinessTexture.Texture:=nil;
-   end;
-   fData.PBRSpecularGlossiness.SpecularGlossinessTexture.TexCoord:=StreamIO.ReadInt64;
-   fData.PBRSpecularGlossiness.SpecularGlossinessTexture.Transform.LoadFromStream(aStream);
-
-  end;
-
-  begin
-
-   // PBRSheen
-
-   fData.PBRSheen.Active:=StreamIO.ReadBoolean;
-
-   fData.PBRSheen.ColorFactor:=StreamIO.ReadVector3;
-
-   TextureIndex:=StreamIO.ReadInt64;
-   if TextureIndex>=0 then begin
-    fData.PBRSheen.ColorTexture.Texture:=TpvScene3D.TTexture(aTextures[TextureIndex]);
-    if assigned(fData.PBRSheen.ColorTexture.Texture) then begin
-     fData.PBRSheen.ColorTexture.Texture.IncRef;
-    end;
-   end else begin
-    fData.PBRSheen.ColorTexture.Texture:=nil;
-   end;
-   fData.PBRSheen.ColorTexture.TexCoord:=StreamIO.ReadInt64;
-   fData.PBRSheen.ColorTexture.Transform.LoadFromStream(aStream);
-
-   fData.PBRSheen.RoughnessFactor:=StreamIO.ReadFloat;
-
-   TextureIndex:=StreamIO.ReadInt64;
-   if TextureIndex>=0 then begin
-    fData.PBRSheen.RoughnessTexture.Texture:=TpvScene3D.TTexture(aTextures[TextureIndex]);
-    if assigned(fData.PBRSheen.RoughnessTexture.Texture) then begin
-     fData.PBRSheen.RoughnessTexture.Texture.IncRef;
-    end;
-   end else begin
-    fData.PBRSheen.RoughnessTexture.Texture:=nil;
-   end;
-   fData.PBRSheen.RoughnessTexture.TexCoord:=StreamIO.ReadInt64;
-   fData.PBRSheen.RoughnessTexture.Transform.LoadFromStream(aStream);
-
-  end;
-
-  begin
-
-   // PBRClearCoat
-
-   fData.PBRClearCoat.Active:=StreamIO.ReadBoolean;
-
-   fData.PBRClearCoat.Factor:=StreamIO.ReadFloat;
-
-   TextureIndex:=StreamIO.ReadInt64;
-   if TextureIndex>=0 then begin
-    fData.PBRClearCoat.Texture.Texture:=TpvScene3D.TTexture(aTextures[TextureIndex]);
-    if assigned(fData.PBRClearCoat.Texture.Texture) then begin
-     fData.PBRClearCoat.Texture.Texture.IncRef;
-    end;
-   end else begin
-    fData.PBRClearCoat.Texture.Texture:=nil;
-   end;
-   fData.PBRClearCoat.Texture.TexCoord:=StreamIO.ReadInt64;
-   fData.PBRClearCoat.Texture.Transform.LoadFromStream(aStream);
-
-   fData.PBRClearCoat.RoughnessFactor:=StreamIO.ReadFloat;
-
-   TextureIndex:=StreamIO.ReadInt64;
-   if TextureIndex>=0 then begin
-    fData.PBRClearCoat.RoughnessTexture.Texture:=TpvScene3D.TTexture(aTextures[TextureIndex]);
-    if assigned(fData.PBRClearCoat.RoughnessTexture.Texture) then begin
-     fData.PBRClearCoat.RoughnessTexture.Texture.IncRef;
-    end;
-   end else begin
-    fData.PBRClearCoat.RoughnessTexture.Texture:=nil;
-   end;
-   fData.PBRClearCoat.RoughnessTexture.TexCoord:=StreamIO.ReadInt64;
-   fData.PBRClearCoat.RoughnessTexture.Transform.LoadFromStream(aStream);
-
-   TextureIndex:=StreamIO.ReadInt64;
-   if TextureIndex>=0 then begin
-    fData.PBRClearCoat.NormalTexture.Texture:=TpvScene3D.TTexture(aTextures[TextureIndex]);
-    if assigned(fData.PBRClearCoat.NormalTexture.Texture) then begin
-     fData.PBRClearCoat.NormalTexture.Texture.IncRef;
-    end;
-   end else begin
-    fData.PBRClearCoat.NormalTexture.Texture:=nil;
-   end;
-   fData.PBRClearCoat.NormalTexture.TexCoord:=StreamIO.ReadInt64;
-   fData.PBRClearCoat.NormalTexture.Transform.LoadFromStream(aStream);
-
-  end;
-
-  begin
-
-   // Unlit
-
-   // nothing to do
-
-  end;
-
-  begin
-
-   // Iridescence
-
-   fData.IOR:=StreamIO.ReadFloat;
-
-   fData.Iridescence.Active:=StreamIO.ReadBoolean;
-
-   fData.Iridescence.Factor:=StreamIO.ReadFloat;
-
-   TextureIndex:=StreamIO.ReadInt64;
-   if TextureIndex>=0 then begin
-    fData.Iridescence.Texture.Texture:=TpvScene3D.TTexture(aTextures[TextureIndex]);
-    if assigned(fData.Iridescence.Texture.Texture) then begin
-     fData.Iridescence.Texture.Texture.IncRef;
-    end;
-   end else begin
-    fData.Iridescence.Texture.Texture:=nil;
-   end;
-   fData.Iridescence.Texture.TexCoord:=StreamIO.ReadInt64;
-   fData.Iridescence.Texture.Transform.LoadFromStream(aStream);
-
-   fData.Iridescence.Ior:=StreamIO.ReadFloat;
-
-   fData.Iridescence.ThicknessMinimum:=StreamIO.ReadFloat;
-
-   fData.Iridescence.ThicknessMaximum:=StreamIO.ReadFloat;
-
-   TextureIndex:=StreamIO.ReadInt64;
-   if TextureIndex>=0 then begin
-    fData.Iridescence.ThicknessTexture.Texture:=TpvScene3D.TTexture(aTextures[TextureIndex]);
-    if assigned(fData.Iridescence.ThicknessTexture.Texture) then begin
-     fData.Iridescence.ThicknessTexture.Texture.IncRef;
-    end;
-   end else begin
-    fData.Iridescence.ThicknessTexture.Texture:=nil;
-   end;
-   fData.Iridescence.ThicknessTexture.TexCoord:=StreamIO.ReadInt64;
-   fData.Iridescence.ThicknessTexture.Transform.LoadFromStream(aStream);
-  
-  end;
-
-  begin
-
-   // Transmission
-
-   fData.Transmission.Active:=StreamIO.ReadBoolean;
-
-   fData.Transmission.Opaque:=StreamIO.ReadBoolean;
-
-   fData.Transmission.Factor:=StreamIO.ReadFloat;
-
-   TextureIndex:=StreamIO.ReadInt64;
-   if TextureIndex>=0 then begin
-    fData.Transmission.Texture.Texture:=TpvScene3D.TTexture(aTextures[TextureIndex]);
-    if assigned(fData.Transmission.Texture.Texture) then begin
-     fData.Transmission.Texture.Texture.IncRef;
-    end;
-   end else begin
-    fData.Transmission.Texture.Texture:=nil;
-   end;
-   fData.Transmission.Texture.TexCoord:=StreamIO.ReadInt64;
-   fData.Transmission.Texture.Transform.LoadFromStream(aStream);
-
-  end;
-
-  begin
-
-   // Volume
-
-   fData.Volume.Active:=StreamIO.ReadBoolean;
-
-   fData.Volume.ThicknessFactor:=StreamIO.ReadFloat;
-
-   TextureIndex:=StreamIO.ReadInt64;
-   if TextureIndex>=0 then begin
-    fData.Volume.ThicknessTexture.Texture:=TpvScene3D.TTexture(aTextures[TextureIndex]);
-    if assigned(fData.Volume.ThicknessTexture.Texture) then begin
-     fData.Volume.ThicknessTexture.Texture.IncRef;
-    end;
-   end else begin
-    fData.Volume.ThicknessTexture.Texture:=nil;
-   end;
-   fData.Volume.ThicknessTexture.TexCoord:=StreamIO.ReadInt64;
-   fData.Volume.ThicknessTexture.Transform.LoadFromStream(aStream);
-
-   fData.Volume.AttenuationColor:=StreamIO.ReadVector3;
-
-   fData.Volume.AttenuationDistance:=StreamIO.ReadFloat;
-
-  end;
-
-  begin
-
-   // Anisotropy
-
-   fData.Anisotropy.Active:=StreamIO.ReadBoolean;
-
-   fData.Anisotropy.AnisotropyStrength:=StreamIO.ReadFloat;
-
-   fData.Anisotropy.AnisotropyRotation:=StreamIO.ReadFloat;
-
-   TextureIndex:=StreamIO.ReadInt64;
-   if TextureIndex>=0 then begin
-    fData.Anisotropy.AnisotropyTexture.Texture:=TpvScene3D.TTexture(aTextures[TextureIndex]);
-    if assigned(fData.Anisotropy.AnisotropyTexture.Texture) then begin
-     fData.Anisotropy.AnisotropyTexture.Texture.IncRef;
-    end;
-   end else begin
-    fData.Anisotropy.AnisotropyTexture.Texture:=nil;
-   end;
-   fData.Anisotropy.AnisotropyTexture.TexCoord:=StreamIO.ReadInt64;
-   fData.Anisotropy.AnisotropyTexture.Transform.LoadFromStream(aStream);
-
-  end;
-
-  begin
-
-   // Dispersion
-
-   fData.Dispersion.Active:=StreamIO.ReadBoolean;
-
-   fData.Dispersion.Dispersion:=StreamIO.ReadFloat;
-
-  end;
-
-  fData.AnimatedTextureMask:=StreamIO.ReadUInt64;
 
  finally
   FreeAndNil(StreamIO);
