@@ -17768,6 +17768,20 @@ begin
         end;
        end;
 
+       // Read used visible draw nodes
+       Count:=StreamIO.ReadInt64;
+       fUsedVisibleDrawNodes.Clear;
+       if Count>0 then begin
+        for Index:=0 to Count-1 do begin
+         OtherIndex:=StreamIO.ReadInt64;
+         if (OtherIndex>=0) and (OtherIndex<fNodes.Count) then begin
+          fUsedVisibleDrawNodes.Add(fNodes[OtherIndex]);
+         end else begin
+          raise EpvScene3D.Create('Invalid used visible draw node index');           
+         end;
+        end;
+       end;
+
        // Read scenes
        Count:=StreamIO.ReadInt64;
        fScenes.Clear;
@@ -17882,7 +17896,7 @@ begin
 
  CalculateBoundingBox;
 
- ConstructBuffers;
+ ConstructBuffers;}
 
  CollectUsedVisibleDrawNodes;
 
@@ -17892,7 +17906,7 @@ begin
 
  ConstructDrawChoreographyBatchItems;
 
- ConstructSkipLists;}
+ ConstructSkipLists;
 
  fUpdatedMeshContentGeneration:=fMeshContentGeneration;
 
@@ -18077,6 +18091,13 @@ begin
       StreamIO.WriteInt64(Count);
       for Index:=0 to Count-1 do begin
        TpvScene3D.TGroup.TNode(fNodes[Index]).SaveToStream(aStream);
+      end;
+
+      // Write used visible draw nodes
+      Count:=fUsedVisibleDrawNodes.Count;
+      StreamIO.WriteInt64(Count);
+      for Index:=0 to Count-1 do begin
+       StreamIO.WriteInt64(fUsedVisibleDrawNodes[Index].fIndex);
       end;
 
       // Write scenes
