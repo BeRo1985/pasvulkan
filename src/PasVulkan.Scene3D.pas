@@ -17518,7 +17518,7 @@ procedure TpvScene3D.TGroup.LoadFromStream(const aStream:TStream);
 var StreamIO:TpvStreamIO;
     PMVFHeader:TpvScene3D.TPVMFHeader;
     HeaderPosition:TpvInt64;
-    Index,OtherIndex,Count:TpvSizeInt;
+    Index,OtherIndex,Count,InFlightFrameIndex:TpvSizeInt;
     Camera:TpvScene3D.TGroup.TCamera;
     Light:TpvScene3D.TGroup.TLight;
     Image:TpvScene3D.TImage;
@@ -17869,6 +17869,38 @@ begin
  finally
   FreeAndNil(StreamIO);
  end;
+
+{PostProcessSkins;
+
+ PostProcessNodes;}
+
+ PostProcessAnimations;
+
+{MarkAnimatedElements;
+
+ CollectAllSceneNodesAndSplitNodesIntoAnimatedOrNotAnimatedSubtreesPerScene;
+
+ CalculateBoundingBox;
+
+ ConstructBuffers;
+
+ CollectUsedVisibleDrawNodes;
+
+ CollectMaterials;
+
+ CollectNodeUsedJoints;
+
+ ConstructDrawChoreographyBatchItems;
+
+ ConstructSkipLists;}
+
+ fUpdatedMeshContentGeneration:=fMeshContentGeneration;
+
+ for InFlightFrameIndex:=0 to fSceneInstance.CountInFlightFrames-1 do begin
+  fFrameUpdatedMeshContentGenerations[InFlightFrameIndex]:=fMeshContentGeneration;
+ end;
+
+ fReady:=true;
 
 end;
 
