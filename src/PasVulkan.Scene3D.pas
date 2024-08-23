@@ -12172,20 +12172,26 @@ begin
 
   Count:=StreamIO.ReadInt64;
   for Index:=0 to Count-1 do begin
+
    NodeMeshPrimitiveInstance:=TpvScene3D.TGroup.TMesh.TPrimitive.TNodeMeshPrimitiveInstance.Create;
    try
+  
     NodeMeshPrimitiveInstance.fMorphTargetBaseIndex:=StreamIO.ReadInt64;
     NodeMeshPrimitiveInstance.fStartBufferVertexOffset:=StreamIO.ReadInt64;
     NodeMeshPrimitiveInstance.fStartBufferIndexOffset:=StreamIO.ReadInt64;
     NodeMeshPrimitiveInstance.fStartBufferDrawIndexOffset:=StreamIO.ReadInt64;
+
+    // Fix material IDs in the vertices, since these could be different after re-loading 
     Vertex:=@fMesh.fGroup.fVertices.ItemArray[NodeMeshPrimitiveInstance.fStartBufferVertexOffset];
     for VertexIndex:=0 to fCountVertices-1 do begin
      Vertex^.MaterialID:=fMaterialID+1; // +1 because 0 = empty material
      inc(Vertex);
     end;
+
    finally
     fNodeMeshPrimitiveInstances.Add(NodeMeshPrimitiveInstance);
    end;
+
   end;
 
   fRaytracingPrimitiveID:=StreamIO.ReadUInt64;
