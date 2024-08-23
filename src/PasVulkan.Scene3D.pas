@@ -8501,6 +8501,8 @@ begin
   FreeAndNil(StreamIO);
  end;
 
+ FillShaderData;
+
 end;
 
 procedure TpvScene3D.TMaterial.PrepareSaveToStream(const aImages,aSamplers,aTextures,aMaterials:TpvObjectList);
