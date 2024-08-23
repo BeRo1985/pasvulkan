@@ -1312,100 +1312,55 @@ end;
 
 function TpvStreamIO.ReadVector2:TpvVector2;
 begin
- result.x:=ReadFloat;
- result.y:=ReadFloat;
+ ReadWithCheck(result,SizeOf(TpvVector2));
 end;
 
 function TpvStreamIO.ReadVector3:TpvVector3;
 begin
- result.x:=ReadFloat;
- result.y:=ReadFloat;
- result.z:=ReadFloat;
+ ReadWithCheck(result,SizeOf(TpvVector3));
 end;
 
 function TpvStreamIO.ReadVector4:TpvVector4;
 begin
- result.x:=ReadFloat;
- result.y:=ReadFloat;
- result.z:=ReadFloat;
- result.w:=ReadFloat;
+ ReadWithCheck(result,SizeOf(TpvVector4));
 end;
 
 function TpvStreamIO.ReadPlane:TpvPlane;
 begin
- result.RawComponents[0]:=ReadFloat;
- result.RawComponents[1]:=ReadFloat;
- result.RawComponents[2]:=ReadFloat;
- result.RawComponents[3]:=ReadFloat;
+ result.Vector4:=ReadVector4;
 end;
 
 function TpvStreamIO.ReadMatrix3x3:TpvMatrix3x3;
 begin
- result.RawComponents[0,0]:=ReadFloat;
- result.RawComponents[0,1]:=ReadFloat;
- result.RawComponents[0,2]:=ReadFloat;
- result.RawComponents[1,0]:=ReadFloat;
- result.RawComponents[1,1]:=ReadFloat;
- result.RawComponents[1,2]:=ReadFloat;
- result.RawComponents[2,0]:=ReadFloat;
- result.RawComponents[2,1]:=ReadFloat;
- result.RawComponents[2,2]:=ReadFloat;
+ ReadWithCheck(result,SizeOf(TpvMatrix3x3));
 end;
 
 function TpvStreamIO.ReadMatrix4x4:TpvMatrix4x4;
 begin
- result.RawComponents[0,0]:=ReadFloat;
- result.RawComponents[0,1]:=ReadFloat;
- result.RawComponents[0,2]:=ReadFloat;
- result.RawComponents[0,3]:=ReadFloat;
- result.RawComponents[1,0]:=ReadFloat;
- result.RawComponents[1,1]:=ReadFloat;
- result.RawComponents[1,2]:=ReadFloat;
- result.RawComponents[1,3]:=ReadFloat;
- result.RawComponents[2,0]:=ReadFloat;
- result.RawComponents[2,1]:=ReadFloat;
- result.RawComponents[2,2]:=ReadFloat;
- result.RawComponents[2,3]:=ReadFloat;
- result.RawComponents[3,0]:=ReadFloat;
- result.RawComponents[3,1]:=ReadFloat;
- result.RawComponents[3,2]:=ReadFloat;
- result.RawComponents[3,3]:=ReadFloat;
+ ReadWithCheck(result,SizeOf(TpvMatrix4x4));
 end;
 
 function TpvStreamIO.ReadQuaternion:TpvQuaternion;
 begin
- result.x:=ReadFloat;
- result.y:=ReadFloat;
- result.z:=ReadFloat;
- result.w:=ReadFloat;
+ result.Vector:=ReadVector4;
 end;
 
 function TpvStreamIO.ReadSphere:TpvSphere;
 begin
- result.Center.x:=ReadFloat;
- result.Center.y:=ReadFloat;
- result.Center.z:=ReadFloat;
+ result.Center:=ReadVector3;
  result.Radius:=ReadFloat;
 end;
 
 function TpvStreamIO.ReadAABB:TpvAABB;
 begin
- result.Min.x:=ReadFloat;
- result.Min.y:=ReadFloat;
- result.Min.z:=ReadFloat;
- result.Max.x:=ReadFloat;
- result.Max.y:=ReadFloat;
- result.Max.z:=ReadFloat;
+ result.Min:=ReadVector3;
+ result.Max:=ReadVector3;
 end;
 
 function TpvStreamIO.ReadOBB:TpvOBB;
 begin
- result.Center.x:=ReadFloat;
- result.Center.y:=ReadFloat;
- result.Center.z:=ReadFloat;
- result.HalfExtents.x:=ReadFloat;
- result.HalfExtents.y:=ReadFloat;
- result.HalfExtents.z:=ReadFloat;
+ result.Center:=ReadVector3;
+ result.HalfExtents:=ReadVector3;
  result.Matrix:=ReadMatrix3x3;
 end;
 
@@ -1604,100 +1559,55 @@ end;
 
 function TpvStreamIO.WriteVector2(const aValue:TpvVector2):TpvSizeUInt;
 begin
- result:=WriteFloat(aValue.x);
- inc(result,WriteFloat(aValue.y));
+ result:=WriteWithCheck(aValue,SizeOf(TpvVector2));
 end;
 
 function TpvStreamIO.WriteVector3(const aValue:TpvVector3):TpvSizeUInt;
 begin
- result:=WriteFloat(aValue.x);
- inc(result,WriteFloat(aValue.y));
- inc(result,WriteFloat(aValue.z));
+ result:=WriteWithCheck(aValue,SizeOf(TpvVector3));
 end;
 
 function TpvStreamIO.WriteVector4(const aValue:TpvVector4):TpvSizeUInt;
 begin
- result:=WriteFloat(aValue.x);
- inc(result,WriteFloat(aValue.y));
- inc(result,WriteFloat(aValue.z));
- inc(result,WriteFloat(aValue.w));
+ result:=WriteWithCheck(aValue,SizeOf(TpvVector4));
 end;
 
 function TpvStreamIO.WritePlane(const aValue:TpvPlane):TpvSizeUInt;
 begin
- result:=WriteFloat(aValue.RawComponents[0]);
- inc(result,WriteFloat(aValue.RawComponents[1]));
- inc(result,WriteFloat(aValue.RawComponents[2]));
- inc(result,WriteFloat(aValue.RawComponents[3]));
+ result:=WriteWithCheck(aValue.Vector4,SizeOf(TpvVector4));
 end;
 
 function TpvStreamIO.WriteMatrix3x3(const aValue:TpvMatrix3x3):TpvSizeUInt;
 begin
- result:=WriteFloat(aValue.RawComponents[0,0]);
- inc(result,WriteFloat(aValue.RawComponents[0,1]));
- inc(result,WriteFloat(aValue.RawComponents[0,2]));
- inc(result,WriteFloat(aValue.RawComponents[1,0]));
- inc(result,WriteFloat(aValue.RawComponents[1,1]));
- inc(result,WriteFloat(aValue.RawComponents[1,2]));
- inc(result,WriteFloat(aValue.RawComponents[2,0]));
- inc(result,WriteFloat(aValue.RawComponents[2,1]));
- inc(result,WriteFloat(aValue.RawComponents[2,2]));
+ result:=WriteWithCheck(aValue,SizeOf(TpvMatrix3x3));
 end;
 
 function TpvStreamIO.WriteMatrix4x4(const aValue:TpvMatrix4x4):TpvSizeUInt;
 begin
- result:=WriteFloat(aValue.RawComponents[0,0]);
- inc(result,WriteFloat(aValue.RawComponents[0,1]));
- inc(result,WriteFloat(aValue.RawComponents[0,2]));
- inc(result,WriteFloat(aValue.RawComponents[0,3]));
- inc(result,WriteFloat(aValue.RawComponents[1,0]));
- inc(result,WriteFloat(aValue.RawComponents[1,1]));
- inc(result,WriteFloat(aValue.RawComponents[1,2]));
- inc(result,WriteFloat(aValue.RawComponents[1,3]));
- inc(result,WriteFloat(aValue.RawComponents[2,0]));
- inc(result,WriteFloat(aValue.RawComponents[2,1]));
- inc(result,WriteFloat(aValue.RawComponents[2,2]));
- inc(result,WriteFloat(aValue.RawComponents[2,3]));
- inc(result,WriteFloat(aValue.RawComponents[3,0]));
- inc(result,WriteFloat(aValue.RawComponents[3,1]));
- inc(result,WriteFloat(aValue.RawComponents[3,2]));
- inc(result,WriteFloat(aValue.RawComponents[3,3]));
+ result:=WriteWithCheck(aValue,SizeOf(TpvMatrix4x4));
 end;
 
 function TpvStreamIO.WriteQuaternion(const aValue:TpvQuaternion):TpvSizeUInt;
 begin
- result:=WriteFloat(aValue.x);
- inc(result,WriteFloat(aValue.y));
- inc(result,WriteFloat(aValue.z));
- inc(result,WriteFloat(aValue.w));
+ result:=WriteWithCheck(aValue.Vector,SizeOf(TpvVector4));
 end;
 
 function TpvStreamIO.WriteSphere(const aValue:TpvSphere):TpvSizeUInt;
 begin
- result:=WriteFloat(aValue.Center.x);
- inc(result,WriteFloat(aValue.Center.y));
- inc(result,WriteFloat(aValue.Center.z));
+ result:=WriteVector3(aValue.Center);
  inc(result,WriteFloat(aValue.Radius));
 end;
 
 function TpvStreamIO.WriteAABB(const aValue:TpvAABB):TpvSizeUInt;
 begin
- result:=WriteFloat(aValue.Min.x);
- inc(result,WriteFloat(aValue.Min.y));
- inc(result,WriteFloat(aValue.Min.z));
- inc(result,WriteFloat(aValue.Max.x));
- inc(result,WriteFloat(aValue.Max.y));
- inc(result,WriteFloat(aValue.Max.z));
+ result:=WriteVector3(aValue.Min);
+ inc(result,WriteVector3(aValue.Max));
 end;
 
 function TpvStreamIO.WriteOBB(const aValue:TpvOBB):TpvSizeUInt;
 begin
- result:=WriteFloat(aValue.Center.x);
- inc(result,WriteFloat(aValue.Center.y));
- inc(result,WriteFloat(aValue.Center.z));
- inc(result,WriteFloat(aValue.HalfExtents.x));
- inc(result,WriteFloat(aValue.HalfExtents.y));
- inc(result,WriteFloat(aValue.HalfExtents.z));
+ result:=WriteVector3(aValue.Center);
+ inc(result,WriteVector3(aValue.HalfExtents));
  inc(result,WriteMatrix3x3(aValue.Matrix));
 end;
 
