@@ -6432,6 +6432,7 @@ procedure TpvScene3D.TImage.LoadFromStream(const aStream:TStream);
 var StreamIO:TpvStreamIO;
     Size:TpvUInt64;
     FileName:TpvUTF8String;
+    DataStream:TStream;
 begin
 
  StreamIO:=TpvStreamIO.Create(aStream);
@@ -6441,20 +6442,40 @@ begin
 
   fKind:=TpvScene3D.TImage.TKind(StreamIO.ReadUInt32);
 
-  FileName:=StreamIO.ReadUTF8String;
+  if fKind=TpvScene3D.TImage.TKind.ResourceTexture then begin
 
-  fResourceDataStream.Clear;
-  if length(FileName)<>0 then begin
-   fResourceDataStream.LoadFromFile(FileName);
-   Size:=StreamIO.ReadUInt64; // Skip size in this case, because it is not needed
-   if Size>0 then begin
-    aStream.Seek(Size,soCurrent); // Skip data in this case, because it is not needed
+   FileName:=StreamIO.ReadUTF8String;
+
+   fResourceDataStream.Clear;
+   if length(FileName)<>0 then begin
+    if pvApplication.Assets.ExistAsset(FileName) then begin
+     DataStream:=pvApplication.Assets.GetAssetStream(FileName);
+     if assigned(DataStream) then begin
+      try
+       DataStream.Seek(0,soBeginning);
+       fResourceDataStream.CopyFrom(DataStream,DataStream.Size);
+      finally
+       FreeAndNil(DataStream);
+      end;
+     end;
+    end else if FileExists(FileName) then begin
+     fResourceDataStream.LoadFromFile(FileName);
+    end else begin
+     fKind:=TpvScene3D.TImage.TKind.WhiteTexture;
+    end;
+    Size:=StreamIO.ReadUInt64; // Skip size in this case, because it is not needed
+    if Size>0 then begin
+     aStream.Seek(Size,soCurrent); // Skip data in this case, because it is not needed
+    end;
+   end else begin
+    Size:=StreamIO.ReadUInt64;
+    if Size>0 then begin
+     fResourceDataStream.CopyFrom(aStream,Size);
+    end else begin
+     fKind:=TpvScene3D.TImage.TKind.WhiteTexture;
+    end;
    end;
-  end else begin
-   Size:=StreamIO.ReadUInt64;
-   if Size>0 then begin
-    fResourceDataStream.CopyFrom(aStream,Size);
-   end;
+
   end;
 
  finally
@@ -6475,13 +6496,17 @@ begin
 
   StreamIO.WriteUInt32(TpvUInt32(fKind));
 
-  StreamIO.WriteUTF8String(''); // for later use for external texture file assets, but for now just embedded textures for simplicity  
+  if fKind=TpvScene3D.TImage.TKind.ResourceTexture then begin
 
-  Size:=fResourceDataStream.Size;
-  StreamIO.WriteUInt64(Size);
-  if Size>0 then begin
-   fResourceDataStream.Seek(0,soBeginning);
-   aStream.CopyFrom(fResourceDataStream,Size);
+   StreamIO.WriteUTF8String(''); // for later use for external texture file assets, but for now just embedded textures for simplicity
+
+   Size:=fResourceDataStream.Size;
+   StreamIO.WriteUInt64(Size);
+   if Size>0 then begin
+    fResourceDataStream.Seek(0,soBeginning);
+    aStream.CopyFrom(fResourceDataStream,Size);
+   end;
+
   end;
 
  finally
