@@ -12355,8 +12355,6 @@ begin
  StreamIO:=TpvStreamIO.Create(aStream);
  try
 
-  fName:=StreamIO.ReadUTF8String;
-
   fPrimitiveIndex:=StreamIO.ReadUInt32;
 
   ui32:=StreamIO.ReadUInt32;
@@ -12426,8 +12424,6 @@ begin
 
  StreamIO:=TpvStreamIO.Create(aStream);
  try
-
-  StreamIO.WriteUTF8String(fName);
 
   StreamIO.WriteUInt32(fPrimitiveIndex);
 
