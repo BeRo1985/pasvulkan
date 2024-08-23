@@ -8501,7 +8501,6 @@ begin
 end;
 
 procedure TpvScene3D.TMaterial.PrepareSaveToStream(const aImages,aSamplers,aTextures,aMaterials:TpvObjectList);
-var Texture:TpvScene3D.TTexture;
 begin
 
  if aMaterials.IndexOf(self)<0 then begin
@@ -8588,7 +8587,6 @@ end;
 
 procedure TpvScene3D.TMaterial.SaveToStream(const aStream:TStream;const aImages,aSamplers,aTextures:TpvObjectList);
 var StreamIO:TpvStreamIO;
-    Texture:TpvScene3D.TTexture;
 begin
  
  StreamIO:=TpvStreamIO.Create(aStream);
@@ -8635,6 +8633,7 @@ begin
    StreamIO.WriteInt64(-1);
   end;
   StreamIO.WriteInt64(fData.EmissiveTexture.TexCoord);
+  fData.EmissiveTexture.Transform.SaveToStream(aStream);
 
   begin
 
