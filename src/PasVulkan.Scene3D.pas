@@ -17929,7 +17929,7 @@ begin
  end;
 
  fReady:=true;
-                                            *)
+
 end;
 
 procedure TpvScene3D.TGroup.SaveToStream(const aStream:TStream;const aMetaData:TpvUInt64);
