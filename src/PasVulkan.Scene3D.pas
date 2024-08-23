@@ -17597,6 +17597,20 @@ begin
         StreamIO.ReadWithCheck(fIndices.Memory^,Count*SizeOf(TpvUInt32));
        end;
 
+       // Read draw choreography batch condensed indices
+       Count:=StreamIO.ReadInt64;
+       fDrawChoreographyBatchCondensedIndices.Resize(Count);
+       if Count>0 then begin
+        StreamIO.ReadWithCheck(fDrawChoreographyBatchCondensedIndices.Memory^,Count*SizeOf(TpvUInt32));
+       end;
+
+       // Read draw choreography batch condensed unique indices
+       Count:=StreamIO.ReadInt64;
+       fDrawChoreographyBatchCondensedUniqueIndices.Resize(Count);
+       if Count>0 then begin
+        StreamIO.ReadWithCheck(fDrawChoreographyBatchCondensedUniqueIndices.Memory^,Count*SizeOf(TpvUInt32));
+       end;
+
        // Read joint blocks
        Count:=StreamIO.ReadInt64;
        fJointBlocks.Resize(Count);
@@ -18007,6 +18021,20 @@ begin
        StreamIO.WriteWithCheck(fIndices.Memory^,Count*SizeOf(TpvUInt32));
       end;
 
+      // Write draw choreography batch condensed indices
+      Count:=fDrawChoreographyBatchCondensedIndices.Count;
+      StreamIO.WriteInt64(Count);
+      if Count>0 then begin
+       StreamIO.WriteWithCheck(fDrawChoreographyBatchCondensedIndices.Memory^,Count*SizeOf(TpvUInt32));
+      end;
+
+      // Write draw choreography batch condensed unique indices
+      Count:=fDrawChoreographyBatchCondensedUniqueIndices.Count;
+      StreamIO.WriteInt64(Count);
+      if Count>0 then begin
+       StreamIO.WriteWithCheck(fDrawChoreographyBatchCondensedUniqueIndices.Memory^,Count*SizeOf(TpvUInt32));
+      end;
+          
       // Write joint blocks
       Count:=fJointBlocks.Count;
       StreamIO.WriteInt64(Count);
