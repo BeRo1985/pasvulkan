@@ -17914,13 +17914,13 @@ begin
 
 {CollectUsedVisibleDrawNodes;
 
- CollectMaterials;
+ CollectMaterials;}
 
- CollectNodeUsedJoints;
+{CollectNodeUsedJoints;}
 
- ConstructDrawChoreographyBatchItems;
+//ConstructDrawChoreographyBatchItems;
 
- ConstructSkipLists; }
+//ConstructSkipLists;
 
  fUpdatedMeshContentGeneration:=fMeshContentGeneration;
 
