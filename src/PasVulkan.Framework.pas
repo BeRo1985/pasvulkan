@@ -3632,7 +3632,8 @@ type EpvVulkanException=class(Exception);
                                  const aBorder:boolean;
                                  const aSRGB:boolean;
                                  const aAdditionalSRGB:boolean=false;
-                                 const aAllocationGroupID:TpvUInt64=0);
+                                 const aAllocationGroupID:TpvUInt64=0;
+                                 const aUsageFlags:TpvVulkanTextureUsageFlags=[]);
        destructor Destroy; override;
        procedure Unload;
        class procedure GetMipMapSize(const aFormat:TVkFormat;const aMipMapWidth,aMipMapHeight:TpvInt32;out aMipMapSize:TVkUInt32;out aCompressed:boolean); static;
@@ -3711,7 +3712,8 @@ type EpvVulkanException=class(Exception);
                              const aBorder:boolean;
                              const aSRGB:boolean;
                              const aAdditionalSRGB:boolean=false;
-                             const aAllocationGroupID:TpvUInt64=0);
+                             const aAllocationGroupID:TpvUInt64=0;
+                             const aUsageFlags:TpvVulkanTextureUsageFlags=[]);
        procedure Upload(const aGraphicsQueue:TpvVulkanQueue;
                         const aGraphicsCommandBuffer:TpvVulkanCommandBuffer;
                         const aGraphicsFence:TpvVulkanFence;
@@ -23619,10 +23621,11 @@ constructor TpvVulkanTexture.CreateDefault(const aDevice:TpvVulkanDevice;
                                            const aBorder:boolean;
                                            const aSRGB:boolean;
                                            const aAdditionalSRGB:boolean;
-                                           const aAllocationGroupID:TpvUInt64);
+                                           const aAllocationGroupID:TpvUInt64;
+                                           const aUsageFlags:TpvVulkanTextureUsageFlags);
 begin
  Create(aDevice);
- LoadDefault(aDefaultType,aWidth,aHeight,aDepth,aCountArrayLayers,aCountFaces,aMipmaps,aBorder,aSRGB,aAdditionalSRGB,aAllocationGroupID);
+ LoadDefault(aDefaultType,aWidth,aHeight,aDepth,aCountArrayLayers,aCountFaces,aMipmaps,aBorder,aSRGB,aAdditionalSRGB,aAllocationGroupID,aUsageFlags);
  Finish(aGraphicsQueue,aGraphicsCommandBuffer,aGraphicsFence,aTransferQueue,aTransferCommandBuffer,aTransferFence);
 end;
 
@@ -27180,7 +27183,8 @@ procedure TpvVulkanTexture.LoadDefault(const aDefaultType:TpvVulkanTextureDefaul
                                        const aBorder:boolean;
                                        const aSRGB:boolean;
                                        const aAdditionalSRGB:boolean;
-                                       const aAllocationGroupID:TpvUInt64);
+                                       const aAllocationGroupID:TpvUInt64;
+                                       const aUsageFlags:TpvVulkanTextureUsageFlags);
 const TexelSize=4;
       BlockShift=5;
       BlockSize=1 shl BlockShift;
@@ -27347,7 +27351,7 @@ begin
                  aCountArrayLayers,
                  aCountFaces,
                  CountMipMaps,
-                 [TpvVulkanTextureUsageFlag.TransferDst,TpvVulkanTextureUsageFlag.Sampled],
+                 [TpvVulkanTextureUsageFlag.TransferDst,TpvVulkanTextureUsageFlag.Sampled]+aUsageFlags,
                  @Data[0],
                  DataSize,
                  false,
