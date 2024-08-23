@@ -6431,6 +6431,7 @@ end;
 procedure TpvScene3D.TImage.LoadFromStream(const aStream:TStream);
 var StreamIO:TpvStreamIO;
     Size:TpvUInt64;
+    FileName:TpvUTF8String;
 begin
 
  StreamIO:=TpvStreamIO.Create(aStream);
@@ -6440,11 +6441,21 @@ begin
 
   fKind:=TpvScene3D.TImage.TKind(StreamIO.ReadUInt32);
 
-  Size:=StreamIO.ReadUInt64;
+  FileName:=StreamIO.ReadUTF8String;
+
   fResourceDataStream.Clear;
-  if Size>0 then begin
-   fResourceDataStream.CopyFrom(aStream,Size);
-  end; 
+  if length(FileName)<>0 then begin
+   fResourceDataStream.LoadFromFile(FileName);
+   Size:=StreamIO.ReadUInt64; // Skip size in this case, because it is not needed
+   if Size>0 then begin
+    aStream.Seek(Size,soCurrent); // Skip data in this case, because it is not needed
+   end;
+  end else begin
+   Size:=StreamIO.ReadUInt64;
+   if Size>0 then begin
+    fResourceDataStream.CopyFrom(aStream,Size);
+   end;
+  end;
 
  finally
   FreeAndNil(StreamIO);
@@ -6463,6 +6474,8 @@ begin
   StreamIO.WriteUTF8String(fName);
 
   StreamIO.WriteUInt32(TpvUInt32(fKind));
+
+  StreamIO.WriteUTF8String(''); // for later use for external texture file assets, but for now just embedded textures for simplicity  
 
   Size:=fResourceDataStream.Size;
   StreamIO.WriteUInt64(Size);
