@@ -17898,7 +17898,7 @@ begin
 
  ConstructBuffers;}
 
- CollectUsedVisibleDrawNodes;
+{CollectUsedVisibleDrawNodes;
 
  CollectMaterials;
 
@@ -17906,7 +17906,7 @@ begin
 
  ConstructDrawChoreographyBatchItems;
 
- ConstructSkipLists;
+ ConstructSkipLists; }
 
  fUpdatedMeshContentGeneration:=fMeshContentGeneration;
 
