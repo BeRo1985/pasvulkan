@@ -17898,29 +17898,29 @@ begin
   FreeAndNil(StreamIO);
  end;
 
-{PostProcessSkins;
+ PostProcessSkins;
 
- PostProcessNodes;}
+ PostProcessNodes;
 
  PostProcessAnimations;
 
-{MarkAnimatedElements;
+ MarkAnimatedElements;
 
  CollectAllSceneNodesAndSplitNodesIntoAnimatedOrNotAnimatedSubtreesPerScene;
 
  CalculateBoundingBox;
 
- ConstructBuffers;}
+ ConstructBuffers;
 
-{CollectUsedVisibleDrawNodes;
+ CollectUsedVisibleDrawNodes;
 
- CollectMaterials;}
+ CollectMaterials;
 
-{CollectNodeUsedJoints;}
+ CollectNodeUsedJoints;
 
-//ConstructDrawChoreographyBatchItems;
+ ConstructDrawChoreographyBatchItems;
 
-//ConstructSkipLists;
+ ConstructSkipLists;
 
  fUpdatedMeshContentGeneration:=fMeshContentGeneration;
 
@@ -17929,7 +17929,7 @@ begin
  end;
 
  fReady:=true;
-
+                                            *)
 end;
 
 procedure TpvScene3D.TGroup.SaveToStream(const aStream:TStream;const aMetaData:TpvUInt64);
@@ -18199,7 +18199,7 @@ begin
 
  finally
   FreeAndNil(StreamIO);
- end;  
+ end;
 
 end;
 
@@ -21223,7 +21223,7 @@ end;
 
 function TpvScene3D.TGroup.TInstance.GetScene:TpvScene3D.TGroup.TScene;
 begin
- if fGroup.fUploaded then begin
+ if fGroup.fReady then begin
   if fScene<0 then begin
    result:=fGroup.fScene;
   end else if fScene<fGroup.fScenes.Count then begin
