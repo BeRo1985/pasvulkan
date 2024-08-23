@@ -7197,7 +7197,6 @@ begin
    fSampler:=nil;
   end; 
 
-
  finally
   FreeAndNil(StreamIO);
  end;
