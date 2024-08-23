@@ -10089,8 +10089,8 @@ begin
    fMaterial:=nil;
   end;
 
+  Index:=StreamIO.ReadInt64;
   if not assigned(fNode) then begin
-   Index:=StreamIO.ReadInt64;
    if (Index>=0) and (Index<fGroup.fNodes.Count) then begin
     fNode:=fGroup.fNodes[Index];
    end else begin
@@ -15205,6 +15205,7 @@ begin
    DrawChoreographyBatchItem:=TDrawChoreographyBatchItem.Create;
    try
     DrawChoreographyBatchItem.fGroup:=fGroup;
+    DrawChoreographyBatchItem.fNode:=nil;
     DrawChoreographyBatchItem.LoadFromStream(aStream,aMaterials);
    finally 
     fDrawChoreographyBatchItems.Add(DrawChoreographyBatchItem);
@@ -15217,6 +15218,7 @@ begin
    DrawChoreographyBatchItem:=TDrawChoreographyBatchItem.Create;
    try
     DrawChoreographyBatchItem.fGroup:=fGroup;
+    DrawChoreographyBatchItem.fNode:=nil;
     DrawChoreographyBatchItem.LoadFromStream(aStream,aMaterials);
    finally 
     fDrawChoreographyBatchUniqueItems.Add(DrawChoreographyBatchItem);
@@ -17802,6 +17804,8 @@ begin
        for Index:=0 to Count-1 do begin
         DrawChoreographyBatchItem:=TpvScene3D.TDrawChoreographyBatchItem.Create;
         try
+         DrawChoreographyBatchItem.fGroup:=self;
+         DrawChoreographyBatchItem.fNode:=nil;
          DrawChoreographyBatchItem.LoadFromStream(aStream,CollectedMaterials);
          fDrawChoreographyBatchItems.Add(DrawChoreographyBatchItem);
         except
@@ -17816,6 +17820,8 @@ begin
        for Index:=0 to Count-1 do begin
         DrawChoreographyBatchItem:=TpvScene3D.TDrawChoreographyBatchItem.Create;
         try
+         DrawChoreographyBatchItem.fGroup:=self;
+         DrawChoreographyBatchItem.fNode:=nil;
          DrawChoreographyBatchItem.LoadFromStream(aStream,CollectedMaterials);
          fDrawChoreographyBatchUniqueItems.Add(DrawChoreographyBatchItem);
         except
