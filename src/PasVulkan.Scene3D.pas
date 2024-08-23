@@ -17703,21 +17703,27 @@ begin
        end;
 
        // Read materials
-       Count:=StreamIO.ReadInt64;
-       for Index:=0 to Count-1 do begin
-        Material:=TpvScene3D.TMaterial.Create(ResourceManager,fSceneInstance);
-        try
-         Material.LoadFromStream(aStream,CollectedImages,CollectedSamplers,CollectedTextures);
-         OtherIndex:=AddMaterial(Material,false,false);
-         if (OtherIndex>=0) and (OtherIndex<fMaterials.Count) then begin
-          CollectedMaterials.Add(fMaterials[OtherIndex]);
-         end else begin
-          CollectedMaterials.Add(nil); // should never happen
+       fSceneInstance.fMaterialListLock.Acquire;
+       try
+        Count:=StreamIO.ReadInt64;
+        for Index:=0 to Count-1 do begin
+         Material:=TpvScene3D.TMaterial.Create(ResourceManager,fSceneInstance);
+         try
+          Material.LoadFromStream(aStream,CollectedImages,CollectedSamplers,CollectedTextures);
+          OtherIndex:=AddMaterial(Material,false,false);
+          if (OtherIndex>=0) and (OtherIndex<fMaterials.Count) then begin
+           CollectedMaterials.Add(fMaterials[OtherIndex]);
+          end else begin
+           CollectedMaterials.Add(nil); // should never happen
+          end;
+         except
+          FreeAndNil(Material);
+          raise;
          end;
-        except
-         FreeAndNil(Material);
-         raise;
         end;
+        FinalizeMaterials(false);
+       finally
+        fSceneInstance.fMaterialListLock.Release;
        end;
 
        // Read meshes
