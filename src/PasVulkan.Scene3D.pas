@@ -12364,8 +12364,7 @@ begin
 
   fPrimitiveIndex:=StreamIO.ReadUInt32;
 
-  ui32:=StreamIO.ReadUInt32;
-  fPrimitiveTopology:=TpvScene3D.TPrimitiveTopology(ui32);
+  fPrimitiveTopology:=TpvScene3D.TPrimitiveTopology(TpvUInt32(StreamIO.ReadUInt32));
 
   Index:=StreamIO.ReadInt64;
   if (Index>=0) and (Index<aMaterials.Count) then begin
@@ -13020,46 +13019,47 @@ begin
  StreamIO:=TpvStreamIO.Create(aStream);
  try
 
-   fName:=StreamIO.ReadUTF8String;
+  fName:=StreamIO.ReadUTF8String;
 
-   fIndex:=StreamIO.ReadInt64;
-  
-   fMorphTargetBaseIndex:=StreamIO.ReadUInt64;
-   fCountMorphTargets:=StreamIO.ReadInt64;
-  
-   fNodeInstanceMorphTargetBaseIndices.Resize(StreamIO.ReadInt64);
-   for Index:=0 to fNodeInstanceMorphTargetBaseIndices.Count-1 do begin
-    fNodeInstanceMorphTargetBaseIndices[Index]:=StreamIO.ReadUInt64;
-   end;
-  
-   Count:=StreamIO.ReadInt64;
-   for Index:=0 to Count-1 do begin
-    Primitive:=TpvScene3D.TGroup.TMesh.TPrimitive.Create(self);
-    try
-     Primitive.LoadFromStream(aStream,aMaterials);
-    finally
-     fPrimitives.Add(Primitive);
-     if Primitive.fRaytracingPrimitiveID>0 then begin
-      fRaytracingPrimitives.Add(Primitive);
-     end;
+  fIndex:=StreamIO.ReadInt64;
+
+  fMorphTargetBaseIndex:=StreamIO.ReadUInt64;
+  fCountMorphTargets:=StreamIO.ReadInt64;
+
+  Count:=StreamIO.ReadInt64;
+  fNodeInstanceMorphTargetBaseIndices.Resize(Count);
+  for Index:=0 to Count-1 do begin
+   fNodeInstanceMorphTargetBaseIndices[Index]:=StreamIO.ReadUInt64;
+  end;
+
+  Count:=StreamIO.ReadInt64;
+  for Index:=0 to Count-1 do begin
+   Primitive:=TpvScene3D.TGroup.TMesh.TPrimitive.Create(self);
+   try
+    Primitive.LoadFromStream(aStream,aMaterials);
+   finally
+    fPrimitives.Add(Primitive);
+    if Primitive.fRaytracingPrimitiveID>0 then begin
+     fRaytracingPrimitives.Add(Primitive);
     end;
    end;
+  end;
 
-   fBoundingBox:=StreamIO.ReadAABB;
+  fBoundingBox:=StreamIO.ReadAABB;
 
-   Count:=StreamIO.ReadInt64;
-   fWeights.Resize(Count);
-   for Index:=0 to fWeights.Count-1 do begin
-    fWeights[Index]:=StreamIO.ReadFloat;
-   end;
+  Count:=StreamIO.ReadInt64;
+  fWeights.Resize(Count);
+  for Index:=0 to fWeights.Count-1 do begin
+   fWeights[Index]:=StreamIO.ReadFloat;
+  end;
 
-   fNodeMeshInstances:=StreamIO.ReadUInt64;
+  fNodeMeshInstances:=StreamIO.ReadUInt64;
 
-   Count:=StreamIO.ReadUInt64;
-   fReferencedByNodes.Resize(Count);
-   for Index:=0 to fReferencedByNodes.Count-1 do begin
-    fReferencedByNodes[Index]:=StreamIO.ReadUInt64;
-   end;
+  Count:=StreamIO.ReadUInt64;
+  fReferencedByNodes.Resize(Count);
+  for Index:=0 to fReferencedByNodes.Count-1 do begin
+   fReferencedByNodes[Index]:=StreamIO.ReadUInt64;
+  end;
   
  finally
   FreeAndNil(StreamIO);
@@ -17746,20 +17746,6 @@ begin
         end;
        end;
 
-       // Read animations
-       Count:=StreamIO.ReadInt64;
-       fAnimations.Clear;
-       for Index:=0 to Count-1 do begin
-        Animation:=TpvScene3D.TGroup.TAnimation.Create(self);
-        try
-         Animation.LoadFromStream(aStream);
-         AddAnimation(Animation);
-        except
-         FreeAndNil(Animation);
-         raise;
-        end;
-       end;
-
        // Read nodes
        Count:=StreamIO.ReadInt64;
        fNodes.Clear;
@@ -17794,6 +17780,20 @@ begin
         fScene:=fScenes[Index];
        end else begin
         fScene:=nil;
+       end;
+
+       // Read animations
+       Count:=StreamIO.ReadInt64;
+       fAnimations.Clear;
+       for Index:=0 to Count-1 do begin
+        Animation:=TpvScene3D.TGroup.TAnimation.Create(self);
+        try
+         Animation.LoadFromStream(aStream);
+         AddAnimation(Animation);
+        except
+         FreeAndNil(Animation);
+         raise;
+        end;
        end;
 
        // Read draw choreography batch items
@@ -18028,13 +18028,6 @@ begin
        TpvScene3D.TGroup.TSkin(fSkins[Index]).SaveToStream(aStream);
       end;
 
-      // Write animations
-      Count:=fAnimations.Count;
-      StreamIO.WriteInt64(Count);
-      for Index:=0 to Count-1 do begin
-       TpvScene3D.TGroup.TAnimation(fAnimations[Index]).SaveToStream(aStream);
-      end;
-
       // Write nodes
       Count:=fNodes.Count;
       StreamIO.WriteInt64(Count);
@@ -18053,6 +18046,13 @@ begin
        StreamIO.WriteInt64(fScenes.IndexOf(fScene));
       end else begin
        StreamIO.WriteInt64(-1);
+      end;
+
+      // Write animations
+      Count:=fAnimations.Count;
+      StreamIO.WriteInt64(Count);
+      for Index:=0 to Count-1 do begin
+       TpvScene3D.TGroup.TAnimation(fAnimations[Index]).SaveToStream(aStream);
       end;
 
       // Write draw choreography batch items
