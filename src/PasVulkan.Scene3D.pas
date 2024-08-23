@@ -12382,7 +12382,7 @@ begin
     Target.fName:=StreamIO.ReadUTF8String;
     OtherCount:=StreamIO.ReadInt64;
     for OtherIndex:=0 to OtherCount-1 do begin
-     TargetVertex:=Target.fVertices.AddNew;
+     TargetVertex:=Pointer(Target.fVertices.AddNew);
      TargetVertex^.Position:=StreamIO.ReadVector3;
      TargetVertex^.Normal:=StreamIO.ReadVector3;
      TargetVertex^.Tangent:=StreamIO.ReadVector3;
