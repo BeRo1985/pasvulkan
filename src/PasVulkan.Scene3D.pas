@@ -17803,6 +17803,9 @@ begin
      try
 
       // Collect all images, samplers, textures and materials
+      for Index:=0 to fMaterials.Count-1 do begin
+       fMaterials[Index].PrepareSaveToStream(CollectedImages,CollectedSamplers,CollectedTextures,CollectedMaterials);
+      end;
       for Index:=0 to fMeshes.Count-1 do begin
        Mesh:=fMeshes[Index];
        if assigned(Mesh) then begin
