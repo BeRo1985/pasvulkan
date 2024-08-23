@@ -250,6 +250,7 @@ type EpvScene3D=class(Exception);
             TFileType=
              (
               Unknown, 
+              PVMF,
               GLTF,
               SAM,
               WavefrontOBJ,
@@ -19034,6 +19035,11 @@ begin
    if assigned(aStream) then begin
     fName:=FileName;
     case TpvScene3D.DetectFileType(aStream) of
+     TpvScene3D.TFileType.PVMF:begin
+      // our own native but version dependent format (can be changed every time, but is for fast loading without further time-costing
+      // post-processing) 
+      LoadFromStream(aStream); 
+     end;
      TpvScene3D.TFileType.GLTF:begin
       GLTF:=TPasGLTF.TDocument.Create;
       try
@@ -26276,6 +26282,15 @@ class function TpvScene3D.DetectFileType(const aMemory:pointer;const aSize:TpvSi
 // is usually within the first few bytes. This approach balances efficiency and practicality. 
 // While edge cases (e.g., long comments at the beginning of ASCII files) may exist, they are rare and can be 
 // ignored for simplicity.
+ function IsPVMF(const aMemory:pointer;const aSize:TpvSizeInt):boolean;
+ var PVMFHeader:TPVMFHeader;
+ begin
+  if assigned(aMemory) and (aSize>=SizeOf(TPVMFHeader)) then begin     
+   result:=(PPVMFHeader(aMemory)^.Signature=PVMFSignature) and (PPVMFHeader(aMemory)^.Version=PVMFVersion);
+  end else begin
+   result:=false;
+  end;
+ end; 
  function IsJSON(const aMemory:pointer;const aSize:TpvSizeInt):boolean;
  var Index:TpvSizeInt;
  begin
@@ -26533,8 +26548,10 @@ begin
   // long comments at the beginning, we can ignore this and similar edge cases for now for simplicity.
   Size:=Min(aSize,1024); 
 
-  if ((aSize>=2) and IsJSON(aMemory,Size)) or // GLTF, which is just JSON with a JSON object at the beginning  
-     ((aSize>=4) and (RawBytes^[0]=ord('g')) and (RawBytes^[1]=ord('l')) and (RawBytes^[2]=ord('T')) and (RawBytes^[3]=ord('F'))) then begin // Binary GLTF
+  if (aSize>=SizeOf(TPVMFHeader)) and IsPVMF(aMemory,Size) then begin // PVMF, our own native file format (can be changed every time, so it's only for version-dependent files)
+   result:=TpvScene3D.TFileType.PVMF;
+ end else if ((aSize>=2) and IsJSON(aMemory,Size)) or // GLTF, which is just JSON with a JSON object at the beginning  
+             ((aSize>=4) and (RawBytes^[0]=ord('g')) and (RawBytes^[1]=ord('l')) and (RawBytes^[2]=ord('T')) and (RawBytes^[3]=ord('F'))) then begin // Binary GLTF
    result:=TpvScene3D.TFileType.GLTF;
   end else if (aSize>=2) and IsXML(aMemory,Size) then begin // Collada DAE, which is XML 
    result:=TpvScene3D.TFileType.ColladaDAE;
