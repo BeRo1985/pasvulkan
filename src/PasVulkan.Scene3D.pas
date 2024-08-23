@@ -2944,8 +2944,8 @@ type EpvScene3D=class(Exception);
              public
               procedure FinalizeMaterials(const aDoLock:Boolean=true);
              public
-              function CheckStream(const aStream:TStream;const aMetaData:PpvUInt64=nil):Boolean;
-              function LoadMetaDataFromStream(const aStream:TStream):TpvUInt64;
+              class function CheckStream(const aStream:TStream;const aMetaData:PpvUInt64=nil):Boolean; static;
+              class function LoadMetaDataFromStream(const aStream:TStream):TpvUInt64; static;
               procedure LoadFromStream(const aStream:TStream);
               procedure SaveToStream(const aStream:TStream;const aMetaData:TpvUInt64=0);
              public
@@ -17468,7 +17468,7 @@ begin
 
 end;
 
-function TpvScene3D.TGroup.CheckStream(const aStream:TStream;const aMetaData:PpvUInt64):Boolean;
+class function TpvScene3D.TGroup.CheckStream(const aStream:TStream;const aMetaData:PpvUInt64):Boolean;
 var StreamIO:TpvStreamIO;
     PMVFHeader:TpvScene3D.TPVMFHeader;
     HeaderPosition:TpvInt64;
@@ -17491,7 +17491,7 @@ begin
  end;
 end;
 
-function TpvScene3D.TGroup.LoadMetaDataFromStream(const aStream:TStream):TpvUInt64;
+class function TpvScene3D.TGroup.LoadMetaDataFromStream(const aStream:TStream):TpvUInt64;
 var StreamIO:TpvStreamIO;
     PMVFHeader:TpvScene3D.TPVMFHeader;
     HeaderPosition:TpvInt64;
