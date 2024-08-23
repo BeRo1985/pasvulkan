@@ -7179,6 +7179,8 @@ begin
  StreamIO:=TpvStreamIO.Create(aStream);
  try
 
+  fName:=StreamIO.ReadUTF8String;
+
   ImageIndex:=StreamIO.ReadInt64;
   if (ImageIndex>=0) and (ImageIndex<aImages.Count) then begin
    fImage:=TpvScene3D.TImage(aImages[ImageIndex]);
@@ -7199,7 +7201,6 @@ begin
  finally
   FreeAndNil(StreamIO);
  end;
-
 
 end;
 
@@ -7226,6 +7227,8 @@ begin
 
  StreamIO:=TpvStreamIO.Create(aStream);
  try
+
+  StreamIO.WriteUTF8String(fName);
 
   ImageIndex:=-1;
   if assigned(fImage) then begin
