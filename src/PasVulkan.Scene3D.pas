@@ -2943,6 +2943,7 @@ type EpvScene3D=class(Exception);
              public
               procedure FinalizeMaterials(const aDoLock:Boolean=true);
              public
+              function CheckStream(const aStream:TStream;const aMetaData:PpvUInt64=nil):Boolean;
               function LoadMetaDataFromStream(const aStream:TStream):TpvUInt64;
               procedure LoadFromStream(const aStream:TStream);
               procedure SaveToStream(const aStream:TStream;const aMetaData:TpvUInt64=0);
@@ -17462,6 +17463,29 @@ begin
 
  end;
 
+end;
+
+function TpvScene3D.TGroup.CheckStream(const aStream:TStream;const aMetaData:PpvUInt64):Boolean;
+var StreamIO:TpvStreamIO;
+    PMVFHeader:TpvScene3D.TPVMFHeader;
+    HeaderPosition:TpvInt64;
+begin
+ StreamIO:=TpvStreamIO.Create(aStream);
+ try
+  HeaderPosition:=aStream.Position;
+  StreamIO.ReadWithCheck(PMVFHeader,SizeOf(TpvScene3D.TPVMFHeader));
+  if (PMVFHeader.Signature=PVMFSignature) and (PMVFHeader.Version=PVMFVersion) then begin
+   if assigned(aMetaData) then begin
+    aMetaData^:=PMVFHeader.MetaData;
+   end;
+   result:=true;
+  end else begin  
+   result:=false;
+  end;
+  aStream.Seek(HeaderPosition,soBeginning);
+ finally
+  FreeAndNil(StreamIO);
+ end;
 end;
 
 function TpvScene3D.TGroup.LoadMetaDataFromStream(const aStream:TStream):TpvUInt64;
