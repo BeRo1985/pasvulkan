@@ -17509,7 +17509,351 @@ begin
 end;
 
 procedure TpvScene3D.TGroup.LoadFromStream(const aStream:TStream);
+var StreamIO:TpvStreamIO;
+    PMVFHeader:TpvScene3D.TPVMFHeader;
+    HeaderPosition:TpvInt64;
+    Index,OtherIndex,Count:TpvSizeInt;
+    Camera:TpvScene3D.TGroup.TCamera;
+    Light:TpvScene3D.TGroup.TLight;
+    Image:TpvScene3D.TImage;
+    Sampler:TpvScene3D.TSampler;
+    Texture:TpvScene3D.TTexture;
+    Material:TpvScene3D.TMaterial;
+    Mesh:TpvScene3D.TGroup.TMesh;
+    Skin:TpvScene3D.TGroup.TSkin;
+    Animation:TpvScene3D.TGroup.TAnimation;
+    Node:TpvScene3D.TGroup.TNode;
+    Scene:TpvScene3D.TGroup.TScene;
+    CollectedImages,CollectedSamplers,CollectedTextures,CollectedMaterials:TpvObjectList;
+    DrawChoreographyBatchItem:TpvScene3D.TDrawChoreographyBatchItem;
 begin
+
+ StreamIO:=TpvStreamIO.Create(aStream);
+ try
+
+  HeaderPosition:=aStream.Position;
+
+  // Read initial header
+  StreamIO.ReadWithCheck(PMVFHeader,SizeOf(TpvScene3D.TPVMFHeader));
+
+  if (PMVFHeader.Signature=PVMFSignature) and (PMVFHeader.Version=PVMFVersion) then begin
+
+   CollectedImages:=TpvObjectList.Create(false);
+   try
+
+    CollectedSamplers:=TpvObjectList.Create(false);
+    try
+
+     CollectedTextures:=TpvObjectList.Create(false);
+     try
+
+      CollectedMaterials:=TpvObjectList.Create(false);
+      try
+
+       // Read culling
+       fCulling:=StreamIO.ReadBoolean;
+
+       // Read dynamic AABB tree culling
+       fDynamicAABBTreeCulling:=StreamIO.ReadBoolean;
+
+       // Read morph target count
+       fMorphTargetCount:=StreamIO.ReadInt64;
+
+       // Read count node weights
+       fCountNodeWeights:=StreamIO.ReadInt64;
+
+       // Read count joint node matrices
+       fCountJointNodeMatrices:=StreamIO.ReadInt64;
+
+       // Read bounding box
+       fBoundingBox:=StreamIO.ReadAABB;
+
+       // Read has static bounding box
+       fHasStaticBoundingBox:=StreamIO.ReadBoolean;
+
+       // Read static bounding box
+       fStaticBoundingBox:=StreamIO.ReadAABB;
+
+       // Read raytracing mask
+       fRaytracingMask:=StreamIO.ReadUInt8;
+
+       // Read vertices
+       Count:=StreamIO.ReadInt64;
+       fVertices.Resize(Count);
+       if Count>0 then begin
+        StreamIO.ReadWithCheck(fVertices.Memory^,Count*SizeOf(TpvScene3D.TVertex));
+       end;
+
+       // Read indices
+       Count:=StreamIO.ReadInt64;
+       fIndices.Resize(Count);
+       if Count>0 then begin
+        StreamIO.ReadWithCheck(fIndices.Memory^,Count*SizeOf(TpvUInt32));
+       end;
+
+       // Read joint blocks
+       Count:=StreamIO.ReadInt64;
+       fJointBlocks.Resize(Count);
+       if Count>0 then begin
+        StreamIO.ReadWithCheck(fJointBlocks.Memory^,Count*SizeOf(TpvScene3D.TJointBlock));
+       end;
+
+       // Read joint block offsets
+       Count:=StreamIO.ReadInt64;
+       SetLength(fJointBlockOffsets,Count);
+       if Count>0 then begin
+        for Index:=0 to Count-1 do begin
+         fJointBlockOffsets[Index]:=StreamIO.ReadInt64;
+        end;
+       end;
+
+       // Read morph target vertices
+       Count:=StreamIO.ReadInt64;
+       fMorphTargetVertices.Resize(Count);
+       if Count>0 then begin
+        StreamIO.ReadWithCheck(fMorphTargetVertices.Memory^,Count*SizeOf(TpvScene3D.TMorphTargetVertex));
+       end;
+
+       // Read cameras
+       Count:=StreamIO.ReadInt64;
+       fCameras.Clear;
+       for Index:=0 to Count-1 do begin
+        Camera:=TpvScene3D.TGroup.TCamera.Create(self);
+        try
+         Camera.LoadFromStream(aStream);
+         AddCamera(Camera);
+        except
+         FreeAndNil(Camera);
+         raise;
+        end;
+       end;
+
+       // Read lights
+       Count:=StreamIO.ReadInt64;
+       fLights.Clear;
+       for Index:=0 to Count-1 do begin
+        Light:=TpvScene3D.TGroup.TLight.Create(self);
+        try
+         Light.LoadFromStream(aStream);
+         AddLight(Light);
+        except
+         FreeAndNil(Light);
+         raise;
+        end;
+       end;
+
+       // Read images
+       Count:=StreamIO.ReadInt64;
+       for Index:=0 to Count-1 do begin
+        Image:=TpvScene3D.TImage.Create(ResourceManager,fSceneInstance);
+        try
+         Image.LoadFromStream(aStream);
+         OtherIndex:=AddImage(Image,false);
+         if (OtherIndex>=0) and (OtherIndex<fNewImageMap.Count) then begin
+          CollectedImages.Add(fNewImageMap[OtherIndex]);
+         end else begin
+          CollectedImages.Add(nil); // should never happen  
+         end;
+        except
+         FreeAndNil(Image);
+         raise;
+        end;
+       end;
+
+       // Read samplers
+       Count:=StreamIO.ReadInt64;
+       for Index:=0 to Count-1 do begin
+        Sampler:=TpvScene3D.TSampler.Create(ResourceManager,fSceneInstance);
+        try
+         Sampler.LoadFromStream(aStream);
+         OtherIndex:=AddSampler(Sampler,false);
+         if (OtherIndex>=0) and (OtherIndex<fNewSamplerMap.Count) then begin
+          CollectedSamplers.Add(fNewSamplerMap[OtherIndex]);
+         end else begin
+          CollectedSamplers.Add(nil); // should never happen
+         end;
+        except
+         FreeAndNil(Sampler);
+         raise;
+        end;
+       end;
+
+       // Read textures
+       Count:=StreamIO.ReadInt64;
+       for Index:=0 to Count-1 do begin
+        Texture:=TpvScene3D.TTexture.Create(ResourceManager,fSceneInstance);
+        try
+         Texture.LoadFromStream(aStream,CollectedImages,CollectedSamplers);
+         OtherIndex:=AddTexture(Texture,false);
+         if (OtherIndex>=0) and (OtherIndex<fNewTextureMap.Count) then begin
+          CollectedTextures.Add(fNewTextureMap[OtherIndex]);
+         end else begin
+          CollectedTextures.Add(nil); // should never happen
+         end;
+        except
+         FreeAndNil(Texture);
+         raise;
+        end;
+       end;
+
+       // Read materials
+       Count:=StreamIO.ReadInt64;
+       for Index:=0 to Count-1 do begin
+        Material:=TpvScene3D.TMaterial.Create(ResourceManager,fSceneInstance);
+        try
+         Material.LoadFromStream(aStream,CollectedImages,CollectedSamplers,CollectedTextures);
+         OtherIndex:=AddMaterial(Material,false,false);
+         if (OtherIndex>=0) and (OtherIndex<fMaterials.Count) then begin
+          CollectedMaterials.Add(fMaterials[OtherIndex]);
+         end else begin
+          CollectedMaterials.Add(nil); // should never happen
+         end;
+        except
+         FreeAndNil(Material);
+         raise;
+        end;
+       end;
+
+       // Read meshes
+       Count:=StreamIO.ReadInt64;
+       fMeshes.Clear;
+       for Index:=0 to Count-1 do begin
+        Mesh:=TpvScene3D.TGroup.TMesh.Create(self,Index);
+        try
+         Mesh.LoadFromStream(aStream,CollectedMaterials);
+         AddMesh(Mesh);
+        except
+         FreeAndNil(Mesh);
+         raise;
+        end;
+       end;
+
+       // Read skins
+       Count:=StreamIO.ReadInt64;
+       fSkins.Clear;
+       for Index:=0 to Count-1 do begin
+        Skin:=TpvScene3D.TGroup.TSkin.Create(self);
+        try
+         Skin.LoadFromStream(aStream);
+         AddSkin(Skin);
+        except
+         FreeAndNil(Skin);
+         raise;
+        end;
+       end;
+
+       // Read animations
+       Count:=StreamIO.ReadInt64;
+       fAnimations.Clear;
+       for Index:=0 to Count-1 do begin
+        Animation:=TpvScene3D.TGroup.TAnimation.Create(self);
+        try
+         Animation.LoadFromStream(aStream);
+         AddAnimation(Animation);
+        except
+         FreeAndNil(Animation);
+         raise;
+        end;
+       end;
+
+       // Read nodes
+       Count:=StreamIO.ReadInt64;
+       fNodes.Clear;
+       for Index:=0 to Count-1 do begin
+        Node:=TpvScene3D.TGroup.TNode.Create(self);
+        try
+         Node.LoadFromStream(aStream);
+         AddNode(Node);
+        except
+         FreeAndNil(Node);
+         raise;
+        end;
+       end;
+
+       // Read scenes
+       Count:=StreamIO.ReadInt64;
+       fScenes.Clear;
+       for Index:=0 to Count-1 do begin
+        Scene:=TpvScene3D.TGroup.TScene.Create(self);
+        try
+         Scene.LoadFromStream(aStream,CollectedMaterials);
+         AddScene(Scene);
+        except
+         FreeAndNil(Scene);
+         raise;
+        end;
+       end;
+
+       // Read default scene
+       Index:=StreamIO.ReadInt64;
+       if (Index>=0) and (Index<fScenes.Count) then begin
+        fScene:=fScenes[Index];
+       end else begin
+        fScene:=nil;
+       end;
+
+       // Read draw choreography batch items
+       Count:=StreamIO.ReadInt64;
+       fDrawChoreographyBatchItems.Clear;
+       for Index:=0 to Count-1 do begin
+        DrawChoreographyBatchItem:=TpvScene3D.TDrawChoreographyBatchItem.Create;
+        try
+         DrawChoreographyBatchItem.LoadFromStream(aStream,CollectedMaterials);
+         fDrawChoreographyBatchItems.Add(DrawChoreographyBatchItem);
+        except
+         FreeAndNil(DrawChoreographyBatchItem);
+         raise;
+        end;
+       end;
+
+       // Read draw choreography batch unique items
+       Count:=StreamIO.ReadInt64;
+       fDrawChoreographyBatchUniqueItems.Clear;
+       for Index:=0 to Count-1 do begin
+        DrawChoreographyBatchItem:=TpvScene3D.TDrawChoreographyBatchItem.Create;
+        try
+         DrawChoreographyBatchItem.LoadFromStream(aStream,CollectedMaterials);
+         fDrawChoreographyBatchUniqueItems.Add(DrawChoreographyBatchItem);
+        except
+         FreeAndNil(DrawChoreographyBatchItem);
+         raise;
+        end;
+       end;
+
+       // Read camera node indices
+       Count:=StreamIO.ReadInt64;
+       fCameraNodeIndices.Clear;
+       if Count>0 then begin
+        for Index:=0 to Count-1 do begin
+         fCameraNodeIndices.Add(StreamIO.ReadInt64);
+        end;
+       end;
+
+      finally
+       CollectedMaterials.Free;
+      end;
+
+     finally
+      CollectedTextures.Free;
+     end;
+
+    finally
+     CollectedSamplers.Free;
+    end;
+
+   finally
+    CollectedImages.Free;
+   end;
+
+  end else begin
+   aStream.Seek(HeaderPosition,soBeginning);
+   raise EpvScene3D.Create('Invalid PVMF header');
+  end;
+
+ finally
+  FreeAndNil(StreamIO);
+ end;
+
 end;
 
 procedure TpvScene3D.TGroup.SaveToStream(const aStream:TStream;const aMetaData:TpvUInt64);
@@ -17576,13 +17920,13 @@ begin
       StreamIO.WriteInt64(fCountJointNodeMatrices);
 
       // Write bounding box
-      StreamIO.WriteWithCheck(fBoundingBox,SizeOf(TpvAABB));
+      StreamIO.WriteAABB(fBoundingBox);
 
       // Write has static bounding box
       StreamIO.WriteBoolean(fHasStaticBoundingBox);
 
       // Write static bounding box
-      StreamIO.WriteWithCheck(fStaticBoundingBox,SizeOf(TpvAABB));
+      StreamIO.WriteAABB(fStaticBoundingBox);
 
       // Write raytracing mask
       StreamIO.WriteUInt8(fRaytracingMask);
