@@ -8117,6 +8117,8 @@ var StreamIO:TpvStreamIO;
     TextureIndex:TpvSizeInt;
 begin
 
+ fVisible:=true;
+
  StreamIO:=TpvStreamIO.Create(aStream);
  try
 
