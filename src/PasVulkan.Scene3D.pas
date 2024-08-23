@@ -2100,6 +2100,7 @@ type EpvScene3D=class(Exception);
                      constructor Create(const aGroup:TGroup;const aIndex:TpvSizeInt=-1); reintroduce;
                      destructor Destroy; override;
                      procedure LoadFromStream(const aStream:TStream);
+                     procedure FixUp;
                      procedure SaveToStream(const aStream:TStream);
                      procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceNode:TPasGLTF.TNode;const aLightMap:TpvScene3D.TGroup.TLights);
                     published
@@ -14767,6 +14768,35 @@ begin
 
 end;
 
+procedure TpvScene3D.TGroup.TNode.FixUp;
+var Index,Count,NodeIndex:TpvSizeInt;
+    Node:TNode;
+begin
+
+ fChildren.Clear;
+ for Index:=0 to fChildrenIndices.Count-1 do begin
+  NodeIndex:=fChildrenIndices.Items[Index];
+  if (NodeIndex>=0) and (NodeIndex<fGroup.fNodes.Count) then begin
+   Node:=fGroup.fNodes[NodeIndex];
+   if assigned(Node) then begin
+    fChildren.Add(Node);
+   end;
+  end;
+ end;
+
+ fSplittedChildren.Clear;
+ for Index:=0 to fSplittedChildrenIndices.Count-1 do begin
+  NodeIndex:=fSplittedChildrenIndices.Items[Index];
+  if (NodeIndex>=0) and (NodeIndex<fGroup.fNodes.Count) then begin
+   Node:=fGroup.fNodes[NodeIndex];
+   if assigned(Node) then begin
+    fSplittedChildren.Add(Node);
+   end;
+  end;
+ end;
+
+end;
+
 procedure TpvScene3D.TGroup.TNode.SaveToStream(const aStream:TStream);
 var StreamIO:TpvStreamIO;
     Index,Count:TpvSizeInt;
@@ -14809,7 +14839,7 @@ begin
   for Index:=0 to Count-1 do begin
    StreamIO.WriteInt64(fSplittedChildren.Items[Index].fIndex);
   end;
-
+  
   if assigned(fMesh) then begin
    StreamIO.WriteInt64(fMesh.fIndex);
   end else begin
@@ -17781,6 +17811,9 @@ begin
          raise;
         end;
        end;
+       for Index:=0 to fNodes.Count-1 do begin
+        fNodes[Index].FixUp;
+       end;
 
        // Read used visible draw nodes
        Count:=StreamIO.ReadInt64;
@@ -17898,15 +17931,15 @@ begin
   FreeAndNil(StreamIO);
  end;
 
- PostProcessSkins;
+//PostProcessSkins;
 
- PostProcessNodes;
+// PostProcessNodes;
 
  PostProcessAnimations;
 
- MarkAnimatedElements;
+{MarkAnimatedElements;
 
- CollectAllSceneNodesAndSplitNodesIntoAnimatedOrNotAnimatedSubtreesPerScene;
+// CollectAllSceneNodesAndSplitNodesIntoAnimatedOrNotAnimatedSubtreesPerScene;
 
  CalculateBoundingBox;
 
@@ -17920,7 +17953,7 @@ begin
 
  ConstructDrawChoreographyBatchItems;
 
- ConstructSkipLists;
+ ConstructSkipLists;             }
 
  fUpdatedMeshContentGeneration:=fMeshContentGeneration;
 
