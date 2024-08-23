@@ -7426,27 +7426,19 @@ begin
  try
 
   TextureIndex:=StreamIO.ReadInt64;
-  if TextureIndex>=0 then begin
-    
-   if (TextureIndex>=0) and (TextureIndex<aTextures.Count) then begin
-    Texture:=TpvScene3D.TTexture(aTextures[TextureIndex]);
-    Texture.IncRef;
-   end else begin
-    Texture:=nil;
-   end;
-
-   Transform.LoadFromStream(aStream);
-
-   TexCoord:=StreamIO.ReadInt64;
-
+  if (TextureIndex>=0) and (TextureIndex<aTextures.Count) then begin
+   Texture:=TpvScene3D.TTexture(aTextures[TextureIndex]);
+   Texture.IncRef;
   end else begin
-
    Texture:=nil;
+  end;
 
+  if TextureIndex>=0 then begin
+   Transform.LoadFromStream(aStream);
+   TexCoord:=StreamIO.ReadInt64;
+  end else begin
    Transform.AssignDefault;
-
    TexCoord:=0;
-
   end; 
 
  finally
@@ -7472,11 +7464,8 @@ begin
   StreamIO.WriteInt64(TextureIndex);
   
   if TextureIndex>=0 then begin
-
    Transform.SaveToStream(aStream);
-   
    StreamIO.WriteInt64(TexCoord);
-
   end; 
 
  finally
