@@ -8141,6 +8141,7 @@ begin
   end;
   fData.NormalTexture.TexCoord:=StreamIO.ReadInt64;
   fData.NormalTexture.Transform.LoadFromStream(aStream);
+
   fData.NormalTextureScale:=StreamIO.ReadFloat;
 
   TextureIndex:=StreamIO.ReadInt64;
@@ -8154,6 +8155,7 @@ begin
   end;
   fData.OcclusionTexture.TexCoord:=StreamIO.ReadInt64;
   fData.OcclusionTexture.Transform.LoadFromStream(aStream);
+
   fData.OcclusionTextureStrength:=StreamIO.ReadFloat;
 
   fData.EmissiveFactor:=StreamIO.ReadVector4;
@@ -8611,6 +8613,8 @@ begin
   StreamIO.WriteInt64(fData.NormalTexture.TexCoord);
   fData.NormalTexture.Transform.SaveToStream(aStream);
 
+  StreamIO.WriteFloat(fData.NormalTextureScale);
+
   if assigned(fData.OcclusionTexture.Texture) then begin
    StreamIO.WriteInt64(aTextures.IndexOf(fData.OcclusionTexture.Texture));
   end else begin
@@ -8618,6 +8622,8 @@ begin
   end;
   StreamIO.WriteInt64(fData.OcclusionTexture.TexCoord);
   fData.OcclusionTexture.Transform.SaveToStream(aStream);
+
+  StreamIO.WriteFloat(fData.OcclusionTextureStrength);
 
   StreamIO.WriteVector4(fData.EmissiveFactor);
 
