@@ -273,6 +273,10 @@ type EpvScene3D=class(Exception);
             PSizeIntDynamicArray=^TSizeIntDynamicArray;
             TSizeIntDynamicArrayList=TpvDynamicArrayList<TpvSizeInt>;
             TSizeIntDynamicArrayEx=array of TpvSizeInt;
+            TInt64DynamicArray=TpvDynamicArray<TpvInt64>;
+            PInt64DynamicArray=^TInt64DynamicArray;
+            TInt64DynamicArrayList=TpvDynamicArrayList<TpvInt64>;
+            TInt64DynamicArrayEx=array of TpvInt64;
             TView=packed record
              ViewMatrix:TpvMatrix4x4;
              ProjectionMatrix:TpvMatrix4x4;
@@ -8124,6 +8128,10 @@ begin
 
   fName:=StreamIO.ReadUTF8String;
 
+  if (fName='Yellow') or (fName='Boots') then begin
+   Sleep(0);
+  end;
+
   fSceneInstance.fTextureListLock.Acquire;
   try
 
@@ -10117,6 +10125,10 @@ begin
   Index:=StreamIO.ReadInt64;
   if (Index>=0) and (Index<fGroup.fMeshes.Count) then begin
    fMesh:=fGroup.fMeshes[Index];
+   if TpvScene3D.TGroup.TMesh(fMesh).fName='Boot_R_001_001.002' then begin
+    writeln(TpvScene3D.TMaterial(fMaterial).fName);
+    Sleep(0);
+   end;
   end else begin
    fMesh:=nil;
   end;
@@ -13027,6 +13039,10 @@ begin
 
   fName:=StreamIO.ReadUTF8String;
 
+  if fName='Boot_R_001_001.002' then begin
+   Sleep(0);
+  end;
+
   fIndex:=StreamIO.ReadInt64;
 
   fMorphTargetBaseIndex:=StreamIO.ReadUInt64;
@@ -14655,6 +14671,7 @@ procedure TpvScene3D.TGroup.TNode.LoadFromStream(const aStream:TStream);
 var StreamIO:TpvStreamIO;
     Index,Count:TpvSizeInt;
     Flags:TpvUInt32;
+    UsedJoint:TpvScene3D.TGroup.TNode.PUsedJoint;
 begin
 
  StreamIO:=TpvStreamIO.Create(aStream);
@@ -14739,6 +14756,7 @@ begin
   if Count>0 then begin
    StreamIO.ReadWithCheck(fWeights.ItemArray[0],Count*SizeOf(TpvFloat));
   end;
+  fWeights.Finish;
   
   fWeightsOffset:=StreamIO.ReadInt64;
 
@@ -14747,25 +14765,28 @@ begin
   fRaytracingMask:=StreamIO.ReadUInt8;
 
   Count:=StreamIO.ReadInt64;
-  fDrawChoreographyBatchItemIndices.Clear;
+  fDrawChoreographyBatchItemIndices.Resize(Count);
   for Index:=0 to Count-1 do begin
-   fDrawChoreographyBatchItemIndices.Add(StreamIO.ReadInt64);
+   fDrawChoreographyBatchItemIndices.ItemArray[Index]:=StreamIO.ReadInt64;
   end;
+  fDrawChoreographyBatchItemIndices.Finish;
 
   Count:=StreamIO.ReadInt64;
-  fDrawChoreographyBatchUniqueItemIndices.Clear;
+  fDrawChoreographyBatchUniqueItemIndices.Resize(Count);
   for Index:=0 to Count-1 do begin
-   fDrawChoreographyBatchUniqueItemIndices.Add(StreamIO.ReadInt64);
+   fDrawChoreographyBatchUniqueItemIndices.ItemArray[Index]:=StreamIO.ReadInt64;
   end;
+  fDrawChoreographyBatchUniqueItemIndices.Finish;
 
   Count:=StreamIO.ReadInt64;
   fUsedJoints.Resize(Count);
   for Index:=0 to Count-1 do begin
-   fUsedJoints.Items[Index].Joint:=StreamIO.ReadInt64;
-   fUsedJoints.Items[Index].Weight:=StreamIO.ReadFloat;
-   fUsedJoints.Items[Index].AABB.Min:=StreamIO.ReadVector3;
-   fUsedJoints.Items[Index].AABB.Max:=StreamIO.ReadVector3;
+   UsedJoint:=@fUsedJoints.ItemArray[Index];
+   UsedJoint^.Joint:=StreamIO.ReadInt64;
+   UsedJoint^.Weight:=StreamIO.ReadFloat;
+   UsedJoint^.AABB:=StreamIO.ReadAABB;
   end;
+  fUsedJoints.Finish;
 
  finally
   FreeAndNil(StreamIO);
@@ -14774,9 +14795,21 @@ begin
 end;
 
 procedure TpvScene3D.TGroup.TNode.FixUp;
-var Index,NodeIndex:TpvSizeInt;
+var Index,SceneIndex,NodeIndex:TpvSizeInt;
+    Scene:TScene;
     Node:TNode;
 begin
+
+ fUsedByScenesList.Clear;
+ for Index:=0 to fUsedByScenesListIndices.Count-1 do begin
+  SceneIndex:=fUsedByScenesListIndices.Items[Index];
+  if (SceneIndex>=0) and (SceneIndex<fGroup.fScenes.Count) then begin
+   Scene:=fGroup.fScenes[SceneIndex];
+   if assigned(Scene) then begin
+    fUsedByScenesList.Add(Scene);
+   end;
+  end;
+ end;
 
  fChildren.Clear;
  for Index:=0 to fChildrenIndices.Count-1 do begin
@@ -14910,8 +14943,7 @@ begin
   for Index:=0 to Count-1 do begin
    StreamIO.WriteInt64(fUsedJoints.Items[Index].Joint);
    StreamIO.WriteFloat(fUsedJoints.Items[Index].Weight);
-   StreamIO.WriteVector3(fUsedJoints.Items[Index].AABB.Min);
-   StreamIO.WriteVector3(fUsedJoints.Items[Index].AABB.Max);
+   StreamIO.WriteAABB(fUsedJoints.Items[Index].AABB);
   end;
 
  finally
@@ -16730,6 +16762,14 @@ var NodeIndex,PrimitiveIndex,StartIndex,DrawChoreographyBatchItemIndex,
 begin
 
  fDrawChoreographyBatchItems.Clear;
+ fDrawChoreographyBatchUniqueItems.Clear;
+ fDrawChoreographyBatchCondensedIndices.Clear;
+ fDrawChoreographyBatchCondensedUniqueIndices.Clear;
+
+ for Scene in fScenes do begin
+  Scene.fDrawChoreographyBatchItems.Clear;
+  Scene.fDrawChoreographyBatchUniqueItems.Clear;
+ end;
 
  for Node in fUsedVisibleDrawNodes do begin
   Mesh:=Node.fMesh;
@@ -17816,9 +17856,6 @@ begin
          raise;
         end;
        end;
-       for Index:=0 to fNodes.Count-1 do begin
-        fNodes[Index].FixUp;
-       end;
 
        // Read used visible draw nodes
        Count:=StreamIO.ReadInt64;
@@ -17846,6 +17883,11 @@ begin
          FreeAndNil(Scene);
          raise;
         end;
+       end;
+
+       // Fix up nodes
+       for Index:=0 to fNodes.Count-1 do begin
+        fNodes[Index].FixUp;
        end;
 
        // Read default scene
@@ -17954,11 +17996,11 @@ begin
 
  CollectMaterials;
 
- CollectNodeUsedJoints;
+ CollectNodeUsedJoints;}
 
- ConstructDrawChoreographyBatchItems;
+//ConstructDrawChoreographyBatchItems;
 
- ConstructSkipLists;             }
+// ConstructSkipLists;
 
  fUpdatedMeshContentGeneration:=fMeshContentGeneration;
 
