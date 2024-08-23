@@ -17949,7 +17949,7 @@ begin
       // Write joint blocks
       Count:=fJointBlocks.Count;
       StreamIO.WriteInt64(Count);
-      for Index:=0 to Count-1 do begin
+      if Count>0 then begin
        StreamIO.WriteWithCheck(fJointBlocks.Memory^,Count*SizeOf(TpvScene3D.TJointBlock));
       end;
 
