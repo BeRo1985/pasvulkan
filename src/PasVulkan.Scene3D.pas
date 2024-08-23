@@ -12356,12 +12356,10 @@ end;
 
 procedure TpvScene3D.TGroup.TMesh.TPrimitive.LoadFromStream(const aStream:TStream;const aMaterials:TpvObjectList);
 var StreamIO:TpvStreamIO;
-    Index,OtherIndex:TpvSizeInt;
+    Index:TpvSizeInt;
     Count,OtherCount:TpvSizeInt;
     Target:TpvScene3D.TGroup.TMesh.TPrimitive.TTarget;
-    TargetVertex:TpvScene3D.TGroup.TMesh.TPrimitive.TTarget.PTargetVertex;
     NodeMeshPrimitiveInstance:TpvScene3D.TGroup.TMesh.TPrimitive.TNodeMeshPrimitiveInstance;
-    ui32:TpvUInt32;
 begin
 
  StreamIO:=TpvStreamIO.Create(aStream);
@@ -12386,11 +12384,9 @@ begin
    try
     Target.fName:=StreamIO.ReadUTF8String;
     OtherCount:=StreamIO.ReadInt64;
-    for OtherIndex:=0 to OtherCount-1 do begin
-     TargetVertex:=Pointer(Target.fVertices.AddNew);
-     TargetVertex^.Position:=StreamIO.ReadVector3;
-     TargetVertex^.Normal:=StreamIO.ReadVector3;
-     TargetVertex^.Tangent:=StreamIO.ReadVector3;
+    Target.fVertices.Resize(OtherCount);
+    if OtherCount>0 then begin
+     StreamIO.ReadWithCheck(Target.fVertices.ItemArray[0],OtherCount*SizeOf(TpvScene3D.TGroup.TMesh.TPrimitive.TTarget.TTargetVertex));
     end;
    finally
     fTargets.Add(Target);
@@ -12426,10 +12422,9 @@ end;
 
 procedure TpvScene3D.TGroup.TMesh.TPrimitive.SaveToStream(const aStream:TStream;const aMaterials:TpvObjectList);
 var StreamIO:TpvStreamIO;
-    Index,OtherIndex:TpvSizeInt;
+    Index:TpvSizeInt;
     Count,OtherCount:TpvSizeInt;
     Target:TpvScene3D.TGroup.TMesh.TPrimitive.TTarget;
-    TargetVertex:TpvScene3D.TGroup.TMesh.TPrimitive.TTarget.PTargetVertex;
     NodeMeshPrimitiveInstance:TpvScene3D.TGroup.TMesh.TPrimitive.TNodeMeshPrimitiveInstance;
 begin
 
@@ -12455,11 +12450,8 @@ begin
    StreamIO.WriteUTF8String(Target.fName);
    OtherCount:=Target.fVertices.Count;
    StreamIO.WriteInt64(OtherCount);
-   for OtherIndex:=0 to OtherCount-1 do begin
-    TargetVertex:=@Target.fVertices.ItemArray[OtherIndex];
-    StreamIO.WriteVector3(TargetVertex^.Position);
-    StreamIO.WriteVector3(TargetVertex^.Normal);
-    StreamIO.WriteVector3(TargetVertex^.Tangent);
+   if OtherCount>0 then begin
+    StreamIO.WriteWithCheck(Target.fVertices.ItemArray[0],OtherCount*SizeOf(TpvScene3D.TGroup.TMesh.TPrimitive.TTarget.TTargetVertex));
    end;
   end;
 
@@ -13054,8 +13046,8 @@ begin
 
   Count:=StreamIO.ReadInt64;
   fWeights.Resize(Count);
-  for Index:=0 to fWeights.Count-1 do begin
-   fWeights[Index]:=StreamIO.ReadFloat;
+  if Count>0 then begin
+   StreamIO.ReadWithCheck(fWeights.ItemArray[0],Count*SizeOf(TpvFloat));
   end;
 
   fNodeMeshInstances:=StreamIO.ReadUInt64;
@@ -13102,8 +13094,8 @@ begin
   StreamIO.WriteAABB(fBoundingBox);
 
   StreamIO.WriteInt64(fWeights.Count);
-  for Index:=0 to fWeights.Count-1 do begin
-   StreamIO.WriteFloat(fWeights[Index]);
+  if fWeights.Count>0 then begin
+   StreamIO.WriteWithCheck(fWeights.ItemArray[0],fWeights.Count*SizeOf(TpvFloat));
   end;
 
   StreamIO.WriteUInt64(fNodeMeshInstances);
@@ -14735,10 +14727,10 @@ begin
 
   Count:=StreamIO.ReadInt64;
   fWeights.Resize(Count);
-  for Index:=0 to Count-1 do begin
-   fWeights.Items[Index]:=StreamIO.ReadFloat;
+  if Count>0 then begin
+   StreamIO.ReadWithCheck(fWeights.ItemArray[0],Count*SizeOf(TpvFloat));
   end;
-
+  
   fWeightsOffset:=StreamIO.ReadInt64;
 
   fJoint:=StreamIO.ReadInt64;
@@ -14773,7 +14765,7 @@ begin
 end;
 
 procedure TpvScene3D.TGroup.TNode.FixUp;
-var Index,Count,NodeIndex:TpvSizeInt;
+var Index,NodeIndex:TpvSizeInt;
     Node:TNode;
 begin
 
@@ -14882,8 +14874,8 @@ begin
 
   Count:=fWeights.Count;
   StreamIO.WriteInt64(Count);
-  for Index:=0 to Count-1 do begin
-   StreamIO.WriteFloat(fWeights.Items[Index]);
+  if Count>0 then begin
+   StreamIO.WriteWithCheck(fWeights.ItemArray[0],Count*SizeOf(TpvFloat));
   end;
 
   StreamIO.WriteInt64(fWeightsOffset);
