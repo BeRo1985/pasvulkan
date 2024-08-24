@@ -165,15 +165,28 @@ vec4 textureCatmullRom(const in sampler2DArray tex, const in vec3 uvw, const in 
        p00 = (p11 - vec2(1.0)) / texSize,
        p33 = (p11 + vec2(2.0)) / texSize,
        p12 = (p11 + (w2 / w4)) / texSize;
-  return (((textureLod(tex, vec3(vec2(p00.x,  p00.y), uvw.z), float(lod)) * w0.x) +
+  return (((textureLod(tex, vec3(vec2(p00.x, p00.y), uvw.z), float(lod)) * w0.x) +
            (textureLod(tex, vec3(vec2(p12.x, p00.y), uvw.z), float(lod)) * w4.x) +
-           (textureLod(tex, vec3(vec2(p33.x,  p00.y), uvw.z), float(lod)) * w3.x)) * w0.y) +
-         (((textureLod(tex, vec3(vec2(p00.x,  p12.y), uvw.z), float(lod)) * w0.x) +
+           (textureLod(tex, vec3(vec2(p33.x, p00.y), uvw.z), float(lod)) * w3.x)) * w0.y) +
+         (((textureLod(tex, vec3(vec2(p00.x, p12.y), uvw.z), float(lod)) * w0.x) +
            (textureLod(tex, vec3(vec2(p12.x, p12.y), uvw.z), float(lod)) * w4.x) +
-           (textureLod(tex, vec3(vec2(p33.x,  p12.y), uvw.z), float(lod)) * w3.x)) * w4.y) +
-         (((textureLod(tex, vec3(vec2(p00.x,  p33.y), uvw.z), float(lod)) * w0.x) +
+           (textureLod(tex, vec3(vec2(p33.x, p12.y), uvw.z), float(lod)) * w3.x)) * w4.y) +
+         (((textureLod(tex, vec3(vec2(p00.x, p33.y), uvw.z), float(lod)) * w0.x) +
            (textureLod(tex, vec3(vec2(p12.x, p33.y), uvw.z), float(lod)) * w4.x) +
-           (textureLod(tex, vec3(vec2(p33.x,  p33.y), uvw.z), float(lod)) * w3.x)) * w3.y);
+           (textureLod(tex, vec3(vec2(p33.x, p33.y), uvw.z), float(lod)) * w3.x)) * w3.y);
+}
+
+// Based on COD's 1-tap bicubic filter https://www.activision.com/cdn/research/Dynamic_Temporal_Antialiasing_and_Upsampling_in_Call_of_Duty_v4.pdf#page=64
+vec4 textureTemporalBicubic(const in sampler2DArray tex, const in vec3 uvw, const in float lod){
+  float width = textureSize(tex, int(lod)).x,
+        sx = uvw.x * width,
+        px = floor(sx - 0.5) + 0.5,
+        tx = sx - px,
+        m03 = fma(tx, 0.8, -0.8) * tx;
+  vec4 left = textureLod(tex, vec3((px - 2.0) / width, uvw.yz), float(lod)),
+       center = textureLod(tex, vec3((px + tx) / width, uvw.yz), float(lod)),
+       right = textureLod(tex, vec3((px + 2.0) / width, uvw.yz), float(lod));
+  return fma(mix(left, right, px), vec4(m03), center) / (m03 + 1.0);    
 }
 
 vec4 FallbackFXAA(const in vec2 invTexSize){
