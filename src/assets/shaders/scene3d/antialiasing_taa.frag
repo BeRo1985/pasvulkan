@@ -29,6 +29,7 @@ const uint FLAG_TRANSLUCENT_DISOCCLUSION = 1u << 1u;
 const uint FLAG_VELOCITY_DISOCCLUSION = 1u << 2u;
 const uint FLAG_DEPTH_DISOCCLUSION = 1u << 3u;
 const uint FLAG_USE_FALLBACK_FXAA = 1u << 4u;
+const uint FLAG_DISABLE_TEMPORAL_ANTIALIASING = 1u << 5u; // For debugging purposes and for showing the raw jittered input without any temporal antialiasing when FLAG_USE_FALLBACK_FXAA is even not set.
 
 layout(push_constant, std140, row_major) uniform PushConstants {
   
@@ -261,8 +262,8 @@ void main() {
     // Offset the history UVW by the current velocity
     vec3 historyUVW = uvw - vec3(currentVelocity, 0.0);
 
-    // First frame disocclusion 
-    bool disoccluded = (pushConstants.flags & FLAG_FIRST_FRAME_DISOCCLUSION) != 0u;
+    // First frame disocclusion or disable temporal antialiasing
+    bool disoccluded = (pushConstants.flags & (FLAG_FIRST_FRAME_DISOCCLUSION | FLAG_DISABLE_TEMPORAL_ANTIALIASING)) != 0u;
 
     if(!disoccluded){      
 

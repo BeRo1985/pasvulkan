@@ -623,7 +623,7 @@ type { TpvScene3DRendererInstance }
        fViewBuffersDescriptorPool:TpvVulkanDescriptorPool;
        fViewBuffersDescriptorSets:TPerInFlightFrameVulkanDescriptorSets;
       private
-       fDebugTAA:TPasMPBool32;
+       fDebugTAAMode:TpvUInt32;
       private
        fPerInFlightFrameGPUDrawIndexedIndirectCommandDynamicArrays:TpvScene3D.TPerInFlightFrameGPUDrawIndexedIndirectCommandDynamicArrays;
        fPerInFlightFrameGPUDrawIndexedIndirectCommandBufferSizes:TpvScene3D.TPerInFlightFrameGPUDrawIndexedIndirectCommandSizeValues;
@@ -820,7 +820,7 @@ type { TpvScene3DRendererInstance }
        property ViewBuffersDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fViewBuffersDescriptorSetLayout;
        property ViewBuffersDescriptorSets:TPerInFlightFrameVulkanDescriptorSets read fViewBuffersDescriptorSets;
       public
-       property DebugTAA:TPasMPBool32 read fDebugTAA write fDebugTAA;
+       property DebugTAAMode:TpvUInt32 read fDebugTAAMode write fDebugTAAMode;
       public
        property PerInFlightFrameGPUDrawIndexedIndirectCommandDynamicArrays:TpvScene3D.TPerInFlightFrameGPUDrawIndexedIndirectCommandDynamicArrays read fPerInFlightFrameGPUDrawIndexedIndirectCommandDynamicArrays write fPerInFlightFrameGPUDrawIndexedIndirectCommandDynamicArrays;
        property PerInFlightFrameGPUDrawIndexedIndirectCommandBufferSizes:TpvScene3D.TPerInFlightFrameGPUDrawIndexedIndirectCommandSizeValues read fPerInFlightFrameGPUDrawIndexedIndirectCommandBufferSizes;
@@ -1623,7 +1623,7 @@ begin
 
  fUseDebugBlit:=false;
 
- fDebugTAA:=false;
+ fDebugTAAMode:=0;
 
  fFrustumClusterGridSizeX:=16;
  fFrustumClusterGridSizeY:=16;

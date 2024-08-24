@@ -84,6 +84,7 @@ type { TpvScene3DRendererPassesAntialiasingTAARenderPass }
               FLAG_VELOCITY_DISOCCLUSION=TpvUInt32(TpvUInt32(1) shl 2);
               FLAG_DEPTH_DISOCCLUSION=TpvUInt32(TpvUInt32(1) shl 3);
               FLAG_USE_FALLBACK_FXAA=TpvUInt32(TpvUInt32(1) shl 4);
+              FLAG_DISABLE_TEMPORAL_ANTIALIASING=TpvUInt32(TpvUInt32(1) shl 5);
         type TPushConstants=packed record
 
               BaseViewIndex:TpvUInt32;
@@ -496,6 +497,9 @@ begin
  if aFrameIndex=0 then begin
   PushConstants.Flags:=PushConstants.Flags or FLAG_FIRST_FRAME_DISOCCLUSION;
  end;
+ if (fInstance.DebugTAAMode and 2)<>0 then begin
+  PushConstants.Flags:=(PushConstants.Flags or FLAG_DISABLE_TEMPORAL_ANTIALIASING) and not FLAG_USE_FALLBACK_FXAA;
+ end;
 
  PushConstants.VarianceClipGamma:=1.0;
 
@@ -513,12 +517,12 @@ begin
   PushConstants.ZAdd:=0.0; 
  end;
  
- if fInstance.DebugTAA then begin
+ if (fInstance.DebugTAAMode and 1)<>0 then begin
   PushConstants.DisocclusionDebugFactor:=1.0;
  end else begin
   PushConstants.DisocclusionDebugFactor:=0.0;
  end;
- 
+
  PushConstants.JitterUV:=fInstance.InFlightFrameStates^[aInFlightFrameIndex].Jitter.xy;
 
  PushConstants.VelocityDisocclusionThresholdScale.x:=1e-2;//32.0/TpvVector2.InlineableCreate(fResourceCurrentColor.Width,fResourceCurrentColor.Height).Length;
