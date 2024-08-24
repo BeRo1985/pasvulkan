@@ -661,7 +661,9 @@ bool traceVolumetricClouds(vec3 rayOrigin,
 #else
       int countSteps = clamp(
         int(
-          (isinf(rayLength) && all(greaterThanEqual(tTopSolutions, vec2(0.0))) && all(lessThan(tGroundSolutions, vec2(0.0))))
+          ((isinf(rayLength) && all(greaterThanEqual(tTopSolutions, vec2(0.0))) && all(lessThan(tGroundSolutions, vec2(0.0)))) ||
+           ((tMinMax.y - tMinMax.x) > (uAtmosphereParameters.atmosphereParameters.VolumetricClouds.LayerHigh.EndHeight)))
+
             ? mix(
                 float(uAtmosphereParameters.atmosphereParameters.VolumetricClouds.OuterSpaceRayMinSteps),
                 float(uAtmosphereParameters.atmosphereParameters.VolumetricClouds.OuterSpaceRayMaxSteps), 
@@ -709,6 +711,48 @@ bool traceVolumetricClouds(vec3 rayOrigin,
       for(int stepIndex = 0; (stepIndex < countSteps) && (time < tMinMax.y); stepIndex++){
     
         vec3 position = fma(rayDirection, vec3(time), rayOrigin);
+
+        float height = length(position);
+
+        if(height < uAtmosphereParameters.atmosphereParameters.VolumetricClouds.LayerLow.StartHeight){
+
+          // In cloud-free area, so we can skip the empty space and go directly to the beginning of the low cloud layer
+
+          vec2 tSolutions = intersectSphere(position, rayDirection, vec2(0.0, uAtmosphereParameters.atmosphereParameters.VolumetricClouds.LayerLow.StartHeight).xxxy);
+
+          if((tSolutions.x < 0.0) && (tSolutions.y >= 0.0)){ 
+            time += tSolutions.y;
+            position = fma(rayDirection, vec3(time), rayOrigin);
+          }          
+
+        }else if(height > uAtmosphereParameters.atmosphereParameters.VolumetricClouds.LayerHigh.EndHeight){
+
+          // Above the clouds, so we can skip the empty space and go directly to the beginning of the high cloud layer
+
+          vec2 tSolutions = intersectSphere(position, rayDirection, vec2(0.0, uAtmosphereParameters.atmosphereParameters.VolumetricClouds.LayerHigh.EndHeight).xxxy);
+
+          if((tSolutions.x >= 0.0) && (tSolutions.y >= 0.0)){ 
+            time += tSolutions.x;
+            position = fma(rayDirection, vec3(time), rayOrigin);
+          }else{
+            // We are above the clouds, so we can abort here, since we are not interested in the empty space above the clouds
+            break;
+          }          
+
+        }else if((height > uAtmosphereParameters.atmosphereParameters.VolumetricClouds.LayerLow.EndHeight) &&
+                 (height < uAtmosphereParameters.atmosphereParameters.VolumetricClouds.LayerHigh.StartHeight)){
+
+          // Above the low clouds and below the high clouds, so we can skip the empty space and go directly to the beginning 
+          // of the high cloud layer
+
+          vec2 tSolutions = intersectSphere(position, rayDirection, vec2(0.0, uAtmosphereParameters.atmosphereParameters.VolumetricClouds.LayerHigh.EndHeight).xxxy);
+
+          if((tSolutions.x >= 0.0) && (tSolutions.y >= 0.0)){
+            time += tSolutions.x;
+            position = fma(rayDirection, vec3(time), rayOrigin);
+          } 
+
+        }
 
         vec4 weatherData = getWeatherData(position, rotationMatrices, mipMapLevel);
         
