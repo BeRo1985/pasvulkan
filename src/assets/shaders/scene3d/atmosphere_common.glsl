@@ -167,6 +167,8 @@ struct CloudParameters {
 
 struct VolumetricCloudLayerLow {
    
+  vec4 Orientation; 
+
   float StartHeight;
   float EndHeight;
   float PositionScale;
@@ -183,6 +185,8 @@ struct VolumetricCloudLayerLow {
 };
 
 struct VolumetricCloudLayerHigh {
+
+  vec4 Orientation; 
   
   float StartHeight;
   float EndHeight;
@@ -242,9 +246,9 @@ struct VolumetricCloudParameters {
   float IndirectScatteringIntensity;
 
   float AmbientLightIntensity;
-  float RotationX;
-  float RotationY;
-  float RotationZ;
+  float Padding0;
+  float Padding1;
+  float Padding2;
   
   VolumetricCloudLayerLow LayerLow;
   VolumetricCloudLayerHigh LayerHigh;

@@ -364,6 +364,8 @@ type TpvScene3DAtmosphere=class;
             TVolumetricCloudLayerLow=packed record
              public
           
+              Orientation:TpvQuaternion;
+
               StartHeight:TpvFloat;
               EndHeight:TpvFloat;
               PositionScale:TpvFloat;
@@ -389,6 +391,8 @@ type TpvScene3DAtmosphere=class;
             { TVolumetricCloudLayerHigh }
             TVolumetricCloudLayerHigh=packed record
              public
+
+              Orientation:TpvQuaternion;
           
               StartHeight:TpvFloat;
               EndHeight:TpvFloat;
@@ -461,9 +465,9 @@ type TpvScene3DAtmosphere=class;
               IndirectScatteringIntensity:TpvFloat;
 
               AmbientLightIntensity:TpvFloat;
-              RotationX:TpvFloat;
-              RotationY:TpvFloat;
-              RotationZ:TpvFloat;
+              Padding0:TpvFloat;
+              Padding1:TpvFloat;
+              Padding2:TpvFloat;
 
               LayerLow:TVolumetricCloudLayerLow;
           
@@ -522,6 +526,8 @@ type TpvScene3DAtmosphere=class;
             TGPUVolumetricCloudLayerLow=packed record
              public
 
+              Orientation:TpvQuaternion;
+
               StartHeight:TpvFloat;
               EndHeight:TpvFloat;
               PositionScale:TpvFloat;
@@ -543,6 +549,8 @@ type TpvScene3DAtmosphere=class;
             TGPUVolumetricCloudLayerHigh=packed record
              public
               
+              Orientation:TpvQuaternion;
+
               StartHeight:TpvFloat;
               EndHeight:TpvFloat;              
               PositionScale:TpvFloat;
@@ -606,9 +614,9 @@ type TpvScene3DAtmosphere=class;
               IndirectScatteringIntensity:TpvFloat;
 
               AmbientLightIntensity:TpvFloat;
-              RotationX:TpvFloat;
-              RotationY:TpvFloat;
-              RotationZ:TpvFloat;
+              Padding0:TpvFloat;
+              Padding1:TpvFloat;
+              Padding2:TpvFloat;
 
               LayerLow:TGPUVolumetricCloudLayerLow;
               LayerHigh:TGPUVolumetricCloudLayerHigh;
@@ -1282,6 +1290,7 @@ end;
 
 procedure TpvScene3DAtmosphere.TVolumetricCloudLayerLow.Initialize;
 begin
+ Orientation:=TpvQuaternion.Identity;
  StartHeight:=6380.0;
  EndHeight:=6400.0;
  PositionScale:=0.0005;
@@ -1309,6 +1318,7 @@ begin
   
   JSONRootObject:=TPasJSONItemObject(aJSON);
   
+  Orientation.Vector:=JSONToVector4(JSONRootObject.Properties['orientation'],Orientation.Vector);
   StartHeight:=TPasJSON.GetNumber(JSONRootObject.Properties['startheight'],StartHeight);
   EndHeight:=TPasJSON.GetNumber(JSONRootObject.Properties['endheight'],EndHeight);
   PositionScale:=TPasJSON.GetNumber(JSONRootObject.Properties['positionscale'],PositionScale);
@@ -1370,6 +1380,7 @@ var JSONArray:TPasJSONItemArray;
 begin
 
  result:=TPasJSONItemObject.Create;
+ result.Add('orientation',Vector4ToJSON(Orientation.Vector));
  result.Add('startheight',TPasJSONItemNumber.Create(StartHeight));
  result.Add('endheight',TPasJSONItemNumber.Create(EndHeight));
  result.Add('positionscale',TPasJSONItemNumber.Create(PositionScale));
@@ -1429,6 +1440,7 @@ end;
 
 procedure TpvScene3DAtmosphere.TVolumetricCloudLayerHigh.Initialize;
 begin
+ Orientation:=TpvQuaternion.Identity;
  StartHeight:=6420.0;
  EndHeight:=6440.0;
  PositionScale:=0.1;
@@ -1451,6 +1463,7 @@ var JSONRootObject:TPasJSONItemObject;
 begin
  if assigned(aJSON) and (aJSON is TPasJSONItemObject) then begin
   JSONRootObject:=TPasJSONItemObject(aJSON);
+  Orientation.Vector:=JSONToVector4(JSONRootObject.Properties['orientation'],Orientation.Vector);
   StartHeight:=TPasJSON.GetNumber(JSONRootObject.Properties['startheight'],StartHeight);
   EndHeight:=TPasJSON.GetNumber(JSONRootObject.Properties['endheight'],EndHeight);
   PositionScale:=TPasJSON.GetNumber(JSONRootObject.Properties['positionscale'],PositionScale);
@@ -1498,6 +1511,7 @@ end;
 function TpvScene3DAtmosphere.TVolumetricCloudLayerHigh.SaveToJSON:TPasJSONItemObject;
 begin
  result:=TPasJSONItemObject.Create;
+ result.Add('orientation',Vector4ToJSON(Orientation.Vector));
  result.Add('startheight',TPasJSONItemNumber.Create(StartHeight));
  result.Add('endheight',TPasJSONItemNumber.Create(EndHeight));
  result.Add('positionscale',TPasJSONItemNumber.Create(PositionScale));
@@ -1566,16 +1580,12 @@ begin
  DirectScatteringIntensity:=1.0;
  IndirectScatteringIntensity:=1.0;
  AmbientLightIntensity:=1.0;
- RotationX:=0.0;
- RotationY:=0.0;
- RotationZ:=0.0;
  LayerLow.Initialize;
  LayerHigh.Initialize;
 end;
 
 procedure TpvScene3DAtmosphere.TVolumetricCloudParameters.LoadFromJSON(const aJSON:TPasJSONItem);
 var JSONRootObject:TPasJSONItemObject;
-    Rotation:TpvVector3;
 begin
  if assigned(aJSON) and (aJSON is TPasJSONItemObject) then begin
   JSONRootObject:=TPasJSONItemObject(aJSON);
@@ -1600,12 +1610,6 @@ begin
   DirectScatteringIntensity:=TPasJSON.GetNumber(JSONRootObject.Properties['directscatteringintensity'],DirectScatteringIntensity);
   IndirectScatteringIntensity:=TPasJSON.GetNumber(JSONRootObject.Properties['indirectscatteringintensity'],IndirectScatteringIntensity);
   AmbientLightIntensity:=TPasJSON.GetNumber(JSONRootObject.Properties['ambientlightintensity'],AmbientLightIntensity);
-  begin
-   Rotation:=JSONToVector3(JSONRootObject.Properties['rotation'],TpvVector3.InlineableCreate(RotationX,RotationY,RotationZ));
-   RotationX:=Rotation.x;
-   RotationY:=Rotation.y;
-   RotationZ:=Rotation.z;
-  end;
   LayerLow.LoadFromJSON(JSONRootObject.Properties['layerlow']);
   LayerHigh.LoadFromJSON(JSONRootObject.Properties['layerhigh']);
  end;
@@ -1661,7 +1665,6 @@ begin
  result.Add('directscatteringintensity',TPasJSONItemNumber.Create(DirectScatteringIntensity));
  result.Add('indirectscatteringintensity',TPasJSONItemNumber.Create(IndirectScatteringIntensity));
  result.Add('ambientlightintensity',TPasJSONItemNumber.Create(AmbientLightIntensity));
- result.Add('rotation',Vector3ToJSON(TpvVector3.InlineableCreate(RotationX,RotationY,RotationZ)));
  result.Add('layerlow',LayerLow.SaveToJSON);
  result.Add('layerhigh',LayerHigh.SaveToJSON);
 end;
@@ -2004,6 +2007,8 @@ end;
 procedure TpvScene3DAtmosphere.TGPUVolumetricCloudLayerLow.Assign(const aVolumetricCloudLayerLow:TVolumetricCloudLayerLow);
 begin
 
+ Orientation:=aVolumetricCloudLayerLow.Orientation;
+ 
  StartHeight:=aVolumetricCloudLayerLow.StartHeight;
  EndHeight:=aVolumetricCloudLayerLow.EndHeight;
 
@@ -2031,6 +2036,8 @@ end;
 procedure TpvScene3DAtmosphere.TGPUVolumetricCloudLayerHigh.Assign(const aVolumetricCloudLayerHigh:TVolumetricCloudLayerHigh);
 begin
  
+ Orientation:=aVolumetricCloudLayerHigh.Orientation;
+
  StartHeight:=aVolumetricCloudLayerHigh.StartHeight;
  EndHeight:=aVolumetricCloudLayerHigh.EndHeight;
  
@@ -2092,10 +2099,6 @@ begin
  DirectScatteringIntensity:=aVolumetricCloudParameters.DirectScatteringIntensity;
  IndirectScatteringIntensity:=aVolumetricCloudParameters.IndirectScatteringIntensity;
  AmbientLightIntensity:=aVolumetricCloudParameters.AmbientLightIntensity;
-
- RotationX:=aVolumetricCloudParameters.RotationX;
- RotationY:=aVolumetricCloudParameters.RotationY;
- RotationZ:=aVolumetricCloudParameters.RotationZ;  
 
  LayerLow.Assign(aVolumetricCloudParameters.LayerLow); 
  LayerHigh.Assign(aVolumetricCloudParameters.LayerHigh);

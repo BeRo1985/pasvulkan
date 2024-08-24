@@ -181,6 +181,8 @@ layout(set = 2, binding = 9) uniform samplerCube uTextureWeatherMap;
 #include "msm_16bit.glsl" 
 #endif
 
+#include "quaternion.glsl"
+
 float bayer2(vec2 a){ 
   a = floor(a);
   return fract(dot(a, vec2(0.5, a.y * 0.75)));
@@ -695,12 +697,8 @@ bool traceVolumetricClouds(vec3 rayOrigin,
       //float sunPhase = getSunPhase(rayDirection, sunDirection, -cloudsForwardScatteringG);
 
       const mat3 rotationMatrices[2] = mat3[2](
-        rotationMatrix(vec3(1.0, 0.0, 0.0), uAtmosphereParameters.atmosphereParameters.VolumetricClouds.RotationX) *
-        rotationMatrix(vec3(0.0, 1.0, 0.0), uAtmosphereParameters.atmosphereParameters.VolumetricClouds.RotationY) *
-        rotationMatrix(vec3(0.0, 0.0, 1.0), uAtmosphereParameters.atmosphereParameters.VolumetricClouds.RotationZ),
-        rotationMatrix(vec3(1.0, 0.0, 0.0), uAtmosphereParameters.atmosphereParameters.VolumetricClouds.RotationY) *
-        rotationMatrix(vec3(0.0, 1.0, 0.0), uAtmosphereParameters.atmosphereParameters.VolumetricClouds.RotationZ) *
-        rotationMatrix(vec3(0.0, 0.0, 1.0), uAtmosphereParameters.atmosphereParameters.VolumetricClouds.RotationX)
+        quaternionToMatrix(uAtmosphereParameters.atmosphereParameters.VolumetricClouds.LayerLow.Orientation),
+        quaternionToMatrix(uAtmosphereParameters.atmosphereParameters.VolumetricClouds.LayerHigh.Orientation)
       );
       
       for(int stepIndex = 0; (stepIndex < countSteps) && (time < tMinMax.y); stepIndex++){
