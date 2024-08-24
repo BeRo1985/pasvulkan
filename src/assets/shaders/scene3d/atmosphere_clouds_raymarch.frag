@@ -623,7 +623,12 @@ bool traceVolumetricClouds(vec3 rayOrigin,
 
     if((tBottomSolutions.x < 0.0) && (tBottomSolutions.y >= 0.0)){
       // Below clouds
-      tMinMax.x = min(tMinMax.x, tBottomSolutions.y);
+#ifndef SHADOWMAP
+      if(rayLength < tBottomSolutions.y){
+        return false;
+      }
+#endif
+      tMinMax.x = max(tMinMax.x, tBottomSolutions.y);
     }else if(tBottomSolutions.x >= 0.0){
       // Inside or above clouds
       if(tGroundSolutions.x >= 0.0){
