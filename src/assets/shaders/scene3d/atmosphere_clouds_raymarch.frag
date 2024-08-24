@@ -633,7 +633,7 @@ bool traceVolumetricClouds(vec3 rayOrigin,
       // Inside or above clouds
       if(tGroundSolutions.x >= 0.0){
         tMinMax.y = min(tMinMax.y, tBottomSolutions.x);
-      } 
+      }           
     }
 
     if(tGroundSolutions.x >= 0.0){
