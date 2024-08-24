@@ -176,19 +176,6 @@ vec4 textureCatmullRom(const in sampler2DArray tex, const in vec3 uvw, const in 
            (textureLod(tex, vec3(vec2(p33.x, p33.y), uvw.z), float(lod)) * w3.x)) * w3.y);
 }
 
-// Based on COD's 1-tap bicubic filter https://www.activision.com/cdn/research/Dynamic_Temporal_Antialiasing_and_Upsampling_in_Call_of_Duty_v4.pdf#page=64
-vec4 textureTemporalBicubic(const in sampler2DArray tex, const in vec3 uvw, const in float lod){
-  float width = textureSize(tex, int(lod)).x,
-        sx = uvw.x * width,
-        px = floor(sx - 0.5) + 0.5,
-        tx = sx - px,
-        m03 = fma(tx, 0.8, -0.8) * tx;
-  vec4 left = textureLod(tex, vec3((px - 2.0) / width, uvw.yz), float(lod)),
-       center = textureLod(tex, vec3((px + tx) / width, uvw.yz), float(lod)),
-       right = textureLod(tex, vec3((px + 2.0) / width, uvw.yz), float(lod));
-  return fma(mix(left, right, px), vec4(m03), center) / (m03 + 1.0);    
-}
-
 vec4 FallbackFXAA(const in vec2 invTexSize){
   const vec2 fragCoordInvScale = invTexSize;
   vec4 p = vec4(inTexCoord, vec2(inTexCoord - (fragCoordInvScale * (0.5 + (1.0 / 4.0)))));
@@ -402,7 +389,7 @@ void main() {
       
       // Get the history color sample, convert it to YCoCg color space and apply tonemapping   
       vec4 historySample = ConvertFromRGB(Tonemap(textureCatmullRom(uHistoryColorTexture, historyUVW, 0.0)));
-      
+            
       // Clip the history color sample to the current minimum and maximum color values
       historySample = ClipAABB(historySample, clamp(averageColor, minimumColor, maximumColor), minimumColor.xyz, maximumColor.xyz);
 
