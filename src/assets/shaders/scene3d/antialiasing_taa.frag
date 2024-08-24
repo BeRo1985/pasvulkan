@@ -247,7 +247,7 @@ void main() {
     velocityUVWZ = vec4(fma(bestDepth.xy, invTexSize, uvw.xy), uvw.z, bestDepth.z);
   }
 
-  if(velocityUVWZ.w < 1e-7){
+  if((velocityUVWZ.w < 1e-7) && (current.w > 0.5)){
     
     // Background and other similar stuff => No temporal antialiasing or similar, so that these things are always sharp.
     color = current;
