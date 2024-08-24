@@ -661,9 +661,9 @@ bool traceVolumetricClouds(vec3 rayOrigin,
 #else
       int countSteps = clamp(
         int(
-          ((isinf(rayLength) && all(greaterThanEqual(tTopSolutions, vec2(0.0))) && all(lessThan(tGroundSolutions, vec2(0.0)))) ||
-           ((tMinMax.y - tMinMax.x) > (uAtmosphereParameters.atmosphereParameters.VolumetricClouds.LayerHigh.EndHeight)))
-
+          (
+           (isinf(rayLength) && all(greaterThanEqual(tBottomSolutions, vec2(0.0))) && all(lessThan(tGroundSolutions, vec2(0.0))))
+          )
             ? mix(
                 float(uAtmosphereParameters.atmosphereParameters.VolumetricClouds.OuterSpaceRayMinSteps),
                 float(uAtmosphereParameters.atmosphereParameters.VolumetricClouds.OuterSpaceRayMaxSteps), 
@@ -788,7 +788,7 @@ bool traceVolumetricClouds(vec3 rayOrigin,
               }
               
               position = fma(rayDirection, vec3(time), rayOrigin);
-              
+
               zeroDensitySampleCounter = 0;                        
 
             }
