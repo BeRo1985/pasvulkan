@@ -184,6 +184,34 @@ vec4 textureCatmullRom(const in sampler2DArray tex, const in vec3 uvw, const in 
            (textureLod(tex, vec3(vec2(p33.x, p33.y), uvw.z), float(lod)) * w3.x)) * w3.y);
 }
 
+// Sacht-Nehab3 texture sampling with 9-tap filtering by exploiting the bilinear filtering of the texture hardware.
+vec4 textureSachtNehab3(const in sampler2DArray tex, const in vec3 uvw, const in float lod){
+ vec2 texSize = textureSize(tex, int(lod)).xy,
+       uv = uvw.xy,
+       samplePos = uv * texSize,
+       p11 = floor(samplePos - vec2(0.5)) + vec2(0.5),
+       t = samplePos - p11, 
+       tt = t * t, 
+       ttt = tt * t,
+       w0 = (((0.218848 - (0.497801 * t)) + (0.370818 * tt)) - (0.0899247 * ttt)),
+       w1 = (((0.562591 + (0.0446542 * t)) - (0.700012 * tt)) + (0.309387 * ttt)),
+       w2 = (((0.216621 + (0.427208 * t)) + (0.228149 * tt)) - (0.309387 * ttt)),
+       w3 = (((0.00194006 + (0.0259387 * t)) + (0.101044 * tt)) + (0.0899247 * ttt)),
+       w4 = w1 + w2,
+       p00 = (p11 - vec2(1.0)) / texSize,
+       p33 = (p11 + vec2(2.0)) / texSize,
+       p12 = (p11 + (w2 / w4)) / texSize;
+  return (((textureLod(tex, vec3(vec2(p00.x, p00.y), uvw.z), float(lod)) * w0.x) +
+           (textureLod(tex, vec3(vec2(p12.x, p00.y), uvw.z), float(lod)) * w4.x) +
+           (textureLod(tex, vec3(vec2(p33.x, p00.y), uvw.z), float(lod)) * w3.x)) * w0.y) +
+         (((textureLod(tex, vec3(vec2(p00.x, p12.y), uvw.z), float(lod)) * w0.x) +
+           (textureLod(tex, vec3(vec2(p12.x, p12.y), uvw.z), float(lod)) * w4.x) +
+           (textureLod(tex, vec3(vec2(p33.x, p12.y), uvw.z), float(lod)) * w3.x)) * w4.y) +
+         (((textureLod(tex, vec3(vec2(p00.x, p33.y), uvw.z), float(lod)) * w0.x) +
+           (textureLod(tex, vec3(vec2(p12.x, p33.y), uvw.z), float(lod)) * w4.x) +
+           (textureLod(tex, vec3(vec2(p33.x, p33.y), uvw.z), float(lod)) * w3.x)) * w3.y);
+}
+
 // Fallback FXAA for disoccluded areas
 vec4 FallbackFXAA(const in vec2 invTexSize){
   const vec2 fragCoordInvScale = invTexSize;
