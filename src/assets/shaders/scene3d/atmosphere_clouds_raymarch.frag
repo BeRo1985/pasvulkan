@@ -721,8 +721,15 @@ bool traceVolumetricClouds(vec3 rayOrigin,
           vec2 tSolutions = intersectSphere(position, rayDirection, vec2(0.0, uAtmosphereParameters.atmosphereParameters.VolumetricClouds.LayerLow.StartHeight).xxxy);
 
           if((tSolutions.x < 0.0) && (tSolutions.y >= 0.0)){ 
-            time += tSolutions.y;
+
+            if((time += tSolutions.y) >= tMinMax.y){
+              break;
+            }
+
             position = fma(rayDirection, vec3(time), rayOrigin);
+
+            zeroDensitySampleCounter = 0;                        
+
           }          
 
         }else if(height > uAtmosphereParameters.atmosphereParameters.VolumetricClouds.LayerHigh.EndHeight){
@@ -732,8 +739,15 @@ bool traceVolumetricClouds(vec3 rayOrigin,
           vec2 tSolutions = intersectSphere(position, rayDirection, vec2(0.0, uAtmosphereParameters.atmosphereParameters.VolumetricClouds.LayerHigh.EndHeight).xxxy);
 
           if((tSolutions.x >= 0.0) && (tSolutions.y >= 0.0)){ 
-            time += tSolutions.x;
+
+            if((time += tSolutions.x) >= tMinMax.y){
+              break;
+            }
+
             position = fma(rayDirection, vec3(time), rayOrigin);
+
+            zeroDensitySampleCounter = 0;                        
+
           }else{
             // We are above the clouds, so we can abort here, since we are not interested in the empty space above the clouds
             break;
@@ -743,14 +757,43 @@ bool traceVolumetricClouds(vec3 rayOrigin,
                  (height < uAtmosphereParameters.atmosphereParameters.VolumetricClouds.LayerHigh.StartHeight)){
 
           // Above the low clouds and below the high clouds, so we can skip the empty space and go directly to the beginning 
-          // of the high cloud layer
+          // of the high cloud layer or the end of the low cloud layer, whichever the case may be, depending on the ray direction 
+          // situation
 
-          vec2 tSolutions = intersectSphere(position, rayDirection, vec2(0.0, uAtmosphereParameters.atmosphereParameters.VolumetricClouds.LayerHigh.EndHeight).xxxy);
+          // First try to intersect the beginning of high cloud layer (the first case to be tested, since the view is more likely to be from 
+          // below the clouds at the most of the time)   
+
+          vec2 tSolutions = intersectSphere(position, rayDirection, vec2(0.0, uAtmosphereParameters.atmosphereParameters.VolumetricClouds.LayerHigh.StartHeight).xxxy);
 
           if((tSolutions.x >= 0.0) && (tSolutions.y >= 0.0)){
-            time += tSolutions.x;
+            
+            if((time += tSolutions.x) >= tMinMax.y){
+              break;
+            }
+
             position = fma(rayDirection, vec3(time), rayOrigin);
-          } 
+
+            zeroDensitySampleCounter = 0;                        
+
+          }else{
+
+            // Otherwise try to intersect the end of low cloud layer, when the previous intersection test failed
+
+            vec2 tSolutions = intersectSphere(position, rayDirection, vec2(0.0, uAtmosphereParameters.atmosphereParameters.VolumetricClouds.LayerLow.EndHeight).xxxy); 
+
+            if((tSolutions.x >= 0.0) && (tSolutions.y >= 0.0)){
+            
+              if((time += tSolutions.x) >= tMinMax.y){
+                break;
+              }
+              
+              position = fma(rayDirection, vec3(time), rayOrigin);
+              
+              zeroDensitySampleCounter = 0;                        
+
+            }
+
+          }
 
         }
 
