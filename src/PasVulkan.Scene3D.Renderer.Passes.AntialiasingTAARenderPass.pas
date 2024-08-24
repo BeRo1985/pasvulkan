@@ -102,10 +102,9 @@ type { TpvScene3DRendererPassesAntialiasingTAARenderPass }
               DisocclusionDebugFactor:TpvFloat;
               Padding:TpvFloat;
 
+              VelocityDisocclusionThreshold:TpvFloat;
+              DepthDisocclusionThreshold:TpvFloat;
               JitterUV:TpvVector2;
-              VelocityDisocclusionThresholdScale:TpvVector2;
-
-              DepthDisocclusionThresholdScale:TpvVector2;
 
              end;
        private
@@ -523,14 +522,12 @@ begin
   PushConstants.DisocclusionDebugFactor:=0.0;
  end;
 
+ PushConstants.VelocityDisocclusionThreshold:=1e-2;//32.0/TpvVector2.InlineableCreate(fResourceCurrentColor.Width,fResourceCurrentColor.Height).Length;
+
+ PushConstants.DepthDisocclusionThreshold:=1.0;//32.0/TpvVector2.InlineableCreate(fResourceCurrentColor.Width,fResourceCurrentColor.Height).Length;
+
  PushConstants.JitterUV:=fInstance.InFlightFrameStates^[aInFlightFrameIndex].Jitter.xy;
 
- PushConstants.VelocityDisocclusionThresholdScale.x:=1e-2;//32.0/TpvVector2.InlineableCreate(fResourceCurrentColor.Width,fResourceCurrentColor.Height).Length;
- PushConstants.VelocityDisocclusionThresholdScale.y:=2000.0;
-
- PushConstants.DepthDisocclusionThresholdScale.x:=0.0;//32.0/TpvVector2.InlineableCreate(fResourceCurrentColor.Width,fResourceCurrentColor.Height).Length;
- PushConstants.DepthDisocclusionThresholdScale.y:=2000.0;
- 
  aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanGraphicsPipeline.Handle);
 
  aCommandBuffer.CmdPushConstants(fVulkanPipelineLayout.Handle,

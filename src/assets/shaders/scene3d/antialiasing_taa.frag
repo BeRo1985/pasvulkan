@@ -48,10 +48,9 @@ layout(push_constant, std140, row_major) uniform PushConstants {
   float disocclusionDebugFactor;
   float padding;
   
+  float velocityDisocclusionThreshold;
+  float depthDisocclusionThreshold;
   vec2 jitterUV;
-  vec2 velocityDisocclusionThresholdScale; // x = threshold, y = scale
-
-  vec2 depthDisocclusionThresholdScale; // x = threshold, y = scale
 
 } pushConstants;
 
@@ -68,6 +67,7 @@ layout(set = 1, binding = 0, std140) uniform uboViews {
 
 mat4 inverseProjectionMatrix = uView.views[pushConstants.baseViewIndex + uint(gl_ViewIndex)].inverseProjectionMatrix;
 
+// Linearize depth
 float LinearizeDepth(float depth, vec2 uv){
 #if 0
   vec2 v = (inverseProjectionMatrix * vec4(vec3(fma(uv, vec2(2.0), vec2(-1.0)), depth), 1.0)).zw;
@@ -77,17 +77,20 @@ float LinearizeDepth(float depth, vec2 uv){
   return -(v.x / v.y);
 }
 
+// Get the luminance of a RGB color
 float Luminance(vec4 color){
     return dot(color.xyz, vec3(0.2125, 0.7154, 0.0721));
 }
 
 #include "bidirectional_tonemapping.glsl"
 
+// Tone mapping
 vec4 Tonemap(vec4 color){
   return ApplyToneMapping(color);
   //return vec4(color.xyz / (Luminance(color) + 1.0), color.w);
 }
 
+// Inverse tone mapping
 vec4 Untonemap(vec4 color){
   return ApplyInverseToneMapping(color); 
   //return vec4(color.xyz / max(1.0 - Luminance(color), 1e-4), color.w);
@@ -95,11 +98,13 @@ vec4 Untonemap(vec4 color){
 
 #if ColorSpace == ColorSpaceYCoCg
 
+// RGB to YCoCg conversion
 vec4 RGBToYCoCg(in vec4 c){
 //return vec4(vec3(c.yy + ((c.x + c.z) * vec2(0.5, -0.5)), c.x - c.z).xzy * 0.5, 1.0);
   return vec4(mat3(0.25, 0.5, -0.25, 0.5, 0, 0.5, 0.25, -0.5, -0.25) * c.xyz, c.w);
 }
 
+// YCoCg to RGB conversion
 vec4 YCoCgToRGB(in vec4 c){
 //return vec4((c.xxx + vec3(c.yz, -c.y)) - vec2(c.z, 0.0).xyx, c.w);
   return vec4(mat3(1.0, 1.0, 1.0, 1.0, 0.0, -1.0, -1.0, 1.0, -1.0) * c.xyz, c.w);
@@ -115,6 +120,7 @@ vec4 YCoCgToRGB(in vec4 c){
 
 #endif
 
+// Clip a point to an axis-aligned bounding box
 vec4 ClipAABB(vec4 q, vec4 p, vec3 aabbMin, vec3 aabbMax){	
 #if 0  
   vec3 p_clip = (aabbMin + aabbMax) * 0.5;
@@ -150,6 +156,7 @@ vec4 ClipAABB(vec4 q, vec4 p, vec3 aabbMin, vec3 aabbMax){
 #endif
 }
 
+// Catmull-Rom texture sampling with 9-tap filtering by exploiting the bilinear filtering of the texture hardware.
 vec4 textureCatmullRom(const in sampler2DArray tex, const in vec3 uvw, const in float lod){
   vec2 texSize = textureSize(tex, int(lod)).xy,
        uv = uvw.xy,
@@ -177,6 +184,7 @@ vec4 textureCatmullRom(const in sampler2DArray tex, const in vec3 uvw, const in 
            (textureLod(tex, vec3(vec2(p33.x, p33.y), uvw.z), float(lod)) * w3.x)) * w3.y);
 }
 
+// Fallback FXAA for disoccluded areas
 vec4 FallbackFXAA(const in vec2 invTexSize){
   const vec2 fragCoordInvScale = invTexSize;
   vec4 p = vec4(inTexCoord, vec2(inTexCoord - (fragCoordInvScale * (0.5 + (1.0 / 4.0)))));
@@ -206,6 +214,61 @@ vec4 FallbackFXAA(const in vec2 invTexSize){
   return clamp(ApplyInverseToneMapping(((lumaB < lumaMin) || (lumaB > lumaMax)) ? rgbA : rgbB), vec4(0.0), vec4(65504.0));
 }
 
+// Check for disocclusions and return true if disoccluded, otherwise false.
+bool IsDisoccluded(const in vec3 uvw, const in vec3 historyUVW, const in vec4 current, const in vec2 invTexSize, const in vec2 depthTransform){
+
+  // First frame disocclusion or disable temporal antialiasing
+  if((pushConstants.flags & (FLAG_FIRST_FRAME_DISOCCLUSION | FLAG_DISABLE_TEMPORAL_ANTIALIASING)) != 0u){
+    return true;
+  }
+
+  // Screen disocclusion
+  if(any(lessThan(historyUVW.xy, vec2(0.0))) || any(greaterThan(historyUVW.xy, vec2(1.0)))){
+    return true;
+  }
+
+  // Optional translucency disocclusion, for optionally to force of different handling of translucent surfaces without temporal antialiasing,
+  // since these have no valid motion vector data.
+  if(((pushConstants.flags & FLAG_TRANSLUCENT_DISOCCLUSION) != 0u) && (current.w < 1e-7)){
+    return true;
+  }
+
+  // Optional velocity disocclusion for further reducing ghosting artifacts.
+  if((pushConstants.flags & FLAG_VELOCITY_DISOCCLUSION) != 0u){
+    const vec2 historyVelocity = textureLod(uHistoryVelocityTexture, historyUVW, 0.0).xy;
+    if(length(textureLod(uCurrentVelocityTexture, uvw, 0.0).xy - historyVelocity) > pushConstants.velocityDisocclusionThreshold){
+      return true;
+    }
+  } 
+
+  // Optional depth disocclusion for further reducing ghosting artifacts.
+  if((pushConstants.flags & FLAG_DEPTH_DISOCCLUSION) != 0u){
+
+    // Get the current and history depth samples as raw values
+    float currentDepth = textureLod(uCurrentDepthTexture, uvw, 0.0).x;
+    float historyDepth = textureLod(uHistoryDepthTexture, historyUVW, 0.0).x;
+
+    // Check if we're not in the far plane for avoiding other unwanted artifacts than ghosting and so on.
+    if(all(greaterThan(vec2(fma(vec2(currentDepth, historyDepth), depthTransform.xx, depthTransform.yy)), vec2(1e-7)))){
+
+      // Linearize the current and history depth samples
+      float currentLinearDepth = LinearizeDepth(currentDepth, uvw.xy);
+      float historyLinearDepth = LinearizeDepth(historyDepth, historyUVW.xy);
+
+      // Check if the current and history depth samples are candidates for disocclusion
+      if(abs(currentLinearDepth - historyLinearDepth) > pushConstants.depthDisocclusionThreshold){
+        return true;
+      }
+
+    }
+
+  }
+
+  // Otherwise we're not disoccluded
+  return false;
+
+}
+
 void main() {
     
   vec2 texSize = vec2(textureSize(uCurrentColorTexture, 0).xy);
@@ -223,6 +286,7 @@ void main() {
 
   vec2 depthTransform = vec2(pushConstants.ZMul, pushConstants.ZAdd);
 
+  // Find the closest depth sample and its attached information 
   vec4 velocityUVWZ;
   {
     vec3 depthSamples[9];
@@ -247,9 +311,11 @@ void main() {
     velocityUVWZ = vec4(fma(bestDepth.xy, invTexSize, uvw.xy), uvw.z, bestDepth.z);
   }
 
-  if((velocityUVWZ.w < 1e-7) && (current.w > 0.5)){
+  // Check for far plane, but avoid translucent surfaces which does writes also no depth data like the background
+  if((velocityUVWZ.w < 1e-7) && (current.w > 0.5)){ 
     
-    // Background and other similar stuff => No temporal antialiasing or similar, so that these things are always sharp.
+    // We're in the far plane, so no temporal antialiasing or similar, so that background und similiar things are always sharp.
+
     color = current;
 
   }else{
@@ -262,65 +328,7 @@ void main() {
     // Offset the history UVW by the current velocity
     vec3 historyUVW = uvw - vec3(currentVelocity, 0.0);
 
-    // First frame disocclusion or disable temporal antialiasing
-    bool disoccluded = (pushConstants.flags & (FLAG_FIRST_FRAME_DISOCCLUSION | FLAG_DISABLE_TEMPORAL_ANTIALIASING)) != 0u;
-
-    if(!disoccluded){      
-
-      // Screen disocclusion
-      disoccluded = any(lessThan(historyUVW.xy, vec2(0.0))) || any(greaterThan(historyUVW.xy, vec2(1.0)));
-
-      if(!disoccluded){
-      
-        // Optional translucency disocclusion, for optionally to force of different handling of translucent surfaces without temporal antialiasing,
-        // since these have no valid motion vector data. 
-        disoccluded = (current.w < 1e-7) && ((pushConstants.flags & FLAG_TRANSLUCENT_DISOCCLUSION) != 0u);
-
-        if(!disoccluded){
-
-          // Optional velocity disocclusion for further reducing ghosting artifacts.
-          if(pushConstants.velocityDisocclusionThresholdScale.x > 1e-7){
-            const vec2 historyVelocity = textureLod(uHistoryVelocityTexture, historyUVW, 0.0).xy;
-            disoccluded = max(
-              0.0,
-              (length(currentVelocity - historyVelocity) - pushConstants.velocityDisocclusionThresholdScale.x) *
-                pushConstants.velocityDisocclusionThresholdScale.y
-            ) >= 1.0;
-          }  
-
-          if(!disoccluded){
-
-            // Optional depth disocclusion for further reducing ghosting artifacts.
-            if(pushConstants.depthDisocclusionThresholdScale.x > 1e-7){
-
-              // Get the current and history depth samples as raw values      
-              float currentDepth = textureLod(uCurrentDepthTexture, uvw, 0.0).x;
-              float historyDepth = textureLod(uHistoryDepthTexture, historyUVW, 0.0).x;
-              
-              // Check if we're not in the far plane for avoiding other unwanted artifacts than ghosting and so on.
-              if(all(greaterThan(vec2(fma(vec2(currentDepth, historyDepth), depthTransform.xx, depthTransform.yy)), vec2(1e-7)))){
-
-                // Linearize the current and history depth samples
-                float currentLinearDepth = LinearizeDepth(currentDepth, uvw.xy);
-                float historyLinearDepth = LinearizeDepth(historyDepth, historyUVW.xy); 
-
-                // Check if the current and history depth samples are candidates for disocclusion
-                disoccluded = clamp((abs(currentLinearDepth - historyLinearDepth) - pushConstants.depthDisocclusionThresholdScale.x) * pushConstants.depthDisocclusionThresholdScale.y, 0.0, 2.0) >= 1.0;
-
-              }
-
-            }
-
-          }
-
-        }
-
-      }
-
-    }
-
-
-    if(disoccluded){
+    if(IsDisoccluded(uvw, historyUVW, current, invTexSize, depthTransform.xy)){
       if((pushConstants.flags & FLAG_USE_FALLBACK_FXAA) != 0u){
         // Use fallback FXAA in areas of off-screen disocclusion (where temporal raster data doesn’t exist) as it is also used at 
         // NVIDIA's Adaptive Temporal Antialiasing (ATAA).
