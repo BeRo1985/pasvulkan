@@ -12124,7 +12124,7 @@ end;
 
 procedure TpvScene3D.TGroup.TMesh.TPrimitive.LoadFromStream(const aStream:TStream;const aMaterials:TpvObjectList);
 var StreamIO:TpvStreamIO;
-    MaterialIndex,Index,VertexIndex:TpvSizeInt;
+    MaterialIndex,Index,VertexIndex,MaterialID:TpvSizeInt;
     Count,OtherCount:TpvSizeInt;
     Target:TpvScene3D.TGroup.TMesh.TPrimitive.TTarget;
     NodeMeshPrimitiveInstance:TpvScene3D.TGroup.TMesh.TPrimitive.TNodeMeshPrimitiveInstance;
@@ -12145,7 +12145,9 @@ begin
    fMaterial:=nil;
   end;
 
-  if not fMesh.fGroup.fMaterialIndexHashMap.TryGet(fMaterial,fMaterialID) then begin
+  if fMesh.fGroup.fMaterialIndexHashMap.TryGet(fMaterial,MaterialID) then begin
+   fMaterialID:=MaterialID;
+  end else begin
    fMaterialID:=MaterialIndex;
   end;
 
