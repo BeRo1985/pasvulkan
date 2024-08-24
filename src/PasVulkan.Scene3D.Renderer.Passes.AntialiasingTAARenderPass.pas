@@ -489,7 +489,7 @@ begin
  PushConstants.BaseViewIndex:=fInstance.InFlightFrameStates^[aInFlightFrameIndex].FinalViewIndex;
  PushConstants.CountViews:=fInstance.InFlightFrameStates^[aInFlightFrameIndex].CountFinalViews;
 
- PushConstants.Flags:=FLAG_TRANSLUCENT_DISOCCLUSION or
+ PushConstants.Flags:=//FLAG_TRANSLUCENT_DISOCCLUSION or
                       FLAG_VELOCITY_DISOCCLUSION or
                     //FLAG_DEPTH_DISOCCLUSION or // works not yet so good, needs more work
                       FLAG_USE_FALLBACK_FXAA;
