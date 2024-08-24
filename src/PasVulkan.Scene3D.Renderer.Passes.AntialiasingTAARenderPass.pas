@@ -79,11 +79,16 @@ uses SysUtils,
 type { TpvScene3DRendererPassesAntialiasingTAARenderPass }
       TpvScene3DRendererPassesAntialiasingTAARenderPass=class(TpvFrameGraph.TRenderPass)
        public
+        const FLAG_FIRST_FRAME_DISOCCLUSION=TpvUInt32(TpvUInt32(1) shl 0);
+              FLAG_TRANSLUCENT_DISOCCLUSION=TpvUInt32(TpvUInt32(1) shl 1);
+              FLAG_VELOCITY_DISOCCLUSION=TpvUInt32(TpvUInt32(1) shl 2);
+              FLAG_DEPTH_DISOCCLUSION=TpvUInt32(TpvUInt32(1) shl 3);
+              FLAG_USE_FALLBACK_FXAA=TpvUInt32(TpvUInt32(1) shl 4);
         type TPushConstants=packed record
 
-              TranslucentCoefficient:TpvFloat;
-              OpaqueCoefficient:TpvFloat;
-              MixCoefficient:TpvFloat;
+              BaseViewIndex:TpvUInt32;
+              CountViews:TpvUInt32;
+              Flags:TpvUInt32;
               VarianceClipGamma:TpvFloat;
 
               TranslucentFeedbackMin:TpvFloat;
@@ -94,14 +99,12 @@ type { TpvScene3DRendererPassesAntialiasingTAARenderPass }
               ZMul:TpvFloat;
               ZAdd:TpvFloat;
               DisocclusionDebugFactor:TpvFloat;
-              UseFallbackFXAA:TpvFloat;
+              Padding:TpvFloat;
 
               JitterUV:TpvVector2;
               VelocityDisocclusionThresholdScale:TpvVector2;
 
               DepthDisocclusionThresholdScale:TpvVector2;
-              BaseViewIndex:TpvInt32;
-              CountViews:TpvInt32;
 
              end;
        private
@@ -483,39 +486,46 @@ var PushConstants:TPushConstants;
 begin
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
  
+ PushConstants.BaseViewIndex:=fInstance.InFlightFrameStates^[aInFlightFrameIndex].FinalViewIndex;
+ PushConstants.CountViews:=fInstance.InFlightFrameStates^[aInFlightFrameIndex].CountFinalViews;
+
+ PushConstants.Flags:=FLAG_TRANSLUCENT_DISOCCLUSION or
+                      FLAG_VELOCITY_DISOCCLUSION or
+                    //FLAG_DEPTH_DISOCCLUSION or // works not yet so good, needs more work
+                      FLAG_USE_FALLBACK_FXAA;
  if aFrameIndex=0 then begin
-  PushConstants.TranslucentCoefficient:=1.0;
-  PushConstants.OpaqueCoefficient:=1.0;
- end else begin
-  PushConstants.TranslucentCoefficient:=Clamp(1.0-exp((-30.0)*pvApplication.DeltaTime),0.001,0.5);
-  PushConstants.OpaqueCoefficient:=Clamp(1.0-exp((-3.0)*pvApplication.DeltaTime),0.001,0.5);
+  PushConstants.Flags:=PushConstants.Flags or FLAG_FIRST_FRAME_DISOCCLUSION;
  end;
- PushConstants.MixCoefficient:=0.0;
+
  PushConstants.VarianceClipGamma:=1.0;
+
  PushConstants.TranslucentFeedbackMin:=0.5;
  PushConstants.TranslucentFeedbackMax:=0.75;
+
  PushConstants.OpaqueFeedbackMin:=0.88;
  PushConstants.OpaqueFeedbackMax:=0.97;
+
  if fInstance.ZFar>0.0 then begin
   PushConstants.ZMul:=-1.0;
   PushConstants.ZAdd:=1.0;
  end else begin
   PushConstants.ZMul:=1.0;
-  PushConstants.ZAdd:=0.0;
+  PushConstants.ZAdd:=0.0; 
  end;
+ 
  if fInstance.DebugTAA then begin
   PushConstants.DisocclusionDebugFactor:=1.0;
  end else begin
   PushConstants.DisocclusionDebugFactor:=0.0;
  end;
- PushConstants.UseFallbackFXAA:=1.0;
+ 
  PushConstants.JitterUV:=fInstance.InFlightFrameStates^[aInFlightFrameIndex].Jitter.xy;
+
  PushConstants.VelocityDisocclusionThresholdScale.x:=1e-2;//32.0/TpvVector2.InlineableCreate(fResourceCurrentColor.Width,fResourceCurrentColor.Height).Length;
  PushConstants.VelocityDisocclusionThresholdScale.y:=2000.0;
+
  PushConstants.DepthDisocclusionThresholdScale.x:=0.0;//32.0/TpvVector2.InlineableCreate(fResourceCurrentColor.Width,fResourceCurrentColor.Height).Length;
  PushConstants.DepthDisocclusionThresholdScale.y:=2000.0;
- PushConstants.BaseViewIndex:=fInstance.InFlightFrameStates^[aInFlightFrameIndex].FinalViewIndex;
- PushConstants.CountViews:=fInstance.InFlightFrameStates^[aInFlightFrameIndex].CountFinalViews;
  
  aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanGraphicsPipeline.Handle);
 
