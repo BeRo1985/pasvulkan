@@ -5674,7 +5674,7 @@ begin
 
  Origin:=(BoundingBox.Min+BoundingBox.Max)*0.5;
 
- LightForwardVector:=-fScene3D.PrimaryShadowMapLightDirection.xyz.Normalize;
+ LightForwardVector:=-fScene3D.PrimaryShadowMapLightDirections[aInFlightFrameIndex].xyz.Normalize;
 //LightForwardVector:=-Renderer.EnvironmentCubeMap.LightDirection.xyz.Normalize;
  LightSideVector:=LightForwardVector.Perpendicular;
 {LightSideVector:=TpvVector3.InlineableCreate(-fViews.Items[0].ViewMatrix.RawComponents[0,2],
@@ -5734,7 +5734,7 @@ begin
  View.InverseViewMatrix:=View.ViewMatrix.Inverse;
 
  InFlightFrameState^.ReflectiveShadowMapMatrix:=LightViewProjectionMatrix;
- InFlightFrameState^.ReflectiveShadowMapLightDirection:=fScene3D.PrimaryShadowMapLightDirection.xyz.Normalize;
+ InFlightFrameState^.ReflectiveShadowMapLightDirection:=fScene3D.PrimaryShadowMapLightDirections[aInFlightFrameIndex].xyz.Normalize;
  InFlightFrameState^.ReflectiveShadowMapScale:=Scale;
  InFlightFrameState^.ReflectiveShadowMapExtents:=Extents;
 
@@ -5793,7 +5793,7 @@ begin
 
   Origin:=(BoundingBox.Min+BoundingBox.Max)*0.5;
 
-  LightForwardVector:=-fScene3D.PrimaryShadowMapLightDirection.xyz.Normalize;
+  LightForwardVector:=-fScene3D.PrimaryShadowMapLightDirections[aInFlightFrameIndex].xyz.Normalize;
  //LightForwardVector:=-Renderer.EnvironmentCubeMap.LightDirection.xyz.Normalize;
   LightSideVector:=LightForwardVector.Perpendicular;
  {LightSideVector:=TpvVector3.InlineableCreate(-fViews.Items[0].ViewMatrix.RawComponents[0,2],
@@ -5853,7 +5853,7 @@ begin
   View.InverseViewMatrix:=View.ViewMatrix.Inverse;
 
   InFlightFrameState^.CloudsShadowMapMatrix:=LightViewProjectionMatrix;
-  InFlightFrameState^.CloudsShadowMapLightDirection:=fScene3D.PrimaryShadowMapLightDirection.xyz.Normalize;
+  InFlightFrameState^.CloudsShadowMapLightDirection:=fScene3D.PrimaryShadowMapLightDirections[aInFlightFrameIndex].xyz.Normalize;
 
   InFlightFrameState^.CloudsShadowMapViewIndex:=fViews[aInFlightFrameIndex].Add(View);
   InFlightFrameState^.CountCloudsShadowMapViews:=1;

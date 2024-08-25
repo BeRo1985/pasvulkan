@@ -3160,6 +3160,8 @@ type EpvScene3D=class(Exception);
             PRaytracingGroupInstanceNodeQueueItem=^TRaytracingGroupInstanceNodeQueueItem;
             TRaytracingGroupInstanceNodeQueue=TpvDynamicQueue<TRaytracingGroupInstanceNodeQueueItem>;
             TRaytracingAccelerationStructureInstanceList=TpvDynamicArrayList<TVkAccelerationStructureInstanceKHR>;
+            TInFlightFrameVector3s=array[0..MaxInFlightFrames-1] of TpvVector3;
+            PInFlightFrameVector3s=^TInFlightFrameVector3s;
             TDeltaTime=TpvDouble;
             PDeltaTime=^TDeltaTime;
             TDeltaTimes=array[0..MaxInFlightFrames-1] of TDeltaTime;
@@ -3307,7 +3309,9 @@ type EpvScene3D=class(Exception);
        fInFlightFrameImageInfoImageDescriptorGenerations:array[0..MaxInFlightFrames-1] of TpvUInt64;
        fInFlightFrameImageInfoImageDescriptorUploadedGenerations:array[0..MaxInFlightFrames-1] of TpvUInt64;
        fPrimaryLightDirection:TpvVector3;
+       fPrimaryLightDirections:TInFlightFrameVector3s;
        fPrimaryShadowMapLightDirection:TpvVector3;
+       fPrimaryShadowMapLightDirections:TInFlightFrameVector3s;
        fDebugPrimitiveVertexDynamicArrays:TpvScene3D.TDebugPrimitiveVertexDynamicArrays;
        fVulkanDebugPrimitiveVertexBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
        fOnNodeFilter:TpvScene3D.TGroup.TInstance.TOnNodeFilter;
@@ -3593,7 +3597,9 @@ type EpvScene3D=class(Exception);
        property GlobalVulkanInstanceMatrixBuffers:TGlobalVulkanInstanceMatrixBuffers read fGlobalVulkanInstanceMatrixBuffers;
        property GlobalVulkanDescriptorSets:TGlobalVulkanDescriptorSets read fGlobalVulkanDescriptorSets;
        property PrimaryLightDirection:TpvVector3 read fPrimaryLightDirection write fPrimaryLightDirection;
+       property PrimaryLightDirections:TInFlightFrameVector3s read fPrimaryLightDirections;
        property PrimaryShadowMapLightDirection:TpvVector3 read fPrimaryShadowMapLightDirection write fPrimaryShadowMapLightDirection;
+       property PrimaryShadowMapLightDirections:TInFlightFrameVector3s read fPrimaryShadowMapLightDirections;
        property LightBuffers:TpvScene3D.TLightBuffers read fLightBuffers;
        property DebugPrimitiveVertexDynamicArrays:TpvScene3D.TDebugPrimitiveVertexDynamicArrays read fDebugPrimitiveVertexDynamicArrays;
        property Particles:PParticles read fPointerToParticles;
@@ -27897,6 +27903,10 @@ var Index,ItemID:TpvSizeInt;
     MaterialIDDirtyMap:TpvScene3D.PMaterialIDDirtyMap;
     Planet:TpvScene3DPlanet;
 begin
+
+ fPrimaryLightDirections[aInFlightFrameIndex]:=fPrimaryLightDirection;
+
+ fPrimaryShadowMapLightDirections[aInFlightFrameIndex]:=fPrimaryShadowMapLightDirection;
 
  if assigned(fVulkanDevice) then begin
 
