@@ -1255,7 +1255,7 @@ begin
    end;   //*)
 
    fSkyBox.Draw(aInFlightFrameIndex,
-                InFlightFrameState^.FinalViewIndex,
+                InFlightFrameState^.FinalUnjitteredViewIndex,
                 InFlightFrameState^.CountFinalViews,
                 aCommandBuffer,
                 InFlightFrameState.SkyBoxOrientation);
