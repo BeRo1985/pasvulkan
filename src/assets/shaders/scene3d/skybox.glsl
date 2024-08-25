@@ -2,6 +2,8 @@
 #define SKYBOX_GLSL
 
 layout(push_constant) uniform PushConstants {
+
+  mat4 orientation;
   
   vec4 lightDirection;
 

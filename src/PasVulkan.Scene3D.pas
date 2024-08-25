@@ -3399,6 +3399,7 @@ type EpvScene3D=class(Exception);
        fSkyBoxTextureImage:TpvScene3D.TImage;
        fSkyBoxMode:TpvScene3DEnvironmentMode;
        fSkyBoxIntensityFactor:TpvFloat;
+       fSkyBoxOrientation:TpvMatrix4x4;
        fEnvironmentTextureImage:TpvScene3D.TImage;
        fEnvironmentMode:TpvScene3DEnvironmentMode;
        fEnvironmentIntensityFactor:TpvFloat;
@@ -3650,6 +3651,9 @@ type EpvScene3D=class(Exception);
        property SkyBoxTextureImage:TpvScene3D.TImage read fSkyBoxTextureImage write fSkyBoxTextureImage;
        property SkyBoxMode:TpvScene3DEnvironmentMode read fSkyBoxMode write fSkyBoxMode;
        property SkyBoxIntensityFactor:TpvFloat read fSkyBoxIntensityFactor write fSkyBoxIntensityFactor;
+      public
+       property SkyBoxOrientation:TpvMatrix4x4 read fSkyBoxOrientation write fSkyBoxOrientation;
+      published
        property EnvironmentTextureImage:TpvScene3D.TImage read fEnvironmentTextureImage write fEnvironmentTextureImage;
        property EnvironmentMode:TpvScene3DEnvironmentMode read fEnvironmentMode write fEnvironmentMode;
        property EnvironmentIntensityFactor:TpvFloat read fEnvironmentIntensityFactor write fEnvironmentIntensityFactor;
@@ -25341,6 +25345,8 @@ begin
  fSkyBoxTextureImage:=nil;
 
  fSkyBoxMode:=TpvScene3DEnvironmentMode.Sky;
+
+ fSkyBoxOrientation:=TpvMatrix4x4.Identity;
 
  fEnvironmentTextureImage:=nil;
 

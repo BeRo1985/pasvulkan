@@ -162,6 +162,8 @@ type { TpvScene3DRendererInstance }
 
              Jitter:TpvVector4;
 
+             SkyBoxOrientation:TpvMatrix4x4;
+
              CameraReset:Boolean;
 
             end;
@@ -6325,6 +6327,8 @@ begin
 
  InFlightFrameState^.Jitter.xy:=GetJitterOffset(aFrameCounter);
  InFlightFrameState^.Jitter.zw:=GetJitterOffset(aFrameCounter-1);
+
+ InFlightFrameState^.SkyBoxOrientation:=fScene3D.SkyBoxOrientation;
 
  case Renderer.GlobalIlluminationMode of
 

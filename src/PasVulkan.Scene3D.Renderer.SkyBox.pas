@@ -79,6 +79,8 @@ type { TpvScene3DRendererSkyBox }
       public
        type TPushConstants=packed record
 
+             Orientation:TpvMatrix4x4;
+
              LightDirection:TpvVector4;
 
              ViewBaseIndex:TpvUInt32;
@@ -118,7 +120,7 @@ type { TpvScene3DRendererSkyBox }
 
        procedure ReleaseResources;
 
-       procedure Draw(const aInFlightFrameIndex,aViewBaseIndex,aCountViews:TpvSizeInt;const aCommandBuffer:TpvVulkanCommandBuffer);
+       procedure Draw(const aInFlightFrameIndex,aViewBaseIndex,aCountViews:TpvSizeInt;const aCommandBuffer:TpvVulkanCommandBuffer;const aOrientation:TpvMatrix4x4);
 
      end;
 
@@ -311,11 +313,13 @@ begin
  FreeAndNil(fVulkanPipeline);
 end;
 
-procedure TpvScene3DRendererSkyBox.Draw(const aInFlightFrameIndex,aViewBaseIndex,aCountViews:TpvSizeInt;const aCommandBuffer:TpvVulkanCommandBuffer);
+procedure TpvScene3DRendererSkyBox.Draw(const aInFlightFrameIndex,aViewBaseIndex,aCountViews:TpvSizeInt;const aCommandBuffer:TpvVulkanCommandBuffer;const aOrientation:TpvMatrix4x4);
 var PushConstants:TpvScene3DRendererSkyBox.TPushConstants;
 begin
 
  fScene3D.VulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'Skybox',[0.25,0.75,0.75,1.0]);
+
+ PushConstants.Orientation:=aOrientation;
 
  PushConstants.LightDirection:=TpvVector4.InlineableCreate(fScene3D.PrimaryLightDirection,0.0);
 

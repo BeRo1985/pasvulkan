@@ -1257,7 +1257,8 @@ begin
    fSkyBox.Draw(aInFlightFrameIndex,
                 InFlightFrameState^.FinalViewIndex,
                 InFlightFrameState^.CountFinalViews,
-                aCommandBuffer);
+                aCommandBuffer,
+                InFlightFrameState.SkyBoxOrientation);
 
    fPlanetOpaquePass.Draw(aInFlightFrameIndex,
                           aFrameIndex,

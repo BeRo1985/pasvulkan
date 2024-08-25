@@ -808,7 +808,8 @@ begin
 {}fSkyBox.Draw(aInFlightFrameIndex,
                InFlightFrameState^.ReflectionProbeViewIndex,
                InFlightFrameState^.CountReflectionProbeViews,
-               aCommandBuffer);//{}
+               aCommandBuffer,
+               InFlightFrameState^.SkyBoxOrientation);//{}
 
   if true then begin
 
