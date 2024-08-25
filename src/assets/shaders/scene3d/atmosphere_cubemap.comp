@@ -140,7 +140,7 @@ void main() {
         inscattering = ss.L;
 
         //if(!IntersectGround){
-          inscattering += GetSunLuminance(cameraPosition, worldDir, sunDirection, atmosphereParameters.BottomRadius).xyz * ss.Transmittance;
+          //inscattering += GetSunLuminance(cameraPosition, worldDir, sunDirection, atmosphereParameters.BottomRadius).xyz * ss.Transmittance;
         //}
 
         transmittance = ss.Transmittance;
