@@ -712,7 +712,7 @@ bool traceVolumetricClouds(vec3 rayOrigin,
     
         vec3 position = fma(rayDirection, vec3(time), rayOrigin);
 
-        float height = length(position);
+/*      float height = length(position);
 
         if(height < uAtmosphereParameters.atmosphereParameters.VolumetricClouds.LayerLow.StartHeight){
 
@@ -726,7 +726,7 @@ bool traceVolumetricClouds(vec3 rayOrigin,
               break;
             }
 
-            position = fma(rayDirection, vec3(time), rayOrigin);
+            position = fma(rayDirection, vec3(fma(offset, timeStep, time)), rayOrigin);
 
             zeroDensitySampleCounter = 0;                        
 
@@ -744,7 +744,7 @@ bool traceVolumetricClouds(vec3 rayOrigin,
               break;
             }
 
-            position = fma(rayDirection, vec3(time), rayOrigin);
+            position = fma(rayDirection, vec3(fma(offset, timeStep, time)), rayOrigin);
 
             zeroDensitySampleCounter = 0;                        
 
@@ -771,7 +771,7 @@ bool traceVolumetricClouds(vec3 rayOrigin,
               break;
             }
 
-            position = fma(rayDirection, vec3(time), rayOrigin);
+            position = fma(rayDirection, vec3(fma(offset, timeStep, time)), rayOrigin);
 
             zeroDensitySampleCounter = 0;                        
 
@@ -787,7 +787,7 @@ bool traceVolumetricClouds(vec3 rayOrigin,
                 break;
               }
               
-              position = fma(rayDirection, vec3(time), rayOrigin);
+              position = fma(rayDirection, vec3(fma(offset, timeStep, time)), rayOrigin);
 
               zeroDensitySampleCounter = 0;                        
 
@@ -795,7 +795,7 @@ bool traceVolumetricClouds(vec3 rayOrigin,
 
           }
 
-        }
+        }*/
 
         vec4 weatherData = getWeatherData(position, rotationMatrices, mipMapLevel);
         
