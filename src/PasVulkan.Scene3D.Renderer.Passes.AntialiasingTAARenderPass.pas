@@ -79,13 +79,17 @@ uses SysUtils,
 type { TpvScene3DRendererPassesAntialiasingTAARenderPass }
       TpvScene3DRendererPassesAntialiasingTAARenderPass=class(TpvFrameGraph.TRenderPass)
        public
-        const FLAG_FIRST_FRAME_DISOCCLUSION=TpvUInt32(TpvUInt32(1) shl 0);
-              FLAG_TRANSLUCENT_DISOCCLUSION=TpvUInt32(TpvUInt32(1) shl 1);
-              FLAG_VELOCITY_DISOCCLUSION=TpvUInt32(TpvUInt32(1) shl 2);
-              FLAG_DEPTH_DISOCCLUSION=TpvUInt32(TpvUInt32(1) shl 3);
-              FLAG_INCLUDE_BACKGROUND=TpvUInt32(TpvUInt32(1) shl 4);
-              FLAG_USE_FALLBACK_FXAA=TpvUInt32(TpvUInt32(1) shl 5);
-              FLAG_DISABLE_TEMPORAL_ANTIALIASING=TpvUInt32(TpvUInt32(1) shl 6);
+        const FLAG_FIRST_FRAME_DISOCCLUSION=TpvUInt32(TpvUInt32(1) shl 0); // First frame disocclusion
+              FLAG_TRANSLUCENT_DISOCCLUSION=TpvUInt32(TpvUInt32(1) shl 1); // Translucent disocclusion
+              FLAG_VELOCITY_DISOCCLUSION=TpvUInt32(TpvUInt32(1) shl 2); // Velocity disocclusion
+              FLAG_DEPTH_DISOCCLUSION=TpvUInt32(TpvUInt32(1) shl 3); // Depth disocclusion
+              FLAG_INCLUDE_BACKGROUND=TpvUInt32(TpvUInt32(1) shl 4); // Include background in the temporal antialiasing.
+              FLAG_VARIANCE_CLIPPING=TpvUInt32(TpvUInt32(1) shl 5); // Variance clipping
+              FLAG_CHROMA_SHRINKING=TpvUInt32(TpvUInt32(1) shl 6); // Chroma shrinking
+              FLAG_CLIPPING=TpvUInt32(TpvUInt32(1) shl 7); // Clipping
+              FLAG_LUMINANCE_WEIGHTING=TpvUInt32(TpvUInt32(1) shl 8); // Luminance weighting
+              FLAG_USE_FALLBACK_FXAA=TpvUInt32(TpvUInt32(1) shl 9); // Use fallback FXAA for disoccluded or otherwise rejected areas.
+              FLAG_DISABLE_TEMPORAL_ANTIALIASING=TpvUInt32(TpvUInt32(1) shl 10); // For debugging purposes and for showing the raw jittered input without any temporal antialiasing when FLAG_USE_FALLBACK_FXAA is even not set.
         type TPushConstants=packed record
 
               BaseViewIndex:TpvUInt32;
@@ -106,7 +110,7 @@ type { TpvScene3DRendererPassesAntialiasingTAARenderPass }
               DisocclusionDebugFactor:TpvFloat;
               VelocityDisocclusionThreshold:TpvFloat;
               DepthDisocclusionThreshold:TpvFloat;
-              Padding:TpvFloat;
+              SharpingFactor:TpvFloat; // <= 0.0 = disabled, > 0.0 = enabled (although 1e-7 is the real threshold, not 0.0) 
 
               JitterUV:TpvVector2;
 
@@ -497,6 +501,10 @@ begin
                       FLAG_VELOCITY_DISOCCLUSION or
                     //FLAG_DEPTH_DISOCCLUSION or // works not yet so good, needs more work
                       FLAG_INCLUDE_BACKGROUND or
+                      FLAG_VARIANCE_CLIPPING or
+                      //FLAG_CHROMA_SHRINKING or // problematic with very bright pixels at bloom and so on later
+                      FLAG_CLIPPING or
+                      FLAG_LUMINANCE_WEIGHTING or
                       FLAG_USE_FALLBACK_FXAA;
  if aFrameIndex=0 then begin
   PushConstants.Flags:=PushConstants.Flags or FLAG_FIRST_FRAME_DISOCCLUSION;
@@ -533,6 +541,8 @@ begin
  PushConstants.VelocityDisocclusionThreshold:=1e-2;//32.0/TpvVector2.InlineableCreate(fResourceCurrentColor.Width,fResourceCurrentColor.Height).Length;
 
  PushConstants.DepthDisocclusionThreshold:=1.0;//32.0/TpvVector2.InlineableCreate(fResourceCurrentColor.Width,fResourceCurrentColor.Height).Length;
+
+ PushConstants.SharpingFactor:=0.0; // No sharping for now
 
  PushConstants.JitterUV:=fInstance.InFlightFrameStates^[aInFlightFrameIndex].Jitter.xy;
 
