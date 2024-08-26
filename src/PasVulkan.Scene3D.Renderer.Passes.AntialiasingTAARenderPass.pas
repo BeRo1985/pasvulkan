@@ -507,8 +507,8 @@ begin
 
  PushConstants.VarianceClipGamma:=1.0;
 
- PushConstants.BackgroundFeedbackMin:=0.88;
- PushConstants.BackgroundFeedbackMax:=0.97;
+ PushConstants.BackgroundFeedbackMin:=0.5;
+ PushConstants.BackgroundFeedbackMax:=0.75;
 
  PushConstants.TranslucentFeedbackMin:=0.8;
  PushConstants.TranslucentFeedbackMax:=0.9;
