@@ -497,16 +497,16 @@ void main() {
   // When fast cloud integration is used, we apply the precomputed cloud inscattering and transmittance values directly after the fast sky or
   // fast aerial perspective, even when it isn't correct, since the clouds are not integrated inbetween the atmosphere slices when using fast sky
   // or fast aerial perspective, but better than nothing 
-  if(applyFastCloudIntegration){
+/*if(applyFastCloudIntegration){
     if(cloudsValid){
       cloudsValid = false;
       addScatteringSample(cloudsInscattering.xyz, cloudsTransmittance.xyz);
     }
     needToRayMarch = false;
-  }
+  }*/
 
   if(needToRayMarch){
-
+/*
     if(cloudsValid){
 
       // When clouds are present, we need to handle them inbetween the atmosphere slices, so therefore we need to ray march the first
@@ -550,7 +550,7 @@ void main() {
 
       // And then continue with the rest of the atmosphere as usual as if the clouds were not there 
 
-    }
+    }//*/
 
     // Move to top atmosphere as the starting point for ray marching.
     // This is critical to be after the above to not disrupt above atmosphere tests and voxel selection.
@@ -583,6 +583,11 @@ void main() {
       
     }
 
+  }
+
+  if(cloudsValid){
+    cloudsValid = false;
+    addScatteringSample(cloudsInscattering.xyz, cloudsTransmittance.xyz);
   }
 
   if(countScatteringSamples > 0){
