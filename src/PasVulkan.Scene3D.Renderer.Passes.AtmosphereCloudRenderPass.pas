@@ -475,7 +475,7 @@ begin
  fPushConstants.BaseViewIndex:=InFlightFrameState^.FinalUnjitteredViewIndex;
  fPushConstants.CountViews:=InFlightFrameState^.CountFinalViews;
 
- fPushConstants.FrameIndex:=0;//aFrameIndex;
+ fPushConstants.FrameIndex:=aFrameIndex;
 
  fPushConstants.Flags:=0;
  if TpvScene3DRenderer(TpvScene3DRendererInstance(fInstance).Renderer).FastSky then begin
