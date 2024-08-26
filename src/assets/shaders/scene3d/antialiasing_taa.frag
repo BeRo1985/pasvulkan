@@ -28,8 +28,9 @@ const uint FLAG_FIRST_FRAME_DISOCCLUSION = 1u << 0u;
 const uint FLAG_TRANSLUCENT_DISOCCLUSION = 1u << 1u;
 const uint FLAG_VELOCITY_DISOCCLUSION = 1u << 2u;
 const uint FLAG_DEPTH_DISOCCLUSION = 1u << 3u;
-const uint FLAG_USE_FALLBACK_FXAA = 1u << 4u;
-const uint FLAG_DISABLE_TEMPORAL_ANTIALIASING = 1u << 5u; // For debugging purposes and for showing the raw jittered input without any temporal antialiasing when FLAG_USE_FALLBACK_FXAA is even not set.
+const uint FLAG_INCLUDE_BACKGROUND = 1u << 4u; // Include background in the temporal antialiasing.
+const uint FLAG_USE_FALLBACK_FXAA = 1u << 5u;
+const uint FLAG_DISABLE_TEMPORAL_ANTIALIASING = 1u << 6u; // For debugging purposes and for showing the raw jittered input without any temporal antialiasing when FLAG_USE_FALLBACK_FXAA is even not set.
 
 layout(push_constant, std140, row_major) uniform PushConstants {
   
@@ -38,18 +39,21 @@ layout(push_constant, std140, row_major) uniform PushConstants {
   uint flags;
   float varianceClipGamma;
   
+  float backgroundFeedbackMin;
+  float backgroundFeedbackMax;
   float translucentFeedbackMin;
   float translucentFeedbackMax;
+
   float opaqueFeedbackMin; 
   float opaqueFeedbackMax; 
-
   float ZMul;
   float ZAdd;
+
   float disocclusionDebugFactor;
-  float padding;
-  
   float velocityDisocclusionThreshold;
   float depthDisocclusionThreshold;
+  float padding;
+
   vec2 jitterUV;
 
 } pushConstants;
@@ -340,7 +344,10 @@ void main() {
   }
 
   // Check for far plane, but avoid translucent surfaces which does writes also no depth data like the background
-  if((velocityUVWZ.w < 1e-7) && (current.w > 0.5)){ 
+  bool isBackground = ((velocityUVWZ.w < 1e-7) && (current.w > 0.5));
+
+  // Check if we're in the far plane and the background should be included in the temporal antialiasing or not
+  if(((pushConstants.flags & FLAG_INCLUDE_BACKGROUND) == 0u) && isBackground){ 
     
     // We're in the far plane, so no temporal antialiasing or similar, so that background und similiar things are always sharp.
 
@@ -440,11 +447,13 @@ void main() {
 #endif      
       float unbiasedWeight = 1.0 - (abs(currentLuminance - historyLuminance) / max(currentLuminance, max(historyLuminance, 0.2)));
       float unbiasedWeightSquaredClamped = clamp(unbiasedWeight * unbiasedWeight, 0.0, 1.0);
-      float luminanceDisocclusionBasedBlendFactor = mix(
-        mix(pushConstants.translucentFeedbackMin, pushConstants.translucentFeedbackMax, unbiasedWeightSquaredClamped),
-        mix(pushConstants.opaqueFeedbackMin, pushConstants.opaqueFeedbackMin, unbiasedWeightSquaredClamped),
-        clamp(currentSamples[4].w, 0.0, 1.0)
-      );
+      float luminanceDisocclusionBasedBlendFactor = isBackground
+        ? mix(pushConstants.backgroundFeedbackMin, pushConstants.backgroundFeedbackMax, unbiasedWeightSquaredClamped) // Background
+        : mix(
+            mix(pushConstants.translucentFeedbackMin, pushConstants.translucentFeedbackMax, unbiasedWeightSquaredClamped), // Translucent
+            mix(pushConstants.opaqueFeedbackMin, pushConstants.opaqueFeedbackMin, unbiasedWeightSquaredClamped), // Opaque
+            clamp(currentSamples[4].w, 0.0, 1.0)
+          );
 
       // Blend the current and history color samples based on luminance-based disocclusion
       if(luminanceDisocclusionBasedBlendFactor > 1e-7){

@@ -83,8 +83,9 @@ type { TpvScene3DRendererPassesAntialiasingTAARenderPass }
               FLAG_TRANSLUCENT_DISOCCLUSION=TpvUInt32(TpvUInt32(1) shl 1);
               FLAG_VELOCITY_DISOCCLUSION=TpvUInt32(TpvUInt32(1) shl 2);
               FLAG_DEPTH_DISOCCLUSION=TpvUInt32(TpvUInt32(1) shl 3);
-              FLAG_USE_FALLBACK_FXAA=TpvUInt32(TpvUInt32(1) shl 4);
-              FLAG_DISABLE_TEMPORAL_ANTIALIASING=TpvUInt32(TpvUInt32(1) shl 5);
+              FLAG_INCLUDE_BACKGROUND=TpvUInt32(TpvUInt32(1) shl 4);
+              FLAG_USE_FALLBACK_FXAA=TpvUInt32(TpvUInt32(1) shl 5);
+              FLAG_DISABLE_TEMPORAL_ANTIALIASING=TpvUInt32(TpvUInt32(1) shl 6);
         type TPushConstants=packed record
 
               BaseViewIndex:TpvUInt32;
@@ -92,18 +93,21 @@ type { TpvScene3DRendererPassesAntialiasingTAARenderPass }
               Flags:TpvUInt32;
               VarianceClipGamma:TpvFloat;
 
+              BackgroundFeedbackMin:TpvFloat;
+              BackgroundFeedbackMax:TpvFloat;
               TranslucentFeedbackMin:TpvFloat;
               TranslucentFeedbackMax:TpvFloat;
+
               OpaqueFeedbackMin:TpvFloat;
               OpaqueFeedbackMax:TpvFloat;
-
               ZMul:TpvFloat;
               ZAdd:TpvFloat;
-              DisocclusionDebugFactor:TpvFloat;
-              Padding:TpvFloat;
 
+              DisocclusionDebugFactor:TpvFloat;
               VelocityDisocclusionThreshold:TpvFloat;
               DepthDisocclusionThreshold:TpvFloat;
+              Padding:TpvFloat;
+
               JitterUV:TpvVector2;
 
              end;
@@ -492,6 +496,7 @@ begin
  PushConstants.Flags:=//FLAG_TRANSLUCENT_DISOCCLUSION or
                       FLAG_VELOCITY_DISOCCLUSION or
                     //FLAG_DEPTH_DISOCCLUSION or // works not yet so good, needs more work
+                      FLAG_INCLUDE_BACKGROUND or
                       FLAG_USE_FALLBACK_FXAA;
  if aFrameIndex=0 then begin
   PushConstants.Flags:=PushConstants.Flags or FLAG_FIRST_FRAME_DISOCCLUSION;
@@ -501,6 +506,9 @@ begin
  end;
 
  PushConstants.VarianceClipGamma:=1.0;
+
+ PushConstants.BackgroundFeedbackMin:=0.88;
+ PushConstants.BackgroundFeedbackMax:=0.97;
 
  PushConstants.TranslucentFeedbackMin:=0.8;
  PushConstants.TranslucentFeedbackMax:=0.9;
