@@ -2658,7 +2658,7 @@ begin
 
  fFrameGraph.AddImageResourceType('resourcetype_msaa_velocity',
                                   false,
-                                  VK_FORMAT_R32G32_SFLOAT,
+                                  VK_FORMAT_R16G16_SFLOAT,
                                   Renderer.SurfaceSampleCountFlagBits,
                                   TpvFrameGraph.TImageType.Color,
                                   TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,fSizeFactor,fSizeFactor,1.0,fCountSurfaceViews),
@@ -2984,7 +2984,7 @@ begin
 
  fFrameGraph.AddImageResourceType('resourcetype_velocity',
                                   false,
-                                  VK_FORMAT_R32G32_SFLOAT,
+                                  VK_FORMAT_R16G16_SFLOAT,
                                   TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
                                   TpvFrameGraph.TImageType.Color,
                                   TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,fSizeFactor,fSizeFactor,1.0,fCountSurfaceViews),
@@ -4840,7 +4840,7 @@ begin
                                                                                         fScaledWidth,
                                                                                         fScaledHeight,
                                                                                         fCountSurfaceViews,
-                                                                                        VK_FORMAT_R32G32_SFLOAT,
+                                                                                        VK_FORMAT_R16G16_SFLOAT,
                                                                                         TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
                                                                                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                                                                         false,
