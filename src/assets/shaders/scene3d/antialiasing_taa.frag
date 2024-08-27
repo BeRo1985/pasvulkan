@@ -87,7 +87,7 @@ float LinearizeDepth(float depth, vec2 uv){
 
 // Get the luminance of a RGB color
 float Luminance(vec4 color){
-    return dot(color.xyz, vec3(0.2125, 0.7154, 0.0721));
+  return dot(color.xyz, vec3(0.2125, 0.7154, 0.0721));
 }
 
 #include "bidirectional_tonemapping.glsl"
