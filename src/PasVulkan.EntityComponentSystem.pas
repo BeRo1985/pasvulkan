@@ -4649,7 +4649,7 @@ begin
 end;
 
 function TpvEntityComponentSystem.TWorld.SerializeToJSON(const aEntityIDs:array of TEntityID;const aRootEntityID:TEntityID):TPasJSONItem;
-var RootObjectItem:TPasJSONItemObject;
+var RootObjectItem,EntitesObjectItem:TPasJSONItemObject;
     EntityIndex:TpvInt32;
     Entity:PEntity;
     EntityID:TEntityID;
@@ -4663,25 +4663,30 @@ begin
   end;
  end;
  //RootObjectItem.Add('SUID',TPasJSONItemString.Create(TPasJSONUTF8String(GetSUID.ToString)));
- if length(aEntityIDs)>0 then begin
-  for EntityIndex:=0 to length(aEntityIDs)-1 do begin
-   EntityID:=aEntityIDs[EntityIndex];
-   if HasEntity(EntityID) then begin
-    Entity:=GetEntityByID(EntityID);
-    if assigned(Entity) then begin
-     RootObjectItem.Add(Entity^.fSUID.ToString,Entity^.SerializeToJSON);
+ EntitesObjectItem:=TPasJSONItemObject.Create;
+ try
+  if length(aEntityIDs)>0 then begin
+   for EntityIndex:=0 to length(aEntityIDs)-1 do begin
+    EntityID:=aEntityIDs[EntityIndex];
+    if HasEntity(EntityID) then begin
+     Entity:=GetEntityByID(EntityID);
+     if assigned(Entity) then begin
+      EntitesObjectItem.Add(Entity^.fSUID.ToString,Entity^.SerializeToJSON);
+     end;
+    end;
+   end;
+  end else begin
+   for EntityIndex:=0 to length(aEntityIDs)-1 do begin
+    if HasEntityIndex(EntityIndex) then begin
+     Entity:=@fEntities[EntityIndex];
+     if assigned(Entity) then begin
+      EntitesObjectItem.Add(Entity^.fSUID.ToString,Entity^.SerializeToJSON);
+     end;
     end;
    end;
   end;
- end else begin
-  for EntityIndex:=0 to length(aEntityIDs)-1 do begin
-   if HasEntityIndex(EntityIndex) then begin
-    Entity:=@fEntities[EntityIndex];
-    if assigned(Entity) then begin
-     RootObjectItem.Add(Entity^.fSUID.ToString,Entity^.SerializeToJSON);
-    end;
-   end;
-  end;
+ finally
+  RootObjectItem.Add('entities',EntitesObjectItem);
  end;
 end;
 
