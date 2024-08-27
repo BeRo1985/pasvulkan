@@ -28,6 +28,6 @@ void main(){
   float delta = ((current.a * current.a) - (previous.a * previous.a)) * (1.0 / 5.0);
   float weight = clamp(1.0 - (sqrt(delta) * SMAA_REPROJECTION_WEIGHT_SCALE), 0.0, 1.0) * 0.5;
 
-  outFragColor = ApplyInverseToneMapping(mix(previous, current, weight));
-  
+  outFragColor = ApplyInverseToneMapping(mix(current, previous, weight));
+
 }
