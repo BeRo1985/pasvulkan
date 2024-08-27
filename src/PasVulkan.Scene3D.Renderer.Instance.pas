@@ -2842,15 +2842,30 @@ begin
                                   1
                                  );
 
- fFrameGraph.AddImageResourceType('resourcetype_color_temporal_antialiasing',
-                                  false,
-                                  Renderer.OptimizedNonAlphaFormat,
-                                  TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
-                                  TpvFrameGraph.TImageType.Color,
-                                  TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,fSizeFactor,fSizeFactor,1.0,fCountSurfaceViews),
-                                  TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_TRANSFER_SRC_BIT),
-                                  1
-                                 );
+ case Renderer.AntialiasingMode of
+  TpvScene3DRendererAntialiasingMode.SMAAT2x:begin
+   fFrameGraph.AddImageResourceType('resourcetype_color_temporal_antialiasing',
+                                    false,
+                                    VK_FORMAT_R16G16B16A16_SFLOAT,
+                                    TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
+                                    TpvFrameGraph.TImageType.Color,
+                                    TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,fSizeFactor,fSizeFactor,1.0,fCountSurfaceViews),
+                                    TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_TRANSFER_SRC_BIT),
+                                    1
+                                   );
+  end;
+  else begin
+   fFrameGraph.AddImageResourceType('resourcetype_color_temporal_antialiasing',
+                                    false,
+                                    Renderer.OptimizedNonAlphaFormat,
+                                    TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
+                                    TpvFrameGraph.TImageType.Color,
+                                    TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,fSizeFactor,fSizeFactor,1.0,fCountSurfaceViews),
+                                    TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_TRANSFER_SRC_BIT),
+                                    1
+                                   );
+  end;
+ end;
 
  fFrameGraph.AddImageResourceType('resourcetype_color_fullres_optimized_non_alpha',
                                   false,
@@ -2958,15 +2973,30 @@ begin
                                   1
                                  );}
 
- fFrameGraph.AddImageResourceType('resourcetype_color_antialiasing',
-                                  false,
-                                  Renderer.OptimizedNonAlphaFormat,
-                                  TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
-                                  TpvFrameGraph.TImageType.Color,
-                                  TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,fSizeFactor,fSizeFactor,1.0,fCountSurfaceViews),
-                                  TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_TRANSFER_SRC_BIT),
-                                  1
-                                 );
+ case Renderer.AntialiasingMode of
+  TpvScene3DRendererAntialiasingMode.SMAAT2x:begin
+   fFrameGraph.AddImageResourceType('resourcetype_color_antialiasing',
+                                    false,
+                                    VK_FORMAT_R16G16B16A16_SFLOAT,
+                                    TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
+                                    TpvFrameGraph.TImageType.Color,
+                                    TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,fSizeFactor,fSizeFactor,1.0,fCountSurfaceViews),
+                                    TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_TRANSFER_SRC_BIT),
+                                    1
+                                   );
+  end;
+  else begin
+   fFrameGraph.AddImageResourceType('resourcetype_color_antialiasing',
+                                    false,
+                                    Renderer.OptimizedNonAlphaFormat,
+                                    TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
+                                    TpvFrameGraph.TImageType.Color,
+                                    TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,fSizeFactor,fSizeFactor,1.0,fCountSurfaceViews),
+                                    TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT),
+                                    1
+                                   );
+  end;
+ end;
 
  fFrameGraph.AddImageResourceType('resourcetype_depth',
                                   false,
@@ -4857,7 +4887,7 @@ begin
                                                                                       fScaledWidth,
                                                                                       fScaledHeight,
                                                                                       fCountSurfaceViews,
-                                                                                      Renderer.OptimizedNonAlphaFormat,
+                                                                                      VK_FORMAT_R16G16B16A16_SFLOAT,
                                                                                       TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
                                                                                       VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                                                                       false,
