@@ -15,6 +15,8 @@ layout(set = 0, binding = 2) uniform sampler2DArray uTexturePrevious;
 
 #include "bidirectional_tonemapping.glsl"
 
+#include "antialiasing_smaa.glsl"
+
 void main(){
   
   vec4 current = ApplyToneMapping(subpassLoad(uSubpassCurrent));
@@ -24,7 +26,7 @@ void main(){
   vec4 previous = ApplyToneMapping(textureLod(uTexturePrevious, vec3(inTexCoord - velocity, float(gl_ViewIndex)), 0.0));
 
   float delta = ((current.a * current.a) - (previous.a * previous.a)) * (1.0 / 5.0);
-  float weight = clamp(1.0 - (sqrt(delta) * 30.0), 0.0, 1.0) * 0.5;
+  float weight = clamp(1.0 - (sqrt(delta) * SMAA_REPROJECTION_WEIGHT_SCALE), 0.0, 1.0) * 0.5;
 
   outFragColor = ApplyInverseToneMapping(mix(previous, current, weight));
 }
