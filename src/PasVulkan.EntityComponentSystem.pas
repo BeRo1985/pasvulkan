@@ -4695,7 +4695,31 @@ begin
 
  result:=TEntityID.Invalid;
 
+ if assigned(aJSONRootItem) and (aJSONRootItem is TPasJSONItemObject) then begin
 
+  EntityIDs:=nil;
+  try
+
+   ParentObjectNames:=TParentObjectNames.Create;
+   try
+
+    EntityUUIDHashMap:=TUUIDIntegerPairHashMap.Create(-1);
+    try
+
+    finally
+     EntityUUIDHashMap.Free;
+    end;
+
+   finally
+    ParentObjectNames.Free;
+   end;
+
+  finally
+   EntityIDs:=nil;
+  end;
+
+ end;
+ inc(fGeneration);
 
 end;
 
