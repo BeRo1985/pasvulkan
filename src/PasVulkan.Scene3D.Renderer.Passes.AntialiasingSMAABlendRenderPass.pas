@@ -83,6 +83,7 @@ type { TpvScene3DRendererPassesAntialiasingSMAABlendRenderPass }
         fVulkanRenderPass:TpvVulkanRenderPass;
         fResourceColor:TpvFrameGraph.TPass.TUsedImageResource;
         fResourceWeights:TpvFrameGraph.TPass.TUsedImageResource;
+        fResourceVelocity:TpvFrameGraph.TPass.TUsedImageResource;
         fResourceSurface:TpvFrameGraph.TPass.TUsedImageResource;
         fVulkanTransferCommandBuffer:TpvVulkanCommandBuffer;
         fVulkanTransferCommandBufferFence:TpvVulkanFence;
@@ -150,6 +151,16 @@ begin
                                  []
                                 );
 
+ if fInstance.Renderer.AntialiasingMode=TpvScene3DRendererAntialiasingMode.SMAAT2x then begin
+  fResourceVelocity:=AddImageInput('resourcetype_velocity',
+                                   'resource_velocity_data',
+                                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                    []
+                                   );
+ end else begin
+  fResourceVelocity:=nil;  
+ end;
+
  fResourceSurface:=AddImageOutput('resourcetype_color_antialiasing',
                                   'resource_antialiasing_color',
                                   VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
@@ -184,7 +195,11 @@ begin
   Stream.Free;
  end;
 
- Stream:=pvScene3DShaderVirtualFileSystem.GetFile('antialiasing_smaa_blend_frag.spv');
+ if fInstance.Renderer.AntialiasingMode=TpvScene3DRendererAntialiasingMode.SMAAT2x then begin
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('antialiasing_smaa_blend_reprojection_frag.spv');
+ end else begin
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('antialiasing_smaa_blend_frag.spv');
+ end; 
  try
   fVulkanFragmentShaderModule:=TpvVulkanShaderModule.Create(fInstance.Renderer.VulkanDevice,Stream);
  finally
@@ -219,8 +234,12 @@ begin
 
  fVulkanDescriptorPool:=TpvVulkanDescriptorPool.Create(fInstance.Renderer.VulkanDevice,
                                                        TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
-                                                       fInstance.Renderer.CountInFlightFrames*2);
- fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,fInstance.Renderer.CountInFlightFrames*2);
+                                                       fInstance.Renderer.CountInFlightFrames*3);
+ if fInstance.Renderer.AntialiasingMode=TpvScene3DRendererAntialiasingMode.SMAAT2x then begin
+  fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,fInstance.Renderer.CountInFlightFrames*3);
+ end else begin
+  fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,fInstance.Renderer.CountInFlightFrames*2);
+ end;
  fVulkanDescriptorPool.Initialize;
 
  fVulkanDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(fInstance.Renderer.VulkanDevice);
@@ -234,6 +253,13 @@ begin
                                        1,
                                        TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                        []);
+ if fInstance.Renderer.AntialiasingMode=TpvScene3DRendererAntialiasingMode.SMAAT2x then begin
+  fVulkanDescriptorSetLayout.AddBinding(2,
+                                        VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                        1,
+                                        TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                        []);
+ end;                                      
  fVulkanDescriptorSetLayout.Initialize;
 
  for InFlightFrameIndex:=0 to FrameGraph.CountInFlightFrames-1 do begin
@@ -275,6 +301,19 @@ begin
                                                                  [],
                                                                  false
                                                                 );
+  if fInstance.Renderer.AntialiasingMode=TpvScene3DRendererAntialiasingMode.SMAAT2x then begin
+   fVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(2,
+                                                                  0,
+                                                                  1,
+                                                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                                                  [TVkDescriptorImageInfo.Create(fInstance.Renderer.ClampedSampler.Handle,
+                                                                                                 fResourceVelocity.VulkanImageViews[InFlightFrameIndex].Handle,
+                                                                                                 fResourceVelocity.ResourceTransition.Layout)],// TVkImageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL))],
+                                                                  [],
+                                                                  [],
+                                                                  false
+                                                                 );
+  end;                                                             
   fVulkanDescriptorSets[InFlightFrameIndex].Flush;
  end;
 
