@@ -360,6 +360,7 @@ type TpvEntityComponentSystem=class
               procedure Deactivate;
               procedure Kill;
               procedure AddComponent(const aComponentID:TComponentID;const aData:Pointer=nil;const aDataSize:TpvSizeInt=0);
+              function AddComponentWithData(const aComponentID:TComponentID):Pointer;
               procedure RemoveComponent(const aComponentID:TComponentID);
               function HasComponent(const aComponentID:TComponentID):boolean;
               function GetComponent(const aComponentID:TComponentID):TpvEntityComponentSystem.TComponent;
@@ -618,6 +619,7 @@ type TpvEntityComponentSystem=class
               procedure DeactivateEntity(const aEntityID:TEntityID);
               procedure KillEntity(const aEntityID:TEntityID);
               procedure AddComponentToEntity(const aEntityID:TEntityID;const aComponentID:TComponentID;const aData:Pointer=nil;const aDataSize:TpvSizeInt=0);
+              function AddComponentWithDataToEntity(const aEntityID:TEntityID;const aComponentID:TComponentID):Pointer;
               procedure RemoveComponentFromEntity(const aEntityID:TEntityID;const aComponentID:TComponentID);
               function HasEntityComponent(const aEntityID:TEntityID;const aComponentID:TComponentID):boolean;
               procedure AddSystem(const aSystem:TSystem);
@@ -1942,6 +1944,15 @@ procedure TpvEntityComponentSystem.TEntity.AddComponent(const aComponentID:TComp
 begin
  if assigned(fWorld) then begin
   fWorld.AddComponentToEntity(fID,aComponentID,aData,aDataSize);
+ end;
+end;
+
+function TpvEntityComponentSystem.TEntity.AddComponentWithData(const aComponentID:TComponentID):Pointer;
+begin
+ if assigned(fWorld) then begin
+  result:=fWorld.AddComponentWithDataToEntity(fID,aComponentID);
+ end else begin
+  result:=nil;
  end;
 end;
 
@@ -3430,6 +3441,26 @@ begin
   Move(aData^,DelayedManagementEvent.Data[0],aDataSize);
  end;
  AddDelayedManagementEvent(DelayedManagementEvent);
+end;
+
+function TpvEntityComponentSystem.TWorld.AddComponentWithDataToEntity(const aEntityID:TEntityID;const aComponentID:TComponentID):Pointer;
+var Component:TpvEntityComponentSystem.TComponent;
+    DelayedManagementEvent:TDelayedManagementEvent;
+begin
+ if aComponentID<fComponents.Count then begin
+  Component:=fComponents[aComponentID];
+  DelayedManagementEvent.EventType:=TpvEntityComponentSystem.TDelayedManagementEventType.AddComponentToEntity;
+  DelayedManagementEvent.EntityID:=aEntityID;
+  DelayedManagementEvent.ComponentID:=aComponentID;
+  DelayedManagementEvent.Data:=nil;
+  DelayedManagementEvent.DataSize:=Component.fRegisteredComponentType.fSize;
+  SetLength(DelayedManagementEvent.Data,Component.fRegisteredComponentType.fSize);
+  FillChar(DelayedManagementEvent.Data[0],Component.fRegisteredComponentType.fSize,#0);
+  AddDelayedManagementEvent(DelayedManagementEvent);
+  result:=@DelayedManagementEvent.Data[0];
+ end else begin
+  result:=nil;
+ end;
 end;
 
 procedure TpvEntityComponentSystem.TWorld.RemoveComponentFromEntity(const aEntityID:TEntityID;const aComponentID:TComponentID);
