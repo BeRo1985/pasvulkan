@@ -515,6 +515,26 @@ type TpvEntityComponentSystem=class
 
             TDelayedManagementEventQueue=TpvDynamicQueue<TDelayedManagementEvent>;
 
+            { TWorldEntityComponentSetQuery }
+
+            TWorldEntityComponentSetQuery=class
+             private
+              fWorld:TWorld;
+              fRequiredComponentBitmap:TpvEntityComponentSystem.TComponentIDBitmap;
+              fExcludedComponentBitmap:TpvEntityComponentSystem.TComponentIDBitmap;
+              fEntityIDs:TpvEntityComponentSystem.TEntityIDList;
+              fGeneration:TpvUInt64;
+             public
+              constructor Create(const aWorld:TWorld;const aRequiredComponents:array of TpvEntityComponentSystem.TComponentID;const aExcludedComponents:array of TpvEntityComponentSystem.TComponentID); overload;
+              constructor Create(const aWorld:TWorld;const aRequiredComponents:array of TpvEntityComponentSystem.TComponent;const aExcludedComponents:array of TpvEntityComponentSystem.TComponent); overload;
+              destructor Destroy; override;
+              procedure Update;
+             public
+              property EntityIDs:TEntityIDList read fEntityIDs;
+            end;
+
+            { TWorld }
+
             TWorld=class
              public
               type TEntityIndexFreeList=TpvGenericList<TpvSizeInt>;
@@ -530,6 +550,7 @@ type TpvEntityComponentSystem=class
               fKilled:TPasMPBool32;
               fPasMPInstance:TPasMP;
               fLock:TPasMPMultipleReaderSingleWriterLock;
+              fGeneration:TpvUInt64;
               fComponents:TComponentList;
               fEntities:TEntities;
               fSystems:TSystemList;
@@ -2549,6 +2570,155 @@ procedure TpvEntityComponentSystem.TSystem.FinalizeUpdate;
 begin
 end;
 
+{ TpvEntityComponentSystem.TWorldEntityComponentSetQuery }
+
+constructor TpvEntityComponentSystem.TWorldEntityComponentSetQuery.Create(const aWorld:TWorld;const aRequiredComponents:array of TpvEntityComponentSystem.TComponentID;const aExcludedComponents:array of TpvEntityComponentSystem.TComponentID);
+var MaxComponentIDPlusOne,Index,BitmapSize:TpvSizeInt;
+begin
+
+ inherited Create;
+
+ fRequiredComponentBitmap:=nil;
+ fExcludedComponentBitmap:=nil;
+ fEntityIDs:=nil;
+
+ fGeneration:=High(TpvUInt64);
+
+ // Find the maximum component ID plus one
+ MaxComponentIDPlusOne:=0;
+ for Index:=0 to length(aRequiredComponents)-1 do begin
+  MaxComponentIDPlusOne:=Max(MaxComponentIDPlusOne,aRequiredComponents[Index]+1);
+ end;
+ for Index:=0 to length(aExcludedComponents)-1 do begin
+  MaxComponentIDPlusOne:=Max(MaxComponentIDPlusOne,aExcludedComponents[Index]+1);
+ end;
+
+ // Calculate the bitmap size
+ BitmapSize:=(MaxComponentIDPlusOne+63) shr 6;
+
+ // Initialize the and component bitmap with the required components
+ SetLength(fRequiredComponentBitmap,BitmapSize);
+ FillChar(fRequiredComponentBitmap[0],BitmapSize*SizeOf(TpvUInt64),#0);
+ for Index:=0 to length(aRequiredComponents)-1 do begin
+  fRequiredComponentBitmap[aRequiredComponents[Index] shr 6]:=fRequiredComponentBitmap[aRequiredComponents[Index] shr 6] or (TpvUInt64(1) shl (aRequiredComponents[Index] and 63));
+ end;
+
+ // Initialize the and not component bitmap with the excluded components
+ SetLength(fExcludedComponentBitmap,BitmapSize);
+ FillChar(fExcludedComponentBitmap[0],BitmapSize*SizeOf(TpvUInt64),#0);
+ for Index:=0 to length(fExcludedComponentBitmap)-1 do begin
+  fExcludedComponentBitmap[aExcludedComponents[Index] shr 6]:=fExcludedComponentBitmap[aExcludedComponents[Index] shr 6] or (TpvUInt64(1) shl (aExcludedComponents[Index] and 63));
+ end;
+
+end;
+
+constructor TpvEntityComponentSystem.TWorldEntityComponentSetQuery.Create(const aWorld:TWorld;const aRequiredComponents:array of TpvEntityComponentSystem.TComponent;const aExcludedComponents:array of TpvEntityComponentSystem.TComponent);
+var Index:TpvSizeInt;
+    RequiredComponents:array of TpvEntityComponentSystem.TComponentID;
+    ExcludedComponents:array of TpvEntityComponentSystem.TComponentID;
+begin
+ RequiredComponents:=nil;
+ try
+  ExcludedComponents:=nil;
+  try
+   SetLength(RequiredComponents,length(aRequiredComponents));
+   for Index:=0 to length(aRequiredComponents)-1 do begin
+    RequiredComponents[Index]:=aRequiredComponents[Index].fRegisteredComponentType.fID;
+   end;
+   SetLength(ExcludedComponents,length(aExcludedComponents));
+   for Index:=0 to length(aExcludedComponents)-1 do begin
+    ExcludedComponents[Index]:=aExcludedComponents[Index].fRegisteredComponentType.fID;
+   end;
+   Create(aWorld,RequiredComponents,ExcludedComponents);
+  finally
+   ExcludedComponents:=nil;
+  end;
+ finally
+  RequiredComponents:=nil;
+ end;
+end;
+
+destructor TpvEntityComponentSystem.TWorldEntityComponentSetQuery.Destroy;
+begin
+ fRequiredComponentBitmap:=nil;
+ fExcludedComponentBitmap:=nil;
+ fEntityIDs:=nil;
+ inherited Destroy;
+end;
+
+procedure TpvEntityComponentSystem.TWorldEntityComponentSetQuery.Update;
+var Index,BitmapEntityIndex,EntityIndex,OtherIndex,CommonBitmapSize,CommonComponentBitmapSize:TpvSizeInt;
+    Value:TpvUInt64;
+    EntityUsedBitmapValue:TpvUInt32;
+    Entity:TpvEntityComponentSystem.PEntity;
+    OK:boolean;
+begin
+
+ if fGeneration<>fWorld.fGeneration then begin
+
+  try
+
+   CommonBitmapSize:=Min(length(fRequiredComponentBitmap),length(fExcludedComponentBitmap));
+
+   fEntityIDs.ClearNoFree;
+
+   BitmapEntityIndex:=0;
+
+   // Iterate over all used entity bitmap values with bittwiddling per bit scan forward to find the next set lowest bit
+   for Index:=0 to Min(length(fWorld.fEntityUsedBitmap),(fWorld.fMaxEntityIndex+31) shr 5)-1 do begin
+
+    EntityUsedBitmapValue:=fWorld.fEntityUsedBitmap[Index];
+
+    // Iterate over all set bits in the used entity bitmap value
+    while EntityUsedBitmapValue<>0 do begin
+
+     EntityIndex:=BitmapEntityIndex+TPasMPMath.BitScanForward32(EntityUsedBitmapValue);
+     EntityUsedBitmapValue:=EntityUsedBitmapValue and (EntityUsedBitmapValue-1);
+
+     Entity:=@fWorld.fEntities[EntityIndex];
+
+     OK:=true;
+
+     CommonComponentBitmapSize:=Min(CommonBitmapSize,length(Entity^.fComponentsBitmap));
+
+     for OtherIndex:=0 to CommonComponentBitmapSize-1 do begin
+      Value:=Entity^.fComponentsBitmap[OtherIndex];
+      if ((Value and fRequiredComponentBitmap[OtherIndex])<>fRequiredComponentBitmap[OtherIndex]) or
+         ((Value and fExcludedComponentBitmap[OtherIndex])<>0) then begin
+       OK:=false;
+       break;
+      end;
+     end;
+
+     if OK then begin
+
+      for OtherIndex:=CommonComponentBitmapSize to CommonBitmapSize-1 do begin
+       if fRequiredComponentBitmap[OtherIndex]<>0 then begin
+        OK:=false;
+        break;
+       end;
+      end;
+
+      if OK then begin
+       fEntityIDs.Add(Entity^.fID);
+      end;
+
+     end;
+
+    end;
+
+    inc(BitmapEntityIndex,32);
+
+   end;
+
+  finally
+   fGeneration:=fWorld.fGeneration;
+  end;
+
+ end;
+
+end;
+
 { TpvEntityComponentSystem.TWorld }
 
 constructor TpvEntityComponentSystem.TWorld.Create(const aPasMPInstance:TPasMP);
@@ -2564,6 +2734,8 @@ begin
  end else begin
   fPasMPInstance:=TPasMP.GetGlobalInstance;
  end;
+
+ fGeneration:=0;
 
  fActive:=false;
 
@@ -3487,6 +3659,8 @@ begin
 
    inc(DelayedManagementEventIndex);
 
+   inc(fGeneration);
+
    case DelayedManagementEvent^.EventType of
 
     TpvEntityComponentSystem.TDelayedManagementEventType.CreateEntity:begin
@@ -3933,6 +4107,7 @@ begin
  finally
   fLock.ReleaseRead;
  end;
+ inc(fGeneration);
  fEntityIndexCounter:=0;
  fEntityUUIDHashMap.Clear;
  fReservedEntityUUIDHashMap.Clear;
@@ -3960,6 +4135,7 @@ begin
  finally
   fLock.ReleaseRead;
  end;
+ inc(fGeneration);
  fEntityIndexCounter:=0;
  fEntityUUIDHashMap.Clear;
  fReservedEntityUUIDHashMap.Clear;
@@ -4233,6 +4409,7 @@ begin
  finally
   BufferedStream.Free;
  end;
+ inc(fGeneration);
 end;
 
 initialization
