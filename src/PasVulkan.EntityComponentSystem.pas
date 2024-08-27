@@ -113,6 +113,7 @@ type TpvEntityComponentSystem=class
                     IndexSignBitMask=TpvUInt32(1 shl IndexBitsMinusOne);
                     IndexMask=TpvUInt32((TpvUInt32(1) shl IndexBits)-1);
                     GenerationMask=TpvUInt32((TpvUInt32(1) shl GenerationBits)-1);
+                    Invalid=TpvUInt32($ffffffff);
               function GetIndex:TpvInt32; inline;
               procedure SetIndex(const aIndex:TpvInt32); inline;
               function GetGeneration:TpvUInt8; inline;
@@ -621,6 +622,7 @@ type TpvEntityComponentSystem=class
               function CreateEntity(const aEntityUUID:TpvUUID):TEntityID; overload;
               function CreateEntity:TEntityID; overload;
               function HasEntity(const aEntityID:TEntityID):boolean;
+              function HasEntityIndex(const aEntityIndex:TpvSizeInt):boolean;
               function IsEntityActive(const aEntityID:TEntityID):boolean;
               procedure ActivateEntity(const aEntityID:TEntityID);
               procedure DeactivateEntity(const aEntityID:TEntityID);
@@ -643,13 +645,13 @@ type TpvEntityComponentSystem=class
               procedure Deactivate;
               procedure MementoSerialize(const aStream:TStream);
               procedure MementoUnserialize(const aStream:TStream);
-              function SerializeToJSON(const aEntityIDs:array of TEntityID;const aRootEntityID:TEntityID=-1):TPasJSONItem;
+              function SerializeToJSON(const aEntityIDs:array of TEntityID;const aRootEntityID:TEntityID=TpvUInt32($ffffffff)):TPasJSONItem;
               function UnserializeFromJSON(const aJSONRootItem:TPasJSONItem;const aCreateNewUUIDs:boolean=false):TEntityID;
               function LoadFromStream(const aStream:TStream;const aCreateNewUUIDs:boolean=false):TEntityID;
-              procedure SaveToStream(const aStream:TStream;const aEntityIDs:array of TEntityID;const aRootEntityID:TEntityID=-1);
+              procedure SaveToStream(const aStream:TStream;const aEntityIDs:array of TEntityID;const aRootEntityID:TEntityID=TpvUInt32($ffffffff));
               function LoadFromFile(const aFileName:TpvUTF8String;const aCreateNewUUIDs:boolean=false):TEntityID;
-              procedure SaveToFile(const aFileName:TpvUTF8String;const aEntityIDs:array of TEntityID;const aRootEntityID:TEntityID=-1);
-              function Assign(const aFrom:TWorld;const aEntityIDs:array of TEntityID;const aRootEntityID:TEntityID=-1;const aAssignOp:TWorldAssignOp=TWorldAssignOp.Replace):TEntityID;
+              procedure SaveToFile(const aFileName:TpvUTF8String;const aEntityIDs:array of TEntityID;const aRootEntityID:TEntityID=TpvUInt32($ffffffff));
+              function Assign(const aFrom:TWorld;const aEntityIDs:array of TEntityID;const aRootEntityID:TEntityID=TpvUInt32($ffffffff);const aAssignOp:TWorldAssignOp=TWorldAssignOp.Replace):TEntityID;
               procedure Store;
               procedure Interpolate(const aAlpha:TpvDouble);
              public
@@ -3402,6 +3404,19 @@ begin
  end;
 end;
 
+function TpvEntityComponentSystem.TWorld.HasEntityIndex(const aEntityIndex:TpvSizeInt):boolean;
+begin
+ fLock.AcquireRead;
+ try
+  result:=(aEntityIndex>=0) and
+          (aEntityIndex<=fMaxEntityIndex) and
+          ((fEntityUsedBitmap[aEntityIndex shr 5] and TpvUInt32(TpvUInt32(1) shl TpvUInt32(aEntityIndex and 31)))<>0) and
+          (fEntities[aEntityIndex].fID.Index=aEntityIndex);
+ finally
+  fLock.ReleaseRead;
+ end;
+end;
+
 function TpvEntityComponentSystem.TWorld.IsEntityActive(const aEntityID:TpvEntityComponentSystem.TEntityID):boolean;
 var EntityIndex:TpvInt32;
 begin
@@ -4540,15 +4555,15 @@ begin
  inc(fGeneration);
 end;
 
-function TpvEntityComponentSystem.TWorld.SerializeToJSON(const aEntityIDs:array of TEntityID;const aRootEntityID:TEntityID=-1):TPasJSONItem;
+function TpvEntityComponentSystem.TWorld.SerializeToJSON(const aEntityIDs:array of TEntityID;const aRootEntityID:TEntityID):TPasJSONItem;
 begin
 end;
 
-function TpvEntityComponentSystem.TWorld.UnserializeFromJSON(const aJSONRootItem:TPasJSONItem;const aCreateNewUUIDs:boolean=false):TEntityID;
+function TpvEntityComponentSystem.TWorld.UnserializeFromJSON(const aJSONRootItem:TPasJSONItem;const aCreateNewUUIDs:boolean):TEntityID;
 begin
 end;
 
-function TpvEntityComponentSystem.TWorld.LoadFromStream(const aStream:TStream;const aCreateNewUUIDs:boolean=false):TEntityID;
+function TpvEntityComponentSystem.TWorld.LoadFromStream(const aStream:TStream;const aCreateNewUUIDs:boolean):TEntityID;
 var s:TPasJSONRawByteString;
     l:TpvInt64;
 begin
@@ -4562,7 +4577,7 @@ begin
    end;
    result:=UnserializeFromJSON(TPasJSON.Parse(s),aCreateNewUUIDs);
   end else begin
-   result:=0;
+   result:=TEntityID.Invalid;
   end;
  finally
   s:='';
@@ -4608,8 +4623,123 @@ begin
  end;
 end;
 
-function TpvEntityComponentSystem.TWorld.Assign(const aFrom:TWorld;const aEntityIDs:array of TEntityID;const aRootEntityID:TEntityID=-1;const aAssignOp:TWorldAssignOp=TWorldAssignOp.Replace):TEntityID;
+function TpvEntityComponentSystem.TWorld.Assign(const aFrom:TWorld;const aEntityIDs:array of TEntityID;const aRootEntityID:TEntityID;const aAssignOp:TWorldAssignOp):TEntityID;
+type TProcessBitmap=array of TpvUInt32;
+var FromEntityID,EntityID:TEntityID;
+    Index:TpvInt32;
+    FromEntity,Entity:PEntity;
+    NewEntityIDs:TEntityIDDynamicArray;
+    FromEntityProcessBitmap:TProcessBitmap;
+    DoRefresh:boolean;
 begin
+
+ result:=TEntityID.Invalid;
+
+ FromEntityProcessBitmap:=nil;
+ try
+
+  if length(aEntityIDs)>0 then begin
+   SetLength(FromEntityProcessBitmap,(aFrom.fMaxEntityIndex+31) shr 5);
+   FillChar(FromEntityProcessBitmap[0],length(FromEntityProcessBitmap)*SizeOf(TpvUInt32),#0);
+   for Index:=0 to length(aEntityIDs)-1 do begin
+    EntityID:=aEntityIDs[Index];
+    if{(EntityID>=0) and}(EntityID.Index<=aFrom.fMaxEntityIndex) then begin
+     FromEntityProcessBitmap[EntityID.Index shr 5]:=FromEntityProcessBitmap[EntityID.Index shr 5] or (TpvUInt32(1) shl (EntityID.Index and 31));
+    end;
+   end;
+  end;
+
+  if aAssignOp=TWorldAssignOp.Replace then begin
+   DoRefresh:=false;
+   for Index:=0 to fMaxEntityIndex do begin
+    if HasEntityIndex(Index) then begin
+     Entity:=@fEntities[Index];
+     if assigned(Entity) then begin
+      EntityID:=Entity^.fID;
+      FromEntity:=aFrom.GetEntityByUUID(Entity^.UUID);
+      if (not assigned(FromEntity)) or
+         (assigned(FromEntity) and
+          ((length(FromEntityProcessBitmap)>0) and
+           (({(FromEntity.ID.Index>=0) and}(FromEntity^.ID.Index<=aFrom.fMaxEntityIndex)) and
+            ((FromEntityProcessBitmap[FromEntity^.ID.Index shr 5] and (TpvUInt32(1) shl (FromEntity^.ID.Index and 31)))=0)))) then begin
+       Entity^.Kill;
+       DoRefresh:=true;
+      end;
+     end;
+    end;
+   end;
+   if DoRefresh then begin
+    Refresh;
+   end;
+  end;
+
+  NewEntityIDs:=nil;
+  try
+
+   SetLength(NewEntityIDs,aFrom.fMaxEntityIndex+1);
+
+   DoRefresh:=false;
+   for Index:=0 to aFrom.fMaxEntityIndex do begin
+    if aFrom.HasEntityIndex(Index) then begin
+     FromEntity:=@aFrom.fEntities[Index];
+     FromEntityID:=FromEntity^.fID;
+     if assigned(FromEntity) and
+        ((length(FromEntityProcessBitmap)=0) or
+         (({(Index>=0) and}(Index<=aFrom.fMaxEntityIndex)) and
+          ((FromEntityProcessBitmap[Index shr 5] and (TpvUInt32(1) shl (Index and 31)))<>0))) then begin
+      if aAssignOp=TWorldAssignOp.Add then begin
+       EntityID:=CreateEntity;
+       DoRefresh:=true;
+      end else begin
+       Entity:=GetEntityByUUID(FromEntity.UUID);
+       if assigned(Entity) then begin
+        EntityID:=Entity^.ID;
+       end else begin
+        EntityID:=CreateEntity(FromEntity.UUID);
+        DoRefresh:=true;
+       end;
+      end;
+      NewEntityIDs[Index]:=EntityID;
+      if (aRootEntityID<>TEntityID.Invalid) and (aRootEntityID=FromEntityID) then begin
+       result:=EntityID;
+      end;
+     end else begin
+      NewEntityIDs[Index]:=TEntityID.Invalid;
+     end;
+    end else begin
+     NewEntityIDs[Index]:=TEntityID.Invalid;
+    end;
+   end;
+   if DoRefresh then begin
+    Refresh;
+   end;
+
+   FromEntityProcessBitmap:=nil;
+
+   for Index:=0 to Min(aFrom.fMaxEntityIndex,Length(NewEntityIDs)-1) do begin
+    EntityID:=NewEntityIDs[Index];
+    if EntityID<>TEntityID.Invalid then begin
+     FromEntity:=@aFrom.fEntities[Index];
+     Entity:=GetEntityByID(EntityID);
+     if aAssignOp in [TWorldAssignOp.Replace,TWorldAssignOp.Add] then begin
+      Entity.Assign(FromEntity^,TEntityAssignOp.Replace,NewEntityIDs,false);
+     end else begin
+      Entity.Assign(FromEntity^,TEntityAssignOp.Combine,NewEntityIDs,false);
+     end;
+    end;
+   end;
+
+  finally
+   SetLength(NewEntityIDs,0);
+  end;
+
+  inc(fGeneration);
+  Refresh;
+
+ finally
+  SetLength(FromEntityProcessBitmap,0);
+ end;
+
 end;
 
 procedure TpvEntityComponentSystem.TWorld.Store;
