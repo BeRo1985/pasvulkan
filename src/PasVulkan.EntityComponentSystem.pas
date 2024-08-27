@@ -3242,7 +3242,21 @@ begin
 end;
 
 procedure TpvEntityComponentSystem.TWorld.Defragment;
+ procedure DefragmentComponents;
+ var ComponentIndex:TpvSizeInt;
+ begin
+  for ComponentIndex:=0 to fComponents.Count-1 do begin
+   fComponents[ComponentIndex].Defragment;
+  end;
+ end;
+ procedure DefragmentEntities;
+ begin
+
+ end;
+
 begin
+ DefragmentComponents;
+ DefragmentEntities;
 end;
 
 procedure TpvEntityComponentSystem.TWorld.Refresh;
