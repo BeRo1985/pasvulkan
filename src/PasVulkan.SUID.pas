@@ -71,6 +71,7 @@ uses SysUtils,
      PasVulkan.Math;
 
 type TpvSUID=type TpvUInt64;
+     PpvSUID=^TpvSUID;
 
      { TpvSUIDHelper }
 

@@ -346,7 +346,7 @@ type TpvEntityComponentSystem=class
              private
               fWorld:TWorld;
               fID:TEntityID;
-              fUUID:TpvUUID;
+              fSUID:TpvSUID;
               fFlags:TFlags;
               fCountComponents:TpvInt32;
               fComponentsBitmap:TComponentIDBitmap;
@@ -362,7 +362,7 @@ type TpvEntityComponentSystem=class
               procedure Deactivate;
               procedure Kill;
               function SerializeToJSON:TPasJSONItemObject;
-              procedure UnserializeFromJSON(const aJSONRootItem:TPasJSONItem;const aCreateNewUUIDs:boolean=false);
+              procedure UnserializeFromJSON(const aJSONRootItem:TPasJSONItem;const aCreateNewSUIDs:boolean=false);
               procedure AddComponent(const aComponentID:TComponentID;const aData:Pointer=nil;const aDataSize:TpvSizeInt=0);
               function AddComponentWithData(const aComponentID:TComponentID):Pointer;
               procedure RemoveComponent(const aComponentID:TComponentID);
@@ -371,7 +371,7 @@ type TpvEntityComponentSystem=class
              public
               property World:TWorld read fWorld write fWorld;
               property ID:TEntityID read fID write fID;
-              property UUID:TpvUUID read fUUID write fUUID;
+              property SUID:TpvSUID read fSUID write fSUID;
               property Flags:TFlags read fFlags write fFlags;
               property Active:boolean read GetActive write SetActive;
               property Components[const aComponentID:TComponentID]:TpvEntityComponentSystem.TComponent read GetComponent;
@@ -518,7 +518,7 @@ type TpvEntityComponentSystem=class
              EntityID:TEntityID;
              ComponentID:TComponentID;
              System:TSystem;
-             UUID:TpvUUID;
+             SUID:TpvSUID;
              Data:TDelayedManagementEventData;
              DataSize:TpvSizeInt;
              DataString:TpvRawByteString;
@@ -563,10 +563,10 @@ type TpvEntityComponentSystem=class
                    TUsedBitmap=array of TpvUInt32;
                    TOnEvent=procedure(const aWorld:TWorld;const aEvent:TEvent) of object;
                    TEventRegistrationStringIntegerPairHashMap=class(TpvStringHashMap<TpvSizeInt>);
-                   TUUIDEntityIDPairHashMap=class(TpvHashMap<TpvUUID,TpvEntityComponentSystem.TEntityID>);
+                   TSUIDEntityIDPairHashMap=class(TpvHashMap<TpvSUID,TpvEntityComponentSystem.TEntityID>);
                    TSystemBooleanPairHashMap=class(TpvHashMap<TpvEntityComponentSystem.TSystem,longbool>);
              private
-              fUUID:TpvUUID;
+              fSUID:TpvSUID;
               fActive:TPasMPBool32;
               fKilled:TPasMPBool32;
               fPasMPInstance:TPasMP;
@@ -584,9 +584,9 @@ type TpvEntityComponentSystem=class
               fEntityUsedBitmap:TUsedBitmap;
               fEntityIndexCounter:TpvSizeInt;
               fMaxEntityIndex:TpvSizeInt;
-              fEntityUUIDHashMap:TUUIDEntityIDPairHashMap;
+              fEntitySUIDHashMap:TSUIDEntityIDPairHashMap;
               fReservedEntityHashMapLock:TPasMPMultipleReaderSingleWriterLock;
-              fReservedEntityUUIDHashMap:TUUIDEntityIDPairHashMap;
+              fReservedEntitySUIDHashMap:TSUIDEntityIDPairHashMap;
               fEventInProcessing:longbool;
               fEventRegistrationLock:TPasMPMultipleReaderSingleWriterLock;
               fEventRegistrationList:TEventRegistrationList;
@@ -609,13 +609,13 @@ type TpvEntityComponentSystem=class
               fDeltaTime:TpvDouble;
               procedure AddDelayedManagementEvent(const aDelayedManagementEvent:TDelayedManagementEvent);
               function GetEntityByID(const aEntityID:TEntityID):PEntity;
-              function GetEntityByUUID(const aEntityUUID:TpvUUID):PEntity;
-              function DoCreateEntity(const aEntityID:TEntityID;const aEntityUUID:TpvUUID):boolean;
+              function GetEntityBySUID(const aEntitySUID:TpvSUID):PEntity;
+              function DoCreateEntity(const aEntityID:TEntityID;const aEntitySUID:TpvSUID):boolean;
               function DoDestroyEntity(const aEntityID:TEntityID):boolean;
               procedure ProcessEvent(const aEvent:PEvent);
               procedure ProcessEvents;
               procedure ProcessDelayedEvents(const aDeltaTime:TTime);
-              function CreateEntity(const aEntityID:TEntityID;const aEntityUUID:TpvUUID):TEntityID; overload;
+              function CreateEntity(const aEntityID:TEntityID;const aEntitySUID:TpvSUID):TEntityID; overload;
              public
               constructor Create(const aPasMPInstance:TPasMP=nil); reintroduce;
               destructor Destroy; override;
@@ -625,7 +625,7 @@ type TpvEntityComponentSystem=class
               function FindEvent(const aName:TpvUTF8String):TEventID;
               procedure SubscribeToEvent(const aEventID:TEventID;const aEventHandler:TEventHandler);
               procedure UnsubscribeFromEvent(const aEventID:TEventID;const aEventHandler:TEventHandler);
-              function CreateEntity(const aEntityUUID:TpvUUID):TEntityID; overload;
+              function CreateEntity(const aEntitySUID:TpvSUID):TEntityID; overload;
               function CreateEntity:TEntityID; overload;
               function HasEntity(const aEntityID:TEntityID):boolean;
               function HasEntityIndex(const aEntityIndex:TpvSizeInt):boolean;
@@ -652,16 +652,16 @@ type TpvEntityComponentSystem=class
               procedure MementoSerialize(const aStream:TStream);
               procedure MementoUnserialize(const aStream:TStream);
               function SerializeToJSON(const aEntityIDs:array of TEntityID;const aRootEntityID:TEntityID=TpvUInt32($ffffffff)):TPasJSONItem;
-              function UnserializeFromJSON(const aJSONRootItem:TPasJSONItem;const aCreateNewUUIDs:boolean=false):TEntityID;
-              function LoadFromStream(const aStream:TStream;const aCreateNewUUIDs:boolean=false):TEntityID;
+              function UnserializeFromJSON(const aJSONRootItem:TPasJSONItem;const aCreateNewSUIDs:boolean=false):TEntityID;
+              function LoadFromStream(const aStream:TStream;const aCreateNewSUIDs:boolean=false):TEntityID;
               procedure SaveToStream(const aStream:TStream;const aEntityIDs:array of TEntityID;const aRootEntityID:TEntityID=TpvUInt32($ffffffff));
-              function LoadFromFile(const aFileName:TpvUTF8String;const aCreateNewUUIDs:boolean=false):TEntityID;
+              function LoadFromFile(const aFileName:TpvUTF8String;const aCreateNewSUIDs:boolean=false):TEntityID;
               procedure SaveToFile(const aFileName:TpvUTF8String;const aEntityIDs:array of TEntityID;const aRootEntityID:TEntityID=TpvUInt32($ffffffff));
               function Assign(const aFrom:TWorld;const aEntityIDs:array of TEntityID;const aRootEntityID:TEntityID=TpvUInt32($ffffffff);const aAssignOp:TWorldAssignOp=TWorldAssignOp.Replace):TEntityID;
               procedure Store;
               procedure Interpolate(const aAlpha:TpvDouble);
              public
-              property UUID:TpvUUID read fUUID write fUUID;
+              property SUID:TpvSUID read fSUID write fSUID;
               property Active:TPasMPBool32 read fActive write fActive;
               property Killed:TPasMPBool32 read fKilled write fKilled;
               property Components:TComponentList read fComponents;
@@ -837,7 +837,7 @@ function TpvEntityComponentSystem.TRegisteredComponentType.SerializeToJSON(const
     end;
     Entity:=aWorld.GetEntityByID(UnsignedInteger);
     if assigned(Entity) then begin
-     result:=TPasJSONItemString.Create(Entity^.fUUID.ToString);
+     result:=TPasJSONItemString.Create(Entity^.fSUID.ToString);
     end else begin
      if UnsignedInteger<TpvUInt64($0010000000000000) then begin
       result:=TPasJSONItemNumber.Create(UnsignedInteger);
@@ -1062,7 +1062,7 @@ procedure TpvEntityComponentSystem.TRegisteredComponentType.UnserializeFromJSON(
         (StringValue[20]='-') and
         (StringValue[25]='-') and
         (StringValue[38]='}') then begin
-      Entity:=aWorld.GetEntityByUUID(TpvUUID.CreateFromString(StringValue));
+      Entity:=aWorld.GetEntityBySUID(TpvSUID.CreateFromString(StringValue));
       if assigned(Entity) then begin
        UnsignedInteger:=Entity^.fID;
       end else begin
@@ -2923,7 +2923,7 @@ begin
 
  inherited Create;
 
- fUUID:=TpvUUID.Create;
+ fSUID:=TpvSUID.Create;
 
  if assigned(aPasMPInstance) then begin
   fPasMPInstance:=aPasMPInstance;
@@ -2939,11 +2939,11 @@ begin
 
  fLock:=TPasMPMultipleReaderSingleWriterLock.Create;
 
- fEntityUUIDHashMap:=TpvEntityComponentSystem.TWorld.TUUIDEntityIDPairHashMap.Create(0);
+ fEntitySUIDHashMap:=TpvEntityComponentSystem.TWorld.TSUIDEntityIDPairHashMap.Create(0);
 
  fReservedEntityHashMapLock:=TPasMPMultipleReaderSingleWriterLock.Create;
 
- fReservedEntityUUIDHashMap:=TpvEntityComponentSystem.TWorld.TUUIDEntityIDPairHashMap.Create(0);
+ fReservedEntitySUIDHashMap:=TpvEntityComponentSystem.TWorld.TSUIDEntityIDPairHashMap.Create(0);
 
  fComponents:=TComponentList.Create;
  fComponents.OwnsObjects:=true;
@@ -3069,9 +3069,9 @@ begin
 
  fFreeEventQueueLock.Free;
 
- FreeAndNil(fEntityUUIDHashMap);
+ FreeAndNil(fEntitySUIDHashMap);
 
- FreeAndNil(fReservedEntityUUIDHashMap);
+ FreeAndNil(fReservedEntitySUIDHashMap);
 
  FreeAndNil(fReservedEntityHashMapLock);
 
@@ -3207,12 +3207,12 @@ begin
  end;
 end;
 
-function TpvEntityComponentSystem.TWorld.GetEntityByUUID(const aEntityUUID:TpvUUID):TpvEntityComponentSystem.PEntity;
+function TpvEntityComponentSystem.TWorld.GetEntityBySUID(const aEntitySUID:TpvSUID):TpvEntityComponentSystem.PEntity;
 begin
  result:=nil;
 end;
 
-function TpvEntityComponentSystem.TWorld.DoCreateEntity(const aEntityID:TEntityID;const aEntityUUID:TpvUUID):boolean;
+function TpvEntityComponentSystem.TWorld.DoCreateEntity(const aEntityID:TEntityID;const aEntitySUID:TpvSUID):boolean;
 var EntityIndex,Index,OldCount,Count:TpvInt32;
     Bitmap:PpvInt32;
     Entity:PEntity;
@@ -3245,7 +3245,7 @@ begin
       Entity^.fWorld:=self;
       Entity^.fID:=0;
       Entity^.fFlags:=[];
-      Entity^.fUUID:=TpvUUID.Null;
+      Entity^.fSUID:=TpvSUID.Null;
       Entity^.fUnknownData:=nil;
       Entity^.fCountComponents:=0;
       Entity^.fComponentsBitmap:=nil;
@@ -3279,12 +3279,12 @@ begin
    Entity^.fWorld:=self;
    Entity^.fID:=aEntityID;
    Entity^.fFlags:=[TEntity.TFlag.Used];
-   Entity^.fUUID:=aEntityUUID;
+   Entity^.fSUID:=aEntitySUID;
    Entity^.fUnknownData:=nil;
    Entity^.fCountComponents:=0;
    Entity^.fComponentsBitmap:=nil;
 
-   fEntityUUIDHashMap.Add(aEntityUUID,aEntityID);
+   fEntitySUIDHashMap.Add(aEntitySUID,aEntityID);
 
    result:=true;
 
@@ -3319,10 +3319,10 @@ begin
      fComponents[Index].FreeComponentFromEntityIndex(EntityIndex);
     end;
     Entity:=@fEntities[EntityIndex];
-    fEntityUUIDHashMap.Delete(Entity^.UUID);
+    fEntitySUIDHashMap.Delete(Entity^.SUID);
     fReservedEntityHashMapLock.AcquireWrite;
     try
-     fReservedEntityUUIDHashMap.Delete(Entity^.UUID);
+     fReservedEntitySUIDHashMap.Delete(Entity^.SUID);
     finally
      fReservedEntityHashMapLock.ReleaseWrite;
     end;
@@ -3349,27 +3349,27 @@ begin
  end;
 end;
 
-function TpvEntityComponentSystem.TWorld.CreateEntity(const aEntityID:TpvEntityComponentSystem.TEntityID;const aEntityUUID:TpvUUID):TpvEntityComponentSystem.TEntityID;
+function TpvEntityComponentSystem.TWorld.CreateEntity(const aEntityID:TpvEntityComponentSystem.TEntityID;const aEntitySUID:TpvSUID):TpvEntityComponentSystem.TEntityID;
 var DelayedManagementEvent:TDelayedManagementEvent;
     Index,OldCount,Count:TpvSizeInt;
-    EntityUUID:PpvUUID;
-    AutoGeneratedUUID:TpvUUID;
-    UUIDIsUnused:boolean;
+    EntitySUID:PpvSUID;
+    AutoGeneratedSUID:TpvSUID;
+    SUIDIsUnused:boolean;
 begin
  result:=0;
  fReservedEntityHashMapLock.AcquireRead;
  try
-  if UUID=TpvUUID.Null then begin
+  if SUID=TpvSUID.Null then begin
    repeat
-    AutoGeneratedUUID:=TpvUUID.Create;
-   until not fReservedEntityUUIDHashMap.ExistKey(AutoGeneratedUUID);
-   EntityUUID:=@AutoGeneratedUUID;
-   UUIDIsUnused:=true;
+    AutoGeneratedSUID:=TpvSUID.Create;
+   until not fReservedEntitySUIDHashMap.ExistKey(AutoGeneratedSUID);
+   EntitySUID:=@AutoGeneratedSUID;
+   SUIDIsUnused:=true;
   end else begin
-   EntityUUID:=@UUID;
-   UUIDIsUnused:=not fReservedEntityUUIDHashMap.ExistKey(EntityUUID^);
+   EntitySUID:=@SUID;
+   SUIDIsUnused:=not fReservedEntitySUIDHashMap.ExistKey(EntitySUID^);
   end;
-  if UUIDIsUnused then begin
+  if SUIDIsUnused then begin
    result:=aEntityID;
    if aEntityID.Index<=0 then begin
     fReservedEntityHashMapLock.ReadToWrite;
@@ -3395,7 +3395,7 @@ begin
      finally
       fEntityLock.ReleaseWrite;
      end;
-     fReservedEntityUUIDHashMap.Add(EntityUUID^,result);
+     fReservedEntitySUIDHashMap.Add(EntitySUID^,result);
     finally
      fReservedEntityHashMapLock.WriteToRead;
     end;
@@ -3411,7 +3411,7 @@ begin
      finally
       fEntityLock.ReleaseWrite;
      end;
-     fReservedEntityUUIDHashMap.Add(EntityUUID^,result);
+     fReservedEntitySUIDHashMap.Add(EntitySUID^,result);
     finally
      fReservedEntityHashMapLock.WriteToRead;
     end;
@@ -3423,33 +3423,33 @@ begin
  if result.Index>=0 then begin
   DelayedManagementEvent.EventType:=TpvEntityComponentSystem.TDelayedManagementEventType.CreateEntity;
   DelayedManagementEvent.EntityID:=result;
-  DelayedManagementEvent.UUID:=EntityUUID^;
+  DelayedManagementEvent.SUID:=EntitySUID^;
   AddDelayedManagementEvent(DelayedManagementEvent);
  end;
 end;
 
-function TpvEntityComponentSystem.TWorld.CreateEntity(const aEntityUUID:TpvUUID):TpvEntityComponentSystem.TEntityID;
+function TpvEntityComponentSystem.TWorld.CreateEntity(const aEntitySUID:TpvSUID):TpvEntityComponentSystem.TEntityID;
 var DelayedManagementEvent:TDelayedManagementEvent;
     Index,OldCount,Count:TpvSizeInt;
-    EntityUUID:PpvUUID;
-    UUID,AutoGeneratedUUID:TpvUUID;
-    UUIDIsUnused:boolean;
+    EntitySUID:PpvSUID;
+    SUID,AutoGeneratedSUID:TpvSUID;
+    SUIDIsUnused:boolean;
 begin
  result:=0;
  fReservedEntityHashMapLock.AcquireRead;
  try
-  UUID:=aEntityUUID;
-  if UUID=TpvUUID.Null then begin
+  SUID:=aEntitySUID;
+  if SUID=TpvSUID.Null then begin
    repeat
-    AutoGeneratedUUID:=TpvUUID.Create;
-   until not fReservedEntityUUIDHashMap.ExistKey(AutoGeneratedUUID);
-   EntityUUID:=@AutoGeneratedUUID;
-   UUIDIsUnused:=true;
+    AutoGeneratedSUID:=TpvSUID.Create;
+   until not fReservedEntitySUIDHashMap.ExistKey(AutoGeneratedSUID);
+   EntitySUID:=@AutoGeneratedSUID;
+   SUIDIsUnused:=true;
   end else begin
-   EntityUUID:=@UUID;
-   UUIDIsUnused:=not fReservedEntityUUIDHashMap.ExistKey(EntityUUID^);
+   EntitySUID:=@SUID;
+   SUIDIsUnused:=not fReservedEntitySUIDHashMap.ExistKey(EntitySUID^);
   end;
-  if UUIDIsUnused then begin
+  if SUIDIsUnused then begin
    fReservedEntityHashMapLock.ReadToWrite;
    try
     fEntityLock.AcquireWrite;
@@ -3473,7 +3473,7 @@ begin
     finally
      fEntityLock.ReleaseWrite;
     end;
-    fReservedEntityUUIDHashMap.Add(EntityUUID^,result);
+    fReservedEntitySUIDHashMap.Add(EntitySUID^,result);
    finally
     fReservedEntityHashMapLock.WriteToRead;
    end;
@@ -3484,14 +3484,14 @@ begin
  if result<>0 then begin
   DelayedManagementEvent.EventType:=TpvEntityComponentSystem.TDelayedManagementEventType.CreateEntity;
   DelayedManagementEvent.EntityID:=result;
-  DelayedManagementEvent.UUID:=EntityUUID^;
+  DelayedManagementEvent.SUID:=EntitySUID^;
   AddDelayedManagementEvent(DelayedManagementEvent);
  end;
 end;
 
 function TpvEntityComponentSystem.TWorld.CreateEntity:TEntityID;
 begin
- result:=CreateEntity(TpvUUID.Null);
+ result:=CreateEntity(TpvSUID.Null);
 end;
 
 function TpvEntityComponentSystem.TWorld.HasEntity(const aEntityID:TpvEntityComponentSystem.TEntityID):boolean;
@@ -3904,7 +3904,7 @@ begin
      EntityID:=DelayedManagementEvent^.EntityID;
      EntityIndex:=EntityID.Index;
      if (EntityIndex>=0) and (EntityIndex<fEntityIndexCounter) then begin
-      DoCreateEntity(EntityID,DelayedManagementEvent^.UUID);
+      DoCreateEntity(EntityID,DelayedManagementEvent^.SUID);
      end;
 
     end;
@@ -4359,8 +4359,8 @@ begin
  end;
  inc(fGeneration);
  fEntityIndexCounter:=0;
- fEntityUUIDHashMap.Clear;
- fReservedEntityUUIDHashMap.Clear;
+ fEntitySUIDHashMap.Clear;
+ fReservedEntitySUIDHashMap.Clear;
  fEntityIndexFreeList.Clear;
 end;
 
@@ -4387,8 +4387,8 @@ begin
  end;
  inc(fGeneration);
  fEntityIndexCounter:=0;
- fEntityUUIDHashMap.Clear;
- fReservedEntityUUIDHashMap.Clear;
+ fEntitySUIDHashMap.Clear;
+ fReservedEntitySUIDHashMap.Clear;
  fEntityIndexFreeList.Clear;
 end;
 
@@ -4477,7 +4477,7 @@ begin
   BitTag:=0;
   BitCounter:=8;
   BitPosition:=-1;
-  if BufferedStream.Write(fUUID,SizeOf(TpvUUID))<>SizeOf(TpvUUID) then begin
+  if BufferedStream.Write(fSUID,SizeOf(TpvSUID))<>SizeOf(TpvSUID) then begin
    raise EInOutError.Create('Stream write error');
   end;
   WriteInt32(fEntityIndexCounter);
@@ -4490,7 +4490,7 @@ begin
     Entity:=@fEntities[EntityID];
     WriteUInt8(EntityID.Generation);
     WriteBit(Entity^.Active);
-    BufferedStream.Write(Entity^.fUUID,SizeOf(TpvUUID));
+    BufferedStream.Write(Entity^.fSUID,SizeOf(TpvSUID));
     WriteInt32(Entity^.fCountComponents);
     for ComponentIndex:=0 to Entity^.fCountComponents-1 do begin
      ComponentID:=ComponentIndex;
@@ -4527,7 +4527,7 @@ var ComponentID:TComponentID;
     Entity:PEntity;
     Component:TpvEntityComponentSystem.TComponent;
     BufferedStream:TStream;
-    TempUUID:TpvUUID;
+    TempSUID:TpvSUID;
     HasNewEntity,IsActive,HasNewComponent:boolean;
  function ReadBit:boolean;
  begin
@@ -4562,7 +4562,7 @@ begin
   BufferedStream.Seek(0,soBeginning);
   BitTag:=0;
   BitCounter:=8;
-  if BufferedStream.Read(TempUUID,SizeOf(TpvUUID))<>SizeOf(TpvUUID) then begin
+  if BufferedStream.Read(TempSUID,SizeOf(TpvSUID))<>SizeOf(TpvSUID) then begin
    raise EInOutError.Create('Stream read error');
   end;
   LocalEntityCounter:=ReadInt32;
@@ -4575,7 +4575,7 @@ begin
    if HasNewEntity then begin
     Generation:=ReadUInt8;
     IsActive:=ReadBit;
-    if BufferedStream.Read(TempUUID,SizeOf(TpvUUID))<>SizeOf(TpvUUID) then begin
+    if BufferedStream.Read(TempSUID,SizeOf(TpvSUID))<>SizeOf(TpvSUID) then begin
      raise EInOutError.Create('Stream read error');
     end;
     if (EntityIndex>=0) and
@@ -4584,21 +4584,21 @@ begin
      Entity:=@fEntities[EntityIndex];
      EntityID:=Entity^.ID;
      if Generation<>EntityID.Generation then begin
-      fEntityUUIDHashMap.Delete(Entity.fUUID);
-      Entity.fUUID:=TempUUID;
-      fEntityUUIDHashMap.Add(Entity.fUUID,EntityID);
+      fEntitySUIDHashMap.Delete(Entity.fSUID);
+      Entity.fSUID:=TempSUID;
+      fEntitySUIDHashMap.Add(Entity.fSUID,EntityID);
       Entity^.ID.Generation:=Generation;
       EntityID:=Entity^.ID;
      end;
-     if TempUUID<>Entity.fUUID then begin
-      fEntityUUIDHashMap.Delete(Entity.fUUID);
-      Entity.fUUID:=TempUUID;
-      fEntityUUIDHashMap.Add(Entity.fUUID,EntityID);
+     if TempSUID<>Entity.fSUID then begin
+      fEntitySUIDHashMap.Delete(Entity.fSUID);
+      Entity.fSUID:=TempSUID;
+      fEntitySUIDHashMap.Add(Entity.fSUID,EntityID);
      end;
     end else begin
      EntityID.Index:=EntityIndex;
      EntityID.Generation:=Generation;
-     EntityID:=CreateEntity(EntityID,TempUUID);
+     EntityID:=CreateEntity(EntityID,TempSUID);
      Refresh;
      Entity:=@fEntities[EntityIndex];
     end;
@@ -4673,17 +4673,17 @@ begin
  if (aRootEntityID<>TEntityID.Invalid) and HasEntity(aRootEntityID) then begin
   Entity:=GetEntityByID(aRootEntityID);
   if assigned(Entity) then begin
-   RootObjectItem.Add('root',TPasJSONItemString.Create(TPasJSONUTF8String(Entity.UUID.ToString)));
+   RootObjectItem.Add('root',TPasJSONItemString.Create(TPasJSONUTF8String(Entity.SUID.ToString)));
   end;
  end;
- //RootObjectItem.Add('uuid',TPasJSONItemString.Create(TPasJSONUTF8String(GetUUID.ToString)));
+ //RootObjectItem.Add('SUID',TPasJSONItemString.Create(TPasJSONUTF8String(GetSUID.ToString)));
  if length(aEntityIDs)>0 then begin
   for EntityIndex:=0 to length(aEntityIDs)-1 do begin
    EntityID:=aEntityIDs[EntityIndex];
    if HasEntity(EntityID) then begin
     Entity:=GetEntityByID(EntityID);
     if assigned(Entity) then begin
-     RootObjectItem.Add(Entity^.fUUID.ToString,Entity^.SerializeToJSON);
+     RootObjectItem.Add(Entity^.fSUID.ToString,Entity^.SerializeToJSON);
     end;
    end;
   end;
@@ -4692,25 +4692,25 @@ begin
    if HasEntityIndex(EntityIndex) then begin
     Entity:=@fEntities[EntityIndex];
     if assigned(Entity) then begin
-     RootObjectItem.Add(Entity^.fUUID.ToString,Entity^.SerializeToJSON);
+     RootObjectItem.Add(Entity^.fSUID.ToString,Entity^.SerializeToJSON);
     end;
    end;
   end;
  end;
 end;
 
-function TpvEntityComponentSystem.TWorld.UnserializeFromJSON(const aJSONRootItem:TPasJSONItem;const aCreateNewUUIDs:boolean):TEntityID;
-type TUUIDIntegerPairHashMap=TpvHashMap<TpvUUID,TpvInt32>;
+function TpvEntityComponentSystem.TWorld.UnserializeFromJSON(const aJSONRootItem:TPasJSONItem;const aCreateNewSUIDs:boolean):TEntityID;
+type TSUIDIntegerPairHashMap=TpvHashMap<TpvSUID,TpvInt32>;
      TParentObjectNames=TpvGenericList<TPasJSONUTF8String>;
-var RootUUID:TpvUUIDString;
-    EntityUUID:TpvUUID;
+var RootSUID:TpvUTF8String;
+    EntitySUID:TpvSUID;
     Entity:PEntity;
     RootObjectItem,EntityObjectItem:TPasJSONItemObject;
     RootObjectItemIndex:TpvInt32;
     RootObjectItemKey:TPasJSONUTF8String;
     RootObjectItemValue:TPasJSONItem;
     EntityID:TEntityID;
-    EntityUUIDHashMap:TUUIDIntegerPairHashMap;
+    EntitySUIDHashMap:TSUIDIntegerPairHashMap;
     EntityIDs:array of TEntityID;
     ParentObjectNames:TParentObjectNames;
     WorldName:TpvUTF8String;
@@ -4726,10 +4726,10 @@ begin
    ParentObjectNames:=TParentObjectNames.Create;
    try
 
-    EntityUUIDHashMap:=TUUIDIntegerPairHashMap.Create(-1);
+    EntitySUIDHashMap:=TSUIDIntegerPairHashMap.Create(-1);
     try
 
-     RootUUID:='';
+     RootSUID:='';
      
      RootObjectItem:=TPasJSONItemObject(aJSONRootItem);
 
@@ -4745,16 +4745,16 @@ begin
       if (length(RootObjectItemKey)>0) and assigned(RootObjectItemValue) then begin
        if RootObjectItemKey='root' then begin
         if RootObjectItemValue is TPasJSONItemString then begin
-         RootUUID:=TpvUUIDString(TPasJSONItemString(RootObjectItemValue).Value);
+         RootSUID:=TpvUTF8String(TPasJSONItemString(RootObjectItemValue).Value);
         end;
-       end else if RootObjectItemKey='uuid' then begin
+       end else if RootObjectItemKey='SUID' then begin
 {       if RootObjectItemValue is TPasJSONItemString then begin
-         WorldUUID:=TpvUUID.CreateFromString(TpvUUIDString(TPasJSONItemString(RootObjectItemValue).Value));
-         if WorldUUID.UInt64s[0]<>0 then begin
+         WorldSUID:=TpvSUID.CreateFromString(TpvUTF8String(TPasJSONItemString(RootObjectItemValue).Value));
+         if WorldSUID.UInt64s[0]<>0 then begin
          end;
         end;}
        end else if RootObjectItemKey='name' then begin
-        WorldName:=TpvUUIDString(TPasJSONItemString(RootObjectItemValue).Value);
+        WorldName:=TpvUTF8String(TPasJSONItemString(RootObjectItemValue).Value);
         if length(WorldName)>0 then begin
         end;
        end else if (length(RootObjectItemKey)=38) and
@@ -4765,18 +4765,18 @@ begin
                    (RootObjectItemKey[25]='-') and
                    (RootObjectItemKey[38]='}') then begin
         if RootObjectItemValue is TPasJSONItemObject then begin
-         EntityUUID:=TpvUUID.CreateFromString(TpvUUIDString(RootObjectItemKey));
-         if aCreateNewUUIDs then begin
+         EntitySUID:=TpvSUID.CreateFromString(TpvUTF8String(RootObjectItemKey));
+         if aCreateNewSUIDs then begin
           EntityID:=CreateEntity;
          end else begin
-          EntityID:=CreateEntity(EntityUUID);
+          EntityID:=CreateEntity(EntitySUID);
          end;
          if EntityID<>TEntityID.Invalid then begin
           Refresh;
           Entity:=GetEntityByID(EntityID);
           if assigned(Entity) then begin
            EntityIDs[RootObjectItemIndex]:=EntityID;
-           EntityUUIDHashMap.Add(EntityUUID,EntityID);
+           EntitySUIDHashMap.Add(EntitySUID,EntityID);
           end else begin
            raise ESystemUnserialization.Create('Internal error 2016-01-19-20-30-0000');
           end;
@@ -4800,7 +4800,7 @@ begin
        if (length(RootObjectItemKey)>0) and assigned(RootObjectItemValue) then begin
         if RootObjectItemKey='root' then begin
          if RootObjectItemValue is TPasJSONItemString then begin
-          RootUUID:=TpvUUIDString(TPasJSONItemString(RootObjectItemValue).Value);
+          RootSUID:=TpvUTF8String(TPasJSONItemString(RootObjectItemValue).Value);
          end;
         end else if (length(RootObjectItemKey)=38) and
                     (RootObjectItemKey[1]='{') and
@@ -4829,8 +4829,8 @@ begin
 
       Refresh;
 
-      if length(RootUUID)>0 then begin
-       Entity:=GetEntityByUUID(TpvUUID.CreateFromString(RootUUID));
+      if length(RootSUID)>0 then begin
+       Entity:=GetEntityBySUID(TpvSUID.CreateFromString(RootSUID));
        if assigned(Entity) then begin
         result:=Entity^.ID;
        end;
@@ -4839,7 +4839,7 @@ begin
      end;
 
     finally
-     EntityUUIDHashMap.Free;
+     EntitySUIDHashMap.Free;
     end;
 
    finally
@@ -4855,7 +4855,7 @@ begin
 
 end;
 
-function TpvEntityComponentSystem.TWorld.LoadFromStream(const aStream:TStream;const aCreateNewUUIDs:boolean):TEntityID;
+function TpvEntityComponentSystem.TWorld.LoadFromStream(const aStream:TStream;const aCreateNewSUIDs:boolean):TEntityID;
 var s:TPasJSONRawByteString;
     l:TpvInt64;
 begin
@@ -4867,7 +4867,7 @@ begin
    if aStream.Read(s[1],l*SizeOf(AnsiChar))<>(l*SizeOf(AnsiChar)) then begin
     raise EInOutError.Create('Stream read error');
    end;
-   result:=UnserializeFromJSON(TPasJSON.Parse(s),aCreateNewUUIDs);
+   result:=UnserializeFromJSON(TPasJSON.Parse(s),aCreateNewSUIDs);
   end else begin
    result:=TEntityID.Invalid;
   end;
@@ -4893,12 +4893,12 @@ begin
  end;
 end;
 
-function TpvEntityComponentSystem.TWorld.LoadFromFile(const aFileName:TpvUTF8String;const aCreateNewUUIDs:boolean):TEntityID;
+function TpvEntityComponentSystem.TWorld.LoadFromFile(const aFileName:TpvUTF8String;const aCreateNewSUIDs:boolean):TEntityID;
 var FileStream:TFileStream;
 begin
  FileStream:=TFileStream.Create(aFileName,fmOpenRead or fmShareDenyWrite);
  try
-  result:=LoadFromStream(FileStream,aCreateNewUUIDs);
+  result:=LoadFromStream(FileStream,aCreateNewSUIDs);
  finally
   FileStream.Free;
  end;
@@ -4948,7 +4948,7 @@ begin
      Entity:=@fEntities[Index];
      if assigned(Entity) then begin
       EntityID:=Entity^.fID;
-      FromEntity:=aFrom.GetEntityByUUID(Entity^.UUID);
+      FromEntity:=aFrom.GetEntityBySUID(Entity^.SUID);
       if (not assigned(FromEntity)) or
          (assigned(FromEntity) and
           ((length(FromEntityProcessBitmap)>0) and
@@ -4983,11 +4983,11 @@ begin
        EntityID:=CreateEntity;
        DoRefresh:=true;
       end else begin
-       Entity:=GetEntityByUUID(FromEntity.UUID);
+       Entity:=GetEntityBySUID(FromEntity^.SUID);
        if assigned(Entity) then begin
         EntityID:=Entity^.ID;
        end else begin
-        EntityID:=CreateEntity(FromEntity.UUID);
+        EntityID:=CreateEntity(FromEntity^.SUID);
         DoRefresh:=true;
        end;
       end;
