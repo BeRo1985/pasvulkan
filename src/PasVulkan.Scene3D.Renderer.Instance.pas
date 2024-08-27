@@ -5293,8 +5293,8 @@ end;
 function TpvScene3DRendererInstance.GetJitterOffset(const aFrameCounter:TpvInt64):TpvVector2;
 const SMAAT2xOffsets:array[0..1] of TpvVector2=
        (
-        (x:-0.25;y:0.25),
-        (x:0.25;y:-0.25)
+        (x:0.25;y:0.25),
+        (x:-0.25;y:-0.25)
        );
 begin
  case Renderer.AntialiasingMode of
@@ -6458,8 +6458,12 @@ begin
   InFlightFrameState^.VoxelizationRenderPassIndex:=-1;
  end;
 
- InFlightFrameState^.Jitter.xy:=GetJitterOffset(aFrameCounter);
- InFlightFrameState^.Jitter.zw:=GetJitterOffset(aFrameCounter-1);
+ if Renderer.AntialiasingMode=TpvScene3DRendererAntialiasingMode.SMAAT2x then begin
+  InFlightFrameState^.Jitter:=TpvVector4.Null;
+ end else begin
+  InFlightFrameState^.Jitter.xy:=GetJitterOffset(aFrameCounter);
+  InFlightFrameState^.Jitter.zw:=GetJitterOffset(aFrameCounter-1);
+ end;
 
  InFlightFrameState^.SkyBoxOrientation:=fScene3D.SkyBoxOrientation;
 
