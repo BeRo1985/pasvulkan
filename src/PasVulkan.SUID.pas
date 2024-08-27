@@ -85,12 +85,12 @@ type TpvSUID=type TpvUInt64;
        class operator NotEqual(const a,b:TSUID):boolean; {$ifdef CAN_INLINE}inline;{$endif}*)
      end;
 
-implementation
-
 var SUIDNodeID:TpvUInt16=0;
     SUIDCounter:TpvUInt32=0;
     SUIDTimestampMilliseconds:TpvUInt64=0;
     SUIDLock:TPasMPInt32=0;
+
+implementation
                              
 { TpvSUIDHelper }
 
