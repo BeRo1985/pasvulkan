@@ -138,6 +138,8 @@ begin
   end;
  end;}
 
+ Format:='rgba16f';
+
  if fInstance.CountSurfaceViews>1 then begin
   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('lens_upsample_'+Format+'_multiview_comp.spv');
  end else begin
