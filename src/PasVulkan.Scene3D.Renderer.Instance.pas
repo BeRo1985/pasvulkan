@@ -2604,7 +2604,7 @@ begin
 
  fFrameGraph.AddImageResourceType('resourcetype_msaa_color_optimized_non_alpha',
                                   false,
-                                  Renderer.OptimizedNonAlphaFormat,
+                                  VK_FORMAT_R16G16B16A16_SFLOAT,//Renderer.OptimizedNonAlphaFormat,
                                   Renderer.SurfaceSampleCountFlagBits,
                                   TpvFrameGraph.TImageType.Color,
                                   TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,fSizeFactor,fSizeFactor,1.0,fCountSurfaceViews),
@@ -2694,7 +2694,7 @@ begin
 
  fFrameGraph.AddImageResourceType('resourcetype_reflectionprobe_optimized_non_alpha',
                                   false,
-                                  Renderer.OptimizedNonAlphaFormat,
+                                  VK_FORMAT_R16G16B16A16_SFLOAT,//Renderer.OptimizedNonAlphaFormat,
                                   VK_SAMPLE_COUNT_1_BIT,
                                   TpvFrameGraph.TImageType.Color,
                                   TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.Absolute,ReflectionProbeWidth,ReflectionProbeHeight,1.0,6),
@@ -2714,7 +2714,7 @@ begin
 
  fFrameGraph.AddImageResourceType('resourcetype_reflectiveshadowmap_color',
                                   false,
-                                  Renderer.OptimizedNonAlphaFormat,
+                                  VK_FORMAT_R16G16B16A16_SFLOAT,//Renderer.OptimizedNonAlphaFormat,
                                   VK_SAMPLE_COUNT_1_BIT,
                                   TpvFrameGraph.TImageType.Color,
                                   TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.Absolute,fReflectiveShadowMapWidth,fReflectiveShadowMapHeight,1.0,0),
@@ -2794,7 +2794,7 @@ begin
 
  fFrameGraph.AddImageResourceType('resourcetype_color_optimized_non_alpha',
                                   false,
-                                  Renderer.OptimizedNonAlphaFormat,
+                                  VK_FORMAT_R16G16B16A16_SFLOAT,//Renderer.OptimizedNonAlphaFormat,
                                   TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
                                   TpvFrameGraph.TImageType.Color,
                                   TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,fSizeFactor,fSizeFactor,1.0,fCountSurfaceViews),
@@ -2834,7 +2834,7 @@ begin
 
  fFrameGraph.AddImageResourceType('resourcetype_voxelization',
                                   false,
-                                  Renderer.OptimizedNonAlphaFormat,
+                                  VK_FORMAT_R16G16B16A16_SFLOAT,//Renderer.OptimizedNonAlphaFormat,
                                   TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
                                   TpvFrameGraph.TImageType.Color,
                                   TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.Absolute,Renderer.GlobalIlluminationVoxelGridSize,Renderer.GlobalIlluminationVoxelGridSize,1.0,0),
@@ -2857,7 +2857,7 @@ begin
   else begin
    fFrameGraph.AddImageResourceType('resourcetype_color_temporal_antialiasing',
                                     false,
-                                    Renderer.OptimizedNonAlphaFormat,
+                                    VK_FORMAT_R16G16B16A16_SFLOAT,//Renderer.OptimizedNonAlphaFormat,
                                     TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
                                     TpvFrameGraph.TImageType.Color,
                                     TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,fSizeFactor,fSizeFactor,1.0,fCountSurfaceViews),
@@ -2869,7 +2869,7 @@ begin
 
  fFrameGraph.AddImageResourceType('resourcetype_color_fullres_optimized_non_alpha',
                                   false,
-                                  Renderer.OptimizedNonAlphaFormat,
+                                  VK_FORMAT_R16G16B16A16_SFLOAT,//Renderer.OptimizedNonAlphaFormat,
                                   TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
                                   TpvFrameGraph.TImageType.Color,
                                   TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,1.0,1.0,1.0,fCountSurfaceViews),
@@ -2988,7 +2988,7 @@ begin
   else begin
    fFrameGraph.AddImageResourceType('resourcetype_color_antialiasing',
                                     false,
-                                    Renderer.OptimizedNonAlphaFormat,
+                                    VK_FORMAT_R16G16B16A16_SFLOAT,//Renderer.OptimizedNonAlphaFormat,
                                     TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
                                     TpvFrameGraph.TImageType.Color,
                                     TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,fSizeFactor,fSizeFactor,1.0,fCountSurfaceViews),
@@ -4599,14 +4599,14 @@ begin
       Renderer.VulkanDevice.DebugUtils.SetObjectName(fDepthMipmappedArray2DImage.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DRendererInstance.fDepthMipmappedArray2DImage.Image');
       Renderer.VulkanDevice.DebugUtils.SetObjectName(fDepthMipmappedArray2DImage.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRendererInstance.fDepthMipmappedArray2DImage.ImageView');
 
-      fSceneMipmappedArray2DImage:=TpvScene3DRendererMipmappedArray2DImage.Create(fScene3D.VulkanDevice,fScaledWidth,fScaledHeight,fCountSurfaceViews,Renderer.OptimizedNonAlphaFormat,VK_SAMPLE_COUNT_1_BIT,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,pvAllocationGroupIDScene3DSurface);
+      fSceneMipmappedArray2DImage:=TpvScene3DRendererMipmappedArray2DImage.Create(fScene3D.VulkanDevice,fScaledWidth,fScaledHeight,fCountSurfaceViews,VK_FORMAT_R16G16B16A16_SFLOAT{Renderer.OptimizedNonAlphaFormat},VK_SAMPLE_COUNT_1_BIT,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,pvAllocationGroupIDScene3DSurface);
       Renderer.VulkanDevice.DebugUtils.SetObjectName(fSceneMipmappedArray2DImage.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DRendererInstance.fSceneMipmappedArray2DImage.Image');
       Renderer.VulkanDevice.DebugUtils.SetObjectName(fSceneMipmappedArray2DImage.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRendererInstance.fSceneMipmappedArray2DImage.ImageView');
 
       if SameValue(fSizeFactor,1.0) then begin
        fFullResSceneMipmappedArray2DImage:=fSceneMipmappedArray2DImage;
       end else begin
-       fFullResSceneMipmappedArray2DImage:=TpvScene3DRendererMipmappedArray2DImage.Create(fScene3D.VulkanDevice,fWidth,fHeight,fCountSurfaceViews,Renderer.OptimizedNonAlphaFormat,VK_SAMPLE_COUNT_1_BIT,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,pvAllocationGroupIDScene3DSurface);
+       fFullResSceneMipmappedArray2DImage:=TpvScene3DRendererMipmappedArray2DImage.Create(fScene3D.VulkanDevice,fWidth,fHeight,fCountSurfaceViews,VK_FORMAT_R16G16B16A16_SFLOAT{Renderer.OptimizedNonAlphaFormat},VK_SAMPLE_COUNT_1_BIT,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,pvAllocationGroupIDScene3DSurface);
       end;
       Renderer.VulkanDevice.DebugUtils.SetObjectName(fFullResSceneMipmappedArray2DImage.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DRendererInstance.fFullResSceneMipmappedArray2DImage.Image');
       Renderer.VulkanDevice.DebugUtils.SetObjectName(fFullResSceneMipmappedArray2DImage.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRendererInstance.fFullResSceneMipmappedArray2DImage.ImageView');
@@ -4912,7 +4912,7 @@ begin
                                                                                       fScaledWidth,
                                                                                       fScaledHeight,
                                                                                       fCountSurfaceViews,
-                                                                                      Renderer.OptimizedNonAlphaFormat,
+                                                                                      VK_FORMAT_R16G16B16A16_SFLOAT{Renderer.OptimizedNonAlphaFormat},
                                                                                       TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
                                                                                       VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                                                                       false,

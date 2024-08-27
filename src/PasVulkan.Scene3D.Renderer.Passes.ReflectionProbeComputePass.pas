@@ -153,7 +153,7 @@ begin
 
  inherited AcquirePersistentResources;
 
- case fInstance.Renderer.OptimizedNonAlphaFormat of
+{case fInstance.Renderer.OptimizedNonAlphaFormat of
   VK_FORMAT_B10G11R11_UFLOAT_PACK32:begin
    Format:='r11g11b10f';
   end;
@@ -164,7 +164,9 @@ begin
    Assert(false);
    Format:='';
   end;
- end;
+ end;}
+
+ Format:='rgba16f';
 
  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cubemap_filter_comp.spv');
  try
