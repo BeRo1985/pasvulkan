@@ -2964,7 +2964,7 @@ begin
                                   TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
                                   TpvFrameGraph.TImageType.Color,
                                   TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,fSizeFactor,fSizeFactor,1.0,fCountSurfaceViews),
-                                  TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT),
+                                  TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_TRANSFER_SRC_BIT),
                                   1
                                  );
 
@@ -3756,7 +3756,14 @@ begin
 
     TpvScene3DRendererAntialiasingMode.SMAAT2x:begin
 
+     TpvScene3DRendererInstancePasses(fPasses).fAntialiasingSMAAEdgesRenderPass:=TpvScene3DRendererPassesAntialiasingSMAAEdgesRenderPass.Create(fFrameGraph,self);
+
+     TpvScene3DRendererInstancePasses(fPasses).fAntialiasingSMAAWeightsRenderPass:=TpvScene3DRendererPassesAntialiasingSMAAWeightsRenderPass.Create(fFrameGraph,self);
+
+     TpvScene3DRendererInstancePasses(fPasses).fAntialiasingSMAABlendRenderPass:=TpvScene3DRendererPassesAntialiasingSMAABlendRenderPass.Create(fFrameGraph,self);
+
      TpvScene3DRendererInstancePasses(fPasses).fAntialiasingSMAAT2xPreCustomPass:=TpvScene3DRendererPassesAntialiasingSMAAT2xPreCustomPass.Create(fFrameGraph,self);
+     TpvScene3DRendererInstancePasses(fPasses).fAntialiasingSMAAT2xPreCustomPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fAntialiasingSMAABlendRenderPass);
 
      TpvScene3DRendererInstancePasses(fPasses).fAntialiasingSMAAT2xTemporalResolveRenderPass:=TpvScene3DRendererPassesAntialiasingSMAAT2xTemporalResolveRenderPass.Create(fFrameGraph,self);
      TpvScene3DRendererInstancePasses(fPasses).fAntialiasingSMAAT2xTemporalResolveRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fAntialiasingSMAAT2xPreCustomPass);
@@ -3764,15 +3771,8 @@ begin
      TpvScene3DRendererInstancePasses(fPasses).fAntialiasingSMAAT2xPostCustomPass:=TpvScene3DRendererPassesAntialiasingSMAAT2xPostCustomPass.Create(fFrameGraph,self);
      TpvScene3DRendererInstancePasses(fPasses).fAntialiasingSMAAT2xPostCustomPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fAntialiasingSMAAT2xTemporalResolveRenderPass);
 
-     TpvScene3DRendererInstancePasses(fPasses).fAntialiasingSMAAEdgesRenderPass:=TpvScene3DRendererPassesAntialiasingSMAAEdgesRenderPass.Create(fFrameGraph,self);
-     TpvScene3DRendererInstancePasses(fPasses).fAntialiasingSMAAEdgesRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fAntialiasingSMAAT2xPostCustomPass);
-
-     TpvScene3DRendererInstancePasses(fPasses).fAntialiasingSMAAWeightsRenderPass:=TpvScene3DRendererPassesAntialiasingSMAAWeightsRenderPass.Create(fFrameGraph,self);
-
-     TpvScene3DRendererInstancePasses(fPasses).fAntialiasingSMAABlendRenderPass:=TpvScene3DRendererPassesAntialiasingSMAABlendRenderPass.Create(fFrameGraph,self);
-
-     AntialiasingFirstPass:=TpvScene3DRendererInstancePasses(fPasses).fAntialiasingSMAAT2xPreCustomPass;
-     AntialiasingLastPass:=TpvScene3DRendererInstancePasses(fPasses).fAntialiasingSMAABlendRenderPass;
+     AntialiasingFirstPass:=TpvScene3DRendererInstancePasses(fPasses).fAntialiasingSMAAEdgesRenderPass;
+     AntialiasingLastPass:=TpvScene3DRendererInstancePasses(fPasses).fAntialiasingSMAAT2xPostCustomPass;
 
     end;
 

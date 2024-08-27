@@ -139,8 +139,8 @@ begin
                                        1.0,
                                        fInstance.CountSurfaceViews);
 
- fResourceCurrentColor:=AddImageInput(fInstance.LastOutputResource.ResourceType.Name,
-                                      fInstance.LastOutputResource.Resource.Name,
+ fResourceCurrentColor:=AddImageInput('resourcetype_color_antialiasing',
+                                     'resource_antialiasing_color',
                                       VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                       [TpvFrameGraph.TResourceTransition.TFlag.Attachment]);
 
