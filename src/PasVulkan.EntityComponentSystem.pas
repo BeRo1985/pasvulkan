@@ -1975,9 +1975,6 @@ begin
 
  result:=TPasJSONItemObject.Create;
 
- result.Add('uuid',TPasJSONItemString.Create(fUUID.ToString));
- result.Add('active',TPasJSONItemBoolean(Active));
-
  ComponentObjectItem:=TPasJSONItemObject.Create;
  try
   for ComponentBitmapIndex:=0 to length(fComponentsBitmap)-1 do begin
@@ -2000,9 +1997,38 @@ begin
 
 end;
 
-procedure TpvEntityComponentSystem.TEntity.UnserializeFromJSON(const aJSONRootItem:TPasJSONItem;const aCreateNewUUIDs:boolean);
+procedure TpvEntityComponentSystem.TEntity.UnserializeFromJSON;
+var Index:TpvSizeInt;
+    RootObjectItem,ComponentsObjectItem:TPasJSONItemObject;
+    ComponentsItem,ComponentDataItem:TPasJSONItem;
+    ComponentID:TpvEntityComponentSystem.TComponentID;
+    ComponentData:Pointer;
+    ComponentName:TpvUTF8String;
+    RegisteredComponentType:TRegisteredComponentType;
 begin
-
+ if assigned(aJSONRootItem) and (aJSONRootItem is TPasJSONItemObject) then begin
+  RootObjectItem:=TPasJSONItemObject(aJSONRootItem);
+  ComponentsItem:=RootObjectItem.Properties['components'];
+  if assigned(ComponentsItem) and (ComponentsItem is TPasJSONItemObject) then begin
+   ComponentsObjectItem:=TPasJSONItemObject(ComponentsItem);
+   for Index:=0 to ComponentsObjectItem.Count-1 do begin
+    ComponentName:=ComponentsObjectItem.Keys[Index];
+    ComponentDataItem:=ComponentsObjectItem.Values[Index];
+    if (length(ComponentName)>0) and assigned(ComponentDataItem) and (ComponentDataItem is TPasJSONItemObject) then begin
+     RegisteredComponentType:=TpvEntityComponentSystem.RegisteredComponentTypeNameHashMap[ComponentName];
+     if assigned(RegisteredComponentType) then begin
+      ComponentID:=RegisteredComponentType.fID;
+      if ComponentID<fWorld.fComponents.Count then begin
+       ComponentData:=fWorld.AddComponentWithDataToEntity(fID,ComponentID);
+       if assigned(ComponentData) then begin
+        RegisteredComponentType.UnserializeFromJSON(ComponentDataItem,ComponentData);
+       end;
+      end;
+     end;
+    end;
+   end;
+  end;
+ end;
 end;
 
 procedure TpvEntityComponentSystem.TEntity.AddComponent(const aComponentID:TComponentID;const aData:Pointer;const aDataSize:TpvSizeInt);
