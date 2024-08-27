@@ -198,7 +198,7 @@ type TpvEntityComponentSystem=class
                             const aSize:TpvSizeInt;
                             const aEnumerationsOrFlags:array of TField.TEnumerationOrFlag);
               procedure Finish;
-              function SerializeToJSON(const aData:TpvPointer):TPasJSONItemObject;
+              function SerializeToJSON(const aData:TpvPointer;const aWorld:TWorld):TPasJSONItemObject;
               procedure UnserializeFromJSON(const aJSON:TPasJSONItem;const aData:TpvPointer;const aWorld:TWorld);
               property Fields:TFields read fFields;
               property EditorWidget:TpvPointer read fEditorWidget write fEditorWidget;
@@ -802,7 +802,7 @@ begin
  SetLength(fFields,fCountFields);
 end;
 
-function TpvEntityComponentSystem.TRegisteredComponentType.SerializeToJSON(const aData:TpvPointer):TPasJSONItemObject;
+function TpvEntityComponentSystem.TRegisteredComponentType.SerializeToJSON(const aData:TpvPointer;const aWorld:TWorld):TPasJSONItemObject;
  function GetElementValue(const aField:PField;
                           const aValueData:TpvPointer):TPasJSONItem;
  var Data:TpvPointer;
@@ -811,6 +811,7 @@ function TpvEntityComponentSystem.TRegisteredComponentType.SerializeToJSON(const
      UnsignedInteger:TpvUInt64;
      FloatValue:TpvDouble;
      StringValue:TpvUTF8String;
+     Entity:PEntity;
  begin
   result:=nil;
   Data:=aValueData;
@@ -833,10 +834,15 @@ function TpvEntityComponentSystem.TRegisteredComponentType.SerializeToJSON(const
       raise ERegisteredComponentType.Create('Internal error 2018-09-04-23-58-0000');
      end;
     end;
-    if UnsignedInteger<TpvUInt64($0010000000000000) then begin
-     result:=TPasJSONItemNumber.Create(UnsignedInteger);
+    Entity:=aWorld.GetEntityByID(UnsignedInteger);
+    if assigned(Entity) then begin
+     result:=TPasJSONItemString.Create(Entity^.fUUID.ToString);
     end else begin
-     result:=TPasJSONItemString.Create(IntToStr(UnsignedInteger));
+     if UnsignedInteger<TpvUInt64($0010000000000000) then begin
+      result:=TPasJSONItemNumber.Create(UnsignedInteger);
+     end else begin
+      result:=TPasJSONItemString.Create(IntToStr(UnsignedInteger));
+     end;
     end;
    end;
    TRegisteredComponentType.TField.TElementType.Enumeration:begin
@@ -2003,7 +2009,7 @@ begin
      ComponentID:=Component.fRegisteredComponentType.fID;
      if HasComponent(ComponentID) then begin
       ComponentData:=Component.GetComponentByEntityIndex(fID.Index);
-      result.Add(Component.RegisteredComponentType.fName,Component.RegisteredComponentType.SerializeToJSON(ComponentData));
+      result.Add(Component.RegisteredComponentType.fName,Component.RegisteredComponentType.SerializeToJSON(ComponentData,fWorld));
      end;
     end;
    end;
