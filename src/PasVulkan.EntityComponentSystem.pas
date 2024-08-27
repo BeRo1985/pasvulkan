@@ -526,7 +526,8 @@ type TpvEntityComponentSystem=class
                    TSystemBooleanPairHashMap=class(TpvHashMap<TpvEntityComponentSystem.TSystem,longbool>);
              private
               fUUID:TpvUUID;
-              fActive:longbool;
+              fActive:TPasMPBool32;
+              fKilled:TPasMPBool32;
               fPasMPInstance:TPasMP;
               fLock:TPasMPMultipleReaderSingleWriterLock;
               fComponents:TComponentList;
@@ -607,7 +608,8 @@ type TpvEntityComponentSystem=class
               procedure MementoUnserialize(const aStream:TStream);
              public
               property UUID:TpvUUID read fUUID write fUUID;
-              property Active:longbool read fActive write fActive;
+              property Active:TPasMPBool32 read fActive write fActive;
+              property Killed:TPasMPBool32 read fKilled write fKilled;
               property Components:TComponentList read fComponents;
               property CurrentTime:TpvTime read fCurrentTime;
               property OnEvent:TOnEvent read fOnEvent write fOnEvent;
@@ -2565,6 +2567,8 @@ begin
 
  fActive:=false;
 
+ fKilled:=false;
+
  fLock:=TPasMPMultipleReaderSingleWriterLock.Create;
 
  fEntityUUIDHashMap:=TpvEntityComponentSystem.TWorld.TUUIDEntityIDPairHashMap.Create(0);
@@ -2997,6 +3001,7 @@ end;
 
 procedure TpvEntityComponentSystem.TWorld.Kill;
 begin
+ fKilled:=true;
 end;
 
 function TpvEntityComponentSystem.TWorld.CreateEvent(const aName:TpvUTF8String):TEventID;
