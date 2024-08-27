@@ -164,10 +164,10 @@ begin
  end;}
 
  fResourceCurrentVelocity:=AddImageInput('resourcetype_velocity',
-                                  'resource_velocity_data',
-                                   VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                   []
-                                  );
+                                         'resource_velocity_data',
+                                          VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                          []
+                                         );
 
  fResourceSurface:=AddImageOutput('resourcetype_color_temporal_antialiasing',
                                   'resource_temporal_antialiasing_color',
