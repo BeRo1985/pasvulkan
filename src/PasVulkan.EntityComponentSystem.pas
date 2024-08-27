@@ -513,7 +513,7 @@ type TpvEntityComponentSystem=class
              System:TSystem;
              UUID:TpvUUID;
              Data:TDelayedManagementEventData;
-             DataSize:TpvInt32;
+             DataSize:TpvSizeInt;
              DataString:TpvRawByteString;
             end;
             PDelayedManagementEvent=^TDelayedManagementEvent;
@@ -1831,7 +1831,7 @@ begin
 end;
 
 procedure TpvEntityComponentSystem.TEntity.AddComponentToEntity(const aComponentID:TComponentID);
-var Index,BitmapIndex,BitIndex,OldCount:TpvSizeInt;
+var BitmapIndex,BitIndex,OldCount:TpvSizeInt;
 begin
  BitmapIndex:=aComponentID shr 5;
  BitIndex:=aComponentID and 31;
@@ -3423,6 +3423,12 @@ begin
  DelayedManagementEvent.EventType:=TpvEntityComponentSystem.TDelayedManagementEventType.AddComponentToEntity;
  DelayedManagementEvent.EntityID:=aEntityID;
  DelayedManagementEvent.ComponentID:=aComponentID;
+ DelayedManagementEvent.Data:=nil;
+ DelayedManagementEvent.DataSize:=aDataSize;
+ if aDataSize>0 then begin
+  SetLength(DelayedManagementEvent.Data,aDataSize);
+  Move(aData^,DelayedManagementEvent.Data[0],aDataSize);
+ end;
  AddDelayedManagementEvent(DelayedManagementEvent);
 end;
 
@@ -3819,6 +3825,9 @@ begin
        end;
        Entity:=@fEntities[EntityIndex];
        Entity^.AddComponentToEntity(DelayedManagementEvent^.ComponentID);
+       if DelayedManagementEvent^.DataSize>0 then begin
+        Move(DelayedManagementEvent^.Data[0],Component.Pointers[Component.GetComponentPoolIndexForEntityIndex(EntityIndex)]^,DelayedManagementEvent^.DataSize);
+       end;
        if WasActive then begin
         for Index:=0 to fSystems.Count-1 do begin
          System:=TSystem(fSystems.Items[Index]);
@@ -3830,6 +3839,9 @@ begin
        end;
       end;
      end;
+
+     DelayedManagementEvent^.Data:=nil;
+     DelayedManagementEvent^.DataSize:=0;
 
     end;
 
