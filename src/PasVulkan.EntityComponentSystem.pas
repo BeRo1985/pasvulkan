@@ -613,6 +613,11 @@ type TpvEntityComponentSystem=class
               property OnEvent:TOnEvent read fOnEvent write fOnEvent;
             end;
 
+      public
+
+       class var RegisteredComponentTypeList:TpvEntityComponentSystem.TRegisteredComponentTypeList;
+       class var RegisteredComponentTypeNameHashMap:TpvEntityComponentSystem.TRegisteredComponentTypeNameHashMap;
+
      end;
 
      TpvECS=TpvEntityComponentSystem;
