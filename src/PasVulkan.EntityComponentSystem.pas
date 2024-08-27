@@ -541,6 +541,13 @@ type TpvEntityComponentSystem=class
               property EntityIDs:TEntityIDList read fEntityIDs;
             end;
 
+            TWorldAssignOp=
+             (
+              Replace,
+              Combine,
+              Add
+             );
+
             { TWorld }
 
             TWorld=class
@@ -636,6 +643,15 @@ type TpvEntityComponentSystem=class
               procedure Deactivate;
               procedure MementoSerialize(const aStream:TStream);
               procedure MementoUnserialize(const aStream:TStream);
+              function SerializeToJSON(const aEntityIDs:array of TEntityID;const aRootEntityID:TEntityID=-1):TPasJSONItem;
+              function UnserializeFromJSON(const aJSONRootItem:TPasJSONItem;const aCreateNewUUIDs:boolean=false):TEntityID;
+              function LoadFromStream(const aStream:TStream;const aCreateNewUUIDs:boolean=false):TEntityID;
+              procedure SaveToStream(const aStream:TStream;const aEntityIDs:array of TEntityID;const aRootEntityID:TEntityID=-1);
+              function LoadFromFile(const aFileName:TpvUTF8String;const aCreateNewUUIDs:boolean=false):TEntityID;
+              procedure SaveToFile(const aFileName:TpvUTF8String;const aEntityIDs:array of TEntityID;const aRootEntityID:TEntityID=-1);
+              function Assign(const aFrom:TWorld;const aEntityIDs:array of TEntityID;const aRootEntityID:TEntityID=-1;const aAssignOp:TWorldAssignOp=TWorldAssignOp.Replace):TEntityID;
+              procedure Store;
+              procedure Interpolate(const aAlpha:TpvDouble);
              public
               property UUID:TpvUUID read fUUID write fUUID;
               property Active:TPasMPBool32 read fActive write fActive;
@@ -4522,6 +4538,86 @@ begin
   BufferedStream.Free;
  end;
  inc(fGeneration);
+end;
+
+function TpvEntityComponentSystem.TWorld.SerializeToJSON(const aEntityIDs:array of TEntityID;const aRootEntityID:TEntityID=-1):TPasJSONItem;
+begin
+end;
+
+function TpvEntityComponentSystem.TWorld.UnserializeFromJSON(const aJSONRootItem:TPasJSONItem;const aCreateNewUUIDs:boolean=false):TEntityID;
+begin
+end;
+
+function TpvEntityComponentSystem.TWorld.LoadFromStream(const aStream:TStream;const aCreateNewUUIDs:boolean=false):TEntityID;
+var s:TPasJSONRawByteString;
+    l:TpvInt64;
+begin
+ s:='';
+ try
+  l:=aStream.Size-aStream.Position;
+  if l>0 then begin
+   SetLength(s,l*SizeOf(AnsiChar));
+   if aStream.Read(s[1],l*SizeOf(AnsiChar))<>(l*SizeOf(AnsiChar)) then begin
+    raise EInOutError.Create('Stream read error');
+   end;
+   result:=UnserializeFromJSON(TPasJSON.Parse(s),aCreateNewUUIDs);
+  end else begin
+   result:=-1;
+  end;
+ finally
+  s:='';
+ end;
+end;
+
+procedure TpvEntityComponentSystem.TWorld.SaveToStream(const aStream:TStream;const aEntityIDs:array of TEntityID;const aRootEntityID:TEntityID);
+var s:TPasJSONRawByteString;
+    l:TpvInt64;
+begin
+ s:=TPasJSON.Stringify(SerializeToJSON(aEntityIDs,aRootEntityID),true);
+ l:=length(s);
+ if l>0 then begin
+  try
+   if aStream.Write(s[1],l*SizeOf(AnsiChar))<>(l*SizeOf(AnsiChar)) then begin
+    raise EInOutError.Create('Stream write error');
+   end;
+  finally
+   s:='';
+  end;
+ end;
+end;
+
+function TpvEntityComponentSystem.TWorld.LoadFromFile(const aFileName:TpvUTF8String;const aCreateNewUUIDs:boolean):TEntityID;
+var FileStream:TFileStream;
+begin
+ FileStream:=TFileStream.Create(aFileName,fmOpenRead or fmShareDenyWrite);
+ try
+  result:=LoadFromStream(FileStream,aCreateNewUUIDs);
+ finally
+  FileStream.Free;
+ end;
+end;
+
+procedure TpvEntityComponentSystem.TWorld.SaveToFile(const aFileName:TpvUTF8String;const aEntityIDs:array of TEntityID;const aRootEntityID:TEntityID);
+var FileStream:TFileStream;
+begin
+ FileStream:=TFileStream.Create(aFileName,fmCreate);
+ try
+  SaveToStream(FileStream,aEntityIDs,aRootEntityID);
+ finally
+  FileStream.Free;
+ end;
+end;
+
+function TpvEntityComponentSystem.TWorld.Assign(const aFrom:TWorld;const aEntityIDs:array of TEntityID;const aRootEntityID:TEntityID=-1;const aAssignOp:TWorldAssignOp=TWorldAssignOp.Replace):TEntityID;
+begin
+end;
+
+procedure TpvEntityComponentSystem.TWorld.Store;
+begin
+end;
+
+procedure TpvEntityComponentSystem.TWorld.Interpolate(const aAlpha:TpvDouble);
+begin
 end;
 
 initialization
