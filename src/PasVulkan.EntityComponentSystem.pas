@@ -2886,15 +2886,113 @@ begin
 end;
 
 procedure TpvEntityComponentSystem.TWorld.ProcessEvent(const aEvent:PEvent);
+var EventHandlerIndex,SystemIndex,EventIndex:TpvInt32;
+    EventRegistration:TpvEntityComponentSystem.TEventRegistration;
+    EventID:TpvEntityComponentSystem.TEventID;
+    EventHandler:TpvEntityComponentSystem.TEventHandler;
+    System:TpvEntityComponentSystem.TSystem;
+    LocalSystemList:TpvEntityComponentSystem.TSystemList;
 begin
+ fEventRegistrationLock.AcquireWrite;
+ try
+  EventID:=aEvent^.EventID;
+  if (EventID>=0) and (EventID<fEventRegistrationList.Count) then begin
+   EventRegistration:=fEventRegistrationList.Items[EventID];
+   if EventRegistration.fActive then begin
+    LocalSystemList:=EventRegistration.SystemList;
+    for SystemIndex:=0 to LocalSystemList.Count-1 do begin
+     System:=LocalSystemList.Items[SystemIndex];
+     if assigned(System) then begin
+      if System.fEventsCanBeParallelProcessed then begin
+       EventIndex:=System.fCountEvents;
+       inc(System.fCountEvents);
+       if length(System.fEvents)<System.fCountEvents then begin
+        SetLength(System.fEvents,System.fCountEvents*2);
+       end;
+       System.fEvents[EventIndex]:=aEvent;
+      end else begin
+       System.ProcessEvent(aEvent^);
+      end;
+     end;
+    end;
+    for EventHandlerIndex:=0 to EventRegistration.fCountEventHandlers-1 do begin
+     EventHandler:=EventRegistration.fEventHandlers[EventHandlerIndex];
+     if assigned(EventHandler) then begin
+      fEventRegistrationLock.ReleaseWrite;
+      try
+       EventRegistration.Lock.AcquireRead;
+       try
+        EventHandler(aEvent^);
+       finally
+        EventRegistration.Lock.ReleaseRead;
+       end;
+      finally
+       fEventRegistrationLock.AcquireWrite;
+      end;
+     end;
+    end;
+   end;
+  end;
+ finally
+  fEventRegistrationLock.ReleaseWrite;
+ end;
 end;
 
 procedure TpvEntityComponentSystem.TWorld.ProcessEvents;
+var CurrentEvent:TpvEntityComponentSystem.PEvent;
+    LocalEventQueue:TpvLinkedListHead;
 begin
+ LinkedListInitialize(@LocalEventQueue);
+ repeat
+  fEventQueueLock.AcquireWrite;
+  try
+   LinkedListSpliceTailInitialize(@LocalEventQueue,@fEventQueue);
+  finally
+   fEventQueueLock.ReleaseWrite;
+  end;
+  CurrentEvent:=LinkedListPopFront(@LocalEventQueue);
+  if assigned(CurrentEvent) then begin
+   repeat
+    ProcessEvent(CurrentEvent);
+    LinkedListPushBack(@fDelayedFreeEventQueue,pointer(CurrentEvent));
+    CurrentEvent:=LinkedListPopFront(@LocalEventQueue);
+   until not assigned(CurrentEvent);
+  end else begin
+   break;
+  end;
+ until false;
 end;
 
 procedure TpvEntityComponentSystem.TWorld.ProcessDelayedEvents(const aDeltaTime:TTime);
+var CurrentEvent,NextEvent:TpvEntityComponentSystem.PEvent;
 begin
+ fDelayedEventQueueLock.AcquireWrite;
+ fEventQueueLock.AcquireWrite;
+ try
+  if not LinkedListEmpty(@fDelayedEventQueue) then begin
+   CurrentEvent:=LinkedListHead(@fDelayedEventQueue);
+   repeat
+    NextEvent:=LinkedListNext(@fDelayedEventQueue,pointer(CurrentEvent));
+    CurrentEvent^.RemainingTime:=CurrentEvent^.RemainingTime-aDeltaTime;
+    if CurrentEvent^.RemainingTime<=0.0 then begin
+     LinkedListRemove(pointer(CurrentEvent));
+     LinkedListPushBack(@fEventQueue,pointer(CurrentEvent));
+    end;
+    CurrentEvent:=NextEvent;
+   until not assigned(CurrentEvent);
+  end;
+ finally
+  fEventQueueLock.ReleaseWrite;
+  fDelayedEventQueueLock.ReleaseWrite;
+ end;
+ if not LinkedListEmpty(@fDelayedFreeEventQueue) then begin
+  fFreeEventQueueLock.AcquireWrite;
+  try
+   LinkedListSpliceTailInitialize(@fFreeEventQueue,@fDelayedFreeEventQueue);
+  finally
+   fFreeEventQueueLock.ReleaseWrite;
+  end;
+ end;
 end;
 
 procedure TpvEntityComponentSystem.TWorld.Kill;
@@ -3270,17 +3368,25 @@ begin
 
   DelayedManagementEventIndex:=0;
   while DelayedManagementEventIndex<fCountDelayedManagementEvents do begin
+
    DelayedManagementEvent:=@fDelayedManagementEvents[DelayedManagementEventIndex];
+
    inc(DelayedManagementEventIndex);
+
    case DelayedManagementEvent^.EventType of
+
     TpvEntityComponentSystem.TDelayedManagementEventType.CreateEntity:begin
+
      EntityID:=DelayedManagementEvent^.EntityID;
      EntityIndex:=EntityID.Index;
      if (EntityIndex>=0) and (EntityIndex<fEntityIndexCounter) then begin
       DoCreateEntity(EntityID,DelayedManagementEvent^.UUID);
      end;
+
     end;
+
     TpvEntityComponentSystem.TDelayedManagementEventType.ActivateEntity:begin
+
      EntityID:=DelayedManagementEvent^.EntityID;
      EntityIndex:=EntityID.Index;
      if (EntityIndex>=0) and
@@ -3295,9 +3401,13 @@ begin
        end;
       end;
       Include(fEntities[EntityID].fFlags,TpvEntityComponentSystem.TEntity.TFlag.Active);
+
      end;
+
     end;
+
     TpvEntityComponentSystem.TDelayedManagementEventType.DeactivateEntity:begin
+
      EntityID:=DelayedManagementEvent^.EntityID;
      EntityIndex:=EntityID.Index;
      if (EntityIndex>=0) and
@@ -3311,8 +3421,11 @@ begin
        EntitiesWereRemoved:=true;
       end;
      end;
+
     end;
+
     TpvEntityComponentSystem.TDelayedManagementEventType.KillEntity:begin
+
      EntityID:=DelayedManagementEvent^.EntityID;
      EntityIndex:=EntityID.Index;
      if (EntityIndex>=0) and
@@ -3330,8 +3443,11 @@ begin
        fDelayedManagementEventLock.AcquireRead;
       end;
      end;
+
     end;
+
     TpvEntityComponentSystem.TDelayedManagementEventType.AddComponentToEntity:begin
+
      EntityID:=DelayedManagementEvent^.EntityID;
      EntityIndex:=EntityID.Index;
      if (EntityIndex>=0) and
@@ -3364,8 +3480,11 @@ begin
        end;
       end;
      end;
+
     end;
+
     TpvEntityComponentSystem.TDelayedManagementEventType.RemoveComponentFromEntity:begin
+
      EntityID:=DelayedManagementEvent^.EntityID;
      EntityIndex:=EntityID.Index;
      if (EntityIndex>=0) and
@@ -3398,8 +3517,11 @@ begin
        end;
       end;
      end;
+
     end;
+
     TpvEntityComponentSystem.TDelayedManagementEventType.AddSystem:begin
+
      System:=DelayedManagementEvent^.System;
      if not fSystemUsedMap.Values[System] then begin
       fSystemUsedMap.Add(System,true);
@@ -3417,8 +3539,11 @@ begin
       end;
       System.Added;
      end;
+
     end;
+
     TpvEntityComponentSystem.TDelayedManagementEventType.RemoveSystem:begin
+
      System:=DelayedManagementEvent^.System;
      if fSystemUsedMap.Values[System] then begin
       System.Removed;
@@ -3426,21 +3551,33 @@ begin
       fSystems.Remove(System);
       InterlockedExchange(fSystemChoreographyNeedToRebuild,-1);
      end;
+
     end;
+
     TpvEntityComponentSystem.TDelayedManagementEventType.SortSystem:begin
+
      System:=DelayedManagementEvent^.System;
      if fSystemUsedMap.Values[System] then begin
       System.SortEntities;
      end;
+
     end;
+
+    else begin
+     Assert(false);
+    end;
+
    end;
+
   end;
+
   fDelayedManagementEventLock.ReadToWrite;
   try
    fCountDelayedManagementEvents:=0;
   finally
    fDelayedManagementEventLock.WriteToRead;
   end;
+
  finally
   fDelayedManagementEventLock.ReleaseRead;
  end;
@@ -3514,22 +3651,30 @@ procedure TpvEntityComponentSystem.TWorld.Update(const aDeltaTime:TpvTime);
 var SystemIndex:TpvSizeInt;
     System:TSystem;
 begin
+
  for SystemIndex:=0 to fSystems.Count-1 do begin
   System:=fSystems.Items[SystemIndex];
   System.fCountEvents:=0;
   System.fDeltaTime:=aDeltaTime;
  end;
+
  ProcessEvents;
+
  if InterlockedCompareExchange(fSystemChoreographyNeedToRebuild,0,-1)<0 then begin
   fSystemChoreography.Build;
  end;
+
  fSystemChoreography.ProcessEvents;
  fSystemChoreography.InitializeUpdate;
  fSystemChoreography.Update;
  fSystemChoreography.FinalizeUpdate;
+
  fCurrentTime:=fCurrentTime+aDeltaTime;
+
  ProcessDelayedEvents(aDeltaTime);
+
  Refresh;
+
 end;
 
 procedure TpvEntityComponentSystem.TWorld.Clear;
