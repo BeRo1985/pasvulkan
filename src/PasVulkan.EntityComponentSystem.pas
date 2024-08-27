@@ -240,17 +240,17 @@ type TpvEntityComponentSystem=class
               fPointers:TPointers;
               fDataPointer:TpvPointer;
               procedure FinalizeComponentByPoolIndex(const aPoolIndex:TpvSizeInt);
-              function GetEntityIndexByPoolIndex(const aPoolIndex:TpvSizeInt):TpvSizeInt; inline;
-              function GetComponentByPoolIndex(const aPoolIndex:TpvSizeInt):TpvPointer; inline;
-              function GetComponentByEntityIndex(const aEntityIndex:TpvSizeInt):TpvPointer; inline;
+              function GetEntityIndexByPoolIndex(const aPoolIndex:TpvSizeInt):TpvSizeInt;
+              function GetComponentByPoolIndex(const aPoolIndex:TpvSizeInt):TpvPointer;
+              function GetComponentByEntityIndex(const aEntityIndex:TpvSizeInt):TpvPointer;
               procedure SetMaxEntities(const aCount:TpvSizeInt);
              public
               constructor Create(const aWorld:TWorld;const aRegisteredComponentType:TRegisteredComponentType); reintroduce;
               destructor Destroy; override;
               procedure Defragment;
               procedure DefragmentIfNeeded;
-              function IsComponentInEntityIndex(const aEntityIndex:TpvSizeInt):boolean; inline;
-              function GetComponentPoolIndexForEntityIndex(const aEntityIndex:TpvSizeInt):TpvSizeInt; inline;
+              function IsComponentInEntityIndex(const aEntityIndex:TpvSizeInt):boolean;
+              function GetComponentPoolIndexForEntityIndex(const aEntityIndex:TpvSizeInt):TpvSizeInt;
               function AllocateComponentForEntityIndex(const aEntityIndex:TpvSizeInt):boolean;
               function FreeComponentFromEntityIndex(const aEntityIndex:TpvSizeInt):boolean;
              public
@@ -323,6 +323,12 @@ type TpvEntityComponentSystem=class
 
             TSystemEvents=array of PEvent;
 
+            TEntityAssignOp=
+             (
+              Replace,
+              Combine
+             );
+
             { TEntity }
 
             TEntity=record
@@ -348,14 +354,15 @@ type TpvEntityComponentSystem=class
               procedure AddComponentToEntity(const aComponentID:TComponentID);
               procedure RemoveComponentFromEntity(const aComponentID:TComponentID);
              public
+              procedure Assign(const aFrom:TEntity;const aAssignOp:TEntityAssignOp=TEntityAssignOp.Replace;const aEntityIDs:TEntityIDDynamicArray=nil;const aDoRefresh:boolean=true);
               procedure SynchronizeToPrefab;
-              procedure Activate; inline;
-              procedure Deactivate; inline;
-              procedure Kill; inline;
-              procedure AddComponent(const aComponentID:TComponentID); inline;
-              procedure RemoveComponent(const aComponentID:TComponentID); inline;
-              function HasComponent(const aComponentID:TComponentID):boolean; inline;
-              function GetComponent(const aComponentID:TComponentID):TpvEntityComponentSystem.TComponent; inline;
+              procedure Activate;
+              procedure Deactivate;
+              procedure Kill;
+              procedure AddComponent(const aComponentID:TComponentID;const aData:Pointer=nil;const aDataSize:TpvSizeInt=0);
+              procedure RemoveComponent(const aComponentID:TComponentID);
+              function HasComponent(const aComponentID:TComponentID):boolean;
+              function GetComponent(const aComponentID:TComponentID):TpvEntityComponentSystem.TComponent;
              public
               property World:TWorld read fWorld write fWorld;
               property ID:TEntityID read fID write fID;
@@ -605,12 +612,12 @@ type TpvEntityComponentSystem=class
               procedure UnsubscribeFromEvent(const aEventID:TEventID;const aEventHandler:TEventHandler);
               function CreateEntity(const aEntityUUID:TpvUUID):TEntityID; overload;
               function CreateEntity:TEntityID; overload;
-              function HasEntity(const aEntityID:TEntityID):boolean; {$ifdef caninline}inline;{$endif}
-              function IsEntityActive(const aEntityID:TEntityID):boolean; {$ifdef caninline}inline;{$endif}
-              procedure ActivateEntity(const aEntityID:TEntityID); {$ifdef caninline}inline;{$endif}
-              procedure DeactivateEntity(const aEntityID:TEntityID); {$ifdef caninline}inline;{$endif}
-              procedure KillEntity(const aEntityID:TEntityID); {$ifdef caninline}inline;{$endif}
-              procedure AddComponentToEntity(const aEntityID:TEntityID;const aComponentID:TComponentID);
+              function HasEntity(const aEntityID:TEntityID):boolean;
+              function IsEntityActive(const aEntityID:TEntityID):boolean;
+              procedure ActivateEntity(const aEntityID:TEntityID);
+              procedure DeactivateEntity(const aEntityID:TEntityID);
+              procedure KillEntity(const aEntityID:TEntityID);
+              procedure AddComponentToEntity(const aEntityID:TEntityID;const aComponentID:TComponentID;const aData:Pointer=nil;const aDataSize:TpvSizeInt=0);
               procedure RemoveComponentFromEntity(const aEntityID:TEntityID;const aComponentID:TComponentID);
               function HasEntityComponent(const aEntityID:TEntityID;const aComponentID:TComponentID):boolean;
               procedure AddSystem(const aSystem:TSystem);
@@ -1851,6 +1858,61 @@ begin
  fComponentsBitmap[BitIndex]:=fComponentsBitmap[BitIndex] and not (TpvUInt32(1) shl BitIndex);
 end;
 
+procedure TpvEntityComponentSystem.TEntity.Assign(const aFrom:TEntity;const aAssignOp:TEntityAssignOp=TEntityAssignOp.Replace;const aEntityIDs:TEntityIDDynamicArray=nil;const aDoRefresh:boolean=true);
+var EntityComponentBitmapIndex,EntityComponentIndex:TpvInt32;
+    EntityComponentBitmapValue:TpvUInt32;
+    EntityComponent:TpvEntityComponentSystem.TComponent;
+    EntityComponentID:TpvEntityComponentSystem.TComponentID;
+    a,b:TpvPointer;
+begin
+
+ for EntityComponentBitmapIndex:=0 to length(aFrom.fComponentsBitmap)-1 do begin
+  EntityComponentBitmapValue:=aFrom.fComponentsBitmap[EntityComponentBitmapIndex];
+  while EntityComponentBitmapValue<>0 do begin
+   EntityComponentIndex:=TPasMPMath.BitScanForward32(EntityComponentBitmapValue);
+   EntityComponentBitmapValue:=EntityComponentBitmapValue and not (EntityComponentBitmapValue-1);
+   if EntityComponentIndex<fWorld.fComponents.Count then begin
+    EntityComponent:=fWorld.fComponents[EntityComponentIndex];
+    if assigned(EntityComponent) then begin
+     EntityComponentID:=EntityComponent.fRegisteredComponentType.fID;
+     if not HasComponent(EntityComponentID) then begin
+      AddComponent(EntityComponentID);
+      fWorld.Refresh;
+     end;
+     a:=EntityComponent.Pointers[EntityComponent.GetComponentPoolIndexForEntityIndex(aFrom.fID.Index)];
+     b:=EntityComponent.Pointers[EntityComponent.GetComponentPoolIndexForEntityIndex(fID.Index)];
+     Move(a^,b^,EntityComponent.RegisteredComponentType.Size);
+    end;
+   end;
+  end;
+ end;
+
+ if aAssignOp=TEntityAssignOp.Replace then begin
+  for EntityComponentBitmapIndex:=0 to length(fComponentsBitmap)-1 do begin
+   EntityComponentBitmapValue:=fComponentsBitmap[EntityComponentBitmapIndex];
+   while EntityComponentBitmapValue<>0 do begin
+    EntityComponentIndex:=TPasMPMath.BitScanForward32(EntityComponentBitmapValue);
+    EntityComponentBitmapValue:=EntityComponentBitmapValue and not (EntityComponentBitmapValue-1);
+    if EntityComponentIndex<fWorld.fComponents.Count then begin
+     EntityComponentID:=EntityComponent.fRegisteredComponentType.fID;
+     if not aFrom.HasComponent(EntityComponentID) then begin
+      RemoveComponent(EntityComponentID);
+     end;
+    end;
+   end;
+  end;
+ end;
+
+ if aFrom.Active then begin
+  Activate;
+ end;
+
+ if aDoRefresh then begin
+  World.Refresh;
+ end;
+
+end;
+              
 procedure TpvEntityComponentSystem.TEntity.SynchronizeToPrefab;
 begin
 end;
@@ -1876,10 +1938,10 @@ begin
  end;
 end;
 
-procedure TpvEntityComponentSystem.TEntity.AddComponent(const aComponentID:TComponentID);
+procedure TpvEntityComponentSystem.TEntity.AddComponent(const aComponentID:TComponentID;const aData:Pointer;const aDataSize:TpvSizeInt);
 begin
  if assigned(fWorld) then begin
-  fWorld.AddComponentToEntity(fID,aComponentID);
+  fWorld.AddComponentToEntity(fID,aComponentID,aData,aDataSize);
  end;
 end;
 
@@ -3355,7 +3417,7 @@ begin
  AddDelayedManagementEvent(DelayedManagementEvent);
 end;
 
-procedure TpvEntityComponentSystem.TWorld.AddComponentToEntity(const aEntityID:TEntityID;const aComponentID:TComponentID);
+procedure TpvEntityComponentSystem.TWorld.AddComponentToEntity(const aEntityID:TEntityID;const aComponentID:TComponentID;const aData:Pointer;const aDataSize:TpvSizeInt);
 var DelayedManagementEvent:TDelayedManagementEvent;
 begin
  DelayedManagementEvent.EventType:=TpvEntityComponentSystem.TDelayedManagementEventType.AddComponentToEntity;

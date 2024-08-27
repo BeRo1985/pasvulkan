@@ -3528,7 +3528,7 @@ begin
 
 {   for Index:=0 to fComponentDataStoreList.Count-1 do begin
      TpvComponentClass(fComponentDataStoreList[Index]).SetNewMaxEntities(fEntityIDCounter);
-    end;{}
+    end;}
 
     OldCount:=length(fEntities);
     Count:=fEntityIDCounter;

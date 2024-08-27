@@ -6142,7 +6142,7 @@ begin
   VertexStagePushConstants^.CountViews:=aCountViews;
   VertexStagePushConstants^.CountAllViews:=fViews[aInFlightFrameIndex].Count;
   VertexStagePushConstants^.FrameIndex:=aFrameIndex;
-  if assigned(aJitter) then begin
+  if assigned(aJitter) and (Renderer.AntialiasingMode<>TpvScene3DRendererAntialiasingMode.SMAAT2x) then begin
    VertexStagePushConstants^.Jitter:=aJitter^;
   end else begin
    VertexStagePushConstants^.Jitter:=TpvVector4.Null;
@@ -6458,9 +6458,9 @@ begin
   InFlightFrameState^.VoxelizationRenderPassIndex:=-1;
  end;
 
- if Renderer.AntialiasingMode=TpvScene3DRendererAntialiasingMode.SMAAT2x then begin
+{if Renderer.AntialiasingMode=TpvScene3DRendererAntialiasingMode.SMAAT2x then begin
   InFlightFrameState^.Jitter:=TpvVector4.Null;
- end else begin
+ end else}begin
   InFlightFrameState^.Jitter.xy:=GetJitterOffset(aFrameCounter);
   InFlightFrameState^.Jitter.zw:=GetJitterOffset(aFrameCounter-1);
  end;
