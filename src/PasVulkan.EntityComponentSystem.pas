@@ -3129,7 +3129,7 @@ begin
  end;
 end;
 
-function TpvEntityComponentSystem.TWorld.CreateEntity:TEntityID; overload;
+function TpvEntityComponentSystem.TWorld.CreateEntity:TEntityID;
 begin
  result:=CreateEntity(TpvUUID.Null);
 end;
