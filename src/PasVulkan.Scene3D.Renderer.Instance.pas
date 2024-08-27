@@ -5300,7 +5300,7 @@ begin
  case Renderer.AntialiasingMode of
   TpvScene3DRendererAntialiasingMode.SMAAT2x:begin
    if aFrameCounter>=0 then begin
-    result:=((SMAAT2xOffsets[aFrameCounter and 1]-TpvVector2.InlineableCreate(0.5,0.5))*2.0)/TpvVector2.InlineableCreate(fScaledWidth,fScaledHeight);
+    result:=SMAAT2xOffsets[aFrameCounter and 1]/TpvVector2.InlineableCreate(fScaledWidth,fScaledHeight);
    end else begin
     result.x:=0.0;
     result.y:=0.0;
