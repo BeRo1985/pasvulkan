@@ -81,8 +81,6 @@ type { TpvScene3DRendererPassesAntialiasingSMAAT2xPostCustomPass }
       private
        fInstance:TpvScene3DRendererInstance;
        fResourceColor:TpvFrameGraph.TPass.TUsedImageResource;
-       fResourceDepth:TpvFrameGraph.TPass.TUsedImageResource;
-       fResourceVelocity:TpvFrameGraph.TPass.TUsedImageResource;
       public
        constructor Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance); reintroduce;
        destructor Destroy; override;
@@ -104,23 +102,13 @@ begin
  fInstance:=aInstance;
  Name:='AntialiasingSMAAT2xPostCustomPass';
 
- fResourceColor:=AddImageInput('resourcetype_color_temporal_antialiasing',
-                               'resource_temporal_antialiasing_color',
+ fResourceColor:=AddImageInput('resourcetype_color_optimized_non_alpha',
+                               'resource_forwardrendering_color',
+                              {'resourcetype_color_temporal_antialiasing',
+                               'resource_temporal_antialiasing_color',}
                                VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
                                []
                               );
-
- fResourceDepth:=AddImageInput('resourcetype_depth',
-                               'resource_depth_data',
-                               VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                               []
-                              );
-
- fResourceVelocity:=AddImageInput('resourcetype_velocity',
-                                  'resource_velocity_data',
-                                  VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                                  []
-                                 );
 
 end;
 
