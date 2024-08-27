@@ -4676,7 +4676,27 @@ begin
 end;
 
 function TpvEntityComponentSystem.TWorld.UnserializeFromJSON(const aJSONRootItem:TPasJSONItem;const aCreateNewUUIDs:boolean):TEntityID;
+type TUUIDIntegerPairHashMap=TpvHashMap<TpvUUID,TpvInt32>;
+     TParentObjectNames=TpvGenericList<TPasJSONUTF8String>;
+var RootUUID:TpvUUIDString;
+    WorldUUID,EntityUUID,ComponentUUID:TpvUUID;
+    Entity:PEntity;
+    RootObjectItem,EntityObjectItem:TPasJSONItemObject;
+    RootObjectItemIndex,EntityObjectItemIndex:TpvInt32;
+    RootObjectItemKey,EntityObjectItemKey:TPasJSONUTF8String;
+    RootObjectItemValue,EntityObjectItemValue,TempItem:TPasJSONItem;
+    EntityID:TEntityID;
+    Component:TpvEntityComponentSystem.TComponent;
+    EntityUUIDHashMap:TUUIDIntegerPairHashMap;
+    EntityIDs:array of TpvInt32;
+    ParentObjectNames:TParentObjectNames;
+    WorldName:TpvUTF8String;
 begin
+
+ result:=TEntityID.Invalid;
+
+
+
 end;
 
 function TpvEntityComponentSystem.TWorld.LoadFromStream(const aStream:TStream;const aCreateNewUUIDs:boolean):TEntityID;
