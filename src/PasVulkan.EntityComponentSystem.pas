@@ -72,7 +72,8 @@ uses {$ifdef Windows}Windows,{$endif}SysUtils,Classes,Math,Variants,TypInfo,
      PasVulkan.Base64,
      PasVulkan.Collections,
      PasVulkan.DataStructures.LinkedList,
-     PasVulkan.Value;
+     PasVulkan.Value,
+     PasVulkan.SUID;
 
 type TpvEntityComponentSystem=class
       public

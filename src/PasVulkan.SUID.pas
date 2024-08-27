@@ -76,13 +76,13 @@ type TpvSUID=type TpvUInt64;
 
      TpvSUIDHelper=record helper for TpvSUID
       public
-       const Null:TpvSUID=(ID:0);
+       const Null:TpvSUID=(0);
       public
-       class function Create:TSUID; static;
-       class function CreateFromString(const aString:string):TSUID; static;
+       class function Create:TpvSUID; static;
+       class function CreateFromString(const aString:string):TpvSUID; static;
        function ToString:string;
-(*     class operator Equal(const a,b:TSUID):boolean; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator NotEqual(const a,b:TSUID):boolean; {$ifdef CAN_INLINE}inline;{$endif}*)
+(*     class operator Equal(const a,b:TpvSUID):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator NotEqual(const a,b:TpvSUID):boolean; {$ifdef CAN_INLINE}inline;{$endif}*)
      end;
 
 var SUIDNodeID:TpvUInt16=0;
@@ -134,22 +134,22 @@ begin
  end;
 end;
 
-function TpvSUID.CreateFromString(const aString:string):TpvSUID;
+class function TpvSUIDHelper.CreateFromString(const aString:string):TpvSUID;
 begin
  result:=StrToUInt64Def(aString,0);
 end;
 
-function TpvSUID.ToString:string;
+function TpvSUIDHelper.ToString:string;
 begin
- result:=UIntToStr(seld);
+ result:=UIntToStr(self);
 end;
 
-{class operator TpvSUID.Equal(const a,b:TpvSUID):boolean;
+{class operator TpvSUIDHelper.Equal(const a,b:TpvSUID):boolean;
 begin
  result:=a=b;
 end;
 
-class operator TpvSUID.NotEqual(const a,b:TpvSUID):boolean;
+class operator TpvSUIDHelper.NotEqual(const a,b:TpvSUID):boolean;
 begin
  result:=a<>b;
 end;}
