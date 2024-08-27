@@ -81,6 +81,7 @@ type TpvScene3DRendererAntialiasingMode=
        DSAA,
        FXAA,
        SMAA,
+       SMAAT2x,
        MSAA,
        MSAASMAA,
        TAA

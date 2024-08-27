@@ -950,6 +950,9 @@ uses PasVulkan.Scene3D.Atmosphere,
      PasVulkan.Scene3D.Renderer.Passes.AntialiasingNoneRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.AntialiasingDSAARenderPass,
      PasVulkan.Scene3D.Renderer.Passes.AntialiasingFXAARenderPass,
+     PasVulkan.Scene3D.Renderer.Passes.AntialiasingSMAAT2xPreCustomPass,
+     PasVulkan.Scene3D.Renderer.Passes.AntialiasingSMAAT2xTemporalResolveRenderPass,
+     PasVulkan.Scene3D.Renderer.Passes.AntialiasingSMAAT2xPostCustomPass,
      PasVulkan.Scene3D.Renderer.Passes.AntialiasingSMAAEdgesRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.AntialiasingSMAAWeightsRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.AntialiasingSMAABlendRenderPass,
@@ -1059,6 +1062,9 @@ type TpvScene3DRendererInstancePasses=class
        fAntialiasingNoneRenderPass:TpvScene3DRendererPassesAntialiasingNoneRenderPass;
        fAntialiasingDSAARenderPass:TpvScene3DRendererPassesAntialiasingDSAARenderPass;
        fAntialiasingFXAARenderPass:TpvScene3DRendererPassesAntialiasingFXAARenderPass;
+       fAntialiasingSMAAT2xPreCustomPass:TpvScene3DRendererPassesAntialiasingSMAAT2xPreCustomPass;
+       fAntialiasingSMAAT2xTemporalResolveRenderPass:TpvScene3DRendererPassesAntialiasingSMAAT2xTemporalResolveRenderPass;
+       fAntialiasingSMAAT2xPostCustomPass:TpvScene3DRendererPassesAntialiasingSMAAT2xPostCustomPass;
        fAntialiasingSMAAEdgesRenderPass:TpvScene3DRendererPassesAntialiasingSMAAEdgesRenderPass;
        fAntialiasingSMAAWeightsRenderPass:TpvScene3DRendererPassesAntialiasingSMAAWeightsRenderPass;
        fAntialiasingSMAABlendRenderPass:TpvScene3DRendererPassesAntialiasingSMAABlendRenderPass;
@@ -3743,12 +3749,45 @@ begin
   end;
 
   TpvScene3DRendererAntialiasingMode.SMAA,
+  TpvScene3DRendererAntialiasingMode.SMAAT2x,
   TpvScene3DRendererAntialiasingMode.MSAASMAA:begin
-   TpvScene3DRendererInstancePasses(fPasses).fAntialiasingSMAAEdgesRenderPass:=TpvScene3DRendererPassesAntialiasingSMAAEdgesRenderPass.Create(fFrameGraph,self);
-   TpvScene3DRendererInstancePasses(fPasses).fAntialiasingSMAAWeightsRenderPass:=TpvScene3DRendererPassesAntialiasingSMAAWeightsRenderPass.Create(fFrameGraph,self);
-   TpvScene3DRendererInstancePasses(fPasses).fAntialiasingSMAABlendRenderPass:=TpvScene3DRendererPassesAntialiasingSMAABlendRenderPass.Create(fFrameGraph,self);
-   AntialiasingFirstPass:=TpvScene3DRendererInstancePasses(fPasses).fAntialiasingSMAAEdgesRenderPass;
-   AntialiasingLastPass:=TpvScene3DRendererInstancePasses(fPasses).fAntialiasingSMAABlendRenderPass;
+
+   case Renderer.AntialiasingMode of
+
+    TpvScene3DRendererAntialiasingMode.SMAAT2x:begin
+
+     TpvScene3DRendererInstancePasses(fPasses).fAntialiasingSMAAT2xPreCustomPass:=TpvScene3DRendererPassesAntialiasingSMAAT2xPreCustomPass.Create(fFrameGraph,self);
+
+     TpvScene3DRendererInstancePasses(fPasses).fAntialiasingSMAAT2xTemporalResolveRenderPass:=TpvScene3DRendererPassesAntialiasingSMAAT2xTemporalResolveRenderPass.Create(fFrameGraph,self);
+     TpvScene3DRendererInstancePasses(fPasses).fAntialiasingSMAAT2xTemporalResolveRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fAntialiasingSMAAT2xPreCustomPass);
+
+     TpvScene3DRendererInstancePasses(fPasses).fAntialiasingSMAAT2xPostCustomPass:=TpvScene3DRendererPassesAntialiasingSMAAT2xPostCustomPass.Create(fFrameGraph,self);
+     TpvScene3DRendererInstancePasses(fPasses).fAntialiasingSMAAT2xPostCustomPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fAntialiasingSMAAT2xTemporalResolveRenderPass);
+
+     TpvScene3DRendererInstancePasses(fPasses).fAntialiasingSMAAEdgesRenderPass:=TpvScene3DRendererPassesAntialiasingSMAAEdgesRenderPass.Create(fFrameGraph,self);
+     TpvScene3DRendererInstancePasses(fPasses).fAntialiasingSMAAEdgesRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fAntialiasingSMAAT2xPostCustomPass);
+
+     TpvScene3DRendererInstancePasses(fPasses).fAntialiasingSMAAWeightsRenderPass:=TpvScene3DRendererPassesAntialiasingSMAAWeightsRenderPass.Create(fFrameGraph,self);
+
+     TpvScene3DRendererInstancePasses(fPasses).fAntialiasingSMAABlendRenderPass:=TpvScene3DRendererPassesAntialiasingSMAABlendRenderPass.Create(fFrameGraph,self);
+
+     AntialiasingFirstPass:=TpvScene3DRendererInstancePasses(fPasses).fAntialiasingSMAAT2xPreCustomPass;
+     AntialiasingLastPass:=TpvScene3DRendererInstancePasses(fPasses).fAntialiasingSMAABlendRenderPass;
+
+    end;
+
+    else begin
+
+     TpvScene3DRendererInstancePasses(fPasses).fAntialiasingSMAAEdgesRenderPass:=TpvScene3DRendererPassesAntialiasingSMAAEdgesRenderPass.Create(fFrameGraph,self);
+     TpvScene3DRendererInstancePasses(fPasses).fAntialiasingSMAAWeightsRenderPass:=TpvScene3DRendererPassesAntialiasingSMAAWeightsRenderPass.Create(fFrameGraph,self);
+     TpvScene3DRendererInstancePasses(fPasses).fAntialiasingSMAABlendRenderPass:=TpvScene3DRendererPassesAntialiasingSMAABlendRenderPass.Create(fFrameGraph,self);
+     AntialiasingFirstPass:=TpvScene3DRendererInstancePasses(fPasses).fAntialiasingSMAAEdgesRenderPass;
+     AntialiasingLastPass:=TpvScene3DRendererInstancePasses(fPasses).fAntialiasingSMAABlendRenderPass;
+
+    end;
+
+   end;
+
   end;
 
   TpvScene3DRendererAntialiasingMode.TAA:begin
@@ -4808,50 +4847,79 @@ begin
   UniversalQueue:=nil;
  end;
 
- if Renderer.AntialiasingMode=TpvScene3DRendererAntialiasingMode.TAA then begin
+ case Renderer.AntialiasingMode of
 
-  for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
+  TpvScene3DRendererAntialiasingMode.SMAAT2x:begin
 
-   fTAAHistoryColorImages[InFlightFrameIndex]:=TpvScene3DRendererArray2DImage.Create(fScene3D.VulkanDevice,
-                                                                                     fScaledWidth,
-                                                                                     fScaledHeight,
-                                                                                     fCountSurfaceViews,
-                                                                                     Renderer.OptimizedNonAlphaFormat,
-                                                                                     TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
-                                                                                     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                                                                     false,
-                                                                                     pvAllocationGroupIDScene3DSurface);
-   Renderer.VulkanDevice.DebugUtils.SetObjectName(fTAAHistoryColorImages[InFlightFrameIndex].VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DRendererInstance.fTAAHistoryColorImages['+IntToStr(InFlightFrameIndex)+'].Image');
-   Renderer.VulkanDevice.DebugUtils.SetObjectName(fTAAHistoryColorImages[InFlightFrameIndex].VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRendererInstance.fTAAHistoryColorImages['+IntToStr(InFlightFrameIndex)+'].ImageView');
+   for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
 
-   fTAAHistoryDepthImages[InFlightFrameIndex]:=TpvScene3DRendererArray2DImage.Create(fScene3D.VulkanDevice,
-                                                                                     fScaledWidth,
-                                                                                     fScaledHeight,
-                                                                                     fCountSurfaceViews,
-                                                                                     VK_FORMAT_D32_SFLOAT,
-                                                                                     TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
-                                                                                     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                                                                     false,
-                                                                                     pvAllocationGroupIDScene3DSurface);
-   Renderer.VulkanDevice.DebugUtils.SetObjectName(fTAAHistoryDepthImages[InFlightFrameIndex].VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DRendererInstance.fTAAHistoryDepthImages['+IntToStr(InFlightFrameIndex)+'].Image');
-   Renderer.VulkanDevice.DebugUtils.SetObjectName(fTAAHistoryDepthImages[InFlightFrameIndex].VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRendererInstance.fTAAHistoryDepthImages['+IntToStr(InFlightFrameIndex)+'].ImageView');
+    fTAAHistoryColorImages[InFlightFrameIndex]:=TpvScene3DRendererArray2DImage.Create(fScene3D.VulkanDevice,
+                                                                                      fScaledWidth,
+                                                                                      fScaledHeight,
+                                                                                      fCountSurfaceViews,
+                                                                                      Renderer.OptimizedNonAlphaFormat,
+                                                                                      TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
+                                                                                      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                                                      false,
+                                                                                      pvAllocationGroupIDScene3DSurface);
+    Renderer.VulkanDevice.DebugUtils.SetObjectName(fTAAHistoryColorImages[InFlightFrameIndex].VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DRendererInstance.fTAAHistoryColorImages['+IntToStr(InFlightFrameIndex)+'].Image');
+    Renderer.VulkanDevice.DebugUtils.SetObjectName(fTAAHistoryColorImages[InFlightFrameIndex].VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRendererInstance.fTAAHistoryColorImages['+IntToStr(InFlightFrameIndex)+'].ImageView');
 
-   fTAAHistoryVelocityImages[InFlightFrameIndex]:=TpvScene3DRendererArray2DImage.Create(fScene3D.VulkanDevice,
-                                                                                        fScaledWidth,
-                                                                                        fScaledHeight,
-                                                                                        fCountSurfaceViews,
-                                                                                        VK_FORMAT_R16G16_SFLOAT,
-                                                                                        TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
-                                                                                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                                                                        false,
-                                                                                        pvAllocationGroupIDScene3DSurface);
-   Renderer.VulkanDevice.DebugUtils.SetObjectName(fTAAHistoryVelocityImages[InFlightFrameIndex].VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DRendererInstance.fTAAHistoryVelocityImages['+IntToStr(InFlightFrameIndex)+'].Image');
-   Renderer.VulkanDevice.DebugUtils.SetObjectName(fTAAHistoryVelocityImages[InFlightFrameIndex].VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRendererInstance.fTAAHistoryVelocityImages['+IntToStr(InFlightFrameIndex)+'].ImageView');
+    fTAAEvents[InFlightFrameIndex]:=TpvVulkanEvent.Create(Renderer.VulkanDevice);
+    Renderer.VulkanDevice.DebugUtils.SetObjectName(fTAAEvents[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_EVENT,'TpvScene3DRendererInstance.fTAAEvents['+IntToStr(InFlightFrameIndex)+']');
 
-   fTAAEvents[InFlightFrameIndex]:=TpvVulkanEvent.Create(Renderer.VulkanDevice);
-   Renderer.VulkanDevice.DebugUtils.SetObjectName(fTAAEvents[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_EVENT,'TpvScene3DRendererInstance.fTAAEvents['+IntToStr(InFlightFrameIndex)+']');
+    fTAAEventReady[InFlightFrameIndex]:=false;
 
-   fTAAEventReady[InFlightFrameIndex]:=false;
+   end;
+
+  end;
+
+  TpvScene3DRendererAntialiasingMode.TAA:begin
+
+   for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
+
+    fTAAHistoryColorImages[InFlightFrameIndex]:=TpvScene3DRendererArray2DImage.Create(fScene3D.VulkanDevice,
+                                                                                      fScaledWidth,
+                                                                                      fScaledHeight,
+                                                                                      fCountSurfaceViews,
+                                                                                      Renderer.OptimizedNonAlphaFormat,
+                                                                                      TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
+                                                                                      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                                                      false,
+                                                                                      pvAllocationGroupIDScene3DSurface);
+    Renderer.VulkanDevice.DebugUtils.SetObjectName(fTAAHistoryColorImages[InFlightFrameIndex].VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DRendererInstance.fTAAHistoryColorImages['+IntToStr(InFlightFrameIndex)+'].Image');
+    Renderer.VulkanDevice.DebugUtils.SetObjectName(fTAAHistoryColorImages[InFlightFrameIndex].VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRendererInstance.fTAAHistoryColorImages['+IntToStr(InFlightFrameIndex)+'].ImageView');
+
+    fTAAHistoryDepthImages[InFlightFrameIndex]:=TpvScene3DRendererArray2DImage.Create(fScene3D.VulkanDevice,
+                                                                                      fScaledWidth,
+                                                                                      fScaledHeight,
+                                                                                      fCountSurfaceViews,
+                                                                                      VK_FORMAT_D32_SFLOAT,
+                                                                                      TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
+                                                                                      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                                                      false,
+                                                                                      pvAllocationGroupIDScene3DSurface);
+    Renderer.VulkanDevice.DebugUtils.SetObjectName(fTAAHistoryDepthImages[InFlightFrameIndex].VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DRendererInstance.fTAAHistoryDepthImages['+IntToStr(InFlightFrameIndex)+'].Image');
+    Renderer.VulkanDevice.DebugUtils.SetObjectName(fTAAHistoryDepthImages[InFlightFrameIndex].VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRendererInstance.fTAAHistoryDepthImages['+IntToStr(InFlightFrameIndex)+'].ImageView');
+
+    fTAAHistoryVelocityImages[InFlightFrameIndex]:=TpvScene3DRendererArray2DImage.Create(fScene3D.VulkanDevice,
+                                                                                         fScaledWidth,
+                                                                                         fScaledHeight,
+                                                                                         fCountSurfaceViews,
+                                                                                         VK_FORMAT_R16G16_SFLOAT,
+                                                                                         TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
+                                                                                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                                                         false,
+                                                                                         pvAllocationGroupIDScene3DSurface);
+    Renderer.VulkanDevice.DebugUtils.SetObjectName(fTAAHistoryVelocityImages[InFlightFrameIndex].VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DRendererInstance.fTAAHistoryVelocityImages['+IntToStr(InFlightFrameIndex)+'].Image');
+    Renderer.VulkanDevice.DebugUtils.SetObjectName(fTAAHistoryVelocityImages[InFlightFrameIndex].VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRendererInstance.fTAAHistoryVelocityImages['+IntToStr(InFlightFrameIndex)+'].ImageView');
+
+    fTAAEvents[InFlightFrameIndex]:=TpvVulkanEvent.Create(Renderer.VulkanDevice);
+    Renderer.VulkanDevice.DebugUtils.SetObjectName(fTAAEvents[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_EVENT,'TpvScene3DRendererInstance.fTAAEvents['+IntToStr(InFlightFrameIndex)+']');
+
+    fTAAEventReady[InFlightFrameIndex]:=false;
+
+   end;
 
   end;
 
@@ -5041,13 +5109,24 @@ begin
  FreeAndNil(fViewBuffersDescriptorPool);
  FreeAndNil(fViewBuffersDescriptorSetLayout);
 
- if Renderer.AntialiasingMode=TpvScene3DRendererAntialiasingMode.TAA then begin
-  for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
-   FreeAndNil(fTAAHistoryColorImages[InFlightFrameIndex]);
-   FreeAndNil(fTAAHistoryDepthImages[InFlightFrameIndex]);
-   FreeAndNil(fTAAHistoryVelocityImages[InFlightFrameIndex]);
-   FreeAndNil(fTAAEvents[InFlightFrameIndex]);
+ case Renderer.AntialiasingMode of
+
+  TpvScene3DRendererAntialiasingMode.SMAAT2x:begin
+   for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
+    FreeAndNil(fTAAHistoryColorImages[InFlightFrameIndex]);
+    FreeAndNil(fTAAEvents[InFlightFrameIndex]);
+   end;
   end;
+
+  TpvScene3DRendererAntialiasingMode.TAA:begin
+   for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
+    FreeAndNil(fTAAHistoryColorImages[InFlightFrameIndex]);
+    FreeAndNil(fTAAHistoryDepthImages[InFlightFrameIndex]);
+    FreeAndNil(fTAAHistoryVelocityImages[InFlightFrameIndex]);
+    FreeAndNil(fTAAEvents[InFlightFrameIndex]);
+   end;
+  end;
+
  end;
 
  for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
@@ -5182,12 +5261,33 @@ begin
 end;
 
 function TpvScene3DRendererInstance.GetJitterOffset(const aFrameCounter:TpvInt64):TpvVector2;
+const SMAAT2xOffsets:array[0..1] of TpvVector2=
+       (
+        (x:-0.25;y:0.25),
+        (x:0.25;y:-0.25)
+       );
 begin
- if (Renderer.AntialiasingMode=TpvScene3DRendererAntialiasingMode.TAA) and (aFrameCounter>=0) then begin
-  result:=((JitterOffsets[aFrameCounter and JitterOffsetMask]-TpvVector2.InlineableCreate(0.5,0.5))*2.0)/TpvVector2.InlineableCreate(fScaledWidth,fScaledHeight);
- end else begin
-  result.x:=0.0;
-  result.y:=0.0;
+ case Renderer.AntialiasingMode of
+  TpvScene3DRendererAntialiasingMode.SMAAT2x:begin
+   if aFrameCounter>=0 then begin
+    result:=((SMAAT2xOffsets[aFrameCounter and 1]-TpvVector2.InlineableCreate(0.5,0.5))*2.0)/TpvVector2.InlineableCreate(fScaledWidth,fScaledHeight);
+   end else begin
+    result.x:=0.0;
+    result.y:=0.0;
+   end;
+  end;
+  TpvScene3DRendererAntialiasingMode.TAA:begin
+   if aFrameCounter>=0 then begin
+    result:=((JitterOffsets[aFrameCounter and JitterOffsetMask]-TpvVector2.InlineableCreate(0.5,0.5))*2.0)/TpvVector2.InlineableCreate(fScaledWidth,fScaledHeight);
+   end else begin
+    result.x:=0.0;
+    result.y:=0.0;
+   end;
+  end;
+  else begin
+   result.x:=0.0;
+   result.y:=0.0;
+  end;
  end;
 end;
 

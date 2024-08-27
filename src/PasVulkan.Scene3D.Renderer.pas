@@ -774,8 +774,11 @@ begin
 //fAntialiasingMode:=TpvScene3DRendererAntialiasingMode.TAA;
  end;
 
- if fAntialiasingMode=TpvScene3DRendererAntialiasingMode.TAA then begin
-  fVelocityBufferNeeded:=true;
+ case AntialiasingMode of
+  TpvScene3DRendererAntialiasingMode.SMAAT2x,
+  TpvScene3DRendererAntialiasingMode.TAA:begin
+   fVelocityBufferNeeded:=true;
+  end;
  end;
 
  SampleCounts:=fVulkanDevice.PhysicalDevice.Properties.limits.framebufferColorSampleCounts and
@@ -1453,6 +1456,7 @@ begin
      case fAntialiasingMode of
 
       TpvScene3DRendererAntialiasingMode.SMAA,
+      TpvScene3DRendererAntialiasingMode.SMAAT2x,
       TpvScene3DRendererAntialiasingMode.MSAASMAA:begin
 
        fSMAAAreaTexture:=TpvVulkanTexture.CreateFromMemory(fVulkanDevice,
