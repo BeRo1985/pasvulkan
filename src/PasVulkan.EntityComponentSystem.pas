@@ -480,6 +480,8 @@ type TpvEntityComponentSystem=class
               procedure Update; virtual;
               procedure UpdateEntities(const aFirstEntityIndex,aLastEntityIndex:TpvSizeInt); virtual;
               procedure FinalizeUpdate; virtual;
+              procedure Store; virtual;
+              procedure Interpolate(const aAlpha:TpvDouble); virtual;
               property World:TWorld read fWorld;
               property Flags:TFlags read fFlags write fFlags;
               property Entities:TEntityIDList read fEntities;
@@ -601,6 +603,7 @@ type TpvEntityComponentSystem=class
               fDelayedManagementEventLock:TPasMPMultipleReaderSingleWriterLock;
               fDelayedManagementEvents:TDelayedManagementEvents;
               fCountDelayedManagementEvents:TpvSizeInt;
+              fDeltaTime:TpvDouble;
               procedure AddDelayedManagementEvent(const aDelayedManagementEvent:TDelayedManagementEvent);
               function GetEntityByID(const aEntityID:TEntityID):PEntity;
               function GetEntityByUUID(const aEntityUUID:TpvUUID):PEntity;
@@ -661,6 +664,7 @@ type TpvEntityComponentSystem=class
               property Components:TComponentList read fComponents;
               property CurrentTime:TpvTime read fCurrentTime;
               property OnEvent:TOnEvent read fOnEvent write fOnEvent;
+              property DeltaTime:TpvDouble read fDeltaTime write fDeltaTime;
             end;
 
       public
@@ -2629,7 +2633,7 @@ procedure TpvEntityComponentSystem.TSystem.Finish;
 begin
 end;
 
-procedure TpvEntityComponentSystem.TSystem.ProcessEvent(const aEvent:TpvEntityComponentSystem.TEvent);
+procedure TpvEntityComponentSystem.TSystem.ProcessEvent(const aEvent: TEvent);
 begin
 end;
 
@@ -2658,6 +2662,14 @@ begin
 end;
 
 procedure TpvEntityComponentSystem.TSystem.FinalizeUpdate;
+begin
+end;
+
+procedure TpvEntityComponentSystem.TSystem.Store;
+begin
+end;
+
+procedure TpvEntityComponentSystem.TSystem.Interpolate(const aAlpha:TpvDouble);
 begin
 end;
 
@@ -4193,6 +4205,8 @@ var SystemIndex:TpvSizeInt;
     System:TSystem;
 begin
 
+ fDeltaTime:=aDeltaTime;
+
  for SystemIndex:=0 to fSystems.Count-1 do begin
   System:=fSystems.Items[SystemIndex];
   System.fCountEvents:=0;
@@ -4743,11 +4757,19 @@ begin
 end;
 
 procedure TpvEntityComponentSystem.TWorld.Store;
+var System:TpvEntityComponentSystem.TSystem;
 begin
+ for System in fSystemChoreography.fSortedSystemList do begin
+  System.Store;
+ end;
 end;
 
 procedure TpvEntityComponentSystem.TWorld.Interpolate(const aAlpha:TpvDouble);
+var System:TpvEntityComponentSystem.TSystem;
 begin
+ for System in fSystemChoreography.fSortedSystemList do begin
+  System.Interpolate(aAlpha);
+ end;
 end;
 
 initialization
