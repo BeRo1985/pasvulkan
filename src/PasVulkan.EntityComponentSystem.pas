@@ -199,7 +199,7 @@ type TpvEntityComponentSystem=class
                             const aEnumerationsOrFlags:array of TField.TEnumerationOrFlag);
               procedure Finish;
               function SerializeToJSON(const aData:TpvPointer):TPasJSONItemObject;
-              procedure UnserializeFromJSON(const aJSON:TPasJSONItem;const aData:TpvPointer);
+              procedure UnserializeFromJSON(const aJSON:TPasJSONItem;const aData:TpvPointer;const aWorld:TWorld);
               property Fields:TFields read fFields;
               property EditorWidget:TpvPointer read fEditorWidget write fEditorWidget;
               property Path:TPath read fPath;
@@ -1028,7 +1028,7 @@ begin
  end;
 end;
 
-procedure TpvEntityComponentSystem.TRegisteredComponentType.UnserializeFromJSON(const aJSON:TPasJSONItem;const aData:TpvPointer);
+procedure TpvEntityComponentSystem.TRegisteredComponentType.UnserializeFromJSON(const aJSON:TPasJSONItem;const aData:TpvPointer;const aWorld:TWorld);
  procedure SetField(const aField:PField;
                     const aData:TpvPointer;
                     const aJSONItemValue:TPasJSONItem);
@@ -1040,13 +1040,30 @@ procedure TpvEntityComponentSystem.TRegisteredComponentType.UnserializeFromJSON(
      FloatValue:TpvDouble;
      StringValue:TpvUTF8String;
      Stream:TMemoryStream;
+     Entity:PEntity;
  begin
   case aField^.ElementType of
    TRegisteredComponentType.TField.TElementType.EntityID:begin
     if aJSONItemValue is TPasJSONItemNumber then begin
      UnsignedInteger:=trunc(TPasJSONItemNumber(aJSONItemValue).Value);
     end else if aJSONItemValue is TPasJSONItemString then begin
-     UnsignedInteger:=StrToIntDef(TPasJSONItemString(aJSONItemValue).Value,0);
+     StringValue:=TPasJSONItemString(aJSONItemValue).Value;
+     if (length(StringValue)=38) and
+        (StringValue[1]='{') and
+        (StringValue[10]='-') and
+        (StringValue[15]='-') and
+        (StringValue[20]='-') and
+        (StringValue[25]='-') and
+        (StringValue[38]='}') then begin
+      Entity:=aWorld.GetEntityByUUID(TpvUUID.CreateFromString(StringValue));
+      if assigned(Entity) then begin
+       UnsignedInteger:=Entity^.fID;
+      end else begin
+       UnsignedInteger:=TEntityID.Invalid;
+      end;
+     end else begin
+      UnsignedInteger:=StrToIntDef(StringValue,0);
+     end;
     end else if aJSONItemValue is TPasJSONItemBoolean then begin
      UnsignedInteger:=ord(TPasJSONItemBoolean(aJSONItemValue).Value) and 1;
     end else begin
@@ -2021,7 +2038,7 @@ begin
       if ComponentID<fWorld.fComponents.Count then begin
        ComponentData:=fWorld.AddComponentWithDataToEntity(fID,ComponentID);
        if assigned(ComponentData) then begin
-        RegisteredComponentType.UnserializeFromJSON(ComponentDataItem,ComponentData);
+        RegisteredComponentType.UnserializeFromJSON(ComponentDataItem,ComponentData,fWorld);
        end;
       end;
      end;
@@ -4679,16 +4696,15 @@ function TpvEntityComponentSystem.TWorld.UnserializeFromJSON(const aJSONRootItem
 type TUUIDIntegerPairHashMap=TpvHashMap<TpvUUID,TpvInt32>;
      TParentObjectNames=TpvGenericList<TPasJSONUTF8String>;
 var RootUUID:TpvUUIDString;
-    WorldUUID,EntityUUID,ComponentUUID:TpvUUID;
+    EntityUUID:TpvUUID;
     Entity:PEntity;
     RootObjectItem,EntityObjectItem:TPasJSONItemObject;
-    RootObjectItemIndex,EntityObjectItemIndex:TpvInt32;
-    RootObjectItemKey,EntityObjectItemKey:TPasJSONUTF8String;
-    RootObjectItemValue,EntityObjectItemValue,TempItem:TPasJSONItem;
+    RootObjectItemIndex:TpvInt32;
+    RootObjectItemKey:TPasJSONUTF8String;
+    RootObjectItemValue:TPasJSONItem;
     EntityID:TEntityID;
-    Component:TpvEntityComponentSystem.TComponent;
     EntityUUIDHashMap:TUUIDIntegerPairHashMap;
-    EntityIDs:array of TpvInt32;
+    EntityIDs:array of TEntityID;
     ParentObjectNames:TParentObjectNames;
     WorldName:TpvUTF8String;
 begin
@@ -4705,6 +4721,115 @@ begin
 
     EntityUUIDHashMap:=TUUIDIntegerPairHashMap.Create(-1);
     try
+
+     RootUUID:='';
+     
+     RootObjectItem:=TPasJSONItemObject(aJSONRootItem);
+
+     SetLength(EntityIDs,RootObjectItem.Count);
+
+     for RootObjectItemIndex:=0 to RootObjectItem.Count-1 do begin
+      EntityIDs[RootObjectItemIndex]:=TEntityID.Invalid;
+     end;
+
+     for RootObjectItemIndex:=0 to RootObjectItem.Count-1 do begin
+      RootObjectItemKey:=RootObjectItem.Keys[RootObjectItemIndex];
+      RootObjectItemValue:=RootObjectItem.Values[RootObjectItemIndex];
+      if (length(RootObjectItemKey)>0) and assigned(RootObjectItemValue) then begin
+       if RootObjectItemKey='root' then begin
+        if RootObjectItemValue is TPasJSONItemString then begin
+         RootUUID:=TpvUUIDString(TPasJSONItemString(RootObjectItemValue).Value);
+        end;
+       end else if RootObjectItemKey='uuid' then begin
+{       if RootObjectItemValue is TPasJSONItemString then begin
+         WorldUUID:=TpvUUID.CreateFromString(TpvUUIDString(TPasJSONItemString(RootObjectItemValue).Value));
+         if WorldUUID.UInt64s[0]<>0 then begin
+         end;
+        end;}
+       end else if RootObjectItemKey='name' then begin
+        WorldName:=TpvUUIDString(TPasJSONItemString(RootObjectItemValue).Value);
+        if length(WorldName)>0 then begin
+        end;
+       end else if (length(RootObjectItemKey)=38) and
+                   (RootObjectItemKey[1]='{') and
+                   (RootObjectItemKey[10]='-') and
+                   (RootObjectItemKey[15]='-') and
+                   (RootObjectItemKey[20]='-') and
+                   (RootObjectItemKey[25]='-') and
+                   (RootObjectItemKey[38]='}') then begin
+        if RootObjectItemValue is TPasJSONItemObject then begin
+         EntityUUID:=TpvUUID.CreateFromString(TpvUUIDString(RootObjectItemKey));
+         if aCreateNewUUIDs then begin
+          EntityID:=CreateEntity;
+         end else begin
+          EntityID:=CreateEntity(EntityUUID);
+         end;
+         if EntityID<>TEntityID.Invalid then begin
+          Refresh;
+          Entity:=GetEntityByID(EntityID);
+          if assigned(Entity) then begin
+           EntityIDs[RootObjectItemIndex]:=EntityID;
+           EntityUUIDHashMap.Add(EntityUUID,EntityID);
+          end else begin
+           raise ESystemUnserialization.Create('Internal error 2016-01-19-20-30-0000');
+          end;
+         end else begin
+          raise ESystemUnserialization.Create('Internal error 2016-01-19-20-30-0001');
+         end;
+        end;
+       end;
+      end;
+     end;
+
+     Refresh;
+
+     begin
+
+      for RootObjectItemIndex:=0 to RootObjectItem.Count-1 do begin
+
+       RootObjectItemKey:=RootObjectItem.Keys[RootObjectItemIndex];
+       RootObjectItemValue:=RootObjectItem.Values[RootObjectItemIndex];
+
+       if (length(RootObjectItemKey)>0) and assigned(RootObjectItemValue) then begin
+        if RootObjectItemKey='root' then begin
+         if RootObjectItemValue is TPasJSONItemString then begin
+          RootUUID:=TpvUUIDString(TPasJSONItemString(RootObjectItemValue).Value);
+         end;
+        end else if (length(RootObjectItemKey)=38) and
+                    (RootObjectItemKey[1]='{') and
+                    (RootObjectItemKey[10]='-') and
+                    (RootObjectItemKey[15]='-') and
+                    (RootObjectItemKey[20]='-') and
+                    (RootObjectItemKey[25]='-') and
+                    (RootObjectItemKey[38]='}') then begin
+         if RootObjectItemValue is TPasJSONItemObject then begin
+          EntityID:=EntityIDs[RootObjectItemIndex];
+          if EntityID<>TEntityID.Invalid then begin
+           Refresh;
+           if HasEntity(EntityID) then begin
+            EntityObjectItem:=TPasJSONItemObject(RootObjectItemValue);
+            Entity:=GetEntityByID(EntityID);
+            if assigned(Entity) then begin
+             Entity^.UnserializeFromJSON(EntityObjectItem);
+             Entity^.Activate;
+            end;
+           end;
+          end;
+         end;
+        end;
+       end;
+      end;
+
+      Refresh;
+
+      if length(RootUUID)>0 then begin
+       Entity:=GetEntityByUUID(TpvUUID.CreateFromString(RootUUID));
+       if assigned(Entity) then begin
+        result:=Entity^.ID;
+       end;
+      end;
+
+     end;
 
     finally
      EntityUUIDHashMap.Free;
