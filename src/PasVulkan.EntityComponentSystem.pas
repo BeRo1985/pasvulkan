@@ -360,6 +360,8 @@ type TpvEntityComponentSystem=class
               procedure Activate;
               procedure Deactivate;
               procedure Kill;
+              function SerializeToJSON:TPasJSONItemObject;
+              procedure UnserializeFromJSON(const aJSONRootItem:TPasJSONItem;const aCreateNewUUIDs:boolean=false);
               procedure AddComponent(const aComponentID:TComponentID;const aData:Pointer=nil;const aDataSize:TpvSizeInt=0);
               function AddComponentWithData(const aComponentID:TComponentID):Pointer;
               procedure RemoveComponent(const aComponentID:TComponentID);
@@ -1903,8 +1905,8 @@ begin
       AddComponent(EntityComponentID);
       fWorld.Refresh;
      end;
-     a:=EntityComponent.Pointers[EntityComponent.GetComponentPoolIndexForEntityIndex(aFrom.fID.Index)];
-     b:=EntityComponent.Pointers[EntityComponent.GetComponentPoolIndexForEntityIndex(fID.Index)];
+     a:=EntityComponent.GetComponentByEntityIndex(aFrom.fID.Index);
+     b:=EntityComponent.GetComponentByEntityIndex(fID.Index);
      Move(a^,b^,EntityComponent.RegisteredComponentType.Size);
     end;
    end;
@@ -1960,6 +1962,47 @@ begin
  if assigned(fWorld) then begin
   fWorld.KillEntity(fID);
  end;
+end;
+
+function TpvEntityComponentSystem.TEntity.SerializeToJSON:TPasJSONItemObject;
+var ComponentBitmapIndex,ComponentIndex:TpvSizeInt;
+    ComponentBitmapValue:TpvUInt32;
+    ComponentObjectItem:TPasJSONItemObject;
+    Component:TpvEntityComponentSystem.TComponent;
+    ComponentID:TpvEntityComponentSystem.TComponentID;
+    ComponentData:Pointer;
+begin
+
+ result:=TPasJSONItemObject.Create;
+
+ result.Add('uuid',TPasJSONItemString.Create(fUUID.ToString));
+ result.Add('active',TPasJSONItemBoolean(Active));
+
+ ComponentObjectItem:=TPasJSONItemObject.Create;
+ try
+  for ComponentBitmapIndex:=0 to length(fComponentsBitmap)-1 do begin
+   ComponentBitmapValue:=fComponentsBitmap[ComponentBitmapIndex];
+   while ComponentBitmapValue<>0 do begin
+    ComponentIndex:=TPasMPMath.BitScanForward32(ComponentBitmapValue);
+    ComponentBitmapValue:=ComponentBitmapValue and not (ComponentBitmapValue-1);
+    if ComponentIndex<fWorld.fComponents.Count then begin
+     ComponentID:=Component.fRegisteredComponentType.fID;
+     if HasComponent(ComponentID) then begin
+      ComponentData:=Component.GetComponentByEntityIndex(fID.Index);
+      result.Add(Component.RegisteredComponentType.fName,Component.RegisteredComponentType.SerializeToJSON(ComponentData));
+     end;
+    end;
+   end;
+  end;
+ finally
+  result.Add('components',ComponentObjectItem);
+ end;
+
+end;
+
+procedure TpvEntityComponentSystem.TEntity.UnserializeFromJSON(const aJSONRootItem:TPasJSONItem;const aCreateNewUUIDs:boolean);
+begin
+
 end;
 
 procedure TpvEntityComponentSystem.TEntity.AddComponent(const aComponentID:TComponentID;const aData:Pointer;const aDataSize:TpvSizeInt);
@@ -3900,7 +3943,7 @@ begin
        end;
        Entity:=@fEntities[EntityIndex];
        Entity^.AddComponentToEntity(DelayedManagementEvent^.ComponentID);
-       Data:=Component.Pointers[Component.GetComponentPoolIndexForEntityIndex(EntityIndex)];
+       Data:=Component.GetComponentByEntityIndex(EntityIndex);
        if DelayedManagementEvent^.DataSize>0 then begin
         if DelayedManagementEvent^.DataSize<Component.RegisteredComponentType.fSize then begin
          FillChar(Data^,Component.RegisteredComponentType.fSize,#0);
@@ -4570,7 +4613,40 @@ begin
 end;
 
 function TpvEntityComponentSystem.TWorld.SerializeToJSON(const aEntityIDs:array of TEntityID;const aRootEntityID:TEntityID):TPasJSONItem;
+var RootObjectItem:TPasJSONItemObject;
+    EntityIndex:TpvInt32;
+    Entity:PEntity;
+    EntityID:TEntityID;
 begin
+ RootObjectItem:=TPasJSONItemObject.Create;
+ result:=RootObjectItem;
+ if (aRootEntityID<>TEntityID.Invalid) and HasEntity(aRootEntityID) then begin
+  Entity:=GetEntityByID(aRootEntityID);
+  if assigned(Entity) then begin
+   RootObjectItem.Add('root',TPasJSONItemString.Create(TPasJSONUTF8String(Entity.UUID.ToString)));
+  end;
+ end;
+ //RootObjectItem.Add('uuid',TPasJSONItemString.Create(TPasJSONUTF8String(GetUUID.ToString)));
+ if length(aEntityIDs)>0 then begin
+  for EntityIndex:=0 to length(aEntityIDs)-1 do begin
+   EntityID:=aEntityIDs[EntityIndex];
+   if HasEntity(EntityID) then begin
+    Entity:=GetEntityByID(EntityID);
+    if assigned(Entity) then begin
+     RootObjectItem.Add(Entity^.fUUID.ToString,Entity^.SerializeToJSON);
+    end;
+   end;
+  end;
+ end else begin
+  for EntityIndex:=0 to length(aEntityIDs)-1 do begin
+   if HasEntityIndex(EntityIndex) then begin
+    Entity:=@fEntities[EntityIndex];
+    if assigned(Entity) then begin
+     RootObjectItem.Add(Entity^.fUUID.ToString,Entity^.SerializeToJSON);
+    end;
+   end;
+  end;
+ end;
 end;
 
 function TpvEntityComponentSystem.TWorld.UnserializeFromJSON(const aJSONRootItem:TPasJSONItem;const aCreateNewUUIDs:boolean):TEntityID;
