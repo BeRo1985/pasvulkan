@@ -76,6 +76,7 @@ uses {$ifdef Windows}Windows,{$endif}SysUtils,Classes,Math,Variants,TypInfo,
 
 type TpvEntityComponentSystem=class
       public
+      
        type ESystemCircularDependency=class(Exception);
 
             ESystemSerialization=class(Exception);
