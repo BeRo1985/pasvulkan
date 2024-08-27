@@ -622,11 +622,6 @@ type TpvEntityComponentSystem=class
 
      TpvECS=TpvEntityComponentSystem;
 
-var RegisteredComponentTypeList:TpvEntityComponentSystem.TRegisteredComponentTypeList=nil;
-    RegisteredComponentTypeNameHashMap:TpvEntityComponentSystem.TRegisteredComponentTypeNameHashMap=nil;
-
-procedure InitializeEntityComponentSystemGlobals;
-
 implementation
 
 { TpvEntityComponentSystem.TpvEntityIDHelper }
@@ -673,7 +668,6 @@ constructor TpvEntityComponentSystem.TRegisteredComponentType.Create(const aName
 var Index:TpvSizeInt;
 begin
  inherited Create;
- InitializeEntityComponentSystemGlobals;
  fID:=RegisteredComponentTypeList.Add(self);
  RegisteredComponentTypeNameHashMap.Add(aName,self);
  fName:=aName;
@@ -3872,21 +3866,18 @@ begin
  end;
 end;
 
-procedure InitializeEntityComponentSystemGlobals;
-begin
- if not assigned(RegisteredComponentTypeList) then begin
-  RegisteredComponentTypeList:=TpvEntityComponentSystem.TRegisteredComponentTypeList.Create;
-  RegisteredComponentTypeList.OwnsObjects:=true;
- end;
- if not assigned(RegisteredComponentTypeNameHashMap) then begin
-  RegisteredComponentTypeNameHashMap:=TpvEntityComponentSystem.TRegisteredComponentTypeNameHashMap.Create(nil);
- end;
-end;
-
 initialization
- InitializeEntityComponentSystemGlobals;
+
+ TpvEntityComponentSystem.RegisteredComponentTypeList:=TpvEntityComponentSystem.TRegisteredComponentTypeList.Create;
+ TpvEntityComponentSystem.RegisteredComponentTypeList.OwnsObjects:=true;
+
+ TpvEntityComponentSystem.RegisteredComponentTypeNameHashMap:=TpvEntityComponentSystem.TRegisteredComponentTypeNameHashMap.Create(nil);
+
 finalization
- FreeAndNil(RegisteredComponentTypeList);
- FreeAndNil(RegisteredComponentTypeNameHashMap);
+
+ FreeAndNil(TpvEntityComponentSystem.RegisteredComponentTypeList);
+
+ FreeAndNil(TpvEntityComponentSystem.RegisteredComponentTypeNameHashMap);
+
 end.
 
