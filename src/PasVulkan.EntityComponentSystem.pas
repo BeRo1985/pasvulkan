@@ -3827,6 +3827,8 @@ begin
        Entity^.AddComponentToEntity(DelayedManagementEvent^.ComponentID);
        if DelayedManagementEvent^.DataSize>0 then begin
         Move(DelayedManagementEvent^.Data[0],Component.Pointers[Component.GetComponentPoolIndexForEntityIndex(EntityIndex)]^,DelayedManagementEvent^.DataSize);
+       end else begin
+        FillChar(Component.Pointers[Component.GetComponentPoolIndexForEntityIndex(EntityIndex)]^,Component.RegisteredComponentType.fSize,#0);
        end;
        if WasActive then begin
         for Index:=0 to fSystems.Count-1 do begin
