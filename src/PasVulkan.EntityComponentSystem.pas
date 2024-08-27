@@ -3241,6 +3241,213 @@ begin
  AddDelayedManagementEvent(DelayedManagementEvent);
 end;
 
+function TWorldDefragmentCompare(const a,b:pointer):TpvInt32;
+begin
+ result:=TpvPtrInt(TpvPtrUInt(a))-TpvPtrInt(TpvPtrUInt(b));
+end;
+
+type TWorldDefragmentListEntities=class
+      private
+       fItems:array of TpvEntityComponentSystem.TEntity;
+       fCount:TpvInt32;
+       function GetItem(const aIndex:TpvInt32):TpvEntityComponentSystem.TEntity; inline;
+       procedure SetItem(const aIndex:TpvInt32;const aItem:TpvEntityComponentSystem.TEntity); inline;
+      public
+       constructor Create(const aCount:TpvInt32);
+       destructor Destroy; override;
+       procedure MemorySwap(aA,aB:pointer;aSize:TpvInt32);
+       function CompareItem(const aIndex,aWithIndex:TpvSizeInt):TpvInt32; inline;
+       procedure Exchange(const aIndex,aWithIndex:TpvSizeInt); virtual;
+       procedure Sort;
+       property Items[const aIndex:TpvInt32]:TpvEntityComponentSystem.TEntity read GetItem write SetItem;
+       property Count:TpvInt32 read fCount;
+     end;
+
+constructor TWorldDefragmentListEntities.Create(const aCount:TpvInt32);
+begin
+ inherited Create;
+ fItems:=nil;
+ fCount:=aCount;
+ SetLength(fItems,fCount);
+ if fCount>0 then begin
+  FillChar(fItems[0],fCount*SizeOf(TObject),#0);
+ end;
+end;
+
+destructor TWorldDefragmentListEntities.Destroy;
+begin
+ SetLength(fItems,0);
+ inherited Destroy;
+end;
+
+function TWorldDefragmentListEntities.GetItem(const aIndex:TpvInt32):TpvEntityComponentSystem.TEntity;
+begin
+ result:=fItems[aIndex];
+end;
+
+procedure TWorldDefragmentListEntities.SetItem(const aIndex:TpvInt32;const aItem:TpvEntityComponentSystem.TEntity);
+begin
+ fItems[aIndex]:=aItem;
+end;
+
+procedure TWorldDefragmentListEntities.MemorySwap(aA,aB:pointer;aSize:TpvInt32);
+var Temp:TpvInt32;
+begin
+ while aSize>=SizeOf(TpvInt32) do begin
+  Temp:=TpvUInt32(aA^);
+  TpvUInt32(aA^):=TpvUInt32(aB^);
+  TpvUInt32(aB^):=Temp;
+  inc(TpvPtrUInt(aA),SizeOf(TpvUInt32));
+  inc(TpvPtrUInt(aB),SizeOf(TpvUInt32));
+  dec(aSize,SizeOf(TpvUInt32));
+ end;
+ while aSize>=SizeOf(TpvUInt8) do begin
+  Temp:=TpvUInt8(aA^);
+  TpvUInt8(aA^):=TpvUInt8(aB^);
+  TpvUInt8(aB^):=Temp;
+  inc(TpvPtrUInt(aA),SizeOf(TpvUInt8));
+  inc(TpvPtrUInt(aB),SizeOf(TpvUInt8));
+  dec(aSize,SizeOf(TpvUInt8));
+ end;
+end;
+
+function TWorldDefragmentListEntities.CompareItem(const aIndex,aWithIndex:TpvSizeInt):TpvInt32;
+begin
+ result:=TpvPtrInt(TpvPtrUInt(Pointer(@fItems[aIndex])))-TpvPtrInt(TpvPtrUInt(Pointer(@fItems[aWithIndex])));
+end;
+
+procedure TWorldDefragmentListEntities.Exchange(const aIndex,aWithIndex:TpvSizeInt);
+begin
+ MemorySwap(@fItems[aIndex],@fItems[aWithIndex],SizeOf(TpvEntityComponentSystem.TEntity));
+end;
+
+procedure TWorldDefragmentListEntities.Sort;
+type PByteArray=^TByteArray;
+     TByteArray=array[0..$3fffffff] of TpvUInt8;
+     PStackItem=^TStackItem;
+     TStackItem=record
+      Left,Right,Depth:TpvInt32;
+     end;
+var Left,Right,Depth,i,j,Middle,Size,Parent,Child,Pivot,iA,iB,iC:TpvInt32;
+    StackItem:PStackItem;
+    Stack:array[0..31] of TStackItem;
+begin
+ if fCount>1 then begin
+  StackItem:=@Stack[0];
+  StackItem^.Left:=0;
+  StackItem^.Right:=fCount-1;
+  StackItem^.Depth:=IntLog2(fCount) shl 1;
+  inc(StackItem);
+  while TpvPtrUInt(pointer(StackItem))>TpvPtrUInt(pointer(@Stack[0])) do begin
+   dec(StackItem);
+   Left:=StackItem^.Left;
+   Right:=StackItem^.Right;
+   Depth:=StackItem^.Depth;
+   Size:=(Right-Left)+1;
+   if Size<16 then begin
+    // Insertion sort
+    iA:=Left;
+    iB:=iA+1;
+    while iB<=Right do begin
+     iC:=iB;
+     while (iA>=Left) and
+           (iC>=Left) and
+           (CompareItem(iA,iC)>0) do begin
+      Exchange(iA,iC);
+      dec(iA);
+      dec(iC);
+     end;
+     iA:=iB;
+     inc(iB);
+    end;
+   end else begin
+    if (Depth=0) or (TpvPtrUInt(pointer(StackItem))>=TpvPtrUInt(pointer(@Stack[high(Stack)-1]))) then begin
+     // Heap sort
+     i:=Size div 2;
+     repeat
+      if i>0 then begin
+       dec(i);
+      end else begin
+       dec(Size);
+       if Size>0 then begin
+        Exchange(Left+Size,Left);
+       end else begin
+        break;
+       end;
+      end;
+      Parent:=i;
+      repeat
+       Child:=(Parent*2)+1;
+       if Child<Size then begin
+        if (Child<(Size-1)) and (CompareItem(Left+Child,Left+Child+1)<0) then begin
+         inc(Child);
+        end;
+        if CompareItem(Left+Parent,Left+Child)<0 then begin
+         Exchange(Left+Parent,Left+Child);
+         Parent:=Child;
+         continue;
+        end;
+       end;
+       break;
+      until false;
+     until false;
+    end else begin
+     // Quick sort width median-of-three optimization
+     Middle:=Left+((Right-Left) shr 1);
+     if (Right-Left)>3 then begin
+      if CompareItem(Left,Middle)>0 then begin
+       Exchange(Left,Middle);
+      end;
+      if CompareItem(Left,Right)>0 then begin
+       Exchange(Left,Right);
+      end;
+      if CompareItem(Middle,Right)>0 then begin
+       Exchange(Middle,Right);
+      end;
+     end;
+     Pivot:=Middle;
+     i:=Left;
+     j:=Right;
+     repeat
+      while (i<Right) and (CompareItem(i,Pivot)<0) do begin
+       inc(i);
+      end;
+      while (j>=i) and (CompareItem(j,Pivot)>0) do begin
+       dec(j);
+      end;
+      if i>j then begin
+       break;
+      end else begin
+       if i<>j then begin
+        Exchange(i,j);
+        if Pivot=i then begin
+         Pivot:=j;
+        end else if Pivot=j then begin
+         Pivot:=i;
+        end;
+       end;
+       inc(i);
+       dec(j);
+      end;
+     until false;
+     if i<Right then begin
+      StackItem^.Left:=i;
+      StackItem^.Right:=Right;
+      StackItem^.Depth:=Depth-1;
+      inc(StackItem);
+     end;
+     if Left<j then begin
+      StackItem^.Left:=Left;
+      StackItem^.Right:=j;
+      StackItem^.Depth:=Depth-1;
+      inc(StackItem);
+     end;
+    end;
+   end;
+  end;
+ end;
+end;
+
 procedure TpvEntityComponentSystem.TWorld.Defragment;
  procedure DefragmentComponents;
  var ComponentIndex:TpvSizeInt;
@@ -3251,9 +3458,7 @@ procedure TpvEntityComponentSystem.TWorld.Defragment;
  end;
  procedure DefragmentEntities;
  begin
-
  end;
-
 begin
  DefragmentComponents;
  DefragmentEntities;
