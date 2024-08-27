@@ -4562,7 +4562,7 @@ begin
    end;
    result:=UnserializeFromJSON(TPasJSON.Parse(s),aCreateNewUUIDs);
   end else begin
-   result:=-1;
+   result:=0;
   end;
  finally
   s:='';
