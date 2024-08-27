@@ -839,11 +839,7 @@ function TpvEntityComponentSystem.TRegisteredComponentType.SerializeToJSON(const
     if assigned(Entity) then begin
      result:=TPasJSONItemString.Create(Entity^.fSUID.ToString);
     end else begin
-     if UnsignedInteger<TpvUInt64($0010000000000000) then begin
-      result:=TPasJSONItemNumber.Create(UnsignedInteger);
-     end else begin
-      result:=TPasJSONItemString.Create(IntToStr(UnsignedInteger));
-     end;
+     result:=TPasJSONItemNull.Create;
     end;
    end;
    TRegisteredComponentType.TField.TElementType.Enumeration:begin
@@ -1055,26 +1051,16 @@ procedure TpvEntityComponentSystem.TRegisteredComponentType.UnserializeFromJSON(
      UnsignedInteger:=trunc(TPasJSONItemNumber(aJSONItemValue).Value);
     end else if aJSONItemValue is TPasJSONItemString then begin
      StringValue:=TPasJSONItemString(aJSONItemValue).Value;
-     if (length(StringValue)=38) and
-        (StringValue[1]='{') and
-        (StringValue[10]='-') and
-        (StringValue[15]='-') and
-        (StringValue[20]='-') and
-        (StringValue[25]='-') and
-        (StringValue[38]='}') then begin
-      Entity:=aWorld.GetEntityBySUID(TpvSUID.CreateFromString(StringValue));
-      if assigned(Entity) then begin
-       UnsignedInteger:=Entity^.fID;
-      end else begin
-       UnsignedInteger:=TEntityID.Invalid;
-      end;
+     Entity:=aWorld.GetEntityBySUID(TpvSUID.CreateFromString(StringValue));
+     if assigned(Entity) then begin
+      UnsignedInteger:=Entity^.fID;
      end else begin
-      UnsignedInteger:=StrToIntDef(StringValue,0);
+      UnsignedInteger:=TEntityID.Invalid;
      end;
     end else if aJSONItemValue is TPasJSONItemBoolean then begin
      UnsignedInteger:=ord(TPasJSONItemBoolean(aJSONItemValue).Value) and 1;
     end else begin
-     UnsignedInteger:=$ffffffff;
+     UnsignedInteger:=TEntityID.Invalid;
     end;
     case aField^.ElementSize of
      1:begin
@@ -4802,7 +4788,7 @@ begin
          if RootObjectItemValue is TPasJSONItemString then begin
           RootSUID:=TpvUTF8String(TPasJSONItemString(RootObjectItemValue).Value);
          end;
-        end else if (length(RootObjectItemKey)=38) and
+        end else if (length(RootObjectItemKey)>0) and
                     (RootObjectItemKey[1]='{') and
                     (RootObjectItemKey[10]='-') and
                     (RootObjectItemKey[15]='-') and
