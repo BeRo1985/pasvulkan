@@ -4696,10 +4696,10 @@ type TSUIDIntegerPairHashMap=TpvHashMap<TpvSUID,TpvInt32>;
 var RootSUID:TpvUTF8String;
     EntitySUID:TpvSUID;
     Entity:PEntity;
-    RootObjectItem,EntityObjectItem:TPasJSONItemObject;
-    RootObjectItemIndex:TpvInt32;
-    RootObjectItemKey:TPasJSONUTF8String;
-    RootObjectItemValue:TPasJSONItem;
+    RootObjectItem,EntityObjectItem,EntitiesObjectItem:TPasJSONItemObject;
+    RootObjectItemIndex,EntitiesObjectItemIndex:TpvSizeInt;
+    RootObjectItemKey,EntitiesObjectItemKey:TPasJSONUTF8String;
+    RootObjectItemValue,EntitiesObjectItemValue:TPasJSONItem;
     EntityID:TEntityID;
     EntitySUIDHashMap:TSUIDIntegerPairHashMap;
     EntityIDs:array of TEntityID;
@@ -4720,16 +4720,11 @@ begin
     EntitySUIDHashMap:=TSUIDIntegerPairHashMap.Create(-1);
     try
 
+     EntitiesObjectItem:=nil;
+
      RootSUID:='';
      
      RootObjectItem:=TPasJSONItemObject(aJSONRootItem);
-
-     SetLength(EntityIDs,RootObjectItem.Count);
-
-     for RootObjectItemIndex:=0 to RootObjectItem.Count-1 do begin
-      EntityIDs[RootObjectItemIndex]:=TEntityID.Invalid;
-     end;
-
      for RootObjectItemIndex:=0 to RootObjectItem.Count-1 do begin
       RootObjectItemKey:=RootObjectItem.Keys[RootObjectItemIndex];
       RootObjectItemValue:=RootObjectItem.Values[RootObjectItemIndex];
@@ -4738,7 +4733,7 @@ begin
         if RootObjectItemValue is TPasJSONItemString then begin
          RootSUID:=TpvUTF8String(TPasJSONItemString(RootObjectItemValue).Value);
         end;
-       end else if RootObjectItemKey='SUID' then begin
+       end else if RootObjectItemKey='suid' then begin
 {       if RootObjectItemValue is TPasJSONItemString then begin
          WorldSUID:=TpvSUID.CreateFromString(TpvUTF8String(TPasJSONItemString(RootObjectItemValue).Value));
          if WorldSUID.UInt64s[0]<>0 then begin
@@ -4748,13 +4743,26 @@ begin
         WorldName:=TpvUTF8String(TPasJSONItemString(RootObjectItemValue).Value);
         if length(WorldName)>0 then begin
         end;
-       end else if (length(RootObjectItemKey)=38) and
-                   (RootObjectItemKey[1]='{') and
-                   (RootObjectItemKey[10]='-') and
-                   (RootObjectItemKey[15]='-') and
-                   (RootObjectItemKey[20]='-') and
-                   (RootObjectItemKey[25]='-') and
-                   (RootObjectItemKey[38]='}') then begin
+       end else if RootObjectItemKey='entities' then begin
+        if RootObjectItemValue is TPasJSONItemObject then begin
+         EntitiesObjectItem:=TPasJSONItemObject(RootObjectItemValue);
+        end;
+       end; 
+      end;
+     end; 
+
+     if assigned(EntitiesObjectItem) then begin
+
+      SetLength(EntityIDs,EntitiesObjectItem.Count);
+
+      for EntitiesObjectItemIndex:=0 to EntitiesObjectItem.Count-1 do begin
+       EntityIDs[EntitiesObjectItemIndex]:=TEntityID.Invalid;
+      end;
+
+      for EntitiesObjectItemIndex:=0 to EntitiesObjectItem.Count-1 do begin
+       EntitiesObjectItemKey:=EntitiesObjectItem.Keys[EntitiesObjectItemIndex];
+       EntitiesObjectItemValue:=EntitiesObjectItem.Values[EntitiesObjectItemIndex];
+       if (length(EntitiesObjectItemKey)>0) and assigned(EntitiesObjectItemValue) then begin
         if RootObjectItemValue is TPasJSONItemObject then begin
          EntitySUID:=TpvSUID.CreateFromString(TpvUTF8String(RootObjectItemKey));
          if aCreateNewSUIDs then begin
@@ -4781,52 +4789,11 @@ begin
 
      Refresh;
 
-     begin
-
-      for RootObjectItemIndex:=0 to RootObjectItem.Count-1 do begin
-
-       RootObjectItemKey:=RootObjectItem.Keys[RootObjectItemIndex];
-       RootObjectItemValue:=RootObjectItem.Values[RootObjectItemIndex];
-
-       if (length(RootObjectItemKey)>0) and assigned(RootObjectItemValue) then begin
-        if RootObjectItemKey='root' then begin
-         if RootObjectItemValue is TPasJSONItemString then begin
-          RootSUID:=TpvUTF8String(TPasJSONItemString(RootObjectItemValue).Value);
-         end;
-        end else if (length(RootObjectItemKey)>0) and
-                    (RootObjectItemKey[1]='{') and
-                    (RootObjectItemKey[10]='-') and
-                    (RootObjectItemKey[15]='-') and
-                    (RootObjectItemKey[20]='-') and
-                    (RootObjectItemKey[25]='-') and
-                    (RootObjectItemKey[38]='}') then begin
-         if RootObjectItemValue is TPasJSONItemObject then begin
-          EntityID:=EntityIDs[RootObjectItemIndex];
-          if EntityID<>TEntityID.Invalid then begin
-           Refresh;
-           if HasEntity(EntityID) then begin
-            EntityObjectItem:=TPasJSONItemObject(RootObjectItemValue);
-            Entity:=GetEntityByID(EntityID);
-            if assigned(Entity) then begin
-             Entity^.UnserializeFromJSON(EntityObjectItem);
-             Entity^.Activate;
-            end;
-           end;
-          end;
-         end;
-        end;
-       end;
+     if length(RootSUID)>0 then begin
+      Entity:=GetEntityBySUID(TpvSUID.CreateFromString(RootSUID));
+      if assigned(Entity) then begin
+       result:=Entity^.ID;
       end;
-
-      Refresh;
-
-      if length(RootSUID)>0 then begin
-       Entity:=GetEntityBySUID(TpvSUID.CreateFromString(RootSUID));
-       if assigned(Entity) then begin
-        result:=Entity^.ID;
-       end;
-      end;
-
      end;
 
     finally
