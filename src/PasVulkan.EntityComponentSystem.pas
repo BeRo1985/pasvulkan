@@ -3712,6 +3712,7 @@ var DelayedManagementEventIndex,Index,EntityIndex:TpvSizeInt;
     Component:TpvEntityComponentSystem.TComponent;
     System:TpvEntityComponentSystem.TSystem;
     EntitiesWereAdded,EntitiesWereRemoved,WasActive:boolean;
+    Data:Pointer;
 begin
 
  EntitiesWereAdded:=false;
@@ -3825,10 +3826,14 @@ begin
        end;
        Entity:=@fEntities[EntityIndex];
        Entity^.AddComponentToEntity(DelayedManagementEvent^.ComponentID);
+       Data:=Component.Pointers[Component.GetComponentPoolIndexForEntityIndex(EntityIndex)];
        if DelayedManagementEvent^.DataSize>0 then begin
-        Move(DelayedManagementEvent^.Data[0],Component.Pointers[Component.GetComponentPoolIndexForEntityIndex(EntityIndex)]^,DelayedManagementEvent^.DataSize);
+        if DelayedManagementEvent^.DataSize<Component.RegisteredComponentType.fSize then begin
+         FillChar(Data^,Component.RegisteredComponentType.fSize,#0);
+        end;
+        Move(DelayedManagementEvent^.Data[0],Data^,Min(DelayedManagementEvent^.DataSize,Component.RegisteredComponentType.fSize));
        end else begin
-        FillChar(Component.Pointers[Component.GetComponentPoolIndexForEntityIndex(EntityIndex)]^,Component.RegisteredComponentType.fSize,#0);
+        FillChar(Data^,Component.RegisteredComponentType.fSize,#0);
        end;
        if WasActive then begin
         for Index:=0 to fSystems.Count-1 do begin
