@@ -13,6 +13,10 @@ layout(location = 0) out vec4 outFragColor;
 layout(set = 0, binding = 0) uniform sampler2DArray uColorTexture;
 layout(set = 0, binding = 1) uniform sampler2DArray uBlendTexture;
 
+#if SMAA_REPROJECTION
+layout(set = 0, binding = 2) uniform sampler2DArray uVelocityTexture;
+#endif
+
 layout(push_constant) uniform PushConstants {
   vec4 metrics;  //
 } pushConstants;
@@ -45,6 +49,9 @@ void main() {
   // Is there any blending weight with a value greater than 0.0?
   if (dot(a, vec4(1.0, 1.0, 1.0, 1.0)) <= 1e-5) {
     outColor = textureLod(uColorTexture, vec3(inTexCoord, float(gl_ViewIndex)), 0.0);  // LinearSampler
+#if SMAA_REPROJECTION
+    outColor.w = sqrt(5.0 * length(textureLod(uVelocityTexture, vec3(inTexCoord, float(gl_ViewIndex)), 0.0).xy)); 
+#endif
   } else {
     bool h = max(a.x, a.z) > max(a.y, a.w);  // max(horizontal) > max(vertical)
 
@@ -62,6 +69,10 @@ void main() {
     // neighbor:
     outColor = ApplyInverseToneMapping((blendingWeight.x * ApplyToneMapping(textureLod(uColorTexture, vec3(blendingCoord.xy, float(gl_ViewIndex)), 0.0))) +  // LinearSampler
                                        (blendingWeight.y * ApplyToneMapping(textureLod(uColorTexture, vec3(blendingCoord.zw, float(gl_ViewIndex)), 0.0))));   // LinearSampler
+#if SMAA_REPROJECTION
+    outColor.w = sqrt(5.0 * length((textureLod(uVelocityTexture, vec3(blendingCoord.xy, float(gl_ViewIndex)), 0.0).xy * blendingWeight.x) + 
+                                   (textureLod(uVelocityTexture, vec3(blendingCoord.zw, float(gl_ViewIndex)), 0.0).xy * blendingWeight.y)));
+#endif
   }
   outFragColor = outColor;
   //outFragColor = vec4(mix(pow((outColor.xyz + vec3(5.5e-2)) / vec3(1.055), vec3(2.4)), outColor.xyz / vec3(12.92), lessThan(outColor.xyz, vec3(4.045e-2))), outColor.w);

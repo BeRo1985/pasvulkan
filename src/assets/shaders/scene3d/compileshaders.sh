@@ -294,6 +294,7 @@ compileshaderarguments=(
   
   "-V antialiasing_smaa_blend.vert -o ${tempPath}/antialiasing_smaa_blend_vert.spv"
   "-V antialiasing_smaa_blend.frag -o ${tempPath}/antialiasing_smaa_blend_frag.spv"
+  "-V antialiasing_smaa_blend.frag -DSMAA_REPROJECTION=1 -o ${tempPath}/antialiasing_smaa_blend_reprojection_frag.spv"
   
   "-V antialiasing_smaa_edges.vert -o ${tempPath}/antialiasing_smaa_edges_vert.spv"
   "-V antialiasing_smaa_edges.frag -o ${tempPath}/antialiasing_smaa_edges_color_frag.spv"
