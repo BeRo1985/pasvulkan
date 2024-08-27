@@ -78,6 +78,12 @@ uses SysUtils,
 
 type { TpvScene3DRendererPassesAntialiasingSMAAWeightsRenderPass }
       TpvScene3DRendererPassesAntialiasingSMAAWeightsRenderPass=class(TpvFrameGraph.TRenderPass)
+       public
+        type TPushConstants=packed record
+              Metrices:TpvVector4;
+              SubsampleIndices:TpvVector4;
+             end; 
+             PPushConstants=^TPushConstants;
        private
         fInstance:TpvScene3DRendererInstance;
         fVulkanRenderPass:TpvVulkanRenderPass;
@@ -283,7 +289,7 @@ begin
 
  fVulkanPipelineLayout:=TpvVulkanPipelineLayout.Create(fInstance.Renderer.VulkanDevice);
  fVulkanPipelineLayout.AddDescriptorSetLayout(fVulkanDescriptorSetLayout);
- fVulkanPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),0,SizeOf(TpvVector4));
+ fVulkanPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),0,SizeOf(TpvScene3DRendererPassesAntialiasingSMAAWeightsRenderPass.TPushConstants));
  fVulkanPipelineLayout.Initialize;
 
  fVulkanGraphicsPipeline:=TpvVulkanGraphicsPipeline.Create(fInstance.Renderer.VulkanDevice,
@@ -381,16 +387,31 @@ begin
 end;
 
 procedure TpvScene3DRendererPassesAntialiasingSMAAWeightsRenderPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
-var Metrices:TpvVector4;
+var PushConstants:TpvScene3DRendererPassesAntialiasingSMAAWeightsRenderPass.TPushConstants;
 begin
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
- Metrices:=TpvVector4.Create(1.0/fInstance.ScaledWidth,1.0/fInstance.ScaledHeight,fInstance.ScaledWidth,fInstance.ScaledHeight);
+ PushConstants.Metrices:=TpvVector4.Create(1.0/fInstance.ScaledWidth,1.0/fInstance.ScaledHeight,fInstance.ScaledWidth,fInstance.ScaledHeight);
+ case fInstance.Renderer.AntialiasingMode of
+  TpvScene3DRendererAntialiasingMode.SMAAT2x:begin
+   case aFrameIndex and 1 of
+    0:begin
+     PushConstants.SubsampleIndices:=TpvVector4.Create(1.0,1.0,1.0,0.0);
+    end;
+    else begin
+     PushConstants.SubsampleIndices:=TpvVector4.Create(2.0,2.0,2.0,0.0);
+    end;
+   end;
+  end;
+  else begin
+   PushConstants.SubsampleIndices:=TpvVector4.Create(0.0,0.0,0.0,0.0);
+  end;
+ end; 
  aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
                                       fVulkanPipelineLayout.Handle,
                                       0,
                                       1,
                                       @fVulkanDescriptorSets[aInFlightFrameIndex].Handle,0,nil);
- aCommandBuffer.CmdPushConstants(fVulkanPipelineLayout.Handle,TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_VERTEX_BIT) or TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_FRAGMENT_BIT),0,SizeOf(TpvVector4),@Metrices);
+ aCommandBuffer.CmdPushConstants(fVulkanPipelineLayout.Handle,TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_VERTEX_BIT) or TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_FRAGMENT_BIT),0,SizeOf(TpvScene3DRendererPassesAntialiasingSMAAWeightsRenderPass.TPushConstants),@PushConstants);
  aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanGraphicsPipeline.Handle);
  aCommandBuffer.CmdDraw(3,1,0,0);
 end;

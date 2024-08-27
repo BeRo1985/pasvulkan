@@ -16,6 +16,7 @@ layout(location = 4) out vec4 outOffset2;
 
 layout(push_constant) uniform PushConstants {
   vec4 metrics;  //
+  vec4 subsampleIndices;  // Just pass zero for SMAA 1x, see @SUBSAMPLE_INDICES.
 } pushConstants;
 
 void main() {

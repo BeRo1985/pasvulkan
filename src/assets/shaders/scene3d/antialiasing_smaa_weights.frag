@@ -39,6 +39,7 @@ layout(set = 0, binding = 2) uniform sampler2D uSearchTexture;
 
 layout(push_constant) uniform PushConstants {
   vec4 metrics;  //
+  vec4 subsampleIndices;  // Just pass zero for SMAA 1x, see @SUBSAMPLE_INDICES.
 } pushConstants;
 
 vec4 SMAA_RT_METRICS = pushConstants.metrics;
@@ -360,7 +361,7 @@ void SMAADetectVerticalCornerPattern(sampler2DArray edgeTexture, inout vec2 weig
 }
 
 void main() {
-  vec4 subsampleIndices = vec4(0.0);  // Just pass zero for SMAA 1x, see @SUBSAMPLE_INDICES.
+  vec4 subsampleIndices = pushConstants.subsampleIndices;
   // subsampleIndices = vec4(1.0, 1.0, 1.0, 0.0);
   vec4 weights = vec4(0.0, 0.0, 0.0, 0.0);
   vec2 e = textureLod(uEdgeTexture, vec3(inTexCoord, float(gl_ViewIndex)), 0).xy;
