@@ -49,7 +49,7 @@
  * 11. Make sure the code runs on all platforms with Vulkan support           *
  *                                                                            *
  ******************************************************************************)
-unit PasVulkan.EntityComponentSystem.RecordBased;
+unit PasVulkan.EntityComponentSystem;
 {$i PasVulkan.inc}
 {$ifndef fpc}
  {$ifdef conditionalexpressions}
@@ -621,12 +621,6 @@ var RegisteredComponentTypeList:TpvEntityComponentSystem.TRegisteredComponentTyp
 procedure InitializeEntityComponentSystemGlobals;
 
 implementation
-
-uses PasVulkan.Components.Name,
-     PasVulkan.Components.Parent,
-     PasVulkan.Components.Renderer,
-     PasVulkan.Components.SortKey,
-     PasVulkan.Components.Transform;
 
 { TpvEntityComponentSystem.TpvEntityIDHelper }
 
