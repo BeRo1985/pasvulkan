@@ -23,7 +23,7 @@ void main(){
   
   vec2 velocity = subpassLoad(uSubpassVelocity).xy;
   
-  vec4 previous = ApplyToneMapping(textureLod(uTexturePrevious, vec3(inTexCoord - velocity, float(gl_ViewIndex)), 0.0));
+  vec4 previous = ApplyToneMapping(textureLod(uTexturePrevious, vec3(inTexCoord + velocity, float(gl_ViewIndex)), 0.0));
 
   float delta = ((current.a * current.a) - (previous.a * previous.a)) * (1.0 / 5.0);
   float weight = clamp(1.0 - (sqrt(delta) * SMAA_REPROJECTION_WEIGHT_SCALE), 0.0, 1.0) * 0.5;
