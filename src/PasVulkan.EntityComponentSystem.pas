@@ -615,6 +615,8 @@ type TpvEntityComponentSystem=class
 
      end;
 
+     TpvECS=TpvEntityComponentSystem;
+
 var RegisteredComponentTypeList:TpvEntityComponentSystem.TRegisteredComponentTypeList=nil;
     RegisteredComponentTypeNameHashMap:TpvEntityComponentSystem.TRegisteredComponentTypeNameHashMap=nil;
 
