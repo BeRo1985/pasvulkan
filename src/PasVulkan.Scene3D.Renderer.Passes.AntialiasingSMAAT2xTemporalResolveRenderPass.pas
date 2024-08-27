@@ -142,7 +142,7 @@ begin
  fResourceCurrentColor:=AddImageInput(fInstance.LastOutputResource.ResourceType.Name,
                                       fInstance.LastOutputResource.Resource.Name,
                                       VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                      []);
+                                      [TpvFrameGraph.TResourceTransition.TFlag.Attachment]);
 
 {if fInstance.Renderer.TransparencyMode in [TpvScene3DRendererTransparencyMode.DIRECT,
                                             TpvScene3DRendererTransparencyMode.SPINLOCKOIT,
@@ -166,7 +166,7 @@ begin
  fResourceCurrentVelocity:=AddImageInput('resourcetype_velocity',
                                          'resource_velocity_data',
                                           VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                          []
+                                          [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                          );
 
  fResourceSurface:=AddImageOutput('resourcetype_color_temporal_antialiasing',
