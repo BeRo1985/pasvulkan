@@ -498,6 +498,7 @@ type TpvScene3DAtmosphere=class;
               MieExtinction:TpvVector4; // w is unused, for alignment
               AbsorptionExtinction:TpvVector4; // w is unused, for alignment
               GroundAlbedo:TpvVector4; // w is unused, for alignment
+              FadeFactor:TpvFloat;
               Intensity:TpvFloat;
               MiePhaseFunctionG:TpvFloat;
               SunAngularRadius:TpvFloat;
@@ -632,7 +633,7 @@ type TpvScene3DAtmosphere=class;
               MieScattering:TpvVector4; // w = sun direction X
               MieExtinction:TpvVector4; // w = sun direction Y
               MieAbsorption:TpvVector4; // w = sun direction Z
-              AbsorptionExtinction:TpvVector4;
+              AbsorptionExtinction:TpvVector4; // w = Fade factor, 0.0 = no atmosphere, 1.0 = full atmosphere  
               GroundAlbedo:TpvVector4; // w = intensity
               SolarIrradiance:TpvVector4;
               BottomRadius:TpvFloat;
@@ -1721,6 +1722,9 @@ begin
  TopRadius:=aEarthTopRadius;
  GroundAlbedo:=TpvVector4.InlineableCreate(0.0,0.0,0.0,0.0);
 
+ // Fade factor
+ FadeFactor:=1.0;
+
  // Intensity 
  Intensity:=1.0;
 
@@ -1794,8 +1798,11 @@ begin
   BottomRadius:=TPasJSON.GetNumber(JSONRootObject.Properties['bottomradius'],BottomRadius);
   TopRadius:=TPasJSON.GetNumber(JSONRootObject.Properties['topradius'],TopRadius);
   GroundAlbedo.xyz:=JSONToVector3(JSONRootObject.Properties['groundalbedo'],GroundAlbedo.xyz);
-  Intensity:=TPasJSON.GetNumber(JSONRootObject.Properties['intensity'],Intensity);
+
+  FadeFactor:=TPasJSON.GetNumber(JSONRootObject.Properties['fadefactor'],FadeFactor);
   
+  Intensity:=TPasJSON.GetNumber(JSONRootObject.Properties['intensity'],Intensity);
+
   LoadDensityProfileLayer(JSONRootObject.Properties['rayleighdensity0'],RayleighDensity.Layers[0]);
   LoadDensityProfileLayer(JSONRootObject.Properties['rayleighdensity1'],RayleighDensity.Layers[1]);
   RayleighScattering.xyz:=JSONToVector3(JSONRootObject.Properties['rayleighscattering'],RayleighScattering.xyz/Factor)*Factor;
@@ -1872,6 +1879,7 @@ begin
  result.Add('bottomradius',TPasJSONItemNumber.Create(BottomRadius));
  result.Add('topradius',TPasJSONItemNumber.Create(TopRadius));
  result.Add('groundalbedo',Vector3ToJSON(GroundAlbedo.xyz));
+ result.Add('fadefactor',TPasJSONItemNumber.Create(FadeFactor));
  result.Add('intensity',TPasJSONItemNumber.Create(Intensity));
  result.Add('rayleighdensity0',SaveDensityLayer(RayleighDensity.Layers[0]));
  result.Add('rayleighdensity1',SaveDensityLayer(RayleighDensity.Layers[1]));
@@ -2131,7 +2139,7 @@ begin
  AbsorptionDensity0LinearTerm:=aAtmosphereParameters.AbsorptionDensity.Layers[0].LinearTerm;
  AbsorptionDensity1ConstantTerm:=aAtmosphereParameters.AbsorptionDensity.Layers[1].ConstantTerm;
  AbsorptionDensity1LinearTerm:=aAtmosphereParameters.AbsorptionDensity.Layers[1].LinearTerm;
- AbsorptionExtinction:=aAtmosphereParameters.AbsorptionExtinction;
+ AbsorptionExtinction:=TpvVector4.InlineableCreate(aAtmosphereParameters.AbsorptionExtinction.xyz,aAtmosphereParameters.FadeFactor);
 
  GroundAlbedo:=TpvVector4.InlineableCreate(aAtmosphereParameters.GroundAlbedo.xyz,aAtmosphereParameters.Intensity);
 

@@ -613,6 +613,12 @@ void main() {
     }
 #endif
 
+    {
+      float fadeFactor = clamp(uAtmosphereParameters.atmosphereParameters.AbsorptionExtinction.w, 0.0, 1.0);
+      inscattering *= fadeFactor;
+      transmittance = mix(transmittance, vec3(1.0), fadeFactor); 
+    } 
+
 #ifdef DUALBLEND
     outInscattering = vec4(clamp(inscattering, vec3(0.0), vec3(65504.0)), 1.0 - clamp(dot(transmittance, vec3(1.0 / 3.0)), 0.0, 1.0)); // clamp to 16-bit floating point range, alpha = 1.0 - transmittance sine it is applied directly to the actual content, where alpha is used in its usual normal way and not as monochromatic transmittance
     outTransmittance = vec4(vec3(clamp(transmittance, vec3(0.0), vec3(1.0))), 1.0); // clamp to normalized range
