@@ -53,8 +53,24 @@
 #endif
             float lightAttenuation = 1.0;
             vec3 lightPosition = light.positionRadius.xyz; 
-            vec3 pointToLightVector = lightPosition - inWorldSpacePosition.xyz;
-            vec3 pointToLightDirection = normalize(((light.metaData.x == 1u) || (light.metaData.x == 4u)) ? -light.directionRange.xyz : pointToLightVector);
+            vec3 pointToLightVector, pointToLightDirection;
+            switch (light.metaData.x) {
+              case 1u:  {  // Directional
+                pointToLightDirection = normalize(-light.directionRange.xyz);
+                pointToLightVector = pointToLightDirection * 1e8; // Far away
+                break;
+              }
+              case 4u: {  // Primary directional
+                imageLightBasedLightDirection = pointToLightDirection = normalize(-light.directionRange.xyz);
+                pointToLightVector = pointToLightDirection * 1e8; // Far away
+                break;
+              }
+              default: { // Point, Spot and other non-directional lights
+                pointToLightVector = lightPosition - inWorldSpacePosition.xyz;
+                pointToLightDirection = normalize(pointToLightVector);
+                break;
+              }
+            }  
 #ifdef SHADOWS
 #if defined(RAYTRACING)
             vec3 rayOrigin = inWorldSpacePosition.xyz;
@@ -79,7 +95,6 @@
                 }
 #elif 0
                 case 1u: { // Directional 
-                  // imageLightBasedLightDirection = light.directionRange.xyz;
                   // fall-through
                 }
                 case 3u: {  // Spot
@@ -196,7 +211,6 @@
             switch (light.metaData.x) {
 #if !defined(REFLECTIVESHADOWMAPOUTPUT)
               case 1u: {  // Directional
-                pointToLightDirection = -light.directionRange.xyz;
                 break;
               }
               case 2u: {  // Point
@@ -219,7 +233,6 @@
               }
 #endif // !defined(REFLECTIVESHADOWMAPOUTPUT)
               case 4u: {  // Primary directional
-                imageLightBasedLightDirection = pointToLightDirection;
                 break;
               }
               default: {
