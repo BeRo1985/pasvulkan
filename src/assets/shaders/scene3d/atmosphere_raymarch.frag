@@ -318,14 +318,14 @@ void main() {
 
   //bool rayHitsAtmosphere = any(greaterThanEqual(raySphereIntersect(worldPos, worldDir, vec3(0.0), atmosphereParameters.TopRadius), vec2(0.0)));
 
-  bool needToRayMarch = false, needAerialPerspective = false, applyFastCloudIntegration = false;
+  bool needToRayMarch = false, needAerialPerspective = false, applyFastCloudIntegration = false, needToProcess = uAtmosphereParameters.atmosphereParameters.AbsorptionExtinction.w > 0.0;
 
   float targetDepth = uintBitsToFloat(0x7F800000u); // +inf
 
   if(/*rayHitsAtmosphere &&*/ depthIsZFar){
 
     // When fast sky is used, we can use a precomputed sky view LUT to get the inscattering and transmittance values 
-    if((pushConstants.flags & FLAGS_USE_FAST_SKY) != 0u){
+    if(((pushConstants.flags & FLAGS_USE_FAST_SKY) != 0u) && needToProcess){
       
       vec2 localUV;
       vec3 UpVector = normalize(worldPos);
@@ -395,7 +395,7 @@ void main() {
 
 #endif
   
-  if(needAerialPerspective){
+  if(needAerialPerspective && needToProcess){
 
     // When fast aerial perspective is used and no clouds are present at this fragment pixel, we can use a precomputed camera volume to get the
     // inscattering and transmittance values
@@ -505,7 +505,7 @@ void main() {
     needToRayMarch = false;
   }*/
 
-  if(needToRayMarch){
+  if(needToRayMarch && needToProcess){
 /*
     if(cloudsValid){
 

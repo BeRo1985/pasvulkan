@@ -1047,7 +1047,11 @@ void main(){
 
   vec3 inscattering, transmittance;
   float depth;
-  if(!traceVolumetricClouds(worldPos, worldDir, depthBufferValue, ivec2(gl_FragCoord), inscattering, transmittance, depth)){
+  if(uAtmosphereParameters.atmosphereParameters.AbsorptionExtinction.w > 0.0){
+    if(!traceVolumetricClouds(worldPos, worldDir, depthBufferValue, ivec2(gl_FragCoord), inscattering, transmittance, depth)){
+      discard;
+    }
+  }else{
     discard;
   }
 
