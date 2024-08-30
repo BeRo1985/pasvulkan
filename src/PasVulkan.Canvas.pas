@@ -741,6 +741,9 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        function DrawFilledRectangle(const aCenter,aBounds:TpvVector2):TpvCanvas; overload;
        function DrawFilledRectangle(const aCenterX,aCenterY,aBoundX,aBoundY:TpvFloat):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
        function DrawFilledRectangle(const aRect:TpvRect):TpvCanvas; overload;
+       function DrawFilledRoundedRectangle(const aCenter,aBounds:TpvVector2;const aRadius:TpvFloat):TpvCanvas; overload;
+       function DrawFilledRoundedRectangle(const aCenterX,aCenterY,aBoundX,aBoundY,aRadius:TpvFloat):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function DrawFilledRoundedRectangle(const aRect:TpvRect;const aRadius:TpvFloat):TpvCanvas; overload;
       public
        function DrawTexturedRectangle(const aTexture:TpvVulkanTexture;const aCenter,aBounds:TpvVector2;const aRotationAngle:TpvFloat=0.0;const aTextureArrayLayer:TpvInt32=0):TpvCanvas; overload;
        function DrawTexturedRectangle(const aTexture:TpvVulkanTexture;const aCenterX,aCenterY,aBoundX,aBoundY:TpvFloat;const aRotationAngle:TpvFloat=0.0;const aTextureArrayLayer:TpvInt32=0):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
@@ -833,6 +836,7 @@ const pcvvaomSolid=0;
       pcvvaomCircle=4;
       pcvvaomEllipse=5;
       pcvvaomRectangle=6;
+      pcvvaomRoundedRectangle=7;
 
       CurveRecursionLimit=16;
 
@@ -5454,6 +5458,78 @@ begin
  inc(fCurrentCountVertices,4);
  inc(fCurrentCountIndices,6);
  result:=self;
+end;
+
+function TpvCanvas.DrawFilledRoundedRectangle(const aCenter,aBounds:TpvVector2;const aRadius:TpvFloat):TpvCanvas;
+var MetaInfo:TpvVector4;
+    MetaInfo2:TpvVector4;
+    VertexColor:TpvHalfFloatVector4;
+    VertexState:TpvUInt32;
+    CanvasVertex:PpvCanvasVertex;
+begin
+ SetGUIElementMode(false);
+ SetAtlasTexture(nil);
+ fInternalRenderingMode:=TpvCanvasRenderingMode.Normal;
+ VertexColor.r:=fState.fColor.r;
+ VertexColor.g:=fState.fColor.g;
+ VertexColor.b:=fState.fColor.b;
+ VertexColor.a:=fState.fColor.a;
+ MetaInfo.xy:=fState.fModelMatrix*aCenter;
+ MetaInfo.zw:=aBounds-TpvVector2.InlineableCreate(aRadius,aRadius);
+ MetaInfo2:=TpvVector4.InlineableCreate(aRadius,0.0,0.0,0.0);
+ VertexState:=GetVertexState;
+ EnsureSufficientReserveUsableSpace(4,6);
+ CanvasVertex:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices+0];
+ CanvasVertex^.Position:=TpvVector3.InlineableCreate(fState.fModelMatrix*(aCenter+TpvVector2.InlineableCreate(-aBounds.x,-aBounds.y)),fState.fZPosition);
+ CanvasVertex^.Color:=VertexColor;
+ CanvasVertex^.TextureCoord:=TpvVector3.Null;
+ CanvasVertex^.State:=VertexState or ((pcvvaomRoundedRectangle and $ff) shl pvcvsObjectModeShift);
+ CanvasVertex^.ClipRect:=fState.fClipSpaceClipRect;
+ CanvasVertex^.MetaInfo:=MetaInfo;
+ CanvasVertex^.MetaInfo2:=MetaInfo2;
+ CanvasVertex:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices+1];
+ CanvasVertex^.Position:=TpvVector3.InlineableCreate(fState.fModelMatrix*(aCenter+TpvVector2.InlineableCreate(aBounds.x,-aBounds.y)),fState.fZPosition);
+ CanvasVertex^.Color:=VertexColor;
+ CanvasVertex^.TextureCoord:=TpvVector3.Null;
+ CanvasVertex^.State:=VertexState or ((pcvvaomRoundedRectangle and $ff) shl pvcvsObjectModeShift);
+ CanvasVertex^.ClipRect:=fState.fClipSpaceClipRect;
+ CanvasVertex^.MetaInfo:=MetaInfo;
+ CanvasVertex^.MetaInfo2:=MetaInfo2;
+ CanvasVertex:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices+2];
+ CanvasVertex^.Position:=TpvVector3.InlineableCreate(fState.fModelMatrix*(aCenter+TpvVector2.InlineableCreate(aBounds.x,aBounds.y)),fState.fZPosition);
+ CanvasVertex^.Color:=VertexColor;
+ CanvasVertex^.TextureCoord:=TpvVector3.Null;
+ CanvasVertex^.State:=VertexState or ((pcvvaomRoundedRectangle and $ff) shl pvcvsObjectModeShift);
+ CanvasVertex^.ClipRect:=fState.fClipSpaceClipRect;
+ CanvasVertex^.MetaInfo:=MetaInfo;
+ CanvasVertex^.MetaInfo2:=MetaInfo2;
+ CanvasVertex:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices+3];
+ CanvasVertex^.Position:=TpvVector3.InlineableCreate(fState.fModelMatrix*(aCenter+TpvVector2.InlineableCreate(-aBounds.x,aBounds.y)),fState.fZPosition);
+ CanvasVertex^.Color:=VertexColor;
+ CanvasVertex^.TextureCoord:=TpvVector3.Null;
+ CanvasVertex^.State:=VertexState or ((pcvvaomRoundedRectangle and $ff) shl pvcvsObjectModeShift);
+ CanvasVertex^.ClipRect:=fState.fClipSpaceClipRect;
+ CanvasVertex^.MetaInfo:=MetaInfo;
+ CanvasVertex^.MetaInfo2:=MetaInfo2;
+ fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+0]:=fCurrentCountVertices+0;
+ fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+1]:=fCurrentCountVertices+1;
+ fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+2]:=fCurrentCountVertices+2;
+ fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+3]:=fCurrentCountVertices+2;
+ fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+4]:=fCurrentCountVertices+3;
+ fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+5]:=fCurrentCountVertices+0;
+ inc(fCurrentCountVertices,4);
+ inc(fCurrentCountIndices,6);
+ result:=self;
+end;
+
+function TpvCanvas.DrawFilledRoundedRectangle(const aCenterX,aCenterY,aBoundX,aBoundY,aRadius:TpvFloat):TpvCanvas;
+begin
+ result:=DrawFilledRoundedRectangle(TpvVector2.InlineableCreate(aCenterX,aCenterY),TpvVector2.InlineableCreate(aBoundX,aBoundY),aRadius);
+end;
+
+function TpvCanvas.DrawFilledRoundedRectangle(const aRect:TpvRect;const aRadius:TpvFloat):TpvCanvas;
+begin
+ result:=DrawFilledRoundedRectangle(aRect.Center,aRect.Size*0.5,aRadius);
 end;
 
 function TpvCanvas.DrawTexturedRectangle(const aTexture:TpvVulkanTexture;const aCenter,aBounds:TpvVector2;const aRotationAngle:TpvFloat=0.0;const aTextureArrayLayer:TpvInt32=0):TpvCanvas;
