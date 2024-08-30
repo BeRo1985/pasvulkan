@@ -31,10 +31,12 @@ layout(location = 2) in vec3 inTexCoord; // 2D texture coordinate with array tex
 layout(location = 3) flat in ivec4 inState; // x = Rendering mode, y = object type, z = not used yet, w = not used yet
 #if USECLIPDISTANCE
 layout(location = 4) in vec4 inMetaInfo; // Various stuff
+layout(location = 5) in vec4 inMetaInfo2; // Various stuff
 #else
 layout(location = 4) in vec4 inClipRect; // xy = Left Top, zw = Right Bottom
 layout(location = 5) in vec2 inClipSpacePosition;  // xy
 layout(location = 6) in vec4 inMetaInfo; // Various stuff
+layout(location = 7) in vec4 inMetaInfo2; // Various stuff
 #endif
 
 #if FILLTYPE == FILLTYPE_ATLAS_TEXTURE 
@@ -894,6 +896,11 @@ void main(void){
         vec2 d = abs(inPosition.xy - inMetaInfo.xy) - inMetaInfo.zw;
         color.a *= linearstep(0.0, -threshold, min(max(d.x, d.y), 0.0) + length(max(d, 0.0)));
         break;      
+      }
+      case 0x07:{
+        // Distance to rounded rectangle
+        vec2 d = abs(inPosition.xy - inMetaInfo.xy) - inMetaInfo.zw;
+        color.a *= linearstep(0.0, -threshold, (min(max(d.x, d.y), 0.0) + length(max(d, 0.0))) - inMetaInfo2.x);
       }
     }
   }
