@@ -99,6 +99,7 @@ type { TpvConsole }
             TConsoleBuffer=array of TpvUInt32;
             PConsoleBuffer=^TConsoleBuffer;
             TUTF8StringList=TpvGenericList<TpvUTF8String>;
+            TOnExecute=procedure(const aLine:TpvUTF8String) of object;
             TOnSetDrawColor=procedure(const aColor:TpvVector4) of object;
             TOnDrawRect=procedure(const aX0,aY0,aX1,aY1:TpvFloat) of object;
             TOnDrawCodePoint=procedure(const aCodePoint:TpvUInt32;const aX,aY:TpvFloat) of object;
@@ -174,6 +175,7 @@ type { TpvConsole }
        fCursorTimeAccumulator:TpvDouble;
        fColors:PColors;
        fCurrentBuffer:PConsoleBuffer;
+       fOnExecute:TOnExecute;
        fOnSetDrawColor:TOnSetDrawColor;
        fOnDrawRect:TOnDrawRect;
        fOnDrawCodePoint:TOnDrawCodePoint;
@@ -244,6 +246,7 @@ type { TpvConsole }
        property Lines:TUTF8StringList read fLines;
        property Colors:PColors read fColors write fColors;
       published
+       property OnExecute:TOnExecute read fOnExecute write fOnExecute;
        property OnSetDrawColor:TOnSetDrawColor read fOnSetDrawColor write fOnSetDrawColor;
        property OnDrawRect:TOnDrawRect read fOnDrawRect write fOnDrawRect;
        property OnDrawCodePoint:TOnDrawCodePoint read fOnDrawCodePoint write fOnDrawCodePoint; 
@@ -303,6 +306,8 @@ begin
  fCursorTimeAccumulator:=0.0;
 
  fCurrentBuffer:=@fRawBuffer;
+
+ fOnExecute:=nil;
 
  fOnSetDrawColor:=nil;
 
@@ -858,8 +863,8 @@ begin
   fHistoryIndex:=fHistory.Count;
  end;
  WriteLine(#0#15+'>'+fLine);
- if OK then begin
-  // TODO
+ if OK and assigned(fOnExecute) then begin
+  fOnExecute(fLine);
  end;
  fLinePosition:=1;
  fLineFirstPosition:=1;
