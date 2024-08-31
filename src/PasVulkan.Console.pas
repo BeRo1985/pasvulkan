@@ -77,6 +77,7 @@ uses SysUtils,
      PasVulkan.Application,
      PasVulkan.Audio,
      PasVulkan.Resources,
+     PasVulkan.Collections,
      PasVulkan.FrameGraph,
      PasVulkan.Canvas;
 
@@ -97,6 +98,7 @@ type { TpvConsole }
             PCursorInfo=^TCursorInfo;
             TConsoleBuffer=array of TpvUInt32;
             PConsoleBuffer=^TConsoleBuffer;
+            TUTF8StringList=TpvGenericList<TpvUTF8String>;
             TOnSetDrawColor=procedure(const aColor:TpvVector4) of object;
             TOnDrawRect=procedure(const aX0,aY0,aX1,aY1:TpvFloat) of object;
             TOnDrawCodePoint=procedure(const aCodePoint:TpvUInt32;const aX,aY:TpvFloat) of object;
@@ -162,8 +164,8 @@ type { TpvConsole }
        fCursor:TCursorInfo;
        fInternalWidth:TpvSizeInt;
        fInternalHeight:TpvSizeInt; 
-       fLines:TStringList;
-       fHistory:TStringList;
+       fLines:TUTF8StringList;
+       fHistory:TUTF8StringList;
        fHistoryIndex:TpvSizeInt;
        fLine:TpvUTF8String;
        fLinePosition:TpvInt32;
@@ -183,7 +185,7 @@ type { TpvConsole }
        procedure UpdateScreen;
        procedure CheckXY;
        procedure ScrollOn;
-       procedure ScrollTo(const aPosition:TpvSizeInt;const aBuffer:TStringList);
+       procedure ScrollTo(const aPosition:TpvSizeInt;const aBuffer:TUTF8StringList);
        procedure ScrollOff;
        procedure SetChrDim(const aCols,aRows:TpvSizeInt);
        procedure SetResolution(const aWidth,aHeight:TpvSizeInt);
@@ -239,7 +241,7 @@ type { TpvConsole }
        property Overwrite:Boolean read fOverwrite write fOverwrite;
        property WindMin:TpvUInt32 read fWindMin write fWindMin;
        property WindMax:TpvUInt32 read fWindMax write fWindMax;
-       property Lines:TStringList read fLines;
+       property Lines:TUTF8StringList read fLines;
        property Colors:PColors read fColors write fColors;
       published
        property OnSetDrawColor:TOnSetDrawColor read fOnSetDrawColor write fOnSetDrawColor;
@@ -290,9 +292,9 @@ begin
  fLinePosition:=1;
  fLineFirstPosition:=1;
 
- fLines:=TStringList.Create;
+ fLines:=TUTF8StringList.Create;
 
- fHistory:=TStringList.Create;
+ fHistory:=TUTF8StringList.Create;
 
  fLine:='';
 
@@ -425,7 +427,7 @@ begin
  fScrolling:=true;
 end;
 
-procedure TpvConsole.ScrollTo(const aPosition:TpvSizeInt;const aBuffer:TStringList);
+procedure TpvConsole.ScrollTo(const aPosition:TpvSizeInt;const aBuffer:TUTF8StringList);
 var StartLine,EndLine,ScrollPos,i,x,y,z,l:TpvSizeInt;
     S:TpvUTF8String;
     p:TPUCUInt32;
@@ -819,7 +821,7 @@ begin
   dec(fHistoryIndex);
  end;
  if (fHistoryIndex>=0) and (fHistoryIndex<fHistory.Count) then begin
-  fLine:=fHistory.Strings[fHistoryIndex];
+  fLine:=fHistory.Items[fHistoryIndex];
   fLinePosition:=length(fLine)+1;
   fLineFirstPosition:=1;
  end else begin
@@ -836,7 +838,7 @@ begin
   inc(fHistoryIndex);
  end;
  if (fHistoryIndex>=0) and (fHistoryIndex<fHistory.Count) then begin
-  fLine:=fHistory.Strings[fHistoryIndex];
+  fLine:=fHistory.Items[fHistoryIndex];
   fLinePosition:=length(fLine)+1;
   fLineFirstPosition:=1;
  end else begin
