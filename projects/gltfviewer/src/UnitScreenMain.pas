@@ -487,44 +487,44 @@ begin
 
    if fAnimationIndex=-2 then begin
     if fGroupInstance.Group.Animations.Count>0 then begin
-     fGroupInstance.Automations[-1].Time:=0;
-     fGroupInstance.Automations[-1].ShadowTime:=-0;
-     fGroupInstance.Automations[-1].Complete:=false;
-     Factor:=fGroupInstance.Automations[-1].Factor;
+     fGroupInstance.Animations[-1].Time:=0;
+     fGroupInstance.Animations[-1].ShadowTime:=-0;
+     fGroupInstance.Animations[-1].Complete:=false;
+     Factor:=fGroupInstance.Animations[-1].Factor;
      if Factor>0.0 then begin
       Factor:=Factor*(1.0-BlendFactor);
       if Factor<1e-5 then begin
        Factor:=-1.0;
       end;
      end;
-     fGroupInstance.Automations[-1].Factor:=0.0;
+     fGroupInstance.Animations[-1].Factor:=0.0;
      for Index:=0 to fGroupInstance.Group.Animations.Count-1 do begin
       t0:=fGroupInstance.Group.Animations[Index].GetAnimationBeginTime;
       t1:=fGroupInstance.Group.Animations[Index].GetAnimationEndTime;
-      fGroupInstance.Automations[Index].Time:=fGroupInstance.Automations[Index].ShadowTime+t0;
-      fGroupInstance.Automations[Index].ShadowTime:=ModuloPos(fGroupInstance.Automations[Index].ShadowTime+(pvApplication.DeltaTime*1.0),t1-t0);
-      fGroupInstance.Automations[Index].Complete:=false;
-      Factor:=fGroupInstance.Automations[Index].Factor;
+      fGroupInstance.Animations[Index].Time:=fGroupInstance.Animations[Index].ShadowTime+t0;
+      fGroupInstance.Animations[Index].ShadowTime:=ModuloPos(fGroupInstance.Animations[Index].ShadowTime+(pvApplication.DeltaTime*1.0),t1-t0);
+      fGroupInstance.Animations[Index].Complete:=false;
+      Factor:=fGroupInstance.Animations[Index].Factor;
       if Factor<0.0 then begin
        Factor:=0.0;
-       fGroupInstance.Automations[Index].ShadowTime:=0.0;
+       fGroupInstance.Animations[Index].ShadowTime:=0.0;
       end;
       Factor:=(Factor*(1.0-BlendFactor))+(1.0*BlendFactor);
-      fGroupInstance.Automations[Index].Factor:=Factor;
+      fGroupInstance.Animations[Index].Factor:=Factor;
      end;
     end else begin
-     fGroupInstance.Automations[-1].Time:=0;
-     fGroupInstance.Automations[-1].ShadowTime:=-0;
-     fGroupInstance.Automations[-1].Complete:=true;
-     fGroupInstance.Automations[-1].Factor:=0.0;
+     fGroupInstance.Animations[-1].Time:=0;
+     fGroupInstance.Animations[-1].ShadowTime:=-0;
+     fGroupInstance.Animations[-1].Complete:=true;
+     fGroupInstance.Animations[-1].Factor:=0.0;
     end;
    end else begin
     for Index:=-1 to fGroupInstance.Group.Animations.Count-1 do begin
-     Factor:=fGroupInstance.Automations[Index].Factor;
+     Factor:=fGroupInstance.Animations[Index].Factor;
      if Index=fAnimationIndex then begin
       if Factor<0.0 then begin
        Factor:=0.0;
-       fGroupInstance.Automations[Index].ShadowTime:=0.0;
+       fGroupInstance.Animations[Index].ShadowTime:=0.0;
       end;
       Factor:=(Factor*(1.0-BlendFactor))+(1.0*BlendFactor);
      end else if Factor>0.0 then begin
@@ -537,17 +537,17 @@ begin
       if Index>=0 then begin
        t0:=fGroupInstance.Group.Animations[Index].GetAnimationBeginTime;
        t1:=fGroupInstance.Group.Animations[Index].GetAnimationEndTime;
-       fGroupInstance.Automations[Index].Time:=fGroupInstance.Automations[Index].ShadowTime+t0;
-       fGroupInstance.Automations[Index].ShadowTime:=ModuloPos(fGroupInstance.Automations[Index].ShadowTime+pvApplication.DeltaTime,t1-t0);
-       fGroupInstance.Automations[Index].Complete:=true;
+       fGroupInstance.Animations[Index].Time:=fGroupInstance.Animations[Index].ShadowTime+t0;
+       fGroupInstance.Animations[Index].ShadowTime:=ModuloPos(fGroupInstance.Animations[Index].ShadowTime+pvApplication.DeltaTime,t1-t0);
+       fGroupInstance.Animations[Index].Complete:=true;
       end else begin
-       fGroupInstance.Automations[Index].Time:=0.0;
-       fGroupInstance.Automations[Index].Complete:=false;
+       fGroupInstance.Animations[Index].Time:=0.0;
+       fGroupInstance.Animations[Index].Complete:=false;
       end;
      end else begin
-      fGroupInstance.Automations[Index].Time:=0.0;
+      fGroupInstance.Animations[Index].Time:=0.0;
      end;
-     fGroupInstance.Automations[Index].Factor:=Factor;
+     fGroupInstance.Animations[Index].Factor:=Factor;
     end;
    end;//}
 
