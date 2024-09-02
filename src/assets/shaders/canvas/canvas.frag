@@ -29,21 +29,26 @@ layout(location = 1) in vec4 inColor;    // RGBA Color (in linear space, NOT in 
 layout(location = 2) in vec3 inTexCoord; // 2D texture coordinate with array texture layer index inside the z component
 #endif
 layout(location = 3) flat in ivec4 inState; // x = Rendering mode, y = object type, z = not used yet, w = not used yet
-#if USECLIPDISTANCE
 layout(location = 4) in vec4 inMetaInfo; // Various stuff
 layout(location = 5) in vec4 inMetaInfo2; // Various stuff
-#else
-layout(location = 4) in vec4 inClipRect; // xy = Left Top, zw = Right Bottom
-layout(location = 5) in vec2 inClipSpacePosition;  // xy
-layout(location = 6) in vec4 inMetaInfo; // Various stuff
-layout(location = 7) in vec4 inMetaInfo2; // Various stuff
+layout(location = 6) in vec2 inClipSpacePosition;  // xy
+#if !USECLIPDISTANCE
+layout(location = 7) in vec4 inClipRect; // xy = Left Top, zw = Right Bottom
 #endif
 
 #if FILLTYPE == FILLTYPE_ATLAS_TEXTURE 
 layout(set = 0, binding = 0) uniform sampler2DArray uTexture;
 #elif FILLTYPE == FILLTYPE_TEXTURE
 layout(set = 0, binding = 0) uniform sampler2D uTexture;
-#elif FILLTYPE == FILLTYPE_VECTOR_PATH
+#endif
+
+#define MASKING 1
+
+#if MASKING
+layout(set = 0, binding = 1) uniform sampler2D uTextureMask;
+#endif
+
+#if FILLTYPE == FILLTYPE_VECTOR_PATH
 
 struct VectorPathGPUSegment {
   uvec4 typeWindingPoint0;
@@ -59,19 +64,19 @@ struct VectorPathGPUShape {
   uvec4 flagsStartGridCellIndexGridSize;
 };
 
-layout(std430, set = 0, binding = 0) buffer VectorPathGPUSegments {
+layout(std430, set = 1, binding = 0) buffer VectorPathGPUSegments {
   VectorPathGPUSegment vectorPathGPUSegments[];
 };
 
-layout(std430, set = 0, binding = 1) buffer VectorPathGPUIndirectSegments {
+layout(std430, set = 1, binding = 1) buffer VectorPathGPUIndirectSegments {
   VectorPathGPUIndirectSegment vectorPathGPUIndirectSegments[];
 };
 
-layout(std430, set = 0, binding = 2) buffer VectorPathGPUGridCells {
+layout(std430, set = 1, binding = 2) buffer VectorPathGPUGridCells {
   VectorPathGPUGridCell vectorPathGPUGridCells[];
 };
 
-layout(std430, set = 0, binding = 3) buffer VectorPathGPUShapes {
+layout(std430, set = 1, binding = 3) buffer VectorPathGPUShapes {
   VectorPathGPUShape vectorPathGPUShapes[];
 };
 
@@ -80,8 +85,7 @@ layout(std430, set = 0, binding = 3) buffer VectorPathGPUShapes {
 layout(location = 0) out vec4 outFragColor;
 
 layout(push_constant) uniform PushConstants {
-  layout(offset = 0) mat4 transformMatrix;
-  layout(offset = 64) mat4 fillMatrix;
+  layout(offset = 0) uvec4 data[8];
 } pushConstants;
 
 #if 0
@@ -776,9 +780,17 @@ void main(void){
   vec4 color;
 #ifndef GUI_ELEMENTS
 #if (FILLTYPE == FILLTYPE_NO_TEXTURE) || (FILLTYPE == FILLTYPE_TEXTURE)
-  mat3x2 fillTransformMatrix = mat3x2(pushConstants.fillMatrix[0].xy, 
-                                      pushConstants.fillMatrix[1].xy, 
-                                      vec2(pushConstants.fillMatrix[0].z, pushConstants.fillMatrix[1].z));
+  const mat4 fillMatrix = mat4(
+    uintBitsToFloat(uvec4(pushConstants.data[2].yzw, 0u)),
+    uintBitsToFloat(uvec4(pushConstants.data[3].xyz, 0u)),
+    uintBitsToFloat(uvec4(pushConstants.data[3].w, pushConstants.data[4].xyz)),
+    uintBitsToFloat(uvec4(pushConstants.data[4].w, pushConstants.data[5].xyz))
+  );
+  const mat3x2 fillTransformMatrix = mat3x2(
+    fillMatrix[0].xy, 
+    fillMatrix[1].xy, 
+    vec2(fillMatrix[0].z, fillMatrix[1].z)
+  );
 #endif
 #if !((FILLTYPE == FILLTYPE_TEXTURE) || (FILLTYPE == FILLTYPE_ATLAS_TEXTURE) || (FILLTYPE == FILLTYPE_VECTOR_PATH))
   color = inColor;
@@ -857,7 +869,7 @@ void main(void){
         break;
       }
     }
-    color *= mix(pushConstants.fillMatrix[2], pushConstants.fillMatrix[3], clamp(gradientTime, 0.0, 1.0));
+    color *= mix(fillMatrix[2], fillMatrix[3], clamp(gradientTime, 0.0, 1.0));
   }
 #endif
 #ifdef SIGNEDDISTANCEDFIELD
@@ -1529,6 +1541,23 @@ void main(void){
       }
     } 
   }
+#endif
+#if MASKING
+  if((pushConstants.data[7].w & (1u << 0)) != 0u){
+    // Construct a 4x4 matrix from the push constants data from a 3x2 matrix  
+    const mat4 maskMatrix = mat4(
+      vec4(uintBitsToFloat(uvec2(pushConstants.data[5].w, pushConstants.data[6].x)), 0.0, 0.0),
+      vec4(uintBitsToFloat(uvec2(pushConstants.data[6].yz)), 0.0, 0.0),
+      vec4(0.0, 0.0, 0.0, 0.0),
+      vec4(uintBitsToFloat(uvec2(pushConstants.data[6].w, pushConstants.data[7].x)), 0.0, 1.0)
+    );  
+    vec2 maskPosition = (inverse(maskMatrix) * vec4(inClipSpacePosition.xy, 0.0, 1.0)).xy;
+    if(all(greaterThanEqual(maskPosition, vec2(0.0))) && all(lessThanEqual(maskPosition, vec2(1.0)))){
+      color *= texture(uTextureMask, maskPosition).x;
+    }else{
+      discard;
+    }
+  } 
 #endif
 #if !USECLIPDISTANCE
 #if BLENDING 

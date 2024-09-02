@@ -8,7 +8,7 @@
 
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 8) in;
 
-layout(push_constant, std140, row_major) uniform PushConstants {
+layout(push_constant, std140) uniform PushConstants {
   uvec4 tileSizeZNearZFar; 
   vec4 viewRect;
   uvec4 countLightsViewIndexSizeOffsetedViewIndex;

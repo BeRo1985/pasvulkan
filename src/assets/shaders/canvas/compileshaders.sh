@@ -5,47 +5,47 @@ FILLTYPE_TEXTURE=1
 FILLTYPE_ATLAS_TEXTURE=2
 FILLTYPE_VECTOR_PATH=3
 
-glslc -x glsl --target-env=vulkan -fshader-stage=vertex -DUSECLIPDISTANCE=0 -DUSETEXTURE=1 -o canvas_vert.spv canvas.vert
-glslc -x glsl --target-env=vulkan -fshader-stage=vertex -DUSECLIPDISTANCE=0 -DUSETEXTURE=0 -o canvas_no_texture_vert.spv canvas.vert
+glslc -x glsl -g --target-env=vulkan -fshader-stage=vertex -DUSECLIPDISTANCE=0 -DUSETEXTURE=1 -o canvas_vert.spv canvas.vert
+glslc -x glsl -g --target-env=vulkan -fshader-stage=vertex -DUSECLIPDISTANCE=0 -DUSETEXTURE=0 -o canvas_no_texture_vert.spv canvas.vert
 
-glslc -x glsl --target-env=vulkan -fshader-stage=fragment -DFILLTYPE=$FILLTYPE_NO_TEXTURE -DBLENDING=1 -DUSECLIPDISTANCE=0 -DUSENODISCARD=1 -o canvas_frag_no_texture.spv canvas.frag
-glslc -x glsl --target-env=vulkan -fshader-stage=fragment -DFILLTYPE=$FILLTYPE_TEXTURE -DBLENDING=1 -DUSECLIPDISTANCE=0 -DUSENODISCARD=1 -o canvas_frag_texture.spv canvas.frag
-glslc -x glsl --target-env=vulkan -fshader-stage=fragment -DFILLTYPE=$FILLTYPE_ATLAS_TEXTURE -DBLENDING=1 -DUSECLIPDISTANCE=0 -DUSENODISCARD=1 -o canvas_frag_atlas_texture.spv canvas.frag
-glslc -x glsl --target-env=vulkan -fshader-stage=fragment -DFILLTYPE=$FILLTYPE_VECTOR_PATH -DBLENDING=1 -DUSECLIPDISTANCE=0 -DUSENODISCARD=1 -o canvas_frag_vectorpath.spv canvas.frag
-glslc -x glsl --target-env=vulkan -fshader-stage=fragment -DFILLTYPE=$FILLTYPE_NO_TEXTURE -DBLENDING=1 -DUSECLIPDISTANCE=0 -DUSENODISCARD=1 -DGUI_ELEMENTS -o canvas_frag_gui_no_texture.spv canvas.frag
+glslc -x glsl -g --target-env=vulkan -fshader-stage=fragment -DFILLTYPE=$FILLTYPE_NO_TEXTURE -DBLENDING=1 -DUSECLIPDISTANCE=0 -DUSENODISCARD=1 -o canvas_frag_no_texture.spv canvas.frag
+glslc -x glsl -g --target-env=vulkan -fshader-stage=fragment -DFILLTYPE=$FILLTYPE_TEXTURE -DBLENDING=1 -DUSECLIPDISTANCE=0 -DUSENODISCARD=1 -o canvas_frag_texture.spv canvas.frag
+glslc -x glsl -g --target-env=vulkan -fshader-stage=fragment -DFILLTYPE=$FILLTYPE_ATLAS_TEXTURE -DBLENDING=1 -DUSECLIPDISTANCE=0 -DUSENODISCARD=1 -o canvas_frag_atlas_texture.spv canvas.frag
+glslc -x glsl -g --target-env=vulkan -fshader-stage=fragment -DFILLTYPE=$FILLTYPE_VECTOR_PATH -DBLENDING=1 -DUSECLIPDISTANCE=0 -DUSENODISCARD=1 -o canvas_frag_vectorpath.spv canvas.frag
+glslc -x glsl -g --target-env=vulkan -fshader-stage=fragment -DFILLTYPE=$FILLTYPE_NO_TEXTURE -DBLENDING=1 -DUSECLIPDISTANCE=0 -DUSENODISCARD=1 -DGUI_ELEMENTS -o canvas_frag_gui_no_texture.spv canvas.frag
 
-glslc -x glsl --target-env=vulkan -fshader-stage=fragment -DFILLTYPE=$FILLTYPE_NO_TEXTURE -DBLENDING=0 -DUSECLIPDISTANCE=0 -DUSENODISCARD=0 -o canvas_frag_no_texture_no_blending.spv canvas.frag
-glslc -x glsl --target-env=vulkan -fshader-stage=fragment -DFILLTYPE=$FILLTYPE_TEXTURE -DBLENDING=0 -DUSECLIPDISTANCE=0 -DUSENODISCARD=0 -o canvas_frag_texture_no_blending.spv canvas.frag
-glslc -x glsl --target-env=vulkan -fshader-stage=fragment -DFILLTYPE=$FILLTYPE_ATLAS_TEXTURE -DBLENDING=0 -DUSECLIPDISTANCE=0 -DUSENODISCARD=0 -o canvas_frag_atlas_texture_no_blending.spv canvas.frag
-glslc -x glsl --target-env=vulkan -fshader-stage=fragment -DFILLTYPE=$FILLTYPE_VECTOR_PATH -DBLENDING=0 -DUSECLIPDISTANCE=0 -DUSENODISCARD=0 -o canvas_frag_vectorpath_no_blending.spv canvas.frag
-glslc -x glsl --target-env=vulkan -fshader-stage=fragment -DFILLTYPE=$FILLTYPE_NO_TEXTURE -DBLENDING=0 -DUSECLIPDISTANCE=0 -DUSENODISCARD=0 -DGUI_ELEMENTS -o canvas_frag_gui_no_texture_no_blending.spv canvas.frag
+glslc -x glsl -g --target-env=vulkan -fshader-stage=fragment -DFILLTYPE=$FILLTYPE_NO_TEXTURE -DBLENDING=0 -DUSECLIPDISTANCE=0 -DUSENODISCARD=0 -o canvas_frag_no_texture_no_blending.spv canvas.frag
+glslc -x glsl -g --target-env=vulkan -fshader-stage=fragment -DFILLTYPE=$FILLTYPE_TEXTURE -DBLENDING=0 -DUSECLIPDISTANCE=0 -DUSENODISCARD=0 -o canvas_frag_texture_no_blending.spv canvas.frag
+glslc -x glsl -g --target-env=vulkan -fshader-stage=fragment -DFILLTYPE=$FILLTYPE_ATLAS_TEXTURE -DBLENDING=0 -DUSECLIPDISTANCE=0 -DUSENODISCARD=0 -o canvas_frag_atlas_texture_no_blending.spv canvas.frag
+glslc -x glsl -g --target-env=vulkan -fshader-stage=fragment -DFILLTYPE=$FILLTYPE_VECTOR_PATH -DBLENDING=0 -DUSECLIPDISTANCE=0 -DUSENODISCARD=0 -o canvas_frag_vectorpath_no_blending.spv canvas.frag
+glslc -x glsl -g --target-env=vulkan -fshader-stage=fragment -DFILLTYPE=$FILLTYPE_NO_TEXTURE -DBLENDING=0 -DUSECLIPDISTANCE=0 -DUSENODISCARD=0 -DGUI_ELEMENTS -o canvas_frag_gui_no_texture_no_blending.spv canvas.frag
 
-glslc -x glsl --target-env=vulkan -fshader-stage=fragment -DFILLTYPE=$FILLTYPE_NO_TEXTURE -DBLENDING=0 -DUSECLIPDISTANCE=0 -DUSENODISCARD=1 -o canvas_frag_no_texture_no_blending_no_discard.spv canvas.frag
-glslc -x glsl --target-env=vulkan -fshader-stage=fragment -DFILLTYPE=$FILLTYPE_TEXTURE -DBLENDING=0 -DUSECLIPDISTANCE=0 -DUSENODISCARD=1 -o canvas_frag_texture_no_blending_no_discard.spv canvas.frag
-glslc -x glsl --target-env=vulkan -fshader-stage=fragment -DFILLTYPE=$FILLTYPE_ATLAS_TEXTURE -DBLENDING=0 -DUSECLIPDISTANCE=0 -DUSENODISCARD=1 -o canvas_frag_atlas_texture_no_blending_no_discard.spv canvas.frag
-glslc -x glsl --target-env=vulkan -fshader-stage=fragment -DFILLTYPE=$FILLTYPE_VECTOR_PATH -DBLENDING=0 -DUSECLIPDISTANCE=0 -DUSENODISCARD=1 -o canvas_frag_vectorpath_no_blending_no_discard.spv canvas.frag
-glslc -x glsl --target-env=vulkan -fshader-stage=fragment -DFILLTYPE=$FILLTYPE_NO_TEXTURE -DBLENDING=0 -DUSECLIPDISTANCE=0 -DUSENODISCARD=1 -DGUI_ELEMENTS -o canvas_frag_gui_no_texture_no_blending_no_discard.spv canvas.frag
+glslc -x glsl -g --target-env=vulkan -fshader-stage=fragment -DFILLTYPE=$FILLTYPE_NO_TEXTURE -DBLENDING=0 -DUSECLIPDISTANCE=0 -DUSENODISCARD=1 -o canvas_frag_no_texture_no_blending_no_discard.spv canvas.frag
+glslc -x glsl -g --target-env=vulkan -fshader-stage=fragment -DFILLTYPE=$FILLTYPE_TEXTURE -DBLENDING=0 -DUSECLIPDISTANCE=0 -DUSENODISCARD=1 -o canvas_frag_texture_no_blending_no_discard.spv canvas.frag
+glslc -x glsl -g --target-env=vulkan -fshader-stage=fragment -DFILLTYPE=$FILLTYPE_ATLAS_TEXTURE -DBLENDING=0 -DUSECLIPDISTANCE=0 -DUSENODISCARD=1 -o canvas_frag_atlas_texture_no_blending_no_discard.spv canvas.frag
+glslc -x glsl -g --target-env=vulkan -fshader-stage=fragment -DFILLTYPE=$FILLTYPE_VECTOR_PATH -DBLENDING=0 -DUSECLIPDISTANCE=0 -DUSENODISCARD=1 -o canvas_frag_vectorpath_no_blending_no_discard.spv canvas.frag
+glslc -x glsl -g --target-env=vulkan -fshader-stage=fragment -DFILLTYPE=$FILLTYPE_NO_TEXTURE -DBLENDING=0 -DUSECLIPDISTANCE=0 -DUSENODISCARD=1 -DGUI_ELEMENTS -o canvas_frag_gui_no_texture_no_blending_no_discard.spv canvas.frag
 
-glslc -x glsl --target-env=vulkan -fshader-stage=vertex -DUSECLIPDISTANCE=1 -DUSETEXTURE=1 -o canvas_vert_clip_distance.spv canvas.vert
-glslc -x glsl --target-env=vulkan -fshader-stage=vertex -DUSECLIPDISTANCE=1 -DUSETEXTURE=0 -o canvas_no_texture_vert_clip_distance.spv canvas.vert
+glslc -x glsl -g --target-env=vulkan -fshader-stage=vertex -DUSECLIPDISTANCE=1 -DUSETEXTURE=1 -o canvas_vert_clip_distance.spv canvas.vert
+glslc -x glsl -g --target-env=vulkan -fshader-stage=vertex -DUSECLIPDISTANCE=1 -DUSETEXTURE=0 -o canvas_no_texture_vert_clip_distance.spv canvas.vert
 
-glslc -x glsl --target-env=vulkan -fshader-stage=fragment -DFILLTYPE=$FILLTYPE_NO_TEXTURE -DBLENDING=1 -DUSECLIPDISTANCE=1 -DUSENODISCARD=1 -o canvas_frag_no_texture_clip_distance.spv canvas.frag
-glslc -x glsl --target-env=vulkan -fshader-stage=fragment -DFILLTYPE=$FILLTYPE_TEXTURE -DBLENDING=1 -DUSECLIPDISTANCE=1 -DUSENODISCARD=1 -o canvas_frag_texture_clip_distance.spv canvas.frag
-glslc -x glsl --target-env=vulkan -fshader-stage=fragment -DFILLTYPE=$FILLTYPE_ATLAS_TEXTURE -DBLENDING=1 -DUSECLIPDISTANCE=1 -DUSENODISCARD=1 -o canvas_frag_atlas_texture_clip_distance.spv canvas.frag
-glslc -x glsl --target-env=vulkan -fshader-stage=fragment -DFILLTYPE=$FILLTYPE_VECTOR_PATH -DBLENDING=1 -DUSECLIPDISTANCE=1 -DUSENODISCARD=1 -o canvas_frag_vectorpath_clip_distance.spv canvas.frag
-glslc -x glsl --target-env=vulkan -fshader-stage=fragment -DFILLTYPE=$FILLTYPE_NO_TEXTURE -DBLENDING=1 -DUSECLIPDISTANCE=1 -DUSENODISCARD=1 -DGUI_ELEMENTS -o canvas_frag_gui_no_texture_clip_distance.spv canvas.frag
+glslc -x glsl -g --target-env=vulkan -fshader-stage=fragment -DFILLTYPE=$FILLTYPE_NO_TEXTURE -DBLENDING=1 -DUSECLIPDISTANCE=1 -DUSENODISCARD=1 -o canvas_frag_no_texture_clip_distance.spv canvas.frag
+glslc -x glsl -g --target-env=vulkan -fshader-stage=fragment -DFILLTYPE=$FILLTYPE_TEXTURE -DBLENDING=1 -DUSECLIPDISTANCE=1 -DUSENODISCARD=1 -o canvas_frag_texture_clip_distance.spv canvas.frag
+glslc -x glsl -g --target-env=vulkan -fshader-stage=fragment -DFILLTYPE=$FILLTYPE_ATLAS_TEXTURE -DBLENDING=1 -DUSECLIPDISTANCE=1 -DUSENODISCARD=1 -o canvas_frag_atlas_texture_clip_distance.spv canvas.frag
+glslc -x glsl -g --target-env=vulkan -fshader-stage=fragment -DFILLTYPE=$FILLTYPE_VECTOR_PATH -DBLENDING=1 -DUSECLIPDISTANCE=1 -DUSENODISCARD=1 -o canvas_frag_vectorpath_clip_distance.spv canvas.frag
+glslc -x glsl -g --target-env=vulkan -fshader-stage=fragment -DFILLTYPE=$FILLTYPE_NO_TEXTURE -DBLENDING=1 -DUSECLIPDISTANCE=1 -DUSENODISCARD=1 -DGUI_ELEMENTS -o canvas_frag_gui_no_texture_clip_distance.spv canvas.frag
 
-glslc -x glsl --target-env=vulkan -fshader-stage=fragment -DFILLTYPE=$FILLTYPE_NO_TEXTURE -DBLENDING=0 -DUSECLIPDISTANCE=1 -DUSENODISCARD=0 -o canvas_frag_no_texture_no_blending_clip_distance.spv canvas.frag
-glslc -x glsl --target-env=vulkan -fshader-stage=fragment -DFILLTYPE=$FILLTYPE_TEXTURE -DBLENDING=0 -DUSECLIPDISTANCE=1 -DUSENODISCARD=0 -o canvas_frag_texture_no_blending_clip_distance.spv canvas.frag
-glslc -x glsl --target-env=vulkan -fshader-stage=fragment -DFILLTYPE=$FILLTYPE_ATLAS_TEXTURE -DBLENDING=0 -DUSECLIPDISTANCE=1 -DUSENODISCARD=0 -o canvas_frag_atlas_texture_no_blending_clip_distance.spv canvas.frag
-glslc -x glsl --target-env=vulkan -fshader-stage=fragment -DFILLTYPE=$FILLTYPE_VECTOR_PATH -DBLENDING=0 -DUSECLIPDISTANCE=1 -DUSENODISCARD=0 -o canvas_frag_vectorpath_no_blending_clip_distance.spv canvas.frag
-glslc -x glsl --target-env=vulkan -fshader-stage=fragment -DFILLTYPE=$FILLTYPE_NO_TEXTURE -DBLENDING=0 -DUSECLIPDISTANCE=1 -DUSENODISCARD=0 -DGUI_ELEMENTS -o canvas_frag_gui_no_texture_no_blending_clip_distance.spv canvas.frag
+glslc -x glsl -g --target-env=vulkan -fshader-stage=fragment -DFILLTYPE=$FILLTYPE_NO_TEXTURE -DBLENDING=0 -DUSECLIPDISTANCE=1 -DUSENODISCARD=0 -o canvas_frag_no_texture_no_blending_clip_distance.spv canvas.frag
+glslc -x glsl -g --target-env=vulkan -fshader-stage=fragment -DFILLTYPE=$FILLTYPE_TEXTURE -DBLENDING=0 -DUSECLIPDISTANCE=1 -DUSENODISCARD=0 -o canvas_frag_texture_no_blending_clip_distance.spv canvas.frag
+glslc -x glsl -g --target-env=vulkan -fshader-stage=fragment -DFILLTYPE=$FILLTYPE_ATLAS_TEXTURE -DBLENDING=0 -DUSECLIPDISTANCE=1 -DUSENODISCARD=0 -o canvas_frag_atlas_texture_no_blending_clip_distance.spv canvas.frag
+glslc -x glsl -g --target-env=vulkan -fshader-stage=fragment -DFILLTYPE=$FILLTYPE_VECTOR_PATH -DBLENDING=0 -DUSECLIPDISTANCE=1 -DUSENODISCARD=0 -o canvas_frag_vectorpath_no_blending_clip_distance.spv canvas.frag
+glslc -x glsl -g --target-env=vulkan -fshader-stage=fragment -DFILLTYPE=$FILLTYPE_NO_TEXTURE -DBLENDING=0 -DUSECLIPDISTANCE=1 -DUSENODISCARD=0 -DGUI_ELEMENTS -o canvas_frag_gui_no_texture_no_blending_clip_distance.spv canvas.frag
 
-glslc -x glsl --target-env=vulkan -fshader-stage=fragment -DFILLTYPE=$FILLTYPE_NO_TEXTURE -DBLENDING=0 -DUSECLIPDISTANCE=1 -DUSENODISCARD=1 -o canvas_frag_no_texture_no_blending_clip_distance_no_discard.spv canvas.frag
-glslc -x glsl --target-env=vulkan -fshader-stage=fragment -DFILLTYPE=$FILLTYPE_TEXTURE -DBLENDING=0 -DUSECLIPDISTANCE=1 -DUSENODISCARD=1 -o canvas_frag_texture_no_blending_clip_distance_no_discard.spv canvas.frag
-glslc -x glsl --target-env=vulkan -fshader-stage=fragment -DFILLTYPE=$FILLTYPE_ATLAS_TEXTURE -DBLENDING=0 -DUSECLIPDISTANCE=1 -DUSENODISCARD=1 -o canvas_frag_atlas_texture_no_blending_clip_distance_no_discard.spv canvas.frag
-glslc -x glsl --target-env=vulkan -fshader-stage=fragment -DFILLTYPE=$FILLTYPE_VECTOR_PATH -DBLENDING=0 -DUSECLIPDISTANCE=1 -DUSENODISCARD=1 -o canvas_frag_vectorpath_no_blending_clip_distance_no_discard.spv canvas.frag
-glslc -x glsl --target-env=vulkan -fshader-stage=fragment -DFILLTYPE=$FILLTYPE_NO_TEXTURE -DBLENDING=0 -DUSECLIPDISTANCE=1 -DUSENODISCARD=1 -DGUI_ELEMENTS -o canvas_frag_gui_no_texture_no_blending_clip_distance_no_discard.spv canvas.frag
+glslc -x glsl -g --target-env=vulkan -fshader-stage=fragment -DFILLTYPE=$FILLTYPE_NO_TEXTURE -DBLENDING=0 -DUSECLIPDISTANCE=1 -DUSENODISCARD=1 -o canvas_frag_no_texture_no_blending_clip_distance_no_discard.spv canvas.frag
+glslc -x glsl -g --target-env=vulkan -fshader-stage=fragment -DFILLTYPE=$FILLTYPE_TEXTURE -DBLENDING=0 -DUSECLIPDISTANCE=1 -DUSENODISCARD=1 -o canvas_frag_texture_no_blending_clip_distance_no_discard.spv canvas.frag
+glslc -x glsl -g --target-env=vulkan -fshader-stage=fragment -DFILLTYPE=$FILLTYPE_ATLAS_TEXTURE -DBLENDING=0 -DUSECLIPDISTANCE=1 -DUSENODISCARD=1 -o canvas_frag_atlas_texture_no_blending_clip_distance_no_discard.spv canvas.frag
+glslc -x glsl -g --target-env=vulkan -fshader-stage=fragment -DFILLTYPE=$FILLTYPE_VECTOR_PATH -DBLENDING=0 -DUSECLIPDISTANCE=1 -DUSENODISCARD=1 -o canvas_frag_vectorpath_no_blending_clip_distance_no_discard.spv canvas.frag
+glslc -x glsl -g --target-env=vulkan -fshader-stage=fragment -DFILLTYPE=$FILLTYPE_NO_TEXTURE -DBLENDING=0 -DUSECLIPDISTANCE=1 -DUSENODISCARD=1 -DGUI_ELEMENTS -o canvas_frag_gui_no_texture_no_blending_clip_distance_no_discard.spv canvas.frag
 
 #!/bin/bash
 
@@ -86,7 +86,7 @@ for f in *.glsl; do
     exit 1
   fi
 
-  glslangValidator -S $stage -V "$glslfile" -o "$spvfile" && {
+  glslangValidator -g -S $stage -V "$glslfile" -o "$spvfile" && {
     echo >/dev/null
     # spirv-opt --strip-debug --unify-const --flatten-decorations --strength-reduction --simplify-instructions --remove-duplicates --redundancy-elimination --eliminate-dead-code-aggressive --eliminate-dead-branches --eliminate-dead-const "$spvfile" -o "$spvfile" && {
     #   echo "$spvfile generated . . ."

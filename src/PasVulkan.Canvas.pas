@@ -256,6 +256,7 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        fViewMatrix:TpvMatrix4x4;
        fModelMatrix:TpvMatrix4x4;
        fFillMatrix:TpvMatrix4x4;
+       fMaskMatrix:TpvMatrix4x4;
        fFont:TpvFont;
        fFontSize:TpvFloat;
        fTextHorizontalAlignment:TpvCanvasTextHorizontalAlignment;
@@ -263,6 +264,7 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        fPath:TpvCanvasPath;
        fTexture:TObject;
        fAtlasTexture:TObject;
+       fMaskTexture:TObject;
        fGUIElementMode:boolean;
        fStrokePattern:TpvCanvasStrokePattern;
        procedure UpdateClipSpaceClipRect(const aCanvas:TpvCanvas);
@@ -289,6 +291,7 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        property ViewMatrix:TpvMatrix4x4 read fViewMatrix write fViewMatrix;
        property ModelMatrix:TpvMatrix4x4 read fModelMatrix write fModelMatrix;
        property FillMatrix:TpvMatrix4x4 read GetFillMatrix write SetFillMatrix;
+       property MaskMatrix:TpvMatrix4x4 read fMaskMatrix write fMaskMatrix;
        property StrokePattern:TpvCanvasStrokePattern read fStrokePattern write fStrokePattern;
       published
        property BlendingMode:TpvCanvasBlendingMode read fBlendingMode write fBlendingMode;
@@ -306,6 +309,7 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        property TextVerticalAlignment:TpvCanvasTextVerticalAlignment read fTextVerticalAlignment write fTextVerticalAlignment;
        property Path:TpvCanvasPath read fPath write fPath;
        property Texture:TObject read fTexture write fTexture;
+       property MaskTexture:TObject read fMaskTexture write fMaskTexture;
      end;
 
      TpvCanvasStateStack=class(TObjectStack<TpvCanvasState>);
@@ -470,8 +474,7 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
 
      PpvCanvasPushConstants=^TpvCanvasPushConstants;
      TpvCanvasPushConstants=record
-      TransformMatrix:TpvMatrix4x4;
-      FillMatrix:TpvMatrix4x4;
+      Data:array[0..7] of TpvVector4;
      end;
 
      TpvCanvasVulkanDescriptor=class;
@@ -484,6 +487,7 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        fDescriptorPool:TpvVulkanDescriptorPool;
        fDescriptorSet:TpvVulkanDescriptorSet;
        fDescriptorTexture:TObject;
+       fDescriptorMaskTexture:TObject;
        fLastUsedFrameNumber:TpvNativeUInt;
       public
        constructor Create(const aCanvas:TpvCanvas); reintroduce;
@@ -493,16 +497,24 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        property DescriptorPool:TpvVulkanDescriptorPool read fDescriptorPool write fDescriptorPool;
        property DescriptorSet:TpvVulkanDescriptorSet read fDescriptorSet write fDescriptorSet;
        property DescriptorTexture:TObject read fDescriptorTexture write fDescriptorTexture;
+       property DescriptorMaskTexture:TObject read fDescriptorMaskTexture write fDescriptorMaskTexture;
        property LastUsedFrameNumber:TpvNativeUInt read fLastUsedFrameNumber write fLastUsedFrameNumber;
      end;
 
-     TpvCanvasTextureDescriptorSetHashMap=class(TpvHashMap<TObject,TpvCanvasVulkanDescriptor>);
+     TpvCanvasTextureDescriptorSetHashMapKey=record
+      Texture:TObject;
+      MaskTexture:TObject;
+     end;
+     PpvCanvasTextureDescriptorSetHashMapKey=^TpvCanvasTextureDescriptorSetHashMapKey;
+
+     TpvCanvasTextureDescriptorSetHashMap=class(TpvHashMap<TpvCanvasTextureDescriptorSetHashMapKey,TpvCanvasVulkanDescriptor>);
 
      PpvCanvasQueueItem=^TpvCanvasQueueItem;
      TpvCanvasQueueItem=record
       Kind:TpvCanvasQueueItemKind;
       BufferIndex:TpvInt32;
       Descriptor:TpvCanvasVulkanDescriptor;
+      MaskingMode:Boolean;
       BlendingMode:TpvCanvasBlendingMode;
       TextureMode:TpvInt32;
       StartVertexIndex:TpvInt32;
@@ -511,6 +523,9 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
       CountIndices:TpvInt32;
       Scissor:TVkRect2D;
       PushConstants:TpvCanvasPushConstants;
+      TransformMatrix:TpvMatrix4x4;
+      FillMatrix:TpvMatrix4x4;
+      MaskMatrix:TpvMatrix4x4;
       Hook:TpvCanvasHook;
       HookData:TVkPointer;
      end;
@@ -545,6 +560,7 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
       private
        fDevice:TpvVulkanDevice;
        fReferenceCounter:TpvInt32;
+       fDummyTexture:TpvVulkanTexture;
        fCanvasVertexShaderModule:TpvVulkanShaderModule;
        fCanvasVertexNoTextureShaderModule:TpvVulkanShaderModule;
        fCanvasFragmentGUINoTextureShaderModule:TpvVulkanShaderModule;
@@ -596,8 +612,6 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        fCanvasCommon:TpvCanvasCommon;
        fPipelineCache:TpvVulkanPipelineCache;
        fVulkanDescriptors:TpvCanvasVulkanDescriptorLinkedListNode;
-       fVulkanDescriptorSetGUINoTextureLayout:TpvVulkanDescriptorSetLayout;
-       fVulkanDescriptorSetNoTextureLayout:TpvVulkanDescriptorSetLayout;
        fVulkanDescriptorSetTextureLayout:TpvVulkanDescriptorSetLayout;
        fVulkanDescriptorSetVectorPathLayout:TpvVulkanDescriptorSetLayout;
        fCountVulkanDescriptors:TpvInt32;
@@ -666,6 +680,8 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        procedure SetModelMatrix(const aModelMatrix:TpvMatrix4x4); {$ifdef CAN_INLINE}inline;{$endif}
        function GetFillMatrix:TpvMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
        procedure SetFillMatrix(const aMatrix:TpvMatrix4x4); {$ifdef CAN_INLINE}inline;{$endif}
+       function GetMaskMatrix:TpvMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetMaskMatrix(const aMatrix:TpvMatrix4x4); {$ifdef CAN_INLINE}inline;{$endif}
        function GetStrokePattern:TpvCanvasStrokePattern; {$ifdef CAN_INLINE}inline;{$endif}
        procedure SetStrokePattern(const aStrokePattern:TpvCanvasStrokePattern); {$ifdef CAN_INLINE}inline;{$endif}
        function GetFont:TpvFont; {$ifdef CAN_INLINE}inline;{$endif}
@@ -687,7 +703,7 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        destructor Destroy; override;
        procedure Start(const aBufferIndex:TpvInt32);
        procedure Stop;
-       procedure DeleteTextureFromCachedDescriptors(const aTexture:TObject);
+       procedure DeleteFromCachedDescriptors(const aKey:TpvCanvasTextureDescriptorSetHashMapKey);
        procedure Flush;
        procedure SetScissor(const aScissor:TVkRect2D); overload;
        procedure SetScissor(const aLeft,aTop,aWidth,aHeight:TpvInt32); overload;
@@ -799,6 +815,7 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        property ViewMatrix:TpvMatrix4x4 read GetViewMatrix write SetViewMatrix;
        property ModelMatrix:TpvMatrix4x4 read GetModelMatrix write SetModelMatrix;
        property FillMatrix:TpvMatrix4x4 read GetFillMatrix write SetFillMatrix;
+       property MaskMatrix:TpvMatrix4x4 read GetMaskMatrix write SetMaskMatrix;
        property StrokePattern:TpvCanvasStrokePattern read GetStrokePattern write SetStrokePattern;
        property Font:TpvFont read GetFont write SetFont;
        property FontSize:TpvFloat read GetFontSize write SetFontSize;
@@ -1139,7 +1156,7 @@ begin
 end;
 
 function TpvCanvasPath.Ellipse(const aCenter,aRadius:TpvVector2):TpvCanvasPath;
-const ARC_MAGIC=0.5522847498; // 4/3 * (1-cos 45°)/sin 45° = 4/3 * (sqrt(2) - 1)
+const ARC_MAGIC=0.5522847498; // 4/3 * (1-cos 45ï¿½)/sin 45ï¿½ = 4/3 * (sqrt(2) - 1)
 begin
  MoveTo(TpvVector2.InlineableCreate(aCenter.x+aRadius.x,aCenter.y));
  CubicCurveTo(TpvVector2.InlineableCreate(aCenter.x+aRadius.x,aCenter.y-(aRadius.y*ARC_MAGIC)),
@@ -1174,7 +1191,7 @@ begin
 end;
 
 function TpvCanvasPath.RoundedRectangle(const aCenter,aBounds:TpvVector2;const aRadiusTopLeft,aRadiusTopRight,aRadiusBottomLeft,aRadiusBottomRight:TpvFloat):TpvCanvasPath;
-const ARC_MAGIC=0.5522847498; // 4/3 * (1-cos 45°)/sin 45° = 4/3 * (sqrt(2) - 1)
+const ARC_MAGIC=0.5522847498; // 4/3 * (1-cos 45ï¿½)/sin 45ï¿½ = 4/3 * (sqrt(2) - 1)
 var Offset,Size,TopLeft,TopRight,BottomLeft,BottomRight:TpvVector2;
 begin
  if IsZero(aRadiusTopLeft) and
@@ -1262,22 +1279,34 @@ end;
 
 function TpvCanvasState.GetStartColor:TpvVector4;
 begin
- result:=fFillMatrix.Columns[2];
+ result.x:=fFillMatrix.RawComponents[2,0];
+ result.y:=fFillMatrix.RawComponents[2,1];
+ result.z:=fFillMatrix.RawComponents[2,2];
+ result.w:=fFillMatrix.RawComponents[2,3];
 end;
 
 procedure TpvCanvasState.SetStartColor(const aColor:TpvVector4);
 begin
- fFillMatrix.Columns[2]:=aColor;
+ fFillMatrix.RawComponents[2,0]:=aColor.x;
+ fFillMatrix.RawComponents[2,1]:=aColor.y;
+ fFillMatrix.RawComponents[2,2]:=aColor.z;
+ fFillMatrix.RawComponents[2,3]:=aColor.w;
 end;
 
 function TpvCanvasState.GetStopColor:TpvVector4;
 begin
- result:=fFillMatrix.Columns[3];
+ result.x:=fFillMatrix.RawComponents[3,0];
+ result.y:=fFillMatrix.RawComponents[3,1];
+ result.z:=fFillMatrix.RawComponents[3,2];
+ result.w:=fFillMatrix.RawComponents[3,3];
 end;
 
 procedure TpvCanvasState.SetStopColor(const aColor:TpvVector4);
 begin
- fFillMatrix.Columns[3]:=aColor;
+ fFillMatrix.RawComponents[3,0]:=aColor.x;
+ fFillMatrix.RawComponents[3,1]:=aColor.y;
+ fFillMatrix.RawComponents[3,2]:=aColor.z;
+ fFillMatrix.RawComponents[3,3]:=aColor.w;
 end;
 
 function TpvCanvasState.GetFillMatrix:TpvMatrix4x4;
@@ -1291,7 +1320,7 @@ begin
  result.RawComponents[1,2]:=0.0;
  result.RawComponents[1,3]:=0.0;
  result.RawComponents[2,0]:=0.0;
- result.RawComponents[2,1]:=0-0;
+ result.RawComponents[2,1]:=0.0;
  result.RawComponents[2,2]:=1.0;
  result.RawComponents[2,3]:=0.0;
  result.RawComponents[3,0]:=fFillMatrix.RawComponents[0,2];
@@ -1331,6 +1360,7 @@ begin
  fFillMatrix:=TpvMatrix4x4.Identity;
  fFillMatrix.Columns[2]:=fColor;
  fFillMatrix.Columns[3]:=fColor;
+ fMaskMatrix:=TpvMatrix4x4.Identity;
  fPath.fCountCommands:=0;
  fTexture:=nil;
  fAtlasTexture:=nil;
@@ -1357,6 +1387,7 @@ begin
   fViewMatrix:=TpvCanvasState(aSource).fViewMatrix;
   fModelMatrix:=TpvCanvasState(aSource).fModelMatrix;
   fFillMatrix:=TpvCanvasState(aSource).fFillMatrix;
+  fMaskMatrix:=TpvCanvasState(aSource).fMaskMatrix;
   fFont:=TpvCanvasState(aSource).fFont;
   fFontSize:=TpvCanvasState(aSource).fFontSize;
   fTextHorizontalAlignment:=TpvCanvasState(aSource).fTextHorizontalAlignment;
@@ -2957,6 +2988,10 @@ end;
 
 constructor TpvCanvasCommon.Create(const aDevice:TpvVulkanDevice);
 var Stream:TStream;
+    UniversalQueue:TpvVulkanQueue;
+    UniversalCommandPool:TpvVulkanCommandPool;
+    UniversalCommandBuffer:TpvVulkanCommandBuffer;
+    UniversalFence:TpvVulkanFence;
 begin
  inherited Create;
 
@@ -2965,6 +3000,49 @@ begin
  fDevice.CanvasCommon:=self;
 
  fReferenceCounter:=0;
+
+ UniversalQueue:=fDevice.UniversalQueue;
+ try
+  UniversalCommandPool:=TpvVulkanCommandPool.Create(fDevice,
+                                                    fDevice.UniversalQueueFamilyIndex,
+                                                    TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
+  try
+   UniversalCommandBuffer:=TpvVulkanCommandBuffer.Create(UniversalCommandPool,
+                                                         VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+   try
+    UniversalFence:=TpvVulkanFence.Create(fDevice);
+    try
+     fDummyTexture:=TpvVulkanTexture.CreateDefault(aDevice,
+                                                   UniversalQueue,
+                                                   UniversalCommandBuffer,
+                                                   UniversalFence,
+                                                   UniversalQueue,
+                                                   UniversalCommandBuffer,
+                                                   UniversalFence,
+                                                   TpvVulkanTextureDefaultType.Checkerboard,
+                                                   16,
+                                                   16,
+                                                   0,
+                                                   0,
+                                                   1,
+                                                   true,
+                                                   true,
+                                                   true,
+                                                   false,
+                                                   0,
+                                                   []);
+     fDummyTexture.UpdateSampler;
+    finally
+     FreeAndNil(UniversalFence);
+    end; 
+   finally
+    FreeAndNil(UniversalCommandBuffer);
+   end;
+  finally
+   FreeAndNil(UniversalCommandPool);
+  end;
+ finally
+ end;
 
  if aDevice.PhysicalDevice.Features.shaderClipDistance<>0 then begin
   Stream:=TpvDataStream.Create(@CanvasVertexClipDistanceSPIRVData,CanvasVertexClipDistanceSPIRVDataSize);
@@ -3192,6 +3270,7 @@ end;
 destructor TpvCanvasCommon.Destroy;
 begin
  fDevice.CanvasCommon:=nil;
+ FreeAndNil(fDummyTexture);
  FreeAndNil(fVulkanPipelineCanvasShaderStageVertex);
  FreeAndNil(fVulkanPipelineCanvasShaderStageVertexNoTexture);
  FreeAndNil(fVulkanPipelineCanvasShaderStageFragmentGUINoTexture);
@@ -3307,14 +3386,13 @@ begin
 
  fPointerToViewport:=@fViewport;
 
- fVulkanDescriptorSetGUINoTextureLayout:=TpvVulkanDescriptorSetLayout.Create(fDevice);
- fVulkanDescriptorSetGUINoTextureLayout.Initialize;
-
- fVulkanDescriptorSetNoTextureLayout:=TpvVulkanDescriptorSetLayout.Create(fDevice);
- fVulkanDescriptorSetNoTextureLayout.Initialize;
-
  fVulkanDescriptorSetTextureLayout:=TpvVulkanDescriptorSetLayout.Create(fDevice);
  fVulkanDescriptorSetTextureLayout.AddBinding(0,
+                                              VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                              1,
+                                              TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                              []);
+ fVulkanDescriptorSetTextureLayout.AddBinding(1,
                                               VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
                                               1,
                                               TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
@@ -3323,12 +3401,12 @@ begin
 
  fVulkanDescriptorSetVectorPathLayout:=TpvVulkanDescriptorSetLayout.Create(fDevice);
  fVulkanDescriptorSetVectorPathLayout.AddBinding(0,
-                                                 VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                                                 VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
                                                  1,
                                                  TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                                  []);
  fVulkanDescriptorSetVectorPathLayout.AddBinding(1,
-                                                 VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                                                 VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
                                                  1,
                                                  TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                                  []);
@@ -3338,6 +3416,16 @@ begin
                                                  TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                                  []);
  fVulkanDescriptorSetVectorPathLayout.AddBinding(3,
+                                                 VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                                                 1,
+                                                 TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                                 []);
+ fVulkanDescriptorSetVectorPathLayout.AddBinding(4,
+                                                 VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                                                 1,
+                                                 TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                                 []);
+ fVulkanDescriptorSetVectorPathLayout.AddBinding(5,
                                                  VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
                                                  1,
                                                  TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
@@ -3390,8 +3478,6 @@ begin
 
  FreeAndNil(fVulkanDescriptorSetVectorPathLayout);
  FreeAndNil(fVulkanDescriptorSetTextureLayout);
- FreeAndNil(fVulkanDescriptorSetNoTextureLayout);
- FreeAndNil(fVulkanDescriptorSetGUINoTextureLayout);
 
  FreeAndNil(fVulkanTextureDescriptorSetHashMap);
 
@@ -3431,20 +3517,8 @@ begin
 
      VulkanPipelineLayout:=TpvVulkanPipelineLayout.Create(fDevice);
      fVulkanPipelineLayouts[BlendingModeIndex,TextureModeIndex]:=VulkanPipelineLayout;
-     case TextureModeIndex of
-      0:begin
-       VulkanPipelineLayout.AddDescriptorSetLayout(fVulkanDescriptorSetNoTextureLayout);
-      end;
-      1..2:begin
-       VulkanPipelineLayout.AddDescriptorSetLayout(fVulkanDescriptorSetTextureLayout);
-      end;
-      3:begin
-       VulkanPipelineLayout.AddDescriptorSetLayout(fVulkanDescriptorSetGUINoTextureLayout);
-      end;
-      else {4:}begin
-       VulkanPipelineLayout.AddDescriptorSetLayout(fVulkanDescriptorSetVectorPathLayout);
-      end;
-     end;
+     VulkanPipelineLayout.AddDescriptorSetLayout(fVulkanDescriptorSetTextureLayout);
+//   VulkanPipelineLayout.AddDescriptorSetLayout(fVulkanDescriptorSetVectorPathLayout);
      VulkanPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or
                                                TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                                0,
@@ -3975,6 +4049,19 @@ begin
  end;
 end;
 
+function TpvCanvas.GetMaskMatrix:TpvMatrix4x4;
+begin
+ result:=fState.MaskMatrix;
+end;
+
+procedure TpvCanvas.SetMaskMatrix(const aMatrix:TpvMatrix4x4);
+begin
+ if fState.MaskMatrix<>aMatrix then begin
+  Flush;
+  fState.MaskMatrix:=aMatrix;
+ end;
+end;
+
 function TpvCanvas.GetStrokePattern:TpvCanvasStrokePattern;
 begin
  result:=fState.fStrokePattern;
@@ -4037,6 +4124,7 @@ procedure TpvCanvas.GarbageCollectDescriptors;
 var DescriptorLinkedListNode,PreviousDescriptorLinkedListNode:TpvCanvasVulkanDescriptorLinkedListNode;
     Descriptor:TpvCanvasVulkanDescriptor;
     CountProcessingBuffers:TpvNativeInt;
+    Key:TpvCanvasTextureDescriptorSetHashMapKey;
 begin
  CountProcessingBuffers:=Max(2,fCountProcessingBuffers)+1;
  DescriptorLinkedListNode:=fVulkanDescriptors.Back;
@@ -4046,7 +4134,9 @@ begin
   if assigned(Descriptor) and
      (TpvNativeInt(TpvNativeUInt(fCurrentFrameNumber-Descriptor.fLastUsedFrameNumber))>CountProcessingBuffers) then begin
    try
-    fVulkanTextureDescriptorSetHashMap.Delete(Descriptor.fDescriptorTexture);
+    Key.Texture:=Descriptor.fDescriptorTexture;
+    Key.MaskTexture:=Descriptor.fDescriptorMaskTexture;
+    fVulkanTextureDescriptorSetHashMap.Delete(Key);
    finally
     Descriptor.Free;
    end;
@@ -4104,14 +4194,14 @@ begin
 
 end;
 
-procedure TpvCanvas.DeleteTextureFromCachedDescriptors(const aTexture:TObject);
+procedure TpvCanvas.DeleteFromCachedDescriptors(const aKey:TpvCanvasTextureDescriptorSetHashMapKey);
 var Descriptor:TpvCanvasVulkanDescriptor;
 begin
- if fVulkanTextureDescriptorSetHashMap.TryGet(aTexture,Descriptor) then begin
+ if fVulkanTextureDescriptorSetHashMap.TryGet(aKey,Descriptor) then begin
   try
    Descriptor.Free;
   finally
-   fVulkanTextureDescriptorSetHashMap.Delete(aTexture);
+   fVulkanTextureDescriptorSetHashMap.Delete(aKey);
   end;
  end;
 end;
@@ -4120,7 +4210,8 @@ procedure TpvCanvas.Flush;
 var CurrentVulkanBufferIndex,OldCount,NewCount,QueueItemIndex:TpvInt32;
     QueueItem:PpvCanvasQueueItem;
     Descriptor:TpvCanvasVulkanDescriptor;
-    CurrentTexture:TObject;
+    CurrentTexture,CurrentMaskTexture:TObject;
+    Key:TpvCanvasTextureDescriptorSetHashMapKey;
 begin
  if assigned(fCurrentFillBuffer) and (fCurrentCountVertices>0) then begin
 
@@ -4162,7 +4253,16 @@ begin
     end;
    end;
 
-   if fVulkanTextureDescriptorSetHashMap.TryGet(CurrentTexture,Descriptor) then begin
+   if assigned(fState.fMaskTexture) and (fState.fMaskTexture is TpvVulkanTexture) then begin
+    CurrentMaskTexture:=fState.fMaskTexture;
+   end else begin
+    CurrentMaskTexture:=nil;
+   end;
+
+   Key.Texture:=CurrentTexture;
+   Key.MaskTexture:=CurrentMaskTexture;
+
+   if fVulkanTextureDescriptorSetHashMap.TryGet(Key,Descriptor) then begin
     // Move existent descriptor to front
     Descriptor.Remove;
     fVulkanDescriptors.Front.Insert(Descriptor);
@@ -4170,14 +4270,14 @@ begin
     // Allocate new descriptor
     Descriptor:=TpvCanvasVulkanDescriptor.Create(self);
     try
+     Descriptor.fDescriptorPool:=TpvVulkanDescriptorPool.Create(fDevice,
+                                                                TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
+                                                                2);
+     Descriptor.fDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,2);
+     Descriptor.fDescriptorPool.Initialize;
+     Descriptor.fDescriptorSet:=TpvVulkanDescriptorSet.Create(Descriptor.fDescriptorPool,
+                                                              fVulkanDescriptorSetTextureLayout);
      if assigned(CurrentTexture) then begin
-      Descriptor.fDescriptorPool:=TpvVulkanDescriptorPool.Create(fDevice,
-                                                                 TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
-                                                                 1);
-      Descriptor.fDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,1);
-      Descriptor.fDescriptorPool.Initialize;
-      Descriptor.fDescriptorSet:=TpvVulkanDescriptorSet.Create(Descriptor.fDescriptorPool,
-                                                               fVulkanDescriptorSetTextureLayout);
       if CurrentTexture is TpvSpriteAtlasArrayTexture then begin
        Descriptor.fDescriptorSet.WriteToDescriptorSet(0,
                                                       0,
@@ -4199,21 +4299,44 @@ begin
                                                       false
                                                      );
       end;
-      Descriptor.fDescriptorSet.Flush;
      end else begin
-      Descriptor.fDescriptorPool:=TpvVulkanDescriptorPool.Create(fDevice,
-                                                                 TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
-                                                                 1);
-      Descriptor.fDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,1);
-      Descriptor.fDescriptorPool.Initialize;
-      Descriptor.fDescriptorSet:=TpvVulkanDescriptorSet.Create(Descriptor.fDescriptorPool,
-                                                               fVulkanDescriptorSetNoTextureLayout);
-      Descriptor.fDescriptorSet.Flush;
+      Descriptor.fDescriptorSet.WriteToDescriptorSet(0,
+                                                     0,
+                                                     1,
+                                                     TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                                     [TpvVulkanTexture(fCanvasCommon.fDummyTexture).DescriptorImageInfo],
+                                                     [],
+                                                     [],
+                                                     false
+                                                    );
      end;
+     if assigned(CurrentMaskTexture) then begin
+      Descriptor.fDescriptorSet.WriteToDescriptorSet(1,
+                                                     0,
+                                                     1,
+                                                     TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                                     [TpvVulkanTexture(CurrentMaskTexture).DescriptorImageInfo],
+                                                     [],
+                                                     [],
+                                                     false
+                                                    );
+     end else begin
+      Descriptor.fDescriptorSet.WriteToDescriptorSet(1,
+                                                     0,
+                                                     1,
+                                                     TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                                     [TpvVulkanTexture(fCanvasCommon.fDummyTexture).DescriptorImageInfo],
+                                                     [],
+                                                     [],
+                                                     false
+                                                    );
+     end;
+     Descriptor.fDescriptorSet.Flush;
     finally
      Descriptor.fDescriptorTexture:=CurrentTexture;
+     Descriptor.fDescriptorMaskTexture:=CurrentMaskTexture;
      fVulkanDescriptors.Front.Insert(Descriptor);
-     fVulkanTextureDescriptorSetHashMap.Add(CurrentTexture,Descriptor);
+     fVulkanTextureDescriptorSetHashMap.Add(Key,Descriptor);
     end;
    end;
 
@@ -4228,6 +4351,7 @@ begin
    QueueItem^.Kind:=TpvCanvasQueueItemKind.Normal;
    QueueItem^.BufferIndex:=CurrentVulkanBufferIndex;
    QueueItem^.Descriptor:=Descriptor;
+   QueueItem^.MaskingMode:=assigned(CurrentMaskTexture);
    QueueItem^.BlendingMode:=fState.fBlendingMode;
    if fState.fGUIElementMode then begin
     QueueItem^.TextureMode:=3;
@@ -4249,8 +4373,44 @@ begin
    QueueItem^.CountVertices:=fCurrentCountVertices;
    QueueItem^.CountIndices:=fCurrentCountIndices;
    QueueItem^.Scissor:=fState.fScissor;
-   QueueItem^.PushConstants.TransformMatrix:=fState.fViewMatrix*fState.fProjectionMatrix;
-   QueueItem^.PushConstants.FillMatrix:=fState.fFillMatrix;
+   QueueItem^.TransformMatrix:=fState.fViewMatrix*fState.fProjectionMatrix;
+   QueueItem^.FillMatrix:=fState.fFillMatrix;
+   QueueItem^.MaskMatrix:=fState.fMaskMatrix*fState.fProjectionMatrix;
+   QueueItem^.PushConstants.Data[0].x:=QueueItem^.TransformMatrix.RawComponents[0,0];
+   QueueItem^.PushConstants.Data[0].y:=QueueItem^.TransformMatrix.RawComponents[0,1];
+   QueueItem^.PushConstants.Data[0].z:=QueueItem^.TransformMatrix.RawComponents[0,3];
+   QueueItem^.PushConstants.Data[0].w:=QueueItem^.TransformMatrix.RawComponents[1,0];
+   QueueItem^.PushConstants.Data[1].x:=QueueItem^.TransformMatrix.RawComponents[1,1];
+   QueueItem^.PushConstants.Data[1].y:=QueueItem^.TransformMatrix.RawComponents[1,3];
+   QueueItem^.PushConstants.Data[1].z:=QueueItem^.TransformMatrix.RawComponents[3,0];
+   QueueItem^.PushConstants.Data[1].w:=QueueItem^.TransformMatrix.RawComponents[3,1];
+   QueueItem^.PushConstants.Data[2].x:=QueueItem^.TransformMatrix.RawComponents[3,3];
+   QueueItem^.PushConstants.Data[2].y:=QueueItem^.FillMatrix.RawComponents[0,0];
+   QueueItem^.PushConstants.Data[2].z:=QueueItem^.FillMatrix.RawComponents[0,1];
+   QueueItem^.PushConstants.Data[2].w:=QueueItem^.FillMatrix.RawComponents[0,2];
+   QueueItem^.PushConstants.Data[3].x:=QueueItem^.FillMatrix.RawComponents[1,0];
+   QueueItem^.PushConstants.Data[3].y:=QueueItem^.FillMatrix.RawComponents[1,1];
+   QueueItem^.PushConstants.Data[3].z:=QueueItem^.FillMatrix.RawComponents[1,2];
+   QueueItem^.PushConstants.Data[3].w:=QueueItem^.FillMatrix.RawComponents[2,0];
+   QueueItem^.PushConstants.Data[4].x:=QueueItem^.FillMatrix.RawComponents[2,1];
+   QueueItem^.PushConstants.Data[4].y:=QueueItem^.FillMatrix.RawComponents[2,2];
+   QueueItem^.PushConstants.Data[4].z:=QueueItem^.FillMatrix.RawComponents[2,3];
+   QueueItem^.PushConstants.Data[4].w:=QueueItem^.FillMatrix.RawComponents[3,0];
+   QueueItem^.PushConstants.Data[5].x:=QueueItem^.FillMatrix.RawComponents[3,1];
+   QueueItem^.PushConstants.Data[5].y:=QueueItem^.FillMatrix.RawComponents[3,2];
+   QueueItem^.PushConstants.Data[5].z:=QueueItem^.FillMatrix.RawComponents[3,3];
+   QueueItem^.PushConstants.Data[5].w:=QueueItem^.MaskMatrix.RawComponents[0,0];
+   QueueItem^.PushConstants.Data[6].x:=QueueItem^.MaskMatrix.RawComponents[0,1];
+   QueueItem^.PushConstants.Data[6].y:=QueueItem^.MaskMatrix.RawComponents[1,0];
+   QueueItem^.PushConstants.Data[6].z:=QueueItem^.MaskMatrix.RawComponents[1,1];
+   QueueItem^.PushConstants.Data[6].w:=QueueItem^.MaskMatrix.RawComponents[3,0];
+   QueueItem^.PushConstants.Data[7].x:=QueueItem^.MaskMatrix.RawComponents[3,1];
+   QueueItem^.PushConstants.Data[7].y:=0.0;
+   QueueItem^.PushConstants.Data[7].z:=0.0;
+   PpvUInt32(Pointer(@QueueItem^.PushConstants.Data[7].w))^:=0;
+   if QueueItem^.MaskingMode then begin
+    PpvUInt32(Pointer(@QueueItem^.PushConstants.Data[7].w))^:=PpvUInt32(Pointer(@QueueItem^.PushConstants.Data[7].w))^ or (TpvUInt32(1) shl 0);
+   end;
   finally
    TPasMPInterlocked.Exchange(fCurrentFillBuffer^.fSpinLock,0);
   end;
@@ -4498,13 +4658,14 @@ procedure TpvCanvas.ExecuteDraw(const aVulkanCommandBuffer:TpvVulkanCommandBuffe
 const Offsets:array[0..0] of TVkDeviceSize=(0);
 var Index,StartVertexIndex,TextureMode:TpvInt32;
     Descriptor:TpvCanvasVulkanDescriptor;
+    MaskingMode:Boolean;
     BlendingMode:TpvCanvasBlendingMode;
     QueueItem:PpvCanvasQueueItem;
     OldQueueItemKind:TpvCanvasQueueItemKind;
     CurrentBuffer:PpvCanvasBuffer;
     VulkanVertexBuffer,VulkanIndexBuffer,OldVulkanVertexBuffer,OldVulkanIndexBuffer:TpvVulkanBuffer;
     OldScissor:TVkRect2D;
-    TransformMatrix,FillMatrix:TpvMatrix4x4;
+    TransformMatrix,FillMatrix,MaskMatrix:TpvMatrix4x4;
     ForceUpdate,ForceUpdatePushConstants,h:boolean;
 //  DynamicOffset:TVkDeviceSize;
 begin
@@ -4529,11 +4690,15 @@ begin
 
    FillMatrix:=TpvMatrix4x4.Null;
 
+   MaskMatrix:=TpvMatrix4x4.Null;
+
    OldQueueItemKind:=TpvCanvasQueueItemKind.None;
 
    ForceUpdate:=true;
 
    ForceUpdatePushConstants:=true;
+
+   MaskingMode:=false;
 
    BlendingMode:=TpvCanvasBlendingMode.AdditiveBlending;
 
@@ -4565,8 +4730,10 @@ begin
       end;
 
       if ForceUpdate or
+         (MaskingMode<>QueueItem^.MaskingMode) or
          (BlendingMode<>QueueItem^.BlendingMode) or
          (TextureMode<>QueueItem^.TextureMode) then begin
+       MaskingMode:=QueueItem^.MaskingMode;
        BlendingMode:=QueueItem^.BlendingMode;
        TextureMode:=QueueItem^.TextureMode;
        aVulkanCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanGraphicsPipelines[QueueItem^.BlendingMode,QueueItem^.TextureMode].Handle);
@@ -4593,10 +4760,12 @@ begin
 
       if ForceUpdate or
          ForceUpdatePushConstants or
-         (TransformMatrix<>QueueItem^.PushConstants.TransformMatrix) or
-         (FillMatrix<>QueueItem^.PushConstants.FillMatrix) then begin
-       TransformMatrix:=QueueItem^.PushConstants.TransformMatrix;
-       FillMatrix:=QueueItem^.PushConstants.FillMatrix;
+         (TransformMatrix<>QueueItem^.TransformMatrix) or
+         (FillMatrix<>QueueItem^.FillMatrix) or
+         (MaskMatrix<>QueueItem^.MaskMatrix) then begin
+       TransformMatrix:=QueueItem^.TransformMatrix;
+       FillMatrix:=QueueItem^.FillMatrix;
+       MaskMatrix:=QueueItem^.MaskMatrix;
        aVulkanCommandBuffer.CmdPushConstants(fVulkanPipelineLayouts[BlendingMode,TextureMode].Handle,
                                              TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or
                                              TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
@@ -4690,6 +4859,7 @@ begin
       (fState.fProjectionMatrix<>PeekState.fProjectionMatrix) or
       (fState.fViewMatrix<>PeekState.fViewMatrix) or
       (fState.fFillMatrix<>PeekState.fFillMatrix) or
+      (fState.fMaskMatrix<>PeekState.fMaskMatrix) or
       (fState.fTexture<>PeekState.fTexture) or
       (fState.fAtlasTexture<>PeekState.fAtlasTexture) or
       (fState.fGUIElementMode<>PeekState.fGUIElementMode)) then begin

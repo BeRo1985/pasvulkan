@@ -36,7 +36,7 @@ const uint FLAG_LUMINANCE_WEIGHTING = 1u << 8u; // Luminance weighting
 const uint FLAG_USE_FALLBACK_FXAA = 1u << 9u; // Use fallback FXAA for disoccluded or otherwise rejected areas.
 const uint FLAG_DISABLE_TEMPORAL_ANTIALIASING = 1u << 10u; // For debugging purposes and for showing the raw jittered input without any temporal antialiasing when FLAG_USE_FALLBACK_FXAA is even not set.
 
-layout(push_constant, std140, row_major) uniform PushConstants {
+layout(push_constant, std140) uniform PushConstants {
   
   uint baseViewIndex;
   uint countViews;

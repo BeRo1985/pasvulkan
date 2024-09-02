@@ -21,7 +21,7 @@ layout (set = 0, binding = 1, std430) buffer HistogramBuffer {
   uint histogramBuffer[];
 };
 
-layout(push_constant, std140, row_major) uniform PushConstants {
+layout(push_constant, std140) uniform PushConstants {
   float minLogLuminance;
   float logLuminanceRange;
   float inverseLogLuminanceRange;
