@@ -2769,10 +2769,10 @@ begin
  // Find the maximum component ID plus one
  MaxComponentIDPlusOne:=0;
  for Index:=0 to length(aRequiredComponents)-1 do begin
-  MaxComponentIDPlusOne:=Max(MaxComponentIDPlusOne,aRequiredComponents[Index]+1);
+  MaxComponentIDPlusOne:=Max(MaxComponentIDPlusOne,TpvSizeInt(aRequiredComponents[Index]+1));
  end;
  for Index:=0 to length(aExcludedComponents)-1 do begin
-  MaxComponentIDPlusOne:=Max(MaxComponentIDPlusOne,aExcludedComponents[Index]+1);
+  MaxComponentIDPlusOne:=Max(MaxComponentIDPlusOne,TpvSizeInt(aExcludedComponents[Index]+1));
  end;
 
  // Calculate the bitmap size
