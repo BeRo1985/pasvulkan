@@ -646,6 +646,8 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        procedure SetTexture(const aTexture:TObject);
        function GetAtlasTexture:TObject; {$ifdef CAN_INLINE}inline;{$endif}
        procedure SetAtlasTexture(const aTexture:TObject);
+       function GetMaskTexture:TObject; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetMaskTexture(const aTexture:TObject);
        function GetGUIElementMode:boolean; {$ifdef CAN_INLINE}inline;{$endif}
        procedure SetGUIElementMode(const aGUIElementMode:boolean);
        function GetBlendingMode:TpvCanvasBlendingMode; {$ifdef CAN_INLINE}inline;{$endif}
@@ -837,6 +839,7 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        property FillStyle:TpvCanvasFillStyle read GetFillStyle write SetFillStyle;
        property FillWrapMode:TpvCanvasFillWrapMode read GetFillWrapMode write SetFillWrapMode;
        property Texture:TObject read GetTexture write SetTexture;
+       property MaskTexture:TObject read GetMaskTexture write SetMaskTexture;
        property State:TpvCanvasState read fState;
      end;
 
@@ -1364,6 +1367,7 @@ begin
  fPath.fCountCommands:=0;
  fTexture:=nil;
  fAtlasTexture:=nil;
+ fMaskTexture:=nil;
  fGUIElementMode:=false;
  fStrokePattern:=TpvCanvasStrokePattern.Empty;
 end;
@@ -1395,6 +1399,7 @@ begin
   fPath.Assign(TpvCanvasState(aSource).fPath);
   fTexture:=TpvCanvasState(aSource).fTexture;
   fAtlasTexture:=TpvCanvasState(aSource).fAtlasTexture;
+  fMaskTexture:=TpvCanvasState(aSource).fMaskTexture;
   fGUIElementMode:=TpvCanvasState(aSource).fGUIElementMode;
   fStrokePattern:=TpvCanvasState(aSource).fStrokePattern;
  end;
@@ -2976,6 +2981,7 @@ begin
  fDescriptorPool:=nil;
  fDescriptorSet:=nil;
  fDescriptorTexture:=nil;
+ fDescriptorMaskTexture:=nil;
 end;
 
 destructor TpvCanvasVulkanDescriptor.Destroy;
@@ -2983,6 +2989,7 @@ begin
  FreeAndNil(fDescriptorSet);
  FreeAndNil(fDescriptorPool);
  fDescriptorTexture:=nil;
+ fDescriptorMaskTexture:=nil;
  inherited Destroy;
 end;
 
@@ -3803,6 +3810,19 @@ begin
  if fState.fAtlasTexture<>aTexture then begin
   Flush;
   fState.fAtlasTexture:=aTexture;
+ end;
+end;
+
+function TpvCanvas.GetMaskTexture:TObject;
+begin
+ result:=fState.fMaskTexture;
+end;
+
+procedure TpvCanvas.SetMaskTexture(const aTexture:TObject);
+begin
+ if fState.fMaskTexture<>aTexture then begin
+  Flush;
+  fState.fMaskTexture:=aTexture;
  end;
 end;
 
