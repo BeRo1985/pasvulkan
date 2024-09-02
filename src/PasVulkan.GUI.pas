@@ -6287,7 +6287,7 @@ var AxisIndex,PhaseIndex,ChildIndex,Index:TpvInt32;
     Child:TpvGUIObject;
     ChildWidget:TpvGUIWidget;
     Anchor:TpvGUIAdvancedGridLayoutAnchor;
-    AnchorEntity:TpvGUIAdvancedGridLayoutAnchors.PpvHashMapEntity;
+    AnchorEntity:TpvGUIAdvancedGridLayoutAnchors.PEntity;
     ChildPreferredSize,ChildFixedSize,ChildTargetSize,
     CurrentSize,TotalStretch,Factor:TpvFloat;
 begin
@@ -6439,7 +6439,7 @@ var AxisIndex,Index,ChildIndex:TpvInt32;
     Child:TpvGUIObject;
     ChildWidget:TpvGUIWidget;
     Anchor:TpvGUIAdvancedGridLayoutAnchor;
-    AnchorEntity:TpvGUIAdvancedGridLayoutAnchors.PpvHashMapEntity;
+    AnchorEntity:TpvGUIAdvancedGridLayoutAnchors.PEntity;
     CurrentSize,TotalStretch,Factor,ChildPosition,CellSize,
     TargetSize:TpvFloat;
     ChildPreferredSize,ChildFixedSize,ChildTargetSize:TpvVector2;
