@@ -364,7 +364,7 @@ begin
    while k<=l do begin
     u32:=PUCUUTF8CodeUnitGetCharAndIncFallback(s,k);
     case u32 of
-     0:begin
+     0,31:begin
       if k<=l then begin
        c:=PUCUUTF8CodeUnitGetCharAndIncFallback(s,k);
       end;
@@ -671,7 +671,7 @@ begin
  while (i<=l) do begin
   c:=PUCUUTF8CodeUnitGetCharAndIncFallback(aString,i);
   case c of
-   0:begin
+   0,31:begin
     // Color escape
     OneLine:=OneLine+#0;
     if i<=l then begin
