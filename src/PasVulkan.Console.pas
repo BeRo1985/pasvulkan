@@ -635,8 +635,8 @@ begin
       inc(fCursor.CurPos.Column);
       CheckXY;
      end;
-    end else if (fCursor.CurPos.Column mod fTabWidth)<>0 then begin
-     for j:=1 to fCursor.CurPos.Column-(fCursor.CurPos.Column mod fTabWidth) do begin
+    end else begin
+     for j:=1 to ((fCursor.CurPos.Column-((fCursor.CurPos.Column+fTabWidth) mod fTabWidth))-fCursor.CurPos.Column)+1 do begin
       MemBufPos:=(((fCursor.CurPos.Row-1)*fColumns)+fCursor.CurPos.Column-1) shl 1;
       fRawBuffer[MemBufPos]:=32;
       fRawBuffer[MemBufPos+1]:=fCursor.Color;
@@ -701,7 +701,7 @@ begin
       inc(x);
      end;
     end else begin
-     while (x mod fTabWidth)<>0 do begin
+     for k:=1 to ((x-((x+fTabWidth) mod fTabWidth))-x)+1 do begin
       OneLine:=OneLine+#32;
       inc(x);
      end;
