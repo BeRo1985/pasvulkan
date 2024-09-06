@@ -19972,7 +19972,7 @@ begin
  fActiveMask:=0;
 
  if length(fInstance.fLightNodes)>0 then begin
-  SceneInstance.fLightsLock.Acquire;
+  fSceneInstance.fLightsLock.Acquire;
   try
    fLights:=TpvScene3D.TLights.Create(true);
    for Index:=0 to length(fInstance.fLightNodes)-1 do begin
@@ -19986,7 +19986,7 @@ begin
     end;
    end;
   finally
-   SceneInstance.fLightsLock.Release;
+   fSceneInstance.fLightsLock.Release;
   end;
  end else begin
   fLights:=nil;
