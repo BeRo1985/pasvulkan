@@ -23593,7 +23593,7 @@ var Index,OtherIndex,PerInFlightFrameRenderInstanceIndex:TpvSizeInt;
     Node:TpvScene3D.TGroup.TNode;
     InstanceNode:TpvScene3D.TGroup.TInstance.TNode;
     InstanceMaterial:TpvScene3D.TGroup.TInstance.TMaterial;
-    HasMaterialUpdate,Dirty,First:boolean;
+    IsActive,HasMaterialUpdate,Dirty,First:boolean;
     RenderInstance:TpvScene3D.TGroup.TInstance.TRenderInstance;
     PerInFlightFrameRenderInstance:TpvScene3D.TGroup.TInstance.PPerInFlightFrameRenderInstance;
     AABBTreeState:TpvBVHDynamicAABBTree.PState;
@@ -23610,15 +23610,17 @@ begin
   SetDirty;
  end;
 
+ IsActive:=fActive and ((not fUseRenderInstances) or (fRenderInstances.Count>0));
+
  if aInFlightFrameIndex>=0 then begin
 
-  fActives[aInFlightFrameIndex]:=fActive;
+  fActives[aInFlightFrameIndex]:=IsActive;
 
 //fModelMatrices[aInFlightFrameIndex]:=fModelMatrix;
 
  end;
 
- if fActive then begin
+ if IsActive then begin
 
   Scene:=GetScene;
 
