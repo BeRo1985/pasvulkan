@@ -29154,8 +29154,8 @@ begin
 
    if aFrustumCulling or aPotentiallyVisibleSetCulling then begin
 
-    fAABBTreeLock.Acquire;
-    try
+   {fAABBTreeLock.Acquire;
+    try}
 
      AABBTreeState:=@fAABBTreeStates[aInFlightFrameIndex];
 
@@ -29182,9 +29182,9 @@ begin
                                   aShadowPass
                                  );
 
-    finally
+{   finally
      fAABBTreeLock.Release;
-    end;
+    end;}
 
    end else begin
 
