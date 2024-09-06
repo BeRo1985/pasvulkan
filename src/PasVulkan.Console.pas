@@ -674,7 +674,7 @@ begin
 end;
 
 procedure TpvConsole.WriteLine(const aString:TpvUTF8String);
-var i,j,l,x:TPUCUInt32;
+var i,j,k,l,x:TPUCUInt32;
     OneLine:TpvUTF8String;
     c:TPUCUUInt32;
 begin
@@ -696,7 +696,7 @@ begin
    9:begin
     // Tab
     if (fTabWidth and (fTabWidth-1))=0 then begin
-     while ((x+1) and (fTabWidth-1))<>0 do begin
+     for k:=1 to (((x+fTabWidth) and not (fTabWidth-1))-x)+1 do begin
       OneLine:=OneLine+#32;
       inc(x);
      end;
