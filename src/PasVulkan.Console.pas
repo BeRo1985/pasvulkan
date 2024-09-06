@@ -696,7 +696,7 @@ begin
    9:begin
     // Tab
     if (fTabWidth and (fTabWidth-1))=0 then begin
-     while (x and (fTabWidth-1))<>0 do begin
+     while ((x+1) and (fTabWidth-1))<>0 do begin
       OneLine:=OneLine+#32;
       inc(x);
      end;
