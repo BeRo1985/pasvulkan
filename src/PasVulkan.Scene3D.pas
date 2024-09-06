@@ -27755,7 +27755,7 @@ begin
 
    fGroupInstances.Sort;
 
-   if assigned(fPasMPInstance) then begin
+   if assigned(fPasMPInstance) and (fPasMPInstance.CountJobWorkerThreads>1) then begin
 
     // Clear queue
     while fParallelGroupInstanceUpdateQueue.Dequeue(GroupInstance) do begin
@@ -27773,13 +27773,19 @@ begin
     Jobs:=nil;
     try
 
-     SetLength(Jobs,Max(1,fPasMPInstance.CountJobWorkerThreads-1));
+     SetLength(Jobs,Max(1,fPasMPInstance.CountJobWorkerThreads));
 
      for Index:=0 to length(Jobs)-1 do begin
       Jobs[Index]:=fPasMPInstance.Acquire(ParallelGroupInstanceUpdateParallelJobFunction,nil,nil,0,TPasMPUInt32($f0000000));
      end;
 
-     fPasMPInstance.Invoke(Jobs);
+     fPasMPInstance.Run(Jobs);
+
+     ParallelGroupInstanceUpdateFunction; // Help the worker threads at processing the queue, before waiting&releasing the jobs
+
+     fPasMPInstance.Wait(Jobs);
+
+     fPasMPInstance.Release(Jobs);
 
     finally
      Jobs:=nil;
