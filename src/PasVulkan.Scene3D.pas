@@ -3432,6 +3432,7 @@ type EpvScene3D=class(Exception);
        fPointerToDeltaTimes:PDeltaTimes;
        fVirtualReality:TpvVirtualReality;
        fBlueNoise2DTexture:TpvVulkanTexture;
+       fPasMPInstance:TPasMP;
        fLoadGLTFTimeDurationLock:TPasMPInt32;
        fLoadGLTFTimeDuration:TpvDouble;
        procedure NewImageDescriptorGeneration;
@@ -3469,6 +3470,7 @@ type EpvScene3D=class(Exception);
        procedure ProcessFreeQueue;
       private
        procedure ParallelGroupInstanceUpdateFunction;
+       procedure ParallelGroupInstanceUpdateParallelJobFunction(const Job:PPasMPJob;const ThreadIndex:TPasMPInt32);
       public
        class function DetectFileType(const aMemory:pointer;const aSize:TpvSizeInt):TpvScene3D.TFileType; overload; static;
        class function DetectFileType(const aStream:TStream):TpvScene3D.TFileType; overload; static;
@@ -3695,6 +3697,7 @@ type EpvScene3D=class(Exception);
        property RaytracingActive:Boolean read fRaytracingActive;
        property AccelerationStructureInputBufferUsageFlags:TVkBufferUsageFlags read fAccelerationStructureInputBufferUsageFlags;
        property OnNodeFilter:TpvScene3D.TGroup.TInstance.TOnNodeFilter read fOnNodeFilter write fOnNodeFilter;
+       property PasMPInstance:TPasMP read fPasMPInstance write fPasMPInstance;
        property LoadGLTFTimeDuration:TpvDouble read fLoadGLTFTimeDuration;
      end;
 
@@ -25091,6 +25094,8 @@ begin
 
  inherited Create(aResourceManager,aParent,aMetaResource);
 
+ fPasMPInstance:=nil;
+
  fLoadLock:=TPasMPSpinLock.Create;
 
  fLoadGLTFTimeDurationLock:=0;
@@ -27673,6 +27678,11 @@ begin
  end;
 end;
 
+procedure TpvScene3D.ParallelGroupInstanceUpdateParallelJobFunction(const Job:PPasMPJob;const ThreadIndex:TPasMPInt32);
+begin
+ ParallelGroupInstanceUpdateFunction;
+end;
+
 procedure TpvScene3D.Update(const aInFlightFrameIndex:TpvSizeInt);
 type TGroupInstanceStack=TpvDynamicFastStack<TpvScene3D.TGroup.TInstance>;
 var Index,OtherIndex,MaterialBufferDataOffset,MaterialBufferDataSize:TpvSizeInt;
@@ -27690,6 +27700,7 @@ var Index,OtherIndex,MaterialBufferDataOffset,MaterialBufferDataSize:TpvSizeInt;
     GroupInstanceStack:TGroupInstanceStack;
     Sphere:TpvSphere;
     StartCPUTime,EndCPUTime:TpvHighResolutionTime;
+    Jobs:array of PPasMPJob;
 begin
 
  fCountLights[aInFlightFrameIndex]:=0;
@@ -27744,7 +27755,7 @@ begin
 
    fGroupInstances.Sort;
 
-   if true then begin
+   if assigned(fPasMPInstance) then begin
 
     // Clear queue
     while fParallelGroupInstanceUpdateQueue.Dequeue(GroupInstance) do begin
@@ -27758,6 +27769,21 @@ begin
     end;
 
     fParallelGroupInstanceUpdateInFlightFrameIndex:=aInFlightFrameIndex;
+
+    Jobs:=nil;
+    try
+
+     SetLength(Jobs,Max(1,fPasMPInstance.CountJobWorkerThreads-1));
+
+     for Index:=0 to length(Jobs)-1 do begin
+      Jobs[Index]:=fPasMPInstance.Acquire(ParallelGroupInstanceUpdateParallelJobFunction,nil,nil,0,TPasMPUInt32($f0000000));
+     end;
+
+     fPasMPInstance.Invoke(Jobs);
+
+    finally
+     Jobs:=nil;
+    end;
 
     ParallelGroupInstanceUpdateFunction;
 
