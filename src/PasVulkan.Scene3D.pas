@@ -23610,7 +23610,26 @@ begin
   SetDirty;
  end;
 
- IsActive:=fActive and ((not fUseRenderInstances) or (fRenderInstances.Count>0));
+ if fActive then begin
+  if fUseRenderInstances then begin
+   if fRenderInstances.Count>0 then begin
+    IsActive:=false;
+    for Index:=0 to fRenderInstances.Count-1 do begin
+     RenderInstance:=fRenderInstances[Index];
+     if RenderInstance.fActive then begin
+      IsActive:=true;
+      break;
+     end;
+    end;
+   end else begin
+    IsActive:=false;
+   end; 
+  end else begin
+   IsActive:=true;
+  end;   
+ end else begin
+  IsActive:=false;
+ end; 
 
  if aInFlightFrameIndex>=0 then begin
 
