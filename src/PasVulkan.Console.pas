@@ -150,6 +150,7 @@ type { TpvConsole }
        fCharHeight:TpvSizeInt;
        fWrapTop:TpvSizeInt;
        fWrapBottom:TpvSizeInt;
+       fTabWidth:TpvSizeInt;
        fBlinkOn:Boolean;
        fScrollLock:Boolean;
        fCursorBlinkOn:Boolean;
@@ -233,6 +234,7 @@ type { TpvConsole }
        property CharHeight:TpvSizeInt read fCharHeight write fCharHeight;
        property Columns:TpvSizeInt read fColumns write fColumns;
        property Rows:TpvSizeInt read fRows write fRows;
+       property TabWidth:TpvSizeInt read fTabWidth write fTabWidth;
        property CursorBlinkOn:Boolean read fCursorBlinkOn write fCursorBlinkOn;
        property CursorOn:Boolean read fCursorOn write fCursorOn;
        property Cursor:TCursorInfo read fCursor write fCursor;
@@ -272,6 +274,8 @@ begin
 
  fWrapTop:=0;
  fWrapBottom:=0;
+
+ fTabWidth:=2;
 
  SetChrDim(80,25);
  CLRSCR(7);
@@ -623,12 +627,22 @@ begin
     end;
    end;
    9:begin
-    for j:=1 to (((fCursor.CurPos.Column+8) and not 7)-fCursor.CurPos.Column)+1 do begin
-     MemBufPos:=(((fCursor.CurPos.Row-1)*fColumns)+fCursor.CurPos.Column-1) shl 1;
-     fRawBuffer[MemBufPos]:=32;
-     fRawBuffer[MemBufPos+1]:=fCursor.Color;
-     inc(fCursor.CurPos.Column);
-     CheckXY;
+    if (fTabWidth and (fTabWidth-1))=0 then begin
+     for j:=1 to (((fCursor.CurPos.Column+fTabWidth) and not (fTabWidth-1))-fCursor.CurPos.Column)+1 do begin
+      MemBufPos:=(((fCursor.CurPos.Row-1)*fColumns)+fCursor.CurPos.Column-1) shl 1;
+      fRawBuffer[MemBufPos]:=32;
+      fRawBuffer[MemBufPos+1]:=fCursor.Color;
+      inc(fCursor.CurPos.Column);
+      CheckXY;
+     end;
+    end else if (fCursor.CurPos.Column mod fTabWidth)<>0 then begin
+     for j:=1 to fCursor.CurPos.Column-(fCursor.CurPos.Column mod fTabWidth) do begin
+      MemBufPos:=(((fCursor.CurPos.Row-1)*fColumns)+fCursor.CurPos.Column-1) shl 1;
+      fRawBuffer[MemBufPos]:=32;
+      fRawBuffer[MemBufPos+1]:=fCursor.Color;
+      inc(fCursor.CurPos.Column);
+      CheckXY;
+     end;
     end;
    end;
    10:begin
@@ -660,13 +674,14 @@ begin
 end;
 
 procedure TpvConsole.WriteLine(const aString:TpvUTF8String);
-var i,j,l:TPUCUInt32;
+var i,j,l,x:TPUCUInt32;
     OneLine:TpvUTF8String;
     c:TPUCUUInt32;
 begin
  i:=1;
  l:=length(aString);
  j:=0;
+ x:=0;
  OneLine:='';
  while (i<=l) do begin
   c:=PUCUUTF8CodeUnitGetCharAndIncFallback(aString,i);
@@ -678,21 +693,38 @@ begin
      OneLine:=OneLine+PUCUUTF32CharToUTF8(PUCUUTF8CodeUnitGetCharAndIncFallback(aString,i));
     end;
    end;
-   13:begin
-    // Ignore
+   9:begin
+    // Tab
+    if (fTabWidth and (fTabWidth-1))=0 then begin
+     while (x and (fTabWidth-1))<>0 do begin
+      OneLine:=OneLine+#32;
+      inc(x);
+     end;
+    end else begin
+     while (x mod fTabWidth)<>0 do begin
+      OneLine:=OneLine+#32;
+      inc(x);
+     end;
+    end;
    end;
    10:begin
     fLines.Add(OneLine);
     OneLine:='';
     j:=0;
+    x:=0;
+   end;
+   13:begin
+    // Ignore
    end;
    else begin
     OneLine:=OneLine+PUCUUTF32CharToUTF8(c);
     inc(j);
+    inc(x);
     if j>=fColumns then begin
      fLines.Add(OneLine);
      OneLine:='';
      j:=0;
+     x:=0;
     end;
    end;
   end;
