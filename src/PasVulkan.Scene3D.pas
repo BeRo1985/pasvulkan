@@ -27608,6 +27608,14 @@ begin
  end;
 end;
 
+// This procedure processes group instances in a parallel manner within a 
+// Directed Acyclic Graph (DAG) structure. Each group instance can only be 
+// updated if all its dependencies are processed. The function works by 
+// dequeuing instances from a parallel queue and checking if their required 
+// dependencies are ready. If all dependencies are resolved, the instance 
+// is updated and marked as processed. Otherwise, it is re-enqueued at the 
+// back of the queue to be checked again later, ensuring no deadlocks occur 
+// and preventing cyclic dependencies in a dynamic game environment.
 procedure TpvScene3D.ParallelGroupInstanceUpdateFunction;
 var OtherIndex:TpvSizeInt;
     GroupInstance,OtherGroupInstance:TpvScene3D.TGroup.TInstance;
@@ -27623,7 +27631,7 @@ begin
    // Initialize ready state
    OK:=true;
 
-   // Check if all required dependencies are ready and already processed
+   // Check if all required dependencies are usable, ready and already processed
    if GroupInstance.fRequiredDependencies.Count=0 then begin
     for OtherIndex:=0 to GroupInstance.fRequiredDependencies.Count-1 do begin
      OtherGroupInstance:=GroupInstance.fRequiredDependencies[OtherIndex];
@@ -27636,9 +27644,10 @@ begin
     end;
    end;
 
-   // Check if appendage instance is ready and already processed
+   // Check if appendage instance is usable, ready and already processed
    if OK and
       assigned(GroupInstance.fAppendageInstance) and
+      GroupInstance.fAppendageInstance.Group.Usable and
       (TPasMPInterlocked.Read(GroupInstance.fAppendageInstance.fVisitedState[fParallelGroupInstanceUpdateInFlightFrameIndex])=0) then begin
     OK:=false;
    end;
@@ -27735,59 +27744,80 @@ begin
 
    fGroupInstances.Sort;
 
-   GroupInstanceStack.Initialize;
-   try
+   if true then begin
 
-    for Index:=0 to fGroupInstances.Count-1 do begin
-     fGroupInstances[Index].fVisitedState[aInFlightFrameIndex]:=0;
+    // Clear queue
+    while fParallelGroupInstanceUpdateQueue.Dequeue(GroupInstance) do begin
     end;
 
+    // Initialize inital queue
     for Index:=0 to fGroupInstances.Count-1 do begin
      GroupInstance:=fGroupInstances[Index];
-     if GroupInstance.fGroup.Usable and (GroupInstance.fVisitedState[aInFlightFrameIndex]=0) then begin
-      if (GroupInstance.fRequiredDependencies.Count=0) and
-         ((not assigned(GroupInstance.fAppendageInstance)) or
-          (assigned(GroupInstance.fAppendageInstance) and
-           (GroupInstance.fAppendageInstance.fVisitedState[aInFlightFrameIndex]<>0))) then begin
-       GroupInstance.fVisitedState[aInFlightFrameIndex]:=2;
-       GroupInstance.Update(aInFlightFrameIndex);
-      end else begin
-       GroupInstanceStack.Push(GroupInstance);
-       while GroupInstanceStack.Pop(GroupInstance) do begin
-        case GroupInstance.fVisitedState[aInFlightFrameIndex] of
-         0:begin
-          GroupInstance.fVisitedState[aInFlightFrameIndex]:=1;
-          GroupInstanceStack.Push(GroupInstance);
-          for OtherIndex:=0 to GroupInstance.fRequiredDependencies.Count-1 do begin
-           OtherGroupInstance:=GroupInstance.fRequiredDependencies[OtherIndex];
-           if (OtherGroupInstance<>GroupInstance.fAppendageInstance) and
-              OtherGroupInstance.Group.Usable and
-              (OtherGroupInstance.fVisitedState[aInFlightFrameIndex]=0) then begin
-            GroupInstanceStack.Push(OtherGroupInstance);
+     GroupInstance.fVisitedState[aInFlightFrameIndex]:=0;
+     fParallelGroupInstanceUpdateQueue.Enqueue(GroupInstance);
+    end;
+
+    fParallelGroupInstanceUpdateInFlightFrameIndex:=aInFlightFrameIndex;
+
+    ParallelGroupInstanceUpdateFunction;
+
+   end else begin
+
+    GroupInstanceStack.Initialize;
+    try
+
+     for Index:=0 to fGroupInstances.Count-1 do begin
+      fGroupInstances[Index].fVisitedState[aInFlightFrameIndex]:=0;
+     end;
+
+     for Index:=0 to fGroupInstances.Count-1 do begin
+      GroupInstance:=fGroupInstances[Index];
+      if GroupInstance.fGroup.Usable and (GroupInstance.fVisitedState[aInFlightFrameIndex]=0) then begin
+       if (GroupInstance.fRequiredDependencies.Count=0) and
+          ((not assigned(GroupInstance.fAppendageInstance)) or
+           (assigned(GroupInstance.fAppendageInstance) and
+            (GroupInstance.fAppendageInstance.fVisitedState[aInFlightFrameIndex]<>0))) then begin
+        GroupInstance.fVisitedState[aInFlightFrameIndex]:=2;
+        GroupInstance.Update(aInFlightFrameIndex);
+       end else begin
+        GroupInstanceStack.Push(GroupInstance);
+        while GroupInstanceStack.Pop(GroupInstance) do begin
+         case GroupInstance.fVisitedState[aInFlightFrameIndex] of
+          0:begin
+           GroupInstance.fVisitedState[aInFlightFrameIndex]:=1;
+           GroupInstanceStack.Push(GroupInstance);
+           for OtherIndex:=0 to GroupInstance.fRequiredDependencies.Count-1 do begin
+            OtherGroupInstance:=GroupInstance.fRequiredDependencies[OtherIndex];
+            if (OtherGroupInstance<>GroupInstance.fAppendageInstance) and
+               OtherGroupInstance.Group.Usable and
+               (OtherGroupInstance.fVisitedState[aInFlightFrameIndex]=0) then begin
+             GroupInstanceStack.Push(OtherGroupInstance);
+            end;
+           end;
+           if assigned(GroupInstance.fAppendageInstance) then begin
+            OtherGroupInstance:=GroupInstance.fAppendageInstance;
+            if OtherGroupInstance.Group.Usable and (OtherGroupInstance.fVisitedState[aInFlightFrameIndex]=0) then begin
+             GroupInstanceStack.Push(OtherGroupInstance);
+            end;
            end;
           end;
-          if assigned(GroupInstance.fAppendageInstance) then begin
-           OtherGroupInstance:=GroupInstance.fAppendageInstance;
-           if OtherGroupInstance.Group.Usable and (OtherGroupInstance.fVisitedState[aInFlightFrameIndex]=0) then begin
-            GroupInstanceStack.Push(OtherGroupInstance);
-           end;
+          1:begin
+           GroupInstance.fVisitedState[aInFlightFrameIndex]:=2;
+           GroupInstance.Update(aInFlightFrameIndex);
           end;
-         end;
-         1:begin
-          GroupInstance.fVisitedState[aInFlightFrameIndex]:=2;
-          GroupInstance.Update(aInFlightFrameIndex);
-         end;
-         else begin
+          else begin
+          end;
          end;
         end;
        end;
       end;
      end;
+
+    finally
+     GroupInstanceStack.Finalize;
     end;
 
-   finally
-    GroupInstanceStack.Finalize;
-   end;
+   end; 
 
   finally
    fGroupInstanceListLock.Release;
