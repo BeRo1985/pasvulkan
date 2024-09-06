@@ -3293,7 +3293,9 @@ type EpvScene3D=class(Exception);
        fLightAABBTreeStates:array[-1..MaxInFlightFrames-1] of TpvBVHDynamicAABBTree.TState;
        fLightAABBTreeStateGenerations:array[-1..MaxInFlightFrames-1] of TpvUInt64;
        fLightBuffers:TpvScene3D.TLightBuffers;
+       fLightsLock:TPasMPSlimReaderWriterLock;
        fAABBTree:TpvBVHDynamicAABBTree;
+       fAABBTreeLock:TPasMPSlimReaderWriterLock;
        fAABBTreeStates:array[-1..MaxInFlightFrames-1] of TpvBVHDynamicAABBTree.TState;
        fBoundingBox:TpvAABB;
        fInFlightFrameBoundingBoxes:TInFlightFrameAABBs;
@@ -3700,6 +3702,8 @@ uses PasVulkan.Scene3D.Renderer.Globals,
      PasVulkan.Scene3D.MeshCompute,
      PasVulkan.Scene3D.Tipsify,
      PasVulkan.Scene3D.Meshlets;
+
+var TotalCPUTime:TpvHighResolutionTime=0;
 
 const FlushUpdateData=false;
 
@@ -19963,16 +19967,21 @@ begin
  fActiveMask:=0;
 
  if length(fInstance.fLightNodes)>0 then begin
-  fLights:=TpvScene3D.TLights.Create(true);
-  for Index:=0 to length(fInstance.fLightNodes)-1 do begin
-   Light:=TpvScene3D.TLight.Create(fSceneInstance);
-   try
-    Light.fData.fVisible:=false;
-    Light.fDataPointer:=@Light.fData;
-    Light.fVisible:=false;
-   finally
-    fLights.Add(Light);
+  SceneInstance.fLightsLock.Acquire;
+  try
+   fLights:=TpvScene3D.TLights.Create(true);
+   for Index:=0 to length(fInstance.fLightNodes)-1 do begin
+    Light:=TpvScene3D.TLight.Create(fSceneInstance);
+    try
+     Light.fData.fVisible:=false;
+     Light.fDataPointer:=@Light.fData;
+     Light.fVisible:=false;
+    finally
+     fLights.Add(Light);
+    end;
    end;
+  finally
+   SceneInstance.fLightsLock.Release;
   end;
  end else begin
   fLights:=nil;
@@ -20067,17 +20076,27 @@ begin
      if (Light.fMatrix<>LightMatrix) or
         (Light.fDataPointer<>InstanceNode.fLight.fDataPointer) or
         (Light.fGeneration<>InstanceNode.fLight.fGeneration) then begin
-      Light.fMatrix:=LightMatrix;
-      Light.fDataPointer:=InstanceNode.fLight.fDataPointer;
-      Light.fGeneration:=InstanceNode.fLight.fGeneration;
-      Light.Update;
+      fSceneInstance.fLightsLock.Acquire;
+      try
+       Light.fMatrix:=LightMatrix;
+       Light.fDataPointer:=InstanceNode.fLight.fDataPointer;
+       Light.fGeneration:=InstanceNode.fLight.fGeneration;
+       Light.Update;
+      finally
+       fSceneInstance.fLightsLock.Release;
+      end;
      end;
     end else begin
      if Light.fDataPointer^.fVisible or (Light.fDataPointer<>@Light.fData) then begin
-      Light.fData.fVisible:=false;
-      Light.fDataPointer:=@Light.fData;
-      Light.fVisible:=false;
-      Light.Update;
+      fSceneInstance.fLightsLock.Acquire;
+      try
+       Light.fData.fVisible:=false;
+       Light.fDataPointer:=@Light.fData;
+       Light.fVisible:=false;
+       Light.Update;
+      finally
+       fSceneInstance.fLightsLock.Release;
+      end;
      end;
     end;
    end;
@@ -20090,14 +20109,19 @@ var Index:TpvSizeInt;
     Light:TpvScene3D.TLight;
 begin
  if assigned(fLights) and (length(fInstance.fLightNodes)>0) then begin
-  for Index:=0 to fLights.Count-1 do begin
-   Light:=fLights[Index];
-   if assigned(Light) and (Light.fDataPointer^.fVisible or (Light.fDataPointer<>@Light.fData)) then begin
-    Light.fData.fVisible:=false;
-    Light.fDataPointer:=@Light.fData;
-    Light.fVisible:=false;
-    Light.Update;
+  fSceneInstance.fLightsLock.Acquire;
+  try
+   for Index:=0 to fLights.Count-1 do begin
+    Light:=fLights[Index];
+    if assigned(Light) and (Light.fDataPointer^.fVisible or (Light.fDataPointer<>@Light.fData)) then begin
+     Light.fData.fVisible:=false;
+     Light.fDataPointer:=@Light.fData;
+     Light.fVisible:=false;
+     Light.Update;
+    end;
    end;
+  finally
+   fSceneInstance.fLightsLock.Release;
   end;
  end;
 end;
@@ -23182,25 +23206,35 @@ procedure TpvScene3D.TGroup.TInstance.Update(const aInFlightFrameIndex:TpvSizeIn
      if (Light.fMatrix<>LightMatrix) or
         (Light.fDataPointer<>InstanceLight.fEffectiveData) or
         (Light.fGeneration<>InstanceLight.fEffectiveData.fGeneration) then begin
-      Light.fMatrix:=LightMatrix;
-      Light.fDataPointer:=InstanceLight.fEffectiveData;
-      Light.fGeneration:=InstanceLight.fEffectiveData.fGeneration;
-      Light.fIgnore:=fUseRenderInstances;
-      Light.Update;
+      fGroup.fSceneInstance.fLightsLock.Acquire;
+      try
+       Light.fMatrix:=LightMatrix;
+       Light.fDataPointer:=InstanceLight.fEffectiveData;
+       Light.fGeneration:=InstanceLight.fEffectiveData.fGeneration;
+       Light.fIgnore:=fUseRenderInstances;
+       Light.Update;
+      finally
+       fGroup.fSceneInstance.fLightsLock.Release;
+      end;
      end;
     end else begin
-     Light:=TpvScene3D.TLight.Create(fSceneInstance);
+     fGroup.fSceneInstance.fLightsLock.Acquire;
      try
-      Light.fLight:=Node.fLight;
-      Light.fInstanceLight:=InstanceLight;
-      Light.fData:=Node.fLight.fData;
-      Light.fDataPointer:=InstanceLight.fEffectiveData;
-      Light.fGeneration:=InstanceLight.fEffectiveData.fGeneration;
-      Light.fMatrix:=LightMatrix;
-      Light.fIgnore:=fUseRenderInstances;
-      Light.Update;
+      Light:=TpvScene3D.TLight.Create(fSceneInstance);
+      try
+       Light.fLight:=Node.fLight;
+       Light.fInstanceLight:=InstanceLight;
+       Light.fData:=Node.fLight.fData;
+       Light.fDataPointer:=InstanceLight.fEffectiveData;
+       Light.fGeneration:=InstanceLight.fEffectiveData.fGeneration;
+       Light.fMatrix:=LightMatrix;
+       Light.fIgnore:=fUseRenderInstances;
+       Light.Update;
+      finally
+       InstanceNode.fLight:=Light;
+      end;
      finally
-      InstanceNode.fLight:=Light;
+      fGroup.fSceneInstance.fLightsLock.Release;
      end;
     end;
    end;
@@ -23557,7 +23591,7 @@ var Index,OtherIndex,PerInFlightFrameRenderInstanceIndex:TpvSizeInt;
     AABBTreeState:TpvBVHDynamicAABBTree.PState;
     AABBTreeNode:TpvBVHDynamicAABBTree.PTreeNode;
     AABBTreeNodePotentiallyVisibleSet:TpvScene3D.TPotentiallyVisibleSet.TNodeIndex;
-    StartCPUTime,EndCPUTime:TpvHighResolutionTime;
+/// StartCPUTime,EndCPUTime:TpvHighResolutionTime;
     TemporaryBoundingBox:TpvAABB;
 begin
 
@@ -23604,7 +23638,7 @@ begin
     fSkins[Index].Used:=false;
    end;
 
-   StartCPUTime:=pvApplication.HighResolutionTimer.GetTime;
+// StartCPUTime:=pvApplication.HighResolutionTimer.GetTime;
    begin
 
     WeightSum:=0.0;
@@ -23632,8 +23666,9 @@ begin
     end;
 
    end;
-   EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
-   //write(pvApplication.HighResolutionTimer.ToFloatSeconds(EndCPUTime-StartCPUTime)*1000:5:2,'ms');
+// EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
+// inc(TotalCPUTime,EndCPUTime-StartCPUTime);
+// write(pvApplication.HighResolutionTimer.ToFloatSeconds(EndCPUTime-StartCPUTime)*1000:5:2,'ms');
 
    if aInFlightFrameIndex>=0 then begin
 
@@ -23664,9 +23699,13 @@ begin
     dec(fDirtyCounter);
    end;
 
+// StartCPUTime:=pvApplication.HighResolutionTimer.GetTime;
    for Index:=0 to Scene.fNodes.Count-1 do begin
     ProcessNode(Scene.fNodes[Index].Index,TpvMatrix4x4.Identity,Dirty);
    end;
+// EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
+//   inc(TotalCPUTime,EndCPUTime-StartCPUTime);
+//   write(pvApplication.HighResolutionTimer.ToFloatSeconds(EndCPUTime-StartCPUTime)*1000:5:2,'ms');
 
    if aInFlightFrameIndex>=0 then begin
     for Index:=0 to fNodes.Count-1 do begin
@@ -23686,10 +23725,14 @@ begin
     end;
    end;
 
+// StartCPUTime:=pvApplication.HighResolutionTimer.GetTime;
    ProcessSkins;
+// EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
+//   inc(TotalCPUTime,EndCPUTime-StartCPUTime);
 
    fNodeMatrices[0]:=fModelMatrix;
 
+// StartCPUTime:=pvApplication.HighResolutionTimer.GetTime;
    for Index:=0 to fGroup.fNodes.Count-1 do begin
     Node:=fGroup.fNodes[Index];
     InstanceNode:=fNodes.RawItems[Index];
@@ -23698,6 +23741,8 @@ begin
      Move(InstanceNode.fWorkWeights[0],fMorphTargetVertexWeights[Node.fWeightsOffset],length(InstanceNode.fWorkWeights)*SizeOf(TpvFloat));
     end;
    end;
+// EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
+// inc(TotalCPUTime,EndCPUTime-StartCPUTime);
 
    if aInFlightFrameIndex>=(-1) then begin
 
@@ -23707,6 +23752,7 @@ begin
      InstanceNode.fBoundingBoxFilled[aInFlightFrameIndex]:=false;
     end;
 
+//  StartCPUTime:=pvApplication.HighResolutionTimer.GetTime;
     for Index:=0 to Scene.fAllNodes.Count-1 do begin
      Node:=Scene.fAllNodes[Index];
      InstanceNode:=fNodes.RawItems[Node.Index];
@@ -23726,13 +23772,19 @@ begin
       InstanceNode.fBoundingBoxFilled[aInFlightFrameIndex]:=false;
      end;
     end;
+//  EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
+//  inc(TotalCPUTime,EndCPUTime-StartCPUTime);
 
+//  StartCPUTime:=pvApplication.HighResolutionTimer.GetTime;
     ProcessBoundingSceneBoxNodes(Scene);
+//  EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
+//  inc(TotalCPUTime,EndCPUTime-StartCPUTime);
 
    end;
 
    if aInFlightFrameIndex>=0 then begin
 
+//  StartCPUTime:=pvApplication.HighResolutionTimer.GetTime;
     for Index:=0 to Scene.fAllNodes.Count-1 do begin
      Node:=Scene.fAllNodes[Index];
      InstanceNode:=fNodes.RawItems[Node.Index];
@@ -23747,8 +23799,11 @@ begin
       InstanceNode.fPotentiallyVisibleSetNodeIndices[aInFlightFrameIndex]:=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex;
      end;
     end;
+//  EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
+//  inc(TotalCPUTime,EndCPUTime-StartCPUTime);
 
     if assigned(fAABBTree) then begin
+//   StartCPUTime:=pvApplication.HighResolutionTimer.GetTime;
      for Index:=0 to Scene.fAllNodes.Count-1 do begin
       Node:=Scene.fAllNodes[Index];
       InstanceNode:=fNodes.RawItems[Node.Index];
@@ -23763,6 +23818,8 @@ begin
        InstanceNode.fAABBTreeProxy:=-1;
       end;
      end;
+//   EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
+//   inc(TotalCPUTime,EndCPUTime-StartCPUTime);
     end;
 
    end;
@@ -23856,14 +23913,19 @@ begin
    end;
   end;
 
-  if fAABBTreeProxy<0 then begin
-   fAABBTreeProxy:=fGroup.fSceneInstance.fAABBTree.CreateProxy(fBoundingBox,TpvPtrInt(Pointer(self)));
-  end else begin
-   if fUseRenderInstances then begin
-    fGroup.fSceneInstance.fAABBTree.MoveProxy(fAABBTreeProxy,TpvAABB.Create(-TpvVector3.AllMaxAxis,TpvVector3.AllMaxAxis),TpvVector3.Null,TpvVector3.AllAxis);
+  fGroup.fSceneInstance.fAABBTreeLock.Acquire;
+  try
+   if fAABBTreeProxy<0 then begin
+    fAABBTreeProxy:=fGroup.fSceneInstance.fAABBTree.CreateProxy(fBoundingBox,TpvPtrInt(Pointer(self)));
    end else begin
-    fGroup.fSceneInstance.fAABBTree.MoveProxy(fAABBTreeProxy,fBoundingBox,TpvVector3.Null,TpvVector3.AllAxis);
+    if fUseRenderInstances then begin
+     fGroup.fSceneInstance.fAABBTree.MoveProxy(fAABBTreeProxy,TpvAABB.Create(-TpvVector3.AllMaxAxis,TpvVector3.AllMaxAxis),TpvVector3.Null,TpvVector3.AllAxis);
+    end else begin
+     fGroup.fSceneInstance.fAABBTree.MoveProxy(fAABBTreeProxy,fBoundingBox,TpvVector3.Null,TpvVector3.AllAxis);
+    end;
    end;
+  finally
+   fGroup.fSceneInstance.fAABBTreeLock.Release;
   end;
 
   if aInFlightFrameIndex>=0 then begin
@@ -23885,7 +23947,12 @@ begin
     if assigned(fGroup) and
        assigned(fGroup.fSceneInstance) and
        assigned(fGroup.fSceneInstance.fAABBTree) then begin
-     fGroup.fSceneInstance.fAABBTree.DestroyProxy(fAABBTreeProxy);
+     fGroup.fSceneInstance.fAABBTreeLock.Acquire;
+     try
+      fGroup.fSceneInstance.fAABBTree.DestroyProxy(fAABBTreeProxy);
+     finally
+      fGroup.fSceneInstance.fAABBTreeLock.Release;
+     end;
     end;
    finally
     fAABBTreeProxy:=-1;
@@ -23895,11 +23962,21 @@ begin
   for Index:=0 to fNodes.Count-1 do begin
    InstanceNode:=fNodes.RawItems[Index];
    if assigned(InstanceNode.fLight) then begin
-    FreeAndNil(InstanceNode.fLight);
+    fGroup.fSceneInstance.fLightsLock.Acquire;
+    try
+     FreeAndNil(InstanceNode.fLight);
+    finally
+     fGroup.fSceneInstance.fLightsLock.Release;
+    end;
    end;
    if assigned(fAABBTree) and (InstanceNode.fAABBTreeProxy>=0) then begin
     try
-     fAABBTree.DestroyProxy(InstanceNode.fAABBTreeProxy);
+     fGroup.fSceneInstance.fAABBTreeLock.Acquire;
+     try
+      fAABBTree.DestroyProxy(InstanceNode.fAABBTreeProxy);
+     finally
+      fGroup.fSceneInstance.fAABBTreeLock.Release;
+     end;
     finally
      InstanceNode.fAABBTreeProxy:=-1;
     end;
@@ -25705,7 +25782,11 @@ begin
   fLightBuffers[Index]:=TpvScene3D.TLightBuffer.Create(self,Index);
  end;
 
+ fLightsLock:=TPasMPSlimReaderWriterLock.Create;
+
  fAABBTree:=TpvBVHDynamicAABBTree.Create;
+
+ fAABBTreeLock:=TPasMPSlimReaderWriterLock.Create;
 
  for Index:=0 to fCountInFlightFrames-1 do begin
   fAABBTreeStates[Index].TreeNodes:=nil;
@@ -26211,6 +26292,10 @@ begin
  FreeAndNil(fRendererInstanceLock);
 
  FreeAndNil(fBlueNoise2DTexture);
+
+ FreeAndNil(fAABBTreeLock);
+
+ FreeAndNil(fLightsLock);
 
  fLastProcessFrameTimerQueryResults:=nil;
 
@@ -27578,6 +27663,8 @@ begin
 
   StartCPUTime:=pvApplication.HighResolutionTimer.GetTime;
 
+  TotalCPUTime:=0;
+
   fGroupInstanceListLock.Acquire;
   try
 
@@ -27642,26 +27729,37 @@ begin
   end;
 
   EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
+{ writeln;
+  writeln;
+  writeln;}
 //write(pvApplication.HighResolutionTimer.ToFloatSeconds(EndCPUTime-StartCPUTime)*1000:5:2,'ms');
+
+{ write(pvApplication.HighResolutionTimer.ToFloatSeconds(EndCPUTime-StartCPUTime)*1000:5:2,'ms ');
+  writeln(pvApplication.HighResolutionTimer.ToFloatSeconds(TotalCPUTime)*1000:5:2,'ms');    //}
 
  finally
   fGroupListLock.Release;
  end;
 
- AABBTreeState:=@fAABBTreeStates[aInFlightFrameIndex];
- fAABBTree.UpdateGeneration;
- if AABBTreeState^.Generation<>fAABBTree.Generation then begin
-  AABBTreeState^.Generation:=fAABBTree.Generation;
-  if (length(fAABBTree.Nodes)>0) and (fAABBTree.Root>=0) then begin
-   if length(AABBTreeState^.TreeNodes)<length(fAABBTree.Nodes) then begin
-    AABBTreeState^.TreeNodes:=copy(fAABBTree.Nodes);
+ fAABBTreeLock.Acquire;
+ try
+  AABBTreeState:=@fAABBTreeStates[aInFlightFrameIndex];
+  fAABBTree.UpdateGeneration;
+  if AABBTreeState^.Generation<>fAABBTree.Generation then begin
+   AABBTreeState^.Generation:=fAABBTree.Generation;
+   if (length(fAABBTree.Nodes)>0) and (fAABBTree.Root>=0) then begin
+    if length(AABBTreeState^.TreeNodes)<length(fAABBTree.Nodes) then begin
+     AABBTreeState^.TreeNodes:=copy(fAABBTree.Nodes);
+    end else begin
+     Move(fAABBTree.Nodes[0],AABBTreeState^.TreeNodes[0],length(fAABBTree.Nodes)*SizeOf(TpvBVHDynamicAABBTree.TTreeNode));
+    end;
+    AABBTreeState^.Root:=fAABBTree.Root;
    end else begin
-    Move(fAABBTree.Nodes[0],AABBTreeState^.TreeNodes[0],length(fAABBTree.Nodes)*SizeOf(TpvBVHDynamicAABBTree.TTreeNode));
+    AABBTreeState^.Root:=-1;
    end;
-   AABBTreeState^.Root:=fAABBTree.Root;
-  end else begin
-   AABBTreeState^.Root:=-1;
   end;
+ finally
+  fAABBTreeLock.Release;
  end;
 
  begin
@@ -28908,30 +29006,37 @@ begin
 
    if aFrustumCulling or aPotentiallyVisibleSetCulling then begin
 
-    AABBTreeState:=@fAABBTreeStates[aInFlightFrameIndex];
+    fAABBTreeLock.Acquire;
+    try
 
-    if aFrustumCulling then begin
-     SetLength(Frustums,aCountViews);
-     for Index:=0 to aCountViews-1 do begin
-      View:=@aViews.Items[aViewBaseIndex+Index];
-      Frustums[Index].Init(View^.ViewMatrix,View^.ProjectionMatrix);
+     AABBTreeState:=@fAABBTreeStates[aInFlightFrameIndex];
+
+     if aFrustumCulling then begin
+      SetLength(Frustums,aCountViews);
+      for Index:=0 to aCountViews-1 do begin
+       View:=@aViews.Items[aViewBaseIndex+Index];
+       Frustums[Index].Init(View^.ViewMatrix,View^.ProjectionMatrix);
+      end;
      end;
-    end;
 
-    CullAndPrepareGroupInstances(aInFlightFrameIndex,
-                                 aRendererInstance,
-                                 aRenderPassIndex,
-                                 aViews,
-                                 aViewNodeIndices,
-                                 aViewBaseIndex,
-                                 aCountViews,
-                                 aMaterialAlphaModes,
-                                 aPotentiallyVisibleSetCulling,
-                                 Frustums,
-                                 AABBTreeState^.TreeNodes,
-                                 AABBTreeState^.Root,
-                                 aShadowPass
-                                );
+     CullAndPrepareGroupInstances(aInFlightFrameIndex,
+                                  aRendererInstance,
+                                  aRenderPassIndex,
+                                  aViews,
+                                  aViewNodeIndices,
+                                  aViewBaseIndex,
+                                  aCountViews,
+                                  aMaterialAlphaModes,
+                                  aPotentiallyVisibleSetCulling,
+                                  Frustums,
+                                  AABBTreeState^.TreeNodes,
+                                  AABBTreeState^.Root,
+                                  aShadowPass
+                                 );
+
+    finally
+     fAABBTreeLock.Release;
+    end;
 
    end else begin
 
