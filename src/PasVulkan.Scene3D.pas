@@ -24617,6 +24617,7 @@ var Index:TpvSizeInt;
     LastAnimationState,AnimationState:TpvScene3D.TGroup.TInstance.PAnimationState;
 begin
  
+ // Clamp alpha
  if aAlpha<0.0 then begin
   Alpha:=0.0;
  end else if aAlpha>1.0 then begin
@@ -24625,14 +24626,17 @@ begin
   Alpha:=aAlpha;
  end;
  
+ // Calculate inverse alpha
  InvAlpha:=1.0-Alpha;
  
+ // Interpolate all animation states
  for Index:=0 to length(fAnimationStates)-1 do begin
  
   LastAnimationState:=@fLastAnimationStates[Index];
  
   AnimationState:=@fAnimationStates[Index];
  
+  // 0 is "No animation" (-1 at group level, since 0 is the first animation in the TGroup instance, thus the -1 offset)
   if Index>0 then begin
    GroupAnimation:=fGroup.fAnimations[Index-1];
   end else begin
@@ -24674,6 +24678,12 @@ begin
     end;
    end;
 
+  end else begin
+
+   // "No animation" has no animation begin and end times, so just reset the times to zero 
+   fGroupInstanceAnimation.fTime:=0.0;
+   fGroupInstanceAnimation.fShadowTime:=0.0;
+
   end;
 
  // Interpolate boolean values with thresholding at 0.5, since these are binary values
@@ -24686,6 +24696,7 @@ begin
   end; 
 
  end;
+
 end;
 
 procedure TpvScene3D.TGroup.TInstance.SetModelMatrix(const aModelMatrix:TpvMatrix4x4);
