@@ -2647,6 +2647,7 @@ type EpvScene3D=class(Exception);
                      fLastAnimationStates:TpvScene3D.TGroup.TInstance.TAnimationStates;
                      fAnimationStates:TpvScene3D.TGroup.TInstance.TAnimationStates;
                      fPointerAnimationStates:TpvScene3D.TGroup.TInstance.TPAnimationStates;
+                     fUseAnimationStates:boolean;
                      fNodes:TpvScene3D.TGroup.TInstance.TNodes;
                      fSkins:TpvScene3D.TGroup.TInstance.TSkins;
                      fScenes:TpvScene3D.TGroup.TInstance.TScenes;
@@ -2820,6 +2821,7 @@ type EpvScene3D=class(Exception);
                      property Animations[const aIndex:TPasGLTFSizeInt]:TpvScene3D.TGroup.TInstance.TAnimation read GetAutomation;
                     public
                      property AnimationStates:TpvScene3D.TGroup.TInstance.TPAnimationStates read fPointerAnimationStates;
+                     property UseAnimationStates:boolean read fUseAnimationStates write fUseAnimationStates;
                     published
                      property OnNodeMatrixPre:TOnNodeMatrix read fOnNodeMatrixPre write fOnNodeMatrixPre;
                      property OnNodeMatrixPost:TOnNodeMatrix read fOnNodeMatrixPost write fOnNodeMatrixPost;
@@ -20519,6 +20521,8 @@ begin
  fAnimationStates:=nil;
  fPointerAnimationStates:=nil;
 
+ fUseAnimationStates:=false;
+
  SetLength(fLastAnimationStates,length(fAnimations));
  SetLength(fAnimationStates,length(fAnimations));
  SetLength(fPointerAnimationStates,length(fAnimations));
@@ -24625,7 +24629,7 @@ end;
 
 procedure TpvScene3D.TGroup.TInstance.StoreAnimationStates;
 begin
- if length(fAnimationStates)>0 then begin
+ if fUseAnimationStates and (length(fAnimationStates)>0) then begin
   Move(fAnimationStates[0],fLastAnimationStates[0],SizeOf(TpvScene3D.TGroup.TInstance.TAnimationState)*length(fAnimationStates));
  end;
 end;
@@ -24638,83 +24642,87 @@ var Index:TpvSizeInt;
     LastAnimationState,AnimationState:TpvScene3D.TGroup.TInstance.PAnimationState;
 begin
  
- // Clamp alpha
- if aAlpha<0.0 then begin
-  Alpha:=0.0;
- end else if aAlpha>1.0 then begin
-  Alpha:=1.0;
- end else begin
-  Alpha:=aAlpha;
- end;
+ if fUseAnimationStates then begin
  
- // Calculate inverse alpha
- InvAlpha:=1.0-Alpha;
- 
- // Interpolate all animation states
- for Index:=0 to length(fAnimationStates)-1 do begin
- 
-  LastAnimationState:=@fLastAnimationStates[Index];
- 
-  AnimationState:=@fAnimationStates[Index];
- 
-  // 0 is "No animation" (-1 at group level, since 0 is the first animation in the TGroup instance, thus the -1 offset)
-  if Index>0 then begin
-   GroupAnimation:=fGroup.fAnimations[Index-1];
+  // Clamp alpha
+  if aAlpha<0.0 then begin
+   Alpha:=0.0;
+  end else if aAlpha>1.0 then begin
+   Alpha:=1.0;
   end else begin
-   GroupAnimation:=nil;
+   Alpha:=aAlpha;
   end;
- 
-  GroupInstanceAnimation:=fAnimations[Index];
- 
-  // Interpolate float values
-  GroupInstanceAnimation.fFactor:=(LastAnimationState^.fFactor*InvAlpha)+(AnimationState^.fFactor*Alpha);
-  GroupInstanceAnimation.fTime:=(LastAnimationState^.fTime*InvAlpha)+(AnimationState^.fTime*Alpha);
-  GroupInstanceAnimation.fShadowTime:=(LastAnimationState^.fShadowTime*InvAlpha)+(AnimationState^.fShadowTime*Alpha);
+  
+  // Calculate inverse alpha
+  InvAlpha:=1.0-Alpha;
+  
+  // Interpolate all animation states
+  for Index:=0 to length(fAnimationStates)-1 do begin
+  
+   LastAnimationState:=@fLastAnimationStates[Index];
+  
+   AnimationState:=@fAnimationStates[Index];
+  
+   // 0 is "No animation" (-1 at group level, since 0 is the first animation in the TGroup instance, thus the -1 offset)
+   if Index>0 then begin
+    GroupAnimation:=fGroup.fAnimations[Index-1];
+   end else begin
+    GroupAnimation:=nil;
+   end;
+  
+   GroupInstanceAnimation:=fAnimations[Index];
+  
+   // Interpolate float values
+   GroupInstanceAnimation.fFactor:=(LastAnimationState^.fFactor*InvAlpha)+(AnimationState^.fFactor*Alpha);
+   GroupInstanceAnimation.fTime:=(LastAnimationState^.fTime*InvAlpha)+(AnimationState^.fTime*Alpha);
+   GroupInstanceAnimation.fShadowTime:=(LastAnimationState^.fShadowTime*InvAlpha)+(AnimationState^.fShadowTime*Alpha);
 
-  if assigned(GroupAnimation) then begin
+   if assigned(GroupAnimation) then begin
 
-   // Wrap times
-   if aWrapping then begin
-    if (GroupInstanceAnimation.fTime<GroupAnimation.fAnimationBeginTime) or (GroupInstanceAnimation.fTime>GroupAnimation.fAnimationEndTime) then begin
-     AnimationLength:=GroupAnimation.fAnimationEndTime-GroupAnimation.fAnimationBeginTime;
-     GroupInstanceAnimation.fTime:=GroupAnimation.fAnimationBeginTime+(frac((GroupInstanceAnimation.fTime-GroupAnimation.fAnimationBeginTime)/AnimationLength)*AnimationLength);
+    // Wrap times
+    if aWrapping then begin
+     if (GroupInstanceAnimation.fTime<GroupAnimation.fAnimationBeginTime) or (GroupInstanceAnimation.fTime>GroupAnimation.fAnimationEndTime) then begin
+      AnimationLength:=GroupAnimation.fAnimationEndTime-GroupAnimation.fAnimationBeginTime;
+      GroupInstanceAnimation.fTime:=GroupAnimation.fAnimationBeginTime+(frac((GroupInstanceAnimation.fTime-GroupAnimation.fAnimationBeginTime)/AnimationLength)*AnimationLength);
+     end;
+     if (GroupInstanceAnimation.fShadowTime<GroupAnimation.fAnimationBeginTime) or (GroupInstanceAnimation.fShadowTime>GroupAnimation.fAnimationEndTime) then begin
+      AnimationLength:=GroupAnimation.fAnimationEndTime-GroupAnimation.fAnimationBeginTime;
+      GroupInstanceAnimation.fShadowTime:=GroupAnimation.fAnimationBeginTime+(frac((GroupInstanceAnimation.fShadowTime-GroupAnimation.fAnimationBeginTime)/AnimationLength)*AnimationLength);
+     end;
     end;
-    if (GroupInstanceAnimation.fShadowTime<GroupAnimation.fAnimationBeginTime) or (GroupInstanceAnimation.fShadowTime>GroupAnimation.fAnimationEndTime) then begin
-     AnimationLength:=GroupAnimation.fAnimationEndTime-GroupAnimation.fAnimationBeginTime;
-     GroupInstanceAnimation.fShadowTime:=GroupAnimation.fAnimationBeginTime+(frac((GroupInstanceAnimation.fShadowTime-GroupAnimation.fAnimationBeginTime)/AnimationLength)*AnimationLength);
+
+    // Clamp times
+    if aClamping then begin
+     if GroupInstanceAnimation.fTime<GroupAnimation.fAnimationBeginTime then begin
+      GroupInstanceAnimation.fTime:=GroupAnimation.fAnimationBeginTime;
+     end else if GroupInstanceAnimation.fTime>GroupAnimation.fAnimationEndTime then begin
+      GroupInstanceAnimation.fTime:=GroupAnimation.fAnimationEndTime;
+     end;
+     if GroupInstanceAnimation.fShadowTime<GroupAnimation.fAnimationBeginTime then begin
+      GroupInstanceAnimation.fShadowTime:=GroupAnimation.fAnimationBeginTime;
+     end else if GroupInstanceAnimation.fShadowTime>GroupAnimation.fAnimationEndTime then begin
+      GroupInstanceAnimation.fShadowTime:=GroupAnimation.fAnimationEndTime;
+     end;
     end;
+
+   end else begin
+
+    // "No animation" has no animation begin and end times, so just reset the times to zero 
+    GroupInstanceAnimation.fTime:=0.0;
+    GroupInstanceAnimation.fShadowTime:=0.0;
+
    end;
 
-   // Clamp times
-   if aClamping then begin
-    if GroupInstanceAnimation.fTime<GroupAnimation.fAnimationBeginTime then begin
-     GroupInstanceAnimation.fTime:=GroupAnimation.fAnimationBeginTime;
-    end else if GroupInstanceAnimation.fTime>GroupAnimation.fAnimationEndTime then begin
-     GroupInstanceAnimation.fTime:=GroupAnimation.fAnimationEndTime;
-    end;
-    if GroupInstanceAnimation.fShadowTime<GroupAnimation.fAnimationBeginTime then begin
-     GroupInstanceAnimation.fShadowTime:=GroupAnimation.fAnimationBeginTime;
-    end else if GroupInstanceAnimation.fShadowTime>GroupAnimation.fAnimationEndTime then begin
-     GroupInstanceAnimation.fShadowTime:=GroupAnimation.fAnimationEndTime;
-    end;
-   end;
-
-  end else begin
-
-   // "No animation" has no animation begin and end times, so just reset the times to zero 
-   GroupInstanceAnimation.fTime:=0.0;
-   GroupInstanceAnimation.fShadowTime:=0.0;
+  // Interpolate boolean values with thresholding at 0.5, since these are binary values
+   if Alpha>=0.5 then begin
+    GroupInstanceAnimation.fAdditive:=AnimationState^.fAdditive;
+    GroupInstanceAnimation.fComplete:=AnimationState^.fComplete;
+   end else begin
+    GroupInstanceAnimation.fAdditive:=LastAnimationState^.fAdditive;
+    GroupInstanceAnimation.fComplete:=LastAnimationState^.fComplete;
+   end; 
 
   end;
-
- // Interpolate boolean values with thresholding at 0.5, since these are binary values
-  if Alpha>=0.5 then begin
-   GroupInstanceAnimation.fAdditive:=AnimationState^.fAdditive;
-   GroupInstanceAnimation.fComplete:=AnimationState^.fComplete;
-  end else begin
-   GroupInstanceAnimation.fAdditive:=LastAnimationState^.fAdditive;
-   GroupInstanceAnimation.fComplete:=LastAnimationState^.fComplete;
-  end; 
 
  end;
 
