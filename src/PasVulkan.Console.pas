@@ -229,6 +229,10 @@ type { TpvConsole }
        function GetBuffer(const aColumn,aRow:TpvSizeInt;out aCodePoint:TpvUInt32;out aForegroundColor,aBackgroundColor:TpvSizeInt;out aBlink:Boolean):boolean;
        procedure Draw(const aDeltaTime:TpvDouble);
        function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+       procedure LoadHistoryFromStream(const aStream:TStream);
+       procedure LoadHistoryFromFileName(const aFileName:String);
+       procedure SaveHistoryToStream(const aStream:TStream);
+       procedure SaveHistoryToFileName(const aFileName:String);
       public
        property CharWidth:TpvSizeInt read fCharWidth write fCharWidth;
        property CharHeight:TpvSizeInt read fCharHeight write fCharHeight;
@@ -1412,6 +1416,67 @@ begin
   end;
   else begin
   end;
+ end;
+end;
+
+procedure TpvConsole.LoadHistoryFromStream(const aStream:TStream);
+var i,l:TPUCUInt32;
+    StringList:TStringList;
+    s:TpvUTF8String;
+begin
+ StringList:=TStringList.Create;
+ try
+  StringList.LoadFromStream(aStream);
+  l:=StringList.Count;
+  fHistory.Clear;
+  for i:=0 to l-1 do begin
+   s:=StringList[i];
+   fHistory.Add(s);
+  end;
+ finally
+  FreeAndNil(StringList);
+ end;
+end;
+
+procedure TpvConsole.LoadHistoryFromFileName(const aFileName:String);
+var MemoryStream:TMemoryStream;
+begin
+ MemoryStream:=TMemoryStream.Create;
+ try
+  MemoryStream.LoadFromFile(aFileName);
+  MemoryStream.Seek(0,soBeginning);
+  LoadHistoryFromStream(MemoryStream);
+ finally
+  FreeAndNil(MemoryStream);
+ end;
+end; 
+
+procedure TpvConsole.SaveHistoryToStream(const aStream:TStream);
+var i,l:TPUCUInt32;
+    StringList:TStringList;
+begin
+ StringList:=TStringList.Create;
+ try
+  l:=fHistory.Count;
+  for i:=0 to l-1 do begin
+   StringList.Add(fHistory.Items[i]);
+  end;
+  StringList.SaveToStream(aStream);
+ finally
+  FreeAndNil(StringList);
+ end;
+end;
+
+procedure TpvConsole.SaveHistoryToFileName(const aFileName:String);
+var MemoryStream:TMemoryStream;
+begin
+ MemoryStream:=TMemoryStream.Create;
+ try
+  SaveHistoryToStream(MemoryStream);
+  MemoryStream.Seek(0,soBeginning);
+  MemoryStream.SaveToFile(aFileName);
+ finally
+  FreeAndNil(MemoryStream);
  end;
 end;
 
