@@ -2942,6 +2942,9 @@ type EpvScene3D=class(Exception);
               procedure Update(const aInFlightFrameIndex:TpvSizeInt);
               procedure PrepareFrame(const aInFlightFrameIndex:TpvSizeInt);
               procedure UploadFrame(const aInFlightFrameIndex:TpvSizeInt);
+             public 
+              procedure StoreAnimationStates;
+              procedure InterpolateAnimationStates(const aAlpha:TpvDouble;const aWrapping:Boolean=true;const aClamping:Boolean=true);
              public
               procedure CleanUp;
               procedure Finish;
@@ -19191,6 +19194,22 @@ begin
  end;
 end;
 
+procedure TpvScene3D.TGroup.StoreAnimationStates;
+var Instance:TpvScene3D.TGroup.TInstance;
+begin
+ for Instance in fInstances do begin
+  Instance.StoreAnimationStates;
+ end;
+end;
+
+procedure TpvScene3D.TGroup.InterpolateAnimationStates(const aAlpha:TpvDouble;const aWrapping:Boolean;const aClamping:Boolean);
+var Instance:TpvScene3D.TGroup.TInstance;
+begin
+ for Instance in fInstances do begin
+  Instance.InterpolateAnimationStates(aAlpha,aWrapping,aClamping);
+ end;
+end;
+
 procedure TpvScene3D.TGroup.UpdateCachedVertices(const aInFlightFrameIndex:TpvSizeInt);
 var Instance:TpvScene3D.TGroup.TInstance;
 begin
@@ -24609,7 +24628,7 @@ begin
  end;
 end;
 
-procedure TpvScene3D.TGroup.TInstance.InterpolateAnimationStates(const aAlpha:TpvDouble;const aWrapping:Boolean=true;const aClamping:Boolean=true);
+procedure TpvScene3D.TGroup.TInstance.InterpolateAnimationStates(const aAlpha:TpvDouble;const aWrapping:Boolean;const aClamping:Boolean);
 var Index:TpvSizeInt;
     Alpha,InvAlpha,AnimationLength:TpvDouble;
     GroupAnimation:TpvScene3D.TGroup.TAnimation;
