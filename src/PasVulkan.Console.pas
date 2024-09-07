@@ -1431,6 +1431,7 @@ begin
   fHistory.Clear;
   for i:=0 to l-1 do begin
    s:=StringList[i];
+   s:=StringReplace(s,#127,#10,[rfReplaceAll]);
    fHistory.Add(s);
   end;
  finally
@@ -1453,13 +1454,18 @@ end;
 
 procedure TpvConsole.SaveHistoryToStream(const aStream:TStream);
 var i,l:TPUCUInt32;
+    s:TpvUTF8String;
     StringList:TStringList;
 begin
  StringList:=TStringList.Create;
  try
   l:=fHistory.Count;
   for i:=0 to l-1 do begin
-   StringList.Add(fHistory.Items[i]);
+   s:=History.Items[i];
+   s:=StringReplace(s,#13#10,#10,[rfReplaceAll]);
+   s:=StringReplace(s,#13,#10,[rfReplaceAll]);
+   s:=StringReplace(s,#10,#127,[rfReplaceAll]);
+   StringList.Add(s);
   end;
   StringList.SaveToStream(aStream);
  finally
