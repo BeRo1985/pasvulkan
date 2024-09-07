@@ -251,7 +251,10 @@ type { TpvConsole }
        property OnExecute:TOnExecute read fOnExecute write fOnExecute;
        property OnSetDrawColor:TOnSetDrawColor read fOnSetDrawColor write fOnSetDrawColor;
        property OnDrawRect:TOnDrawRect read fOnDrawRect write fOnDrawRect;
-       property OnDrawCodePoint:TOnDrawCodePoint read fOnDrawCodePoint write fOnDrawCodePoint; 
+       property OnDrawCodePoint:TOnDrawCodePoint read fOnDrawCodePoint write fOnDrawCodePoint;
+      public
+       property History:TUTF8StringList read fHistory;
+       property HistoryIndex:TpvSizeInt read fHistoryIndex write fHistoryIndex;
      end;
 
 implementation
