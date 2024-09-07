@@ -2199,6 +2199,24 @@ type EpvScene3D=class(Exception);
                             property Complete:LongBool read fComplete write fComplete;
                           end;
                           TAnimations=array of TpvScene3D.TGroup.TInstance.TAnimation;
+                          { TAnimationState }
+                          TAnimationState=record
+                           private
+                            fFactor:TpvFloat;
+                            fTime:TpvDouble;
+                            fShadowTime:TpvDouble;
+                            fAdditive:LongBool;
+                            fComplete:LongBool;
+                           public
+                            property Factor:TpvFloat read fFactor write fFactor;
+                            property Time:TpvDouble read fTime write fTime;
+                            property ShadowTime:TpvDouble read fShadowTime write fShadowTime;
+                            property Additive:LongBool read fAdditive write fAdditive;
+                            property Complete:LongBool read fComplete write fComplete;
+                          end;
+                          PAnimationState=^TAnimationState;
+                          TAnimationStates=array of TAnimationState;
+                          TPAnimationStates=array of PAnimationState;
                           { TNode }
                           TNode=class
                            public
@@ -2626,6 +2644,9 @@ type EpvScene3D=class(Exception);
                      fDuplicatedMaterials:TpvScene3D.TMaterials;
                      fMaterials:TpvScene3D.TGroup.TInstance.TMaterials;
                      fAnimations:TpvScene3D.TGroup.TInstance.TAnimations;
+                     fLastAnimationStates:TpvScene3D.TGroup.TInstance.TAnimationStates;
+                     fAnimationStates:TpvScene3D.TGroup.TInstance.TAnimationStates;
+                     fPointerAnimationStates:TpvScene3D.TGroup.TInstance.TPAnimationStates;
                      fNodes:TpvScene3D.TGroup.TInstance.TNodes;
                      fSkins:TpvScene3D.TGroup.TInstance.TSkins;
                      fScenes:TpvScene3D.TGroup.TInstance.TScenes;
@@ -2794,6 +2815,8 @@ type EpvScene3D=class(Exception);
                      property BoundingSpheres:TBoundingSpheres read fBoundingSpheres;
                     public
                      property Animations[const aIndex:TPasGLTFSizeInt]:TpvScene3D.TGroup.TInstance.TAnimation read GetAutomation;
+                    public
+                     property AnimationStates:TpvScene3D.TGroup.TInstance.TPAnimationStates read fPointerAnimationStates;
                     published
                      property OnNodeMatrixPre:TOnNodeMatrix read fOnNodeMatrixPre write fOnNodeMatrixPre;
                      property OnNodeMatrixPost:TOnNodeMatrix read fOnNodeMatrixPost write fOnNodeMatrixPost;
@@ -20468,6 +20491,21 @@ begin
 
  fAnimations[0].Factor:=1.0;
 
+ fLastAnimationStates:=nil;
+ fAnimationStates:=nil;
+ fPointerAnimationStates:=nil;
+
+ SetLength(fLastAnimationStates,length(fAnimations));
+ SetLength(fAnimationStates,length(fAnimations));
+ SetLength(fPointerAnimationStates,length(fAnimations));
+
+ FillChar(fLastAnimationStates[0],SizeOf(TpvScene3D.TGroup.TInstance.TAnimationState)*length(fAnimations),#0);
+ FillChar(fAnimationStates[0],SizeOf(TpvScene3D.TGroup.TInstance.TAnimationState)*length(fAnimations),#0);
+
+ for Index:=0 to length(fAnimations)-1 do begin
+  fPointerAnimationStates[Index]:=@fAnimationStates[Index];
+ end;
+
  fNodeMatrices:=nil;
 
  fMorphTargetVertexWeights:=nil;
@@ -20887,6 +20925,12 @@ begin
  fSkins:=nil;
 
  fMaterialMap:=nil;
+
+ fLastAnimationStates:=nil;
+
+ fAnimationStates:=nil;
+
+ fPointerAnimationStates:=nil;
 
  fAnimations:=nil;
 
