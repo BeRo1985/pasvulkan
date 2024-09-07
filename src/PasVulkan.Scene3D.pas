@@ -3519,6 +3519,8 @@ type EpvScene3D=class(Exception);
        procedure DumpMemoryUsage(const aStringList:TStringList);
        procedure Upload;
        procedure Unload;
+       procedure StoreAnimationStates;
+       procedure InterpolateAnimationStates(const aAlpha:TpvDouble;const aWrapping:Boolean=true;const aClamping:Boolean=true);
        procedure ResetSurface;
        procedure ResetFrame(const aInFlightFrameIndex:TpvSizeInt);
        procedure Check(const aInFlightFrameIndex:TpvSizeInt);
@@ -27765,6 +27767,22 @@ begin
 
  end;
 
+end;
+
+procedure TpvScene3D.StoreAnimationStates;
+var Group:TGroup;
+begin
+ for Group in fGroups do begin
+  Group.StoreAnimationStates;
+ end;
+end;
+
+procedure TpvScene3D.InterpolateAnimationStates(const aAlpha:TpvDouble;const aWrapping:Boolean;const aClamping:Boolean);
+var Group:TGroup;
+begin
+ for Group in fGroups do begin
+  Group.InterpolateAnimationStates(aAlpha,aWrapping,aClamping);
+ end;
 end;
 
 procedure TpvScene3D.ResetSurface;
