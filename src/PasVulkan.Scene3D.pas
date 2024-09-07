@@ -2712,7 +2712,8 @@ type EpvScene3D=class(Exception);
                      fVulkanMorphTargetVertexWeightsBufferCount:TpvInt64;
                      fCacheVerticesNodeDirtyBitmap:array of TpvUInt32;
                      fRaytracingMask:TpvUInt8;
-                     function GetAutomation(const aIndex:TPasGLTFSizeInt):TpvScene3D.TGroup.TInstance.TAnimation;
+                     function GetAnimation(const aIndex:TPasGLTFSizeInt):TpvScene3D.TGroup.TInstance.TAnimation;
+                     function GetAnimationState(const aIndex:TPasGLTFSizeInt):TpvScene3D.TGroup.TInstance.PAnimationState;
                      procedure SetScene(const aScene:TpvSizeInt);
                      function GetScene:TpvScene3D.TGroup.TScene;
                      procedure SetModelMatrix(const aModelMatrix:TpvMatrix4x4);
@@ -2818,9 +2819,9 @@ type EpvScene3D=class(Exception);
                      property BoundingBox:TpvAABB read fBoundingBox;
                      property BoundingSpheres:TBoundingSpheres read fBoundingSpheres;
                     public
-                     property Animations[const aIndex:TPasGLTFSizeInt]:TpvScene3D.TGroup.TInstance.TAnimation read GetAutomation;
+                     property Animations[const aIndex:TPasGLTFSizeInt]:TpvScene3D.TGroup.TInstance.TAnimation read GetAnimation;
                     public
-                     property AnimationStates:TpvScene3D.TGroup.TInstance.TPAnimationStates read fPointerAnimationStates;
+                     property AnimationStates[const aIndex:TPasGLTFSizeInt]:TpvScene3D.TGroup.TInstance.PAnimationState read GetAnimationState;
                      property UseAnimationStates:boolean read fUseAnimationStates write fUseAnimationStates;
                     published
                      property OnNodeMatrixPre:TOnNodeMatrix read fOnNodeMatrixPre write fOnNodeMatrixPre;
@@ -21175,9 +21176,14 @@ begin
 
 end;
 
-function TpvScene3D.TGroup.TInstance.GetAutomation(const aIndex:TPasGLTFSizeInt):TpvScene3D.TGroup.TInstance.TAnimation;
+function TpvScene3D.TGroup.TInstance.GetAnimation(const aIndex:TPasGLTFSizeInt):TpvScene3D.TGroup.TInstance.TAnimation;
 begin
  result:=fAnimations[aIndex+1];
+end;
+
+function TpvScene3D.TGroup.TInstance.GetAnimationState(const aIndex:TPasGLTFSizeInt):TpvScene3D.TGroup.TInstance.PAnimationState;
+begin
+ result:=@fAnimationStates[aIndex+1];
 end;
 
 procedure TpvScene3D.TGroup.TInstance.SetScene(const aScene:TpvSizeInt);
