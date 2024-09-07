@@ -24700,8 +24700,8 @@ begin
   end else begin
 
    // "No animation" has no animation begin and end times, so just reset the times to zero 
-   fGroupInstanceAnimation.fTime:=0.0;
-   fGroupInstanceAnimation.fShadowTime:=0.0;
+   GroupInstanceAnimation.fTime:=0.0;
+   GroupInstanceAnimation.fShadowTime:=0.0;
 
   end;
 
