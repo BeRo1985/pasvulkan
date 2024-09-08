@@ -1442,6 +1442,7 @@ begin
    s:=StringReplace(s,#127,#10,[rfReplaceAll]);
    fHistory.Add(s);
   end;
+  fHistoryIndex:=fHistory.Count;
  finally
   FreeAndNil(StringList);
  end;
