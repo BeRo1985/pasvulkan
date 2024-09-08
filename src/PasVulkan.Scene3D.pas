@@ -24655,6 +24655,7 @@ var Index:TpvSizeInt;
     GroupAnimation:TpvScene3D.TGroup.TAnimation;
     GroupInstanceAnimation:TpvScene3D.TGroup.TInstance.TAnimation;
     LastAnimationState,AnimationState:TpvScene3D.TGroup.TInstance.PAnimationState;
+    Time:TpvDouble;
 begin
  
  if fUseAnimationStates then begin
@@ -24694,36 +24695,41 @@ begin
 
    if assigned(GroupAnimation) then begin
 
-    if TpvScene3D.TGroup.TInstance.TAnimationState.TAnimationStateFlag.Relative in AnimationState^.fFlags then begin
-    end else begin
+    AnimationLength:=GroupAnimation.fAnimationEndTime-GroupAnimation.fAnimationBeginTime;
 
-     // Wrap times
-     if TpvScene3D.TGroup.TInstance.TAnimationState.TAnimationStateFlag.Wrapping in AnimationState^.fFlags then begin
-      if (GroupInstanceAnimation.fTime<GroupAnimation.fAnimationBeginTime) or (GroupInstanceAnimation.fTime>GroupAnimation.fAnimationEndTime) then begin
-       AnimationLength:=GroupAnimation.fAnimationEndTime-GroupAnimation.fAnimationBeginTime;
-       GroupInstanceAnimation.fTime:=GroupAnimation.fAnimationBeginTime+(frac((GroupInstanceAnimation.fTime-GroupAnimation.fAnimationBeginTime)/AnimationLength)*AnimationLength);
-      end;
-      if (GroupInstanceAnimation.fShadowTime<GroupAnimation.fAnimationBeginTime) or (GroupInstanceAnimation.fShadowTime>GroupAnimation.fAnimationEndTime) then begin
-       AnimationLength:=GroupAnimation.fAnimationEndTime-GroupAnimation.fAnimationBeginTime;
-       GroupInstanceAnimation.fShadowTime:=GroupAnimation.fAnimationBeginTime+(frac((GroupInstanceAnimation.fShadowTime-GroupAnimation.fAnimationBeginTime)/AnimationLength)*AnimationLength);
-      end;
-     end;
-
-     // Clamp times
-     if TpvScene3D.TGroup.TInstance.TAnimationState.TAnimationStateFlag.Clamping in AnimationState^.fFlags then begin
-      if GroupInstanceAnimation.fTime<GroupAnimation.fAnimationBeginTime then begin
-       GroupInstanceAnimation.fTime:=GroupAnimation.fAnimationBeginTime;
-      end else if GroupInstanceAnimation.fTime>GroupAnimation.fAnimationEndTime then begin
-       GroupInstanceAnimation.fTime:=GroupAnimation.fAnimationEndTime;
-      end;
-      if GroupInstanceAnimation.fShadowTime<GroupAnimation.fAnimationBeginTime then begin
-       GroupInstanceAnimation.fShadowTime:=GroupAnimation.fAnimationBeginTime;
-      end else if GroupInstanceAnimation.fShadowTime>GroupAnimation.fAnimationEndTime then begin
-       GroupInstanceAnimation.fShadowTime:=GroupAnimation.fAnimationEndTime;
-      end;
-     end;
-
+    Time:=GroupInstanceAnimation.fTime;
+    if not (TpvScene3D.TGroup.TInstance.TAnimationState.TAnimationStateFlag.Relative in AnimationState^.fFlags) then begin
+     Time:=Time+GroupAnimation.fAnimationBeginTime;
     end;
+    if (TpvScene3D.TGroup.TInstance.TAnimationState.TAnimationStateFlag.Wrapping in AnimationState^.fFlags) and
+       (AnimationLength>0.0) and ((Time<GroupAnimation.fAnimationBeginTime) or (Time>GroupAnimation.fAnimationEndTime)) then begin
+     Time:=GroupAnimation.fAnimationBeginTime+(frac((Time-GroupAnimation.fAnimationBeginTime)/AnimationLength)*AnimationLength);
+    end;
+    if TpvScene3D.TGroup.TInstance.TAnimationState.TAnimationStateFlag.Clamping in AnimationState^.fFlags then begin
+     if Time<GroupAnimation.fAnimationBeginTime then begin
+      Time:=GroupAnimation.fAnimationBeginTime;
+     end else if Time>GroupAnimation.fAnimationEndTime then begin
+      Time:=GroupAnimation.fAnimationEndTime;
+     end;
+    end;
+    GroupInstanceAnimation.fTime:=Time;
+
+    Time:=GroupInstanceAnimation.fShadowTime;
+    if not (TpvScene3D.TGroup.TInstance.TAnimationState.TAnimationStateFlag.Relative in AnimationState^.fFlags) then begin
+     Time:=Time+GroupAnimation.fAnimationBeginTime;
+    end;
+    if (TpvScene3D.TGroup.TInstance.TAnimationState.TAnimationStateFlag.Wrapping in AnimationState^.fFlags) and
+       (AnimationLength>0.0) and ((Time<GroupAnimation.fAnimationBeginTime) or (Time>GroupAnimation.fAnimationEndTime)) then begin
+     Time:=GroupAnimation.fAnimationBeginTime+(frac((Time-GroupAnimation.fAnimationBeginTime)/AnimationLength)*AnimationLength);
+    end;
+    if TpvScene3D.TGroup.TInstance.TAnimationState.TAnimationStateFlag.Clamping in AnimationState^.fFlags then begin
+     if Time<GroupAnimation.fAnimationBeginTime then begin
+      Time:=GroupAnimation.fAnimationBeginTime;
+     end else if Time>GroupAnimation.fAnimationEndTime then begin
+      Time:=GroupAnimation.fAnimationEndTime;
+     end;
+    end;
+    GroupInstanceAnimation.fShadowTime:=Time;
 
    end else begin
 
