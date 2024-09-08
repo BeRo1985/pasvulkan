@@ -180,6 +180,7 @@ type { TpvConsole }
        fOnSetDrawColor:TOnSetDrawColor;
        fOnDrawRect:TOnDrawRect;
        fOnDrawCodePoint:TOnDrawCodePoint;
+       fHistoryFileName:String;
       public
        constructor Create;
        destructor Destroy; override;
@@ -233,6 +234,7 @@ type { TpvConsole }
        procedure LoadHistoryFromFileName(const aFileName:String);
        procedure SaveHistoryToStream(const aStream:TStream);
        procedure SaveHistoryToFileName(const aFileName:String);
+       procedure AppendToHistoryFileName(const aFileName:String;const aLine:TpvUTF8String);
       public
        property CharWidth:TpvSizeInt read fCharWidth write fCharWidth;
        property CharHeight:TpvSizeInt read fCharHeight write fCharHeight;
@@ -259,6 +261,7 @@ type { TpvConsole }
       public
        property History:TUTF8StringList read fHistory;
        property HistoryIndex:TpvSizeInt read fHistoryIndex write fHistoryIndex;
+       property HistoryFileName:String read fHistoryFileName write fHistoryFileName;
      end;
 
 implementation
@@ -309,6 +312,8 @@ begin
  fLines:=TUTF8StringList.Create;
 
  fHistory:=TUTF8StringList.Create;
+
+ fHistoryFileName:='';
 
  fLine:='';
 
@@ -900,6 +905,9 @@ begin
  if OK then begin
   fHistory.Add(fLine);
   fHistoryIndex:=fHistory.Count;
+  if length(fHistoryFileName)>0 then begin
+   AppendToHistoryFileName(fHistoryFileName,fLine);
+  end;
  end;
  WriteLine(#0#15+'>'+fLine);
  if OK and assigned(fOnExecute) then begin
@@ -1484,6 +1492,35 @@ begin
  finally
   FreeAndNil(MemoryStream);
  end;
+end;
+
+procedure TpvConsole.AppendToHistoryFileName(const aFileName:String;const aLine:TpvUTF8String);
+var HistoryFile:File;
+    Size:TpvInt64;
+    s:TpvUTF8String;
+begin
+ AssignFile(HistoryFile,aFileName);
+ if FileExists(aFileName) then begin
+  {$i-}Reset(HistoryFile,1);{$i+}
+  if IOResult<>0 then begin
+   CloseFile(HistoryFile);
+   exit;
+  end;
+  Size:=FileSize(HistoryFile);
+  Seek(HistoryFile,Size);
+ end else begin
+  {$i-}Rewrite(HistoryFile,1);{$i+}
+  if IOResult<>0 then begin
+   CloseFile(HistoryFile);
+   exit;
+  end;
+ end;
+ s:=StringReplace(aLine,#13#10,#10,[rfReplaceAll]);
+ s:=StringReplace(s,#13,#10,[rfReplaceAll]);
+ s:=StringReplace(s,#10,#127,[rfReplaceAll]);
+ s:=aLine+{$ifdef Windows}#13#10{$else}#10{$endif};
+ BlockWrite(HistoryFile,s[1],length(s));
+ CloseFile(HistoryFile);
 end;
 
 end.
