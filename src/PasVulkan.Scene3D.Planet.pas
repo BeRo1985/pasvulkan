@@ -15525,7 +15525,7 @@ begin
  end;
 
  for Index:=0 to fData.fPhysicsMeshIndices.Count-1 do begin
-  IndexBuffer:=fData.fPhysicsMeshIndices.ItemArray[fData.fPlanet.PhysicsMeshLODOffsets[0]+Index];
+  IndexBuffer:=fTiledPhysicsMeshIndices.ItemArray[fData.fPlanet.PhysicsMeshLODOffsets[0]+Index];
   aStream.WriteBuffer(IndexBuffer,SizeOf(TpvUInt32));
  end;
  
@@ -15565,9 +15565,9 @@ begin
  end;
  Index:=0;
  while (Index+2)<fData.fPlanet.PhysicsMeshLODCounts[0] do begin
-  WriteLine('f '+IntToStr(fData.fPhysicsMeshIndices.ItemArray[fData.fPlanet.PhysicsMeshLODOffsets[0]+Index+0]+1)+'//'+IntToStr(fData.fPhysicsMeshIndices.ItemArray[fData.fPlanet.PhysicsMeshLODOffsets[0]+Index+0]+1)+' '+
-                 IntToStr(fData.fPhysicsMeshIndices.ItemArray[fData.fPlanet.PhysicsMeshLODOffsets[0]+Index+1]+1)+'//'+IntToStr(fData.fPhysicsMeshIndices.ItemArray[fData.fPlanet.PhysicsMeshLODOffsets[0]+Index+1]+1)+' '+
-                 IntToStr(fData.fPhysicsMeshIndices.ItemArray[fData.fPlanet.PhysicsMeshLODOffsets[0]+Index+2]+1)+'//'+IntToStr(fData.fPhysicsMeshIndices.ItemArray[fData.fPlanet.PhysicsMeshLODOffsets[0]+Index+2]+1));
+  WriteLine('f '+IntToStr(fTiledPhysicsMeshIndices.ItemArray[fData.fPlanet.PhysicsMeshLODOffsets[0]+Index+0]+1)+'//'+IntToStr(fTiledPhysicsMeshIndices.ItemArray[fData.fPlanet.PhysicsMeshLODOffsets[0]+Index+0]+1)+' '+
+                 IntToStr(fTiledPhysicsMeshIndices.ItemArray[fData.fPlanet.PhysicsMeshLODOffsets[0]+Index+1]+1)+'//'+IntToStr(fTiledPhysicsMeshIndices.ItemArray[fData.fPlanet.PhysicsMeshLODOffsets[0]+Index+1]+1)+' '+
+                 IntToStr(fTiledPhysicsMeshIndices.ItemArray[fData.fPlanet.PhysicsMeshLODOffsets[0]+Index+2]+1)+'//'+IntToStr(fTiledPhysicsMeshIndices.ItemArray[fData.fPlanet.PhysicsMeshLODOffsets[0]+Index+2]+1));
   inc(Index,3);
  end;
 end;
