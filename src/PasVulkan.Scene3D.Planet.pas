@@ -1554,6 +1554,8 @@ type TpvScene3DPlanets=class;
        procedure ProcessSimulation(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt);
        procedure BeginFrame(const aInFlightFrameIndex:TpvSizeInt;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil);
        procedure EndFrame(const aInFlightFrameIndex:TpvSizeInt;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil);
+       procedure ExportPhysicsMeshToBIN(const aStream:TStream); overload;
+       procedure ExportPhysicsMeshToBIN(const aFileName:TpvUTF8String); overload;
        procedure ExportPhysicsMeshToOBJ(const aStream:TStream); overload;
        procedure ExportPhysicsMeshToOBJ(const aFileName:TpvUTF8String); overload;
        function GetPhysicsVertex(const aX,aY:TpvInt32):TpvScene3DPlanet.PMeshVertex;
@@ -15502,6 +15504,42 @@ begin
 
  end;
 
+end;
+
+procedure TpvScene3DPlanet.ExportPhysicsMeshToBIN(const aStream:TStream);
+var CountVertices,CountIndices,IndexBuffer:TpvUInt32;
+    Index:TpvSizeInt;
+    Vertex:TpvScene3DPlanet.PMeshVertex;
+begin
+
+ CountVertices:=fData.fPhysicsMeshVertices.Count;
+ Stream.WriteBuffer(CountVertices,SizeOf(TpvUInt32));
+
+ CountIndices:=fData.fPhysicsMeshIndices.Count;
+ Stream.WriteBuffer(CountIndices,SizeOf(TpvUInt32));
+
+ for Index:=0 to fData.fPhysicsMeshVertices.Count-1 do begin
+  Vertex:=@fData.fPhysicsMeshVertices.ItemArray[Index];
+  Stream.WriteBuffer(Vertex^.Position,SizeOf(TpvVector3));
+  Stream.WriteBuffer(Vertex^.OctahedralEncodedNormal,SizeOf(TpvUInt32));
+ end;
+
+ for Index:=0 to fData.fPhysicsMeshIndices.Count-1 do begin
+  IndexBuffer:=fData.fPhysicsMeshIndices.ItemArray[Index];
+  Stream.WriteBuffer(IndexBuffer,SizeOf(TpvUInt32));
+ end;
+ 
+end;
+
+procedure TpvScene3DPlanet.ExportPhysicsMeshToBIN(const aFileName:TpvUTF8String);
+var FileStream:TFileStream;
+begin
+ FileStream:=TFileStream.Create(aFileName,fmCreate);
+ try
+  ExportPhysicsMeshToBIN(FileStream);
+ finally
+  FreeAndNil(FileStream);
+ end;
 end;
 
 procedure TpvScene3DPlanet.ExportPhysicsMeshToOBJ(const aStream:TStream);
