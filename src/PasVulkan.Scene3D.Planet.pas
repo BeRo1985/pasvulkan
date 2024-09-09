@@ -15521,7 +15521,7 @@ begin
  for Index:=0 to fData.fPhysicsMeshVertices.Count-1 do begin
   Vertex:=@fData.fPhysicsMeshVertices.ItemArray[Index];
   Stream.WriteBuffer(Vertex^.Position,SizeOf(TpvVector3));
-  Stream.WriteBuffer(Vertex^.OctahedralEncodedNormal,SizeOf(TpvUInt32));
+  Stream.WriteBuffer(Vertex^.OctahedralEncodedNormal,SizeOf(TpvInt16Vector2));
  end;
 
  for Index:=0 to fData.fPhysicsMeshIndices.Count-1 do begin
