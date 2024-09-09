@@ -15513,20 +15513,20 @@ var CountVertices,CountIndices,IndexBuffer:TpvUInt32;
 begin
 
  CountVertices:=fData.fPhysicsMeshVertices.Count;
- Stream.WriteBuffer(CountVertices,SizeOf(TpvUInt32));
+ aStream.WriteBuffer(CountVertices,SizeOf(TpvUInt32));
 
- CountIndices:=fData.fPhysicsMeshIndices.Count;
- Stream.WriteBuffer(CountIndices,SizeOf(TpvUInt32));
+ CountIndices:=fData.fPlanet.PhysicsMeshLODCounts[0];
+ aStream.WriteBuffer(CountIndices,SizeOf(TpvUInt32));
 
  for Index:=0 to fData.fPhysicsMeshVertices.Count-1 do begin
   Vertex:=@fData.fPhysicsMeshVertices.ItemArray[Index];
-  Stream.WriteBuffer(Vertex^.Position,SizeOf(TpvVector3));
-  Stream.WriteBuffer(Vertex^.OctahedralEncodedNormal,SizeOf(TpvInt16Vector2));
+  aStream.WriteBuffer(Vertex^.Position,SizeOf(TpvVector3));
+  aStream.WriteBuffer(Vertex^.OctahedralEncodedNormal,SizeOf(TpvInt16Vector2));
  end;
 
  for Index:=0 to fData.fPhysicsMeshIndices.Count-1 do begin
-  IndexBuffer:=fData.fPhysicsMeshIndices.ItemArray[Index];
-  Stream.WriteBuffer(IndexBuffer,SizeOf(TpvUInt32));
+  IndexBuffer:=fData.fPhysicsMeshIndices.ItemArray[fData.fPlanet.PhysicsMeshLODOffsets[0]+Index];
+  aStream.WriteBuffer(IndexBuffer,SizeOf(TpvUInt32));
  end;
  
 end;
@@ -15564,10 +15564,10 @@ begin
   WriteLine('vn '+ConvertDoubleToString(Normal.x)+' '+ConvertDoubleToString(Normal.y)+' '+ConvertDoubleToString(Normal.z));
  end;
  Index:=0;
- while (Index+2)<fData.fPhysicsMeshIndices.Count do begin
-  WriteLine('f '+IntToStr(fData.fPhysicsMeshIndices.ItemArray[Index+0]+1)+'//'+IntToStr(fData.fPhysicsMeshIndices.ItemArray[Index+0]+1)+' '+
-                 IntToStr(fData.fPhysicsMeshIndices.ItemArray[Index+1]+1)+'//'+IntToStr(fData.fPhysicsMeshIndices.ItemArray[Index+1]+1)+' '+
-                 IntToStr(fData.fPhysicsMeshIndices.ItemArray[Index+2]+1)+'//'+IntToStr(fData.fPhysicsMeshIndices.ItemArray[Index+2]+1));
+ while (Index+2)<fData.fPlanet.PhysicsMeshLODCounts[0] do begin
+  WriteLine('f '+IntToStr(fData.fPhysicsMeshIndices.ItemArray[fData.fPlanet.PhysicsMeshLODOffsets[0]+Index+0]+1)+'//'+IntToStr(fData.fPhysicsMeshIndices.ItemArray[fData.fPlanet.PhysicsMeshLODOffsets[0]+Index+0]+1)+' '+
+                 IntToStr(fData.fPhysicsMeshIndices.ItemArray[fData.fPlanet.PhysicsMeshLODOffsets[0]+Index+1]+1)+'//'+IntToStr(fData.fPhysicsMeshIndices.ItemArray[fData.fPlanet.PhysicsMeshLODOffsets[0]+Index+1]+1)+' '+
+                 IntToStr(fData.fPhysicsMeshIndices.ItemArray[fData.fPlanet.PhysicsMeshLODOffsets[0]+Index+2]+1)+'//'+IntToStr(fData.fPhysicsMeshIndices.ItemArray[fData.fPlanet.PhysicsMeshLODOffsets[0]+Index+2]+1));
   inc(Index,3);
  end;
 end;
