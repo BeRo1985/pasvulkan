@@ -4394,9 +4394,20 @@ begin
 
     Upload(Queue,CommandBuffer,Fence);
 
+    CommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+    CommandBuffer.BeginRecording;
+
     fPlanet.fHeightMapMipMapGeneration.Execute(CommandBuffer);
     fPlanet.fNormalMapMipMapGeneration.Execute(CommandBuffer);
     fPlanet.fPhysicsDataGeneration.Execute(CommandBuffer);
+
+    CommandBuffer.EndRecording;
+    CommandBuffer.Execute(Queue,
+                          TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                          nil,
+                          nil,
+                          Fence,
+                          true);
 
     fPlanet.fData.Download(Queue,
                            CommandBuffer,
@@ -15276,11 +15287,18 @@ begin
 
    begin
 
-    fHeightMapMipMapGeneration.Execute(fVulkanComputeCommandBuffer);
+    BeginUpdate;
+    try
 
-    fNormalMapMipMapGeneration.Execute(fVulkanComputeCommandBuffer);
+     fHeightMapMipMapGeneration.Execute(fVulkanComputeCommandBuffer);
 
-    fPhysicsDataGeneration.Execute(fVulkanComputeCommandBuffer);
+     fNormalMapMipMapGeneration.Execute(fVulkanComputeCommandBuffer);
+
+     fPhysicsDataGeneration.Execute(fVulkanComputeCommandBuffer);
+
+    finally
+     EndUpdate;
+    end;
 
     fData.Download(fVulkanComputeQueue,
                    fVulkanComputeCommandBuffer,
