@@ -318,7 +318,8 @@ type TpvScene3DPlanets=class;
                                  const aCommandBuffer:TpvVulkanCommandBuffer;
                                  const aFence:TpvVulkanFence;
                                  const aTransferHeightMap:Boolean;
-                                 const aTransferGrass:Boolean);
+                                 const aTransferGrass:Boolean;
+                                 const aTransferPhysicsData:Boolean);
               procedure TransferTo(const aCommandBuffer:TpvVulkanCommandBuffer;
                                    const aInFlightFrameData:TData;
                                    const aTransferHeightMap:Boolean;
@@ -3048,7 +3049,8 @@ procedure TpvScene3DPlanet.TData.Download(const aQueue:TpvVulkanQueue;
                                           const aCommandBuffer:TpvVulkanCommandBuffer;
                                           const aFence:TpvVulkanFence;
                                           const aTransferHeightMap:Boolean;
-                                          const aTransferGrass:Boolean);                                          
+                                          const aTransferGrass:Boolean;
+                                          const aTransferPhysicsData:Boolean);
 var CountImageMemoryBarriers,CountBufferMemoryBarriers:TpvSizeInt;
     ImageSubresourceRange:TVkImageSubresourceRange;
     ImageMemoryBarriers:array[0..5] of TVkImageMemoryBarrier;
@@ -4354,7 +4356,8 @@ begin
                            CommandBuffer,
                            Fence,
                            true,
-                           true);
+                           true,
+                           false);
 
    finally
     FreeAndNil(Fence);
@@ -15231,7 +15234,8 @@ begin
                    fVulkanComputeCommandBuffer,
                    fVulkanComputeFence,
                    true,
-                   true);
+                   true,
+                   false);
 
    end;
 
@@ -15321,10 +15325,10 @@ procedure TpvScene3DPlanet.Update(const aInFlightFrameIndex:TpvSizeInt);
 var QueueTileIndex:TpvSizeInt;
     TileIndex:TpvUInt32;
     Source:Pointer;
-    UpdateRenderIndex,UpdateWaterVisibility:Boolean;
+    UpdateRenderIndex,UpdateWaterVisibility,UpdatedPhysicsData,
+    UpdatedHeightMap,UpdatedGrass,UpdatePhysicsData:Boolean;
     RaytracingTile:TRaytracingTile;
     CurrentRaytracingTileQueue:TRaytracingTiles;
-    UpdatedHeightMap,UpdatedGrass,UpdatePhysicsData:Boolean;
 begin
 
  fData.fCountDirtyTiles:=0;
@@ -15334,6 +15338,8 @@ begin
  UpdateWaterVisibility:=false;
 
  UpdatedHeightMap:=false;
+
+ UpdatedPhysicsData:=false;
 
  UpdatedGrass:=false;
 
@@ -15564,18 +15570,21 @@ begin
 
    fPhysicsDataGeneration.Execute(fVulkanComputeCommandBuffer);
 
+   UpdatedPhysicsData:=true;
+
   finally
    EndUpdate;
   end;
 
  end;
 
- if assigned(fVulkanDevice) and (UpdatedHeightMap or UpdatedGrass) then begin
+ if assigned(fVulkanDevice) and (UpdatedHeightMap or UpdatedGrass or UpdatedPhysicsData) then begin
   fData.Download(fVulkanComputeQueue,
                  fVulkanComputeCommandBuffer,
                  fVulkanComputeFence,
                  UpdatedHeightMap,
-                 UpdatedGrass);
+                 UpdatedGrass,
+                 UpdatedPhysicsData);
  end;
 
 {if assigned(fVulkanDevice) and UpdateWaterVisibility then begin
