@@ -4394,9 +4394,9 @@ begin
 
     Upload(Queue,CommandBuffer,Fence);
 
-    fHeightMapMipMapGeneration.Execute(CommandBuffer);
-    fNormalMapMipMapGeneration.Execute(CommandBuffer);
-    fPhysicsDataGeneration.Execute(CommandBuffer);
+    fPlanet.fHeightMapMipMapGeneration.Execute(CommandBuffer);
+    fPlanet.fNormalMapMipMapGeneration.Execute(CommandBuffer);
+    fPlanet.fPhysicsDataGeneration.Execute(CommandBuffer);
 
     fPlanet.fData.Download(Queue,
                            CommandBuffer,
