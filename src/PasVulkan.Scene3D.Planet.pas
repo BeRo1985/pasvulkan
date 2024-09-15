@@ -16396,7 +16396,7 @@ var UV:TpvVector2;
     v00,v01,v10,v11:TpvScalar;
 begin
 
- if length(fData.fGrassMapData)>0 then begin
+ if length(fData.fRawPhysicsData)>0 then begin
 
   UV:=WrapOctahedralCoordinates(aUV);
 
