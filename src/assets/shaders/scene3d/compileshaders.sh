@@ -392,6 +392,8 @@ compileshaderarguments=(
 
   "-V planet_normalmap_generation.comp -o ${tempPath}/planet_normalmap_generation_comp.spv"
 
+  "-V planet_physics_data_generation.comp -o ${tempPath}/planet_physics_data_generation_comp.spv"
+
   "-V planet_tiled_mesh_index_generation.comp -o ${tempPath}/planet_tiled_mesh_index_generation_comp.spv"
 
   "-V planet_tiled_mesh_vertex_generation.comp -o ${tempPath}/planet_tiled_mesh_vertex_generation_comp.spv"

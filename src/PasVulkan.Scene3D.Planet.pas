@@ -198,6 +198,14 @@ type TpvScene3DPlanets=class;
             end;
             PWaterModification=^TWaterModification;
             TWaterModifications=array[0..MaxInFlightFrames-1] of TWaterModification;
+            TRawPhysicsDataItem=packed record
+             Height:TpvFloat;
+             Normal:TpvUInt32; // RGB10A2
+             Slope:TpvFloat;
+             Reversed:TpvUInt32;
+            end;
+            PRawPhysicsDataItem=^TRawPhysicsDataItem;
+            TRawPhysicsDataItems=array of TRawPhysicsDataItem;
             { TData }
             TData=class // one ground truth instance and one or more in-flight instances for flawlessly parallel rendering
              public
@@ -230,12 +238,14 @@ type TpvScene3DPlanets=class;
               fInFlightFrameIndex:TpvInt32; // -1 is the ground truth instance, >=0 are the in-flight frame instances
               fHeightMap:THeightMap; // only on the ground truth instance, otherwise nil
               fHeightMapImage:TpvScene3DRendererMipmapImage2D; // R32_SFLOAT (at least for now, just for the sake of simplicity, later maybe R16_UNORM or R16_SNORM)
-              fNormalMapImage:TpvScene3DRendererMipmapImage2D; // R16G16B16A16_SNORM (at least for now, just for the sake of simplicity, later maybe RGBA8_SNORM)
+              fNormalMapImage:TpvScene3DRendererMipmapImage2D; // A2B10G10R10_UNORM_PACK32
 //            fHeightMapBuffer:TpvVulkanBuffer;
 //            fNormalMapBuffer:TpvVulkanBuffer;
               fBlendMapImage:TpvScene3DRendererImage2D; // A2B10G10R10_UNORM_PACK32
               fGrassMapImage:TpvScene3DRendererImage2D; // R32_FLOAT
               fGrassMapBuffer:TpvVulkanBuffer;
+              fPhysicsDataBuffer:TpvVulkanBuffer;
+              fRawPhysicsData:TRawPhysicsDataItems;
               fWaterHeightMapImage:TpvScene3DRendererImage2D; // R32_SFLOAT
               fWaterHeightMapBuffers:array[0..1] of TpvVulkanBuffer; // Double-buffered
               fWaterFlowMapBuffer:TpvVulkanBuffer;
@@ -332,6 +342,7 @@ type TpvScene3DPlanets=class;
 {             property HeightMapData:THeightMapData read fHeightMapData;
               property NormalMapData:TNormalMapData read fNormalMapData;}
               property GrassMapData:TGrassMapData read fGrassMapData;
+              property RawPhysicsData:TRawPhysicsDataItems read fRawPhysicsData;
              public
               property VisualMeshVertexBuffers:TDoubleBufferedVulkanBuffers read fVisualMeshVertexBuffers;
               property VisualMeshDistanceBuffers:TDoubleBufferedVulkanBuffers read fVisualMeshDistanceBuffers;              
@@ -1425,6 +1436,7 @@ type TpvScene3DPlanets=class;
        fVulkanUniversalAcquireSemaphores:array[0..MaxInFlightFrames-1] of TpvVulkanSemaphore;
        fVulkanUniversalReleaseSemaphores:array[0..MaxInFlightFrames-1] of TpvVulkanSemaphore;
        fHeightMapResolution:TpvInt32;
+       fPhysicsHeightMapResolution:TpvInt32;
        fGrassMapResolution:TpvInt32;
        fWaterMapResolution:TpvInt32;
        fTileMapResolution:TpvInt32;
@@ -1573,6 +1585,7 @@ type TpvScene3DPlanets=class;
       published
        property Scene3D:TObject read fScene3D;
        property HeightMapResolution:TpvInt32 read fHeightMapResolution;
+       property PhysicsHeightMapResolution:TpvInt32 read fPhysicsHeightMapResolution;
        property GrassMapResolution:TpvInt32 read fGrassMapResolution;
        property WaterMapResolution:TpvInt32 read fWaterMapResolution;
        property TileMapResolution:TpvInt32 read fTileMapResolution;
@@ -1781,6 +1794,8 @@ begin
 
  fGrassMapBuffer:=nil;
 
+ fPhysicsDataBuffer:=nil;
+
  fWaterHeightMapImage:=nil;
 
  fWaterHeightMapBuffers[0]:=nil;
@@ -1803,6 +1818,8 @@ begin
  fNormalMapData:=nil;}
 
  fGrassMapData:=nil;
+
+ fRawPhysicsData:=nil;
 
  fTileDirtyMap:=nil;
 
@@ -1960,7 +1977,33 @@ begin
                                            pvAllocationGroupIDScene3DPlanetStatic);
    fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fGrassMapBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fGrassMapBuffer');
    
-  end; 
+  end;
+
+  if fInFlightFrameIndex<0 then begin
+
+   fPhysicsDataBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
+                                              fPlanet.fPhysicsResolution*fPlanet.fPhysicsResolution*SizeOf(TpvScene3DPlanet.TRawPhysicsDataItem),
+                                              TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
+                                              fPlanet.fGlobalBufferSharingMode,
+                                              fPlanet.fGlobalBufferQueueFamilyIndices,
+                                              0,
+                                              TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_CACHED_BIT),
+                                              0,
+                                              0,
+                                              0,
+                                              0,
+                                              0,
+                                              0,
+                                              [TpvVulkanBufferFlag.PersistentMappedIfPossible],
+                                              0,
+                                              pvAllocationGroupIDScene3DPlanetStatic);
+   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fPhysicsDataBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fPhysicsDataBuffer');
+
+   if length(fRawPhysicsData)<>(fPlanet.fPhysicsResolution*fPlanet.fPhysicsResolution) then begin
+    SetLength(fRawPhysicsData,fPlanet.fPhysicsResolution*fPlanet.fPhysicsResolution);
+   end;
+
+  end;
 
   if fInFlightFrameIndex<0 then begin
 
@@ -2490,6 +2533,8 @@ begin
 
  FreeAndNil(fGrassMapBuffer);
 
+ FreeAndNil(fPhysicsDataBuffer);
+
  FreeAndNil(fWaterHeightMapImage);
 
  FreeAndNil(fWaterHeightMapBuffers[0]);
@@ -2508,6 +2553,8 @@ begin
  fNormalMapData:=nil;//}
 
  fGrassMapData:=nil;
+
+ fRawPhysicsData:=nil;
 
  fTileGenerations:=nil;
 
@@ -13356,6 +13403,8 @@ begin
  fVisualResolution:=fTileMapResolution*fVisualTileResolution;
 
  fPhysicsResolution:=fTileMapResolution*fPhysicsTileResolution;
+
+ fPhysicsHeightMapResolution:=RoundUpToPowerOfTwo(Min(Max(fPhysicsResolution,128),8192));
 
  fGrassInvocationVariants:=Max(1,fHeightMapResolution div fVisualResolution);
  fGrassInvocationVariants:=fGrassInvocationVariants*fGrassInvocationVariants;
