@@ -16412,16 +16412,16 @@ begin
   xi:=Min(Max(xi,0),fPhysicsResolution-1);
   yi:=Min(Max(yi,0),fPhysicsResolution-1);
 
-  v00:=fData.fRawPhysicsData[(yi*fGrassMapResolution)+xi].Slope;
+  v00:=fData.fRawPhysicsData[(yi*fPhysicsResolution)+xi].Slope;
 
   WrapOctahedralTexelCoordinatesEx(xi+1,yi,fPhysicsResolution,fPhysicsResolution,tx,ty);
-  v01:=fData.fRawPhysicsData[(ty*fGrassMapResolution)+tx].Slope;
+  v01:=fData.fRawPhysicsData[(ty*fPhysicsResolution)+tx].Slope;
 
   WrapOctahedralTexelCoordinatesEx(xi,yi+1,fPhysicsResolution,fPhysicsResolution,tx,ty);
-  v10:=fData.fRawPhysicsData[(ty*fGrassMapResolution)+tx].Slope;
+  v10:=fData.fRawPhysicsData[(ty*fPhysicsResolution)+tx].Slope;
 
   WrapOctahedralTexelCoordinatesEx(xi+1,yi+1,fPhysicsResolution,fPhysicsResolution,tx,ty);
-  v11:=fData.fRawPhysicsData[(ty*fGrassMapResolution)+tx].Slope;
+  v11:=fData.fRawPhysicsData[(ty*fPhysicsResolution)+tx].Slope;
 
   ixf:=1.0-xf;
   result:=(((v00*ixf)+(v01*xf))*(1.0-yf))+(((v10*ixf)+(v11*xf))*yf);
