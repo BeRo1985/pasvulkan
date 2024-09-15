@@ -4394,12 +4394,16 @@ begin
 
     Upload(Queue,CommandBuffer,Fence);
 
+    fHeightMapMipMapGeneration.Execute(CommandBuffer);
+    fNormalMapMipMapGeneration.Execute(CommandBuffer);
+    fPhysicsDataGeneration.Execute(CommandBuffer);
+
     fPlanet.fData.Download(Queue,
                            CommandBuffer,
                            Fence,
                            true,
                            true,
-                           false);
+                           true);
 
    finally
     FreeAndNil(Fence);
@@ -15272,12 +15276,18 @@ begin
 
    begin
 
+    fHeightMapMipMapGeneration.Execute(fVulkanComputeCommandBuffer);
+
+    fNormalMapMipMapGeneration.Execute(fVulkanComputeCommandBuffer);
+
+    fPhysicsDataGeneration.Execute(fVulkanComputeCommandBuffer);
+
     fData.Download(fVulkanComputeQueue,
                    fVulkanComputeCommandBuffer,
                    fVulkanComputeFence,
                    true,
                    true,
-                   false);
+                   true);
 
    end;
 
