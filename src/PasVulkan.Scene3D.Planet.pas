@@ -4381,9 +4381,9 @@ var Queue:TpvVulkanQueue;
     Fence:TpvVulkanFence;
 begin
 
- Queue:=fPlanet.fVulkanDevice.TransferQueue;
+ Queue:=fPlanet.fVulkanDevice.ComputeQueue;
 
- CommandPool:=TpvVulkanCommandPool.Create(fPlanet.fVulkanDevice,fPlanet.fVulkanDevice.TransferQueueFamilyIndex);
+ CommandPool:=TpvVulkanCommandPool.Create(fPlanet.fVulkanDevice,fPlanet.fVulkanDevice.ComputeQueueFamilyIndex);
  try
 
   CommandBuffer:=TpvVulkanCommandBuffer.Create(CommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
