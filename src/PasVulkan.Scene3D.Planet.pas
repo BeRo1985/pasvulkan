@@ -1616,6 +1616,8 @@ type TpvScene3DPlanets=class;
        function GetGrass(const aUV:TpvVector2):TpvScalar; overload;
        function GetGrass(const aNormal:TpvVector3):TpvScalar; overload;
        function GetUV(const aPosition:TpvVector3):TpvVector2;
+       function GetSlope(const aUV:TpvVector2):TpvFloat; overload;
+       function GetSlope(const aNormal:TpvVector3):TpvFloat; overload;
       published
        property Scene3D:TObject read fScene3D;
        property HeightMapResolution:TpvInt32 read fHeightMapResolution;
@@ -16337,7 +16339,7 @@ var UV:TpvVector2;
     xf,yf,ixf:TpvFloat;
     v00,v01,v10,v11:TpvScalar;
 begin
- 
+
  if length(fData.fGrassMapData)>0 then begin
 
   UV:=WrapOctahedralCoordinates(aUV);
@@ -16384,7 +16386,58 @@ end;
 function TpvScene3DPlanet.GetUV(const aPosition:TpvVector3):TpvVector2;
 begin
  result:=WrapOctahedralCoordinates(OctEqualAreaUnsignedEncode(aPosition.Normalize));
-end;  
+end;
+
+function TpvScene3DPlanet.GetSlope(const aUV:TpvVector2):TpvFloat;
+var UV:TpvVector2;
+    TexelX,TexelY:TpvFloat;
+    xi,yi,tx,ty:TpvInt32;
+    xf,yf,ixf:TpvFloat;
+    v00,v01,v10,v11:TpvScalar;
+begin
+
+ if length(fData.fGrassMapData)>0 then begin
+
+  UV:=WrapOctahedralCoordinates(aUV);
+
+  TexelX:=UV.x*fPhysicsResolution;
+  TexelY:=UV.y*fPhysicsResolution;
+
+  xi:=Floor(TexelX);
+  yi:=Floor(TexelY);
+
+  xf:=TexelX-xi;
+  yf:=TexelY-yi;
+
+  xi:=Min(Max(xi,0),fPhysicsResolution-1);
+  yi:=Min(Max(yi,0),fPhysicsResolution-1);
+
+  v00:=fData.fRawPhysicsData[(yi*fGrassMapResolution)+xi].Slope;
+
+  WrapOctahedralTexelCoordinatesEx(xi+1,yi,fPhysicsResolution,fPhysicsResolution,tx,ty);
+  v01:=fData.fRawPhysicsData[(ty*fGrassMapResolution)+tx].Slope;
+
+  WrapOctahedralTexelCoordinatesEx(xi,yi+1,fPhysicsResolution,fPhysicsResolution,tx,ty);
+  v10:=fData.fRawPhysicsData[(ty*fGrassMapResolution)+tx].Slope;
+
+  WrapOctahedralTexelCoordinatesEx(xi+1,yi+1,fPhysicsResolution,fPhysicsResolution,tx,ty);
+  v11:=fData.fRawPhysicsData[(ty*fGrassMapResolution)+tx].Slope;
+
+  ixf:=1.0-xf;
+  result:=(((v00*ixf)+(v01*xf))*(1.0-yf))+(((v10*ixf)+(v11*xf))*yf);
+
+ end else begin
+
+  result:=0.0;
+
+ end;
+
+end;
+
+function TpvScene3DPlanet.GetSlope(const aNormal:TpvVector3):TpvFloat;
+begin
+ result:=GetSlope(OctEqualAreaUnsignedEncode(aNormal));
+end;
 
 { TpvScene3DPlanets }
 
