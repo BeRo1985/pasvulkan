@@ -1513,6 +1513,7 @@ type TpvScene3DPlanets=class;
        fNormalMapGeneration:TNormalMapGeneration;
        fHeightMapMipMapGeneration:THeightMapMipMapGeneration;
        fNormalMapMipMapGeneration:TNormalMapMipMapGeneration;
+       fPhysicsDataGeneration:TPhysicsDataGeneration;
 {      fVisualMeshIndexGeneration:TMeshIndexGeneration;
        fPhysicsMeshIndexGeneration:TMeshIndexGeneration;}
        fVisualMeshVertexGeneration:TMeshVertexGeneration;
@@ -13928,6 +13929,8 @@ begin
 
  fNormalMapMipMapGeneration:=TNormalMapMipMapGeneration.Create(self);
 
+ fPhysicsDataGeneration:=TPhysicsDataGeneration.Create(self);
+
 {fVisualMeshIndexGeneration:=TMeshIndexGeneration.Create(self,false);
 
  fPhysicsMeshIndexGeneration:=TMeshIndexGeneration.Create(self,true);}
@@ -14188,6 +14191,8 @@ begin
  FreeAndNil(fVisualMeshDistanceGeneration);
 
  FreeAndNil(fWaterCullPass);
+
+ FreeAndNil(fPhysicsDataGeneration);
 
  FreeAndNil(fNormalMapMipMapGeneration);
 
@@ -15319,7 +15324,7 @@ var QueueTileIndex:TpvSizeInt;
     UpdateRenderIndex,UpdateWaterVisibility:Boolean;
     RaytracingTile:TRaytracingTile;
     CurrentRaytracingTileQueue:TRaytracingTiles;
-    UpdatedHeightMap,UpdatedGrass:Boolean;
+    UpdatedHeightMap,UpdatedGrass,UpdatePhysicsData:Boolean;
 begin
 
  fData.fCountDirtyTiles:=0;
@@ -15332,6 +15337,8 @@ begin
 
  UpdatedGrass:=false;
 
+ UpdatePhysicsData:=false;
+
  if fData.fModifyGrassMapActive then begin
 
   if assigned(fVulkanDevice) then begin
@@ -15340,7 +15347,11 @@ begin
    try
 
     if fData.fModifyGrassMapActive then begin
+
      fGrassMapModification.Execute(fVulkanComputeCommandBuffer);
+
+     UpdatePhysicsData:=true;
+
     end;
 
    finally
@@ -15417,6 +15428,8 @@ begin
      UpdateRenderIndex:=true;
 
      UpdateWaterVisibility:=true;
+
+     UpdatePhysicsData:=true;
 
     end;
 
@@ -15540,6 +15553,19 @@ begin
     TPasMPInterlocked.Write(fData.fVisualMeshVertexBufferRenderIndex,fData.fVisualMeshVertexBufferNextRenderIndex);
    end;
 
+  end;
+
+ end;
+
+ if assigned(fVulkanDevice) and UpdatePhysicsData then begin
+
+  BeginUpdate;
+  try
+
+   fPhysicsDataGeneration.Execute(fVulkanComputeCommandBuffer);
+
+  finally
+   EndUpdate;
   end;
 
  end;
