@@ -200,7 +200,7 @@ type TpvScene3DPlanets=class;
             TWaterModifications=array[0..MaxInFlightFrames-1] of TWaterModification;
             TRawPhysicsDataItem=packed record
              Height:TpvFloat;
-             Normal:TpvUInt32; // RGB10A2
+             OctahedralEncodedNormal:TpvInt16Vector2;
              Slope:TpvFloat;
              Reversed:TpvUInt32;
             end;
