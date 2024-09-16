@@ -1641,6 +1641,7 @@ type TpvScene3DPlanets=class;
        procedure ExportPhysicsMeshToOBJ(const aStream:TStream); overload;
        procedure ExportPhysicsMeshToOBJ(const aFileName:TpvUTF8String); overload;
        function GetPhysicsVertex(const aX,aY:TpvInt32):TpvScene3DPlanet.PMeshVertex;
+       function GetPhysicsSlope(const aX,aY:TpvInt32):TpvScene3DPlanet.TMeshSlope;
        function GetHeight(const aUV:TpvVector2;const aAbsolute:boolean=true):TpvScalar; overload;
        function GetHeight(const aNormal:TpvVector3;const aAbsolute:boolean=true):TpvScalar; overload;
        function GetNormal(const aUV:TpvVector2):TpvVector3; overload;
@@ -9479,14 +9480,30 @@ begin
                                  SizeOf(TPushConstants),
                                  @fPushConstants);   
 
- if fPhysics then begin
-  aCommandBuffer.CmdDispatch(((fPlanet.fPhysicsTileResolution*fPlanet.fPhysicsTileResolution)+255) shr 8,
-                              fPlanet.fData.fCountDirtyTiles,
-                              1);
+ if fVulkanDevice.PhysicalDevice.RenderDocDetected then begin
+
+  if fPlanet.fData.fCountDirtyTiles>0 then begin
+
+   if fPhysics then begin
+    aCommandBuffer.CmdDispatch(((fPlanet.fPhysicsTileResolution*fPlanet.fPhysicsTileResolution)+255) shr 8,
+                               fPlanet.fData.fCountDirtyTiles,
+                               1);
+   end else begin
+    aCommandBuffer.CmdDispatch(((fPlanet.fVisualTileResolution*fPlanet.fVisualTileResolution)+255) shr 8,
+                               fPlanet.fData.fCountDirtyTiles,
+                               1);
+   end;
+
+  end;
+
  end else begin
-  aCommandBuffer.CmdDispatch(((fPlanet.fVisualTileResolution*fPlanet.fVisualTileResolution)+255) shr 8,
-                              fPlanet.fData.fCountDirtyTiles,
-                              1);
+
+  if fPhysics then begin
+   aCommandBuffer.CmdDispatchIndirect(fPlanet.fData.fTileDirtyQueueBuffer.Handle,SizeOf(TVkDispatchIndirectCommand));
+  end else begin
+   aCommandBuffer.CmdDispatchIndirect(fPlanet.fData.fTileDirtyQueueBuffer.Handle,0);
+  end;
+
  end;
 
  if fPhysics then begin
@@ -16507,6 +16524,28 @@ begin
 
 end;
 
+function TpvScene3DPlanet.GetPhysicsSlope(const aX,aY:TpvInt32):TpvScene3DPlanet.TMeshSlope;
+var TileIndex,VertexIndex:TpvSizeInt;
+    GlobalX,GlobalY,TileMapX,TileMapY,TileX,TileY:TpvInt32;
+begin
+
+ WrapOctahedralTexelCoordinatesEx(aX,aY,fPhysicsResolution,fPhysicsResolution,GlobalX,GlobalY);
+
+ TileMapX:=GlobalX div fPhysicsTileResolution;
+ TileMapY:=GlobalY div fPhysicsTileResolution;
+
+ TileX:=GlobalX-(TileMapX*fPhysicsTileResolution);
+ TileY:=GlobalY-(TileMapY*fPhysicsTileResolution);
+
+ TileIndex:=(TileMapY*fTileMapResolution)+TileMapX;
+
+ VertexIndex:=(TileIndex*fPhysicsTileResolution*fPhysicsTileResolution)+
+              ((TileY*fPhysicsTileResolution)+TileX);
+
+ result:=fData.fPhysicsMeshSlopes.ItemArray[VertexIndex];
+
+end;
+
 function TpvScene3DPlanet.GetHeight(const aUV:TpvVector2;const aAbsolute:boolean):TpvScalar;
 var x,y,fx,fxi,fy:TpvDouble;
     ix,iy:TpvInt32;
@@ -16802,7 +16841,31 @@ begin
 end;  
 
 function TpvScene3DPlanet.GetSlope(const aUV:TpvVector2):TpvFloat;
-var UV:TpvVector2;
+var x,y,fx,fxi,fy:TpvDouble;
+    ix,iy:TpvInt32;
+    v0,v1,v2,v3:TpvScene3DPlanet.TMeshSlope;
+begin
+
+ x:=aUV.x*fPhysicsResolution;
+ y:=aUV.y*fPhysicsResolution;
+
+ ix:=Floor(x);
+ iy:=Floor(y);
+
+ fx:=x-ix;
+ fy:=y-iy;
+
+ v0:=GetPhysicsSlope(ix,iy);
+ v1:=GetPhysicsSlope(ix+1,iy);
+ v2:=GetPhysicsSlope(ix,iy+1);
+ v3:=GetPhysicsSlope(ix+1,iy+1);
+
+ fxi:=1.0-fx;
+
+ result:=(((v0*fxi)+(v1*fx))*(1.0-fy))+(((v2*fxi)+(v3*fx))*fy);
+
+end;
+{var UV:TpvVector2;
     TexelX,TexelY:TpvFloat;
     xi,yi,tx,ty:TpvInt32;
     xf,yf,ixf:TpvFloat;
@@ -16845,7 +16908,7 @@ begin
 
  end;
 
-end;
+end;}
 
 function TpvScene3DPlanet.GetSlope(const aNormal:TpvVector3):TpvFloat;
 begin
