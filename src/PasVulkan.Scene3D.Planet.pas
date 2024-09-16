@@ -154,6 +154,9 @@ type TpvScene3DPlanets=class;
             end;
             PMeshVertex=^TMeshVertex;
             TMeshVertices=TpvDynamicArrayList<TMeshVertex>;
+            TMeshSlope=TpvFloat;
+            PMeshSlope=^TMeshSlope;
+            TMeshSlopes=TpvDynamicArrayList<TMeshSlope>;
             TMeshIndex=TpvUInt32;
             PMeshIndex=^TMeshIndex;
             TMeshIndices=TpvDynamicArrayList<TMeshIndex>;
@@ -303,6 +306,7 @@ type TpvScene3DPlanets=class;
               fLODActive:Boolean;
               fPhysicsMeshVertices:TMeshVertices;
               fPhysicsMeshIndices:TMeshIndices;
+              fPhysicsMeshSlopes:TMeshSlopes;
               fTileDirtyQueueItems:TTileDirtyQueueItems;
               fTileGenerations:TTileGenerations;
               fTiledMeshBoundingBoxes:TTiledMeshBoundingBoxes;
@@ -2551,6 +2555,9 @@ begin
   fPhysicsMeshIndices:=TMeshIndices.Create;
   fPhysicsMeshIndices.Resize(fPlanet.fTileMapResolution*fPlanet.fTileMapResolution*fPlanet.fPhysicsTileResolution*fPlanet.fPhysicsTileResolution*6);
 
+  fPhysicsMeshSlopes:=TMeshSlopes.Create;
+  fPhysicsMeshSlopes.Resize(fPlanet.fTileMapResolution*fPlanet.fTileMapResolution*fPlanet.fPhysicsTileResolution*fPlanet.fPhysicsTileResolution);
+
   fTileDirtyQueueItems:=TTileDirtyQueueItems.Create;
   fTileDirtyQueueItems.Resize((fPlanet.fTileMapResolution*fPlanet.fTileMapResolution)+6);
 
@@ -2569,6 +2576,8 @@ begin
   fPhysicsMeshVertices:=nil;
 
   fPhysicsMeshIndices:=nil;
+
+  fPhysicsMeshSlopes:=nil;
 
   fTileDirtyQueueItems:=nil;
 
@@ -2639,6 +2648,8 @@ begin
  FreeAndNil(fPhysicsMeshVertices);
 
  FreeAndNil(fPhysicsMeshIndices);
+
+ FreeAndNil(fPhysicsMeshSlopes);
 
 {fHeightMapData:=nil;
 
@@ -15954,6 +15965,14 @@ begin
                                           fData.fPhysicsMeshVertices.ItemArray[0],
                                           fTileMapResolution*fTileMapResolution*fPhysicsTileResolution*fPhysicsTileResolution*SizeOf(TMeshVertex));
 
+     fVulkanDevice.MemoryStaging.Download(fVulkanComputeQueue,
+                                          fVulkanComputeCommandBuffer,
+                                          fVulkanComputeFence,
+                                          fData.fPhysicsMeshSlopeBuffer,
+                                          0,
+                                          fData.fPhysicsMeshSlopes.ItemArray[0],
+                                          fTileMapResolution*fTileMapResolution*fPhysicsTileResolution*fPhysicsTileResolution*SizeOf(TMeshSlope));
+
     end else begin
 
      if (TpvVulkanBufferFlag.PersistentMapped in fData.fPhysicsMeshVertexBuffer.Flags) and
@@ -15976,6 +15995,23 @@ begin
        raise EpvVulkanException.Create('Vulkan buffer memory block map failed');
       end;
 
+      Source:=fData.fPhysicsMeshSlopeBuffer.Memory.MapMemory;
+      if assigned(Source) then begin
+       try
+        fData.fPhysicsMeshSlopeBuffer.Flush(Source,0,fData.fPhysicsMeshSlopeBuffer.Size);
+        for QueueTileIndex:=0 to TpvSizeInt(fData.fCountDirtyTiles)-1 do begin
+         TileIndex:=fData.fTileDirtyQueueItems.ItemArray[QueueTileIndex];
+         Move(Pointer(TpvPtrUInt(TpvPtrUInt(Source)+TpvPtrUInt(TileIndex*fPhysicsTileResolution*fPhysicsTileResolution*SizeOf(TMeshSlope))))^,
+              fData.fPhysicsMeshSlopes.ItemArray[TileIndex*fPhysicsTileResolution*fPhysicsTileResolution],
+              fPhysicsTileResolution*fPhysicsTileResolution*SizeOf(TMeshSlope));
+        end;
+       finally
+        fData.fPhysicsMeshSlopeBuffer.Memory.UnmapMemory;
+       end;
+      end else begin
+       raise EpvVulkanException.Create('Vulkan buffer memory block map failed');
+      end;
+
      end else begin
 
       fVulkanMemoryStagingQueue.Clear;
@@ -15986,6 +16022,10 @@ begin
                                                   TileIndex*fPhysicsTileResolution*fPhysicsTileResolution*SizeOf(TMeshVertex),
                                                   fData.fPhysicsMeshVertices.ItemArray[TileIndex*fPhysicsTileResolution*fPhysicsTileResolution],
                                                   fPhysicsTileResolution*fPhysicsTileResolution*SizeOf(TMeshVertex));
+        fVulkanMemoryStagingQueue.EnqueueDownload(fData.fPhysicsMeshSlopeBuffer,
+                                                  TileIndex*fPhysicsTileResolution*fPhysicsTileResolution*SizeOf(TMeshSlope),
+                                                  fData.fPhysicsMeshSlopes.ItemArray[TileIndex*fPhysicsTileResolution*fPhysicsTileResolution],
+                                                  fPhysicsTileResolution*fPhysicsTileResolution*SizeOf(TMeshSlope));
        end;
       finally
        fVulkanDevice.MemoryStaging.ProcessQueue(fVulkanComputeQueue,
