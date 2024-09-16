@@ -276,6 +276,7 @@ type TpvScene3DPlanets=class;
               fVisualMeshVertexBufferRenderIndex:TPasMPInt32;
               fPhysicsMeshIndexBuffer:TpvVulkanBuffer;
               fPhysicsMeshVertexBuffer:TpvVulkanBuffer;
+              fPhysicsMeshSlopeBuffer:TpvVulkanBuffer;
               fRayIntersectionResultBuffer:TpvVulkanBuffer;
               fCountTriangleIndices:TVkUInt32;
               fCountDirtyTiles:TVkUInt32;
@@ -353,6 +354,7 @@ type TpvScene3DPlanets=class;
               property VisualMeshIndexBuffer:TpvVulkanBuffer read fVisualMeshIndexBuffer;
               property PhysicsMeshVertexBuffer:TpvVulkanBuffer read fPhysicsMeshVertexBuffer;
               property PhysicsMeshIndexBuffer:TpvVulkanBuffer read fPhysicsMeshIndexBuffer;
+              property PhysicsMeshSlopeBuffer:TpvVulkanBuffer read fPhysicsMeshSlopeBuffer;
               property RayIntersectionResultBuffer:TpvVulkanBuffer read fRayIntersectionResultBuffer;
               property PhysicsMeshVertices:TMeshVertices read fPhysicsMeshVertices;
 //            property PhysicsMeshIndices:TMeshIndices read fPhysicsMeshIndices;
@@ -1895,6 +1897,8 @@ begin
 
  fPhysicsMeshIndexBuffer:=nil;
 
+ fPhysicsMeshSlopeBuffer:=nil;
+
  fRayIntersectionResultBuffer:=nil;
 
  fOwnershipHolderState:=TpvScene3DPlanet.TData.TOwnershipHolderState.Uninitialized;
@@ -2460,6 +2464,25 @@ begin
                                                   );
    fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fPhysicsMeshIndexBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.PhysicsMeshIndexBuffer['+IntToStr(fInFlightFrameIndex)+']');
 
+   fPhysicsMeshSlopeBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
+                                                   fPlanet.fTileMapResolution*fPlanet.fTileMapResolution*fPlanet.fPhysicsTileResolution*fPlanet.fPhysicsTileResolution*SizeOf(TpvFloat),
+                                                   TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
+                                                   fPlanet.fGlobalBufferSharingMode,
+                                                   fPlanet.fGlobalBufferQueueFamilyIndices,
+                                                   TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                                   TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_CACHED_BIT),
+                                                   0,
+                                                   TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                   0,
+                                                   0,
+                                                   0,
+                                                   0,
+                                                   [TpvVulkanBufferFlag.PersistentMappedIfPossible],
+                                                   0,
+                                                   pvAllocationGroupIDScene3DPlanetStatic
+                                                  );
+    fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fPhysicsMeshSlopeBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.PhysicsMeshSlopeBuffer['+IntToStr(fInFlightFrameIndex)+']');
+
   end;
 
   if fInFlightFrameIndex<0 then begin
@@ -2633,6 +2656,8 @@ begin
  FreeAndNil(fPhysicsMeshVertexBuffer);
 
  FreeAndNil(fPhysicsMeshIndexBuffer);
+
+ FreeAndNil(fPhysicsMeshSlopeBuffer);
 
  FreeAndNil(fRayIntersectionResultBuffer);
 
@@ -16339,7 +16364,7 @@ var UV:TpvVector2;
     xf,yf,ixf:TpvFloat;
     v00,v01,v10,v11:TpvScalar;
 begin
-
+ 
  if length(fData.fGrassMapData)>0 then begin
 
   UV:=WrapOctahedralCoordinates(aUV);
@@ -16386,7 +16411,7 @@ end;
 function TpvScene3DPlanet.GetUV(const aPosition:TpvVector3):TpvVector2;
 begin
  result:=WrapOctahedralCoordinates(OctEqualAreaUnsignedEncode(aPosition.Normalize));
-end;
+end;  
 
 function TpvScene3DPlanet.GetSlope(const aUV:TpvVector2):TpvFloat;
 var UV:TpvVector2;
