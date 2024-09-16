@@ -201,14 +201,6 @@ type TpvScene3DPlanets=class;
             end;
             PWaterModification=^TWaterModification;
             TWaterModifications=array[0..MaxInFlightFrames-1] of TWaterModification;
-            TRawPhysicsDataItem=packed record
-             Height:TpvFloat;
-             OctahedralEncodedNormal:TpvInt16Vector2;
-             Slope:TpvFloat;
-             Reversed:TpvUInt32;
-            end;
-            PRawPhysicsDataItem=^TRawPhysicsDataItem;
-            TRawPhysicsDataItems=array of TRawPhysicsDataItem;
             { TData }
             TData=class // one ground truth instance and one or more in-flight instances for flawlessly parallel rendering
              public
@@ -247,8 +239,6 @@ type TpvScene3DPlanets=class;
               fBlendMapImage:TpvScene3DRendererImage2D; // A2B10G10R10_UNORM_PACK32
               fGrassMapImage:TpvScene3DRendererImage2D; // R32_FLOAT
               fGrassMapBuffer:TpvVulkanBuffer;
-              fPhysicsDataBuffer:TpvVulkanBuffer;
-              fRawPhysicsData:TRawPhysicsDataItems;
               fWaterHeightMapImage:TpvScene3DRendererImage2D; // R32_SFLOAT
               fWaterHeightMapBuffers:array[0..1] of TpvVulkanBuffer; // Double-buffered
               fWaterFlowMapBuffer:TpvVulkanBuffer;
@@ -324,8 +314,7 @@ type TpvScene3DPlanets=class;
                                  const aCommandBuffer:TpvVulkanCommandBuffer;
                                  const aFence:TpvVulkanFence;
                                  const aTransferHeightMap:Boolean;
-                                 const aTransferGrass:Boolean;
-                                 const aTransferPhysicsData:Boolean);
+                                 const aTransferGrass:Boolean);
               procedure TransferTo(const aCommandBuffer:TpvVulkanCommandBuffer;
                                    const aInFlightFrameData:TData;
                                    const aTransferHeightMap:Boolean;
@@ -349,7 +338,6 @@ type TpvScene3DPlanets=class;
 {             property HeightMapData:THeightMapData read fHeightMapData;
               property NormalMapData:TNormalMapData read fNormalMapData;}
               property GrassMapData:TGrassMapData read fGrassMapData;
-              property RawPhysicsData:TRawPhysicsDataItems read fRawPhysicsData;
              public
               property VisualMeshVertexBuffers:TDoubleBufferedVulkanBuffers read fVisualMeshVertexBuffers;
               property VisualMeshSlopeBuffers:TDoubleBufferedVulkanBuffers read fVisualMeshSlopeBuffers;
@@ -803,38 +791,6 @@ type TpvScene3DPlanets=class;
               type TPushConstants=packed record
                     PlanetGroundRadius:TpvFloat; // planet ground radius
                     HeightMapScale:TpvFloat; // scale of height map
-                   end;
-                   PPushConstants=^TPushConstants;
-             private
-              fPlanet:TpvScene3DPlanet;
-              fVulkanDevice:TpvVulkanDevice;
-              fComputeShaderModule:TpvVulkanShaderModule;
-              fComputeShaderStage:TpvVulkanPipelineShaderStage;
-              fPipeline:TpvVulkanComputePipeline;
-              fDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
-              fDescriptorPool:TpvVulkanDescriptorPool;
-              fDescriptorSet:TpvVulkanDescriptorSet;
-              fPipelineLayout:TpvVulkanPipelineLayout;
-              fPushConstants:TPushConstants;
-             public
-              constructor Create(const aPlanet:TpvScene3DPlanet); reintroduce;
-              destructor Destroy; override;
-              procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer);
-             public
-              property PushConstants:TPushConstants read fPushConstants write fPushConstants;
-            end;
-            { TPhysicsDataGeneration }
-            TPhysicsDataGeneration=class
-             public
-              type TPushConstants=packed record
-                    PlanetGroundRadius:TpvFloat; // planet ground radius
-                    HeightMapScale:TpvFloat; // scale of height map
-                    StepScaleSize:TpvInt32; // step scale size
-                    StepScaleShift:TpvInt32; // step scale shift
-                    // vec2 resolution - begin
-                    ResolutionX:TpvInt32; // resolution x
-                    ResolutionY:TpvInt32; // resolution y
-                    // vec2 resolution - end
                    end;
                    PPushConstants=^TPushConstants;
              private
@@ -1549,7 +1505,6 @@ type TpvScene3DPlanets=class;
        fNormalMapGeneration:TNormalMapGeneration;
        fHeightMapMipMapGeneration:THeightMapMipMapGeneration;
        fNormalMapMipMapGeneration:TNormalMapMipMapGeneration;
-       fPhysicsDataGeneration:TPhysicsDataGeneration;
 {      fVisualMeshIndexGeneration:TMeshIndexGeneration;
        fPhysicsMeshIndexGeneration:TMeshIndexGeneration;}
        fVisualMeshVertexGeneration:TMeshVertexGeneration;
@@ -1867,8 +1822,6 @@ begin
 
  fGrassMapBuffer:=nil;
 
- fPhysicsDataBuffer:=nil;
-
  fWaterHeightMapImage:=nil;
 
  fWaterHeightMapBuffers[0]:=nil;
@@ -1891,8 +1844,6 @@ begin
  fNormalMapData:=nil;}
 
  fGrassMapData:=nil;
-
- fRawPhysicsData:=nil;
 
  fTileDirtyMap:=nil;
 
@@ -2055,32 +2006,6 @@ begin
                                            pvAllocationGroupIDScene3DPlanetStatic);
    fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fGrassMapBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fGrassMapBuffer');
    
-  end;
-
-  if fInFlightFrameIndex<0 then begin
-
-   fPhysicsDataBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
-                                              fPlanet.fPhysicsResolution*fPlanet.fPhysicsResolution*SizeOf(TpvScene3DPlanet.TRawPhysicsDataItem),
-                                              TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
-                                              fPlanet.fGlobalBufferSharingMode,
-                                              fPlanet.fGlobalBufferQueueFamilyIndices,
-                                              0,
-                                              TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_CACHED_BIT),
-                                              0,
-                                              0,
-                                              0,
-                                              0,
-                                              0,
-                                              0,
-                                              [TpvVulkanBufferFlag.PersistentMappedIfPossible],
-                                              0,
-                                              pvAllocationGroupIDScene3DPlanetStatic);
-   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fPhysicsDataBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fPhysicsDataBuffer');
-
-   if length(fRawPhysicsData)<>(fPlanet.fPhysicsResolution*fPlanet.fPhysicsResolution) then begin
-    SetLength(fRawPhysicsData,fPlanet.fPhysicsResolution*fPlanet.fPhysicsResolution);
-   end;
-
   end;
 
   if fInFlightFrameIndex<0 then begin
@@ -2635,8 +2560,6 @@ begin
 
  FreeAndNil(fGrassMapBuffer);
 
- FreeAndNil(fPhysicsDataBuffer);
-
  FreeAndNil(fWaterHeightMapImage);
 
  FreeAndNil(fWaterHeightMapBuffers[0]);
@@ -2657,8 +2580,6 @@ begin
  fNormalMapData:=nil;//}
 
  fGrassMapData:=nil;
-
- fRawPhysicsData:=nil;
 
  fTileGenerations:=nil;
 
@@ -3121,12 +3042,11 @@ procedure TpvScene3DPlanet.TData.Download(const aQueue:TpvVulkanQueue;
                                           const aCommandBuffer:TpvVulkanCommandBuffer;
                                           const aFence:TpvVulkanFence;
                                           const aTransferHeightMap:Boolean;
-                                          const aTransferGrass:Boolean;
-                                          const aTransferPhysicsData:Boolean);
+                                          const aTransferGrass:Boolean);
 var CountImageMemoryBarriers,CountBufferMemoryBarriers:TpvSizeInt;
     ImageSubresourceRange:TVkImageSubresourceRange;
     ImageMemoryBarriers:array[0..5] of TVkImageMemoryBarrier;
-    BufferMemoryBarriers:array[0..6] of TVkBufferMemoryBarrier;
+    BufferMemoryBarriers:array[0..5] of TVkBufferMemoryBarrier;
     ImageCopies:array[0..31] of TVkImageCopy;
     ImageCopy:PVkImageCopy;
     BufferCopy:TVkBufferCopy;             
@@ -3238,19 +3158,6 @@ begin
    inc(CountBufferMemoryBarriers);
 
   end; 
-
-{ if aTransferPhysicsData then begin
-
-   BufferMemoryBarriers[CountBufferMemoryBarriers]:=TVkBufferMemoryBarrier.Create(0,//TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT) or TVkAccessFlags(VK_ACCESS_MEMORY_WRITE_BIT),
-                                                                                  TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
-                                                                                  VK_QUEUE_FAMILY_IGNORED,
-                                                                                  VK_QUEUE_FAMILY_IGNORED,
-                                                                                  fPhysicsDataBuffer.Handle,
-                                                                                  0,
-                                                                                  fPhysicsDataBuffer.Size);
-   inc(CountBufferMemoryBarriers);
-
-  end;}
 
   if (CountImageMemoryBarriers>0) or (CountBufferMemoryBarriers>0) then begin
 
@@ -3392,19 +3299,6 @@ begin
 
   end;
 
-  if aTransferPhysicsData then begin
-
-   BufferMemoryBarriers[CountBufferMemoryBarriers]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
-                                                                                  0,//TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT) or TVkAccessFlags(VK_ACCESS_MEMORY_WRITE_BIT),
-                                                                                  VK_QUEUE_FAMILY_IGNORED,
-                                                                                  VK_QUEUE_FAMILY_IGNORED,
-                                                                                  fPhysicsDataBuffer.Handle,
-                                                                                  0,
-                                                                                  fPhysicsDataBuffer.Size);
-   inc(CountBufferMemoryBarriers);
-
-  end;
-
   if (CountImageMemoryBarriers>0) or (CountBufferMemoryBarriers>0) then begin
 
    aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
@@ -3465,22 +3359,6 @@ begin
                                                  0,
                                                  fGrassMapData[0],
                                                  fGrassMapBuffer.Size);
-
-   end;
-
-   if aTransferPhysicsData then begin
-
-    if length(fPlanet.fData.fRawPhysicsData)<>(fPlanet.fPhysicsResolution*fPlanet.fPhysicsResolution) then begin
-     SetLength(fPlanet.fData.fRawPhysicsData,fPlanet.fPhysicsResolution*fPlanet.fPhysicsResolution);
-    end;
-    
-    fPlanet.fVulkanDevice.MemoryStaging.Download(aQueue,
-                                                 aCommandBuffer,
-                                                 aFence,
-                                                 fPhysicsDataBuffer,
-                                                 0,
-                                                 fPlanet.fData.fRawPhysicsData[0],
-                                                 fPhysicsDataBuffer.Size);
 
    end;
 
@@ -4453,9 +4331,9 @@ var Queue:TpvVulkanQueue;
     Fence:TpvVulkanFence;
 begin
 
- Queue:=fPlanet.fVulkanDevice.ComputeQueue;
+ Queue:=fPlanet.fVulkanDevice.TransferQueue;
 
- CommandPool:=TpvVulkanCommandPool.Create(fPlanet.fVulkanDevice,fPlanet.fVulkanDevice.ComputeQueueFamilyIndex);
+ CommandPool:=TpvVulkanCommandPool.Create(fPlanet.fVulkanDevice,fPlanet.fVulkanDevice.TransferQueueFamilyIndex);
  try
 
   CommandBuffer:=TpvVulkanCommandBuffer.Create(CommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
@@ -4466,25 +4344,9 @@ begin
 
     Upload(Queue,CommandBuffer,Fence);
 
-    CommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
-    CommandBuffer.BeginRecording;
-
-    fPlanet.fHeightMapMipMapGeneration.Execute(CommandBuffer);
-    fPlanet.fNormalMapMipMapGeneration.Execute(CommandBuffer);
-    fPlanet.fPhysicsDataGeneration.Execute(CommandBuffer);
-
-    CommandBuffer.EndRecording;
-    CommandBuffer.Execute(Queue,
-                          TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
-                          nil,
-                          nil,
-                          Fence,
-                          true);
-
     fPlanet.fData.Download(Queue,
                            CommandBuffer,
                            Fence,
-                           true,
                            true,
                            true);
 
@@ -7843,307 +7705,6 @@ begin
 
 end;
 
-{ TpvScene3DPlanet.TPhysicsDataGeneration }
-
-(*
-{ TPhysicsDataGeneration }
-            TPhysicsDataGeneration=class
-             public
-              type TPushConstants=packed record
-                    PlanetGroundRadius:TpvFloat; // planet ground radius
-                    HeightMapScale:TpvFloat; // scale of height map
-                    StepScaleSize:TpvInt32; // step scale size
-                    SteoScaleShift:TpvInt32; // step scale shift
-                    // vec2 resolution - begin
-                    ResolutionX:TpvInt32; // resolution x
-                    ResolutionY:TpvInt32; // resolution y
-                    // vec2 resolution - end
-                   end;
-                   PPushConstants=^TPushConstants;
-             private
-              fPlanet:TpvScene3DPlanet;
-              fVulkanDevice:TpvVulkanDevice;
-              fComputeShaderModule:TpvVulkanShaderModule;
-              fComputeShaderStage:TpvVulkanPipelineShaderStage;
-              fPipeline:TpvVulkanComputePipeline;
-              fDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
-              fDescriptorPool:TpvVulkanDescriptorPool;
-              fDescriptorSet:TpvVulkanDescriptorSet;
-              fPipelineLayout:TpvVulkanPipelineLayout;
-              fPushConstants:TPushConstants;
-             public
-              constructor Create(const aPlanet:TpvScene3DPlanet); reintroduce;
-              destructor Destroy; override;
-              procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer);
-             public
-              property PushConstants:TPushConstants read fPushConstants write fPushConstants;
-            end;
-
-layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
-
-layout(set = 0, binding = 0) uniform texture2D uTextureHeightMap;
-layout(set = 0, binding = 1) uniform texture2D uTextureNormalMap;
-
-layout(set = 0, binding = 2, std430) buffer uPhysicsData {
-  uvec4 data[]; // x = height (float), y = normal (rgb10a2), z = slope (float), w = unused
-} physicsData;
-
-/* clang-format on */
-
-layout(push_constant) uniform PushConstants {
-  float planetGroundRadius; // planet ground radius
-  float heightMapScale; // scale of height map
-  int stepScaleSize;
-  int stepScaleShift;
-  ivec2 resolution;
-} pushConstants;
-
-*)
-
-constructor TpvScene3DPlanet.TPhysicsDataGeneration.Create(const aPlanet:TpvScene3DPlanet);
-var Stream:TStream;
-begin
-
- inherited Create;
-
- fPlanet:=aPlanet;
-
- fVulkanDevice:=fPlanet.fVulkanDevice;
-
- if assigned(fVulkanDevice) then begin
-
-  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_physics_data_generation_comp.spv');
-  try
-   fComputeShaderModule:=TpvVulkanShaderModule.Create(fVulkanDevice,Stream);
-  finally
-   FreeAndNil(Stream);
-  end;
-
-  fVulkanDevice.DebugUtils.SetObjectName(fComputeShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DPlanet.TPhysicsDataGeneration.fComputeShaderModule');
-
-  fComputeShaderStage:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_COMPUTE_BIT,fComputeShaderModule,'main');
-
-  fDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(fVulkanDevice);
-  fDescriptorSetLayout.AddBinding(0,
-                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE),
-                                  1,
-                                  TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
-                                  [],
-                                  0);
-  fDescriptorSetLayout.AddBinding(1,
-                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE),
-                                  1,
-                                  TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
-                                  [],
-                                  0);
-  fDescriptorSetLayout.AddBinding(2,
-                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
-                                  1,
-                                  TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
-                                  [],
-                                  0);
-  fDescriptorSetLayout.Initialize;
-
-  fPipelineLayout:=TpvVulkanPipelineLayout.Create(fVulkanDevice);
-  fPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),0,SizeOf(TPushConstants));
-  fPipelineLayout.AddDescriptorSetLayout(fDescriptorSetLayout);
-  fPipelineLayout.Initialize;
-
-  fDescriptorPool:=TpvVulkanDescriptorPool.Create(fVulkanDevice,
-                                                  TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
-                                                  1);
-  fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE),2);
-  fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),1);
-  fDescriptorPool.Initialize;
-
-  fDescriptorSet:=TpvVulkanDescriptorSet.Create(fDescriptorPool,fDescriptorSetLayout);
-  fDescriptorSet.WriteToDescriptorSet(0,
-                                      0,
-                                      1,
-                                      TVkDescriptorType(VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE),
-                                      [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,
-                                                                     fPlanet.fData.fHeightMapImage.VulkanImageViews[0].Handle,
-                                                                     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
-                                      [],
-                                      [],
-                                      false);   
-  fDescriptorSet.WriteToDescriptorSet(1,
-                                      0,
-                                      1,
-                                      TVkDescriptorType(VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE),
-                                      [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,
-                                                                     fPlanet.fData.fNormalMapImage.VulkanImageViews[0].Handle,
-                                                                     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
-                                      [],
-                                      [],
-                                      false);           
-  fDescriptorSet.WriteToDescriptorSet(2,
-                                      0,
-                                      1,
-                                      TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
-                                      [],
-                                      [TVkDescriptorBufferInfo.Create(fPlanet.fData.fPhysicsDataBuffer.Handle,
-                                                                      0,
-                                                                      VK_WHOLE_SIZE)],
-                                      [],
-                                      false);   
-  fDescriptorSet.Flush;
-  TpvVulkanDevice(fVulkanDevice).DebugUtils.SetObjectName(fDescriptorSet.Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET,'TpvScene3DPlanet.TPhysicsDataGeneration.fDescriptorSet');
-
-  fPipeline:=TpvVulkanComputePipeline.Create(fVulkanDevice,
-                                             pvApplication.VulkanPipelineCache,
-                                             TVkPipelineCreateFlags(0),
-                                             fComputeShaderStage,
-                                             fPipelineLayout,
-                                             nil,
-                                             0);
-
-  fPushConstants.PlanetGroundRadius:=fPlanet.fBottomRadius;
-  fPushConstants.HeightMapScale:=fPlanet.fHeightMapScale;
-  fPushConstants.StepScaleShift:=Max(0,IntLog2(fPlanet.fHeightMapResolution)-IntLog2(fPlanet.fPhysicsResolution));
-  fPushConstants.StepScaleSize:=1 shl fPushConstants.StepScaleShift;
-  fPushConstants.ResolutionX:=fPlanet.fPhysicsResolution;
-  fPushConstants.ResolutionY:=fPlanet.fPhysicsResolution;
-
- end;
-
-end;
-
-destructor TpvScene3DPlanet.TPhysicsDataGeneration.Destroy;
-begin
-
- FreeAndNil(fPipeline);
-
- FreeAndNil(fDescriptorSet);
-
- FreeAndNil(fDescriptorPool);
-
- FreeAndNil(fPipelineLayout);
-
- FreeAndNil(fDescriptorSetLayout);
-
- FreeAndNil(fComputeShaderStage);
-
- FreeAndNil(fComputeShaderModule);
-
- inherited Destroy;
-
-end;
-
-procedure TpvScene3DPlanet.TPhysicsDataGeneration.Execute(const aCommandBuffer:TpvVulkanCommandBuffer);
-var ImageMemoryBarriers:array[0..1] of TVkImageMemoryBarrier;
-    BufferMemoryBarrier:TVkBufferMemoryBarrier; 
-begin
-
- fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'Planet PhysicsDataGeneration',[0.5,0.75,0.25,1.0]);
- 
- ImageMemoryBarriers[0]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
-                                                      TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
-                                                      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                                      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                                      VK_QUEUE_FAMILY_IGNORED,
-                                                      VK_QUEUE_FAMILY_IGNORED,
-                                                      fPlanet.fData.fHeightMapImage.VulkanImage.Handle,
-                                                      TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
-                                                                                      0,
-                                                                                      1,
-                                                                                      0,
-                                                                                      1));
-
- ImageMemoryBarriers[1]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
-                                                      TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
-                                                      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                                      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                                      VK_QUEUE_FAMILY_IGNORED,
-                                                      VK_QUEUE_FAMILY_IGNORED,
-                                                      fPlanet.fData.fNormalMapImage.VulkanImage.Handle,
-                                                      TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
-                                                                                      0,
-                                                                                      1,
-                                                                                      0,
-                                                                                      1));
- 
- BufferMemoryBarrier:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT) or TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT) or TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
-                                                    TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT) or TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT) or TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
-                                                    VK_QUEUE_FAMILY_IGNORED,
-                                                    VK_QUEUE_FAMILY_IGNORED,
-                                                    fPlanet.fData.fPhysicsDataBuffer.Handle,
-                                                    0,
-                                                    VK_WHOLE_SIZE);
-
-
- aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
-                                   TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
-                                   0,
-                                   0,nil,
-                                   1,@BufferMemoryBarrier,
-                                   2,@ImageMemoryBarriers[0]);
-
- aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,fPipeline.Handle);
-
- aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE,
-                                      fPipelineLayout.Handle,
-                                      0,
-                                      1,
-                                      @fDescriptorSet.Handle,
-                                      0,
-                                      nil);
-
- aCommandBuffer.CmdPushConstants(fPipelineLayout.Handle,
-                                 TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
-                                 0,
-                                 SizeOf(TPushConstants),
-                                 @fPushConstants);  
-
- aCommandBuffer.CmdDispatch((fPlanet.fPhysicsResolution+15) shr 4,
-                            (fPlanet.fPhysicsResolution+15) shr 4,
-                            1); 
-
- ImageMemoryBarriers[0]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
-                                                      TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
-                                                      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                                      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                                      VK_QUEUE_FAMILY_IGNORED,
-                                                      VK_QUEUE_FAMILY_IGNORED,
-                                                      fPlanet.fData.fHeightMapImage.VulkanImage.Handle,
-                                                      TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
-                                                                                      0,
-                                                                                      1,
-                                                                                      0,
-                                                                                      1));
-
- ImageMemoryBarriers[1]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
-                                                      TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
-                                                      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                                      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                                      VK_QUEUE_FAMILY_IGNORED,
-                                                      VK_QUEUE_FAMILY_IGNORED,
-                                                      fPlanet.fData.fNormalMapImage.VulkanImage.Handle,
-                                                      TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
-                                                                                      0,
-                                                                                      1,
-                                                                                      0,
-                                                                                      1));
-
- BufferMemoryBarrier:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT) or TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT) or TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
-                                                    TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT) or TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT) or TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
-                                                    VK_QUEUE_FAMILY_IGNORED,
-                                                    VK_QUEUE_FAMILY_IGNORED,
-                                                    fPlanet.fData.fPhysicsDataBuffer.Handle,
-                                                    0,
-                                                    VK_WHOLE_SIZE); 
-
- aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
-                                   TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
-                                   0,
-                                   0,nil,
-                                   1,@BufferMemoryBarrier,
-                                   2,@ImageMemoryBarriers[0]);
-
- fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
-
-end;
- 
 { TpvScene3DPlanet.THeightMapMipMapGeneration }
 
 constructor TpvScene3DPlanet.THeightMapMipMapGeneration.Create(const aPlanet:TpvScene3DPlanet);
@@ -14386,8 +13947,6 @@ begin
 
  fNormalMapMipMapGeneration:=TNormalMapMipMapGeneration.Create(self);
 
- fPhysicsDataGeneration:=TPhysicsDataGeneration.Create(self);
-
 {fVisualMeshIndexGeneration:=TMeshIndexGeneration.Create(self,false);
 
  fPhysicsMeshIndexGeneration:=TMeshIndexGeneration.Create(self,true);}
@@ -14652,8 +14211,6 @@ begin
  FreeAndNil(fVisualMeshDistanceGeneration);
 
  FreeAndNil(fWaterCullPass);
-
- FreeAndNil(fPhysicsDataGeneration);
 
  FreeAndNil(fNormalMapMipMapGeneration);
 
@@ -15688,23 +15245,9 @@ begin
 
    begin
 
-    BeginUpdate;
-    try
-
-     fHeightMapMipMapGeneration.Execute(fVulkanComputeCommandBuffer);
-
-     fNormalMapMipMapGeneration.Execute(fVulkanComputeCommandBuffer);
-
-     fPhysicsDataGeneration.Execute(fVulkanComputeCommandBuffer);
-
-    finally
-     EndUpdate;
-    end;
-
     fData.Download(fVulkanComputeQueue,
                    fVulkanComputeCommandBuffer,
                    fVulkanComputeFence,
-                   true,
                    true,
                    true);
 
@@ -15796,8 +15339,8 @@ procedure TpvScene3DPlanet.Update(const aInFlightFrameIndex:TpvSizeInt);
 var QueueTileIndex:TpvSizeInt;
     TileIndex:TpvUInt32;
     Source:Pointer;
-    UpdateRenderIndex,UpdateWaterVisibility,UpdatedPhysicsData,
-    UpdatedHeightMap,UpdatedGrass,UpdatePhysicsData:Boolean;
+    UpdateRenderIndex,UpdateWaterVisibility,
+    UpdatedHeightMap,UpdatedGrass:Boolean;
     RaytracingTile:TRaytracingTile;
     CurrentRaytracingTileQueue:TRaytracingTiles;
 begin
@@ -15810,11 +15353,7 @@ begin
 
  UpdatedHeightMap:=false;
 
- UpdatedPhysicsData:=false;
-
  UpdatedGrass:=false;
-
- UpdatePhysicsData:=false;
 
  if fData.fModifyGrassMapActive then begin
 
@@ -15824,11 +15363,7 @@ begin
    try
 
     if fData.fModifyGrassMapActive then begin
-
-     fGrassMapModification.Execute(fVulkanComputeCommandBuffer);
-
-     UpdatePhysicsData:=true;
-
+     fGrassMapModification.Execute(fVulkanComputeCommandBuffer);     
     end;
 
    finally
@@ -15907,8 +15442,6 @@ begin
      UpdateRenderIndex:=true;
 
      UpdateWaterVisibility:=true;
-
-     UpdatePhysicsData:=true;
 
     end;
 
@@ -16065,28 +15598,12 @@ begin
 
  end;
 
- if assigned(fVulkanDevice) and UpdatePhysicsData then begin
-
-  BeginUpdate;
-  try
-
-   fPhysicsDataGeneration.Execute(fVulkanComputeCommandBuffer);
-
-   UpdatedPhysicsData:=true;
-
-  finally
-   EndUpdate;
-  end;
-
- end;
-
- if assigned(fVulkanDevice) and (UpdatedHeightMap or UpdatedGrass or UpdatedPhysicsData) then begin
+ if assigned(fVulkanDevice) and (UpdatedHeightMap or UpdatedGrass) then begin
   fData.Download(fVulkanComputeQueue,
                  fVulkanComputeCommandBuffer,
                  fVulkanComputeFence,
                  UpdatedHeightMap,
-                 UpdatedGrass,
-                 UpdatedPhysicsData);
+                 UpdatedGrass);
  end;
 
 {if assigned(fVulkanDevice) and UpdateWaterVisibility then begin
@@ -16865,50 +16382,6 @@ begin
  result:=(((v0*fxi)+(v1*fx))*(1.0-fy))+(((v2*fxi)+(v3*fx))*fy);
 
 end;
-{var UV:TpvVector2;
-    TexelX,TexelY:TpvFloat;
-    xi,yi,tx,ty:TpvInt32;
-    xf,yf,ixf:TpvFloat;
-    v00,v01,v10,v11:TpvScalar;
-begin
-
- if length(fData.fRawPhysicsData)>0 then begin
-
-  UV:=WrapOctahedralCoordinates(aUV);
-
-  TexelX:=UV.x*fPhysicsResolution;
-  TexelY:=UV.y*fPhysicsResolution;
-
-  xi:=Floor(TexelX);
-  yi:=Floor(TexelY);
-
-  xf:=TexelX-xi;
-  yf:=TexelY-yi;
-
-  xi:=Min(Max(xi,0),fPhysicsResolution-1);
-  yi:=Min(Max(yi,0),fPhysicsResolution-1);
-
-  v00:=fData.fRawPhysicsData[(yi*fPhysicsResolution)+xi].Slope;
-
-  WrapOctahedralTexelCoordinatesEx(xi+1,yi,fPhysicsResolution,fPhysicsResolution,tx,ty);
-  v01:=fData.fRawPhysicsData[(ty*fPhysicsResolution)+tx].Slope;
-
-  WrapOctahedralTexelCoordinatesEx(xi,yi+1,fPhysicsResolution,fPhysicsResolution,tx,ty);
-  v10:=fData.fRawPhysicsData[(ty*fPhysicsResolution)+tx].Slope;
-
-  WrapOctahedralTexelCoordinatesEx(xi+1,yi+1,fPhysicsResolution,fPhysicsResolution,tx,ty);
-  v11:=fData.fRawPhysicsData[(ty*fPhysicsResolution)+tx].Slope;
-
-  ixf:=1.0-xf;
-  result:=(((v00*ixf)+(v01*xf))*(1.0-yf))+(((v10*ixf)+(v11*xf))*yf);
-
- end else begin
-
-  result:=0.0;
-
- end;
-
-end;}
 
 function TpvScene3DPlanet.GetSlope(const aNormal:TpvVector3):TpvFloat;
 begin
