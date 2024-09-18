@@ -451,6 +451,7 @@ type PpvAudioInt32=^TpvInt32;
        property OtherTag:TpvUInt64 read fOtherTag write fOtherTag;
        property DynamicRateFactor:TpvInt32 read fDynamicRateFactor write fDynamicRateFactor;
        property DynamicVolume:TpvInt32 read fDynamicVolume write fDynamicVolume;
+       property Age:TpvInt64 read fAge;
        property Position:TpvInt64 read fPosition;
       published
        property KeyOff:LongBool read fKeyOff;
