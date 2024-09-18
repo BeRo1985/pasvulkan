@@ -434,6 +434,8 @@ type PpvAudioInt32=^TpvInt32;
        procedure Init(AVolume,APanning,ARate:TpvFloat);
        procedure Prepare;
        procedure MixTo(Buffer:PpvAudioSoundSampleValues;MixVolume:TpvInt32;const RealVoice:Boolean);
+      published
+       property KeyOff:LongBool read fKeyOff;
      end;
 
      TpvAudioSoundSampleVoices=array of TpvAudioSoundSampleVoice;
