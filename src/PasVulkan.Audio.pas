@@ -413,6 +413,8 @@ type PpvAudioInt32=^TpvInt32;
        fGlobalVoiceID:TpvID;
        fVolumeSquaredMagnitude:TpvFloat;
        fReadyToPutIntoSleep:Boolean;
+       fTag:TpvUInt64;
+       fOtherTag:TpvUInt64;
        procedure UpdateSpatialization;
        function GetSampleLength(CountSamplesValue:TpvInt32):TpvInt32;
        procedure PreClickRemoval(Buffer:TpvPointer);
@@ -427,13 +429,16 @@ type PpvAudioInt32=^TpvInt32;
        procedure UpdateSpatializationDelayRamping;
        procedure UpdateSpatializationLowPassRamping;
       public
-       constructor Create(AAudioEngine:TpvAudio;ASample:TpvAudioSoundSample;AIndex:TpvInt32);
+       constructor Create(aAudioEngine:TpvAudio;aSample:TpvAudioSoundSample;aIndex:TpvInt32);
        destructor Destroy; override;
        procedure Enqueue;
        procedure Dequeue;
-       procedure Init(AVolume,APanning,ARate:TpvFloat);
+       procedure Init(aVolume,aPanning,aRate:TpvFloat);
        procedure Prepare;
-       procedure MixTo(Buffer:PpvAudioSoundSampleValues;MixVolume:TpvInt32;const RealVoice:Boolean);
+       procedure MixTo(aBuffer:PpvAudioSoundSampleValues;aMixVolume:TpvInt32;const aRealVoice:Boolean);
+      public
+       property Tag:TpvUInt64 read fTag write fTag;
+       property OtherTag:TpvUInt64 read fOtherTag write fOtherTag;
       published
        property KeyOff:LongBool read fKeyOff;
      end;
@@ -1505,7 +1510,7 @@ begin
  result:=Min(Max(AngleChange*25.0,GainChange)*2.0,1.0);
 end;
 
-constructor TpvAudioSoundSampleVoice.Create(AAudioEngine:TpvAudio;ASample:TpvAudioSoundSample;AIndex:TpvInt32);
+constructor TpvAudioSoundSampleVoice.Create(aAudioEngine:TpvAudio;aSample:TpvAudioSoundSample;aIndex:TpvInt32);
 begin
  inherited Create;
  fPrevious:=nil;
@@ -1513,9 +1518,9 @@ begin
  fNextFree:=nil;
  fIsOnList:=false;
  fActiveVoiceIndex:=-1;
- fAudioEngine:=AAudioEngine;
- fSample:=ASample;
- fIndex:=AIndex;
+ fAudioEngine:=aAudioEngine;
+ fSample:=aSample;
+ fIndex:=aIndex;
  fMixToEffect:=false;
  fActive:=false;
  fLastLeft:=0;
@@ -1585,6 +1590,8 @@ begin
  end;
  fHRTFMask:=fHRTFLength-1;
  fGlobalVoiceID:=0;
+ fTag:=High(TpvUInt64);
+ fOtherTag:=High(TpvUInt64);
 end;
 
 destructor TpvAudioSoundSampleVoice.Destroy;
@@ -1609,6 +1616,8 @@ begin
   end;
   fNext:=nil;
   fIsOnList:=true;
+  fTag:=High(TpvUInt64);
+  fOtherTag:=High(TpvUInt64);
  end;
  if (fActiveVoiceIndex<0) and (fSample.CountActiveVoices<length(fSample.ActiveVoices)) then begin
   fActiveVoiceIndex:=fSample.CountActiveVoices;
@@ -1645,14 +1654,14 @@ begin
  end;
 end;
 
-procedure TpvAudioSoundSampleVoice.Init(AVolume,APanning,ARate:TpvFloat);
+procedure TpvAudioSoundSampleVoice.Init(aVolume,aPanning,aRate:TpvFloat);
 begin
  fActive:=true;
  fKeyOff:=false;
  fBackwards:=false;
- fVolume:=round(Clamp(AVolume,-1.0,1.0)*65536);
- fPanning:=round(Clamp(APanning,-1.0,1.0)*65536);
- fRate:=ARate;
+ fVolume:=round(Clamp(aVolume,-1.0,1.0)*65536);
+ fPanning:=round(Clamp(aPanning,-1.0,1.0)*65536);
+ fRate:=aRate;
  fDopplerRate:=1.0;
  fIncrement:=(fSample.SampleRate*round((fRate*fDopplerRate)*TpvInt64($100000000))) div fSample.AudioEngine.SampleRate;
  fIncrementCurrent:=fIncrement shl 16;
@@ -2696,22 +2705,22 @@ begin
 
 end;
 
-procedure TpvAudioSoundSampleVoice.MixTo(Buffer:PpvAudioSoundSampleValues;MixVolume:TpvInt32;const RealVoice:Boolean);
+procedure TpvAudioSoundSampleVoice.MixTo(aBuffer:PpvAudioSoundSampleValues;aMixVolume:TpvInt32;const aRealVoice:Boolean);
 var Remain,ToDo,Counter:TpvInt32;
     Buf:PpvAudioInt32;
     BufEx:PpvAudioInt32s;
 begin
- PreClickRemoval(Buffer);
+ PreClickRemoval(aBuffer);
  if fActive then begin
-  Buf:=TpvPointer(Buffer);
+  Buf:=TpvPointer(aBuffer);
 
-  if RealVoice or not
+  if aRealVoice or not
      (fSample.Sleepable and (((fVolumeLeft or fVolumeRight or fLastLeft or fLastRight)=0) and (fVolumeLeftCurrent=fVolumeLeft) and (fVolumeRightCurrent=fVolumeRight) and not (fSpatializationHasContent or fKeyOff))) then begin
 
    UpdateIncrementRamping;
 
-   if RealVoice then begin
-    UpdateVolumeRamping(MixVolume);
+   if aRealVoice then begin
+    UpdateVolumeRamping(aMixVolume);
    end else begin
     UpdateVolumeRamping(0);
    end;
