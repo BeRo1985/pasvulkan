@@ -308,6 +308,10 @@ type PpvAudioInt32=^TpvInt32;
 
      TpvAudioSoundSampleVoiceLowPassHistory=array[0..1] of TpvInt32;
 
+     TpvAudioSoundSampleVoice=class;
+
+     TpvAudioSoundSampleVoiceOnIntervalHook=function(aSampleoie:TpvAudioSoundSampleVoice):boolean of object;
+
      { TpvAudioSoundSampleVoice }
 
      TpvAudioSoundSampleVoice=class
@@ -339,6 +343,7 @@ type PpvAudioInt32=^TpvInt32;
        fRampingSamples:TpvInt32;
        fMulLeft:TpvInt32;
        fMulRight:TpvInt32;
+       fDynamicVolume:TpvInt32;
        fVolumeLeft:TpvInt32;
        fVolumeRight:TpvInt32;
        fVolumeLeftLast:TpvInt32;
@@ -415,6 +420,8 @@ type PpvAudioInt32=^TpvInt32;
        fReadyToPutIntoSleep:Boolean;
        fTag:TpvUInt64;
        fOtherTag:TpvUInt64;
+       fOnIntervalHook:TpvAudioSoundSampleVoiceOnIntervalHook;
+       fOnIntervalHookSampleCounter:Int32;
        procedure UpdateSpatialization;
        function GetSampleLength(CountSamplesValue:TpvInt32):TpvInt32;
        procedure PreClickRemoval(Buffer:TpvPointer);
@@ -424,8 +431,8 @@ type PpvAudioInt32=^TpvInt32;
        procedure MixProcVolumeRamping(Buffer:TpvPointer;ToDo:TpvInt32);
        procedure MixProcNormal(Buffer:TpvPointer;ToDo:TpvInt32);
        procedure UpdateIncrementRamping;
-       procedure UpdateTargetVolumes(MixVolume:TpvInt32);
-       procedure UpdateVolumeRamping(MixVolume:TpvInt32);
+       procedure UpdateTargetVolumes(aMixVolume:TpvInt32);
+       procedure UpdateVolumeRamping(aMixVolume:TpvInt32);
        procedure UpdateSpatializationDelayRamping;
        procedure UpdateSpatializationLowPassRamping;
       public
@@ -439,8 +446,10 @@ type PpvAudioInt32=^TpvInt32;
       public
        property Tag:TpvUInt64 read fTag write fTag;
        property OtherTag:TpvUInt64 read fOtherTag write fOtherTag;
+       property DynamicVolume:TpvInt32 read fDynamicVolume write fDynamicVolume;
       published
        property KeyOff:LongBool read fKeyOff;
+       property OnIntervalHook:TpvAudioSoundSampleVoiceOnIntervalHook read fOnIntervalHook write fOnIntervalHook;
      end;
 
      TpvAudioSoundSampleVoices=array of TpvAudioSoundSampleVoice;
@@ -1592,6 +1601,9 @@ begin
  fGlobalVoiceID:=0;
  fTag:=High(TpvUInt64);
  fOtherTag:=High(TpvUInt64);
+ fDynamicVolume:=32768;
+ fOnIntervalHook:=nil;
+ fOnIntervalHookSampleCounter:=-1;
 end;
 
 destructor TpvAudioSoundSampleVoice.Destroy;
@@ -1616,8 +1628,6 @@ begin
   end;
   fNext:=nil;
   fIsOnList:=true;
-  fTag:=High(TpvUInt64);
-  fOtherTag:=High(TpvUInt64);
  end;
  if (fActiveVoiceIndex<0) and (fSample.CountActiveVoices<length(fSample.ActiveVoices)) then begin
   fActiveVoiceIndex:=fSample.CountActiveVoices;
@@ -1738,6 +1748,14 @@ begin
   fSpatializationLowPassRampingRemain:=0;
  end;
  fRampingSamples:=fAudioEngine.RampingSamples;
+ fDynamicVolume:=32768;
+ fTag:=High(TpvUInt64);
+ fOtherTag:=High(TpvUInt64);
+ if assigned(fOnIntervalHook) then begin
+  fOnIntervalHookSampleCounter:=0;
+ end else begin
+  fOnIntervalHookSampleCounter:=-1;
+ end;
 end;
 
 procedure TpvAudioSoundSampleVoice.UpdateSpatialization;
@@ -2570,9 +2588,10 @@ begin
  end;
 end;
 
-procedure TpvAudioSoundSampleVoice.UpdateTargetVolumes(MixVolume:TpvInt32);
-var Pan:TpvInt32;
+procedure TpvAudioSoundSampleVoice.UpdateTargetVolumes(aMixVolume:TpvInt32);
+var MixVolume,Pan:TpvInt32;
 begin
+ MixVolume:=SARLongint(aMixVolume*fDynamicVolume,15);
  if fSpatialization then begin
   fVolumeLeft:=SARLongint(MixVolume*fMulLeft,15);
   fVolumeRight:=SARLongint(MixVolume*fMulRight,15);
@@ -2610,9 +2629,9 @@ begin
  fVolumeRight:=fVolumeRight shl 15;
 end;
 
-procedure TpvAudioSoundSampleVoice.UpdateVolumeRamping(MixVolume:TpvInt32);
+procedure TpvAudioSoundSampleVoice.UpdateVolumeRamping(aMixVolume:TpvInt32);
 begin
- UpdateTargetVolumes(MixVolume);
+ UpdateTargetVolumes(aMixVolume);
  if fAge=0 then begin
   fVolumeRampingRemain:=0;
   fVolumeLeftLast:=fVolumeLeft;
@@ -2717,6 +2736,17 @@ begin
   if aRealVoice or not
      (fSample.Sleepable and (((fVolumeLeft or fVolumeRight or fLastLeft or fLastRight)=0) and (fVolumeLeftCurrent=fVolumeLeft) and (fVolumeRightCurrent=fVolumeRight) and not (fSpatializationHasContent or fKeyOff))) then begin
 
+   if assigned(fOnIntervalHook) then begin
+    if fOnIntervalHookSampleCounter<=0 then begin
+     if not fOnIntervalHook(self) then begin
+      fActive:=false;
+     end;
+     fOnIntervalHookSampleCounter:=fRampingSamples;
+    end;
+   end else begin
+    fOnIntervalHookSampleCounter:=-1;
+   end;
+
    UpdateIncrementRamping;
 
    if aRealVoice then begin
@@ -2752,6 +2782,9 @@ begin
     end;
     if (fVolumeRampingRemain>0) and (ToDo>=fVolumeRampingRemain) then begin
      ToDo:=fVolumeRampingRemain;
+    end;
+    if (fOnIntervalHookSampleCounter>0) and (ToDo>=fOnIntervalHookSampleCounter) then begin
+     ToDo:=fOnIntervalHookSampleCounter;
     end;
     if fSpatialization and (fAudioEngine.SpatializationMode in [SPATIALIZATION_PSEUDO,SPATIALIZATION_HRTF]) then begin
      case fAudioEngine.SpatializationMode of
@@ -2903,6 +2936,24 @@ begin
        fSpatializationDelayRightCurrent:=fSpatializationDelayRight;
        fSpatializationDelayLeftIncrement:=0;
        fSpatializationDelayRightIncrement:=0;
+      end;
+     end;
+    end;
+
+    if fOnIntervalHookSampleCounter>0 then begin
+     dec(fOnIntervalHookSampleCounter,ToDo);
+     if fOnIntervalHookSampleCounter=0 then begin
+      if assigned(fOnIntervalHook) then begin
+       if not fOnIntervalHook(self) then begin
+        fActive:=false;
+       end;
+       fOnIntervalHookSampleCounter:=fVolumeRampingRemain;
+       UpdateIncrementRamping;
+       if aRealVoice then begin
+        UpdateVolumeRamping(aMixVolume);
+       end else begin
+        UpdateVolumeRamping(0);
+       end;
       end;
      end;
     end;
