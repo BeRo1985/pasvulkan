@@ -310,7 +310,7 @@ type PpvAudioInt32=^TpvInt32;
 
      TpvAudioSoundSampleVoice=class;
 
-     TpvAudioSoundSampleVoiceOnIntervalHook=function(const aSampleVoice:TpvAudioSoundSampleVoice):boolean of object;
+     TpvAudioSoundSampleVoiceOnIntervalHook=function(const aSampleVoice:TpvAudioSoundSampleVoice;const aDeltaSamples:TpvInt32):boolean of object;
 
      { TpvAudioSoundSampleVoice }
 
@@ -424,7 +424,9 @@ type PpvAudioInt32=^TpvInt32;
        fOtherTag:TpvUInt64;
        fCurrentOnIntervalHook:TpvAudioSoundSampleVoiceOnIntervalHook;
        fOnIntervalHook:TpvAudioSoundSampleVoiceOnIntervalHook;
-       fOnIntervalHookSampleCounter:Int32;
+       fOnIntervalHookSampleCounter:TpvInt32;
+       fOnIntervalHookTotalSampleCounter:TpvInt64;
+       fOnIntervalHookLastTotalSampleCounter:TpvInt64;
        procedure UpdateSpatialization;
        function GetSampleLength(CountSamplesValue:TpvInt32):TpvInt32;
        procedure PreClickRemoval(Buffer:TpvPointer);
@@ -1617,6 +1619,8 @@ begin
  fDynamicVolume:=32768;
  fOnIntervalHook:=nil;
  fOnIntervalHookSampleCounter:=-1;
+ fOnIntervalHookTotalSampleCounter:=0;
+ fOnIntervalHookLastTotalSampleCounter:=0;
 end;
 
 destructor TpvAudioSoundSampleVoice.Destroy;
@@ -1777,6 +1781,8 @@ begin
  end else begin
   fOnIntervalHookSampleCounter:=-1;
  end;
+ fOnIntervalHookTotalSampleCounter:=0;
+ fOnIntervalHookLastTotalSampleCounter:=0;
 end;
 
 procedure TpvAudioSoundSampleVoice.UpdateSpatialization;
@@ -2764,7 +2770,8 @@ begin
 
    if assigned(fCurrentOnIntervalHook) then begin
     if fOnIntervalHookSampleCounter<=0 then begin
-     fCurrentOnIntervalHook(self);
+     fCurrentOnIntervalHook(self,fOnIntervalHookTotalSampleCounter-fOnIntervalHookLastTotalSampleCounter);
+     fOnIntervalHookLastTotalSampleCounter:=fOnIntervalHookTotalSampleCounter;
      fOnIntervalHookSampleCounter:=fRampingSamples;
     end;
    end else begin
@@ -2968,7 +2975,7 @@ begin
      dec(fOnIntervalHookSampleCounter,ToDo);
      if fOnIntervalHookSampleCounter=0 then begin
       if assigned(fOnIntervalHook) then begin
-       if fCurrentOnIntervalHook(self) then begin
+       if fCurrentOnIntervalHook(self,fOnIntervalHookTotalSampleCounter-fOnIntervalHookLastTotalSampleCounter) then begin
         UpdateIncrementRamping;
         if aRealVoice then begin
          UpdateVolumeRamping(aMixVolume);
@@ -2976,10 +2983,13 @@ begin
          UpdateVolumeRamping(0);
         end;
        end;
+       fOnIntervalHookLastTotalSampleCounter:=fOnIntervalHookTotalSampleCounter;
        fOnIntervalHookSampleCounter:=fVolumeRampingRemain;
       end;
      end;
     end;
+
+    inc(fOnIntervalHookTotalSampleCounter,ToDo);
 
     inc(Buf,ToDo shl 1);
    end;
