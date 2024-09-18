@@ -449,6 +449,8 @@ type PpvAudioInt32=^TpvInt32;
        procedure Prepare;
        procedure MixTo(aBuffer:PpvAudioSoundSampleValues;aMixVolume:TpvInt32;const aRealVoice:Boolean);
       public
+       property AudioEngine:TpvAudio read fAudioEngine;
+       property Sample:TpvAudioSoundSample read fSample;
        property Tag:TpvUInt64 read fTag write fTag;
        property OtherTag:TpvUInt64 read fOtherTag write fOtherTag;
        property DynamicRateFactor:TpvInt32 read fDynamicRateFactor write fDynamicRateFactor;
