@@ -333,6 +333,8 @@ type PpvAudioInt32=^TpvInt32;
        fAge:TpvInt64;
        fListenerGeneration:TpvUInt64;
        fPosition:TpvInt64;
+       fDynamicRateFactor:TpvInt32;
+       fTargetIncrement:TpvInt64;
        fIncrement:TpvInt64;
        fIncrementLast:TpvInt64;
        fIncrementCurrent:TpvInt64;
@@ -447,6 +449,7 @@ type PpvAudioInt32=^TpvInt32;
       public
        property Tag:TpvUInt64 read fTag write fTag;
        property OtherTag:TpvUInt64 read fOtherTag write fOtherTag;
+       property DynamicRateFactor:TpvInt32 read fDynamicRateFactor write fDynamicRateFactor;
        property DynamicVolume:TpvInt32 read fDynamicVolume write fDynamicVolume;
        property Position:TpvInt64 read fPosition;
       published
@@ -1608,6 +1611,7 @@ begin
  fGlobalVoiceID:=0;
  fTag:=High(TpvUInt64);
  fOtherTag:=High(TpvUInt64);
+ fDynamicRateFactor:=65536;
  fDynamicVolume:=32768;
  fOnIntervalHook:=nil;
  fOnIntervalHookSampleCounter:=-1;
@@ -1755,6 +1759,7 @@ begin
   fSpatializationLowPassRampingRemain:=0;
  end;
  fRampingSamples:=fAudioEngine.RampingSamples;
+ fDynamicRateFactor:=65536;
  fDynamicVolume:=32768;
  fTag:=High(TpvUInt64);
  fOtherTag:=High(TpvUInt64);
@@ -2588,17 +2593,22 @@ end;
 
 procedure TpvAudioSoundSampleVoice.UpdateIncrementRamping;
 begin
+{$if declared(SARInt64)}
+ fTargetIncrement:=SARInt64(fIncrement*fDynamicRateFactor,16);
+{$else}
+ fTargetIncrement:=(fIncrement*fDynamicRateFactor) div 65536;
+{$ifend}
  if fAge=0 then begin
   fIncrementRampingRemain:=0;
   fIncrementRampingStepRemain:=0;
-  fIncrementCurrent:=fIncrement shl 16;
-  fIncrementLast:=fIncrement;
+  fIncrementCurrent:=fTargetIncrement shl 16;
+  fIncrementLast:=fTargetIncrement;
   fIncrementIncrement:=0;
- end else if fIncrementLast<>fIncrement then begin
+ end else if fIncrementLast<>fTargetIncrement then begin
   fIncrementRampingRemain:=fRampingSamples;
   fIncrementRampingStepRemain:=Min(Max(fRampingSamples div 10,1),fRampingSamples);
-  fIncrementLast:=fIncrement;
-  fIncrementIncrement:=((fIncrement shl 16)-fIncrementCurrent) div fIncrementRampingRemain;
+  fIncrementLast:=fTargetIncrement;
+  fIncrementIncrement:=((fTargetIncrement shl 16)-fIncrementCurrent) div fIncrementRampingRemain;
  end;
 end;
 
@@ -2907,7 +2917,7 @@ begin
      dec(fIncrementRampingRemain,ToDo);
      if fIncrementRampingRemain=0 then begin
       fIncrementRampingStepRemain:=0;
-      fIncrementCurrent:=fIncrement shl 16;
+      fIncrementCurrent:=fTargetIncrement shl 16;
       fIncrementIncrement:=0;
      end;
     end;
