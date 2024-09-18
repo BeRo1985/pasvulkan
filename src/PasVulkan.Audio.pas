@@ -451,6 +451,7 @@ type PpvAudioInt32=^TpvInt32;
        property OtherTag:TpvUInt64 read fOtherTag write fOtherTag;
        property DynamicRateFactor:TpvInt32 read fDynamicRateFactor write fDynamicRateFactor;
        property DynamicVolume:TpvInt32 read fDynamicVolume write fDynamicVolume;
+       property Active:LongBool read fActive write fActive;
        property Age:TpvInt64 read fAge;
        property Position:TpvInt64 read fPosition;
       published
@@ -2763,9 +2764,7 @@ begin
 
    if assigned(fCurrentOnIntervalHook) then begin
     if fOnIntervalHookSampleCounter<=0 then begin
-     if not fCurrentOnIntervalHook(self) then begin
-      fActive:=false;
-     end;
+     fCurrentOnIntervalHook(self);
      fOnIntervalHookSampleCounter:=fRampingSamples;
     end;
    end else begin
@@ -2969,16 +2968,15 @@ begin
      dec(fOnIntervalHookSampleCounter,ToDo);
      if fOnIntervalHookSampleCounter=0 then begin
       if assigned(fOnIntervalHook) then begin
-       if not fCurrentOnIntervalHook(self) then begin
-        fActive:=false;
+       if fCurrentOnIntervalHook(self) then begin
+        UpdateIncrementRamping;
+        if aRealVoice then begin
+         UpdateVolumeRamping(aMixVolume);
+        end else begin
+         UpdateVolumeRamping(0);
+        end;
        end;
        fOnIntervalHookSampleCounter:=fVolumeRampingRemain;
-       UpdateIncrementRamping;
-       if aRealVoice then begin
-        UpdateVolumeRamping(aMixVolume);
-       end else begin
-        UpdateVolumeRamping(0);
-       end;
       end;
      end;
     end;
