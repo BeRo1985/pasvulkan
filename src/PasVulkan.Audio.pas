@@ -447,6 +447,7 @@ type PpvAudioInt32=^TpvInt32;
        property Tag:TpvUInt64 read fTag write fTag;
        property OtherTag:TpvUInt64 read fOtherTag write fOtherTag;
        property DynamicVolume:TpvInt32 read fDynamicVolume write fDynamicVolume;
+       property Position:TpvInt64 read fPosition;
       published
        property KeyOff:LongBool read fKeyOff;
        property OnIntervalHook:TpvAudioSoundSampleVoiceOnIntervalHook read fOnIntervalHook write fOnIntervalHook;
