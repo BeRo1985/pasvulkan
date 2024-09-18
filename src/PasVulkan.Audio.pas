@@ -310,7 +310,7 @@ type PpvAudioInt32=^TpvInt32;
 
      TpvAudioSoundSampleVoice=class;
 
-     TpvAudioSoundSampleVoiceOnIntervalHook=function(aSampleoie:TpvAudioSoundSampleVoice):boolean of object;
+     TpvAudioSoundSampleVoiceOnIntervalHook=function(const aSampleVoice:TpvAudioSoundSampleVoice):boolean of object;
 
      { TpvAudioSoundSampleVoice }
 
