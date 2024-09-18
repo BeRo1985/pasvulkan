@@ -312,107 +312,107 @@ type PpvAudioInt32=^TpvInt32;
 
      TpvAudioSoundSampleVoice=class
       private
-       Previous:TpvAudioSoundSampleVoice;
-       Next:TpvAudioSoundSampleVoice;
-       NextFree:TpvAudioSoundSampleVoice;
-       IsOnList:LongBool;
-       ActiveVoiceIndex:TpvInt32;
-       AudioEngine:TpvAudio;
-       Sample:TpvAudioSoundSample;
-       Index:TpvInt32;
-       MixToEffect:LongBool;
-       Active:LongBool;
-       KeyOff:LongBool;
-       Backwards:LongBool;
-       Volume:TpvInt32;
-       Panning:TpvInt32;
-       Age:TpvInt64;
-       ListenerGeneration:TpvUInt64;
-       Position:TpvInt64;
-       Increment:TpvInt64;
-       IncrementLast:TpvInt64;
-       IncrementCurrent:TpvInt64;
-       IncrementIncrement:TpvInt64;
-       IncrementRampingRemain:TpvInt32;
-       IncrementRampingStepRemain:TpvInt32;
-       MixIncrement:TpvInt64;
-       RampingSamples:TpvInt32;
-       MulLeft:TpvInt32;
-       MulRight:TpvInt32;
-       VolumeLeft:TpvInt32;
-       VolumeRight:TpvInt32;
-       VolumeLeftLast:TpvInt32;
-       VolumeRightLast:TpvInt32;
-       VolumeLeftCurrent:TpvInt32;
-       VolumeRightCurrent:TpvInt32;
-       VolumeLeftIncrement:TpvInt32;
-       VolumeRightIncrement:TpvInt32;
-       VolumeRampingRemain:TpvInt32;
-       HRTFLeftCoefs:TpvAudioHRTFCoefs;
-       HRTFRightCoefs:TpvAudioHRTFCoefs;
-       HRTFLeftCoefsCurrent:TpvAudioHRTFCoefs;
-       HRTFRightCoefsCurrent:TpvAudioHRTFCoefs;
-       HRTFLeftCoefsIncrement:TpvAudioHRTFCoefs;
-       HRTFRightCoefsIncrement:TpvAudioHRTFCoefs;
-       HRTFLeftHistory:TpvAudioHRTFHistory;
-       HRTFRightHistory:TpvAudioHRTFHistory;
-       HRTFHistoryIndex:TpvInt32;
-       HRTFLeftDelay:TpvInt32;
-       HRTFRightDelay:TpvInt32;
-       HRTFLeftDelayCurrent:TpvInt32;
-       HRTFRightDelayCurrent:TpvInt32;
-       HRTFLeftDelayLast:TpvInt32;
-       HRTFRightDelayLast:TpvInt32;
-       HRTFLeftDelayIncrement:TpvInt32;
-       HRTFRightDelayIncrement:TpvInt32;
-       HRTFCounter:TpvInt32;
-       HRTFRampingRemain:TpvInt32;
-       HRTFRampingStepRemain:TpvInt32;
-       HRTFLength:TpvInt32;
-       HRTFMask:TpvInt32;
-       Spatialization:LongBool;
-       SpatializationLocal:LongBool;
-       SpatializationHasContent:LongBool;
-       SpatializationOrigin:TpvVector3;
-       SpatializationVelocity:TpvVector3;
-       SpatializationVolumeLast:TpvFloat;
-       SpatializationDelayLeft:TpvInt32;
-       SpatializationDelayRight:TpvInt32;
-       SpatializationDelayLeftIndex:TpvInt32;
-       SpatializationDelayRightIndex:TpvInt32;
-       SpatializationDelayLeftLast:TpvInt32;
-       SpatializationDelayRightLast:TpvInt32;
-       SpatializationDelayLeftCurrent:TpvInt32;
-       SpatializationDelayRightCurrent:TpvInt32;
-       SpatializationDelayLeftIncrement:TpvInt32;
-       SpatializationDelayRightIncrement:TpvInt32;
-       SpatializationDelayRampingRemain:TpvInt32;
-       SpatializationDelayLeftLine:array of TpvInt32;
-       SpatializationDelayRightLine:array of TpvInt32;
-       SpatializationLowPassLeftCoef:TpvInt32;
-       SpatializationLowPassRightCoef:TpvInt32;
-       SpatializationLowPassLeftLastCoef:TpvInt32;
-       SpatializationLowPassRightLastCoef:TpvInt32;
-       SpatializationLowPassLeftCurrentCoef:TpvInt32;
-       SpatializationLowPassRightCurrentCoef:TpvInt32;
-       SpatializationLowPassLeftIncrementCoef:TpvInt32;
-       SpatializationLowPassRightIncrementCoef:TpvInt32;
-       SpatializationLowPassLeftHistory:TpvAudioSoundSampleVoiceLowPassHistory;
-       SpatializationLowPassRightHistory:TpvAudioSoundSampleVoiceLowPassHistory;
-       SpatializationLowPassRampingRemain:TpvInt32;
-       LastDirection:TpvVector3;
-       LastLeft:TpvInt32;
-       LastRight:TpvInt32;
-       NewLastLeft:TpvInt32;
-       NewLastRight:TpvInt32;
-       Rate:TpvFloat;
-       DopplerRate:TpvFloat;
-       LastElevation:TpvFloat;
-       LastAzimuth:TpvFloat;
-       VoiceIndexPointer:TpvPointer;
-       GlobalVoiceID:TpvID;
-       VolumeSquaredMagnitude:TpvFloat;
-       ReadyToPutIntoSleep:Boolean;
+       fPrevious:TpvAudioSoundSampleVoice;
+       fNext:TpvAudioSoundSampleVoice;
+       fNextFree:TpvAudioSoundSampleVoice;
+       fIsOnList:LongBool;
+       fActiveVoiceIndex:TpvInt32;
+       fAudioEngine:TpvAudio;
+       fSample:TpvAudioSoundSample;
+       fIndex:TpvInt32;
+       fMixToEffect:LongBool;
+       fActive:LongBool;
+       fKeyOff:LongBool;
+       fBackwards:LongBool;
+       fVolume:TpvInt32;
+       fPanning:TpvInt32;
+       fAge:TpvInt64;
+       fListenerGeneration:TpvUInt64;
+       fPosition:TpvInt64;
+       fIncrement:TpvInt64;
+       fIncrementLast:TpvInt64;
+       fIncrementCurrent:TpvInt64;
+       fIncrementIncrement:TpvInt64;
+       fIncrementRampingRemain:TpvInt32;
+       fIncrementRampingStepRemain:TpvInt32;
+       fMixIncrement:TpvInt64;
+       fRampingSamples:TpvInt32;
+       fMulLeft:TpvInt32;
+       fMulRight:TpvInt32;
+       fVolumeLeft:TpvInt32;
+       fVolumeRight:TpvInt32;
+       fVolumeLeftLast:TpvInt32;
+       fVolumeRightLast:TpvInt32;
+       fVolumeLeftCurrent:TpvInt32;
+       fVolumeRightCurrent:TpvInt32;
+       fVolumeLeftIncrement:TpvInt32;
+       fVolumeRightIncrement:TpvInt32;
+       fVolumeRampingRemain:TpvInt32;
+       fHRTFLeftCoefs:TpvAudioHRTFCoefs;
+       fHRTFRightCoefs:TpvAudioHRTFCoefs;
+       fHRTFLeftCoefsCurrent:TpvAudioHRTFCoefs;
+       fHRTFRightCoefsCurrent:TpvAudioHRTFCoefs;
+       fHRTFLeftCoefsIncrement:TpvAudioHRTFCoefs;
+       fHRTFRightCoefsIncrement:TpvAudioHRTFCoefs;
+       fHRTFLeftHistory:TpvAudioHRTFHistory;
+       fHRTFRightHistory:TpvAudioHRTFHistory;
+       fHRTFHistoryIndex:TpvInt32;
+       fHRTFLeftDelay:TpvInt32;
+       fHRTFRightDelay:TpvInt32;
+       fHRTFLeftDelayCurrent:TpvInt32;
+       fHRTFRightDelayCurrent:TpvInt32;
+       fHRTFLeftDelayLast:TpvInt32;
+       fHRTFRightDelayLast:TpvInt32;
+       fHRTFLeftDelayIncrement:TpvInt32;
+       fHRTFRightDelayIncrement:TpvInt32;
+       fHRTFCounter:TpvInt32;
+       fHRTFRampingRemain:TpvInt32;
+       fHRTFRampingStepRemain:TpvInt32;
+       fHRTFLength:TpvInt32;
+       fHRTFMask:TpvInt32;
+       fSpatialization:LongBool;
+       fSpatializationLocal:LongBool;
+       fSpatializationHasContent:LongBool;
+       fSpatializationOrigin:TpvVector3;
+       fSpatializationVelocity:TpvVector3;
+       fSpatializationVolumeLast:TpvFloat;
+       fSpatializationDelayLeft:TpvInt32;
+       fSpatializationDelayRight:TpvInt32;
+       fSpatializationDelayLeftIndex:TpvInt32;
+       fSpatializationDelayRightIndex:TpvInt32;
+       fSpatializationDelayLeftLast:TpvInt32;
+       fSpatializationDelayRightLast:TpvInt32;
+       fSpatializationDelayLeftCurrent:TpvInt32;
+       fSpatializationDelayRightCurrent:TpvInt32;
+       fSpatializationDelayLeftIncrement:TpvInt32;
+       fSpatializationDelayRightIncrement:TpvInt32;
+       fSpatializationDelayRampingRemain:TpvInt32;
+       fSpatializationDelayLeftLine:array of TpvInt32;
+       fSpatializationDelayRightLine:array of TpvInt32;
+       fSpatializationLowPassLeftCoef:TpvInt32;
+       fSpatializationLowPassRightCoef:TpvInt32;
+       fSpatializationLowPassLeftLastCoef:TpvInt32;
+       fSpatializationLowPassRightLastCoef:TpvInt32;
+       fSpatializationLowPassLeftCurrentCoef:TpvInt32;
+       fSpatializationLowPassRightCurrentCoef:TpvInt32;
+       fSpatializationLowPassLeftIncrementCoef:TpvInt32;
+       fSpatializationLowPassRightIncrementCoef:TpvInt32;
+       fSpatializationLowPassLeftHistory:TpvAudioSoundSampleVoiceLowPassHistory;
+       fSpatializationLowPassRightHistory:TpvAudioSoundSampleVoiceLowPassHistory;
+       fSpatializationLowPassRampingRemain:TpvInt32;
+       fLastDirection:TpvVector3;
+       fLastLeft:TpvInt32;
+       fLastRight:TpvInt32;
+       fNewLastLeft:TpvInt32;
+       fNewLastRight:TpvInt32;
+       fRate:TpvFloat;
+       fDopplerRate:TpvFloat;
+       fLastElevation:TpvFloat;
+       fLastAzimuth:TpvFloat;
+       fVoiceIndexPointer:TpvPointer;
+       fGlobalVoiceID:TpvID;
+       fVolumeSquaredMagnitude:TpvFloat;
+       fReadyToPutIntoSleep:Boolean;
        procedure UpdateSpatialization;
        function GetSampleLength(CountSamplesValue:TpvInt32):TpvInt32;
        procedure PreClickRemoval(Buffer:TpvPointer);
@@ -1506,227 +1506,227 @@ end;
 constructor TpvAudioSoundSampleVoice.Create(AAudioEngine:TpvAudio;ASample:TpvAudioSoundSample;AIndex:TpvInt32);
 begin
  inherited Create;
- Previous:=nil;
- Next:=nil;
- NextFree:=nil;
- IsOnList:=false;
- ActiveVoiceIndex:=-1;
- AudioEngine:=AAudioEngine;
- Sample:=ASample;
- Index:=AIndex;
- MixToEffect:=false;
- Active:=false;
- LastLeft:=0;
- LastRight:=0;
- NewLastLeft:=0;
- NewLastRight:=0;
- MulLeft:=32768;
- MulRight:=32768;
- VolumeRampingRemain:=0;
- IncrementRampingRemain:=0;
- IncrementRampingStepRemain:=0;
- FillChar(HRTFLeftCoefs,SizeOf(TpvAudioHRTFCoefs),AnsiChar(#0));
- FillChar(HRTFRightCoefs,SizeOf(TpvAudioHRTFCoefs),AnsiChar(#0));
- FillChar(HRTFLeftCoefsCurrent,SizeOf(TpvAudioHRTFCoefs),AnsiChar(#0));
- FillChar(HRTFRightCoefsCurrent,SizeOf(TpvAudioHRTFCoefs),AnsiChar(#0));
- FillChar(HRTFLeftCoefsIncrement,SizeOf(TpvAudioHRTFCoefs),AnsiChar(#0));
- FillChar(HRTFRightCoefsIncrement,SizeOf(TpvAudioHRTFCoefs),AnsiChar(#0));
- FillChar(HRTFLeftHistory,SizeOf(TpvAudioHRTFHistory),AnsiChar(#0));
- FillChar(HRTFRightHistory,SizeOf(TpvAudioHRTFHistory),AnsiChar(#0));
- HRTFHistoryIndex:=0;
- HRTFLeftDelay:=0;
- HRTFRightDelay:=0;
- HRTFLeftDelayCurrent:=0;
- HRTFRightDelayCurrent:=0;
- HRTFLeftDelayLast:=0;
- HRTFRightDelayLast:=0;
- HRTFLeftDelayIncrement:=0;
- HRTFRightDelayIncrement:=0;
- HRTFCounter:=0;
- HRTFRampingRemain:=0;
- HRTFRampingStepRemain:=0;
- LastDirection:=TpvVector3.Null;
- SpatializationHasContent:=false;
- SpatializationVolumeLast:=0;
- SpatializationDelayLeft:=0;
- SpatializationDelayRight:=0;
- SpatializationDelayLeftLast:=SpatializationDelayLeft;
- SpatializationDelayRightLast:=SpatializationDelayRight;
- SpatializationDelayLeftCurrent:=SpatializationDelayLeft;
- SpatializationDelayRightCurrent:=SpatializationDelayRight;
- SpatializationDelayLeftIncrement:=0;
- SpatializationDelayRightIncrement:=0;
- SpatializationDelayRampingRemain:=0;
- SpatializationDelayLeftLine:=nil;
- SpatializationDelayRightLine:=nil;
- SetLength(SpatializationDelayLeftLine,AudioEngine.SpatializationDelayPowerOfTwo);
- SetLength(SpatializationDelayRightLine,AudioEngine.SpatializationDelayPowerOfTwo);
- SpatializationLowPassLeftCoef:=LowPassLength shl LowPassShift;
- SpatializationLowPassRightCoef:=LowPassLength shl LowPassShift;
- SpatializationLowPassLeftLastCoef:=SpatializationLowPassLeftCoef;
- SpatializationLowPassRightLastCoef:=SpatializationLowPassRightCoef;
- SpatializationLowPassLeftCurrentCoef:=SpatializationLowPassLeftCoef;
- SpatializationLowPassRightCurrentCoef:=SpatializationLowPassRightCoef;
- SpatializationLowPassLeftIncrementCoef:=0;
- SpatializationLowPassRightIncrementCoef:=0;
- SpatializationLowPassRampingRemain:=0;
- RampingSamples:=AudioEngine.RampingSamples;
- VoiceIndexPointer:=nil;
- Spatialization:=false;
- SpatializationLocal:=false;
- SpatializationOrigin:=TpvVector3.Null;
- SpatializationVelocity:=TpvVector3.Null;
- if AudioEngine.HRTF then begin
-  HRTFLength:=AudioEngine.HRTFPreset^.irSize;
+ fPrevious:=nil;
+ fNext:=nil;
+ fNextFree:=nil;
+ fIsOnList:=false;
+ fActiveVoiceIndex:=-1;
+ fAudioEngine:=AAudioEngine;
+ fSample:=ASample;
+ fIndex:=AIndex;
+ fMixToEffect:=false;
+ fActive:=false;
+ fLastLeft:=0;
+ fLastRight:=0;
+ fNewLastLeft:=0;
+ fNewLastRight:=0;
+ fMulLeft:=32768;
+ fMulRight:=32768;
+ fVolumeRampingRemain:=0;
+ fIncrementRampingRemain:=0;
+ fIncrementRampingStepRemain:=0;
+ FillChar(fHRTFLeftCoefs,SizeOf(TpvAudioHRTFCoefs),AnsiChar(#0));
+ FillChar(fHRTFRightCoefs,SizeOf(TpvAudioHRTFCoefs),AnsiChar(#0));
+ FillChar(fHRTFLeftCoefsCurrent,SizeOf(TpvAudioHRTFCoefs),AnsiChar(#0));
+ FillChar(fHRTFRightCoefsCurrent,SizeOf(TpvAudioHRTFCoefs),AnsiChar(#0));
+ FillChar(fHRTFLeftCoefsIncrement,SizeOf(TpvAudioHRTFCoefs),AnsiChar(#0));
+ FillChar(fHRTFRightCoefsIncrement,SizeOf(TpvAudioHRTFCoefs),AnsiChar(#0));
+ FillChar(fHRTFLeftHistory,SizeOf(TpvAudioHRTFHistory),AnsiChar(#0));
+ FillChar(fHRTFRightHistory,SizeOf(TpvAudioHRTFHistory),AnsiChar(#0));
+ fHRTFHistoryIndex:=0;
+ fHRTFLeftDelay:=0;
+ fHRTFRightDelay:=0;
+ fHRTFLeftDelayCurrent:=0;
+ fHRTFRightDelayCurrent:=0;
+ fHRTFLeftDelayLast:=0;
+ fHRTFRightDelayLast:=0;
+ fHRTFLeftDelayIncrement:=0;
+ fHRTFRightDelayIncrement:=0;
+ fHRTFCounter:=0;
+ fHRTFRampingRemain:=0;
+ fHRTFRampingStepRemain:=0;
+ fLastDirection:=TpvVector3.Null;
+ fSpatializationHasContent:=false;
+ fSpatializationVolumeLast:=0;
+ fSpatializationDelayLeft:=0;
+ fSpatializationDelayRight:=0;
+ fSpatializationDelayLeftLast:=fSpatializationDelayLeft;
+ fSpatializationDelayRightLast:=fSpatializationDelayRight;
+ fSpatializationDelayLeftCurrent:=fSpatializationDelayLeft;
+ fSpatializationDelayRightCurrent:=fSpatializationDelayRight;
+ fSpatializationDelayLeftIncrement:=0;
+ fSpatializationDelayRightIncrement:=0;
+ fSpatializationDelayRampingRemain:=0;
+ fSpatializationDelayLeftLine:=nil;
+ fSpatializationDelayRightLine:=nil;
+ SetLength(fSpatializationDelayLeftLine,fAudioEngine.SpatializationDelayPowerOfTwo);
+ SetLength(fSpatializationDelayRightLine,fAudioEngine.SpatializationDelayPowerOfTwo);
+ fSpatializationLowPassLeftCoef:=LowPassLength shl LowPassShift;
+ fSpatializationLowPassRightCoef:=LowPassLength shl LowPassShift;
+ fSpatializationLowPassLeftLastCoef:=fSpatializationLowPassLeftCoef;
+ fSpatializationLowPassRightLastCoef:=fSpatializationLowPassRightCoef;
+ fSpatializationLowPassLeftCurrentCoef:=fSpatializationLowPassLeftCoef;
+ fSpatializationLowPassRightCurrentCoef:=fSpatializationLowPassRightCoef;
+ fSpatializationLowPassLeftIncrementCoef:=0;
+ fSpatializationLowPassRightIncrementCoef:=0;
+ fSpatializationLowPassRampingRemain:=0;
+ fRampingSamples:=fAudioEngine.RampingSamples;
+ fVoiceIndexPointer:=nil;
+ fSpatialization:=false;
+ fSpatializationLocal:=false;
+ fSpatializationOrigin:=TpvVector3.Null;
+ fSpatializationVelocity:=TpvVector3.Null;
+ if fAudioEngine.HRTF then begin
+  fHRTFLength:=fAudioEngine.HRTFPreset^.irSize;
  end else begin
-  HRTFLength:=HRIR_MAX_LENGTH;
+  fHRTFLength:=HRIR_MAX_LENGTH;
  end;
- HRTFMask:=HRTFLength-1;
- GlobalVoiceID:=0;
+ fHRTFMask:=fHRTFLength-1;
+ fGlobalVoiceID:=0;
 end;
 
 destructor TpvAudioSoundSampleVoice.Destroy;
 begin
  Dequeue;
- SetLength(SpatializationDelayLeftLine,0);
- SetLength(SpatializationDelayRightLine,0);
+ SetLength(fSpatializationDelayLeftLine,0);
+ SetLength(fSpatializationDelayRightLine,0);
  inherited Destroy;
 end;
 
 procedure TpvAudioSoundSampleVoice.Enqueue;
 begin
- if not IsOnList then begin
-  if assigned(AudioEngine.VoiceLast) then begin
-   AudioEngine.VoiceLast.Next:=self;
-   Previous:=AudioEngine.VoiceLast;
-   AudioEngine.VoiceLast:=self;
+ if not fIsOnList then begin
+  if assigned(fAudioEngine.VoiceLast) then begin
+   fAudioEngine.VoiceLast.fNext:=self;
+   fPrevious:=fAudioEngine.VoiceLast;
+   fAudioEngine.VoiceLast:=self;
   end else begin
-   Previous:=nil;
-   AudioEngine.VoiceFirst:=self;
-   AudioEngine.VoiceLast:=self;
+   fPrevious:=nil;
+   fAudioEngine.VoiceFirst:=self;
+   fAudioEngine.VoiceLast:=self;
   end;
-  Next:=nil;
-  IsOnList:=true;
+  fNext:=nil;
+  fIsOnList:=true;
  end;
- if (ActiveVoiceIndex<0) and (Sample.CountActiveVoices<length(Sample.ActiveVoices)) then begin
-  ActiveVoiceIndex:=Sample.CountActiveVoices;
-  inc(Sample.CountActiveVoices);
-  Sample.ActiveVoices[ActiveVoiceIndex]:=self;
+ if (fActiveVoiceIndex<0) and (fSample.CountActiveVoices<length(fSample.ActiveVoices)) then begin
+  fActiveVoiceIndex:=fSample.CountActiveVoices;
+  inc(fSample.CountActiveVoices);
+  fSample.ActiveVoices[fActiveVoiceIndex]:=self;
  end;
 end;
 
 procedure TpvAudioSoundSampleVoice.Dequeue;
 begin
- if ActiveVoiceIndex>=0 then begin
-  // Swap with last active voice when needed and remove from list
-  if ((ActiveVoiceIndex+1)<Sample.CountActiveVoices) and (Sample.CountActiveVoices>1) then begin
-   Sample.ActiveVoices[ActiveVoiceIndex]:=Sample.ActiveVoices[Sample.CountActiveVoices-1];
-   Sample.ActiveVoices[ActiveVoiceIndex].ActiveVoiceIndex:=ActiveVoiceIndex;
+ if fActiveVoiceIndex>=0 then begin
+  // Swap with last fActive voice when needed and remove from list
+  if ((fActiveVoiceIndex+1)<fSample.CountActiveVoices) and (fSample.CountActiveVoices>1) then begin
+   fSample.ActiveVoices[fActiveVoiceIndex]:=fSample.ActiveVoices[fSample.CountActiveVoices-1];
+   fSample.ActiveVoices[fActiveVoiceIndex].fActiveVoiceIndex:=fActiveVoiceIndex;
   end;
-  dec(Sample.CountActiveVoices);
-  ActiveVoiceIndex:=-1;
+  dec(fSample.CountActiveVoices);
+  fActiveVoiceIndex:=-1;
  end;
- if IsOnList then begin
-  if assigned(Previous) then begin
-   Previous.Next:=Next;
-  end else if AudioEngine.VoiceFirst=self then begin
-   AudioEngine.VoiceFirst:=Next;
+ if fIsOnList then begin
+  if assigned(fPrevious) then begin
+   fPrevious.fNext:=fNext;
+  end else if fAudioEngine.VoiceFirst=self then begin
+   fAudioEngine.VoiceFirst:=fNext;
   end;
-  if assigned(Next) then begin
-   Next.Previous:=Previous;
-  end else if AudioEngine.VoiceLast=self then begin
-   AudioEngine.VoiceLast:=Previous;
+  if assigned(fNext) then begin
+   fNext.fPrevious:=fPrevious;
+  end else if fAudioEngine.VoiceLast=self then begin
+   fAudioEngine.VoiceLast:=fPrevious;
   end;
-  Previous:=nil;
-  Next:=nil;
-  IsOnList:=false;
+  fPrevious:=nil;
+  fNext:=nil;
+  fIsOnList:=false;
  end;
 end;
 
 procedure TpvAudioSoundSampleVoice.Init(AVolume,APanning,ARate:TpvFloat);
 begin
- Active:=true;
- KeyOff:=false;
- Backwards:=false;
- Volume:=round(Clamp(AVolume,-1.0,1.0)*65536);
- Panning:=round(Clamp(APanning,-1.0,1.0)*65536);
- Rate:=ARate;
- DopplerRate:=1.0;
- Increment:=(Sample.SampleRate*round((Rate*DopplerRate)*TpvInt64($100000000))) div Sample.AudioEngine.SampleRate;
- IncrementCurrent:=Increment shl 16;
- IncrementLast:=Increment;
- IncrementIncrement:=0;
- IncrementRampingRemain:=0;
- IncrementRampingStepRemain:=0;
- Age:=0;
- ListenerGeneration:=High(TpvUInt64);
- Position:=0;
- LastElevation:=1e+30;
- LastAzimuth:=1e+30;
- if AudioEngine.SpatializationMode=SPATIALIZATION_HRTF then begin
-  FillChar(HRTFLeftCoefs,SizeOf(TpvAudioHRTFCoefs),AnsiChar(#0));
-  FillChar(HRTFRightCoefs,SizeOf(TpvAudioHRTFCoefs),AnsiChar(#0));
-  FillChar(HRTFLeftCoefsCurrent,SizeOf(TpvAudioHRTFCoefs),AnsiChar(#0));
-  FillChar(HRTFRightCoefsCurrent,SizeOf(TpvAudioHRTFCoefs),AnsiChar(#0));
-  FillChar(HRTFLeftCoefsIncrement,SizeOf(TpvAudioHRTFCoefs),AnsiChar(#0));
-  FillChar(HRTFRightCoefsIncrement,SizeOf(TpvAudioHRTFCoefs),AnsiChar(#0));
-  FillChar(HRTFLeftHistory,SizeOf(TpvAudioHRTFHistory),AnsiChar(#0));
-  FillChar(HRTFRightHistory,SizeOf(TpvAudioHRTFHistory),AnsiChar(#0));
-  HRTFHistoryIndex:=0;
-  HRTFLeftDelay:=0;
-  HRTFRightDelay:=0;
-  HRTFLeftDelayCurrent:=0;
-  HRTFRightDelayCurrent:=0;
-  HRTFLeftDelayLast:=0;
-  HRTFRightDelayLast:=0;
-  HRTFLeftDelayIncrement:=0;
-  HRTFRightDelayIncrement:=0;
-  HRTFRampingRemain:=0;
-  HRTFRampingStepRemain:=0;
-  HRTFLength:=AudioEngine.HRTFPreset^.irSize;
-  HRTFMask:=HRTFLength-1;
+ fActive:=true;
+ fKeyOff:=false;
+ fBackwards:=false;
+ fVolume:=round(Clamp(AVolume,-1.0,1.0)*65536);
+ fPanning:=round(Clamp(APanning,-1.0,1.0)*65536);
+ fRate:=ARate;
+ fDopplerRate:=1.0;
+ fIncrement:=(fSample.SampleRate*round((fRate*fDopplerRate)*TpvInt64($100000000))) div fSample.AudioEngine.SampleRate;
+ fIncrementCurrent:=fIncrement shl 16;
+ fIncrementLast:=fIncrement;
+ fIncrementIncrement:=0;
+ fIncrementRampingRemain:=0;
+ fIncrementRampingStepRemain:=0;
+ fAge:=0;
+ fListenerGeneration:=High(TpvUInt64);
+ fPosition:=0;
+ fLastElevation:=1e+30;
+ fLastAzimuth:=1e+30;
+ if fAudioEngine.SpatializationMode=SPATIALIZATION_HRTF then begin
+  FillChar(fHRTFLeftCoefs,SizeOf(TpvAudioHRTFCoefs),AnsiChar(#0));
+  FillChar(fHRTFRightCoefs,SizeOf(TpvAudioHRTFCoefs),AnsiChar(#0));
+  FillChar(fHRTFLeftCoefsCurrent,SizeOf(TpvAudioHRTFCoefs),AnsiChar(#0));
+  FillChar(fHRTFRightCoefsCurrent,SizeOf(TpvAudioHRTFCoefs),AnsiChar(#0));
+  FillChar(fHRTFLeftCoefsIncrement,SizeOf(TpvAudioHRTFCoefs),AnsiChar(#0));
+  FillChar(fHRTFRightCoefsIncrement,SizeOf(TpvAudioHRTFCoefs),AnsiChar(#0));
+  FillChar(fHRTFLeftHistory,SizeOf(TpvAudioHRTFHistory),AnsiChar(#0));
+  FillChar(fHRTFRightHistory,SizeOf(TpvAudioHRTFHistory),AnsiChar(#0));
+  fHRTFHistoryIndex:=0;
+  fHRTFLeftDelay:=0;
+  fHRTFRightDelay:=0;
+  fHRTFLeftDelayCurrent:=0;
+  fHRTFRightDelayCurrent:=0;
+  fHRTFLeftDelayLast:=0;
+  fHRTFRightDelayLast:=0;
+  fHRTFLeftDelayIncrement:=0;
+  fHRTFRightDelayIncrement:=0;
+  fHRTFRampingRemain:=0;
+  fHRTFRampingStepRemain:=0;
+  fHRTFLength:=fAudioEngine.HRTFPreset^.irSize;
+  fHRTFMask:=fHRTFLength-1;
  end;
- VolumeRampingRemain:=0;
- VolumeLeft:=0;
- VolumeRight:=0;
- VolumeLeftLast:=0;
- VolumeRightLast:=0;
- VolumeLeftCurrent:=0;
- VolumeRightCurrent:=0;
- VolumeLeftIncrement:=0;
- VolumeRightIncrement:=0;
- inc(LastLeft,NewLastLeft);
- inc(LastRight,NewLastRight);
- NewLastLeft:=0;
- NewLastRight:=0;
- if AudioEngine.SpatializationMode in [SPATIALIZATION_PSEUDO,SPATIALIZATION_HRTF] then begin
-  SpatializationHasContent:=false;
-  SpatializationDelayLeft:=0;
-  SpatializationDelayRight:=0;
-  SpatializationDelayLeftLast:=SpatializationDelayLeft;
-  SpatializationDelayRightLast:=SpatializationDelayRight;
-  SpatializationDelayLeftCurrent:=SpatializationDelayLeft;
-  SpatializationDelayRightCurrent:=SpatializationDelayRight;
-  SpatializationDelayLeftIncrement:=0;
-  SpatializationDelayRightIncrement:=0;
-  SpatializationDelayRampingRemain:=0;
+ fVolumeRampingRemain:=0;
+ fVolumeLeft:=0;
+ fVolumeRight:=0;
+ fVolumeLeftLast:=0;
+ fVolumeRightLast:=0;
+ fVolumeLeftCurrent:=0;
+ fVolumeRightCurrent:=0;
+ fVolumeLeftIncrement:=0;
+ fVolumeRightIncrement:=0;
+ inc(fLastLeft,fNewLastLeft);
+ inc(fLastRight,fNewLastRight);
+ fNewLastLeft:=0;
+ fNewLastRight:=0;
+ if fAudioEngine.SpatializationMode in [SPATIALIZATION_PSEUDO,SPATIALIZATION_HRTF] then begin
+  fSpatializationHasContent:=false;
+  fSpatializationDelayLeft:=0;
+  fSpatializationDelayRight:=0;
+  fSpatializationDelayLeftLast:=fSpatializationDelayLeft;
+  fSpatializationDelayRightLast:=fSpatializationDelayRight;
+  fSpatializationDelayLeftCurrent:=fSpatializationDelayLeft;
+  fSpatializationDelayRightCurrent:=fSpatializationDelayRight;
+  fSpatializationDelayLeftIncrement:=0;
+  fSpatializationDelayRightIncrement:=0;
+  fSpatializationDelayRampingRemain:=0;
 {end;
- if AudioEngine.SpatializationMode=SPATIALIZATION_PSEUDO then begin}
-  SpatializationLowPassLeftCoef:=LowPassLength shl LowPassShift;
-  SpatializationLowPassRightCoef:=LowPassLength shl LowPassShift;
-  SpatializationLowPassLeftLastCoef:=SpatializationLowPassLeftCoef;
-  SpatializationLowPassRightLastCoef:=SpatializationLowPassRightCoef;
-  SpatializationLowPassLeftCurrentCoef:=SpatializationLowPassLeftCoef;
-  SpatializationLowPassRightCurrentCoef:=SpatializationLowPassRightCoef;
-  SpatializationLowPassLeftIncrementCoef:=0;
-  SpatializationLowPassRightIncrementCoef:=0;
-  SpatializationLowPassLeftHistory[0]:=0;
-  SpatializationLowPassLeftHistory[1]:=0;
-  SpatializationLowPassRightHistory[0]:=0;
-  SpatializationLowPassRightHistory[1]:=0;
-  SpatializationLowPassRampingRemain:=0;
+ if fAudioEngine.SpatializationMode=SPATIALIZATION_PSEUDO then begin}
+  fSpatializationLowPassLeftCoef:=LowPassLength shl LowPassShift;
+  fSpatializationLowPassRightCoef:=LowPassLength shl LowPassShift;
+  fSpatializationLowPassLeftLastCoef:=fSpatializationLowPassLeftCoef;
+  fSpatializationLowPassRightLastCoef:=fSpatializationLowPassRightCoef;
+  fSpatializationLowPassLeftCurrentCoef:=fSpatializationLowPassLeftCoef;
+  fSpatializationLowPassRightCurrentCoef:=fSpatializationLowPassRightCoef;
+  fSpatializationLowPassLeftIncrementCoef:=0;
+  fSpatializationLowPassRightIncrementCoef:=0;
+  fSpatializationLowPassLeftHistory[0]:=0;
+  fSpatializationLowPassLeftHistory[1]:=0;
+  fSpatializationLowPassRightHistory[0]:=0;
+  fSpatializationLowPassRightHistory[1]:=0;
+  fSpatializationLowPassRampingRemain:=0;
  end;
- RampingSamples:=AudioEngine.RampingSamples;
+ fRampingSamples:=fAudioEngine.RampingSamples;
 end;
 
 procedure TpvAudioSoundSampleVoice.UpdateSpatialization;
@@ -1756,49 +1756,49 @@ var Distance,ClampedDistance,AttenuationDistance,Attenuation,Spatialization,Spat
     DoIt,IsLocal:boolean;
 begin
 
- ListenerOrigin:=AudioEngine.ListenerViewMatrix.SimpleInverse.Translation.xyz;
+ ListenerOrigin:=fAudioEngine.ListenerViewMatrix.SimpleInverse.Translation.xyz;
 
- RelativeVector:=AudioEngine.ListenerViewMatrix*SpatializationOrigin;
+ RelativeVector:=fAudioEngine.ListenerViewMatrix*fSpatializationOrigin;
 
  NormalizedRelativeVector:=RelativeVector.Normalize;
 
- IsLocal:=SpatializationLocal or (SpatializationOrigin=ListenerOrigin);
+ IsLocal:=fSpatializationLocal or (fSpatializationOrigin=ListenerOrigin);
 
  Distance:=RelativeVector.Length;
 
- ClampedDistance:=Clamp(Distance,Sample.MinDistance,Sample.MaxDistance);
+ ClampedDistance:=Clamp(Distance,fSample.MinDistance,fSample.MaxDistance);
 
  if IsLocal then begin
   Attenuation:=1.0;
  end else begin
-  case Sample.DistanceModel of
+  case fSample.DistanceModel of
    TpvAudioDistanceModel.InverseDistance:begin
-    AttenuationDistance:=Sample.MinDistance+(Sample.AttenuationRollOff*(Distance-Sample.MinDistance));
+    AttenuationDistance:=fSample.MinDistance+(fSample.AttenuationRollOff*(Distance-fSample.MinDistance));
     if AttenuationDistance>0.0 then begin
-     Attenuation:=Sample.MinDistance/AttenuationDistance;
+     Attenuation:=fSample.MinDistance/AttenuationDistance;
     end else begin
      Attenuation:=1.0;
     end;
    end;
    TpvAudioDistanceModel.InverseDistanceClamped:begin
-    AttenuationDistance:=Sample.MinDistance+(Sample.AttenuationRollOff*(ClampedDistance-Sample.MinDistance));
+    AttenuationDistance:=fSample.MinDistance+(fSample.AttenuationRollOff*(ClampedDistance-fSample.MinDistance));
     if AttenuationDistance>0.0 then begin
-     Attenuation:=Sample.MinDistance/AttenuationDistance;
+     Attenuation:=fSample.MinDistance/AttenuationDistance;
     end else begin
      Attenuation:=1.0;
     end;
    end;
    TpvAudioDistanceModel.LinearDistance:begin
-    Attenuation:=1.0-(Sample.AttenuationRollOff*((Distance-Sample.MinDistance)/(Sample.MaxDistance-Sample.MinDistance)));
+    Attenuation:=1.0-(fSample.AttenuationRollOff*((Distance-fSample.MinDistance)/(fSample.MaxDistance-fSample.MinDistance)));
    end;
    TpvAudioDistanceModel.LinearDistanceClamped:begin
-    Attenuation:=1.0-(Sample.AttenuationRollOff*((ClampedDistance-Sample.MinDistance)/(Sample.MaxDistance-Sample.MinDistance)));
+    Attenuation:=1.0-(fSample.AttenuationRollOff*((ClampedDistance-fSample.MinDistance)/(fSample.MaxDistance-fSample.MinDistance)));
    end;
    TpvAudioDistanceModel.ExponentDistance:begin
-    Attenuation:=Power(Distance/Sample.MinDistance,-Sample.AttenuationRollOff);
+    Attenuation:=Power(Distance/fSample.MinDistance,-fSample.AttenuationRollOff);
    end;
    TpvAudioDistanceModel.ExponentDistanceClamped:begin
-    Attenuation:=Power(ClampedDistance/Sample.MinDistance,-Sample.AttenuationRollOff);
+    Attenuation:=Power(ClampedDistance/fSample.MinDistance,-fSample.AttenuationRollOff);
    end;
    else {TpvAudioDistanceModel.NoAttenuation:}begin
     Attenuation:=1.0;
@@ -1809,15 +1809,15 @@ begin
   end;
  end;
 
- if AudioEngine.InnerAngle<360.0 then begin
-  Angle:=(ArcCos(NormalizedRelativeVector.z*AudioEngine.ConeScale)*RAD2DEG)*2.0;
-  if (Angle>AudioEngine.InnerAngle) and (Angle<=AudioEngine.OuterAngle) then begin
-   Scale:=(Angle-AudioEngine.InnerAngle)/(AudioEngine.OuterAngle-AudioEngine.InnerAngle);
-   ConeVolume:=FloatLerp(1.0,AudioEngine.OuterGain,Scale);
-   ConeHF:=FloatLerp(1.0,AudioEngine.OuterGainHF,Scale);
-  end else if Angle>AudioEngine.OuterAngle then begin
-   ConeVolume:=AudioEngine.OuterGain;
-   ConeHF:=AudioEngine.OuterGainHF;
+ if fAudioEngine.InnerAngle<360.0 then begin
+  Angle:=(ArcCos(NormalizedRelativeVector.z*fAudioEngine.ConeScale)*RAD2DEG)*2.0;
+  if (Angle>fAudioEngine.InnerAngle) and (Angle<=fAudioEngine.OuterAngle) then begin
+   Scale:=(Angle-fAudioEngine.InnerAngle)/(fAudioEngine.OuterAngle-fAudioEngine.InnerAngle);
+   ConeVolume:=FloatLerp(1.0,fAudioEngine.OuterGain,Scale);
+   ConeHF:=FloatLerp(1.0,fAudioEngine.OuterGainHF,Scale);
+  end else if Angle>fAudioEngine.OuterAngle then begin
+   ConeVolume:=fAudioEngine.OuterGain;
+   ConeHF:=fAudioEngine.OuterGainHF;
   end else begin
    ConeVolume:=1.0;
    ConeHF:=1.0;
@@ -1834,7 +1834,7 @@ begin
   SpatializationVolume:=1.0;
  end;
 
- RampingSamples:=AudioEngine.RampingSamples;
+ fRampingSamples:=fAudioEngine.RampingSamples;
 
  if IsLocal then begin
   DirectionGain:=1.0;
@@ -1845,16 +1845,16 @@ begin
 
  DoIt:=false;
  Direction:=NormalizedRelativeVector;
- if Age=0 then begin
-  SpatializationVolumeLast:=SpatializationVolume;
-  LastDirection:=Direction;
+ if fAge=0 then begin
+  fSpatializationVolumeLast:=SpatializationVolume;
+  fLastDirection:=Direction;
  end else begin
-  Delta:=CalculateDelta(SpatializationVolumeLast,SpatializationVolume,LastDirection,Direction);
+  Delta:=CalculateDelta(fSpatializationVolumeLast,SpatializationVolume,fLastDirection,Direction);
   if Delta>0.001 then begin
    DoIt:=true;
-   RampingSamples:=trunc(Max(floor((Delta*(AudioEngine.SampleRate*0.015))+0.5),1.0));
-   SpatializationVolumeLast:=SpatializationVolume;
-   LastDirection:=Direction;
+   fRampingSamples:=trunc(Max(floor((Delta*(fAudioEngine.SampleRate*0.015))+0.5),1.0));
+   fSpatializationVolumeLast:=SpatializationVolume;
+   fLastDirection:=Direction;
   end;
  end;
 
@@ -1908,35 +1908,35 @@ begin
    Spatialization:=1.0;
   end;
  end;//}
- case AudioEngine.SpatializationMode of
+ case fAudioEngine.SpatializationMode of
   SPATIALIZATION_HRTF:begin
-   MulLeft:=round(Clamp(SpatializationVolume,-1.0,1.0)*32768.0);
-   MulRight:=MulLeft;
+   fMulLeft:=round(Clamp(SpatializationVolume,-1.0,1.0)*32768.0);
+   fMulRight:=fMulLeft;
   end;
   else begin
-   MulLeft:=round(Clamp(SpatializationVolume*DirectionGain*sin(HalfPI*Min(Max(0.0,0.5*(1.0-(Spatialization*HF_DAMP_FACTOR))),1.0)),-1.0,1.0)*32768.0);
-   MulRight:=round(Clamp(SpatializationVolume*DirectionGain*sin(HalfPI*Min(Max(0.0,0.5*(1.0+(Spatialization*HF_DAMP_FACTOR))),1.0)),-1.0,1.0)*32768.0);
+   fMulLeft:=round(Clamp(SpatializationVolume*DirectionGain*sin(HalfPI*Min(Max(0.0,0.5*(1.0-(Spatialization*HF_DAMP_FACTOR))),1.0)),-1.0,1.0)*32768.0);
+   fMulRight:=round(Clamp(SpatializationVolume*DirectionGain*sin(HalfPI*Min(Max(0.0,0.5*(1.0+(Spatialization*HF_DAMP_FACTOR))),1.0)),-1.0,1.0)*32768.0);
   end;
  end;
 
  LeftHFGain:=1.0;
  RightHFGain:=1.0;
 
- case AudioEngine.SpatializationMode of
+ case fAudioEngine.SpatializationMode of
   SPATIALIZATION_PSEUDO:begin
-   SpatializationDelayLeft:=0;
-   SpatializationDelayRight:=0;
-   if AudioEngine.ListenerUnderwater then begin
-    SpatializationDelay:=AudioEngine.SpatializationDelayUnderwater;
+   fSpatializationDelayLeft:=0;
+   fSpatializationDelayRight:=0;
+   if fAudioEngine.ListenerUnderwater then begin
+    SpatializationDelay:=fAudioEngine.SpatializationDelayUnderwater;
    end else begin
-    SpatializationDelay:=AudioEngine.SpatializationDelayAir;
+    SpatializationDelay:=fAudioEngine.SpatializationDelayAir;
    end;
    if Spatialization<0.0 then begin
     RightHFGain:=1.0+(Spatialization*HF_DAMP_HALF);
-    SpatializationDelayRight:=round((SpatializationDelay*(-Spatialization))*SpatializationDelayLength);
+    fSpatializationDelayRight:=round((SpatializationDelay*(-Spatialization))*SpatializationDelayLength);
    end else if Spatialization>0.0 then begin
     LeftHFGain:=1.0-(Spatialization*HF_DAMP_HALF);
-    SpatializationDelayLeft:=round((SpatializationDelay*Spatialization)*SpatializationDelayLength);
+    fSpatializationDelayLeft:=round((SpatializationDelay*Spatialization)*SpatializationDelayLength);
    end;
    if NormalizedRelativeVector.z>0 then begin
     Gain:=1.0-(NormalizedRelativeVector.z*HF_DAMP);
@@ -1956,35 +1956,35 @@ begin
     Elevation:=0.0;
     Azimuth:=0.0;
    end;
-   if (Age=0) or (abs(LastElevation-Elevation)>=0.25) or (abs(LastAzimuth-Azimuth)>=0.25) then begin
-    AudioEngine.GetLerpedHRTFCoefs(Elevation,Azimuth,HRTFLeftCoefs,HRTFRightCoefs,HRTFLeftDelay,HRTFRightDelay);
-    HRTFRampingRemain:=0;
-    HRTFLeftCoefsCurrent:=HRTFLeftCoefs;
-    HRTFRightCoefsCurrent:=HRTFRightCoefs;
-    for Counter:=0 to HRTFMask do begin
-     HRTFLeftCoefsIncrement[Counter]:=0;
-     HRTFRightCoefsIncrement[Counter]:=0;
+   if (fAge=0) or (abs(fLastElevation-Elevation)>=0.25) or (abs(fLastAzimuth-Azimuth)>=0.25) then begin
+    fAudioEngine.GetLerpedHRTFCoefs(Elevation,Azimuth,fHRTFLeftCoefs,fHRTFRightCoefs,fHRTFLeftDelay,fHRTFRightDelay);
+    fHRTFRampingRemain:=0;
+    fHRTFLeftCoefsCurrent:=fHRTFLeftCoefs;
+    fHRTFRightCoefsCurrent:=fHRTFRightCoefs;
+    for Counter:=0 to fHRTFMask do begin
+     fHRTFLeftCoefsIncrement[Counter]:=0;
+     fHRTFRightCoefsIncrement[Counter]:=0;
     end;
-    SpatializationDelayLeft:=HRTFLeftDelay;
-    SpatializationDelayRight:=HRTFRightDelay;
+    fSpatializationDelayLeft:=fHRTFLeftDelay;
+    fSpatializationDelayRight:=fHRTFRightDelay;
    end else begin
     if DoIt then begin
-     HRTFRampingRemain:=RampingSamples;
-     AudioEngine.GetLerpedHRTFCoefs(Elevation,Azimuth,HRTFLeftCoefs,HRTFRightCoefs,HRTFLeftDelay,HRTFRightDelay);
-     for Counter:=0 to HRTFMask do begin
-      HRTFLeftCoefsIncrement[Counter]:=(HRTFLeftCoefs[Counter]-HRTFLeftCoefsCurrent[Counter]) div HRTFRampingRemain;
-      HRTFRightCoefsIncrement[Counter]:=(HRTFRightCoefs[Counter]-HRTFRightCoefsCurrent[Counter]) div HRTFRampingRemain;
+     fHRTFRampingRemain:=fRampingSamples;
+     fAudioEngine.GetLerpedHRTFCoefs(Elevation,Azimuth,fHRTFLeftCoefs,fHRTFRightCoefs,fHRTFLeftDelay,fHRTFRightDelay);
+     for Counter:=0 to fHRTFMask do begin
+      fHRTFLeftCoefsIncrement[Counter]:=(fHRTFLeftCoefs[Counter]-fHRTFLeftCoefsCurrent[Counter]) div fHRTFRampingRemain;
+      fHRTFRightCoefsIncrement[Counter]:=(fHRTFRightCoefs[Counter]-fHRTFRightCoefsCurrent[Counter]) div fHRTFRampingRemain;
      end;
-     SpatializationDelayLeft:=HRTFLeftDelay;
-     SpatializationDelayRight:=HRTFRightDelay;
+     fSpatializationDelayLeft:=fHRTFLeftDelay;
+     fSpatializationDelayRight:=fHRTFRightDelay;
     end;
    end;
-   LastElevation:=Elevation;
-   LastAzimuth:=Azimuth;
+   fLastElevation:=Elevation;
+   fLastAzimuth:=Azimuth;
   end;
  end;
 
- if AudioEngine.SpatializationMode in [SPATIALIZATION_PSEUDO,SPATIALIZATION_HRTF] then begin
+ if fAudioEngine.SpatializationMode in [SPATIALIZATION_PSEUDO,SPATIALIZATION_HRTF] then begin
   if Distance>MinAbsorptionDistance then begin
    Factor:=Clamp(power(AirAbsorptionGainHF,AirAbsorptionFactor*((Clamp(Distance,MinAbsorptionDistance,MaxAbsorptionDistance)-MinAbsorptionDistance)*WorldUnitsToMeters)),0.0,1.0);
    if IsNaN(Factor) or IsInfinite(Factor) then begin
@@ -1993,13 +1993,13 @@ begin
    LeftHFGain:=LeftHFGain*Factor;
    RightHFGain:=RightHFGain*Factor;
   end;
-  SpatializationLowPassLeftCoef:=Min(Max(round(Clamp(LowPassCoef(LeftHFGain,AudioEngine.SpatializationLowPassCW),0.0,1.0)*(LowPassLength shl LowPassShift)),0),LowPassLength shl LowPassShift);
-  SpatializationLowPassRightCoef:=Min(Max(round(Clamp(LowPassCoef(RightHFGain,AudioEngine.SpatializationLowPassCW),0.0,1.0)*(LowPassLength shl LowPassShift)),0),LowPassLength shl LowPassShift);
+  fSpatializationLowPassLeftCoef:=Min(Max(round(Clamp(LowPassCoef(LeftHFGain,fAudioEngine.SpatializationLowPassCW),0.0,1.0)*(LowPassLength shl LowPassShift)),0),LowPassLength shl LowPassShift);
+  fSpatializationLowPassRightCoef:=Min(Max(round(Clamp(LowPassCoef(RightHFGain,fAudioEngine.SpatializationLowPassCW),0.0,1.0)*(LowPassLength shl LowPassShift)),0),LowPassLength shl LowPassShift);
  end;
 
  Factor:=DopplerFactor;
  if Factor>0.0 then begin
-  if AudioEngine.ListenerUnderwater then begin
+  if fAudioEngine.ListenerUnderwater then begin
    SpeedOfSound:=SpeedOfSoundUnderwater;
   end else begin
    SpeedOfSound:=SpeedOfSoundAir;
@@ -2009,12 +2009,12 @@ begin
    Factor:=Factor/SpeedOfSound;
    SpeedOfSound:=1.0;
   end;
-  SourceToListenerVector:=(SpatializationOrigin-ListenerOrigin).Normalize;
-  DopplerListener:=Min(AudioEngine.ListenerVelocity.Dot(SourceToListenerVector)*Factor,SpeedOfSound/Factor);
-  DopplerSource:=Min(SpatializationVelocity.Dot(SourceToListenerVector)*Factor,SpeedOfSound/Factor);
-  DopplerRate:=Clamp(SpeedOfSound+DopplerListener,1.0,(SpeedOfSound*2.0)-1.0)/
+  SourceToListenerVector:=(fSpatializationOrigin-ListenerOrigin).Normalize;
+  DopplerListener:=Min(fAudioEngine.ListenerVelocity.Dot(SourceToListenerVector)*Factor,SpeedOfSound/Factor);
+  DopplerSource:=Min(fSpatializationVelocity.Dot(SourceToListenerVector)*Factor,SpeedOfSound/Factor);
+  fDopplerRate:=Clamp(SpeedOfSound+DopplerListener,1.0,(SpeedOfSound*2.0)-1.0)/
                Clamp(SpeedOfSound+DopplerSource,1.0,(SpeedOfSound*2.0)-1.0);
-  Increment:=(TpvInt64(Sample.SampleRate)*round((Rate*DopplerRate)*TpvInt64($100000000))) div AudioEngine.SampleRate;
+  fIncrement:=(TpvInt64(fSample.SampleRate)*round((fRate*fDopplerRate)*TpvInt64($100000000))) div fAudioEngine.SampleRate;
  end;
 end;
 
@@ -2022,76 +2022,76 @@ function TpvAudioSoundSampleVoice.GetSampleLength(CountSamplesValue:TpvInt32):Tp
 var SmpInc,SmpLen,SmpLoopStart,SmpLoopEnd,CountSamples,SampleBufferSize,Difference:TpvInt64;
     LoopMode:TpvInt32;
 begin
- SmpInc:=IncrementCurrent shr 16;
+ SmpInc:=fIncrementCurrent shr 16;
  if SmpInc=0 then begin
   result:=0;
  end else begin
-  SmpLen:=TpvInt64(Sample.SampleLength) shl 32;
-  if (Sample.SustainLoop.Mode<>SoundLoopModeNONE) and not KeyOff then begin
-   LoopMode:=Sample.SustainLoop.Mode;
-   SmpLoopStart:=TpvInt64(Sample.SustainLoop.StartSample) shl 32;
-   SmpLoopEnd:=TpvInt64(Sample.SustainLoop.EndSample) shl 32;
-  end else if Sample.Loop.Mode<>SoundLoopModeNONE then begin
-   LoopMode:=Sample.Loop.Mode;
-   SmpLoopStart:=TpvInt64(Sample.Loop.StartSample) shl 32;
-   SmpLoopEnd:=TpvInt64(Sample.Loop.EndSample) shl 32;
+  SmpLen:=TpvInt64(fSample.SampleLength) shl 32;
+  if (fSample.SustainLoop.Mode<>SoundLoopModeNONE) and not fKeyOff then begin
+   LoopMode:=fSample.SustainLoop.Mode;
+   SmpLoopStart:=TpvInt64(fSample.SustainLoop.StartSample) shl 32;
+   SmpLoopEnd:=TpvInt64(fSample.SustainLoop.EndSample) shl 32;
+  end else if fSample.Loop.Mode<>SoundLoopModeNONE then begin
+   LoopMode:=fSample.Loop.Mode;
+   SmpLoopStart:=TpvInt64(fSample.Loop.StartSample) shl 32;
+   SmpLoopEnd:=TpvInt64(fSample.Loop.EndSample) shl 32;
   end else begin
    LoopMode:=SoundLoopModeNONE;
    SmpLoopStart:=0;
    SmpLoopEnd:=SmpLen;
   end;
   if LoopMode<>SoundLoopModeNONE then begin
-   if Position<SmpLoopStart then begin
-    if Backwards then begin
+   if fPosition<SmpLoopStart then begin
+    if fBackwards then begin
      if LoopMode=SoundLoopModePINGPONG then begin
-      Position:=SmpLoopStart-(SmpLoopStart-Position);
-      Backwards:=false;
-      if (Position<SmpLoopStart) or (Position>=((SmpLoopStart+SmpLoopEnd) div 2)) then begin
-       Position:=SmpLoopStart;
+      fPosition:=SmpLoopStart-(SmpLoopStart-fPosition);
+      fBackwards:=false;
+      if (fPosition<SmpLoopStart) or (fPosition>=((SmpLoopStart+SmpLoopEnd) div 2)) then begin
+       fPosition:=SmpLoopStart;
       end;
      end else if LoopMode=SoundLoopModeBACKWARD then begin
-      Position:=SmpLen-(SmpLoopStart-Position);
-      if Position>=SmpLoopEnd then begin
-       Position:=Position+(SmpLoopStart-SmpLoopEnd);
-       if Position<SmpLoopStart then begin
-        Position:=SmpLoopStart;
+      fPosition:=SmpLen-(SmpLoopStart-fPosition);
+      if fPosition>=SmpLoopEnd then begin
+       fPosition:=fPosition+(SmpLoopStart-SmpLoopEnd);
+       if fPosition<SmpLoopStart then begin
+        fPosition:=SmpLoopStart;
        end;
       end;
      end else begin
-      Position:=SmpLoopEnd-(SmpLoopStart-Position);
-      Backwards:=false;
-      if Position>=SmpLoopEnd then begin
-       Position:=Position+(SmpLoopStart-SmpLoopEnd);
-       if Position<SmpLoopStart then begin
-        Position:=SmpLoopStart;
+      fPosition:=SmpLoopEnd-(SmpLoopStart-fPosition);
+      fBackwards:=false;
+      if fPosition>=SmpLoopEnd then begin
+       fPosition:=fPosition+(SmpLoopStart-SmpLoopEnd);
+       if fPosition<SmpLoopStart then begin
+        fPosition:=SmpLoopStart;
        end;
       end;
      end;
     end else begin
-     if Position<0 then begin
-      Position:=0;
+     if fPosition<0 then begin
+      fPosition:=0;
      end;
     end;
-   end else if Position>=SmpLoopEnd then begin
+   end else if fPosition>=SmpLoopEnd then begin
     if LoopMode=SoundLoopModeBACKWARD then begin
-     Backwards:=true;
+     fBackwards:=true;
     end else if LoopMode=SoundLoopModePINGPONG then begin
-     Position:=SmpLoopEnd-(Position-SmpLoopEnd);
-     Backwards:=true;
-     if (Position<SmpLoopStart) or (Position>=((SmpLoopStart+SmpLoopEnd) div 2)) then begin
-      Position:=SmpLoopStart;
+     fPosition:=SmpLoopEnd-(fPosition-SmpLoopEnd);
+     fBackwards:=true;
+     if (fPosition<SmpLoopStart) or (fPosition>=((SmpLoopStart+SmpLoopEnd) div 2)) then begin
+      fPosition:=SmpLoopStart;
      end;
     end else begin
-     Position:=Position+(SmpLoopStart-SmpLoopEnd);
-     if Position<SmpLoopStart then begin
-      Position:=SmpLoopStart;
+     fPosition:=fPosition+(SmpLoopStart-SmpLoopEnd);
+     if fPosition<SmpLoopStart then begin
+      fPosition:=SmpLoopStart;
      end;
     end;
    end;
   end;
-  if (Position<0) OR (Position>=SmpLen) OR
-     ((Position<SmpLoopStart) AND
-      ((Position<0) OR Backwards)) then begin
+  if (fPosition<0) OR (fPosition>=SmpLen) OR
+     ((fPosition<SmpLoopStart) AND
+      ((fPosition<0) OR fBackwards)) then begin
    result:=0;
    exit;
   end;
@@ -2103,15 +2103,15 @@ begin
   if CountSamplesValue>SampleBufferSize then begin
    CountSamplesValue:=SampleBufferSize;
   end;
-  if Backwards then begin
-   Difference:=(Position-(SmpInc*(TpvInt64(CountSamplesValue)-1)));
+  if fBackwards then begin
+   Difference:=(fPosition-(SmpInc*(TpvInt64(CountSamplesValue)-1)));
    if Difference<SmpLoopStart then begin
-    CountSamples:=(((Position-SmpLoopStart)-1) div SmpInc)+1;
+    CountSamples:=(((fPosition-SmpLoopStart)-1) div SmpInc)+1;
    end;
   end else begin
-   Difference:=(Position+(SmpInc*(TpvInt64(CountSamplesValue)-1)));
+   Difference:=(fPosition+(SmpInc*(TpvInt64(CountSamplesValue)-1)));
    if Difference>=SmpLoopEnd then begin
-    CountSamples:=(((SmpLoopEnd-Position)-1) div SmpInc)+1;
+    CountSamples:=(((SmpLoopEnd-fPosition)-1) div SmpInc)+1;
    end;
   end;
   if CountSamples<=1 then begin
@@ -2129,11 +2129,11 @@ procedure TpvAudioSoundSampleVoice.PreClickRemoval(Buffer:TpvPointer);
 var LocalLeft,LocalRight,Counter:TpvInt32;
     Buf:PpvAudioInt32;
 begin
- LocalLeft:=LastLeft;
- LocalRight:=LastRight;
+ LocalLeft:=fLastLeft;
+ LocalRight:=fLastRight;
  if (LocalLeft<>0) or (LocalRight<>0) then begin
   Buf:=TpvPointer(Buffer);
-  for Counter:=1 to Sample.AudioEngine.BufferSamples do begin
+  for Counter:=1 to fSample.AudioEngine.BufferSamples do begin
    dec(LocalLeft,SARLongint(LocalLeft+(SARLongint(-LocalLeft,31) and $ff),8));
    dec(LocalRight,SARLongint(LocalRight+(SARLongint(-LocalRight,31) and $ff),8));
    Buf^:=Buf^+SARLongint(LocalLeft,12);
@@ -2141,8 +2141,8 @@ begin
    Buf^:=Buf^+SARLongint(LocalRight,12);
    inc(Buf);
   end;
-  LastLeft:=LocalLeft;
-  LastRight:=LocalRight;
+  fLastLeft:=LocalLeft;
+  fLastRight:=LocalRight;
  end;
 end;
 
@@ -2151,8 +2151,8 @@ var LocalNewLastLeft,LocalNewLastRight:TpvInt32;
     Buf:PpvAudioInt32;
 begin
  Buf:=Buffer;
- LocalNewLastLeft:=NewLastLeft;
- LocalNewLastRight:=NewLastRight;
+ LocalNewLastLeft:=fNewLastLeft;
+ LocalNewLastRight:=fNewLastRight;
  if (Remain>0) and ((LocalNewLastLeft<>0) or (LocalNewLastRight<>0)) then begin
   while Remain>0 do begin
    dec(LocalNewLastLeft,SARLongint(LocalNewLastLeft+(SARLongint(-LocalNewLastLeft,31) and $ff),8));
@@ -2164,8 +2164,8 @@ begin
    dec(Remain);
   end;
  end;
- NewLastLeft:=LocalNewLastLeft;
- NewLastRight:=LocalNewLastRight;
+ fNewLastLeft:=LocalNewLastLeft;
+ fNewLastRight:=LocalNewLastRight;
 end;
 
 procedure TpvAudioSoundSampleVoice.MixProcSpatializationHRTF(Buffer:TpvPointer;ToDo:TpvInt32);
@@ -2177,36 +2177,36 @@ var vl,vr,vli,vri,pll,plr,plli,plri,pdl,pdr,pdli,pdri,pdlip,pdrip,pdm,hhi,hm,p,m
     d:PpvAudioSoundSampleValues;
 begin
  Buf:=TpvPointer(Buffer);
- d:=Sample.Data;
- vl:=VolumeLeftCurrent;
- vr:=VolumeRightCurrent;
- vli:=VolumeLeftIncrement;
- vri:=VolumeRightIncrement;
- pll:=SpatializationLowPassLeftCurrentCoef;
- plr:=SpatializationLowPassRightCurrentCoef;
- plli:=SpatializationLowPassLeftIncrementCoef;
- plri:=SpatializationLowPassRightIncrementCoef;
- pllh:=SpatializationLowPassLeftHistory;
- plrh:=SpatializationLowPassRightHistory;
- pdl:=SpatializationDelayLeftCurrent;
- pdr:=SpatializationDelayRightCurrent;
- pdli:=SpatializationDelayLeftIncrement;
- pdri:=SpatializationDelayRightIncrement;
- pdlip:=SpatializationDelayLeftIndex;
- pdrip:=SpatializationDelayRightIndex;
- pdlp:=@SpatializationDelayLeftLine[0];
- pdrp:=@SpatializationDelayRightLine[0];
- pdm:=AudioEngine.SpatializationDelayMask;
- hl:=@HRTFLeftCoefsCurrent[0];
- hr:=@HRTFRightCoefsCurrent[0];
- hli:=@HRTFLeftCoefsIncrement[0];
- hri:=@HRTFRightCoefsIncrement[0];
- hlh:=@HRTFLeftHistory[0];
- hrh:=@HRTFRightHistory[0];
- hhi:=HRTFHistoryIndex;
- hm:=HRTFMask;
- p64:=Position;
- i64:=MixIncrement;
+ d:=fSample.Data;
+ vl:=fVolumeLeftCurrent;
+ vr:=fVolumeRightCurrent;
+ vli:=fVolumeLeftIncrement;
+ vri:=fVolumeRightIncrement;
+ pll:=fSpatializationLowPassLeftCurrentCoef;
+ plr:=fSpatializationLowPassRightCurrentCoef;
+ plli:=fSpatializationLowPassLeftIncrementCoef;
+ plri:=fSpatializationLowPassRightIncrementCoef;
+ pllh:=fSpatializationLowPassLeftHistory;
+ plrh:=fSpatializationLowPassRightHistory;
+ pdl:=fSpatializationDelayLeftCurrent;
+ pdr:=fSpatializationDelayRightCurrent;
+ pdli:=fSpatializationDelayLeftIncrement;
+ pdri:=fSpatializationDelayRightIncrement;
+ pdlip:=fSpatializationDelayLeftIndex;
+ pdrip:=fSpatializationDelayRightIndex;
+ pdlp:=@fSpatializationDelayLeftLine[0];
+ pdrp:=@fSpatializationDelayRightLine[0];
+ pdm:=fAudioEngine.SpatializationDelayMask;
+ hl:=@fHRTFLeftCoefsCurrent[0];
+ hr:=@fHRTFRightCoefsCurrent[0];
+ hli:=@fHRTFLeftCoefsIncrement[0];
+ hri:=@fHRTFRightCoefsIncrement[0];
+ hlh:=@fHRTFLeftHistory[0];
+ hrh:=@fHRTFRightHistory[0];
+ hhi:=fHRTFHistoryIndex;
+ hm:=fHRTFMask;
+ p64:=fPosition;
+ i64:=fMixIncrement;
  while ToDo>0 do begin
   dec(ToDo);
   p:=TpvUInt32(p64 shr PositionShift) shl 1;
@@ -2316,18 +2316,18 @@ begin
   hhi:=(hhi+1) and hm;
   inc(p64,i64);
  end;
- VolumeLeftCurrent:=vl;
- VolumeRightCurrent:=vr;
- SpatializationLowPassLeftCurrentCoef:=pll;
- SpatializationLowPassRightCurrentCoef:=plr;
- SpatializationLowPassLeftHistory:=pllh;
- SpatializationLowPassRightHistory:=plrh;
- SpatializationDelayLeftCurrent:=pdl;
- SpatializationDelayRightCurrent:=pdr;
- SpatializationDelayLeftIndex:=pdlip;
- SpatializationDelayRightIndex:=pdrip;
- HRTFHistoryIndex:=hhi;
- Position:=p64;
+ fVolumeLeftCurrent:=vl;
+ fVolumeRightCurrent:=vr;
+ fSpatializationLowPassLeftCurrentCoef:=pll;
+ fSpatializationLowPassRightCurrentCoef:=plr;
+ fSpatializationLowPassLeftHistory:=pllh;
+ fSpatializationLowPassRightHistory:=plrh;
+ fSpatializationDelayLeftCurrent:=pdl;
+ fSpatializationDelayRightCurrent:=pdr;
+ fSpatializationDelayLeftIndex:=pdlip;
+ fSpatializationDelayRightIndex:=pdrip;
+ fHRTFHistoryIndex:=hhi;
+ fPosition:=p64;
 end;
 
 procedure TpvAudioSoundSampleVoice.MixProcSpatializationPSEUDO(Buffer:TpvPointer;ToDo:TpvInt32);
@@ -2339,28 +2339,28 @@ var vl,vr,vli,vri,pll,plr,plli,plri,pdl,pdr,pdli,pdri,pdlip,pdrip,pdm,p,m,s,v:Tp
     d:PpvAudioSoundSampleValues;
 begin
  Buf:=TpvPointer(Buffer);
- d:=Sample.Data;
- vl:=VolumeLeftCurrent;
- vr:=VolumeRightCurrent;
- vli:=VolumeLeftIncrement;
- vri:=VolumeRightIncrement;
- pll:=SpatializationLowPassLeftCurrentCoef;
- plr:=SpatializationLowPassRightCurrentCoef;
- plli:=SpatializationLowPassLeftIncrementCoef;
- plri:=SpatializationLowPassRightIncrementCoef;
- pllh:=SpatializationLowPassLeftHistory;
- plrh:=SpatializationLowPassRightHistory;
- pdl:=SpatializationDelayLeftCurrent;
- pdr:=SpatializationDelayRightCurrent;
- pdli:=SpatializationDelayLeftIncrement;
- pdri:=SpatializationDelayRightIncrement;
- pdlip:=SpatializationDelayLeftIndex;
- pdrip:=SpatializationDelayRightIndex;
- pdlp:=@SpatializationDelayLeftLine[0];
- pdrp:=@SpatializationDelayRightLine[0];
- pdm:=AudioEngine.SpatializationDelayMask;
- p64:=Position;
- i64:=MixIncrement;
+ d:=fSample.Data;
+ vl:=fVolumeLeftCurrent;
+ vr:=fVolumeRightCurrent;
+ vli:=fVolumeLeftIncrement;
+ vri:=fVolumeRightIncrement;
+ pll:=fSpatializationLowPassLeftCurrentCoef;
+ plr:=fSpatializationLowPassRightCurrentCoef;
+ plli:=fSpatializationLowPassLeftIncrementCoef;
+ plri:=fSpatializationLowPassRightIncrementCoef;
+ pllh:=fSpatializationLowPassLeftHistory;
+ plrh:=fSpatializationLowPassRightHistory;
+ pdl:=fSpatializationDelayLeftCurrent;
+ pdr:=fSpatializationDelayRightCurrent;
+ pdli:=fSpatializationDelayLeftIncrement;
+ pdri:=fSpatializationDelayRightIncrement;
+ pdlip:=fSpatializationDelayLeftIndex;
+ pdrip:=fSpatializationDelayRightIndex;
+ pdlp:=@fSpatializationDelayLeftLine[0];
+ pdrp:=@fSpatializationDelayRightLine[0];
+ pdm:=fAudioEngine.SpatializationDelayMask;
+ p64:=fPosition;
+ i64:=fMixIncrement;
  while ToDo>0 do begin
   dec(ToDo);
   p:=TpvUInt32(p64 shr PositionShift) shl 1;
@@ -2449,17 +2449,17 @@ begin
   pdrip:=(pdrip+1) and pdm;
   inc(p64,i64);
  end;
- VolumeLeftCurrent:=vl;
- VolumeRightCurrent:=vr;
- SpatializationLowPassLeftCurrentCoef:=pll;
- SpatializationLowPassRightCurrentCoef:=plr;
- SpatializationLowPassLeftHistory:=pllh;
- SpatializationLowPassRightHistory:=plrh;
- SpatializationDelayLeftCurrent:=pdl;
- SpatializationDelayRightCurrent:=pdr;
- SpatializationDelayLeftIndex:=pdlip;
- SpatializationDelayRightIndex:=pdrip;
- Position:=p64;
+ fVolumeLeftCurrent:=vl;
+ fVolumeRightCurrent:=vr;
+ fSpatializationLowPassLeftCurrentCoef:=pll;
+ fSpatializationLowPassRightCurrentCoef:=plr;
+ fSpatializationLowPassLeftHistory:=pllh;
+ fSpatializationLowPassRightHistory:=plrh;
+ fSpatializationDelayLeftCurrent:=pdl;
+ fSpatializationDelayRightCurrent:=pdr;
+ fSpatializationDelayLeftIndex:=pdlip;
+ fSpatializationDelayRightIndex:=pdrip;
+ fPosition:=p64;
 end;
 
 procedure TpvAudioSoundSampleVoice.MixProcVolumeRamping(Buffer:TpvPointer;ToDo:TpvInt32);
@@ -2469,13 +2469,13 @@ var vl,vr,vli,vri,p,m,s:TpvInt32;
     d:PpvAudioSoundSampleValues;
 begin
  Buf:=TpvPointer(Buffer);
- d:=Sample.Data;
- vl:=VolumeLeftCurrent;
- vr:=VolumeRightCurrent;
- vli:=VolumeLeftIncrement;
- vri:=VolumeRightIncrement;
- p64:=Position;
- i64:=MixIncrement;
+ d:=fSample.Data;
+ vl:=fVolumeLeftCurrent;
+ vr:=fVolumeRightCurrent;
+ vli:=fVolumeLeftIncrement;
+ vri:=fVolumeRightIncrement;
+ p64:=fPosition;
+ i64:=fMixIncrement;
  while ToDo>0 do begin
   dec(ToDo);
   p:=TpvUInt32(p64 shr PositionShift) shl 1;
@@ -2498,9 +2498,9 @@ begin
   inc(vr,vri);
   inc(p64,i64);
  end;
- VolumeLeftCurrent:=vl;
- VolumeRightCurrent:=vr;
- Position:=p64;
+ fVolumeLeftCurrent:=vl;
+ fVolumeRightCurrent:=vr;
+ fPosition:=p64;
 end;
 
 procedure TpvAudioSoundSampleVoice.MixProcNormal(Buffer:TpvPointer;ToDo:TpvInt32);
@@ -2510,16 +2510,16 @@ var vl,vr,p,m,s:TpvInt32;
     d:PpvAudioSoundSampleValues;
 begin
  Buf:=TpvPointer(Buffer);
- d:=Sample.Data;
+ d:=fSample.Data;
 {$ifdef UseDIV}
  vl:=VolumeLeft div 32768;
  vr:=VolumeRight div 32768;
 {$else}
- vl:=SARLongint(VolumeLeft,15);
- vr:=SARLongint(VolumeRight,15);
+ vl:=SARLongint(fVolumeLeft,15);
+ vr:=SARLongint(fVolumeRight,15);
 {$endif}
- p64:=Position;
- i64:=MixIncrement;
+ p64:=fPosition;
+ i64:=fMixIncrement;
  while ToDo>0 do begin
   dec(ToDo);
   p:=TpvUInt32(p64 shr PositionShift) shl 1;
@@ -2540,128 +2540,128 @@ begin
   inc(Buf);
   inc(p64,i64);
  end;
- Position:=p64;
+ fPosition:=p64;
 end;
 
 procedure TpvAudioSoundSampleVoice.UpdateIncrementRamping;
 begin
- if Age=0 then begin
-  IncrementRampingRemain:=0;
-  IncrementRampingStepRemain:=0;
-  IncrementCurrent:=Increment shl 16;
-  IncrementLast:=Increment;
-  IncrementIncrement:=0;
- end else if IncrementLast<>Increment then begin
-  IncrementRampingRemain:=RampingSamples;
-  IncrementRampingStepRemain:=Min(Max(RampingSamples div 10,1),RampingSamples);
-  IncrementLast:=Increment;
-  IncrementIncrement:=((Increment shl 16)-IncrementCurrent) div IncrementRampingRemain;
+ if fAge=0 then begin
+  fIncrementRampingRemain:=0;
+  fIncrementRampingStepRemain:=0;
+  fIncrementCurrent:=fIncrement shl 16;
+  fIncrementLast:=fIncrement;
+  fIncrementIncrement:=0;
+ end else if fIncrementLast<>fIncrement then begin
+  fIncrementRampingRemain:=fRampingSamples;
+  fIncrementRampingStepRemain:=Min(Max(fRampingSamples div 10,1),fRampingSamples);
+  fIncrementLast:=fIncrement;
+  fIncrementIncrement:=((fIncrement shl 16)-fIncrementCurrent) div fIncrementRampingRemain;
  end;
 end;
 
 procedure TpvAudioSoundSampleVoice.UpdateTargetVolumes(MixVolume:TpvInt32);
 var Pan:TpvInt32;
 begin
- if Spatialization then begin
-  VolumeLeft:=SARLongint(MixVolume*MulLeft,15);
-  VolumeRight:=SARLongint(MixVolume*MulRight,15);
-  if VolumeLeft<-32768 then begin
-   VolumeLeft:=-32768;
-  end else if VolumeLeft>=32768 then begin
-   VolumeLeft:=32768;
+ if fSpatialization then begin
+  fVolumeLeft:=SARLongint(MixVolume*fMulLeft,15);
+  fVolumeRight:=SARLongint(MixVolume*fMulRight,15);
+  if fVolumeLeft<-32768 then begin
+   fVolumeLeft:=-32768;
+  end else if fVolumeLeft>=32768 then begin
+   fVolumeLeft:=32768;
   end;
-  if VolumeRight<-32768 then begin
-   VolumeRight:=-32768;
-  end else if VolumeRight>=32768 then begin
-   VolumeRight:=32768;
+  if fVolumeRight<-32768 then begin
+   fVolumeRight:=-32768;
+  end else if fVolumeRight>=32768 then begin
+   fVolumeRight:=32768;
   end;
  end else begin
-  Pan:=Panning+65536;
+  Pan:=fPanning+65536;
   if Pan<0 then begin
    Pan:=0;
   end else if Pan>=131072 then begin
    Pan:=131072;
   end;
-  VolumeLeft:=SARLongint(AudioEngine.PanningLUT[SARLongint(131072-Pan,1)]*MixVolume,15);
-  VolumeRight:=SARLongint(AudioEngine.PanningLUT[SARLongint(Pan,1)]*MixVolume,15);
-  if VolumeLeft<0 then begin
-   VolumeLeft:=0;
-  end else if VolumeLeft>=32768 then begin
-   VolumeLeft:=32768;
+  fVolumeLeft:=SARLongint(fAudioEngine.PanningLUT[SARLongint(131072-Pan,1)]*MixVolume,15);
+  fVolumeRight:=SARLongint(fAudioEngine.PanningLUT[SARLongint(Pan,1)]*MixVolume,15);
+  if fVolumeLeft<0 then begin
+   fVolumeLeft:=0;
+  end else if fVolumeLeft>=32768 then begin
+   fVolumeLeft:=32768;
   end;
-  if VolumeRight<0 then begin
-   VolumeRight:=0;
-  end else if VolumeRight>=32768 then begin
-   VolumeRight:=32768;
+  if fVolumeRight<0 then begin
+   fVolumeRight:=0;
+  end else if fVolumeRight>=32768 then begin
+   fVolumeRight:=32768;
   end;
  end;
- VolumeLeft:=VolumeLeft shl 15;
- VolumeRight:=VolumeRight shl 15;
+ fVolumeLeft:=fVolumeLeft shl 15;
+ fVolumeRight:=fVolumeRight shl 15;
 end;
 
 procedure TpvAudioSoundSampleVoice.UpdateVolumeRamping(MixVolume:TpvInt32);
 begin
  UpdateTargetVolumes(MixVolume);
- if Age=0 then begin
-  VolumeRampingRemain:=0;
-  VolumeLeftLast:=VolumeLeft;
-  VolumeRightLast:=VolumeRight;
-  VolumeLeftCurrent:=VolumeLeft;
-  VolumeRightCurrent:=VolumeRight;
-  VolumeLeftIncrement:=0;
-  VolumeRightIncrement:=0;
- end else if (VolumeLeftLast<>VolumeLeft) or (VolumeRightLast<>VolumeRight) then begin
-  VolumeRampingRemain:=RampingSamples;
-  VolumeLeftLast:=VolumeLeft;
-  VolumeRightLast:=VolumeRight;
-  VolumeLeftIncrement:=(VolumeLeft-VolumeLeftCurrent) div VolumeRampingRemain;
-  VolumeRightIncrement:=(VolumeRight-VolumeRightCurrent) div VolumeRampingRemain;
+ if fAge=0 then begin
+  fVolumeRampingRemain:=0;
+  fVolumeLeftLast:=fVolumeLeft;
+  fVolumeRightLast:=fVolumeRight;
+  fVolumeLeftCurrent:=fVolumeLeft;
+  fVolumeRightCurrent:=fVolumeRight;
+  fVolumeLeftIncrement:=0;
+  fVolumeRightIncrement:=0;
+ end else if (fVolumeLeftLast<>fVolumeLeft) or (fVolumeRightLast<>fVolumeRight) then begin
+  fVolumeRampingRemain:=fRampingSamples;
+  fVolumeLeftLast:=fVolumeLeft;
+  fVolumeRightLast:=fVolumeRight;
+  fVolumeLeftIncrement:=(fVolumeLeft-fVolumeLeftCurrent) div fVolumeRampingRemain;
+  fVolumeRightIncrement:=(fVolumeRight-fVolumeRightCurrent) div fVolumeRampingRemain;
  end;
 end;
 
 procedure TpvAudioSoundSampleVoice.UpdateSpatializationDelayRamping;
 begin
- if Age=0 then begin
-  SpatializationDelayRampingRemain:=0;
-  SpatializationDelayLeftLast:=SpatializationDelayLeft;
-  SpatializationDelayRightLast:=SpatializationDelayRight;
-  SpatializationDelayLeftCurrent:=SpatializationDelayLeft;
-  SpatializationDelayRightCurrent:=SpatializationDelayRight;
-  SpatializationDelayLeftIncrement:=0;
-  SpatializationDelayRightIncrement:=0;
-  if AudioEngine.SpatializationDelayPowerOfTwo>0 then begin
-   FillChar(SpatializationDelayLeftLine[0],AudioEngine.SpatializationDelayPowerOfTwo*SizeOf(TpvInt32),AnsiChar(#0));
-   FillChar(SpatializationDelayRightLine[0],AudioEngine.SpatializationDelayPowerOfTwo*SizeOf(TpvInt32),AnsiChar(#0));
+ if fAge=0 then begin
+  fSpatializationDelayRampingRemain:=0;
+  fSpatializationDelayLeftLast:=fSpatializationDelayLeft;
+  fSpatializationDelayRightLast:=fSpatializationDelayRight;
+  fSpatializationDelayLeftCurrent:=fSpatializationDelayLeft;
+  fSpatializationDelayRightCurrent:=fSpatializationDelayRight;
+  fSpatializationDelayLeftIncrement:=0;
+  fSpatializationDelayRightIncrement:=0;
+  if fAudioEngine.SpatializationDelayPowerOfTwo>0 then begin
+   FillChar(fSpatializationDelayLeftLine[0],fAudioEngine.SpatializationDelayPowerOfTwo*SizeOf(TpvInt32),AnsiChar(#0));
+   FillChar(fSpatializationDelayRightLine[0],fAudioEngine.SpatializationDelayPowerOfTwo*SizeOf(TpvInt32),AnsiChar(#0));
   end;
- end else if (SpatializationDelayLeftLast<>SpatializationDelayLeft) or (SpatializationDelayRightLast<>SpatializationDelayRight) then begin
-  SpatializationDelayRampingRemain:=RampingSamples;
-  SpatializationDelayLeftLast:=SpatializationDelayLeft;
-  SpatializationDelayRightLast:=SpatializationDelayRight;
-  SpatializationDelayLeftIncrement:=(SpatializationDelayLeft-SpatializationDelayLeftCurrent) div SpatializationDelayRampingRemain;
-  SpatializationDelayRightIncrement:=(SpatializationDelayRight-SpatializationDelayRightCurrent) div SpatializationDelayRampingRemain;
+ end else if (fSpatializationDelayLeftLast<>fSpatializationDelayLeft) or (fSpatializationDelayRightLast<>fSpatializationDelayRight) then begin
+  fSpatializationDelayRampingRemain:=fRampingSamples;
+  fSpatializationDelayLeftLast:=fSpatializationDelayLeft;
+  fSpatializationDelayRightLast:=fSpatializationDelayRight;
+  fSpatializationDelayLeftIncrement:=(fSpatializationDelayLeft-fSpatializationDelayLeftCurrent) div fSpatializationDelayRampingRemain;
+  fSpatializationDelayRightIncrement:=(fSpatializationDelayRight-fSpatializationDelayRightCurrent) div fSpatializationDelayRampingRemain;
  end;
 end;
 
 procedure TpvAudioSoundSampleVoice.UpdateSpatializationLowPassRamping;
 begin
- if Age=0 then begin
-  SpatializationLowPassRampingRemain:=0;
-  SpatializationLowPassLeftLastCoef:=SpatializationLowPassLeftCoef;
-  SpatializationLowPassRightLastCoef:=SpatializationLowPassRightCoef;
-  SpatializationLowPassLeftCurrentCoef:=SpatializationLowPassLeftCoef;
-  SpatializationLowPassRightCurrentCoef:=SpatializationLowPassRightCoef;
-  SpatializationLowPassLeftIncrementCoef:=0;
-  SpatializationLowPassRightIncrementCoef:=0;
-  SpatializationLowPassLeftHistory[0]:=0;
-  SpatializationLowPassLeftHistory[1]:=0;
-  SpatializationLowPassRightHistory[0]:=0;
-  SpatializationLowPassRightHistory[1]:=0;
- end else if (SpatializationLowPassLeftLastCoef<>SpatializationLowPassLeftCoef) or (SpatializationLowPassRightLastCoef<>SpatializationLowPassRightCoef) then begin
-  SpatializationLowPassRampingRemain:=RampingSamples;
-  SpatializationLowPassLeftLastCoef:=SpatializationLowPassLeftCoef;
-  SpatializationLowPassRightLastCoef:=SpatializationLowPassRightCoef;
-  SpatializationLowPassLeftIncrementCoef:=(SpatializationLowPassLeftCoef-SpatializationLowPassLeftCurrentCoef) div SpatializationLowPassRampingRemain;
-  SpatializationLowPassRightIncrementCoef:=(SpatializationLowPassRightCoef-SpatializationLowPassRightCurrentCoef) div SpatializationLowPassRampingRemain;
+ if fAge=0 then begin
+  fSpatializationLowPassRampingRemain:=0;
+  fSpatializationLowPassLeftLastCoef:=fSpatializationLowPassLeftCoef;
+  fSpatializationLowPassRightLastCoef:=fSpatializationLowPassRightCoef;
+  fSpatializationLowPassLeftCurrentCoef:=fSpatializationLowPassLeftCoef;
+  fSpatializationLowPassRightCurrentCoef:=fSpatializationLowPassRightCoef;
+  fSpatializationLowPassLeftIncrementCoef:=0;
+  fSpatializationLowPassRightIncrementCoef:=0;
+  fSpatializationLowPassLeftHistory[0]:=0;
+  fSpatializationLowPassLeftHistory[1]:=0;
+  fSpatializationLowPassRightHistory[0]:=0;
+  fSpatializationLowPassRightHistory[1]:=0;
+ end else if (fSpatializationLowPassLeftLastCoef<>fSpatializationLowPassLeftCoef) or (fSpatializationLowPassRightLastCoef<>fSpatializationLowPassRightCoef) then begin
+  fSpatializationLowPassRampingRemain:=fRampingSamples;
+  fSpatializationLowPassLeftLastCoef:=fSpatializationLowPassLeftCoef;
+  fSpatializationLowPassRightLastCoef:=fSpatializationLowPassRightCoef;
+  fSpatializationLowPassLeftIncrementCoef:=(fSpatializationLowPassLeftCoef-fSpatializationLowPassLeftCurrentCoef) div fSpatializationLowPassRampingRemain;
+  fSpatializationLowPassRightIncrementCoef:=(fSpatializationLowPassRightCoef-fSpatializationLowPassRightCurrentCoef) div fSpatializationLowPassRampingRemain;
  end;
 end;
 
@@ -2669,28 +2669,28 @@ procedure TpvAudioSoundSampleVoice.Prepare;
 const OneDivVolume=1.0/1073741824.0;
 begin
 
- if Active then begin
+ if fActive then begin
 
-  if ListenerGeneration<>AudioEngine.ListenerGeneration then begin
-   ListenerGeneration:=AudioEngine.ListenerGeneration;
-   Age:=0;
+  if fListenerGeneration<>fAudioEngine.ListenerGeneration then begin
+   fListenerGeneration:=fAudioEngine.ListenerGeneration;
+   fAge:=0;
   end;
 
-  if Spatialization then begin
+  if fSpatialization then begin
    UpdateSpatialization;
   end;
 
   UpdateTargetVolumes(32768);
 
-  VolumeSquaredMagnitude:=sqr(VolumeLeft*OneDivVolume)+sqr(VolumeRight*OneDivVolume);
+  fVolumeSquaredMagnitude:=sqr(fVolumeLeft*OneDivVolume)+sqr(fVolumeRight*OneDivVolume);
 
  end else begin
 
-  VolumeSquaredMagnitude:=0.0;
+  fVolumeSquaredMagnitude:=0.0;
 
  end;
 
- ReadyToPutIntoSleep:=Sample.Sleepable and (((VolumeRampingRemain or VolumeLeft or VolumeRight or LastLeft or LastRight)=0) and (VolumeLeftCurrent=VolumeLeft) and (VolumeRightCurrent=VolumeRight) and not (SpatializationHasContent or KeyOff));
+ fReadyToPutIntoSleep:=fSample.Sleepable and (((fVolumeRampingRemain or fVolumeLeft or fVolumeRight or fLastLeft or fLastRight)=0) and (fVolumeLeftCurrent=fVolumeLeft) and (fVolumeRightCurrent=fVolumeRight) and not (fSpatializationHasContent or fKeyOff));
 
 end;
 
@@ -2700,11 +2700,11 @@ var Remain,ToDo,Counter:TpvInt32;
     BufEx:PpvAudioInt32s;
 begin
  PreClickRemoval(Buffer);
- if Active then begin
+ if fActive then begin
   Buf:=TpvPointer(Buffer);
 
   if RealVoice or not
-     (Sample.Sleepable and (((VolumeLeft or VolumeRight or LastLeft or LastRight)=0) and (VolumeLeftCurrent=VolumeLeft) and (VolumeRightCurrent=VolumeRight) and not (SpatializationHasContent or KeyOff))) then begin
+     (fSample.Sleepable and (((fVolumeLeft or fVolumeRight or fLastLeft or fLastRight)=0) and (fVolumeLeftCurrent=fVolumeLeft) and (fVolumeRightCurrent=fVolumeRight) and not (fSpatializationHasContent or fKeyOff))) then begin
 
    UpdateIncrementRamping;
 
@@ -2714,111 +2714,111 @@ begin
     UpdateVolumeRamping(0);
    end;
 
-   if Spatialization and (AudioEngine.SpatializationMode in [SPATIALIZATION_PSEUDO,SPATIALIZATION_HRTF]) then begin
+   if fSpatialization and (fAudioEngine.SpatializationMode in [SPATIALIZATION_PSEUDO,SPATIALIZATION_HRTF]) then begin
     UpdateSpatializationDelayRamping;
     UpdateSpatializationLowPassRamping;
    end;
 
-   if (VolumeRampingRemain or VolumeLeft or VolumeRight)=0 then begin
-    if IncrementRampingRemain>0 then begin
-     IncrementRampingStepRemain:=IncrementRampingRemain;
+   if (fVolumeRampingRemain or fVolumeLeft or fVolumeRight)=0 then begin
+    if fIncrementRampingRemain>0 then begin
+     fIncrementRampingStepRemain:=fIncrementRampingRemain;
     end;
    end;
 
-   NewLastLeft:=0;
-   NewLastRight:=0;
-   Remain:=Sample.AudioEngine.BufferSamples;
-   while (Remain>0) and Active do begin
+   fNewLastLeft:=0;
+   fNewLastRight:=0;
+   Remain:=fSample.AudioEngine.BufferSamples;
+   while (Remain>0) and fActive do begin
 
     ToDo:=Remain;
-    if IncrementRampingRemain>0 then begin
-     if ToDo>=IncrementRampingRemain then begin
-      ToDo:=IncrementRampingRemain;
+    if fIncrementRampingRemain>0 then begin
+     if ToDo>=fIncrementRampingRemain then begin
+      ToDo:=fIncrementRampingRemain;
      end;
-     if (IncrementRampingStepRemain>0) and (ToDo>=IncrementRampingStepRemain) then begin
-      ToDo:=IncrementRampingStepRemain;
+     if (fIncrementRampingStepRemain>0) and (ToDo>=fIncrementRampingStepRemain) then begin
+      ToDo:=fIncrementRampingStepRemain;
      end;
     end;
-    if (VolumeRampingRemain>0) and (ToDo>=VolumeRampingRemain) then begin
-     ToDo:=VolumeRampingRemain;
+    if (fVolumeRampingRemain>0) and (ToDo>=fVolumeRampingRemain) then begin
+     ToDo:=fVolumeRampingRemain;
     end;
-    if Spatialization and (AudioEngine.SpatializationMode in [SPATIALIZATION_PSEUDO,SPATIALIZATION_HRTF]) then begin
-     case AudioEngine.SpatializationMode of
+    if fSpatialization and (fAudioEngine.SpatializationMode in [SPATIALIZATION_PSEUDO,SPATIALIZATION_HRTF]) then begin
+     case fAudioEngine.SpatializationMode of
       SPATIALIZATION_PSEUDO:begin
-       if (SpatializationLowPassRampingRemain>0) and (ToDo>=SpatializationLowPassRampingRemain) then begin
-        ToDo:=SpatializationLowPassRampingRemain;
+       if (fSpatializationLowPassRampingRemain>0) and (ToDo>=fSpatializationLowPassRampingRemain) then begin
+        ToDo:=fSpatializationLowPassRampingRemain;
        end;
       end;
       SPATIALIZATION_HRTF:begin
-       if (HRTFRampingRemain>0) and (ToDo>=HRTFRampingRemain) then begin
-        ToDo:=HRTFRampingRemain;
+       if (fHRTFRampingRemain>0) and (ToDo>=fHRTFRampingRemain) then begin
+        ToDo:=fHRTFRampingRemain;
        end;
       end;
      end;
-     if (SpatializationDelayRampingRemain>0) and (ToDo>=SpatializationDelayRampingRemain) then begin
-      ToDo:=SpatializationDelayRampingRemain;
+     if (fSpatializationDelayRampingRemain>0) and (ToDo>=fSpatializationDelayRampingRemain) then begin
+      ToDo:=fSpatializationDelayRampingRemain;
      end;
     end;
 
     ToDo:=GetSampleLength(ToDo);
     if ToDo=0 then begin
-     Active:=false;
+     fActive:=false;
      break;
     end;
 
     dec(Remain,ToDo);
-    inc(Age,ToDo);
+    inc(fAge,ToDo);
 
-    if Backwards then begin
-     MixIncrement:=-(IncrementCurrent shr 16);
+    if fBackwards then begin
+     fMixIncrement:=-(fIncrementCurrent shr 16);
     end else begin
-     MixIncrement:=IncrementCurrent shr 16;
+     fMixIncrement:=fIncrementCurrent shr 16;
     end;
 
-    if IncrementRampingRemain>0 then begin
-     inc(IncrementCurrent,IncrementIncrement*ToDo);
+    if fIncrementRampingRemain>0 then begin
+     inc(fIncrementCurrent,fIncrementIncrement*ToDo);
     end;
 
-    if (VolumeRampingRemain or VolumeLeftCurrent or VolumeRightCurrent)=0 then begin
-     inc(Position,MixIncrement*ToDo);
-     if Spatialization and (AudioEngine.SpatializationMode in [SPATIALIZATION_PSEUDO,SPATIALIZATION_HRTF]) then begin
-      if (AudioEngine.SpatializationMode=SPATIALIZATION_HRTF) and (HRTFRampingRemain>0) then begin
-       for Counter:=0 to HRTFMask do begin
-        inc(HRTFLeftCoefs[Counter],HRTFLeftCoefsIncrement[Counter]*ToDo);
-        inc(HRTFRightCoefs[Counter],HRTFRightCoefsIncrement[Counter]*ToDo);
+    if (fVolumeRampingRemain or fVolumeLeftCurrent or fVolumeRightCurrent)=0 then begin
+     inc(fPosition,fMixIncrement*ToDo);
+     if fSpatialization and (fAudioEngine.SpatializationMode in [SPATIALIZATION_PSEUDO,SPATIALIZATION_HRTF]) then begin
+      if (fAudioEngine.SpatializationMode=SPATIALIZATION_HRTF) and (fHRTFRampingRemain>0) then begin
+       for Counter:=0 to fHRTFMask do begin
+        inc(fHRTFLeftCoefs[Counter],fHRTFLeftCoefsIncrement[Counter]*ToDo);
+        inc(fHRTFRightCoefs[Counter],fHRTFRightCoefsIncrement[Counter]*ToDo);
        end;
       end;
-      inc(SpatializationLowPassLeftCurrentCoef,SpatializationLowPassLeftIncrementCoef*ToDo);
-      inc(SpatializationLowPassRightCurrentCoef,SpatializationLowPassRightIncrementCoef*ToDo);
-      SpatializationLowPassLeftHistory[0]:=0;
-      SpatializationLowPassLeftHistory[1]:=0;
-      SpatializationLowPassRightHistory[0]:=0;
-      SpatializationLowPassRightHistory[1]:=0;
-      inc(SpatializationDelayLeftCurrent,SpatializationDelayLeftIncrement*ToDo);
-      inc(SpatializationDelayRightCurrent,SpatializationDelayRightIncrement*ToDo);
-      if SpatializationHasContent then begin
-       SpatializationHasContent:=false;
+      inc(fSpatializationLowPassLeftCurrentCoef,fSpatializationLowPassLeftIncrementCoef*ToDo);
+      inc(fSpatializationLowPassRightCurrentCoef,fSpatializationLowPassRightIncrementCoef*ToDo);
+      fSpatializationLowPassLeftHistory[0]:=0;
+      fSpatializationLowPassLeftHistory[1]:=0;
+      fSpatializationLowPassRightHistory[0]:=0;
+      fSpatializationLowPassRightHistory[1]:=0;
+      inc(fSpatializationDelayLeftCurrent,fSpatializationDelayLeftIncrement*ToDo);
+      inc(fSpatializationDelayRightCurrent,fSpatializationDelayRightIncrement*ToDo);
+      if fSpatializationHasContent then begin
+       fSpatializationHasContent:=false;
        Counter:=ToDo;
-       if Counter>AudioEngine.SpatializationDelayPowerOfTwo then begin
-        Counter:=AudioEngine.SpatializationDelayPowerOfTwo;
+       if Counter>fAudioEngine.SpatializationDelayPowerOfTwo then begin
+        Counter:=fAudioEngine.SpatializationDelayPowerOfTwo;
        end;
        while Counter>0 do begin
         dec(Counter);
-        SpatializationDelayLeftLine[SpatializationDelayLeftIndex]:=0;
-        SpatializationDelayLeftIndex:=(SpatializationDelayLeftIndex+1) and AudioEngine.SpatializationDelayMask;
-        SpatializationDelayRightLine[SpatializationDelayRightIndex]:=0;
-        SpatializationDelayRightIndex:=(SpatializationDelayRightIndex+1) and AudioEngine.SpatializationDelayMask;
+        fSpatializationDelayLeftLine[fSpatializationDelayLeftIndex]:=0;
+        fSpatializationDelayLeftIndex:=(fSpatializationDelayLeftIndex+1) and fAudioEngine.SpatializationDelayMask;
+        fSpatializationDelayRightLine[fSpatializationDelayRightIndex]:=0;
+        fSpatializationDelayRightIndex:=(fSpatializationDelayRightIndex+1) and fAudioEngine.SpatializationDelayMask;
        end;
       end;
      end;
-     NewLastLeft:=0;
-     NewLastRight:=0;
+     fNewLastLeft:=0;
+     fNewLastRight:=0;
     end else begin
      BufEx:=@PpvAudioInt32s(Buf)^[(ToDo-1) shl 1];
-     NewLastLeft:=BufEx^[0];
-     NewLastRight:=BufEx^[1];
-     if Spatialization and (AudioEngine.SpatializationMode in [SPATIALIZATION_PSEUDO,SPATIALIZATION_HRTF]) then begin
-      case AudioEngine.SpatializationMode of
+     fNewLastLeft:=BufEx^[0];
+     fNewLastRight:=BufEx^[1];
+     if fSpatialization and (fAudioEngine.SpatializationMode in [SPATIALIZATION_PSEUDO,SPATIALIZATION_HRTF]) then begin
+      case fAudioEngine.SpatializationMode of
        SPATIALIZATION_PSEUDO:begin
         MixProcSpatializationPSEUDO(Buf,ToDo);
        end;
@@ -2827,71 +2827,71 @@ begin
        end;
       end;
      end else begin
-      // Even for fast fake 3D stereo spatialization
-      if VolumeRampingRemain>0 then begin
+      // Even for fast fake 3D stereo fSpatialization
+      if fVolumeRampingRemain>0 then begin
        MixProcVolumeRamping(Buf,ToDo);
       end else begin
        MixProcNormal(Buf,ToDo);
       end;
      end;
-     SpatializationHasContent:=true;
-     NewLastLeft:=(BufEx^[0]-NewLastLeft) shl 12;
-     NewLastRight:=(BufEx^[1]-NewLastRight) shl 12;
+     fSpatializationHasContent:=true;
+     fNewLastLeft:=(BufEx^[0]-fNewLastLeft) shl 12;
+     fNewLastRight:=(BufEx^[1]-fNewLastRight) shl 12;
     end;
 
-    if IncrementRampingRemain>0 then begin
-     if IncrementRampingStepRemain>0 then begin
-      dec(IncrementRampingStepRemain,ToDo);
-      if IncrementRampingStepRemain=0 then begin
-       IncrementRampingStepRemain:=AudioEngine.RampingStepSamples;
+    if fIncrementRampingRemain>0 then begin
+     if fIncrementRampingStepRemain>0 then begin
+      dec(fIncrementRampingStepRemain,ToDo);
+      if fIncrementRampingStepRemain=0 then begin
+       fIncrementRampingStepRemain:=fAudioEngine.RampingStepSamples;
       end;
      end;
-     dec(IncrementRampingRemain,ToDo);
-     if IncrementRampingRemain=0 then begin
-      IncrementRampingStepRemain:=0;
-      IncrementCurrent:=Increment shl 16;
-      IncrementIncrement:=0;
+     dec(fIncrementRampingRemain,ToDo);
+     if fIncrementRampingRemain=0 then begin
+      fIncrementRampingStepRemain:=0;
+      fIncrementCurrent:=fIncrement shl 16;
+      fIncrementIncrement:=0;
      end;
     end;
 
-    if VolumeRampingRemain>0 then begin
-     dec(VolumeRampingRemain,ToDo);
-     if VolumeRampingRemain=0 then begin
-      VolumeLeftCurrent:=VolumeLeft;
-      VolumeRightCurrent:=VolumeRight;
-      VolumeLeftIncrement:=0;
-      VolumeRightIncrement:=0;
+    if fVolumeRampingRemain>0 then begin
+     dec(fVolumeRampingRemain,ToDo);
+     if fVolumeRampingRemain=0 then begin
+      fVolumeLeftCurrent:=fVolumeLeft;
+      fVolumeRightCurrent:=fVolumeRight;
+      fVolumeLeftIncrement:=0;
+      fVolumeRightIncrement:=0;
      end;
     end;
 
-    if Spatialization and (AudioEngine.SpatializationMode in [SPATIALIZATION_PSEUDO,SPATIALIZATION_HRTF]) then begin
-     if (AudioEngine.SpatializationMode=SPATIALIZATION_HRTF) and (HRTFRampingRemain>0) then begin
-      dec(HRTFRampingRemain,ToDo);
-      if HRTFRampingRemain=0 then begin
-       for Counter:=0 to HRTFMask do begin
-        HRTFLeftCoefsCurrent[Counter]:=HRTFLeftCoefs[Counter];
-        HRTFRightCoefsCurrent[Counter]:=HRTFRightCoefs[Counter];
-        HRTFLeftCoefsIncrement[Counter]:=0;
-        HRTFRightCoefsIncrement[Counter]:=0;
+    if fSpatialization and (fAudioEngine.SpatializationMode in [SPATIALIZATION_PSEUDO,SPATIALIZATION_HRTF]) then begin
+     if (fAudioEngine.SpatializationMode=SPATIALIZATION_HRTF) and (fHRTFRampingRemain>0) then begin
+      dec(fHRTFRampingRemain,ToDo);
+      if fHRTFRampingRemain=0 then begin
+       for Counter:=0 to fHRTFMask do begin
+        fHRTFLeftCoefsCurrent[Counter]:=fHRTFLeftCoefs[Counter];
+        fHRTFRightCoefsCurrent[Counter]:=fHRTFRightCoefs[Counter];
+        fHRTFLeftCoefsIncrement[Counter]:=0;
+        fHRTFRightCoefsIncrement[Counter]:=0;
        end;
       end;
      end;
-     if SpatializationLowPassRampingRemain>0 then begin
-      dec(SpatializationLowPassRampingRemain,ToDo);
-      if SpatializationLowPassRampingRemain=0 then begin
-       SpatializationLowPassLeftCurrentCoef:=SpatializationLowPassLeftCoef;
-       SpatializationLowPassRightCurrentCoef:=SpatializationLowPassRightCoef;
-       SpatializationLowPassLeftIncrementCoef:=0;
-       SpatializationLowPassRightIncrementCoef:=0;
+     if fSpatializationLowPassRampingRemain>0 then begin
+      dec(fSpatializationLowPassRampingRemain,ToDo);
+      if fSpatializationLowPassRampingRemain=0 then begin
+       fSpatializationLowPassLeftCurrentCoef:=fSpatializationLowPassLeftCoef;
+       fSpatializationLowPassRightCurrentCoef:=fSpatializationLowPassRightCoef;
+       fSpatializationLowPassLeftIncrementCoef:=0;
+       fSpatializationLowPassRightIncrementCoef:=0;
       end;
      end;
-     if SpatializationDelayRampingRemain>0 then begin
-      dec(SpatializationDelayRampingRemain,ToDo);
-      if SpatializationDelayRampingRemain=0 then begin
-       SpatializationDelayLeftCurrent:=SpatializationDelayLeft;
-       SpatializationDelayRightCurrent:=SpatializationDelayRight;
-       SpatializationDelayLeftIncrement:=0;
-       SpatializationDelayRightIncrement:=0;
+     if fSpatializationDelayRampingRemain>0 then begin
+      dec(fSpatializationDelayRampingRemain,ToDo);
+      if fSpatializationDelayRampingRemain=0 then begin
+       fSpatializationDelayLeftCurrent:=fSpatializationDelayLeft;
+       fSpatializationDelayRightCurrent:=fSpatializationDelayRight;
+       fSpatializationDelayLeftIncrement:=0;
+       fSpatializationDelayRightIncrement:=0;
       end;
      end;
     end;
@@ -2903,24 +2903,24 @@ begin
 
   end;
 
-  if not Active then begin
-   if assigned(VoiceIndexPointer) then begin
-    InterlockedExchange(TpvInt32(VoiceIndexPointer^),-1);
-    VoiceIndexPointer:=nil;
+  if not fActive then begin
+   if assigned(fVoiceIndexPointer) then begin
+    InterlockedExchange(TpvInt32(fVoiceIndexPointer^),-1);
+    fVoiceIndexPointer:=nil;
    end;
-   if GlobalVoiceID<>0 then begin
-    AudioEngine.GlobalVoiceManager.DeallocateGlobalVoice(GlobalVoiceID);
-    GlobalVoiceID:=0;
+   if fGlobalVoiceID<>0 then begin
+    fAudioEngine.GlobalVoiceManager.DeallocateGlobalVoice(fGlobalVoiceID);
+    fGlobalVoiceID:=0;
    end;
   end;
  end else begin
-  if (LastLeft=0) and (LastRight=0) then begin
+  if (fLastLeft=0) and (fLastRight=0) then begin
    Dequeue;
-   NextFree:=Sample.FreeVoice;
-   Sample.FreeVoice:=self;
-   if GlobalVoiceID<>0 then begin
-    AudioEngine.GlobalVoiceManager.DeallocateGlobalVoice(GlobalVoiceID);
-    GlobalVoiceID:=0;
+   fNextFree:=fSample.FreeVoice;
+   fSample.FreeVoice:=self;
+   if fGlobalVoiceID<>0 then begin
+    fAudioEngine.GlobalVoiceManager.DeallocateGlobalVoice(fGlobalVoiceID);
+    fGlobalVoiceID:=0;
    end;
   end;
  end;
@@ -3499,7 +3499,7 @@ begin
  SetLength(Voices,VirtualVoices);
  for i:=0 to length(Voices)-1 do begin
   Voices[i]:=TpvAudioSoundSampleVoice.Create(AudioEngine,self,i);
-  Voices[i].NextFree:=FreeVoice;
+  Voices[i].fNextFree:=FreeVoice;
   FreeVoice:=Voices[i];
  end;
  SetLength(ActiveVoices,VirtualVoices);
@@ -3521,12 +3521,12 @@ var BestVoice,BestVolume,i:TpvInt32;
 begin
  if assigned(FreeVoice) then begin
   Voice:=FreeVoice;
-  FreeVoice:=Voice.NextFree;
-  BestVoice:=Voice.Index;
+  FreeVoice:=Voice.fNextFree;
+  BestVoice:=Voice.fIndex;
  end else begin
   BestVoice:=-1;
   for i:=0 to length(Voices)-1 do begin
-   if not Voices[i].Active then begin
+   if not Voices[i].fActive then begin
     BestVoice:=i;
     break;
    end;
@@ -3536,9 +3536,9 @@ begin
    BestAge:=0;
    for i:=0 to length(Voices)-1 do begin
     Voice:=Voices[i];
-    if (Voice.Age>BestAge) or ((Voice.Age=BestAge) and (Voice.Volume<=BestVolume)) then begin
-     BestAge:=Voices[i].Age;
-     BestVolume:=Voices[i].Volume;
+    if (Voice.fAge>BestAge) or ((Voice.fAge=BestAge) and (Voice.fVolume<=BestVolume)) then begin
+     BestAge:=Voices[i].fAge;
+     BestVolume:=Voices[i].fVolume;
      BestVoice:=i;
     end;
    end;
@@ -3547,17 +3547,17 @@ begin
  if (BestVoice>=0) and (BestVoice<length(Voices)) then begin
   Voice:=Voices[BestVoice];
   if PerreservedGlobalVoiceID<>0 then begin
-   Voice.GlobalVoiceID:=PerreservedGlobalVoiceID;
+   Voice.fGlobalVoiceID:=PerreservedGlobalVoiceID;
    AudioEngine.GlobalVoiceManager.SetGlobalVoice(PerreservedGlobalVoiceID,self,BestVoice);
   end else begin
-   Voice.GlobalVoiceID:=AudioEngine.GlobalVoiceManager.AllocateGlobalVoice(self,BestVoice);
+   Voice.fGlobalVoiceID:=AudioEngine.GlobalVoiceManager.AllocateGlobalVoice(self,BestVoice);
   end;
-  if assigned(Voice.VoiceIndexPointer) then begin
-   InterlockedExchange(TpvInt32(Voice.VoiceIndexPointer^),-1);
-   Voice.VoiceIndexPointer:=nil;
+  if assigned(Voice.fVoiceIndexPointer) then begin
+   InterlockedExchange(TpvInt32(Voice.fVoiceIndexPointer^),-1);
+   Voice.fVoiceIndexPointer:=nil;
   end;
   Voice.Init(Volume,Panning,Rate);
-  Voice.VoiceIndexPointer:=VoiceIndexPointer;
+  Voice.fVoiceIndexPointer:=VoiceIndexPointer;
   if assigned(VoiceIndexPointer) then begin
    InterlockedExchange(TpvInt32(VoiceIndexPointer^),BestVoice);
   end;
@@ -3580,7 +3580,7 @@ begin
  if (VoiceNumber>=0) and (VoiceNumber<length(Voices)) then begin
   Voice:=Voices[VoiceNumber];
   SmpLen:=TpvInt64(SampleLength);
-  if (SustainLoop.Mode<>SoundLoopModeNONE) and not Voice.KeyOff then begin
+  if (SustainLoop.Mode<>SoundLoopModeNONE) and not Voice.fKeyOff then begin
    LoopMode:=SustainLoop.Mode;
    SmpLoopStart:=TpvInt64(SustainLoop.StartSample);
    SmpLoopEnd:=TpvInt64(SustainLoop.EndSample);
@@ -3594,7 +3594,7 @@ begin
    SmpLoopEnd:=SmpLen;
   end;
   if LoopMode<>SoundLoopModeNONE then begin
-   Voice.Position:=(SmpLoopStart shl 32)+((SmpLoopEnd-SmpLoopStart)*TpvInt64(AudioEngine.PCG32.Get32));
+   Voice.fPosition:=(SmpLoopStart shl 32)+((SmpLoopEnd-SmpLoopStart)*TpvInt64(AudioEngine.PCG32.Get32));
   end;
  end;
 end;
@@ -3604,16 +3604,16 @@ var Voice:TpvAudioSoundSampleVoice;
 begin
  if (VoiceNumber>=0) and (VoiceNumber<length(Voices)) then begin
   Voice:=Voices[VoiceNumber];
-  Voice.Active:=false;
-  if Voice.GlobalVoiceID<>0 then begin
-   AudioEngine.GlobalVoiceManager.DeallocateGlobalVoice(Voice.GlobalVoiceID);
-   Voice.GlobalVoiceID:=0;
+  Voice.fActive:=false;
+  if Voice.fGlobalVoiceID<>0 then begin
+   AudioEngine.GlobalVoiceManager.DeallocateGlobalVoice(Voice.fGlobalVoiceID);
+   Voice.fGlobalVoiceID:=0;
   end else begin
    AudioEngine.GlobalVoiceManager.DeallocateGlobalVoice(self,VoiceNumber);
   end;
-  if assigned(Voice.VoiceIndexPointer) then begin
-   InterlockedExchange(TpvInt32(Voice.VoiceIndexPointer^),-1);
-   Voice.VoiceIndexPointer:=nil;
+  if assigned(Voice.fVoiceIndexPointer) then begin
+   InterlockedExchange(TpvInt32(Voice.fVoiceIndexPointer^),-1);
+   Voice.fVoiceIndexPointer:=nil;
   end;
  end;
 end;
@@ -3623,12 +3623,12 @@ var Voice:TpvAudioSoundSampleVoice;
 begin
  if (VoiceNumber>=0) and (VoiceNumber<length(Voices)) then begin
   Voice:=Voices[VoiceNumber];
-  Voice.KeyOff:=true;
+  Voice.fKeyOff:=true;
   if (Loop.Mode<>SoundLoopModeNONE) or (SustainLoop.Mode=SoundLoopModeNONE) then begin
-   Voice.Active:=false;
-   if assigned(Voice.VoiceIndexPointer) then begin
-    TpvInt32(Voice.VoiceIndexPointer^):=-1;
-    Voice.VoiceIndexPointer:=nil;
+   Voice.fActive:=false;
+   if assigned(Voice.fVoiceIndexPointer) then begin
+    TpvInt32(Voice.fVoiceIndexPointer^):=-1;
+    Voice.fVoiceIndexPointer:=nil;
    end;
   end;
  end;
@@ -3640,7 +3640,7 @@ begin
  result:=VoiceNumber;
  if (VoiceNumber>=0) and (VoiceNumber<length(Voices)) then begin
   Voice:=Voices[VoiceNumber];
-  Voice.Volume:=round(Clamp(Volume,-1.0,1.0)*65536.0);
+  Voice.fVolume:=round(Clamp(Volume,-1.0,1.0)*65536.0);
  end;
 end;
 
@@ -3650,7 +3650,7 @@ begin
  result:=VoiceNumber;
  if (VoiceNumber>=0) and (VoiceNumber<length(Voices)) then begin
   Voice:=Voices[VoiceNumber];
-  Voice.Panning:=round(Clamp(Panning,-1.0,1.0)*65536.0);
+  Voice.fPanning:=round(Clamp(Panning,-1.0,1.0)*65536.0);
  end;
 end;
 
@@ -3660,8 +3660,8 @@ begin
  result:=VoiceNumber;
  if (VoiceNumber>=0) and (VoiceNumber<length(Voices)) then begin
   Voice:=Voices[VoiceNumber];
-  Voice.Rate:=Rate;
-  Voice.Increment:=(SampleRate*round((Rate*Voice.DopplerRate)*TpvInt64($100000000))) div AudioEngine.SampleRate;
+  Voice.fRate:=Rate;
+  Voice.fIncrement:=(SampleRate*round((Rate*Voice.fDopplerRate)*TpvInt64($100000000))) div AudioEngine.SampleRate;
  end;
 end;
 
@@ -3671,10 +3671,10 @@ begin
  result:=VoiceNumber;
  if (VoiceNumber>=0) and (VoiceNumber<length(Voices)) then begin
   Voice:=Voices[VoiceNumber];
-  Voice.Spatialization:=Spatialization;
-  Voice.SpatializationOrigin:=Origin;
-  Voice.SpatializationVelocity:=Velocity;
-  Voice.SpatializationLocal:=Local;
+  Voice.fSpatialization:=Spatialization;
+  Voice.fSpatializationOrigin:=Origin;
+  Voice.fSpatializationVelocity:=Velocity;
+  Voice.fSpatializationLocal:=Local;
  end;
 end;
 
@@ -3684,7 +3684,7 @@ begin
  result:=VoiceNumber;
  if (VoiceNumber>=0) and (VoiceNumber<length(Voices)) then begin
   Voice:=Voices[VoiceNumber];
-  Voice.MixToEffect:=Active;
+  Voice.fMixToEffect:=Active;
  end;
 end;
 
@@ -3693,7 +3693,7 @@ var i:TpvInt32;
 begin
  result:=false;
  for i:=0 to length(Voices)-1 do begin
-  if Voices[i].Active then begin
+  if Voices[i].fActive then begin
    result:=true;
    break;
   end;
@@ -3702,7 +3702,7 @@ end;
 
 function TpvAudioSoundSample.IsVoicePlaying(VoiceNumber:TpvInt32):boolean;
 begin
- result:=((VoiceNumber>=0) and (VoiceNumber<length(Voices))) and Voices[VoiceNumber].Active;
+ result:=((VoiceNumber>=0) and (VoiceNumber<length(Voices))) and Voices[VoiceNumber].fActive;
 end;
 
 constructor TpvAudioSoundMusic.Create(AAudioEngine:TpvAudio;ASoundMusics:TpvAudioSoundMusics);
@@ -6359,7 +6359,6 @@ begin
  evmu:=ev-trunc(ev);
 end;
 
-
 procedure TpvAudio.CalcAzIndices(evidx:TpvInt32;az:TpvFloat;azidx:PpvAudioInt32s;var azmu:TpvFloat);
 const pi2=pi*2;
 begin
@@ -6537,9 +6536,9 @@ end;
 
 function CompareVoiceByVolumeSquaredMagnitudes(const a,b:Pointer):TpvInt32;
 begin
- result:=Sign(TpvAudioSoundSampleVoice(b).VolumeSquaredMagnitude-TpvAudioSoundSampleVoice(a).VolumeSquaredMagnitude);
+ result:=Sign(TpvAudioSoundSampleVoice(b).fVolumeSquaredMagnitude-TpvAudioSoundSampleVoice(a).fVolumeSquaredMagnitude);
  if result=0 then begin
-  result:=Sign(TpvInt32(Ord(TpvAudioSoundSampleVoice(a).ReadyToPutIntoSleep) and 1)-TpvInt32(Ord(TpvAudioSoundSampleVoice(b).ReadyToPutIntoSleep) and 1));
+  result:=Sign(TpvInt32(Ord(TpvAudioSoundSampleVoice(a).fReadyToPutIntoSleep) and 1)-TpvInt32(Ord(TpvAudioSoundSampleVoice(b).fReadyToPutIntoSleep) and 1));
   if result=0 then begin
    result:=Sign(TpvPtrInt(a)-TpvPtrInt(b));
   end;
@@ -6596,7 +6595,7 @@ begin
 
      // Reassigned active voice indices, since they could be in different order after volume sorting
      for VoiceIndex:=0 to Sample.CountActiveVoices-1 do begin
-      Sample.ActiveVoices[VoiceIndex].ActiveVoiceIndex:=VoiceIndex;
+      Sample.ActiveVoices[VoiceIndex].fActiveVoiceIndex:=VoiceIndex;
      end;
 
     end;
@@ -6610,11 +6609,11 @@ begin
      MixToEffect:=Sample.MixToEffect;
      for VoiceIndex:=0 to Sample.CountActiveVoices-1 do begin
       Voice:=Sample.ActiveVoices[VoiceIndex];
-      if (VoiceIndex>=Sample.SampleRealVoices) and Voice.ReadyToPutIntoSleep then begin
+      if (VoiceIndex>=Sample.SampleRealVoices) and Voice.fReadyToPutIntoSleep then begin
        break;
       end else begin
        Voice.MixTo(Sample.MixingBuffer,32768,VoiceIndex<Sample.SampleRealVoices);
-       MixToEffect:=MixToEffect or Voice.MixToEffect;
+       MixToEffect:=MixToEffect or Voice.fMixToEffect;
       end;
      end;
 
@@ -6662,10 +6661,10 @@ begin
 
      for VoiceIndex:=0 to Sample.CountActiveVoices-1 do begin
       Voice:=Sample.ActiveVoices[VoiceIndex];
-      if (VoiceIndex>=Sample.SampleRealVoices) and Voice.ReadyToPutIntoSleep then begin
+      if (VoiceIndex>=Sample.SampleRealVoices) and Voice.fReadyToPutIntoSleep then begin
        break;
       end else begin
-       if Sample.MixToEffect or Voice.MixToEffect then begin
+       if Sample.MixToEffect or Voice.fMixToEffect then begin
         p:=EffectMixingBuffer;
        end else begin
         p:=MixingBuffer;
@@ -6681,8 +6680,8 @@ begin
   end;
 { Voice:=VoiceFirst;
   while assigned(Voice) do begin
-   NextVoice:=Voice.Next;
-   if Voice.MixToEffect then begin
+   NextVoice:=Voice.fNext;
+   if Voice.fMixToEffect then begin
     p:=EffectMixingBuffer;
    end else begin
     p:=MixingBuffer;
