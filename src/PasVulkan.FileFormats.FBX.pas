@@ -8184,7 +8184,7 @@ end;
 
 procedure TpvFBXMesh.Finish;
 type TTriangleVertexMap=TDictionary<TpvFBXMeshTriangleVertex,TpvInt64>;
-var Index,SubIndex,WorkIndex,PolygonVertexIndex:TpvInt32;
+var PolygonIndex,Index,SubIndex,WorkIndex,PolygonVertexIndex:TpvInt32;
     VertexIndex,TriangleVertexIndex,ClusterIndex:TpvInt64;
     Skins,Clusters:TpvFBXObjects;
     Skin,Cluster:TpvFBXObject;
@@ -8255,7 +8255,8 @@ begin
 
  if HasBlendShapes then begin
   PolygonVertexIndex:=0;
-  for Polygon in fPolygons do begin
+  for PolygonIndex:=0 to fPolygons.Count-1 do begin
+   Polygon:=fPolygons[PolygonIndex];
    for Index:=0 to Polygon.Count-1 do begin
     TriangleVertexIndex:=fTriangleVertices.Add(FillTriangleVertex(Polygon[WorkIndex],PolygonVertexIndex+Index));
    end;
@@ -8265,7 +8266,8 @@ begin
   TriangleVertexMap:=TTriangleVertexMap.Create;
   try
    PolygonVertexIndex:=0;
-   for Polygon in fPolygons do begin
+   for PolygonIndex:=0 to fPolygons.Count-1 do begin
+    Polygon:=fPolygons[PolygonIndex];
     for Index:=0 to Polygon.Count-3 do begin
      for SubIndex:=0 to 2 do begin
       case SubIndex of
