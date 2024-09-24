@@ -1727,11 +1727,11 @@ function TriangleTriangleIntersection(const v0,v1,v2,u0,u1,u2:TpvVector3):boolea
 
 function UnclampedClosestPointToLine(const LineStartPoint,LineEndPoint,Point:TpvVector3;const ClosestPointOnLine:PpvVector3=nil;const Time:PpvScalar=nil):TpvScalar;
 function ClosestPointToLine(const LineStartPoint,LineEndPoint,Point:TpvVector3;const ClosestPointOnLine:PpvVector3=nil;const Time:PpvScalar=nil):TpvScalar;
-function ClosestPointToRect(const Rect:TpvRect;const Point:TpvVector2;const ClosestPointOnRect:PpvVector2=nil):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
-function ClosestPointToAABB(const AABB:TpvAABB;const Point:TpvVector3;const ClosestPointOnAABB:PpvVector3=nil):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
-function ClosestPointToOBB(const OBB:TpvOBB;const Point:TpvVector3;out ClosestPoint:TpvVector3):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
-function ClosestPointToSphere(const Sphere:TpvSphere;const Point:TpvVector3;out ClosestPoint:TpvVector3):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
-function ClosestPointToCapsule(const Capsule:TpvCapsule;const Point:TpvVector3;out ClosestPoint:TpvVector3;const Time:PpvScalar=nil):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
+function ClosestPointToRect(const Rect:TpvRect;const Point:TpvVector2;const ClosestPointOnRect:PpvVector2=nil):TpvScalar; //{$ifdef CAN_INLINE}inline;{$endif}
+function ClosestPointToAABB(const AABB:TpvAABB;const Point:TpvVector3;const ClosestPointOnAABB:PpvVector3=nil):TpvScalar; //{$ifdef CAN_INLINE}inline;{$endif}
+function ClosestPointToOBB(const OBB:TpvOBB;const Point:TpvVector3;out ClosestPoint:TpvVector3):TpvScalar; //{$ifdef CAN_INLINE}inline;{$endif}
+function ClosestPointToSphere(const Sphere:TpvSphere;const Point:TpvVector3;out ClosestPoint:TpvVector3):TpvScalar; //{$ifdef CAN_INLINE}inline;{$endif}
+function ClosestPointToCapsule(const Capsule:TpvCapsule;const Point:TpvVector3;out ClosestPoint:TpvVector3;const Time:PpvScalar=nil):TpvScalar; //{$ifdef CAN_INLINE}inline;{$endif}
 function ClosestPointToTriangle(const a,b,c,p:TpvVector3;out ClosestPoint:TpvVector3):TpvScalar;
 
 function SquaredDistanceFromPointToAABB(const AABB:TpvAABB;const Point:TpvVector3):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
@@ -18121,7 +18121,7 @@ begin
  result:=Point.DistanceTo(ClosestPoint);
 end;
 
-function ClosestPointToRect(const Rect:TpvRect;const Point:TpvVector2;const ClosestPointOnRect:PpvVector2):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
+function ClosestPointToRect(const Rect:TpvRect;const Point:TpvVector2;const ClosestPointOnRect:PpvVector2):TpvScalar; //{$ifdef CAN_INLINE}inline;{$endif}
 var ClosestPoint:TpvVector2;
 begin
  ClosestPoint.x:=Min(Max(Point.x,Rect.Min.x),Rect.Max.x);
@@ -18132,7 +18132,7 @@ begin
  result:=ClosestPoint.DistanceTo(Point);
 end;
 
-function ClosestPointToAABB(const AABB:TpvAABB;const Point:TpvVector3;const ClosestPointOnAABB:PpvVector3):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
+function ClosestPointToAABB(const AABB:TpvAABB;const Point:TpvVector3;const ClosestPointOnAABB:PpvVector3):TpvScalar; //{$ifdef CAN_INLINE}inline;{$endif}
 var ClosestPoint:TpvVector3;
 begin
  ClosestPoint.x:=Min(Max(Point.x,AABB.Min.x),AABB.Max.x);
@@ -18144,7 +18144,7 @@ begin
  result:=ClosestPoint.DistanceTo(Point);
 end;
 
-function ClosestPointToOBB(const OBB:TpvOBB;const Point:TpvVector3;out ClosestPoint:TpvVector3):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
+function ClosestPointToOBB(const OBB:TpvOBB;const Point:TpvVector3;out ClosestPoint:TpvVector3):TpvScalar; //{$ifdef CAN_INLINE}inline;{$endif}
 var DistanceVector:TpvVector3;
 begin
  DistanceVector:=Point-OBB.Center;
@@ -18161,7 +18161,7 @@ begin
  ClosestPoint:=Point+((Sphere.Center-Point).Normalize*result);
 end;
 
-function ClosestPointToCapsule(const Capsule:TpvCapsule;const Point:TpvVector3;out ClosestPoint:TpvVector3;const Time:PpvScalar=nil):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
+function ClosestPointToCapsule(const Capsule:TpvCapsule;const Point:TpvVector3;out ClosestPoint:TpvVector3;const Time:PpvScalar=nil):TpvScalar; //{$ifdef CAN_INLINE}inline;{$endif}
 var LineSegmentPointsDifference,LineClosestPoint:TpvVector3;
     LineSegmentLengthSquared,PointOnLineSegmentTime:TpvScalar;
 begin

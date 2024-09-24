@@ -1599,7 +1599,7 @@ begin
     TreeNode:=@Nodes[NodeIndex];
     if TreeNode.UserData>0 then begin
      if assigned(Pointer(TreeNode^.UserData)) then begin
-      Distance:=ClosestPointToAABB(TreeNode^.AABB,aPoint);
+      Distance:=ClosestPointToAABB(TreeNode^.AABB,aPoint,PpvVector3(nil));
       if (not assigned(result)) or (BestDistance>Distance) then begin
        BestDistance:=Distance;
        result:=TreeNode;
