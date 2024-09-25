@@ -122,7 +122,7 @@ type EpvResource=class(Exception);
 
      TpvMetaResourceClass=class of TpvMetaResource;
 
-     TpvMetaResource=class(TpvPooledObject)
+     TpvMetaResource=class //(TpvPooledObject)
       private
       protected
        fUUID:TpvUUID;
@@ -643,7 +643,9 @@ begin
  if not assigned(fMetaResource) then begin
   fMetaResource:=GetMetaResourceClass.CreateTemporary;
  end;
- TPasMPInterlocked.Write(TObject(fMetaResource.fResource),TObject(self));
+ if assigned(fMetaResource) then begin
+  TPasMPInterlocked.Write(TObject(fMetaResource.fResource),TObject(self));
+ end;
 
  OldReferenceCounter:=fReferenceCounter;
  try
