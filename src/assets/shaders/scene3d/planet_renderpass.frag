@@ -404,12 +404,17 @@ void main(){
   
   if(planetData.selected.w > 1e-6){
     float d = length(sphereNormal - normalize(planetData.selected.xyz)) - planetData.selected.w;
+#if 0     
     float t = fwidth(d);
     float l = max(1e-6, planetData.selected.w * 0.25);
     if((d < l) && ((t < (l * 2.0)) && !(isnan(t) || isinf(t)))){ // to prevent artifacts at normal discontinuities and edges
       t = clamp(t * 1.41421356237, 1e-3, 1e-2); // minimize the possibility of artifacts at normal discontinuities and edges even more, by limiting the range of t to a reasonable value range
       c.xyz = mix(c.xyz, mix(vec3(1.0) - clamp(c.zxy, vec3(1.0), vec3(1.0)), vec3(1.0, 0.0, 0.0), 0.5), smoothstep(t, -t, d) * 0.5);
     }
+#else
+    float t = 1e-3; // constant value without the problems of fwidth with normal discontinuities and edges
+    c.xyz = mix(c.xyz, mix(vec3(1.0) - clamp(c.zxy, vec3(1.0), vec3(1.0)), vec3(1.0, 0.0, 0.0), 0.5), smoothstep(t, -t, d) * 0.5);
+#endif
   }
 
 #ifdef WIREFRAME
