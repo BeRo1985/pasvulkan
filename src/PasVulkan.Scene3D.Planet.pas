@@ -1550,6 +1550,7 @@ type TpvScene3DPlanets=class;
        fImageRowChanged:array[0..16384-1] of boolean; // 16k is overkill anyway, better too much than too less
        fImageRowBufferCopy:array[0..8192-1] of TVkBufferImageCopy; // 16k / 2, since contiguous rows are merged into one copy operation
        fAtmosphere:TObject;
+       fBrushes:TpvScene3DPlanet.TBrushes; 
       private
        procedure GenerateMeshIndices(const aTiledMeshIndices:TpvScene3DPlanet.TMeshIndices;
                                      const aTiledMeshIndexGroups:TpvScene3DPlanet.TTiledMeshIndexGroups;
@@ -1561,6 +1562,7 @@ type TpvScene3DPlanets=class;
                                      out aMeshLODCounts:TpvScene3DPlanet.TSizeIntArray);
       public
        constructor Create(const aScene3D:TObject;
+                          const aBrushes:TpvScene3DPlanet.TBrushes; 
                           const aHeightMapResolution:TpvInt32=4096;
                           const aVisualResolution:TpvSizeInt=4096;
                           const aPhysicsResolution:TpvSizeInt=1024;
@@ -13986,6 +13988,7 @@ end;
 { TpvScene3DPlanet }
 
 constructor TpvScene3DPlanet.Create(const aScene3D:TObject;
+                                    const aBrushes:TpvScene3DPlanet.TBrushes;
                                     const aHeightMapResolution:TpvInt32;
                                     const aVisualResolution:TpvSizeInt;
                                     const aPhysicsResolution:TpvSizeInt;
@@ -14003,6 +14006,8 @@ begin
  fVulkanDevice:=TpvScene3D(fScene3D).VulkanDevice;
 
  fAtmosphere:=nil;
+
+ fBrushes:=aBrushes;
 
  fHeightMapResolution:=RoundUpToPowerOfTwo(Min(Max(aHeightMapResolution,128),8192));
 
