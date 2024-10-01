@@ -1778,6 +1778,8 @@ begin
  PNGStreams:=nil;
  try
 
+  SetLength(PNGStreams,length(aBrushes));
+
   for Index:=0 to length(aBrushes)-1 do begin
    PNGFileName:=IntToStr(Index);
    while length(PNGFileName)<3 do begin
