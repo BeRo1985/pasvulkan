@@ -1705,7 +1705,6 @@ uses PasVulkan.Scene3D,
 type TVector3Array=TpvDynamicArray<TpvVector3>;
      TIndexArray=TpvDynamicArray<TpvUInt32>;
 
-// function LoadPNGImage(DataPointer:TpvPointer;DataSize:TpvUInt32;var ImageData:TpvPointer;var ImageWidth,ImageHeight:TpvInt32;const HeaderOnly:boolean;var PixelFormat:TpvPNGPixelFormat):boolean;
 procedure ConvertPNGStreamsToBrushes(const aPNGStreams:array of TStream;out aBrushes:TpvScene3DPlanet.TBrushes);
 var PNGIndex,PixelIndex:TpvSizeInt; 
     PNGPixelFormat:TpvPNGPixelFormat;
@@ -1728,6 +1727,8 @@ begin
     PNGWidth:=0;
     PNGHeight:=0;
     PNGPixelFormat:=TpvPNGPixelFormat.Unknown;
+    PNGStream.Seek(0,soBeginning);
+    PNGStream.ReadBuffer(PNGData^,PNGStream.Size);
     if LoadPNGImage(PNGData,PNGStream.Size,PixelData,PNGWidth,PNGHeight,false,PNGPixelFormat) then begin
      if assigned(PixelData) and (PNGWidth>0) and (PNGHeight>0) then begin
       if PNGPixelFormat=TpvPNGPixelFormat.R16G16B16A16 then begin
@@ -1833,6 +1834,8 @@ begin
     PixelData:=nil;
     QOIWidth:=0;
     QOIHeight:=0;
+    QOIStream.Seek(0,soBeginning);
+    QOIStream.ReadBuffer(QOIData^,QOIStream.Size);
     if LoadQOIImage(QOIData,QOIStream.Size,PixelData,QOIWidth,QOIHeight,false,SRGB) then begin
      if assigned(PixelData) and (QOIWidth>0) and (QOIHeight>0) then begin
       if QOIWidth<>256 then begin
