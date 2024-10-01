@@ -1,0 +1,81 @@
+#version 450 core
+
+#pragma shader_stage(compute)
+
+#extension GL_ARB_separate_shader_objects : enable
+#extension GL_ARB_shading_language_420pack : enable
+#extension GL_GOOGLE_include_directive : enable
+
+/* clang-format off */
+
+layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+
+layout(set = 0, binding = 0, r32f) uniform image2D uImageHeightMap;
+
+layout(set = 0, binding = 1) buffer TileMapDirtyBuffer {
+  uint data[]; // bitwise dirty map
+} tileMapDirtyBuffer;
+
+layout(push_constant) uniform PushConstants {
+  vec4 vector;
+  uvec4 tileMapResolutionShift; // x = dirty size, y = shift
+  float innerRadius;
+  float outerRadius;
+  float minHeight;
+  float maxHeight;
+  float bottomRadius;
+  float topRadius;
+  float targetHeight;
+} pushConstants;
+
+/* clang-format on */
+
+#include "octahedral.glsl"
+#include "octahedralmap.glsl"
+
+void main(){
+  
+  ivec2 texel = ivec2(gl_GlobalInvocationID.xy);
+
+  ivec2 texSize = imageSize(uImageHeightMap);
+
+  if(all(greaterThanEqual(texel, ivec2(0))) && all(lessThan(texel, texSize))){
+  
+    ivec2 xy = wrapOctahedralTexelCoordinates(texel, texSize);
+    
+    vec3 p = octPlanetUnsignedDecode(vec2(xy) / vec2(texSize));
+
+    vec3 n = normalize(pushConstants.vector.xyz);
+    
+    float d = smoothstep(pushConstants.outerRadius, pushConstants.innerRadius, length(p - n));
+    
+    if(d > 0.0){
+
+      {
+        uvec2 tileMapXY = uvec2(texel)  >> pushConstants.tileMapResolutionShift.y;
+        uint tileMapIndex = (tileMapXY.y * pushConstants.tileMapResolutionShift.x) + tileMapXY.x;
+        atomicOr(tileMapDirtyBuffer.data[tileMapIndex >> 5u], 1u << (tileMapIndex & 31u));
+      } 
+   
+      imageStore(
+        uImageHeightMap, 
+        texel, 
+        vec4(
+          clamp(
+            mix(
+              imageLoad(uImageHeightMap, texel).x, 
+              (pushConstants.targetHeight - (dot(p, n) * pushConstants.bottomRadius)) / (pushConstants.topRadius - pushConstants.bottomRadius), 
+              d
+            ), 
+            pushConstants.minHeight, 
+            pushConstants.maxHeight
+          )
+        )
+      );
+
+    }
+
+  }
+
+}
+
