@@ -1686,6 +1686,12 @@ procedure ConvertPNGAssetsToBrushes(const aAssetPath:TpvUTF8String;out aBrushes:
 procedure ConvertQOIStreamsToBrushes(const aQOIStreams:array of TStream;out aBrushes:TpvScene3DPlanet.TBrushes);
 procedure ConvertQOIAssetsToBrushes(const aAssetPath:TpvUTF8String;out aBrushes:TpvScene3DPlanet.TBrushes);
 
+function LoadBrushesFromStream(const aStream:TStream;out aBrushes:TpvScene3DPlanet.TBrushes):boolean;
+function LoadBrushesFromAsset(const aAssetPath:TpvUTF8String;out aBrushes:TpvScene3DPlanet.TBrushes):boolean;
+
+procedure SaveBrushesToStream(const aStream:TStream;const aBrushes:TpvScene3DPlanet.TBrushes);
+procedure SaveBrushesToAsset(const aAssetPath:TpvUTF8String;const aBrushes:TpvScene3DPlanet.TBrushes);
+
 implementation
 
 uses PasVulkan.Scene3D,
@@ -1876,7 +1882,77 @@ begin
   end;
  end;
 end;
- 
+
+function LoadBrushesFromStream(const aStream:TStream;out aBrushes:TpvScene3DPlanet.TBrushes):boolean;
+var OutStream:TMemoryStream;
+begin
+ OutStream:=TMemoryStream.Create;
+ try
+  if DecompressStream(aStream,OutStream) then begin
+   if OutStream.Size=SizeOf(TpvScene3DPlanet.TBrushes) then begin
+    OutStream.Seek(0,soBeginning);
+    OutStream.Read(aBrushes,SizeOf(TpvScene3DPlanet.TBrushes));
+    result:=true;
+   end else begin
+    FillChar(aBrushes,SizeOf(TpvScene3DPlanet.TBrushes),#0);
+    result:=false;
+   end;
+  end else begin
+   FillChar(aBrushes,SizeOf(TpvScene3DPlanet.TBrushes),#0);
+   result:=false;
+  end;
+ finally
+  FreeAndNil(OutStream);
+ end;
+end;
+
+function LoadBrushesFromAsset(const aAssetPath:TpvUTF8String;out aBrushes:TpvScene3DPlanet.TBrushes):boolean;
+var Stream:TStream;
+begin
+ if pvApplication.Assets.ExistAsset(aAssetPath) then begin
+  Stream:=pvApplication.Assets.GetAssetStream(aAssetPath);
+  try
+   result:=LoadBrushesFromStream(Stream,aBrushes);
+  finally
+   FreeAndNil(Stream);
+  end;
+ end else begin
+  FillChar(aBrushes,SizeOf(TpvScene3DPlanet.TBrushes),#0);
+  result:=false;
+ end;
+end;
+
+procedure SaveBrushesToStream(const aStream:TStream;const aBrushes:TpvScene3DPlanet.TBrushes);
+var OutStream:TMemoryStream;
+begin
+ OutStream:=TMemoryStream.Create;
+ try
+  OutStream.Write(aBrushes,SizeOf(TpvScene3DPlanet.TBrushes));
+  OutStream.Seek(0,soBeginning);
+  if not CompressStream(OutStream,aStream,TpvCompressionMethod.LZBRRC,5,0) then begin
+   if not CompressStream(OutStream,aStream,TpvCompressionMethod.None,5,0) then begin
+    Assert(false);
+   end;
+  end;
+ finally
+  FreeAndNil(OutStream);
+ end;
+end;
+
+procedure SaveBrushesToAsset(const aAssetPath:TpvUTF8String;const aBrushes:TpvScene3DPlanet.TBrushes);
+var RealFilePath:TpvUTF8String;
+    Stream:TMemoryStream;
+begin
+ RealFilePath:=IncludeTrailingPathDelimiter(pvApplication.Assets.BasePath)+aAssetPath;
+ Stream:=TMemoryStream.Create;
+ try
+  SaveBrushesToStream(Stream,aBrushes);
+  Stream.SaveToFile(RealFilePath);
+ finally
+  FreeAndNil(Stream);
+ end;
+end;
+
 function WrapOctahedralCoordinates(const aUV:TpvVector2):TpvVector2;
 begin
  if ((((Trunc(Abs(aUV.x))+(Ord(aUV.x<0.0) and 1)) xor (Trunc(Abs(aUV.y))+(Ord(aUV.y<0.0) and 1))) and 1)<>0) then begin
