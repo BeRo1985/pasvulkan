@@ -1590,7 +1590,7 @@ type TpvScene3DPlanets=class;
        procedure EndUpdate;
        procedure FlushUpdate;
        procedure Initialize(const aPasMPInstance:TPasMP=nil;const aData:TStream=nil;const aDataFreeOnDestroy:boolean=false);
-       procedure Flatten(const aVector:TpvVector3;const aInnerRadius,aOuterRadius,aTargetHeight:TpvFloat);
+       procedure Flatten(const aVector:TpvVector3;const aInnerRadius,aOuterRadius,aTargetHeight:TpvFloat;const aBrushIndex:TpvUInt32);
        function RayIntersection(const aRayOrigin,aRayDirection:TpvVector3;out aHitNormal:TpvVector3;out aHitTime:TpvScalar):boolean;
        procedure Update(const aInFlightFrameIndex:TpvSizeInt);
        procedure FrameUpdate(const aInFlightFrameIndex:TpvSizeInt);
@@ -15640,7 +15640,7 @@ begin
 
 end;
 
-procedure TpvScene3DPlanet.Flatten(const aVector:TpvVector3;const aInnerRadius,aOuterRadius,aTargetHeight:TpvFloat);
+procedure TpvScene3DPlanet.Flatten(const aVector:TpvVector3;const aInnerRadius,aOuterRadius,aTargetHeight:TpvFloat;const aBrushIndex:TpvUInt32);
 begin
 
  if assigned(fVulkanDevice) then begin
@@ -15648,13 +15648,15 @@ begin
   BeginUpdate;
   try
 
-   fHeightMapFlatten.fPushConstants.Vector.xyz:=aVector;
+   fHeightMapFlatten.fPushConstants.Vector:=TpvVector4.InlineableCreate(aVector,aOuterRadius);
 
    fHeightMapFlatten.fPushConstants.InnerRadius:=aInnerRadius;
 
    fHeightMapFlatten.fPushConstants.OuterRadius:=aOuterRadius;
 
    fHeightMapFlatten.fPushConstants.TargetHeight:=aTargetHeight;
+
+   fHeightMapFlatten.fPushConstants.BrushIndex:=aBrushIndex;
 
    fHeightMapFlatten.Execute(fVulkanComputeCommandBuffer);
 
