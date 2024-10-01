@@ -14253,6 +14253,42 @@ begin
 
  end;
 
+ if assigned(fVulkanDevice) then begin
+
+  fBrushesTexture:=TpvVulkanTexture.CreateFromMemory(fVulkanDevice,
+                                                     fVulkanUniversalQueue,
+                                                     fVulkanUniversalCommandBuffer,
+                                                     fVulkanUniversalFence,
+                                                     fVulkanUniversalQueue,
+                                                     fVulkanUniversalCommandBuffer,
+                                                     fVulkanUniversalFence,
+                                                     VK_FORMAT_R8_UNORM,
+                                                     VK_SAMPLE_COUNT_1_BIT,
+                                                     256,
+                                                     256,
+                                                     0,
+                                                     256,
+                                                     1,
+                                                     0,
+                                                     [TpvVulkanTextureUsageFlag.Sampled,TpvVulkanTextureUsageFlag.TransferDst],
+                                                     @fBrushes,
+                                                     SizeOf(TpvScene3DPlanet.TBrushes),
+                                                     false,
+                                                     false,
+                                                     0,
+                                                     true,
+                                                     false,
+                                                     false,
+                                                     0);
+  fVulkanDevice.DebugUtils.SetObjectName(fBrushesTexture.Image.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DPlanet.fBrushesTexture.Image');
+  fVulkanDevice.DebugUtils.SetObjectName(fBrushesTexture.ImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DPlanet.fBrushesTexture.ImageView');
+
+ end else begin
+
+  fBrushesTexture:=nil;
+
+ end;
+
  fData:=TData.Create(self,-1);
 
  fInFlightFrameDataList:=TInFlightFrameDataList.Create(true);
@@ -14452,42 +14488,6 @@ begin
   fRaytracingTileQueue:=nil;
 
   fRaytracingTileNextQueue:=nil;
-
- end;
-
- if assigned(fVulkanDevice) then begin
-
-  fBrushesTexture:=TpvVulkanTexture.CreateFromMemory(fVulkanDevice,
-                                                     fVulkanUniversalQueue,
-                                                     fVulkanUniversalCommandBuffer,
-                                                     fVulkanUniversalFence,
-                                                     fVulkanUniversalQueue,
-                                                     fVulkanUniversalCommandBuffer,
-                                                     fVulkanUniversalFence,
-                                                     VK_FORMAT_R8_UNORM,
-                                                     VK_SAMPLE_COUNT_1_BIT,
-                                                     256,
-                                                     256,
-                                                     0,
-                                                     256,
-                                                     1,
-                                                     0,
-                                                     [TpvVulkanTextureUsageFlag.Sampled,TpvVulkanTextureUsageFlag.TransferDst],
-                                                     @fBrushes,
-                                                     SizeOf(TpvScene3DPlanet.TBrushes),
-                                                     false,
-                                                     false,
-                                                     0,
-                                                     true,
-                                                     false,
-                                                     false,
-                                                     0);
-  fVulkanDevice.DebugUtils.SetObjectName(fBrushesTexture.Image.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DPlanet.fBrushesTexture.Image');
-  fVulkanDevice.DebugUtils.SetObjectName(fBrushesTexture.ImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DPlanet.fBrushesTexture.ImageView');
-
- end else begin
-
-  fBrushesTexture:=nil;
 
  end;
 
