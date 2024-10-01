@@ -387,8 +387,12 @@ compileshaderarguments=(
   "-V planet_heightmap_data_initialization.comp -o ${tempPath}/planet_heightmap_data_initialization_comp.spv"
   
   "-V planet_heightmap_flatten.comp -o ${tempPath}/planet_heightmap_flatten_comp.spv"
+
+  "-V planet_heightmap_flatten_brush.comp -o ${tempPath}/planet_heightmap_flatten_brush_comp.spv"
   
   "-V planet_heightmap_modification.comp -o ${tempPath}/planet_heightmap_modification_comp.spv"
+
+  "-V planet_heightmap_modification_brush.comp -o ${tempPath}/planet_heightmap_modification_brush_comp.spv"
 
   "-V planet_normalmap_generation.comp -o ${tempPath}/planet_normalmap_generation_comp.spv"
 
