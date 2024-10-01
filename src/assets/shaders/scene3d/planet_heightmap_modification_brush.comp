@@ -45,7 +45,7 @@ void main(){
          b = normalize(cross(n, t = normalize(t - dot(t, n)))),
          p = sphereNormal - pushConstants.positionRadius.xyz;
     vec2 uv = vec2(dot(p, t), dot(p, b)) / pushConstants.positionRadius.w;
-    float d = smoothstep(1.0, 0.99609375, max(abs(uv.x), abs(uv.y)));
+    float d = smoothstep(1.0, 1.0 - (1.0 / length(textureSize(uBrushTextureArray, 0).xy)), max(abs(uv.x), abs(uv.y)));
 
     if(d > 0.0){
 
