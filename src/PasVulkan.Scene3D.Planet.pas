@@ -92,6 +92,7 @@ uses Classes,
      PasVulkan.Scene3D.Renderer.MipmapImage2D,
      PasVulkan.Scene3D.Renderer.IBLDescriptor,
      PasVulkan.Image.Utils,
+     PasVulkan.Image.PNG,
      PasVulkan.Compression,
      PasVulkan.Hash.xxHash64;
 
@@ -201,6 +202,10 @@ type TpvScene3DPlanets=class;
             end;
             PWaterModification=^TWaterModification;
             TWaterModifications=array[0..MaxInFlightFrames-1] of TWaterModification;
+            TBrush=array[0..255,0..255] of TpvUInt8;
+            PBrush=^TBrush;
+            TBrushes=array[0..255] of TBrush;
+            PBrushes=^TBrushes;
             { TData }
             TData=class // one ground truth instance and one or more in-flight instances for flawlessly parallel rendering
              public
@@ -1674,6 +1679,9 @@ function OctEqualAreaUnsignedEncode(const aVector:TpvVector3):TpvVector2;
 function OctEqualAreaSignedDecode(const aUV:TpvVector2):TpvVector3;
 function OctEqualAreaUnsignedDecode(const aUV:TpvVector2):TpvVector3;
 
+procedure ConvertPNGStreamsToBrushes(const aPNGStreams:array of TStream;out aBrushes:TpvScene3DPlanet.TBrushes);
+procedure ConvertPNGAssetsToBrushes(const aAssetPath:TpvUTF8String;out aBrushes:TpvScene3DPlanet.TBrushes);
+
 implementation
 
 uses PasVulkan.Scene3D,
@@ -1685,6 +1693,107 @@ uses PasVulkan.Scene3D,
 type TVector3Array=TpvDynamicArray<TpvVector3>;
      TIndexArray=TpvDynamicArray<TpvUInt32>;
 
+// function LoadPNGImage(DataPointer:TpvPointer;DataSize:TpvUInt32;var ImageData:TpvPointer;var ImageWidth,ImageHeight:TpvInt32;const HeaderOnly:boolean;var PixelFormat:TpvPNGPixelFormat):boolean;
+procedure ConvertPNGStreamsToBrushes(const aPNGStreams:array of TStream;out aBrushes:TpvScene3DPlanet.TBrushes);
+var PNGIndex,PixelIndex:TpvSizeInt; 
+    PNGPixelFormat:TpvPNGPixelFormat;
+    PNGWidth,PNGHeight:TpvInt32;
+    PNGData:TpvPointer;
+    PixelData:TpvPointer;
+    PNGStream:TStream;
+    p8,m8:PpvUInt8;
+    p16:PpvUInt16;
+begin
+
+ FillChar(aBrushes,SizeOf(TpvScene3DPlanet.TBrushes),#0);
+
+ for PNGIndex:=0 to Min(length(TpvScene3DPlanet.TBrushes),length(aPNGStreams))-1 do begin
+  PNGStream:=aPNGStreams[PNGIndex];
+  if assigned(PNGStream) and (PNGStream.Size>0) then begin
+   GetMem(PNGData,PNGStream.Size);
+   try
+    PixelData:=nil;
+    PNGWidth:=0;
+    PNGHeight:=0;
+    PNGPixelFormat:=TpvPNGPixelFormat.Unknown;
+    if LoadPNGImage(PNGData,PNGStream.Size,PixelData,PNGWidth,PNGHeight,false,PNGPixelFormat) then begin
+     if assigned(PixelData) and (PNGWidth>0) and (PNGHeight>0) then begin
+      if PNGPixelFormat=TpvPNGPixelFormat.R16G16B16A16 then begin
+       // Convert to R8G8B8A8
+       p8:=PixelData;
+       p16:=PixelData;
+       for PixelIndex:=0 to ((PNGWidth*PNGHeight)*4)-1 do begin
+        p8^:=p16^ shr 8;
+        inc(p8);
+        inc(p16);
+       end;
+      end;      
+     end;
+     begin
+      // Convert R8G8B8A8 to mono-channel byte
+      p8:=PixelData;
+      m8:=PixelData;
+      for PixelIndex:=0 to ((PNGWidth*PNGHeight)*4)-1 do begin
+       m8^:=p8^;
+       inc(p8,4);
+       inc(m8);
+      end;
+     end;
+     if (PNGWidth<>256) or (PNGHeight<>256) then begin
+      GetMem(p8,256*256);
+      ResizeMonoByte2D(PixelData,PNGWidth,PNGHeight,p8,256,256);
+      FreeMem(PixelData);
+      PixelData:=p8;
+      PNGWidth:=256;
+      PNGHeight:=256;
+     end;
+     Move(PixelData^,aBrushes[PNGIndex],256*256);
+    end;    
+   finally
+    FreeMem(PNGData);
+   end;
+  end;
+ end;
+
+end;
+
+procedure ConvertPNGAssetsToBrushes(const aAssetPath:TpvUTF8String;out aBrushes:TpvScene3DPlanet.TBrushes);
+var PNGStreams:array of TStream;
+    Index:TpvSizeInt;
+    PNGFileName:TpvUTF8String;
+begin
+
+ PNGStreams:=nil;
+ try
+
+  for Index:=0 to length(aBrushes)-1 do begin
+   PNGFileName:=IntToStr(Index);
+   while length(PNGFileName)<3 do begin
+    PNGFileName:='0'+PNGFileName;
+   end;
+   PNGFileName:=aAssetPath+'/'+PNGFileName+'.png';
+   if pvApplication.Assets.ExistAsset(PNGFileName) then begin
+    PNGStreams[Index]:=pvApplication.Assets.GetAssetStream(PNGFileName);
+   end else begin
+    PNGStreams[Index]:=nil;
+   end;
+  end;
+
+  ConvertPNGStreamsToBrushes(PNGStreams,aBrushes);
+
+ finally
+  try
+   for Index:=0 to length(PNGStreams)-1 do begin
+    if assigned(PNGStreams[Index]) then begin
+     PNGStreams[Index].Free;
+    end;
+   end;
+  finally
+   PNGStreams:=nil;
+  end;
+ end;
+end;
+ 
 function WrapOctahedralCoordinates(const aUV:TpvVector2):TpvVector2;
 begin
  if ((((Trunc(Abs(aUV.x))+(Ord(aUV.x<0.0) and 1)) xor (Trunc(Abs(aUV.y))+(Ord(aUV.y<0.0) and 1))) and 1)<>0) then begin
