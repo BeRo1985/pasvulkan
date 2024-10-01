@@ -1551,6 +1551,7 @@ type TpvScene3DPlanets=class;
        fImageRowBufferCopy:array[0..8192-1] of TVkBufferImageCopy; // 16k / 2, since contiguous rows are merged into one copy operation
        fAtmosphere:TObject;
        fBrushes:TpvScene3DPlanet.TBrushes; 
+       fBrushesTexture:TpvVulkanTexture;
       private
        procedure GenerateMeshIndices(const aTiledMeshIndices:TpvScene3DPlanet.TMeshIndices;
                                      const aTiledMeshIndexGroups:TpvScene3DPlanet.TTiledMeshIndexGroups;
@@ -14409,6 +14410,42 @@ begin
 
  end;
 
+ if assigned(fVulkanDevice) then begin
+
+  fBrushesTexture:=TpvVulkanTexture.CreateFromMemory(fVulkanDevice,
+                                                     fVulkanUniversalQueue,
+                                                     fVulkanUniversalCommandBuffer,
+                                                     fVulkanUniversalFence,
+                                                     fVulkanUniversalQueue,
+                                                     fVulkanUniversalCommandBuffer,
+                                                     fVulkanUniversalFence,
+                                                     VK_FORMAT_R8_UNORM,
+                                                     VK_SAMPLE_COUNT_1_BIT,
+                                                     256,
+                                                     256,
+                                                     0,
+                                                     256,
+                                                     1,
+                                                     0,
+                                                     [TpvVulkanTextureUsageFlag.Sampled,TpvVulkanTextureUsageFlag.TransferDst],
+                                                     @fBrushes,
+                                                     SizeOf(TpvScene3DPlanet.TBrushes),
+                                                     false,
+                                                     false,
+                                                     0,
+                                                     true,
+                                                     false,
+                                                     false,
+                                                     0);
+  fVulkanDevice.DebugUtils.SetObjectName(fBrushesTexture.Image.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DPlanet.fBrushesTexture.Image');
+  fVulkanDevice.DebugUtils.SetObjectName(fBrushesTexture.ImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DPlanet.fBrushesTexture.ImageView');
+
+ end else begin
+
+  fBrushesTexture:=nil;
+
+ end;
+
  fReady:=true;
 
 end;
@@ -14417,6 +14454,8 @@ destructor TpvScene3DPlanet.Destroy;
 var InFlightFrameIndex,Index:TpvSizeInt;
 begin
 
+ FreeAndNil(fBrushesTexture);
+ 
  if assigned(fRaytracingTiles) then begin
   try
    if assigned(pvApplication) then begin
