@@ -290,6 +290,7 @@ type TpvScene3DPlanets=class;
               fOwnershipHolderState:TpvScene3DPlanet.TData.TOwnershipHolderState;
               fSelectedRegion:TpvVector4;
               fSelectedRegionProperty:TpvVector4Property;
+              fSelectedBrush:TpvUInt32;
               fModifyHeightMapActive:Boolean;
               fModifyHeightMapBorderRadius:TpvScalar;
               fModifyHeightMapFactor:TpvScalar;
@@ -367,6 +368,7 @@ type TpvScene3DPlanets=class;
               property ModelMatrix:TpvMatrix4x4 read fModelMatrix write fModelMatrix;
               property Ready:TPasMPBool32 read fReady write fReady;
               property SelectedRegion:TpvVector4Property read fSelectedRegionProperty;
+              property SelectedBrush:TpvUInt32 read fSelectedBrush write fSelectedBrush;
               property ModifyHeightMapActive:Boolean read fModifyHeightMapActive write fModifyHeightMapActive;
               property ModifyHeightMapBorderRadius:TpvScalar read fModifyHeightMapBorderRadius write fModifyHeightMapBorderRadius;
               property ModifyHeightMapFactor:TpvScalar read fModifyHeightMapFactor write fModifyHeightMapFactor;
@@ -2812,6 +2814,8 @@ begin
 
  fSelectedRegionProperty:=TpvVector4Property.Create(@fSelectedRegion);
 
+ fSelectedBrush:=0;
+
  fModifyHeightMapActive:=false;
 
  fModifyHeightMapBorderRadius:=0.0;
@@ -4008,6 +4012,7 @@ end;
 procedure TpvScene3DPlanet.TData.Assign(const aData:TData);
 begin
  fSelectedRegion:=aData.fSelectedRegion;
+ fSelectedBrush:=aData.fSelectedBrush;
  fWireframeActive:=aData.fWireframeActive;
  fDisplacementMappingActive:=aData.fDisplacementMappingActive;
  fParallaxMappingActive:=aData.fParallaxMappingActive;
@@ -6875,6 +6880,7 @@ begin
                                                                     1.0);
 
  fPushConstants.PositionRadius:=fPlanet.fData.fSelectedRegion;
+ fPushConstants.BrushIndex:=fPlanet.fData.fSelectedBrush;
 
  aCommandBuffer.CmdPushConstants(fPipelineLayout.Handle,
                                  TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
