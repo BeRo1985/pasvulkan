@@ -45,7 +45,7 @@ void main(){
          b = normalize(cross(n, t = normalize(t - dot(t, n)))),
          p = sphereNormal - pushConstants.positionRadius.xyz;
     vec2 uv = vec2(dot(p, t), dot(p, b)) / pushConstants.positionRadius.w;
-    float d = smoothstep(0.0, -1e-4, max(abs(uv.x), abs(uv.y)) - 1.0);
+    float d = smoothstep(1.0, 0.9999, max(abs(uv.x), abs(uv.y)));
 
     if(d > 0.0){
 
