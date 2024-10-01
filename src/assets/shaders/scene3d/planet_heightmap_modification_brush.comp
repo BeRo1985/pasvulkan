@@ -16,16 +16,20 @@ layout(set = 0, binding = 1) buffer TileMapDirtyBuffer {
   uint data[]; // bitwise dirty map
 } tileMapDirtyBuffer;
 
+layout(set = 0, binding = 2) uniform sampler2DArray uBrushTextureArray;
+
 layout(push_constant) uniform PushConstants {
   vec4 positionRadius; // xyz = position, w = radius
   vec4 innerRadiusValueMinMax; // x = inner radius, y = value, z = min, w = max
   uvec4 tileMapResolutionShift; // x = dirty size, y = shift
+  uvec4 brushIndex; // x = index, y = unused, z = unused, w = unused
 } pushConstants;
 
 /* clang-format on */
 
 #include "octahedral.glsl"
 #include "octahedralmap.glsl"
+#include "planet_heightmap_brush.glsl"
 
 void main(){
   
@@ -37,11 +41,18 @@ void main(){
 
     vec3 sphereNormal = octPlanetUnsignedDecode(vec2(texel) / vec2(texSize));
 
+    float angle = dot(sphereNormal, pushConstants.positionRadius.xyz);
+    float dist = length(sphereNormal - pushConstants.positionRadius.xyz) / pushConstants.positionRadius.w;
+
     float d = smoothstep(
-      0.0,
-      -pushConstants.innerRadiusValueMinMax.x,
-      length(sphereNormal - pushConstants.positionRadius.xyz) - pushConstants.positionRadius.w
+      1.0,
+      1.0 - (pushConstants.innerRadiusValueMinMax.x / pushConstants.positionRadius.w),
+      dist
     );
+
+    if(d > 0.0){
+      d *= getBrushTexelValue(uBrushTextureArray, int(pushConstants.brushIndex.x), angle, dist);
+    }
 
     if(d > 0.0){
 
