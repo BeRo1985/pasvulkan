@@ -1785,7 +1785,11 @@ begin
    while length(PNGFileName)<3 do begin
     PNGFileName:='0'+PNGFileName;
    end;
-   PNGFileName:=aAssetPath+'/'+PNGFileName+'.png';
+   if (length(aAssetPath)>0) and (aAssetPath[length(aAssetPath)]<>'/') then begin
+    PNGFileName:=aAssetPath+'/'+PNGFileName+'.png';
+   end else begin
+    PNGFileName:=aAssetPath+PNGFileName+'.png';
+   end;
    if pvApplication.Assets.ExistAsset(PNGFileName) then begin
     PNGStreams[Index]:=pvApplication.Assets.GetAssetStream(PNGFileName);
    end else begin
@@ -1864,7 +1868,11 @@ begin
    while length(QOIFileName)<3 do begin
     QOIFileName:='0'+QOIFileName;
    end;
-   QOIFileName:=aAssetPath+'/'+QOIFileName+'.qoi';
+   if (length(aAssetPath)>0) and (aAssetPath[length(aAssetPath)]<>'/') then begin
+    QOIFileName:=aAssetPath+'/'+QOIFileName+'.qoi';
+   end else begin
+    QOIFileName:=aAssetPath+QOIFileName+'.qoi';
+   end;
    if pvApplication.Assets.ExistAsset(QOIFileName) then begin
     QOIStreams[Index]:=pvApplication.Assets.GetAssetStream(QOIFileName);
    end else begin
