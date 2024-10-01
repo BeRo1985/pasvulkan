@@ -16,9 +16,11 @@ layout(set = 0, binding = 1) buffer TileMapDirtyBuffer {
   uint data[]; // bitwise dirty map
 } tileMapDirtyBuffer;
 
+layout(set = 0, binding = 2) uniform sampler2DArray uBrushTextureArray;
+
 layout(push_constant) uniform PushConstants {
-  vec4 vector;
-  uvec4 tileMapResolutionShift; // x = dirty size, y = shift
+  vec4 positionRadius;
+  uvec4 tileMapResolutionShiftBrushIndex; // x = dirty size, y = shift, z = brush index
   float innerRadius;
   float outerRadius;
   float minHeight;
@@ -45,18 +47,46 @@ void main(){
     
     vec3 p = octPlanetUnsignedDecode(vec2(xy) / vec2(texSize));
 
-    vec3 n = normalize(pushConstants.vector.xyz);
-    
-    float d = smoothstep(pushConstants.outerRadius, pushConstants.innerRadius, length(p - n));
-    
+    vec3 n = normalize(pushConstants.positionRadius.xyz);
+
+    float d;
+
+    if(pushConstants.tileMapResolutionShiftBrushIndex.z == 0u){
+
+      // Just a circle brush
+     
+      d = smoothstep(pushConstants.outerRadius, pushConstants.innerRadius, length(p - n));
+
+    }else if(pushConstants.tileMapResolutionShiftBrushIndex.z <= 255u){
+
+      // Brush texture
+     
+      vec3 t = n.yzx - n.zxy, 
+           b = normalize(cross(n, t = normalize(t - dot(t, n)))),
+           o = p - pushConstants.positionRadius.xyz;
+      vec2 uv = vec2(dot(o, t), dot(o, b)) / pushConstants.positionRadius.w;
+      d = smoothstep(1.0, 1.0 - (1.0 / length(textureSize(uBrushTextureArray, 0).xy)), max(abs(uv.x), abs(uv.y)));
+
+      if(d > 0.0){
+        d *= textureLod(uBrushTextureArray, vec3(fma(uv, vec2(0.5), vec2(0.5)), float(pushConstants.tileMapResolutionShiftBrushIndex.z)), 0.0).x;
+      }
+
+    }else{
+
+      // No brush
+     
+      d = 0.0;
+
+    }
+
     if(d > 0.0){
 
       {
-        uvec2 tileMapXY = uvec2(texel)  >> pushConstants.tileMapResolutionShift.y;
-        uint tileMapIndex = (tileMapXY.y * pushConstants.tileMapResolutionShift.x) + tileMapXY.x;
+        uvec2 tileMapXY = uvec2(texel) >> pushConstants.tileMapResolutionShiftBrushIndex.y;
+        uint tileMapIndex = (tileMapXY.y * pushConstants.tileMapResolutionShiftBrushIndex.x) + tileMapXY.x;
         atomicOr(tileMapDirtyBuffer.data[tileMapIndex >> 5u], 1u << (tileMapIndex & 31u));
       } 
-   
+  
       imageStore(
         uImageHeightMap, 
         texel, 
