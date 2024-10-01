@@ -67,6 +67,8 @@ void main(){
       vec2 uv = vec2(dot(o, t), dot(o, b)) / pushConstants.positionRadius.w;
       d = smoothstep(1.0, 1.0 - (1.0 / length(textureSize(uBrushTextureArray, 0).xy)), max(abs(uv.x), abs(uv.y)));
 
+      d *= smoothstep(1e-4, -1e-4, dot(p, n)); // When we are on the back side of the planet, we need to clear the brush, but smoothly.
+
       if(d > 0.0){
         d *= textureLod(uBrushTextureArray, vec3(fma(uv, vec2(0.5), vec2(0.5)), float(pushConstants.tileMapResolutionShiftBrushIndex.z)), 0.0).x;
       }
