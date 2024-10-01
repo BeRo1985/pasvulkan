@@ -248,7 +248,7 @@ type PPpvInt8=^PpvInt8;
      end;
 
      PpvID=^TpvID;
-     TpvID=type {$ifdef Debug}TpvUInt64{$else}TpvUInt32{$endif};
+     TpvID=type TpvUInt64;//{$ifdef Debug}TpvUInt64{$else}TpvUInt32{$endif};
 
      TpvIDHelper=record helper for TpvID
       public

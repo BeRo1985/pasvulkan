@@ -107,25 +107,25 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
      PpvCanvasLineJoin=^TpvCanvasLineJoin;
      TpvCanvasLineJoin=
       (
-       Bevel,
-       Miter,
-       Round
+       Bevel=0,
+       Miter=1,
+       Round=2
       );
 
      PpvCanvasLineCap=^TpvCanvasLineCap;
      TpvCanvasLineCap=
       (
-       Butt,
-       Square,
-       Round
+       Butt=0,
+       Square=1,
+       Round=2
       );
 
      PpvCanvasFillRule=^TpvCanvasFillRule;
      TpvCanvasFillRule=
       (
-       DoNotMatter, // for pure raw speed, where is no guarantee winding fill rule correctness of triangulation
-       NonZero,
-       EvenOdd
+       DoNotMatter=0, // for pure raw speed, where is no guarantee winding fill rule correctness of triangulation
+       NonZero=1,
+       EvenOdd=2
       );
 
      PpvCanvasFillStyle=^TpvCanvasFillStyle;
@@ -148,28 +148,28 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
      PpvCanvasTextHorizontalAlignment=^TpvCanvasTextHorizontalAlignment;
      TpvCanvasTextHorizontalAlignment=
       (
-       Leading,
-       Center,
-       Tailing
+       Leading=0,
+       Center=1,
+       Tailing=2
       );
 
      ppvCanvasTextVerticalAlignment=^TpvCanvasTextVerticalAlignment;
      TpvCanvasTextVerticalAlignment=
       (
-       Leading,
-       Middle,
-       Tailing
+       Leading=0,
+       Middle=1,
+       Tailing=2
       );
 
      PpvCanvasPathCommandType=^TpvCanvasPathCommandType;
      TpvCanvasPathCommandType=
       (
-       MoveTo,
-       LineTo,
-       QuadraticCurveTo,
-       CubicCurveTo,
-       ArcTo,
-       Close
+       MoveTo=0,
+       LineTo=1,
+       QuadraticCurveTo=2,
+       CubicCurveTo=3,
+       ArcTo=4,
+       Close=5
       );
 
      PpvCanvasPathCommandPoints=^TpvCanvasPathCommandPoints;
