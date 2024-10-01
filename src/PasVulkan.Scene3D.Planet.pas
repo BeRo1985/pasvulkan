@@ -1746,7 +1746,7 @@ begin
       // Convert R8G8B8A8 to mono-channel byte
       p8:=PixelData;
       m8:=PixelData;
-      for PixelIndex:=0 to ((PNGWidth*PNGHeight)*4)-1 do begin
+      for PixelIndex:=0 to (PNGWidth*PNGHeight)-1 do begin
        m8^:=p8^;
        inc(p8,4);
        inc(m8);
@@ -1820,7 +1820,6 @@ var QOIIndex,PixelIndex:TpvSizeInt;
     PixelData:TpvPointer;
     QOIStream:TStream;
     p8,m8:PpvUInt8;
-    p16:PpvUInt16;
     SRGB:boolean;
 begin
 
@@ -1838,6 +1837,16 @@ begin
     QOIStream.ReadBuffer(QOIData^,QOIStream.Size);
     if LoadQOIImage(QOIData,QOIStream.Size,PixelData,QOIWidth,QOIHeight,false,SRGB) then begin
      if assigned(PixelData) and (QOIWidth>0) and (QOIHeight>0) then begin
+      begin
+       // Convert R8G8B8A8 to mono-channel byte
+       p8:=PixelData;
+       m8:=PixelData;
+       for PixelIndex:=0 to (QOIWidth*QOIHeight)-1 do begin
+        m8^:=p8^;
+        inc(p8,4);
+        inc(m8);
+       end;
+      end;
       if QOIWidth<>256 then begin
        GetMem(p8,256*256);
        ResizeMonoByte2D(PixelData,QOIWidth,QOIHeight,p8,256,256);
