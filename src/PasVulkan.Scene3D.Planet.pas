@@ -1718,7 +1718,7 @@ begin
 
  FillChar(aBrushes,SizeOf(TpvScene3DPlanet.TBrushes),#0);
 
- for PNGIndex:=0 to Min(length(TpvScene3DPlanet.TBrushes),length(aPNGStreams))-1 do begin
+ for PNGIndex:=0 to Min(high(TpvScene3DPlanet.TBrushes)+1,length(aPNGStreams))-1 do begin
   PNGStream:=aPNGStreams[PNGIndex];
   if assigned(PNGStream) and (PNGStream.Size>0) then begin
    GetMem(PNGData,PNGStream.Size);
@@ -1825,7 +1825,7 @@ begin
 
  FillChar(aBrushes,SizeOf(TpvScene3DPlanet.TBrushes),#0);
 
- for QOIIndex:=0 to Min(length(TpvScene3DPlanet.TBrushes),length(aQOIStreams))-1 do begin
+ for QOIIndex:=0 to Min(high(TpvScene3DPlanet.TBrushes)+1,length(aQOIStreams))-1 do begin
   QOIStream:=aQOIStreams[QOIIndex];
   if assigned(QOIStream) and (QOIStream.Size>0) then begin
    GetMem(QOIData,QOIStream.Size);
