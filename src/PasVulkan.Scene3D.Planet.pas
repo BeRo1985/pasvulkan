@@ -93,6 +93,7 @@ uses Classes,
      PasVulkan.Scene3D.Renderer.IBLDescriptor,
      PasVulkan.Image.Utils,
      PasVulkan.Image.PNG,
+     PasVulkan.Image.QOI,
      PasVulkan.Compression,
      PasVulkan.Hash.xxHash64;
 
@@ -1682,6 +1683,9 @@ function OctEqualAreaUnsignedDecode(const aUV:TpvVector2):TpvVector3;
 procedure ConvertPNGStreamsToBrushes(const aPNGStreams:array of TStream;out aBrushes:TpvScene3DPlanet.TBrushes);
 procedure ConvertPNGAssetsToBrushes(const aAssetPath:TpvUTF8String;out aBrushes:TpvScene3DPlanet.TBrushes);
 
+procedure ConvertQOIStreamsToBrushes(const aQOIStreams:array of TStream;out aBrushes:TpvScene3DPlanet.TBrushes);
+procedure ConvertQOIAssetsToBrushes(const aAssetPath:TpvUTF8String;out aBrushes:TpvScene3DPlanet.TBrushes);
+
 implementation
 
 uses PasVulkan.Scene3D,
@@ -1790,6 +1794,85 @@ begin
    end;
   finally
    PNGStreams:=nil;
+  end;
+ end;
+end;
+
+procedure ConvertQOIStreamsToBrushes(const aQOIStreams:array of TStream;out aBrushes:TpvScene3DPlanet.TBrushes);
+var QOIIndex,PixelIndex:TpvSizeInt;
+    QOIWidth,QOIHeight:TpvInt32;
+    QOIData:TpvPointer;
+    PixelData:TpvPointer;
+    QOIStream:TStream;
+    p8,m8:PpvUInt8;
+    p16:PpvUInt16;
+    SRGB:boolean;
+begin
+
+ FillChar(aBrushes,SizeOf(TpvScene3DPlanet.TBrushes),#0);
+
+ for QOIIndex:=0 to Min(length(TpvScene3DPlanet.TBrushes),length(aQOIStreams))-1 do begin
+  QOIStream:=aQOIStreams[QOIIndex];
+  if assigned(QOIStream) and (QOIStream.Size>0) then begin
+   GetMem(QOIData,QOIStream.Size);
+   try
+    PixelData:=nil;
+    QOIWidth:=0;
+    QOIHeight:=0;
+    if LoadQOIImage(QOIData,QOIStream.Size,PixelData,QOIWidth,QOIHeight,false,SRGB) then begin
+     if assigned(PixelData) and (QOIWidth>0) and (QOIHeight>0) then begin
+      if QOIWidth<>256 then begin
+       GetMem(p8,256*256);
+       ResizeMonoByte2D(PixelData,QOIWidth,QOIHeight,p8,256,256);
+       FreeMem(PixelData);
+       PixelData:=p8;
+       QOIWidth:=256;
+       QOIHeight:=256;
+      end;
+      Move(PixelData^,aBrushes[QOIIndex],256*256);
+     end;
+    end;
+   finally
+    FreeMem(QOIData);
+   end;
+  end;
+ end;
+
+end;
+
+procedure ConvertQOIAssetsToBrushes(const aAssetPath:TpvUTF8String;out aBrushes:TpvScene3DPlanet.TBrushes);
+var QOIStreams:array of TStream;
+    Index:TpvSizeInt;
+    QOIFileName:TpvUTF8String;
+begin
+
+ QOIStreams:=nil;
+ try
+
+  for Index:=0 to length(aBrushes)-1 do begin
+   QOIFileName:=IntToStr(Index);
+   while length(QOIFileName)<3 do begin
+    QOIFileName:='0'+QOIFileName;
+   end;
+   QOIFileName:=aAssetPath+'/'+QOIFileName+'.qoi';
+   if pvApplication.Assets.ExistAsset(QOIFileName) then begin
+    QOIStreams[Index]:=pvApplication.Assets.GetAssetStream(QOIFileName);
+   end else begin
+    QOIStreams[Index]:=nil;
+   end;
+  end;
+
+  ConvertQOIStreamsToBrushes(QOIStreams,aBrushes);
+
+ finally
+  try
+   for Index:=0 to length(QOIStreams)-1 do begin
+    if assigned(QOIStreams[Index]) then begin
+     QOIStreams[Index].Free;
+    end;
+   end;
+  finally
+   QOIStreams:=nil;
   end;
  end;
 end;
