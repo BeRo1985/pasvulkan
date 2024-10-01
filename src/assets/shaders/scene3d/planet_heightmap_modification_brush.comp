@@ -49,7 +49,7 @@ void main(){
 
     if(d > 0.0){
 
-      d *= textureLod(uBrushTextureArray, vec3(uv, float(pushConstants.brushIndex.x)), 0.0).x;
+      d *= textureLod(uBrushTextureArray, vec3(fma(uv, vec2(0.5), vec2(0.5)), float(pushConstants.brushIndex.x)), 0.0).x;
 
       if(d > 0.0){
 
