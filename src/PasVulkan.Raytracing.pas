@@ -379,6 +379,8 @@ type EpvRaytracing=class(Exception);
 
 implementation
 
+uses PasVulkan.Application;
+
 { TpvRaytracingCompactedSizeQueryPool }
 
 constructor TpvRaytracingCompactedSizeQueryPool.Create(const aDevice:TpvVulkanDevice);
@@ -758,16 +760,28 @@ begin
 end;
 
 procedure TpvRaytracingAccelerationStructureBuildQueue.Execute(const aCommandBuffer:TpvVulkanCommandBuffer);
+var Index:TpvSizeInt;
 begin
  Assert(assigned(aCommandBuffer));
  Assert(fDevice=aCommandBuffer.Device);
  if fBuildGeometryInfos.Count>0 then begin
   Assert(fBuildGeometryInfos.Count=fBuildOffsetInfoPtrs.Count);
   try
-   fDevice.Commands.Commands.CmdBuildAccelerationStructuresKHR(aCommandBuffer.Handle,
-                                                               fBuildGeometryInfos.Count,
-                                                               @fBuildGeometryInfos.ItemArray[0],
-                                                               @fBuildOffsetInfoPtrs.ItemArray[0]);
+   if assigned(pvApplication) and pvApplication.VulkanDebugging then begin
+    // This is the workaround for newer vulkan validation layer versions >= 1.x.280
+    for Index:=0 to fBuildGeometryInfos.Count-1 do begin
+     fDevice.Commands.Commands.CmdBuildAccelerationStructuresKHR(aCommandBuffer.Handle,
+                                                                 1,
+                                                                 @fBuildGeometryInfos.ItemArray[Index],
+                                                                 @fBuildOffsetInfoPtrs.ItemArray[Index]);
+    end;
+   end else begin
+    // This crashes newer vulkan validation layer versions >= 1.x.280
+    fDevice.Commands.Commands.CmdBuildAccelerationStructuresKHR(aCommandBuffer.Handle,
+                                                                fBuildGeometryInfos.Count,
+                                                                @fBuildGeometryInfos.ItemArray[0],
+                                                                @fBuildOffsetInfoPtrs.ItemArray[0]);
+   end;
   finally
    Clear;
   end; 
