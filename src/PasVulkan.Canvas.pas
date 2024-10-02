@@ -227,7 +227,7 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        function QuadraticCurveTo(const aC0,aA0:TpvVector2):TpvCanvasPath;
        function CubicCurveTo(const aC0,aC1,aA0:TpvVector2):TpvCanvasPath;
        function ArcTo(const aP0,aP1:TpvVector2;const aRadius:TpvFloat):TpvCanvasPath;
-       function Arc(const aCenter:TpvVector2;const aRadius,aAngle0,aAngle1:TpvFloat;const aClockwise:boolean):TpvCanvasPath;
+       function Arc(const aCenter:TpvVector2;const aRadius,aAngle0,aAngle1:TpvFloat;const aCounterClockwise:boolean=false):TpvCanvasPath;
        function Ellipse(const aCenter,aRadius:TpvVector2):TpvCanvasPath;
        function Circle(const aCenter:TpvVector2;const aRadius:TpvFloat):TpvCanvasPath;
        function Rectangle(const aCenter,aBounds:TpvVector2):TpvCanvasPath;
@@ -1115,21 +1115,13 @@ begin
  result:=self;
 end;
 
-function TpvCanvasPath.Arc(const aCenter:TpvVector2;const aRadius,aAngle0,aAngle1:TpvFloat;const aClockwise:boolean):TpvCanvasPath;
+function TpvCanvasPath.Arc(const aCenter:TpvVector2;const aRadius,aAngle0,aAngle1:TpvFloat;const aCounterClockwise:boolean):TpvCanvasPath;
 var Direction,CountSubdivisions,SubdivisionIndex:TpvInt32;
     p0,d01,d21,Normal,Tangent,Current,Previous,PreviousTangent:TpvVector2;
     d,AngleDifference,PartAngleDifference,Kappa:TpvFloat;
 begin
  AngleDifference:=aAngle1-aAngle0;
- if aClockwise then begin
-  if abs(AngleDifference)>=TwoPI then begin
-   AngleDifference:=TwoPI;
-  end else begin
-   while AngleDifference<0.0 do begin
-    AngleDifference:=AngleDifference+TwoPI;
-   end;
-  end;
- end else begin
+ if aCounterClockwise then begin
   if abs(AngleDifference)>=TwoPI then begin
    AngleDifference:=-TwoPI;
   end else begin
@@ -1137,10 +1129,18 @@ begin
     AngleDifference:=AngleDifference-TwoPI;
    end;
   end;
+ end else begin
+  if abs(AngleDifference)>=TwoPI then begin
+   AngleDifference:=TwoPI;
+  end else begin
+   while AngleDifference<0.0 do begin
+    AngleDifference:=AngleDifference+TwoPI;
+   end;
+  end;
  end;
  CountSubdivisions:=Min(Max(round(abs(AngleDifference)/HalfPI),1),5);
  PartAngleDifference:=AngleDifference/CountSubdivisions;
- Kappa:=abs((4.0/3.0)*(1.0-cos(PartAngleDifference))/sin(PartAngleDifference))*IfThen(not aClockwise,-1,1);
+ Kappa:=abs((4.0/3.0)*(1.0-cos(PartAngleDifference))/sin(PartAngleDifference))*IfThen(aCounterClockwise,-1,1);
  Previous:=TpvVector2.Null;
  PreviousTangent:=TpvVector2.Null;
  for SubdivisionIndex:=0 to CountSubdivisions-1 do begin
