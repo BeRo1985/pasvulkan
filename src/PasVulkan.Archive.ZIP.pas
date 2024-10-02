@@ -314,6 +314,7 @@ type EpvArchiveZIP=class(Exception);
       private
        fEntries:TpvArchiveZIPEntries;
        fStream:TStream;
+       fOwnStream:Boolean;
       public
        constructor Create;
        destructor Destroy; override;
@@ -2593,12 +2594,16 @@ begin
  inherited Create;
  fEntries:=TpvArchiveZIPEntries.Create;
  fStream:=nil;
+ fOwnStream:=false;
 end;
 
 destructor TpvArchiveZIP.Destroy;
 begin
  FreeAndNil(fEntries);
- //FreeAndNil(fStream);
+ if fOwnStream then begin
+  FreeAndNil(fStream);
+  fOwnStream:=false;
+ end;
  inherited Destroy;
 end;
 
@@ -2617,7 +2622,12 @@ end;
 
 procedure TpvArchiveZIP.Clear;
 begin
- FreeAndNil(fStream);
+ if fOwnStream then begin
+  FreeAndNil(fStream);
+  fOwnStream:=false;
+ end else begin
+  fStream:=nil;
+ end;
  fEntries.Clear;
 end;
 
@@ -2633,6 +2643,7 @@ var LocalFileHeader:TpvArchiveZIPLocalFileHeader;
 begin
 
  Clear;
+
  fStream:=aStream;
 
  Size:=fStream.Size;
@@ -2721,11 +2732,17 @@ end;
 procedure TpvArchiveZIP.LoadFromFile(const aFileName:string);
 var Stream:TStream;
 begin
+ if fOwnStream then begin
+  FreeAndNil(fStream);
+  fOwnStream:=false;
+ end else begin
+  fStream:=nil;
+ end;
  Stream:=TFileStream.Create(aFileName,fmOpenRead or fmShareDenyWrite);
  try
   LoadFromStream(Stream);
+  fOwnStream:=true;
  finally
-//FreeAndNil(Stream);
  end;
 end;
 
