@@ -768,7 +768,7 @@ begin
   Assert(fBuildGeometryInfos.Count=fBuildOffsetInfoPtrs.Count);
   try
    if assigned(pvApplication) and pvApplication.VulkanDebugging then begin
-    // This is the workaround for newer vulkan validation layer versions >= 1.x.280
+    // This is the workaround for newer vulkan validation layer versions > 1.x.275
     for Index:=0 to fBuildGeometryInfos.Count-1 do begin
      fDevice.Commands.Commands.CmdBuildAccelerationStructuresKHR(aCommandBuffer.Handle,
                                                                  1,
@@ -776,7 +776,7 @@ begin
                                                                  @fBuildOffsetInfoPtrs.ItemArray[Index]);
     end;
    end else begin
-    // This crashes newer vulkan validation layer versions >= 1.x.280
+    // This crashes newer vulkan validation layer versions > 1.x.275
     fDevice.Commands.Commands.CmdBuildAccelerationStructuresKHR(aCommandBuffer.Handle,
                                                                 fBuildGeometryInfos.Count,
                                                                 @fBuildGeometryInfos.ItemArray[0],
