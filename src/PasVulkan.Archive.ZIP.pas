@@ -2725,6 +2725,7 @@ begin
  try
   LoadFromStream(Stream);
  finally
+  FreeAndNil(Stream);
  end;
 end;
 
