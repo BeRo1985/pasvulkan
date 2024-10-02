@@ -142,7 +142,8 @@ begin
                                        1.0,
                                        fInstance.CountSurfaceViews);
 
- fDualBlendSupport:=fInstance.Renderer.VulkanDevice.PhysicalDevice.Features.dualSrcBlend<>VK_FALSE;
+ fDualBlendSupport:=(fInstance.Renderer.VulkanDevice.PhysicalDevice.Features.dualSrcBlend<>VK_FALSE) and
+                    (fInstance.Renderer.VulkanDevice.PhysicalDevice.Properties.limits.maxFragmentDualSrcAttachments>=2);
 
  fResourceCascadedShadowMap:=AddImageInput('resourcetype_cascadedshadowmap_data',
                                            'resource_cascadedshadowmap_data_final',
