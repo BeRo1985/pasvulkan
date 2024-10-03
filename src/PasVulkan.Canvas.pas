@@ -1131,9 +1131,8 @@ function TpvCanvasPath.ArcToBezier(const aOrigin,aRadius:TpvVector2;const aStart
 type TMatrix=array[0..5] of TpvFloat;
 var SweepDirection:TpvInt32;    
     ArcSweepLeft,StartAngle,CurrentStartAngle,CurrentEndAngle:TpvFloat;
-    CurrentStartOffset,CurrentEndOffset,CP1,CP2,RotationSinCos:TpvVector2;
+    CurrentStartOffset,CurrentEndOffset,cp0,cp1,RotationSinCos:TpvVector2;
     KappaFactor:TpvFloat;
-    Command:PpvCanvasPathCommand;
     Matrix:TMatrix;
 begin
  
@@ -1173,15 +1172,13 @@ begin
  SinCos(StartAngle,CurrentStartOffset.y,CurrentStartOffset.x);
 
  // Move to the start point (transformed) 
- Command:=NewCommand;
  if fStartPointSeen then begin
-  Command^.CommandType:=TpvCanvasPathCommandType.LineTo;
+  LineTo(TpvVector2.InlineableCreate((CurrentStartOffset.x*Matrix[0])+(CurrentStartOffset.y*Matrix[2])+Matrix[4],
+                                     (CurrentStartOffset.x*Matrix[1])+(CurrentStartOffset.y*Matrix[3])+Matrix[5]));
  end else begin
-  Command^.CommandType:=TpvCanvasPathCommandType.MoveTo;
+  MoveTo(TpvVector2.InlineableCreate((CurrentStartOffset.x*Matrix[0])+(CurrentStartOffset.y*Matrix[2])+Matrix[4],
+                                     (CurrentStartOffset.x*Matrix[1])+(CurrentStartOffset.y*Matrix[3])+Matrix[5]));
  end;
- Command^.Points[0]:=TpvVector2.InlineableCreate((CurrentStartOffset.x*Matrix[0])+(CurrentStartOffset.y*Matrix[2])+Matrix[4],
-                                                 (CurrentStartOffset.x*Matrix[1])+(CurrentStartOffset.y*Matrix[3])+Matrix[5]);
- fStartPointSeen:=true;
 
  while ArcSweepLeft>0.0 do begin
 
@@ -1190,23 +1187,21 @@ begin
   SinCos(CurrentEndAngle,CurrentEndOffset.y,CurrentEndOffset.x);
 
   // Calculate the kappa factor
-  KappaFactor:=(4.0/3.0)*tan((CurrentEndOffset-CurrentStartOffset).Length*0.25);
+  KappaFactor:=(4.0/3.0)*tan((CurrentEndAngle-CurrentStartAngle)*0.25);
 
   // Calculate the control points
-  CP1:=TpvVector2.InlineableCreate(CurrentStartOffset.x-(CurrentStartOffset.y*KappaFactor),
+  cp0:=TpvVector2.InlineableCreate(CurrentStartOffset.x-(CurrentStartOffset.y*KappaFactor),
                                    CurrentStartOffset.y+(CurrentStartOffset.x*KappaFactor));
-  CP2:=TpvVector2.InlineableCreate(CurrentEndOffset.x+(CurrentEndOffset.y*KappaFactor),
+  cp1:=TpvVector2.InlineableCreate(CurrentEndOffset.x+(CurrentEndOffset.y*KappaFactor),
                                    CurrentEndOffset.y-(CurrentEndOffset.x*KappaFactor));
 
   // Draw the current arc segment as a Bezier curve (using baked coordinates)
-  Command:=NewCommand;
-  Command^.CommandType:=TpvCanvasPathCommandType.CubicCurveTo;
-  Command^.Points[0]:=TpvVector2.InlineableCreate((CP1.x*Matrix[0])+(CP1.y*Matrix[2])+Matrix[4],
-                                                  (CP1.x*Matrix[1])+(CP1.y*Matrix[3])+Matrix[5]);
-  Command^.Points[1]:=TpvVector2.InlineableCreate((CP2.x*Matrix[0])+(CP2.y*Matrix[2])+Matrix[4],
-                                                  (CP2.x*Matrix[1])+(CP2.y*Matrix[3])+Matrix[5]);
-  Command^.Points[2]:=TpvVector2.InlineableCreate((CurrentEndOffset.x*Matrix[0])+(CurrentEndOffset.y*Matrix[2])+Matrix[4],
-                                                  (CurrentEndOffset.x*Matrix[1])+(CurrentEndOffset.y*Matrix[3])+Matrix[5]);  
+  CubicCurveTo(TpvVector2.InlineableCreate((cp0.x*Matrix[0])+(cp0.y*Matrix[2])+Matrix[4],
+                                           (cp0.x*Matrix[1])+(cp0.y*Matrix[3])+Matrix[5]),
+               TpvVector2.InlineableCreate((cp1.x*Matrix[0])+(cp1.y*Matrix[2])+Matrix[4],
+                                           (cp1.x*Matrix[1])+(cp1.y*Matrix[3])+Matrix[5]),
+               TpvVector2.InlineableCreate((CurrentEndOffset.x*Matrix[0])+(CurrentEndOffset.y*Matrix[2])+Matrix[4],
+                                           (CurrentEndOffset.x*Matrix[1])+(CurrentEndOffset.y*Matrix[3])+Matrix[5]));
 
   // Move to the next segment 
   ArcSweepLeft:=ArcSweepLeft-HalfPI;
