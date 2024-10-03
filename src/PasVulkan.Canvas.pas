@@ -1253,49 +1253,66 @@ begin
  // Split into smaller segments
  CountSegments:=ceil(abs(SweepAngle)/HalfPI);
 
- // Calculate the angle step
- Angle:=aStartAngle;
- AngleStep:=SweepAngle/CountSegments;
+ // If there are no segments, then just move to the end point for to avoid division by zero
+ if CountSegments=0 then begin
 
- // Calculate kappa alpha factor
- KappaAlpha:=(4.0/3.0)*tan(AngleStep*0.25);
+  SinCos(aEndAngle,Normal.x,Normal.y);
 
- SinCos(Angle,Normal.x,Normal.y);
+  CurrentPoint:=TpvVector2.InlineableCreate(aCenter.x+(Normal.y*aRadius),aCenter.y+(Normal.x*aRadius));
 
- NextTangent:=TpvVector2.InlineableCreate(Normal.x,-Normal.y)*aRadius*KappaAlpha;
+  if fStartPointSeen then begin
+   LineTo(CurrentPoint);
+  end else begin
+   MoveTo(CurrentPoint);
+  end;
 
- NextPoint.x:=aCenter.x+(Normal.y*aRadius);
- NextPoint.y:=aCenter.y+(Normal.x*aRadius);
+ end else begin
 
- // Iterate over all segments
- for SegmentIndex:=0 to CountSegments-1 do begin
+  // Calculate the angle step
+  Angle:=aStartAngle;
+  AngleStep:=SweepAngle/CountSegments;
 
-  // Calculate the next angle
-  Angle:=Angle+AngleStep;
+  // Calculate kappa alpha factor
+  KappaAlpha:=(4.0/3.0)*tan(AngleStep*0.25);
 
-  // Calculate rotation
   SinCos(Angle,Normal.x,Normal.y);
 
-  // Calculate the start and end points
-  CurrentPoint:=NextPoint;
+  NextTangent:=TpvVector2.InlineableCreate(Normal.x,-Normal.y)*aRadius*KappaAlpha;
+
   NextPoint.x:=aCenter.x+(Normal.y*aRadius);
   NextPoint.y:=aCenter.y+(Normal.x*aRadius);
 
-  // Calculate tangents
-  CurrentTangent:=NextTangent;
-  NextTangent:=TpvVector2.InlineableCreate(Normal.x,-Normal.y)*aRadius*KappaAlpha;
+  // Iterate over all segments
+  for SegmentIndex:=0 to CountSegments-1 do begin
 
-  // If it is the first segment, then move to the start point
-  if SegmentIndex=0 then begin
-   if fStartPointSeen then begin
-    LineTo(CurrentPoint);
-   end else begin
-    MoveTo(CurrentPoint);
+   // Calculate the next angle
+   Angle:=Angle+AngleStep;
+
+   // Calculate rotation
+   SinCos(Angle,Normal.x,Normal.y);
+
+   // Calculate the start and end points
+   CurrentPoint:=NextPoint;
+   NextPoint.x:=aCenter.x+(Normal.y*aRadius);
+   NextPoint.y:=aCenter.y+(Normal.x*aRadius);
+
+   // Calculate tangents
+   CurrentTangent:=NextTangent;
+   NextTangent:=TpvVector2.InlineableCreate(Normal.x,-Normal.y)*aRadius*KappaAlpha;
+
+   // If it is the first segment, then move to the start point
+   if SegmentIndex=0 then begin
+    if fStartPointSeen then begin
+     LineTo(CurrentPoint);
+    end else begin
+     MoveTo(CurrentPoint);
+    end;
    end;
-  end;
 
-  // Draw the cubic Bezier curve to approximate the arc segment
-  CubicCurveTo(CurrentPoint-CurrentTangent,NextPoint+NextTangent,NextPoint);
+   // Draw the cubic Bezier curve to approximate the arc segment
+   CubicCurveTo(CurrentPoint-CurrentTangent,NextPoint+NextTangent,NextPoint);
+
+  end;
 
  end;
 
