@@ -214,6 +214,7 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
       private
        fCommands:TpvCanvasPathCommands;
        fCountCommands:TpvInt32;
+       fStartPointSeen:Boolean;
        function NewCommand:PpvCanvasPathCommand;
       public
        constructor Create; reintroduce;
@@ -227,7 +228,8 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        function QuadraticCurveTo(const aC0,aA0:TpvVector2):TpvCanvasPath;
        function CubicCurveTo(const aC0,aC1,aA0:TpvVector2):TpvCanvasPath;
        function ArcTo(const aP0,aP1:TpvVector2;const aRadius:TpvFloat):TpvCanvasPath;
-       function Arc(const aCenter:TpvVector2;const aRadius,aAngle0,aAngle1:TpvFloat;const aCounterClockwise:boolean=false):TpvCanvasPath;
+       function ArcToBezier(const aOrigin,aRadius:TpvVector2;const aStartAngle,aEndAngle:TpvFloat;const aCounterClockwise:boolean;const aRotation:TpvFloat):TpvCanvasPath;
+       function Arc(const aCenter:TpvVector2;const aRadius,aStartAngle,aEndAngle:TpvFloat;const aCounterClockwise:boolean=false):TpvCanvasPath;
        function Ellipse(const aCenter,aRadius:TpvVector2):TpvCanvasPath;
        function Circle(const aCenter:TpvVector2;const aRadius:TpvFloat):TpvCanvasPath;
        function Rectangle(const aCenter,aBounds:TpvVector2):TpvCanvasPath;
@@ -786,8 +788,8 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        function CubicCurveTo(const aC0X,aC0Y,aC1X,aC1Y,aAX,aAY:TpvFloat):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
        function ArcTo(const aP0,aP1:TpvVector2;const aRadius:TpvFloat):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
        function ArcTo(const aP0X,aP0Y,aP1X,aP1Y,aRadius:TpvFloat):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
-       function Arc(const aCenter:TpvVector2;const aRadius,aAngle0,aAngle1:TpvFloat;const aClockwise:boolean):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
-       function Arc(const aCenterX,aCenterY,aRadius,aAngle0,aAngle1:TpvFloat;const aClockwise:boolean):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function Arc(const aCenter:TpvVector2;const aRadius,aAngle0,aAngle1:TpvFloat;const aCounterClockwise:boolean):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function Arc(const aCenterX,aCenterY,aRadius,aAngle0,aAngle1:TpvFloat;const aCounterClockwise:boolean):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
        function Ellipse(const aCenter,aRadius:TpvVector2):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
        function Ellipse(const aCenterX,aCenterY,aRadiusX,aRadiusY:TpvFloat):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
        function Circle(const aCenter:TpvVector2;const aRadius:TpvFloat):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
@@ -1013,6 +1015,7 @@ begin
  inherited Create;
  fCommands:=nil;
  fCountCommands:=0;
+ fStartPointSeen:=false;
 end;
 
 destructor TpvCanvasPath.Destroy;
@@ -1025,6 +1028,7 @@ procedure TpvCanvasPath.Assign(aSource:TPersistent);
 begin
  if assigned(aSource) and (aSource is TpvCanvasPath) then begin
   fCountCommands:=TpvCanvasPath(aSource).fCountCommands;
+  fStartPointSeen:=TpvCanvasPath(aSource).fStartPointSeen;
   if length(fCommands)<fCountCommands then begin
    SetLength(fCommands,fCountCommands*2);
   end;
@@ -1049,12 +1053,14 @@ function TpvCanvasPath.BeginPath:TpvCanvasPath;
 begin
  fCountCommands:=0;
  result:=self;
+ fStartPointSeen:=false;
 end;
 
 function TpvCanvasPath.EndPath:TpvCanvasPath;
 begin
  fCountCommands:=0;
  result:=self;
+ fStartPointSeen:=false;
 end;
 
 function TpvCanvasPath.ClosePath:TpvCanvasPath;
@@ -1063,6 +1069,7 @@ begin
  Command:=NewCommand;
  Command^.CommandType:=TpvCanvasPathCommandType.Close;
  result:=self;
+ fStartPointSeen:=false;
 end;
 
 function TpvCanvasPath.MoveTo(const aP0:TpvVector2):TpvCanvasPath;
@@ -1071,6 +1078,7 @@ begin
  Command:=NewCommand;
  Command^.CommandType:=TpvCanvasPathCommandType.MoveTo;
  Command^.Points[0]:=aP0;
+ fStartPointSeen:=true;
  result:=self;
 end;
 
@@ -1080,6 +1088,7 @@ begin
  Command:=NewCommand;
  Command^.CommandType:=TpvCanvasPathCommandType.LineTo;
  Command^.Points[0]:=aP0;
+ fStartPointSeen:=true;
  result:=self;
 end;
 
@@ -1090,6 +1099,7 @@ begin
  Command^.CommandType:=TpvCanvasPathCommandType.QuadraticCurveTo;
  Command^.Points[0]:=aC0;
  Command^.Points[1]:=aA0;
+ fStartPointSeen:=true;
  result:=self;
 end;
 
@@ -1101,6 +1111,7 @@ begin
  Command^.Points[0]:=aC0;
  Command^.Points[1]:=aC1;
  Command^.Points[2]:=aA0;
+ fStartPointSeen:=true;
  result:=self;
 end;
 
@@ -1112,51 +1123,186 @@ begin
  Command^.Points[0]:=aP0;
  Command^.Points[1]:=aP1;
  Command^.Points[2]:=TpvVector2.InlineableCreate(aRadius,aRadius);
+ fStartPointSeen:=true;
  result:=self;
 end;
 
-function TpvCanvasPath.Arc(const aCenter:TpvVector2;const aRadius,aAngle0,aAngle1:TpvFloat;const aCounterClockwise:boolean):TpvCanvasPath;
-var Direction,CountSubdivisions,SubdivisionIndex:TpvInt32;
-    p0,d01,d21,Normal,Tangent,Current,Previous,PreviousTangent:TpvVector2;
-    d,AngleDifference,PartAngleDifference,Kappa:TpvFloat;
+function TpvCanvasPath.ArcToBezier(const aOrigin,aRadius:TpvVector2;const aStartAngle,aEndAngle:TpvFloat;const aCounterClockwise:boolean;const aRotation:TpvFloat):TpvCanvasPath;
+type TMatrix=array[0..5] of TpvFloat;
+var SweepDirection:TpvInt32;    
+    ArcSweepLeft,StartAngle,CurrentStartAngle,CurrentEndAngle:TpvFloat;
+    CurrentStartOffset,CurrentEndOffset,CP1,CP2,RotationSinCos:TpvVector2;
+    KappaFactor:TpvFloat;
+    Command:PpvCanvasPathCommand;
+    Matrix:TMatrix;
 begin
- AngleDifference:=aAngle1-aAngle0;
+ 
+ // Calculate the sweep direction
  if aCounterClockwise then begin
-  if abs(AngleDifference)>=TwoPI then begin
-   AngleDifference:=-TwoPI;
-  end else begin
-   while AngleDifference>0.0 do begin
-    AngleDifference:=AngleDifference-TwoPI;
-   end;
-  end;
+  SweepDirection:=-1;
  end else begin
-  if abs(AngleDifference)>=TwoPI then begin
-   AngleDifference:=TwoPI;
-  end else begin
-   while AngleDifference<0.0 do begin
-    AngleDifference:=AngleDifference+TwoPI;
-   end;
-  end;
+  SweepDirection:=1;
  end;
- CountSubdivisions:=Min(Max(round(abs(AngleDifference)/HalfPI),1),5);
- PartAngleDifference:=AngleDifference/CountSubdivisions;
- Kappa:=abs((4.0/3.0)*(1.0-cos(PartAngleDifference))/sin(PartAngleDifference))*IfThen(aCounterClockwise,-1,1);
- Previous:=TpvVector2.Null;
- PreviousTangent:=TpvVector2.Null;
- for SubdivisionIndex:=0 to CountSubdivisions-1 do begin
-  SinCos(Mix(aAngle0,aAngle1,SubdivisionIndex/CountSubdivisions),Normal.y,Normal.x);
-  Current:=aCenter+(Normal*aRadius);
-  Tangent:=TpvVector2.InlineableCreate(-Normal.y,Normal.x)*aRadius*Kappa;
-  if SubdivisionIndex=0 then begin
-   MoveTo(Current);
-  end else begin
-   CubicCurveTo(Previous+PreviousTangent,Current-Tangent,Current);
-  end;
-  Previous:=Current;
-  PreviousTangent:=Tangent;
+
+ // Calculate the total arc we're going to sweep
+ ArcSweepLeft:=(aEndAngle-aStartAngle)*SweepDirection;
+
+ // Ensure the sweep is positive, and normalize it
+ if ArcSweepLeft<0.0 then begin
+  ArcSweepLeft:=TwoPI+(ArcSweepLeft-(Floor(ArcSweepLeft/TwoPI)*TwoPI));
+  StartAngle:=aEndAngle-(ArcSweepLeft*SweepDirection);
+ end else if ArcSweepLeft>TwoPI then begin
+  ArcSweepLeft:=TwoPI;
+  StartAngle:=aStartAngle;
+ end else begin
+  StartAngle:=aStartAngle;
  end;
+
+ // Create transformation matrix from scratch at once
+ SinCos(aRotation,RotationSinCos.x,RotationSinCos.y);
+
+ Matrix[0]:=aRadius.x*RotationSinCos.y;
+ Matrix[1]:=aRadius.y*RotationSinCos.x;
+ Matrix[2]:=-aRadius.x*RotationSinCos.x;
+ Matrix[3]:=aRadius.y*RotationSinCos.y;
+ Matrix[4]:=aOrigin.x;
+ Matrix[5]:=aOrigin.y;
+
+ // Current start angle and offset (unit circle)
+ CurrentStartAngle:=StartAngle;
+ SinCos(StartAngle,CurrentStartOffset.y,CurrentStartOffset.x);
+
+ // Move to the start point (transformed) 
+ Command:=NewCommand;
+ if fStartPointSeen then begin
+  Command^.CommandType:=TpvCanvasPathCommandType.LineTo;
+ end else begin
+  Command^.CommandType:=TpvCanvasPathCommandType.MoveTo;
+ end;
+ Command^.Points[0]:=TpvVector2.InlineableCreate((CurrentStartOffset.x*Matrix[0])+(CurrentStartOffset.y*Matrix[2])+Matrix[4],
+                                                 (CurrentStartOffset.x*Matrix[1])+(CurrentStartOffset.y*Matrix[3])+Matrix[5]);
+ fStartPointSeen:=true;
+
+ while ArcSweepLeft>0.0 do begin
+
+  // Calculate the end angle and offset (unit circle)
+  CurrentEndAngle:=CurrentStartAngle+(Min(ArcSweepLeft,HalfPI)*SweepDirection);
+  SinCos(CurrentEndAngle,CurrentEndOffset.y,CurrentEndOffset.x);
+
+  // Calculate the kappa factor
+  KappaFactor:=(4.0/3.0)*tan((CurrentEndOffset-CurrentStartOffset).Length*0.25);
+
+  // Calculate the control points
+  CP1:=TpvVector2.InlineableCreate(CurrentStartOffset.x-(CurrentStartOffset.y*KappaFactor),
+                                   CurrentStartOffset.y+(CurrentStartOffset.x*KappaFactor));
+  CP2:=TpvVector2.InlineableCreate(CurrentEndOffset.x+(CurrentEndOffset.y*KappaFactor),
+                                   CurrentEndOffset.y-(CurrentEndOffset.x*KappaFactor));
+
+  // Draw the current arc segment as a Bezier curve (using baked coordinates)
+  Command:=NewCommand;
+  Command^.CommandType:=TpvCanvasPathCommandType.CubicCurveTo;
+  Command^.Points[0]:=TpvVector2.InlineableCreate((CP1.x*Matrix[0])+(CP1.y*Matrix[2])+Matrix[4],
+                                                  (CP1.x*Matrix[1])+(CP1.y*Matrix[3])+Matrix[5]);
+  Command^.Points[1]:=TpvVector2.InlineableCreate((CP2.x*Matrix[0])+(CP2.y*Matrix[2])+Matrix[4],
+                                                  (CP2.x*Matrix[1])+(CP2.y*Matrix[3])+Matrix[5]);
+  Command^.Points[2]:=TpvVector2.InlineableCreate((CurrentEndOffset.x*Matrix[0])+(CurrentEndOffset.y*Matrix[2])+Matrix[4],
+                                                  (CurrentEndOffset.x*Matrix[1])+(CurrentEndOffset.y*Matrix[3])+Matrix[5]);  
+
+  // Move to the next segment 
+  ArcSweepLeft:=ArcSweepLeft-HalfPI;
+  CurrentStartAngle:=CurrentEndAngle;
+  CurrentStartOffset:=CurrentEndOffset;
+
+ end;
+
+ result:=self;
+
+end;
+
+function TpvCanvasPath.Arc(const aCenter:TpvVector2;const aRadius,aStartAngle,aEndAngle:TpvFloat;const aCounterClockwise:boolean):TpvCanvasPath;
+{$undef UseArcToBezier}
+{$ifdef UseArcToBezier}
+begin
+ ArcToBezier(aCenter,TpvVector2.InlineableCreate(aRadius,aRadius),aStartAngle,aEndAngle,aCounterClockwise,0.0);
  result:=self;
 end;
+{$else}
+var SegmentIndex,CountSegments:TpvInt32;
+    SweepAngle,AngleStep,Angle,KappaAlpha:TpvFloat;
+    CurrentPoint,NextPoint,Normal,CurrentTangent,NextTangent:TpvVector2;
+begin
+
+ // Calculate the sweep direction
+ SweepAngle:=aEndAngle-aStartAngle;
+
+ // Normalize the angles for clockwise or counterclockwise direction
+ if aCounterClockwise then begin
+  if abs(SweepAngle)>=TwoPI then begin
+   SweepAngle:=-TwoPI;
+  end else if SweepAngle>0.0 then begin
+   SweepAngle:=SweepAngle-TwoPI;
+  end;
+ end else begin
+  if abs(SweepAngle)>=TwoPI then begin
+   SweepAngle:=TwoPI;
+  end else if SweepAngle<0.0 then begin
+   SweepAngle:=SweepAngle+TwoPI;
+  end;
+ end;
+
+ // Split into smaller segments
+ CountSegments:=ceil(abs(SweepAngle)/HalfPI);
+
+ // Calculate the angle step
+ Angle:=aStartAngle;
+ AngleStep:=SweepAngle/CountSegments;
+
+ // Calculate kappa alpha factor
+ KappaAlpha:=(4.0/3.0)*tan(AngleStep*0.25);
+
+ SinCos(Angle,Normal.x,Normal.y);
+
+ NextTangent:=TpvVector2.InlineableCreate(Normal.x,-Normal.y)*aRadius*KappaAlpha;
+
+ NextPoint.x:=aCenter.x+(Normal.y*aRadius);
+ NextPoint.y:=aCenter.y+(Normal.x*aRadius);
+
+ // Iterate over all segments
+ for SegmentIndex:=0 to CountSegments-1 do begin
+
+  // Calculate the next angle
+  Angle:=Angle+AngleStep;
+
+  // Calculate rotation
+  SinCos(Angle,Normal.x,Normal.y);
+
+  // Calculate the start and end points
+  CurrentPoint:=NextPoint;
+  NextPoint.x:=aCenter.x+(Normal.y*aRadius);
+  NextPoint.y:=aCenter.y+(Normal.x*aRadius);
+
+  // Calculate tangents
+  CurrentTangent:=NextTangent;
+  NextTangent:=TpvVector2.InlineableCreate(Normal.x,-Normal.y)*aRadius*KappaAlpha;
+
+  // If it is the first segment, then move to the start point
+  if SegmentIndex=0 then begin
+   if fStartPointSeen then begin
+    LineTo(CurrentPoint);
+   end else begin
+    MoveTo(CurrentPoint);
+   end;
+  end;
+
+  // Draw the cubic Bezier curve to approximate the arc segment
+  CubicCurveTo(CurrentPoint-CurrentTangent,NextPoint+NextTangent,NextPoint);
+
+ end;
+
+ result:=self;
+
+end;
+{$endif}
 
 function TpvCanvasPath.Ellipse(const aCenter,aRadius:TpvVector2):TpvCanvasPath;
 const ARC_MAGIC=0.5522847498; // 4/3 * (1-cos 45�)/sin 45� = 4/3 * (sqrt(2) - 1)
@@ -6023,15 +6169,15 @@ begin
  result:=self;
 end;
 
-function TpvCanvas.Arc(const aCenter:TpvVector2;const aRadius,aAngle0,aAngle1:TpvFloat;const aClockwise:boolean):TpvCanvas;
+function TpvCanvas.Arc(const aCenter:TpvVector2;const aRadius,aAngle0,aAngle1:TpvFloat;const aCounterClockwise:boolean):TpvCanvas;
 begin
- fState.fPath.Arc(aCenter,aRadius,aAngle0,aAngle1,aClockwise);
+ fState.fPath.Arc(aCenter,aRadius,aAngle0,aAngle1,aCounterClockwise);
  result:=self;
 end;
 
-function TpvCanvas.Arc(const aCenterX,aCenterY,aRadius,aAngle0,aAngle1:TpvFloat;const aClockwise:boolean):TpvCanvas;
+function TpvCanvas.Arc(const aCenterX,aCenterY,aRadius,aAngle0,aAngle1:TpvFloat;const aCounterClockwise:boolean):TpvCanvas;
 begin
- fState.fPath.Arc(TpvVector2.InlineableCreate(aCenterX,aCenterY),aRadius,aAngle0,aAngle1,aClockwise);
+ fState.fPath.Arc(TpvVector2.InlineableCreate(aCenterX,aCenterY),aRadius,aAngle0,aAngle1,aCounterClockwise);
  result:=self;
 end;
 
