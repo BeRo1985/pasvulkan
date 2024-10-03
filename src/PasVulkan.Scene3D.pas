@@ -3039,6 +3039,11 @@ type EpvScene3D=class(Exception);
               property RaytracingMask:TpvUInt8 read fRaytracingMask write fRaytracingMask;
             end;
             TGroups=TpvObjectGenericList<TpvScene3D.TGroup>;
+            { THeadlessGroup }
+            THeadlessGroup=class(TGroup)
+             public
+              constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil;const aMetaResource:TpvMetaResource=nil;const aParallelLoadable:TpvResource.TParallelLoadable=TpvResource.TParallelLoadable.None); override;
+            end;
             TImageIDHashMap=TpvHashMap<TID,TImage>;
             TSamplerIDHashMap=TpvHashMap<TID,TSampler>;
             TTextureIDHashMap=TpvHashMap<TID,TTexture>;
@@ -20192,6 +20197,14 @@ begin
    fSceneInstance.fLightsLock.Release;
   end;
  end;
+end;
+
+{ TpvScene3D.THeadlessGroup }
+
+constructor TpvScene3D.THeadlessGroup.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource;const aMetaResource:TpvMetaResource;const aParallelLoadable:TpvResource.TParallelLoadable);
+begin
+ inherited Create(aResourceManager,aParent,aMetaResource,aParallelLoadable);
+ Headless:=true;
 end;
 
 { TpvScene3D.TGroup.TInstances }
