@@ -97,6 +97,7 @@ type { TScreenMain }
        fFPSTimeAccumulator:TpvDouble;
        fFrameTimeString:string;
        fLoadedFileName:string;
+       fResetCameraOnLoad:Boolean;
       public
 
        constructor Create; override;
@@ -167,6 +168,8 @@ begin
  fAnimationIndex:=-2;
 
  fLoadedFileName:='';
+
+ fResetCameraOnLoad:=false;
 
  fCameraMode:=TCameraMode.Orbit;
 
@@ -682,6 +685,7 @@ begin
   case aKeyEvent.KeyCode of
    KEYCODE_F5:begin
     if length(fLoadedFileName)>0 then begin
+     fResetCameraOnLoad:=not (TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers);
      LoadGLTF(fLoadedFileName);
     end;
    end;
@@ -935,42 +939,48 @@ begin
    end;
   end;//}
 
-  fCameraIndex:=-1;
+  if not fResetCameraOnLoad then begin
 
-  if assigned(fGroup) then begin
+   fCameraIndex:=-1;
 
-   Center:=(fGroup.BoundingBox.Min+fGroup.BoundingBox.Max)*0.5;
+   if assigned(fGroup) then begin
 
-   Bounds:=(fGroup.BoundingBox.Max-fGroup.BoundingBox.Min)*0.5;
+    Center:=(fGroup.BoundingBox.Min+fGroup.BoundingBox.Max)*0.5;
 
-   fCameraSpeed:=Max(1.0,fGroup.BoundingBox.Radius)*0.1;
+    Bounds:=(fGroup.BoundingBox.Max-fGroup.BoundingBox.Min)*0.5;
 
-  end else begin
+    fCameraSpeed:=Max(1.0,fGroup.BoundingBox.Radius)*0.1;
 
-   Center:=TpvVector3.InlineableCreate(0.0,0.0,0.0);
+   end else begin
 
-   Bounds:=TpvVector3.InlineableCreate(10.0,10.0,10.0);
+    Center:=TpvVector3.InlineableCreate(0.0,0.0,0.0);
 
-   fCameraSpeed:=1.0;
+    Bounds:=TpvVector3.InlineableCreate(10.0,10.0,10.0);
+
+    fCameraSpeed:=1.0;
+
+   end;
+
+   CameraRotationX:=0.0;
+   CameraRotationY:=0.0;
+
+   fZoom:=1.0;
+
+   fCameraMatrix:=TpvMatrix4x4.CreateLookAt(Center+(TpvVector3.Create(sin(CameraRotationX*PI*2.0)*cos(-CameraRotationY*PI*2.0),
+                                                                       sin(-CameraRotationY*PI*2.0),
+                                                                       cos(CameraRotationX*PI*2.0)*cos(-CameraRotationY*PI*2.0)).Normalize*
+                                                             (Max(Max(Bounds[0],Bounds[1]),Bounds[2])*2.0*1.0)),
+                                             Center,
+                                             TpvVector3.Create(0.0,1.0,0.0)).SimpleInverse;
+
+   fCameraRotationX:=0.0;
+   fCameraRotationY:=0.0;
 
   end;
 
-  CameraRotationX:=0.0;
-  CameraRotationY:=0.0;
-
-  fZoom:=1.0;
-
-  fCameraMatrix:=TpvMatrix4x4.CreateLookAt(Center+(TpvVector3.Create(sin(CameraRotationX*PI*2.0)*cos(-CameraRotationY*PI*2.0),
-                                                                      sin(-CameraRotationY*PI*2.0),
-                                                                      cos(CameraRotationX*PI*2.0)*cos(-CameraRotationY*PI*2.0)).Normalize*
-                                                            (Max(Max(Bounds[0],Bounds[1]),Bounds[2])*2.0*1.0)),
-                                            Center,
-                                            TpvVector3.Create(0.0,1.0,0.0)).SimpleInverse;
-
-  fCameraRotationX:=0.0;
-  fCameraRotationY:=0.0;
-
  end;
+
+ fResetCameraOnLoad:=false;
 
 {if fGroupInstance.Group.Animations.Count>=1 then begin
   fAnimationIndex:=1;
