@@ -553,6 +553,8 @@ begin
 
   end;
 
+  fScene3D.SceneTimes[InFlightFrameIndex]:=fTime;
+
   fScene3D.Update(InFlightFrameIndex);
 
   Center:=(fScene3D.BoundingBox.Min+fScene3D.BoundingBox.Max)*0.5;

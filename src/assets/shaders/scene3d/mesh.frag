@@ -830,6 +830,9 @@ void main() {
       const vec3 viewDirection = normalize(-inCameraRelativePosition);
       const float rim = pow(1.0 - clamp((clamp(dot(workNormal, viewDirection), 0.0, 1.0) - hologramRimThreshold) / (1.0 - hologramRimThreshold), 0.0, 1.0), hologramRimPower);
       color *= vec4(vec3(hologramMainColorFactor.xyz * (1.0 + (glow * 0.35))) + (rim * hologramRimColorFactor.xyz), (scanLine + rim + glow) * flicker);
+      if(dot(workNormal, viewDirection) < 0.0){
+        color.w = 0.0;
+      } 
     } 
   }
 #endif
