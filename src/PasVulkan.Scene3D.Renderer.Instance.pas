@@ -6128,25 +6128,30 @@ procedure TpvScene3DRendererInstance.ExecuteDraw(const aPreviousInFlightFrameInd
 var DrawChoreographyBatchRangeIndex:TpvSizeInt;
     Pipeline,NewPipeline:TpvVulkanPipeline;
     First,GPUCulling:boolean;
-    VertexStagePushConstants:TpvScene3D.PMeshStagePushConstants;
+    MeshStagePushConstants:TpvScene3D.PMeshStagePushConstants;
     DrawChoreographyBatchRangeDynamicArray:TpvScene3D.PDrawChoreographyBatchRangeDynamicArray;
     DrawChoreographyBatchRangeIndexDynamicArray:TpvScene3D.PDrawChoreographyBatchRangeIndexDynamicArray;
     DrawChoreographyBatchRange:TpvScene3D.PDrawChoreographyBatchRange;
     vkCmdDrawIndexedIndirectCount:TvkCmdDrawIndexedIndirectCount;
+    Time:TpvDouble;
 begin
 
  if (aViewBaseIndex>=0) and (aCountViews>0) then begin
 
-  VertexStagePushConstants:=@fMeshStagePushConstants[aRenderPassIndex];
-  VertexStagePushConstants^.ViewBaseIndex:=aViewBaseIndex;
-  VertexStagePushConstants^.CountViews:=aCountViews;
-  VertexStagePushConstants^.CountAllViews:=fViews[aInFlightFrameIndex].Count;
-  VertexStagePushConstants^.FrameIndex:=aFrameIndex;
+  Time:=fScene3D.SceneTimes^[aInFlightFrameIndex];
+
+  MeshStagePushConstants:=@fMeshStagePushConstants[aRenderPassIndex];
+  MeshStagePushConstants^.ViewBaseIndex:=aViewBaseIndex;
+  MeshStagePushConstants^.CountViews:=aCountViews;
+  MeshStagePushConstants^.CountAllViews:=fViews[aInFlightFrameIndex].Count;
+  MeshStagePushConstants^.FrameIndex:=aFrameIndex;
   if assigned(aJitter) and (Renderer.AntialiasingMode<>TpvScene3DRendererAntialiasingMode.SMAAT2x) then begin
-   VertexStagePushConstants^.Jitter:=aJitter^;
+   MeshStagePushConstants^.Jitter:=aJitter^;
   end else begin
-   VertexStagePushConstants^.Jitter:=TpvVector4.Null;
+   MeshStagePushConstants^.Jitter:=TpvVector4.Null;
   end;
+  MeshStagePushConstants^.TimeSeconds:=floor(Time);
+  MeshStagePushConstants^.TimeFractionalSecond:=frac(Time);
 
   fSetGlobalResourcesDone[aRenderPassIndex]:=false;
 

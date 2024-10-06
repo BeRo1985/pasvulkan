@@ -368,11 +368,19 @@ type EpvScene3D=class(Exception);
             end;
             PMeshComputeStagePushConstants=^TMeshComputeStagePushConstants;
             TMeshStagePushConstants=record
+
              ViewBaseIndex:UInt32;
              CountViews:UInt32;
              CountAllViews:UInt32;
              FrameIndex:UInt32;
+
              Jitter:TpvVector4;
+
+             TimeSeconds:TpvUInt32;
+             TimeFractionalSecond:TpvFloat;
+             Unused0:TpvUInt32;
+             Unused1:TpvUInt32;
+
             end;
             PMeshStagePushConstants=^TMeshStagePushConstants;
             { TVertex }
