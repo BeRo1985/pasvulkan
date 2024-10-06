@@ -803,6 +803,7 @@ void main() {
       break;
     }
   }
+#ifndef VOXELIZATION
   {
     if((flags & (1u << 15u)) != 0u){
       // Holographic effect
@@ -812,7 +813,12 @@ void main() {
       const vec4 hologramRimColorFactor = vec4(unpackHalf2x16(material.hologramMainColorFactorRimColorFactor.z), unpackHalf2x16(material.hologramMainColorFactorRimColorFactor.w));
       const vec4 hologramRimPowerThresholdScanTilingSpeed = vec4(unpackHalf2x16(material.hologramRimPowerThresholdScanTilingSpeedIntensityGlowTilingSpeedIntensity.x), unpackHalf2x16(material.hologramRimPowerThresholdScanTilingSpeedIntensityGlowTilingSpeedIntensity.y));
       const vec4 hologramScanIntensityGlowTilingSpeed = vec4(unpackHalf2x16(material.hologramRimPowerThresholdScanTilingSpeedIntensityGlowTilingSpeedIntensity.z), unpackHalf2x16(material.hologramRimPowerThresholdScanTilingSpeedIntensityGlowTilingSpeedIntensity.w));
-      const vec3 hologramDirection = normalize(hologramDirectionFlickerSpeed.xyz);
+      vec3 hologramDirection;
+      if(dot(hologramDirectionFlickerSpeed.xyz, hologramDirectionFlickerSpeed.xyz) > 1e-6){
+        hologramDirection = normalize(hologramDirectionFlickerSpeed.xyz);
+      }else{
+        hologramDirection = normalize(uView.views[inViewIndex].inverseViewMatrix[1].xyz); // Up vector of the view matrix as hologram direction 
+      }
       const float hologramFlickerSpeed = hologramDirectionFlickerSpeed.w;
       const float hologramRimPower = hologramRimPowerThresholdScanTilingSpeed.x;
       const float hologramRimThreshold = hologramRimPowerThresholdScanTilingSpeed.y;
@@ -835,6 +841,7 @@ void main() {
       } 
     } 
   }
+#endif // !VOXELIZATION
 #endif
   float alpha = ((flags & (1u << 31u)) != 0u) 
                    ? 1.0 // Force alpha to 1.0, if actually a opaque material is used, but with transmission in the transparency pass

@@ -117,21 +117,21 @@
     Group.getMaterialID("TestAnimatedMaterial"),
     {
       "active": true,
-      "direction": [0.0, 1.0, 0.0],
+      "direction": [0.0, 0.0, 0.0],
       "flickerSpeed": 10.0,
       "flickerIntensity": 1.0,
-      "mainColor": [1.0, 1.0, 1.0],
+      "mainColor": [0.0, 0.6, 0.25],
       "mainAlpha": 1.0,
-      "rimColor": [1.0, 1.0, 1.0],
+      "rimColor": [0.1, 0.7, 0.3],
       "rimAlpha": 1.0,
       "rimPower": 1.29,
       "rimThreshold": 0.0,
-      "scanTiling": 5.27,
+      "scanTiling": 1024.0,
       "scanSpeed": -1.66,
       "scanIntensity": 1.0,
-      "glowTiling": 0.15,
+      "glowTiling": 15.0,
       "glowSpeed": 10.0,
-      "glowIntensity": 1.0
+      "glowIntensity": 0.65
     }
   );
 })();
