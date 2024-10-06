@@ -4592,7 +4592,7 @@ begin
   if (Index>=0) and (Index<fGroup.fMaterials.Count) then begin
    Material:=fGroup.fMaterials[Index];
   end;
-  JSONString:=POCAGetStringValue(aContext,aArguments^[1]);
+  JSONString:=POCAStringDump(aContext,aArguments^[1]);
   JSON:=TPasJSON.Parse(JSONString);
   if assigned(JSON) then begin
    try
