@@ -830,7 +830,8 @@ void main() {
       const float hologramGlowIntensity = hologramScanIntensityGlowTilingSpeed.w;
       const float hologramTime = float(uint(pushConstants.timeSecondsTimeFractionalSecond.x & 4095u)) + uintBitsToFloat(pushConstants.timeSecondsTimeFractionalSecond.y);
       const float vertexDirection = fma(dot(inWorldSpacePosition.xyz, hologramDirection), 0.5, 0.5);
-      const float scanLine = (abs(hologramScanIntensity) > 1e-6) ? (smoothstep(-0.1, 0.1, sin((vertexDirection * hologramScanTiling) + (hologramTime * hologramScanSpeed))) * hologramScanIntensity) : 0.0;
+      const float scanLine = (abs(hologramScanIntensity) > 1e-6) ? (fma(sin((vertexDirection * hologramScanTiling) + (hologramTime * hologramScanSpeed)), 0.5, 0.5) * hologramScanIntensity) : 0.0;
+//    const float scanLine = (abs(hologramScanIntensity) > 1e-6) ? (smoothstep(-0.1, 0.1, sin((vertexDirection * hologramScanTiling) + (hologramTime * hologramScanSpeed))) * hologramScanIntensity) : 0.0;
       const float glow = (abs(hologramGlowIntensity) > 1e-6) ? (fract((vertexDirection * hologramGlowTiling) - (hologramTime * hologramGlowSpeed)) * hologramGlowIntensity) : 0.0;
       const float flicker = (abs(hologramFlickerIntensity) > 1e-6) ? mix(1.0, hologramNoise(fract(hologramTime * hologramFlickerSpeed)), hologramFlickerIntensity) : 1.0;
       const vec3 viewDirection = normalize(-inCameraRelativePosition);

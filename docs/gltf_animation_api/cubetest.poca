@@ -1,4 +1,4 @@
-
+/*
 
 // This is a simple example of how to use the PasVulkan Scene3D animation API based on the glTF draft extension KHR_animation_pointer in my
 // own scripting language with the name POCA which is ECMAScript/JavaScript-like, but which is much more powerful and has a lot of features
@@ -111,6 +111,7 @@
 
   }
 })();
+*/
 
 (function(){
   Group.setMaterialHologram(
@@ -126,12 +127,12 @@
       "rimAlpha": 1.0,
       "rimPower": 1.29,
       "rimThreshold": 0.0,
-      "scanTiling": 16.0,
-      "scanSpeed": -1.66,
-      "scanIntensity": 1.0,
-      "glowTiling": 15.0,
+      "scanTiling": 256.0,
+      "scanSpeed": -16.0,
+      "scanIntensity": 0.25,
+      "glowTiling": 1.0,
       "glowSpeed": 10.0,
-      "glowIntensity": 0.0 //65
+      "glowIntensity": 0.125
     }
   );
 })();
