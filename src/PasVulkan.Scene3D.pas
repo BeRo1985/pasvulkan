@@ -3390,7 +3390,7 @@ type EpvScene3D=class(Exception);
                (TFaceCullingMode.None,TFaceCullingMode.None)
               );
              PVMFSignature:TPVMFSignature=('P','V','M','F');
-             PVMFVersion=TpVUInt32($00000001);
+             PVMFVersion=TpVUInt32($00000002);
       private
        fLock:TPasMPSpinLock;
        fLoadLock:TPasMPSpinLock;
@@ -8614,6 +8614,40 @@ begin
 
    end;
 
+   begin
+
+    // Hologram
+
+    fData.Hologram.Active:=StreamIO.ReadBoolean;
+
+    fData.Hologram.Direction:=StreamIO.ReadVector3;
+
+    fData.Hologram.FlickerSpeed:=StreamIO.ReadFloat;
+
+    fData.Hologram.FlickerIntensity:=StreamIO.ReadFloat;
+
+    fData.Hologram.MainColorFactor:=StreamIO.ReadVector4;
+
+    fData.Hologram.RimColorFactor:=StreamIO.ReadVector4;
+
+    fData.Hologram.RimPower:=StreamIO.ReadFloat;
+
+    fData.Hologram.RimThreshold:=StreamIO.ReadFloat;
+
+    fData.Hologram.ScanTiling:=StreamIO.ReadFloat;
+
+    fData.Hologram.ScanSpeed:=StreamIO.ReadFloat;
+
+    fData.Hologram.ScanIntensity:=StreamIO.ReadFloat;
+
+    fData.Hologram.GlowTiling:=StreamIO.ReadFloat;
+
+    fData.Hologram.GlowSpeed:=StreamIO.ReadFloat;
+
+    fData.Hologram.GlowIntensity:=StreamIO.ReadFloat;
+
+   end;   
+
    fData.AnimatedTextureMask:=StreamIO.ReadUInt64;
 
   finally
@@ -8900,6 +8934,40 @@ begin
    StreamIO.WriteBoolean(fData.Dispersion.Active);
 
    StreamIO.WriteFloat(fData.Dispersion.Dispersion);
+
+  end;
+
+  begin
+
+   // Hologram
+
+   StreamIO.WriteBoolean(fData.Hologram.Active);
+
+   StreamIO.WriteVector3(fData.Hologram.Direction);
+
+   StreamIO.WriteFloat(fData.Hologram.FlickerSpeed);
+
+   StreamIO.WriteFloat(fData.Hologram.FlickerIntensity);
+
+   StreamIO.WriteVector4(fData.Hologram.MainColorFactor);
+
+   StreamIO.WriteVector4(fData.Hologram.RimColorFactor);
+
+   StreamIO.WriteFloat(fData.Hologram.RimPower);
+
+   StreamIO.WriteFloat(fData.Hologram.RimThreshold);
+
+   StreamIO.WriteFloat(fData.Hologram.ScanTiling);
+
+   StreamIO.WriteFloat(fData.Hologram.ScanSpeed);
+
+   StreamIO.WriteFloat(fData.Hologram.ScanIntensity);
+
+   StreamIO.WriteFloat(fData.Hologram.GlowTiling);
+
+   StreamIO.WriteFloat(fData.Hologram.GlowSpeed);
+
+   StreamIO.WriteFloat(fData.Hologram.GlowIntensity);
 
   end;
 
