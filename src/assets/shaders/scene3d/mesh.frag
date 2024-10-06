@@ -341,6 +341,27 @@ vec4 textureFetch(const in int textureIndex, const in vec4 defaultValue, const b
   #include "rgb9e5.glsl"
 #endif
 
+float hologramNoiseFunction(float x, const in uint s){
+  x *= float(s);
+  uint i = uint(floor(x));
+  float f = fract(x);
+  f = f * f * (3.0 - (f * 2.0));
+  uvec2 y = uvec2(i, (i + 1u) & (s - 1u));
+  y ^= y >> uvec2(17u);
+  y *= uvec2(0xed5ad4bbu);
+  y ^= y >> uvec2(11u);
+  y *= uvec2(0xac4c1b51u);
+  y ^= y >> uvec2(15u);
+  y *= uvec2(0x31848babu);
+  y ^= y >> uvec2(14u);
+  vec2 v = vec2(intBitsToFloat(ivec2(((y >> uvec2(9u)) & uvec2(0x007fffffu)) | uvec2(0x3f800000u))) - vec2(1.0));
+  return mix(v.x, v.y, f);
+}
+
+float hologramNoise(float x){
+  return smoothstep(0.0, 0.25, hologramNoiseFunction(x, 128u));
+}
+
 void main() {
 #ifdef VOXELIZATION
   if(any(lessThan(inWorldSpacePosition.xyz, inAABBMin.xyz)) || 
@@ -781,6 +802,35 @@ void main() {
       color = textureFetch(0, vec4(1.0), true) * material.baseColorFactor * vec2((litIntensity * 0.25) + 0.75, 1.0).xxxy;
       break;
     }
+  }
+  {
+    if((flags & (1u << 15u)) != 0u){
+      // Holographic effect
+      const vec4 hologramDirectionFlickerSpeed = vec4(unpackHalf2x16(material.hologramDirectionFlickerSpeedIntensity.x), unpackHalf2x16(material.hologramDirectionFlickerSpeedIntensity.y));
+      const float hologramFlickerIntensity = unpackHalf2x16(material.hologramDirectionFlickerSpeedIntensity.z).x;
+      const vec4 hologramMainColorFactor = vec4(unpackHalf2x16(material.hologramMainColorFactorRimColorFactor.x), unpackHalf2x16(material.hologramMainColorFactorRimColorFactor.y));
+      const vec4 hologramRimColorFactor = vec4(unpackHalf2x16(material.hologramMainColorFactorRimColorFactor.z), unpackHalf2x16(material.hologramMainColorFactorRimColorFactor.w));
+      const vec4 hologramRimPowerThresholdScanTilingSpeed = vec4(unpackHalf2x16(material.hologramRimPowerThresholdScanTilingSpeedIntensityGlowTilingSpeedIntensity.x), unpackHalf2x16(material.hologramRimPowerThresholdScanTilingSpeedIntensityGlowTilingSpeedIntensity.y));
+      const vec4 hologramScanIntensityGlowTilingSpeed = vec4(unpackHalf2x16(material.hologramRimPowerThresholdScanTilingSpeedIntensityGlowTilingSpeedIntensity.z), unpackHalf2x16(material.hologramRimPowerThresholdScanTilingSpeedIntensityGlowTilingSpeedIntensity.w));
+      const vec3 hologramDirection = normalize(hologramDirectionFlickerSpeed.xyz);
+      const float hologramFlickerSpeed = hologramDirectionFlickerSpeed.w;
+      const float hologramRimPower = hologramRimPowerThresholdScanTilingSpeed.x;
+      const float hologramRimThreshold = hologramRimPowerThresholdScanTilingSpeed.y;
+      const float hologramScanTiling = hologramRimPowerThresholdScanTilingSpeed.z;
+      const float hologramScanSpeed = hologramRimPowerThresholdScanTilingSpeed.w;
+      const float hologramScanIntensity = hologramScanIntensityGlowTilingSpeed.x;
+      const float hologramGlowTiling = hologramScanIntensityGlowTilingSpeed.y;
+      const float hologramGlowSpeed = hologramScanIntensityGlowTilingSpeed.z;
+      const float hologramGlowIntensity = hologramScanIntensityGlowTilingSpeed.w;
+      const float hologramTime = float(uint(pushConstants.timeSecondsTimeFractionalSecond.x & 4095u)) + uintBitsToFloat(pushConstants.timeSecondsTimeFractionalSecond.y);
+      const float vertexDirection = fma(dot(inWorldSpacePosition.xyz, hologramDirection), 0.5, 0.5);
+      const float scanLine = (abs(hologramScanIntensity) > 1e-6) ? (step(sin((vertexDirection * hologramScanTiling) + (hologramTime * hologramScanSpeed)), 0.5) * hologramScanIntensity) : 0.0;
+      const float glow = (abs(hologramGlowIntensity) > 1e-6) ? (fract((vertexDirection * hologramGlowTiling) - (hologramTime * hologramGlowSpeed)) * hologramGlowIntensity) : 0.0;
+      const float flicker = (abs(hologramFlickerIntensity) > 1e-6) ? mix(1.0, hologramNoise(fract(hologramTime * hologramFlickerSpeed)), hologramFlickerIntensity) : 1.0;
+      const vec3 viewDirection = normalize(-inCameraRelativePosition);
+      const float rim = pow(1.0 - clamp((clamp(dot(workNormal, viewDirection), 0.0, 1.0) - hologramRimThreshold) / (1.0 - hologramRimThreshold), 0.0, 1.0), hologramRimPower);
+      color *= vec4(vec3(hologramMainColorFactor.xyz * (1.0 + (glow * 0.35))) + (rim * hologramRimColorFactor.xyz), (scanLine + rim + glow) * flicker);
+    } 
   }
 #endif
   float alpha = ((flags & (1u << 31u)) != 0u) 
