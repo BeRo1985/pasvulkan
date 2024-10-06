@@ -926,6 +926,9 @@ type EpvScene3D=class(Exception);
               property Sampler:TSampler read fSampler write fSampler;
             end;
             TTextures=TpvObjectGenericList<TTexture>;
+
+            { TMaterial }
+
             TMaterial=class(TBaseObject)
              public
               type TAlphaMode=
@@ -1351,6 +1354,7 @@ type EpvScene3D=class(Exception);
               procedure PrepareSaveToStream(const aImages,aSamplers,aTextures,aMaterials:TpvObjectList);
               procedure SaveToStream(const aStream:TStream;const aImages,aSamplers,aTextures:TpvObjectList);
               procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceMaterial:TPasGLTF.TMaterial;const aTextureMap:TTextures);
+              procedure LoadHologramFromJSON(const aJSONItem:TPasJSONItem);
               procedure FillShaderData;
              public
               property Data:PData read fDataPointer;
@@ -4441,6 +4445,7 @@ type { TPOCAScene3DGroup }
        function getAnimationID(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TpvInt32):TPOCAValue;
        function getSceneID(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TpvInt32):TPOCAValue;
        function createAnimation(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TpvInt32):TPOCAValue;
+       function setMaterialHologram(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TpvInt32):TPOCAValue; 
      end;
 
 { TPOCAScene3DGroup }
@@ -4574,6 +4579,31 @@ begin
  POCAScene3DGroupAnimation:=TPOCAScene3DGroupAnimation.Create(aContext^.Instance,aContext,nil,nil,false);
  POCAScene3DGroupAnimation.fAnimation:=Animation;
  result:=POCANewNativeObject(aContext,POCAScene3DGroupAnimation);
+end;
+
+function TPOCAScene3DGroup.setMaterialHologram(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TpvInt32):TPOCAValue;
+var Index:TpvSizeInt;
+    Material:TpvScene3D.TMaterial;
+    JSONString:TpvUTF8String;
+    JSON:TPasJSONItem;
+begin
+ if aCountArguments>=2 then begin
+  Index:=trunc(POCAGetNumberValue(aContext,aArguments^[0]));
+  if (Index>=0) and (Index<fGroup.fMaterials.Count) then begin
+   Material:=fGroup.fMaterials[Index];
+  end;
+  JSONString:=POCAGetStringValue(aContext,aArguments^[1]);
+  JSON:=TPasJSON.Parse(JSONString);
+  if assigned(JSON) then begin
+   try
+    Material.LoadHologramFromJSON(JSON);
+   finally
+    FreeAndNil(JSON);
+   end;
+   Material.FillShaderData;
+  end;
+ end;
+ result:=POCAValueNull;
 end;
 
 { TpvScene3D.TScalarSum }
@@ -9432,12 +9462,70 @@ begin
    end;
   end;
 
+  begin
+   LoadHologramFromJSON(aSourceMaterial.Extensions.Properties['PASVULKAN_hologram']);
+  end;
+
  finally
   fSceneInstance.fTextureListLock.Release;
  end;
 
  FillShaderData;
 
+end;
+
+procedure TpvScene3D.TMaterial.LoadHologramFromJSON(const aJSONItem:TPasJSONItem);
+var JSONObject:TPasJSONItemObject;
+    JSONItem:TPasJSONItem;    
+begin
+ if assigned(aJSONItem) and (aJSONItem is TPasJSONItemObject) then begin
+  JSONObject:=TPasJSONItemObject(aJSONItem);
+  fData.Hologram.Active:=false;
+  fData.Hologram.Direction:=TpvVector3.Create(0.0,1.0,0.0);
+  fData.Hologram.FlickerSpeed:=10.0;
+  fData.Hologram.FlickerIntensity:=1.0;
+  fData.Hologram.MainColorFactor:=TpvVector4.Create(1.0,1.0,1.0,1.0);
+  fData.Hologram.RimColorFactor:=TpvVector4.Create(1.0,1.0,1.0,1.0);
+  fData.Hologram.RimPower:=1.29;
+  fData.Hologram.RimThreshold:=0.0;
+  fData.Hologram.ScanTiling:=5.27;
+  fData.Hologram.ScanSpeed:=-1.66;
+  fData.Hologram.ScanIntensity:=1.0;
+  fData.Hologram.GlowTiling:=0.15;
+  fData.Hologram.GlowSpeed:=10.0;
+  fData.Hologram.GlowIntensity:=1.0;
+  fData.Hologram.Active:=TPasJSON.GetBoolean(JSONObject.Properties['active'],fData.Hologram.Active);
+  JSONItem:=JSONObject.Properties['direction'];
+  if assigned(JSONItem) and (JSONItem is TPasJSONItemArray) and (TPasJSONItemArray(JSONItem).Count=3) then begin
+   fData.Hologram.Direction.x:=TPasJSON.GetNumber(TPasJSONItemArray(JSONItem).Items[0],fData.Hologram.Direction.x);
+   fData.Hologram.Direction.y:=TPasJSON.GetNumber(TPasJSONItemArray(JSONItem).Items[1],fData.Hologram.Direction.y);
+   fData.Hologram.Direction.z:=TPasJSON.GetNumber(TPasJSONItemArray(JSONItem).Items[2],fData.Hologram.Direction.z);
+  end;
+  fData.Hologram.FlickerSpeed:=TPasJSON.GetNumber(JSONObject.Properties['flickerSpeed'],fData.Hologram.FlickerSpeed);
+  fData.Hologram.FlickerIntensity:=TPasJSON.GetNumber(JSONObject.Properties['flickerIntensity'],fData.Hologram.FlickerIntensity);
+  JSONItem:=JSONObject.Properties['mainColor'];
+  if assigned(JSONItem) and (JSONItem is TPasJSONItemArray) and (TPasJSONItemArray(JSONItem).Count=3) then begin
+   fData.Hologram.MainColorFactor.x:=TPasJSON.GetNumber(TPasJSONItemArray(JSONItem).Items[0],fData.Hologram.MainColorFactor.x);
+   fData.Hologram.MainColorFactor.y:=TPasJSON.GetNumber(TPasJSONItemArray(JSONItem).Items[1],fData.Hologram.MainColorFactor.y);
+   fData.Hologram.MainColorFactor.z:=TPasJSON.GetNumber(TPasJSONItemArray(JSONItem).Items[2],fData.Hologram.MainColorFactor.z);
+  end;
+  fData.Hologram.MainColorFactor.w:=TPasJSON.GetNumber(JSONObject.Properties['mainAlpha'],fData.Hologram.MainColorFactor.w);
+  JSONItem:=JSONObject.Properties['rimColor'];
+  if assigned(JSONItem) and (JSONItem is TPasJSONItemArray) and (TPasJSONItemArray(JSONItem).Count=3) then begin
+   fData.Hologram.RimColorFactor.x:=TPasJSON.GetNumber(TPasJSONItemArray(JSONItem).Items[0],fData.Hologram.RimColorFactor.x);
+   fData.Hologram.RimColorFactor.y:=TPasJSON.GetNumber(TPasJSONItemArray(JSONItem).Items[1],fData.Hologram.RimColorFactor.y);
+   fData.Hologram.RimColorFactor.z:=TPasJSON.GetNumber(TPasJSONItemArray(JSONItem).Items[2],fData.Hologram.RimColorFactor.z);
+  end;
+  fData.Hologram.RimColorFactor.w:=TPasJSON.GetNumber(JSONObject.Properties['rimAlpha'],fData.Hologram.RimColorFactor.w);
+  fData.Hologram.RimPower:=TPasJSON.GetNumber(JSONObject.Properties['rimPower'],fData.Hologram.RimPower);
+  fData.Hologram.RimThreshold:=TPasJSON.GetNumber(JSONObject.Properties['rimThreshold'],fData.Hologram.RimThreshold);
+  fData.Hologram.ScanTiling:=TPasJSON.GetNumber(JSONObject.Properties['scanTiling'],fData.Hologram.ScanTiling);
+  fData.Hologram.ScanSpeed:=TPasJSON.GetNumber(JSONObject.Properties['scanSpeed'],fData.Hologram.ScanSpeed);
+  fData.Hologram.ScanIntensity:=TPasJSON.GetNumber(JSONObject.Properties['scanIntensity'],fData.Hologram.ScanIntensity);
+  fData.Hologram.GlowTiling:=TPasJSON.GetNumber(JSONObject.Properties['glowTiling'],fData.Hologram.GlowTiling);
+  fData.Hologram.GlowSpeed:=TPasJSON.GetNumber(JSONObject.Properties['glowSpeed'],fData.Hologram.GlowSpeed);
+  fData.Hologram.GlowIntensity:=TPasJSON.GetNumber(JSONObject.Properties['glowIntensity'],fData.Hologram.GlowIntensity);
+ end; 
 end;
 
 procedure TpvScene3D.TMaterial.FillShaderData;
@@ -11669,33 +11757,33 @@ begin
          if length(TargetPointerStrings)>4 then begin
           if TargetPointerStrings[4]='direction' then begin
            fTarget:=TAnimation.TChannel.TTarget.PointerMaterialHologramDirection;
-          end else if TargetPointerStrings[4]='flickerspeed' then begin
+          end else if TargetPointerStrings[4]='flickerSpeed' then begin
            fTarget:=TAnimation.TChannel.TTarget.PointerMaterialHologramFlickerSpeed;
-          end else if TargetPointerStrings[4]='flickerintensity' then begin
+          end else if TargetPointerStrings[4]='flickerIntensity' then begin
            fTarget:=TAnimation.TChannel.TTarget.PointerMaterialHologramFlickerIntensity; 
-          end else if TargetPointerStrings[4]='maincolor' then begin
+          end else if TargetPointerStrings[4]='mainColor' then begin
            fTarget:=TAnimation.TChannel.TTarget.PointerMaterialHologramMainColor;
-          end else if TargetPointerStrings[4]='mainalpha' then begin
+          end else if TargetPointerStrings[4]='mainAlpha' then begin
            fTarget:=TAnimation.TChannel.TTarget.PointerMaterialHologramMainAlpha;
-          end else if TargetPointerStrings[4]='rimcolor' then begin
+          end else if TargetPointerStrings[4]='rimColor' then begin
            fTarget:=TAnimation.TChannel.TTarget.PointerMaterialHologramRimColor;
-          end else if TargetPointerStrings[4]='rimalpha' then begin
+          end else if TargetPointerStrings[4]='rimAlpha' then begin
            fTarget:=TAnimation.TChannel.TTarget.PointerMaterialHologramRimAlpha; 
-          end else if TargetPointerStrings[4]='rimpower' then begin
+          end else if TargetPointerStrings[4]='rimPower' then begin
            fTarget:=TAnimation.TChannel.TTarget.PointerMaterialHologramRimPower;
-          end else if TargetPointerStrings[4]='rimthreshold' then begin
+          end else if TargetPointerStrings[4]='rimThreshold' then begin
            fTarget:=TAnimation.TChannel.TTarget.PointerMaterialHologramRimThreshold;
-          end else if TargetPointerStrings[4]='scantiling' then begin
+          end else if TargetPointerStrings[4]='scanTiling' then begin
            fTarget:=TAnimation.TChannel.TTarget.PointerMaterialHologramScanTiling;
-          end else if TargetPointerStrings[4]='scanspeed' then begin
+          end else if TargetPointerStrings[4]='scanSpeed' then begin
            fTarget:=TAnimation.TChannel.TTarget.PointerMaterialHologramScanSpeed;
-          end else if TargetPointerStrings[4]='scanintensity' then begin
+          end else if TargetPointerStrings[4]='scanIntensity' then begin
            fTarget:=TAnimation.TChannel.TTarget.PointerMaterialHologramScanIntensity;
-          end else if TargetPointerStrings[4]='glowtiling' then begin
+          end else if TargetPointerStrings[4]='glowTiling' then begin
            fTarget:=TAnimation.TChannel.TTarget.PointerMaterialHologramGlowTiling;
-          end else if TargetPointerStrings[4]='glowspeed' then begin
+          end else if TargetPointerStrings[4]='glowSpeed' then begin
            fTarget:=TAnimation.TChannel.TTarget.PointerMaterialHologramGlowSpeed;
-          end else if TargetPointerStrings[4]='glowintensity' then begin
+          end else if TargetPointerStrings[4]='glowIntensity' then begin
            fTarget:=TAnimation.TChannel.TTarget.PointerMaterialHologramGlowIntensity;
           end;
          end;
