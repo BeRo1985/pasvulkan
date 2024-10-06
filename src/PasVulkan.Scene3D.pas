@@ -1044,6 +1044,22 @@ type EpvScene3D=class(Exception);
                     Active:boolean;
                     Dispersion:TpvFloat;
                    end;
+                   THologram=record
+                    Active:boolean;
+                    Direction:TpvVector3;
+                    FlickerSpeed:TpvFloat;
+                    FlickerIntensity:TpvFloat;
+                    MainColorFactor:TpvVector4;
+                    RimColorFactor:TpvVector4;
+                    RimPower:TpvFloat;
+                    RimThreshold:TpvFloat;
+                    ScanTiling:TpvFloat;
+                    ScanSpeed:TpvFloat;
+                    ScanIntensity:TpvFloat;
+                    GlowTiling:TpvFloat;
+                    GlowSpeed:TpvFloat;
+                    GlowIntensity:TpvFloat;                    
+                   end;
                    TShaderData=packed record
                     case boolean of
                      false:(
@@ -1066,6 +1082,36 @@ type EpvScene3D=class(Exception);
                        Unused1:TpvUInt32;
                        Unused2:TpvUInt32;
                       // uvec4 Dispersion End
+                      // uvec4 HologramDirectionFlickerSpeedIntensity                       
+                       HologramDirectionX:TpvUInt16;
+                       HologramDirectionY:TpvUInt16;
+                       HologramDirectionZ:TpvUInt16;
+                       HologramFlickerSpeed:TpvUInt16;                       
+                       HologramFlickerIntensity:TpvUInt16;
+                       HologramReserved0:TpvUInt16;
+                       HologramReserved1:TpvUInt16;
+                       HologramReserved2:TpvUInt16;
+                      // uvec4 HologramDirectionFlickerSpeedIntensity end
+                      // uvec4 HologramMainColorFactorRimColorFactor
+                       HologramMainColorFactorR:TpvUInt16;
+                       HologramMainColorFactorG:TpvUInt16;
+                       HologramMainColorFactorB:TpvUInt16;
+                       HologramMainColorFactorA:TpvUInt16;
+                       HologramRimColorFactorR:TpvUInt16;
+                       HologramRimColorFactorG:TpvUInt16;
+                       HologramRimColorFactorB:TpvUInt16;
+                       HologramRimColorFactorA:TpvUInt16;
+                      // uvec4 HologramMainColorFactorRimColorFactor end
+                      // uvec4 HologramRimPowerThresholdScanTilingSpeedIntensityGlowTilingSpeedIntensity
+                       HologramRimPower:TpvUInt16;
+                       HologramRimThreshold:TpvUInt16;
+                       HologramScanTiling:TpvUInt16;
+                       HologramScanSpeed:TpvUInt16;
+                       HologramScanIntensity:TpvUInt16;
+                       HologramGlowTiling:TpvUInt16;
+                       HologramGlowSpeed:TpvUInt16;
+                       HologramGlowIntensity:TpvUInt16;
+                      // uvec4 HologramRimPowerThresholdScanTilingSpeedIntensityGlowTilingSpeedIntensity end   
                       // uvec4 AlphaCutOffFlags begin
                        AlphaCutOff:TpvFloat; // for with uintBitsToFloat on GLSL code side
                        Flags:TpvUInt32;
@@ -1106,6 +1152,7 @@ type EpvScene3D=class(Exception);
                      Volume:TVolume;
                      Anisotropy:TAnisotropy;
                      Dispersion:TDispersion;
+                     Hologram:THologram;
                      AnimatedTextureMask:TpvUInt64;
                      function GetTextureTransform(const aTextureIndex:TpvScene3D.TTextureIndex):TpvScene3D.TMaterial.TTextureReference.PTransform;
                    end;
@@ -1194,6 +1241,22 @@ type EpvScene3D=class(Exception);
                       Active:false;
                       Dispersion:0.0;
                      );
+                     Hologram:(
+                      Active:false;
+                      Direction:(x:0.0;y:0.0;z:0.0);
+                      FlickerSpeed:0.0;
+                      FlickerIntensity:0.0;
+                      MainColorFactor:(x:1.0;y:1.0;z:1.0;w:1.0);
+                      RimColorFactor:(x:1.0;y:1.0;z:1.0;w:1.0);
+                      RimPower:1.0;
+                      RimThreshold:1.0;
+                      ScanTiling:1.0;
+                      ScanSpeed:1.0;
+                      ScanIntensity:1.0;
+                      GlowTiling:1.0;
+                      GlowSpeed:1.0;
+                      GlowIntensity:1.0;
+                     );
                      AnimatedTextureMask:0;
                     );
                    DefaultShaderData:TShaderData=
@@ -1213,6 +1276,30 @@ type EpvScene3D=class(Exception);
                      Unused0:0;
                      Unused1:0;
                      Unused2:0;
+                     HologramDirectionX:0;
+                     HologramDirectionY:0;
+                     HologramDirectionZ:0;
+                     HologramFlickerSpeed:0;
+                     HologramFlickerIntensity:0;
+                     HologramReserved0:0;
+                     HologramReserved1:0;
+                     HologramReserved2:0;
+                     HologramMainColorFactorR:0;
+                     HologramMainColorFactorG:0;
+                     HologramMainColorFactorB:0;
+                     HologramMainColorFactorA:0;
+                     HologramRimColorFactorR:0;
+                     HologramRimColorFactorG:0;
+                     HologramRimColorFactorB:0;
+                     HologramRimColorFactorA:0;
+                     HologramRimPower:0;
+                     HologramRimThreshold:0;
+                     HologramScanTiling:0;
+                     HologramScanSpeed:0;
+                     HologramScanIntensity:0;
+                     HologramGlowTiling:0;
+                     HologramGlowSpeed:0;
+                     HologramGlowIntensity:0;                     
                      AlphaCutOff:1.0;
                      Flags:0;
                      Textures0:0;
@@ -9436,6 +9523,31 @@ begin
  if fData.Dispersion.Active then begin
   fShaderData.Flags:=fShaderData.Flags or (1 shl 14);
   fShaderData.Dispersion:=fData.Dispersion.Dispersion;
+ end;
+
+ if fData.Hologram.Active then begin
+  fShaderData.Flags:=fShaderData.Flags or (1 shl 15);
+  PpvHalfFloat(pointer(@fShaderData.HologramDirectionX))^:=fData.Hologram.Direction.x;
+  PpvHalfFloat(pointer(@fShaderData.HologramDirectionY))^:=fData.Hologram.Direction.y;
+  PpvHalfFloat(pointer(@fShaderData.HologramDirectionZ))^:=fData.Hologram.Direction.z;
+  PpvHalfFloat(pointer(@fShaderData.HologramFlickerSpeed))^:=fData.Hologram.FlickerSpeed;
+  PpvHalfFloat(pointer(@fShaderData.HologramFlickerIntensity))^:=fData.Hologram.FlickerIntensity;
+  PpvHalfFloat(pointer(@fShaderData.HologramMainColorFactorR))^:=fData.Hologram.MainColorFactor.x;
+  PpvHalfFloat(pointer(@fShaderData.HologramMainColorFactorG))^:=fData.Hologram.MainColorFactor.y;
+  PpvHalfFloat(pointer(@fShaderData.HologramMainColorFactorB))^:=fData.Hologram.MainColorFactor.z;
+  PpvHalfFloat(pointer(@fShaderData.HologramMainColorFactorA))^:=fData.Hologram.MainColorFactor.w;
+  PpvHalfFloat(pointer(@fShaderData.HologramRimColorFactorR))^:=fData.Hologram.RimColorFactor.x;
+  PpvHalfFloat(pointer(@fShaderData.HologramRimColorFactorG))^:=fData.Hologram.RimColorFactor.y;
+  PpvHalfFloat(pointer(@fShaderData.HologramRimColorFactorB))^:=fData.Hologram.RimColorFactor.z;
+  PpvHalfFloat(pointer(@fShaderData.HologramRimColorFactorA))^:=fData.Hologram.RimColorFactor.w;
+  PpvHalfFloat(pointer(@fShaderData.HologramRimPower))^:=fData.Hologram.RimPower;
+  PpvHalfFloat(pointer(@fShaderData.HologramRimThreshold))^:=fData.Hologram.RimThreshold;
+  PpvHalfFloat(pointer(@fShaderData.HologramScanTiling))^:=fData.Hologram.ScanTiling;
+  PpvHalfFloat(pointer(@fShaderData.HologramScanSpeed))^:=fData.Hologram.ScanSpeed;
+  PpvHalfFloat(pointer(@fShaderData.HologramScanIntensity))^:=fData.Hologram.ScanIntensity;
+  PpvHalfFloat(pointer(@fShaderData.HologramGlowTiling))^:=fData.Hologram.GlowTiling;
+  PpvHalfFloat(pointer(@fShaderData.HologramGlowSpeed))^:=fData.Hologram.GlowSpeed;
+  PpvHalfFloat(pointer(@fShaderData.HologramGlowIntensity))^:=fData.Hologram.GlowIntensity;
  end;
 
  TPasMPInterlocked.Increment(fGeneration);
