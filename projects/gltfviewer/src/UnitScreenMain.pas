@@ -96,6 +96,7 @@ type { TScreenMain }
        fOldFPS:TpvInt32;
        fFPSTimeAccumulator:TpvDouble;
        fFrameTimeString:string;
+       fLoadedFileName:string;
       public
 
        constructor Create; override;
@@ -164,6 +165,8 @@ begin
  fFPSTimeAccumulator:=0;
 
  fAnimationIndex:=-2;
+
+ fLoadedFileName:='';
 
  fCameraMode:=TCameraMode.Orbit;
 
@@ -675,7 +678,15 @@ var Index:TpvSizeInt;
     StringList:TStringList;
 begin
  result:=inherited KeyEvent(aKeyEvent);
- if aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Down then begin
+ if aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Typed then begin
+  case aKeyEvent.KeyCode of
+   KEYCODE_F5:begin
+    if length(fLoadedFileName)>0 then begin
+     LoadGLTF(fLoadedFileName);
+    end;
+   end;
+  end;
+ end else if aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Down then begin
   case aKeyEvent.KeyCode of
    KEYCODE_ESCAPE:begin
     pvApplication.Terminate;
@@ -979,6 +990,8 @@ begin
   fGroup.DeferredFree;
   fGroup:=nil;
  end;
+
+ fLoadedFileName:=aFileName;
 
  pvApplication.ResourceManager.BackgroundLoadResource(TpvScene3D.TGroup,aFileName,OnFinish,fScene3D);
 
