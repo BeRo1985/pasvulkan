@@ -825,18 +825,22 @@ void main() {
       vec3 hologramDirection = vec3(decodedFloats0.xy, decodedFloats0.z);
       float hologramDirectionLength = dot(hologramDirection, hologramDirection); 
       if(hologramDirectionLength >= 4.0){
-        // When the hologram direction is equal or larger than 2.0 unit length, it is assumed that it is a screen space based hologram (as a distinguishing criterion)
-        // Not using gl_FragCoord.y here, because it is only a rounded integer value but not the correct floating point value, therefore using the view projection 
-        // matrix to calculate the correct vertex direction. Indeed, the vertex shader could deliever also the clip space position, but this would require to
-        // pass the clip space position to the fragment shader, which is not done here, because the clip space position is not needed for other purposes otherwise,
-        // so it is calculated here in the fragment shader instead, only for the hologram effect, if enabled. Given that it's not used in excessive amounts.   
-        vec4 clipSpace = (view.projectionMatrix * view.viewMatrix) * vec4(inWorldSpacePosition, 1.0);
-        vertexDirection = fma(clipSpace.y / clipSpace.w, -0.5 * sign(hologramDirection.y), 0.5); // The sign of the y component of the hologram direction is used to determine the direction of the hologram effect
+        if(hologramDirection.z >= -(1e-6)){ 
+          // When the hologram direction is equal or larger than 2.0 unit length, it is assumed that it is a screen space based hologram (as a distinguishing criterion)
+          // Not using gl_FragCoord.y here, because it is only a rounded integer value but not the correct floating point value, therefore using the view projection 
+          // matrix to calculate the correct vertex direction. Indeed, the vertex shader could deliever also the clip space position, but this would require to
+          // pass the clip space position to the fragment shader, which is not done here, because the clip space position is not needed for other purposes otherwise,
+          // so it is calculated here in the fragment shader instead, only for the hologram effect, if enabled. Given that it's not used in excessive amounts.   
+          vec4 clipSpace = (view.projectionMatrix * view.viewMatrix) * vec4(inWorldSpacePosition, 1.0);
+          vertexDirection = fma(clipSpace.y / clipSpace.w, -0.5 * sign(hologramDirection.y), 0.5); // The sign of the y component of the hologram direction is used to determine the direction of the hologram effect
+        }else{
+          vertexDirection = float(gl_FragCoord.y) / float(pushConstants.timeSecondsTimeFractionalSecondWidthHeight.w); // The y component of the hologram direction is used to determine the direction of the hologram effect
+        }
       }else{
         if(hologramDirectionLength < 1e-6){
           // When the hologram direction is zero or nearly zero, it is assumed that it is a view direction based hologram (as a distinguishing criterion) (it's similar to the screen space based hologram, but a bit different anyway) 
           hologramDirection = normalize(view.inverseViewMatrix[1].xyz); // Up vector of the view matrix as hologram direction 
-        }else{
+        }else{ 
           // When the hologram direction is not zero and smaller than 2.0 unit length, it is assumed that it is a world space based hologram
           hologramDirection = normalize(hologramDirection.xyz);
         }
@@ -852,17 +856,17 @@ void main() {
       const vec4 hologramRimColorFactor = vec4(decodedFloats2.zw, decodedFloats3.xy);
       const float hologramRimPower = decodedFloats3.z;
       const float hologramRimThreshold = decodedFloats3.w;
-      const float hologramScanTiling = decodedFloats4.x;
+      const float hologramScanTiling = (decodedFloats4.x < 0.0) ? (float(pushConstants.timeSecondsTimeFractionalSecondWidthHeight.w) * (-decodedFloats4.x)) : decodedFloats4.x;
       const float hologramScanSpeed = decodedFloats4.y;
       const float hologramScanMin = decodedFloats4.z;
       const float hologramScanMax = decodedFloats4.w;
-      const float hologramGlowTiling = decodedFloats5.x;
+      const float hologramGlowTiling = (decodedFloats5.x < 0.0) ? (float(pushConstants.timeSecondsTimeFractionalSecondWidthHeight.w) * (-decodedFloats5.x)) : decodedFloats5.x;
       const float hologramGlowSpeed = decodedFloats5.y;
       const float hologramGlowMin = decodedFloats5.z;
       const float hologramGlowMax = decodedFloats5.w;
 
       // Get the hologram time 
-      const float hologramTime = float(uint(pushConstants.timeSecondsTimeFractionalSecond.x & 4095u)) + uintBitsToFloat(pushConstants.timeSecondsTimeFractionalSecond.y);
+      const float hologramTime = float(uint(pushConstants.timeSecondsTimeFractionalSecondWidthHeight.x & 4095u)) + uintBitsToFloat(pushConstants.timeSecondsTimeFractionalSecondWidthHeight.y);
 
       // Calculate the scan line part of the hologram effect
       const float scanLine = (hologramScanMin < hologramScanMax) ? mix(hologramScanMin, hologramScanMax, clamp(fma(sin((vertexDirection * 6.283185307179586 * hologramScanTiling) + (hologramTime * hologramScanSpeed)), 0.75, 0.5), 0.0, 1.0)) : hologramScanMin;
