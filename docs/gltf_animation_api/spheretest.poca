@@ -3,7 +3,7 @@
     Group.getMaterialID("TestAnimatedMaterial"),
     {
       "active": true,
-      "direction": [0.0, 0.0, 0.0], // when the direction is [0.0, 0.0, 0.0], the direction is calculated from the up vector of the view matrix
+      "direction": [0.0, 20.0, 0.0], // when the direction is [0.0, 0.0, 0.0], the direction is calculated from the up vector of the view matrix
       "flickerSpeed": 1.0,
       "flickerMin": 0.5,
       "flickerMax": 1.0,

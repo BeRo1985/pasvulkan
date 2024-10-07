@@ -17227,7 +17227,7 @@ end;
 function TpvScene3D.TGroup.AssetGetURI(const aURI:TPasGLTFUTF8String):TStream;
 var FileName:TPasGLTFUTF8String;
 begin
- FileName:=ExpandRelativePath(aURI,AssetBasePath);
+ FileName:=PasVulkan.Utils.ExpandRelativePath(aURI,AssetBasePath);
  if pvApplication.Assets.ExistAsset(FileName) then begin
   result:=pvApplication.Assets.GetAssetStream(FileName);
  end else begin
