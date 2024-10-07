@@ -2182,8 +2182,8 @@ type EpvVulkanException=class(Exception);
        function QueuePresent(const aQueue:TpvVulkanQueue;const aSemaphore:TpvVulkanSemaphore=nil;const aNext:Pointer=nil):TVkResult;
        function AcquireNextImage(const aSemaphore:TpvVulkanSemaphore=nil;const aFence:TpvVulkanFence=nil;const aTimeOut:TpvUInt64=TpvUInt64(high(TpvUInt64))):TVkResult;
        procedure GetScreenshot(out aScreenshot:TpvVulkanSwapChainScreenshot;const aSwapChainImage:TpvVulkanImage=nil);
-       procedure SaveScreenshotAsJPEGToStream(const aStream:TStream;const aSwapChainImage:TpvVulkanImage=nil;const aQuality:TpvInt32=95);
-       procedure SaveScreenshotAsPNGToStream(const aStream:TStream;const aSwapChainImage:TpvVulkanImage=nil);
+       procedure SaveScreenshotAsJPEGToStream(const aStream:TStream;const aSwapChainImage:TpvVulkanImage=nil;const aQuality:TpvInt32=95;const aFast:Boolean=false;const aChromaSubsampling:TpvInt32=-1);
+       procedure SaveScreenshotAsPNGToStream(const aStream:TStream;const aSwapChainImage:TpvVulkanImage=nil;const aFast:Boolean=false);
        procedure SaveScreenshotAsQOIToStream(const aStream:TStream;const aSwapChainImage:TpvVulkanImage=nil);
        property Images[const aImageIndex:TpvInt32]:TpvVulkanImage read GetImage; default;
       published
@@ -18834,7 +18834,7 @@ begin
 
 end;
 
-procedure TpvVulkanSwapChain.SaveScreenshotAsJPEGToStream(const aStream:TStream;const aSwapChainImage:TpvVulkanImage=nil;const aQuality:TpvInt32=95);
+procedure TpvVulkanSwapChain.SaveScreenshotAsJPEGToStream(const aStream:TStream;const aSwapChainImage:TpvVulkanImage;const aQuality:TpvInt32;const aFast:Boolean;const aChromaSubsampling:TpvInt32);
 var SwapChainScreenshot:TpvVulkanSwapChainScreenshot;
     JPEGData:TpvPointer;
     JPEGDataSize:TpvUInt32;
@@ -18844,7 +18844,7 @@ begin
   SwapChainScreenshot.Data:=nil;
   GetScreenshot(SwapChainScreenshot,aSwapChainImage);
   if length(SwapChainScreenshot.Data)>0 then begin
-   SaveJPEGImage(@SwapChainScreenshot.Data[0],SwapChainScreenshot.Width,SwapChainScreenshot.Height,JPEGData,JPEGDataSize,aQuality,false,-1);
+   SaveJPEGImage(@SwapChainScreenshot.Data[0],SwapChainScreenshot.Width,SwapChainScreenshot.Height,JPEGData,JPEGDataSize,aQuality,aFast,aChromaSubsampling);
    if assigned(JPEGData) then begin
     try
      aStream.Seek(0,soBeginning);
@@ -18860,7 +18860,7 @@ begin
  end;
 end;
 
-procedure TpvVulkanSwapChain.SaveScreenshotAsPNGToStream(const aStream:TStream;const aSwapChainImage:TpvVulkanImage=nil);
+procedure TpvVulkanSwapChain.SaveScreenshotAsPNGToStream(const aStream:TStream;const aSwapChainImage:TpvVulkanImage;const aFast:Boolean);
 var SwapChainScreenshot:TpvVulkanSwapChainScreenshot;
     PNGData:TpvPointer;
     PNGDataSize:TpvUInt32;
@@ -18870,7 +18870,7 @@ begin
   SwapChainScreenshot.Data:=nil;
   GetScreenshot(SwapChainScreenshot,aSwapChainImage);
   if length(SwapChainScreenshot.Data)>0 then begin
-   SavePNGImage(@SwapChainScreenshot.Data[0],SwapChainScreenshot.Width,SwapChainScreenshot.Height,PNGData,PNGDataSize,TpvPNGPixelFormat.R8G8B8A8);
+   SavePNGImage(@SwapChainScreenshot.Data[0],SwapChainScreenshot.Width,SwapChainScreenshot.Height,PNGData,PNGDataSize,TpvPNGPixelFormat.R8G8B8A8,aFast);
    if assigned(PNGData) then begin
     try
      aStream.Seek(0,soBeginning);
@@ -18886,7 +18886,7 @@ begin
  end;
 end;
 
-procedure TpvVulkanSwapChain.SaveScreenshotAsQOIToStream(const aStream:TStream;const aSwapChainImage:TpvVulkanImage=nil);
+procedure TpvVulkanSwapChain.SaveScreenshotAsQOIToStream(const aStream:TStream;const aSwapChainImage:TpvVulkanImage);
 var SwapChainScreenshot:TpvVulkanSwapChainScreenshot;
     QOIData:TpvPointer;
     QOIDataSize:TpvUInt32;
