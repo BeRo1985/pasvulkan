@@ -806,7 +806,9 @@ void main() {
 #ifndef VOXELIZATION
   {
     if((flags & (1u << 15u)) != 0u){
+      
       // Holographic effect
+
       // Decode the hologram data from half floats to floats
       const vec4 decodedFloats0 = vec4(unpackHalf2x16(material.hologramBlock0.x), unpackHalf2x16(material.hologramBlock0.y));
       const vec4 decodedFloats1 = vec4(unpackHalf2x16(material.hologramBlock0.z), unpackHalf2x16(material.hologramBlock0.w));
@@ -814,8 +816,35 @@ void main() {
       const vec4 decodedFloats3 = vec4(unpackHalf2x16(material.hologramBlock1.z), unpackHalf2x16(material.hologramBlock1.w));
       const vec4 decodedFloats4 = vec4(unpackHalf2x16(material.hologramBlock2.x), unpackHalf2x16(material.hologramBlock2.y));
       const vec4 decodedFloats5 = vec4(unpackHalf2x16(material.hologramBlock2.z), unpackHalf2x16(material.hologramBlock2.w));
+
+      // Get the view
+      const View view = uView.views[inViewIndex];
+
+      // Calculate the vertex direction
+      float vertexDirection;
+      vec3 hologramDirection = vec3(decodedFloats0.xy, decodedFloats0.z);
+      float hologramDirectionLength = dot(hologramDirection, hologramDirection); 
+      if(hologramDirectionLength >= 4.0){
+        // When the hologram direction is equal or larger than 2.0 unit length, it is assumed that it is a screen space based hologram (as a distinguishing criterion)
+        // Not using gl_FragCoord.y here, because it is only a rounded integer value but not the correct floating point value, therefore using the view projection 
+        // matrix to calculate the correct vertex direction. Indeed, the vertex shader could deliever also the clip space position, but this would require to
+        // pass the clip space position to the fragment shader, which is not done here, because the clip space position is not needed for other purposes otherwise,
+        // so it is calculated here in the fragment shader instead, only for the hologram effect, if enabled. Given that it's not used in excessive amounts.   
+        vec4 clipSpace = (view.projectionMatrix * view.viewMatrix) * vec4(inWorldSpacePosition, 1.0);
+        vertexDirection = fma(clipSpace.y / clipSpace.w, 0.5, 0.5);
+      }else{
+        if(hologramDirectionLength < 1e-6){
+          // When the hologram direction is zero or nearly zero, it is assumed that it is a view direction based hologram (as a distinguishing criterion) (it's similar to the screen space based hologram, but a bit different anyway) 
+          hologramDirection = normalize(view.inverseViewMatrix[1].xyz); // Up vector of the view matrix as hologram direction 
+        }else{
+          // When the hologram direction is not zero and smaller than 2.0 unit length, it is assumed that it is a world space based hologram
+          hologramDirection = normalize(hologramDirection.xyz);
+        }
+        // Assign the vertex direction based on the hologram direction
+        vertexDirection = fma(dot(inWorldSpacePosition.xyz, hologramDirection), 0.5, 0.5);
+      }
+
       // Assign the decoded values to the hologram parameters
-      vec3 hologramDirection = normalize(vec3(decodedFloats0.xy, decodedFloats0.z));
       const float hologramFlickerSpeed = decodedFloats0.w;
       const float hologramFlickerMin = decodedFloats1.x;
       const float hologramFlickerMax = decodedFloats1.y;
@@ -831,22 +860,33 @@ void main() {
       const float hologramGlowSpeed = decodedFloats5.y;
       const float hologramGlowMin = decodedFloats5.z;
       const float hologramGlowMax = decodedFloats5.w;
-      if(dot(hologramDirection, hologramDirection) > 1e-6){
-        hologramDirection = normalize(hologramDirection.xyz);
-      }else{
-        hologramDirection = normalize(uView.views[inViewIndex].inverseViewMatrix[1].xyz); // Up vector of the view matrix as hologram direction 
-      }
+
+      // Get the hologram time 
       const float hologramTime = float(uint(pushConstants.timeSecondsTimeFractionalSecond.x & 4095u)) + uintBitsToFloat(pushConstants.timeSecondsTimeFractionalSecond.y);
-      const float vertexDirection = fma(dot(inWorldSpacePosition.xyz, hologramDirection), 0.5, 0.5);
+
+      // Calculate the scan line part of the hologram effect
       const float scanLine = (hologramScanMin < hologramScanMax) ? mix(hologramScanMin, hologramScanMax, clamp(fma(sin((vertexDirection * hologramScanTiling) + (hologramTime * hologramScanSpeed)), 0.75, 0.5), 0.0, 1.0)) : hologramScanMin;
+
+      // Calculate the screen-retrace-like glow part of the hologram effect
       const float glow = (hologramGlowMin < hologramGlowMax) ? mix(hologramGlowMin, hologramGlowMax, fract((vertexDirection * hologramGlowTiling) - (hologramTime * hologramGlowSpeed))) : hologramGlowMin;
+
+      // Calculate the flicker part of the hologram effect
       const float flicker = (hologramFlickerMin < hologramFlickerMax) ? mix(hologramFlickerMin, hologramFlickerMax, hologramNoise(fract(hologramTime * hologramFlickerSpeed))) : hologramFlickerMin;
-      const vec3 viewDirection = normalize(uView.views[inViewIndex].inverseViewMatrix[2].xyz);
+
+      // Get the view direction from the inverse view matrix
+      const vec3 viewDirection = normalize(view.inverseViewMatrix[2].xyz);
+
+      // Calculate the rim part of the hologram effect
       const float rim = pow(1.0 - clamp((clamp(dot(workNormal, viewDirection), 0.0, 1.0) - hologramRimThreshold) / (1.0 - hologramRimThreshold), 0.0, 1.0), hologramRimPower);
+
+      // Calculate the hologram color by combining the scan line, glow, flicker, and rim parts and multiplying it with the actual color
       color *= vec4(vec3(hologramMainColorFactor.xyz * (1.0 + (glow * 0.35))) + (rim * hologramRimColorFactor.xyz), (scanLine + (rim * hologramRimColorFactor.w) + glow) * flicker * hologramMainColorFactor.w);
+
+      // Back-face culling for hologram effect
 /*    if(dot(workNormal, viewDirection) < 0.0){
         color.w = 0.0;
       }*/
+
     } 
   }
 #endif // !VOXELIZATION
