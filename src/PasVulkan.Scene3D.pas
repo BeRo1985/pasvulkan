@@ -378,8 +378,8 @@ type EpvScene3D=class(Exception);
 
              TimeSeconds:TpvUInt32;
              TimeFractionalSecond:TpvFloat;
-             Unused0:TpvUInt32;
-             Unused1:TpvUInt32;
+             Width:TpvUInt32;
+             Height:TpvUInt32;
 
             end;
             PMeshStagePushConstants=^TMeshStagePushConstants;

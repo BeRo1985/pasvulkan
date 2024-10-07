@@ -6152,6 +6152,8 @@ begin
   end;
   MeshStagePushConstants^.TimeSeconds:=floor(Time);
   MeshStagePushConstants^.TimeFractionalSecond:=frac(Time);
+  MeshStagePushConstants^.Width:=fScaledWidth;
+  MeshStagePushConstants^.Height:=fScaledHeight;
 
   fSetGlobalResourcesDone[aRenderPassIndex]:=false;
 
