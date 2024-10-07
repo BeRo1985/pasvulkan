@@ -20,9 +20,9 @@ struct Material {
   vec4 iridescenceThicknessMaximumTransmissionFactorVolumeThicknessFactorVolumeAttenuationDistance;
   uvec4 volumeAttenuationColorAnisotropyStrengthAnisotropyRotation;
   uvec4 dispersionUnused; // x = dispersion, y, z, w = unused
-  uvec4 hologramDirectionFlickerSpeedIntensity; // direction (xyz) + flicker speed and intensity (all halffloats)
-  uvec4 hologramMainColorFactorRimColorFactor; // xy = main color factor (halffloat vec4 including alpha), zw = rim color factor (halffloat vec4 including alpha)
-  uvec4 hologramRimPowerThresholdScanTilingSpeedIntensityGlowTilingSpeedIntensity; // rim power, rim threshold, scan tiling, scan speed, scan intensity, glow tiling, glow speed, glow intensity (all halffloat)
+  uvec4 hologramBlock0;
+  uvec4 hologramBlock1;
+  uvec4 hologramBlock2;
   uvec4 alphaCutOffFlagsTex0Tex1;
   int textures[20];
   mat3x2 textureTransforms[20];
@@ -73,9 +73,9 @@ layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer Ma
   vec4 iridescenceThicknessMaximumTransmissionFactorVolumeThicknessFactorVolumeAttenuationDistance;
   uvec4 volumeAttenuationColorAnisotropyStrengthAnisotropyRotation;
   uvec4 dispersionUnused; // x = dispersion, y, z, w = unused
-  uvec4 hologramDirectionFlickerSpeedIntensity; // direction (xyz) + flicker speed and intensity (all halffloats)
-  uvec4 hologramMainColorFactorRimColorFactor; // xy = main color factor (halffloat vec4 including alpha), zw = rim color factor (halffloat vec4 including alpha)
-  uvec4 hologramRimPowerThresholdScanTilingSpeedIntensityGlowTilingSpeedIntensity; // rim power, rim threshold, scan tiling, scan speed, scan intensity, glow tiling, glow speed, glow intensity (all halffloat)
+  uvec4 hologramBlock0;
+  uvec4 hologramBlock1;
+  uvec4 hologramBlock2;
   uvec4 alphaCutOffFlagsTex0Tex1;
   int textures[20];
   mat3x2 textureTransforms[20];

@@ -1051,17 +1051,20 @@ type EpvScene3D=class(Exception);
                     Active:boolean;
                     Direction:TpvVector3;
                     FlickerSpeed:TpvFloat;
-                    FlickerIntensity:TpvFloat;
+                    FlickerMin:TpvFloat;
+                    FlickerMax:TpvFloat;
                     MainColorFactor:TpvVector4;
                     RimColorFactor:TpvVector4;
                     RimPower:TpvFloat;
                     RimThreshold:TpvFloat;
                     ScanTiling:TpvFloat;
                     ScanSpeed:TpvFloat;
-                    ScanIntensity:TpvFloat;
+                    ScanMin:TpvFloat;
+                    ScanMax:TpvFloat;
                     GlowTiling:TpvFloat;
                     GlowSpeed:TpvFloat;
-                    GlowIntensity:TpvFloat;                    
+                    GlowMin:TpvFloat;
+                    GlowMax:TpvFloat;
                    end;
                    TShaderData=packed record
                     case boolean of
@@ -1085,36 +1088,35 @@ type EpvScene3D=class(Exception);
                        Unused1:TpvUInt32;
                        Unused2:TpvUInt32;
                       // uvec4 Dispersion End
-                      // uvec4 HologramDirectionFlickerSpeedIntensity                       
+                      // uvec4 Hologram Blocks begin
                        HologramDirectionX:TpvUInt16;
                        HologramDirectionY:TpvUInt16;
                        HologramDirectionZ:TpvUInt16;
-                       HologramFlickerSpeed:TpvUInt16;                       
-                       HologramFlickerIntensity:TpvUInt16;
-                       HologramReserved0:TpvUInt16;
-                       HologramReserved1:TpvUInt16;
-                       HologramReserved2:TpvUInt16;
-                      // uvec4 HologramDirectionFlickerSpeedIntensity end
-                      // uvec4 HologramMainColorFactorRimColorFactor
+                       HologramFlickerSpeed:TpvUInt16;                                              
+                       HologramFlickerMin:TpvUInt16;
+                       HologramFlickerMax:TpvUInt16;
                        HologramMainColorFactorR:TpvUInt16;
                        HologramMainColorFactorG:TpvUInt16;
+
                        HologramMainColorFactorB:TpvUInt16;
                        HologramMainColorFactorA:TpvUInt16;
                        HologramRimColorFactorR:TpvUInt16;
-                       HologramRimColorFactorG:TpvUInt16;
+                       HologramRimColorFactorG:TpvUInt16;                       
                        HologramRimColorFactorB:TpvUInt16;
                        HologramRimColorFactorA:TpvUInt16;
-                      // uvec4 HologramMainColorFactorRimColorFactor end
-                      // uvec4 HologramRimPowerThresholdScanTilingSpeedIntensityGlowTilingSpeedIntensity
                        HologramRimPower:TpvUInt16;
                        HologramRimThreshold:TpvUInt16;
+
                        HologramScanTiling:TpvUInt16;
                        HologramScanSpeed:TpvUInt16;
-                       HologramScanIntensity:TpvUInt16;
+                       HologramScanMin:TpvUInt16;
+                       HologramScanMax:TpvUInt16;
                        HologramGlowTiling:TpvUInt16;
                        HologramGlowSpeed:TpvUInt16;
-                       HologramGlowIntensity:TpvUInt16;
-                      // uvec4 HologramRimPowerThresholdScanTilingSpeedIntensityGlowTilingSpeedIntensity end   
+                       HologramGlowMin:TpvUInt16;
+                       HologramGlowMax:TpvUInt16;
+
+                      // uvec4 Hologram Blocks end
                       // uvec4 AlphaCutOffFlags begin
                        AlphaCutOff:TpvFloat; // for with uintBitsToFloat on GLSL code side
                        Flags:TpvUInt32;
@@ -1248,17 +1250,20 @@ type EpvScene3D=class(Exception);
                       Active:false;
                       Direction:(x:0.0;y:0.0;z:0.0);
                       FlickerSpeed:0.0;
-                      FlickerIntensity:0.0;
+                      FlickerMin:0.0;
+                      FlickerMax:0.0;
                       MainColorFactor:(x:1.0;y:1.0;z:1.0;w:1.0);
                       RimColorFactor:(x:1.0;y:1.0;z:1.0;w:1.0);
                       RimPower:1.0;
                       RimThreshold:1.0;
                       ScanTiling:1.0;
                       ScanSpeed:1.0;
-                      ScanIntensity:1.0;
+                      ScanMin:0.0;
+                      ScanMax:1.0;
                       GlowTiling:1.0;
                       GlowSpeed:1.0;
-                      GlowIntensity:1.0;
+                      GlowMin:0.0;
+                      GlowMax:1.0;
                      );
                      AnimatedTextureMask:0;
                     );
@@ -1283,10 +1288,8 @@ type EpvScene3D=class(Exception);
                      HologramDirectionY:0;
                      HologramDirectionZ:0;
                      HologramFlickerSpeed:0;
-                     HologramFlickerIntensity:0;
-                     HologramReserved0:0;
-                     HologramReserved1:0;
-                     HologramReserved2:0;
+                     HologramFlickerMin:0;
+                     HologramFlickerMax:0;
                      HologramMainColorFactorR:0;
                      HologramMainColorFactorG:0;
                      HologramMainColorFactorB:0;
@@ -1299,10 +1302,12 @@ type EpvScene3D=class(Exception);
                      HologramRimThreshold:0;
                      HologramScanTiling:0;
                      HologramScanSpeed:0;
-                     HologramScanIntensity:0;
+                     HologramScanMin:0;
+                     HologramScanMax:0;
                      HologramGlowTiling:0;
                      HologramGlowSpeed:0;
-                     HologramGlowIntensity:0;                     
+                     HologramGlowMin:0;                     
+                     HologramGlowMax:0;
                      AlphaCutOff:1.0;
                      Flags:0;
                      Textures0:0;
@@ -1847,7 +1852,8 @@ type EpvScene3D=class(Exception);
                                    PointerMaterialPBRDispersion,
                                    PointerMaterialHologramDirection,        
                                    PointerMaterialHologramFlickerSpeed,
-                                   PointerMaterialHologramFlickerIntensity,
+                                   PointerMaterialHologramFlickerMin,
+                                   PointerMaterialHologramFlickerMax,
                                    PointerMaterialHologramMainColor,
                                    PointerMaterialHologramMainAlpha,
                                    PointerMaterialHologramRimColor,
@@ -1856,10 +1862,12 @@ type EpvScene3D=class(Exception);
                                    PointerMaterialHologramRimThreshold,
                                    PointerMaterialHologramScanTiling,
                                    PointerMaterialHologramScanSpeed,
-                                   PointerMaterialHologramScanIntensity,
+                                   PointerMaterialHologramScanMin,
+                                   PointerMaterialHologramScanMax,
                                    PointerMaterialHologramGlowTiling,
                                    PointerMaterialHologramGlowSpeed,
-                                   PointerMaterialHologramGlowIntensity,
+                                   PointerMaterialHologramGlowMin,
+                                   PointerMaterialHologramGlowMax,
                                    PointerTextureOffset,
                                    PointerTextureRotation,
                                    PointerTextureScale
@@ -1901,7 +1909,8 @@ type EpvScene3D=class(Exception);
                                     TTarget.PointerMaterialPBRDispersion,
                                     TTarget.PointerMaterialHologramDirection,
                                     TTarget.PointerMaterialHologramFlickerSpeed,
-                                    TTarget.PointerMaterialHologramFlickerIntensity,
+                                    TTarget.PointerMaterialHologramFlickerMin,
+                                    TTarget.PointerMaterialHologramFlickerMax,
                                     TTarget.PointerMaterialHologramMainColor,
                                     TTarget.PointerMaterialHologramMainAlpha,
                                     TTarget.PointerMaterialHologramRimColor,
@@ -1910,10 +1919,12 @@ type EpvScene3D=class(Exception);
                                     TTarget.PointerMaterialHologramRimThreshold,
                                     TTarget.PointerMaterialHologramScanTiling,
                                     TTarget.PointerMaterialHologramScanSpeed,
-                                    TTarget.PointerMaterialHologramScanIntensity,
+                                    TTarget.PointerMaterialHologramScanMin,
+                                    TTarget.PointerMaterialHologramScanMax,
                                     TTarget.PointerMaterialHologramGlowTiling,
                                     TTarget.PointerMaterialHologramGlowSpeed,
-                                    TTarget.PointerMaterialHologramGlowIntensity,
+                                    TTarget.PointerMaterialHologramGlowMin,
+                                    TTarget.PointerMaterialHologramGlowMax,
                                     TTarget.PointerTextureOffset,
                                     TTarget.PointerTextureRotation,
                                     TTarget.PointerTextureScale
@@ -2588,7 +2599,8 @@ type EpvScene3D=class(Exception);
                                    DefaultMaterialPBRDispersion,
                                    DefaultMaterialHologramDirection,
                                    DefaultMaterialHologramFlickerSpeed,
-                                   DefaultMaterialHologramFlickerIntensity,
+                                   DefaultMaterialHologramFlickerMin,
+                                   DefaultMaterialHologramFlickerMax,
                                    DefaultMaterialHologramMainColor,
                                    DefaultMaterialHologramMainAlpha,
                                    DefaultMaterialHologramRimColor,
@@ -2597,10 +2609,12 @@ type EpvScene3D=class(Exception);
                                    DefaultMaterialHologramRimThreshold,
                                    DefaultMaterialHologramScanTiling,
                                    DefaultMaterialHologramScanSpeed,
-                                   DefaultMaterialHologramScanIntensity,
+                                   DefaultMaterialHologramScanMin,
+                                   DefaultMaterialHologramScanMax,
                                    DefaultMaterialHologramGlowTiling,
                                    DefaultMaterialHologramGlowSpeed,
-                                   DefaultMaterialHologramGlowIntensity,
+                                   DefaultMaterialHologramGlowMin,
+                                   DefaultMaterialHologramGlowMax,
                                    DefaultTextureOffset,
                                    DefaultTextureRotation,
                                    DefaultTextureScale,
@@ -2632,7 +2646,8 @@ type EpvScene3D=class(Exception);
                                    MaterialPBRDispersion,
                                    MaterialHologramDirection,
                                    MaterialHologramFlickerSpeed,
-                                   MaterialHologramFlickerIntensity,
+                                   MaterialHologramFlickerMin,
+                                   MaterialHologramFlickerMax,
                                    MaterialHologramMainColor,
                                    MaterialHologramMainAlpha,
                                    MaterialHologramRimColor,
@@ -2641,10 +2656,12 @@ type EpvScene3D=class(Exception);
                                    MaterialHologramRimThreshold,
                                    MaterialHologramScanTiling,
                                    MaterialHologramScanSpeed,
-                                   MaterialHologramScanIntensity,
+                                   MaterialHologramScanMin,
+                                   MaterialHologramScanMax,
                                    MaterialHologramGlowTiling,
                                    MaterialHologramGlowSpeed,
-                                   MaterialHologramGlowIntensity,
+                                   MaterialHologramGlowMin,
+                                   MaterialHologramGlowMax,
                                    TextureOffset,
                                    TextureRotation,
                                    TextureScale
@@ -2684,7 +2701,8 @@ type EpvScene3D=class(Exception);
                                      MaterialPBRDispersion:TpvFloat;
                                      MaterialHologramDirection:TpvVector3;
                                      MaterialHologramFlickerSpeed:TpvFloat;
-                                     MaterialHologramFlickerIntensity:TpvFloat;
+                                     MaterialHologramFlickerMin:TpvFloat;
+                                     MaterialHologramFlickerMax:TpvFloat;
                                      MaterialHologramMainColor:TpvVector3;
                                      MaterialHologramMainAlpha:TpvFloat;
                                      MaterialHologramRimColor:TpvVector3;
@@ -2693,10 +2711,12 @@ type EpvScene3D=class(Exception);
                                      MaterialHologramRimThreshold:TpvFloat;
                                      MaterialHologramScanTiling:TpvFloat;
                                      MaterialHologramScanSpeed:TpvFloat;
-                                     MaterialHologramScanIntensity:TpvFloat;
+                                     MaterialHologramScanMin:TpvFloat;
+                                     MaterialHologramScanMax:TpvFloat;
                                      MaterialHologramGlowTiling:TpvFloat;
                                      MaterialHologramGlowSpeed:TpvFloat;
-                                     MaterialHologramGlowIntensity:TpvFloat;
+                                     MaterialHologramGlowMin:TpvFloat;
+                                     MaterialHologramGlowMax:TpvFloat;
                                     );
                                     0:(
                                      TextureOffset:TpvVector2;
@@ -3394,7 +3414,7 @@ type EpvScene3D=class(Exception);
                (TFaceCullingMode.None,TFaceCullingMode.None)
               );
              PVMFSignature:TPVMFSignature=('P','V','M','F');
-             PVMFVersion=TpVUInt32($00000002);
+             PVMFVersion=TpVUInt32($00000003);
       private
        fLock:TPasMPSpinLock;
        fLoadLock:TPasMPSpinLock;
@@ -8654,7 +8674,9 @@ begin
 
     fData.Hologram.FlickerSpeed:=StreamIO.ReadFloat;
 
-    fData.Hologram.FlickerIntensity:=StreamIO.ReadFloat;
+    fData.Hologram.FlickerMin:=StreamIO.ReadFloat;
+
+    fData.Hologram.FlickerMax:=StreamIO.ReadFloat;
 
     fData.Hologram.MainColorFactor:=StreamIO.ReadVector4;
 
@@ -8668,13 +8690,17 @@ begin
 
     fData.Hologram.ScanSpeed:=StreamIO.ReadFloat;
 
-    fData.Hologram.ScanIntensity:=StreamIO.ReadFloat;
+    fData.Hologram.ScanMin:=StreamIO.ReadFloat;
+
+    fData.Hologram.ScanMax:=StreamIO.ReadFloat;
 
     fData.Hologram.GlowTiling:=StreamIO.ReadFloat;
 
     fData.Hologram.GlowSpeed:=StreamIO.ReadFloat;
 
-    fData.Hologram.GlowIntensity:=StreamIO.ReadFloat;
+    fData.Hologram.GlowMin:=StreamIO.ReadFloat;
+
+    fData.Hologram.GlowMax:=StreamIO.ReadFloat;
 
    end;   
 
@@ -8977,7 +9003,9 @@ begin
 
    StreamIO.WriteFloat(fData.Hologram.FlickerSpeed);
 
-   StreamIO.WriteFloat(fData.Hologram.FlickerIntensity);
+   StreamIO.WriteFloat(fData.Hologram.FlickerMin);
+
+   StreamIO.WriteFloat(fData.Hologram.FlickerMax);
 
    StreamIO.WriteVector4(fData.Hologram.MainColorFactor);
 
@@ -8991,13 +9019,17 @@ begin
 
    StreamIO.WriteFloat(fData.Hologram.ScanSpeed);
 
-   StreamIO.WriteFloat(fData.Hologram.ScanIntensity);
+   StreamIO.WriteFloat(fData.Hologram.ScanMin);
+
+   StreamIO.WriteFloat(fData.Hologram.ScanMax);
 
    StreamIO.WriteFloat(fData.Hologram.GlowTiling);
 
    StreamIO.WriteFloat(fData.Hologram.GlowSpeed);
 
-   StreamIO.WriteFloat(fData.Hologram.GlowIntensity);
+   StreamIO.WriteFloat(fData.Hologram.GlowMin);
+
+   StreamIO.WriteFloat(fData.Hologram.GlowMax);
 
   end;
 
@@ -9483,17 +9515,20 @@ begin
   fData.Hologram.Active:=false;
   fData.Hologram.Direction:=TpvVector3.Create(0.0,1.0,0.0);
   fData.Hologram.FlickerSpeed:=10.0;
-  fData.Hologram.FlickerIntensity:=1.0;
+  fData.Hologram.FlickerMin:=0.0;
+  fData.Hologram.FlickerMax:=1.0;
   fData.Hologram.MainColorFactor:=TpvVector4.Create(1.0,1.0,1.0,1.0);
   fData.Hologram.RimColorFactor:=TpvVector4.Create(1.0,1.0,1.0,1.0);
   fData.Hologram.RimPower:=1.29;
   fData.Hologram.RimThreshold:=0.0;
   fData.Hologram.ScanTiling:=5.27;
   fData.Hologram.ScanSpeed:=-1.66;
-  fData.Hologram.ScanIntensity:=1.0;
+  fData.Hologram.ScanMin:=1.0;
+  fData.Hologram.ScanMax:=1.0;
   fData.Hologram.GlowTiling:=0.15;
   fData.Hologram.GlowSpeed:=10.0;
-  fData.Hologram.GlowIntensity:=1.0;
+  fData.Hologram.GlowMin:=1.0;
+  fData.Hologram.GlowMax:=1.0;
   fData.Hologram.Active:=TPasJSON.GetBoolean(JSONObject.Properties['active'],fData.Hologram.Active);
   JSONItem:=JSONObject.Properties['direction'];
   if assigned(JSONItem) and (JSONItem is TPasJSONItemArray) and (TPasJSONItemArray(JSONItem).Count=3) then begin
@@ -9502,7 +9537,8 @@ begin
    fData.Hologram.Direction.z:=TPasJSON.GetNumber(TPasJSONItemArray(JSONItem).Items[2],fData.Hologram.Direction.z);
   end;
   fData.Hologram.FlickerSpeed:=TPasJSON.GetNumber(JSONObject.Properties['flickerSpeed'],fData.Hologram.FlickerSpeed);
-  fData.Hologram.FlickerIntensity:=TPasJSON.GetNumber(JSONObject.Properties['flickerIntensity'],fData.Hologram.FlickerIntensity);
+  fData.Hologram.FlickerMin:=TPasJSON.GetNumber(JSONObject.Properties['flickerMin'],fData.Hologram.FlickerMin);
+  fData.Hologram.FlickerMax:=TPasJSON.GetNumber(JSONObject.Properties['flickerMax'],fData.Hologram.FlickerMax);
   JSONItem:=JSONObject.Properties['mainColor'];
   if assigned(JSONItem) and (JSONItem is TPasJSONItemArray) and (TPasJSONItemArray(JSONItem).Count=3) then begin
    fData.Hologram.MainColorFactor.x:=TPasJSON.GetNumber(TPasJSONItemArray(JSONItem).Items[0],fData.Hologram.MainColorFactor.x);
@@ -9521,10 +9557,12 @@ begin
   fData.Hologram.RimThreshold:=TPasJSON.GetNumber(JSONObject.Properties['rimThreshold'],fData.Hologram.RimThreshold);
   fData.Hologram.ScanTiling:=TPasJSON.GetNumber(JSONObject.Properties['scanTiling'],fData.Hologram.ScanTiling);
   fData.Hologram.ScanSpeed:=TPasJSON.GetNumber(JSONObject.Properties['scanSpeed'],fData.Hologram.ScanSpeed);
-  fData.Hologram.ScanIntensity:=TPasJSON.GetNumber(JSONObject.Properties['scanIntensity'],fData.Hologram.ScanIntensity);
+  fData.Hologram.ScanMin:=TPasJSON.GetNumber(JSONObject.Properties['scanMin'],fData.Hologram.ScanMin);
+  fData.Hologram.ScanMax:=TPasJSON.GetNumber(JSONObject.Properties['scanMax'],fData.Hologram.ScanMax);
   fData.Hologram.GlowTiling:=TPasJSON.GetNumber(JSONObject.Properties['glowTiling'],fData.Hologram.GlowTiling);
   fData.Hologram.GlowSpeed:=TPasJSON.GetNumber(JSONObject.Properties['glowSpeed'],fData.Hologram.GlowSpeed);
-  fData.Hologram.GlowIntensity:=TPasJSON.GetNumber(JSONObject.Properties['glowIntensity'],fData.Hologram.GlowIntensity);
+  fData.Hologram.GlowMin:=TPasJSON.GetNumber(JSONObject.Properties['glowMin'],fData.Hologram.GlowMin);
+  fData.Hologram.GlowMax:=TPasJSON.GetNumber(JSONObject.Properties['glowMax'],fData.Hologram.GlowMax);
  end; 
 end;
 
@@ -9762,7 +9800,8 @@ begin
   PpvHalfFloat(pointer(@fShaderData.HologramDirectionY))^:=fData.Hologram.Direction.y;
   PpvHalfFloat(pointer(@fShaderData.HologramDirectionZ))^:=fData.Hologram.Direction.z;
   PpvHalfFloat(pointer(@fShaderData.HologramFlickerSpeed))^:=fData.Hologram.FlickerSpeed;
-  PpvHalfFloat(pointer(@fShaderData.HologramFlickerIntensity))^:=fData.Hologram.FlickerIntensity;
+  PpvHalfFloat(pointer(@fShaderData.HologramFlickerMin))^:=fData.Hologram.FlickerMin;
+  PpvHalfFloat(pointer(@fShaderData.HologramFlickerMax))^:=fData.Hologram.FlickerMax;
   PpvHalfFloat(pointer(@fShaderData.HologramMainColorFactorR))^:=fData.Hologram.MainColorFactor.x;
   PpvHalfFloat(pointer(@fShaderData.HologramMainColorFactorG))^:=fData.Hologram.MainColorFactor.y;
   PpvHalfFloat(pointer(@fShaderData.HologramMainColorFactorB))^:=fData.Hologram.MainColorFactor.z;
@@ -9775,10 +9814,12 @@ begin
   PpvHalfFloat(pointer(@fShaderData.HologramRimThreshold))^:=fData.Hologram.RimThreshold;
   PpvHalfFloat(pointer(@fShaderData.HologramScanTiling))^:=fData.Hologram.ScanTiling;
   PpvHalfFloat(pointer(@fShaderData.HologramScanSpeed))^:=fData.Hologram.ScanSpeed;
-  PpvHalfFloat(pointer(@fShaderData.HologramScanIntensity))^:=fData.Hologram.ScanIntensity;
+  PpvHalfFloat(pointer(@fShaderData.HologramScanMin))^:=fData.Hologram.ScanMin;
+  PpvHalfFloat(pointer(@fShaderData.HologramScanMax))^:=fData.Hologram.ScanMax;
   PpvHalfFloat(pointer(@fShaderData.HologramGlowTiling))^:=fData.Hologram.GlowTiling;
   PpvHalfFloat(pointer(@fShaderData.HologramGlowSpeed))^:=fData.Hologram.GlowSpeed;
-  PpvHalfFloat(pointer(@fShaderData.HologramGlowIntensity))^:=fData.Hologram.GlowIntensity;
+  PpvHalfFloat(pointer(@fShaderData.HologramGlowMin))^:=fData.Hologram.GlowMin;
+  PpvHalfFloat(pointer(@fShaderData.HologramGlowMax))^:=fData.Hologram.GlowMax;
  end;
 
  TPasMPInterlocked.Increment(fGeneration);
@@ -11759,8 +11800,10 @@ begin
            fTarget:=TAnimation.TChannel.TTarget.PointerMaterialHologramDirection;
           end else if TargetPointerStrings[4]='flickerSpeed' then begin
            fTarget:=TAnimation.TChannel.TTarget.PointerMaterialHologramFlickerSpeed;
-          end else if TargetPointerStrings[4]='flickerIntensity' then begin
-           fTarget:=TAnimation.TChannel.TTarget.PointerMaterialHologramFlickerIntensity; 
+          end else if TargetPointerStrings[4]='flickerMin' then begin
+           fTarget:=TAnimation.TChannel.TTarget.PointerMaterialHologramFlickerMin; 
+          end else if TargetPointerStrings[4]='flickerMax' then begin
+           fTarget:=TAnimation.TChannel.TTarget.PointerMaterialHologramFlickerMax;
           end else if TargetPointerStrings[4]='mainColor' then begin
            fTarget:=TAnimation.TChannel.TTarget.PointerMaterialHologramMainColor;
           end else if TargetPointerStrings[4]='mainAlpha' then begin
@@ -11777,14 +11820,18 @@ begin
            fTarget:=TAnimation.TChannel.TTarget.PointerMaterialHologramScanTiling;
           end else if TargetPointerStrings[4]='scanSpeed' then begin
            fTarget:=TAnimation.TChannel.TTarget.PointerMaterialHologramScanSpeed;
-          end else if TargetPointerStrings[4]='scanIntensity' then begin
-           fTarget:=TAnimation.TChannel.TTarget.PointerMaterialHologramScanIntensity;
+          end else if TargetPointerStrings[4]='scanMin' then begin
+           fTarget:=TAnimation.TChannel.TTarget.PointerMaterialHologramScanMin;
+          end else if TargetPointerStrings[4]='scanMax' then begin
+           fTarget:=TAnimation.TChannel.TTarget.PointerMaterialHologramScanMax;
           end else if TargetPointerStrings[4]='glowTiling' then begin
            fTarget:=TAnimation.TChannel.TTarget.PointerMaterialHologramGlowTiling;
           end else if TargetPointerStrings[4]='glowSpeed' then begin
            fTarget:=TAnimation.TChannel.TTarget.PointerMaterialHologramGlowSpeed;
-          end else if TargetPointerStrings[4]='glowIntensity' then begin
-           fTarget:=TAnimation.TChannel.TTarget.PointerMaterialHologramGlowIntensity;
+          end else if TargetPointerStrings[4]='glowMin' then begin
+           fTarget:=TAnimation.TChannel.TTarget.PointerMaterialHologramGlowMin;
+          end else if TargetPointerStrings[4]='glowMax' then begin
+           fTarget:=TAnimation.TChannel.TTarget.PointerMaterialHologramGlowMax;
           end;
          end;
         end;
@@ -12294,17 +12341,20 @@ begin
     TAnimation.TChannel.TTarget.PointerMaterialPBRAnisotropyRotation,
     TAnimation.TChannel.TTarget.PointerMaterialPBRDispersion,
     TAnimation.TChannel.TTarget.PointerMaterialHologramFlickerSpeed,
-    TAnimation.TChannel.TTarget.PointerMaterialHologramFlickerIntensity,
+    TAnimation.TChannel.TTarget.PointerMaterialHologramFlickerMin,
+    TAnimation.TChannel.TTarget.PointerMaterialHologramFlickerMax,
     TAnimation.TChannel.TTarget.PointerMaterialHologramMainAlpha,
     TAnimation.TChannel.TTarget.PointerMaterialHologramRimAlpha,
     TAnimation.TChannel.TTarget.PointerMaterialHologramRimPower,
     TAnimation.TChannel.TTarget.PointerMaterialHologramRimThreshold,
     TAnimation.TChannel.TTarget.PointerMaterialHologramScanTiling,
     TAnimation.TChannel.TTarget.PointerMaterialHologramScanSpeed,
-    TAnimation.TChannel.TTarget.PointerMaterialHologramScanIntensity,
+    TAnimation.TChannel.TTarget.PointerMaterialHologramScanMin,
+    TAnimation.TChannel.TTarget.PointerMaterialHologramScanMax,
     TAnimation.TChannel.TTarget.PointerMaterialHologramGlowTiling,
     TAnimation.TChannel.TTarget.PointerMaterialHologramGlowSpeed,
-    TAnimation.TChannel.TTarget.PointerMaterialHologramGlowIntensity:begin
+    TAnimation.TChannel.TTarget.PointerMaterialHologramGlowMin,
+    TAnimation.TChannel.TTarget.PointerMaterialHologramGlowMax:begin
      OutputScalarArray:=aSourceDocument.Accessors[SourceAnimationSampler.Output].DecodeAsFloatArray(false);
      try
       SetLength(DestinationAnimationChannel.fOutputScalarArray,length(OutputScalarArray));
@@ -16421,7 +16471,8 @@ begin
          TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRDispersion,
          TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramDirection,
          TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramFlickerSpeed,
-         TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramFlickerIntensity,
+         TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramFlickerMin,
+         TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramFlickerMax,
          TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramMainColor,
          TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramMainAlpha,
          TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramRimColor,
@@ -16430,10 +16481,12 @@ begin
          TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramRimThreshold,
          TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramScanTiling,
          TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramScanSpeed,
-         TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramScanIntensity,
+         TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramScanMin,
+         TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramScanMax,
          TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramGlowTiling,
          TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramGlowSpeed,
-         TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramGlowIntensity,
+         TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramGlowMin,
+         TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramGlowMax,
          TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerTextureOffset,
          TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerTextureRotation,
          TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerTextureScale:begin
@@ -20037,7 +20090,8 @@ var Index,AnimatedTextureIndex:TpvSizeInt;
     MaterialPBRDispersionSum:TpvScene3D.TScalarSum;
     MaterialHologramDirectionSum:TpvScene3D.TVector3Sum;
     MaterialHologramFlickerSpeedSum:TpvScene3D.TScalarSum;
-    MaterialHologramFlickerIntensitySum:TpvScene3D.TScalarSum;
+    MaterialHologramFlickerMinSum:TpvScene3D.TScalarSum;
+    MaterialHologramFlickerMaxSum:TpvScene3D.TScalarSum;
     MaterialHologramMainColorSum:TpvScene3D.TVector3Sum;
     MaterialHologramMainAlphaSum:TpvScene3D.TScalarSum;
     MaterialHologramRimColorSum:TpvScene3D.TVector3Sum;
@@ -20046,10 +20100,12 @@ var Index,AnimatedTextureIndex:TpvSizeInt;
     MaterialHologramRimThresholdSum:TpvScene3D.TScalarSum;
     MaterialHologramScanTilingSum:TpvScene3D.TScalarSum;
     MaterialHologramScanSpeedSum:TpvScene3D.TScalarSum;
-    MaterialHologramScanIntensitySum:TpvScene3D.TScalarSum;
+    MaterialHologramScanMinSum:TpvScene3D.TScalarSum;
+    MaterialHologramScanMaxSum:TpvScene3D.TScalarSum;
     MaterialHologramGlowTilingSum:TpvScene3D.TScalarSum;
     MaterialHologramGlowSpeedSum:TpvScene3D.TScalarSum;
-    MaterialHologramGlowIntensitySum:TpvScene3D.TScalarSum;  
+    MaterialHologramGlowMinSum:TpvScene3D.TScalarSum;  
+    MaterialHologramGlowMaxSum:TpvScene3D.TScalarSum;      
     AnimatedTextureMask:TpvUInt64;
     TextureTransform:TpvScene3D.TMaterial.TTextureReference.PTransform;
     WorkTextureTransform:TpvScene3D.TMaterial.TTextureReference.PTransform;
@@ -20092,7 +20148,8 @@ begin
   MaterialPBRDispersionSum.Clear;
   MaterialHologramDirectionSum.Clear;
   MaterialHologramFlickerSpeedSum.Clear;
-  MaterialHologramFlickerIntensitySum.Clear;
+  MaterialHologramFlickerMinSum.Clear;
+  MaterialHologramFlickerMaxSum.Clear;
   MaterialHologramMainColorSum.Clear;
   MaterialHologramMainAlphaSum.Clear;
   MaterialHologramRimColorSum.Clear;
@@ -20101,10 +20158,12 @@ begin
   MaterialHologramRimThresholdSum.Clear;
   MaterialHologramScanTilingSum.Clear;
   MaterialHologramScanSpeedSum.Clear;
-  MaterialHologramScanIntensitySum.Clear;
+  MaterialHologramScanMinSum.Clear;
+  MaterialHologramScanMaxSum.Clear;
   MaterialHologramGlowTilingSum.Clear;
   MaterialHologramGlowSpeedSum.Clear;
-  MaterialHologramGlowIntensitySum.Clear;
+  MaterialHologramGlowMinSum.Clear;
+  MaterialHologramGlowMaxSum.Clear;
   begin
    AnimatedTextureMask:=fData.AnimatedTextureMask;
    while AnimatedTextureMask<>0 do begin
@@ -20151,7 +20210,8 @@ begin
       MaterialPBRDispersionSum.Add(fData.Dispersion.Dispersion,Factor,Additive);
       MaterialHologramDirectionSum.Add(fData.Hologram.Direction,Factor,Additive);
       MaterialHologramFlickerSpeedSum.Add(fData.Hologram.FlickerSpeed,Factor,Additive);
-      MaterialHologramFlickerIntensitySum.Add(fData.Hologram.FlickerIntensity,Factor,Additive);
+      MaterialHologramFlickerMinSum.Add(fData.Hologram.FlickerMin,Factor,Additive);
+      MaterialHologramFlickerMaxSum.Add(fData.Hologram.FlickerMax,Factor,Additive);
       MaterialHologramMainColorSum.Add(fData.Hologram.MainColorFactor.xyz,Factor,Additive);
       MaterialHologramMainAlphaSum.Add(fData.Hologram.MainColorFactor.w,Factor,Additive);
       MaterialHologramRimColorSum.Add(fData.Hologram.RimColorFactor.xyz,Factor,Additive);
@@ -20160,10 +20220,12 @@ begin
       MaterialHologramRimThresholdSum.Add(fData.Hologram.RimThreshold,Factor,Additive);
       MaterialHologramScanTilingSum.Add(fData.Hologram.ScanTiling,Factor,Additive);
       MaterialHologramScanSpeedSum.Add(fData.Hologram.ScanSpeed,Factor,Additive);
-      MaterialHologramScanIntensitySum.Add(fData.Hologram.ScanIntensity,Factor,Additive);
+      MaterialHologramScanMinSum.Add(fData.Hologram.ScanMin,Factor,Additive);
+      MaterialHologramScanMaxSum.Add(fData.Hologram.ScanMax,Factor,Additive);
       MaterialHologramGlowTilingSum.Add(fData.Hologram.GlowTiling,Factor,Additive);
       MaterialHologramGlowSpeedSum.Add(fData.Hologram.GlowSpeed,Factor,Additive);
-      MaterialHologramGlowIntensitySum.Add(fData.Hologram.GlowIntensity,Factor,Additive);
+      MaterialHologramGlowMinSum.Add(fData.Hologram.GlowMin,Factor,Additive);
+      MaterialHologramGlowMaxSum.Add(fData.Hologram.GlowMax,Factor,Additive);
      end else begin
       // Texture
       TextureTransform:=fData.GetTextureTransform(TpvScene3D.TTextureIndex(Overwrite^.SubIndex));
@@ -20372,11 +20434,18 @@ begin
         MaterialHologramFlickerSpeedSum.Add(Overwrite^.MaterialHologramFlickerSpeed,Factor,Additive);
        end;
       end;
-      if TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramFlickerIntensity in Overwrite^.Flags then begin
-       if TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialHologramFlickerIntensity in Overwrite^.Flags then begin
-        MaterialHologramFlickerIntensitySum.Add(fData.Hologram.FlickerIntensity,Factor,Additive);
+      if TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramFlickerMin in Overwrite^.Flags then begin
+       if TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialHologramFlickerMin in Overwrite^.Flags then begin
+        MaterialHologramFlickerMinSum.Add(fData.Hologram.FlickerMin,Factor,Additive);
        end else begin
-        MaterialHologramFlickerIntensitySum.Add(Overwrite^.MaterialHologramFlickerIntensity,Factor,Additive);
+        MaterialHologramFlickerMinSum.Add(Overwrite^.MaterialHologramFlickerMin,Factor,Additive);
+       end;
+      end;
+      if TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramFlickerMax in Overwrite^.Flags then begin
+       if TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialHologramFlickerMax in Overwrite^.Flags then begin
+        MaterialHologramFlickerMaxSum.Add(fData.Hologram.FlickerMax,Factor,Additive);
+       end else begin
+        MaterialHologramFlickerMaxSum.Add(Overwrite^.MaterialHologramFlickerMax,Factor,Additive);
        end;
       end;
       if TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramMainColor in Overwrite^.Flags then begin
@@ -20435,11 +20504,18 @@ begin
         MaterialHologramScanSpeedSum.Add(Overwrite^.MaterialHologramScanSpeed,Factor,Additive);
        end;
       end;
-      if TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramScanIntensity in Overwrite^.Flags then begin
-       if TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialHologramScanIntensity in Overwrite^.Flags then begin
-        MaterialHologramScanIntensitySum.Add(fData.Hologram.ScanIntensity,Factor,Additive);
+      if TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramScanMin in Overwrite^.Flags then begin
+       if TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialHologramScanMin in Overwrite^.Flags then begin
+        MaterialHologramScanMinSum.Add(fData.Hologram.ScanMin,Factor,Additive);
        end else begin
-        MaterialHologramScanIntensitySum.Add(Overwrite^.MaterialHologramScanIntensity,Factor,Additive);
+        MaterialHologramScanMinSum.Add(Overwrite^.MaterialHologramScanMin,Factor,Additive);
+       end;
+      end;
+      if TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramScanMax in Overwrite^.Flags then begin
+       if TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialHologramScanMax in Overwrite^.Flags then begin
+        MaterialHologramScanMaxSum.Add(fData.Hologram.ScanMax,Factor,Additive);
+       end else begin
+        MaterialHologramScanMaxSum.Add(Overwrite^.MaterialHologramScanMax,Factor,Additive);
        end;
       end;
       if TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramGlowTiling in Overwrite^.Flags then begin
@@ -20456,13 +20532,20 @@ begin
         MaterialHologramGlowSpeedSum.Add(Overwrite^.MaterialHologramGlowSpeed,Factor,Additive);
        end;
       end;
-      if TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramGlowIntensity in Overwrite^.Flags then begin
-       if TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialHologramGlowIntensity in Overwrite^.Flags then begin
-        MaterialHologramGlowIntensitySum.Add(fData.Hologram.GlowIntensity,Factor,Additive);
+      if TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramGlowMin in Overwrite^.Flags then begin
+       if TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialHologramGlowMin in Overwrite^.Flags then begin
+        MaterialHologramGlowMinSum.Add(fData.Hologram.GlowMin,Factor,Additive);
        end else begin
-        MaterialHologramGlowIntensitySum.Add(Overwrite^.MaterialHologramGlowIntensity,Factor,Additive);
+        MaterialHologramGlowMinSum.Add(Overwrite^.MaterialHologramGlowMin,Factor,Additive);
        end;
       end;      
+      if TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramGlowMax in Overwrite^.Flags then begin
+       if TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialHologramGlowMax in Overwrite^.Flags then begin
+        MaterialHologramGlowMaxSum.Add(fData.Hologram.GlowMax,Factor,Additive);
+       end else begin
+        MaterialHologramGlowMaxSum.Add(Overwrite^.MaterialHologramGlowMax,Factor,Additive);
+       end;
+      end;
      end else begin
       // Texture
       TextureTransform:=fData.GetTextureTransform(TpvScene3D.TTextureIndex(Overwrite^.SubIndex));
@@ -20521,7 +20604,8 @@ begin
   fWorkData.Dispersion.Dispersion:=MaterialPBRDispersionSum.Get(fWorkData.Dispersion.Dispersion);
   fWorkData.Hologram.Direction:=MaterialHologramDirectionSum.Get(fWorkData.Hologram.Direction);
   fWorkData.Hologram.FlickerSpeed:=MaterialHologramFlickerSpeedSum.Get(fWorkData.Hologram.FlickerSpeed);
-  fWorkData.Hologram.FlickerIntensity:=MaterialHologramFlickerIntensitySum.Get(fWorkData.Hologram.FlickerIntensity);
+  fWorkData.Hologram.FlickerMin:=MaterialHologramFlickerMinSum.Get(fWorkData.Hologram.FlickerMin);
+  fWorkData.Hologram.FlickerMax:=MaterialHologramFlickerMaxSum.Get(fWorkData.Hologram.FlickerMax);
   fWorkData.Hologram.MainColorFactor.xyz:=MaterialHologramMainColorSum.Get(fWorkData.Hologram.MainColorFactor.xyz);
   fWorkData.Hologram.MainColorFactor.w:=MaterialHologramMainAlphaSum.Get(fWorkData.Hologram.MainColorFactor.w);
   fWorkData.Hologram.RimColorFactor.xyz:=MaterialHologramRimColorSum.Get(fWorkData.Hologram.RimColorFactor.xyz);
@@ -20530,10 +20614,12 @@ begin
   fWorkData.Hologram.RimThreshold:=MaterialHologramRimThresholdSum.Get(fWorkData.Hologram.RimThreshold);
   fWorkData.Hologram.ScanTiling:=MaterialHologramScanTilingSum.Get(fWorkData.Hologram.ScanTiling);
   fWorkData.Hologram.ScanSpeed:=MaterialHologramScanSpeedSum.Get(fWorkData.Hologram.ScanSpeed);
-  fWorkData.Hologram.ScanIntensity:=MaterialHologramScanIntensitySum.Get(fWorkData.Hologram.ScanIntensity);
+  fWorkData.Hologram.ScanMin:=MaterialHologramScanMinSum.Get(fWorkData.Hologram.ScanMin);
+  fWorkData.Hologram.ScanMax:=MaterialHologramScanMaxSum.Get(fWorkData.Hologram.ScanMax);
   fWorkData.Hologram.GlowTiling:=MaterialHologramGlowTilingSum.Get(fWorkData.Hologram.GlowTiling);
   fWorkData.Hologram.GlowSpeed:=MaterialHologramGlowSpeedSum.Get(fWorkData.Hologram.GlowSpeed);
-  fWorkData.Hologram.GlowIntensity:=MaterialHologramGlowIntensitySum.Get(fWorkData.Hologram.GlowIntensity);
+  fWorkData.Hologram.GlowMin:=MaterialHologramGlowMinSum.Get(fWorkData.Hologram.GlowMin);
+  fWorkData.Hologram.GlowMax:=MaterialHologramGlowMaxSum.Get(fWorkData.Hologram.GlowMax);
   begin
    AnimatedTextureMask:=fData.AnimatedTextureMask;
    while AnimatedTextureMask<>0 do begin
@@ -23049,7 +23135,8 @@ procedure TpvScene3D.TGroup.TInstance.Update(const aInFlightFrameIndex:TpvSizeIn
       TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRDispersion,
       TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramDirection,
       TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramFlickerSpeed,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramFlickerIntensity,
+      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramFlickerMin,
+      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramFlickerMax,
       TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramMainColor,
       TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramMainAlpha,
       TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramRimColor,
@@ -23058,10 +23145,12 @@ procedure TpvScene3D.TGroup.TInstance.Update(const aInFlightFrameIndex:TpvSizeIn
       TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramRimThreshold,
       TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramScanTiling,
       TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramScanSpeed,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramScanIntensity,
+      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramScanMin,
+      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramScanMax,
       TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramGlowTiling,
       TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramGlowSpeed,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramGlowIntensity,      
+      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramGlowMin, 
+      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramGlowMax,
       TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerTextureOffset,
       TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerTextureRotation,
       TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerTextureScale:begin
@@ -23253,10 +23342,15 @@ procedure TpvScene3D.TGroup.TInstance.Update(const aInFlightFrameIndex:TpvSizeIn
              Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramFlickerSpeed);
              MaterialOverwrite^.MaterialHologramFlickerSpeed:=Scalar;
             end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramFlickerIntensity:begin
+            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramFlickerMin:begin
              ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
-             Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramFlickerIntensity);
-             MaterialOverwrite^.MaterialHologramFlickerIntensity:=Scalar;
+             Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramFlickerMin);
+             MaterialOverwrite^.MaterialHologramFlickerMin:=Scalar;
+            end;
+            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramFlickerMax:begin
+             ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
+             Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramFlickerMax);
+             MaterialOverwrite^.MaterialHologramFlickerMax:=Scalar;
             end;
             TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramMainColor:begin
              ProcessVector3(Vector3,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
@@ -23298,10 +23392,15 @@ procedure TpvScene3D.TGroup.TInstance.Update(const aInFlightFrameIndex:TpvSizeIn
              Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramScanSpeed);
              MaterialOverwrite^.MaterialHologramScanSpeed:=Scalar;
             end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramScanIntensity:begin
+            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramScanMin:begin
              ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
-             Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramScanIntensity);
-             MaterialOverwrite^.MaterialHologramScanIntensity:=Scalar;
+             Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramScanMin);
+             MaterialOverwrite^.MaterialHologramScanMin:=Scalar;
+            end;
+            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramScanMax:begin
+             ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
+             Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramScanMax);
+             MaterialOverwrite^.MaterialHologramScanMax:=Scalar;
             end;
             TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramGlowTiling:begin
              ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
@@ -23313,10 +23412,15 @@ procedure TpvScene3D.TGroup.TInstance.Update(const aInFlightFrameIndex:TpvSizeIn
              Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramGlowSpeed);
              MaterialOverwrite^.MaterialHologramGlowSpeed:=Scalar;
             end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramGlowIntensity:begin
+            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramGlowMin:begin
              ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
-             Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramGlowIntensity);
-             MaterialOverwrite^.MaterialHologramGlowIntensity:=Scalar;
+             Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramGlowMin);
+             MaterialOverwrite^.MaterialHologramGlowMin:=Scalar;
+            end;
+            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramGlowMax:begin
+             ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
+             Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramGlowMax);
+             MaterialOverwrite^.MaterialHologramGlowMax:=Scalar;
             end;
             TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerTextureOffset:begin
              ProcessVector2(Vector2,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
@@ -23612,7 +23716,8 @@ procedure TpvScene3D.TGroup.TInstance.Update(const aInFlightFrameIndex:TpvSizeIn
       TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRDispersion,
       TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramDirection,
       TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramFlickerSpeed,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramFlickerIntensity,
+      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramFlickerMin,
+      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramFlickerMax,
       TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramMainColor,
       TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramMainAlpha,
       TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramRimColor,
@@ -23621,10 +23726,12 @@ procedure TpvScene3D.TGroup.TInstance.Update(const aInFlightFrameIndex:TpvSizeIn
       TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramRimThreshold,
       TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramScanTiling,
       TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramScanSpeed,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramScanIntensity,
+      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramScanMin,
+      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramScanMax,
       TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramGlowTiling,
       TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramGlowSpeed,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramGlowIntensity,
+      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramGlowMin,
+      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramGlowMax,
       TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerTextureOffset,
       TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerTextureRotation,
       TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerTextureScale:begin
@@ -23775,9 +23882,13 @@ procedure TpvScene3D.TGroup.TInstance.Update(const aInFlightFrameIndex:TpvSizeIn
              MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialHologramFlickerSpeed,
                                                                  TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramFlickerSpeed];
             end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramFlickerIntensity:begin
-             MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialHologramFlickerIntensity,
-                                                                 TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramFlickerIntensity];
+            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramFlickerMin:begin
+             MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialHologramFlickerMin,
+                                                                 TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramFlickerMin];
+            end;
+            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramFlickerMax:begin
+             MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialHologramFlickerMax,
+                                                                 TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramFlickerMax];
             end;
             TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramMainColor:begin
              MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialHologramMainColor,
@@ -23811,9 +23922,13 @@ procedure TpvScene3D.TGroup.TInstance.Update(const aInFlightFrameIndex:TpvSizeIn
              MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialHologramScanSpeed,
                                                                  TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramScanSpeed];
             end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramScanIntensity:begin
-             MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialHologramScanIntensity,
-                                                                 TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramScanIntensity];
+            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramScanMin:begin
+             MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialHologramScanMin,
+                                                                 TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramScanMin];
+            end;
+            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramScanMax:begin
+             MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialHologramScanMax,
+                                                                 TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramScanMax];
             end;
             TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramGlowTiling:begin
              MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialHologramGlowTiling,
@@ -23823,9 +23938,13 @@ procedure TpvScene3D.TGroup.TInstance.Update(const aInFlightFrameIndex:TpvSizeIn
              MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialHologramGlowSpeed,
                                                                  TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramGlowSpeed];
             end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramGlowIntensity:begin
-             MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialHologramGlowIntensity,
-                                                                 TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramGlowIntensity];
+            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramGlowMin:begin
+             MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialHologramGlowMin,
+                                                                 TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramGlowMin];
+            end;
+            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramGlowMax:begin
+             MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialHologramGlowMax,
+                                                                 TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramGlowMax];
             end;
             TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerTextureOffset:begin
              MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultTextureOffset,
@@ -32071,7 +32190,8 @@ begin
    TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRDispersion,
    TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramDirection,
    TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramFlickerSpeed,
-   TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramFlickerIntensity,
+   TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramFlickerMin,
+   TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramFlickerMax,
    TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramMainColor,
    TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramMainAlpha,
    TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramRimColor,
@@ -32080,10 +32200,12 @@ begin
    TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramRimThreshold,
    TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramScanTiling,
    TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramScanSpeed,
-   TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramScanIntensity,
+   TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramScanMin,
+   TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramScanMax,
    TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramGlowTiling,
    TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramGlowSpeed,
-   TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramGlowIntensity,   
+   TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramGlowMin,
+   TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramGlowMax, 
    TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerTextureOffset,
    TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerTextureRotation,
    TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerTextureScale:begin
