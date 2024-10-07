@@ -1089,32 +1089,35 @@ type EpvScene3D=class(Exception);
                        Unused2:TpvUInt32;
                       // uvec4 Dispersion End
                       // uvec4 Hologram Blocks begin
-                       HologramDirectionX:TpvUInt16;
-                       HologramDirectionY:TpvUInt16;
-                       HologramDirectionZ:TpvUInt16;
-                       HologramFlickerSpeed:TpvUInt16;                                              
-                       HologramFlickerMin:TpvUInt16;
-                       HologramFlickerMax:TpvUInt16;
-                       HologramMainColorFactorR:TpvUInt16;
-                       HologramMainColorFactorG:TpvUInt16;
+                       HologramDirectionX:TpvUInt16; // b0.x
+                       HologramDirectionY:TpvUInt16; // b0.y
+                       HologramDirectionZ:TpvUInt16; // b0.z
+                       HologramFlickerSpeed:TpvUInt16; // b0.w
 
-                       HologramMainColorFactorB:TpvUInt16;
-                       HologramMainColorFactorA:TpvUInt16;
-                       HologramRimColorFactorR:TpvUInt16;
-                       HologramRimColorFactorG:TpvUInt16;                       
-                       HologramRimColorFactorB:TpvUInt16;
-                       HologramRimColorFactorA:TpvUInt16;
-                       HologramRimPower:TpvUInt16;
-                       HologramRimThreshold:TpvUInt16;
+                       HologramFlickerMin:TpvUInt16; // b1.x
+                       HologramFlickerMax:TpvUInt16; // b1.y
+                       HologramMainColorFactorR:TpvUInt16; // b1.z
+                       HologramMainColorFactorG:TpvUInt16; // b1.w
 
-                       HologramScanTiling:TpvUInt16;
-                       HologramScanSpeed:TpvUInt16;
-                       HologramScanMin:TpvUInt16;
-                       HologramScanMax:TpvUInt16;
-                       HologramGlowTiling:TpvUInt16;
-                       HologramGlowSpeed:TpvUInt16;
-                       HologramGlowMin:TpvUInt16;
-                       HologramGlowMax:TpvUInt16;
+                       HologramMainColorFactorB:TpvUInt16; // b2.x
+                       HologramMainColorFactorA:TpvUInt16; // b2.y
+                       HologramRimColorFactorR:TpvUInt16; // b2.z
+                       HologramRimColorFactorG:TpvUInt16; // b2.w
+
+                       HologramRimColorFactorB:TpvUInt16; // b3.x
+                       HologramRimColorFactorA:TpvUInt16; // b3.y
+                       HologramRimPower:TpvUInt16; // b3.z
+                       HologramRimThreshold:TpvUInt16; // b3.w
+
+                       HologramScanTiling:TpvUInt16; // b4.x
+                       HologramScanSpeed:TpvUInt16; // b4.y
+                       HologramScanMin:TpvUInt16; // b4.z
+                       HologramScanMax:TpvUInt16; // b4.w
+
+                       HologramGlowTiling:TpvUInt16; // b5.x
+                       HologramGlowSpeed:TpvUInt16; // b5.y
+                       HologramGlowMin:TpvUInt16; // b5.z
+                       HologramGlowMax:TpvUInt16; // b5.w
 
                       // uvec4 Hologram Blocks end
                       // uvec4 AlphaCutOffFlags begin
