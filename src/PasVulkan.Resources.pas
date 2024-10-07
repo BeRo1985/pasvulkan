@@ -902,7 +902,7 @@ begin
  if pvApplication.Assets.ExistAsset(String(SanitizedFileName)) then begin
   result:=pvApplication.Assets.GetAssetStream(String(SanitizedFileName));
   fIsAsset:=true;
-  fAssetBasePath:=ExtractFilePath(SanitizedFileName);
+  fAssetBasePath:=PasVulkan.Utils.ExtractFilePath(SanitizedFileName);
  end else begin
   if FileExists(String(SanitizedFileName)) then begin
    result:=TFileStream.Create(String(SanitizedFileName),fmOpenRead);

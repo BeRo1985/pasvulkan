@@ -210,6 +210,7 @@ function MatchPattern(Input,Pattern:PAnsiChar):boolean;
 function IsPathSeparator(const aChar:AnsiChar):Boolean;
 function ExpandRelativePath(const aRelativePath:TpvRawByteString;const aBasePath:TpvRawByteString=''):TpvRawByteString;
 function ConvertPathToRelative(aAbsolutePath,aBasePath:TpvRawByteString):TpvRawByteString;
+function ExtractFilePath(aPath:TpvRawByteString):TpvRawByteString;
 
 function SizeToHumanReadableString(const aSize:TpvUInt64):TpvRawByteString;
 
@@ -1847,6 +1848,18 @@ begin
   end;
   if AbsolutePathIndex<=length(aAbsolutePath) then begin
    result:=result+copy(aAbsolutePath,AbsolutePathIndex,(length(aAbsolutePath)-AbsolutePathIndex)+1);
+  end;
+ end;
+end;
+
+function ExtractFilePath(aPath:TpvRawByteString):TpvRawByteString;
+var Index:TpvInt32;
+begin
+ result:=aPath;
+ for Index:=length(result) downto 1 do begin
+  if IsPathSeparator(result[Index]) then begin
+   SetLength(result,Index);
+   exit;
   end;
  end;
 end;
