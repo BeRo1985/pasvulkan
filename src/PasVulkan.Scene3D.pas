@@ -3254,6 +3254,7 @@ type EpvScene3D=class(Exception);
             TSamplerHashMap=TpvHashMap<TSampler.THashData,TSampler>;
             TTextureHashMap=TpvHashMap<TTexture.THashData,TTexture>;
             TMaterialHashMap=TpvHashMap<TMaterial.THashData,TMaterial>;
+            TMaterialExistHashMap=TpvHashMap<TMaterial,Boolean>;
             TBufferMemoryBarriers=TpvDynamicArray<TVkBufferMemoryBarrier>;
             TInFlightFrameBufferMemoryBarriers=array[0..MaxInFlightFrames-1] of TBufferMemoryBarriers;
             TMaterialBufferData=array[0..65535] of TMaterial.TShaderData;
@@ -3522,6 +3523,7 @@ type EpvScene3D=class(Exception);
        fMaterialIDToUpdateDirtyMaps:TMaterialIDDirtyMaps;
        fMaterialIDMap:TMaterialIDMap;
        fMaterialHashMap:TMaterialHashMap;
+       fMaterialExistHashMap:TMaterialExistHashMap;
        fEmptyMaterial:TpvScene3D.TMaterial;
        fMaterialDataProcessedGenerations:array[0..MaxInFlightFrames-1] of TpvUInt64;
        fMaterialDataUpdatedGenerations:array[0..MaxInFlightFrames-1] of TpvUInt64;
@@ -8007,6 +8009,7 @@ begin
   fSceneInstance.fMaterialListLock.Acquire;
   try
    fSceneInstance.fMaterials.Add(self);
+   fSceneInstance.fMaterialExistHashMap.Add(self,true);
    fID:=fSceneInstance.fMaterialIDManager.AllocateID;
    fSceneInstance.fMaterialIDHashMap.Add(fID,self);
    if (fID>0) and (fID<$10000) then begin
@@ -8042,6 +8045,9 @@ begin
     fSceneInstance.fMaterials.Remove(self);
     if fSceneInstance.fMaterialHashMap[fData]=self then begin
      fSceneInstance.fMaterialHashMap.Delete(fData);
+    end;
+    if fSceneInstance.fMaterialExistHashMap.ExistKey(self) then begin
+     fSceneInstance.fMaterialExistHashMap.Delete(self);
     end;
     if fID>0 then begin
      if fID<$10000 then begin
@@ -17541,7 +17547,7 @@ begin
     Material:=nil;
    end else begin
     HashedMaterial:=fSceneInstance.fMaterialHashMap[HashData];
-    if assigned(HashedMaterial) then begin
+    if assigned(HashedMaterial) and fSceneInstance.fMaterialExistHashMap.ExistKey(HashedMaterial) then begin
      result:=fMaterials.Add(HashedMaterial);
      fMaterialIndexHashMap.Add(HashedMaterial,result);
     end else begin
@@ -26528,6 +26534,8 @@ begin
 
  fMaterialHashMap:=TMaterialHashMap.Create(nil);
 
+ fMaterialExistHashMap:=TMaterialExistHashMap.Create(false);
+
  FillChar(fInFlightFrameMaterialBufferDataGenerations,SizeOf(TInFlightFrameMaterialBufferDataGenerations),#$ff);
 
  FillChar(fSceneTimes,SizeOf(TSceneTimes),#0);
@@ -27208,6 +27216,7 @@ begin
  end;
  FreeAndNil(fMaterials);
  FreeAndNil(fMaterialHashMap);
+ FreeAndNil(fMaterialExistHashMap);
  FreeAndNil(fMaterialIDHashMap);
  FreeAndNil(fMaterialIDManager);
  FreeAndNil(fMaterialListLock);

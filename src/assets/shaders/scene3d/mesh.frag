@@ -865,7 +865,7 @@ void main() {
       const float hologramTime = float(uint(pushConstants.timeSecondsTimeFractionalSecond.x & 4095u)) + uintBitsToFloat(pushConstants.timeSecondsTimeFractionalSecond.y);
 
       // Calculate the scan line part of the hologram effect
-      const float scanLine = (hologramScanMin < hologramScanMax) ? mix(hologramScanMin, hologramScanMax, clamp(fma(sin((vertexDirection * hologramScanTiling) + (hologramTime * hologramScanSpeed)), 0.75, 0.5), 0.0, 1.0)) : hologramScanMin;
+      const float scanLine = (hologramScanMin < hologramScanMax) ? mix(hologramScanMin, hologramScanMax, clamp(fma(sin((vertexDirection * 6.283185307179586 * hologramScanTiling) + (hologramTime * hologramScanSpeed)), 0.75, 0.5), 0.0, 1.0)) : hologramScanMin;
 
       // Calculate the screen-retrace-like glow part of the hologram effect
       const float glow = (hologramGlowMin < hologramGlowMax) ? mix(hologramGlowMin, hologramGlowMax, fract((vertexDirection * hologramGlowTiling) - (hologramTime * hologramGlowSpeed))) : hologramGlowMin;

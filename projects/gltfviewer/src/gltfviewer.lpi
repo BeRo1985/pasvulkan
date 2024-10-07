@@ -23,13 +23,13 @@
     </PublishOptions>
     <RunParams>
       <local>
-        <CommandLineParams Value="&quot;\home\bero\Projects\GitHub\pasvulkan\docs\gltf_animation_api\spheretest.glb&quot; --antialiasing-mode msaasmaa --depth-of-field-mode none --force-use-validation-layers"/>
+        <CommandLineParams Value="&quot;\home\bero\Projects\GLTF\a4\dancers.glb&quot; --antialiasing-mode msaasmaa --depth-of-field-mode none --force-use-validation-layers"/>
       </local>
       <FormatVersion Value="2"/>
       <Modes Count="1">
         <Mode0 Name="default">
           <local>
-            <CommandLineParams Value="&quot;\home\bero\Projects\GitHub\pasvulkan\docs\gltf_animation_api\spheretest.glb&quot; --antialiasing-mode msaasmaa --depth-of-field-mode none --force-use-validation-layers"/>
+            <CommandLineParams Value="&quot;\home\bero\Projects\GLTF\a4\dancers.glb&quot; --antialiasing-mode msaasmaa --depth-of-field-mode none --force-use-validation-layers"/>
           </local>
         </Mode0>
       </Modes>
