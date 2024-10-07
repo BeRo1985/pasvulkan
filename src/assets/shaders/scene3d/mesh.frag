@@ -831,7 +831,7 @@ void main() {
         // pass the clip space position to the fragment shader, which is not done here, because the clip space position is not needed for other purposes otherwise,
         // so it is calculated here in the fragment shader instead, only for the hologram effect, if enabled. Given that it's not used in excessive amounts.   
         vec4 clipSpace = (view.projectionMatrix * view.viewMatrix) * vec4(inWorldSpacePosition, 1.0);
-        vertexDirection = fma(clipSpace.y / clipSpace.w, 0.5, 0.5);
+        vertexDirection = fma(clipSpace.y / clipSpace.w, -0.5 * sign(hologramDirection.y), 0.5); // The sign of the y component of the hologram direction is used to determine the direction of the hologram effect
       }else{
         if(hologramDirectionLength < 1e-6){
           // When the hologram direction is zero or nearly zero, it is assumed that it is a view direction based hologram (as a distinguishing criterion) (it's similar to the screen space based hologram, but a bit different anyway) 
