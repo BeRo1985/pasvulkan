@@ -1478,6 +1478,7 @@ type TpvScene3DPlanets=class;
        fPhysicsTileResolution:TpvInt32;
        fVisualResolution:TpvSizeInt;
        fPhysicsResolution:TpvSizeInt;
+       fGenerateLODIndices:Boolean;
        fBottomRadius:TpvFloat; // Start of the lowest planet ground
        fTopRadius:TpvFloat; // End of the atmosphere
        fHeightMapScale:TpvFloat; // Scale factor for the height map
@@ -1570,7 +1571,8 @@ type TpvScene3DPlanets=class;
                           const aVisualResolution:TpvSizeInt=4096;
                           const aPhysicsResolution:TpvSizeInt=1024;
                           const aBottomRadius:TpvFloat=70.0;
-                          const aTopRadius:TpvFloat=100.0); reintroduce;
+                          const aTopRadius:TpvFloat=100.0;
+                          const aGenerateLODIndices:Boolean=false); reintroduce;
        destructor Destroy; override;
        procedure AfterConstruction; override;
        procedure BeforeDestruction; override;
@@ -14067,7 +14069,8 @@ constructor TpvScene3DPlanet.Create(const aScene3D:TObject;
                                     const aVisualResolution:TpvSizeInt;
                                     const aPhysicsResolution:TpvSizeInt;
                                     const aBottomRadius:TpvFloat;
-                                    const aTopRadius:TpvFloat);
+                                    const aTopRadius:TpvFloat;
+                                    const aGenerateLODIndices:Boolean);
 var InFlightFrameIndex,Index,Resolution:TpvSizeInt;
 //  ta,tb:TpvHighResolutionTime;
     TileLODLevels:TTileLODLevels;
@@ -14115,6 +14118,8 @@ begin
  fMaxGrassVertices:=Max(65536,(512 shl 20) div SizeOf(TpvScene3DPlanet.TGrassVertex));
 
  fMaxGrassIndices:=Max(65536,(256 shl 20) div SizeOf(TpvUInt32));
+
+ fGenerateLODIndices:=aGenerateLODIndices;
 
  fTiledVisualMeshIndices:=TMeshIndices.Create;
 
@@ -14772,7 +14777,11 @@ begin
 
  aCountMeshIndices:=0;
 
- aCountMeshLODLevels:=Max(1,IntLog2(aTileMapResolution));
+ if fGenerateLODIndices then begin
+  aCountMeshLODLevels:=Max(1,IntLog2(aTileMapResolution));
+ end else begin
+  aCountMeshLODLevels:=1;
+ end;
 
  aMeshLODOffsets:=nil;
  SetLength(aMeshLODOffsets,aCountMeshLODLevels);
