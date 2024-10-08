@@ -836,6 +836,7 @@ type EpvScene3D=class(Exception);
               procedure LoadFromStream(const aStream:TStream);
               procedure SaveToStream(const aStream:TStream);
               procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceImage:TPasGLTF.TImage);
+              procedure DumpMemoryUsage(const aStringList:TStringList;var aTotalSizeVRAM,aTotalSizeRAM:TpvUInt64);
              published
               property Kind:TKind read fKind write fKind;
               property ResourceDataStream:TMemoryStream read fResourceDataStream write fResourceDataStream;
@@ -6826,6 +6827,34 @@ begin
  fKind:=TpvScene3D.TImage.TKind.ResourceTexture;
  fResourceDataStream.Clear;
  aSourceImage.GetResourceData(fResourceDataStream);
+end;
+
+procedure TpvScene3D.TImage.DumpMemoryUsage(const aStringList:TStringList;var aTotalSizeVRAM,aTotalSizeRAM:TpvUInt64);
+ procedure WriteLine(const s:String);
+ begin
+  aStringList.Add(s);
+ end;
+var SizeVRAM,SizeRAM,LastSizeVRAM,LastSizeRAM:TpvUInt64;
+begin
+
+ LastSizeVRAM:=aTotalSizeVRAM;
+ LastSizeRAM:=aTotalSizeRAM;
+
+ WriteLine('- Image "'+fName+'"');
+ WriteLine('');
+
+ SizeVRAM:=fTexture.RawSize;
+ SizeRAM:=0;
+ WriteLine('        Size: '+ToSize(SizeVRAM)+' on vRAM, '+ToSize(SizeRAM)+' on RAM');
+ inc(aTotalSizeVRAM,SizeVRAM);
+ inc(aTotalSizeRAM,SizeRAM);
+
+ WriteLine('  Total size: '+ToSize(aTotalSizeVRAM-LastSizeVRAM)+' on vRAM, '+ToSize(aTotalSizeRAM-LastSizeRAM)+' on RAM');
+ WriteLine('');
+
+ WriteLine('===============================================================');
+ WriteLine('');
+
 end;
 
 { TpvScene3D.TSampler }
@@ -16043,7 +16072,7 @@ begin
 
  WriteLine('- Group "'+fName+'"');
  WriteLine('');
- 
+
  SizeVRAM:=0;
  SizeRAM:=fVertices.Count*SizeOf(TVertex);
  WriteLine('                              Vertices: '+IntToStr(fVertices.Count)+' ('+ToSize(SizeVRAM)+' on vRAM, '+ToSize(SizeRAM)+' on RAM)');
@@ -27834,13 +27863,23 @@ begin
 end;
 
 procedure TpvScene3D.DumpMemoryUsage(const aStringList:TStringList);
-var Group:TGroup;
+var Image:TImage;
+    Group:TGroup;
     GroupInstance:TGroup.TInstance;
     TotalSizeVRAM,TotalSizeRAM:TpvUInt64;
 begin
 
  TotalSizeVRAM:=0;
  TotalSizeRAM:=0;
+
+ fImageListLock.Acquire;
+ try
+  for Image in fImages do begin
+   Image.DumpMemoryUsage(aStringList,TotalSizeVRAM,TotalSizeRAM);
+  end;
+ finally
+  fImageListLock.Release;
+ end;
 
  fGroupListLock.Acquire;
  try

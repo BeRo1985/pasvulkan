@@ -3446,6 +3446,7 @@ type EpvVulkanException=class(Exception);
        fKTXTexture:pointer;
        fKTXVulkanTexture:pointer;
        fAllocationGroupID:TpvUInt64;
+       fRawSize:TpvUInt64;
        procedure UpdateSRGBFormat;
        procedure SetSampler(const aSampler:TpvVulkanSampler);
       public
@@ -3636,7 +3637,7 @@ type EpvVulkanException=class(Exception);
                                  const aUsageFlags:TpvVulkanTextureUsageFlags=[]);
        destructor Destroy; override;
        procedure Unload;
-       class procedure GetMipMapSize(const aFormat:TVkFormat;const aMipMapWidth,aMipMapHeight:TpvInt32;out aMipMapSize:TVkUInt32;out aCompressed:boolean); static;
+       class function GetMipMapSize(const aFormat:TVkFormat;const aMipMapWidth,aMipMapHeight:TpvInt32;out aMipMapSize:TVkUInt64;out aCompressed:boolean;const aRaise:Boolean):Boolean; static;
        class procedure SwapEndianness(const aData:TpvPointer;
                                       const aDataSize:TVkSizeInt;
                                       const aFormat:TVkFormat;
@@ -3753,6 +3754,7 @@ type EpvVulkanException=class(Exception);
        procedure UpdateSampler;
        procedure UpdateDescriptorImageInfo;
        property DescriptorImageInfo:TVkDescriptorImageInfo read fDescriptorImageInfo;
+       property RawSize:TpvUInt64 read fRawSize;
       published
        property Device:TpvVulkanDevice read fDevice;
        property Format:TVkFormat read fFormat write fFormat;
@@ -23333,6 +23335,8 @@ begin
 
  fKTXVulkanTexture:=nil;
 
+ fRawSize:=0;
+
 end;
 
 constructor TpvVulkanTexture.CreateFromMemory(const aDevice:TpvVulkanDevice;
@@ -23693,8 +23697,9 @@ begin
  FreeAndNil(fStagingBuffer);
 end;
 
-class procedure TpvVulkanTexture.GetMipMapSize(const aFormat:TVkFormat;const aMipMapWidth,aMipMapHeight:TpvInt32;out aMipMapSize:TVkUInt32;out aCompressed:boolean);
+class function TpvVulkanTexture.GetMipMapSize(const aFormat:TVkFormat;const aMipMapWidth,aMipMapHeight:TpvInt32;out aMipMapSize:TVkUInt64;out aCompressed:boolean;const aRaise:Boolean):Boolean;
 begin
+ result:=true;
  case aFormat of
   VK_FORMAT_R8_UNORM:begin
    aMipMapSize:=aMipMapHeight*aMipMapWidth*1*SizeOf(TpvUInt8);
@@ -24082,7 +24087,13 @@ begin
    aCompressed:=false;
   end;
   else begin
-   raise EpvVulkanTextureException.Create('Non-supported texture image format ('+IntToStr(TpvInt32(aFormat))+')');
+   if aRaise then begin
+    raise EpvVulkanTextureException.Create('Non-supported texture image format ('+IntToStr(TpvInt32(aFormat))+')');
+   end else begin
+    aMipMapSize:=aMipMapHeight*aMipMapWidth*SizeOf(TpvUInt32);
+    aCompressed:=false;
+   end;
+   result:=false;
   end;
  end;
 end;
@@ -24101,7 +24112,7 @@ class procedure TpvVulkanTexture.SwapEndianness(const aData:TpvPointer;
                                                 const aDDSStructure:boolean=true);
 var MipMapLevelIndex,MipMapWidth,MipMapHeight,MipMapDepth,
     LayerIndex,DepthIndex,Index:TpvInt32;
-    DataOffset,TotalMipMapSize,StoredMipMapSize,MipMapSize:TpvUInt32;
+    DataOffset,TotalMipMapSize,StoredMipMapSize,MipMapSize:TpvUInt64;
     v16:PpvUInt16;
     v32:PpvUInt32;
     v64:PpvUInt64;
@@ -24128,7 +24139,7 @@ begin
    for LayerIndex:=0 to Max(1,aTotalCountArrayLayers)-1 do begin
     for DepthIndex:=0 to MipMapDepth-1 do begin
      MipMapSize:=0;
-     GetMipMapSize(aFormat,MipMapWidth,MipMapHeight,MipMapSize,Compressed);
+     GetMipMapSize(aFormat,MipMapWidth,MipMapHeight,MipMapSize,Compressed,true);
      Assert(TVkSizeInt(DataOffset+MipMapSize)<=TVkSizeInt(aDataSize));
      case aSwapEndiannessTexels of
       2:begin
@@ -24454,11 +24465,14 @@ procedure TpvVulkanTexture.Finish(const aGraphicsQueue:TpvVulkanQueue;
                                   const aTransferCommandBuffer:TpvVulkanCommandBuffer;
                                   const aTransferFence:TpvVulkanFence);
  procedure DoKTX;
- var KTXTexture:PktxTexture;
+ var Index:TpvSizeInt;
+     KTXTexture:PktxTexture;
      KTXVulkanFunctions:TktxVulkanFunctions;
      KTXVulkanDeviceInfo:PktxVulkanDeviceInfo;
      CommandPool:TpvVulkanCommandPool;
      KTXResult:TKTX_error_code;
+     MipMapSize:TpvUInt64;
+     Compressed:boolean;
  begin
 
   KTXTexture:=fKTXTexture;
@@ -24567,6 +24581,11 @@ procedure TpvVulkanTexture.Finish(const aGraphicsQueue:TpvVulkanQueue;
        fDescriptorImageInfo.imageView:=VK_NULL_HANDLE;
       end;
       fDescriptorImageInfo.imageLayout:=fImageLayout;
+      fRawSize:=0;
+      for Index:=0 to Max(1,fCountMipMaps)-1 do begin
+       GetMipMapSize(fFormat,fWidth shr Index,fHeight shr Index,MipMapSize,Compressed,false);
+       inc(fRawSize,MipMapSize*(Max(1,fDepth) shr Index)*Max(1,fCountArrayLayers)*Max(1,fCountFaces));
+      end;
      end else begin
       try
        FreeMem(fKTXVulkanTexture);
@@ -24595,6 +24614,8 @@ var MaxDimension,MaxMipMapLevels:TpvInt32;
     PrefersDedicatedAllocation:boolean;
     MemoryBlockFlags:TpvVulkanDeviceMemoryBlockFlags;
 begin
+
+ fRawSize:=0;
 
  if assigned(fKTXTexture) then begin
   DoKTX;
@@ -24760,6 +24781,8 @@ begin
   if not assigned(fMemoryBlock) then begin
    raise EpvVulkanMemoryAllocationException.Create('Memory for texture couldn''t be allocated!');
   end;
+
+  fRawSize:=MemoryRequirements.size;
 
   fMemoryBlock.fAssociatedObject:=self;
 
@@ -27386,7 +27409,7 @@ type PpvUInt8Array=^TpvUInt8Array;
      TpvUInt8Array=array[0..65535] of TpvUInt8;
 var BufferImageCopyArraySize,MipMapLevelIndex,MipMapWidth,MipMapHeight,MipMapDepth,
     LayerIndex,DepthIndex,PreviousMipMapLevelIndex:TpvInt32;
-    DataOffset,TotalMipMapSize,StoredMipMapSize,MipMapSize,Index:TpvUInt32;
+    DataOffset,TotalMipMapSize,StoredMipMapSize,MipMapSize:TpvUInt64;
     Compressed:boolean;
     BufferMemoryBarrier:TVkBufferMemoryBarrier;
     BufferImageCopyArray:TVkBufferImageCopyArray;
@@ -27655,7 +27678,7 @@ begin
           BufferImageCopy^.imageExtent.depth:=1;
           MipMapSize:=0;
           Compressed:=false;
-          GetMipMapSize(fFormat,MipMapWidth,MipMapHeight,MipMapSize,Compressed);
+          GetMipMapSize(fFormat,MipMapWidth,MipMapHeight,MipMapSize,Compressed,true);
           Assert(TVkSizeInt(DataOffset+MipMapSize)<=TVkSizeInt(aDataSize));
           inc(DataOffset,MipMapSize);
          end;
@@ -27697,7 +27720,7 @@ begin
           BufferImageCopy^.imageExtent.height:=Max(1,MipMapHeight);
           BufferImageCopy^.imageExtent.depth:=1;
           MipMapSize:=0;
-          GetMipMapSize(fFormat,MipMapWidth,MipMapHeight,MipMapSize,Compressed);
+          GetMipMapSize(fFormat,MipMapWidth,MipMapHeight,MipMapSize,Compressed,true);
           Assert(TVkSizeInt(DataOffset+MipMapSize)<=TVkSizeInt(aDataSize));
           inc(TotalMipMapSize,MipMapSize);
           inc(DataOffset,MipMapSize);
