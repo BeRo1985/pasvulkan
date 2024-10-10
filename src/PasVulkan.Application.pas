@@ -1142,7 +1142,7 @@ type EpvApplication=class(Exception)
        destructor Destroy; override;
        function ExistAsset(const aFileName:TpvUTF8String):boolean;
        function GetAssetStream(const aFileName:TpvUTF8String):TStream;
-       function GetAssetSize(const aFileName:TpvUTF8String):TpVInt64;
+       function GetAssetSize(const aFileName:TpvUTF8String):TpvUInt64;
        function GetDirectoryFileList(const aPath:TpvUTF8String;const aRaiseExceptionOnNonExistentDirectory:boolean=false):TFileNameList;
        property BasePath:TpvUTF8String read fBasePath;
      end;
@@ -6626,7 +6626,7 @@ begin
 end;
 {$endif}
 
-function TpvApplicationAssets.GetAssetSize(const aFileName:TpvUTF8String):TpvInt64;
+function TpvApplicationAssets.GetAssetSize(const aFileName:TpvUTF8String):TpvUInt64;
 {$ifdef Android}
 var Asset:PAAsset;
 begin
