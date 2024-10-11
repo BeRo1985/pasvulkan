@@ -4617,16 +4617,20 @@ begin
   Index:=trunc(POCAGetNumberValue(aContext,aArguments^[0]));
   if (Index>=0) and (Index<fGroup.fMaterials.Count) then begin
    Material:=fGroup.fMaterials[Index];
+  end else begin
+   Material:=nil;
   end;
-  JSONString:=POCAStringDump(aContext,aArguments^[1]);
-  JSON:=TPasJSON.Parse(JSONString);
-  if assigned(JSON) then begin
-   try
-    Material.LoadHologramFromJSON(JSON);
-   finally
-    FreeAndNil(JSON);
+  if assigned(Material) then begin
+   JSONString:=POCAStringDump(aContext,aArguments^[1]);
+   JSON:=TPasJSON.Parse(JSONString);
+   if assigned(JSON) then begin
+    try
+     Material.LoadHologramFromJSON(JSON);
+    finally
+     FreeAndNil(JSON);
+    end;
+    Material.FillShaderData;
    end;
-   Material.FillShaderData;
   end;
  end;
  result:=POCAValueNull;
