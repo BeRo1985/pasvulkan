@@ -3145,6 +3145,7 @@ var LocalFileHeader:TpvArchiveZIPLocalFileHeader;
     InData:TpvPointer;
     DestData:TpvPointer;
     DestLen:TpvSizeUInt;
+    ZIPVersion:TpvUInt32;
 begin
 
  if fEntries.Count=0 then begin
@@ -3159,6 +3160,8 @@ begin
 
  fZIP64:=fEntries.Count>=$ffff;
 
+ ZIPVersion:=20;
+
  for Counter:=0 to fEntries.Count-1 do begin
   LocalFile:=fEntries[Counter];
   if assigned(LocalFile) then begin
@@ -3166,11 +3169,10 @@ begin
    try
     FillChar(LocalFileHeader,SizeOf(TpvArchiveZIPLocalFileHeader),#0);
     LocalFileHeader.Signature:=TpvArchiveZIPHeaderSignatures.LocalFileHeaderSignature;
-    LocalFileHeader.ExtractVersion:=10;
-    LocalFileHeader.BitFlags:=0;
+    LocalFileHeader.BitFlags:=$0800; // UTF8
     if LocalFile.Stream.Size>0 then begin
      if LocalFile.CompressionLevel>1 then begin
-      LocalFileHeader.BitFlags:=2;
+      LocalFileHeader.BitFlags:=LocalFileHeader.BitFlags or $0002; // Fast (-ef) compression option was used.
       LocalFileHeader.CompressMethod:=8;
       if LocalFile.Stream.Size>0 then begin
        DestData:=nil;
@@ -3244,6 +3246,10 @@ begin
      ZIP64ExtensibleInfoFieldHeader.RelativeHeaderOffset:=0;
      LocalFile.fZIP64ExtensibleInfoFieldHeader:=ZIP64ExtensibleInfoFieldHeader;
      fZIP64:=true;
+     LocalFileHeader.ExtractVersion:=45;
+     ZIPVersion:=45;
+    end else begin
+     LocalFileHeader.ExtractVersion:=20;
     end;
 
     LocalFile.fHeaderPosition:=aStream.Position;
@@ -3351,9 +3357,9 @@ begin
 
   FillChar(ZIP64EndCentralFileHeader,SizeOf(TpvArchiveZIP64EndCentralFileHeader),#0);
   ZIP64EndCentralFileHeader.Signature:=TpvArchiveZIPHeaderSignatures.Zip64EndCentralFileHeaderSignature;
-  ZIP64EndCentralFileHeader.RecordSize:=SizeOf(TpvArchiveZIP64EndCentralFileHeader);
-  ZIP64EndCentralFileHeader.ExtractVersionRequired:=45;
-  ZIP64EndCentralFileHeader.VersionMadeBy:=45;
+  ZIP64EndCentralFileHeader.RecordSize:=48; // 56-12; // SizeOf(TpvArchiveZIP64EndCentralFileHeader)-12;
+  ZIP64EndCentralFileHeader.ExtractVersionRequired:=ZIPVersion;
+  ZIP64EndCentralFileHeader.VersionMadeBy:=ZIPVersion;
   ZIP64EndCentralFileHeader.EntriesThisDisk:=Entries;
   ZIP64EndCentralFileHeader.TotalEntries:=Entries;
   ZIP64EndCentralFileHeader.StartDiskOffset:=StartDiskOffset;
