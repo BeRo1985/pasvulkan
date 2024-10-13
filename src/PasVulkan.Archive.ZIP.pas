@@ -87,6 +87,9 @@ type EpvArchiveZIP=class(Exception);
        const LocalFileHeaderSignature:TpvArchiveZIPHeaderSignature=(Chars:('P','K',#3,#4));
              CentralFileHeaderSignature:TpvArchiveZIPHeaderSignature=(Chars:('P','K',#1,#2));
              EndCentralFileHeaderSignature:TpvArchiveZIPHeaderSignature=(Chars:('P','K',#5,#6));
+             Zip64DataDescriptorHeaderSignature:TpvArchiveZIPHeaderSignature=(Chars:('P','K',#7,#8));
+             Zip64EndCentralFileHeaderSignature:TpvArchiveZIPHeaderSignature=(Chars:('P','K',#6,#6));
+             Zip64CentralLocatorHeaderSignature:TpvArchiveZIPHeaderSignature=(Chars:('P','K',#6,#7));
      end;
 
      TpvArchiveZIPCompressionLevel=0..5;
@@ -181,6 +184,9 @@ type EpvArchiveZIP=class(Exception);
      PpvArchiveZIP64ExtensibleInfoFieldHeader=^TpvArchiveZIP64ExtensibleInfoFieldHeader;
      TpvArchiveZIP64ExtensibleInfoFieldHeader=packed record
       public
+       const HeaderID=$0001;
+             DataSize=28;
+      public
        OriginalSize:TpvUInt64;
        CompressedSize:TpvUInt64;
        RelativeHeaderOffset:TpvUInt64;
@@ -267,6 +273,7 @@ type EpvArchiveZIP=class(Exception);
        fSourceArchive:TpvArchiveZIP;
        fCompressionLevel:TpvArchiveZIPCompressionLevel;
        fLocalFileHeader:TpvArchiveZIPLocalFileHeader;
+       fZIP64ExtensibleInfoFieldHeader:TpvArchiveZIP64ExtensibleInfoFieldHeader;
        procedure SetFileName(const aFileName:TpvRawByteString);
        function GetDirectory:boolean;
        function GetLink:boolean;
@@ -315,6 +322,7 @@ type EpvArchiveZIP=class(Exception);
        fEntries:TpvArchiveZIPEntries;
        fStream:TStream;
        fOwnStream:Boolean;
+       fZIP64:boolean;
       public
        constructor Create;
        destructor Destroy; override;
@@ -326,6 +334,7 @@ type EpvArchiveZIP=class(Exception);
        procedure SaveToFile(const aFileName:string);
       published
        property Entries:TpvArchiveZIPEntries read fEntries;
+       property ZIP64:boolean read fZIP64 write fZIP64;
      end;
 
 implementation
@@ -2468,20 +2477,29 @@ begin
      ExtensibleDataFieldHeader.SwapEndiannessIfNeeded;
      From:=fSourceArchive.fStream.Position;
      case ExtensibleDataFieldHeader.HeaderID of
-      $0001:begin
+      TpvArchiveZIP64ExtensibleInfoFieldHeader.HeaderID:begin
        fSourceArchive.fStream.ReadBuffer(ExtensibleInfoFieldHeader,SizeOf(TpvArchiveZIP64ExtensibleInfoFieldHeader));
        ExtensibleInfoFieldHeader.SwapEndiannessIfNeeded;
        if (LocalFileHeader.BitFlags and 8)=0 then begin
-        CompressedSize:=ExtensibleInfoFieldHeader.CompressedSize;
-        UncompressedSize:=ExtensibleInfoFieldHeader.OriginalSize;
+        if LocalFileHeader.CompressedSize=TpvUInt32($ffffffff) then begin
+         CompressedSize:=ExtensibleInfoFieldHeader.CompressedSize;
+        end;
+        if LocalFileHeader.UncompressedSize=TpvUInt32($ffffffff) then begin
+         UncompressedSize:=ExtensibleInfoFieldHeader.OriginalSize;
+        end;
        end;
       end;
       $7075:begin
       end;
      end;
-     if fSourceArchive.fStream.Seek(From+ExtensibleDataFieldHeader.DataSize,soBeginning)<>From+ExtensibleDataFieldHeader.DataSize then begin
+     if fSourceArchive.fStream.Seek(From+ExtensibleDataFieldHeader.DataSize,soBeginning)<>(From+ExtensibleDataFieldHeader.DataSize) then begin
       raise EpvArchiveZIP.Create('Seek error');
      end;
+    end;
+   end else if LocalFileHeader.ExtraFieldLength>0 then begin
+    From:=fSourceArchive.fStream.Position;
+    if fSourceArchive.fStream.Seek(From+LocalFileHeader.ExtraFieldLength,soBeginning)<>(From+LocalFileHeader.ExtraFieldLength) then begin
+     raise EpvArchiveZIP.Create('Seek error');
     end;
    end;
 
@@ -2595,6 +2613,7 @@ begin
  fEntries:=TpvArchiveZIPEntries.Create;
  fStream:=nil;
  fOwnStream:=false;
+ fZIP64:=false;
 end;
 
 destructor TpvArchiveZIP.Destroy;
@@ -2634,12 +2653,19 @@ end;
 procedure TpvArchiveZIP.LoadFromStream(const aStream:TStream);
 var LocalFileHeader:TpvArchiveZIPLocalFileHeader;
     EndCentralFileHeader:TpvArchiveZIPEndCentralFileHeader;
+    ZIP64EndCentralFileHeader:TpvArchiveZIP64EndCentralFileHeader;
     CentralFileHeader:TpvArchiveZIPCentralFileHeader;
-    Size,CentralFileHeaderOffset:TpvInt64;
+    Size,CentralFileHeaderOffset,EndCentralFileHeaderOffset,
+    ZIP64EndCentralLocatorOffset,ZIP64EndCentralFileHeaderOffset,
+    EntriesThisDisk:TpvInt64;
     Index,Count,FileCount:TpvSizeInt;
     FileName:TpvRawByteString;
-    OK:boolean;
+    HasExtensibleInfoFieldHeader,OK:boolean;
     FileEntry:TpvArchiveZIPEntry;
+    StartPosition,From:TpvInt64;
+    ZIPExtensibleDataFieldHeader:TpvArchiveZIPExtensibleDataFieldHeader;
+    ZIP64ExtensibleInfoFieldHeader:TpvArchiveZIP64ExtensibleInfoFieldHeader;
+    ZIP64EndCentralLocator:TpvArchiveZIP64EndCentralLocator;
 begin
 
  Clear;
@@ -2650,11 +2676,18 @@ begin
 
  OK:=false;
 
+ fZIP64:=false;
+
  fStream.Seek(0,soFromBeginning);
 
  fStream.ReadBuffer(LocalFileHeader,SizeOf(TpvArchiveZIPLocalFileHeader));
 
+ EndCentralFileHeaderOffset:=-1;
+ ZIP64EndCentralLocatorOffset:=-1;
+ ZIP64EndCentralFileHeaderOffset:=-1;
+
  if LocalFileHeader.Signature.Value=TpvArchiveZIPHeaderSignatures.LocalFileHeaderSignature.Value then begin
+
   for Index:=Size-SizeOf(TpvArchiveZipEndCentralFileHeader) downto Size-(65535+SizeOf(TpvArchiveZipEndCentralFileHeader)) do begin
    if Index<0 then begin
     break;
@@ -2662,6 +2695,7 @@ begin
     fStream.Seek(Index,soFromBeginning);
     if fStream.Read(EndCentralFileHeader,SizeOf(TpvArchiveZipEndCentralFileHeader))=SizeOf(TpvArchiveZipEndCentralFileHeader) then begin
      if EndCentralFileHeader.Signature.Value=TpvArchiveZIPHeaderSignatures.EndCentralFileHeaderSignature.Value then begin
+      EndCentralFileHeaderOffset:=Index;
       EndCentralFileHeader.SwapEndiannessIfNeeded;
       OK:=true;
       break;
@@ -2669,6 +2703,54 @@ begin
     end;
    end;
   end;
+
+  if OK then begin
+
+   for Index:=EndCentralFileHeaderOffset-SizeOf(TpvArchiveZIP64EndCentralLocator) downto EndCentralFileHeaderOffset-(65535+SizeOf(TpvArchiveZIP64EndCentralLocator)) do begin
+    if Index<0 then begin
+     break;
+    end else begin
+     fStream.Seek(Index,soFromBeginning);
+     if fStream.Read(ZIP64EndCentralLocator,SizeOf(TpvArchiveZIP64EndCentralLocator))=SizeOf(TpvArchiveZIP64EndCentralLocator) then begin
+      if ZIP64EndCentralLocator.Signature.Value=TpvArchiveZIPHeaderSignatures.Zip64CentralLocatorHeaderSignature.Value then begin
+       ZIP64EndCentralLocator.SwapEndiannessIfNeeded;
+       ZIP64EndCentralFileHeaderOffset:=Index;
+       break;
+      end;
+     end;
+    end;
+   end;
+
+   if ZIP64EndCentralLocatorOffset>=0 then begin
+    OK:=false;
+    ZIP64EndCentralFileHeaderOffset:=ZIP64EndCentralLocator.CentralDirectoryOffset;
+    fStream.Seek(ZIP64EndCentralFileHeaderOffset,soFromBeginning);
+    if fStream.Read(ZIP64EndCentralFileHeader,SizeOf(TpvArchiveZIP64EndCentralFileHeader))=SizeOf(TpvArchiveZIP64EndCentralFileHeader) then begin
+     if ZIP64EndCentralFileHeader.Signature.Value=TpvArchiveZIPHeaderSignatures.Zip64EndCentralFileHeaderSignature.Value then begin
+      OK:=true;
+      fZIP64:=true;
+     end;
+    end;
+   end else begin
+    for Index:=EndCentralFileHeaderOffset-SizeOf(TpvArchiveZIP64EndCentralFileHeader) downto EndCentralFileHeaderOffset-(65535+SizeOf(TpvArchiveZIP64EndCentralFileHeader)) do begin
+     if Index<0 then begin
+      break;
+     end else begin
+      fStream.Seek(Index,soFromBeginning);
+      if fStream.Read(ZIP64EndCentralFileHeader,SizeOf(TpvArchiveZIP64EndCentralFileHeader))=SizeOf(TpvArchiveZIP64EndCentralFileHeader) then begin
+       if ZIP64EndCentralFileHeader.Signature.Value=TpvArchiveZIPHeaderSignatures.Zip64EndCentralFileHeaderSignature.Value then begin
+        ZIP64EndCentralFileHeader.SwapEndiannessIfNeeded;
+        ZIP64EndCentralFileHeaderOffset:=Index;
+        fZIP64:=true;
+        break;
+       end;
+      end;
+     end;
+    end;
+   end;
+
+  end;
+
  end;
 
  if not OK then begin
@@ -2677,7 +2759,17 @@ begin
 
  Count:=0;
 
- fStream.Seek(EndCentralFileHeader.StartDiskOffset,soFromBeginning);
+ if (ZIP64EndCentralFileHeaderOffset>=0) and (EndCentralFileHeader.StartDiskOffset=TpvUInt32($ffffffff)) then begin
+  fStream.Seek(ZIP64EndCentralFileHeader.StartDiskOffset,soFromBeginning);
+ end else begin
+  fStream.Seek(EndCentralFileHeader.StartDiskOffset,soFromBeginning);
+ end;
+
+ if (ZIP64EndCentralFileHeaderOffset>=0) and (EndCentralFileHeader.EntriesThisDisk=TpvUInt32($ffff)) then begin
+  EntriesThisDisk:=ZIP64EndCentralFileHeader.EntriesThisDisk;
+ end else begin
+  EntriesThisDisk:=EndCentralFileHeader.EntriesThisDisk;
+ end;
 
  repeat
 
@@ -2700,15 +2792,54 @@ begin
    end;
   end;
 
-  if Count<EndCentralFileHeader.EntriesThisDisk then begin
+  if Count<EntriesThisDisk then begin
 
-   fStream.Seek(CentralFileHeader.ExtraFieldLength+CentralFileHeader.FileCommentLength,soFromCurrent);
+   HasExtensibleInfoFieldHeader:=false;
+
+   if CentralFileHeader.ExtraFieldLength>=SizeOf(TpvArchiveZIPExtensibleDataFieldHeader) then begin
+    StartPosition:=fStream.Position;
+    while (fStream.Position+(SizeOf(ZIPExtensibleDataFieldHeader)-1))<(StartPosition+CentralFileHeader.ExtraFieldLength) do begin
+     fStream.ReadBuffer(ZIPExtensibleDataFieldHeader,SizeOf(TpvArchiveZIPExtensibleDataFieldHeader));
+     ZIPExtensibleDataFieldHeader.SwapEndiannessIfNeeded;
+     From:=fStream.Position;
+     case ZIPExtensibleDataFieldHeader.HeaderID of
+      TpvArchiveZIP64ExtensibleInfoFieldHeader.HeaderID:begin
+       fStream.ReadBuffer(ZIP64ExtensibleInfoFieldHeader,SizeOf(TpvArchiveZIP64ExtensibleInfoFieldHeader));
+       ZIP64ExtensibleInfoFieldHeader.SwapEndiannessIfNeeded;
+       HasExtensibleInfoFieldHeader:=true;
+      end;
+      $7075:begin
+      end;
+     end;
+     if fStream.Seek(From+ZIPExtensibleDataFieldHeader.DataSize,soBeginning)<>From+ZIPExtensibleDataFieldHeader.DataSize then begin
+      raise EpvArchiveZIP.Create('Seek error');
+     end;
+    end;
+   end else if CentralFileHeader.ExtraFieldLength>0 then begin
+    fStream.Seek(CentralFileHeader.ExtraFieldLength,soFromCurrent);
+   end;
+
+   fStream.Seek(CentralFileHeader.FileCommentLength,soFromCurrent);
 
    if length(FileName)>0 then begin
     FileEntry:=fEntries.Add(FileName);
     FileEntry.fCentralHeaderPosition:=CentralFileHeaderOffset;
-    FileEntry.fHeaderPosition:=CentralFileHeader.LocalFileHeaderOffset;
-    FileEntry.Size:=CentralFileHeader.UncompressedSize;
+    FileEntry.fRequiresZIP64:=HasExtensibleInfoFieldHeader;
+    if HasExtensibleInfoFieldHeader then begin
+     if CentralFileHeader.LocalFileHeaderOffset=TpvUInt32($ffffffff) then begin
+      FileEntry.fHeaderPosition:=ZIP64ExtensibleInfoFieldHeader.RelativeHeaderOffset;
+     end else begin
+      FileEntry.fHeaderPosition:=CentralFileHeader.LocalFileHeaderOffset;
+     end;
+     if CentralFileHeader.UncompressedSize=TpvUInt32($ffffffff) then begin
+      FileEntry.Size:=ZIP64ExtensibleInfoFieldHeader.CompressedSize;
+     end else begin
+      FileEntry.Size:=CentralFileHeader.UncompressedSize;
+     end;
+    end else begin
+     FileEntry.fHeaderPosition:=CentralFileHeader.LocalFileHeaderOffset;
+     FileEntry.Size:=CentralFileHeader.UncompressedSize;
+    end;
     FileEntry.fSourceArchive:=self;
    end;
 
@@ -2716,14 +2847,14 @@ begin
 
   end else begin
 
-   Count:=not EndCentralFileHeader.EntriesThisDisk;
+   Count:=not EntriesThisDisk;
    break;
 
   end;
 
  until false;
 
- if EndCentralFileHeader.EntriesThisDisk<>Count then begin
+ if EntriesThisDisk<>Count then begin
   raise EpvArchiveZIP.Create('Invalid ZIP archive');
  end;
 
@@ -3000,6 +3131,10 @@ procedure TpvArchiveZIP.SaveToStream(const aStream:TStream);
 var LocalFileHeader:TpvArchiveZIPLocalFileHeader;
     CentralFileHeader:TpvArchiveZIPCentralFileHeader;
     EndCentralFileHeader:TpvArchiveZIPEndCentralFileHeader;
+    ZIP64EndCentralFileHeader:TpvArchiveZIP64EndCentralFileHeader;
+    ZIPExtensibleDataFieldHeader:TpvArchiveZIPExtensibleDataFieldHeader;
+    ZIP64ExtensibleInfoFieldHeader:TpvArchiveZIP64ExtensibleInfoFieldHeader;
+    ZIP64EndCentralLocator:TpvArchiveZIP64EndCentralLocator;
     Counter:TpvSizeInt;
     CompressedStream:TStream;
     LocalFile:TpvArchiveZIPEntry;
@@ -3021,6 +3156,8 @@ begin
  end else if (aStream is TFileStream) and ((aStream as TFileStream).Size>0) then begin
   (aStream as TFileStream).Size:=0;
  end;
+
+ fZIP64:=fEntries.Count>=$ffff;
 
  for Counter:=0 to fEntries.Count-1 do begin
   LocalFile:=fEntries[Counter];
@@ -3080,42 +3217,78 @@ begin
     end else begin
      LocalFileHeader.CompressMethod:=0;
     end;
+
     TpvArchiveZIPDateTimeUtils.ConvertDateTimeToZIPDateTime(LocalFile.DateTime,
                                                             LocalFileHeader.Date,
                                                             LocalFileHeader.Time);
+
     LocalFileHeader.FileNameLength:=length(LocalFile.FileName);
     LocalFileHeader.CompressedSize:=CompressedStream.Size;
+
     LocalFile.Stream.Seek(0,soBeginning);
+
     CRC32.Initialize;
     CRC32.Update(LocalFile.Stream);
+
     LocalFileHeader.CRC32:=CRC32.Finalize;
     LocalFileHeader.UncompressedSize:=LocalFile.Stream.Size;
+
+    LocalFile.fRequiresZIP64:=(LocalFile.Stream.Size>=High(TpvUInt32)) or (CompressedStream.Size>=High(TpvUInt32));
+    if LocalFile.fRequiresZIP64 then begin
+     inc(LocalFileHeader.ExtraFieldLength,SizeOf(TpvArchiveZIPExtensibleDataFieldHeader)+TpvArchiveZIP64ExtensibleInfoFieldHeader.DataSize);
+     LocalFileHeader.CompressedSize:=TpvUInt32($ffffffff);
+     LocalFileHeader.UncompressedSize:=TpvUInt32($ffffffff);
+     ZIP64ExtensibleInfoFieldHeader.OriginalSize:=LocalFile.Stream.Size;
+     ZIP64ExtensibleInfoFieldHeader.CompressedSize:=CompressedStream.Size;
+     ZIP64ExtensibleInfoFieldHeader.DiskStartNumber:=0;
+     ZIP64ExtensibleInfoFieldHeader.RelativeHeaderOffset:=0;
+     LocalFile.fZIP64ExtensibleInfoFieldHeader:=ZIP64ExtensibleInfoFieldHeader;
+     fZIP64:=true;
+    end;
+
     LocalFile.fHeaderPosition:=aStream.Position;
     LocalFile.fLocalFileHeader:=LocalFileHeader;
+
     LocalFileHeader.SwapEndiannessIfNeeded;
     aStream.WriteBuffer(LocalFileHeader,SizeOf(TpvArchiveZIPLocalFileHeader));
     LocalFileHeader.SwapEndiannessIfNeeded;
+
     if LocalFileHeader.FileNameLength>0 then begin
      aStream.WriteBuffer(LocalFile.FileName[1],LocalFileHeader.FileNameLength);
     end;
+
+    if LocalFile.fRequiresZIP64 then begin
+     ZIPExtensibleDataFieldHeader.HeaderID:=TpvArchiveZIP64ExtensibleInfoFieldHeader.HeaderID;
+     ZIPExtensibleDataFieldHeader.DataSize:=TpvArchiveZIP64ExtensibleInfoFieldHeader.DataSize;
+     aStream.WriteBuffer(ZIPExtensibleDataFieldHeader,SizeOf(TpvArchiveZIPExtensibleDataFieldHeader));
+     aStream.WriteBuffer(ZIP64ExtensibleInfoFieldHeader,SizeOf(TpvArchiveZIP64ExtensibleInfoFieldHeader));
+    end;
+
     if LocalFileHeader.CompressedSize>0 then begin
      if aStream.CopyFrom(CompressedStream,LocalFileHeader.CompressedSize)<>TpvInt32(LocalFileHeader.CompressedSize) then begin
       raise EpvArchiveZIP.Create('Copy error');
      end;
     end;
+
    finally
     CompressedStream.Free;
    end;
+
   end;
+
  end;
 
  Entries:=0;
  StartDiskOffset:=aStream.Position;
  CentralFileDirectorySize:=0;
  for Counter:=0 to fEntries.Count-1 do begin
+
   LocalFile:=fEntries[Counter];
+
   if assigned(LocalFile) then begin
+
    FillChar(CentralFileHeader,SizeOf(TpvArchiveZIPCentralFileHeader),#0);
+
    CentralFileHeader.Signature:=TpvArchiveZIPHeaderSignatures.CentralFileHeaderSignature;
    CentralFileHeader.CreatorVersion:=LocalFile.fLocalFileHeader.ExtractVersion;
    CentralFileHeader.ExtractVersion:=LocalFile.fLocalFileHeader.ExtractVersion;
@@ -3127,27 +3300,82 @@ begin
    CentralFileHeader.CompressedSize:=LocalFile.fLocalFileHeader.CompressedSize;
    CentralFileHeader.UncompressedSize:=LocalFile.fLocalFileHeader.UncompressedSize;
    CentralFileHeader.FileNameLength:=LocalFile.fLocalFileHeader.FileNameLength;
-   CentralFileHeader.ExtraFieldLength:=LocalFile.fLocalFileHeader.ExtraFieldLength;
+   CentralFileHeader.ExtraFieldLength:=0;//LocalFile.fLocalFileHeader.ExtraFieldLength;
    CentralFileHeader.ExternalAttrributes:=$20;
    CentralFileHeader.LocalFileHeaderOffset:=LocalFile.fHeaderPosition;
    CentralFileHeader.SwapEndiannessIfNeeded;
+
    LocalFile.fCentralHeaderPosition:=aStream.Position;
+
+   if LocalFile.fRequiresZIP64 then begin
+    inc(CentralFileHeader.ExtraFieldLength,SizeOf(TpvArchiveZIPExtensibleDataFieldHeader)+TpvArchiveZIP64ExtensibleInfoFieldHeader.DataSize);
+    CentralFileHeader.CompressedSize:=TpvUInt32($ffffffff);
+    CentralFileHeader.UncompressedSize:=TpvUInt32($ffffffff);
+    CentralFileHeader.LocalFileHeaderOffset:=TpvUInt32($ffffffff);
+    ZIP64ExtensibleInfoFieldHeader:=LocalFile.fZIP64ExtensibleInfoFieldHeader;
+    ZIP64ExtensibleInfoFieldHeader.RelativeHeaderOffset:=LocalFile.fHeaderPosition;
+   end;
+
    aStream.WriteBuffer(CentralFileHeader,SizeOf(TpvArchiveZIPCentralFileHeader));
+
    if CentralFileHeader.FileNameLength>0 then begin
     aStream.WriteBuffer(LocalFile.FileName[1],CentralFileHeader.FileNameLength);
    end;
+
+   if LocalFile.fRequiresZIP64 then begin
+    ZIPExtensibleDataFieldHeader.HeaderID:=TpvArchiveZIP64ExtensibleInfoFieldHeader.HeaderID;
+    ZIPExtensibleDataFieldHeader.DataSize:=TpvArchiveZIP64ExtensibleInfoFieldHeader.DataSize;
+    aStream.WriteBuffer(ZIPExtensibleDataFieldHeader,SizeOf(TpvArchiveZIPExtensibleDataFieldHeader));
+    aStream.WriteBuffer(ZIP64ExtensibleInfoFieldHeader,SizeOf(TpvArchiveZIP64ExtensibleInfoFieldHeader));
+    fZIP64:=true;
+   end;
+
    inc(Entries);
+
    inc(CentralFileDirectorySize,SizeOf(TpvArchiveZIPCentralFileHeader)+CentralFileHeader.FileNameLength);
+
   end;
+
  end;
 
  FillChar(EndCentralFileHeader,SizeOf(TpvArchiveZIPEndCentralFileHeader),#0);
-
  EndCentralFileHeader.Signature:=TpvArchiveZIPHeaderSignatures.EndCentralFileHeaderSignature;
- EndCentralFileHeader.EntriesThisDisk:=Entries;
- EndCentralFileHeader.TotalEntries:=Entries;
- EndCentralFileHeader.StartDiskOffset:=StartDiskOffset;
- EndCentralFileHeader.CentralDirectorySize:=CentralFileDirectorySize;
+
+ if fZIP64 then begin
+
+  FillChar(ZIP64EndCentralLocator,SizeOf(TpvArchiveZIP64EndCentralLocator),#0);
+  ZIP64EndCentralLocator.Signature:=TpvArchiveZIPHeaderSignatures.Zip64CentralLocatorHeaderSignature;
+  ZIP64EndCentralLocator.EndOfCentralDirectoryStartDisk:=0;
+  ZIP64EndCentralLocator.CentralDirectoryOffset:=aStream.Position;
+  ZIP64EndCentralLocator.TotalDisks:=0;
+
+  FillChar(ZIP64EndCentralFileHeader,SizeOf(TpvArchiveZIP64EndCentralFileHeader),#0);
+  ZIP64EndCentralFileHeader.Signature:=TpvArchiveZIPHeaderSignatures.Zip64EndCentralFileHeaderSignature;
+  ZIP64EndCentralFileHeader.RecordSize:=SizeOf(TpvArchiveZIP64EndCentralFileHeader);
+  ZIP64EndCentralFileHeader.ExtractVersionRequired:=45;
+  ZIP64EndCentralFileHeader.VersionMadeBy:=45;
+  ZIP64EndCentralFileHeader.EntriesThisDisk:=Entries;
+  ZIP64EndCentralFileHeader.TotalEntries:=Entries;
+  ZIP64EndCentralFileHeader.StartDiskOffset:=StartDiskOffset;
+  ZIP64EndCentralFileHeader.CentralDirectorySize:=CentralFileDirectorySize;
+  aStream.WriteBuffer(ZIP64EndCentralFileHeader,SizeOf(TpvArchiveZIP64EndCentralFileHeader));
+
+  aStream.WriteBuffer(ZIP64EndCentralLocator,SizeOf(TpvArchiveZIP64EndCentralLocator));
+
+  EndCentralFileHeader.EntriesThisDisk:=TpvUInt16($ffff);
+  EndCentralFileHeader.TotalEntries:=TpvUInt16($ffff);
+  EndCentralFileHeader.StartDiskOffset:=TpvUInt32($ffffffff);
+  EndCentralFileHeader.CentralDirectorySize:=TpvUInt32($ffffffff);
+
+ end else begin
+
+  EndCentralFileHeader.EntriesThisDisk:=Entries;
+  EndCentralFileHeader.TotalEntries:=Entries;
+  EndCentralFileHeader.StartDiskOffset:=StartDiskOffset;
+  EndCentralFileHeader.CentralDirectorySize:=CentralFileDirectorySize;
+
+ end;
+
  aStream.WriteBuffer(EndCentralFileHeader,SizeOf(TpvArchiveZIPEndCentralFileHeader));
 
 end;
