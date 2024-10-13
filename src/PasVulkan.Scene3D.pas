@@ -20854,7 +20854,7 @@ begin
     InstanceNode:=fInstance.fNodes[fInstance.fLightNodes[Index]];
     if fInstance.fActive and fActive and assigned(InstanceNode) and assigned(InstanceNode.fLight) then begin
      LightMatrix:=InstanceNode.fLight.Matrix*fModelMatrix;
-     if (Light.fMatrix<>LightMatrix) or
+     if (not CompareMem(@Light.fMatrix,@LightMatrix,SizeOf(TpvMatrix4x4))) or
         (Light.fDataPointer<>InstanceNode.fLight.fDataPointer) or
         (Light.fGeneration<>InstanceNode.fLight.fGeneration) then begin
       fSceneInstance.fLightsLock.Acquire;
@@ -24218,7 +24218,7 @@ procedure TpvScene3D.TGroup.TInstance.Update(const aInFlightFrameIndex:TpvSizeIn
     InstanceLight:=fLights[Node.fLight.fIndex];
     if assigned(InstanceNode.fLight) then begin
      Light:=InstanceNode.fLight;
-     if (Light.fMatrix<>LightMatrix) or
+     if (not CompareMem(@Light.fMatrix,@LightMatrix,SizeOf(TpvMatrix4x4))) or
         (Light.fDataPointer<>InstanceLight.fEffectiveData) or
         (Light.fGeneration<>InstanceLight.fEffectiveData.fGeneration) then begin
       fGroup.fSceneInstance.fLightsLock.Acquire;
