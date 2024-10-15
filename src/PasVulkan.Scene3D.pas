@@ -2431,6 +2431,7 @@ type EpvScene3D=class(Exception);
 //                          fWorkMatrices:array[-1..MaxInFlightFrames-1] of TpvMatrix4x4;
                             fBoundingBoxes:array[-1..MaxInFlightFrames-1] of TpvAABB;
                             fBoundingBoxFilled:array[-1..MaxInFlightFrames-1] of boolean;
+                            fBoundingSpheres:array[-1..MaxInFlightFrames-1] of TpvSphere;
                             fPotentiallyVisibleSetNodeIndices:array[0..MaxInFlightFrames-1] of TpvScene3D.TPotentiallyVisibleSet.TNodeIndex;
                             fCacheVerticesGenerations:array[0..MaxInFlightFrames-1] of TpvUInt64;
                             fCacheVerticesGeneration:TpvUInt64;
@@ -24680,6 +24681,7 @@ var Index,OtherIndex,PerInFlightFrameRenderInstanceIndex:TpvSizeInt;
     AABBTreeNodePotentiallyVisibleSet:TpvScene3D.TPotentiallyVisibleSet.TNodeIndex;
 /// StartCPUTime,EndCPUTime:TpvHighResolutionTime;
     TemporaryBoundingBox:TpvAABB;
+    BoundingSphere:TpvSphere;
 begin
 
  if assigned(fAppendageInstance) and assigned(fAppendageNode) then begin
@@ -24952,7 +24954,9 @@ begin
     Node:=Scene.fAllNodes[Index];
     InstanceNode:=fNodes.RawItems[Node.Index];
     if InstanceNode.fBoundingBoxFilled[aInFlightFrameIndex] and assigned(Node.Mesh) then begin
-     fNodeBoundingSpheres[aInFlightFrameIndex][Node.fIndex]:=TpvSphere.CreateFromAABB(InstanceNode.fBoundingBoxes[aInFlightFrameIndex]);
+     BoundingSphere:=TpvSphere.CreateFromAABB(InstanceNode.fBoundingBoxes[aInFlightFrameIndex]);
+     fNodeBoundingSpheres[aInFlightFrameIndex][Node.fIndex]:=BoundingSphere;
+     InstanceNode.fBoundingSpheres[aInFlightFrameIndex]:=BoundingSphere;
     end;
    end;
   end;
