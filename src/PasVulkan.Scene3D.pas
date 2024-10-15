@@ -273,6 +273,8 @@ type EpvScene3D=class(Exception);
             PSizeIntDynamicArray=^TSizeIntDynamicArray;
             TSizeIntDynamicArrayList=TpvDynamicArrayList<TpvSizeInt>;
             TSizeIntDynamicArrayEx=array of TpvSizeInt;
+            TUInt32DynamicArray=TpvDynamicArray<TpvUInt32>;
+            PUInt32DynamicArray=^TUInt32DynamicArray;
             TInt64DynamicArray=TpvDynamicArray<TpvInt64>;
             PInt64DynamicArray=^TInt64DynamicArray;
             TInt64DynamicArrayList=TpvDynamicArrayList<TpvInt64>;
@@ -2779,6 +2781,7 @@ type EpvScene3D=class(Exception);
                             fModelMatrix:TpvMatrix4x4;
                             fPreviousModelMatrix:TpvMatrix4x4;
                             //fModelMatrices:array[-1..MaxInFlightFrames-1] of TpvMatrix4x4;
+                            fNodeCullObjectIDs:TUInt32DynamicArray;
                             fBoundingBox:TpvAABB;
                             fBoundingSphere:TpvSphere;
                             fActiveMask:TPasMPUInt32;
@@ -2793,6 +2796,7 @@ type EpvScene3D=class(Exception);
                             procedure RemoveLights;
                            public
                             property ModelMatrix:TpvMatrix4x4 read fModelMatrix write fModelMatrix;
+                            property NodeCullObjectIDs:TUInt32DynamicArray read fNodeCullObjectIDs;
                            published
                             property Active:Boolean read fActive write fActive;
                             property ActiveMask:TPasMPUInt32 read fActiveMask write fActiveMask;
@@ -20729,6 +20733,7 @@ end;
 constructor TpvScene3D.TGroup.TInstance.TRenderInstance.Create(const aInstance:TpvScene3D.TGroup.TInstance);
 var Index:TpvSizeInt;
     Light:TpvScene3D.TLight;
+    NodeCullObjectID:TpvUInt32;
 begin
 
  inherited Create;
@@ -20776,12 +20781,33 @@ begin
   fLights:=nil;
  end;
 
+ fNodeCullObjectIDs.Initialize;
+
+ fSceneInstance.fCullObjectIDLock.Acquire;
+ try
+  for Index:=0 to fInstance.fGroup.fNodes.Count-1 do begin
+   if assigned(fInstance.fGroup.fNodes[Index].Mesh) then begin
+    NodeCullObjectID:=fSceneInstance.fCullObjectIDManager.AllocateID;
+    if fSceneInstance.fMaxCullObjectID<NodeCullObjectID then begin
+     fSceneInstance.fMaxCullObjectID:=NodeCullObjectID;
+    end;
+   end else begin
+    NodeCullObjectID:=0;
+   end;
+   fNodeCullObjectIDs.Add(NodeCullObjectID);
+  end;
+ finally
+  fSceneInstance.fCullObjectIDLock.Release;
+ end;
+
 end;
 
 destructor TpvScene3D.TGroup.TInstance.TRenderInstance.Destroy;
 var Index:TpvSizeInt;
     Light:TpvScene3D.TLight;
+    NodeCullObjectID:TpvUInt32;
 begin
+
  if assigned(fLights) and (length(fInstance.fLightNodes)>0) then begin
   RemoveLights;
   for Index:=0 to fLights.Count-1 do begin
@@ -20791,6 +20817,21 @@ begin
   end;
  end;
  FreeAndNil(fLights);
+
+ fSceneInstance.fCullObjectIDLock.Acquire;
+ try
+  for Index:=0 to fNodeCullObjectIDs.Count-1 do begin
+   NodeCullObjectID:=fNodeCullObjectIDs.ItemArray[Index];
+   if NodeCullObjectID<>0 then begin
+    fSceneInstance.fCullObjectIDManager.FreeID(NodeCullObjectID);
+   end;
+  end;
+ finally
+  fSceneInstance.fCullObjectIDLock.Release;
+ end;
+
+ fNodeCullObjectIDs.Finalize;
+
  inherited Destroy;
 end;
 
