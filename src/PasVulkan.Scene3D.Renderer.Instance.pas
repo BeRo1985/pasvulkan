@@ -6104,8 +6104,8 @@ begin
            GPUDrawIndexedIndirectCommand^.DrawIndexedIndirectCommand.vertexOffset:=0;
            GPUDrawIndexedIndirectCommand^.DrawIndexedIndirectCommand.firstInstance:=InstanceID;
            GPUDrawIndexedIndirectCommand^.ObjectIndex:=RenderInstance.NodeCullObjectIDs[NodeIndex];
-           BoundingSphere:=@TpvScene3D.TGroup.TInstance(DrawChoreographyBatchItem.GroupInstance).Nodes[NodeIndex].BoundingSpheres[aInFlightFrameIndex]; //GlobalRenderInstanceCullData^.BoundingSpheres[NodeIndex];
-           GPUDrawIndexedIndirectCommand^.BoundingSphere:=TpvVector4.InlineableCreate(GlobalVulkanInstanceMatrixDynamicArray^.ItemArray[(InstanceID shl 1) or 0]*BoundingSphere^.Center,BoundingSphere^.Radius);
+           BoundingSphere:=@TpvScene3D.TGroup.TInstance(DrawChoreographyBatchItem.GroupInstance).Nodes[NodeIndex].BoundingSpheres[aInFlightFrameIndex];
+           GPUDrawIndexedIndirectCommand^.BoundingSphere:=BoundingSphere^.Transform(GlobalVulkanInstanceMatrixDynamicArray^.ItemArray[(InstanceID shl 1) or 0]).ToVector4;
           end;
          end;
         end;
