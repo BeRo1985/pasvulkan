@@ -365,8 +365,7 @@ type EpvScene3D=class(Exception);
             PGlobalVulkanInstanceMatrixDynamicArray=^TGlobalVulkanInstanceMatrixDynamicArray;
             TGlobalVulkanInstanceMatrixDynamicArrays=array[0..MaxInFlightFrames-1] of TGlobalVulkanInstanceMatrixDynamicArray;
             TCullData=record
-             BoundingSpheres:TpvSphereDynamicArray;
-             CullObjectIDs:TpvUInt32DynamicArray;
+             RenderInstance:TObject;
             end;
             PCullData=^TCullData;
             TGlobalRenderInstanceCullDataDynamicArray=TpvDynamicArray<TCullData>;
@@ -2814,7 +2813,7 @@ type EpvScene3D=class(Exception);
                           TPerInFlightFrameRenderInstance=record
                            PotentiallyVisibleSetNodeIndex:TpvScene3D.TPotentiallyVisibleSet.TNodeIndex;
                            BoundingBox:TpvAABB;
-                           NodeCullObjectIDs:TpvUInt32DynamicArray;
+                           RenderInstance:TObject;
                            ModelMatrix:TpvMatrix4x4;
                            PreviousModelMatrix:TpvMatrix4x4;
                           end;
@@ -24976,7 +24975,7 @@ begin
        PerInFlightFrameRenderInstance:=@fPerInFlightFrameRenderInstances[aInFlightFrameIndex].Items[PerInFlightFrameRenderInstanceIndex];
        PerInFlightFrameRenderInstance^.PotentiallyVisibleSetNodeIndex:=RenderInstance.fPotentiallyVisibleSetNodeIndex;
        PerInFlightFrameRenderInstance^.BoundingBox:=RenderInstance.fBoundingBox;
-       PerInFlightFrameRenderInstance^.NodeCullObjectIDs:=RenderInstance.fNodeCullObjectIDs;
+       PerInFlightFrameRenderInstance^.RenderInstance:=RenderInstance;
        PerInFlightFrameRenderInstance^.ModelMatrix:=RenderInstance.fModelMatrix;
        if RenderInstance.fFirst then begin
         RenderInstance.fFirst:=false;
@@ -25828,7 +25827,7 @@ begin
     GlobalVulkanInstanceMatrixDynamicArray^.Add(PerInFlightFrameRenderInstance^.ModelMatrix);
     GlobalVulkanInstanceMatrixDynamicArray^.Add(PerInFlightFrameRenderInstance^.PreviousModelMatrix);
     GlobalRenderInstanceCullData:=Pointer(GlobalRenderInstanceCullDataDynamicArray^.AddNew);
-    GlobalRenderInstanceCullData^.CullObjectIDs:=PerInFlightFrameRenderInstance^.NodeCullObjectIDs;
+    GlobalRenderInstanceCullData^.RenderInstance:=PerInFlightFrameRenderInstance.RenderInstance;
     inc(aInstancesCount);
    end;
 
