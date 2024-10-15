@@ -2779,6 +2779,8 @@ type EpvScene3D=class(Exception);
                           TScenes=TpvObjectGenericList<TpvScene3D.TGroup.TInstance.TScene>;
                           { TRenderInstance }
                           TRenderInstance=class
+                           public
+                            type TRenderInstanceMatrixInstances=array[-1..MaxInFlightFrames-1] of TpvMatrix4x4;
                            private
                             fInstance:TpvScene3D.TGroup.TInstance;
                             fSceneInstance:TpvScene3D;
@@ -2788,7 +2790,7 @@ type EpvScene3D=class(Exception);
                             fPotentiallyVisibleSetNodeIndex:TpvScene3D.TPotentiallyVisibleSet.TNodeIndex;
                             fModelMatrix:TpvMatrix4x4;
                             fPreviousModelMatrix:TpvMatrix4x4;
-                            //fModelMatrices:array[-1..MaxInFlightFrames-1] of TpvMatrix4x4;
+                            fModelMatrices:TRenderInstanceMatrixInstances;
                             fNodeCullObjectIDs:TpvUInt32DynamicArray;
                             fBoundingBox:TpvAABB;
                             fBoundingSphere:TpvSphere;
@@ -2804,6 +2806,7 @@ type EpvScene3D=class(Exception);
                             procedure RemoveLights;
                            public
                             property ModelMatrix:TpvMatrix4x4 read fModelMatrix write fModelMatrix;
+                            property ModelMatrices:TRenderInstanceMatrixInstances read fModelMatrices;
                             property NodeCullObjectIDs:TpvUInt32DynamicArray read fNodeCullObjectIDs;
                            published
                             property Active:Boolean read fActive write fActive;
@@ -20763,9 +20766,9 @@ begin
 
  fPreviousModelMatrix:=TpvMatrix4x4.Identity;
 
-{for Index:=-1 to MaxInFlightFrames-1 do begin
+ for Index:=-1 to MaxInFlightFrames-1 do begin
   fModelMatrices[Index]:=TpvMatrix4x4.Identity;
- end;}
+ end;
 
  fActiveMask:=0;
 
@@ -24956,7 +24959,7 @@ begin
       RenderInstance:=fRenderInstances[Index];
       if RenderInstance.fActive then begin
        TPasMPInterlocked.BitwiseOr(RenderInstance.fActiveMask,TpvUInt32(1) shl aInFlightFrameIndex);
-//     RenderInstance.fModelMatrices[aInFlightFrameIndex]:=RenderInstance.fModelMatrix;
+       RenderInstance.fModelMatrices[aInFlightFrameIndex]:=RenderInstance.fModelMatrix;
        RenderInstance.fBoundingBox:=TemporaryBoundingBox.HomogenTransform(RenderInstance.fModelMatrix);
        RenderInstance.fBoundingSphere:=TpvSphere.CreateFromAABB(RenderInstance.fBoundingBox);
        if First then begin
