@@ -1232,6 +1232,9 @@ type PpvScalar=^TpvScalar;
      PpvSpheres=^TpvSpheres;
      TpvSpheres=array[0..65535] of TpvSphere;
 
+     TpvSphereDynamicArray=array of TpvSphere;
+     PpvSphereDynamicArray=^TpvSphereDynamicArray;
+
      PpvCapsule=^TpvCapsule;
      TpvCapsule=packed record
       LineStartPoint:TpvVector3;

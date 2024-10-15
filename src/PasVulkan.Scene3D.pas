@@ -364,9 +364,14 @@ type EpvScene3D=class(Exception);
             TGlobalVulkanInstanceMatrixDynamicArray=TpvDynamicArray<TpvMatrix4x4>;
             PGlobalVulkanInstanceMatrixDynamicArray=^TGlobalVulkanInstanceMatrixDynamicArray;
             TGlobalVulkanInstanceMatrixDynamicArrays=array[0..MaxInFlightFrames-1] of TGlobalVulkanInstanceMatrixDynamicArray;
-            TGlobalRenderInstanceBoundingSphereDynamicArray=TpvDynamicArray<TpvSphere>;
-            PGlobalRenderInstanceBoundingSphereDynamicArray=^TGlobalRenderInstanceBoundingSphereDynamicArray;
-            TGlobalRenderInstanceBoundingSphereDynamicArrays=array[0..MaxInFlightFrames-1] of TGlobalRenderInstanceBoundingSphereDynamicArray;
+            TCullData=record
+             BoundingSpheres:TpvSphereDynamicArray;
+             CullObjectIDs:TpvUInt32DynamicArray;
+            end;
+            PCullData=^TCullData;
+            TGlobalRenderInstanceCullDataDynamicArray=TpvDynamicArray<TCullData>;
+            PGlobalRenderInstanceCullDataDynamicArray=^TGlobalRenderInstanceCullDataDynamicArray;
+            TGlobalRenderInstanceCullDataDynamicArrays=array[0..MaxInFlightFrames-1] of TGlobalRenderInstanceCullDataDynamicArray;
             TMeshComputeStagePushConstants=record
              IndexOffset:UInt32;
              CountIndices:UInt32;
@@ -1631,7 +1636,8 @@ type EpvScene3D=class(Exception);
                0:(
                 DrawIndexedIndirectCommand:TVkDrawIndexedIndirectCommand;
                 ObjectIndex:TpvUInt32;
-                Padding0:array[1..2] of TpvUInt32;
+                NodeIndex:TpvUInt32;
+                Padding0:TpvUInt32;
                 BoundingSphere:TpvVector4;
                 Padding1:array[0..3] of TpvUInt32;
                );
@@ -2781,7 +2787,7 @@ type EpvScene3D=class(Exception);
                             fModelMatrix:TpvMatrix4x4;
                             fPreviousModelMatrix:TpvMatrix4x4;
                             //fModelMatrices:array[-1..MaxInFlightFrames-1] of TpvMatrix4x4;
-                            fNodeCullObjectIDs:TUInt32DynamicArray;
+                            fNodeCullObjectIDs:TpvUInt32DynamicArray;
                             fBoundingBox:TpvAABB;
                             fBoundingSphere:TpvSphere;
                             fActiveMask:TPasMPUInt32;
@@ -2796,7 +2802,7 @@ type EpvScene3D=class(Exception);
                             procedure RemoveLights;
                            public
                             property ModelMatrix:TpvMatrix4x4 read fModelMatrix write fModelMatrix;
-                            property NodeCullObjectIDs:TUInt32DynamicArray read fNodeCullObjectIDs;
+                            property NodeCullObjectIDs:TpvUInt32DynamicArray read fNodeCullObjectIDs;
                            published
                             property Active:Boolean read fActive write fActive;
                             property ActiveMask:TPasMPUInt32 read fActiveMask write fActiveMask;
@@ -2806,6 +2812,8 @@ type EpvScene3D=class(Exception);
                            PotentiallyVisibleSetNodeIndex:TpvScene3D.TPotentiallyVisibleSet.TNodeIndex;
                            BoundingBox:TpvAABB;
                            BoundingSphere:TpvSphere;
+                           NodeBoundingSpheres:TpvSphereDynamicArray;
+                           NodeCullObjectIDs:TpvUInt32DynamicArray;
                            ModelMatrix:TpvMatrix4x4;
                            PreviousModelMatrix:TpvMatrix4x4;
                           end;
@@ -2836,6 +2844,7 @@ type EpvScene3D=class(Exception);
                           end;
                           PAABBTreeSkipList=^TAABBTreeSkipList;
                           TBoundingSpheres=array[0..MaxInFlightFrames-1] of TpvSphere;
+                          TNodeBoundingSpheres=array[0..MaxInFlightFrames-1] of TpvSphereDynamicArray;
                     private
                      fGroup:TGroup;
                      fLock:TPasMPSpinLock;
@@ -2895,6 +2904,7 @@ type EpvScene3D=class(Exception);
                      fDrawChoreographyBatchUniqueItems:TDrawChoreographyBatchItems;
                      fPerInFlightFrameRenderInstances:TPerInFlightFrameRenderInstances;
                      fPointerToPerInFlightFrameRenderInstances:PPerInFlightFrameRenderInstances;
+                     fNodeBoundingSpheres:TNodeBoundingSpheres;
                     public
                      fVulkanPerInFlightFrameFirstInstances:array[0..MaxInFlightFrames-1,0..MaxRendererInstances-1,0..MaxRenderPassIndices-1] of TpvSizeInt;
                      fVulkanPerInFlightFrameInstancesCounts:array[0..MaxInFlightFrames-1,0..MaxRendererInstances-1,0..MaxRenderPassIndices-1] of TpvSizeInt;
@@ -3034,6 +3044,7 @@ type EpvScene3D=class(Exception);
                      property PerInFlightFrameRenderInstances:PPerInFlightFrameRenderInstances read fPointerToPerInFlightFrameRenderInstances;
                      property BoundingBox:TpvAABB read fBoundingBox;
                      property BoundingSpheres:TBoundingSpheres read fBoundingSpheres;
+                     property NodeBoundingSpheres:TNodeBoundingSpheres read fNodeBoundingSpheres;
                     public
                      property Animations[const aIndex:TPasGLTFSizeInt]:TpvScene3D.TGroup.TInstance.TAnimation read GetAnimation;
                     public
@@ -3482,7 +3493,7 @@ type EpvScene3D=class(Exception);
        fImageDescriptorGeneration:TpvUInt64;
        fImageDescriptorProcessedGeneration:TpvUInt64;
 //     fGlobalVulkanViewUniformStagingBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
-       fGlobalRenderInstanceBoundingSphereDynamicArrays:TGlobalRenderInstanceBoundingSphereDynamicArrays;
+       fGlobalRenderInstanceCullDataDynamicArrays:TGlobalRenderInstanceCullDataDynamicArrays;
        fGlobalVulkanInstanceMatrixDynamicArrays:TGlobalVulkanInstanceMatrixDynamicArrays;
        fGlobalVulkanInstanceMatrixBuffers:TGlobalVulkanInstanceMatrixBuffers;
        fGlobalVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
@@ -3911,7 +3922,8 @@ type EpvScene3D=class(Exception);
        property Atmospheres:TObject read fAtmospheres;
        property AtmosphereGlobals:TObject read fAtmosphereGlobals;
       public
-       property GlobalRenderInstanceBoundingSphereDynamicArrays:TGlobalRenderInstanceBoundingSphereDynamicArrays read fGlobalRenderInstanceBoundingSphereDynamicArrays;
+       property GlobalVulkanInstanceMatrixDynamicArrays:TGlobalVulkanInstanceMatrixDynamicArrays read fGlobalVulkanInstanceMatrixDynamicArrays;
+       property GlobalRenderInstanceCullDataDynamicArrays:TGlobalRenderInstanceCullDataDynamicArrays read fGlobalRenderInstanceCullDataDynamicArrays;
       public
        property LastProcessFrameTimerQueryResults:TpvTimerQuery.TResults read fLastProcessFrameTimerQueryResults;
       public
@@ -20781,7 +20793,9 @@ begin
   fLights:=nil;
  end;
 
- fNodeCullObjectIDs.Initialize;
+ fNodeCullObjectIDs:=nil;
+
+ SetLength(fNodeCullObjectIDs,fInstance.fGroup.fNodes.Count);
 
  fSceneInstance.fCullObjectIDLock.Acquire;
  try
@@ -20794,7 +20808,7 @@ begin
    end else begin
     NodeCullObjectID:=0;
    end;
-   fNodeCullObjectIDs.Add(NodeCullObjectID);
+   fNodeCullObjectIDs[Index]:=NodeCullObjectID;
   end;
  finally
   fSceneInstance.fCullObjectIDLock.Release;
@@ -20820,8 +20834,8 @@ begin
 
  fSceneInstance.fCullObjectIDLock.Acquire;
  try
-  for Index:=0 to fNodeCullObjectIDs.Count-1 do begin
-   NodeCullObjectID:=fNodeCullObjectIDs.ItemArray[Index];
+  for Index:=0 to length(fNodeCullObjectIDs)-1 do begin
+   NodeCullObjectID:=fNodeCullObjectIDs[Index];
    if NodeCullObjectID<>0 then begin
     fSceneInstance.fCullObjectIDManager.FreeID(NodeCullObjectID);
    end;
@@ -20830,7 +20844,7 @@ begin
   fSceneInstance.fCullObjectIDLock.Release;
  end;
 
- fNodeCullObjectIDs.Finalize;
+ fNodeCullObjectIDs:=nil;
 
  inherited Destroy;
 end;
@@ -21188,6 +21202,11 @@ begin
  fNodes:=TpvScene3D.TGroup.TInstance.TNodes.Create(true);
  for Index:=0 to fGroup.fNodes.Count-1 do begin
   fNodes.Add(TpvScene3D.TGroup.TInstance.TNode.Create(fGroup,fGroup.fNodes.RawItems[Index],self));
+ end;
+
+ FillChar(fNodeBoundingSpheres,SizeOf(TNodeBoundingSpheres),#0);
+ for Index:=0 to fSceneInstance.CountInFlightFrames-1 do begin
+  SetLength(fNodeBoundingSpheres[Index],fGroup.fNodes.Count+1);
  end;
 
  SetLength(fSkins,fGroup.fSkins.Count);
@@ -21668,6 +21687,10 @@ begin
  FreeAndNil(fCameras);
 
  FreeAndNil(fLights);
+
+ for Index:=0 to fSceneInstance.CountInFlightFrames-1 do begin
+  fNodeBoundingSpheres[Index]:=nil;
+ end;
 
  if assigned(fSceneInstance.fCullObjectIDLock) then begin
   fSceneInstance.fCullObjectIDLock.Acquire;
@@ -24924,6 +24947,16 @@ begin
    end;
   end;
 
+  if assigned(Scene) and (aInFlightFrameIndex>=0) then begin
+   for Index:=0 to Scene.fAllNodes.Count-1 do begin
+    Node:=Scene.fAllNodes[Index];
+    InstanceNode:=fNodes.RawItems[Node.Index];
+    if InstanceNode.fBoundingBoxFilled[aInFlightFrameIndex] and assigned(Node.Mesh) then begin
+     fNodeBoundingSpheres[aInFlightFrameIndex][Node.fIndex]:=TpvSphere.CreateFromAABB(InstanceNode.fBoundingBoxes[aInFlightFrameIndex]);
+    end;
+   end;
+  end;
+
   if aInFlightFrameIndex>=0 then begin
    fPerInFlightFrameRenderInstances[aInFlightFrameIndex].Count:=0;
    if fUseRenderInstances then begin
@@ -24955,6 +24988,8 @@ begin
        PerInFlightFrameRenderInstance^.PotentiallyVisibleSetNodeIndex:=RenderInstance.fPotentiallyVisibleSetNodeIndex;
        PerInFlightFrameRenderInstance^.BoundingBox:=RenderInstance.fBoundingBox;
        PerInFlightFrameRenderInstance^.BoundingSphere:=RenderInstance.fBoundingSphere;
+       PerInFlightFrameRenderInstance^.NodeBoundingSpheres:=fNodeBoundingSpheres[aInFlightFrameIndex];
+       PerInFlightFrameRenderInstance^.NodeCullObjectIDs:=RenderInstance.fNodeCullObjectIDs;
        PerInFlightFrameRenderInstance^.ModelMatrix:=RenderInstance.fModelMatrix;
        if RenderInstance.fFirst then begin
         RenderInstance.fFirst:=false;
@@ -25749,7 +25784,8 @@ var PerInFlightFrameRenderInstanceIndex,FrustumIndex,ViewIndex:TpvSizeInt;
     ViewPotentiallyVisibleSetNodeIndex:TpvScene3D.TPotentiallyVisibleSet.TNodeIndex;
     DoCulling,PotentiallyVisible:boolean;
     GlobalVulkanInstanceMatrixDynamicArray:PGlobalVulkanInstanceMatrixDynamicArray;
-    GlobalRenderInstanceBoundingSphereDynamicArray:PGlobalRenderInstanceBoundingSphereDynamicArray;
+    GlobalRenderInstanceCullDataDynamicArray:PGlobalRenderInstanceCullDataDynamicArray;
+    GlobalRenderInstanceCullData:PCullData;
     PerInFlightFrameRenderInstanceDynamicArray:TpvScene3D.TGroup.TInstance.PPerInFlightFrameRenderInstanceDynamicArray;
     PerInFlightFrameRenderInstance:TpvScene3D.TGroup.TInstance.PPerInFlightFrameRenderInstance;
 begin
@@ -25758,7 +25794,7 @@ begin
 
   GlobalVulkanInstanceMatrixDynamicArray:=@fSceneInstance.fGlobalVulkanInstanceMatrixDynamicArrays[aInFlightFrameIndex];
 
-  GlobalRenderInstanceBoundingSphereDynamicArray:=@fSceneInstance.fGlobalRenderInstanceBoundingSphereDynamicArrays[aInFlightFrameIndex];
+  GlobalRenderInstanceCullDataDynamicArray:=@fSceneInstance.fGlobalRenderInstanceCullDataDynamicArrays[aInFlightFrameIndex];
 
   aFirstInstance:=GlobalVulkanInstanceMatrixDynamicArray^.Count shr 1;
   aInstancesCount:=0;
@@ -25804,7 +25840,9 @@ begin
    if PotentiallyVisible then begin
     GlobalVulkanInstanceMatrixDynamicArray^.Add(PerInFlightFrameRenderInstance^.ModelMatrix);
     GlobalVulkanInstanceMatrixDynamicArray^.Add(PerInFlightFrameRenderInstance^.PreviousModelMatrix);
-    GlobalRenderInstanceBoundingSphereDynamicArray^.Add(PerInFlightFrameRenderInstance^.BoundingSphere);
+    GlobalRenderInstanceCullData:=Pointer(GlobalRenderInstanceCullDataDynamicArray^.AddNew);
+    GlobalRenderInstanceCullData^.BoundingSpheres:=PerInFlightFrameRenderInstance^.NodeBoundingSpheres;
+    GlobalRenderInstanceCullData^.CullObjectIDs:=PerInFlightFrameRenderInstance^.NodeCullObjectIDs;
     inc(aInstancesCount);
    end;
 
@@ -26484,10 +26522,10 @@ begin
   fGlobalVulkanInstanceMatrixDynamicArrays[Index].Count:=0;
   fGlobalVulkanInstanceMatrixDynamicArrays[Index].Add(TpvMatrix4x4.Identity);
   fGlobalVulkanInstanceMatrixDynamicArrays[Index].Add(TpvMatrix4x4.Identity);
-  fGlobalRenderInstanceBoundingSphereDynamicArrays[Index].Initialize;
-  fGlobalRenderInstanceBoundingSphereDynamicArrays[Index].Resize(65536);
-  fGlobalRenderInstanceBoundingSphereDynamicArrays[Index].Count:=0;
-  fGlobalRenderInstanceBoundingSphereDynamicArrays[Index].Add(TpvSphere.Create(TpvVector4.Null));
+  fGlobalRenderInstanceCullDataDynamicArrays[Index].Initialize;
+  fGlobalRenderInstanceCullDataDynamicArrays[Index].Resize(65536);
+  fGlobalRenderInstanceCullDataDynamicArrays[Index].Count:=0;
+  fGlobalRenderInstanceCullDataDynamicArrays[Index].AddNew;
  end;
 
  fVulkanDynamicVertexBufferData.Initialize;
@@ -27417,7 +27455,7 @@ begin
 
  for Index:=0 to fCountInFlightFrames-1 do begin
   fGlobalVulkanInstanceMatrixDynamicArrays[Index].Finalize;
-  fGlobalRenderInstanceBoundingSphereDynamicArrays[Index].Finalize;
+  fGlobalRenderInstanceCullDataDynamicArrays[Index].Finalize;
  end;
 
  fVkMultiDrawIndexedInfoEXTDynamicArray.Finalize;
@@ -28829,7 +28867,7 @@ end;
 
 procedure TpvScene3D.ResetFrame(const aInFlightFrameIndex:TpvSizeInt);
 var GlobalVulkanInstanceMatrixDynamicArray:PGlobalVulkanInstanceMatrixDynamicArray;
-    GlobalRenderInstanceBoundingSphereDynamicArray:PGlobalRenderInstanceBoundingSphereDynamicArray;
+    GlobalRenderInstanceCullDataDynamicArray:PGlobalRenderInstanceCullDataDynamicArray;
 begin
 
  GlobalVulkanInstanceMatrixDynamicArray:=@fGlobalVulkanInstanceMatrixDynamicArrays[aInFlightFrameIndex];
@@ -28840,12 +28878,12 @@ begin
  end;
  GlobalVulkanInstanceMatrixDynamicArray^.Count:=2;
 
- GlobalRenderInstanceBoundingSphereDynamicArray:=@fGlobalRenderInstanceBoundingSphereDynamicArrays[aInFlightFrameIndex];
- if GlobalRenderInstanceBoundingSphereDynamicArray^.Count<1 then begin
-  GlobalRenderInstanceBoundingSphereDynamicArray^.Count:=0;
-  GlobalRenderInstanceBoundingSphereDynamicArray^.Add(TpvSphere.Create(TpvVector4.Null));
+ GlobalRenderInstanceCullDataDynamicArray:=@fGlobalRenderInstanceCullDataDynamicArrays[aInFlightFrameIndex];
+ if GlobalRenderInstanceCullDataDynamicArray^.Count<1 then begin
+  GlobalRenderInstanceCullDataDynamicArray^.Count:=0;
+  GlobalRenderInstanceCullDataDynamicArray^.AddNew;
  end;
- GlobalRenderInstanceBoundingSphereDynamicArray^.Count:=1;
+ GlobalRenderInstanceCullDataDynamicArray^.Count:=1;
 
 end;
 
