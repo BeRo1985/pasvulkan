@@ -6102,7 +6102,7 @@ begin
             GPUDrawIndexedIndirectCommand^.DrawIndexedIndirectCommand.firstInstance:=InstanceID;
             GPUDrawIndexedIndirectCommand^.ObjectIndex:=GlobalRenderInstanceCullData^.CullObjectIDs[NodeIndex];
             BoundingSphere:=@GlobalRenderInstanceCullData^.BoundingSpheres[NodeIndex];
-            GPUDrawIndexedIndirectCommand^.BoundingSphere:=TpvVector4.InlineableCreate(GlobalVulkanInstanceMatrixDynamicArray^.ItemArray[(InstanceID shl 1) or 0].MulHomogen(BoundingSphere^.Center),BoundingSphere^.Radius);
+            GPUDrawIndexedIndirectCommand^.BoundingSphere:=TpvVector4.InlineableCreate(GlobalVulkanInstanceMatrixDynamicArray^.ItemArray[(InstanceID shl 1) or 0]*BoundingSphere^.Center,BoundingSphere^.Radius);
            end;
           end;
          end;
