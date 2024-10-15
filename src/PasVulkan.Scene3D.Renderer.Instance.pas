@@ -6019,7 +6019,7 @@ var DrawChoreographyBatchItemIndex,GPUDrawIndexedIndirectCommandIndex,
     DrawChoreographyBatchRange:TpvScene3D.TDrawChoreographyBatchRange;
     DrawChoreographyBatchRangeItem:TpvScene3D.PDrawChoreographyBatchRange;
     GPUDrawIndexedIndirectCommand:TpvScene3D.PGPUDrawIndexedIndirectCommand;
-    GlobalVulkanInstanceMatrixDynamicArray:TpvScene3D.PGlobalVulkanInstanceMatrixDynamicArray;
+//  GlobalVulkanInstanceMatrixDynamicArray:TpvScene3D.PGlobalVulkanInstanceMatrixDynamicArray;
     GlobalRenderInstanceCullDataDynamicArray:TpvScene3D.PGlobalRenderInstanceCullDataDynamicArray;
     GlobalRenderInstanceCullData:TpvScene3D.PCullData;
     RenderInstance:TpvScene3D.TGroup.TInstance.TRenderInstance;
@@ -6029,7 +6029,7 @@ begin
 
  fPerInFlightFrameGPUCulledArray[aInFlightFrameIndex,aRenderPassIndex]:=aGPUCulling;
 
- GlobalVulkanInstanceMatrixDynamicArray:=@fScene3D.GlobalVulkanInstanceMatrixDynamicArrays[aInFlightFrameIndex];
+//GlobalVulkanInstanceMatrixDynamicArray:=@fScene3D.GlobalVulkanInstanceMatrixDynamicArrays[aInFlightFrameIndex];
 
  GlobalRenderInstanceCullDataDynamicArray:=@fScene3D.GlobalRenderInstanceCullDataDynamicArrays[aInFlightFrameIndex];
 
@@ -6105,7 +6105,8 @@ begin
            GPUDrawIndexedIndirectCommand^.DrawIndexedIndirectCommand.firstInstance:=InstanceID;
            GPUDrawIndexedIndirectCommand^.ObjectIndex:=RenderInstance.NodeCullObjectIDs[NodeIndex];
            BoundingSphere:=@TpvScene3D.TGroup.TInstance(DrawChoreographyBatchItem.GroupInstance).Nodes[NodeIndex].BoundingSpheres[aInFlightFrameIndex];
-           GPUDrawIndexedIndirectCommand^.BoundingSphere:=BoundingSphere^.Transform(GlobalVulkanInstanceMatrixDynamicArray^.ItemArray[(InstanceID shl 1) or 0]).ToVector4;
+//         GPUDrawIndexedIndirectCommand^.BoundingSphere:=BoundingSphere^.Transform(GlobalVulkanInstanceMatrixDynamicArray^.ItemArray[(InstanceID shl 1) or 0]).ToVector4;
+           GPUDrawIndexedIndirectCommand^.BoundingSphere:=BoundingSphere^.Transform(RenderInstance.ModelMatrices[aInFlightFrameIndex]).ToVector4;
           end;
          end;
         end;
