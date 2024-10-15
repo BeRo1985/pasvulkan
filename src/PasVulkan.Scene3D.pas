@@ -362,6 +362,9 @@ type EpvScene3D=class(Exception);
             TGlobalVulkanInstanceMatrixDynamicArray=TpvDynamicArray<TpvMatrix4x4>;
             PGlobalVulkanInstanceMatrixDynamicArray=^TGlobalVulkanInstanceMatrixDynamicArray;
             TGlobalVulkanInstanceMatrixDynamicArrays=array[0..MaxInFlightFrames-1] of TGlobalVulkanInstanceMatrixDynamicArray;
+            TGlobalRenderInstanceBoundingSphereDynamicArray=TpvDynamicArray<TpvSphere>;
+            PGlobalRenderInstanceBoundingSphereDynamicArray=^TGlobalRenderInstanceBoundingSphereDynamicArray;
+            TGlobalRenderInstanceBoundingSphereDynamicArrays=array[0..MaxInFlightFrames-1] of TGlobalRenderInstanceBoundingSphereDynamicArray;
             TMeshComputeStagePushConstants=record
              IndexOffset:UInt32;
              CountIndices:UInt32;
@@ -2777,6 +2780,7 @@ type EpvScene3D=class(Exception);
                             fPreviousModelMatrix:TpvMatrix4x4;
                             //fModelMatrices:array[-1..MaxInFlightFrames-1] of TpvMatrix4x4;
                             fBoundingBox:TpvAABB;
+                            fBoundingSphere:TpvSphere;
                             fActiveMask:TPasMPUInt32;
                             fLights:TpvScene3D.TLights;
                            public
@@ -2797,6 +2801,7 @@ type EpvScene3D=class(Exception);
                           TPerInFlightFrameRenderInstance=record
                            PotentiallyVisibleSetNodeIndex:TpvScene3D.TPotentiallyVisibleSet.TNodeIndex;
                            BoundingBox:TpvAABB;
+                           BoundingSphere:TpvSphere;
                            ModelMatrix:TpvMatrix4x4;
                            PreviousModelMatrix:TpvMatrix4x4;
                           end;
@@ -3473,6 +3478,7 @@ type EpvScene3D=class(Exception);
        fImageDescriptorGeneration:TpvUInt64;
        fImageDescriptorProcessedGeneration:TpvUInt64;
 //     fGlobalVulkanViewUniformStagingBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
+       fGlobalRenderInstanceBoundingSphereDynamicArrays:TGlobalRenderInstanceBoundingSphereDynamicArrays;
        fGlobalVulkanInstanceMatrixDynamicArrays:TGlobalVulkanInstanceMatrixDynamicArrays;
        fGlobalVulkanInstanceMatrixBuffers:TGlobalVulkanInstanceMatrixBuffers;
        fGlobalVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
@@ -3900,6 +3906,8 @@ type EpvScene3D=class(Exception);
       public
        property Atmospheres:TObject read fAtmospheres;
        property AtmosphereGlobals:TObject read fAtmosphereGlobals;
+      public
+       property GlobalRenderInstanceBoundingSphereDynamicArrays:TGlobalRenderInstanceBoundingSphereDynamicArrays read fGlobalRenderInstanceBoundingSphereDynamicArrays;
       public
        property LastProcessFrameTimerQueryResults:TpvTimerQuery.TResults read fLastProcessFrameTimerQueryResults;
       public
@@ -24888,6 +24896,7 @@ begin
        TPasMPInterlocked.BitwiseOr(RenderInstance.fActiveMask,TpvUInt32(1) shl aInFlightFrameIndex);
 //     RenderInstance.fModelMatrices[aInFlightFrameIndex]:=RenderInstance.fModelMatrix;
        RenderInstance.fBoundingBox:=TemporaryBoundingBox.HomogenTransform(RenderInstance.fModelMatrix);
+       RenderInstance.fBoundingSphere:=TpvSphere.CreateFromAABB(RenderInstance.fBoundingBox);
        if First then begin
         First:=false;
         fBoundingBox:=RenderInstance.fBoundingBox;
@@ -24904,6 +24913,7 @@ begin
        PerInFlightFrameRenderInstance:=@fPerInFlightFrameRenderInstances[aInFlightFrameIndex].Items[PerInFlightFrameRenderInstanceIndex];
        PerInFlightFrameRenderInstance^.PotentiallyVisibleSetNodeIndex:=RenderInstance.fPotentiallyVisibleSetNodeIndex;
        PerInFlightFrameRenderInstance^.BoundingBox:=RenderInstance.fBoundingBox;
+       PerInFlightFrameRenderInstance^.BoundingSphere:=RenderInstance.fBoundingSphere;
        PerInFlightFrameRenderInstance^.ModelMatrix:=RenderInstance.fModelMatrix;
        if RenderInstance.fFirst then begin
         RenderInstance.fFirst:=false;
@@ -25698,6 +25708,7 @@ var PerInFlightFrameRenderInstanceIndex,FrustumIndex,ViewIndex:TpvSizeInt;
     ViewPotentiallyVisibleSetNodeIndex:TpvScene3D.TPotentiallyVisibleSet.TNodeIndex;
     DoCulling,PotentiallyVisible:boolean;
     GlobalVulkanInstanceMatrixDynamicArray:PGlobalVulkanInstanceMatrixDynamicArray;
+    GlobalRenderInstanceBoundingSphereDynamicArray:PGlobalRenderInstanceBoundingSphereDynamicArray;
     PerInFlightFrameRenderInstanceDynamicArray:TpvScene3D.TGroup.TInstance.PPerInFlightFrameRenderInstanceDynamicArray;
     PerInFlightFrameRenderInstance:TpvScene3D.TGroup.TInstance.PPerInFlightFrameRenderInstance;
 begin
@@ -25705,6 +25716,8 @@ begin
  if fUseRenderInstances then begin
 
   GlobalVulkanInstanceMatrixDynamicArray:=@fSceneInstance.fGlobalVulkanInstanceMatrixDynamicArrays[aInFlightFrameIndex];
+
+  GlobalRenderInstanceBoundingSphereDynamicArray:=@fSceneInstance.fGlobalRenderInstanceBoundingSphereDynamicArrays[aInFlightFrameIndex];
 
   aFirstInstance:=GlobalVulkanInstanceMatrixDynamicArray^.Count shr 1;
   aInstancesCount:=0;
@@ -25750,6 +25763,7 @@ begin
    if PotentiallyVisible then begin
     GlobalVulkanInstanceMatrixDynamicArray^.Add(PerInFlightFrameRenderInstance^.ModelMatrix);
     GlobalVulkanInstanceMatrixDynamicArray^.Add(PerInFlightFrameRenderInstance^.PreviousModelMatrix);
+    GlobalRenderInstanceBoundingSphereDynamicArray^.Add(PerInFlightFrameRenderInstance^.BoundingSphere);
     inc(aInstancesCount);
    end;
 
@@ -26429,6 +26443,10 @@ begin
   fGlobalVulkanInstanceMatrixDynamicArrays[Index].Count:=0;
   fGlobalVulkanInstanceMatrixDynamicArrays[Index].Add(TpvMatrix4x4.Identity);
   fGlobalVulkanInstanceMatrixDynamicArrays[Index].Add(TpvMatrix4x4.Identity);
+  fGlobalRenderInstanceBoundingSphereDynamicArrays[Index].Initialize;
+  fGlobalRenderInstanceBoundingSphereDynamicArrays[Index].Resize(65536);
+  fGlobalRenderInstanceBoundingSphereDynamicArrays[Index].Count:=0;
+  fGlobalRenderInstanceBoundingSphereDynamicArrays[Index].Add(TpvSphere.Create(TpvVector4.Null));
  end;
 
  fVulkanDynamicVertexBufferData.Initialize;
@@ -27358,6 +27376,7 @@ begin
 
  for Index:=0 to fCountInFlightFrames-1 do begin
   fGlobalVulkanInstanceMatrixDynamicArrays[Index].Finalize;
+  fGlobalRenderInstanceBoundingSphereDynamicArrays[Index].Finalize;
  end;
 
  fVkMultiDrawIndexedInfoEXTDynamicArray.Finalize;
@@ -28769,6 +28788,7 @@ end;
 
 procedure TpvScene3D.ResetFrame(const aInFlightFrameIndex:TpvSizeInt);
 var GlobalVulkanInstanceMatrixDynamicArray:PGlobalVulkanInstanceMatrixDynamicArray;
+    GlobalRenderInstanceBoundingSphereDynamicArray:PGlobalRenderInstanceBoundingSphereDynamicArray;
 begin
 
  GlobalVulkanInstanceMatrixDynamicArray:=@fGlobalVulkanInstanceMatrixDynamicArrays[aInFlightFrameIndex];
@@ -28778,6 +28798,13 @@ begin
   GlobalVulkanInstanceMatrixDynamicArray^.Add(TpvMatrix4x4.Identity);
  end;
  GlobalVulkanInstanceMatrixDynamicArray^.Count:=2;
+
+ GlobalRenderInstanceBoundingSphereDynamicArray:=@fGlobalRenderInstanceBoundingSphereDynamicArrays[aInFlightFrameIndex];
+ if GlobalRenderInstanceBoundingSphereDynamicArray^.Count<1 then begin
+  GlobalRenderInstanceBoundingSphereDynamicArray^.Count:=0;
+  GlobalRenderInstanceBoundingSphereDynamicArray^.Add(TpvSphere.Create(TpvVector4.Null));
+ end;
+ GlobalRenderInstanceBoundingSphereDynamicArray^.Count:=1;
 
 end;
 
