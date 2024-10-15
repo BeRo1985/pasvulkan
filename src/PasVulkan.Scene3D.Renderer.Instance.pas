@@ -6067,7 +6067,10 @@ begin
        DrawChoreographyBatchItem:=DrawChoreographyBatchItems[DrawChoreographyBatchItemIndex];
 
        if (DrawChoreographyBatchItem.CountIndices>0) and
-          (TpvScene3D.TGroup.TInstance(DrawChoreographyBatchItem.GroupInstance).fVulkanPerInFlightFrameInstancesCounts[aInFlightFrameIndex,fID,aRenderPassIndex]>0) then begin
+          (TpvScene3D.TGroup.TInstance(DrawChoreographyBatchItem.GroupInstance).fVulkanPerInFlightFrameInstancesCounts[aInFlightFrameIndex,fID,aRenderPassIndex]>0) and
+          assigned(DrawChoreographyBatchItem.Node) then begin
+
+        NodeIndex:=TpvScene3D.TGroup.TNode(DrawChoreographyBatchItem.Node).Index;
 
         if TpvScene3D.TGroup.TInstance(DrawChoreographyBatchItem.GroupInstance).fVulkanPerInFlightFrameInstancesCounts[aInFlightFrameIndex,fID,aRenderPassIndex]=1 then begin
          GPUDrawIndexedIndirectCommandIndex:=GPUDrawIndexedIndirectCommandDynamicArray^.AddNewIndex;
@@ -6089,21 +6092,18 @@ begin
          for InstanceIndex:=0 to TpvScene3D.TGroup.TInstance(DrawChoreographyBatchItem.GroupInstance).fVulkanPerInFlightFrameInstancesCounts[aInFlightFrameIndex,fID,aRenderPassIndex]-1 do begin
           InstanceID:=TpvScene3D.TGroup.TInstance(DrawChoreographyBatchItem.GroupInstance).fVulkanPerInFlightFrameFirstInstances[aInFlightFrameIndex,fID,aRenderPassIndex]+InstanceIndex;
           GlobalRenderInstanceCullData:=@GlobalRenderInstanceCullDataDynamicArray^.ItemArray[InstanceID];
-          if assigned(DrawChoreographyBatchItem.Node) then begin
-           NodeIndex:=TpvScene3D.TGroup.TNode(DrawChoreographyBatchItem.Node).Index;
-           if (NodeIndex<length(GlobalRenderInstanceCullData^.CullObjectIDs)) and
-              (NodeIndex<length(GlobalRenderInstanceCullData^.BoundingSpheres)) then begin
-            GPUDrawIndexedIndirectCommandIndex:=GPUDrawIndexedIndirectCommandDynamicArray^.AddNewIndex;
-            GPUDrawIndexedIndirectCommand:=@GPUDrawIndexedIndirectCommandDynamicArray^.Items[GPUDrawIndexedIndirectCommandIndex];
-            GPUDrawIndexedIndirectCommand^.DrawIndexedIndirectCommand.indexCount:=DrawChoreographyBatchItem.CountIndices;
-            GPUDrawIndexedIndirectCommand^.DrawIndexedIndirectCommand.instanceCount:=1;
-            GPUDrawIndexedIndirectCommand^.DrawIndexedIndirectCommand.firstIndex:=DrawChoreographyBatchItem.StartIndex;
-            GPUDrawIndexedIndirectCommand^.DrawIndexedIndirectCommand.vertexOffset:=0;
-            GPUDrawIndexedIndirectCommand^.DrawIndexedIndirectCommand.firstInstance:=InstanceID;
-            GPUDrawIndexedIndirectCommand^.ObjectIndex:=GlobalRenderInstanceCullData^.CullObjectIDs[NodeIndex];
-            BoundingSphere:=@GlobalRenderInstanceCullData^.BoundingSpheres[NodeIndex];
-            GPUDrawIndexedIndirectCommand^.BoundingSphere:=TpvVector4.InlineableCreate(GlobalVulkanInstanceMatrixDynamicArray^.ItemArray[(InstanceID shl 1) or 0]*BoundingSphere^.Center,BoundingSphere^.Radius);
-           end;
+          if (NodeIndex<length(GlobalRenderInstanceCullData^.CullObjectIDs)) and
+             (NodeIndex<length(GlobalRenderInstanceCullData^.BoundingSpheres)) then begin
+           GPUDrawIndexedIndirectCommandIndex:=GPUDrawIndexedIndirectCommandDynamicArray^.AddNewIndex;
+           GPUDrawIndexedIndirectCommand:=@GPUDrawIndexedIndirectCommandDynamicArray^.Items[GPUDrawIndexedIndirectCommandIndex];
+           GPUDrawIndexedIndirectCommand^.DrawIndexedIndirectCommand.indexCount:=DrawChoreographyBatchItem.CountIndices;
+           GPUDrawIndexedIndirectCommand^.DrawIndexedIndirectCommand.instanceCount:=1;
+           GPUDrawIndexedIndirectCommand^.DrawIndexedIndirectCommand.firstIndex:=DrawChoreographyBatchItem.StartIndex;
+           GPUDrawIndexedIndirectCommand^.DrawIndexedIndirectCommand.vertexOffset:=0;
+           GPUDrawIndexedIndirectCommand^.DrawIndexedIndirectCommand.firstInstance:=InstanceID;
+           GPUDrawIndexedIndirectCommand^.ObjectIndex:=GlobalRenderInstanceCullData^.CullObjectIDs[NodeIndex];
+           BoundingSphere:=@GlobalRenderInstanceCullData^.BoundingSpheres[NodeIndex];
+           GPUDrawIndexedIndirectCommand^.BoundingSphere:=TpvVector4.InlineableCreate(GlobalVulkanInstanceMatrixDynamicArray^.ItemArray[(InstanceID shl 1) or 0]*BoundingSphere^.Center,BoundingSphere^.Radius);
           end;
          end;
         end;
