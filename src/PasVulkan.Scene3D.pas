@@ -661,6 +661,7 @@ type EpvScene3D=class(Exception);
              published
               property Triangles:TTriangles read fTriangles;
             end;
+            TBakedMeshes=TpvObjectGenericList<TpvScene3D.TBakedMesh>;
             { TPotentiallyVisibleSet }
             TPotentiallyVisibleSet=class
              public
