@@ -287,7 +287,7 @@ float getAtmosphereCullingFactor(const in AtmosphereCullingParameters CullingPar
         return 1.0;
       }
     }*/
-    float signedDistance = max(geometrySignedDistance, cameraSignedDistance); 
+    float signedDistance = min(geometrySignedDistance, cameraSignedDistance); 
     const vec2 innerOuterFadeDistances = uintBitsToFloat(CullingParameters.innerOuterFadeDistancesCountFacesMode.xy);
     return clamp((signedDistance - innerOuterFadeDistances.x) / max(1e-6, innerOuterFadeDistances.y - innerOuterFadeDistances.x), 0.0, 1.0);
   }
