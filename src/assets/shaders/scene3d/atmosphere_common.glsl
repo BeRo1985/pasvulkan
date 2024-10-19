@@ -221,7 +221,7 @@ float getAtmosphereCullingFactor(const in AtmosphereCullingParameters CullingPar
       p = fma(cross(q.xyz, fma(p, vec3(q.w), cross(q.xyz, p))), vec3(2.0), p); // Rotate the point to the OBB space by the inverse quaternion
       signedDistance = length(max(abs(p) - CullingParameters.obbExtent.xyz, vec3(0.0)));
     }  
-    return 1.0 - clamp((signedDistance - CullingParameters.innerOuterFadeDistances.x) / max(1e-6, (CullingParameters.innerOuterFadeDistances.y - CullingParameters.innerOuterFadeDistances.x)), 0.0, 1.0);
+    return clamp((signedDistance - CullingParameters.innerOuterFadeDistances.x) / max(1e-6, (CullingParameters.innerOuterFadeDistances.y - CullingParameters.innerOuterFadeDistances.x)), 0.0, 1.0);
   }
 }
 
