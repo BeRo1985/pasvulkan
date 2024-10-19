@@ -1728,6 +1728,7 @@ end;
 procedure TpvScene3DAtmosphere.TGPUAtmosphereCullingParameters.Assign(const aAtmosphereCullingParameters:TAtmosphereCullingParameters);
 var FaceIndex:TpvSizeInt; 
 begin
+ aAtmosphereCullingParameters.CalculateBoundingSphere;
  InnerFadeDistance:=aAtmosphereCullingParameters.InnerFadeDistance;
  OuterFadeDistance:=aAtmosphereCullingParameters.OuterFadeDistance;
  CountFaces:=aAtmosphereCullingParameters.CountFaces;
@@ -1748,7 +1749,6 @@ begin
    end;
   end;
  end;
- aAtmosphereCullingParameters.CalculateBoundingSphere;
 end;
 
 { TpvScene3DAtmosphere.TGPUAtmosphereParameters }
