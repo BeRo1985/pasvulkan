@@ -322,6 +322,18 @@ void main() {
 
   float targetDepth = uintBitsToFloat(0x7F800000u); // +inf
 
+  float atmosphereCullingFactor;
+  if((((pushConstants.flags & FLAGS_USE_FAST_AERIAL_PERSPECTIVE) != 0u) || ((pushConstants.flags & FLAGS_SHADOWS) == 0u)) && (abs(uAtmosphereParameters.atmosphereParameters.CullingParameters.obbCenter.w) > 1e-6)){ 
+    if(depthIsZFar){
+      atmosphereCullingFactor = 1.0;
+    }else{
+      vec4 t = (view.inverseViewMatrix * view.inverseProjectionMatrix) * vec4(fma(uv, vec2(2.0), vec2(-1.0)), depthBufferValue, 1.0);
+      atmosphereCullingFactor = getAtmosphereCullingFactor(uAtmosphereParameters.atmosphereParameters.CullingParameters, t.xyz /= t.w);
+    }
+  }else{
+    atmosphereCullingFactor = 1.0;
+  }
+
   if(/*rayHitsAtmosphere &&*/ depthIsZFar){
 
     // When fast sky is used, we can use a precomputed sky view LUT to get the inscattering and transmittance values 
@@ -478,7 +490,7 @@ void main() {
         vec3 transmittance = vec3(inscattering.w); // convert from monochromatic transmittance, not optimal but better than nothing
 #endif
 
-        addScatteringSample(inscattering.xyz, transmittance.xyz);
+        addScatteringSample(mix(vec3(0.0), inscattering.xyz, atmosphereCullingFactor), mix(vec3(1.0), transmittance.xyz, atmosphereCullingFactor));
 
         applyFastCloudIntegration = true;
 
@@ -618,6 +630,11 @@ void main() {
       inscattering *= fadeFactor;
       transmittance = mix(transmittance, vec3(1.0), fadeFactor); 
     } 
+
+    if(atmosphereCullingFactor < 1.0){
+      inscattering = mix(vec3(0.0), inscattering, atmosphereCullingFactor);
+      transmittance = mix(vec3(1.0), transmittance, atmosphereCullingFactor);
+    }
 
 #ifdef DUALBLEND
     outInscattering = vec4(clamp(inscattering, vec3(0.0), vec3(65504.0)), 1.0 - clamp(dot(transmittance, vec3(1.0 / 3.0)), 0.0, 1.0)); // clamp to 16-bit floating point range, alpha = 1.0 - transmittance sine it is applied directly to the actual content, where alpha is used in its usual normal way and not as monochromatic transmittance

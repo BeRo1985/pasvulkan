@@ -25,109 +25,6 @@
 
 float SampleSegmentT = 0.3;
 
-struct DensityProfileLayer {
-  float Width;
-  float ExpTerm;
-  float ExpScale;
-  float LinearTerm;
-  float ConstantTerm;
-  float Unused0;
-  float Unused1;
-  float Unused2;
-};
-
-struct DensityProfile {
-  DensityProfileLayer Layers[2];
-};
-
-struct VolumetricCloudLayer {
-
-  vec4 Albedo; // w = unused 
-
-  vec4 ExtinctionCoefficient; // w = CoverageWindAngle
-	
-  float SkewAlongWindDirection;
-	float TotalNoiseScale;
-	float CurlScale;
-	float CurlNoiseHeightFraction;
-	
-  float CurlNoiseModifier;
-	float DetailScale;
-	float DetailNoiseHeightFraction;
-	float DetailNoiseModifier;
-	
-  float SkewAlongCoverageWindDirection;
-	float WeatherScale;
-	float CoverageAmount;
-	float CoverageMinimum;
-	
-  float TypeAmount;
-	float TypeMinimum;
-	float RainAmount;
-	float RainMinimum;
-	
-  vec4 GradientSmall;
-	
-  vec4 GradientMedium;
-	
-  vec4 GradientLarge;
-	
-  vec4 AnvilDeformationSmall;
-	
-  vec4 AnvilDeformationMedium;
-	
-  vec4 AnvilDeformationLarge;
-	
-  float WindSpeed;
-	float WindAngle;
-	float WindUpAmount;
-	float CoverageWindSpeed;
-  
-  //float CoverageWindAngle; // in ExtinctionCoefficient.w  
-
-};
-
-struct VolumetricCloudParametersOld {
-
-	float BeerPowder;
-	float BeerPowderPower;
-	float AmbientGroundMultiplier; 	
-  float PhaseG;
-
-	float PhaseG2;
-	float PhaseBlend; 
-	float MultiScatteringScattering;	
-  float MultiScatteringExtinction;
-
-	float MultiScatteringEccentricity;
-	float ShadowStepLength;
-	float HorizonBlendAmount;
-	float HorizonBlendPower;
-
-	float CloudStartHeight;
-	float CloudThickness;
-	float AnimationMultiplier;
-	float Padding0;
-
-	int MaxStepCount; 
-	float MaxMarchingDistance; 
-	float InverseDistanceStepCount; 
-	float RenderDistance;
-
-	float LODDistance; 
-	float LODMin; 
-	float BigStepMarch; 
-	float TransmittanceThreshold; 
-
-	float ShadowSampleCount;
-	float GroundContributionSampleCount;
-	float Padding1;
-	float Padding2;
-  
-	VolumetricCloudLayer Layers[2];
-
-};
-
 struct CloudPhaseParameters {
   float G;
   float G2;
@@ -255,6 +152,18 @@ struct VolumetricCloudParameters {
 
 };
 
+// Atmosphere culling for avoiding rendering the atmosphere scattering inside scene objects, when the GPU is too slow for real atmospheric shadowing either by
+// using shadow mapping or by using raytracing. The culling is based on an oriented bounding box (OBB) that is used to cull the atmosphere scattering
+// inside the scene objects. The OBB is defined by the center, extent, and orientation quaternion. The culling is based on the distance to the OBB center
+// where it will fade out the atmosphere scattering based on the inner and outer fade distances.
+// The OBB must set dynamically based on the scene object that it should cull the atmosphere scattering inside.
+struct AtmosphereCullingParameters {
+  vec4 obbCenter; // xyz = center, w = radius (so that it can be used as a sphere as well, if it is zero then culling is disabled, if negative then it is a sphere)
+  vec4 obbExtent; // xyz = extent, w = unused
+  vec4 obbOrientation; // Quaternion 
+  vec4 innerOuterFadeDistances; // x = inner fade distance, y = outer fade distance, zw = unused
+};
+
 struct AtmosphereParameters {
 
   mat4 transform;
@@ -290,9 +199,31 @@ struct AtmosphereParameters {
   int RaymarchingMinSteps;
   int RaymarchingMaxSteps;
 
+  AtmosphereCullingParameters CullingParameters;
+
   VolumetricCloudParameters VolumetricClouds;
 
 };
+
+float getAtmosphereCullingFactor(const in AtmosphereCullingParameters CullingParameters, vec3 p){
+  if(abs(CullingParameters.obbCenter.w) < 1e-6){
+    return 1.0;
+  }else{
+    float signedDistance;
+    if(CullingParameters.obbCenter.w < 0.0){
+      // Sphere culling
+      signedDistance = length(p - CullingParameters.obbCenter.xyz) + CullingParameters.obbCenter.w;
+    }else{
+      // OBB culling
+      p -= CullingParameters.obbCenter.xyz; // Translate the point to the OBB space
+      vec4 q = CullingParameters.obbOrientation;
+      q = vec4(-q.xyz, q.w) / length(q); // Inversed quaternion
+      p = fma(cross(q.xyz, fma(p, vec3(q.w), cross(q.xyz, p))), vec3(2.0), p); // Rotate the point to the OBB space by the inverse quaternion
+      signedDistance = length(max(abs(p) - CullingParameters.obbExtent.xyz, vec3(0.0)));
+    }  
+    return 1.0 - clamp((signedDistance - CullingParameters.innerOuterFadeDistances.x) / max(1e-6, (CullingParameters.innerOuterFadeDistances.y - CullingParameters.innerOuterFadeDistances.x)), 0.0, 1.0);
+  }
+}
 
 vec3 getSunDirection(const in AtmosphereParameters atmosphereParameters){
   return vec3(atmosphereParameters.MieScattering.w, atmosphereParameters.MieExtinction.w, atmosphereParameters.MieAbsorption.w);
