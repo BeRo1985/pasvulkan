@@ -270,8 +270,6 @@ type TpvScene3DAtmosphere=class;
              OuterFadeDistance:TpvFloat;
              CountFaces:TpvUInt32;             
              Mode:TpvUInt32;
-             CenterRadius:TpvVector4;
-             HalfExtents:TpvVector4;
              InversedTransform:TpvMatrix4x4;
              FacePlanes:array[0..31] of TpvVector4;
             end;
@@ -548,8 +546,6 @@ type TpvScene3DAtmosphere=class;
               OuterFadeDistance:TpvFloat;
               CountFaces:TpvUInt32;
               Mode:TpvUInt32;
-              CenterRadius:TpvVector4;
-              HalfExtents:TpvVector4;
               InversedTransform:TpvMatrix4x4;
               FacePlanes:array[0..31] of TpvVector4;
               procedure Assign(const aAtmosphereCullingParameters:TAtmosphereCullingParameters);
@@ -1666,8 +1662,6 @@ begin
  OuterFadeDistance:=aAtmosphereCullingParameters.OuterFadeDistance;
  CountFaces:=aAtmosphereCullingParameters.CountFaces;
  Mode:=aAtmosphereCullingParameters.Mode;
- CenterRadius:=aAtmosphereCullingParameters.CenterRadius;
- HalfExtents:=aAtmosphereCullingParameters.HalfExtents;
  InversedTransform:=aAtmosphereCullingParameters.InversedTransform;
  for FaceIndex:=0 to Min(TpvSizeInt(CountFaces),32)-1 do begin
   FacePlanes[FaceIndex]:=aAtmosphereCullingParameters.FacePlanes[FaceIndex];

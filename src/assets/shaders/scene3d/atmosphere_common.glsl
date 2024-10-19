@@ -153,16 +153,12 @@ struct VolumetricCloudParameters {
 };
 
 // Atmosphere culling for avoiding rendering the atmosphere scattering inside scene objects, when the GPU is too slow for real atmospheric shadowing either by
-// using shadow mapping or by using raytracing. The culling is based on an oriented bounding box (OBB) that is used to cull the atmosphere scattering
-// inside the scene objects. The OBB is defined by the center, extent, and orientation quaternion. The culling is based on the distance to the OBB center
-// where it will fade out the atmosphere scattering based on the inner and outer fade distances.
-// The OBB must set dynamically based on the scene object that it should cull the atmosphere scattering inside.
+// using shadow mapping or by using raytracing. 
+// This structure data must set dynamically based on the scene object that it should cull the atmosphere scattering inside.
 struct AtmosphereCullingParameters {
   uvec4 innerOuterFadeDistancesCountFacesMode; // x = inner fade distance, y = outer fade distance, z = count faces, w = mode (0 = Disabled, 1 = AABB, 2 = Sphere, 3 = Convex Hull)
-  vec4 centerRadius; // xyz = center, w = radius
-  vec4 halfExtents; // xyz = extent, w = unused
   mat4 inversedTransform; // Inversed transform matrix 
-  vec4 facePlanes[32]; // maximal 32 faces
+  vec4 facePlanes[32]; // maximal 32 faces, but for AABB [0] is the center and [1] is the extent, for Sphere [0] is the center (xyz) with radius (w)
 };
 
 struct AtmosphereParameters {
@@ -217,12 +213,12 @@ float getAtmosphereCullingFactor(const in AtmosphereCullingParameters CullingPar
     switch(CullingParameters.innerOuterFadeDistancesCountFacesMode.w){
       case 1u:{
         // AABB culling
-        signedDistance = length(max(vec3(0.0), abs(p) - CullingParameters.halfExtents.xyz));
+        signedDistance = length(max(vec3(0.0), abs(p - CullingParameters.facePlanes[0].xyz) - CullingParameters.facePlanes[1].xyz));
         break;
       }
       case 2u:{
         // Sphere culling
-        signedDistance = length(p) - CullingParameters.centerRadius.w;
+        signedDistance = length(p - CullingParameters.facePlanes[0].xyz) - CullingParameters.facePlanes[0].w;
         break;
       }
       case 3u:{
@@ -230,7 +226,7 @@ float getAtmosphereCullingFactor(const in AtmosphereCullingParameters CullingPar
         signedDistance = 0.0;
         for(uint faceIndex = 0u, countFaces = min(CullingParameters.innerOuterFadeDistancesCountFacesMode.z, 32u); faceIndex < countFaces; faceIndex++){
           const vec4 facePlane = CullingParameters.facePlanes[faceIndex];
-          signedDistance = max(signedDistance, dot(p, facePlane.xyz) + facePlane.w);
+          signedDistance = min(signedDistance, dot(p, facePlane.xyz) + facePlane.w);
           if(signedDistance <= innerOuterFadeDistances.x){
             // If it is already inside the inner fade distance, then break the loop early
             break;
