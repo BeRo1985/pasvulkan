@@ -385,7 +385,7 @@ void main() {
 
   }else{ 
 
-    needAerialPerspective = true;
+    needAerialPerspective = atmosphereCullingFactor > 0.0;
 
   }
 
