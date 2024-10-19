@@ -266,10 +266,14 @@ type TpvScene3DAtmosphere=class;
             end;
             { TAtmosphereCullingParameters }
             TAtmosphereCullingParameters=packed record
-             OBBCenter:TpvVector4; // xyz = center, w = radius (so that it can be used as a sphere as well, if it is zero then culling is disabled, if negative then it is a sphere)
-             OBBExtent:TpvVector4; // xyz = extent, w = unused
-             OBBOrientation:TpvQuaternion; // Quaternion
-             InnerOuterFadeDistances:TpvVector4; // x = inner fade distance, y = outer fade distance, zw = unused
+             InnerFadeDistance:TpvFloat;
+             OuterFadeDistance:TpvFloat;
+             CountFaces:TpvUInt32;             
+             Mode:TpvUInt32;
+             CenterRadius:TpvVector4;
+             HalfExtents:TpvVector4;
+             InversedTransform:TpvMatrix4x4;
+             FacePlanes:array[0..31] of TpvVector4;
             end;
             PAtmosphereCullingParameters=^TAtmosphereCullingParameters;            
             { TVolumetricCloudLayerLow }
@@ -540,10 +544,14 @@ type TpvScene3DAtmosphere=class;
             { TGPUAtmosphereCullingParameters }
             TGPUAtmosphereCullingParameters=packed record
              public
-              OBBCenter:TpvVector4; // xyz = center, w = radius (so that it can be used as a sphere as well, if it is zero then culling is disabled, if negative then it is a sphere)
-              OBBExtent:TpvVector4; // xyz = extent, w = unused
-              OBBOrientation:TpvQuaternion; // Quaternion
-              InnerOuterFadeDistances:TpvVector4; // x = inner fade distance, y = outer fade distance, zw = unused
+              InnerFadeDistance:TpvFloat;
+              OuterFadeDistance:TpvFloat;
+              CountFaces:TpvUInt32;
+              Mode:TpvUInt32;
+              CenterRadius:TpvVector4;
+              HalfExtents:TpvVector4;
+              InversedTransform:TpvMatrix4x4;
+              FacePlanes:array[0..31] of TpvVector4;
               procedure Assign(const aAtmosphereCullingParameters:TAtmosphereCullingParameters);
             end;
             { TGPUAtmosphereParameters }
@@ -1652,11 +1660,18 @@ end;
 { TpvScene3DAtmosphere.TGPUAtmosphereCullingParameters }
 
 procedure TpvScene3DAtmosphere.TGPUAtmosphereCullingParameters.Assign(const aAtmosphereCullingParameters:TAtmosphereCullingParameters);
+var FaceIndex:TpvSizeInt; 
 begin
- OBBCenter:=aAtmosphereCullingParameters.OBBCenter;
- OBBExtent:=aAtmosphereCullingParameters.OBBExtent;
- OBBOrientation:=aAtmosphereCullingParameters.OBBOrientation;
- InnerOuterFadeDistances:=aAtmosphereCullingParameters.InnerOuterFadeDistances;
+ InnerFadeDistance:=aAtmosphereCullingParameters.InnerFadeDistance;
+ OuterFadeDistance:=aAtmosphereCullingParameters.OuterFadeDistance;
+ CountFaces:=aAtmosphereCullingParameters.CountFaces;
+ Mode:=aAtmosphereCullingParameters.Mode;
+ CenterRadius:=aAtmosphereCullingParameters.CenterRadius;
+ HalfExtents:=aAtmosphereCullingParameters.HalfExtents;
+ InversedTransform:=aAtmosphereCullingParameters.InversedTransform;
+ for FaceIndex:=0 to Min(TpvSizeInt(CountFaces),32)-1 do begin
+  FacePlanes[FaceIndex]:=aAtmosphereCullingParameters.FacePlanes[FaceIndex];
+ end;
 end;
 
 { TpvScene3DAtmosphere.TGPUAtmosphereParameters }

@@ -323,7 +323,7 @@ void main() {
   float targetDepth = uintBitsToFloat(0x7F800000u); // +inf
 
   float atmosphereCullingFactor;
-  if((((pushConstants.flags & FLAGS_USE_FAST_AERIAL_PERSPECTIVE) != 0u) || ((pushConstants.flags & FLAGS_SHADOWS) == 0u)) && (abs(uAtmosphereParameters.atmosphereParameters.CullingParameters.obbCenter.w) > 1e-6)){ 
+  if((((pushConstants.flags & FLAGS_USE_FAST_AERIAL_PERSPECTIVE) != 0u) || ((pushConstants.flags & FLAGS_SHADOWS) == 0u)) && (uAtmosphereParameters.atmosphereParameters.CullingParameters.innerOuterFadeDistancesCountFacesMode.w != 0u)){ 
     if(depthIsZFar){
       atmosphereCullingFactor = 1.0;
     }else{

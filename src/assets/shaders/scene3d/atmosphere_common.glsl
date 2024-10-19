@@ -158,10 +158,11 @@ struct VolumetricCloudParameters {
 // where it will fade out the atmosphere scattering based on the inner and outer fade distances.
 // The OBB must set dynamically based on the scene object that it should cull the atmosphere scattering inside.
 struct AtmosphereCullingParameters {
-  vec4 obbCenter; // xyz = center, w = radius (so that it can be used as a sphere as well, if it is zero then culling is disabled, if negative then it is a sphere)
-  vec4 obbExtent; // xyz = extent, w = unused
-  vec4 obbOrientation; // Quaternion 
-  vec4 innerOuterFadeDistances; // x = inner fade distance, y = outer fade distance, zw = unused
+  uvec4 innerOuterFadeDistancesCountFacesMode; // x = inner fade distance, y = outer fade distance, z = count faces, w = mode (0 = Disabled, 1 = AABB, 2 = Sphere, 3 = Convex Hull)
+  vec4 centerRadius; // xyz = center, w = radius
+  vec4 halfExtents; // xyz = extent, w = unused
+  mat4 inversedTransform; // Inversed transform matrix 
+  vec4 facePlanes[32]; // maximal 32 faces
 };
 
 struct AtmosphereParameters {
@@ -206,26 +207,43 @@ struct AtmosphereParameters {
 };
 
 float getAtmosphereCullingFactor(const in AtmosphereCullingParameters CullingParameters, vec3 p){
-  if(abs(CullingParameters.obbCenter.w) < 1e-6){
+  if(CullingParameters.innerOuterFadeDistancesCountFacesMode.w == 0u){
+    // Disabled
     return 1.0;
   }else{
+    p = (CullingParameters.inversedTransform * vec4(p, 1.0)).xyz; // Transform the point to the local space 
+    const vec2 innerOuterFadeDistances = uintBitsToFloat(CullingParameters.innerOuterFadeDistancesCountFacesMode.xy);
     float signedDistance;
-    if(CullingParameters.obbCenter.w < 0.0){
-      // Sphere culling
-      signedDistance = length(p - CullingParameters.obbCenter.xyz) + CullingParameters.obbCenter.w;
-    }else{
-      // OBB culling
-      p -= CullingParameters.obbCenter.xyz; // Translate the point to the OBB space
-      vec4 q = CullingParameters.obbOrientation;
-#if 1
-      p = fma(cross(-q.xyz, fma(p, vec3(q.w), cross(-q.xyz, p))), vec3(2.0), p); // Inverse rotate the point to the OBB space by the quaternion (given that the quaternion is already normalized)
-#else      
-      q = vec4(-q.xyz, q.w) / length(q); // Inversed quaternion
-      p = fma(cross(q.xyz, fma(p, vec3(q.w), cross(q.xyz, p))), vec3(2.0), p); // Rotate the point to the OBB space by the inverse quaternion
-#endif
-      signedDistance = length(max(abs(p) - CullingParameters.obbExtent.xyz, vec3(0.0)));
-    }  
-    return clamp((signedDistance - CullingParameters.innerOuterFadeDistances.x) / max(1e-6, (CullingParameters.innerOuterFadeDistances.y - CullingParameters.innerOuterFadeDistances.x)), 0.0, 1.0);
+    switch(CullingParameters.innerOuterFadeDistancesCountFacesMode.w){
+      case 1u:{
+        // AABB culling
+        signedDistance = length(max(vec3(0.0), abs(p) - CullingParameters.halfExtents.xyz));
+        break;
+      }
+      case 2u:{
+        // Sphere culling
+        signedDistance = length(p) - CullingParameters.centerRadius.w;
+        break;
+      }
+      case 3u:{
+        // Convex Hull culling
+        signedDistance = 0.0;
+        for(uint faceIndex = 0u, countFaces = min(CullingParameters.innerOuterFadeDistancesCountFacesMode.z, 32u); faceIndex < countFaces; faceIndex++){
+          const vec4 facePlane = CullingParameters.facePlanes[faceIndex];
+          signedDistance = max(signedDistance, dot(p, facePlane.xyz) + facePlane.w);
+          if(signedDistance <= innerOuterFadeDistances.x){
+            // If it is already inside the inner fade distance, then break the loop early
+            break;
+          }
+        }
+        break;
+      }
+      default:{
+        // Should not happen
+        return 1.0;
+      }
+    }
+    return clamp((signedDistance - innerOuterFadeDistances.x) / max(1e-6, innerOuterFadeDistances.y - innerOuterFadeDistances.x), 0.0, 1.0);
   }
 }
 
