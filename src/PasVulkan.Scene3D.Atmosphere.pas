@@ -883,6 +883,7 @@ begin
      p:=@FacePlanes[FaceIndex];
      s.Radius:=Max(s.Radius,(s.Center-(p^.xyz*(-p^.w))).Length);
     end;
+    s.Radius:=s.Radius*2.0;
    end else begin
     s.Center:=TpvVector3.Origin;
     s.Radius:=0.0;
