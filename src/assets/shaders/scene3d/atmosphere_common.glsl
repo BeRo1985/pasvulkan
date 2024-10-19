@@ -203,18 +203,21 @@ struct AtmosphereParameters {
 
 };
 
-float getAtmosphereCullingFactor(const in AtmosphereCullingParameters CullingParameters, vec3 p){
+float getAtmosphereCullingFactor(const in AtmosphereCullingParameters CullingParameters, vec3 p, vec3 c){
   if(CullingParameters.innerOuterFadeDistancesCountFacesMode.w == 0u){
     // Disabled
     return 1.0;
   }else{
+    if((CullingParameters.innerOuterFadeDistancesCountFacesMode.w & 0x10u) != 0u){
+      p = c; // Use the camera position instead of the point
+    }
     p = (CullingParameters.inversedTransform * vec4(p, 1.0)).xyz; // Transform the point to the local space 
     const vec2 innerOuterFadeDistances = uintBitsToFloat(CullingParameters.innerOuterFadeDistancesCountFacesMode.xy);
     float signedDistance = length(p - CullingParameters.boundingSphere.xyz) - CullingParameters.boundingSphere.w;
     if(signedDistance > 0.0){
       return 1.0; // Outside the bounding sphere, early out 
     }
-    switch(CullingParameters.innerOuterFadeDistancesCountFacesMode.w){
+    switch(CullingParameters.innerOuterFadeDistancesCountFacesMode.w & 0xf){
       case 1u:{
         // Sphere culling
         signedDistance = length(p - CullingParameters.facePlanes[0].xyz) - CullingParameters.facePlanes[0].w;

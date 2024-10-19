@@ -328,7 +328,7 @@ void main() {
       atmosphereCullingFactor = 1.0;
     }else{
       vec4 t = (view.inverseViewMatrix * view.inverseProjectionMatrix) * vec4(fma(uv, vec2(2.0), vec2(-1.0)), depthBufferValue, 1.0);
-      atmosphereCullingFactor = getAtmosphereCullingFactor(uAtmosphereParameters.atmosphereParameters.CullingParameters, t.xyz /= t.w);
+      atmosphereCullingFactor = getAtmosphereCullingFactor(uAtmosphereParameters.atmosphereParameters.CullingParameters, t.xyz /= t.w, worldPos);
     }
   }else{
     atmosphereCullingFactor = 1.0;
