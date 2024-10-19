@@ -858,7 +858,7 @@ var FaceIndex:TpvSizeInt;
     cx,cy,cz:TpvDouble;
     p:PpvVector4;
 begin
- case Mode of
+ case Mode and $f of
   1:begin
    s.Center:=CenterRadius.xyz;
    s.Radius:=CenterRadius.w;
@@ -1734,7 +1734,7 @@ begin
  Mode:=aAtmosphereCullingParameters.Mode;
  InversedTransform:=aAtmosphereCullingParameters.InversedTransform;
  BoundingSphere:=aAtmosphereCullingParameters.BoundingSphere;
- case Mode of
+ case Mode and $f of
   1:begin
    Center:=aAtmosphereCullingParameters.Center;
    HalfExtents:=aAtmosphereCullingParameters.HalfExtents;
