@@ -1153,6 +1153,7 @@ type PpvScalar=^TpvScalar;
        function Area:TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
        function Center:TpvVector3;
        function Flip:TpvAABB;
+       function ToOBB(const aTransform:TpvMatrix4x4):TpvOBB;
        function SquareMagnitude:TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
        function Resize(const f:TpvScalar):TpvAABB; {$ifdef CAN_INLINE}inline;{$endif}
        procedure DirectCombine(const WithAABB:TpvAABB); {$ifdef CAN_INLINE}inline;{$endif}
@@ -15091,6 +15092,13 @@ end;
 function TpvAABB.SquareMagnitude:TpvScalar;
 begin
  result:=sqr(Max.x-Min.x)+(Max.y-Min.y)+sqr(Max.z-Min.z);
+end;
+
+function TpvAABB.ToOBB(const aTransform:TpvMatrix4x4):TpvOBB;
+begin
+ result.Center:=aTransform*((Min+Max)*0.5);
+ result.HalfExtents:=(Max-Min)*0.5;
+ result.Matrix:=aTransform.ToMatrix3x3;
 end;
 
 function TpvAABB.Resize(const f:TpvScalar):TpvAABB;
