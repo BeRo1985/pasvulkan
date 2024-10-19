@@ -217,7 +217,7 @@ float getAtmosphereCullingFactor(const in AtmosphereCullingParameters CullingPar
     if(signedDistance > 0.0){
       return 1.0; // Outside the bounding sphere, early out 
     }
-    switch(CullingParameters.innerOuterFadeDistancesCountFacesMode.w & 0xf){
+    switch(CullingParameters.innerOuterFadeDistancesCountFacesMode.w & 0xfu){
       case 1u:{
         // Sphere culling
         signedDistance = length(p - CullingParameters.facePlanes[0].xyz) - CullingParameters.facePlanes[0].w;
