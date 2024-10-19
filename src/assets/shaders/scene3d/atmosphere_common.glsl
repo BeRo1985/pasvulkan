@@ -203,16 +203,57 @@ struct AtmosphereParameters {
 
 };
 
+float getAtmosphereCullingSDF(const in AtmosphereCullingParameters CullingParameters, vec3 p){
+  if(CullingParameters.innerOuterFadeDistancesCountFacesMode.w == 0u){
+    // Disabled
+    return 1e20;
+  }else{
+    p = (CullingParameters.inversedTransform * vec4(p, 1.0)).xyz; // Transform the point to the local space 
+    float signedDistance = length(p - CullingParameters.boundingSphere.xyz) - CullingParameters.boundingSphere.w;
+    if(signedDistance > 0.0){
+      return 1e20; // Outside the bounding sphere, early out 
+    }
+    switch(CullingParameters.innerOuterFadeDistancesCountFacesMode.w & 0xfu){
+      case 1u:{
+        // Sphere culling
+        signedDistance = length(p - CullingParameters.facePlanes[0].xyz) - CullingParameters.facePlanes[0].w;
+        break;
+      }
+      case 2u:{
+        // AABB culling
+        signedDistance = length(max(vec3(0.0), abs(p - CullingParameters.facePlanes[0].xyz) - CullingParameters.facePlanes[1].xyz));
+        break;
+      }
+      case 3u:{
+        // Convex Hull culling
+        signedDistance = uintBitsToFloat(0xff800000u); // -inf
+        for(uint faceIndex = 0u, countFaces = min(CullingParameters.innerOuterFadeDistancesCountFacesMode.z, 32u); faceIndex < countFaces; faceIndex++){
+          const vec4 facePlane = CullingParameters.facePlanes[faceIndex];
+          signedDistance = max(signedDistance, dot(p, facePlane.xyz) + facePlane.w);
+        }
+        break;
+      }
+      default:{
+        // Should not happen
+        return 1e20;
+      }
+    }
+    return signedDistance;
+  }
+}
+
 float getAtmosphereCullingFactor(const in AtmosphereCullingParameters CullingParameters, vec3 p, vec3 c){
   if(CullingParameters.innerOuterFadeDistancesCountFacesMode.w == 0u){
     // Disabled
     return 1.0;
   }else{
+    float geometrySignedDistance = getAtmosphereCullingSDF(CullingParameters, p);
+    float cameraSignedDistance = getAtmosphereCullingSDF(CullingParameters, c);
+/*   
     if((CullingParameters.innerOuterFadeDistancesCountFacesMode.w & 0x10u) != 0u){
       p = c; // Use the camera position instead of the point
     }
     p = (CullingParameters.inversedTransform * vec4(p, 1.0)).xyz; // Transform the point to the local space 
-    const vec2 innerOuterFadeDistances = uintBitsToFloat(CullingParameters.innerOuterFadeDistancesCountFacesMode.xy);
     float signedDistance = length(p - CullingParameters.boundingSphere.xyz) - CullingParameters.boundingSphere.w;
     if(signedDistance > 0.0){
       return 1.0; // Outside the bounding sphere, early out 
@@ -245,7 +286,9 @@ float getAtmosphereCullingFactor(const in AtmosphereCullingParameters CullingPar
         // Should not happen
         return 1.0;
       }
-    }
+    }*/
+    float signedDistance = max(geometrySignedDistance, cameraSignedDistance); 
+    const vec2 innerOuterFadeDistances = uintBitsToFloat(CullingParameters.innerOuterFadeDistancesCountFacesMode.xy);
     return clamp((signedDistance - innerOuterFadeDistances.x) / max(1e-6, innerOuterFadeDistances.y - innerOuterFadeDistances.x), 0.0, 1.0);
   }
 }
