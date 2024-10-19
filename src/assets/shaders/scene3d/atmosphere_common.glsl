@@ -247,9 +247,7 @@ float getAtmosphereCullingFactor(const in AtmosphereCullingParameters CullingPar
     // Disabled
     return 1.0;
   }else{
-    float geometrySignedDistance = getAtmosphereCullingSDF(CullingParameters, p);
-    float cameraSignedDistance = getAtmosphereCullingSDF(CullingParameters, c);
-/*   
+    const vec2 innerOuterFadeDistances = uintBitsToFloat(CullingParameters.innerOuterFadeDistancesCountFacesMode.xy);
     if((CullingParameters.innerOuterFadeDistancesCountFacesMode.w & 0x10u) != 0u){
       p = c; // Use the camera position instead of the point
     }
@@ -286,9 +284,7 @@ float getAtmosphereCullingFactor(const in AtmosphereCullingParameters CullingPar
         // Should not happen
         return 1.0;
       }
-    }*/
-    float signedDistance = min(geometrySignedDistance, cameraSignedDistance); 
-    const vec2 innerOuterFadeDistances = uintBitsToFloat(CullingParameters.innerOuterFadeDistancesCountFacesMode.xy);
+    }
     return clamp((signedDistance - innerOuterFadeDistances.x) / max(1e-6, innerOuterFadeDistances.y - innerOuterFadeDistances.x), 0.0, 1.0);
   }
 }
