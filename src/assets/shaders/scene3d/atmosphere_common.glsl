@@ -156,8 +156,9 @@ struct VolumetricCloudParameters {
 // using shadow mapping or by using raytracing. 
 // This structure data must set dynamically based on the scene object that it should cull the atmosphere scattering inside.
 struct AtmosphereCullingParameters {
-  uvec4 innerOuterFadeDistancesCountFacesMode; // x = inner fade distance, y = outer fade distance, z = count faces, w = mode (0 = Disabled, 1 = AABB, 2 = Sphere, 3 = Convex Hull)
+  uvec4 innerOuterFadeDistancesCountFacesMode; // x = inner fade distance, y = outer fade distance, z = count faces, w = mode (0 = Disabled, 1 = Sphere, 2 = AABB, 3 = Convex Hull)
   mat4 inversedTransform; // Inversed transform matrix 
+  vec4 boundingSphere; // x = center, y = radius 
   vec4 facePlanes[32]; // maximal 32 faces, but for AABB [0] is the center and [1] is the extent, for Sphere [0] is the center (xyz) with radius (w)
 };
 
@@ -209,16 +210,19 @@ float getAtmosphereCullingFactor(const in AtmosphereCullingParameters CullingPar
   }else{
     p = (CullingParameters.inversedTransform * vec4(p, 1.0)).xyz; // Transform the point to the local space 
     const vec2 innerOuterFadeDistances = uintBitsToFloat(CullingParameters.innerOuterFadeDistancesCountFacesMode.xy);
-    float signedDistance;
+    float signedDistance = length(p - CullingParameters.boundingSphere.xyz) - CullingParameters.boundingSphere.w;
+    if(signedDistance > 0.0){
+      return 1.0; // Outside the bounding sphere, early out 
+    }
     switch(CullingParameters.innerOuterFadeDistancesCountFacesMode.w){
       case 1u:{
-        // AABB culling
-        signedDistance = length(max(vec3(0.0), abs(p - CullingParameters.facePlanes[0].xyz) - CullingParameters.facePlanes[1].xyz));
+        // Sphere culling
+        signedDistance = length(p - CullingParameters.facePlanes[0].xyz) - CullingParameters.facePlanes[0].w;
         break;
       }
       case 2u:{
-        // Sphere culling
-        signedDistance = length(p - CullingParameters.facePlanes[0].xyz) - CullingParameters.facePlanes[0].w;
+        // AABB culling
+        signedDistance = length(max(vec3(0.0), abs(p - CullingParameters.facePlanes[0].xyz) - CullingParameters.facePlanes[1].xyz));
         break;
       }
       case 3u:{

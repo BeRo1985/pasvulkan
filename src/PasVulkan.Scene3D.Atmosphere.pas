@@ -266,22 +266,26 @@ type TpvScene3DAtmosphere=class;
             end;
             { TAtmosphereCullingParameters }
             TAtmosphereCullingParameters=packed record
-             InnerFadeDistance:TpvFloat;
-             OuterFadeDistance:TpvFloat;
-             CountFaces:TpvUInt32;             
-             Mode:TpvUInt32;
-             InversedTransform:TpvMatrix4x4;
-             case TpvInt32 of
-              0:(
-               FacePlanes:array[0..31] of TpvVector4;
-              );
-              1:(
-               Center:TpvVector4;
-               HalfExtents:TpvVector4;
-              );
-              2:(
-               CenterRadius:TpvVector4;
-              );
+             public
+              procedure CalculateBoundingSphere;
+             public
+              InnerFadeDistance:TpvFloat;
+              OuterFadeDistance:TpvFloat;
+              CountFaces:TpvUInt32;             
+              Mode:TpvUInt32;
+              InversedTransform:TpvMatrix4x4;
+              BoundingSphere:TpvVector4;
+              case TpvInt32 of
+               0:(
+                FacePlanes:array[0..31] of TpvVector4;
+               );
+               1:(
+                Center:TpvVector4;
+                HalfExtents:TpvVector4;
+               );
+               2:(
+                CenterRadius:TpvVector4;
+               );
             end;
             PAtmosphereCullingParameters=^TAtmosphereCullingParameters;            
             { TVolumetricCloudLayerLow }
@@ -559,6 +563,7 @@ type TpvScene3DAtmosphere=class;
               CountFaces:TpvUInt32;
               Mode:TpvUInt32;
               InversedTransform:TpvMatrix4x4;
+              BoundingSphere:TpvVector4;
               case TpvInt32 of
                0:(
                 FacePlanes:array[0..31] of TpvVector4;
@@ -843,6 +848,49 @@ begin
  ExpScale:=aExpScale;
  LinearTerm:=aLinearTerm;
  ConstantTerm:=aConstantTerm;
+end;
+
+{ TpvScene3DAtmosphere.TAtmosphereCullingParameters }
+
+procedure TpvScene3DAtmosphere.TAtmosphereCullingParameters.CalculateBoundingSphere;
+var FaceIndex:TpvSizeInt;
+    s:TpvSphere;
+    cx,cy,cz:TpvDouble;
+    p:PpvVector4;
+begin
+ case Mode of
+  1:begin
+   s.Center:=CenterRadius.xyz;
+   s.Radius:=CenterRadius.w;
+  end;
+  2:begin
+   s:=TpvSphere.CreateFromAABB(TpvAABB.Create(Center.xyz-HalfExtents.xyz,Center.xyz+HalfExtents.xyz));
+  end;
+  3:begin
+   if CountFaces>0 then begin
+    cx:=0.0;
+    cy:=0.0;
+    cz:=0.0;
+    for FaceIndex:=0 to TpvSizeInt(CountFaces)-1 do begin
+     p:=@FacePlanes[FaceIndex];
+     cx:=cx+(p^.x*(-p^.w));
+     cy:=cy+(p^.y*(-p^.w));
+     cz:=cz+(p^.z*(-p^.w));
+    end;
+    s.Center:=TpvVector3.InlineableCreate(cx/CountFaces,cy/CountFaces,cz/CountFaces);
+    s.Radius:=0.0;
+    for FaceIndex:=0 to TpvSizeInt(CountFaces)-1 do begin
+     p:=@FacePlanes[FaceIndex];
+     s.Radius:=Max(s.Radius,(s.Center-(p^.xyz*(-p^.w))).Length);
+    end;
+   end else begin
+    s.Center:=TpvVector3.Origin;
+    s.Radius:=0.0;
+   end;
+  end;
+ end;
+ BoundingSphere.xyz:=s.Center;
+ BoundingSphere.w:=s.Radius+OuterFadeDistance;
 end;
 
 { TpvScene3DAtmosphere.TVolumetricCloudLayerLow }
@@ -1684,6 +1732,7 @@ begin
  CountFaces:=aAtmosphereCullingParameters.CountFaces;
  Mode:=aAtmosphereCullingParameters.Mode;
  InversedTransform:=aAtmosphereCullingParameters.InversedTransform;
+ BoundingSphere:=aAtmosphereCullingParameters.BoundingSphere;
  case Mode of
   1:begin
    Center:=aAtmosphereCullingParameters.Center;
@@ -1698,6 +1747,7 @@ begin
    end;
   end;
  end;
+ aAtmosphereCullingParameters.CalculateBoundingSphere;
 end;
 
 { TpvScene3DAtmosphere.TGPUAtmosphereParameters }
