@@ -223,12 +223,12 @@ float getAtmosphereCullingFactor(const in AtmosphereCullingParameters CullingPar
       }
       case 3u:{
         // Convex Hull culling
-        signedDistance = 0.0;
+        signedDistance = uintBitsToFloat(0xff800000u); // -inf
         for(uint faceIndex = 0u, countFaces = min(CullingParameters.innerOuterFadeDistancesCountFacesMode.z, 32u); faceIndex < countFaces; faceIndex++){
           const vec4 facePlane = CullingParameters.facePlanes[faceIndex];
-          signedDistance = min(signedDistance, dot(p, facePlane.xyz) + facePlane.w);
-          if(signedDistance <= innerOuterFadeDistances.x){
-            // If it is already inside the inner fade distance, then break the loop early
+          signedDistance = max(signedDistance, dot(p, facePlane.xyz) + facePlane.w);
+          if(signedDistance >= innerOuterFadeDistances.y){
+            // If it is already greater than the outer fade distance, then break the loop early
             break;
           }
         }
