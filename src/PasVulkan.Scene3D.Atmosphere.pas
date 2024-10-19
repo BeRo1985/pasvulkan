@@ -271,7 +271,17 @@ type TpvScene3DAtmosphere=class;
              CountFaces:TpvUInt32;             
              Mode:TpvUInt32;
              InversedTransform:TpvMatrix4x4;
-             FacePlanes:array[0..31] of TpvVector4;
+             case TpvInt32 of
+              0:(
+               FacePlanes:array[0..31] of TpvVector4;
+              );
+              1:(
+               Center:TpvVector4;
+               HalfExtents:TpvVector4;
+              );
+              2:(
+               CenterRadius:TpvVector4;
+              );
             end;
             PAtmosphereCullingParameters=^TAtmosphereCullingParameters;            
             { TVolumetricCloudLayerLow }
@@ -542,13 +552,24 @@ type TpvScene3DAtmosphere=class;
             { TGPUAtmosphereCullingParameters }
             TGPUAtmosphereCullingParameters=packed record
              public
+              procedure Assign(const aAtmosphereCullingParameters:TAtmosphereCullingParameters);
+             public
               InnerFadeDistance:TpvFloat;
               OuterFadeDistance:TpvFloat;
               CountFaces:TpvUInt32;
               Mode:TpvUInt32;
               InversedTransform:TpvMatrix4x4;
-              FacePlanes:array[0..31] of TpvVector4;
-              procedure Assign(const aAtmosphereCullingParameters:TAtmosphereCullingParameters);
+              case TpvInt32 of
+               0:(
+                FacePlanes:array[0..31] of TpvVector4;
+               );
+               1:(
+                Center:TpvVector4;
+                HalfExtents:TpvVector4;
+               );
+               2:(
+                CenterRadius:TpvVector4;
+               );
             end;
             { TGPUAtmosphereParameters }
             TGPUAtmosphereParameters=packed record
@@ -1663,8 +1684,19 @@ begin
  CountFaces:=aAtmosphereCullingParameters.CountFaces;
  Mode:=aAtmosphereCullingParameters.Mode;
  InversedTransform:=aAtmosphereCullingParameters.InversedTransform;
- for FaceIndex:=0 to Min(TpvSizeInt(CountFaces),32)-1 do begin
-  FacePlanes[FaceIndex]:=aAtmosphereCullingParameters.FacePlanes[FaceIndex];
+ case Mode of
+  1:begin
+   Center:=aAtmosphereCullingParameters.Center;
+   HalfExtents:=aAtmosphereCullingParameters.HalfExtents;
+  end;
+  2:begin
+   CenterRadius:=aAtmosphereCullingParameters.CenterRadius;
+  end;
+  3:begin
+   for FaceIndex:=0 to Min(TpvSizeInt(CountFaces),32)-1 do begin
+    FacePlanes[FaceIndex]:=aAtmosphereCullingParameters.FacePlanes[FaceIndex];
+   end;
+  end;
  end;
 end;
 
