@@ -891,7 +891,7 @@ begin
   end;
  end;
  BoundingSphere.xyz:=s.Center;
- BoundingSphere.w:=s.Radius+OuterFadeDistance;
+ BoundingSphere.w:=s.Radius+(OuterFadeDistance*2.0);
 end;
 
 { TpvScene3DAtmosphere.TVolumetricCloudLayerLow }
