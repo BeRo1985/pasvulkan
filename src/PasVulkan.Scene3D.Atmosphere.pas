@@ -1737,11 +1737,11 @@ begin
  BoundingSphere:=aAtmosphereCullingParameters.BoundingSphere;
  case Mode and $f of
   1:begin
-   Center:=aAtmosphereCullingParameters.Center;
-   HalfExtents:=aAtmosphereCullingParameters.HalfExtents;
+   CenterRadius:=aAtmosphereCullingParameters.CenterRadius;
   end;
   2:begin
-   CenterRadius:=aAtmosphereCullingParameters.CenterRadius;
+   Center:=aAtmosphereCullingParameters.Center;
+   HalfExtents:=aAtmosphereCullingParameters.HalfExtents;
   end;
   3:begin
    for FaceIndex:=0 to Min(TpvSizeInt(CountFaces),32)-1 do begin
