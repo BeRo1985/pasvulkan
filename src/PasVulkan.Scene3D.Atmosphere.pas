@@ -625,6 +625,8 @@ type TpvScene3DAtmosphere=class;
               fSkyLuminanceLUTTexture:TpvScene3DRendererImageCubeMap;
               fSkyViewLUTTexture:TpvScene3DRendererArray2DImage;
               fCameraVolumeTexture:TpvScene3DRendererArray2DImage;
+              fSkyViewLUTTextureImageLayout:TVkImageLayout;
+              fCameraVolumeTextureImageLayout:TVkImageLayout;
               fCubeMapTexture:TpvScene3DRendererMipmapImageCubeMap;
               fGGXCubeMapTexture:TpvScene3DRendererMipmapImageCubeMap;
               fCharlieCubeMapTexture:TpvScene3DRendererMipmapImageCubeMap;
@@ -1860,7 +1862,9 @@ begin
  TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.DebugUtils.SetObjectName(fSkyViewLUTTexture.VulkanArrayImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'SkyViewLUTTexture');
  if assigned(fSkyViewLUTTexture.VulkanOtherArrayImageView) then begin
   TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.DebugUtils.SetObjectName(fSkyViewLUTTexture.VulkanOtherArrayImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'SkyViewLUTTexture');
- end;                                                                                                           
+ end;
+
+ fSkyViewLUTTextureImageLayout:=VK_IMAGE_LAYOUT_GENERAL;
 
  fCameraVolumeTexture:=TpvScene3DRendererArray2DImage.Create(TpvScene3D(fAtmosphere.fScene3D).VulkanDevice,
                                                              CameraVolumeTextureWidth,
@@ -1877,6 +1881,8 @@ begin
  if assigned(fCameraVolumeTexture.VulkanOtherArrayImageView) then begin
   TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.DebugUtils.SetObjectName(fCameraVolumeTexture.VulkanOtherArrayImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'CameraVolumeTexture');
  end;                                                            
+
+ fCameraVolumeTextureImageLayout:=VK_IMAGE_LAYOUT_GENERAL;
 
  fCubeMapTexture:=TpvScene3DRendererMipmapImageCubeMap.Create(TpvScene3D(fAtmosphere.fScene3D).VulkanDevice,
                                                               CubeMapTextureSize,
@@ -3262,11 +3268,43 @@ begin
                                     0,
                                     0,nil,
                                     0,nil,
-                                    1,@ImageMemoryBarriers[0]);   
+                                    1,@ImageMemoryBarriers[0]);
 
   TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
 
- end; 
+  fSkyViewLUTTextureImageLayout:=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+ end else if fSkyViewLUTTextureImageLayout<>VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL then begin
+
+  // Sky view LUT
+
+  TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'TpvScene3DAtmosphere.SkyViewLUT',[0.0,0.0,1.0,1.0]);
+
+  ImageMemoryBarriers[0]:=TVkImageMemoryBarrier.Create(0,
+                                                       TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT),
+                                                       VK_IMAGE_LAYOUT_UNDEFINED,
+                                                       VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                       VK_QUEUE_FAMILY_IGNORED,
+                                                       VK_QUEUE_FAMILY_IGNORED,
+                                                       fSkyViewLUTTexture.VulkanImage.Handle,
+                                                       TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                       0,
+                                                                                       1,
+                                                                                       0,
+                                                                                       fSkyViewLUTTexture.Layers));
+
+  aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                    0,
+                                    0,nil,
+                                    0,nil,
+                                    1,@ImageMemoryBarriers[0]);
+
+  TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
+
+  fSkyViewLUTTextureImageLayout:=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+ end;
 
  if TpvScene3DRenderer(TpvScene3DRendererInstance(fRendererInstance).Renderer).FastAerialPerspective then begin
 
@@ -3341,11 +3379,43 @@ begin
                                     0,
                                     0,nil,
                                     0,nil,
-                                    1,@ImageMemoryBarriers[0]);    
+                                    1,@ImageMemoryBarriers[0]);
 
   TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
 
- end; 
+  fCameraVolumeTextureImageLayout:=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+ end else if fCameraVolumeTextureImageLayout<>VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL then begin
+
+  // Camera volume
+
+  TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'TpvScene3DAtmosphere.CameraVolume',[1.0,1.0,0.0,1.0]);
+
+  ImageMemoryBarriers[0]:=TVkImageMemoryBarrier.Create(0,
+                                                       TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT),
+                                                       VK_IMAGE_LAYOUT_UNDEFINED,
+                                                       VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                       VK_QUEUE_FAMILY_IGNORED,
+                                                       VK_QUEUE_FAMILY_IGNORED,
+                                                       fCameraVolumeTexture.VulkanImage.Handle,
+                                                       TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                       0,
+                                                                                       1,
+                                                                                       0,
+                                                                                       fCameraVolumeTexture.Layers));
+
+  aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                    0,
+                                    0,nil,
+                                    0,nil,
+                                    1,@ImageMemoryBarriers[0]);
+
+  TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
+
+  fCameraVolumeTextureImageLayout:=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+ end;
 
  begin
 
