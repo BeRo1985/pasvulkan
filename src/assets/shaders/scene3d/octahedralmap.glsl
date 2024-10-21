@@ -217,6 +217,62 @@ vec4 texturePlanetOctahedralMap(const in sampler2D tex, vec3 direction, const in
   }
 }
 
+vec4 texturePlanetOctahedralMapArray(const in sampler2DArray tex, vec3 direction, const int arrayIndex) {
+  ivec2 texSize = textureSize(tex, 0).xy;
+  vec2 invTexSize = vec2(1.0) / vec2(texSize);
+  vec2 uv = octPlanetUnsignedEncode(direction) + (vec2(0.5) * invTexSize);
+  if(any(lessThanEqual(uv, invTexSize)) || any(greaterThanEqual(uv, vec2(1.0) - invTexSize))){
+   // Handle edges with manual bilinear interpolation using texelFetch for correct octahedral texel edge mirroring 
+   uv = fma(uv, texSize, vec2(-0.5));
+   ivec2 baseCoord = ivec2(floor(uv));
+   vec2 fractionalPart = uv - vec2(baseCoord);
+   return mix(mix(texelFetch(tex, ivec3(wrapOctahedralTexelCoordinates(baseCoord + ivec2(0, 0), texSize), arrayIndex), 0), 
+                  texelFetch(tex, ivec3(wrapOctahedralTexelCoordinates(baseCoord + ivec2(1, 0), texSize), arrayIndex), 0), fractionalPart.x), 
+              mix(texelFetch(tex, ivec3(wrapOctahedralTexelCoordinates(baseCoord + ivec2(0, 1), texSize), arrayIndex), 0), 
+                  texelFetch(tex, ivec3(wrapOctahedralTexelCoordinates(baseCoord + ivec2(1, 1), texSize), arrayIndex), 0), fractionalPart.x), fractionalPart.y);
+  }else{
+    // Non-edge texels can be sampled directly with textureLod
+    return textureLod(tex, vec3(uv, float(arrayIndex)), 0.0);
+  }
+}
+
+vec4 texturePlanetOctahedralMapArray(const in sampler2DArray tex, vec2 uv, const int arrayIndex) {
+  ivec2 texSize = textureSize(tex, 0).xy;
+  vec2 invTexSize = vec2(1.0) / vec2(texSize);
+  if(any(lessThanEqual(uv, invTexSize)) || any(greaterThanEqual(uv, vec2(1.0) - invTexSize))){
+   // Handle edges with manual bilinear interpolation using texelFetch for correct octahedral texel edge mirroring 
+   uv = fma(uv, texSize, vec2(-0.5));
+   ivec2 baseCoord = ivec2(floor(uv));
+   vec2 fractionalPart = uv - vec2(baseCoord);
+   return mix(mix(texelFetch(tex, ivec3(wrapOctahedralTexelCoordinates(baseCoord + ivec2(0, 0), texSize), arrayIndex), 0), 
+                  texelFetch(tex, ivec3(wrapOctahedralTexelCoordinates(baseCoord + ivec2(1, 0), texSize), arrayIndex), 0), fractionalPart.x), 
+              mix(texelFetch(tex, ivec3(wrapOctahedralTexelCoordinates(baseCoord + ivec2(0, 1), texSize), arrayIndex), 0), 
+                  texelFetch(tex, ivec3(wrapOctahedralTexelCoordinates(baseCoord + ivec2(1, 1), texSize), arrayIndex), 0), fractionalPart.x), fractionalPart.y);
+  }else{
+    // Non-edge texels can be sampled directly with textureLod
+    return textureLod(tex, vec3(uv, float(arrayIndex)), 0.0);
+  }
+}
+
+vec4 texturePlanetOctahedralMapArray(const in sampler2DArray tex, vec3 direction, const int arrayIndex, const in int lod) {
+  ivec2 texSize = textureSize(tex, lod).xy;
+  vec2 invTexSize = vec2(1.0) / vec2(texSize);
+  vec2 uv = octPlanetUnsignedEncode(direction) + (vec2(0.5) * invTexSize);
+  if(any(lessThanEqual(uv, invTexSize)) || any(greaterThanEqual(uv, vec2(1.0) - invTexSize))){
+   // Handle edges with manual bilinear interpolation using texelFetch for correct octahedral texel edge mirroring 
+   uv = fma(uv, texSize, vec2(-0.5));
+   ivec2 baseCoord = ivec2(floor(uv));
+   vec2 fractionalPart = uv - vec2(baseCoord);
+   return mix(mix(texelFetch(tex, ivec3(wrapOctahedralTexelCoordinates(baseCoord + ivec2(0, 0), texSize), arrayIndex), lod), 
+                  texelFetch(tex, ivec3(wrapOctahedralTexelCoordinates(baseCoord + ivec2(1, 0), texSize), arrayIndex), lod), fractionalPart.x), 
+              mix(texelFetch(tex, ivec3(wrapOctahedralTexelCoordinates(baseCoord + ivec2(0, 1), texSize), arrayIndex), lod), 
+                  texelFetch(tex, ivec3(wrapOctahedralTexelCoordinates(baseCoord + ivec2(1, 1), texSize), arrayIndex), lod), fractionalPart.x), fractionalPart.y);
+  }else{
+    // Non-edge texels can be sampled directly with textureLod
+    return textureLod(tex, vec3(uv, float(arrayIndex)), float(lod));
+  }
+}
+
 #ifdef FRAGMENT_SHADER
 vec4 textureMipMapPlanetOctahedralMap(const in sampler2D tex, vec3 direction) {
   ivec2 texSize = textureSize(tex, 0).xy; 

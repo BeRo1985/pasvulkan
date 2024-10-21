@@ -38,8 +38,6 @@ BraceWrapping:
 
 BreakConstructorInitializers: BeforeComma
 
-AllowAllArgumentsOnNextLine: true
-
 # Indent case labels.
 IndentCaseLabels: true
 

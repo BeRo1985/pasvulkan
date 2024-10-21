@@ -257,6 +257,11 @@ vec3 workNormal;
 void main(){
 
   layerMaterialSetup(sphereNormal);
+  
+  layerMaterialWeights = mat2x4(
+    texturePlanetOctahedralMapArray(uArrayTextures[PLANET_TEXTURE_BLENDMAP], sphereNormal, 0),
+    texturePlanetOctahedralMapArray(uArrayTextures[PLANET_TEXTURE_BLENDMAP], sphereNormal, 1)
+  );
  
 #ifdef EXTERNAL_VERTICES
   workNormal = inBlock.normal.xyz;
@@ -281,7 +286,7 @@ void main(){
 #endif
 
   tangentSpaceBasis = mat3(workTangent, workBitangent, workNormal);
-
+ 
   tangentSpaceViewDirection = normalize(tangentSpaceBasis * viewDirection);
   tangentSpaceViewDirectionXYOverZ = tangentSpaceViewDirection.xy / tangentSpaceViewDirection.z;
 
@@ -298,20 +303,55 @@ void main(){
   {
 
     float weightSum = 0.0;
-    [[unroll]] for(int layerIndex = 0; layerIndex < 4; layerIndex++){
-      const float weight = layerMaterialWeights[layerIndex];
-      if(weight > 0.0){        
-        albedo += multiplanarTexture(u2DTextures[(GetPlanetMaterialAlbedoTextureIndex(layerMaterials[layerIndex]) << 1) | 1], GetPlanetMaterialScale(layerMaterials[layerIndex])) * weight;
-        normalHeight += multiplanarTexture(u2DTextures[(GetPlanetMaterialNormalHeightTextureIndex(layerMaterials[layerIndex]) << 1) | 0], GetPlanetMaterialScale(layerMaterials[layerIndex])) * weight;
-        occlusionRoughnessMetallic += multiplanarTexture(u2DTextures[(GetPlanetMaterialOcclusionRoughnessMetallicTextureIndex(layerMaterials[layerIndex]) << 1) | 0], GetPlanetMaterialScale(layerMaterials[layerIndex])) * weight;
-        weightSum += weight;
+    [[unroll]] for(int layerTopLevelIndex = 0; layerTopLevelIndex < 2; layerTopLevelIndex++){
+      const vec4 weights = layerMaterialWeights[layerTopLevelIndex]; 
+      if(any(greaterThan(weights, vec4(0.0)))){
+        [[unroll]] for(int layerBottomLevelIndex = 0; layerBottomLevelIndex < 4; layerBottomLevelIndex++){
+          const float weight = weights[layerBottomLevelIndex];
+          if(weight > 0.0){        
+            const int layerIndex = (layerTopLevelIndex << 2) | layerBottomLevelIndex; 
+            const PlanetMaterial layerMaterial = layerMaterials[layerIndex];
+            albedo += multiplanarTexture(u2DTextures[(GetPlanetMaterialAlbedoTextureIndex(layerMaterial) << 1) | 1], GetPlanetMaterialScale(layerMaterial)) * weight;
+            normalHeight += multiplanarTexture(u2DTextures[(GetPlanetMaterialNormalHeightTextureIndex(layerMaterial) << 1) | 0], GetPlanetMaterialScale(layerMaterial)) * weight;
+            occlusionRoughnessMetallic += multiplanarTexture(u2DTextures[(GetPlanetMaterialOcclusionRoughnessMetallicTextureIndex(layerMaterial) << 1) | 0], GetPlanetMaterialScale(layerMaterial)) * weight;
+            weightSum += weight;
+          }
+        }
       }
     }
 
+    // Process the default ground texture if the weight sum is less than fadeEnd
+    {
+
+      // Define the range for the soft transition
+      const float fadeStart = 0.25; // Begin of fading
+      const float fadeEnd = 0.5;   // Full fading
+
+      // Calculate the factor for the default weight
+      const float defaultWeightFactor = clamp((fadeEnd - weightSum) / (fadeEnd - fadeStart), 0.0, 1.0);
+
+      // Calculate the weight of the default ground texture
+      const float defaultWeight = defaultWeightFactor;   
+
+      if(defaultWeight > 0.0){   
+
+        const PlanetMaterial defaultMaterial = layerMaterials[15];
+        albedo += multiplanarTexture(u2DTextures[(GetPlanetMaterialAlbedoTextureIndex(defaultMaterial) << 1) | 1], GetPlanetMaterialScale(defaultMaterial)) * defaultWeight;
+        normalHeight += multiplanarTexture(u2DTextures[(GetPlanetMaterialNormalHeightTextureIndex(defaultMaterial) << 1) | 0], GetPlanetMaterialScale(defaultMaterial)) * defaultWeight;
+        occlusionRoughnessMetallic += multiplanarTexture(u2DTextures[(GetPlanetMaterialOcclusionRoughnessMetallicTextureIndex(defaultMaterial) << 1) | 0], GetPlanetMaterialScale(defaultMaterial)) * defaultWeight;
+        weightSum += defaultWeight;
+
+      }  
+
+    }
+      
+
+    // Process the grass texture if the grass value is greater than 0.0
     float grass = clamp(texturePlanetOctahedralMap(uTextures[PLANET_TEXTURE_GRASSMAP], sphereNormal).x, 0.0, 1.0);
     if(grass > 0.0){
 
-      {
+      // Normalize the weights before adding the grass texture
+      if(weightSum > 0.0){
         float factor = 1.0 / max(1e-7, weightSum);
         albedo *= factor;
         normalHeight *= factor;
@@ -319,22 +359,25 @@ void main(){
         weightSum *= factor;
       } 
 
+      // Optional attenuation of the current textures based on the grass value
       float f = pow(1.0 - grass, 16.0);     
       albedo *= f;
       normalHeight *= f;
       occlusionRoughnessMetallic *= f;
       weightSum *= f;
- 
+
+      // Add the grass texture 
       const float weight = grass;
-      const PlanetMaterial grassMaterial = layerMaterials[1];
-      albedo += multiplanarTexture(u2DTextures[(GetPlanetMaterialAlbedoTextureIndex(grassMaterial) << 1) | 1], GetPlanetMaterialScale(grassMaterial) * 10.0) * weight;
-      normalHeight += multiplanarTexture(u2DTextures[(GetPlanetMaterialNormalHeightTextureIndex(grassMaterial) << 1) | 0], GetPlanetMaterialScale(grassMaterial) * 10.0) * weight;
-      occlusionRoughnessMetallic += multiplanarTexture(u2DTextures[(GetPlanetMaterialOcclusionRoughnessMetallicTextureIndex(grassMaterial) << 1) | 0], GetPlanetMaterialScale(grassMaterial) * 10.0) * weight;
+      const PlanetMaterial grassMaterial = layerMaterials[14];
+      albedo += multiplanarTexture(u2DTextures[(GetPlanetMaterialAlbedoTextureIndex(grassMaterial) << 1) | 1], GetPlanetMaterialScale(grassMaterial)) * weight;
+      normalHeight += multiplanarTexture(u2DTextures[(GetPlanetMaterialNormalHeightTextureIndex(grassMaterial) << 1) | 0], GetPlanetMaterialScale(grassMaterial)) * weight;
+      occlusionRoughnessMetallic += multiplanarTexture(u2DTextures[(GetPlanetMaterialOcclusionRoughnessMetallicTextureIndex(grassMaterial) << 1) | 0], GetPlanetMaterialScale(grassMaterial)) * weight;
       weightSum += weight;
 
     }
 
-    {
+    // Normalize the weights 
+    if(weightSum > 0.0){
       float factor = 1.0 / max(1e-7, weightSum);
       albedo *= factor;
       normalHeight *= factor;

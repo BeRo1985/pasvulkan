@@ -95,17 +95,21 @@ PlanetData planetData = pushConstants.planetData; // For to avoid changing the c
 
 #if !defined(PLANET_WATER)
 
-PlanetMaterial layerMaterials[4];
-vec4 layerMaterialWeights;
+#define layerMaterials planetData.materials
+
+//PlanetMaterial layerMaterials[4];
+mat2x4 layerMaterialWeights;
 
 void layerMaterialSetup(vec3 sphereNormal){
 
+/*
   layerMaterials[0] = planetData.materials[0];
   layerMaterials[1] = planetData.materials[1];
   layerMaterials[2] = planetData.materials[2];
   layerMaterials[3] = planetData.materials[3];
-   
-  layerMaterialWeights = vec4(1.0, 0.0, 0.0, 0.0);
+*/
+      
+  //layerMaterialWeights = mat2x4(vec4(0.0, 0.0, 0.0, 0.0), vec4(0.0, 0.0, 0.0, 0.0));
 
 }
 
@@ -275,11 +279,16 @@ vec4 multiplanarTexture(const in sampler2D tex, float scale){
 #endif
 }
 
+float getLayerWeight(const in int layerIndex){
+  return layerMaterialWeights[layerIndex >> 2][layerIndex & 3];
+}
+
 vec3 getLayeredMultiplanarAlbedo(){
   vec4 albedoWeightSum = vec4(0.0);
   [[unroll]] for(int layerIndex = 0; layerIndex < 4; layerIndex++){
-    if(layerMaterialWeights[layerIndex] > 0.0){
-      albedoWeightSum += vec4(multiplanarTexture(u2DTextures[(GetPlanetMaterialAlbedoTextureIndex(layerMaterials[layerIndex]) << 1) | 1], GetPlanetMaterialScale(layerMaterials[layerIndex])).xyz, 1.0) * layerMaterialWeights[layerIndex];
+    const float weight = getLayerWeight(layerIndex);
+    if(weight > 0.0){
+      albedoWeightSum += vec4(multiplanarTexture(u2DTextures[(GetPlanetMaterialAlbedoTextureIndex(layerMaterials[layerIndex]) << 1) | 1], GetPlanetMaterialScale(layerMaterials[layerIndex])).xyz, 1.0) * weight;
     }
   }
   return albedoWeightSum.xyz / max(1e-7, albedoWeightSum.w);
@@ -288,8 +297,9 @@ vec3 getLayeredMultiplanarAlbedo(){
 vec3 getLayeredMultiplanarNormal(){
   vec4 normalWeightSum = vec4(0.0);
   [[unroll]] for(int layerIndex = 0; layerIndex < 4; layerIndex++){
-    if(layerMaterialWeights[layerIndex] > 0.0){
-      normalWeightSum += vec4(multiplanarTexture(u2DTextures[(GetPlanetMaterialNormalHeightTextureIndex(layerMaterials[layerIndex]) << 1) | 0], GetPlanetMaterialScale(layerMaterials[layerIndex])).xyz, 1.0) * layerMaterialWeights[layerIndex];
+    const float weight = getLayerWeight(layerIndex);
+    if(weight > 0.0){
+      normalWeightSum += vec4(multiplanarTexture(u2DTextures[(GetPlanetMaterialNormalHeightTextureIndex(layerMaterials[layerIndex]) << 1) | 0], GetPlanetMaterialScale(layerMaterials[layerIndex])).xyz, 1.0) * weight;
     }
   }
   return normalWeightSum.xyz / max(1e-7, normalWeightSum.w);
@@ -298,8 +308,9 @@ vec3 getLayeredMultiplanarNormal(){
 float getLayeredMultiplanarHeight(){
   vec2 heightWeightSum = vec2(0.0);
   [[unroll]] for(int layerIndex = 0; layerIndex < 4; layerIndex++){
-    if(layerMaterialWeights[layerIndex] > 0.0){
-      heightWeightSum += vec2(multiplanarTexture(u2DTextures[(GetPlanetMaterialNormalHeightTextureIndex(layerMaterials[layerIndex]) << 1) | 0], GetPlanetMaterialScale(layerMaterials[layerIndex])).w, 1.0) * layerMaterialWeights[layerIndex];
+    const float weight = getLayerWeight(layerIndex);
+    if(weight > 0.0){
+      heightWeightSum += vec2(multiplanarTexture(u2DTextures[(GetPlanetMaterialNormalHeightTextureIndex(layerMaterials[layerIndex]) << 1) | 0], GetPlanetMaterialScale(layerMaterials[layerIndex])).w, 1.0) * weight;
     }
   }
   return heightWeightSum.x / max(1e-7, heightWeightSum.y);
@@ -308,8 +319,9 @@ float getLayeredMultiplanarHeight(){
 vec3 getLayeredMultiplanarOcclusionRoughnessMetallic(){
   vec4 occlusionRoughnessMetallicWeightSum = vec4(0.0);
   [[unroll]] for(int layerIndex = 0; layerIndex < 4; layerIndex++){
-    if(layerMaterialWeights[layerIndex] > 0.0){
-      occlusionRoughnessMetallicWeightSum += vec4(multiplanarTexture(u2DTextures[(GetPlanetMaterialOcclusionRoughnessMetallicTextureIndex(layerMaterials[layerIndex]) << 1) | 0], GetPlanetMaterialScale(layerMaterials[layerIndex])).xyz, 1.0) * layerMaterialWeights[layerIndex];
+    const float weight = getLayerWeight(layerIndex);
+    if(weight > 0.0){
+      occlusionRoughnessMetallicWeightSum += vec4(multiplanarTexture(u2DTextures[(GetPlanetMaterialOcclusionRoughnessMetallicTextureIndex(layerMaterials[layerIndex]) << 1) | 0], GetPlanetMaterialScale(layerMaterials[layerIndex])).xyz, 1.0) * weight;
     }
   }
   return occlusionRoughnessMetallicWeightSum.xyz / max(1e-7, occlusionRoughnessMetallicWeightSum.w);

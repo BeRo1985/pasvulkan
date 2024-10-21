@@ -374,6 +374,10 @@ compileshaderarguments=(
 
   "-V planet_water_prepass.comp -o ${tempPath}/planet_water_prepass_comp.spv"
 
+  "-V planet_blendmap_initialization.comp -o ${tempPath}/planet_blendmap_initialization_comp.spv"
+
+  "-V planet_blendmap_modification.comp -o ${tempPath}/planet_blendmap_modification_comp.spv"
+
   "-V planet_grassmap_initialization.comp -o ${tempPath}/planet_grassmap_initialization_comp.spv"
 
   "-V planet_grassmap_modification.comp -o ${tempPath}/planet_grassmap_modification_comp.spv"
