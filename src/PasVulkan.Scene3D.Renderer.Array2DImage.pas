@@ -85,7 +85,7 @@ type { TpvScene3DRendererArray2DImage }
        fFormat:TVkFormat;
       public
 
-       constructor Create(const aDevice:TpvVulkanDevice;const aWidth,aHeight,aLayers:TpvInt32;const aFormat:TVkFormat;const aSampleBits:TVkSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT);const aImageLayout:TVkImageLayout=TVkImageLayout(VK_IMAGE_LAYOUT_GENERAL);const aStorage:boolean=false;const aAllocationGroupID:TpvUInt64=0;const aOtherFormat:TVkFormat=VK_FORMAT_UNDEFINED);
+       constructor Create(const aDevice:TpvVulkanDevice;const aWidth,aHeight,aLayers:TpvInt32;const aFormat:TVkFormat;const aSampleBits:TVkSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT);const aImageLayout:TVkImageLayout=TVkImageLayout(VK_IMAGE_LAYOUT_GENERAL);const aStorage:boolean=false;const aAllocationGroupID:TpvUInt64=0;const aOtherFormat:TVkFormat=VK_FORMAT_UNDEFINED;const aSharingMode:TVkSharingMode=TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE);const aQueueFamilyIndices:TpvVulkanQueueFamilyIndices=nil);
 
        destructor Destroy; override;
 
@@ -113,7 +113,7 @@ implementation
 
 { TpvScene3DRendererArray2DImage }
 
-constructor TpvScene3DRendererArray2DImage.Create(const aDevice:TpvVulkanDevice;const aWidth,aHeight,aLayers:TpvInt32;const aFormat:TVkFormat;const aSampleBits:TVkSampleCountFlagBits;const aImageLayout:TVkImageLayout;const aStorage:boolean;const aAllocationGroupID:TpvUInt64;const aOtherFormat:TVkFormat);
+constructor TpvScene3DRendererArray2DImage.Create(const aDevice:TpvVulkanDevice;const aWidth,aHeight,aLayers:TpvInt32;const aFormat:TVkFormat;const aSampleBits:TVkSampleCountFlagBits;const aImageLayout:TVkImageLayout;const aStorage:boolean;const aAllocationGroupID:TpvUInt64;const aOtherFormat:TVkFormat;const aSharingMode:TVkSharingMode;const aQueueFamilyIndices:TpvVulkanQueueFamilyIndices);
 var MemoryRequirements:TVkMemoryRequirements;
     RequiresDedicatedAllocation,
     PrefersDedicatedAllocation:boolean;
@@ -169,9 +169,9 @@ begin
                                      TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT) or
                                      IfThen(aStorage,TVkImageUsageFlags(VK_IMAGE_USAGE_STORAGE_BIT),0) or
                                      TVkImageUsageFlags(VK_IMAGE_USAGE_TRANSFER_DST_BIT),
-                                     VK_SHARING_MODE_EXCLUSIVE,
-                                     0,
-                                     nil,
+                                     aSharingMode,
+                                     length(aQueueFamilyIndices),
+                                     @aQueueFamilyIndices[0],
                                      VK_IMAGE_LAYOUT_UNDEFINED,
                                      aOtherFormat
                                     );

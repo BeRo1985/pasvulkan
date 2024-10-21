@@ -125,7 +125,9 @@ layout (set = 1, binding = 10, std430) readonly buffer FrustumClusterGridData {
 
 // Per planet descriptor set
 
-layout(set = 2, binding = 0) uniform sampler2D uTextures[]; // 0 = height map, 1 = normal map, 2 = tangent bitangent map
+// Aliased textures, because some are array textures and some are not 
+layout(set = 2, binding = 0) uniform sampler2D uTextures[]; // 0 = height map, 1 = normal map, 2 = blend map, 3 = grass map, 4 = water map
+layout(set = 2, binding = 0) uniform sampler2DArray uArrayTextures[]; // 0 = height map, 1 = normal map, 2 = blend map, 3 = grass map, 4 = water map
 
 #include "planet_textures.glsl"
 #include "planet_renderpass.glsl"

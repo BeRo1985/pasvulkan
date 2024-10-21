@@ -242,7 +242,7 @@ type TpvScene3DPlanets=class;
               fNormalMapImage:TpvScene3DRendererMipmapImage2D; // A2B10G10R10_UNORM_PACK32
 //            fHeightMapBuffer:TpvVulkanBuffer;
 //            fNormalMapBuffer:TpvVulkanBuffer;
-              fBlendMapImage:TpvScene3DRendererImage2D; // A2B10G10R10_UNORM_PACK32
+              fBlendMapImage:TpvScene3DRendererArray2DImage; // R8G8B8A8_UNORM
               fGrassMapImage:TpvScene3DRendererImage2D; // R32_FLOAT
               fGrassMapBuffer:TpvVulkanBuffer;
               fWaterHeightMapImage:TpvScene3DRendererImage2D; // R32_SFLOAT
@@ -333,7 +333,7 @@ type TpvScene3DPlanets=class;
               property HeightMap:THeightMap read fHeightMap;
               property HeightMapImage:TpvScene3DRendererMipmapImage2D read fHeightMapImage;
               property NormalMapImage:TpvScene3DRendererMipmapImage2D read fNormalMapImage;
-              property BlendMapImage:TpvScene3DRendererImage2D read fBlendMapImage;
+              property BlendMapImage:TpvScene3DRendererArray2DImage read fBlendMapImage;
               property TileLODMapBuffer:TpvVulkanBuffer read fTileLODMapBuffer;
               property TileDirtyMapBuffer:TpvVulkanBuffer read fTileDirtyMapBuffer;
               property TileExpandedDirtyMapBuffer:TpvVulkanBuffer read fTileExpandedDirtyMapBuffer;
@@ -2257,18 +2257,21 @@ begin
 
   end;//}
 
-  fBlendMapImage:=TpvScene3DRendererImage2D.Create(fPlanet.fVulkanDevice,
-                                                   fPlanet.fHeightMapResolution,
-                                                   fPlanet.fHeightMapResolution,
-                                                   VK_FORMAT_R8G8B8A8_SNORM,
-                                                   true,
-                                                   VK_SAMPLE_COUNT_1_BIT,
-                                                   VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                                   ImageSharingMode,
-                                                   ImageQueueFamilyIndices,
-                                                   pvAllocationGroupIDScene3DPlanetStatic);
+  fBlendMapImage:=TpvScene3DRendererArray2DImage.Create(fPlanet.fVulkanDevice,
+                                                        fPlanet.fHeightMapResolution,
+                                                        fPlanet.fHeightMapResolution,
+                                                        2,
+                                                        VK_FORMAT_R8G8B8A8_SNORM,
+                                                        VK_SAMPLE_COUNT_1_BIT,
+                                                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                        true,
+                                                        pvAllocationGroupIDScene3DPlanetStatic,
+                                                        VK_FORMAT_UNDEFINED,
+                                                        ImageSharingMode,
+                                                        ImageQueueFamilyIndices);
   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fBlendMapImage.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fBlendMapImage.Image');
   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fBlendMapImage.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fBlendMapImage.ImageView');
+  fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fBlendMapImage.VulkanArrayImageView.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fBlendMapImage.ArrayImageView');
 
   fGrassMapImage:=TpvScene3DRendererImage2D.Create(fPlanet.fVulkanDevice,
                                                    fPlanet.fGrassMapResolution,
@@ -3855,11 +3858,16 @@ begin
                                 VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                                 fNormalMapImage.MipMapLevels,@ImageCopies[0]);
 
+    ImageCopy:=@ImageCopies[0];
+    ImageCopy^.srcSubresource.layerCount:=aInFlightFrameData.fBlendMapImage.Layers;
+    ImageCopy^.dstSubresource.layerCount:=aInFlightFrameData.fBlendMapImage.Layers;
     aCommandBuffer.CmdCopyImage(fBlendMapImage.VulkanImage.Handle,
                                 VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
                                 aInFlightFrameData.fBlendMapImage.VulkanImage.Handle,
                                 VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                                 1,@ImageCopies[0]);
+    ImageCopy^.srcSubresource.layerCount:=1;
+    ImageCopy^.dstSubresource.layerCount:=1;
 
    end;
 
@@ -14403,7 +14411,7 @@ begin
                                                                                            fInFlightFrameDataList[InFlightFrameIndex].fNormalMapImage.VulkanImageView.Handle,
                                                                                            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
                                                              TVkDescriptorImageInfo.Create(TpvScene3D(fScene3D).GeneralComputeSampler.Handle,
-                                                                                           fInFlightFrameDataList[InFlightFrameIndex].fBlendMapImage.VulkanImageView.Handle,
+                                                                                           fInFlightFrameDataList[InFlightFrameIndex].fBlendMapImage.VulkanArrayImageView.Handle,
                                                                                            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
                                                              TVkDescriptorImageInfo.Create(TpvScene3D(fScene3D).GeneralComputeSampler.Handle,
                                                                                            fInFlightFrameDataList[InFlightFrameIndex].fGrassMapImage.VulkanImageView.Handle,
