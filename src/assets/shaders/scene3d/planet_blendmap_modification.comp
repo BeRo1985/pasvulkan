@@ -35,7 +35,7 @@ void main(){
 
   if(all(greaterThanEqual(texel, ivec3(0))) && all(lessThan(texel, texSize))){
 
-    vec3 p = octPlanetUnsignedDecode(vec2(texel) / vec2(texSize));
+    vec3 p = octPlanetUnsignedDecode(vec2(texel) / vec2(texSize.xy));
 
     vec3 n = normalize(pushConstants.positionRadius.xyz);
 
