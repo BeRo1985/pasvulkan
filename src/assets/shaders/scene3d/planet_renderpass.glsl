@@ -35,6 +35,8 @@ layout(set = 2, binding = 1, std430) readonly buffer PlanetData {
 
   vec4 selected; // xyz = octahedral map coordinates, w = radius   
 
+  uvec4 selectedColorBrushIndexBrushRotation; // xy = selected color (16-bit half float vec4), z = brush index, w = brush rotation
+
   PlanetMaterial materials[16];
 
 } planetData;
@@ -67,15 +69,18 @@ layout(push_constant) uniform PushConstants {
 #else
 layout(push_constant) uniform PushConstants {
 
+  // First uvec4
   uint viewBaseIndex;
   uint countViews;
   uint countQuadPointsInOneDirection; 
   uint countAllViews;
   
+  // Second uvec4
   uint resolutionXY;  
   float tessellationFactor; // = factor / referenceMinEdgeSize, for to avoid at least one division in the shader 
   vec2 jitter;
 
+  // Third uvec4 
   int frameIndex; 
   int reversed;
 #if defined(USE_BUFFER_REFERENCE) 

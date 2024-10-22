@@ -21,8 +21,7 @@ layout(set = 0, binding = 2) uniform sampler2DArray uBrushTextureArray;
 layout(push_constant) uniform PushConstants {
   vec4 positionRadius; // xyz = position, w = radius
   vec4 innerRadiusValueMinMax; // x = inner radius, y = value, z = min, w = max
-  uvec4 tileMapResolutionShiftBrushIndex; // x = dirty size, y = shift, z = brush index
-  float brushRotation; 
+  uvec4 tileMapResolutionShiftBrushIndexBrushRotation; // x = dirty size, y = shift, z = brush index, w = brush rotation
 } pushConstants;
 
 /* clang-format on */
@@ -44,7 +43,7 @@ void main(){
 
     float d;
 
-    if(pushConstants.tileMapResolutionShiftBrushIndex.z == 0u){
+    if(pushConstants.tileMapResolutionShiftBrushIndexBrushRotation.z == 0u){
 
       // Just a circle brush
      
@@ -54,15 +53,16 @@ void main(){
         length(p - n) - pushConstants.positionRadius.w
       );
 
-    }else if(pushConstants.tileMapResolutionShiftBrushIndex.z <= 255u){
+    }else if(pushConstants.tileMapResolutionShiftBrushIndexBrushRotation.z <= 255u){
 
       // Brush texture
 
       vec3 t = n.yzx - n.zxy, 
            b = normalize(cross(n, t = normalize(t - dot(t, n)))),
            o = p - n;
-      if(pushConstants.brushRotation != 0.0){
-        const vec2 rotationSinCos = sin(vec2(pushConstants.brushRotation) + vec2(0.0, 1.57079632679));
+      float brushRotation = uintBitsToFloat(pushConstants.tileMapResolutionShiftBrushIndexBrushRotation.w); 
+      if(brushRotation != 0.0){
+        const vec2 rotationSinCos = sin(vec2(brushRotation) + vec2(0.0, 1.57079632679));
         const vec3 ot = t, ob = b;
         t = (ot * rotationSinCos.y) - (ob * rotationSinCos.x);
         b = (ot * rotationSinCos.x) + (ob * rotationSinCos.y);
@@ -73,7 +73,7 @@ void main(){
       d *= smoothstep(-1e-4, 1e-4, dot(p, n)); // When we are on the back side of the planet, we need to clear the brush, but smoothly.
 
       if(d > 0.0){
-        d *= textureLod(uBrushTextureArray, vec3(fma(uv, vec2(0.5), vec2(0.5)), float(pushConstants.tileMapResolutionShiftBrushIndex.z)), 0.0).x;
+        d *= textureLod(uBrushTextureArray, vec3(fma(uv, vec2(0.5), vec2(0.5)), float(pushConstants.tileMapResolutionShiftBrushIndexBrushRotation.z)), 0.0).x;
       } 
 
     }else{
@@ -87,22 +87,22 @@ void main(){
     if(d > 0.0){
 
       // When we are on the dirty map tile corner, we need to update the adjacent tiles as well, otherwise we can only update the current tile.
-/*    uint tileMapMask = pushConstants.tileMapResolutionShiftBrushIndex.x - 1u; // Size is always a power of two, so we can convert it to a mask easily.
+/*    uint tileMapMask = pushConstants.tileMapResolutionShiftBrushIndexBrushRotation.x - 1u; // Size is always a power of two, so we can convert it to a mask easily.
       uvec2 tileMapFractionalXY = uvec2(texel) & uvec2(tileMapMask);
       if(any(equal(tileMapFractionalXY, uvec2(0))) || any(equal(tileMapFractionalXY, uvec2(tileMapMask)))){
         const ivec2 minXY = ivec2((tileMapFractionalXY.x == 0u) ? -1 : 0, (tileMapFractionalXY.y == 0u) ? -1 : 0);
         const ivec2 maxXY = ivec2((tileMapFractionalXY.x == tileMapMask) ? 1 : 0, (tileMapFractionalXY.y == tileMapMask) ? 1 : 0);
         for(int y = minXY.y; y <= maxXY.y; y++){
           for(int x = minXY.x; x <= maxXY.x; x++){
-            uvec2 tileMapXY = uvec2(wrapOctahedralTexelCoordinates(ivec2(texel) + ivec2(x, y), ivec2(texSize))) >> pushConstants.tileMapResolutionShiftBrushIndex.y;
-            uint tileMapIndex = (tileMapXY.y * pushConstants.tileMapResolutionShiftBrushIndex.x) + tileMapXY.x;
+            uvec2 tileMapXY = uvec2(wrapOctahedralTexelCoordinates(ivec2(texel) + ivec2(x, y), ivec2(texSize))) >> pushConstants.tileMapResolutionShiftBrushIndexBrushRotation.y;
+            uint tileMapIndex = (tileMapXY.y * pushConstants.tileMapResolutionShiftBrushIndexBrushRotation.x) + tileMapXY.x;
             atomicOr(tileMapDirtyBuffer.data[tileMapIndex >> 5u], 1u << (tileMapIndex & 31u));
           }
         }
         // Commented out code, because the CPU expands the dirty map in the moment anyway.
       }else*/{
-        uvec2 tileMapXY = uvec2(texel) >> pushConstants.tileMapResolutionShiftBrushIndex.y;
-        uint tileMapIndex = (tileMapXY.y * pushConstants.tileMapResolutionShiftBrushIndex.x) + tileMapXY.x;
+        uvec2 tileMapXY = uvec2(texel) >> pushConstants.tileMapResolutionShiftBrushIndexBrushRotation.y;
+        uint tileMapIndex = (tileMapXY.y * pushConstants.tileMapResolutionShiftBrushIndexBrushRotation.x) + tileMapXY.x;
         atomicOr(tileMapDirtyBuffer.data[tileMapIndex >> 5u], 1u << (tileMapIndex & 31u));
       } 
 

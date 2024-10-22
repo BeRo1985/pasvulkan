@@ -428,7 +428,7 @@ void main(){
   float litIntensity = 1.0;
 
   const float specularWeight = 1.0;
-
+ 
   const float iblWeight = 1.0;
 
 #define LIGHTING_INITIALIZATION
@@ -448,18 +448,69 @@ void main(){
   vec4 c = vec4(diffuseOutput + specularOutput, 1.0);
   
   if(planetData.selected.w > 1e-6){
-    float d = length(sphereNormal - normalize(planetData.selected.xyz)) - planetData.selected.w;
+    
+    const vec4 selectedColor = vec4(unpackHalf2x16(planetData.selectedColorBrushIndexBrushRotation.x), unpackHalf2x16(planetData.selectedColorBrushIndexBrushRotation.y));
+    
+    float d;
+    
+    const uint brushIndex = planetData.selectedColorBrushIndexBrushRotation.z;
+
+    if(brushIndex == 0u){
+
+      // Circle brush
+
+      d = length(sphereNormal - normalize(planetData.selected.xyz)) - planetData.selected.w;
+
+    }else if(brushIndex <= 255u){
+
+      // Brush texture
+
+      const float brushRotation = uintBitsToFloat(planetData.selectedColorBrushIndexBrushRotation.w);
+
+      const vec3 n = normalize(planetData.selected.xyz),
+                 p = sphereNormal;
+
+      vec3 t = n.yzx - n.zxy, 
+           b = normalize(cross(n, t = normalize(t - dot(t, n)))),
+           o = p - n;
+      
+      if(brushRotation != 0.0){
+        const vec2 rotationSinCos = sin(vec2(brushRotation) + vec2(0.0, 1.57079632679));
+        const vec3 ot = t, ob = b;
+        t = (ot * rotationSinCos.y) - (ob * rotationSinCos.x);
+        b = (ot * rotationSinCos.x) + (ob * rotationSinCos.y);
+      }
+
+      vec2 uv = vec2(dot(o, t), dot(o, b)) / planetData.selected.w;
+
+      d = smoothstep(1.0, 1.0 - (1.0 / length(vec2(textureSize(uArrayTextures[PLANET_TEXTURE_BRUSHES], 0).xy))), max(abs(uv.x), abs(uv.y)));
+
+      d *= smoothstep(-1e-4, 1e-4, dot(p, n)); // When we are on the back side of the planet, we need to clear the brush, but smoothly.
+
+      if(d > 0.0){
+        d *= textureLod(uArrayTextures[PLANET_TEXTURE_BRUSHES], vec3(fma(uv, vec2(0.5), vec2(0.5)), float(brushIndex)), 0.0).x;
+      } 
+
+      d = 1.0 - clamp(d, 0.0, 1.0);
+
+    }else{
+
+      d = 0.0;
+      
+    }
+
 #if 0     
     float t = fwidth(d);
     float l = max(1e-6, planetData.selected.w * 0.25);
     if((d < l) && ((t < (l * 2.0)) && !(isnan(t) || isinf(t)))){ // to prevent artifacts at normal discontinuities and edges
       t = clamp(t * 1.41421356237, 1e-3, 1e-2); // minimize the possibility of artifacts at normal discontinuities and edges even more, by limiting the range of t to a reasonable value range
-      c.xyz = mix(c.xyz, mix(vec3(1.0) - clamp(c.zxy, vec3(1.0), vec3(1.0)), vec3(1.0, 0.0, 0.0), 0.5), smoothstep(t, -t, d) * 0.5);
+      c.xyz = mix(c.xyz, mix(vec3(1.0) - clamp(c.zxy, vec3(1.0), vec3(1.0)), selectedColor.xyz, selectedColor.w), smoothstep(t, -t, d) * 0.5);
     }
 #else
     float t = 1e-3; // constant value without the problems of fwidth with normal discontinuities and edges
-    c.xyz = mix(c.xyz, mix(vec3(1.0) - clamp(c.zxy, vec3(1.0), vec3(1.0)), vec3(1.0, 0.0, 0.0), 0.5), smoothstep(t, -t, d) * 0.5);
+    c.xyz = mix(c.xyz, mix(vec3(1.0) - clamp(c.zxy, vec3(1.0), vec3(1.0)), selectedColor.xyz, selectedColor.w), smoothstep(t, -t, d) * 0.5);
 #endif
+
   }
 
 #ifdef WIREFRAME

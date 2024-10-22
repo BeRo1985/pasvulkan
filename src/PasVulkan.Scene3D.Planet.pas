@@ -134,6 +134,10 @@ type TpvScene3DPlanets=class;
 
              Selected:TpvVector4;
 
+             SelectedColor:TpvHalfFloatVector4;
+             SelectedBrushIndex:TpvUInt32;
+             SelectedBrushRotation:TpvFloat;
+
              Textures:array[0..15,0..3] of TpvUInt32;
 
             end;
@@ -14687,7 +14691,7 @@ begin
    fDescriptorSets[InFlightFrameIndex]:=TpvVulkanDescriptorSet.Create(fDescriptorPool,TpvScene3D(fScene3D).PlanetDescriptorSetLayout);
    fDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(0,
                                                             0,
-                                                            5,
+                                                            6,
                                                             TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
                                                             [TVkDescriptorImageInfo.Create(TpvScene3D(fScene3D).GeneralComputeSampler.Handle,
                                                                                            fInFlightFrameDataList[InFlightFrameIndex].fHeightMapImage.VulkanImageView.Handle,
@@ -14703,6 +14707,9 @@ begin
                                                                                            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
                                                              TVkDescriptorImageInfo.Create(TpvScene3D(fScene3D).GeneralComputeSampler.Handle,
                                                                                            {fInFlightFrameDataList[InFlightFrameIndex].}fData.fWaterHeightMapImage.VulkanImageView.Handle,
+                                                                                           VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
+                                                             TVkDescriptorImageInfo.Create(TpvScene3D(fScene3D).GeneralComputeSampler.Handle,
+                                                                                           fBrushesTexture.ImageView.Handle,
                                                                                            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
                                                             [],
                                                             [],
@@ -15495,7 +15502,7 @@ begin
  // Height map + normal map + blend map + grass map + water map
  result.AddBinding(0,
                    TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                   5,
+                   6,
                    ShaderStageFlags,
                    [],
                    0);
@@ -15519,7 +15526,7 @@ begin
  result:=TpvVulkanDescriptorPool.Create(aVulkanDevice,
                                         TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
                                         aCountInFlightFrames);
- result.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),5*aCountInFlightFrames);
+ result.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),6*aCountInFlightFrames);
  result.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),1*aCountInFlightFrames);
  result.Initialize;
  aVulkanDevice.DebugUtils.SetObjectName(result.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'TpvScene3DPlanet.PlanetDescriptorPool');
@@ -16503,6 +16510,12 @@ begin
     fPlanetData.Indices:=0;
    end;
    fPlanetData.Selected:=InFlightFrameData.SelectedRegion.Vector;
+   fPlanetData.SelectedColor.x:=1.0;
+   fPlanetData.SelectedColor.y:=0.0;
+   fPlanetData.SelectedColor.z:=0.0;
+   fPlanetData.SelectedColor.w:=0.5;
+   fPlanetData.SelectedBrushIndex:=InFlightFrameData.fSelectedBrush;
+   fPlanetData.SelectedBrushRotation:=InFlightFrameData.BrushRotation*TwoPI;
 
    for MaterialIndex:=Low(TpvScene3DPlanet.TMaterials) to High(TpvScene3DPlanet.TMaterials) do begin
     Material:=@fMaterials[MaterialIndex];

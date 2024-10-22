@@ -127,6 +127,8 @@ layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer Pl
 
   vec4 selected; // xyz = octahedral map coordinates, w = radius   
 
+  uvec4 selectedColorBrushIndexBrushRotation; // xy = selected color (16-bit half float vec4), z = brush index, w = brush rotation
+
   PlanetMaterial materials[16];
 
 };
