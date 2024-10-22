@@ -17,7 +17,9 @@ layout(set = 0, binding = 1) uniform sampler2DArray uBrushTextureArray;
 layout(push_constant) uniform PushConstants {
   vec4 positionRadius; // xyz = position, w = radius
   vec4 innerRadiusValueMinMax; // x = inner radius, y = value, z = min, w = max
-  uvec4 layerIndexBrushIndex; // x = layer index, y = brush index
+  uint layerIndex;
+  uint brushIndex;
+  float brushRotation;
 } pushConstants;
 
 /* clang-format on */
@@ -27,7 +29,7 @@ layout(push_constant) uniform PushConstants {
 
 void main(){
   
-  ivec3 texel = ivec3(gl_GlobalInvocationID.xy, int(pushConstants.layerIndexBrushIndex.x >> 2u)); // four layers per texel (RGBA), one per color channel 
+  ivec3 texel = ivec3(gl_GlobalInvocationID.xy, int(pushConstants.layerIndex >> 2u)); // four layers per texel (RGBA), one per color channel 
 
   ivec3 texSize = imageSize(uImageBlendMap);
 
@@ -39,7 +41,7 @@ void main(){
 
     float d;
 
-    if(pushConstants.layerIndexBrushIndex.y == 0u){
+    if(pushConstants.brushIndex == 0u){
 
       // Just a circle brush
      
@@ -49,20 +51,26 @@ void main(){
         length(p - n) - pushConstants.positionRadius.w
       );
 
-    }else if(pushConstants.layerIndexBrushIndex.y <= 255u){
+    }else if(pushConstants.brushIndex <= 255u){
 
       // Brush texture
 
       vec3 t = n.yzx - n.zxy, 
            b = normalize(cross(n, t = normalize(t - dot(t, n)))),
            o = p - n;
+      if(pushConstants.brushRotation != 0.0){
+        const vec2 rotationSinCos = sin(vec2(pushConstants.brushRotation) + vec2(0.0, 1.57079632679));
+        const vec3 ot = t, ob = b;
+        t = (ot * rotationSinCos.y) - (ob * rotationSinCos.x);
+        b = (ot * rotationSinCos.x) + (ob * rotationSinCos.y);
+      }
       vec2 uv = vec2(dot(o, t), dot(o, b)) / pushConstants.positionRadius.w;
       d = smoothstep(1.0, 1.0 - (1.0 / length(textureSize(uBrushTextureArray, 0).xy)), max(abs(uv.x), abs(uv.y)));
 
       d *= smoothstep(-1e-4, 1e-4, dot(p, n)); // When we are on the back side of the planet, we need to clear the brush, but smoothly.
 
       if(d > 0.0){
-        d *= textureLod(uBrushTextureArray, vec3(fma(uv, vec2(0.5), vec2(0.5)), float(pushConstants.layerIndexBrushIndex.y)), 0.0).x;
+        d *= textureLod(uBrushTextureArray, vec3(fma(uv, vec2(0.5), vec2(0.5)), float(pushConstants.brushIndex)), 0.0).x;
       } 
 
     }else{
@@ -77,8 +85,8 @@ void main(){
 
       vec4 blendMapValues = imageLoad(uImageBlendMap, texel);
 
-      blendMapValues[pushConstants.layerIndexBrushIndex.x & 3u] = clamp(
-        blendMapValues[pushConstants.layerIndexBrushIndex.x & 3u] + (d * pushConstants.innerRadiusValueMinMax.y),
+      blendMapValues[pushConstants.layerIndex & 3u] = clamp(
+        blendMapValues[pushConstants.layerIndex & 3u] + (d * pushConstants.innerRadiusValueMinMax.y),
         pushConstants.innerRadiusValueMinMax.z,
         pushConstants.innerRadiusValueMinMax.w
       );

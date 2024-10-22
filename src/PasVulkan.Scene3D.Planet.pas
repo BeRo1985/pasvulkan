@@ -291,6 +291,7 @@ type TpvScene3DPlanets=class;
               fSelectedRegion:TpvVector4;
               fSelectedRegionProperty:TpvVector4Property;
               fSelectedBrush:TpvUInt32;
+              fBrushRotation:TpvScalar;
               fModifyHeightMapActive:Boolean;
               fModifyHeightMapBorderRadius:TpvScalar;
               fModifyHeightMapFactor:TpvScalar;
@@ -369,6 +370,7 @@ type TpvScene3DPlanets=class;
               property Ready:TPasMPBool32 read fReady write fReady;
               property SelectedRegion:TpvVector4Property read fSelectedRegionProperty;
               property SelectedBrush:TpvUInt32 read fSelectedBrush write fSelectedBrush;
+              property BrushRotation:TpvScalar read fBrushRotation write fBrushRotation;
               property ModifyHeightMapActive:Boolean read fModifyHeightMapActive write fModifyHeightMapActive;
               property ModifyHeightMapBorderRadius:TpvScalar read fModifyHeightMapBorderRadius write fModifyHeightMapBorderRadius;
               property ModifyHeightMapFactor:TpvScalar read fModifyHeightMapFactor write fModifyHeightMapFactor;
@@ -508,6 +510,7 @@ type TpvScene3DPlanets=class;
                     PositionRadius:TpvVector4; // xyz = position, w = radius
                     InnerRadiusValueMinMax:TpvVector4; // x = inner radius, y = value, z = min, w = max
                     BrushIndex:TpvUInt32;
+                    BrushRotation:TpvFloat;
                    end;
                    PPushConstants=^TPushConstants;
              private
@@ -563,6 +566,7 @@ type TpvScene3DPlanets=class;
                     Value:TpvFloat;
                     WaterHeightMapResolution:TpvUInt32;
                     BrushIndex:TpvUInt32;
+                    BrushRotation:TpvFloat;
                    end;
                    PModificationPushConstants=^TModificationPushConstants;
              private
@@ -684,7 +688,7 @@ type TpvScene3DPlanets=class;
                     TileMapResolution:TpvUInt32;
                     TileMapShift:TpvUInt32;
                     BrushIndex:TpvUInt32;
-                    Reserved0:TpvUInt32;
+                    BrushRotation:TpvFloat;
                    end;
                    PPushConstants=^TPushConstants;
              private
@@ -721,6 +725,7 @@ type TpvScene3DPlanets=class;
                     BottomRadius:TpvFloat;
                     TopRadius:TpvFloat;
                     TargetHeight:TpvFloat;
+                    BrushRotation:TpvFloat;
                    end;
                    PPushConstants=^TPushConstants;
              private
@@ -1622,7 +1627,7 @@ type TpvScene3DPlanets=class;
        procedure EndUpdate;
        procedure FlushUpdate;
        procedure Initialize(const aPasMPInstance:TPasMP=nil;const aData:TStream=nil;const aDataFreeOnDestroy:boolean=false);
-       procedure Flatten(const aVector:TpvVector3;const aInnerRadius,aOuterRadius,aTargetHeight:TpvFloat;const aBrushIndex:TpvUInt32);
+       procedure Flatten(const aVector:TpvVector3;const aInnerRadius,aOuterRadius,aTargetHeight:TpvFloat;const aBrushIndex:TpvUInt32;const aBrushRotation:TpvFloat);
        function RayIntersection(const aRayOrigin,aRayDirection:TpvVector3;out aHitNormal:TpvVector3;out aHitTime:TpvScalar):boolean;
        procedure Update(const aInFlightFrameIndex:TpvSizeInt);
        procedure FrameUpdate(const aInFlightFrameIndex:TpvSizeInt);
@@ -2848,6 +2853,8 @@ begin
  fSelectedRegionProperty:=TpvVector4Property.Create(@fSelectedRegion);
 
  fSelectedBrush:=0;
+
+ fBrushRotation:=0.0;
 
  fModifyHeightMapActive:=false;
 
@@ -4083,6 +4090,7 @@ procedure TpvScene3DPlanet.TData.Assign(const aData:TData);
 begin
  fSelectedRegion:=aData.fSelectedRegion;
  fSelectedBrush:=aData.fSelectedBrush;
+ fBrushRotation:=aData.fBrushRotation;
  fWireframeActive:=aData.fWireframeActive;
  fDisplacementMappingActive:=aData.fDisplacementMappingActive;
  fParallaxMappingActive:=aData.fParallaxMappingActive;
@@ -5538,6 +5546,7 @@ begin
   fPushConstants.PositionRadius:=TpvVector4.Create(0.0,0.0,0.0,0.0);
   fPushConstants.InnerRadiusValueMinMax:=TpvVector4.Create(0.0,0.0,0.0,0.0);
   fPushConstants.BrushIndex:=0;
+  fPushConstants.BrushRotation:=0.0;
 
  end;
 
@@ -5607,6 +5616,7 @@ begin
 
  fPushConstants.PositionRadius:=fPlanet.fData.fSelectedRegion;
  fPushConstants.BrushIndex:=fPlanet.fData.fSelectedBrush;
+ fPushConstants.BrushRotation:=fPlanet.fData.fBrushRotation*TwoPI;
 
  aCommandBuffer.CmdPushConstants(fPipelineLayout.Handle,
                                  TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
@@ -6038,6 +6048,7 @@ begin
   fModificationPushConstants.Value:=0.0;
   fModificationPushConstants.WaterHeightMapResolution:=fPlanet.fWaterMapResolution;
   fModificationPushConstants.BrushIndex:=0;
+  fModificationPushConstants.BrushRotation:=0.0;
 
  end;
 
@@ -6136,6 +6147,7 @@ begin
    fModificationPushConstants.Value:=WaterModification^.Value;
    fModificationPushConstants.WaterHeightMapResolution:=fPlanet.fWaterMapResolution;
    fModificationPushConstants.BrushIndex:=fPlanet.fData.fSelectedBrush;
+   fModificationPushConstants.BrushRotation:=fPlanet.fData.fBrushRotation*TwoPI;
 
    BufferMemoryBarriers[0]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                           TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
@@ -7042,6 +7054,7 @@ begin
   fPushConstants.TileMapResolution:=fPlanet.fTileMapResolution;
   fPushConstants.TileMapShift:=fPlanet.fTileMapShift;
   fPushConstants.BrushIndex:=0;
+  fPushConstants.BrushRotation:=0.0;
 
  end;
 
@@ -7159,6 +7172,7 @@ begin
 
  fPushConstants.PositionRadius:=fPlanet.fData.fSelectedRegion;
  fPushConstants.BrushIndex:=fPlanet.fData.fSelectedBrush;
+ fPushConstants.BrushRotation:=fPlanet.fData.fBrushRotation*TwoPI;
 
  aCommandBuffer.CmdPushConstants(fPipelineLayout.Handle,
                                  TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
@@ -7314,6 +7328,7 @@ begin
   fPushConstants.TileMapResolution:=fPlanet.fTileMapResolution;
   fPushConstants.TileMapShift:=fPlanet.fTileMapShift;
   fPushConstants.BrushIndex:=0;
+  fPushConstants.BrushRotation:=0.0;
 
  end;
 
@@ -15937,7 +15952,7 @@ begin
 
 end;
 
-procedure TpvScene3DPlanet.Flatten(const aVector:TpvVector3;const aInnerRadius,aOuterRadius,aTargetHeight:TpvFloat;const aBrushIndex:TpvUInt32);
+procedure TpvScene3DPlanet.Flatten(const aVector:TpvVector3;const aInnerRadius,aOuterRadius,aTargetHeight:TpvFloat;const aBrushIndex:TpvUInt32;const aBrushRotation:TpvFloat);
 begin
 
  if assigned(fVulkanDevice) then begin
@@ -15954,6 +15969,8 @@ begin
    fHeightMapFlatten.fPushConstants.TargetHeight:=aTargetHeight;
 
    fHeightMapFlatten.fPushConstants.BrushIndex:=aBrushIndex;
+
+   fHeightMapFlatten.fPushConstants.BrushRotation:=aBrushRotation;
 
    fHeightMapFlatten.Execute(fVulkanComputeCommandBuffer);
 

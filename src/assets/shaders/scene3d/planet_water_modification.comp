@@ -25,6 +25,7 @@ layout(push_constant) uniform PushConstants {
   float value;
   uint waterHeightMapResolution;
   uint brushIndex;
+  float brushRotation;
 } pushConstants;
 
 // This shader transforms the relative water height map buffer to an absolute water height map image for rendering.
@@ -65,6 +66,12 @@ void main(){
       vec3 t = n.yzx - n.zxy, 
            b = normalize(cross(n, t = normalize(t - dot(t, n)))),
            o = p - n;
+      if(pushConstants.brushRotation != 0.0){
+        const vec2 rotationSinCos = sin(vec2(pushConstants.brushRotation) + vec2(0.0, 1.57079632679));
+        const vec3 ot = t, ob = b;
+        t = (ot * rotationSinCos.y) - (ob * rotationSinCos.x);
+        b = (ot * rotationSinCos.x) + (ob * rotationSinCos.y);
+      }
       vec2 uv = vec2(dot(o, t), dot(o, b)) / pushConstants.positionRadius.w;
       d = smoothstep(1.0, 1.0 - (1.0 / length(textureSize(uBrushTextureArray, 0).xy)), max(abs(uv.x), abs(uv.y)));
 

@@ -22,6 +22,7 @@ layout(push_constant) uniform PushConstants {
   vec4 positionRadius; // xyz = position, w = radius
   vec4 innerRadiusValueMinMax; // x = inner radius, y = value, z = min, w = max
   uvec4 tileMapResolutionShiftBrushIndex; // x = dirty size, y = shift, z = brush index
+  float brushRotation; 
 } pushConstants;
 
 /* clang-format on */
@@ -60,6 +61,12 @@ void main(){
       vec3 t = n.yzx - n.zxy, 
            b = normalize(cross(n, t = normalize(t - dot(t, n)))),
            o = p - n;
+      if(pushConstants.brushRotation != 0.0){
+        const vec2 rotationSinCos = sin(vec2(pushConstants.brushRotation) + vec2(0.0, 1.57079632679));
+        const vec3 ot = t, ob = b;
+        t = (ot * rotationSinCos.y) - (ob * rotationSinCos.x);
+        b = (ot * rotationSinCos.x) + (ob * rotationSinCos.y);
+      }
       vec2 uv = vec2(dot(o, t), dot(o, b)) / pushConstants.positionRadius.w;
       d = smoothstep(1.0, 1.0 - (1.0 / length(textureSize(uBrushTextureArray, 0).xy)), max(abs(uv.x), abs(uv.y)));
 
