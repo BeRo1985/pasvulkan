@@ -263,24 +263,49 @@ void multiplanarSetup(vec3 position, vec3 positionDX, vec3 positionDY, vec3 norm
 
 vec4 multiplanarTexture(const in sampler2D tex, float scale){
 #ifdef TRIPLANAR
-  return (textureNoTile(tex, multiplanarP.yz * scale, multiplanarDX.yz * scale, multiplanarDY.yz * scale) * multiplanarM.x) +
-         (textureNoTile(tex, multiplanarP.zx * scale, multiplanarDX.zx * scale, multiplanarDY.zx * scale) * multiplanarM.y) + 
-         (textureNoTile(tex, multiplanarP.xy * scale, multiplanarDX.xy * scale, multiplanarDY.xy * scale) * multiplanarM.z);
+  if(scale < 0.0){
+    scale = -scale;
+    return (textureGrad(tex, multiplanarP.yz * scale, multiplanarDX.yz * scale, multiplanarDY.yz * scale) * multiplanarM.x) +
+           (textureGrad(tex, multiplanarP.zx * scale, multiplanarDX.zx * scale, multiplanarDY.zx * scale) * multiplanarM.y) + 
+           (textureGrad(tex, multiplanarP.xy * scale, multiplanarDX.xy * scale, multiplanarDY.xy * scale) * multiplanarM.z);
+  }else{
+    return (textureNoTile(tex, multiplanarP.yz * scale, multiplanarDX.yz * scale, multiplanarDY.yz * scale) * multiplanarM.x) +
+           (textureNoTile(tex, multiplanarP.zx * scale, multiplanarDX.zx * scale, multiplanarDY.zx * scale) * multiplanarM.y) + 
+           (textureNoTile(tex, multiplanarP.xy * scale, multiplanarDX.xy * scale, multiplanarDY.xy * scale) * multiplanarM.z);
+  }
 #else
- return (textureNoTile(
+  if(scale < 0.0){
+    scale = -scale;
+    return (textureGrad(
+              tex, 
+              vec2(multiplanarP[multiplanarMA.y], multiplanarP[multiplanarMA.z]) * scale,
+              vec2(multiplanarDX[multiplanarMA.y], multiplanarDX[multiplanarMA.z]) * scale,
+              vec2(multiplanarDY[multiplanarMA.y], multiplanarDY[multiplanarMA.z]) * scale
+            ) * multiplanarM.x
+          ) +
+          (textureGrad(
             tex, 
-            vec2(multiplanarP[multiplanarMA.y], multiplanarP[multiplanarMA.z]) * scale,
-            vec2(multiplanarDX[multiplanarMA.y], multiplanarDX[multiplanarMA.z]) * scale,
-            vec2(multiplanarDY[multiplanarMA.y], multiplanarDY[multiplanarMA.z]) * scale
-          ) * multiplanarM.x
-        ) +
-        (textureNoTile(
-           tex, 
-           vec2(multiplanarP[multiplanarME.y], multiplanarP[multiplanarME.z]) * scale,
-           vec2(multiplanarDX[multiplanarME.y], multiplanarDX[multiplanarME.z]) * scale,
-           vec2(multiplanarDY[multiplanarME.y], multiplanarDY[multiplanarME.z]) * scale
-          ) * multiplanarM.y
-        );
+            vec2(multiplanarP[multiplanarME.y], multiplanarP[multiplanarME.z]) * scale,
+            vec2(multiplanarDX[multiplanarME.y], multiplanarDX[multiplanarME.z]) * scale,
+            vec2(multiplanarDY[multiplanarME.y], multiplanarDY[multiplanarME.z]) * scale
+            ) * multiplanarM.y
+          );
+  }else{
+    return (textureNoTile(
+              tex, 
+              vec2(multiplanarP[multiplanarMA.y], multiplanarP[multiplanarMA.z]) * scale,
+              vec2(multiplanarDX[multiplanarMA.y], multiplanarDX[multiplanarMA.z]) * scale,
+              vec2(multiplanarDY[multiplanarMA.y], multiplanarDY[multiplanarMA.z]) * scale
+            ) * multiplanarM.x
+          ) +
+          (textureNoTile(
+            tex, 
+            vec2(multiplanarP[multiplanarME.y], multiplanarP[multiplanarME.z]) * scale,
+            vec2(multiplanarDX[multiplanarME.y], multiplanarDX[multiplanarME.z]) * scale,
+            vec2(multiplanarDY[multiplanarME.y], multiplanarDY[multiplanarME.z]) * scale
+            ) * multiplanarM.y
+          );
+  }
 #endif
 }
 
