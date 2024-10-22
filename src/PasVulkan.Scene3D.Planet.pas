@@ -17049,6 +17049,7 @@ begin
      InFlightFrameData.AcquireOnComputeQueue(fVulkanComputeCommandBuffer);
 
      if (InFlightFrameData.fHeightMapGeneration<>fData.fHeightMapGeneration) or
+        (InFlightFrameData.fBlendMapGeneration<>fData.fBlendMapGeneration) or
         (InFlightFrameData.fGrassMapGeneration<>fData.fGrassMapGeneration) then begin
       fData.TransferTo(fVulkanComputeCommandBuffer,
                        InFlightFrameData,
