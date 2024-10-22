@@ -303,6 +303,7 @@ void main(){
   {
 
     float weightSum = 0.0;
+    float maxWeight = 0.0;
     [[unroll]] for(int layerTopLevelIndex = 0; layerTopLevelIndex < 2; layerTopLevelIndex++){
       const vec4 weights = layerMaterialWeights[layerTopLevelIndex]; 
       if(any(greaterThan(weights, vec4(0.0)))){
@@ -315,6 +316,7 @@ void main(){
             normalHeight += multiplanarTexture(u2DTextures[(GetPlanetMaterialNormalHeightTextureIndex(layerMaterial) << 1) | 0], GetPlanetMaterialScale(layerMaterial)) * weight;
             occlusionRoughnessMetallic += multiplanarTexture(u2DTextures[(GetPlanetMaterialOcclusionRoughnessMetallicTextureIndex(layerMaterial) << 1) | 0], GetPlanetMaterialScale(layerMaterial)) * weight;
             weightSum += weight;
+            maxWeight = max(maxWeight, weight);
           }
         }
       }
@@ -324,11 +326,11 @@ void main(){
     {
 
       // Define the range for the soft transition
-      const float fadeStart = 0.25; // Begin of fading
-      const float fadeEnd = 0.5;   // Full fading
+      const float fadeStart = 0.5; // Begin of fading
+      const float fadeEnd = 1.0;   // Full fading
 
       // Calculate the factor for the default weight
-      const float defaultWeightFactor = clamp((fadeEnd - weightSum) / (fadeEnd - fadeStart), 0.0, 1.0);
+      const float defaultWeightFactor = clamp((fadeEnd - maxWeight) / (fadeEnd - fadeStart), 0.0, 1.0);
 
       // Calculate the weight of the default ground texture
       const float defaultWeight = defaultWeightFactor;   
@@ -344,7 +346,6 @@ void main(){
       }  
 
     }
-      
 
     // Process the grass texture if the grass value is greater than 0.0
     float grass = clamp(texturePlanetOctahedralMap(uTextures[PLANET_TEXTURE_GRASSMAP], sphereNormal).x, 0.0, 1.0);
@@ -496,7 +497,7 @@ void main(){
     }else{
 
       d = 0.0;
-      
+
     }
 
 #if 0     
