@@ -299,6 +299,7 @@ type TpvScene3DPlanets=class;
               fOwnershipHolderState:TpvScene3DPlanet.TData.TOwnershipHolderState;
               fSelectedRegion:TpvVector4;
               fSelectedRegionProperty:TpvVector4Property;
+              fSelectedGroundTexture:TpvUInt32;
               fSelectedBrush:TpvUInt32;
               fBrushRotation:TpvScalar;
               fModifyHeightMapActive:Boolean;
@@ -384,6 +385,7 @@ type TpvScene3DPlanets=class;
               property ModelMatrix:TpvMatrix4x4 read fModelMatrix write fModelMatrix;
               property Ready:TPasMPBool32 read fReady write fReady;
               property SelectedRegion:TpvVector4Property read fSelectedRegionProperty;
+              property SelectedGroundTexture:TpvUInt32 read fSelectedGroundTexture write fSelectedGroundTexture;
               property SelectedBrush:TpvUInt32 read fSelectedBrush write fSelectedBrush;
               property BrushRotation:TpvScalar read fBrushRotation write fBrushRotation;
               property ModifyHeightMapActive:Boolean read fModifyHeightMapActive write fModifyHeightMapActive;
@@ -2935,6 +2937,8 @@ begin
 
  fSelectedRegionProperty:=TpvVector4Property.Create(@fSelectedRegion);
 
+ fSelectedGroundTexture:=0;
+
  fSelectedBrush:=0;
 
  fBrushRotation:=0.0;
@@ -4296,6 +4300,7 @@ end;
 procedure TpvScene3DPlanet.TData.Assign(const aData:TData);
 begin
  fSelectedRegion:=aData.fSelectedRegion;
+ fSelectedGroundTexture:=aData.fSelectedGroundTexture;
  fSelectedBrush:=aData.fSelectedBrush;
  fBrushRotation:=aData.fBrushRotation;
  fWireframeActive:=aData.fWireframeActive;
@@ -5808,7 +5813,7 @@ begin
                                       1,
                                       TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
                                       [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,
-                                                                     fPlanet.fData.fBlendMapImage.VulkanImageView.Handle,
+                                                                     fPlanet.fData.fBlendMapImage.VulkanArrayImageView.Handle,
                                                                      VK_IMAGE_LAYOUT_GENERAL)],
                                       [],
                                       [],
@@ -5880,7 +5885,7 @@ begin
                                                                                   0,
                                                                                   1,
                                                                                   0,
-                                                                                  1));
+                                                                                  TpvScene3DPlanet.CountBlendMapLayers));
 
  aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_HOST_BIT),
                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
@@ -5905,6 +5910,7 @@ begin
                                                                     1.0);
 
  fPushConstants.PositionRadius:=fPlanet.fData.fSelectedRegion;
+ fPushConstants.LayerIndex:=fPlanet.fData.fSelectedGroundTexture;
  fPushConstants.BrushIndex:=fPlanet.fData.fSelectedBrush;
  fPushConstants.BrushRotation:=fPlanet.fData.fBrushRotation*TwoPI;
 
@@ -5929,7 +5935,7 @@ begin
                                                                                   0,
                                                                                   1,
                                                                                   0,
-                                                                                  1));
+                                                                                  TpvScene3DPlanet.CountBlendMapLayers));
 
  aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_HOST_BIT),
