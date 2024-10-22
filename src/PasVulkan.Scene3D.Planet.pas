@@ -5314,10 +5314,6 @@ begin
 
      aStream.ReadBuffer(GrassMapDataChunkHeader,SizeOf(TGrassMapDataChunkHeader));
 
-     if GrassMapDataChunkHeader.Resolution<>fGrassMapResolution then begin
-      raise EpvScene3DPlanet.Create('Invalid grass map resolution');
-     end;
-
      fGrassMapData.Seek(0,soBeginning);
 
      if GrassMapDataChunkHeader.Resolution=fGrassMapResolution then begin
@@ -5354,10 +5350,6 @@ begin
 
      aStream.ReadBuffer(WaterHeightMapDataChunkHeader,SizeOf(TWaterHeightMapDataChunkHeader));
 
-     if WaterHeightMapDataChunkHeader.Resolution<>fWaterMapResolution then begin
-      raise EpvScene3DPlanet.Create('Invalid water height map resolution');
-     end;
-  
      fWaterHeightMapData.Seek(0,soBeginning);
     
      if WaterHeightMapDataChunkHeader.Resolution=fWaterMapResolution then begin
