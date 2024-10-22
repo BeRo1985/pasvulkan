@@ -2361,7 +2361,7 @@ begin
                                                         fPlanet.fBlendMapResolution,
                                                         fPlanet.fBlendMapResolution,
                                                         TpvScene3DPlanet.CountBlendMapLayers,
-                                                        VK_FORMAT_R8G8B8A8_SNORM,
+                                                        VK_FORMAT_R8G8B8A8_UNORM,
                                                         VK_SAMPLE_COUNT_1_BIT,
                                                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                                         true,
