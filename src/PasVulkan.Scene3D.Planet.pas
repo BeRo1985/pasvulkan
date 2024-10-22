@@ -2401,7 +2401,7 @@ begin
                                            0,
                                            0,
                                            0,
-                                           [TpvVulkanBufferFlag.PersistentMappedIfPossible],
+                                           [TpvVulkanBufferFlag.PersistentMappedIfPossible,TpvVulkanBufferFlag.PreferDedicatedAllocation],
                                            0,
                                            pvAllocationGroupIDScene3DPlanetStatic);
    fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fBlendMapBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fBlendMapBuffer');
@@ -2419,7 +2419,7 @@ begin
                                            0,
                                            0,
                                            0,
-                                           [TpvVulkanBufferFlag.PersistentMappedIfPossible],
+                                           [TpvVulkanBufferFlag.PersistentMappedIfPossible,TpvVulkanBufferFlag.PreferDedicatedAllocation],
                                            0,
                                            pvAllocationGroupIDScene3DPlanetStatic);
    fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fGrassMapBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fGrassMapBuffer');
