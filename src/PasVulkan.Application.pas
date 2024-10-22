@@ -1346,6 +1346,7 @@ type EpvApplication=class(Exception)
 
        fWidth:TpvInt32;
        fHeight:TpvInt32;
+       fUseRealFullScreen:boolean;
        fFullscreen:boolean;
        fMaximized:boolean;
        fPresentMode:TpvApplicationPresentMode;
@@ -1926,6 +1927,8 @@ type EpvApplication=class(Exception)
        property Height:TpvInt32 read fHeight write fHeight;
 
        property SkipNextDrawFrame:boolean read fSkipNextDrawFrame write fSkipNextDrawFrame;
+
+       property UseRealFullScreen:boolean read fUseRealFullScreen write fUseRealFullScreen;
 
        property Fullscreen:boolean read fFullscreen write fFullscreen;
 
@@ -7189,6 +7192,7 @@ begin
 
  fWidth:=1280;
  fHeight:=720;
+ fUseRealFullScreen:=false;
  fFullscreen:=false;
  fMaximized:=false;
  fExclusiveFullScreenMode:=TpvVulkanExclusiveFullScreenMode.Default;
@@ -11452,7 +11456,11 @@ begin
       SDL_SetWindowFullscreen(fSurfaceWindow,SDL_WINDOW_FULLSCREEN_DESKTOP);
      end;
     end;}
-    SDL_SetWindowFullscreen(fSurfaceWindow,SDL_WINDOW_FULLSCREEN_DESKTOP);
+    if fUseRealFullScreen then begin
+     SDL_SetWindowFullscreen(fSurfaceWindow,SDL_WINDOW_FULLSCREEN);
+    end else begin
+     SDL_SetWindowFullscreen(fSurfaceWindow,SDL_WINDOW_FULLSCREEN_DESKTOP);
+    end;
    end else begin
     SDL_SetWindowFullscreen(fSurfaceWindow,0);
    end;
