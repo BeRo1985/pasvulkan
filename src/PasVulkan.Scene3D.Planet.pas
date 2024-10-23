@@ -5980,7 +5980,7 @@ begin
                                       0,
                                       nil);
 
- fPushConstants.InnerRadiusValueMinMax:=TpvVector4.InlineableCreate(Max(0.0,fPlanet.fData.fModifyBlendMapBorderRadius),
+ fPushConstants.InnerRadiusValueMinMax:=TpvVector4.InlineableCreate(Max(1e-6,fPlanet.fData.fModifyBlendMapBorderRadius),
                                                                     fPlanet.fData.fModifyBlendMapFactor,
                                                                     0.0,
                                                                     1.0);
@@ -6351,7 +6351,7 @@ begin
                                       0,
                                       nil);
 
- fPushConstants.InnerRadiusValueMinMax:=TpvVector4.InlineableCreate(Max(0.0,fPlanet.fData.fModifyGrassMapBorderRadius),
+ fPushConstants.InnerRadiusValueMinMax:=TpvVector4.InlineableCreate(Max(1e-6,fPlanet.fData.fModifyGrassMapBorderRadius),
                                                                     fPlanet.fData.fModifyGrassMapFactor,
                                                                     0.0,
                                                                     1.0);
@@ -7907,7 +7907,7 @@ begin
                                       0,
                                       nil);
 
- fPushConstants.InnerRadiusValueMinMax:=TpvVector4.InlineableCreate(Max(0.0,fPlanet.fData.fModifyHeightMapBorderRadius),
+ fPushConstants.InnerRadiusValueMinMax:=TpvVector4.InlineableCreate(Max(1e-6,fPlanet.fData.fModifyHeightMapBorderRadius),
                                                                     fPlanet.fData.fModifyHeightMapFactor,
                                                                     0.0,
                                                                     1.0);
@@ -17289,7 +17289,7 @@ begin
    fPlanetData.SelectedColor.w:=0.5;
    fPlanetData.SelectedBrushIndex:=InFlightFrameData.fSelectedBrush;
    fPlanetData.SelectedBrushRotation:=InFlightFrameData.BrushRotation*TwoPI;
-   fPlanetData.SelectedInnerRadius:=InFlightFrameData.BrushInnerRadius;
+   fPlanetData.SelectedInnerRadius:=Max(InFlightFrameData.BrushInnerRadius,1e-6);
 
    for MaterialIndex:=Low(TpvScene3DPlanet.TMaterials) to High(TpvScene3DPlanet.TMaterials) do begin
     Material:=@fMaterials[MaterialIndex];
@@ -17327,7 +17327,7 @@ begin
  if aInFlightFrameIndex>=0 then begin
   WaterModification:=@fWaterModifications[aInFlightFrameIndex];
   WaterModification^.PositionRadius:=TpvVector4.Create(aPosition.Normalize,aRadius);
-  WaterModification^.InnerRadius:=Max(0.0,{aRadius-}aBorderRadius);
+  WaterModification^.InnerRadius:=Max(1e-6,aBorderRadius);
   WaterModification^.Value:=aValue;
  end;
 end;

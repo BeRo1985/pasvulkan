@@ -469,7 +469,7 @@ void main(){
       }
 #else
       float t = planetData.selectedInnerRadius;
-      c.xyz = mix(c.xyz, mix(vec3(1.0) - clamp(c.zxy, vec3(1.0), vec3(1.0)), selectedColor.xyz, selectedColor.w), smoothstep(t, -t, d) * 0.5);
+      c.xyz = mix(c.xyz, mix(vec3(1.0) - clamp(c.zxy, vec3(1.0), vec3(1.0)), selectedColor.xyz, selectedColor.w), smoothstep(0.0, -t, d) * 0.5);
 #endif
 
     }else if(brushIndex <= 255u){
