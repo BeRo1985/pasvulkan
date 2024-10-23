@@ -248,7 +248,7 @@ type TpvScene3DPlanets=class;
              private    // All 2D maps are octahedral projected maps in this implementation (not equirectangular projected maps or cube maps)
               fPlanet:TpvScene3DPlanet;
               fInFlightFrameIndex:TpvInt32; // -1 is the ground truth instance, >=0 are the in-flight frame instances
-              fHeightMap:THeightMap; // only on the ground truth instance, otherwise nil
+//            fHeightMap:THeightMap; // only on the ground truth instance, otherwise nil
               fHeightMapImage:TpvScene3DRendererMipmapImage2D; // R32_SFLOAT (at least for now, just for the sake of simplicity, later maybe R16_UNORM or R16_SNORM)
               fNormalMapImage:TpvScene3DRendererMipmapImage2D; // A2B10G10R10_UNORM_PACK32
               fBlendMapImage:TpvScene3DRendererArray2DImage; // R8G8B8A8_UNORM
@@ -350,7 +350,7 @@ type TpvScene3DPlanets=class;
              published
               property Planet:TpvScene3DPlanet read fPlanet;
               property InFlightFrameIndex:TpvInt32 read fInFlightFrameIndex;
-              property HeightMap:THeightMap read fHeightMap;
+//            property HeightMap:THeightMap read fHeightMap;
               property HeightMapImage:TpvScene3DRendererMipmapImage2D read fHeightMapImage;
               property NormalMapImage:TpvScene3DRendererMipmapImage2D read fNormalMapImage;
               property BlendMapImage:TpvScene3DRendererArray2DImage read fBlendMapImage;
@@ -2184,12 +2184,12 @@ begin
 
  fInFlightFrameIndex:=aInFlightFrameIndex;
 
- if fInFlightFrameIndex<0 then begin
+{if fInFlightFrameIndex<0 then begin
   fHeightMap:=nil;
   SetLength(fHeightMap,fPlanet.fHeightMapResolution*fPlanet.fHeightMapResolution);
  end else begin
   fHeightMap:=nil;
- end;
+ end;}
 
  fInitialized:=false;
 
@@ -2929,7 +2929,7 @@ end;
 destructor TpvScene3DPlanet.TData.Destroy;
 begin
 
- fHeightMap:=nil;
+//fHeightMap:=nil;
 
  FreeAndNil(fHeightMapImage);
 
