@@ -148,8 +148,10 @@ void main(){
 
           // Minimize all weights
 
-          blendMapValueLayers[0] = mix(blendMapValueLayers[0], vec4(0.0), d * clamp(-pushConstants.innerRadiusValueMinMax.y, 0.0, 1.0));
-          blendMapValueLayers[1] = mix(blendMapValueLayers[1], vec4(0.0), d * clamp(-pushConstants.innerRadiusValueMinMax.y, 0.0, 1.0));
+          blendMapValueLayers[0] = mix(blendMapValueLayers[0], min(blendMapValueLayers[0], vec4(1.0 - d)), clamp(-pushConstants.innerRadiusValueMinMax.y, 0.0, 1.0));
+          blendMapValueLayers[1] = mix(blendMapValueLayers[1], min(blendMapValueLayers[1], vec4(1.0 - d)), clamp(-pushConstants.innerRadiusValueMinMax.y, 0.0, 1.0));
+//        blendMapValueLayers[0] = mix(blendMapValueLayers[0], vec4(0.0), d * clamp(-pushConstants.innerRadiusValueMinMax.y, 0.0, 1.0));
+//        blendMapValueLayers[1] = mix(blendMapValueLayers[1], vec4(0.0), d * clamp(-pushConstants.innerRadiusValueMinMax.y, 0.0, 1.0));
 
         }
 
@@ -211,7 +213,8 @@ void main(){
 
         }else{
 
-          const float targetBlendMapValue = mix(blendMapValue, /*min(blendMapValue, 1.0 - d)*/0.0, d * clamp(-pushConstants.innerRadiusValueMinMax.y, 0.0, 1.0));
+          const float targetBlendMapValue = mix(blendMapValue, min(blendMapValue, 1.0 - d), clamp(-pushConstants.innerRadiusValueMinMax.y, 0.0, 1.0));
+//        const float targetBlendMapValue = mix(blendMapValue, 0.0, d * clamp(-pushConstants.innerRadiusValueMinMax.y, 0.0, 1.0));
           
           deltaValue = min(0.0, targetBlendMapValue - blendMapValue);
 
