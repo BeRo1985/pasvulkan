@@ -17,7 +17,7 @@ layout(set = 0, binding = 1) uniform sampler2DArray uBrushTextureArray;
 layout(push_constant) uniform PushConstants {
   vec4 positionRadius; // xyz = position, w = radius
   vec4 innerRadiusValueMinMax; // x = inner radius, y = value, z = min, w = max
-  uint layerIndex;
+  uint layerIndexFlags;
   uint brushIndex;
   float brushRotation;
 } pushConstants;
@@ -29,7 +29,10 @@ layout(push_constant) uniform PushConstants {
 
 void main(){
   
-  ivec3 texel = ivec3(gl_GlobalInvocationID.xy, int(pushConstants.layerIndex >> 2u)); // four layers per texel (RGBA), one per color channel 
+  const uint layerIndex = pushConstants.layerIndexFlags & 0xffu;
+  const uint flags = pushConstants.layerIndexFlags >> 16u;
+
+  ivec3 texel = ivec3(gl_GlobalInvocationID.xy, int(layerIndex >> 2u)); // four layers per texel (RGBA), one per color channel 
 
   ivec3 texSize = imageSize(uImageBlendMap);
 
@@ -83,15 +86,40 @@ void main(){
 
     if(d > 0.0){
 
-      vec4 blendMapValues = imageLoad(uImageBlendMap, texel);
+      if((flags & 1u) != 0u){
 
-      blendMapValues[pushConstants.layerIndex & 3u] = clamp(
-        blendMapValues[pushConstants.layerIndex & 3u] + (d * pushConstants.innerRadiusValueMinMax.y),
-        pushConstants.innerRadiusValueMinMax.z,
-        pushConstants.innerRadiusValueMinMax.w
-      );
-          
-      imageStore(uImageBlendMap, texel, blendMapValues);
+        for(uint layerTopLevelIndex = 0, countTopLevels = texSize.z; layerTopLevelIndex < countTopLevels; layerTopLevelIndex++){
+
+          ivec3 texelTopLevel = ivec3(texel.xy, int(layerTopLevelIndex));
+
+          vec4 blendMapValues = imageLoad(uImageBlendMap, texelTopLevel);
+
+          uvec4 targetLayerIndices = uvec4(layerTopLevelIndex << 2u) | uvec4(0u, 1u, 2u, 3u);
+
+          blendMapValues = clamp(
+            blendMapValues + (vec4(d * pushConstants.innerRadiusValueMinMax.y) * mix(vec4(-1.0), vec4(1.0), vec4(equal(targetLayerIndices, uvec4(layerIndex))))),
+            pushConstants.innerRadiusValueMinMax.zzzz,
+            pushConstants.innerRadiusValueMinMax.wwww
+          );
+
+          imageStore(uImageBlendMap, texelTopLevel, blendMapValues);
+
+        }
+
+      }else{
+
+        vec4 blendMapValues = imageLoad(uImageBlendMap, texel);
+
+        blendMapValues[layerIndex & 3u] = clamp(
+          blendMapValues[layerIndex & 3u] + (d * pushConstants.innerRadiusValueMinMax.y),
+          pushConstants.innerRadiusValueMinMax.z,
+          pushConstants.innerRadiusValueMinMax.w
+        );
+
+        imageStore(uImageBlendMap, texel, blendMapValues);
+
+      }
+         
 
     }
 
