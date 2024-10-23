@@ -94,12 +94,12 @@ void main(){
 #if 1
         // Read blend map values 
         vec4 blendMapValues[4] = vec4[4](vec4(0.0), vec4(0.0), vec4(0.0), vec4(0.0));
-        for(uint layerTopLevelIndex = 0u, countTopLevels = texSize.z; layerTopLevelIndex < countTopLevels; layerTopLevelIndex++){
+        for(uint layerTopLevelIndex = 0u, countTopLevels = uint(texSize.z); layerTopLevelIndex < countTopLevels; layerTopLevelIndex++){
           blendMapValues[layerTopLevelIndex] = imageLoad(uImageBlendMap, ivec3(texel.xy, int(layerTopLevelIndex)));
         }
 
         // Get the current blend map value for the modified layer
-        const float blendMapValue = blendMapValues[layerIndex << 2u][layerIndex & 3u];
+        float blendMapValue = blendMapValues[layerIndex << 2u][layerIndex & 3u];
 
         const float targetBlendMapValue = mix(blendMapValue, max(blendMapValue, d), clamp(pushConstants.innerRadiusValueMinMax.y, 0.0, 1.0));
           
@@ -107,7 +107,7 @@ void main(){
 
         const float absDeltaValue = abs(deltaValue);
 
-        blendMapValues[layerIndex << 2u][layerIndex & 3u] = clamp(
+        blendMapValues[layerIndex << 2u][layerIndex & 3u] = blendMapValue = clamp(
           blendMapValue + mix(deltaValue, sign(deltaValue) * smallestValue, float(bool((absDeltaValue > 1e-6) && (absDeltaValue < smallestValue)))),
           pushConstants.innerRadiusValueMinMax.z,
           pushConstants.innerRadiusValueMinMax.w
@@ -115,7 +115,7 @@ void main(){
 
         // Sum of all other weights
         float otherWeightSum = 0.0;
-        for(uint layerTopLevelIndex = 0u, countTopLevels = texSize.z; layerTopLevelIndex < countTopLevels; layerTopLevelIndex++){
+        for(uint layerTopLevelIndex = 0u, countTopLevels = uint(texSize.z); layerTopLevelIndex < countTopLevels; layerTopLevelIndex++){
           for(uint layerBottomLevelIndex = 0u; layerBottomLevelIndex < 4u; layerBottomLevelIndex++){
             if(((layerTopLevelIndex << 2u) | layerBottomLevelIndex) != layerIndex){
               otherWeightSum += blendMapValues[layerTopLevelIndex][layerBottomLevelIndex];
@@ -125,9 +125,9 @@ void main(){
 
         // Normalize all other weights to sum to 1.0 in relation to the target weight of the modified layer
         if(otherWeightSum > 0.0){
-          const float targetWeightSum = 1.0 - blendMapValues[layerIndex >> 2u][layerIndex & 3u];
+          const float targetWeightSum = 1.0 - blendMapValue;
           const float weightSumFactor = targetWeightSum / otherWeightSum;
-          for(uint layerTopLevelIndex = 0u, countTopLevels = texSize.z; layerTopLevelIndex < countTopLevels; layerTopLevelIndex++){
+          for(uint layerTopLevelIndex = 0u, countTopLevels = uint(texSize.z); layerTopLevelIndex < countTopLevels; layerTopLevelIndex++){
             for(uint layerBottomLevelIndex = 0u; layerBottomLevelIndex < 4u; layerBottomLevelIndex++){
               if(((layerTopLevelIndex << 2u) | layerBottomLevelIndex) != layerIndex){
                 blendMapValues[layerTopLevelIndex][layerBottomLevelIndex] *= weightSumFactor;
@@ -137,7 +137,7 @@ void main(){
         }
 
         // Write back the modified blend map values
-        for(uint layerTopLevelIndex = 0u, countTopLevels = texSize.z; layerTopLevelIndex < countTopLevels; layerTopLevelIndex++){
+        for(uint layerTopLevelIndex = 0u, countTopLevels = uint(texSize.z); layerTopLevelIndex < countTopLevels; layerTopLevelIndex++){
           imageStore(uImageBlendMap, ivec3(texel.xy, int(layerTopLevelIndex)), clamp(blendMapValues[layerTopLevelIndex], pushConstants.innerRadiusValueMinMax.zzzz, pushConstants.innerRadiusValueMinMax.wwww));
         }
 
