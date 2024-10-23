@@ -5289,25 +5289,52 @@ begin
 
       fBlendMapData.CopyFrom(aStream,fBlendMapResolution*fBlendMapResolution*SizeOf(TpvUInt32)*TpvScene3DPlanet.CountBlendMapLayers);
 
+      if (BlendMapDataChunkHeader.Flags and 1)<>0 then begin
+       BackwardTransformRGBA8Data(fBlendMapData);
+      end;
+
      end else begin
 
       // The more complicated way, resize the data
       
       GetMem(InData,BlendMapDataChunkHeader.Resolution*BlendMapDataChunkHeader.Resolution*SizeOf(TpvUInt32)*TpvScene3DPlanet.CountBlendMapLayers);
       try
-       GetMem(OutData,fBlendMapResolution*fBlendMapResolution*SizeOf(TpvUInt32)*TpvScene3DPlanet.CountBlendMapLayers);
-       try
-        FillChar(OutData^,fBlendMapResolution*fBlendMapResolution*SizeOf(TpvUInt32)*TpvScene3DPlanet.CountBlendMapLayers,#0);
-        aStream.ReadBuffer(InData^,BlendMapDataChunkHeader.Resolution*BlendMapDataChunkHeader.Resolution*SizeOf(TpvUInt32)*Min(TpvScene3DPlanet.CountBlendMapLayers,BlendMapDataChunkHeader.CountLayers));
-        for LayerIndex:=0 to Min(TpvScene3DPlanet.CountBlendMapLayers,BlendMapDataChunkHeader.CountLayers)-1 do begin
-         ResizeRGBA32(pointer(TpvPtrUInt(TpvPtrUInt(InData)+(TpvPtrUInt(LayerIndex)*TpvPtrUInt(BlendMapDataChunkHeader.Resolution*BlendMapDataChunkHeader.Resolution*SizeOf(TpvUInt32))))),
-                      BlendMapDataChunkHeader.Resolution,BlendMapDataChunkHeader.Resolution,
-                      pointer(TpvPtrUInt(TpvPtrUInt(OutData)+(TpvPtrUInt(LayerIndex)*TpvPtrUInt(fBlendMapResolution*fBlendMapResolution*SizeOf(TpvUInt32))))),
-                      fBlendMapResolution,fBlendMapResolution);
+       if (BlendMapDataChunkHeader.Flags and 1)<>0 then begin
+        GetMem(DecodedInData,GrassMapDataChunkHeader.Resolution*GrassMapDataChunkHeader.Resolution*SizeOf(TpvFloat));
+        try
+         GetMem(OutData,fBlendMapResolution*fBlendMapResolution*SizeOf(TpvUInt32)*TpvScene3DPlanet.CountBlendMapLayers);
+         try
+          FillChar(OutData^,fBlendMapResolution*fBlendMapResolution*SizeOf(TpvUInt32)*TpvScene3DPlanet.CountBlendMapLayers,#0);
+          aStream.ReadBuffer(InData^,BlendMapDataChunkHeader.Resolution*BlendMapDataChunkHeader.Resolution*SizeOf(TpvUInt32)*Min(TpvScene3DPlanet.CountBlendMapLayers,BlendMapDataChunkHeader.CountLayers));
+          BackwardTransformRGBA8Data(InData,DecodedInData,BlendMapDataChunkHeader.Resolution*BlendMapDataChunkHeader.Resolution*SizeOf(TpvUInt32)*Min(TpvScene3DPlanet.CountBlendMapLayers,BlendMapDataChunkHeader.CountLayers));
+          for LayerIndex:=0 to Min(TpvScene3DPlanet.CountBlendMapLayers,BlendMapDataChunkHeader.CountLayers)-1 do begin
+           ResizeRGBA32(pointer(TpvPtrUInt(TpvPtrUInt(DecodedInData)+(TpvPtrUInt(LayerIndex)*TpvPtrUInt(BlendMapDataChunkHeader.Resolution*BlendMapDataChunkHeader.Resolution*SizeOf(TpvUInt32))))),
+                        BlendMapDataChunkHeader.Resolution,BlendMapDataChunkHeader.Resolution,
+                        pointer(TpvPtrUInt(TpvPtrUInt(OutData)+(TpvPtrUInt(LayerIndex)*TpvPtrUInt(fBlendMapResolution*fBlendMapResolution*SizeOf(TpvUInt32))))),
+                        fBlendMapResolution,fBlendMapResolution);
+          end;
+          fBlendMapData.WriteBuffer(OutData^,fBlendMapResolution*fBlendMapResolution*SizeOf(TpvUInt32)*TpvScene3DPlanet.CountBlendMapLayers);
+         finally
+          FreeMem(OutData);
+         end;
+        finally
+         FreeMem(DecodedInData);
         end;
-        fBlendMapData.WriteBuffer(OutData^,fBlendMapResolution*fBlendMapResolution*SizeOf(TpvUInt32)*TpvScene3DPlanet.CountBlendMapLayers);
-       finally
-        FreeMem(OutData);
+       end else begin
+        GetMem(OutData,fBlendMapResolution*fBlendMapResolution*SizeOf(TpvUInt32)*TpvScene3DPlanet.CountBlendMapLayers);
+        try
+         FillChar(OutData^,fBlendMapResolution*fBlendMapResolution*SizeOf(TpvUInt32)*TpvScene3DPlanet.CountBlendMapLayers,#0);
+         aStream.ReadBuffer(InData^,BlendMapDataChunkHeader.Resolution*BlendMapDataChunkHeader.Resolution*SizeOf(TpvUInt32)*Min(TpvScene3DPlanet.CountBlendMapLayers,BlendMapDataChunkHeader.CountLayers));
+         for LayerIndex:=0 to Min(TpvScene3DPlanet.CountBlendMapLayers,BlendMapDataChunkHeader.CountLayers)-1 do begin
+          ResizeRGBA32(pointer(TpvPtrUInt(TpvPtrUInt(InData)+(TpvPtrUInt(LayerIndex)*TpvPtrUInt(BlendMapDataChunkHeader.Resolution*BlendMapDataChunkHeader.Resolution*SizeOf(TpvUInt32))))),
+                       BlendMapDataChunkHeader.Resolution,BlendMapDataChunkHeader.Resolution,
+                       pointer(TpvPtrUInt(TpvPtrUInt(OutData)+(TpvPtrUInt(LayerIndex)*TpvPtrUInt(fBlendMapResolution*fBlendMapResolution*SizeOf(TpvUInt32))))),
+                       fBlendMapResolution,fBlendMapResolution);
+         end;
+         fBlendMapData.WriteBuffer(OutData^,fBlendMapResolution*fBlendMapResolution*SizeOf(TpvUInt32)*TpvScene3DPlanet.CountBlendMapLayers);
+        finally
+         FreeMem(OutData);
+        end;
        end;
       finally
        FreeMem(InData);
@@ -5494,38 +5521,52 @@ begin
 
    BlendMapDataChunkHeader.Resolution:=fBlendMapResolution;
    BlendMapDataChunkHeader.CountLayers:=TpvScene3DPlanet.CountBlendMapLayers;
-   BlendMapDataChunkHeader.Flags:=0;
+   BlendMapDataChunkHeader.Flags:=1;
    OutStream.WriteBuffer(BlendMapDataChunkHeader,SizeOf(TBlendMapDataChunkHeader));
 
    fBlendMapData.Seek(0,soBeginning);
-   OutStream.CopyFrom(fBlendMapData,fBlendMapData.Size);
+   GetMem(InData,fBlendMapData.Size);
+   try
+    fBlendMapData.ReadBuffer(InData^,fBlendMapData.Size);
+    GetMem(OutData,fBlendMapData.Size);
+    try
+     ForwardTransformRGBA8Data(InData,OutData,fBlendMapData.Size);
+     OutStream.WriteBuffer(OutData^,fBlendMapData.Size);
+    finally
+     FreeMem(OutData);
+    end;
+   finally
+    FreeMem(InData);
+   end;
+// fBlendMapData.Seek(0,soBeginning);
+// OutStream.CopyFrom(fBlendMapData,fBlendMapData.Size);
 
   end;
 
   begin
     
-    Chunk.Signature:=TpvScene3DPlanet.TSerializedData.ChunkSignatureGrassMapData;
-    Chunk.Size:=SizeOf(TGrassMapDataChunkHeader)+(fGrassMapResolution*fGrassMapResolution*SizeOf(TpvFloat));
-    OutStream.WriteBuffer(Chunk,SizeOf(TChunk));
+   Chunk.Signature:=TpvScene3DPlanet.TSerializedData.ChunkSignatureGrassMapData;
+   Chunk.Size:=SizeOf(TGrassMapDataChunkHeader)+(fGrassMapResolution*fGrassMapResolution*SizeOf(TpvFloat));
+   OutStream.WriteBuffer(Chunk,SizeOf(TChunk));
 
-    GrassMapDataChunkHeader.Resolution:=fGrassMapResolution;
-    OutStream.WriteBuffer(GrassMapDataChunkHeader,SizeOf(TGrassMapDataChunkHeader));
+   GrassMapDataChunkHeader.Resolution:=fGrassMapResolution;
+   OutStream.WriteBuffer(GrassMapDataChunkHeader,SizeOf(TGrassMapDataChunkHeader));
 
-    fGrassMapData.Seek(0,soBeginning);
-    GetMem(InData,fGrassMapData.Size);
+   fGrassMapData.Seek(0,soBeginning);
+   GetMem(InData,fGrassMapData.Size);
+   try
+    fGrassMapData.ReadBuffer(InData^,fGrassMapData.Size);
+    GetMem(OutData,fGrassMapData.Size);
     try
-     fGrassMapData.ReadBuffer(InData^,fGrassMapData.Size);
-     GetMem(OutData,fGrassMapData.Size);
-     try
-      ForwardTransform32BitFloatData(InData,OutData,fGrassMapData.Size);
-      OutStream.WriteBuffer(OutData^,fGrassMapData.Size);
-     finally
-      FreeMem(OutData);
-     end;
+     ForwardTransform32BitFloatData(InData,OutData,fGrassMapData.Size);
+     OutStream.WriteBuffer(OutData^,fGrassMapData.Size);
     finally
-     FreeMem(InData);
+     FreeMem(OutData);
     end;
-  //OutStream.CopyFrom(fGrassMapData,fGrassMapData.Size);
+   finally
+    FreeMem(InData);
+   end;
+ //OutStream.CopyFrom(fGrassMapData,fGrassMapData.Size);
 
   end;
 

@@ -287,7 +287,7 @@ end;
 
 ////////////////////////////////////////////////////////////////////////////////////////
 
-// This function transforms RGBa8 data to a better compressible format, together with preserving the order
+// This function transforms RGBA8 data to a better compressible format, together with preserving the order
 // before and after the transformation for better delta compression
 procedure ForwardTransformRGBA8Data(const aInData,aOutData:pointer;const aDataSize:TpvSizeInt);
 var Index,Count:TpvSizeInt;
