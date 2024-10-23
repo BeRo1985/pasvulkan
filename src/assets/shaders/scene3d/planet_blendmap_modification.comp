@@ -89,48 +89,73 @@ void main(){
 
       const float smallestValue = 1.0 / 256.0;
 
-      if(((flags & 1u) != 0u) && (pushConstants.innerRadiusValueMinMax.y > 0.0)){
+      if((flags & 1u) != 0u){
 
 #if 1
         // Read blend map values 
-        vec4 blendMapValues[2] = vec4[2](
+        vec4 blendMapValueLayers[2] = vec4[2](
           imageLoad(uImageBlendMap, ivec3(texel.xy, 0)),
           imageLoad(uImageBlendMap, ivec3(texel.xy, 1))
         );
+
+        if(pushConstants.innerRadiusValueMinMax.y > 0.0){
+
+          // Raise a single layer and lower all other layers
+
+          // Get the current blend map values for the modified layer  
+          vec4 blendMapValues = blendMapValueLayers[layerIndex >> 2u];
+
+          // Get the current blend map value for the modified layer
+          float blendMapValue = blendMapValues[layerIndex & 3u];
           
-        // Get the current blend map value for the modified layer
-        float blendMapValue = blendMapValues[layerIndex << 2u][layerIndex & 3u];
-        
-        // Calculate the target blend map value for the modified layer
-        const float targetBlendMapValue = mix(blendMapValue, max(blendMapValue, d), clamp(pushConstants.innerRadiusValueMinMax.y, 0.0, 1.0));
+          // Calculate the target blend map value for the modified layer
+          const float targetBlendMapValue = mix(blendMapValue, max(blendMapValue, d), clamp(pushConstants.innerRadiusValueMinMax.y, 0.0, 1.0));
 
-        // Calculate the delta value         
-        const float deltaValue = max(0.0, targetBlendMapValue - blendMapValue);
+          // Calculate the delta value         
+          float deltaValue = max(0.0, targetBlendMapValue - blendMapValue);
+          deltaValue = mix(deltaValue, smallestValue, float(bool((deltaValue > 1e-6) && (deltaValue < smallestValue))));
 
-        // Calculate the absolute delta value
-        const float absDeltaValue = abs(deltaValue);
+          // Update the blend map value for the modified layer with the delta value but ensure that the delta value is not too small
+          blendMapValues[layerIndex & 3u] = clamp(
+            blendMapValue + deltaValue,
+            pushConstants.innerRadiusValueMinMax.z,
+            pushConstants.innerRadiusValueMinMax.w
+          );
 
-        // Update the blend map value for the modified layer with the delta value but ensure that the delta value is not too small
-        blendMapValues[layerIndex << 2u][layerIndex & 3u] = blendMapValue = clamp(
-          blendMapValue + mix(deltaValue, sign(deltaValue) * smallestValue, float(bool((absDeltaValue > 1e-6) && (absDeltaValue < smallestValue)))),
-          pushConstants.innerRadiusValueMinMax.z,
-          pushConstants.innerRadiusValueMinMax.w
-        );
+          // Get the blend map value
+          blendMapValue = blendMapValues[layerIndex & 3u];
 
-        // Sum of all other weights
-        float otherWeightSum =  dot(blendMapValues[0], vec4(notEqual(uvec4(layerIndex), uvec4(0u, 1u, 2u, 3u)))) +
-                                dot(blendMapValues[1], vec4(notEqual(uvec4(layerIndex), uvec4(4u, 5u, 6u, 7u))));
-        
-        // Normalize all other weights to sum to 1.0 in relation to the target weight of the modified layer
-        if(otherWeightSum > 0.0){
-          const float weightSumFactor = (1.0 - blendMapValue) / otherWeightSum;
-          blendMapValues[0] *= mix(vec4(1.0), vec4(weightSumFactor), vec4(notEqual(uvec4(layerIndex), uvec4(0u, 1u, 2u, 3u))));
-          blendMapValues[1] *= mix(vec4(1.0), vec4(weightSumFactor), vec4(notEqual(uvec4(layerIndex), uvec4(5u, 4u, 6u, 7u))));
+          // Update the blend map values for the modified layer
+          blendMapValueLayers[layerIndex >> 2u] = blendMapValues;
+
+          // Calculate blend map value layer masks
+          const vec4 blendMapValueLayerMasks[2] = vec4[2](
+            vec4(notEqual(uvec4(layerIndex), uvec4(0u, 1u, 2u, 3u))),
+            vec4(notEqual(uvec4(layerIndex), uvec4(4u, 5u, 6u, 7u)))          
+          );
+
+          // Sum of all other weights
+          const float otherWeightSum = dot(blendMapValueLayers[0], blendMapValueLayerMasks[0]) + dot(blendMapValueLayers[1], blendMapValueLayerMasks[1]);
+          
+          // Normalize all other weights to sum to 1.0 in relation to the target weight of the modified layer
+          if(otherWeightSum > (1.0 - blendMapValue)){
+            const float weightSumFactor =(1.0 - blendMapValue) / otherWeightSum;
+            blendMapValueLayers[0] = mix(blendMapValueLayers[0], min(blendMapValueLayers[0], blendMapValueLayers[0] * vec4(weightSumFactor)), blendMapValueLayerMasks[0]);
+            blendMapValueLayers[1] = mix(blendMapValueLayers[1], min(blendMapValueLayers[1], blendMapValueLayers[1] * vec4(weightSumFactor)), blendMapValueLayerMasks[1]);
+          }
+
+        }else{
+
+          // Minimize all weights
+
+          blendMapValueLayers[0] = mix(blendMapValueLayers[0], vec4(0.0), d * clamp(-pushConstants.innerRadiusValueMinMax.y, 0.0, 1.0));
+          blendMapValueLayers[1] = mix(blendMapValueLayers[1], vec4(0.0), d * clamp(-pushConstants.innerRadiusValueMinMax.y, 0.0, 1.0));
+
         }
 
         // Write back the modified blend map values
-        imageStore(uImageBlendMap, ivec3(texel.xy, 0), blendMapValues[0]);
-        imageStore(uImageBlendMap, ivec3(texel.xy, 1), blendMapValues[1]);
+        imageStore(uImageBlendMap, ivec3(texel.xy, 0), blendMapValueLayers[0]);
+        imageStore(uImageBlendMap, ivec3(texel.xy, 1), blendMapValueLayers[1]);
 
 #else
         for(uint layerTopLevelIndex = 0u, countTopLevels = texSize.z; layerTopLevelIndex < countTopLevels; layerTopLevelIndex++){
@@ -186,7 +211,7 @@ void main(){
 
         }else{
 
-          const float targetBlendMapValue = mix(blendMapValue, 0.0, d * clamp(-pushConstants.innerRadiusValueMinMax.y, 0.0, 1.0));
+          const float targetBlendMapValue = mix(blendMapValue, /*min(blendMapValue, 1.0 - d)*/0.0, d * clamp(-pushConstants.innerRadiusValueMinMax.y, 0.0, 1.0));
           
           deltaValue = min(0.0, targetBlendMapValue - blendMapValue);
 

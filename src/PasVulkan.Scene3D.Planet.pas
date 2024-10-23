@@ -5976,7 +5976,7 @@ begin
                                                                     1.0);
 
  fPushConstants.PositionRadius:=fPlanet.fData.fSelectedRegion;
- fPushConstants.LayerIndex:=fPlanet.fData.fSelectedGroundTexture;
+ fPushConstants.LayerIndex:=fPlanet.fData.fSelectedGroundTexture and $ff;
  if fPlanet.fData.fModifyBlendMapReplace then begin
   fPushConstants.LayerIndex:=fPushConstants.LayerIndex or (TpvUInt32(1) shl 16);
  end;

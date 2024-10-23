@@ -326,11 +326,11 @@ void main(){
     {
 
       // Define the range for the soft transition
-      const float fadeStart = 0.5; // Begin of fading
-      const float fadeEnd = 1.0;   // Full fading
+      const float fadeStart = 0.0; // Begin of fading
+      const float fadeEnd = 1.0; // Full fading
 
       // Calculate the factor for the default weight
-      const float defaultWeightFactor = clamp((fadeEnd - maxWeight) / (fadeEnd - fadeStart), 0.0, 1.0);
+      const float defaultWeightFactor = clamp((fadeEnd - weightSum) / (fadeEnd - fadeStart), 0.0, 1.0);
 
       // Calculate the weight of the default ground texture
       const float defaultWeight = defaultWeightFactor;   
