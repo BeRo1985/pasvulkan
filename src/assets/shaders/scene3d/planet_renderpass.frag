@@ -468,7 +468,7 @@ void main(){
         c.xyz = mix(c.xyz, mix(vec3(1.0) - clamp(c.zxy, vec3(1.0), vec3(1.0)), selectedColor.xyz, selectedColor.w), smoothstep(t, -t, d) * 0.5);
       }
 #else
-      float t = 1e-3; // constant value without the problems of fwidth with normal discontinuities and edges
+      float t = planetData.selectedInnerRadius;
       c.xyz = mix(c.xyz, mix(vec3(1.0) - clamp(c.zxy, vec3(1.0), vec3(1.0)), selectedColor.xyz, selectedColor.w), smoothstep(t, -t, d) * 0.5);
 #endif
 

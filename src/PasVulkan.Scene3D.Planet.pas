@@ -139,6 +139,11 @@ type TpvScene3DPlanets=class;
              SelectedBrushIndex:TpvUInt32;
              SelectedBrushRotation:TpvFloat;
 
+             SelectedInnerRadius:TpvFloat;
+             Reserved0_:TpvUInt32;
+             Reserved1_:TpvUInt32;
+             Reserved2_:TpvUInt32;
+
              Textures:array[0..15,0..3] of TpvUInt32;
 
             end;
@@ -299,6 +304,7 @@ type TpvScene3DPlanets=class;
               fSelectedGroundTexture:TpvUInt32;
               fSelectedBrush:TpvUInt32;
               fBrushRotation:TpvScalar;
+              fBrushInnerRadius:TpvScalar;
               fModifyHeightMapActive:Boolean;
               fModifyHeightMapBorderRadius:TpvScalar;
               fModifyHeightMapFactor:TpvScalar;
@@ -386,6 +392,7 @@ type TpvScene3DPlanets=class;
               property SelectedGroundTexture:TpvUInt32 read fSelectedGroundTexture write fSelectedGroundTexture;
               property SelectedBrush:TpvUInt32 read fSelectedBrush write fSelectedBrush;
               property BrushRotation:TpvScalar read fBrushRotation write fBrushRotation;
+              property BrushInnerRadius:TpvScalar read fBrushInnerRadius write fBrushInnerRadius;
               property ModifyHeightMapActive:Boolean read fModifyHeightMapActive write fModifyHeightMapActive;
               property ModifyHeightMapBorderRadius:TpvScalar read fModifyHeightMapBorderRadius write fModifyHeightMapBorderRadius;
               property ModifyHeightMapFactor:TpvScalar read fModifyHeightMapFactor write fModifyHeightMapFactor;
@@ -2887,6 +2894,8 @@ begin
 
  fBrushRotation:=0.0;
 
+ fBrushInnerRadius:=0.001;
+
  fModifyHeightMapActive:=false;
 
  fModifyHeightMapBorderRadius:=0.0;
@@ -4321,6 +4330,7 @@ begin
  fSelectedGroundTexture:=aData.fSelectedGroundTexture;
  fSelectedBrush:=aData.fSelectedBrush;
  fBrushRotation:=aData.fBrushRotation;
+ fBrushInnerRadius:=aData.fBrushInnerRadius;
  fWireframeActive:=aData.fWireframeActive;
  fDisplacementMappingActive:=aData.fDisplacementMappingActive;
  fParallaxMappingActive:=aData.fParallaxMappingActive;
@@ -17279,6 +17289,7 @@ begin
    fPlanetData.SelectedColor.w:=0.5;
    fPlanetData.SelectedBrushIndex:=InFlightFrameData.fSelectedBrush;
    fPlanetData.SelectedBrushRotation:=InFlightFrameData.BrushRotation*TwoPI;
+   fPlanetData.SelectedInnerRadius:=InFlightFrameData.BrushInnerRadius;
 
    for MaterialIndex:=Low(TpvScene3DPlanet.TMaterials) to High(TpvScene3DPlanet.TMaterials) do begin
     Material:=@fMaterials[MaterialIndex];

@@ -37,6 +37,11 @@ layout(set = 2, binding = 1, std430) readonly buffer PlanetData {
 
   uvec4 selectedColorBrushIndexBrushRotation; // xy = selected color (16-bit half float vec4), z = brush index, w = brush rotation
 
+  float selectedInnerRadius;
+  uint reserved0;
+  uint reserved1;
+  uint reserved2;
+
   PlanetMaterial materials[16];
 
 } planetData;

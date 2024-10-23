@@ -129,6 +129,11 @@ layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer Pl
 
   uvec4 selectedColorBrushIndexBrushRotation; // xy = selected color (16-bit half float vec4), z = brush index, w = brush rotation
 
+  float selectedInnerRadius;
+  uint reserved0;
+  uint reserved1;
+  uint reserved2;
+
   PlanetMaterial materials[16];
 
 };
