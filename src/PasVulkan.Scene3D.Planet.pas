@@ -303,6 +303,7 @@ type TpvScene3DPlanets=class;
               fModifyHeightMapBorderRadius:TpvScalar;
               fModifyHeightMapFactor:TpvScalar;
               fModifyBlendMapActive:Boolean;
+              fModifyBlendMapReplace:Boolean;
               fModifyBlendMapBorderRadius:TpvScalar;
               fModifyBlendMapFactor:TpvScalar;
               fModifyGrassMapActive:Boolean;
@@ -389,6 +390,7 @@ type TpvScene3DPlanets=class;
               property ModifyHeightMapBorderRadius:TpvScalar read fModifyHeightMapBorderRadius write fModifyHeightMapBorderRadius;
               property ModifyHeightMapFactor:TpvScalar read fModifyHeightMapFactor write fModifyHeightMapFactor;
               property ModifyBlendMapActive:Boolean read fModifyBlendMapActive write fModifyBlendMapActive;
+              property ModifyBlendMapReplace:Boolean read fModifyBlendMapReplace write fModifyBlendMapReplace;
               property ModifyBlendMapBorderRadius:TpvScalar read fModifyBlendMapBorderRadius write fModifyBlendMapBorderRadius;
               property ModifyBlendMapFactor:TpvScalar read fModifyBlendMapFactor write fModifyBlendMapFactor;
               property ModifyGrassMapActive:Boolean read fModifyGrassMapActive write fModifyGrassMapActive;
@@ -2892,6 +2894,8 @@ begin
  fModifyHeightMapFactor:=0.0;
 
  fModifyBlendMapActive:=false;
+
+ fModifyBlendMapReplace:=false;
 
  fModifyBlendMapBorderRadius:=0.0;
 
@@ -5973,6 +5977,9 @@ begin
 
  fPushConstants.PositionRadius:=fPlanet.fData.fSelectedRegion;
  fPushConstants.LayerIndex:=fPlanet.fData.fSelectedGroundTexture;
+ if fPlanet.fData.fModifyBlendMapReplace then begin
+  fPushConstants.LayerIndex:=fPushConstants.LayerIndex or (TpvUInt32(1) shl 16);
+ end;
  fPushConstants.BrushIndex:=fPlanet.fData.fSelectedBrush;
  fPushConstants.BrushRotation:=fPlanet.fData.fBrushRotation*TwoPI;
 
