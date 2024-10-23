@@ -86,6 +86,8 @@ void main(){
 
     if(d > 0.0){
 
+      const float smallestValue = 1.0 / 256.0;
+
       if((flags & 1u) != 0u){
 
         for(uint layerTopLevelIndex = 0, countTopLevels = texSize.z; layerTopLevelIndex < countTopLevels; layerTopLevelIndex++){
@@ -94,10 +96,14 @@ void main(){
 
           vec4 blendMapValues = imageLoad(uImageBlendMap, texelTopLevel);
 
-          uvec4 targetLayerIndices = uvec4(layerTopLevelIndex << 2u) | uvec4(0u, 1u, 2u, 3u);
+          const uvec4 targetLayerIndices = uvec4(layerTopLevelIndex << 2u) | uvec4(0u, 1u, 2u, 3u);
 
+          const vec4 deltaValues = mix(blendMapValues, vec4(equal(targetLayerIndices, uvec4(layerIndex))) * d, clamp(pushConstants.innerRadiusValueMinMax.y, 0.0, 1.0)) - blendMapValues;
+
+          const vec4 absDeltaValues = abs(deltaValues);
+          
           blendMapValues = clamp(
-            blendMapValues + (vec4(d * pushConstants.innerRadiusValueMinMax.y) * mix(vec4(-1.0), vec4(1.0), vec4(equal(targetLayerIndices, uvec4(layerIndex))))),
+            blendMapValues + mix(deltaValues, sign(deltaValues) * smallestValue, vec4(uvec4(greaterThan(absDeltaValues, vec4(1e-6))) & uvec4(lessThan(absDeltaValues, vec4(smallestValue))))),
             pushConstants.innerRadiusValueMinMax.zzzz,
             pushConstants.innerRadiusValueMinMax.wwww
           );
@@ -110,8 +116,14 @@ void main(){
 
         vec4 blendMapValues = imageLoad(uImageBlendMap, texel);
 
+        const float blendMapValue = blendMapValues[layerIndex & 3u];
+
+        const float deltaValue = mix(blendMapValue, d, clamp(pushConstants.innerRadiusValueMinMax.y, 0.0, 1.0)) - blendMapValue;
+
+        const float absDeltaValue = abs(deltaValue);
+        
         blendMapValues[layerIndex & 3u] = clamp(
-          blendMapValues[layerIndex & 3u] + (d * pushConstants.innerRadiusValueMinMax.y),
+          blendMapValue + mix(deltaValue, sign(deltaValue) * smallestValue, float(bool((absDeltaValue > 1e-6) && (absDeltaValue < smallestValue)))),
           pushConstants.innerRadiusValueMinMax.z,
           pushConstants.innerRadiusValueMinMax.w
         );
