@@ -104,15 +104,25 @@ function MapFloatToUInt32WithOrderPreservation(const aValue:TpvFloat):TpvUInt32;
 // Convert a 32-bit uint32 to a float, preserving order.
 function UnmapFloatFromUInt32WithOrderPreservation(const aValue:TpvUInt32):TpvFloat; inline;
 
-// This function transforms 32-bit float data to a better compressible format, together with preserving the order 
-// before and after the transformation for better delta compression 
+// This function transforms 32-bit float data to a better compressible format, together with preserving the order
+// before and after the transformation for better delta compression
 procedure ForwardTransform32BitFloatData(const aInData,aOutData:pointer;const aDataSize:TpvSizeInt); overload;
 procedure ForwardTransform32BitFloatData(const aStream:TStream); overload;
 
-// This function transforms 32-bit float data back from a better compressible format, together with preserving the order 
-// before and after the transformation for better delta compression 
+// This function transforms 32-bit float data back from a better compressible format, together with preserving the order
+// before and after the transformation for better delta compression
 procedure BackwardTransform32BitFloatData(const aInData,aOutData:pointer;const aDataSize:TpvSizeInt); overload;
 procedure BackwardTransform32BitFloatData(const aStream:TStream); overload;
+
+// This function transforms RGBA8 data to a better compressible format, together with preserving the order
+// before and after the transformation for better delta compression
+procedure ForwardTransformRGBA8Data(const aInData,aOutData:pointer;const aDataSize:TpvSizeInt); overload;
+procedure ForwardTransformRGBA8Data(const aStream:TStream); overload;
+
+// This function transforms RGBA8 data back from a better compressible format, together with preserving the order
+// before and after the transformation for better delta compression
+procedure BackwardTransformRGBA8Data(const aInData,aOutData:pointer;const aDataSize:TpvSizeInt); overload;
+procedure BackwardTransformRGBA8Data(const aStream:TStream); overload;
 
 function CompressStream(const aInStream:TStream;const aOutStream:TStream;const aCompressionMethod:TpvCompressionMethod=TpvCompressionMethod.LZBRRC;const aCompressionLevel:TpvUInt32=5;const aParts:TpvUInt32=0):boolean;
 
@@ -142,8 +152,8 @@ end;
 
 ////////////////////////////////////////////////////////////////////////////////////////
 
-// This function transforms 32-bit float data to a better compressible format, together with preserving the order 
-// before and after the transformation for better delta compression 
+// This function transforms 32-bit float data to a better compressible format, together with preserving the order
+// before and after the transformation for better delta compression
 procedure ForwardTransform32BitFloatData(const aInData,aOutData:pointer;const aDataSize:TpvSizeInt);
 var Index,Count:TpvSizeInt;
     Previous,Value,Delta:TpvUInt32;
@@ -162,7 +172,7 @@ begin
  end;
 end;
 
-procedure ForwardTransform32BitFloatData(const aStream:TStream); 
+procedure ForwardTransform32BitFloatData(const aStream:TStream);
 var InData,OutData:Pointer;
     Size:TpvSizeInt;
 begin
@@ -179,7 +189,7 @@ begin
       FreeMem(OutData);
      finally
       OutData:=nil;
-     end; 
+     end;
     end;
    end else begin
     GetMem(InData,Size);
@@ -196,22 +206,22 @@ begin
        FreeMem(OutData);
       finally
        OutData:=nil;
-      end; 
+      end;
      end;
     finally
      try
       FreeMem(InData);
-     finally 
+     finally
       InData:=nil;
-     end; 
+     end;
     end;
-   end; 
+   end;
   end;
- end; 
+ end;
 end;
 
-// This function transforms 32-bit float data back from a better compressible format, together with preserving the order 
-// before and after the transformation for better delta compression 
+// This function transforms 32-bit float data back from a better compressible format, together with preserving the order
+// before and after the transformation for better delta compression
 procedure BackwardTransform32BitFloatData(const aInData,aOutData:pointer;const aDataSize:TpvSizeInt);
 var Index,Count:TpvSizeInt;
     Value:TpvUInt32;
@@ -244,7 +254,7 @@ begin
       FreeMem(OutData);
      finally
       OutData:=nil;
-     end; 
+     end;
     end;
    end else begin
     GetMem(InData,Size);
@@ -261,18 +271,175 @@ begin
        FreeMem(OutData);
       finally
        OutData:=nil;
-      end; 
+      end;
      end;
     finally
      try
       FreeMem(InData);
-     finally 
+     finally
       InData:=nil;
-     end; 
+     end;
     end;
-   end; 
+   end;
   end;
- end; 
+ end;
+end;
+
+////////////////////////////////////////////////////////////////////////////////////////
+
+// This function transforms RGBa8 data to a better compressible format, together with preserving the order
+// before and after the transformation for better delta compression
+procedure ForwardTransformRGBA8Data(const aInData,aOutData:pointer;const aDataSize:TpvSizeInt);
+var Index,Count:TpvSizeInt;
+    Value:TpvUInt32;
+    PreviousR,ValueR,DeltaR,
+    PreviousG,ValueG,DeltaG,
+    PreviousB,ValueB,DeltaB,
+    PreviousA,ValueA,DeltaA:TpvUInt8;
+begin
+ Count:=aDataSize shr 2;
+ PreviousR:=0;
+ PreviousG:=0;
+ PreviousB:=0;
+ PreviousA:=0;
+ for Index:=0 to Count-1 do begin
+  Value:=PpvUInt32Array(aInData)^[Index];
+  ValueR:=(Value shr 0) and $ff;
+  ValueG:=(Value shr 8) and $ff;
+  ValueB:=(Value shr 16) and $ff;
+  ValueA:=(Value shr 24) and $ff;
+  DeltaR:=ValueR-PreviousR;
+  DeltaG:=ValueG-PreviousG;
+  DeltaB:=ValueB-PreviousB;
+  DeltaA:=ValueA-PreviousA;
+  PreviousR:=ValueR;
+  PreviousG:=ValueG;
+  PreviousB:=ValueB;
+  PreviousA:=ValueA;
+  PpvUInt8Array(aOutData)^[Index]:=DeltaR;
+  PpvUInt8Array(aOutData)^[Index+Count]:=DeltaG;
+  PpvUInt8Array(aOutData)^[Index+(Count*2)]:=DeltaB;
+  PpvUInt8Array(aOutData)^[Index+(Count*3)]:=DeltaA;
+ end;
+end;
+
+procedure ForwardTransformRGBA8Data(const aStream:TStream);
+var InData,OutData:Pointer;
+    Size:TpvSizeInt;
+begin
+ if assigned(aStream) then begin
+  Size:=aStream.Size;
+  if Size>0 then begin
+   if aStream is TMemoryStream then begin
+    GetMem(OutData,Size);
+    try
+     ForwardTransformRGBA8Data(TMemoryStream(aStream).Memory,OutData,Size);
+     Move(OutData^,TMemoryStream(aStream).Memory^,Size);
+    finally
+     try
+      FreeMem(OutData);
+     finally
+      OutData:=nil;
+     end;
+    end;
+   end else begin
+    GetMem(InData,Size);
+    try
+     aStream.Seek(0,soBeginning);
+     aStream.ReadBuffer(InData^,Size);
+     GetMem(OutData,Size);
+     try
+      ForwardTransform32BitFloatData(InData,OutData,Size);
+      aStream.Seek(0,soBeginning);
+      aStream.WriteBuffer(OutData^,Size);
+     finally
+      try
+       FreeMem(OutData);
+      finally
+       OutData:=nil;
+      end;
+     end;
+    finally
+     try
+      FreeMem(InData);
+     finally
+      InData:=nil;
+     end;
+    end;
+   end;
+  end;
+ end;
+end;
+
+// This function transforms RGBA8 data back from a better compressible format, together with preserving the order
+// before and after the transformation for better delta compression
+procedure BackwardTransformRGBA8Data(const aInData,aOutData:pointer;const aDataSize:TpvSizeInt);
+var Index,Count:TpvSizeInt;
+    ValueR,ValueG,ValueB,ValueA:TpvUInt8;
+begin
+ Count:=aDataSize shr 2;
+ ValueR:=0;
+ ValueG:=0;
+ ValueB:=0;
+ ValueA:=0;
+ for Index:=0 to Count-1 do begin
+  inc(ValueR,TpvUInt8(PpvUInt8Array(aInData)^[Index]));
+  inc(ValueG,TpvUInt8(PpvUInt8Array(aInData)^[Index+Count]));
+  inc(ValueB,TpvUInt8(PpvUInt8Array(aInData)^[Index+(Count*2)]));
+  inc(ValueA,TpvUInt8(PpvUInt8Array(aInData)^[Index+(Count*3)]));
+  PpvUInt32Array(aOutData)^[Index]:=((TpvUInt32(ValueR) and $ff) shl 0) or
+                                    ((TpvUInt32(ValueG) and $ff) shl 8) or
+                                    ((TpvUInt32(ValueB) and $ff) shl 16) or
+                                    ((TpvUInt32(ValueA) and $ff) shl 24);
+ end;
+end;
+
+procedure BackwardTransformRGBA8Data(const aStream:TStream);
+var InData,OutData:Pointer;
+    Size:TpvSizeInt;
+begin
+ if assigned(aStream) then begin
+  Size:=aStream.Size;
+  if Size>0 then begin
+   if aStream is TMemoryStream then begin
+    GetMem(OutData,Size);
+    try
+     BackwardTransformRGBA8Data(TMemoryStream(aStream).Memory,OutData,Size);
+     Move(OutData^,TMemoryStream(aStream).Memory^,Size);
+    finally
+     try
+      FreeMem(OutData);
+     finally
+      OutData:=nil;
+     end;
+    end;
+   end else begin
+    GetMem(InData,Size);
+    try
+     aStream.Seek(0,soBeginning);
+     aStream.ReadBuffer(InData^,Size);
+     GetMem(OutData,Size);
+     try
+      BackwardTransform32BitFloatData(InData,OutData,Size);
+      aStream.Seek(0,soBeginning);
+      aStream.WriteBuffer(OutData^,Size);
+     finally
+      try
+       FreeMem(OutData);
+      finally
+       OutData:=nil;
+      end;
+     end;
+    finally
+     try
+      FreeMem(InData);
+     finally
+      InData:=nil;
+     end;
+    end;
+   end;
+  end;
+ end;
 end;
 
 ////////////////////////////////////////////////////////////////////////////////////////
