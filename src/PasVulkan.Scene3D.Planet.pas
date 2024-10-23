@@ -5970,7 +5970,7 @@ begin
                                       0,
                                       nil);
 
- fPushConstants.InnerRadiusValueMinMax:=TpvVector4.InlineableCreate(Max(0.0,fPlanet.fData.fSelectedRegion.w-fPlanet.fData.fModifyBlendMapBorderRadius),
+ fPushConstants.InnerRadiusValueMinMax:=TpvVector4.InlineableCreate(Max(0.0,fPlanet.fData.fModifyBlendMapBorderRadius),
                                                                     fPlanet.fData.fModifyBlendMapFactor,
                                                                     0.0,
                                                                     1.0);
