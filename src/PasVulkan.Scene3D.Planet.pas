@@ -6341,7 +6341,7 @@ begin
                                       0,
                                       nil);
 
- fPushConstants.InnerRadiusValueMinMax:=TpvVector4.InlineableCreate(Max(0.0,fPlanet.fData.fSelectedRegion.w-fPlanet.fData.fModifyGrassMapBorderRadius),
+ fPushConstants.InnerRadiusValueMinMax:=TpvVector4.InlineableCreate(Max(0.0,fPlanet.fData.fModifyGrassMapBorderRadius),
                                                                     fPlanet.fData.fModifyGrassMapFactor,
                                                                     0.0,
                                                                     1.0);
@@ -7897,7 +7897,7 @@ begin
                                       0,
                                       nil);
 
- fPushConstants.InnerRadiusValueMinMax:=TpvVector4.InlineableCreate(Max(0.0,fPlanet.fData.fSelectedRegion.w-fPlanet.fData.fModifyHeightMapBorderRadius),
+ fPushConstants.InnerRadiusValueMinMax:=TpvVector4.InlineableCreate(Max(0.0,fPlanet.fData.fModifyHeightMapBorderRadius),
                                                                     fPlanet.fData.fModifyHeightMapFactor,
                                                                     0.0,
                                                                     1.0);
@@ -17316,7 +17316,7 @@ begin
  if aInFlightFrameIndex>=0 then begin
   WaterModification:=@fWaterModifications[aInFlightFrameIndex];
   WaterModification^.PositionRadius:=TpvVector4.Create(aPosition.Normalize,aRadius);
-  WaterModification^.InnerRadius:=Max(0.0,aRadius-aBorderRadius);
+  WaterModification^.InnerRadius:=Max(0.0,{aRadius-}aBorderRadius);
   WaterModification^.Value:=aValue;
  end;
 end;
