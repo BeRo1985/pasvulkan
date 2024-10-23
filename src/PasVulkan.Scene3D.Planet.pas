@@ -5171,7 +5171,7 @@ var Header:TpvScene3DPlanet.TSerializedData.THeader;
     GrassMapDataChunkHeader:TGrassMapDataChunkHeader;
     WaterHeightMapDataChunkHeader:TWaterHeightMapDataChunkHeader;
     CheckSum:TpvUInt64;
-    InData,OutData:pointer;
+    InData,DecodedInData,OutData:pointer;
     UncompressedStream:TMemoryStream;
 begin
 
@@ -5255,15 +5255,20 @@ begin
       
       GetMem(InData,HeightMapDataChunkHeader.Resolution*HeightMapDataChunkHeader.Resolution*SizeOf(TpvFloat));
       try
-       GetMem(OutData,fHeightMapResolution*fHeightMapResolution*SizeOf(TpvFloat));
+       GetMem(DecodedInData,HeightMapDataChunkHeader.Resolution*HeightMapDataChunkHeader.Resolution*SizeOf(TpvFloat));
        try
-        aStream.ReadBuffer(InData^,HeightMapDataChunkHeader.Resolution*HeightMapDataChunkHeader.Resolution*SizeOf(TpvFloat));
-        BackwardTransform32BitFloatData(InData,OutData,HeightMapDataChunkHeader.Resolution*HeightMapDataChunkHeader.Resolution*SizeOf(TpvFloat));
-        ResizeMonoFloat2D(InData,HeightMapDataChunkHeader.Resolution,HeightMapDataChunkHeader.Resolution,
-                          OutData,fHeightMapResolution,fHeightMapResolution);
-        fHeightMapData.WriteBuffer(OutData^,fHeightMapResolution*fHeightMapResolution*SizeOf(TpvFloat));
+        GetMem(OutData,fHeightMapResolution*fHeightMapResolution*SizeOf(TpvFloat));
+        try
+         aStream.ReadBuffer(InData^,HeightMapDataChunkHeader.Resolution*HeightMapDataChunkHeader.Resolution*SizeOf(TpvFloat));
+         BackwardTransform32BitFloatData(InData,DecodedInData,HeightMapDataChunkHeader.Resolution*HeightMapDataChunkHeader.Resolution*SizeOf(TpvFloat));
+         ResizeMonoFloat2D(DecodedInData,HeightMapDataChunkHeader.Resolution,HeightMapDataChunkHeader.Resolution,
+                           OutData,fHeightMapResolution,fHeightMapResolution);
+         fHeightMapData.WriteBuffer(OutData^,fHeightMapResolution*fHeightMapResolution*SizeOf(TpvFloat));
+        finally
+         FreeMem(OutData);
+        end;
        finally
-        FreeMem(OutData);
+        FreeMem(DecodedInData);
        end;
       finally
        FreeMem(InData);
@@ -5330,15 +5335,20 @@ begin
       
       GetMem(InData,GrassMapDataChunkHeader.Resolution*GrassMapDataChunkHeader.Resolution*SizeOf(TpvFloat));
       try
-       GetMem(OutData,fGrassMapResolution*fGrassMapResolution*SizeOf(TpvFloat));
+       GetMem(DecodedInData,GrassMapDataChunkHeader.Resolution*GrassMapDataChunkHeader.Resolution*SizeOf(TpvFloat));
        try
-        aStream.ReadBuffer(InData^,GrassMapDataChunkHeader.Resolution*GrassMapDataChunkHeader.Resolution*SizeOf(TpvFloat));
-        BackwardTransform32BitFloatData(InData,OutData,GrassMapDataChunkHeader.Resolution*GrassMapDataChunkHeader.Resolution*SizeOf(TpvFloat));
-        ResizeMonoFloat2D(InData,GrassMapDataChunkHeader.Resolution,GrassMapDataChunkHeader.Resolution,
-                          OutData,fGrassMapResolution,fGrassMapResolution);
-        fGrassMapData.WriteBuffer(OutData^,fGrassMapResolution*fGrassMapResolution*SizeOf(TpvFloat));
+        GetMem(OutData,fGrassMapResolution*fGrassMapResolution*SizeOf(TpvFloat));
+        try
+         aStream.ReadBuffer(InData^,GrassMapDataChunkHeader.Resolution*GrassMapDataChunkHeader.Resolution*SizeOf(TpvFloat));
+         BackwardTransform32BitFloatData(InData,DecodedInData,GrassMapDataChunkHeader.Resolution*GrassMapDataChunkHeader.Resolution*SizeOf(TpvFloat));
+         ResizeMonoFloat2D(DecodedInData,GrassMapDataChunkHeader.Resolution,GrassMapDataChunkHeader.Resolution,
+                           OutData,fGrassMapResolution,fGrassMapResolution);
+         fGrassMapData.WriteBuffer(OutData^,fGrassMapResolution*fGrassMapResolution*SizeOf(TpvFloat));
+        finally
+         FreeMem(OutData);
+        end;
        finally
-        FreeMem(OutData);
+        FreeMem(DecodedInData);
        end;
       finally
        FreeMem(InData);
@@ -5366,15 +5376,20 @@ begin
       
       GetMem(InData,WaterHeightMapDataChunkHeader.Resolution*WaterHeightMapDataChunkHeader.Resolution*SizeOf(TpvFloat));
       try
-       GetMem(OutData,fWaterMapResolution*fWaterMapResolution*SizeOf(TpvFloat));
+       GetMem(DecodedInData,WaterHeightMapDataChunkHeader.Resolution*WaterHeightMapDataChunkHeader.Resolution*SizeOf(TpvFloat));
        try
-        aStream.ReadBuffer(InData^,WaterHeightMapDataChunkHeader.Resolution*WaterHeightMapDataChunkHeader.Resolution*SizeOf(TpvFloat));
-        BackwardTransform32BitFloatData(InData,OutData,WaterHeightMapDataChunkHeader.Resolution*WaterHeightMapDataChunkHeader.Resolution*SizeOf(TpvFloat));
-        ResizeMonoFloat2D(InData,WaterHeightMapDataChunkHeader.Resolution,WaterHeightMapDataChunkHeader.Resolution,
-                          OutData,fWaterMapResolution,fWaterMapResolution);
-        fWaterHeightMapData.WriteBuffer(OutData^,fWaterMapResolution*fWaterMapResolution*SizeOf(TpvFloat));
+        GetMem(OutData,fWaterMapResolution*fWaterMapResolution*SizeOf(TpvFloat));
+        try
+         aStream.ReadBuffer(InData^,WaterHeightMapDataChunkHeader.Resolution*WaterHeightMapDataChunkHeader.Resolution*SizeOf(TpvFloat));
+         BackwardTransform32BitFloatData(InData,DecodedInData,WaterHeightMapDataChunkHeader.Resolution*WaterHeightMapDataChunkHeader.Resolution*SizeOf(TpvFloat));
+         ResizeMonoFloat2D(DecodedInData,WaterHeightMapDataChunkHeader.Resolution,WaterHeightMapDataChunkHeader.Resolution,
+                           OutData,fWaterMapResolution,fWaterMapResolution);
+         fWaterHeightMapData.WriteBuffer(OutData^,fWaterMapResolution*fWaterMapResolution*SizeOf(TpvFloat));
+        finally
+         FreeMem(OutData);
+        end;
        finally
-        FreeMem(OutData);
+        FreeMem(DecodedInData);
        end;
       finally
        FreeMem(InData);
