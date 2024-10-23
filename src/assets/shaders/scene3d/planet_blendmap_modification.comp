@@ -88,7 +88,7 @@ void main(){
 
       const float smallestValue = 1.0 / 256.0;
 
-      if((flags & 1u) != 0u){
+      if(((flags & 1u) != 0u) && (pushConstants.innerRadiusValueMinMax.y > 0.0)){
 
         for(uint layerTopLevelIndex = 0, countTopLevels = texSize.z; layerTopLevelIndex < countTopLevels; layerTopLevelIndex++){
 
@@ -98,7 +98,13 @@ void main(){
 
           const uvec4 targetLayerIndices = uvec4(layerTopLevelIndex << 2u) | uvec4(0u, 1u, 2u, 3u);
 
-          const vec4 deltaValues = mix(blendMapValues, vec4(equal(targetLayerIndices, uvec4(layerIndex))) * d, clamp(pushConstants.innerRadiusValueMinMax.y, 0.0, 1.0)) - blendMapValues;
+          const vec4 targetBlendMapValues = mix(
+                                              mix(blendMapValues, max(blendMapValues, d), clamp(pushConstants.innerRadiusValueMinMax.y, 0.0, 1.0)),
+                                              mix(blendMapValues, min(blendMapValues, 1.0 - d), clamp(pushConstants.innerRadiusValueMinMax.y, 0.0, 1.0)),
+                                              vec4(equal(targetLayerIndices, uvec4(layerIndex)))
+                                            );
+
+          const vec4 deltaValues = targetBlendMapValues - blendMapValues;
 
           const vec4 absDeltaValues = abs(deltaValues);
           
@@ -118,7 +124,21 @@ void main(){
 
         const float blendMapValue = blendMapValues[layerIndex & 3u];
 
-        const float deltaValue = mix(blendMapValue, d, clamp(pushConstants.innerRadiusValueMinMax.y, 0.0, 1.0)) - blendMapValue;
+        float deltaValue;
+        
+        if(pushConstants.innerRadiusValueMinMax.y > 0.0){
+          
+          const float targetBlendMapValue = mix(blendMapValue, max(blendMapValue, d), clamp(pushConstants.innerRadiusValueMinMax.y, 0.0, 1.0));
+          
+          deltaValue = max(0.0, targetBlendMapValue - blendMapValue);
+
+        }else{
+
+          const float targetBlendMapValue = mix(blendMapValue, 0.0, d * clamp(-pushConstants.innerRadiusValueMinMax.y, 0.0, 1.0));
+          
+          deltaValue = min(0.0, targetBlendMapValue - blendMapValue);
+
+        }
 
         const float absDeltaValue = abs(deltaValue);
         

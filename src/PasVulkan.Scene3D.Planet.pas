@@ -17051,6 +17051,7 @@ begin
 
  end;
 
+ UpdatedBlendMap:=false;
  if assigned(fVulkanDevice) and (UpdatedHeightMap or UpdatedBlendMap or UpdatedGrass) then begin
   fData.Download(fVulkanComputeQueue,
                  fVulkanComputeCommandBuffer,
