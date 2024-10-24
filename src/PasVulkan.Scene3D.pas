@@ -28877,12 +28877,29 @@ begin
 end;
 
 procedure TpvScene3D.Check(const aInFlightFrameIndex:TpvSizeInt);
-var Group:TpvScene3D.TGroup;
+var Index:TpvSizeInt;
+    Group:TpvScene3D.TGroup;
+    Planet:TpvScene3DPlanet;
 begin
+
  ProcessFreeQueue;
+
  for Group in fGroups do begin
   Group.Check(aInFlightFrameIndex);
  end;
+
+ TpvScene3DPlanets(fPlanets).Lock.AcquireRead;
+ try
+  for Index:=0 to TpvScene3DPlanets(fPlanets).Count-1 do begin
+   Planet:=TpvScene3DPlanets(fPlanets).Items[Index];
+   if Planet.Ready then begin
+    Planet.Check(aInFlightFrameIndex);
+   end;
+  end;
+ finally
+  TpvScene3DPlanets(fPlanets).Lock.ReleaseRead;
+ end;
+
 end;
 
 // This procedure processes group instances in a parallel manner within a 

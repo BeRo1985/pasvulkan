@@ -1710,6 +1710,7 @@ type TpvScene3DPlanets=class;
        procedure Flatten(const aVector:TpvVector3;const aInnerRadius,aOuterRadius,aTargetHeight:TpvFloat;const aBrushIndex:TpvUInt32;const aBrushRotation:TpvFloat);
        function RayIntersection(const aRayOrigin,aRayDirection:TpvVector3;out aHitNormal:TpvVector3;out aHitTime:TpvScalar):boolean;
        procedure ProcessModifications(const aInFlightFrameIndex:TpvSizeInt);
+       procedure Check(const aInFlightFrameIndex:TpvSizeInt);
        procedure Update(const aInFlightFrameIndex:TpvSizeInt);
        procedure FrameUpdate(const aInFlightFrameIndex:TpvSizeInt);
        procedure Prepare(const aInFlightFrameIndex:TpvSizeInt;const aRendererInstance:TObject;const aRenderPassIndex:TpvSizeInt;const aViewPortWidth,aViewPortHeight:TpvInt32;const aMainViewPort:Boolean);
@@ -17095,6 +17096,11 @@ begin
    EndUpdate;
   end;
  end;}
+
+end;
+
+procedure TpvScene3DPlanet.Check(const aInFlightFrameIndex:TpvSizeInt);
+begin
 
 end;
 
