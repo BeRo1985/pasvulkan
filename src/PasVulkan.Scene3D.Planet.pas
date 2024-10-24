@@ -336,16 +336,6 @@ type TpvScene3DPlanets=class;
               fSelectedBrush:TpvUInt32;
               fBrushRotation:TpvScalar;
               fBrushInnerRadius:TpvScalar;
-              fModifyHeightMapActive:Boolean;
-              fModifyHeightMapBorderRadius:TpvScalar;
-              fModifyHeightMapFactor:TpvScalar;
-              fModifyBlendMapActive:Boolean;
-              fModifyBlendMapReplace:Boolean;
-              fModifyBlendMapBorderRadius:TpvScalar;
-              fModifyBlendMapFactor:TpvScalar;
-              fModifyGrassMapActive:Boolean;
-              fModifyGrassMapBorderRadius:TpvScalar;
-              fModifyGrassMapFactor:TpvScalar;
               fWireframeActive:Boolean;
               fDisplacementMappingActive:Boolean;
               fParallaxMappingActive:Boolean;
@@ -424,16 +414,6 @@ type TpvScene3DPlanets=class;
               property SelectedBrush:TpvUInt32 read fSelectedBrush write fSelectedBrush;
               property BrushRotation:TpvScalar read fBrushRotation write fBrushRotation;
               property BrushInnerRadius:TpvScalar read fBrushInnerRadius write fBrushInnerRadius;
-              property ModifyHeightMapActive:Boolean read fModifyHeightMapActive write fModifyHeightMapActive;
-              property ModifyHeightMapBorderRadius:TpvScalar read fModifyHeightMapBorderRadius write fModifyHeightMapBorderRadius;
-              property ModifyHeightMapFactor:TpvScalar read fModifyHeightMapFactor write fModifyHeightMapFactor;
-              property ModifyBlendMapActive:Boolean read fModifyBlendMapActive write fModifyBlendMapActive;
-              property ModifyBlendMapReplace:Boolean read fModifyBlendMapReplace write fModifyBlendMapReplace;
-              property ModifyBlendMapBorderRadius:TpvScalar read fModifyBlendMapBorderRadius write fModifyBlendMapBorderRadius;
-              property ModifyBlendMapFactor:TpvScalar read fModifyBlendMapFactor write fModifyBlendMapFactor;
-              property ModifyGrassMapActive:Boolean read fModifyGrassMapActive write fModifyGrassMapActive;
-              property ModifyGrassMapBorderRadius:TpvScalar read fModifyGrassMapBorderRadius write fModifyGrassMapBorderRadius;
-              property ModifyGrassMapFactor:TpvScalar read fModifyGrassMapFactor write fModifyGrassMapFactor;
               property WireframeActive:Boolean read fWireframeActive write fWireframeActive;
               property DisplacementMappingActive:Boolean read fDisplacementMappingActive write fDisplacementMappingActive;
               property ParallaxMappingActive:Boolean read fParallaxMappingActive write fParallaxMappingActive;
@@ -550,7 +530,7 @@ type TpvScene3DPlanets=class;
               type TPushConstants=packed record
                     PositionRadius:TpvVector4; // xyz = position, w = radius
                     InnerRadiusValueMinMax:TpvVector4; // x = inner radius, y = value, z = min, w = max
-                    LayerIndex:TpvUInt32;
+                    LayerIndexFlags:TpvUInt32;
                     BrushIndex:TpvUInt32;
                     BrushRotation:TpvFloat;
                    end;
@@ -569,7 +549,7 @@ type TpvScene3DPlanets=class;
              public
               constructor Create(const aPlanet:TpvScene3DPlanet); reintroduce;
               destructor Destroy; override;
-              procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer);
+              procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aBlendMapModificationItem:TBlendMapModificationItem);
              public
               property PushConstants:TPushConstants read fPushConstants write fPushConstants;
             end;
@@ -622,7 +602,7 @@ type TpvScene3DPlanets=class;
              public
               constructor Create(const aPlanet:TpvScene3DPlanet); reintroduce;
               destructor Destroy; override;
-              procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer);
+              procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aGrassMapModificationItem:TGrassMapModificationItem);
              public
               property PushConstants:TPushConstants read fPushConstants write fPushConstants;
             end;
@@ -800,7 +780,7 @@ type TpvScene3DPlanets=class;
              public
               constructor Create(const aPlanet:TpvScene3DPlanet); reintroduce;
               destructor Destroy; override;
-              procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer);
+              procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aHeightMapModificationItem:THeightMapModificationItem);
              public
               property PushConstants:TPushConstants read fPushConstants write fPushConstants;
             end;
@@ -1729,13 +1709,13 @@ type TpvScene3DPlanets=class;
        procedure Initialize(const aPasMPInstance:TPasMP=nil;const aData:TStream=nil;const aDataFreeOnDestroy:boolean=false);
        procedure Flatten(const aVector:TpvVector3;const aInnerRadius,aOuterRadius,aTargetHeight:TpvFloat;const aBrushIndex:TpvUInt32;const aBrushRotation:TpvFloat);
        function RayIntersection(const aRayOrigin,aRayDirection:TpvVector3;out aHitNormal:TpvVector3;out aHitTime:TpvScalar):boolean;
-       procedure ProcessModifications;
+       procedure ProcessModifications(const aInFlightFrameIndex:TpvSizeInt);
        procedure Update(const aInFlightFrameIndex:TpvSizeInt);
        procedure FrameUpdate(const aInFlightFrameIndex:TpvSizeInt);
        procedure Prepare(const aInFlightFrameIndex:TpvSizeInt;const aRendererInstance:TObject;const aRenderPassIndex:TpvSizeInt;const aViewPortWidth,aViewPortHeight:TpvInt32;const aMainViewPort:Boolean);
        procedure UploadFrame(const aInFlightFrameIndex:TpvSizeInt);
        procedure EnqueueHeightMapModification(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aRadius,aBorderRadius,aValue:TpvScalar);
-       procedure EnqueueBlendMapModification(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aRadius,aBorderRadius,aValue:TpvScalar);
+       procedure EnqueueBlendMapModification(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aRadius,aBorderRadius,aValue:TpvScalar;const aReplace:Boolean);
        procedure EnqueueGrassMapModification(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aRadius,aBorderRadius,aValue:TpvScalar);
        procedure EnqueueWaterModification(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aRadius,aBorderRadius,aValue:TpvScalar);
        procedure ProcessSimulation(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt);
@@ -2933,26 +2913,6 @@ begin
  fBrushRotation:=0.0;
 
  fBrushInnerRadius:=0.001;
-
- fModifyHeightMapActive:=false;
-
- fModifyHeightMapBorderRadius:=0.0;
-
- fModifyHeightMapFactor:=0.0;
-
- fModifyBlendMapActive:=false;
-
- fModifyBlendMapReplace:=false;
-
- fModifyBlendMapBorderRadius:=0.0;
-
- fModifyBlendMapFactor:=0.0;
-
- fModifyGrassMapActive:=false;
-
- fModifyGrassMapBorderRadius:=0.0;
-
- fModifyGrassMapFactor:=0.0;
 
  fWireframeActive:=false;
 
@@ -5982,7 +5942,7 @@ begin
 
 end;
 
-procedure TpvScene3DPlanet.TBlendMapModification.Execute(const aCommandBuffer:TpvVulkanCommandBuffer);
+procedure TpvScene3DPlanet.TBlendMapModification.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aBlendMapModificationItem:TBlendMapModificationItem);
 var ImageMemoryBarrier:TVkImageMemoryBarrier;
 begin
 
@@ -6018,18 +5978,15 @@ begin
                                       0,
                                       nil);
 
- fPushConstants.InnerRadiusValueMinMax:=TpvVector4.InlineableCreate(Max(1e-6,fPlanet.fData.fModifyBlendMapBorderRadius),
-                                                                    fPlanet.fData.fModifyBlendMapFactor,
+ fPushConstants.InnerRadiusValueMinMax:=TpvVector4.InlineableCreate(Max(1e-6,aBlendMapModificationItem.InnerRadius),
+                                                                    aBlendMapModificationItem.Value,
                                                                     0.0,
                                                                     1.0);
 
- fPushConstants.PositionRadius:=fPlanet.fData.fSelectedRegion;
- fPushConstants.LayerIndex:=fPlanet.fData.fSelectedGroundTexture and $ff;
- if fPlanet.fData.fModifyBlendMapReplace then begin
-  fPushConstants.LayerIndex:=fPushConstants.LayerIndex or (TpvUInt32(1) shl 16);
- end;
- fPushConstants.BrushIndex:=fPlanet.fData.fSelectedBrush;
- fPushConstants.BrushRotation:=fPlanet.fData.fBrushRotation*TwoPI;
+ fPushConstants.PositionRadius:=aBlendMapModificationItem.PositionRadius;
+ fPushConstants.LayerIndexFlags:=(aBlendMapModificationItem.LayerIndex and $ff) or (aBlendMapModificationItem.Flags shl 16);
+ fPushConstants.BrushIndex:=aBlendMapModificationItem.BrushIndex;
+ fPushConstants.BrushRotation:=aBlendMapModificationItem.BrushRotation*TwoPI;
 
  aCommandBuffer.CmdPushConstants(fPipelineLayout.Handle,
                                  TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
@@ -6353,7 +6310,7 @@ begin
 
 end;
 
-procedure TpvScene3DPlanet.TGrassMapModification.Execute(const aCommandBuffer:TpvVulkanCommandBuffer);
+procedure TpvScene3DPlanet.TGrassMapModification.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aGrassMapModificationItem:TGrassMapModificationItem);
 var ImageMemoryBarrier:TVkImageMemoryBarrier;
 begin
 
@@ -6389,14 +6346,14 @@ begin
                                       0,
                                       nil);
 
- fPushConstants.InnerRadiusValueMinMax:=TpvVector4.InlineableCreate(Max(1e-6,fPlanet.fData.fModifyGrassMapBorderRadius),
-                                                                    fPlanet.fData.fModifyGrassMapFactor,
+ fPushConstants.InnerRadiusValueMinMax:=TpvVector4.InlineableCreate(Max(1e-6,aGrassMapModificationItem.InnerRadius),
+                                                                    aGrassMapModificationItem.Value,
                                                                     0.0,
                                                                     1.0);
 
- fPushConstants.PositionRadius:=fPlanet.fData.fSelectedRegion;
- fPushConstants.BrushIndex:=fPlanet.fData.fSelectedBrush;
- fPushConstants.BrushRotation:=fPlanet.fData.fBrushRotation*TwoPI;
+ fPushConstants.PositionRadius:=aGrassMapModificationItem.PositionRadius;
+ fPushConstants.BrushIndex:=aGrassMapModificationItem.BrushIndex;
+ fPushConstants.BrushRotation:=aGrassMapModificationItem.BrushRotation*TwoPI;
 
  aCommandBuffer.CmdPushConstants(fPipelineLayout.Handle,
                                  TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
@@ -7861,7 +7818,7 @@ begin
 
 end;
 
-procedure TpvScene3DPlanet.THeightMapModification.Execute(const aCommandBuffer:TpvVulkanCommandBuffer);
+procedure TpvScene3DPlanet.THeightMapModification.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aHeightMapModificationItem:THeightMapModificationItem);
 var ImageMemoryBarrier:TVkImageMemoryBarrier;
     BufferMemoryBarrier:TVkBufferMemoryBarrier;
 begin
@@ -7945,14 +7902,14 @@ begin
                                       0,
                                       nil);
 
- fPushConstants.InnerRadiusValueMinMax:=TpvVector4.InlineableCreate(Max(1e-6,fPlanet.fData.fModifyHeightMapBorderRadius),
-                                                                    fPlanet.fData.fModifyHeightMapFactor,
+ fPushConstants.InnerRadiusValueMinMax:=TpvVector4.InlineableCreate(Max(1e-6,aHeightMapModificationItem.InnerRadius),
+                                                                    aHeightMapModificationItem.Value,
                                                                     0.0,
                                                                     1.0);
 
- fPushConstants.PositionRadius:=fPlanet.fData.fSelectedRegion;
- fPushConstants.BrushIndex:=fPlanet.fData.fSelectedBrush;
- fPushConstants.BrushRotation:=fPlanet.fData.fBrushRotation*TwoPI;
+ fPushConstants.PositionRadius:=aHeightMapModificationItem.PositionRadius;
+ fPushConstants.BrushIndex:=aHeightMapModificationItem.BrushIndex;
+ fPushConstants.BrushRotation:=aHeightMapModificationItem.BrushRotation*TwoPI;
 
  aCommandBuffer.CmdPushConstants(fPipelineLayout.Handle,
                                  TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
@@ -16826,7 +16783,7 @@ begin
  result:=Sign(TpvInt32(a)-TpvInt32(b));
 end;
 
-procedure TpvScene3DPlanet.ProcessModifications;
+procedure TpvScene3DPlanet.ProcessModifications(const aInFlightFrameIndex:TpvSizeInt);
 var QueueTileIndex:TpvSizeInt;
     TileIndex:TpvUInt32;
     Source:Pointer;
@@ -16848,15 +16805,17 @@ begin
 
  UpdatedGrass:=false;
 
- if fData.fModifyBlendMapActive then begin
+ if (aInFlightFrameIndex>=0) and (abs(fBlendMapModificationItems[aInFlightFrameIndex].Value)>1e-7) then begin
 
   if assigned(fVulkanDevice) then begin
 
    BeginUpdate;
    try
 
-    if fData.fModifyBlendMapActive then begin
-     fBlendMapModification.Execute(fVulkanComputeCommandBuffer);
+    try
+     fBlendMapModification.Execute(fVulkanComputeCommandBuffer,fBlendMapModificationItems[aInFlightFrameIndex]);
+    finally
+     fBlendMapModificationItems[aInFlightFrameIndex].Value:=0.0;
     end;
 
    finally
@@ -16869,15 +16828,17 @@ begin
 
  end;
 
- if fData.fModifyGrassMapActive then begin
+ if (aInFlightFrameIndex>=0) and (abs(fGrassMapModificationItems[aInFlightFrameIndex].Value)>1e-7) then begin
 
   if assigned(fVulkanDevice) then begin
 
    BeginUpdate;
    try
 
-    if fData.fModifyGrassMapActive then begin
-     fGrassMapModification.Execute(fVulkanComputeCommandBuffer);
+    try
+     fGrassMapModification.Execute(fVulkanComputeCommandBuffer,fGrassMapModificationItems[aInFlightFrameIndex]);
+    finally
+     fGrassMapModificationItems[aInFlightFrameIndex].Value:=0.0;
     end;
 
    finally
@@ -16891,7 +16852,7 @@ begin
  end;
 
  if (fData.fHeightMapProcessedGeneration<>fData.fHeightMapGeneration) or
-    fData.fModifyHeightMapActive then begin
+    ((aInFlightFrameIndex>=0) and (abs(fHeightMapModificationItems[aInFlightFrameIndex].Value)>1e-7)) then begin
 
   if assigned(fVulkanDevice) then begin
 
@@ -16900,8 +16861,12 @@ begin
    BeginUpdate;
    try
 
-    if fData.fModifyHeightMapActive then begin
-     fHeightMapModification.Execute(fVulkanComputeCommandBuffer);
+    if (aInFlightFrameIndex>=0) and (abs(fHeightMapModificationItems[aInFlightFrameIndex].Value)>1e-7) then begin
+     try
+      fHeightMapModification.Execute(fVulkanComputeCommandBuffer,fHeightMapModificationItems[aInFlightFrameIndex]);
+     finally
+      fHeightMapModificationItems[aInFlightFrameIndex].Value:=0.0;
+     end;
     end;
 
     if fData.fHeightMapProcessedGeneration<>fData.fHeightMapGeneration then begin
@@ -17135,7 +17100,7 @@ end;
 
 procedure TpvScene3DPlanet.Update(const aInFlightFrameIndex:TpvSizeInt);
 begin
- ProcessModifications;
+ ProcessModifications(aInFlightFrameIndex);
 end;
 
 procedure TpvScene3DPlanet.FrameUpdate(const aInFlightFrameIndex:TpvSizeInt);
@@ -17383,7 +17348,7 @@ begin
  end;
 end;
 
-procedure TpvScene3DPlanet.EnqueueBlendMapModification(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aRadius,aBorderRadius,aValue:TpvScalar);
+procedure TpvScene3DPlanet.EnqueueBlendMapModification(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aRadius,aBorderRadius,aValue:TpvScalar;const aReplace:Boolean);
 var BlendMapModificationItem:PBlendMapModificationItem;
 begin
  if aInFlightFrameIndex>=0 then begin
@@ -17394,7 +17359,7 @@ begin
   BlendMapModificationItem^.BrushIndex:=fData.fSelectedBrush;
   BlendMapModificationItem^.BrushRotation:=fData.fBrushRotation;
   BlendMapModificationItem^.LayerIndex:=fData.fSelectedGroundTexture;
-  BlendMapModificationItem^.Flags:=ord(fData.fModifyBlendMapReplace) and 1;
+  BlendMapModificationItem^.Flags:=ord(aReplace) and 1;
  end;
 end;
 
