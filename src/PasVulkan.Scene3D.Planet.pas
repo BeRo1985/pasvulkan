@@ -15300,11 +15300,23 @@ begin
 
   fVulkanMemoryStagingQueue:=TpvVulkanDeviceMemoryStagingQueue.Create;
 
-  fVulkanComputeQueue:=fVulkanDevice.ComputeQueue;
+  if TpvScene3D(fScene3D).PlanetSingleBuffers then begin
 
-  fVulkanComputeCommandPool:=TpvVulkanCommandPool.Create(fVulkanDevice,
-                                                  fVulkanDevice.ComputeQueueFamilyIndex,
-                                                  TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
+   fVulkanComputeQueue:=fVulkanDevice.UniversalQueue;
+
+   fVulkanComputeCommandPool:=TpvVulkanCommandPool.Create(fVulkanDevice,
+                                                          fVulkanDevice.UniversalQueueFamilyIndex,
+                                                          TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
+
+  end else begin
+
+   fVulkanComputeQueue:=fVulkanDevice.ComputeQueue;
+
+   fVulkanComputeCommandPool:=TpvVulkanCommandPool.Create(fVulkanDevice,
+                                                          fVulkanDevice.ComputeQueueFamilyIndex,
+                                                          TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
+
+  end;
 
   fVulkanComputeCommandBuffer:=TpvVulkanCommandBuffer.Create(fVulkanComputeCommandPool);
 
