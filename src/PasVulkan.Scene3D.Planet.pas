@@ -215,6 +215,16 @@ type TpvScene3DPlanets=class;
             end;
             PHeightMapModificationItem=^THeightMapModificationItem;
             THeightMapModificationItems=array[0..MaxInFlightFrames-1] of THeightMapModificationItem;
+            THeightMapFlattenItem=record
+             Vector:TpvVector3;
+             InnerRadius:TpvFloat;
+             OuterRadius:TpvFloat;
+             TargetHeight:TpvFloat;
+             BrushIndex:TpvUInt32;
+             BrushRotation:TpvFloat;
+            end;
+            PHeightMapFlattenItem=^THeightMapFlattenItem;
+            THeightMapFlattenItems=array[0..MaxInFlightFrames-1] of THeightMapFlattenItem;
             TBlendMapModificationItem=packed record
              PositionRadius:TpvVector4;
              InnerRadius:TpvFloat;
@@ -1654,6 +1664,7 @@ type TpvScene3DPlanets=class;
        fRaytracingTileQueues:TRaytracingTileQueues;
        fRaytracingTileQueueUpdateIndex:TPasMPUInt32;
        fHeightMapModificationItems:THeightMapModificationItems;
+       fHeightMapFlattenItems:THeightMapFlattenItems;
        fBlendMapModificationItems:TBlendMapModificationItems;
        fGrassMapModificationItems:TGrassMapModificationItems;
        fWaterModificationItems:TWaterModificationItems;
@@ -1717,6 +1728,7 @@ type TpvScene3DPlanets=class;
        procedure Prepare(const aInFlightFrameIndex:TpvSizeInt;const aRendererInstance:TObject;const aRenderPassIndex:TpvSizeInt;const aViewPortWidth,aViewPortHeight:TpvInt32;const aMainViewPort:Boolean);
        procedure UploadFrame(const aInFlightFrameIndex:TpvSizeInt);
        procedure EnqueueHeightMapModification(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aRadius,aBorderRadius,aValue:TpvScalar);
+       procedure EnqueueHeightMapFlatten(const aInFlightFrameIndex:TpvSizeInt;const aVector:TpvVector3;const aInnerRadius,aOuterRadius,aTargetHeight:TpvFloat;const aBrushIndex:TpvUInt32;const aBrushRotation:TpvFloat);
        procedure EnqueueBlendMapModification(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aRadius,aBorderRadius,aValue:TpvScalar;const aReplace:Boolean);
        procedure EnqueueGrassMapModification(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aRadius,aBorderRadius,aValue:TpvScalar);
        procedure EnqueueWaterModification(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aRadius,aBorderRadius,aValue:TpvScalar);
@@ -15245,6 +15257,8 @@ begin
 
  FillChar(fHeightMapModificationItems,SizeOf(THeightMapModificationItems),#0);
 
+ FillChar(fHeightMapFlattenItems,SizeOf(THeightMapFlattenItems),#0);
+
  FillChar(fBlendMapModificationItems,SizeOf(TBlendMapModificationItems),#0);
 
  FillChar(fGrassMapModificationItems,SizeOf(TGrassMapModificationItems),#0);
@@ -16768,7 +16782,7 @@ begin
 
    fHeightMapFlatten.fPushConstants.BrushIndex:=aBrushIndex;
 
-   fHeightMapFlatten.fPushConstants.BrushRotation:=aBrushRotation;
+   fHeightMapFlatten.fPushConstants.BrushRotation:=aBrushRotation*TwoPI;
 
    fHeightMapFlatten.Execute(fVulkanComputeCommandBuffer);
 
@@ -16897,7 +16911,8 @@ begin
  end;
 
  if (fData.fHeightMapProcessedGeneration<>fData.fHeightMapGeneration) or
-    ((aInFlightFrameIndex>=0) and (abs(fHeightMapModificationItems[aInFlightFrameIndex].Value)>1e-7)) then begin
+    ((aInFlightFrameIndex>=0) and (abs(fHeightMapModificationItems[aInFlightFrameIndex].Value)>1e-7)) or
+    ((aInFlightFrameIndex>=0) and (abs(fHeightMapFlattenItems[aInFlightFrameIndex].TargetHeight)>1e-7)) then begin
 
   if assigned(fVulkanDevice) then begin
 
@@ -16911,6 +16926,20 @@ begin
       fHeightMapModification.Execute(fVulkanComputeCommandBuffer,fHeightMapModificationItems[aInFlightFrameIndex]);
      finally
       fHeightMapModificationItems[aInFlightFrameIndex].Value:=0.0;
+     end;
+    end;
+
+    if (aInFlightFrameIndex>=0) and (abs(fHeightMapFlattenItems[aInFlightFrameIndex].TargetHeight)>1e-7) then begin
+     try
+      fHeightMapFlatten.fPushConstants.Vector:=TpvVector4.InlineableCreate(fHeightMapFlattenItems[aInFlightFrameIndex].Vector,fHeightMapFlattenItems[aInFlightFrameIndex].OuterRadius);
+      fHeightMapFlatten.fPushConstants.InnerRadius:=fHeightMapFlattenItems[aInFlightFrameIndex].InnerRadius;
+      fHeightMapFlatten.fPushConstants.OuterRadius:=fHeightMapFlattenItems[aInFlightFrameIndex].OuterRadius;
+      fHeightMapFlatten.fPushConstants.TargetHeight:=fHeightMapFlattenItems[aInFlightFrameIndex].TargetHeight;
+      fHeightMapFlatten.fPushConstants.BrushIndex:=fHeightMapFlattenItems[aInFlightFrameIndex].BrushIndex;
+      fHeightMapFlatten.fPushConstants.BrushRotation:=fHeightMapFlattenItems[aInFlightFrameIndex].BrushRotation*TwoPI;
+      fHeightMapFlatten.Execute(fVulkanComputeCommandBuffer);
+     finally
+      fHeightMapFlattenItems[aInFlightFrameIndex].TargetHeight:=0.0;
      end;
     end;
 
@@ -17414,6 +17443,20 @@ begin
   HeightMapModificationItem^.Value:=aValue;
   HeightMapModificationItem^.BrushIndex:=fData.fSelectedBrush;
   HeightMapModificationItem^.BrushRotation:=fData.fBrushRotation;
+ end;
+end;
+
+procedure TpvScene3DPlanet.EnqueueHeightMapFlatten(const aInFlightFrameIndex:TpvSizeInt;const aVector:TpvVector3;const aInnerRadius,aOuterRadius,aTargetHeight:TpvFloat;const aBrushIndex:TpvUInt32;const aBrushRotation:TpvFloat);
+var HeightMapFlattenItem:PHeightMapFlattenItem;
+begin
+ if aInFlightFrameIndex>=0 then begin
+  HeightMapFlattenItem:=@fHeightMapFlattenItems[aInFlightFrameIndex];
+  HeightMapFlattenItem^.Vector:=aVector;
+  HeightMapFlattenItem^.InnerRadius:=aInnerRadius;
+  HeightMapFlattenItem^.OuterRadius:=aOuterRadius;
+  HeightMapFlattenItem^.TargetHeight:=aTargetHeight;
+  HeightMapFlattenItem^.BrushIndex:=aBrushIndex;
+  HeightMapFlattenItem^.BrushRotation:=aBrushRotation;
  end;
 end;
 
