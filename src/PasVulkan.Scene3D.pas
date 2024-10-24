@@ -3461,6 +3461,7 @@ type EpvScene3D=class(Exception);
        fMeshShaderSupport:Boolean;
        fHardwareRaytracingSupport:Boolean;
        fRaytracingActive:Boolean;
+       fPlanetSingleBuffers:Boolean;
        fAccelerationStructureInputBufferUsageFlags:TVkBufferUsageFlags;
        fDefaultSampler:TSampler;
        fDefaultNonRepeatSampler:TSampler;
@@ -3969,6 +3970,7 @@ type EpvScene3D=class(Exception);
        property MeshShaderSupport:Boolean read fMeshShaderSupport;
        property HardwareRaytracingSupport:Boolean read fHardwareRaytracingSupport;
        property RaytracingActive:Boolean read fRaytracingActive;
+       property PlanetSingleBuffers:Boolean read fPlanetSingleBuffers write fPlanetSingleBuffers;
        property AccelerationStructureInputBufferUsageFlags:TVkBufferUsageFlags read fAccelerationStructureInputBufferUsageFlags;
        property OnNodeFilter:TpvScene3D.TGroup.TInstance.TOnNodeFilter read fOnNodeFilter write fOnNodeFilter;
        property PasMPInstance:TPasMP read fPasMPInstance write fPasMPInstance;
@@ -26398,6 +26400,8 @@ begin
  end else begin
   fAccelerationStructureInputBufferUsageFlags:=TVkBufferUsageFlags(0);
  end;
+
+ fPlanetSingleBuffers:=false;
 
  fMeshGenerationCounter:=1;
 
