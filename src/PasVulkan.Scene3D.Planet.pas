@@ -17101,7 +17101,7 @@ end;
 
 procedure TpvScene3DPlanet.Check(const aInFlightFrameIndex:TpvSizeInt);
 begin
-
+//ProcessModifications(aInFlightFrameIndex);
 end;
 
 procedure TpvScene3DPlanet.Update(const aInFlightFrameIndex:TpvSizeInt);
