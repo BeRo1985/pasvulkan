@@ -2198,8 +2198,13 @@ begin
   ImageSharingMode:=TVkSharingMode.VK_SHARING_MODE_EXCLUSIVE;
   ImageQueueFamilyIndices:=[];
  end else begin
-  ImageSharingMode:=fPlanet.fInFlightFrameSharingMode;
-  ImageQueueFamilyIndices:=fPlanet.fInFlightFrameQueueFamilyIndices;
+  if TpvScene3D(aPlanet.fScene3D).PlanetSingleBuffers then begin
+   ImageSharingMode:=TVkSharingMode.VK_SHARING_MODE_EXCLUSIVE;
+   ImageQueueFamilyIndices:=[];
+  end else begin
+   ImageSharingMode:=fPlanet.fInFlightFrameSharingMode;
+   ImageQueueFamilyIndices:=fPlanet.fInFlightFrameQueueFamilyIndices;
+  end;
  end;
 
  fInFlightFrameIndex:=aInFlightFrameIndex;
@@ -2311,60 +2316,71 @@ begin
 
  if assigned(fPlanet.fVulkanDevice) then begin
 
-  fHeightMapImage:=TpvScene3DRendererMipmapImage2D.Create(fPlanet.fVulkanDevice,
-                                                          fPlanet.fHeightMapResolution,
-                                                          fPlanet.fHeightMapResolution,
-                                                          VK_FORMAT_R32_SFLOAT,
-                                                          true,
-                                                          VK_SAMPLE_COUNT_1_BIT,
-                                                          VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                                          ImageSharingMode,
-                                                          ImageQueueFamilyIndices,
-                                                          pvAllocationGroupIDScene3DPlanetStatic);
-  fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fHeightMapImage.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fHeightMapImage.Image');
-  fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fHeightMapImage.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fHeightMapImage.ImageView');
+  if (fInFlightFrameIndex<0) or not TpvScene3D(fPlanet.fScene3D).PlanetSingleBuffers then begin
 
-  fNormalMapImage:=TpvScene3DRendererMipmapImage2D.Create(fPlanet.fVulkanDevice,
-                                                          fPlanet.fHeightMapResolution,
-                                                          fPlanet.fHeightMapResolution,
-                                                          VK_FORMAT_A2B10G10R10_UNORM_PACK32,
-                                                          true,
-                                                          VK_SAMPLE_COUNT_1_BIT,
-                                                          VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                                          ImageSharingMode,
-                                                          ImageQueueFamilyIndices,
-                                                          pvAllocationGroupIDScene3DPlanetStatic);
-  fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fNormalMapImage.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fNormalMapImage.Image');
-  fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fNormalMapImage.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fNormalMapImage.ImageView');
+   fHeightMapImage:=TpvScene3DRendererMipmapImage2D.Create(fPlanet.fVulkanDevice,
+                                                           fPlanet.fHeightMapResolution,
+                                                           fPlanet.fHeightMapResolution,
+                                                           VK_FORMAT_R32_SFLOAT,
+                                                           true,
+                                                           VK_SAMPLE_COUNT_1_BIT,
+                                                           VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                           ImageSharingMode,
+                                                           ImageQueueFamilyIndices,
+                                                           pvAllocationGroupIDScene3DPlanetStatic);
+   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fHeightMapImage.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fHeightMapImage.Image');
+   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fHeightMapImage.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fHeightMapImage.ImageView');
 
-  fBlendMapImage:=TpvScene3DRendererArray2DImage.Create(fPlanet.fVulkanDevice,
-                                                        fPlanet.fBlendMapResolution,
-                                                        fPlanet.fBlendMapResolution,
-                                                        TpvScene3DPlanet.CountBlendMapLayers,
-                                                        VK_FORMAT_R8G8B8A8_UNORM,
-                                                        VK_SAMPLE_COUNT_1_BIT,
-                                                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                                        true,
-                                                        pvAllocationGroupIDScene3DPlanetStatic,
-                                                        VK_FORMAT_UNDEFINED,
-                                                        ImageSharingMode,
-                                                        ImageQueueFamilyIndices);
-  fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fBlendMapImage.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fBlendMapImage.Image');
-  fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fBlendMapImage.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fBlendMapImage.ImageView');
-  fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fBlendMapImage.VulkanArrayImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fBlendMapImage.ArrayImageView');
+   fNormalMapImage:=TpvScene3DRendererMipmapImage2D.Create(fPlanet.fVulkanDevice,
+                                                           fPlanet.fHeightMapResolution,
+                                                           fPlanet.fHeightMapResolution,
+                                                           VK_FORMAT_A2B10G10R10_UNORM_PACK32,
+                                                           true,
+                                                           VK_SAMPLE_COUNT_1_BIT,
+                                                           VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                           ImageSharingMode,
+                                                           ImageQueueFamilyIndices,
+                                                           pvAllocationGroupIDScene3DPlanetStatic);
+   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fNormalMapImage.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fNormalMapImage.Image');
+   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fNormalMapImage.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fNormalMapImage.ImageView');
 
-  fGrassMapImage:=TpvScene3DRendererImage2D.Create(fPlanet.fVulkanDevice,
-                                                   fPlanet.fGrassMapResolution,
-                                                   fPlanet.fGrassMapResolution,
-                                                   VK_FORMAT_R32_SFLOAT,
-                                                   true,
-                                                   VK_SAMPLE_COUNT_1_BIT,
-                                                   VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                                   ImageSharingMode,
-                                                   ImageQueueFamilyIndices,
-                                                   pvAllocationGroupIDScene3DPlanetStatic);
-  fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fGrassMapImage.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fGrassMapImage.Image');
-  fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fGrassMapImage.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fGrassMapImage.ImageView');
+   fBlendMapImage:=TpvScene3DRendererArray2DImage.Create(fPlanet.fVulkanDevice,
+                                                         fPlanet.fBlendMapResolution,
+                                                         fPlanet.fBlendMapResolution,
+                                                         TpvScene3DPlanet.CountBlendMapLayers,
+                                                         VK_FORMAT_R8G8B8A8_UNORM,
+                                                         VK_SAMPLE_COUNT_1_BIT,
+                                                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                         true,
+                                                         pvAllocationGroupIDScene3DPlanetStatic,
+                                                         VK_FORMAT_UNDEFINED,
+                                                         ImageSharingMode,
+                                                         ImageQueueFamilyIndices);
+   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fBlendMapImage.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fBlendMapImage.Image');
+   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fBlendMapImage.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fBlendMapImage.ImageView');
+   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fBlendMapImage.VulkanArrayImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fBlendMapImage.ArrayImageView');
+
+   fGrassMapImage:=TpvScene3DRendererImage2D.Create(fPlanet.fVulkanDevice,
+                                                    fPlanet.fGrassMapResolution,
+                                                    fPlanet.fGrassMapResolution,
+                                                    VK_FORMAT_R32_SFLOAT,
+                                                    true,
+                                                    VK_SAMPLE_COUNT_1_BIT,
+                                                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                    ImageSharingMode,
+                                                    ImageQueueFamilyIndices,
+                                                    pvAllocationGroupIDScene3DPlanetStatic);
+   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fGrassMapImage.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fGrassMapImage.Image');
+   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fGrassMapImage.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fGrassMapImage.ImageView');
+
+  end else if (fInFlightFrameIndex>=0) and TpvScene3D(fPlanet.fScene3D).PlanetSingleBuffers then begin
+
+   fHeightMapImage:=fPlanet.fData.fHeightMapImage;
+   fNormalMapImage:=fPlanet.fData.fNormalMapImage;
+   fBlendMapImage:=fPlanet.fData.fBlendMapImage;
+   fGrassMapImage:=fPlanet.fData.fGrassMapImage;
+
+  end;
 
   if fInFlightFrameIndex<0 then begin
     
@@ -2931,13 +2947,27 @@ begin
 
 //fHeightMap:=nil;
 
- FreeAndNil(fHeightMapImage);
+ if (fInFlightFrameIndex<0) or not TpvScene3D(fPlanet.fScene3D).PlanetSingleBuffers then begin
 
- FreeAndNil(fNormalMapImage);
+  FreeAndNil(fHeightMapImage);
 
- FreeAndNil(fBlendMapImage);
+  FreeAndNil(fNormalMapImage);
 
- FreeAndNil(fGrassMapImage);
+  FreeAndNil(fBlendMapImage);
+
+  FreeAndNil(fGrassMapImage);
+
+ end else begin
+
+  fHeightMapImage:=nil;
+
+  fNormalMapImage:=nil;
+
+  fBlendMapImage:=nil;
+
+  fGrassMapImage:=nil;
+
+ end;
 
  FreeAndNil(fDownloadBuffer);
 
@@ -15257,7 +15287,8 @@ begin
    fGlobalBufferQueueFamilyIndices:=nil;
   end;
 
-  if (fVulkanDevice.UniversalQueueFamilyIndex<>fVulkanDevice.ComputeQueueFamilyIndex) and
+  if (not TpvScene3D(fScene3D).PlanetSingleBuffers) and
+     (fVulkanDevice.UniversalQueueFamilyIndex<>fVulkanDevice.ComputeQueueFamilyIndex) and
      fVulkanDevice.PhysicalDevice.RenderDocDetected then begin
    fInFlightFrameSharingMode:=TVkSharingMode(VK_SHARING_MODE_CONCURRENT);
    fInFlightFrameQueueFamilyIndices:=[fVulkanDevice.UniversalQueueFamilyIndex,
@@ -17124,7 +17155,9 @@ begin
       ((InFlightFrameData.fHeightMapGeneration<>fData.fHeightMapGeneration) or
        (InFlightFrameData.fGrassMapGeneration<>fData.fGrassMapGeneration))) then begin
 
-   BeginUpdate;
+   if not TpvScene3D(fScene3D).PlanetSingleBuffers then begin
+    BeginUpdate;
+   end;
    try
 
 {   if fData.fVisualMeshGeneration<>fData.fHeightMapGeneration then begin
@@ -17137,28 +17170,36 @@ begin
 
     if assigned(InFlightFrameData) then begin
 
-     InFlightFrameData.AcquireOnComputeQueue(fVulkanComputeCommandBuffer);
+     if not TpvScene3D(fScene3D).PlanetSingleBuffers then begin
+      InFlightFrameData.AcquireOnComputeQueue(fVulkanComputeCommandBuffer);
+     end;
 
      if (InFlightFrameData.fHeightMapGeneration<>fData.fHeightMapGeneration) or
         (InFlightFrameData.fBlendMapGeneration<>fData.fBlendMapGeneration) or
         (InFlightFrameData.fGrassMapGeneration<>fData.fGrassMapGeneration) then begin
-      fData.TransferTo(fVulkanComputeCommandBuffer,
-                       InFlightFrameData,
-                       InFlightFrameData.fHeightMapGeneration<>fData.fHeightMapGeneration,
-                       InFlightFrameData.fBlendMapGeneration<>fData.fBlendMapGeneration,
-                       InFlightFrameData.fGrassMapGeneration<>fData.fGrassMapGeneration
-                      );
+      if not TpvScene3D(fScene3D).PlanetSingleBuffers then begin
+       fData.TransferTo(fVulkanComputeCommandBuffer,
+                        InFlightFrameData,
+                        InFlightFrameData.fHeightMapGeneration<>fData.fHeightMapGeneration,
+                        InFlightFrameData.fBlendMapGeneration<>fData.fBlendMapGeneration,
+                        InFlightFrameData.fGrassMapGeneration<>fData.fGrassMapGeneration
+                       );
+      end;
       InFlightFrameData.fHeightMapGeneration:=fData.fHeightMapGeneration;
       InFlightFrameData.fBlendMapGeneration:=fData.fBlendMapGeneration;
       InFlightFrameData.fGrassMapGeneration:=fData.fGrassMapGeneration;
      end;
 
-     InFlightFrameData.ReleaseOnComputeQueue(fVulkanComputeCommandBuffer);
+     if not TpvScene3D(fScene3D).PlanetSingleBuffers then begin
+      InFlightFrameData.ReleaseOnComputeQueue(fVulkanComputeCommandBuffer);
+     end;
 
     end;
 
    finally
-    EndUpdate;
+    if not TpvScene3D(fScene3D).PlanetSingleBuffers then begin
+     EndUpdate;
+    end;
    end;
 
    fInFlightFrameReady[aInFlightFrameIndex]:=true;
@@ -17171,12 +17212,16 @@ end;
 
 procedure TpvScene3DPlanet.Check(const aInFlightFrameIndex:TpvSizeInt);
 begin
-//ProcessModifications(aInFlightFrameIndex);
+ if TpvScene3D(fScene3D).PlanetSingleBuffers then begin
+  ProcessModifications(aInFlightFrameIndex);
+ end;
 end;
 
 procedure TpvScene3DPlanet.Update(const aInFlightFrameIndex:TpvSizeInt);
 begin
- ProcessModifications(aInFlightFrameIndex);
+ if not TpvScene3D(fScene3D).PlanetSingleBuffers then begin
+  ProcessModifications(aInFlightFrameIndex);
+ end;
 end;
 
 procedure TpvScene3DPlanet.FrameUpdate(const aInFlightFrameIndex:TpvSizeInt);
@@ -17422,7 +17467,8 @@ begin
 
   InFlightFrameData:=fInFlightFrameDataList[aInFlightFrameIndex];
 
-  if assigned(InFlightFrameData) and
+  if (not TpvScene3D(fScene3D).PlanetSingleBuffers) and
+     assigned(InFlightFrameData) and
      (fVulkanDevice.UniversalQueueFamilyIndex<>fVulkanDevice.ComputeQueueFamilyIndex) and
      (fInFlightFrameSharingMode=TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE)) then begin
 
@@ -17464,7 +17510,8 @@ begin
 
   InFlightFrameData:=fInFlightFrameDataList[aInFlightFrameIndex];
 
-  if assigned(InFlightFrameData) and
+  if (not TpvScene3D(fScene3D).PlanetSingleBuffers) and
+     assigned(InFlightFrameData) and
      (fVulkanDevice.UniversalQueueFamilyIndex<>fVulkanDevice.ComputeQueueFamilyIndex) and
      (fInFlightFrameSharingMode=TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE)) then begin
 
