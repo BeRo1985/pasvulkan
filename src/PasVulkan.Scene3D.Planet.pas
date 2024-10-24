@@ -334,6 +334,7 @@ type TpvScene3DPlanets=class;
               fModelMatrix:TpvMatrix4x4;
               fReady:TPasMPBool32;
               fInitialized:TPasMPBool32;
+              fForceAllTilesDirty:TPasMPBool32;
               fHeightMapGeneration:TpvUInt64;
               fHeightMapProcessedGeneration:TpvUInt64;
               fBlendMapGeneration:TpvUInt64;
@@ -413,6 +414,7 @@ type TpvScene3DPlanets=class;
 //            property PhysicsMeshIndices:TMeshIndices read fPhysicsMeshIndices;
               property TileDirtyQueueItems:TTileDirtyQueueItems read fTileDirtyQueueItems;
               property CountDirtyTiles:TpvUInt32 read fCountDirtyTiles;
+              property ForceAllTilesDirty:TPasMPBool32 read fForceAllTilesDirty write fForceAllTilesDirty;
              public
               property TileGenerations:TTileGenerations read fTileGenerations;
               property TiledMeshBoundingBoxes:TTiledMeshBoundingBoxes read fTiledMeshBoundingBoxes;
@@ -17012,18 +17014,31 @@ begin
                                          SizeOf(TVkUInt32));
    end;
 
-   if fData.fCountDirtyTiles>0 then begin
+   if (fData.fCountDirtyTiles>0) or fData.fForceAllTilesDirty then begin
 
-    fVulkanDevice.MemoryStaging.Download(fVulkanComputeQueue,
-                                         fVulkanComputeCommandBuffer,
-                                         fVulkanComputeFence,
-                                         fData.fTileDirtyQueueBuffer,
-                                         SizeOf(TVkUInt32)*6,
-                                         fData.fTileDirtyQueueItems.ItemArray[0],
-                                         fData.fCountDirtyTiles*SizeOf(TVkUInt32));
+    if fData.fForceAllTilesDirty then begin
 
-    if fData.fCountDirtyTiles>0 then begin
-     TpvTypedSort<TpvUInt32>.IntroSort(@fData.fTileDirtyQueueItems.ItemArray[0],0,fData.fCountDirtyTiles-1,TpvTypedSortCompareUInt32);
+     fData.fForceAllTilesDirty:=false;
+
+     fData.fCountDirtyTiles:=fTileMapResolution*fTileMapResolution;
+     for QueueTileIndex:=0 to TpvSizeInt(fData.fCountDirtyTiles)-1 do begin
+      fData.fTileDirtyQueueItems.ItemArray[QueueTileIndex]:=QueueTileIndex;
+     end;
+
+    end else begin
+
+     fVulkanDevice.MemoryStaging.Download(fVulkanComputeQueue,
+                                          fVulkanComputeCommandBuffer,
+                                          fVulkanComputeFence,
+                                          fData.fTileDirtyQueueBuffer,
+                                          SizeOf(TVkUInt32)*6,
+                                          fData.fTileDirtyQueueItems.ItemArray[0],
+                                          fData.fCountDirtyTiles*SizeOf(TVkUInt32));
+
+     if fData.fCountDirtyTiles>0 then begin
+      TpvTypedSort<TpvUInt32>.IntroSort(@fData.fTileDirtyQueueItems.ItemArray[0],0,fData.fCountDirtyTiles-1,TpvTypedSortCompareUInt32);
+     end;
+
     end;
 
     fData.fVisualMeshVertexBufferCopies.ClearNoFree;
