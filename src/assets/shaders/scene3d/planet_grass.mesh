@@ -344,8 +344,6 @@ void main() {
   
   const uvec2 globalXY = (tileMapXY * uvec2(pushConstants.tileResolution)) + localTileXY;
 
-  const uvec4 rawVertex = visualMeshVertices.vertices[globalIndex];
-
 #ifdef FineOffseting
 
   const uvec4 gridPositions[9] = uvec4[9](
@@ -353,18 +351,35 @@ void main() {
     getTriangleRawVertex(ivec2(globalXY) + ivec2(0, -1)),
     getTriangleRawVertex(ivec2(globalXY) + ivec2(1, -1)),
     getTriangleRawVertex(ivec2(globalXY) + ivec2(-1, 0)),
-    rawVertex, //getTriangleRawVertex(ivec2(globalXY) + ivec2(0, 0)),
+    getTriangleRawVertex(ivec2(globalXY) + ivec2(0, 0)),
     getTriangleRawVertex(ivec2(globalXY) + ivec2(1, 0)),
     getTriangleRawVertex(ivec2(globalXY) + ivec2(-1, 1)),
     getTriangleRawVertex(ivec2(globalXY) + ivec2(0, 1)),
     getTriangleRawVertex(ivec2(globalXY) + ivec2(1, 1))    
   ); 
 
-#endif
+  vec3 patchPosition = uintBitsToFloat(gridPositions[4].xyz);
+
+  const float grassOffsetRadius = max(max(max(max(max(max(max(
+    distance(patchPosition, uintBitsToFloat(gridPositions[0].xyz)),
+    distance(patchPosition, uintBitsToFloat(gridPositions[1].xyz))),
+    distance(patchPosition, uintBitsToFloat(gridPositions[2].xyz))),
+    distance(patchPosition, uintBitsToFloat(gridPositions[3].xyz))),
+    distance(patchPosition, uintBitsToFloat(gridPositions[5].xyz))),
+    distance(patchPosition, uintBitsToFloat(gridPositions[6].xyz))),
+    distance(patchPosition, uintBitsToFloat(gridPositions[7].xyz))),
+    distance(patchPosition, uintBitsToFloat(gridPositions[8].xyz))
+  );
+
+#else
+
+  const uvec4 rawVertex = visualMeshVertices.vertices[globalIndex];
 
   vec3 patchPosition = uintBitsToFloat(rawVertex.xyz);
 
   const float grassOffsetRadius = visualMeshDistances.values[globalIndex];
+
+#endif
 
 // const uint countVertices = countVerticesPerBlade * countBlades;
 
