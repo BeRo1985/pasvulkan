@@ -206,13 +206,44 @@ type TpvScene3DPlanets=class;
 
             end;
             PGrassVertex=^TGrassVertex;
-            TWaterModification=packed record
+            THeightMapModificationItem=packed record
              PositionRadius:TpvVector4;
              InnerRadius:TpvFloat;
              Value:TpvFloat;
+             BrushIndex:TpvUInt32;
+             BrushRotation:TpvFloat;
             end;
-            PWaterModification=^TWaterModification;
-            TWaterModifications=array[0..MaxInFlightFrames-1] of TWaterModification;
+            PHeightMapModificationItem=^THeightMapModificationItem;
+            THeightMapModificationItems=array[0..MaxInFlightFrames-1] of THeightMapModificationItem;
+            TBlendMapModificationItem=packed record
+             PositionRadius:TpvVector4;
+             InnerRadius:TpvFloat;
+             Value:TpvFloat;
+             BrushIndex:TpvUInt32;
+             BrushRotation:TpvFloat;
+             LayerIndex:TpvUInt32;
+             Flags:TpvUInt32;
+            end;
+            PBlendMapModificationItem=^TBlendMapModificationItem;
+            TBlendMapModificationItems=array[0..MaxInFlightFrames-1] of TBlendMapModificationItem;
+            TGrassMapModificationItem=packed record
+             PositionRadius:TpvVector4;
+             InnerRadius:TpvFloat;
+             Value:TpvFloat;
+             BrushIndex:TpvUInt32;
+             BrushRotation:TpvFloat;
+            end;
+            PGrassMapModificationItem=^TGrassMapModificationItem;
+            TGrassMapModificationItems=array[0..MaxInFlightFrames-1] of TGrassMapModificationItem;
+            TWaterModificationItem=packed record
+             PositionRadius:TpvVector4;
+             InnerRadius:TpvFloat;
+             Value:TpvFloat;
+             BrushIndex:TpvUInt32;
+             BrushRotation:TpvFloat;
+            end;
+            PWaterModificationItem=^TWaterModificationItem;
+            TWaterModificationItems=array[0..MaxInFlightFrames-1] of TWaterModificationItem;
             TBrush=array[0..255,0..255] of TpvUInt8;
             PBrush=^TBrush;
             TBrushes=array[0..255] of TBrush;
@@ -1642,7 +1673,7 @@ type TpvScene3DPlanets=class;
        fRaytracingTileNextQueue:TRaytracingTiles;
        fRaytracingTileQueues:TRaytracingTileQueues;
        fRaytracingTileQueueUpdateIndex:TPasMPUInt32;
-       fWaterModifications:TWaterModifications;
+       fWaterModificationItems:TWaterModificationItems;
        fRendererInstanceListLock:TPasMPCriticalSection;
        fRendererInstances:TRendererInstances;
        fRendererInstanceHashMap:TRendererInstanceHashMap;
@@ -1695,6 +1726,7 @@ type TpvScene3DPlanets=class;
        procedure Initialize(const aPasMPInstance:TPasMP=nil;const aData:TStream=nil;const aDataFreeOnDestroy:boolean=false);
        procedure Flatten(const aVector:TpvVector3;const aInnerRadius,aOuterRadius,aTargetHeight:TpvFloat;const aBrushIndex:TpvUInt32;const aBrushRotation:TpvFloat);
        function RayIntersection(const aRayOrigin,aRayDirection:TpvVector3;out aHitNormal:TpvVector3;out aHitTime:TpvScalar):boolean;
+       procedure ProcessModifications;
        procedure Update(const aInFlightFrameIndex:TpvSizeInt);
        procedure FrameUpdate(const aInFlightFrameIndex:TpvSizeInt);
        procedure Prepare(const aInFlightFrameIndex:TpvSizeInt;const aRendererInstance:TObject;const aRenderPassIndex:TpvSizeInt;const aViewPortWidth,aViewPortHeight:TpvInt32;const aMainViewPort:Boolean);
@@ -6871,25 +6903,25 @@ procedure TpvScene3DPlanet.TWaterSimulation.Execute(const aCommandBuffer:TpvVulk
 var SourceBufferIndex,DestinationBufferIndex:TpvSizeInt;
     ImageMemoryBarrier:TVkImageMemoryBarrier;
     BufferMemoryBarriers:array[0..2] of TVkBufferMemoryBarrier;
-    WaterModification:PWaterModification;
+    WaterModificationItem:PWaterModificationItem;
     DoInterpolate:Boolean;
 begin
 
  fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'Planet WaterSimulation',[0.5,0.5,0.5,1.0]);
 
- WaterModification:=@fPlanet.fWaterModifications[aInFlightFrameIndex];
- if abs(WaterModification^.Value)>1e-7 then begin
+ WaterModificationItem:=@fPlanet.fWaterModificationItems[aInFlightFrameIndex];
+ if abs(WaterModificationItem^.Value)>1e-7 then begin
 
   try
 
    DestinationBufferIndex:=(fPlanet.fData.fWaterBufferIndex+1) and 1;
 
-   fModificationPushConstants.PositionRadius:=WaterModification^.PositionRadius;
-   fModificationPushConstants.InnerRadius:=WaterModification^.InnerRadius;
-   fModificationPushConstants.Value:=WaterModification^.Value;
+   fModificationPushConstants.PositionRadius:=WaterModificationItem^.PositionRadius;
+   fModificationPushConstants.InnerRadius:=WaterModificationItem^.InnerRadius;
+   fModificationPushConstants.Value:=WaterModificationItem^.Value;
    fModificationPushConstants.WaterHeightMapResolution:=fPlanet.fWaterMapResolution;
-   fModificationPushConstants.BrushIndex:=fPlanet.fData.fSelectedBrush;
-   fModificationPushConstants.BrushRotation:=fPlanet.fData.fBrushRotation*TwoPI;
+   fModificationPushConstants.BrushIndex:=WaterModificationItem^.BrushIndex;
+   fModificationPushConstants.BrushRotation:=WaterModificationItem^.BrushRotation*TwoPI;
 
    BufferMemoryBarriers[0]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                           TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
@@ -6943,7 +6975,7 @@ begin
 
   finally
 
-   WaterModification^.Value:=0.0;
+   WaterModificationItem^.Value:=0.0;
 
   end;
 
@@ -15216,7 +15248,7 @@ begin
  end;
  fCountPhysicsMeshIndices:=fCountPhysicsMeshIndices*((fTileMapResolution*fTileMapResolution)*6); }
 
- FillChar(fWaterModifications,SizeOf(TWaterModifications),#0);
+ FillChar(fWaterModificationItems,SizeOf(TWaterModificationItems),#0);
        
  fBottomRadius:=aBottomRadius;
 
@@ -16782,7 +16814,7 @@ begin
  result:=Sign(TpvInt32(a)-TpvInt32(b));
 end;
 
-procedure TpvScene3DPlanet.Update(const aInFlightFrameIndex:TpvSizeInt);
+procedure TpvScene3DPlanet.ProcessModifications;
 var QueueTileIndex:TpvSizeInt;
     TileIndex:TpvUInt32;
     Source:Pointer;
@@ -17089,6 +17121,11 @@ begin
 
 end;
 
+procedure TpvScene3DPlanet.Update(const aInFlightFrameIndex:TpvSizeInt);
+begin
+ ProcessModifications;
+end;
+
 procedure TpvScene3DPlanet.FrameUpdate(const aInFlightFrameIndex:TpvSizeInt);
 var InFlightFrameData:TData;
 begin
@@ -17322,13 +17359,15 @@ begin
 end;
 
 procedure TpvScene3DPlanet.EnqueueWaterModification(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aRadius,aBorderRadius,aValue:TpvScalar);
-var WaterModification:PWaterModification;
+var WaterModificationItem:PWaterModificationItem;
 begin
  if aInFlightFrameIndex>=0 then begin
-  WaterModification:=@fWaterModifications[aInFlightFrameIndex];
-  WaterModification^.PositionRadius:=TpvVector4.Create(aPosition.Normalize,aRadius);
-  WaterModification^.InnerRadius:=Max(1e-6,aBorderRadius);
-  WaterModification^.Value:=aValue;
+  WaterModificationItem:=@fWaterModificationItems[aInFlightFrameIndex];
+  WaterModificationItem^.PositionRadius:=TpvVector4.Create(aPosition.Normalize,aRadius);
+  WaterModificationItem^.InnerRadius:=Max(1e-6,aBorderRadius);
+  WaterModificationItem^.Value:=aValue;
+  WaterModificationItem^.BrushIndex:=fData.fSelectedBrush;
+  WaterModificationItem^.BrushRotation:=fData.fBrushRotation;
  end;
 end;
 
