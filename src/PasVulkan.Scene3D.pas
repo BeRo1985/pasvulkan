@@ -30443,6 +30443,7 @@ var Index:TpvSizeInt;
     View:TpvScene3D.PView;
     DrawChoreographyBatchItems:TDrawChoreographyBatchItems;
     Planet:TpvScene3DPlanet;
+    a,b:TpvHighResolutionTime;
 begin
 
  for MaterialAlphaMode:=Low(TpvScene3D.TMaterial.TAlphaMode) to high(TpvScene3D.TMaterial.TAlphaMode) do begin
@@ -30554,10 +30555,13 @@ begin
   end;
  end;
 
+//a:=pvApplication.HighResolutionTimer.GetTime;
  TpvScene3DRendererInstance(aRendererInstance).PrepareDraw(aInFlightFrameIndex,
                                                            aRenderPassIndex,
                                                            aMaterialAlphaModes,
                                                            aGPUCulling);
+{b:=pvApplication.HighResolutionTimer.GetTime;
+ writeln('a: ',pvApplication.HighResolutionTimer.ToFloatSeconds(b-a)*1000.0:10:8,'ms');}
 
 end;
 
