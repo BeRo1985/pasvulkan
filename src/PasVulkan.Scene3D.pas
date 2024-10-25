@@ -30322,7 +30322,7 @@ begin
 
 // a:=pvApplication.HighResolutionTimer.GetTime;
 
-   if aFrustumCulling or aPotentiallyVisibleSetCulling then begin
+  if aFrustumCulling or aPotentiallyVisibleSetCulling then begin
 
    {fAABBTreeLock.Acquire;
     try}
