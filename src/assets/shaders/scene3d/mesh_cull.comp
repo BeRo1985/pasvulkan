@@ -281,19 +281,19 @@ void main(){
   }else{
       
     // Always visible, if there is no bounding sphere, or if culling is disabled, or if there are more than one instance, since in this case 
-    // the bounding sphere is not valid for all instances  
-    isDrawIndexedIndirectCommandVisible = true;
+    // the bounding sphere is not valid for all instances, or always invisible, when instanceCount is zero.       
+    isDrawIndexedIndirectCommandVisible = (cmd0.y != 0u);
 
+  }
+
+  if(!isDrawIndexedIndirectCommandVisible){
+    return;
   }
 
   const uvec4 cmd1 = inputDrawIndexedIndirectCommands.commands[sourceIndex].cmd1;
 
   const uint objectIndex = cmd1.y;
   
-  if(!isDrawIndexedIndirectCommandVisible){
-    return;
-  }
-
   // Mark as visible in any case, independently of being already added in the previous pass 
   atomicOr(outputVisiblityBuffer.bitmap[pushConstants.visibilityBufferOffset + (cmd1.y >> 5u)], 1u << (cmd1.y & 31u)); 
 
