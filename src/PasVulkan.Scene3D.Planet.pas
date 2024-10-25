@@ -6981,6 +6981,30 @@ begin
 
 end;
 
+procedure TpvScene3DPlanet.TWaterSimulation.PrepareSimulation(const aQueue:TpvVulkanQueue;const aCommandBuffer:TpvVulkanCommandBuffer;const aFence:TpvVulkanFence);
+var Value:TpvFloat;
+begin
+
+ Value:=0.0;
+
+ fPlanet.fVulkanDevice.MemoryStaging.Download(aQueue,
+                                              aCommandBuffer,
+                                              aFence,
+                                              fPlanet.fData.fWaterMaxAbsoluteHeightDifferenceBuffer,
+                                              0,
+                                              Value,
+                                              SizeOf(TpvFloat));
+
+ if abs(Value)<fPlanet.fData.fWaterSimulationThreshold then begin
+  if fPlanet.fData.fWaterSimulationCountUnderThresholdFrames<fPlanet.fData.fWaterSimulationMaximumCountUnderThresholdFrames then begin
+   inc(fPlanet.fData.fWaterSimulationCountUnderThresholdFrames);
+  end;
+ end else begin
+  fPlanet.fData.fWaterSimulationCountUnderThresholdFrames:=0;
+ end;
+
+end;
+
 procedure TpvScene3DPlanet.TWaterSimulation.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aDeltaTime:TpvDouble;const aInFlightFrameIndex:TpvSizeInt);
 var SourceBufferIndex,DestinationBufferIndex:TpvSizeInt;
     ImageMemoryBarrier:TVkImageMemoryBarrier;
@@ -7332,30 +7356,6 @@ begin
  fPlanet.fData.fWaterFirst:=false;
 
  fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
-
-end;
-
-procedure TpvScene3DPlanet.TWaterSimulation.PrepareSimulation(const aQueue:TpvVulkanQueue;const aCommandBuffer:TpvVulkanCommandBuffer;const aFence:TpvVulkanFence);
-var Value:TpvFloat;
-begin
-
- Value:=0.0;
-
- fPlanet.fVulkanDevice.MemoryStaging.Download(aQueue,
-                                              aCommandBuffer,
-                                              aFence,
-                                              fPlanet.fData.fWaterMaxAbsoluteHeightDifferenceBuffer,
-                                              0,
-                                              Value,
-                                              SizeOf(TpvFloat));
-
- if abs(Value)<fPlanet.fData.fWaterSimulationThreshold then begin
-  if fPlanet.fData.fWaterSimulationCountUnderThresholdFrames<fPlanet.fData.fWaterSimulationMaximumCountUnderThresholdFrames then begin
-   inc(fPlanet.fData.fWaterSimulationCountUnderThresholdFrames);
-  end;
- end else begin
-  fPlanet.fData.fWaterSimulationCountUnderThresholdFrames:=0;
- end;
 
 end;
 
