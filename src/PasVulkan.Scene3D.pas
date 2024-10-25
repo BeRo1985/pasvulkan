@@ -29018,6 +29018,10 @@ var Index,OtherIndex,MaterialBufferDataOffset,MaterialBufferDataSize:TpvSizeInt;
     Jobs:array of PPasMPJob;
 begin
 
+ StartCPUTime:=pvApplication.HighResolutionTimer.GetTime;
+
+ TotalCPUTime:=0;
+
  fCountLights[aInFlightFrameIndex]:=0;
 
  TpvScene3DPlanets(fPlanets).Lock.AcquireRead;
@@ -29060,10 +29064,6 @@ begin
     Group.Update(aInFlightFrameIndex);
    end;
   end;
-
-  StartCPUTime:=pvApplication.HighResolutionTimer.GetTime;
-
-  TotalCPUTime:=0;
 
   fGroupInstanceListLock.Acquire;
   try
@@ -29180,14 +29180,6 @@ begin
    fGroupInstanceListLock.Release;
   end;
 
-  EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
-{ writeln;
-  writeln;
-  writeln;}
-//write(pvApplication.HighResolutionTimer.ToFloatSeconds(EndCPUTime-StartCPUTime)*1000:5:2,'ms');
-
-{ write(pvApplication.HighResolutionTimer.ToFloatSeconds(EndCPUTime-StartCPUTime)*1000:5:2,'ms ');
-  writeln(pvApplication.HighResolutionTimer.ToFloatSeconds(TotalCPUTime)*1000:5:2,'ms');    //}
 
  finally
   fGroupListLock.Release;
@@ -29258,6 +29250,12 @@ begin
   fInFlightFrameBoundingBoxes[aInFlightFrameIndex]:=fBoundingBox;
 
  end;
+
+ EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
+
+{
+ write(pvApplication.HighResolutionTimer.ToFloatSeconds(EndCPUTime-StartCPUTime)*1000:5:2,'ms ');
+ writeln(pvApplication.HighResolutionTimer.ToFloatSeconds(TotalCPUTime)*1000:5:2,'ms');    //}
 
 end;
 
