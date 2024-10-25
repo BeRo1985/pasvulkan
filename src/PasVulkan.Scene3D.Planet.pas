@@ -2290,7 +2290,7 @@ begin
 
  fWaterSimulationMaximumCountUnderThresholdFrames:=16;
 
- fWaterSimulationThreshold:=1e-4;
+ fWaterSimulationThreshold:=1e-5;
 
  fWaterVisibilityBuffer:=nil;
 
