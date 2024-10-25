@@ -621,6 +621,8 @@ type { TpvScene3DRendererInstance }
        fMeshCullPass1ComputeVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fMeshCullPass1ComputeVulkanDescriptorPool:TpvVulkanDescriptorPool;
        fMeshCullPass1ComputeVulkanDescriptorSets:TPerInFlightFrameVulkanDescriptorSets;
+       fMeshCullPassDescriptorGeneration:TpvUInt64;
+       fMeshCullPassDescriptorGenerations:array[0..MaxInFlightFrames-1] of TpvUInt64;
        fViewBuffersDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fViewBuffersDescriptorPool:TpvVulkanDescriptorPool;
        fViewBuffersDescriptorSets:TPerInFlightFrameVulkanDescriptorSets;
@@ -4998,7 +5000,11 @@ begin
  fMeshCullPass1ComputeVulkanDescriptorPool.Initialize;
  Renderer.VulkanDevice.DebugUtils.SetObjectName(fMeshCullPass1ComputeVulkanDescriptorPool.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'TpvScene3DRendererInstance.fMeshCullPass1ComputeVulkanDescriptorPool');
 
+ fMeshCullPassDescriptorGeneration:=0;
+
  for InFlightFrameIndex:=0 to fScene3D.CountInFlightFrames-1 do begin
+
+  fMeshCullPassDescriptorGenerations[InFlightFrameIndex]:=0;
 
   fMeshCullPass1ComputeVulkanDescriptorSets[InFlightFrameIndex]:=TpvVulkanDescriptorSet.Create(fMeshCullPass1ComputeVulkanDescriptorPool,fMeshCullPass1ComputeVulkanDescriptorSetLayout);
   fMeshCullPass1ComputeVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(0,
@@ -6879,6 +6885,12 @@ begin
   end;
 
   if DoNeedUpdateDescriptors then begin
+   inc(fMeshCullPassDescriptorGeneration);
+  end;
+
+  if fMeshCullPassDescriptorGenerations[aInFlightFrameIndex]<>fMeshCullPassDescriptorGeneration then begin
+
+   fMeshCullPassDescriptorGenerations[aInFlightFrameIndex]:=fMeshCullPassDescriptorGeneration;
 
    begin
 
@@ -6891,15 +6903,15 @@ begin
                                                                                         [],
                                                                                         false
                                                                                        );
-    fMeshCullPass0ComputeVulkanDescriptorSets[NextInFlightFrameIndex].WriteToDescriptorSet(1,
-                                                                                           0,
-                                                                                           1,
-                                                                                           TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
-                                                                                           [],
-                                                                                           [fPerInFlightFrameGPUDrawIndexedIndirectCommandVisibilityBuffers[aInFlightFrameIndex].DescriptorBufferInfo],
-                                                                                           [],
-                                                                                           true
-                                                                                          );
+    fMeshCullPass0ComputeVulkanDescriptorSets[aInFlightFrameIndex].WriteToDescriptorSet(1,
+                                                                                        0,
+                                                                                        1,
+                                                                                        TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                                                        [],
+                                                                                        [fPerInFlightFrameGPUDrawIndexedIndirectCommandVisibilityBuffers[PreviousInFlightFrameIndex].DescriptorBufferInfo],
+                                                                                        [],
+                                                                                        true
+                                                                                       );
     fMeshCullPass0ComputeVulkanDescriptorSets[aInFlightFrameIndex].WriteToDescriptorSet(2,
                                                                                         0,
                                                                                         1,
