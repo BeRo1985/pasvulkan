@@ -29674,6 +29674,10 @@ begin
    for PlanetIndex:=0 to TpvScene3DPlanets(fPlanets).Count-1 do begin
     Planet:=TpvScene3DPlanets(fPlanets).Items[PlanetIndex];
     if Planet.Ready then begin
+     Planet.PrepareSimulation(fVulkanFrameGraphStagingQueue,
+                              fVulkanFrameGraphStagingCommandBuffer,
+                              fVulkanFrameGraphStagingFence,
+                              aInFlightFrameIndex);
      //Planet.ProcessFrame(aInFlightFrameIndex,aWaitSemaphore,nil);
     end;
    end;

@@ -303,6 +303,9 @@ type TpvScene3DPlanets=class;
               fWaterFrameIndex:TpvUInt32;
               fWaterFirst:TPasMPBool32;
               fWaterActive:TPasMPBool32;
+              fWaterSimulationCountUnderThresholdFrames:TpvSizeInt;
+              fWaterSimulationMaximumCountUnderThresholdFrames:TpvSizeInt;
+              fWaterSimulationThreshold:TpvFloat;
               fWaterVisibilityBuffer:TpvVulkanBuffer;
               fHeightMapData:THeightMapData;
               fNormalMapData:TNormalMapData;
@@ -403,6 +406,10 @@ type TpvScene3DPlanets=class;
               property VisualMeshVertexBuffers:TDoubleBufferedVulkanBuffers read fVisualMeshVertexBuffers;
               property VisualMeshSlopeBuffers:TDoubleBufferedVulkanBuffers read fVisualMeshSlopeBuffers;
               property VisualMeshDistanceBuffers:TDoubleBufferedVulkanBuffers read fVisualMeshDistanceBuffers;
+             public
+              property WaterSimulationCountUnderThresholdFrames:TpvSizeInt read fWaterSimulationCountUnderThresholdFrames write fWaterSimulationCountUnderThresholdFrames;
+              property WaterSimulationMaximumCountUnderThresholdFrames:TpvSizeInt read fWaterSimulationMaximumCountUnderThresholdFrames write fWaterSimulationMaximumCountUnderThresholdFrames;
+              property WaterSimulationThreshold:TpvFloat read fWaterSimulationThreshold write fWaterSimulationThreshold;
              published
               property VisualMeshVertexBufferUpdateIndex:TPasMPInt32 read fVisualMeshVertexBufferUpdateIndex;
               property VisualMeshVertexBufferRenderIndex:TPasMPInt32 read fVisualMeshVertexBufferRenderIndex;
@@ -695,7 +702,7 @@ type TpvScene3DPlanets=class;
               constructor Create(const aPlanet:TpvScene3DPlanet); reintroduce;
               destructor Destroy; override;
               procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aDeltaTime:TpvDouble;const aInFlightFrameIndex:TpvSizeInt);
-              procedure ReadWaterMaxAbsoluteHeightDifferenceBuffer(const aQueue:TpvVulkanQueue;const aCommandBuffer:TpvVulkanCommandBuffer;const aFence:TpvVulkanFence);
+              procedure PrepareSimulation(const aQueue:TpvVulkanQueue;const aCommandBuffer:TpvVulkanCommandBuffer;const aFence:TpvVulkanFence);
              public
               property PushConstants:TPushConstants read fPushConstants write fPushConstants;
             end;
@@ -1736,6 +1743,10 @@ type TpvScene3DPlanets=class;
        procedure EnqueueBlendMapModification(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aRadius,aBorderRadius,aValue:TpvScalar;const aReplace:Boolean);
        procedure EnqueueGrassMapModification(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aRadius,aBorderRadius,aValue:TpvScalar);
        procedure EnqueueWaterModification(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aRadius,aBorderRadius,aValue:TpvScalar);
+       procedure PrepareSimulation(const aQueue:TpvVulkanQueue;
+                                   const aCommandBuffer:TpvVulkanCommandBuffer;
+                                   const aFence:TpvVulkanFence;
+                                   const aInFlightFrameIndex:TpvSizeInt);
        procedure ProcessSimulation(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt);
        procedure BeginFrame(const aInFlightFrameIndex:TpvSizeInt;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil);
        procedure EndFrame(const aInFlightFrameIndex:TpvSizeInt;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil);
@@ -2274,6 +2285,12 @@ begin
  fWaterFirst:=true;
 
  fWaterActive:=false;
+
+ fWaterSimulationCountUnderThresholdFrames:=0;
+
+ fWaterSimulationMaximumCountUnderThresholdFrames:=16;
+
+ fWaterSimulationThreshold:=1e-3;
 
  fWaterVisibilityBuffer:=nil;
 
@@ -5269,6 +5286,8 @@ begin
 
  fPlanet.fData.fWaterActive:=true;
 
+ fPlanet.fData.fWaterSimulationCountUnderThresholdFrames:=0;
+
  StartPosition:=aStream.Position;
 
  aStream.ReadBuffer(Header.Signature,SizeOf(TpvScene3DPlanet.TSerializedData.TSignature));
@@ -7044,9 +7063,11 @@ begin
 
   fPlanet.fData.fWaterActive:=true;
 
+  fPlanet.fData.fWaterSimulationCountUnderThresholdFrames:=0;
+
  end;
 
- if fPlanet.fData.fWaterActive then begin
+ if fPlanet.fData.fWaterActive and (fPlanet.fData.fWaterSimulationCountUnderThresholdFrames<fPlanet.fData.fWaterSimulationMaximumCountUnderThresholdFrames) then begin
   fTimeAccumulator:=Min(fTimeAccumulator+aDeltaTime,0.1); // Limit to 100ms for avoid too long frame times
  end else if fPlanet.fData.fWaterFirst then begin
   fTimeAccumulator:=Min(Max(fTimeStep,fTimeAccumulator+aDeltaTime),0.1); // Limit to 100ms for avoid too long frame times
@@ -7314,9 +7335,11 @@ begin
 
 end;
 
-procedure TpvScene3DPlanet.TWaterSimulation.ReadWaterMaxAbsoluteHeightDifferenceBuffer(const aQueue:TpvVulkanQueue;const aCommandBuffer:TpvVulkanCommandBuffer;const aFence:TpvVulkanFence);
+procedure TpvScene3DPlanet.TWaterSimulation.PrepareSimulation(const aQueue:TpvVulkanQueue;const aCommandBuffer:TpvVulkanCommandBuffer;const aFence:TpvVulkanFence);
 var Value:TpvFloat;
 begin
+
+ Value:=0.0;
 
  fPlanet.fVulkanDevice.MemoryStaging.Download(aQueue,
                                               aCommandBuffer,
@@ -7325,6 +7348,15 @@ begin
                                               0,
                                               Value,
                                               SizeOf(TpvFloat));
+
+ if abs(Value)<fPlanet.fData.fWaterSimulationThreshold then begin
+  if fPlanet.fData.fWaterSimulationCountUnderThresholdFrames<fPlanet.fData.fWaterSimulationMaximumCountUnderThresholdFrames then begin
+   inc(fPlanet.fData.fWaterSimulationCountUnderThresholdFrames);
+  end;
+ end else begin
+  fPlanet.fData.fWaterSimulationCountUnderThresholdFrames:=0;
+ end;
+
 end;
 
 { TpvScene3DPlanet.THeightMapDataInitialization }
@@ -7972,6 +8004,8 @@ var ImageMemoryBarrier:TVkImageMemoryBarrier;
     BufferMemoryBarrier:TVkBufferMemoryBarrier;
 begin
 
+ fPlanet.fData.fWaterSimulationCountUnderThresholdFrames:=0;
+
  fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'Planet HeightMapModification',[0.5,0.5,0.5,1.0]);
 
  begin
@@ -8245,6 +8279,8 @@ procedure TpvScene3DPlanet.THeightMapFlatten.Execute(const aCommandBuffer:TpvVul
 var ImageMemoryBarrier:TVkImageMemoryBarrier;
     BufferMemoryBarrier:TVkBufferMemoryBarrier;
 begin
+
+ fPlanet.fData.fWaterSimulationCountUnderThresholdFrames:=0;
 
  fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'Planet HeightMapFlatten',[0.5,0.25,0.5,1.0]);
 
@@ -17616,6 +17652,20 @@ begin
   WaterModificationItem^.Value:=aValue;
   WaterModificationItem^.BrushIndex:=fData.fSelectedBrush;
   WaterModificationItem^.BrushRotation:=fData.fBrushRotation;
+ end;
+end;
+
+procedure TpvScene3DPlanet.PrepareSimulation(const aQueue:TpvVulkanQueue;
+                                             const aCommandBuffer:TpvVulkanCommandBuffer;
+                                             const aFence:TpvVulkanFence;
+                                             const aInFlightFrameIndex:TpvSizeInt);
+var InFlightFrameData:TData;
+begin
+ if assigned(fVulkanDevice) and (aInFlightFrameIndex>=0) then begin
+  InFlightFrameData:=fInFlightFrameDataList[aInFlightFrameIndex];
+  if assigned(InFlightFrameData) then begin
+   fWaterSimulation.PrepareSimulation(aQueue,aCommandBuffer,aFence);
+  end;
  end;
 end;
 
