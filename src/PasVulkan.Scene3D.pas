@@ -29797,7 +29797,7 @@ begin
 
    end else begin
     fProcessFrameTimerQueryUpdateRaytracingIndex:=-1;
-    fLastProcessFrameCPUTimeValues[fProcessFrameTimerQueryUpdateRaytracingIndex]:=0;
+    //fLastProcessFrameCPUTimeValues[fProcessFrameTimerQueryUpdateRaytracingIndex]:=0;
    end;
 
    if length(fLastProcessFrameCPUTimeValues)>=2 then begin
