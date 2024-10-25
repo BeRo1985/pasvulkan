@@ -94,7 +94,7 @@ uint getIndex(uvec2 position, ivec2 offset){
 }
 
 #if defined(OUTFLOW)
-vec2 readHeight(ivec2 p){
+vec2 readHeight(ivec2 p, const in vec3 referenceNormal, const in bool includeSphericalElevationDifference){
   p = clamp(wrapOctahedralTexelCoordinates(p, ivec2(pushConstants.waterHeightMapResolution)), ivec2(0), ivec2(pushConstants.waterHeightMapResolution - 1));
   uint index = (uint(p.y) * pushConstants.waterHeightMapResolution) + uint(p.x);
   const float planetHeight = mix(
@@ -105,7 +105,10 @@ vec2 readHeight(ivec2 p){
       : texturePlanetOctahedralMap(uPlanetHeightmap, (vec2(p) + vec2(0.5)) * texelSize).x // Otherwise we need to use interpolation.
   );
   const float waterHeight = inWaterHeightMap.values[index];
-  return vec2(planetHeight, waterHeight);
+  return vec2(
+    planetHeight * (1.0 + (includeSphericalElevationDifference ? (dot(normalize(octPlanetUnsignedDecode(vec2(p) * texelSize)) - referenceNormal, referenceNormal)) : 0.0)), 
+    waterHeight
+  );
 } 
 #endif
 
@@ -132,16 +135,18 @@ void main(){
 
     }else{
 
-      const vec2 centerHeight = readHeight(ivec2(position));
+      const vec3 centerNormal = normalize(octPlanetUnsignedDecode(vec2(position) * texelSize));
 
+      const vec2 centerHeight = readHeight(ivec2(position), centerNormal, false);
+     
       const vec4 oldFlow = vec4(waterFlowMap.values[index]);
 
       const vec4 heightDifferences = vec4(dot(centerHeight, vec2(1.0))) - 
                                      vec4(
-                                       dot(readHeight(ivec2(position) + ivec2( 1,  0)), vec2(1.0)),
-                                       dot(readHeight(ivec2(position) + ivec2( 0,  1)), vec2(1.0)),
-                                       dot(readHeight(ivec2(position) + ivec2(-1,  0)), vec2(1.0)),
-                                       dot(readHeight(ivec2(position) + ivec2( 0, -1)), vec2(1.0))
+                                       dot(readHeight(ivec2(position) + ivec2( 1,  0), centerNormal, true), vec2(1.0)),
+                                       dot(readHeight(ivec2(position) + ivec2( 0,  1), centerNormal, true), vec2(1.0)),
+                                       dot(readHeight(ivec2(position) + ivec2(-1,  0), centerNormal, true), vec2(1.0)),
+                                       dot(readHeight(ivec2(position) + ivec2( 0, -1), centerNormal, true), vec2(1.0))
                                      ); 
 
       const vec4 newFlow = max(vec4(0.0), heightDifferences * pushConstants.crossSectionalPipeArea * pushConstants.gravity * pushConstants.compensationFactor * pushConstants.deltaTime);
