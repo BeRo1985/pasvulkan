@@ -3555,8 +3555,6 @@ type EpvScene3D=class(Exception);
        fMaterialDataGenerationLock:TPasMPSpinLock;
        fLights:TInFlightFrameLights;
        fCountLights:TCountInFlightFrameLights;
-       fIndirectLights:array[0..MaxInFlightFrames-1,0..MaxVisibleLights-1] of TpvScene3D.TLight;
-       fCountIndirectLights:array[0..MaxInFlightFrames-1] of TpvSizeInt;
        fGroupListLock:TPasMPCriticalSection;
        fGroups:TGroups;
        fGroupInstanceListLock:TPasMPCriticalSection;
@@ -3707,10 +3705,6 @@ type EpvScene3D=class(Exception);
        fLoadGLTFTimeDuration:TpvDouble;
        procedure NewImageDescriptorGeneration;
        procedure NewMaterialDataGeneration;
-       procedure CullLights(const aInFlightFrameIndex:TpvSizeInt;
-                            const aFrustums:TpvFrustumDynamicArray;
-                            const aTreeNodes:TpvBVHDynamicAABBTree.TTreeNodes;
-                            const aRoot:TpvSizeInt);
        procedure CollectLights(const aTreeNodes:TpvBVHDynamicAABBTree.TTreeNodes;
                                             const aRoot:TpvSizeInt;
                                             var aLightItemArray:TpvScene3D.TLightItems;
@@ -3772,12 +3766,6 @@ type EpvScene3D=class(Exception);
 //     procedure FinalizeViews(const aInFlightFrameIndex:TpvSizeInt);
        procedure UploadFrame(const aInFlightFrameIndex:TpvSizeInt);
        procedure UploadFrameData(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt);
-       procedure PrepareLights(const aInFlightFrameIndex:TpvSizeInt;
-                               const aViewBaseIndex:TpvSizeInt;
-                               const aCountViews:TpvSizeInt;
-                               const aViewPortWidth:TpvInt32;
-                               const aViewPortHeight:TpvInt32;
-                               const aFrustums:TpvFrustumDynamicArray);
        procedure Prepare(const aInFlightFrameIndex:TpvSizeInt;
                          const aRendererInstance:TObject;
                          const aRenderPassIndex:TpvSizeInt;
@@ -3789,7 +3777,6 @@ type EpvScene3D=class(Exception);
                          const aViewPortHeight:TpvInt32;
                          const aMainViewPort:Boolean;
                          const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes=[TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Blend,TpvScene3D.TMaterial.TAlphaMode.Mask];
-                         const aLights:boolean=true;
                          const aFrustumCulling:boolean=true;
                          const aPotentiallyVisibleSetCulling:boolean=true;
                          const aGPUCulling:boolean=true;
@@ -29259,81 +29246,6 @@ begin
 
 end;
 
-procedure TpvScene3D.CullLights(const aInFlightFrameIndex:TpvSizeInt;
-                                const aFrustums:TpvFrustumDynamicArray;
-                                const aTreeNodes:TpvBVHDynamicAABBTree.TTreeNodes;
-                                const aRoot:TpvSizeInt);
-type TStackItem=record
-      Node:TpvSizeInt;
-      Mask:TpvUInt32;
-     end;
-     PStackItem=^TStackItem;
-     TStack=TpvDynamicFastStack<TStackItem>;
-var Index:TpvSizeInt;
-    StackItem:TStack.PT;
-    Node:TpvSizeInt;
-    TreeNode:TpvBVHDynamicAABBTree.PTreeNode;
-    Mask:TpvUInt32;
-    Stack:TStack;
-    PotentiallyVisible:boolean;
-begin
- if (aRoot>=0) and (length(aTreeNodes)>0) then begin
-  Stack.Initialize;
-  try
-   StackItem:=Pointer(Stack.PushIndirect);
-   StackItem^.Node:=aRoot;
-   StackItem^.Mask:=$ffffffff;
-   while Stack.PopIndirect(StackItem) do begin
-    Node:=StackItem^.Node;
-    Mask:=StackItem^.Mask;
-    while Node>=0 do begin
-     TreeNode:=@aTreeNodes[Node];
-     if length(aFrustums)>0 then begin
-      if length(aFrustums)=1 then begin
-       PotentiallyVisible:=not ((((Mask and $80000000)<>0) and (aFrustums[0].AABBInFrustum(TreeNode^.AABB,Mask)=TpvFrustum.COMPLETE_OUT)));
-      end else begin
-       PotentiallyVisible:=false;
-       for Index:=0 to length(aFrustums)-1 do begin
-        if aFrustums[Index].AABBInFrustum(TreeNode^.AABB)<>TpvFrustum.COMPLETE_OUT then begin
-         PotentiallyVisible:=true;
-         break;
-        end;
-       end;
-      end;
-     end else begin
-      PotentiallyVisible:=true;
-     end;
-     if PotentiallyVisible then begin
-      if TreeNode^.UserData<>0 then begin
-       if fCountIndirectLights[aInFlightFrameIndex]<MaxVisibleLights then begin
-        fIndirectLights[aInFlightFrameIndex,fCountIndirectLights[aInFlightFrameIndex]]:=TpvScene3D.TLight(Pointer(TreeNode^.UserData));
-        inc(fCountIndirectLights[aInFlightFrameIndex]);
-       end;
-      end;
-      if TreeNode^.Children[0]>=0 then begin
-       if TreeNode^.Children[1]>=0 then begin
-        StackItem:=Stack.PushIndirect;
-        StackItem^.Node:=TreeNode^.Children[1];
-        StackItem^.Mask:=Mask;
-       end;
-       Node:=TreeNode^.Children[0];
-       continue;
-      end else begin
-       if TreeNode^.Children[1]>=0 then begin
-        Node:=TreeNode^.Children[1];
-        continue;
-       end;
-      end;
-     end;
-     break;
-    end;
-   end;
-  finally
-   Stack.Finalize;
-  end;
- end;
-end;
-
 procedure TpvScene3D.CollectLights(const aTreeNodes:TpvBVHDynamicAABBTree.TTreeNodes;
                                    const aRoot:TpvSizeInt;
                                    var aLightItemArray:TpvScene3D.TLightItems;
@@ -30214,56 +30126,6 @@ begin
  end;
 end;
 
-procedure TpvScene3D.PrepareLights(const aInFlightFrameIndex:TpvSizeInt;
-                                   const aViewBaseIndex:TpvSizeInt;
-                                   const aCountViews:TpvSizeInt;
-                                   const aViewPortWidth:TpvInt32;
-                                   const aViewPortHeight:TpvInt32;
-                                   const aFrustums:TpvFrustumDynamicArray);
-var Index:TpvSizeInt;
-   {Lights:TpvScene3D.TLights;
-    Light:TpvScene3D.TLight;
-    ViewProjectionMatrix:TpvMatrix4x4;
-    ViewPort:TpvFloatClipRect;}
-    AABBTreeState:TpvBVHDynamicAABBTree.PState;
-begin
-
-{ViewProjectionMatrix:=aViewMatrix*aProjectionMatrix;
-
- ViewPort[0]:=0;
- ViewPort[1]:=0;
- ViewPort[2]:=aViewPortWidth;
- ViewPort[3]:=aViewPortHeight;   }
-
- //Lights:=fLights[aInFlightFrameIndex];
-
- fCountIndirectLights[aInFlightFrameIndex]:=0;
-
- AABBTreeState:=@fLightAABBTreeStates[aInFlightFrameIndex];
-
- CullLights(aInFlightFrameIndex,aFrustums,AABBTreeState^.TreeNodes,AABBTreeState^.Root);
-
- if fCountIndirectLights[aInFlightFrameIndex]>0 then begin
-// IndirectIntroSort(@fIndirectLights[aInFlightFrameIndex,0],0,fCountIndirectLights[aInFlightFrameIndex],TpvScene3DCompareIndirectLights);
- end;
-
-end;
-
-function TpvScene3DCompareIndirectLights(const a,b:pointer):TpvInt32;
-begin
- result:=Sign((ord(TpvScene3D.TLight(b).fData.fType_=TpvScene3D.TLightData.TLightType.PrimaryDirectional) and 1)-
-              (ord(TpvScene3D.TLight(a).fData.fType_=TpvScene3D.TLightData.TLightType.PrimaryDirectional) and 1));
- if result=0 then begin
-  result:=Sign((ord(TpvScene3D.TLight(b).fData.fType_=TpvScene3D.TLightData.TLightType.Directional) and 1)-
-               (ord(TpvScene3D.TLight(a).fData.fType_=TpvScene3D.TLightData.TLightType.Directional) and 1));
-  if result=0 then begin
-   result:=Sign(TpvScene3D.TLight(b).fViewSpacePosition.z-TpvScene3D.TLight(a).fViewSpacePosition.z);
-   if result=0 then begin
-   end;
-  end;
- end;
-end;
-
 procedure TpvScene3D.CullAndPrepareGroupInstances(const aInFlightFrameIndex:TpvSizeInt;
                                                   const aRendererInstance:TObject;
                                                   const aRenderPassIndex:TpvSizeInt;
@@ -30427,7 +30289,6 @@ procedure TpvScene3D.Prepare(const aInFlightFrameIndex:TpvSizeInt;
                              const aViewPortHeight:TpvInt32;
                              const aMainViewPort:Boolean;
                              const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes;
-                             const aLights:boolean;
                              const aFrustumCulling:boolean;
                              const aPotentiallyVisibleSetCulling:boolean;
                              const aGPUCulling:boolean;
@@ -30458,6 +30319,8 @@ begin
 
   Frustums:=nil;
   try
+
+// a:=pvApplication.HighResolutionTimer.GetTime;
 
    if aFrustumCulling or aPotentiallyVisibleSetCulling then begin
 
@@ -30515,20 +30378,12 @@ begin
 
    end;
 
-   if aLights then begin
-    PrepareLights(aInFlightFrameIndex,
-                  aViewBaseIndex,
-                  aCountViews,
-                  aViewPortWidth,
-                  aViewPortHeight,
-                  Frustums);
-   end else begin
-    fCountIndirectLights[aInFlightFrameIndex]:=0;
-   end;
-
   finally
    Frustums:=nil;
   end;
+
+{ b:=pvApplication.HighResolutionTimer.GetTime;
+  writeln('a: ',pvApplication.HighResolutionTimer.ToFloatSeconds(b-a)*1000.0:10:8,'ms');}
 
   TpvScene3DPlanets(fPlanets).Lock.AcquireRead;
   try
@@ -30555,13 +30410,10 @@ begin
   end;
  end;
 
-//a:=pvApplication.HighResolutionTimer.GetTime;
  TpvScene3DRendererInstance(aRendererInstance).PrepareDraw(aInFlightFrameIndex,
                                                            aRenderPassIndex,
                                                            aMaterialAlphaModes,
                                                            aGPUCulling);
-{b:=pvApplication.HighResolutionTimer.GetTime;
- writeln('a: ',pvApplication.HighResolutionTimer.ToFloatSeconds(b-a)*1000.0:10:8,'ms');}
 
 end;
 

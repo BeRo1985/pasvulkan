@@ -6549,7 +6549,6 @@ begin
                    [TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Mask,TpvScene3D.TMaterial.TAlphaMode.Blend],
                    true,
                    true,
-                   true,
                    Renderer.GPUCulling);
 
   if InFlightFrameState^.VoxelizationRenderPassIndex>=0 then begin
@@ -6564,7 +6563,6 @@ begin
                     Renderer.GlobalIlluminationVoxelGridSize,
                     false,
                     [TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Mask,TpvScene3D.TMaterial.TAlphaMode.Blend],
-                    false,
                     false,
                     false,
                     false);
@@ -6585,7 +6583,6 @@ begin
                    fReflectionProbeHeight,
                    false,
                    [TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Mask,TpvScene3D.TMaterial.TAlphaMode.Blend],
-                   true,
                    false,
                    false,
                    false);
@@ -6606,7 +6603,6 @@ begin
                    [TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Mask],
                    false,
                    false,
-                   false,
                    false);
  end;
 
@@ -6623,7 +6619,6 @@ begin
                    fReflectiveShadowMapHeight,
                    false,
                    [TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Mask,TpvScene3D.TMaterial.TAlphaMode.Blend],
-                   true,
                    false,
                    false,
                    false);
@@ -6642,7 +6637,6 @@ begin
                    fCascadedShadowMapHeight,
                    false,
                    [TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Mask],
-                   false,
                    true,
                    true,
                    Renderer.GPUCulling and Renderer.GPUShadowCulling,
