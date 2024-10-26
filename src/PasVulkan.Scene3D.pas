@@ -29013,9 +29013,31 @@ begin
  ParallelGroupInstanceUpdateFunction;
 end;
 
+type TpvScene3D_Update_Groups_Data=record
+      Groups:TpvScene3D.TGroups;
+      InFlightFrameIndex:TpvSizeInt;
+     end;
+     PpvScene3D_Update_Groups_Data=^TpvScene3D_Update_Groups_Data;
+
+procedure TpvScene3D_Update_Groups(const Job:PPasMPJob;const ThreadIndex:TPasMPInt32;const Data:pointer;const FromIndex,ToIndex:TPasMPNativeInt);
+var Index:TPasMPNativeInt;
+    Group:TpvScene3D.TGroup;
+    CallData:PpvScene3D_Update_Groups_Data;
+begin
+ if assigned(Data) then begin
+  CallData:=PpvScene3D_Update_Groups_Data(Data);
+  for Index:=FromIndex to ToIndex do begin
+   Group:=CallData^.Groups.Items[Index];
+   if assigned(Group) and Group.Usable then begin
+    Group.Update(CallData^.InFlightFrameIndex);
+   end;
+  end;
+ end;
+end;
+
 procedure TpvScene3D.Update(const aInFlightFrameIndex:TpvSizeInt);
 type TGroupInstanceStack=TpvDynamicFastStack<TpvScene3D.TGroup.TInstance>;
-var Index,OtherIndex,MaterialBufferDataOffset,MaterialBufferDataSize:TpvSizeInt;
+var Index,OtherIndex,MaterialBufferDataOffset,MaterialBufferDataSize,CountExtraJobs:TpvSizeInt;
     MinMaterialID,MaxMaterialID:TpvInt32;
     Group:TpvScene3D.TGroup;
     GroupInstance,OtherGroupInstance:TpvScene3D.TGroup.TInstance;
@@ -29031,6 +29053,7 @@ var Index,OtherIndex,MaterialBufferDataOffset,MaterialBufferDataSize:TpvSizeInt;
     Sphere:TpvSphere;
     StartCPUTime,EndCPUTime:TpvHighResolutionTime;
     Jobs:array of PPasMPJob;
+    Update_Groups_Data:TpvScene3D_Update_Groups_Data;
 begin
 
  StartCPUTime:=pvApplication.HighResolutionTimer.GetTime;
@@ -29074,12 +29097,6 @@ begin
  fGroupListLock.Acquire;
  try
 
-  for Group in fGroups do begin
-   if Group.Usable then begin
-    Group.Update(aInFlightFrameIndex);
-   end;
-  end;
-
   fGroupInstanceListLock.Acquire;
   try
 
@@ -29113,10 +29130,22 @@ begin
     Jobs:=nil;
     try
 
-     SetLength(Jobs,Max(1,fPasMPInstance.CountJobWorkerThreads));
+     if fGroups.Count>0 then begin
+      CountExtraJobs:=1;
+     end else begin
+      CountExtraJobs:=0;
+     end;
 
-     for Index:=0 to length(Jobs)-1 do begin
+     SetLength(Jobs,Max(1,fPasMPInstance.CountJobWorkerThreads)+CountExtraJobs);
+
+     for Index:=0 to length(Jobs)-(1+CountExtraJobs) do begin
       Jobs[Index]:=fPasMPInstance.Acquire(ParallelGroupInstanceUpdateParallelJobFunction,nil,nil,0,TPasMPUInt32($f0000000));
+     end;
+
+     if (CountExtraJobs>0) and (fGroups.Count>0) then begin
+      Update_Groups_Data.Groups:=fGroups;
+      Update_Groups_Data.InFlightFrameIndex:=aInFlightFrameIndex;
+      Jobs[length(Jobs)-1]:=fPasMPInstance.ParallelFor(@Update_Groups_Data,0,fGroups.Count-1,TpvScene3D_Update_Groups,1,PasMPDefaultDepth,nil);
      end;
 
      fPasMPInstance.Run(Jobs);
@@ -29134,6 +29163,12 @@ begin
     ParallelGroupInstanceUpdateFunction;
 
    end else begin
+
+    for Group in fGroups do begin
+     if assigned(Group) and Group.Usable then begin
+      Group.Update(aInFlightFrameIndex);
+     end;
+    end;
 
     GroupInstanceStack.Initialize;
     try
