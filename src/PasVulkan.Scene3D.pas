@@ -100,6 +100,7 @@ uses {$ifdef Windows}
      PasVulkan.FileFormats.DAE,
      PasVulkan.FileFormats.FBX,
      PasVulkan.FileFormats.SAM,
+     PasVulkan.Scene3D.Renderer.Globals,
      POCA;
 
 type EpvScene3D=class(Exception);
@@ -116,8 +117,7 @@ type EpvScene3D=class(Exception);
 
      TpvScene3D=class(TpvResource)
       public
-       const MaxRenderPassIndices=32;
-             MaxRendererInstances=32;
+       const MaxRendererInstances=32;
              MaxVisibleLights=65536;
              MaxDebugPrimitiveVertices=1 shl 20;
              MaxParticles=65536; // <= Must be power of two
@@ -574,7 +574,7 @@ type EpvScene3D=class(Exception);
             TOnSetRenderPassResources=procedure(const aCommandBuffer:TpvVulkanCommandBuffer;
                                                 const aPipelineLayout:TpvVulkanPipelineLayout;
                                                 const aRendererInstance:TObject;
-                                                const aRenderPassIndex:TpvSizeInt;
+                                                const aRenderPass:TpvScene3DRendererRenderPass;
                                                 const aPreviousInFlightFrameIndex:TpvSizeInt;
                                                 const aInFlightFrameIndex:TpvSizeInt) of object;
             TPVMFSignature=array[0..3] of AnsiChar;
@@ -1626,7 +1626,7 @@ type EpvScene3D=class(Exception);
             PDrawChoreographyBatchItemBuckets=^TDrawChoreographyBatchItemBuckets;
             TDrawChoreographyBatchItemMaterialAlphaModeBuckets=array[TpvScene3D.TMaterial.TAlphaMode] of TDrawChoreographyBatchItemBuckets;
             PDrawChoreographyBatchItemMaterialAlphaModeBuckets=^TDrawChoreographyBatchItemMaterialAlphaModeBuckets;
-            TDrawChoreographyBatchItemRenderPassBuckets=array[0..MaxRenderPassIndices-1] of TDrawChoreographyBatchItemMaterialAlphaModeBuckets;
+            TDrawChoreographyBatchItemRenderPassBuckets=array[TpvScene3DRendererRenderPass] of TDrawChoreographyBatchItemMaterialAlphaModeBuckets;
             PDrawChoreographyBatchItemRenderPassBuckets=^TDrawChoreographyBatchItemRenderPassBuckets;
             TDrawChoreographyBatchItemFrameBuckets=array[0..MaxInFlightFrames-1] of TDrawChoreographyBatchItemRenderPassBuckets;
             PDrawChoreographyBatchItemFrameBuckets=^TDrawChoreographyBatchItemFrameBuckets;
@@ -1654,7 +1654,7 @@ type EpvScene3D=class(Exception);
             TPerInFlightFrameGPUDrawIndexedIndirectCommandSizeValues=array[0..MaxInFlightFrames-1] of TpvSizeInt;
             TPerInFlightFrameGPUDrawIndexedIndirectCommandBuffers=array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
             TPerInFlightFrameGPUDrawIndexedIndirectCommandBufferPartSizes=array[0..MaxInFlightFrames-1] of TpvSizeUInt;
-            TPerInFlightFrameGPUCulledArray=array[0..MaxInFlightFrames-1,0..MaxRenderPassIndices-1] of Boolean;
+            TPerInFlightFrameGPUCulledArray=array[0..MaxInFlightFrames-1,TpvScene3DRendererRenderPass] of Boolean;
             PPerInFlightFrameGPUCulledArray=^TPerInFlightFrameGPUCulledArray;
             TPerInFlightFrameGPUCountObjectIndicesArray=array[0..MaxInFlightFrames-1] of TpvSizeInt;
             PPerInFlightFrameGPUCountObjectIndicesArray=^TPerInFlightFrameGPUCountObjectIndicesArray;
@@ -1671,7 +1671,7 @@ type EpvScene3D=class(Exception);
             PDrawChoreographyBatchRangeDynamicArray=^TDrawChoreographyBatchRangeDynamicArray;
             TDrawChoreographyBatchRangeIndexDynamicArray=TpvDynamicArray<TpvSizeInt>;
             PDrawChoreographyBatchRangeIndexDynamicArray=^TDrawChoreographyBatchRangeIndexDynamicArray;
-            TDrawChoreographyBatchRangeRenderPassBuckets=array[0..MaxRenderPassIndices-1] of TDrawChoreographyBatchRangeIndexDynamicArray;
+            TDrawChoreographyBatchRangeRenderPassBuckets=array[TpvScene3DRendererRenderPass] of TDrawChoreographyBatchRangeIndexDynamicArray;
             PDrawChoreographyBatchRangeRenderPassBuckets=^TDrawChoreographyBatchRangeRenderPassBuckets;
             TDrawChoreographyBatchRangeFrameBuckets=array[0..MaxInFlightFrames-1] of TDrawChoreographyBatchRangeDynamicArray;
             PDrawChoreographyBatchRangeFrameBuckets=^TDrawChoreographyBatchRangeFrameBuckets;
@@ -2830,7 +2830,7 @@ type EpvScene3D=class(Exception);
                           TCullVisibleBitmaps=array[0..MaxInFlightFrames-1] of TCullVisibleBitmap;
                           TCullVisibleNodePath=array of TpvSizeInt;
                           TCullVisibleNodePaths=array[0..MaxInFlightFrames-1] of TCullVisibleNodePath;
-                          TOnNodeFilter=function(const aInFlightFrameIndex:TpvSizeInt;const aRendererInstance:TObject;const aRenderPassIndex:TpvSizeInt;const aGroup:TpvScene3D.TGroup;const aGroupInstance:TpvScene3D.TGroup.TInstance;const aNode:TpvScene3D.TGroup.TNode;const aInstanceNode:TpvScene3D.TGroup.TInstance.TNode):boolean of object;
+                          TOnNodeFilter=function(const aInFlightFrameIndex:TpvSizeInt;const aRendererInstance:TObject;const aRenderPass:TpvScene3DRendererRenderPass;const aGroup:TpvScene3D.TGroup;const aGroupInstance:TpvScene3D.TGroup.TInstance;const aNode:TpvScene3D.TGroup.TNode;const aInstanceNode:TpvScene3D.TGroup.TInstance.TNode):boolean of object;
                           type TAABBTreeSkipListItem=record
                                 public
                                  AABB:TpvAABB;
@@ -2908,8 +2908,8 @@ type EpvScene3D=class(Exception);
                      fPerInFlightFrameRenderInstances:TPerInFlightFrameRenderInstances;
                      fPointerToPerInFlightFrameRenderInstances:PPerInFlightFrameRenderInstances;
                     public
-                     fVulkanPerInFlightFrameFirstInstances:array[0..MaxInFlightFrames-1,0..MaxRendererInstances-1,0..MaxRenderPassIndices-1] of TpvSizeInt;
-                     fVulkanPerInFlightFrameInstancesCounts:array[0..MaxInFlightFrames-1,0..MaxRendererInstances-1,0..MaxRenderPassIndices-1] of TpvSizeInt;
+                     fVulkanPerInFlightFrameFirstInstances:array[0..MaxInFlightFrames-1,0..MaxRendererInstances-1,TpvScene3DRendererRenderPass] of TpvSizeInt;
+                     fVulkanPerInFlightFrameInstancesCounts:array[0..MaxInFlightFrames-1,0..MaxRendererInstances-1,TpvScene3DRendererRenderPass] of TpvSizeInt;
                     private
                      fActiveScenes:array[-1..MaxInFlightFrames-1] of TpvScene3D.TGroup.TScene;
                      fActives:array[-1..MaxInFlightFrames-1] of boolean;
@@ -2946,7 +2946,7 @@ type EpvScene3D=class(Exception);
                      function GetScene:TpvScene3D.TGroup.TScene;
                      procedure SetModelMatrix(const aModelMatrix:TpvMatrix4x4);
                      procedure PreparePerInFlightFrameRenderInstances(const aInFlightFrameIndex:TpvSizeInt;
-                                                                      const aRenderPassIndex:TpvSizeInt;
+                                                                      const aRenderPass:TpvScene3DRendererRenderPass;
                                                                       const aViewNodeIndices:TpvScene3D.TPotentiallyVisibleSet.TViewNodeIndices;
                                                                       const aViewBaseIndex:TpvSizeInt;
                                                                       const aCountViews:TpvSizeInt;
@@ -2956,7 +2956,7 @@ type EpvScene3D=class(Exception);
                                                                       out aInstancesCount:TpvSizeInt);
                      procedure Prepare(const aInFlightFrameIndex:TpvSizeInt;
                                        const aRendererInstance:TObject;
-                                       const aRenderPassIndex:TpvSizeInt;
+                                       const aRenderPass:TpvScene3DRendererRenderPass;
                                        const aViewNodeIndices:TpvScene3D.TPotentiallyVisibleSet.TViewNodeIndices;
                                        const aViewBaseIndex:TpvSizeInt;
                                        const aCountViews:TpvSizeInt;
@@ -3283,7 +3283,7 @@ type EpvScene3D=class(Exception);
             PMaterialBufferData=^TMaterialBufferData;
             TImageInfos=array[0..65535] of TVkDescriptorImageInfo;
             TGlobalVulkanDescriptorSets=array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
-            TMeshStagePushConstantArray=array[0..MaxRenderPassIndices-1] of TpvScene3D.TMeshStagePushConstants;
+            TMeshStagePushConstantArray=array[TpvScene3DRendererRenderPass] of TpvScene3D.TMeshStagePushConstants;
             TInFlightFrameLights=array[0..MaxInFlightFrames-1] of TpvScene3D.TLights;
             TCountInFlightFrameLights=array[-1..MaxInFlightFrames-1] of TpvSizeInt;
             TCachedVertexRange=record
@@ -3295,7 +3295,7 @@ type EpvScene3D=class(Exception);
             TSceneTimes=array[0..MaxInFlightFrames-1] of TpvDouble;
             PSceneTimes=^TSceneTimes;
             TInFlightFrameMaterialBufferDataGenerations=array[0..MaxInFlightFrames-1] of TMaterialGenerations;
-            TSetGlobalResourcesDone=array[0..MaxRenderPassIndices-1] of boolean;
+            TSetGlobalResourcesDone=array[TpvScene3DRendererRenderPass] of boolean;
             { TRaytracingGroupInstanceNode }
             TRaytracingGroupInstanceNode=class
              public
@@ -3712,7 +3712,7 @@ type EpvScene3D=class(Exception);
                                             var aLightMetaInfoArray:TpvScene3D.TLightMetaInfos);
        procedure CullAndPrepareGroupInstances(const aInFlightFrameIndex:TpvSizeInt;
                                               const aRendererInstance:TObject;
-                                              const aRenderPassIndex:TpvSizeInt;
+                                              const aRenderPass:TpvScene3DRendererRenderPass;
                                               const aViews:TpvScene3D.TViews;
                                               const aViewNodeIndices:TpvScene3D.TPotentiallyVisibleSet.TViewNodeIndices;
                                               const aViewBaseIndex:TpvSizeInt;
@@ -3728,7 +3728,7 @@ type EpvScene3D=class(Exception);
        procedure SetGlobalResources(const aCommandBuffer:TpvVulkanCommandBuffer;
                                     const aPipelineLayout:TpvVulkanPipelineLayout;
                                     const aRendererInstance:TObject;
-                                    const aRenderPassIndex:TpvSizeInt;
+                                    const aRenderPass:TpvScene3DRendererRenderPass;
                                     const aPreviousInFlightFrameIndex:TpvSizeInt;
                                     const aInFlightFrameIndex:TpvSizeInt);
       private
@@ -3769,7 +3769,7 @@ type EpvScene3D=class(Exception);
        procedure UploadFrameData(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt);
        procedure Prepare(const aInFlightFrameIndex:TpvSizeInt;
                          const aRendererInstance:TObject;
-                         const aRenderPassIndex:TpvSizeInt;
+                         const aRenderPass:TpvScene3DRendererRenderPass;
                          const aViews:TpvScene3D.TViews;
                          const aViewNodeIndices:TpvScene3D.TPotentiallyVisibleSet.TViewNodeIndices;
                          const aViewBaseIndex:TpvSizeInt;
@@ -3799,7 +3799,7 @@ type EpvScene3D=class(Exception);
                                      const aGraphicsPipeline:TpvVulkanGraphicsPipeline;
                                      const aPreviousInFlightFrameIndex:TpvSizeInt;
                                      const aInFlightFrameIndex:TpvSizeInt;
-                                     const aRenderPassIndex:TpvSizeInt;
+                                     const aRenderPass:TpvScene3DRendererRenderPass;
                                      const aViewBaseIndex:TpvSizeInt;
                                      const aCountViews:TpvSizeInt;
                                      const aFrameIndex:TpvSizeInt;
@@ -3810,7 +3810,7 @@ type EpvScene3D=class(Exception);
                                const aGraphicsPipeline:TpvVulkanGraphicsPipeline;
                                const aPreviousInFlightFrameIndex:TpvSizeInt;
                                const aInFlightFrameIndex:TpvSizeInt;
-                               const aRenderPassIndex:TpvSizeInt;
+                               const aRenderPass:TpvScene3DRendererRenderPass;
                                const aViewBaseIndex:TpvSizeInt;
                                const aCountViews:TpvSizeInt;
                                const aFrameIndex:TpvSizeInt;
@@ -3821,7 +3821,7 @@ type EpvScene3D=class(Exception);
                       const aGraphicsPipelines:TpvScene3D.TGraphicsPipelines;
                       const aPreviousInFlightFrameIndex:TpvSizeInt;
                       const aInFlightFrameIndex:TpvSizeInt;
-                      const aRenderPassIndex:TpvSizeInt;
+                      const aRenderPass:TpvScene3DRendererRenderPass;
                       const aViewBaseIndex:TpvSizeInt;
                       const aCountViews:TpvSizeInt;
                       const aFrameIndex:TpvSizeInt;
@@ -3969,8 +3969,7 @@ type EpvScene3D=class(Exception);
 
 implementation
 
-uses PasVulkan.Scene3D.Renderer.Globals,
-     PasVulkan.Scene3D.Renderer.Instance,
+uses PasVulkan.Scene3D.Renderer.Instance,
      PasVulkan.Scene3D.Planet,
      PasVulkan.Scene3D.Atmosphere,
      PasVulkan.Scene3D.MeshCompute,
@@ -25513,7 +25512,7 @@ begin
            ((GroupInstanceNode.fCountOverwrites=0) or
             ((GroupInstanceNode.fCountOverwrites=1) and
              ((GroupInstanceNode.fOverwrites[0].Flags=[TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.Defaults]))))))) and
-         ((not assigned(aNodeFilter)) or aNodeFilter(-1,nil,-1,fGroup,self,GroupNode,GroupInstanceNode)) then begin
+         ((not assigned(aNodeFilter)) or aNodeFilter(-1,nil,TpvScene3DRendererRenderPass.None,fGroup,self,GroupNode,GroupInstanceNode)) then begin
      GetBakedMeshProcessMorphSkinNode(result,
                                       GroupNode,
                                       GroupInstanceNode,
@@ -25776,7 +25775,7 @@ begin
 end;
 
 procedure TpvScene3D.TGroup.TInstance.PreparePerInFlightFrameRenderInstances(const aInFlightFrameIndex:TpvSizeInt;
-                                                                             const aRenderPassIndex:TpvSizeInt;
+                                                                             const aRenderPass:TpvScene3DRendererRenderPass;
                                                                              const aViewNodeIndices:TpvScene3D.TPotentiallyVisibleSet.TViewNodeIndices;
                                                                              const aViewBaseIndex:TpvSizeInt;
                                                                              const aCountViews:TpvSizeInt;
@@ -25862,7 +25861,7 @@ end;
 
 procedure TpvScene3D.TGroup.TInstance.Prepare(const aInFlightFrameIndex:TpvSizeInt;
                                               const aRendererInstance:TObject;
-                                              const aRenderPassIndex:TpvSizeInt;
+                                              const aRenderPass:TpvScene3DRendererRenderPass;
                                               const aViewNodeIndices:TpvScene3D.TPotentiallyVisibleSet.TViewNodeIndices;
                                               const aViewBaseIndex:TpvSizeInt;
                                               const aCountViews:TpvSizeInt;
@@ -25907,7 +25906,7 @@ begin
 
    DoCulling:=fGroup.fCulling and not fUseRenderInstances;
 
-   DrawChoreographyBatchItemMaterialAlphaModeBuckets:=@TpvScene3DRendererInstance(aRendererInstance).DrawChoreographyBatchItemFrameBuckets[aInFlightFrameIndex,aRenderPassIndex];
+   DrawChoreographyBatchItemMaterialAlphaModeBuckets:=@TpvScene3DRendererInstance(aRendererInstance).DrawChoreographyBatchItemFrameBuckets[aInFlightFrameIndex,aRenderPass];
 
    if assigned(fAABBTree) then begin
 
@@ -25935,9 +25934,9 @@ begin
         SkipListItem:=@Scene.fSkipList[SkipListItemIndex];
         Node:=fGroup.fNodes[SkipListItem^.NodeIndex];
         InstanceNode:=fNodes.RawItems[SkipListItem^.NodeIndex];
-        if (((not assigned(fOnNodeFilter)) or fOnNodeFilter(aInFlightFrameIndex,aRendererInstance,aRenderPassIndex,Group,self,Node,InstanceNode)) and
-            ((not assigned(GroupOnNodeFilter)) or GroupOnNodeFilter(aInFlightFrameIndex,aRendererInstance,aRenderPassIndex,Group,self,Node,InstanceNode)) and
-            ((not assigned(GlobalOnNodeFilter)) or GlobalOnNodeFilter(aInFlightFrameIndex,aRendererInstance,aRenderPassIndex,Group,self,Node,InstanceNode))) then begin
+        if (((not assigned(fOnNodeFilter)) or fOnNodeFilter(aInFlightFrameIndex,aRendererInstance,aRenderPass,Group,self,Node,InstanceNode)) and
+            ((not assigned(GroupOnNodeFilter)) or GroupOnNodeFilter(aInFlightFrameIndex,aRendererInstance,aRenderPass,Group,self,Node,InstanceNode)) and
+            ((not assigned(GlobalOnNodeFilter)) or GlobalOnNodeFilter(aInFlightFrameIndex,aRendererInstance,aRenderPass,Group,self,Node,InstanceNode))) then begin
          fCullVisibleBitmaps[aInFlightFrameIndex][SkipListItem^.NodeIndex shr 5]:=fCullVisibleBitmaps[aInFlightFrameIndex][SkipListItem^.NodeIndex shr 5] or (TpvUInt32(1) shl (SkipListItem^.NodeIndex and 31));
          inc(SkipListItemIndex);
         end else begin
@@ -26158,9 +26157,9 @@ begin
      end;
 
      if PotentiallyVisible and
-        (((not assigned(fOnNodeFilter)) or fOnNodeFilter(aInFlightFrameIndex,aRendererInstance,aRenderPassIndex,Group,self,Node,InstanceNode)) and
-         ((not assigned(GroupOnNodeFilter)) or GroupOnNodeFilter(aInFlightFrameIndex,aRendererInstance,aRenderPassIndex,Group,self,Node,InstanceNode)) and
-         ((not assigned(GlobalOnNodeFilter)) or GlobalOnNodeFilter(aInFlightFrameIndex,aRendererInstance,aRenderPassIndex,Group,self,Node,InstanceNode))) then begin
+        (((not assigned(fOnNodeFilter)) or fOnNodeFilter(aInFlightFrameIndex,aRendererInstance,aRenderPass,Group,self,Node,InstanceNode)) and
+         ((not assigned(GroupOnNodeFilter)) or GroupOnNodeFilter(aInFlightFrameIndex,aRendererInstance,aRenderPass,Group,self,Node,InstanceNode)) and
+         ((not assigned(GlobalOnNodeFilter)) or GlobalOnNodeFilter(aInFlightFrameIndex,aRendererInstance,aRenderPass,Group,self,Node,InstanceNode))) then begin
 
       DrawChoreographyBatchItemIndices:=@Node.fDrawChoreographyBatchItemIndices;
       for DrawChoreographyBatchItemIndex:=0 to DrawChoreographyBatchItemIndices^.Count-1 do begin
@@ -26194,7 +26193,7 @@ begin
    end;
 
    PreparePerInFlightFrameRenderInstances(aInFlightFrameIndex,
-                                          aRenderPassIndex,
+                                          aRenderPass,
                                           aViewNodeIndices,
                                           aViewBaseIndex,
                                           aCountViews,
@@ -26209,8 +26208,8 @@ begin
 
  RendererInstanceID:=TpvScene3DRendererInstance(aRendererInstance).ID;
 
- fVulkanPerInFlightFrameFirstInstances[aInFlightFrameIndex,RendererInstanceID,aRenderPassIndex]:=FirstInstance;
- fVulkanPerInFlightFrameInstancesCounts[aInFlightFrameIndex,RendererInstanceID,aRenderPassIndex]:=InstancesCount;
+ fVulkanPerInFlightFrameFirstInstances[aInFlightFrameIndex,RendererInstanceID,aRenderPass]:=FirstInstance;
+ fVulkanPerInFlightFrameInstancesCounts[aInFlightFrameIndex,RendererInstanceID,aRenderPass]:=InstancesCount;
 
 end;
 
@@ -26320,7 +26319,8 @@ end;
 { TpvScene3D }
 
 constructor TpvScene3D.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource;const aMetaResource:TpvMetaResource;const aVulkanDevice:TpvVulkanDevice;const aUseBufferDeviceAddress:boolean;const aCountInFlightFrames:TpvSizeInt;const aVulkanPipelineCache:TpvVulkanPipelineCache;const aVirtualReality:TpvVirtualReality;const aRaytracing:Boolean;const aMeshShaders:Boolean);
-var Index,InFlightFrameIndex,RenderPassIndex,Count:TpvSizeInt;
+var Index,InFlightFrameIndex,Count:TpvSizeInt;
+    RenderPass:TpvScene3DRendererRenderPass;
     MaterialAlphaMode:TpvScene3D.TMaterial.TAlphaMode;
     PrimitiveTopology:TPrimitiveTopology;
     FaceCullingMode:TFaceCullingMode;
@@ -27222,7 +27222,8 @@ begin
 end;
 
 destructor TpvScene3D.Destroy;
-var Index,InFlightFrameIndex,RenderPassIndex:TpvSizeInt;
+var Index,InFlightFrameIndex:TpvSizeInt;
+    RenderPass:TpvScene3DRendererRenderPass;
     MaterialAlphaMode:TpvScene3D.TMaterial.TAlphaMode;
     PrimitiveTopology:TPrimitiveTopology;
     FaceCullingMode:TFaceCullingMode;
@@ -29836,7 +29837,8 @@ begin
 end;
 
 procedure TpvScene3D.UploadFrame(const aInFlightFrameIndex:TpvSizeInt);
-var Index,ItemID,RenderPassIndex,PlanetIndex:TpvSizeInt;
+var Index,ItemID,PlanetIndex:TpvSizeInt;
+    RenderPass:TpvScene3DRendererRenderPass;
     Size:TVkDeviceSize;
     Group:TpvScene3D.TGroup;
     Planet:TpvScene3DPlanet;
@@ -30155,7 +30157,7 @@ end;
 
 procedure TpvScene3D.CullAndPrepareGroupInstances(const aInFlightFrameIndex:TpvSizeInt;
                                                   const aRendererInstance:TObject;
-                                                  const aRenderPassIndex:TpvSizeInt;
+                                                  const aRenderPass:TpvScene3DRendererRenderPass;
                                                   const aViews:TpvScene3D.TViews;
                                                   const aViewNodeIndices:TpvScene3D.TPotentiallyVisibleSet.TViewNodeIndices;
                                                   const aViewBaseIndex:TpvSizeInt;
@@ -30259,7 +30261,7 @@ begin
         if PotentiallyVisible then begin
          GroupInstance.Prepare(aInFlightFrameIndex,
                                aRendererInstance,
-                               aRenderPassIndex,
+                               aRenderPass,
                                aViewNodeIndices,
                                aViewBaseIndex,
                                aCountViews,
@@ -30307,7 +30309,7 @@ end;
 
 procedure TpvScene3D.Prepare(const aInFlightFrameIndex:TpvSizeInt;
                              const aRendererInstance:TObject;
-                             const aRenderPassIndex:TpvSizeInt;
+                             const aRenderPass:TpvScene3DRendererRenderPass;
                              const aViews:TpvScene3D.TViews;
                              const aViewNodeIndices:TpvScene3D.TPotentiallyVisibleSet.TViewNodeIndices;
                              const aViewBaseIndex:TpvSizeInt;
@@ -30337,7 +30339,7 @@ begin
  for MaterialAlphaMode:=Low(TpvScene3D.TMaterial.TAlphaMode) to high(TpvScene3D.TMaterial.TAlphaMode) do begin
   for PrimitiveTopology:=Low(TpvScene3D.TPrimitiveTopology) to high(TpvScene3D.TPrimitiveTopology) do begin
    for FaceCullingMode:=Low(TpvScene3D.TFaceCullingMode) to high(TpvScene3D.TFaceCullingMode) do begin
-    TpvScene3DRendererInstance(aRendererInstance).DrawChoreographyBatchItemFrameBuckets[aInFlightFrameIndex,aRenderPassIndex,MaterialAlphaMode,PrimitiveTopology,FaceCullingMode].ClearNoFree;
+    TpvScene3DRendererInstance(aRendererInstance).DrawChoreographyBatchItemFrameBuckets[aInFlightFrameIndex,aRenderPass,MaterialAlphaMode,PrimitiveTopology,FaceCullingMode].ClearNoFree;
    end;
   end;
  end;
@@ -30366,7 +30368,7 @@ begin
 
      CullAndPrepareGroupInstances(aInFlightFrameIndex,
                                   aRendererInstance,
-                                  aRenderPassIndex,
+                                  aRenderPass,
                                   aViews,
                                   aViewNodeIndices,
                                   aViewBaseIndex,
@@ -30390,7 +30392,7 @@ begin
       for GroupInstance in Group.fInstances do begin
        GroupInstance.Prepare(aInFlightFrameIndex,
                              aRendererInstance,
-                             aRenderPassIndex,
+                             aRenderPass,
                              aViewNodeIndices,
                              aViewBaseIndex,
                              aCountViews,
@@ -30417,7 +30419,7 @@ begin
    for Index:=0 to TpvScene3DPlanets(fPlanets).Count-1 do begin
     Planet:=TpvScene3DPlanets(fPlanets).Items[Index];
     if Planet.Ready then begin
-     Planet.Prepare(aInFlightFrameIndex,aRendererInstance,aRenderPassIndex,aViewPortWidth,aViewPortHeight,aMainViewPort);
+     Planet.Prepare(aInFlightFrameIndex,aRendererInstance,aRenderPass,aViewPortWidth,aViewPortHeight,aMainViewPort);
     end;
    end;
   finally
@@ -30429,7 +30431,7 @@ begin
  for MaterialAlphaMode:=Low(TpvScene3D.TMaterial.TAlphaMode) to high(TpvScene3D.TMaterial.TAlphaMode) do begin
   for PrimitiveTopology:=Low(TpvScene3D.TPrimitiveTopology) to high(TpvScene3D.TPrimitiveTopology) do begin
    for FaceCullingMode:=Low(TpvScene3D.TFaceCullingMode) to high(TpvScene3D.TFaceCullingMode) do begin
-    DrawChoreographyBatchItems:=TpvScene3DRendererInstance(aRendererInstance).DrawChoreographyBatchItemFrameBuckets[aInFlightFrameIndex,aRenderPassIndex,MaterialAlphaMode,PrimitiveTopology,FaceCullingMode];
+    DrawChoreographyBatchItems:=TpvScene3DRendererInstance(aRendererInstance).DrawChoreographyBatchItemFrameBuckets[aInFlightFrameIndex,aRenderPass,MaterialAlphaMode,PrimitiveTopology,FaceCullingMode];
     if DrawChoreographyBatchItems.Count>1 then begin
      DrawChoreographyBatchItems.IndexOrderSort;
     end;
@@ -30438,7 +30440,7 @@ begin
  end;
 
  TpvScene3DRendererInstance(aRendererInstance).PrepareDraw(aInFlightFrameIndex,
-                                                           aRenderPassIndex,
+                                                           aRenderPass,
                                                            aMaterialAlphaModes,
                                                            aGPUCulling);
 
@@ -30447,7 +30449,7 @@ end;
 procedure TpvScene3D.SetGlobalResources(const aCommandBuffer:TpvVulkanCommandBuffer;
                                         const aPipelineLayout:TpvVulkanPipelineLayout;
                                         const aRendererInstance:TObject;
-                                        const aRenderPassIndex:TpvSizeInt;
+                                        const aRenderPass:TpvScene3DRendererRenderPass;
                                         const aPreviousInFlightFrameIndex:TpvSizeInt;
                                         const aInFlightFrameIndex:TpvSizeInt);
 const Offsets:array[0..4] of TVkDeviceSize=(0,0,0,0,0);
@@ -30455,16 +30457,16 @@ var BufferHandles:array[0..4] of TVkBuffer;
     Count:TpvSizeInt;
 begin
 
- if not TpvScene3DRendererInstance(aRendererInstance).fSetGlobalResourcesDone[aRenderPassIndex] then begin
+ if not TpvScene3DRendererInstance(aRendererInstance).fSetGlobalResourcesDone[aRenderPass] then begin
 
-  TpvScene3DRendererInstance(aRendererInstance).fSetGlobalResourcesDone[aRenderPassIndex]:=true;
+  TpvScene3DRendererInstance(aRendererInstance).fSetGlobalResourcesDone[aRenderPass]:=true;
 
   aCommandBuffer.CmdPushConstants(aPipelineLayout.Handle,
                                   TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_VERTEX_BIT) or
                                   TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_FRAGMENT_BIT),
                                   0,
                                   SizeOf(TpvScene3D.TMeshStagePushConstants),
-                                  @TpvScene3DRendererInstance(aRendererInstance).MeshStagePushConstants[aRenderPassIndex]);
+                                  @TpvScene3DRendererInstance(aRendererInstance).MeshStagePushConstants[aRenderPass]);
 
   aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
                                        aPipelineLayout.Handle,
@@ -31974,7 +31976,7 @@ procedure TpvScene3D.DrawDebugPrimitives(const aRendererInstance:TObject;
                                          const aGraphicsPipeline:TpvVulkanGraphicsPipeline;
                                          const aPreviousInFlightFrameIndex:TpvSizeInt;
                                          const aInFlightFrameIndex:TpvSizeInt;
-                                         const aRenderPassIndex:TpvSizeInt;
+                                         const aRenderPass:TpvScene3DRendererRenderPass;
                                          const aViewBaseIndex:TpvSizeInt;
                                          const aCountViews:TpvSizeInt;
                                          const aFrameIndex:TpvSizeInt;
@@ -31986,18 +31988,18 @@ const Offsets:TVkDeviceSize=0;
 begin
  if (aViewBaseIndex>=0) and (aCountViews>0) and (fDebugPrimitiveVertexDynamicArrays[aInFlightFrameIndex].Count>0) then begin
 
-{ VertexStagePushConstants:=@fVertexStagePushConstants[aRenderPassIndex];
+{ VertexStagePushConstants:=@fVertexStagePushConstants[aRenderPass];
   VertexStagePushConstants^.ViewBaseIndex:=aViewBaseIndex;
   VertexStagePushConstants^.CountViews:=aCountViews;
   VertexStagePushConstants^.CountAllViews:=fViews.Count;
   VertexStagePushConstants^.FrameIndex:=aFrameIndex;
   VertexStagePushConstants^.Jitter:=TpvVector4.Null;
 
-  fSetGlobalResourcesDone[aRenderPassIndex]:=false;}
-  SetGlobalResources(aCommandBuffer,aPipelineLayout,aRendererInstance,aRenderPassIndex,aPreviousInFlightFrameIndex,aInFlightFrameIndex);
+  fSetGlobalResourcesDone[aRenderPass]:=false;}
+  SetGlobalResources(aCommandBuffer,aPipelineLayout,aRendererInstance,aRenderPass,aPreviousInFlightFrameIndex,aInFlightFrameIndex);
 
   if assigned(aOnSetRenderPassResources) then begin
-   aOnSetRenderPassResources(aCommandBuffer,aPipelineLayout,aRendererInstance,aRenderPassIndex,aPreviousInFlightFrameIndex,aInFlightFrameIndex);
+   aOnSetRenderPassResources(aCommandBuffer,aPipelineLayout,aRendererInstance,aRenderPass,aPreviousInFlightFrameIndex,aInFlightFrameIndex);
   end;
 
   aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,aGraphicsPipeline.Handle);
@@ -32011,7 +32013,7 @@ procedure TpvScene3D.DrawParticles(const aRendererInstance:TObject;
                                    const aGraphicsPipeline:TpvVulkanGraphicsPipeline;
                                    const aPreviousInFlightFrameIndex:TpvSizeInt;
                                    const aInFlightFrameIndex:TpvSizeInt;
-                                   const aRenderPassIndex:TpvSizeInt;
+                                   const aRenderPass:TpvScene3DRendererRenderPass;
                                    const aViewBaseIndex:TpvSizeInt;
                                    const aCountViews:TpvSizeInt;
                                    const aFrameIndex:TpvSizeInt;
@@ -32026,18 +32028,18 @@ begin
 
   fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'TpvScene3D.DrawParticles',[0.5,0.75,0.25,1.0]);
 
-{ VertexStagePushConstants:=@fVertexStagePushConstants[aRenderPassIndex];
+{ VertexStagePushConstants:=@fVertexStagePushConstants[aRenderPass];
   VertexStagePushConstants^.ViewBaseIndex:=aViewBaseIndex;
   VertexStagePushConstants^.CountViews:=aCountViews;
   VertexStagePushConstants^.CountAllViews:=fViews.Count;
   VertexStagePushConstants^.FrameIndex:=aFrameIndex;
   VertexStagePushConstants^.Jitter:=TpvVector4.Null;
 
-  fSetGlobalResourcesDone[aRenderPassIndex]:=false;}
-  SetGlobalResources(aCommandBuffer,aPipelineLayout,aRendererInstance,aRenderPassIndex,aPreviousInFlightFrameIndex,aInFlightFrameIndex);
+  fSetGlobalResourcesDone[aRenderPass]:=false;}
+  SetGlobalResources(aCommandBuffer,aPipelineLayout,aRendererInstance,aRenderPass,aPreviousInFlightFrameIndex,aInFlightFrameIndex);
 
   if assigned(aOnSetRenderPassResources) then begin
-   aOnSetRenderPassResources(aCommandBuffer,aPipelineLayout,aRendererInstance,aRenderPassIndex,aPreviousInFlightFrameIndex,aInFlightFrameIndex);
+   aOnSetRenderPassResources(aCommandBuffer,aPipelineLayout,aRendererInstance,aRenderPass,aPreviousInFlightFrameIndex,aInFlightFrameIndex);
   end;
 
   aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,aGraphicsPipeline.Handle);
@@ -32054,7 +32056,7 @@ procedure TpvScene3D.Draw(const aRendererInstance:TObject;
                           const aGraphicsPipelines:TpvScene3D.TGraphicsPipelines;
                           const aPreviousInFlightFrameIndex:TpvSizeInt;
                           const aInFlightFrameIndex:TpvSizeInt;
-                          const aRenderPassIndex:TpvSizeInt;
+                          const aRenderPass:TpvScene3DRendererRenderPass;
                           const aViewBaseIndex:TpvSizeInt;
                           const aCountViews:TpvSizeInt;
                           const aFrameIndex:TpvSizeInt;
@@ -32086,7 +32088,7 @@ begin
 
  TpvScene3DRendererInstance(aRendererInstance).ExecuteDraw(aPreviousInFlightFrameIndex,
                                                            aInFlightFrameIndex,
-                                                           aRenderPassIndex,
+                                                           aRenderPass,
                                                            aViewBaseIndex,
                                                            aCountViews,
                                                            aFrameIndex,

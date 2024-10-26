@@ -85,7 +85,7 @@ type { TpvScene3DRendererPassesReflectionProbeRenderPass }
        procedure OnSetRenderPassResources(const aCommandBuffer:TpvVulkanCommandBuffer;
                                           const aPipelineLayout:TpvVulkanPipelineLayout;
                                           const aRendererInstance:TObject;
-                                          const aRenderPassIndex:TpvSizeInt;
+                                          const aRenderPass:TpvScene3DRendererRenderPass;
                                           const aPreviousInFlightFrameIndex:TpvSizeInt;
                                           const aInFlightFrameIndex:TpvSizeInt);
       public
@@ -776,7 +776,7 @@ end;
 procedure TpvScene3DRendererPassesReflectionProbeRenderPass.OnSetRenderPassResources(const aCommandBuffer:TpvVulkanCommandBuffer;
                                                                                      const aPipelineLayout:TpvVulkanPipelineLayout;
                                                                                      const aRendererInstance:TObject;
-                                                                                     const aRenderPassIndex:TpvSizeInt;
+                                                                                     const aRenderPass:TpvScene3DRendererRenderPass;
                                                                                      const aPreviousInFlightFrameIndex:TpvSizeInt;
                                                                                      const aInFlightFrameIndex:TpvSizeInt);
 begin
@@ -821,7 +821,7 @@ begin
                                     fVulkanGraphicsPipelines[true,TpvScene3D.TMaterial.TAlphaMode.Opaque],
                                     -1,
                                     aInFlightFrameIndex,
-                                    InFlightFrameState^.ReflectionProbeRenderPassIndex,
+                                    TpvScene3DRendererRenderPass.ReflectionProbe,
                                     InFlightFrameState^.ReflectionProbeViewIndex,
                                     InFlightFrameState^.CountReflectionProbeViews,
                                     FrameGraph.DrawFrameIndex,
@@ -836,7 +836,7 @@ begin
                                      fVulkanGraphicsPipelines[true,TpvScene3D.TMaterial.TAlphaMode.Mask],
                                      -1,
                                      aInFlightFrameIndex,
-                                     InFlightFrameState^.ReflectionProbeRenderPassIndex,
+                                     TpvScene3DRendererRenderPass.ReflectionProbe,
                                      InFlightFrameState^.ReflectionProbeViewIndex,
                                      InFlightFrameState^.CountReflectionProbeViews,
                                      FrameGraph.DrawFrameIndex,
@@ -853,7 +853,7 @@ begin
                                    fVulkanGraphicsPipelines[false,TpvScene3D.TMaterial.TAlphaMode.Opaque],
                                    -1,
                                    aInFlightFrameIndex,
-                                   InFlightFrameState^.ReflectionProbeRenderPassIndex,
+                                   TpvScene3DRendererRenderPass.ReflectionProbe,
                                    InFlightFrameState^.ReflectionProbeViewIndex,
                                    InFlightFrameState^.CountReflectionProbeViews,
                                    FrameGraph.DrawFrameIndex,
@@ -868,7 +868,7 @@ begin
                                    fVulkanGraphicsPipelines[false,TpvScene3D.TMaterial.TAlphaMode.Mask],
                                    -1,
                                    aInFlightFrameIndex,
-                                   InFlightFrameState^.ReflectionProbeRenderPassIndex,
+                                   TpvScene3DRendererRenderPass.ReflectionProbe,
                                    InFlightFrameState^.ReflectionProbeViewIndex,
                                    InFlightFrameState^.CountReflectionProbeViews,
                                    FrameGraph.DrawFrameIndex,
@@ -884,7 +884,7 @@ begin
    fInstance.Renderer.Scene3D.Draw(fVulkanGraphicsPipelines[true,TpvScene3D.TMaterial.TAlphaMode.Mask],
                                    -1,
                                    aInFlightFrameIndex,
-                                   InFlightFrameState^.ViewRenderPassIndex,
+                                   TpvScene3DRendererRenderPass.View,
                                    InFlightFrameState^.FinalViewIndex,
                                    InFlightFrameState^.CountFinalViews,
                                    fFrameGraph.DrawFrameIndex,

@@ -85,7 +85,7 @@ type { TpvScene3DRendererPassesWaterRenderPass }
        procedure OnSetRenderPassResources(const aCommandBuffer:TpvVulkanCommandBuffer;
                                           const aPipelineLayout:TpvVulkanPipelineLayout;
                                           const aRendererInstance:TObject;
-                                          const aRenderPassIndex:TpvSizeInt;
+                                          const aRenderPass:TpvScene3DRendererRenderPass;
                                           const aPreviousInFlightFrameIndex:TpvSizeInt;
                                           const aInFlightFrameIndex:TpvSizeInt);
       private
@@ -541,7 +541,7 @@ end;
 procedure TpvScene3DRendererPassesWaterRenderPass.OnSetRenderPassResources(const aCommandBuffer:TpvVulkanCommandBuffer;
                                                                                         const aPipelineLayout:TpvVulkanPipelineLayout;
                                                                                         const aRendererInstance:TObject;
-                                                                                        const aRenderPassIndex:TpvSizeInt;
+                                                                                        const aRenderPass:TpvScene3DRendererRenderPass;
                                                                                         const aPreviousInFlightFrameIndex:TpvSizeInt;
                                                                                         const aInFlightFrameIndex:TpvSizeInt);
 var DescriptorSets:array[0..1] of TVkDescriptorSet;
@@ -599,7 +599,7 @@ begin
 
   fPlanetWaterRenderPass.Draw(aInFlightFrameIndex,
                               aFrameIndex,
-                              InFlightFrameState^.ViewRenderPassIndex,
+                              TpvScene3DRendererRenderPass.View,
                               InFlightFrameState^.FinalViewIndex,
                               InFlightFrameState^.CountFinalViews,
                               aCommandBuffer,

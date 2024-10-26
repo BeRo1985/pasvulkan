@@ -223,7 +223,7 @@ begin
 end;
 
 procedure TpvScene3DRendererPassesMeshCullPass0ComputePass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
-var RenderPassIndex,
+var RenderPass:TpvScene3DRendererRenderPass;
     DrawChoreographyBatchRangeIndex,
     PreviousInFlightFrameIndex,
     FirstDrawCallIndex,
@@ -240,20 +240,19 @@ begin
 
  case fCullRenderPass of
   TpvScene3DRendererCullRenderPass.FinalView:begin
-   RenderPassIndex:=fInstance.InFlightFrameStates[aInFlightFrameIndex].ViewRenderPassIndex;
+   RenderPass:=TpvScene3DRendererRenderPass.View;
    Part:=0;
   end;
   TpvScene3DRendererCullRenderPass.CascadedShadowMap:begin
-   RenderPassIndex:=fInstance.InFlightFrameStates[aInFlightFrameIndex].CascadedShadowMapRenderPassIndex;
+   RenderPass:=TpvScene3DRendererRenderPass.CascadedShadowMap;
    Part:=1;
   end;
   else begin
-   RenderPassIndex:=-1;
-   Part:=0;
+   exit;
   end;
  end;
 
- if RenderPassIndex>=0 then begin
+ begin
 
   PreviousInFlightFrameIndex:=FrameGraph.DrawPreviousInFlightFrameIndex;
 
@@ -306,14 +305,14 @@ begin
                                     4,@BufferMemoryBarriers[0],
                                     0,nil);
 
-  if fInstance.PerInFlightFrameGPUCulledArray[aInFlightFrameIndex,RenderPassIndex] then begin
+  if fInstance.PerInFlightFrameGPUCulledArray[aInFlightFrameIndex,RenderPass] then begin
 
    FirstDrawCallIndex:=0;
    CountDrawCallIndices:=0;
 
    DrawChoreographyBatchRangeDynamicArray:=@fInstance.DrawChoreographyBatchRangeFrameBuckets[aInFlightFrameIndex];
 
-   DrawChoreographyBatchRangeIndexDynamicArray:=@fInstance.DrawChoreographyBatchRangeFrameRenderPassBuckets[aInFlightFrameIndex,RenderPassIndex];
+   DrawChoreographyBatchRangeIndexDynamicArray:=@fInstance.DrawChoreographyBatchRangeFrameRenderPassBuckets[aInFlightFrameIndex,RenderPass];
 
    for DrawChoreographyBatchRangeIndex:=0 to DrawChoreographyBatchRangeIndexDynamicArray^.Count-1 do begin
 
@@ -385,11 +384,11 @@ begin
                                        0,
                                        nil);
 
-  if fInstance.PerInFlightFrameGPUCulledArray[aInFlightFrameIndex,RenderPassIndex] then begin
+  if fInstance.PerInFlightFrameGPUCulledArray[aInFlightFrameIndex,RenderPass] then begin
 
    DrawChoreographyBatchRangeDynamicArray:=@fInstance.DrawChoreographyBatchRangeFrameBuckets[aInFlightFrameIndex];
 
-   DrawChoreographyBatchRangeIndexDynamicArray:=@fInstance.DrawChoreographyBatchRangeFrameRenderPassBuckets[aInFlightFrameIndex,RenderPassIndex];
+   DrawChoreographyBatchRangeIndexDynamicArray:=@fInstance.DrawChoreographyBatchRangeFrameRenderPassBuckets[aInFlightFrameIndex,RenderPass];
 
    for DrawChoreographyBatchRangeIndex:=0 to DrawChoreographyBatchRangeIndexDynamicArray^.Count-1 do begin
 

@@ -397,12 +397,12 @@ begin
 end;
 
 procedure TpvScene3DRendererPassesContentProjectionRenderPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
-var RenderPassIndex:TpvInt32;
+var RenderPass:TpvScene3DRendererRenderPass;
     VertexStagePushConstants:TpvScene3D.TMeshStagePushConstants;
 begin
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
- RenderPassIndex:=fInstance.InFlightFrameStates^[aInFlightFrameIndex].ViewRenderPassIndex;
- VertexStagePushConstants:=fInstance.MeshStagePushConstants[RenderPassIndex];
+ RenderPass:=TpvScene3DRendererRenderPass.View;
+ VertexStagePushConstants:=fInstance.MeshStagePushConstants[RenderPass];
  if assigned(fInstance.VirtualReality) then begin
   VertexStagePushConstants.ViewBaseIndex:=fInstance.InFlightFrameStates^[aInFlightFrameIndex].HUDViewIndex;
   VertexStagePushConstants.CountViews:=fInstance.InFlightFrameStates^[aInFlightFrameIndex].CountFinalViews;

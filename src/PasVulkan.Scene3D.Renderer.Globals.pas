@@ -223,6 +223,21 @@ type TpvScene3DRendererAntialiasingMode=
       );
      PpvScene3DRendererCullRenderPass=^TpvScene3DRendererCullRenderPass;
 
+     TpvScene3DRendererRenderPass=
+      (
+       None=0,
+       View=1,
+       CascadedShadowMap=2,
+       ReflectionProbe=3,
+       TopDownSkyOcclusionMap=4,
+       ReflectiveShadowMap=5,
+       Voxelization=6
+      );
+     PpvScene3DRendererRenderPass=^TpvScene3DRendererRenderPass;
+
+const TpvScene3DRendererRenderPassFirst=TpvScene3DRendererRenderPass.View;
+      TpvScene3DRendererRenderPassLast=TpvScene3DRendererRenderPass.Voxelization;
+
 var pvScene3DShaderVirtualFileSystem:TpvVirtualFileSystem=nil;
 
 implementation

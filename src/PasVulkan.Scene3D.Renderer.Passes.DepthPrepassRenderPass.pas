@@ -84,7 +84,7 @@ type { TpvScene3DRendererPassesDepthPrepassRenderPass }
        procedure OnSetRenderPassResources(const aCommandBuffer:TpvVulkanCommandBuffer;
                                           const aPipelineLayout:TpvVulkanPipelineLayout;
                                           const aRendererInstance:TObject;
-                                          const aRenderPassIndex:TpvSizeInt;
+                                          const aRenderPass:TpvScene3DRendererRenderPass;
                                           const aPreviousInFlightFrameIndex:TpvSizeInt;
                                           const aInFlightFrameIndex:TpvSizeInt);
       private
@@ -481,7 +481,7 @@ end;
 procedure TpvScene3DRendererPassesDepthPrepassRenderPass.OnSetRenderPassResources(const aCommandBuffer:TpvVulkanCommandBuffer;
                                                                                   const aPipelineLayout:TpvVulkanPipelineLayout;
                                                                                   const aRendererInstance:TObject;
-                                                                                  const aRenderPassIndex:TpvSizeInt;
+                                                                                  const aRenderPass:TpvScene3DRendererRenderPass;
                                                                                   const aPreviousInFlightFrameIndex:TpvSizeInt;
                                                                                   const aInFlightFrameIndex:TpvSizeInt);
 begin
@@ -515,7 +515,7 @@ begin
 
    fPlanetDepthPrePass.Draw(aInFlightFrameIndex,
                             aFrameIndex,
-                            InFlightFrameState^.ViewRenderPassIndex,
+                            TpvScene3DRendererRenderPass.View,
                             InFlightFrameState^.FinalViewIndex,
                             InFlightFrameState^.CountFinalViews,
                             aCommandBuffer);
@@ -524,7 +524,7 @@ begin
                                    fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Opaque],
                                    -1,
                                    aInFlightFrameIndex,
-                                   InFlightFrameState^.ViewRenderPassIndex,
+                                   TpvScene3DRendererRenderPass.View,
                                    InFlightFrameState^.FinalViewIndex,
                                    InFlightFrameState^.CountFinalViews,
                                    FrameGraph.DrawFrameIndex,
@@ -539,7 +539,7 @@ begin
    fInstance.Renderer.Scene3D.Draw(fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Mask],
                                    -1,
                                    aInFlightFrameIndex,
-                                   InFlightFrameState^.ViewRenderPassIndex,
+                                   TpvScene3DRendererRenderPass.View,
                                    InFlightFrameState^.FinalViewIndex,
                                    InFlightFrameState^.CountFinalViews,
                                    fFrameGraph.DrawFrameIndex,

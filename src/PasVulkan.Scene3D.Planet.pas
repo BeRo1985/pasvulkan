@@ -1430,7 +1430,7 @@ type TpvScene3DPlanets=class;
                                           const aHeight:TpvInt32;
                                           const aVulkanSampleCountFlagBits:TVkSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT));
               procedure ReleaseResources;
-              procedure Draw(const aInFlightFrameIndex,aFrameIndex,aRenderPassIndex,aViewBaseIndex,aCountViews:TpvSizeInt;const aCommandBuffer:TpvVulkanCommandBuffer);
+              procedure Draw(const aInFlightFrameIndex,aFrameIndex:TpvSizeInt;const aRenderPass:TpvScene3DRendererRenderPass;const aViewBaseIndex,aCountViews:TpvSizeInt;const aCommandBuffer:TpvVulkanCommandBuffer);
              public
               property PushConstants:TPlanetPushConstants read fPlanetPushConstants write fPlanetPushConstants;
             end;
@@ -1501,7 +1501,7 @@ type TpvScene3DPlanets=class;
                                           const aHeight:TpvInt32;
                                           const aVulkanSampleCountFlagBits:TVkSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT));
               procedure ReleaseResources;
-              procedure Draw(const aInFlightFrameIndex,aFrameIndex,aRenderPassIndex,aViewBaseIndex,aCountViews:TpvSizeInt;const aCommandBuffer:TpvVulkanCommandBuffer;const aPassDescriptorSet:TpvVulkanDescriptorSet);
+              procedure Draw(const aInFlightFrameIndex,aFrameIndex:TpvSizeInt;const aRenderPass:TpvScene3DRendererRenderPass;const aViewBaseIndex,aCountViews:TpvSizeInt;const aCommandBuffer:TpvVulkanCommandBuffer;const aPassDescriptorSet:TpvVulkanDescriptorSet);
              public
               property PushConstants:TPushConstants read fPushConstants write fPushConstants;
             end;
@@ -1535,18 +1535,18 @@ type TpvScene3DPlanets=class;
             TRendererViewInstance=class
              public
               type { TKey }
-                   TKey=record
+                   TKey=packed record
                     public
                      fRendererInstance:TObject;
-                     fRenderPassIndex:TpvSizeInt;
+                     fRenderPass:TpvSizeInt;
                     public
-                     constructor Create(const aRendererInstance:TObject;const aRenderPassIndex:TpvSizeInt);
+                     constructor Create(const aRendererInstance:TObject;const aRenderPass:TpvScene3DRendererRenderPass);
                    end;
                    PKey=^TKey;
              private
               fPlanet:TpvScene3DPlanet;
               fRendererInstance:TObject;
-              fRenderPassIndex:TpvSizeInt;
+              fRenderPass:TpvScene3DRendererRenderPass;
               fKey:TKey;
               fVulkanVisiblityBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
               fVulkanDrawIndexedIndirectCommandBuffer:TpvVulkanBuffer;
@@ -1565,7 +1565,7 @@ type TpvScene3DPlanets=class;
               fWaterRenderDescriptorPool:TpvVulkanDescriptorPool;
               fWaterRenderDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
              public
-              constructor Create(const aPlanet:TpvScene3DPlanet;const aRendererInstance:TObject;const aRenderPassIndex:TpvSizeInt;const aMainViewPort:Boolean);
+              constructor Create(const aPlanet:TpvScene3DPlanet;const aRendererInstance:TObject;const aRenderPass:TpvScene3DRendererRenderPass;const aMainViewPort:Boolean);
               destructor Destroy; override;
               procedure AfterConstruction; override;
               procedure BeforeDestruction; override;
@@ -1736,7 +1736,7 @@ type TpvScene3DPlanets=class;
        procedure Check(const aInFlightFrameIndex:TpvSizeInt);
        procedure Update(const aInFlightFrameIndex:TpvSizeInt);
        procedure FrameUpdate(const aInFlightFrameIndex:TpvSizeInt);
-       procedure Prepare(const aInFlightFrameIndex:TpvSizeInt;const aRendererInstance:TObject;const aRenderPassIndex:TpvSizeInt;const aViewPortWidth,aViewPortHeight:TpvInt32;const aMainViewPort:Boolean);
+       procedure Prepare(const aInFlightFrameIndex:TpvSizeInt;const aRendererInstance:TObject;const aRenderPass:TpvScene3DRendererRenderPass;const aViewPortWidth,aViewPortHeight:TpvInt32;const aMainViewPort:Boolean);
        procedure UploadFrame(const aInFlightFrameIndex:TpvSizeInt);
        procedure EnqueueHeightMapModification(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aRadius,aBorderRadius,aValue:TpvScalar);
        procedure EnqueueHeightMapFlatten(const aInFlightFrameIndex:TpvSizeInt;const aVector:TpvVector3;const aInnerRadius,aOuterRadius,aTargetHeight:TpvFloat;const aBrushIndex:TpvUInt32;const aBrushRotation:TpvFloat);
@@ -11748,7 +11748,8 @@ begin
 end;
 
 procedure TpvScene3DPlanet.TCullPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt);
-var PlanetIndex,RenderPassIndex,BaseViewIndex,CountViews,CountBufferMemoryBarriers,
+var PlanetIndex,BaseViewIndex,CountViews,CountBufferMemoryBarriers:TpvSizeInt;
+    RenderPass:TpvScene3DRendererRenderPass;
     AdditionalViewIndex,CountAdditionalViews,PreviousInFlightFrameIndex:TpvSizeInt;
     Planet:TpvScene3DPlanet;
     First:Boolean;
@@ -11802,14 +11803,14 @@ begin
 
      case fCullRenderPass of
       TpvScene3DRendererCullRenderPass.FinalView:begin
-       RenderPassIndex:=InFlightFrameState^.ViewRenderPassIndex;
+       RenderPass:=TpvScene3DRendererRenderPass.View;
        BaseViewIndex:=InFlightFrameState^.FinalViewIndex;
        CountViews:=InFlightFrameState^.CountFinalViews;
        AdditionalViewIndex:=0;
        CountAdditionalViews:=0;
       end;
       TpvScene3DRendererCullRenderPass.CascadedShadowMap:begin
-       RenderPassIndex:=InFlightFrameState^.CascadedShadowMapRenderPassIndex;
+       RenderPass:=TpvScene3DRendererRenderPass.CascadedShadowMap;
        BaseViewIndex:=InFlightFrameState^.CascadedShadowMapViewIndex;
        CountViews:=InFlightFrameState^.CountCascadedShadowMapViews;
        AdditionalViewIndex:=InFlightFrameState^.FinalViewIndex;
@@ -11817,7 +11818,7 @@ begin
       end;
       else begin
        Assert(false);
-       RenderPassIndex:=0;
+       RenderPass:=TpvScene3DRendererRenderPass.View;
        BaseViewIndex:=0;
        CountViews:=0;
        AdditionalViewIndex:=0;
@@ -11831,7 +11832,7 @@ begin
 
        if Planet.fRendererInstanceHashMap.TryGet(TpvScene3DPlanet.TRendererInstance.TKey.Create(fRendererInstance),
                                                  RendererInstance) and
-          Planet.fRendererViewInstanceHashMap.TryGet(TpvScene3DPlanet.TRendererViewInstance.TKey.Create(fRendererInstance,RenderPassIndex),
+          Planet.fRendererViewInstanceHashMap.TryGet(TpvScene3DPlanet.TRendererViewInstance.TKey.Create(fRendererInstance,RenderPass),
                                                      RendererViewInstance) then begin
 
         begin
@@ -12116,14 +12117,14 @@ begin
 
       case fCullRenderPass of
        TpvScene3DRendererCullRenderPass.FinalView:begin
-        RenderPassIndex:=InFlightFrameState^.ViewRenderPassIndex;
+        RenderPass:=TpvScene3DRendererRenderPass.View;
         BaseViewIndex:=InFlightFrameState^.FinalViewIndex;
         CountViews:=InFlightFrameState^.CountFinalViews;
         AdditionalViewIndex:=0;
         CountAdditionalViews:=0;
        end;
        TpvScene3DRendererCullRenderPass.CascadedShadowMap:begin
-        RenderPassIndex:=InFlightFrameState^.CascadedShadowMapRenderPassIndex;
+        RenderPass:=TpvScene3DRendererRenderPass.CascadedShadowMap;
         BaseViewIndex:=InFlightFrameState^.CascadedShadowMapViewIndex;
         CountViews:=InFlightFrameState^.CountCascadedShadowMapViews;
         AdditionalViewIndex:=InFlightFrameState^.FinalViewIndex;
@@ -12131,7 +12132,7 @@ begin
        end;
        else begin
         Assert(false);
-        RenderPassIndex:=0;
+        RenderPass:=TpvScene3DRendererRenderPass.View;
         BaseViewIndex:=0;
         CountViews:=0;
         AdditionalViewIndex:=0;
@@ -12145,7 +12146,7 @@ begin
 
         if Planet.fRendererInstanceHashMap.TryGet(TpvScene3DPlanet.TRendererInstance.TKey.Create(fRendererInstance),
                                                   RendererInstance) and
-           Planet.fRendererViewInstanceHashMap.TryGet(TpvScene3DPlanet.TRendererViewInstance.TKey.Create(fRendererInstance,RenderPassIndex),
+           Planet.fRendererViewInstanceHashMap.TryGet(TpvScene3DPlanet.TRendererViewInstance.TKey.Create(fRendererInstance,RenderPass),
                                                       RendererViewInstance) then begin
 
          fGrassPushConstants.ModelMatrix:=Planet.fInFlightFrameDataList[aInFlightFrameIndex].fModelMatrix;
@@ -12750,7 +12751,8 @@ begin
 end;
 
 procedure TpvScene3DPlanet.TWaterPrepass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt);
-var PlanetIndex,RenderPassIndex,BaseViewIndex,CountViews,AdditionalViewIndex,CountAdditionalViews:TpvSizeInt;
+var PlanetIndex,BaseViewIndex,CountViews,AdditionalViewIndex,CountAdditionalViews:TpvSizeInt;
+    RenderPass:TpvScene3DRendererRenderPass;
     Planet:TpvScene3DPlanet;
     First:Boolean;
     InFlightFrameState:TpvScene3DRendererInstance.PInFlightFrameState;
@@ -12815,7 +12817,7 @@ begin
     end;
 
     if Planet.fRendererInstanceHashMap.TryGet(TpvScene3DPlanet.TRendererInstance.TKey.Create(fRendererInstance),RendererInstance) and
-       Planet.fRendererViewInstanceHashMap.TryGet(TpvScene3DPlanet.TRendererViewInstance.TKey.Create(fRendererInstance,InFlightFrameState^.ViewRenderPassIndex),RendererViewInstance) then begin
+       Planet.fRendererViewInstanceHashMap.TryGet(TpvScene3DPlanet.TRendererViewInstance.TKey.Create(fRendererInstance,TpvScene3DRendererRenderPass.View),RendererViewInstance) then begin
 
      fPushConstants.ModelMatrix:=Planet.fInFlightFrameDataList[aInFlightFrameIndex].fModelMatrix;
      fPushConstants.ViewBaseIndex:=InFlightFrameState^.FinalViewIndex;
@@ -13801,7 +13803,7 @@ begin
 
 end;
 
-procedure TpvScene3DPlanet.TRenderPass.Draw(const aInFlightFrameIndex,aFrameIndex,aRenderPassIndex,aViewBaseIndex,aCountViews:TpvSizeInt;const aCommandBuffer:TpvVulkanCommandBuffer);
+procedure TpvScene3DPlanet.TRenderPass.Draw(const aInFlightFrameIndex,aFrameIndex:TpvSizeInt;const aRenderPass:TpvScene3DRendererRenderPass;const aViewBaseIndex,aCountViews:TpvSizeInt;const aCommandBuffer:TpvVulkanCommandBuffer);
 const Offsets:array[0..0] of TVkDeviceSize=(0);
 var PlanetIndex,Level:TpvSizeInt;
     Planet:TpvScene3DPlanet;
@@ -13954,7 +13956,7 @@ begin
  ///    aCommandBuffer.CmdBindIndexBuffer(Planet.fInFlightFrameDataList[aInFlightFrameIndex].fVisualMeshIndexBuffer.Handle,0,VK_INDEX_TYPE_UINT32);
  //      aCommandBuffer.CmdBindVertexBuffers(0,1,@Planet.fInFlightFrameDataList[aInFlightFrameIndex].fVisualMeshVertexBuffer.Handle,@Offsets);{}
         if assigned(vkCmdDrawIndexedIndirectCount) and
-           Planet.fRendererViewInstanceHashMap.TryGet(TpvScene3DPlanet.TRendererViewInstance.TKey.Create(fRendererInstance,aRenderPassIndex),
+           Planet.fRendererViewInstanceHashMap.TryGet(TpvScene3DPlanet.TRendererViewInstance.TKey.Create(fRendererInstance,aRenderPass),
                                                       RendererViewInstance) then begin
          case fMode of
           TpvScene3DPlanet.TRenderPass.TMode.ShadowMapDisocclusion,
@@ -14023,7 +14025,9 @@ begin
 
     Planet:=TpvScene3DPlanets(TpvScene3D(fScene3D).Planets).Items[PlanetIndex];
 
-    if Planet.fReady and Planet.fInFlightFrameReady[aInFlightFrameIndex] then begin
+    if Planet.fReady and Planet.fInFlightFrameReady[aInFlightFrameIndex] and
+       Planet.fRendererViewInstanceHashMap.TryGet(TpvScene3DPlanet.TRendererViewInstance.TKey.Create(fRendererInstance,aRenderPass),
+                                                  RendererViewInstance) then begin
 
      {if Planet.fData.fVisible then}begin
 
@@ -14098,7 +14102,7 @@ begin
                                       @fGrassPushConstants);
 
       if assigned(vkCmdDrawIndexedIndirectCount) and
-         Planet.fRendererViewInstanceHashMap.TryGet(TpvScene3DPlanet.TRendererViewInstance.TKey.Create(fRendererInstance,aRenderPassIndex),
+         Planet.fRendererViewInstanceHashMap.TryGet(TpvScene3DPlanet.TRendererViewInstance.TKey.Create(fRendererInstance,aRenderPass),
                                                     RendererViewInstance) then begin
 
        if assigned(RendererViewInstance.fVulkanGrassVerticesBuffer) or not TpvScene3D(fScene3D).MeshShaderSupport then begin
@@ -14562,7 +14566,7 @@ begin
 
 end;
 
-procedure TpvScene3DPlanet.TWaterRenderPass.Draw(const aInFlightFrameIndex,aFrameIndex,aRenderPassIndex,aViewBaseIndex,aCountViews:TpvSizeInt;const aCommandBuffer:TpvVulkanCommandBuffer;const aPassDescriptorSet:TpvVulkanDescriptorSet);
+procedure TpvScene3DPlanet.TWaterRenderPass.Draw(const aInFlightFrameIndex,aFrameIndex:TpvSizeInt;const aRenderPass:TpvScene3DRendererRenderPass;const aViewBaseIndex,aCountViews:TpvSizeInt;const aCommandBuffer:TpvVulkanCommandBuffer;const aPassDescriptorSet:TpvVulkanDescriptorSet);
 var PlanetIndex:TpvSizeInt;
     Planet:TpvScene3DPlanet;
     First:Boolean;
@@ -14607,7 +14611,7 @@ begin
       end;
 
       if Planet.fRendererInstanceHashMap.TryGet(TpvScene3DPlanet.TRendererInstance.TKey.Create(fRendererInstance),RendererInstance) and
-         Planet.fRendererViewInstanceHashMap.TryGet(TpvScene3DPlanet.TRendererViewInstance.TKey.Create(fRendererInstance,InFlightFrameState^.ViewRenderPassIndex),RendererViewInstance) then begin
+         Planet.fRendererViewInstanceHashMap.TryGet(TpvScene3DPlanet.TRendererViewInstance.TKey.Create(fRendererInstance,TpvScene3DRendererRenderPass.View),RendererViewInstance) then begin
 
        DescriptorSets[0]:=Planet.fDescriptorSets[aInFlightFrameIndex].Handle;
        DescriptorSets[1]:=RendererViewInstance.fWaterRenderDescriptorSets[aInFlightFrameIndex].Handle;
@@ -14730,15 +14734,15 @@ end;
 
 { TpvScene3DPlanet.TRendererViewInstance.TKey }
 
-constructor TpvScene3DPlanet.TRendererViewInstance.TKey.Create(const aRendererInstance:TObject;const aRenderPassIndex:TpvSizeInt);
+constructor TpvScene3DPlanet.TRendererViewInstance.TKey.Create(const aRendererInstance:TObject;const aRenderPass:TpvScene3DRendererRenderPass);
 begin
  fRendererInstance:=aRendererInstance;
- fRenderPassIndex:=aRenderPassIndex;
+ fRenderPass:=TpvSizeInt(aRenderPass);
 end;
 
 { TpvScene3DPlanet.TRendererViewInstance }
 
-constructor TpvScene3DPlanet.TRendererViewInstance.Create(const aPlanet:TpvScene3DPlanet;const aRendererInstance:TObject;const aRenderPassIndex:TpvSizeInt;const aMainViewPort:Boolean);
+constructor TpvScene3DPlanet.TRendererViewInstance.Create(const aPlanet:TpvScene3DPlanet;const aRendererInstance:TObject;const aRenderPass:TpvScene3DRendererRenderPass;const aMainViewPort:Boolean);
 var InFlightFrameIndex,PreviousInFlightFrameIndex,Index:TpvSizeInt;
     GrassMetaData:TGrassMetaData;
 begin
@@ -14748,9 +14752,9 @@ begin
 
  fRendererInstance:=aRendererInstance;
 
- fRenderPassIndex:=aRenderPassIndex;
+ fRenderPass:=aRenderPass;
 
- fKey:=TpvScene3DPlanet.TRendererViewInstance.TKey.Create(fRendererInstance,fRenderPassIndex);
+ fKey:=TpvScene3DPlanet.TRendererViewInstance.TKey.Create(fRendererInstance,fRenderPass);
 
  for InFlightFrameIndex:=0 to MaxInFlightFrames-1 do begin
   fVulkanVisiblityBuffers[InFlightFrameIndex]:=nil;
@@ -17424,7 +17428,7 @@ begin
  TransferData(aInFlightFrameIndex);
 end;
 
-procedure TpvScene3DPlanet.Prepare(const aInFlightFrameIndex:TpvSizeInt;const aRendererInstance:TObject;const aRenderPassIndex:TpvSizeInt;const aViewPortWidth,aViewPortHeight:TpvInt32;const aMainViewPort:Boolean);
+procedure TpvScene3DPlanet.Prepare(const aInFlightFrameIndex:TpvSizeInt;const aRendererInstance:TObject;const aRenderPass:TpvScene3DRendererRenderPass;const aViewPortWidth,aViewPortHeight:TpvInt32;const aMainViewPort:Boolean);
 var RendererInstance:TpvScene3DPlanet.TRendererInstance;
     RendererViewInstance:TpvScene3DPlanet.TRendererViewInstance;
     RelativeCameraPosition:TpvVector3;
@@ -17496,9 +17500,9 @@ begin
   fRendererViewInstanceListLock.Acquire;
   try
 
-   if not fRendererViewInstanceHashMap.TryGet(TpvScene3DPlanet.TRendererViewInstance.TKey.Create(aRendererInstance,aRenderPassIndex),
+   if not fRendererViewInstanceHashMap.TryGet(TpvScene3DPlanet.TRendererViewInstance.TKey.Create(aRendererInstance,aRenderPass),
                                               RendererViewInstance) then begin
-    RendererViewInstance:=TpvScene3DPlanet.TRendererViewInstance.Create(self,aRendererInstance,aRenderPassIndex,aMainViewPort);
+    RendererViewInstance:=TpvScene3DPlanet.TRendererViewInstance.Create(self,aRendererInstance,aRenderPass,aMainViewPort);
    end;
 
    if assigned(RendererViewInstance) then begin

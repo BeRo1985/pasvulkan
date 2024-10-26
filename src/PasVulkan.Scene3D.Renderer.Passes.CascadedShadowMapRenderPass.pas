@@ -85,7 +85,7 @@ type { TpvScene3DRendererPassesCascadedShadowMapRenderPass }
        procedure OnSetRenderPassResources(const aCommandBuffer:TpvVulkanCommandBuffer;
                                           const aPipelineLayout:TpvVulkanPipelineLayout;
                                           const aRendererInstance:TObject;
-                                          const aRenderPassIndex:TpvSizeInt;
+                                          const aRenderPass:TpvScene3DRendererRenderPass;
                                           const aPreviousInFlightFrameIndex:TpvSizeInt;
                                           const aInFlightFrameIndex:TpvSizeInt);
       private
@@ -497,7 +497,7 @@ end;
 procedure TpvScene3DRendererPassesCascadedShadowMapRenderPass.OnSetRenderPassResources(const aCommandBuffer:TpvVulkanCommandBuffer;
                                                                                        const aPipelineLayout:TpvVulkanPipelineLayout;
                                                                                        const aRendererInstance:TObject;
-                                                                                       const aRenderPassIndex:TpvSizeInt;
+                                                                                       const aRenderPass:TpvScene3DRendererRenderPass;
                                                                                        const aPreviousInFlightFrameIndex:TpvSizeInt;
                                                                                        const aInFlightFrameIndex:TpvSizeInt);
 begin
@@ -532,7 +532,7 @@ begin
 
     fPlanetShadowMapPass.Draw(aInFlightFrameIndex,
                               aFrameIndex,
-                              InFlightFrameState^.CascadedShadowMapRenderPassIndex,
+                              TpvScene3DRendererRenderPass.CascadedShadowMap,
                               InFlightFrameState^.CascadedShadowMapViewIndex,
                               InFlightFrameState^.CountCascadedShadowMapViews,
                               aCommandBuffer);
@@ -541,7 +541,7 @@ begin
                                     fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Opaque],
                                     -1,
                                     aInFlightFrameIndex,
-                                    InFlightFrameState^.CascadedShadowMapRenderPassIndex,
+                                    TpvScene3DRendererRenderPass.CascadedShadowMap,
                                     InFlightFrameState^.CascadedShadowMapViewIndex,
                                     InFlightFrameState^.CountCascadedShadowMapViews,
                                     FrameGraph.DrawFrameIndex,
@@ -556,7 +556,7 @@ begin
                                     fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Mask],
                                     -1,
                                     aInFlightFrameIndex,
-                                    InFlightFrameState^.CascadedShadowMapRenderPassIndex,
+                                    TpvScene3DRendererRenderPass.CascadedShadowMap,
                                     InFlightFrameState^.CascadedShadowMapViewIndex,
                                     InFlightFrameState^.CountCascadedShadowMapViews,
                                     FrameGraph.DrawFrameIndex,
@@ -571,7 +571,7 @@ begin
                                     fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Blend],
                                     -1,
                                     aInFlightFrameIndex,
-                                    InFlightFrameState^.CascadedShadowMapRenderPassIndex,
+                                    TpvScene3DRendererRenderPass.CascadedShadowMap,
                                     InFlightFrameState^.CascadedShadowMapViewIndex,
                                     InFlightFrameState^.CountCascadedShadowMapViews,
                                     fFrameGraph.DrawFrameIndex,

@@ -88,7 +88,7 @@ type { TpvScene3DRendererPassesForwardRenderPass }
        procedure OnSetRenderPassResources(const aCommandBuffer:TpvVulkanCommandBuffer;
                                           const aPipelineLayout:TpvVulkanPipelineLayout;
                                           const aRendererInstance:TObject;
-                                          const aRenderPassIndex:TpvSizeInt;
+                                          const aRenderPass:TpvScene3DRendererRenderPass;
                                           const aPreviousInFlightFrameIndex:TpvSizeInt;
                                           const aInFlightFrameIndex:TpvSizeInt);
       private
@@ -1127,7 +1127,7 @@ end;
 procedure TpvScene3DRendererPassesForwardRenderPass.OnSetRenderPassResources(const aCommandBuffer:TpvVulkanCommandBuffer;
                                                                              const aPipelineLayout:TpvVulkanPipelineLayout;
                                                                              const aRendererInstance:TObject;
-                                                                             const aRenderPassIndex:TpvSizeInt;
+                                                                             const aRenderPass:TpvScene3DRendererRenderPass;
                                                                              const aPreviousInFlightFrameIndex:TpvSizeInt;
                                                                              const aInFlightFrameIndex:TpvSizeInt);
 var DescriptorSets:array[0..1] of TVkDescriptorSet;
@@ -1216,7 +1216,7 @@ begin
 
     fPlanetDepthPrePass.Draw(aInFlightFrameIndex,
                              aFrameIndex,
-                             InFlightFrameState^.ViewRenderPassIndex,
+                             TpvScene3DRendererRenderPass.View,
                              InFlightFrameState^.FinalViewIndex,
                              InFlightFrameState^.CountFinalViews,
                              aCommandBuffer);//}
@@ -1225,7 +1225,7 @@ begin
                                     fVulkanGraphicsPipelines[true,TpvScene3D.TMaterial.TAlphaMode.Opaque],
                                     -1,
                                     aInFlightFrameIndex,
-                                    InFlightFrameState^.ViewRenderPassIndex,
+                                    TpvScene3DRendererRenderPass.View,
                                     InFlightFrameState^.FinalViewIndex,
                                     InFlightFrameState^.CountFinalViews,
                                     FrameGraph.DrawFrameIndex,
@@ -1241,7 +1241,7 @@ begin
                                      fVulkanGraphicsPipelines[true,TpvScene3D.TMaterial.TAlphaMode.Mask],
                                      -1,
                                      aInFlightFrameIndex,
-                                     InFlightFrameState^.ViewRenderPassIndex,
+                                     TpvScene3DRendererRenderPass.View,
                                      InFlightFrameState^.FinalViewIndex,
                                      InFlightFrameState^.CountFinalViews,
                                      fFrameGraph.DrawFrameIndex,
@@ -1262,7 +1262,7 @@ begin
 
    fPlanetOpaquePass.Draw(aInFlightFrameIndex,
                           aFrameIndex,
-                          InFlightFrameState^.ViewRenderPassIndex,
+                          TpvScene3DRendererRenderPass.View,
                           InFlightFrameState^.FinalViewIndex,
                           InFlightFrameState^.CountFinalViews,
                           aCommandBuffer);
@@ -1273,7 +1273,7 @@ begin
                                    fVulkanGraphicsPipelines[false,TpvScene3D.TMaterial.TAlphaMode.Opaque],
                                    PreviousInFlightFrameIndex,
                                    aInFlightFrameIndex,
-                                   InFlightFrameState^.ViewRenderPassIndex,
+                                   TpvScene3DRendererRenderPass.View,
                                    InFlightFrameState^.FinalViewIndex,
                                    InFlightFrameState^.CountFinalViews,
                                    FrameGraph.DrawFrameIndex,
@@ -1288,7 +1288,7 @@ begin
                                    fVulkanGraphicsPipelines[false,TpvScene3D.TMaterial.TAlphaMode.Mask],
                                    PreviousInFlightFrameIndex,
                                    aInFlightFrameIndex,
-                                   InFlightFrameState^.ViewRenderPassIndex,
+                                   TpvScene3DRendererRenderPass.View,
                                    InFlightFrameState^.FinalViewIndex,
                                    InFlightFrameState^.CountFinalViews,
                                    FrameGraph.DrawFrameIndex,
@@ -1305,7 +1305,7 @@ begin
                                    fVulkanGraphicsPipelines[true,TpvScene3D.TMaterial.TAlphaMode.Mask],
                                    -1,
                                    aInFlightFrameIndex,
-                                   InFlightFrameState^.ViewRenderPassIndex,
+                                   TpvScene3DRendererRenderPass.View,
                                    InFlightFrameState^.FinalViewIndex,
                                    InFlightFrameState^.CountFinalViews,
                                    fFrameGraph.DrawFrameIndex,
@@ -1321,7 +1321,7 @@ begin
                                                   fVulkanDebugPrimitiveGraphicsPipeline,
                                                   -1,
                                                   aInFlightFrameIndex,
-                                                  InFlightFrameState^.ViewRenderPassIndex,
+                                                  TpvScene3DRendererRenderPass.View,
                                                   InFlightFrameState^.FinalViewIndex,
                                                   InFlightFrameState^.CountFinalViews,
                                                   FrameGraph.DrawFrameIndex,

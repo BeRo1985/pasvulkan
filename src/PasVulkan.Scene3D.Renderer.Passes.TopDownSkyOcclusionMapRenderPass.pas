@@ -84,7 +84,7 @@ type { TpvScene3DRendererPassesTopDownSkyOcclusionMapRenderPass }
        procedure OnSetRenderPassResources(const aCommandBuffer:TpvVulkanCommandBuffer;
                                           const aPipelineLayout:TpvVulkanPipelineLayout;
                                           const aRendererInstance:TObject;
-                                          const aRenderPassIndex:TpvSizeInt;
+                                          const aRenderPass:TpvScene3DRendererRenderPass;
                                           const aPreviousInFlightFrameIndex:TpvSizeInt;
                                           const aInFlightFrameIndex:TpvSizeInt);
       private
@@ -410,7 +410,7 @@ end;
 procedure TpvScene3DRendererPassesTopDownSkyOcclusionMapRenderPass.OnSetRenderPassResources(const aCommandBuffer:TpvVulkanCommandBuffer;
                                                                                             const aPipelineLayout:TpvVulkanPipelineLayout;
                                                                                             const aRendererInstance:TObject;
-                                                                                            const aRenderPassIndex:TpvSizeInt;
+                                                                                            const aRenderPass:TpvScene3DRendererRenderPass;
                                                                                             const aPreviousInFlightFrameIndex:TpvSizeInt;
                                                                                             const aInFlightFrameIndex:TpvSizeInt);
 begin
@@ -437,7 +437,7 @@ begin
                                    fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Opaque],
                                    -1,
                                    aInFlightFrameIndex,
-                                   InFlightFrameState^.TopDownSkyOcclusionMapRenderPassIndex,
+                                   TpvScene3DRendererRenderPass.TopDownSkyOcclusionMap,
                                    InFlightFrameState^.TopDownSkyOcclusionMapViewIndex,
                                    InFlightFrameState^.CountTopDownSkyOcclusionMapViews,
                                    FrameGraph.DrawFrameIndex,
@@ -450,7 +450,7 @@ begin
                                    fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Mask],
                                    -1,
                                    aInFlightFrameIndex,
-                                   InFlightFrameState^.TopDownSkyOcclusionMapRenderPassIndex,
+                                   TpvScene3DRendererRenderPass.TopDownSkyOcclusionMap,
                                    InFlightFrameState^.TopDownSkyOcclusionMapViewIndex,
                                    InFlightFrameState^.CountTopDownSkyOcclusionMapViews,
                                    FrameGraph.DrawFrameIndex,
@@ -463,7 +463,7 @@ begin
                                    fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Blend],
                                    -1,
                                    aInFlightFrameIndex,
-                                   InFlightFrameState^.TopDownSkyOcclusionMapRenderPassIndex,
+                                   TpvScene3DRendererRenderPass.TopDownSkyOcclusionMap,
                                    InFlightFrameState^.TopDownSkyOcclusionMapViewIndex,
                                    InFlightFrameState^.CountTopDownSkyOcclusionMapViews,
                                    fFrameGraph.DrawFrameIndex,

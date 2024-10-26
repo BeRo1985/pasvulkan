@@ -84,7 +84,7 @@ type { TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingMetaVox
        procedure OnSetRenderPassResources(const aCommandBuffer:TpvVulkanCommandBuffer;
                                           const aPipelineLayout:TpvVulkanPipelineLayout;
                                           const aRendererInstance:TObject;
-                                          const aRenderPassIndex:TpvSizeInt;
+                                          const aRenderPass:TpvScene3DRendererRenderPass;
                                           const aPreviousInFlightFrameIndex:TpvSizeInt;
                                           const aInFlightFrameIndex:TpvSizeInt);
       private
@@ -635,7 +635,7 @@ end;
 procedure TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingMetaVoxelizationRenderPass.OnSetRenderPassResources(const aCommandBuffer:TpvVulkanCommandBuffer;
                                                                                                                                 const aPipelineLayout:TpvVulkanPipelineLayout;
                                                                                                                                 const aRendererInstance:TObject;
-                                                                                                                                const aRenderPassIndex:TpvSizeInt;
+                                                                                                                                const aRenderPass:TpvScene3DRendererRenderPass;
                                                                                                                                 const aPreviousInFlightFrameIndex:TpvSizeInt;
                                                                                                                                 const aInFlightFrameIndex:TpvSizeInt);
 begin
@@ -667,7 +667,7 @@ begin
                                   fVulkanGraphicsPipelines,
                                   -1,
                                   aInFlightFrameIndex,
-                                  InFlightFrameState^.VoxelizationRenderPassIndex,
+                                  TpvScene3DRendererRenderPass.Voxelization,
                                   InFlightFrameState^.FinalViewIndex,
                                   Min(1,InFlightFrameState^.CountFinalViews),
                                   FrameGraph.DrawFrameIndex,
@@ -682,7 +682,7 @@ begin
                                            fVulkanParticleGraphicsPipeline,
                                            -1,
                                            aInFlightFrameIndex,
-                                           InFlightFrameState^.VoxelizationRenderPassIndex,
+                                           TpvScene3DRendererRenderPass.Voxelization,
                                            InFlightFrameState^.FinalViewIndex,
                                            Min(1,InFlightFrameState^.CountFinalViews),
                                            FrameGraph.DrawFrameIndex,
