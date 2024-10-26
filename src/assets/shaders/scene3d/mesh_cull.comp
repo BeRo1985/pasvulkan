@@ -104,7 +104,7 @@ layout(set = 0, binding = 4, std430) buffer OutputVisiblityBuffer {
 
 layout(set = 0, binding = 5) uniform sampler2DArray uTextureDepths[];
 
-// Global instance matrix descriptor set 
+// Global descriptor set 
 layout(set = 1, binding = 0, std430) readonly buffer InstanceMatrices {
   mat4 instanceMatrices[]; // pair-wise: 0 = base, 1 = previous (for velocity)
 } instanceMatrices;
@@ -117,6 +117,7 @@ vec4 sphereTransform(const in vec4 sphere, const in mat4 transform){
   return vec4(
     (transform * vec4(sphere.xyz, 1.0)).xyz, 
     max(
+      // We are conservative here, so don't scale smaller than the original sphere radius for to be sure that the object is not culled away as a false positive
       sphere.w * max(1.0, sqrt(max(max(dot(transform[0].xyz, transform[0].xyz), dot(transform[1].xyz, transform[1].xyz)), dot(transform[2].xyz, transform[2].xyz)))),
       0.0
     )
