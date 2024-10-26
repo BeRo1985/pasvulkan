@@ -104,9 +104,24 @@ layout(set = 0, binding = 4, std430) buffer OutputVisiblityBuffer {
 
 layout(set = 0, binding = 5) uniform sampler2DArray uTextureDepths[];
 
+// Global instance matrix descriptor set 
+layout(set = 1, binding = 0, std430) readonly buffer InstanceMatrices {
+  mat4 instanceMatrices[]; // pair-wise: 0 = base, 1 = previous (for velocity)
+} instanceMatrices;
+
 #include "frustum.glsl"
 
 #include "projectsphere.glsl"
+
+vec4 sphereTransform(const in vec4 sphere, const in mat4 transform){
+  return vec4(
+    (transform * vec4(sphere.xyz, 1.0)).xyz, 
+    max(
+      sphere.w * max(1.0, sqrt(max(max(dot(transform[0].xyz, transform[0].xyz), dot(transform[1].xyz, transform[1].xyz)), dot(transform[2].xyz, transform[2].xyz)))),
+      0.0
+    )
+  );
+}
 
 // The following variables are shared between all invocations of this shader for too keep the pre-calculations needed for the culling small, which
 // are valid and the same for all invocations anyway. Other implementations uses CPU pre-calculations for it, but this is a more simple and straight 
@@ -210,12 +225,19 @@ void main(){
 
   const uvec4 cmd0 = inputDrawIndexedIndirectCommands.commands[sourceIndex].cmd0;
 
+  const uvec4 cmd1 = inputDrawIndexedIndirectCommands.commands[sourceIndex].cmd1;
+
   vec4 screenSpaceAABB = vec4(-2.0); // out of screen space, so that it is always culled away 
 
   // Only cull when needed, since some render passes may not need culling, so we just forward the drawIndexedIndirectCommands 
   // directly to the output buffer in that case. And don't cull draw items with more than one instance, since in this case
   // the bounding sphere is not valid for all instances.
   if((boundingSphere.w > 0.0) && (pushConstants.skipCulling == 0u) && (cmd0.y == 1u)){
+
+    if(cmd1.x != 0u){
+      // Instance matrix is available, so transform the bounding sphere by it (pair-wise instance matrices: 0 = base, 1 = previous for velocity)
+      boundingSphere = sphereTransform(boundingSphere, instanceMatrices.instanceMatrices[cmd1.x << 1u]);
+    } 
  
     vec2 viewPortSize = vec2(textureSize(uTextureDepths[nonuniformEXT(pushConstants.textureDepthIndex)], 0).xy);
     int countLODLevels = textureQueryLevels(uTextureDepths[nonuniformEXT(pushConstants.textureDepthIndex)]);
@@ -289,8 +311,6 @@ void main(){
   if(!isDrawIndexedIndirectCommandVisible){
     return;
   }
-
-  const uvec4 cmd1 = inputDrawIndexedIndirectCommands.commands[sourceIndex].cmd1;
 
   const uint objectIndex = cmd1.y;
   
