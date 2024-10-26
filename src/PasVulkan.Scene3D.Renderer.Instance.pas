@@ -6080,6 +6080,7 @@ begin
         NodeIndex:=TpvScene3D.TGroup.TNode(DrawChoreographyBatchItem.Node).Index;
 
         if (TpvScene3D.TGroup.TInstance(DrawChoreographyBatchItem.GroupInstance).fVulkanPerInFlightFrameInstancesCounts[aInFlightFrameIndex,fID,aRenderPassIndex]=1) and not TpvScene3D.TGroup.TInstance(DrawChoreographyBatchItem.GroupInstance).UseRenderInstances then begin
+
          GPUDrawIndexedIndirectCommandIndex:=GPUDrawIndexedIndirectCommandDynamicArray^.AddNewIndex;
          GPUDrawIndexedIndirectCommand:=@GPUDrawIndexedIndirectCommandDynamicArray^.Items[GPUDrawIndexedIndirectCommandIndex];
          GPUDrawIndexedIndirectCommand^.DrawIndexedIndirectCommand.indexCount:=DrawChoreographyBatchItem.CountIndices;
@@ -6091,13 +6092,11 @@ begin
 //       BoundingSphere:=@TpvScene3D.TGroup.TInstance(DrawChoreographyBatchItem.GroupInstance).BoundingSpheres[aInFlightFrameIndex];
          BoundingSphere:=@TpvScene3D.TGroup.TInstance(DrawChoreographyBatchItem.GroupInstance).Nodes[NodeIndex].BoundingSpheres[aInFlightFrameIndex];
          GPUDrawIndexedIndirectCommand^.BoundingSphere:=TpvVector4.InlineableCreate(BoundingSphere^.Center,BoundingSphere^.Radius);
- {       if assigned(DrawChoreographyBatchItem.Node) and
-            ((TpvScene3D.TGroup.TNode.TNodeFlag.TransformAnimated in TpvScene3D.TGroup.TNode(DrawChoreographyBatchItem.Node).Flags) or
-             (TpvScene3D.TGroup.TNode.TNodeFlag.SkinAnimated in TpvScene3D.TGroup.TNode(DrawChoreographyBatchItem.Node).Flags)) then begin
-          GPUDrawIndexedIndirectCommand^.BoundingSphere.w:=-1;
-         end;}
+
         end else begin
+
          for InstanceIndex:=0 to TpvScene3D.TGroup.TInstance(DrawChoreographyBatchItem.GroupInstance).fVulkanPerInFlightFrameInstancesCounts[aInFlightFrameIndex,fID,aRenderPassIndex]-1 do begin
+
           InstanceID:=TpvScene3D.TGroup.TInstance(DrawChoreographyBatchItem.GroupInstance).fVulkanPerInFlightFrameFirstInstances[aInFlightFrameIndex,fID,aRenderPassIndex]+InstanceIndex;
           GlobalRenderInstanceCullData:=@GlobalRenderInstanceCullDataDynamicArray^.ItemArray[InstanceID];
           RenderInstance:=TpvScene3D.TGroup.TInstance.TRenderInstance(GlobalRenderInstanceCullData^.RenderInstance);
@@ -6115,6 +6114,7 @@ begin
            GPUDrawIndexedIndirectCommand^.BoundingSphere:=BoundingSphere^.Transform(RenderInstance.ModelMatrices[aInFlightFrameIndex]).ToVector4;
           end;
          end;
+
         end;
 
        end;

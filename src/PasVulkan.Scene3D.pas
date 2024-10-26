@@ -3703,6 +3703,7 @@ type EpvScene3D=class(Exception);
        fPasMPInstance:TPasMP;
        fLoadGLTFTimeDurationLock:TPasMPInt32;
        fLoadGLTFTimeDuration:TpvDouble;
+       fDrawDataGeneration:TPasMPUInt64;
        procedure NewImageDescriptorGeneration;
        procedure NewMaterialDataGeneration;
        procedure CollectLights(const aTreeNodes:TpvBVHDynamicAABBTree.TTreeNodes;
@@ -3933,6 +3934,8 @@ type EpvScene3D=class(Exception);
        property RendererInstanceList:TpvObjectList read fRendererInstanceList;
       public
        property BlueNoise2DTexture:TpvVulkanTexture read fBlueNoise2DTexture;
+      public
+       property DrawDataGeneration:TPasMPUInt64 read fDrawDataGeneration write fDrawDataGeneration;
       published
        property RendererInstanceIDManager:TRendererInstanceIDManager read fRendererInstanceIDManager;
        property PotentiallyVisibleSet:TpvScene3D.TPotentiallyVisibleSet read fPotentiallyVisibleSet;
@@ -20850,6 +20853,11 @@ begin
    end else begin
     fIndex:=-1;
    end;
+{$ifdef cpu64}
+   TPasMPInterlocked.Increment(fSceneInstance.fDrawDataGeneration);
+{$else}
+   inc(fSceneInstance.fDrawDataGeneration);
+{$endif}
   finally
    TPasMPMultipleReaderSingleWriterSpinLock.ReleaseWrite(fInstance.fRenderInstanceLock);
   end;
@@ -20880,6 +20888,11 @@ begin
    finally
     fIndex:=-1;
    end;
+{$ifdef cpu64}
+   TPasMPInterlocked.Increment(fSceneInstance.fDrawDataGeneration);
+{$else}
+   inc(fSceneInstance.fDrawDataGeneration);
+{$endif}
   finally
    TPasMPMultipleReaderSingleWriterSpinLock.ReleaseWrite(fInstance.fRenderInstanceLock);
   end;
@@ -21794,6 +21807,12 @@ begin
     fGroup.fInstanceListLock.Release;
    end;
 
+{$ifdef cpu64}
+   TPasMPInterlocked.Increment(fSceneInstance.fDrawDataGeneration);
+{$else}
+   inc(fSceneInstance.fDrawDataGeneration);
+{$endif}
+
    begin
     fSceneInstance.fNewInstanceListLock.Acquire;
     try
@@ -21950,6 +21969,12 @@ begin
    finally
     fGroup:=nil;
    end;
+
+{$ifdef cpu64}
+   TPasMPInterlocked.Increment(fSceneInstance.fDrawDataGeneration);
+{$else}
+   inc(fSceneInstance.fDrawDataGeneration);
+{$endif}
 
   finally
    fAdded:=false;
@@ -26316,6 +26341,8 @@ begin
  fLoadGLTFTimeDurationLock:=0;
 
  fLoadGLTFTimeDuration:=0;
+
+ fDrawDataGeneration:=0;
 
  if assigned(aVulkanDevice) then begin
   fVulkanDevice:=aVulkanDevice;
