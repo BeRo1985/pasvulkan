@@ -1206,8 +1206,6 @@ type PpvScalar=^TpvScalar;
      PpvSphere=^TpvSphere;
      TpvSphere=record
       public
-       Center:TpvVector3;
-       Radius:TpvScalar;
        constructor Create(const pCenter:TpvVector3;const pRadius:TpvScalar); overload;
        constructor Create(const aVector:TpvVector4); overload;
        constructor CreateFromAABB(const ppvAABB:TpvAABB);
@@ -1228,6 +1226,20 @@ type PpvScalar=^TpvScalar;
        function TriangleIntersection(const Triangle:TpvTriangle;out Position,Normal:TpvVector3;out Depth:TpvScalar):boolean; overload;
        function TriangleIntersection(const SegmentTriangle:TpvSegmentTriangle;const TriangleNormal:TpvVector3;out Position,Normal:TpvVector3;out Depth:TpvScalar):boolean; overload;
        function SweptIntersection(const SphereB:TpvSphere;const VelocityA,VelocityB:TpvVector3;out TimeFirst,TimeLast:TpvScalar):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+      public
+       case TpvUInt8 of
+        0:(
+         Center:TpvVector3;
+        );
+        1:(
+         x:TpvScalar;
+         y:TpvScalar;
+         z:TpvScalar;
+         Radius:TpvScalar;
+        );
+        2:(
+         Vector4:TpvVector4;
+        );
      end;
 
      PpvSpheres=^TpvSpheres;
