@@ -69,7 +69,11 @@ uses SysUtils,
      PasVulkan.Utils,
      Generics.Collections;
 
-type TpvDynamicArray<T>=record
+type
+
+{ TpvDynamicArray }
+
+ TpvDynamicArray<T>=record
       public
        type PT=^T;
             TItemArray=array of T;
@@ -84,6 +88,7 @@ type TpvDynamicArray<T>=record
        procedure Clear;
        procedure ClearNoFree;
        procedure Resize(const aCount:TpvSizeInt);
+       procedure SetCount(const aCount:TpvSizeInt);
        procedure Finish;
        procedure Assign(const aFrom:{$ifdef fpc}{$endif}TpvDynamicArray<T>); overload;
        procedure Assign(const aItems:array of T); overload;
@@ -851,6 +856,14 @@ begin
   Count:=aCount;
   SetLength(Items,Count);
  end;
+end;
+
+procedure TpvDynamicArray<T>.SetCount(const aCount:TpvSizeInt);
+begin
+ if length(Items)<Count then begin
+  SetLength(Items,Count+((Count+1) shr 1));
+ end;
+ Count:=aCount;
 end;
 
 procedure TpvDynamicArray<T>.Finish;
