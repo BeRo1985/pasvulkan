@@ -108,9 +108,9 @@ vec2 readHeight(ivec2 p, const in vec3 referenceNormal, const in bool includeSph
   // Carefully adjust the planet height to include spherical elevation differences and properly computing height differences between the center point 
   // and its neighbors for to effectively account for the sphere's curvature of spherical planet geometry in the simulation.
   return vec2(
-    planetHeight, 
+    planetHeight * (1.0 + (includeSphericalElevationDifference ? (dot(normalize(octPlanetUnsignedDecode(vec2(p) * texelSize)) - referenceNormal, referenceNormal)) : 0.0)), 
     waterHeight
-  ) * (1.0 + (includeSphericalElevationDifference ? (dot(normalize(octPlanetUnsignedDecode(vec2(p) * texelSize)) - referenceNormal, referenceNormal)) : 0.0));
+  );
 } 
 #endif
 
