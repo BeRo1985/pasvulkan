@@ -18,7 +18,7 @@ uint encodeRGB9E5(vec3 color){
 
   // Bias has to have the biggest exponent of the maximum channel plus 15 and nothing in the mantissa. When it will get added to the
   // three channels, it will shift the explicit one and the 8 most significant bits of the mantissa bits into the low 9 bits. The IEEE
-  // 754 rules will take care of the rest, by rounding rathert than truncating the value at addition. Channel values with smaller natural
+  // 754 rules will take care of the rest, by rounding rather than truncating the value at addition. Channel values with smaller natural
   // exponents will be shifted further to the right => more bits will be discarded
   float bias = uintBitsToFloat((floatBitsToUint(maximumChannel) + 0x07804000u) & 0x7f800000u);
 
