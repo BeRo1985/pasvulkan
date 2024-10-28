@@ -1236,6 +1236,8 @@ type EpvApplication=class(Exception)
       protected
        procedure Execute; override;
       public
+       class var UpdateThreadTag:TpvUInt64;
+      public
        constructor Create(const aApplication:TpvApplication); reintroduce;
        destructor Destroy; override;
        procedure Shutdown;
@@ -7035,14 +7037,14 @@ begin
      break;
     end;
     TWaitResult.wrError:begin
-     pvApplication.Log(LOG_ERROR,'TpvApplicationUpdateThread.WaitForDone','fDoneEvent.WaitFor failed!');
+     pvApplication.Log(LOG_ERROR,'TpvApplicationUpdateThread.WaitForDone','fDoneEvent.WaitFor failed! Last tag was '+IntToHex(UpdateThreadTag));
      break;
     end;
     TWaitResult.wrTimeout:begin
-     pvApplication.Log(LOG_DEBUG,'TpvApplicationUpdateThread.WaitForDone','fDoneEvent.WaitFor timeouted! Trying again . . .');
+     pvApplication.Log(LOG_DEBUG,'TpvApplicationUpdateThread.WaitForDone','fDoneEvent.WaitFor timeouted! Trying again . . .  Last tag was '+IntToHex(UpdateThreadTag));
     end;
     TWaitResult.wrAbandoned:begin
-     pvApplication.Log(LOG_ERROR,'TpvApplicationUpdateThread.WaitForDone','fDoneEvent.WaitFor abandoned!');
+     pvApplication.Log(LOG_ERROR,'TpvApplicationUpdateThread.WaitForDone','fDoneEvent.WaitFor abandoned! Last tag was '+IntToHex(UpdateThreadTag));
      break;
     end;
     else begin
@@ -7061,6 +7063,7 @@ begin
  NameThreadForDebugging('TpvApplicationUpdateThread');
 {$endif}
  ReturnValue:=0;
+ UpdateThreadTag:=0;
  Priority:=TThreadPriority.tpHigher;
  try
   SetExceptionMask(fFPUExceptionMask);
