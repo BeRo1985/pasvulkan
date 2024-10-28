@@ -26400,7 +26400,7 @@ const RGBE_DATA_RED=0;
    alpha:=1.0;
   end;
  end;
- function LoadHDRImage(var ImageData:TpvPointer;var ImageWidth,ImageHeight:TpvInt32):boolean;
+ function LoadHDRImage(var ImageData:TpvPointer;var ImageWidth,ImageHeight:TpvInt32;var ImageSize:TpvSizeInt):boolean;
  label NonRLE,DoFail;
  var i,j,k,CountPixels,y,x:TpvInt32;
      programtype,line:shortstring;
@@ -26632,9 +26632,11 @@ const RGBE_DATA_RED=0;
     end;
     case aDestinationFormat of
      VK_FORMAT_R32G32B32A32_SFLOAT:begin
-      // Just passs through
+      // Just pass through
+      ImageSize:=ImageWidth*ImageHeight*SizeOf(TpvFloat)*4;
      end;
      VK_FORMAT_R16G16B16A16_SFLOAT:begin
+      ImageSize:=ImageWidth*ImageHeight*SizeOf(TpvHalfFloat)*4;
       CountPixels:=ImageWidth*ImageHeight;
       p:=ImageData;
       p16:=ImageData;
@@ -26656,6 +26658,7 @@ const RGBE_DATA_RED=0;
       ReAllocMem(ImageData,ImageWidth*ImageHeight*SizeOf(TpvHalfFloat)*4);
      end;
      VK_FORMAT_E5B9G9R9_UFLOAT_PACK32:begin
+      ImageSize:=ImageWidth*ImageHeight*SizeOf(TpvUInt32);
       CountPixels:=ImageWidth*ImageHeight;
       p:=ImageData;
       p32:=ImageData;
@@ -26673,6 +26676,7 @@ const RGBE_DATA_RED=0;
       ReAllocMem(ImageData,ImageWidth*ImageHeight*SizeOf(TpvUInt32));
      end;
      VK_FORMAT_B10G11R11_UFLOAT_PACK32:begin
+      ImageSize:=ImageWidth*ImageHeight*SizeOf(TpvUInt32);
       CountPixels:=ImageWidth*ImageHeight;
       p:=ImageData;
       p32:=ImageData;
@@ -26690,6 +26694,7 @@ const RGBE_DATA_RED=0;
       ReAllocMem(ImageData,ImageWidth*ImageHeight*SizeOf(TpvUInt32));
      end;
      VK_FORMAT_R8G8B8A8_UNORM:begin
+      ImageSize:=ImageWidth*ImageHeight*SizeOf(TpvUInt32);
       CountPixels:=ImageWidth*ImageHeight;
       p:=ImageData;
       p8:=ImageData;
@@ -26711,6 +26716,7 @@ const RGBE_DATA_RED=0;
       ReAllocMem(ImageData,ImageWidth*ImageHeight*SizeOf(TpvUInt8)*4);
      end;
      VK_FORMAT_R8G8B8A8_SRGB:begin
+      ImageSize:=ImageWidth*ImageHeight*SizeOf(TpvUInt32);
       CountPixels:=ImageWidth*ImageHeight;
       p:=ImageData;
       p8:=ImageData;
@@ -26732,6 +26738,7 @@ const RGBE_DATA_RED=0;
       ReAllocMem(ImageData,ImageWidth*ImageHeight*SizeOf(TpvUInt8)*4);
      end;
      else begin
+      ImageSize:=0;
       FreeMem(ImageData);
       ImageData:=nil;
       result:=false;
@@ -26748,12 +26755,14 @@ const RGBE_DATA_RED=0;
  end;
 var ImageData:TpvPointer;
     ImageWidth,ImageHeight:TpvInt32;
+    ImageSize:TpvSizeInt;
 begin
  ImageData:=nil;
  ImageWidth:=0;
  ImageHeight:=0;
+ ImageSize:=0;
  try
-  if LoadHDRImage(ImageData,ImageWidth,ImageHeight) then begin
+  if LoadHDRImage(ImageData,ImageWidth,ImageHeight,ImageSize) then begin
    LoadFromMemory(aDestinationFormat,
                   VK_SAMPLE_COUNT_1_BIT,
                   Max(1,ImageWidth),
@@ -26761,10 +26770,10 @@ begin
                   0,
                   0,
                   1,
-                  MipMapLevels[aMipMaps],
+                  MipMapLevels[aMipMaps and ((aDestinationFormat<>VK_FORMAT_E5B9G9R9_UFLOAT_PACK32) and (aDestinationFormat<>VK_FORMAT_B10G11R11_UFLOAT_PACK32))],
                   [TpvVulkanTextureUsageFlag.TransferDst,TpvVulkanTextureUsageFlag.Sampled],
                   ImageData,
-                  ImageWidth*ImageHeight*SizeOf(TpvFloat)*4,
+                  ImageSize,
                   false,
                   false,
                   1,
