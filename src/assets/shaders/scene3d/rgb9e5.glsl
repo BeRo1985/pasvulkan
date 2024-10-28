@@ -2,8 +2,13 @@
 #define RGB9E5_GLSL
 
 uint encodeRGB9E5(vec3 color){
+
+  // Clamp the color to the representable range
   color = clamp(color, vec3(0.0), vec3(65408.0));
+
 #if 0
+
+  // Detailed version and without any floating point operations. It should be also more exact in terms of rounding and clamping, but maybe a bit slower.
 
   // Cast the color floats to uint
   const uvec3 castedColor = floatBitsToUint(color.xyz);
@@ -42,23 +47,45 @@ uint encodeRGB9E5(vec3 color){
   return (mantissas.x << 0u) | (mantissas.y << 9u) | (mantissas.z << 18u) | (uint(maximumExponent - (127u - 16u)) << 27u);
      
 #else  
-  float maxChannel = max(max(color.x, color.y), color.z);
-  int sharedExponent = clamp(int((uint(floatBitsToUint(maxChannel) & 0x7f800000u) >> 23u)) - (127 - 16), 0, 31);
+  
+  // The more compact version with floating point operations
+
+  // Find the largest component
+  float maximumChannel = max(max(color.x, color.y), color.z);
+
+  // Get the shared exponent
+  int sharedExponent = clamp(int((uint(floatBitsToUint(maximumChannel) & 0x7f800000u) >> 23u)) - (127 - 16), 0, 31);
+
+  // Calculate the denominator
   float denominator = exp2(float(sharedExponent - 24));  
-  int maximum = int(floor((maxChannel / denominator) + 0.5));
+
+  // Calculate the maximum value
+  int maximum = int(floor((maximumChannel / denominator) + 0.5));
+
+  // If the maximum value is larger than 511, then double the denominator and increment the shared exponent
   if(maximum >= 512){
     denominator *= 2.0;
     sharedExponent++;
   }
-  uvec3 t = uvec3(floor((color / denominator) + vec3(0.5))) & uvec3(0x1ffu);
-  return t.x | (t.y << 9u) | (t.z << 18u) | (uint(sharedExponent) << 27u);
+
+  // Calculate the mantissas
+  uvec3 t = (uvec3(floor((color / denominator) + vec3(0.5))) & uvec3(0x1ffu)) << uvec3(0u, 9u, 18u);
+
+  // Combine the components
+  return t.x | t.y | t.z | (uint(sharedExponent) << 27u);
+
 #endif
 }
 
 vec3 decodeRGB9E5(uint color){
 #if 1
+
+  // Fast oneliner version
   return vec3(uvec3((uvec3(color) >> uvec3(0u, 9u, 18u)) & uvec3(0x1ffu))) * vec3(exp2(float(int(int(uint((color >> 27u) & 31u)) - 24))));
+
 #elif 0
+
+  // Detailed version and without any floating point operations
 
   // Extract the shared exponent with +1 compensation for the implicit 1
   const uint sharedExponent = ((color >> 27u) & 0x1fu) + (127u - 16u);
@@ -80,11 +107,15 @@ vec3 decodeRGB9E5(uint color){
   return uintBitsToFloat(exponents | mantissas);
 
 #else
+  
+  // Also fast but a bit more readable version
+
   return vec3(
     float(bitfieldExtract(color, 0, 9)),
     float(bitfieldExtract(color, 9, 9)),
     float(bitfieldExtract(color, 18, 9))
   ) * exp2(float(int(bitfieldExtract(color, 27, 5)) - 24)); 
+
 #endif
 }
 
