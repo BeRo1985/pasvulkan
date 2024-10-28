@@ -3,12 +3,37 @@
 
 uint encodeRGB9E5(vec3 color){
 
+#if 1
+
+  // Fast and pretty exact version with bit magic on floats
+ 
+  const float minValue = uintBitsToFloat(0x37800000u); // 1.00 x 2^-16
+  const float maxValue = uintBitsToFloat(0x477f8000u); // 1.ff x 2^+15
+
+  // Clamp the color to the representable range
+  color = clamp(color, vec3(0.0), vec3(maxValue));
+
+  // Find the largest component with clamping to the representable minimum value, so that the exponent is within the representable valid 5-bit range
+  float maximumChannel = max(max(minValue, color.x), max(color.y, color.z));
+
+  // Bias has to have the biggest exponent of the maximum channel plus 15 and nothing in the mantissa. When it will get added to the
+  // three channels, it will shift the explicit one and the 8 most significant bits of the mantissa bits into the low 9 bits. The IEEE
+  // 754 rules will take care of the rest, by rounding rathert than truncating the value at addition. Channel values with smaller natural
+  // exponents will be shifted further to the right => more bits will be discarded
+  float bias = uintBitsToFloat((floatBitsToUint(maximumChannel) + 0x07804000u) & 0x7f800000u);
+
+  // Cast the color floats to uint and shift the mantissas to the correct position
+  uvec3 casted = (floatBitsToUint(color + bias) & uvec3(0x1ffu)) << uvec3(0u, 9u, 18u);
+
+  // Combine the components
+  return casted.x | casted.y | casted.z | uint((floatBitsToUint(bias) << 4u) + 0x10000000u);
+  
+#elif 0
+
+  // Detailed version and without any floating point operations. It should be also more exact in terms of rounding and clamping, but maybe a bit slower
+
   // Clamp the color to the representable range
   color = clamp(color, vec3(0.0), vec3(65408.0));
-
-#if 0
-
-  // Detailed version and without any floating point operations. It should be also more exact in terms of rounding and clamping, but maybe a bit slower.
 
   // Cast the color floats to uint
   const uvec3 castedColor = floatBitsToUint(color.xyz);
@@ -49,6 +74,9 @@ uint encodeRGB9E5(vec3 color){
 #else  
   
   // The more compact version with floating point operations
+
+  // Clamp the color to the representable range
+  color = clamp(color, vec3(0.0), vec3(65408.0));
 
   // Find the largest component
   float maximumChannel = max(max(color.x, color.y), color.z);
