@@ -1741,7 +1741,9 @@ type EpvApplication=class(Exception)
 
        procedure UpdateJoysticks(const aInitial:boolean);
 
-      protected
+       function PasMPInstanceOnWorkerThreadException(const aException:Exception):Boolean;
+
+       protected
 
        class procedure VulkanDebugLn(const What:TpvUTF8String); static;
 
@@ -7154,6 +7156,10 @@ begin
   fDoDestroyGlobalPasMPInstance:=true;
  end;
 
+ if not assigned(fPasMPInstance.OnWorkerThreadException) then begin
+  fPasMPInstance.OnWorkerThreadException:=PasMPInstanceOnWorkerThreadException;
+ end;
+
  fHighResolutionTimer:=TpvHighResolutionTimer.Create;
 
  fFrameLimiterHighResolutionTimerSleepWithDriftCompensation:=TpvHighResolutionTimerSleepWithDriftCompensation.Create(fHighResolutionTimer);
@@ -7513,6 +7519,17 @@ begin
   end;
  end;
 {$ifend}
+end;
+
+function TpvApplication.PasMPInstanceOnWorkerThreadException(const aException:Exception):Boolean;
+var ExceptionString:string;
+begin
+ ExceptionString:=DumpExceptionCallStack(aException);
+{$if defined(fpc) and defined(android) and (defined(Release) or not defined(Debug))}
+ __android_log_write(ANDROID_LOG_ERROR,'PasVulkanApplication',PAnsiChar(TpvApplicationRawByteString(ExceptionString)));
+{$ifend}
+ TpvApplication.Log(LOG_ERROR,'TpvApplication.PasMPInstanceOnWorkerThreadException',ExceptionString);
+ result:=false;
 end;
 
 procedure TpvApplication.SetTitle(const aTitle:TpvUTF8String);
