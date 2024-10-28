@@ -7039,7 +7039,7 @@ begin
      break;
     end;
     TWaitResult.wrTimeout:begin
-     pvApplication.Log(LOG_DEBUG,'TpvApplicationUpdateThread.WaitForDone','fDoneEvent.WaitFor timeouted! Tryig again . . .');
+     pvApplication.Log(LOG_DEBUG,'TpvApplicationUpdateThread.WaitForDone','fDoneEvent.WaitFor timeouted! Trying again . . .');
     end;
     TWaitResult.wrAbandoned:begin
      pvApplication.Log(LOG_ERROR,'TpvApplicationUpdateThread.WaitForDone','fDoneEvent.WaitFor abandoned!');
