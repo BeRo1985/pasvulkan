@@ -56,7 +56,9 @@ uint encodeRGB9E5(vec3 color){
 }
 
 vec3 decodeRGB9E5(uint color){
-#if 0
+#if 1
+  return vec3(uvec3((uvec3(color) >> uvec3(0u, 9u, 18u)) & uvec3(0x1ffu))) * vec3(exp2(float(int(int(uint((color >> 27u) & 31u)) - 24))));
+#elif 0
 
   // Extract the shared exponent with +1 compensation for the implicit 1
   const uint sharedExponent = ((color >> 27u) & 0x1fu) + (127u - 16u);
@@ -82,7 +84,7 @@ vec3 decodeRGB9E5(uint color){
     float(bitfieldExtract(color, 0, 9)),
     float(bitfieldExtract(color, 9, 9)),
     float(bitfieldExtract(color, 18, 9))
-  ) * exp2(float(int(bitfieldExtract(color, 27, 5)) - 24));
+  ) * exp2(float(int(bitfieldExtract(color, 27, 5)) - 24)); 
 #endif
 }
 

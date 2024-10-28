@@ -581,7 +581,7 @@ begin
     end;
 
     // Generate mipmaps
-    if true{AdditionalImageFormat<>VK_FORMAT_UNDEFINED} then begin
+    if true {AdditionalImageFormat<>VK_FORMAT_UNDEFINED} then begin
 
      // With compute shader, 4 mipmaps at once per compute pass 
 

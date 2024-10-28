@@ -49,7 +49,7 @@ shared float sharedA[8 * 8];
 #endif
 
 vec4 reduceOp(const in vec4 a, const in vec4 b){
-#ifdef USE_RGB9E5
+#if defined(USE_RGB9E5)
   return clamp(mix(a, b, 0.5), vec4(0.0), vec4(65408.0));
 #elif defined(USE_RGBA16F)
   return clamp(mix(a, b, 0.5), vec4(0.0), vec4(65504.0));
@@ -78,10 +78,10 @@ void main() {
   if(all(lessThan(invocationPosition.xy, sourceSize))){
     mat4x4 texels = mat4x4(
 #ifdef USE_RGB9E5
-      vec4(decodeRGB9E5(imageLoad(uSourceTexture, ivec3((invocationPosition.xy << 1) + ivec2(0, 0), 0)).x), 1.0),
-      vec4(decodeRGB9E5(imageLoad(uSourceTexture, ivec3((invocationPosition.xy << 1) + ivec2(1, 0), 0)).x), 1.0),
-      vec4(decodeRGB9E5(imageLoad(uSourceTexture, ivec3((invocationPosition.xy << 1) + ivec2(0, 1), 0)).x), 1.0),
-      vec4(decodeRGB9E5(imageLoad(uSourceTexture, ivec3((invocationPosition.xy << 1) + ivec2(1, 1), 0)).x), 1.0)
+      vec4(decodeRGB9E5(imageLoad(uSourceTexture, ivec3((invocationPosition.xy << 1) + ivec2(0, 0), invocationPosition.z)).x), 1.0),
+      vec4(decodeRGB9E5(imageLoad(uSourceTexture, ivec3((invocationPosition.xy << 1) + ivec2(1, 0), invocationPosition.z)).x), 1.0),
+      vec4(decodeRGB9E5(imageLoad(uSourceTexture, ivec3((invocationPosition.xy << 1) + ivec2(0, 1), invocationPosition.z)).x), 1.0),
+      vec4(decodeRGB9E5(imageLoad(uSourceTexture, ivec3((invocationPosition.xy << 1) + ivec2(1, 1), invocationPosition.z)).x), 1.0)
 #else      
       imageLoad(uSourceTexture, ivec3((invocationPosition.xy << 1) + ivec2(0, 0), invocationPosition.z)),
       imageLoad(uSourceTexture, ivec3((invocationPosition.xy << 1) + ivec2(1, 0), invocationPosition.z)),
