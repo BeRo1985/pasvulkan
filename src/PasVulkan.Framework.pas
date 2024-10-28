@@ -24554,6 +24554,7 @@ procedure TpvVulkanTexture.Finish(const aGraphicsQueue:TpvVulkanQueue;
       fImageLayout:=PktxVulkanTexture(fKTXVulkanTexture)^.imageLayout;
       fFormat:=PktxVulkanTexture(fKTXVulkanTexture)^.imageFormat;
       fImageViewType:=PktxVulkanTexture(fKTXVulkanTexture)^.viewType;
+      fTotalCountArrayLayers:={Max(1,fCountFaces)*}Max(1,fCountArrayLayers);
       fDeviceMemory:=VK_NULL_HANDLE;//PktxVulkanTexture(fKTXVulkanTexture)^.deviceMemory;
       fImage:=TpvVulkanImage.Create(fDevice,PktxVulkanTexture(fKTXVulkanTexture)^.image,nil,false);
       fImageView:=TpvVulkanImageView.Create(fDevice,
