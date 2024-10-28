@@ -7029,7 +7029,27 @@ end;
 procedure TpvApplicationUpdateThread.WaitForDone;
 begin
  if fInvoked then begin
-  fDoneEvent.WaitFor;
+  repeat
+   case fDoneEvent.WaitFor(10000) of
+    TWaitResult.wrSignaled:begin
+     break;
+    end;
+    TWaitResult.wrError:begin
+     pvApplication.Log(LOG_ERROR,'TpvApplicationUpdateThread.WaitForDone','fDoneEvent.WaitFor failed!');
+     break;
+    end;
+    TWaitResult.wrTimeout:begin
+     pvApplication.Log(LOG_DEBUG,'TpvApplicationUpdateThread.WaitForDone','fDoneEvent.WaitFor timeouted! Tryig again . . .');
+    end;
+    TWaitResult.wrAbandoned:begin
+     pvApplication.Log(LOG_ERROR,'TpvApplicationUpdateThread.WaitForDone','fDoneEvent.WaitFor abandoned!');
+     break;
+    end;
+    else begin
+     Assert(false);
+    end;
+   end;
+  until false;
   fInvoked:=false;
  end;
 end;
