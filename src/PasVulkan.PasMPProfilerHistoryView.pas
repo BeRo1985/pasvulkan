@@ -82,7 +82,7 @@ type { TpvPasMPProfilerHistoryView }
       public
        constructor Create; reintroduce;
        destructor Destroy; override;
-       procedure Paint(const aCanvas:TpvCanvas;const aX,aY,aWidth,aHeight,aTextSize,aBackgroundAlpha,aForegroundAlpha:TpvScalar);
+       procedure Paint(const aCanvas:TpvCanvas;const aX,aY,aWidth,aHeight,aTextSize,aBackgroundAlpha,aForegroundAlpha:TpvScalar;const aColorizeDepth:Boolean);
        procedure TransferData;
        property PasMPInstance:TPasMP read fPasMPInstance write fPasMPInstance;
        property VisibleTimePeriod:TPasMPHighResolutionTime read fVisibleTimePeriod write fVisibleTimePeriod;
@@ -114,7 +114,7 @@ begin
  inherited Destroy;
 end;
 
-procedure TpvPasMPProfilerHistoryView.Paint(const aCanvas:TpvCanvas;const aX,aY,aWidth,aHeight,aTextSize,aBackgroundAlpha,aForegroundAlpha:TpvScalar);
+procedure TpvPasMPProfilerHistoryView.Paint(const aCanvas:TpvCanvas;const aX,aY,aWidth,aHeight,aTextSize,aBackgroundAlpha,aForegroundAlpha:TpvScalar;const aColorizeDepth:Boolean);
 const ProfilerNotActivated='Profiler not activated';
       Colors:array[0..7] of TpvUInt32=
        (
@@ -201,7 +201,11 @@ begin
        StackDepth:=TPasMPInt32(ProfilerHistoryRingBufferItem.ThreadIndexStackDepth shr 16);
        y0:=aY+((HeightPerThread*ThreadIndex)+((StackDepth*HeightPerThread)/fThreadMaxStackDepths[ThreadIndex]));
        y1:=aY+((HeightPerThread*ThreadIndex)+Min(((StackDepth+1)*HeightPerThread)/fThreadMaxStackDepths[ThreadIndex],HeightPerThread));
-       c:=Colors[ProfilerHistoryRingBufferItem^.JobTag and 7];
+       if aColorizeDepth then begin
+        c:=Colors[StackDepth and 7];
+       end else begin
+        c:=Colors[ProfilerHistoryRingBufferItem^.JobTag and 7];
+       end;
        aCanvas.Color:=GetColor((((c and $ff00ff) shr 1) and $ff00ff) or (((c and $00ff00) shr 1) and $00ff00),aForegroundAlpha);
        aCanvas.DrawFilledRectangle(TpvRect.CreateAbsolute(x0,y0,x1,y1));
        aCanvas.Color:=GetColor(c,aForegroundAlpha);
