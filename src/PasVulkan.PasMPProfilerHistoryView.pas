@@ -191,9 +191,9 @@ begin
     end;
     for HistoryIndex:=0 to Min(fProfilerHistoryCount-1,PasMPProfilerHistoryRingBufferSizeMask) do begin
      ProfilerHistoryRingBufferItem:=@fProfilerHistory[HistoryIndex];
-     x1:=aX+TpvInt64((((ProfilerHistoryRingBufferItem^.EndTime-FirstTime)*round(aWidth))+(fVisibleTimePeriod-1)) div fVisibleTimePeriod);
+     x1:=aX+(((TpvDouble(ProfilerHistoryRingBufferItem^.EndTime-FirstTime)*aWidth)+(fVisibleTimePeriod-1))/fVisibleTimePeriod);
      if x1>=0 then begin
-      x0:=aX+TpvInt64(((ProfilerHistoryRingBufferItem^.StartTime-FirstTime)*round(aWidth)) div fVisibleTimePeriod);
+      x0:=aX+((TpvDouble(ProfilerHistoryRingBufferItem^.StartTime-FirstTime)*aWidth)/fVisibleTimePeriod);
       if x0>=aWidth then begin
        break;
       end else begin
