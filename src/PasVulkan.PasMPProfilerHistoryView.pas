@@ -82,7 +82,7 @@ type { TpvPasMPProfilerHistoryView }
       public
        constructor Create; reintroduce;
        destructor Destroy; override;
-       procedure Paint(const aCanvas:TpvCanvas;const aX,aY,aWidth,aHeight:TpvScalar);
+       procedure Paint(const aCanvas:TpvCanvas;const aX,aY,aWidth,aHeight,aTextSize,aBackgroundAlpha,aForegroundAlpha:TpvScalar);
        procedure TransferData;
        property PasMPInstance:TPasMP read fPasMPInstance write fPasMPInstance;
        property VisibleTimePeriod:TPasMPHighResolutionTime read fVisibleTimePeriod write fVisibleTimePeriod;
@@ -114,7 +114,7 @@ begin
  inherited Destroy;
 end;
 
-procedure TpvPasMPProfilerHistoryView.Paint(const aCanvas:TpvCanvas;const aX,aY,aWidth,aHeight:TpvScalar);
+procedure TpvPasMPProfilerHistoryView.Paint(const aCanvas:TpvCanvas;const aX,aY,aWidth,aHeight,aTextSize,aBackgroundAlpha,aForegroundAlpha:TpvScalar);
 const ProfilerNotActivated='Profiler not activated';
       Colors:array[0..7] of TpvUInt32=
        (
@@ -157,9 +157,9 @@ begin
 
    for ThreadIndex:=0 to fPasMPInstance.CountJobWorkerThreads-1 do begin
     if (ThreadIndex and 1)<>0 then begin
-     aCanvas.Color:=GetColor($aaaaaa,0.5);
+     aCanvas.Color:=GetColor($aaaaaa,aBackgroundAlpha);
     end else begin
-     aCanvas.Color:=GetColor($eeeeee,0.5);
+     aCanvas.Color:=GetColor($eeeeee,aBackgroundAlpha);
     end;
     if ThreadIndex=(fPasMPInstance.CountJobWorkerThreads-1) then begin
      aCanvas.DrawFilledRectangle(TpvRect.CreateAbsolute(aX,aY+(HeightPerThread*ThreadIndex),aX+aWidth,aY+aHeight));
@@ -169,8 +169,10 @@ begin
    end;
 
    if fProfilerHistoryCount>0 then begin
-    FirstTime:=Max(fProfilerHistory[0].StartTime,
-                   fProfilerHistory[Min(fProfilerHistoryCount-1,PasMPProfilerHistoryRingBufferSizeMask)].EndTime-fVisibleTimePeriod);
+    FirstTime:=fProfilerHistory[Min(fProfilerHistoryCount-1,PasMPProfilerHistoryRingBufferSizeMask)].EndTime-fVisibleTimePeriod;
+    if FirstTime<fProfilerHistory[0].StartTime then begin
+     FirstTime:=fProfilerHistory[0].StartTime;
+    end;
     for ThreadIndex:=0 to fPasMPInstance.CountJobWorkerThreads-1 do begin
      fThreadMaxStackDepths[ThreadIndex]:=1;
     end;
@@ -200,27 +202,21 @@ begin
        y0:=aY+((HeightPerThread*ThreadIndex)+((StackDepth*HeightPerThread)/fThreadMaxStackDepths[ThreadIndex]));
        y1:=aY+((HeightPerThread*ThreadIndex)+Min(((StackDepth+1)*HeightPerThread)/fThreadMaxStackDepths[ThreadIndex],HeightPerThread));
        c:=Colors[ProfilerHistoryRingBufferItem^.JobTag and 7];
-       aCanvas.BeginPath;
-       aCanvas.Rectangle(TpvRect.CreateAbsolute(x0,y0,x1,y1));
-       aCanvas.Color:=GetColor(c,1.0);
-       aCanvas.Fill;
-       aCanvas.Color:=GetColor((((c and $ff00ff) shr 1) and $ff00ff) or (((c and $00ff00) shr 1) and $00ff00),1.0);
-       aCanvas.Stroke;
-       aCanvas.EndPath;
+       aCanvas.Color:=GetColor((((c and $ff00ff) shr 1) and $ff00ff) or (((c and $00ff00) shr 1) and $00ff00),aForegroundAlpha);
+       aCanvas.DrawFilledRectangle(TpvRect.CreateAbsolute(x0,y0,x1,y1));
+       aCanvas.Color:=GetColor(c,aForegroundAlpha);
+       aCanvas.DrawFilledRectangle(TpvRect.CreateAbsolute(x0+1,y0+1,x1-1,y1-1));
       end;
      end;
     end;
    end;
 
-   aCanvas.Color:=GetColor($000000,1.0);
-   aCanvas.FontSize:=-24;
+   aCanvas.Color:=GetColor($000000,aForegroundAlpha);
+   aCanvas.FontSize:=aTextSize;
 
    for ThreadIndex:=0 to fPasMPInstance.CountJobWorkerThreads-1 do begin
-    aCanvas.BeginPath;
-    aCanvas.MoveTo(aX,aY+(HeightPerThread*(ThreadIndex+1)));
-    aCanvas.LineTo(aX+aWidth,aY+(HeightPerThread*(ThreadIndex+1)));
-    aCanvas.Stroke;
-    aCanvas.EndPath;
+    aCanvas.DrawFilledRectangle(TpvRect.CreateAbsolute(aX,aY+(HeightPerThread*(ThreadIndex+1)),
+                                                       aX+aWidth,aY+(HeightPerThread*(ThreadIndex+1))+1));
     s:='Worker thread #'+IntToStr(ThreadIndex);
     aCanvas.DrawText(s,
                      aX+aCanvas.TextWidth(' '),
@@ -228,7 +224,8 @@ begin
    end;
 
   end else begin
-   aCanvas.FontSize:=-48;
+   aCanvas.Color:=GetColor($000000,aForegroundAlpha);
+   aCanvas.FontSize:=aTextSize*2.0;
    aCanvas.DrawText(ProfilerNotActivated,
                     aX+((aWidth-aCanvas.TextWidth(ProfilerNotActivated))*0.5),
                     aY+((aHeight-aCanvas.TextHeight(ProfilerNotActivated))*0.5));
