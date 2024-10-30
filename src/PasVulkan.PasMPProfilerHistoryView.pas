@@ -66,6 +66,7 @@ uses SysUtils,
      Math,
      Vulkan,
      PasMP,
+     PasVulkan.Application,
      PasVulkan.Types,
      PasVulkan.Math,
      PasVulkan.Canvas;
@@ -245,8 +246,8 @@ begin
  fMultipleReaderSingleWriterLock.AcquireWrite;
  try
   if assigned(fPasMPInstance.Profiler) then begin
-   fProfilerHistoryCount:=fPasMPInstance.Profiler.Count;
-   Move(fPasMPInstance.Profiler.History^,fProfilerHistory,Min(fProfilerHistoryCount,PasMPProfilerHistoryRingBufferSize)*SizeOf(TPasMPProfilerHistoryRingBufferItem));
+   fProfilerHistoryCount:=pvApplication.PasMPProfilerHistoryCount;
+   Move(pvApplication.PasMPProfilerHistory,fProfilerHistory,Min(fProfilerHistoryCount,PasMPProfilerHistoryRingBufferSize)*SizeOf(TPasMPProfilerHistoryRingBufferItem));
   end;
  finally
   fMultipleReaderSingleWriterLock.ReleaseWrite;

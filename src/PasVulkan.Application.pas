@@ -1300,6 +1300,14 @@ type EpvApplication=class(Exception)
 
        fPasMPInstance:TPasMP;
 
+       fPasMPProfilerSuppressGaps:TPasMPBool32;
+
+       fPasMPProfilerVisibleTimePeriod:TPasMPHighResolutionTime;
+
+       fPasMPProfilerHistory:TPasMPProfilerHistory;
+
+       fPasMPProfilerHistoryCount:TPasMPInt32;
+
        fDoDestroyGlobalPasMPInstance:TPasMPBool32;
 
        fHighResolutionTimer:TpvHighResolutionTimer;
@@ -1901,6 +1909,18 @@ type EpvApplication=class(Exception)
       published
 
        property PasMPInstance:TPasMP read fPasMPInstance;
+
+       property PasMPProfilerSuppressGaps:TPasMPBool32 read fPasMPProfilerSuppressGaps write fPasMPProfilerSuppressGaps;
+
+       property PasMPProfilerVisibleTimePeriod:TPasMPHighResolutionTime read fPasMPProfilerVisibleTimePeriod write fPasMPProfilerVisibleTimePeriod;
+
+      public
+
+       property PasMPProfilerHistory:TPasMPProfilerHistory read fPasMPProfilerHistory write fPasMPProfilerHistory;
+
+       property PasMPProfilerHistoryCount:TPasMPInt32 read fPasMPProfilerHistoryCount write fPasMPProfilerHistoryCount;
+
+      published
 
        property HighResolutionTimer:TpvHighResolutionTimer read fHighResolutionTimer;
 
@@ -7160,6 +7180,18 @@ begin
   fPasMPInstance.OnWorkerThreadException:=PasMPInstanceOnWorkerThreadException;
  end;
 
+ fPasMPProfilerSuppressGaps:=true;
+
+ if assigned(fPasMPInstance.Profiler) then begin
+  fPasMPProfilerVisibleTimePeriod:=(fPasMPInstance.Profiler.HighResolutionTimer.QuarterSecondInterval+1) shr 1;
+ end else begin
+  fPasMPProfilerVisibleTimePeriod:=-1;
+ end;
+
+ FillChar(fPasMPProfilerHistory,SizeOf(TPasMPProfilerHistory),#0);
+
+ fPasMPProfilerHistoryCount:=0;
+
  fHighResolutionTimer:=TpvHighResolutionTimer.Create;
 
  fFrameLimiterHighResolutionTimerSleepWithDriftCompensation:=TpvHighResolutionTimerSleepWithDriftCompensation.Create(fHighResolutionTimer);
@@ -10789,6 +10821,10 @@ var Index,Counter,Tries:TpvInt32;
     DoSkipNextFrameForRendering,ReadyForSwapChainLatency:boolean;
 begin
 
+ if assigned(fPasMPInstance.Profiler) then begin
+  fPasMPInstance.Profiler.Start(fPasMPProfilerSuppressGaps);
+ end;
+
  DoSkipNextFrameForRendering:=ShouldSkipNextFrameForRendering;
 
  ReadyForSwapChainLatency:=DoSkipNextFrameForRendering or WaitForSwapChainLatency;
@@ -11875,6 +11911,17 @@ begin
  end else begin
 
   fDeltaTime:=0;
+
+ end;
+
+ if assigned(fPasMPInstance.Profiler) then begin
+
+  fPasMPInstance.Profiler.Stop(fPasMPProfilerVisibleTimePeriod);
+
+  if assigned(fPasMPInstance.Profiler) then begin
+   fPasMPProfilerHistoryCount:=fPasMPInstance.Profiler.Count;
+   Move(fPasMPInstance.Profiler.History^,fPasMPProfilerHistory,Min(fPasMPProfilerHistoryCount,PasMPProfilerHistoryRingBufferSize)*SizeOf(TPasMPProfilerHistoryRingBufferItem));
+  end;
 
  end;
 
