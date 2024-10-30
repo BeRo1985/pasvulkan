@@ -1378,6 +1378,7 @@ type EpvApplication=class(Exception)
        fUseAudio:boolean;
        fBlocking:boolean;
        fUpdateUsesGPU:boolean;
+       fUseExtraUpdateThread:boolean;
        fWaitOnPreviousFrames:boolean;
        fWaitOnPreviousFrame:boolean;
        fTerminationWithAltF4:boolean;
@@ -2005,6 +2006,8 @@ type EpvApplication=class(Exception)
        property Blocking:boolean read fBlocking write fBlocking;
 
        property UpdateUsesGPU:boolean read fUpdateUsesGPU write fUpdateUsesGPU;
+
+       property UseExtraUpdateThread:boolean read fUseExtraUpdateThread write fUseExtraUpdateThread;
 
        property WaitOnPreviousFrames:boolean read fWaitOnPreviousFrames write fWaitOnPreviousFrames;
 
@@ -7277,6 +7280,7 @@ begin
  fUseAudio:=false;
  fBlocking:=true;
  fUpdateUsesGPU:=false;
+ fUseExtraUpdateThread:=false;
  fWaitOnPreviousFrames:=false;
  fWaitOnPreviousFrame:=false;
  fTerminationWithAltF4:=true;
@@ -7789,7 +7793,7 @@ begin
 {$ifend}
  try
   if assigned(fVulkanDevice) then begin
-   if fUpdateUsesGPU then begin
+   if fUpdateUsesGPU or fUseExtraUpdateThread then begin
     if assigned(fUpdateThread) then begin
      if fUpdateThread.fInvoked then begin
       fUpdateThread.WaitForDone;
@@ -9696,7 +9700,7 @@ begin
       TAcquireVulkanBackBufferState.RecreateSwapChain,
       TAcquireVulkanBackBufferState.RecreateSurface:begin
 
-       if fUpdateUsesGPU then begin
+       if fUpdateUsesGPU or fUseExtraUpdateThread then begin
         if assigned(fUpdateThread) then begin
          if fUpdateThread.fInvoked then begin
           fUpdateThread.WaitForDone;
@@ -11669,7 +11673,7 @@ begin
 
    Check(fUpdateDeltaTime);
 
-   if fUpdateUsesGPU and assigned(fUpdateThread) then begin
+   if (fUpdateUsesGPU or fUseExtraUpdateThread) and assigned(fUpdateThread) then begin
     fUpdateThread.Invoke;
     fUpdateThread.WaitForDone;
    end else begin
@@ -11724,7 +11728,7 @@ begin
 
         Check(fUpdateDeltaTime);
 
-        if assigned(fUpdateThread) then begin
+        if (fUpdateUsesGPU or fUseExtraUpdateThread) and assigned(fUpdateThread) then begin
          fUpdateThread.Invoke;
         end else begin
          UpdateJob:=fPasMPInstance.Acquire(UpdateJobFunction);
@@ -11743,7 +11747,7 @@ begin
 
         Check(fUpdateDeltaTime);
 
-        if fUpdateUsesGPU and assigned(fUpdateThread) then begin
+        if (fUpdateUsesGPU or fUseExtraUpdateThread) and assigned(fUpdateThread) then begin
          fUpdateThread.Invoke;
          fUpdateThread.WaitForDone;
         end else begin
@@ -11768,7 +11772,7 @@ begin
        finally
         if assigned(fVulkanDevice) then begin
          try
-          if fUpdateUsesGPU then begin
+          if fUpdateUsesGPU or fUseExtraUpdateThread then begin
            if assigned(fUpdateThread) then begin
             if fUpdateThread.fInvoked then begin
              fUpdateThread.WaitForDone;
@@ -11793,7 +11797,7 @@ begin
       end;
 
      finally
-      if assigned(fUpdateThread) then begin
+      if (fUpdateUsesGPU or fUseExtraUpdateThread) and assigned(fUpdateThread) then begin
        if fUpdateThread.fInvoked then begin
         fUpdateThread.WaitForDone;
        end;
@@ -11843,7 +11847,7 @@ begin
 
         BeginFrame(fUpdateDeltaTime);
 
-        if fUpdateUsesGPU and assigned(fUpdateThread) then begin
+        if (fUpdateUsesGPU or fUseExtraUpdateThread) and assigned(fUpdateThread) then begin
          fUpdateThread.Invoke;
          DrawJobFunction(nil,fPasMPInstance.GetJobWorkerThreadIndex);
          fUpdateThread.WaitForDone;
@@ -11871,7 +11875,7 @@ begin
 
         Check(fUpdateDeltaTime);
 
-        if fUpdateUsesGPU and assigned(fUpdateThread) then begin
+        if (fUpdateUsesGPU or fUseExtraUpdateThread) and assigned(fUpdateThread) then begin
          fUpdateThread.Invoke;
          fUpdateThread.WaitForDone;
         end else begin
