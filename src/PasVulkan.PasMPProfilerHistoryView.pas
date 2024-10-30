@@ -100,7 +100,7 @@ begin
 
  fPasMPInstance:=nil;
 
- fVisibleTimePeriod:=1;
+ fVisibleTimePeriod:=pvApplication.PasMPProfilerVisibleTimePeriod;
 
  fMultipleReaderSingleWriterLock:=TPasMPMultipleReaderSingleWriterLock.Create;
 
