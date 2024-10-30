@@ -13456,7 +13456,11 @@ begin
 {$ifend}
            try
 
-            fUpdateThread:=TpvApplicationUpdateThread.Create(self);
+            if fUpdateUsesGPU or fUseExtraUpdateThread then begin
+             fUpdateThread:=TpvApplicationUpdateThread.Create(self);
+            end else begin
+             fUpdateThread:=nil;
+            end;
             try
 
              while not fTerminated do begin
