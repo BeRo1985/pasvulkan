@@ -229,11 +229,16 @@ begin
    end;
 
   end else begin
+
+   aCanvas.Color:=GetColor($eeeeee,aBackgroundAlpha);
+   aCanvas.DrawFilledRectangle(TpvRect.CreateAbsolute(aX,aY,aX+aWidth,aY+aHeight));
+
    aCanvas.Color:=GetColor($000000,aForegroundAlpha);
    aCanvas.FontSize:=aTextSize*2.0;
    aCanvas.DrawText(ProfilerNotActivated,
                     aX+((aWidth-aCanvas.TextWidth(ProfilerNotActivated))*0.5),
                     aY+((aHeight-aCanvas.TextHeight(ProfilerNotActivated))*0.5));
+
   end;
 
  finally
