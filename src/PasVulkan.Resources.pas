@@ -1346,7 +1346,7 @@ begin
           nil,
           0,
           fToProcessQueueItems.Count-1,
-          HandleToProcessQueueItemsParallelForMethod(),
+          HandleToProcessQueueItemsParallelForMethod,
           1,
           PasMPDefaultDepth,
           nil,
