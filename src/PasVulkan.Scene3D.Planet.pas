@@ -1808,6 +1808,7 @@ type TpvScene3DPlanets=class;
        property RaytracingTileQueue:TRaytracingTiles read fRaytracingTileQueue;
        property RaytracingTileQueues:TRaytracingTileQueues read fRaytracingTileQueues;
        property RaytracingTileQueueUpdateIndex:TPasMPUInt32 read fRaytracingTileQueueUpdateIndex;
+       property BrushesTexture:TpvVulkanTexture read fBrushesTexture;
      end;
 
      { TpvScene3DPlanets }
