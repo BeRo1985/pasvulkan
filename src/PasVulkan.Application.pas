@@ -11631,6 +11631,13 @@ begin
   end;
 
   try
+   fResourceManager.Process;
+  except
+   Log(LOG_VERBOSE,'TpvApplication.ProcessMessages','Exception at fResourceManager.Process');
+   raise;
+  end;
+
+  try
    fResourceManager.FinishResources(fBackgroundResourceLoaderFrameTimeout);
   except
    Log(LOG_VERBOSE,'TpvApplication.ProcessMessages','Exception at fResourceManager.FinishResources');
