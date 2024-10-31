@@ -258,6 +258,8 @@ type TpvScene3DPlanets=class;
             PBrush=^TBrush;
             TBrushes=array[0..255] of TBrush;
             PBrushes=^TBrushes;
+            TUsedBrushes=array[0..255] of Boolean;
+            PUsedBrushes=^TUsedBrushes;
             { TData }
             TData=class // one ground truth instance and one or more in-flight instances for flawlessly parallel rendering
              public
@@ -1847,6 +1849,8 @@ function LoadBrushesFromAsset(const aAssetPath:TpvUTF8String;out aBrushes:TpvSce
 procedure SaveBrushesToStream(const aStream:TStream;const aBrushes:TpvScene3DPlanet.TBrushes);
 procedure SaveBrushesToAsset(const aAssetPath:TpvUTF8String;const aBrushes:TpvScene3DPlanet.TBrushes);
 
+procedure BrushesToUsedBrushes(const aBrushes:TpvScene3DPlanet.TBrushes;out aUsedBrushes:TpvScene3DPlanet.TUsedBrushes);
+
 implementation
 
 uses PasVulkan.Scene3D,
@@ -2127,6 +2131,29 @@ begin
   Stream.SaveToFile(RealFilePath);
  finally
   FreeAndNil(Stream);
+ end;
+end;
+
+procedure BrushesToUsedBrushes(const aBrushes:TpvScene3DPlanet.TBrushes;out aUsedBrushes:TpvScene3DPlanet.TUsedBrushes);
+var Index,x,y:TpvUInt32;
+    Used:Boolean;
+    Brush:TpvScene3DPlanet.PBrush;
+begin
+ for Index:=0 to 255 do begin
+  Used:=false;
+  Brush:=@aBrushes[Index];
+  for y:=0 to 255 do begin
+   for x:=0 to 255 do begin
+    if Brush^[y,x]<>0 then begin
+     Used:=true;
+     break;
+    end;
+   end;
+   if Used then begin
+    break;
+   end;
+  end;
+  aUsedBrushes[Index]:=Used;  
  end;
 end;
 
