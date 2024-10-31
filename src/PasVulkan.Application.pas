@@ -7047,37 +7047,39 @@ end;
 
 procedure TpvApplicationUpdateThread.Invoke;
 begin
- if not fInvoked then begin
-  fInvoked:=true;
+ if not TPasMPInterlocked.CompareExchange(fInvoked,TPasMPBool32(true),TPasMPBool32(false)) then begin
   fEvent.SetEvent;
  end;
 end;
 
 procedure TpvApplicationUpdateThread.WaitForDone;
 begin
- if fInvoked then begin
-  repeat
-   case fDoneEvent.WaitFor(10000) of
-    TWaitResult.wrSignaled:begin
-     break;
+ if TPasMPInterlocked.Read(fInvoked) then begin
+  try
+   repeat
+    case fDoneEvent.WaitFor(10000) of
+     TWaitResult.wrSignaled:begin
+      break;
+     end;
+     TWaitResult.wrError:begin
+      pvApplication.Log(LOG_ERROR,'TpvApplicationUpdateThread.WaitForDone','fDoneEvent.WaitFor failed! Last tag was '+IntToHex(UpdateThreadTag));
+      break;
+     end;
+     TWaitResult.wrTimeout:begin
+      pvApplication.Log(LOG_DEBUG,'TpvApplicationUpdateThread.WaitForDone','fDoneEvent.WaitFor timeouted! Trying again . . .  Last tag was '+IntToHex(UpdateThreadTag));
+     end;
+     TWaitResult.wrAbandoned:begin
+      pvApplication.Log(LOG_ERROR,'TpvApplicationUpdateThread.WaitForDone','fDoneEvent.WaitFor abandoned! Last tag was '+IntToHex(UpdateThreadTag));
+      break;
+     end;
+     else begin
+      Assert(false);
+     end;
     end;
-    TWaitResult.wrError:begin
-     pvApplication.Log(LOG_ERROR,'TpvApplicationUpdateThread.WaitForDone','fDoneEvent.WaitFor failed! Last tag was '+IntToHex(UpdateThreadTag));
-     break;
-    end;
-    TWaitResult.wrTimeout:begin
-     pvApplication.Log(LOG_DEBUG,'TpvApplicationUpdateThread.WaitForDone','fDoneEvent.WaitFor timeouted! Trying again . . .  Last tag was '+IntToHex(UpdateThreadTag));
-    end;
-    TWaitResult.wrAbandoned:begin
-     pvApplication.Log(LOG_ERROR,'TpvApplicationUpdateThread.WaitForDone','fDoneEvent.WaitFor abandoned! Last tag was '+IntToHex(UpdateThreadTag));
-     break;
-    end;
-    else begin
-     Assert(false);
-    end;
-   end;
-  until false;
-  fInvoked:=false;
+   until false;
+  finally
+   TPasMPInterlocked.Exchange(fInvoked,TPasMPBool32(false));
+  end;
  end;
 end;
 
@@ -7795,9 +7797,7 @@ begin
   if assigned(fVulkanDevice) then begin
    if fUpdateUsesGPU then begin
     if fUseExtraUpdateThread and assigned(fUpdateThread) then begin
-     if fUpdateThread.fInvoked then begin
-      fUpdateThread.WaitForDone;
-     end;
+     fUpdateThread.WaitForDone;
     end else begin
      while fInUpdateJobFunction do begin
       TPasMP.Yield;
@@ -9702,9 +9702,7 @@ begin
 
        if fUpdateUsesGPU then begin
         if fUseExtraUpdateThread and assigned(fUpdateThread) then begin
-         if fUpdateThread.fInvoked then begin
-          fUpdateThread.WaitForDone;
-         end;
+         fUpdateThread.WaitForDone;
         end else begin
          while fInUpdateJobFunction do begin
           TPasMP.Yield;
@@ -11774,9 +11772,7 @@ begin
          try
           if fUpdateUsesGPU then begin
            if fUseExtraUpdateThread and assigned(fUpdateThread) then begin
-            if fUpdateThread.fInvoked then begin
-             fUpdateThread.WaitForDone;
-            end;
+            fUpdateThread.WaitForDone;
            end else begin
             while fInUpdateJobFunction do begin
              TPasMP.Yield;
@@ -11798,9 +11794,7 @@ begin
 
      finally
       if fUseExtraUpdateThread and assigned(fUpdateThread) then begin
-       if fUpdateThread.fInvoked then begin
-        fUpdateThread.WaitForDone;
-       end;
+       fUpdateThread.WaitForDone;
       end else begin
        if assigned(UpdateJob) then begin
         fPasMPInstance.WaitRelease(UpdateJob);
