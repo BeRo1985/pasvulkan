@@ -7799,7 +7799,7 @@ begin
     if fUseExtraUpdateThread and assigned(fUpdateThread) then begin
      fUpdateThread.WaitForDone;
     end else begin
-     while fInUpdateJobFunction do begin
+     while TPasMPInterlocked.Read(fInUpdateJobFunction) do begin
       TPasMP.Yield;
      end;
     end;
@@ -9704,7 +9704,7 @@ begin
         if fUseExtraUpdateThread and assigned(fUpdateThread) then begin
          fUpdateThread.WaitForDone;
         end else begin
-         while fInUpdateJobFunction do begin
+         while TPasMPInterlocked.Read(fInUpdateJobFunction) do begin
           TPasMP.Yield;
          end;
         end;
@@ -10500,11 +10500,12 @@ end;}
 
 procedure TpvApplication.UpdateJobFunction(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32);
 begin
- TPasMPInterlocked.Write(fInUpdateJobFunction,TPasMPBool32(true));
- try
-  Update(fUpdateDeltaTime);
- finally
-  TPasMPInterlocked.Write(fInUpdateJobFunction,TPasMPBool32(false));
+ if not TPasMPInterlocked.CompareExchange(fInUpdateJobFunction,TPasMPBool32(true),TPasMPBool32(false)) then begin
+  try
+   Update(fUpdateDeltaTime);
+  finally
+   TPasMPInterlocked.Write(fInUpdateJobFunction,TPasMPBool32(false));
+  end;
  end;
 end;
 
@@ -11774,7 +11775,7 @@ begin
            if fUseExtraUpdateThread and assigned(fUpdateThread) then begin
             fUpdateThread.WaitForDone;
            end else begin
-            while fInUpdateJobFunction do begin
+            while TPasMPInterlocked.Read(fInUpdateJobFunction) do begin
              TPasMP.Yield;
             end;
            end;
