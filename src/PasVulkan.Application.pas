@@ -1377,7 +1377,7 @@ type EpvApplication=class(Exception)
        fAndroidTrapBackButton:boolean;
        fUseAudio:boolean;
        fBlocking:boolean;
-       fUpdateUsesGPU:boolean;
+       fUpdateWaitsForGPU:boolean;
        fUseExtraUpdateThread:boolean;
        fWaitOnPreviousFrames:boolean;
        fWaitOnPreviousFrame:boolean;
@@ -2007,7 +2007,7 @@ type EpvApplication=class(Exception)
 
        property Blocking:boolean read fBlocking write fBlocking;
 
-       property UpdateUsesGPU:boolean read fUpdateUsesGPU write fUpdateUsesGPU;
+       property UpdateWaitsForGPU:boolean read fUpdateWaitsForGPU write fUpdateWaitsForGPU;
 
        property UseExtraUpdateThread:boolean read fUseExtraUpdateThread write fUseExtraUpdateThread;
 
@@ -7283,7 +7283,7 @@ begin
  fAndroidTrapBackButton:=true;
  fUseAudio:=false;
  fBlocking:=true;
- fUpdateUsesGPU:=false;
+ fUpdateWaitsForGPU:=false;
  fUseExtraUpdateThread:=false;
  fWaitOnPreviousFrames:=false;
  fWaitOnPreviousFrame:=false;
@@ -7801,7 +7801,7 @@ begin
 {$ifend}
  try
   if assigned(fVulkanDevice) then begin
-   if fUpdateUsesGPU then begin
+   if fUpdateWaitsForGPU then begin
     if fUseExtraUpdateThread and assigned(fUpdateThread) then begin
      fUpdateThread.WaitForDone;
     end else begin
@@ -9713,7 +9713,7 @@ begin
       TAcquireVulkanBackBufferState.RecreateSwapChain,
       TAcquireVulkanBackBufferState.RecreateSurface:begin
 
-       if fUpdateUsesGPU then begin
+       if fUpdateWaitsForGPU then begin
         if fUseExtraUpdateThread and assigned(fUpdateThread) then begin
          fUpdateThread.WaitForDone;
         end else begin
@@ -11797,7 +11797,7 @@ begin
        finally
         if assigned(fVulkanDevice) then begin
          try
-          if fUpdateUsesGPU then begin
+          if fUpdateWaitsForGPU then begin
            if fUseExtraUpdateThread and assigned(fUpdateThread) then begin
             fUpdateThread.WaitForDone;
            end else begin
