@@ -1674,6 +1674,8 @@ type EpvApplication=class(Exception)
 
        fInUpdateJobFunction:TPasMPBool32;
 
+       fUpdateJob:PPasMPJob;
+
 {$if not (defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless))}
        fNativeEventQueue:TpvApplicationNativeEventQueue;
 
@@ -7328,6 +7330,10 @@ begin
 
  fVulkanPipelineCache:=nil;
 
+ fUpdateJob:=nil;
+
+ fInUpdateJobFunction:=false;
+
  fCountCPUThreads:=Max(1,TPasMP.GetCountOfHardwareThreads(fAvailableCPUCores));
 {$if defined(fpc) and defined(android)}
  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication',PAnsiChar(TpvApplicationRawByteString('Detected CPU thread count: '+IntToStr(fCountCPUThreads))));
@@ -7799,6 +7805,13 @@ begin
     if fUseExtraUpdateThread and assigned(fUpdateThread) then begin
      fUpdateThread.WaitForDone;
     end else begin
+     if assigned(fUpdateJob) then begin
+      try
+       fPasMPInstance.WaitRelease(fUpdateJob);
+      finally
+       fUpdateJob:=nil;
+      end;
+     end;
      while TPasMPInterlocked.Read(fInUpdateJobFunction) do begin
       TPasMP.Yield;
      end;
@@ -9704,6 +9717,13 @@ begin
         if fUseExtraUpdateThread and assigned(fUpdateThread) then begin
          fUpdateThread.WaitForDone;
         end else begin
+         if assigned(fUpdateJob) then begin
+          try
+           fPasMPInstance.WaitRelease(fUpdateJob);
+          finally
+           fUpdateJob:=nil;
+          end;
+         end;
          while TPasMPInterlocked.Read(fInUpdateJobFunction) do begin
           TPasMP.Yield;
          end;
@@ -10820,7 +10840,6 @@ var Index,Counter,Tries:TpvInt32;
  {$ifend}
 {$ifend}
     OK,Found:boolean;
-    UpdateJob:PPasMPJob;
     DoSkipNextFrameForRendering,ReadyForSwapChainLatency:boolean;
 begin
 
@@ -11703,7 +11722,7 @@ begin
 
     TpvApplicationProcessingMode.Flexible:begin
 
-     UpdateJob:=nil;
+     fUpdateJob:=nil;
      try
 
       if fVulkanBackBufferState=TVulkanBackBufferState.Acquire then begin
@@ -11737,8 +11756,8 @@ begin
         if fUseExtraUpdateThread and assigned(fUpdateThread) then begin
          fUpdateThread.Invoke;
         end else begin
-         UpdateJob:=fPasMPInstance.Acquire(UpdateJobFunction);
-         fPasMPInstance.Run(UpdateJob);
+         fUpdateJob:=fPasMPInstance.Acquire(UpdateJobFunction);
+         fPasMPInstance.Run(fUpdateJob);
         end;
 
        end else begin
@@ -11782,6 +11801,13 @@ begin
            if fUseExtraUpdateThread and assigned(fUpdateThread) then begin
             fUpdateThread.WaitForDone;
            end else begin
+            if assigned(fUpdateJob) then begin
+             try
+              fPasMPInstance.WaitRelease(fUpdateJob);
+             finally
+              fUpdateJob:=nil;
+             end;
+            end;
             while TPasMPInterlocked.Read(fInUpdateJobFunction) do begin
              TPasMP.Yield;
             end;
@@ -11804,8 +11830,8 @@ begin
       if fUseExtraUpdateThread and assigned(fUpdateThread) then begin
        fUpdateThread.WaitForDone;
       end else begin
-       if assigned(UpdateJob) then begin
-        fPasMPInstance.WaitRelease(UpdateJob);
+       if assigned(fUpdateJob) then begin
+        fPasMPInstance.WaitRelease(fUpdateJob);
        end;
       end;
      end;
@@ -11854,12 +11880,12 @@ begin
          DrawJobFunction(nil,fPasMPInstance.GetJobWorkerThreadIndex);
          fUpdateThread.WaitForDone;
         end else begin
-         UpdateJob:=fPasMPInstance.Acquire(UpdateJobFunction);
+         fUpdateJob:=fPasMPInstance.Acquire(UpdateJobFunction);
          try
-          fPasMPInstance.Run(UpdateJob);
+          fPasMPInstance.Run(fUpdateJob);
           DrawJobFunction(nil,fPasMPInstance.GetJobWorkerThreadIndex);
          finally
-          fPasMPInstance.WaitRelease(UpdateJob);
+          fPasMPInstance.WaitRelease(fUpdateJob);
          end;
         end;
 
