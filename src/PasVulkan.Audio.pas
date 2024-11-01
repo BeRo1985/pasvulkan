@@ -5597,6 +5597,9 @@ end;
 
 procedure TpvAudioThread.Execute;
 begin
+{$if declared(NameThreadForDebugging)}
+ NameThreadForDebugging('TpvAudioThread');
+{$ifend}
  try
 (*{$ifdef windows}
   SetThreadAffinityMask(GetCurrentThread,1 shl GDFW.CPUCores[1]);
