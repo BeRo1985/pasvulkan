@@ -1515,7 +1515,7 @@ begin
  if TPasMPInterlocked.Read(fCountQueueItems)>0 then begin
 
   fRootJob:=pvApplication.PasMPInstance.Acquire(RootJobMethod,nil,nil,0,0);
-  pvApplication.PasMPInstance.RunGlobal(fRootJob);
+  pvApplication.PasMPInstance.Run(fRootJob,true);
 
  end;
 

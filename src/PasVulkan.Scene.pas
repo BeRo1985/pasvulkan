@@ -1198,7 +1198,7 @@ begin
 
   if TPasMPInterlocked.Read(fCountToBackgroundLoadNodes)>0 then begin
    fBackgroundLoadJob:=pvApplication.PasMPInstance.Acquire(BackgroundLoadJobMethod,nil,nil,0,0);
-   pvApplication.PasMPInstance.Run(fBackgroundLoadJob);
+   pvApplication.PasMPInstance.Run(fBackgroundLoadJob,true);
   end;
 
   break;
