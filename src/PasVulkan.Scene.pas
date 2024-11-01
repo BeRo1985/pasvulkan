@@ -892,7 +892,11 @@ end;
 
 procedure TpvScene.BackgroundLoadJobMethod(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32);
 begin
+//if pvApplication.PasMPInstance.JobWorkerThreads[aThreadIndex].Depth<=1 then begin
  BackgroundLoad;
+{end else begin
+  TPasMPInterlocked.BitwiseOr(aJob^.InternalData,PasMPJobFlagRequeue);
+ end;}
 end;
 
 procedure TpvScene.StartLoad;
