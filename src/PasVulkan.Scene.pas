@@ -240,33 +240,25 @@ type TpvScene=class;
 
      { TpvScene }
      TpvScene=class
-      public
-       type TBackgroundLoadThread=class(TPasMPThread)
-             private
-              fScene:TpvScene;
-              fEvent:TPasMPEvent;
-             protected
-              procedure Execute; override;
-             public
-              constructor Create(const aScene:TpvScene); reintroduce;
-              destructor Destroy; override;
-              procedure Shutdown;
-              procedure WakeUp;
-            end;
       private
        fRootNode:TpvSceneNode;
        fAllNodesLock:TPasMPSlimReaderWriterLock;
        fAllNodes:TpvSceneNodes;
-       fCountToLoadNodes:TPasMPInt32;
-       fBackgroundLoadThread:TBackgroundLoadThread;
+       fCountToStartLoadNodes:TPasMPInt32;
+       fCountToBackgroundLoadNodes:TPasMPInt32;
+       fCountToFinishLoadNodes:TPasMPInt32;
        fData:TObject;
       public 
        fStartLoadVisitGeneration:TpvUInt32;
        fBackgroundLoadVisitGeneration:TpvUInt32;
        fFinishLoadVisitGeneration:TpvUInt32;
+      private
+       fBackgroundLoadJob:PPasMPJob;
+       procedure BackgroundLoadJobMethod(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32);
       public
        constructor Create(const aData:TObject=nil); reintroduce; virtual;
        destructor Destroy; override;
+       procedure Shutdown; virtual;
        procedure StartLoad; virtual;
        procedure BackgroundLoad; virtual;
        procedure FinishLoad; virtual;
@@ -377,7 +369,6 @@ var ChildNodeIndex:TpvSizeInt;
     NodeClass:TpvSceneNodeClass;
     Nodes:TpvSceneNodes;
 begin
-
  if assigned(fParent) and not fDestroying then begin
   ParentNode:=fParent;
   TPasMPMultipleReaderSingleWriterSpinLock.AcquireWrite(ParentNode.fLock);
@@ -425,7 +416,7 @@ begin
   finally
    fScene.fAllNodesLock.Release;
   end; 
-  TPasMPInterlocked.Increment(fScene.fCountToLoadNodes);
+  TPasMPInterlocked.Increment(fScene.fCountToStartLoadNodes);
  end;
 end;
 
@@ -633,6 +624,8 @@ begin
  OldState:=TPasMPInterlocked.Read(fState);
  if (OldState=TpvSceneNodeState.Unloaded) or (OldState=TpvSceneNodeState.StartLoading) then begin
   TPasMPInterlocked.CompareExchange(fState,TpvSceneNodeState.StartLoaded,OldState);
+  TPasMPInterlocked.Decrement(fScene.fCountToStartLoadNodes);
+  TPasMPInterlocked.Increment(fScene.fCountToBackgroundLoadNodes);
  end;  
 end;
 
@@ -650,6 +643,8 @@ begin
  OldState:=TPasMPInterlocked.Read(fState);
  if (OldState=TpvSceneNodeState.StartLoaded) or (OldState=TpvSceneNodeState.BackgroundLoading) then begin
   TPasMPInterlocked.CompareExchange(fState,TpvSceneNodeState.BackgroundLoaded,OldState);
+  TPasMPInterlocked.Decrement(fScene.fCountToBackgroundLoadNodes);
+  TPasMPInterlocked.Increment(fScene.fCountToFinishLoadNodes);
  end;  
 end;
 
@@ -668,7 +663,7 @@ begin
  if ((OldState=TpvSceneNodeState.BackgroundLoaded) or (OldState=TpvSceneNodeState.Loading)) and
     (TPasMPInterlocked.CompareExchange(fState,TpvSceneNodeState.Loaded,OldState)=OldState) then begin
   if assigned(fScene) then begin
-   TPasMPInterlocked.Decrement(fScene.fCountToLoadNodes);
+   TPasMPInterlocked.Decrement(fScene.fCountToFinishLoadNodes);
   end;
  end;
 end;
@@ -840,52 +835,6 @@ procedure TpvSceneNode.Deserialize(const aData:TObject);
 begin
 end;
 
-{ TpvScene.TBackgroundLoadThread }
-
-constructor TpvScene.TBackgroundLoadThread.Create(const aScene:TpvScene);
-begin
- fScene:=aScene;
- fEvent:=TPasMPEvent.Create(nil,false,false,'');
- inherited Create(false);
-end;
-
-destructor TpvScene.TBackgroundLoadThread.Destroy;
-begin
- Shutdown;
- FreeAndNil(fEvent);
- inherited Destroy;
-end;
-
-procedure TpvScene.TBackgroundLoadThread.Shutdown;
-begin
- if not Finished then begin
-  Terminate;
-  fEvent.SetEvent;
-  WaitFor;
- end;
-end;
-
-procedure TpvScene.TBackgroundLoadThread.WakeUp;
-begin
- fEvent.SetEvent;
-end;
-
-procedure TpvScene.TBackgroundLoadThread.Execute;
-begin
- while not Terminated do begin
-  fEvent.WaitFor;
-  if Terminated then begin
-   break;
-  end else begin 
-   if TPasMPInterlocked.Read(fScene.fCountToLoadNodes)>0 then begin
-    fScene.BackgroundLoad;
-   end else begin
-    Sleep(0);
-   end;
-  end;
- end;
-end;
-
 { TpvScene }
 
 constructor TpvScene.Create(const aData:TObject=nil);
@@ -899,7 +848,9 @@ begin
  fRootNode:=TpvSceneNode.Create(nil);
  fRootNode.fScene:=self;
 
- fCountToLoadNodes:=1;
+ fCountToStartLoadNodes:=0;
+ fCountToBackgroundLoadNodes:=0;
+ fCountToFinishLoadNodes:=0;
 
  fData:=aData;
 
@@ -907,18 +858,39 @@ begin
  fBackgroundLoadVisitGeneration:=1;
  fFinishLoadVisitGeneration:=1;
 
- fBackgroundLoadThread:=TBackgroundLoadThread.Create(self);
+ fBackgroundLoadJob:=nil;
 
 end;
 
 destructor TpvScene.Destroy;
 begin
- fBackgroundLoadThread.Shutdown;
- FreeAndNil(fBackgroundLoadThread);
+
+ Shutdown;
+
  FreeAndNil(fRootNode);
+
  FreeAndNil(fAllNodes);
+
  FreeAndNil(fAllNodesLock);
+
  inherited Destroy;
+
+end;
+
+procedure TpvScene.Shutdown;
+begin
+ if assigned(fBackgroundLoadJob) then begin
+  try
+   pvApplication.PasMPInstance.WaitRelease(fBackgroundLoadJob);
+  finally
+   fBackgroundLoadJob:=nil;
+  end;
+ end;
+end; 
+
+procedure TpvScene.BackgroundLoadJobMethod(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32);
+begin
+ BackgroundLoad;
 end;
 
 procedure TpvScene.StartLoad;
@@ -973,7 +945,7 @@ begin
         on e:Exception do begin
          pvApplication.Log(LOG_ERROR,ClassName+'.StartLoad',DumpExceptionCallStack(e));
          if TPasMPInterlocked.CompareExchange(Node.fState,TpvSceneNodeState.Failed,TpvSceneNodeState.Unloaded)=TpvSceneNodeState.Unloaded then begin
-          TPasMPInterlocked.Decrement(fCountToLoadNodes);
+          TPasMPInterlocked.Decrement(fCountToStartLoadNodes);
          end;
         end;
        end;
@@ -995,7 +967,7 @@ begin
         on e:Exception do begin
          pvApplication.Log(LOG_ERROR,ClassName+'.StartLoad',DumpExceptionCallStack(e));
          if TPasMPInterlocked.CompareExchange(Node.fState,TpvSceneNodeState.Failed,TpvSceneNodeState.StartLoading)=TpvSceneNodeState.StartLoading then begin
-          TPasMPInterlocked.Decrement(fCountToLoadNodes);
+          TPasMPInterlocked.Decrement(fCountToStartLoadNodes);
          end;
         end;
        end;
@@ -1063,7 +1035,7 @@ begin
         on e:Exception do begin
          pvApplication.Log(LOG_ERROR,ClassName+'.BackgroundLoad',DumpExceptionCallStack(e));
          if TPasMPInterlocked.CompareExchange(Node.fState,TpvSceneNodeState.Failed,TpvSceneNodeState.StartLoaded)=TpvSceneNodeState.StartLoaded then begin
-          TPasMPInterlocked.Decrement(fCountToLoadNodes);
+          TPasMPInterlocked.Decrement(fCountToBackgroundLoadNodes);
          end;
         end;
        end;
@@ -1085,7 +1057,7 @@ begin
         on e:Exception do begin
          pvApplication.Log(LOG_ERROR,ClassName+'.BackgroundLoad',DumpExceptionCallStack(e));
          if TPasMPInterlocked.CompareExchange(Node.fState,TpvSceneNodeState.Failed,TpvSceneNodeState.BackgroundLoading)=TpvSceneNodeState.BackgroundLoading then begin
-          TPasMPInterlocked.Decrement(fCountToLoadNodes);
+          TPasMPInterlocked.Decrement(fCountToBackgroundLoadNodes);
          end;
         end;
        end;
@@ -1153,7 +1125,7 @@ begin
         on e:Exception do begin
          pvApplication.Log(LOG_ERROR,ClassName+'.FinishLoad',DumpExceptionCallStack(e));
          if TPasMPInterlocked.CompareExchange(Node.fState,TpvSceneNodeState.Failed,TpvSceneNodeState.BackgroundLoaded)=TpvSceneNodeState.BackgroundLoaded then begin
-          TPasMPInterlocked.Decrement(fCountToLoadNodes);
+          TPasMPInterlocked.Decrement(fCountToFinishLoadNodes);
          end;
         end;
        end;
@@ -1175,7 +1147,7 @@ begin
         on e:Exception do begin
          pvApplication.Log(LOG_ERROR,ClassName+'.FinishLoad',DumpExceptionCallStack(e));
          if TPasMPInterlocked.CompareExchange(Node.fState,TpvSceneNodeState.Failed,TpvSceneNodeState.Loading)=TpvSceneNodeState.Loading then begin
-          TPasMPInterlocked.Decrement(fCountToLoadNodes);
+          TPasMPInterlocked.Decrement(fCountToFinishLoadNodes);
          end;
         end;
        end;
@@ -1203,11 +1175,40 @@ end;
 
 procedure TpvScene.LoadSynchronizationPoint;
 begin
- if TPasMPInterlocked.Read(fCountToLoadNodes)>0 then begin
+ 
+ if TPasMPInterlocked.Read(fCountToStartLoadNodes)>0 then begin
   StartLoad;
-  fBackgroundLoadThread.WakeUp;
+ end;
+ 
+ repeat
+
+  if assigned(fBackgroundLoadJob) then begin
+
+   if pvApplication.PasMPInstance.IsJobValid(fBackgroundLoadJob) then begin
+    break;
+   end;
+
+   try
+    pvApplication.PasMPInstance.WaitRelease(fBackgroundLoadJob);
+   finally
+    fBackgroundLoadJob:=nil;
+   end;
+
+  end;
+
+  if TPasMPInterlocked.Read(fCountToBackgroundLoadNodes)>0 then begin
+   fBackgroundLoadJob:=pvApplication.PasMPInstance.Acquire(BackgroundLoadJobMethod,nil,nil,0,0);
+   pvApplication.PasMPInstance.Run(fBackgroundLoadJob);
+  end;
+
+  break;
+
+ until false;
+
+ if TPasMPInterlocked.Read(fCountToFinishLoadNodes)>0 then begin
   FinishLoad;
  end;
+
 end;
 
 procedure TpvScene.Check;
