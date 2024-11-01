@@ -7172,7 +7172,9 @@ begin
   fPasMPInstance:=GlobalPasMP;
   fDoDestroyGlobalPasMPInstance:=false;
  end else begin
-  GlobalPasMPMaximalThreads:=-1;
+  GlobalPasMPCountThreads:=-1;
+  GlobalPasMPMinimumCountThreads:=4;
+  GlobalPasMPMaximumCountThreads:=-1;
   GlobalPasMPThreadHeadRoomForForeignTasks:=0;
   GlobalPasMPDoCPUCorePinning:=false;
   GlobalPasMPSleepingOnIdle:=true;
