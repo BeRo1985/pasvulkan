@@ -679,7 +679,9 @@ begin
    ChildNode.WaitForLoaded;
   end;
   while TPasMPInterlocked.Read(fState)<TpvSceneNodeState.Loaded do begin
-   Sleep(1);
+   if not pvApplication.PasMPInstance.StealAndExecuteJob then begin
+    Sleep(1);
+   end;
   end;
  finally
   pvApplication.Log(LOG_DEBUG,ClassName+'.WaitForLoaded','Leaving...');
