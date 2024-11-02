@@ -3,27 +3,29 @@
 // Copyright (C) 2017, Benjamin 'BeRo' Rosseaux (benjamin@rosseaux.de)
 // License: zlib 
 
-layout(location = 0) in vec3 inPosition; 
-layout(location = 1) in vec4 inColor;    
+layout(location = 0) in vec3 inOriginalPosition;
+layout(location = 1) in vec3 inPosition; 
+layout(location = 2) in vec4 inColor;    
 #if USETEXTURE
-layout(location = 2) in vec3 inTexCoord; 
+layout(location = 3) in vec3 inTexCoord; 
 #endif
-layout(location = 3) in uint inState;    
-layout(location = 4) in vec4 inClipRect; 
-layout(location = 5) in vec4 inMetaInfo; 
-layout(location = 6) in vec4 inMetaInfo2; 
+layout(location = 4) in uint inState;    
+layout(location = 5) in vec4 inClipRect; 
+layout(location = 6) in vec4 inMetaInfo; 
+layout(location = 7) in vec4 inMetaInfo2; 
 
-layout(location = 0) out vec2 outPosition;
-layout(location = 1) out vec4 outColor;
+layout(location = 0) out vec3 outOriginalPosition;
+layout(location = 1) out vec2 outPosition;
+layout(location = 2) out vec4 outColor;
 #if USETEXTURE
-layout(location = 2) out vec3 outTexCoord;
+layout(location = 3) out vec3 outTexCoord;
 #endif
-layout(location = 3) flat out ivec4 outState;    
-layout(location = 4) out vec4 outMetaInfo; 
-layout(location = 5) out vec4 outMetaInfo2; 
-layout(location = 6) out vec2 outClipSpacePosition; 
+layout(location = 4) flat out ivec4 outState;    
+layout(location = 5) out vec4 outMetaInfo; 
+layout(location = 6) out vec4 outMetaInfo2; 
+layout(location = 7) out vec2 outClipSpacePosition; 
 #if !USECLIPDISTANCE
-layout(location = 7) out vec4 outClipRect; 
+layout(location = 8) out vec4 outClipRect; 
 #endif
 
 layout(push_constant, std140) uniform PushConstants {
@@ -62,6 +64,7 @@ out gl_PerVertex {
 };
 
 void main(void){
+  outOriginalPosition = inOriginalPosition;
   outPosition = inPosition.xy;
   outColor = inColor;
 #if USETEXTURE

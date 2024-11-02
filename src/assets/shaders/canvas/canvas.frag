@@ -23,17 +23,18 @@
 
 layout(early_fragment_tests) in;
 
-layout(location = 0) in vec2 inPosition; // 2D position
-layout(location = 1) in vec4 inColor;    // RGBA Color (in linear space, NOT in sRGB non-linear color space!)
+layout(location = 0) in vec2 inOriginalPosition; // 2D position
+layout(location = 1) in vec2 inPosition; // 2D position
+layout(location = 2) in vec4 inColor;    // RGBA Color (in linear space, NOT in sRGB non-linear color space!)
 #if (FILLTYPE == FILLTYPE_TEXTURE) || (FILLTYPE == FILLTYPE_ATLAS_TEXTURE) || (FILLTYPE == FILLTYPE_VECTOR_PATH) || defined(GUI_ELEMENTS) 
-layout(location = 2) in vec3 inTexCoord; // 2D texture coordinate with array texture layer index inside the z component
+layout(location = 3) in vec3 inTexCoord; // 2D texture coordinate with array texture layer index inside the z component
 #endif
-layout(location = 3) flat in ivec4 inState; // x = Rendering mode, y = object type, z = not used yet, w = not used yet
-layout(location = 4) in vec4 inMetaInfo; // Various stuff
-layout(location = 5) in vec4 inMetaInfo2; // Various stuff
-layout(location = 6) in vec2 inClipSpacePosition;  // xy
+layout(location = 4) flat in ivec4 inState; // x = Rendering mode, y = object type, z = not used yet, w = not used yet
+layout(location = 5) in vec4 inMetaInfo; // Various stuff
+layout(location = 6) in vec4 inMetaInfo2; // Various stuff
+layout(location = 7) in vec2 inClipSpacePosition;  // xy
 #if !USECLIPDISTANCE
-layout(location = 7) in vec4 inClipRect; // xy = Left Top, zw = Right Bottom
+layout(location = 8) in vec4 inClipRect; // xy = Left Top, zw = Right Bottom
 #endif
 
 #if FILLTYPE == FILLTYPE_ATLAS_TEXTURE 
@@ -909,7 +910,7 @@ void main(void){
 #endif
 #ifdef SIGNEDDISTANCEDFIELD
   if(inState.y != 0){
-    float threshold = length(abs(dFdx(inPosition.xy)) + abs(dFdy(inPosition.xy))) * SQRT_0_DOT_5;
+    float threshold = length(abs(dFdx(inOriginalPosition.xy)) + abs(dFdy(inOriginalPosition.xy))) * SQRT_0_DOT_5;
     switch(inState.y){
       case 0x01:{
         // Distance to line edge
@@ -919,40 +920,40 @@ void main(void){
       }
       case 0x02:{
         // Distance to line round cap circle       
-        color.a *= linearstep(0.0, -threshold, length(inPosition.xy - inMetaInfo.xy) - inMetaInfo.z);
+        color.a *= linearstep(0.0, -threshold, length(inOriginalPosition.xy - inMetaInfo.xy) - inMetaInfo.z);
         break;      
       }
       case 0x03:{
         // Distance to round line (polygon edge) 
-        vec2 pa = inPosition.xy - inMetaInfo.xy, ba = inMetaInfo.zw - inMetaInfo.xy;
+        vec2 pa = inOriginalPosition.xy - inMetaInfo.xy, ba = inMetaInfo.zw - inMetaInfo.xy;
         color.a *= linearstep(0.0, -threshold, length(pa - (ba * (clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0)))) - threshold);
         break;      
       }
       case 0x04:{
         // Distance to circle       
-        color.a *= linearstep(0.0, -threshold, length(inPosition.xy - inMetaInfo.xy) - inMetaInfo.z);
+        color.a *= linearstep(0.0, -threshold, length(inOriginalPosition.xy - inMetaInfo.xy) - inMetaInfo.z);
         break;      
       }
       case 0x05:{
         // Distance to ellipse
-        color.a *= linearstep(0.0, -threshold, sdEllipse(inPosition.xy - inMetaInfo.xy, inMetaInfo.zw));
+        color.a *= linearstep(0.0, -threshold, sdEllipse(inOriginalPosition.xy - inMetaInfo.xy, inMetaInfo.zw));
         break;      
       }
       case 0x06:{
         // Distance to rectangle
-        vec2 d = abs(inPosition.xy - inMetaInfo.xy) - inMetaInfo.zw;
+        vec2 d = abs(inOriginalPosition.xy - inMetaInfo.xy) - inMetaInfo.zw;
         color.a *= linearstep(0.0, -threshold, min(max(d.x, d.y), 0.0) + length(max(d, 0.0)));
         break;      
       }
       case 0x07:{
         // Distance to rounded rectangle
-        vec2 d = abs(inPosition.xy - inMetaInfo.xy) - inMetaInfo.zw;
+        vec2 d = abs(inOriginalPosition.xy - inMetaInfo.xy) - inMetaInfo.zw;
         color.a *= linearstep(0.0, -threshold, (min(max(d.x, d.y), 0.0) + length(max(d, 0.0))) - inMetaInfo2.x);
       }
       case 0x08:{
         // Distance to circle arc ring segment
         float d = sdCircleArcRingSegment(
-          inPosition.xy - inMetaInfo.xy, // p
+          inOriginalPosition.xy - inMetaInfo.xy, // p
           inMetaInfo.z, // innerRadius 
           inMetaInfo.w, // outerRadius
           inMetaInfo2.x, // startAngle
@@ -970,8 +971,8 @@ void main(void){
     color = vec4(0.0);
     int guiElementIndex = inState.y;
     vec2 pa = inMetaInfo.xy, pb = inMetaInfo.zw, size = pb - pa;
-    vec2 p = inPosition.xy - pa;
-    float t = length(abs(dFdx(inPosition.xy)) + abs(dFdy(inPosition.xy))) * SQRT_0_DOT_5;   
+    vec2 p = inOriginalPosition.xy - pa;
+    float t = length(abs(dFdx(inOriginalPosition.xy)) + abs(dFdy(inOriginalPosition.xy))) * SQRT_0_DOT_5;   
     float focused = ((guiElementIndex & 0x80) != 0) ? 1.0 : 0.0;
     guiElementIndex &= 0x7f;
     switch(guiElementIndex){
