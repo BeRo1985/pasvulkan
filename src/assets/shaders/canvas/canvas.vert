@@ -3,7 +3,7 @@
 // Copyright (C) 2017, Benjamin 'BeRo' Rosseaux (benjamin@rosseaux.de)
 // License: zlib 
 
-layout(location = 0) in vec3 inOriginalPosition;
+layout(location = 0) in vec2 inOriginalPosition;
 layout(location = 1) in vec3 inPosition; 
 layout(location = 2) in vec4 inColor;    
 #if USETEXTURE
@@ -14,7 +14,7 @@ layout(location = 5) in vec4 inClipRect;
 layout(location = 6) in vec4 inMetaInfo; 
 layout(location = 7) in vec4 inMetaInfo2; 
 
-layout(location = 0) out vec3 outOriginalPosition;
+layout(location = 0) out vec2 outOriginalPosition;
 layout(location = 1) out vec2 outPosition;
 layout(location = 2) out vec4 outColor;
 #if USETEXTURE
