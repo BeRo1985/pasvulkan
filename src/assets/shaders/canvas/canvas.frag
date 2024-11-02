@@ -949,6 +949,7 @@ void main(void){
         // Distance to rounded rectangle
         vec2 d = abs(inOriginalPosition.xy - inMetaInfo.xy) - inMetaInfo.zw;
         color.a *= linearstep(0.0, -threshold, (min(max(d.x, d.y), 0.0) + length(max(d, 0.0))) - inMetaInfo2.x);
+        break;      
       }
       case 0x08:{
         // Distance to circle arc ring segment
@@ -961,6 +962,7 @@ void main(void){
           inMetaInfo2.z  // gapThickness
         );
         color.a *= linearstep(0.0, -threshold, d);        
+        break;      
       } 
     }
   }
