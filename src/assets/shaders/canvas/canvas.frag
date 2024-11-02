@@ -292,6 +292,41 @@ float sdEllipse(vec2 p, in vec2 ab){
   }
   return d;
 }
+
+float sdOrientedBox(const in vec2 p, const in vec2 a, const in vec2 b, const in float th){
+   float l = length(b-a);
+   vec2 d = (b - a) / l;
+   vec2 q = p - ((a + b) * 0.5);
+   q = mat2(d.x,-d.y, d.y, d.x) * q;
+   q = abs(q) - (vec2(l, th) * 0.5);
+   return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0);    
+ }
+                                                  
+float sdCircleArcRingSegment(vec2 p, float innerRadius, float outerRadius, float startAngle, float endAngle, float gapThickness){
+  vec2 op = p;
+  const vec4 s = sin(
+    vec4(0.0, 1.57079632679, 3.14159265359, 4.71238898038) +
+    vec2(
+     mix(startAngle, endAngle, 0.5), 
+     abs(endAngle - startAngle) * -0.5
+    ).xxyy
+  );
+  p = mat2(-s.x, -s.y, s.y, -s.x) * p;
+  p.x = abs(p.x);
+  float l = length(p);
+  p = mat2(-s.w, s.z, s.z, s.w) * p;
+  p = vec2(
+    ((p.y > 0.0) || (p.x > 0.0)) ? p.x : (l * sign(-s.w)),
+    (p.x > 0.0) ? p.y : l 
+  );
+  p = vec2(p.x, abs(p.y - mix(innerRadius, outerRadius, 0.5)) - (abs(outerRadius - innerRadius) * 0.5));
+  float d = length(max(p, 0.0)) + min(0.0, max(p.x, p.y));
+  const vec2 startSinCos = sin(vec2(startAngle) + vec2(0.0, 1.57079632679)); 
+  const vec2 endSinCos = sin(vec2(endAngle) + vec2(0.0, 1.57079632679)); 
+  d = max(d, -sdOrientedBox(op, vec2(0.0), vec2(startSinCos.yx) * (outerRadius * 2.0), gapThickness)); 
+  d = max(d, -sdOrientedBox(op, vec2(0.0), vec2(endSinCos.yx) * (outerRadius * 2.0), gapThickness)); 
+  return d;
+}      
 #endif
 
 #ifdef GUI_ELEMENTS
@@ -914,6 +949,18 @@ void main(void){
         vec2 d = abs(inPosition.xy - inMetaInfo.xy) - inMetaInfo.zw;
         color.a *= linearstep(0.0, -threshold, (min(max(d.x, d.y), 0.0) + length(max(d, 0.0))) - inMetaInfo2.x);
       }
+      case 0x08:{
+        // Distance to circle arc ring segment
+        float d = sdCircleArcRingSegment(
+          inPosition.xy - inMetaInfo.xy, // p
+          inMetaInfo.z, // innerRadius 
+          inMetaInfo.w, // outerRadius
+          inMetaInfo2.x, // startAngle
+          inMetaInfo2.y, // endAngle
+          inMetaInfo2.z  // gapThickness
+        );
+        color.a *= linearstep(0.0, -threshold, d);        
+      } 
     }
   }
 #endif
