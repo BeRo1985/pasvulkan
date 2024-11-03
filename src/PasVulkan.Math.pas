@@ -1300,6 +1300,8 @@ type PpvScalar=^TpvScalar;
        function Center:TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
        function Combine(const aWithRect:TpvRect):TpvRect; overload; {$ifdef CAN_INLINE}inline;{$endif}
        function Combine(const aWithPoint:TpvVector2):TpvRect; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure DirectCombine(const aWithRect:TpvRect); overload; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure DirectCombine(const aWithPoint:TpvVector2); overload; {$ifdef CAN_INLINE}inline;{$endif}
        function Intersect(const aWithRect:TpvRect;Threshold:TpvScalar=EPSILON):boolean; overload;// {$ifdef CAN_INLINE}inline;{$endif}
        function Contains(const aWithRect:TpvRect;Threshold:TpvScalar=EPSILON):boolean; overload;// {$ifdef CAN_INLINE}inline;{$endif}
        function GetIntersection(const WithAABB:TpvRect):TpvRect; {$ifdef CAN_INLINE}inline;{$endif}
@@ -16698,6 +16700,22 @@ begin
  result.Min.y:=Math.Min(Min.y,aWithPoint.y);
  result.Max.x:=Math.Max(Max.x,aWithPoint.x);
  result.Max.y:=Math.Max(Max.y,aWithPoint.y);
+end;
+
+procedure TpvRect.DirectCombine(const aWithRect:TpvRect);
+begin
+ Min.x:=Math.Min(Min.x,aWithRect.Min.x);
+ Min.y:=Math.Min(Min.y,aWithRect.Min.y);
+ Max.x:=Math.Max(Max.x,aWithRect.Max.x);
+ Max.y:=Math.Max(Max.y,aWithRect.Max.y);
+end;
+
+procedure TpvRect.DirectCombine(const aWithPoint:TpvVector2);
+begin
+ Min.x:=Math.Min(Min.x,aWithPoint.x);
+ Min.y:=Math.Min(Min.y,aWithPoint.y);
+ Max.x:=Math.Max(Max.x,aWithPoint.x);
+ Max.y:=Math.Max(Max.y,aWithPoint.y);
 end;
 
 function TpvRect.Intersect(const aWithRect:TpvRect;Threshold:TpvScalar=EPSILON):boolean;

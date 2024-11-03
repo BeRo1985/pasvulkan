@@ -5909,11 +5909,14 @@ begin
 end;
 
 function TpvCanvas.DrawFilledCircleArcRingSegment(const aCenter:TpvVector2;const aInnerRadius,aOuterRadius,aStartAngle,aEndAngle,aGapThickness:TpvFloat):TpvCanvas;
-var MetaInfo,MetaInfo2:TpvVector4;
+var Index:TpvSizeInt;
+    MetaInfo,MetaInfo2:TpvVector4;
     VertexColor:TpvHalfFloatVector4;
     VertexState:TpvUInt32;
     CanvasVertex:PpvCanvasVertex;
-    Radius:TpvFloat;
+    MinRadius,MaxRadius:TpvFloat;
+    AABB:TpvAABB2D;
+    CosSinValues:TpvVector2;
 begin
  SetGUIElementMode(false);
  SetAtlasTexture(nil);
@@ -5928,11 +5931,23 @@ begin
  MetaInfo2.x:=aStartAngle;
  MetaInfo2.y:=aEndAngle;
  MetaInfo2.z:=aGapThickness;
- Radius:=Max(Max(aInnerRadius,aOuterRadius)*1.015625,Max(aInnerRadius,aOuterRadius)+(abs(aOuterRadius-aInnerRadius)*0.125));
+ MinRadius:=Max(0.0,Min(Min(aInnerRadius,aOuterRadius)*0.98725,Min(aInnerRadius,aOuterRadius)-(abs(aOuterRadius-aInnerRadius)*0.125)));
+ MaxRadius:=Max(Max(aInnerRadius,aOuterRadius)*1.015625,Max(aInnerRadius,aOuterRadius)+(abs(aOuterRadius-aInnerRadius)*0.125));
+ begin
+  AABB.Min:=TpvVector2.InlineableCreate(Infinity,Infinity);
+  AABB.Max:=TpvVector2.InlineableCreate(-Infinity,-Infinity);
+  for Index:=0 to 8 do begin
+   SinCos(FloatLerp(aStartAngle-(pi*0.015625),aEndAngle+(pi*0.015625),Index/8.0),CosSinValues.y,CosSinValues.x);
+   AABB.DirectCombine(aCenter+(CosSinValues*MinRadius));
+   AABB.DirectCombine(aCenter+(CosSinValues*MaxRadius));
+  end;
+  AABB.Min:=AABB.Min-TpvVector2.InlineableCreate(1.0,1.0);
+  AABB.Max:=AABB.Max+TpvVector2.InlineableCreate(1.0,1.0);
+ end;
  VertexState:=GetVertexState;
  EnsureSufficientReserveUsableSpace(4,6);
  CanvasVertex:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices+0];
- CanvasVertex^.OriginalPosition:=aCenter+TpvVector2.InlineableCreate(-Radius,-Radius);
+ CanvasVertex^.OriginalPosition:=TpvVector2.InlineableCreate(AABB.Left,AABB.Top);
  CanvasVertex^.Position:=TpvVector3.InlineableCreate(fState.fModelMatrix*CanvasVertex^.OriginalPosition,fState.fZPosition);
  CanvasVertex^.Color:=VertexColor;
  CanvasVertex^.TextureCoord:=TpvVector3.Null;
@@ -5941,7 +5956,7 @@ begin
  CanvasVertex^.MetaInfo:=MetaInfo;
  CanvasVertex^.MetaInfo2:=MetaInfo2;
  CanvasVertex:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices+1];
- CanvasVertex^.OriginalPosition:=aCenter+TpvVector2.InlineableCreate(Radius,-Radius);
+ CanvasVertex^.OriginalPosition:=TpvVector2.InlineableCreate(AABB.Right,AABB.Top);
  CanvasVertex^.Position:=TpvVector3.InlineableCreate(fState.fModelMatrix*CanvasVertex^.OriginalPosition,fState.fZPosition);
  CanvasVertex^.Color:=VertexColor;
  CanvasVertex^.TextureCoord:=TpvVector3.Null;
@@ -5950,7 +5965,7 @@ begin
  CanvasVertex^.MetaInfo:=MetaInfo;
  CanvasVertex^.MetaInfo2:=MetaInfo2;
  CanvasVertex:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices+2];
- CanvasVertex^.OriginalPosition:=aCenter+TpvVector2.InlineableCreate(Radius,Radius);
+ CanvasVertex^.OriginalPosition:=TpvVector2.InlineableCreate(AABB.Right,AABB.Bottom);
  CanvasVertex^.Position:=TpvVector3.InlineableCreate(fState.fModelMatrix*CanvasVertex^.OriginalPosition,fState.fZPosition);
  CanvasVertex^.Color:=VertexColor;
  CanvasVertex^.TextureCoord:=TpvVector3.Null;
@@ -5959,7 +5974,7 @@ begin
  CanvasVertex^.MetaInfo:=MetaInfo;
  CanvasVertex^.MetaInfo2:=MetaInfo2;
  CanvasVertex:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices+3];
- CanvasVertex^.OriginalPosition:=aCenter+TpvVector2.InlineableCreate(-Radius,Radius);
+ CanvasVertex^.OriginalPosition:=TpvVector2.InlineableCreate(AABB.Left,AABB.Bottom);
  CanvasVertex^.Position:=TpvVector3.InlineableCreate(fState.fModelMatrix*CanvasVertex^.OriginalPosition,fState.fZPosition);
  CanvasVertex^.Color:=VertexColor;
  CanvasVertex^.TextureCoord:=TpvVector3.Null;
