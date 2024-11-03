@@ -6486,6 +6486,7 @@ begin
         fTexture.DoFreeDataAfterFinish:=false;
         case fKind of
          TpvScene3D.TImage.TKind.WhiteTexture:begin
+          fTexture.Name:='TpvScene3D.TImage.TKind.WhiteTexture';
           fTexture.LoadFromMemory(VK_FORMAT_R8G8B8A8_UNORM,
                                   VK_SAMPLE_COUNT_1_BIT,
                                   8,
@@ -6509,6 +6510,7 @@ begin
                                   pvAllocationGroupIDScene3DTexture);
          end;
          TpvScene3D.TImage.TKind.DefaultNormalMapTexture:begin
+          fTexture.Name:='TpvScene3D.TImage.TKind.DefaultNormalMapTexture';
           fTexture.LoadFromMemory(VK_FORMAT_R8G8B8A8_UNORM,
                                   VK_SAMPLE_COUNT_1_BIT,
                                   8,
@@ -6532,6 +6534,7 @@ begin
                                   pvAllocationGroupIDScene3DTexture);
          end;
          TpvScene3D.TImage.TKind.DefaultParticleTexture:begin
+          fTexture.Name:='TpvScene3D.TImage.TKind.DefaultParticleTexture';
           w:=64;
           h:=64;
           TemporaryPixels:=nil;
@@ -6582,6 +6585,7 @@ begin
           end;
          end;
          else begin
+          fTexture.Name:='TpvScene3D.TImage["'+fName+'","'+FileName+'"]';
           fTexture.LoadFromImage(fResourceDataStream,
                                  true,
                                  false,
@@ -27213,7 +27217,8 @@ begin
                                                                true,
                                                                false,
                                                                false,
-                                                               0
+                                                               0,
+                                                               'TpvScene3D.BlueNoise2DTexture'
                                                               );
 
        finally
