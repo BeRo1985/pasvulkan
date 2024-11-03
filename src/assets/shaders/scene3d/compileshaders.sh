@@ -374,6 +374,8 @@ compileshaderarguments=(
 
   "-V planet_water_prepass.comp -o ${tempPath}/planet_water_prepass_comp.spv"
 
+  "-V planet_blendmap_downsample.comp -o ${tempPath}/planet_blendmap_downsample_comp.spv"
+
   "-V planet_blendmap_initialization.comp -o ${tempPath}/planet_blendmap_initialization_comp.spv"
 
   "-V planet_blendmap_modification.comp -o ${tempPath}/planet_blendmap_modification_comp.spv"
