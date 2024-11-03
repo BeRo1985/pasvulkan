@@ -17376,7 +17376,8 @@ begin
  end;
 
  if UpdatedBlendMap then begin
-  if abs(TpvScene3D(fScene3D).SceneTimes^[aInFlightFrameIndex]-fBlendMapTransferLastTime)<1.0 then begin
+  if (abs(TpvScene3D(fScene3D).SceneTimes^[aInFlightFrameIndex]-fBlendMapTransferLastTime)<1.0) and
+     ((pvApplication.FrameCounter and 63)<>0) then begin
    UpdatedBlendMap:=false;
   end;
  end else if fBlendMapTransferGeneration<>fBlendMapUpdateGeneration then begin
