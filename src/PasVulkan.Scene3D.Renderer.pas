@@ -1408,7 +1408,8 @@ begin
                                                               0,
                                                               [],
                                                               0,
-                                                              pvAllocationGroupIDScene3DStatic
+                                                              pvAllocationGroupIDScene3DStatic,
+                                                              'TpvScene3DRenderer.fSkySphericalHarmonicsBuffer'
                                                              );
  fVulkanDevice.DebugUtils.SetObjectName(fEnvironmentSphericalHarmonicsBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DRenderer.fSkySphericalHarmonicsBuffer');
 
@@ -1427,7 +1428,8 @@ begin
                                                                       0,
                                                                       [],
                                                                       0,
-                                                                      pvAllocationGroupIDScene3DStatic
+                                                                      pvAllocationGroupIDScene3DStatic,
+                                                                      'TpvScene3DRenderer.fSkySphericalHarmonicsMetaDataBuffer'
                                                                      );
  fVulkanDevice.DebugUtils.SetObjectName(fEnvironmentSphericalHarmonicsMetaDataBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DRenderer.fSkySphericalHarmonicsMetaDataBuffer');
 
@@ -1505,7 +1507,11 @@ begin
                                                            false,
                                                            0,
                                                            true,
-                                                           false);
+                                                           false,
+                                                           false,
+                                                           0,
+                                                           'TpvScene3DRenderer.SMAAAreaTexture'
+                                                          );
        fVulkanDevice.DebugUtils.SetObjectName(fSMAAAreaTexture.Image.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DRenderer.fSMAAAreaTexture.Image');
        fVulkanDevice.DebugUtils.SetObjectName(fSMAAAreaTexture.ImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRenderer.fSMAAAreaTexture.ImageView');
 
@@ -1534,7 +1540,10 @@ begin
                                                              false,
                                                              0,
                                                              true,
-                                                             false);
+                                                             false,
+                                                             false,
+                                                             0,
+                                                             'TpvScene3DRenderer.SMAASearchTexture');
        fVulkanDevice.DebugUtils.SetObjectName(fSMAASearchTexture.Image.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DRenderer.fSMAASearchTexture.Image');
        fVulkanDevice.DebugUtils.SetObjectName(fSMAASearchTexture.ImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRenderer.fSMAASearchTexture.ImageView');
 
@@ -1548,31 +1557,34 @@ begin
       SetLength(EmptyAmbientOcclusionTextureData,2048*2048*6);
       FillChar(EmptyAmbientOcclusionTextureData[0],length(EmptyAmbientOcclusionTextureData)*SizeOf(TpvUInt8),#$ff);
       fEmptyAmbientOcclusionTexture:=TpvVulkanTexture.CreateFromMemory(fVulkanDevice,
-                                                           UniversalQueue,
-                                                           UniversalCommandBuffer,
-                                                           UniversalFence,
-                                                           UniversalQueue,
-                                                           UniversalCommandBuffer,
-                                                           UniversalFence,
-                                                           VK_FORMAT_R8_UNORM,
-                                                           VK_SAMPLE_COUNT_1_BIT,
-                                                           2048,
-                                                           2048,
-                                                           0,
-                                                           6,
-                                                           1,
-                                                           0,
-                                                           [TpvVulkanTextureUsageFlag.General,
-                                                            TpvVulkanTextureUsageFlag.TransferDst,
-                                                            TpvVulkanTextureUsageFlag.TransferSrc,
-                                                            TpvVulkanTextureUsageFlag.Sampled],
-                                                           @EmptyAmbientOcclusionTextureData[0],
-                                                           length(EmptyAmbientOcclusionTextureData)*SizeOf(TpvUInt8),
-                                                           false,
-                                                           false,
-                                                           0,
-                                                           true,
-                                                           false);
+                                                                       UniversalQueue,
+                                                                       UniversalCommandBuffer,
+                                                                       UniversalFence,
+                                                                       UniversalQueue,
+                                                                       UniversalCommandBuffer,
+                                                                       UniversalFence,
+                                                                       VK_FORMAT_R8_UNORM,
+                                                                       VK_SAMPLE_COUNT_1_BIT,
+                                                                       2048,
+                                                                       2048,
+                                                                       0,
+                                                                       6,
+                                                                       1,
+                                                                       0,
+                                                                       [TpvVulkanTextureUsageFlag.General,
+                                                                        TpvVulkanTextureUsageFlag.TransferDst,
+                                                                        TpvVulkanTextureUsageFlag.TransferSrc,
+                                                                        TpvVulkanTextureUsageFlag.Sampled],
+                                                                       @EmptyAmbientOcclusionTextureData[0],
+                                                                       length(EmptyAmbientOcclusionTextureData)*SizeOf(TpvUInt8),
+                                                                       false,
+                                                                       false,
+                                                                       0,
+                                                                       true,
+                                                                       false,
+                                                                       false,
+                                                                       0,
+                                                                       'TpvScene3DRenderer.fEmptyAmbientOcclusionTexture');
       fVulkanDevice.DebugUtils.SetObjectName(fEmptyAmbientOcclusionTexture.Image.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DRenderer.fEmptyAmbientOcclusionTexture.Image');
       fVulkanDevice.DebugUtils.SetObjectName(fEmptyAmbientOcclusionTexture.ImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRenderer.fEmptyAmbientOcclusionTexture.ImageView');
      finally
