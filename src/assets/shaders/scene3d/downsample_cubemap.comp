@@ -75,7 +75,7 @@ void main() {
 
   vec4 texel;
 
-  if(all(lessThan(invocationPosition.xy, sourceSize))){
+  if(all(lessThan(invocationPosition.xy, destinationTextureSize))){
     mat4x4 texels = mat4x4(
 #ifdef USE_RGB9E5
       vec4(decodeRGB9E5(imageLoad(uSourceTexture, ivec3((invocationPosition.xy << 1) + ivec2(0, 0), invocationPosition.z)).x), 1.0),

@@ -38,7 +38,7 @@ void main() {
 
   vec3 normal;
 
-  if(all(lessThan(invocationPosition.xy, sourceSize))){
+  if(all(lessThan(invocationPosition.xy, destinationTextureSize))){
     mat4x3 normals = mat4x3(
       fma(imageLoad(uSourceTexture, (invocationPosition.xy << 1) + ivec2(0, 0)).xyz, vec3(2.0), vec3(-1.0)),
       fma(imageLoad(uSourceTexture, (invocationPosition.xy << 1) + ivec2(1, 0)).xyz, vec3(2.0), vec3(-1.0)),

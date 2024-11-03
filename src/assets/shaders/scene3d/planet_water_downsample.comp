@@ -38,7 +38,14 @@ void main() {
 
   vec4 heights;
 
-  if(all(lessThan(invocationPosition.xy, sourceSize))){
+  if(all(lessThan(invocationPosition.xy, destinationTextureSize))){
+    if(pushConstants.targetMipMapLevel == 0){
+      destinationBuffer.values[(((invocationPosition.y << 1) + 0) * sourceSize.x) + ((invocationPosition.x << 1) + 0)] = imageLoad(uSourceTexture, (invocationPosition.xy << 1) + ivec2(0, 0)).x;
+      destinationBuffer.values[(((invocationPosition.y << 1) + 0) * sourceSize.x) + ((invocationPosition.x << 1) + 1)] = imageLoad(uSourceTexture, (invocationPosition.xy << 1) + ivec2(1, 0)).x;
+      destinationBuffer.values[(((invocationPosition.y << 1) + 1) * sourceSize.x) + ((invocationPosition.x << 1) + 0)] = imageLoad(uSourceTexture, (invocationPosition.xy << 1) + ivec2(0, 1)).x;
+      destinationBuffer.values[(((invocationPosition.y << 1) + 1) * sourceSize.x) + ((invocationPosition.x << 1) + 1)] = imageLoad(uSourceTexture, (invocationPosition.xy << 1) + ivec2(1, 1)).x;
+      return;
+    }
     heights = vec4(
       reduceOp(
         reduceOp(
@@ -52,6 +59,9 @@ void main() {
       )
     );
   }else{
+    if(pushConstants.targetMipMapLevel == 0){
+      return;
+    }
     heights = vec4(0.0);  
   } 
 

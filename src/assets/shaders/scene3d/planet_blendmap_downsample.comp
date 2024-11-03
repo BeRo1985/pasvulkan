@@ -59,7 +59,14 @@ void main() {
 
   uvec4 values[4];
 
-  if(all(lessThan(invocationPosition.xy, sourceSize))){
+  if(all(lessThan(invocationPosition.xy, destinationTextureSize))){
+    if(pushConstants.targetMipMapLevel == 0){
+      destinationBuffer.values[(((invocationPosition.y << 1) + 0) * sourceSize.x) + ((invocationPosition.x << 1) + 0)] = convert(loadFromSourceTexture((invocationPosition.xy << 1) + ivec2(0, 0)));  
+      destinationBuffer.values[(((invocationPosition.y << 1) + 0) * sourceSize.x) + ((invocationPosition.x << 1) + 1)] = convert(loadFromSourceTexture((invocationPosition.xy << 1) + ivec2(1, 0)));
+      destinationBuffer.values[(((invocationPosition.y << 1) + 1) * sourceSize.x) + ((invocationPosition.x << 1) + 0)] = convert(loadFromSourceTexture((invocationPosition.xy << 1) + ivec2(0, 1)));
+      destinationBuffer.values[(((invocationPosition.y << 1) + 1) * sourceSize.x) + ((invocationPosition.x << 1) + 1)] = convert(loadFromSourceTexture((invocationPosition.xy << 1) + ivec2(1, 1)));
+      return;
+    }  
     values[0] = uvec4(
       reduceOp(
         reduceOp(
@@ -73,6 +80,9 @@ void main() {
       )
     );
   }else{
+    if(pushConstants.targetMipMapLevel == 0){
+      return;
+    }
     values[0] = uvec4(0);  
   } 
 
