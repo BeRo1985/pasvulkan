@@ -1628,6 +1628,10 @@ type TpvScene3DPlanets=class;
        fTiledVisualMeshIndexGroups:TTiledMeshIndexGroups;
        fTiledPhysicsMeshIndices:TMeshIndices;
        fTiledPhysicsMeshIndexGroups:TTiledMeshIndexGroups;
+       fCPUWaterSizeShift:TpvSizeInt;
+       fCPUWaterSize:TpvSizeInt;
+       fCPUBlendMapSizeShift:TpvSizeInt;
+       fCPUBlendMapSize:TpvSizeInt;
        fData:TData;
        fInFlightFrameDataList:TInFlightFrameDataList;
        fReleaseFrameCounter:TpvInt32;
@@ -1679,6 +1683,9 @@ type TpvScene3DPlanets=class;
        fHeightMapModificationItems:THeightMapModificationItems;
        fHeightMapFlattenItems:THeightMapFlattenItems;
        fBlendMapModificationItems:TBlendMapModificationItems;
+       fBlendMapUpdateGeneration:TpvUInt64;
+       fBlendMapTransferGeneration:TpvUInt64;
+       fBlendMapTransferLastTime:TpvDouble;
        fGrassMapModificationItems:TGrassMapModificationItems;
        fWaterModificationItems:TWaterModificationItems;
        fRendererInstanceListLock:TPasMPCriticalSection;
@@ -1709,7 +1716,9 @@ type TpvScene3DPlanets=class;
                           const aPhysicsResolution:TpvSizeInt=1024;
                           const aBottomRadius:TpvFloat=70.0;
                           const aTopRadius:TpvFloat=100.0;
-                          const aGenerateLODIndices:Boolean=false); reintroduce;
+                          const aGenerateLODIndices:Boolean=false;
+                          const aCPUWaterSizeShift:TpvSizeInt=4;
+                          const aCPUBlendMapSizeShift:TpvSizeInt=4); reintroduce;
        destructor Destroy; override;
        procedure AfterConstruction; override;
        procedure BeforeDestruction; override;
@@ -3565,17 +3574,30 @@ type TWhat=
        BlendMap,
        GrassMap
       );
+     TWhatSet=set of TWhat;
 var CountImageMemoryBarriers,CountBufferMemoryBarriers:TpvSizeInt;
     ImageSubresourceRange:TVkImageSubresourceRange;
     ImageMemoryBarriers:array[0..5] of TVkImageMemoryBarrier;
     BufferMemoryBarriers:array[0..5] of TVkBufferMemoryBarrier;
     BufferImageCopy:TVkBufferImageCopy;
+    WhatSet:TWhatSet;
     What:TWhat;
 begin
 
  if assigned(fPlanet.fVulkanDevice) then begin
 
-  for What:=Low(TWhat) to High(TWhat) do begin
+  WhatSet:=[];
+  if aTransferHeightMap then begin
+   WhatSet:=WhatSet+[TWhat.HeightMap,TWhat.NormalMap];
+  end;
+  if aTransferBlendMap then begin
+   Include(WhatSet,TWhat.BlendMap);
+  end;
+  if aTransferGrass then begin
+   Include(WhatSet,TWhat.GrassMap);
+  end;
+
+  for What in WhatSet do begin
 
    if assigned(aQueue) and assigned(aFence) then begin
 
@@ -15315,7 +15337,9 @@ constructor TpvScene3DPlanet.Create(const aScene3D:TObject;
                                     const aPhysicsResolution:TpvSizeInt;
                                     const aBottomRadius:TpvFloat;
                                     const aTopRadius:TpvFloat;
-                                    const aGenerateLODIndices:Boolean);
+                                    const aGenerateLODIndices:Boolean;
+                                    const aCPUWaterSizeShift:TpvSizeInt;
+                                    const aCPUBlendMapSizeShift:TpvSizeInt);
 var InFlightFrameIndex,Index,Resolution:TpvSizeInt;
 //  ta,tb:TpvHighResolutionTime;
     TileLODLevels:TTileLODLevels;
@@ -15354,6 +15378,12 @@ begin
  fPhysicsResolution:=fTileMapResolution*fPhysicsTileResolution;
 
  fPhysicsHeightMapResolution:=RoundUpToPowerOfTwo(Min(Max(fPhysicsResolution,128),8192));
+
+ fCPUWaterSizeShift:=Min(Max(aCPUWaterSizeShift,0),4);
+ fCPUWaterSize:=Max(1,fWaterMapResolution shr fCPUWaterSizeShift);
+
+ fCPUBlendMapSizeShift:=Min(Max(aCPUBlendMapSizeShift,0),4);
+ fCPUBlendMapSize:=Max(1,fBlendMapResolution shr fCPUBlendMapSizeShift);
 
  fGrassInvocationVariants:=Max(1,fHeightMapResolution div fVisualResolution);
  fGrassInvocationVariants:=fGrassInvocationVariants*fGrassInvocationVariants;
@@ -15433,6 +15463,12 @@ begin
  FillChar(fHeightMapFlattenItems,SizeOf(THeightMapFlattenItems),#0);
 
  FillChar(fBlendMapModificationItems,SizeOf(TBlendMapModificationItems),#0);
+
+ fBlendMapUpdateGeneration:=0;
+
+ fBlendMapTransferGeneration:=0;
+
+ fBlendMapTransferLastTime:=0.0;
 
  FillChar(fGrassMapModificationItems,SizeOf(TGrassMapModificationItems),#0);
 
@@ -17056,6 +17092,8 @@ begin
 
    UpdatedBlendMap:=true;
 
+   inc(fBlendMapUpdateGeneration);
+
   end;
 
  end;
@@ -17337,8 +17375,20 @@ begin
 
  end;
 
- UpdatedBlendMap:=false;
- if assigned(fVulkanDevice) and (UpdatedHeightMap or UpdatedBlendMap or UpdatedGrass) then begin
+ if UpdatedBlendMap then begin
+  if abs(TpvScene3D(fScene3D).SceneTimes^[aInFlightFrameIndex]-fBlendMapTransferLastTime)<1.0 then begin
+   UpdatedBlendMap:=false;
+  end;
+ end else if fBlendMapTransferGeneration<>fBlendMapUpdateGeneration then begin
+  fBlendMapTransferGeneration:=fBlendMapUpdateGeneration;
+  UpdatedBlendMap:=true;
+ end;
+ if UpdatedBlendMap then begin
+  fBlendMapTransferLastTime:=TpvScene3D(fScene3D).SceneTimes^[aInFlightFrameIndex];
+ end;
+
+ if assigned(fVulkanDevice) and
+    (UpdatedHeightMap or UpdatedBlendMap or UpdatedGrass) then begin
   fData.Download(fVulkanComputeQueue,
                  fVulkanComputeCommandBuffer,
                  fVulkanComputeFence,
