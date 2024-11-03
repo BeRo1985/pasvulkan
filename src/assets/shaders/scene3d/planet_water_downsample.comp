@@ -28,8 +28,7 @@ float reduceOp(const in float a, const in float b){
 
 void main() {
 
-  // Maximum four mipmap levels in a single pass, so more mip map levels require multiple passes divided by four mip maps, the remainder must be in
-  // pushConstants.targetMipMapLevel.
+  // Downsample towards pushConstants.targetMipMapLevel to destinationBuffer.
 
   ivec2 invocationPosition = ivec2(gl_GlobalInvocationID.xy);
               
