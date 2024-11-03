@@ -108,9 +108,12 @@ type TpvScene3DPlanets=class;
        type THeightValue=TpvFloat;
             PHeightValue=^THeightValue;
             THeightMap=array of THeightValue;
-            TBlendMapValue=record
+            { TBlendMapValue }
+            TBlendMapValue=packed record
              public
               Weights:array[0..(4*CountBlendMapLayers)-1] of TpvUInt8;
+             public
+              function GetDominantLayerIndex:TpvSizeInt;
             end;
             PBlendMapValue=^TBlendMapValue;
             TSourcePrimitiveMode=
@@ -2250,6 +2253,38 @@ end;
 function OctEqualAreaUnsignedDecode(const aUV:TpvVector2):TpvVector3;
 begin
  result:=OctEqualAreaSignedDecode(TpvVector2.InlineableCreate((aUV.x*2.0)-1.0,(aUV.y*2.0)-1.0));
+end;
+
+{ TpvScene3DPlanet.TBlendMapValue }
+
+function TpvScene3DPlanet.TBlendMapValue.GetDominantLayerIndex:TpvSizeInt;
+begin
+ if Weights[0]<Weights[1] then begin
+  result:=1;
+ end else begin
+  result:=0;
+ end;
+ if Weights[result]<Weights[2] then begin
+  result:=2;
+ end;
+ if Weights[result]<Weights[3] then begin
+  result:=3;
+ end;
+ if Weights[result]<Weights[4] then begin
+  result:=4;
+ end;
+ if Weights[result]<Weights[5] then begin
+  result:=5;
+ end;
+ if Weights[result]<Weights[6] then begin
+  result:=6;
+ end;
+ if Weights[result]<Weights[7] then begin
+  result:=7;
+ end;
+ if Weights[result]=0 then begin
+  result:=-1;
+ end;
 end;
 
 { TpvScene3DPlanet.TData.TOwnershipHolderState }
