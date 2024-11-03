@@ -108,6 +108,11 @@ type TpvScene3DPlanets=class;
        type THeightValue=TpvFloat;
             PHeightValue=^THeightValue;
             THeightMap=array of THeightValue;
+            TBlendMapValue=record
+             public
+              Weights:array[0..(4*CountBlendMapLayers)-1] of TpvUInt8;
+            end;
+            PBlendMapValue=^TBlendMapValue;
             TSourcePrimitiveMode=
              (
               VisualMeshTriangles,
@@ -286,7 +291,7 @@ type TpvScene3DPlanets=class;
                    TVisualMeshVertexBufferCopies=TpvDynamicArrayList<TVkBufferCopy>;
                    THeightMapData=array of TpvFloat;
                    TNormalMapData=array of TpvHalfFloatVector4;
-                   TBlendMapData=array of TpvUInt32;
+                   TBlendMapData=array of TBlendMapValue;
                    TGrassMapData=array of TpvFloat;
              private    // All 2D maps are octahedral projected maps in this implementation (not equirectangular projected maps or cube maps)
               fPlanet:TpvScene3DPlanet;
@@ -1777,6 +1782,8 @@ type TpvScene3DPlanets=class;
        procedure GetPositionAndNormal(const aNormal:TpvVector3;out aOutPosition,aOutNormal:TpvVector3); overload;
        function GetGrass(const aUV:TpvVector2):TpvScalar; overload;
        function GetGrass(const aNormal:TpvVector3):TpvScalar; overload;
+       function GetBlendMap(const aUV:TpvVector2):TBlendMapValue; overload;
+       function GetBlendMap(const aNormal:TpvVector3):TBlendMapValue; overload;
        function GetUV(const aPosition:TpvVector3):TpvVector2;
        function GetSlope(const aUV:TpvVector2):TpvFloat; overload;
        function GetSlope(const aNormal:TpvVector3):TpvFloat; overload;
@@ -4035,8 +4042,8 @@ begin
 
      TWhat.BlendMap:begin
 
-      if length(fBlendMapData)<>(fPlanet.fBlendMapResolution*fPlanet.fBlendMapResolution*TpvScene3DPlanet.CountBlendMapLayers) then begin
-       SetLength(fBlendMapData,fPlanet.fBlendMapResolution*fPlanet.fBlendMapResolution*TpvScene3DPlanet.CountBlendMapLayers);
+      if length(fBlendMapData)<>(fPlanet.fBlendMapResolution*fPlanet.fBlendMapResolution) then begin
+       SetLength(fBlendMapData,fPlanet.fBlendMapResolution*fPlanet.fBlendMapResolution);
       end;
 
       fPlanet.fVulkanDevice.MemoryStaging.Download(aQueue,
@@ -4045,7 +4052,7 @@ begin
                                                    fDownloadBuffer,
                                                    0,
                                                    fBlendMapData[0],
-                                                   fPlanet.fBlendMapResolution*fPlanet.fBlendMapResolution*TpvScene3DPlanet.CountBlendMapLayers*SizeOf(TpvUInt32));
+                                                   fPlanet.fBlendMapResolution*fPlanet.fBlendMapResolution*SizeOf(TpvScene3DPlanet.TBlendMapValue));
 
      end;
 
@@ -18212,7 +18219,7 @@ var UV:TpvVector2;
     xf,yf,ixf:TpvFloat;
     v00,v01,v10,v11:TpvScalar;
 begin
- 
+
  if length(fData.fGrassMapData)>0 then begin
 
   UV:=WrapOctahedralCoordinates(aUV);
@@ -18254,6 +18261,72 @@ end;
 function TpvScene3DPlanet.GetGrass(const aNormal:TpvVector3):TpvScalar;
 begin
  result:=GetGrass(OctEqualAreaUnsignedEncode(aNormal));
+end;
+
+function TpvScene3DPlanet.GetBlendMap(const aUV:TpvVector2):TpvScene3DPlanet.TBlendMapValue;
+var UV:TpvVector2;
+    TexelX,TexelY:TpvFloat;
+    xi,yi,tx,ty:TpvInt32;
+    xf,yf,ixf:TpvFloat;
+    v00,v01,v10,v11:TpvScene3DPlanet.TBlendMapValue;
+begin
+
+ if length(fData.fGrassMapData)>0 then begin
+
+  UV:=WrapOctahedralCoordinates(aUV);
+
+  TexelX:=UV.x*fBlendMapResolution;
+  TexelY:=UV.y*fBlendMapResolution;
+
+  xi:=Floor(TexelX);
+  yi:=Floor(TexelY);
+
+  xf:=TexelX-xi;
+  yf:=TexelY-yi;
+
+  xi:=Min(Max(xi,0),fBlendMapResolution-1);
+  yi:=Min(Max(yi,0),fBlendMapResolution-1);
+
+  v00:=fData.fBlendMapData[(yi*fBlendMapResolution)+xi];
+
+  WrapOctahedralTexelCoordinatesEx(xi+1,yi,fBlendMapResolution,fBlendMapResolution,tx,ty);
+  v01:=fData.fBlendMapData[(ty*fBlendMapResolution)+tx];
+
+  WrapOctahedralTexelCoordinatesEx(xi,yi+1,fBlendMapResolution,fBlendMapResolution,tx,ty);
+  v10:=fData.fBlendMapData[(ty*fBlendMapResolution)+tx];
+
+  WrapOctahedralTexelCoordinatesEx(xi+1,yi+1,fBlendMapResolution,fBlendMapResolution,tx,ty);
+  v11:=fData.fBlendMapData[(ty*fBlendMapResolution)+tx];
+
+  ixf:=1.0-xf;
+
+  result.Weights[0]:=Min(Max(round((((v00.Weights[0]*ixf)+(v01.Weights[0]*xf))*(1.0-yf))+(((v10.Weights[0]*ixf)+(v11.Weights[0]*xf))*yf)),0),255);
+  result.Weights[1]:=Min(Max(round((((v00.Weights[1]*ixf)+(v01.Weights[1]*xf))*(1.0-yf))+(((v10.Weights[1]*ixf)+(v11.Weights[1]*xf))*yf)),0),255);
+  result.Weights[2]:=Min(Max(round((((v00.Weights[2]*ixf)+(v01.Weights[2]*xf))*(1.0-yf))+(((v10.Weights[2]*ixf)+(v11.Weights[2]*xf))*yf)),0),255);
+  result.Weights[3]:=Min(Max(round((((v00.Weights[3]*ixf)+(v01.Weights[3]*xf))*(1.0-yf))+(((v10.Weights[3]*ixf)+(v11.Weights[3]*xf))*yf)),0),255);
+  result.Weights[4]:=Min(Max(round((((v00.Weights[4]*ixf)+(v01.Weights[4]*xf))*(1.0-yf))+(((v10.Weights[4]*ixf)+(v11.Weights[4]*xf))*yf)),0),255);
+  result.Weights[5]:=Min(Max(round((((v00.Weights[5]*ixf)+(v01.Weights[5]*xf))*(1.0-yf))+(((v10.Weights[5]*ixf)+(v11.Weights[5]*xf))*yf)),0),255);
+  result.Weights[6]:=Min(Max(round((((v00.Weights[6]*ixf)+(v01.Weights[6]*xf))*(1.0-yf))+(((v10.Weights[6]*ixf)+(v11.Weights[6]*xf))*yf)),0),255);
+  result.Weights[7]:=Min(Max(round((((v00.Weights[7]*ixf)+(v01.Weights[7]*xf))*(1.0-yf))+(((v10.Weights[7]*ixf)+(v11.Weights[7]*xf))*yf)),0),255);
+
+ end else begin
+
+  result.Weights[0]:=0;
+  result.Weights[1]:=0;
+  result.Weights[2]:=0;
+  result.Weights[3]:=0;
+  result.Weights[4]:=0;
+  result.Weights[5]:=0;
+  result.Weights[6]:=0;
+  result.Weights[7]:=0;
+
+ end;
+
+end;
+
+function TpvScene3DPlanet.GetBlendMap(const aNormal:TpvVector3):TpvScene3DPlanet.TBlendMapValue;
+begin
+ result:=GetBlendMap(OctEqualAreaUnsignedEncode(aNormal));
 end;
 
 function TpvScene3DPlanet.GetUV(const aPosition:TpvVector3):TpvVector2;
