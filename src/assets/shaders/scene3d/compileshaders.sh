@@ -422,6 +422,8 @@ compileshaderarguments=(
   "-V planet_water_simulation.comp -DOUTFLOW -o ${tempPath}/planet_water_simulation_pass2_comp.spv"
 
   "-V planet_water_interpolation.comp -DOUTFLOW -o ${tempPath}/planet_water_interpolation_comp.spv"
+
+  "-V planet_water_downsample.comp -o ${tempPath}/planet_water_downsample_comp.spv"
   
   "-V planet_water_cull.comp -o ${tempPath}/planet_water_cull_comp.spv"
   
