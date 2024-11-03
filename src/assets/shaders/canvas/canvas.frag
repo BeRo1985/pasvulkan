@@ -322,10 +322,11 @@ float sdCircleArcRingSegment(vec2 p, float innerRadius, float outerRadius, float
   );
   p = vec2(p.x, abs(p.y - mix(innerRadius, outerRadius, 0.5)) - (abs(outerRadius - innerRadius) * 0.5));
   float d = length(max(p, 0.0)) + min(0.0, max(p.x, p.y));
-  const vec2 startSinCos = sin(vec2(startAngle) + vec2(0.0, 1.57079632679)); 
-  const vec2 endSinCos = sin(vec2(endAngle) + vec2(0.0, 1.57079632679)); 
-  d = max(d, -sdOrientedBox(op, vec2(0.0), vec2(startSinCos.yx) * (outerRadius * 2.0), gapThickness)); 
-  d = max(d, -sdOrientedBox(op, vec2(0.0), vec2(endSinCos.yx) * (outerRadius * 2.0), gapThickness)); 
+  if(gapThickness > 1e-6){
+    const vec4 startEndSinCos = sin(vec2(startAngle, endAngle).xxyy + vec2(0.0, 1.57079632679).xyxy); 
+    d = max(d, -sdOrientedBox(op, vec2(0.0), vec2(startEndSinCos.yx) * (outerRadius * 2.0), gapThickness)); 
+    d = max(d, -sdOrientedBox(op, vec2(0.0), vec2(startEndSinCos.wz) * (outerRadius * 2.0), gapThickness)); 
+  }
   return d;
 }      
 #endif
