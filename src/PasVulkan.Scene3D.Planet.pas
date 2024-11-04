@@ -17672,6 +17672,14 @@ begin
     EndUpdate;
    end;
 
+   fVulkanDevice.MemoryStaging.Download(fVulkanComputeQueue,
+                                        fVulkanComputeCommandBuffer,
+                                        fVulkanComputeFence,
+                                        fData.fBlendMiniMapBuffer,
+                                        0,
+                                        fData.fBlendMiniMapData[0],
+                                        fBlendMiniMapResolution*fBlendMiniMapResolution*SizeOf(TBlendMapValue));
+
    UpdatedBlendMap:=true;
 
    inc(fBlendMapUpdateGeneration);
@@ -17957,7 +17965,7 @@ begin
 
  end;
 
- if UpdatedBlendMap then begin
+{if UpdatedBlendMap then begin
   if (abs(TpvScene3D(fScene3D).SceneTimes^[aInFlightFrameIndex]-fBlendMapTransferLastTime)<1.0) and
      ((pvApplication.FrameCounter and 63)<>0) then begin
    UpdatedBlendMap:=false;
@@ -17968,7 +17976,9 @@ begin
  end;
  if UpdatedBlendMap then begin
   fBlendMapTransferLastTime:=TpvScene3D(fScene3D).SceneTimes^[aInFlightFrameIndex];
- end;
+ end;}
+
+ UpdatedBlendMap:=false;
 
  if assigned(fVulkanDevice) and
     (UpdatedHeightMap or UpdatedBlendMap or UpdatedGrass) then begin
@@ -18897,7 +18907,45 @@ var UV:TpvVector2;
     v00,v01,v10,v11:TpvScene3DPlanet.TBlendMapValue;
 begin
 
- if length(fData.fGrassMapData)>0 then begin
+ if length(fData.fBlendMiniMapData)>0 then begin
+
+  UV:=WrapOctahedralCoordinates(aUV);
+
+  TexelX:=UV.x*fBlendMiniMapResolution;
+  TexelY:=UV.y*fBlendMiniMapResolution;
+
+  xi:=Floor(TexelX);
+  yi:=Floor(TexelY);
+
+  xf:=TexelX-xi;
+  yf:=TexelY-yi;
+
+  xi:=Min(Max(xi,0),fBlendMiniMapResolution-1);
+  yi:=Min(Max(yi,0),fBlendMiniMapResolution-1);
+
+  v00:=fData.fBlendMiniMapData[(yi*fBlendMiniMapResolution)+xi];
+
+  WrapOctahedralTexelCoordinatesEx(xi+1,yi,fBlendMiniMapResolution,fBlendMiniMapResolution,tx,ty);
+  v01:=fData.fBlendMiniMapData[(ty*fBlendMiniMapResolution)+tx];
+
+  WrapOctahedralTexelCoordinatesEx(xi,yi+1,fBlendMiniMapResolution,fBlendMiniMapResolution,tx,ty);
+  v10:=fData.fBlendMiniMapData[(ty*fBlendMiniMapResolution)+tx];
+
+  WrapOctahedralTexelCoordinatesEx(xi+1,yi+1,fBlendMiniMapResolution,fBlendMiniMapResolution,tx,ty);
+  v11:=fData.fBlendMiniMapData[(ty*fBlendMiniMapResolution)+tx];
+
+  ixf:=1.0-xf;
+
+  result.Weights[0]:=Min(Max(round((((v00.Weights[0]*ixf)+(v01.Weights[0]*xf))*(1.0-yf))+(((v10.Weights[0]*ixf)+(v11.Weights[0]*xf))*yf)),0),255);
+  result.Weights[1]:=Min(Max(round((((v00.Weights[1]*ixf)+(v01.Weights[1]*xf))*(1.0-yf))+(((v10.Weights[1]*ixf)+(v11.Weights[1]*xf))*yf)),0),255);
+  result.Weights[2]:=Min(Max(round((((v00.Weights[2]*ixf)+(v01.Weights[2]*xf))*(1.0-yf))+(((v10.Weights[2]*ixf)+(v11.Weights[2]*xf))*yf)),0),255);
+  result.Weights[3]:=Min(Max(round((((v00.Weights[3]*ixf)+(v01.Weights[3]*xf))*(1.0-yf))+(((v10.Weights[3]*ixf)+(v11.Weights[3]*xf))*yf)),0),255);
+  result.Weights[4]:=Min(Max(round((((v00.Weights[4]*ixf)+(v01.Weights[4]*xf))*(1.0-yf))+(((v10.Weights[4]*ixf)+(v11.Weights[4]*xf))*yf)),0),255);
+  result.Weights[5]:=Min(Max(round((((v00.Weights[5]*ixf)+(v01.Weights[5]*xf))*(1.0-yf))+(((v10.Weights[5]*ixf)+(v11.Weights[5]*xf))*yf)),0),255);
+  result.Weights[6]:=Min(Max(round((((v00.Weights[6]*ixf)+(v01.Weights[6]*xf))*(1.0-yf))+(((v10.Weights[6]*ixf)+(v11.Weights[6]*xf))*yf)),0),255);
+  result.Weights[7]:=Min(Max(round((((v00.Weights[7]*ixf)+(v01.Weights[7]*xf))*(1.0-yf))+(((v10.Weights[7]*ixf)+(v11.Weights[7]*xf))*yf)),0),255);
+
+ end else if length(fData.fBlendMapData)>0 then begin
 
   UV:=WrapOctahedralCoordinates(aUV);
 
