@@ -1694,6 +1694,7 @@ type TpvScene3DPlanets=class;
        fInFlightFrameReady:array[0..MaxInFlightFrames-1] of TPasMPBool32;
        fBlendMapInitialization:TBlendMapInitialization;
        fBlendMapModification:TBlendMapModification;
+       fBlendMapDownsampling:TBlendMapDownsampling;
        fGrassMapInitialization:TGrassMapInitialization;
        fGrassMapModification:TGrassMapModification;
        fHeightMapRandomInitialization:THeightMapRandomInitialization;
@@ -16196,6 +16197,8 @@ begin
 
  fBlendMapModification:=TBlendMapModification.Create(self);
 
+ fBlendMapDownsampling:=TBlendMapDownsampling.Create(self);
+
  fGrassMapInitialization:=TGrassMapInitialization.Create(self);
 
  fGrassMapModification:=TGrassMapModification.Create(self);
@@ -16513,6 +16516,8 @@ begin
  FreeAndNil(fBlendMapInitialization);
 
  FreeAndNil(fBlendMapModification);
+
+ FreeAndNil(fBlendMapDownsampling);
 
  FreeAndNil(fInFlightFrameDataList);
 
@@ -17660,6 +17665,8 @@ begin
     finally
      fBlendMapModificationItems[aInFlightFrameIndex].Value:=0.0;
     end;
+
+    fBlendMapDownsampling.Execute(fVulkanComputeCommandBuffer);
 
    finally
     EndUpdate;
