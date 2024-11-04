@@ -2577,7 +2577,7 @@ begin
                                                0,
                                                0,
                                                0,
-                                               [TpvVulkanBufferFlag.PersistentMappedIfPossible{,TpvVulkanBufferFlag.PreferDedicatedAllocation}],
+                                               [TpvVulkanBufferFlag.PersistentMappedIfPossible,TpvVulkanBufferFlag.PreferDedicatedAllocation],
                                                0,
                                                pvAllocationGroupIDScene3DPlanetStatic,
                                                'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fBlendMiniMapBuffer'
@@ -2673,7 +2673,7 @@ begin
                                                0,
                                                0,
                                                0,
-                                               [TpvVulkanBufferFlag.PersistentMappedIfPossible{,TpvVulkanBufferFlag.PreferDedicatedAllocation}],
+                                               [TpvVulkanBufferFlag.PersistentMappedIfPossible,TpvVulkanBufferFlag.PreferDedicatedAllocation],
                                                0,
                                                pvAllocationGroupIDScene3DPlanetStatic,
                                                'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fWaterMiniMapBuffer'
