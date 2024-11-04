@@ -722,6 +722,8 @@ type TpvScene3DPlanets=class;
               fInterpolationPushConstants:TInterpolationPushConstants;
               fModificationPushConstants:TModificationPushConstants;
               fDownsamplePushConstants:TDownsamplePushConstants;
+              fDownsampleProcessedGeneration:TpvUInt64;
+              fDownsampleDownloadedGeneration:TpvUInt64;
               fTimeAccumulator:TpvDouble;
               fLastTimeAccumulator:TpvDouble;
               fTimeStep:TpvDouble;
@@ -7130,6 +7132,10 @@ begin
 
  end;
 
+ fDownsampleProcessedGeneration:=0;
+
+ fDownsampleDownloadedGeneration:=0;
+
  fTimeAccumulator:=0.0;
 
  fLastTimeAccumulator:=-1.0;
@@ -7222,6 +7228,21 @@ end;
 procedure TpvScene3DPlanet.TWaterSimulation.PrepareSimulation(const aQueue:TpvVulkanQueue;const aCommandBuffer:TpvVulkanCommandBuffer;const aFence:TpvVulkanFence);
 var Value:TpvFloat;
 begin
+
+ if fDownsampleDownloadedGeneration<>fDownsampleProcessedGeneration then begin  
+  try  
+   fPlanet.fVulkanDevice.MemoryStaging.Download(aQueue,
+                                                aCommandBuffer,
+                                                aFence,
+                                                fPlanet.fData.fWaterMiniMapBuffer,
+                                                0,
+                                                fPlanet.fData.fWaterMiniMapData[0],
+                                                fPlanet.fWaterMiniMapResolution*fPlanet.fWaterMiniMapResolution*SizeOf(TpvFloat));
+
+  finally
+   fDownsampleDownloadedGeneration:=fDownsampleProcessedGeneration;
+  end;
+ end; 
 
  Value:=0.0;
 
@@ -7589,6 +7610,8 @@ begin
                                     0,nil,
                                     2,@BufferMemoryBarriers[0],
                                     0,nil); 
+
+  inc(fDownsampleProcessedGeneration);
 
  end;
 
