@@ -1804,6 +1804,8 @@ type TpvScene3DPlanets=class;
        procedure GetPositionAndNormal(const aNormal:TpvVector3;out aOutPosition,aOutNormal:TpvVector3); overload;
        function GetGrass(const aUV:TpvVector2):TpvScalar; overload;
        function GetGrass(const aNormal:TpvVector3):TpvScalar; overload;
+       function GetWater(const aUV:TpvVector2):TpvScalar; overload;
+       function GetWater(const aNormal:TpvVector3):TpvScalar; overload;
        function GetBlendMap(const aUV:TpvVector2):TBlendMapValue; overload;
        function GetBlendMap(const aNormal:TpvVector3):TBlendMapValue; overload;
        function GetUV(const aPosition:TpvVector3):TpvVector2;
@@ -18541,6 +18543,57 @@ end;
 function TpvScene3DPlanet.GetGrass(const aNormal:TpvVector3):TpvScalar;
 begin
  result:=GetGrass(OctEqualAreaUnsignedEncode(aNormal));
+end;
+
+function TpvScene3DPlanet.GetWater(const aUV:TpvVector2):TpvScalar;
+var UV:TpvVector2;
+    TexelX,TexelY:TpvFloat;
+    xi,yi,tx,ty:TpvInt32;
+    xf,yf,ixf:TpvFloat;
+    v00,v01,v10,v11:TpvScalar;
+begin
+
+ if length(fData.fWaterMiniMapData)>0 then begin
+
+  UV:=WrapOctahedralCoordinates(aUV);
+
+  TexelX:=UV.x*fWaterMiniMapResolution;
+  TexelY:=UV.y*fWaterMiniMapResolution;
+
+  xi:=Floor(TexelX);
+  yi:=Floor(TexelY);
+
+  xf:=TexelX-xi;
+  yf:=TexelY-yi;
+
+  xi:=Min(Max(xi,0),fWaterMiniMapResolution-1);
+  yi:=Min(Max(yi,0),fWaterMiniMapResolution-1);
+
+  v00:=fData.fWaterMiniMapData[(yi*fWaterMiniMapResolution)+xi];
+
+  WrapOctahedralTexelCoordinatesEx(xi+1,yi,fWaterMiniMapResolution,fWaterMiniMapResolution,tx,ty);
+  v01:=fData.fWaterMiniMapData[(ty*fWaterMiniMapResolution)+tx];
+
+  WrapOctahedralTexelCoordinatesEx(xi,yi+1,fWaterMiniMapResolution,fWaterMiniMapResolution,tx,ty);
+  v10:=fData.fWaterMiniMapData[(ty*fWaterMiniMapResolution)+tx];
+
+  WrapOctahedralTexelCoordinatesEx(xi+1,yi+1,fWaterMiniMapResolution,fWaterMiniMapResolution,tx,ty);
+  v11:=fData.fWaterMiniMapData[(ty*fWaterMiniMapResolution)+tx];
+
+  ixf:=1.0-xf;
+  result:=(((v00*ixf)+(v01*xf))*(1.0-yf))+(((v10*ixf)+(v11*xf))*yf);
+
+ end else begin
+
+  result:=0.0;
+
+ end;
+
+end;
+
+function TpvScene3DPlanet.GetWater(const aNormal:TpvVector3):TpvScalar;
+begin
+ result:=GetWater(OctEqualAreaUnsignedEncode(aNormal));
 end;
 
 function TpvScene3DPlanet.GetBlendMap(const aUV:TpvVector2):TpvScene3DPlanet.TBlendMapValue;
