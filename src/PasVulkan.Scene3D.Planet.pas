@@ -319,10 +319,12 @@ type TpvScene3DPlanets=class;
               fWaterSimulationMaximumCountUnderThresholdFrames:TpvSizeInt;
               fWaterSimulationThreshold:TpvFloat;
               fWaterVisibilityBuffer:TpvVulkanBuffer;
+              fBlendMiniMapBuffer:TpvVulkanBuffer;
               fHeightMapData:THeightMapData;
               fNormalMapData:TNormalMapData;
               fBlendMapData:TBlendMapData;
               fGrassMapData:TGrassMapData;
+              fBlendMiniMapData:TBlendMapData;
               fWaterMiniMapData:TWaterMapData;
               fTileDirtyMap:TpvScene3DPlanet.TData.TTileDirtyMap;
               fTileExpandedDirtyMap:TpvScene3DPlanet.TData.TTileDirtyMap;
@@ -415,6 +417,7 @@ type TpvScene3DPlanets=class;
               property NormalMapData:TNormalMapData read fNormalMapData;
               property BlendMapData:TBlendMapData read fBlendMapData;
               property GrassMapData:TGrassMapData read fGrassMapData;
+              property BlendMiniMapData:TBlendMapData read fBlendMiniMapData;
               property WaterMiniMapData:TWaterMapData read fWaterMiniMapData;
              public
               property VisualMeshVertexBuffers:TDoubleBufferedVulkanBuffers read fVisualMeshVertexBuffers;
@@ -2396,6 +2399,8 @@ begin
 
  fWaterVisibilityBuffer:=nil;
 
+ fBlendMiniMapBuffer:=nil;
+
  fHeightMapData:=nil;
 
  fNormalMapData:=nil;
@@ -2403,6 +2408,8 @@ begin
  fBlendMapData:=nil;
 
  fGrassMapData:=nil;
+
+ fBlendMiniMapData:=nil;
 
  fWaterMiniMapData:=nil;
 
@@ -2554,6 +2561,29 @@ begin
 
   if fInFlightFrameIndex<0 then begin
 
+   SetLength(fBlendMiniMapData,fPlanet.fBlendMiniMapResolution*fPlanet.fBlendMiniMapResolution);
+   FillChar(fBlendMiniMapData[0],fPlanet.fBlendMiniMapResolution*fPlanet.fBlendMiniMapResolution*SizeOf(TBlendMapValue),#0);
+
+   fBlendMiniMapBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
+                                               fPlanet.fBlendMiniMapResolution*fPlanet.fBlendMiniMapResolution*SizeOf(TBlendMapValue),
+                                               TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
+                                               fPlanet.fGlobalBufferSharingMode,
+                                               fPlanet.fGlobalBufferQueueFamilyIndices,
+                                               0,
+                                               TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_CACHED_BIT),
+                                               0,
+                                               0,
+                                               0,
+                                               0,
+                                               0,
+                                               0,
+                                               [TpvVulkanBufferFlag.PersistentMappedIfPossible{,TpvVulkanBufferFlag.PreferDedicatedAllocation}],
+                                               0,
+                                               pvAllocationGroupIDScene3DPlanetStatic,
+                                               'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fBlendMiniMapBuffer'
+                                              );
+   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fBlendMiniMapBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fBlendMiniMapBuffer');
+
    SetLength(fWaterMiniMapData,fPlanet.fWaterMiniMapResolution*fPlanet.fWaterMiniMapResolution);
    FillChar(fWaterMiniMapData[0],fPlanet.fWaterMiniMapResolution*fPlanet.fWaterMiniMapResolution*SizeOf(TpvFloat),#0);
 
@@ -2643,7 +2673,7 @@ begin
                                                0,
                                                0,
                                                0,
-                                               [TpvVulkanBufferFlag.PersistentMappedIfPossible,TpvVulkanBufferFlag.PreferDedicatedAllocation],
+                                               [TpvVulkanBufferFlag.PersistentMappedIfPossible{,TpvVulkanBufferFlag.PreferDedicatedAllocation}],
                                                0,
                                                pvAllocationGroupIDScene3DPlanetStatic,
                                                'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fWaterMiniMapBuffer'
@@ -3156,6 +3186,8 @@ begin
 
  FreeAndNil(fDownloadBuffer);
 
+ FreeAndNil(fBlendMiniMapBuffer);
+ 
  FreeAndNil(fWaterHeightMapImage);
 
  FreeAndNil(fWaterHeightMapBuffers[0]);
