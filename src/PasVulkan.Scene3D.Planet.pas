@@ -5388,12 +5388,12 @@ begin
    aCommandBuffer.EndRecording;
 
    aCommandBuffer.Execute(aQueue,TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),nil,nil,aFence,true);
-   
+
   end;
 
  finally
   FreeAndNil(TemporaryBuffer);
- end; 
+ end;
 
 end;
 
@@ -5457,6 +5457,43 @@ begin
                            true,
                            true,
                            true);
+
+   finally
+    FreeAndNil(Fence);
+   end;
+
+  finally
+   FreeAndNil(CommandBuffer);
+  end;
+
+ finally
+  FreeAndNil(CommandPool);
+ end;
+
+ Queue:=fPlanet.fVulkanDevice.UniversalQueue;
+
+ CommandPool:=TpvVulkanCommandPool.Create(fPlanet.fVulkanDevice,fPlanet.fVulkanDevice.UniversalQueueFamilyIndex);
+ try
+
+  CommandBuffer:=TpvVulkanCommandBuffer.Create(CommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+  try
+
+   Fence:=TpvVulkanFence.Create(fPlanet.fVulkanDevice);
+   try
+
+    CommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+    CommandBuffer.BeginRecording;
+    fPlanet.fBlendMapDownsampling.Execute(CommandBuffer);
+    CommandBuffer.EndRecording;
+    CommandBuffer.Execute(Queue,TVkPipelineStageFlags(VK_PIPELINE_STAGE_HOST_BIT),nil,nil,Fence,true);
+
+    fPlanet.fVulkanDevice.MemoryStaging.Download(Queue,
+                                                 CommandBuffer,
+                                                 Fence,
+                                                 fPlanet.fData.fBlendMiniMapBuffer,
+                                                 0,
+                                                 fPlanet.fData.fBlendMiniMapData[0],
+                                                 fPlanet.fBlendMiniMapResolution*fPlanet.fBlendMiniMapResolution*SizeOf(TBlendMapValue));
 
    finally
     FreeAndNil(Fence);
@@ -17672,6 +17709,12 @@ begin
     EndUpdate;
    end;
 
+   UpdatedBlendMap:=true;
+
+   inc(fBlendMapUpdateGeneration);
+
+   fBlendMapTransferGeneration:=fBlendMapUpdateGeneration;
+
    fVulkanDevice.MemoryStaging.Download(fVulkanComputeQueue,
                                         fVulkanComputeCommandBuffer,
                                         fVulkanComputeFence,
@@ -17680,9 +17723,30 @@ begin
                                         fData.fBlendMiniMapData[0],
                                         fBlendMiniMapResolution*fBlendMiniMapResolution*SizeOf(TBlendMapValue));
 
-   UpdatedBlendMap:=true;
+  end;
 
-   inc(fBlendMapUpdateGeneration);
+ end else if fBlendMapTransferGeneration<>fBlendMapUpdateGeneration then begin
+
+  if assigned(fVulkanDevice) then begin
+
+   fBlendMapTransferGeneration:=fBlendMapUpdateGeneration;
+
+   BeginUpdate;
+   try
+
+    fBlendMapDownsampling.Execute(fVulkanComputeCommandBuffer);
+
+   finally
+    EndUpdate;
+   end;
+
+   fVulkanDevice.MemoryStaging.Download(fVulkanComputeQueue,
+                                        fVulkanComputeCommandBuffer,
+                                        fVulkanComputeFence,
+                                        fData.fBlendMiniMapBuffer,
+                                        0,
+                                        fData.fBlendMiniMapData[0],
+                                        fBlendMiniMapResolution*fBlendMiniMapResolution*SizeOf(TBlendMapValue));
 
   end;
 
