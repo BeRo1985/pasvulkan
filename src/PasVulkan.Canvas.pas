@@ -5909,7 +5909,7 @@ begin
 end;
 
 function TpvCanvas.DrawFilledCircleArcRingSegment(const aCenter:TpvVector2;const aInnerRadius,aOuterRadius,aStartAngle,aEndAngle,aGapThickness:TpvFloat):TpvCanvas;
-var Index:TpvSizeInt;
+var Index,Count:TpvSizeInt;
     MetaInfo,MetaInfo2:TpvVector4;
     VertexColor:TpvHalfFloatVector4;
     VertexState:TpvUInt32;
@@ -5934,15 +5934,21 @@ begin
  MinRadius:=Max(0.0,Min(Min(aInnerRadius,aOuterRadius)*0.98725,Min(aInnerRadius,aOuterRadius)-(abs(aOuterRadius-aInnerRadius)*0.125)));
  MaxRadius:=Max(Max(aInnerRadius,aOuterRadius)*1.015625,Max(aInnerRadius,aOuterRadius)+(abs(aOuterRadius-aInnerRadius)*0.125));
  begin
-  AABB.Min:=TpvVector2.InlineableCreate(Infinity,Infinity);
-  AABB.Max:=TpvVector2.InlineableCreate(-Infinity,-Infinity);
-  for Index:=0 to 8 do begin
-   SinCos(FloatLerp(aStartAngle-(pi*0.015625),aEndAngle+(pi*0.015625),Index/8.0),CosSinValues.y,CosSinValues.x);
-   AABB.DirectCombine(aCenter+(CosSinValues*MinRadius));
-   AABB.DirectCombine(aCenter+(CosSinValues*MaxRadius));
+  if abs(aEndAngle-aStartAngle)>=pi then begin
+   AABB.Min:=aCenter+TpvVector2.InlineableCreate(-MaxRadius,-MaxRadius);
+   AABB.Max:=aCenter+TpvVector2.InlineableCreate(MaxRadius,MaxRadius);
+  end else begin
+   AABB.Min:=TpvVector2.InlineableCreate(Infinity,Infinity);
+   AABB.Max:=TpvVector2.InlineableCreate(-Infinity,-Infinity);
+   Count:=Min(Max(ceil(abs(aEndAngle-aStartAngle)/(pi*0.125)),8),16);
+   for Index:=0 to Count do begin
+    SinCos(FloatLerp(aStartAngle-(pi*0.015625),aEndAngle+(pi*0.015625),Index/Count),CosSinValues.y,CosSinValues.x);
+    AABB.DirectCombine(aCenter+(CosSinValues*MinRadius));
+    AABB.DirectCombine(aCenter+(CosSinValues*MaxRadius));
+   end;
+   AABB.Min:=AABB.Min-TpvVector2.InlineableCreate(1.0,1.0);
+   AABB.Max:=AABB.Max+TpvVector2.InlineableCreate(1.0,1.0);
   end;
-  AABB.Min:=AABB.Min-TpvVector2.InlineableCreate(1.0,1.0);
-  AABB.Max:=AABB.Max+TpvVector2.InlineableCreate(1.0,1.0);
  end;
  VertexState:=GetVertexState;
  EnsureSufficientReserveUsableSpace(4,6);
