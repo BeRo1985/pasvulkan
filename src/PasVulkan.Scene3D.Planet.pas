@@ -18644,14 +18644,22 @@ begin
  v2:=GetPhysicsVertex(ix,iy+1);
  v3:=GetPhysicsVertex(ix+1,iy+1);
 
- h0:=v0^.Position.Length;
- h1:=v1^.Position.Length;
- h2:=v2^.Position.Length;
- h3:=v3^.Position.Length;
+ if aAbsolute then begin
+  h0:=v0^.Position.Length;
+  h1:=v1^.Position.Length;
+  h2:=v2^.Position.Length;
+  h3:=v3^.Position.Length;
+ end else begin
+  h0:=v0^.Position.Length-fBottomRadius;
+  h1:=v1^.Position.Length-fBottomRadius;
+  h2:=v2^.Position.Length-fBottomRadius;
+  h3:=v3^.Position.Length-fBottomRadius;
+ end;
 
  fxi:=1.0-fx;
 
  result:=(((h0*fxi)+(h1*fx))*(1.0-fy))+(((h2*fxi)+(h3*fx))*fy);
+
 
 end;
 {var UV:TpvVector2;
