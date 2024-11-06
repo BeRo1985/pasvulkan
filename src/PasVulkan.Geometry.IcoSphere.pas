@@ -125,9 +125,9 @@ begin
 
      for FaceIndex:=0 to 19 do begin
 
-      TessellationFaceVertices[0]:=FaceVertices[FaceIndices[FaceIndex,0]];
+      TessellationFaceVertices[0]:=FaceVertices[FaceIndices[FaceIndex,2]];
       TessellationFaceVertices[1]:=FaceVertices[FaceIndices[FaceIndex,1]];
-      TessellationFaceVertices[2]:=FaceVertices[FaceIndices[FaceIndex,2]];
+      TessellationFaceVertices[2]:=FaceVertices[FaceIndices[FaceIndex,0]];
 
       for Index:=0 to (aResolution*aResolution)-1 do begin
 
