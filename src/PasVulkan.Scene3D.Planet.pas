@@ -2258,18 +2258,21 @@ end;
 function OctEqualAreaSignedEncode(const aVector:TpvVector3):TpvVector2;
 const OneOverHalfPi=0.6366197723675814;
       Vec2OneOne:TpvVector2=(x:1.0;y:1.0);
-var uv:TpvVector2;
+var Vector:TpvVector3;
+    uv:TpvVector2;
+
 begin
- uv.x:=sqrt(1.0-Abs(aVector.z));
- uv.y:=uv.x*ArcTan2(abs(aVector.y),max(1e-17,abs(aVector.x)))*OneOverHalfPi;
+ Vector:=aVector.Normalize;
+ uv.x:=sqrt(1.0-Abs(Vector.z));
+ uv.y:=uv.x*ArcTan2(abs(Vector.y),Max(1e-17,abs(Vector.x)))*OneOverHalfPi;
  uv.x:=uv.x-uv.y;
- if aVector.z<0.0 then begin
+ if Vector.z<0.0 then begin
   result:=Vec2OneOne-uv.yx;
  end else begin
   result:=uv.xy;
  end;
- result.x:=result.x*(((ord(aVector.x>=0.0) and 1) shl 1)-1);
- result.y:=result.y*(((ord(aVector.y>=0.0) and 1) shl 1)-1);
+ result.x:=result.x*(((ord(Vector.x>=0.0) and 1) shl 1)-1);
+ result.y:=result.y*(((ord(Vector.y>=0.0) and 1) shl 1)-1);
 end;
 
 function OctEqualAreaUnsignedEncode(const aVector:TpvVector3):TpvVector2;
