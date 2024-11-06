@@ -68,7 +68,8 @@ uses Classes,SysUtils,Math,PasMP,PasDblStrUtils,PasVulkan.Types,PasVulkan.Math,P
 // Generate an icosphere iteratively with a given tessellation resolution per triangle 
 procedure IterativelyGenerateIcoSphere(const aResolution:TpvSizeInt;out aVertices:TpvVector3DynamicArray;out aIndices:TpvUInt32DynamicArray;const aRadius:TpvFloat=1.0);
 
-// Generate an icosphere recursively with a given minimum count of vertices instead of a recursion depth level for somewhat better control
+// Generate an icosphere recursively with a given minimum count of vertices instead of a recursion depth level for somewhat better control.
+// However negative aCountMinimumVertices values are used as forced recursion depth levels, when it is really explicitly needed.
 procedure RecursivelyGenerateIcoSphere(const aCountMinimumVertices:TpvSizeInt;out aVertices:TpvVector3DynamicArray;out aIndices:TpvUInt32DynamicArray;const aRadius:TpvFloat=1.0);
 
 implementation
@@ -312,11 +313,15 @@ const GoldenRatio=1.61803398874989485; // (1.0+sqrt(5.0))/2.0 (golden ratio)
 var SubdivisionLevel,Count:TpvSizeInt;
 begin
 
- Count:=12;
- SubdivisionLevel:=0;
- while Count<aCountMinimumVertices do begin
-  Count:=12+((10*((2 shl SubdivisionLevel)+1))*((2 shl SubdivisionLevel)-1));
-  inc(SubdivisionLevel);
+ if aCountMinimumVertices>=0 then begin
+  Count:=12;
+  SubdivisionLevel:=0;
+  while Count<aCountMinimumVertices do begin
+   Count:=12+((10*((2 shl SubdivisionLevel)+1))*((2 shl SubdivisionLevel)-1));
+   inc(SubdivisionLevel);
+  end;
+ end else begin
+  SubdivisionLevel:=-aCountMinimumVertices; // Use negative values as subdivision levels
  end;
 
  aVertices.Assign(IcosaheronVertices);
