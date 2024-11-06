@@ -3855,6 +3855,7 @@ type EpvScene3D=class(Exception);
                             const aTextureID:TpvUInt32;
                             const aAdditiveBlending:boolean):TpvSizeInt;
       public
+       function CreateMaterial(const aName:TpvUTF8String):TpvScene3D.TMaterial;
        function CreateGroup(const aName:TpvUTF8String=''):TpvScene3D.TGroup;
       public
        function GetImageByName(const aName:TpvUTF8String='';const aIgnoreCase:boolean=true):TpvScene3D.TImage;
@@ -32564,6 +32565,12 @@ begin
  end else begin
   Particle^.TextureID:=aTextureID;
  end;
+end;
+
+function TpvScene3D.CreateMaterial(const aName:TpvUTF8String):TpvScene3D.TMaterial;
+begin
+ result:=TpvScene3D.TMaterial.Create(ResourceManager,self,nil);
+ result.fName:=aName;
 end;
 
 function TpvScene3D.CreateGroup(const aName:TpvUTF8String):TpvScene3D.TGroup;
