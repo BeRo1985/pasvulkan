@@ -1,0 +1,188 @@
+(******************************************************************************
+ *                                 PasVulkan                                  *
+ ******************************************************************************
+ *                       Version see PasVulkan.Framework.pas                  *
+ ******************************************************************************
+ *                                zlib license                                *
+ *============================================================================*
+ *                                                                            *
+ * Copyright (C) 2016-2024, Benjamin Rosseaux (benjamin@rosseaux.de)          *
+ *                                                                            *
+ * This software is provided 'as-is', without any express or implied          *
+ * warranty. In no event will the authors be held liable for any damages      *
+ * arising from the use of this software.                                     *
+ *                                                                            *
+ * Permission is granted to anyone to use this software for any purpose,      *
+ * including commercial applications, and to alter it and redistribute it     *
+ * freely, subject to the following restrictions:                             *
+ *                                                                            *
+ * 1. The origin of this software must not be misrepresented; you must not    *
+ *    claim that you wrote the original software. If you use this software    *
+ *    in a product, an acknowledgement in the product documentation would be  *
+ *    appreciated but is not required.                                        *
+ * 2. Altered source versions must be plainly marked as such, and must not be *
+ *    misrepresented as being the original software.                          *
+ * 3. This notice may not be removed or altered from any source distribution. *
+ *                                                                            *
+ ******************************************************************************
+ *                  General guidelines for code contributors                  *
+ *============================================================================*
+ *                                                                            *
+ * 1. Make sure you are legally allowed to make a contribution under the zlib *
+ *    license.                                                                *
+ * 2. The zlib license header goes at the top of each source file, with       *
+ *    appropriate copyright notice.                                           *
+ * 3. This PasVulkan wrapper may be used only with the PasVulkan-own Vulkan   *
+ *    Pascal header.                                                          *
+ * 4. After a pull request, check the status of your pull request on          *
+      http://github.com/BeRo1985/pasvulkan                                    *
+ * 5. Write code which's compatible with Delphi >= 2009 and FreePascal >=     *
+ *    3.1.1                                                                   *
+ * 6. Don't use Delphi-only, FreePascal-only or Lazarus-only libraries/units, *
+ *    but if needed, make it out-ifdef-able.                                  *
+ * 7. No use of third-party libraries/units as possible, but if needed, make  *
+ *    it out-ifdef-able.                                                      *
+ * 8. Try to use const when possible.                                         *
+ * 9. Make sure to comment out writeln, used while debugging.                 *
+ * 10. Make sure the code compiles on 32-bit and 64-bit platforms (x86-32,    *
+ *     x86-64, ARM, ARM64, etc.).                                             *
+ * 11. Make sure the code runs on all platforms with Vulkan support           *
+ *                                                                            *
+ ******************************************************************************)
+unit PasVulkan.Geometry.IcoSphere;
+{$i PasVulkan.inc}
+{$ifndef fpc}
+ {$ifdef conditionalexpressions}
+  {$if CompilerVersion>=24.0}
+   {$legacyifend on}
+  {$ifend}
+ {$endif}
+{$endif}
+
+{$scopedenums on}
+
+interface
+
+uses Classes,SysUtils,Math,PasMP,PasDblStrUtils,PasVulkan.Types,PasVulkan.Math,PasVulkan.Collections,PasVulkan.Utils;
+
+procedure IterativelyGenerateIcoSphere(const aResolution:TpvSizeInt;out aVertices:TpvVector3DynamicArray;out aIndices:TpvUInt32DynamicArray;const aRadius:TpvFloat=1.0);
+
+implementation
+
+procedure IterativelyGenerateIcoSphere(const aResolution:TpvSizeInt;out aVertices:TpvVector3DynamicArray;out aIndices:TpvUInt32DynamicArray;const aRadius:TpvFloat);
+type TVertexHashMap=TpvHashMap<TpvVector3,TpvUInt32>; // $ffffffff = invalid index
+const GoldenRatio=1.61803398874989485; // (1.0 + sqrt(5.0)) / 2.0 (golden ratio)
+      IcosahedronLength=1.902113032590307; // sqrt(sqr(1) + sqr(GoldenRatio))
+      IcosahedronNorm=0.5257311121191336; // 1.0 / IcosahedronLength
+      IcosahedronNormGoldenRatio=0.85065080835204; // GoldenRatio / IcosahedronLength
+      FaceVertices:array[0..11] of TpvVector3=(
+       (x:0.0;y:IcosahedronNorm;z:IcosahedronNormGoldenRatio),
+       (x:0.0;y:-IcosahedronNorm;z:IcosahedronNormGoldenRatio),
+       (x:IcosahedronNorm;y:IcosahedronNormGoldenRatio;z:0.0),
+       (x:-IcosahedronNorm;y:IcosahedronNormGoldenRatio;z:0.0),
+       (x:IcosahedronNormGoldenRatio;y:0.0;z:IcosahedronNorm),
+       (x:-IcosahedronNormGoldenRatio;y:0.0;z:IcosahedronNorm),
+       (x:0.0;y:-IcosahedronNorm;z:-IcosahedronNormGoldenRatio),
+       (x:0.0;y:IcosahedronNorm;z:-IcosahedronNormGoldenRatio),
+       (x:-IcosahedronNorm;y:-IcosahedronNormGoldenRatio;z:0.0),
+       (x:IcosahedronNorm;y:-IcosahedronNormGoldenRatio;z:0.0),
+       (x:-IcosahedronNormGoldenRatio;y:0.0;z:-IcosahedronNorm),
+       (x:IcosahedronNormGoldenRatio;y:0.0;z:-IcosahedronNorm)
+      );
+      FaceIndices:array[0..19,0..2] of TpvUInt32=(
+       (0,5,1),(0,3,5),(0,2,3),(0,4,2),(0,1,4),
+       (1,5,8),(5,3,10),(3,2,7),(2,4,11),(4,1,9),
+       (7,11,6),(11,9,6),(9,8,6),(8,10,6),(10,7,6),
+       (2,11,7),(4,9,11),(1,8,9),(5,10,8),(3,7,10)
+      );
+var VertexHashMap:TVertexHashMap;
+    FaceIndex,Index,VertexIndex,CountVertices,CountIndices:TpvSizeInt; 
+    IndexValue:TpvUInt32;
+    TessellationFaceVertices:array[0..2] of TpvVector3;
+    TessellatedVertices:array[0..2] of TpvVector3;
+begin
+
+ // Generate icosahedron and tessellate it iteratively without recursion
+ begin
+
+  CountVertices:=0;
+  try
+
+   CountIndices:=0;
+   try
+
+    // Peeallocate possible approximate memory for vertices and indices in advance, so we don't need to reallocate memory during the tessellation process in the best case 
+    SetLength(aVertices,20*(aResolution+1)*(aResolution+1)*3);
+    SetLength(aIndices,20*(aResolution+1)*(aResolution+1)*3);
+
+    VertexHashMap:=TVertexHashMap.Create(TpvUInt32($ffffffff)); // $ffffffff = invalid index as default value
+    try
+
+     for FaceIndex:=0 to 19 do begin
+
+      TessellationFaceVertices[0]:=FaceVertices[FaceIndices[FaceIndex,0]];
+      TessellationFaceVertices[1]:=FaceVertices[FaceIndices[FaceIndex,1]];
+      TessellationFaceVertices[2]:=FaceVertices[FaceIndices[FaceIndex,2]];
+
+      for Index:=0 to aResolution do begin
+
+       TessellateTriangle(Index,aResolution,@TessellationFaceVertices[0],@TessellatedVertices[0]);
+
+       for VertexIndex:=0 to 2 do begin
+
+        // Try to find vertex in hash map
+        IndexValue:=VertexHashMap[TessellatedVertices[VertexIndex]];
+        
+        // If vertex is not found in hash map, add it to the vertices list and hash map
+        if IndexValue=TpvUInt32($ffffffff) then begin
+
+         // Create new vertex, when it is not found in hash map
+         IndexValue:=CountVertices;
+         if length(aVertices)<=CountVertices then begin
+          SetLength(aVertices,(CountVertices+1)+((CountVertices+1) shr 1));
+         end;
+         aVertices[CountVertices]:=TessellatedVertices[VertexIndex];
+         inc(CountVertices);
+
+         // Add vertex to hash map
+         VertexHashMap.Add(TessellatedVertices[VertexIndex],IndexValue);
+
+        end;
+
+        // Add index to indices list
+        if length(aIndices)<=CountIndices then begin
+         SetLength(aIndices,(CountIndices+1)+((CountIndices+1) shr 1));
+        end;
+        aIndices[CountIndices]:=IndexValue;
+        inc(CountIndices);
+
+       end;     
+
+      end;
+
+     end;   
+
+    finally
+     FreeAndNil(VertexHashMap);
+    end;
+
+   finally
+    SetLength(aIndices,CountIndices); // Shrink to fit to the actual count of indices
+   end;
+
+  finally
+   SetLength(aVertices,CountVertices); // Shrink to fit to the actual count of vertices
+  end;  
+
+ end;  
+
+ // Normalize vertices and scale them by radius
+ begin
+  for Index:=0 to CountVertices-1 do begin
+   aVertices[Index]:=aVertices[Index].Normalize*aRadius;
+  end; 
+ end; 
+
+end;
+
+end.
