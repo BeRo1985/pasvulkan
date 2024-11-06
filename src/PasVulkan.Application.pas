@@ -15165,9 +15165,7 @@ begin
 
 end;
 
-{$ifdef Windows}
 initialization
-{$ifndef PasVulkanUseSDL2}
 {$if defined(PasVulkanUseJCLDebug) and not defined(fpc)}
 //JclStackTrackingOptions:=JclStackTrackingOptions+[stRawMode,stStaticModuleList];
  if JclStartExceptionTracking then begin
@@ -15178,6 +15176,8 @@ initialization
 {$ifend}
  OldExceptProc:=Addr(System.ExceptProc);
  System.ExceptProc:=@ExceptionOccurred;
+{$ifdef Windows}
+{$ifndef PasVulkanUseSDL2}
  timeBeginPeriod(1);
  @GetPointerType:=GetProcAddress(LoadLibrary('user32.dll'),'GetPointerType');
  @GetPointerTouchInfo:=GetProcAddress(LoadLibrary('user32.dll'),'GetPointerTouchInfo');
@@ -15196,8 +15196,11 @@ initialization
  @SetProcessDpiAwarenessContext:=GetProcAddress(LoadLibrary('user32.dll'),'SetProcessDpiAwarenessContext');
  @EnableNonClientDpiScaling:=GetProcAddress(LoadLibrary('user32.dll'),'EnableNonClientDpiScaling');
 {$endif}
+{$endif}
 finalization
+{$ifdef Windows}
  timeEndPeriod(1);
+{$endif}
  System.ExceptProc:=OldExceptProc;
 {$if defined(PasVulkanUseJCLDebug) and not defined(fpc)}
  if JclExceptionTrackingActive then begin
@@ -15207,5 +15210,4 @@ finalization
   JclStopExceptionTracking;
  end;
 {$ifend}
-{$endif}
 end.
