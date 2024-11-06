@@ -486,11 +486,11 @@ type PpvScalar=^TpvScalar;
       Latitude:TpvScalar;
      end;
 
-     TpvVector2Array=array of TpvVector2;
+     TpvVector2DynamicArray=array of TpvVector2;
 
-     TpvVector3Array=array of TpvVector3;
+     TpvVector3DynamicArray=array of TpvVector3;
 
-     TpvVector4Array=array of TpvVector4;
+     TpvVector4DynamicArray=array of TpvVector4;
 
      PpvVector3s=^TpvVector3s;
      TpvVector3s=array[0..$ff] of TpvVector3;

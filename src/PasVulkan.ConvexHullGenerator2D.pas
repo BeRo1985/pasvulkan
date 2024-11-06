@@ -72,7 +72,7 @@ type TpvConvexHull2DPixels=array of boolean;
 
 procedure GetConvexHull2D(const Pixels:TpvConvexHull2DPixels;
                           const Width,Height:TpvInt32;
-                          out ConvexHullVertices:TpvVector2Array;
+                          out ConvexHullVertices:TpvVector2DynamicArray;
                           CountVertices:TpvInt32;
                           out CenterX,CenterY,CenterRadius:TpvFloat;
                           const BorderExtendX:TpvFloat=1.0;
@@ -98,11 +98,11 @@ begin
  end;
 end;
 
-function RamerDouglasPeucker(const Points:TpvVector2Array;Epsilon:TpvFloat):TpvVector2Array;
+function RamerDouglasPeucker(const Points:TpvVector2DynamicArray;Epsilon:TpvFloat):TpvVector2DynamicArray;
 var FirstPoint,LastPoint:TpvVector2;
     Index,i,j:TpvInt32;
     Distance,BestDistance:TpvFloat;
-    r1,r2:TpvVector2Array;
+    r1,r2:TpvVector2DynamicArray;
 begin
  if length(Points)<3 then begin
   result:=copy(Points);
@@ -138,7 +138,7 @@ begin
  end;
 end;
 
-function GenerateConvexHull(const Points:TpvVector2Array):TpvVector2Array;
+function GenerateConvexHull(const Points:TpvVector2DynamicArray):TpvVector2DynamicArray;
 var bot,top,i,n,minmin,minmax,maxmin,maxmax:TpvInt32;
     xmin,xmax:TpvFloat;
 begin
@@ -269,7 +269,7 @@ begin
 
 end;
 
-function VisvalingamWhyatt(const Points:TpvVector2Array;MaxCount:TpvInt32):TpvVector2Array;
+function VisvalingamWhyatt(const Points:TpvVector2DynamicArray;MaxCount:TpvInt32):TpvVector2DynamicArray;
 var Index,Count,MinIndex:TpvInt32;
     MinArea,Area:TpvFloat;
 begin
@@ -294,7 +294,7 @@ begin
  SetLength(result,Count);
 end;
 
-function VisvalingamWhyattModified(const Points:TpvVector2Array;MinimumArea:TpvFloat;MaxCount:TpvInt32):TpvVector2Array;
+function VisvalingamWhyattModified(const Points:TpvVector2DynamicArray;MinimumArea:TpvFloat;MaxCount:TpvInt32):TpvVector2DynamicArray;
 var Index,Count,MinIndex:TpvInt32;
     MinArea,Area:TpvFloat;
 begin
@@ -323,7 +323,7 @@ begin
  SetLength(result,Count);
 end;
 
-function GetArea(const Points:TpvVector2Array):TpvFloat;
+function GetArea(const Points:TpvVector2DynamicArray):TpvFloat;
 var i:TpvInt32;
 begin
  result:=0;
@@ -333,7 +333,7 @@ begin
  result:=result*0.5;
 end;
 
-function FixLastPoint(const Points:TpvVector2Array):TpvVector2Array;
+function FixLastPoint(const Points:TpvVector2DynamicArray):TpvVector2DynamicArray;
 var c:TpvInt32;
 begin
  result:=copy(Points);
@@ -344,7 +344,7 @@ begin
  end;
 end;
 
-function FixNoLastPoint(const Points:TpvVector2Array):TpvVector2Array;
+function FixNoLastPoint(const Points:TpvVector2DynamicArray):TpvVector2DynamicArray;
 var c:TpvInt32;
 begin
  result:=copy(Points);
@@ -354,7 +354,7 @@ begin
  end;
 end;
 
-function FixOrder(const Points:TpvVector2Array):TpvVector2Array;
+function FixOrder(const Points:TpvVector2DynamicArray):TpvVector2DynamicArray;
 var i,j:TpvInt32;
 begin
  result:=copy(Points);
@@ -367,7 +367,7 @@ begin
  end;
 end;
 
-function SortPoints(const Points:TpvVector2Array):TpvVector2Array;
+function SortPoints(const Points:TpvVector2DynamicArray):TpvVector2DynamicArray;
 var i:TpvInt32;
     p:TpvVector2;
 begin
@@ -421,7 +421,7 @@ begin
  result:=t;
 end;
 
-function SegmentHullIntersection(const Points:TpvVector2Array;const a1,a2:TpvVector2):boolean;
+function SegmentHullIntersection(const Points:TpvVector2DynamicArray;const a1,a2:TpvVector2):boolean;
 var i:TpvInt32;
 begin
  result:=false;
@@ -433,7 +433,7 @@ begin
  end;
 end;
 
-function PointHullIntersection(const Points:TpvVector2Array;const p:TpvVector2):boolean;
+function PointHullIntersection(const Points:TpvVector2DynamicArray;const p:TpvVector2):boolean;
 var i:TpvInt32;
     d:TpvFloat;
     Sign,FirstSign:boolean;
@@ -454,7 +454,7 @@ begin
  end;
 end;
 
-function PointInHull(const Points:TpvVector2Array;const p:TpvVector2):boolean;
+function PointInHull(const Points:TpvVector2DynamicArray;const p:TpvVector2):boolean;
 var i,j:TpvInt32;
     d0,d1:TpvVector2;
     d:TpvFloat;
@@ -502,13 +502,13 @@ begin
  result:=InRect(HitPoint,a1,a2) and InRect(HitPoint,b1,b2);
 end;
 
-function FindOptimalPolygon(const Points:TpvVector2Array;VertexCount:TpvInt32;var DestArea:TpvFloat):TpvVector2Array;
+function FindOptimalPolygon(const Points:TpvVector2DynamicArray;VertexCount:TpvInt32;var DestArea:TpvFloat):TpvVector2DynamicArray;
 type TLine=record
       Start:TpvVector2;
       Difference:TpvVector2;
      end;
      TLines=array of TLine;
-var Vertices,Edges,Dest:TpvVector2Array;
+var Vertices,Edges,Dest:TpvVector2DynamicArray;
     Counters:array of TpvInt32;
     Lines:TLines;
     First:boolean;
@@ -637,7 +637,7 @@ begin
  result:=Dest;
 end;
 
-function FixConvexHull(const OptimizedPoints,OriginalPoints:TpvVector2Array):TpvVector2Array;
+function FixConvexHull(const OptimizedPoints,OriginalPoints:TpvVector2DynamicArray):TpvVector2DynamicArray;
 var Count,Index,OtherIndex,OtherOtherIndex:TpvInt32;
     pA,pB,oA,oB:PpvVector2;
     AB,Normal,HitPoint,MidPoint,CenterPoint,BestHitPoint:TpvVector2;
@@ -726,7 +726,7 @@ end;
 
 procedure GetConvexHull2D(const Pixels:TpvConvexHull2DPixels;
                           const Width,Height:TpvInt32;
-                          out ConvexHullVertices:TpvVector2Array;
+                          out ConvexHullVertices:TpvVector2DynamicArray;
                           CountVertices:TpvInt32;
                           out CenterX,CenterY,CenterRadius:TpvFloat;
                           const BorderExtendX:TpvFloat=1.0;
@@ -734,7 +734,7 @@ procedure GetConvexHull2D(const Pixels:TpvConvexHull2DPixels;
                           const ConvexHullMode:TpvInt32=0);
 var SpriteW,SpriteH,rx1,ry1,rx2,ry2,x,y,x1,x2,y1,y2,c,c2,i,j,k,n,p:TpvInt32;
     SpriteBitmap,SpriteBitmap2:TpvConvexHull2DPixels;
-    WorkVertices,HullVertices,OriginalHullVertices:TpvVector2Array;
+    WorkVertices,HullVertices,OriginalHullVertices:TpvVector2DynamicArray;
     b,OK:boolean;
     cx,cy,cr,r,d:TpvFloat;
 begin

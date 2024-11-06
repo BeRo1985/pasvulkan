@@ -194,7 +194,7 @@ type EpvSpriteAtlas=class(Exception);
      TpvSpriteFlags=set of TpvSpriteFlag;
 
      PpvSpriteTrimmedHullVectors=^TpvSpriteTrimmedHullVectors;
-     TpvSpriteTrimmedHullVectors=TpvVector2Array;
+     TpvSpriteTrimmedHullVectors=TpvVector2DynamicArray;
 
      TpvSpriteTrimmedHullVectorsArray=array of TpvSpriteTrimmedHullVectors;
 

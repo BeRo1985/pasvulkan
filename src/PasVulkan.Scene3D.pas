@@ -1960,9 +1960,9 @@ type EpvScene3D=class(Exception);
                             fInterpolation:TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation;
                             fInputTimeArray:TpvDoubleDynamicArray;
                             fOutputScalarArray:TpvFloatDynamicArray;
-                            fOutputVector2Array:TpvVector2Array;
-                            fOutputVector3Array:TpvVector3Array;
-                            fOutputVector4Array:TpvVector4Array;
+                            fOutputVector2Array:TpvVector2DynamicArray;
+                            fOutputVector3Array:TpvVector3DynamicArray;
+                            fOutputVector4Array:TpvVector4DynamicArray;
                            public
                             constructor Create; reintroduce;
                             destructor Destroy; override;
@@ -1981,9 +1981,9 @@ type EpvScene3D=class(Exception);
                            public
                             property InputTimeArray:TpvDoubleDynamicArray read fInputTimeArray write fInputTimeArray;
                             property OutputScalarArray:TpvFloatDynamicArray read fOutputScalarArray write fOutputScalarArray;
-                            property OutputVector2Array:TpvVector2Array read fOutputVector2Array write fOutputVector2Array;
-                            property OutputVector3Array:TpvVector3Array read fOutputVector3Array write fOutputVector3Array;
-                            property OutputVector4Array:TpvVector4Array read fOutputVector4Array write fOutputVector4Array;
+                            property OutputVector2Array:TpvVector2DynamicArray read fOutputVector2Array write fOutputVector2Array;
+                            property OutputVector3Array:TpvVector3DynamicArray read fOutputVector3Array write fOutputVector3Array;
+                            property OutputVector4Array:TpvVector4DynamicArray read fOutputVector4Array write fOutputVector4Array;
                           end;
                           TChannels=TpvObjectGenericList<TChannel>;
                           { TDefaultChannel }
@@ -12966,8 +12966,8 @@ var PrimitiveIndex,
     PrimitiveTarget:TpvScene3D.TGroup.TMesh.TPrimitive.TTarget;
     PrimitiveTargetVertex:TpvScene3D.TGroup.TMesh.TPrimitive.TTarget.PTargetVertex;
     Vertex:TpvScene3D.PVertex;
-    Positions,Normals,Tangents,Bitangents,TargetPositions,TargetNormals,TargetTangents:TpvVector3Array;
-    TexCoords:TpvVector2Array;
+    Positions,Normals,Tangents,Bitangents,TargetPositions,TargetNormals,TargetTangents:TpvVector3DynamicArray;
+    TexCoords:TpvVector2DynamicArray;
     Area:TpvScalar;
     Normal,Tangent,Bitangent,p1p0,p2p0:TpvVector3;
     t1t0,t2t0:TpvVector2;
