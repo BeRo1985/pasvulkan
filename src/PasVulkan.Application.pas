@@ -2578,12 +2578,19 @@ end;
 
 procedure LogCrash(const aExceptionString:String);
 {$ifdef PasVulkanUseCrashLog}
-var LogFile:TextFile;
+var FileName:String;
+    LogFile:TextFile;
 {$endif}
 begin
 {$ifdef PasVulkanUseCrashLog}
- AssignFile(LogFile,ChangeFileExt(ParamStr(0),'.crashlog'));
- Append(LogFile);
+ FileName:=ChangeFileExt(ParamStr(0),'.crashlog');
+ if FileExists(FileName) then begin
+  AssignFile(LogFile,FileName);
+  Append(LogFile);
+ end else begin
+  AssignFile(LogFile,FileName);
+  Rewrite(LogFile);
+ end;
  WriteLn(LogFile);
  WriteLn(LogFile,'-----------------------------------------');
  WriteLn(LogFile);
