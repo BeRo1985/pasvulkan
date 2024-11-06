@@ -2196,6 +2196,8 @@ function DumpExceptionCallStack(e:Exception;aAddr:Pointer=nil;aFrameCount:Longin
 function DumpExceptionCallStack(e:Exception):string;
 {$ifend}
 
+procedure LogCrash(const aExceptionString:String);
+
 implementation
 
 uses PasVulkan.Utils,PasDblStrUtils,PasVulkan.Compression;
@@ -2573,6 +2575,25 @@ begin
  end;
 end;
 {$ifend}
+
+procedure LogCrash(const aExceptionString:String);
+{$ifdef PasVulkanUseCrashLog}
+var LogFile:TextFile;
+{$endif}
+begin
+{$ifdef PasVulkanUseCrashLog}
+ AssignFile(LogFile,ChangeFileExt(ParamStr(0),'.crashlog'));
+ Append(LogFile);
+ WriteLn(LogFile);
+ WriteLn(LogFile,'-----------------------------------------');
+ WriteLn(LogFile);
+ WriteLn(LogFile,DateTimeToStr(Now)+':');
+ WriteLn(LogFile);
+ WriteLn(LogFile,aExceptionString);
+ WriteLn(LogFile);
+ CloseFile(LogFile);
+{$endif}
+end;
 
 {$if defined(Linux)}
 function IsDebuggerPresent:LongBool;
@@ -7134,6 +7155,7 @@ begin
    __android_log_write(ANDROID_LOG_ERROR,'PasVulkanApplication',PAnsiChar(TpvApplicationRawByteString(ExceptionString)));
 {$ifend}
    TpvApplication.Log(LOG_ERROR,'TpvApplicationUpdateThread.Execute',ExceptionString);
+   LogCrash(ExceptionString);
    raise;
   end;
  end;
@@ -7594,6 +7616,7 @@ begin
  __android_log_write(ANDROID_LOG_ERROR,'PasVulkanApplication',PAnsiChar(TpvApplicationRawByteString(ExceptionString)));
 {$ifend}
  TpvApplication.Log(LOG_ERROR,'TpvApplication.PasMPInstanceOnWorkerThreadException',ExceptionString);
+ LogCrash(ExceptionString);
  result:=false;
 end;
 
@@ -13578,6 +13601,7 @@ begin
            __android_log_write(ANDROID_LOG_ERROR,'PasVulkanApplication',PAnsiChar(TpvApplicationRawByteString(ExceptionString)));
 {$ifend}
            TpvApplication.Log(LOG_ERROR,'TpvApplication.Run',ExceptionString);
+           LogCrash(ExceptionString);
            //raise;
            if fVulkanDevice.UseNVIDIADeviceDiagnostics then begin
             // Device lost notification is asynchronous to the NVIDIA display
@@ -15102,13 +15126,20 @@ function GetExceptionStackInfoProc(P:PExceptionRecord):Pointer;
 var LLines:TStringList;
     LText:String;
     LResult:PChar;
+//  StackInfoList:TJclStackInfoList;
 begin
  LLines:=TStringList.Create;
  try
+{ StackInfoList:=TJclStackInfoList.Create(true,7,p.ExceptAddr,false,nil,nil);
+  try
+   StackInfoList.AddToStrings(LLines,true,true,true,true);
+  finally
+   FreeAndNil(StackInfoList);
+  end;}
   JclLastExceptStackListToStrings(LLines,true,true,true,true);
   LText:=LLines.Text;
   LResult:=StrAlloc(Length(LText));
-  StrCopy(LResult, PChar(LText));
+  StrCopy(LResult,PChar(LText));
   Result:=LResult;
  finally
   LLines.Free;
@@ -15157,6 +15188,8 @@ begin
 {$ifend}
  TpvApplication.Log(LOG_ERROR,'TpvApplication',ExceptionString);
 
+ LogCrash(ExceptionString);
+
  if assigned(OldExceptProc) then begin
   TExceptionOccurred(OldExceptProc)(aSender,aAddr{$ifdef fpc},aFrameCount,aFrames{$endif});
  end;
@@ -15169,9 +15202,9 @@ initialization
 {$if defined(PasVulkanUseJCLDebug) and not defined(fpc)}
 //JclStackTrackingOptions:=JclStackTrackingOptions+[stRawMode,stStaticModuleList];
  if JclStartExceptionTracking then begin
-  Exception.GetExceptionStackInfoProc:=GetExceptionStackInfoProc;
+{ Exception.GetExceptionStackInfoProc:=GetExceptionStackInfoProc;
   Exception.GetStackInfoStringProc:=GetStackInfoStringProc;
-  Exception.CleanUpStackInfoProc:=CleanUpStackInfoProc;
+  Exception.CleanUpStackInfoProc:=CleanUpStackInfoProc;}
  end;
 {$ifend}
  OldExceptProc:=Addr(System.ExceptProc);
