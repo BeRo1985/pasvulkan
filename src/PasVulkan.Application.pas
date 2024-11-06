@@ -84,6 +84,9 @@ uses {$if defined(Unix)}
       Registry,
       {$if not (defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless))}MultiMon,ShellAPI,PasVulkan.Win32.GameInput,{$ifend}
      {$ifend}
+     {$if defined(PasVulkanUseJCLDebug) and not defined(fpc)}
+      JclDebug,
+     {$ifend}
      SysUtils,
      Classes,
      SyncObjs,
@@ -2187,7 +2190,11 @@ function IsDebuggerPresent:LongBool; stdcall; external 'kernel32.dll' name 'IsDe
 function IsDebuggerPresent:LongBool;
 {$ifend}
 
+{$if defined(fpc)}
+function DumpExceptionCallStack(e:Exception;aAddr:Pointer=nil;aFrameCount:Longint=0;aFrames:PPointer=nil):string;
+{$else}
 function DumpExceptionCallStack(e:Exception):string;
+{$ifend}
 
 implementation
 
@@ -2524,7 +2531,7 @@ const DPI_AWARENESS_CONTEXT_UNAWARE=TDPI_AWARENESS_CONTEXT(-1);
 {$ifend}
 
 {$if defined(fpc)}
-function DumpExceptionCallStack(e:Exception):string;
+function DumpExceptionCallStack(e:Exception;aAddr:Pointer;aFrameCount:Longint;aFrames:PPointer):string;
 var i:int32;
     Frames:PPointer;
 begin
@@ -2532,11 +2539,23 @@ begin
  if assigned(e) then begin
   result:=result+'Exception class: '+e.ClassName+LineEnding+'Message: '+e.Message+LineEnding;
  end;
- result:=result+BackTraceStrFunc(ExceptAddr);
- Frames:=ExceptFrames;
- for i:=0 to ExceptFrameCount-1 do begin
-  result:=result+LineEnding+BackTraceStrFunc(Frames);
-  inc(Frames);
+ if assigned(aAddr) then begin
+  result:=result+BackTraceStrFunc(aAddr);
+ end else begin
+  result:=result+BackTraceStrFunc(ExceptAddr);
+ end;
+ if assigned(aFrames) and (aFrameCount>0) then begin
+  Frames:=aFrames;
+  for i:=0 to aFrameCount-1 do begin
+   result:=result+LineEnding+BackTraceStrFunc(Frames);
+   inc(Frames);
+  end;
+ end else begin
+  Frames:=ExceptFrames;
+  for i:=0 to ExceptFrameCount-1 do begin
+   result:=result+LineEnding+BackTraceStrFunc(Frames);
+   inc(Frames);
+  end;
  end;
 end;
 {$else}
@@ -14072,7 +14091,7 @@ end;*)
 function LibCMalloc(Size:ptruint):pointer; cdecl; external 'c' name 'malloc';
 procedure LibCFree(p:pointer); cdecl; external 'c' name 'free';
 
-function DumpExceptionCallStack(e:Exception):string;
+{function DumpExceptionCallStack(e:Exception):string;
 var i:int32;
     Frames:PPointer;
 begin
@@ -14086,7 +14105,7 @@ begin
   result:=result+LineEnding+BackTraceStrFunc(Frames);
   inc(Frames);
  end;
-end;
+end;}
 
 type PLooperID=^TLooperID;
      TLooperID=
@@ -15078,10 +15097,88 @@ end;
 
 {$ifend}
 
+{$if defined(PasVulkanUseJCLDebug) and not defined(fpc)}
+function GetExceptionStackInfoProc(P:PExceptionRecord):Pointer;
+var LLines:TStringList;
+    LText:String;
+    LResult:PChar;
+begin
+ LLines:=TStringList.Create;
+ try
+  JclLastExceptStackListToStrings(LLines,true,true,true,true);
+  LText:=LLines.Text;
+  LResult:=StrAlloc(Length(LText));
+  StrCopy(LResult, PChar(LText));
+  Result:=LResult;
+ finally
+  LLines.Free;
+ end;
+end;
+
+function GetStackInfoStringProc(Info:Pointer):string;
+begin
+ Result:=string(PChar(Info));
+end;
+
+procedure CleanUpStackInfoProc(Info:Pointer);
+begin
+ StrDispose(PChar(Info));
+end;
+{$ifend}
+
+type TExceptionOccurred=procedure(aSender:TObject;aAddr:Pointer{$ifdef fpc};aFrameCount:Longint;aFrames:PPointer{$endif});
+
+var OldExceptProc:Pointer=nil;
+    HandlingException:Boolean=false;
+
+procedure ExceptionOccurred(aSender:TObject;aAddr:Pointer{$ifdef fpc};aFrameCount:Longint;aFrames:PPointer{$endif});
+const LineEnding={$ifdef Unix}#10{$else}#13#10{$endif};
+var ExceptionString:string;
+begin
+
+ if HandlingException then begin
+  exit;
+ end;
+
+ HandlingException:=true;
+
+ if assigned(aSender) and (aSender is Exception) then begin
+  ExceptionString:=DumpExceptionCallStack(Exception(aSender){$ifdef fpc},aAddr,aFrameCount,aFrames{$endif});
+ end else begin
+{$ifdef fpc}
+  ExceptionString:=DumpExceptionCallStack(Exception(nil){$ifdef fpc},aAddr,aFrameCount,aFrames{$endif});
+{$else}
+  ExceptionString:='Program exception at $'+IntToHex(TpvPtrUInt(aAddr),SizeOf(Pointer) shl 1)+LineEnding;
+{$endif}
+ end;
+
+{$if defined(fpc) and defined(android) and (defined(Release) or not defined(Debug))}
+ __android_log_write(ANDROID_LOG_ERROR,'PasVulkanApplication',PAnsiChar(TpvApplicationRawByteString(ExceptionString)));
+{$ifend}
+ TpvApplication.Log(LOG_ERROR,'TpvApplication',ExceptionString);
+
+ if assigned(OldExceptProc) then begin
+  TExceptionOccurred(OldExceptProc)(aSender,aAddr{$ifdef fpc},aFrameCount,aFrames{$endif});
+ end;
+
+ HandlingException:=false;
+
+end;
+
 {$ifdef Windows}
 initialization
- timeBeginPeriod(1);
 {$ifndef PasVulkanUseSDL2}
+{$if defined(PasVulkanUseJCLDebug) and not defined(fpc)}
+//JclStackTrackingOptions:=JclStackTrackingOptions+[stRawMode,stStaticModuleList];
+ if JclStartExceptionTracking then begin
+  Exception.GetExceptionStackInfoProc:=GetExceptionStackInfoProc;
+  Exception.GetStackInfoStringProc:=GetStackInfoStringProc;
+  Exception.CleanUpStackInfoProc:=CleanUpStackInfoProc;
+ end;
+{$ifend}
+ OldExceptProc:=Addr(System.ExceptProc);
+ System.ExceptProc:=@ExceptionOccurred;
+ timeBeginPeriod(1);
  @GetPointerType:=GetProcAddress(LoadLibrary('user32.dll'),'GetPointerType');
  @GetPointerTouchInfo:=GetProcAddress(LoadLibrary('user32.dll'),'GetPointerTouchInfo');
  @GetPointerPenInfo:=GetProcAddress(LoadLibrary('user32.dll'),'GetPointerPenInfo');
@@ -15101,5 +15198,14 @@ initialization
 {$endif}
 finalization
  timeEndPeriod(1);
+ System.ExceptProc:=OldExceptProc;
+{$if defined(PasVulkanUseJCLDebug) and not defined(fpc)}
+ if JclExceptionTrackingActive then begin
+  Exception.GetExceptionStackInfoProc:=nil;
+  Exception.GetStackInfoStringProc:=nil;
+  Exception.CleanUpStackInfoProc:=nil;
+  JclStopExceptionTracking;
+ end;
+{$ifend}
 {$endif}
 end.
