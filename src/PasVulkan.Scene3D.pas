@@ -75,6 +75,7 @@ uses {$ifdef Windows}
      PasMP,
      PasJSON,
      PasGLTF,
+     PasDblStrUtils,
      PasVulkan.Types,
      PasVulkan.Utils,
      PasVulkan.Math,
@@ -2109,6 +2110,8 @@ type EpvScene3D=class(Exception);
                             function AddIndirectVertex(const aIndex:PpvSizeInt=nil):TpvScene3D.PVertex;
                             function AddVertex(const aVertex:TpvScene3D.TVertex):TpvSizeInt;
                             function AddIndex(const aIndex:TpvUInt32):TpvSizeInt;
+                            procedure DumpToOBJ(const aStream:TStream); overload;
+                            procedure DumpToOBJ(const aFileName:string); overload;
                             procedure Finish;
                             procedure LoadFromStream(const aStream:TStream;const aMaterials:TpvObjectList);
                             procedure SaveToStream(const aStream:TStream;const aMaterials:TpvObjectList);
@@ -12698,6 +12701,81 @@ begin
   fTemporaryIndices:=TpvScene3D.TGroup.TGroupIndices.Create;
  end;
  result:=fTemporaryIndices.Add(aIndex);
+end;
+
+procedure TpvScene3D.TGroup.TMesh.TPrimitive.DumpToOBJ(const aStream:TStream);
+const LineEnding:TpvUTF8String={$ifdef Windows}#13#10{$else}#10{$endif};
+var Index,BaseIndex:TpvSizeInt;
+    Vertex:TpvScene3D.PVertex;
+    Normal:TpvVector3;
+ function ConvertFloatToString(const aValue:TpvFloat):TpvUTF8String;
+ begin
+  result:=ConvertDoubleToString(aValue,omStandard,-1);
+ end;   
+ procedure WriteLine(const aLine:TpvUTF8String);
+ begin
+  if length(aLine)>0 then begin
+   aStream.Write(aLine[1],length(aLine));
+  end;
+  if length(LineEnding)>0 then begin
+   aStream.Write(LineEnding[1],length(LineEnding));
+  end; 
+ end;
+begin
+ if assigned(fTemporaryVertices) and assigned(fTemporaryIndices) then begin
+  for Index:=0 to fTemporaryVertices.Count-1 do begin
+   Vertex:=@fTemporaryVertices.ItemArray[Index];
+   WriteLine('v '+ConvertFloatToString(Vertex^.Position.x)+' '+ConvertFloatToString(Vertex^.Position.y)+' '+ConvertFloatToString(Vertex^.Position.z));
+  end;
+  for Index:=0 to fTemporaryVertices.Count-1 do begin
+   Vertex:=@fTemporaryVertices.ItemArray[Index];
+   Normal:=OctDecode(Vertex^.Normal);
+   WriteLine('vn '+ConvertFloatToString(Normal.x)+' '+ConvertFloatToString(Normal.y)+' '+ConvertFloatToString(Normal.z));
+  end;
+  for Index:=0 to fTemporaryVertices.Count-1 do begin
+   Vertex:=@fTemporaryVertices.ItemArray[Index];
+   WriteLine('vt '+ConvertFloatToString(Vertex^.TexCoord0.x)+' '+ConvertFloatToString(Vertex^.TexCoord0.y));
+  end;
+  for Index:=0 to (fTemporaryIndices.Count div 3)-1 do begin
+   WriteLine('f '+IntToStr(fTemporaryIndices.ItemArray[(Index*3)+0]+1)+'/'+IntToStr(fTemporaryIndices.ItemArray[(Index*3)+0]+1)+'/'+IntToStr(fTemporaryIndices.ItemArray[(Index*3)+0]+1)+' '+
+                  IntToStr(fTemporaryIndices.ItemArray[(Index*3)+1]+1)+'/'+IntToStr(fTemporaryIndices.ItemArray[(Index*3)+1]+1)+'/'+IntToStr(fTemporaryIndices.ItemArray[(Index*3)+1]+1)+' '+
+                  IntToStr(fTemporaryIndices.ItemArray[(Index*3)+2]+1)+'/'+IntToStr(fTemporaryIndices.ItemArray[(Index*3)+2]+1)+'/'+IntToStr(fTemporaryIndices.ItemArray[(Index*3)+2]+1));
+  end;
+ end else if {(fStartBufferVertexOffset>=0) and} (fStartBufferVertexOffset<fMesh.fGroup.fVertices.Count) and
+             {(fStartBufferIndexOffset>=0) and} (fStartBufferIndexOffset<fMesh.fGroup.fIndices.Count) and
+             (fCountVertices>0) and (fCountIndices>0) then begin
+  for Index:=fStartBufferVertexOffset to fStartBufferVertexOffset+fCountVertices-1 do begin
+   Vertex:=@fMesh.fGroup.fVertices.ItemArray[Index];
+   WriteLine('v '+ConvertFloatToString(Vertex^.Position.x)+' '+ConvertFloatToString(Vertex^.Position.y)+' '+ConvertFloatToString(Vertex^.Position.z));
+  end;
+  for Index:=fStartBufferVertexOffset to fStartBufferVertexOffset+fCountVertices-1 do begin
+   Vertex:=@fMesh.fGroup.fVertices.ItemArray[Index];
+   Normal:=OctDecode(Vertex^.Normal);
+   WriteLine('vn '+ConvertFloatToString(Normal.x)+' '+ConvertFloatToString(Normal.y)+' '+ConvertFloatToString(Normal.z));
+  end;
+  for Index:=fStartBufferVertexOffset to fStartBufferVertexOffset+fCountVertices-1 do begin
+   Vertex:=@fMesh.fGroup.fVertices.ItemArray[Index];
+   WriteLine('vt '+ConvertFloatToString(Vertex^.TexCoord0.x)+' '+ConvertFloatToString(Vertex^.TexCoord0.y));
+  end;
+  for Index:=0 to (fCountIndices div 3)-1 do begin
+   BaseIndex:=fStartBufferIndexOffset+(Index*3);
+   WriteLine('f '+IntToStr(fMesh.fGroup.fIndices.ItemArray[BaseIndex+0]+1)+'/'+IntToStr(fMesh.fGroup.fIndices.ItemArray[BaseIndex+0]+1)+'/'+IntToStr(fMesh.fGroup.fIndices.ItemArray[BaseIndex+0]+1)+' '+
+                  IntToStr(fMesh.fGroup.fIndices.ItemArray[BaseIndex+1]+1)+'/'+IntToStr(fMesh.fGroup.fIndices.ItemArray[BaseIndex+1]+1)+'/'+IntToStr(fMesh.fGroup.fIndices.ItemArray[BaseIndex+1]+1)+' '+
+                  IntToStr(fMesh.fGroup.fIndices.ItemArray[BaseIndex+2]+1)+'/'+IntToStr(fMesh.fGroup.fIndices.ItemArray[BaseIndex+2]+1)+'/'+IntToStr(fMesh.fGroup.fIndices.ItemArray[BaseIndex+2]+1));
+  end;
+ end;
+end; 
+
+procedure TpvScene3D.TGroup.TMesh.TPrimitive.DumpToOBJ(const aFileName:string);
+var Stream:TMemoryStream;
+begin
+ Stream:=TMemoryStream.Create;
+ try
+  DumpToOBJ(Stream);
+  Stream.SaveToFile(aFileName);
+ finally
+  FreeAndNil(Stream);
+ end;
 end;
 
 procedure TpvScene3D.TGroup.TMesh.TPrimitive.Finish;
