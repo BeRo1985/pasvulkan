@@ -1882,6 +1882,7 @@ procedure DecodeQTangentUI32Vectors(const aValue:TpvUInt32;out aTangent,aBitange
 function DecodeQTangentUI32(const aValue:TpvUInt32):TpvMatrix3x3;
 
 function TessellateTriangle(const aIndex,aResolution:TpvSizeInt;const aInputVertices:PpvVector3Array;const aOutputVertices:PpvVector3Array):TpvMatrix3x3;
+function IndirectTessellateTriangle(const aIndex,aResolution:TpvSizeInt;const aInputVertices:PPpvVector3Array;const aOutputVertices:PPpvVector3Array):TpvMatrix3x3;
 
 implementation
 
@@ -21275,6 +21276,78 @@ begin
  aOutputVertices^[0]:=(aInputVertices^[0]*result.RawVectors[0].x)+(aInputVertices^[1]*result.RawVectors[0].y)+(aInputVertices^[2]*result.RawVectors[0].z);
  aOutputVertices^[1]:=(aInputVertices^[0]*result.RawVectors[1].x)+(aInputVertices^[1]*result.RawVectors[1].y)+(aInputVertices^[2]*result.RawVectors[1].z);
  aOutputVertices^[2]:=(aInputVertices^[0]*result.RawVectors[2].x)+(aInputVertices^[1]*result.RawVectors[2].y)+(aInputVertices^[2]*result.RawVectors[2].z);
+
+ // Return the barycentric coordinates for other possible calculations like texture coordinate interpolation and the like.
+ // result is already set
+
+end;
+
+function IndirectTessellateTriangle(const aIndex,aResolution:TpvSizeInt;const aInputVertices:PPpvVector3Array;const aOutputVertices:PPpvVector3Array):TpvMatrix3x3;
+var BarycentricIndex:TpvSizeInt;
+    y,x,InverseResolution,t:TpvFloat;
+    Inversed:Boolean;
+    bc0,bc1,bc2:TpvVector2;
+    uvw,p:TpvVector3;
+begin
+
+ // Setup some variables for the barycentric coordinates
+ y:=floor(sqrt(aIndex));
+ x:=(aIndex-sqr(y))*0.5;
+ InverseResolution:=1.0/aResolution;
+
+ // Check if it is a inverted triangle case
+ Inversed:=frac(x)>0.4;
+
+ // Calculate the barycentric coordinates of the triangle, which is made of three points.
+ begin
+
+  // Calculate the first barycentric coordinate of the triangle
+  bc0:=TpvVector2.Create(x,TpvFloat(aResolution)-y)*InverseResolution;
+  if Inversed then begin
+   bc0:=bc0+TpvVector2.Create(0.5*InverseResolution,0.0);
+  end;
+
+  // Calculate the second barycentric coordinate of the triangle
+  bc1:=bc0+TpvVector2.Create(InverseResolution,-InverseResolution);
+  if Inversed then begin
+   bc1:=bc1-TpvVector2.Create(InverseResolution,0.0);
+  end;
+
+  // Calculate the third barycentric coordinate of the triangle
+  bc2:=bc0;
+  if Inversed then begin
+   bc2:=bc2-TpvVector2.Create(0.0,InverseResolution);
+  end else begin
+   bc2:=bc2-TpvVector2.Create(InverseResolution,0.0);
+  end;
+
+ end;
+
+ // Put the barycentric coordinates into a 3x3 matrix for easier access, including the third w coordinate, which is just 1.0 - (u + v).
+ result:=TpvMatrix3x3.Create(TpvVector3.Create(bc0,1.0-(bc0.x+bc0.y)),
+                             TpvVector3.Create(bc1,1.0-(bc1.x+bc1.y)),
+                             TpvVector3.Create(bc2,1.0-(bc2.x+bc2.y)));
+
+ // Maybe not really necessary, but just for safety reasons, clamp the barycentric coordinates to the triangle for to avoid possible out-of-bound coordinates.
+ for BarycentricIndex:=0 to 2 do begin
+  uvw:=result.RawVectors[BarycentricIndex];
+  p:=(aInputVertices^[0]^*uvw.x)+(aInputVertices^[1]^*uvw.y)+(aInputVertices^[2]^*uvw.z);
+  if uvw.x<0.0 then begin
+   t:=Clamp((p-aInputVertices^[1]^).Dot(aInputVertices^[2]^-aInputVertices^[1]^)/(aInputVertices^[2]^-aInputVertices^[1]^).Dot(aInputVertices^[2]^-aInputVertices^[1]^),0.0,1.0);
+   result.RawVectors[BarycentricIndex]:=TpvVector3.Create(0.0,1.0-t,t);
+  end else if uvw.y<0.0 then begin
+   t:=Clamp((p-aInputVertices^[2]^).Dot(aInputVertices^[0]^-aInputVertices^[2]^)/(aInputVertices^[0]^-aInputVertices^[2]^).Dot(aInputVertices^[0]^-aInputVertices^[2]^),0.0,1.0);
+   result.RawVectors[BarycentricIndex]:=TpvVector3.Create(t,0.0,1.0-t);
+  end else if uvw.z<0.0 then begin
+   t:=Clamp((p-aInputVertices^[0]^).Dot(aInputVertices^[1]^-aInputVertices^[0]^)/(aInputVertices^[1]^-aInputVertices^[0]^).Dot(aInputVertices^[1]^-aInputVertices^[0]^),0.0,1.0);
+   result.RawVectors[BarycentricIndex]:=TpvVector3.Create(1.0-t,t,0.0);
+  end;
+ end;
+
+ // Calculate the output vertices by multiplying the barycentric coordinates with the input vertices.
+ aOutputVertices^[0]^:=(aInputVertices^[0]^*result.RawVectors[0].x)+(aInputVertices^[1]^*result.RawVectors[0].y)+(aInputVertices^[2]^*result.RawVectors[0].z);
+ aOutputVertices^[1]^:=(aInputVertices^[0]^*result.RawVectors[1].x)+(aInputVertices^[1]^*result.RawVectors[1].y)+(aInputVertices^[2]^*result.RawVectors[1].z);
+ aOutputVertices^[2]^:=(aInputVertices^[0]^*result.RawVectors[2].x)+(aInputVertices^[1]^*result.RawVectors[2].y)+(aInputVertices^[2]^*result.RawVectors[2].z);
 
  // Return the barycentric coordinates for other possible calculations like texture coordinate interpolation and the like.
  // result is already set
