@@ -65,7 +65,7 @@ interface
 
 uses Classes,SysUtils,Math,PasMP,PasDblStrUtils,PasVulkan.Types,PasVulkan.Math,PasVulkan.Collections,PasVulkan.Utils;
 
-// Generate an icosphere iteratively with a given resolution
+// Generate an icosphere iteratively with a given tessellation resolution per triangle 
 procedure IterativelyGenerateIcoSphere(const aResolution:TpvSizeInt;out aVertices:TpvVector3DynamicArray;out aIndices:TpvUInt32DynamicArray;const aRadius:TpvFloat=1.0);
 
 // Generate an icosphere recursively with a given minimum count of vertices instead of a recursion depth level for somewhat better control
