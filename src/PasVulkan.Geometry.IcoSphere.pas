@@ -129,7 +129,7 @@ begin
       TessellationFaceVertices[1]:=FaceVertices[FaceIndices[FaceIndex,1]];
       TessellationFaceVertices[2]:=FaceVertices[FaceIndices[FaceIndex,2]];
 
-      for Index:=0 to aResolution do begin
+      for Index:=0 to (aResolution*aResolution)-1 do begin
 
        TessellateTriangle(Index,aResolution,@TessellationFaceVertices[0],@TessellatedVertices[0]);
 

@@ -21230,31 +21230,31 @@ begin
  begin
 
   // Calculate the first barycentric coordinate of the triangle
-  bc0:=TpvVector2.Create(x,TpvFloat(aResolution)-y)*InverseResolution;
+  bc0:=TpvVector2.InlineableCreate(x,TpvFloat(aResolution)-y)*InverseResolution;
   if Inversed then begin
-   bc0:=bc0+TpvVector2.Create(0.5*InverseResolution,0.0);
+   bc0:=bc0+TpvVector2.InlineableCreate(0.5*InverseResolution,0.0);
   end;
 
   // Calculate the second barycentric coordinate of the triangle
-  bc1:=bc0+TpvVector2.Create(InverseResolution,-InverseResolution);
+  bc1:=bc0+TpvVector2.InlineableCreate(InverseResolution,-InverseResolution);
   if Inversed then begin
-   bc1:=bc1-TpvVector2.Create(InverseResolution,0.0);
+   bc1:=bc1-TpvVector2.InlineableCreate(InverseResolution,0.0);
   end;
 
   // Calculate the third barycentric coordinate of the triangle
   bc2:=bc0;
   if Inversed then begin
-   bc2:=bc2-TpvVector2.Create(0.0,InverseResolution);
+   bc2:=bc2-TpvVector2.InlineableCreate(InverseResolution,0.0);
   end else begin
-   bc2:=bc2-TpvVector2.Create(InverseResolution,0.0);
+   bc2:=bc2-TpvVector2.InlineableCreate(0.0,InverseResolution);
   end;
 
  end;
 
  // Put the barycentric coordinates into a 3x3 matrix for easier access, including the third w coordinate, which is just 1.0 - (u + v).
- result:=TpvMatrix3x3.Create(TpvVector3.Create(bc0,1.0-(bc0.x+bc0.y)),
-                             TpvVector3.Create(bc1,1.0-(bc1.x+bc1.y)),
-                             TpvVector3.Create(bc2,1.0-(bc2.x+bc2.y)));
+ result.RawVectors[0]:=TpvVector3.InlineableCreate(bc0,1.0-(bc0.x+bc0.y));
+ result.RawVectors[1]:=TpvVector3.InlineableCreate(bc1,1.0-(bc1.x+bc1.y));
+ result.RawVectors[2]:=TpvVector3.InlineableCreate(bc2,1.0-(bc2.x+bc2.y));
 
  // Maybe not really necessary, but just for safety reasons, clamp the barycentric coordinates to the triangle for to avoid possible out-of-bound coordinates.
  for BarycentricIndex:=0 to 2 do begin
@@ -21302,31 +21302,31 @@ begin
  begin
 
   // Calculate the first barycentric coordinate of the triangle
-  bc0:=TpvVector2.Create(x,TpvFloat(aResolution)-y)*InverseResolution;
+  bc0:=TpvVector2.InlineableCreate(x,TpvFloat(aResolution)-y)*InverseResolution;
   if Inversed then begin
-   bc0:=bc0+TpvVector2.Create(0.5*InverseResolution,0.0);
+   bc0:=bc0+TpvVector2.InlineableCreate(0.5*InverseResolution,0.0);
   end;
 
   // Calculate the second barycentric coordinate of the triangle
-  bc1:=bc0+TpvVector2.Create(InverseResolution,-InverseResolution);
+  bc1:=bc0+TpvVector2.InlineableCreate(InverseResolution,-InverseResolution);
   if Inversed then begin
-   bc1:=bc1-TpvVector2.Create(InverseResolution,0.0);
+   bc1:=bc1-TpvVector2.InlineableCreate(InverseResolution,0.0);
   end;
 
   // Calculate the third barycentric coordinate of the triangle
   bc2:=bc0;
   if Inversed then begin
-   bc2:=bc2-TpvVector2.Create(0.0,InverseResolution);
+   bc2:=bc2-TpvVector2.InlineableCreate(InverseResolution,0.0);
   end else begin
-   bc2:=bc2-TpvVector2.Create(InverseResolution,0.0);
+   bc2:=bc2-TpvVector2.InlineableCreate(0.0,InverseResolution);
   end;
 
  end;
 
  // Put the barycentric coordinates into a 3x3 matrix for easier access, including the third w coordinate, which is just 1.0 - (u + v).
- result:=TpvMatrix3x3.Create(TpvVector3.Create(bc0,1.0-(bc0.x+bc0.y)),
-                             TpvVector3.Create(bc1,1.0-(bc1.x+bc1.y)),
-                             TpvVector3.Create(bc2,1.0-(bc2.x+bc2.y)));
+ result.RawVectors[0]:=TpvVector3.InlineableCreate(bc0,1.0-(bc0.x+bc0.y));
+ result.RawVectors[1]:=TpvVector3.InlineableCreate(bc1,1.0-(bc1.x+bc1.y));
+ result.RawVectors[2]:=TpvVector3.InlineableCreate(bc2,1.0-(bc2.x+bc2.y));
 
  // Maybe not really necessary, but just for safety reasons, clamp the barycentric coordinates to the triangle for to avoid possible out-of-bound coordinates.
  for BarycentricIndex:=0 to 2 do begin
