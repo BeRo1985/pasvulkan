@@ -492,17 +492,23 @@ type PpvScalar=^TpvScalar;
 
      TpvVector4DynamicArray=array of TpvVector4;
 
-     PpvVector3s=^TpvVector3s;
-     TpvVector3s=array[0..$ff] of TpvVector3;
+     PpvVector2Array=^TpvVector2Array;
+     TpvVector2Array=array[0..$ff] of TpvVector2;
 
-     PPpvVector3s=^TPpvVector3s;
-     TPpvVector3s=array[0..$ff] of PpvVector3;
+     PPpvVector2Array=^TPpvVector3Array;
+     TPpvVector2Array=array[0..$ff] of PpvVector2;
 
-     PpvVector4s=^TpvVector4s;
+     PpvVector3Array=^TpvVector3Array;
+     TpvVector3Array=array[0..$ff] of TpvVector3;
+
+     PPpvVector3Array=^TPpvVector3Array;
+     TPpvVector3Array=array[0..$ff] of PpvVector3;
+
+     PpvVector4Array=^TpvVector4s;
      TpvVector4s=array[0..$ff] of TpvVector4;
 
-     PPpvVector4s=^TPpvVector4s;
-     TPpvVector4s=array[0..$ff] of PpvVector4;
+     PPpvVector4Array=^TPpvVector4Array;
+     TPpvVector4Array=array[0..$ff] of PpvVector4;
 
      PpvPlane=^TpvPlane;
      TpvPlane=record
@@ -1722,8 +1728,8 @@ function SuperSmoothestStep(const Edge0,Edge1,Value:TpvVector2):TpvVector2; over
 function SuperSmoothestStep(const Edge0,Edge1,Value:TpvVector3):TpvVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
 function SuperSmoothestStep(const Edge0,Edge1,Value:TpvVector4):TpvVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
 
-procedure DoCalculateInterval(const Vertices:PpvVector3s;const Count:TpvInt32;const Axis:TpvVector3;out OutMin,OutMax:TpvScalar);
-function DoSpanIntersect(const Vertices1:PpvVector3s;const Count1:TpvInt32;const Vertices2:PpvVector3s;const Count2:TpvInt32;const AxisTest:TpvVector3;out AxisPenetration:TpvVector3):TpvScalar;
+procedure DoCalculateInterval(const Vertices:PpvVector3Array;const Count:TpvInt32;const Axis:TpvVector3;out OutMin,OutMax:TpvScalar);
+function DoSpanIntersect(const Vertices1:PpvVector3Array;const Count1:TpvInt32;const Vertices2:PpvVector3Array;const Count2:TpvInt32;const AxisTest:TpvVector3;out AxisPenetration:TpvVector3):TpvScalar;
 
 function BoxGetDistanceToPoint(Point:TpvVector3;const Center,Size:TpvVector3;const InvTransformMatrix,TransformMatrix:TpvMatrix4x4;var ClosestBoxPoint:TpvVector3):TpvScalar;
 function GetDistanceFromLine(const p0,p1,p:TpvVector3;var Projected:TpvVector3;const Time:PpvScalar=nil):TpvScalar;
@@ -1875,7 +1881,7 @@ procedure DecodeQTangentUI32Vectors(const aValue:TpvUInt32;out aTangent,aBitange
 
 function DecodeQTangentUI32(const aValue:TpvUInt32):TpvMatrix3x3;
 
-function TessellateTriangle(const aIndex,aResolution:TpvSizeInt;const aInputVertices:PpvVector3s;const aOutputVertices:PpvVector3s):TpvMatrix3x3;
+function TessellateTriangle(const aIndex,aResolution:TpvSizeInt;const aInputVertices:PpvVector3Array;const aOutputVertices:PpvVector3Array):TpvMatrix3x3;
 
 implementation
 
@@ -17387,7 +17393,7 @@ begin
  result.w:=SuperSmoothestStep(Edge0.w,Edge1.w,Value.w);
 end;
 
-procedure DoCalculateInterval(const Vertices:PpvVector3s;const Count:TpvInt32;const Axis:TpvVector3;out OutMin,OutMax:TpvScalar);
+procedure DoCalculateInterval(const Vertices:PpvVector3Array;const Count:TpvInt32;const Axis:TpvVector3;out OutMin,OutMax:TpvScalar);
 var Distance:TpvScalar;
     Index:TpvInt32;
 begin
@@ -17405,7 +17411,7 @@ begin
  end;
 end;
 
-function DoSpanIntersect(const Vertices1:PpvVector3s;const Count1:TpvInt32;const Vertices2:PpvVector3s;const Count2:TpvInt32;const AxisTest:TpvVector3;out AxisPenetration:TpvVector3):TpvScalar;
+function DoSpanIntersect(const Vertices1:PpvVector3Array;const Count1:TpvInt32;const Vertices2:PpvVector3Array;const Count2:TpvInt32;const AxisTest:TpvVector3;out AxisPenetration:TpvVector3):TpvScalar;
 var min1,max1,min2,max2,len1,len2:TpvScalar;
 begin
  AxisPenetration:=AxisTest.Normalize;
@@ -21203,7 +21209,7 @@ begin
  DecodeQTangentUI32Vectors(aValue,result.Tangent,result.Bitangent,result.Normal);
 end;
 
-function TessellateTriangle(const aIndex,aResolution:TpvSizeInt;const aInputVertices:PpvVector3s;const aOutputVertices:PpvVector3s):TpvMatrix3x3;
+function TessellateTriangle(const aIndex,aResolution:TpvSizeInt;const aInputVertices:PpvVector3Array;const aOutputVertices:PpvVector3Array):TpvMatrix3x3;
 var BarycentricIndex:TpvSizeInt;
     y,x,InverseResolution,t:TpvFloat;
     Inversed:Boolean;
