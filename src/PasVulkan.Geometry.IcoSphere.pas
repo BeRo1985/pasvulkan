@@ -76,7 +76,7 @@ implementation
 
 uses PasVulkan.Geometry.Utils;
 
-procedure GenerateTexCoords(const aVertices:TpvVector3DynamicArray;out aTexCoords:TpvVector2DynamicArray;const aIndices:TpvUInt32DynamicArray);
+procedure GenerateTexCoords(const aVertices:TpvVector3DynamicArray;out aTexCoords:TpvVector2DynamicArray;const aIndices:TpvUInt32DynamicArray;const aFixUVs:Boolean);
 var Index,Count:TpvSizeInt;
     ta,tb,tc:PpvVector2;
 begin
@@ -90,43 +90,47 @@ begin
  end;
 
  // Fix UVs
- Index:=0;
- Count:=length(aIndices);
- while (Index+2)<Count do begin
+ if aFixUVs then begin
 
-  ta:=@aTexCoords[aIndices[Index+0]];
-  tb:=@aTexCoords[aIndices[Index+1]];
-  tc:=@aTexCoords[aIndices[Index+2]];
+  Index:=0;
+  Count:=length(aIndices);
+  while (Index+2)<Count do begin
 
-  if ((tb^.x-ta^.x)>=0.5) and (ta^.y<>1.0) then begin
-   tb^.x:=tb^.x-1.0;
+   ta:=@aTexCoords[aIndices[Index+0]];
+   tb:=@aTexCoords[aIndices[Index+1]];
+   tc:=@aTexCoords[aIndices[Index+2]];
+
+   if ((tb^.x-ta^.x)>=0.5) and (ta^.y<>1.0) then begin
+    tb^.x:=tb^.x-1.0;
+   end;
+
+   if (tc^.x-tb^.x)>0.5 then begin
+    tc^.x:=tc^.x-1.0;
+   end;
+
+   if (ta^.x>0.5) and ((ta^.x-tc^.x)>0.5) or ((ta^.x=1.0) and (tc^.y=0.0)) then begin
+    ta^.x:=ta^.x-1.0;
+   end;
+
+   if (tb^.x>0.5) and ((tb^.x-ta^.x)>0.5) then begin
+    tb^.x:=tb^.x-1.0;
+   end;
+
+   if (ta^.y=0.0) or (ta^.y=1.0) then begin
+    ta^.x:=(tb^.x+tc^.x)*0.5;
+   end;
+
+   if (tb^.y=0.0) or (tb^.y=1.0) then begin
+    tb^.x:=(ta^.x+tc^.x)*0.5;
+   end;
+
+   if (tc^.y=0.0) or (tc^.y=1.0) then begin
+    tc^.x:=(ta^.x+tb^.x)*0.5;
+   end;
+
+   inc(Index,3);
   end;
 
-  if (tc^.x-tb^.x)>0.5 then begin
-   tc^.x:=tc^.x-1.0;
-  end;
-
-  if (ta^.x>0.5) and ((ta^.x-tc^.x)>0.5) or ((ta^.x=1.0) and (tc^.y=0.0)) then begin
-   ta^.x:=ta^.x-1.0;
-  end;
-
-  if (tb^.x>0.5) and ((tb^.x-ta^.x)>0.5) then begin
-   tb^.x:=tb^.x-1.0;
-  end;
-
-  if (ta^.y=0.0) or (ta^.y=1.0) then begin
-   ta^.x:=(tb^.x+tc^.x)*0.5;
-  end;
-
-  if (tb^.y=0.0) or (tb^.y=1.0) then begin
-   tb^.x:=(ta^.x+tc^.x)*0.5;
-  end;
-
-  if (tc^.y=0.0) or (tc^.y=1.0) then begin
-   tc^.x:=(ta^.x+tb^.x)*0.5;
-  end;
-  
-  inc(Index,3);
  end;
 
 end;
@@ -225,7 +229,7 @@ begin
      end;   
 
      // Generate texture coordinates
-     GenerateTexCoords(aVertices,aTexCoords,aIndices);
+     GenerateTexCoords(aVertices,aTexCoords,aIndices,false);
 
      // Fix wrap around UVs
      FixWrapAroundUVs(aVertices,aTexCoords,aIndices);
@@ -426,7 +430,7 @@ begin
    Move(Indices.Items[0],aIndices[0],Indices.Count*SizeOf(TpvUInt32));
 
    // Generate texture coordinates
-   GenerateTexCoords(aVertices,aTexCoords,aIndices);
+   GenerateTexCoords(aVertices,aTexCoords,aIndices,false);
 
    // Fix wrap around UVs
    FixWrapAroundUVs(aVertices,aTexCoords,aIndices);
