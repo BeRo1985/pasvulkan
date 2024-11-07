@@ -712,7 +712,7 @@ end;
 procedure GenerateFibonacciSphere(const aCountPoints:TpvSizeInt;out aVertices:TpvVector3DynamicArray;out aTexCoords:TpvVector2DynamicArray;out aIndices:TpvUInt32DynamicArray;const aRadius:TpvFloat=1.0);
 var FibonacciSphere:TpvFibonacciSphere;
     Index:TpvSizeInt;
-    Vertex:PVertex;
+    Vertex:TpvFibonacciSphere.PVertex;
 begin
 
  FibonacciSphere:=TpvFibonacciSphere.Create(aCountPoints,aRadius,TpvFibonacciSphere.TTextureProjectionMapping.Equirectangular);
