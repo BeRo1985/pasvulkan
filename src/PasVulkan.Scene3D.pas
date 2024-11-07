@@ -12867,63 +12867,63 @@ begin
    UVOffsets[1]:=TpvVector2.InlineableCreate(0.0,0.0);
    UVOffsets[2]:=TpvVector2.InlineableCreate(0.0,0.0);
 
-   if (abs(UVs[0]^.x+UVOffsets[0].x)-(UVs[1]^.x+UVOffsets[1].x))>0.5 then begin
+   if abs((UVs[0]^.x+UVOffsets[0].x)-(UVs[1]^.x+UVOffsets[1].x))>0.5 then begin
     if (UVs[0]^.x+UVOffsets[0].x)<(UVs[1]^.x+UVOffsets[1].x) then begin
      MustDuplicateVertices[0]:=true;
-     UVOffsets[0].x:=1.0;
+     UVOffsets[0].x:=UVOffsets[0].x+1.0;
     end else begin
      MustDuplicateVertices[1]:=true;
-     UVOffsets[1].x:=1.0;
+     UVOffsets[1].x:=UVOffsets[1].x+1.0;
     end; 
    end;
    
-   if (abs(UVs[0]^.x+UVOffsets[0].x)-(UVs[2]^.x+UVOffsets[2].x))>0.5 then begin
+   if abs(((UVs[0]^.x+UVOffsets[0].x)-(UVs[2]^.x+UVOffsets[2].x))>0.5 then begin
     if (UVs[0]^.x+UVOffsets[0].x)<(UVs[2]^.x+UVOffsets[2].x) then begin
      MustDuplicateVertices[0]:=true;
-     UVOffsets[0].x:=1.0;
+     UVOffsets[0].x:=UVOffsets[0].x+1.0;
     end else begin
      MustDuplicateVertices[2]:=true;
-     UVOffsets[2].x:=1.0;
+     UVOffsets[2].x:=UVOffsets[2].x+1.0;
     end; 
    end;
 
-   if (abs(UVs[1]^.x+UVOffsets[1].x)-(UVs[2]^.x+UVOffsets[2].x))>0.5 then begin
+   if abs((UVs[1]^.x+UVOffsets[1].x)-(UVs[2]^.x+UVOffsets[2].x))>0.5 then begin
     if (UVs[1]^.x+UVOffsets[1].x)<(UVs[2]^.x+UVOffsets[2].x) then begin
      MustDuplicateVertices[1]:=true;
-     UVOffsets[1].x:=1.0;
+     UVOffsets[1].x:=UVOffsets[1].x+1.0;
     end else begin
      MustDuplicateVertices[2]:=true;
-     UVOffsets[2].x:=1.0;
+     UVOffsets[2].x:=UVOffsets[2].x+1.0;
     end; 
    end;
 
-   if (abs(UVs[0]^.y+UVOffsets[0].y)-(UVs[1]^.y+UVOffsets[1].y))>0.5 then begin
+   if abs((UVs[0]^.y+UVOffsets[0].y)-(UVs[1]^.y+UVOffsets[1].y))>0.5 then begin
     if (UVs[0]^.y+UVOffsets[0].y)<(UVs[1]^.y+UVOffsets[1].y) then begin
      MustDuplicateVertices[0]:=true;
-     UVOffsets[0].y:=1.0;
+     UVOffsets[0].y:=UVOffsets[0].y+1.0;
     end else begin
      MustDuplicateVertices[1]:=true;
-     UVOffsets[1].y:=1.0;
+     UVOffsets[1].y:=UVOffsets[1].y+1.0;
     end; 
    end;
 
-   if (abs(UVs[0]^.y+UVOffsets[0].y)-(UVs[2]^.y+UVOffsets[2].y))>0.5 then begin
+   if abs((UVs[0]^.y+UVOffsets[0].y)-(UVs[2]^.y+UVOffsets[2].y))>0.5 then begin
     if (UVs[0]^.y+UVOffsets[0].y)<(UVs[2]^.y+UVOffsets[2].y) then begin
      MustDuplicateVertices[0]:=true;
-     UVOffsets[0].y:=1.0;
+     UVOffsets[0].y:=UVOffsets[0].y+1.0;
     end else begin
      MustDuplicateVertices[2]:=true;
-     UVOffsets[2].y:=1.0;
+     UVOffsets[2].y:=UVOffsets[2].y+1.0;
     end; 
    end;
 
-   if (abs(UVs[1]^.y+UVOffsets[1].y)-(UVs[2]^.y+UVOffsets[2].y))>0.5 then begin
+   if abs((UVs[1]^.y+UVOffsets[1].y)-(UVs[2]^.y+UVOffsets[2].y))>0.5 then begin
     if (UVs[1]^.y+UVOffsets[1].y)<(UVs[2]^.y+UVOffsets[2].y) then begin
      MustDuplicateVertices[1]:=true;
-     UVOffsets[1].y:=1.0;
+     UVOffsets[1].y:=UVOffsets[1].y+1.0;
     end else begin
      MustDuplicateVertices[2]:=true;
-     UVOffsets[2].y:=1.0;
+     UVOffsets[2].y:=UVOffsets[2].y+1.0;
     end; 
    end;
    
@@ -12954,12 +12954,12 @@ begin
      end else begin
       UVs[2]:=@fTemporaryVertices.ItemArray[VertexIndices[2]].TexCoord1;
      end;
-     UVs[2]^:=UVs[2]^+UVOffsets[1];
+     UVs[2]^:=UVs[2]^+UVOffsets[2];
     end;
 
-    fTemporaryIndices.Add(VertexIndices[0]);
-    fTemporaryIndices.Add(VertexIndices[1]);
-    fTemporaryIndices.Add(VertexIndices[2]);
+    fTemporaryIndices.ItemArray[Index+0]:=VertexIndices[0];
+    fTemporaryIndices.ItemArray[Index+1]:=VertexIndices[1];
+    fTemporaryIndices.ItemArray[Index+2]:=VertexIndices[2];
 
    end;  
 
