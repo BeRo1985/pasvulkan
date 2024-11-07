@@ -12821,6 +12821,7 @@ var Index,OriginalCountIndices:TpvSizeInt;
     UVs:array[0..2] of PpvVector2;
     UVOffsets:array[0..2] of TpvVector2;
     MustDuplicateVertices:array[0..2] of boolean;
+    CanAlignXToZero,CanAlignYToZero:boolean;
 begin
  
  if (fPrimitiveTopology<>TpvScene3D.TPrimitiveTopology.Triangles) or (fTemporaryVertices.Count=0) or
@@ -12926,19 +12927,35 @@ begin
      UVOffsets[2].y:=UVOffsets[2].y+1.0;
     end; 
    end;
-   
+
    if MustDuplicateVertices[0] or MustDuplicateVertices[1] or MustDuplicateVertices[2] then begin
-    
-    if MustDuplicateVertices[0] then begin
+
+    // Check if we can align to zero
+    CanAlignXToZero:=((UVs[0]^.x+UVOffsets[0].x)>=1.0) and ((UVs[1]^.x+UVOffsets[1].x)>=1.0) and ((UVs[2]^.x+UVOffsets[2].x)>=1.0); 
+    CanAlignYToZero:=((UVs[0]^.y+UVOffsets[0].y)>=1.0) and ((UVs[1]^.y+UVOffsets[1].y)>=1.0) and ((UVs[2]^.y+UVOffsets[2].y)>=1.0);
+
+    if CanAlignXToZero or CanAlignYToZero then begin 
+
+     if CanAlignXToZero then begin
+      UVOffsets[0].x:=UVOffsets[0].x-1.0;
+      UVOffsets[1].x:=UVOffsets[1].x-1.0;
+      UVOffsets[2].x:=UVOffsets[2].x-1.0;
+     end;
+
+     if CanAlignYToZero then begin
+      UVOffsets[0].y:=UVOffsets[0].y-1.0;
+      UVOffsets[1].y:=UVOffsets[1].y-1.0;
+      UVOffsets[2].y:=UVOffsets[2].y-1.0;
+     end;
+
      VertexIndices[0]:=fTemporaryVertices.Add(Vertices[0]^);
      if aTexCoordIndex=0 then begin
       UVs[0]:=@fTemporaryVertices.ItemArray[VertexIndices[0]].TexCoord0;
      end else begin
       UVs[0]:=@fTemporaryVertices.ItemArray[VertexIndices[0]].TexCoord1;
-     end; 
+     end;
      UVs[0]^:=UVs[0]^+UVOffsets[0];
-    end;
-    if MustDuplicateVertices[1] then begin
+
      VertexIndices[1]:=fTemporaryVertices.Add(Vertices[1]^);
      if aTexCoordIndex=0 then begin
       UVs[1]:=@fTemporaryVertices.ItemArray[VertexIndices[1]].TexCoord0;
@@ -12946,8 +12963,7 @@ begin
       UVs[1]:=@fTemporaryVertices.ItemArray[VertexIndices[1]].TexCoord1;
      end;
      UVs[1]^:=UVs[1]^+UVOffsets[1];
-    end;
-    if MustDuplicateVertices[2] then begin
+
      VertexIndices[2]:=fTemporaryVertices.Add(Vertices[2]^);
      if aTexCoordIndex=0 then begin
       UVs[2]:=@fTemporaryVertices.ItemArray[VertexIndices[2]].TexCoord0;
@@ -12955,7 +12971,38 @@ begin
       UVs[2]:=@fTemporaryVertices.ItemArray[VertexIndices[2]].TexCoord1;
      end;
      UVs[2]^:=UVs[2]^+UVOffsets[2];
-    end;
+
+    end else begin
+
+     if MustDuplicateVertices[0] then begin
+      VertexIndices[0]:=fTemporaryVertices.Add(Vertices[0]^);
+      if aTexCoordIndex=0 then begin
+       UVs[0]:=@fTemporaryVertices.ItemArray[VertexIndices[0]].TexCoord0;
+      end else begin
+       UVs[0]:=@fTemporaryVertices.ItemArray[VertexIndices[0]].TexCoord1;
+      end; 
+      UVs[0]^:=UVs[0]^+UVOffsets[0];
+     end;
+     if MustDuplicateVertices[1] then begin
+      VertexIndices[1]:=fTemporaryVertices.Add(Vertices[1]^);
+      if aTexCoordIndex=0 then begin
+       UVs[1]:=@fTemporaryVertices.ItemArray[VertexIndices[1]].TexCoord0;
+      end else begin
+       UVs[1]:=@fTemporaryVertices.ItemArray[VertexIndices[1]].TexCoord1;
+      end;
+      UVs[1]^:=UVs[1]^+UVOffsets[1];
+     end;
+     if MustDuplicateVertices[2] then begin
+      VertexIndices[2]:=fTemporaryVertices.Add(Vertices[2]^);
+      if aTexCoordIndex=0 then begin
+       UVs[2]:=@fTemporaryVertices.ItemArray[VertexIndices[2]].TexCoord0;
+      end else begin
+       UVs[2]:=@fTemporaryVertices.ItemArray[VertexIndices[2]].TexCoord1;
+      end;
+      UVs[2]^:=UVs[2]^+UVOffsets[2];
+     end;
+
+    end; 
 
     fTemporaryIndices.ItemArray[Index+0]:=VertexIndices[0];
     fTemporaryIndices.ItemArray[Index+1]:=VertexIndices[1];
