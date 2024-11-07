@@ -84,7 +84,7 @@ begin
  VertexIndex:=0;
 
  for RingIndex:=0 to aCountRings do begin
-  SinCos((RingIndex/TpvFloat(aCountRings))*PI,SinTheta1,CosTheta1);
+  SinCos((RingIndex/TpvFloat(aCountRings))*TwoPI,SinTheta1,CosTheta1);
   for SliceIndex:=0 to aCountSlices do begin
    SinCos((SliceIndex/TpvFloat(aCountSlices))*TwoPI,SinTheta2,CosTheta2);
    aVertices[VertexIndex]:=TpvVector3.InlineableCreate(CosTheta1*SinTheta2,SinTheta1,CosTheta1*CosTheta2)*aRadius;
