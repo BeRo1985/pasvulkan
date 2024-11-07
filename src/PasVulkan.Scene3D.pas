@@ -12867,8 +12867,8 @@ begin
    UVOffsets[1]:=TpvVector2.InlineableCreate(0.0,0.0);
    UVOffsets[2]:=TpvVector2.InlineableCreate(0.0,0.0);
 
-   if abs(UVs[0]^.x-UVs[1]^.x)>0.5 then begin
-    if UVs[0]^.x<UVs[1]^.x then begin
+   if (abs(UVs[0]^.x+UVOffsets[0].x)-(UVs[1]^.x+UVOffsets[1].x))>0.5 then begin
+    if (UVs[0]^.x+UVOffsets[0].x)<(UVs[1]^.x+UVOffsets[1].x) then begin
      MustDuplicateVertices[0]:=true;
      UVOffsets[0].x:=1.0;
     end else begin
@@ -12877,8 +12877,8 @@ begin
     end; 
    end;
    
-   if abs(UVs[0]^.x-UVs[2]^.x)>0.5 then begin
-    if UVs[0]^.x<UVs[2]^.x then begin
+   if (abs(UVs[0]^.x+UVOffsets[0].x)-(UVs[2]^.x+UVOffsets[2].x))>0.5 then begin
+    if (UVs[0]^.x+UVOffsets[0].x)<(UVs[2]^.x+UVOffsets[2].x) then begin
      MustDuplicateVertices[0]:=true;
      UVOffsets[0].x:=1.0;
     end else begin
@@ -12886,9 +12886,9 @@ begin
      UVOffsets[2].x:=1.0;
     end; 
    end;
-   
-   if abs(UVs[1]^.x-UVs[2]^.x)>0.5 then begin
-    if UVs[1]^.x<UVs[2]^.x then begin
+
+   if (abs(UVs[1]^.x+UVOffsets[1].x)-(UVs[2]^.x+UVOffsets[2].x))>0.5 then begin
+    if (UVs[1]^.x+UVOffsets[1].x)<(UVs[2]^.x+UVOffsets[2].x) then begin
      MustDuplicateVertices[1]:=true;
      UVOffsets[1].x:=1.0;
     end else begin
@@ -12896,9 +12896,9 @@ begin
      UVOffsets[2].x:=1.0;
     end; 
    end;
-   
-   if abs(UVs[0]^.y-UVs[1]^.y)>0.5 then begin
-    if UVs[0]^.y<UVs[1]^.y then begin
+
+   if (abs(UVs[0]^.y+UVOffsets[0].y)-(UVs[1]^.y+UVOffsets[1].y))>0.5 then begin
+    if (UVs[0]^.y+UVOffsets[0].y)<(UVs[1]^.y+UVOffsets[1].y) then begin
      MustDuplicateVertices[0]:=true;
      UVOffsets[0].y:=1.0;
     end else begin
@@ -12906,9 +12906,9 @@ begin
      UVOffsets[1].y:=1.0;
     end; 
    end;
-   
-   if abs(UVs[0]^.y-UVs[2]^.y)>0.5 then begin
-    if UVs[0]^.y<UVs[2]^.y then begin
+
+   if (abs(UVs[0]^.y+UVOffsets[0].y)-(UVs[2]^.y+UVOffsets[2].y))>0.5 then begin
+    if (UVs[0]^.y+UVOffsets[0].y)<(UVs[2]^.y+UVOffsets[2].y) then begin
      MustDuplicateVertices[0]:=true;
      UVOffsets[0].y:=1.0;
     end else begin
@@ -12917,8 +12917,8 @@ begin
     end; 
    end;
 
-   if abs(UVs[1]^.y-UVs[2]^.y)>0.5 then begin
-    if UVs[1]^.y<UVs[2]^.y then begin
+   if (abs(UVs[1]^.y+UVOffsets[1].y)-(UVs[2]^.y+UVOffsets[2].y))>0.5 then begin
+    if (UVs[1]^.y+UVOffsets[1].y)<(UVs[2]^.y+UVOffsets[2].y) then begin
      MustDuplicateVertices[1]:=true;
      UVOffsets[1].y:=1.0;
     end else begin
@@ -12926,7 +12926,7 @@ begin
      UVOffsets[2].y:=1.0;
     end; 
    end;
-
+   
    if MustDuplicateVertices[0] or MustDuplicateVertices[1] or MustDuplicateVertices[2] then begin
     
     if MustDuplicateVertices[0] then begin
