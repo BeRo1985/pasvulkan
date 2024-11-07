@@ -2112,6 +2112,7 @@ type EpvScene3D=class(Exception);
                             function AddIndex(const aIndex:TpvUInt32):TpvSizeInt;
                             procedure DumpToOBJ(const aStream:TStream); overload;
                             procedure DumpToOBJ(const aFileName:string); overload;
+                            procedure FixWrapAroundUVs(const aTexCoordIndex:TpvSizeInt=0);
                             procedure Finish;
                             procedure LoadFromStream(const aStream:TStream;const aMaterials:TpvObjectList);
                             procedure SaveToStream(const aStream:TStream;const aMaterials:TpvObjectList);
@@ -12736,11 +12737,28 @@ begin
    Vertex:=@fTemporaryVertices.ItemArray[Index];
    WriteLine('vt '+ConvertFloatToString(Vertex^.TexCoord0.x)+' '+ConvertFloatToString(Vertex^.TexCoord0.y));
   end;
-  for Index:=0 to (fTemporaryIndices.Count div 3)-1 do begin
-   WriteLine('f '+IntToStr(fTemporaryIndices.ItemArray[(Index*3)+0]+1)+'/'+IntToStr(fTemporaryIndices.ItemArray[(Index*3)+0]+1)+'/'+IntToStr(fTemporaryIndices.ItemArray[(Index*3)+0]+1)+' '+
-                  IntToStr(fTemporaryIndices.ItemArray[(Index*3)+1]+1)+'/'+IntToStr(fTemporaryIndices.ItemArray[(Index*3)+1]+1)+'/'+IntToStr(fTemporaryIndices.ItemArray[(Index*3)+1]+1)+' '+
-                  IntToStr(fTemporaryIndices.ItemArray[(Index*3)+2]+1)+'/'+IntToStr(fTemporaryIndices.ItemArray[(Index*3)+2]+1)+'/'+IntToStr(fTemporaryIndices.ItemArray[(Index*3)+2]+1));
-  end;
+  case fPrimitiveTopology of
+   TpvScene3D.TPrimitiveTopology.Points:begin
+    for Index:=0 to fTemporaryIndices.Count-1 do begin
+     BaseIndex:=fTemporaryIndices.ItemArray[Index];
+     WriteLine('f '+IntToStr(BaseIndex+1)+'/'+IntToStr(BaseIndex+1)+'/'+IntToStr(BaseIndex+1));
+    end;
+   end;
+   TpvScene3D.TPrimitiveTopology.Lines:begin
+    for Index:=0 to (fTemporaryIndices.Count div 2)-1 do begin
+     BaseIndex:=fTemporaryIndices.ItemArray[Index*2];
+     WriteLine('f '+IntToStr(BaseIndex+1)+'/'+IntToStr(BaseIndex+1)+'/'+IntToStr(BaseIndex+1)+' '+
+                    IntToStr(fTemporaryIndices.ItemArray[(Index*2)+1]+1)+'/'+IntToStr(fTemporaryIndices.ItemArray[(Index*2)+1]+1)+'/'+IntToStr(fTemporaryIndices.ItemArray[(Index*2)+1]+1));
+    end;
+   end;
+   TpvScene3D.TPrimitiveTopology.Triangles:begin
+    for Index:=0 to (fTemporaryIndices.Count div 3)-1 do begin
+     WriteLine('f '+IntToStr(fTemporaryIndices.ItemArray[(Index*3)+0]+1)+'/'+IntToStr(fTemporaryIndices.ItemArray[(Index*3)+0]+1)+'/'+IntToStr(fTemporaryIndices.ItemArray[(Index*3)+0]+1)+' '+
+                    IntToStr(fTemporaryIndices.ItemArray[(Index*3)+1]+1)+'/'+IntToStr(fTemporaryIndices.ItemArray[(Index*3)+1]+1)+'/'+IntToStr(fTemporaryIndices.ItemArray[(Index*3)+1]+1)+' '+
+                    IntToStr(fTemporaryIndices.ItemArray[(Index*3)+2]+1)+'/'+IntToStr(fTemporaryIndices.ItemArray[(Index*3)+2]+1)+'/'+IntToStr(fTemporaryIndices.ItemArray[(Index*3)+2]+1));
+    end;
+   end; 
+  end; 
  end else if {(fStartBufferVertexOffset>=0) and} (fStartBufferVertexOffset<fMesh.fGroup.fVertices.Count) and
              {(fStartBufferIndexOffset>=0) and} (fStartBufferIndexOffset<fMesh.fGroup.fIndices.Count) and
              (fCountVertices>0) and (fCountIndices>0) then begin
@@ -12757,11 +12775,28 @@ begin
    Vertex:=@fMesh.fGroup.fVertices.ItemArray[Index];
    WriteLine('vt '+ConvertFloatToString(Vertex^.TexCoord0.x)+' '+ConvertFloatToString(Vertex^.TexCoord0.y));
   end;
-  for Index:=0 to (fCountIndices div 3)-1 do begin
-   BaseIndex:=fStartBufferIndexOffset+(Index*3);
-   WriteLine('f '+IntToStr(fMesh.fGroup.fIndices.ItemArray[BaseIndex+0]+1)+'/'+IntToStr(fMesh.fGroup.fIndices.ItemArray[BaseIndex+0]+1)+'/'+IntToStr(fMesh.fGroup.fIndices.ItemArray[BaseIndex+0]+1)+' '+
-                  IntToStr(fMesh.fGroup.fIndices.ItemArray[BaseIndex+1]+1)+'/'+IntToStr(fMesh.fGroup.fIndices.ItemArray[BaseIndex+1]+1)+'/'+IntToStr(fMesh.fGroup.fIndices.ItemArray[BaseIndex+1]+1)+' '+
-                  IntToStr(fMesh.fGroup.fIndices.ItemArray[BaseIndex+2]+1)+'/'+IntToStr(fMesh.fGroup.fIndices.ItemArray[BaseIndex+2]+1)+'/'+IntToStr(fMesh.fGroup.fIndices.ItemArray[BaseIndex+2]+1));
+  case fPrimitiveTopology of
+   TpvScene3D.TPrimitiveTopology.Points:begin
+    for Index:=0 to (fCountIndices div 1)-1 do begin
+     BaseIndex:=fStartBufferIndexOffset+(Index*1);
+     WriteLine('f '+IntToStr(fMesh.fGroup.fIndices.ItemArray[BaseIndex+0]+1)+'/'+IntToStr(fMesh.fGroup.fIndices.ItemArray[BaseIndex+0]+1)+'/'+IntToStr(fMesh.fGroup.fIndices.ItemArray[BaseIndex+0]+1));
+    end;
+   end;
+   TpvScene3D.TPrimitiveTopology.Lines:begin
+    for Index:=0 to (fCountIndices div 2)-1 do begin
+     BaseIndex:=fStartBufferIndexOffset+(Index*2);
+     WriteLine('f '+IntToStr(fMesh.fGroup.fIndices.ItemArray[BaseIndex+0]+1)+'/'+IntToStr(fMesh.fGroup.fIndices.ItemArray[BaseIndex+0]+1)+'/'+IntToStr(fMesh.fGroup.fIndices.ItemArray[BaseIndex+0]+1)+' '+
+                    IntToStr(fMesh.fGroup.fIndices.ItemArray[BaseIndex+1]+1)+'/'+IntToStr(fMesh.fGroup.fIndices.ItemArray[BaseIndex+1]+1)+'/'+IntToStr(fMesh.fGroup.fIndices.ItemArray[BaseIndex+1]+1));
+    end;
+   end;
+   TpvScene3D.TPrimitiveTopology.Triangles:begin
+    for Index:=0 to (fCountIndices div 3)-1 do begin
+     BaseIndex:=fStartBufferIndexOffset+(Index*3);
+     WriteLine('f '+IntToStr(fMesh.fGroup.fIndices.ItemArray[BaseIndex+0]+1)+'/'+IntToStr(fMesh.fGroup.fIndices.ItemArray[BaseIndex+0]+1)+'/'+IntToStr(fMesh.fGroup.fIndices.ItemArray[BaseIndex+0]+1)+' '+
+                    IntToStr(fMesh.fGroup.fIndices.ItemArray[BaseIndex+1]+1)+'/'+IntToStr(fMesh.fGroup.fIndices.ItemArray[BaseIndex+1]+1)+'/'+IntToStr(fMesh.fGroup.fIndices.ItemArray[BaseIndex+1]+1)+' '+
+                    IntToStr(fMesh.fGroup.fIndices.ItemArray[BaseIndex+2]+1)+'/'+IntToStr(fMesh.fGroup.fIndices.ItemArray[BaseIndex+2]+1)+'/'+IntToStr(fMesh.fGroup.fIndices.ItemArray[BaseIndex+2]+1));
+    end;
+   end;
   end;
  end;
 end; 
@@ -12776,6 +12811,164 @@ begin
  finally
   FreeAndNil(Stream);
  end;
+end;
+
+procedure TpvScene3D.TGroup.TMesh.TPrimitive.FixWrapAroundUVs(const aTexCoordIndex:TpvSizeInt=0);
+var Index,OriginalCountIndices:TpvSizeInt;
+    Vertex:TpvScene3D.PVertex;
+    VertexIndices:array[0..2] of TpvSizeInt;
+    Vertices:array[0..2] of TpvScene3D.PVertex;
+    UVs:array[0..2] of PpvVector2;
+    UVOffsets:array[0..2] of TpvVector2;
+    MustDuplicateVertices:array[0..2] of boolean;
+begin
+ 
+ if (fPrimitiveTopology<>TpvScene3D.TPrimitiveTopology.Triangles) or (fTemporaryVertices.Count=0) or
+    (aTexCoordIndex<0) or (aTexCoordIndex>=2) then begin
+  exit;
+ end;
+
+ OriginalCountIndices:=fTemporaryIndices.Count;
+
+ Index:=0;
+ while (Index+2)<OriginalCountIndices do begin
+  
+  VertexIndices[0]:=fTemporaryIndices.ItemArray[Index+0];
+  VertexIndices[1]:=fTemporaryIndices.ItemArray[Index+1];
+  VertexIndices[2]:=fTemporaryIndices.ItemArray[Index+2];
+
+  Vertices[0]:=@fTemporaryVertices.ItemArray[VertexIndices[0]];
+  Vertices[1]:=@fTemporaryVertices.ItemArray[VertexIndices[1]];
+  Vertices[2]:=@fTemporaryVertices.ItemArray[VertexIndices[2]];
+
+  if aTexCoordIndex=0 then begin
+   UVs[0]:=@Vertices[0]^.TexCoord0;
+   UVs[1]:=@Vertices[1]^.TexCoord0;
+   UVs[2]:=@Vertices[2]^.TexCoord0;
+  end else begin
+   UVs[0]:=@Vertices[0]^.TexCoord1;
+   UVs[1]:=@Vertices[1]^.TexCoord1;
+   UVs[2]:=@Vertices[2]^.TexCoord1;
+  end;
+
+  // Check UVs for wrapping arounds and fix them by duplicating vertices
+  if (abs(UVs[0]^.x-UVs[1]^.x)>0.5) or
+     (abs(UVs[0]^.x-UVs[2]^.x)>0.5) or
+     (abs(UVs[1]^.x-UVs[2]^.x)>0.5) or
+     (abs(UVs[0]^.y-UVs[1]^.y)>0.5) or
+     (abs(UVs[0]^.y-UVs[2]^.y)>0.5) or
+     (abs(UVs[1]^.y-UVs[2]^.y)>0.5) then begin
+
+   MustDuplicateVertices[0]:=false;
+   MustDuplicateVertices[1]:=false;
+   MustDuplicateVertices[2]:=false;
+
+   UVOffsets[0]:=TpvVector2.InlineableCreate(0.0,0.0);
+   UVOffsets[1]:=TpvVector2.InlineableCreate(0.0,0.0);
+   UVOffsets[2]:=TpvVector2.InlineableCreate(0.0,0.0);
+
+   if abs(UVs[0]^.x-UVs[1]^.x)>0.5 then begin
+    if UVs[0]^.x<UVs[1]^.x then begin
+     MustDuplicateVertices[0]:=true;
+     UVOffsets[0].x:=1.0;
+    end else begin
+     MustDuplicateVertices[1]:=true;
+     UVOffsets[1].x:=1.0;
+    end; 
+   end;
+   
+   if abs(UVs[0]^.x-UVs[2]^.x)>0.5 then begin
+    if UVs[0]^.x<UVs[2]^.x then begin
+     MustDuplicateVertices[0]:=true;
+     UVOffsets[0].x:=1.0;
+    end else begin
+     MustDuplicateVertices[2]:=true;
+     UVOffsets[2].x:=1.0;
+    end; 
+   end;
+   
+   if abs(UVs[1]^.x-UVs[2]^.x)>0.5 then begin
+    if UVs[1]^.x<UVs[2]^.x then begin
+     MustDuplicateVertices[1]:=true;
+     UVOffsets[1].x:=1.0;
+    end else begin
+     MustDuplicateVertices[2]:=true;
+     UVOffsets[2].x:=1.0;
+    end; 
+   end;
+   
+   if abs(UVs[0]^.y-UVs[1]^.y)>0.5 then begin
+    if UVs[0]^.y<UVs[1]^.y then begin
+     MustDuplicateVertices[0]:=true;
+     UVOffsets[0].y:=1.0;
+    end else begin
+     MustDuplicateVertices[1]:=true;
+     UVOffsets[1].y:=1.0;
+    end; 
+   end;
+   
+   if abs(UVs[0]^.y-UVs[2]^.y)>0.5 then begin
+    if UVs[0]^.y<UVs[2]^.y then begin
+     MustDuplicateVertices[0]:=true;
+     UVOffsets[0].y:=1.0;
+    end else begin
+     MustDuplicateVertices[2]:=true;
+     UVOffsets[2].y:=1.0;
+    end; 
+   end;
+
+   if abs(UVs[1]^.y-UVs[2]^.y)>0.5 then begin
+    if UVs[1]^.y<UVs[2]^.y then begin
+     MustDuplicateVertices[1]:=true;
+     UVOffsets[1].y:=1.0;
+    end else begin
+     MustDuplicateVertices[2]:=true;
+     UVOffsets[2].y:=1.0;
+    end; 
+   end;
+
+   if MustDuplicateVertices[0] or MustDuplicateVertices[1] or MustDuplicateVertices[2] then begin
+    
+    if MustDuplicateVertices[0] then begin
+     VertexIndices[0]:=fTemporaryVertices.Add(Vertices[0]^);
+     if aTexCoordIndex=0 then begin
+      UVs[0]:=@fTemporaryVertices.ItemArray[VertexIndices[0]].TexCoord0;
+     end else begin
+      UVs[0]:=@fTemporaryVertices.ItemArray[VertexIndices[0]].TexCoord1;
+     end; 
+     UVs[0]^:=UVs[0]^+UVOffsets[0];
+    end;
+    if MustDuplicateVertices[1] then begin
+     VertexIndices[1]:=fTemporaryVertices.Add(Vertices[1]^);
+     if aTexCoordIndex=0 then begin
+      UVs[1]:=@fTemporaryVertices.ItemArray[VertexIndices[1]].TexCoord0;
+     end else begin
+      UVs[1]:=@fTemporaryVertices.ItemArray[VertexIndices[1]].TexCoord1;
+     end;
+     UVs[1]^:=UVs[1]^+UVOffsets[1];
+    end;
+    if MustDuplicateVertices[2] then begin
+     VertexIndices[2]:=fTemporaryVertices.Add(Vertices[2]^);
+     if aTexCoordIndex=0 then begin
+      UVs[2]:=@fTemporaryVertices.ItemArray[VertexIndices[2]].TexCoord0;
+     end else begin
+      UVs[2]:=@fTemporaryVertices.ItemArray[VertexIndices[2]].TexCoord1;
+     end;
+     UVs[2]^:=UVs[2]^+UVOffsets[1];
+    end;
+
+    fTemporaryIndices.Add(VertexIndices[0]);
+    fTemporaryIndices.Add(VertexIndices[1]);
+    fTemporaryIndices.Add(VertexIndices[2]);
+
+   end;  
+
+  end;  
+
+  inc(Index,3);
+
+ end;
+
 end;
 
 procedure TpvScene3D.TGroup.TMesh.TPrimitive.Finish;
