@@ -12877,7 +12877,7 @@ begin
     end; 
    end;
    
-   if abs(((UVs[0]^.x+UVOffsets[0].x)-(UVs[2]^.x+UVOffsets[2].x))>0.5 then begin
+   if abs((UVs[0]^.x+UVOffsets[0].x)-(UVs[2]^.x+UVOffsets[2].x))>0.5 then begin
     if (UVs[0]^.x+UVOffsets[0].x)<(UVs[2]^.x+UVOffsets[2].x) then begin
      MustDuplicateVertices[0]:=true;
      UVOffsets[0].x:=UVOffsets[0].x+1.0;
