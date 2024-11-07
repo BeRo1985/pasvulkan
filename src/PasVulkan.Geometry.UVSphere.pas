@@ -65,51 +65,68 @@ interface
 
 uses Classes,SysUtils,Math,PasMP,PasDblStrUtils,PasVulkan.Types,PasVulkan.Math,PasVulkan.Collections,PasVulkan.Utils;
 
-procedure GenerateUVSphere(const aCountRings,aCountSlices:TpvSizeInt;out aVertices:TpvVector3DynamicArray;out aIndices:TpvUInt32DynamicArray;const aRadius:TpvFloat=1.0);
+procedure GenerateUVSphere(const aCountStacks,aCountSlices:TpvSizeInt;out aVertices:TpvVector3DynamicArray;out aIndices:TpvUInt32DynamicArray;const aRadius:TpvFloat=1.0);
 
 implementation
 
-procedure GenerateUVSphere(const aCountRings,aCountSlices:TpvSizeInt;out aVertices:TpvVector3DynamicArray;out aIndices:TpvUInt32DynamicArray;const aRadius:TpvFloat=1.0);
+procedure GenerateUVSphere(const aCountStacks,aCountSlices:TpvSizeInt;out aVertices:TpvVector3DynamicArray;out aIndices:TpvUInt32DynamicArray;const aRadius:TpvFloat=1.0);
 var Index:TpvSizeInt;
-    RingIndex,SliceIndex:TpvSizeInt;
+    StackIndex,SliceIndex:TpvSizeInt;
     VertexIndex:TpvSizeInt;
     Vertex:PpvVector3;
-    VertexIndex1,VertexIndex2,VertexIndex3,VertexIndex4:TpvUInt32;    
-    SinTheta1,CosTheta1,SinTheta2,CosTheta2:TpvFloat;
+    VertexIndex0,VertexIndex1,VertexIndex2,VertexIndex3:TpvUInt32;
+    SinPhi,CosPhi,SinTheta,CosTheta:TpvFloat;
 begin
 
- SetLength(aVertices,(aCountRings+1)*(aCountSlices+1));
- SetLength(aIndices,aCountRings*aCountSlices*6);
+ SetLength(aVertices,(aCountStacks+1)*(aCountSlices+1));
+ SetLength(aIndices,aCountStacks*aCountSlices*6);
 
  VertexIndex:=0;
 
- for RingIndex:=0 to aCountRings do begin
-  SinCos((RingIndex/TpvFloat(aCountRings))*TwoPI,SinTheta1,CosTheta1);
+ for StackIndex:=0 to aCountStacks do begin
+  SinCos((StackIndex/TpvFloat(aCountStacks))*PI,SinPhi,CosPhi);
   for SliceIndex:=0 to aCountSlices do begin
-   SinCos((SliceIndex/TpvFloat(aCountSlices))*TwoPI,SinTheta2,CosTheta2);
-   aVertices[VertexIndex]:=TpvVector3.InlineableCreate(CosTheta1*SinTheta2,SinTheta1,CosTheta1*CosTheta2)*aRadius;
+   SinCos((SliceIndex/TpvFloat(aCountSlices))*TwoPI,SinTheta,CosTheta);
+ //aVertices[VertexIndex]:=TpvVector3.InlineableCreate(SinPhi*CosTheta,CosPhi,SinPhi*SinTheta)*aRadius;
+   aVertices[VertexIndex]:=TpvVector3.InlineableCreate(CosPhi*SinTheta,SinPhi,CosPhi*CosTheta)*aRadius;
    inc(VertexIndex);
   end;
  end;
 
  Index:=0;
 
- for RingIndex:=0 to aCountRings-1 do begin
+ for StackIndex:=0 to aCountStacks-1 do begin
 
   for SliceIndex:=0 to aCountSlices-1 do begin
 
-   VertexIndex1:=TpvUInt32(((RingIndex+0)*(aCountSlices+1))+(SliceIndex+0));
-   VertexIndex2:=TpvUInt32(((RingIndex+1)*(aCountSlices+1))+(SliceIndex+0));
-   VertexIndex3:=TpvUInt32(((RingIndex+1)*(aCountSlices+1))+(SliceIndex+1));
-   VertexIndex4:=TpvUInt32(((RingIndex+0)*(aCountSlices+1))+(SliceIndex+1));
+   VertexIndex0:=TpvUInt32(((StackIndex+0)*(aCountSlices+1))+(SliceIndex+0));
+   VertexIndex1:=TpvUInt32(((StackIndex+1)*(aCountSlices+1))+(SliceIndex+0));
+   VertexIndex2:=TpvUInt32(((StackIndex+1)*(aCountSlices+1))+(SliceIndex+1));
+   VertexIndex3:=TpvUInt32(((StackIndex+0)*(aCountSlices+1))+(SliceIndex+1));
 
-   aIndices[Index+0]:=VertexIndex1;
-   aIndices[Index+1]:=VertexIndex2;
-   aIndices[Index+2]:=VertexIndex3;
+   // Check winding order
+   if (aVertices[VertexIndex0].Dot(aVertices[VertexIndex2].Cross(aVertices[VertexIndex1]))<0.0) and 
+      (aVertices[VertexIndex0].Dot(aVertices[VertexIndex3].Cross(aVertices[VertexIndex2]))<0.0) then begin
 
-   aIndices[Index+3]:=VertexIndex1;
-   aIndices[Index+4]:=VertexIndex3;
-   aIndices[Index+5]:=VertexIndex4;
+    aIndices[Index+0]:=VertexIndex0;
+    aIndices[Index+1]:=VertexIndex1;
+    aIndices[Index+2]:=VertexIndex2;
+
+    aIndices[Index+3]:=VertexIndex0;
+    aIndices[Index+4]:=VertexIndex2;
+    aIndices[Index+5]:=VertexIndex3;
+
+   end else begin
+
+    aIndices[Index+0]:=VertexIndex0;
+    aIndices[Index+1]:=VertexIndex2;
+    aIndices[Index+2]:=VertexIndex1;
+
+    aIndices[Index+3]:=VertexIndex0;
+    aIndices[Index+4]:=VertexIndex3;
+    aIndices[Index+5]:=VertexIndex2;
+   
+   end;
 
    inc(Index,6);
 
