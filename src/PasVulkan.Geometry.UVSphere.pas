@@ -84,7 +84,7 @@ begin
  VertexIndex:=0;
 
  for StackIndex:=0 to aCountStacks do begin
-  SinCos((StackIndex/TpvFloat(aCountStacks))*PI,SinPhi,CosPhi);
+  SinCos(((StackIndex/TpvFloat(aCountStacks))-0.5)*PI,SinPhi,CosPhi);
   for SliceIndex:=0 to aCountSlices do begin
    SinCos((SliceIndex/TpvFloat(aCountSlices))*TwoPI,SinTheta,CosTheta);
  //aVertices[VertexIndex]:=TpvVector3.InlineableCreate(SinPhi*CosTheta,CosPhi,SinPhi*SinTheta)*aRadius;
