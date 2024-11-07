@@ -12822,6 +12822,7 @@ var Index,OriginalCountIndices:TpvSizeInt;
     UVOffsets:array[0..2] of TpvVector2;
     MustDuplicateVertices:array[0..2] of boolean;
     CanAlignXToZero,CanAlignYToZero:boolean;
+    MaxOffset:TpvFloat;
 begin
  
  if (fPrimitiveTopology<>TpvScene3D.TPrimitiveTopology.Triangles) or (fTemporaryVertices.Count=0) or
@@ -12936,16 +12937,37 @@ begin
 
     if CanAlignXToZero or CanAlignYToZero then begin 
 
+     // Try to find the common maximum offset for all UVs first, if possible, otherwise just subtract 1.0 as fallback, for to     
+     // ensure that the UVs are in the range [0.0,1.0] after the offsets have been applied as much as possible. Anyway, when
+     // the texture sampler is set to repeat, the UVs will be wrapped around anyway, so it doesn't matter if the UVs are in the
+     // range [0.0,1.0] or not, but it's better for other aspects with working with the UVs, like for example for post processing
+     // and post editing of the UVs or even for texture coordinate quantization, to have them in the range [0.0,1.0] as much as 
+     // possible.
+
      if CanAlignXToZero then begin
-      UVOffsets[0].x:=UVOffsets[0].x-1.0;
-      UVOffsets[1].x:=UVOffsets[1].x-1.0;
-      UVOffsets[2].x:=UVOffsets[2].x-1.0;
+      MaxOffset:=Floor(Max(Max(UVs[0].x+UVOffsets[0].x,UVs[1].x+UVOffsets[1].x),UVs[2].x+UVOffsets[2].x));
+      if ((UVs[0]^.x+UVOffsets[0].x)>=MaxOffset) and ((UVs[1]^.x+UVOffsets[1].x)>=MaxOffset) and ((UVs[2]^.x+UVOffsets[2].x)>=MaxOffset) then begin
+       UVOffsets[0].x:=UVOffsets[0].x-MaxOffset;
+       UVOffsets[1].x:=UVOffsets[1].x-MaxOffset;
+       UVOffsets[2].x:=UVOffsets[2].x-MaxOffset;
+      end else begin
+       UVOffsets[0].x:=UVOffsets[0].x-1.0;
+       UVOffsets[1].x:=UVOffsets[1].x-1.0;
+       UVOffsets[2].x:=UVOffsets[2].x-1.0;
+      end; 
      end;
 
      if CanAlignYToZero then begin
-      UVOffsets[0].y:=UVOffsets[0].y-1.0;
-      UVOffsets[1].y:=UVOffsets[1].y-1.0;
-      UVOffsets[2].y:=UVOffsets[2].y-1.0;
+      MaxOffset:=Floor(Max(Max(UVs[0].y+UVOffsets[0].y,UVs[1].y+UVOffsets[1].y),UVs[2].y+UVOffsets[2].y));
+      if ((UVs[0]^.y+UVOffsets[0].y)>=MaxOffset) and ((UVs[1]^.y+UVOffsets[1].y)>=MaxOffset) and ((UVs[2]^.y+UVOffsets[2].y)>=MaxOffset) then begin
+       UVOffsets[0].y:=UVOffsets[0].y-MaxOffset;
+       UVOffsets[1].y:=UVOffsets[1].y-MaxOffset;
+       UVOffsets[2].y:=UVOffsets[2].y-MaxOffset;
+      end else begin
+       UVOffsets[0].y:=UVOffsets[0].y-1.0;
+       UVOffsets[1].y:=UVOffsets[1].y-1.0;
+       UVOffsets[2].y:=UVOffsets[2].y-1.0;
+      end;
      end;
 
      VertexIndices[0]:=fTemporaryVertices.Add(Vertices[0]^);
