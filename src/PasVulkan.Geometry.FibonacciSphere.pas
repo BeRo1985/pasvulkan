@@ -153,7 +153,11 @@ type { TpvFibonacciSphere }
        property Indices:TIndices read fIndices;
      end;
 
+procedure GenerateFibonacciSphere(const aCountPoints:TpvSizeInt;out aVertices:TpvVector3DynamicArray;out aTexCoords:TpvVector2DynamicArray;out aIndices:TpvUInt32DynamicArray;const aRadius:TpvFloat=1.0);
+
 implementation
+
+uses PasVulkan.Geometry.Utils;
 
 function DirectionToHEALPix(const aDirection:TpvVector3):TpvVector2;
 const Phi0=0.729727656226966363; // ArcSin(2.0/3.0)
@@ -704,5 +708,38 @@ begin
   FreeAndNil(Stream);
  end;
 end; 
+
+procedure GenerateFibonacciSphere(const aCountPoints:TpvSizeInt;out aVertices:TpvVector3DynamicArray;out aTexCoords:TpvVector2DynamicArray;out aIndices:TpvUInt32DynamicArray;const aRadius:TpvFloat=1.0);
+var FibonacciSphere:TpvFibonacciSphere;
+    Index:TpvSizeInt;
+    Vertex:PVertex;
+begin
+
+ FibonacciSphere:=TpvFibonacciSphere.Create(aCountPoints,aRadius,TpvFibonacciSphere.TTextureProjectionMapping.Equirectangular);
+ try
+  
+  FibonacciSphere.Generate;
+  
+  SetLength(aVertices,FibonacciSphere.Vertices.Count);
+  SetLength(aTexCoords,FibonacciSphere.Vertices.Count);
+  SetLength(aIndices,FibonacciSphere.Indices.Count);
+  
+  for Index:=0 to FibonacciSphere.Vertices.Count-1 do begin
+   Vertex:=@FibonacciSphere.Vertices.ItemArray[Index];
+   aVertices[Index]:=TpvVector3.InlineableCreate(Vertex^.Position.x,Vertex^.Position.y,Vertex^.Position.z);
+   aTexCoords[Index]:=TpvVector2.InlineableCreate(Vertex^.TexCoord.x,Vertex^.TexCoord.y);
+  end;
+  
+  for Index:=0 to FibonacciSphere.Indices.Count-1 do begin
+   aIndices[Index]:=FibonacciSphere.Indices.ItemArray[Index];
+  end;
+
+ finally
+  FreeAndNil(FibonacciSphere);
+ end;
+
+ FixWrapAroundUVs(aVertices,aTexCoords,aIndices);
+
+end;
 
 end.
