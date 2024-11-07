@@ -65,11 +65,11 @@ interface
 
 uses Classes,SysUtils,Math,PasMP,PasDblStrUtils,PasVulkan.Types,PasVulkan.Math,PasVulkan.Collections,PasVulkan.Utils;
 
-procedure GenerateUVSphere(const aCountStacks,aCountSlices:TpvSizeInt;out aVertices:TpvVector3DynamicArray;out aIndices:TpvUInt32DynamicArray;const aRadius:TpvFloat=1.0);
+procedure GenerateUVSphere(const aCountStacks,aCountSlices:TpvSizeInt;out aVertices:TpvVector3DynamicArray;out aTexCoords:TpvVector2DynamicArray;out aIndices:TpvUInt32DynamicArray;const aRadius:TpvFloat=1.0);
 
 implementation
 
-procedure GenerateUVSphere(const aCountStacks,aCountSlices:TpvSizeInt;out aVertices:TpvVector3DynamicArray;out aIndices:TpvUInt32DynamicArray;const aRadius:TpvFloat=1.0);
+procedure GenerateUVSphere(const aCountStacks,aCountSlices:TpvSizeInt;out aVertices:TpvVector3DynamicArray;out aTexCoords:TpvVector2DynamicArray;out aIndices:TpvUInt32DynamicArray;const aRadius:TpvFloat=1.0);
 var Index:TpvSizeInt;
     StackIndex,SliceIndex:TpvSizeInt;
     VertexIndex:TpvSizeInt;
@@ -79,6 +79,7 @@ var Index:TpvSizeInt;
 begin
 
  SetLength(aVertices,(aCountStacks+1)*(aCountSlices+1));
+ SetLength(aTexCoords,(aCountStacks+1)*(aCountSlices+1));
  SetLength(aIndices,aCountStacks*aCountSlices*6);
 
  VertexIndex:=0;
@@ -87,8 +88,8 @@ begin
   SinCos(((StackIndex/TpvFloat(aCountStacks))-0.5)*PI,SinPhi,CosPhi);
   for SliceIndex:=0 to aCountSlices do begin
    SinCos((SliceIndex/TpvFloat(aCountSlices))*TwoPI,SinTheta,CosTheta);
- //aVertices[VertexIndex]:=TpvVector3.InlineableCreate(SinPhi*CosTheta,CosPhi,SinPhi*SinTheta)*aRadius;
    aVertices[VertexIndex]:=TpvVector3.InlineableCreate(CosPhi*SinTheta,SinPhi,CosPhi*CosTheta)*aRadius;
+   aTexCoords[VertexIndex]:=TpvVector2.InlineableCreate(SliceIndex/TpvFloat(aCountSlices),StackIndex/TpvFloat(aCountStacks));
    inc(VertexIndex);
   end;
  end;

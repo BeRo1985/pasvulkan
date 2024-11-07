@@ -66,15 +66,15 @@ interface
 uses Classes,SysUtils,Math,PasMP,PasDblStrUtils,PasVulkan.Types,PasVulkan.Math,PasVulkan.Collections,PasVulkan.Utils;
 
 // Generate an icosphere iteratively with a given tessellation resolution per triangle 
-procedure IterativelyGenerateIcoSphere(const aResolution:TpvSizeInt;out aVertices:TpvVector3DynamicArray;out aIndices:TpvUInt32DynamicArray;const aRadius:TpvFloat=1.0);
+procedure IterativelyGenerateIcoSphere(const aResolution:TpvSizeInt;out aVertices:TpvVector3DynamicArray;out aTexCoords:TpvVector2DynamicArray;out aIndices:TpvUInt32DynamicArray;const aRadius:TpvFloat=1.0);
 
 // Generate an icosphere recursively with a given minimum count of vertices instead of a recursion depth level for somewhat better control.
 // However negative aCountMinimumVertices values are used as forced recursion depth levels, when it is really explicitly needed.
-procedure RecursivelyGenerateIcoSphere(const aCountMinimumVertices:TpvSizeInt;out aVertices:TpvVector3DynamicArray;out aIndices:TpvUInt32DynamicArray;const aRadius:TpvFloat=1.0);
+procedure RecursivelyGenerateIcoSphere(const aCountMinimumVertices:TpvSizeInt;out aVertices:TpvVector3DynamicArray;out aTexCoords:TpvVector2DynamicArray;out aIndices:TpvUInt32DynamicArray;const aRadius:TpvFloat=1.0);
 
 implementation
 
-procedure IterativelyGenerateIcoSphere(const aResolution:TpvSizeInt;out aVertices:TpvVector3DynamicArray;out aIndices:TpvUInt32DynamicArray;const aRadius:TpvFloat);
+procedure IterativelyGenerateIcoSphere(const aResolution:TpvSizeInt;out aVertices:TpvVector3DynamicArray;out aTexCoords:TpvVector2DynamicArray;out aIndices:TpvUInt32DynamicArray;const aRadius:TpvFloat);
 type TVertexHashMap=TpvHashMap<TpvVector3,TpvUInt32>; // $ffffffff = invalid index
 const GoldenRatio=1.61803398874989485; // (1.0 + sqrt(5.0)) / 2.0 (golden ratio)
       IcosahedronLength=1.902113032590307; // sqrt(sqr(1) + sqr(GoldenRatio))
@@ -166,6 +166,12 @@ begin
       end;
 
      end;   
+
+     // Generate texture coordinates
+     SetLength(aTexCoords,CountVertices);
+     for Index:=0 to CountVertices-1 do begin
+      aTexCoords[Index]:=TpvVector2.Create(0.5+ArcTan2(aVertices[Index].z,aVertices[Index].x)/TwoPI,0.5-ArcSin(aVertices[Index].y)/Pi);
+     end;
 
     finally
      FreeAndNil(VertexHashMap);
@@ -334,7 +340,7 @@ begin
 
 end;                                                                              
 
-procedure RecursivelyGenerateIcoSphere(const aCountMinimumVertices:TpvSizeInt;out aVertices:TpvVector3DynamicArray;out aIndices:TpvUInt32DynamicArray;const aRadius:TpvFloat=1.0);
+procedure RecursivelyGenerateIcoSphere(const aCountMinimumVertices:TpvSizeInt;out aVertices:TpvVector3DynamicArray;out aTexCoords:TpvVector2DynamicArray;out aIndices:TpvUInt32DynamicArray;const aRadius:TpvFloat=1.0);
 var Index:TpvSizeInt;
     Vertices:TVector3Array;
     Indices:TIndexArray;
@@ -361,6 +367,12 @@ begin
    // Copy indices to output indices array
    SetLength(aIndices,Indices.Count);
    Move(Indices.Items[0],aIndices[0],Indices.Count*SizeOf(TpvUInt32));
+
+   // Generate texture coordinates
+   SetLength(aTexCoords,Vertices.Count);
+   for Index:=0 to Vertices.Count-1 do begin
+    aTexCoords[Index]:=TpvVector2.Create(0.5+ArcTan2(Vertices.Items[Index].z,Vertices.Items[Index].x)/TwoPI,0.5-ArcSin(Vertices.Items[Index].y)/Pi);
+   end;
 
   finally
    Indices.Finalize;
