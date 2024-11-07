@@ -100,7 +100,7 @@ begin
    tb:=@aTexCoords[aIndices[Index+1]];
    tc:=@aTexCoords[aIndices[Index+2]];
 
-   if ((tb^.x-ta^.x)>=0.5) and (ta^.y<>1.0) then begin
+   if ((tb^.x-ta^.x)>=0.5) and not SameValue(ta^.y,1.0) then begin
     tb^.x:=tb^.x-1.0;
    end;
 
@@ -108,7 +108,7 @@ begin
     tc^.x:=tc^.x-1.0;
    end;
 
-   if (ta^.x>0.5) and ((ta^.x-tc^.x)>0.5) or ((ta^.x=1.0) and (tc^.y=0.0)) then begin
+   if (ta^.x>0.5) and ((ta^.x-tc^.x)>0.5) or (SameValue(ta^.x,1.0) and SameValue(tc^.y,0.0)) then begin
     ta^.x:=ta^.x-1.0;
    end;
 
@@ -116,15 +116,15 @@ begin
     tb^.x:=tb^.x-1.0;
    end;
 
-   if (ta^.y=0.0) or (ta^.y=1.0) then begin
+   if SameValue(ta^.y,0.0) or SameValue(ta^.y,1.0) then begin
     ta^.x:=(tb^.x+tc^.x)*0.5;
    end;
 
-   if (tb^.y=0.0) or (tb^.y=1.0) then begin
+   if SameValue(tb^.y,0.0) or SameValue(tb^.y,1.0) then begin
     tb^.x:=(ta^.x+tc^.x)*0.5;
    end;
 
-   if (tc^.y=0.0) or (tc^.y=1.0) then begin
+   if SameValue(tc^.y,0.0) or SameValue(tc^.y,1.0) then begin
     tc^.x:=(ta^.x+tb^.x)*0.5;
    end;
 
