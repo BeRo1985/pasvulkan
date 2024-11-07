@@ -71,8 +71,7 @@ procedure FixWrapAroundUVs(var aVertices:TpvVector3DynamicArray;var aTexCoords:T
 implementation
 
 procedure FixWrapAroundUVs(var aVertices:TpvVector3DynamicArray;var aTexCoords:TpvVector2DynamicArray;var aIndices:TpvUInt32DynamicArray);
-var OrginialCountVertices,OriginalCountIndices,CountVertices,CountIndices,Index,VertexIndex,
-    Index:TpvSizeInt;
+var OriginalCountVertices,OriginalCountIndices,CountVertices,CountIndices,Index,VertexIndex:TpvSizeInt;
     VertexIndices:array[0..2] of TpvSizeInt;
     Vertices:array[0..2] of TpvVector3;
     UVs:array[0..2] of TpvVector2;

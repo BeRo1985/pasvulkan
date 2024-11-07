@@ -74,6 +74,8 @@ procedure RecursivelyGenerateIcoSphere(const aCountMinimumVertices:TpvSizeInt;ou
 
 implementation
 
+uses PasVulkan.Geometry.Utils;
+
 procedure IterativelyGenerateIcoSphere(const aResolution:TpvSizeInt;out aVertices:TpvVector3DynamicArray;out aTexCoords:TpvVector2DynamicArray;out aIndices:TpvUInt32DynamicArray;const aRadius:TpvFloat);
 type TVertexHashMap=TpvHashMap<TpvVector3,TpvUInt32>; // $ffffffff = invalid index
 const GoldenRatio=1.61803398874989485; // (1.0 + sqrt(5.0)) / 2.0 (golden ratio)
@@ -193,6 +195,8 @@ begin
    aVertices[Index]:=aVertices[Index].Normalize*aRadius;
   end; 
  end; 
+
+ FixWrapAroundUVs(aVertices,aTexCoords,aIndices);
 
 end;
 
@@ -373,6 +377,8 @@ begin
    for Index:=0 to Vertices.Count-1 do begin
     aTexCoords[Index]:=TpvVector2.Create(0.5+ArcTan2(Vertices.Items[Index].z,Vertices.Items[Index].x)/TwoPI,0.5-ArcSin(Vertices.Items[Index].y)/Pi);
    end;
+
+   FixWrapAroundUVs(aVertices,aTexCoords,aIndices);
 
   finally
    Indices.Finalize;
