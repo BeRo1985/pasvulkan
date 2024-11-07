@@ -76,6 +76,61 @@ implementation
 
 uses PasVulkan.Geometry.Utils;
 
+procedure GenerateTexCoords(const aVertices:TpvVector3DynamicArray;out aTexCoords:TpvVector2DynamicArray;const aIndices:TpvUInt32DynamicArray);
+var Index,Count:TpvSizeInt;
+    ta,tb,tc:PpvVector2;
+begin
+ 
+ // Set length of texture coordinates array
+ SetLength(aTexCoords,length(aVertices));
+
+ // Calculate texture coordinates
+ for Index:=0 to length(aVertices)-1 do begin
+  aTexCoords[Index]:=TpvVector2.Create(0.5+ArcTan2(aVertices[Index].z,aVertices[Index].x)/TwoPI,0.5-ArcSin(aVertices[Index].y)/PI);
+ end;
+
+ // Fix UVs
+ Index:=0;
+ Count:=length(aIndices);
+ while (Index+2)<Count do begin
+
+  ta:=@aTexCoords[aIndices[Index+0]];
+  tb:=@aTexCoords[aIndices[Index+1]];
+  tc:=@aTexCoords[aIndices[Index+2]];
+
+  if ((tb^.x-ta^.x)>=0.5) and (ta^.y<>1.0) then begin
+   tb^.x:=tb^.x-1.0;
+  end;
+
+  if (tc^.x-tb^.x)>0.5 then begin
+   tc^.x:=tc^.x-1.0;
+  end;
+
+  if (ta^.x>0.5) and ((ta^.x-tc^.x)>0.5) or ((ta^.x=1.0) and (tc^.y=0.0)) then begin
+   ta^.x:=ta^.x-1.0;
+  end;
+
+  if (tb^.x>0.5) and ((tb^.x-ta^.x)>0.5) then begin
+   tb^.x:=tb^.x-1.0;
+  end;
+
+  if (ta^.y=0.0) or (ta^.y=1.0) then begin
+   ta^.x:=(tb^.x+tc^.x)*0.5;
+  end;
+
+  if (tb^.y=0.0) or (tb^.y=1.0) then begin
+   tb^.x:=(ta^.x+tc^.x)*0.5;
+  end;
+
+  if (tc^.y=0.0) or (tc^.y=1.0) then begin
+   tc^.x:=(ta^.x+tb^.x)*0.5;
+  end;
+  
+  inc(Index,3);
+ end;
+
+end;
+
 procedure IterativelyGenerateIcoSphere(const aResolution:TpvSizeInt;out aVertices:TpvVector3DynamicArray;out aTexCoords:TpvVector2DynamicArray;out aIndices:TpvUInt32DynamicArray;const aRadius:TpvFloat);
 type TVertexHashMap=TpvHashMap<TpvVector3,TpvUInt32>; // $ffffffff = invalid index
 const GoldenRatio=1.61803398874989485; // (1.0 + sqrt(5.0)) / 2.0 (golden ratio)
@@ -170,10 +225,10 @@ begin
      end;   
 
      // Generate texture coordinates
-     SetLength(aTexCoords,CountVertices);
-     for Index:=0 to CountVertices-1 do begin
-      aTexCoords[Index]:=TpvVector2.Create(0.5+ArcTan2(aVertices[Index].z,aVertices[Index].x)/TwoPI,0.5-ArcSin(aVertices[Index].y)/Pi);
-     end;
+     GenerateTexCoords(aVertices,aTexCoords,aIndices);
+
+     // Fix wrap around UVs
+     FixWrapAroundUVs(aVertices,aTexCoords,aIndices);
 
     finally
      FreeAndNil(VertexHashMap);
@@ -195,8 +250,6 @@ begin
    aVertices[Index]:=aVertices[Index].Normalize*aRadius;
   end; 
  end; 
-
- FixWrapAroundUVs(aVertices,aTexCoords,aIndices);
 
 end;
 
@@ -373,11 +426,9 @@ begin
    Move(Indices.Items[0],aIndices[0],Indices.Count*SizeOf(TpvUInt32));
 
    // Generate texture coordinates
-   SetLength(aTexCoords,Vertices.Count);
-   for Index:=0 to Vertices.Count-1 do begin
-    aTexCoords[Index]:=TpvVector2.Create(0.5+ArcTan2(Vertices.Items[Index].z,Vertices.Items[Index].x)/TwoPI,0.5-ArcSin(Vertices.Items[Index].y)/Pi);
-   end;
+   GenerateTexCoords(aVertices,aTexCoords,aIndices);
 
+   // Fix wrap around UVs
    FixWrapAroundUVs(aVertices,aTexCoords,aIndices);
 
   finally
