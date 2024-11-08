@@ -1190,7 +1190,7 @@ type EpvScene3D=class(Exception);
                      NormalTextureScale:1.0;
                      OcclusionTexture:(Texture:nil;TexCoord:0;Transform:(Active:false;Offset:(x:0.0;y:0.0);Rotation:0.0;Scale:(x:1.0;y:1.0)));
                      OcclusionTextureStrength:1.0;
-                     EmissiveFactor:(x:1.0;y:1.0;z:1.0;w:1.0);
+                     EmissiveFactor:(x:0.0;y:0.0;z:0.0;w:1.0);
                      EmissiveTexture:(Texture:nil;TexCoord:0;Transform:(Active:false;Offset:(x:0.0;y:0.0);Rotation:0.0;Scale:(x:1.0;y:1.0)));
                      PBRMetallicRoughness:(
                       BaseColorFactor:(x:1.0;y:1.0;z:1.0;w:1.0);
