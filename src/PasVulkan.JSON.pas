@@ -116,9 +116,9 @@ begin
   result.y:=TPasJSON.GetNumber(TPasJSONItemArray(aVectorJSONItem).Items[1],0.0);
   result.z:=TPasJSON.GetNumber(TPasJSONItemArray(aVectorJSONItem).Items[2],0.0);
  end else if assigned(aVectorJSONItem) and (aVectorJSONItem is TPasJSONItemObject) then begin
-  result.x:=TPasJSON.GetNumber(TPasJSONItemObject(aVectorJSONItem).Properties['x'],0.0);
-  result.y:=TPasJSON.GetNumber(TPasJSONItemObject(aVectorJSONItem).Properties['y'],0.0);
-  result.z:=TPasJSON.GetNumber(TPasJSONItemObject(aVectorJSONItem).Properties['z'],0.0);
+  result.x:=TPasJSON.GetNumber(TPasJSONItemObject(aVectorJSONItem).Properties['x'],TPasJSON.GetNumber(TPasJSONItemObject(aVectorJSONItem).Properties['pitch'],0.0));
+  result.y:=TPasJSON.GetNumber(TPasJSONItemObject(aVectorJSONItem).Properties['y'],TPasJSON.GetNumber(TPasJSONItemObject(aVectorJSONItem).Properties['yaw'],0.0));
+  result.z:=TPasJSON.GetNumber(TPasJSONItemObject(aVectorJSONItem).Properties['z'],TPasJSON.GetNumber(TPasJSONItemObject(aVectorJSONItem).Properties['roll'],0.0));
  end else begin
   result:=aDefault;
  end;

@@ -17484,6 +17484,7 @@ end;
 procedure TpvScene3DPlanet.Initialize(const aPasMPInstance:TPasMP;const aData:TStream;const aDataFreeOnDestroy:boolean);
 //var ui32:TVkUInt32;
 var HeightMapDataInitialization:TpvScene3DPlanet.THeightMapDataInitialization;
+    BufferMemoryBarriers:array[0..2] of TVkBufferMemoryBarrier;
 begin
 
  if not fData.fInitialized then begin
@@ -17516,6 +17517,82 @@ begin
 
      fGrassMapInitialization.Execute(fVulkanComputeCommandBuffer);
 
+     BufferMemoryBarriers[0].sType:=VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+     BufferMemoryBarriers[0].pNext:=nil;
+     BufferMemoryBarriers[0].srcAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
+     BufferMemoryBarriers[0].dstAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT) or TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT);
+     BufferMemoryBarriers[0].srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+     BufferMemoryBarriers[0].dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+     BufferMemoryBarriers[0].buffer:=fData.fWaterHeightMapBuffers[0].Handle;
+     BufferMemoryBarriers[0].offset:=0;
+     BufferMemoryBarriers[0].size:=fData.fWaterHeightMapBuffers[0].Size;
+     
+     BufferMemoryBarriers[1].sType:=VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+     BufferMemoryBarriers[1].pNext:=nil;
+     BufferMemoryBarriers[1].srcAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
+     BufferMemoryBarriers[1].dstAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT) or TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT);
+     BufferMemoryBarriers[1].srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+     BufferMemoryBarriers[1].dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+     BufferMemoryBarriers[1].buffer:=fData.fWaterHeightMapBuffers[1].Handle;
+     BufferMemoryBarriers[1].offset:=0;
+     BufferMemoryBarriers[1].size:=fData.fWaterHeightMapBuffers[1].Size;
+
+     BufferMemoryBarriers[2].sType:=VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+     BufferMemoryBarriers[2].pNext:=nil;
+     BufferMemoryBarriers[2].srcAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
+     BufferMemoryBarriers[2].dstAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT) or TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT);
+     BufferMemoryBarriers[2].srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+     BufferMemoryBarriers[2].dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+     BufferMemoryBarriers[2].buffer:=fData.fWaterFlowMapBuffer.Handle;
+     BufferMemoryBarriers[2].offset:=0;
+     BufferMemoryBarriers[2].size:=fData.fWaterFlowMapBuffer.Size;
+
+     fVulkanComputeCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                                    0,
+                                                    0,
+                                                    nil,
+                                                    Length(BufferMemoryBarriers),
+                                                    @BufferMemoryBarriers,
+                                                    0,
+                                                    nil);
+
+     // Clear water height map buffers
+     fVulkanComputeCommandBuffer.CmdFillBuffer(fData.fWaterHeightMapBuffers[0].Handle,
+                                               0,
+                                               fData.fWaterHeightMapBuffers[0].Size,
+                                               0);
+
+     fVulkanComputeCommandBuffer.CmdFillBuffer(fData.fWaterHeightMapBuffers[1].Handle,
+                                               0,
+                                               fData.fWaterHeightMapBuffers[1].Size,
+                                               0); 
+
+     // Clear water flow map buffer
+     fVulkanComputeCommandBuffer.CmdFillBuffer(fData.fWaterFlowMapBuffer.Handle,
+                                               0,
+                                               fData.fWaterFlowMapBuffer.Size,
+                                               0);
+
+     BufferMemoryBarriers[0].srcAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT) or TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT);
+     BufferMemoryBarriers[0].dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
+
+     BufferMemoryBarriers[1].srcAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT) or TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT);
+     BufferMemoryBarriers[1].dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
+
+     BufferMemoryBarriers[2].srcAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT) or TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT);
+     BufferMemoryBarriers[2].dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
+
+     fVulkanComputeCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                                    0,
+                                                    0,
+                                                    nil,
+                                                    Length(BufferMemoryBarriers),
+                                                    @BufferMemoryBarriers,
+                                                    0,
+                                                    nil);
+                                                    
     finally
      EndUpdate;
     end;
