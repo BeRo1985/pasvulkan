@@ -5533,6 +5533,8 @@ begin
 
  fPlanet.fData.fWaterSimulationCountUnderThresholdFrames:=0;
 
+ fPlanet.fData.fWaterFrameIndex:=1;
+
  StartPosition:=aStream.Position;
 
  aStream.ReadBuffer(Header.Signature,SizeOf(TpvScene3DPlanet.TSerializedData.TSignature));
