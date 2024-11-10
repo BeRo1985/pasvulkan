@@ -1422,7 +1422,8 @@ type EpvScene3D=class(Exception);
                      Directional=1,
                      Point=2,
                      Spot=3,
-                     PrimaryDirectional=4
+                     PrimaryDirectional=4,
+                     ViewDirectional=5
                     );
                    TType=TLightType;
              private
@@ -9993,7 +9994,8 @@ begin
   end;
   case Data^.Type_ of
    TpvScene3D.TLightData.TLightType.Directional,
-   TpvScene3D.TLightData.TLightType.PrimaryDirectional:begin
+   TpvScene3D.TLightData.TLightType.PrimaryDirectional,
+   TpvScene3D.TLightData.TLightType.ViewDirectional:begin
     AABB.Min:=TpvVector3.InlineableCreate(-Infinity,-Infinity,-Infinity);
     AABB.Max:=TpvVector3.InlineableCreate(Infinity,Infinity,Infinity);
    end;
@@ -29727,7 +29729,8 @@ begin
       if (aLightItemArray.Count<MaxVisibleLights) and (Light.DataPointer^.fVisible and not Light.fIgnore) then begin
        case Light.fDataPointer^.Type_ of
         TpvScene3D.TLightData.TType.Directional,
-        TpvScene3D.TLightData.TType.PrimaryDirectional:begin
+        TpvScene3D.TLightData.TType.PrimaryDirectional,
+        TpvScene3D.TLightData.TType.ViewDirectional:begin
          // It is already in lux, nothing to do.
          Intensity:=Light.fDataPointer^.fIntensity;
         end;

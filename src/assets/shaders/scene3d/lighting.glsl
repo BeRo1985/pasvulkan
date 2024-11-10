@@ -65,6 +65,11 @@
                 pointToLightVector = pointToLightDirection * 1e8; // Far away
                 break;
               }
+              case 5u: {  // View directional
+                imageLightBasedLightDirection = pointToLightDirection = normalize(-inViewSpacePosition.xyz);
+                pointToLightVector = pointToLightDirection * 1e8; // Far away
+                break;
+              }
               default: { // Point, Spot and other non-directional lights
                 pointToLightVector = lightPosition - inWorldSpacePosition.xyz;
                 pointToLightDirection = normalize(pointToLightVector);
@@ -82,7 +87,8 @@
               switch (light.metaData.x) {
 #if !defined(REFLECTIVESHADOWMAPOUTPUT)
 #if defined(RAYTRACING)
-                case 1u: { // Directional 
+                case 1u:   // Directional 
+                case 5u: { // View directional
                   lightAttenuation *= getRaytracedHardShadow(rayOrigin, rayNormal, pointToLightDirection, rayOffset, 10000000.0);
                   break;
                 }
@@ -94,7 +100,8 @@
                   break;
                 }
 #elif 0
-                case 1u: { // Directional 
+                case 1u:   // Directional 
+                case 5u: { // View directional 
                   // fall-through
                 }
                 case 3u: {  // Spot
@@ -210,7 +217,8 @@
 #endif // SHADOWS
             switch (light.metaData.x) {
 #if !defined(REFLECTIVESHADOWMAPOUTPUT)
-              case 1u: {  // Directional
+              case 1u:   // Directional
+              case 5u: { // View directional
                 break;
               }
               case 2u: {  // Point

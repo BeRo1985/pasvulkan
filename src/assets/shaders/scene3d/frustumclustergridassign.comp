@@ -105,9 +105,11 @@ void main() {
       if (lightMetaInfo.minBounds.w > 0.5) {
         switch(int(lightMetaInfo.minBounds.w + 0.5)){
           case 1:
-          case 4:{
+          case 4:
+          case 5:{
             // Directional light
             // Primary directional light
+            // View directional light
             // => always add without further checks, since directional lights are actually always scene global
             visibleLightDecalIndices[int(countVisibleLights)] = (batchIndex * countThreads) + lightProcessIndex;
             countVisibleLights++;     
