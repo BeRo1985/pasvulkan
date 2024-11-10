@@ -1433,7 +1433,7 @@ type EpvScene3D=class(Exception);
               fInnerConeAngle:TpvFloat;
               fOuterConeAngle:TpvFloat;
               fColor:TpvVector3;
-              fLightProfile:TpvInt32;
+              fLightProfileTexture:TpvScene3D.TTexture;
               fExtendedLightProfile:boolean;
               fCastShadows:boolean;
               fVisible:boolean;
@@ -1446,7 +1446,7 @@ type EpvScene3D=class(Exception);
               property InnerConeAngle:TpvFloat read fInnerConeAngle write fInnerConeAngle;
               property OuterConeAngle:TpvFloat read fOuterConeAngle write fOuterConeAngle;
               property Color:TpvVector3 read fColor write fColor;
-              property LightProfile:TpvInt32 read fLightProfile write fLightProfile;
+              property LightProfileTexture:TpvScene3D.TTexture read fLightProfileTexture write fLightProfileTexture;
               property ExtendedLightProfile:boolean read fExtendedLightProfile write fExtendedLightProfile;
               property CastShadows:boolean read fCastShadows write fCastShadows;
               property Visible:boolean read fVisible write fVisible;
@@ -1540,7 +1540,7 @@ type EpvScene3D=class(Exception);
               property InnerConeAngle:TpvFloat read fData.fInnerConeAngle write fData.fInnerConeAngle;
               property OuterConeAngle:TpvFloat read fData.fOuterConeAngle write fData.fOuterConeAngle;
               property Color:TpvVector3 read fData.fColor write fData.fColor;
-              property LightProfile:TpvInt32 read fData.fLightProfile write fData.fLightProfile;
+              property LightProfileTexture:TpvScene3D.TTexture read fData.fLightProfileTexture write fData.fLightProfileTexture;
               property ExtendedLightProfile:boolean read fData.fExtendedLightProfile write fData.fExtendedLightProfile;
               property CastShadows:boolean read fData.fCastShadows write fData.fCastShadows;
               property Generation:TpvUInt64 read fData.fGeneration write fData.fGeneration;
@@ -2210,8 +2210,9 @@ type EpvScene3D=class(Exception);
                     public
                      constructor Create(const aGroup:TGroup;const aIndex:TpvSizeInt=-1); reintroduce;
                      destructor Destroy; override;
-                     procedure LoadFromStream(const aStream:TStream);
-                     procedure SaveToStream(const aStream:TStream);
+                     procedure LoadFromStream(const aStream:TStream;const aImages,aSamplers,aTextures:TpvObjectList);
+                     procedure PrepareSaveToStream(const aImages,aSamplers,aTextures:TpvObjectList);
+                     procedure SaveToStream(const aStream:TStream;const aImages,aSamplers,aTextures:TpvObjectList);
                      procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceLight:TPasJSONItemObject);
                     public
                      property Data:TLightData read fData write fData;
@@ -3451,7 +3452,7 @@ type EpvScene3D=class(Exception);
                (TFaceCullingMode.None,TFaceCullingMode.None)
               );
              PVMFSignature:TPVMFSignature=('P','V','M','F');
-             PVMFVersion=TpVUInt32($00000004);
+             PVMFVersion=TpVUInt32($00000005);
       private
        fLock:TPasMPSpinLock;
        fLoadLock:TPasMPSpinLock;
@@ -9916,7 +9917,7 @@ begin
  fAABBTreeProxy:=-1;
  fInstanceLight:=nil;
  fDataPointer:=@fData;
- fData.fLightProfile:=-1;
+ fData.fLightProfileTexture:=nil;
  fData.fExtendedLightProfile:=false;
  fGeneration:=0;
  fIgnore:=false;
@@ -15120,19 +15121,26 @@ begin
  fNodes:=TNodes.Create;
  fNodes.OwnsObjects:=false;
  fData.fVisible:=true;
- fData.fLightProfile:=-1;
+ fData.fLightProfileTexture:=nil;
  fData.fExtendedLightProfile:=false;
 end;
 
 destructor TpvScene3D.TGroup.TLight.Destroy;
 begin
+ if assigned(fData.LightProfileTexture) then begin
+  try
+   fData.LightProfileTexture.DecRef;
+  finally
+   fData.LightProfileTexture:=nil;
+  end;
+ end;
  FreeAndNil(fNodes);
  inherited Destroy;
 end;
 
-procedure TpvScene3D.TGroup.TLight.LoadFromStream(const aStream:TStream);
+procedure TpvScene3D.TGroup.TLight.LoadFromStream(const aStream:TStream;const aImages,aSamplers,aTextures:TpvObjectList);
 var StreamIO:TpvStreamIO;
-    Index,Count:TpvSizeInt;
+    Index,Count,LightProfileIndex:TpvSizeInt;
 begin
 
  StreamIO:=TpvStreamIO.Create(aStream);
@@ -15154,7 +15162,15 @@ begin
 
   fData.fColor:=StreamIO.ReadVector3;
 
-  fData.fLightProfile:=StreamIO.ReadInt32;
+  LightProfileIndex:=StreamIO.ReadInt64;
+  if (LightProfileIndex>=0) and (LightProfileIndex<aTextures.Count) then begin
+   fData.LightProfileTexture:=TpvScene3D.TTexture(aTextures[LightProfileIndex]);
+   if assigned(fData.LightProfileTexture) then begin
+    fData.LightProfileTexture.IncRef;
+   end;
+  end else begin
+   fData.LightProfileTexture:=nil;
+  end;
 
   fData.fExtendedLightProfile:=StreamIO.ReadBoolean;
 
@@ -15176,9 +15192,16 @@ begin
 
 end;
 
-procedure TpvScene3D.TGroup.TLight.SaveToStream(const aStream:TStream);
+procedure TpvScene3D.TGroup.TLight.PrepareSaveToStream(const aImages,aSamplers,aTextures:TpvObjectList);
+begin
+ if assigned(fData.LightProfileTexture) then begin
+  fData.LightProfileTexture.PrepareSaveToStream(aImages,aSamplers,aTextures);
+ end;
+end;
+
+procedure TpvScene3D.TGroup.TLight.SaveToStream(const aStream:TStream;const aImages,aSamplers,aTextures:TpvObjectList);
 var StreamIO:TpvStreamIO;
-    Index,Count:TpvSizeInt;
+    Index,Count,LightProfileIndex:TpvSizeInt;
 begin
 
  StreamIO:=TpvStreamIO.Create(aStream);
@@ -15200,7 +15223,11 @@ begin
 
   StreamIO.WriteVector3(fData.fColor);
 
-  StreamIO.WriteInt32(fData.fLightProfile);
+  LightProfileIndex:=-1;
+  if assigned(fData.LightProfileTexture) then begin
+   LightProfileIndex:=aSamplers.IndexOf(fData.LightProfileTexture);
+  end;
+  StreamIO.WriteInt64(LightProfileIndex);
 
   StreamIO.WriteBoolean(fData.fExtendedLightProfile);
 
@@ -15239,7 +15266,7 @@ begin
  fData.fColor.y:=1.0;
  fData.fColor.z:=1.0;
  fData.fVisible:=true;
- fData.fLightProfile:=-1;
+ fData.fLightProfileTexture:=nil;
  fData.fExtendedLightProfile:=false;
  fData.fCastShadows:=false;
  fData.fGeneration:=1;
@@ -18470,20 +18497,6 @@ begin
          end;
         end;
 
-        // Read lights
-        Count:=StreamIO.ReadInt64;
-        fLights.Clear;
-        for Index:=0 to Count-1 do begin
-         Light:=TpvScene3D.TGroup.TLight.Create(self);
-         try
-          Light.LoadFromStream(aStream);
-          AddLight(Light);
-         except
-          FreeAndNil(Light);
-          raise;
-         end;
-        end;
-
         // Read images
         Count:=StreamIO.ReadInt64;
         for Index:=0 to Count-1 do begin
@@ -18561,6 +18574,20 @@ begin
          FinalizeMaterials(false);
         finally
          fSceneInstance.fMaterialListLock.Release;
+        end;
+
+        // Read lights
+        Count:=StreamIO.ReadInt64;
+        fLights.Clear;
+        for Index:=0 to Count-1 do begin
+         Light:=TpvScene3D.TGroup.TLight.Create(self);
+         try
+          Light.LoadFromStream(aStream,CollectedImages,CollectedSamplers,CollectedTextures);
+          AddLight(Light);
+         except
+          FreeAndNil(Light);
+          raise;
+         end;
         end;
 
         // Read meshes
@@ -18814,6 +18841,9 @@ begin
         end;
        end;
       end; 
+      for Index:=0 to fLights.Count-1 do begin
+       TpvScene3D.TGroup.TLight(fLights[Index]).PrepareSaveToStream(CollectedImages,CollectedSamplers,CollectedTextures);
+      end;
 
       // Write culling
       StreamIO.WriteBoolean(fCulling);
@@ -18900,13 +18930,6 @@ begin
        TpvScene3D.TGroup.TCamera(fCameras[Index]).SaveToStream(aStream);
       end;
 
-      // Write lights
-      Count:=fLights.Count;
-      StreamIO.WriteInt64(Count);
-      for Index:=0 to Count-1 do begin
-       TpvScene3D.TGroup.TLight(fLights[Index]).SaveToStream(aStream);
-      end;
-
       // Write images
       Count:=CollectedImages.Count;
       StreamIO.WriteInt64(Count);
@@ -18933,6 +18956,13 @@ begin
       StreamIO.WriteInt64(Count);
       for Index:=0 to Count-1 do begin
        TpvScene3D.TMaterial(CollectedMaterials[Index]).SaveToStream(aStream,CollectedImages,CollectedSamplers,CollectedTextures);
+      end;
+
+      // Write lights
+      Count:=fLights.Count;
+      StreamIO.WriteInt64(Count);
+      for Index:=0 to Count-1 do begin
+       TpvScene3D.TGroup.TLight(fLights[Index]).SaveToStream(aStream,CollectedImages,CollectedSamplers,CollectedTextures);
       end;
 
       // Write meshes
@@ -29783,10 +29813,13 @@ begin
        if (Intensity>0.0) and (Light.fRadius>0.0) then begin
         Light.fLightItemIndex:=aLightItemArray.AddNewIndex;
         LightItem:=@aLightItemArray.Items[Light.fLightItemIndex];
-        LightItem^.TypeLightProfile:=(TpvUInt32(Light.fDataPointer^.Type_) and $f) or
-                                     (TpvUInt32(ord(Light.fDataPointer^.fLightProfile>=0) and 1) shl 16) or
-                                     (TpvUInt32(ord(Light.fDataPointer^.fExtendedLightProfile) and 1) shl 17) or
-                                     (TpvUInt32(Light.fDataPointer^.fLightProfile and $3fff) shl 18);
+        LightItem^.TypeLightProfile:=(TpvUInt32(Light.fDataPointer^.Type_) and $f);
+        if assigned(Light.fDataPointer^.fLightProfileTexture) then begin
+         LightItem^.TypeLightProfile:=LightItem^.TypeLightProfile or
+                                      (TpvUInt32(1) shl 16) or
+                                      (TpvUInt32(ord(Light.fDataPointer^.fExtendedLightProfile) and 1) shl 17) or
+                                      (TpvUInt32(Light.fDataPointer^.fLightProfileTexture.fID and $3fff) shl 18);
+        end;
         LightItem^.ShadowMapIndex:=0;
         InnerConeAngleCosinus:=cos(Light.fDataPointer^.InnerConeAngle);
         OuterConeAngleCosinus:=cos(Light.fDataPointer^.OuterConeAngle);
