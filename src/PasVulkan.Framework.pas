@@ -14077,7 +14077,7 @@ begin
      AddLine('      "MemoryChunkBlocks": {');
      begin
       BlockIndex:=0;
-      Node:=MemoryChunk.fSizeRedBlackTree.fRoot;
+      Node:=MemoryChunk.fOffsetRedBlackTree.fRoot;
       while assigned(Node) do begin
        MemoryChunkBlock:=Node.fValue;
        if assigned(MemoryChunkBlock) then begin
