@@ -816,7 +816,8 @@ type EpvScene3D=class(Exception);
                      WhiteTexture=0,
                      DefaultNormalMapTexture=1,
                      DefaultParticleTexture=2,
-                     ResourceTexture=3
+                     ResourceIESTexture=3,
+                     ResourceTexture=4
                     );
                    THashData=packed record
                     MessageDigest:TpvHashXXHash64.TMessageDigest;
@@ -826,6 +827,7 @@ type EpvScene3D=class(Exception);
              private
               fKind:TKind;
               fResourceDataStream:TMemoryStream;
+              fIESTexture:TpvIESLoader.TTexture;
               fHashData:THashData;
               fTexture:TpvVulkanTexture;
               fLock:TPasMPSpinLock;
@@ -847,6 +849,7 @@ type EpvScene3D=class(Exception);
               procedure AssignFromStream(const aName:TpvUTF8String;const aStream:TStream);
               procedure LoadFromStream(const aStream:TStream);
               procedure SaveToStream(const aStream:TStream);
+              procedure AssignFromIES(const aName:TpvUTF8String;const aIESLoader:TpvIESLoader);
               procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceImage:TPasGLTF.TImage);
               procedure DumpMemoryUsage(const aStringList:TStringList;var aTotalSizeVRAM,aTotalSizeRAM:TpvUInt64);
              published
@@ -3453,7 +3456,7 @@ type EpvScene3D=class(Exception);
                (TFaceCullingMode.None,TFaceCullingMode.None)
               );
              PVMFSignature:TPVMFSignature=('P','V','M','F');
-             PVMFVersion=TpVUInt32($00000005);
+             PVMFVersion=TpVUInt32($00000006);
       private
        fLock:TPasMPSpinLock;
        fLoadLock:TPasMPSpinLock;
@@ -6404,11 +6407,13 @@ begin
  fResourceDataStream:=TMemoryStream.Create;
  fLock:=TPasMPSpinLock.Create;
  fTexture:=nil;
+ fIESTexture.Data:=nil;
 end;
 
 destructor TpvScene3D.TImage.Destroy;
 begin
  Unload;
+ fIESTexture.Data:=nil;
  FreeAndNil(fTexture);
  FreeAndNil(fLock);
  FreeAndNil(fResourceDataStream);
@@ -6598,6 +6603,30 @@ begin
            TemporaryPixels:=nil;
           end;
          end;
+         TpvScene3D.TImage.TKind.ResourceIESTexture:begin
+          fTexture.Name:='TpvScene3D.TImage.TKind.ResourceIESTexture["'+fName+'","'+FileName+'"]';
+          fTexture.LoadFromMemory(VK_FORMAT_R32_SFLOAT,
+                                  VK_SAMPLE_COUNT_1_BIT,
+                                  fIESTexture.Width,
+                                  fIESTexture.Height,
+                                  0,
+                                  0,
+                                  1,
+                                  0,
+                                  [TpvVulkanTextureUsageFlag.General,
+                                   TpvVulkanTextureUsageFlag.TransferDst,
+                                   TpvVulkanTextureUsageFlag.TransferSrc,
+                                   TpvVulkanTextureUsageFlag.Sampled],
+                                  @fIESTexture.Data[0],
+                                  length(fIESTexture.Data)*SizeOf(TpvFloat),
+                                  false,
+                                  false,
+                                  0,
+                                  true,
+                                  false,
+                                  false,
+                                  pvAllocationGroupIDScene3DTexture);
+         end;
          else begin
           fTexture.Name:='TpvScene3D.TImage["'+fName+'","'+FileName+'"]';
           fTexture.LoadFromImage(fResourceDataStream,
@@ -6740,6 +6769,9 @@ begin
  if fResourceDataStream.Size>0 then begin
   result.MessageDigest:=TpvHashXXHash64.Process(fResourceDataStream.Memory,fResourceDataStream.Size,0);
   Move(fResourceDataStream.Memory^,result.FirstBytes,Min(SizeOf(result.FirstBytes),fResourceDataStream.Size));
+ end else if length(fIESTexture.Data)>0 then begin
+  result.MessageDigest:=TpvHashXXHash64.Process(@fIESTexture.Data[0],Length(fIESTexture.Data)*SizeOf(fIESTexture.Data[0]),0);
+  Move(fIESTexture.Data[0],result.FirstBytes,Min(SizeOf(result.FirstBytes),Length(fIESTexture.Data)*SizeOf(fIESTexture.Data[0])));
  end;
 end;
 
@@ -6778,6 +6810,7 @@ var StreamIO:TpvStreamIO;
     Size:TpvUInt64;
     FileName:TpvUTF8String;
     DataStream:TStream;
+    IESLoader:TpvIESLoader;
 begin
 
  StreamIO:=TpvStreamIO.Create(aStream);
@@ -6787,38 +6820,94 @@ begin
 
   fKind:=TpvScene3D.TImage.TKind(StreamIO.ReadUInt32);
 
-  if fKind=TpvScene3D.TImage.TKind.ResourceTexture then begin
+  case fKind of
 
-   FileName:=StreamIO.ReadUTF8String;
+   TpvScene3D.TImage.TKind.ResourceIESTexture:begin
 
-   fResourceDataStream.Clear;
-   if length(FileName)<>0 then begin
-    if pvApplication.Assets.ExistAsset(FileName) then begin
-     DataStream:=pvApplication.Assets.GetAssetStream(FileName);
-     if assigned(DataStream) then begin
-      try
-       DataStream.Seek(0,soBeginning);
-       fResourceDataStream.CopyFrom(DataStream,DataStream.Size);
-      finally
-       FreeAndNil(DataStream);
+    fResourceDataStream.Clear;
+
+    FileName:=StreamIO.ReadUTF8String;
+
+    if length(FileName)<>0 then begin
+
+     if pvApplication.Assets.ExistAsset(FileName) then begin
+      DataStream:=pvApplication.Assets.GetAssetStream(FileName);
+      if assigned(DataStream) then begin
+       try
+        DataStream.Seek(0,soBeginning);
+        IESLoader:=TpvIESLoader.Create;
+        try
+         IESLoader.LoadFromStream(DataStream);
+         IESLoader.GetTexture(fIESTexture);
+        finally
+         FreeAndNil(IESLoader);
+        end;
+       finally
+        FreeAndNil(DataStream);
+       end;
       end;
+     end else if FileExists(FileName) then begin
+      IESLoader:=TpvIESLoader.Create;
+      try
+       IESLoader.LoadFromFile(FileName);
+       IESLoader.GetTexture(fIESTexture);
+      finally
+       FreeAndNil(IESLoader);
+      end;
+     end else begin
+      fKind:=TpvScene3D.TImage.TKind.WhiteTexture;
      end;
-    end else if FileExists(FileName) then begin
-     fResourceDataStream.LoadFromFile(FileName);
+
     end else begin
-     fKind:=TpvScene3D.TImage.TKind.WhiteTexture;
+
+     fIESTexture.Width:=StreamIO.ReadInt32;
+     fIESTexture.Height:=StreamIO.ReadInt32;
+
+     SetLength(fIESTexture.Data,fIESTexture.Width*fIESTexture.Height);
+
+     StreamIO.Stream.Read(fIESTexture.Data[0],fIESTexture.Width*fIESTexture.Height*SizeOf(TpvFloat));
+
     end;
-    Size:=StreamIO.ReadUInt64; // Skip size in this case, because it is not needed
-    if Size>0 then begin
-     aStream.Seek(Size,soCurrent); // Skip data in this case, because it is not needed
-    end;
-   end else begin
-    Size:=StreamIO.ReadUInt64;
-    if Size>0 then begin
-     fResourceDataStream.CopyFrom(aStream,Size);
+
+   end;
+
+   TpvScene3D.TImage.TKind.ResourceTexture:begin
+
+    FileName:=StreamIO.ReadUTF8String;
+
+    fResourceDataStream.Clear;
+    if length(FileName)<>0 then begin
+     if pvApplication.Assets.ExistAsset(FileName) then begin
+      DataStream:=pvApplication.Assets.GetAssetStream(FileName);
+      if assigned(DataStream) then begin
+       try
+        DataStream.Seek(0,soBeginning);
+        fResourceDataStream.CopyFrom(DataStream,DataStream.Size);
+       finally
+        FreeAndNil(DataStream);
+       end;
+      end;
+     end else if FileExists(FileName) then begin
+      fResourceDataStream.LoadFromFile(FileName);
+     end else begin
+      fKind:=TpvScene3D.TImage.TKind.WhiteTexture;
+     end;
+     Size:=StreamIO.ReadUInt64; // Skip size in this case, because it is not needed
+     if Size>0 then begin
+      aStream.Seek(Size,soCurrent); // Skip data in this case, because it is not needed
+     end;
     end else begin
-     fKind:=TpvScene3D.TImage.TKind.WhiteTexture;
+     Size:=StreamIO.ReadUInt64;
+     if Size>0 then begin
+      fResourceDataStream.CopyFrom(aStream,Size);
+     end else begin
+      fKind:=TpvScene3D.TImage.TKind.WhiteTexture;
+     end;
     end;
+
+   end;
+
+   else begin
    end;
 
   end;
@@ -6841,15 +6930,34 @@ begin
 
   StreamIO.WriteUInt32(TpvUInt32(fKind));
 
-  if fKind=TpvScene3D.TImage.TKind.ResourceTexture then begin
+  case fKind of
 
-   StreamIO.WriteUTF8String(''); // for later use for external texture file assets, but for now just embedded textures for simplicity
+   TpvScene3D.TImage.TKind.ResourceIESTexture:begin
 
-   Size:=fResourceDataStream.Size;
-   StreamIO.WriteUInt64(Size);
-   if Size>0 then begin
-    fResourceDataStream.Seek(0,soBeginning);
-    aStream.CopyFrom(fResourceDataStream,Size);
+    StreamIO.WriteUTF8String(''); // for later use for external texture file assets, but for now just embedded textures for simplicity
+
+    StreamIO.WriteInt32(fIESTexture.Width);
+    StreamIO.WriteInt32(fIESTexture.Height);
+
+    StreamIO.Stream.Write(fIESTexture.Data[0],fIESTexture.Width*fIESTexture.Height*SizeOf(TpvFloat));
+
+   end;
+
+   TpvScene3D.TImage.TKind.ResourceTexture:begin
+
+    StreamIO.WriteUTF8String(''); // for later use for external texture file assets, but for now just embedded textures for simplicity
+
+    Size:=fResourceDataStream.Size;
+    StreamIO.WriteUInt64(Size);
+    if Size>0 then begin
+     fResourceDataStream.Seek(0,soBeginning);
+     aStream.CopyFrom(fResourceDataStream,Size);
+    end;
+
+   end;
+
+   else begin
+
    end;
 
   end;
@@ -6858,6 +6966,14 @@ begin
   FreeAndNil(StreamIO);
  end;
  
+end;
+
+procedure TpvScene3D.TImage.AssignFromIES(const aName:TpvUTF8String;const aIESLoader:TpvIESLoader);
+begin
+ fName:=aName;
+ fKind:=TpvScene3D.TImage.TKind.ResourceIESTexture;
+ fResourceDataStream.Clear;
+ aIESLoader.GetTexture(fIESTexture);
 end;
 
 procedure TpvScene3D.TImage.AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceImage:TPasGLTF.TImage);
