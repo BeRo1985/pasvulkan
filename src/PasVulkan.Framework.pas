@@ -1051,6 +1051,13 @@ type EpvVulkanException=class(Exception);
        fMemoryChunkList:PpvVulkanDeviceMemoryManagerChunkList;
        fSize:TVkDeviceSize;
        fUsed:TVkDeviceSize;
+       fAllocationCount:TVkDeviceSize;
+       fAllocationBytes:TVkDeviceSize;
+       fAllocationSizeMin:TVkDeviceSize;
+       fAllocationSizeMax:TVkDeviceSize;
+       fUnusedRangeCount:TVkDeviceSize;
+       fUnusedRangeSizeMin:TVkDeviceSize;
+       fUnusedRangeSizeMax:TVkDeviceSize;
        fMappedOffset:TVkDeviceSize;
        fMappedSize:TVkDeviceSize;
        fOffsetRedBlackTree:TpvVulkanDeviceMemoryChunkBlockRedBlackTree;
@@ -1287,6 +1294,8 @@ type EpvVulkanException=class(Exception);
                                    const aFence:TpvVulkanFence=nil);
 
        procedure Dump(const aStringList:TStringList=nil);
+
+       procedure DumpJSON(const aStringList:TStringList=nil);
 
       published
 
@@ -11678,6 +11687,20 @@ begin
 
  fUsed:=0;
 
+ fAllocationCount:=0;
+
+ fAllocationBytes:=0;
+
+ fAllocationSizeMin:=VK_WHOLE_SIZE;
+
+ fAllocationSizeMax:=0;
+
+ fUnusedRangeCount:=0;
+
+ fUnusedRangeSizeMin:=VK_WHOLE_SIZE;
+
+ fUnusedRangeSizeMax:=0;
+
  fMappedOffset:=0;
 
  fMappedSize:=fSize;
@@ -11934,7 +11957,7 @@ function TpvVulkanDeviceMemoryChunk.AllocateMemory(aChunkBlock:PpvVulkanDeviceMe
 var Node,OtherNode,LastNode:TpvVulkanDeviceMemoryChunkBlockRedBlackTreeNode;
     MemoryChunkBlock:TpvVulkanDeviceMemoryChunkBlock;
     Alignment,MemoryChunkBlockBeginOffset,MemoryChunkBlockEndOffset,PayloadBeginOffset,PayloadEndOffset,
-    BufferImageGranularity,BufferImageGranularityInvertedMask:TVkDeviceSize;
+    BufferImageGranularity,BufferImageGranularityInvertedMask,UsedSize,UnusedSize:TVkDeviceSize;
     TryAgain:boolean;
 begin
 
@@ -12136,7 +12159,24 @@ begin
        aOffset^:=PayloadBeginOffset;
       end;
 
-      inc(fUsed,PayloadEndOffset-PayloadBeginOffset);
+      UsedSize:=PayloadEndOffset-PayloadBeginOffset;
+      if UsedSize>0 then begin
+
+       inc(fUsed,UsedSize);
+
+       inc(fAllocationCount);
+       inc(fAllocationBytes,UsedSize);
+       fAllocationSizeMin:=Min(fAllocationSizeMin,UsedSize);
+       fAllocationSizeMax:=Max(fAllocationSizeMax,UsedSize);
+
+      end;
+
+      UnusedSize:=MemoryChunkBlock.Size-UsedSize;
+      if UnusedSize>0 then begin
+       inc(fUnusedRangeCount);
+       fUnusedRangeSizeMin:=Min(fUnusedRangeSizeMin,UnusedSize);
+       fUnusedRangeSizeMax:=Max(fUnusedRangeSizeMax,UnusedSize);
+      end;
 
      end;
 
@@ -12173,12 +12213,13 @@ begin
   if assigned(Node) then begin
    MemoryChunkBlock:=Node.fValue;
    if MemoryChunkBlock.fAllocationType<>TpvVulkanDeviceMemoryAllocationType.Free then begin
-    dec(fUsed,MemoryChunkBlock.Size);
     if aSize=0 then begin
      result:=FreeMemory(aOffset);
     end else if MemoryChunkBlock.fSize=aSize then begin
      result:=true;
     end else begin
+     dec(fUsed,MemoryChunkBlock.Size);
+     dec(fAllocationBytes,MemoryChunkBlock.Size);
      if MemoryChunkBlock.fSize<aSize then begin
       OtherNode:=MemoryChunkBlock.fOffsetRedBlackTreeNode.Successor;
       if assigned(OtherNode) and
@@ -12215,9 +12256,10 @@ begin
        result:=true;
       end;
      end;
-    end;
-    if result then begin
-     inc(fUsed,aSize);
+     if result then begin
+      inc(fUsed,aSize);
+      inc(fAllocationBytes,aSize);
+     end;
     end;
    end;
   end;
@@ -12246,6 +12288,8 @@ begin
    if MemoryChunkBlock.fAllocationType<>TpvVulkanDeviceMemoryAllocationType.Free then begin
 
     dec(fUsed,MemoryChunkBlock.fSize);
+    dec(fAllocationBytes,MemoryChunkBlock.Size);
+    dec(fAllocationCount);
 
     // Freeing including coalescing free blocks
     while assigned(Node) do begin
@@ -13704,6 +13748,235 @@ begin
  end else begin
   WriteLn(s);
  end;
+
+end;
+
+procedure TpvVulkanDeviceMemoryManager.DumpJSON(const aStringList:TStringList);
+ procedure AddLine(const aLine:TpvRawByteString);
+ begin
+  if assigned(aStringList) then begin
+   aStringList.Add(aLine);
+  end else begin
+   WriteLn(aLine);
+  end;
+ end;
+var HeapIndex,TypeIndex:TpvSizeInt;
+    MemoryChunk:TpvVulkanDeviceMemoryChunk;
+    Size,Used:TpvUInt64;
+    Index:TpvSizeInt;
+    s:TpvRawByteString;
+    BlockCount,BlockBytes,
+    AllocationCount,AllocationBytes,AllocationSizeMin,AllocationSizeMax,
+    UnusedRangeCount,UnusedRangeSizeMin,UnusedRangeSizeMax:TpvUInt64;
+    Flags:TpvUTF8String;
+begin
+
+ AddLine('{');
+ begin
+  
+  AddLine('  "General": {');
+  begin
+   AddLine('    "API": "Vulkan",');
+   AddLine('    "apiVersion": "'+fDevice.fPhysicalDevice.GetAPIVersionString+'",');
+   AddLine('    "GPU": "'+fDevice.fPhysicalDevice.DeviceName+'",');
+   AddLine('    "deviceType": '+IntToStr(TpvUInt64(fDevice.fPhysicalDevice.fProperties.deviceType))+',');
+   AddLine('    "maxMemoryAllocationCount": '+IntToStr(TpvUInt64(fDevice.fPhysicalDevice.fProperties.limits.maxMemoryAllocationCount))+',');
+   AddLine('    "bufferImageGranularity": '+IntToStr(TpvUInt64(fDevice.fPhysicalDevice.fProperties.limits.bufferImageGranularity))+',');
+   AddLine('    "nonCoherentAtomSize": '+IntToStr(TpvUInt64(fDevice.fPhysicalDevice.fProperties.limits.nonCoherentAtomSize))+',');
+   AddLine('    "memoryHeapCount": '+IntToStr(TpvUInt64(fDevice.fPhysicalDevice.fMemoryProperties.memoryHeapCount))+',');
+   AddLine('    "memoryTypeCount": '+IntToStr(TpvUInt64(fDevice.fPhysicalDevice.fMemoryProperties.memoryTypeCount)));
+  end;
+  AddLine('},');
+
+  AddLine('  "Total": {');
+  begin
+   BlockCount:=0;
+   BlockBytes:=0;
+   AllocationCount:=0;
+   AllocationBytes:=0;
+   UnusedRangeCount:=0;
+   AllocationSizeMin:=High(TpvUInt64);
+   AllocationSizeMax:=0;
+   UnusedRangeSizeMin:=High(TpvUInt64);
+   UnusedRangeSizeMax:=0;
+   MemoryChunk:=fMemoryChunkList.Last;
+   while assigned(MemoryChunk) do begin
+    inc(BlockCount);
+    inc(BlockBytes,MemoryChunk.fSize);
+    inc(AllocationCount,MemoryChunk.fAllocationCount);
+    inc(AllocationBytes,MemoryChunk.fAllocationBytes);
+    inc(UnusedRangeCount,MemoryChunk.fUnusedRangeCount);
+    AllocationSizeMin:=Min(AllocationSizeMin,MemoryChunk.fAllocationSizeMin);
+    AllocationSizeMax:=Max(AllocationSizeMax,MemoryChunk.fAllocationSizeMax);
+    UnusedRangeSizeMin:=Min(UnusedRangeSizeMin,MemoryChunk.fUnusedRangeSizeMin);
+    UnusedRangeSizeMax:=Max(UnusedRangeSizeMax,MemoryChunk.fUnusedRangeSizeMax);
+    MemoryChunk:=MemoryChunk.fPreviousMemoryChunk;
+   end;
+   AddLine('    "BlockCount": '+IntToStr(BlockCount)+',');
+   AddLine('    "BlockBytes": '+IntToStr(BlockBytes)+',');
+   AddLine('    "AllocationCount": '+IntToStr(AllocationCount)+',');
+   AddLine('    "AllocationBytes": '+IntToStr(AllocationBytes)+',');
+   AddLine('    "UnusedRangeCount": '+IntToStr(UnusedRangeCount)+',');
+   AddLine('    "AllocationSizeMin": '+IntToStr(AllocationSizeMin)+',');
+   AddLine('    "AllocationSizeMax": '+IntToStr(AllocationSizeMax)+',');
+   AddLine('    "UnusedRangeSizeMin": '+IntToStr(UnusedRangeSizeMin)+',');
+   AddLine('    "UnusedRangeSizeMax": '+IntToStr(UnusedRangeSizeMax)); 
+  end;
+  AddLine('  },');
+
+  AddLine('  "MemoryInfo": {');
+  begin
+   for HeapIndex:=0 to fDevice.fPhysicalDevice.fMemoryProperties.memoryHeapCount-1 do begin
+    BlockCount:=0;
+    BlockBytes:=0;
+    AllocationCount:=0;
+    AllocationBytes:=0;
+    UnusedRangeCount:=0;
+    AllocationSizeMin:=High(TpvUInt64);
+    AllocationSizeMax:=0;
+    UnusedRangeSizeMin:=High(TpvUInt64);
+    UnusedRangeSizeMax:=0;
+    MemoryChunk:=fMemoryChunkList.First;
+    while assigned(MemoryChunk) do begin
+     if MemoryChunk.fMemoryHeapIndex=HeapIndex then begin
+      inc(BlockCount);
+      inc(BlockBytes,MemoryChunk.fSize);
+      inc(AllocationCount,MemoryChunk.fAllocationCount);
+      inc(AllocationBytes,MemoryChunk.fAllocationBytes);
+      inc(UnusedRangeCount,MemoryChunk.fUnusedRangeCount);
+      AllocationSizeMin:=Min(AllocationSizeMin,MemoryChunk.fAllocationSizeMin);
+      AllocationSizeMax:=Max(AllocationSizeMax,MemoryChunk.fAllocationSizeMax);
+      UnusedRangeSizeMin:=Min(UnusedRangeSizeMin,MemoryChunk.fUnusedRangeSizeMin);
+      UnusedRangeSizeMax:=Max(UnusedRangeSizeMax,MemoryChunk.fUnusedRangeSizeMax);
+     end;
+     MemoryChunk:=MemoryChunk.fNextMemoryChunk;
+    end;
+    AddLine('    "Heap '+IntToStr(HeapIndex)+'": {');
+    begin
+     Flags:='';
+     if (fDevice.fPhysicalDevice.fMemoryProperties.memoryHeaps[HeapIndex].flags and TVkMemoryHeapFlags(VK_MEMORY_HEAP_DEVICE_LOCAL_BIT))<>0 then begin
+      Flags:=Flags+'"DEVICE_LOCAL"';
+     end;
+     if (fDevice.fPhysicalDevice.fMemoryProperties.memoryHeaps[HeapIndex].flags and TVkMemoryHeapFlags(VK_MEMORY_HEAP_MULTI_INSTANCE_BIT))<>0 then begin
+      if length(Flags)>0 then begin
+       Flags:=Flags+', ';
+      end;
+      Flags:=Flags+'"MULTI_INSTANCE"';
+     end;
+     AddLine('      "Flags": ['+Flags+'],');
+     AddLine('      "Size": '+IntToStr(fDevice.fPhysicalDevice.fMemoryProperties.memoryHeaps[HeapIndex].size)+',');
+     AddLine('      "Budget": {');
+     begin
+      AddLine('        "BudgetBytes": '+IntToStr(fDevice.fPhysicalDevice.fMemoryProperties.memoryHeaps[HeapIndex].size)+',');
+      AddLine('        "UsageBytes": '+IntToStr(AllocationBytes));
+     end;
+     AddLine('      },');
+     AddLine('      "Stats": {');
+     begin
+      AddLine('        "BlockCount": '+IntToStr(BlockCount)+',');
+      AddLine('        "BlockBytes": '+IntToStr(BlockBytes)+',');
+      AddLine('        "AllocationCount": '+IntToStr(AllocationCount)+',');
+      AddLine('        "AllocationBytes": '+IntToStr(AllocationBytes)+',');
+      AddLine('        "UnusedRangeCount": '+IntToStr(UnusedRangeCount)+',');
+      AddLine('        "AllocationSizeMin": '+IntToStr(AllocationSizeMin)+',');
+      AddLine('        "AllocationSizeMax": '+IntToStr(AllocationSizeMax)+',');
+      AddLine('        "UnusedRangeSizeMin": '+IntToStr(UnusedRangeSizeMin)+',');
+      AddLine('        "UnusedRangeSizeMax": '+IntToStr(UnusedRangeSizeMax));
+     end;
+     AddLine('      },');
+     AddLine('      "MemoryPools": {');
+     begin
+      for TypeIndex:=0 to fDevice.fPhysicalDevice.fMemoryProperties.memoryTypeCount-1 do begin
+       if (fDevice.fPhysicalDevice.fMemoryProperties.memoryTypes[TypeIndex].heapIndex=HeapIndex) and
+          (fDevice.fPhysicalDevice.fMemoryProperties.memoryTypes[TypeIndex].propertyFlags<>0) then begin
+        BlockCount:=0;
+        BlockBytes:=0;
+        AllocationCount:=0;
+        AllocationBytes:=0;
+        UnusedRangeCount:=0;
+        AllocationSizeMin:=High(TpvUInt64);
+        AllocationSizeMax:=0;
+        UnusedRangeSizeMin:=High(TpvUInt64);
+        UnusedRangeSizeMax:=0;
+        MemoryChunk:=fMemoryChunkList.First;
+        while assigned(MemoryChunk) do begin
+         if MemoryChunk.fMemoryTypeIndex=TypeIndex then begin
+          inc(BlockCount);
+          inc(BlockBytes,MemoryChunk.fSize);
+          inc(AllocationCount,MemoryChunk.fAllocationCount);
+          inc(AllocationBytes,MemoryChunk.fAllocationBytes);
+          inc(UnusedRangeCount,MemoryChunk.fUnusedRangeCount);
+          AllocationSizeMin:=Min(AllocationSizeMin,MemoryChunk.fAllocationSizeMin);
+          AllocationSizeMax:=Max(AllocationSizeMax,MemoryChunk.fAllocationSizeMax);
+          UnusedRangeSizeMin:=Min(UnusedRangeSizeMin,MemoryChunk.fUnusedRangeSizeMin);
+          UnusedRangeSizeMax:=Max(UnusedRangeSizeMax,MemoryChunk.fUnusedRangeSizeMax);
+         end;
+         MemoryChunk:=MemoryChunk.fNextMemoryChunk;
+        end;
+        AddLine('        "Type '+IntToStr(TypeIndex)+'": {');
+        begin
+         Flags:='';
+         if (fDevice.fPhysicalDevice.fMemoryProperties.memoryTypes[TypeIndex].propertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT))<>0 then begin
+          Flags:=Flags+'"DEVICE_LOCAL"';
+         end;
+         if (fDevice.fPhysicalDevice.fMemoryProperties.memoryTypes[TypeIndex].propertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))<>0 then begin
+          if length(Flags)>0 then begin
+           Flags:=Flags+', ';
+          end;
+          Flags:=Flags+'"HOST_VISIBLE"';
+         end;
+         if (fDevice.fPhysicalDevice.fMemoryProperties.memoryTypes[TypeIndex].propertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT))<>0 then begin
+          if length(Flags)>0 then begin
+           Flags:=Flags+', ';
+          end;
+          Flags:=Flags+'"HOST_COHERENT"';
+         end;
+         if (fDevice.fPhysicalDevice.fMemoryProperties.memoryTypes[TypeIndex].propertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_CACHED_BIT))<>0 then begin
+          if length(Flags)>0 then begin
+           Flags:=Flags+', ';
+          end;
+          Flags:=Flags+'"HOST_CACHED"';
+         end;
+         if (fDevice.fPhysicalDevice.fMemoryProperties.memoryTypes[TypeIndex].propertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT))<>0 then begin
+          if length(Flags)>0 then begin
+           Flags:=Flags+', ';
+          end;
+          Flags:=Flags+'"LAZILY_ALLOCATED"';
+         end;
+         if (fDevice.fPhysicalDevice.fMemoryProperties.memoryTypes[TypeIndex].propertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_PROTECTED_BIT)<>0) then begin
+          if length(Flags)>0 then begin
+           Flags:=Flags+', ';
+          end;
+          Flags:=Flags+'"PROTECTED"';
+         end;
+         AddLine('          "Flags": ['+Flags+'],');
+         AddLine('          "Stats": {');
+         begin
+          AddLine('            "BlockCount": '+IntToStr(BlockCount)+',');
+          AddLine('            "BlockBytes": '+IntToStr(BlockBytes)+',');
+          AddLine('            "AllocationCount": '+IntToStr(AllocationCount)+',');
+          AddLine('            "AllocationBytes": '+IntToStr(AllocationBytes)+',');
+          AddLine('            "UnusedRangeCount": '+IntToStr(UnusedRangeCount)+',');
+          AddLine('            "AllocationSizeMin": '+IntToStr(AllocationSizeMin)+',');
+          AddLine('            "AllocationSizeMax": '+IntToStr(AllocationSizeMax)+',');
+          AddLine('            "UnusedRangeSizeMin": '+IntToStr(UnusedRangeSizeMin)+',');
+          AddLine('            "UnusedRangeSizeMax": '+IntToStr(UnusedRangeSizeMax));
+         end;
+         AddLine('          }');
+        end;
+        AddLine('        },');
+       end;
+      end;       
+     end; 
+     AddLine('      }');
+    end;
+    AddLine('    },');
+   end; 
+  end;
+  AddLine('  },');
+
+ end;
+ AddLine('}');
 
 end;
 
