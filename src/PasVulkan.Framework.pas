@@ -13789,7 +13789,7 @@ begin
    AddLine('    "memoryHeapCount": '+IntToStr(TpvUInt64(fDevice.fPhysicalDevice.fMemoryProperties.memoryHeapCount))+',');
    AddLine('    "memoryTypeCount": '+IntToStr(TpvUInt64(fDevice.fPhysicalDevice.fMemoryProperties.memoryTypeCount)));
   end;
-  AddLine('},');
+  AddLine('  },');
 
   AddLine('  "Total": {');
   begin
