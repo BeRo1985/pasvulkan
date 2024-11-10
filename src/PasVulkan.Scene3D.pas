@@ -1433,6 +1433,8 @@ type EpvScene3D=class(Exception);
               fInnerConeAngle:TpvFloat;
               fOuterConeAngle:TpvFloat;
               fColor:TpvVector3;
+              fLightProfile:TpvInt32;
+              fExtendedLightProfile:boolean;
               fCastShadows:boolean;
               fVisible:boolean;
               fAlways:boolean;
@@ -1444,6 +1446,8 @@ type EpvScene3D=class(Exception);
               property InnerConeAngle:TpvFloat read fInnerConeAngle write fInnerConeAngle;
               property OuterConeAngle:TpvFloat read fOuterConeAngle write fOuterConeAngle;
               property Color:TpvVector3 read fColor write fColor;
+              property LightProfile:TpvInt32 read fLightProfile write fLightProfile;
+              property ExtendedLightProfile:boolean read fExtendedLightProfile write fExtendedLightProfile;
               property CastShadows:boolean read fCastShadows write fCastShadows;
               property Visible:boolean read fVisible write fVisible;
               property Always:boolean read fAlways write fAlways;
@@ -1536,6 +1540,8 @@ type EpvScene3D=class(Exception);
               property InnerConeAngle:TpvFloat read fData.fInnerConeAngle write fData.fInnerConeAngle;
               property OuterConeAngle:TpvFloat read fData.fOuterConeAngle write fData.fOuterConeAngle;
               property Color:TpvVector3 read fData.fColor write fData.fColor;
+              property LightProfile:TpvInt32 read fData.fLightProfile write fData.fLightProfile;
+              property ExtendedLightProfile:boolean read fData.fExtendedLightProfile write fData.fExtendedLightProfile;
               property CastShadows:boolean read fData.fCastShadows write fData.fCastShadows;
               property Generation:TpvUInt64 read fData.fGeneration write fData.fGeneration;
              published
@@ -3445,7 +3451,7 @@ type EpvScene3D=class(Exception);
                (TFaceCullingMode.None,TFaceCullingMode.None)
               );
              PVMFSignature:TPVMFSignature=('P','V','M','F');
-             PVMFVersion=TpVUInt32($00000003);
+             PVMFVersion=TpVUInt32($00000004);
       private
        fLock:TPasMPSpinLock;
        fLoadLock:TPasMPSpinLock;
@@ -9910,6 +9916,8 @@ begin
  fAABBTreeProxy:=-1;
  fInstanceLight:=nil;
  fDataPointer:=@fData;
+ fData.fLightProfile:=-1;
+ fData.fExtendedLightProfile:=false;
  fGeneration:=0;
  fIgnore:=false;
 end;
@@ -15112,6 +15120,8 @@ begin
  fNodes:=TNodes.Create;
  fNodes.OwnsObjects:=false;
  fData.fVisible:=true;
+ fData.fLightProfile:=-1;
+ fData.fExtendedLightProfile:=false;
 end;
 
 destructor TpvScene3D.TGroup.TLight.Destroy;
@@ -15143,6 +15153,10 @@ begin
   fData.fOuterConeAngle:=StreamIO.ReadFloat;
 
   fData.fColor:=StreamIO.ReadVector3;
+
+  fData.fLightProfile:=StreamIO.ReadInt32;
+
+  fData.fExtendedLightProfile:=StreamIO.ReadBoolean;
 
   fData.fCastShadows:=StreamIO.ReadBoolean;
 
@@ -15186,6 +15200,10 @@ begin
 
   StreamIO.WriteVector3(fData.fColor);
 
+  StreamIO.WriteInt32(fData.fLightProfile);
+
+  StreamIO.WriteBoolean(fData.fExtendedLightProfile);
+
   StreamIO.WriteBoolean(fData.fCastShadows);
 
   StreamIO.WriteBoolean(fData.fVisible);
@@ -15221,6 +15239,8 @@ begin
  fData.fColor.y:=1.0;
  fData.fColor.z:=1.0;
  fData.fVisible:=true;
+ fData.fLightProfile:=-1;
+ fData.fExtendedLightProfile:=false;
  fData.fCastShadows:=false;
  fData.fGeneration:=1;
  if assigned(aSourceLight) then begin
@@ -29764,8 +29784,9 @@ begin
         Light.fLightItemIndex:=aLightItemArray.AddNewIndex;
         LightItem:=@aLightItemArray.Items[Light.fLightItemIndex];
         LightItem^.TypeLightProfile:=(TpvUInt32(Light.fDataPointer^.Type_) and $f) or
-                                     (TpvUInt32(0) shl 17) or
-                                     (TpvUInt32(0) shl 18);
+                                     (TpvUInt32(ord(Light.fDataPointer^.fLightProfile>=0) and 1) shl 16) or
+                                     (TpvUInt32(ord(Light.fDataPointer^.fExtendedLightProfile) and 1) shl 17) or
+                                     (TpvUInt32(Light.fDataPointer^.fLightProfile and $3fff) shl 18);
         LightItem^.ShadowMapIndex:=0;
         InnerConeAngleCosinus:=cos(Light.fDataPointer^.InnerConeAngle);
         OuterConeAngleCosinus:=cos(Light.fDataPointer^.OuterConeAngle);
