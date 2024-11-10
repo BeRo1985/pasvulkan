@@ -88,8 +88,7 @@
               switch (light.metaData.x) {
 #if !defined(REFLECTIVESHADOWMAPOUTPUT)
 #if defined(RAYTRACING)
-                case 1u:   // Directional 
-                case 5u: { // View directional
+                case 1u: { // Directional 
                   lightAttenuation *= getRaytracedHardShadow(rayOrigin, rayNormal, pointToLightDirection, rayOffset, 10000000.0);
                   break;
                 }
@@ -97,12 +96,14 @@
                   // Fall-through, because same raytracing attempt as for spot lights. 
                 }
                 case 3u: {  // Spot
+                  // Fall-through, because same raytracing attempt as for view directional lights.
+                }
+                case 5u: { // View directional
                   lightAttenuation *= getRaytracedHardShadow(rayOrigin, rayNormal, pointToLightDirection, rayOffset, min(10000000.0, length(pointToLightVector)));
                   break;
                 }
 #elif 0
-                case 1u:   // Directional 
-                case 5u: { // View directional 
+                case 1u: { // Directional 
                   // fall-through
                 }
                 case 3u: {  // Spot
@@ -115,7 +116,8 @@
                   }
                   break;
                 }
-                case 2u: {  // Point
+                case 2u:   // Point
+                case 5u: { // View directional 
                   float znear = 1e-2, zfar = 0.0; // TODO
                   vec4 moments = (textureLod(uCubeMapShadowMapArrayTexture, vec4(vec3(pointToLightDirection), float(int(light.metaData.y))), 0.0) + vec2(-0.035955884801, 0.0).xyyy) * mat4(0.2227744146, 0.0771972861, 0.7926986636, 0.0319417555, 0.1549679261, 0.1394629426, 0.7963415838, -0.172282317, 0.1451988946, 0.2120202157, 0.7258694464, -0.2758014811, 0.163127443, 0.2591432266, 0.6539092497, -0.3376131734);
                   lightAttenuation *= reduceLightBleeding(getMSMShadowIntensity(moments, clamp((length(pointToLightVector) - znear) / (zfar - znear), 0.0, 1.0), 5e-3, 1e-2), 0.0);
@@ -218,8 +220,7 @@
 #endif // SHADOWS
             switch (light.metaData.x) {
 #if !defined(REFLECTIVESHADOWMAPOUTPUT)
-              case 1u:   // Directional
-              case 5u: { // View directional
+              case 1u: { // Directional
                 break;
               }
               case 2u: {  // Point
@@ -244,6 +245,9 @@
               case 4u: {  // Primary directional
                 break;
               }
+              case 5u: {  // View directional
+                break;
+              }
               default: {
                 continue;
               }
@@ -251,7 +255,8 @@
 #if !defined(REFLECTIVESHADOWMAPOUTPUT)
             switch (light.metaData.x) {
               case 2u:    // Point
-              case 3u: {  // Spot
+              case 3u:    // Spot
+              case 5u: {  // View directional
                 if (light.directionRange.w >= 0.0) {
                   float currentDistance = length(pointToLightVector);
                   if (currentDistance > 0.0) {
