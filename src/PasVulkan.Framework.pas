@@ -13760,7 +13760,7 @@ procedure TpvVulkanDeviceMemoryManager.DumpJSON(const aStringList:TStringList);
    WriteLn(aLine);
   end;
  end;
-var HeapIndex,TypeIndex:TpvSizeInt;
+var HeapIndex,TypeIndex,ChunkIndex,BlockIndex:TpvSizeInt;
     MemoryChunk:TpvVulkanDeviceMemoryChunk;
     Size,Used:TpvUInt64;
     Index:TpvSizeInt;
@@ -13974,6 +13974,81 @@ begin
    end; 
   end;
   AddLine('  },');
+
+  AddLine('  "MemoryChunks": {');
+  begin
+   ChunkIndex:=0;
+   MemoryChunk:=fMemoryChunkList.First;
+   while assigned(MemoryChunk) do begin
+    AddLine('    "Chunk '+IntToStr(ChunkIndex)+'": {');
+    begin
+     AddLine('      "HeapIndex": '+IntToStr(MemoryChunk.fMemoryHeapIndex)+',');
+     AddLine('      "TypeIndex": '+IntToStr(MemoryChunk.fMemoryTypeIndex)+',');
+     AddLine('      "Size": '+IntToStr(MemoryChunk.fSize)+',');
+     AddLine('      "Used": '+IntToStr(MemoryChunk.fUsed)+',');
+     AddLine('      "NonUsed": '+IntToStr(MemoryChunk.fSize-MemoryChunk.fUsed)+',');
+     AddLine('      "AllocationCount": '+IntToStr(MemoryChunk.fAllocationCount)+',');
+     AddLine('      "AllocationBytes": '+IntToStr(MemoryChunk.fAllocationBytes)+',');
+     AddLine('      "UnusedRangeCount": '+IntToStr(MemoryChunk.fUnusedRangeCount)+',');
+     AddLine('      "AllocationSizeMin": '+IntToStr(MemoryChunk.fAllocationSizeMin)+',');
+     AddLine('      "AllocationSizeMax": '+IntToStr(MemoryChunk.fAllocationSizeMax)+',');
+     AddLine('      "UnusedRangeSizeMin": '+IntToStr(MemoryChunk.fUnusedRangeSizeMin)+',');
+     AddLine('      "UnusedRangeSizeMax": '+IntToStr(MemoryChunk.fUnusedRangeSizeMax)+',');
+     HeapIndex:=MemoryChunk.fMemoryHeapIndex;
+     TypeIndex:=MemoryChunk.fMemoryTypeIndex;
+     Flags:='';
+     if (fDevice.fPhysicalDevice.fMemoryProperties.memoryHeaps[HeapIndex].flags and TVkMemoryHeapFlags(VK_MEMORY_HEAP_DEVICE_LOCAL_BIT))<>0 then begin
+      Flags:=Flags+'"DEVICE_LOCAL"';
+     end;
+     if (fDevice.fPhysicalDevice.fMemoryProperties.memoryHeaps[HeapIndex].flags and TVkMemoryHeapFlags(VK_MEMORY_HEAP_MULTI_INSTANCE_BIT))<>0 then begin
+      if length(Flags)>0 then begin
+       Flags:=Flags+', ';
+      end;
+      Flags:=Flags+'"MULTI_INSTANCE"';
+     end;
+     AddLine('      "HeapFlags": ['+Flags+'],');
+     Flags:='';
+     if (fDevice.fPhysicalDevice.fMemoryProperties.memoryTypes[TypeIndex].propertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT))<>0 then begin
+      Flags:=Flags+'"DEVICE_LOCAL"';
+     end;
+     if (fDevice.fPhysicalDevice.fMemoryProperties.memoryTypes[TypeIndex].propertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))<>0 then begin
+      if length(Flags)>0 then begin
+       Flags:=Flags+', ';
+      end;
+      Flags:=Flags+'"HOST_VISIBLE"';
+     end;
+     if (fDevice.fPhysicalDevice.fMemoryProperties.memoryTypes[TypeIndex].propertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT))<>0 then begin
+      if length(Flags)>0 then begin
+       Flags:=Flags+', ';
+      end;
+      Flags:=Flags+'"HOST_COHERENT"';
+     end;
+     if (fDevice.fPhysicalDevice.fMemoryProperties.memoryTypes[TypeIndex].propertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_CACHED_BIT))<>0 then begin
+      if length(Flags)>0 then begin
+       Flags:=Flags+', ';
+      end;
+      Flags:=Flags+'"HOST_CACHED"';
+     end;
+     if (fDevice.fPhysicalDevice.fMemoryProperties.memoryTypes[TypeIndex].propertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT))<>0 then begin
+      if length(Flags)>0 then begin
+       Flags:=Flags+', ';
+      end;
+      Flags:=Flags+'"LAZILY_ALLOCATED"';
+     end;
+     if (fDevice.fPhysicalDevice.fMemoryProperties.memoryTypes[TypeIndex].propertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_PROTECTED_BIT)<>0) then begin
+      if length(Flags)>0 then begin
+       Flags:=Flags+', ';
+      end;
+      Flags:=Flags+'"PROTECTED"';
+     end;
+     AddLine('      "TypeFlags": ['+Flags+']');
+    end;
+    AddLine('    },');
+    inc(ChunkIndex);
+    MemoryChunk:=MemoryChunk.fNextMemoryChunk;
+   end; 
+  end;
+  AddLine('  }');
 
  end;
  AddLine('}');
