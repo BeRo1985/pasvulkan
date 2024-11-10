@@ -131,7 +131,7 @@ type EpvIESLoader=class(Exception);
        procedure LoadFromString(const aData:TpvRawByteString);
        procedure LoadFromStream(const aStream:TStream);
        procedure LoadFromFile(const aFileName:TpvUTF8String);
-       procedure GetTexture(out aTexture:TTexture);
+       procedure GetTexture(out aTexture:TTexture;const a2D:Boolean);
       public
        property Version:TIESVersion read fVersion;
        property PhotometricType:TIESPhotometricType read fPhotometricType;
@@ -594,7 +594,7 @@ begin
  end;
 end;
 
-procedure TpvIESLoader.GetTexture(out aTexture:TTexture);
+procedure TpvIESLoader.GetTexture(out aTexture:TTexture;const a2D:Boolean);
 var x,y:TpvInt32;
     InverseMaxValue,InverseWidth,InverseHeight,HorizontalFraction,VerticalFraction:TpvFloat;
 begin
@@ -614,7 +614,11 @@ begin
   HorizontalFraction:=y*InverseHeight;
   for x:=0 to aTexture.Width-1 do begin
    VerticalFraction:=x*InverseWidth;
-   aTexture.Data[(y*aTexture.Width)+x]:=Interpolate2D(HorizontalFraction*360.0,VerticalFraction*180.0)*InverseMaxValue;
+   if a2D then begin
+    aTexture.Data[(y*aTexture.Width)+x]:=Interpolate2D(HorizontalFraction*360.0,VerticalFraction*180.0)*InverseMaxValue;
+   end else begin
+    aTexture.Data[(y*aTexture.Width)+x]:=Interpolate1D(VerticalFraction*180.0)*InverseMaxValue;
+   end;
   end;
  end;
 

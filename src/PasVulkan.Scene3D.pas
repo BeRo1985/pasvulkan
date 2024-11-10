@@ -828,6 +828,7 @@ type EpvScene3D=class(Exception);
               fKind:TKind;
               fResourceDataStream:TMemoryStream;
               fIESTexture:TpvIESLoader.TTexture;
+              fExtendedIESTexture:Boolean;
               fHashData:THashData;
               fTexture:TpvVulkanTexture;
               fLock:TPasMPSpinLock;
@@ -849,7 +850,7 @@ type EpvScene3D=class(Exception);
               procedure AssignFromStream(const aName:TpvUTF8String;const aStream:TStream);
               procedure LoadFromStream(const aStream:TStream);
               procedure SaveToStream(const aStream:TStream);
-              procedure AssignFromIES(const aName:TpvUTF8String;const aIESLoader:TpvIESLoader);
+              procedure AssignFromIES(const aName:TpvUTF8String;const aIESLoader:TpvIESLoader;const aExtendedLightProfile:Boolean);
               procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceImage:TPasGLTF.TImage);
               procedure DumpMemoryUsage(const aStringList:TStringList;var aTotalSizeVRAM,aTotalSizeRAM:TpvUInt64);
              published
@@ -931,6 +932,7 @@ type EpvScene3D=class(Exception);
               procedure AssignFromWhiteTexture;
               procedure AssignFromDefaultNormalMapTexture;
               procedure AssignFromDefaultParticleTexture;
+              procedure AssignFromIES(const aName:TpvUTF8String;const aIESLoader:TpvIESLoader;const aExtendedLightProfile:Boolean);
               procedure AssignForImage(const aName:TpvUTF8String;const aImage:TpvScene3D.TImage);
               procedure LoadFromStream(const aStream:TStream;const aImages,aSamplers:TpvObjectList);
               procedure PrepareSaveToStream(const aImages,aSamplers,aTextures:TpvObjectList);
@@ -3456,7 +3458,7 @@ type EpvScene3D=class(Exception);
                (TFaceCullingMode.None,TFaceCullingMode.None)
               );
              PVMFSignature:TPVMFSignature=('P','V','M','F');
-             PVMFVersion=TpVUInt32($00000006);
+             PVMFVersion=TpVUInt32($00000007);
       private
        fLock:TPasMPSpinLock;
        fLoadLock:TPasMPSpinLock;
@@ -6408,6 +6410,7 @@ begin
  fLock:=TPasMPSpinLock.Create;
  fTexture:=nil;
  fIESTexture.Data:=nil;
+ fExtendedIESTexture:=false;
 end;
 
 destructor TpvScene3D.TImage.Destroy;
@@ -6828,6 +6831,8 @@ begin
 
     FileName:=StreamIO.ReadUTF8String;
 
+    fExtendedIESTexture:=StreamIO.ReadBoolean;
+
     if length(FileName)<>0 then begin
 
      if pvApplication.Assets.ExistAsset(FileName) then begin
@@ -6838,7 +6843,7 @@ begin
         IESLoader:=TpvIESLoader.Create;
         try
          IESLoader.LoadFromStream(DataStream);
-         IESLoader.GetTexture(fIESTexture);
+         IESLoader.GetTexture(fIESTexture,fExtendedIESTexture);
         finally
          FreeAndNil(IESLoader);
         end;
@@ -6850,7 +6855,7 @@ begin
       IESLoader:=TpvIESLoader.Create;
       try
        IESLoader.LoadFromFile(FileName);
-       IESLoader.GetTexture(fIESTexture);
+       IESLoader.GetTexture(fIESTexture,fExtendedIESTexture);
       finally
        FreeAndNil(IESLoader);
       end;
@@ -6936,6 +6941,8 @@ begin
 
     StreamIO.WriteUTF8String(''); // for later use for external texture file assets, but for now just embedded textures for simplicity
 
+    StreamIO.WriteBoolean(fExtendedIESTexture);
+
     StreamIO.WriteInt32(fIESTexture.Width);
     StreamIO.WriteInt32(fIESTexture.Height);
 
@@ -6968,12 +6975,13 @@ begin
  
 end;
 
-procedure TpvScene3D.TImage.AssignFromIES(const aName:TpvUTF8String;const aIESLoader:TpvIESLoader);
+procedure TpvScene3D.TImage.AssignFromIES(const aName:TpvUTF8String;const aIESLoader:TpvIESLoader;const aExtendedLightProfile:Boolean);
 begin
  fName:=aName;
  fKind:=TpvScene3D.TImage.TKind.ResourceIESTexture;
  fResourceDataStream.Clear;
- aIESLoader.GetTexture(fIESTexture);
+ aIESLoader.GetTexture(fIESTexture,aExtendedLightProfile);
+ fExtendedIESTexture:=aExtendedLightProfile;
 end;
 
 procedure TpvScene3D.TImage.AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceImage:TPasGLTF.TImage);
@@ -7608,6 +7616,37 @@ begin
   fSceneInstance.fImageListLock.Acquire;
   try
    fImage:=fSceneInstance.fDefaultParticleImage;
+   fImage.IncRef;
+  finally
+   fSceneInstance.fImageListLock.Release;
+  end;
+
+  fSceneInstance.fSamplerListLock.Acquire;
+  try
+   fSampler:=fSceneInstance.fDefaultSampler;
+   fSampler.IncRef;
+  finally
+   fSceneInstance.fSamplerListLock.Release;
+  end;
+
+ finally
+  fSceneInstance.fTextureListLock.Release;
+ end;
+
+end;
+
+procedure TpvScene3D.TTexture.AssignFromIES(const aName:TpvUTF8String;const aIESLoader:TpvIESLoader;const aExtendedLightProfile:Boolean);
+begin
+
+ fName:='[IES]'+aName;
+
+ fSceneInstance.fTextureListLock.Acquire;
+ try
+
+  fSceneInstance.fImageListLock.Acquire;
+  try
+   fImage:=TpvScene3D.TImage.Create(ResourceManager,fSceneInstance);
+   fImage.AssignFromIES(aName,aIESLoader,aExtendedLightProfile);
    fImage.IncRef;
   finally
    fSceneInstance.fImageListLock.Release;
@@ -15371,6 +15410,10 @@ var TypeString:TPasJSONUTF8String;
     ColorItem,SpotItem:TPasJSONItem;
     ColorArray:TPasJSONItemArray;
     SpotObject:TPasJSONItemObject;
+    ExtrasObject:TPasJSONItemObject;
+    IESProfileFileName:TPasJSONUTF8String;
+    IESLoader:TpvIESLoader;
+    TemporaryStream:TStream;
 begin
  fName:='';
  fNodes.Clear;
@@ -15440,6 +15483,35 @@ begin
    if ColorArray.Count>2 then begin
     fData.fColor.z:=TPasJSON.GetNumber(ColorArray.Items[2],fData.fColor.z);
    end;
+  end;
+  ExtrasObject:=TPasJSONItemObject(aSourceLight.Properties['extras']);
+  if assigned(ExtrasObject) then begin
+   IESProfileFileName:=TPasJSON.GetString(ExtrasObject.Properties['iesprofile'],'');
+   if length(IESProfileFileName)>0 then begin
+    fData.fExtendedLightProfile:=TPasJSON.GetBoolean(ExtrasObject.Properties['extendedlightprofile'],fData.fExtendedLightProfile);
+    IESLoader:=TpvIESLoader.Create;
+    try
+     if pvApplication.Assets.ExistAsset(IESProfileFileName) then begin
+      TemporaryStream:=pvApplication.Assets.GetAssetStream(IESProfileFileName);
+     end else begin
+      TemporaryStream:=nil;
+     end;
+     if not assigned(TemporaryStream) then begin
+      TemporaryStream:=aSourceDocument.GetURI(IESProfileFileName);
+     end;
+     if assigned(TemporaryStream) then begin
+      try
+       IESLoader.LoadFromStream(TemporaryStream);
+       fData.fLightProfileTexture:=TpvScene3D.TTexture.Create(ResourceManager,fSceneInstance);
+       fData.fLightProfileTexture.AssignFromIES(IESProfileFileName,IESLoader,fData.fExtendedLightProfile);
+      finally
+       FreeAndNil(TemporaryStream);
+      end;
+     end;
+    finally
+     FreeAndNil(IESLoader);
+    end;
+   end; 
   end;
  end;
 end;
