@@ -36,7 +36,7 @@ layout(set = 0, binding = 0, std430) readonly buffer InstanceMatrices {
 
 #ifdef LIGHTS
 struct Light {
-  uvec4 metaData;
+  uvec4 metaData; // x = type, y = ShadowMapIndex, z = LightAngleScale, w = LightAngleOffset
   vec4 colorIntensity;
   vec4 positionRadius;
   vec4 directionRange;

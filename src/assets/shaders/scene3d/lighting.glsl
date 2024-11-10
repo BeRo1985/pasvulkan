@@ -51,10 +51,11 @@
           if (lightTreeNode.aabbMaxUserData.w != 0xffffffffu) {
             Light light = lights[lightTreeNode.aabbMaxUserData.w];
 #endif
+            const uint lightType = light.metaData.x & 0x0000000fu;
             float lightAttenuation = 1.0;
             vec3 lightPosition = light.positionRadius.xyz; 
             vec3 pointToLightVector, pointToLightDirection;
-            switch (light.metaData.x) {
+            switch (lightType) {
               case 1u:  {  // Directional
                 pointToLightDirection = normalize(-light.directionRange.xyz);
                 pointToLightVector = pointToLightDirection * 1e8; // Far away
@@ -85,7 +86,7 @@
 #endif
 #if !defined(REFLECTIVESHADOWMAPOUTPUT)
             if (/*(uShadows != 0) &&*/receiveShadows && ((light.metaData.y & 0x80000000u) == 0u) && (uCascadedShadowMaps.metaData.x != SHADOWMAP_MODE_NONE)) {
-              switch (light.metaData.x) {
+              switch (lightType) {
 #if !defined(REFLECTIVESHADOWMAPOUTPUT)
 #if defined(RAYTRACING)
                 case 1u: { // Directional 
@@ -218,7 +219,7 @@
 #endif // !defined(REFLECTIVESHADOWMAPOUTPUT)
             float lightAttenuationEx = lightAttenuation;
 #endif // SHADOWS
-            switch (light.metaData.x) {
+            switch (lightType) {
 #if !defined(REFLECTIVESHADOWMAPOUTPUT)
               case 1u: { // Directional
                 break;
@@ -253,7 +254,7 @@
               }
             }
 #if !defined(REFLECTIVESHADOWMAPOUTPUT)
-            switch (light.metaData.x) {
+            switch (lightType) {
               case 2u:    // Point
               case 3u:    // Spot
               case 5u: {  // View directional
@@ -314,13 +315,13 @@
                   float realIOR = 1.0 / ior;
                   float iorDispersionSpread = 0.04 * volumeDispersion * (realIOR - 1.0);
                   vec3 iorValues = vec3(1.0 / (realIOR - iorDispersionSpread), ior, 1.0 / (realIOR + iorDispersionSpread));
-                  vec3 initalPointToLightVector = (light.metaData.x == 0) ? pointToLightDirection : pointToLightVector;
+                  vec3 initalPointToLightVector = (lightType == 0u) ? pointToLightDirection : pointToLightVector;
                   for(int i = 0; i < 3; i++){
                     vec3 transmissionRay = getVolumeTransmissionRay(normal.xyz, viewDirection, volumeThickness, iorValues[i]);
                     pointToLightVector = initalPointToLightVector - transmissionRay;
                     pointToLightDirection = normalize(pointToLightVector);
                     float lightAttenuation = lightAttenuationEx;
-                    switch (light.metaData.x) {
+                    switch (lightType) {
                       case 3u: {  // Spot 
     #if 1
                         float angularAttenuation = clamp(fma(dot(normalize(light.directionRange.xyz), -pointToLightDirection), uintBitsToFloat(light.metaData.z), uintBitsToFloat(light.metaData.w)), 0.0, 1.0);
@@ -337,7 +338,7 @@
                         break;
                       }
                     }
-                    switch (light.metaData.x) {
+                    switch (lightType) {
                       case 2u:    // Point
                       case 3u: {  // Spot
                         if (light.directionRange.w >= 0.0) {
@@ -364,10 +365,10 @@
                   }
                 }else{
                   vec3 transmissionRay = getVolumeTransmissionRay(normal.xyz, viewDirection, volumeThickness, ior);
-                  pointToLightVector = ((light.metaData.x == 0) ? pointToLightDirection : pointToLightVector) - transmissionRay;
+                  pointToLightVector = ((lightType == 0u) ? pointToLightDirection : pointToLightVector) - transmissionRay;
                   pointToLightDirection = normalize(pointToLightVector);
                   float lightAttenuation = lightAttenuationEx;
-                  switch (light.metaData.x) {
+                  switch (lightType) {
                     case 3u: {  // Spot
   #if 1
                       float angularAttenuation = clamp(fma(dot(normalize(light.directionRange.xyz), -pointToLightDirection), uintBitsToFloat(light.metaData.z), uintBitsToFloat(light.metaData.w)), 0.0, 1.0);
@@ -384,7 +385,7 @@
                       break;
                     }
                   }
-                  switch (light.metaData.x) {
+                  switch (lightType) {
                     case 2u:    // Point
                     case 3u: {  // Spot
                       if (light.directionRange.w >= 0.0) {
