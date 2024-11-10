@@ -1452,7 +1452,7 @@ type EpvScene3D=class(Exception);
             PLightData=^TLightData;
             TLightItem=packed record
              // uvec4 MetaData; begin
-              Type_:TpvUInt32;
+              TypeLightProfile:TpvUInt32;
               ShadowMapIndex:TpvUInt32;
 {             InnerConeCosinus:TpvFloat;
               OuterConeCosinus:TpvFloat;}
@@ -29763,7 +29763,9 @@ begin
        if (Intensity>0.0) and (Light.fRadius>0.0) then begin
         Light.fLightItemIndex:=aLightItemArray.AddNewIndex;
         LightItem:=@aLightItemArray.Items[Light.fLightItemIndex];
-        LightItem^.Type_:=TpvUInt32(Light.fDataPointer^.Type_);
+        LightItem^.TypeLightProfile:=(TpvUInt32(Light.fDataPointer^.Type_) and $f) or
+                                     (TpvUInt32(0) shl 17) or
+                                     (TpvUInt32(0) shl 18);
         LightItem^.ShadowMapIndex:=0;
         InnerConeAngleCosinus:=cos(Light.fDataPointer^.InnerConeAngle);
         OuterConeAngleCosinus:=cos(Light.fDataPointer^.OuterConeAngle);
