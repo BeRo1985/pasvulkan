@@ -66,8 +66,9 @@
                 break;
               }
               case 5u: {  // View directional
-                imageLightBasedLightDirection = pointToLightDirection = normalize(-inViewSpacePosition.xyz);
-                pointToLightVector = pointToLightDirection * 1e8; // Far away
+                lightPosition = inWorldSpacePosition.xyz - inCameraRelativePosition.xyz;
+                pointToLightVector = lightPosition - inWorldSpacePosition.xyz;
+                pointToLightDirection = normalize(pointToLightVector);
                 break;
               }
               default: { // Point, Spot and other non-directional lights
