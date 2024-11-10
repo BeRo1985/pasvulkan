@@ -100,6 +100,13 @@ type EpvIESLoader=class(Exception);
             end;
             PParserState=^TParserState;
             TFloatDynamicArray=TpvDynamicArrayList<TpvFloat>;
+            TTextureData=array of TpvFloat;
+            TTexture=record
+             Width:TpvInt32;
+             Height:TpvInt32;
+             Data:TTextureData;
+            end;
+            PTexture=^TTexture;
       private     
        fVersion:TIESVersion;
        fPhotometricType:TIESPhotometricType;
@@ -124,6 +131,7 @@ type EpvIESLoader=class(Exception);
        procedure LoadFromString(const aData:TpvRawByteString);
        procedure LoadFromStream(const aStream:TStream);
        procedure LoadFromFile(const aFileName:TpvUTF8String);
+       procedure GetTexture(out aTexture:TTexture);
       public
        property Version:TIESVersion read fVersion;
        property PhotometricType:TIESPhotometricType read fPhotometricType;
@@ -584,6 +592,32 @@ begin
  if fHorizontalAngles.Count>0 then begin
   result:=result/fHorizontalAngles.Count;
  end;
+end;
+
+procedure TpvIESLoader.GetTexture(out aTexture:TTexture);
+var x,y:TpvInt32;
+    InverseMaxValue,InverseWidth,InverseHeight,HorizontalFraction,VerticalFraction:TpvFloat;
+begin
+
+ aTexture.Width:=fWidth;
+ aTexture.Height:=fHeight;
+ aTexture.Data:=nil;
+
+ SetLength(aTexture.Data,aTexture.Width*aTexture.Height);
+
+ InverseWidth:=1.0/aTexture.Width;
+ InverseHeight:=1.0/aTexture.Height;
+
+ InverseMaxValue:=1.0/fBrightness;
+
+ for y:=0 to aTexture.Height-1 do begin
+  HorizontalFraction:=y*InverseHeight;
+  for x:=0 to aTexture.Width-1 do begin
+   VerticalFraction:=x*InverseWidth;
+   aTexture.Data[(y*aTexture.Width)+x]:=Interpolate2D(HorizontalFraction*360.0,VerticalFraction*180.0)*InverseMaxValue;
+  end;
+ end;
+
 end;
     
 end.
