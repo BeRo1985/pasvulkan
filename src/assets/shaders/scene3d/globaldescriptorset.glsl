@@ -40,7 +40,7 @@ struct Light {
   vec4 colorIntensity;
   vec4 positionRadius;
   vec4 directionRange;
-  mat4 shadowMapMatrix;
+  mat4 transformMatrix;
 };
 
 layout(set = 0, binding = 1, std430) readonly buffer LightItemData {

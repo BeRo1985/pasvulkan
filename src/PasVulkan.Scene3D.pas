@@ -1462,7 +1462,7 @@ type EpvScene3D=class(Exception);
              ColorIntensity:TpvVector4; // XYZ = Color RGB, W = Intensity
              PositionRadius:TpvVector4; // XYZ = Position, W = Radius
              DirectionRange:TpvVector4; // XYZ = Direction, W = Range
-             ShadowMapMatrix:TpvMatrix4x4;
+             TransformMatrix:TpvMatrix4x4;
             end;
             PLightItem=^TLightItem;
             TLightItems=TpvDynamicArray<TLightItem>;
@@ -29774,7 +29774,7 @@ begin
         LightItem^.ColorIntensity:=TpvVector4.InlineableCreate(Light.fDataPointer^.fColor,Intensity);
         LightItem^.PositionRadius:=TpvVector4.InlineableCreate(Light.fPosition,Light.fRadius);
         LightItem^.DirectionRange:=TpvVector4.InlineableCreate(Light.fDirection,Light.fDataPointer^.fRange);
-        LightItem^.ShadowMapMatrix:=TpvMatrix4x4.Identity;
+        LightItem^.TransformMatrix:=Light.fMatrix;
         LightMetaInfo:=@aLightMetaInfoArray[Light.fLightItemIndex];
         LightMetaInfo^.MinBounds:=TpvVector4.Create(Light.fBoundingBox.Min,TpvUInt32(Light.fDataPointer^.Type_));
         LightMetaInfo^.MaxBounds:=TpvVector4.Create(Light.fBoundingBox.Max,Light.fBoundingBox.Radius);

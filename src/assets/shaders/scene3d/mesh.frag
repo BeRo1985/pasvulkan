@@ -318,7 +318,7 @@ vec2 textureUV(const in int textureIndex) {
 
 ivec2 texture2DSize(const in int textureIndex) {
   int textureID = getTexCoordID(textureIndex); 
-  return (textureID >= 0) ? ivec2(textureSize(u2DTextures[nonuniformEXT(textureID & 0x3fff)], 0).xy) : ivec2(0);
+  return (textureID >= 0) ? ivec2(textureSize(u2DTextures[nonuniformEXT(textureID & 0x3fff) << 1], 0).xy) : ivec2(0);
 }
 
 vec4 textureFetch(const in int textureIndex, const in vec4 defaultValue, const bool sRGB) {
