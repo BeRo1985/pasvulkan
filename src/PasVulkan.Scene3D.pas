@@ -101,6 +101,7 @@ uses {$ifdef Windows}
      PasVulkan.FileFormats.DAE,
      PasVulkan.FileFormats.FBX,
      PasVulkan.FileFormats.SAM,
+     PasVulkan.FileFormats.IES,
      PasVulkan.Scene3D.Renderer.Globals,
      POCA;
 
