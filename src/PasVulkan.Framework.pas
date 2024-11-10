@@ -72,6 +72,7 @@ uses {$if defined(Windows)}
      {$if defined(Android)}PasVulkan.Android,{$ifend}
      SysUtils,Classes,SyncObjs,Math,{$ifdef fpc}dynlibs,{$endif}
      PasMP,
+     PasJSON,
      PUCU,
      Vulkan,
      PasVulkan.Types,
@@ -13762,6 +13763,7 @@ procedure TpvVulkanDeviceMemoryManager.DumpJSON(const aStringList:TStringList);
  end;
 var HeapIndex,TypeIndex,ChunkIndex,BlockIndex:TpvSizeInt;
     MemoryChunk:TpvVulkanDeviceMemoryChunk;
+    MemoryChunkBlock:TpvVulkanDeviceMemoryChunkBlock;
     Size,Used:TpvUInt64;
     Index:TpvSizeInt;
     s:TpvRawByteString;
@@ -13769,6 +13771,7 @@ var HeapIndex,TypeIndex,ChunkIndex,BlockIndex:TpvSizeInt;
     AllocationCount,AllocationBytes,AllocationSizeMin,AllocationSizeMax,
     UnusedRangeCount,UnusedRangeSizeMin,UnusedRangeSizeMax:TpvUInt64;
     Flags:TpvUTF8String;
+    Node:TpvVulkanDeviceMemoryChunkBlockRedBlackTreeNode;
 begin
 
  AddLine('{');
@@ -13777,8 +13780,8 @@ begin
   AddLine('  "General": {');
   begin
    AddLine('    "API": "Vulkan",');
-   AddLine('    "apiVersion": "'+fDevice.fPhysicalDevice.GetAPIVersionString+'",');
-   AddLine('    "GPU": "'+fDevice.fPhysicalDevice.DeviceName+'",');
+   AddLine('    "apiVersion": '+TPasJSON.StringQuote(fDevice.fPhysicalDevice.GetAPIVersionString)+',');
+   AddLine('    "GPU": '+TPasJSON.StringQuote(fDevice.fPhysicalDevice.DeviceName)+',');
    AddLine('    "deviceType": '+IntToStr(TpvUInt64(fDevice.fPhysicalDevice.fProperties.deviceType))+',');
    AddLine('    "maxMemoryAllocationCount": '+IntToStr(TpvUInt64(fDevice.fPhysicalDevice.fProperties.limits.maxMemoryAllocationCount))+',');
    AddLine('    "bufferImageGranularity": '+IntToStr(TpvUInt64(fDevice.fPhysicalDevice.fProperties.limits.bufferImageGranularity))+',');
@@ -13994,13 +13997,11 @@ begin
      AddLine('      "AllocationSizeMax": '+IntToStr(MemoryChunk.fAllocationSizeMax)+',');
      AddLine('      "UnusedRangeSizeMin": '+IntToStr(MemoryChunk.fUnusedRangeSizeMin)+',');
      AddLine('      "UnusedRangeSizeMax": '+IntToStr(MemoryChunk.fUnusedRangeSizeMax)+',');
-     HeapIndex:=MemoryChunk.fMemoryHeapIndex;
-     TypeIndex:=MemoryChunk.fMemoryTypeIndex;
      Flags:='';
-     if (fDevice.fPhysicalDevice.fMemoryProperties.memoryHeaps[HeapIndex].flags and TVkMemoryHeapFlags(VK_MEMORY_HEAP_DEVICE_LOCAL_BIT))<>0 then begin
+     if (MemoryChunk.fMemoryHeapFlags and TVkMemoryHeapFlags(VK_MEMORY_HEAP_DEVICE_LOCAL_BIT))<>0 then begin
       Flags:=Flags+'"DEVICE_LOCAL"';
      end;
-     if (fDevice.fPhysicalDevice.fMemoryProperties.memoryHeaps[HeapIndex].flags and TVkMemoryHeapFlags(VK_MEMORY_HEAP_MULTI_INSTANCE_BIT))<>0 then begin
+     if (MemoryChunk.fMemoryHeapFlags and TVkMemoryHeapFlags(VK_MEMORY_HEAP_MULTI_INSTANCE_BIT))<>0 then begin
       if length(Flags)>0 then begin
        Flags:=Flags+', ';
       end;
@@ -14008,40 +14009,111 @@ begin
      end;
      AddLine('      "HeapFlags": ['+Flags+'],');
      Flags:='';
-     if (fDevice.fPhysicalDevice.fMemoryProperties.memoryTypes[TypeIndex].propertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT))<>0 then begin
+     if (MemoryChunk.fMemoryPropertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT))<>0 then begin
       Flags:=Flags+'"DEVICE_LOCAL"';
      end;
-     if (fDevice.fPhysicalDevice.fMemoryProperties.memoryTypes[TypeIndex].propertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))<>0 then begin
+     if (MemoryChunk.fMemoryPropertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))<>0 then begin
       if length(Flags)>0 then begin
        Flags:=Flags+', ';
       end;
       Flags:=Flags+'"HOST_VISIBLE"';
      end;
-     if (fDevice.fPhysicalDevice.fMemoryProperties.memoryTypes[TypeIndex].propertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT))<>0 then begin
+     if (MemoryChunk.fMemoryPropertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT))<>0 then begin
       if length(Flags)>0 then begin
        Flags:=Flags+', ';
       end;
       Flags:=Flags+'"HOST_COHERENT"';
      end;
-     if (fDevice.fPhysicalDevice.fMemoryProperties.memoryTypes[TypeIndex].propertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_CACHED_BIT))<>0 then begin
+     if (MemoryChunk.fMemoryPropertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_CACHED_BIT))<>0 then begin
       if length(Flags)>0 then begin
        Flags:=Flags+', ';
       end;
       Flags:=Flags+'"HOST_CACHED"';
      end;
-     if (fDevice.fPhysicalDevice.fMemoryProperties.memoryTypes[TypeIndex].propertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT))<>0 then begin
+     if (MemoryChunk.fMemoryPropertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT))<>0 then begin
       if length(Flags)>0 then begin
        Flags:=Flags+', ';
       end;
       Flags:=Flags+'"LAZILY_ALLOCATED"';
      end;
-     if (fDevice.fPhysicalDevice.fMemoryProperties.memoryTypes[TypeIndex].propertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_PROTECTED_BIT)<>0) then begin
+     if (MemoryChunk.fMemoryPropertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_PROTECTED_BIT)<>0) then begin
       if length(Flags)>0 then begin
        Flags:=Flags+', ';
       end;
       Flags:=Flags+'"PROTECTED"';
      end;
-     AddLine('      "TypeFlags": ['+Flags+']');
+     AddLine('      "TypeFlags": ['+Flags+'],');
+     Flags:='';
+     if MemoryChunk.fMemoryChunkFlags<>[] then begin
+      if TpvVulkanDeviceMemoryChunkFlag.PersistentMapped in MemoryChunk.fMemoryChunkFlags then begin
+       Flags:=Flags+'"PERSISTENT_MAPPED"';
+      end;
+      if TpvVulkanDeviceMemoryChunkFlag.PersistentMappedIfPossibe in MemoryChunk.fMemoryChunkFlags then begin
+       if length(Flags)>0 then begin
+        Flags:=Flags+', ';
+       end;
+       Flags:=Flags+'"PERSISTENT_MAPPED_IF_POSSIBLE"';
+      end;
+      if TpvVulkanDeviceMemoryChunkFlag.BufferDeviceAddress in MemoryChunk.fMemoryChunkFlags then begin
+       if length(Flags)>0 then begin
+        Flags:=Flags+', ';
+       end;
+       Flags:=Flags+'"BUFFER_DEVICE_ADDRESS"';
+      end;
+      if TpvVulkanDeviceMemoryChunkFlag.DedicatedAllocation in MemoryChunk.fMemoryChunkFlags then begin
+       if length(Flags)>0 then begin
+        Flags:=Flags+', ';
+       end;
+       Flags:=Flags+'"DEDICATED_ALLOCATION"';
+      end;
+      if TpvVulkanDeviceMemoryChunkFlag.OwnSingleMemoryChunk in MemoryChunk.fMemoryChunkFlags then begin
+       if length(Flags)>0 then begin
+        Flags:=Flags+', ';
+       end;
+       Flags:=Flags+'"OWN_SINGLE_MEMORY_CHUNK"';
+      end;
+     end;
+     AddLine('      "MemoryChunkFlags": ['+Flags+'],');
+     AddLine('      "MemoryChunkBlocks": {');
+     begin
+      BlockIndex:=0;
+      Node:=MemoryChunk.fSizeRedBlackTree.fRoot;
+      while assigned(Node) do begin
+       MemoryChunkBlock:=Node.fValue;
+       if assigned(MemoryChunkBlock) then begin
+        AddLine('        "Block '+IntToStr(BlockIndex)+'": {');
+        begin
+         if assigned(MemoryChunkBlock.fMemoryBlock) then begin
+          AddLine('          "Name": '+TPasJSON.StringQuote(MemoryChunkBlock.fMemoryBlock.fName)+',');
+         end;
+         AddLine('          "Offset": '+IntToStr(MemoryChunkBlock.fOffset)+',');
+         AddLine('          "Size": '+IntToStr(MemoryChunkBlock.fSize)+',');
+         case MemoryChunkBlock.fAllocationType of
+          TpvVulkanDeviceMemoryAllocationType.Free:begin
+           AddLine('          "AllocationType": "Free",');
+          end;
+          TpvVulkanDeviceMemoryAllocationType.Unknown:begin
+           AddLine('          "AllocationType": "Unknown",');
+          end;
+          TpvVulkanDeviceMemoryAllocationType.Buffer:begin
+           AddLine('          "AllocationType": "Buffer",');
+          end;
+          TpvVulkanDeviceMemoryAllocationType.ImageLinear:begin
+           AddLine('          "AllocationType": "ImageLinear",');
+          end;
+          TpvVulkanDeviceMemoryAllocationType.ImageOptimal:begin
+           AddLine('          "AllocationType": "ImageOptimal",');
+          end;
+         end;
+         AddLine('          "Alignment": '+IntToStr(MemoryChunkBlock.fAlignment)+'');
+        end;
+        AddLine('        },');
+        inc(BlockIndex);
+       end;
+       Node:=Node.Successor;
+      end;
+     end;
+     AddLine('    }');
     end;
     AddLine('    },');
     inc(ChunkIndex);
