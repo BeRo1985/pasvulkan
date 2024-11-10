@@ -18046,7 +18046,7 @@ constructor TpvVulkanFrameBufferAttachment.Create(const aDevice:TpvVulkanDevice;
                                                   const aHeight:TpvUInt32;
                                                   const aFormat:TVkFormat;
                                                   const aDoDestroy:boolean;
-                                                  const aName:TpvUTF8String='');
+                                                  const aName:TpvUTF8String);
 begin
 
  inherited Create;
