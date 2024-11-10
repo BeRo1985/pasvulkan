@@ -14113,7 +14113,7 @@ begin
        Node:=Node.Successor;
       end;
      end;
-     AddLine('    }');
+      AddLine('      }');
     end;
     AddLine('    },');
     inc(ChunkIndex);
