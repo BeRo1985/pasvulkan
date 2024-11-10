@@ -122,6 +122,8 @@ type EpvIESLoader=class(Exception);
        constructor Create; reintroduce;
        destructor Destroy; override;
        procedure LoadFromString(const aData:TpvRawByteString);
+       procedure LoadFromStream(const aStream:TStream);
+       procedure LoadFromFile(const aFileName:TpvUTF8String);
       public
        property Version:TIESVersion read fVersion;
        property PhotometricType:TIESPhotometricType read fPhotometricType;
@@ -433,6 +435,31 @@ begin
   fBrightness:=1000.0;
  end;
 
+end;
+
+procedure TpvIESLoader.LoadFromStream(const aStream:TStream);
+var Data:TpvRawByteString;
+begin
+ if assigned(aStream) and (aStream.Size>0) then begin
+  SetLength(Data,aStream.Size);
+  aStream.Seek(0,soBeginning);
+  aStream.Read(Data[1],aStream.Size);
+  LoadFromString(Data);
+ end else begin
+  raise EpvIESLoader.Create('Invalid stream');
+ end;
+end;
+
+procedure TpvIESLoader.LoadFromFile(const aFileName:TpvUTF8String);
+var Stream:TMemoryStream;
+begin
+ Stream:=TMemoryStream.Create;
+ try
+  Stream.LoadFromFile(string(aFileName));
+  LoadFromStream(Stream);
+ finally
+  Stream.Free;
+ end;
 end;
 
 function TpvIESLoader.GetNearestCandelaValue(const aX,aY:TpvInt32):TpvFloat;
