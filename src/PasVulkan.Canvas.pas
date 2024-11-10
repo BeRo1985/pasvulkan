@@ -3199,7 +3199,8 @@ begin
                                                    true,
                                                    false,
                                                    0,
-                                                   []);
+                                                   [],
+                                                   'TpvCanvas.DummyTexture');
      fDummyTexture.UpdateSampler;
     finally
      FreeAndNil(UniversalFence);
@@ -4720,7 +4721,8 @@ begin
                                              0,
                                              [TpvVulkanBufferFlag.PersistentMapped],
                                              0,
-                                             pvAllocationGroupIDCanvas
+                                             pvAllocationGroupIDCanvas,
+                                             'TpvCanvas.VertexBuffer'
                                             );
        end else begin
         VulkanBuffer:=TpvVulkanBuffer.Create(fDevice,
@@ -4738,7 +4740,8 @@ begin
                                              0,
                                              [],
                                              0,
-                                             pvAllocationGroupIDCanvas
+                                             pvAllocationGroupIDCanvas,
+                                             'TpvCanvas.VertexBuffer'
                                             );
        end;
        CurrentBuffer^.fVulkanVertexBuffers[Index]:=VulkanBuffer;
@@ -4782,7 +4785,8 @@ begin
                                              0,
                                              [TpvVulkanBufferFlag.PersistentMapped],
                                              0,
-                                             pvAllocationGroupIDCanvas
+                                             pvAllocationGroupIDCanvas,
+                                             'TpvCanvas.IndexBuffer'
                                             );
        end else begin
         VulkanBuffer:=TpvVulkanBuffer.Create(fDevice,
@@ -4800,7 +4804,8 @@ begin
                                              0,
                                              [],
                                              0,
-                                             pvAllocationGroupIDCanvas
+                                             pvAllocationGroupIDCanvas,
+                                             'TpvCanvas.IndexBuffer'
                                             );
        end;
        CurrentBuffer^.fVulkanIndexBuffers[Index]:=VulkanBuffer;

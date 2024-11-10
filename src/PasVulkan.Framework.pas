@@ -2049,7 +2049,8 @@ type EpvVulkanException=class(Exception);
                           const aWidth:TpvUInt32;
                           const aHeight:TpvUInt32;
                           const aFormat:TVkFormat;
-                          const aDoDestroy:boolean=true); reintroduce; overload;
+                          const aDoDestroy:boolean=true;
+                          const aName:TpvUTF8String=''); reintroduce; overload;
        destructor Destroy; override;
       published
        property Device:TpvVulkanDevice read fDevice;
@@ -2078,6 +2079,7 @@ type EpvVulkanException=class(Exception);
        fLayers:TpvUInt32;
        fDoDestroy:boolean;
        fDoDestroyAttachments:boolean;
+       fName:TpvUTF8String;
        function GetFrameBufferAttachment(const aIndex:TpvInt32):TpvVulkanFrameBufferAttachment;
       public
        constructor Create(const aDevice:TpvVulkanDevice;
@@ -2085,14 +2087,16 @@ type EpvVulkanException=class(Exception);
                           const aWidth:TpvUInt32;
                           const aHeight:TpvUInt32;
                           const aLayers:TpvUInt32;
-                          const aDoDestroyAttachments:boolean=true); reintroduce; overload;
+                          const aDoDestroyAttachments:boolean=true;
+                          const aName:TpvUTF8String=''); reintroduce; overload;
        constructor Create(const aDevice:TpvVulkanDevice;
                           const aRenderPass:TpvVulkanRenderPass;
                           const aWidth:TpvUInt32;
                           const aHeight:TpvUInt32;
                           const aLayers:TpvUInt32;
                           const aFrameBufferAttachments:array of TpvVulkanFrameBufferAttachment;
-                          const aDoDestroyAttachments:boolean=true); reintroduce; overload;
+                          const aDoDestroyAttachments:boolean=true;
+                          const aName:TpvUTF8String=''); reintroduce; overload;
        constructor Create(const aDevice:TpvVulkanDevice;
                           const aRenderPass:TpvVulkanRenderPass;
                           const aWidth:TpvUInt32;
@@ -2101,7 +2105,8 @@ type EpvVulkanException=class(Exception);
                           const aFrameBufferHandle:TVkFrameBuffer;
                           const aFrameBufferAttachments:array of TpvVulkanFrameBufferAttachment;
                           const aDoDestroy:boolean=true;
-                          const aDoDestroyAttachments:boolean=true); reintroduce; overload;
+                          const aDoDestroyAttachments:boolean=true;
+                          const aName:TpvUTF8String=''); reintroduce; overload;
        destructor Destroy; override;
        function AddAttachment(const aFrameBufferAttachment:TpvVulkanFrameBufferAttachment):TpvInt32;
        procedure Initialize;
@@ -13832,6 +13837,10 @@ begin
 
   fDeviceAddress:=GetDeviceAddress;
 
+  if length(aName)>0 then begin
+   fDevice.DebugUtils.SetObjectName(fBufferHandle,TVkObjectType.VK_OBJECT_TYPE_BUFFER,aName);
+  end;
+
  except
 
   if fBufferHandle<>VK_NULL_HANDLE then begin
@@ -17616,7 +17625,8 @@ constructor TpvVulkanFrameBufferAttachment.Create(const aDevice:TpvVulkanDevice;
                                                   const aWidth:TpvUInt32;
                                                   const aHeight:TpvUInt32;
                                                   const aFormat:TVkFormat;
-                                                  const aDoDestroy:boolean=true);
+                                                  const aDoDestroy:boolean;
+                                                  const aName:TpvUTF8String='');
 begin
 
  inherited Create;
@@ -17673,12 +17683,15 @@ constructor TpvVulkanFrameBuffer.Create(const aDevice:TpvVulkanDevice;
                                         const aWidth:TpvUInt32;
                                         const aHeight:TpvUInt32;
                                         const aLayers:TpvUInt32;
-                                        const aDoDestroyAttachments:boolean=true);
+                                        const aDoDestroyAttachments:boolean;
+                                        const aName:TpvUTF8String);
 begin
 
  inherited Create;
 
  fDevice:=aDevice;
+
+ fName:=aName;
 
  fFrameBufferHandle:=VK_NULL_HANDLE;
 
@@ -17708,12 +17721,15 @@ constructor TpvVulkanFrameBuffer.Create(const aDevice:TpvVulkanDevice;
                                         const aHeight:TpvUInt32;
                                         const aLayers:TpvUInt32;
                                         const aFrameBufferAttachments:array of TpvVulkanFrameBufferAttachment;
-                                        const aDoDestroyAttachments:boolean=true);
+                                        const aDoDestroyAttachments:boolean;
+                                        const aName:TpvUTF8String);
 begin
 
  inherited Create;
 
  fDevice:=aDevice;
+
+ fName:=aName;
 
  fFrameBufferHandle:=VK_NULL_HANDLE;
 
@@ -17752,13 +17768,16 @@ constructor TpvVulkanFrameBuffer.Create(const aDevice:TpvVulkanDevice;
                                         const aLayers:TpvUInt32;
                                         const aFrameBufferHandle:TVkFrameBuffer;
                                         const aFrameBufferAttachments:array of TpvVulkanFrameBufferAttachment;
-                                        const aDoDestroy:boolean=true;
-                                        const aDoDestroyAttachments:boolean=true);
+                                        const aDoDestroy:boolean;
+                                        const aDoDestroyAttachments:boolean;
+                                        const aName:TpvUTF8String);
 begin
 
  inherited Create;
 
  fDevice:=aDevice;
+
+ fName:=aName;
 
  fFrameBufferHandle:=aFrameBufferHandle;
 
@@ -17785,6 +17804,10 @@ begin
  fDoDestroy:=aDoDestroy;
 
  fDoDestroyAttachments:=aDoDestroyAttachments;
+
+ if length(fName)>0 then begin
+  fDevice.DebugUtils.SetObjectName(fFrameBufferHandle,TVkObjectType.VK_OBJECT_TYPE_FRAMEBUFFER,fName);
+ end;
 
 end;
 
@@ -17855,6 +17878,10 @@ begin
   FrameBufferCreateInfo.layers:=fLayers;
 
   VulkanCheckResult(fDevice.fDeviceVulkan.CreateFramebuffer(fDevice.fDeviceHandle,@FrameBufferCreateInfo,fDevice.fAllocationCallbacks,@fFrameBufferHandle));
+
+  if length(fName)>0 then begin
+   fDevice.DebugUtils.SetObjectName(fFrameBufferHandle,TVkObjectType.VK_OBJECT_TYPE_FRAMEBUFFER,fName);
+  end;
 
  end;
 end;
@@ -19096,6 +19123,8 @@ begin
     fRenderPass.ClearValues[0].color.float32[3]:=1.0;
    end;
 
+   fDevice.DebugUtils.SetObjectName(fRenderPass.fRenderPassHandle,TVkObjectType.VK_OBJECT_TYPE_RENDER_PASS,'TpvVulkanSwapChainSimpleDirectRenderTarget.RenderPass');
+
   end;
 
   SetLength(fFrameBufferColorAttachments,fSwapChain.CountImages);
@@ -19143,13 +19172,17 @@ begin
     ColorAttachmentImage.fImageView:=ColorAttachmentImageView;
     ColorAttachmentImageView.fImage:=ColorAttachmentImage;
 
+    fDevice.DebugUtils.SetObjectName(ColorAttachmentImage.fImageHandle,TVkObjectType.VK_OBJECT_TYPE_IMAGE,'TpvVulkanSwapChainSimpleDirectRenderTarget.ColorAttachmentImage['+IntToStr(Index)+']');
+    fDevice.DebugUtils.SetObjectName(ColorAttachmentImageView.fImageViewHandle,TVkObjectType.VK_OBJECT_TYPE_IMAGE_VIEW,'TpvVulkanSwapChainSimpleDirectRenderTarget.ColorAttachmentImageView['+IntToStr(Index)+']');
+
     fFrameBufferColorAttachments[Index]:=TpvVulkanFrameBufferAttachment.Create(fDevice,
                                                                                ColorAttachmentImage,
                                                                                ColorAttachmentImageView,
                                                                                fSwapChain.Width,
                                                                                fSwapChain.Height,
                                                                                fSwapChain.ImageFormat,
-                                                                               true);
+                                                                               true,
+                                                                               'TpvVulkanSwapChainSimpleDirectRenderTarget.FrameBufferColorAttachments['+IntToStr(Index)+']');
 
    except
     FreeAndNil(fFrameBufferColorAttachments[Index]);
@@ -19169,7 +19202,8 @@ begin
                                                                      fDepthImageFormat,
                                                                      TVkBufferUsageFlags(VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT),
                                                                      VK_SHARING_MODE_EXCLUSIVE,
-                                                                     pvAllocationGroupIDFrameBuffer);
+                                                                     pvAllocationGroupIDFrameBuffer,
+                                                                     'TpvVulkanSwapChainSimpleDirectRenderTarget.DepthFrameBufferAttachment');
 
   SetLength(fFrameBuffers,fSwapChain.CountImages);
   for Index:=0 to fSwapChain.CountImages-1 do begin
@@ -19182,7 +19216,8 @@ begin
                                                      fSwapChain.Height,
                                                      1,
                                                      [fFrameBufferColorAttachments[Index],fDepthFrameBufferAttachment],
-                                                     false);
+                                                     false,
+                                                     'TpvVulkanSwapChainSimpleDirectRenderTarget.FrameBuffer');
   end;
 
  except
@@ -24942,6 +24977,18 @@ begin
    fDescriptorImageInfo.imageView:=VK_NULL_HANDLE;
   end;
   fDescriptorImageInfo.imageLayout:=fImageLayout;
+
+  if length(fName)>0 then begin
+   if assigned(fImage) then begin
+    fDevice.DebugUtils.SetObjectName(fImage.fImageHandle,TVkObjectType.VK_OBJECT_TYPE_IMAGE,fName);
+   end;
+   if assigned(fImageView) then begin
+    fDevice.DebugUtils.SetObjectName(fImageView.fImageViewHandle,TVkObjectType.VK_OBJECT_TYPE_IMAGE_VIEW,fName);
+   end;
+   if assigned(fSRGBImageView) then begin
+    fDevice.DebugUtils.SetObjectName(fSRGBImageView.fImageViewHandle,TVkObjectType.VK_OBJECT_TYPE_IMAGE_VIEW,fName+'(SRGB)');
+   end;
+  end;
 
  finally
 

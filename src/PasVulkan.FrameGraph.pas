@@ -2434,7 +2434,8 @@ begin
                                                                fMemoryPreferredNotHeapFlags,
                                                                fBufferFlags,
                                                                0,
-                                                               pvAllocationGroupIDFrameGraphBuffer);
+                                                               pvAllocationGroupIDFrameGraphBuffer,
+                                                               'TpvFrameGraph["'+fResourceType.Name+'"]['+IntToStr(InFlightFrameIndex)+']');
     fFrameGraph.fVulkanDevice.DebugUtils.SetObjectName(fVulkanBuffers[InFlightFrameIndex].Handle,TVkObjectType.VK_OBJECT_TYPE_BUFFER,fResourceType.Name+'['+IntToStr(InFlightFrameIndex)+']');
    end;
   end;
