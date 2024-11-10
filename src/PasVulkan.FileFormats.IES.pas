@@ -277,9 +277,9 @@ begin
  while ParserState.Position<=length(ParserState.Data) do begin
   Line:=TpvIESLoader.GetLine(ParserState,false);
   if length(Line)>0 then begin
-   if Line='TILT=NONE' then begin
+   if (Line='TILT=NONE') or (Line='TILT= NONE') or (Line='TILT =NONE') or (Line='TILT = NONE') then begin
     break;
-   end else if pos('TILT=',UpperCase(Line))=1 then begin
+   end else if (pos('TILT=',UpperCase(Line))=1) or (pos('TILT =',UpperCase(Line))=1) then begin
     raise EpvIESLoader.Create('Tiled IES files are not supported');
    end;  
   end;  
