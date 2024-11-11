@@ -15502,7 +15502,7 @@ begin
      if assigned(TemporaryStream) then begin
       try
        IESLoader.LoadFromStream(TemporaryStream);
-       fData.fLightProfileTexture:=TpvScene3D.TTexture.Create(ResourceManager,fSceneInstance);
+       fData.fLightProfileTexture:=TpvScene3D.TTexture.Create(fGroup.ResourceManager,fGroup.fSceneInstance);
        fData.fLightProfileTexture.AssignFromIES(IESProfileFileName,IESLoader,fData.fExtendedLightProfile);
       finally
        FreeAndNil(TemporaryStream);
