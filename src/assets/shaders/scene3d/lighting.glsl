@@ -9,6 +9,30 @@
 #endif
 #endif
 
+float getLightIESProfileTangentAngle(const in Light light, const in vec3 pointToLightDirection){
+  if((light.metaData.x & (1u << 17u)) != 0u){
+    // 2D light profile
+    const vec3 localPointToLightDirection = transpose(mat3(light.transformMatrix)) * pointToLightDirection;
+    return clamp(fma(atan(-localPointToLightDirection.y, -localPointToLightDirection.x), 0.1591549430918953, 0.5), 0.0, 1.0);
+  }else{
+    // 1D light profile
+    return 0.5;
+  }
+}
+
+float applyLightIESProfile(const in Light light, const in vec3 pointToLightDirection){
+  return ((light.metaData.x & (1u << 16u)) != 0u) 
+          ? textureLod(
+              u2DTextures[nonuniformEXT((((light.metaData.x & 0xfffc0000u) >> 18u) & 0x3fffu) << 1)], 
+              vec2(
+                clamp(fma(asin(clamp(dot(pointToLightDirection, normalize(-light.directionRange.xyz)), -1.0, 1.0)), 0.3183098861837907, 0.5), 0.0, 1.0), 
+                getLightIESProfileTangentAngle(light, pointToLightDirection)
+              ),
+              0.0
+            ).x
+          : 1.0;
+}  
+
 #elif defined(LIGHTING_INITIALIZATION)
 
 #ifdef RAYTRACING
@@ -220,22 +244,7 @@
 #endif // !defined(REFLECTIVESHADOWMAPOUTPUT)
             float lightAttenuationEx = lightAttenuation;
 #endif // SHADOWS
-            {  
-              if((light.metaData.x & (1u << 16u)) != 0u){
-                float normalizedAngle = clamp(fma(asin(clamp(dot(pointToLightDirection, normalize(-light.directionRange.xyz)), -1.0, 1.0)), 0.3183098861837907, 0.5), 0.0, 1.0),
-                      normalizedTangentAngle;
-                if((light.metaData.x & (1u << 17u)) != 0u){
-                  // 2D light profile
-                  vec3 localPointToLightDirection = transpose(mat3(light.transformMatrix)) * pointToLightDirection;
-                  normalizedTangentAngle = clamp(fma(atan(-localPointToLightDirection.y, -localPointToLightDirection.x), 0.1591549430918953, 0.5), 0.0, 1.0);
-                }else{
-                  // 1D light profile
-                  normalizedTangentAngle = 0.5;
-                }  
-                const uint lightProfile = (light.metaData.x & 0xfffc0000u) >> 18u;
-                lightAttenuation *= textureLod(u2DTextures[nonuniformEXT((lightProfile & 0x3fffu) << 1)], vec2(normalizedAngle, normalizedTangentAngle), 0.0).x;
-              }
-            }  
+            lightAttenuation *= applyLightIESProfile(light, pointToLightDirection);
             switch (lightType) {
 #if !defined(REFLECTIVESHADOWMAPOUTPUT)
               case 1u: { // Directional
@@ -371,22 +380,7 @@
                         break;
                       }
                     }
-                    {  
-                      if((light.metaData.x & (1u << 16u)) != 0u){
-                        float normalizedAngle = clamp(fma(asin(clamp(dot(pointToLightDirection, normalize(-light.directionRange.xyz)), -1.0, 1.0)), 0.3183098861837907, 0.5), 0.0, 1.0),
-                              normalizedTangentAngle;
-                        if((light.metaData.x & (1u << 17u)) != 0u){
-                          // 2D light profile
-                          vec3 localPointToLightDirection = transpose(mat3(light.transformMatrix)) * pointToLightDirection;
-                          normalizedTangentAngle = clamp(fma(atan(-localPointToLightDirection.y, -localPointToLightDirection.x), 0.1591549430918953, 0.5), 0.0, 1.0);
-                        }else{
-                          // 1D light profile
-                          normalizedTangentAngle = 0.5;
-                        }  
-                        const uint lightProfile = (light.metaData.x & 0xfffc0000u) >> 18u;
-                        lightAttenuation *= textureLod(u2DTextures[nonuniformEXT((lightProfile & 0x3fffu) << 1)], vec2(normalizedAngle, normalizedTangentAngle), 0.0).x;
-                      }
-                    }  
+                    lightAttenuation *= applyLightIESProfile(light, pointToLightDirection);
                     vec3 transmittedLight = lightAttenuation * getPunctualRadianceTransmission(normal.xyz, viewDirection, pointToLightDirection, alphaRoughness, F0, F90, diffuseColorAlpha.xyz, iorValues[i]);
 #ifndef VOLUMEATTENUTATION_FORCED
                     if((flags & (1u << 12u)) != 0u)
@@ -434,22 +428,7 @@
                       break;
                     }
                   }
-                  {  
-                    if((light.metaData.x & (1u << 16u)) != 0u){
-                      float normalizedAngle = clamp(fma(asin(clamp(dot(pointToLightDirection, normalize(-light.directionRange.xyz)), -1.0, 1.0)), 0.3183098861837907, 0.5), 0.0, 1.0),
-                            normalizedTangentAngle;
-                      if((light.metaData.x & (1u << 17u)) != 0u){
-                        // 2D light profile
-                        vec3 localPointToLightDirection = transpose(mat3(light.transformMatrix)) * pointToLightDirection;
-                        normalizedTangentAngle = clamp(fma(atan(-localPointToLightDirection.y, -localPointToLightDirection.x), 0.1591549430918953, 0.5), 0.0, 1.0);
-                      }else{
-                        // 1D light profile
-                        normalizedTangentAngle = 0.5;
-                      }  
-                      const uint lightProfile = (light.metaData.x & 0xfffc0000u) >> 18u;
-                      lightAttenuation *= textureLod(u2DTextures[nonuniformEXT((lightProfile & 0x3fffu) << 1)], vec2(normalizedAngle, normalizedTangentAngle), 0.0).x;
-                    }
-                  }  
+                  lightAttenuation *= applyLightIESProfile(light, pointToLightDirection);
                   vec3 transmittedLight = lightAttenuation * getPunctualRadianceTransmission(normal.xyz, viewDirection, pointToLightDirection, alphaRoughness, F0, F90, diffuseColorAlpha.xyz, ior);
 #ifndef VOLUMEATTENUTATION_FORCED
                   if((flags & (1u << 12u)) != 0u) 
