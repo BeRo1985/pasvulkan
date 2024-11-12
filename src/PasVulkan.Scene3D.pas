@@ -13254,6 +13254,9 @@ begin
   MaterialIndex:=StreamIO.ReadInt64;
   if (MaterialIndex>=0) and (MaterialIndex<aMaterials.Count) then begin
    fMaterial:=TpvScene3D.TMaterial(aMaterials[MaterialIndex]);
+   if assigned(fMaterial) then begin
+    fMaterial.IncRef;
+   end;
   end else begin
    fMaterial:=nil;
   end;
@@ -18182,7 +18185,7 @@ begin
 end;
 
 function TpvScene3D.TGroup.AddMaterial(const aMaterial:TpvScene3D.TMaterial;const aForceNew:Boolean;const aDoubleCheck:Boolean):TpvSizeInt;
-var Material,HashedMaterial:TpvScene3D.TMaterial;
+var Material,HashedMaterial,UsedMaterial:TpvScene3D.TMaterial;
     HashData:TpvScene3D.TMaterial.THashData;
     s:TPUCUUTF8String;
 begin
@@ -18191,6 +18194,7 @@ begin
   if aDoubleCheck and fMaterialIndexHashMap.TryGet(Material,result) then begin
    exit;
   end;
+  UsedMaterial:=nil;
   try
    HashData:=Material.fData;
    if aForceNew then begin
@@ -18199,16 +18203,19 @@ begin
     end;
     result:=fMaterials.Add(Material);
     fMaterialIndexHashMap.Add(Material,result);
+    UsedMaterial:=Material;
     Material:=nil;
    end else begin
     HashedMaterial:=fSceneInstance.fMaterialHashMap[HashData];
-    if assigned(HashedMaterial) and fSceneInstance.fMaterialExistHashMap.ExistKey(HashedMaterial) then begin
+    if assigned(HashedMaterial) and fSceneInstance.fMaterialExistHashMap.ExistKey(HashedMaterial) and (HashedMaterial.fName=Material.fName) then begin
      result:=fMaterials.Add(HashedMaterial);
      fMaterialIndexHashMap.Add(HashedMaterial,result);
+     UsedMaterial:=HashedMaterial;
     end else begin
      fSceneInstance.fMaterialHashMap[HashData]:=Material;
      result:=fMaterials.Add(Material);
      fMaterialIndexHashMap.Add(Material,result);
+     UsedMaterial:=Material;
      Material:=nil;
     end;
    end;
@@ -18222,7 +18229,9 @@ begin
     end;
    end;
   finally
-   FreeAndNil(Material);
+   if assigned(Material) and (Material<>UsedMaterial) then begin
+    FreeAndNil(Material);
+   end;
   end;
  end else begin
   result:=-1;
