@@ -1554,7 +1554,7 @@ begin
 
      EmptyAmbientOcclusionTextureData:=nil;
      try
-      SetLength(EmptyAmbientOcclusionTextureData,2048*2048*6);
+      SetLength(EmptyAmbientOcclusionTextureData,64*64*6);
       FillChar(EmptyAmbientOcclusionTextureData[0],length(EmptyAmbientOcclusionTextureData)*SizeOf(TpvUInt8),#$ff);
       fEmptyAmbientOcclusionTexture:=TpvVulkanTexture.CreateFromMemory(fVulkanDevice,
                                                                        UniversalQueue,
@@ -1565,8 +1565,8 @@ begin
                                                                        UniversalFence,
                                                                        VK_FORMAT_R8_UNORM,
                                                                        VK_SAMPLE_COUNT_1_BIT,
-                                                                       2048,
-                                                                       2048,
+                                                                       64,
+                                                                       64,
                                                                        0,
                                                                        6,
                                                                        1,
