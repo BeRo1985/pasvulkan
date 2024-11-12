@@ -10166,15 +10166,25 @@ begin
     AABB.Max:=TpvVector3.InlineableCreate(Infinity,Infinity,Infinity);
    end;
    TpvScene3D.TLightData.TLightType.Point:begin
-    AABB.Min:=Position-TpvVector3.InlineableCreate(Radius,Radius,Radius);
-    AABB.Max:=Position+TpvVector3.InlineableCreate(Radius,Radius,Radius);
+    if IsInfinite(fRadius) then begin
+     AABB.Min:=TpvVector3.InlineableCreate(-Infinity,-Infinity,-Infinity);
+     AABB.Max:=TpvVector3.InlineableCreate(Infinity,Infinity,Infinity);
+    end else begin
+     AABB.Min:=Position-TpvVector3.InlineableCreate(Radius,Radius,Radius);
+     AABB.Max:=Position+TpvVector3.InlineableCreate(Radius,Radius,Radius);
+    end;
    end;
    TpvScene3D.TLightData.TLightType.Spot:begin
-    OppositeLength:=Tan(Data^.fOuterConeAngle{*0.5})*Radius;
-    OBB.Center:=fMatrix*TpvVector3.InlineableCreate(0.0,0.0,-Radius*0.5);
-    OBB.HalfExtents:=TpvVector3.InlineableCreate(OppositeLength,OppositeLength,Radius*0.5);
-    OBB.Matrix:=fMatrix.ToMatrix3x3;
-    AABB:=TpvAABB.CreateFromOBB(OBB);
+    if IsInfinite(fRadius) then begin
+     AABB.Min:=TpvVector3.InlineableCreate(-Infinity,-Infinity,-Infinity);
+     AABB.Max:=TpvVector3.InlineableCreate(Infinity,Infinity,Infinity);
+    end else begin
+     OppositeLength:=Tan(Data^.fOuterConeAngle{*0.5})*Radius;
+     OBB.Center:=fMatrix*TpvVector3.InlineableCreate(0.0,0.0,-Radius*0.5);
+     OBB.HalfExtents:=TpvVector3.InlineableCreate(OppositeLength,OppositeLength,Radius*0.5);
+     OBB.Matrix:=fMatrix.ToMatrix3x3;
+     AABB:=TpvAABB.CreateFromOBB(OBB);
+    end;
    end;
    else {TpvScene3D.TLightData.TLightType.None:}begin
     AABB.Min:=TpvVector3.InlineableCreate(Infinity,Infinity,Infinity);
