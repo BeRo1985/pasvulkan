@@ -134,6 +134,10 @@
 
   // Render General information in the header
   function renderHeader(general) {
+    // Clear previous header information
+    while (headerBox.firstChild) {
+      headerBox.removeChild(headerBox.firstChild);
+    }
     headerBox.innerHTML = `
       <strong>General Information</strong><br>
       API: ${general.API}<br>
@@ -151,6 +155,10 @@
 
   // Render heap information section
   function renderHeapInfo(memoryInfo) {
+    // Clear previous heap information
+    while (heapInfo.firstChild) {
+      heapInfo.removeChild(heapInfo.firstChild);
+    }
     heapInfo.innerHTML = `<strong>Heap Information</strong>`;
     Object.keys(memoryInfo).forEach(heapName => {
       const heap = memoryInfo[heapName];
@@ -200,7 +208,11 @@
 
   // Render the memory visualization based on memory chunks
   function renderVisualization(memoryChunks) {
-    visualization.innerHTML = ''; // Clear previous visualizations
+    // Clear previous visualizations
+    while (visualization.firstChild) {
+      visualization.removeChild(visualization.firstChild);
+    }
+//  visualization.innerHTML = ''; // Clear previous visualizations
     Object.keys(memoryChunks).forEach((chunkName) => {
       const chunk = memoryChunks[chunkName];
       const chunkDiv = document.createElement('div');
