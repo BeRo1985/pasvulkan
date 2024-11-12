@@ -95,7 +95,7 @@ type { TpvScene3DRendererEnvironmentCubeMap }
        fHeight:TpvInt32;
       public
 
-       constructor Create(const aVulkanDevice:TpvVulkanDevice;const aVulkanPipelineCache:TpvVulkanPipelineCache;const aSampler:TpvVulkanSampler;const aLightDirection:TpvVector3;const aIntensityFactor:TpvFloat;const aImageFormat:TVkFormat=TVkFormat(VK_FORMAT_R16G16B16A16_SFLOAT);const aTexture:TpvVulkanTexture=nil;const aEnvironmentMode:TpvScene3DEnvironmentMode=TpvScene3DEnvironmentMode.Sky);
+       constructor Create(const aVulkanDevice:TpvVulkanDevice;const aVulkanPipelineCache:TpvVulkanPipelineCache;const aSampler:TpvVulkanSampler;const aLightDirection:TpvVector3;const aIntensityFactor:TpvFloat;const aImageFormat:TVkFormat=TVkFormat(VK_FORMAT_R16G16B16A16_SFLOAT);const aTexture:TpvVulkanTexture=nil;const aEnvironmentMode:TpvScene3DEnvironmentMode=TpvScene3DEnvironmentMode.Sky;const aName:TpvUTF8String='');
 
        destructor Destroy; override;
 
@@ -123,7 +123,7 @@ implementation
 
 { TpvScene3DRendererEnvironmentCubeMap }
 
-constructor TpvScene3DRendererEnvironmentCubeMap.Create(const aVulkanDevice:TpvVulkanDevice;const aVulkanPipelineCache:TpvVulkanPipelineCache;const aSampler:TpvVulkanSampler;const aLightDirection:TpvVector3;const aIntensityFactor:TpvFloat;const aImageFormat:TVkFormat;const aTexture:TpvVulkanTexture;const aEnvironmentMode:TpvScene3DEnvironmentMode);
+constructor TpvScene3DRendererEnvironmentCubeMap.Create(const aVulkanDevice:TpvVulkanDevice;const aVulkanPipelineCache:TpvVulkanPipelineCache;const aSampler:TpvVulkanSampler;const aLightDirection:TpvVector3;const aIntensityFactor:TpvFloat;const aImageFormat:TVkFormat;const aTexture:TpvVulkanTexture;const aEnvironmentMode:TpvScene3DEnvironmentMode;const aName:TpvUTF8String);
 var Index,FaceIndex,MipMaps,CountMipMapLevelSets,MipMapLevelSetIndex:TpvSizeInt;
     Stream:TStream;
     MemoryRequirements:TVkMemoryRequirements;
@@ -279,6 +279,8 @@ begin
                                      AdditionalImageFormat
                                     );
 
+ pvApplication.VulkanDevice.DebugUtils.SetObjectName(fVulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'EnvironmentCubeMap["'+aName+'"].fVulkanImage');
+
  MemoryRequirements:=pvApplication.VulkanDevice.MemoryManager.GetImageMemoryRequirements(fVulkanImage.Handle,
                                                                                          RequiresDedicatedAllocation,
                                                                                          PrefersDedicatedAllocation);
@@ -303,7 +305,8 @@ begin
                                                                             0,
                                                                             TpvVulkanDeviceMemoryAllocationType.ImageOptimal,
                                                                             @fVulkanImage.Handle,
-                                                                            pvAllocationGroupIDScene3DTexture);
+                                                                            pvAllocationGroupIDScene3DTexture,
+                                                                            'EnvironmentCubeMap["'+aName+'"].fMemoryBlock');
  if not assigned(fMemoryBlock) then begin
   raise EpvVulkanMemoryAllocationException.Create('Memory for texture couldn''t be allocated!');
  end;
@@ -377,6 +380,8 @@ begin
                                                    TVkImageUsageFlags(VK_IMAGE_USAGE_TRANSFER_DST_BIT) or
                                                    TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT));
 
+           pvApplication.VulkanDevice.DebugUtils.SetObjectName(fVulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'EnvironmentCubeMap["'+aName+'"].fVulkanImageView');
+
        fDescriptorImageInfo:=TVkDescriptorImageInfo.Create(fVulkanSampler.Handle,
                                                            fVulkanImageView.Handle,
                                                            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
@@ -395,6 +400,8 @@ begin
                                             0,
                                             6);
        try
+
+        pvApplication.VulkanDevice.DebugUtils.SetObjectName(ImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'EnvironmentCubeMap["'+aName+'"].ImageView');
 
         DescriptorImageInfo:=TVkDescriptorImageInfo.Create(fVulkanSampler.Handle,
                                                            ImageView.Handle,
