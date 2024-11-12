@@ -134,6 +134,7 @@ begin
                                      nil,
                                      VK_IMAGE_LAYOUT_UNDEFINED
                                     );
+ aDevice.DebugUtils.SetObjectName(fVulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DRendererOrderIndependentTransparencyImage.Image');
 
  MemoryRequirements:=aDevice.MemoryManager.GetImageMemoryRequirements(fVulkanImage.Handle,
                                                                       RequiresDedicatedAllocation,
@@ -159,7 +160,8 @@ begin
                                                          0,
                                                          TpvVulkanDeviceMemoryAllocationType.ImageOptimal,
                                                          @fVulkanImage.Handle,
-                                                         pvAllocationGroupIDScene3DSurface);
+                                                         pvAllocationGroupIDScene3DSurface,
+                                                         'TpvScene3DRendererOrderIndependentTransparencyImage.MemoryBlock');
  if not assigned(fMemoryBlock) then begin
   raise EpvVulkanMemoryAllocationException.Create('Memory for texture couldn''t be allocated!');
  end;
@@ -167,9 +169,9 @@ begin
  fMemoryBlock.AssociatedObject:=self;
 
  VulkanCheckResult(aDevice.Commands.BindImageMemory(aDevice.Handle,
-                                                                       fVulkanImage.Handle,
-                                                                       fMemoryBlock.MemoryChunk.Handle,
-                                                                       fMemoryBlock.Offset));
+                                                    fVulkanImage.Handle,
+                                                    fMemoryBlock.MemoryChunk.Handle,
+                                                    fMemoryBlock.Offset));
 
  Queue:=aDevice.GraphicsQueue;
 
@@ -229,6 +231,7 @@ begin
                                                 1,
                                                 0,
                                                 aLayers);
+    aDevice.DebugUtils.SetObjectName(fVulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRendererOrderIndependentTransparencyImage.ImageView');
 
     fDescriptorImageInfo:=TVkDescriptorImageInfo.Create(aVulkanSampler.Handle,
                                                         fVulkanImageView.Handle,

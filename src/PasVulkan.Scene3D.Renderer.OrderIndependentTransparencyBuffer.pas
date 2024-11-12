@@ -115,9 +115,9 @@ begin
                                        [],
                                        0,
                                        pvAllocationGroupIDScene3DSurface,
-                                       'TpvScene3D.OITBuffer');
+                                       'TpvScene3DRendererOrderIndependentTransparencyBuffer');
 
- aDevice.DebugUtils.SetObjectName(fVulkanBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.OITBuffer');
+ aDevice.DebugUtils.SetObjectName(fVulkanBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DRendererOrderIndependentTransparencyBuffer');
 
  if (aBufferUsage and (TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT) or
                        TVkBufferUsageFlags(VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT)))<>0 then begin
