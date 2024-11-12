@@ -705,9 +705,17 @@ begin
     pvApplication.Terminate;
    end;
    KEYCODE_F8:begin
-    if TpvApplicationInputKeyModifier.CTRL in aKeyEvent.KeyModifiers then begin
+    if (aKeyEvent.KeyModifiers*[TpvApplicationInputKeyModifier.CTRL,TpvApplicationInputKeyModifier.ALT,TpvApplicationInputKeyModifier.SHIFT])=[TpvApplicationInputKeyModifier.CTRL] then begin
      pvApplication.DumpVulkanMemoryManager;
-    end else if TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers then begin
+     StringList:=TStringList.Create;
+     try
+      pvApplication.VulkanDevice.MemoryManager.DumpJSON(StringList);
+      StringList.SaveToFile(IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0)))+'vulkanmemory.json');
+     finally
+      FreeAndNil(StringList);
+     end;
+     result:=true;
+    end else if (aKeyEvent.KeyModifiers*[TpvApplicationInputKeyModifier.CTRL,TpvApplicationInputKeyModifier.ALT,TpvApplicationInputKeyModifier.SHIFT])=[TpvApplicationInputKeyModifier.SHIFT] then begin
      if assigned(fScene3D) then begin
       StringList:=TStringList.Create;
       try
@@ -720,7 +728,7 @@ begin
        FreeAndNil(StringList);
       end;
      end;
-    end else begin
+    end else if (aKeyEvent.KeyModifiers*[TpvApplicationInputKeyModifier.CTRL,TpvApplicationInputKeyModifier.ALT,TpvApplicationInputKeyModifier.SHIFT])=[] then begin
      if assigned(fScene3D) then begin
       fScene3D.DumpProfiler;
      end;
