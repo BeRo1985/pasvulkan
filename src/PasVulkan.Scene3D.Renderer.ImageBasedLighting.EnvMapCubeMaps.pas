@@ -284,7 +284,7 @@ var ImageIndex,Index,MipMaps:TpvSizeInt;
     Images:array[0..2] of PpvVulkanImage;
     MemoryBlocks:array[0..2] of PpvVulkanDeviceMemoryBlock;
     AdditionalImageFormat:TVkFormat;
-    FormatVariant:String;
+    FormatVariant,Name:String;
 //  ImportanceSamples:TImportanceSamples;
 begin
  inherited Create;
@@ -351,6 +351,18 @@ begin
    Include(MemoryBlockFlags,TpvVulkanDeviceMemoryBlockFlag.DedicatedAllocation);
   end;
 
+  case ImageIndex of
+   0:begin
+    Name:='TpScene3DRendererImageBasedLightingEnvMapCubeMaps.GGX.MemoryBlock';
+   end;
+   1:begin
+    Name:='TpScene3DRendererImageBasedLightingEnvMapCubeMaps.Charlie.MemoryBlock';
+   end;
+   else begin
+    Name:='TpScene3DRendererImageBasedLightingEnvMapCubeMaps.Lambertian.MemoryBlock';
+   end;
+  end;
+
   MemoryBlocks[ImageIndex]^:=aVulkanDevice.MemoryManager.AllocateMemoryBlock(MemoryBlockFlags,
                                                                              MemoryRequirements.size,
                                                                              MemoryRequirements.alignment,
@@ -365,7 +377,8 @@ begin
                                                                              0,
                                                                              TpvVulkanDeviceMemoryAllocationType.ImageOptimal,
                                                                              @Images[ImageIndex]^.Handle,
-                                                                             pvAllocationGroupIDScene3DTexture);
+                                                                             pvAllocationGroupIDScene3DTexture,
+                                                                             Name);
   if not assigned(MemoryBlocks[ImageIndex]^) then begin
    raise EpvVulkanMemoryAllocationException.Create('Memory for texture couldn''t be allocated!');
   end;
@@ -378,6 +391,10 @@ begin
                                                            MemoryBlocks[ImageIndex]^.Offset));
 
  end;
+
+ aVulkanDevice.DebugUtils.SetObjectName(fVulkanGGXImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DRendererImageBasedLightingEnvMapCubeMaps.fVulkanGGXImage');
+ aVulkanDevice.DebugUtils.SetObjectName(fVulkanCharlieImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DRendererImageBasedLightingEnvMapCubeMaps.fVulkanCharlieImage');
+ aVulkanDevice.DebugUtils.SetObjectName(fVulkanLambertianImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DRendererImageBasedLightingEnvMapCubeMaps.fVulkanLambertianImage');
 
  GraphicsQueue:=aVulkanDevice.GraphicsQueue;
 
@@ -439,6 +456,7 @@ begin
                                                MipMaps,
                                                TVkBorderColor(VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK),
                                                false);
+       aVulkanDevice.DebugUtils.SetObjectName(fVulkanSampler.Handle,VK_OBJECT_TYPE_SAMPLER,'TpvScene3DRendererImageBasedLightingEnvMapCubeMaps.fVulkanSampler');
 
        fVulkanGGXImageView:=TpvVulkanImageView.Create(aVulkanDevice,
                                                       fVulkanGGXImage,
@@ -455,6 +473,7 @@ begin
                                                       6,
                                                       true,
                                                       TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT));
+       aVulkanDevice.DebugUtils.SetObjectName(fVulkanGGXImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRendererImageBasedLightingEnvMapCubeMaps.fVulkanGGXImageView');
 
        fVulkanCharlieImageView:=TpvVulkanImageView.Create(aVulkanDevice,
                                                           fVulkanCharlieImage,
@@ -471,6 +490,7 @@ begin
                                                           6,
                                                           true,
                                                           TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT));
+       aVulkanDevice.DebugUtils.SetObjectName(fVulkanCharlieImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRendererImageBasedLightingEnvMapCubeMaps.fVulkanCharlieImageView');
 
        fVulkanLambertianImageView:=TpvVulkanImageView.Create(aVulkanDevice,
                                                              fVulkanLambertianImage,
@@ -487,6 +507,7 @@ begin
                                                              6,
                                                              true,
                                                              TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT));
+       aVulkanDevice.DebugUtils.SetObjectName(fVulkanLambertianImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRendererImageBasedLightingEnvMapCubeMaps.fVulkanLambertianImageView');
 
        fGGXDescriptorImageInfo:=TVkDescriptorImageInfo.Create(fVulkanSampler.Handle,
                                                               fVulkanGGXImageView.Handle,
@@ -529,6 +550,7 @@ begin
                                                                   1,
                                                                   0,
                                                                   6);
+          aVulkanDevice.DebugUtils.SetObjectName(ImageViews[ImageIndex,Index].Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRendererImageBasedLightingEnvMapCubeMaps.ImageViews['+IntToStr(ImageIndex)+','+IntToStr(Index)+']');
 
           DescriptorImageInfos[ImageIndex,Index]:=TVkDescriptorImageInfo.Create(fVulkanSampler.Handle,
                                                                                 ImageViews[ImageIndex,Index].Handle,
