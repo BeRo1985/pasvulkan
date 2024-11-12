@@ -18957,7 +18957,7 @@ procedure TpvScene3DPlanet.GetPositionAndNormal(const aUV:TpvVector2;out aOutPos
 var x,y,fx,fy:TpvDouble;
     ix,iy:TpvInt32;
     v0,v1,v2,v3:TpvScene3DPlanet.PMeshVertex;
-    p0,p1,p2,p3:TpvVector3;
+//  p0,p1,p2,p3:TpvVector3;
     n0,n1,n2,n3:TpvVector3;
 begin
 
