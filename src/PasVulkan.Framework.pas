@@ -13762,8 +13762,8 @@ procedure TpvVulkanDeviceMemoryManager.DumpJSON(const aStringList:TStringList);
   end;
  end;
 var HeapIndex,TypeIndex,ChunkIndex,BlockIndex:TpvSizeInt;
-    MemoryChunk:TpvVulkanDeviceMemoryChunk;
-    MemoryChunkBlock:TpvVulkanDeviceMemoryChunkBlock;
+    MemoryChunk,NextMemoryChunk:TpvVulkanDeviceMemoryChunk;
+    MemoryChunkBlock,NextMemoryChunkBlock:TpvVulkanDeviceMemoryChunkBlock;
     Size,Used:TpvUInt64;
     Index:TpvSizeInt;
     s:TpvRawByteString;
@@ -13771,7 +13771,8 @@ var HeapIndex,TypeIndex,ChunkIndex,BlockIndex:TpvSizeInt;
     AllocationCount,AllocationBytes,AllocationSizeMin,AllocationSizeMax,
     UnusedRangeCount,UnusedRangeSizeMin,UnusedRangeSizeMax:TpvUInt64;
     Flags:TpvUTF8String;
-    Node:TpvVulkanDeviceMemoryChunkBlockRedBlackTreeNode;
+    Node,NextNode:TpvVulkanDeviceMemoryChunkBlockRedBlackTreeNode;
+    FirstA:Boolean;
 begin
 
  AddLine('{');
@@ -13889,6 +13890,7 @@ begin
      AddLine('      },');
      AddLine('      "MemoryPools": {');
      begin
+      FirstA:=true;
       for TypeIndex:=0 to fDevice.fPhysicalDevice.fMemoryProperties.memoryTypeCount-1 do begin
        if (fDevice.fPhysicalDevice.fMemoryProperties.memoryTypes[TypeIndex].heapIndex=HeapIndex) and
           (fDevice.fPhysicalDevice.fMemoryProperties.memoryTypes[TypeIndex].propertyFlags<>0) then begin
@@ -13916,6 +13918,11 @@ begin
          end;
          MemoryChunk:=MemoryChunk.fNextMemoryChunk;
         end;
+        if FirstA then begin
+         FirstA:=false;
+        end else begin
+         AddLine('        },');
+        end;    
         AddLine('        "Type '+IntToStr(TypeIndex)+'": {');
         begin
          Flags:='';
@@ -13967,13 +13974,19 @@ begin
          end;
          AddLine('          }');
         end;
-        AddLine('        },');
+       end;
+       if not FirstA then begin
+        AddLine('        }');
        end;
       end;       
      end; 
      AddLine('      }');
     end;
-    AddLine('    },');
+    if HeapIndex<fDevice.fPhysicalDevice.fMemoryProperties.memoryHeapCount-1 then begin
+     AddLine('    },');
+    end else begin
+     AddLine('    }');
+    end; 
    end; 
   end;
   AddLine('  },');
@@ -14076,11 +14089,17 @@ begin
      AddLine('      "MemoryChunkFlags": ['+Flags+'],');
      AddLine('      "MemoryChunkBlocks": {');
      begin
+      FirstA:=true;
       BlockIndex:=0;
       Node:=MemoryChunk.fOffsetRedBlackTree.fRoot;
       while assigned(Node) do begin
        MemoryChunkBlock:=Node.fValue;
        if assigned(MemoryChunkBlock) then begin
+        if FirstA then begin
+         FirstA:=false;
+        end else begin
+         AddLine('        },');
+        end;
         AddLine('        "Block '+IntToStr(BlockIndex)+'": {');
         begin
          if assigned(MemoryChunkBlock.fMemoryBlock) then begin
@@ -14107,17 +14126,24 @@ begin
          end;
          AddLine('          "Alignment": '+IntToStr(MemoryChunkBlock.fAlignment)+'');
         end;
-        AddLine('        },');
         inc(BlockIndex);
        end;
        Node:=Node.Successor;
       end;
+      if not FirstA then begin
+       AddLine('        },');
+      end; 
      end;
-      AddLine('      }');
+     AddLine('      }');
     end;
-    AddLine('    },');
+    NextMemoryChunk:=MemoryChunk.fNextMemoryChunk;
+    if assigned(NextMemoryChunk) then begin
+     AddLine('    },');
+    end else begin
+     AddLine('    }');
+    end;
     inc(ChunkIndex);
-    MemoryChunk:=MemoryChunk.fNextMemoryChunk;
+    MemoryChunk:=NextMemoryChunk;
    end; 
   end;
   AddLine('  }');
