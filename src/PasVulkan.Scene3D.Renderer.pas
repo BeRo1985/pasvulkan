@@ -1459,7 +1459,7 @@ begin
  fVulkanDevice.DebugUtils.SetObjectName(fLensStar.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DRenderer.fLensStar.Image');
  fVulkanDevice.DebugUtils.SetObjectName(fLensStar.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRenderer.fLensStar.ImageView');
 
- fImageBasedLightingEnvMapCubeMaps:=TpvScene3DRendererImageBasedLightingEnvMapCubeMaps.Create(fVulkanDevice,fVulkanPipelineCache,fEnvironmentCubeMap.DescriptorImageInfo,fOptimizedCubeMapFormat);
+ fImageBasedLightingEnvMapCubeMaps:=TpvScene3DRendererImageBasedLightingEnvMapCubeMaps.Create(fVulkanDevice,fVulkanPipelineCache,fRepeatedSampler,fEnvironmentCubeMap.DescriptorImageInfo,fOptimizedCubeMapFormat);
 
  UniversalQueue:=fVulkanDevice.UniversalQueue;
  try

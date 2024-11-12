@@ -97,7 +97,7 @@ type { TpvScene3DRendererImageBasedLightingEnvMapCubeMaps }
        fLambertianDescriptorImageInfo:TVkDescriptorImageInfo;
       public
 
-       constructor Create(const aVulkanDevice:TpvVulkanDevice;const aVulkanPipelineCache:TpvVulkanPipelineCache;const aDescriptorImageInfo:TVkDescriptorImageInfo;const aImageFormat:TVkFormat=TVkFormat(VK_FORMAT_R16G16B16A16_SFLOAT));
+       constructor Create(const aVulkanDevice:TpvVulkanDevice;const aVulkanPipelineCache:TpvVulkanPipelineCache;const aVulkanSampler:TpvVulkanSampler;const aDescriptorImageInfo:TVkDescriptorImageInfo;const aImageFormat:TVkFormat=TVkFormat(VK_FORMAT_R16G16B16A16_SFLOAT));
 
        destructor Destroy; override;
 
@@ -248,7 +248,7 @@ end;
 
 { TpvScene3DRendererImageBasedLightingEnvMapCubeMaps }
 
-constructor TpvScene3DRendererImageBasedLightingEnvMapCubeMaps.Create(const aVulkanDevice:TpvVulkanDevice;const aVulkanPipelineCache:TpvVulkanPipelineCache;const aDescriptorImageInfo:TVkDescriptorImageInfo;const aImageFormat:TVkFormat);
+constructor TpvScene3DRendererImageBasedLightingEnvMapCubeMaps.Create(const aVulkanDevice:TpvVulkanDevice;const aVulkanPipelineCache:TpvVulkanPipelineCache;const aVulkanSampler:TpvVulkanSampler;const aDescriptorImageInfo:TVkDescriptorImageInfo;const aImageFormat:TVkFormat);
 type TPushConstants=record
       MipMapLevel:TpvInt32;
       MaxMipMapLevel:TpvInt32;
@@ -440,7 +440,7 @@ begin
                                       true);
        end;
 
-       fVulkanSampler:=TpvVulkanSampler.Create(aVulkanDevice,
+{      fVulkanSampler:=TpvVulkanSampler.Create(aVulkanDevice,
                                                TVkFilter(VK_FILTER_LINEAR),
                                                TVkFilter(VK_FILTER_LINEAR),
                                                TVkSamplerMipmapMode(VK_SAMPLER_MIPMAP_MODE_LINEAR),
@@ -456,7 +456,8 @@ begin
                                                MipMaps,
                                                TVkBorderColor(VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK),
                                                false);
-       aVulkanDevice.DebugUtils.SetObjectName(fVulkanSampler.Handle,VK_OBJECT_TYPE_SAMPLER,'TpvScene3DRendererImageBasedLightingEnvMapCubeMaps.fVulkanSampler');
+       aVulkanDevice.DebugUtils.SetObjectName(fVulkanSampler.Handle,VK_OBJECT_TYPE_SAMPLER,'TpvScene3DRendererImageBasedLightingEnvMapCubeMaps.fVulkanSampler');}
+       fVulkanSampler:=aVulkanSampler;
 
        fVulkanGGXImageView:=TpvVulkanImageView.Create(aVulkanDevice,
                                                       fVulkanGGXImage,
@@ -820,7 +821,7 @@ begin
  FreeAndNil(fVulkanGGXImageView);
  FreeAndNil(fVulkanCharlieImageView);
  FreeAndNil(fVulkanLambertianImageView);
- FreeAndNil(fVulkanSampler);
+//FreeAndNil(fVulkanSampler);
  FreeAndNil(fVulkanGGXImage);
  FreeAndNil(fVulkanCharlieImage);
  FreeAndNil(fVulkanLambertianImage);
