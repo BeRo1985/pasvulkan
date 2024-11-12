@@ -10135,6 +10135,8 @@ begin
      // float distanceByRange = currentDistance / light.positionRange.w;
      // lightAttenuation *= clamp(1.0 - (distanceByRange * distanceByRange * distanceByRange * distanceByRange), 0.0, 1.0) / (currentDistance * currentDistance);
      Radius:=Data^.fRange;
+    end else if Data^.fRange<0.0 then begin
+     Radius:=Infinity;
     end else begin
      // lightAttenuation *= 1.0 / (currentDistance * currentDistance);
      Luminance:=Data^.fColor.Dot(LinearRGBLuminance)*Data^.fIntensity;
