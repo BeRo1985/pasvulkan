@@ -2530,7 +2530,8 @@ begin
                                                          pvAllocationGroupIDScene3DPlanetStatic,
                                                          VK_FORMAT_UNDEFINED,
                                                          ImageSharingMode,
-                                                         ImageQueueFamilyIndices);
+                                                         ImageQueueFamilyIndices,
+                                                         'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fBlendMapImage');
    fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fBlendMapImage.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fBlendMapImage.Image');
    fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fBlendMapImage.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fBlendMapImage.ImageView');
    fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fBlendMapImage.VulkanArrayImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fBlendMapImage.ArrayImageView');
@@ -15833,7 +15834,10 @@ begin
                                                                        VK_IMAGE_LAYOUT_GENERAL,
                                                                        true,
                                                                        pvAllocationGroupIDScene3DPlanetStatic,
-                                                                       VK_FORMAT_R32_UINT);
+                                                                       VK_FORMAT_R32_UINT,
+                                                                       VK_SHARING_MODE_EXCLUSIVE,
+                                                                       nil,
+                                                                       'TpvScene3DPlanet.WaterAccelerationImage');
   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fVulkanWaterAccelerationImage.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DPlanet.WaterAccelerationImage.Image');
   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fVulkanWaterAccelerationImage.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DPlanet.WaterAccelerationImage.ImageView');
   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fVulkanWaterAccelerationImage.VulkanArrayImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DPlanet.WaterAccelerationImage.ArrayImageView');
