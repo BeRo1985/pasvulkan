@@ -1907,7 +1907,7 @@ begin
                                                               TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
                                                               nil,
                                                               0,
-                                                              'AtmosphereCubeMap');
+                                                              'TpScene3DAtmosphere.CubeMapTexture');
 
  fGGXCubeMapTexture:=TpvScene3DRendererMipmapImageCubeMap.Create(TpvScene3D(fAtmosphere.fScene3D).VulkanDevice,
                                                                  CubeMapTextureSize,
@@ -1919,7 +1919,7 @@ begin
                                                                  TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
                                                                  nil,
                                                                  0,
-                                                                 'GGXCubeMap');
+                                                                 'TpScene3DAtmosphere.GGXCubeMapTexture');
 
  fCharlieCubeMapTexture:=TpvScene3DRendererMipmapImageCubeMap.Create(TpvScene3D(fAtmosphere.fScene3D).VulkanDevice,
                                                                      CubeMapTextureSize,
@@ -1931,7 +1931,7 @@ begin
                                                                      TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
                                                                      nil,
                                                                      0,
-                                                                     'CharlieCubeMap');
+                                                                     'TpScene3DAtmosphere.CharlieCubeMapTexture');
 
  fLambertianCubeMapTexture:=TpvScene3DRendererMipmapImageCubeMap.Create(TpvScene3D(fAtmosphere.fScene3D).VulkanDevice,
                                                                         CubeMapTextureSize,
@@ -1943,7 +1943,7 @@ begin
                                                                         TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
                                                                         nil,
                                                                         0,
-                                                                        'LambertianCubeMap');
+                                                                        'TpScene3DAtmosphere.LambertianCubeMapTexture');
 
  fTransmittanceLUTPassDescriptorPool:=TpvVulkanDescriptorPool.Create(TpvScene3D(fAtmosphere.fScene3D).VulkanDevice,
                                                                      TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT) or
