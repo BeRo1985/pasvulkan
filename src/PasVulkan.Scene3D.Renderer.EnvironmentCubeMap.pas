@@ -234,13 +234,13 @@ begin
     case pvApplication.VulkanDevice.PhysicalDevice.Properties.vendorID of
      TVkUInt32(TpvVulkanVendorID.NVIDIA),TVkUInt32(TpvVulkanVendorID.AMD):begin
       Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cubemap_sky_'+FormatVariant+'comp.spv');
-      fWidth:=2048;
-      fHeight:=2048;
+      fWidth:=256;
+      fHeight:=256;
      end;
      else begin
       Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cubemap_sky_fast_'+FormatVariant+'comp.spv');
-      fWidth:=512;
-      fHeight:=512;
+      fWidth:=128;
+      fHeight:=128;
      end;
     end;
    end;
