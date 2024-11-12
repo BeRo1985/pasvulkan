@@ -181,7 +181,7 @@ begin
                                      fAdditionalImageFormat
                                     );
  if length(aName)>0 then begin
-  aDevice.DebugUtils.SetObjectName(fVulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,aName+'.Image');
+  aDevice.DebugUtils.SetObjectName(fVulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DRendererImageCubeMap["'+aName+'"].Image');
  end;
 
  MemoryRequirements:=aDevice.MemoryManager.GetImageMemoryRequirements(fVulkanImage.Handle,
@@ -208,7 +208,8 @@ begin
                                                          0,
                                                          TpvVulkanDeviceMemoryAllocationType.ImageOptimal,
                                                          @fVulkanImage.Handle,
-                                                         aAllocationGroupID);
+                                                         aAllocationGroupID,
+                                                         'TpvScene3DRendererImageCubeMap["'+aName+'"].MemoryBlock');
  if not assigned(fMemoryBlock) then begin
   raise EpvVulkanMemoryAllocationException.Create('Memory for texture couldn''t be allocated!');
  end;
@@ -262,7 +263,7 @@ begin
                                                 0,
                                                 6);
      if length(aName)>0 then begin
-      aDevice.DebugUtils.SetObjectName(fVulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,aName+'.ImageView');
+      aDevice.DebugUtils.SetObjectName(fVulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRendererImageCubeMap["'+aName+'"].ImageView');
      end;
 
    finally
