@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PasVulkan Vulkan Memory Visualizer</title>
+<style>
+  body { font-family: Arial, sans-serif; }
+  .container { margin: 20px; }
+  .header-box, .heap-info, .chunk { margin: 10px 0; }
+  .header-box, .heap-info, .chunk-bar { padding: 10px; border: 1px solid #ccc; border-radius: 5px; }
+  .chunk-label { font-weight: bold; display: inline-block; }
+  .chunk-bar { position: relative; background: #e0e0e0; width: 100%; height: 30px; overflow: hidden; margin-top: 5px; }
+  .block { position: absolute; top: 0; height: 100%; vertical-align: top; box-sizing: border-box; border: 1px solid #000; overflow: hidden; }
+  .block.Unknown { background-color: #9e9e9e; } /* Gray */
+  .block.ImageOptimal { background-color: #2196f3; } /* Blue */
+  .block.ImageLinear { background-color: #ff9800; } /* Orange */
+  .block.Buffer { background-color: #4caf50; } /* Green */
+  .block.Free { background-color: #ddd; cursor: pointer; } /* Light Gray with hover pointer */
+  .chunk-info-button { cursor: pointer; color: blue; font-weight: bold; float: right; margin-left: 5px; }
+  .tooltip { position: absolute; background: #333; color: #fff; padding: 5px; border-radius: 5px; display: none; z-index: 10; }
+  .block-name { font-size: 10px; padding: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #fff; }
+  .export-button { display: none; margin-top: 10px; margin-bottom: 10px; padding: 10px 20px; font-size: 14px; cursor: pointer; background-color: #4CAF50; color: white; border: none; border-radius: 5px; }
+  .hidden-input { display: none; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>PasVulkan Vulkan Memory Visualizer <span style="font-size: 10px;">Copyright (C) 2024, Benjamin 'BeRo' Rosseaux - zlib licensed</span></h1>  
+
+  <p>This tool visualizes Vulkan memory allocations from a JSON file exported by PasVulkan.</p>
+
+  <div id="instructions-container">
+    <p>Drag & drop a JSON file below to visualize Vulkan memory allocations.</p>
+  </div>
+
+  <div id="drop-zone" style="border: 2px dashed #000; padding: 20px; text-align: center;">
+    Drop JSON file here or click to browse
+  </div>
+
+  <input type="file" id="file-input" class="hidden-input" accept=".json">
+
+  <button id="export-button" class="export-button" onclick="exportHTML()">Export HTML</button>
+
+  <div id="header-box" class="header-box"></div>
+  <div id="heap-info" class="heap-info"></div>
+  <div id="visualization"></div>
+  <div class="tooltip" id="tooltip"></div>
+</div>
+
+<script>
+  const dropZone = document.getElementById('drop-zone');
+  const fileInput = document.getElementById('file-input');
+  const headerBox = document.getElementById('header-box');
+  const heapInfo = document.getElementById('heap-info');
+  const visualization = document.getElementById('visualization');
+  const tooltip = document.getElementById('tooltip');
+  const exportButton = document.getElementById('export-button');
+  let embeddedData = null; // Store data for exporting
+
+  // Check if JSON data is embedded (for exported HTML)
+  document.addEventListener('DOMContentLoaded', () => {
+    if (typeof embeddedJsonData !== 'undefined') {
+      initializeVisualization(embeddedJsonData);
+      exportButton.style.display = 'none'; // Hide export button in exported HTML
+    }
+  });
+
+  // Open file dialog when drop zone is clicked
+  dropZone.addEventListener('click', () => {
+    fileInput.click();
+  });
+
+  // Handle file selection from the dialog
+  fileInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      loadFile(file);
+    }
+  });
+
+  // Handle drag-over and drag-leave events for drop-zone styling
+  dropZone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    dropZone.style.backgroundColor = '#f0f0f0';
+  });
+
+  dropZone.addEventListener('dragleave', () => {
+    dropZone.style.backgroundColor = '';
+  });
+
+  // Handle file drop in drop-zone
+  dropZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dropZone.style.backgroundColor = ''; // Restore background color
+    const file = e.dataTransfer.files[0];
+    if (file) {
+      loadFile(file);
+    }
+  });
+
+  // Load the file and initialize visualization
+  function loadFile(file) {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const data = JSON.parse(e.target.result);
+      embeddedData = data; // Store data for export
+      initializeVisualization(data);
+      exportButton.style.display = 'inline-block'; // Show export button after loading JSON
+    };
+    reader.readAsText(file);
+  }
+
+  function initializeVisualization(data) {
+    renderHeader(data.General);
+    renderHeapInfo(data.MemoryInfo);
+    renderVisualization(data.MemoryChunks);
+  }
+
+  // Convert bytes to human-readable format (e.g., 64 MiB)
+  function formatSize(bytes) {
+    const units = ['bytes', 'KiB', 'MiB', 'GiB', 'TiB'];
+    let unitIndex = 0;
+    let size = bytes;
+
+    while (size >= 1024 && unitIndex < units.length - 1) {
+      size /= 1024;
+      unitIndex++;
+    }
+
+    return `${bytes} bytes (${size.toFixed(2)} ${units[unitIndex]})`;
+  }
+
+  // Render General information in the header
+  function renderHeader(general) {
+    headerBox.innerHTML = `
+      <strong>General Information</strong><br>
+      API: ${general.API}<br>
+      API Version: ${general.apiVersion}<br>
+      Driver Version: ${general.driverVersion}<br>
+      GPU: ${general.GPU}<br>
+      Device Type: ${general.deviceType}<br>
+      Max Memory Allocations: ${general.maxMemoryAllocationCount}<br>
+      Buffer Image Granularity: ${formatSize(general.bufferImageGranularity)}<br>
+      Non-Coherent Atom Size: ${formatSize(general.nonCoherentAtomSize)}<br>
+      Memory Heap Count: ${general.memoryHeapCount}<br>
+      Memory Type Count: ${general.memoryTypeCount}
+    `;
+  }
+
+  // Render heap information section
+  function renderHeapInfo(memoryInfo) {
+    heapInfo.innerHTML = `<strong>Heap Information</strong>`;
+    Object.keys(memoryInfo).forEach(heapName => {
+      const heap = memoryInfo[heapName];
+      const heapDiv = document.createElement('div');
+      heapDiv.className = 'heap-info';
+      heapDiv.innerHTML = `
+        <strong>${heapName}</strong><br>
+        Flags: ${heap.Flags.join(', ')}<br>
+        Size: ${formatSize(heap.Size)}<br>
+        Budget: ${formatSize(heap.Budget.BudgetBytes)}<br>
+        Usage: ${formatSize(heap.Budget.UsageBytes)}<br>
+        Allocation Count: ${heap.Stats.AllocationCount}<br>
+        Block Count: ${heap.Stats.BlockCount}<br>
+        Allocation Bytes: ${formatSize(heap.Stats.AllocationBytes)}
+      `;
+
+      // Render Memory Pool Types if available
+      if (heap.MemoryPools) {
+        const typesDiv = document.createElement('div');
+        typesDiv.innerHTML = '<strong>Types:</strong><br>';
+
+        Object.keys(heap.MemoryPools).forEach(typeName => {
+          const type = heap.MemoryPools[typeName];
+          const typeDiv = document.createElement('div');
+          typeDiv.style.marginLeft = '15px';
+          typeDiv.innerHTML = `
+            <strong>${typeName}</strong><br>
+            Flags: ${type.Flags.join(', ')}<br>
+            Block Count: ${type.Stats.BlockCount}<br>
+            Block Bytes: ${formatSize(type.Stats.BlockBytes)}<br>
+            Allocation Count: ${type.Stats.AllocationCount}<br>
+            Allocation Bytes: ${formatSize(type.Stats.AllocationBytes)}<br>
+            Min Allocation Size: ${formatSize(type.Stats.AllocationSizeMin)}<br>
+            Max Allocation Size: ${formatSize(type.Stats.AllocationSizeMax)}
+          `;
+          typesDiv.appendChild(typeDiv);
+        });
+
+        heapDiv.appendChild(typesDiv);
+      }
+
+      heapInfo.appendChild(heapDiv);
+    });
+  }
+
+  // Render the memory visualization based on memory chunks
+  function renderVisualization(memoryChunks) {
+    visualization.innerHTML = ''; // Clear previous visualizations
+    Object.keys(memoryChunks).forEach((chunkName) => {
+      const chunk = memoryChunks[chunkName];
+      const chunkDiv = document.createElement('div');
+      chunkDiv.className = 'chunk';
+
+      // Label for the chunk
+      const chunkLabel = document.createElement('div');
+      chunkLabel.className = 'chunk-label';
+      chunkLabel.textContent = `${chunkName} - Size: ${formatSize(chunk.Size)}, Used: ${formatSize(chunk.Used)}`;
+
+      // "+" Button for chunk details
+      const chunkInfoButton = document.createElement('span');
+      chunkInfoButton.className = 'chunk-info-button';
+      chunkInfoButton.textContent = '+';
+      chunkInfoButton.onclick = (event) => showChunkInfoTooltip(chunk, event);
+
+      chunkLabel.appendChild(chunkInfoButton);
+      chunkDiv.appendChild(chunkLabel);
+
+      // Bar for the chunk
+      const chunkBar = document.createElement('div');
+      chunkBar.className = 'chunk-bar';
+
+      const scaleFactor = 100 / chunk.Size; // Scale each block within the chunk to fit 100% width
+      let lastOffset = 0; // Track the end of the last block to calculate free space
+
+      Object.keys(chunk.MemoryChunkBlocks).forEach((blockName) => {
+        const block = chunk.MemoryChunkBlocks[blockName];
+
+        // Render any free space before the current block as a free block
+        if (block.Offset > lastOffset) {
+          const freeSize = block.Offset - lastOffset;
+          const freeBlockDiv = document.createElement('div');
+          freeBlockDiv.className = 'block Free';
+          freeBlockDiv.style.left = `${lastOffset * scaleFactor}%`;
+          freeBlockDiv.style.width = `${freeSize * scaleFactor}%`;
+          freeBlockDiv.onmouseover = (event) => showTooltip({ Offset: lastOffset, Size: freeSize, AllocationType: 'Free' }, event);
+          freeBlockDiv.onmouseout = () => hideTooltip();
+          chunkBar.appendChild(freeBlockDiv);
+        }
+
+        // Render the actual block
+        const blockDiv = document.createElement('div');
+        blockDiv.className = `block ${block.AllocationType || 'Unknown'}`;
+        blockDiv.style.left = `${block.Offset * scaleFactor}%`;
+        blockDiv.style.width = `${block.Size * scaleFactor}%`;
+
+        // Add the block name in the top-left corner if it exists
+        if (block.Name) {
+          const blockNameDiv = document.createElement('div');
+          blockNameDiv.className = 'block-name';
+          blockNameDiv.textContent = block.Name;
+          blockDiv.appendChild(blockNameDiv);
+        }
+
+        blockDiv.onmouseover = (event) => showTooltip(block, event);
+        blockDiv.onmouseout = () => hideTooltip();
+        chunkBar.appendChild(blockDiv);
+
+        lastOffset = block.Offset + block.Size; // Update lastOffset for the next free space check
+      });
+
+      // Render any remaining free space at the end of the chunk
+      if (lastOffset < chunk.Size) {
+        const freeSize = chunk.Size - lastOffset;
+        const freeBlockDiv = document.createElement('div');
+        freeBlockDiv.className = 'block Free';
+        freeBlockDiv.style.left = `${lastOffset * scaleFactor}%`;
+        freeBlockDiv.style.width = `${freeSize * scaleFactor}%`;
+        freeBlockDiv.onmouseover = (event) => showTooltip({ Offset: lastOffset, Size: freeSize, AllocationType: 'Free' }, event);
+        freeBlockDiv.onmouseout = () => hideTooltip();
+        chunkBar.appendChild(freeBlockDiv);
+      }
+
+      chunkDiv.appendChild(chunkBar);
+      visualization.appendChild(chunkDiv);
+    });
+  }
+
+  // Show tooltip with block details on hover
+  function showTooltip(block, event) {
+    tooltip.innerHTML = `
+      <strong>Block Details:</strong><br>
+      ${block.Name ? 'Name: ' + block.Name + '<br>' : ''}
+      Offset: ${formatSize(block.Offset)}<br>
+      Size: ${formatSize(block.Size)}<br>
+      Type: ${block.AllocationType || 'Unknown'}<br>
+      Alignment: ${block.Alignment || 'N/A'}
+    `;
+    tooltip.style.display = 'block';
+    tooltip.style.left = `${event.pageX + 5}px`;
+    tooltip.style.top = `${event.pageY + 5}px`;
+  }
+
+  // Hide tooltip on mouse out
+  function hideTooltip() {
+    tooltip.style.display = 'none';
+  }
+
+  // Show chunk details in a tooltip
+  function showChunkInfoTooltip(chunk, event) {
+    tooltip.innerHTML = `
+      <strong>Chunk Details:</strong><br>
+      Heap Index: ${chunk.HeapIndex}<br>
+      Type Index: ${chunk.TypeIndex}<br>
+      Size: ${formatSize(chunk.Size)}<br>
+      Used: ${formatSize(chunk.Used)}<br>
+      NonUsed: ${formatSize(chunk.NonUsed)}<br>
+      Allocation Count: ${chunk.AllocationCount}<br>
+      Allocation Bytes: ${formatSize(chunk.AllocationBytes)}<br>
+      Heap Flags: ${chunk.HeapFlags.join(', ')}<br>
+      Type Flags: ${chunk.TypeFlags.join(', ')}
+    `;
+    tooltip.style.display = 'block';
+    tooltip.style.left = `${event.pageX + 5}px`;
+    tooltip.style.top = `${event.pageY + 5}px`;
+    event.stopPropagation();
+  }
+
+  document.body.addEventListener('click', () => {
+    hideTooltip(); // Hide tooltips on body click
+  });
+
+  // Export the current DOM as a standalone HTML file with embedded JSON data
+  function exportHTML() {
+    const htmlContent = document.documentElement.cloneNode(true);
+
+    // Remove the instructions container from the cloned content
+    const instructionsContainerClone = htmlContent.querySelector('#instructions-container');
+    if (instructionsContainerClone) instructionsContainerClone.remove();
+
+    // Remove the drag-and-drop area from the cloned content
+    const dropZoneClone = htmlContent.querySelector('#drop-zone');
+    if (dropZoneClone) dropZoneClone.remove();
+
+    // Remove the file input from the cloned content
+    const fileInputClone = htmlContent.querySelector('#file-input');
+    if (fileInputClone) fileInputClone.remove();
+
+    // Remove the export button from the cloned content
+    const exportButtonClone = htmlContent.querySelector('#export-button');
+    if (exportButtonClone) exportButtonClone.remove();
+
+    // Embed the JSON data into the cloned HTML as a script tag
+    const embeddedScript = document.createElement('script');
+    embeddedScript.type = 'text/javascript';
+    const jsonData = JSON.stringify(embeddedData);
+    embeddedScript.textContent = `var embeddedJsonData = ${jsonData}; document.addEventListener('DOMContentLoaded', () => initializeVisualization(embeddedJsonData));`;
+
+    // Append the embedded script to the cloned HTML
+    htmlContent.querySelector('body').appendChild(embeddedScript);
+
+    // Convert cloned HTML content to a standalone HTML string
+    const doctype = '<!DOCTYPE html>';
+    const htmlString = doctype + '\n' + htmlContent.outerHTML;
+
+    // Create a Blob with the HTML content and initiate download
+    const blob = new Blob([htmlString], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'vulkan_memory_visualization.html';
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+</script>
+</body>
+</html>
