@@ -13975,10 +13975,10 @@ begin
          AddLine('          }');
         end;
        end;
-       if not FirstA then begin
-        AddLine('        }');
-       end;
       end;       
+      if not FirstA then begin
+       AddLine('        }');
+      end;
      end; 
      AddLine('      }');
     end;
@@ -14131,7 +14131,7 @@ begin
        Node:=Node.Successor;
       end;
       if not FirstA then begin
-       AddLine('        },');
+       AddLine('        }');
       end; 
      end;
      AddLine('      }');
