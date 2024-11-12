@@ -1851,7 +1851,7 @@ begin
                                                                 VK_SHARING_MODE_EXCLUSIVE,
                                                                 [],
                                                                 0,
-                                                                'SkyLuminanceLUTTexture');
+                                                                'TpScene3DAtmosphere.TRendererInstance.SkyLuminanceLUTTexture');
 
  fSkyViewLUTTexture:=TpvScene3DRendererArray2DImage.Create(TpvScene3D(fAtmosphere.fScene3D).VulkanDevice,
                                                            SkyViewLUTTextureWidth,
@@ -3755,7 +3755,7 @@ begin
                                                             VK_SHARING_MODE_EXCLUSIVE,
                                                             nil,
                                                             0,
-                                                            'WeatherMap');
+                                                            'TpvScene3DAtmosphere.fWeatherMapTexture');
 
   fWeatherMapTextureDescriptorPool:=TpvVulkanDescriptorPool.Create(TpvScene3D(fScene3D).VulkanDevice,
                                                                    TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
