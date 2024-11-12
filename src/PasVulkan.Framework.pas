@@ -13995,7 +13995,7 @@ begin
   AddLine('  "MemoryChunks": {');
   begin
    ChunkIndex:=0;
-   MemoryChunk:=fMemoryChunkList.First;
+   MemoryChunk:=fMemoryChunkList.Last;
    while assigned(MemoryChunk) do begin
     AddLine('    "Chunk '+IntToStr(ChunkIndex)+'": {');
     begin
@@ -14137,7 +14137,7 @@ begin
      end;
      AddLine('      }');
     end;
-    NextMemoryChunk:=MemoryChunk.fNextMemoryChunk;
+    NextMemoryChunk:=MemoryChunk.fPreviousMemoryChunk;
     if assigned(NextMemoryChunk) then begin
      AddLine('    },');
     end else begin
