@@ -30042,7 +30042,7 @@ begin
         LightItem^.TransformMatrix:=Light.fMatrix;
         LightMetaInfo:=@aLightMetaInfoArray[Light.fLightItemIndex];
         LightMetaInfo^.MinBounds:=TpvVector4.Create(Light.fBoundingBox.Min,TpvUInt32(Light.fDataPointer^.Type_));
-        LightMetaInfo^.MaxBounds:=TpvVector4.Create(Light.fBoundingBox.Max,Light.fBoundingBox.Radius);
+        LightMetaInfo^.MaxBounds:=TpvVector4.Create(Light.fBoundingBox.Max,IfThen(Light.fDataPointer^.fRange<0.0,-1.0,Light.fBoundingBox.Radius));
        end else begin
         Light.fLightItemIndex:=-1;
        end;

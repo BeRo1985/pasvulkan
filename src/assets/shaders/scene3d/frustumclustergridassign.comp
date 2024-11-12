@@ -118,7 +118,7 @@ void main() {
 #if 1
           case 2:
           case 3:{
-            if(any(isinf(lightMetaInfo.minBounds.xyz)) || any(isinf(lightMetaInfo.maxBounds.xyz))){
+            if((lightMetaInfo.maxBounds.w < 0.0) || (any(isinf(lightMetaInfo.minBounds.xyz)) || any(isinf(lightMetaInfo.maxBounds.xyz)))){
               // Infinite bounds, so always add
               visibleLightDecalIndices[int(countVisibleLights)] = (batchIndex * countThreads) + lightProcessIndex;
               countVisibleLights++;     
@@ -143,7 +143,7 @@ void main() {
 #else
           case 2:{
             // Point light => check in view space
-            if(any(isinf(lightMetaInfo.minBounds.xyz)) || any(isinf(lightMetaInfo.maxBounds.xyz))){
+            if((lightMetaInfo.maxBounds.w < 0.0) || (any(isinf(lightMetaInfo.minBounds.xyz)) || any(isinf(lightMetaInfo.maxBounds.xyz)))){
               // Infinite bounds, so always add
               visibleLightDecalIndices[int(countVisibleLights)] = (batchIndex * countThreads) + lightProcessIndex;
               countVisibleLights++;     
@@ -170,7 +170,7 @@ void main() {
             vec3 clusterAABBMax = frustumClusterGridAABBs[clusterIndex].maxWorldSpaceBounds.xyz;
             vec3 lightAABBMin = lightMetaInfo.minBounds.xyz;
             vec3 lightAABBMax = lightMetaInfo.maxBounds.xyz;
-            if((any(isinf(lightAABBMin)) || any(isinf(lightAABBMax))) || // Infinite bounds, so always add
+            if(((lightMetaInfo.maxBounds.w < 0.0) || (any(isinf(lightMetaInfo.minBounds.xyz)) || any(isinf(lightMetaInfo.maxBounds.xyz)))) || // Infinite bounds, so always add
                ((all(lessThanEqual(clusterAABBMin, lightAABBMax)) && all(lessThanEqual(lightAABBMin, clusterAABBMax)))))
               visibleLightDecalIndices[int(countVisibleLights)] = (batchIndex * countThreads) + lightProcessIndex;
               countVisibleLights++;
