@@ -326,7 +326,8 @@
       Allocation Count: ${chunk.AllocationCount}<br>
       Allocation Bytes: ${formatSize(chunk.AllocationBytes)}<br>
       Heap Flags: ${chunk.HeapFlags.join(', ')}<br>
-      Type Flags: ${chunk.TypeFlags.join(', ')}
+      Type Flags: ${chunk.TypeFlags.join(', ')}<br>
+      Chunk Flags: ${chunk.MemoryChunkFlags.join(', ')}
     `;
     tooltip.style.display = 'block';
     tooltip.style.left = `${event.pageX + 5}px`;
