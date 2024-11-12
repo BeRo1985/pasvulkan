@@ -2185,7 +2185,8 @@ begin
                                                                                                          0,
                                                                                                          MemoryAllocationType,
                                                                                                          @fVulkanImages[InFlightFrameIndex].Handle,
-                                                                                                         AllocationGroupID);
+                                                                                                         AllocationGroupID,
+                                                                                                         'TpvFrameGraph.TResourcePhysicalImageData["'+fResourceType.fName+'"]');
     if not assigned(fVulkanMemoryBlocks[InFlightFrameIndex]) then begin
      raise EpvVulkanMemoryAllocationException.Create('Memory for image resource couldn''t be allocated!');
     end;
