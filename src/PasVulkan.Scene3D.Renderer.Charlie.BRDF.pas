@@ -168,9 +168,11 @@ begin
                                      VK_IMAGE_LAYOUT_UNDEFINED
                                     );
 
+ aVulkanDevice.DebugUtils.SetObjectName(fVulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DRendererCharlieBRDF.fVulkanImage');                                    
+
  MemoryRequirements:=aVulkanDevice.MemoryManager.GetImageMemoryRequirements(fVulkanImage.Handle,
-                                                                                         RequiresDedicatedAllocation,
-                                                                                         PrefersDedicatedAllocation);
+                                                                            RequiresDedicatedAllocation,
+                                                                            PrefersDedicatedAllocation);
 
  MemoryBlockFlags:=[];
 
@@ -192,7 +194,8 @@ begin
                                                                0,
                                                                TpvVulkanDeviceMemoryAllocationType.ImageOptimal,
                                                                @fVulkanImage.Handle,
-                                                               pvAllocationGroupIDScene3DTexture);
+                                                               pvAllocationGroupIDScene3DTexture,
+                                                               'TpvScene3DRendererCharlieBRDF.fMemoryBlock');
  if not assigned(fMemoryBlock) then begin
   raise EpvVulkanMemoryAllocationException.Create('Memory for texture couldn''t be allocated!');
  end;
@@ -247,6 +250,8 @@ begin
                                                 1,
                                                 0,
                                                 1);
+
+    aVulkanDevice.DebugUtils.SetObjectName(fVulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRendererCharlieBRDF.fVulkanImageView'); 
 
     fDescriptorImageInfo:=TVkDescriptorImageInfo.Create(fVulkanSampler.Handle,
                                                         fVulkanImageView.Handle,
