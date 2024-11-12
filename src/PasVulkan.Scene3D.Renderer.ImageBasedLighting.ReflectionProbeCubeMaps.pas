@@ -175,6 +175,7 @@ var ImageIndex,InFlightFrameIndex,Index:TpvSizeInt;
 //ImageMemoryBarrier:TVkImageMemoryBarrier;
     Images:array[0..MaxInFlightFrames-1,0..3] of PpvVulkanImage;
     MemoryBlocks:array[0..MaxInFlightFrames-1,0..3] of PpvVulkanDeviceMemoryBlock;
+    Name:TpvUTF8String;
 //  ImportanceSamples:TImportanceSamples;
 begin
  inherited Create;
@@ -231,6 +232,21 @@ begin
     Include(MemoryBlockFlags,TpvVulkanDeviceMemoryBlockFlag.DedicatedAllocation);
    end;
 
+   case ImageIndex of
+    0:begin
+     Name:='TpScene3DRendererImageBasedLightingReflectionProbeCubeMaps.Raw.MemoryBlocks['+IntToStr(InFlightFrameIndex)+']';
+    end;
+    1:begin
+     Name:='TpScene3DRendererImageBasedLightingReflectionProbeCubeMaps.GGX.MemoryBlocks['+IntToStr(InFlightFrameIndex)+']';
+    end;
+    2:begin
+     Name:='TpScene3DRendererImageBasedLightingReflectionProbeCubeMaps.Charlie.MemoryBlocks['+IntToStr(InFlightFrameIndex)+']';
+    end;
+    else begin
+     Name:='TpScene3DRendererImageBasedLightingReflectionProbeCubeMaps.Lambertian.MemoryBlocks['+IntToStr(InFlightFrameIndex)+']';
+    end;
+   end;
+
    MemoryBlocks[InFlightFrameIndex,ImageIndex]^:=aVulkanDevice.MemoryManager.AllocateMemoryBlock(MemoryBlockFlags,
                                                                                                  MemoryRequirements.size,
                                                                                                  MemoryRequirements.alignment,
@@ -245,7 +261,8 @@ begin
                                                                                                  0,
                                                                                                  TpvVulkanDeviceMemoryAllocationType.ImageOptimal,
                                                                                                  @Images[InFlightFrameIndex,ImageIndex]^.Handle,
-                                                                                                 pvAllocationGroupIDScene3DTexture);
+                                                                                                 pvAllocationGroupIDScene3DTexture,
+                                                                                                 Name);
    if not assigned(MemoryBlocks[InFlightFrameIndex,ImageIndex]^) then begin
     raise EpvVulkanMemoryAllocationException.Create('Memory for texture couldn''t be allocated!');
    end;
@@ -258,6 +275,11 @@ begin
                                                             MemoryBlocks[InFlightFrameIndex,ImageIndex]^.Offset));
 
   end;
+
+  aVulkanDevice.DebugUtils.SetObjectName(fVulkanRawImages[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DRendererImageBasedLightingReflectionProbeCubeMaps.RawImages['+IntToStr(InFlightFrameIndex)+']');
+  aVulkanDevice.DebugUtils.SetObjectName(fVulkanGGXImages[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DRendererImageBasedLightingReflectionProbeCubeMaps.GGXImages['+IntToStr(InFlightFrameIndex)+']');
+  aVulkanDevice.DebugUtils.SetObjectName(fVulkanCharlieImages[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DRendererImageBasedLightingReflectionProbeCubeMaps.CharlieImages['+IntToStr(InFlightFrameIndex)+']');
+  aVulkanDevice.DebugUtils.SetObjectName(fVulkanLambertianImages[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DRendererImageBasedLightingReflectionProbeCubeMaps.LambertianImages['+IntToStr(InFlightFrameIndex)+']');
 
  end;
 
@@ -310,6 +332,7 @@ begin
                                             MipMaps,
                                             TVkBorderColor(VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK),
                                             false);
+    aVulkanDevice.DebugUtils.SetObjectName(fVulkanSampler.Handle,VK_OBJECT_TYPE_SAMPLER,'TpvScene3DRendererImageBasedLightingReflectionProbeCubeMaps.Sampler');                                        
 
     for InFlightFrameIndex:=0 to fCountInFlightFrames-1 do begin
 
@@ -326,6 +349,7 @@ begin
                                                                          MipMaps,
                                                                          0,
                                                                          6);
+     aVulkanDevice.DebugUtils.SetObjectName(fVulkanRawImageViews[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRendererImageBasedLightingReflectionProbeCubeMaps.RawImageViews['+IntToStr(InFlightFrameIndex)+']');                                                                    
 
      fVulkanGGXImageViews[InFlightFrameIndex]:=TpvVulkanImageView.Create(aVulkanDevice,
                                                                          fVulkanGGXImages[InFlightFrameIndex],
@@ -340,6 +364,7 @@ begin
                                                                          MipMaps,
                                                                          0,
                                                                          6);
+     aVulkanDevice.DebugUtils.SetObjectName(fVulkanGGXImageViews[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRendererImageBasedLightingReflectionProbeCubeMaps.GGXImageViews['+IntToStr(InFlightFrameIndex)+']');
 
      fVulkanCharlieImageViews[InFlightFrameIndex]:=TpvVulkanImageView.Create(aVulkanDevice,
                                                                              fVulkanCharlieImages[InFlightFrameIndex],
@@ -354,6 +379,7 @@ begin
                                                                              MipMaps,
                                                                              0,
                                                                              6);
+     aVulkanDevice.DebugUtils.SetObjectName(fVulkanCharlieImageViews[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRendererImageBasedLightingReflectionProbeCubeMaps.CharlieImageViews['+IntToStr(InFlightFrameIndex)+']');
 
      fVulkanLambertianImageViews[InFlightFrameIndex]:=TpvVulkanImageView.Create(aVulkanDevice,
                                                                                 fVulkanLambertianImages[InFlightFrameIndex],
@@ -368,6 +394,7 @@ begin
                                                                                 MipMaps,
                                                                                 0,
                                                                                 6);
+     aVulkanDevice.DebugUtils.SetObjectName(fVulkanLambertianImageViews[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRendererImageBasedLightingReflectionProbeCubeMaps.LambertianImageViews['+IntToStr(InFlightFrameIndex)+']');
 
      fRawDescriptorImageInfos[InFlightFrameIndex]:=TVkDescriptorImageInfo.Create(fVulkanSampler.Handle,
                                                                                  fVulkanRawImageViews[InFlightFrameIndex].Handle,
@@ -400,6 +427,7 @@ begin
                                                                           1,
                                                                           0,
                                                                           6);
+      aVulkanDevice.DebugUtils.SetObjectName(fRawImageViews[InFlightFrameIndex,Index].Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRendererImageBasedLightingReflectionProbeCubeMaps.RawImageViews['+IntToStr(InFlightFrameIndex)+','+IntToStr(Index)+']');
 
       fGGXImageViews[InFlightFrameIndex,Index]:=TpvVulkanImageView.Create(aVulkanDevice,
                                                                           fVulkanGGXImages[InFlightFrameIndex],
@@ -414,6 +442,7 @@ begin
                                                                           1,
                                                                           0,
                                                                           6);
+      aVulkanDevice.DebugUtils.SetObjectName(fGGXImageViews[InFlightFrameIndex,Index].Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRendererImageBasedLightingReflectionProbeCubeMaps.GGXImageViews['+IntToStr(InFlightFrameIndex)+','+IntToStr(Index)+']');
 
       fCharlieImageViews[InFlightFrameIndex,Index]:=TpvVulkanImageView.Create(aVulkanDevice,
                                                                               fVulkanCharlieImages[InFlightFrameIndex],
@@ -428,6 +457,7 @@ begin
                                                                               1,
                                                                               0,
                                                                               6);
+      aVulkanDevice.DebugUtils.SetObjectName(fCharlieImageViews[InFlightFrameIndex,Index].Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRendererImageBasedLightingReflectionProbeCubeMaps.CharlieImageViews['+IntToStr(InFlightFrameIndex)+','+IntToStr(Index)+']');
 
       fLambertianImageViews[InFlightFrameIndex,Index]:=TpvVulkanImageView.Create(aVulkanDevice,
                                                                                  fVulkanLambertianImages[InFlightFrameIndex],
@@ -442,6 +472,7 @@ begin
                                                                                  1,
                                                                                  0,
                                                                                  6);
+      aVulkanDevice.DebugUtils.SetObjectName(fLambertianImageViews[InFlightFrameIndex,Index].Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRendererImageBasedLightingReflectionProbeCubeMaps.LambertianImageViews['+IntToStr(InFlightFrameIndex)+','+IntToStr(Index)+']');
 
      end;
 
