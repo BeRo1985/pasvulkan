@@ -13784,6 +13784,7 @@ begin
    AddLine('    "apiVersion": '+TPasJSON.StringQuote(fDevice.fPhysicalDevice.GetAPIVersionString)+',');
    AddLine('    "GPU": '+TPasJSON.StringQuote(fDevice.fPhysicalDevice.DeviceName)+',');
    AddLine('    "deviceType": '+IntToStr(TpvUInt64(fDevice.fPhysicalDevice.fProperties.deviceType))+',');
+   AddLine('    "driverVersion": '+TPasJSON.StringQuote(fDevice.fPhysicalDevice.GetDriverVersionString)+',');
    AddLine('    "maxMemoryAllocationCount": '+IntToStr(TpvUInt64(fDevice.fPhysicalDevice.fProperties.limits.maxMemoryAllocationCount))+',');
    AddLine('    "bufferImageGranularity": '+IntToStr(TpvUInt64(fDevice.fPhysicalDevice.fProperties.limits.bufferImageGranularity))+',');
    AddLine('    "nonCoherentAtomSize": '+IntToStr(TpvUInt64(fDevice.fPhysicalDevice.fProperties.limits.nonCoherentAtomSize))+',');
