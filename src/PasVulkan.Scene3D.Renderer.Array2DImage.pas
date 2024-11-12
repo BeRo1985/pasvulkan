@@ -85,7 +85,7 @@ type { TpvScene3DRendererArray2DImage }
        fFormat:TVkFormat;
       public
 
-       constructor Create(const aDevice:TpvVulkanDevice;const aWidth,aHeight,aLayers:TpvInt32;const aFormat:TVkFormat;const aSampleBits:TVkSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT);const aImageLayout:TVkImageLayout=TVkImageLayout(VK_IMAGE_LAYOUT_GENERAL);const aStorage:boolean=false;const aAllocationGroupID:TpvUInt64=0;const aOtherFormat:TVkFormat=VK_FORMAT_UNDEFINED;const aSharingMode:TVkSharingMode=TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE);const aQueueFamilyIndices:TpvVulkanQueueFamilyIndices=nil);
+       constructor Create(const aDevice:TpvVulkanDevice;const aWidth,aHeight,aLayers:TpvInt32;const aFormat:TVkFormat;const aSampleBits:TVkSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT);const aImageLayout:TVkImageLayout=TVkImageLayout(VK_IMAGE_LAYOUT_GENERAL);const aStorage:boolean=false;const aAllocationGroupID:TpvUInt64=0;const aOtherFormat:TVkFormat=VK_FORMAT_UNDEFINED;const aSharingMode:TVkSharingMode=TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE);const aQueueFamilyIndices:TpvVulkanQueueFamilyIndices=nil;const aName:TpvUTF8String='');
 
        destructor Destroy; override;
 
@@ -113,7 +113,7 @@ implementation
 
 { TpvScene3DRendererArray2DImage }
 
-constructor TpvScene3DRendererArray2DImage.Create(const aDevice:TpvVulkanDevice;const aWidth,aHeight,aLayers:TpvInt32;const aFormat:TVkFormat;const aSampleBits:TVkSampleCountFlagBits;const aImageLayout:TVkImageLayout;const aStorage:boolean;const aAllocationGroupID:TpvUInt64;const aOtherFormat:TVkFormat;const aSharingMode:TVkSharingMode;const aQueueFamilyIndices:TpvVulkanQueueFamilyIndices);
+constructor TpvScene3DRendererArray2DImage.Create(const aDevice:TpvVulkanDevice;const aWidth,aHeight,aLayers:TpvInt32;const aFormat:TVkFormat;const aSampleBits:TVkSampleCountFlagBits;const aImageLayout:TVkImageLayout;const aStorage:boolean;const aAllocationGroupID:TpvUInt64;const aOtherFormat:TVkFormat;const aSharingMode:TVkSharingMode;const aQueueFamilyIndices:TpvVulkanQueueFamilyIndices;const aName:TpvUTF8String);
 var MemoryRequirements:TVkMemoryRequirements;
     RequiresDedicatedAllocation,
     PrefersDedicatedAllocation:boolean;
@@ -183,6 +183,7 @@ begin
                                      VK_IMAGE_LAYOUT_UNDEFINED,
                                      aOtherFormat
                                     );
+ aDevice.DebugUtils.SetObjectName(fVulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DRendererArray2DImage["'+aName+'"].fVulkanImage.Handle');
 
  MemoryRequirements:=aDevice.MemoryManager.GetImageMemoryRequirements(fVulkanImage.Handle,
                                                                       RequiresDedicatedAllocation,
@@ -208,7 +209,8 @@ begin
                                                          0,
                                                          TpvVulkanDeviceMemoryAllocationType.ImageOptimal,
                                                          @fVulkanImage.Handle,
-                                                         aAllocationGroupID);
+                                                         aAllocationGroupID,
+                                                         'TpvScene3DRendererArray2DImage["'+aName+'"].fMemoryBlock');
  if not assigned(fMemoryBlock) then begin
   raise EpvVulkanMemoryAllocationException.Create('Memory for texture couldn''t be allocated!');
  end;
@@ -261,6 +263,7 @@ begin
                                                 1,
                                                 0,
                                                 aLayers);
+    aDevice.DebugUtils.SetObjectName(fVulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRendererArray2DImage["'+aName+'"].fVulkanImageView.Handle');                                            
 
     fVulkanArrayImageView:=TpvVulkanImageView.Create(aDevice,
                                                      fVulkanImage,
@@ -275,6 +278,7 @@ begin
                                                      1,
                                                      0,
                                                      aLayers);
+    aDevice.DebugUtils.SetObjectName(fVulkanArrayImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRendererArray2DImage["'+aName+'"].fVulkanArrayImageView.Handle');
 
     if aOtherFormat<>VK_FORMAT_UNDEFINED then begin
 
@@ -291,6 +295,7 @@ begin
                                                            1,
                                                            0,
                                                            aLayers);
+     aDevice.DebugUtils.SetObjectName(fVulkanOtherArrayImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRendererArray2DImage["'+aName+'"].fVulkanOtherArrayImageView.Handle');
 
     end else begin
 
