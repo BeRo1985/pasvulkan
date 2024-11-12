@@ -2414,7 +2414,8 @@ begin
                                                                                                                              true,
                                                                                                                              TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
                                                                                                                              TVkImageLayout(VK_IMAGE_LAYOUT_GENERAL),
-                                                                                                                             pvAllocationGroupIDScene3DStatic);
+                                                                                                                             pvAllocationGroupIDScene3DStatic,
+                                                                                                                             'TpvScene3DRendererInstance.fGlobalIlluminationCascadedVoxelConeTracingOcclusionImages['+IntToStr(CascadeIndex)+']');
     Renderer.VulkanDevice.DebugUtils.SetObjectName(fGlobalIlluminationCascadedVoxelConeTracingOcclusionImages[CascadeIndex].VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DRendererInstance.fGlobalIlluminationCascadedVoxelConeTracingOcclusionImages['+IntToStr(CascadeIndex)+'].Image');
     Renderer.VulkanDevice.DebugUtils.SetObjectName(fGlobalIlluminationCascadedVoxelConeTracingOcclusionImages[CascadeIndex].VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRendererInstance.fGlobalIlluminationCascadedVoxelConeTracingOcclusionImages['+IntToStr(CascadeIndex)+'].ImageView');
 
@@ -2428,7 +2429,8 @@ begin
                                                                                                                                         true,
                                                                                                                                         TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
                                                                                                                                         TVkImageLayout(VK_IMAGE_LAYOUT_GENERAL),
-                                                                                                                                        pvAllocationGroupIDScene3DStatic);
+                                                                                                                                        pvAllocationGroupIDScene3DStatic,
+                                                                                                                                        'TpvScene3DRendererInstance.fGlobalIlluminationCascadedVoxelConeTracingRadianceImages['+IntToStr(CascadeIndex)+','+IntToStr(ImageIndex)+']');
      Renderer.VulkanDevice.DebugUtils.SetObjectName(fGlobalIlluminationCascadedVoxelConeTracingRadianceImages[CascadeIndex,ImageIndex].VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DRendererInstance.fGlobalIlluminationCascadedVoxelConeTracingRadianceImages['+IntToStr(CascadeIndex)+','+IntToStr(ImageIndex)+'].Image');
      Renderer.VulkanDevice.DebugUtils.SetObjectName(fGlobalIlluminationCascadedVoxelConeTracingRadianceImages[CascadeIndex,ImageIndex].VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRendererInstance.fGlobalIlluminationCascadedVoxelConeTracingRadianceImages['+IntToStr(CascadeIndex)+','+IntToStr(ImageIndex)+'].ImageView');
 
