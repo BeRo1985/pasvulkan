@@ -1856,7 +1856,11 @@ begin
                                                            VK_SAMPLE_COUNT_1_BIT,
                                                            VK_IMAGE_LAYOUT_GENERAL,
                                                            true,
-                                                           0);           
+                                                           0,
+                                                           VK_FORMAT_UNDEFINED,
+                                                           VK_SHARING_MODE_EXCLUSIVE,
+                                                           nil,
+                                                           'TpScene3DAtmosphere.SkyViewLUTTexture');           
  TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.DebugUtils.SetObjectName(fSkyViewLUTTexture.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'SkyViewLUTTexture');
  TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.DebugUtils.SetObjectName(fSkyViewLUTTexture.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'SkyViewLUTTexture');
  TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.DebugUtils.SetObjectName(fSkyViewLUTTexture.VulkanArrayImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'SkyViewLUTTexture');
@@ -1874,7 +1878,11 @@ begin
                                                              VK_SAMPLE_COUNT_1_BIT,
                                                              VK_IMAGE_LAYOUT_GENERAL,
                                                              true,
-                                                             0);
+                                                             0,
+                                                             VK_FORMAT_UNDEFINED,
+                                                             VK_SHARING_MODE_EXCLUSIVE,
+                                                             nil,
+                                                             'TpScene3DAtmosphere.CameraVolumeTexture');
  TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.DebugUtils.SetObjectName(fCameraVolumeTexture.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'CameraVolumeTexture');
  TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.DebugUtils.SetObjectName(fCameraVolumeTexture.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'CameraVolumeTexture');
  TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.DebugUtils.SetObjectName(fCameraVolumeTexture.VulkanArrayImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'CameraVolumeTexture');
