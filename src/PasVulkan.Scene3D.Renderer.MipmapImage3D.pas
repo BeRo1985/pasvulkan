@@ -199,7 +199,7 @@ begin
                                      VK_IMAGE_LAYOUT_UNDEFINED
                                     );
  if length(aName)>0 then begin
-  aDevice.DebugUtils.SetObjectName(fVulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,aName+'.Image');
+  aDevice.DebugUtils.SetObjectName(fVulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DRendererMipmapImage3D["'+aName+'"].Image');
  end;
 
  MemoryRequirements:=aDevice.MemoryManager.GetImageMemoryRequirements(fVulkanImage.Handle,
@@ -226,7 +226,8 @@ begin
                                                          0,
                                                          TpvVulkanDeviceMemoryAllocationType.ImageOptimal,
                                                          @fVulkanImage.Handle,
-                                                         aAllocationGroupID);
+                                                         aAllocationGroupID,
+                                                         'TpvScene3DRendererMipmapImage3D["'+aName+'"].MemoryBlock');
  if not assigned(fMemoryBlock) then begin
   raise EpvVulkanMemoryAllocationException.Create('Memory for texture couldn''t be allocated!');
  end;
@@ -280,7 +281,7 @@ begin
                                                 0,
                                                 1);
     if length(aName)>0 then begin
-     aDevice.DebugUtils.SetObjectName(fVulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,aName+'.ImageView');
+     aDevice.DebugUtils.SetObjectName(fVulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRendererMipmapImage3D["'+aName+'"].ImageView');
     end;
 
     SetLength(VulkanImageViews,fMipMapLevels);
@@ -300,7 +301,7 @@ begin
                                                                    0,
                                                                    1);
      if length(aName)>0 then begin
-      aDevice.DebugUtils.SetObjectName(VulkanImageViews[MipMapLevelIndex].Handle,VK_OBJECT_TYPE_IMAGE_VIEW,aName+'.ImageViews['+IntToStr(MipMapLevelIndex)+']');
+      aDevice.DebugUtils.SetObjectName(VulkanImageViews[MipMapLevelIndex].Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRendererMipmapImage3D["'+aName+'"].ImageViews['+IntToStr(MipMapLevelIndex)+']');
      end;
     end;
 
