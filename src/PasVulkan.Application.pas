@@ -8938,7 +8938,8 @@ begin
                                                                                      fVulkanSwapChain.Width,
                                                                                      fVulkanSwapChain.Height,
                                                                                      fVulkanSwapChain.ImageFormat,
-                                                                                     true);
+                                                                                     true,
+                                                                                     'fVulkanFrameBufferColorAttachments['+IntToStr(Index)+']');
 
    except
     FreeAndNil(fVulkanFrameBufferColorAttachments[Index]);
@@ -8958,7 +8959,9 @@ begin
                                                                            fVulkanDepthImageFormat,
                                                                            TVkBufferUsageFlags(VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT),
                                                                            VK_SHARING_MODE_EXCLUSIVE,
-                                                                           fVulkanSwapChainQueueFamilyIndices.Items);
+                                                                           fVulkanSwapChainQueueFamilyIndices.Items,
+                                                                           0,
+                                                                           'fVulkanDepthFrameBufferAttachment');
 
   SetLength(fVulkanFrameBuffers,fVulkanSwapChain.CountImages);
   for Index:=0 to fVulkanSwapChain.CountImages-1 do begin
@@ -8971,7 +8974,8 @@ begin
                                                            fVulkanSwapChain.Height,
                                                            1,
                                                            [fVulkanFrameBufferColorAttachments[Index],fVulkanDepthFrameBufferAttachment],
-                                                           false);
+                                                           false,
+                                                           'fVulkanFrameBuffers['+IntToStr(Index)+']');
   end;
 
  end;

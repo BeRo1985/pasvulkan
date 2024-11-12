@@ -12964,6 +12964,10 @@ begin
 
  fName:=aName;
 
+ if length(fName)=0 then begin
+  fName:=aName;
+ end;
+
  fInUse:=true;
 
 end;
