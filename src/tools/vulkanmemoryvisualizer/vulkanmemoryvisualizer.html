@@ -213,7 +213,9 @@
       const chunkInfoButton = document.createElement('span');
       chunkInfoButton.className = 'chunk-info-button';
       chunkInfoButton.textContent = '+';
-      chunkInfoButton.onclick = (event) => showChunkInfoTooltip(chunk, event);
+      //chunkInfoButton.onclick = (event) => showChunkInfoTooltip(chunk, event);
+      chunkInfoButton.onmouseover = (event) => showChunkInfoTooltip(chunk, event);
+      chunkInfoButton.onmouseout = () => hideChunkInfoTooltip();
 
       chunkLabel.appendChild(chunkInfoButton);
       chunkDiv.appendChild(chunkLabel);
@@ -316,6 +318,11 @@
     tooltip.style.left = `${event.pageX + 5}px`;
     tooltip.style.top = `${event.pageY + 5}px`;
     event.stopPropagation();
+  }
+
+  // Hide chunk details tooltip  
+  function hideChunkInfoTooltip() {
+    tooltip.style.display = 'none';
   }
 
   document.body.addEventListener('click', () => {
