@@ -108,6 +108,7 @@ type { TpvScene3DRendererImageBasedLightingReflectionProbeCubeMaps }
       public
 
        constructor Create(const aVulkanDevice:TpvVulkanDevice;
+                          const aVulkanSampler:TpvVulkanSampler;
                           const aWidth:TpvInt32;
                           const aHeight:TpvInt32;
                           const aCountInFlightFrames:TpvInt32;
@@ -156,6 +157,7 @@ implementation
 { TpvScene3DRendererImageBasedLightingReflectionProbeCubeMaps }
 
 constructor TpvScene3DRendererImageBasedLightingReflectionProbeCubeMaps.Create(const aVulkanDevice:TpvVulkanDevice;
+                                                                               const aVulkanSampler:TpvVulkanSampler;        
                                                                                const aWidth:TpvInt32;
                                                                                const aHeight:TpvInt32;
                                                                                const aCountInFlightFrames:TpvInt32;
@@ -316,7 +318,7 @@ begin
      end;
     end;
 
-    fVulkanSampler:=TpvVulkanSampler.Create(aVulkanDevice,
+{   fVulkanSampler:=TpvVulkanSampler.Create(aVulkanDevice,
                                             TVkFilter(VK_FILTER_LINEAR),
                                             TVkFilter(VK_FILTER_LINEAR),
                                             TVkSamplerMipmapMode(VK_SAMPLER_MIPMAP_MODE_LINEAR),
@@ -332,7 +334,8 @@ begin
                                             MipMaps,
                                             TVkBorderColor(VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK),
                                             false);
-    aVulkanDevice.DebugUtils.SetObjectName(fVulkanSampler.Handle,VK_OBJECT_TYPE_SAMPLER,'TpvScene3DRendererImageBasedLightingReflectionProbeCubeMaps.Sampler');                                        
+    aVulkanDevice.DebugUtils.SetObjectName(fVulkanSampler.Handle,VK_OBJECT_TYPE_SAMPLER,'TpvScene3DRendererImageBasedLightingReflectionProbeCubeMaps.Sampler');}
+    fVulkanSampler:=aVulkanSampler;
 
     for InFlightFrameIndex:=0 to fCountInFlightFrames-1 do begin
 
@@ -515,7 +518,7 @@ begin
   FreeAndNil(fVulkanCharlieImages[InFlightFrameIndex]);
   FreeAndNil(fVulkanLambertianImages[InFlightFrameIndex]);
  end;
- FreeAndNil(fVulkanSampler);
+//FreeAndNil(fVulkanSampler);
  inherited Destroy;
 end;
 

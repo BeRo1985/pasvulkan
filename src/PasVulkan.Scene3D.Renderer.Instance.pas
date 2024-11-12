@@ -4286,6 +4286,7 @@ begin
 
  if Renderer.GlobalIlluminationMode=TpvScene3DRendererGlobalIlluminationMode.CameraReflectionProbe then begin
   fImageBasedLightingReflectionProbeCubeMaps:=TpvScene3DRendererImageBasedLightingReflectionProbeCubeMaps.Create(Renderer.VulkanDevice,
+                                                                                                                 Renderer.RepeatedSampler,
                                                                                                                  Max(16,fReflectionProbeWidth),
                                                                                                                  Max(16,fReflectionProbeHeight),
                                                                                                                  Renderer.CountInFlightFrames);
