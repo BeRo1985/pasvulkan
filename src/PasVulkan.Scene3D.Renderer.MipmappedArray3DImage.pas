@@ -86,7 +86,7 @@ type { TpvScene3DRendererMipmappedArray3DImage }
 
        VulkanImageViews:array of TpvVulkanImageView;
 
-       constructor Create(const aDevice:TpvVulkanDevice;const aWidth,aHeight,aDepth:TpvInt32;const aFormat:TVkFormat;const aStorageBit:boolean;const aSampleBits:TVkSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT);const aImageLayout:TVkImageLayout=TVkImageLayout(VK_IMAGE_LAYOUT_GENERAL);const aAllocationGroupID:TpvUInt64=0);
+       constructor Create(const aDevice:TpvVulkanDevice;const aWidth,aHeight,aDepth:TpvInt32;const aFormat:TVkFormat;const aStorageBit:boolean;const aSampleBits:TVkSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT);const aImageLayout:TVkImageLayout=TVkImageLayout(VK_IMAGE_LAYOUT_GENERAL);const aAllocationGroupID:TpvUInt64=0;const aName:TpvUTF8String='');
 
        destructor Destroy; override;
 
@@ -114,7 +114,7 @@ implementation
 
 { TpvScene3DRendererMipmappedArray3DImage }
 
-constructor TpvScene3DRendererMipmappedArray3DImage.Create(const aDevice:TpvVulkanDevice;const aWidth,aHeight,aDepth:TpvInt32;const aFormat:TVkFormat;const aStorageBit:boolean;const aSampleBits:TVkSampleCountFlagBits;const aImageLayout:TVkImageLayout;const aAllocationGroupID:TpvUInt64);
+constructor TpvScene3DRendererMipmappedArray3DImage.Create(const aDevice:TpvVulkanDevice;const aWidth,aHeight,aDepth:TpvInt32;const aFormat:TVkFormat;const aStorageBit:boolean;const aSampleBits:TVkSampleCountFlagBits;const aImageLayout:TVkImageLayout;const aAllocationGroupID:TpvUInt64;const aName:TpvUTF8String);
 var MipMapLevelIndex:TpvInt32;
     MemoryRequirements:TVkMemoryRequirements;
     RequiresDedicatedAllocation,
@@ -166,6 +166,8 @@ begin
                                      VK_IMAGE_LAYOUT_UNDEFINED
                                     );
 
+ aDevice.DebugUtils.SetObjectName(fVulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DRendererMipmappedArray3DImage["'+aName+'"].Image');
+
  MemoryRequirements:=aDevice.MemoryManager.GetImageMemoryRequirements(fVulkanImage.Handle,
                                                                       RequiresDedicatedAllocation,
                                                                       PrefersDedicatedAllocation);
@@ -190,7 +192,8 @@ begin
                                                          0,
                                                          TpvVulkanDeviceMemoryAllocationType.ImageOptimal,
                                                          @fVulkanImage.Handle,
-                                                         aAllocationGroupID);
+                                                         aAllocationGroupID,
+                                                         'TpvScene3DRendererMipmappedArray3DImage["'+aName+'"].MemoryBlock');
  if not assigned(fMemoryBlock) then begin
   raise EpvVulkanMemoryAllocationException.Create('Memory for texture couldn''t be allocated!');
  end;
@@ -198,9 +201,9 @@ begin
  fMemoryBlock.AssociatedObject:=self;
 
  VulkanCheckResult(aDevice.Commands.BindImageMemory(aDevice.Handle,
-                                                                       fVulkanImage.Handle,
-                                                                       fMemoryBlock.MemoryChunk.Handle,
-                                                                       fMemoryBlock.Offset));
+                                                    fVulkanImage.Handle,
+                                                    fMemoryBlock.MemoryChunk.Handle,
+                                                    fMemoryBlock.Offset));
 
  Queue:=aDevice.GraphicsQueue;
 
@@ -243,6 +246,7 @@ begin
                                                 fMipMapLevels,
                                                 0,
                                                 1);
+    aDevice.DebugUtils.SetObjectName(fVulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRendererMipmappedArray3DImage["'+aName+'"].ImageView');
 
     SetLength(VulkanImageViews,fMipMapLevels);
 
@@ -260,6 +264,7 @@ begin
                                                                    1,
                                                                    0,
                                                                    1);
+     aDevice.DebugUtils.SetObjectName(VulkanImageViews[MipMapLevelIndex].Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRendererMipmappedArray3DImage["'+aName+'"].ImageViews['+IntToStr(MipMapLevelIndex)+']');
     end;
 
    finally
