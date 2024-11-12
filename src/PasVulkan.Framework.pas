@@ -14092,7 +14092,10 @@ begin
      begin
       First:=true;
       BlockIndex:=0;
-      Node:=MemoryChunk.fOffsetRedBlackTree.fRoot.Minimum;
+      Node:=MemoryChunk.fOffsetRedBlackTree.fRoot;
+      if assigned(Node) then begin
+       Node:=Node.Minimum;
+      end;  
       while assigned(Node) do begin
        MemoryChunkBlock:=Node.fValue;
        if assigned(MemoryChunkBlock) then begin
