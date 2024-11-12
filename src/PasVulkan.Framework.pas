@@ -4224,6 +4224,8 @@ var ktxTexture_CreateFromMemory:TktxTexture_CreateFromMemory=nil;
 
     ktxVulkanDevice:TpvVulkanDevice=nil;
 
+    KTXTextureName:TpvUTF8String='KTX2Texture';
+
 function ktxVulkanTexture_subAllocatorAllocMemFunc(allocInfo:PVkMemoryAllocateInfo;memReq:PVkMemoryRequirements;pageCount:PpvUInt64):TpvUInt64; {$if defined(Windows) or defined(Win32) or defined(Win64)}stdcall;{$else}cdecl;{$ifend}
 var MemoryBlockFlags:TpvVulkanDeviceMemoryBlockFlags;
     MemoryRequiredPropertyFlags,MemoryPreferredPropertyFlags,
@@ -4276,7 +4278,7 @@ begin
                                                                   MemoryAllocationType,
                                                                   nil,
                                                                   AllocationGroupID,
-                                                                  'KTX2Texture');
+                                                                  KTXTextureName);
    result:=TpvPtrUInt(MemoryBlock);
    if assigned(pageCount) then begin
     pageCount^:=1;
@@ -4353,6 +4355,8 @@ const KTXVulkanSubAllocatorCallbacks:TktxVulkanTexture_subAllocatorCallbacks=(
        memoryUnmapFuncPtr:{$ifdef fpc}@ktxVulkanTexture_subAllocatorMemoryUnmapFunc{$else}ktxVulkanTexture_subAllocatorMemoryUnmapFunc{$endif};
        freeMemFuncPtr:{$ifdef fpc}@ktxVulkanTexture_subAllocatorFreeMemFunc{$else}ktxVulkanTexture_subAllocatorFreeMemFunc{$endif};
       );
+
+var KTXVulkanSubAllocatorCallbackSpinLock:TPasMPInt32=0;
 
 function KTXErrorCodeToString(const aErrorCode:TKTX_error_code):TpvRawByteString;
 begin
@@ -24210,7 +24214,12 @@ begin
   try
    if assigned(fKTXVulkanTexture) then begin
     if assigned(ktxVulkanTexture_Destruct_WithSuballocator) then begin
-     ktxVulkanTexture_Destruct_WithSuballocator(fKTXVulkanTexture,fDevice.Handle,nil,@KTXVulkanSubAllocatorCallbacks);
+     TPasMPMultipleReaderSingleWriterSpinLock.AcquireWrite(KTXVulkanSubAllocatorCallbackSpinLock);
+     try
+      ktxVulkanTexture_Destruct_WithSuballocator(fKTXVulkanTexture,fDevice.Handle,nil,@KTXVulkanSubAllocatorCallbacks);
+     finally
+      TPasMPMultipleReaderSingleWriterSpinLock.ReleaseWrite(KTXVulkanSubAllocatorCallbackSpinLock);
+     end;
     end else if assigned(ktxVulkanTexture_Destruct) then begin
      ktxVulkanTexture_Destruct(fKTXVulkanTexture,fDevice.Handle,nil);
     end;
@@ -25093,13 +25102,19 @@ procedure TpvVulkanTexture.Finish(const aGraphicsQueue:TpvVulkanQueue;
     try
      GetMem(fKTXVulkanTexture,SizeOf(TktxVulkanTexture));
      if assigned(ktxTexture_VkUploadEx_WithSuballocator) then begin
-      KTXResult:=ktxTexture_VkUploadEx_WithSuballocator(ktxTexture,
-                                                        KTXVulkanDeviceInfo,
-                                                        fKTXVulkanTexture,
-                                                        VK_IMAGE_TILING_OPTIMAL,
-                                                        TpvUInt32(VK_IMAGE_USAGE_SAMPLED_BIT),
-                                                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                                        @KTXVulkanSubAllocatorCallbacks);
+      TPasMPMultipleReaderSingleWriterSpinLock.AcquireWrite(KTXVulkanSubAllocatorCallbackSpinLock);
+      try
+       KTXTextureName:=fName;
+       KTXResult:=ktxTexture_VkUploadEx_WithSuballocator(ktxTexture,
+                                                         KTXVulkanDeviceInfo,
+                                                         fKTXVulkanTexture,
+                                                         VK_IMAGE_TILING_OPTIMAL,
+                                                         TpvUInt32(VK_IMAGE_USAGE_SAMPLED_BIT),
+                                                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                         @KTXVulkanSubAllocatorCallbacks);
+      finally
+       TPasMPMultipleReaderSingleWriterSpinLock.ReleaseWrite(KTXVulkanSubAllocatorCallbackSpinLock);
+      end;
      end else begin
       KTXResult:=ktxTexture_VkUploadEx(ktxTexture,
                                        KTXVulkanDeviceInfo,
@@ -28986,6 +29001,7 @@ initialization
  InitializeVulkanDefaultGroupHeapChunkSizes;
 finalization
  FreeAndNil(VulkanDefaultGroupHeapChunkSizes);
+ KTXTextureName:='';
 end.
 
 
