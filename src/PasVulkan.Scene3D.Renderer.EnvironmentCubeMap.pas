@@ -380,7 +380,7 @@ begin
                                                    TVkImageUsageFlags(VK_IMAGE_USAGE_TRANSFER_DST_BIT) or
                                                    TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT));
 
-           pvApplication.VulkanDevice.DebugUtils.SetObjectName(fVulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'EnvironmentCubeMap["'+aName+'"].fVulkanImageView');
+       pvApplication.VulkanDevice.DebugUtils.SetObjectName(fVulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'EnvironmentCubeMap["'+aName+'"].fVulkanImageView');
 
        fDescriptorImageInfo:=TVkDescriptorImageInfo.Create(fVulkanSampler.Handle,
                                                            fVulkanImageView.Handle,
