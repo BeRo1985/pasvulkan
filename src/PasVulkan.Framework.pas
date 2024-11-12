@@ -923,7 +923,8 @@ type EpvVulkanException=class(Exception);
        Unknown,
        Buffer,
        ImageLinear,
-       ImageOptimal
+       ImageOptimal,
+       Image
       );
 
      PpvVulkanDeviceMemoryChunkFlag=^TpvVulkanDeviceMemoryChunkFlag;
@@ -4245,7 +4246,7 @@ begin
    MemoryPreferredHeapFlags:=0;
    MemoryAvoidHeapFlags:=0;
    MemoryPreferredNotHeapFlags:=0;
-   MemoryAllocationType:=TpvVulkanDeviceMemoryAllocationType.Unknown;
+   MemoryAllocationType:=TpvVulkanDeviceMemoryAllocationType.Image;
    AllocationGroupID:=pvAllocationGroupIDKTXTextureStaging;
   end else begin
    MemoryRequiredPropertyFlags:=0;
@@ -4256,7 +4257,7 @@ begin
    MemoryPreferredHeapFlags:=0;
    MemoryAvoidHeapFlags:=0;
    MemoryPreferredNotHeapFlags:=0;
-   MemoryAllocationType:=TpvVulkanDeviceMemoryAllocationType.Unknown;
+   MemoryAllocationType:=TpvVulkanDeviceMemoryAllocationType.Image;
    AllocationGroupID:=pvAllocationGroupIDKTXTexture;
   end;
   try
@@ -4274,7 +4275,8 @@ begin
                                                                   MemoryPreferredNotHeapFlags,
                                                                   MemoryAllocationType,
                                                                   nil,
-                                                                  AllocationGroupID);
+                                                                  AllocationGroupID,
+                                                                  'KTX2Texture');
    result:=TpvPtrUInt(MemoryBlock);
    if assigned(pageCount) then begin
     pageCount^:=1;
@@ -12069,7 +12071,7 @@ begin
         assigned(OtherNode.fValue) and
         ((OtherNode.fValue.fAllocationType<>TpvVulkanDeviceMemoryAllocationType.Free) and
          (((OtherNode.fValue.fAllocationType in [TpvVulkanDeviceMemoryAllocationType.Unknown,TpvVulkanDeviceMemoryAllocationType.Buffer])<>(aAllocationType in [TpvVulkanDeviceMemoryAllocationType.Unknown,TpvVulkanDeviceMemoryAllocationType.Buffer])) or
-          ((OtherNode.fValue.fAllocationType in [TpvVulkanDeviceMemoryAllocationType.ImageLinear,TpvVulkanDeviceMemoryAllocationType.ImageOptimal])<>(aAllocationType in [TpvVulkanDeviceMemoryAllocationType.ImageLinear,TpvVulkanDeviceMemoryAllocationType.ImageOptimal])))) then begin
+          ((OtherNode.fValue.fAllocationType in [TpvVulkanDeviceMemoryAllocationType.ImageLinear,TpvVulkanDeviceMemoryAllocationType.ImageOptimal,TpvVulkanDeviceMemoryAllocationType.Image])<>(aAllocationType in [TpvVulkanDeviceMemoryAllocationType.ImageLinear,TpvVulkanDeviceMemoryAllocationType.ImageOptimal,TpvVulkanDeviceMemoryAllocationType.Image])))) then begin
       if (PayloadBeginOffset and BufferImageGranularityInvertedMask)=((OtherNode.fValue.fOffset+(OtherNode.fValue.fSize-1)) and BufferImageGranularityInvertedMask) then begin
        if LastNode=Node then begin
         LastNode:=nil;
@@ -12095,7 +12097,7 @@ begin
          assigned(OtherNode.fValue) and
          ((OtherNode.fValue.fAllocationType<>TpvVulkanDeviceMemoryAllocationType.Free) and
           (((OtherNode.fValue.fAllocationType in [TpvVulkanDeviceMemoryAllocationType.Unknown,TpvVulkanDeviceMemoryAllocationType.Buffer])<>(aAllocationType in [TpvVulkanDeviceMemoryAllocationType.Unknown,TpvVulkanDeviceMemoryAllocationType.Buffer])) or
-           ((OtherNode.fValue.fAllocationType in [TpvVulkanDeviceMemoryAllocationType.ImageLinear,TpvVulkanDeviceMemoryAllocationType.ImageOptimal])<>(aAllocationType in [TpvVulkanDeviceMemoryAllocationType.ImageLinear,TpvVulkanDeviceMemoryAllocationType.ImageOptimal])))) then begin
+           ((OtherNode.fValue.fAllocationType in [TpvVulkanDeviceMemoryAllocationType.ImageLinear,TpvVulkanDeviceMemoryAllocationType.ImageOptimal,TpvVulkanDeviceMemoryAllocationType.Image])<>(aAllocationType in [TpvVulkanDeviceMemoryAllocationType.ImageLinear,TpvVulkanDeviceMemoryAllocationType.ImageOptimal,TpvVulkanDeviceMemoryAllocationType.Image])))) then begin
        if ((PayloadEndOffset-1) and BufferImageGranularityInvertedMask)=(OtherNode.fValue.fOffset and BufferImageGranularityInvertedMask) then begin
         LastNode:=nil;
         Node:=Node.Successor;
@@ -12715,7 +12717,7 @@ begin
            (BufferImageGranularity>1) and
            ((LastAllocationType<>TpvVulkanDeviceMemoryAllocationType.Free) and
             (((LastAllocationType in [TpvVulkanDeviceMemoryAllocationType.Unknown,TpvVulkanDeviceMemoryAllocationType.Buffer])<>(ChunkBlock.AllocationType in [TpvVulkanDeviceMemoryAllocationType.Unknown,TpvVulkanDeviceMemoryAllocationType.Buffer])) or
-             ((LastAllocationType in [TpvVulkanDeviceMemoryAllocationType.ImageLinear,TpvVulkanDeviceMemoryAllocationType.ImageOptimal])<>(ChunkBlock.AllocationType in [TpvVulkanDeviceMemoryAllocationType.ImageLinear,TpvVulkanDeviceMemoryAllocationType.ImageOptimal])))) and
+             ((LastAllocationType in [TpvVulkanDeviceMemoryAllocationType.ImageLinear,TpvVulkanDeviceMemoryAllocationType.ImageOptimal,TpvVulkanDeviceMemoryAllocationType.Image])<>(ChunkBlock.AllocationType in [TpvVulkanDeviceMemoryAllocationType.ImageLinear,TpvVulkanDeviceMemoryAllocationType.ImageOptimal,TpvVulkanDeviceMemoryAllocationType.Image])))) and
            ((ToOffset and BufferImageGranularityInvertedMask)=(LastEndOffset and BufferImageGranularityInvertedMask)) and
            (Alignment<BufferImageGranularity) then begin
          Alignment:=BufferImageGranularity;
@@ -13369,7 +13371,8 @@ begin
     (fDedicatedAllocationSupport<>TDedicatedAllocationSupport.None) and
     (aMemoryAllocationType in [TpvVulkanDeviceMemoryAllocationType.Buffer,
                                TpvVulkanDeviceMemoryAllocationType.ImageLinear,
-                               TpvVulkanDeviceMemoryAllocationType.ImageOptimal]) then begin
+                               TpvVulkanDeviceMemoryAllocationType.ImageOptimal{,
+                               TpvVulkanDeviceMemoryAllocationType.Image}]) then begin
   MemoryChunkFlags:=MemoryChunkFlags+[TpvVulkanDeviceMemoryChunkFlag.OwnSingleMemoryChunk,
                                       TpvVulkanDeviceMemoryChunkFlag.DedicatedAllocation];
  end else begin
@@ -13390,7 +13393,8 @@ begin
      MemoryDedicatedAllocateInfoKHR.buffer:=PVkBuffer(aMemoryDedicatedAllocationDataHandle)^;
     end;
     TpvVulkanDeviceMemoryAllocationType.ImageLinear,
-    TpvVulkanDeviceMemoryAllocationType.ImageOptimal:begin
+    TpvVulkanDeviceMemoryAllocationType.ImageOptimal{,
+    TpvVulkanDeviceMemoryAllocationType.Image}:begin
      MemoryDedicatedAllocateInfoKHR.image:=PVkImage(aMemoryDedicatedAllocationDataHandle)^;
      MemoryDedicatedAllocateInfoKHR.buffer:=VK_NULL_HANDLE;
     end;
@@ -14126,6 +14130,9 @@ begin
           end;
           TpvVulkanDeviceMemoryAllocationType.ImageOptimal:begin
            AddLine('          "AllocationType": "ImageOptimal",');
+          end;
+          TpvVulkanDeviceMemoryAllocationType.Image:begin
+           AddLine('          "AllocationType": "Image",');
           end;
          end;
          AddLine('          "Alignment": '+IntToStr(MemoryChunkBlock.fAlignment)+'');
