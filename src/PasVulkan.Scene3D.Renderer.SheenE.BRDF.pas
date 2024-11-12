@@ -176,9 +176,11 @@ case TpvVulkanVendorID(aVulkanDevice.PhysicalDevice.Properties.vendorID) of
                                      VK_IMAGE_LAYOUT_UNDEFINED
                                     );
 
+ aVulkanDevice.DebugUtils.SetObjectName(fVulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DRendererSheenEBRDF.Image');
+
  MemoryRequirements:=aVulkanDevice.MemoryManager.GetImageMemoryRequirements(fVulkanImage.Handle,
-                                                                                         RequiresDedicatedAllocation,
-                                                                                         PrefersDedicatedAllocation);
+                                                                            RequiresDedicatedAllocation,
+                                                                            PrefersDedicatedAllocation);
 
  MemoryBlockFlags:=[];
 
@@ -200,7 +202,8 @@ case TpvVulkanVendorID(aVulkanDevice.PhysicalDevice.Properties.vendorID) of
                                                                0,
                                                                TpvVulkanDeviceMemoryAllocationType.ImageOptimal,
                                                                @fVulkanImage.Handle,
-                                                               pvAllocationGroupIDScene3DTexture);
+                                                               pvAllocationGroupIDScene3DTexture,
+                                                               'TpvScene3DRendererSheenEBRDF.MemoryBlock');
  if not assigned(fMemoryBlock) then begin
   raise EpvVulkanMemoryAllocationException.Create('Memory for texture couldn''t be allocated!');
  end;
@@ -208,9 +211,9 @@ case TpvVulkanVendorID(aVulkanDevice.PhysicalDevice.Properties.vendorID) of
  fMemoryBlock.AssociatedObject:=self;
 
  VulkanCheckResult(aVulkanDevice.Commands.BindImageMemory(aVulkanDevice.Handle,
-                                                                       fVulkanImage.Handle,
-                                                                       fMemoryBlock.MemoryChunk.Handle,
-                                                                       fMemoryBlock.Offset));
+                                                          fVulkanImage.Handle,
+                                                          fMemoryBlock.MemoryChunk.Handle,
+                                                          fMemoryBlock.Offset));
 
  Queue:=aVulkanDevice.GraphicsQueue;
 
@@ -256,6 +259,8 @@ case TpvVulkanVendorID(aVulkanDevice.PhysicalDevice.Properties.vendorID) of
                                                 0,
                                                 1);
 
+    aVulkanDevice.DebugUtils.SetObjectName(fVulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRendererSheenEBRDF.ImageView');
+
     fDescriptorImageInfo:=TVkDescriptorImageInfo.Create(fVulkanSampler.Handle,
                                                         fVulkanImageView.Handle,
                                                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
@@ -275,6 +280,8 @@ case TpvVulkanVendorID(aVulkanDevice.PhysicalDevice.Properties.vendorID) of
                                          1);
     try
 
+     aVulkanDevice.DebugUtils.SetObjectName(ImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRendererSheenEBRDF.ImageView');
+     
      RenderPass:=TpvVulkanRenderPass.Create(aVulkanDevice);
      try
 

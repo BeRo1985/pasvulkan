@@ -766,7 +766,8 @@ begin
                                                true,
                                                false,
                                                false,
-                                               pvAllocationGroupIDSpriteAtlas);
+                                               pvAllocationGroupIDSpriteAtlas,
+                                               'TpvSpriteAtlasArrayTexture');
 
    fTexture.WrapModeU:=TpvVulkanTextureWrapMode.ClampToBorder;
    fTexture.WrapModeV:=TpvVulkanTextureWrapMode.ClampToBorder;
