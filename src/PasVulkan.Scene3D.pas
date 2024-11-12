@@ -6054,6 +6054,7 @@ begin
 
    if assigned(BLASGroup^.fBLASGeometry) then begin
 
+
     MustUpdate:=MustUpdateAll;
 
     if fCacheVerticesGeneration<>fInstanceNode.fCacheVerticesGenerations[aInFlightFrameIndex] then begin
