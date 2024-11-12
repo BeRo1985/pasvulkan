@@ -1819,7 +1819,11 @@ begin
                                                          VK_FORMAT_R32G32B32A32_SFLOAT,
                                                          true,
                                                          VK_SAMPLE_COUNT_1_BIT,
-                                                         VK_IMAGE_LAYOUT_GENERAL);
+                                                         VK_IMAGE_LAYOUT_GENERAL,
+                                                         VK_SHARING_MODE_EXCLUSIVE,
+                                                         nil,
+                                                         0,
+                                                         'TpScene3DAtmosphere.TRendererInstance.TransmittanceTexture');
  TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.DebugUtils.SetObjectName(fTransmittanceTexture.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TransmittanceTexture');
  TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.DebugUtils.SetObjectName(fTransmittanceTexture.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TransmittanceTexture');
 
@@ -1832,7 +1836,8 @@ begin
                                                            VK_IMAGE_LAYOUT_GENERAL,
                                                            VK_SHARING_MODE_EXCLUSIVE,
                                                            [],
-                                                           0);
+                                                           0,
+                                                           'TpScene3DAtmosphere.TRendererInstance.MultiScatteringTexture');
  TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.DebugUtils.SetObjectName(fMultiScatteringTexture.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'MultiScatteringTexture');
  TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.DebugUtils.SetObjectName(fMultiScatteringTexture.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'MultiScatteringTexture');
 
