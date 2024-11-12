@@ -13772,7 +13772,7 @@ var HeapIndex,TypeIndex,ChunkIndex,BlockIndex:TpvSizeInt;
     UnusedRangeCount,UnusedRangeSizeMin,UnusedRangeSizeMax:TpvUInt64;
     Flags:TpvUTF8String;
     Node,NextNode:TpvVulkanDeviceMemoryChunkBlockRedBlackTreeNode;
-    FirstA:Boolean;
+    First:Boolean;
 begin
 
  AddLine('{');
@@ -13890,7 +13890,7 @@ begin
      AddLine('      },');
      AddLine('      "MemoryPools": {');
      begin
-      FirstA:=true;
+      First:=true;
       for TypeIndex:=0 to fDevice.fPhysicalDevice.fMemoryProperties.memoryTypeCount-1 do begin
        if (fDevice.fPhysicalDevice.fMemoryProperties.memoryTypes[TypeIndex].heapIndex=HeapIndex) and
           (fDevice.fPhysicalDevice.fMemoryProperties.memoryTypes[TypeIndex].propertyFlags<>0) then begin
@@ -13918,8 +13918,8 @@ begin
          end;
          MemoryChunk:=MemoryChunk.fNextMemoryChunk;
         end;
-        if FirstA then begin
-         FirstA:=false;
+        if First then begin
+         First:=false;
         end else begin
          AddLine('        },');
         end;    
@@ -13976,7 +13976,7 @@ begin
         end;
        end;
       end;       
-      if not FirstA then begin
+      if not First then begin
        AddLine('        }');
       end;
      end; 
@@ -14089,14 +14089,14 @@ begin
      AddLine('      "MemoryChunkFlags": ['+Flags+'],');
      AddLine('      "MemoryChunkBlocks": {');
      begin
-      FirstA:=true;
+      First:=true;
       BlockIndex:=0;
       Node:=MemoryChunk.fOffsetRedBlackTree.fRoot;
       while assigned(Node) do begin
        MemoryChunkBlock:=Node.fValue;
        if assigned(MemoryChunkBlock) then begin
-        if FirstA then begin
-         FirstA:=false;
+        if First then begin
+         First:=false;
         end else begin
          AddLine('        },');
         end;
@@ -14130,7 +14130,7 @@ begin
        end;
        Node:=Node.Successor;
       end;
-      if not FirstA then begin
+      if not First then begin
        AddLine('        }');
       end; 
      end;
