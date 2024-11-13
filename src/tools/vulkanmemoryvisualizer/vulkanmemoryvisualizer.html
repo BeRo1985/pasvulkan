@@ -782,8 +782,8 @@
              "  function showTooltip(evt, title, content) {\n" +
              "    const tooltip = document.getElementById(\"tooltip\");\n" +
              "    const tooltipBg = document.getElementById(\"tooltip-bg\");\n" +
-             "    tooltip.setAttribute(\"x\", evt.pageX);\n" +
-             "    tooltip.setAttribute(\"y\", evt.pageY);\n" +
+             "    tooltip.setAttribute(\"x\", evt.pageX - 200);\n" +
+             "    tooltip.setAttribute(\"y\", evt.pageY - 20);\n" +
              "    tooltip.setAttribute(\"visibility\", \"visible\");\n" +
              "    tooltip.textContent = title + \": \" + content;\n" +
              "    updateTooltipBg();\n" +
