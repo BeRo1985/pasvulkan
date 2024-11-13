@@ -479,12 +479,27 @@
       document.body.classList.remove('dark-mode');
     }
   }
-
+  
   // Check if the user prefers dark mode initially
   handleColorSchemeChange(prefersDarkMode);
 
   // Add event listener to react to changes
   prefersDarkMode.addEventListener('change', handleColorSchemeChange);
+
+  // Hook Ctrl+F (or Cmd+F) to focus and scroll to the search bar
+  document.addEventListener('keydown', (event) => {
+    if ((event.ctrlKey || event.metaKey) && event.key === 'f') {
+      event.preventDefault(); // Prevent the browser's default find function
+
+      // Check if the search bar is currently visible
+      if (searchBar.style.display !== 'none') {      
+      
+        searchBar.focus(); // Focus the search bar
+        searchBar.scrollIntoView({ behavior: 'smooth', block: 'center' }); // Scroll the search bar into view
+      }
+      
+    }
+  });
 
   // Export the current DOM as a standalone HTML file with embedded JSON data
   function exportHTML() {
