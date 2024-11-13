@@ -140,9 +140,25 @@
     }
   });
 
+  // Debounce function to limit search bar input events
+  function debounce(func, delay) {
+    let timeout;
+    return function (...args) {
+      const callNow = !timeout; // If timeout doesn't exist, call immediately
+      clearTimeout(timeout); // Clear previous timer
+      timeout = setTimeout(() => {
+        timeout = null; // Reset timeout after delay
+      }, delay);
+
+      if (callNow) {
+        func.apply(this, args); // Call the function immediately
+      }
+    };
+  }
+
   // Add search functionality for the search bar
   function addSearchFunctionality() {
-    searchBar.addEventListener('input', () => {
+    searchBar.addEventListener('input', debounce(() => {
       
       // Convert search term to lowercase
       const searchTerm = searchBar.value.toLowerCase();
@@ -208,7 +224,7 @@
         mismatchDivs.forEach((element) => element.classList.remove('found'));
 
       }
-    });
+    }, 300)); // Add debounce with a delay of 300ms
   }
 
   // Load the file and initialize visualization
