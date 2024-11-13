@@ -617,12 +617,15 @@
         let yPosition = margin;
 
         // Function to create text elements
-        function createText(x, y, textContent, fontSize = "12px", color = "#000") {
+        function createText(x, y, textContent, fontSize = "12px", color = "#000", width = -1) {
           const textElement = document.createElementNS("http://www.w3.org/2000/svg", "text");
           textElement.setAttribute("x", x);
           textElement.setAttribute("y", y);
           textElement.setAttribute("font-size", fontSize);
           textElement.setAttribute("fill", color);
+          if(width > 0){
+            textElement.setAttribute("width", width);
+          }
           textElement.textContent = textContent;
           return textElement;
         }
@@ -741,7 +744,7 @@
                       `  document.getElementById('${blockID}').addEventListener('mouseout', hideTooltip);\n`;
 
             if (block.Name) {
-              const blockLabel = createText(xOffset + 5, yPosition + 20, block.Name, "10px");
+              const blockLabel = createText(xPosition + 5, yPosition + 20, block.Name, "10px", "#fff", blockWidth);
               svg.appendChild(blockLabel);
             }
 
