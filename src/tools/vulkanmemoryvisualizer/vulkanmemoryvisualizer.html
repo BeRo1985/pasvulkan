@@ -42,6 +42,7 @@
   .dark-mode .chunk-info-button:hover { color: #1e88e5; }
   .dark-mode .chunk-info-button:active { color: #1976d2; }
   .dark-mode .chunk-label { color: #fff; }  
+  .block.found { border: 4px solid red; } /* Highlight matched elements */
 </style>
 </head>
 <body>
@@ -83,6 +84,8 @@
   const exportButton = document.getElementById('export-button');
   const searchBar = document.getElementById('search-bar');
   let embeddedData = null; // Store data for exporting
+
+  const blockNameToElementMap = new Map(); // Map to link block names to DOM elements
 
   // Theme toggle
   function toggleTheme() {
@@ -130,6 +133,35 @@
     }
   });
 
+  // Add search functionality for the search bar
+  function addSearchFunctionality() {
+    searchBar.addEventListener('input', () => {
+      const searchTerm = searchBar.value.toLowerCase();
+      if (searchTerm === '') {
+        blockNameToElementMap.forEach((elements) => {
+          // Remove 'found' css class from each element
+          elements.forEach((element) => element.classList.remove('found'));
+        });
+      } else {
+        let firstFound = true;
+        blockNameToElementMap.forEach((elements, blockName) => {
+          if (blockName.includes(searchTerm)) {
+            elements.forEach((element) => {
+              // Add 'found' css class to element
+              element.classList.add('found');
+              if (firstFound) {
+                firstFound = false;
+                element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              }
+            });
+          } else {
+            elements.forEach((element) => element.classList.remove('found'));
+          }
+        });
+      }
+    });
+  }
+
   // Load the file and initialize visualization
   function loadFile(file) {
     const reader = new FileReader();
@@ -139,6 +171,7 @@
       initializeVisualization(data);
       searchBar.style.display = 'block'; // Show search bar after loading JSON
       exportButton.style.display = 'inline-block'; // Show export button after loading JSON
+      addSearchFunctionality(); // Activate search functionality after loading JSON
     };
     reader.readAsText(file);
   }
@@ -231,8 +264,13 @@
 
   // Render the memory visualization based on memory chunks
   function renderVisualization(memoryChunks) {
+
     // Clear previous visualizations
     visualization.innerHTML = '';
+
+    // Clear previous references to block elements
+    blockNameToElementMap.clear(); 
+
     Object.keys(memoryChunks).forEach((chunkName) => {
       const chunk = memoryChunks[chunkName];
       const chunkDiv = document.createElement('div');
@@ -287,6 +325,15 @@
           blockNameDiv.className = 'block-name';
           blockNameDiv.textContent = block.Name;
           blockDiv.appendChild(blockNameDiv);
+          
+          // Add the block name to the map for search functionality
+          const blockNameKey = block.Name.toLowerCase();
+          if (blockNameToElementMap.has(blockNameKey)) {
+            blockNameToElementMap.get(blockNameKey).push(blockDiv);            
+          }else{
+            blockNameToElementMap.set(blockNameKey, [blockDiv]);
+          }
+
         }
 
         blockDiv.onmouseover = (event) => showTooltip(block, event);
