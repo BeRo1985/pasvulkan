@@ -172,7 +172,7 @@
         Usage: ${formatSize(heap.Budget.UsageBytes)}<br>
         Allocation Count: ${heap.Stats.AllocationCount}<br>
         Block Count: ${heap.Stats.BlockCount}<br>
-        Allocation Bytes: ${formatSize(heap.Stats.AllocationBytes)}
+        Allocation Bytes: ${formatSize((type.Stats.AllocationCount > 0) ? heap.Stats.AllocationBytes : 0)}
       `;
 
       // Render Memory Pool Types if available
@@ -192,9 +192,9 @@
             Block Count: ${type.Stats.BlockCount}<br>
             Block Bytes: ${formatSize(type.Stats.BlockBytes)}<br>
             Allocation Count: ${type.Stats.AllocationCount}<br>
-            Allocation Bytes: ${formatSize(type.Stats.AllocationBytes)}<br>
-            Min Allocation Size: ${formatSize(type.Stats.AllocationSizeMin)}<br>
-            Max Allocation Size: ${formatSize(type.Stats.AllocationSizeMax)}
+            Allocation Bytes: ${formatSize((type.Stats.AllocationCount > 0) ? type.Stats.AllocationBytes : 0)}<br>
+            Min Allocation Size: ${formatSize((type.Stats.AllocationCount > 0) ? type.Stats.AllocationSizeMin : 0)}<br>
+            Max Allocation Size: ${formatSize((type.Stats.AllocationCount > 0) ? type.Stats.AllocationSizeMax : 0)}
           `;
           typesDiv.appendChild(typeDiv);
         });
@@ -324,7 +324,7 @@
       Used: ${formatSize(chunk.Used)}<br>
       NonUsed: ${formatSize(chunk.NonUsed)}<br>
       Allocation Count: ${chunk.AllocationCount}<br>
-      Allocation Bytes: ${formatSize(chunk.AllocationBytes)}<br>
+      Allocation Bytes: ${formatSize((chunk.AllocationCount > 0) ? chunk.AllocationBytes : 0)}<br>
       Heap Flags: ${chunk.HeapFlags.join(', ')}<br>
       Type Flags: ${chunk.TypeFlags.join(', ')}<br>
       Chunk Flags: ${chunk.MemoryChunkFlags.join(', ')}
