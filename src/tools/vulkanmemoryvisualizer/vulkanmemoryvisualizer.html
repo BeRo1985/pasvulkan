@@ -604,15 +604,19 @@
           return;
         }
 
+        // Initialize SVG dimensions and margin
         let svgWidth = 1000;
         let svgHeight = 3000;
         const margin = 20;
 
+        // Create an SVG element
         const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
         svg.setAttribute("xmlns", "http://www.w3.org/2000/svg");
 
+        // Set starting position for rendering
         let yPosition = margin;
 
+        // Function to create text elements
         function createText(x, y, textContent, fontSize = "12px", color = "#000") {
           const textElement = document.createElementNS("http://www.w3.org/2000/svg", "text");
           textElement.setAttribute("x", x);
@@ -622,14 +626,6 @@
           textElement.textContent = textContent;
           return textElement;
         }
-
-        // Tooltip Text Element (Initially Hidden)
-        const tooltip = createText(0, 0, "", "12px", "#fff");
-        tooltip.setAttribute("id", "tooltip");
-        tooltip.setAttribute("visibility", "hidden");
-        tooltip.setAttribute("pointer-events", "none"); // Disable interaction with the tooltip
-        tooltip.setAttribute("background-color", "rgba(0, 0, 0, 0.8)");
-        svg.appendChild(tooltip);
 
         // Display General Information
         const generalInfo = embeddedData.General;
@@ -757,23 +753,50 @@
         // Set final height based on the last yPosition
         svgHeight = yPosition + margin;
 
+        // Tooltip Background Element (Initially Hidden)
+        const tooltipBg = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+        tooltipBg.setAttribute("id", "tooltip-bg");
+        tooltipBg.setAttribute("visibility", "hidden");
+        tooltipBg.setAttribute("fill", "rgba(0, 0, 0, 0.8)");
+        svg.appendChild(tooltipBg);
+
+        // Tooltip Text Element (Initially Hidden)
+        const tooltip = createText(0, 0, "", "12px", "#fff");
+        tooltip.setAttribute("id", "tooltip");
+        tooltip.setAttribute("visibility", "hidden");
+        tooltip.setAttribute("pointer-events", "none"); // Disable interaction with the tooltip
+        svg.appendChild(tooltip);
+
         // Tooltip Functions
         svg.innerHTML += "<script type=\"text/javascript\">\n" +
-                         "<![CDATA[\n" +
-                         "  function showTooltip(evt, title, content) {\n" +
-                         "     const tooltip = document.getElementById(\"tooltip\");\n" +
-                         "     tooltip.setAttribute(\"x\", evt.pageX);\n" +
-                         "     tooltip.setAttribute(\"y\", evt.pageY);\n" +
-                         "     tooltip.setAttribute(\"visibility\", \"visible\");\n" +
-                         "     tooltip.textContent = title + \": \" + content;\n" +
-                         "   }\n" +
-                         "   function hideTooltip() {\n" +
-                         "     const tooltip = document.getElementById(\"tooltip\");\n" +
-                         "     tooltip.setAttribute(\"visibility\", \"hidden\");\n" +
-                         "   }\n" +
-                         jsCode +
-                         "]]>\n" +
-                         "\<\/script>\n";        
+             "<![CDATA[\n" +
+             "  function updateTooltipBg() {\n" +
+             "    const tooltip = document.getElementById(\"tooltip\");\n" +
+             "    const bbox = tooltip.getBBox();\n" +
+             "    tooltipBg.setAttribute(\"x\", bbox.x - 5);\n" +
+             "    tooltipBg.setAttribute(\"y\", bbox.y - 5);\n" +
+             "    tooltipBg.setAttribute(\"width\", bbox.width + 10);\n" +
+             "    tooltipBg.setAttribute(\"height\", bbox.height + 10);\n" +
+             "  }\n" +
+             "  function showTooltip(evt, title, content) {\n" +
+             "    const tooltip = document.getElementById(\"tooltip\");\n" +
+             "    const tooltipBg = document.getElementById(\"tooltip-bg\");\n" +
+             "    tooltip.setAttribute(\"x\", evt.pageX);\n" +
+             "    tooltip.setAttribute(\"y\", evt.pageY);\n" +
+             "    tooltip.setAttribute(\"visibility\", \"visible\");\n" +
+             "    tooltip.textContent = title + \": \" + content;\n" +
+             "    updateTooltipBg();\n" +
+             "    tooltipBg.setAttribute(\"visibility\", \"visible\");\n" +
+             "  }\n" +
+             "  function hideTooltip() {\n" +
+             "    const tooltip = document.getElementById(\"tooltip\");\n" +
+             "    const tooltipBg = document.getElementById(\"tooltip-bg\");\n" +
+             "    tooltip.setAttribute(\"visibility\", \"hidden\");\n" +
+             "    tooltipBg.setAttribute(\"visibility\", \"hidden\");\n" +
+             "  }\n" +
+             jsCode +
+             "]]>\n" +
+             "\<\/script>\n";
 
         // Set final SVG dimensions
         svg.setAttribute("width", svgWidth);
