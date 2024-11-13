@@ -704,24 +704,28 @@
 
         let blockIDs = [], blockIDCounter = 0, jsCode = "";
 
+        let originalSVGWidth = svgWidth;
+
         // Render Chunk Blocks with Hover Tooltip
         Object.keys(embeddedData.MemoryChunks).forEach(chunkName => {
           const chunk = embeddedData.MemoryChunks[chunkName];
           svg.appendChild(createText(margin, yPosition, `Chunk: ${chunkName} - Size: ${formatSize(chunk.Size)}`, "12px"));
           yPosition += 15;
 
-          const scaleFactor = (svgWidth - 2 * margin) / chunk.Size;
+          const scaleFactor = (originalSVGWidth - (2 * margin)) / chunk.Size;
           let xOffset = margin;
 
           Object.keys(chunk.MemoryChunkBlocks).forEach(blockName => {
             const block = chunk.MemoryChunkBlocks[blockName];
-            const blockWidth = block.Size * scaleFactor;
+
+            const xPosition = xOffset + (block.Offset * scaleFactor);
+            const blockWidth = min(xPosition + block.Size * scaleFactor, originalSVGWidth - margin) - xPosition;
 
             const blockID = `block-${blockIDCounter++}`;
 
             const blockRect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
             blockRect.setAttribute("id", blockID);
-            blockRect.setAttribute("x", xOffset);
+            blockRect.setAttribute("x", xPosition);
             blockRect.setAttribute("y", yPosition);
             blockRect.setAttribute("width", blockWidth);
             blockRect.setAttribute("height", 30);
@@ -741,9 +745,8 @@
               svg.appendChild(blockLabel);
             }
 
-            xOffset += blockWidth + 1;
+            svgWidth = Math.max(svgWidth, xPosition + blockWidth + margin);
 
-            svgWidth = Math.max(svgWidth, xOffset + margin);
           });
 
           yPosition += 50;
