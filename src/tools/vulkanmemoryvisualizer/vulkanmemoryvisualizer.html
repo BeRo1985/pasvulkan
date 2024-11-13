@@ -86,6 +86,7 @@
   let embeddedData = null; // Store data for exporting
 
   const blockNameToElementMap = new Map(); // Map to link block names to DOM elements
+  const blockTypeToElementMap = new Map(); // Map to link block types to DOM elements
 
   // Theme toggle
   function toggleTheme() {
@@ -136,28 +137,70 @@
   // Add search functionality for the search bar
   function addSearchFunctionality() {
     searchBar.addEventListener('input', () => {
+      
+      // Convert search term to lowercase
       const searchTerm = searchBar.value.toLowerCase();
+
+      // Check if the search term is empty
       if (searchTerm === '') {
+
+        // Remove 'found' css class from all elements if the search term is empty
         blockNameToElementMap.forEach((elements) => {
           // Remove 'found' css class from each element
           elements.forEach((element) => element.classList.remove('found'));
         });
+
+        // Scroll to the search bar
+        searchBar.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
       } else {
-        let firstFound = true;
+
+        // Create sets to store matched and mismatched elements
+        const matchDivs = new Set();
+        const mismatchDivs = new Set();
+
+        // Check if the block name contains the search term
         blockNameToElementMap.forEach((elements, blockName) => {
           if (blockName.includes(searchTerm)) {
-            elements.forEach((element) => {
-              // Add 'found' css class to element
-              element.classList.add('found');
-              if (firstFound) {
-                firstFound = false;
-                element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-              }
-            });
+            elements.forEach((element) => matchDivs.add(element));
           } else {
-            elements.forEach((element) => element.classList.remove('found'));
+            elements.forEach((element) => mismatchDivs.add(element));
           }
         });
+
+        // Check if the block type contains the search term
+        blockTypeToElementMap.forEach((elements, blockType) => {
+          if (blockType.includes(searchTerm)) {            
+            elements.forEach(
+              (element) => { 
+                matchDivs.add(element); 
+                mismatchDivs.delete(element); 
+              } 
+            );            
+          } else {
+            elements.forEach(
+              (element) => {
+                if(!matchDivs.has(element)){
+                  mismatchDivs.add(element);
+                }
+              }
+            );
+          }
+        });
+
+        // Add 'found' css class to each element and scroll to the first found element
+        let firstFound = true;
+        matchDivs.forEach((element) => {
+          if (firstFound) {
+            firstFound = false;
+            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+          element.classList.add('found')
+        });
+
+        // Remove 'found' css class from mismatched elements
+        mismatchDivs.forEach((element) => element.classList.remove('found'));
+
       }
     });
   }
@@ -270,6 +313,7 @@
 
     // Clear previous references to block elements
     blockNameToElementMap.clear(); 
+    blockTypeToElementMap.clear();
 
     Object.keys(memoryChunks).forEach((chunkName) => {
       const chunk = memoryChunks[chunkName];
@@ -332,6 +376,14 @@
             blockNameToElementMap.get(blockNameKey).push(blockDiv);            
           }else{
             blockNameToElementMap.set(blockNameKey, [blockDiv]);
+          }
+
+          // Add the block type to the map for search functionality
+          const blockTypeKey = (block.AllocationType || 'Unknown').toLowerCase();
+          if (blockTypeToElementMap.has(blockTypeKey)) {
+            blockTypeToElementMap.get(blockTypeKey).push(blockDiv);            
+          }else{
+            blockTypeToElementMap.set(blockTypeKey, [blockDiv]);
           }
 
         }
