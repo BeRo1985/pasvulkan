@@ -492,7 +492,7 @@
     if ((event.ctrlKey || event.metaKey) && event.key === 'f') {
       if (ctrlFPressedOnce) {
         ctrlFPressedOnce = false;
-        // Allow the default find function if pressed twice quickly
+        // Allow the default find function if pressed twice quickly, so don't prevent the default event here in this case
       }else{
         event.preventDefault(); // Prevent the browser's default find function
 
