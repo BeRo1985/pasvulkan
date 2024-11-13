@@ -597,6 +597,8 @@
       
       // Export the current visualization as an SVG file
       function exportSVG() {
+
+        // Check if there is data to export
         if (!embeddedData) {
           alert("No data to export. Please load a JSON file first.");
           return;
