@@ -719,7 +719,7 @@
             const block = chunk.MemoryChunkBlocks[blockName];
 
             const xPosition = xOffset + (block.Offset * scaleFactor);
-            const blockWidth = min(xPosition + block.Size * scaleFactor, originalSVGWidth - margin) - xPosition;
+            const blockWidth = min(xPosition + (block.Size * scaleFactor), originalSVGWidth - margin) - xPosition;
 
             const blockID = `block-${blockIDCounter++}`;
 
