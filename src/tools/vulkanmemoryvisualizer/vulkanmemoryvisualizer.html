@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PasVulkan Vulkan Memory Visualizer</title>
 <style>
-  body { font-family: Arial, sans-serif; }
+  body { font-family: Arial, sans-serif; transition: background 0.3s, color 0.3s; }
   .container { margin: 20px; }
   .header-box, .heap-info, .heap-types-info, .heap-type-info, .chunk { margin: 10px 0; }
   .header-box, .heap-info, .heap-types-info, .heap-type-info, .chunk-bar { padding: 10px; border: 1px solid #ccc; border-radius: 5px; }
@@ -21,8 +21,27 @@
   .chunk-info-button { cursor: pointer; color: blue; font-weight: bold; float: right; margin-left: 5px; }
   .tooltip { position: absolute; background: #333; color: #fff; padding: 5px; border-radius: 5px; display: none; z-index: 10; }
   .block-name { font-size: 10px; padding: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #fff; }
-  .export-button { display: none; margin-top: 10px; margin-bottom: 10px; padding: 10px 20px; font-size: 14px; cursor: pointer; background-color: #4CAF50; color: white; border: none; border-radius: 5px; }
+  .export-button { margin-top: 10px; margin-bottom: 10px; padding: 10px 20px; font-size: 14px; cursor: pointer; background-color: #4CAF50; color: white; border: none; border-radius: 5px; display: none; }
+  .export-button, .theme-toggle-button { margin-top: 10px; margin-bottom: 10px; padding: 10px 20px; font-size: 14px; cursor: pointer; background-color: #4CAF50; color: white; border: none; border-radius: 5px; }
+  .export-button { display: none; } 
   .hidden-input { display: none; }
+  .search-bar { margin-bottom: 20px; padding: 10px; font-size: 14px; width: 100%; border: 1px solid #ccc; border-radius: 5px;  margin-top: 10px; display: none; }
+  .drop-zone { border: 2px dashed #000; padding: 20px; text-align: center; }
+  .dark-mode { background-color: #121212; color: #e0e0e0; }
+  .dark-mode .chunk-bar { background: #333; }
+  .dark-mode .drop-zone { border-color: #e0e0e0; }
+  .dark-mode .block.Free { background-color: #333; }
+  .dark-mode .tooltip { background: #fff; color: #333; }
+  .dark-mode .block-name { color: #000; }
+  .dark-mode .export-button, .dark-mode .theme-toggle-button { background-color: #2196f3; }
+  .dark-mode .export-button:hover, .dark-mode .theme-toggle-button:hover { background-color: #1e88e5; }
+  .dark-mode .export-button:active, .dark-mode .theme-toggle-button:active { background-color: #1976d2; }
+  .dark-mode .export-button, .dark-mode .theme-toggle-button { color: #fff; }
+  .dark-mode .block { border-color: #fff; }
+  .dark-mode .chunk-info-button { color: #2196f3; }
+  .dark-mode .chunk-info-button:hover { color: #1e88e5; }
+  .dark-mode .chunk-info-button:active { color: #1976d2; }
+  .dark-mode .chunk-label { color: #fff; }  
 </style>
 </head>
 <body>
@@ -35,16 +54,21 @@
     <p>Drag & drop a JSON file below to visualize Vulkan memory allocations.</p>
   </div>
 
-  <div id="drop-zone" style="border: 2px dashed #000; padding: 20px; text-align: center;">
+  <div id="drop-zone" class="drop-zone">
     Drop JSON file here or click to browse
   </div>
 
   <input type="file" id="file-input" class="hidden-input" accept=".json">
 
+  <button id="theme-toggle-button" class="theme-toggle-button" onclick="toggleTheme()">Toggle Dark Mode</button>
+
   <button id="export-button" class="export-button" onclick="exportHTML()">Export HTML</button>
 
   <div id="header-box" class="header-box"></div>
   <div id="heap-info" class="heap-info"></div>
+
+  <input type="text" id="search-bar" class="search-bar" placeholder="Search by block name or type...">
+
   <div id="visualization"></div>
   <div class="tooltip" id="tooltip"></div>
 </div>
@@ -57,7 +81,13 @@
   const visualization = document.getElementById('visualization');
   const tooltip = document.getElementById('tooltip');
   const exportButton = document.getElementById('export-button');
+  const searchBar = document.getElementById('search-bar');
   let embeddedData = null; // Store data for exporting
+
+  // Theme toggle
+  function toggleTheme() {
+    document.body.classList.toggle('dark-mode');
+  }
 
   // Check if JSON data is embedded (for exported HTML)
   document.addEventListener('DOMContentLoaded', () => {
@@ -107,6 +137,7 @@
       const data = JSON.parse(e.target.result);
       embeddedData = data; // Store data for export
       initializeVisualization(data);
+      searchBar.style.display = 'block'; // Show search bar after loading JSON
       exportButton.style.display = 'inline-block'; // Show export button after loading JSON
     };
     reader.readAsText(file);
@@ -134,10 +165,6 @@
 
   // Render General information in the header
   function renderHeader(general) {
-    // Clear previous header information
-    while (headerBox.firstChild) {
-      headerBox.removeChild(headerBox.firstChild);
-    }
     headerBox.innerHTML = `
       <strong>General Information</strong><br>
       API: ${general.API}<br>
@@ -155,10 +182,6 @@
 
   // Render heap information section
   function renderHeapInfo(memoryInfo) {
-    // Clear previous heap information
-    while (heapInfo.firstChild) {
-      heapInfo.removeChild(heapInfo.firstChild);
-    }
     heapInfo.innerHTML = `<strong>Heap Information</strong>`;
     Object.keys(memoryInfo).forEach(heapName => {
       const heap = memoryInfo[heapName];
@@ -209,10 +232,7 @@
   // Render the memory visualization based on memory chunks
   function renderVisualization(memoryChunks) {
     // Clear previous visualizations
-    while (visualization.firstChild) {
-      visualization.removeChild(visualization.firstChild);
-    }
-//  visualization.innerHTML = ''; // Clear previous visualizations
+    visualization.innerHTML = '';
     Object.keys(memoryChunks).forEach((chunkName) => {
       const chunk = memoryChunks[chunkName];
       const chunkDiv = document.createElement('div');
@@ -227,7 +247,6 @@
       const chunkInfoButton = document.createElement('span');
       chunkInfoButton.className = 'chunk-info-button';
       chunkInfoButton.textContent = '+';
-      //chunkInfoButton.onclick = (event) => showChunkInfoTooltip(chunk, event);
       chunkInfoButton.onmouseover = (event) => showChunkInfoTooltip(chunk, event);
       chunkInfoButton.onmouseout = () => hideChunkInfoTooltip();
 
@@ -343,6 +362,24 @@
   document.body.addEventListener('click', () => {
     hideTooltip(); // Hide tooltips on body click
   });
+
+  // Check if the user prefers dark mode
+  const prefersDarkMode = window.matchMedia('(prefers-color-scheme: dark)');
+
+  // Function that runs when the color scheme changes
+  function handleColorSchemeChange(event) {
+    if (event.matches) {
+      document.body.classList.add('dark-mode');
+    } else {
+      document.body.classList.remove('dark-mode');
+    }
+  }
+
+  // Check if the user prefers dark mode initially
+  handleColorSchemeChange(prefersDarkMode);
+
+  // Add event listener to react to changes
+  prefersDarkMode.addEventListener('change', handleColorSchemeChange);
 
   // Export the current DOM as a standalone HTML file with embedded JSON data
   function exportHTML() {
