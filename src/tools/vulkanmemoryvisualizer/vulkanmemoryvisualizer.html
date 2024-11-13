@@ -172,7 +172,7 @@
         Usage: ${formatSize(heap.Budget.UsageBytes)}<br>
         Allocation Count: ${heap.Stats.AllocationCount}<br>
         Block Count: ${heap.Stats.BlockCount}<br>
-        Allocation Bytes: ${formatSize((type.Stats.AllocationCount > 0) ? heap.Stats.AllocationBytes : 0)}
+        Allocation Bytes: ${formatSize((heap.Stats.AllocationCount > 0) ? heap.Stats.AllocationBytes : 0)}
       `;
 
       // Render Memory Pool Types if available
