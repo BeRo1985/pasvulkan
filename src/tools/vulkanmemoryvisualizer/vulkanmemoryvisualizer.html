@@ -384,14 +384,14 @@
             blockNameToElementMap.set(blockNameKey, [blockDiv]);
           }
 
-          // Add the block type to the map for search functionality
-          const blockTypeKey = (block.AllocationType || 'Unknown').toLowerCase();
-          if (blockTypeToElementMap.has(blockTypeKey)) {
-            blockTypeToElementMap.get(blockTypeKey).push(blockDiv);            
-          }else{
-            blockTypeToElementMap.set(blockTypeKey, [blockDiv]);
-          }
+        }
 
+        // Add the block type to the map for search functionality
+        const blockTypeKey = (block.AllocationType || 'Unknown').toLowerCase();
+        if (blockTypeToElementMap.has(blockTypeKey)) {
+          blockTypeToElementMap.get(blockTypeKey).push(blockDiv);            
+        }else{
+          blockTypeToElementMap.set(blockTypeKey, [blockDiv]);
         }
 
         blockDiv.onmouseover = (event) => showTooltip(block, event);
