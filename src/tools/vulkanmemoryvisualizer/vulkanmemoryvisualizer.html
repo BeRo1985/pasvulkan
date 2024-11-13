@@ -486,18 +486,28 @@
   // Add event listener to react to changes
   prefersDarkMode.addEventListener('change', handleColorSchemeChange);
 
-  // Hook Ctrl+F (or Cmd+F) to focus and scroll to the search bar
+  // Hook Ctrl+F (or Cmd+F) to focus and scroll to the search bar if it is visible, and allow the browser's default find function on double press
+  let ctrlFPressedOnce = false;
   document.addEventListener('keydown', (event) => {
     if ((event.ctrlKey || event.metaKey) && event.key === 'f') {
-      event.preventDefault(); // Prevent the browser's default find function
+      if (ctrlFPressedOnce) {
+        ctrlFPressedOnce = false;
+        // Allow the default find function if pressed twice quickly
+      }else{
+        event.preventDefault(); // Prevent the browser's default find function
 
-      // Check if the search bar is currently visible
-      if (searchBar.style.display !== 'none') {      
-      
-        searchBar.focus(); // Focus the search bar
-        searchBar.scrollIntoView({ behavior: 'smooth', block: 'center' }); // Scroll the search bar into view
+        // Set a timer to reset ctrlFPressedOnce after 500ms
+        ctrlFPressedOnce = true;
+        setTimeout(() => {
+          ctrlFPressedOnce = false;
+        }, 500);
+
+        // Check if the search bar is currently visible
+        if (searchBar.style.display !== 'none') {
+          searchBar.focus(); // Focus the search bar
+          searchBar.scrollIntoView({ behavior: 'smooth', block: 'center' }); // Scroll the search bar into view
+        }
       }
-      
     }
   });
 
