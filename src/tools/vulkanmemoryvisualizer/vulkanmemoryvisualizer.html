@@ -156,8 +156,13 @@
     };
   }
 
-  // Add search functionality for the search bar
-  function addSearchFunctionality() {
+  // Enable search bar
+  function enableSearch() {
+
+    // Show search bar after loading JSON
+    searchBar.style.display = 'block'; 
+
+    // Add search functionality for the search bar
     searchBar.addEventListener('input', debounce(() => {
       
       // Convert search term to lowercase
@@ -234,9 +239,7 @@
       const data = JSON.parse(e.target.result);
       embeddedData = data; // Store data for export
       initializeVisualization(data);
-      searchBar.style.display = 'block'; // Show search bar after loading JSON
       exportButton.style.display = 'inline-block'; // Show export button after loading JSON
-      addSearchFunctionality(); // Activate search functionality after loading JSON
     };
     reader.readAsText(file);
   }
@@ -245,6 +248,7 @@
     renderHeader(data.General);
     renderHeapInfo(data.MemoryInfo);
     renderVisualization(data.MemoryChunks);
+    enableSearch(); // Activate search bar after loading JSON
   }
 
   // Convert bytes to human-readable format (e.g., 64 MiB)
