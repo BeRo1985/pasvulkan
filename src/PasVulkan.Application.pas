@@ -15218,7 +15218,8 @@ begin
 end;
 
 procedure InitializeOutputLogLevel;
-var Index,Count:TpvSizeInt; 
+var Index,Count:TpvSizeInt;
+    Value:TpvInt32;
     Parameter:string;
 begin
 
@@ -15251,8 +15252,8 @@ begin
       pvOutputLogLevel:=LOG_VERBOSE;
      end else if Parameter='debug' then begin
       pvOutputLogLevel:=LOG_DEBUG;
-     end else if TryStrToInt(Parameter,Index) then begin
-      pvOutputLogLevel:=Index;
+     end else if TryStrToInt(Parameter,Value) then begin
+      pvOutputLogLevel:=Value;
      end;
      break;
     end; 
