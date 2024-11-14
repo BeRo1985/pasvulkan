@@ -15217,13 +15217,54 @@ begin
 
 end;
 
+procedure InitializeOutputLogLevel;
+var Index,Count:TpvSizeInt; 
+    Parameter:string;
+begin
+
+ // Set default log level
+ if pvDebuggerPresent then begin
+  pvOutputLogLevel:=LOG_DEBUG; // If a debugger is present, set log level to debug (errors, info, verbose and debug)
+ end else begin
+  pvOutputLogLevel:=LOG_INFO; // If no debugger is present, set log level to info (errors and info) 
+ end;
+
+ // Parse command line parameters
+ Index:=1; 
+ Count:=ParamCount;
+ while Index<=Count do begin
+  Parameter:=LowerCase(ParamStr(Index));
+  inc(Index);
+  if (length(Parameter)>0) and ((Parameter[1]='-') or (Parameter[1]='/')) then begin
+   Delete(Parameter,1,1);
+   if Parameter='loglevel' then begin
+    if Index<=Count then begin
+     Parameter:=LowerCase(ParamStr(Index));
+     inc(Index);
+     if Parameter='none' then begin
+      pvOutputLogLevel:=LOG_NONE;
+     end else if Parameter='error' then begin
+      pvOutputLogLevel:=LOG_ERROR;
+     end else if Parameter='info' then begin
+      pvOutputLogLevel:=LOG_INFO;
+     end else if Parameter='verbose' then begin
+      pvOutputLogLevel:=LOG_VERBOSE;
+     end else if Parameter='debug' then begin
+      pvOutputLogLevel:=LOG_DEBUG;
+     end else if TryStrToInt(Parameter,Index) then begin
+      pvOutputLogLevel:=Index;
+     end;
+     break;
+    end; 
+   end;
+  end;
+ end;
+
+end; 
+
 initialization
  pvDebuggerPresent:=IsDebuggerPresent;
- if pvDebuggerPresent then begin
-  pvOutputLogLevel:=LOG_DEBUG;
- end else begin
-  pvOutputLogLevel:=LOG_INFO;
- end;
+ pvOutputLogLevel:=LOG_DEBUG;
 {$if defined(PasVulkanUseJCLDebug) and not defined(fpc)}
 //JclStackTrackingOptions:=JclStackTrackingOptions+[stRawMode,stStaticModuleList];
  if JclStartExceptionTracking then begin
@@ -15255,6 +15296,7 @@ initialization
  @EnableNonClientDpiScaling:=GetProcAddress(LoadLibrary('user32.dll'),'EnableNonClientDpiScaling');
 {$endif}
 {$endif}
+ InitializeOutputLogLevel;
 finalization
 {$ifdef Windows}
  timeEndPeriod(1);
