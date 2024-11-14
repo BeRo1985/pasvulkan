@@ -15238,6 +15238,9 @@ begin
   inc(Index);
   if (length(Parameter)>0) and ((Parameter[1]='-') or (Parameter[1]='/')) then begin
    Delete(Parameter,1,1);
+   if (length(Parameter)>0) and ((Parameter[1]='-') or (Parameter[1]='/')) then begin
+    Delete(Parameter,1,1);
+   end;
    if Parameter='loglevel' then begin
     if Index<=Count then begin
      Parameter:=LowerCase(ParamStr(Index));
