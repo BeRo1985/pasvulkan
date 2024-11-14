@@ -20200,7 +20200,7 @@ var GLTF:TPasGLTF.TDocument;
     OBJ:TpvOBJModel;
 begin
  result:=false;
- fSceneInstance.fLoadLock.Acquire;
+//fSceneInstance.fLoadLock.Acquire;
  try
   pvApplication.Log(LOG_DEBUG,'TpvScene3D.TGroup.BeginLoad("'+FileName+'")','Entering...');
   try
@@ -20266,7 +20266,7 @@ begin
    pvApplication.Log(LOG_DEBUG,'TpvScene3D.TGroup.BeginLoad("'+FileName+'")','Leaving...');
   end;
  finally
-  fSceneInstance.fLoadLock.Release;
+//fSceneInstance.fLoadLock.Release;
  end;
 end;
 
