@@ -7596,7 +7596,7 @@ begin
   end;
  end;
 {$elseif defined(Debug) or not defined(Release)}
-{case aLevel of
+ case aLevel of
   LOG_NONE:begin
   end;
   LOG_INFO:begin
@@ -7611,7 +7611,7 @@ begin
   LOG_ERROR:begin
    VulkanDebugLn('[Error] '+aWhere+': '+aWhat);
   end;
- end;}
+ end;
 {$ifend}
 end;
 
