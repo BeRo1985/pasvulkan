@@ -18590,9 +18590,30 @@ var StreamIO:TpvStreamIO;
     DrawChoreographyBatchItem:TpvScene3D.TDrawChoreographyBatchItem;
     MaterialIDMap:TMaterialIDMapArrayIndexHashMap;
     StartTime,EndTime,
+    VerticesStartTime,VerticesEndTime,
+    IndicesStartTime,IndicesEndTime,
+    DrawChoreographyBatchItemStartTime,DrawChoreographyBatchItemEndTime,
+    DrawUniqueChoreographyBatchItemStartTime,DrawUniqueChoreographyBatchItemEndTime,
+    JointBlocksStartTime,JointBlocksEndTime,
+    JointBlockOffsetsStartTime,JointBlockOffsetsEndTime,
+    MorphTargetVerticesStartTime,MorphTargetVerticesEndTime,
+    CamerasStartTime,CamerasEndTime,    
     ImagesStartTime,ImagesEndTime,
+    SamplersStartTime,SamplersEndTime,
+    TexturesStartTime,TexturesEndTime,
+    MaterialsStartTime,MaterialsEndTime,
+    LightsStartTime,LightsEndTime,
+    MeshesStartTime,MeshesEndTime,
+    SkinsStartTime,SkinsEndTime,
     AnimationsStartTime,AnimationsEndTime,
-    MeshesStartTime,MeshesEndTime:TpvHighResolutionTime;
+    NodesStartTime,NodesEndTime,
+    UsedVisibleDrawNodesStartTime,UsedVisibleDrawNodesEndTime,
+    ScenesStartTime,ScenesEndTime,       
+    FixUpNodesStartTime,FixUpNodesEndTime,
+    DrawChoreographyBatchItemsStartTime,DrawChoreographyBatchItemsEndTime,
+    DrawChoreographyBatchUniqueItemsStartTime,DrawChoreographyBatchUniqueItemsEndTime,
+    CameraNodeIndicesStartTime,CameraNodeIndicesEndTime,
+    PostProcessAnimationsStartTime,PostProcessAnimationsEndTime:TpvHighResolutionTime;
     TimeDuration:TpvDouble;
     TimeDurationString:TpvUTF8String;
 begin
@@ -18652,41 +18673,52 @@ begin
         fRaytracingMask:=StreamIO.ReadUInt8;
 
         // Read vertices
+        VerticesStartTime:=pvApplication.HighResolutionTimer.GetTime;
         Count:=StreamIO.ReadInt64;
         fVertices.Resize(Count);
         if Count>0 then begin
          StreamIO.ReadWithCheck(fVertices.Memory^,Count*SizeOf(TpvScene3D.TVertex));
         end;
+        VerticesEndTime:=pvApplication.HighResolutionTimer.GetTime;
 
         // Read indices
+        IndicesStartTime:=pvApplication.HighResolutionTimer.GetTime;
         Count:=StreamIO.ReadInt64;
         fIndices.Resize(Count);
         if Count>0 then begin
          StreamIO.ReadWithCheck(fIndices.Memory^,Count*SizeOf(TpvUInt32));
         end;
+        IndicesEndTime:=pvApplication.HighResolutionTimer.GetTime;
 
         // Read draw choreography batch condensed indices
+        DrawChoreographyBatchItemStartTime:=pvApplication.HighResolutionTimer.GetTime;
         Count:=StreamIO.ReadInt64;
         fDrawChoreographyBatchCondensedIndices.Resize(Count);
         if Count>0 then begin
          StreamIO.ReadWithCheck(fDrawChoreographyBatchCondensedIndices.Memory^,Count*SizeOf(TpvUInt32));
         end;
+        DrawChoreographyBatchItemEndTime:=pvApplication.HighResolutionTimer.GetTime;
 
         // Read draw choreography batch condensed unique indices
+        DrawUniqueChoreographyBatchItemStartTime:=pvApplication.HighResolutionTimer.GetTime;
         Count:=StreamIO.ReadInt64;
         fDrawChoreographyBatchCondensedUniqueIndices.Resize(Count);
         if Count>0 then begin
          StreamIO.ReadWithCheck(fDrawChoreographyBatchCondensedUniqueIndices.Memory^,Count*SizeOf(TpvUInt32));
         end;
+        DrawUniqueChoreographyBatchItemEndTime:=pvApplication.HighResolutionTimer.GetTime;
 
         // Read joint blocks
+        JointBlocksStartTime:=pvApplication.HighResolutionTimer.GetTime;
         Count:=StreamIO.ReadInt64;
         fJointBlocks.Resize(Count);
         if Count>0 then begin
          StreamIO.ReadWithCheck(fJointBlocks.Memory^,Count*SizeOf(TpvScene3D.TJointBlock));
         end;
+        JointBlocksEndTime:=pvApplication.HighResolutionTimer.GetTime;
 
         // Read joint block offsets
+        JointBlockOffsetsStartTime:=pvApplication.HighResolutionTimer.GetTime;
         Count:=StreamIO.ReadInt64;
         SetLength(fJointBlockOffsets,Count);
         if Count>0 then begin
@@ -18694,15 +18726,19 @@ begin
           fJointBlockOffsets[Index]:=StreamIO.ReadInt64;
          end;
         end;
+        JointBlockOffsetsEndTime:=pvApplication.HighResolutionTimer.GetTime;
 
         // Read morph target vertices
+        MorphTargetVerticesStartTime:=pvApplication.HighResolutionTimer.GetTime;
         Count:=StreamIO.ReadInt64;
         fMorphTargetVertices.Resize(Count);
         if Count>0 then begin
          StreamIO.ReadWithCheck(fMorphTargetVertices.Memory^,Count*SizeOf(TpvScene3D.TMorphTargetVertex));
         end;
+        MorphTargetVerticesEndTime:=pvApplication.HighResolutionTimer.GetTime;
 
         // Read cameras
+        CamerasStartTime:=pvApplication.HighResolutionTimer.GetTime;
         Count:=StreamIO.ReadInt64;
         fCameras.Clear;
         for Index:=0 to Count-1 do begin
@@ -18715,8 +18751,9 @@ begin
           raise;
          end;
         end;
+        CamerasEndTime:=pvApplication.HighResolutionTimer.GetTime;
 
-        // Read images
+        // Read images        
         ImagesStartTime:=pvApplication.HighResolutionTimer.GetTime;
         Count:=StreamIO.ReadInt64;
         for Index:=0 to Count-1 do begin
@@ -18737,6 +18774,7 @@ begin
         ImagesEndTime:=pvApplication.HighResolutionTimer.GetTime;
 
         // Read samplers
+        SamplersStartTime:=pvApplication.HighResolutionTimer.GetTime;
         Count:=StreamIO.ReadInt64;
         for Index:=0 to Count-1 do begin
          Sampler:=TpvScene3D.TSampler.Create(ResourceManager,fSceneInstance);
@@ -18753,8 +18791,10 @@ begin
           raise;
          end;
         end;
+        SamplersEndTime:=pvApplication.HighResolutionTimer.GetTime;
 
         // Read textures
+        TexturesStartTime:=pvApplication.HighResolutionTimer.GetTime;
         Count:=StreamIO.ReadInt64;
         for Index:=0 to Count-1 do begin
          Texture:=TpvScene3D.TTexture.Create(ResourceManager,fSceneInstance);
@@ -18771,8 +18811,10 @@ begin
           raise;
          end;
         end;
+        TexturesEndTime:=pvApplication.HighResolutionTimer.GetTime;
 
         // Read materials
+        MaterialsStartTime:=pvApplication.HighResolutionTimer.GetTime;
         fSceneInstance.fMaterialListLock.Acquire;
         try
          Count:=StreamIO.ReadInt64;
@@ -18796,8 +18838,10 @@ begin
         finally
          fSceneInstance.fMaterialListLock.Release;
         end;
+        MaterialsEndTime:=pvApplication.HighResolutionTimer.GetTime;
 
         // Read lights
+        LightsStartTime:=pvApplication.HighResolutionTimer.GetTime;
         Count:=StreamIO.ReadInt64;
         fLights.Clear;
         for Index:=0 to Count-1 do begin
@@ -18810,6 +18854,7 @@ begin
           raise;
          end;
         end;
+        LightsEndTime:=pvApplication.HighResolutionTimer.GetTime;
 
         // Read meshes
         MeshesStartTime:=pvApplication.HighResolutionTimer.GetTime;
@@ -18828,6 +18873,7 @@ begin
         MeshesEndTime:=pvApplication.HighResolutionTimer.GetTime;
 
         // Read skins
+        SkinsStartTime:=pvApplication.HighResolutionTimer.GetTime;
         Count:=StreamIO.ReadInt64;
         fSkins.Clear;
         for Index:=0 to Count-1 do begin
@@ -18840,8 +18886,10 @@ begin
           raise;
          end;
         end;
+        SkinsEndTime:=pvApplication.HighResolutionTimer.GetTime;
 
         // Read nodes
+        NodesStartTime:=pvApplication.HighResolutionTimer.GetTime;
         Count:=StreamIO.ReadInt64;
         fNodes.Clear;
         for Index:=0 to Count-1 do begin
@@ -18854,8 +18902,10 @@ begin
           raise;
          end;
         end;
+        NodesEndTime:=pvApplication.HighResolutionTimer.GetTime;
 
         // Read used visible draw nodes
+        UsedVisibleDrawNodesStartTime:=pvApplication.HighResolutionTimer.GetTime;
         Count:=StreamIO.ReadInt64;
         fUsedVisibleDrawNodes.Clear;
         if Count>0 then begin
@@ -18868,8 +18918,10 @@ begin
           end;
          end;
         end;
+        UsedVisibleDrawNodesEndTime:=pvApplication.HighResolutionTimer.GetTime;
 
         // Read scenes
+        ScenesStartTime:=pvApplication.HighResolutionTimer.GetTime;
         Count:=StreamIO.ReadInt64;
         fScenes.Clear;
         for Index:=0 to Count-1 do begin
@@ -18882,11 +18934,14 @@ begin
           raise;
          end;
         end;
+        ScenesEndTime:=pvApplication.HighResolutionTimer.GetTime;
 
         // Fix up nodes
+        FixUpNodesStartTime:=pvApplication.HighResolutionTimer.GetTime;
         for Index:=0 to fNodes.Count-1 do begin
          fNodes[Index].FixUp;
         end;
+        FixUpNodesEndTime:=pvApplication.HighResolutionTimer.GetTime;
 
         // Read default scene
         Index:=StreamIO.ReadInt64;
@@ -18913,6 +18968,7 @@ begin
         AnimationsEndTime:=pvApplication.HighResolutionTimer.GetTime;
 
         // Read draw choreography batch items
+        DrawChoreographyBatchItemsStartTime:=pvApplication.HighResolutionTimer.GetTime;
         Count:=StreamIO.ReadInt64;
         fDrawChoreographyBatchItems.Clear;
         for Index:=0 to Count-1 do begin
@@ -18927,8 +18983,10 @@ begin
           raise;
          end;
         end;
+        DrawChoreographyBatchItemsEndTime:=pvApplication.HighResolutionTimer.GetTime;
 
         // Read draw choreography batch unique items
+        DrawChoreographyBatchUniqueItemsStartTime:=pvApplication.HighResolutionTimer.GetTime;
         Count:=StreamIO.ReadInt64;
         fDrawChoreographyBatchUniqueItems.Clear;
         for Index:=0 to Count-1 do begin
@@ -18943,8 +19001,10 @@ begin
           raise;
          end;
         end;
+        DrawChoreographyBatchUniqueItemsEndTime:=pvApplication.HighResolutionTimer.GetTime;
 
         // Read camera node indices
+        CameraNodeIndicesStartTime:=pvApplication.HighResolutionTimer.GetTime;
         Count:=StreamIO.ReadInt64;
         fCameraNodeIndices.Clear;
         if Count>0 then begin
@@ -18952,6 +19012,7 @@ begin
           fCameraNodeIndices.Add(StreamIO.ReadInt64);
          end;
         end;
+        CameraNodeIndicesEndTime:=pvApplication.HighResolutionTimer.GetTime;
 
        finally
         CollectedMaterials.Free;
@@ -18986,7 +19047,9 @@ begin
 
 // PostProcessNodes;
 
+ PostProcessAnimationsStartTime:=pvApplication.HighResolutionTimer.GetTime;
  PostProcessAnimations;
+ PostProcessAnimationsEndTime:=pvApplication.HighResolutionTimer.GetTime;
 
 {MarkAnimatedElements;
 
@@ -19017,22 +19080,89 @@ begin
  TPasMPMultipleReaderSingleWriterSpinLock.AcquireWrite(fSceneInstance.fLoadGLTFTimeDurationLock);
  try
 
+  TimeDuration:=pvApplication.HighResolutionTimer.ToFloatSeconds(VerticesEndTime-VerticesStartTime);
+  Str(TimeDuration*1000.0:1:2,TimeDurationString);
+  pvApplication.Log(LOG_DEBUG,'TpvScene3D.TGroup.LoadFromStream("'+FileName+'")','Vertices duration: '+TimeDurationString+' ms');
+
+  TimeDuration:=pvApplication.HighResolutionTimer.ToFloatSeconds(IndicesEndTime-IndicesStartTime);
+  Str(TimeDuration*1000.0:1:2,TimeDurationString);
+  pvApplication.Log(LOG_DEBUG,'TpvScene3D.TGroup.LoadFromStream("'+FileName+'")','Indices duration: '+TimeDurationString+' ms');
+
+  TimeDuration:=pvApplication.HighResolutionTimer.ToFloatSeconds(DrawChoreographyBatchItemEndTime-DrawChoreographyBatchItemStartTime);
+  Str(TimeDuration*1000.0:1:2,TimeDurationString);
+  pvApplication.Log(LOG_DEBUG,'TpvScene3D.TGroup.LoadFromStream("'+FileName+'")','Draw choreography batch condensed indices duration: '+TimeDurationString+' ms');
+
+  TimeDuration:=pvApplication.HighResolutionTimer.ToFloatSeconds(DrawUniqueChoreographyBatchItemEndTime-DrawUniqueChoreographyBatchItemStartTime);
+  Str(TimeDuration*1000.0:1:2,TimeDurationString);
+  pvApplication.Log(LOG_DEBUG,'TpvScene3D.TGroup.LoadFromStream("'+FileName+'")','Draw choreography batch condensed unique indices duration: '+TimeDurationString+' ms');
+
+  TimeDuration:=pvApplication.HighResolutionTimer.ToFloatSeconds(JointBlocksEndTime-JointBlocksStartTime);
+  Str(TimeDuration*1000.0:1:2,TimeDurationString);
+  pvApplication.Log(LOG_DEBUG,'TpvScene3D.TGroup.LoadFromStream("'+FileName+'")','Joint blocks duration: '+TimeDurationString+' ms');
+
+  TimeDuration:=pvApplication.HighResolutionTimer.ToFloatSeconds(JointBlockOffsetsEndTime-JointBlockOffsetsStartTime);
+  Str(TimeDuration*1000.0:1:2,TimeDurationString);
+  pvApplication.Log(LOG_DEBUG,'TpvScene3D.TGroup.LoadFromStream("'+FileName+'")','Joint block offsets duration: '+TimeDurationString+' ms');
+
+  TimeDuration:=pvApplication.HighResolutionTimer.ToFloatSeconds(MorphTargetVerticesEndTime-MorphTargetVerticesStartTime);
+  Str(TimeDuration*1000.0:1:2,TimeDurationString);
+  pvApplication.Log(LOG_DEBUG,'TpvScene3D.TGroup.LoadFromStream("'+FileName+'")','Morph target vertices duration: '+TimeDurationString+' ms');
+
+  TimeDuration:=pvApplication.HighResolutionTimer.ToFloatSeconds(CamerasEndTime-CamerasStartTime);
+  Str(TimeDuration*1000.0:1:2,TimeDurationString);
+  pvApplication.Log(LOG_DEBUG,'TpvScene3D.TGroup.LoadFromStream("'+FileName+'")','Cameras duration: '+TimeDurationString+' ms');
+
   TimeDuration:=pvApplication.HighResolutionTimer.ToFloatSeconds(ImagesEndTime-ImagesStartTime);
   Str(TimeDuration*1000.0:1:2,TimeDurationString);
   pvApplication.Log(LOG_DEBUG,'TpvScene3D.TGroup.LoadFromStream("'+FileName+'")','Images duration: '+TimeDurationString+' ms');
+
+  TimeDuration:=pvApplication.HighResolutionTimer.ToFloatSeconds(SamplersEndTime-SamplersStartTime);
+  Str(TimeDuration*1000.0:1:2,TimeDurationString);
+  pvApplication.Log(LOG_DEBUG,'TpvScene3D.TGroup.LoadFromStream("'+FileName+'")','Samplers duration: '+TimeDurationString+' ms');
+
+  TimeDuration:=pvApplication.HighResolutionTimer.ToFloatSeconds(TexturesEndTime-TexturesStartTime);
+  Str(TimeDuration*1000.0:1:2,TimeDurationString);
+  pvApplication.Log(LOG_DEBUG,'TpvScene3D.TGroup.LoadFromStream("'+FileName+'")','Textures duration: '+TimeDurationString+' ms');
+
+  TimeDuration:=pvApplication.HighResolutionTimer.ToFloatSeconds(MaterialsEndTime-MaterialsStartTime);
+  Str(TimeDuration*1000.0:1:2,TimeDurationString);
+  pvApplication.Log(LOG_DEBUG,'TpvScene3D.TGroup.LoadFromStream("'+FileName+'")','Materials duration: '+TimeDurationString+' ms');
+
+  TimeDuration:=pvApplication.HighResolutionTimer.ToFloatSeconds(LightsEndTime-LightsStartTime);
+  Str(TimeDuration*1000.0:1:2,TimeDurationString);
+  pvApplication.Log(LOG_DEBUG,'TpvScene3D.TGroup.LoadFromStream("'+FileName+'")','Lights duration: '+TimeDurationString+' ms');
 
   TimeDuration:=pvApplication.HighResolutionTimer.ToFloatSeconds(MeshesEndTime-MeshesStartTime);
   Str(TimeDuration*1000.0:1:2,TimeDurationString);
   pvApplication.Log(LOG_DEBUG,'TpvScene3D.TGroup.LoadFromStream("'+FileName+'")','Meshes duration: '+TimeDurationString+' ms');
 
+  TimeDuration:=pvApplication.HighResolutionTimer.ToFloatSeconds(SkinsEndTime-SkinsStartTime);
+  Str(TimeDuration*1000.0:1:2,TimeDurationString);
+  pvApplication.Log(LOG_DEBUG,'TpvScene3D.TGroup.LoadFromStream("'+FileName+'")','Skins duration: '+TimeDurationString+' ms');
+
   TimeDuration:=pvApplication.HighResolutionTimer.ToFloatSeconds(AnimationsEndTime-AnimationsStartTime);
   Str(TimeDuration*1000.0:1:2,TimeDurationString);
   pvApplication.Log(LOG_DEBUG,'TpvScene3D.TGroup.LoadFromStream("'+FileName+'")','Animations duration: '+TimeDurationString+' ms');
 
+  TimeDuration:=pvApplication.HighResolutionTimer.ToFloatSeconds(NodesEndTime-NodesStartTime);
+  Str(TimeDuration*1000.0:1:2,TimeDurationString);
+  pvApplication.Log(LOG_DEBUG,'TpvScene3D.TGroup.LoadFromStream("'+FileName+'")','Nodes duration: '+TimeDurationString+' ms');
+
+  TimeDuration:=pvApplication.HighResolutionTimer.ToFloatSeconds(UsedVisibleDrawNodesEndTime-UsedVisibleDrawNodesStartTime);
+  Str(TimeDuration*1000.0:1:2,TimeDurationString);
+  pvApplication.Log(LOG_DEBUG,'TpvScene3D.TGroup.LoadFromStream("'+FileName+'")','Used visible draw nodes duration: '+TimeDurationString+' ms');
+
+  TimeDuration:=pvApplication.HighResolutionTimer.ToFloatSeconds(ScenesEndTime-ScenesStartTime);
+  Str(TimeDuration*1000.0:1:2,TimeDurationString);
+  pvApplication.Log(LOG_DEBUG,'TpvScene3D.TGroup.LoadFromStream("'+FileName+'")','Scenes duration: '+TimeDurationString+' ms');
+
+  TimeDuration:=pvApplication.HighResolutionTimer.ToFloatSeconds(PostProcessAnimationsEndTime-PostProcessAnimationsStartTime);
+  Str(TimeDuration*1000.0:1:2,TimeDurationString);
+  pvApplication.Log(LOG_DEBUG,'TpvScene3D.TGroup.LoadFromStream("'+FileName+'")','Post process animations duration: '+TimeDurationString+' ms');
+
   TimeDuration:=pvApplication.HighResolutionTimer.ToFloatSeconds(EndTime-StartTime);
   Str(TimeDuration*1000.0:1:2,TimeDurationString);
   pvApplication.Log(LOG_DEBUG,'TpvScene3D.TGroup.LoadFromStream("'+FileName+'")','Total duration: '+TimeDurationString+' ms');
-  fSceneInstance.fLoadGLTFTimeDuration:=fSceneInstance.fLoadGLTFTimeDuration+TimeDuration;
 
  finally
   TPasMPMultipleReaderSingleWriterSpinLock.ReleaseWrite(fSceneInstance.fLoadGLTFTimeDurationLock);
