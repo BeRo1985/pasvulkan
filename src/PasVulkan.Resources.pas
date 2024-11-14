@@ -302,7 +302,9 @@ type EpvResource=class(Exception);
       private
        fResourceManager:TpvResourceManager;
        fResourceClass:TpvResourceClass;
+       fResourceListLock:TPasMPSlimReaderWriterLock;
        fResourceList:TResourceList;
+       fResourceFileNameMapLock:TPasMPSlimReaderWriterLock;
        fResourceFileNameMap:TResourceStringMap;
        fMemoryBudget:TpvSizeInt;
        fMemoryUsage:TpvSizeInt;
@@ -334,6 +336,7 @@ type EpvResource=class(Exception);
        procedure SortDelayedToFreeResourcesByCreationIndices(const aLock:Boolean);
       private
        fLock:TPasMPMultipleReaderSingleWriterSpinLock;
+       fCreationIndexCounterLock:TPasMPSlimReaderWriterLock;
        fLocked:TPasMPBool32;
        fActive:TPasMPBool32;
        fLoadLock:TPasMPCriticalSection;
@@ -454,7 +457,7 @@ begin
   pvApplication.ResourceManager.fMetaResourceLock.ReleaseWrite;
  end;
 
- fResourceLock.Free;
+ FreeAndNil(fResourceLock);
 
  inherited Destroy;
 end;
@@ -644,29 +647,21 @@ begin
  fResourceClassType:=fResourceManager.GetResourceClassType(TpvResourceClass(ClassType));
 
  if assigned(fResourceManager) then begin
-  if not fResourceManager.fLocked then begin
-   fResourceManager.fLock.AcquireWrite;
-  end;
+  fResourceManager.fCreationIndexCounterLock.Acquire;
   try
    fCreationIndex:=fResourceManager.fCreationIndexCounter;
    inc(fResourceManager.fCreationIndexCounter);
   finally
-   if not fResourceManager.fLocked then begin
-    fResourceManager.fLock.ReleaseWrite;
-   end;
+   fResourceManager.fCreationIndexCounterLock.Release;
   end;
  end;
 
  if assigned(fResourceManager) and assigned(fResourceClassType) then begin
-  if not fResourceManager.fLocked then begin
-   fResourceManager.fLock.AcquireWrite;
-  end;
+  fResourceClassType.fResourceListLock.Acquire;
   try
    fResourceClassType.fResourceList.Add(self);
   finally
-   if not fResourceManager.fLocked then begin
-    fResourceManager.fLock.ReleaseWrite;
-   end;
+   fResourceClassType.fResourceListLock.Release;
   end;
  end;
 
@@ -688,7 +683,12 @@ begin
   try
 
    if assigned(fResourceClassType) then begin
-    fResourceClassType.fResourceList.Remove(self);
+    fResourceClassType.fResourceListLock.Acquire;
+    try
+     fResourceClassType.fResourceList.Remove(self);
+    finally
+     fResourceClassType.fResourceListLock.Release;
+    end;
    end;
 
    if fIsOnDelayedToFreeResourcesList and assigned(fResourceManager.fDelayedToFreeResources) then begin
@@ -776,8 +776,8 @@ var NewFileName:TpvUTF8String;
 begin
  NewFileName:=TpvResourceManager.SanitizeFileName(aFileName);
  if fFileName<>NewFileName then begin
-  if assigned(fResourceManager) and not fResourceManager.fLocked then begin
-   fResourceManager.fLock.AcquireWrite;
+  if assigned(fResourceClassType) then begin
+   fResourceClassType.fResourceFileNameMapLock.Acquire;
   end;
   try
    OldReferenceCounter:=fReferenceCounter;
@@ -794,8 +794,8 @@ begin
     fReferenceCounter:=OldReferenceCounter;
    end;
   finally
-   if assigned(fResourceManager) and not fResourceManager.fLocked then begin
-    fResourceManager.fLock.ReleaseWrite;
+   if assigned(fResourceClassType) then begin
+    fResourceClassType.fResourceFileNameMapLock.Release;
    end;
   end;
  end;
@@ -1791,8 +1791,12 @@ begin
 
  fResourceClass:=aResourceClass;
 
+ fResourceListLock:=TPasMPSlimReaderWriterLock.Create;
+
  fResourceList:=TResourceList.Create;
  fResourceList.OwnsObjects:=false;
+
+ fResourceFileNameMapLock:=TPasMPSlimReaderWriterLock.Create;
 
  fResourceFileNameMap:=TResourceStringMap.Create(nil);
 
@@ -1807,9 +1811,13 @@ begin
 
  Shutdown;
 
- fResourceList.Free;
+ FreeAndNil(fResourceList);
 
- fResourceFileNameMap.Free;
+ FreeAndNil(fResourceListLock);
+
+ FreeAndNil(fResourceFileNameMap);
+
+ FreeAndNil(fResourceFileNameMapLock);
 
  inherited Destroy;
 end;
@@ -1834,6 +1842,8 @@ begin
  fLock:=TPasMPMultipleReaderSingleWriterSpinLock.Create;
 
  fLocked:=false;
+
+ fCreationIndexCounterLock:=TPasMPSlimReaderWriterLock.Create;
 
  fLoadLock:=TPasMPCriticalSection.Create;
 
@@ -1911,6 +1921,8 @@ begin
  FreeAndNil(fMetaResourceLock);
 
  FreeAndNil(fLoadLock);
+
+ FreeAndNil(fCreationIndexCounterLock);
 
  FreeAndNil(fLock);
 
@@ -2197,11 +2209,11 @@ function TpvResourceManager.FindResource(const aResourceClass:TpvResourceClass;c
 var ResourceClassType:TpvResourceClassType;
 begin
  ResourceClassType:=GetResourceClassType(aResourceClass);
- fLock.AcquireRead;
+ ResourceClassType.fResourceFileNameMapLock.Acquire;
  try
   result:=ResourceClassType.fResourceFileNameMap[SanitizeFileName(aFileName)];
  finally
-  fLock.ReleaseRead;
+  ResourceClassType.fResourceFileNameMapLock.Release;
  end;
 end;
 
@@ -2214,7 +2226,12 @@ begin
  ResourceClassType:=GetResourceClassType(aResourceClass);
  fLock.AcquireRead;
  try
-  result:=ResourceClassType.fResourceFileNameMap[FileName];
+  ResourceClassType.fResourceFileNameMapLock.Acquire;
+  try
+   result:=ResourceClassType.fResourceFileNameMap[FileName];
+  finally
+   ResourceClassType.fResourceFileNameMapLock.Release;
+  end;
   if assigned(result) then begin
    Resource:=result.GetResource;
    if not (Resource is aResourceClass) then begin

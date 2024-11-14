@@ -988,7 +988,7 @@ type EpvScene3D=class(Exception);
                      Texture:TpvScene3D.TTexture;
                      TexCoord:TpvSizeInt;
                      Transform:TTransform;
-                     procedure LoadFromStream(const aStream:TStream;const aTextures:TpvObjectList);
+                     procedure LoadFromStream(const aStream:TStream;const aTextures:TpvObjectList;const aSceneInstance:TpvScene3D);
                      procedure SaveToStream(const aStream:TStream;const aTextures:TpvObjectList);
                    end;
                    PTextureReference=^TTextureReference;
@@ -7709,20 +7709,30 @@ begin
   fName:=StreamIO.ReadUTF8String;
 
   ImageIndex:=StreamIO.ReadInt64;
-  if (ImageIndex>=0) and (ImageIndex<aImages.Count) then begin
-   fImage:=TpvScene3D.TImage(aImages[ImageIndex]);
-   fImage.IncRef;
-  end else begin
-   fImage:=nil;
+  fSceneInstance.fImageListLock.Acquire;
+  try
+   if (ImageIndex>=0) and (ImageIndex<aImages.Count) then begin
+    fImage:=TpvScene3D.TImage(aImages[ImageIndex]);
+    fImage.IncRef;
+   end else begin
+    fImage:=nil;
+   end;
+  finally
+   fSceneInstance.fImageListLock.Release;
   end;
 
   SamplerIndex:=StreamIO.ReadInt64;
-  if (SamplerIndex>=0) and (SamplerIndex<aSamplers.Count) then begin
-   fSampler:=TpvScene3D.TSampler(aSamplers[SamplerIndex]);
-   fSampler.IncRef;
-  end else begin
-   fSampler:=nil;
-  end; 
+  fSceneInstance.fSamplerListLock.Acquire;
+  try
+   if (SamplerIndex>=0) and (SamplerIndex<aSamplers.Count) then begin
+    fSampler:=TpvScene3D.TSampler(aSamplers[SamplerIndex]);
+    fSampler.IncRef;
+   end else begin
+    fSampler:=nil;
+   end;
+  finally
+   fSceneInstance.fSamplerListLock.Release;
+  end;
 
  finally
   FreeAndNil(StreamIO);
@@ -7937,7 +7947,7 @@ end;
 
 { TpvScene3D.TMaterial.TTextureReference }
 
-procedure TpvScene3D.TMaterial.TTextureReference.LoadFromStream(const aStream:TStream;const aTextures:TpvObjectList);
+procedure TpvScene3D.TMaterial.TTextureReference.LoadFromStream(const aStream:TStream;const aTextures:TpvObjectList;const aSceneInstance:TpvScene3D);
 var StreamIO:TpvStreamIO;
     TextureIndex:TpvInt32;
 begin
@@ -7946,11 +7956,16 @@ begin
  try
 
   TextureIndex:=StreamIO.ReadInt64;
-  if (TextureIndex>=0) and (TextureIndex<aTextures.Count) then begin
-   Texture:=TpvScene3D.TTexture(aTextures[TextureIndex]);
-   Texture.IncRef;
-  end else begin
-   Texture:=nil;
+  aSceneInstance.fTextureListLock.Acquire;
+  try
+   if (TextureIndex>=0) and (TextureIndex<aTextures.Count) then begin
+    Texture:=TpvScene3D.TTexture(aTextures[TextureIndex]);
+    Texture.IncRef;
+   end else begin
+    Texture:=nil;
+   end;
+  finally
+   aSceneInstance.fTextureListLock.Release;
   end;
 
   if TextureIndex>=0 then begin
@@ -8712,236 +8727,229 @@ begin
 
   fName:=StreamIO.ReadUTF8String;
 
-  fSceneInstance.fTextureListLock.Acquire;
-  try
+  fData:=TpvScene3D.TMaterial.DefaultData;
 
-   fData:=TpvScene3D.TMaterial.DefaultData;
+  fData.ShadingModel:=TpvScene3D.TMaterial.TShadingModel(TpvUInt32(StreamIO.ReadUInt32));
 
-   fData.ShadingModel:=TpvScene3D.TMaterial.TShadingModel(TpvUInt32(StreamIO.ReadUInt32));
+  fData.CastingShadows:=StreamIO.ReadBoolean;
+  fData.ReceiveShadows:=StreamIO.ReadBoolean;
 
-   fData.CastingShadows:=StreamIO.ReadBoolean;
-   fData.ReceiveShadows:=StreamIO.ReadBoolean;
+  fData.AlphaCutOff:=StreamIO.ReadFloat;
 
-   fData.AlphaCutOff:=StreamIO.ReadFloat;
+  fData.AlphaMode:=TpvScene3D.TMaterial.TAlphaMode(TpvUInt32(StreamIO.ReadUInt32));
 
-   fData.AlphaMode:=TpvScene3D.TMaterial.TAlphaMode(TpvUInt32(StreamIO.ReadUInt32));
+  fData.DoubleSided:=StreamIO.ReadBoolean;
 
-   fData.DoubleSided:=StreamIO.ReadBoolean;
+  fData.NormalTexture.LoadFromStream(aStream,aTextures,fSceneInstance);
 
-   fData.NormalTexture.LoadFromStream(aStream,aTextures);
+  fData.NormalTextureScale:=StreamIO.ReadFloat;
 
-   fData.NormalTextureScale:=StreamIO.ReadFloat;
+  fData.OcclusionTexture.LoadFromStream(aStream,aTextures,fSceneInstance);
 
-   fData.OcclusionTexture.LoadFromStream(aStream,aTextures);
+  fData.OcclusionTextureStrength:=StreamIO.ReadFloat;
 
-   fData.OcclusionTextureStrength:=StreamIO.ReadFloat;
+  fData.EmissiveFactor:=StreamIO.ReadVector4;
 
-   fData.EmissiveFactor:=StreamIO.ReadVector4;
+  fData.EmissiveTexture.LoadFromStream(aStream,aTextures,fSceneInstance);
 
-   fData.EmissiveTexture.LoadFromStream(aStream,aTextures);
+  begin
 
-   begin
+   // PBRMetallicRoughness
 
-    // PBRMetallicRoughness
+   fData.PBRMetallicRoughness.BaseColorFactor:=StreamIO.ReadVector4;
 
-    fData.PBRMetallicRoughness.BaseColorFactor:=StreamIO.ReadVector4;
+   fData.PBRMetallicRoughness.BaseColorTexture.LoadFromStream(aStream,aTextures,fSceneInstance);
 
-    fData.PBRMetallicRoughness.BaseColorTexture.LoadFromStream(aStream,aTextures);
+   fData.PBRMetallicRoughness.RoughnessFactor:=StreamIO.ReadFloat;
 
-    fData.PBRMetallicRoughness.RoughnessFactor:=StreamIO.ReadFloat;
+   fData.PBRMetallicRoughness.MetallicFactor:=StreamIO.ReadFloat;
 
-    fData.PBRMetallicRoughness.MetallicFactor:=StreamIO.ReadFloat;
+   fData.PBRMetallicRoughness.MetallicRoughnessTexture.LoadFromStream(aStream,aTextures,fSceneInstance);
 
-    fData.PBRMetallicRoughness.MetallicRoughnessTexture.LoadFromStream(aStream,aTextures);
+   fData.PBRMetallicRoughness.SpecularFactor:=StreamIO.ReadFloat;
 
-    fData.PBRMetallicRoughness.SpecularFactor:=StreamIO.ReadFloat;
+   fData.PBRMetallicRoughness.SpecularTexture.LoadFromStream(aStream,aTextures,fSceneInstance);
 
-    fData.PBRMetallicRoughness.SpecularTexture.LoadFromStream(aStream,aTextures);
+   fData.PBRMetallicRoughness.SpecularColorFactor:=StreamIO.ReadVector3;
 
-    fData.PBRMetallicRoughness.SpecularColorFactor:=StreamIO.ReadVector3;
+   fData.PBRMetallicRoughness.SpecularColorTexture.LoadFromStream(aStream,aTextures,fSceneInstance);
 
-    fData.PBRMetallicRoughness.SpecularColorTexture.LoadFromStream(aStream,aTextures);
-
-   end;
-
-   begin
-
-    // PBRSpecularGlossiness
-
-    fData.PBRSpecularGlossiness.DiffuseFactor:=StreamIO.ReadVector4;
-
-    fData.PBRSpecularGlossiness.DiffuseTexture.LoadFromStream(aStream,aTextures); 
-
-    fData.PBRSpecularGlossiness.GlossinessFactor:=StreamIO.ReadFloat;
-
-    fData.PBRSpecularGlossiness.SpecularFactor:=StreamIO.ReadVector3;
-
-    fData.PBRSpecularGlossiness.SpecularGlossinessTexture.LoadFromStream(aStream,aTextures);
-
-   end;
-
-   begin
-
-    // PBRSheen
-
-    fData.PBRSheen.Active:=StreamIO.ReadBoolean;
-
-    fData.PBRSheen.ColorFactor:=StreamIO.ReadVector3;
-
-    fData.PBRSheen.ColorTexture.LoadFromStream(aStream,aTextures);
-    
-    fData.PBRSheen.RoughnessFactor:=StreamIO.ReadFloat;
-
-    fData.PBRSheen.RoughnessTexture.LoadFromStream(aStream,aTextures);
-
-   end;
-
-   begin
-
-    // PBRClearCoat
-
-    fData.PBRClearCoat.Active:=StreamIO.ReadBoolean;
-
-    fData.PBRClearCoat.Factor:=StreamIO.ReadFloat;
-
-    fData.PBRClearCoat.Texture.LoadFromStream(aStream,aTextures);
-
-    fData.PBRClearCoat.RoughnessFactor:=StreamIO.ReadFloat;
-
-    fData.PBRClearCoat.RoughnessTexture.LoadFromStream(aStream,aTextures);
-
-    fData.PBRClearCoat.NormalTexture.LoadFromStream(aStream,aTextures);
-
-   end;
-
-   begin
-
-    // Unlit
-
-    // nothing to do
-
-   end;
-
-   begin
-
-    // Iridescence
-
-    fData.IOR:=StreamIO.ReadFloat;
-
-    fData.Iridescence.Active:=StreamIO.ReadBoolean;
-
-    fData.Iridescence.Factor:=StreamIO.ReadFloat;
-
-    fData.Iridescence.Texture.LoadFromStream(aStream,aTextures);
-    fData.Iridescence.Ior:=StreamIO.ReadFloat;
-
-    fData.Iridescence.ThicknessMinimum:=StreamIO.ReadFloat;
-
-    fData.Iridescence.ThicknessMaximum:=StreamIO.ReadFloat;
-
-    fData.Iridescence.ThicknessTexture.LoadFromStream(aStream,aTextures);
-
-   end;
-
-   begin
-
-    // Transmission
-
-    fData.Transmission.Active:=StreamIO.ReadBoolean;
-
-    fData.Transmission.Opaque:=StreamIO.ReadBoolean;
-
-    fData.Transmission.Factor:=StreamIO.ReadFloat;
-
-    fData.Transmission.Texture.LoadFromStream(aStream,aTextures);
-
-   end;
-
-   begin
-
-    // Volume
-
-    fData.Volume.Active:=StreamIO.ReadBoolean;
-
-    fData.Volume.ThicknessFactor:=StreamIO.ReadFloat;
-
-    fData.Volume.ThicknessTexture.LoadFromStream(aStream,aTextures);
-
-    fData.Volume.AttenuationColor:=StreamIO.ReadVector3;
-
-    fData.Volume.AttenuationDistance:=StreamIO.ReadFloat;
-
-   end;
-
-   begin
-
-    // Anisotropy
-
-    fData.Anisotropy.Active:=StreamIO.ReadBoolean;
-
-    fData.Anisotropy.AnisotropyStrength:=StreamIO.ReadFloat;
-
-    fData.Anisotropy.AnisotropyRotation:=StreamIO.ReadFloat;
-
-    fData.Anisotropy.AnisotropyTexture.LoadFromStream(aStream,aTextures);
-
-   end;
-
-   begin
-
-    // Dispersion
-
-    fData.Dispersion.Active:=StreamIO.ReadBoolean;
-
-    fData.Dispersion.Dispersion:=StreamIO.ReadFloat;
-
-   end;
-
-   begin
-
-    // Hologram
-
-    fData.Hologram.Active:=StreamIO.ReadBoolean;
-
-    fData.Hologram.Direction:=StreamIO.ReadVector3;
-
-    fData.Hologram.FlickerSpeed:=StreamIO.ReadFloat;
-
-    fData.Hologram.FlickerMin:=StreamIO.ReadFloat;
-
-    fData.Hologram.FlickerMax:=StreamIO.ReadFloat;
-
-    fData.Hologram.MainColorFactor:=StreamIO.ReadVector4;
-
-    fData.Hologram.RimColorFactor:=StreamIO.ReadVector4;
-
-    fData.Hologram.RimPower:=StreamIO.ReadFloat;
-
-    fData.Hologram.RimThreshold:=StreamIO.ReadFloat;
-
-    fData.Hologram.ScanTiling:=StreamIO.ReadFloat;
-
-    fData.Hologram.ScanSpeed:=StreamIO.ReadFloat;
-
-    fData.Hologram.ScanMin:=StreamIO.ReadFloat;
-
-    fData.Hologram.ScanMax:=StreamIO.ReadFloat;
-
-    fData.Hologram.GlowTiling:=StreamIO.ReadFloat;
-
-    fData.Hologram.GlowSpeed:=StreamIO.ReadFloat;
-
-    fData.Hologram.GlowMin:=StreamIO.ReadFloat;
-
-    fData.Hologram.GlowMax:=StreamIO.ReadFloat;
-
-   end;   
-
-   fData.AnimatedTextureMask:=StreamIO.ReadUInt64;
-
-  finally
-   fSceneInstance.fTextureListLock.Release;
   end;
+
+  begin
+
+   // PBRSpecularGlossiness
+
+   fData.PBRSpecularGlossiness.DiffuseFactor:=StreamIO.ReadVector4;
+
+   fData.PBRSpecularGlossiness.DiffuseTexture.LoadFromStream(aStream,aTextures,fSceneInstance);
+
+   fData.PBRSpecularGlossiness.GlossinessFactor:=StreamIO.ReadFloat;
+
+   fData.PBRSpecularGlossiness.SpecularFactor:=StreamIO.ReadVector3;
+
+   fData.PBRSpecularGlossiness.SpecularGlossinessTexture.LoadFromStream(aStream,aTextures,fSceneInstance);
+
+  end;
+
+  begin
+
+   // PBRSheen
+
+   fData.PBRSheen.Active:=StreamIO.ReadBoolean;
+
+   fData.PBRSheen.ColorFactor:=StreamIO.ReadVector3;
+
+   fData.PBRSheen.ColorTexture.LoadFromStream(aStream,aTextures,fSceneInstance);
+
+   fData.PBRSheen.RoughnessFactor:=StreamIO.ReadFloat;
+
+   fData.PBRSheen.RoughnessTexture.LoadFromStream(aStream,aTextures,fSceneInstance);
+
+  end;
+
+  begin
+
+   // PBRClearCoat
+
+   fData.PBRClearCoat.Active:=StreamIO.ReadBoolean;
+
+   fData.PBRClearCoat.Factor:=StreamIO.ReadFloat;
+
+   fData.PBRClearCoat.Texture.LoadFromStream(aStream,aTextures,fSceneInstance);
+
+   fData.PBRClearCoat.RoughnessFactor:=StreamIO.ReadFloat;
+
+   fData.PBRClearCoat.RoughnessTexture.LoadFromStream(aStream,aTextures,fSceneInstance);
+
+   fData.PBRClearCoat.NormalTexture.LoadFromStream(aStream,aTextures,fSceneInstance);
+
+  end;
+
+  begin
+
+   // Unlit
+
+   // nothing to do
+
+  end;
+
+  begin
+
+   // Iridescence
+
+   fData.IOR:=StreamIO.ReadFloat;
+
+   fData.Iridescence.Active:=StreamIO.ReadBoolean;
+
+   fData.Iridescence.Factor:=StreamIO.ReadFloat;
+
+   fData.Iridescence.Texture.LoadFromStream(aStream,aTextures,fSceneInstance);
+   fData.Iridescence.Ior:=StreamIO.ReadFloat;
+
+   fData.Iridescence.ThicknessMinimum:=StreamIO.ReadFloat;
+
+   fData.Iridescence.ThicknessMaximum:=StreamIO.ReadFloat;
+
+   fData.Iridescence.ThicknessTexture.LoadFromStream(aStream,aTextures,fSceneInstance);
+
+  end;
+
+  begin
+
+   // Transmission
+
+   fData.Transmission.Active:=StreamIO.ReadBoolean;
+
+   fData.Transmission.Opaque:=StreamIO.ReadBoolean;
+
+   fData.Transmission.Factor:=StreamIO.ReadFloat;
+
+   fData.Transmission.Texture.LoadFromStream(aStream,aTextures,fSceneInstance);
+
+  end;
+
+  begin
+
+   // Volume
+
+   fData.Volume.Active:=StreamIO.ReadBoolean;
+
+   fData.Volume.ThicknessFactor:=StreamIO.ReadFloat;
+
+   fData.Volume.ThicknessTexture.LoadFromStream(aStream,aTextures,fSceneInstance);
+
+   fData.Volume.AttenuationColor:=StreamIO.ReadVector3;
+
+   fData.Volume.AttenuationDistance:=StreamIO.ReadFloat;
+
+  end;
+
+  begin
+
+   // Anisotropy
+
+   fData.Anisotropy.Active:=StreamIO.ReadBoolean;
+
+   fData.Anisotropy.AnisotropyStrength:=StreamIO.ReadFloat;
+
+   fData.Anisotropy.AnisotropyRotation:=StreamIO.ReadFloat;
+
+   fData.Anisotropy.AnisotropyTexture.LoadFromStream(aStream,aTextures,fSceneInstance);
+
+  end;
+
+  begin
+
+   // Dispersion
+
+   fData.Dispersion.Active:=StreamIO.ReadBoolean;
+
+   fData.Dispersion.Dispersion:=StreamIO.ReadFloat;
+
+  end;
+
+  begin
+
+   // Hologram
+
+   fData.Hologram.Active:=StreamIO.ReadBoolean;
+
+   fData.Hologram.Direction:=StreamIO.ReadVector3;
+
+   fData.Hologram.FlickerSpeed:=StreamIO.ReadFloat;
+
+   fData.Hologram.FlickerMin:=StreamIO.ReadFloat;
+
+   fData.Hologram.FlickerMax:=StreamIO.ReadFloat;
+
+   fData.Hologram.MainColorFactor:=StreamIO.ReadVector4;
+
+   fData.Hologram.RimColorFactor:=StreamIO.ReadVector4;
+
+   fData.Hologram.RimPower:=StreamIO.ReadFloat;
+
+   fData.Hologram.RimThreshold:=StreamIO.ReadFloat;
+
+   fData.Hologram.ScanTiling:=StreamIO.ReadFloat;
+
+   fData.Hologram.ScanSpeed:=StreamIO.ReadFloat;
+
+   fData.Hologram.ScanMin:=StreamIO.ReadFloat;
+
+   fData.Hologram.ScanMax:=StreamIO.ReadFloat;
+
+   fData.Hologram.GlowTiling:=StreamIO.ReadFloat;
+
+   fData.Hologram.GlowSpeed:=StreamIO.ReadFloat;
+
+   fData.Hologram.GlowMin:=StreamIO.ReadFloat;
+
+   fData.Hologram.GlowMax:=StreamIO.ReadFloat;
+
+  end;
+
+  fData.AnimatedTextureMask:=StreamIO.ReadUInt64;
 
  finally
   FreeAndNil(StreamIO);
@@ -18069,9 +18077,9 @@ begin
  Image:=aImage;
  if assigned(Image) then begin
   try
+   HashData:=Image.GetHashData;
    fSceneInstance.fImageListLock.Acquire;
    try
-    HashData:=Image.GetHashData;
     if aForceNew then begin
      if not fSceneInstance.fImageHashMap.ExistKey(HashData) then begin
       fSceneInstance.fImageHashMap[HashData]:=Image;
@@ -18092,13 +18100,13 @@ begin
       Image:=nil;
      end;
     end;
-    if assigned(CurrentImage) and (fNewImages.IndexOf(CurrentImage)<0) then begin
-     CurrentImage.IncRef;
-     CurrentImage.LoadData;
-     fNewImages.Add(CurrentImage);
-    end;
    finally
     fSceneInstance.fImageListLock.Release;
+   end;
+   if assigned(CurrentImage) and (fNewImages.IndexOf(CurrentImage)<0) then begin
+    CurrentImage.IncRef;
+    CurrentImage.LoadData;
+    fNewImages.Add(CurrentImage);
    end;
   finally
    FreeAndNil(Image);
@@ -18754,6 +18762,7 @@ begin
         CamerasEndTime:=pvApplication.HighResolutionTimer.GetTime;
 
         // Read images        
+        pvApplication.Log(LOG_DEBUG,'TpvScene3D.TGroup.LoadFromStream("'+FileName+'")','Images Start');
         ImagesStartTime:=pvApplication.HighResolutionTimer.GetTime;
         Count:=StreamIO.ReadInt64;
         for Index:=0 to Count-1 do begin
@@ -18772,6 +18781,7 @@ begin
          end;
         end;
         ImagesEndTime:=pvApplication.HighResolutionTimer.GetTime;
+        pvApplication.Log(LOG_DEBUG,'TpvScene3D.TGroup.LoadFromStream("'+FileName+'")','Images End');
 
         // Read samplers
         SamplersStartTime:=pvApplication.HighResolutionTimer.GetTime;
@@ -18794,6 +18804,7 @@ begin
         SamplersEndTime:=pvApplication.HighResolutionTimer.GetTime;
 
         // Read textures
+        pvApplication.Log(LOG_DEBUG,'TpvScene3D.TGroup.LoadFromStream("'+FileName+'")','Textures Start');
         TexturesStartTime:=pvApplication.HighResolutionTimer.GetTime;
         Count:=StreamIO.ReadInt64;
         for Index:=0 to Count-1 do begin
@@ -18812,17 +18823,23 @@ begin
          end;
         end;
         TexturesEndTime:=pvApplication.HighResolutionTimer.GetTime;
+        pvApplication.Log(LOG_DEBUG,'TpvScene3D.TGroup.LoadFromStream("'+FileName+'")','Textures End');
 
         // Read materials
+        pvApplication.Log(LOG_DEBUG,'TpvScene3D.TGroup.LoadFromStream("'+FileName+'")','Materials Start');
         MaterialsStartTime:=pvApplication.HighResolutionTimer.GetTime;
-        fSceneInstance.fMaterialListLock.Acquire;
         try
          Count:=StreamIO.ReadInt64;
          for Index:=0 to Count-1 do begin
           Material:=TpvScene3D.TMaterial.Create(ResourceManager,fSceneInstance);
           try
            Material.LoadFromStream(aStream,CollectedImages,CollectedSamplers,CollectedTextures);
-           OtherIndex:=AddMaterial(Material,false,false);
+           fSceneInstance.fMaterialListLock.Acquire;
+           try
+            OtherIndex:=AddMaterial(Material,false,false);
+           finally
+            fSceneInstance.fMaterialListLock.Release;
+           end;
            if (OtherIndex>=0) and (OtherIndex<fMaterials.Count) then begin
             MaterialIDMap[Index]:=OtherIndex;
             CollectedMaterials.Add(fMaterials[OtherIndex]);
@@ -18834,11 +18851,11 @@ begin
            raise;
           end;
          end;
-         FinalizeMaterials(false);
+         FinalizeMaterials(true);
         finally
-         fSceneInstance.fMaterialListLock.Release;
+         MaterialsEndTime:=pvApplication.HighResolutionTimer.GetTime;
         end;
-        MaterialsEndTime:=pvApplication.HighResolutionTimer.GetTime;
+        pvApplication.Log(LOG_DEBUG,'TpvScene3D.TGroup.LoadFromStream("'+FileName+'")','Materials End');
 
         // Read lights
         LightsStartTime:=pvApplication.HighResolutionTimer.GetTime;
