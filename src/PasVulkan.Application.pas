@@ -115,10 +115,10 @@ const MaxSwapChainImages=3;
       FrameTimesHistoryMask=FrameTimesHistorySize-1;
 
       LOG_NONE=0;
-      LOG_INFO=1;
-      LOG_VERBOSE=2;
-      LOG_DEBUG=3;
-      LOG_ERROR=4;
+      LOG_ERROR=1;
+      LOG_INFO=2;
+      LOG_VERBOSE=3;
+      LOG_DEBUG=4;
 
       EVENT_NONE=0;
       EVENT_KEY=1;
@@ -2146,28 +2146,32 @@ type EpvApplication=class(Exception)
 
 var pvApplication:TpvApplication=nil;
 
+    pvDebuggerPresent:Boolean=false;
+
+    pvOutputLogLevel:TpvInt32=LOG_INFO;
+
 {$if defined(fpc) and defined(android)}
-     AndroidJavaVM:PJavaVM=nil;
-     AndroidJavaEnv:PJNIEnv=nil;
-     AndroidJavaClass:jclass=nil;
-     AndroidJavaObject:jobject=nil;
+    AndroidJavaVM:PJavaVM=nil;
+    AndroidJavaEnv:PJNIEnv=nil;
+    AndroidJavaClass:jclass=nil;
+    AndroidJavaObject:jobject=nil;
 
-     AndroidActivity:PANativeActivity=nil;
+    AndroidActivity:PANativeActivity=nil;
 
-     AndroidSavedState:TpvPointer=nil;
-     AndroidSavedStateSize:TpvSizeUInt=0;
+    AndroidSavedState:TpvPointer=nil;
+    AndroidSavedStateSize:TpvSizeUInt=0;
 
 {$if defined(fpc) and defined(android) and (defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless))}
-     AndroidAssetManagerObject:JObject=nil;
+    AndroidAssetManagerObject:JObject=nil;
 {$ifend}
 
-     AndroidAssetManager:PAAssetManager=nil;
+    AndroidAssetManager:PAAssetManager=nil;
 
-     AndroidInternalDataPath:TpvUTF8String='';
-     AndroidExternalDataPath:TpvUTF8String='';
-     AndroidLibraryPath:TpvUTF8String='';
+    AndroidInternalDataPath:TpvUTF8String='';
+    AndroidExternalDataPath:TpvUTF8String='';
+    AndroidLibraryPath:TpvUTF8String='';
 
-     AndroidDeviceName:TpvUTF8String='';
+    AndroidDeviceName:TpvUTF8String='';
 
 function AndroidGetManufacturerName:TpvApplicationUnicodeString;
 function AndroidGetModelName:TpvApplicationUnicodeString;
@@ -7551,8 +7555,10 @@ var StdOut:Windows.THandle;
 {$ifend}
 begin
 {$if defined(Debug) or not defined(Release)}
- TemporaryString:=WideString(What);
- OutputDebugStringW(PWideChar(TemporaryString));
+ if pvDebuggerPresent then begin
+  TemporaryString:=WideString(What);
+  OutputDebugStringW(PWideChar(TemporaryString));
+ end;
  StdOut:=GetStdHandle(Std_Output_Handle);
 //Win32Check(StdOut<>Invalid_Handle_Value);
  if (StdOut<>0) and (StdOut<>Invalid_Handle_Value) then begin
@@ -7578,41 +7584,43 @@ end;
 
 class procedure TpvApplication.Log(const aLevel:TpvInt32;const aWhere,aWhat:TpvUTF8String);
 begin
+ if aLevel<=pvOutputLogLevel then begin
 {$if (defined(fpc) and defined(android)) and (defined(Debug) or not defined(Release))}
- case aLevel of
-  LOG_NONE:begin
+  case aLevel of
+   LOG_NONE:begin
+   end;
+   LOG_ERROR:begin
+    __android_log_write(ANDROID_LOG_ERROR,PAnsiChar(TpvUTF8String(aWhere)),PAnsiChar(TpvUTF8String(aWhat)));
+   end;
+   LOG_INFO:begin
+    __android_log_write(ANDROID_LOG_INFO,PAnsiChar(TpvUTF8String(aWhere)),PAnsiChar(TpvUTF8String(aWhat)));
+   end;
+   LOG_VERBOSE:begin
+    __android_log_write(ANDROID_LOG_VERBOSE,PAnsiChar(TpvUTF8String(aWhere)),PAnsiChar(TpvUTF8String(aWhat)));
+   end;
+   LOG_DEBUG:begin
+    __android_log_write(ANDROID_LOG_DEBUG,PAnsiChar(TpvUTF8String(aWhere)),PAnsiChar(TpvUTF8String(aWhat)));
+   end;
   end;
-  LOG_INFO:begin
-   __android_log_write(ANDROID_LOG_INFO,PAnsiChar(TpvUTF8String(aWhere)),PAnsiChar(TpvUTF8String(aWhat)));
-  end;
-  LOG_VERBOSE:begin
-   __android_log_write(ANDROID_LOG_VERBOSE,PAnsiChar(TpvUTF8String(aWhere)),PAnsiChar(TpvUTF8String(aWhat)));
-  end;
-  LOG_DEBUG:begin
-   __android_log_write(ANDROID_LOG_DEBUG,PAnsiChar(TpvUTF8String(aWhere)),PAnsiChar(TpvUTF8String(aWhat)));
-  end;
-  LOG_ERROR:begin
-   __android_log_write(ANDROID_LOG_ERROR,PAnsiChar(TpvUTF8String(aWhere)),PAnsiChar(TpvUTF8String(aWhat)));
-  end;
- end;
 {$elseif defined(Debug) or not defined(Release)}
- case aLevel of
-  LOG_NONE:begin
+  case aLevel of
+   LOG_NONE:begin
+   end;
+   LOG_ERROR:begin
+    VulkanDebugLn('[Error] '+aWhere+': '+aWhat);
+   end;
+   LOG_INFO:begin
+    VulkanDebugLn('[Info] '+aWhere+': '+aWhat);
+   end;
+   LOG_VERBOSE:begin
+    VulkanDebugLn('[Verbose] '+aWhere+': '+aWhat);
+   end;
+   LOG_DEBUG:begin
+    VulkanDebugLn('[Debug] '+aWhere+': '+aWhat);
+   end;
   end;
-  LOG_INFO:begin
-   VulkanDebugLn('[Info] '+aWhere+': '+aWhat);
-  end;
-  LOG_VERBOSE:begin
-   VulkanDebugLn('[Verbose] '+aWhere+': '+aWhat);
-  end;
-  LOG_DEBUG:begin
-   VulkanDebugLn('[Debug] '+aWhere+': '+aWhat);
-  end;
-  LOG_ERROR:begin
-   VulkanDebugLn('[Error] '+aWhere+': '+aWhat);
-  end;
- end;
 {$ifend}
+ end;
 end;
 
 function TpvApplication.PasMPInstanceOnWorkerThreadException(const aException:Exception):Boolean;
@@ -15210,6 +15218,12 @@ begin
 end;
 
 initialization
+ pvDebuggerPresent:=IsDebuggerPresent;
+ if pvDebuggerPresent then begin
+  pvOutputLogLevel:=LOG_DEBUG;
+ end else begin
+  pvOutputLogLevel:=LOG_INFO;
+ end;
 {$if defined(PasVulkanUseJCLDebug) and not defined(fpc)}
 //JclStackTrackingOptions:=JclStackTrackingOptions+[stRawMode,stStaticModuleList];
  if JclStartExceptionTracking then begin
