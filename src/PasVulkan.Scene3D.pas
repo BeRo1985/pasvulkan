@@ -18762,7 +18762,7 @@ begin
         CamerasEndTime:=pvApplication.HighResolutionTimer.GetTime;
 
         // Read images        
-        pvApplication.Log(LOG_DEBUG,'TpvScene3D.TGroup.LoadFromStream("'+FileName+'")','Images Start');
+         pvApplication.Log(LOG_DEBUG,'TpvScene3D.TGroup.LoadFromStream("'+FileName+'")','Images Start');
         ImagesStartTime:=pvApplication.HighResolutionTimer.GetTime;
         Count:=StreamIO.ReadInt64;
         for Index:=0 to Count-1 do begin
