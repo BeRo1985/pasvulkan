@@ -22704,7 +22704,7 @@ begin
 end;
 
 procedure TpvScene3D.TGroup.TInstance.Unload;
-var Index:TpvSizeInt;
+//var Index:TpvSizeInt;
 begin
  if fUploaded then begin
   fLock.Acquire;
