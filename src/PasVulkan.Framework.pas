@@ -1026,7 +1026,8 @@ type EpvVulkanException=class(Exception);
                         const aSize:TVkDeviceSize;
                         const aAlignment:TVkDeviceSize;
                         const aAllocationType:TpvVulkanDeviceMemoryAllocationType);
-       function CanBeDefragmented:boolean;
+       function CanBeDefragmentedInplace:boolean;
+       function CanBeDefragmentedDelayed:boolean;
       published
        property MemoryChunk:TpvVulkanDeviceMemoryChunk read fMemoryChunk;
        property Offset:TVkDeviceSize read fOffset;
@@ -1159,6 +1160,16 @@ type EpvVulkanException=class(Exception);
                                                                         const aFence:TpvVulkanFence;
                                                                         const aMemoryBlock:TpvVulkanDeviceMemoryBlock) of object;
 
+     TpvVulkanDeviceMemoryBlockOnDefragmentDelayedReallocate=procedure(const aQueue:TpvVulkanQueue;
+                                                                       const aCommandBuffer:TpvVulkanCommandBuffer;
+                                                                       const aFence:TpvVulkanFence;
+                                                                       const aMemoryBlock:TpvVulkanDeviceMemoryBlock;
+                                                                       const aFromOffset:TVkDeviceSize;
+                                                                       const aToOffset:TVkDeviceSize;
+                                                                       const aSize:TVkDeviceSize) of object;
+
+     TpvVulkanDeviceMemoryBlockOnDefragmentDelayedFinalize=procedure(const aMemoryBlock:TpvVulkanDeviceMemoryBlock) of object;
+
      { TpvVulkanDeviceMemoryBlock }
 
      TpvVulkanDeviceMemoryBlock=class(TpvVulkanObject)
@@ -1173,6 +1184,8 @@ type EpvVulkanException=class(Exception);
        fAssociatedObject:TObject;
        fOnBeforeDefragmentInplace:TpvVulkanDeviceMemoryBlockOnBeforeAfterDefragmentInplace;
        fOnAfterDefragmentInplace:TpvVulkanDeviceMemoryBlockOnBeforeAfterDefragmentInplace;
+       fOnDefragmentDelayedReallocate:TpvVulkanDeviceMemoryBlockOnDefragmentDelayedReallocate;
+       fOnDefragmentDelayedFinalize:TpvVulkanDeviceMemoryBlockOnDefragmentDelayedFinalize;
        fInUse:Boolean;
        fName:TpvUTF8String;
       public
@@ -1201,6 +1214,8 @@ type EpvVulkanException=class(Exception);
        property AssociatedObject:TObject read fAssociatedObject write fAssociatedObject;
        property OnBeforeDefragmentInplace:TpvVulkanDeviceMemoryBlockOnBeforeAfterDefragmentInplace read fOnBeforeDefragmentInplace write fOnBeforeDefragmentInplace;
        property OnAfterDefragmentInplace:TpvVulkanDeviceMemoryBlockOnBeforeAfterDefragmentInplace read fOnAfterDefragmentInplace write fOnAfterDefragmentInplace;
+       property OnDefragmentDelayedReallocate:TpvVulkanDeviceMemoryBlockOnDefragmentDelayedReallocate read fOnDefragmentDelayedReallocate write fOnDefragmentDelayedReallocate;
+       property OnDefragmentDelayedFinalize:TpvVulkanDeviceMemoryBlockOnDefragmentDelayedFinalize read fOnDefragmentDelayedFinalize write fOnDefragmentDelayedFinalize;
        property Name:TpvUTF8String read fName write fName;
      end;
 
@@ -11518,11 +11533,18 @@ begin
  end;
 end;
 
-function TpvVulkanDeviceMemoryChunkBlock.CanBeDefragmented:boolean;
+function TpvVulkanDeviceMemoryChunkBlock.CanBeDefragmentedInplace:boolean;
 begin
  result:=assigned(fMemoryBlock) and
-         assigned(fMemoryBlock.fOnBeforeDefragmentInplace) and
-         assigned(fMemoryBlock.fOnAfterDefragmentInplace);
+         (assigned(fMemoryBlock.fOnBeforeDefragmentInplace) and
+          assigned(fMemoryBlock.fOnAfterDefragmentInplace));          
+end;
+
+function TpvVulkanDeviceMemoryChunkBlock.CanBeDefragmentedDelayed:boolean;
+begin
+ result:=assigned(fMemoryBlock) and
+         (assigned(fMemoryBlock.fOnDefragmentDelayedReallocate) and
+          assigned(fMemoryBlock.fOnDefragmentDelayedFinalize));          
 end;
 
 constructor TpvVulkanDeviceMemoryChunk.Create(const aMemoryManager:TpvVulkanDeviceMemoryManager;
@@ -12707,7 +12729,7 @@ begin
 
        // Check if we can defragment this chunk block
        if (ChunkBlock.fSize>0) and
-          ChunkBlock.CanBeDefragmented then begin
+          ChunkBlock.CanBeDefragmentedInplace then begin
 
         // Setup values
 
@@ -13158,6 +13180,10 @@ begin
  fOnBeforeDefragmentInplace:=nil;
 
  fOnAfterDefragmentInplace:=nil;
+
+ fOnDefragmentDelayedReallocate:=nil;
+
+ fOnDefragmentDelayedFinalize:=nil;
 
  fAssociatedObject:=nil;
 
