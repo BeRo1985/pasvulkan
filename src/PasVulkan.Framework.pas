@@ -12792,7 +12792,7 @@ begin
               // Perform the copy operation
               BufferCopy:=TVkBufferCopy.Create(FromOffset+Remaining,ToOffset+Remaining,ChunkSize);
               aCommandBuffer.CmdCopyBuffer(TemporaryBuffer,
-                                           fMemoryHandle,
+                                           TemporaryBuffer,
                                            1,
                                            @BufferCopy);
 
@@ -12842,7 +12842,7 @@ begin
               // Perform the copy operation
               BufferCopy:=TVkBufferCopy.Create(FromOffset+Offset,ToOffset+Offset,ChunkSize);
               aCommandBuffer.CmdCopyBuffer(TemporaryBuffer,
-                                           fMemoryHandle,
+                                           TemporaryBuffer,
                                            1,
                                            @BufferCopy);
 
@@ -12883,7 +12883,7 @@ begin
             BufferCopy:=TVkBufferCopy.Create(FromOffset,ToOffset,ChunkBlock.fSize);
 
             aCommandBuffer.CmdCopyBuffer(TemporaryBuffer,
-                                         fMemoryHandle,
+                                         TemporaryBuffer,
                                          1,
                                          @BufferCopy);
 
