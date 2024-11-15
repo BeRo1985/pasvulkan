@@ -12805,7 +12805,7 @@ begin
               BufferMemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT) or TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT);
               BufferMemoryBarrier.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
               BufferMemoryBarrier.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
-              BufferMemoryBarrier.buffer:=fMemoryHandle;
+              BufferMemoryBarrier.buffer:=TemporaryBuffer;
               BufferMemoryBarrier.offset:=Min(FromOffset,ToOffset)+Remaining;
               BufferMemoryBarrier.size:=((Max(FromOffset,ToOffset)+Remaining)+ChunkSize)-BufferMemoryBarrier.offset;
               aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
@@ -12857,7 +12857,7 @@ begin
               BufferMemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT) or TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT);
               BufferMemoryBarrier.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
               BufferMemoryBarrier.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
-              BufferMemoryBarrier.buffer:=fMemoryHandle;
+              BufferMemoryBarrier.buffer:=TemporaryBuffer;
               BufferMemoryBarrier.offset:=Min(FromOffset,ToOffset)+Offset;
               BufferMemoryBarrier.size:=((Max(FromOffset,ToOffset)+Offset)+ChunkSize)-BufferMemoryBarrier.offset;
               aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
@@ -12900,7 +12900,7 @@ begin
             BufferMemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT) or TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT);
             BufferMemoryBarrier.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
             BufferMemoryBarrier.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
-            BufferMemoryBarrier.buffer:=fMemoryHandle;
+            BufferMemoryBarrier.buffer:=TemporaryBuffer;
             BufferMemoryBarrier.offset:=Min(FromOffset,ToOffset);
             BufferMemoryBarrier.size:=Max(FromOffset,ToOffset)+ChunkBlock.fSize-Min(FromOffset,ToOffset);
             aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
