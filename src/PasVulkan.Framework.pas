@@ -12797,6 +12797,8 @@ begin
                                            @BufferCopy);
 
               // Add a memory barrier to make sure that the copy operation is finished before the next copy operation or the next possible fill buffer command
+              // Hint: It combines actually two memory barriers for read and write into a single one read+write barrier wit combined memory range   
+              FillChar(BufferMemoryBarrier,SizeOf(TVkBufferMemoryBarrier),#0);
               BufferMemoryBarrier.sType:=VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
               BufferMemoryBarrier.pNext:=nil;
               BufferMemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT) or TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT);
@@ -12847,6 +12849,8 @@ begin
                                            @BufferCopy);
 
               // Add a memory barrier to make sure that the copy operation is finished before the next copy operation or the next possible fill buffer command
+              // Hint: It combines actually two memory barriers for read and write into a single one read+write barrier wit combined memory range   
+              FillChar(BufferMemoryBarrier,SizeOf(TVkBufferMemoryBarrier),#0);
               BufferMemoryBarrier.sType:=VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
               BufferMemoryBarrier.pNext:=nil;
               BufferMemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT) or TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT);
@@ -12888,6 +12892,8 @@ begin
                                          @BufferCopy);
 
             // Add a memory barrier to make sure that the copy operation is finished before the next possible fill buffer command
+            // Hint: It combines actually two memory barriers for read and write into a single one read+write barrier wit combined memory range   
+            FillChar(BufferMemoryBarrier,SizeOf(TVkBufferMemoryBarrier),#0);
             BufferMemoryBarrier.sType:=VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
             BufferMemoryBarrier.pNext:=nil;
             BufferMemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT) or TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT);
