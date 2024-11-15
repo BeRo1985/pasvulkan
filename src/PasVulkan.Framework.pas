@@ -14074,7 +14074,7 @@ procedure TpvVulkanDeviceMemoryManager.DefragmentInplace(const aQueue:TpvVulkanQ
                                                          const aFence:TpvVulkanFence;
                                                          const aRemainingDefragmentions:TpvSizeInt;
                                                          const aRemainingSize:TpvSizeInt;
-                                                         const aMemoryChunkIndex:PpvSizeInt=nil);
+                                                         const aMemoryChunkIndex:PpvSizeInt);
 var MemoryChunk:TpvVulkanDeviceMemoryChunk;
     MemoryChunkIndex,CurrentMemoryChunkIndex,RemainingDefragmentions,RemainingSize:TpvSizeInt;
 begin
