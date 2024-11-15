@@ -15287,22 +15287,36 @@ begin
 end; 
 
 initialization
+ 
+ // Check if a debugger is present
  pvDebuggerPresent:=IsDebuggerPresent;
- pvOutputLogLevel:=LOG_DEBUG;
+ 
+ // Initialize log level
+ pvOutputLogLevel:=LOG_DEBUG; 
  InitializeOutputLogLevel;
+
 {$if defined(Windows) and (defined(Debug) or not defined(Release))}
+ 
  pvStdOut:=GetStdHandle(Std_Output_Handle);
+
+  // Check if a console is existing
  if (pvStdOut=0) or (pvStdOut=Invalid_Handle_Value) then begin
-  if (pvOutputLogLevel>LOG_NONE) and not AttachConsole(ATTACH_PARENT_PROCESS) then begin
+  // If no console is existing and the log level is not none, create a new console
+  if (pvOutputLogLevel>LOG_NONE) and not AttachConsole(ATTACH_PARENT_PROCESS) then begin 
    AllocConsole;
   end;
  end;
+
+ // If a console is existing, set the console output codepage to UTF-8 (65001) and check if it is UTF-8 afterwards for further use with a bit slower UTF-16 fallback
  if (pvStdOut<>0) and (pvStdOut<>Invalid_Handle_Value) then begin
-  SetConsoleOutputCP(65001); // CP_UTF8
-  pvIsStdOutUTF8:=GetConsoleOutputCP=65001;
+  SetConsoleOutputCP(65001); // Set console output codepage to UTF-8 (CP_UTF8 / 65001)
+  pvIsStdOutUTF8:=GetConsoleOutputCP=65001; // Check if console output codepage is UTF-8 (CP_UTF8 / 65001)
  end;
+
 {$ifend}
+
 {$if defined(PasVulkanUseJCLDebug) and not defined(fpc)}
+ // Initialize JCL debug
 //JclStackTrackingOptions:=JclStackTrackingOptions+[stRawMode,stStaticModuleList];
  if JclStartExceptionTracking then begin
 { Exception.GetExceptionStackInfoProc:=GetExceptionStackInfoProc;
@@ -15310,11 +15324,18 @@ initialization
   Exception.CleanUpStackInfoProc:=CleanUpStackInfoProc;}
  end;
 {$ifend}
+
+ // Set exception handler and save old exception handler
  OldExceptProc:=Addr(System.ExceptProc);
  System.ExceptProc:=@ExceptionOccurred;
+
 {$ifdef Windows}
 {$ifndef PasVulkanUseSDL2}
+  
+ // Set timer resolution to 1ms 
  timeBeginPeriod(1);
+
+ // Get touchscreen API functions
  @GetPointerType:=GetProcAddress(LoadLibrary('user32.dll'),'GetPointerType');
  @GetPointerTouchInfo:=GetProcAddress(LoadLibrary('user32.dll'),'GetPointerTouchInfo');
  @GetPointerPenInfo:=GetProcAddress(LoadLibrary('user32.dll'),'GetPointerPenInfo');
@@ -15323,22 +15344,34 @@ initialization
                      assigned(GetPointerTouchInfo) and
                      assigned(GetPointerPenInfo) and
                      assigned(EnableMouseInPointer);
+
+ // Get windows version API functions
  @RtlGetNtVersionNumbers:=GetProcAddress(LoadLibrary('ntdll.dll'),'RtlGetNtVersionNumbers');
  if assigned(RtlGetNtVersionNumbers) then begin
   RtlGetNtVersionNumbers(WindowsVersionMajor,WindowsVersionMinor,WindowsVersionBuildNumber);
  end;
+
+ // Get DPI awareness API functions
  @SetProcessDPIAware:=GetProcAddress(LoadLibrary('user32.dll'),'SetProcessDPIAware');
  @SetProcessDpiAwareness:=GetProcAddress(LoadLibrary('shcore.dll'),'SetProcessDpiAwareness');
  @SetProcessDpiAwarenessContext:=GetProcAddress(LoadLibrary('user32.dll'),'SetProcessDpiAwarenessContext');
  @EnableNonClientDpiScaling:=GetProcAddress(LoadLibrary('user32.dll'),'EnableNonClientDpiScaling');
+
 {$endif}
 {$endif}
+
 finalization
+
 {$ifdef Windows}
+ // Reset timer resolution
  timeEndPeriod(1);
 {$endif}
+
+ // Reset exception handler to old exception handler
  System.ExceptProc:=OldExceptProc;
+
 {$if defined(PasVulkanUseJCLDebug) and not defined(fpc)}
+ // Finalize JCL debug
  if JclExceptionTrackingActive then begin
   Exception.GetExceptionStackInfoProc:=nil;
   Exception.GetStackInfoStringProc:=nil;
@@ -15346,4 +15379,5 @@ finalization
   JclStopExceptionTracking;
  end;
 {$ifend}
+
 end.
