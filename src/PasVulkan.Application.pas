@@ -2150,6 +2150,11 @@ var pvApplication:TpvApplication=nil;
 
     pvOutputLogLevel:TpvInt32=LOG_INFO;
 
+{$if defined(Windows) and (defined(Debug) or not defined(Release))}
+    pvStdOut:Windows.THandle=0;
+    pvIsStdOutUTF8:Boolean=false;
+{$ifend}
+
 {$if defined(fpc) and defined(android)}
     AndroidJavaVM:PJavaVM=nil;
     AndroidJavaEnv:PJNIEnv=nil;
@@ -7550,34 +7555,49 @@ end;
 class procedure TpvApplication.VulkanDebugLn(const What:TpvUTF8String);
 {$if defined(Windows)}
 {$if defined(Debug) or not defined(Release)}
-var StdOut:Windows.THandle;
-    TemporaryString:WideString;
+const AnsiCRLF:array[0..1] of AnsiChar=(#13,#10);
+      WideCRLF:array[0..1] of WideChar=(#13,#10);
+var TemporaryString:WideString;
 {$ifend}
 begin
 {$if defined(Debug) or not defined(Release)}
- if pvDebuggerPresent then begin
-  TemporaryString:=WideString(What);
-  OutputDebugStringW(PWideChar(TemporaryString));
- end;
- StdOut:=GetStdHandle(Std_Output_Handle);
-//Win32Check(StdOut<>Invalid_Handle_Value);
- if (StdOut<>0) and (StdOut<>Invalid_Handle_Value) then begin
-//TemporaryString:=TemporaryString+#13#10;
-//WriteConsoleW(StdOut,PWideChar(TemporaryString),length(TemporaryString),nil,nil);
-  WriteLn(What);
+ if pvOutputLogLevel>LOG_NONE then begin
+  if pvDebuggerPresent then begin
+   TemporaryString:=PUCUUTF8ToUTF16(What);
+   OutputDebugStringW(PWideChar(TemporaryString));
+  end else begin
+   TemporaryString:='';
+  end;
+  if (pvStdOut<>0) and (pvStdOut<>Invalid_Handle_Value) then begin
+   if pvIsStdOutUTF8 then begin
+    WriteConsoleA(pvStdOut,PAnsiChar(What),length(What),nil,nil);
+    WriteConsoleA(pvStdOut,PAnsiChar(@AnsiCRLF[0]),Length(AnsiCRLF),nil,nil);
+   end else begin
+    if not pvDebuggerPresent then begin
+     TemporaryString:=PUCUUTF8ToUTF16(What);
+    end;
+    WriteConsoleW(pvStdOut,PWideChar(TemporaryString),length(TemporaryString),nil,nil);
+    WriteConsoleW(pvStdOut,PAnsiChar(@WideCRLF[0]),Length(WideCRLF),nil,nil);
+   end;
+ //WriteLn(What);
+  end;
  end;
 {$ifend}
 end;
 {$elseif defined(fpc) and defined(android)}
 begin
 {$if defined(Debug) or not defined(Release)}
- __android_log_write(ANDROID_LOG_DEBUG,'PasVulkanApplication',PAnsiChar(TpvUTF8String(What)));
+ if pvOutputLogLevel>LOG_NONE then begin
+  __android_log_write(ANDROID_LOG_DEBUG,'PasVulkanApplication',PAnsiChar(TpvUTF8String(What)));
+ end;
 {$ifend}
 end;
 {$else}
 begin
 {$if defined(Debug) or not defined(Release)}
- WriteLn({$ifdef Windows}WideString(What){$else}What{$endif});
+ if pvOutputLogLevel>LOG_NONE then begin
+  WriteLn({$ifdef Windows}WideString(What){$else}What{$endif});
+ end;
 {$ifend}
 end;
 {$ifend}
@@ -15269,6 +15289,16 @@ end;
 initialization
  pvDebuggerPresent:=IsDebuggerPresent;
  pvOutputLogLevel:=LOG_DEBUG;
+ InitializeOutputLogLevel;
+{$if defined(Windows) and (defined(Debug) or not defined(Release))}
+ pvStdOut:=GetStdHandle(Std_Output_Handle);
+ if (pvStdOut=0) or (StdOut=Invalid_Handle_Value) then begin
+ end;
+ if (pvStdOut<>0) and (StdOut<>Invalid_Handle_Value) then begin
+  SetConsoleOutputCP(65001); // CP_UTF8
+  pvIsStdOutUTF8:=GetConsoleOutputCP=65001;
+ end;
+{$ifend}
 {$if defined(PasVulkanUseJCLDebug) and not defined(fpc)}
 //JclStackTrackingOptions:=JclStackTrackingOptions+[stRawMode,stStaticModuleList];
  if JclStartExceptionTracking then begin
@@ -15300,7 +15330,6 @@ initialization
  @EnableNonClientDpiScaling:=GetProcAddress(LoadLibrary('user32.dll'),'EnableNonClientDpiScaling');
 {$endif}
 {$endif}
- InitializeOutputLogLevel;
 finalization
 {$ifdef Windows}
  timeEndPeriod(1);
