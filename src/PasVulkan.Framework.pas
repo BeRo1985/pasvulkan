@@ -1160,7 +1160,9 @@ type EpvVulkanException=class(Exception);
                                                                         const aFence:TpvVulkanFence;
                                                                         const aMemoryBlock:TpvVulkanDeviceMemoryBlock) of object;
 
-     TpvVulkanDeviceMemoryBlockOnDefragmentDelayedReallocate=procedure(const aQueue:TpvVulkanQueue;
+     TpvVulkanDeviceMemoryBlockOnDefragmentInplaceNeedSpecialCopy=function(const aMemoryBlock:TpvVulkanDeviceMemoryBlock):boolean of object;
+
+     TpvVulkanDeviceMemoryBlockOnDefragmentReallocate=procedure(const aQueue:TpvVulkanQueue;
                                                                        const aCommandBuffer:TpvVulkanCommandBuffer;
                                                                        const aFence:TpvVulkanFence;
                                                                        const aMemoryBlock:TpvVulkanDeviceMemoryBlock;
@@ -1168,7 +1170,7 @@ type EpvVulkanException=class(Exception);
                                                                        const aToOffset:TVkDeviceSize;
                                                                        const aSize:TVkDeviceSize) of object;
 
-     TpvVulkanDeviceMemoryBlockOnDefragmentDelayedFinalize=procedure(const aMemoryBlock:TpvVulkanDeviceMemoryBlock) of object;
+     TpvVulkanDeviceMemoryBlockOnDefragmentFinalize=procedure(const aMemoryBlock:TpvVulkanDeviceMemoryBlock) of object;
 
      { TpvVulkanDeviceMemoryBlock }
 
@@ -1184,8 +1186,9 @@ type EpvVulkanException=class(Exception);
        fAssociatedObject:TObject;
        fOnBeforeDefragmentInplace:TpvVulkanDeviceMemoryBlockOnBeforeAfterDefragmentInplace;
        fOnAfterDefragmentInplace:TpvVulkanDeviceMemoryBlockOnBeforeAfterDefragmentInplace;
-       fOnDefragmentDelayedReallocate:TpvVulkanDeviceMemoryBlockOnDefragmentDelayedReallocate;
-       fOnDefragmentDelayedFinalize:TpvVulkanDeviceMemoryBlockOnDefragmentDelayedFinalize;
+       fOnDefragmentInplaceNeedSpecialCopy:TpvVulkanDeviceMemoryBlockOnDefragmentInplaceNeedSpecialCopy;
+       fOnDefragmentReallocate:TpvVulkanDeviceMemoryBlockOnDefragmentReallocate;
+       fOnDefragmentFinalize:TpvVulkanDeviceMemoryBlockOnDefragmentFinalize;
        fInUse:Boolean;
        fName:TpvUTF8String;
       public
@@ -1214,8 +1217,9 @@ type EpvVulkanException=class(Exception);
        property AssociatedObject:TObject read fAssociatedObject write fAssociatedObject;
        property OnBeforeDefragmentInplace:TpvVulkanDeviceMemoryBlockOnBeforeAfterDefragmentInplace read fOnBeforeDefragmentInplace write fOnBeforeDefragmentInplace;
        property OnAfterDefragmentInplace:TpvVulkanDeviceMemoryBlockOnBeforeAfterDefragmentInplace read fOnAfterDefragmentInplace write fOnAfterDefragmentInplace;
-       property OnDefragmentDelayedReallocate:TpvVulkanDeviceMemoryBlockOnDefragmentDelayedReallocate read fOnDefragmentDelayedReallocate write fOnDefragmentDelayedReallocate;
-       property OnDefragmentDelayedFinalize:TpvVulkanDeviceMemoryBlockOnDefragmentDelayedFinalize read fOnDefragmentDelayedFinalize write fOnDefragmentDelayedFinalize;
+       property OnDefragmentInplaceNeedSpecialCopy:TpvVulkanDeviceMemoryBlockOnDefragmentInplaceNeedSpecialCopy read fOnDefragmentInplaceNeedSpecialCopy write fOnDefragmentInplaceNeedSpecialCopy;
+       property OnDefragmentReallocate:TpvVulkanDeviceMemoryBlockOnDefragmentReallocate read fOnDefragmentReallocate write fOnDefragmentReallocate;
+       property OnDefragmentFinalize:TpvVulkanDeviceMemoryBlockOnDefragmentFinalize read fOnDefragmentFinalize write fOnDefragmentFinalize;
        property Name:TpvUTF8String read fName write fName;
      end;
 
@@ -11536,15 +11540,18 @@ end;
 function TpvVulkanDeviceMemoryChunkBlock.CanBeDefragmentedInplace:boolean;
 begin
  result:=assigned(fMemoryBlock) and
-         (assigned(fMemoryBlock.fOnBeforeDefragmentInplace) and
-          assigned(fMemoryBlock.fOnAfterDefragmentInplace));          
+         ((assigned(fMemoryBlock.fOnBeforeDefragmentInplace) and
+           assigned(fMemoryBlock.fOnAfterDefragmentInplace)) or
+          ((assigned(fMemoryBlock.fOnDefragmentInplaceNeedSpecialCopy) and
+            assigned(fMemoryBlock.fOnDefragmentReallocate) and
+            assigned(fMemoryBlock.fOnDefragmentFinalize))));
 end;
 
 function TpvVulkanDeviceMemoryChunkBlock.CanBeDefragmentedDelayed:boolean;
 begin
  result:=assigned(fMemoryBlock) and
-         (assigned(fMemoryBlock.fOnDefragmentDelayedReallocate) and
-          assigned(fMemoryBlock.fOnDefragmentDelayedFinalize));          
+         (assigned(fMemoryBlock.fOnDefragmentReallocate) and
+          assigned(fMemoryBlock.fOnDefragmentFinalize));          
 end;
 
 constructor TpvVulkanDeviceMemoryChunk.Create(const aMemoryManager:TpvVulkanDeviceMemoryManager;
@@ -12567,15 +12574,17 @@ end;
 procedure TpvVulkanDeviceMemoryChunk.DefragmentInplace(const aQueue:TpvVulkanQueue;
                                                        const aCommandBuffer:TpvVulkanCommandBuffer;
                                                        const aFence:TpvVulkanFence);
+type TBooleanArray=array of Boolean;
 var CountChunkBlocks,CountDefragmentedChunkBlocks,Index,OtherIndex:TpvSizeInt;
     ChunkBlocks,DefragmentedChunkBlocks,FreeChunkBlocks:TpvVulkanDeviceMemoryChunkBlockArray;
+    NeedSpecialCopyDefragmentedChunkBlocks:TBooleanArray;
     Node,NextNode:TpvVulkanDeviceMemoryChunkBlockRedBlackTreeNode;
     ChunkBlock:TpvVulkanDeviceMemoryChunkBlock;
     FromOffset,ToOffset,MinimumOffset,NextOffset,LastEndOffset,
     BufferImageGranularity,BufferImageGranularityInvertedMask,
     Alignment,Remaining,ChunkSize,Offset:TVkDeviceSize;
     Memory:TvkPointer;
-    DoNeedUnmapMemory,UseGPU:boolean;
+    DoNeedUnmapMemory,UseGPU,NeedSpecialCopy:boolean;
     LastAllocationType:TpvVulkanDeviceMemoryAllocationType;
     TemporaryBuffer:TVkBuffer;
     BufferCreateInfo:TVkBufferCreateInfo;
@@ -12651,175 +12660,306 @@ begin
 
    try
 
-    ChunkBlocks:=nil;
+    NeedSpecialCopyDefragmentedChunkBlocks:=nil;
+
     try
 
-     // Collect all free chunk blocks
+     ChunkBlocks:=nil;
+     try
 
-     CountChunkBlocks:=0;
-     Node:=fOffsetRedBlackTree.LeftMost;
-     while assigned(Node) do begin
-      ChunkBlock:=Node.fValue;
-      if ChunkBlock.AllocationType=TpvVulkanDeviceMemoryAllocationType.Free then begin
-       inc(CountChunkBlocks);
+      // Collect all free chunk blocks
+
+      CountChunkBlocks:=0;
+      Node:=fOffsetRedBlackTree.LeftMost;
+      while assigned(Node) do begin
+       ChunkBlock:=Node.fValue;
+       if ChunkBlock.AllocationType=TpvVulkanDeviceMemoryAllocationType.Free then begin
+        inc(CountChunkBlocks);
+       end;
+       Node:=Node.Successor;
       end;
-      Node:=Node.Successor;
-     end;
 
-     SetLength(FreeChunkBlocks,CountChunkBlocks);
+      SetLength(FreeChunkBlocks,CountChunkBlocks);
 
-     CountChunkBlocks:=0;
-     Node:=fOffsetRedBlackTree.LeftMost;
-     while assigned(Node) do begin
-      ChunkBlock:=Node.fValue;
-      if ChunkBlock.AllocationType=TpvVulkanDeviceMemoryAllocationType.Free then begin
-       FreeChunkBlocks[CountChunkBlocks]:=ChunkBlock;
-       inc(CountChunkBlocks);
+      CountChunkBlocks:=0;
+      Node:=fOffsetRedBlackTree.LeftMost;
+      while assigned(Node) do begin
+       ChunkBlock:=Node.fValue;
+       if ChunkBlock.AllocationType=TpvVulkanDeviceMemoryAllocationType.Free then begin
+        FreeChunkBlocks[CountChunkBlocks]:=ChunkBlock;
+        inc(CountChunkBlocks);
+       end;
+       Node:=Node.Successor;
       end;
-      Node:=Node.Successor;
-     end;
 
-     // Collect all non-free chunk blocks
+      // Collect all non-free chunk blocks
 
-     CountChunkBlocks:=0;
-     Node:=fOffsetRedBlackTree.LeftMost;
-     while assigned(Node) do begin
-      ChunkBlock:=Node.fValue;
-      if ChunkBlock.AllocationType<>TpvVulkanDeviceMemoryAllocationType.Free then begin
-       inc(CountChunkBlocks);
+      CountChunkBlocks:=0;
+      Node:=fOffsetRedBlackTree.LeftMost;
+      while assigned(Node) do begin
+       ChunkBlock:=Node.fValue;
+       if ChunkBlock.AllocationType<>TpvVulkanDeviceMemoryAllocationType.Free then begin
+        inc(CountChunkBlocks);
+       end;
+       Node:=Node.Successor;
       end;
-      Node:=Node.Successor;
-     end;
 
-     SetLength(ChunkBlocks,CountChunkBlocks);
+      SetLength(ChunkBlocks,CountChunkBlocks);
 
-     SetLength(DefragmentedChunkBlocks,CountChunkBlocks);
+      SetLength(DefragmentedChunkBlocks,CountChunkBlocks);
 
-     CountChunkBlocks:=0;
-     Node:=fOffsetRedBlackTree.LeftMost;
-     while assigned(Node) do begin
-      ChunkBlock:=Node.fValue;
-      if ChunkBlock.AllocationType<>TpvVulkanDeviceMemoryAllocationType.Free then begin
-       ChunkBlocks[CountChunkBlocks]:=ChunkBlock;
-       inc(CountChunkBlocks);
+      SetLength(NeedSpecialCopyDefragmentedChunkBlocks,CountChunkBlocks);
+
+      CountChunkBlocks:=0;
+      Node:=fOffsetRedBlackTree.LeftMost;
+      while assigned(Node) do begin
+       ChunkBlock:=Node.fValue;
+       if ChunkBlock.AllocationType<>TpvVulkanDeviceMemoryAllocationType.Free then begin
+        ChunkBlocks[CountChunkBlocks]:=ChunkBlock;
+        inc(CountChunkBlocks);
+       end;
+       Node:=Node.Successor;
       end;
-      Node:=Node.Successor;
-     end;
 
-     if CountChunkBlocks>0 then begin
+      if CountChunkBlocks>0 then begin
 
-      // Initialize BufferImageGranularity values
+       // Initialize BufferImageGranularity values
 
-      BufferImageGranularity:=MaxUInt64(1,VulkanDeviceSizeRoundUpToPowerOfTwo(MemoryManager.fDevice.fPhysicalDevice.fProperties.limits.bufferImageGranularity));
+       BufferImageGranularity:=MaxUInt64(1,VulkanDeviceSizeRoundUpToPowerOfTwo(MemoryManager.fDevice.fPhysicalDevice.fProperties.limits.bufferImageGranularity));
 
-      BufferImageGranularityInvertedMask:=not (BufferImageGranularity-1);
+       BufferImageGranularityInvertedMask:=not (BufferImageGranularity-1);
 
-      // Initialize start values
+       // Initialize start values
 
-      MinimumOffset:=0;
+       MinimumOffset:=0;
 
-      LastEndOffset:=0;
+       LastEndOffset:=0;
 
-      LastAllocationType:=TpvVulkanDeviceMemoryAllocationType.Free;
+       LastAllocationType:=TpvVulkanDeviceMemoryAllocationType.Free;
 
-      // Go through all non-free chunk blocks
-      for Index:=0 to CountChunkBlocks-1 do begin
+       // Go through all non-free chunk blocks
+       for Index:=0 to CountChunkBlocks-1 do begin
 
-       ChunkBlock:=ChunkBlocks[Index];
+        ChunkBlock:=ChunkBlocks[Index];
 
-       // Check if we can defragment this chunk block
-       if (ChunkBlock.fSize>0) and
-          ChunkBlock.CanBeDefragmentedInplace then begin
+        // Check if we can defragment this chunk block
+        if (ChunkBlock.fSize>0) and
+           ChunkBlock.CanBeDefragmentedInplace then begin
 
-        // Setup values
+         NeedSpecialCopy:=assigned(ChunkBlock.MemoryBlock) and
+                          assigned(ChunkBlock.MemoryBlock.fOnDefragmentInplaceNeedSpecialCopy) and
+                          ChunkBlock.MemoryBlock.fOnDefragmentInplaceNeedSpecialCopy(ChunkBlock.MemoryBlock);
 
-        FromOffset:=ChunkBlock.fOffset;
+         // Setup values
 
-        ToOffset:=MinimumOffset;
+         FromOffset:=ChunkBlock.fOffset;
 
-        Alignment:=ChunkBlock.fAlignment;
+         ToOffset:=MinimumOffset;
 
-        // Adjust alignment for the BufferImageGranularity satisfaction, if needed
-        if (Index>0) and
-           (BufferImageGranularity>1) and
-           ((LastAllocationType<>TpvVulkanDeviceMemoryAllocationType.Free) and
-            (((LastAllocationType in [TpvVulkanDeviceMemoryAllocationType.Unknown,TpvVulkanDeviceMemoryAllocationType.Buffer])<>(ChunkBlock.AllocationType in [TpvVulkanDeviceMemoryAllocationType.Unknown,TpvVulkanDeviceMemoryAllocationType.Buffer])) or
-             ((LastAllocationType in [TpvVulkanDeviceMemoryAllocationType.ImageLinear,TpvVulkanDeviceMemoryAllocationType.ImageOptimal,TpvVulkanDeviceMemoryAllocationType.Image])<>(ChunkBlock.AllocationType in [TpvVulkanDeviceMemoryAllocationType.ImageLinear,TpvVulkanDeviceMemoryAllocationType.ImageOptimal,TpvVulkanDeviceMemoryAllocationType.Image])))) and
-           ((ToOffset and BufferImageGranularityInvertedMask)=(LastEndOffset and BufferImageGranularityInvertedMask)) and
-           (Alignment<BufferImageGranularity) then begin
-         Alignment:=BufferImageGranularity;
-        end;
+         Alignment:=ChunkBlock.fAlignment;
 
-        // Apply alignment to the new chunk block offset, if needed
-        if (Alignment>1) and ((ToOffset and (Alignment-1))<>0) then begin
-         inc(ToOffset,Alignment-(ToOffset and (Alignment-1)));
-        end;
-
-        if ToOffset<FromOffset then begin
-
-         // Trigger OnBeforeDefragment event hook, if there are any
-         if assigned(ChunkBlock.fMemoryBlock) and
-            assigned(ChunkBlock.fMemoryBlock.fOnBeforeDefragmentInplace) then begin
-          ChunkBlock.fMemoryBlock.fOnBeforeDefragmentInplace(aQueue,aCommandBuffer,aFence,ChunkBlock.fMemoryBlock);
+         // Adjust alignment for the BufferImageGranularity satisfaction, if needed
+         if (Index>0) and
+            (BufferImageGranularity>1) and
+            ((LastAllocationType<>TpvVulkanDeviceMemoryAllocationType.Free) and
+             (((LastAllocationType in [TpvVulkanDeviceMemoryAllocationType.Unknown,TpvVulkanDeviceMemoryAllocationType.Buffer])<>(ChunkBlock.AllocationType in [TpvVulkanDeviceMemoryAllocationType.Unknown,TpvVulkanDeviceMemoryAllocationType.Buffer])) or
+              ((LastAllocationType in [TpvVulkanDeviceMemoryAllocationType.ImageLinear,TpvVulkanDeviceMemoryAllocationType.ImageOptimal,TpvVulkanDeviceMemoryAllocationType.Image])<>(ChunkBlock.AllocationType in [TpvVulkanDeviceMemoryAllocationType.ImageLinear,TpvVulkanDeviceMemoryAllocationType.ImageOptimal,TpvVulkanDeviceMemoryAllocationType.Image])))) and
+            ((ToOffset and BufferImageGranularityInvertedMask)=(LastEndOffset and BufferImageGranularityInvertedMask)) and
+            (Alignment<BufferImageGranularity) then begin
+          Alignment:=BufferImageGranularity;
          end;
 
-         // Delete (old) chunk blocks
-         if length(FreeChunkBlocks)>0 then begin
-          try
-           for OtherIndex:=0 to length(FreeChunkBlocks)-1 do begin
-            FreeChunkBlocks[OtherIndex].Free;
-           end;
-          finally
-           FreeChunkBlocks:=nil;
+         // Apply alignment to the new chunk block offset, if needed
+         if (Alignment>1) and ((ToOffset and (Alignment-1))<>0) then begin
+          inc(ToOffset,Alignment-(ToOffset and (Alignment-1)));
+         end;
+
+         if (ToOffset<FromOffset) and
+            ((not NeedSpecialCopy) or
+             // No overlapping area for blocks which need a special copy like vkCmdCopyImage, since overlapping areas are not allowed for them             
+             (NeedSpecialCopy and not ((FromOffset<(ToOffset+ChunkBlock.fSize)) and
+                                       (ToOffset<(FromOffset+ChunkBlock.fSize))))) then begin
+
+          // Trigger OnBeforeDefragment event hook, if there are any
+          if (not NeedSpecialCopy) and
+             assigned(ChunkBlock.fMemoryBlock) and
+             assigned(ChunkBlock.fMemoryBlock.fOnBeforeDefragmentInplace) then begin
+           ChunkBlock.fMemoryBlock.fOnBeforeDefragmentInplace(aQueue,aCommandBuffer,aFence,ChunkBlock.fMemoryBlock);
           end;
-         end;
 
-         // Delete old chunk block offset from red-black-tree
-         fOffsetRedBlackTree.Delete(FromOffset);
+          // Delete (old) chunk blocks
+          if length(FreeChunkBlocks)>0 then begin
+           try
+            for OtherIndex:=0 to length(FreeChunkBlocks)-1 do begin
+             FreeChunkBlocks[OtherIndex].Free;
+            end;
+           finally
+            FreeChunkBlocks:=nil;
+           end;
+          end;
 
-         try
+          // Delete old chunk block offset from red-black-tree
+          fOffsetRedBlackTree.Delete(FromOffset);
 
-          if UseGPU then begin
+          try
 
-           aCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
-           aCommandBuffer.BeginRecording;
+           if NeedSpecialCopy then begin
 
-           if (FromOffset<>ToOffset) and
-              (FromOffset<(ToOffset+ChunkBlock.fSize)) and
-              (ToOffset<(FromOffset+ChunkBlock.fSize)) then begin
+            aCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+            aCommandBuffer.BeginRecording;
+            ChunkBlock.MemoryBlock.fOnDefragmentReallocate(aQueue,
+                                                           aCommandBuffer,
+                                                           aFence,
+                                                           ChunkBlock.MemoryBlock,
+                                                           FromOffset,
+                                                           ToOffset,
+                                                           ChunkBlock.fSize);
+            aCommandBuffer.EndRecording;
+            FillChar(SubmitInfo,SizeOf(TVkSubmitInfo),#0);
+            SubmitInfo.sType:=VK_STRUCTURE_TYPE_SUBMIT_INFO;
+            SubmitInfo.commandBufferCount:=1;
+            SubmitInfo.pCommandBuffers:=@aCommandBuffer.Handle;
 
-            // Overlapping area, use splitted copies
+            aQueue.Submit(1,@SubmitInfo,aFence);
 
-            if FromOffset<ToOffset then begin
+           end else begin
 
-             // Move towards the end of the chunk block, copying from the end to the beginning 
+            if UseGPU then begin
 
-             // Calculate safe chunk size for copying over the overlapping area
-             ChunkSize:=Max(ToOffset-FromOffset,1);
- 
-             // Calculate remaining size for copying over the overlapping area
-             Remaining:=ChunkBlock.fSize;
-             
-             // Copy over the overlapping area
-             while Remaining>0 do begin
+             aCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+             aCommandBuffer.BeginRecording;
 
-              // If the chunk size is bigger than the remaining size, adjust the chunk size
-              if ChunkSize>Remaining then begin
-               ChunkSize:=Remaining;
+             if (FromOffset<>ToOffset) and
+                (FromOffset<(ToOffset+ChunkBlock.fSize)) and
+                (ToOffset<(FromOffset+ChunkBlock.fSize)) then begin
+
+              // Overlapping area, use splitted copies
+
+              if FromOffset<ToOffset then begin
+
+               // Move towards the end of the chunk block, copying from the end to the beginning
+
+               // Calculate safe chunk size for copying over the overlapping area
+               ChunkSize:=Max(ToOffset-FromOffset,1);
+
+               // Calculate remaining size for copying over the overlapping area
+               Remaining:=ChunkBlock.fSize;
+
+               // Copy over the overlapping area
+               while Remaining>0 do begin
+
+                // If the chunk size is bigger than the remaining size, adjust the chunk size
+                if ChunkSize>Remaining then begin
+                 ChunkSize:=Remaining;
+                end;
+
+                // Subtract the chunk size from the remaining size
+                dec(Remaining,ChunkSize);
+
+                // Perform the copy operation
+                BufferCopy:=TVkBufferCopy.Create(FromOffset+Remaining,ToOffset+Remaining,ChunkSize);
+                aCommandBuffer.CmdCopyBuffer(TemporaryBuffer,
+                                             TemporaryBuffer,
+                                             1,
+                                             @BufferCopy);
+
+                // Add a memory barrier to make sure that the copy operation is finished before the next copy operation or the next possible fill buffer command
+                // Hint: It combines actually two memory barriers for read and write into a single one read+write barrier wit combined memory range
+                FillChar(BufferMemoryBarrier,SizeOf(TVkBufferMemoryBarrier),#0);
+                BufferMemoryBarrier.sType:=VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+                BufferMemoryBarrier.pNext:=nil;
+                BufferMemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT) or TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT);
+                BufferMemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT) or TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT);
+                BufferMemoryBarrier.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+                BufferMemoryBarrier.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+                BufferMemoryBarrier.buffer:=TemporaryBuffer;
+                BufferMemoryBarrier.offset:=Min(FromOffset,ToOffset)+Remaining;
+                BufferMemoryBarrier.size:=((Max(FromOffset,ToOffset)+Remaining)+ChunkSize)-BufferMemoryBarrier.offset;
+                aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                                  TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                                  0,
+                                                  0,
+                                                  nil,
+                                                  1,
+                                                  @BufferMemoryBarrier,
+                                                  0,
+                                                  nil);
+
+               end;
+
+              end else begin
+
+               // Move towards the beginning of the chunk block, copying from the beginning to the end
+
+               // Calculate safe chunk size for copying over the overlapping area
+               ChunkSize:=Max(FromOffset-ToOffset,1);
+
+               // Initialize offset
+               Offset:=0;
+
+               // Calculate remaining size for copying over the overlapping area
+               Remaining:=ChunkBlock.fSize;
+
+               // Copy over the overlapping area
+               while Remaining>0 do begin
+
+                // If the chunk size is bigger than the remaining size, adjust the chunk size
+                if ChunkSize>Remaining then begin
+                 ChunkSize:=Remaining;
+                end;
+
+                // Perform the copy operation
+                BufferCopy:=TVkBufferCopy.Create(FromOffset+Offset,ToOffset+Offset,ChunkSize);
+                aCommandBuffer.CmdCopyBuffer(TemporaryBuffer,
+                                             TemporaryBuffer,
+                                             1,
+                                             @BufferCopy);
+
+                // Add a memory barrier to make sure that the copy operation is finished before the next copy operation or the next possible fill buffer command
+                // Hint: It combines actually two memory barriers for read and write into a single one read+write barrier wit combined memory range
+                FillChar(BufferMemoryBarrier,SizeOf(TVkBufferMemoryBarrier),#0);
+                BufferMemoryBarrier.sType:=VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+                BufferMemoryBarrier.pNext:=nil;
+                BufferMemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT) or TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT);
+                BufferMemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT) or TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT);
+                BufferMemoryBarrier.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+                BufferMemoryBarrier.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+                BufferMemoryBarrier.buffer:=TemporaryBuffer;
+                BufferMemoryBarrier.offset:=Min(FromOffset,ToOffset)+Offset;
+                BufferMemoryBarrier.size:=((Max(FromOffset,ToOffset)+Offset)+ChunkSize)-BufferMemoryBarrier.offset;
+                aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                                  TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                                  0,
+                                                  0,
+                                                  nil,
+                                                  1,
+                                                  @BufferMemoryBarrier,
+                                                  0,
+                                                  nil);
+
+                // Add the chunk size to the offset
+                inc(Offset,ChunkSize);
+
+                // Subtract the chunk size from the remaining size
+                dec(Remaining,ChunkSize);
+
+               end;
+
               end;
-             
-              // Subtract the chunk size from the remaining size
-              dec(Remaining,ChunkSize);
-             
-              // Perform the copy operation
-              BufferCopy:=TVkBufferCopy.Create(FromOffset+Remaining,ToOffset+Remaining,ChunkSize);
+
+             end else begin
+
+              // Non-overlapping area, use single direct copy
+
+              BufferCopy:=TVkBufferCopy.Create(FromOffset,ToOffset,ChunkBlock.fSize);
+
               aCommandBuffer.CmdCopyBuffer(TemporaryBuffer,
                                            TemporaryBuffer,
                                            1,
                                            @BufferCopy);
 
-              // Add a memory barrier to make sure that the copy operation is finished before the next copy operation or the next possible fill buffer command
-              // Hint: It combines actually two memory barriers for read and write into a single one read+write barrier wit combined memory range   
+              // Add a memory barrier to make sure that the copy operation is finished before the next possible fill buffer command
+              // Hint: It combines actually two memory barriers for read and write into a single one read+write barrier wit combined memory range
               FillChar(BufferMemoryBarrier,SizeOf(TVkBufferMemoryBarrier),#0);
               BufferMemoryBarrier.sType:=VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
               BufferMemoryBarrier.pNext:=nil;
@@ -12828,60 +12968,8 @@ begin
               BufferMemoryBarrier.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
               BufferMemoryBarrier.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
               BufferMemoryBarrier.buffer:=TemporaryBuffer;
-              BufferMemoryBarrier.offset:=Min(FromOffset,ToOffset)+Remaining;
-              BufferMemoryBarrier.size:=((Max(FromOffset,ToOffset)+Remaining)+ChunkSize)-BufferMemoryBarrier.offset;
-              aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
-                                                TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
-                                                0,
-                                                0,
-                                                nil,
-                                                1,
-                                                @BufferMemoryBarrier,
-                                                0,
-                                                nil);                                                                       
-
-             end;
-
-            end else begin
-
-             // Move towards the beginning of the chunk block, copying from the beginning to the end
-
-             // Calculate safe chunk size for copying over the overlapping area
-             ChunkSize:=Max(FromOffset-ToOffset,1);
-
-             // Initialize offset
-             Offset:=0;
-
-             // Calculate remaining size for copying over the overlapping area
-             Remaining:=ChunkBlock.fSize;
-
-             // Copy over the overlapping area
-             while Remaining>0 do begin
-
-              // If the chunk size is bigger than the remaining size, adjust the chunk size
-              if ChunkSize>Remaining then begin
-               ChunkSize:=Remaining;
-              end;
-
-              // Perform the copy operation
-              BufferCopy:=TVkBufferCopy.Create(FromOffset+Offset,ToOffset+Offset,ChunkSize);
-              aCommandBuffer.CmdCopyBuffer(TemporaryBuffer,
-                                           TemporaryBuffer,
-                                           1,
-                                           @BufferCopy);
-
-              // Add a memory barrier to make sure that the copy operation is finished before the next copy operation or the next possible fill buffer command
-              // Hint: It combines actually two memory barriers for read and write into a single one read+write barrier wit combined memory range   
-              FillChar(BufferMemoryBarrier,SizeOf(TVkBufferMemoryBarrier),#0);
-              BufferMemoryBarrier.sType:=VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
-              BufferMemoryBarrier.pNext:=nil;
-              BufferMemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT) or TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT);
-              BufferMemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT) or TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT);
-              BufferMemoryBarrier.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
-              BufferMemoryBarrier.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
-              BufferMemoryBarrier.buffer:=TemporaryBuffer;
-              BufferMemoryBarrier.offset:=Min(FromOffset,ToOffset)+Offset;
-              BufferMemoryBarrier.size:=((Max(FromOffset,ToOffset)+Offset)+ChunkSize)-BufferMemoryBarrier.offset;
+              BufferMemoryBarrier.offset:=Min(FromOffset,ToOffset);
+              BufferMemoryBarrier.size:=Max(FromOffset,ToOffset)+ChunkBlock.fSize-Min(FromOffset,ToOffset);
               aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
                                                 TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
                                                 0,
@@ -12892,252 +12980,223 @@ begin
                                                 0,
                                                 nil);
 
-              // Add the chunk size to the offset
-              inc(Offset,ChunkSize);
-
-              // Subtract the chunk size from the remaining size
-              dec(Remaining,ChunkSize);
-
              end;
 
-            end;
-
-           end else begin
-
-            // Non-overlapping area, use single direct copy
-
-            BufferCopy:=TVkBufferCopy.Create(FromOffset,ToOffset,ChunkBlock.fSize);
-
-            aCommandBuffer.CmdCopyBuffer(TemporaryBuffer,
-                                         TemporaryBuffer,
-                                         1,
-                                         @BufferCopy);
-
-            // Add a memory barrier to make sure that the copy operation is finished before the next possible fill buffer command
-            // Hint: It combines actually two memory barriers for read and write into a single one read+write barrier wit combined memory range   
-            FillChar(BufferMemoryBarrier,SizeOf(TVkBufferMemoryBarrier),#0);
-            BufferMemoryBarrier.sType:=VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
-            BufferMemoryBarrier.pNext:=nil;
-            BufferMemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT) or TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT);
-            BufferMemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT) or TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT);
-            BufferMemoryBarrier.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
-            BufferMemoryBarrier.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
-            BufferMemoryBarrier.buffer:=TemporaryBuffer;
-            BufferMemoryBarrier.offset:=Min(FromOffset,ToOffset);
-            BufferMemoryBarrier.size:=Max(FromOffset,ToOffset)+ChunkBlock.fSize-Min(FromOffset,ToOffset);
-            aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
-                                              TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
-                                              0,
-                                              0,
-                                              nil,
-                                              1,
-                                              @BufferMemoryBarrier,
-                                              0,
-                                              nil);
-
-           end;
-
-           if (ToOffset+ChunkBlock.fSize)<FromOffset then begin
-            FillSize:=(FromOffset-(ToOffset+ChunkBlock.fSize)) and TpvUInt64($fffffffffffffffc); // 4-byte aligned
-            if FillSize>0 then begin 
-             aCommandBuffer.CmdFillBuffer(TemporaryBuffer,
-                                          ToOffset+ChunkBlock.fSize,
-                                          FillSize,
-                                          0);
-            end;
-           end;
-
-           aCommandBuffer.EndRecording;
-
-           FillChar(SubmitInfo,SizeOf(TVkSubmitInfo),#0);
-           SubmitInfo.sType:=VK_STRUCTURE_TYPE_SUBMIT_INFO;
-           SubmitInfo.commandBufferCount:=1;
-           SubmitInfo.pCommandBuffers:=@aCommandBuffer.Handle;
-
-           aQueue.Submit(1,@SubmitInfo,aFence);
-
-          end else begin
-
-           if (FromOffset<>ToOffset) and
-              (FromOffset<(ToOffset+ChunkBlock.fSize)) and
-              (ToOffset<(FromOffset+ChunkBlock.fSize)) then begin
-
-            // Overlapping area, use splitted copies
-
-            if FromOffset<ToOffset then begin
-
-             // Move towards the end of the chunk block, copying from the end to the beginning 
-
-             // Calculate safe chunk size for copying over the overlapping area
-             ChunkSize:=Max(ToOffset-FromOffset,1);
- 
-             // Calculate remaining size for copying over the overlapping area
-             Remaining:=ChunkBlock.fSize;
-             
-             // Copy over the overlapping area
-             while Remaining>0 do begin
-
-              // If the chunk size is bigger than the remaining size, adjust the chunk size
-              if ChunkSize>Remaining then begin
-               ChunkSize:=Remaining;
+             if (ToOffset+ChunkBlock.fSize)<FromOffset then begin
+              FillSize:=(FromOffset-(ToOffset+ChunkBlock.fSize)) and TpvUInt64($fffffffffffffffc); // 4-byte aligned
+              if FillSize>0 then begin
+               aCommandBuffer.CmdFillBuffer(TemporaryBuffer,
+                                            ToOffset+ChunkBlock.fSize,
+                                            FillSize,
+                                            0);
               end;
-             
-              // Subtract the chunk size from the remaining size
-              dec(Remaining,ChunkSize);
-             
-              // Perform the copy operation
-              Move(PpvUInt8Array(Memory)^[FromOffset+Remaining],
-                   PpvUInt8Array(Memory)^[ToOffset+Remaining],
-                   ChunkSize);
-
              end;
+
+             aCommandBuffer.EndRecording;
+
+             FillChar(SubmitInfo,SizeOf(TVkSubmitInfo),#0);
+             SubmitInfo.sType:=VK_STRUCTURE_TYPE_SUBMIT_INFO;
+             SubmitInfo.commandBufferCount:=1;
+             SubmitInfo.pCommandBuffers:=@aCommandBuffer.Handle;
+
+             aQueue.Submit(1,@SubmitInfo,aFence);
 
             end else begin
 
-             // Move towards the beginning of the chunk block, copying from the beginning to the end
+             if (FromOffset<>ToOffset) and
+                (FromOffset<(ToOffset+ChunkBlock.fSize)) and
+                (ToOffset<(FromOffset+ChunkBlock.fSize)) then begin
 
-             // Calculate safe chunk size for copying over the overlapping area
-             ChunkSize:=Max(FromOffset-ToOffset,1);
+              // Overlapping area, use splitted copies
 
-             // Initialize offset
-             Offset:=0;
+              if FromOffset<ToOffset then begin
 
-             // Calculate remaining size for copying over the overlapping area
-             Remaining:=ChunkBlock.fSize;
+               // Move towards the end of the chunk block, copying from the end to the beginning
 
-             // Copy over the overlapping area
-             while Remaining>0 do begin
+               // Calculate safe chunk size for copying over the overlapping area
+               ChunkSize:=Max(ToOffset-FromOffset,1);
 
-              // If the chunk size is bigger than the remaining size, adjust the chunk size
-              if ChunkSize>Remaining then begin
-               ChunkSize:=Remaining;
+               // Calculate remaining size for copying over the overlapping area
+               Remaining:=ChunkBlock.fSize;
+
+               // Copy over the overlapping area
+               while Remaining>0 do begin
+
+                // If the chunk size is bigger than the remaining size, adjust the chunk size
+                if ChunkSize>Remaining then begin
+                 ChunkSize:=Remaining;
+                end;
+
+                // Subtract the chunk size from the remaining size
+                dec(Remaining,ChunkSize);
+
+                // Perform the copy operation
+                Move(PpvUInt8Array(Memory)^[FromOffset+Remaining],
+                     PpvUInt8Array(Memory)^[ToOffset+Remaining],
+                     ChunkSize);
+
+               end;
+
+              end else begin
+
+               // Move towards the beginning of the chunk block, copying from the beginning to the end
+
+               // Calculate safe chunk size for copying over the overlapping area
+               ChunkSize:=Max(FromOffset-ToOffset,1);
+
+               // Initialize offset
+               Offset:=0;
+
+               // Calculate remaining size for copying over the overlapping area
+               Remaining:=ChunkBlock.fSize;
+
+               // Copy over the overlapping area
+               while Remaining>0 do begin
+
+                // If the chunk size is bigger than the remaining size, adjust the chunk size
+                if ChunkSize>Remaining then begin
+                 ChunkSize:=Remaining;
+                end;
+
+                // Perform the copy operation
+                Move(PpvUInt8Array(Memory)^[FromOffset+Offset],
+                     PpvUInt8Array(Memory)^[ToOffset+Offset],
+                     ChunkSize);
+
+                // Add the chunk size to the offset
+                inc(Offset,ChunkSize);
+
+                // Subtract the chunk size from the remaining size
+                dec(Remaining,ChunkSize);
+
+               end;
+
               end;
 
-              // Perform the copy operation
-              Move(PpvUInt8Array(Memory)^[FromOffset+Offset],
-                   PpvUInt8Array(Memory)^[ToOffset+Offset],
-                   ChunkSize);
+             end else begin
 
-              // Add the chunk size to the offset
-              inc(Offset,ChunkSize);
+              // Non-overlapping area, use single direct copy
 
-              // Subtract the chunk size from the remaining size
-              dec(Remaining,ChunkSize);
+              Move(PpvUInt8Array(Memory)^[FromOffset],
+                   PpvUInt8Array(Memory)^[ToOffset],
+                   ChunkBlock.fSize);
 
+             end;
+
+             if (ToOffset+ChunkBlock.fSize)<FromOffset then begin
+              FillChar(PpvUInt8Array(Memory)^[ToOffset+ChunkBlock.fSize],
+                       FromOffset-(ToOffset+ChunkBlock.fSize),
+                       #0);
              end;
 
             end;
 
-           end else begin 
-
-            // Non-overlapping area, use single direct copy
-
-            Move(PpvUInt8Array(Memory)^[FromOffset],
-                 PpvUInt8Array(Memory)^[ToOffset],
-                 ChunkBlock.fSize);
-
-           end;      
-
-           if (ToOffset+ChunkBlock.fSize)<FromOffset then begin
-            FillChar(PpvUInt8Array(Memory)^[ToOffset+ChunkBlock.fSize],
-                     FromOffset-(ToOffset+ChunkBlock.fSize),
-                     #0);
            end;
 
+          finally
+
+           // Update chunk block offset with the new chunk block offset
+           ChunkBlock.fOffset:=ToOffset;
+
+           // Update memory block offset with the new chunk block offset
+           if assigned(ChunkBlock.fMemoryBlock) then begin
+            ChunkBlock.fMemoryBlock.fOffset:=ToOffset;
+           end;
+
+           // Insert new chunk block offset into red-black-tree
+           fOffsetRedBlackTree.Insert(ToOffset,ChunkBlock);
+
+           // Add chunk block offset to the defragmented chunk block list
+           DefragmentedChunkBlocks[CountDefragmentedChunkBlocks]:=ChunkBlock;
+           NeedSpecialCopyDefragmentedChunkBlocks[CountDefragmentedChunkBlocks]:=NeedSpecialCopy;
+           inc(CountDefragmentedChunkBlocks);
+
           end;
-
-         finally
-
-          // Update chunk block offset with the new chunk block offset
-          ChunkBlock.fOffset:=ToOffset;
-
-          // Update memory block offset with the new chunk block offset
-          if assigned(ChunkBlock.fMemoryBlock) then begin
-           ChunkBlock.fMemoryBlock.fOffset:=ToOffset;
-          end;
-
-          // Insert new chunk block offset into red-black-tree
-          fOffsetRedBlackTree.Insert(ToOffset,ChunkBlock);
-
-          // Add chunk block offset to the defragmented chunk block list
-          DefragmentedChunkBlocks[CountDefragmentedChunkBlocks]:=ChunkBlock;
-          inc(CountDefragmentedChunkBlocks);
 
          end;
 
         end;
 
+        // Remember some values for the possible next chunk block
+
+        MinimumOffset:=ChunkBlock.fOffset+ChunkBlock.fSize;
+
+        LastEndOffset:=(ChunkBlock.fOffset+ChunkBlock.fSize)-1;
+
+        LastAllocationType:=ChunkBlock.AllocationType;
+
        end;
 
-       // Remember some values for the possible next chunk block
+      end;
 
-       MinimumOffset:=ChunkBlock.fOffset+ChunkBlock.fSize;
+     finally
+      ChunkBlocks:=nil;
+     end;
 
-       LastEndOffset:=(ChunkBlock.fOffset+ChunkBlock.fSize)-1;
+     if CountDefragmentedChunkBlocks>0 then begin
 
-       LastAllocationType:=ChunkBlock.AllocationType;
+      // Delete (old) chunk blocks
+      if length(FreeChunkBlocks)>0 then begin
+       try
+        for OtherIndex:=0 to length(FreeChunkBlocks)-1 do begin
+         FreeChunkBlocks[OtherIndex].Free;
+        end;
+       finally
+        FreeChunkBlocks:=nil;
+       end;
+      end;
 
+      // Recreate (new) free chunk blocks
+      for Index:=0 to CountChunkBlocks-1 do begin
+       ChunkBlock:=ChunkBlocks[Index];
+       FromOffset:=ChunkBlock.fOffset+ChunkBlock.fSize;
+       if (Index+1)<CountChunkBlocks then begin
+        ToOffset:=ChunkBlocks[Index+1].fOffset;
+       end else begin
+        ToOffset:=fSize;
+       end;
+       if (Index=0) and (ChunkBlock.fOffset>0) then begin
+        TpvVulkanDeviceMemoryChunkBlock.Create(self,
+                                               0,
+                                               ChunkBlock.fOffset,
+                                               1,
+                                               TpvVulkanDeviceMemoryAllocationType.Free);
+       end;
+       if FromOffset<ToOffset then begin
+        TpvVulkanDeviceMemoryChunkBlock.Create(self,
+                                               FromOffset,
+                                               ToOffset-FromOffset,
+                                               1,
+                                               TpvVulkanDeviceMemoryAllocationType.Free);
+       end;
+      end;
+
+      // Flush and invalidate mapped memory, if needed
+      if VulkanIsNonCoherent(fMemoryPropertyFlags) then begin
+       InvalidateMappedMemory;
+       FlushMappedMemory;
+      end;
+
+      // Trigger after defragment event hooks, if there are any
+      for Index:=0 to CountDefragmentedChunkBlocks-1 do begin
+       ChunkBlock:=DefragmentedChunkBlocks[Index];
+       if NeedSpecialCopyDefragmentedChunkBlocks[CountDefragmentedChunkBlocks] then begin
+        if assigned(ChunkBlock.fMemoryBlock) and
+           assigned(ChunkBlock.fMemoryBlock.fOnDefragmentFinalize) then begin
+         ChunkBlock.fMemoryBlock.fOnDefragmentFinalize(ChunkBlock.fMemoryBlock);
+        end;
+       end else begin
+        if assigned(ChunkBlock.fMemoryBlock) and
+           assigned(ChunkBlock.fMemoryBlock.fOnAfterDefragmentInplace) then begin
+         ChunkBlock.fMemoryBlock.fOnAfterDefragmentInplace(aQueue,aCommandBuffer,aFence,ChunkBlock.fMemoryBlock);
+        end;
+       end;
       end;
 
      end;
 
     finally
-     ChunkBlocks:=nil;
-    end;
-
-    if CountDefragmentedChunkBlocks>0 then begin
-
-     // Delete (old) chunk blocks
-     if length(FreeChunkBlocks)>0 then begin
-      try
-       for OtherIndex:=0 to length(FreeChunkBlocks)-1 do begin
-        FreeChunkBlocks[OtherIndex].Free;
-       end;
-      finally
-       FreeChunkBlocks:=nil;
-      end;
-     end;
-
-     // Recreate (new) free chunk blocks
-     for Index:=0 to CountChunkBlocks-1 do begin
-      ChunkBlock:=ChunkBlocks[Index];
-      FromOffset:=ChunkBlock.fOffset+ChunkBlock.fSize;
-      if (Index+1)<CountChunkBlocks then begin
-       ToOffset:=ChunkBlocks[Index+1].fOffset;
-      end else begin
-       ToOffset:=fSize;
-      end;
-      if (Index=0) and (ChunkBlock.fOffset>0) then begin
-       TpvVulkanDeviceMemoryChunkBlock.Create(self,
-                                              0,
-                                              ChunkBlock.fOffset,
-                                              1,
-                                              TpvVulkanDeviceMemoryAllocationType.Free);
-      end;
-      if FromOffset<ToOffset then begin
-       TpvVulkanDeviceMemoryChunkBlock.Create(self,
-                                              FromOffset,
-                                              ToOffset-FromOffset,
-                                              1,
-                                              TpvVulkanDeviceMemoryAllocationType.Free);
-      end;
-     end;
-
-     // Flush and invalidate mapped memory, if needed
-     if VulkanIsNonCoherent(fMemoryPropertyFlags) then begin
-      InvalidateMappedMemory;
-      FlushMappedMemory;
-     end;
-
-     // Trigger OnAfterDefragment event hooks, if there are any
-     for Index:=0 to CountDefragmentedChunkBlocks-1 do begin
-      ChunkBlock:=DefragmentedChunkBlocks[Index];
-      if assigned(ChunkBlock.fMemoryBlock) and
-         assigned(ChunkBlock.fMemoryBlock.fOnAfterDefragmentInplace) then begin
-       ChunkBlock.fMemoryBlock.fOnAfterDefragmentInplace(aQueue,aCommandBuffer,aFence,ChunkBlock.fMemoryBlock);
-      end;
-     end;
-
+     NeedSpecialCopyDefragmentedChunkBlocks:=nil;
     end;
 
    finally
@@ -13181,9 +13240,11 @@ begin
 
  fOnAfterDefragmentInplace:=nil;
 
- fOnDefragmentDelayedReallocate:=nil;
+ fOnDefragmentInplaceNeedSpecialCopy:=nil;
 
- fOnDefragmentDelayedFinalize:=nil;
+ fOnDefragmentReallocate:=nil;
+
+ fOnDefragmentFinalize:=nil;
 
  fAssociatedObject:=nil;
 
