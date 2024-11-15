@@ -1076,9 +1076,11 @@ type EpvVulkanException=class(Exception);
        fMemory:PVkVoid;
        fAllocationGroupID:TpvUInt64;
        procedure AdjustMappedMemoryRange(var aMappedMemoryRange:TVkMappedMemoryRange);
-       procedure DefragmentInplace(const aQueue:TpvVulkanQueue=nil;
-                                   const aCommandBuffer:TpvVulkanCommandBuffer=nil;
-                                   const aFence:TpvVulkanFence=nil);
+       procedure DefragmentInplace(const aQueue:TpvVulkanQueue;
+                                   const aCommandBuffer:TpvVulkanCommandBuffer;
+                                   const aFence:TpvVulkanFence;
+                                   var aRemainingDefragmentions:TpvSizeInt;
+                                   var aRemainingSize:TpvSizeInt);
       public
        constructor Create(const aMemoryManager:TpvVulkanDeviceMemoryManager;
                           const aMemoryChunkList:PpvVulkanDeviceMemoryManagerChunkList;
@@ -1164,15 +1166,15 @@ type EpvVulkanException=class(Exception);
 
      TpvVulkanDeviceMemoryBlockOnDefragmentInplaceSpecialCopyCanUseTemporaryTarget=function(const aMemoryBlock:TpvVulkanDeviceMemoryBlock):boolean of object;
 
-     TpvVulkanDeviceMemoryBlockOnDefragmentReallocate=procedure(const aQueue:TpvVulkanQueue;
-                                                                const aCommandBuffer:TpvVulkanCommandBuffer;
-                                                                const aFence:TpvVulkanFence;
-                                                                const aMemoryBlock:TpvVulkanDeviceMemoryBlock;
-                                                                const aFromOffset:TVkDeviceSize;
-                                                                const aToOffset:TVkDeviceSize;
-                                                                const aSize:TVkDeviceSize;
-                                                                const aForceUseaTemporaryMemoryBlock:Boolean;
-                                                                const aTemporaryMemoryBlock:TpvVulkanDeviceMemoryBlock) of object;
+     TpvVulkanDeviceMemoryBlockOnDefragmentReallocate=function(const aQueue:TpvVulkanQueue;
+                                                               const aCommandBuffer:TpvVulkanCommandBuffer;
+                                                               const aFence:TpvVulkanFence;
+                                                               const aMemoryBlock:TpvVulkanDeviceMemoryBlock;
+                                                               const aFromOffset:TVkDeviceSize;
+                                                               const aToOffset:TVkDeviceSize;
+                                                               const aSize:TVkDeviceSize;
+                                                               const aForceUseaTemporaryMemoryBlock:Boolean;
+                                                               const aTemporaryMemoryBlock:TpvVulkanDeviceMemoryBlock):boolean of object;
 
      TpvVulkanDeviceMemoryBlockOnDefragmentFinalize=procedure(const aMemoryBlock:TpvVulkanDeviceMemoryBlock) of object;
 
@@ -1316,9 +1318,11 @@ type EpvVulkanException=class(Exception);
        ** And only host visible memory chunks are defragmentable with this function!
        **
        **)
-       procedure DefragmentInplace(const aQueue:TpvVulkanQueue=nil;
-                                   const aCommandBuffer:TpvVulkanCommandBuffer=nil;
-                                   const aFence:TpvVulkanFence=nil);
+       procedure DefragmentInplace(const aQueue:TpvVulkanQueue;
+                                   const aCommandBuffer:TpvVulkanCommandBuffer;
+                                   const aFence:TpvVulkanFence;
+                                   const aRemainingDefragmentions:TpvSizeInt=-1;
+                                   const aRemainingSize:TpvSizeInt=-1);
 
        procedure Dump(const aStringList:TStringList=nil);
 
@@ -12579,7 +12583,9 @@ end;
 
 procedure TpvVulkanDeviceMemoryChunk.DefragmentInplace(const aQueue:TpvVulkanQueue;
                                                        const aCommandBuffer:TpvVulkanCommandBuffer;
-                                                       const aFence:TpvVulkanFence);
+                                                       const aFence:TpvVulkanFence;
+                                                       var aRemainingDefragmentions:TpvSizeInt;
+                                                       var aRemainingSize:TpvSizeInt);
 type TBooleanArray=array of Boolean;
 var CountChunkBlocks,CountDefragmentedChunkBlocks,Index,OtherIndex:TpvSizeInt;
     ChunkBlocks,DefragmentedChunkBlocks,FreeChunkBlocks:TpvVulkanDeviceMemoryChunkBlockArray;
@@ -12819,7 +12825,9 @@ begin
            inc(ToOffset,Alignment-(ToOffset and (Alignment-1)));
           end;
 
-          if (ToOffset<FromOffset) and
+          if (aRemainingDefragmentions<>0) and
+             ((aRemainingSize<0) or (aRemainingDefragmentions>Max(1,ChunkBlock.Size))) and
+             (ToOffset<FromOffset) and
              ((not NeedSpecialCopy) or
               // No overlapping area for blocks which need a special copy like vkCmdCopyImage and doesn't support temporary targets, since overlapping areas are not allowed for them
               (NeedSpecialCopy and (SpecialCopyCanUseTemporaryTarget or
@@ -12851,15 +12859,17 @@ begin
 
             if NeedSpecialCopy then begin
 
-             ChunkBlock.MemoryBlock.fOnDefragmentReallocate(aQueue,
-                                                            aCommandBuffer,
-                                                            aFence,
-                                                            ChunkBlock.MemoryBlock,
-                                                            FromOffset,
-                                                            ToOffset,
-                                                            ChunkBlock.fSize,
-                                                            (FromOffset<(ToOffset+ChunkBlock.fSize)) and (ToOffset<(FromOffset+ChunkBlock.fSize)),
-                                                            TemporaryMemoryBlock);
+             if not ChunkBlock.MemoryBlock.fOnDefragmentReallocate(aQueue,
+                                                                   aCommandBuffer,
+                                                                   aFence,
+                                                                   ChunkBlock.MemoryBlock,
+                                                                   FromOffset,
+                                                                   ToOffset,
+                                                                   ChunkBlock.fSize,
+                                                                   (FromOffset<(ToOffset+ChunkBlock.fSize)) and (ToOffset<(FromOffset+ChunkBlock.fSize)),
+                                                                   TemporaryMemoryBlock) then begin
+              ToOffset:=FromOffset; // Failed, so restore original offset
+             end;
 
             end else begin
 
@@ -13133,6 +13143,15 @@ begin
             end;
 
            finally
+
+            if FromOffset<>ToOffset then begin
+             if aRemainingDefragmentions>0 then begin
+              dec(aRemainingDefragmentions);
+             end;
+             if aRemainingSize>0 then begin
+              dec(aRemainingSize,ChunkBlock.fSize);
+             end;
+            end;
 
             // Update chunk block offset with the new chunk block offset
             ChunkBlock.fOffset:=ToOffset;
@@ -14051,13 +14070,23 @@ end;
 
 procedure TpvVulkanDeviceMemoryManager.DefragmentInplace(const aQueue:TpvVulkanQueue;
                                                          const aCommandBuffer:TpvVulkanCommandBuffer;
-                                                         const aFence:TpvVulkanFence);
+                                                         const aFence:TpvVulkanFence;
+                                                         const aRemainingDefragmentions:TpvSizeInt;
+                                                         const aRemainingSize:TpvSizeInt);
 var MemoryChunk:TpvVulkanDeviceMemoryChunk;
+    RemainingDefragmentions:TpvSizeInt;
+    RemainingSize:TpvSizeInt;
 begin
+ RemainingDefragmentions:=aRemainingDefragmentions;
+ RemainingSize:=RemainingSize;
  MemoryChunk:=fMemoryChunkList.First;
  while assigned(MemoryChunk) do begin
   try
-   MemoryChunk.DefragmentInplace(aQueue,aCommandBuffer,aFence);
+   MemoryChunk.DefragmentInplace(aQueue,
+                                 aCommandBuffer,
+                                 aFence,
+                                 RemainingDefragmentions,
+                                 RemainingSize);
   finally
    MemoryChunk:=MemoryChunk.fNextMemoryChunk;
   end;
