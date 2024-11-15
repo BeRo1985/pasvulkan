@@ -12551,7 +12551,7 @@ var CountChunkBlocks,CountDefragmentedChunkBlocks,Index,OtherIndex:TpvSizeInt;
     ChunkBlock:TpvVulkanDeviceMemoryChunkBlock;
     FromOffset,ToOffset,MinimumOffset,NextOffset,LastEndOffset,
     BufferImageGranularity,BufferImageGranularityInvertedMask,
-    Alignment:TVkDeviceSize;
+    Alignment,Remaining,ChunkSize,Offset:TVkDeviceSize;
     Memory:TvkPointer;
     DoNeedUnmapMemory,UseGPU:boolean;
     LastAllocationType:TpvVulkanDeviceMemoryAllocationType;
@@ -12561,6 +12561,7 @@ var CountChunkBlocks,CountDefragmentedChunkBlocks,Index,OtherIndex:TpvSizeInt;
     BufferCopy:TVkBufferCopy;
     FillSize:TVkDeviceSize;
     SubmitInfo:TVkSubmitInfo;
+    BufferMemoryBarrier:TVkBufferMemoryBarrier;
 begin
 
  Device:=fMemoryManager.fDevice;
@@ -12761,12 +12762,152 @@ begin
            aCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
            aCommandBuffer.BeginRecording;
 
-           BufferCopy:=TVkBufferCopy.Create(FromOffset,ToOffset,ChunkBlock.fSize);
+           if (FromOffset<>ToOffset) and
+              (FromOffset<(ToOffset+ChunkBlock.fSize)) and
+              (ToOffset<(FromOffset+ChunkBlock.fSize)) then begin
 
-           aCommandBuffer.CmdCopyBuffer(TemporaryBuffer,
-                                        fMemoryHandle,
-                                        1,
-                                        @BufferCopy);
+            // Overlapping area, use splitted copies
+
+            if FromOffset<ToOffset then begin
+
+             // Move towards the end of the chunk block, copying from the end to the beginning 
+
+             // Calculate safe chunk size for copying over the overlapping area
+             ChunkSize:=Max(ToOffset-FromOffset,1);
+ 
+             // Calculate remaining size for copying over the overlapping area
+             Remaining:=ChunkBlock.fSize;
+             
+             // Copy over the overlapping area
+             while Remaining>0 do begin
+
+              // If the chunk size is bigger than the remaining size, adjust the chunk size
+              if ChunkSize>Remaining then begin
+               ChunkSize:=Remaining;
+              end;
+             
+              // Subtract the chunk size from the remaining size
+              dec(Remaining,ChunkSize);
+             
+              // Perform the copy operation
+              BufferCopy:=TVkBufferCopy.Create(FromOffset+Remaining,ToOffset+Remaining,ChunkSize);
+              aCommandBuffer.CmdCopyBuffer(TemporaryBuffer,
+                                           fMemoryHandle,
+                                           1,
+                                           @BufferCopy);
+
+              // Add a memory barrier to make sure that the copy operation is finished before the next copy operation or the next possible fill buffer command
+              BufferMemoryBarrier.sType:=VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+              BufferMemoryBarrier.pNext:=nil;
+              BufferMemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT) or TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT);
+              BufferMemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT) or TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT);
+              BufferMemoryBarrier.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+              BufferMemoryBarrier.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+              BufferMemoryBarrier.buffer:=fMemoryHandle;
+              BufferMemoryBarrier.offset:=Min(FromOffset,ToOffset)+Remaining;
+              BufferMemoryBarrier.size:=((Max(FromOffset,ToOffset)+Remaining)+ChunkSize)-BufferMemoryBarrier.offset;
+              aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                                TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                                0,
+                                                0,
+                                                nil,
+                                                1,
+                                                @BufferMemoryBarrier,
+                                                0,
+                                                nil);                                                                       
+
+             end;
+
+            end else begin
+
+             // Move towards the beginning of the chunk block, copying from the beginning to the end
+
+             // Calculate safe chunk size for copying over the overlapping area
+             ChunkSize:=Max(FromOffset-ToOffset,1);
+
+             // Initialize offset
+             Offset:=0;
+
+             // Calculate remaining size for copying over the overlapping area
+             Remaining:=ChunkBlock.fSize;
+
+             // Copy over the overlapping area
+             while Remaining>0 do begin
+
+              // If the chunk size is bigger than the remaining size, adjust the chunk size
+              if ChunkSize>Remaining then begin
+               ChunkSize:=Remaining;
+              end;
+
+              // Perform the copy operation
+              BufferCopy:=TVkBufferCopy.Create(FromOffset+Offset,ToOffset+Offset,ChunkSize);
+              aCommandBuffer.CmdCopyBuffer(TemporaryBuffer,
+                                           fMemoryHandle,
+                                           1,
+                                           @BufferCopy);
+
+              // Add a memory barrier to make sure that the copy operation is finished before the next copy operation or the next possible fill buffer command
+              BufferMemoryBarrier.sType:=VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+              BufferMemoryBarrier.pNext:=nil;
+              BufferMemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT) or TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT);
+              BufferMemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT) or TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT);
+              BufferMemoryBarrier.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+              BufferMemoryBarrier.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+              BufferMemoryBarrier.buffer:=fMemoryHandle;
+              BufferMemoryBarrier.offset:=Min(FromOffset,ToOffset)+Offset;
+              BufferMemoryBarrier.size:=((Max(FromOffset,ToOffset)+Offset)+ChunkSize)-BufferMemoryBarrier.offset;
+              aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                                TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                                0,
+                                                0,
+                                                nil,
+                                                1,
+                                                @BufferMemoryBarrier,
+                                                0,
+                                                nil);
+
+              // Add the chunk size to the offset
+              inc(Offset,ChunkSize);
+
+              // Subtract the chunk size from the remaining size
+              dec(Remaining,ChunkSize);
+
+             end;
+
+            end;
+
+           end else begin
+
+            // Non-overlapping area, use single direct copy
+
+            BufferCopy:=TVkBufferCopy.Create(FromOffset,ToOffset,ChunkBlock.fSize);
+
+            aCommandBuffer.CmdCopyBuffer(TemporaryBuffer,
+                                         fMemoryHandle,
+                                         1,
+                                         @BufferCopy);
+
+            // Add a memory barrier to make sure that the copy operation is finished before the next possible fill buffer command
+            BufferMemoryBarrier.sType:=VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+            BufferMemoryBarrier.pNext:=nil;
+            BufferMemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT) or TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT);
+            BufferMemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT) or TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT);
+            BufferMemoryBarrier.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+            BufferMemoryBarrier.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+            BufferMemoryBarrier.buffer:=fMemoryHandle;
+            BufferMemoryBarrier.offset:=Min(FromOffset,ToOffset);
+            BufferMemoryBarrier.size:=Max(FromOffset,ToOffset)+ChunkBlock.fSize-Min(FromOffset,ToOffset);
+            aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                              TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                              0,
+                                              0,
+                                              nil,
+                                              1,
+                                              @BufferMemoryBarrier,
+                                              0,
+                                              nil);
+
+           end;
 
            if (ToOffset+ChunkBlock.fSize)<FromOffset then begin
             FillSize:=(FromOffset-(ToOffset+ChunkBlock.fSize)) and TpvUInt64($fffffffffffffffc); // 4-byte aligned
