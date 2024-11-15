@@ -12114,8 +12114,9 @@ begin
      if assigned(OtherNode) and
         assigned(OtherNode.fValue) and
         ((OtherNode.fValue.fAllocationType<>TpvVulkanDeviceMemoryAllocationType.Free) and
-         (((OtherNode.fValue.fAllocationType in [TpvVulkanDeviceMemoryAllocationType.Unknown,TpvVulkanDeviceMemoryAllocationType.Buffer])<>(aAllocationType in [TpvVulkanDeviceMemoryAllocationType.Unknown,TpvVulkanDeviceMemoryAllocationType.Buffer])) or
-          ((OtherNode.fValue.fAllocationType in [TpvVulkanDeviceMemoryAllocationType.ImageLinear,TpvVulkanDeviceMemoryAllocationType.ImageOptimal,TpvVulkanDeviceMemoryAllocationType.Image])<>(aAllocationType in [TpvVulkanDeviceMemoryAllocationType.ImageLinear,TpvVulkanDeviceMemoryAllocationType.ImageOptimal,TpvVulkanDeviceMemoryAllocationType.Image])))) then begin
+         (((OtherNode.fValue.fAllocationType in [TpvVulkanDeviceMemoryAllocationType.Buffer,TpvVulkanDeviceMemoryAllocationType.ImageLinear])<>(aAllocationType in [TpvVulkanDeviceMemoryAllocationType.Buffer,TpvVulkanDeviceMemoryAllocationType.ImageLinear])) or
+          ((OtherNode.fValue.fAllocationType=TpvVulkanDeviceMemoryAllocationType.ImageOptimal)<>(aAllocationType=TpvVulkanDeviceMemoryAllocationType.ImageOptimal)) or
+          ((OtherNode.fValue.fAllocationType in [TpvVulkanDeviceMemoryAllocationType.Unknown,TpvVulkanDeviceMemoryAllocationType.Image]) or (aAllocationType in [TpvVulkanDeviceMemoryAllocationType.Unknown,TpvVulkanDeviceMemoryAllocationType.Image])))) then begin
       if (PayloadBeginOffset and BufferImageGranularityInvertedMask)=((OtherNode.fValue.fOffset+(OtherNode.fValue.fSize-1)) and BufferImageGranularityInvertedMask) then begin
        if LastNode=Node then begin
         LastNode:=nil;
@@ -12140,8 +12141,9 @@ begin
       if assigned(OtherNode) and
          assigned(OtherNode.fValue) and
          ((OtherNode.fValue.fAllocationType<>TpvVulkanDeviceMemoryAllocationType.Free) and
-          (((OtherNode.fValue.fAllocationType in [TpvVulkanDeviceMemoryAllocationType.Unknown,TpvVulkanDeviceMemoryAllocationType.Buffer])<>(aAllocationType in [TpvVulkanDeviceMemoryAllocationType.Unknown,TpvVulkanDeviceMemoryAllocationType.Buffer])) or
-           ((OtherNode.fValue.fAllocationType in [TpvVulkanDeviceMemoryAllocationType.ImageLinear,TpvVulkanDeviceMemoryAllocationType.ImageOptimal,TpvVulkanDeviceMemoryAllocationType.Image])<>(aAllocationType in [TpvVulkanDeviceMemoryAllocationType.ImageLinear,TpvVulkanDeviceMemoryAllocationType.ImageOptimal,TpvVulkanDeviceMemoryAllocationType.Image])))) then begin
+          (((OtherNode.fValue.fAllocationType in [TpvVulkanDeviceMemoryAllocationType.Buffer,TpvVulkanDeviceMemoryAllocationType.ImageLinear])<>(aAllocationType in [TpvVulkanDeviceMemoryAllocationType.Buffer,TpvVulkanDeviceMemoryAllocationType.ImageLinear])) or
+           ((OtherNode.fValue.fAllocationType=TpvVulkanDeviceMemoryAllocationType.ImageOptimal)<>(aAllocationType=TpvVulkanDeviceMemoryAllocationType.ImageOptimal)) or
+           ((OtherNode.fValue.fAllocationType in [TpvVulkanDeviceMemoryAllocationType.Unknown,TpvVulkanDeviceMemoryAllocationType.Image]) or (aAllocationType in [TpvVulkanDeviceMemoryAllocationType.Unknown,TpvVulkanDeviceMemoryAllocationType.Image])))) then begin
        if ((PayloadEndOffset-1) and BufferImageGranularityInvertedMask)=(OtherNode.fValue.fOffset and BufferImageGranularityInvertedMask) then begin
         LastNode:=nil;
         Node:=Node.Successor;
@@ -12814,8 +12816,9 @@ begin
           if (Index>0) and
              (BufferImageGranularity>1) and
              ((LastAllocationType<>TpvVulkanDeviceMemoryAllocationType.Free) and
-              (((LastAllocationType in [TpvVulkanDeviceMemoryAllocationType.Unknown,TpvVulkanDeviceMemoryAllocationType.Buffer])<>(ChunkBlock.AllocationType in [TpvVulkanDeviceMemoryAllocationType.Unknown,TpvVulkanDeviceMemoryAllocationType.Buffer])) or
-               ((LastAllocationType in [TpvVulkanDeviceMemoryAllocationType.ImageLinear,TpvVulkanDeviceMemoryAllocationType.ImageOptimal,TpvVulkanDeviceMemoryAllocationType.Image])<>(ChunkBlock.AllocationType in [TpvVulkanDeviceMemoryAllocationType.ImageLinear,TpvVulkanDeviceMemoryAllocationType.ImageOptimal,TpvVulkanDeviceMemoryAllocationType.Image])))) and
+              (((LastAllocationType in [TpvVulkanDeviceMemoryAllocationType.Buffer,TpvVulkanDeviceMemoryAllocationType.ImageLinear])<>(ChunkBlock.fAllocationType in [TpvVulkanDeviceMemoryAllocationType.Buffer,TpvVulkanDeviceMemoryAllocationType.ImageLinear])) or
+               ((LastAllocationType=TpvVulkanDeviceMemoryAllocationType.ImageOptimal)<>(ChunkBlock.fAllocationType=TpvVulkanDeviceMemoryAllocationType.ImageOptimal)) or
+               ((LastAllocationType in [TpvVulkanDeviceMemoryAllocationType.Unknown,TpvVulkanDeviceMemoryAllocationType.Image]) or (ChunkBlock.fAllocationType in [TpvVulkanDeviceMemoryAllocationType.Unknown,TpvVulkanDeviceMemoryAllocationType.Image])))) and
              ((ToOffset and BufferImageGranularityInvertedMask)=(LastEndOffset and BufferImageGranularityInvertedMask)) and
              (Alignment<BufferImageGranularity) then begin
            Alignment:=BufferImageGranularity;
