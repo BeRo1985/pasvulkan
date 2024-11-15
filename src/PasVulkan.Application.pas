@@ -7570,14 +7570,14 @@ begin
   end;
   if (pvStdOut<>0) and (pvStdOut<>Invalid_Handle_Value) then begin
    if pvIsStdOutUTF8 then begin
-    WriteConsoleA(pvStdOut,PAnsiChar(What),length(What),nil,nil);
-    WriteConsoleA(pvStdOut,PAnsiChar(@AnsiCRLF[0]),Length(AnsiCRLF),nil,nil);
+    WriteConsoleA(pvStdOut,PAnsiChar(What),length(What),PCardinal(nil)^,nil);
+    WriteConsoleA(pvStdOut,PAnsiChar(@AnsiCRLF[0]),Length(AnsiCRLF),PCardinal(nil)^,nil);
    end else begin
     if not pvDebuggerPresent then begin
      TemporaryString:=PUCUUTF8ToUTF16(What);
     end;
-    WriteConsoleW(pvStdOut,PWideChar(TemporaryString),length(TemporaryString),nil,nil);
-    WriteConsoleW(pvStdOut,PAnsiChar(@WideCRLF[0]),Length(WideCRLF),nil,nil);
+    WriteConsoleW(pvStdOut,PWideChar(TemporaryString),length(TemporaryString),PCardinal(nil)^,nil);
+    WriteConsoleW(pvStdOut,PAnsiChar(@WideCRLF[0]),Length(WideCRLF),PCardinal(nil)^,nil);
    end;
  //WriteLn(What);
   end;
@@ -7650,7 +7650,7 @@ begin
 {$if defined(fpc) and defined(android) and (defined(Release) or not defined(Debug))}
  __android_log_write(ANDROID_LOG_ERROR,'PasVulkanApplication',PAnsiChar(TpvApplicationRawByteString(ExceptionString)));
 {$ifend}
- TpvApplication.Log(LOG_ERROR,'TpvApplication.PasMPInstanceOnWorkerThreadException',ExceptionString);
+ TpvApplication.Log(LOG_ERROR,'TpvApplication.PasMPInstanceOnWorkerThreadException',TpvUTF8String(ExceptionString));
  LogCrash(ExceptionString);
  result:=false;
 end;
@@ -7754,15 +7754,15 @@ begin
 
    MessageIDName:=aCallbackData^.pMessageIdName;
 
-   if (pos('Mapping an image with layout',Message)>0) and (pos('can result in undefined behavior if this memory is used by the device',Message)>0) then begin
+   if (pos('Mapping an image with layout',String(Message))>0) and (pos('can result in undefined behavior if this memory is used by the device',String(Message))>0) then begin
     // Ignore because the AMD allocator will mix up memory types on IGP processors.
-   end else if pos('Invalid SPIR-V binary version 1.3',Message)>0 then begin
+   end else if pos('Invalid SPIR-V binary version 1.3',String(Message))>0 then begin
     // Ignore because the validator is wrong here.
-   end else if pos('Shader requires flag',Message)>0 then begin
+   end else if pos('Shader requires flag',String(Message))>0 then begin
     // Ignore because the validator is wrong here.
-   end else if (pos('SPIR-V module not valid: Pointer operand',Message)>0) and (pos('must be a memory object',Message)>0) then begin
+   end else if (pos('SPIR-V module not valid: Pointer operand',String(Message))>0) and (pos('must be a memory object',String(Message))>0) then begin
     // Ignore because the validator is wrong here.
-   end else if pos('UNASSIGNED-CoreValidation-DrawState-ClearCmdBeforeDraw',MessageIDName)>0 then begin
+   end else if pos('UNASSIGNED-CoreValidation-DrawState-ClearCmdBeforeDraw',String(MessageIDName))>0 then begin
     // Ignore
    end else begin
 
@@ -7821,12 +7821,12 @@ begin
 
     Objects:='';
     if aCallbackData^.objectCount>0 then begin
-     Objects:=NewLine+Tab+'Objects - '+IntToStr(aCallbackData^.objectCount);
+     Objects:=NewLine+Tab+'Objects - '+TpvUTF8String(IntToStr(aCallbackData^.objectCount));
      pObjects:=aCallbackData^.pObjects;
      for Index:=0 to TpvSizeInt(aCallbackData^.objectCount)-1 do begin
-      Objects:=Objects+NewLine+Tab+Tab+'Object['+IntToStr(Index)+'] - '+
-               VulkanObjectTypeToString(pObjects^.objectType)+', '+
-               'Handle '+UIntToStr(TpvUInt64(pObjects^.objectHandle));
+      Objects:=Objects+NewLine+Tab+Tab+'Object['+TpvUTF8String(IntToStr(Index))+'] - '+
+               TpvUTF8String(VulkanObjectTypeToString(pObjects^.objectType))+', '+
+               'Handle '+TpvUTF8String(UIntToStr(TpvUInt64(pObjects^.objectHandle)));
       if assigned(pObjects^.pObjectName) and (length(pObjects^.pObjectName)>0) then begin
        Objects:=Objects+', Name '+TpvUTF8String(pObjects^.pObjectName);
       end;
@@ -7836,10 +7836,10 @@ begin
 
     QueueLabels:='';
     if aCallbackData^.QueueLabelCount>0 then begin
-     QueueLabels:=NewLine+Tab+'Queue labels - '+IntToStr(aCallbackData^.QueueLabelCount);
+     QueueLabels:=NewLine+Tab+'Queue labels - '+TpvUTF8String(IntToStr(aCallbackData^.QueueLabelCount));
      pLabels:=aCallbackData^.pQueueLabels;
      for Index:=0 to TpvSizeInt(aCallbackData^.QueueLabelCount)-1 do begin
-      QueueLabels:=QueueLabels+NewLine+Tab+Tab+'Label['+IntToStr(Index)+'] - '+TpvUTF8String(pLabels^.pLabelName)+'{ '+ConvertDoubleToString(pLabels^.color[0])+', '+ConvertDoubleToString(pLabels^.color[1])+', '+ConvertDoubleToString(pLabels^.color[2])+', '+ConvertDoubleToString(pLabels^.color[3])+' }';
+      QueueLabels:=QueueLabels+NewLine+Tab+Tab+'Label['+TpvUTF8String(IntToStr(Index))+'] - '+TpvUTF8String(pLabels^.pLabelName)+'{ '+TpvUTF8String(ConvertDoubleToString(pLabels^.color[0]))+', '+TpvUTF8String(ConvertDoubleToString(pLabels^.color[1]))+', '+TpvUTF8String(ConvertDoubleToString(pLabels^.color[2]))+', '+TpvUTF8String(ConvertDoubleToString(pLabels^.color[3]))+' }';
       inc(pLabels);
      end;
     end;
@@ -15292,9 +15292,9 @@ initialization
  InitializeOutputLogLevel;
 {$if defined(Windows) and (defined(Debug) or not defined(Release))}
  pvStdOut:=GetStdHandle(Std_Output_Handle);
- if (pvStdOut=0) or (StdOut=Invalid_Handle_Value) then begin
+ if (pvStdOut=0) or (pvStdOut=Invalid_Handle_Value) then begin
  end;
- if (pvStdOut<>0) and (StdOut<>Invalid_Handle_Value) then begin
+ if (pvStdOut<>0) and (pvStdOut<>Invalid_Handle_Value) then begin
   SetConsoleOutputCP(65001); // CP_UTF8
   pvIsStdOutUTF8:=GetConsoleOutputCP=65001;
  end;
