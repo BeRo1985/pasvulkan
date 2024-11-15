@@ -1322,7 +1322,8 @@ type EpvVulkanException=class(Exception);
                                    const aCommandBuffer:TpvVulkanCommandBuffer;
                                    const aFence:TpvVulkanFence;
                                    const aRemainingDefragmentions:TpvSizeInt=-1;
-                                   const aRemainingSize:TpvSizeInt=-1);
+                                   const aRemainingSize:TpvSizeInt=-1;
+                                   const aMemoryChunkIndex:PpvSizeInt=nil);
 
        procedure Dump(const aStringList:TStringList=nil);
 
@@ -14072,25 +14073,98 @@ procedure TpvVulkanDeviceMemoryManager.DefragmentInplace(const aQueue:TpvVulkanQ
                                                          const aCommandBuffer:TpvVulkanCommandBuffer;
                                                          const aFence:TpvVulkanFence;
                                                          const aRemainingDefragmentions:TpvSizeInt;
-                                                         const aRemainingSize:TpvSizeInt);
+                                                         const aRemainingSize:TpvSizeInt;
+                                                         const aMemoryChunkIndex:PpvSizeInt=nil);
 var MemoryChunk:TpvVulkanDeviceMemoryChunk;
-    RemainingDefragmentions:TpvSizeInt;
-    RemainingSize:TpvSizeInt;
+    MemoryChunkIndex,CurrentMemoryChunkIndex,RemainingDefragmentions,RemainingSize:TpvSizeInt;
 begin
+
+ // Initialize remaining defragmentions and size
  RemainingDefragmentions:=aRemainingDefragmentions;
  RemainingSize:=RemainingSize;
- MemoryChunk:=fMemoryChunkList.First;
+
+ // Initialize memory chunk index as start index, for temporal incremental defragmentation of memory chunks over multiple calls
+ if assigned(aMemoryChunkIndex) then begin
+  MemoryChunkIndex:=aMemoryChunkIndex^;
+ end else begin
+  MemoryChunkIndex:=-1;
+ end;
+
+ // Get last memory chunk as initial chunk, since the order of the memory chunks is from oldest (last) to newest (first)
+ MemoryChunk:=fMemoryChunkList.Last;
+
+ // Walk to the memory chunk with the given index when it is wanted to start from a specific memory chunk  
+ if MemoryChunkIndex>=0 then begin
+  
+  // Initialize current memory chunk index as start index 
+  CurrentMemoryChunkIndex:=0;
+
+  // Walk over all memory chunks
+  while assigned(MemoryChunk) do begin
+
+   // Check if the memory chunk index is the same as the current memory chunk index
+   if CurrentMemoryChunkIndex=MemoryChunkIndex then begin
+
+    // When the memory chunk with the given index is found, then break
+    break;
+
+   end else begin
+
+    // Otherwise walk to the next memory chunk
+    MemoryChunk:=MemoryChunk.fPreviousMemoryChunk;
+
+    // Check if the memory chunk is valid
+    if assigned(MemoryChunk) then begin
+     // When the memory chunk with the given index does exist, then increment the current memory chunk index
+     inc(CurrentMemoryChunkIndex);
+    end else begin
+     // When the memory chunk with the given index doesn't exist, then start from the first memory chunk
+     MemoryChunk:=fMemoryChunkList.Last;
+     MemoryChunkIndex:=0;
+     break;
+    end;
+  
+   end;
+  
+  end;
+
+ end;
+
+ // Walk over all memory chunks and defragment them, until there are no more remaining defragmentions or size
  while assigned(MemoryChunk) and ((RemainingDefragmentions<>0) and (RemainingSize<>0)) do begin
+
   try
+
+   // Defragment the memory chunk
    MemoryChunk.DefragmentInplace(aQueue,
                                  aCommandBuffer,
                                  aFence,
                                  RemainingDefragmentions,
                                  RemainingSize);
+
   finally
-   MemoryChunk:=MemoryChunk.fNextMemoryChunk;
+   
+   // Go to the next memory chunk
+   MemoryChunk:=MemoryChunk.fPreviousMemoryChunk;
+
+   // When temporal memory chunk index is used, then increment it (with warp around) for the next memory chunk in the next loop iteration
+   if MemoryChunkIndex>=0 then begin
+    if assigned(MemoryChunk) then begin
+     inc(MemoryChunkIndex);
+    end else begin
+     MemoryChunkIndex:=0;
+    end;
+   end;
+
   end;
+
  end;
+ 
+ // When temporal memory chunk index is used, then write back the current memory chunk index
+ if assigned(aMemoryChunkIndex) then begin
+  aMemoryChunkIndex^:=MemoryChunkIndex;
+ end;
+
 end;
 
 procedure TpvVulkanDeviceMemoryManager.Dump(const aStringList:TStringList);
