@@ -12930,9 +12930,85 @@ begin
 
           end else begin
 
-           Move(PpvUInt8Array(Memory)^[FromOffset],
-                PpvUInt8Array(Memory)^[ToOffset],
-                ChunkBlock.fSize);
+           if (FromOffset<>ToOffset) and
+              (FromOffset<(ToOffset+ChunkBlock.fSize)) and
+              (ToOffset<(FromOffset+ChunkBlock.fSize)) then begin
+
+            // Overlapping area, use splitted copies
+
+            if FromOffset<ToOffset then begin
+
+             // Move towards the end of the chunk block, copying from the end to the beginning 
+
+             // Calculate safe chunk size for copying over the overlapping area
+             ChunkSize:=Max(ToOffset-FromOffset,1);
+ 
+             // Calculate remaining size for copying over the overlapping area
+             Remaining:=ChunkBlock.fSize;
+             
+             // Copy over the overlapping area
+             while Remaining>0 do begin
+
+              // If the chunk size is bigger than the remaining size, adjust the chunk size
+              if ChunkSize>Remaining then begin
+               ChunkSize:=Remaining;
+              end;
+             
+              // Subtract the chunk size from the remaining size
+              dec(Remaining,ChunkSize);
+             
+              // Perform the copy operation
+              Move(PpvUInt8Array(Memory)^[FromOffset+Remaining],
+                   PpvUInt8Array(Memory)^[ToOffset+Remaining],
+                   ChunkSize);
+
+             end;
+
+            end else begin
+
+             // Move towards the beginning of the chunk block, copying from the beginning to the end
+
+             // Calculate safe chunk size for copying over the overlapping area
+             ChunkSize:=Max(FromOffset-ToOffset,1);
+
+             // Initialize offset
+             Offset:=0;
+
+             // Calculate remaining size for copying over the overlapping area
+             Remaining:=ChunkBlock.fSize;
+
+             // Copy over the overlapping area
+             while Remaining>0 do begin
+
+              // If the chunk size is bigger than the remaining size, adjust the chunk size
+              if ChunkSize>Remaining then begin
+               ChunkSize:=Remaining;
+              end;
+
+              // Perform the copy operation
+              Move(PpvUInt8Array(Memory)^[FromOffset+Offset],
+                   PpvUInt8Array(Memory)^[ToOffset+Offset],
+                   ChunkSize);
+
+              // Add the chunk size to the offset
+              inc(Offset,ChunkSize);
+
+              // Subtract the chunk size from the remaining size
+              dec(Remaining,ChunkSize);
+
+             end;
+
+            end;
+
+           end else begin 
+
+            // Non-overlapping area, use single direct copy
+
+            Move(PpvUInt8Array(Memory)^[FromOffset],
+                 PpvUInt8Array(Memory)^[ToOffset],
+                 ChunkBlock.fSize);
+
+           end;      
 
            if (ToOffset+ChunkBlock.fSize)<FromOffset then begin
             FillChar(PpvUInt8Array(Memory)^[ToOffset+ChunkBlock.fSize],
