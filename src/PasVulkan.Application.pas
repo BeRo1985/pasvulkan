@@ -15293,6 +15293,9 @@ initialization
 {$if defined(Windows) and (defined(Debug) or not defined(Release))}
  pvStdOut:=GetStdHandle(Std_Output_Handle);
  if (pvStdOut=0) or (pvStdOut=Invalid_Handle_Value) then begin
+  if (pvOutputLogLevel>LOG_NONE) and not AttachConsole(ATTACH_PARENT_PROCESS) then begin
+   AllocConsole;
+  end;
  end;
  if (pvStdOut<>0) and (pvStdOut<>Invalid_Handle_Value) then begin
   SetConsoleOutputCP(65001); // CP_UTF8
