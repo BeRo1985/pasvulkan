@@ -14080,7 +14080,7 @@ begin
  RemainingDefragmentions:=aRemainingDefragmentions;
  RemainingSize:=RemainingSize;
  MemoryChunk:=fMemoryChunkList.First;
- while assigned(MemoryChunk) do begin
+ while assigned(MemoryChunk) and ((RemainingDefragmentions<>0) and (RemainingSize<>0)) do begin
   try
    MemoryChunk.DefragmentInplace(aQueue,
                                  aCommandBuffer,
