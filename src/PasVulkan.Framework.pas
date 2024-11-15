@@ -1162,13 +1162,17 @@ type EpvVulkanException=class(Exception);
 
      TpvVulkanDeviceMemoryBlockOnDefragmentInplaceNeedSpecialCopy=function(const aMemoryBlock:TpvVulkanDeviceMemoryBlock):boolean of object;
 
+     TpvVulkanDeviceMemoryBlockOnDefragmentInplaceSpecialCopyCanUseTemporaryTarget=function(const aMemoryBlock:TpvVulkanDeviceMemoryBlock):boolean of object;
+
      TpvVulkanDeviceMemoryBlockOnDefragmentReallocate=procedure(const aQueue:TpvVulkanQueue;
-                                                                       const aCommandBuffer:TpvVulkanCommandBuffer;
-                                                                       const aFence:TpvVulkanFence;
-                                                                       const aMemoryBlock:TpvVulkanDeviceMemoryBlock;
-                                                                       const aFromOffset:TVkDeviceSize;
-                                                                       const aToOffset:TVkDeviceSize;
-                                                                       const aSize:TVkDeviceSize) of object;
+                                                                const aCommandBuffer:TpvVulkanCommandBuffer;
+                                                                const aFence:TpvVulkanFence;
+                                                                const aMemoryBlock:TpvVulkanDeviceMemoryBlock;
+                                                                const aFromOffset:TVkDeviceSize;
+                                                                const aToOffset:TVkDeviceSize;
+                                                                const aSize:TVkDeviceSize;
+                                                                const aForceUseaTemporaryMemoryBlock:Boolean;
+                                                                const aTemporaryMemoryBlock:TpvVulkanDeviceMemoryBlock) of object;
 
      TpvVulkanDeviceMemoryBlockOnDefragmentFinalize=procedure(const aMemoryBlock:TpvVulkanDeviceMemoryBlock) of object;
 
@@ -1187,6 +1191,7 @@ type EpvVulkanException=class(Exception);
        fOnBeforeDefragmentInplace:TpvVulkanDeviceMemoryBlockOnBeforeAfterDefragmentInplace;
        fOnAfterDefragmentInplace:TpvVulkanDeviceMemoryBlockOnBeforeAfterDefragmentInplace;
        fOnDefragmentInplaceNeedSpecialCopy:TpvVulkanDeviceMemoryBlockOnDefragmentInplaceNeedSpecialCopy;
+       fOnDefragmentInplaceSpecialCopyCanUseTemporaryTarget:TpvVulkanDeviceMemoryBlockOnDefragmentInplaceSpecialCopyCanUseTemporaryTarget;
        fOnDefragmentReallocate:TpvVulkanDeviceMemoryBlockOnDefragmentReallocate;
        fOnDefragmentFinalize:TpvVulkanDeviceMemoryBlockOnDefragmentFinalize;
        fInUse:Boolean;
@@ -1218,6 +1223,7 @@ type EpvVulkanException=class(Exception);
        property OnBeforeDefragmentInplace:TpvVulkanDeviceMemoryBlockOnBeforeAfterDefragmentInplace read fOnBeforeDefragmentInplace write fOnBeforeDefragmentInplace;
        property OnAfterDefragmentInplace:TpvVulkanDeviceMemoryBlockOnBeforeAfterDefragmentInplace read fOnAfterDefragmentInplace write fOnAfterDefragmentInplace;
        property OnDefragmentInplaceNeedSpecialCopy:TpvVulkanDeviceMemoryBlockOnDefragmentInplaceNeedSpecialCopy read fOnDefragmentInplaceNeedSpecialCopy write fOnDefragmentInplaceNeedSpecialCopy;
+       property OnDefragmentInplaceSpecialCopyCanUseTemporaryTarget:TpvVulkanDeviceMemoryBlockOnDefragmentInplaceSpecialCopyCanUseTemporaryTarget read fOnDefragmentInplaceSpecialCopyCanUseTemporaryTarget write fOnDefragmentInplaceSpecialCopyCanUseTemporaryTarget;
        property OnDefragmentReallocate:TpvVulkanDeviceMemoryBlockOnDefragmentReallocate read fOnDefragmentReallocate write fOnDefragmentReallocate;
        property OnDefragmentFinalize:TpvVulkanDeviceMemoryBlockOnDefragmentFinalize read fOnDefragmentFinalize write fOnDefragmentFinalize;
        property Name:TpvUTF8String read fName write fName;
@@ -12584,7 +12590,7 @@ var CountChunkBlocks,CountDefragmentedChunkBlocks,Index,OtherIndex:TpvSizeInt;
     BufferImageGranularity,BufferImageGranularityInvertedMask,
     Alignment,Remaining,ChunkSize,Offset,MaximalChunkBlockSize:TVkDeviceSize;
     Memory:TvkPointer;
-    DoNeedUnmapMemory,UseGPU,NeedSpecialCopy:boolean;
+    DoNeedUnmapMemory,UseGPU,NeedSpecialCopy,SpecialCopyCanUseTemporaryTarget:boolean;
     LastAllocationType:TpvVulkanDeviceMemoryAllocationType;
     TemporaryBuffer:TVkBuffer;
     BufferCreateInfo:TVkBufferCreateInfo;
@@ -12782,6 +12788,13 @@ begin
                            assigned(ChunkBlock.MemoryBlock.fOnDefragmentInplaceNeedSpecialCopy) and
                            ChunkBlock.MemoryBlock.fOnDefragmentInplaceNeedSpecialCopy(ChunkBlock.MemoryBlock);
 
+          if NeedSpecialCopy then begin
+           SpecialCopyCanUseTemporaryTarget:=assigned(ChunkBlock.MemoryBlock.fOnDefragmentInplaceSpecialCopyCanUseTemporaryTarget) and
+                                             ChunkBlock.MemoryBlock.fOnDefragmentInplaceSpecialCopyCanUseTemporaryTarget(ChunkBlock.MemoryBlock);
+          end else begin
+           SpecialCopyCanUseTemporaryTarget:=false;
+          end;
+
           // Setup values
 
           FromOffset:=ChunkBlock.fOffset;
@@ -12808,9 +12821,10 @@ begin
 
           if (ToOffset<FromOffset) and
              ((not NeedSpecialCopy) or
-              // No overlapping area for blocks which need a special copy like vkCmdCopyImage, since overlapping areas are not allowed for them
-              (NeedSpecialCopy and not ((FromOffset<(ToOffset+ChunkBlock.fSize)) and
-                                        (ToOffset<(FromOffset+ChunkBlock.fSize))))) then begin
+              // No overlapping area for blocks which need a special copy like vkCmdCopyImage and doesn't support temporary targets, since overlapping areas are not allowed for them
+              (NeedSpecialCopy and (SpecialCopyCanUseTemporaryTarget or
+                                    not ((FromOffset<(ToOffset+ChunkBlock.fSize)) and
+                                         (ToOffset<(FromOffset+ChunkBlock.fSize)))))) then begin
 
            // Trigger OnBeforeDefragment event hook, if there are any
            if (not NeedSpecialCopy) and
@@ -12837,22 +12851,15 @@ begin
 
             if NeedSpecialCopy then begin
 
-             aCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
-             aCommandBuffer.BeginRecording;
              ChunkBlock.MemoryBlock.fOnDefragmentReallocate(aQueue,
                                                             aCommandBuffer,
                                                             aFence,
                                                             ChunkBlock.MemoryBlock,
                                                             FromOffset,
                                                             ToOffset,
-                                                            ChunkBlock.fSize);
-             aCommandBuffer.EndRecording;
-             FillChar(SubmitInfo,SizeOf(TVkSubmitInfo),#0);
-             SubmitInfo.sType:=VK_STRUCTURE_TYPE_SUBMIT_INFO;
-             SubmitInfo.commandBufferCount:=1;
-             SubmitInfo.pCommandBuffers:=@aCommandBuffer.Handle;
-
-             aQueue.Submit(1,@SubmitInfo,aFence);
+                                                            ChunkBlock.fSize,
+                                                            (FromOffset<(ToOffset+ChunkBlock.fSize)) and (ToOffset<(FromOffset+ChunkBlock.fSize)),
+                                                            TemporaryMemoryBlock);
 
             end else begin
 
@@ -13277,6 +13284,8 @@ begin
  fOnAfterDefragmentInplace:=nil;
 
  fOnDefragmentInplaceNeedSpecialCopy:=nil;
+
+ fOnDefragmentInplaceSpecialCopyCanUseTemporaryTarget:=nil;
 
  fOnDefragmentReallocate:=nil;
 
