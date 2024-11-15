@@ -1633,6 +1633,7 @@ type EpvScene3D=class(Exception);
             TDrawChoreographyBatchItems=class(TpvObjectGenericList<TDrawChoreographyBatchItem>)
              public
               procedure GroupInstanceClone(const aFrom:TDrawChoreographyBatchItems;const aGroupInstance:TObject;const aIsUnique:Boolean);
+              procedure GroupInstanceFixup(const aFrom:TDrawChoreographyBatchItems;const aGroupInstance:TObject;const aIsUnique:Boolean);
               procedure Sort;
               procedure IndexOrderSort;
             end;
@@ -10695,6 +10696,29 @@ begin
    end;
   finally
    Add(NewDrawChoreographyBatchItem);
+  end;
+ end;
+end;
+
+procedure TpvScene3D.TDrawChoreographyBatchItems.GroupInstanceFixUp(const aFrom:TDrawChoreographyBatchItems;const aGroupInstance:TObject;const aIsUnique:Boolean);
+var Index:TpvSizeInt;
+    DrawChoreographyBatchItem,NewDrawChoreographyBatchItem:TpvScene3D.TDrawChoreographyBatchItem;
+begin
+ for Index:=0 to Min(aFrom.Count,Count)-1 do begin
+  DrawChoreographyBatchItem:=aFrom.RawItems[Index];
+  NewDrawChoreographyBatchItem:=RawItems[Index];
+  NewDrawChoreographyBatchItem.fGroupInstance:=aGroupInstance;
+  if assigned(aGroupInstance) then begin
+   if assigned(DrawChoreographyBatchItem.Node) then begin
+    NewDrawChoreographyBatchItem.fObjectIndex:=TpvScene3D.TGroup.TInstance(aGroupInstance).Nodes[TpvScene3D.TGroup.TNode(DrawChoreographyBatchItem.Node).fIndex].fCullObjectID;
+   end else begin
+    NewDrawChoreographyBatchItem.fObjectIndex:=0;
+   end;
+   if aIsUnique then begin
+    inc(NewDrawChoreographyBatchItem.fStartIndex,TpvScene3D.TGroup.TInstance(aGroupInstance).fVulkanDrawUniqueIndexBufferOffset);
+   end else begin
+    inc(NewDrawChoreographyBatchItem.fStartIndex,TpvScene3D.TGroup.TInstance(aGroupInstance).fVulkanDrawIndexBufferOffset);
+   end;
   end;
  end;
 end;
