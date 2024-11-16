@@ -4989,7 +4989,7 @@ constructor TpvRedBlackTree<TKey,TValue>.TNode.Create(const aKey:TKey;
                                                       const aLeft:TpvRedBlackTree<TKey,TValue>.TNode;
                                                       const aRight:TpvRedBlackTree<TKey,TValue>.TNode;
                                                       const aParent:TpvRedBlackTree<TKey,TValue>.TNode;
-                                                      const aColor:boolean=false);
+                                                      const aColor:boolean);
 begin
  inherited Create;
  fKey:=aKey;
