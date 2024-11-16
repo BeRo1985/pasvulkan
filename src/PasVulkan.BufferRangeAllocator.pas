@@ -412,18 +412,18 @@ begin
   repeat
 
    // Best-fit search
-   Node:=fFreeSizeRangeRedBlackTree.fRoot;
+   Node:=fFreeSizeRangeRedBlackTree.Root;
    while assigned(Node) do begin
-    if aSize<Node.fKey then begin
-     if assigned(Node.fLeft) then begin
+    if aSize<Node.Key then begin
+     if assigned(Node.Left) then begin
       // If free block is too big, then go to left
-      Node:=Node.fLeft;
+      Node:=Node.Left;
       continue;
      end else begin
       // If free block is too big and there is no left children node, then try to find suitable smaller but not too small free blocks
-      while assigned(Node) and (Node.fKey>aSize) do begin
+      while assigned(Node) and (Node.Key>aSize) do begin
        OtherNode:=Node.Predecessor;
-       if assigned(OtherNode) and (OtherNode.fKey>=aSize) then begin
+       if assigned(OtherNode) and (OtherNode.Key>=aSize) then begin
         Node:=OtherNode;
        end else begin
         break;
@@ -431,14 +431,14 @@ begin
       end;
       break;
      end;
-    end else if aSize>Node.fKey then begin
-     if assigned(Node.fRight) then begin
+    end else if aSize>Node.Key then begin
+     if assigned(Node.Right) then begin
       // If free block is too small, go to right
-      Node:=Node.fRight;
+      Node:=Node.Right;
       continue;
      end else begin
       // If free block is too small and there is no right children node, then try to find suitable bigger but not too small free blocks
-      while assigned(Node) and (Node.fKey<aSize) do begin
+      while assigned(Node) and (Node.Key<aSize) do begin
        OtherNode:=Node.Successor;
        if assigned(OtherNode) then begin
         Node:=OtherNode;
