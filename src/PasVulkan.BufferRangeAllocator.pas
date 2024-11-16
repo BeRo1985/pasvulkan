@@ -212,6 +212,69 @@ begin
 end;
 
 procedure TpvBufferRangeAllocator.TRangeList.Sort;
+{$define UseMergeSort}
+{$ifdef UseMergeSort}
+// Merge sort
+var PartA,PartB,CurrentRange:PRange;
+    InSize,PartASize,PartBSize,Merges:TpvSizeINt;
+begin
+ if assigned(First) then begin
+  InSize:=1;
+  while true do begin
+   PartA:=First;
+   First:=nil;
+   Last:=nil;
+   Merges:=0;
+   while assigned(PartA) do begin
+    inc(Merges);
+    PartB:=PartA;
+    PartASize:=0;
+    while PartASize<InSize do begin
+     inc(PartASize);
+     PartB:=PartB^.Next;
+     if not assigned(PartB) then begin
+      break;
+     end;
+    end;
+    PartBSize:=InSize;
+    while (PartASize>0) or ((PartBSize>0) and assigned(PartB)) do begin
+     if PartASize=0 then begin
+      CurrentRange:=PartB;
+      PartB:=PartB^.Next;
+      dec(PartBSize);
+     end else if (PartBSize=0) or not assigned(PartB) then begin
+      CurrentRange:=PartA;
+      PartA:=PartA^.Next;
+      dec(PartASize);
+     end else if PartA^.Start<=PartB^.Start then begin
+      CurrentRange:=PartA;
+      PartA:=PartA^.Next;
+      dec(PartASize);
+     end else begin
+      CurrentRange:=PartB;
+      PartB:=PartB^.Next;
+      dec(PartBSize);
+     end;
+     if assigned(Last) then begin
+      Last^.Next:=CurrentRange;
+     end else begin
+      First:=CurrentRange;
+     end;
+     CurrentRange^.Previous:=Last;
+     Last:=CurrentRange;
+    end;
+    PartA:=PartB;
+   end;
+   Last^.Next:=nil;
+   if Merges<=1 then begin
+    break;
+   end;
+   inc(InSize,InSize);
+  end;
+ end;
+end;
+{$else}
+// Bubble sort
 var Current,Next,ToDelete:PRange;
 begin
  Current:=First;
@@ -229,12 +292,13 @@ begin
   end;
  end;
 end;
+{$endif}
 
 procedure TpvBufferRangeAllocator.TRangeList.MergeRanges(const aBufferRangeAllocator:TpvBufferRangeAllocator);
-var Current,Next,ToDelete:PRange;
+var Current,{Next,}ToDelete:PRange;
 begin
 
- // Sorting per linked list bubble sort, just for safety, should not be needed, when the sorting insert function works correctly
+ // Sorting
  Sort;
 
  // Merging 
