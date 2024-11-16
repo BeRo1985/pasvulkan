@@ -1,0 +1,156 @@
+// Function to calculate the variance-based metric
+function calculateVarianceBasedMetric(freeSpaces) {
+
+  // Get the number of free memory blocks
+  var blockCount = freeSpaces.size();
+  
+  // If there are no blocks, return 0
+  if(blockCount === 0){
+    return 0.0;
+  }
+
+  // Calculate the total free memory
+  var totalFreeMemory = 0.0;
+  for(var index = 0; index < blockCount; index++){
+    totalFreeMemory += freeSpaces[index];
+  }
+
+  // If there is no free memory, return 0
+  if(totalFreeMemory === 0.0){
+    return 0.0;
+  }
+
+  // Calculate the mean of the free memory sizes
+  var meanFreeMemory = totalFreeMemory / blockCount;
+
+  // Calculate the variance
+  var sumSquaredDifferences = 0;
+  for(var index = 0; index < blockCount; index++){
+    sumSquaredDifferences += Math.pow(freeSpaces[index] - meanFreeMemory, 2.0);
+  }
+  var variance = Math.sqrt(sumSquaredDifferences);
+
+  // Calculate the final metric
+  return (blockCount > 1.0) ? (1.0 - (1.0 / totalFreeMemory) * (blockCount / Math.sqrt(blockCount * (blockCount - 1.0))) * variance) : 0.0;
+}
+
+// Function to calculate the quality-based metric
+function calculateQualityBasedMetric(freeSpaces) {
+  var totalFreeMemory = 0.0;
+  var qualitySum = 0.0;
+
+  // Sum the squares of the free block sizes and the total free memory
+  for (var index = 0.0, count = freeSpaces.size(); index < count; index++) {
+    qualitySum += Math.pow(freeSpaces[index], 2.0);
+    totalFreeMemory += freeSpaces[index];
+  }
+
+  // If there is no free memory, return 0
+  if(totalFreeMemory === 0){
+    return 0;
+  }
+
+  // Calculate the final metric
+  return 1.0 - Math.pow(Math.sqrt(qualitySum) / totalFreeMemory, 2.0);
+}
+
+// Function to calculate the simple heuristic metric
+function calculateSimpleHeuristicMetric(freeSpaces) {
+  var totalFreeMemory = 0;
+  var largestFreeBlock = 0;
+
+  // Find the largest free block and the total free memory
+  for(var index = 0, count = freeSpaces.size(); index < count; index++){
+    totalFreeMemory += freeSpaces[index];
+    if(freeSpaces[index] > largestFreeBlock){
+      largestFreeBlock = freeSpaces[index];
+    }
+  }
+
+  // Calculate the final metric
+  return (totalFreeMemory === 0) ? 1.0 : ((totalFreeMemory - largestFreeBlock) / totalFreeMemory);
+}
+
+var results = [];
+
+function testMetrics(scenarioName, freeSpaces, description){
+  let scenarioResults = {
+    scenarioName: scenarioName,
+    freeSpaces: "[" ~ freeSpaces.join(", ") ~ "]",
+    description: description,
+    varianceBasedMetric: calculateVarianceBasedMetric(freeSpaces).toFixed(6),
+    qualityBasedMetric: calculateQualityBasedMetric(freeSpaces).toFixed(6),
+    simpleHeuristicMetric: calculateSimpleHeuristicMetric(freeSpaces).toFixed(6)
+  }; 
+  print("--- ", scenarioResults.scenarioName, " ---\n");
+  print("Free spaces: ", scenarioResults.freeSpaces, "\n");
+  print("Description: ", scenarioResults.description, "\n");
+  print("Variance-based memory fragmentation metric: ", scenarioResults.varianceBasedMetric, "\n");
+  print("Quality-based memory fragmentation metric: ", scenarioResults.qualityBasedMetric, "\n");
+  print("Simple heuristic memory fragmentation metric: ", scenarioResults.simpleHeuristicMetric, "\n");
+  results.push(scenarioResults);
+}
+
+testMetrics("Scenario 1", [1000], "Single free block");
+testMetrics("Scenario 2", [500, 500], "Two equal free blocks");
+testMetrics("Scenario 3", [100, 100, 100, 100, 100], "Five equal free blocks");
+testMetrics("Scenario 4", [200, 800, 50, 950], "Four free blocks with varying sizes");
+testMetrics("Scenario 5", [100, 200, 300, 400, 500, 600, 700, 800, 900, 1000], "Ten free blocks with increasing sizes");
+testMetrics("Scenario 6", [100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 1000], "Ten free blocks with increasing sizes and one duplicate");
+testMetrics("Scenario 7", [100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 1000, 1000], "Ten free blocks with increasing sizes and two duplicates");
+testMetrics("Scenario 8", [900, 300, 100, 1000, 500, 200, 700, 400, 800, 600], "Ten free blocks with random sizes");
+testMetrics("Scenario 9", [400, 100, 200, 800], "Four free blocks with random sizes");
+testMetrics("Scenario 10", [700, 300, 250], "Three free blocks with random sizes");
+testMetrics("Scenario 11", [650, 150], "Two free blocks with random sizes");
+
+// Export as HTML table  
+var html = "";
+function addToHTML(text){
+  html ~= text;
+} 
+addToHTML("<html>\n");
+addToHTML("<head>\n");
+addToHTML("<style>\n");
+addToHTML("table {\n");
+addToHTML("  font-family: arial, sans-serif;\n");
+addToHTML("  border-collapse: collapse;\n");
+addToHTML("  width: 100%;\n");
+addToHTML("}\n");
+addToHTML("td, th {\n");
+addToHTML("  border: 1px solid #dddddd;\n");
+addToHTML("  text-align: left;\n");
+addToHTML("  padding: 8px;\n");
+addToHTML("}\n");
+addToHTML("tr:nth-child(even) {\n");
+addToHTML("  background-color: #dddddd;\n");
+addToHTML("}\n");
+addToHTML("</style>\n");
+addToHTML("</head>\n");
+addToHTML("<body>\n");
+addToHTML("<h2>Memory fragmentation metrics</h2>\n");
+addToHTML("<table>\n");
+addToHTML("  <tr>\n");
+addToHTML("    <th>Scenario</th>\n");
+addToHTML("    <th>Free spaces</th>\n");
+addToHTML("    <th>Description</th>\n");
+addToHTML("    <th>Variance-based metric</th>\n");
+addToHTML("    <th>Quality-based metric</th>\n");
+addToHTML("    <th>Simple heuristic metric</th>\n");
+addToHTML("  </tr>\n");
+for(var index = 0, count = results.size(); index < count; index++){
+  var result = results[index];
+  addToHTML("  <tr>\n");
+  addToHTML("    <td>" ~ result.scenarioName ~ "</td>\n");
+  addToHTML("    <td>" ~ result.freeSpaces ~ "</td>\n");
+  addToHTML("    <td>" ~ result.description ~ "</td>\n");
+  addToHTML("    <td>" ~ result.varianceBasedMetric ~ "</td>\n");
+  addToHTML("    <td>" ~ result.qualityBasedMetric ~ "</td>\n");
+  addToHTML("    <td>" ~ result.simpleHeuristicMetric ~ "</td>\n");
+  addToHTML("  </tr>\n");
+}
+addToHTML("</table>\n");
+addToHTML("</body>\n");
+addToHTML("</html>\n");
+var htmlFile = IO.open("memoryfragmentationmetrics.html", "c");
+htmlFile.write(html);
+htmlFile.close();
