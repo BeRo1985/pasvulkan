@@ -102,6 +102,8 @@ testMetrics("Scenario 8", [900, 300, 100, 1000, 500, 200, 700, 400, 800, 600], "
 testMetrics("Scenario 9", [400, 100, 200, 800], "Four free blocks with random sizes");
 testMetrics("Scenario 10", [700, 300, 250], "Three free blocks with random sizes");
 testMetrics("Scenario 11", [650, 150], "Two free blocks with random sizes");
+testMetrics("Scenario 12", [124, 616, 262, 831, 981, 164, 341, 472, 678, 134], "Ten free blocks with random sizes");
+
 
 // Export as HTML table  
 var html = "";
