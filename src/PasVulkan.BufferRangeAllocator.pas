@@ -487,11 +487,12 @@ end;
 
 procedure TpvBufferRangeAllocator.Release(const aStart:TpvSizeInt;aSize:TpvSizeInt);
 var Current,Next:PRange;
+    Node,OtherNode:TRangeRedBlackTree.TNode;
 begin
 
  if (aStart>=0) and (aSize<>0) then begin
 
-  if aSize<0 then begin
+{ if aSize<0 then begin
    Current:=fAllocatedRanges.First;
    while assigned(Current) do begin
     if Current^.Start=aStart then begin
@@ -500,11 +501,55 @@ begin
     end;
     Current:=Current^.Next;
    end;
+   if not assigned(Current) then begin
+    Current:=fAllocatedRanges.First;
+   end;
+  end else begin
+   Current:=fAllocatedRanges.First;
+  end;}
+
+  Node:=fAllocatedOffsetRangeRedBlackTree.Find(aStart);
+  if assigned(Node) then begin
+
+   repeat
+    OtherNode:=Node.Predecessor;
+    if assigned(OtherNode) and (OtherNode.Key=aStart) then begin
+     Node:=OtherNode;
+    end else begin
+     break;
+    end;
+   until false;
+
+   if aSize>0 then begin
+    while assigned(Node.Value) and (Node.Value.Len<>aSize) do begin
+     OtherNode:=Node.Successor;
+     if assigned(OtherNode) and (OtherNode.Key=aStart) then begin
+      if assigned(OtherNode.Value) and (OtherNode.Value.Len=aSize) then begin
+       break;
+      end else begin
+       Node:=OtherNode;
+      end;
+     end else begin
+      break;
+     end;
+    end;
+   end;
+
+   if assigned(Node.Value) then begin
+    Current:=Node.Value;
+    aSize:=Current^.Len;
+   end else begin
+    Current:=fAllocatedRanges.First;
+   end;
+
+  end else begin
+
+   Current:=fAllocatedRanges.First;
+
   end;
 
   if aSize>0 then begin
 
-   Current:=fAllocatedRanges.First;
    while assigned(Current) do begin
     if (Current^.Start=aStart) and (Current^.Len=aSize) then begin
      fAllocatedRanges.Remove(Current);
