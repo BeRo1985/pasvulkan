@@ -31,7 +31,7 @@ function calculateVarianceBasedMetric(freeSpaces) {
   var variance = Math.sqrt(sumSquaredDifferences);
 
   // Calculate the final metric
-  return (blockCount > 0.0) ? (1.0 - (1.0 / totalFreeMemory) * (blockCount / Math.sqrt(blockCount * (blockCount - 1.0))) * variance) : 0.0;
+  return (blockCount > 1.0) ? (1.0 - (1.0 / totalFreeMemory) * (blockCount / Math.sqrt(blockCount * (blockCount - 1.0))) * variance) : 0.0;
 }
 
 // Function to calculate the quality-based metric, based on https://asawicki.info/news_1757_a_metric_for_memory_fragmentation 
