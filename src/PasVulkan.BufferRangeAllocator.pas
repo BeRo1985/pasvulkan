@@ -635,10 +635,24 @@ begin
 end;
 
 function TpvBufferRangeAllocator.CalculateFragmentationFactor:TpvDouble;
+var TotalFreeMemory,LargestFreeBlock:TpvSizeInt;
+    Current:PRange;
 begin
+ TotalFreeMemory:=0;
+ LargestFreeBlock:=0;
+ Current:=fFreeRanges.First;
+ while assigned(Current) do begin
+  inc(TotalFreeMemory,Current^.Len);
+  if Current^.Len>LargestFreeBlock then begin
+   LargestFreeBlock:=Current^.Len;
+  end;
+  Current:=Current^.Next;
+ end;
+ if TotalFreeMemory=0 then begin
+  result:=0.0;
+ end else begin
+  result:=(TotalFreeMemory-LargestFreeBlock)/TotalFreeMemory;
+ end;
 end;
 
-{var TotalSize,FreeSize:TpvSizeInt;
-    Current:PRange;
-}
 end.
