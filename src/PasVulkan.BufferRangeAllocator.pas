@@ -634,6 +634,7 @@ begin
 
 end;
 
+// Calculate fragmentation factor 
 function TpvBufferRangeAllocator.CalculateFragmentationFactor:TpvDouble;
 var TotalFreeMemory,LargestFreeBlock:TpvSizeInt;
     Current:PRange;
