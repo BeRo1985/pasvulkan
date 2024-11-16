@@ -635,7 +635,10 @@ begin
 end;
 
 function TpvBufferRangeAllocator.CalculateFragmentationFactor:TpvDouble;
-var TotalSize,FreeSize:TpvSizeInt;
-    Current:PRange;
+begin
+end;
 
+{var TotalSize,FreeSize:TpvSizeInt;
+    Current:PRange;
+}
 end.
