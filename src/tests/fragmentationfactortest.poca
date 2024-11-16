@@ -104,6 +104,9 @@ testMetrics("Scenario 10", "Four free blocks with random sizes", [400, 100, 200,
 testMetrics("Scenario 11", "Three free blocks with random sizes", [700, 300, 250]);
 testMetrics("Scenario 12", "Two free blocks with random sizes", [650, 150]);
 testMetrics("Scenario 13", "50 free blocks with random sizes", [276, 645, 413, 746, 201, 993, 341, 422, 853, 741, 273, 730, 233, 997, 152, 307, 571, 794, 772, 950, 356, 172, 192, 858, 602, 820, 976, 484, 575, 201, 737, 475, 351, 502, 933, 983, 977, 638, 483, 779, 777, 581, 554, 864, 369, 264, 778, 994, 207, 502]);
+testMetrics("Scenario 14", "20 free blocks with equal sizes", [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]);
+testMetrics("Scenario 15", "Two free blocks with different sizes", [200, 800]);
+testMetrics("Scenario 16", "Two free big blocks and three small free blocks", [200, 800, 1, 1, 1]); 
 
 // Export as HTML table  
 var html =
