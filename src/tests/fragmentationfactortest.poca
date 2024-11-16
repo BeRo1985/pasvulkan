@@ -83,8 +83,8 @@ function testMetrics(scenarioName, freeSpaces, description){
     simpleHeuristicMetric: calculateSimpleHeuristicMetric(freeSpaces).toFixed(6)
   }; 
   print("--- ", scenarioResults.scenarioName, " ---\n");
-  print("Free spaces: ", scenarioResults.freeSpaces, "\n");
   print("Description: ", scenarioResults.description, "\n");
+  print("Free spaces: ", scenarioResults.freeSpaces, "\n");
   print("Variance-based memory fragmentation metric: ", scenarioResults.varianceBasedMetric, "\n");
   print("Quality-based memory fragmentation metric: ", scenarioResults.qualityBasedMetric, "\n");
   print("Simple heuristic memory fragmentation metric: ", scenarioResults.simpleHeuristicMetric, "\n");
@@ -131,8 +131,8 @@ addToHTML("<h2>Memory fragmentation metrics</h2>\n");
 addToHTML("<table>\n");
 addToHTML("  <tr>\n");
 addToHTML("    <th>Scenario</th>\n");
-addToHTML("    <th>Free spaces</th>\n");
 addToHTML("    <th>Description</th>\n");
+addToHTML("    <th>Free spaces</th>\n");
 addToHTML("    <th>Variance-based metric</th>\n");
 addToHTML("    <th>Quality-based metric</th>\n");
 addToHTML("    <th>Simple heuristic metric</th>\n");
@@ -141,8 +141,8 @@ for(var index = 0, count = results.size(); index < count; index++){
   var result = results[index];
   addToHTML("  <tr>\n");
   addToHTML("    <td>" ~ result.scenarioName ~ "</td>\n");
-  addToHTML("    <td>" ~ result.freeSpaces ~ "</td>\n");
   addToHTML("    <td>" ~ result.description ~ "</td>\n");
+  addToHTML("    <td>" ~ result.freeSpaces ~ "</td>\n");
   addToHTML("    <td>" ~ result.varianceBasedMetric ~ "</td>\n");
   addToHTML("    <td>" ~ result.qualityBasedMetric ~ "</td>\n");
   addToHTML("    <td>" ~ result.simpleHeuristicMetric ~ "</td>\n");
