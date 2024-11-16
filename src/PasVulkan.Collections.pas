@@ -821,8 +821,8 @@ type
        property Values[const aKey:TKey]:TValue read GetValue write SetValue; default;
      end;
 
-     { TpvRedBlackTree<TKey,TValue> }
-     TpvRedBlackTree<TKey,TValue>=class
+     { TpvGenericRedBlackTree<TKey,TValue> }
+     TpvGenericRedBlackTree<TKey,TValue>=class
       public
        type PKey=^TKey;
             PValue=^TValue;
@@ -4982,13 +4982,13 @@ begin
  result:=TValueEnumerator.Create(self);
 end;
 
-{ TpvRedBlackTree<TKey,TValue>.TNode }
+{ TpvGenericRedBlackTree<TKey,TValue>.TNode }
 
-constructor TpvRedBlackTree<TKey,TValue>.TNode.Create(const aKey:TKey;
+constructor TpvGenericRedBlackTree<TKey,TValue>.TNode.Create(const aKey:TKey;
                                                       const aValue:TValue;
-                                                      const aLeft:TpvRedBlackTree<TKey,TValue>.TNode;
-                                                      const aRight:TpvRedBlackTree<TKey,TValue>.TNode;
-                                                      const aParent:TpvRedBlackTree<TKey,TValue>.TNode;
+                                                      const aLeft:TpvGenericRedBlackTree<TKey,TValue>.TNode;
+                                                      const aRight:TpvGenericRedBlackTree<TKey,TValue>.TNode;
+                                                      const aParent:TpvGenericRedBlackTree<TKey,TValue>.TNode;
                                                       const aColor:boolean);
 begin
  inherited Create;
@@ -5000,14 +5000,14 @@ begin
  fColor:=aColor;
 end;
 
-destructor TpvRedBlackTree<TKey,TValue>.TNode.Destroy;
+destructor TpvGenericRedBlackTree<TKey,TValue>.TNode.Destroy;
 begin
  FreeAndNil(fLeft);
  FreeAndNil(fRight);
  inherited Destroy;
 end;
 
-procedure TpvRedBlackTree<TKey,TValue>.TNode.Clear;
+procedure TpvGenericRedBlackTree<TKey,TValue>.TNode.Clear;
 begin
  FillChar(fKey,SizeOf(TKey),#0);
  fLeft:=nil;
@@ -5016,7 +5016,7 @@ begin
  fColor:=false;
 end;
 
-function TpvRedBlackTree<TKey,TValue>.TNode.Minimum:TpvRedBlackTree<TKey,TValue>.TNode;
+function TpvGenericRedBlackTree<TKey,TValue>.TNode.Minimum:TpvGenericRedBlackTree<TKey,TValue>.TNode;
 begin
  result:=self;
  while assigned(result.fLeft) do begin
@@ -5024,7 +5024,7 @@ begin
  end;
 end;
 
-function TpvRedBlackTree<TKey,TValue>.TNode.Maximum:TpvRedBlackTree<TKey,TValue>.TNode;
+function TpvGenericRedBlackTree<TKey,TValue>.TNode.Maximum:TpvGenericRedBlackTree<TKey,TValue>.TNode;
 begin
  result:=self;
  while assigned(result.fRight) do begin
@@ -5032,8 +5032,8 @@ begin
  end;
 end;
 
-function TpvRedBlackTree<TKey,TValue>.TNode.Predecessor:TpvRedBlackTree<TKey,TValue>.TNode;
-var Last:TpvRedBlackTree<TKey,TValue>.TNode;
+function TpvGenericRedBlackTree<TKey,TValue>.TNode.Predecessor:TpvGenericRedBlackTree<TKey,TValue>.TNode;
+var Last:TpvGenericRedBlackTree<TKey,TValue>.TNode;
 begin
  if assigned(fLeft) then begin
   result:=fLeft;
@@ -5050,8 +5050,8 @@ begin
  end;
 end;
 
-function TpvRedBlackTree<TKey,TValue>.TNode.Successor:TpvRedBlackTree<TKey,TValue>.TNode;
-var Last:TpvRedBlackTree<TKey,TValue>.TNode;
+function TpvGenericRedBlackTree<TKey,TValue>.TNode.Successor:TpvGenericRedBlackTree<TKey,TValue>.TNode;
+var Last:TpvGenericRedBlackTree<TKey,TValue>.TNode;
 begin
  if assigned(fRight) then begin
   result:=fRight;
@@ -5068,27 +5068,27 @@ begin
  end;
 end;
 
-{ TpvRedBlackTree<TKey,TValue> }
+{ TpvGenericRedBlackTree<TKey,TValue> }
 
-constructor TpvRedBlackTree<TKey,TValue>.Create;
+constructor TpvGenericRedBlackTree<TKey,TValue>.Create;
 begin
  inherited Create;
  fRoot:=nil;
 end;
 
-destructor TpvRedBlackTree<TKey,TValue>.Destroy;
+destructor TpvGenericRedBlackTree<TKey,TValue>.Destroy;
 begin
  Clear;
  inherited Destroy;
 end;
 
-procedure TpvRedBlackTree<TKey,TValue>.Clear;
+procedure TpvGenericRedBlackTree<TKey,TValue>.Clear;
 begin
  FreeAndNil(fRoot);
 end;
 
-procedure TpvRedBlackTree<TKey,TValue>.RotateLeft(x:TpvRedBlackTree<TKey,TValue>.TNode);
-var y:TpvRedBlackTree<TKey,TValue>.TNode;
+procedure TpvGenericRedBlackTree<TKey,TValue>.RotateLeft(x:TpvGenericRedBlackTree<TKey,TValue>.TNode);
+var y:TpvGenericRedBlackTree<TKey,TValue>.TNode;
 begin
  y:=x.fRight;
  x.fRight:=y.fLeft;
@@ -5107,8 +5107,8 @@ begin
  x.fParent:=y;
 end;
 
-procedure TpvRedBlackTree<TKey,TValue>.RotateRight(x:TpvRedBlackTree<TKey,TValue>.TNode);
-var y:TpvRedBlackTree<TKey,TValue>.TNode;
+procedure TpvGenericRedBlackTree<TKey,TValue>.RotateRight(x:TpvGenericRedBlackTree<TKey,TValue>.TNode);
+var y:TpvGenericRedBlackTree<TKey,TValue>.TNode;
 begin
  y:=x.fLeft;
  x.fLeft:=y.fRight;
@@ -5127,7 +5127,7 @@ begin
  x.fParent:=y;
 end;
 
-function TpvRedBlackTree<TKey,TValue>.Find(const aKey:TKey):TpvRedBlackTree<TKey,TValue>.TNode;
+function TpvGenericRedBlackTree<TKey,TValue>.Find(const aKey:TKey):TpvGenericRedBlackTree<TKey,TValue>.TNode;
 var Value:TpvInt32;
     Comparer:IComparer<TKey>;
 begin
@@ -5146,8 +5146,8 @@ begin
  result:=nil;
 end;
 
-function TpvRedBlackTree<TKey,TValue>.Insert(const aKey:TKey;const aValue:TValue):TpvRedBlackTree<TKey,TValue>.TNode;
-var x,y,xParentParent:TpvRedBlackTree<TKey,TValue>.TNode;
+function TpvGenericRedBlackTree<TKey,TValue>.Insert(const aKey:TKey;const aValue:TValue):TpvGenericRedBlackTree<TKey,TValue>.TNode;
+var x,y,xParentParent:TpvGenericRedBlackTree<TKey,TValue>.TNode;
     Comparer:IComparer<TKey>;
 begin
  Comparer:=TComparer<TKey>.Default;
@@ -5161,7 +5161,7 @@ begin
    x:=x.fRight;
   end;
  end;
- result:=TpvRedBlackTree<TKey,TValue>.TNode.Create(aKey,aValue,nil,nil,y,true);
+ result:=TpvGenericRedBlackTree<TKey,TValue>.TNode.Create(aKey,aValue,nil,nil,y,true);
  if assigned(y) then begin
   if Comparer.Compare(aKey,y.fKey)<0 then begin
    y.Left:=result;
@@ -5211,8 +5211,8 @@ begin
  fRoot.fColor:=false;
 end;
 
-procedure TpvRedBlackTree<TKey,TValue>.Remove(const aNode:TpvRedBlackTree<TKey,TValue>.TNode);
-var w,x,y,z,xParent:TpvRedBlackTree<TKey,TValue>.TNode;
+procedure TpvGenericRedBlackTree<TKey,TValue>.Remove(const aNode:TpvGenericRedBlackTree<TKey,TValue>.TNode);
+var w,x,y,z,xParent:TpvGenericRedBlackTree<TKey,TValue>.TNode;
     TemporaryColor:boolean;
 begin
  z:=aNode;
@@ -5342,8 +5342,8 @@ begin
  end;
 end;
 
-procedure TpvRedBlackTree<TKey,TValue>.Delete(const aKey:TKey);
-var Node:TpvRedBlackTree<TKey,TValue>.TNode;
+procedure TpvGenericRedBlackTree<TKey,TValue>.Delete(const aKey:TKey);
+var Node:TpvGenericRedBlackTree<TKey,TValue>.TNode;
 begin
  Node:=Find(aKey);
  if assigned(Node) then begin
@@ -5351,7 +5351,7 @@ begin
  end;
 end;
 
-function TpvRedBlackTree<TKey,TValue>.LeftMost:TpvRedBlackTree<TKey,TValue>.TNode;
+function TpvGenericRedBlackTree<TKey,TValue>.LeftMost:TpvGenericRedBlackTree<TKey,TValue>.TNode;
 begin
  result:=fRoot;
  while assigned(result) and assigned(result.fLeft) do begin
@@ -5359,7 +5359,7 @@ begin
  end;
 end;
 
-function TpvRedBlackTree<TKey,TValue>.RightMost:TpvRedBlackTree<TKey,TValue>.TNode;
+function TpvGenericRedBlackTree<TKey,TValue>.RightMost:TpvGenericRedBlackTree<TKey,TValue>.TNode;
 begin
  result:=fRoot;
  while assigned(result) and assigned(result.fRight) do begin
