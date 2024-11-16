@@ -5504,7 +5504,7 @@ end;
 
 procedure TpvInt64RedBlackTree<TValue>.TNode.Clear;
 begin
- FillChar(fKey,SizeOf(TKey),#0);
+ fKey:=0;
  fLeft:=nil;
  fRight:=nil;
  fParent:=nil;
@@ -5884,7 +5884,7 @@ end;
 
 procedure TpvUInt64RedBlackTree<TValue>.TNode.Clear;
 begin
- FillChar(fKey,SizeOf(TKey),#0);
+ fKey:=0;
  fLeft:=nil;
  fRight:=nil;
  fParent:=nil;
