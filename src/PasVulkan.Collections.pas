@@ -821,6 +821,60 @@ type
        property Values[const aKey:TKey]:TValue read GetValue write SetValue; default;
      end;
 
+     { TpvRedBlackTree<TKey,TValue> }
+     TpvRedBlackTree<TKey,TValue>=class
+      public
+       type PKey=^TKey;
+            PValue=^TValue;
+            { TNode }
+            TNode=class
+             private
+              fKey:TKey;
+              fValue:TValue;
+              fLeft:TNode;
+              fRight:TNode;
+              fParent:TNode;
+              fColor:boolean;
+             public
+              constructor Create(const aKey:TKey;
+                                 const aValue:TValue;
+                                 const aLeft:TNode=nil;
+                                 const aRight:TNode=nil;
+                                 const aParent:TNode=nil;
+                                 const aColor:boolean=false);
+              destructor Destroy; override;
+              procedure Clear;
+              function Minimum:TNode;
+              function Maximum:TNode;
+              function Predecessor:TNode;
+              function Successor:TNode;
+             public
+              property Key:TKey read fKey write fKey;
+              property Value:TValue read fValue write fValue;
+              property Left:TNode read fLeft write fLeft;
+              property Right:TNode read fRight write fRight;
+              property Parent:TNode read fParent write fParent;
+              property Color:boolean read fColor write fColor;
+            end;
+      private
+       fRoot:TNode;
+      protected
+       procedure RotateLeft(x:TNode);
+       procedure RotateRight(x:TNode);
+      public
+       constructor Create;
+       destructor Destroy; override;
+       procedure Clear;
+       function Find(const aKey:TKey):TNode;
+       function Insert(const aKey:TKey;const aValue:TValue):TNode;
+       procedure Remove(const aNode:TNode);
+       procedure Delete(const aKey:TKey);
+      published
+       function LeftMost:TNode;
+       function RightMost:TNode;
+       property Root:TNode read fRoot;
+     end;
+
 implementation
 
 uses Generics.Defaults;
@@ -4926,6 +4980,385 @@ end;
 function TpvInt64SkipList<TValue>.GetEnumerator:TValueEnumerator;
 begin
  result:=TValueEnumerator.Create(self);
+end;
+
+{ TpvRedBlackTree<TKey,TValue>.TNode }
+
+constructor TpvRedBlackTree<TKey,TValue>.TNode.Create(const aKey:TKey;
+                                                      const aValue:TValue;
+                                                      const aLeft:TpvRedBlackTree<TKey,TValue>.TNode;
+                                                      const aRight:TpvRedBlackTree<TKey,TValue>.TNode;
+                                                      const aParent:TpvRedBlackTree<TKey,TValue>.TNode;
+                                                      const aColor:boolean=false);
+begin
+ inherited Create;
+ fKey:=aKey;
+ fValue:=aValue;
+ fLeft:=aLeft;
+ fRight:=aRight;
+ fParent:=aParent;
+ fColor:=aColor;
+end;
+
+destructor TpvRedBlackTree<TKey,TValue>.TNode.Destroy;
+begin
+ FreeAndNil(fLeft);
+ FreeAndNil(fRight);
+ inherited Destroy;
+end;
+
+procedure TpvRedBlackTree<TKey,TValue>.TNode.Clear;
+begin
+ fKey:=0;
+ fLeft:=nil;
+ fRight:=nil;
+ fParent:=nil;
+ fColor:=false;
+end;
+
+function TpvRedBlackTree<TKey,TValue>.TNode.Minimum:TpvRedBlackTree<TKey,TValue>.TNode;
+begin
+ result:=self;
+ while assigned(result.fLeft) do begin
+  result:=result.fLeft;
+ end;
+end;
+
+function TpvRedBlackTree<TKey,TValue>.TNode.Maximum:TpvRedBlackTree<TKey,TValue>.TNode;
+begin
+ result:=self;
+ while assigned(result.fRight) do begin
+  result:=result.fRight;
+ end;
+end;
+
+function TpvRedBlackTree<TKey,TValue>.TNode.Predecessor:TpvRedBlackTree<TKey,TValue>.TNode;
+var Last:TpvRedBlackTree<TKey,TValue>.TNode;
+begin
+ if assigned(fLeft) then begin
+  result:=fLeft;
+  while assigned(result) and assigned(result.fRight) do begin
+   result:=result.fRight;
+  end;
+ end else begin
+  Last:=self;
+  result:=Parent;
+  while assigned(result) and (result.fLeft=Last) do begin
+   Last:=result;
+   result:=result.Parent;
+  end;
+ end;
+end;
+
+function TpvRedBlackTree<TKey,TValue>.TNode.Successor:TpvRedBlackTree<TKey,TValue>.TNode;
+var Last:TpvRedBlackTree<TKey,TValue>.TNode;
+begin
+ if assigned(fRight) then begin
+  result:=fRight;
+  while assigned(result) and assigned(result.fLeft) do begin
+   result:=result.fLeft;
+  end;
+ end else begin
+  Last:=self;
+  result:=Parent;
+  while assigned(result) and (result.fRight=Last) do begin
+   Last:=result;
+   result:=result.Parent;
+  end;
+ end;
+end;
+
+{ TpvRedBlackTree<TKey,TValue> }
+
+constructor TpvRedBlackTree<TKey,TValue>.Create;
+begin
+ inherited Create;
+ fRoot:=nil;
+end;
+
+destructor TpvRedBlackTree<TKey,TValue>.Destroy;
+begin
+ Clear;
+ inherited Destroy;
+end;
+
+procedure TpvRedBlackTree<TKey,TValue>.Clear;
+begin
+ FreeAndNil(fRoot);
+end;
+
+procedure TpvRedBlackTree<TKey,TValue>.RotateLeft(x:TpvRedBlackTree<TKey,TValue>.TNode);
+var y:TpvRedBlackTree<TKey,TValue>.TNode;
+begin
+ y:=x.fRight;
+ x.fRight:=y.fLeft;
+ if assigned(y.fLeft) then begin
+  y.fLeft.fParent:=x;
+ end;
+ y.fParent:=x.fParent;
+ if x=fRoot then begin
+  fRoot:=y;
+ end else if x=x.fParent.fLeft then begin
+  x.fparent.fLeft:=y;
+ end else begin
+  x.fParent.fRight:=y;
+ end;
+ y.fLeft:=x;
+ x.fParent:=y;
+end;
+
+procedure TpvRedBlackTree<TKey,TValue>.RotateRight(x:TpvRedBlackTree<TKey,TValue>.TNode);
+var y:TpvRedBlackTree<TKey,TValue>.TNode;
+begin
+ y:=x.fLeft;
+ x.fLeft:=y.fRight;
+ if assigned(y.fRight) then begin
+  y.fRight.fParent:=x;
+ end;
+ y.fParent:=x.fParent;
+ if x=fRoot then begin
+  fRoot:=y;
+ end else if x=x.fParent.fRight then begin
+  x.fParent.fRight:=y;
+ end else begin
+  x.fParent.fLeft:=y;
+ end;
+ y.fRight:=x;
+ x.fParent:=y;
+end;
+
+function TpvRedBlackTree<TKey,TValue>.Find(const aKey:TKey):TpvRedBlackTree<TKey,TValue>.TNode;
+begin
+ result:=fRoot;
+ while assigned(result) do begin
+  if aKey<result.fKey then begin
+   result:=result.fLeft;
+  end else if aKey>result.fKey then begin
+   result:=result.fRight;
+  end else begin
+   exit;
+  end;
+ end;
+ result:=nil;
+end;
+
+function TpvRedBlackTree<TKey,TValue>.Insert(const aKey:TKey;const aValue:TValue):TpvRedBlackTree<TKey,TValue>.TNode;
+var x,y,xParentParent:TpvRedBlackTree<TKey,TValue>.TNode;
+begin
+ x:=fRoot;
+ y:=nil;
+ while assigned(x) do begin
+  y:=x;
+  if aKey<x.fKey then begin
+   x:=x.fLeft;
+  end else begin
+   x:=x.fRight;
+  end;
+ end;
+ result:=TpvRedBlackTree<TKey,TValue>.TNode.Create(aKey,aValue,nil,nil,y,true);
+ if assigned(y) then begin
+  if aKey<y.fKey then begin
+   y.Left:=result;
+  end else begin
+   y.Right:=result;
+  end;
+ end else begin
+  fRoot:=result;
+ end;
+ x:=result;
+ while (x<>fRoot) and assigned(x.fParent) and assigned(x.fParent.fParent) and x.fParent.fColor do begin
+  xParentParent:=x.fParent.fParent;
+  if x.fParent=xParentParent.fLeft then begin
+   y:=xParentParent.fRight;
+   if assigned(y) and y.fColor then begin
+    x.fParent.fColor:=false;
+    y.fColor:=false;
+    xParentParent.fColor:=true;
+    x:=xParentParent;
+   end else begin
+    if x=x.fParent.fRight then begin
+     x:=x.fParent;
+     RotateLeft(x);
+    end;
+    x.fParent.fColor:=false;
+    xParentParent.fColor:=true;
+    RotateRight(xParentParent);
+   end;
+  end else begin
+   y:=xParentParent.fLeft;
+   if assigned(y) and y.fColor then begin
+    x.fParent.fColor:=false;
+    y.fColor:=false;
+    x.fParent.fParent.fColor:=true;
+    x:=x.fParent.fParent;
+   end else begin
+    if x=x.fParent.fLeft then begin
+     x:=x.fParent;
+     RotateRight(x);
+    end;
+    x.fParent.fColor:=false;
+    xParentParent.fColor:=true;
+    RotateLeft(xParentParent);
+   end;
+  end;
+ end;
+ fRoot.fColor:=false;
+end;
+
+procedure TpvRedBlackTree<TKey,TValue>.Remove(const aNode:TpvRedBlackTree<TKey,TValue>.TNode);
+var w,x,y,z,xParent:TpvRedBlackTree<TKey,TValue>.TNode;
+    TemporaryColor:boolean;
+begin
+ z:=aNode;
+ y:=z;
+ x:=nil;
+ xParent:=nil;
+ if assigned(x) and assigned(xParent) then begin
+  // For to suppress "Value assigned to '*' never used" hints
+ end;
+ if assigned(y.fLeft) then begin
+  if assigned(y.fRight) then begin
+   y:=y.fRight;
+   while assigned(y.fLeft) do begin
+    y:=y.fLeft;
+   end;
+   x:=y.fRight;
+  end else begin
+   x:=y.fLeft;
+  end;
+ end else begin
+  x:=y.fRight;
+ end;
+ if y<>z then begin
+  z.fLeft.fParent:=y;
+  y.fLeft:=z.fLeft;
+  if y<>z.fRight then begin
+   xParent:=y.fParent;
+   if assigned(x) then begin
+    x.fParent:=y.fParent;
+   end;
+   y.fParent.fLeft:=x;
+   y.fRight:=z.fRight;
+   z.fRight.fParent:=y;
+  end else begin
+   xParent:=y;
+  end;
+  if fRoot=z then begin
+   fRoot:=y;
+  end else if z.fParent.fLeft=z then begin
+   z.fParent.fLeft:=y;
+  end else begin
+   z.fParent.fRight:=y;
+  end;
+  y.fParent:=z.fParent;
+  TemporaryColor:=y.fColor;
+  y.fColor:=z.fColor;
+  z.fColor:=TemporaryColor;
+  y:=z;
+ end else begin
+  xParent:=y.fParent;
+  if assigned(x) then begin
+   x.fParent:=y.fParent;
+  end;
+  if fRoot=z then begin
+   fRoot:=x;
+  end else if z.fParent.fLeft=z then begin
+   z.fParent.fLeft:=x;
+  end else begin
+   z.fParent.fRight:=x;
+  end;
+ end;
+ if assigned(y) then begin
+  if not y.fColor then begin
+   while (x<>fRoot) and not (assigned(x) and x.fColor) do begin
+    if x=xParent.fLeft then begin
+     w:=xParent.fRight;
+     if w.fColor then begin
+      w.fColor:=false;
+      xParent.fColor:=true;
+      RotateLeft(xParent);
+      w:=xParent.fRight;
+     end;
+     if not ((assigned(w.fLeft) and w.fLeft.fColor) or (assigned(w.fRight) and w.fRight.fColor)) then begin
+      w.fColor:=true;
+      x:=xParent;
+      xParent:=xParent.fParent;
+     end else begin
+      if not (assigned(w.fRight) and w.fRight.fColor) then begin
+       w.fLeft.fColor:=false;
+       w.fColor:=true;
+       RotateRight(w);
+       w:=xParent.fRight;
+      end;
+      w.fColor:=xParent.fColor;
+      xParent.fColor:=false;
+      if assigned(w.fRight) then begin
+       w.fRight.fColor:=false;
+      end;
+      RotateLeft(xParent);
+      x:=fRoot;
+     end;
+    end else begin
+     w:=xParent.fLeft;
+     if w.fColor then begin
+      w.fColor:=false;
+      xParent.fColor:=true;
+      RotateRight(xParent);
+      w:=xParent.fLeft;
+     end;
+     if not ((assigned(w.fLeft) and w.fLeft.fColor) or (assigned(w.fRight) and w.fRight.fColor)) then begin
+      w.fColor:=true;
+      x:=xParent;
+      xParent:=xParent.fParent;
+     end else begin
+      if not (assigned(w.fLeft) and w.fLeft.fColor) then begin
+       w.fRight.fColor:=false;
+       w.fColor:=true;
+       RotateLeft(w);
+       w:=xParent.fLeft;
+      end;
+      w.fColor:=xParent.fColor;
+      xParent.fColor:=false;
+      if assigned(w.fLeft) then begin
+       w.fLeft.fColor:=false;
+      end;
+      RotateRight(xParent);
+      x:=fRoot;
+     end;
+    end;
+   end;
+   if assigned(x) then begin
+    x.fColor:=false;
+   end;
+  end;
+  y.Clear;
+  y.Free;
+ end;
+end;
+
+procedure TpvRedBlackTree<TKey,TValue>.Delete(const aKey:TKey);
+var Node:TpvRedBlackTree<TKey,TValue>.TNode;
+begin
+ Node:=Find(aKey);
+ if assigned(Node) then begin
+  Remove(Node);
+ end;
+end;
+
+function TpvRedBlackTree<TKey,TValue>.LeftMost:TpvRedBlackTree<TKey,TValue>.TNode;
+begin
+ result:=fRoot;
+ while assigned(result) and assigned(result.fLeft) do begin
+  result:=result.fLeft;
+ end;
+end;
+
+function TpvRedBlackTree<TKey,TValue>.RightMost:TpvRedBlackTree<TKey,TValue>.TNode;
+begin
+ result:=fRoot;
+ while assigned(result) and assigned(result.fRight) do begin
+  result:=result.fRight;
+ end;
 end;
 
 end.
