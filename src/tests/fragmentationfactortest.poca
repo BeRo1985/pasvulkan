@@ -1,4 +1,4 @@
-// Function to calculate the variance-based metric
+// Function to calculate the variance-based metric, based on https://jackwrfuller.au/posts/memory-fragmentation/
 function calculateVarianceBasedMetric(freeSpaces) {
 
   // Get the number of free memory blocks
@@ -34,7 +34,7 @@ function calculateVarianceBasedMetric(freeSpaces) {
   return (blockCount > 1.0) ? (1.0 - (1.0 / totalFreeMemory) * (blockCount / Math.sqrt(blockCount * (blockCount - 1.0))) * variance) : 0.0;
 }
 
-// Function to calculate the quality-based metric
+// Function to calculate the quality-based metric, based on https://asawicki.info/news_1757_a_metric_for_memory_fragmentation 
 function calculateQualityBasedMetric(freeSpaces) {
   var totalFreeMemory = 0.0;
   var qualitySum = 0.0;
@@ -54,7 +54,7 @@ function calculateQualityBasedMetric(freeSpaces) {
   return 1.0 - Math.pow(Math.sqrt(qualitySum) / totalFreeMemory, 2.0);
 }
 
-// Function to calculate the simple heuristic metric
+// Function to calculate the simple heuristic metric (totalFreeMemory-largestFreeBlock)/totalFreeMemory
 function calculateSimpleHeuristicMetric(freeSpaces) {
   var totalFreeMemory = 0;
   var largestFreeBlock = 0;
@@ -68,16 +68,16 @@ function calculateSimpleHeuristicMetric(freeSpaces) {
   }
 
   // Calculate the final metric
-  return (totalFreeMemory === 0) ? 1.0 : ((totalFreeMemory - largestFreeBlock) / totalFreeMemory);
+  return (totalFreeMemory === 0) ? 0.0 : ((totalFreeMemory - largestFreeBlock) / totalFreeMemory);
 }
 
 var results = [];
 
-function testMetrics(scenarioName, freeSpaces, description){
+function testMetrics(scenarioName, description, freeSpaces){
   let scenarioResults = {
     scenarioName: scenarioName,
-    freeSpaces: "[" ~ freeSpaces.join(", ") ~ "]",
     description: description,
+    freeSpaces: "[" ~ freeSpaces.join(", ") ~ "]",
     varianceBasedMetric: calculateVarianceBasedMetric(freeSpaces).toFixed(6),
     qualityBasedMetric: calculateQualityBasedMetric(freeSpaces).toFixed(6),
     simpleHeuristicMetric: calculateSimpleHeuristicMetric(freeSpaces).toFixed(6)
@@ -91,68 +91,79 @@ function testMetrics(scenarioName, freeSpaces, description){
   results.push(scenarioResults);
 }
 
-testMetrics("Scenario 1", [1000], "Single free block");
-testMetrics("Scenario 2", [500, 500], "Two equal free blocks");
-testMetrics("Scenario 3", [100, 100, 100, 100, 100], "Five equal free blocks");
-testMetrics("Scenario 4", [200, 800, 50, 950], "Four free blocks with varying sizes");
-testMetrics("Scenario 5", [100, 200, 300, 400, 500, 600, 700, 800, 900, 1000], "Ten free blocks with increasing sizes");
-testMetrics("Scenario 6", [100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 1000], "Ten free blocks with increasing sizes and one duplicate");
-testMetrics("Scenario 7", [100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 1000, 1000], "Ten free blocks with increasing sizes and two duplicates");
-testMetrics("Scenario 8", [900, 300, 100, 1000, 500, 200, 700, 400, 800, 600], "Ten free blocks with random sizes");
-testMetrics("Scenario 9", [400, 100, 200, 800], "Four free blocks with random sizes");
-testMetrics("Scenario 10", [700, 300, 250], "Three free blocks with random sizes");
-testMetrics("Scenario 11", [650, 150], "Two free blocks with random sizes");
-testMetrics("Scenario 12", [124, 616, 262, 831, 981, 164, 341, 472, 678, 134], "Ten free blocks with random sizes");
+testMetrics("Scenario 1", "No free blocks", []);
+testMetrics("Scenario 2", "Single free block", [1000]);
+testMetrics("Scenario 3", "Two equal free blocks", [500, 500]);
+testMetrics("Scenario 4", "Five equal free blocks", [100, 100, 100, 100, 100]);
+testMetrics("Scenario 5", "Four free blocks with varying sizes", [200, 800, 50, 950]);
+testMetrics("Scenario 6", "Ten free blocks with increasing sizes", [100, 200, 300, 400, 500, 600, 700, 800, 900, 1000]);
+testMetrics("Scenario 7", "Ten free blocks with increasing sizes and one duplicate", [100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 1000]);
+testMetrics("Scenario 8", "Ten free blocks with increasing sizes and two duplicates", [100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 1000, 1000]);
+testMetrics("Scenario 9", "Ten free blocks with random sizes", [900, 300, 100, 1000, 500, 200, 700, 400, 800, 600]);
+testMetrics("Scenario 10", "Four free blocks with random sizes", [400, 100, 200, 800]);
+testMetrics("Scenario 11", "Three free blocks with random sizes", [700, 300, 250]);
+testMetrics("Scenario 12", "Two free blocks with random sizes", [650, 150]);
+testMetrics("Scenario 13", "50 free blocks with random sizes", [276, 645, 413, 746, 201, 993, 341, 422, 853, 741, 273, 730, 233, 997, 152, 307, 571, 794, 772, 950, 356, 172, 192, 858, 602, 820, 976, 484, 575, 201, 737, 475, 351, 502, 933, 983, 977, 638, 483, 779, 777, 581, 554, 864, 369, 264, 778, 994, 207, 502]);
 
 
 // Export as HTML table  
-var html = "";
-function addToHTML(text){
-  html ~= text;
-} 
-addToHTML("<html>\n");
-addToHTML("<head>\n");
-addToHTML("<style>\n");
-addToHTML("table {\n");
-addToHTML("  font-family: arial, sans-serif;\n");
-addToHTML("  border-collapse: collapse;\n");
-addToHTML("  width: 100%;\n");
-addToHTML("}\n");
-addToHTML("td, th {\n");
-addToHTML("  border: 1px solid #dddddd;\n");
-addToHTML("  text-align: left;\n");
-addToHTML("  padding: 8px;\n");
-addToHTML("}\n");
-addToHTML("tr:nth-child(even) {\n");
-addToHTML("  background-color: #dddddd;\n");
-addToHTML("}\n");
-addToHTML("</style>\n");
-addToHTML("</head>\n");
-addToHTML("<body>\n");
-addToHTML("<h2>Memory fragmentation metrics</h2>\n");
-addToHTML("<table>\n");
-addToHTML("  <tr>\n");
-addToHTML("    <th>Scenario</th>\n");
-addToHTML("    <th>Description</th>\n");
-addToHTML("    <th>Free spaces</th>\n");
-addToHTML("    <th>Variance-based metric</th>\n");
-addToHTML("    <th>Quality-based metric</th>\n");
-addToHTML("    <th>Simple heuristic metric</th>\n");
-addToHTML("  </tr>\n");
+var html =
+  "<html>\n" ~
+  "  <head>\n" ~
+  "    <title>Memory fragmentation metrics</title>\n" ~
+  "    <style>\n" ~
+  "      table {\n" ~
+  "        font-family: arial, sans-serif;\n" ~
+  "        border-collapse: collapse;\n" ~
+  "        width: 100%;\n" ~
+  "      }\n" ~
+  "      td, th {\n" ~
+  "        border: 1px solid #dddddd;\n" ~
+  "        text-align: left;\n" ~
+  "        padding: 8px;\n" ~
+  "      }\n" ~
+  "      tr:nth-child(even) {\n" ~
+  "        background-color: #dddddd;\n" ~
+  "      }\n" ~
+  "    </style>\n" ~
+  "  </head>\n" ~
+  "  <body>\n" ~
+  "    <h2>Memory fragmentation metrics</h2>\n" ~
+  "    <table>\n" ~
+  "      <tr>\n" ~
+  "        <th>Scenario</th>\n" ~
+  "        <th>Description</th>\n" ~
+  "        <th>Free spaces</th>\n" ~
+  "        <th>Variance-based metric</th>\n" ~
+  "        <th>Quality-based metric</th>\n" ~
+  "        <th>Simple heuristic metric</th>\n" ~
+  "      </tr>\n";
 for(var index = 0, count = results.size(); index < count; index++){
   var result = results[index];
-  addToHTML("  <tr>\n");
-  addToHTML("    <td>" ~ result.scenarioName ~ "</td>\n");
-  addToHTML("    <td>" ~ result.description ~ "</td>\n");
-  addToHTML("    <td>" ~ result.freeSpaces ~ "</td>\n");
-  addToHTML("    <td>" ~ result.varianceBasedMetric ~ "</td>\n");
-  addToHTML("    <td>" ~ result.qualityBasedMetric ~ "</td>\n");
-  addToHTML("    <td>" ~ result.simpleHeuristicMetric ~ "</td>\n");
-  addToHTML("  </tr>\n");
+  html ~=
+    "      <tr>\n" ~
+    "        <td>" ~ result.scenarioName ~ "</td>\n" ~
+    "        <td>" ~ result.description ~ "</td>\n" ~
+    "        <td>" ~ result.freeSpaces ~ "</td>\n" ~
+    "        <td>" ~ result.varianceBasedMetric ~ "</td>\n" ~
+    "        <td>" ~ result.qualityBasedMetric ~ "</td>\n" ~
+    "        <td>" ~ result.simpleHeuristicMetric ~ "</td>\n" ~
+    "      </tr>\n";
 }
-addToHTML("</table>\n");
-addToHTML("</body>\n");
-addToHTML("</html>\n");
+html ~=
+  "    </table>\n" ~
+  "    <p>\n" ~
+  "      <b>Variance-based metric:</b> The variance-based metric is based on the variance of the free memory block sizes. A lower value indicates less fragmentation. Based on <a href=\"https://jackwrfuller.au/posts/memory-fragmentation/\">this article</a> by jackwrfuller.\n" ~
+  "    </p>\n" ~
+  "    <p>\n" ~
+  "      <b>Quality-based metric:</b> The quality-based metric is based on the sum of the squares of the free memory block sizes. A lower value indicates less fragmentation. Based on <a href=\"https://asawicki.info/news_1757_a_metric_for_memory_fragmentation\">this article</a> by AdamSawicki.\n" ~
+  "    </p>\n" ~
+  "    <p>\n" ~
+  "      <b>Simple heuristic metric:</b> The simple heuristic metric is based on the difference between the total free memory and the largest free block size. A lower value indicates less fragmentation.\n" ~
+  "    </p>\n" ~
+  "  </body>\n" ~
+  "</html>\n";
+
 var htmlFile = IO.open("memoryfragmentationmetrics.html", "c");
 htmlFile.write(html);
 htmlFile.close();
