@@ -73,7 +73,7 @@ type { TpvBufferRangeAllocator }
       public
        type TOnResize=procedure(const aSender:TpvBufferRangeAllocator;const aNewCapacity:TpvSizeInt) of object;
             PRange=^TRange;
-            TRangeRedBlackTree=TpvUInt64RedBlackTree<PRange>;
+            TRangeRedBlackTree=TpvInt64RedBlackTree<PRange>;
             { TRange }
             TRange=record
              public
