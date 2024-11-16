@@ -81,7 +81,8 @@ type { TpvBufferRangeAllocator }
               Len:TpvSizeInt;
               Previous:PRange;
               Next:PRange;
-              Node:TRangeRedBlackTree.TNode;
+              OffsetNode:TRangeRedBlackTree.TNode;
+              SizeNode:TRangeRedBlackTree.TNode;
               procedure SwapWith(var aWith:TRange);
               class function CreateRange(const aStart,aLen:TpvSizeInt):TpvBufferRangeAllocator.PRange; static;
             end;
@@ -101,6 +102,7 @@ type { TpvBufferRangeAllocator }
        fAllocatedRanges:TRangeList;
        fFreeRanges:TRangeList;
        fAllocatedOffsetRangeRedBlackTree:TRangeRedBlackTree;
+       fFreeOffsetRangeRedBlackTree:TRangeRedBlackTree;
        fFreeSizeRangeRedBlackTree:TRangeRedBlackTree;
        fCapacity:TpvSizeInt;
        fOnResize:TOnResize;
@@ -135,7 +137,8 @@ begin
  result^.Len:=aLen;
  result^.Previous:=nil;
  result^.Next:=nil;
- result^.Node:=nil;
+ result^.OffsetNode:=nil;
+ result^.SizeNode:=nil;
 end;
 
 { TpvBufferRangeAllocator.TRangeList }
@@ -309,11 +312,15 @@ begin
    Current^.Len:=Current^.Len+Current^.Next^.Len;
    Current^.Next:=Current^.Next^.Next;
    Remove(ToDelete);
-   aBufferRangeAllocator.fFreeSizeRangeRedBlackTree.Remove(ToDelete^.Node);
-   ToDelete^.Node:=nil;
-   aBufferRangeAllocator.fFreeSizeRangeRedBlackTree.Remove(Current^.Node);
-   Current^.Node:=aBufferRangeAllocator.fFreeSizeRangeRedBlackTree.Insert(Current^.Len,Current);
+   aBufferRangeAllocator.fFreeOffsetRangeRedBlackTree.Remove(ToDelete^.OffsetNode);
+   aBufferRangeAllocator.fFreeSizeRangeRedBlackTree.Remove(ToDelete^.SizeNode);
+   ToDelete^.OffsetNode:=nil;
+   ToDelete^.SizeNode:=nil;
    FreeMem(ToDelete);
+// aBufferRangeAllocator.fFreeOffsetRangeRedBlackTree.Remove(Current^.OffsetNode);
+   aBufferRangeAllocator.fFreeSizeRangeRedBlackTree.Remove(Current^.SizeNode);
+// Current^.OffsetNode:=aBufferRangeAllocator.fFreeOffsetRangeRedBlackTree.Insert(Current^.Start,Current);
+   Current^.SizeNode:=aBufferRangeAllocator.fFreeSizeRangeRedBlackTree.Insert(Current^.Len,Current);
   end else begin
    Current:=Current^.Next;
   end;
@@ -330,13 +337,15 @@ begin
  fAllocatedRanges.Initialize;
  fFreeRanges.Initialize;
  fAllocatedOffsetRangeRedBlackTree:=TRangeRedBlackTree.Create;
+ fFreeOffsetRangeRedBlackTree:=TRangeRedBlackTree.Create;
  fFreeSizeRangeRedBlackTree:=TRangeRedBlackTree.Create;
  fOnResize:=nil;
  fCapacity:=aCapacity;
  if fCapacity>0 then begin
   Range:=TpvBufferRangeAllocator.TRange.CreateRange(0,fCapacity);
   fFreeRanges.Insert(Range);
-  Range^.Node:=fFreeSizeRangeRedBlackTree.Insert(fCapacity,Range);
+  Range^.OffsetNode:=fFreeOffsetRangeRedBlackTree.Insert(0,Range);
+  Range^.SizeNode:=fFreeSizeRangeRedBlackTree.Insert(fCapacity,Range);
  end;
 end;
 
@@ -345,6 +354,7 @@ begin
  fAllocatedRanges.Finalize;
  fFreeRanges.Finalize;
  FreeAndNil(fAllocatedOffsetRangeRedBlackTree);
+ FreeAndNil(fFreeOffsetRangeRedBlackTree);
  FreeAndNil(fFreeSizeRangeRedBlackTree);
  inherited Destroy;
 end;
@@ -408,62 +418,39 @@ begin
 
    if assigned(Node) then begin
     Current:=Node.Value;
-    if assigned(Current) then begin
+    while assigned(Current) do begin
      if Current^.Len=aSize then begin
       result:=Current^.Start;
       fFreeRanges.Remove(Current);
-      fFreeSizeRangeRedBlackTree.Remove(Current^.Node);
+      fFreeOffsetRangeRedBlackTree.Remove(Current^.OffsetNode);
+      fFreeSizeRangeRedBlackTree.Remove(Current^.SizeNode);
       Current^.Previous:=nil;
       Current^.Next:=nil;
       fAllocatedRanges.Insert(Current);
-      Current^.Node:=fAllocatedOffsetRangeRedBlackTree.Insert(Current^.Start,Current);
+      Current^.OffsetNode:=fAllocatedOffsetRangeRedBlackTree.Insert(Current^.Start,Current);
+      Current^.SizeNode:=nil;
       exit;
      end else if Current^.Len>aSize then begin
       result:=Current^.Start;
       if Current^.Len>aSize then begin
        Next:=Current^.CreateRange(Current^.Start+aSize,Current^.Len-aSize);
        fFreeRanges.Insert(Next);
-       Next^.Node:=fFreeSizeRangeRedBlackTree.Insert(Next^.Len,Next);
+       Next^.OffsetNode:=fFreeOffsetRangeRedBlackTree.Insert(Next^.Start,Next);
+       Next^.SizeNode:=fFreeSizeRangeRedBlackTree.Insert(Next^.Len,Next);
       end;
       fFreeRanges.Remove(Current);
-      fFreeSizeRangeRedBlackTree.Remove(Current^.Node);
+      fFreeOffsetRangeRedBlackTree.Remove(Current^.OffsetNode);
+      fFreeSizeRangeRedBlackTree.Remove(Current^.SizeNode);
       Current^.Previous:=nil;
       Current^.Next:=nil;
       fAllocatedRanges.Insert(Current);
-      Current^.Node:=fAllocatedOffsetRangeRedBlackTree.Insert(Current^.Start,Current);
+      Current^.OffsetNode:=fAllocatedOffsetRangeRedBlackTree.Insert(Current^.Start,Current);
+      Current^.SizeNode:=nil;
       exit;
      end;
+     Current:=Current^.Next;
     end;
    end;
-
-{  Current:=fFreeRanges.First;
-   while assigned(Current) do begin
-    if Current^.Len=aSize then begin
-     result:=Current^.Start;
-     fFreeRanges.Remove(Current);
-     fFreeSizeRangeRedBlackTree.Remove(Current^.Node);
-     Current^.Previous:=nil;
-     Current^.Next:=nil;
-     fAllocatedRanges.Insert(Current);
-     Current^.Node:=fAllocatedOffsetRangeRedBlackTree.Insert(Current^.Start,Current);
-     exit;
-    end else if Current^.Len>aSize then begin
-     result:=Current^.Start;
-     if Current^.Len>aSize then begin
-      Next:=Current^.CreateRange(Current^.Start+aSize,Current^.Len-aSize);
-      fFreeRanges.Insert(Next);
-      Next^.Node:=fFreeSizeRangeRedBlackTree.Insert(Next^.Len,Next);
-     end;
-     fFreeRanges.Remove(Current);
-     fFreeSizeRangeRedBlackTree.Remove(Current^.Node);
-     Current^.Previous:=nil;
-     Current^.Next:=nil;
-     fAllocatedRanges.Insert(Current);
-     Current^.Node:=fAllocatedOffsetRangeRedBlackTree.Insert(Current^.Start,Current);
-     exit;
-    end;
-    Current:=Current^.Next;
-   end;}
 
    result:=fCapacity;
    inc(fCapacity,aSize);
@@ -473,7 +460,8 @@ begin
    Current:=fFreeRanges.Last;
    Next:=Current^.CreateRange(result,aSize);
    fFreeRanges.Insert(Next);
-   Next^.Node:=fFreeSizeRangeRedBlackTree.Insert(Next^.Len,Next);
+   Next^.OffsetNode:=fFreeOffsetRangeRedBlackTree.Insert(Next^.Start,Next);
+   Next^.SizeNode:=fFreeSizeRangeRedBlackTree.Insert(Next^.Len,Next);
 
   until false;
 
@@ -491,22 +479,6 @@ var Current,Next:PRange;
 begin
 
  if (aStart>=0) and (aSize<>0) then begin
-
-{ if aSize<0 then begin
-   Current:=fAllocatedRanges.First;
-   while assigned(Current) do begin
-    if Current^.Start=aStart then begin
-     aSize:=Current^.Len;
-     break;
-    end;
-    Current:=Current^.Next;
-   end;
-   if not assigned(Current) then begin
-    Current:=fAllocatedRanges.First;
-   end;
-  end else begin
-   Current:=fAllocatedRanges.First;
-  end;}
 
   Node:=fAllocatedOffsetRangeRedBlackTree.Find(aStart);
   if assigned(Node) then begin
@@ -553,45 +525,54 @@ begin
    while assigned(Current) do begin
     if (Current^.Start=aStart) and (Current^.Len=aSize) then begin
      fAllocatedRanges.Remove(Current);
-     fAllocatedOffsetRangeRedBlackTree.Remove(Current^.Node);
+     fAllocatedOffsetRangeRedBlackTree.Remove(Current^.OffsetNode);
+     Current^.OffsetNode:=nil;
      Current^.Previous:=nil;
      Current^.Next:=nil;
      fFreeRanges.Insert(Current);
-     Current^.Node:=fFreeSizeRangeRedBlackTree.Insert(Current^.Len,Current);
+     Current^.OffsetNode:=fFreeOffsetRangeRedBlackTree.Insert(Current^.Start,Current);
+     Current^.SizeNode:=fFreeSizeRangeRedBlackTree.Insert(Current^.Len,Current);
      MergeFreeRanges;
      exit;
     end else if (Current^.Start=aStart) and (aSize<Current^.Len) then begin
      Next:=Current^.CreateRange(aStart+aSize,Current^.Len-aSize);
      fAllocatedRanges.Remove(Current);
-     fAllocatedOffsetRangeRedBlackTree.Remove(Current^.Node);
+     fAllocatedOffsetRangeRedBlackTree.Remove(Current^.OffsetNode);
+     Current^.OffsetNode:=nil;
      Current^.Previous:=nil;
      Current^.Next:=nil;
      fAllocatedRanges.Insert(Current);
-     Current^.Node:=fAllocatedOffsetRangeRedBlackTree.Insert(Current^.Start,Current);
+     Current^.OffsetNode:=fAllocatedOffsetRangeRedBlackTree.Insert(Current^.Start,Current);
      fFreeRanges.Insert(Next);
-     Next^.Node:=fFreeSizeRangeRedBlackTree.Insert(Next^.Len,Next);
+     Next^.OffsetNode:=fFreeOffsetRangeRedBlackTree.Insert(Next^.Start,Next);
+     Next^.SizeNode:=fFreeSizeRangeRedBlackTree.Insert(Next^.Len,Next);
      MergeFreeRanges;
      exit;
     end else if (Current^.Start<aStart) and ((Current^.Start+Current^.Len)>aStart) then begin
      if (Current^.Start+Current^.Len)>(aStart+aSize) then begin
       Next:=Current^.CreateRange(aStart+aSize,(Current^.Start+Current^.Len)-(aStart+aSize));
       fAllocatedRanges.Remove(Current);
-      fAllocatedOffsetRangeRedBlackTree.Remove(Current^.Node);
+      fAllocatedOffsetRangeRedBlackTree.Remove(Current^.OffsetNode);
+      Current^.OffsetNode:=nil;
       Current^.Previous:=nil;
       Current^.Next:=nil;
       fAllocatedRanges.Insert(Current);
-      Current^.Node:=fAllocatedOffsetRangeRedBlackTree.Insert(Current^.Start,Current);
+      Current^.OffsetNode:=fAllocatedOffsetRangeRedBlackTree.Insert(Current^.Start,Current);
+      Current^.SizeNode:=nil;
       fFreeRanges.Insert(Next);
-      Next^.Node:=fFreeSizeRangeRedBlackTree.Insert(Next^.Len,Next);
+      Next^.OffsetNode:=fFreeOffsetRangeRedBlackTree.Insert(Next^.Start,Next);
+      Next^.SizeNode:=fFreeSizeRangeRedBlackTree.Insert(Next^.Len,Next);
       MergeFreeRanges;
       exit;
      end else begin
       fAllocatedRanges.Remove(Current);
-      fAllocatedOffsetRangeRedBlackTree.Remove(Current^.Node);
+      fAllocatedOffsetRangeRedBlackTree.Remove(Current^.OffsetNode);
+      Current^.OffsetNode:=nil;
       Current^.Previous:=nil;
       Current^.Next:=nil;
       fFreeRanges.Insert(Current);
-      Current^.Node:=fFreeSizeRangeRedBlackTree.Insert(Current^.Len,Current);
+      Current^.OffsetNode:=fFreeOffsetRangeRedBlackTree.Insert(Current^.Start,Current);
+      Current^.SizeNode:=fFreeSizeRangeRedBlackTree.Insert(Current^.Len,Current);
       MergeFreeRanges;
       exit;
      end;
