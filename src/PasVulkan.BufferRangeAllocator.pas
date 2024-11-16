@@ -95,8 +95,7 @@ type { TpvBufferRangeAllocator }
               procedure Finalize;
               procedure Insert(const aRange:PRange);
               procedure Remove(const aRange:PRange);
-              procedure Sort;
-              procedure MergeRanges(const aBufferRangeAllocator:TpvBufferRangeAllocator); // only for free ranges
+              procedure SortByOffsets;
             end;
       private
        fAllocatedRanges:TRangeList;
@@ -106,7 +105,7 @@ type { TpvBufferRangeAllocator }
        fFreeSizeRangeRedBlackTree:TRangeRedBlackTree;
        fCapacity:TpvSizeInt;
        fOnResize:TOnResize;
-       procedure MergeFreeRanges;
+       procedure MergeFreeRanges(const aRange:PRange);
       public
        constructor Create(const aCapacity:TpvSizeInt=0); reintroduce;
        destructor Destroy; override;
@@ -214,7 +213,7 @@ begin
  end;
 end;
 
-procedure TpvBufferRangeAllocator.TRangeList.Sort;
+procedure TpvBufferRangeAllocator.TRangeList.SortByOffsets;
 {$define UseMergeSort}
 {$ifdef UseMergeSort}
 // Merge sort
@@ -297,37 +296,6 @@ begin
 end;
 {$endif}
 
-procedure TpvBufferRangeAllocator.TRangeList.MergeRanges(const aBufferRangeAllocator:TpvBufferRangeAllocator);
-var Current,{Next,}ToDelete:PRange;
-begin
-
- // Sorting
- Sort;
-
- // Merging 
- Current:=First;
- while assigned(Current) and assigned(Current^.Next) do begin
-  if (Current^.Start+Current^.Len)=Current^.Next^.Start then begin
-   ToDelete:=Current^.Next;
-   Current^.Len:=Current^.Len+Current^.Next^.Len;
-   Current^.Next:=Current^.Next^.Next;
-   Remove(ToDelete);
-   aBufferRangeAllocator.fFreeOffsetRangeRedBlackTree.Remove(ToDelete^.OffsetNode);
-   aBufferRangeAllocator.fFreeSizeRangeRedBlackTree.Remove(ToDelete^.SizeNode);
-   ToDelete^.OffsetNode:=nil;
-   ToDelete^.SizeNode:=nil;
-   FreeMem(ToDelete);
-// aBufferRangeAllocator.fFreeOffsetRangeRedBlackTree.Remove(Current^.OffsetNode);
-   aBufferRangeAllocator.fFreeSizeRangeRedBlackTree.Remove(Current^.SizeNode);
-// Current^.OffsetNode:=aBufferRangeAllocator.fFreeOffsetRangeRedBlackTree.Insert(Current^.Start,Current);
-   Current^.SizeNode:=aBufferRangeAllocator.fFreeSizeRangeRedBlackTree.Insert(Current^.Len,Current);
-  end else begin
-   Current:=Current^.Next;
-  end;
- end;
-
-end;
-
 { TpvBufferRangeAllocator }
 
 constructor TpvBufferRangeAllocator.Create(const aCapacity:TpvSizeInt=0);
@@ -359,9 +327,79 @@ begin
  inherited Destroy;
 end;
 
-procedure TpvBufferRangeAllocator.MergeFreeRanges;
+procedure TpvBufferRangeAllocator.MergeFreeRanges(const aRange:PRange);
+var Node,OtherNode:TRangeRedBlackTree.TNode;
+    Current,Next,ToDelete:PRange;
 begin
- fFreeRanges.MergeRanges(self);
+
+ // If the given range is valid and has a valid offset node, then try to merge the free ranges around the given range
+ if assigned(aRange) and assigned(aRange^.OffsetNode) and (aRange^.OffsetNode.Value=aRange) then begin
+
+  // Walk to the beginning of the contiguous area, where the given range is part of it 
+  Node:=aRange^.OffsetNode;  
+  repeat
+   OtherNode:=Node.Predecessor;
+   if assigned(OtherNode) and assigned(OtherNode.Value) and ((OtherNode.Value.Start+OtherNode.Value.Len)=Node.Value.Start) then begin
+    Node:=OtherNode;
+   end else begin
+    break;
+   end;
+  until false;
+
+  // Merge these contiguous areas to one big contiguous area until there is no more contiguous areas to merge which are connected to each other 
+  if assigned(Node) then begin
+   Current:=Node.Value;
+   OtherNode:=Node.Successor;
+   while assigned(OtherNode) and assigned(OtherNode.Value) and ((Node.Value.Start+Node.Value.Len)=OtherNode.Value.Start) do begin
+    Next:=OtherNode.Value;
+    ToDelete:=Next;
+    Current^.Len:=Current^.Len+Next^.Len;
+    Next:=Next^.Next;
+    fFreeRanges.Remove(ToDelete);
+    fFreeOffsetRangeRedBlackTree.Remove(ToDelete^.OffsetNode);
+    fFreeSizeRangeRedBlackTree.Remove(ToDelete^.SizeNode);
+    ToDelete^.OffsetNode:=nil;
+    ToDelete^.SizeNode:=nil;
+    FreeMem(ToDelete);
+ // fFreeOffsetRangeRedBlackTree.Remove(Current^.OffsetNode);
+    fFreeSizeRangeRedBlackTree.Remove(Current^.SizeNode);
+ // Current^.OffsetNode:=fFreeOffsetRangeRedBlackTree.Insert(Current^.Start,Current);
+    Current^.SizeNode:=fFreeSizeRangeRedBlackTree.Insert(Current^.Len,Current);
+    OtherNode:=Node.Successor;
+   end;
+  end;
+
+ end else begin
+
+  // Otherwise doing a full merge of all free ranges
+
+  // Sort the free ranges by their offsets for the next steps 
+  fFreeRanges.SortByOffsets;
+
+  // Walk through all free ranges and merge them if they are contiguous to each other
+  Current:=fFreeRanges.First;
+  while assigned(Current) and assigned(Current^.Next) do begin
+   if (Current^.Start+Current^.Len)=Current^.Next^.Start then begin
+    ToDelete:=Current^.Next;
+    Current^.Len:=Current^.Len+Current^.Next^.Len;
+    Current^.Next:=Current^.Next^.Next;
+    fFreeRanges.Remove(ToDelete);
+    fFreeOffsetRangeRedBlackTree.Remove(ToDelete^.OffsetNode);
+    fFreeSizeRangeRedBlackTree.Remove(ToDelete^.SizeNode);
+    ToDelete^.OffsetNode:=nil;
+    ToDelete^.SizeNode:=nil;
+    FreeMem(ToDelete);
+ // fFreeOffsetRangeRedBlackTree.Remove(Current^.OffsetNode);
+    fFreeSizeRangeRedBlackTree.Remove(Current^.SizeNode);
+ // Current^.OffsetNode:=fFreeOffsetRangeRedBlackTree.Insert(Current^.Start,Current);
+    Current^.SizeNode:=fFreeSizeRangeRedBlackTree.Insert(Current^.Len,Current);
+   end else begin
+    Current:=Current^.Next;
+   end;
+  end;
+
+ end;
+
 end;
 
 function TpvBufferRangeAllocator.Allocate(const aSize:TpvSizeInt):TpvSizeInt;
@@ -416,6 +454,7 @@ begin
     end;
    end;
 
+   // If a suitable free block was found, then allocate it
    if assigned(Node) then begin
     Current:=Node.Value;
     while assigned(Current) do begin
@@ -452,6 +491,7 @@ begin
     end;
    end;
 
+   // Otherwise, try to resize the buffer
    result:=fCapacity;
    inc(fCapacity,aSize);
    if assigned(fOnResize) then begin
@@ -480,9 +520,11 @@ begin
 
  if (aStart>=0) and (aSize<>0) then begin
 
+  // Find any node with the same start offset
   Node:=fAllocatedOffsetRangeRedBlackTree.Find(aStart);
   if assigned(Node) then begin
 
+   // Find the first node with the same start offset by going to the left 
    repeat
     OtherNode:=Node.Predecessor;
     if assigned(OtherNode) and (OtherNode.Key=aStart) then begin
@@ -492,6 +534,7 @@ begin
     end;
    until false;
 
+   // When a specific size is given, then try to find the first node with the same start offset and the same size 
    if aSize>0 then begin
     while assigned(Node.Value) and (Node.Value.Len<>aSize) do begin
      OtherNode:=Node.Successor;
@@ -507,6 +550,7 @@ begin
     end;
    end;
 
+   // Initialize the current node and update the size variable
    if assigned(Node.Value) then begin
     Current:=Node.Value;
     aSize:=Current^.Len;
@@ -516,10 +560,13 @@ begin
 
   end else begin
 
+   // If no node with the same start offset was found, then initialize the current node with the first allocated node
+   // for a bruteforce search as fallback
    Current:=fAllocatedRanges.First;
 
   end;
 
+  // If the current node is valid, then search for the best node to release
   if aSize>0 then begin
 
    while assigned(Current) do begin
@@ -532,7 +579,7 @@ begin
      fFreeRanges.Insert(Current);
      Current^.OffsetNode:=fFreeOffsetRangeRedBlackTree.Insert(Current^.Start,Current);
      Current^.SizeNode:=fFreeSizeRangeRedBlackTree.Insert(Current^.Len,Current);
-     MergeFreeRanges;
+     MergeFreeRanges(Current);
      exit;
     end else if (Current^.Start=aStart) and (aSize<Current^.Len) then begin
      Next:=Current^.CreateRange(aStart+aSize,Current^.Len-aSize);
@@ -546,7 +593,7 @@ begin
      fFreeRanges.Insert(Next);
      Next^.OffsetNode:=fFreeOffsetRangeRedBlackTree.Insert(Next^.Start,Next);
      Next^.SizeNode:=fFreeSizeRangeRedBlackTree.Insert(Next^.Len,Next);
-     MergeFreeRanges;
+     MergeFreeRanges(Next);
      exit;
     end else if (Current^.Start<aStart) and ((Current^.Start+Current^.Len)>aStart) then begin
      if (Current^.Start+Current^.Len)>(aStart+aSize) then begin
@@ -562,7 +609,7 @@ begin
       fFreeRanges.Insert(Next);
       Next^.OffsetNode:=fFreeOffsetRangeRedBlackTree.Insert(Next^.Start,Next);
       Next^.SizeNode:=fFreeSizeRangeRedBlackTree.Insert(Next^.Len,Next);
-      MergeFreeRanges;
+      MergeFreeRanges(Next);
       exit;
      end else begin
       fAllocatedRanges.Remove(Current);
@@ -573,7 +620,7 @@ begin
       fFreeRanges.Insert(Current);
       Current^.OffsetNode:=fFreeOffsetRangeRedBlackTree.Insert(Current^.Start,Current);
       Current^.SizeNode:=fFreeSizeRangeRedBlackTree.Insert(Current^.Len,Current);
-      MergeFreeRanges;
+      MergeFreeRanges(Current);
       exit;
      end;
     end;
