@@ -5009,7 +5009,7 @@ end;
 
 procedure TpvRedBlackTree<TKey,TValue>.TNode.Clear;
 begin
- fKey:=0;
+ FillChar(fKey,SizeOf(TKey),#0);
  fLeft:=nil;
  fRight:=nil;
  fParent:=nil;
@@ -5128,12 +5128,16 @@ begin
 end;
 
 function TpvRedBlackTree<TKey,TValue>.Find(const aKey:TKey):TpvRedBlackTree<TKey,TValue>.TNode;
+var Value:TpvInt32;
+    Comparer:IComparer<TKey>;
 begin
+ Comparer:=TComparer<TKey>.Default;
  result:=fRoot;
  while assigned(result) do begin
-  if aKey<result.fKey then begin
+  Value:=Comparer.Compare(aKey,result.fKey);
+  if Value<0 then begin
    result:=result.fLeft;
-  end else if aKey>result.fKey then begin
+  end else if Value>0 then begin
    result:=result.fRight;
   end else begin
    exit;
@@ -5144,12 +5148,14 @@ end;
 
 function TpvRedBlackTree<TKey,TValue>.Insert(const aKey:TKey;const aValue:TValue):TpvRedBlackTree<TKey,TValue>.TNode;
 var x,y,xParentParent:TpvRedBlackTree<TKey,TValue>.TNode;
+    Comparer:IComparer<TKey>;
 begin
+ Comparer:=TComparer<TKey>.Default;
  x:=fRoot;
  y:=nil;
  while assigned(x) do begin
   y:=x;
-  if aKey<x.fKey then begin
+  if Comparer.Compare(aKey,x.fKey)<0 then begin
    x:=x.fLeft;
   end else begin
    x:=x.fRight;
@@ -5157,7 +5163,7 @@ begin
  end;
  result:=TpvRedBlackTree<TKey,TValue>.TNode.Create(aKey,aValue,nil,nil,y,true);
  if assigned(y) then begin
-  if aKey<y.fKey then begin
+  if Comparer.Compare(aKey,y.fKey)<0 then begin
    y.Left:=result;
   end else begin
    y.Right:=result;
