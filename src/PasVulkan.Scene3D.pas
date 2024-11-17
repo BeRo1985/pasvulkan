@@ -2961,8 +2961,9 @@ type EpvScene3D=class(Exception);
                      fRaytracingMask:TpvUInt8;
                      procedure ConstructData(const aLock:boolean);
                      procedure AllocateData;
-                     procedure ReallocateData;
                      procedure ReleaseData;
+                     procedure ReleaseDataForReallocation;
+                     procedure ReallocateData;
                      function GetAnimation(const aIndex:TPasGLTFSizeInt):TpvScene3D.TGroup.TInstance.TAnimation;
                      function GetAnimationState(const aIndex:TPasGLTFSizeInt):TpvScene3D.TGroup.TInstance.PAnimationState;
                      procedure SetScene(const aScene:TpvSizeInt);
@@ -22649,21 +22650,11 @@ end;
 
 procedure TpvScene3D.TGroup.TInstance.AllocateData;
 var Index:TpvSizeInt;
-    Generation:TpvUInt32;
     Node:TpvScene3D.TGroup.TNode;
     InstanceNode:TpvScene3D.TGroup.TInstance.TNode;
-    SrcVertex{,DstVertex}:PVertex;
-    DstDynamicVertex:PGPUDynamicVertex;
-    DstStaticVertex:PGPUStaticVertex;
-    SrcMorphTargetVertex,DstMorphTargetVertex:PMorphTargetVertex;
-    SrcJointBlock,DstJointBlock:PJointBlock;
 begin
 
  if assigned(fSceneInstance) and not fHeadless then begin
-
-  repeat
-   Generation:=TPasMPInterlocked.Increment(fGroup.fSceneInstance.fMeshGenerationCounter);
-  until Generation<>0;
 
   fSceneInstance.fBufferRangeAllocatorLock.Acquire;
   try
@@ -22747,10 +22738,6 @@ begin
 
 end;
 
-procedure TpvScene3D.TGroup.TInstance.ReallocateData;
-begin
-end;
-
 procedure TpvScene3D.TGroup.TInstance.ReleaseData;
 var Index:TpvSizeInt;
     InstanceNode:TpvScene3D.TGroup.TInstance.TNode;
@@ -22760,16 +22747,16 @@ begin
 
   fSceneInstance.fBufferRangeAllocatorLock.Acquire;
   try
-   fSceneInstance.fVulkanVertexBufferRangeAllocator.ReleaseBufferRangeAndNil(fBufferRanges.VulkanVertexBufferRange);
+   fSceneInstance.fVulkanVertexBufferRangeAllocator.ReleaseBufferRange(fBufferRanges.VulkanVertexBufferRange);
 {  if fSceneInstance.fRaytracingActive and (fVulkanIndexBufferRange.Offset>=0) then begin
-    fSceneInstance.fVulkanIndexBufferRangeAllocator.ReleaseBufferRangeAndNil(fVulkanIndexBufferRange);
+    fSceneInstance.fVulkanIndexBufferRangeAllocator.ReleaseBufferRange(fVulkanIndexBufferRange);
    end;}
-   fSceneInstance.fVulkanDrawIndexBufferRangeAllocator.ReleaseBufferRangeAndNil(fBufferRanges.VulkanDrawIndexBufferRange);
-   fSceneInstance.fVulkanDrawUniqueIndexBufferRangeAllocator.ReleaseBufferRangeAndNil(fBufferRanges.VulkanDrawUniqueIndexBufferRange);
-   fSceneInstance.fVulkanMorphTargetVertexBufferRangeAllocator.ReleaseBufferRangeAndNil(fBufferRanges.VulkanMorphTargetVertexBufferRange);
-   fSceneInstance.fVulkanJointBlockBufferRangeAllocator.ReleaseBufferRangeAndNil(fBufferRanges.VulkanJointBlockBufferRange);
-   fSceneInstance.fVulkanNodeMatricesBufferRangeAllocator.ReleaseBufferRangeAndNil(fBufferRanges.VulkanNodeMatricesBufferRange);
-   fSceneInstance.fVulkanMorphTargetVertexWeightsBufferRangeAllocator.ReleaseBufferRangeAndNil(fBufferRanges.VulkanMorphTargetVertexWeightsBufferRange);
+   fSceneInstance.fVulkanDrawIndexBufferRangeAllocator.ReleaseBufferRange(fBufferRanges.VulkanDrawIndexBufferRange);
+   fSceneInstance.fVulkanDrawUniqueIndexBufferRangeAllocator.ReleaseBufferRange(fBufferRanges.VulkanDrawUniqueIndexBufferRange);
+   fSceneInstance.fVulkanMorphTargetVertexBufferRangeAllocator.ReleaseBufferRange(fBufferRanges.VulkanMorphTargetVertexBufferRange);
+   fSceneInstance.fVulkanJointBlockBufferRangeAllocator.ReleaseBufferRange(fBufferRanges.VulkanJointBlockBufferRange);
+   fSceneInstance.fVulkanNodeMatricesBufferRangeAllocator.ReleaseBufferRange(fBufferRanges.VulkanNodeMatricesBufferRange);
+   fSceneInstance.fVulkanMorphTargetVertexWeightsBufferRangeAllocator.ReleaseBufferRange(fBufferRanges.VulkanMorphTargetVertexWeightsBufferRange);
   finally
    fSceneInstance.fBufferRangeAllocatorLock.Release;
   end;
@@ -22789,6 +22776,144 @@ begin
    finally
     fSceneInstance.fRaytracingLock.Release;
    end;
+  end;
+
+ end;
+
+end;
+
+procedure TpvScene3D.TGroup.TInstance.ReleaseDataForReallocation;
+var Index:TpvSizeInt;
+begin
+
+ if assigned(fSceneInstance) and not fHeadless then begin
+
+  fSceneInstance.fBufferRangeAllocatorLock.Acquire;
+  try
+   fSceneInstance.fVulkanVertexBufferRangeAllocator.ReleaseBufferRange(fBufferRanges.VulkanVertexBufferRange);
+{  if fSceneInstance.fRaytracingActive and (fVulkanIndexBufferRange.Offset>=0) then begin
+    fSceneInstance.fVulkanIndexBufferRangeAllocator.ReleaseBufferRange(fVulkanIndexBufferRange);
+   end;}
+   fSceneInstance.fVulkanDrawIndexBufferRangeAllocator.ReleaseBufferRange(fBufferRanges.VulkanDrawIndexBufferRange);
+   fSceneInstance.fVulkanDrawUniqueIndexBufferRangeAllocator.ReleaseBufferRange(fBufferRanges.VulkanDrawUniqueIndexBufferRange);
+   fSceneInstance.fVulkanMorphTargetVertexBufferRangeAllocator.ReleaseBufferRange(fBufferRanges.VulkanMorphTargetVertexBufferRange);
+   fSceneInstance.fVulkanJointBlockBufferRangeAllocator.ReleaseBufferRange(fBufferRanges.VulkanJointBlockBufferRange);
+   fSceneInstance.fVulkanNodeMatricesBufferRangeAllocator.ReleaseBufferRange(fBufferRanges.VulkanNodeMatricesBufferRange);
+   fSceneInstance.fVulkanMorphTargetVertexWeightsBufferRangeAllocator.ReleaseBufferRange(fBufferRanges.VulkanMorphTargetVertexWeightsBufferRange);
+  finally
+   fSceneInstance.fBufferRangeAllocatorLock.Release;
+  end;
+
+ end;
+
+end;
+
+procedure TpvScene3D.TGroup.TInstance.ReallocateData;
+var Index:TpvSizeInt;
+    DoNeedUpdate:Boolean;
+    Node:TpvScene3D.TGroup.TNode;
+    InstanceNode:TpvScene3D.TGroup.TInstance.TNode;
+begin
+
+ if assigned(fSceneInstance) and not fHeadless then begin
+
+  DoNeedUpdate:=false;
+
+  fSceneInstance.fBufferRangeAllocatorLock.Acquire;
+  try
+   if fSceneInstance.fVulkanVertexBufferRangeAllocator.AllocateBufferRangeWithOffsetChangeCheck(fBufferRanges.VulkanVertexBufferRange) then begin
+    DoNeedUpdate:=true;
+   end;
+{  if fSceneInstance.fRaytracingActive and (fVulkanIndexBufferRange.Offset>=0) then begin
+    if fSceneInstance.fVulkanIndexBufferRangeAllocator.AllocateBufferRangeWithOffsetChangeCheck(fVulkanIndexBufferRange) then begin
+     DoNeedUpdate:=true;
+    end;
+   end;}
+   if fSceneInstance.fVulkanDrawIndexBufferRangeAllocator.AllocateBufferRangeWithOffsetChangeCheck(fBufferRanges.VulkanDrawIndexBufferRange) then begin
+    DoNeedUpdate:=true;
+   end;
+   if fSceneInstance.fVulkanDrawUniqueIndexBufferRangeAllocator.AllocateBufferRangeWithOffsetChangeCheck(fBufferRanges.VulkanDrawUniqueIndexBufferRange) then begin
+    DoNeedUpdate:=true;
+   end;
+   if fSceneInstance.fVulkanMorphTargetVertexBufferRangeAllocator.AllocateBufferRangeWithOffsetChangeCheck(fBufferRanges.VulkanMorphTargetVertexBufferRange) then begin
+    DoNeedUpdate:=true;
+   end;
+   if fSceneInstance.fVulkanJointBlockBufferRangeAllocator.AllocateBufferRangeWithOffsetChangeCheck(fBufferRanges.VulkanJointBlockBufferRange) then begin
+    DoNeedUpdate:=true;
+   end;
+   if fSceneInstance.fVulkanNodeMatricesBufferRangeAllocator.AllocateBufferRangeWithOffsetChangeCheck(fBufferRanges.VulkanNodeMatricesBufferRange) then begin
+    DoNeedUpdate:=true;
+   end;
+   if fSceneInstance.fVulkanMorphTargetVertexWeightsBufferRangeAllocator.AllocateBufferRangeWithOffsetChangeCheck(fBufferRanges.VulkanMorphTargetVertexWeightsBufferRange) then begin
+    DoNeedUpdate:=true;
+   end;
+   if DoNeedUpdate then begin
+    ConstructData(false);
+   end;
+  finally
+   fSceneInstance.fBufferRangeAllocatorLock.Release;
+  end;
+
+  if DoNeedUpdate then begin
+
+   if fSceneInstance.fRaytracingActive then begin
+    fSceneInstance.fRaytracingLock.Acquire;
+    try
+     for Index:=0 to fNodes.Count-1 do begin
+      InstanceNode:=fNodes.RawItems[Index];
+      if InstanceNode.fRaytracingGroupInstanceNodeID>0 then begin
+       fSceneInstance.fRaytracingGroupInstanceNodeRemoveQueue.Enqueue(TRaytracingGroupInstanceNodeQueueItem.Create(self,Index,InstanceNode.fRaytracingGroupInstanceNodeID));
+       fSceneInstance.fRaytracingGroupInstanceNodeExistHashMap.Delete(InstanceNode.fRaytracingGroupInstanceNodeID);
+      end;
+     end;
+    finally
+     fSceneInstance.fRaytracingLock.Release;
+    end;
+   end;
+
+   if assigned(fScenes) then begin
+    for Index:=0 to Min(fScenes.Count,fGroup.fScenes.Count)-1 do begin
+     fScenes[Index].FixUp;
+    end;
+   end;
+
+   if assigned(fDrawChoreographyBatchItems) then begin
+    fDrawChoreographyBatchItems.GroupInstanceFixup(fGroup.fDrawChoreographyBatchItems,self,false);
+   end;
+
+   if assigned(fDrawChoreographyBatchUniqueItems) then begin
+    fDrawChoreographyBatchUniqueItems.GroupInstanceFixup(fGroup.fDrawChoreographyBatchUniqueItems,self,true);
+   end;
+
+   // Add to new instances list, even when it's not a new instance, for example after defragmentation, so that the instance is updated on the buffers
+   if assigned(fScenes) then begin
+    fSceneInstance.fNewInstanceListLock.Acquire;
+    try
+     fSceneInstance.fNewInstances.Add(self);
+    finally
+     fSceneInstance.fNewInstanceListLock.Release;
+    end;
+    TPasMPInterlocked.Write(fIsNewInstance,TPasMPBool32(true));
+   end;
+
+   if fSceneInstance.fRaytracingActive then begin
+    fSceneInstance.fRaytracingLock.Acquire;
+    try
+     for Index:=0 to fGroup.fNodes.Count-1 do begin
+      Node:=fGroup.fNodes[Index];
+      InstanceNode:=fNodes.RawItems[Index];
+      if assigned(Node.Mesh) and (Node.Mesh.fRaytracingPrimitives.Count>0) then begin
+       InstanceNode.fRaytracingGroupInstanceNodeID:=fSceneInstance.fRaytracingGroupInstanceNodeIDCounter+1;
+       inc(fSceneInstance.fRaytracingGroupInstanceNodeIDCounter);
+       fSceneInstance.fRaytracingGroupInstanceNodeExistHashMap.Add(InstanceNode.fRaytracingGroupInstanceNodeID,true);
+       fSceneInstance.fRaytracingGroupInstanceNodeAddQueue.Enqueue(TRaytracingGroupInstanceNodeQueueItem.Create(self,Index,InstanceNode.fRaytracingGroupInstanceNodeID));
+      end;
+     end;
+    finally
+     fSceneInstance.fRaytracingLock.Release;
+    end;
+   end;
+
   end;
 
  end;
@@ -28596,14 +28721,14 @@ begin
     // Release all data buffer range allocators
     for GroupInstance in fGroupInstances do begin
      if GroupInstance.fGroup.Usable then begin
-      GroupInstance.ReleaseData;
+      GroupInstance.ReleaseDataForReallocation;
      end;
     end;
 
     // Reallocation of all data buffer range allocators without fragmentation
     for GroupInstance in fGroupInstances do begin
      if GroupInstance.fGroup.Usable then begin
-      GroupInstance.AllocateData;
+      GroupInstance.ReallocateData;
      end;
     end;
 
