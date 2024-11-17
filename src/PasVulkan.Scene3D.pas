@@ -3430,6 +3430,8 @@ type EpvScene3D=class(Exception);
             TRaytracingGroupInstanceNodeArrayList=TpvObjectGenericList<TRaytracingGroupInstanceNode>;
             { TRaytracingGroupInstanceNodeHashMap }
             TRaytracingGroupInstanceNodeHashMap=TpvHashMap<TpvUInt64,TRaytracingGroupInstanceNode>;
+            { TRaytracingGroupInstanceNodeExistHashMap }
+            TRaytracingGroupInstanceNodeExistHashMap=TpvHashMap<TpvUInt64,Boolean>;
             { TRaytracingGroupInstanceNodeQueueItem }
             TRaytracingGroupInstanceNodeQueueItem=record
              private
@@ -3628,6 +3630,7 @@ type EpvScene3D=class(Exception);
        fRaytracingGroupInstanceNodeList:TRaytracingGroupInstanceNodeList;
        fRaytracingGroupInstanceNodeDirtyArrayList:TRaytracingGroupInstanceNodeArrayList;
        fRaytracingGroupInstanceNodeHashMap:TRaytracingGroupInstanceNodeHashMap;
+       fRaytracingGroupInstanceNodeExistHashMap:TRaytracingGroupInstanceNodeExistHashMap;
        fRaytracingGroupInstanceNodeAddQueue:TRaytracingGroupInstanceNodeQueue;
        fRaytracingGroupInstanceNodeRemoveQueue:TRaytracingGroupInstanceNodeQueue;
        fRaytracingBLASInstances:TpvRaytracingBottomLevelAccelerationStructureInstanceList;
@@ -22656,6 +22659,7 @@ begin
      if assigned(Node.Mesh) and (Node.Mesh.fRaytracingPrimitives.Count>0) then begin
       InstanceNode.fRaytracingGroupInstanceNodeID:=fSceneInstance.fRaytracingGroupInstanceNodeIDCounter+1;
       inc(fSceneInstance.fRaytracingGroupInstanceNodeIDCounter);
+      fSceneInstance.fRaytracingGroupInstanceNodeExistHashMap.Add(InstanceNode.fRaytracingGroupInstanceNodeID,true);
       fSceneInstance.fRaytracingGroupInstanceNodeAddQueue.Enqueue(TRaytracingGroupInstanceNodeQueueItem.Create(self,Index,InstanceNode.fRaytracingGroupInstanceNodeID));
      end;
     end;
@@ -22759,6 +22763,7 @@ begin
      InstanceNode:=fNodes.RawItems[Index];
      if InstanceNode.fRaytracingGroupInstanceNodeID>0 then begin
       fSceneInstance.fRaytracingGroupInstanceNodeRemoveQueue.Enqueue(TRaytracingGroupInstanceNodeQueueItem.Create(self,Index,InstanceNode.fRaytracingGroupInstanceNodeID));
+      fSceneInstance.fRaytracingGroupInstanceNodeExistHashMap.Delete(InstanceNode.fRaytracingGroupInstanceNodeID);
      end;
     end;
    finally
@@ -27391,6 +27396,8 @@ begin
 
  fRaytracingGroupInstanceNodeHashMap:=TRaytracingGroupInstanceNodeHashMap.Create(nil);
 
+ fRaytracingGroupInstanceNodeExistHashMap:=TRaytracingGroupInstanceNodeExistHashMap.Create(false);
+
  fRaytracingGroupInstanceNodeAddQueue.Initialize;
 
  fRaytracingGroupInstanceNodeRemoveQueue.Initialize;
@@ -28485,6 +28492,8 @@ begin
  fRaytracingGroupInstanceNodeRemoveQueue.Finalize;
 
  FreeAndNil(fRaytracingGroupInstanceNodeHashMap);
+
+ FreeAndNil(fRaytracingGroupInstanceNodeExistHashMap);
 
  FreeAndNil(fRaytracingGroupInstanceNodeDirtyArrayList);
 
@@ -32140,7 +32149,10 @@ begin
     //////////////////////////////////////////////////////////////////////////////
 
     while fRaytracingGroupInstanceNodeAddQueue.Dequeue(RaytracingGroupInstanceNodeQueueItem) do begin
-     if not fRaytracingGroupInstanceNodeHashMap.ExistKey(RaytracingGroupInstanceNodeQueueItem.fRaytracingGroupInstanceNodeID) then begin
+     if (not fRaytracingGroupInstanceNodeHashMap.ExistKey(RaytracingGroupInstanceNodeQueueItem.fRaytracingGroupInstanceNodeID)) and
+        fRaytracingGroupInstanceNodeExistHashMap.ExistKey(RaytracingGroupInstanceNodeQueueItem.fRaytracingGroupInstanceNodeID) and
+        assigned(RaytracingGroupInstanceNodeQueueItem.fInstance) and
+        assigned(RaytracingGroupInstanceNodeQueueItem.fInstance.fGroup) then begin
       RaytracingGroupInstanceNode:=TRaytracingGroupInstanceNode.Create(self,
                                                                        RaytracingGroupInstanceNodeQueueItem.fInstance.fGroup,
                                                                        RaytracingGroupInstanceNodeQueueItem.fInstance,

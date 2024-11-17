@@ -355,7 +355,7 @@ begin
     Next:=OtherNode.Value;
     ToDelete:=Next;
     Current^.Len:=Current^.Len+Next^.Len;
-    Next:=Next^.Next;
+    Current^.Next:=Next^.Next;
     fFreeRanges.Remove(ToDelete);
     fFreeOffsetRangeRedBlackTree.Remove(ToDelete^.OffsetNode);
     fFreeSizeRangeRedBlackTree.Remove(ToDelete^.SizeNode);
