@@ -97,6 +97,11 @@ type { TpvBufferRangeAllocator }
               procedure Remove(const aRange:PRange);
               procedure SortByOffsets;
             end;
+            TBufferRange=record
+             Offset:TpvSizeInt;
+             Size:TpvSizeInt;
+            end;
+            PBufferRange=^TBufferRange;
       private
        fAllocatedRanges:TRangeList;
        fFreeRanges:TRangeList;
@@ -111,6 +116,8 @@ type { TpvBufferRangeAllocator }
        destructor Destroy; override;
        function Allocate(const aSize:TpvSizeInt):TpvSizeInt;
        procedure Release(const aStart:TpvSizeInt;aSize:TpvSizeInt=-1);
+       function AllocateBufferRange(const aSize:TpvSizeInt):TBufferRange;
+       procedure ReleaseBufferRange(const aBufferRange:TBufferRange);
        function CalculateFragmentationFactor:TpvDouble;
       published
        property Capacity:TpvSizeInt read fCapacity;
@@ -632,6 +639,17 @@ begin
 
  end;
 
+end;
+
+function TpvBufferRangeAllocator.AllocateBufferRange(const aSize:TpvSizeInt):TpvBufferRangeAllocator.TBufferRange;
+begin
+ result.Offset:=Allocate(aSize);
+ result.Size:=aSize;
+end;
+
+procedure TpvBufferRangeAllocator.ReleaseBufferRange(const aBufferRange:TpvBufferRangeAllocator.TBufferRange);
+begin
+ Release(aBufferRange.Offset,aBufferRange.Size);
 end;
 
 // Calculate fragmentation factor 
