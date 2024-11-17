@@ -118,6 +118,7 @@ type { TpvBufferRangeAllocator }
        procedure Release(const aStart:TpvSizeInt;aSize:TpvSizeInt=-1);
        function AllocateBufferRange(const aSize:TpvSizeInt):TBufferRange;
        procedure ReleaseBufferRange(const aBufferRange:TBufferRange);
+       procedure ReleaseBufferRangeAndNil(var aBufferRange:TBufferRange);
        function CalculateFragmentationFactor:TpvDouble;
       published
        property Capacity:TpvSizeInt read fCapacity;
@@ -641,15 +642,26 @@ begin
 
 end;
 
-function TpvBufferRangeAllocator.AllocateBufferRange(const aSize:TpvSizeInt):TpvBufferRangeAllocator.TBufferRange;
+function TpvBufferRangeAllocator.AllocateBufferRange(const aSize: TpvSizeInt
+ ): TBufferRange;
 begin
  result.Offset:=Allocate(aSize);
  result.Size:=aSize;
 end;
 
-procedure TpvBufferRangeAllocator.ReleaseBufferRange(const aBufferRange:TpvBufferRangeAllocator.TBufferRange);
+procedure TpvBufferRangeAllocator.ReleaseBufferRange(
+ const aBufferRange: TBufferRange);
 begin
  Release(aBufferRange.Offset,aBufferRange.Size);
+end;
+
+procedure TpvBufferRangeAllocator.ReleaseBufferRangeAndNil(var aBufferRange:TBufferRange);
+begin
+ if (aBufferRange.Offset>=0) and (aBufferRange.Size>0) then begin
+  Release(aBufferRange.Offset,aBufferRange.Size);
+ end;
+ aBufferRange.Offset:=-1;
+ aBufferRange.Size:=0;
 end;
 
 // Calculate fragmentation factor 
