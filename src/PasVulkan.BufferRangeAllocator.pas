@@ -88,24 +88,26 @@ type { TpvBufferRangeAllocator }
               fBufferRangeAllocator:TpvBufferRangeAllocator;
               fOffset:TpvInt64;
               fSize:TpvInt64;
+              fAlignment:TpvInt64;
               fAllocationType:TAllocationType;
               fOffsetRedBlackTreeNode:TRangeRedBlackTree.TNode;
               fSizeRedBlackTreeNode:TRangeRedBlackTree.TNode;
              public
-              constructor Create(const aBufferRangeAllocator:TpvBufferRangeAllocator;const aOffset,aSize:TpvInt64;const aAllocationType:TAllocationType); reintroduce;
+              constructor Create(const aBufferRangeAllocator:TpvBufferRangeAllocator;const aOffset,aSize,aAlignment:TpvInt64;const aAllocationType:TAllocationType); reintroduce;
               destructor Destroy; override;
-              procedure Update(const aOffset,aSize:TpvInt64;const aAllocationType:TAllocationType);
+              procedure Update(const aOffset,aSize,aAlignment:TpvInt64;const aAllocationType:TAllocationType);
             end;
             { TBufferRange }
             TBufferRange=record
              public
               Offset:TpvInt64;
               Size:TpvInt64;
+              Alignment:TpvInt64;
              public
               procedure Clear;
             end;
             PBufferRange=^TBufferRange;
-       const EmptyBufferRange:TBufferRange=(Offset:-1;Size:0);
+       const EmptyBufferRange:TBufferRange=(Offset:-1;Size:0;Alignment:0);
       private
        fOffsetRedBlackTree:TRangeRedBlackTree;
        fSizeRedBlackTree:TRangeRedBlackTree;
@@ -116,9 +118,9 @@ type { TpvBufferRangeAllocator }
       public
        constructor Create(const aCapacity:TpvInt64=0); reintroduce;
        destructor Destroy; override;
-       function Allocate(const aSize:TpvInt64):TpvInt64;
+       function Allocate(const aSize:TpvInt64;const aAlignment:TpvInt64=1):TpvInt64;
        function Release(const aOffset:TpvInt64;const aSize:TpvInt64=-1):Boolean;
-       function AllocateBufferRange(const aSize:TpvInt64):TBufferRange;
+       function AllocateBufferRange(const aSize:TpvInt64;const aAlignment:TpvInt64=1):TBufferRange;
        function AllocateBufferRangeWithOffsetChangeCheck(var aBufferRange:TBufferRange):boolean;
        procedure ReleaseBufferRange(const aBufferRange:TBufferRange);
        procedure ReleaseBufferRangeAndNil(var aBufferRange:TBufferRange);
@@ -128,19 +130,19 @@ type { TpvBufferRangeAllocator }
        property OnResize:TOnResize read fOnResize write fOnResize; 
      end;
 
-
 implementation
 
 uses PasVulkan.Utils;
 
 { TpvBufferRangeAllocator.TRange }
 
-constructor TpvBufferRangeAllocator.TRange.Create(const aBufferRangeAllocator:TpvBufferRangeAllocator;const aOffset,aSize:TpvInt64;const aAllocationType:TAllocationType);
+constructor TpvBufferRangeAllocator.TRange.Create(const aBufferRangeAllocator:TpvBufferRangeAllocator;const aOffset,aSize,aAlignment:TpvInt64;const aAllocationType:TAllocationType);
 begin
  inherited Create;
  fBufferRangeAllocator:=aBufferRangeAllocator;
  fOffset:=aOffset;
  fSize:=aSize;
+ fAlignment:=aAlignment;
  fAllocationType:=aAllocationType;
  fOffsetRedBlackTreeNode:=fBufferRangeAllocator.fOffsetRedBlackTree.Insert(aOffset,self);
  if fAllocationType=TpvBufferRangeAllocator.TRange.TAllocationType.Free then begin
@@ -157,7 +159,7 @@ begin
  inherited Destroy;
 end;
 
-procedure TpvBufferRangeAllocator.TRange.Update(const aOffset,aSize:TpvInt64;const aAllocationType:TAllocationType);
+procedure TpvBufferRangeAllocator.TRange.Update(const aOffset,aSize,aAlignment:TpvInt64;const aAllocationType:TAllocationType);
 begin
  if fOffset<>aOffset then begin
   fBufferRangeAllocator.fOffsetRedBlackTree.Remove(fOffsetRedBlackTreeNode);
@@ -173,7 +175,7 @@ begin
  end;
  fOffset:=aOffset;
  fSize:=aSize;
-//fAlignment:=aAlignment;
+ fAlignment:=aAlignment;
  fAllocationType:=aAllocationType;
 end;
 
@@ -197,7 +199,7 @@ begin
  fAllocated:=0;
  fCapacity:=aCapacity;
  if fCapacity>0 then begin
-  TpvBufferRangeAllocator.TRange.Create(self,0,fCapacity,TpvBufferRangeAllocator.TRange.TAllocationType.Free);
+  TpvBufferRangeAllocator.TRange.Create(self,0,fCapacity,1,TpvBufferRangeAllocator.TRange.TAllocationType.Free);
  end;
 end;
 
@@ -214,13 +216,15 @@ begin
  inherited Destroy;
 end;
 
-function TpvBufferRangeAllocator.Allocate(const aSize:TpvInt64):TpvInt64;
+function TpvBufferRangeAllocator.Allocate(const aSize:TpvInt64;const aAlignment:TpvInt64=1):TpvInt64;
 var Range:TRange;
     Node,OtherNode:TRangeRedBlackTree.TNode;
-    RangeBeginOffset,RangeEndOffset,PayloadBeginOffset,PayloadEndOffset:TpvInt64;
+    RangeBeginOffset,RangeEndOffset,PayloadBeginOffset,PayloadEndOffset,Alignment:TpvInt64;
 begin
 
  if aSize>0 then begin
+
+  Alignment:=aAlignment;
 
   fLock.Acquire;
   try
@@ -283,20 +287,20 @@ begin
 
      // Prefer to allocate from the end of the memory chunk block
      PayloadBeginOffset:=RangeEndOffset-aSize;
-{    if (Alignment>1) and ((PayloadBeginOffset and (Alignment-1))<>0) then begin
+     if (Alignment>1) and ((PayloadBeginOffset and (Alignment-1))<>0) then begin
       dec(PayloadBeginOffset,PayloadBeginOffset and (Alignment-1));
       if PayloadBeginOffset<RangeBeginOffset then begin
        PayloadBeginOffset:=RangeBeginOffset; // For just to be sure
       end;
-     end;}
+     end;
 
 {$else}
 
      // Prefer to allocate from the beginning of the memory chunk block
      PayloadBeginOffset:=RangeBeginOffset;
-{    if (Alignment>1) and ((PayloadBeginOffset and (Alignment-1))<>0) then begin
+     if (Alignment>1) and ((PayloadBeginOffset and (Alignment-1))<>0) then begin
       inc(PayloadBeginOffset,Alignment-(PayloadBeginOffset and (Alignment-1)));
-     end;}
+     end;
 
 {$ifend}
 
@@ -305,18 +309,18 @@ begin
      if (PayloadBeginOffset<PayloadEndOffset) and
         (PayloadEndOffset<=RangeEndOffset) then begin
 
-      Range.Update(PayloadBeginOffset,PayloadEndOffset-PayloadBeginOffset,TpvBufferRangeAllocator.TRange.TAllocationType.Allocated);
+      Range.Update(PayloadBeginOffset,PayloadEndOffset-PayloadBeginOffset,Alignment,TpvBufferRangeAllocator.TRange.TAllocationType.Allocated);
 
       result:=Range.fOffset;
 
       inc(fAllocated,Range.fSize);
 
       if RangeBeginOffset<PayloadBeginOffset then begin
-       TpvBufferRangeAllocator.TRange.Create(self,RangeBeginOffset,PayloadBeginOffset-RangeBeginOffset,TpvBufferRangeAllocator.TRange.TAllocationType.Free);
+       TpvBufferRangeAllocator.TRange.Create(self,RangeBeginOffset,PayloadBeginOffset-RangeBeginOffset,1,TpvBufferRangeAllocator.TRange.TAllocationType.Free);
       end;
 
       if PayloadEndOffset<RangeEndOffset then begin
-       TpvBufferRangeAllocator.TRange.Create(self,PayloadEndOffset,RangeEndOffset-PayloadEndOffset,TpvBufferRangeAllocator.TRange.TAllocationType.Free);
+       TpvBufferRangeAllocator.TRange.Create(self,PayloadEndOffset,RangeEndOffset-PayloadEndOffset,1,TpvBufferRangeAllocator.TRange.TAllocationType.Free);
       end;
 
       exit;
@@ -333,9 +337,9 @@ begin
     end;
     Node:=fOffsetRedBlackTree.RightMost;
     if assigned(Node) and assigned(Node.Value) and (Node.Value.fAllocationType=TpvBufferRangeAllocator.TRange.TAllocationType.Free) then begin
-     Node.Value.Update(Node.Value.fOffset,(result+aSize)-Node.Value.fOffset,TpvBufferRangeAllocator.TRange.TAllocationType.Free);
+     Node.Value.Update(Node.Value.fOffset,(result+aSize)-Node.Value.fOffset,1,TpvBufferRangeAllocator.TRange.TAllocationType.Free);
     end else begin
-     TpvBufferRangeAllocator.TRange.Create(self,result,aSize,TpvBufferRangeAllocator.TRange.TAllocationType.Free);
+     TpvBufferRangeAllocator.TRange.Create(self,result,aSize,1,TpvBufferRangeAllocator.TRange.TAllocationType.Free);
     end;
 
    until false;
@@ -380,7 +384,7 @@ begin
       OtherRange:=OtherNode.fValue;
       TempOffset:=OtherRange.fOffset;
       TempSize:=(Range.fOffset+Range.fSize)-TempOffset;
-      OtherRange.Update(TempOffset,TempSize,TpvBufferRangeAllocator.TRange.TAllocationType.Free);
+      OtherRange.Update(TempOffset,TempSize,1,TpvBufferRangeAllocator.TRange.TAllocationType.Free);
       FreeAndNil(Range);
       Range:=OtherRange;
       Node:=OtherNode;
@@ -393,14 +397,14 @@ begin
       OtherRange:=OtherNode.fValue;
       TempOffset:=Range.fOffset;
       TempSize:=(OtherRange.fOffset+OtherRange.fSize)-TempOffset;
-      Range.Update(TempOffset,TempSize,TpvBufferRangeAllocator.TRange.TAllocationType.Free);
+      Range.Update(TempOffset,TempSize,1,TpvBufferRangeAllocator.TRange.TAllocationType.Free);
       FreeAndNil(OtherRange);
       continue;
      end;
 
      if Range.fAllocationType<>TpvBufferRangeAllocator.TRange.TAllocationType.Free then begin
       // Mark block as free
-      Range.Update(Range.fOffset,Range.fSize,TpvBufferRangeAllocator.TRange.TAllocationType.Free);
+      Range.Update(Range.fOffset,Range.fSize,1,TpvBufferRangeAllocator.TRange.TAllocationType.Free);
      end;
      break;
 
@@ -418,9 +422,9 @@ begin
 
 end;
 
-function TpvBufferRangeAllocator.AllocateBufferRange(const aSize:TpvInt64):TBufferRange;
+function TpvBufferRangeAllocator.AllocateBufferRange(const aSize:TpvInt64;const aAlignment:TpvInt64):TBufferRange;
 begin
- result.Offset:=Allocate(aSize);
+ result.Offset:=Allocate(aSize,aAlignment);
  result.Size:=aSize;
 end;
 
