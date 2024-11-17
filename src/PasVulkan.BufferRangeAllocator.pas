@@ -65,6 +65,7 @@ uses SysUtils,
      Classes,
      Math,
      Vulkan,
+     PasMP,
      PasVulkan.Collections,
      PasVulkan.Types;
 
@@ -116,6 +117,7 @@ type { TpvBufferRangeAllocator }
        fCapacity:TpvSizeInt;
        fOnResize:TOnResize;
        fAllocated:TpvSizeInt;
+       fLock:TPasMPCriticalSection;
        procedure MergeFreeRanges(const aRange:PRange);
       public
        constructor Create(const aCapacity:TpvSizeInt=0); reintroduce;
@@ -329,6 +331,7 @@ constructor TpvBufferRangeAllocator.Create(const aCapacity:TpvSizeInt=0);
 var Range:TpvBufferRangeAllocator.PRange;
 begin
  inherited Create;
+ fLock:=TPasMPCriticalSection.Create;
  fAllocatedRanges.Initialize;
  fFreeRanges.Initialize;
  fAllocatedOffsetRangeRedBlackTree:=TRangeRedBlackTree.Create;
@@ -352,6 +355,7 @@ begin
  FreeAndNil(fAllocatedOffsetRangeRedBlackTree);
  FreeAndNil(fFreeOffsetRangeRedBlackTree);
  FreeAndNil(fFreeSizeRangeRedBlackTree);
+ FreeAndNil(fLock);
  inherited Destroy;
 end;
 
@@ -441,103 +445,110 @@ begin
 
  if aSize>0 then begin
 
-  repeat
+  fLock.Acquire;
+  try
 
-   // Best-fit search
-   Node:=fFreeSizeRangeRedBlackTree.Root;
-   while assigned(Node) do begin
-    if aSize<Node.Key then begin
-     if assigned(Node.Left) then begin
-      // If free block is too big, then go to left
-      Node:=Node.Left;
-      continue;
-     end else begin
-      // If free block is too big and there is no left children node, then try to find suitable smaller but not too small free blocks
-      while assigned(Node) and (Node.Key>aSize) do begin
-       OtherNode:=Node.Predecessor;
-       if assigned(OtherNode) and (OtherNode.Key>=aSize) then begin
-        Node:=OtherNode;
-       end else begin
-        break;
+   repeat
+
+    // Best-fit search
+    Node:=fFreeSizeRangeRedBlackTree.Root;
+    while assigned(Node) do begin
+     if aSize<Node.Key then begin
+      if assigned(Node.Left) then begin
+       // If free block is too big, then go to left
+       Node:=Node.Left;
+       continue;
+      end else begin
+       // If free block is too big and there is no left children node, then try to find suitable smaller but not too small free blocks
+       while assigned(Node) and (Node.Key>aSize) do begin
+        OtherNode:=Node.Predecessor;
+        if assigned(OtherNode) and (OtherNode.Key>=aSize) then begin
+         Node:=OtherNode;
+        end else begin
+         break;
+        end;
        end;
+       break;
       end;
+     end else if aSize>Node.Key then begin
+      if assigned(Node.Right) then begin
+       // If free block is too small, go to right
+       Node:=Node.Right;
+       continue;
+      end else begin
+       // If free block is too small and there is no right children node, then try to find suitable bigger but not too small free blocks
+       while assigned(Node) and (Node.Key<aSize) do begin
+        OtherNode:=Node.Successor;
+        if assigned(OtherNode) then begin
+         Node:=OtherNode;
+        end else begin
+         break;
+        end;
+       end;
+       break;
+      end;
+     end else begin
+      // Perfect match
       break;
      end;
-    end else if aSize>Node.Key then begin
-     if assigned(Node.Right) then begin
-      // If free block is too small, go to right
-      Node:=Node.Right;
-      continue;
-     end else begin
-      // If free block is too small and there is no right children node, then try to find suitable bigger but not too small free blocks
-      while assigned(Node) and (Node.Key<aSize) do begin
-       OtherNode:=Node.Successor;
-       if assigned(OtherNode) then begin
-        Node:=OtherNode;
-       end else begin
-        break;
+    end;
+
+    // If a suitable free block was found, then allocate it
+    if assigned(Node) then begin
+     Current:=Node.Value;
+     while assigned(Current) do begin
+      if Current^.Len=aSize then begin
+       result:=Current^.Start;
+       fFreeRanges.Remove(Current);
+       fFreeOffsetRangeRedBlackTree.Remove(Current^.OffsetNode);
+       fFreeSizeRangeRedBlackTree.Remove(Current^.SizeNode);
+       Current^.Previous:=nil;
+       Current^.Next:=nil;
+       fAllocatedRanges.Insert(Current);
+       Current^.OffsetNode:=fAllocatedOffsetRangeRedBlackTree.Insert(Current^.Start,Current);
+       Current^.SizeNode:=nil;
+       inc(fAllocated,aSize);
+       exit;
+      end else if Current^.Len>aSize then begin
+       result:=Current^.Start;
+       if Current^.Len>aSize then begin
+        Next:=Current^.CreateRange(Current^.Start+aSize,Current^.Len-aSize);
+        fFreeRanges.Insert(Next);
+        Next^.OffsetNode:=fFreeOffsetRangeRedBlackTree.Insert(Next^.Start,Next);
+        Next^.SizeNode:=fFreeSizeRangeRedBlackTree.Insert(Next^.Len,Next);
        end;
+       fFreeRanges.Remove(Current);
+       fFreeOffsetRangeRedBlackTree.Remove(Current^.OffsetNode);
+       fFreeSizeRangeRedBlackTree.Remove(Current^.SizeNode);
+       Current^.Previous:=nil;
+       Current^.Next:=nil;
+       fAllocatedRanges.Insert(Current);
+       Current^.OffsetNode:=fAllocatedOffsetRangeRedBlackTree.Insert(Current^.Start,Current);
+       Current^.SizeNode:=nil;
+       inc(fAllocated,aSize);
+       exit;
       end;
-      break;
+      Current:=Current^.Next;
      end;
-    end else begin
-     // Perfect match
-     break;
     end;
-   end;
 
-   // If a suitable free block was found, then allocate it
-   if assigned(Node) then begin
-    Current:=Node.Value;
-    while assigned(Current) do begin
-     if Current^.Len=aSize then begin
-      result:=Current^.Start;
-      fFreeRanges.Remove(Current);
-      fFreeOffsetRangeRedBlackTree.Remove(Current^.OffsetNode);
-      fFreeSizeRangeRedBlackTree.Remove(Current^.SizeNode);
-      Current^.Previous:=nil;
-      Current^.Next:=nil;
-      fAllocatedRanges.Insert(Current);
-      Current^.OffsetNode:=fAllocatedOffsetRangeRedBlackTree.Insert(Current^.Start,Current);
-      Current^.SizeNode:=nil;
-      inc(fAllocated,aSize);
-      exit;
-     end else if Current^.Len>aSize then begin
-      result:=Current^.Start;
-      if Current^.Len>aSize then begin
-       Next:=Current^.CreateRange(Current^.Start+aSize,Current^.Len-aSize);
-       fFreeRanges.Insert(Next);
-       Next^.OffsetNode:=fFreeOffsetRangeRedBlackTree.Insert(Next^.Start,Next);
-       Next^.SizeNode:=fFreeSizeRangeRedBlackTree.Insert(Next^.Len,Next);
-      end;
-      fFreeRanges.Remove(Current);
-      fFreeOffsetRangeRedBlackTree.Remove(Current^.OffsetNode);
-      fFreeSizeRangeRedBlackTree.Remove(Current^.SizeNode);
-      Current^.Previous:=nil;
-      Current^.Next:=nil;
-      fAllocatedRanges.Insert(Current);
-      Current^.OffsetNode:=fAllocatedOffsetRangeRedBlackTree.Insert(Current^.Start,Current);
-      Current^.SizeNode:=nil;
-      inc(fAllocated,aSize);
-      exit;
-     end;
-     Current:=Current^.Next;
+    // Otherwise, try to resize the buffer
+    result:=fCapacity;
+    inc(fCapacity,aSize);
+    if assigned(fOnResize) then begin
+     fOnResize(self,fCapacity);
     end;
-   end;
+    Current:=fFreeRanges.Last;
+    Next:=Current^.CreateRange(result,aSize);
+    fFreeRanges.Insert(Next);
+    Next^.OffsetNode:=fFreeOffsetRangeRedBlackTree.Insert(Next^.Start,Next);
+    Next^.SizeNode:=fFreeSizeRangeRedBlackTree.Insert(Next^.Len,Next);
 
-   // Otherwise, try to resize the buffer
-   result:=fCapacity;
-   inc(fCapacity,aSize);
-   if assigned(fOnResize) then begin
-    fOnResize(self,fCapacity);
-   end;
-   Current:=fFreeRanges.Last;
-   Next:=Current^.CreateRange(result,aSize);
-   fFreeRanges.Insert(Next);
-   Next^.OffsetNode:=fFreeOffsetRangeRedBlackTree.Insert(Next^.Start,Next);
-   Next^.SizeNode:=fFreeSizeRangeRedBlackTree.Insert(Next^.Len,Next);
+   until false;
 
-  until false;
+  finally
+   fLock.Release;
+  end;
 
  end else begin
 
@@ -554,101 +565,60 @@ begin
 
  if (aStart>=0) and (aSize<>0) then begin
 
-  // Find any node with the same start offset
-  Node:=fAllocatedOffsetRangeRedBlackTree.Find(aStart);
-  if assigned(Node) then begin
+  fLock.Acquire;
+  try
 
-   // Find the first node with the same start offset by going to the left 
-   repeat
-    OtherNode:=Node.Predecessor;
-    if assigned(OtherNode) and (OtherNode.Key=aStart) then begin
-     Node:=OtherNode;
-    end else begin
-     break;
-    end;
-   until false;
+   // Find any node with the same start offset
+   Node:=fAllocatedOffsetRangeRedBlackTree.Find(aStart);
+   if assigned(Node) then begin
 
-   // When a specific size is given, then try to find the first node with the same start offset and the same size 
-   if aSize>0 then begin
-    while assigned(Node.Value) and (Node.Value.Len<>aSize) do begin
-     OtherNode:=Node.Successor;
+    // Find the first node with the same start offset by going to the left
+    repeat
+     OtherNode:=Node.Predecessor;
      if assigned(OtherNode) and (OtherNode.Key=aStart) then begin
-      if assigned(OtherNode.Value) and (OtherNode.Value.Len=aSize) then begin
-       break;
-      end else begin
-       Node:=OtherNode;
-      end;
+      Node:=OtherNode;
      end else begin
       break;
      end;
+    until false;
+
+    // When a specific size is given, then try to find the first node with the same start offset and the same size
+    if aSize>0 then begin
+     while assigned(Node.Value) and (Node.Value.Len<>aSize) do begin
+      OtherNode:=Node.Successor;
+      if assigned(OtherNode) and (OtherNode.Key=aStart) then begin
+       if assigned(OtherNode.Value) and (OtherNode.Value.Len=aSize) then begin
+        break;
+       end else begin
+        Node:=OtherNode;
+       end;
+      end else begin
+       break;
+      end;
+     end;
     end;
-   end;
 
-   // Initialize the current node and update the size variable
-   if assigned(Node.Value) then begin
-    Current:=Node.Value;
-    aSize:=Current^.Len;
+    // Initialize the current node and update the size variable
+    if assigned(Node.Value) then begin
+     Current:=Node.Value;
+     aSize:=Current^.Len;
+    end else begin
+     Current:=fAllocatedRanges.First;
+    end;
+
    end else begin
+
+    // If no node with the same start offset was found, then initialize the current node with the first allocated node
+    // for a bruteforce search as fallback
     Current:=fAllocatedRanges.First;
+
    end;
 
-  end else begin
+   // If the current node is valid, then search for the best node to release
+   if aSize>0 then begin
 
-   // If no node with the same start offset was found, then initialize the current node with the first allocated node
-   // for a bruteforce search as fallback
-   Current:=fAllocatedRanges.First;
-
-  end;
-
-  // If the current node is valid, then search for the best node to release
-  if aSize>0 then begin
-
-   while assigned(Current) do begin
-    if (Current^.Start=aStart) and (Current^.Len=aSize) then begin
-     fAllocatedRanges.Remove(Current);
-     fAllocatedOffsetRangeRedBlackTree.Remove(Current^.OffsetNode);
-     Current^.OffsetNode:=nil;
-     Current^.Previous:=nil;
-     Current^.Next:=nil;
-     fFreeRanges.Insert(Current);
-     Current^.OffsetNode:=fFreeOffsetRangeRedBlackTree.Insert(Current^.Start,Current);
-     Current^.SizeNode:=fFreeSizeRangeRedBlackTree.Insert(Current^.Len,Current);
-     MergeFreeRanges(Current);
-     dec(fAllocated,aSize);
-     exit;
-    end else if (Current^.Start=aStart) and (aSize<Current^.Len) then begin
-     Next:=Current^.CreateRange(aStart+aSize,Current^.Len-aSize);
-     fAllocatedRanges.Remove(Current);
-     fAllocatedOffsetRangeRedBlackTree.Remove(Current^.OffsetNode);
-     Current^.OffsetNode:=nil;
-     Current^.Previous:=nil;
-     Current^.Next:=nil;
-     fAllocatedRanges.Insert(Current);
-     Current^.OffsetNode:=fAllocatedOffsetRangeRedBlackTree.Insert(Current^.Start,Current);
-     fFreeRanges.Insert(Next);
-     Next^.OffsetNode:=fFreeOffsetRangeRedBlackTree.Insert(Next^.Start,Next);
-     Next^.SizeNode:=fFreeSizeRangeRedBlackTree.Insert(Next^.Len,Next);
-     MergeFreeRanges(Next);
-     dec(fAllocated,aSize);
-     exit;
-    end else if (Current^.Start<aStart) and ((Current^.Start+Current^.Len)>aStart) then begin
-     if (Current^.Start+Current^.Len)>(aStart+aSize) then begin
-      Next:=Current^.CreateRange(aStart+aSize,(Current^.Start+Current^.Len)-(aStart+aSize));
-      fAllocatedRanges.Remove(Current);
-      fAllocatedOffsetRangeRedBlackTree.Remove(Current^.OffsetNode);
-      Current^.OffsetNode:=nil;
-      Current^.Previous:=nil;
-      Current^.Next:=nil;
-      fAllocatedRanges.Insert(Current);
-      Current^.OffsetNode:=fAllocatedOffsetRangeRedBlackTree.Insert(Current^.Start,Current);
-      Current^.SizeNode:=nil;
-      fFreeRanges.Insert(Next);
-      Next^.OffsetNode:=fFreeOffsetRangeRedBlackTree.Insert(Next^.Start,Next);
-      Next^.SizeNode:=fFreeSizeRangeRedBlackTree.Insert(Next^.Len,Next);
-      MergeFreeRanges(Next);
-      dec(fAllocated,aSize);
-      exit;
-     end else begin
+    while assigned(Current) do begin
+     if (Current^.Start=aStart) and (Current^.Len=aSize) then begin
       fAllocatedRanges.Remove(Current);
       fAllocatedOffsetRangeRedBlackTree.Remove(Current^.OffsetNode);
       Current^.OffsetNode:=nil;
@@ -660,11 +630,59 @@ begin
       MergeFreeRanges(Current);
       dec(fAllocated,aSize);
       exit;
+     end else if (Current^.Start=aStart) and (aSize<Current^.Len) then begin
+      Next:=Current^.CreateRange(aStart+aSize,Current^.Len-aSize);
+      fAllocatedRanges.Remove(Current);
+      fAllocatedOffsetRangeRedBlackTree.Remove(Current^.OffsetNode);
+      Current^.OffsetNode:=nil;
+      Current^.Previous:=nil;
+      Current^.Next:=nil;
+      fAllocatedRanges.Insert(Current);
+      Current^.OffsetNode:=fAllocatedOffsetRangeRedBlackTree.Insert(Current^.Start,Current);
+      fFreeRanges.Insert(Next);
+      Next^.OffsetNode:=fFreeOffsetRangeRedBlackTree.Insert(Next^.Start,Next);
+      Next^.SizeNode:=fFreeSizeRangeRedBlackTree.Insert(Next^.Len,Next);
+      MergeFreeRanges(Next);
+      dec(fAllocated,aSize);
+      exit;
+     end else if (Current^.Start<aStart) and ((Current^.Start+Current^.Len)>aStart) then begin
+      if (Current^.Start+Current^.Len)>(aStart+aSize) then begin
+       Next:=Current^.CreateRange(aStart+aSize,(Current^.Start+Current^.Len)-(aStart+aSize));
+       fAllocatedRanges.Remove(Current);
+       fAllocatedOffsetRangeRedBlackTree.Remove(Current^.OffsetNode);
+       Current^.OffsetNode:=nil;
+       Current^.Previous:=nil;
+       Current^.Next:=nil;
+       fAllocatedRanges.Insert(Current);
+       Current^.OffsetNode:=fAllocatedOffsetRangeRedBlackTree.Insert(Current^.Start,Current);
+       Current^.SizeNode:=nil;
+       fFreeRanges.Insert(Next);
+       Next^.OffsetNode:=fFreeOffsetRangeRedBlackTree.Insert(Next^.Start,Next);
+       Next^.SizeNode:=fFreeSizeRangeRedBlackTree.Insert(Next^.Len,Next);
+       MergeFreeRanges(Next);
+       dec(fAllocated,aSize);
+       exit;
+      end else begin
+       fAllocatedRanges.Remove(Current);
+       fAllocatedOffsetRangeRedBlackTree.Remove(Current^.OffsetNode);
+       Current^.OffsetNode:=nil;
+       Current^.Previous:=nil;
+       Current^.Next:=nil;
+       fFreeRanges.Insert(Current);
+       Current^.OffsetNode:=fFreeOffsetRangeRedBlackTree.Insert(Current^.Start,Current);
+       Current^.SizeNode:=fFreeSizeRangeRedBlackTree.Insert(Current^.Len,Current);
+       MergeFreeRanges(Current);
+       dec(fAllocated,aSize);
+       exit;
+      end;
      end;
+     Current:=Current^.Next;
     end;
-    Current:=Current^.Next;
+
    end;
 
+  finally
+   fLock.Release;
   end;
 
  end;
@@ -709,21 +727,26 @@ function TpvBufferRangeAllocator.CalculateFragmentationFactor:TpvDouble;
 var TotalFreeMemory,LargestFreeBlock:TpvSizeInt;
     Current:PRange;
 begin
- MergeFreeRanges(nil);
- TotalFreeMemory:=0;
- LargestFreeBlock:=0;
- Current:=fFreeRanges.First;
- while assigned(Current) do begin
-  inc(TotalFreeMemory,Current^.Len);
-  if Current^.Len>LargestFreeBlock then begin
-   LargestFreeBlock:=Current^.Len;
+ fLock.Acquire;
+ try
+  MergeFreeRanges(nil);
+  TotalFreeMemory:=0;
+  LargestFreeBlock:=0;
+  Current:=fFreeRanges.First;
+  while assigned(Current) do begin
+   inc(TotalFreeMemory,Current^.Len);
+   if Current^.Len>LargestFreeBlock then begin
+    LargestFreeBlock:=Current^.Len;
+   end;
+   Current:=Current^.Next;
   end;
-  Current:=Current^.Next;
- end;
- if TotalFreeMemory=0 then begin
-  result:=0.0;
- end else begin
-  result:=(TotalFreeMemory-LargestFreeBlock)/TotalFreeMemory;
+  if TotalFreeMemory=0 then begin
+   result:=0.0;
+  end else begin
+   result:=(TotalFreeMemory-LargestFreeBlock)/TotalFreeMemory;
+  end;
+ finally
+  fLock.Release;
  end;
 end;
 
