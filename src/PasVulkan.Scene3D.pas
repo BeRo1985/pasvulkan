@@ -3681,6 +3681,9 @@ type EpvScene3D=class(Exception);
        fVulkanNodeMatricesBufferRangeAllocator:TpvBufferRangeAllocator;
        fVulkanMorphTargetVertexWeightsBufferRangeAllocator:TpvBufferRangeAllocator;
        fVulkanLongTermStaticBuffers:TVulkanLongTermStaticBuffers;
+       fLastNeedDefragmentationCheckTime:TpvHighResolutionTime;
+       function NeedDefragmentation(const aForceCheck:boolean):boolean;
+       function Defragment(const aForce:boolean):boolean;
       public
        fVulkanShortTermDynamicBuffers:TVulkanShortTermDynamicBuffers;
       private
@@ -27450,6 +27453,8 @@ begin
   fVulkanMorphTargetVertexWeightsBufferData[Index].Initialize;
  end;
 
+ fLastNeedDefragmentationCheckTime:=0;
+
  fVulkanVertexBufferRangeAllocator:=TpvBufferRangeAllocator.Create;
 
 //fVulkanIndexBufferRangeAllocator:=TpvBufferRangeAllocator.Create;
@@ -28489,6 +28494,68 @@ begin
  fVulkanDrawUniqueIndexBufferData.Resize(fInitialCountIndices);
  fVulkanMorphTargetVertexBufferData.Resize(fInitialCountMorphTargetVertices);
  fVulkanJointBlockBufferData.Resize(fInitialCountJointBlocks);
+end;
+
+
+function TpvScene3D.NeedDefragmentation(const aForceCheck:boolean):boolean;
+const Threshold=0.75;
+var NowTime:TpvHighResolutionTime;
+begin
+ NowTime:=pvApplication.HighResolutionTimer.GetTime;
+ if aForceCheck or (fLastNeedDefragmentationCheckTime=0) or (abs(NowTime-fLastNeedDefragmentationCheckTime)>pvApplication.HighResolutionTimer.SecondInterval) then begin
+  fLastNeedDefragmentationCheckTime:=NowTime;
+  result:=(fVulkanVertexBufferRangeAllocator.CalculateFragmentationFactor>=Threshold) or
+ //       (fVulkanIndexBufferRangeAllocator.CalculateFragmentationFactor>=Threshold) or
+          (fVulkanDrawIndexBufferRangeAllocator.CalculateFragmentationFactor>=Threshold) or
+          (fVulkanDrawUniqueIndexBufferRangeAllocator.CalculateFragmentationFactor>=Threshold) or
+          (fVulkanMorphTargetVertexBufferRangeAllocator.CalculateFragmentationFactor>=Threshold) or
+          (fVulkanJointBlockBufferRangeAllocator.CalculateFragmentationFactor>=Threshold) or
+          (fVulkanNodeMatricesBufferRangeAllocator.CalculateFragmentationFactor>=Threshold) or
+          (fVulkanMorphTargetVertexWeightsBufferRangeAllocator.CalculateFragmentationFactor>=Threshold);
+ end else begin
+  result:=false;
+ end;
+end;
+
+function TpvScene3D.Defragment(const aForce:boolean):boolean;
+var GroupInstance:TpvScene3D.TGroup.TInstance;
+begin
+
+ // Check if we need to defragment
+ result:=aForce or NeedDefragmentation(false);
+ if result then begin
+
+  // We have to lock the group list and the group instance list
+  fGroupListLock.Acquire;
+  try
+
+   fGroupInstanceListLock.Acquire;
+   try
+
+    // Release all data buffer range allocators
+    for GroupInstance in fGroupInstances do begin
+     if GroupInstance.fGroup.Usable then begin
+      GroupInstance.ReleaseData;
+     end;
+    end;
+
+    // Reallocation of all data buffer range allocators without fragmentation
+    for GroupInstance in fGroupInstances do begin
+     if GroupInstance.fGroup.Usable then begin
+      GroupInstance.AllocateData;
+     end;
+    end;
+
+   finally
+    fGroupInstanceListLock.Release;
+   end;
+
+  finally
+   fGroupListLock.Release;
+  end;
+
+ end;
+
 end;
 
 class function TpvScene3D.DetectFileType(const aMemory:pointer;const aSize:TpvSizeInt):TpvScene3D.TFileType; 
@@ -29815,6 +29882,8 @@ var Index:TpvSizeInt;
     Group:TpvScene3D.TGroup;
     Planet:TpvScene3DPlanet;
 begin
+
+ Defragment(false);
 
  ProcessFreeQueue;
 
