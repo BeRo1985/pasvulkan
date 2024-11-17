@@ -72,65 +72,59 @@ uses SysUtils,
 type { TpvBufferRangeAllocator }
      TpvBufferRangeAllocator=class
       public
-       type TOnResize=procedure(const aSender:TpvBufferRangeAllocator;const aNewCapacity:TpvSizeInt) of object;
-            PRange=^TRange;
-            TRangeRedBlackTree=TpvInt64RedBlackTree<PRange>;
-            { TRange }
-            TRange=record
+       type TOnResize=procedure(const aSender:TpvBufferRangeAllocator;const aNewCapacity:TpvInt64) of object;
+            TRange=class;
+            { TRangeRedBlackTree }
+            TRangeRedBlackTree=TpvInt64RedBlackTree<TRange>;
+            TRange=class
              public
-              Start:TpvSizeInt;
-              Len:TpvSizeInt;
-              Previous:PRange;
-              Next:PRange;
-              OffsetNode:TRangeRedBlackTree.TNode;
-              SizeNode:TRangeRedBlackTree.TNode;
-              procedure SwapWith(var aWith:TRange);
-              class function CreateRange(const aStart,aLen:TpvSizeInt):TpvBufferRangeAllocator.PRange; static;
-            end;
-            { TRangeList }
-            TRangeList=record
+              type TAllocationType=
+                    (
+                     Free,
+                     Allocated
+                    );
+                   PAllocationType=^TAllocationType;
+             private
+              fBufferRangeAllocator:TpvBufferRangeAllocator;
+              fOffset:TpvInt64;
+              fSize:TpvInt64;
+              fAllocationType:TAllocationType;
+              fOffsetRedBlackTreeNode:TRangeRedBlackTree.TNode;
+              fSizeRedBlackTreeNode:TRangeRedBlackTree.TNode;
              public
-              First:PRange;
-              Last:PRange;
-              procedure Initialize;
-              procedure Finalize;
-              procedure Insert(const aRange:PRange);
-              procedure Remove(const aRange:PRange);
-              procedure SortByOffsets;
+              constructor Create(const aBufferRangeAllocator:TpvBufferRangeAllocator;const aOffset,aSize:TpvInt64;const aAllocationType:TAllocationType); reintroduce;
+              destructor Destroy; override;
+              procedure Update(const aOffset,aSize:TpvInt64;const aAllocationType:TAllocationType);
             end;
             { TBufferRange }
             TBufferRange=record
              public
-              Offset:TpvSizeInt;
-              Size:TpvSizeInt;
+              Offset:TpvInt64;
+              Size:TpvInt64;
              public
               procedure Clear;
             end;
             PBufferRange=^TBufferRange;
        const EmptyBufferRange:TBufferRange=(Offset:-1;Size:0);
       private
-       fAllocatedRanges:TRangeList;
-       fFreeRanges:TRangeList;
-       fAllocatedOffsetRangeRedBlackTree:TRangeRedBlackTree;
-       fFreeOffsetRangeRedBlackTree:TRangeRedBlackTree;
-       fFreeSizeRangeRedBlackTree:TRangeRedBlackTree;
-       fCapacity:TpvSizeInt;
+       fOffsetRedBlackTree:TRangeRedBlackTree;
+       fSizeRedBlackTree:TRangeRedBlackTree;
+       fCapacity:TpvInt64;
        fOnResize:TOnResize;
-       fAllocated:TpvSizeInt;
+       fAllocated:TpvInt64;
        fLock:TPasMPCriticalSection;
-       procedure MergeFreeRanges(const aRange:PRange);
       public
-       constructor Create(const aCapacity:TpvSizeInt=0); reintroduce;
+       constructor Create(const aCapacity:TpvInt64=0); reintroduce;
        destructor Destroy; override;
-       function Allocate(const aSize:TpvSizeInt):TpvSizeInt;
-       procedure Release(const aStart:TpvSizeInt;aSize:TpvSizeInt=-1);
-       function AllocateBufferRange(const aSize:TpvSizeInt):TBufferRange;
+       function Allocate(const aSize:TpvInt64):TpvInt64;
+       function Release(const aOffset:TpvInt64;const aSize:TpvInt64=-1):Boolean;
+       function AllocateBufferRange(const aSize:TpvInt64):TBufferRange;
        function AllocateBufferRangeWithOffsetChangeCheck(var aBufferRange:TBufferRange):boolean;
        procedure ReleaseBufferRange(const aBufferRange:TBufferRange);
        procedure ReleaseBufferRangeAndNil(var aBufferRange:TBufferRange);
        function CalculateFragmentationFactor:TpvDouble;
       published
-       property Capacity:TpvSizeInt read fCapacity;
+       property Capacity:TpvInt64 read fCapacity;
        property OnResize:TOnResize read fOnResize write fOnResize; 
      end;
 
@@ -141,181 +135,47 @@ uses PasVulkan.Utils;
 
 { TpvBufferRangeAllocator.TRange }
 
-procedure TpvBufferRangeAllocator.TRange.SwapWith(var aWith:TRange);
+constructor TpvBufferRangeAllocator.TRange.Create(const aBufferRangeAllocator:TpvBufferRangeAllocator;const aOffset,aSize:TpvInt64;const aAllocationType:TAllocationType);
 begin
- TpvSwap<TpvSizeInt>.Swap(Start,aWith.Start);
- TpvSwap<TpvSizeInt>.Swap(Len,aWith.Len);
-end;
-
-class function TpvBufferRangeAllocator.TRange.CreateRange(const aStart,aLen:TpvSizeInt):TpvBufferRangeAllocator.PRange;
-begin
- GetMem(result,SizeOf(TpvBufferRangeAllocator.TRange));
- result^.Start:=aStart;
- result^.Len:=aLen;
- result^.Previous:=nil;
- result^.Next:=nil;
- result^.OffsetNode:=nil;
- result^.SizeNode:=nil;
-end;
-
-{ TpvBufferRangeAllocator.TRangeList }
-
-procedure TpvBufferRangeAllocator.TRangeList.Initialize;
-begin
- First:=nil;
- Last:=nil;
-end;
-
-procedure TpvBufferRangeAllocator.TRangeList.Finalize;
-var Current,Next:PRange;
-begin
- Current:=First;
- while assigned(Current) do begin
-  Next:=Current^.Next;
-  FreeMem(Current);
-  Current:=Next;
- end;
- First:=nil;
- Last:=nil;
-end;
-
-procedure TpvBufferRangeAllocator.TRangeList.Insert(const aRange:PRange);
-var Current,Previous:PRange;
-begin
- if assigned(aRange) then begin
-  if assigned(First) then begin
-   aRange^.Previous:=Last;
-   aRange^.Previous^.Next:=aRange;
-   Last:=aRange;
-{  if aRange^.Start<First^.Start then begin
-    aRange^.Next:=First;
-    aRange^.Next^.Previous:=aRange;
-    First:=aRange;
-   end else if aRange^.Start>Last^.Start then begin
-    aRange^.Previous:=Last;
-    aRange^.Previous^.Next:=aRange;
-    Last:=aRange;
-   end else begin
-    Current:=First;
-    while assigned(Current^.Next) and (Current^.Next^.Start<aRange^.Start) do begin
-     Current:=Current^.Next;
-    end;
-    aRange^.Next:=Current^.Next;
-    if assigned(Current^.Next) then begin
-     aRange^.Next^.Previous:=aRange;
-    end;
-    Current^.Next:=aRange;
-    aRange^.Previous:=Current;
-   end;}
-  end else begin
-   First:=aRange;
-   Last:=aRange;
-   aRange^.Previous:=nil;
-   aRange^.Next:=nil;
-  end;
+ inherited Create;
+ fBufferRangeAllocator:=aBufferRangeAllocator;
+ fOffset:=aOffset;
+ fSize:=aSize;
+ fAllocationType:=aAllocationType;
+ fOffsetRedBlackTreeNode:=fBufferRangeAllocator.fOffsetRedBlackTree.Insert(aOffset,self);
+ if fAllocationType=TpvBufferRangeAllocator.TRange.TAllocationType.Free then begin
+  fSizeRedBlackTreeNode:=fBufferRangeAllocator.fSizeRedBlackTree.Insert(aSize,self);
  end;
 end;
 
-procedure TpvBufferRangeAllocator.TRangeList.Remove(const aRange:PRange);
+destructor TpvBufferRangeAllocator.TRange.Destroy;
 begin
- if assigned(aRange) then begin
-  if assigned(aRange^.Previous) then begin
-   aRange^.Previous^.Next:=aRange^.Next;
-  end else if First=aRange then begin
-   First:=aRange^.Next;
-  end;
-  if assigned(aRange^.Next) then begin
-   aRange^.Next^.Previous:=aRange^.Previous;
-  end else if Last=aRange then begin
-   Last:=aRange^.Previous;
-  end;
-  aRange^.Previous:=nil;
-  aRange^.Next:=nil;
+ fBufferRangeAllocator.fOffsetRedBlackTree.Remove(fOffsetRedBlackTreeNode);
+ if fAllocationType=TpvBufferRangeAllocator.TRange.TAllocationType.Free then begin
+  fBufferRangeAllocator.fSizeRedBlackTree.Remove(fSizeRedBlackTreeNode);
  end;
+ inherited Destroy;
 end;
 
-procedure TpvBufferRangeAllocator.TRangeList.SortByOffsets;
-{$define UseMergeSort}
-{$ifdef UseMergeSort}
-// Merge sort
-var PartA,PartB,CurrentRange:PRange;
-    InSize,PartASize,PartBSize,Merges:TpvSizeINt;
+procedure TpvBufferRangeAllocator.TRange.Update(const aOffset,aSize:TpvInt64;const aAllocationType:TAllocationType);
 begin
- if assigned(First) then begin
-  InSize:=1;
-  while true do begin
-   PartA:=First;
-   First:=nil;
-   Last:=nil;
-   Merges:=0;
-   while assigned(PartA) do begin
-    inc(Merges);
-    PartB:=PartA;
-    PartASize:=0;
-    while PartASize<InSize do begin
-     inc(PartASize);
-     PartB:=PartB^.Next;
-     if not assigned(PartB) then begin
-      break;
-     end;
-    end;
-    PartBSize:=InSize;
-    while (PartASize>0) or ((PartBSize>0) and assigned(PartB)) do begin
-     if PartASize=0 then begin
-      CurrentRange:=PartB;
-      PartB:=PartB^.Next;
-      dec(PartBSize);
-     end else if (PartBSize=0) or not assigned(PartB) then begin
-      CurrentRange:=PartA;
-      PartA:=PartA^.Next;
-      dec(PartASize);
-     end else if PartA^.Start<=PartB^.Start then begin
-      CurrentRange:=PartA;
-      PartA:=PartA^.Next;
-      dec(PartASize);
-     end else begin
-      CurrentRange:=PartB;
-      PartB:=PartB^.Next;
-      dec(PartBSize);
-     end;
-     if assigned(Last) then begin
-      Last^.Next:=CurrentRange;
-     end else begin
-      First:=CurrentRange;
-     end;
-     CurrentRange^.Previous:=Last;
-     Last:=CurrentRange;
-    end;
-    PartA:=PartB;
-   end;
-   Last^.Next:=nil;
-   if Merges<=1 then begin
-    break;
-   end;
-   inc(InSize,InSize);
+ if fOffset<>aOffset then begin
+  fBufferRangeAllocator.fOffsetRedBlackTree.Remove(fOffsetRedBlackTreeNode);
+  fOffsetRedBlackTreeNode:=fBufferRangeAllocator.fOffsetRedBlackTree.Insert(aOffset,self);
+ end;
+ if ((fAllocationType=fBufferRangeAllocator.TRange.TAllocationType.Free)<>(aAllocationType=fBufferRangeAllocator.TRange.TAllocationType.Free)) or (fSize<>aSize) then begin
+  if fAllocationType=fBufferRangeAllocator.TRange.TAllocationType.Free then begin
+   fBufferRangeAllocator.fSizeRedBlackTree.Remove(fSizeRedBlackTreeNode);
+  end;
+  if aAllocationType=fBufferRangeAllocator.TRange.TAllocationType.Free then begin
+   fSizeRedBlackTreeNode:=fBufferRangeAllocator.fSizeRedBlackTree.Insert(aSize,self);
   end;
  end;
+ fOffset:=aOffset;
+ fSize:=aSize;
+//fAlignment:=aAlignment;
+ fAllocationType:=aAllocationType;
 end;
-{$else}
-// Bubble sort
-var Current,Next,ToDelete:PRange;
-begin
- Current:=First;
- while assigned(Current) and assigned(Current^.Next) do begin
-  Next:=Current^.Next;
-  if Current^.Start>Current^.Next^.Start then begin
-   Current^.SwapWith(Next^);
-   if assigned(Current^.Previous) then begin
-    Current:=Current^.Previous;
-   end else begin
-    Current:=Next;
-   end;
-  end else begin
-   Current:=Next;
-  end;
- end;
-end;
-{$endif}
 
 { TpvBufferRangeAllocator.TBufferRange }
 
@@ -327,120 +187,37 @@ end;
 
 { TpvBufferRangeAllocator }
 
-constructor TpvBufferRangeAllocator.Create(const aCapacity:TpvSizeInt=0);
-var Range:TpvBufferRangeAllocator.PRange;
+constructor TpvBufferRangeAllocator.Create(const aCapacity:TpvInt64=0);
 begin
  inherited Create;
  fLock:=TPasMPCriticalSection.Create;
- fAllocatedRanges.Initialize;
- fFreeRanges.Initialize;
- fAllocatedOffsetRangeRedBlackTree:=TRangeRedBlackTree.Create;
- fFreeOffsetRangeRedBlackTree:=TRangeRedBlackTree.Create;
- fFreeSizeRangeRedBlackTree:=TRangeRedBlackTree.Create;
+ fOffsetRedBlackTree:=TRangeRedBlackTree.Create;
+ fSizeRedBlackTree:=TRangeRedBlackTree.Create;
  fOnResize:=nil;
  fAllocated:=0;
  fCapacity:=aCapacity;
  if fCapacity>0 then begin
-  Range:=TpvBufferRangeAllocator.TRange.CreateRange(0,fCapacity);
-  fFreeRanges.Insert(Range);
-  Range^.OffsetNode:=fFreeOffsetRangeRedBlackTree.Insert(0,Range);
-  Range^.SizeNode:=fFreeSizeRangeRedBlackTree.Insert(fCapacity,Range);
+  TpvBufferRangeAllocator.TRange.Create(self,0,fCapacity,TpvBufferRangeAllocator.TRange.TAllocationType.Free);
  end;
 end;
 
 destructor TpvBufferRangeAllocator.Destroy;
 begin
- fAllocatedRanges.Finalize;
- fFreeRanges.Finalize;
- FreeAndNil(fAllocatedOffsetRangeRedBlackTree);
- FreeAndNil(fFreeOffsetRangeRedBlackTree);
- FreeAndNil(fFreeSizeRangeRedBlackTree);
+ if assigned(fOffsetRedBlackTree) then begin
+  while assigned(fOffsetRedBlackTree.fRoot) do begin
+   fOffsetRedBlackTree.fRoot.fValue.Free;
+  end;
+ end;
+ FreeAndNil(fOffsetRedBlackTree);
+ FreeAndNil(fSizeRedBlackTree);
  FreeAndNil(fLock);
  inherited Destroy;
 end;
 
-procedure TpvBufferRangeAllocator.MergeFreeRanges(const aRange:PRange);
-var Node,OtherNode:TRangeRedBlackTree.TNode;
-    Current,Next,ToDelete:PRange;
-begin
-
- // If the given range is valid and has a valid offset node, then try to merge the free ranges around the given range
- if assigned(aRange) and assigned(aRange^.OffsetNode) and (aRange^.OffsetNode.Value=aRange) then begin
-
-  // Walk to the beginning of the contiguous area, where the given range is part of it 
-  Node:=aRange^.OffsetNode;  
-  repeat
-   OtherNode:=Node.Predecessor;
-   if assigned(OtherNode) and assigned(OtherNode.Value) and ((OtherNode.Value.Start+OtherNode.Value.Len)=Node.Value.Start) then begin
-    Node:=OtherNode;
-   end else begin
-    break;
-   end;
-  until false;
-
-  // Merge these contiguous areas to one big contiguous area until there is no more contiguous areas to merge which are connected to each other 
-  if assigned(Node) then begin
-   Current:=Node.Value;
-   OtherNode:=Node.Successor;
-   while assigned(OtherNode) and assigned(OtherNode.Value) and ((Node.Value.Start+Node.Value.Len)=OtherNode.Value.Start) do begin
-    Next:=OtherNode.Value;
-    ToDelete:=Next;
-    Current^.Len:=Current^.Len+Next^.Len;
-    Current^.Next:=Next^.Next;
-    fFreeRanges.Remove(ToDelete);
-    fFreeOffsetRangeRedBlackTree.Remove(ToDelete^.OffsetNode);
-    fFreeSizeRangeRedBlackTree.Remove(ToDelete^.SizeNode);
-    ToDelete^.OffsetNode:=nil;
-    ToDelete^.SizeNode:=nil;
-    FreeMem(ToDelete);
- // fFreeOffsetRangeRedBlackTree.Remove(Current^.OffsetNode);
-    fFreeSizeRangeRedBlackTree.Remove(Current^.SizeNode);
- // Current^.OffsetNode:=fFreeOffsetRangeRedBlackTree.Insert(Current^.Start,Current);
-    Current^.SizeNode:=fFreeSizeRangeRedBlackTree.Insert(Current^.Len,Current);
-    OtherNode:=Node.Successor;
-   end;
-  end;
-
- end else begin
-
-  // Otherwise doing a full merge of all free ranges
-
-  Node:=fFreeOffsetRangeRedBlackTree.LeftMost;
-  if assigned(Node) then begin
-
-   while assigned(Node) do begin
-
-    OtherNode:=Node.Successor;
-    if assigned(OtherNode) and assigned(OtherNode.Value) and ((Node.Value.Start+Node.Value.Len)=OtherNode.Value.Start) then begin
-     Next:=OtherNode.Value;
-     ToDelete:=Next;
-     Current^.Len:=Current^.Len+Next^.Len;
-     Current^.Next:=Next^.Next;
-     fFreeRanges.Remove(ToDelete);
-     fFreeOffsetRangeRedBlackTree.Remove(ToDelete^.OffsetNode);
-     fFreeSizeRangeRedBlackTree.Remove(ToDelete^.SizeNode);
-     ToDelete^.OffsetNode:=nil;
-     ToDelete^.SizeNode:=nil;
-     FreeMem(ToDelete);
-  // fFreeOffsetRangeRedBlackTree.Remove(Current^.OffsetNode);
-     fFreeSizeRangeRedBlackTree.Remove(Current^.SizeNode);
-  // Current^.OffsetNode:=fFreeOffsetRangeRedBlackTree.Insert(Current^.Start,Current);
-     Current^.SizeNode:=fFreeSizeRangeRedBlackTree.Insert(Current^.Len,Current);
-    end;
-
-    Node:=Node.Successor;
-
-   end;
-
-  end;
-
- end;
-
-end;
-
-function TpvBufferRangeAllocator.Allocate(const aSize:TpvSizeInt):TpvSizeInt;
-var Current,Next:PRange;
+function TpvBufferRangeAllocator.Allocate(const aSize:TpvInt64):TpvInt64;
+var Range:TRange;
     Node,OtherNode:TRangeRedBlackTree.TNode;
+    RangeBeginOffset,RangeEndOffset,PayloadBeginOffset,PayloadEndOffset:TpvInt64;
 begin
 
  if aSize>0 then begin
@@ -451,7 +228,7 @@ begin
    repeat
 
     // Best-fit search
-    Node:=fFreeSizeRangeRedBlackTree.Root;
+    Node:=fSizeRedBlackTree.Root;
     while assigned(Node) do begin
      if aSize<Node.Key then begin
       if assigned(Node.Left) then begin
@@ -494,42 +271,58 @@ begin
     end;
 
     // If a suitable free block was found, then allocate it
-    if assigned(Node) then begin
-     Current:=Node.Value;
-     while assigned(Current) do begin
-      if Current^.Len=aSize then begin
-       result:=Current^.Start;
-       fFreeRanges.Remove(Current);
-       fFreeOffsetRangeRedBlackTree.Remove(Current^.OffsetNode);
-       fFreeSizeRangeRedBlackTree.Remove(Current^.SizeNode);
-       Current^.Previous:=nil;
-       Current^.Next:=nil;
-       fAllocatedRanges.Insert(Current);
-       Current^.OffsetNode:=fAllocatedOffsetRangeRedBlackTree.Insert(Current^.Start,Current);
-       Current^.SizeNode:=nil;
-       inc(fAllocated,aSize);
-       exit;
-      end else if Current^.Len>aSize then begin
-       result:=Current^.Start;
-       if Current^.Len>aSize then begin
-        Next:=Current^.CreateRange(Current^.Start+aSize,Current^.Len-aSize);
-        fFreeRanges.Insert(Next);
-        Next^.OffsetNode:=fFreeOffsetRangeRedBlackTree.Insert(Next^.Start,Next);
-        Next^.SizeNode:=fFreeSizeRangeRedBlackTree.Insert(Next^.Len,Next);
-       end;
-       fFreeRanges.Remove(Current);
-       fFreeOffsetRangeRedBlackTree.Remove(Current^.OffsetNode);
-       fFreeSizeRangeRedBlackTree.Remove(Current^.SizeNode);
-       Current^.Previous:=nil;
-       Current^.Next:=nil;
-       fAllocatedRanges.Insert(Current);
-       Current^.OffsetNode:=fAllocatedOffsetRangeRedBlackTree.Insert(Current^.Start,Current);
-       Current^.SizeNode:=nil;
-       inc(fAllocated,aSize);
-       exit;
+    if assigned(Node) and (Node.fKey>=aSize) then begin
+
+     Range:=Node.fValue;
+
+     RangeBeginOffset:=Range.fOffset;
+
+     RangeEndOffset:=RangeBeginOffset+Range.fSize;
+
+{$if false}
+
+     // Prefer to allocate from the end of the memory chunk block
+     PayloadBeginOffset:=RangeEndOffset-aSize;
+{    if (Alignment>1) and ((PayloadBeginOffset and (Alignment-1))<>0) then begin
+      dec(PayloadBeginOffset,PayloadBeginOffset and (Alignment-1));
+      if PayloadBeginOffset<RangeBeginOffset then begin
+       PayloadBeginOffset:=RangeBeginOffset; // For just to be sure
       end;
-      Current:=Current^.Next;
+     end;}
+
+{$else}
+
+     // Prefer to allocate from the beginning of the memory chunk block
+     PayloadBeginOffset:=RangeBeginOffset;
+{    if (Alignment>1) and ((PayloadBeginOffset and (Alignment-1))<>0) then begin
+      inc(PayloadBeginOffset,Alignment-(PayloadBeginOffset and (Alignment-1)));
+     end;}
+
+{$ifend}
+
+     PayloadEndOffset:=PayloadBeginOffset+aSize;
+
+     if (PayloadBeginOffset<PayloadEndOffset) and
+        (PayloadEndOffset<=RangeEndOffset) then begin
+
+      Range.Update(PayloadBeginOffset,PayloadEndOffset-PayloadBeginOffset,TpvBufferRangeAllocator.TRange.TAllocationType.Allocated);
+
+      result:=Range.fOffset;
+
+      inc(fAllocated,Range.fSize);
+
+      if RangeBeginOffset<PayloadBeginOffset then begin
+       TpvBufferRangeAllocator.TRange.Create(self,RangeBeginOffset,PayloadBeginOffset-RangeBeginOffset,TpvBufferRangeAllocator.TRange.TAllocationType.Free);
+      end;
+
+      if PayloadEndOffset<RangeEndOffset then begin
+       TpvBufferRangeAllocator.TRange.Create(self,PayloadEndOffset,RangeEndOffset-PayloadEndOffset,TpvBufferRangeAllocator.TRange.TAllocationType.Free);
+      end;
+
+      exit;
+
      end;
+
     end;
 
     // Otherwise, try to resize the buffer
@@ -538,11 +331,7 @@ begin
     if assigned(fOnResize) then begin
      fOnResize(self,fCapacity);
     end;
-    Current:=fFreeRanges.Last;
-    Next:=Current^.CreateRange(result,aSize);
-    fFreeRanges.Insert(Next);
-    Next^.OffsetNode:=fFreeOffsetRangeRedBlackTree.Insert(Next^.Start,Next);
-    Next^.SizeNode:=fFreeSizeRangeRedBlackTree.Insert(Next^.Len,Next);
+    TpvBufferRangeAllocator.TRange.Create(self,result,aSize,TpvBufferRangeAllocator.TRange.TAllocationType.Free);
 
    until false;
 
@@ -558,138 +347,73 @@ begin
 
 end;
 
-procedure TpvBufferRangeAllocator.Release(const aStart:TpvSizeInt;aSize:TpvSizeInt);
-var Current,Next:PRange;
-    Node,OtherNode:TRangeRedBlackTree.TNode;
+function TpvBufferRangeAllocator.Release(const aOffset:TpvInt64;const aSize:TpvInt64=-1):Boolean;
+var Node,OtherNode:TRangeRedBlackTree.TNode;
+    Range,OtherRange:TRange;
+    TempOffset,TempSize:TpvInt64;
 begin
 
- if (aStart>=0) and (aSize<>0) then begin
+ result:=false;
 
-  fLock.Acquire;
-  try
+ fLock.Acquire;
+ try
 
-   // Find any node with the same start offset
-   Node:=fAllocatedOffsetRangeRedBlackTree.Find(aStart);
-   if assigned(Node) then begin
+  Node:=fOffsetRedBlackTree.Find(aOffset);
+  if assigned(Node) then begin
 
-    // Find the first node with the same start offset by going to the left
-    repeat
-     OtherNode:=Node.Predecessor;
-     if assigned(OtherNode) and (OtherNode.Key=aStart) then begin
+   Range:=Node.fValue;
+   if Range.fAllocationType<>TpvBufferRangeAllocator.TRange.TAllocationType.Free then begin
+
+    dec(fAllocated,Range.fSize);
+
+    // Freeing including coalescing free blocks
+    while assigned(Node) do begin
+
+     // Coalescing previous free block with current block
+     OtherNode:=Range.fOffsetRedBlackTreeNode.Predecessor;
+     if assigned(OtherNode) and (OtherNode.fValue.fAllocationType=TpvBufferRangeAllocator.TRange.TAllocationType.Free) then begin
+      OtherRange:=OtherNode.fValue;
+      TempOffset:=OtherRange.fOffset;
+      TempSize:=(Range.fOffset+Range.fSize)-TempOffset;
+      OtherRange.Update(TempOffset,TempSize,TpvBufferRangeAllocator.TRange.TAllocationType.Free);
+      FreeAndNil(Range);
+      Range:=OtherRange;
       Node:=OtherNode;
-     end else begin
-      break;
+      continue;
      end;
-    until false;
 
-    // When a specific size is given, then try to find the first node with the same start offset and the same size
-    if aSize>0 then begin
-     while assigned(Node.Value) and (Node.Value.Len<>aSize) do begin
-      OtherNode:=Node.Successor;
-      if assigned(OtherNode) and (OtherNode.Key=aStart) then begin
-       if assigned(OtherNode.Value) and (OtherNode.Value.Len=aSize) then begin
-        break;
-       end else begin
-        Node:=OtherNode;
-       end;
-      end else begin
-       break;
-      end;
+     // Coalescing current block with next free block
+     OtherNode:=Range.fOffsetRedBlackTreeNode.Successor;
+     if assigned(OtherNode) and (OtherNode.fValue.fAllocationType=TpvBufferRangeAllocator.TRange.TAllocationType.Free) then begin
+      OtherRange:=OtherNode.fValue;
+      TempOffset:=Range.fOffset;
+      TempSize:=(OtherRange.fOffset+OtherRange.fSize)-TempOffset;
+      Range.Update(TempOffset,TempSize,TpvBufferRangeAllocator.TRange.TAllocationType.Free);
+      FreeAndNil(OtherRange);
+      continue;
      end;
+
+     if Range.fAllocationType<>TpvBufferRangeAllocator.TRange.TAllocationType.Free then begin
+      // Mark block as free
+      Range.Update(Range.fOffset,Range.fSize,TpvBufferRangeAllocator.TRange.TAllocationType.Free);
+     end;
+     break;
+
     end;
 
-    // Initialize the current node and update the size variable
-    if assigned(Node.Value) then begin
-     Current:=Node.Value;
-     aSize:=Current^.Len;
-    end else begin
-     Current:=fAllocatedRanges.First;
-    end;
-
-   end else begin
-
-    // If no node with the same start offset was found, then initialize the current node with the first allocated node
-    // for a bruteforce search as fallback
-    Current:=fAllocatedRanges.First;
+    result:=true;
 
    end;
 
-   // If the current node is valid, then search for the best node to release
-   if aSize>0 then begin
-
-    while assigned(Current) do begin
-     if (Current^.Start=aStart) and (Current^.Len=aSize) then begin
-      fAllocatedRanges.Remove(Current);
-      fAllocatedOffsetRangeRedBlackTree.Remove(Current^.OffsetNode);
-      Current^.OffsetNode:=nil;
-      Current^.Previous:=nil;
-      Current^.Next:=nil;
-      fFreeRanges.Insert(Current);
-      Current^.OffsetNode:=fFreeOffsetRangeRedBlackTree.Insert(Current^.Start,Current);
-      Current^.SizeNode:=fFreeSizeRangeRedBlackTree.Insert(Current^.Len,Current);
-      MergeFreeRanges(Current);
-      dec(fAllocated,aSize);
-      exit;
-     end else if (Current^.Start=aStart) and (aSize<Current^.Len) then begin
-      Next:=Current^.CreateRange(aStart+aSize,Current^.Len-aSize);
-      fAllocatedRanges.Remove(Current);
-      fAllocatedOffsetRangeRedBlackTree.Remove(Current^.OffsetNode);
-      Current^.OffsetNode:=nil;
-      Current^.Previous:=nil;
-      Current^.Next:=nil;
-      fAllocatedRanges.Insert(Current);
-      Current^.OffsetNode:=fAllocatedOffsetRangeRedBlackTree.Insert(Current^.Start,Current);
-      fFreeRanges.Insert(Next);
-      Next^.OffsetNode:=fFreeOffsetRangeRedBlackTree.Insert(Next^.Start,Next);
-      Next^.SizeNode:=fFreeSizeRangeRedBlackTree.Insert(Next^.Len,Next);
-      MergeFreeRanges(Next);
-      dec(fAllocated,aSize);
-      exit;
-     end else if (Current^.Start<aStart) and ((Current^.Start+Current^.Len)>aStart) then begin
-      if (Current^.Start+Current^.Len)>(aStart+aSize) then begin
-       Next:=Current^.CreateRange(aStart+aSize,(Current^.Start+Current^.Len)-(aStart+aSize));
-       fAllocatedRanges.Remove(Current);
-       fAllocatedOffsetRangeRedBlackTree.Remove(Current^.OffsetNode);
-       Current^.OffsetNode:=nil;
-       Current^.Previous:=nil;
-       Current^.Next:=nil;
-       fAllocatedRanges.Insert(Current);
-       Current^.OffsetNode:=fAllocatedOffsetRangeRedBlackTree.Insert(Current^.Start,Current);
-       Current^.SizeNode:=nil;
-       fFreeRanges.Insert(Next);
-       Next^.OffsetNode:=fFreeOffsetRangeRedBlackTree.Insert(Next^.Start,Next);
-       Next^.SizeNode:=fFreeSizeRangeRedBlackTree.Insert(Next^.Len,Next);
-       MergeFreeRanges(Next);
-       dec(fAllocated,aSize);
-       exit;
-      end else begin
-       fAllocatedRanges.Remove(Current);
-       fAllocatedOffsetRangeRedBlackTree.Remove(Current^.OffsetNode);
-       Current^.OffsetNode:=nil;
-       Current^.Previous:=nil;
-       Current^.Next:=nil;
-       fFreeRanges.Insert(Current);
-       Current^.OffsetNode:=fFreeOffsetRangeRedBlackTree.Insert(Current^.Start,Current);
-       Current^.SizeNode:=fFreeSizeRangeRedBlackTree.Insert(Current^.Len,Current);
-       MergeFreeRanges(Current);
-       dec(fAllocated,aSize);
-       exit;
-      end;
-     end;
-     Current:=Current^.Next;
-    end;
-
-   end;
-
-  finally
-   fLock.Release;
   end;
 
+ finally
+  fLock.Release;
  end;
 
 end;
 
-function TpvBufferRangeAllocator.AllocateBufferRange(const aSize:TpvSizeInt):TBufferRange;
+function TpvBufferRangeAllocator.AllocateBufferRange(const aSize:TpvInt64):TBufferRange;
 begin
  result.Offset:=Allocate(aSize);
  result.Size:=aSize;
@@ -697,7 +421,7 @@ end;
 
 // Use it "ONLY" in combination with defragmentation, since it is not a reallocation, just a normal allocation with checking if the offset has changed!
 function TpvBufferRangeAllocator.AllocateBufferRangeWithOffsetChangeCheck(var aBufferRange:TBufferRange):boolean;
-var OldOffset:TpvSizeInt;
+var OldOffset:TpvInt64;
 begin
  if (aBufferRange.Offset>=0) and (aBufferRange.Size>0) then begin
   OldOffset:=aBufferRange.Offset;
@@ -710,7 +434,9 @@ end;
 
 procedure TpvBufferRangeAllocator.ReleaseBufferRange(const aBufferRange:TBufferRange);
 begin
- Release(aBufferRange.Offset,aBufferRange.Size);
+ if (aBufferRange.Offset>=0) and (aBufferRange.Size>0) then begin
+  Release(aBufferRange.Offset,aBufferRange.Size);
+ end;
 end;
 
 procedure TpvBufferRangeAllocator.ReleaseBufferRangeAndNil(var aBufferRange:TBufferRange);
@@ -724,21 +450,24 @@ end;
 
 // Calculate fragmentation factor 
 function TpvBufferRangeAllocator.CalculateFragmentationFactor:TpvDouble;
-var TotalFreeMemory,LargestFreeBlock:TpvSizeInt;
-    Current:PRange;
+var TotalFreeMemory,LargestFreeBlock:TpvInt64;
+    Node:TRangeRedBlackTree.TNode;
+    Range:TRange;
 begin
  fLock.Acquire;
  try
-  MergeFreeRanges(nil);
   TotalFreeMemory:=0;
   LargestFreeBlock:=0;
-  Current:=fFreeRanges.First;
-  while assigned(Current) do begin
-   inc(TotalFreeMemory,Current^.Len);
-   if Current^.Len>LargestFreeBlock then begin
-    LargestFreeBlock:=Current^.Len;
+  Node:=fOffsetRedBlackTree.LeftMost;
+  while assigned(Node) do begin
+   Range:=Node.Value;
+   if assigned(Range) and (Range.fAllocationType=TpvBufferRangeAllocator.TRange.TAllocationType.Free) then begin
+    inc(TotalFreeMemory,Range.fSize);
+    if LargestFreeBlock<Range.fSize then begin
+     LargestFreeBlock:=Range.fSize;
+    end;
    end;
-   Current:=Current^.Next;
+   Node:=Node.Successor;
   end;
   if TotalFreeMemory=0 then begin
    result:=0.0;
