@@ -331,7 +331,12 @@ begin
     if assigned(fOnResize) then begin
      fOnResize(self,fCapacity);
     end;
-    TpvBufferRangeAllocator.TRange.Create(self,result,aSize,TpvBufferRangeAllocator.TRange.TAllocationType.Free);
+    Node:=fOffsetRedBlackTree.RightMost;
+    if assigned(Node) and assigned(Node.Value) and (Node.Value.fAllocationType=TpvBufferRangeAllocator.TRange.TAllocationType.Free) then begin
+     Node.Value.Update(Node.Value.fOffset,(result+aSize)-Node.Value.fOffset,TpvBufferRangeAllocator.TRange.TAllocationType.Free);
+    end else begin
+     TpvBufferRangeAllocator.TRange.Create(self,result,aSize,TpvBufferRangeAllocator.TRange.TAllocationType.Free);
+    end;
 
    until false;
 
