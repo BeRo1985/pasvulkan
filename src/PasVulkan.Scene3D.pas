@@ -3681,7 +3681,8 @@ type EpvScene3D=class(Exception);
        fVulkanNodeMatricesBufferRangeAllocator:TpvBufferRangeAllocator;
        fVulkanMorphTargetVertexWeightsBufferRangeAllocator:TpvBufferRangeAllocator;
        fVulkanLongTermStaticBuffers:TVulkanLongTermStaticBuffers;
-       fLastNeedDefragmentationCheckTime:TpvHighResolutionTime;
+       fDefragmentationDataCheckGeneration:TpvUInt64;
+       fDataGeneration:TpvUInt64;
        function NeedDefragmentation(const aForceCheck:boolean):boolean;
        function Defragment(const aForce:boolean):boolean;
       public
@@ -22255,6 +22256,10 @@ begin
   fAABBTreeSkipLists[Index].Count:=0;
  end;
 
+ if assigned(fSceneInstance) then begin
+  TPasMPInterlocked.Increment(fSceneInstance.fDataGeneration);
+ end;
+
 end;
 
 destructor TpvScene3D.TGroup.TInstance.Destroy;
@@ -22403,6 +22408,10 @@ begin
  FreeAndNil(fDependencyLock);
 
  fGroup:=nil;
+
+ if assigned(fSceneInstance) then begin
+  TPasMPInterlocked.Increment(fSceneInstance.fDataGeneration);
+ end;
 
  FreeAndNil(fLock);
 
@@ -27245,6 +27254,10 @@ begin
 
  fDrawDataGeneration:=0;
 
+ fDefragmentationDataCheckGeneration:=High(TpvUInt64);
+
+ fDataGeneration:=0;
+
  if assigned(aVulkanDevice) then begin
   fVulkanDevice:=aVulkanDevice;
  end else if assigned(pvApplication) then begin
@@ -27452,8 +27465,6 @@ begin
   fVulkanNodeMatricesBufferData[Index].Initialize;
   fVulkanMorphTargetVertexWeightsBufferData[Index].Initialize;
  end;
-
- fLastNeedDefragmentationCheckTime:=0;
 
  fVulkanVertexBufferRangeAllocator:=TpvBufferRangeAllocator.Create;
 
@@ -28496,14 +28507,11 @@ begin
  fVulkanJointBlockBufferData.Resize(fInitialCountJointBlocks);
 end;
 
-
 function TpvScene3D.NeedDefragmentation(const aForceCheck:boolean):boolean;
 const Threshold=0.75;
-var NowTime:TpvHighResolutionTime;
 begin
- NowTime:=pvApplication.HighResolutionTimer.GetTime;
- if aForceCheck or (fLastNeedDefragmentationCheckTime=0) or (abs(NowTime-fLastNeedDefragmentationCheckTime)>pvApplication.HighResolutionTimer.SecondInterval) then begin
-  fLastNeedDefragmentationCheckTime:=NowTime;
+ if aForceCheck or (fDefragmentationDataCheckGeneration<>fDataGeneration) then begin
+  fDefragmentationDataCheckGeneration:=fDataGeneration;
   result:=(fVulkanVertexBufferRangeAllocator.CalculateFragmentationFactor>=Threshold) or
  //       (fVulkanIndexBufferRangeAllocator.CalculateFragmentationFactor>=Threshold) or
           (fVulkanDrawIndexBufferRangeAllocator.CalculateFragmentationFactor>=Threshold) or
@@ -28553,6 +28561,8 @@ begin
   finally
    fGroupListLock.Release;
   end;
+
+  fDefragmentationDataCheckGeneration:=fDataGeneration;
 
  end;
 
