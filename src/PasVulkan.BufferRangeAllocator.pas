@@ -513,7 +513,7 @@ type TNodes=array of TRangeRedBlackTree.TNode;
 var Index,CountAllocatedNodes:TpvSizeInt;
     AllocatedNodes:TNodes;
     Node,NextNode:TRangeRedBlackTree.TNode;
-    Offset,TotalSize:TpvInt64;
+    Offset,TotalSize,Alignment:TpvInt64;
 begin
 
  result:=false;
@@ -555,6 +555,10 @@ begin
     Node:=AllocatedNodes[Index];
     if Offset<>Node.Value.fOffset then begin
      result:=true;
+     Alignment:=Node.Value.fAlignment;
+     if (Alignment>1) and ((Offset and (Alignment-1))<>0) then begin
+      inc(Offset,Alignment-(Offset and (Alignment-1)));
+     end;
      if assigned(aMove) then begin
       aMove(self,Node.Value.fOffset,Offset,Node.Value.fSize);
      end;
