@@ -441,6 +441,7 @@ function TpvBufferRangeAllocator.AllocateBufferRange(const aSize:TpvInt64;const 
 begin
  result.Offset:=Allocate(aSize,aAlignment);
  result.Size:=aSize;
+ result.Alignment:=aAlignment;
 end;
 
 // Use it "ONLY" in combination with defragmentation, since it is not a reallocation, just a normal allocation with checking if the offset has changed!
