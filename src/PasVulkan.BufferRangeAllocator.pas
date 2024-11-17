@@ -518,55 +518,62 @@ begin
 
  result:=false;
 
- AllocatedNodes:=nil;
+ fLock.Acquire;
  try
 
-  // Collect allocated nodes, get total size and free all free nodes 
-  TotalSize:=0;
-  CountAllocatedNodes:=0;
-  Node:=fOffsetRedBlackTree.LeftMost;
-  while assigned(Node) do begin
-   Node:=NextNode;
-   Offset:=Node.Value.fOffset+Node.Value.fSize;
-   if TotalSize<Offset then begin
-    TotalSize:=Offset;
-   end;
-   if Node.Value.fAllocationType=TpvBufferRangeAllocator.TRange.TAllocationType.Free then begin
-    Node.Value.Free;
-   end else begin
-    if length(AllocatedNodes)<=CountAllocatedNodes then begin
-     SetLength(AllocatedNodes,(CountAllocatedNodes+1)+((CountAllocatedNodes+1) shr 1));
-    end;
-    AllocatedNodes[CountAllocatedNodes]:=Node;
-    inc(CountAllocatedNodes);
-   end;
-   Node:=NextNode;
-  end;
-
-  // Finalize allocated nodes array size
-  SetLength(AllocatedNodes,CountAllocatedNodes);
-
-  // Assign new offsets
-  Offset:=0;
-  for Index:=0 to CountAllocatedNodes-1 do begin
-   Node:=AllocatedNodes[Index];
-   if Offset<>Node.Value.fOffset then begin
-    result:=true;
-    if assigned(aMove) then begin
-     aMove(self,Node.Value.fOffset,Offset,Node.Value.fSize);
-    end;
-    Node.Value.Update(Offset,Node.Value.fSize,1,Node.Value.fAllocationType);
-   end;
-   inc(Offset,Node.Value.fSize);
-  end;
-
-  // Create new free node at the end
-  if Offset<TotalSize then begin
-   TpvBufferRangeAllocator.TRange.Create(self,Offset,TotalSize-Offset,1,TpvBufferRangeAllocator.TRange.TAllocationType.Free);
-  end;
-   
- finally
   AllocatedNodes:=nil;
+  try
+
+   // Collect allocated nodes, get total size and free all free nodes 
+   TotalSize:=0;
+   CountAllocatedNodes:=0;
+   Node:=fOffsetRedBlackTree.LeftMost;
+   while assigned(Node) do begin
+    NextNode:=Node.Successor;
+    Offset:=Node.Value.fOffset+Node.Value.fSize;
+    if TotalSize<Offset then begin
+     TotalSize:=Offset;
+    end;
+    if Node.Value.fAllocationType=TpvBufferRangeAllocator.TRange.TAllocationType.Free then begin
+     Node.Value.Free;
+    end else begin
+     if length(AllocatedNodes)<=CountAllocatedNodes then begin
+      SetLength(AllocatedNodes,(CountAllocatedNodes+1)+((CountAllocatedNodes+1) shr 1));
+     end;
+     AllocatedNodes[CountAllocatedNodes]:=Node;
+     inc(CountAllocatedNodes);
+    end;
+    Node:=NextNode;
+   end;
+
+   // Finalize allocated nodes array size
+   SetLength(AllocatedNodes,CountAllocatedNodes);
+
+   // Assign new offsets
+   Offset:=0;
+   for Index:=0 to CountAllocatedNodes-1 do begin
+    Node:=AllocatedNodes[Index];
+    if Offset<>Node.Value.fOffset then begin
+     result:=true;
+     if assigned(aMove) then begin
+      aMove(self,Node.Value.fOffset,Offset,Node.Value.fSize);
+     end;
+     Node.Value.Update(Offset,Node.Value.fSize,1,Node.Value.fAllocationType);
+    end;
+    inc(Offset,Node.Value.fSize);
+   end;
+
+   // Create new free node at the end
+   if Offset<TotalSize then begin
+    TpvBufferRangeAllocator.TRange.Create(self,Offset,TotalSize-Offset,1,TpvBufferRangeAllocator.TRange.TAllocationType.Free);
+   end;
+    
+  finally
+   AllocatedNodes:=nil;
+  end;
+
+ finally
+  fLock.Release;
  end;
 
 end;
