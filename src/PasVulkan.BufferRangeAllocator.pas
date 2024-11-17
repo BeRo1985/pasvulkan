@@ -471,6 +471,7 @@ begin
  end;
  aBufferRange.Offset:=-1;
  aBufferRange.Size:=0;
+ aBufferRange.Alignment:=0;
 end;
 
 // Calculate fragmentation factor 
