@@ -28563,7 +28563,7 @@ var GroupInstance:TpvScene3D.TGroup.TInstance;
 begin
 
  // Check if we need to defragment
- result:=aForce or NeedDefragmentation(false);
+ result:=false;//aForce or NeedDefragmentation(false);
  if result then begin
 
   // We have to lock the group list and the group instance list
