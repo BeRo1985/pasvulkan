@@ -3689,6 +3689,7 @@ type EpvScene3D=class(Exception);
        fVulkanMorphTargetVertexWeightsBufferRangeAllocator:TpvBufferRangeAllocator;
        fVulkanLongTermStaticBuffers:TVulkanLongTermStaticBuffers;
       private
+       fInDefragment:TPasMPBool32;
        fDefragmentationDataCheckGeneration:TpvUInt64;
        fDataGeneration:TpvUInt64;
        function NeedDefragmentation(const aForceCheck:boolean):boolean;
@@ -27428,6 +27429,8 @@ begin
 
  fDrawDataGeneration:=0;
 
+ fInDefragment:=false;
+
  fDefragmentationDataCheckGeneration:=High(TpvUInt64);
 
  fDataGeneration:=0;
@@ -28707,51 +28710,72 @@ function TpvScene3D.Defragment(const aForce:boolean):boolean;
 var GroupInstance:TpvScene3D.TGroup.TInstance;
 begin
 
- // Check if we need to defragment
- result:=false;//aForce or NeedDefragmentation(false);
- if result then begin
+ if not TPasMPInterlocked.CompareExchange(fInDefragment,true,false) then begin
 
-  if assigned(pvApplication) then begin
-   pvApplication.WaitForPreviousFrame(true);
-  end;
-
-  // We have to lock the group list and the group instance list
-  fGroupListLock.Acquire;
   try
 
-   fGroupInstanceListLock.Acquire;
-   try
+   // Check if we need to defragment
+   result:=false;//aForce or NeedDefragmentation(false);
+   if result then begin
 
-    fBufferRangeAllocatorLock.Acquire;
+    if assigned(pvApplication) then begin
+     pvApplication.WaitForPreviousFrame(true);
+    end;
+
+    // We have to lock the group list and the group instance list
+    fGroupListLock.Acquire;
     try
 
-     // Release all data buffer range allocators
-     for GroupInstance in fGroupInstances do begin
-      if GroupInstance.fGroup.Usable then begin
-       GroupInstance.ReleaseDataForReallocation;
-      end;
-     end;
+     fGroupInstanceListLock.Acquire;
+     try
 
-     // Reallocation of all data buffer range allocators without fragmentation
-     for GroupInstance in fGroupInstances do begin
-      if GroupInstance.fGroup.Usable then begin
-       GroupInstance.ReallocateData;
+      fRaytracingLock.Acquire;
+      try
+
+       fBufferRangeAllocatorLock.Acquire;
+       try
+
+        // Release all data buffer range allocators
+        for GroupInstance in fGroupInstances do begin
+         if GroupInstance.fGroup.Usable then begin
+          GroupInstance.ReleaseDataForReallocation;
+         end;
+        end;
+
+        // Reallocation of all data buffer range allocators without fragmentation
+        for GroupInstance in fGroupInstances do begin
+         if GroupInstance.fGroup.Usable then begin
+          GroupInstance.ReallocateData;
+         end;
+        end;
+
+       finally
+        fBufferRangeAllocatorLock.Release;
+       end;
+
+      finally
+       fRaytracingLock.Release;
       end;
+
+     finally
+      fGroupInstanceListLock.Release;
      end;
 
     finally
-     fBufferRangeAllocatorLock.Release;
+     fGroupListLock.Release;
     end;
 
-   finally
-    fGroupInstanceListLock.Release;
+    fDefragmentationDataCheckGeneration:=fDataGeneration;
+
    end;
 
   finally
-   fGroupListLock.Release;
+   TPasMPInterlocked.Write(fInDefragment,false);
   end;
 
-  fDefragmentationDataCheckGeneration:=fDataGeneration;
+ end else begin
+
+  result:=false;
 
  end;
 
