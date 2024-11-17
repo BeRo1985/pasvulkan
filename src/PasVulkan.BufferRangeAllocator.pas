@@ -74,6 +74,8 @@ type { TpvBufferRangeAllocator }
      TpvBufferRangeAllocator=class
       public
        type TOnResize=procedure(const aSender:TpvBufferRangeAllocator;const aNewCapacity:TpvInt64) of object;
+            TOnDefragmentMove=procedure(const aSender:TpvBufferRangeAllocator;const aOldOffset,aNewOffset,aSize:TpvInt64) of object;
+            { TRange }
             TRange=class;
             { TRangeRedBlackTree }
             TRangeRedBlackTree=TpvInt64RedBlackTree<TRange>;
@@ -107,7 +109,7 @@ type { TpvBufferRangeAllocator }
              public
               procedure Clear;
             end;
-            PBufferRange=^TBufferRange;
+            PBufferRange=^TBufferRange;            
        const EmptyBufferRange:TBufferRange=(Offset:-1;Size:0;Alignment:0);
       private
        fOffsetRedBlackTree:TRangeRedBlackTree;
@@ -122,10 +124,11 @@ type { TpvBufferRangeAllocator }
        function Allocate(const aSize:TpvInt64;const aAlignment:TpvInt64=1):TpvInt64;
        function Release(const aOffset:TpvInt64;const aSize:TpvInt64=-1):Boolean;
        function AllocateBufferRange(const aSize:TpvInt64;const aAlignment:TpvInt64=1):TBufferRange;
-       function AllocateBufferRangeWithOffsetChangeCheck(var aBufferRange:TBufferRange):boolean;
+       function AllocateBufferRangeWithOffsetChangeCheck(var aBufferRange:TBufferRange):Boolean;
        procedure ReleaseBufferRange(const aBufferRange:TBufferRange);
        procedure ReleaseBufferRangeAndNil(var aBufferRange:TBufferRange);
        function CalculateFragmentationFactor:TpvDouble;
+       function Defragment(const aMove:TOnDefragmentMove):Boolean;
       published
        property Capacity:TpvInt64 read fCapacity;
        property OnResize:TOnResize read fOnResize write fOnResize; 
@@ -503,6 +506,69 @@ begin
  finally
   fLock.Release;
  end;
+end;
+
+function TpvBufferRangeAllocator.Defragment(const aMove:TOnDefragmentMove):Boolean;
+type TNodes=array of TRangeRedBlackTree.TNode;
+var Index,CountAllocatedNodes:TpvSizeInt;
+    AllocatedNodes:TNodes;
+    Node,NextNode:TRangeRedBlackTree.TNode;
+    Offset,TotalSize:TpvInt64;
+begin
+
+ result:=false;
+
+ AllocatedNodes:=nil;
+ try
+
+  // Collect allocated nodes, get total size and free all free nodes 
+  TotalSize:=0;
+  CountAllocatedNodes:=0;
+  Node:=fOffsetRedBlackTree.LeftMost;
+  while assigned(Node) do begin
+   Node:=NextNode;
+   Offset:=Node.Value.fOffset+Node.Value.fSize;
+   if TotalSize<Offset then begin
+    TotalSize:=Offset;
+   end;
+   if Node.Value.fAllocationType=TpvBufferRangeAllocator.TRange.TAllocationType.Free then begin
+    Node.Value.Free;
+   end else begin
+    if length(AllocatedNodes)<=CountAllocatedNodes then begin
+     SetLength(AllocatedNodes,(CountAllocatedNodes+1)+((CountAllocatedNodes+1) shr 1));
+    end;
+    AllocatedNodes[CountAllocatedNodes]:=Node;
+    inc(CountAllocatedNodes);
+   end;
+   Node:=NextNode;
+  end;
+
+  // Finalize allocated nodes array size
+  SetLength(AllocatedNodes,CountAllocatedNodes);
+
+  // Assign new offsets
+  Offset:=0;
+  for Index:=0 to CountAllocatedNodes-1 do begin
+   Node:=AllocatedNodes[Index];
+   if Offset<>Node.Value.fOffset then begin
+    result:=true;
+    if assigned(aMove) then begin
+     aMove(self,Node.Value.fOffset,Offset,Node.Value.fSize);
+    end;
+    Node.Value.Update(Offset,Node.Value.fSize,1,Node.Value.fAllocationType);
+   end;
+   inc(Offset,Node.Value.fSize);
+  end;
+
+  // Create new free node at the end
+  if Offset<TotalSize then begin
+   TpvBufferRangeAllocator.TRange.Create(self,Offset,TotalSize-Offset,1,TpvBufferRangeAllocator.TRange.TAllocationType.Free);
+  end;
+   
+ finally
+  AllocatedNodes:=nil;
+ end;
+
 end;
 
 end.
