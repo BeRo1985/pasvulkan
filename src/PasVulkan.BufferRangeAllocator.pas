@@ -166,11 +166,11 @@ begin
   fBufferRangeAllocator.fOffsetRedBlackTree.Remove(fOffsetRedBlackTreeNode);
   fOffsetRedBlackTreeNode:=fBufferRangeAllocator.fOffsetRedBlackTree.Insert(aOffset,self);
  end;
- if ((fAllocationType=fBufferRangeAllocator.TRange.TAllocationType.Free)<>(aAllocationType=fBufferRangeAllocator.TRange.TAllocationType.Free)) or (fSize<>aSize) then begin
-  if fAllocationType=fBufferRangeAllocator.TRange.TAllocationType.Free then begin
+ if ((fAllocationType=TpvBufferRangeAllocator.TRange.TAllocationType.Free)<>(aAllocationType=TpvBufferRangeAllocator.TRange.TAllocationType.Free)) or (fSize<>aSize) then begin
+  if fAllocationType=TpvBufferRangeAllocator.TRange.TAllocationType.Free then begin
    fBufferRangeAllocator.fSizeRedBlackTree.Remove(fSizeRedBlackTreeNode);
   end;
-  if aAllocationType=fBufferRangeAllocator.TRange.TAllocationType.Free then begin
+  if aAllocationType=TpvBufferRangeAllocator.TRange.TAllocationType.Free then begin
    fSizeRedBlackTreeNode:=fBufferRangeAllocator.fSizeRedBlackTree.Insert(aSize,self);
   end;
  end;
@@ -207,8 +207,8 @@ end;
 destructor TpvBufferRangeAllocator.Destroy;
 begin
  if assigned(fOffsetRedBlackTree) then begin
-  while assigned(fOffsetRedBlackTree.fRoot) do begin
-   fOffsetRedBlackTree.fRoot.fValue.Free;
+  while assigned(fOffsetRedBlackTree.Root) do begin
+   fOffsetRedBlackTree.Root.Value.Free;
   end;
  end;
  FreeAndNil(fOffsetRedBlackTree);
@@ -277,8 +277,8 @@ begin
 
     // Check block for if it fits to the desired alignment, otherwise search for a better suitable block
     if Alignment>1 then begin
-     while assigned(Node) and (Node.fKey>=aSize) do begin
-      Range:=Node.fValue;
+     while assigned(Node) and (Node.Key>=aSize) do begin
+      Range:=Node.Value;
       if ((Range.fOffset and (Alignment-1))<>0) and
          ((Range.fOffset+(Alignment-(Range.fOffset and (Alignment-1)))+aSize)>=(Range.fOffset+Range.fSize)) then begin
        // If free block is alignment-technical too small, then try to find with-alignment-technical suitable bigger blocks
@@ -290,9 +290,9 @@ begin
     end;
 
     // If a suitable free block was found, then allocate it
-    if assigned(Node) and (Node.fKey>=aSize) then begin
+    if assigned(Node) and (Node.Key>=aSize) then begin
 
-     Range:=Node.fValue;
+     Range:=Node.Value;
 
      RangeBeginOffset:=Range.fOffset;
 
@@ -385,7 +385,7 @@ begin
   Node:=fOffsetRedBlackTree.Find(aOffset);
   if assigned(Node) then begin
 
-   Range:=Node.fValue;
+   Range:=Node.Value;
    if Range.fAllocationType<>TpvBufferRangeAllocator.TRange.TAllocationType.Free then begin
 
     dec(fAllocated,Range.fSize);
@@ -395,8 +395,8 @@ begin
 
      // Coalescing previous free block with current block
      OtherNode:=Range.fOffsetRedBlackTreeNode.Predecessor;
-     if assigned(OtherNode) and (OtherNode.fValue.fAllocationType=TpvBufferRangeAllocator.TRange.TAllocationType.Free) then begin
-      OtherRange:=OtherNode.fValue;
+     if assigned(OtherNode) and (OtherNode.Value.fAllocationType=TpvBufferRangeAllocator.TRange.TAllocationType.Free) then begin
+      OtherRange:=OtherNode.Value;
       TempOffset:=OtherRange.fOffset;
       TempSize:=(Range.fOffset+Range.fSize)-TempOffset;
       OtherRange.Update(TempOffset,TempSize,1,TpvBufferRangeAllocator.TRange.TAllocationType.Free);
@@ -408,8 +408,8 @@ begin
 
      // Coalescing current block with next free block
      OtherNode:=Range.fOffsetRedBlackTreeNode.Successor;
-     if assigned(OtherNode) and (OtherNode.fValue.fAllocationType=TpvBufferRangeAllocator.TRange.TAllocationType.Free) then begin
-      OtherRange:=OtherNode.fValue;
+     if assigned(OtherNode) and (OtherNode.Value.fAllocationType=TpvBufferRangeAllocator.TRange.TAllocationType.Free) then begin
+      OtherRange:=OtherNode.Value;
       TempOffset:=Range.fOffset;
       TempSize:=(OtherRange.fOffset+OtherRange.fSize)-TempOffset;
       Range.Update(TempOffset,TempSize,1,TpvBufferRangeAllocator.TRange.TAllocationType.Free);
