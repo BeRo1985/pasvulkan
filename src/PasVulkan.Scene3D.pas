@@ -3681,6 +3681,7 @@ type EpvScene3D=class(Exception);
        fVulkanNodeMatricesBufferRangeAllocator:TpvBufferRangeAllocator;
        fVulkanMorphTargetVertexWeightsBufferRangeAllocator:TpvBufferRangeAllocator;
        fVulkanLongTermStaticBuffers:TVulkanLongTermStaticBuffers;
+      private
        fDefragmentationDataCheckGeneration:TpvUInt64;
        fDataGeneration:TpvUInt64;
        function NeedDefragmentation(const aForceCheck:boolean):boolean;
