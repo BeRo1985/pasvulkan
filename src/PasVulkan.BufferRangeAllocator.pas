@@ -122,6 +122,7 @@ type { TpvBufferRangeAllocator }
        function Allocate(const aSize:TpvSizeInt):TpvSizeInt;
        procedure Release(const aStart:TpvSizeInt;aSize:TpvSizeInt=-1);
        function AllocateBufferRange(const aSize:TpvSizeInt):TBufferRange;
+       function AllocateBufferRangeWithOffsetChangeCheck(var aBufferRange:TBufferRange):boolean;
        procedure ReleaseBufferRange(const aBufferRange:TBufferRange);
        procedure ReleaseBufferRangeAndNil(var aBufferRange:TBufferRange);
        function CalculateFragmentationFactor:TpvDouble;
@@ -655,15 +656,27 @@ begin
 
 end;
 
-function TpvBufferRangeAllocator.AllocateBufferRange(const aSize: TpvSizeInt
- ): TBufferRange;
+function TpvBufferRangeAllocator.AllocateBufferRange(const aSize:TpvSizeInt):TBufferRange;
 begin
  result.Offset:=Allocate(aSize);
  result.Size:=aSize;
 end;
 
-procedure TpvBufferRangeAllocator.ReleaseBufferRange(
- const aBufferRange: TBufferRange);
+// Use it "ONLY" in combination with defragmentation, since it is not a reallocation, just a normal allocation with checking if the offset has changed!
+function TpvBufferRangeAllocator.AllocateBufferRangeWithOffsetChangeCheck(var aBufferRange:TBufferRange):boolean;
+var OldOffset:TpvSizeInt;
+begin
+ if (aBufferRange.Offset>=0) and (aBufferRange.Size>0) then begin
+  OldOffset:=aBufferRange.Offset;
+  aBufferRange.Offset:=Allocate(aBufferRange.Size);
+  result:=OldOffset<>aBufferRange.Offset;
+ end else begin
+  result:=false; 
+ end;
+end;
+
+
+procedure TpvBufferRangeAllocator.ReleaseBufferRange(const aBufferRange:TBufferRange);
 begin
  Release(aBufferRange.Offset,aBufferRange.Size);
 end;
