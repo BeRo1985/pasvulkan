@@ -97,11 +97,16 @@ type { TpvBufferRangeAllocator }
               procedure Remove(const aRange:PRange);
               procedure SortByOffsets;
             end;
+            { TBufferRange }
             TBufferRange=record
-             Offset:TpvSizeInt;
-             Size:TpvSizeInt;
+             public
+              Offset:TpvSizeInt;
+              Size:TpvSizeInt;
+             public
+              procedure Clear;
             end;
             PBufferRange=^TBufferRange;
+       const EmptyBufferRange:TBufferRange=(Offset:-1;Size:0);
       private
        fAllocatedRanges:TRangeList;
        fFreeRanges:TRangeList;
@@ -304,6 +309,14 @@ begin
  end;
 end;
 {$endif}
+
+{ TpvBufferRangeAllocator.TBufferRange }
+
+procedure TpvBufferRangeAllocator.TBufferRange.Clear;
+begin
+ Offset:=-1;
+ Size:=0;
+end;
 
 { TpvBufferRangeAllocator }
 
