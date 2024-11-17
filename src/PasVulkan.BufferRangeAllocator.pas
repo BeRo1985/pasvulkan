@@ -675,7 +675,6 @@ begin
  end;
 end;
 
-
 procedure TpvBufferRangeAllocator.ReleaseBufferRange(const aBufferRange:TBufferRange);
 begin
  Release(aBufferRange.Offset,aBufferRange.Size);
