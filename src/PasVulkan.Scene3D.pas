@@ -28715,7 +28715,7 @@ begin
   try
 
    // Check if we need to defragment
-   result:=false;//aForce or NeedDefragmentation(false);
+   result:=aForce or NeedDefragmentation(false);
    if result then begin
 
     if assigned(pvApplication) then begin
