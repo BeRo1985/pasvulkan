@@ -22679,6 +22679,17 @@ begin
    fDrawChoreographyBatchUniqueItems.GroupInstanceFixup(fGroup.fDrawChoreographyBatchUniqueItems,self,true);
   end;
 
+  // Add to new instances list, even when it's not a new instance, for example after defragmentation, so that the instance is updated on the buffers
+  if assigned(fScenes) then begin
+   fSceneInstance.fNewInstanceListLock.Acquire;
+   try
+    fSceneInstance.fNewInstances.Add(self);
+   finally
+    fSceneInstance.fNewInstanceListLock.Release;
+   end;
+   TPasMPInterlocked.Write(fIsNewInstance,TPasMPBool32(true));
+  end;
+
  end else begin
 
   fVulkanVertexBufferOffset:=-1;
