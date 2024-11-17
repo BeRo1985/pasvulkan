@@ -553,12 +553,12 @@ begin
    Offset:=0;
    for Index:=0 to CountAllocatedNodes-1 do begin
     Node:=AllocatedNodes[Index];
+    Alignment:=Node.Value.fAlignment;
+    if (Alignment>1) and ((Offset and (Alignment-1))<>0) then begin
+     inc(Offset,Alignment-(Offset and (Alignment-1)));
+    end;
     if Offset<>Node.Value.fOffset then begin
      result:=true;
-     Alignment:=Node.Value.fAlignment;
-     if (Alignment>1) and ((Offset and (Alignment-1))<>0) then begin
-      inc(Offset,Alignment-(Offset and (Alignment-1)));
-     end;
      if assigned(aMove) then begin
       aMove(self,Node.Value.fOffset,Offset,Node.Value.fSize);
      end;
