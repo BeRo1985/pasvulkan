@@ -10815,8 +10815,21 @@ begin
      ((not assigned(fVulkanMorphTargetVertexBuffer)) or (fVulkanMorphTargetVertexBuffer.Size<(Max(1,fSceneInstance.fVulkanMorphTargetVertexBufferData.Count)*SizeOf(TMorphTargetVertex)))) or
      ((not assigned(fVulkanJointBlockBuffer)) or (fVulkanJointBlockBuffer.Size<(Max(1,fSceneInstance.fVulkanJointBlockBufferData.Count)*SizeOf(TJointBlock)))) then begin
 
-   // Just reupload all buffers in this case, since the size of the buffers has changed (larger than before)
-   // or the buffers are not yet allocated
+   // Just reupload all buffers in this case, since the size of the buffers has changed (larger than before) or the buffers are 
+   // not yet allocated.
+
+   // But first to try to defragment the buffers, when the size of the buffers has changed (larger than before), because we could
+   // avoid to resize the buffers, if the size of the buffers has not changed after the defragmentation, but still reupload all
+   // buffers in this case.
+   if (assigned(fVulkanDynamicVertexBuffer) and (fVulkanDynamicVertexBuffer.Size<(Max(1,fSceneInstance.fVulkanDynamicVertexBufferData.Count)*SizeOf(TGPUDynamicVertex)))) or
+      (assigned(fVulkanStaticVertexBuffer) and (fVulkanStaticVertexBuffer.Size<(Max(1,fSceneInstance.fVulkanStaticVertexBufferData.Count)*SizeOf(TGPUStaticVertex)))) or
+ //   (fSceneInstance.fRaytracingActive and (assigned(fVulkanIndexBuffer) and (fVulkanIndexBuffer.Size<(Max(1,fSceneInstance.fVulkanIndexBufferData.Count)*SizeOf(TpvUInt32))))) or
+      (assigned(fVulkanDrawIndexBuffer) and (fVulkanDrawIndexBuffer.Size<(Max(1,fSceneInstance.fVulkanDrawIndexBufferData.Count)*SizeOf(TpvUInt32)))) or
+      (assigned(fVulkanDrawUniqueIndexBuffer) and (fVulkanDrawUniqueIndexBuffer.Size<(Max(1,fSceneInstance.fVulkanDrawUniqueIndexBufferData.Count)*SizeOf(TpvUInt32)))) or
+      (assigned(fVulkanMorphTargetVertexBuffer) and (fVulkanMorphTargetVertexBuffer.Size<(Max(1,fSceneInstance.fVulkanMorphTargetVertexBufferData.Count)*SizeOf(TMorphTargetVertex)))) or
+      (assigned(fVulkanJointBlockBuffer) and (fVulkanJointBlockBuffer.Size<(Max(1,fSceneInstance.fVulkanJointBlockBufferData.Count)*SizeOf(TJointBlock)))) then begin
+    fSceneInstance.Defragment(true);
+   end;
 
    FreeAndNil(fVulkanComputeDescriptorSet);
    FreeAndNil(fVulkanComputeDescriptorPool);
