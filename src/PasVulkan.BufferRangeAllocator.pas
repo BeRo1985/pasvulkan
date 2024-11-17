@@ -513,7 +513,7 @@ type TNodes=array of TRangeRedBlackTree.TNode;
 var Index,CountAllocatedNodes:TpvSizeInt;
     AllocatedNodes:TNodes;
     Node,NextNode:TRangeRedBlackTree.TNode;
-    Offset,TotalSize,Alignment:TpvInt64;
+    OriginalOffset,Offset,TotalSize,Alignment:TpvInt64;
 begin
 
  result:=false;
@@ -530,18 +530,20 @@ begin
    Node:=fOffsetRedBlackTree.LeftMost;
    while assigned(Node) do begin
     NextNode:=Node.Successor;
-    Offset:=Node.Value.fOffset+Node.Value.fSize;
-    if TotalSize<Offset then begin
-     TotalSize:=Offset;
-    end;
-    if Node.Value.fAllocationType=TpvBufferRangeAllocator.TRange.TAllocationType.Free then begin
-     Node.Value.Free;
-    end else begin
-     if length(AllocatedNodes)<=CountAllocatedNodes then begin
-      SetLength(AllocatedNodes,(CountAllocatedNodes+1)+((CountAllocatedNodes+1) shr 1));
+    if assigned(Node.Value) then begin 
+     Offset:=Node.Value.fOffset+Node.Value.fSize;
+     if TotalSize<Offset then begin
+      TotalSize:=Offset;
      end;
-     AllocatedNodes[CountAllocatedNodes]:=Node;
-     inc(CountAllocatedNodes);
+     if Node.Value.fAllocationType=TpvBufferRangeAllocator.TRange.TAllocationType.Free then begin
+      Node.Value.Free;
+     end else begin
+      if length(AllocatedNodes)<=CountAllocatedNodes then begin
+       SetLength(AllocatedNodes,(CountAllocatedNodes+1)+((CountAllocatedNodes+1) shr 1));
+      end;
+      AllocatedNodes[CountAllocatedNodes]:=Node;
+      inc(CountAllocatedNodes);
+     end;
     end;
     Node:=NextNode;
    end;
@@ -549,15 +551,20 @@ begin
    // Finalize allocated nodes array size
    SetLength(AllocatedNodes,CountAllocatedNodes);
 
-   // Assign new offsets
+   // Assign new offsets, create free nodes for the gaps between the allocated nodes while checking and correcting the alignment, and
+   // move the data if the offset has changed
    Offset:=0;
    for Index:=0 to CountAllocatedNodes-1 do begin
     Node:=AllocatedNodes[Index];
+    OriginalOffset:=Node.Value.fOffset;
     Alignment:=Node.Value.fAlignment;
     if (Alignment>1) and ((Offset and (Alignment-1))<>0) then begin
      inc(Offset,Alignment-(Offset and (Alignment-1)));
     end;
     if Offset<>Node.Value.fOffset then begin
+     if OriginalOffset<Offset then begin
+      TpvBufferRangeAllocator.TRange.Create(self,OriginalOffset,Offset-OriginalOffset,1,TpvBufferRangeAllocator.TRange.TAllocationType.Free);
+     end;
      result:=true;
      if assigned(aMove) then begin
       aMove(self,Node.Value.fOffset,Offset,Node.Value.fSize);
