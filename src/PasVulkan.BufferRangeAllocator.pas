@@ -67,6 +67,7 @@ uses SysUtils,
      Vulkan,
      PasMP,
      PasVulkan.Collections,
+     PasVulkan.Math,
      PasVulkan.Types;
 
 type { TpvBufferRangeAllocator }
@@ -224,7 +225,7 @@ begin
 
  if aSize>0 then begin
 
-  Alignment:=aAlignment;
+  Alignment:=RoundUpToPowerOfTwo64(aAlignment);
 
   fLock.Acquire;
   try
@@ -271,6 +272,20 @@ begin
      end else begin
       // Perfect match
       break;
+     end;
+    end;
+
+    // Check block for if it fits to the desired alignment, otherwise search for a better suitable block
+    if Alignment>1 then begin
+     while assigned(Node) and (Node.fKey>=aSize) do begin
+      Range:=Node.fValue;
+      if ((Range.fOffset and (Alignment-1))<>0) and
+         ((Range.fOffset+(Alignment-(Range.fOffset and (Alignment-1)))+aSize)>=(Range.fOffset+Range.fSize)) then begin
+       // If free block is alignment-technical too small, then try to find with-alignment-technical suitable bigger blocks
+       Node:=Node.Successor;
+      end else begin
+       break;
+      end;
      end;
     end;
 
