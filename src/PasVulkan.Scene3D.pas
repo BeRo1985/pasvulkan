@@ -28711,6 +28711,10 @@ begin
  result:=false;//aForce or NeedDefragmentation(false);
  if result then begin
 
+  if assigned(pvApplication) then begin
+   pvApplication.WaitForPreviousFrame(true);
+  end;
+
   // We have to lock the group list and the group instance list
   fGroupListLock.Acquire;
   try
@@ -28718,18 +28722,25 @@ begin
    fGroupInstanceListLock.Acquire;
    try
 
-    // Release all data buffer range allocators
-    for GroupInstance in fGroupInstances do begin
-     if GroupInstance.fGroup.Usable then begin
-      GroupInstance.ReleaseDataForReallocation;
-     end;
-    end;
+    fBufferRangeAllocatorLock.Acquire;
+    try
 
-    // Reallocation of all data buffer range allocators without fragmentation
-    for GroupInstance in fGroupInstances do begin
-     if GroupInstance.fGroup.Usable then begin
-      GroupInstance.ReallocateData;
+     // Release all data buffer range allocators
+     for GroupInstance in fGroupInstances do begin
+      if GroupInstance.fGroup.Usable then begin
+       GroupInstance.ReleaseDataForReallocation;
+      end;
      end;
+
+     // Reallocation of all data buffer range allocators without fragmentation
+     for GroupInstance in fGroupInstances do begin
+      if GroupInstance.fGroup.Usable then begin
+       GroupInstance.ReallocateData;
+      end;
+     end;
+
+    finally
+     fBufferRangeAllocatorLock.Release;
     end;
 
    finally
