@@ -303,7 +303,7 @@ begin
 
 {$if false}
 
-     // Prefer to allocate from the end of the memory chunk block
+     // Prefer to allocate from the end of the range
      PayloadBeginOffset:=RangeEndOffset-aSize;
      if (Alignment>1) and ((PayloadBeginOffset and (Alignment-1))<>0) then begin
       dec(PayloadBeginOffset,PayloadBeginOffset and (Alignment-1));
@@ -314,7 +314,7 @@ begin
 
 {$else}
 
-     // Prefer to allocate from the beginning of the memory chunk block
+     // Prefer to allocate from the beginning of the range
      PayloadBeginOffset:=RangeBeginOffset;
      if (Alignment>1) and ((PayloadBeginOffset and (Alignment-1))<>0) then begin
       inc(PayloadBeginOffset,Alignment-(PayloadBeginOffset and (Alignment-1)));
