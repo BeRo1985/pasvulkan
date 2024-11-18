@@ -309,7 +309,8 @@ const SDL2LibName={$if defined(Win32)}
     	SDL_WINDOW_VULKAN=$10000000;         //**< window usable with Vulkan */
 {$ifend}
 
-      SDL_WINDOWPOS_CENTERED_MASK=$2FFF0000;
+      SDL_WINDOWPOS_UNDEFINED=$1FFF0000;
+      SDL_WINDOWPOS_CENTERED=$2FFF0000;
 
       // SDL_WindowEventID (enum)
       SDL_WINDOWEVENT_NONE=0;    //*< Never used

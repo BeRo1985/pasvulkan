@@ -13296,11 +13296,13 @@ begin
 {$ifend}
    fSurfaceWindow:=SDL_CreateWindow(PAnsiChar(TpvApplicationRawByteString(fWindowTitle)),
 {$ifdef Android}
-                                    SDL_WINDOWPOS_CENTERED_MASK,
-                                    SDL_WINDOWPOS_CENTERED_MASK,
+                                    SDL_WINDOWPOS_CENTERED,
+                                    SDL_WINDOWPOS_CENTERED,
 {$else}
-                                    ((fScreenWidth-fWidth)+1) div 2,
-                                    ((fScreenHeight-fHeight)+1) div 2,
+                                    SDL_WINDOWPOS_UNDEFINED,
+                                    SDL_WINDOWPOS_UNDEFINED,
+{                                   ((fScreenWidth-fWidth)+1) div 2,
+                                    ((fScreenHeight-fHeight)+1) div 2,}
 {$endif}
                                     fWidth,
                                     fHeight,
