@@ -1018,6 +1018,7 @@ void main(void){
                               focused),
                           linearstep(-t, t, d1)) *
                       vec2(1.0, linearstep(t, -t, d0)).xxxy);                      
+        color.w = 1.0; // Opaque                    
         break;
       }
       case GUI_ELEMENT_WINDOW_DROPSHADOW:{
@@ -1193,7 +1194,8 @@ void main(void){
                                 uBorderLight,
                                 linearstep(-t, t, p.y - (size.y - 1.0))), 
                             linearstep(-t, t, d1)) *
-                      vec2(1.0, linearstep(t, -t, d0)).xxxy);                      
+                      vec2(1.0, linearstep(t, -t, d0)).xxxy);  
+        color.w = 1.0; // Opaque                    
         break;
       }
       case GUI_ELEMENT_PANEL_ENABLED:
@@ -1239,6 +1241,7 @@ void main(void){
                                 linearstep(-t, t, p.y - (size.y - 1.0))), 
                             linearstep(-t, t, d1)) *
                       vec2(1.0, linearstep(t, -t, d0)).xxxy);                      
+        color.w = 1.0; // Opaque                    
         break;
       }      
       case GUI_ELEMENT_TAB_BUTTON_UNFOCUSED:
@@ -1304,6 +1307,7 @@ void main(void){
                                 linearstep(-t, t, p.y - (size.y - 1.0))), 
                             linearstep(-t, t, d1)) *
                       vec2(1.0, linearstep(t, -t, d0)).xxxy);                      
+        color.w = 1.0; // Opaque                    
         break;
       }
       case GUI_ELEMENT_MOUSE_CURSOR_ARROW:
