@@ -1359,8 +1359,8 @@ type TpvGUIObject=class;
        function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean; virtual;
        function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean; virtual;
        function Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boolean; virtual;
-       procedure AfterCreateSwapChain; virtual;
-       procedure BeforeDestroySwapChain; virtual;
+       procedure AcquireVolatileResources; virtual;
+       procedure ReleaseVolatileResources; virtual;
        procedure Draw; virtual;
        procedure ExecuteDraw(var aWaitSemaphore:TpvVulkanSemaphore); virtual;
       public
@@ -1487,8 +1487,8 @@ type TpvGUIObject=class;
        destructor Destroy; override;
        procedure AfterConstruction; override;
        procedure BeforeDestruction; override;
-       procedure AfterCreateSwapChain; override;
-       procedure BeforeDestroySwapChain; override;
+       procedure AcquireVolatileResources; override;
+       procedure ReleaseVolatileResources; override;
        procedure ReleaseObject(const aGUIObject:TpvGUIObject);
        procedure ClearProtectedObjectList;
        procedure ProtectObjectForNextDraw(const aObject:TpvGUIObject);
@@ -13335,7 +13335,7 @@ begin
  if (not (self is TpvGUIInstance)) and
     assigned(fInstance) and
     fInstance.fSwapChainReady then begin
-  AfterCreateSwapChain;
+  AcquireVolatileResources;
  end;
 end;
 
@@ -13345,7 +13345,7 @@ begin
  if (not (self is TpvGUIInstance)) and
     assigned(fInstance) and
     fInstance.fSwapChainReady then begin
-  BeforeDestroySwapChain;
+  ReleaseVolatileResources;
  end;
  ParentWindow:=GetWindow;
  if assigned(ParentWindow) and (ParentWindow.fLastFocused=self) then begin
@@ -14129,7 +14129,7 @@ begin
  end;
 end;
 
-procedure TpvGUIWidget.AfterCreateSwapChain;
+procedure TpvGUIWidget.AcquireVolatileResources;
 var ChildIndex:TpvInt32;
     Child:TpvGUIObject;
     ChildWidget:TpvGUIWidget;
@@ -14138,12 +14138,12 @@ begin
   Child:=fChildren.Items[ChildIndex];
   if Child is TpvGUIWidget then begin
    ChildWidget:=Child as TpvGUIWidget;
-   ChildWidget.AfterCreateSwapChain;
+   ChildWidget.AcquireVolatileResources;
   end;
  end;
 end;
 
-procedure TpvGUIWidget.BeforeDestroySwapChain;
+procedure TpvGUIWidget.ReleaseVolatileResources;
 var ChildIndex:TpvInt32;
     Child:TpvGUIObject;
     ChildWidget:TpvGUIWidget;
@@ -14152,7 +14152,7 @@ begin
   Child:=fChildren.Items[ChildIndex];
   if Child is TpvGUIWidget then begin
    ChildWidget:=Child as TpvGUIWidget;
-   ChildWidget.BeforeDestroySwapChain;
+   ChildWidget.ReleaseVolatileResources;
   end;
  end;
 end;
@@ -14452,16 +14452,16 @@ begin
  inherited BeforeDestruction;
 end;
 
-procedure TpvGUIInstance.AfterCreateSwapChain;
+procedure TpvGUIInstance.AcquireVolatileResources;
 begin
- inherited AfterCreateSwapChain;
+ inherited AcquireVolatileResources;
  fSwapChainReady:=true;
 end;
 
-procedure TpvGUIInstance.BeforeDestroySwapChain;
+procedure TpvGUIInstance.ReleaseVolatileResources;
 begin
  fSwapChainReady:=false;
- inherited BeforeDestroySwapChain;
+ inherited ReleaseVolatileResources;
 end;
 
 procedure TpvGUIInstance.SetUpdateBufferIndex(const aUpdateBufferIndex:TpvInt32);

@@ -167,8 +167,8 @@ type TScreenMain=class(TpvApplicationScreen)
                                  const aFragmentShaderStream:TStream;
                                  const aRadius:TpvFloat); reintroduce;
               destructor Destroy; override;
-              procedure AfterCreateSwapChain; override;
-              procedure BeforeDestroySwapChain; override;
+              procedure AcquireVolatileResources; override;
+              procedure ReleaseVolatileResources; override;
               procedure Update; override;
               procedure UpdateContent(const aBufferIndex:TpvInt32;const aDrawRect,aClipRect:TpvRect); override;
               procedure DrawContent(const aVulkanCommandBuffer:TpvVulkanCommandBuffer;const aBufferIndex:TpvInt32;const aDrawRect,aClipRect:TpvRect); override;
@@ -1329,10 +1329,10 @@ begin
  inherited Destroy;
 end;
 
-procedure TScreenMain.TMeshVulkanCanvas.AfterCreateSwapChain;
+procedure TScreenMain.TMeshVulkanCanvas.AcquireVolatileResources;
 begin
 
- inherited AfterCreateSwapChain;
+ inherited AcquireVolatileResources;
 
  FreeAndNil(fVulkanGraphicsPipeline);
 
@@ -1415,10 +1415,10 @@ begin
 
 end;
 
-procedure TScreenMain.TMeshVulkanCanvas.BeforeDestroySwapChain;
+procedure TScreenMain.TMeshVulkanCanvas.ReleaseVolatileResources;
 begin
  FreeAndNil(fVulkanGraphicsPipeline);
- inherited BeforeDestroySwapChain;
+ inherited ReleaseVolatileResources;
 end;
 
 procedure TScreenMain.TMeshVulkanCanvas.Update;
@@ -1665,7 +1665,7 @@ begin
                                                            fUpdateThread.fMeshFragmentShaderSPVStream,
                                                            sqrt(sqr(fUpdateThread.fWorldSizeX)+sqr(fUpdateThread.fWorldSizeY)+sqr(fUpdateThread.fWorldSizeZ))
                                                           );
-    fGUIVulkanCanvas.AfterCreateSwapChain;
+    fGUIVulkanCanvas.AcquireVolatileResources;
     fGUIRootSplitterPanel1.LeftTopPanel.PerformLayout;
     fMesh:=fUpdateThread.fMesh;
    end;
@@ -2787,7 +2787,7 @@ begin
 
  pvApplication.Input.SetCursorPosition(pvApplication.Width div 2,pvApplication.Height div 2);
 
- fGUIInstance.AfterCreateSwapChain;
+ fGUIInstance.AcquireVolatileResources;
 
  fGUIInstance.PerformLayout;
 
@@ -2795,7 +2795,7 @@ end;
 
 procedure TScreenMain.BeforeDestroySwapChain;
 begin
- fGUIInstance.BeforeDestroySwapChain;
+ fGUIInstance.ReleaseVolatileResources;
  fVulkanCanvas.VulkanRenderPass:=nil;
  FreeAndNil(fVulkanRenderPass);
  inherited BeforeDestroySwapChain;
