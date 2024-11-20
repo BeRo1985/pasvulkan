@@ -215,6 +215,7 @@ type TpvGUIObject=class;
                 fDrawGUIElementMetaMin:TpvVector2;
                 fDrawGUIElementMetaMax:TpvVector2;
                 fDrawGUIElementMeta:TpvFloat;
+                fDrawGUIElementTransparent:Boolean;
                );
                TKind.DrawSprite:(
                 fDrawSpriteSprite:TpvSprite;
@@ -4083,7 +4084,8 @@ var LastClipRect,LastModelMatrix,LastColor,LastState:TpvSizeInt;
                            aBatchItem.fDrawGUIElementMax,
                            aBatchItem.fDrawGUIElementMetaMin,
                            aBatchItem.fDrawGUIElementMetaMax,
-                           aBatchItem.fDrawGUIElementMeta);
+                           aBatchItem.fDrawGUIElementMeta,
+                           aBatchItem.fDrawGUIElementTransparent);
    end;
    TBatchItem.TKind.DrawSprite:begin
     fCanvas.DrawSprite(aBatchItem.fDrawSpriteSprite,
@@ -4175,6 +4177,7 @@ begin
  BatchItem^.fDrawGUIElementMetaMin:=aMetaMin;
  BatchItem^.fDrawGUIElementMetaMax:=aMetaMax;
  BatchItem^.fDrawGUIElementMeta:=aMeta;
+ BatchItem^.fDrawGUIElementTransparent:=Transparent;
 end;
 
 procedure TpvGUIDrawEngine.DrawGUIElementWithTransparentEdges(const aGUIElement:TVkInt32;const aFocused:Boolean;const aMin,aMax,aMetaMin,aMetaMax:TpvVector2;const aMeta:TpvFloat;const aTransparentMargin:TpvRect;const aDrawCenter:Boolean=true);
@@ -4192,6 +4195,7 @@ begin
   BatchItem^.fDrawGUIElementMetaMin:=aMetaMin;
   BatchItem^.fDrawGUIElementMetaMax:=aMetaMax;
   BatchItem^.fDrawGUIElementMeta:=aMeta;
+  BatchItem^.fDrawGUIElementTransparent:=Transparent;
  end else begin
   for RowIndex:=0 to 2 do begin
    for ColumnIndex:=0 to 2 do begin
@@ -4238,6 +4242,7 @@ begin
      BatchItem^.fDrawGUIElementMetaMin:=aMetaMin;
      BatchItem^.fDrawGUIElementMetaMax:=aMetaMax;
      BatchItem^.fDrawGUIElementMeta:=aMeta;
+     BatchItem^.fDrawGUIElementTransparent:=Transparent;
     end;
    end;
   end;

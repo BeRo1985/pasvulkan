@@ -1003,6 +1003,9 @@ void main(void){
                               uUnfocusedWindowHeaderSeperatorTop, linearstep(1.0 + t, 0.0, p.y)),
                           uUnfocusedWindowHeaderSeperatorBottom, linearstep(size.y - (1.0 + t), size.y, p.y)) *
                       vec2(1.0, linearstep(t, -t, d0)).xxxy);                      
+        if(inMetaInfo2.x < 0.5){
+          color.w = 1.0; // Opaque
+        }                    
         break;
       }
       case GUI_ELEMENT_WINDOW_FILL:{
@@ -1018,7 +1021,9 @@ void main(void){
                               focused),
                           linearstep(-t, t, d1)) *
                       vec2(1.0, linearstep(t, -t, d0)).xxxy);                      
-        color.w = 1.0; // Opaque                    
+        if(inMetaInfo2.x < 0.5){
+          color.w = 1.0; // Opaque
+        }                    
         break;
       }
       case GUI_ELEMENT_WINDOW_DROPSHADOW:{
@@ -1100,6 +1105,9 @@ void main(void){
                                 linearstep(-t, t, p.y - (size.y - 1.0))), 
                             linearstep(-t, t, d1)) *
                       vec2(1.0, linearstep(t, -t, d0)).xxxy);                      
+        if(inMetaInfo2.x < 0.5){
+          color.w = 1.0; // Opaque
+        }                    
         break;
       }
       case GUI_ELEMENT_FOCUSED:{
@@ -1108,6 +1116,9 @@ void main(void){
         color = blend(color,
                       uFocused * 
                       vec2(1.0, linearstep(t, -t, max(d0, -d1))).xxxy);
+        if(inMetaInfo2.x < 0.5){
+          color.w = 1.0; // Opaque
+        }                    
         break;
       }
       case GUI_ELEMENT_HOVERED:{
@@ -1116,6 +1127,9 @@ void main(void){
         color = blend(color,
                       uHovered * 
                       vec2(1.0, linearstep(t, -t, max(d0, -d1))).xxxy);
+        if(inMetaInfo2.x < 0.5){
+          color.w = 1.0; // Opaque
+        }                    
         break;
       }
       case GUI_ELEMENT_BOX_UNFOCUSED:  
@@ -1195,7 +1209,9 @@ void main(void){
                                 linearstep(-t, t, p.y - (size.y - 1.0))), 
                             linearstep(-t, t, d1)) *
                       vec2(1.0, linearstep(t, -t, d0)).xxxy);  
-        color.w = 1.0; // Opaque                    
+        if(inMetaInfo2.x < 0.5){
+          color.w = 1.0; // Opaque
+        }                    
         break;
       }
       case GUI_ELEMENT_PANEL_ENABLED:
@@ -1241,7 +1257,9 @@ void main(void){
                                 linearstep(-t, t, p.y - (size.y - 1.0))), 
                             linearstep(-t, t, d1)) *
                       vec2(1.0, linearstep(t, -t, d0)).xxxy);                      
-        color.w = 1.0; // Opaque                    
+        if(inMetaInfo2.x < 0.5){
+          color.w = 1.0; // Opaque
+        }                    
         break;
       }      
       case GUI_ELEMENT_TAB_BUTTON_UNFOCUSED:
@@ -1307,7 +1325,9 @@ void main(void){
                                 linearstep(-t, t, p.y - (size.y - 1.0))), 
                             linearstep(-t, t, d1)) *
                       vec2(1.0, linearstep(t, -t, d0)).xxxy);                      
-        color.w = 1.0; // Opaque                    
+        if(inMetaInfo2.x < 0.5){
+          color.w = 1.0; // Opaque
+        }                    
         break;
       }
       case GUI_ELEMENT_MOUSE_CURSOR_ARROW:
