@@ -14046,7 +14046,11 @@ end;
 
 function TpvGUIWidget.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
 begin
- result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
+ if (fWidgetFlags*[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled])=[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled] then begin
+  result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
+ end else begin
+  result:=false;
+ end;
 end;
 
 function TpvGUIWidget.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean;
@@ -14056,49 +14060,53 @@ var ChildIndex:TpvInt32;
     ChildPointerEvent:TpvApplicationInputPointerEvent;
     PreviousContained,CurrentContained:Boolean;
 begin
- result:=assigned(fOnPointerEvent) and fOnPointerEvent(self,aPointerEvent);
- if not result then begin
-  ChildPointerEvent:=aPointerEvent;
-  for ChildIndex:=fChildren.Count-1 downto 0 do begin
-   Child:=fChildren.Items[ChildIndex];
-   if Child is TpvGUIWidget then begin
-    ChildWidget:=Child as TpvGUIWidget;
-    if ChildWidget.Visible then begin
-     case aPointerEvent.PointerEventType of
-      TpvApplicationInputPointerEventType.Motion,TpvApplicationInputPointerEventType.Drag:begin
-       ChildPointerEvent.Position:=aPointerEvent.Position-ChildWidget.fPosition;
-       PreviousContained:=ChildWidget.Contains(ChildPointerEvent.Position-ChildPointerEvent.RelativePosition);
-       CurrentContained:=ChildWidget.Contains(ChildPointerEvent.Position);
-       if CurrentContained and not PreviousContained then begin
-        ChildWidget.PointerEnter;
-       end else if PreviousContained and not CurrentContained then begin
-        ChildWidget.PointerLeave;
-       end;
-       if PreviousContained or CurrentContained then begin
-        result:=ChildWidget.PointerEvent(ChildPointerEvent);
-        if result then begin
-         exit;
+ if (fWidgetFlags*[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled])=[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled] then begin
+  result:=assigned(fOnPointerEvent) and fOnPointerEvent(self,aPointerEvent);
+  if not result then begin
+   ChildPointerEvent:=aPointerEvent;
+   for ChildIndex:=fChildren.Count-1 downto 0 do begin
+    Child:=fChildren.Items[ChildIndex];
+    if Child is TpvGUIWidget then begin
+     ChildWidget:=Child as TpvGUIWidget;
+     if ChildWidget.Visible then begin
+      case aPointerEvent.PointerEventType of
+       TpvApplicationInputPointerEventType.Motion,TpvApplicationInputPointerEventType.Drag:begin
+        ChildPointerEvent.Position:=aPointerEvent.Position-ChildWidget.fPosition;
+        PreviousContained:=ChildWidget.Contains(ChildPointerEvent.Position-ChildPointerEvent.RelativePosition);
+        CurrentContained:=ChildWidget.Contains(ChildPointerEvent.Position);
+        if CurrentContained and not PreviousContained then begin
+         ChildWidget.PointerEnter;
+        end else if PreviousContained and not CurrentContained then begin
+         ChildWidget.PointerLeave;
+        end;
+        if PreviousContained or CurrentContained then begin
+         result:=ChildWidget.PointerEvent(ChildPointerEvent);
+         if result then begin
+          exit;
+         end;
         end;
        end;
-      end;
-      else begin
-       ChildPointerEvent.Position:=aPointerEvent.Position-ChildWidget.fPosition;
-       if ChildWidget.Contains(ChildPointerEvent.Position) then begin
-        result:=ChildWidget.PointerEvent(ChildPointerEvent);
-        if result then begin
-         exit;
+       else begin
+        ChildPointerEvent.Position:=aPointerEvent.Position-ChildWidget.fPosition;
+        if ChildWidget.Contains(ChildPointerEvent.Position) then begin
+         result:=ChildWidget.PointerEvent(ChildPointerEvent);
+         if result then begin
+          exit;
+         end;
         end;
        end;
       end;
      end;
     end;
    end;
+   if (aPointerEvent.PointerEventType=TpvApplicationInputPointerEventType.Down) and
+      (aPointerEvent.Button=TpvApplicationInputPointerButton.Left) and not
+      (TpvGUIWidgetFlag.Focused in fWidgetFlags) then begin
+    RequestFocus;
+   end;
+   result:=false;
   end;
-  if (aPointerEvent.PointerEventType=TpvApplicationInputPointerEventType.Down) and
-     (aPointerEvent.Button=TpvApplicationInputPointerButton.Left) and not
-     (TpvGUIWidgetFlag.Focused in fWidgetFlags) then begin
-   RequestFocus;
-  end;
+ end else begin
   result:=false;
  end;
 end;
@@ -14109,23 +14117,27 @@ var ChildIndex:TpvInt32;
     ChildWidget:TpvGUIWidget;
     ChildPosition:TpvVector2;
 begin
- result:=assigned(fOnScrolled) and fOnScrolled(self,aPosition,aRelativeAmount);
- if not result then begin
-  for ChildIndex:=fChildren.Count-1 downto 0 do begin
-   Child:=fChildren.Items[ChildIndex];
-   if Child is TpvGUIWidget then begin
-    ChildWidget:=Child as TpvGUIWidget;
-    if ChildWidget.Visible then begin
-     ChildPosition:=aPosition-ChildWidget.fPosition;
-     if ChildWidget.Contains(ChildPosition) then begin
-      result:=ChildWidget.Scrolled(ChildPosition,aRelativeAmount);
-      if result then begin
-       exit;
+ if (fWidgetFlags*[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled])=[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled] then begin
+  result:=assigned(fOnScrolled) and fOnScrolled(self,aPosition,aRelativeAmount);
+  if not result then begin
+   for ChildIndex:=fChildren.Count-1 downto 0 do begin
+    Child:=fChildren.Items[ChildIndex];
+    if Child is TpvGUIWidget then begin
+     ChildWidget:=Child as TpvGUIWidget;
+     if ChildWidget.Visible then begin
+      ChildPosition:=aPosition-ChildWidget.fPosition;
+      if ChildWidget.Contains(ChildPosition) then begin
+       result:=ChildWidget.Scrolled(ChildPosition,aRelativeAmount);
+       if result then begin
+        exit;
+       end;
       end;
      end;
     end;
    end;
   end;
+ end else begin
+  result:=false;
  end;
 end;
 
@@ -14947,7 +14959,7 @@ begin
         Current:=fCurrentFocusPath.Items[fCurrentFocusPath.Count-1];
         if assigned(Current) and (Current<>self) and (Current is TpvGUIWidget) then begin
          CurrentWidget:=Current as TpvGUIWidget;
-         if CurrentWidget.Focused and not (CurrentWidget.WantAllKeys or CurrentWidget.WantTabKey) then begin
+         if ((CurrentWidget.fWidgetFlags*[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled,TpvGUIWidgetFlag.Focused])=[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled,TpvGUIWidgetFlag.Focused]) and not (CurrentWidget.WantAllKeys or CurrentWidget.WantTabKey) then begin
           result:=ProcessTab(CurrentWidget,TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers);
           if result then begin
            exit;
@@ -14974,7 +14986,7 @@ begin
      Current:=fCurrentFocusPath.Items[Index];
      if (Current<>self) and (Current is TpvGUIWidget) then begin
       CurrentWidget:=Current as TpvGUIWidget;
-      if CurrentWidget.KeyPreview then begin
+      if ((CurrentWidget.fWidgetFlags*[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled])=[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled]) and CurrentWidget.KeyPreview then begin
        result:=CurrentWidget.KeyEvent(aKeyEvent);
        if result then begin
         exit;
@@ -14992,7 +15004,7 @@ begin
      Current:=fCurrentFocusPath.Items[Index];
      if (Current<>self) and (Current is TpvGUIWidget) then begin
       CurrentWidget:=Current as TpvGUIWidget;
-      if CurrentWidget.Focused then begin
+      if ((CurrentWidget.fWidgetFlags*[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled,TpvGUIWidgetFlag.Focused])=[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled,TpvGUIWidgetFlag.Focused]) then begin
        result:=CurrentWidget.KeyEvent(aKeyEvent);
        if result then begin
         exit;
@@ -15717,23 +15729,27 @@ end;
 
 function TpvGUIWindow.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
 begin
- result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
- if not result then begin
-  if aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Down then begin
-   case aKeyEvent.KeyCode of
-    KEYCODE_F4:begin
-     if (aKeyEvent.KeyModifiers*[TpvApplicationInputKeyModifier.ALT,
-                                 TpvApplicationInputKeyModifier.CTRL,
-                                 TpvApplicationInputKeyModifier.SHIFT,
-                                 TpvApplicationInputKeyModifier.META])=[TpvApplicationInputKeyModifier.CTRL] then begin
-      if assigned(fCloseButton) and assigned(fCloseButton.fOnClick) then begin
-       fCloseButton.fOnClick(fCloseButton);
-       result:=true;
+ if (fWidgetFlags*[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled])=[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled] then begin
+  result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
+  if not result then begin
+   if aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Down then begin
+    case aKeyEvent.KeyCode of
+     KEYCODE_F4:begin
+      if (aKeyEvent.KeyModifiers*[TpvApplicationInputKeyModifier.ALT,
+                                  TpvApplicationInputKeyModifier.CTRL,
+                                  TpvApplicationInputKeyModifier.SHIFT,
+                                  TpvApplicationInputKeyModifier.META])=[TpvApplicationInputKeyModifier.CTRL] then begin
+       if assigned(fCloseButton) and assigned(fCloseButton.fOnClick) then begin
+        fCloseButton.fOnClick(fCloseButton);
+        result:=true;
+       end;
       end;
      end;
     end;
    end;
   end;
+ end else begin
+  result:=false;
  end;
 end;
 
@@ -15741,317 +15757,325 @@ function TpvGUIWindow.PointerEvent(const aPointerEvent:TpvApplicationInputPointe
 var ClampedRelativePosition,MinimumPosition,MinimumSize,NewSize,NewPosition,OldSize:TpvVector2;
     OK:Boolean;
 begin
- result:=assigned(fOnPointerEvent) and fOnPointerEvent(self,aPointerEvent);
- if not result then begin
-  OK:=false;
-  if (aPointerEvent.PointerEventType=TpvApplicationInputPointerEventType.Drag) or
-     (fMouseAction<>TpvGUIWindowMouseAction.None) then begin
-   OK:=true;
-  end else if (fWindowState=TpvGUIWindowState.Normal) and
-              (aPointerEvent.Position.x>=0) and
-              (aPointerEvent.Position.y>=0) and
-              (aPointerEvent.Position.x<fSize.x) and
-              (aPointerEvent.Position.y<fSize.y) then begin
-   if (fWindowState in [TpvGUIWindowState.Normal]) and
-      (TpvGUIWindowFlag.ResizableNW in fWindowFlags) and
-      (aPointerEvent.Position.x<Skin.fWindowResizeGripSize) and
-      (aPointerEvent.Position.y<Skin.fWindowResizeGripSize) then begin
-    OK:=true;
-   end else if (fWindowState in [TpvGUIWindowState.Normal]) and
-               (TpvGUIWindowFlag.ResizableNE in fWindowFlags) and
-               (aPointerEvent.Position.x>(fSize.x-Skin.fWindowResizeGripSize)) and
-               (aPointerEvent.Position.y<Skin.fWindowResizeGripSize) then begin
-    OK:=true;
-   end else if (fWindowState in [TpvGUIWindowState.Normal]) and
-               (TpvGUIWindowFlag.ResizableSW in fWindowFlags) and
-               (aPointerEvent.Position.x<Skin.fWindowResizeGripSize) and
-               (aPointerEvent.Position.y>(fSize.y-Skin.fWindowResizeGripSize)) then begin
-    OK:=true;
-   end else if (fWindowState in [TpvGUIWindowState.Normal]) and
-               (TpvGUIWindowFlag.ResizableSE in fWindowFlags) and
-               (aPointerEvent.Position.x>(fSize.x-Skin.fWindowResizeGripSize)) and
-               (aPointerEvent.Position.y>(fSize.y-Skin.fWindowResizeGripSize)) then begin
-    OK:=true;
-   end else if (fWindowState in [TpvGUIWindowState.Normal]) and
-               (TpvGUIWindowFlag.ResizableN in fWindowFlags) and
-               (aPointerEvent.Position.y<Skin.fWindowResizeGripSize) then begin
-    OK:=true;
-   end else if (fWindowState in [TpvGUIWindowState.Normal]) and
-               (TpvGUIWindowFlag.ResizableS in fWindowFlags) and
-               (aPointerEvent.Position.y>(fSize.y-Skin.fWindowResizeGripSize)) then begin
-    OK:=true;
-   end else if (fWindowState in [TpvGUIWindowState.Normal]) and
-               (TpvGUIWindowFlag.ResizableW in fWindowFlags) and
-               (aPointerEvent.Position.x<Skin.fWindowResizeGripSize) then begin
-    OK:=true;
-   end else if (fWindowState in [TpvGUIWindowState.Normal]) and
-               (TpvGUIWindowFlag.ResizableE in fWindowFlags) and
-               (aPointerEvent.Position.x>(fSize.x-Skin.fWindowResizeGripSize)) then begin
-    OK:=true;
-   end;
-  end;
-  if OK then begin
-   result:=false;
-  end else begin
-   result:=inherited PointerEvent(aPointerEvent);
-  end;
+ if (fWidgetFlags*[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled])=[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled] then begin
+  result:=assigned(fOnPointerEvent) and fOnPointerEvent(self,aPointerEvent);
   if not result then begin
-   OldSize:=fSize;
-   case aPointerEvent.PointerEventType of
-    TpvApplicationInputPointerEventType.Down:begin
-     fMouseAction:=TpvGUIWindowMouseAction.None;
-     fCursor:=TpvGUICursor.Arrow;
-     if (aPointerEvent.Position.x>=0) and
-        (aPointerEvent.Position.y>=0) and
-        (aPointerEvent.Position.x<fSize.x) and
-        (aPointerEvent.Position.y<fSize.y) then begin
-      if (fWindowState in [TpvGUIWindowState.Normal]) and
-         (TpvGUIWindowFlag.ResizableNW in fWindowFlags) and
-         (aPointerEvent.Position.x<Skin.fWindowResizeGripSize) and
-         (aPointerEvent.Position.y<Skin.fWindowResizeGripSize) then begin
-       fMouseAction:=TpvGUIWindowMouseAction.SizeNW;
-       fCursor:=TpvGUICursor.NWSE;
-      end else if (fWindowState in [TpvGUIWindowState.Normal]) and
-                  (TpvGUIWindowFlag.ResizableNE in fWindowFlags) and
-                  (aPointerEvent.Position.x>(fSize.x-Skin.fWindowResizeGripSize)) and
-                  (aPointerEvent.Position.y<Skin.fWindowResizeGripSize) then begin
-       fMouseAction:=TpvGUIWindowMouseAction.SizeNE;
-       fCursor:=TpvGUICursor.NESW;
-      end else if (fWindowState in [TpvGUIWindowState.Normal]) and
-                  (TpvGUIWindowFlag.ResizableSW in fWindowFlags) and
-                  (aPointerEvent.Position.x<Skin.fWindowResizeGripSize) and
-                  (aPointerEvent.Position.y>(fSize.y-Skin.fWindowResizeGripSize)) then begin
-       fMouseAction:=TpvGUIWindowMouseAction.SizeSW;
-       fCursor:=TpvGUICursor.NESW;
-      end else if (fWindowState in [TpvGUIWindowState.Normal]) and
-                  (TpvGUIWindowFlag.ResizableSE in fWindowFlags) and
-                  (aPointerEvent.Position.x>(fSize.x-Skin.fWindowResizeGripSize)) and
-                  (aPointerEvent.Position.y>(fSize.y-Skin.fWindowResizeGripSize)) then begin
-       fMouseAction:=TpvGUIWindowMouseAction.SizeSE;
-       fCursor:=TpvGUICursor.NWSE;
-      end else if (fWindowState in [TpvGUIWindowState.Normal]) and
-                  (TpvGUIWindowFlag.ResizableN in fWindowFlags) and
-                  (aPointerEvent.Position.y<Skin.fWindowResizeGripSize) then begin
-       fMouseAction:=TpvGUIWindowMouseAction.SizeN;
-       fCursor:=TpvGUICursor.NS;
-      end else if (fWindowState in [TpvGUIWindowState.Normal]) and
-                  (TpvGUIWindowFlag.ResizableS in fWindowFlags) and
-                  (aPointerEvent.Position.y>(fSize.y-Skin.fWindowResizeGripSize)) then begin
-       fMouseAction:=TpvGUIWindowMouseAction.SizeS;
-       fCursor:=TpvGUICursor.NS;
-      end else if (fWindowState in [TpvGUIWindowState.Normal]) and
-                  (TpvGUIWindowFlag.ResizableW in fWindowFlags) and
-                  (aPointerEvent.Position.x<Skin.fWindowResizeGripSize) then begin
-       fMouseAction:=TpvGUIWindowMouseAction.SizeW;
-       fCursor:=TpvGUICursor.EW;
-      end else if (fWindowState in [TpvGUIWindowState.Normal]) and
-                  (TpvGUIWindowFlag.ResizableE in fWindowFlags) and
-                  (aPointerEvent.Position.x>(fSize.x-Skin.fWindowResizeGripSize)) then begin
-       fMouseAction:=TpvGUIWindowMouseAction.SizeE;
-       fCursor:=TpvGUICursor.EW;
-      end else if (TpvGUIWindowFlag.Movable in fWindowFlags) and
-                  (aPointerEvent.Position.y<Skin.fWindowHeaderHeight) then begin
-       if fWindowState=TpvGUIWindowState.Maximized then begin
-        fSavedPosition.x:=Max(0.0,aPointerEvent.Position.x-(fSavedSize.x*0.5));
-        fSavedPosition.y:=fPosition.y;
-        WindowState:=TpvGUIWindowState.Normal;
-       end;
-       fMouseAction:=TpvGUIWindowMouseAction.Move;
-       fCursor:=TpvGUICursor.Move;
-      end;
-      RequestFocus;
-     end;
-{    if not (TpvGUIWidgetFlag.Focused in fWidgetFlags) then begin
-      RequestFocus;
-     end;}
+   OK:=false;
+   if (aPointerEvent.PointerEventType=TpvApplicationInputPointerEventType.Drag) or
+      (fMouseAction<>TpvGUIWindowMouseAction.None) then begin
+    OK:=true;
+   end else if (fWindowState=TpvGUIWindowState.Normal) and
+               (aPointerEvent.Position.x>=0) and
+               (aPointerEvent.Position.y>=0) and
+               (aPointerEvent.Position.x<fSize.x) and
+               (aPointerEvent.Position.y<fSize.y) then begin
+    if (fWindowState in [TpvGUIWindowState.Normal]) and
+       (TpvGUIWindowFlag.ResizableNW in fWindowFlags) and
+       (aPointerEvent.Position.x<Skin.fWindowResizeGripSize) and
+       (aPointerEvent.Position.y<Skin.fWindowResizeGripSize) then begin
+     OK:=true;
+    end else if (fWindowState in [TpvGUIWindowState.Normal]) and
+                (TpvGUIWindowFlag.ResizableNE in fWindowFlags) and
+                (aPointerEvent.Position.x>(fSize.x-Skin.fWindowResizeGripSize)) and
+                (aPointerEvent.Position.y<Skin.fWindowResizeGripSize) then begin
+     OK:=true;
+    end else if (fWindowState in [TpvGUIWindowState.Normal]) and
+                (TpvGUIWindowFlag.ResizableSW in fWindowFlags) and
+                (aPointerEvent.Position.x<Skin.fWindowResizeGripSize) and
+                (aPointerEvent.Position.y>(fSize.y-Skin.fWindowResizeGripSize)) then begin
+     OK:=true;
+    end else if (fWindowState in [TpvGUIWindowState.Normal]) and
+                (TpvGUIWindowFlag.ResizableSE in fWindowFlags) and
+                (aPointerEvent.Position.x>(fSize.x-Skin.fWindowResizeGripSize)) and
+                (aPointerEvent.Position.y>(fSize.y-Skin.fWindowResizeGripSize)) then begin
+     OK:=true;
+    end else if (fWindowState in [TpvGUIWindowState.Normal]) and
+                (TpvGUIWindowFlag.ResizableN in fWindowFlags) and
+                (aPointerEvent.Position.y<Skin.fWindowResizeGripSize) then begin
+     OK:=true;
+    end else if (fWindowState in [TpvGUIWindowState.Normal]) and
+                (TpvGUIWindowFlag.ResizableS in fWindowFlags) and
+                (aPointerEvent.Position.y>(fSize.y-Skin.fWindowResizeGripSize)) then begin
+     OK:=true;
+    end else if (fWindowState in [TpvGUIWindowState.Normal]) and
+                (TpvGUIWindowFlag.ResizableW in fWindowFlags) and
+                (aPointerEvent.Position.x<Skin.fWindowResizeGripSize) then begin
+     OK:=true;
+    end else if (fWindowState in [TpvGUIWindowState.Normal]) and
+                (TpvGUIWindowFlag.ResizableE in fWindowFlags) and
+                (aPointerEvent.Position.x>(fSize.x-Skin.fWindowResizeGripSize)) then begin
+     OK:=true;
     end;
-    TpvApplicationInputPointerEventType.Up:begin
-     fMouseAction:=TpvGUIWindowMouseAction.None;
-     fCursor:=TpvGUICursor.Arrow;
-    end;
-    TpvApplicationInputPointerEventType.Motion:begin
-     if fMouseAction=TpvGUIWindowMouseAction.None then begin
+   end;
+   if OK then begin
+    result:=false;
+   end else begin
+    result:=inherited PointerEvent(aPointerEvent);
+   end;
+   if not result then begin
+    OldSize:=fSize;
+    case aPointerEvent.PointerEventType of
+     TpvApplicationInputPointerEventType.Down:begin
+      fMouseAction:=TpvGUIWindowMouseAction.None;
       fCursor:=TpvGUICursor.Arrow;
-      if (fWindowState in [TpvGUIWindowState.Normal]) and
-         (TpvGUIWindowFlag.ResizableNW in fWindowFlags) and
-         (aPointerEvent.Position.x<Skin.fWindowResizeGripSize) and
-         (aPointerEvent.Position.y<Skin.fWindowResizeGripSize) then begin
-       fCursor:=TpvGUICursor.NWSE;
-      end else if (fWindowState in [TpvGUIWindowState.Normal]) and
-                  (TpvGUIWindowFlag.ResizableNE in fWindowFlags) and
-                  (aPointerEvent.Position.x>(fSize.x-Skin.fWindowResizeGripSize)) and
-                  (aPointerEvent.Position.y<Skin.fWindowResizeGripSize) then begin
-       fCursor:=TpvGUICursor.NESW;
-      end else if (fWindowState in [TpvGUIWindowState.Normal]) and
-                  (TpvGUIWindowFlag.ResizableSW in fWindowFlags) and
-                  (aPointerEvent.Position.x<Skin.fWindowResizeGripSize) and
-                  (aPointerEvent.Position.y>(fSize.y-Skin.fWindowResizeGripSize)) then begin
-       fCursor:=TpvGUICursor.NESW;
-      end else if (fWindowState in [TpvGUIWindowState.Normal]) and
-                  (TpvGUIWindowFlag.ResizableSE in fWindowFlags) and
-                  (aPointerEvent.Position.x>(fSize.x-Skin.fWindowResizeGripSize)) and
-                  (aPointerEvent.Position.y>(fSize.y-Skin.fWindowResizeGripSize)) then begin
-       fCursor:=TpvGUICursor.NWSE;
-      end else if (fWindowState in [TpvGUIWindowState.Normal]) and
-                  (TpvGUIWindowFlag.ResizableN in fWindowFlags) and
-                  (aPointerEvent.Position.y<Skin.fWindowResizeGripSize) then begin
-       fCursor:=TpvGUICursor.NS;
-      end else if (fWindowState in [TpvGUIWindowState.Normal]) and
-                  (TpvGUIWindowFlag.ResizableS in fWindowFlags) and
-                  (aPointerEvent.Position.y>(fSize.y-Skin.fWindowResizeGripSize)) then begin
-       fCursor:=TpvGUICursor.NS;
-      end else if (fWindowState in [TpvGUIWindowState.Normal]) and
-                  (TpvGUIWindowFlag.ResizableW in fWindowFlags) and
-                  (aPointerEvent.Position.x<Skin.fWindowResizeGripSize) then begin
-       fCursor:=TpvGUICursor.EW;
-      end else if (fWindowState in [TpvGUIWindowState.Normal]) and
-                  (TpvGUIWindowFlag.ResizableE in fWindowFlags) and
-                  (aPointerEvent.Position.x>(fSize.x-Skin.fWindowResizeGripSize)) then begin
-       fCursor:=TpvGUICursor.EW;
+      if (aPointerEvent.Position.x>=0) and
+         (aPointerEvent.Position.y>=0) and
+         (aPointerEvent.Position.x<fSize.x) and
+         (aPointerEvent.Position.y<fSize.y) then begin
+       if (fWindowState in [TpvGUIWindowState.Normal]) and
+          (TpvGUIWindowFlag.ResizableNW in fWindowFlags) and
+          (aPointerEvent.Position.x<Skin.fWindowResizeGripSize) and
+          (aPointerEvent.Position.y<Skin.fWindowResizeGripSize) then begin
+        fMouseAction:=TpvGUIWindowMouseAction.SizeNW;
+        fCursor:=TpvGUICursor.NWSE;
+       end else if (fWindowState in [TpvGUIWindowState.Normal]) and
+                   (TpvGUIWindowFlag.ResizableNE in fWindowFlags) and
+                   (aPointerEvent.Position.x>(fSize.x-Skin.fWindowResizeGripSize)) and
+                   (aPointerEvent.Position.y<Skin.fWindowResizeGripSize) then begin
+        fMouseAction:=TpvGUIWindowMouseAction.SizeNE;
+        fCursor:=TpvGUICursor.NESW;
+       end else if (fWindowState in [TpvGUIWindowState.Normal]) and
+                   (TpvGUIWindowFlag.ResizableSW in fWindowFlags) and
+                   (aPointerEvent.Position.x<Skin.fWindowResizeGripSize) and
+                   (aPointerEvent.Position.y>(fSize.y-Skin.fWindowResizeGripSize)) then begin
+        fMouseAction:=TpvGUIWindowMouseAction.SizeSW;
+        fCursor:=TpvGUICursor.NESW;
+       end else if (fWindowState in [TpvGUIWindowState.Normal]) and
+                   (TpvGUIWindowFlag.ResizableSE in fWindowFlags) and
+                   (aPointerEvent.Position.x>(fSize.x-Skin.fWindowResizeGripSize)) and
+                   (aPointerEvent.Position.y>(fSize.y-Skin.fWindowResizeGripSize)) then begin
+        fMouseAction:=TpvGUIWindowMouseAction.SizeSE;
+        fCursor:=TpvGUICursor.NWSE;
+       end else if (fWindowState in [TpvGUIWindowState.Normal]) and
+                   (TpvGUIWindowFlag.ResizableN in fWindowFlags) and
+                   (aPointerEvent.Position.y<Skin.fWindowResizeGripSize) then begin
+        fMouseAction:=TpvGUIWindowMouseAction.SizeN;
+        fCursor:=TpvGUICursor.NS;
+       end else if (fWindowState in [TpvGUIWindowState.Normal]) and
+                   (TpvGUIWindowFlag.ResizableS in fWindowFlags) and
+                   (aPointerEvent.Position.y>(fSize.y-Skin.fWindowResizeGripSize)) then begin
+        fMouseAction:=TpvGUIWindowMouseAction.SizeS;
+        fCursor:=TpvGUICursor.NS;
+       end else if (fWindowState in [TpvGUIWindowState.Normal]) and
+                   (TpvGUIWindowFlag.ResizableW in fWindowFlags) and
+                   (aPointerEvent.Position.x<Skin.fWindowResizeGripSize) then begin
+        fMouseAction:=TpvGUIWindowMouseAction.SizeW;
+        fCursor:=TpvGUICursor.EW;
+       end else if (fWindowState in [TpvGUIWindowState.Normal]) and
+                   (TpvGUIWindowFlag.ResizableE in fWindowFlags) and
+                   (aPointerEvent.Position.x>(fSize.x-Skin.fWindowResizeGripSize)) then begin
+        fMouseAction:=TpvGUIWindowMouseAction.SizeE;
+        fCursor:=TpvGUICursor.EW;
+       end else if (TpvGUIWindowFlag.Movable in fWindowFlags) and
+                   (aPointerEvent.Position.y<Skin.fWindowHeaderHeight) then begin
+        if fWindowState=TpvGUIWindowState.Maximized then begin
+         fSavedPosition.x:=Max(0.0,aPointerEvent.Position.x-(fSavedSize.x*0.5));
+         fSavedPosition.y:=fPosition.y;
+         WindowState:=TpvGUIWindowState.Normal;
+        end;
+        fMouseAction:=TpvGUIWindowMouseAction.Move;
+        fCursor:=TpvGUICursor.Move;
+       end;
+       RequestFocus;
       end;
+ {    if not (TpvGUIWidgetFlag.Focused in fWidgetFlags) then begin
+       RequestFocus;
+      end;}
      end;
-    end;
-    TpvApplicationInputPointerEventType.Drag:begin
-     if assigned(fParent) and (fParent is TpvGUIWindow) and (TpvGUIWindowFlag.Header in (fParent as TpvGUIWindow).fWindowFlags) then begin
-      MinimumPosition:=TpvVector2.InlineableCreate(0.0,Skin.fWindowHeaderHeight);
-     end else begin
-      MinimumPosition:=TpvVector2.Null;
+     TpvApplicationInputPointerEventType.Up:begin
+      fMouseAction:=TpvGUIWindowMouseAction.None;
+      fCursor:=TpvGUICursor.Arrow;
      end;
-     if WindowState=TpvGUIWindowState.Minimized then begin
-      MinimumSize:=TpvVector2.InlineableCreate(Skin.fMinimizedWindowMinimumWidth,Skin.fMinimizedWindowMinimumHeight);
-     end else begin
-      MinimumSize:=TpvVector2.InlineableCreate(Skin.fWindowMinimumWidth,Skin.fWindowMinimumHeight);
-     end;
-     if assigned(fButtonPanel) then begin
-      MinimumSize.x:=Max(MinimumSize.x,fButtonPanel.Size.x+(Skin.fSpacing*2.0));
-     end;
-     //writeln(aPointerEvent.RelativePosition.x:1:8,' ',aPointerEvent.RelativePosition.y:1:8,' ',int32(fMouseAction),' ',TpvPtrUInt(self));
-     case fMouseAction of
-      TpvGUIWindowMouseAction.Move:begin
-       if assigned(fParent) and (fParent is TpvGUIWidget) then begin
-        ClampedRelativePosition:=Clamp(aPointerEvent.RelativePosition,-fPosition,(fParent as TpvGUIWidget).fSize-(fPosition+fSize));
-       end else begin
-        ClampedRelativePosition:=Maximum(aPointerEvent.RelativePosition,-fPosition);
-       end;
-       fPosition:=fPosition+ClampedRelativePosition;
-       fCursor:=TpvGUICursor.Move;
-      end;
-      TpvGUIWindowMouseAction.SizeNW:begin
-       NewSize:=Maximum(fSize-aPointerEvent.RelativePosition,MinimumSize);
-       if assigned(fParent) and (fParent is TpvGUIWidget) then begin
-        ClampedRelativePosition:=Clamp(fPosition+(fSize-NewSize),TpvVector2.Null,(fParent as TpvGUIWidget).fSize-NewSize)-fPosition;
-       end else begin
-        ClampedRelativePosition:=Maximum(fPosition+(fSize-NewSize),TpvVector2.Null)-fPosition;
-       end;
-       fPosition:=fPosition+ClampedRelativePosition;
-       fSize:=fSize-ClampedRelativePosition;
-       fCursor:=TpvGUICursor.NWSE;
-      end;
-      TpvGUIWindowMouseAction.SizeNE:begin
-       NewSize:=Maximum(fSize+TpvVector2.InlineableCreate(aPointerEvent.RelativePosition.x,
-                                                -aPointerEvent.RelativePosition.y),
-                        MinimumSize);
-       if assigned(fParent) and (fParent is TpvGUIWidget) then begin
-        ClampedRelativePosition.x:=Minimum(NewSize.x,(fParent as TpvGUIWidget).fSize.x-fPosition.x)-fSize.x;
-        ClampedRelativePosition.y:=Clamp(fPosition.y+(fSize.y-NewSize.y),0.0,(fParent as TpvGUIWidget).fSize.y-NewSize.y)-fPosition.y;
-       end else begin
-        ClampedRelativePosition.x:=NewSize.x-fSize.x;
-        ClampedRelativePosition.y:=Maximum(fPosition.y+(fSize.y-NewSize.y),0.0)-fPosition.y;
-       end;
-       fPosition.y:=fPosition.y+ClampedRelativePosition.y;
-       fSize.x:=fSize.x+ClampedRelativePosition.x;
-       fSize.y:=fSize.y-ClampedRelativePosition.y;
-       fCursor:=TpvGUICursor.NESW;
-      end;
-      TpvGUIWindowMouseAction.SizeSW:begin
-       NewSize:=Maximum(fSize+TpvVector2.InlineableCreate(-aPointerEvent.RelativePosition.x,
-                                                aPointerEvent.RelativePosition.y),
-                        MinimumSize);
-       if assigned(fParent) and (fParent is TpvGUIWidget) then begin
-        ClampedRelativePosition.x:=Clamp(fPosition.x+(fSize.x-NewSize.x),0.0,(fParent as TpvGUIWidget).fSize.x-NewSize.x)-fPosition.x;
-        ClampedRelativePosition.y:=Minimum(NewSize.y,(fParent as TpvGUIWidget).fSize.y-fPosition.y)-fSize.y;
-       end else begin
-        ClampedRelativePosition.x:=Maximum(fPosition.x+(fSize.x-NewSize.x),0.0)-fPosition.x;
-        ClampedRelativePosition.y:=NewSize.y-fSize.y;
-       end;
-       fPosition.x:=fPosition.x+ClampedRelativePosition.x;
-       fSize.x:=fSize.x-ClampedRelativePosition.x;
-       fSize.y:=fSize.y+ClampedRelativePosition.y;
-       fCursor:=TpvGUICursor.NESW;
-      end;
-      TpvGUIWindowMouseAction.SizeSE:begin
-       if assigned(fParent) and (fParent is TpvGUIWidget) then begin
-        fSize:=Clamp(fSize+aPointerEvent.RelativePosition,MinimumSize,(fParent as TpvGUIWidget).fSize-fPosition);
-       end else begin
-        fSize:=Maximum(fSize+aPointerEvent.RelativePosition,MinimumSize);
-       end;
-       fCursor:=TpvGUICursor.NWSE;
-      end;
-      TpvGUIWindowMouseAction.SizeN:begin
-       NewSize.y:=Maximum(fSize.y-aPointerEvent.RelativePosition.y,MinimumSize.y);
-       if assigned(fParent) and (fParent is TpvGUIWidget) then begin
-        ClampedRelativePosition.y:=Clamp(fPosition.y+(fSize.y-NewSize.y),0.0,(fParent as TpvGUIWidget).fSize.y-NewSize.y)-fPosition.y;
-       end else begin
-        ClampedRelativePosition.y:=Maximum(fPosition.y+(fSize.y-NewSize.y),0.0)-fPosition.y;
-       end;
-       fPosition.y:=fPosition.y+ClampedRelativePosition.y;
-       fSize.y:=fSize.y-ClampedRelativePosition.y;
-       fCursor:=TpvGUICursor.NS;
-      end;
-      TpvGUIWindowMouseAction.SizeS:begin
-       if assigned(fParent) and (fParent is TpvGUIWidget) then begin
-        fSize.y:=Clamp(fSize.y+aPointerEvent.RelativePosition.y,MinimumSize.y,(fParent as TpvGUIWidget).fSize.y-fPosition.y);
-       end else begin
-        fSize.y:=Maximum(fSize.y+aPointerEvent.RelativePosition.y,MinimumSize.y);
-       end;
-       fCursor:=TpvGUICursor.NS;
-      end;
-      TpvGUIWindowMouseAction.SizeW:begin
-       NewSize.x:=Maximum(fSize.x-aPointerEvent.RelativePosition.x,MinimumSize.x);
-       if assigned(fParent) and (fParent is TpvGUIWidget) then begin
-        ClampedRelativePosition.x:=Clamp(fPosition.x+(fSize.x-NewSize.x),0.0,(fParent as TpvGUIWidget).fSize.x-NewSize.x)-fPosition.x;
-       end else begin
-        ClampedRelativePosition.x:=Maximum(fPosition.x+(fSize.x-NewSize.x),0.0)-fPosition.x;
-       end;
-       fPosition.x:=fPosition.x+ClampedRelativePosition.x;
-       fSize.x:=fSize.x-ClampedRelativePosition.x;
-       fCursor:=TpvGUICursor.EW;
-      end;
-      TpvGUIWindowMouseAction.SizeE:begin
-       if assigned(fParent) and (fParent is TpvGUIWidget) then begin
-        fSize.x:=Clamp(fSize.x+aPointerEvent.RelativePosition.x,MinimumSize.x,(fParent as TpvGUIWidget).fSize.x-fPosition.x);
-       end else begin
-        fSize.x:=Maximum(fSize.x+aPointerEvent.RelativePosition.x,MinimumSize.x);
-       end;
-       fCursor:=TpvGUICursor.EW;
-      end;
-      else begin
+     TpvApplicationInputPointerEventType.Motion:begin
+      if fMouseAction=TpvGUIWindowMouseAction.None then begin
        fCursor:=TpvGUICursor.Arrow;
+       if (fWindowState in [TpvGUIWindowState.Normal]) and
+          (TpvGUIWindowFlag.ResizableNW in fWindowFlags) and
+          (aPointerEvent.Position.x<Skin.fWindowResizeGripSize) and
+          (aPointerEvent.Position.y<Skin.fWindowResizeGripSize) then begin
+        fCursor:=TpvGUICursor.NWSE;
+       end else if (fWindowState in [TpvGUIWindowState.Normal]) and
+                   (TpvGUIWindowFlag.ResizableNE in fWindowFlags) and
+                   (aPointerEvent.Position.x>(fSize.x-Skin.fWindowResizeGripSize)) and
+                   (aPointerEvent.Position.y<Skin.fWindowResizeGripSize) then begin
+        fCursor:=TpvGUICursor.NESW;
+       end else if (fWindowState in [TpvGUIWindowState.Normal]) and
+                   (TpvGUIWindowFlag.ResizableSW in fWindowFlags) and
+                   (aPointerEvent.Position.x<Skin.fWindowResizeGripSize) and
+                   (aPointerEvent.Position.y>(fSize.y-Skin.fWindowResizeGripSize)) then begin
+        fCursor:=TpvGUICursor.NESW;
+       end else if (fWindowState in [TpvGUIWindowState.Normal]) and
+                   (TpvGUIWindowFlag.ResizableSE in fWindowFlags) and
+                   (aPointerEvent.Position.x>(fSize.x-Skin.fWindowResizeGripSize)) and
+                   (aPointerEvent.Position.y>(fSize.y-Skin.fWindowResizeGripSize)) then begin
+        fCursor:=TpvGUICursor.NWSE;
+       end else if (fWindowState in [TpvGUIWindowState.Normal]) and
+                   (TpvGUIWindowFlag.ResizableN in fWindowFlags) and
+                   (aPointerEvent.Position.y<Skin.fWindowResizeGripSize) then begin
+        fCursor:=TpvGUICursor.NS;
+       end else if (fWindowState in [TpvGUIWindowState.Normal]) and
+                   (TpvGUIWindowFlag.ResizableS in fWindowFlags) and
+                   (aPointerEvent.Position.y>(fSize.y-Skin.fWindowResizeGripSize)) then begin
+        fCursor:=TpvGUICursor.NS;
+       end else if (fWindowState in [TpvGUIWindowState.Normal]) and
+                   (TpvGUIWindowFlag.ResizableW in fWindowFlags) and
+                   (aPointerEvent.Position.x<Skin.fWindowResizeGripSize) then begin
+        fCursor:=TpvGUICursor.EW;
+       end else if (fWindowState in [TpvGUIWindowState.Normal]) and
+                   (TpvGUIWindowFlag.ResizableE in fWindowFlags) and
+                   (aPointerEvent.Position.x>(fSize.x-Skin.fWindowResizeGripSize)) then begin
+        fCursor:=TpvGUICursor.EW;
+       end;
       end;
      end;
-     if assigned(fParent) and (fParent is TpvGUIWidget) then begin
-      Size.Vector:=Clamp(fSize,MinimumSize,(fParent as TpvGUIWidget).fSize-fPosition);
-      Position.Vector:=Clamp(fPosition,MinimumPosition,(fParent as TpvGUIWidget).fSize-fSize);
-     end else begin
-      Size.Vector:=Maximum(fSize,MinimumSize);
-      Position.Vector:=Maximum(fPosition,MinimumPosition);
-     end;
-     if fSize<>OldSize then begin
-      PerformLayout;
+     TpvApplicationInputPointerEventType.Drag:begin
+      if assigned(fParent) and (fParent is TpvGUIWindow) and (TpvGUIWindowFlag.Header in (fParent as TpvGUIWindow).fWindowFlags) then begin
+       MinimumPosition:=TpvVector2.InlineableCreate(0.0,Skin.fWindowHeaderHeight);
+      end else begin
+       MinimumPosition:=TpvVector2.Null;
+      end;
+      if WindowState=TpvGUIWindowState.Minimized then begin
+       MinimumSize:=TpvVector2.InlineableCreate(Skin.fMinimizedWindowMinimumWidth,Skin.fMinimizedWindowMinimumHeight);
+      end else begin
+       MinimumSize:=TpvVector2.InlineableCreate(Skin.fWindowMinimumWidth,Skin.fWindowMinimumHeight);
+      end;
+      if assigned(fButtonPanel) then begin
+       MinimumSize.x:=Max(MinimumSize.x,fButtonPanel.Size.x+(Skin.fSpacing*2.0));
+      end;
+      //writeln(aPointerEvent.RelativePosition.x:1:8,' ',aPointerEvent.RelativePosition.y:1:8,' ',int32(fMouseAction),' ',TpvPtrUInt(self));
+      case fMouseAction of
+       TpvGUIWindowMouseAction.Move:begin
+        if assigned(fParent) and (fParent is TpvGUIWidget) then begin
+         ClampedRelativePosition:=Clamp(aPointerEvent.RelativePosition,-fPosition,(fParent as TpvGUIWidget).fSize-(fPosition+fSize));
+        end else begin
+         ClampedRelativePosition:=Maximum(aPointerEvent.RelativePosition,-fPosition);
+        end;
+        fPosition:=fPosition+ClampedRelativePosition;
+        fCursor:=TpvGUICursor.Move;
+       end;
+       TpvGUIWindowMouseAction.SizeNW:begin
+        NewSize:=Maximum(fSize-aPointerEvent.RelativePosition,MinimumSize);
+        if assigned(fParent) and (fParent is TpvGUIWidget) then begin
+         ClampedRelativePosition:=Clamp(fPosition+(fSize-NewSize),TpvVector2.Null,(fParent as TpvGUIWidget).fSize-NewSize)-fPosition;
+        end else begin
+         ClampedRelativePosition:=Maximum(fPosition+(fSize-NewSize),TpvVector2.Null)-fPosition;
+        end;
+        fPosition:=fPosition+ClampedRelativePosition;
+        fSize:=fSize-ClampedRelativePosition;
+        fCursor:=TpvGUICursor.NWSE;
+       end;
+       TpvGUIWindowMouseAction.SizeNE:begin
+        NewSize:=Maximum(fSize+TpvVector2.InlineableCreate(aPointerEvent.RelativePosition.x,
+                                                 -aPointerEvent.RelativePosition.y),
+                         MinimumSize);
+        if assigned(fParent) and (fParent is TpvGUIWidget) then begin
+         ClampedRelativePosition.x:=Minimum(NewSize.x,(fParent as TpvGUIWidget).fSize.x-fPosition.x)-fSize.x;
+         ClampedRelativePosition.y:=Clamp(fPosition.y+(fSize.y-NewSize.y),0.0,(fParent as TpvGUIWidget).fSize.y-NewSize.y)-fPosition.y;
+        end else begin
+         ClampedRelativePosition.x:=NewSize.x-fSize.x;
+         ClampedRelativePosition.y:=Maximum(fPosition.y+(fSize.y-NewSize.y),0.0)-fPosition.y;
+        end;
+        fPosition.y:=fPosition.y+ClampedRelativePosition.y;
+        fSize.x:=fSize.x+ClampedRelativePosition.x;
+        fSize.y:=fSize.y-ClampedRelativePosition.y;
+        fCursor:=TpvGUICursor.NESW;
+       end;
+       TpvGUIWindowMouseAction.SizeSW:begin
+        NewSize:=Maximum(fSize+TpvVector2.InlineableCreate(-aPointerEvent.RelativePosition.x,
+                                                 aPointerEvent.RelativePosition.y),
+                         MinimumSize);
+        if assigned(fParent) and (fParent is TpvGUIWidget) then begin
+         ClampedRelativePosition.x:=Clamp(fPosition.x+(fSize.x-NewSize.x),0.0,(fParent as TpvGUIWidget).fSize.x-NewSize.x)-fPosition.x;
+         ClampedRelativePosition.y:=Minimum(NewSize.y,(fParent as TpvGUIWidget).fSize.y-fPosition.y)-fSize.y;
+        end else begin
+         ClampedRelativePosition.x:=Maximum(fPosition.x+(fSize.x-NewSize.x),0.0)-fPosition.x;
+         ClampedRelativePosition.y:=NewSize.y-fSize.y;
+        end;
+        fPosition.x:=fPosition.x+ClampedRelativePosition.x;
+        fSize.x:=fSize.x-ClampedRelativePosition.x;
+        fSize.y:=fSize.y+ClampedRelativePosition.y;
+        fCursor:=TpvGUICursor.NESW;
+       end;
+       TpvGUIWindowMouseAction.SizeSE:begin
+        if assigned(fParent) and (fParent is TpvGUIWidget) then begin
+         fSize:=Clamp(fSize+aPointerEvent.RelativePosition,MinimumSize,(fParent as TpvGUIWidget).fSize-fPosition);
+        end else begin
+         fSize:=Maximum(fSize+aPointerEvent.RelativePosition,MinimumSize);
+        end;
+        fCursor:=TpvGUICursor.NWSE;
+       end;
+       TpvGUIWindowMouseAction.SizeN:begin
+        NewSize.y:=Maximum(fSize.y-aPointerEvent.RelativePosition.y,MinimumSize.y);
+        if assigned(fParent) and (fParent is TpvGUIWidget) then begin
+         ClampedRelativePosition.y:=Clamp(fPosition.y+(fSize.y-NewSize.y),0.0,(fParent as TpvGUIWidget).fSize.y-NewSize.y)-fPosition.y;
+        end else begin
+         ClampedRelativePosition.y:=Maximum(fPosition.y+(fSize.y-NewSize.y),0.0)-fPosition.y;
+        end;
+        fPosition.y:=fPosition.y+ClampedRelativePosition.y;
+        fSize.y:=fSize.y-ClampedRelativePosition.y;
+        fCursor:=TpvGUICursor.NS;
+       end;
+       TpvGUIWindowMouseAction.SizeS:begin
+        if assigned(fParent) and (fParent is TpvGUIWidget) then begin
+         fSize.y:=Clamp(fSize.y+aPointerEvent.RelativePosition.y,MinimumSize.y,(fParent as TpvGUIWidget).fSize.y-fPosition.y);
+        end else begin
+         fSize.y:=Maximum(fSize.y+aPointerEvent.RelativePosition.y,MinimumSize.y);
+        end;
+        fCursor:=TpvGUICursor.NS;
+       end;
+       TpvGUIWindowMouseAction.SizeW:begin
+        NewSize.x:=Maximum(fSize.x-aPointerEvent.RelativePosition.x,MinimumSize.x);
+        if assigned(fParent) and (fParent is TpvGUIWidget) then begin
+         ClampedRelativePosition.x:=Clamp(fPosition.x+(fSize.x-NewSize.x),0.0,(fParent as TpvGUIWidget).fSize.x-NewSize.x)-fPosition.x;
+        end else begin
+         ClampedRelativePosition.x:=Maximum(fPosition.x+(fSize.x-NewSize.x),0.0)-fPosition.x;
+        end;
+        fPosition.x:=fPosition.x+ClampedRelativePosition.x;
+        fSize.x:=fSize.x-ClampedRelativePosition.x;
+        fCursor:=TpvGUICursor.EW;
+       end;
+       TpvGUIWindowMouseAction.SizeE:begin
+        if assigned(fParent) and (fParent is TpvGUIWidget) then begin
+         fSize.x:=Clamp(fSize.x+aPointerEvent.RelativePosition.x,MinimumSize.x,(fParent as TpvGUIWidget).fSize.x-fPosition.x);
+        end else begin
+         fSize.x:=Maximum(fSize.x+aPointerEvent.RelativePosition.x,MinimumSize.x);
+        end;
+        fCursor:=TpvGUICursor.EW;
+       end;
+       else begin
+        fCursor:=TpvGUICursor.Arrow;
+       end;
+      end;
+      if assigned(fParent) and (fParent is TpvGUIWidget) then begin
+       Size.Vector:=Clamp(fSize,MinimumSize,(fParent as TpvGUIWidget).fSize-fPosition);
+       Position.Vector:=Clamp(fPosition,MinimumPosition,(fParent as TpvGUIWidget).fSize-fSize);
+      end else begin
+       Size.Vector:=Maximum(fSize,MinimumSize);
+       Position.Vector:=Maximum(fPosition,MinimumPosition);
+      end;
+      if fSize<>OldSize then begin
+       PerformLayout;
+      end;
      end;
     end;
    end;
+   result:=true;
   end;
-  result:=true;
+ end else begin
+  result:=false;
  end;
 end;
 
 function TpvGUIWindow.Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boolean;
 begin
- result:=assigned(fOnScrolled) and fOnScrolled(self,aPosition,aRelativeAmount);
- if not result then begin
-  inherited Scrolled(aPosition,aRelativeAmount);
-  result:=true;
+ if (fWidgetFlags*[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled])=[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled] then begin
+  result:=assigned(fOnScrolled) and fOnScrolled(self,aPosition,aRelativeAmount);
+  if not result then begin
+   inherited Scrolled(aPosition,aRelativeAmount);
+   result:=true;
+  end;
+ end else begin
+  result:=false;
  end;
 end;
 
@@ -16253,35 +16277,39 @@ function TpvGUIMessageDialog.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEven
 var Index,KeyCodeIndex:TpvSizeInt;
     MessageDialogButton:PpvGUIMessageDialogButton;
 begin
- result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
- if not result then begin
-  if (aKeyEvent.KeyModifiers*[TpvApplicationInputKeyModifier.ALT,
-                              TpvApplicationInputKeyModifier.CTRL,
-                              TpvApplicationInputKeyModifier.SHIFT,
-                              TpvApplicationInputKeyModifier.META])=[] then begin
-   for Index:=0 to length(fButtons)-1 do begin
-    MessageDialogButton:=@fButtons[Index];
-    for KeyCodeIndex:=0 to length(MessageDialogButton^.fKeyCodes)-1 do begin
-     if MessageDialogButton^.fKeyCodes[KeyCodeIndex]=aKeyEvent.KeyCode then begin
-      if aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Up then begin
-       if assigned(fOnButtonClick) then begin
-        fOnButtonClick(self,MessageDialogButton^.fID);
+ if (fWidgetFlags*[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled])=[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled] then begin
+  result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
+  if not result then begin
+   if (aKeyEvent.KeyModifiers*[TpvApplicationInputKeyModifier.ALT,
+                               TpvApplicationInputKeyModifier.CTRL,
+                               TpvApplicationInputKeyModifier.SHIFT,
+                               TpvApplicationInputKeyModifier.META])=[] then begin
+    for Index:=0 to length(fButtons)-1 do begin
+     MessageDialogButton:=@fButtons[Index];
+     for KeyCodeIndex:=0 to length(MessageDialogButton^.fKeyCodes)-1 do begin
+      if MessageDialogButton^.fKeyCodes[KeyCodeIndex]=aKeyEvent.KeyCode then begin
+       if aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Up then begin
+        if assigned(fOnButtonClick) then begin
+         fOnButtonClick(self,MessageDialogButton^.fID);
+        end;
+        result:=true;
+        Close;
        end;
-       result:=true;
-       Close;
+       break;
       end;
+     end;
+     if result then begin
       break;
      end;
     end;
-    if result then begin
-     break;
-    end;
+   end;
+   if not result then begin
+    result:=inherited KeyEvent(aKeyEvent);
    end;
   end;
-  if not result then begin
-   result:=inherited KeyEvent(aKeyEvent);
-  end;
- end;
+ end else begin
+  result:=false;
+ end; 
 end;
 
 procedure TpvGUIMessageDialog.MessageDialogOnButtonClick(const aSender:TpvGUIObject);
@@ -16552,22 +16580,34 @@ end;
 
 function TpvGUILabel.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
 begin
- result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
+ if (fWidgetFlags*[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled])=[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled] then begin
+  result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
+ end else begin
+  result:=false;
+ end;  
 end;
 
 function TpvGUILabel.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean;
 begin
- result:=assigned(fOnPointerEvent) and fOnPointerEvent(self,aPointerEvent);
- if not result then begin
-  result:=inherited PointerEvent(aPointerEvent);
+ if (fWidgetFlags*[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled])=[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled] then begin
+  result:=assigned(fOnPointerEvent) and fOnPointerEvent(self,aPointerEvent);
+  if not result then begin
+   result:=inherited PointerEvent(aPointerEvent);
+  end;
+ end else begin
+  result:=false;
  end;
 end;
 
 function TpvGUILabel.Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boolean;
 begin
- result:=assigned(fOnScrolled) and fOnScrolled(self,aPosition,aRelativeAmount);
- if not result then begin
-  result:=inherited Scrolled(aPosition,aRelativeAmount);
+ if (fWidgetFlags*[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled])=[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled] then begin
+  result:=assigned(fOnScrolled) and fOnScrolled(self,aPosition,aRelativeAmount);
+  if not result then begin
+   result:=inherited Scrolled(aPosition,aRelativeAmount);
+  end;
+ end else begin
+  result:=false;
  end;
 end;
 
@@ -16750,23 +16790,27 @@ end;
 
 function TpvGUIButton.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
 begin
- result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
- if Enabled and not result then begin
-  case aKeyEvent.KeyCode of
-   KEYCODE_SPACE,KEYCODE_RETURN,KEYCODE_RETURN2,KEYCODE_KP_ENTER:begin
-    case aKeyEvent.KeyEventType of
-     TpvApplicationInputKeyEventType.Down:begin
-      ProcessDown(fSize*0.5);
+ if (fWidgetFlags*[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled])=[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled] then begin
+  result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
+  if not result then begin
+   case aKeyEvent.KeyCode of
+    KEYCODE_SPACE,KEYCODE_RETURN,KEYCODE_RETURN2,KEYCODE_KP_ENTER:begin
+     case aKeyEvent.KeyEventType of
+      TpvApplicationInputKeyEventType.Down:begin
+       ProcessDown(fSize*0.5);
+      end;
+      TpvApplicationInputKeyEventType.Up:begin
+       ProcessUp(fSize*0.5);
+      end;
+      TpvApplicationInputKeyEventType.Typed:begin
+      end;
      end;
-     TpvApplicationInputKeyEventType.Up:begin
-      ProcessUp(fSize*0.5);
-     end;
-     TpvApplicationInputKeyEventType.Typed:begin
-     end;
+     result:=true;
     end;
-    result:=true;
    end;
   end;
+ end else begin
+  result:=false;
  end;
 end;
 
@@ -16776,25 +16820,29 @@ var ChildIndex:TpvInt32;
     ChildButton:TpvGUIButton;
     OldDown:Boolean;
 begin
- result:=assigned(fOnPointerEvent) and fOnPointerEvent(self,aPointerEvent);
- if not result then begin
-  result:=inherited PointerEvent(aPointerEvent);
-  if Enabled and (aPointerEvent.Button=TpvApplicationInputPointerButton.Left) and not result then begin
-   case aPointerEvent.PointerEventType of
-    TpvApplicationInputPointerEventType.Down:begin
-     ProcessDown(aPointerEvent.Position);
-     result:=true;
-    end;
-    TpvApplicationInputPointerEventType.Up:begin
-     ProcessUp(aPointerEvent.Position);
-     result:=true;
-    end;
-    TpvApplicationInputPointerEventType.Motion:begin
-    end;
-    TpvApplicationInputPointerEventType.Drag:begin
+ if (fWidgetFlags*[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled])=[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled] then begin
+  result:=assigned(fOnPointerEvent) and fOnPointerEvent(self,aPointerEvent);
+  if not result then begin
+   result:=inherited PointerEvent(aPointerEvent);
+   if Enabled and (aPointerEvent.Button=TpvApplicationInputPointerButton.Left) and not result then begin
+    case aPointerEvent.PointerEventType of
+     TpvApplicationInputPointerEventType.Down:begin
+      ProcessDown(aPointerEvent.Position);
+      result:=true;
+     end;
+     TpvApplicationInputPointerEventType.Up:begin
+      ProcessUp(aPointerEvent.Position);
+      result:=true;
+     end;
+     TpvApplicationInputPointerEventType.Motion:begin
+     end;
+     TpvApplicationInputPointerEventType.Drag:begin
+     end;
     end;
    end;
   end;
+ end else begin
+  result:=false;
  end;
 end;
 
@@ -17096,64 +17144,76 @@ end;
 
 function TpvGUICheckBox.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
 begin
- result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
- if Enabled and not result then begin
-  case aKeyEvent.KeyCode of
-   KEYCODE_SPACE,KEYCODE_RETURN,KEYCODE_RETURN2,KEYCODE_KP_ENTER:begin
-    case aKeyEvent.KeyEventType of
-     TpvApplicationInputKeyEventType.Typed:begin
-      if TpvGUICheckBoxFlag.RadioCheckBox in fCheckBoxFlags then begin
-       SetChecked(true);
-      end else begin
-       SetChecked(not GetChecked);
-      end;
-     end;
-    end;
-    result:=true;
-   end;
-  end;
- end;
-end;
-
-function TpvGUICheckBox.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean;
-begin
- result:=assigned(fOnPointerEvent) and fOnPointerEvent(self,aPointerEvent);
- if not result then begin
-  result:=inherited PointerEvent(aPointerEvent);
+ if (fWidgetFlags*[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled])=[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled] then begin
+  result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
   if Enabled and not result then begin
-   case aPointerEvent.PointerEventType of
-    TpvApplicationInputPointerEventType.Down:begin
-     case aPointerEvent.Button of
-      TpvApplicationInputPointerButton.Left:begin
+   case aKeyEvent.KeyCode of
+    KEYCODE_SPACE,KEYCODE_RETURN,KEYCODE_RETURN2,KEYCODE_KP_ENTER:begin
+     case aKeyEvent.KeyEventType of
+      TpvApplicationInputKeyEventType.Typed:begin
        if TpvGUICheckBoxFlag.RadioCheckBox in fCheckBoxFlags then begin
         SetChecked(true);
        end else begin
         SetChecked(not GetChecked);
        end;
       end;
-      TpvApplicationInputPointerButton.Middle:begin
-      end;
-      TpvApplicationInputPointerButton.Right:begin
-      end;
      end;
-    end;
-    TpvApplicationInputPointerEventType.Up:begin
-    end;
-    TpvApplicationInputPointerEventType.Motion:begin
-    end;
-    TpvApplicationInputPointerEventType.Drag:begin
+     result:=true;
     end;
    end;
-   result:=true;
   end;
+ end else begin
+  result:=false;
  end;
+end;
+
+function TpvGUICheckBox.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean;
+begin
+ if (fWidgetFlags*[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled])=[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled] then begin
+  result:=assigned(fOnPointerEvent) and fOnPointerEvent(self,aPointerEvent);
+  if not result then begin
+   result:=inherited PointerEvent(aPointerEvent);
+   if Enabled and not result then begin
+    case aPointerEvent.PointerEventType of
+     TpvApplicationInputPointerEventType.Down:begin
+      case aPointerEvent.Button of
+       TpvApplicationInputPointerButton.Left:begin
+        if TpvGUICheckBoxFlag.RadioCheckBox in fCheckBoxFlags then begin
+         SetChecked(true);
+        end else begin
+         SetChecked(not GetChecked);
+        end;
+       end;
+       TpvApplicationInputPointerButton.Middle:begin
+       end;
+       TpvApplicationInputPointerButton.Right:begin
+       end;
+      end;
+     end;
+     TpvApplicationInputPointerEventType.Up:begin
+     end;
+     TpvApplicationInputPointerEventType.Motion:begin
+     end;
+     TpvApplicationInputPointerEventType.Drag:begin
+     end;
+    end;
+    result:=true;
+   end;
+  end;
+ end else begin
+  result:=false;
+ end; 
 end;
 
 function TpvGUICheckBox.Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boolean;
 begin
- result:=assigned(fOnScrolled) and fOnScrolled(self,aPosition,aRelativeAmount);
- if not result then begin
-  result:=inherited Scrolled(aPosition,aRelativeAmount);
+ if (fWidgetFlags*[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled])=[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled] then begin
+  result:=assigned(fOnScrolled) and fOnScrolled(self,aPosition,aRelativeAmount);
+  if not result then begin
+   result:=inherited Scrolled(aPosition,aRelativeAmount);
+  end;
+ end else begin
+  result:=false;
  end;
 end;
 
@@ -17567,102 +17627,169 @@ var CurrentPosition,OtherPosition,TemporaryUncheckedTextCursorPositionIndex,
     TemporaryUncheckedTextSelectionStart,TemporaryUncheckedTextSelectionEnd:TpvInt32;
     TemporaryText,TemporaryUncheckedText:TpvUTF8String;
 begin
- result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
- if Enabled and not result then begin
-  case aKeyEvent.KeyEventType of
-   TpvApplicationInputKeyEventType.Down:begin
-    case aKeyEvent.KeyCode of
-     KEYCODE_APPLICATION:begin
-      result:=true;
-      fTime:=0.0;
+ if (fWidgetFlags*[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled])=[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled] then begin
+  result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
+  if Enabled and not result then begin
+   case aKeyEvent.KeyEventType of
+    TpvApplicationInputKeyEventType.Down:begin
+     case aKeyEvent.KeyCode of
+      KEYCODE_APPLICATION:begin
+       result:=true;
+       fTime:=0.0;
+      end;
      end;
     end;
-   end;
-   TpvApplicationInputKeyEventType.Up:begin
-    case aKeyEvent.KeyCode of
-     KEYCODE_APPLICATION:begin
-      if assigned(fPopupMenu) then begin
-       fPopupMenu.Activate(AbsolutePosition+(fSize*0.5));
+    TpvApplicationInputKeyEventType.Up:begin
+     case aKeyEvent.KeyCode of
+      KEYCODE_APPLICATION:begin
+       if assigned(fPopupMenu) then begin
+        fPopupMenu.Activate(AbsolutePosition+(fSize*0.5));
+       end;
+       fTime:=0.0;
+       result:=true;
       end;
-      fTime:=0.0;
-      result:=true;
      end;
     end;
-   end;
-   TpvApplicationInputKeyEventType.Typed:begin
-    case aKeyEvent.KeyCode of
-     KEYCODE_LEFT:begin
-      if TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers then begin
-       if fTextSelectionStart<1 then begin
-        fTextSelectionStart:=fTextCursorPositionIndex;
-       end;
-       fTextCursorPositionIndex:=Min(Max(fTextCursorPositionIndex-1,1),PUCUUTF8Length(fText)+1);
-       fTextSelectionEnd:=fTextCursorPositionIndex;
-      end else begin
-       fTextSelectionStart:=0;
-       fTextSelectionEnd:=0;
-       fTextCursorPositionIndex:=Min(Max(fTextCursorPositionIndex-1,1),PUCUUTF8Length(fText)+1);
-      end;
-      fTime:=0.0;
-      result:=true;
-     end;
-     KEYCODE_RIGHT:begin
-      if TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers then begin
-       if fTextSelectionStart<1 then begin
-        fTextSelectionStart:=fTextCursorPositionIndex;
-       end;
-       fTextCursorPositionIndex:=Min(Max(fTextCursorPositionIndex+1,1),PUCUUTF8Length(fText)+1);
-       fTextSelectionEnd:=fTextCursorPositionIndex;
-      end else begin
-       fTextSelectionStart:=0;
-       fTextSelectionEnd:=0;
-       fTextCursorPositionIndex:=Min(Max(fTextCursorPositionIndex+1,1),PUCUUTF8Length(fText)+1);
-      end;
-      fTime:=0.0;
-      result:=true;
-     end;
-     KEYCODE_HOME:begin
-      if TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers then begin
-       if fTextSelectionStart<1 then begin
-        fTextSelectionStart:=fTextCursorPositionIndex;
-       end;
-       fTextCursorPositionIndex:=1;
-       fTextSelectionEnd:=fTextCursorPositionIndex;
-      end else begin
-       fTextSelectionStart:=0;
-       fTextSelectionEnd:=0;
-       fTextCursorPositionIndex:=1;
-      end;
-      fTime:=0.0;
-      result:=true;
-     end;
-     KEYCODE_END:begin
-      if TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers then begin
-       if fTextSelectionStart<1 then begin
-        fTextSelectionStart:=fTextCursorPositionIndex;
-       end;
-       fTextCursorPositionIndex:=PUCUUTF8Length(fText)+1;
-       fTextSelectionEnd:=fTextCursorPositionIndex;
-      end else begin
-       fTextSelectionStart:=0;
-       fTextSelectionEnd:=0;
-       fTextCursorPositionIndex:=PUCUUTF8Length(fText)+1;
-      end;
-      fTime:=0.0;
-      result:=true;
-     end;
-     KEYCODE_BACKSPACE:begin
-      if (fTextSelectionStart>0) and
-         (fTextSelectionEnd>0) and
-         fEditable then begin
-       CurrentPosition:=PUCUUTF8GetCodeUnit(fText,Min(fTextSelectionStart,fTextSelectionEnd)-1);
-       OtherPosition:=PUCUUTF8GetCodeUnit(fText,Max(fTextSelectionStart,fTextSelectionEnd)-1);
-       TemporaryUncheckedText:=fText;
-       Delete(TemporaryUncheckedText,CurrentPosition,OtherPosition-CurrentPosition);
-       if CheckText(TemporaryUncheckedText) then begin
-        fTextCursorPositionIndex:=CurrentPosition;
+    TpvApplicationInputKeyEventType.Typed:begin
+     case aKeyEvent.KeyCode of
+      KEYCODE_LEFT:begin
+       if TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers then begin
+        if fTextSelectionStart<1 then begin
+         fTextSelectionStart:=fTextCursorPositionIndex;
+        end;
+        fTextCursorPositionIndex:=Min(Max(fTextCursorPositionIndex-1,1),PUCUUTF8Length(fText)+1);
+        fTextSelectionEnd:=fTextCursorPositionIndex;
+       end else begin
         fTextSelectionStart:=0;
         fTextSelectionEnd:=0;
+        fTextCursorPositionIndex:=Min(Max(fTextCursorPositionIndex-1,1),PUCUUTF8Length(fText)+1);
+       end;
+       fTime:=0.0;
+       result:=true;
+      end;
+      KEYCODE_RIGHT:begin
+       if TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers then begin
+        if fTextSelectionStart<1 then begin
+         fTextSelectionStart:=fTextCursorPositionIndex;
+        end;
+        fTextCursorPositionIndex:=Min(Max(fTextCursorPositionIndex+1,1),PUCUUTF8Length(fText)+1);
+        fTextSelectionEnd:=fTextCursorPositionIndex;
+       end else begin
+        fTextSelectionStart:=0;
+        fTextSelectionEnd:=0;
+        fTextCursorPositionIndex:=Min(Max(fTextCursorPositionIndex+1,1),PUCUUTF8Length(fText)+1);
+       end;
+       fTime:=0.0;
+       result:=true;
+      end;
+      KEYCODE_HOME:begin
+       if TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers then begin
+        if fTextSelectionStart<1 then begin
+         fTextSelectionStart:=fTextCursorPositionIndex;
+        end;
+        fTextCursorPositionIndex:=1;
+        fTextSelectionEnd:=fTextCursorPositionIndex;
+       end else begin
+        fTextSelectionStart:=0;
+        fTextSelectionEnd:=0;
+        fTextCursorPositionIndex:=1;
+       end;
+       fTime:=0.0;
+       result:=true;
+      end;
+      KEYCODE_END:begin
+       if TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers then begin
+        if fTextSelectionStart<1 then begin
+         fTextSelectionStart:=fTextCursorPositionIndex;
+        end;
+        fTextCursorPositionIndex:=PUCUUTF8Length(fText)+1;
+        fTextSelectionEnd:=fTextCursorPositionIndex;
+       end else begin
+        fTextSelectionStart:=0;
+        fTextSelectionEnd:=0;
+        fTextCursorPositionIndex:=PUCUUTF8Length(fText)+1;
+       end;
+       fTime:=0.0;
+       result:=true;
+      end;
+      KEYCODE_BACKSPACE:begin
+       if (fTextSelectionStart>0) and
+          (fTextSelectionEnd>0) and
+          fEditable then begin
+        CurrentPosition:=PUCUUTF8GetCodeUnit(fText,Min(fTextSelectionStart,fTextSelectionEnd)-1);
+        OtherPosition:=PUCUUTF8GetCodeUnit(fText,Max(fTextSelectionStart,fTextSelectionEnd)-1);
+        TemporaryUncheckedText:=fText;
+        Delete(TemporaryUncheckedText,CurrentPosition,OtherPosition-CurrentPosition);
+        if CheckText(TemporaryUncheckedText) then begin
+         fTextCursorPositionIndex:=CurrentPosition;
+         fTextSelectionStart:=0;
+         fTextSelectionEnd:=0;
+         if fText<>TemporaryUncheckedText then begin
+          fText:=TemporaryUncheckedText;
+          UpdateText;
+          if assigned(fOnChange) then begin
+           fOnChange(self);
+          end;
+         end;
+        end;
+       end else begin
+        CurrentPosition:=PUCUUTF8GetCodeUnit(fText,fTextCursorPositionIndex-1);
+        if (CurrentPosition>1) and (CurrentPosition<=(length(fText)+1)) and
+           fEditable then begin
+         OtherPosition:=CurrentPosition;
+         PUCUUTF8Dec(fText,OtherPosition);
+         if (OtherPosition>0) and (OtherPosition<=length(fText)) and (OtherPosition<CurrentPosition) then begin
+          TemporaryUncheckedText:=fText;
+          Delete(TemporaryUncheckedText,OtherPosition,CurrentPosition-OtherPosition);
+          if CheckText(TemporaryUncheckedText) then begin
+           dec(fTextCursorPositionIndex);
+           if fText<>TemporaryUncheckedText then begin
+            fText:=TemporaryUncheckedText;
+            UpdateText;
+            if assigned(fOnChange) then begin
+             fOnChange(self);
+            end;
+           end;
+          end;
+         end;
+        end;
+       end;
+       fTime:=0.0;
+       result:=true;
+      end;
+      KEYCODE_INSERT:begin
+       TemporaryUncheckedText:=fText;
+       TemporaryUncheckedTextCursorPositionIndex:=fTextCursorPositionIndex;
+       TemporaryUncheckedTextSelectionStart:=fTextSelectionStart;
+       TemporaryUncheckedTextSelectionEnd:=fTextSelectionEnd;
+       if (TemporaryUncheckedTextSelectionStart>0) and
+          (TemporaryUncheckedTextSelectionEnd>0) then begin
+        CurrentPosition:=PUCUUTF8GetCodeUnit(TemporaryUncheckedText,Min(TemporaryUncheckedTextSelectionStart,TemporaryUncheckedTextSelectionEnd)-1);
+        OtherPosition:=PUCUUTF8GetCodeUnit(TemporaryUncheckedText,Max(TemporaryUncheckedTextSelectionStart,TemporaryUncheckedTextSelectionEnd)-1);
+        Delete(TemporaryUncheckedText,CurrentPosition,OtherPosition-CurrentPosition);
+        TemporaryUncheckedTextCursorPositionIndex:=CurrentPosition;
+        TemporaryUncheckedTextSelectionStart:=0;
+        TemporaryUncheckedTextSelectionEnd:=0;
+       end;
+       if TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers then begin
+        if pvApplication.Clipboard.HasText and fEditable then begin
+         TemporaryText:=pvApplication.Clipboard.GetText;
+         if length(TemporaryText)>0 then begin
+          Insert(TemporaryText,
+                 TemporaryUncheckedText,
+                 PUCUUTF8GetCodeUnit(TemporaryUncheckedText,TemporaryUncheckedTextCursorPositionIndex-1));
+          inc(TemporaryUncheckedTextCursorPositionIndex,PUCUUTF8Length(TemporaryText));
+         end;
+        end;
+       end else if fEditable then begin
+        Insert(#32,
+               TemporaryUncheckedText,
+               PUCUUTF8GetCodeUnit(TemporaryUncheckedText,TemporaryUncheckedTextCursorPositionIndex-1));
+       end;
+       if CheckText(TemporaryUncheckedText) then begin
+        fTextCursorPositionIndex:=TemporaryUncheckedTextCursorPositionIndex;
+        fTextSelectionStart:=TemporaryUncheckedTextSelectionStart;
+        fTextSelectionEnd:=TemporaryUncheckedTextSelectionEnd;
         if fText<>TemporaryUncheckedText then begin
          fText:=TemporaryUncheckedText;
          UpdateText;
@@ -17671,18 +17798,27 @@ begin
          end;
         end;
        end;
-      end else begin
-       CurrentPosition:=PUCUUTF8GetCodeUnit(fText,fTextCursorPositionIndex-1);
-       if (CurrentPosition>1) and (CurrentPosition<=(length(fText)+1)) and
+       fTime:=0.0;
+       result:=true;
+      end;
+      KEYCODE_DELETE:begin
+       if (fTextSelectionStart>0) and
+          (fTextSelectionEnd>0) and
           fEditable then begin
-        OtherPosition:=CurrentPosition;
-        PUCUUTF8Dec(fText,OtherPosition);
-        if (OtherPosition>0) and (OtherPosition<=length(fText)) and (OtherPosition<CurrentPosition) then begin
-         TemporaryUncheckedText:=fText;
-         Delete(TemporaryUncheckedText,OtherPosition,CurrentPosition-OtherPosition);
-         if CheckText(TemporaryUncheckedText) then begin
-          dec(fTextCursorPositionIndex);
-          if fText<>TemporaryUncheckedText then begin
+        if TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers then begin
+         CutSelectedText;
+        end else begin
+         DeleteSelectedText;
+        end;
+       end else begin
+        CurrentPosition:=PUCUUTF8GetCodeUnit(fText,fTextCursorPositionIndex-1);
+        if (CurrentPosition>0) and (CurrentPosition<=length(fText)) and fEditable then begin
+         OtherPosition:=CurrentPosition;
+         PUCUUTF8Inc(fText,OtherPosition);
+         if (OtherPosition>1) and (OtherPosition<=(length(fText)+1)) and (CurrentPosition<OtherPosition) then begin
+          TemporaryUncheckedText:=fText;
+          Delete(TemporaryUncheckedText,CurrentPosition,OtherPosition-CurrentPosition);
+          if (fText<>TemporaryUncheckedText) and CheckText(TemporaryUncheckedText) then begin
            fText:=TemporaryUncheckedText;
            UpdateText;
            if assigned(fOnChange) then begin
@@ -17692,11 +17828,42 @@ begin
          end;
         end;
        end;
+       fTime:=0.0;
+       result:=true;
       end;
-      fTime:=0.0;
-      result:=true;
+      KEYCODE_A:begin
+       if TpvApplicationInputKeyModifier.CTRL in aKeyEvent.KeyModifiers then begin
+        fTextSelectionStart:=1;
+        fTextSelectionEnd:=PUCUUTF8Length(fText)+1;
+        result:=true;
+       end;
+      end;
+      KEYCODE_C:begin
+       if TpvApplicationInputKeyModifier.CTRL in aKeyEvent.KeyModifiers then begin
+        CopySelectedText;
+        result:=true;
+       end;
+      end;
+      KEYCODE_V:begin
+       if TpvApplicationInputKeyModifier.CTRL in aKeyEvent.KeyModifiers then begin
+        if fEditable then begin
+         PasteText;
+        end;
+        result:=true;
+       end;
+      end;
+      KEYCODE_X:begin
+       if TpvApplicationInputKeyModifier.CTRL in aKeyEvent.KeyModifiers then begin
+        if fEditable then begin
+         CutSelectedText;
+        end;
+        result:=true;
+       end;
+      end;
      end;
-     KEYCODE_INSERT:begin
+    end;
+    TpvApplicationInputKeyEventType.Unicode:begin
+     if fEditable then begin
       TemporaryUncheckedText:=fText;
       TemporaryUncheckedTextCursorPositionIndex:=fTextCursorPositionIndex;
       TemporaryUncheckedTextSelectionStart:=fTextSelectionStart;
@@ -17710,21 +17877,10 @@ begin
        TemporaryUncheckedTextSelectionStart:=0;
        TemporaryUncheckedTextSelectionEnd:=0;
       end;
-      if TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers then begin
-       if pvApplication.Clipboard.HasText and fEditable then begin
-        TemporaryText:=pvApplication.Clipboard.GetText;
-        if length(TemporaryText)>0 then begin
-         Insert(TemporaryText,
-                TemporaryUncheckedText,
-                PUCUUTF8GetCodeUnit(TemporaryUncheckedText,TemporaryUncheckedTextCursorPositionIndex-1));
-         inc(TemporaryUncheckedTextCursorPositionIndex,PUCUUTF8Length(TemporaryText));
-        end;
-       end;
-      end else if fEditable then begin
-       Insert(#32,
-              TemporaryUncheckedText,
-              PUCUUTF8GetCodeUnit(TemporaryUncheckedText,TemporaryUncheckedTextCursorPositionIndex-1));
-      end;
+      Insert(PUCUUTF32CharToUTF8(aKeyEvent.KeyCode),
+             TemporaryUncheckedText,
+             PUCUUTF8GetCodeUnit(TemporaryUncheckedText,TemporaryUncheckedTextCursorPositionIndex-1));
+      inc(TemporaryUncheckedTextCursorPositionIndex);
       if CheckText(TemporaryUncheckedText) then begin
        fTextCursorPositionIndex:=TemporaryUncheckedTextCursorPositionIndex;
        fTextSelectionStart:=TemporaryUncheckedTextSelectionStart;
@@ -17738,122 +17894,81 @@ begin
        end;
       end;
       fTime:=0.0;
-      result:=true;
      end;
-     KEYCODE_DELETE:begin
-      if (fTextSelectionStart>0) and
-         (fTextSelectionEnd>0) and
-         fEditable then begin
-       if TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers then begin
-        CutSelectedText;
-       end else begin
-        DeleteSelectedText;
-       end;
-      end else begin
-       CurrentPosition:=PUCUUTF8GetCodeUnit(fText,fTextCursorPositionIndex-1);
-       if (CurrentPosition>0) and (CurrentPosition<=length(fText)) and fEditable then begin
-        OtherPosition:=CurrentPosition;
-        PUCUUTF8Inc(fText,OtherPosition);
-        if (OtherPosition>1) and (OtherPosition<=(length(fText)+1)) and (CurrentPosition<OtherPosition) then begin
-         TemporaryUncheckedText:=fText;
-         Delete(TemporaryUncheckedText,CurrentPosition,OtherPosition-CurrentPosition);
-         if (fText<>TemporaryUncheckedText) and CheckText(TemporaryUncheckedText) then begin
-          fText:=TemporaryUncheckedText;
-          UpdateText;
-          if assigned(fOnChange) then begin
-           fOnChange(self);
-          end;
-         end;
-        end;
-       end;
-      end;
-      fTime:=0.0;
-      result:=true;
-     end;
-     KEYCODE_A:begin
-      if TpvApplicationInputKeyModifier.CTRL in aKeyEvent.KeyModifiers then begin
-       fTextSelectionStart:=1;
-       fTextSelectionEnd:=PUCUUTF8Length(fText)+1;
-       result:=true;
-      end;
-     end;
-     KEYCODE_C:begin
-      if TpvApplicationInputKeyModifier.CTRL in aKeyEvent.KeyModifiers then begin
-       CopySelectedText;
-       result:=true;
-      end;
-     end;
-     KEYCODE_V:begin
-      if TpvApplicationInputKeyModifier.CTRL in aKeyEvent.KeyModifiers then begin
-       if fEditable then begin
-        PasteText;
-       end;
-       result:=true;
-      end;
-     end;
-     KEYCODE_X:begin
-      if TpvApplicationInputKeyModifier.CTRL in aKeyEvent.KeyModifiers then begin
-       if fEditable then begin
-        CutSelectedText;
-       end;
-       result:=true;
-      end;
-     end;
+     result:=true;
     end;
-   end;
-   TpvApplicationInputKeyEventType.Unicode:begin
-    if fEditable then begin
-     TemporaryUncheckedText:=fText;
-     TemporaryUncheckedTextCursorPositionIndex:=fTextCursorPositionIndex;
-     TemporaryUncheckedTextSelectionStart:=fTextSelectionStart;
-     TemporaryUncheckedTextSelectionEnd:=fTextSelectionEnd;
-     if (TemporaryUncheckedTextSelectionStart>0) and
-        (TemporaryUncheckedTextSelectionEnd>0) then begin
-      CurrentPosition:=PUCUUTF8GetCodeUnit(TemporaryUncheckedText,Min(TemporaryUncheckedTextSelectionStart,TemporaryUncheckedTextSelectionEnd)-1);
-      OtherPosition:=PUCUUTF8GetCodeUnit(TemporaryUncheckedText,Max(TemporaryUncheckedTextSelectionStart,TemporaryUncheckedTextSelectionEnd)-1);
-      Delete(TemporaryUncheckedText,CurrentPosition,OtherPosition-CurrentPosition);
-      TemporaryUncheckedTextCursorPositionIndex:=CurrentPosition;
-      TemporaryUncheckedTextSelectionStart:=0;
-      TemporaryUncheckedTextSelectionEnd:=0;
-     end;
-     Insert(PUCUUTF32CharToUTF8(aKeyEvent.KeyCode),
-            TemporaryUncheckedText,
-            PUCUUTF8GetCodeUnit(TemporaryUncheckedText,TemporaryUncheckedTextCursorPositionIndex-1));
-     inc(TemporaryUncheckedTextCursorPositionIndex);
-     if CheckText(TemporaryUncheckedText) then begin
-      fTextCursorPositionIndex:=TemporaryUncheckedTextCursorPositionIndex;
-      fTextSelectionStart:=TemporaryUncheckedTextSelectionStart;
-      fTextSelectionEnd:=TemporaryUncheckedTextSelectionEnd;
-      if fText<>TemporaryUncheckedText then begin
-       fText:=TemporaryUncheckedText;
-       UpdateText;
-       if assigned(fOnChange) then begin
-        fOnChange(self);
-       end;
-      end;
-     end;
-     fTime:=0.0;
-    end;
-    result:=true;
    end;
   end;
+  SetRenderDirty;
+ end else begin
+  result:=false;
  end;
- SetRenderDirty;
 end;
 
 function TpvGUITextEdit.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean;
 var Index:TpvInt32;
 begin
- result:=assigned(fOnPointerEvent) and fOnPointerEvent(self,aPointerEvent);
- if not result then begin
-  result:=inherited PointerEvent(aPointerEvent);
+ if (fWidgetFlags*[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled])=[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled] then begin
+  result:=assigned(fOnPointerEvent) and fOnPointerEvent(self,aPointerEvent);
   if not result then begin
-   case aPointerEvent.PointerEventType of
-    TpvApplicationInputPointerEventType.Down:begin
-     case aPointerEvent.Button of
-      TpvApplicationInputPointerButton.Left:begin
-       fTextSelectionStart:=0;
-       fTextSelectionEnd:=0;
+   result:=inherited PointerEvent(aPointerEvent);
+   if not result then begin
+    case aPointerEvent.PointerEventType of
+     TpvApplicationInputPointerEventType.Down:begin
+      case aPointerEvent.Button of
+       TpvApplicationInputPointerButton.Left:begin
+        fTextSelectionStart:=0;
+        fTextSelectionEnd:=0;
+        fTextCursorPositionIndex:=1;
+        if fCountTextGlyphRects>0 then begin
+         if aPointerEvent.Position.x>=fTextGlyphRects[fCountTextGlyphRects-1].Right then begin
+          fTextCursorPositionIndex:=fCountTextGlyphRects+1;
+         end else begin
+          for Index:=fCountTextGlyphRects-1 downto 0 do begin
+           if aPointerEvent.Position.x>=fTextGlyphRects[Index].Left then begin
+            fTextCursorPositionIndex:=Index+1;
+            break;
+           end;
+          end;
+         end;
+        end;
+        RequestFocus;
+       end;
+       TpvApplicationInputPointerButton.Middle:begin
+        RequestFocus;
+       end;
+       TpvApplicationInputPointerButton.Right:begin
+        RequestFocus;
+       end;
+      end;
+      fTime:=0.0;
+      result:=true;
+     end;
+     TpvApplicationInputPointerEventType.Up:begin
+      case aPointerEvent.Button of
+       TpvApplicationInputPointerButton.Left:begin
+        if assigned(fOnClick) and Contains(aPointerEvent.Position) then begin
+         fOnClick(self);
+        end;
+        RequestFocus;
+       end;
+       TpvApplicationInputPointerButton.Middle:begin
+        RequestFocus;
+       end;
+       TpvApplicationInputPointerButton.Right:begin
+        RequestFocus;
+        if assigned(fPopupMenu) then begin
+         fPopupMenu.Activate(AbsolutePosition+aPointerEvent.Position);
+        end;
+       end;
+      end;
+      fTime:=0.0;
+     end;
+     TpvApplicationInputPointerEventType.Motion:begin
+      if Focused and (TpvApplicationInputPointerButton.Left in aPointerEvent.Buttons) then begin
+       if fTextSelectionStart<1 then begin
+        fTextSelectionStart:=fTextCursorPositionIndex;
+       end;
        fTextCursorPositionIndex:=1;
        if fCountTextGlyphRects>0 then begin
         if aPointerEvent.Position.x>=fTextGlyphRects[fCountTextGlyphRects-1].Right then begin
@@ -17867,81 +17982,38 @@ begin
          end;
         end;
        end;
-       RequestFocus;
+       fTextSelectionEnd:=fTextCursorPositionIndex;
+       fTime:=0.0;
       end;
-      TpvApplicationInputPointerButton.Middle:begin
-       RequestFocus;
-      end;
-      TpvApplicationInputPointerButton.Right:begin
-       RequestFocus;
-      end;
-     end;
-     fTime:=0.0;
-     result:=true;
-    end;
-    TpvApplicationInputPointerEventType.Up:begin
-     case aPointerEvent.Button of
-      TpvApplicationInputPointerButton.Left:begin
-       if assigned(fOnClick) and Contains(aPointerEvent.Position) then begin
-        fOnClick(self);
-       end;
-       RequestFocus;
-      end;
-      TpvApplicationInputPointerButton.Middle:begin
-       RequestFocus;
-      end;
-      TpvApplicationInputPointerButton.Right:begin
-       RequestFocus;
-       if assigned(fPopupMenu) then begin
-        fPopupMenu.Activate(AbsolutePosition+aPointerEvent.Position);
-       end;
-      end;
-     end;
-     fTime:=0.0;
-    end;
-    TpvApplicationInputPointerEventType.Motion:begin
-     if Focused and (TpvApplicationInputPointerButton.Left in aPointerEvent.Buttons) then begin
-      if fTextSelectionStart<1 then begin
-       fTextSelectionStart:=fTextCursorPositionIndex;
-      end;
-      fTextCursorPositionIndex:=1;
-      if fCountTextGlyphRects>0 then begin
-       if aPointerEvent.Position.x>=fTextGlyphRects[fCountTextGlyphRects-1].Right then begin
-        fTextCursorPositionIndex:=fCountTextGlyphRects+1;
-       end else begin
-        for Index:=fCountTextGlyphRects-1 downto 0 do begin
-         if aPointerEvent.Position.x>=fTextGlyphRects[Index].Left then begin
-          fTextCursorPositionIndex:=Index+1;
-          break;
-         end;
-        end;
-       end;
-      end;
-      fTextSelectionEnd:=fTextCursorPositionIndex;
-      fTime:=0.0;
-     end;
-     if not fEditable then begin
-      fCursor:=TpvGUICursor.Arrow;
-     end else begin
-      if fSpinnable and fDragRect.Touched(aPointerEvent.Position) then begin
-       fCursor:=TpvGUICursor.NS;
+      if not fEditable then begin
+       fCursor:=TpvGUICursor.Arrow;
       end else begin
-       fCursor:=TpvGUICursor.Beam;
+       if fSpinnable and fDragRect.Touched(aPointerEvent.Position) then begin
+        fCursor:=TpvGUICursor.NS;
+       end else begin
+        fCursor:=TpvGUICursor.Beam;
+       end;
       end;
+      result:=true;
      end;
-     result:=true;
     end;
    end;
   end;
+  SetRenderDirty;
+ end else begin
+  result:=false;
  end;
- SetRenderDirty;
 end;
 
 function TpvGUITextEdit.Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boolean;
 begin
- result:=assigned(fOnScrolled) and fOnScrolled(self,aPosition,aRelativeAmount);
- if not result then begin
-  result:=inherited Scrolled(aPosition,aRelativeAmount);
+ if (fWidgetFlags*[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled])=[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled] then begin
+  result:=assigned(fOnScrolled) and fOnScrolled(self,aPosition,aRelativeAmount);
+  if not result then begin
+   result:=inherited Scrolled(aPosition,aRelativeAmount);
+  end;
+ end else begin
+  result:=false;
  end;
 end;
 
@@ -18204,93 +18276,101 @@ end;
 function TpvGUIIntegerEdit.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
 var TemporaryValue:TpvInt64;
 begin
- result:=inherited KeyEvent(aKeyEvent);
- if not result then begin
-  case aKeyEvent.KeyEventType of
-   TpvApplicationInputKeyEventType.Typed:begin
-    case aKeyEvent.KeyCode of
-     KEYCODE_RETURN:begin
-      Accept;
-      result:=true;
-     end;
-     KEYCODE_UP:begin
-      if fEditable then begin
-       TemporaryValue:=GetValue;
-       if ((TemporaryValue+fSmallStep)<=fMaximumValue) and not (TemporaryValue>(TemporaryValue+fSmallStep)) then begin
-        SetValue(TemporaryValue+fSmallStep);
-       end else begin
-        SetValue(fMaximumValue);
-       end;
+ if (fWidgetFlags*[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled])=[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled] then begin
+  result:=inherited KeyEvent(aKeyEvent);
+  if not result then begin
+   case aKeyEvent.KeyEventType of
+    TpvApplicationInputKeyEventType.Typed:begin
+     case aKeyEvent.KeyCode of
+      KEYCODE_RETURN:begin
+       Accept;
+       result:=true;
       end;
-      result:=true;
-     end;
-     KEYCODE_DOWN:begin
-      if fEditable then begin
-       TemporaryValue:=GetValue;
-       if ((TemporaryValue-fSmallStep)>=fMinimumValue) and not (TemporaryValue<(TemporaryValue-fSmallStep)) then begin
-        SetValue(TemporaryValue-fSmallStep);
-       end else begin
-        SetValue(fMinimumValue);
+      KEYCODE_UP:begin
+       if fEditable then begin
+        TemporaryValue:=GetValue;
+        if ((TemporaryValue+fSmallStep)<=fMaximumValue) and not (TemporaryValue>(TemporaryValue+fSmallStep)) then begin
+         SetValue(TemporaryValue+fSmallStep);
+        end else begin
+         SetValue(fMaximumValue);
+        end;
        end;
+       result:=true;
       end;
-      result:=true;
-     end;
-     KEYCODE_PAGEUP:begin
-      if fEditable then begin
-       TemporaryValue:=GetValue;
-       if ((TemporaryValue+fLargeStep)<=fMaximumValue) and not (TemporaryValue>(TemporaryValue+fLargeStep)) then begin
-        SetValue(TemporaryValue+fLargeStep);
-       end else begin
-        SetValue(fMaximumValue);
+      KEYCODE_DOWN:begin
+       if fEditable then begin
+        TemporaryValue:=GetValue;
+        if ((TemporaryValue-fSmallStep)>=fMinimumValue) and not (TemporaryValue<(TemporaryValue-fSmallStep)) then begin
+         SetValue(TemporaryValue-fSmallStep);
+        end else begin
+         SetValue(fMinimumValue);
+        end;
        end;
+       result:=true;
       end;
-      result:=true;
-     end;
-     KEYCODE_PAGEDOWN:begin
-      if fEditable then begin
-       TemporaryValue:=GetValue;
-       if ((TemporaryValue-fLargeStep)>=fMinimumValue) and not (TemporaryValue<(TemporaryValue-fLargeStep)) then begin
-        SetValue(TemporaryValue-fLargeStep);
-       end else begin
-        SetValue(fMinimumValue);
+      KEYCODE_PAGEUP:begin
+       if fEditable then begin
+        TemporaryValue:=GetValue;
+        if ((TemporaryValue+fLargeStep)<=fMaximumValue) and not (TemporaryValue>(TemporaryValue+fLargeStep)) then begin
+         SetValue(TemporaryValue+fLargeStep);
+        end else begin
+         SetValue(fMaximumValue);
+        end;
        end;
+       result:=true;
       end;
-      result:=true;
+      KEYCODE_PAGEDOWN:begin
+       if fEditable then begin
+        TemporaryValue:=GetValue;
+        if ((TemporaryValue-fLargeStep)>=fMinimumValue) and not (TemporaryValue<(TemporaryValue-fLargeStep)) then begin
+         SetValue(TemporaryValue-fLargeStep);
+        end else begin
+         SetValue(fMinimumValue);
+        end;
+       end;
+       result:=true;
+      end;
      end;
     end;
    end;
   end;
- end;
+ end else begin
+  result:=false;
+ end;  
 end;
 
 function TpvGUIIntegerEdit.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean;
 var TemporaryValue,Step:TpvInt64;
     v:TpvFloat;
 begin
- result:=inherited PointerEvent(aPointerEvent);
- if not result then begin
-  case aPointerEvent.PointerEventType of
-   TpvApplicationInputPointerEventType.Drag:begin
-    if fEditable then begin
-     TemporaryValue:=GetValue;
-     v:=aPointerEvent.RelativePosition.x-aPointerEvent.RelativePosition.y;
-     if v<0.0 then begin
-      Step:=floor(v)*fSmallStep;
-     end else begin
-      Step:=ceil(v)*fSmallStep;
+ if (fWidgetFlags*[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled])=[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled] then begin
+  result:=inherited PointerEvent(aPointerEvent);
+  if not result then begin
+   case aPointerEvent.PointerEventType of
+    TpvApplicationInputPointerEventType.Drag:begin
+     if fEditable then begin
+      TemporaryValue:=GetValue;
+      v:=aPointerEvent.RelativePosition.x-aPointerEvent.RelativePosition.y;
+      if v<0.0 then begin
+       Step:=floor(v)*fSmallStep;
+      end else begin
+       Step:=ceil(v)*fSmallStep;
+      end;
+      if ((Step>0) and ((TemporaryValue+Step)<=fMaximumValue) and not (TemporaryValue>(TemporaryValue+Step))) or
+         ((Step<0) and ((TemporaryValue+Step)>=fMinimumValue) and not (TemporaryValue<(TemporaryValue+Step))) then begin
+       SetValue(TemporaryValue+Step);
+      end else if Step<0 then begin
+       SetValue(fMinimumValue);
+      end else if Step>0 then begin
+       SetValue(fMaximumValue);
+      end;
      end;
-     if ((Step>0) and ((TemporaryValue+Step)<=fMaximumValue) and not (TemporaryValue>(TemporaryValue+Step))) or
-        ((Step<0) and ((TemporaryValue+Step)>=fMinimumValue) and not (TemporaryValue<(TemporaryValue+Step))) then begin
-      SetValue(TemporaryValue+Step);
-     end else if Step<0 then begin
-      SetValue(fMinimumValue);
-     end else if Step>0 then begin
-      SetValue(fMaximumValue);
-     end;
+     result:=true;
     end;
-    result:=true;
    end;
   end;
+ end else begin
+  result:=false;
  end;
 end;
 
@@ -18298,26 +18378,30 @@ function TpvGUIIntegerEdit.Scrolled(const aPosition,aRelativeAmount:TpvVector2):
 var TemporaryValue,Step:TpvInt64;
     v:TpvFloat;
 begin
- result:=inherited Scrolled(aPosition,aRelativeAmount);
- if not result then begin
-  if fEditable then begin
-   TemporaryValue:=GetValue;
-   v:=aRelativeAmount.x+aRelativeAmount.y;
-   if v<0.0 then begin
-    Step:=floor(v)*fSmallStep;
-   end else begin
-    Step:=ceil(v)*fSmallStep;
+ if (fWidgetFlags*[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled])=[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled] then begin
+  result:=inherited Scrolled(aPosition,aRelativeAmount);
+  if not result then begin
+   if fEditable then begin
+    TemporaryValue:=GetValue;
+    v:=aRelativeAmount.x+aRelativeAmount.y;
+    if v<0.0 then begin
+     Step:=floor(v)*fSmallStep;
+    end else begin
+     Step:=ceil(v)*fSmallStep;
+    end;
+    if ((Step>0) and ((TemporaryValue+Step)<=fMaximumValue) and not (TemporaryValue>(TemporaryValue+Step))) or
+       ((Step<0) and ((TemporaryValue+Step)>=fMinimumValue) and not (TemporaryValue<(TemporaryValue+Step))) then begin
+     SetValue(TemporaryValue+Step);
+    end else if Step<0 then begin
+     SetValue(fMinimumValue);
+    end else if Step>0 then begin
+     SetValue(fMaximumValue);
+    end;
    end;
-   if ((Step>0) and ((TemporaryValue+Step)<=fMaximumValue) and not (TemporaryValue>(TemporaryValue+Step))) or
-      ((Step<0) and ((TemporaryValue+Step)>=fMinimumValue) and not (TemporaryValue<(TemporaryValue+Step))) then begin
-    SetValue(TemporaryValue+Step);
-   end else if Step<0 then begin
-    SetValue(fMinimumValue);
-   end else if Step>0 then begin
-    SetValue(fMaximumValue);
-   end;
+   result:=true;
   end;
-  result:=true;
+ end else begin
+  result:=false;
  end;
 end;
 
@@ -18516,63 +18600,66 @@ end;
 function TpvGUIFloatEdit.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
 var TemporaryValue:TpvDouble;
 begin
- result:=inherited KeyEvent(aKeyEvent);
- if not result then begin
-  case aKeyEvent.KeyEventType of
-   TpvApplicationInputKeyEventType.Typed:begin
-    case aKeyEvent.KeyCode of
-     KEYCODE_RETURN:begin
-      Accept;
-      result:=true;
-     end;
-
-     KEYCODE_UP:begin
-      if fEditable then begin
-       TemporaryValue:=GetValue;
-       if ((TemporaryValue+fSmallStep)<=fMaximumValue) and not (TemporaryValue>(TemporaryValue+fSmallStep)) then begin
-        SetValue(TemporaryValue+fSmallStep);
-       end else begin
-        SetValue(fMaximumValue);
-       end;
+ if (fWidgetFlags*[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled])=[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled] then begin
+  result:=inherited KeyEvent(aKeyEvent);
+  if not result then begin
+   case aKeyEvent.KeyEventType of
+    TpvApplicationInputKeyEventType.Typed:begin
+     case aKeyEvent.KeyCode of
+      KEYCODE_RETURN:begin
+       Accept;
+       result:=true;
       end;
-      result:=true;
-     end;
-     KEYCODE_DOWN:begin
-      if fEditable then begin
-       TemporaryValue:=GetValue;
-       if ((TemporaryValue-fSmallStep)>=fMinimumValue) and not (TemporaryValue<(TemporaryValue-fSmallStep)) then begin
-        SetValue(TemporaryValue-fSmallStep);
-       end else begin
-        SetValue(fMinimumValue);
+      KEYCODE_UP:begin
+       if fEditable then begin
+        TemporaryValue:=GetValue;
+        if ((TemporaryValue+fSmallStep)<=fMaximumValue) and not (TemporaryValue>(TemporaryValue+fSmallStep)) then begin
+         SetValue(TemporaryValue+fSmallStep);
+        end else begin
+         SetValue(fMaximumValue);
+        end;
        end;
+       result:=true;
       end;
-      result:=true;
-     end;
-     KEYCODE_PAGEUP:begin
-      if fEditable then begin
-       TemporaryValue:=GetValue;
-       if ((TemporaryValue+fLargeStep)<=fMaximumValue) and not (TemporaryValue>(TemporaryValue+fLargeStep)) then begin
-        SetValue(TemporaryValue+fLargeStep);
-       end else begin
-        SetValue(fMaximumValue);
+      KEYCODE_DOWN:begin
+       if fEditable then begin
+        TemporaryValue:=GetValue;
+        if ((TemporaryValue-fSmallStep)>=fMinimumValue) and not (TemporaryValue<(TemporaryValue-fSmallStep)) then begin
+         SetValue(TemporaryValue-fSmallStep);
+        end else begin
+         SetValue(fMinimumValue);
+        end;
        end;
+       result:=true;
       end;
-      result:=true;
-     end;
-     KEYCODE_PAGEDOWN:begin
-      if fEditable then begin
-       TemporaryValue:=GetValue;
-       if ((TemporaryValue-fLargeStep)>=fMinimumValue) and not (TemporaryValue<(TemporaryValue-fLargeStep)) then begin
-        SetValue(TemporaryValue-fLargeStep);
-       end else begin
-        SetValue(fMinimumValue);
+      KEYCODE_PAGEUP:begin
+       if fEditable then begin
+        TemporaryValue:=GetValue;
+        if ((TemporaryValue+fLargeStep)<=fMaximumValue) and not (TemporaryValue>(TemporaryValue+fLargeStep)) then begin
+         SetValue(TemporaryValue+fLargeStep);
+        end else begin
+         SetValue(fMaximumValue);
+        end;
        end;
+       result:=true;
       end;
-      result:=true;
+      KEYCODE_PAGEDOWN:begin
+       if fEditable then begin
+        TemporaryValue:=GetValue;
+        if ((TemporaryValue-fLargeStep)>=fMinimumValue) and not (TemporaryValue<(TemporaryValue-fLargeStep)) then begin
+         SetValue(TemporaryValue-fLargeStep);
+        end else begin
+         SetValue(fMinimumValue);
+        end;
+       end;
+       result:=true;
+      end;
      end;
     end;
    end;
   end;
+ end else begin
+  result:=false;
  end;
 end;
 
@@ -18580,30 +18667,34 @@ function TpvGUIFloatEdit.PointerEvent(const aPointerEvent:TpvApplicationInputPoi
 var TemporaryValue,Step:TpvDouble;
     v:TpvFloat;
 begin
- result:=inherited PointerEvent(aPointerEvent);
- if not result then begin
-  case aPointerEvent.PointerEventType of
-   TpvApplicationInputPointerEventType.Drag:begin
-    if fEditable then begin
-     TemporaryValue:=GetValue;
-     v:=aPointerEvent.RelativePosition.x-aPointerEvent.RelativePosition.y;
-     if v<0.0 then begin
-      Step:=floor(v)*fSmallStep;
-     end else begin
-      Step:=ceil(v)*fSmallStep;
+ if (fWidgetFlags*[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled])=[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled] then begin
+  result:=inherited PointerEvent(aPointerEvent);
+  if not result then begin
+   case aPointerEvent.PointerEventType of
+    TpvApplicationInputPointerEventType.Drag:begin
+     if fEditable then begin
+      TemporaryValue:=GetValue;
+      v:=aPointerEvent.RelativePosition.x-aPointerEvent.RelativePosition.y;
+      if v<0.0 then begin
+       Step:=floor(v)*fSmallStep;
+      end else begin
+       Step:=ceil(v)*fSmallStep;
+      end;
+      if ((Step>0) and ((TemporaryValue+Step)<=fMaximumValue) and not (TemporaryValue>(TemporaryValue+Step))) or
+         ((Step<0) and ((TemporaryValue+Step)>=fMinimumValue) and not (TemporaryValue<(TemporaryValue+Step))) then begin
+       SetValue(TemporaryValue+Step);
+      end else if Step<0 then begin
+       SetValue(fMinimumValue);
+      end else if Step>0 then begin
+       SetValue(fMaximumValue);
+      end;
      end;
-     if ((Step>0) and ((TemporaryValue+Step)<=fMaximumValue) and not (TemporaryValue>(TemporaryValue+Step))) or
-        ((Step<0) and ((TemporaryValue+Step)>=fMinimumValue) and not (TemporaryValue<(TemporaryValue+Step))) then begin
-      SetValue(TemporaryValue+Step);
-     end else if Step<0 then begin
-      SetValue(fMinimumValue);
-     end else if Step>0 then begin
-      SetValue(fMaximumValue);
-     end;
+     result:=true;
     end;
-    result:=true;
    end;
   end;
+ end else begin
+  result:=false;
  end;
 end;
 
@@ -18611,26 +18702,30 @@ function TpvGUIFloatEdit.Scrolled(const aPosition,aRelativeAmount:TpvVector2):Bo
 var TemporaryValue,Step:TpvDouble;
     v:TpvFloat;
 begin
- result:=inherited Scrolled(aPosition,aRelativeAmount);
- if not result then begin
-  if fEditable then begin
-   TemporaryValue:=GetValue;
-   v:=aRelativeAmount.x+aRelativeAmount.y;
-   if v<0.0 then begin
-    Step:=floor(v)*fSmallStep;
-   end else begin
-    Step:=ceil(v)*fSmallStep;
+ if (fWidgetFlags*[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled])=[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled] then begin
+  result:=inherited Scrolled(aPosition,aRelativeAmount);
+  if not result then begin
+   if fEditable then begin
+    TemporaryValue:=GetValue;
+    v:=aRelativeAmount.x+aRelativeAmount.y;
+    if v<0.0 then begin
+     Step:=floor(v)*fSmallStep;
+    end else begin
+     Step:=ceil(v)*fSmallStep;
+    end;
+    if ((Step>0) and ((TemporaryValue+Step)<=fMaximumValue) and not (TemporaryValue>(TemporaryValue+Step))) or
+       ((Step<0) and ((TemporaryValue+Step)>=fMinimumValue) and not (TemporaryValue<(TemporaryValue+Step))) then begin
+     SetValue(TemporaryValue+Step);
+    end else if Step<0 then begin
+     SetValue(fMinimumValue);
+    end else if Step>0 then begin
+     SetValue(fMaximumValue);
+    end;
    end;
-   if ((Step>0) and ((TemporaryValue+Step)<=fMaximumValue) and not (TemporaryValue>(TemporaryValue+Step))) or
-      ((Step<0) and ((TemporaryValue+Step)>=fMinimumValue) and not (TemporaryValue<(TemporaryValue+Step))) then begin
-    SetValue(TemporaryValue+Step);
-   end else if Step<0 then begin
-    SetValue(fMinimumValue);
-   end else if Step>0 then begin
-    SetValue(fMaximumValue);
-   end;
+   result:=true;
   end;
-  result:=true;
+ end else begin
+  result:=false;
  end;
 end;
 
@@ -19272,115 +19367,119 @@ var Index,OtherIndex:TpvInt32;
     Child:TpvGUIObject;
     MenuItem:TpvGUIMenuItem;
 begin
- result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
- if Enabled and not result then begin
-  case aKeyEvent.KeyEventType of
-   TpvApplicationInputKeyEventType.Down:begin
-    result:=true;
-   end;
-   TpvApplicationInputKeyEventType.Up:begin
-    result:=true;
-   end;
-   TpvApplicationInputKeyEventType.Typed:begin
-    case aKeyEvent.KeyCode of
-     KEYCODE_DOWN,KEYCODE_SPACE,KEYCODE_RETURN,KEYCODE_RETURN2,KEYCODE_KP_ENTER:begin
-      fSelectedMenuItem:=nil;
-      if assigned(fFocusedMenuItem) then begin
-       fSelectedMenuItem:=fFocusedMenuItem;
-       if fFocusedMenuItem.Enabled and fFocusedMenuItem.Selectable then begin
-        if assigned(fFocusedMenuItem.Menu) then begin
-         fFocusedMenuItem.Menu.Activate(AbsolutePosition+TpvVector2.InlineableCreate(fFocusedMenuItem.fOpenRect.Left,fSize.y));
-         fFocusedMenuItem.Menu.FocusFirstMenuItem;
-        end;
-        if assigned(fFocusedMenuItem.OnClick) then begin
-         fFocusedMenuItem.OnClick(fFocusedMenuItem);
-        end;
-       end;
-      end;
-     end;
-     KEYCODE_ESCAPE:begin
-      fSelectedMenuItem:=nil;
-      for Index:=0 to fChildren.Count-1 do begin
-       Child:=fChildren[Index];
-       if Child is TpvGUIMenuItem then begin
-        MenuItem:=TpvGUIMenuItem(Child);
-        fFocusedMenuItem:=MenuItem;
-        fHoveredMenuItem:=MenuItem;
-        break;
-       end;
-      end;
-     end;
-     KEYCODE_LEFT:begin
-      for Index:=0 to fChildren.Count-1 do begin
-       Child:=fChildren[Index];
-       if (Child is TpvGUIMenuItem) and (Child=fFocusedMenuItem) then begin
-        for OtherIndex:=Index-1 downto 0 do begin
-         Child:=fChildren[OtherIndex];
-         if Child is TpvGUIMenuItem then begin
-          MenuItem:=TpvGUIMenuItem(Child);
-          if MenuItem.Enabled and MenuItem.Selectable then begin
-           fSelectedMenuItem:=nil;
-           fFocusedMenuItem:=MenuItem;
-           fHoveredMenuItem:=MenuItem;
-           break;
-          end;
-         end;
-        end;
-        break;
-       end;
-      end;
-     end;
-     KEYCODE_RIGHT:begin
-      for Index:=0 to fChildren.Count-1 do begin
-       Child:=fChildren[Index];
-       if (Child is TpvGUIMenuItem) and (Child=fFocusedMenuItem) then begin
-        for OtherIndex:=Index+1 to fChildren.Count-1 do begin
-         Child:=fChildren[OtherIndex];
-         if Child is TpvGUIMenuItem then begin
-          MenuItem:=TpvGUIMenuItem(Child);
-          if MenuItem.Enabled and MenuItem.Selectable then begin
-           fSelectedMenuItem:=nil;
-           fFocusedMenuItem:=MenuItem;
-           fHoveredMenuItem:=MenuItem;
-           break;
-          end;
-         end;
-        end;
-        break;
-       end;
-      end;
-     end;
-     KEYCODE_HOME:begin
-      for Index:=0 to fChildren.Count-1 do begin
-       Child:=fChildren[Index];
-       if Child is TpvGUIMenuItem then begin
-        MenuItem:=TpvGUIMenuItem(Child);
-        fSelectedMenuItem:=nil;
-        fFocusedMenuItem:=MenuItem;
-        fHoveredMenuItem:=MenuItem;
-        break;
-       end;
-      end;
-     end;
-     KEYCODE_END:begin
-      for Index:=fChildren.Count-1 downto 0 do begin
-       Child:=fChildren[Index];
-       if Child is TpvGUIMenuItem then begin
-        MenuItem:=TpvGUIMenuItem(Child);
-        fSelectedMenuItem:=nil;
-        fFocusedMenuItem:=MenuItem;
-        fHoveredMenuItem:=MenuItem;
-        break;
-       end;
-      end;
-     end;
+ if (fWidgetFlags*[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled])=[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled] then begin
+  result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
+  if Enabled and not result then begin
+   case aKeyEvent.KeyEventType of
+    TpvApplicationInputKeyEventType.Down:begin
+     result:=true;
     end;
-    result:=true;
-   end;
-   TpvApplicationInputKeyEventType.Unicode:begin
-    result:=true;
+    TpvApplicationInputKeyEventType.Up:begin
+     result:=true;
+    end;
+    TpvApplicationInputKeyEventType.Typed:begin
+     case aKeyEvent.KeyCode of
+      KEYCODE_DOWN,KEYCODE_SPACE,KEYCODE_RETURN,KEYCODE_RETURN2,KEYCODE_KP_ENTER:begin
+       fSelectedMenuItem:=nil;
+       if assigned(fFocusedMenuItem) then begin
+        fSelectedMenuItem:=fFocusedMenuItem;
+        if fFocusedMenuItem.Enabled and fFocusedMenuItem.Selectable then begin
+         if assigned(fFocusedMenuItem.Menu) then begin
+          fFocusedMenuItem.Menu.Activate(AbsolutePosition+TpvVector2.InlineableCreate(fFocusedMenuItem.fOpenRect.Left,fSize.y));
+          fFocusedMenuItem.Menu.FocusFirstMenuItem;
+         end;
+         if assigned(fFocusedMenuItem.OnClick) then begin
+          fFocusedMenuItem.OnClick(fFocusedMenuItem);
+         end;
+        end;
+       end;
+      end;
+      KEYCODE_ESCAPE:begin
+       fSelectedMenuItem:=nil;
+       for Index:=0 to fChildren.Count-1 do begin
+        Child:=fChildren[Index];
+        if Child is TpvGUIMenuItem then begin
+         MenuItem:=TpvGUIMenuItem(Child);
+         fFocusedMenuItem:=MenuItem;
+         fHoveredMenuItem:=MenuItem;
+         break;
+        end;
+       end;
+      end;
+      KEYCODE_LEFT:begin
+       for Index:=0 to fChildren.Count-1 do begin
+        Child:=fChildren[Index];
+        if (Child is TpvGUIMenuItem) and (Child=fFocusedMenuItem) then begin
+         for OtherIndex:=Index-1 downto 0 do begin
+          Child:=fChildren[OtherIndex];
+          if Child is TpvGUIMenuItem then begin
+           MenuItem:=TpvGUIMenuItem(Child);
+           if MenuItem.Enabled and MenuItem.Selectable then begin
+            fSelectedMenuItem:=nil;
+            fFocusedMenuItem:=MenuItem;
+            fHoveredMenuItem:=MenuItem;
+            break;
+           end;
+          end;
+         end;
+         break;
+        end;
+       end;
+      end;
+      KEYCODE_RIGHT:begin
+       for Index:=0 to fChildren.Count-1 do begin
+        Child:=fChildren[Index];
+        if (Child is TpvGUIMenuItem) and (Child=fFocusedMenuItem) then begin
+         for OtherIndex:=Index+1 to fChildren.Count-1 do begin
+          Child:=fChildren[OtherIndex];
+          if Child is TpvGUIMenuItem then begin
+           MenuItem:=TpvGUIMenuItem(Child);
+           if MenuItem.Enabled and MenuItem.Selectable then begin
+            fSelectedMenuItem:=nil;
+            fFocusedMenuItem:=MenuItem;
+            fHoveredMenuItem:=MenuItem;
+            break;
+           end;
+          end;
+         end;
+         break;
+        end;
+       end;
+      end;
+      KEYCODE_HOME:begin
+       for Index:=0 to fChildren.Count-1 do begin
+        Child:=fChildren[Index];
+        if Child is TpvGUIMenuItem then begin
+         MenuItem:=TpvGUIMenuItem(Child);
+         fSelectedMenuItem:=nil;
+         fFocusedMenuItem:=MenuItem;
+         fHoveredMenuItem:=MenuItem;
+         break;
+        end;
+       end;
+      end;
+      KEYCODE_END:begin
+       for Index:=fChildren.Count-1 downto 0 do begin
+        Child:=fChildren[Index];
+        if Child is TpvGUIMenuItem then begin
+         MenuItem:=TpvGUIMenuItem(Child);
+         fSelectedMenuItem:=nil;
+         fFocusedMenuItem:=MenuItem;
+         fHoveredMenuItem:=MenuItem;
+         break;
+        end;
+       end;
+      end;
+     end;
+     result:=true;
+    end;
+    TpvApplicationInputKeyEventType.Unicode:begin
+     result:=true;
+    end;
    end;
   end;
+ end else begin
+  result:=false;
  end;
 end;
 
@@ -19389,81 +19488,89 @@ var Index:TpvInt32;
     Child:TpvGUIObject;
     MenuItem:TpvGUIMenuItem;
 begin
- result:=assigned(fOnPointerEvent) and fOnPointerEvent(self,aPointerEvent);
- if not result then begin
-  result:=inherited PointerEvent(aPointerEvent);
+ if (fWidgetFlags*[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled])=[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled] then begin
+  result:=assigned(fOnPointerEvent) and fOnPointerEvent(self,aPointerEvent);
   if not result then begin
-   case aPointerEvent.PointerEventType of
-    TpvApplicationInputPointerEventType.Down:begin
-     if not Focused then begin
-      RequestFocus;
-     end;
-     fSelectedMenuItem:=nil;
-     fFocusedMenuItem:=nil;
-     fHoveredMenuItem:=nil;
-     for Index:=0 to fChildren.Count-1 do begin
-      Child:=fChildren[Index];
-      if Child is TpvGUIMenuItem then begin
-       MenuItem:=TpvGUIMenuItem(Child);
-       if MenuItem.Enabled and
-          MenuItem.Selectable and
-          MenuItem.fRect.Touched(aPointerEvent.Position) then begin
-        fSelectedMenuItem:=MenuItem;
-        fFocusedMenuItem:=MenuItem;
-        fHoveredMenuItem:=MenuItem;
-        if fSelectedMenuItem.Enabled and fSelectedMenuItem.Selectable and assigned(fSelectedMenuItem.Menu) then begin
-         fSelectedMenuItem.Menu.Activate(AbsolutePosition+TpvVector2.InlineableCreate(fSelectedMenuItem.fOpenRect.Left,fSize.y));
-        end;
-        break;
-       end;
+   result:=inherited PointerEvent(aPointerEvent);
+   if not result then begin
+    case aPointerEvent.PointerEventType of
+     TpvApplicationInputPointerEventType.Down:begin
+      if not Focused then begin
+       RequestFocus;
       end;
-     end;
-     if not assigned(fFocusedMenuItem) then begin
+      fSelectedMenuItem:=nil;
+      fFocusedMenuItem:=nil;
+      fHoveredMenuItem:=nil;
       for Index:=0 to fChildren.Count-1 do begin
        Child:=fChildren[Index];
        if Child is TpvGUIMenuItem then begin
-        fFocusedMenuItem:=TpvGUIMenuItem(Child);
-        break;
+        MenuItem:=TpvGUIMenuItem(Child);
+        if MenuItem.Enabled and
+           MenuItem.Selectable and
+           MenuItem.fRect.Touched(aPointerEvent.Position) then begin
+         fSelectedMenuItem:=MenuItem;
+         fFocusedMenuItem:=MenuItem;
+         fHoveredMenuItem:=MenuItem;
+         if fSelectedMenuItem.Enabled and fSelectedMenuItem.Selectable and assigned(fSelectedMenuItem.Menu) then begin
+          fSelectedMenuItem.Menu.Activate(AbsolutePosition+TpvVector2.InlineableCreate(fSelectedMenuItem.fOpenRect.Left,fSize.y));
+         end;
+         break;
+        end;
        end;
       end;
-     end;
-     result:=true;
-    end;
-    TpvApplicationInputPointerEventType.Up:begin
-     if assigned(fSelectedMenuItem) then begin
-      if fSelectedMenuItem.Enabled and fSelectedMenuItem.Selectable and assigned(fSelectedMenuItem.fOnClick) then begin
-       fSelectedMenuItem.fOnClick(fSelectedMenuItem);
-      end;
-      fSelectedMenuItem:=nil;
-     end;
-     result:=true;
-    end;
-    TpvApplicationInputPointerEventType.Motion:begin
-     fHoveredMenuItem:=nil;
-     for Index:=0 to fChildren.Count-1 do begin
-      Child:=fChildren[Index];
-      if Child is TpvGUIMenuItem then begin
-       MenuItem:=TpvGUIMenuItem(Child);
-       if MenuItem.Enabled and
-          MenuItem.Selectable and
-          MenuItem.fRect.Touched(aPointerEvent.Position) then begin
-        fHoveredMenuItem:=MenuItem;
-        break;
+      if not assigned(fFocusedMenuItem) then begin
+       for Index:=0 to fChildren.Count-1 do begin
+        Child:=fChildren[Index];
+        if Child is TpvGUIMenuItem then begin
+         fFocusedMenuItem:=TpvGUIMenuItem(Child);
+         break;
+        end;
        end;
       end;
+      result:=true;
      end;
-     result:=true;
+     TpvApplicationInputPointerEventType.Up:begin
+      if assigned(fSelectedMenuItem) then begin
+       if fSelectedMenuItem.Enabled and fSelectedMenuItem.Selectable and assigned(fSelectedMenuItem.fOnClick) then begin
+        fSelectedMenuItem.fOnClick(fSelectedMenuItem);
+       end;
+       fSelectedMenuItem:=nil;
+      end;
+      result:=true;
+     end;
+     TpvApplicationInputPointerEventType.Motion:begin
+      fHoveredMenuItem:=nil;
+      for Index:=0 to fChildren.Count-1 do begin
+       Child:=fChildren[Index];
+       if Child is TpvGUIMenuItem then begin
+        MenuItem:=TpvGUIMenuItem(Child);
+        if MenuItem.Enabled and
+           MenuItem.Selectable and
+           MenuItem.fRect.Touched(aPointerEvent.Position) then begin
+         fHoveredMenuItem:=MenuItem;
+         break;
+        end;
+       end;
+      end;
+      result:=true;
+     end;
     end;
    end;
   end;
+ end else begin
+  result:=false;
  end;
 end;
 
 function TpvGUIWindowMenu.Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boolean;
 begin
- result:=assigned(fOnScrolled) and fOnScrolled(self,aPosition,aRelativeAmount);
- if not result then begin
-  result:=inherited Scrolled(aPosition,aRelativeAmount);
+ if (fWidgetFlags*[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled])=[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled] then begin
+  result:=assigned(fOnScrolled) and fOnScrolled(self,aPosition,aRelativeAmount);
+  if not result then begin
+   result:=inherited Scrolled(aPosition,aRelativeAmount);
+  end;
+ end else begin
+  result:=false;
  end;
 end;
 
@@ -19683,238 +19790,246 @@ end;
 
 function TpvGUIScrollBar.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
 begin
- result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
- if Enabled and not result then begin
-  case aKeyEvent.KeyCode of
-   KEYCODE_LEFT,KEYCODE_UP,KEYCODE_MINUS,KEYCODE_KP_MINUS:begin
-    case aKeyEvent.KeyEventType of
-     TpvApplicationInputKeyEventType.Typed:begin
-      if ((fValue-fSmallStep)>=fMinimumValue) and not (fValue<(fValue-fSmallStep)) then begin
-       SetValue(fValue-fSmallStep);
-      end else begin
+ if (fWidgetFlags*[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled])=[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled] then begin
+  result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
+  if Enabled and not result then begin
+   case aKeyEvent.KeyCode of
+    KEYCODE_LEFT,KEYCODE_UP,KEYCODE_MINUS,KEYCODE_KP_MINUS:begin
+     case aKeyEvent.KeyEventType of
+      TpvApplicationInputKeyEventType.Typed:begin
+       if ((fValue-fSmallStep)>=fMinimumValue) and not (fValue<(fValue-fSmallStep)) then begin
+        SetValue(fValue-fSmallStep);
+       end else begin
+        SetValue(fMinimumValue);
+       end;
+      end;
+     end;
+     result:=true;
+    end;
+    KEYCODE_RIGHT,KEYCODE_DOWN,KEYCODE_PLUS,KEYCODE_KP_PLUS:begin
+     case aKeyEvent.KeyEventType of
+      TpvApplicationInputKeyEventType.Typed:begin
+       if ((fValue+fSmallStep)<=fMaximumValue) and not (fValue>(fValue+fSmallStep)) then begin
+        SetValue(fValue+fSmallStep);
+       end else begin
+        SetValue(fMaximumValue);
+       end;
+      end;
+     end;
+     result:=true;
+    end;
+    KEYCODE_PAGEDOWN:begin
+     case aKeyEvent.KeyEventType of
+      TpvApplicationInputKeyEventType.Typed:begin
+       if ((fValue+fLargeStep)<=fMaximumValue) and not (fValue>(fValue+fLargeStep)) then begin
+        SetValue(fValue+fLargeStep);
+       end else begin
+        SetValue(fMaximumValue);
+       end;
+      end;
+     end;
+     result:=true;
+    end;
+    KEYCODE_PAGEUP:begin
+     case aKeyEvent.KeyEventType of
+      TpvApplicationInputKeyEventType.Typed:begin
+       if ((fValue-fLargeStep)>=fMinimumValue) and not (fValue<(fValue-fLargeStep)) then begin
+        SetValue(fValue-fLargeStep);
+       end else begin
+        SetValue(fMinimumValue);
+       end;
+      end;
+     end;
+     result:=true;
+    end;
+    KEYCODE_HOME:begin
+     case aKeyEvent.KeyEventType of
+      TpvApplicationInputKeyEventType.Typed:begin
        SetValue(fMinimumValue);
       end;
      end;
+     result:=true;
     end;
-    result:=true;
-   end;
-   KEYCODE_RIGHT,KEYCODE_DOWN,KEYCODE_PLUS,KEYCODE_KP_PLUS:begin
-    case aKeyEvent.KeyEventType of
-     TpvApplicationInputKeyEventType.Typed:begin
-      if ((fValue+fSmallStep)<=fMaximumValue) and not (fValue>(fValue+fSmallStep)) then begin
-       SetValue(fValue+fSmallStep);
-      end else begin
+    KEYCODE_END:begin
+     case aKeyEvent.KeyEventType of
+      TpvApplicationInputKeyEventType.Typed:begin
        SetValue(fMaximumValue);
       end;
      end;
+     result:=true;
     end;
-    result:=true;
-   end;
-   KEYCODE_PAGEDOWN:begin
-    case aKeyEvent.KeyEventType of
-     TpvApplicationInputKeyEventType.Typed:begin
-      if ((fValue+fLargeStep)<=fMaximumValue) and not (fValue>(fValue+fLargeStep)) then begin
-       SetValue(fValue+fLargeStep);
-      end else begin
-       SetValue(fMaximumValue);
-      end;
-     end;
-    end;
-    result:=true;
-   end;
-   KEYCODE_PAGEUP:begin
-    case aKeyEvent.KeyEventType of
-     TpvApplicationInputKeyEventType.Typed:begin
-      if ((fValue-fLargeStep)>=fMinimumValue) and not (fValue<(fValue-fLargeStep)) then begin
-       SetValue(fValue-fLargeStep);
-      end else begin
-       SetValue(fMinimumValue);
-      end;
-     end;
-    end;
-    result:=true;
-   end;
-   KEYCODE_HOME:begin
-    case aKeyEvent.KeyEventType of
-     TpvApplicationInputKeyEventType.Typed:begin
-      SetValue(fMinimumValue);
-     end;
-    end;
-    result:=true;
-   end;
-   KEYCODE_END:begin
-    case aKeyEvent.KeyEventType of
-     TpvApplicationInputKeyEventType.Typed:begin
-      SetValue(fMaximumValue);
-     end;
-    end;
-    result:=true;
    end;
   end;
- end;
+ end else begin
+  result:=false;
+ end; 
 end;
 
 function TpvGUIScrollBar.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean;
 var Step:TpvInt64;
 begin
- result:=assigned(fOnPointerEvent) and fOnPointerEvent(self,aPointerEvent);
- if not result then begin
-  result:=inherited PointerEvent(aPointerEvent);
+ if (fWidgetFlags*[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled])=[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled] then begin
+  result:=assigned(fOnPointerEvent) and fOnPointerEvent(self,aPointerEvent);
   if not result then begin
-   case aPointerEvent.PointerEventType of
-    TpvApplicationInputPointerEventType.Down:begin
-     if not Focused then begin
-      RequestFocus;
-     end;
-     fFocusedSubWidget:=TpvGUIScrollBarSubWidget.None;
-     fPushedSubWidget:=TpvGUIScrollBarSubWidget.None;
-     fSliderPushed:=false;
-     fStepSize:=0;
-     fTimeAccumulator:=MaxDouble;
-     case fOrientation of
-      TpvGUIScrollBarOrientation.Horizontal:begin
-       if aPointerEvent.Position.x<fButtonSize then begin
-        fFocusedSubWidget:=TpvGUIScrollBarSubWidget.DecButton;
-        fPushedSubWidget:=TpvGUIScrollBarSubWidget.DecButton;
-       end else if aPointerEvent.Position.x>=(Width-fButtonSize) then begin
-        fFocusedSubWidget:=TpvGUIScrollBarSubWidget.IncButton;
-        fPushedSubWidget:=TpvGUIScrollBarSubWidget.IncButton;
-       end else if GetThumbButtonRect.Touched(aPointerEvent.Position) then begin
-        fFocusedSubWidget:=TpvGUIScrollBarSubWidget.ThumbButton;
-        fPushedSubWidget:=TpvGUIScrollBarSubWidget.ThumbButton;
-       end else begin
-        fSliderPushed:=true;
-       end;
+   result:=inherited PointerEvent(aPointerEvent);
+   if not result then begin
+    case aPointerEvent.PointerEventType of
+     TpvApplicationInputPointerEventType.Down:begin
+      if not Focused then begin
+       RequestFocus;
       end;
-      else {TpvGUIScrollBarOrientation.Vertical:}begin
-       if aPointerEvent.Position.y<fButtonSize then begin
-        fFocusedSubWidget:=TpvGUIScrollBarSubWidget.DecButton;
-        fPushedSubWidget:=TpvGUIScrollBarSubWidget.DecButton;
-       end else if aPointerEvent.Position.y>=(Height-fButtonSize) then begin
-        fFocusedSubWidget:=TpvGUIScrollBarSubWidget.IncButton;
-        fPushedSubWidget:=TpvGUIScrollBarSubWidget.IncButton;
-       end else if GetThumbButtonRect.Touched(aPointerEvent.Position) then begin
-        fFocusedSubWidget:=TpvGUIScrollBarSubWidget.ThumbButton;
-        fPushedSubWidget:=TpvGUIScrollBarSubWidget.ThumbButton;
-       end else begin
-        fSliderPushed:=true;
-       end;
-      end;
-     end;
-     if fPushedSubWidget=TpvGUIScrollBarSubWidget.ThumbButton then begin
-(*    case fOrientation of
-       TpvGUIScrollBarOrientation.Horizontal:begin
-        SetValue(round(fMinimumValue+((aPointerEvent.Position.x-(fButtonSize+(ThumbButtonSize*0.5)))*(Max(1,fMaximumValue-fMinimumValue)/(Width-((fButtonSize*2.0)+(ThumbButtonSize*1.0)))))));
-       end;
-       else {TpvGUIScrollBarOrientation.Vertical:}begin
-        SetValue(round(fMinimumValue+((aPointerEvent.Position.y-(fButtonSize+(ThumbButtonSize*0.5)))*(Max(1,fMaximumValue-fMinimumValue)/(Height-((fButtonSize*2.0)+(ThumbButtonSize*1.0)))))));
-       end;
-      end;*)
-     end else if fSliderPushed then begin
-      fFocusedSubWidget:=TpvGUIScrollBarSubWidget.ThumbButton;
-      fPushedSubWidget:=TpvGUIScrollBarSubWidget.ThumbButton;
+      fFocusedSubWidget:=TpvGUIScrollBarSubWidget.None;
+      fPushedSubWidget:=TpvGUIScrollBarSubWidget.None;
+      fSliderPushed:=false;
+      fStepSize:=0;
+      fTimeAccumulator:=MaxDouble;
       case fOrientation of
        TpvGUIScrollBarOrientation.Horizontal:begin
-        if aPointerEvent.Position.x<GetThumbButtonRect.Left then begin
-         fStepSize:=-fLargeStep;
+        if aPointerEvent.Position.x<fButtonSize then begin
+         fFocusedSubWidget:=TpvGUIScrollBarSubWidget.DecButton;
+         fPushedSubWidget:=TpvGUIScrollBarSubWidget.DecButton;
+        end else if aPointerEvent.Position.x>=(Width-fButtonSize) then begin
+         fFocusedSubWidget:=TpvGUIScrollBarSubWidget.IncButton;
+         fPushedSubWidget:=TpvGUIScrollBarSubWidget.IncButton;
+        end else if GetThumbButtonRect.Touched(aPointerEvent.Position) then begin
+         fFocusedSubWidget:=TpvGUIScrollBarSubWidget.ThumbButton;
+         fPushedSubWidget:=TpvGUIScrollBarSubWidget.ThumbButton;
         end else begin
-         fStepSize:=fLargeStep;
+         fSliderPushed:=true;
         end;
        end;
        else {TpvGUIScrollBarOrientation.Vertical:}begin
-        if aPointerEvent.Position.y<GetThumbButtonRect.Top then begin
-         fStepSize:=-fLargeStep;
+        if aPointerEvent.Position.y<fButtonSize then begin
+         fFocusedSubWidget:=TpvGUIScrollBarSubWidget.DecButton;
+         fPushedSubWidget:=TpvGUIScrollBarSubWidget.DecButton;
+        end else if aPointerEvent.Position.y>=(Height-fButtonSize) then begin
+         fFocusedSubWidget:=TpvGUIScrollBarSubWidget.IncButton;
+         fPushedSubWidget:=TpvGUIScrollBarSubWidget.IncButton;
+        end else if GetThumbButtonRect.Touched(aPointerEvent.Position) then begin
+         fFocusedSubWidget:=TpvGUIScrollBarSubWidget.ThumbButton;
+         fPushedSubWidget:=TpvGUIScrollBarSubWidget.ThumbButton;
         end else begin
-         fStepSize:=fLargeStep;
+         fSliderPushed:=true;
         end;
        end;
       end;
-      fTimeAccumulator:=0.5;
-      if ((fStepSize>0) and ((fValue+fStepSize)<=fMaximumValue) and not (fValue>(fValue+fStepSize))) or
-         ((fStepSize<0) and ((fValue+fStepSize)>=fMinimumValue) and not (fValue<(fValue+fStepSize))) then begin
-       SetValue(fValue+fStepSize);
-      end else if fStepSize<0 then begin
-       SetValue(fMinimumValue);
-      end else if fStepSize>0 then begin
-       SetValue(fMaximumValue);
-      end;
-     end else begin
-      case fPushedSubWidget of
-       TpvGUIScrollBarSubWidget.DecButton:begin
-        if ((fValue-fSmallStep)>=fMinimumValue) and not (fValue<(fValue-fSmallStep)) then begin
-         SetValue(fValue-fSmallStep);
-        end else begin
-         SetValue(fMinimumValue);
+      if fPushedSubWidget=TpvGUIScrollBarSubWidget.ThumbButton then begin
+ (*    case fOrientation of
+        TpvGUIScrollBarOrientation.Horizontal:begin
+         SetValue(round(fMinimumValue+((aPointerEvent.Position.x-(fButtonSize+(ThumbButtonSize*0.5)))*(Max(1,fMaximumValue-fMinimumValue)/(Width-((fButtonSize*2.0)+(ThumbButtonSize*1.0)))))));
         end;
-        fStepSize:=-fSmallStep;
-        fTimeAccumulator:=0.5;
-       end;
-       TpvGUIScrollBarSubWidget.IncButton:begin
-        if ((fValue+fSmallStep)<=fMaximumValue) and not (fValue>(fValue+fSmallStep)) then begin
-         SetValue(fValue+fSmallStep);
-        end else begin
-         SetValue(fMaximumValue);
+        else {TpvGUIScrollBarOrientation.Vertical:}begin
+         SetValue(round(fMinimumValue+((aPointerEvent.Position.y-(fButtonSize+(ThumbButtonSize*0.5)))*(Max(1,fMaximumValue-fMinimumValue)/(Height-((fButtonSize*2.0)+(ThumbButtonSize*1.0)))))));
         end;
-        fStepSize:=fSmallStep;
-        fTimeAccumulator:=0.5;
-       end;
-      end;
-     end;
-     result:=true;
-    end;
-    TpvApplicationInputPointerEventType.Up:begin
-     fPushedSubWidget:=TpvGUIScrollBarSubWidget.None;
-     fSliderPushed:=false;
-     fStepSize:=0;
-     result:=true;
-    end;
-    TpvApplicationInputPointerEventType.Motion:begin
-     result:=true;
-    end;
-    TpvApplicationInputPointerEventType.Drag:begin
-     if fDragActive then begin
-{$if true}
-      case fOrientation of
-       TpvGUIScrollBarOrientation.Horizontal:begin
-        SetValue(round(fMinimumValue+((aPointerEvent.Position.x-(fButtonSize+(ThumbButtonSize*0.5)))*((fMaximumValue-fMinimumValue)/Max(1,Width-((fButtonSize*2.0)+(ThumbButtonSize*1.0)))))));
-       end;
-       else {TpvGUIScrollBarOrientation.Vertical:}begin
-        SetValue(round(fMinimumValue+((aPointerEvent.Position.y-(fButtonSize+(ThumbButtonSize*0.5)))*((fMaximumValue-fMinimumValue)/Max(1,Height-((fButtonSize*2.0)+(ThumbButtonSize*1.0)))))));
-       end;
-      end;
-{$else}
-      case fOrientation of
-       TpvGUIScrollBarOrientation.Horizontal:begin
-        if (aPointerEvent.Position.x>=GetThumbButtonRect.Left) and
-           (aPointerEvent.Position.x<=GetThumbButtonRect.Right) then begin
-         Step:=round(aPointerEvent.RelativePosition.x*((fMaximumValue-fMinimumValue)/Max(1,Width-((fButtonSize*2.0)+ThumbButtonSize))));
-        end else begin
-         Step:=0;
+       end;*)
+      end else if fSliderPushed then begin
+       fFocusedSubWidget:=TpvGUIScrollBarSubWidget.ThumbButton;
+       fPushedSubWidget:=TpvGUIScrollBarSubWidget.ThumbButton;
+       case fOrientation of
+        TpvGUIScrollBarOrientation.Horizontal:begin
+         if aPointerEvent.Position.x<GetThumbButtonRect.Left then begin
+          fStepSize:=-fLargeStep;
+         end else begin
+          fStepSize:=fLargeStep;
+         end;
+        end;
+        else {TpvGUIScrollBarOrientation.Vertical:}begin
+         if aPointerEvent.Position.y<GetThumbButtonRect.Top then begin
+          fStepSize:=-fLargeStep;
+         end else begin
+          fStepSize:=fLargeStep;
+         end;
         end;
        end;
-       else {TpvGUIScrollBarOrientation.Vertical:}begin
-        if (aPointerEvent.Position.y>=GetThumbButtonRect.Top) and
-           (aPointerEvent.Position.y<=GetThumbButtonRect.Bottom) then begin
-         Step:=round(aPointerEvent.RelativePosition.y*((fMaximumValue-fMinimumValue)/Max(1,Height-((fButtonSize*2.0)+ThumbButtonSize))));
-        end else begin
-         Step:=0;
+       fTimeAccumulator:=0.5;
+       if ((fStepSize>0) and ((fValue+fStepSize)<=fMaximumValue) and not (fValue>(fValue+fStepSize))) or
+          ((fStepSize<0) and ((fValue+fStepSize)>=fMinimumValue) and not (fValue<(fValue+fStepSize))) then begin
+        SetValue(fValue+fStepSize);
+       end else if fStepSize<0 then begin
+        SetValue(fMinimumValue);
+       end else if fStepSize>0 then begin
+        SetValue(fMaximumValue);
+       end;
+      end else begin
+       case fPushedSubWidget of
+        TpvGUIScrollBarSubWidget.DecButton:begin
+         if ((fValue-fSmallStep)>=fMinimumValue) and not (fValue<(fValue-fSmallStep)) then begin
+          SetValue(fValue-fSmallStep);
+         end else begin
+          SetValue(fMinimumValue);
+         end;
+         fStepSize:=-fSmallStep;
+         fTimeAccumulator:=0.5;
+        end;
+        TpvGUIScrollBarSubWidget.IncButton:begin
+         if ((fValue+fSmallStep)<=fMaximumValue) and not (fValue>(fValue+fSmallStep)) then begin
+          SetValue(fValue+fSmallStep);
+         end else begin
+          SetValue(fMaximumValue);
+         end;
+         fStepSize:=fSmallStep;
+         fTimeAccumulator:=0.5;
         end;
        end;
       end;
-      if ((Step>0) and ((fValue+Step)<=fMaximumValue) and not (fValue>(fValue+Step))) or
-         ((Step<0) and ((fValue+Step)>=fMinimumValue) and not (fValue<(fValue+Step))) then begin
-       SetValue(fValue+Step);
-      end else if Step<0 then begin
-       SetValue(fMinimumValue);
-      end else if Step>0 then begin
-       SetValue(fMaximumValue);
-      end;
-{$ifend}
       result:=true;
+     end;
+     TpvApplicationInputPointerEventType.Up:begin
+      fPushedSubWidget:=TpvGUIScrollBarSubWidget.None;
+      fSliderPushed:=false;
+      fStepSize:=0;
+      result:=true;
+     end;
+     TpvApplicationInputPointerEventType.Motion:begin
+      result:=true;
+     end;
+     TpvApplicationInputPointerEventType.Drag:begin
+      if fDragActive then begin
+ {$if true}
+       case fOrientation of
+        TpvGUIScrollBarOrientation.Horizontal:begin
+         SetValue(round(fMinimumValue+((aPointerEvent.Position.x-(fButtonSize+(ThumbButtonSize*0.5)))*((fMaximumValue-fMinimumValue)/Max(1,Width-((fButtonSize*2.0)+(ThumbButtonSize*1.0)))))));
+        end;
+        else {TpvGUIScrollBarOrientation.Vertical:}begin
+         SetValue(round(fMinimumValue+((aPointerEvent.Position.y-(fButtonSize+(ThumbButtonSize*0.5)))*((fMaximumValue-fMinimumValue)/Max(1,Height-((fButtonSize*2.0)+(ThumbButtonSize*1.0)))))));
+        end;
+       end;
+ {$else}
+       case fOrientation of
+        TpvGUIScrollBarOrientation.Horizontal:begin
+         if (aPointerEvent.Position.x>=GetThumbButtonRect.Left) and
+            (aPointerEvent.Position.x<=GetThumbButtonRect.Right) then begin
+          Step:=round(aPointerEvent.RelativePosition.x*((fMaximumValue-fMinimumValue)/Max(1,Width-((fButtonSize*2.0)+ThumbButtonSize))));
+         end else begin
+          Step:=0;
+         end;
+        end;
+        else {TpvGUIScrollBarOrientation.Vertical:}begin
+         if (aPointerEvent.Position.y>=GetThumbButtonRect.Top) and
+            (aPointerEvent.Position.y<=GetThumbButtonRect.Bottom) then begin
+          Step:=round(aPointerEvent.RelativePosition.y*((fMaximumValue-fMinimumValue)/Max(1,Height-((fButtonSize*2.0)+ThumbButtonSize))));
+         end else begin
+          Step:=0;
+         end;
+        end;
+       end;
+       if ((Step>0) and ((fValue+Step)<=fMaximumValue) and not (fValue>(fValue+Step))) or
+          ((Step<0) and ((fValue+Step)>=fMinimumValue) and not (fValue<(fValue+Step))) then begin
+        SetValue(fValue+Step);
+       end else if Step<0 then begin
+        SetValue(fMinimumValue);
+       end else if Step>0 then begin
+        SetValue(fMaximumValue);
+       end;
+ {$ifend}
+       result:=true;
+      end;
      end;
     end;
    end;
   end;
+ end else begin
+  result:=false;
  end;
 end;
 
@@ -19922,24 +20037,28 @@ function TpvGUIScrollBar.Scrolled(const aPosition,aRelativeAmount:TpvVector2):Bo
 var TemporaryValue,Step:TpvInt64;
     v:TpvFloat;
 begin
- result:=inherited Scrolled(aPosition,aRelativeAmount);
- if not result then begin
-  TemporaryValue:=Value;
-  v:=aRelativeAmount.x-aRelativeAmount.y;
-  if v<0.0 then begin
-   Step:=floor(v);
-  end else begin
-   Step:=ceil(v);
+ if (fWidgetFlags*[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled])=[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled] then begin
+  result:=inherited Scrolled(aPosition,aRelativeAmount);
+  if not result then begin
+   TemporaryValue:=Value;
+   v:=aRelativeAmount.x-aRelativeAmount.y;
+   if v<0.0 then begin
+    Step:=floor(v);
+   end else begin
+    Step:=ceil(v);
+   end;
+   if ((Step>0) and ((TemporaryValue+Step)<=fMaximumValue) and not (TemporaryValue>(TemporaryValue+Step))) or
+      ((Step<0) and ((TemporaryValue+Step)>=fMinimumValue) and not (TemporaryValue<(TemporaryValue+Step))) then begin
+    SetValue(TemporaryValue+Step);
+   end else if Step<0 then begin
+    SetValue(fMinimumValue);
+   end else if Step>0 then begin
+    SetValue(fMaximumValue);
+   end;
+   result:=true;
   end;
-  if ((Step>0) and ((TemporaryValue+Step)<=fMaximumValue) and not (TemporaryValue>(TemporaryValue+Step))) or
-     ((Step<0) and ((TemporaryValue+Step)>=fMinimumValue) and not (TemporaryValue<(TemporaryValue+Step))) then begin
-   SetValue(TemporaryValue+Step);
-  end else if Step<0 then begin
-   SetValue(fMinimumValue);
-  end else if Step>0 then begin
-   SetValue(fMaximumValue);
-  end;
-  result:=true;
+ end else begin
+  result:=false;
  end;
 end;
 
@@ -20137,193 +20256,201 @@ end;
 
 function TpvGUISlider.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
 begin
- result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
- if Enabled and not result then begin
-  case aKeyEvent.KeyCode of
-   KEYCODE_LEFT,KEYCODE_UP,KEYCODE_MINUS,KEYCODE_KP_MINUS:begin
-    case aKeyEvent.KeyEventType of
-     TpvApplicationInputKeyEventType.Typed:begin
-      if ((fValue-fSmallStep)>=fMinimumValue) and not (fValue<(fValue-fSmallStep)) then begin
-       SetValue(fValue-fSmallStep);
-      end else begin
+ if (fWidgetFlags*[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled])=[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled] then begin
+  result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
+  if Enabled and not result then begin
+   case aKeyEvent.KeyCode of
+    KEYCODE_LEFT,KEYCODE_UP,KEYCODE_MINUS,KEYCODE_KP_MINUS:begin
+     case aKeyEvent.KeyEventType of
+      TpvApplicationInputKeyEventType.Typed:begin
+       if ((fValue-fSmallStep)>=fMinimumValue) and not (fValue<(fValue-fSmallStep)) then begin
+        SetValue(fValue-fSmallStep);
+       end else begin
+        SetValue(fMinimumValue);
+       end;
+      end;
+     end;
+     result:=true;
+    end;
+    KEYCODE_RIGHT,KEYCODE_DOWN,KEYCODE_PLUS,KEYCODE_KP_PLUS:begin
+     case aKeyEvent.KeyEventType of
+      TpvApplicationInputKeyEventType.Typed:begin
+       if ((fValue+fSmallStep)<=fMaximumValue) and not (fValue>(fValue+fSmallStep)) then begin
+        SetValue(fValue+fSmallStep);
+       end else begin
+        SetValue(fMaximumValue);
+       end;
+      end;
+     end;
+     result:=true;
+    end;
+    KEYCODE_PAGEDOWN:begin
+     case aKeyEvent.KeyEventType of
+      TpvApplicationInputKeyEventType.Typed:begin
+       if ((fValue+fLargeStep)<=fMaximumValue) and not (fValue>(fValue+fLargeStep)) then begin
+        SetValue(fValue+fLargeStep);
+       end else begin
+        SetValue(fMaximumValue);
+       end;
+      end;
+     end;
+     result:=true;
+    end;
+    KEYCODE_PAGEUP:begin
+     case aKeyEvent.KeyEventType of
+      TpvApplicationInputKeyEventType.Typed:begin
+       if ((fValue-fLargeStep)>=fMinimumValue) and not (fValue<(fValue-fLargeStep)) then begin
+        SetValue(fValue-fLargeStep);
+       end else begin
+        SetValue(fMinimumValue);
+       end;
+      end;
+     end;
+     result:=true;
+    end;
+    KEYCODE_HOME:begin
+     case aKeyEvent.KeyEventType of
+      TpvApplicationInputKeyEventType.Typed:begin
        SetValue(fMinimumValue);
       end;
      end;
+     result:=true;
     end;
-    result:=true;
-   end;
-   KEYCODE_RIGHT,KEYCODE_DOWN,KEYCODE_PLUS,KEYCODE_KP_PLUS:begin
-    case aKeyEvent.KeyEventType of
-     TpvApplicationInputKeyEventType.Typed:begin
-      if ((fValue+fSmallStep)<=fMaximumValue) and not (fValue>(fValue+fSmallStep)) then begin
-       SetValue(fValue+fSmallStep);
-      end else begin
+    KEYCODE_END:begin
+     case aKeyEvent.KeyEventType of
+      TpvApplicationInputKeyEventType.Typed:begin
        SetValue(fMaximumValue);
       end;
      end;
+     result:=true;
     end;
-    result:=true;
-   end;
-   KEYCODE_PAGEDOWN:begin
-    case aKeyEvent.KeyEventType of
-     TpvApplicationInputKeyEventType.Typed:begin
-      if ((fValue+fLargeStep)<=fMaximumValue) and not (fValue>(fValue+fLargeStep)) then begin
-       SetValue(fValue+fLargeStep);
-      end else begin
-       SetValue(fMaximumValue);
-      end;
-     end;
-    end;
-    result:=true;
-   end;
-   KEYCODE_PAGEUP:begin
-    case aKeyEvent.KeyEventType of
-     TpvApplicationInputKeyEventType.Typed:begin
-      if ((fValue-fLargeStep)>=fMinimumValue) and not (fValue<(fValue-fLargeStep)) then begin
-       SetValue(fValue-fLargeStep);
-      end else begin
-       SetValue(fMinimumValue);
-      end;
-     end;
-    end;
-    result:=true;
-   end;
-   KEYCODE_HOME:begin
-    case aKeyEvent.KeyEventType of
-     TpvApplicationInputKeyEventType.Typed:begin
-      SetValue(fMinimumValue);
-     end;
-    end;
-    result:=true;
-   end;
-   KEYCODE_END:begin
-    case aKeyEvent.KeyEventType of
-     TpvApplicationInputKeyEventType.Typed:begin
-      SetValue(fMaximumValue);
-     end;
-    end;
-    result:=true;
    end;
   end;
+ end else begin
+  result:=false;
  end;
 end;
 
 function TpvGUISlider.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean;
 var Step:TpvInt64;
 begin
- result:=assigned(fOnPointerEvent) and fOnPointerEvent(self,aPointerEvent);
- if not result then begin
-  result:=inherited PointerEvent(aPointerEvent);
+ if (fWidgetFlags*[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled])=[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled] then begin
+  result:=assigned(fOnPointerEvent) and fOnPointerEvent(self,aPointerEvent);
   if not result then begin
-   case aPointerEvent.PointerEventType of
-    TpvApplicationInputPointerEventType.Down:begin
-     if not Focused then begin
-      RequestFocus;
-     end;
-     fFocusedSubWidget:=TpvGUISliderSubWidget.None;
-     fPushedSubWidget:=TpvGUISliderSubWidget.None;
-     fSliderPushed:=false;
-     fStepSize:=0;
-     fTimeAccumulator:=MaxDouble;
-     case fOrientation of
-      TpvGUISliderOrientation.Horizontal:begin
-       if GetThumbButtonRect.Touched(aPointerEvent.Position) then begin
-        fFocusedSubWidget:=TpvGUISliderSubWidget.ThumbButton;
-        fPushedSubWidget:=TpvGUISliderSubWidget.ThumbButton;
-       end else begin
-        fSliderPushed:=true;
-       end;
+   result:=inherited PointerEvent(aPointerEvent);
+   if not result then begin
+    case aPointerEvent.PointerEventType of
+     TpvApplicationInputPointerEventType.Down:begin
+      if not Focused then begin
+       RequestFocus;
       end;
-      else {TpvGUISliderOrientation.Vertical:}begin
-       if GetThumbButtonRect.Touched(aPointerEvent.Position) then begin
-        fFocusedSubWidget:=TpvGUISliderSubWidget.ThumbButton;
-        fPushedSubWidget:=TpvGUISliderSubWidget.ThumbButton;
-       end else begin
-        fSliderPushed:=true;
-       end;
-      end;
-     end;
-     if fPushedSubWidget=TpvGUISliderSubWidget.ThumbButton then begin
-(*    case fOrientation of
-       TpvGUISliderOrientation.Horizontal:begin
-        SetValue(round(fMinimumValue+((aPointerEvent.Position.x-(fButtonSize+(fThumbButtonSize*0.5)))*((fMaximumValue-fMinimumValue)/Max(1,Width-((fButtonSize*2.0)+(fThumbButtonSize*1.0)))))));
-       end;
-       else {TpvGUISliderOrientation.Vertical:}begin
-        SetValue(round(fMinimumValue+((aPointerEvent.Position.y-(fButtonSize+(fThumbButtonSize*0.5)))*((fMaximumValue-fMinimumValue)/Max(1,Height-((fButtonSize*2.0)+(fThumbButtonSize*1.0)))))));
-       end;
-      end;*)
-     end else if fSliderPushed then begin
-      fFocusedSubWidget:=TpvGUISliderSubWidget.ThumbButton;
-      fPushedSubWidget:=TpvGUISliderSubWidget.ThumbButton;
+      fFocusedSubWidget:=TpvGUISliderSubWidget.None;
+      fPushedSubWidget:=TpvGUISliderSubWidget.None;
+      fSliderPushed:=false;
+      fStepSize:=0;
+      fTimeAccumulator:=MaxDouble;
       case fOrientation of
        TpvGUISliderOrientation.Horizontal:begin
-        if aPointerEvent.Position.x<GetThumbButtonRect.Left then begin
-         fStepSize:=-fLargeStep;
+        if GetThumbButtonRect.Touched(aPointerEvent.Position) then begin
+         fFocusedSubWidget:=TpvGUISliderSubWidget.ThumbButton;
+         fPushedSubWidget:=TpvGUISliderSubWidget.ThumbButton;
         end else begin
-         fStepSize:=fLargeStep;
+         fSliderPushed:=true;
         end;
        end;
        else {TpvGUISliderOrientation.Vertical:}begin
-        if aPointerEvent.Position.y<GetThumbButtonRect.Top then begin
-         fStepSize:=-fLargeStep;
+        if GetThumbButtonRect.Touched(aPointerEvent.Position) then begin
+         fFocusedSubWidget:=TpvGUISliderSubWidget.ThumbButton;
+         fPushedSubWidget:=TpvGUISliderSubWidget.ThumbButton;
         end else begin
-         fStepSize:=fLargeStep;
+         fSliderPushed:=true;
         end;
        end;
       end;
-      if ((fStepSize>0) and ((fValue+fStepSize)<=fMaximumValue) and not (fValue>(fValue+fStepSize))) or
-         ((fStepSize<0) and ((fValue+fStepSize)>=fMinimumValue) and not (fValue<(fValue+fStepSize))) then begin
-       SetValue(fValue+fStepSize);
-      end else if fStepSize<0 then begin
+      if fPushedSubWidget=TpvGUISliderSubWidget.ThumbButton then begin
+ (*    case fOrientation of
+        TpvGUISliderOrientation.Horizontal:begin
+         SetValue(round(fMinimumValue+((aPointerEvent.Position.x-(fButtonSize+(fThumbButtonSize*0.5)))*((fMaximumValue-fMinimumValue)/Max(1,Width-((fButtonSize*2.0)+(fThumbButtonSize*1.0)))))));
+        end;
+        else {TpvGUISliderOrientation.Vertical:}begin
+         SetValue(round(fMinimumValue+((aPointerEvent.Position.y-(fButtonSize+(fThumbButtonSize*0.5)))*((fMaximumValue-fMinimumValue)/Max(1,Height-((fButtonSize*2.0)+(fThumbButtonSize*1.0)))))));
+        end;
+       end;*)
+      end else if fSliderPushed then begin
+       fFocusedSubWidget:=TpvGUISliderSubWidget.ThumbButton;
+       fPushedSubWidget:=TpvGUISliderSubWidget.ThumbButton;
+       case fOrientation of
+        TpvGUISliderOrientation.Horizontal:begin
+         if aPointerEvent.Position.x<GetThumbButtonRect.Left then begin
+          fStepSize:=-fLargeStep;
+         end else begin
+          fStepSize:=fLargeStep;
+         end;
+        end;
+        else {TpvGUISliderOrientation.Vertical:}begin
+         if aPointerEvent.Position.y<GetThumbButtonRect.Top then begin
+          fStepSize:=-fLargeStep;
+         end else begin
+          fStepSize:=fLargeStep;
+         end;
+        end;
+       end;
+       if ((fStepSize>0) and ((fValue+fStepSize)<=fMaximumValue) and not (fValue>(fValue+fStepSize))) or
+          ((fStepSize<0) and ((fValue+fStepSize)>=fMinimumValue) and not (fValue<(fValue+fStepSize))) then begin
+        SetValue(fValue+fStepSize);
+       end else if fStepSize<0 then begin
+        SetValue(fMinimumValue);
+       end else if fStepSize>0 then begin
+        SetValue(fMaximumValue);
+       end;
+       fTimeAccumulator:=0.5;
+      end;
+      result:=true;
+     end;
+     TpvApplicationInputPointerEventType.Up:begin
+      fPushedSubWidget:=TpvGUISliderSubWidget.None;
+      fSliderPushed:=false;
+      fStepSize:=0;
+      result:=true;
+     end;
+     TpvApplicationInputPointerEventType.Motion:begin
+      result:=true;
+     end;
+     TpvApplicationInputPointerEventType.Drag:begin
+ {$if true}
+      case fOrientation of
+       TpvGUISliderOrientation.Horizontal:begin
+        SetValue(round(fMinimumValue+((aPointerEvent.Position.x-(fThumbButtonSize*0.5))*((fMaximumValue-fMinimumValue)/Max(1,Width-(fThumbButtonSize*1.0))))));
+       end;
+       else {TpvGUISliderOrientation.Vertical:}begin
+        SetValue(round(fMinimumValue+((aPointerEvent.Position.y-(fThumbButtonSize*0.5))*((fMaximumValue-fMinimumValue)/Max(1,Height-(fThumbButtonSize*1.0))))));
+       end;
+      end;
+ {$else}
+      case fOrientation of
+       TpvGUISliderOrientation.Horizontal:begin
+        Step:=round(aPointerEvent.RelativePosition.x*((fMaximumValue-fMinimumValue)/Max(1,Width-ThumbButtonSize)));
+       end;
+       else {TpvGUISliderOrientation.Vertical:}begin
+        Step:=round(aPointerEvent.RelativePosition.y*((fMaximumValue-fMinimumValue)/Max(1,Height-ThumbButtonSize)));
+       end;
+      end;
+      if ((Step>0) and ((fValue+Step)<=fMaximumValue) and not (fValue>(fValue+Step))) or
+         ((Step<0) and ((fValue+Step)>=fMinimumValue) and not (fValue<(fValue+Step))) then begin
+       SetValue(fValue+Step);
+      end else if Step<0 then begin
        SetValue(fMinimumValue);
-      end else if fStepSize>0 then begin
+      end else if Step>0 then begin
        SetValue(fMaximumValue);
       end;
-      fTimeAccumulator:=0.5;
+ {$ifend}
+      result:=true;
      end;
-     result:=true;
-    end;
-    TpvApplicationInputPointerEventType.Up:begin
-     fPushedSubWidget:=TpvGUISliderSubWidget.None;
-     fSliderPushed:=false;
-     fStepSize:=0;
-     result:=true;
-    end;
-    TpvApplicationInputPointerEventType.Motion:begin
-     result:=true;
-    end;
-    TpvApplicationInputPointerEventType.Drag:begin
-{$if true}
-     case fOrientation of
-      TpvGUISliderOrientation.Horizontal:begin
-       SetValue(round(fMinimumValue+((aPointerEvent.Position.x-(fThumbButtonSize*0.5))*((fMaximumValue-fMinimumValue)/Max(1,Width-(fThumbButtonSize*1.0))))));
-      end;
-      else {TpvGUISliderOrientation.Vertical:}begin
-       SetValue(round(fMinimumValue+((aPointerEvent.Position.y-(fThumbButtonSize*0.5))*((fMaximumValue-fMinimumValue)/Max(1,Height-(fThumbButtonSize*1.0))))));
-      end;
-     end;
-{$else}
-     case fOrientation of
-      TpvGUISliderOrientation.Horizontal:begin
-       Step:=round(aPointerEvent.RelativePosition.x*((fMaximumValue-fMinimumValue)/Max(1,Width-ThumbButtonSize)));
-      end;
-      else {TpvGUISliderOrientation.Vertical:}begin
-       Step:=round(aPointerEvent.RelativePosition.y*((fMaximumValue-fMinimumValue)/Max(1,Height-ThumbButtonSize)));
-      end;
-     end;
-     if ((Step>0) and ((fValue+Step)<=fMaximumValue) and not (fValue>(fValue+Step))) or
-        ((Step<0) and ((fValue+Step)>=fMinimumValue) and not (fValue<(fValue+Step))) then begin
-      SetValue(fValue+Step);
-     end else if Step<0 then begin
-      SetValue(fMinimumValue);
-     end else if Step>0 then begin
-      SetValue(fMaximumValue);
-     end;
-{$ifend}
-     result:=true;
     end;
    end;
   end;
+ end else begin
+  result:=false;
  end;
 end;
 
@@ -20331,25 +20458,29 @@ function TpvGUISlider.Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boole
 var TemporaryValue,Step:TpvInt64;
     v:TpvFloat;
 begin
- result:=inherited Scrolled(aPosition,aRelativeAmount);
- if not result then begin
-  TemporaryValue:=Value;
-  v:=aRelativeAmount.x-aRelativeAmount.y;
-  if v<0.0 then begin
-   Step:=floor(v);
-  end else begin
-   Step:=ceil(v);
+ if (fWidgetFlags*[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled])=[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled] then begin
+  result:=inherited Scrolled(aPosition,aRelativeAmount);
+  if not result then begin
+   TemporaryValue:=Value;
+   v:=aRelativeAmount.x-aRelativeAmount.y;
+   if v<0.0 then begin
+    Step:=floor(v);
+   end else begin
+    Step:=ceil(v);
+   end;
+   if ((Step>0) and ((TemporaryValue+Step)<=fMaximumValue) and not (TemporaryValue>(TemporaryValue+Step))) or
+      ((Step<0) and ((TemporaryValue+Step)>=fMinimumValue) and not (TemporaryValue<(TemporaryValue+Step))) then begin
+    SetValue(TemporaryValue+Step);
+   end else if Step<0 then begin
+    SetValue(fMinimumValue);
+   end else if Step>0 then begin
+    SetValue(fMaximumValue);
+   end;
+   result:=true;
   end;
-  if ((Step>0) and ((TemporaryValue+Step)<=fMaximumValue) and not (TemporaryValue>(TemporaryValue+Step))) or
-     ((Step<0) and ((TemporaryValue+Step)>=fMinimumValue) and not (TemporaryValue<(TemporaryValue+Step))) then begin
-   SetValue(TemporaryValue+Step);
-  end else if Step<0 then begin
-   SetValue(fMinimumValue);
-  end else if Step>0 then begin
-   SetValue(fMaximumValue);
-  end;
-  result:=true;
- end;
+ end else begin
+  result:=false;
+ end; 
 end;
 
 procedure TpvGUISlider.Draw;
@@ -21104,73 +21235,77 @@ end;
 
 function TpvGUITabPanel.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
 begin
- ExecuteInvalidateActions;
- result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
- if Enabled and (TpvGUITabPanelFlag.VisibleHeader in fFlags) and not result then begin
-  case aKeyEvent.KeyCode of
-   KEYCODE_LEFT,KEYCODE_UP:begin
-    case aKeyEvent.KeyEventType of
-     TpvApplicationInputKeyEventType.Typed:begin
-      SetTabIndex(Min(Max(fTabIndex-1,0),fTabs.Count-1));
+ if (fWidgetFlags*[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled])=[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled] then begin
+  ExecuteInvalidateActions;
+  result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
+  if Enabled and (TpvGUITabPanelFlag.VisibleHeader in fFlags) and not result then begin
+   case aKeyEvent.KeyCode of
+    KEYCODE_LEFT,KEYCODE_UP:begin
+     case aKeyEvent.KeyEventType of
+      TpvApplicationInputKeyEventType.Typed:begin
+       SetTabIndex(Min(Max(fTabIndex-1,0),fTabs.Count-1));
+      end;
      end;
+     result:=true;
     end;
-    result:=true;
-   end;
-   KEYCODE_RIGHT,KEYCODE_DOWN:begin
-    case aKeyEvent.KeyEventType of
-     TpvApplicationInputKeyEventType.Typed:begin
-      SetTabIndex(Min(Max(fTabIndex+1,0),fTabs.Count-1));
+    KEYCODE_RIGHT,KEYCODE_DOWN:begin
+     case aKeyEvent.KeyEventType of
+      TpvApplicationInputKeyEventType.Typed:begin
+       SetTabIndex(Min(Max(fTabIndex+1,0),fTabs.Count-1));
+      end;
      end;
+     result:=true;
     end;
-    result:=true;
-   end;
-   KEYCODE_MINUS,KEYCODE_KP_MINUS:begin
-    case aKeyEvent.KeyEventType of
-     TpvApplicationInputKeyEventType.Typed:begin
+    KEYCODE_MINUS,KEYCODE_KP_MINUS:begin
+     case aKeyEvent.KeyEventType of
+      TpvApplicationInputKeyEventType.Typed:begin
+      end;
      end;
+     result:=true;
     end;
-    result:=true;
-   end;
-   KEYCODE_PLUS,KEYCODE_KP_PLUS:begin
-    case aKeyEvent.KeyEventType of
-     TpvApplicationInputKeyEventType.Typed:begin
+    KEYCODE_PLUS,KEYCODE_KP_PLUS:begin
+     case aKeyEvent.KeyEventType of
+      TpvApplicationInputKeyEventType.Typed:begin
+      end;
      end;
+     result:=true;
     end;
-    result:=true;
-   end;
-   KEYCODE_PAGEDOWN:begin
-    case aKeyEvent.KeyEventType of
-     TpvApplicationInputKeyEventType.Typed:begin
-      SetTabIndex(Min(Max(fTabIndex-4,0),fTabs.Count-1));
+    KEYCODE_PAGEDOWN:begin
+     case aKeyEvent.KeyEventType of
+      TpvApplicationInputKeyEventType.Typed:begin
+       SetTabIndex(Min(Max(fTabIndex-4,0),fTabs.Count-1));
+      end;
      end;
+     result:=true;
     end;
-    result:=true;
-   end;
-   KEYCODE_PAGEUP:begin
-    case aKeyEvent.KeyEventType of
-     TpvApplicationInputKeyEventType.Typed:begin
-      SetTabIndex(Min(Max(fTabIndex+4,0),fTabs.Count-1));
+    KEYCODE_PAGEUP:begin
+     case aKeyEvent.KeyEventType of
+      TpvApplicationInputKeyEventType.Typed:begin
+       SetTabIndex(Min(Max(fTabIndex+4,0),fTabs.Count-1));
+      end;
      end;
+     result:=true;
     end;
-    result:=true;
-   end;
-   KEYCODE_HOME:begin
-    case aKeyEvent.KeyEventType of
-     TpvApplicationInputKeyEventType.Typed:begin
-      SetTabIndex(Min(0,fTabs.Count-1));
+    KEYCODE_HOME:begin
+     case aKeyEvent.KeyEventType of
+      TpvApplicationInputKeyEventType.Typed:begin
+       SetTabIndex(Min(0,fTabs.Count-1));
+      end;
      end;
+     result:=true;
     end;
-    result:=true;
-   end;
-   KEYCODE_END:begin
-    case aKeyEvent.KeyEventType of
-     TpvApplicationInputKeyEventType.Typed:begin
-      SetTabIndex(fTabs.Count-1);
+    KEYCODE_END:begin
+     case aKeyEvent.KeyEventType of
+      TpvApplicationInputKeyEventType.Typed:begin
+       SetTabIndex(fTabs.Count-1);
+      end;
      end;
+     result:=true;
     end;
-    result:=true;
    end;
   end;
+ end else begin
+  result:=false;
  end;
 end;
 
@@ -21178,42 +21313,46 @@ function TpvGUITabPanel.PointerEvent(const aPointerEvent:TpvApplicationInputPoin
 var CurrentTabIndex:TpvSizeInt;
     CurrentTab:TpvGUITab;
 begin
- ExecuteInvalidateActions;
- result:=assigned(fOnPointerEvent) and fOnPointerEvent(self,aPointerEvent);
- if not result then begin
-  result:=inherited PointerEvent(aPointerEvent);
+ if (fWidgetFlags*[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled])=[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled] then begin
+  ExecuteInvalidateActions;
+  result:=assigned(fOnPointerEvent) and fOnPointerEvent(self,aPointerEvent);
   if not result then begin
-   case aPointerEvent.PointerEventType of
-    TpvApplicationInputPointerEventType.Down:begin
-     if not TopLevelFocused then begin
-      RequestFocus;
-     end;
-     if (TpvGUITabPanelFlag.VisibleHeader in fFlags) and
-        not ((fTabIndex>=0) and (fTabIndex<fTabs.Count) and
-             fTabs.Items[fTabIndex].fRect.Touched(aPointerEvent.Position)) then begin
-      for CurrentTabIndex:=0 to fTabs.Count-1 do begin
-       if CurrentTabIndex<>fTabIndex then begin
-        CurrentTab:=fTabs.Items[CurrentTabIndex];
-        if CurrentTab.fRect.Touched(aPointerEvent.Position) then begin
-         SetTabIndex(CurrentTabIndex);
-         break;
+   result:=inherited PointerEvent(aPointerEvent);
+   if not result then begin
+    case aPointerEvent.PointerEventType of
+     TpvApplicationInputPointerEventType.Down:begin
+      if not TopLevelFocused then begin
+       RequestFocus;
+      end;
+      if (TpvGUITabPanelFlag.VisibleHeader in fFlags) and
+         not ((fTabIndex>=0) and (fTabIndex<fTabs.Count) and
+              fTabs.Items[fTabIndex].fRect.Touched(aPointerEvent.Position)) then begin
+       for CurrentTabIndex:=0 to fTabs.Count-1 do begin
+        if CurrentTabIndex<>fTabIndex then begin
+         CurrentTab:=fTabs.Items[CurrentTabIndex];
+         if CurrentTab.fRect.Touched(aPointerEvent.Position) then begin
+          SetTabIndex(CurrentTabIndex);
+          break;
+         end;
         end;
        end;
       end;
+      result:=true;
      end;
-     result:=true;
-    end;
-    TpvApplicationInputPointerEventType.Up:begin
-     result:=true;
-    end;
-    TpvApplicationInputPointerEventType.Motion:begin
-     result:=true;
-    end;
-    TpvApplicationInputPointerEventType.Drag:begin
-     result:=true;
+     TpvApplicationInputPointerEventType.Up:begin
+      result:=true;
+     end;
+     TpvApplicationInputPointerEventType.Motion:begin
+      result:=true;
+     end;
+     TpvApplicationInputPointerEventType.Drag:begin
+      result:=true;
+     end;
     end;
    end;
   end;
+ end else begin
+  result:=false;
  end;
 end;
 
@@ -21221,19 +21360,23 @@ function TpvGUITabPanel.Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boo
 var TemporaryValue,Step:TpvInt64;
     v:TpvFloat;
 begin
- ExecuteInvalidateActions;
- result:=inherited Scrolled(aPosition,aRelativeAmount);
- if (TpvGUITabPanelFlag.VisibleHeader in fFlags) and
-    fHeaderRect.Touched(aPosition) and not result then begin
-  TemporaryValue:=fTabIndex;
-  v:=aRelativeAmount.x-aRelativeAmount.y;
-  if v<0.0 then begin
-   Step:=floor(v);
-  end else begin
-   Step:=ceil(v);
+ if (fWidgetFlags*[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled])=[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled] then begin
+  ExecuteInvalidateActions;
+  result:=inherited Scrolled(aPosition,aRelativeAmount);
+  if (TpvGUITabPanelFlag.VisibleHeader in fFlags) and
+     fHeaderRect.Touched(aPosition) and not result then begin
+   TemporaryValue:=fTabIndex;
+   v:=aRelativeAmount.x-aRelativeAmount.y;
+   if v<0.0 then begin
+    Step:=floor(v);
+   end else begin
+    Step:=ceil(v);
+   end;
+   SetTabIndex(Min(Max(fTabIndex+Step,0),fTabs.Count-1));
+   result:=true;
   end;
-  SetTabIndex(Min(Max(fTabIndex+Step,0),fTabs.Count-1));
-  result:=true;
+ end else begin
+  result:=false;
  end;
 end;
 
@@ -21520,191 +21663,199 @@ function TpvGUIListBox.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boo
   end;
  end;
 begin
- result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
- if Enabled and not result then begin
-  case aKeyEvent.KeyCode of
-   KEYCODE_LSHIFT,KEYCODE_RSHIFT:begin
-    case aKeyEvent.KeyEventType of
-     TpvApplicationInputKeyEventType.Down:begin
-      fAction:=TpvGUIListBoxAction.PreMark;
-      fActionStartIndex:=fItemIndex;
-      fActionStopIndex:=fItemIndex;
-     end;
-     TpvApplicationInputKeyEventType.Up:begin
-      if fAction=TpvGUIListBoxAction.Mark then begin
-       DoSelection(true);
-       fAction:=TpvGUIListBoxAction.None;
-      end else if fAction=TpvGUIListBoxAction.PreMark then begin
-       fAction:=TpvGUIListBoxAction.None;
+ if (fWidgetFlags*[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled])=[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled] then begin
+  result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
+  if Enabled and not result then begin
+   case aKeyEvent.KeyCode of
+    KEYCODE_LSHIFT,KEYCODE_RSHIFT:begin
+     case aKeyEvent.KeyEventType of
+      TpvApplicationInputKeyEventType.Down:begin
+       fAction:=TpvGUIListBoxAction.PreMark;
+       fActionStartIndex:=fItemIndex;
+       fActionStopIndex:=fItemIndex;
+      end;
+      TpvApplicationInputKeyEventType.Up:begin
+       if fAction=TpvGUIListBoxAction.Mark then begin
+        DoSelection(true);
+        fAction:=TpvGUIListBoxAction.None;
+       end else if fAction=TpvGUIListBoxAction.PreMark then begin
+        fAction:=TpvGUIListBoxAction.None;
+       end;
       end;
      end;
+     result:=true;
     end;
-    result:=true;
-   end;
-   KEYCODE_LEFT,KEYCODE_UP,KEYCODE_MINUS,KEYCODE_KP_MINUS:begin
-    case aKeyEvent.KeyEventType of
-     TpvApplicationInputKeyEventType.Typed:begin
-      SetItemIndex(Min(Max(fItemIndex-1,0),fItems.Count-1));
-      DoSelection(false);
-     end;
-    end;
-    result:=true;
-   end;
-   KEYCODE_RIGHT,KEYCODE_DOWN,KEYCODE_PLUS,KEYCODE_KP_PLUS:begin
-    case aKeyEvent.KeyEventType of
-     TpvApplicationInputKeyEventType.Typed:begin
-      SetItemIndex(Min(Max(fItemIndex+1,0),fItems.Count-1));
-      DoSelection(false);
-     end;
-    end;
-    result:=true;
-   end;
-   KEYCODE_PAGEDOWN:begin
-    case aKeyEvent.KeyEventType of
-     TpvApplicationInputKeyEventType.Typed:begin
-      SetItemIndex(Min(Max(fItemIndex+4,0),fItems.Count-1));
-      DoSelection(false);
-     end;
-    end;
-    result:=true;
-   end;
-   KEYCODE_PAGEUP:begin
-    case aKeyEvent.KeyEventType of
-     TpvApplicationInputKeyEventType.Typed:begin
-      SetItemIndex(Min(Max(fItemIndex-4,0),fItems.Count-1));
-      DoSelection(false);
-     end;
-    end;
-    result:=true;
-   end;
-   KEYCODE_HOME:begin
-    case aKeyEvent.KeyEventType of
-     TpvApplicationInputKeyEventType.Typed:begin
-      SetItemIndex(Min(0,fItems.Count-1));
-      DoSelection(false);
-     end;
-    end;
-    result:=true;
-   end;
-   KEYCODE_END:begin
-    case aKeyEvent.KeyEventType of
-     TpvApplicationInputKeyEventType.Typed:begin
-      SetItemIndex(fItems.Count-1);
-      DoSelection(false);
-     end;
-    end;
-    result:=true;
-   end;
-   KEYCODE_BACKSPACE:begin
-    case aKeyEvent.KeyEventType of
-     TpvApplicationInputKeyEventType.Typed:begin
-      if MultiSelect then begin
-       ClearSelection;
+    KEYCODE_LEFT,KEYCODE_UP,KEYCODE_MINUS,KEYCODE_KP_MINUS:begin
+     case aKeyEvent.KeyEventType of
+      TpvApplicationInputKeyEventType.Typed:begin
+       SetItemIndex(Min(Max(fItemIndex-1,0),fItems.Count-1));
+       DoSelection(false);
       end;
      end;
+     result:=true;
     end;
-    result:=true;
-   end;
-   KEYCODE_SPACE:begin
-    case aKeyEvent.KeyEventType of
-     TpvApplicationInputKeyEventType.Typed:begin
-      if MultiSelect then begin
-       SetSelected(fItemIndex,not GetSelected(fItemIndex));
+    KEYCODE_RIGHT,KEYCODE_DOWN,KEYCODE_PLUS,KEYCODE_KP_PLUS:begin
+     case aKeyEvent.KeyEventType of
+      TpvApplicationInputKeyEventType.Typed:begin
+       SetItemIndex(Min(Max(fItemIndex+1,0),fItems.Count-1));
+       DoSelection(false);
       end;
      end;
+     result:=true;
     end;
-    result:=true;
+    KEYCODE_PAGEDOWN:begin
+     case aKeyEvent.KeyEventType of
+      TpvApplicationInputKeyEventType.Typed:begin
+       SetItemIndex(Min(Max(fItemIndex+4,0),fItems.Count-1));
+       DoSelection(false);
+      end;
+     end;
+     result:=true;
+    end;
+    KEYCODE_PAGEUP:begin
+     case aKeyEvent.KeyEventType of
+      TpvApplicationInputKeyEventType.Typed:begin
+       SetItemIndex(Min(Max(fItemIndex-4,0),fItems.Count-1));
+       DoSelection(false);
+      end;
+     end;
+     result:=true;
+    end;
+    KEYCODE_HOME:begin
+     case aKeyEvent.KeyEventType of
+      TpvApplicationInputKeyEventType.Typed:begin
+       SetItemIndex(Min(0,fItems.Count-1));
+       DoSelection(false);
+      end;
+     end;
+     result:=true;
+    end;
+    KEYCODE_END:begin
+     case aKeyEvent.KeyEventType of
+      TpvApplicationInputKeyEventType.Typed:begin
+       SetItemIndex(fItems.Count-1);
+       DoSelection(false);
+      end;
+     end;
+     result:=true;
+    end;
+    KEYCODE_BACKSPACE:begin
+     case aKeyEvent.KeyEventType of
+      TpvApplicationInputKeyEventType.Typed:begin
+       if MultiSelect then begin
+        ClearSelection;
+       end;
+      end;
+     end;
+     result:=true;
+    end;
+    KEYCODE_SPACE:begin
+     case aKeyEvent.KeyEventType of
+      TpvApplicationInputKeyEventType.Typed:begin
+       if MultiSelect then begin
+        SetSelected(fItemIndex,not GetSelected(fItemIndex));
+       end;
+      end;
+     end;
+     result:=true;
+    end;
    end;
   end;
+ end else begin
+  result:=false;
  end;
 end;
 
 function TpvGUIListBox.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean;
 var CurrentItemIndex:TpvSizeInt;
 begin
- UpdateScrollBar;
- result:=assigned(fOnPointerEvent) and fOnPointerEvent(self,aPointerEvent);
- if not result then begin
-  result:=inherited PointerEvent(aPointerEvent);
+ if (fWidgetFlags*[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled])=[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled] then begin
+  UpdateScrollBar;
+  result:=assigned(fOnPointerEvent) and fOnPointerEvent(self,aPointerEvent);
   if not result then begin
-   case aPointerEvent.PointerEventType of
-    TpvApplicationInputPointerEventType.Down:begin
-     RequestFocus;
-     fAction:=TpvGUIListBoxAction.None;
-     SetItemIndex(trunc((aPointerEvent.Position.y-fWorkYOffset)/Max(fWorkRowHeight,1.0))+fScrollBar.Value);
-     if TpvApplicationInputKeyModifier.CTRL in aPointerEvent.KeyModifiers then begin
-      SetSelected(fItemIndex,not GetSelected(fItemIndex));
-     end else if TpvApplicationInputKeyModifier.SHIFT in aPointerEvent.KeyModifiers then begin
-      fAction:=TpvGUIListBoxAction.Mark;
-      fActionStartIndex:=fItemIndex;
-      fActionStopIndex:=fItemIndex;
-      fSelectedBitmap:=nil;
-      SetSelected(fItemIndex,true);
-     end;
-     if aPointerEvent.Button=TpvApplicationInputPointerButton.Left then begin
-      if fDoubleClickCounter=0 then begin
-       fDoubleClickTimeAccumulator:=0.0;
-      end;
-     end;
-     result:=true;
-    end;
-    TpvApplicationInputPointerEventType.Up:begin
-     if fAction=TpvGUIListBoxAction.Mark then begin
+   result:=inherited PointerEvent(aPointerEvent);
+   if not result then begin
+    case aPointerEvent.PointerEventType of
+     TpvApplicationInputPointerEventType.Down:begin
+      RequestFocus;
+      fAction:=TpvGUIListBoxAction.None;
       SetItemIndex(trunc((aPointerEvent.Position.y-fWorkYOffset)/Max(fWorkRowHeight,1.0))+fScrollBar.Value);
-      fActionStopIndex:=fItemIndex;
-      fSelectedBitmap:=nil;
-      for CurrentItemIndex:=Min(fActionStartIndex,fActionStopIndex) to Max(fActionStartIndex,fActionStopIndex) do begin
-       ChangeSelected(CurrentItemIndex,true,false);
+      if TpvApplicationInputKeyModifier.CTRL in aPointerEvent.KeyModifiers then begin
+       SetSelected(fItemIndex,not GetSelected(fItemIndex));
+      end else if TpvApplicationInputKeyModifier.SHIFT in aPointerEvent.KeyModifiers then begin
+       fAction:=TpvGUIListBoxAction.Mark;
+       fActionStartIndex:=fItemIndex;
+       fActionStopIndex:=fItemIndex;
+       fSelectedBitmap:=nil;
+       SetSelected(fItemIndex,true);
       end;
-      if assigned(fOnChangeSelection) then begin
-       fOnChangeSelection(self);
-      end;
-     end;
-     if aPointerEvent.Button=TpvApplicationInputPointerButton.Left then begin
-      if fDoubleClickCounter<2 then begin
-       inc(fDoubleClickCounter);
-       if fDoubleClickCounter=2 then begin
-        fDoubleClickCounter:=0;
+      if aPointerEvent.Button=TpvApplicationInputPointerButton.Left then begin
+       if fDoubleClickCounter=0 then begin
         fDoubleClickTimeAccumulator:=0.0;
-        if assigned(fOnDoubleClick) then begin
-         fOnDoubleClick(self);
+       end;
+      end;
+      result:=true;
+     end;
+     TpvApplicationInputPointerEventType.Up:begin
+      if fAction=TpvGUIListBoxAction.Mark then begin
+       SetItemIndex(trunc((aPointerEvent.Position.y-fWorkYOffset)/Max(fWorkRowHeight,1.0))+fScrollBar.Value);
+       fActionStopIndex:=fItemIndex;
+       fSelectedBitmap:=nil;
+       for CurrentItemIndex:=Min(fActionStartIndex,fActionStopIndex) to Max(fActionStartIndex,fActionStopIndex) do begin
+        ChangeSelected(CurrentItemIndex,true,false);
+       end;
+       if assigned(fOnChangeSelection) then begin
+        fOnChangeSelection(self);
+       end;
+      end;
+      if aPointerEvent.Button=TpvApplicationInputPointerButton.Left then begin
+       if fDoubleClickCounter<2 then begin
+        inc(fDoubleClickCounter);
+        if fDoubleClickCounter=2 then begin
+         fDoubleClickCounter:=0;
+         fDoubleClickTimeAccumulator:=0.0;
+         if assigned(fOnDoubleClick) then begin
+          fOnDoubleClick(self);
+         end;
         end;
        end;
       end;
+      fAction:=TpvGUIListBoxAction.None;
+      result:=true;
      end;
-     fAction:=TpvGUIListBoxAction.None;
-     result:=true;
-    end;
-    TpvApplicationInputPointerEventType.Motion:begin
-     if fAction=TpvGUIListBoxAction.Mark then begin
-      SetItemIndex(trunc((aPointerEvent.Position.y-fWorkYOffset)/Max(fWorkRowHeight,1.0))+fScrollBar.Value);
-      fActionStopIndex:=fItemIndex;
-      fSelectedBitmap:=nil;
-      for CurrentItemIndex:=Min(fActionStartIndex,fActionStopIndex) to Max(fActionStartIndex,fActionStopIndex) do begin
-       ChangeSelected(CurrentItemIndex,true,false);
+     TpvApplicationInputPointerEventType.Motion:begin
+      if fAction=TpvGUIListBoxAction.Mark then begin
+       SetItemIndex(trunc((aPointerEvent.Position.y-fWorkYOffset)/Max(fWorkRowHeight,1.0))+fScrollBar.Value);
+       fActionStopIndex:=fItemIndex;
+       fSelectedBitmap:=nil;
+       for CurrentItemIndex:=Min(fActionStartIndex,fActionStopIndex) to Max(fActionStartIndex,fActionStopIndex) do begin
+        ChangeSelected(CurrentItemIndex,true,false);
+       end;
+       if assigned(fOnChangeSelection) then begin
+        fOnChangeSelection(self);
+       end;
       end;
-      if assigned(fOnChangeSelection) then begin
-       fOnChangeSelection(self);
-      end;
+      result:=true;
      end;
-     result:=true;
-    end;
-    TpvApplicationInputPointerEventType.Drag:begin
-     if fAction=TpvGUIListBoxAction.Mark then begin
-      SetItemIndex(trunc((aPointerEvent.Position.y-fWorkYOffset)/Max(fWorkRowHeight,1.0))+fScrollBar.Value);
-      fActionStopIndex:=fItemIndex;
-      fSelectedBitmap:=nil;
-      for CurrentItemIndex:=Min(fActionStartIndex,fActionStopIndex) to Max(fActionStartIndex,fActionStopIndex) do begin
-       ChangeSelected(CurrentItemIndex,true,false);
+     TpvApplicationInputPointerEventType.Drag:begin
+      if fAction=TpvGUIListBoxAction.Mark then begin
+       SetItemIndex(trunc((aPointerEvent.Position.y-fWorkYOffset)/Max(fWorkRowHeight,1.0))+fScrollBar.Value);
+       fActionStopIndex:=fItemIndex;
+       fSelectedBitmap:=nil;
+       for CurrentItemIndex:=Min(fActionStartIndex,fActionStopIndex) to Max(fActionStartIndex,fActionStopIndex) do begin
+        ChangeSelected(CurrentItemIndex,true,false);
+       end;
+       if assigned(fOnChangeSelection) then begin
+        fOnChangeSelection(self);
+       end;
       end;
-      if assigned(fOnChangeSelection) then begin
-       fOnChangeSelection(self);
-      end;
+      result:=true;
      end;
-     result:=true;
     end;
    end;
   end;
+ end else begin
+  result:=false;
  end;
 end;
 
@@ -21712,17 +21863,21 @@ function TpvGUIListBox.Scrolled(const aPosition,aRelativeAmount:TpvVector2):Bool
 var TemporaryValue,Step:TpvInt64;
     v:TpvFloat;
 begin
- result:=inherited Scrolled(aPosition,aRelativeAmount);
- if not result then begin
-  TemporaryValue:=fItemIndex;
-  v:=aRelativeAmount.x-aRelativeAmount.y;
-  if v<0.0 then begin
-   Step:=floor(v);
-  end else begin
-   Step:=ceil(v);
+ if (fWidgetFlags*[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled])=[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled] then begin
+  result:=inherited Scrolled(aPosition,aRelativeAmount);
+  if not result then begin
+   TemporaryValue:=fItemIndex;
+   v:=aRelativeAmount.x-aRelativeAmount.y;
+   if v<0.0 then begin
+    Step:=floor(v);
+   end else begin
+    Step:=ceil(v);
+   end;
+   SetItemIndex(Min(Max(fItemIndex+Step,0),fItems.Count-1));
+   result:=true;
   end;
-  SetItemIndex(Min(Max(fItemIndex+Step,0),fItems.Count-1));
-  result:=true;
+ end else begin
+  result:=false;
  end;
 end;
 
@@ -21933,95 +22088,103 @@ end;
 
 function TpvGUIComboBox.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
 begin
- result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
- if Enabled and not result then begin
-  case aKeyEvent.KeyCode of
-   KEYCODE_LEFT,KEYCODE_UP,KEYCODE_MINUS,KEYCODE_KP_MINUS:begin
-    case aKeyEvent.KeyEventType of
-     TpvApplicationInputKeyEventType.Typed:begin
-      SetItemIndex(Min(Max(fItemIndex-1,0),fItems.Count-1));
+ if (fWidgetFlags*[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled])=[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled] then begin
+  result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
+  if Enabled and not result then begin
+   case aKeyEvent.KeyCode of
+    KEYCODE_LEFT,KEYCODE_UP,KEYCODE_MINUS,KEYCODE_KP_MINUS:begin
+     case aKeyEvent.KeyEventType of
+      TpvApplicationInputKeyEventType.Typed:begin
+       SetItemIndex(Min(Max(fItemIndex-1,0),fItems.Count-1));
+      end;
      end;
+     result:=true;
     end;
-    result:=true;
-   end;
-   KEYCODE_RIGHT,KEYCODE_DOWN,KEYCODE_PLUS,KEYCODE_KP_PLUS:begin
-    case aKeyEvent.KeyEventType of
-     TpvApplicationInputKeyEventType.Typed:begin
-      SetItemIndex(Min(Max(fItemIndex+1,0),fItems.Count-1));
+    KEYCODE_RIGHT,KEYCODE_DOWN,KEYCODE_PLUS,KEYCODE_KP_PLUS:begin
+     case aKeyEvent.KeyEventType of
+      TpvApplicationInputKeyEventType.Typed:begin
+       SetItemIndex(Min(Max(fItemIndex+1,0),fItems.Count-1));
+      end;
      end;
+     result:=true;
     end;
-    result:=true;
-   end;
-   KEYCODE_PAGEDOWN:begin
-    case aKeyEvent.KeyEventType of
-     TpvApplicationInputKeyEventType.Typed:begin
-      SetItemIndex(Min(Max(fItemIndex+4,0),fItems.Count-1));
+    KEYCODE_PAGEDOWN:begin
+     case aKeyEvent.KeyEventType of
+      TpvApplicationInputKeyEventType.Typed:begin
+       SetItemIndex(Min(Max(fItemIndex+4,0),fItems.Count-1));
+      end;
      end;
+     result:=true;
     end;
-    result:=true;
-   end;
-   KEYCODE_PAGEUP:begin
-    case aKeyEvent.KeyEventType of
-     TpvApplicationInputKeyEventType.Typed:begin
-      SetItemIndex(Min(Max(fItemIndex-4,0),fItems.Count-1));
+    KEYCODE_PAGEUP:begin
+     case aKeyEvent.KeyEventType of
+      TpvApplicationInputKeyEventType.Typed:begin
+       SetItemIndex(Min(Max(fItemIndex-4,0),fItems.Count-1));
+      end;
      end;
+     result:=true;
     end;
-    result:=true;
-   end;
-   KEYCODE_HOME:begin
-    case aKeyEvent.KeyEventType of
-     TpvApplicationInputKeyEventType.Typed:begin
-      SetItemIndex(Min(0,fItems.Count-1));
+    KEYCODE_HOME:begin
+     case aKeyEvent.KeyEventType of
+      TpvApplicationInputKeyEventType.Typed:begin
+       SetItemIndex(Min(0,fItems.Count-1));
+      end;
      end;
+     result:=true;
     end;
-    result:=true;
-   end;
-   KEYCODE_END:begin
-    case aKeyEvent.KeyEventType of
-     TpvApplicationInputKeyEventType.Typed:begin
-      SetItemIndex(fItems.Count-1);
+    KEYCODE_END:begin
+     case aKeyEvent.KeyEventType of
+      TpvApplicationInputKeyEventType.Typed:begin
+       SetItemIndex(fItems.Count-1);
+      end;
      end;
+     result:=true;
     end;
-    result:=true;
-   end;
-   KEYCODE_SPACE,KEYCODE_RETURN,KEYCODE_RETURN2,KEYCODE_KP_ENTER:begin
-    case aKeyEvent.KeyEventType of
-     TpvApplicationInputKeyEventType.Typed:begin
-      fPopupButton.SetDown(true);
+    KEYCODE_SPACE,KEYCODE_RETURN,KEYCODE_RETURN2,KEYCODE_KP_ENTER:begin
+     case aKeyEvent.KeyEventType of
+      TpvApplicationInputKeyEventType.Typed:begin
+       fPopupButton.SetDown(true);
+      end;
      end;
+     result:=true;
     end;
-    result:=true;
    end;
   end;
- end;
+ end else begin
+  result:=false;
+ end; 
 end;
 
 function TpvGUIComboBox.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean;
 var CurrentItemIndex:TpvSizeInt;
 begin
- result:=assigned(fOnPointerEvent) and fOnPointerEvent(self,aPointerEvent);
- if not result then begin
-  result:=inherited PointerEvent(aPointerEvent);
+ if (fWidgetFlags*[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled])=[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled] then begin
+  result:=assigned(fOnPointerEvent) and fOnPointerEvent(self,aPointerEvent);
   if not result then begin
-   case aPointerEvent.PointerEventType of
-    TpvApplicationInputPointerEventType.Down:begin
-     if not Focused then begin
-      RequestFocus;
+   result:=inherited PointerEvent(aPointerEvent);
+   if not result then begin
+    case aPointerEvent.PointerEventType of
+     TpvApplicationInputPointerEventType.Down:begin
+      if not Focused then begin
+       RequestFocus;
+      end;
+      fPopupButton.SetDown(not fPopupButton.Down);
+      result:=true;
      end;
-     fPopupButton.SetDown(not fPopupButton.Down);
-     result:=true;
-    end;
-    TpvApplicationInputPointerEventType.Up:begin
-     result:=true;
-    end;
-    TpvApplicationInputPointerEventType.Motion:begin
-     result:=true;
-    end;
-    TpvApplicationInputPointerEventType.Drag:begin
-     result:=true;
+     TpvApplicationInputPointerEventType.Up:begin
+      result:=true;
+     end;
+     TpvApplicationInputPointerEventType.Motion:begin
+      result:=true;
+     end;
+     TpvApplicationInputPointerEventType.Drag:begin
+      result:=true;
+     end;
     end;
    end;
   end;
+ end else begin
+  result:=false;
  end;
 end;
 
@@ -22029,17 +22192,21 @@ function TpvGUIComboBox.Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boo
 var TemporaryValue,Step:TpvInt64;
     v:TpvFloat;
 begin
- result:=inherited Scrolled(aPosition,aRelativeAmount);
- if not result then begin
-  TemporaryValue:=fItemIndex;
-  v:=aRelativeAmount.x-aRelativeAmount.y;
-  if v<0.0 then begin
-   Step:=floor(v);
-  end else begin
-   Step:=ceil(v);
+ if (fWidgetFlags*[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled])=[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled] then begin
+  result:=inherited Scrolled(aPosition,aRelativeAmount);
+  if not result then begin
+   TemporaryValue:=fItemIndex;
+   v:=aRelativeAmount.x-aRelativeAmount.y;
+   if v<0.0 then begin
+    Step:=floor(v);
+   end else begin
+    Step:=ceil(v);
+   end;
+   SetItemIndex(Min(Max(fItemIndex+Step,0),fItems.Count-1));
+   result:=true;
   end;
-  SetItemIndex(Min(Max(fItemIndex+Step,0),fItems.Count-1));
-  result:=true;
+ end else begin
+  result:=false;
  end;
 end;
 
@@ -22096,107 +22263,119 @@ end;
 
 function TpvGUISplitterPanelGripButton.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
 begin
- result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
- if Enabled and not result then begin
-  case aKeyEvent.KeyCode of
-   KEYCODE_LEFT,KEYCODE_UP,KEYCODE_MINUS,KEYCODE_KP_MINUS:begin
-    case aKeyEvent.KeyEventType of
-     TpvApplicationInputKeyEventType.Typed:begin
-      TpvGUISplitterPanel(fParent).PartitionSize:=Clamp(TpvGUISplitterPanel(fParent).PartitionSize-1.0,0.0,TpvGUISplitterPanel(fParent).AvailableSpace);
+ if (fWidgetFlags*[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled])=[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled] then begin
+  result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
+  if Enabled and not result then begin
+   case aKeyEvent.KeyCode of
+    KEYCODE_LEFT,KEYCODE_UP,KEYCODE_MINUS,KEYCODE_KP_MINUS:begin
+     case aKeyEvent.KeyEventType of
+      TpvApplicationInputKeyEventType.Typed:begin
+       TpvGUISplitterPanel(fParent).PartitionSize:=Clamp(TpvGUISplitterPanel(fParent).PartitionSize-1.0,0.0,TpvGUISplitterPanel(fParent).AvailableSpace);
+      end;
      end;
+     result:=true;
     end;
-    result:=true;
-   end;
-   KEYCODE_RIGHT,KEYCODE_DOWN,KEYCODE_PLUS,KEYCODE_KP_PLUS:begin
-    case aKeyEvent.KeyEventType of
-     TpvApplicationInputKeyEventType.Typed:begin
-      TpvGUISplitterPanel(fParent).PartitionSize:=Clamp(TpvGUISplitterPanel(fParent).PartitionSize+1.0,0.0,TpvGUISplitterPanel(fParent).AvailableSpace);
+    KEYCODE_RIGHT,KEYCODE_DOWN,KEYCODE_PLUS,KEYCODE_KP_PLUS:begin
+     case aKeyEvent.KeyEventType of
+      TpvApplicationInputKeyEventType.Typed:begin
+       TpvGUISplitterPanel(fParent).PartitionSize:=Clamp(TpvGUISplitterPanel(fParent).PartitionSize+1.0,0.0,TpvGUISplitterPanel(fParent).AvailableSpace);
+      end;
      end;
+     result:=true;
     end;
-    result:=true;
-   end;
-   KEYCODE_PAGEDOWN:begin
-    case aKeyEvent.KeyEventType of
-     TpvApplicationInputKeyEventType.Typed:begin
-      TpvGUISplitterPanel(fParent).PartitionSize:=Clamp(TpvGUISplitterPanel(fParent).PartitionSize+(TpvGUISplitterPanel(fParent).AvailableSpace*0.25),0.0,TpvGUISplitterPanel(fParent).AvailableSpace);
+    KEYCODE_PAGEDOWN:begin
+     case aKeyEvent.KeyEventType of
+      TpvApplicationInputKeyEventType.Typed:begin
+       TpvGUISplitterPanel(fParent).PartitionSize:=Clamp(TpvGUISplitterPanel(fParent).PartitionSize+(TpvGUISplitterPanel(fParent).AvailableSpace*0.25),0.0,TpvGUISplitterPanel(fParent).AvailableSpace);
+      end;
      end;
+     result:=true;
     end;
-    result:=true;
-   end;
-   KEYCODE_PAGEUP:begin
-    case aKeyEvent.KeyEventType of
-     TpvApplicationInputKeyEventType.Typed:begin
-      TpvGUISplitterPanel(fParent).PartitionSize:=Clamp(TpvGUISplitterPanel(fParent).PartitionSize-(TpvGUISplitterPanel(fParent).AvailableSpace*0.25),0.0,TpvGUISplitterPanel(fParent).AvailableSpace);
+    KEYCODE_PAGEUP:begin
+     case aKeyEvent.KeyEventType of
+      TpvApplicationInputKeyEventType.Typed:begin
+       TpvGUISplitterPanel(fParent).PartitionSize:=Clamp(TpvGUISplitterPanel(fParent).PartitionSize-(TpvGUISplitterPanel(fParent).AvailableSpace*0.25),0.0,TpvGUISplitterPanel(fParent).AvailableSpace);
+      end;
      end;
+     result:=true;
     end;
-    result:=true;
-   end;
-   KEYCODE_HOME:begin
-    case aKeyEvent.KeyEventType of
-     TpvApplicationInputKeyEventType.Typed:begin
-      TpvGUISplitterPanel(fParent).PartitionFactor:=0.0;
+    KEYCODE_HOME:begin
+     case aKeyEvent.KeyEventType of
+      TpvApplicationInputKeyEventType.Typed:begin
+       TpvGUISplitterPanel(fParent).PartitionFactor:=0.0;
+      end;
      end;
+     result:=true;
     end;
-    result:=true;
-   end;
-   KEYCODE_END:begin
-    case aKeyEvent.KeyEventType of
-     TpvApplicationInputKeyEventType.Typed:begin
-      TpvGUISplitterPanel(fParent).PartitionFactor:=1.0;
+    KEYCODE_END:begin
+     case aKeyEvent.KeyEventType of
+      TpvApplicationInputKeyEventType.Typed:begin
+       TpvGUISplitterPanel(fParent).PartitionFactor:=1.0;
+      end;
      end;
+     result:=true;
     end;
-    result:=true;
    end;
   end;
+ end else begin
+  result:=false;
  end;
 end;
 
 function TpvGUISplitterPanelGripButton.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean;
 var CurrentItemIndex:TpvSizeInt;
 begin
- result:=assigned(fOnPointerEvent) and fOnPointerEvent(self,aPointerEvent);
- if not result then begin
-  result:=inherited PointerEvent(aPointerEvent);
+ if (fWidgetFlags*[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled])=[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled] then begin
+  result:=assigned(fOnPointerEvent) and fOnPointerEvent(self,aPointerEvent);
   if not result then begin
-   case aPointerEvent.PointerEventType of
-    TpvApplicationInputPointerEventType.Down:begin
-     if not Focused then begin
-      RequestFocus;
-     end;
-     fDown:=true;
-     result:=true;
-    end;
-    TpvApplicationInputPointerEventType.Up:begin
-     fDown:=false;
-     result:=true;
-    end;
-    TpvApplicationInputPointerEventType.Motion:begin
-     result:=true;
-    end;
-    TpvApplicationInputPointerEventType.Drag:begin
-     case TpvGUISplitterPanel(fParent).fOrientation of
-      TpvGUISplitterPanelOrientation.Horizontal:begin
-       TpvGUISplitterPanel(fParent).PartitionSize:=Clamp(TpvGUISplitterPanel(fParent).PartitionSize+aPointerEvent.RelativePosition.x,0.0,TpvGUISplitterPanel(fParent).AvailableSpace);
+   result:=inherited PointerEvent(aPointerEvent);
+   if not result then begin
+    case aPointerEvent.PointerEventType of
+     TpvApplicationInputPointerEventType.Down:begin
+      if not Focused then begin
+       RequestFocus;
       end;
-      else {TpvGUISplitterPanelOrientation.Vertical:}begin
-       TpvGUISplitterPanel(fParent).PartitionSize:=Clamp(TpvGUISplitterPanel(fParent).PartitionSize+aPointerEvent.RelativePosition.y,0.0,TpvGUISplitterPanel(fParent).AvailableSpace);
-      end;
+      fDown:=true;
+      result:=true;
      end;
-     result:=true;
+     TpvApplicationInputPointerEventType.Up:begin
+      fDown:=false;
+      result:=true;
+     end;
+     TpvApplicationInputPointerEventType.Motion:begin
+      result:=true;
+     end;
+     TpvApplicationInputPointerEventType.Drag:begin
+      case TpvGUISplitterPanel(fParent).fOrientation of
+       TpvGUISplitterPanelOrientation.Horizontal:begin
+        TpvGUISplitterPanel(fParent).PartitionSize:=Clamp(TpvGUISplitterPanel(fParent).PartitionSize+aPointerEvent.RelativePosition.x,0.0,TpvGUISplitterPanel(fParent).AvailableSpace);
+       end;
+       else {TpvGUISplitterPanelOrientation.Vertical:}begin
+        TpvGUISplitterPanel(fParent).PartitionSize:=Clamp(TpvGUISplitterPanel(fParent).PartitionSize+aPointerEvent.RelativePosition.y,0.0,TpvGUISplitterPanel(fParent).AvailableSpace);
+       end;
+      end;
+      result:=true;
+     end;
     end;
    end;
   end;
+ end else begin
+  result:=false;
  end;
 end;
 
 function TpvGUISplitterPanelGripButton.Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boolean;
 var v:TpvFloat;
 begin
- result:=inherited Scrolled(aPosition,aRelativeAmount);
- if not result then begin
-  v:=aRelativeAmount.x-aRelativeAmount.y;
-  TpvGUISplitterPanel(fParent).PartitionSize:=Clamp(TpvGUISplitterPanel(fParent).PartitionSize+v,0.0,TpvGUISplitterPanel(fParent).AvailableSpace);
-  result:=true;
+ if (fWidgetFlags*[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled])=[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled] then begin
+  result:=inherited Scrolled(aPosition,aRelativeAmount);
+  if not result then begin
+   v:=aRelativeAmount.x-aRelativeAmount.y;
+   TpvGUISplitterPanel(fParent).PartitionSize:=Clamp(TpvGUISplitterPanel(fParent).PartitionSize+v,0.0,TpvGUISplitterPanel(fParent).AvailableSpace);
+   result:=true;
+  end;
+ end else begin
+  result:=false;
  end;
 end;
 
@@ -23274,484 +23453,496 @@ var CurrentPosition,OtherPosition,TemporaryUncheckedTextCursorPositionIndex,
     TemporaryUncheckedTextSelectionStart,TemporaryUncheckedTextSelectionEnd:TpvInt32;
     TemporaryText,TemporaryUncheckedText:TpvUTF8String;
 begin
- result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
- if assigned(fView) and Enabled and not result then begin
-  case aKeyEvent.KeyEventType of
-   TpvApplicationInputKeyEventType.Down:begin
-    case aKeyEvent.KeyCode of
-     KEYCODE_APPLICATION:begin
-      result:=true;
-     end;
-    end;
-   end;
-   TpvApplicationInputKeyEventType.Up:begin
-    case aKeyEvent.KeyCode of
-     KEYCODE_APPLICATION:begin
-      if assigned(fPopupMenu) then begin
-       fPopupMenu.Activate(AbsolutePosition+(fSize*0.5));
+ if (fWidgetFlags*[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled])=[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled] then begin
+  result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
+  if assigned(fView) and Enabled and not result then begin
+   case aKeyEvent.KeyEventType of
+    TpvApplicationInputKeyEventType.Down:begin
+     case aKeyEvent.KeyCode of
+      KEYCODE_APPLICATION:begin
+       result:=true;
       end;
-      result:=true;
      end;
     end;
-   end;
-   TpvApplicationInputKeyEventType.Typed:begin
-    case aKeyEvent.KeyCode of
-     KEYCODE_RETURN,KEYCODE_RETURN2,KEYCODE_KP_ENTER:begin
-      if fEditable then begin
-       fView.Enter(fOverwrite);
+    TpvApplicationInputKeyEventType.Up:begin
+     case aKeyEvent.KeyCode of
+      KEYCODE_APPLICATION:begin
+       if assigned(fPopupMenu) then begin
+        fPopupMenu.Activate(AbsolutePosition+(fSize*0.5));
+       end;
+       result:=true;
+      end;
+     end;
+    end;
+    TpvApplicationInputKeyEventType.Typed:begin
+     case aKeyEvent.KeyCode of
+      KEYCODE_RETURN,KEYCODE_RETURN2,KEYCODE_KP_ENTER:begin
+       if fEditable then begin
+        fView.Enter(fOverwrite);
+        fDirty:=true;
+        fTime:=0.0;
+        if assigned(fOnChange) then begin
+         fOnChange(self);
+        end;
+       end;
+       result:=true;
+      end;
+      KEYCODE_TAB:begin
+       if (aKeyEvent.KeyModifiers*[TpvApplicationInputKeyModifier.SHIFT,
+                                   TpvApplicationInputKeyModifier.CTRL,
+                                   TpvApplicationInputKeyModifier.ALT,
+                                   TpvApplicationInputKeyModifier.META])=[] then begin
+        if fEditable then begin
+         fView.InsertCodePoint(9,fOverwrite);
+         fDirty:=true;
+         fTime:=0.0;
+         if assigned(fOnChange) then begin
+          fOnChange(self);
+         end;
+        end;
+        result:=true;
+       end;
+      end;
+      KEYCODE_KP_MINUS,KEYCODE_MINUS:begin
+       if (aKeyEvent.KeyModifiers*[TpvApplicationInputKeyModifier.ALT,
+                                   TpvApplicationInputKeyModifier.CTRL,
+                                   TpvApplicationInputKeyModifier.SHIFT,
+                                   TpvApplicationInputKeyModifier.META])=[TpvApplicationInputKeyModifier.CTRL] then begin
+        FontSize:=Min(Max(abs(FontSize)-1,2),48)*Sign(FontSize);
+        SetViewDirty;
+        result:=true;
+       end;
+      end;
+      KEYCODE_KP_PLUS,KEYCODE_PLUS:begin
+       if (aKeyEvent.KeyModifiers*[TpvApplicationInputKeyModifier.ALT,
+                                   TpvApplicationInputKeyModifier.CTRL,
+                                   TpvApplicationInputKeyModifier.SHIFT,
+                                   TpvApplicationInputKeyModifier.META])=[TpvApplicationInputKeyModifier.CTRL] then begin
+        FontSize:=Min(Max(abs(FontSize)+1,2),48)*Sign(FontSize);
+        SetViewDirty;
+        result:=true;
+       end;
+      end;
+      KEYCODE_LEFT:begin
+       if TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers then begin
+        if not fView.HasMarkedRange then begin
+         fView.SetMarkStart;
+        end;
+        fView.MoveLeft;
+        fView.SetMarkEnd;
+       end else begin
+        if fView.HasMarkedRange then begin
+         fView.UnmarkAll;
+        end;
+        fView.MoveLeft;
+       end;
        fDirty:=true;
        fTime:=0.0;
-       if assigned(fOnChange) then begin
-        fOnChange(self);
-       end;
+       result:=true;
       end;
-      result:=true;
-     end;
-     KEYCODE_TAB:begin
-      if (aKeyEvent.KeyModifiers*[TpvApplicationInputKeyModifier.SHIFT,
-                                  TpvApplicationInputKeyModifier.CTRL,
-                                  TpvApplicationInputKeyModifier.ALT,
-                                  TpvApplicationInputKeyModifier.META])=[] then begin
-       if fEditable then begin
-        fView.InsertCodePoint(9,fOverwrite);
-        fDirty:=true;
-        fTime:=0.0;
-        if assigned(fOnChange) then begin
-         fOnChange(self);
+      KEYCODE_RIGHT:begin
+       if TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers then begin
+        if not fView.HasMarkedRange then begin
+         fView.SetMarkStart;
         end;
-       end;
-       result:=true;
-      end;
-     end;
-     KEYCODE_KP_MINUS,KEYCODE_MINUS:begin
-      if (aKeyEvent.KeyModifiers*[TpvApplicationInputKeyModifier.ALT,
-                                  TpvApplicationInputKeyModifier.CTRL,
-                                  TpvApplicationInputKeyModifier.SHIFT,
-                                  TpvApplicationInputKeyModifier.META])=[TpvApplicationInputKeyModifier.CTRL] then begin
-       FontSize:=Min(Max(abs(FontSize)-1,2),48)*Sign(FontSize);
-       SetViewDirty;
-       result:=true;
-      end;
-     end;
-     KEYCODE_KP_PLUS,KEYCODE_PLUS:begin
-      if (aKeyEvent.KeyModifiers*[TpvApplicationInputKeyModifier.ALT,
-                                  TpvApplicationInputKeyModifier.CTRL,
-                                  TpvApplicationInputKeyModifier.SHIFT,
-                                  TpvApplicationInputKeyModifier.META])=[TpvApplicationInputKeyModifier.CTRL] then begin
-       FontSize:=Min(Max(abs(FontSize)+1,2),48)*Sign(FontSize);
-       SetViewDirty;
-       result:=true;
-      end;
-     end;
-     KEYCODE_LEFT:begin
-      if TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers then begin
-       if not fView.HasMarkedRange then begin
-        fView.SetMarkStart;
-       end;
-       fView.MoveLeft;
-       fView.SetMarkEnd;
-      end else begin
-       if fView.HasMarkedRange then begin
-        fView.UnmarkAll;
-       end;
-       fView.MoveLeft;
-      end;
-      fDirty:=true;
-      fTime:=0.0;
-      result:=true;
-     end;
-     KEYCODE_RIGHT:begin
-      if TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers then begin
-       if not fView.HasMarkedRange then begin
-        fView.SetMarkStart;
-       end;
-       fView.MoveRight;
-       fView.SetMarkEnd;
-      end else begin
-       if fView.HasMarkedRange then begin
-        fView.UnmarkAll;
-       end;
-       fView.MoveRight;
-      end;
-      fDirty:=true;
-      fTime:=0.0;
-      result:=true;
-     end;
-     KEYCODE_UP:begin
-      if TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers then begin
-       if not fView.HasMarkedRange then begin
-        fView.SetMarkStart;
-       end;
-       fView.MoveUp;
-       fView.SetMarkEnd;
-      end else begin
-       if fView.HasMarkedRange then begin
-        fView.UnmarkAll;
-       end;
-       fView.MoveUp;
-      end;
-      fDirty:=true;
-      fTime:=0.0;
-      result:=true;
-     end;
-     KEYCODE_DOWN:begin
-      if TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers then begin
-       if not fView.HasMarkedRange then begin
-        fView.SetMarkStart;
-       end;
-       fView.MoveDown;
-       fView.SetMarkEnd;
-      end else begin
-       if fView.HasMarkedRange then begin
-        fView.UnmarkAll;
-       end;
-       fView.MoveDown;
-      end;
-      fDirty:=true;
-      fTime:=0.0;
-      result:=true;
-     end;
-     KEYCODE_HOME:begin
-      if TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers then begin
-       if not fView.HasMarkedRange then begin
-        fView.SetMarkStart;
-       end;
-       fView.MoveToLineBegin;
-       fView.SetMarkEnd;
-      end else begin
-       fView.MoveToLineBegin;
-      end;
-      fDirty:=true;
-      fTime:=0.0;
-      result:=true;
-     end;
-     KEYCODE_END:begin
-      if TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers then begin
-       if not fView.HasMarkedRange then begin
-        fView.SetMarkStart;
-       end;
-       fView.MoveToLineEnd;
-       fView.SetMarkEnd;
-      end else begin
-       if fView.HasMarkedRange then begin
-        fView.UnmarkAll;
-       end;
-       fView.MoveToLineEnd;
-      end;
-      fDirty:=true;
-      fTime:=0.0;
-      result:=true;
-     end;
-     KEYCODE_PAGEUP:begin
-      if TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers then begin
-       if not fView.HasMarkedRange then begin
-        fView.SetMarkStart;
-       end;
-       fView.MovePageUp;
-       fView.SetMarkEnd;
-      end else begin
-       if fView.HasMarkedRange then begin
-        fView.UnmarkAll;
-       end;
-       fView.MovePageUp;
-      end;
-      fDirty:=true;
-      fTime:=0.0;
-      result:=true;
-     end;
-     KEYCODE_PAGEDOWN:begin
-      if TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers then begin
-       if not fView.HasMarkedRange then begin
-        fView.SetMarkStart;
-       end;
-       fView.MovePageDown;
-       fView.SetMarkEnd;
-      end else begin
-       if fView.HasMarkedRange then begin
-        fView.UnmarkAll;
-       end;
-       fView.MovePageDown;
-      end;
-      fDirty:=true;
-      fTime:=0.0;
-      result:=true;
-     end;
-     KEYCODE_BACKSPACE:begin
-      if fView.HasMarkedRange then begin
-       if fEditable then begin
-        DeleteSelectedText;
-       end;
-      end else begin
-       if fEditable then begin
-        fView.Backspace;
-        fDirty:=true;
-        fTime:=0.0;
-        if assigned(fOnChange) then begin
-         fOnChange(self);
+        fView.MoveRight;
+        fView.SetMarkEnd;
+       end else begin
+        if fView.HasMarkedRange then begin
+         fView.UnmarkAll;
         end;
+        fView.MoveRight;
        end;
+       fDirty:=true;
+       fTime:=0.0;
+       result:=true;
       end;
-      result:=true;
-     end;
-     KEYCODE_INSERT:begin
-      if TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers then begin
-       if fEditable then begin
-        PasteText;
+      KEYCODE_UP:begin
+       if TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers then begin
+        if not fView.HasMarkedRange then begin
+         fView.SetMarkStart;
+        end;
+        fView.MoveUp;
+        fView.SetMarkEnd;
+       end else begin
+        if fView.HasMarkedRange then begin
+         fView.UnmarkAll;
+        end;
+        fView.MoveUp;
        end;
-      end else begin
-       fOverwrite:=not fOverwrite;
+       fDirty:=true;
+       fTime:=0.0;
+       result:=true;
       end;
-      fDirty:=true;
-      fTime:=0.0;
-      result:=true;
-     end;
-     KEYCODE_DELETE:begin
-      if fView.HasMarkedRange then begin
-       if fEditable then begin
-        if TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers then begin
-         CutSelectedText;
-        end else begin
+      KEYCODE_DOWN:begin
+       if TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers then begin
+        if not fView.HasMarkedRange then begin
+         fView.SetMarkStart;
+        end;
+        fView.MoveDown;
+        fView.SetMarkEnd;
+       end else begin
+        if fView.HasMarkedRange then begin
+         fView.UnmarkAll;
+        end;
+        fView.MoveDown;
+       end;
+       fDirty:=true;
+       fTime:=0.0;
+       result:=true;
+      end;
+      KEYCODE_HOME:begin
+       if TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers then begin
+        if not fView.HasMarkedRange then begin
+         fView.SetMarkStart;
+        end;
+        fView.MoveToLineBegin;
+        fView.SetMarkEnd;
+       end else begin
+        fView.MoveToLineBegin;
+       end;
+       fDirty:=true;
+       fTime:=0.0;
+       result:=true;
+      end;
+      KEYCODE_END:begin
+       if TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers then begin
+        if not fView.HasMarkedRange then begin
+         fView.SetMarkStart;
+        end;
+        fView.MoveToLineEnd;
+        fView.SetMarkEnd;
+       end else begin
+        if fView.HasMarkedRange then begin
+         fView.UnmarkAll;
+        end;
+        fView.MoveToLineEnd;
+       end;
+       fDirty:=true;
+       fTime:=0.0;
+       result:=true;
+      end;
+      KEYCODE_PAGEUP:begin
+       if TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers then begin
+        if not fView.HasMarkedRange then begin
+         fView.SetMarkStart;
+        end;
+        fView.MovePageUp;
+        fView.SetMarkEnd;
+       end else begin
+        if fView.HasMarkedRange then begin
+         fView.UnmarkAll;
+        end;
+        fView.MovePageUp;
+       end;
+       fDirty:=true;
+       fTime:=0.0;
+       result:=true;
+      end;
+      KEYCODE_PAGEDOWN:begin
+       if TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers then begin
+        if not fView.HasMarkedRange then begin
+         fView.SetMarkStart;
+        end;
+        fView.MovePageDown;
+        fView.SetMarkEnd;
+       end else begin
+        if fView.HasMarkedRange then begin
+         fView.UnmarkAll;
+        end;
+        fView.MovePageDown;
+       end;
+       fDirty:=true;
+       fTime:=0.0;
+       result:=true;
+      end;
+      KEYCODE_BACKSPACE:begin
+       if fView.HasMarkedRange then begin
+        if fEditable then begin
          DeleteSelectedText;
         end;
-       end;
-      end else begin
-       if fEditable then begin
-        fView.Delete;
-        fDirty:=true;
-        fTime:=0.0;
-        if assigned(fOnChange) then begin
-         fOnChange(self);
-        end;
-       end;
-      end;
-      result:=true;
-     end;
-     KEYCODE_A:begin
-      if TpvApplicationInputKeyModifier.CTRL in aKeyEvent.KeyModifiers then begin
-       SelectAll;
-       result:=true;
-      end;
-     end;
-     KEYCODE_C:begin
-      if TpvApplicationInputKeyModifier.CTRL in aKeyEvent.KeyModifiers then begin
-       CopySelectedText;
-       result:=true;
-      end;
-     end;
-     KEYCODE_V:begin
-      if TpvApplicationInputKeyModifier.CTRL in aKeyEvent.KeyModifiers then begin
-       if fEditable then begin
-        PasteText;
-       end;
-       result:=true;
-      end;
-     end;
-     KEYCODE_X:begin
-      if TpvApplicationInputKeyModifier.CTRL in aKeyEvent.KeyModifiers then begin
-       if fEditable then begin
-        CutSelectedText;
-       end;
-       result:=true;
-      end;
-     end;
-     KEYCODE_Y:begin
-      if TpvApplicationInputKeyModifier.CTRL in aKeyEvent.KeyModifiers then begin
-       if fEditable then begin
-        if TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers then begin
-         fView.Undo;
-        end else begin
-         fView.Redo;
-        end;
-        fDirty:=true;
-        fTime:=0.0;
-        if assigned(fOnChange) then begin
-         fOnChange(self);
+       end else begin
+        if fEditable then begin
+         fView.Backspace;
+         fDirty:=true;
+         fTime:=0.0;
+         if assigned(fOnChange) then begin
+          fOnChange(self);
+         end;
         end;
        end;
        result:=true;
       end;
-     end;
-     KEYCODE_Z:begin
-      if TpvApplicationInputKeyModifier.CTRL in aKeyEvent.KeyModifiers then begin
-       if fEditable then begin
-        if TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers then begin
-         fView.Redo;
-        end else begin
-         fView.Undo;
+      KEYCODE_INSERT:begin
+       if TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers then begin
+        if fEditable then begin
+         PasteText;
         end;
-        fDirty:=true;
-        fTime:=0.0;
-        if assigned(fOnChange) then begin
-         fOnChange(self);
+       end else begin
+        fOverwrite:=not fOverwrite;
+       end;
+       fDirty:=true;
+       fTime:=0.0;
+       result:=true;
+      end;
+      KEYCODE_DELETE:begin
+       if fView.HasMarkedRange then begin
+        if fEditable then begin
+         if TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers then begin
+          CutSelectedText;
+         end else begin
+          DeleteSelectedText;
+         end;
+        end;
+       end else begin
+        if fEditable then begin
+         fView.Delete;
+         fDirty:=true;
+         fTime:=0.0;
+         if assigned(fOnChange) then begin
+          fOnChange(self);
+         end;
         end;
        end;
        result:=true;
       end;
-     end;
-     KEYCODE_F:begin
-      if TpvApplicationInputKeyModifier.CTRL in aKeyEvent.KeyModifiers then begin
-       OpenSearchReplaceDialog(false);
-       result:=true;
-      end;
-     end;
-     KEYCODE_G:begin
-      if TpvApplicationInputKeyModifier.CTRL in aKeyEvent.KeyModifiers then begin
-       PopupMenuOnGoToLineNumberClick(nil);
-       result:=true;
-      end;
-     end;
-     KEYCODE_H,KEYCODE_R:begin
-      if TpvApplicationInputKeyModifier.CTRL in aKeyEvent.KeyModifiers then begin
-       if fEditable then begin
-        OpenSearchReplaceDialog(true);
+      KEYCODE_A:begin
+       if TpvApplicationInputKeyModifier.CTRL in aKeyEvent.KeyModifiers then begin
+        SelectAll;
+        result:=true;
        end;
+      end;
+      KEYCODE_C:begin
+       if TpvApplicationInputKeyModifier.CTRL in aKeyEvent.KeyModifiers then begin
+        CopySelectedText;
+        result:=true;
+       end;
+      end;
+      KEYCODE_V:begin
+       if TpvApplicationInputKeyModifier.CTRL in aKeyEvent.KeyModifiers then begin
+        if fEditable then begin
+         PasteText;
+        end;
+        result:=true;
+       end;
+      end;
+      KEYCODE_X:begin
+       if TpvApplicationInputKeyModifier.CTRL in aKeyEvent.KeyModifiers then begin
+        if fEditable then begin
+         CutSelectedText;
+        end;
+        result:=true;
+       end;
+      end;
+      KEYCODE_Y:begin
+       if TpvApplicationInputKeyModifier.CTRL in aKeyEvent.KeyModifiers then begin
+        if fEditable then begin
+         if TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers then begin
+          fView.Undo;
+         end else begin
+          fView.Redo;
+         end;
+         fDirty:=true;
+         fTime:=0.0;
+         if assigned(fOnChange) then begin
+          fOnChange(self);
+         end;
+        end;
+        result:=true;
+       end;
+      end;
+      KEYCODE_Z:begin
+       if TpvApplicationInputKeyModifier.CTRL in aKeyEvent.KeyModifiers then begin
+        if fEditable then begin
+         if TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers then begin
+          fView.Redo;
+         end else begin
+          fView.Undo;
+         end;
+         fDirty:=true;
+         fTime:=0.0;
+         if assigned(fOnChange) then begin
+          fOnChange(self);
+         end;
+        end;
+        result:=true;
+       end;
+      end;
+      KEYCODE_F:begin
+       if TpvApplicationInputKeyModifier.CTRL in aKeyEvent.KeyModifiers then begin
+        OpenSearchReplaceDialog(false);
+        result:=true;
+       end;
+      end;
+      KEYCODE_G:begin
+       if TpvApplicationInputKeyModifier.CTRL in aKeyEvent.KeyModifiers then begin
+        PopupMenuOnGoToLineNumberClick(nil);
+        result:=true;
+       end;
+      end;
+      KEYCODE_H,KEYCODE_R:begin
+       if TpvApplicationInputKeyModifier.CTRL in aKeyEvent.KeyModifiers then begin
+        if fEditable then begin
+         OpenSearchReplaceDialog(true);
+        end;
+        result:=true;
+       end;
+      end;
+      KEYCODE_F3:begin
+       FindNext;
        result:=true;
       end;
-     end;
-     KEYCODE_F3:begin
-      FindNext;
-      result:=true;
      end;
     end;
-   end;
-   TpvApplicationInputKeyEventType.Unicode:begin
-    if fEditable then begin
-     fView.InsertCodePoint(aKeyEvent.KeyCode,fOverwrite);
-     fDirty:=true;
-     fTime:=0.0;
-     if assigned(fOnChange) then begin
-      fOnChange(self);
+    TpvApplicationInputKeyEventType.Unicode:begin
+     if fEditable then begin
+      fView.InsertCodePoint(aKeyEvent.KeyCode,fOverwrite);
+      fDirty:=true;
+      fTime:=0.0;
+      if assigned(fOnChange) then begin
+       fOnChange(self);
+      end;
      end;
+     result:=true;
     end;
-    result:=true;
    end;
   end;
- end;
- if result then begin
-  if assigned(fOnStatusChange) then begin
-   fOnStatusChange(self);
+  if result then begin
+   if assigned(fOnStatusChange) then begin
+    fOnStatusChange(self);
+   end;
   end;
+  SetRenderDirty;
+ end else begin
+  result:=false;
  end;
- SetRenderDirty;
 end;
 
 function TpvGUIMultiLineTextEdit.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean;
 var Index:TpvInt32;
 begin
- result:=assigned(fOnPointerEvent) and fOnPointerEvent(self,aPointerEvent);
- if not result then begin
-  result:=inherited PointerEvent(aPointerEvent);
-  if assigned(fView) and not result then begin
-   case aPointerEvent.PointerEventType of
-    TpvApplicationInputPointerEventType.Down:begin
-     case aPointerEvent.Button of
-      TpvApplicationInputPointerButton.Left:begin
-       fView.SetMarkStart;
+ if (fWidgetFlags*[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled])=[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled] then begin
+  result:=assigned(fOnPointerEvent) and fOnPointerEvent(self,aPointerEvent);
+  if not result then begin
+   result:=inherited PointerEvent(aPointerEvent);
+   if assigned(fView) and not result then begin
+    case aPointerEvent.PointerEventType of
+     TpvApplicationInputPointerEventType.Down:begin
+      case aPointerEvent.Button of
+       TpvApplicationInputPointerButton.Left:begin
+        fView.SetMarkStart;
+        fView.CodePointIndex:=fView.GetCodePointIndexFromRelativeCursorPosition(trunc(floor((aPointerEvent.Position.x-fTextAreaRect.Offset.x)/fFontCharSize.x)),
+                                                                                trunc(floor((aPointerEvent.Position.y-fTextAreaRect.Offset.y)/fFontCharSize.y)));
+        fDirty:=true;
+        fTime:=0.0;
+        RequestFocus;
+       end;
+       TpvApplicationInputPointerButton.Middle:begin
+        RequestFocus;
+       end;
+       TpvApplicationInputPointerButton.Right:begin
+        RequestFocus;
+       end;
+      end;
+      result:=true;
+     end;
+     TpvApplicationInputPointerEventType.Up:begin
+      case aPointerEvent.Button of
+       TpvApplicationInputPointerButton.Left:begin
+        if assigned(fOnClick) and Contains(aPointerEvent.Position) then begin
+         fOnClick(self);
+        end;
+ //     RequestFocus;
+       end;
+       TpvApplicationInputPointerButton.Middle:begin
+ //     RequestFocus;
+       end;
+       TpvApplicationInputPointerButton.Right:begin
+ //     RequestFocus;
+        if assigned(fPopupMenu) then begin
+         fPopupMenu.Activate(AbsolutePosition+aPointerEvent.Position);
+        end;
+       end;
+      end;
+     end;
+     TpvApplicationInputPointerEventType.Motion,
+     TpvApplicationInputPointerEventType.Drag:begin
+      if TpvApplicationInputPointerButton.Left in aPointerEvent.Buttons then begin
        fView.CodePointIndex:=fView.GetCodePointIndexFromRelativeCursorPosition(trunc(floor((aPointerEvent.Position.x-fTextAreaRect.Offset.x)/fFontCharSize.x)),
                                                                                trunc(floor((aPointerEvent.Position.y-fTextAreaRect.Offset.y)/fFontCharSize.y)));
+       fView.SetMarkEnd;
        fDirty:=true;
        fTime:=0.0;
-       RequestFocus;
       end;
-      TpvApplicationInputPointerButton.Middle:begin
-       RequestFocus;
+      if not fEditable then begin
+       fCursor:=TpvGUICursor.Arrow;
+      end else begin
+       fCursor:=TpvGUICursor.Beam;
       end;
-      TpvApplicationInputPointerButton.Right:begin
-       RequestFocus;
-      end;
+      result:=true;
      end;
-     result:=true;
-    end;
-    TpvApplicationInputPointerEventType.Up:begin
-     case aPointerEvent.Button of
-      TpvApplicationInputPointerButton.Left:begin
-       if assigned(fOnClick) and Contains(aPointerEvent.Position) then begin
-        fOnClick(self);
-       end;
-//     RequestFocus;
-      end;
-      TpvApplicationInputPointerButton.Middle:begin
-//     RequestFocus;
-      end;
-      TpvApplicationInputPointerButton.Right:begin
-//     RequestFocus;
-       if assigned(fPopupMenu) then begin
-        fPopupMenu.Activate(AbsolutePosition+aPointerEvent.Position);
-       end;
-      end;
-     end;
-    end;
-    TpvApplicationInputPointerEventType.Motion,
-    TpvApplicationInputPointerEventType.Drag:begin
-     if TpvApplicationInputPointerButton.Left in aPointerEvent.Buttons then begin
-      fView.CodePointIndex:=fView.GetCodePointIndexFromRelativeCursorPosition(trunc(floor((aPointerEvent.Position.x-fTextAreaRect.Offset.x)/fFontCharSize.x)),
-                                                                              trunc(floor((aPointerEvent.Position.y-fTextAreaRect.Offset.y)/fFontCharSize.y)));
-      fView.SetMarkEnd;
-      fDirty:=true;
-      fTime:=0.0;
-     end;
-     if not fEditable then begin
-      fCursor:=TpvGUICursor.Arrow;
-     end else begin
-      fCursor:=TpvGUICursor.Beam;
-     end;
-     result:=true;
     end;
    end;
   end;
- end;
- if result then begin
-  if assigned(fOnStatusChange) then begin
-   fOnStatusChange(self);
+  if result then begin
+   if assigned(fOnStatusChange) then begin
+    fOnStatusChange(self);
+   end;
   end;
+  SetRenderDirty;
+ end else begin
+  result:=false;
  end;
- SetRenderDirty;
 end;
 
 function TpvGUIMultiLineTextEdit.Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boolean;
 var TemporaryValue,Step:TpvInt64;
     v:TpvFloat;
 begin
- result:=inherited Scrolled(aPosition,aRelativeAmount);
- if assigned(fView) and not result then begin
-  if (pvApplication.Input.GetKeyModifiers*[TpvApplicationInputKeyModifier.ALT,
-                                           TpvApplicationInputKeyModifier.CTRL,
-                                           TpvApplicationInputKeyModifier.SHIFT,
-                                           TpvApplicationInputKeyModifier.META])=[TpvApplicationInputKeyModifier.CTRL] then begin
-   v:=aRelativeAmount.x+aRelativeAmount.y;
-   if v<0.0 then begin
-    Step:=floor(v);
+ if (fWidgetFlags*[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled])=[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled] then begin
+  result:=inherited Scrolled(aPosition,aRelativeAmount);
+  if assigned(fView) and not result then begin
+   if (pvApplication.Input.GetKeyModifiers*[TpvApplicationInputKeyModifier.ALT,
+                                            TpvApplicationInputKeyModifier.CTRL,
+                                            TpvApplicationInputKeyModifier.SHIFT,
+                                            TpvApplicationInputKeyModifier.META])=[TpvApplicationInputKeyModifier.CTRL] then begin
+    v:=aRelativeAmount.x+aRelativeAmount.y;
+    if v<0.0 then begin
+     Step:=floor(v);
+    end else begin
+     Step:=ceil(v);
+    end;
+    FontSize:=Min(Max(abs(FontSize)+Step,2),48)*Sign(FontSize);
+    SetViewDirty;
    end else begin
-    Step:=ceil(v);
+    v:=aRelativeAmount.x+aRelativeAmount.y;
+    if v<0.0 then begin
+     Step:=floor(v);
+    end else begin
+     Step:=ceil(v);
+    end;
+  { if Step<0 then begin
+     fView.MoveDown;
+     fDirty:=true;
+    end else if Step>0 then begin
+     fView.MoveUp;
+     fDirty:=true;
+    end;}
+    if fVerticalScrollBar.Visible and (Step<>0) then begin
+     fVerticalScrollBar.Value:=fVerticalScrollBar.Value-Step;
+     fDirty:=true;
+     fTime:=0.0;
+    end;
+    if assigned(fOnStatusChange) then begin
+     fOnStatusChange(self);
+    end;
    end;
-   FontSize:=Min(Max(abs(FontSize)+Step,2),48)*Sign(FontSize);
-   SetViewDirty;
-  end else begin
-   v:=aRelativeAmount.x+aRelativeAmount.y;
-   if v<0.0 then begin
-    Step:=floor(v);
-   end else begin
-    Step:=ceil(v);
-   end;
- { if Step<0 then begin
-    fView.MoveDown;
-    fDirty:=true;
-   end else if Step>0 then begin
-    fView.MoveUp;
-    fDirty:=true;
-   end;}
-   if fVerticalScrollBar.Visible and (Step<>0) then begin
-    fVerticalScrollBar.Value:=fVerticalScrollBar.Value-Step;
-    fDirty:=true;
-    fTime:=0.0;
-   end;
-   if assigned(fOnStatusChange) then begin
-    fOnStatusChange(self);
-   end;
+   result:=true;
   end;
-  result:=true;
+  SetRenderDirty;
+ end else begin
+  result:=false;
  end;
- SetRenderDirty;
 end;
 
 procedure TpvGUIMultiLineTextEdit.Update;
@@ -23988,14 +24179,18 @@ end;
 
 function TpvGUIMultiLineTextEditSearchReplaceWindow.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
 begin
- result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
- if (aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Typed) and not result then begin
-  case aKeyEvent.KeyCode of
-   KEYCODE_ESCAPE:begin
-    result:=true;
-    Close;
+ if (fWidgetFlags*[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled])=[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled] then begin
+  result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
+  if (aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Typed) and not result then begin
+   case aKeyEvent.KeyCode of
+    KEYCODE_ESCAPE:begin
+     result:=true;
+     Close;
+    end;
    end;
   end;
+ end else begin
+  result:=false;
  end;
 end;
 
@@ -24207,27 +24402,35 @@ end;
 
 function TpvGUIMultiLineTextEditGotoLineWindow.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
 begin
- result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
- if (aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Typed) and not result then begin
-  case aKeyEvent.KeyCode of
-   KEYCODE_ESCAPE:begin
-    result:=true;
-    Close;
+ if (fWidgetFlags*[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled])=[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled] then begin
+  result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
+  if (aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Typed) and not result then begin
+   case aKeyEvent.KeyCode of
+    KEYCODE_ESCAPE:begin
+     result:=true;
+     Close;
+    end;
    end;
   end;
+ end else begin
+  result:=false;
  end;
 end;
 
 function TpvGUIMultiLineTextEditGotoLineWindow.IntegerEditLineNumberOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
 begin
- result:=false;
- if aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Typed then begin
-  case aKeyEvent.KeyCode of
-   KEYCODE_RETURN,KEYCODE_RETURN2,KEYCODE_KP_ENTER:begin
-    ButtonOKOnClick(self);
-    result:=true;
+ if (fWidgetFlags*[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled])=[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled] then begin
+  result:=false;
+  if aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Typed then begin
+   case aKeyEvent.KeyCode of
+    KEYCODE_RETURN,KEYCODE_RETURN2,KEYCODE_KP_ENTER:begin
+     ButtonOKOnClick(self);
+     result:=true;
+    end;
    end;
   end;
+ end else begin
+  result:=false;
  end;
 end;
 
@@ -24358,91 +24561,95 @@ var CurrentPosition,OtherPosition,TemporaryUncheckedTextCursorPositionIndex,
     TemporaryUncheckedTextSelectionStart,TemporaryUncheckedTextSelectionEnd:TpvInt32;
     TemporaryText,TemporaryUncheckedText:TpvUTF8String;
 begin
- result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
- if Enabled and not result then begin
-  case aKeyEvent.KeyEventType of
-   TpvApplicationInputKeyEventType.Down:begin
-    case aKeyEvent.KeyCode of
-     KEYCODE_APPLICATION:begin
-      result:=true;
+ if (fWidgetFlags*[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled])=[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled] then begin
+  result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
+  if Enabled and not result then begin
+   case aKeyEvent.KeyEventType of
+    TpvApplicationInputKeyEventType.Down:begin
+     case aKeyEvent.KeyCode of
+      KEYCODE_APPLICATION:begin
+       result:=true;
+      end;
      end;
     end;
-   end;
-   TpvApplicationInputKeyEventType.Up:begin
-    case aKeyEvent.KeyCode of
-     KEYCODE_APPLICATION:begin
-{     if assigned(fPopupMenu) then begin
-       fPopupMenu.Activate(AbsolutePosition+(fSize*0.5));
-      end;}
-      result:=true;
+    TpvApplicationInputKeyEventType.Up:begin
+     case aKeyEvent.KeyCode of
+      KEYCODE_APPLICATION:begin
+ {     if assigned(fPopupMenu) then begin
+        fPopupMenu.Activate(AbsolutePosition+(fSize*0.5));
+       end;}
+       result:=true;
+      end;
      end;
     end;
-   end;
-   TpvApplicationInputKeyEventType.Typed:begin
-    case aKeyEvent.KeyCode of
-     KEYCODE_LEFT:begin
-      fHSV.y:=Clamp(fHSV.y-0.01,0.0,1.0);
-      fRGB:=ConvertHSVToRGB(fHSV);
-      if assigned(fOnChange) then begin
-       fOnChange(self);
-      end;
-      result:=true;
-     end;
-     KEYCODE_RIGHT:begin
-      fHSV.y:=Clamp(fHSV.y+0.01,0.0,1.0);
-      fRGB:=ConvertHSVToRGB(fHSV);
-      if assigned(fOnChange) then begin
-       fOnChange(self);
-      end;
-      result:=true;
-     end;
-     KEYCODE_UP:begin
-      fHSV.z:=Clamp(fHSV.z+0.01,0.0,1.0);
-      fRGB:=ConvertHSVToRGB(fHSV);
-      if assigned(fOnChange) then begin
-       fOnChange(self);
-      end;
-      result:=true;
-     end;
-     KEYCODE_DOWN:begin
-      fHSV.z:=Clamp(fHSV.z-0.01,0.0,1.0);
-      fRGB:=ConvertHSVToRGB(fHSV);
+    TpvApplicationInputKeyEventType.Typed:begin
+     case aKeyEvent.KeyCode of
+      KEYCODE_LEFT:begin
+       fHSV.y:=Clamp(fHSV.y-0.01,0.0,1.0);
+       fRGB:=ConvertHSVToRGB(fHSV);
        if assigned(fOnChange) then begin
-       fOnChange(self);
+        fOnChange(self);
+       end;
+       result:=true;
       end;
-      result:=true;
-     end;
-     KEYCODE_HOME:begin
-      result:=true;
-     end;
-     KEYCODE_END:begin
-      result:=true;
-     end;
-     KEYCODE_PAGEUP:begin
-      fHSV.x:=fHSV.x+0.01;
-      if fHSV.x>1.0 then begin
-       fHSV.x:=fHSV.x-1.0;
+      KEYCODE_RIGHT:begin
+       fHSV.y:=Clamp(fHSV.y+0.01,0.0,1.0);
+       fRGB:=ConvertHSVToRGB(fHSV);
+       if assigned(fOnChange) then begin
+        fOnChange(self);
+       end;
+       result:=true;
       end;
-      fRGB:=ConvertHSVToRGB(fHSV);
-      if assigned(fOnChange) then begin
-       fOnChange(self);
+      KEYCODE_UP:begin
+       fHSV.z:=Clamp(fHSV.z+0.01,0.0,1.0);
+       fRGB:=ConvertHSVToRGB(fHSV);
+       if assigned(fOnChange) then begin
+        fOnChange(self);
+       end;
+       result:=true;
       end;
-      result:=true;
-     end;
-     KEYCODE_PAGEDOWN:begin
-      fHSV.x:=fHSV.x-0.01;
-      if fHSV.x<0.0 then begin
-       fHSV.x:=fHSV.x+1.0;
+      KEYCODE_DOWN:begin
+       fHSV.z:=Clamp(fHSV.z-0.01,0.0,1.0);
+       fRGB:=ConvertHSVToRGB(fHSV);
+        if assigned(fOnChange) then begin
+        fOnChange(self);
+       end;
+       result:=true;
       end;
-      fRGB:=ConvertHSVToRGB(fHSV);
-      if assigned(fOnChange) then begin
-       fOnChange(self);
+      KEYCODE_HOME:begin
+       result:=true;
       end;
-      result:=true;
+      KEYCODE_END:begin
+       result:=true;
+      end;
+      KEYCODE_PAGEUP:begin
+       fHSV.x:=fHSV.x+0.01;
+       if fHSV.x>1.0 then begin
+        fHSV.x:=fHSV.x-1.0;
+       end;
+       fRGB:=ConvertHSVToRGB(fHSV);
+       if assigned(fOnChange) then begin
+        fOnChange(self);
+       end;
+       result:=true;
+      end;
+      KEYCODE_PAGEDOWN:begin
+       fHSV.x:=fHSV.x-0.01;
+       if fHSV.x<0.0 then begin
+        fHSV.x:=fHSV.x+1.0;
+       end;
+       fRGB:=ConvertHSVToRGB(fHSV);
+       if assigned(fOnChange) then begin
+        fOnChange(self);
+       end;
+       result:=true;
+      end;
      end;
     end;
    end;
   end;
+ end else begin
+  result:=false;
  end;
 end;
 
@@ -24517,67 +24724,75 @@ var Index:TpvInt32;
   end;
  end;
 begin
- result:=assigned(fOnPointerEvent) and fOnPointerEvent(self,aPointerEvent);
- if not result then begin
-  result:=inherited PointerEvent(aPointerEvent);
+ if (fWidgetFlags*[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled])=[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled] then begin
+  result:=assigned(fOnPointerEvent) and fOnPointerEvent(self,aPointerEvent);
   if not result then begin
-   case aPointerEvent.PointerEventType of
-    TpvApplicationInputPointerEventType.Down:begin
-     fMode:=0;
-     case aPointerEvent.Button of
-      TpvApplicationInputPointerButton.Left:begin
-       Process(aPointerEvent.Position,true,0,fMode);
-       RequestFocus;
-      end;
-      TpvApplicationInputPointerButton.Middle:begin
-      end;
-      TpvApplicationInputPointerButton.Right:begin
-      end;
-     end;
-     result:=true;
-    end;
-    TpvApplicationInputPointerEventType.Up:begin
-     if Focused then begin
+   result:=inherited PointerEvent(aPointerEvent);
+   if not result then begin
+    case aPointerEvent.PointerEventType of
+     TpvApplicationInputPointerEventType.Down:begin
+      fMode:=0;
       case aPointerEvent.Button of
        TpvApplicationInputPointerButton.Left:begin
- {      if assigned(fOnClick) and Contains(aPointerEvent.Position) then begin
-         fOnClick(self);
-        end;}
-        fMode:=0;
+        Process(aPointerEvent.Position,true,0,fMode);
+        RequestFocus;
        end;
        TpvApplicationInputPointerButton.Middle:begin
        end;
        TpvApplicationInputPointerButton.Right:begin
- {      if assigned(fPopupMenu) then begin
-         fPopupMenu.Activate(AbsolutePosition+aPointerEvent.Position);
-        end;}
+       end;
+      end;
+      result:=true;
+     end;
+     TpvApplicationInputPointerEventType.Up:begin
+      if Focused then begin
+       case aPointerEvent.Button of
+        TpvApplicationInputPointerButton.Left:begin
+  {      if assigned(fOnClick) and Contains(aPointerEvent.Position) then begin
+          fOnClick(self);
+         end;}
+         fMode:=0;
+        end;
+        TpvApplicationInputPointerButton.Middle:begin
+        end;
+        TpvApplicationInputPointerButton.Right:begin
+  {      if assigned(fPopupMenu) then begin
+          fPopupMenu.Activate(AbsolutePosition+aPointerEvent.Position);
+         end;}
+        end;
        end;
       end;
      end;
-    end;
-    TpvApplicationInputPointerEventType.Motion:begin
-     if Process(aPointerEvent.Position,Focused and (TpvApplicationInputPointerButton.Left in aPointerEvent.Buttons),fMode,fMode) then begin
-      fCursor:=TpvGUICursor.Cross;
-     end else begin
-      fCursor:=TpvGUICursor.Arrow;
+     TpvApplicationInputPointerEventType.Motion:begin
+      if Process(aPointerEvent.Position,Focused and (TpvApplicationInputPointerButton.Left in aPointerEvent.Buttons),fMode,fMode) then begin
+       fCursor:=TpvGUICursor.Cross;
+      end else begin
+       fCursor:=TpvGUICursor.Arrow;
+      end;
+      result:=true;
      end;
-     result:=true;
     end;
    end;
   end;
+ end else begin
+  result:=false;
  end;
 end;
 
 function TpvGUIColorWheel.Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boolean;
 begin
- result:=assigned(fOnScrolled) and fOnScrolled(self,aPosition,aRelativeAmount);
- if not result then begin
-  fHSV.x:=frac(frac((fHSV.x+((aRelativeAmount.x+aRelativeAmount.y)*0.01))+1.0)+1.0);
-  fRGB:=ConvertHSVToRGB(fHSV);
-  if assigned(fOnChange) then begin
-   fOnChange(self);
+ if (fWidgetFlags*[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled])=[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled] then begin
+  result:=assigned(fOnScrolled) and fOnScrolled(self,aPosition,aRelativeAmount);
+  if not result then begin
+   fHSV.x:=frac(frac((fHSV.x+((aRelativeAmount.x+aRelativeAmount.y)*0.01))+1.0)+1.0);
+   fRGB:=ConvertHSVToRGB(fHSV);
+   if assigned(fOnChange) then begin
+    fOnChange(self);
+   end;
+   result:=true;
   end;
-  result:=true;
+ end else begin
+  result:=false;
  end;
 end;
 
@@ -25468,112 +25683,116 @@ function TpvGUIListView.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Bo
  end;
 var Step:TpvSizeInt;
 begin
- result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
- if Enabled and not result then begin
-  case aKeyEvent.KeyCode of
-   KEYCODE_LSHIFT,KEYCODE_RSHIFT:begin
-    case aKeyEvent.KeyEventType of
-     TpvApplicationInputKeyEventType.Down:begin
-      fAction:=TpvGUIListViewAction.PreMark;
-      fActionStartIndex:=fItemIndex;
-      fActionStopIndex:=fItemIndex;
-     end;
-     TpvApplicationInputKeyEventType.Up:begin
-      if fAction=TpvGUIListViewAction.Mark then begin
-       DoSelection(true);
-       fAction:=TpvGUIListViewAction.None;
-      end else if fAction=TpvGUIListViewAction.PreMark then begin
-       fAction:=TpvGUIListViewAction.None;
+ if (fWidgetFlags*[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled])=[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled] then begin
+  result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
+  if Enabled and not result then begin
+   case aKeyEvent.KeyCode of
+    KEYCODE_LSHIFT,KEYCODE_RSHIFT:begin
+     case aKeyEvent.KeyEventType of
+      TpvApplicationInputKeyEventType.Down:begin
+       fAction:=TpvGUIListViewAction.PreMark;
+       fActionStartIndex:=fItemIndex;
+       fActionStopIndex:=fItemIndex;
+      end;
+      TpvApplicationInputKeyEventType.Up:begin
+       if fAction=TpvGUIListViewAction.Mark then begin
+        DoSelection(true);
+        fAction:=TpvGUIListViewAction.None;
+       end else if fAction=TpvGUIListViewAction.PreMark then begin
+        fAction:=TpvGUIListViewAction.None;
+       end;
       end;
      end;
+     result:=true;
     end;
-    result:=true;
-   end;
-   KEYCODE_LEFT,KEYCODE_UP,KEYCODE_MINUS,KEYCODE_KP_MINUS:begin
-    case aKeyEvent.KeyEventType of
-     TpvApplicationInputKeyEventType.Typed:begin
-      if aKeyEvent.KeyCode=KEYCODE_UP then begin
-       Step:=GetCountItemsPerRow;
-      end else begin
-       Step:=1;
-      end;
-      SetItemIndex(Min(Max(fItemIndex-Step,0),fItems.Count-1));
-      DoSelection(false);
-     end;
-    end;
-    result:=true;
-   end;
-   KEYCODE_RIGHT,KEYCODE_DOWN,KEYCODE_PLUS,KEYCODE_KP_PLUS:begin
-    case aKeyEvent.KeyEventType of
-     TpvApplicationInputKeyEventType.Typed:begin
-      if aKeyEvent.KeyCode=KEYCODE_DOWN then begin
-       Step:=GetCountItemsPerRow;
-      end else begin
-       Step:=1;
-      end;
-      SetItemIndex(Min(Max(fItemIndex+Step,0),fItems.Count-1));
-      DoSelection(false);
-     end;
-    end;
-    result:=true;
-   end;
-   KEYCODE_PAGEDOWN:begin
-    case aKeyEvent.KeyEventType of
-     TpvApplicationInputKeyEventType.Typed:begin
-      SetItemIndex(Min(Max(fItemIndex+(GetCountItemsPerRow*4),0),fItems.Count-1));
-      DoSelection(false);
-     end;
-    end;
-    result:=true;
-   end;
-   KEYCODE_PAGEUP:begin
-    case aKeyEvent.KeyEventType of
-     TpvApplicationInputKeyEventType.Typed:begin
-      SetItemIndex(Min(Max(fItemIndex-(GetCountItemsPerRow*4),0),fItems.Count-1));
-      DoSelection(false);
-     end;
-    end;
-    result:=true;
-   end;
-   KEYCODE_HOME:begin
-    case aKeyEvent.KeyEventType of
-     TpvApplicationInputKeyEventType.Typed:begin
-      SetItemIndex(Min(0,fItems.Count-1));
-      DoSelection(false);
-     end;
-    end;
-    result:=true;
-   end;
-   KEYCODE_END:begin
-    case aKeyEvent.KeyEventType of
-     TpvApplicationInputKeyEventType.Typed:begin
-      SetItemIndex(fItems.Count-1);
-      DoSelection(false);
-     end;
-    end;
-    result:=true;
-   end;
-   KEYCODE_BACKSPACE:begin
-    case aKeyEvent.KeyEventType of
-     TpvApplicationInputKeyEventType.Typed:begin
-      if MultiSelect then begin
-       ClearSelection;
+    KEYCODE_LEFT,KEYCODE_UP,KEYCODE_MINUS,KEYCODE_KP_MINUS:begin
+     case aKeyEvent.KeyEventType of
+      TpvApplicationInputKeyEventType.Typed:begin
+       if aKeyEvent.KeyCode=KEYCODE_UP then begin
+        Step:=GetCountItemsPerRow;
+       end else begin
+        Step:=1;
+       end;
+       SetItemIndex(Min(Max(fItemIndex-Step,0),fItems.Count-1));
+       DoSelection(false);
       end;
      end;
+     result:=true;
     end;
-    result:=true;
-   end;
-   KEYCODE_SPACE:begin
-    case aKeyEvent.KeyEventType of
-     TpvApplicationInputKeyEventType.Typed:begin
-      if MultiSelect then begin
-       SetSelected(fItemIndex,not GetSelected(fItemIndex));
+    KEYCODE_RIGHT,KEYCODE_DOWN,KEYCODE_PLUS,KEYCODE_KP_PLUS:begin
+     case aKeyEvent.KeyEventType of
+      TpvApplicationInputKeyEventType.Typed:begin
+       if aKeyEvent.KeyCode=KEYCODE_DOWN then begin
+        Step:=GetCountItemsPerRow;
+       end else begin
+        Step:=1;
+       end;
+       SetItemIndex(Min(Max(fItemIndex+Step,0),fItems.Count-1));
+       DoSelection(false);
       end;
      end;
+     result:=true;
     end;
-    result:=true;
+    KEYCODE_PAGEDOWN:begin
+     case aKeyEvent.KeyEventType of
+      TpvApplicationInputKeyEventType.Typed:begin
+       SetItemIndex(Min(Max(fItemIndex+(GetCountItemsPerRow*4),0),fItems.Count-1));
+       DoSelection(false);
+      end;
+     end;
+     result:=true;
+    end;
+    KEYCODE_PAGEUP:begin
+     case aKeyEvent.KeyEventType of
+      TpvApplicationInputKeyEventType.Typed:begin
+       SetItemIndex(Min(Max(fItemIndex-(GetCountItemsPerRow*4),0),fItems.Count-1));
+       DoSelection(false);
+      end;
+     end;
+     result:=true;
+    end;
+    KEYCODE_HOME:begin
+     case aKeyEvent.KeyEventType of
+      TpvApplicationInputKeyEventType.Typed:begin
+       SetItemIndex(Min(0,fItems.Count-1));
+       DoSelection(false);
+      end;
+     end;
+     result:=true;
+    end;
+    KEYCODE_END:begin
+     case aKeyEvent.KeyEventType of
+      TpvApplicationInputKeyEventType.Typed:begin
+       SetItemIndex(fItems.Count-1);
+       DoSelection(false);
+      end;
+     end;
+     result:=true;
+    end;
+    KEYCODE_BACKSPACE:begin
+     case aKeyEvent.KeyEventType of
+      TpvApplicationInputKeyEventType.Typed:begin
+       if MultiSelect then begin
+        ClearSelection;
+       end;
+      end;
+     end;
+     result:=true;
+    end;
+    KEYCODE_SPACE:begin
+     case aKeyEvent.KeyEventType of
+      TpvApplicationInputKeyEventType.Typed:begin
+       if MultiSelect then begin
+        SetSelected(fItemIndex,not GetSelected(fItemIndex));
+       end;
+      end;
+     end;
+     result:=true;
+    end;
    end;
   end;
+ end else begin
+  result:=false;
  end;
 end;
 
@@ -25582,44 +25801,16 @@ var CurrentItemIndex,
     FoundItemIndex:TpvSizeInt;
     Item:TpvGUIListViewItem;
 begin
- UpdateScrollBar;
- result:=assigned(fOnPointerEvent) and fOnPointerEvent(self,aPointerEvent);
- if not result then begin
-  result:=inherited PointerEvent(aPointerEvent);
+ if (fWidgetFlags*[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled])=[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled] then begin
+  UpdateScrollBar;
+  result:=assigned(fOnPointerEvent) and fOnPointerEvent(self,aPointerEvent);
   if not result then begin
-   case aPointerEvent.PointerEventType of
-    TpvApplicationInputPointerEventType.Down:begin
-     RequestFocus;
-     fAction:=TpvGUIListViewAction.None;
-     FoundItemIndex:=-1;
-     for CurrentItemIndex:=0 to fItems.Count-1 do begin
-      Item:=fItems.Items[CurrentItemIndex];
-      if Item.fRect.Touched(aPointerEvent.Position) then begin
-       FoundItemIndex:=CurrentItemIndex;
-       break;
-      end;
-     end;
-     if FoundItemIndex>=0 then begin
-      SetItemIndex(FoundItemIndex);
-      if TpvApplicationInputKeyModifier.CTRL in aPointerEvent.KeyModifiers then begin
-       SetSelected(fItemIndex,not GetSelected(fItemIndex));
-      end else if TpvApplicationInputKeyModifier.SHIFT in aPointerEvent.KeyModifiers then begin
-       fAction:=TpvGUIListViewAction.Mark;
-       fActionStartIndex:=fItemIndex;
-       fActionStopIndex:=fItemIndex;
-       fSelectedBitmap:=nil;
-       SetSelected(fItemIndex,true);
-      end;
-     end;
-     if aPointerEvent.Button=TpvApplicationInputPointerButton.Left then begin
-      if fDoubleClickCounter=0 then begin
-       fDoubleClickTimeAccumulator:=0.0;
-      end;
-     end;
-     result:=true;
-    end;
-    TpvApplicationInputPointerEventType.Up:begin
-     if fAction=TpvGUIListViewAction.Mark then begin
+   result:=inherited PointerEvent(aPointerEvent);
+   if not result then begin
+    case aPointerEvent.PointerEventType of
+     TpvApplicationInputPointerEventType.Down:begin
+      RequestFocus;
+      fAction:=TpvGUIListViewAction.None;
       FoundItemIndex:=-1;
       for CurrentItemIndex:=0 to fItems.Count-1 do begin
        Item:=fItems.Items[CurrentItemIndex];
@@ -25630,81 +25821,113 @@ begin
       end;
       if FoundItemIndex>=0 then begin
        SetItemIndex(FoundItemIndex);
-       fActionStopIndex:=fItemIndex;
-       fSelectedBitmap:=nil;
-       for CurrentItemIndex:=Min(fActionStartIndex,fActionStopIndex) to Max(fActionStartIndex,fActionStopIndex) do begin
-        ChangeSelected(CurrentItemIndex,true,false);
-       end;
-       if assigned(fOnChangeSelection) then begin
-        fOnChangeSelection(self);
+       if TpvApplicationInputKeyModifier.CTRL in aPointerEvent.KeyModifiers then begin
+        SetSelected(fItemIndex,not GetSelected(fItemIndex));
+       end else if TpvApplicationInputKeyModifier.SHIFT in aPointerEvent.KeyModifiers then begin
+        fAction:=TpvGUIListViewAction.Mark;
+        fActionStartIndex:=fItemIndex;
+        fActionStopIndex:=fItemIndex;
+        fSelectedBitmap:=nil;
+        SetSelected(fItemIndex,true);
        end;
       end;
-     end;
-     if aPointerEvent.Button=TpvApplicationInputPointerButton.Left then begin
-      if fDoubleClickCounter<2 then begin
-       inc(fDoubleClickCounter);
-       if fDoubleClickCounter=2 then begin
-        fDoubleClickCounter:=0;
+      if aPointerEvent.Button=TpvApplicationInputPointerButton.Left then begin
+       if fDoubleClickCounter=0 then begin
         fDoubleClickTimeAccumulator:=0.0;
-        if assigned(fOnDoubleClick) then begin
-         fOnDoubleClick(self);
+       end;
+      end;
+      result:=true;
+     end;
+     TpvApplicationInputPointerEventType.Up:begin
+      if fAction=TpvGUIListViewAction.Mark then begin
+       FoundItemIndex:=-1;
+       for CurrentItemIndex:=0 to fItems.Count-1 do begin
+        Item:=fItems.Items[CurrentItemIndex];
+        if Item.fRect.Touched(aPointerEvent.Position) then begin
+         FoundItemIndex:=CurrentItemIndex;
+         break;
+        end;
+       end;
+       if FoundItemIndex>=0 then begin
+        SetItemIndex(FoundItemIndex);
+        fActionStopIndex:=fItemIndex;
+        fSelectedBitmap:=nil;
+        for CurrentItemIndex:=Min(fActionStartIndex,fActionStopIndex) to Max(fActionStartIndex,fActionStopIndex) do begin
+         ChangeSelected(CurrentItemIndex,true,false);
+        end;
+        if assigned(fOnChangeSelection) then begin
+         fOnChangeSelection(self);
         end;
        end;
       end;
+      if aPointerEvent.Button=TpvApplicationInputPointerButton.Left then begin
+       if fDoubleClickCounter<2 then begin
+        inc(fDoubleClickCounter);
+        if fDoubleClickCounter=2 then begin
+         fDoubleClickCounter:=0;
+         fDoubleClickTimeAccumulator:=0.0;
+         if assigned(fOnDoubleClick) then begin
+          fOnDoubleClick(self);
+         end;
+        end;
+       end;
+      end;
+      fAction:=TpvGUIListViewAction.None;
+      result:=true;
      end;
-     fAction:=TpvGUIListViewAction.None;
-     result:=true;
-    end;
-    TpvApplicationInputPointerEventType.Motion:begin
-     if fAction=TpvGUIListViewAction.Mark then begin
-      FoundItemIndex:=-1;
-      for CurrentItemIndex:=0 to fItems.Count-1 do begin
-       Item:=fItems.Items[CurrentItemIndex];
-       if Item.fRect.Touched(aPointerEvent.Position) then begin
-        FoundItemIndex:=CurrentItemIndex;
-        break;
+     TpvApplicationInputPointerEventType.Motion:begin
+      if fAction=TpvGUIListViewAction.Mark then begin
+       FoundItemIndex:=-1;
+       for CurrentItemIndex:=0 to fItems.Count-1 do begin
+        Item:=fItems.Items[CurrentItemIndex];
+        if Item.fRect.Touched(aPointerEvent.Position) then begin
+         FoundItemIndex:=CurrentItemIndex;
+         break;
+        end;
+       end;
+       if FoundItemIndex>=0 then begin
+        SetItemIndex(FoundItemIndex);
+        fActionStopIndex:=fItemIndex;
+        fSelectedBitmap:=nil;
+        for CurrentItemIndex:=Min(fActionStartIndex,fActionStopIndex) to Max(fActionStartIndex,fActionStopIndex) do begin
+         ChangeSelected(CurrentItemIndex,true,false);
+        end;
+        if assigned(fOnChangeSelection) then begin
+         fOnChangeSelection(self);
+        end;
        end;
       end;
-      if FoundItemIndex>=0 then begin
-       SetItemIndex(FoundItemIndex);
-       fActionStopIndex:=fItemIndex;
-       fSelectedBitmap:=nil;
-       for CurrentItemIndex:=Min(fActionStartIndex,fActionStopIndex) to Max(fActionStartIndex,fActionStopIndex) do begin
-        ChangeSelected(CurrentItemIndex,true,false);
-       end;
-       if assigned(fOnChangeSelection) then begin
-        fOnChangeSelection(self);
-       end;
-      end;
+      result:=true;
      end;
-     result:=true;
-    end;
-    TpvApplicationInputPointerEventType.Drag:begin
-     if fAction=TpvGUIListViewAction.Mark then begin
-      FoundItemIndex:=-1;
-      for CurrentItemIndex:=0 to fItems.Count-1 do begin
-       Item:=fItems.Items[CurrentItemIndex];
-       if Item.fRect.Touched(aPointerEvent.Position) then begin
-        FoundItemIndex:=CurrentItemIndex;
-        break;
+     TpvApplicationInputPointerEventType.Drag:begin
+      if fAction=TpvGUIListViewAction.Mark then begin
+       FoundItemIndex:=-1;
+       for CurrentItemIndex:=0 to fItems.Count-1 do begin
+        Item:=fItems.Items[CurrentItemIndex];
+        if Item.fRect.Touched(aPointerEvent.Position) then begin
+         FoundItemIndex:=CurrentItemIndex;
+         break;
+        end;
+       end;
+       if FoundItemIndex>=0 then begin
+        SetItemIndex(FoundItemIndex);
+        fActionStopIndex:=fItemIndex;
+        fSelectedBitmap:=nil;
+        for CurrentItemIndex:=Min(fActionStartIndex,fActionStopIndex) to Max(fActionStartIndex,fActionStopIndex) do begin
+         ChangeSelected(CurrentItemIndex,true,false);
+        end;
+        if assigned(fOnChangeSelection) then begin
+         fOnChangeSelection(self);
+        end;
        end;
       end;
-      if FoundItemIndex>=0 then begin
-       SetItemIndex(FoundItemIndex);
-       fActionStopIndex:=fItemIndex;
-       fSelectedBitmap:=nil;
-       for CurrentItemIndex:=Min(fActionStartIndex,fActionStopIndex) to Max(fActionStartIndex,fActionStopIndex) do begin
-        ChangeSelected(CurrentItemIndex,true,false);
-       end;
-       if assigned(fOnChangeSelection) then begin
-        fOnChangeSelection(self);
-       end;
-      end;
+      result:=true;
      end;
-     result:=true;
     end;
    end;
   end;
+ end else begin
+  result:=false;
  end;
 end;
 
@@ -25712,17 +25935,21 @@ function TpvGUIListView.Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boo
 var TemporaryValue,Step:TpvInt64;
     v:TpvFloat;
 begin
- result:=inherited Scrolled(aPosition,aRelativeAmount);
- if not result then begin
-  TemporaryValue:=fItemIndex;
-  v:=aRelativeAmount.x-aRelativeAmount.y;
-  if v<0.0 then begin
-   Step:=floor(v);
-  end else begin
-   Step:=ceil(v);
+ if (fWidgetFlags*[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled])=[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled] then begin
+  result:=inherited Scrolled(aPosition,aRelativeAmount);
+  if not result then begin
+   TemporaryValue:=fItemIndex;
+   v:=aRelativeAmount.x-aRelativeAmount.y;
+   if v<0.0 then begin
+    Step:=floor(v);
+   end else begin
+    Step:=ceil(v);
+   end;
+   SetItemIndex(Min(Max(fItemIndex+Step,0),fItems.Count-1));
+   result:=true;
   end;
-  SetItemIndex(Min(Max(fItemIndex+Step,0),fItems.Count-1));
-  result:=true;
+ end else begin
+  result:=false;
  end;
 end;
 
@@ -26987,207 +27214,144 @@ function TpvGUITreeView.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Bo
  end;
 var TreeNode:TpvGUITreeNode;
 begin
- UpdateNodes;
- UpdateContent;
- result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
- if Enabled and not result then begin
-  case aKeyEvent.KeyCode of
-   KEYCODE_LSHIFT,KEYCODE_RSHIFT:begin
-    case aKeyEvent.KeyEventType of
-     TpvApplicationInputKeyEventType.Down:begin
-      fAction:=TpvGUITreeViewAction.PreMark;
-      fActionStartIndex:=fNodeIndex;
-      fActionStopIndex:=fNodeIndex;
-     end;
-     TpvApplicationInputKeyEventType.Up:begin
-      if fAction=TpvGUITreeViewAction.Mark then begin
-       DoSelection(true);
-       fAction:=TpvGUITreeViewAction.None;
-      end else if fAction=TpvGUITreeViewAction.PreMark then begin
-       fAction:=TpvGUITreeViewAction.None;
+ if (fWidgetFlags*[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled])=[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled] then begin
+  UpdateNodes;
+  UpdateContent;
+  result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
+  if Enabled and not result then begin
+   case aKeyEvent.KeyCode of
+    KEYCODE_LSHIFT,KEYCODE_RSHIFT:begin
+     case aKeyEvent.KeyEventType of
+      TpvApplicationInputKeyEventType.Down:begin
+       fAction:=TpvGUITreeViewAction.PreMark;
+       fActionStartIndex:=fNodeIndex;
+       fActionStopIndex:=fNodeIndex;
       end;
-     end;
-    end;
-    result:=true;
-   end;
-   KEYCODE_LEFT,KEYCODE_MINUS,KEYCODE_KP_MINUS:begin
-    case aKeyEvent.KeyEventType of
-     TpvApplicationInputKeyEventType.Typed:begin
-      if (fNodeIndex>=0) and (fNodeIndex<fNodes.Count) then begin
-       TreeNode:=fNodes[fNodeIndex];
-       if TreeNode.Expanded and (TreeNode.fChildren.Count>0) then begin
-        TreeNode.SetExpanded(false);
-       end else if assigned(TreeNode.fParent) and TreeNode.fParent.Expanded and ((TreeNode.fParent<>fRoot) or (TpvGUITreeViewFlag.ShowRootNode in fFlags)) then begin
-        TreeNode.fParent.SetExpanded(false);
-        SetNodeIndex(TreeNode.fParent.fNodeIndex);
-       end;
-       UpdateNodes;
-       if assigned(fOnChange) then begin
-        fOnChange(self);
+      TpvApplicationInputKeyEventType.Up:begin
+       if fAction=TpvGUITreeViewAction.Mark then begin
+        DoSelection(true);
+        fAction:=TpvGUITreeViewAction.None;
+       end else if fAction=TpvGUITreeViewAction.PreMark then begin
+        fAction:=TpvGUITreeViewAction.None;
        end;
       end;
      end;
+     result:=true;
     end;
-    result:=true;
-   end;
-   KEYCODE_RIGHT,KEYCODE_PLUS,KEYCODE_KP_PLUS,KEYCODE_RETURN:begin
-    case aKeyEvent.KeyEventType of
-     TpvApplicationInputKeyEventType.Typed:begin
-      if (fNodeIndex>=0) and (fNodeIndex<fNodes.Count) then begin
-       TreeNode:=fNodes[fNodeIndex];
-       TreeNode.SetExpanded(true);
-       UpdateNodes;
-       if assigned(fOnChange) then begin
-        fOnChange(self);
-       end;
-      end;
-     end;
-    end;
-    result:=true;
-   end;
-   KEYCODE_UP:begin
-    case aKeyEvent.KeyEventType of
-     TpvApplicationInputKeyEventType.Typed:begin
-      SetNodeIndex(Min(Max(fNodeIndex-1,0),fNodes.Count-1));
-      DoSelection(false);
-     end;
-    end;
-    result:=true;
-   end;
-   KEYCODE_DOWN:begin
-    case aKeyEvent.KeyEventType of
-     TpvApplicationInputKeyEventType.Typed:begin
-      SetNodeIndex(Min(Max(fNodeIndex+1,0),fNodes.Count-1));
-      DoSelection(false);
-     end;
-    end;
-    result:=true;
-   end;
-   KEYCODE_PAGEDOWN:begin
-    case aKeyEvent.KeyEventType of
-     TpvApplicationInputKeyEventType.Typed:begin
-      SetNodeIndex(Min(Max(fNodeIndex+4,0),fNodes.Count-1));
-      DoSelection(false);
-     end;
-    end;
-    result:=true;
-   end;
-   KEYCODE_PAGEUP:begin
-    case aKeyEvent.KeyEventType of
-     TpvApplicationInputKeyEventType.Typed:begin
-      SetNodeIndex(Min(Max(fNodeIndex-4,0),fNodes.Count-1));
-      DoSelection(false);
-     end;
-    end;
-    result:=true;
-   end;
-   KEYCODE_HOME:begin
-    case aKeyEvent.KeyEventType of
-     TpvApplicationInputKeyEventType.Typed:begin
-      SetNodeIndex(Min(0,fNodes.Count-1));
-      DoSelection(false);
-     end;
-    end;
-    result:=true;
-   end;
-   KEYCODE_END:begin
-    case aKeyEvent.KeyEventType of
-     TpvApplicationInputKeyEventType.Typed:begin
-      SetNodeIndex(fNodes.Count-1);
-      DoSelection(false);
-     end;
-    end;
-    result:=true;
-   end;
-   KEYCODE_BACKSPACE:begin
-    case aKeyEvent.KeyEventType of
-     TpvApplicationInputKeyEventType.Typed:begin
-      ClearSelection;
-     end;
-    end;
-    result:=true;
-   end;
-{  KEYCODE_DELETE:begin
-    case aKeyEvent.KeyEventType of
-     TpvApplicationInputKeyEventType.Typed:begin
-      if (fNodeIndex>=0) and (fNodeIndex<fNodes.Count) then begin
-       TreeNode:=fNodes[fNodeIndex];
-       if assigned(TreeNode.fParent) then begin
-        TreeNode.fParent.Remove(TreeNode);
-       end;
-      end;
-     end;
-    end;
-    result:=true;
-   end;}
-   KEYCODE_SPACE:begin
-    case aKeyEvent.KeyEventType of
-     TpvApplicationInputKeyEventType.Typed:begin
-      if TpvApplicationInputKeyModifier.CTRL in aKeyEvent.KeyModifiers then begin
-       if not MultiSelect then begin
-        InternalClearSelection;
-       end;
+    KEYCODE_LEFT,KEYCODE_MINUS,KEYCODE_KP_MINUS:begin
+     case aKeyEvent.KeyEventType of
+      TpvApplicationInputKeyEventType.Typed:begin
        if (fNodeIndex>=0) and (fNodeIndex<fNodes.Count) then begin
         TreeNode:=fNodes[fNodeIndex];
-        TreeNode.SetSelected(not TreeNode.Selected);
-       end;
-       if assigned(fOnChangeSelection) then begin
-        fOnChangeSelection(self);
-       end;
-      end else begin
-       if (fNodeIndex>=0) and (fNodeIndex<fNodes.Count) then begin
-        TreeNode:=fNodes[fNodeIndex];
-        if TpvGUITreeNode.TFlag.CheckBox in TreeNode.fFlags then begin
-         TreeNode.SetChecked(not TreeNode.Checked);
+        if TreeNode.Expanded and (TreeNode.fChildren.Count>0) then begin
+         TreeNode.SetExpanded(false);
+        end else if assigned(TreeNode.fParent) and TreeNode.fParent.Expanded and ((TreeNode.fParent<>fRoot) or (TpvGUITreeViewFlag.ShowRootNode in fFlags)) then begin
+         TreeNode.fParent.SetExpanded(false);
+         SetNodeIndex(TreeNode.fParent.fNodeIndex);
+        end;
+        UpdateNodes;
+        if assigned(fOnChange) then begin
+         fOnChange(self);
         end;
        end;
       end;
      end;
+     result:=true;
     end;
-    result:=true;
-   end;
-  end;
- end;
-end;
-
-function TpvGUITreeView.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean;
-var CurrentNodeIndex,IndentOffset:TpvSizeInt;
-    TreeNode:TpvGUITreeNode;
-    Skin:TpvGUISkin;
-begin
- Skin:=GetSkin;
- if assigned(Skin) then begin
-  UpdateNodes;
-  UpdateScrollBars;
-  UpdateContent;
-  result:=assigned(fOnPointerEvent) and fOnPointerEvent(self,aPointerEvent);
-  if not result then begin
-   result:=inherited PointerEvent(aPointerEvent);
-   if not result then begin
-    if TpvGUITreeViewFlag.ShowRootNode in fFlags then begin
-     IndentOffset:=0;
-    end else begin
-     IndentOffset:=1;
-    end;
-    case aPointerEvent.PointerEventType of
-     TpvApplicationInputPointerEventType.Down:begin
-      RequestFocus;
-      fAction:=TpvGUITreeViewAction.None;
-      SetNodeIndex(trunc((aPointerEvent.Position.y-fWorkYOffset)/Max(fWorkRowHeight,1.0))+fVerticalScrollBar.Value);
-      if (fNodeIndex>=0) and (fNodeIndex<fNodes.Count) then begin
-       TreeNode:=fNodes[fNodeIndex];
-      end else begin
-       TreeNode:=nil;
+    KEYCODE_RIGHT,KEYCODE_PLUS,KEYCODE_KP_PLUS,KEYCODE_RETURN:begin
+     case aKeyEvent.KeyEventType of
+      TpvApplicationInputKeyEventType.Typed:begin
+       if (fNodeIndex>=0) and (fNodeIndex<fNodes.Count) then begin
+        TreeNode:=fNodes[fNodeIndex];
+        TreeNode.SetExpanded(true);
+        UpdateNodes;
+        if assigned(fOnChange) then begin
+         fOnChange(self);
+        end;
+       end;
       end;
-      if assigned(TreeNode) and
-         Skin.IsTreeViewExpandCollapseButtonTouched(self,TreeNode,aPointerEvent.Position) then begin
-       TreeNode.Expanded:=not TreeNode.Expanded;
-       UpdateNodes;
-      end else if assigned(TreeNode) and
-                  Skin.IsTreeViewCheckBoxTouched(self,TreeNode,aPointerEvent.Position) then begin
-       TreeNode.Checked:=not TreeNode.Checked;
-      end else begin
-       if TpvApplicationInputKeyModifier.CTRL in aPointerEvent.KeyModifiers then begin
+     end;
+     result:=true;
+    end;
+    KEYCODE_UP:begin
+     case aKeyEvent.KeyEventType of
+      TpvApplicationInputKeyEventType.Typed:begin
+       SetNodeIndex(Min(Max(fNodeIndex-1,0),fNodes.Count-1));
+       DoSelection(false);
+      end;
+     end;
+     result:=true;
+    end;
+    KEYCODE_DOWN:begin
+     case aKeyEvent.KeyEventType of
+      TpvApplicationInputKeyEventType.Typed:begin
+       SetNodeIndex(Min(Max(fNodeIndex+1,0),fNodes.Count-1));
+       DoSelection(false);
+      end;
+     end;
+     result:=true;
+    end;
+    KEYCODE_PAGEDOWN:begin
+     case aKeyEvent.KeyEventType of
+      TpvApplicationInputKeyEventType.Typed:begin
+       SetNodeIndex(Min(Max(fNodeIndex+4,0),fNodes.Count-1));
+       DoSelection(false);
+      end;
+     end;
+     result:=true;
+    end;
+    KEYCODE_PAGEUP:begin
+     case aKeyEvent.KeyEventType of
+      TpvApplicationInputKeyEventType.Typed:begin
+       SetNodeIndex(Min(Max(fNodeIndex-4,0),fNodes.Count-1));
+       DoSelection(false);
+      end;
+     end;
+     result:=true;
+    end;
+    KEYCODE_HOME:begin
+     case aKeyEvent.KeyEventType of
+      TpvApplicationInputKeyEventType.Typed:begin
+       SetNodeIndex(Min(0,fNodes.Count-1));
+       DoSelection(false);
+      end;
+     end;
+     result:=true;
+    end;
+    KEYCODE_END:begin
+     case aKeyEvent.KeyEventType of
+      TpvApplicationInputKeyEventType.Typed:begin
+       SetNodeIndex(fNodes.Count-1);
+       DoSelection(false);
+      end;
+     end;
+     result:=true;
+    end;
+    KEYCODE_BACKSPACE:begin
+     case aKeyEvent.KeyEventType of
+      TpvApplicationInputKeyEventType.Typed:begin
+       ClearSelection;
+      end;
+     end;
+     result:=true;
+    end;
+ {  KEYCODE_DELETE:begin
+     case aKeyEvent.KeyEventType of
+      TpvApplicationInputKeyEventType.Typed:begin
+       if (fNodeIndex>=0) and (fNodeIndex<fNodes.Count) then begin
+        TreeNode:=fNodes[fNodeIndex];
+        if assigned(TreeNode.fParent) then begin
+         TreeNode.fParent.Remove(TreeNode);
+        end;
+       end;
+      end;
+     end;
+     result:=true;
+    end;}
+    KEYCODE_SPACE:begin
+     case aKeyEvent.KeyEventType of
+      TpvApplicationInputKeyEventType.Typed:begin
+       if TpvApplicationInputKeyModifier.CTRL in aKeyEvent.KeyModifiers then begin
         if not MultiSelect then begin
          InternalClearSelection;
         end;
@@ -27198,38 +27362,141 @@ begin
         if assigned(fOnChangeSelection) then begin
          fOnChangeSelection(self);
         end;
-       end else if TpvApplicationInputKeyModifier.SHIFT in aPointerEvent.KeyModifiers then begin
-        fAction:=TpvGUITreeViewAction.Mark;
-        fActionStartIndex:=fNodeIndex;
-        fActionStopIndex:=fNodeIndex;
-        InternalClearSelection;
+       end else begin
         if (fNodeIndex>=0) and (fNodeIndex<fNodes.Count) then begin
          TreeNode:=fNodes[fNodeIndex];
-         TreeNode.SetSelected(not TreeNode.Selected);
-        end;
-        if assigned(fOnChangeSelection) then begin
-         fOnChangeSelection(self);
-        end;
-       end;
-       if aPointerEvent.Button=TpvApplicationInputPointerButton.Left then begin
-        if fDoubleClickCounter=0 then begin
-         fDoubleClickTimeAccumulator:=0.0;
+         if TpvGUITreeNode.TFlag.CheckBox in TreeNode.fFlags then begin
+          TreeNode.SetChecked(not TreeNode.Checked);
+         end;
         end;
        end;
       end;
-      result:=true;
      end;
-     TpvApplicationInputPointerEventType.Up:begin
-      if (fNodeIndex>=0) and (fNodeIndex<fNodes.Count) then begin
-       TreeNode:=fNodes[fNodeIndex];
-      end else begin
-       TreeNode:=nil;
+     result:=true;
+    end;
+   end;
+  end;
+ end else begin
+  result:=false;
+ end;
+end;
+
+function TpvGUITreeView.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean;
+var CurrentNodeIndex,IndentOffset:TpvSizeInt;
+    TreeNode:TpvGUITreeNode;
+    Skin:TpvGUISkin;
+begin
+ if (fWidgetFlags*[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled])=[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled] then begin
+  Skin:=GetSkin;
+  if assigned(Skin) then begin
+   UpdateNodes;
+   UpdateScrollBars;
+   UpdateContent;
+   result:=assigned(fOnPointerEvent) and fOnPointerEvent(self,aPointerEvent);
+   if not result then begin
+    result:=inherited PointerEvent(aPointerEvent);
+    if not result then begin
+     if TpvGUITreeViewFlag.ShowRootNode in fFlags then begin
+      IndentOffset:=0;
+     end else begin
+      IndentOffset:=1;
+     end;
+     case aPointerEvent.PointerEventType of
+      TpvApplicationInputPointerEventType.Down:begin
+       RequestFocus;
+       fAction:=TpvGUITreeViewAction.None;
+       SetNodeIndex(trunc((aPointerEvent.Position.y-fWorkYOffset)/Max(fWorkRowHeight,1.0))+fVerticalScrollBar.Value);
+       if (fNodeIndex>=0) and (fNodeIndex<fNodes.Count) then begin
+        TreeNode:=fNodes[fNodeIndex];
+       end else begin
+        TreeNode:=nil;
+       end;
+       if assigned(TreeNode) and
+          Skin.IsTreeViewExpandCollapseButtonTouched(self,TreeNode,aPointerEvent.Position) then begin
+        TreeNode.Expanded:=not TreeNode.Expanded;
+        UpdateNodes;
+       end else if assigned(TreeNode) and
+                   Skin.IsTreeViewCheckBoxTouched(self,TreeNode,aPointerEvent.Position) then begin
+        TreeNode.Checked:=not TreeNode.Checked;
+       end else begin
+        if TpvApplicationInputKeyModifier.CTRL in aPointerEvent.KeyModifiers then begin
+         if not MultiSelect then begin
+          InternalClearSelection;
+         end;
+         if (fNodeIndex>=0) and (fNodeIndex<fNodes.Count) then begin
+          TreeNode:=fNodes[fNodeIndex];
+          TreeNode.SetSelected(not TreeNode.Selected);
+         end;
+         if assigned(fOnChangeSelection) then begin
+          fOnChangeSelection(self);
+         end;
+        end else if TpvApplicationInputKeyModifier.SHIFT in aPointerEvent.KeyModifiers then begin
+         fAction:=TpvGUITreeViewAction.Mark;
+         fActionStartIndex:=fNodeIndex;
+         fActionStopIndex:=fNodeIndex;
+         InternalClearSelection;
+         if (fNodeIndex>=0) and (fNodeIndex<fNodes.Count) then begin
+          TreeNode:=fNodes[fNodeIndex];
+          TreeNode.SetSelected(not TreeNode.Selected);
+         end;
+         if assigned(fOnChangeSelection) then begin
+          fOnChangeSelection(self);
+         end;
+        end;
+        if aPointerEvent.Button=TpvApplicationInputPointerButton.Left then begin
+         if fDoubleClickCounter=0 then begin
+          fDoubleClickTimeAccumulator:=0.0;
+         end;
+        end;
+       end;
+       result:=true;
       end;
-      if assigned(TreeNode) and
-         (Skin.IsTreeViewExpandCollapseButtonTouched(self,TreeNode,aPointerEvent.Position) or
-          Skin.IsTreeViewCheckBoxTouched(self,TreeNode,aPointerEvent.Position)) then begin
-       // Nothing
-      end else begin
+      TpvApplicationInputPointerEventType.Up:begin
+       if (fNodeIndex>=0) and (fNodeIndex<fNodes.Count) then begin
+        TreeNode:=fNodes[fNodeIndex];
+       end else begin
+        TreeNode:=nil;
+       end;
+       if assigned(TreeNode) and
+          (Skin.IsTreeViewExpandCollapseButtonTouched(self,TreeNode,aPointerEvent.Position) or
+           Skin.IsTreeViewCheckBoxTouched(self,TreeNode,aPointerEvent.Position)) then begin
+        // Nothing
+       end else begin
+        if fAction=TpvGUITreeViewAction.Mark then begin
+         SetNodeIndex(trunc((aPointerEvent.Position.y-fWorkYOffset)/Max(fWorkRowHeight,1.0))+fVerticalScrollBar.Value);
+         fActionStopIndex:=fNodeIndex;
+         InternalClearSelection;
+         if MultiSelect then begin
+          for CurrentNodeIndex:=Max(0,Min(fActionStartIndex,fActionStopIndex)) to Min(Max(fActionStartIndex,fActionStopIndex),fNodes.Count-1) do begin
+           fNodes[CurrentNodeIndex].SetSelected(true);
+          end;
+         end else begin
+          if (fNodeIndex>=0) and (fNodeIndex<fNodes.Count) then begin
+           TreeNode:=fNodes[fNodeIndex];
+           TreeNode.SetSelected(true);
+          end;
+         end;
+         if assigned(fOnChangeSelection) then begin
+          fOnChangeSelection(self);
+         end;
+        end;
+        if aPointerEvent.Button=TpvApplicationInputPointerButton.Left then begin
+         if fDoubleClickCounter<2 then begin
+          inc(fDoubleClickCounter);
+          if fDoubleClickCounter=2 then begin
+           fDoubleClickCounter:=0;
+           fDoubleClickTimeAccumulator:=0.0;
+           if assigned(fOnDoubleClick) then begin
+            fOnDoubleClick(self);
+           end;
+          end;
+         end;
+        end;
+       end;
+       fAction:=TpvGUITreeViewAction.None;
+       result:=true;
+      end;
+      TpvApplicationInputPointerEventType.Motion:begin
        if fAction=TpvGUITreeViewAction.Mark then begin
         SetNodeIndex(trunc((aPointerEvent.Position.y-fWorkYOffset)/Max(fWorkRowHeight,1.0))+fVerticalScrollBar.Value);
         fActionStopIndex:=fNodeIndex;
@@ -27248,67 +27515,35 @@ begin
          fOnChangeSelection(self);
         end;
        end;
-       if aPointerEvent.Button=TpvApplicationInputPointerButton.Left then begin
-        if fDoubleClickCounter<2 then begin
-         inc(fDoubleClickCounter);
-         if fDoubleClickCounter=2 then begin
-          fDoubleClickCounter:=0;
-          fDoubleClickTimeAccumulator:=0.0;
-          if assigned(fOnDoubleClick) then begin
-           fOnDoubleClick(self);
-          end;
+       result:=true;
+      end;
+      TpvApplicationInputPointerEventType.Drag:begin
+       if fAction=TpvGUITreeViewAction.Mark then begin
+        SetNodeIndex(trunc((aPointerEvent.Position.y-fWorkYOffset)/Max(fWorkRowHeight,1.0))+fVerticalScrollBar.Value);
+        fActionStopIndex:=fNodeIndex;
+        InternalClearSelection;
+        if MultiSelect then begin
+         for CurrentNodeIndex:=Max(0,Min(fActionStartIndex,fActionStopIndex)) to Min(Max(fActionStartIndex,fActionStopIndex),fNodes.Count-1) do begin
+          fNodes[CurrentNodeIndex].SetSelected(true);
+         end;
+        end else begin
+         if (fNodeIndex>=0) and (fNodeIndex<fNodes.Count) then begin
+          TreeNode:=fNodes[fNodeIndex];
+          TreeNode.SetSelected(true);
          end;
         end;
+        if assigned(fOnChangeSelection) then begin
+         fOnChangeSelection(self);
+        end;
        end;
+       result:=true;
       end;
-      fAction:=TpvGUITreeViewAction.None;
-      result:=true;
-     end;
-     TpvApplicationInputPointerEventType.Motion:begin
-      if fAction=TpvGUITreeViewAction.Mark then begin
-       SetNodeIndex(trunc((aPointerEvent.Position.y-fWorkYOffset)/Max(fWorkRowHeight,1.0))+fVerticalScrollBar.Value);
-       fActionStopIndex:=fNodeIndex;
-       InternalClearSelection;
-       if MultiSelect then begin
-        for CurrentNodeIndex:=Max(0,Min(fActionStartIndex,fActionStopIndex)) to Min(Max(fActionStartIndex,fActionStopIndex),fNodes.Count-1) do begin
-         fNodes[CurrentNodeIndex].SetSelected(true);
-        end;
-       end else begin
-        if (fNodeIndex>=0) and (fNodeIndex<fNodes.Count) then begin
-         TreeNode:=fNodes[fNodeIndex];
-         TreeNode.SetSelected(true);
-        end;
-       end;
-       if assigned(fOnChangeSelection) then begin
-        fOnChangeSelection(self);
-       end;
-      end;
-      result:=true;
-     end;
-     TpvApplicationInputPointerEventType.Drag:begin
-      if fAction=TpvGUITreeViewAction.Mark then begin
-       SetNodeIndex(trunc((aPointerEvent.Position.y-fWorkYOffset)/Max(fWorkRowHeight,1.0))+fVerticalScrollBar.Value);
-       fActionStopIndex:=fNodeIndex;
-       InternalClearSelection;
-       if MultiSelect then begin
-        for CurrentNodeIndex:=Max(0,Min(fActionStartIndex,fActionStopIndex)) to Min(Max(fActionStartIndex,fActionStopIndex),fNodes.Count-1) do begin
-         fNodes[CurrentNodeIndex].SetSelected(true);
-        end;
-       end else begin
-        if (fNodeIndex>=0) and (fNodeIndex<fNodes.Count) then begin
-         TreeNode:=fNodes[fNodeIndex];
-         TreeNode.SetSelected(true);
-        end;
-       end;
-       if assigned(fOnChangeSelection) then begin
-        fOnChangeSelection(self);
-       end;
-      end;
-      result:=true;
      end;
     end;
    end;
   end;
+ end else begin 
+  result:=false;
  end;
 end;
 
@@ -27316,18 +27551,22 @@ function TpvGUITreeView.Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boo
 var TemporaryValue,Step:TpvInt64;
     v:TpvFloat;
 begin
- UpdateNodes;
- result:=inherited Scrolled(aPosition,aRelativeAmount);
- if not result then begin
-  TemporaryValue:=fNodeIndex;
-  v:=aRelativeAmount.x-aRelativeAmount.y;
-  if v<0.0 then begin
-   Step:=floor(v);
-  end else begin
-   Step:=ceil(v);
+ if (fWidgetFlags*[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled])=[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled] then begin
+  UpdateNodes;
+  result:=inherited Scrolled(aPosition,aRelativeAmount);
+  if not result then begin
+   TemporaryValue:=fNodeIndex;
+   v:=aRelativeAmount.x-aRelativeAmount.y;
+   if v<0.0 then begin
+    Step:=floor(v);
+   end else begin
+    Step:=ceil(v);
+   end;
+   SetNodeIndex(Min(Max(fNodeIndex+Step,0),fNodes.Count-1));
+   result:=true;
   end;
-  SetNodeIndex(Min(Max(fNodeIndex+Step,0),fNodes.Count-1));
-  result:=true;
+ end else begin
+  result:=false;
  end;
 end;
 
@@ -27617,62 +27856,78 @@ end;
 
 function TpvGUIFileDialog.TextEditPathOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
 begin
- result:=false;
- if aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Typed then begin
-  case aKeyEvent.KeyCode of
-   KEYCODE_RETURN,KEYCODE_RETURN2,KEYCODE_KP_ENTER:begin
-    SetPath(fTextEditPath.Text);
-    result:=true;
+ if (fWidgetFlags*[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled])=[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled] then begin
+  result:=false;
+  if aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Typed then begin
+   case aKeyEvent.KeyCode of
+    KEYCODE_RETURN,KEYCODE_RETURN2,KEYCODE_KP_ENTER:begin
+     SetPath(fTextEditPath.Text);
+     result:=true;
+    end;
    end;
   end;
+ end else begin
+  result:=false;
  end;
 end;
 
 function TpvGUIFileDialog.TextEditFileNameOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
 begin
- result:=false;
- if aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Typed then begin
-  case aKeyEvent.KeyCode of
-   KEYCODE_RETURN,KEYCODE_RETURN2,KEYCODE_KP_ENTER:begin
-    if not Accept(-1) then begin
-     fListView.ItemIndex:=-1;
-     fTextEditFileName.Text:='';
+ if (fWidgetFlags*[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled])=[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled] then begin
+  result:=false;
+  if aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Typed then begin
+   case aKeyEvent.KeyCode of
+    KEYCODE_RETURN,KEYCODE_RETURN2,KEYCODE_KP_ENTER:begin
+     if not Accept(-1) then begin
+      fListView.ItemIndex:=-1;
+      fTextEditFileName.Text:='';
+     end;
+     result:=true;
     end;
-    result:=true;
    end;
   end;
+ end else begin
+  result:=false;
  end;
 end;
 
 function TpvGUIFileDialog.TextEditFilterOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
 begin
- result:=false;
- if aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Typed then begin
-  case aKeyEvent.KeyCode of
-   KEYCODE_RETURN,KEYCODE_RETURN2,KEYCODE_KP_ENTER:begin
-    Refresh(-1);
-    result:=true;
+ if (fWidgetFlags*[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled])=[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled] then begin
+  result:=false;
+  if aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Typed then begin
+   case aKeyEvent.KeyCode of
+    KEYCODE_RETURN,KEYCODE_RETURN2,KEYCODE_KP_ENTER:begin
+     Refresh(-1);
+     result:=true;
+    end;
    end;
   end;
+ end else begin
+  result:=false;
  end;
 end;
 
 function TpvGUIFileDialog.ListViewOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
 begin
- result:=false;
- case aKeyEvent.KeyCode of
-  KEYCODE_RETURN,KEYCODE_RETURN2,KEYCODE_KP_ENTER:begin
-   if aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Up then begin
-    Accept(0);
+ if (fWidgetFlags*[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled])=[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled] then begin
+  result:=false;
+  case aKeyEvent.KeyCode of
+   KEYCODE_RETURN,KEYCODE_RETURN2,KEYCODE_KP_ENTER:begin
+    if aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Up then begin
+     Accept(0);
+    end;
+    result:=true;
    end;
-   result:=true;
-  end;
-  KEYCODE_BACKSPACE:begin
-   if aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Up then begin
-    SetPath('..');
+   KEYCODE_BACKSPACE:begin
+    if aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Up then begin
+     SetPath('..');
+    end;
+    result:=true;
    end;
-   result:=true;
   end;
+ end else begin
+  result:=false;
  end;
 end;
 
@@ -28053,19 +28308,23 @@ end;
 
 function TpvGUIFileDialog.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
 begin
- result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
- if not result then begin
-  case aKeyEvent.KeyCode of
-   KEYCODE_ESCAPE:begin
-    if aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Up then begin
-     Reject;
+ if (fWidgetFlags*[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled])=[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled] then begin
+  result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
+  if not result then begin
+   case aKeyEvent.KeyCode of
+    KEYCODE_ESCAPE:begin
+     if aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Up then begin
+      Reject;
+     end;
+     result:=true;
     end;
-    result:=true;
+   end;
+   if not result then begin
+    result:=inherited KeyEvent(aKeyEvent);
    end;
   end;
-  if not result then begin
-   result:=inherited KeyEvent(aKeyEvent);
-  end;
+ end else begin
+  result:=false;
  end;
 end;
 
