@@ -1,4 +1,4 @@
-(******************************************************************************
+﻿(******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
  *                       Version see PasVulkan.Framework.pas                  *
@@ -6171,7 +6171,7 @@ begin
  result:=self;
 end;
 
-function TpvCanvas.DrawGUIElement(const aGUIElement:TVkInt32;const aFocused:boolean;const aMinX,aMinY,aMaxX,aMaxY,aMetaMinX,aMetaMinY,aMetaMaxX,aMetaMaxY:TpvFloat;const aMeta:TpvFloat;const aTransparent:Boolean=false):TpvCanvas;
+function TpvCanvas.DrawGUIElement(const aGUIElement:TVkInt32;const aFocused:boolean;const aMinX,aMinY,aMaxX,aMaxY,aMetaMinX,aMetaMinY,aMetaMaxX,aMetaMaxY:TpvFloat;const aMeta:TpvFloat;const aTransparent:Boolean):TpvCanvas;
 begin
  result:=DrawGUIElement(aGUIElement,aFocused,TpvVector2.InlineableCreate(aMinX,aMinY),TpvVector2.InlineableCreate(aMaxX,aMaxY),TpvVector2.InlineableCreate(aMetaMinX,aMetaMinY),TpvVector2.InlineableCreate(aMetaMaxX,aMetaMaxY),aMeta,aTransparent);
 end;
