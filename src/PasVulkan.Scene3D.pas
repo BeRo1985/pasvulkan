@@ -983,9 +983,7 @@ type EpvScene3D=class(Exception);
               property Sampler:TSampler read fSampler write fSampler;
             end;
             TTextures=TpvObjectGenericList<TTexture>;
-
             { TMaterial }
-
             TMaterial=class(TBaseObject)
              public
               type TAlphaMode=

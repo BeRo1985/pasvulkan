@@ -18356,10 +18356,18 @@ begin
      if fEditable then begin
       TemporaryValue:=GetValue;
       v:=aPointerEvent.RelativePosition.x-aPointerEvent.RelativePosition.y;
-      if v<0.0 then begin
-       Step:=floor(v)*fSmallStep;
+      if TpvApplicationInputKeyModifier.SHIFT in aPointerEvent.KeyModifiers then begin
+       if v<0.0 then begin
+        Step:=floor(v)*fLargeStep;
+       end else begin
+        Step:=ceil(v)*fLargeStep;
+       end;
       end else begin
-       Step:=ceil(v)*fSmallStep;
+       if v<0.0 then begin
+        Step:=floor(v)*fSmallStep;
+       end else begin
+        Step:=ceil(v)*fSmallStep;
+       end;
       end;
       if ((Step>0) and ((TemporaryValue+Step)<=fMaximumValue) and not (TemporaryValue>(TemporaryValue+Step))) or
          ((Step<0) and ((TemporaryValue+Step)>=fMinimumValue) and not (TemporaryValue<(TemporaryValue+Step))) then begin
@@ -18389,10 +18397,18 @@ begin
    if fEditable then begin
     TemporaryValue:=GetValue;
     v:=aRelativeAmount.x+aRelativeAmount.y;
-    if v<0.0 then begin
-     Step:=floor(v)*fSmallStep;
+    if TpvApplicationInputKeyModifier.SHIFT in pvApplication.Input.GetKeyModifiers then begin
+     if v<0.0 then begin
+      Step:=floor(v)*fLargeStep;
+     end else begin
+      Step:=ceil(v)*fLargeStep;
+     end;
     end else begin
-     Step:=ceil(v)*fSmallStep;
+     if v<0.0 then begin
+      Step:=floor(v)*fSmallStep;
+     end else begin
+      Step:=ceil(v)*fSmallStep;
+     end;
     end;
     if ((Step>0) and ((TemporaryValue+Step)<=fMaximumValue) and not (TemporaryValue>(TemporaryValue+Step))) or
        ((Step<0) and ((TemporaryValue+Step)>=fMinimumValue) and not (TemporaryValue<(TemporaryValue+Step))) then begin
@@ -18680,10 +18696,18 @@ begin
      if fEditable then begin
       TemporaryValue:=GetValue;
       v:=aPointerEvent.RelativePosition.x-aPointerEvent.RelativePosition.y;
-      if v<0.0 then begin
-       Step:=floor(v)*fSmallStep;
+      if TpvApplicationInputKeyModifier.SHIFT in aPointerEvent.KeyModifiers then begin
+       if v<0.0 then begin
+        Step:=floor(v)*fLargeStep;
+       end else begin
+        Step:=ceil(v)*fLargeStep;
+       end;
       end else begin
-       Step:=ceil(v)*fSmallStep;
+       if v<0.0 then begin
+        Step:=floor(v)*fSmallStep;
+       end else begin
+        Step:=ceil(v)*fSmallStep;
+       end;
       end;
       if ((Step>0) and ((TemporaryValue+Step)<=fMaximumValue) and not (TemporaryValue>(TemporaryValue+Step))) or
          ((Step<0) and ((TemporaryValue+Step)>=fMinimumValue) and not (TemporaryValue<(TemporaryValue+Step))) then begin
@@ -18713,10 +18737,18 @@ begin
    if fEditable then begin
     TemporaryValue:=GetValue;
     v:=aRelativeAmount.x+aRelativeAmount.y;
-    if v<0.0 then begin
-     Step:=floor(v)*fSmallStep;
+    if TpvApplicationInputKeyModifier.SHIFT in pvApplication.Input.GetKeyModifiers then begin
+     if v<0.0 then begin
+      Step:=floor(v)*fLargeStep;
+     end else begin
+      Step:=ceil(v)*fLargeStep;
+     end;
     end else begin
-     Step:=ceil(v)*fSmallStep;
+     if v<0.0 then begin
+      Step:=floor(v)*fSmallStep;
+     end else begin
+      Step:=ceil(v)*fSmallStep;
+     end;
     end;
     if ((Step>0) and ((TemporaryValue+Step)<=fMaximumValue) and not (TemporaryValue>(TemporaryValue+Step))) or
        ((Step<0) and ((TemporaryValue+Step)>=fMinimumValue) and not (TemporaryValue<(TemporaryValue+Step))) then begin
