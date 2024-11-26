@@ -530,11 +530,13 @@ type EpvScene3D=class(Exception);
              public
               case boolean of
                false:(
-                Position:TpvVector3;                  //  12    0
-                Color:TpvHalfFloatVector4;            // + 8 = 20
+                Position:TpvVector3;                  //  12   12
+                PointSize:TpvFloat;                   // + 4 = 16
+                Color:TpvHalfFloatVector4;            // + 8 = 24
+                Offset:TpvVector2;                    // + 8 = 32
                );                                     //  ==   ==
-               true:(                                 //  20   20 per vertex
-                Padding:array[0..19] of TpvUInt8;
+               true:(                                 //  32   32 per vertex
+                Padding:array[0..31] of TpvUInt8;
                );
             end;
             PSolidPrimitiveVertex=^TSolidPrimitiveVertex;
@@ -542,15 +544,16 @@ type EpvScene3D=class(Exception);
             TSolidPrimitiveVertexDynamicArray=class(TpvDynamicArrayList<TSolidPrimitiveVertex>)
             end;
             TSolidPrimitiveVertexDynamicArrays=array[0..MaxInFlightFrames-1] of TSolidPrimitiveVertexDynamicArray;
-            TSolidPrimitiveType=
+            TSolidPrimitiveTopologyType=
              (
+              None,
               Point,
               Line,
               Triangle
              );
-            PSolidPrimitiveType=^TSolidPrimitiveType;
+            PSolidPrimitiveTopologyType=^TSolidPrimitiveTopologyType;
             TSolidPrimitiveBatchItem=record
-             Type_:TSolidPrimitiveType;
+             PrimitiveTopologyType:TSolidPrimitiveTopologyType;
              VertexOffset:TpvSizeInt;
              CountVertices:TpvSizeInt;
              LineWidthOrPointSize:TpvFloat;
@@ -3881,6 +3884,17 @@ type EpvScene3D=class(Exception);
                                      const aCommandBuffer:TpvVulkanCommandBuffer;
                                      const aPipelineLayout:TpvVulkanPipelineLayout;
                                      const aOnSetRenderPassResources:TpvScene3D.TOnSetRenderPassResources);
+       procedure DrawSolidPrimitives(const aRendererInstance:TObject;
+                                     const aGraphicsPipeline:TpvVulkanGraphicsPipeline;
+                                     const aPreviousInFlightFrameIndex:TpvSizeInt;
+                                     const aInFlightFrameIndex:TpvSizeInt;
+                                     const aRenderPass:TpvScene3DRendererRenderPass;
+                                     const aViewBaseIndex:TpvSizeInt;
+                                     const aCountViews:TpvSizeInt;
+                                     const aFrameIndex:TpvSizeInt;
+                                     const aCommandBuffer:TpvVulkanCommandBuffer;
+                                     const aPipelineLayout:TpvVulkanPipelineLayout;
+                                     const aOnSetRenderPassResources:TpvScene3D.TOnSetRenderPassResources);
        procedure DrawParticles(const aRendererInstance:TObject;
                                const aGraphicsPipeline:TpvVulkanGraphicsPipeline;
                                const aPreviousInFlightFrameIndex:TpvSizeInt;
@@ -3912,6 +3926,7 @@ type EpvScene3D=class(Exception);
                               out aZFar:TpvScalar);
        procedure InitializeGraphicsPipeline(const aPipeline:TpvVulkanGraphicsPipeline;const aWithPreviousPosition:boolean=false);
        procedure InitializeDebugPrimitiveGraphicsPipeline(const aPipeline:TpvVulkanGraphicsPipeline);
+       procedure InitializeSolidPrimitiveGraphicsPipeline(const aPipeline:TpvVulkanGraphicsPipeline);
        procedure InitializeParticleGraphicsPipeline(const aPipeline:TpvVulkanGraphicsPipeline);
        procedure StoreParticleStates;
        procedure UpdateParticleStates(const aDeltaTime:TpvDouble);
@@ -3929,9 +3944,10 @@ type EpvScene3D=class(Exception);
                             const aLifeTime:TpvScalar;
                             const aTextureID:TpvUInt32;
                             const aAdditiveBlending:boolean):TpvSizeInt;
-       function AddSolidPoint(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aColor:TpvVector4;const aSize:TpvScalar):Boolean;
-       function AddSolidLine(const aInFlightFrameIndex:TpvSizeInt;const aStartPosition,aEndPosition:TpvVector3;const aColor:TpvVector4;const aSize:TpvScalar):Boolean;
-       function AddSolidTriangle(const aInFlightFrameIndex:TpvSizeInt;const aPosition0,aPosition1,aPosition2:TpvVector3;const aColor:TpvVector4):Boolean;
+       procedure ClearSolid(const aInFlightFrameIndex:TpvSizeInt);
+       function AddSolidPoint(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aColor:TpvVector4;const aSize:TpvScalar;const aPositionOffset:TpvVector2):Boolean;
+       function AddSolidLine(const aInFlightFrameIndex:TpvSizeInt;const aStartPosition,aEndPosition:TpvVector3;const aColor:TpvVector4;const aSize:TpvScalar;const aStartPositionOffset,aEndPositionOffset:TpvVector2):Boolean;
+       function AddSolidTriangle(const aInFlightFrameIndex:TpvSizeInt;const aPosition0,aPosition1,aPosition2:TpvVector3;const aColor:TpvVector4;const aPosition0Offset,aPosition1Offset,aPosition2Offset:TpvVector2):Boolean;
       public
        function CreateMaterial(const aName:TpvUTF8String):TpvScene3D.TMaterial;
        function CreateGroup(const aName:TpvUTF8String=''):TpvScene3D.TGroup;
@@ -4053,6 +4069,7 @@ uses PasVulkan.Scene3D.Renderer.Instance,
      PasVulkan.Scene3D.Planet,
      PasVulkan.Scene3D.Atmosphere,
      PasVulkan.Scene3D.MeshCompute,
+     PasVulkan.Scene3D.Gizmo,
      PasVulkan.Scene3D.Tipsify,
      PasVulkan.Scene3D.Meshlets;
 
@@ -33387,6 +33404,78 @@ begin
  end;
 end;
 
+procedure TpvScene3D.DrawSolidPrimitives(const aRendererInstance:TObject;
+                                         const aGraphicsPipeline:TpvVulkanGraphicsPipeline;
+                                         const aPreviousInFlightFrameIndex:TpvSizeInt;
+                                         const aInFlightFrameIndex:TpvSizeInt;
+                                         const aRenderPass:TpvScene3DRendererRenderPass;
+                                         const aViewBaseIndex:TpvSizeInt;
+                                         const aCountViews:TpvSizeInt;
+                                         const aFrameIndex:TpvSizeInt;
+                                         const aCommandBuffer:TpvVulkanCommandBuffer;
+                                         const aPipelineLayout:TpvVulkanPipelineLayout;
+                                         const aOnSetRenderPassResources:TpvScene3D.TOnSetRenderPassResources);
+const Offsets:TVkDeviceSize=0;
+//var VertexStagePushConstants:TpvScene3D.PMeshStagePushConstants;
+var BatchIndex:TpvSizeInt;
+    BatchItem:PSolidPrimitiveBatchItem;
+    SolidPrimitiveBatchItemDynamicArray:TSolidPrimitiveBatchItemDynamicArray;
+    PrimitiveTopologyType:TSolidPrimitiveTopologyType;
+begin
+ SolidPrimitiveBatchItemDynamicArray:=fSolidPrimitiveBatchItemDynamicArrays[aInFlightFrameIndex];
+ if (aViewBaseIndex>=0) and (aCountViews>0) and
+    (fSolidPrimitiveVertexDynamicArrays[aInFlightFrameIndex].Count>0) and
+    (SolidPrimitiveBatchItemDynamicArray.Count>0) then begin
+
+{ VertexStagePushConstants:=@fVertexStagePushConstants[aRenderPass];
+  VertexStagePushConstants^.ViewBaseIndex:=aViewBaseIndex;
+  VertexStagePushConstants^.CountViews:=aCountViews;
+  VertexStagePushConstants^.CountAllViews:=fViews.Count;
+  VertexStagePushConstants^.FrameIndex:=aFrameIndex;
+  VertexStagePushConstants^.Jitter:=TpvVector4.Null;
+
+  fSetGlobalResourcesDone[aRenderPass]:=false;}
+{ SetGlobalResources(aCommandBuffer,aPipelineLayout,aRendererInstance,aRenderPass,aPreviousInFlightFrameIndex,aInFlightFrameIndex);
+
+  if assigned(aOnSetRenderPassResources) then begin
+   aOnSetRenderPassResources(aCommandBuffer,aPipelineLayout,aRendererInstance,aRenderPass,aPreviousInFlightFrameIndex,aInFlightFrameIndex);
+  end;
+
+  aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,aGraphicsPipeline.Handle);
+  aCommandBuffer.CmdBindVertexBuffers(0,1,@fVulkanDebugPrimitiveVertexBuffers[aInFlightFrameIndex].Handle,@Offsets);
+  aCommandBuffer.CmdDraw(Min(fDebugPrimitiveVertexDynamicArrays[aInFlightFrameIndex].Count,TpvScene3D.MaxDebugPrimitiveVertices),1,0,0);}
+
+  PrimitiveTopologyType:=TSolidPrimitiveTopologyType.None;
+
+  aCommandBuffer.CmdBindVertexBuffers(0,1,@fVulkanSolidPrimitiveVertexBuffers[aInFlightFrameIndex].Handle,@Offsets);
+
+  for BatchIndex:=0 to SolidPrimitiveBatchItemDynamicArray.Count-1 do begin
+
+   BatchItem:=@SolidPrimitiveBatchItemDynamicArray.ItemArray[BatchIndex];
+
+   if BatchItem^.CountVertices>0 then begin
+
+    if PrimitiveTopologyType<>BatchItem^.PrimitiveTopologyType then begin
+     PrimitiveTopologyType:=BatchItem^.PrimitiveTopologyType;
+     case PrimitiveTopologyType of
+      TSolidPrimitiveTopologyType.Line:begin
+       aCommandBuffer.CmdSetLineWidth(BatchItem^.LineWidthOrPointSize);
+      end;
+      else begin
+      end;
+     end;
+    end;
+
+    aCommandBuffer.CmdDraw(BatchItem^.CountVertices,1,BatchItem^.VertexOffset,0);
+
+   end;
+
+  end;
+
+ end;
+
+end;
+
 procedure TpvScene3D.DrawParticles(const aRendererInstance:TObject;
                                    const aGraphicsPipeline:TpvVulkanGraphicsPipeline;
                                    const aPreviousInFlightFrameIndex:TpvSizeInt;
@@ -33547,6 +33636,15 @@ begin
  aPipeline.VertexInputState.AddVertexInputBindingDescription(0,SizeOf(TpvScene3D.TDebugPrimitiveVertex),VK_VERTEX_INPUT_RATE_VERTEX);
  aPipeline.VertexInputState.AddVertexInputAttributeDescription(0,0,VK_FORMAT_R32G32B32_SFLOAT,TVkPtrUInt(pointer(@TpvScene3D.PDebugPrimitiveVertex(nil)^.Position)));
  aPipeline.VertexInputState.AddVertexInputAttributeDescription(1,0,VK_FORMAT_R16G16B16A16_SFLOAT,TVkPtrUInt(pointer(@TpvScene3D.PDebugPrimitiveVertex(nil)^.Color)));
+end;
+
+procedure TpvScene3D.InitializeSolidPrimitiveGraphicsPipeline(const aPipeline:TpvVulkanGraphicsPipeline);
+begin
+ aPipeline.VertexInputState.AddVertexInputBindingDescription(0,SizeOf(TpvScene3D.TSolidPrimitiveVertex),VK_VERTEX_INPUT_RATE_VERTEX);
+ aPipeline.VertexInputState.AddVertexInputAttributeDescription(0,0,VK_FORMAT_R32G32B32_SFLOAT,TVkPtrUInt(pointer(@TpvScene3D.PSolidPrimitiveVertex(nil)^.Position)));
+ aPipeline.VertexInputState.AddVertexInputAttributeDescription(1,0,VK_FORMAT_R32_SFLOAT,TVkPtrUInt(pointer(@TpvScene3D.PSolidPrimitiveVertex(nil)^.PointSize)));
+ aPipeline.VertexInputState.AddVertexInputAttributeDescription(2,0,VK_FORMAT_R16G16B16A16_SFLOAT,TVkPtrUInt(pointer(@TpvScene3D.PSolidPrimitiveVertex(nil)^.Color)));
+ aPipeline.VertexInputState.AddVertexInputAttributeDescription(3,0,VK_FORMAT_R32G32_SFLOAT,TVkPtrUInt(pointer(@TpvScene3D.PSolidPrimitiveVertex(nil)^.Offset)));
 end;
 
 procedure TpvScene3D.InitializeParticleGraphicsPipeline(const aPipeline:TpvVulkanGraphicsPipeline);
@@ -33852,7 +33950,13 @@ begin
  end;
 end;
 
-function TpvScene3D.AddSolidPoint(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aColor:TpvVector4;const aSize:TpvScalar):boolean;
+procedure TpvScene3D.ClearSolid(const aInFlightFrameIndex:TpvSizeInt);
+begin
+ fSolidPrimitiveVertexDynamicArrays[aInFlightFrameIndex].ClearNoFree;
+ fSolidPrimitiveBatchItemDynamicArrays[aInFlightFrameIndex].ClearNoFree;
+end;
+
+function TpvScene3D.AddSolidPoint(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aColor:TpvVector4;const aSize:TpvScalar;const aPositionOffset:TpvVector2):boolean;
 var Vertex:TpvScene3D.PSolidPrimitiveVertex;
     VertexItems:TpvScene3D.TSolidPrimitiveVertexDynamicArray;
     BatchItem:TpvScene3D.PSolidPrimitiveBatchItem;
@@ -33863,8 +33967,8 @@ begin
  if assigned(VertexItems) and assigned(BatchItems) and (VertexItems.Count<MaxSolidPrimitiveVertices) then begin
   if BatchItems.Count>0 then begin
    BatchItem:=@BatchItems.ItemArray[BatchItems.Count-1];
-   if (BatchItem^.Type_<>TSolidPrimitiveType.Point) or
-      (BatchItem^.LineWidthOrPointSize<>aSize) or
+   if (BatchItem^.PrimitiveTopologyType<>TSolidPrimitiveTopologyType.Point) or
+//    (BatchItem^.LineWidthOrPointSize<>aSize) or
       ((BatchItem^.VertexOffset+BatchItem^.CountVertices)<>VertexItems.Count) then begin
     BatchItem:=nil;
    end;
@@ -33873,7 +33977,7 @@ begin
   end;
   if (not assigned(BatchItem)) and (BatchItems.Count<MaxSolidPrimitiveBatchItems) then begin
    BatchItem:=pointer(BatchItems.AddNew);
-   BatchItem^.Type_:=TSolidPrimitiveType.Point;
+   BatchItem^.PrimitiveTopologyType:=TSolidPrimitiveTopologyType.Point;
    BatchItem^.LineWidthOrPointSize:=aSize;
    BatchItem^.VertexOffset:=VertexItems.Count;
    BatchItem^.CountVertices:=0;
@@ -33881,10 +33985,12 @@ begin
   if assigned(BatchItem) then begin
    Vertex:=pointer(VertexItems.AddNew);
    Vertex^.Position:=aPosition;
+   Vertex^.PointSize:=aSize;
    Vertex^.Color.x:=aColor.x;
    Vertex^.Color.y:=aColor.y;
    Vertex^.Color.z:=aColor.z;
    Vertex^.Color.w:=aColor.w;
+   Vertex^.Offset:=aPositionOffset;
    inc(BatchItem^.CountVertices);
    result:=true;
   end else begin
@@ -33895,7 +34001,7 @@ begin
  end;
 end;
 
-function TpvScene3D.AddSolidLine(const aInFlightFrameIndex:TpvSizeInt;const aStartPosition,aEndPosition:TpvVector3;const aColor:TpvVector4;const aSize:TpvScalar):boolean;
+function TpvScene3D.AddSolidLine(const aInFlightFrameIndex:TpvSizeInt;const aStartPosition,aEndPosition:TpvVector3;const aColor:TpvVector4;const aSize:TpvScalar;const aStartPositionOffset,aEndPositionOffset:TpvVector2):boolean;
 var Vertex:TpvScene3D.PSolidPrimitiveVertex;
     VertexItems:TpvScene3D.TSolidPrimitiveVertexDynamicArray;
     BatchItem:TpvScene3D.PSolidPrimitiveBatchItem;
@@ -33906,7 +34012,7 @@ begin
  if assigned(VertexItems) and assigned(BatchItems) and ((VertexItems.Count+1)<MaxSolidPrimitiveVertices) then begin
   if BatchItems.Count>0 then begin
    BatchItem:=@BatchItems.ItemArray[BatchItems.Count-1];
-   if (BatchItem^.Type_<>TSolidPrimitiveType.Line) or
+   if (BatchItem^.PrimitiveTopologyType<>TSolidPrimitiveTopologyType.Line) or
       (BatchItem^.LineWidthOrPointSize<>aSize) or
       ((BatchItem^.VertexOffset+BatchItem^.CountVertices)<>VertexItems.Count) then begin
     BatchItem:=nil;
@@ -33916,7 +34022,7 @@ begin
   end;
   if (not assigned(BatchItem)) and (BatchItems.Count<MaxSolidPrimitiveBatchItems) then begin
    BatchItem:=pointer(BatchItems.AddNew);
-   BatchItem^.Type_:=TSolidPrimitiveType.Line;
+   BatchItem^.PrimitiveTopologyType:=TSolidPrimitiveTopologyType.Line;
    BatchItem^.LineWidthOrPointSize:=aSize;
    BatchItem^.VertexOffset:=VertexItems.Count;
    BatchItem^.CountVertices:=0;
@@ -33924,17 +34030,21 @@ begin
   if assigned(BatchItem) and ((VertexItems.Count+1)<MaxSolidPrimitiveVertices) then begin
    Vertex:=pointer(VertexItems.AddNew);
    Vertex^.Position:=aStartPosition;
+   Vertex^.PointSize:=aSize;
    Vertex^.Color.x:=aColor.x;
    Vertex^.Color.y:=aColor.y;
    Vertex^.Color.z:=aColor.z;
    Vertex^.Color.w:=aColor.w;
+   Vertex^.Offset:=aStartPositionOffset;
    inc(BatchItem^.CountVertices);
    Vertex:=pointer(VertexItems.AddNew);
    Vertex^.Position:=aEndPosition;
+   Vertex^.PointSize:=aSize;
    Vertex^.Color.x:=aColor.x;
    Vertex^.Color.y:=aColor.y;
    Vertex^.Color.z:=aColor.z;
    Vertex^.Color.w:=aColor.w;
+   Vertex^.Offset:=aEndPositionOffset;
    inc(BatchItem^.CountVertices);
    result:=true;
   end else begin
@@ -33945,7 +34055,7 @@ begin
  end;
 end;
 
-function TpvScene3D.AddSolidTriangle(const aInFlightFrameIndex:TpvSizeInt;const aPosition0,aPosition1,aPosition2:TpvVector3;const aColor:TpvVector4):boolean;
+function TpvScene3D.AddSolidTriangle(const aInFlightFrameIndex:TpvSizeInt;const aPosition0,aPosition1,aPosition2:TpvVector3;const aColor:TpvVector4;const aPosition0Offset,aPosition1Offset,aPosition2Offset:TpvVector2):boolean;
 var Vertex:TpvScene3D.PSolidPrimitiveVertex;
     VertexItems:TpvScene3D.TSolidPrimitiveVertexDynamicArray;
     BatchItem:TpvScene3D.PSolidPrimitiveBatchItem;
@@ -33956,7 +34066,7 @@ begin
  if assigned(VertexItems) and assigned(BatchItems) and ((VertexItems.Count+2)<MaxSolidPrimitiveVertices) then begin
   if BatchItems.Count>0 then begin
    BatchItem:=@BatchItems.ItemArray[BatchItems.Count-1];
-   if (BatchItem^.Type_<>TSolidPrimitiveType.Triangle) or
+   if (BatchItem^.PrimitiveTopologyType<>TSolidPrimitiveTopologyType.Triangle) or
       ((BatchItem^.VertexOffset+BatchItem^.CountVertices)<>VertexItems.Count) then begin
     BatchItem:=nil;
    end;
@@ -33965,7 +34075,7 @@ begin
   end;
   if (not assigned(BatchItem)) and (BatchItems.Count<MaxSolidPrimitiveBatchItems) then begin
    BatchItem:=pointer(BatchItems.AddNew);
-   BatchItem^.Type_:=TSolidPrimitiveType.Triangle;
+   BatchItem^.PrimitiveTopologyType:=TSolidPrimitiveTopologyType.Triangle;
    BatchItem^.LineWidthOrPointSize:=0.0;
    BatchItem^.VertexOffset:=VertexItems.Count;
    BatchItem^.CountVertices:=0;
@@ -33973,24 +34083,30 @@ begin
   if assigned(BatchItem) and ((VertexItems.Count+2)<MaxSolidPrimitiveVertices) then begin
    Vertex:=pointer(VertexItems.AddNew);
    Vertex^.Position:=aPosition0;
+   Vertex^.PointSize:=0.0;
    Vertex^.Color.x:=aColor.x;
    Vertex^.Color.y:=aColor.y;
    Vertex^.Color.z:=aColor.z;
    Vertex^.Color.w:=aColor.w;
+   Vertex^.Offset:=aPosition0Offset;
    inc(BatchItem^.CountVertices);
    Vertex:=pointer(VertexItems.AddNew);
    Vertex^.Position:=aPosition1;
+   Vertex^.PointSize:=0.0;
    Vertex^.Color.x:=aColor.x;
    Vertex^.Color.y:=aColor.y;
    Vertex^.Color.z:=aColor.z;
    Vertex^.Color.w:=aColor.w;
+   Vertex^.Offset:=aPosition1Offset;
    inc(BatchItem^.CountVertices);
    Vertex:=pointer(VertexItems.AddNew);
    Vertex^.Position:=aPosition2;
+   Vertex^.PointSize:=0.0;
    Vertex^.Color.x:=aColor.x;
    Vertex^.Color.y:=aColor.y;
    Vertex^.Color.z:=aColor.z;
    Vertex^.Color.w:=aColor.w;
+   Vertex^.Offset:=aPosition2Offset;
    inc(BatchItem^.CountVertices);
    result:=true;
   end else begin

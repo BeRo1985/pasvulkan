@@ -335,6 +335,9 @@ compileshaderarguments=(
   "-V debug_primitive.frag -o ${tempPath}/debug_primitive_frag.spv"
   "-V debug_primitive.frag -DVELOCITY -o ${tempPath}/debug_primitive_velocity_frag.spv"
 
+  "-V solid_primitive.vert -o ${tempPath}/solid_primitive_vert.spv"
+  "-V solid_primitive.frag -o ${tempPath}/solid_primitive_frag.spv"
+
   "-V particle.vert -o ${tempPath}/particle_vert.spv"
   "-V particle.vert -DVOXELIZATION -o ${tempPath}/particle_voxelization_vert.spv"
   "-V particle.vert -DRAYTRACING -o ${tempPath}/particle_raytracing_vert.spv"
