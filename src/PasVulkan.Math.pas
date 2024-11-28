@@ -996,6 +996,9 @@ type PpvScalar=^TpvScalar;
         5:(RawVectors:array[0..3] of TpvVector4);
      end;
 
+     TpvMatrix4x4Array=array[0..65535] of TpvMatrix4x4;
+     PpvMatrix4x4Array=^TpvMatrix4x4Array;
+
      TpvMatrix4x4DynamicArray=array of TpvMatrix4x4;
 
      // Dual quaternion with uniform scaling support

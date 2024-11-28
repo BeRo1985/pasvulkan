@@ -335,6 +335,7 @@ compileshaderarguments=(
   "-V debug_primitive.frag -o ${tempPath}/debug_primitive_frag.spv"
   "-V debug_primitive.frag -DVELOCITY -o ${tempPath}/debug_primitive_velocity_frag.spv"
 
+  "-V solid_primitive.comp -o ${tempPath}/solid_primitive_comp.spv"
   "-V solid_primitive.vert -o ${tempPath}/solid_primitive_vert.spv"
   "-V solid_primitive.frag -o ${tempPath}/solid_primitive_frag.spv"
 
