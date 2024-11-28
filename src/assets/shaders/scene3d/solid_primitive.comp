@@ -129,7 +129,7 @@ void main(){
 
             visible = visible || all(greaterThanEqual(centerClip.xyz, vec3(-centerClip.w)));
 
-            vec2 centerScreen = clipSpaceToScreenSpace(centerClip.xy / centerClip.w) + centerOffset;
+            vec2 centerScreen = clipSpaceToScreenSpace((centerClip.xy / centerClip.w) + centerOffset);
 
             aabb.xy = min(aabb.xy, centerScreen);
             aabb.zw = max(aabb.zw, centerScreen);
@@ -173,8 +173,8 @@ void main(){
             visible = visible || (all(greaterThanEqual(lineStartClip.xyz, vec3(-lineStartClip.w))) ||
                                   all(greaterThanEqual(lineEndClip.xyz, vec3(-lineEndClip.w))));
 
-            vec2 lineStartScreen = clipSpaceToScreenSpace(lineStartClip.xy / lineStartClip.w) + lineStartOffset;
-            vec2 lineEndScreen = clipSpaceToScreenSpace(lineEndClip.xy / lineEndClip.w) + lineEndOffset;
+            vec2 lineStartScreen = clipSpaceToScreenSpace((lineStartClip.xy / lineStartClip.w) + lineStartOffset);
+            vec2 lineEndScreen = clipSpaceToScreenSpace((lineEndClip.xy / lineEndClip.w) + lineEndOffset);
 
             aabb.xy = min(aabb.xy, lineStartScreen);
             aabb.zw = max(aabb.zw, lineStartScreen);
@@ -228,9 +228,9 @@ void main(){
                                   all(greaterThanEqual(triangleVertex1Clip.xyz, vec3(-triangleVertex1Clip.w))) || 
                                   all(greaterThanEqual(triangleVertex2Clip.xyz, vec3(-triangleVertex2Clip.w))));
 
-            vec2 triangleVertex0Screen = clipSpaceToScreenSpace(triangleVertex0Clip.xy / triangleVertex0Clip.w) + triangleVertex0Offset;
-            vec2 triangleVertex1Screen = clipSpaceToScreenSpace(triangleVertex1Clip.xy / triangleVertex1Clip.w) + triangleVertex1Offset;
-            vec2 triangleVertex2Screen = clipSpaceToScreenSpace(triangleVertex2Clip.xy / triangleVertex2Clip.w) + triangleVertex2Offset;
+            vec2 triangleVertex0Screen = clipSpaceToScreenSpace((triangleVertex0Clip.xy / triangleVertex0Clip.w) + triangleVertex0Offset);
+            vec2 triangleVertex1Screen = clipSpaceToScreenSpace((triangleVertex1Clip.xy / triangleVertex1Clip.w) + triangleVertex1Offset);
+            vec2 triangleVertex2Screen = clipSpaceToScreenSpace((triangleVertex2Clip.xy / triangleVertex2Clip.w) + triangleVertex2Offset);
 
             aabb.xy = min(aabb.xy, triangleVertex0Screen);
             aabb.zw = max(aabb.zw, triangleVertex0Screen);
@@ -285,9 +285,9 @@ void main(){
                                   all(greaterThanEqual(triangleVertex1Clip.xyz, vec3(-triangleVertex1Clip.w))) || 
                                   all(greaterThanEqual(triangleVertex2Clip.xyz, vec3(-triangleVertex2Clip.w))));
 
-            vec2 triangleVertex0Screen = clipSpaceToScreenSpace(triangleVertex0Clip.xy / triangleVertex0Clip.w) + triangleVertex0Offset;
-            vec2 triangleVertex1Screen = clipSpaceToScreenSpace(triangleVertex1Clip.xy / triangleVertex1Clip.w) + triangleVertex1Offset;
-            vec2 triangleVertex2Screen = clipSpaceToScreenSpace(triangleVertex2Clip.xy / triangleVertex2Clip.w) + triangleVertex2Offset;
+            vec2 triangleVertex0Screen = clipSpaceToScreenSpace((triangleVertex0Clip.xy / triangleVertex0Clip.w) + triangleVertex0Offset);
+            vec2 triangleVertex1Screen = clipSpaceToScreenSpace((triangleVertex1Clip.xy / triangleVertex1Clip.w) + triangleVertex1Offset);
+            vec2 triangleVertex2Screen = clipSpaceToScreenSpace((triangleVertex2Clip.xy / triangleVertex2Clip.w) + triangleVertex2Offset);
 
             aabb.xy = min(aabb.xy, triangleVertex0Screen);
             aabb.zw = max(aabb.zw, triangleVertex0Screen);
@@ -330,7 +330,7 @@ void main(){
           // Center of the point (or circle) 
           vec2 center2D = uintBitsToFloat(primitive.position0.xy);
           vec2 centerOffset = uintBitsToFloat(primitive.position.wz);
-          vec2 centerScreen = clipSpaceToScreenSpace(center2D.xy) + centerOffset;
+          vec2 centerScreen = clipSpaceToScreenSpace(center2D.xy + centerOffset);
           aabb.xy = min(aabb.xy, centerScreen);
           aabb.zw = max(aabb.zw, centerScreen);
 
@@ -358,8 +358,8 @@ void main(){
           vec2 lineEnd2D = uintBitsToFloat(primitive.position1.xy);
           vec2 lineEndOffset = uintBitsToFloat(primitive.offset1Offset2.xy);
 
-          vec2 lineStartScreen = clipSpaceToScreenSpace(lineStart2D) + lineStartOffset;
-          vec2 lineEndScreen = clipSpaceToScreenSpace(lineEnd2D) + lineEndOffset;
+          vec2 lineStartScreen = clipSpaceToScreenSpace(lineStart2D + lineStartOffset);
+          vec2 lineEndScreen = clipSpaceToScreenSpace(lineEnd2D + lineEndOffset);
 
           aabb.xy = min(aabb.xy, lineStartScreen);
           aabb.zw = max(aabb.zw, lineStartScreen);
@@ -395,9 +395,9 @@ void main(){
           vec2 triangleVertex22D = uintBitsToFloat(primitive.position2.xy);
           vec2 triangleVertex2Offset = uintBitsToFloat(primitive.offset1Offset2.zw);
 
-          vec2 triangleVertex0Screen = clipSpaceToScreenSpace(triangleVertex02D.xy) + triangleVertex0Offset;
-          vec2 triangleVertex1Screen = clipSpaceToScreenSpace(triangleVertex12D.xy) + triangleVertex1Offset;
-          vec2 triangleVertex2Screen = clipSpaceToScreenSpace(triangleVertex22D.xy) + triangleVertex2Offset;
+          vec2 triangleVertex0Screen = clipSpaceToScreenSpace(triangleVertex02D.xy + triangleVertex0Offset);
+          vec2 triangleVertex1Screen = clipSpaceToScreenSpace(triangleVertex12D.xy + triangleVertex1Offset);
+          vec2 triangleVertex2Screen = clipSpaceToScreenSpace(triangleVertex22D.xy + triangleVertex2Offset);
 
           aabb.xy = min(aabb.xy, triangleVertex0Screen);
           aabb.zw = max(aabb.zw, triangleVertex0Screen);
@@ -434,9 +434,9 @@ void main(){
           vec2 triangleVertex22D = uintBitsToFloat(primitive.position2.xy);
           vec2 triangleVertex2Offset = uintBitsToFloat(primitive.offset1Offset2.zw);
 
-          vec2 triangleVertex0Screen = clipSpaceToScreenSpace(triangleVertex02D.xy) + triangleVertex0Offset;
-          vec2 triangleVertex1Screen = clipSpaceToScreenSpace(triangleVertex12D.xy) + triangleVertex1Offset;
-          vec2 triangleVertex2Screen = clipSpaceToScreenSpace(triangleVertex22D.xy) + triangleVertex2Offset;
+          vec2 triangleVertex0Screen = clipSpaceToScreenSpace(triangleVertex02D.xy + triangleVertex0Offset);
+          vec2 triangleVertex1Screen = clipSpaceToScreenSpace(triangleVertex12D.xy + triangleVertex1Offset);
+          vec2 triangleVertex2Screen = clipSpaceToScreenSpace(triangleVertex22D.xy + triangleVertex2Offset);
 
           aabb.xy = min(aabb.xy, triangleVertex0Screen);
           aabb.zw = max(aabb.zw, triangleVertex0Screen);

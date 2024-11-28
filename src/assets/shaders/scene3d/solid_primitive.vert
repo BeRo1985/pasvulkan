@@ -87,12 +87,12 @@ void main() {
 
         // Center of the point
         vec4 position0 = viewProjectionMatrix * vec4(inPosition0, 1.0);
-        outPosition0 = clipSpaceToScreenSpace(position0.xy / position0.w) + inOffset0;
+        outPosition0 = clipSpaceToScreenSpace((position0.xy / position0.w) + inOffset0);
 
       }else{
 
         // Center of the point
-        outPosition0 = clipSpaceToScreenSpace(inPosition0.xy) + inOffset0;
+        outPosition0 = clipSpaceToScreenSpace(inPosition0.xy + inOffset0);
 
       }
 
@@ -111,19 +111,19 @@ void main() {
 
         // Line start
         vec4 position0 = viewProjectionMatrix * vec4(inPosition0, 1.0);
-        outPosition0 = clipSpaceToScreenSpace(position0.xy / position0.w) + inOffset0;
+        outPosition0 = clipSpaceToScreenSpace((position0.xy / position0.w) + inOffset0);
 
         // Line end
         vec4 position1 = viewProjectionMatrix * vec4(inPosition1, 1.0);
-        outPosition1 = clipSpaceToScreenSpace(position1.xy / position1.w) + inOffset1;
+        outPosition1 = clipSpaceToScreenSpace((position1.xy / position1.w) + inOffset1);
 
       }else{ 
 
         // Line start
-        outPosition0 = clipSpaceToScreenSpace(inPosition0.xy) + inOffset0;
+        outPosition0 = clipSpaceToScreenSpace(inPosition0.xy + inOffset0);
 
         // Line end
-        outPosition1 = clipSpaceToScreenSpace(inPosition1.xy) + inOffset1;
+        outPosition1 = clipSpaceToScreenSpace(inPosition1.xy + inOffset1);
 
       }
 
@@ -140,26 +140,26 @@ void main() {
 
         // Triangle vertex 0
         vec4 position0 = viewProjectionMatrix * vec4(inPosition0, 1.0);
-        outPosition0 = clipSpaceToScreenSpace(position0.xy / position0.w) + inOffset0;
+        outPosition0 = clipSpaceToScreenSpace((position0.xy / position0.w) + inOffset0);
 
         // Triangle vertex 1
         vec4 position1 = viewProjectionMatrix * vec4(inPosition1, 1.0);
-        outPosition1 = clipSpaceToScreenSpace(position1.xy / position1.w) + inOffset1;
+        outPosition1 = clipSpaceToScreenSpace((position1.xy / position1.w) + inOffset1);
 
         // Triangle vertex 2      
         vec4 position2 = viewProjectionMatrix * vec4(inPosition2, 1.0);
-        outPosition2 = clipSpaceToScreenSpace(position2.xy / position2.w) + inOffset2;
+        outPosition2 = clipSpaceToScreenSpace((position2.xy / position2.w) + inOffset2);
 
       }else{
 
         // Triangle vertex 0
-        outPosition0 = clipSpaceToScreenSpace(inPosition0.xy) + inOffset0;
+        outPosition0 = clipSpaceToScreenSpace(inPosition0.xy + inOffset0);
 
         // Triangle vertex 1
-        outPosition1 = clipSpaceToScreenSpace(inPosition1.xy) + inOffset1;
+        outPosition1 = clipSpaceToScreenSpace(inPosition1.xy + inOffset1);
 
         // Triangle vertex 2
-        outPosition2 = clipSpaceToScreenSpace(inPosition2.xy) + inOffset2;
+        outPosition2 = clipSpaceToScreenSpace(inPosition2.xy + inOffset2);
 
       }
 
