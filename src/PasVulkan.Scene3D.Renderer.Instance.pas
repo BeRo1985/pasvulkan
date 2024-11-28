@@ -107,6 +107,9 @@ type { TpvScene3DRendererInstance }
                                                           GlobalIlluminationRadiantHintVolumeSize)*
                                                          GlobalIlluminationRadiantHintVolumeSize;
              MaxMultiIndirectDrawCalls=65536; //1048576; // as worst case
+             MaxSolidPrimitives=1 shl 20;
+             MaxSolidPrimitiveVertices=MaxSolidPrimitives*4;
+             MaxSolidPrimitiveIndices=MaxSolidPrimitives*6;
        type { TInFlightFrameState }
             TInFlightFrameState=record
 
@@ -432,6 +435,50 @@ type { TpvScene3DRendererInstance }
             TViews=array[0..MaxInFlightFrames-1] of TpvScene3D.TViews;
             TPerInFlightFrameVulkanDescriptorSets=array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
             TColorGradingSettingUniformBuffers=array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
+            { TSolidPrimitiveVertex }
+            TSolidPrimitiveVertex=packed record
+             public
+              const PrimitiveTopologyPoint=0;
+                    PrimitiveTopologyLine=1;
+                    PrimitiveTopologyTriangle=2;
+                    PrimitiveTopologyTriangleWireframe=3;
+             public
+              // uvec4-wise structure ordering so that the shaders can access it uvec4-wise
+              case boolean of
+               false:(
+                Position:TpvVector2;                  //   8    8
+                Offset0:TpvVector2;                   // + 8 = 16
+                Position0:TpvVector3;                 // +12 = 28
+                PrimitiveTopology:TpvUInt32;          // + 4 = 32
+                Position1:TpvVector3;                 // +12 = 44
+                LineThicknessorPointSize:TpvFloat;    // + 4 = 48
+                Position2:TpvVector3;                 // +12 = 60
+                Unused:TpvUInt32;                     // + 4 = 64
+                Offset1:TpvVector2;                   // + 8 = 72
+                Offset2:TpvVector2;                   // + 8 = 80
+                Color:TpvVector4;                     // +16 = 96
+               );                                     //  ==   ==
+               true:(                                 //  96   96 per vertex
+                Padding:array[0..95] of TpvUInt8;
+               );
+            end;
+            PSolidPrimitiveVertex=^TSolidPrimitiveVertex;
+            TSolidPrimitiveVertices=array of TSolidPrimitiveVertex;
+            TSolidPrimitiveVertexDynamicArray=class(TpvDynamicArrayList<TSolidPrimitiveVertex>)
+            end;
+            TSolidPrimitiveVertexDynamicArrays=array[0..MaxInFlightFrames-1] of TSolidPrimitiveVertexDynamicArray;
+            // For solid primitives, the primitive structure is just the same as the vertex structure for simplicity
+            TSolidPrimitivePrimitive=TSolidPrimitiveVertex;
+            PSolidPrimitivePrimitive=^TSolidPrimitivePrimitive;
+            TSolidPrimitivePrimitives=TSolidPrimitiveVertices;
+            TSolidPrimitivePrimitiveDynamicArray=TSolidPrimitiveVertexDynamicArray;
+            TSolidPrimitivePrimitiveDynamicArrays=TSolidPrimitiveVertexDynamicArrays;
+            TSolidPrimitiveIndex=TpvUInt32;
+            PSolidPrimitiveIndex=^TSolidPrimitiveIndex;
+            TSolidPrimitiveIndices=array of TSolidPrimitiveIndex;
+            TSolidPrimitiveIndexDynamicArray=class(TpvDynamicArrayList<TSolidPrimitiveIndex>)
+            end;
+            TSolidPrimitiveIndexDynamicArrays=array[0..MaxInFlightFrames-1] of TSolidPrimitiveIndexDynamicArray;
       private
        fScene3D:TpvScene3D;
        fID:TpvUInt32;
@@ -640,6 +687,8 @@ type { TpvScene3DRendererInstance }
        fPointerToPerInFlightFrameColorGradingSettings:PpvScene3DRendererInstanceColorGradingSettingsArray;
        fColorGradingSettingUniformBuffers:TColorGradingSettingUniformBuffers;
       private
+       fSolidPrimitivePrimitiveDynamicArrays:TSolidPrimitivePrimitiveDynamicArrays;
+      private
        function GetPixelAmountFactor:TpvDouble;
        procedure SetPixelAmountFactor(const aPixelAmountFactor:TpvDouble);
       private
@@ -667,6 +716,13 @@ type { TpvScene3DRendererInstance }
        procedure ReleasePersistentResources;
        procedure AcquireVolatileResources;
        procedure ReleaseVolatileResources;
+       procedure ClearSolid(const aInFlightFrameIndex:TpvSizeInt);
+       function AddSolidPoint2D(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector2;const aColor:TpvVector4;const aSize:TpvScalar;const aPositionOffset:TpvVector2):Boolean;
+       function AddSolidLine2D(const aInFlightFrameIndex:TpvSizeInt;const aStartPosition,aEndPosition:TpvVector2;const aColor:TpvVector4;const aSize:TpvScalar;const aStartPositionOffset,aEndPositionOffset:TpvVector2):Boolean;
+       function AddSolidTriangle2D(const aInFlightFrameIndex:TpvSizeInt;const aPosition0,aPosition1,aPosition2:TpvVector2;const aColor:TpvVector4;const aPosition0Offset,aPosition1Offset,aPosition2Offset:TpvVector2;const aLineWidth:TpvScalar=0.0):Boolean;
+       function AddSolidPoint3D(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aColor:TpvVector4;const aSize:TpvScalar;const aPositionOffset:TpvVector2):Boolean;
+       function AddSolidLine3D(const aInFlightFrameIndex:TpvSizeInt;const aStartPosition,aEndPosition:TpvVector3;const aColor:TpvVector4;const aSize:TpvScalar;const aStartPositionOffset,aEndPositionOffset:TpvVector2):Boolean;
+       function AddSolidTriangle3D(const aInFlightFrameIndex:TpvSizeInt;const aPosition0,aPosition1,aPosition2:TpvVector3;const aColor:TpvVector4;const aPosition0Offset,aPosition1Offset,aPosition2Offset:TpvVector2;const aLineWidth:TpvScalar=0.0):Boolean;
        procedure Update(const aInFlightFrameIndex:TpvInt32;const aFrameCounter:TpvInt64);
        procedure ResetFrame(const aInFlightFrameIndex:TpvInt32);
        function AddView(const aInFlightFrameIndex:TpvInt32;const aView:TpvScene3D.TView):TpvInt32;
@@ -1707,6 +1763,10 @@ begin
  fLuminanceFactor:=1.0;
  fLuminanceExponent:=1.0;
 
+ for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
+  fSolidPrimitivePrimitiveDynamicArrays[InFlightFrameIndex]:=TSolidPrimitivePrimitiveDynamicArray.Create;
+ end;
+
  fFrameGraph:=TpvFrameGraph.Create(Renderer.VulkanDevice,Renderer.CountInFlightFrames);
 
  fFrameGraph.CanDoParallelProcessing:=false;
@@ -1989,6 +2049,10 @@ var InFlightFrameIndex,CascadeIndex,ImageIndex:TpvSizeInt;
 begin
 
  FreeAndNil(fFrameGraph);
+
+ for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
+  FreeAndNil(fSolidPrimitivePrimitiveDynamicArrays[InFlightFrameIndex]);
+ end;
 
  for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
   fViews[InFlightFrameIndex].Finalize;
@@ -5278,6 +5342,145 @@ begin
 
  end;
 
+end;
+
+procedure TpvScene3DRendererInstance.ClearSolid(const aInFlightFrameIndex:TpvSizeInt);
+begin
+ fSolidPrimitivePrimitiveDynamicArrays[aInFlightFrameIndex].ClearNoFree;
+end;
+
+function TpvScene3DRendererInstance.AddSolidPoint2D(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector2;const aColor:TpvVector4;const aSize:TpvScalar;const aPositionOffset:TpvVector2):Boolean;
+var Primitive:PSolidPrimitivePrimitive;
+    PrimitiveItems:TSolidPrimitivePrimitiveDynamicArray;
+begin
+ PrimitiveItems:=fSolidPrimitivePrimitiveDynamicArrays[aInFlightFrameIndex];
+ if assigned(PrimitiveItems) and (PrimitiveItems.Count<MaxSolidPrimitives) then begin
+  Primitive:=pointer(PrimitiveItems.AddNew);
+  Primitive^.Position:=TpvVector2.Null;
+  Primitive^.Position0:=TpvVector3.InlineableCreate(aPosition,0.0);
+  Primitive^.Offset0:=aPositionOffset;
+  Primitive^.Color:=aColor;
+  Primitive^.PrimitiveTopology:=TSolidPrimitivePrimitive.PrimitiveTopologyPoint or 4;
+  Primitive^.LineThicknessOrPointSize:=aSize;
+  result:=true;
+ end else begin
+  result:=false;
+ end;
+end;
+
+function TpvScene3DRendererInstance.AddSolidLine2D(const aInFlightFrameIndex:TpvSizeInt;const aStartPosition,aEndPosition:TpvVector2;const aColor:TpvVector4;const aSize:TpvScalar;const aStartPositionOffset,aEndPositionOffset:TpvVector2):Boolean;
+var Primitive:PSolidPrimitivePrimitive;
+    PrimitiveItems:TSolidPrimitivePrimitiveDynamicArray;
+begin
+ PrimitiveItems:=fSolidPrimitivePrimitiveDynamicArrays[aInFlightFrameIndex];
+ if assigned(PrimitiveItems) and (PrimitiveItems.Count<MaxSolidPrimitives) then begin
+  Primitive:=pointer(PrimitiveItems.AddNew);
+  Primitive^.Position:=TpvVector2.Null;
+  Primitive^.Position0:=TpvVector3.InlineableCreate(aStartPosition,0.0);
+  Primitive^.Offset0:=aStartPositionOffset;
+  Primitive^.Position1:=TpvVector3.InlineableCreate(aEndPosition,0.0);
+  Primitive^.Offset1:=aEndPositionOffset;
+  Primitive^.Color:=aColor;
+  Primitive^.PrimitiveTopology:=TSolidPrimitivePrimitive.PrimitiveTopologyLine or 4;
+  Primitive^.LineThicknessOrPointSize:=aSize;
+  result:=true;
+ end else begin
+  result:=false;
+ end;
+end;
+
+function TpvScene3DRendererInstance.AddSolidTriangle2D(const aInFlightFrameIndex:TpvSizeInt;const aPosition0,aPosition1,aPosition2:TpvVector2;const aColor:TpvVector4;const aPosition0Offset,aPosition1Offset,aPosition2Offset:TpvVector2;const aLineWidth:TpvScalar=0.0):Boolean;
+var Primitive:PSolidPrimitivePrimitive;
+    PrimitiveItems:TSolidPrimitivePrimitiveDynamicArray;
+begin
+ PrimitiveItems:=fSolidPrimitivePrimitiveDynamicArrays[aInFlightFrameIndex];
+ if assigned(PrimitiveItems) and (PrimitiveItems.Count<MaxSolidPrimitives) then begin
+  Primitive:=pointer(PrimitiveItems.AddNew);
+  Primitive^.Position:=TpvVector2.Null;
+  Primitive^.Position0:=TpvVector3.InlineableCreate(aPosition0,0.0);
+  Primitive^.Offset0:=aPosition0Offset;
+  Primitive^.Position1:=TpvVector3.InlineableCreate(aPosition1,0.0);
+  Primitive^.Offset1:=aPosition1Offset;
+  Primitive^.Position2:=TpvVector3.InlineableCreate(aPosition2,0.0);
+  Primitive^.Offset2:=aPosition2Offset;
+  Primitive^.Color:=aColor;
+  if aLineWidth>0.0 then begin
+   Primitive^.PrimitiveTopology:=TSolidPrimitivePrimitive.PrimitiveTopologyTriangleWireframe or 4;
+  end else begin
+   Primitive^.PrimitiveTopology:=TSolidPrimitivePrimitive.PrimitiveTopologyTriangle or 4;
+  end;
+  Primitive^.LineThicknessOrPointSize:=aLineWidth;
+  result:=true;
+ end else begin
+  result:=false;
+ end;
+end;
+
+function TpvScene3DRendererInstance.AddSolidPoint3D(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aColor:TpvVector4;const aSize:TpvScalar;const aPositionOffset:TpvVector2):Boolean;
+var Primitive:PSolidPrimitivePrimitive;
+    PrimitiveItems:TSolidPrimitivePrimitiveDynamicArray;
+begin
+ PrimitiveItems:=fSolidPrimitivePrimitiveDynamicArrays[aInFlightFrameIndex];
+ if assigned(PrimitiveItems) and (PrimitiveItems.Count<MaxSolidPrimitives) then begin
+  Primitive:=pointer(PrimitiveItems.AddNew);
+  Primitive^.Position:=TpvVector2.Null;
+  Primitive^.Position0:=aPosition;
+  Primitive^.Offset0:=aPositionOffset;
+  Primitive^.Color:=aColor;
+  Primitive^.PrimitiveTopology:=TSolidPrimitivePrimitive.PrimitiveTopologyPoint;
+  Primitive^.LineThicknessOrPointSize:=aSize;
+  result:=true;
+ end else begin
+  result:=false;
+ end;
+end;
+
+function TpvScene3DRendererInstance.AddSolidLine3D(const aInFlightFrameIndex:TpvSizeInt;const aStartPosition,aEndPosition:TpvVector3;const aColor:TpvVector4;const aSize:TpvScalar;const aStartPositionOffset,aEndPositionOffset:TpvVector2):Boolean;
+var Primitive:PSolidPrimitivePrimitive;
+    PrimitiveItems:TSolidPrimitivePrimitiveDynamicArray;
+begin
+ PrimitiveItems:=fSolidPrimitivePrimitiveDynamicArrays[aInFlightFrameIndex];
+ if assigned(PrimitiveItems) and (PrimitiveItems.Count<MaxSolidPrimitives) then begin
+  Primitive:=pointer(PrimitiveItems.AddNew);
+  Primitive^.Position:=TpvVector2.Null;
+  Primitive^.Position0:=aStartPosition;
+  Primitive^.Offset0:=aStartPositionOffset;
+  Primitive^.Position1:=aEndPosition;
+  Primitive^.Offset1:=aEndPositionOffset;
+  Primitive^.Color:=aColor;
+  Primitive^.PrimitiveTopology:=TSolidPrimitivePrimitive.PrimitiveTopologyLine;
+  Primitive^.LineThicknessOrPointSize:=aSize;
+  result:=true;
+ end else begin
+  result:=false;
+ end;
+end;
+
+function TpvScene3DRendererInstance.AddSolidTriangle3D(const aInFlightFrameIndex:TpvSizeInt;const aPosition0,aPosition1,aPosition2:TpvVector3;const aColor:TpvVector4;const aPosition0Offset,aPosition1Offset,aPosition2Offset:TpvVector2;const aLineWidth:TpvScalar=0.0):Boolean;
+var Primitive:PSolidPrimitivePrimitive;
+    PrimitiveItems:TSolidPrimitivePrimitiveDynamicArray;
+begin
+ PrimitiveItems:=fSolidPrimitivePrimitiveDynamicArrays[aInFlightFrameIndex];
+ if assigned(PrimitiveItems) and (PrimitiveItems.Count<MaxSolidPrimitives) then begin
+  Primitive:=pointer(PrimitiveItems.AddNew);
+  Primitive^.Position:=TpvVector2.Null;
+  Primitive^.Position0:=aPosition0;
+  Primitive^.Offset0:=aPosition0Offset;
+  Primitive^.Position1:=aPosition1;
+  Primitive^.Offset1:=aPosition1Offset;
+  Primitive^.Position2:=aPosition2;
+  Primitive^.Offset2:=aPosition2Offset;
+  Primitive^.Color:=aColor;
+  if aLineWidth>0.0 then begin
+   Primitive^.PrimitiveTopology:=TSolidPrimitivePrimitive.PrimitiveTopologyTriangleWireframe;
+  end else begin
+   Primitive^.PrimitiveTopology:=TSolidPrimitivePrimitive.PrimitiveTopologyTriangle;
+  end;
+  Primitive^.LineThicknessOrPointSize:=aLineWidth;
+  result:=true;
+ end else begin
+  result:=false;
+ end;
 end;
 
 procedure TpvScene3DRendererInstance.Update(const aInFlightFrameIndex:TpvInt32;const aFrameCounter:TpvInt64);
