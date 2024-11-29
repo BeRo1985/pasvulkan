@@ -479,6 +479,7 @@ type { TpvScene3DRendererInstance }
             TSolidPrimitiveIndexDynamicArray=class(TpvDynamicArrayList<TSolidPrimitiveIndex>)
             end;
             TSolidPrimitiveIndexDynamicArrays=array[0..MaxInFlightFrames-1] of TSolidPrimitiveIndexDynamicArray;
+            TSolidPrimitiveVulkanBuffers=array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
       private
        fScene3D:TpvScene3D;
        fID:TpvUInt32;
@@ -688,6 +689,10 @@ type { TpvScene3DRendererInstance }
        fColorGradingSettingUniformBuffers:TColorGradingSettingUniformBuffers;
       private
        fSolidPrimitivePrimitiveDynamicArrays:TSolidPrimitivePrimitiveDynamicArrays;
+       fSolidPrimitivePrimitiveBuffers:TSolidPrimitiveVulkanBuffers;
+       fSolidPrimitiveIndirectDrawCommandBuffer:TpvVulkanBuffer;
+       fSolidPrimitiveVertexBuffer:TpvVulkanBuffer;
+       fSolidPrimitiveIndexBuffer:TpvVulkanBuffer;
       private
        function GetPixelAmountFactor:TpvDouble;
        procedure SetPixelAmountFactor(const aPixelAmountFactor:TpvDouble);
@@ -1764,8 +1769,83 @@ begin
  fLuminanceExponent:=1.0;
 
  for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
+
   fSolidPrimitivePrimitiveDynamicArrays[InFlightFrameIndex]:=TSolidPrimitivePrimitiveDynamicArray.Create;
+
+  fSolidPrimitivePrimitiveBuffers[InFlightFrameIndex]:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
+                                                                              SizeOf(TSolidPrimitivePrimitive)*MaxSolidPrimitives,
+                                                                              TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT),
+                                                                              TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                                              [],
+                                                                              0,
+                                                                              TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                                                              0,
+                                                                              0,
+                                                                              0,
+                                                                              0,
+                                                                              0,
+                                                                              0,
+                                                                              [TpvVulkanBufferFlag.PersistentMappedIfPossible],
+                                                                              0,
+                                                                              0,
+                                                                              'fSolidPrimitivePrimitiveBuffers');
+
  end;
+
+ fSolidPrimitiveIndirectDrawCommandBuffer:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
+                                                                  SizeOf(TVkDrawIndexedIndirectCommand)*MaxSolidPrimitives,
+                                                                  TVkBufferUsageFlags(VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
+                                                                  TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                                  [],
+                                                                  0,
+                                                                  TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                                  0,
+                                                                  0,
+                                                                  0,
+                                                                  0,
+                                                                  0,
+                                                                  0,
+                                                                  [],
+                                                                  0,
+                                                                  0,
+                                                                  'fSolidPrimitiveIndirectDrawCommandBuffer');
+
+ fSolidPrimitiveVertexBuffer:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
+                                                     SizeOf(TSolidPrimitiveVertex)*MaxSolidPrimitiveVertices,
+                                                     TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
+                                                     TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                     [],
+                                                     0,
+                                                     TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                     0,
+                                                     0,
+                                                     0,
+                                                     0,
+                                                     0,
+                                                     0,
+                                                     [],
+                                                     0,
+                                                     0,
+                                                     'fSolidPrimitiveVertexBuffers');
+
+ fSolidPrimitiveIndexBuffer:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
+                                                    SizeOf(TpvUInt32)*MaxSolidPrimitiveIndices,
+                                                    TVkBufferUsageFlags(VK_BUFFER_USAGE_INDEX_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
+                                                    TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                    [],
+                                                    0,
+                                                    TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                    0,
+                                                    0,
+                                                    0,
+                                                    0,
+                                                    0,
+                                                    0,
+                                                    [],
+                                                    0,
+                                                    0,
+                                                    'fSolidPrimitiveIndexBuffers');
+
 
  fFrameGraph:=TpvFrameGraph.Create(Renderer.VulkanDevice,Renderer.CountInFlightFrames);
 
@@ -2052,7 +2132,14 @@ begin
 
  for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
   FreeAndNil(fSolidPrimitivePrimitiveDynamicArrays[InFlightFrameIndex]);
+  FreeAndNil(fSolidPrimitivePrimitiveBuffers[InFlightFrameIndex]);
  end;
+
+ FreeAndNil(fSolidPrimitiveIndirectDrawCommandBuffer);
+
+ FreeAndNil(fSolidPrimitiveVertexBuffer);
+
+ FreeAndNil(fSolidPrimitiveIndexBuffer);
 
  for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
   fViews[InFlightFrameIndex].Finalize;
