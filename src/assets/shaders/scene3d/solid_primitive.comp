@@ -526,6 +526,7 @@ void main(){
       // We can't use atomicAdd here because the indices need to be in order to ensure that the rendering order is correct for the primitives,
       // so we generate degenerate indices for invisible primitives to keep the indices in sync with the vertices but not render the primitive.      
       uint firstIndex = primitiveIndex * 6u; // Each primitive has 6 indices for a quad of two triangles
+      atomicAdd(destinationDrawIndexedIndirectCommand.drawIndexedIndirectCommand.cmd0.x, 6u); // But increment the index count for the draw command anyway, for the indirect draw call later
       if(visible){
 
         destinationIndices.indices[firstIndex] = firstVertex;
