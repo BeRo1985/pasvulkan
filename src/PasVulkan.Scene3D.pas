@@ -122,9 +122,6 @@ type EpvScene3D=class(Exception);
        const MaxRendererInstances=32;
              MaxVisibleLights=65536;
              MaxDebugPrimitiveVertices=1 shl 20;
-             MaxSolidPrimitives=1 shl 20;
-             MaxSolidPrimitiveVertices=MaxSolidPrimitives*4;
-             MaxSolidPrimitiveIndices=MaxSolidPrimitives*6;
              MaxParticles=65536; // <= Must be power of two
              ParticleIndexMask=MaxParticles-1;
              MaxParticleVertices=MaxParticles*3;
@@ -524,52 +521,6 @@ type EpvScene3D=class(Exception);
             TDebugPrimitiveVertexDynamicArray=class(TpvDynamicArrayList<TDebugPrimitiveVertex>)
             end;
             TDebugPrimitiveVertexDynamicArrays=array[0..MaxInFlightFrames-1] of TDebugPrimitiveVertexDynamicArray;
-            { TSolidPrimitiveVertex }
-            TSolidPrimitiveVertex=packed record
-             public
-              const PrimitiveTopologyPoint=0;
-                    PrimitiveTopologyLine=1;
-                    PrimitiveTopologyTriangle=2;
-                    PrimitiveTopologyTriangleWireframe=3;
-             public
-              constructor Create(const aPosition:TpvVector3;const aColor:TpvVector4);
-             public
-              // uvec4-wise structure ordering so that the shaders can access it uvec4-wise  
-              case boolean of
-               false:(
-                Position:TpvVector2;                  //   8    8
-                Offset0:TpvVector2;                   // + 8 = 16
-                Position0:TpvVector3;                 // +12 = 28
-                PrimitiveTopology:TpvUInt32;          // + 4 = 32
-                Position1:TpvVector3;                 // +12 = 44
-                LineThicknessorPointSize:TpvFloat;    // + 4 = 48
-                Position2:TpvVector3;                 // +12 = 60
-                Unused:TpvUInt32;                     // + 4 = 64
-                Offset1:TpvVector2;                   // + 8 = 72
-                Offset2:TpvVector2;                   // + 8 = 80
-                Color:TpvVector4;                     // +16 = 96 
-               );                                     //  ==   ==
-               true:(                                 //  96   96 per vertex
-                Padding:array[0..95] of TpvUInt8;
-               );
-            end;
-            PSolidPrimitiveVertex=^TSolidPrimitiveVertex;
-            TSolidPrimitiveVertices=array of TSolidPrimitiveVertex;
-            TSolidPrimitiveVertexDynamicArray=class(TpvDynamicArrayList<TSolidPrimitiveVertex>)
-            end;
-            TSolidPrimitiveVertexDynamicArrays=array[0..MaxInFlightFrames-1] of TSolidPrimitiveVertexDynamicArray;
-            // For solid primitives, the primitive structure is just the same as the vertex structure for simplicity
-            TSolidPrimitivePrimitive=TSolidPrimitiveVertex;
-            PSolidPrimitivePrimitive=^TSolidPrimitivePrimitive;
-            TSolidPrimitivePrimitives=TSolidPrimitiveVertices;
-            TSolidPrimitivePrimitiveDynamicArray=TSolidPrimitiveVertexDynamicArray;
-            TSolidPrimitivePrimitiveDynamicArrays=TSolidPrimitiveVertexDynamicArrays;
-            TSolidPrimitiveIndex=TpvUInt32;
-            PSolidPrimitiveIndex=^TSolidPrimitiveIndex;
-            TSolidPrimitiveIndices=array of TSolidPrimitiveIndex;
-            TSolidPrimitiveIndexDynamicArray=class(TpvDynamicArrayList<TSolidPrimitiveIndex>)
-            end;
-            TSolidPrimitiveIndexDynamicArrays=array[0..MaxInFlightFrames-1] of TSolidPrimitiveIndexDynamicArray;
             { TParticle }
             TParticle=record
              LastGeneration:TpvUInt64;
@@ -3663,11 +3614,6 @@ type EpvScene3D=class(Exception);
        fPrimaryShadowMapLightDirections:TInFlightFrameVector3s;
        fDebugPrimitiveVertexDynamicArrays:TpvScene3D.TDebugPrimitiveVertexDynamicArrays;
        fVulkanDebugPrimitiveVertexBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
-       fSolidPrimitiveVertexDynamicArrays:TpvScene3D.TSolidPrimitiveVertexDynamicArrays;
-       fSolidPrimitiveIndexDynamicArrays:TpvScene3D.TSolidPrimitiveIndexDynamicArrays;
-       fSolidPrimitivePrimitiveDynamicArrays:TpvScene3D.TSolidPrimitivePrimitiveDynamicArrays;
-       fVulkanSolidPrimitiveVertexBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
-       fVulkanSolidPrimitiveIndexBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
        fOnNodeFilter:TpvScene3D.TGroup.TInstance.TOnNodeFilter;
        fParticles:TParticles;
        fPointerToParticles:PParticles;
@@ -3894,17 +3840,6 @@ type EpvScene3D=class(Exception);
                                      const aCommandBuffer:TpvVulkanCommandBuffer;
                                      const aPipelineLayout:TpvVulkanPipelineLayout;
                                      const aOnSetRenderPassResources:TpvScene3D.TOnSetRenderPassResources);
-       procedure DrawSolidPrimitives(const aRendererInstance:TObject;
-                                     const aGraphicsPipeline:TpvVulkanGraphicsPipeline;
-                                     const aPreviousInFlightFrameIndex:TpvSizeInt;
-                                     const aInFlightFrameIndex:TpvSizeInt;
-                                     const aRenderPass:TpvScene3DRendererRenderPass;
-                                     const aViewBaseIndex:TpvSizeInt;
-                                     const aCountViews:TpvSizeInt;
-                                     const aFrameIndex:TpvSizeInt;
-                                     const aCommandBuffer:TpvVulkanCommandBuffer;
-                                     const aPipelineLayout:TpvVulkanPipelineLayout;
-                                     const aOnSetRenderPassResources:TpvScene3D.TOnSetRenderPassResources);
        procedure DrawParticles(const aRendererInstance:TObject;
                                const aGraphicsPipeline:TpvVulkanGraphicsPipeline;
                                const aPreviousInFlightFrameIndex:TpvSizeInt;
@@ -3936,7 +3871,6 @@ type EpvScene3D=class(Exception);
                               out aZFar:TpvScalar);
        procedure InitializeGraphicsPipeline(const aPipeline:TpvVulkanGraphicsPipeline;const aWithPreviousPosition:boolean=false);
        procedure InitializeDebugPrimitiveGraphicsPipeline(const aPipeline:TpvVulkanGraphicsPipeline);
-       procedure InitializeSolidPrimitiveGraphicsPipeline(const aPipeline:TpvVulkanGraphicsPipeline);
        procedure InitializeParticleGraphicsPipeline(const aPipeline:TpvVulkanGraphicsPipeline);
        procedure StoreParticleStates;
        procedure UpdateParticleStates(const aDeltaTime:TpvDouble);
@@ -3954,11 +3888,6 @@ type EpvScene3D=class(Exception);
                             const aLifeTime:TpvScalar;
                             const aTextureID:TpvUInt32;
                             const aAdditiveBlending:boolean):TpvSizeInt;
-       procedure ClearSolid(const aInFlightFrameIndex:TpvSizeInt);
-       function AddSolidPoint(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aColor:TpvVector4;const aSize:TpvScalar;const aPositionOffset:TpvVector2):Boolean;
-       function AddSolidLine(const aInFlightFrameIndex:TpvSizeInt;const aStartPosition,aEndPosition:TpvVector3;const aColor:TpvVector4;const aSize:TpvScalar;const aStartPositionOffset,aEndPositionOffset:TpvVector2):Boolean;
-       function AddSolidTriangle(const aInFlightFrameIndex:TpvSizeInt;const aPosition0,aPosition1,aPosition2:TpvVector3;const aColor:TpvVector4;const aPosition0Offset,aPosition1Offset,aPosition2Offset:TpvVector2;const aLineWidth:TpvScalar=0.0):Boolean;
-       procedure FinishSolid(const aInFlightFrameIndex:TpvSizeInt;const aViewProjectionMatrices:PpvMatrix4x4Array;const aCountViewProjectionMatrices:TpvSizeInt);
       public
        function CreateMaterial(const aName:TpvUTF8String):TpvScene3D.TMaterial;
        function CreateGroup(const aName:TpvUTF8String=''):TpvScene3D.TGroup;
@@ -3978,8 +3907,6 @@ type EpvScene3D=class(Exception);
        property PrimaryShadowMapLightDirections:TInFlightFrameVector3s read fPrimaryShadowMapLightDirections;
        property LightBuffers:TpvScene3D.TLightBuffers read fLightBuffers;
        property DebugPrimitiveVertexDynamicArrays:TpvScene3D.TDebugPrimitiveVertexDynamicArrays read fDebugPrimitiveVertexDynamicArrays;
-       property SolidPrimitiveVertexDynamicArrays:TpvScene3D.TSolidPrimitiveVertexDynamicArrays read fSolidPrimitiveVertexDynamicArrays;
-       property SolidPrimitiveIndexDynamicArrays:TpvScene3D.TSolidPrimitiveIndexDynamicArrays read fSolidPrimitiveIndexDynamicArrays;
        property Particles:PParticles read fPointerToParticles;
        property SkyBoxBrightnessFactor:TpvScalar read fSkyBoxBrightnessFactor write fSkyBoxBrightnessFactor;
        property LightIntensityFactor:TpvScalar read fLightIntensityFactor write fLightIntensityFactor;
@@ -5079,16 +5006,6 @@ end;
 constructor TpvScene3D.TDebugPrimitiveVertex.Create(const aPosition:TpvVector3;const aColor:TpvVector4);
 begin
  Position:=aPosition;
- Color.x:=aColor.x;
- Color.y:=aColor.y;
- Color.z:=aColor.z;
- Color.w:=aColor.w;
-end;
-
-{ TpvScene3D.TSolidPrimitiveVertex }
-
-constructor TpvScene3D.TSolidPrimitiveVertex.Create(const aPosition:TpvVector3;const aColor:TpvVector4);
-begin
  Color.x:=aColor.x;
  Color.y:=aColor.y;
  Color.z:=aColor.z;
@@ -27772,9 +27689,6 @@ begin
 
  for Index:=0 to fCountInFlightFrames-1 do begin
   fDebugPrimitiveVertexDynamicArrays[Index]:=TpvScene3D.TDebugPrimitiveVertexDynamicArray.Create;
-  fSolidPrimitiveVertexDynamicArrays[Index]:=TpvScene3D.TSolidPrimitiveVertexDynamicArray.Create;
-  fSolidPrimitiveIndexDynamicArrays[Index]:=TpvScene3D.TSolidPrimitiveIndexDynamicArray.Create;
-  fSolidPrimitivePrimitiveDynamicArrays[Index]:=TpvScene3D.TSolidPrimitivePrimitiveDynamicArray.Create;
  end;
 
  fPointerToParticles:=@fParticles;
@@ -28609,9 +28523,6 @@ begin
 
  for Index:=0 to fCountInFlightFrames-1 do begin
   FreeAndNil(fDebugPrimitiveVertexDynamicArrays[Index]);
-  FreeAndNil(fSolidPrimitiveVertexDynamicArrays[Index]);
-  FreeAndNil(fSolidPrimitiveIndexDynamicArrays[Index]);
-  FreeAndNil(fSolidPrimitivePrimitiveDynamicArrays[Index]);
  end;
 
  FreeAndNil(fImageDescriptorGenerationLock);
@@ -29461,48 +29372,6 @@ begin
           end;
 
           for Index:=0 to fCountInFlightFrames-1 do begin
-           fVulkanSolidPrimitiveVertexBuffers[Index]:=TpvVulkanBuffer.Create(fVulkanDevice,
-                                                                             SizeOf(TpvScene3D.TSolidPrimitiveVertex)*MaxSolidPrimitiveVertices,
-                                                                             TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT) or fAccelerationStructureInputBufferUsageFlags,
-                                                                             TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                                                             [],
-                                                                             TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
-                                                                             TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
-                                                                             0,
-                                                                             0,
-                                                                             0,
-                                                                             0,
-                                                                             0,
-                                                                             0,
-                                                                             [TpvVulkanBufferFlag.PersistentMapped],
-                                                                             0,
-                                                                             pvAllocationGroupIDScene3DDynamic,
-                                                                             'TpvScene3D.fVulkanSolidPrimitiveVertexBuffers['+IntToStr(Index)+']');
-           fVulkanDevice.DebugUtils.SetObjectName(fVulkanSolidPrimitiveVertexBuffers[Index].Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.fVulkanSolidPrimitiveVertexBuffers['+IntToStr(Index)+']');
-          end;
-
-          for Index:=0 to fCountInFlightFrames-1 do begin
-           fVulkanSolidPrimitiveIndexBuffers[Index]:=TpvVulkanBuffer.Create(fVulkanDevice,
-                                                                            SizeOf(TpvScene3D.TSolidPrimitiveIndex)*MaxSolidPrimitiveIndices,
-                                                                            TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_INDEX_BUFFER_BIT) or fAccelerationStructureInputBufferUsageFlags,
-                                                                            TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                                                            [],
-                                                                            TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
-                                                                            TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
-                                                                            0,
-                                                                            0,
-                                                                            0,
-                                                                            0,
-                                                                            0,
-                                                                            0,
-                                                                            [TpvVulkanBufferFlag.PersistentMapped],
-                                                                            0,
-                                                                            pvAllocationGroupIDScene3DDynamic,
-                                                                            'TpvScene3D.fVulkanSolidPrimitiveIndexBuffers['+IntToStr(Index)+']');
-           fVulkanDevice.DebugUtils.SetObjectName(fVulkanSolidPrimitiveIndexBuffers[Index].Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.fVulkanSolidPrimitiveIndexBuffers['+IntToStr(Index)+']');
-          end;
-
-          for Index:=0 to fCountInFlightFrames-1 do begin
            fVulkanParticleVertexBuffers[Index]:=TpvVulkanBuffer.Create(fVulkanDevice,
                                                                        SizeOf(TpvScene3D.TParticleVertex)*MaxParticleVertices,
                                                                        TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT) or fAccelerationStructureInputBufferUsageFlags,
@@ -29649,48 +29518,6 @@ begin
                                                                              pvAllocationGroupIDScene3DDynamic,
                                                                              'TpvScene3D.fVulkanDebugPrimitiveVertexBuffers['+IntToStr(Index)+']');
            fVulkanDevice.DebugUtils.SetObjectName(fVulkanDebugPrimitiveVertexBuffers[Index].Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.fVulkanDebugPrimitiveVertexBuffers['+IntToStr(Index)+']');
-          end;
-
-          for Index:=0 to fCountInFlightFrames-1 do begin
-           fVulkanSolidPrimitiveVertexBuffers[Index]:=TpvVulkanBuffer.Create(fVulkanDevice,
-                                                                             SizeOf(TpvScene3D.TSolidPrimitiveVertex)*MaxSolidPrimitiveVertices,
-                                                                             TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT) or fAccelerationStructureInputBufferUsageFlags,
-                                                                             TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                                                             [],
-                                                                             0,
-                                                                             TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
-                                                                             0,
-                                                                             TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
-                                                                             0,
-                                                                             0,
-                                                                             0,
-                                                                             0,
-                                                                             [],
-                                                                             0,
-                                                                             pvAllocationGroupIDScene3DDynamic,
-                                                                             'TpvScene3D.fVulkanSolidPrimitiveVertexBuffers['+IntToStr(Index)+']');
-           fVulkanDevice.DebugUtils.SetObjectName(fVulkanSolidPrimitiveVertexBuffers[Index].Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.fVulkanSolidPrimitiveVertexBuffers['+IntToStr(Index)+']');
-          end;
-
-          for Index:=0 to fCountInFlightFrames-1 do begin
-           fVulkanSolidPrimitiveIndexBuffers[Index]:=TpvVulkanBuffer.Create(fVulkanDevice,
-                                                                            SizeOf(TpvScene3D.TSolidPrimitiveIndex)*MaxSolidPrimitiveIndices,
-                                                                            TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_INDEX_BUFFER_BIT) or fAccelerationStructureInputBufferUsageFlags,
-                                                                            TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                                                            [],
-                                                                            0,
-                                                                            TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
-                                                                            0,
-                                                                            TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
-                                                                            0,
-                                                                            0,
-                                                                            0,
-                                                                            0,
-                                                                            [],
-                                                                            0,
-                                                                            pvAllocationGroupIDScene3DDynamic,
-                                                                            'TpvScene3D.fVulkanSolidPrimitiveIndexBuffers['+IntToStr(Index)+']');
-           fVulkanDevice.DebugUtils.SetObjectName(fVulkanSolidPrimitiveIndexBuffers[Index].Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.fVulkanSolidPrimitiveIndexBuffers['+IntToStr(Index)+']');
           end;
 
           for Index:=0 to fCountInFlightFrames-1 do begin
@@ -30145,8 +29972,6 @@ begin
 
      for Index:=0 to fCountInFlightFrames-1 do begin
       FreeAndNil(fVulkanDebugPrimitiveVertexBuffers[Index]);
-      FreeAndNil(fVulkanSolidPrimitiveVertexBuffers[Index]);
-      FreeAndNil(fVulkanSolidPrimitiveIndexBuffers[Index]);
       FreeAndNil(fVulkanParticleVertexBuffers[Index]);
      end;
 
@@ -31559,26 +31384,6 @@ begin
                                       fVulkanDebugPrimitiveVertexBuffers[aInFlightFrameIndex],
                                       0,
                                       SizeOf(TpvScene3D.TDebugPrimitiveVertex)*Min(fDebugPrimitiveVertexDynamicArrays[aInFlightFrameIndex].Count,TpvScene3D.MaxDebugPrimitiveVertices));
-  end;
-
-  if fSolidPrimitiveVertexDynamicArrays[aInFlightFrameIndex].Count>0 then begin
-   fVulkanDevice.MemoryStaging.Upload(fVulkanStagingQueue,
-                                      fVulkanStagingCommandBuffer,
-                                      fVulkanStagingFence,
-                                      fSolidPrimitiveVertexDynamicArrays[aInFlightFrameIndex].ItemArray[0],
-                                      fVulkanSolidPrimitiveVertexBuffers[aInFlightFrameIndex],
-                                      0,
-                                      SizeOf(TpvScene3D.TSolidPrimitiveVertex)*Min(fSolidPrimitiveVertexDynamicArrays[aInFlightFrameIndex].Count,TpvScene3D.MaxSolidPrimitiveVertices));
-  end;
-
-  if fSolidPrimitiveIndexDynamicArrays[aInFlightFrameIndex].Count>0 then begin
-   fVulkanDevice.MemoryStaging.Upload(fVulkanStagingQueue,
-                                      fVulkanStagingCommandBuffer,
-                                      fVulkanStagingFence,
-                                      fSolidPrimitiveIndexDynamicArrays[aInFlightFrameIndex].ItemArray[0],
-                                      fVulkanSolidPrimitiveIndexBuffers[aInFlightFrameIndex],
-                                      0,
-                                      SizeOf(TpvScene3D.TSolidPrimitiveIndex)*Min(fSolidPrimitiveIndexDynamicArrays[aInFlightFrameIndex].Count,TpvScene3D.MaxSolidPrimitiveIndices));
   end;
 
   if fCountInFlightFrameParticleVertices[aInFlightFrameIndex]>0 then begin
@@ -33475,82 +33280,6 @@ begin
  end;
 end;
 
-procedure TpvScene3D.DrawSolidPrimitives(const aRendererInstance:TObject;
-                                         const aGraphicsPipeline:TpvVulkanGraphicsPipeline;
-                                         const aPreviousInFlightFrameIndex:TpvSizeInt;
-                                         const aInFlightFrameIndex:TpvSizeInt;
-                                         const aRenderPass:TpvScene3DRendererRenderPass;
-                                         const aViewBaseIndex:TpvSizeInt;
-                                         const aCountViews:TpvSizeInt;
-                                         const aFrameIndex:TpvSizeInt;
-                                         const aCommandBuffer:TpvVulkanCommandBuffer;
-                                         const aPipelineLayout:TpvVulkanPipelineLayout;
-                                         const aOnSetRenderPassResources:TpvScene3D.TOnSetRenderPassResources);
-begin
-end;
-(*const Offsets:TVkDeviceSize=0;
-//var VertexStagePushConstants:TpvScene3D.PMeshStagePushConstants;
-var BatchIndex:TpvSizeInt;
-    BatchItem:PSolidPrimitiveBatchItem;
-    SolidPrimitiveBatchItemDynamicArray:TSolidPrimitiveBatchItemDynamicArray;
-    PrimitiveTopologyType:TSolidPrimitiveTopologyType;
-begin
- SolidPrimitiveBatchItemDynamicArray:=fSolidPrimitiveBatchItemDynamicArrays[aInFlightFrameIndex];
- if (aViewBaseIndex>=0) and (aCountViews>0) and
-    (fSolidPrimitiveVertexDynamicArrays[aInFlightFrameIndex].Count>0) and
-    (fSolidPrimitiveIndexDynamicArrays[aInFlightFrameIndex].Count>0) and
-    (SolidPrimitiveBatchItemDynamicArray.Count>0) then begin
-
-{ VertexStagePushConstants:=@fVertexStagePushConstants[aRenderPass];
-  VertexStagePushConstants^.ViewBaseIndex:=aViewBaseIndex;
-  VertexStagePushConstants^.CountViews:=aCountViews;
-  VertexStagePushConstants^.CountAllViews:=fViews.Count;
-  VertexStagePushConstants^.FrameIndex:=aFrameIndex;
-  VertexStagePushConstants^.Jitter:=TpvVector4.Null;
-
-  fSetGlobalResourcesDone[aRenderPass]:=false;}
-{ SetGlobalResources(aCommandBuffer,aPipelineLayout,aRendererInstance,aRenderPass,aPreviousInFlightFrameIndex,aInFlightFrameIndex);
-
-  if assigned(aOnSetRenderPassResources) then begin
-   aOnSetRenderPassResources(aCommandBuffer,aPipelineLayout,aRendererInstance,aRenderPass,aPreviousInFlightFrameIndex,aInFlightFrameIndex);
-  end;
-
-  aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,aGraphicsPipeline.Handle);
-  aCommandBuffer.CmdBindVertexBuffers(0,1,@fVulkanDebugPrimitiveVertexBuffers[aInFlightFrameIndex].Handle,@Offsets);
-  aCommandBuffer.CmdDraw(Min(fDebugPrimitiveVertexDynamicArrays[aInFlightFrameIndex].Count,TpvScene3D.MaxDebugPrimitiveVertices),1,0,0);}
-
-//  PrimitiveTopologyType:=TSolidPrimitiveTopologyType.None;
-
-  aCommandBuffer.CmdBindVertexBuffers(0,1,@fVulkanSolidPrimitiveVertexBuffers[aInFlightFrameIndex].Handle,@Offsets);
-  aCommandBuffer.CmdBindIndexBuffer(fVulkanSolidPrimitiveIndexBuffers[aInFlightFrameIndex].Handle,0,TVkIndexType(VK_INDEX_TYPE_UINT32));
-
-  for BatchIndex:=0 to SolidPrimitiveBatchItemDynamicArray.Count-1 do begin
-
-   BatchItem:=@SolidPrimitiveBatchItemDynamicArray.ItemArray[BatchIndex];
-
-   if BatchItem^.CountVertices>0 then begin
-
-    if PrimitiveTopologyType<>BatchItem^.PrimitiveTopologyType then begin
-     PrimitiveTopologyType:=BatchItem^.PrimitiveTopologyType;
-     case PrimitiveTopologyType of
-      TSolidPrimitiveTopologyType.Line:begin
-       aCommandBuffer.CmdSetLineWidth(BatchItem^.LineWidthOrPointSize);
-      end;
-      else begin
-      end;
-     end;
-    end;
-
-    aCommandBuffer.CmdDraw(BatchItem^.CountVertices,1,BatchItem^.VertexOffset,0);
-
-   end;
-
-  end;
-
- end;
-
-end;*)
-
 procedure TpvScene3D.DrawParticles(const aRendererInstance:TObject;
                                    const aGraphicsPipeline:TpvVulkanGraphicsPipeline;
                                    const aPreviousInFlightFrameIndex:TpvSizeInt;
@@ -33711,21 +33440,6 @@ begin
  aPipeline.VertexInputState.AddVertexInputBindingDescription(0,SizeOf(TpvScene3D.TDebugPrimitiveVertex),VK_VERTEX_INPUT_RATE_VERTEX);
  aPipeline.VertexInputState.AddVertexInputAttributeDescription(0,0,VK_FORMAT_R32G32B32_SFLOAT,TVkPtrUInt(pointer(@TpvScene3D.PDebugPrimitiveVertex(nil)^.Position)));
  aPipeline.VertexInputState.AddVertexInputAttributeDescription(1,0,VK_FORMAT_R16G16B16A16_SFLOAT,TVkPtrUInt(pointer(@TpvScene3D.PDebugPrimitiveVertex(nil)^.Color)));
-end;
-
-procedure TpvScene3D.InitializeSolidPrimitiveGraphicsPipeline(const aPipeline:TpvVulkanGraphicsPipeline);
-begin
- aPipeline.VertexInputState.AddVertexInputBindingDescription(0,SizeOf(TpvScene3D.TSolidPrimitiveVertex),VK_VERTEX_INPUT_RATE_VERTEX);
- aPipeline.VertexInputState.AddVertexInputAttributeDescription(0,0,VK_FORMAT_R32G32_SFLOAT,TVkPtrUInt(pointer(@TpvScene3D.PSolidPrimitiveVertex(nil)^.Position)));
- aPipeline.VertexInputState.AddVertexInputAttributeDescription(1,0,VK_FORMAT_R32G32B32_SFLOAT,TVkPtrUInt(pointer(@TpvScene3D.PSolidPrimitiveVertex(nil)^.Position0)));
- aPipeline.VertexInputState.AddVertexInputAttributeDescription(2,0,VK_FORMAT_R32G32B32_SFLOAT,TVkPtrUInt(pointer(@TpvScene3D.PSolidPrimitiveVertex(nil)^.Position1)));
- aPipeline.VertexInputState.AddVertexInputAttributeDescription(3,0,VK_FORMAT_R32G32B32_SFLOAT,TVkPtrUInt(pointer(@TpvScene3D.PSolidPrimitiveVertex(nil)^.Position2)));
- aPipeline.VertexInputState.AddVertexInputAttributeDescription(4,0,VK_FORMAT_R32G32_SFLOAT,TVkPtrUInt(pointer(@TpvScene3D.PSolidPrimitiveVertex(nil)^.Offset0)));
- aPipeline.VertexInputState.AddVertexInputAttributeDescription(5,0,VK_FORMAT_R32G32_SFLOAT,TVkPtrUInt(pointer(@TpvScene3D.PSolidPrimitiveVertex(nil)^.Offset1)));
- aPipeline.VertexInputState.AddVertexInputAttributeDescription(6,0,VK_FORMAT_R32G32_SFLOAT,TVkPtrUInt(pointer(@TpvScene3D.PSolidPrimitiveVertex(nil)^.Offset2)));
- aPipeline.VertexInputState.AddVertexInputAttributeDescription(7,0,VK_FORMAT_R16G16B16A16_SFLOAT,TVkPtrUInt(pointer(@TpvScene3D.PSolidPrimitiveVertex(nil)^.Color)));
- aPipeline.VertexInputState.AddVertexInputAttributeDescription(8,0,VK_FORMAT_R32_UINT,TVkPtrUInt(pointer(@TpvScene3D.PSolidPrimitiveVertex(nil)^.PrimitiveTopology)));
- aPipeline.VertexInputState.AddVertexInputAttributeDescription(9,0,VK_FORMAT_R32_SFLOAT,TVkPtrUInt(pointer(@TpvScene3D.PSolidPrimitiveVertex(nil)^.LineThicknessorPointSize)));
 end;
 
 procedure TpvScene3D.InitializeParticleGraphicsPipeline(const aPipeline:TpvVulkanGraphicsPipeline);
@@ -34029,84 +33743,6 @@ begin
  end else begin
   Particle^.TextureID:=aTextureID;
  end;
-end;
-
-procedure TpvScene3D.ClearSolid(const aInFlightFrameIndex:TpvSizeInt);
-begin
- fSolidPrimitiveVertexDynamicArrays[aInFlightFrameIndex].ClearNoFree;
- fSolidPrimitiveIndexDynamicArrays[aInFlightFrameIndex].ClearNoFree;
- fSolidPrimitivePrimitiveDynamicArrays[aInFlightFrameIndex].ClearNoFree;
-end;
-
-function TpvScene3D.AddSolidPoint(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aColor:TpvVector4;const aSize:TpvScalar;const aPositionOffset:TpvVector2):boolean;
-var Primitive:TpvScene3D.PSolidPrimitivePrimitive;
-    PrimitiveItems:TpvScene3D.TSolidPrimitiveVertexDynamicArray;
-begin
- PrimitiveItems:=fSolidPrimitiveVertexDynamicArrays[aInFlightFrameIndex];
- if assigned(PrimitiveItems) and (PrimitiveItems.Count<MaxSolidPrimitives) then begin
-  Primitive:=pointer(PrimitiveItems.AddNew);
-  Primitive^.Position:=TpvVector2.Null;
-  Primitive^.Position0:=aPosition;
-  Primitive^.Offset0:=aPositionOffset;
-  Primitive^.Color:=aColor;
-  Primitive^.PrimitiveTopology:=TpvScene3D.TSolidPrimitiveVertex.PrimitiveTopologyPoint;
-  Primitive^.LineThicknessOrPointSize:=aSize;
-  result:=true;
- end else begin
-  result:=false;
- end;
-end;
-
-function TpvScene3D.AddSolidLine(const aInFlightFrameIndex:TpvSizeInt;const aStartPosition,aEndPosition:TpvVector3;const aColor:TpvVector4;const aSize:TpvScalar;const aStartPositionOffset,aEndPositionOffset:TpvVector2):boolean;
-var Primitive:TpvScene3D.PSolidPrimitivePrimitive;
-    PrimitiveItems:TpvScene3D.TSolidPrimitiveVertexDynamicArray;
-begin
- PrimitiveItems:=fSolidPrimitiveVertexDynamicArrays[aInFlightFrameIndex];
- if assigned(PrimitiveItems) and (PrimitiveItems.Count<MaxSolidPrimitives) then begin
-  Primitive:=pointer(PrimitiveItems.AddNew);
-  Primitive^.Position:=TpvVector2.Null;
-  Primitive^.Position0:=aStartPosition;
-  Primitive^.Offset0:=aStartPositionOffset;
-  Primitive^.Position1:=aEndPosition;
-  Primitive^.Offset1:=aEndPositionOffset;
-  Primitive^.Color:=aColor;
-  Primitive^.PrimitiveTopology:=TpvScene3D.TSolidPrimitiveVertex.PrimitiveTopologyLine;
-  Primitive^.LineThicknessOrPointSize:=aSize;
-  result:=true;
- end else begin
-  result:=false;
- end;
-end;
-
-function TpvScene3D.AddSolidTriangle(const aInFlightFrameIndex:TpvSizeInt;const aPosition0,aPosition1,aPosition2:TpvVector3;const aColor:TpvVector4;const aPosition0Offset,aPosition1Offset,aPosition2Offset:TpvVector2;const aLineWidth:TpvScalar):boolean;
-var Primitive:TpvScene3D.PSolidPrimitivePrimitive;
-    PrimitiveItems:TpvScene3D.TSolidPrimitiveVertexDynamicArray;
-begin
- PrimitiveItems:=fSolidPrimitiveVertexDynamicArrays[aInFlightFrameIndex];
- if assigned(PrimitiveItems) and (PrimitiveItems.Count<MaxSolidPrimitives) then begin
-  Primitive:=pointer(PrimitiveItems.AddNew);
-  Primitive^.Position:=TpvVector2.Null;
-  Primitive^.Position0:=aPosition0;
-  Primitive^.Offset0:=aPosition0Offset;
-  Primitive^.Position1:=aPosition1;
-  Primitive^.Offset1:=aPosition1Offset;
-  Primitive^.Position2:=aPosition2;
-  Primitive^.Offset2:=aPosition2Offset;
-  Primitive^.Color:=aColor;
-  if aLineWidth>0.0 then begin
-   Primitive^.PrimitiveTopology:=TpvScene3D.TSolidPrimitiveVertex.PrimitiveTopologyTriangleWireframe;
-  end else begin
-   Primitive^.PrimitiveTopology:=TpvScene3D.TSolidPrimitiveVertex.PrimitiveTopologyTriangle;
-  end;
-  Primitive^.LineThicknessOrPointSize:=aLineWidth;
-  result:=true;
- end else begin
-  result:=false;
- end;
-end;
-
-procedure TpvScene3D.FinishSolid(const aInFlightFrameIndex:TpvSizeInt;const aViewProjectionMatrices:PpvMatrix4x4Array;const aCountViewProjectionMatrices:TpvSizeInt);
-begin
 end;
 
 function TpvScene3D.CreateMaterial(const aName:TpvUTF8String):TpvScene3D.TMaterial;

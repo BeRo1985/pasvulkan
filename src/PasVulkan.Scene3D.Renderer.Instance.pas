@@ -7437,6 +7437,24 @@ begin
  end;
 end;
 
+(*
+procedure TpvScene3D.InitializeSolidPrimitiveGraphicsPipeline(const aPipeline:TpvVulkanGraphicsPipeline);
+begin
+ aPipeline.VertexInputState.AddVertexInputBindingDescription(0,SizeOf(TpvScene3D.TSolidPrimitiveVertex),VK_VERTEX_INPUT_RATE_VERTEX);
+ aPipeline.VertexInputState.AddVertexInputAttributeDescription(0,0,VK_FORMAT_R32G32_SFLOAT,TVkPtrUInt(pointer(@TpvScene3D.PSolidPrimitiveVertex(nil)^.Position)));
+ aPipeline.VertexInputState.AddVertexInputAttributeDescription(1,0,VK_FORMAT_R32G32B32_SFLOAT,TVkPtrUInt(pointer(@TpvScene3D.PSolidPrimitiveVertex(nil)^.Position0)));
+ aPipeline.VertexInputState.AddVertexInputAttributeDescription(2,0,VK_FORMAT_R32G32B32_SFLOAT,TVkPtrUInt(pointer(@TpvScene3D.PSolidPrimitiveVertex(nil)^.Position1)));
+ aPipeline.VertexInputState.AddVertexInputAttributeDescription(3,0,VK_FORMAT_R32G32B32_SFLOAT,TVkPtrUInt(pointer(@TpvScene3D.PSolidPrimitiveVertex(nil)^.Position2)));
+ aPipeline.VertexInputState.AddVertexInputAttributeDescription(4,0,VK_FORMAT_R32G32_SFLOAT,TVkPtrUInt(pointer(@TpvScene3D.PSolidPrimitiveVertex(nil)^.Offset0)));
+ aPipeline.VertexInputState.AddVertexInputAttributeDescription(5,0,VK_FORMAT_R32G32_SFLOAT,TVkPtrUInt(pointer(@TpvScene3D.PSolidPrimitiveVertex(nil)^.Offset1)));
+ aPipeline.VertexInputState.AddVertexInputAttributeDescription(6,0,VK_FORMAT_R32G32_SFLOAT,TVkPtrUInt(pointer(@TpvScene3D.PSolidPrimitiveVertex(nil)^.Offset2)));
+ aPipeline.VertexInputState.AddVertexInputAttributeDescription(7,0,VK_FORMAT_R16G16B16A16_SFLOAT,TVkPtrUInt(pointer(@TpvScene3D.PSolidPrimitiveVertex(nil)^.Color)));
+ aPipeline.VertexInputState.AddVertexInputAttributeDescription(8,0,VK_FORMAT_R32_UINT,TVkPtrUInt(pointer(@TpvScene3D.PSolidPrimitiveVertex(nil)^.PrimitiveTopology)));
+ aPipeline.VertexInputState.AddVertexInputAttributeDescription(9,0,VK_FORMAT_R32_SFLOAT,TVkPtrUInt(pointer(@TpvScene3D.PSolidPrimitiveVertex(nil)^.LineThicknessorPointSize)));
+end;
+
+*)
+
 initialization
  InitializeJitterOffsets;
 end.
