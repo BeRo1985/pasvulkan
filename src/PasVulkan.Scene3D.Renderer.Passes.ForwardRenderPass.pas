@@ -1317,18 +1317,6 @@ begin
 
    end;}
 
-   fInstance.Renderer.Scene3D.DrawDebugPrimitives(fInstance,
-                                                  fVulkanDebugPrimitiveGraphicsPipeline,
-                                                  -1,
-                                                  aInFlightFrameIndex,
-                                                  TpvScene3DRendererRenderPass.View,
-                                                  InFlightFrameState^.FinalViewIndex,
-                                                  InFlightFrameState^.CountFinalViews,
-                                                  FrameGraph.DrawFrameIndex,
-                                                  aCommandBuffer,
-                                                  fVulkanPipelineLayout,
-                                                  OnSetRenderPassResources);
-
   end;
 
  end;

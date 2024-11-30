@@ -4044,6 +4044,11 @@ type EpvScene3D=class(Exception);
        property BlueNoise2DTexture:TpvVulkanTexture read fBlueNoise2DTexture;
       public
        property DrawDataGeneration:TPasMPUInt64 read fDrawDataGeneration write fDrawDataGeneration;
+      public
+       property VulkanFrameGraphStagingQueue:TpvVulkanQueue read fVulkanFrameGraphStagingQueue;
+       property VulkanFrameGraphStagingCommandPool:TpvVulkanCommandPool read fVulkanFrameGraphStagingCommandPool;
+       property VulkanFrameGraphStagingCommandBuffer:TpvVulkanCommandBuffer read fVulkanFrameGraphStagingCommandBuffer;
+       property VulkanFrameGraphStagingFence:TpvVulkanFence read fVulkanFrameGraphStagingFence;
       published
        property RendererInstanceIDManager:TRendererInstanceIDManager read fRendererInstanceIDManager;
        property PotentiallyVisibleSet:TpvScene3D.TPotentiallyVisibleSet read fPotentiallyVisibleSet;

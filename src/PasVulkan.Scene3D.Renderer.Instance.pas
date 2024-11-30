@@ -1027,6 +1027,7 @@ uses PasVulkan.Scene3D.Atmosphere,
      PasVulkan.Scene3D.Renderer.Passes.LensUpsampleComputePass,
      PasVulkan.Scene3D.Renderer.Passes.LensResolveRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.TonemappingRenderPass,
+     PasVulkan.Scene3D.Renderer.Passes.CanvasRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.HUDMipMapCustomPass,
      PasVulkan.Scene3D.Renderer.Passes.ContentProjectionRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.DebugBlitRenderPass,
@@ -1139,6 +1140,7 @@ type TpvScene3DRendererInstancePasses=class
        fLensUpsampleComputePass:TpvScene3DRendererPassesLensUpsampleComputePass;
        fLensResolveRenderPass:TpvScene3DRendererPassesLensResolveRenderPass;
        fTonemappingRenderPass:TpvScene3DRendererPassesTonemappingRenderPass;
+       fCanvasRenderPass:TpvScene3DRendererPassesCanvasRenderPass;
        fHUDRenderPass:TpvScene3DRendererInstance.THUDRenderPass;
        fHUDMipMapCustomPass:TpvScene3DRendererPassesHUDMipMapCustomPass;
        fContentProjectionRenderPass:TpvScene3DRendererPassesContentProjectionRenderPass;
@@ -4112,9 +4114,13 @@ begin
   TpvScene3DRendererInstancePasses(fPasses).fTonemappingRenderPass.AddExplicitPassDependency(AntialiasingLastPass);
  end;
 
+ TpvScene3DRendererInstancePasses(fPasses).fCanvasRenderPass:=TpvScene3DRendererPassesCanvasRenderPass.Create(fFrameGraph,self);
+ TpvScene3DRendererInstancePasses(fPasses).fCanvasRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fTonemappingRenderPass);
+
  if assigned(fHUDRenderPassClass) then begin
   TpvScene3DRendererInstancePasses(fPasses).fHUDRenderPass:=fHUDRenderPassClass.Create(fFrameGraph,self,fHUDRenderPassParent);
   TpvScene3DRendererInstancePasses(fPasses).fHUDRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fTonemappingRenderPass);
+  TpvScene3DRendererInstancePasses(fPasses).fHUDRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fCanvasRenderPass);
 
   TpvScene3DRendererInstancePasses(fPasses).fHUDMipMapCustomPass:=TpvScene3DRendererPassesHUDMipMapCustomPass.Create(fFrameGraph,self);
   TpvScene3DRendererInstancePasses(fPasses).fHUDMipMapCustomPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fHUDRenderPass);
@@ -4131,12 +4137,14 @@ begin
    TpvScene3DRendererInstancePasses(fPasses).fDebugBlitRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fHUDRenderPass);
    TpvScene3DRendererInstancePasses(fPasses).fDebugBlitRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fContentProjectionRenderPass);
   end;
+  TpvScene3DRendererInstancePasses(fPasses).fDebugBlitRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fCanvasRenderPass);
 
   fFrameGraph.RootPass:=TpvScene3DRendererInstancePasses(fPasses).fDebugBlitRenderPass;
 
  end;
 
  TpvScene3DRendererInstancePasses(fPasses).fFrameBufferBlitRenderPass:=TpvScene3DRendererPassesFrameBufferBlitRenderPass.Create(fFrameGraph,self,true);
+ TpvScene3DRendererInstancePasses(fPasses).fFrameBufferBlitRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fCanvasRenderPass);
 
  fFrameGraph.RootPass:=TpvScene3DRendererInstancePasses(fPasses).fFrameBufferBlitRenderPass;
 
@@ -7001,6 +7009,18 @@ begin
                                             fCascadedShadowMapVulkanUniformBuffers[aInFlightFrameIndex],
                                             0,
                                             SizeOf(TCascadedShadowMapUniformBuffer));
+
+ if fSolidPrimitivePrimitiveDynamicArrays[aInFlightFrameIndex].Count>0 then begin
+
+  Renderer.VulkanDevice.MemoryStaging.Upload(fScene3D.VulkanStagingQueue,
+                                             fScene3D.VulkanStagingCommandBuffer,
+                                             fScene3D.VulkanStagingFence,
+                                             fSolidPrimitivePrimitiveDynamicArrays[aInFlightFrameIndex].ItemArray[0],
+                                             fSolidPrimitivePrimitiveBuffers[aInFlightFrameIndex],
+                                             0,
+                                             fSolidPrimitivePrimitiveDynamicArrays[aInFlightFrameIndex].Count*SizeOf(TSolidPrimitivePrimitive));
+
+ end;
 
  case Renderer.GlobalIlluminationMode of
 
