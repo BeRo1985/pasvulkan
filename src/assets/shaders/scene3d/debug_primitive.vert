@@ -14,6 +14,7 @@ layout (push_constant) uniform PushConstants {
   uint viewBaseIndex;
   uint countViews;
   uint countAllViews;
+  uint dummy;
   vec2 viewPortSize;
 } pushConstants;
 

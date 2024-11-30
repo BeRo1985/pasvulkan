@@ -877,6 +877,12 @@ type { TpvScene3DRendererInstance }
       public
        property DebugTAAMode:TpvUInt32 read fDebugTAAMode write fDebugTAAMode;
       public
+       property SolidPrimitivePrimitiveDynamicArrays:TSolidPrimitivePrimitiveDynamicArrays read fSolidPrimitivePrimitiveDynamicArrays;
+       property SolidPrimitivePrimitiveBuffers:TSolidPrimitiveVulkanBuffers read fSolidPrimitivePrimitiveBuffers;
+       property SolidPrimitiveIndirectDrawCommandBuffer:TpvVulkanBuffer read fSolidPrimitiveIndirectDrawCommandBuffer;
+       property SolidPrimitiveVertexBuffer:TpvVulkanBuffer read fSolidPrimitiveVertexBuffer;
+       property SolidPrimitiveIndexBuffer:TpvVulkanBuffer read fSolidPrimitiveIndexBuffer;
+      public
        property PerInFlightFrameGPUDrawIndexedIndirectCommandDynamicArrays:TpvScene3D.TPerInFlightFrameGPUDrawIndexedIndirectCommandDynamicArrays read fPerInFlightFrameGPUDrawIndexedIndirectCommandDynamicArrays write fPerInFlightFrameGPUDrawIndexedIndirectCommandDynamicArrays;
        property PerInFlightFrameGPUDrawIndexedIndirectCommandBufferSizes:TpvScene3D.TPerInFlightFrameGPUDrawIndexedIndirectCommandSizeValues read fPerInFlightFrameGPUDrawIndexedIndirectCommandBufferSizes;
        property PerInFlightFrameGPUDrawIndexedIndirectCommandDisocclusionOffsets:TpvScene3D.TPerInFlightFrameGPUDrawIndexedIndirectCommandSizeValues read fPerInFlightFrameGPUDrawIndexedIndirectCommandDisocclusionOffsets;
@@ -1027,6 +1033,7 @@ uses PasVulkan.Scene3D.Atmosphere,
      PasVulkan.Scene3D.Renderer.Passes.LensUpsampleComputePass,
      PasVulkan.Scene3D.Renderer.Passes.LensResolveRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.TonemappingRenderPass,
+     PasVulkan.Scene3D.Renderer.Passes.CanvasComputePass,
      PasVulkan.Scene3D.Renderer.Passes.CanvasRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.HUDMipMapCustomPass,
      PasVulkan.Scene3D.Renderer.Passes.ContentProjectionRenderPass,
@@ -1140,6 +1147,7 @@ type TpvScene3DRendererInstancePasses=class
        fLensUpsampleComputePass:TpvScene3DRendererPassesLensUpsampleComputePass;
        fLensResolveRenderPass:TpvScene3DRendererPassesLensResolveRenderPass;
        fTonemappingRenderPass:TpvScene3DRendererPassesTonemappingRenderPass;
+       fCanvasComputePass:TpvScene3DRendererPassesCanvasComputePass;
        fCanvasRenderPass:TpvScene3DRendererPassesCanvasRenderPass;
        fHUDRenderPass:TpvScene3DRendererInstance.THUDRenderPass;
        fHUDMipMapCustomPass:TpvScene3DRendererPassesHUDMipMapCustomPass;
@@ -4114,7 +4122,10 @@ begin
   TpvScene3DRendererInstancePasses(fPasses).fTonemappingRenderPass.AddExplicitPassDependency(AntialiasingLastPass);
  end;
 
+ TpvScene3DRendererInstancePasses(fPasses).fCanvasComputePass:=TpvScene3DRendererPassesCanvasComputePass.Create(fFrameGraph,self);
+
  TpvScene3DRendererInstancePasses(fPasses).fCanvasRenderPass:=TpvScene3DRendererPassesCanvasRenderPass.Create(fFrameGraph,self);
+ TpvScene3DRendererInstancePasses(fPasses).fCanvasRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fCanvasComputePass);
  TpvScene3DRendererInstancePasses(fPasses).fCanvasRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fTonemappingRenderPass);
 
  if assigned(fHUDRenderPassClass) then begin

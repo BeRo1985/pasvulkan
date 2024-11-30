@@ -88,6 +88,7 @@ type { TpvScene3DRendererPassesCanvasRenderPass }
              ViewBaseIndex:TpvUInt32;
              CountViews:TpvUInt32;
              CountAllViews:TpvUInt32;
+             Dummy:TpvUInt32;
              ViewPortSize:TpvVector2;
             end;
             PPushConstants=^TPushConstants;
