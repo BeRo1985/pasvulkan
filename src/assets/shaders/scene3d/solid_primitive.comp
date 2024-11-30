@@ -472,10 +472,11 @@ void main(){
     visible = visible && (all(lessThanEqual(aabb.xy, vec2(1.0))) && all(greaterThanEqual(aabb.zw, vec2(0.0))) && all(lessThanEqual(aabb.xy, aabb.zw)));
 
     // If the primitive is visible, generate the vertices and indices
+    uint firstVertex = 0u;
     if(visible){
 
       // Generate the quad vertices for the current primitive 
-      uint firstVertex = atomicAdd(destinationDrawIndexedIndirectCommand.drawIndexedIndirectCommand.cmd1.y, 4u); // Each primitive has 4 vertices for a quad of two triangles
+      firstVertex = atomicAdd(destinationDrawIndexedIndirectCommand.drawIndexedIndirectCommand.cmd1.y, 4u); // Each primitive has 4 vertices for a quad of two triangles
       {
 
         destinationVertices.vertices[firstVertex] = Vertex(
@@ -516,9 +517,16 @@ void main(){
 
       }  
 
+    }
+
+    {  
+
       // Generate the quad indices for the current primitive
-      uint firstIndex = atomicAdd(destinationDrawIndexedIndirectCommand.drawIndexedIndirectCommand.cmd0.x, 6u); // Each primitive has 6 indices for a quad of two triangles
-      {
+//    uint firstIndex = atomicAdd(destinationDrawIndexedIndirectCommand.drawIndexedIndirectCommand.cmd0.x, 6u); // Each primitive has 6 indices for a quad of two triangles
+      // We can't use atomicAdd here because the indices need to be in order to ensure that the rendering order is correct for the primitives,
+      // so we generate degenerate indices for invisible primitives to keep the indices in sync with the vertices but not render the primitive.      
+      uint firstIndex = primitiveIndex * 6u; // Each primitive has 6 indices for a quad of two triangles
+      if(visible){
 
         destinationIndices.indices[firstIndex] = firstVertex;
         destinationIndices.indices[firstIndex + 1u] = firstVertex + 1u;
@@ -527,6 +535,18 @@ void main(){
         destinationIndices.indices[firstIndex + 3u] = firstVertex;
         destinationIndices.indices[firstIndex + 4u] = firstVertex + 2u;
         destinationIndices.indices[firstIndex + 5u] = firstVertex + 3u;
+
+      }else{
+
+        // If the primitive is not visible, output degenerate indices to keep the indices in sync with the vertices but not render the primitive
+
+        destinationIndices.indices[firstIndex] = firstVertex;
+        destinationIndices.indices[firstIndex + 1u] = firstVertex;
+        destinationIndices.indices[firstIndex + 2u] = firstVertex;
+
+        destinationIndices.indices[firstIndex + 3u] = firstVertex;
+        destinationIndices.indices[firstIndex + 4u] = firstVertex;
+        destinationIndices.indices[firstIndex + 5u] = firstVertex;
 
       }
 
