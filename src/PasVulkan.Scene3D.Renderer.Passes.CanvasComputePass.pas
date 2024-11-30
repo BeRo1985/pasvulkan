@@ -285,155 +285,159 @@ begin
 
  InFlightFrameIndex:=aInFlightFrameIndex;
 
- PushConstants.ViewBaseIndex:=fInstance.InFlightFrameStates^[aInFlightFrameIndex].FinalViewIndex;
- PushConstants.CountViews:=fInstance.InFlightFrameStates^[aInFlightFrameIndex].CountFinalViews;
- PushConstants.CountAllViews:=fInstance.InFlightFrameStates^[aInFlightFrameIndex].CountViews;
- PushConstants.CountPrimitives:=fInstance.SolidPrimitivePrimitiveDynamicArrays[aInFlightFrameIndex].Count;
- PushConstants.ViewPortSize:=TpvVector2.Create(fInstance.Width,fInstance.Height);
+ if fInstance.SolidPrimitivePrimitiveDynamicArrays[aInFlightFrameIndex].Count>0 then begin
 
- BufferMemoryBarriers[0].sType:=VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
- BufferMemoryBarriers[0].pNext:=nil;
- BufferMemoryBarriers[0].srcAccessMask:=TVkAccessFlags(VK_ACCESS_HOST_WRITE_BIT) or TVkAccessFlags(VK_ACCESS_HOST_READ_BIT) or TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT) or TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT);
- BufferMemoryBarriers[0].dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT);
- BufferMemoryBarriers[0].srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
- BufferMemoryBarriers[0].dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
- BufferMemoryBarriers[0].buffer:=fInstance.SolidPrimitivePrimitiveBuffers[InFlightFrameIndex].Handle;
- BufferMemoryBarriers[0].offset:=0;
- BufferMemoryBarriers[0].size:=VK_WHOLE_SIZE;
+  PushConstants.ViewBaseIndex:=fInstance.InFlightFrameStates^[aInFlightFrameIndex].FinalViewIndex;
+  PushConstants.CountViews:=fInstance.InFlightFrameStates^[aInFlightFrameIndex].CountFinalViews;
+  PushConstants.CountAllViews:=fInstance.InFlightFrameStates^[aInFlightFrameIndex].CountViews;
+  PushConstants.CountPrimitives:=fInstance.SolidPrimitivePrimitiveDynamicArrays[aInFlightFrameIndex].Count;
+  PushConstants.ViewPortSize:=TpvVector2.Create(fInstance.Width,fInstance.Height);
 
- BufferMemoryBarriers[1].sType:=VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
- BufferMemoryBarriers[1].pNext:=nil;
- BufferMemoryBarriers[1].srcAccessMask:=TVkAccessFlags(VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT);
- BufferMemoryBarriers[1].dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
- BufferMemoryBarriers[1].srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
- BufferMemoryBarriers[1].dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
- BufferMemoryBarriers[1].buffer:=fInstance.SolidPrimitiveVertexBuffer.Handle;
- BufferMemoryBarriers[1].offset:=0;
- BufferMemoryBarriers[1].size:=VK_WHOLE_SIZE;
+  BufferMemoryBarriers[0].sType:=VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+  BufferMemoryBarriers[0].pNext:=nil;
+  BufferMemoryBarriers[0].srcAccessMask:=TVkAccessFlags(VK_ACCESS_HOST_WRITE_BIT) or TVkAccessFlags(VK_ACCESS_HOST_READ_BIT) or TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT) or TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT);
+  BufferMemoryBarriers[0].dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT);
+  BufferMemoryBarriers[0].srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+  BufferMemoryBarriers[0].dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+  BufferMemoryBarriers[0].buffer:=fInstance.SolidPrimitivePrimitiveBuffers[InFlightFrameIndex].Handle;
+  BufferMemoryBarriers[0].offset:=0;
+  BufferMemoryBarriers[0].size:=VK_WHOLE_SIZE;
 
- BufferMemoryBarriers[2].sType:=VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
- BufferMemoryBarriers[2].pNext:=nil;
- BufferMemoryBarriers[2].srcAccessMask:=TVkAccessFlags(VK_ACCESS_INDEX_READ_BIT);
- BufferMemoryBarriers[2].dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
- BufferMemoryBarriers[2].srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
- BufferMemoryBarriers[2].dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
- BufferMemoryBarriers[2].buffer:=fInstance.SolidPrimitiveIndexBuffer.Handle;
- BufferMemoryBarriers[2].offset:=0;
- BufferMemoryBarriers[2].size:=VK_WHOLE_SIZE;
+  BufferMemoryBarriers[1].sType:=VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+  BufferMemoryBarriers[1].pNext:=nil;
+  BufferMemoryBarriers[1].srcAccessMask:=TVkAccessFlags(VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT);
+  BufferMemoryBarriers[1].dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
+  BufferMemoryBarriers[1].srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+  BufferMemoryBarriers[1].dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+  BufferMemoryBarriers[1].buffer:=fInstance.SolidPrimitiveVertexBuffer.Handle;
+  BufferMemoryBarriers[1].offset:=0;
+  BufferMemoryBarriers[1].size:=VK_WHOLE_SIZE;
 
- BufferMemoryBarriers[3].sType:=VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
- BufferMemoryBarriers[3].pNext:=nil;
- BufferMemoryBarriers[3].srcAccessMask:=TVkAccessFlags(VK_ACCESS_INDIRECT_COMMAND_READ_BIT);
- BufferMemoryBarriers[3].dstAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT); 
- BufferMemoryBarriers[3].srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
- BufferMemoryBarriers[3].dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
- BufferMemoryBarriers[3].buffer:=fInstance.SolidPrimitiveIndirectDrawCommandBuffer.Handle;
- BufferMemoryBarriers[3].offset:=0;
- BufferMemoryBarriers[3].size:=VK_WHOLE_SIZE;
+  BufferMemoryBarriers[2].sType:=VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+  BufferMemoryBarriers[2].pNext:=nil;
+  BufferMemoryBarriers[2].srcAccessMask:=TVkAccessFlags(VK_ACCESS_INDEX_READ_BIT);
+  BufferMemoryBarriers[2].dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
+  BufferMemoryBarriers[2].srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+  BufferMemoryBarriers[2].dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+  BufferMemoryBarriers[2].buffer:=fInstance.SolidPrimitiveIndexBuffer.Handle;
+  BufferMemoryBarriers[2].offset:=0;
+  BufferMemoryBarriers[2].size:=VK_WHOLE_SIZE;
 
- aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_HOST_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_INPUT_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT),
-                                   TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
-                                   TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT),
-                                   0,nil,
-                                   4,@BufferMemoryBarriers,
-                                   0,nil);
+  BufferMemoryBarriers[3].sType:=VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+  BufferMemoryBarriers[3].pNext:=nil;
+  BufferMemoryBarriers[3].srcAccessMask:=TVkAccessFlags(VK_ACCESS_INDIRECT_COMMAND_READ_BIT);
+  BufferMemoryBarriers[3].dstAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT);
+  BufferMemoryBarriers[3].srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+  BufferMemoryBarriers[3].dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+  BufferMemoryBarriers[3].buffer:=fInstance.SolidPrimitiveIndirectDrawCommandBuffer.Handle;
+  BufferMemoryBarriers[3].offset:=0;
+  BufferMemoryBarriers[3].size:=VK_WHOLE_SIZE;
 
- // Clear SolidPrimitiveIndirectDrawCommandBuffer and set the second uint32 to 1 (so three vkCmdFillBuffer calls are needed)
- aCommandBuffer.CmdFillBuffer(fInstance.SolidPrimitiveIndirectDrawCommandBuffer.Handle,
-                              0,
-                              SizeOf(TpvUInt32),
-                              0); 
- aCommandBuffer.CmdFillBuffer(fInstance.SolidPrimitiveIndirectDrawCommandBuffer.Handle,
-                              SizeOf(TpvUInt32),
-                              SizeOf(TpvUInt32),
-                              1);
- aCommandBuffer.CmdFillBuffer(fInstance.SolidPrimitiveIndirectDrawCommandBuffer.Handle,
-                              SizeOf(TpvUInt32)*2,
-                              (SizeOf(TVkDrawIndexedIndirectCommand)+SizeOf(TpvUInt32))-(SizeOf(TpvUInt32)*2),
-                              0);
+  aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_HOST_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_INPUT_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT),
+                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                    TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT),
+                                    0,nil,
+                                    4,@BufferMemoryBarriers,
+                                    0,nil);
 
- BufferMemoryBarriers[3].sType:=VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
- BufferMemoryBarriers[3].pNext:=nil;
- BufferMemoryBarriers[3].srcAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT);
- BufferMemoryBarriers[3].dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
- BufferMemoryBarriers[3].srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
- BufferMemoryBarriers[3].dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
- BufferMemoryBarriers[3].buffer:=fInstance.SolidPrimitiveIndirectDrawCommandBuffer.Handle;
- BufferMemoryBarriers[3].offset:=0;
- BufferMemoryBarriers[3].size:=VK_WHOLE_SIZE;
+  // Clear SolidPrimitiveIndirectDrawCommandBuffer and set the second uint32 to 1 (so three vkCmdFillBuffer calls are needed)
+  aCommandBuffer.CmdFillBuffer(fInstance.SolidPrimitiveIndirectDrawCommandBuffer.Handle,
+                               0,
+                               SizeOf(TpvUInt32),
+                               0);
+  aCommandBuffer.CmdFillBuffer(fInstance.SolidPrimitiveIndirectDrawCommandBuffer.Handle,
+                               SizeOf(TpvUInt32),
+                               SizeOf(TpvUInt32),
+                               1);
+  aCommandBuffer.CmdFillBuffer(fInstance.SolidPrimitiveIndirectDrawCommandBuffer.Handle,
+                               SizeOf(TpvUInt32)*2,
+                               (SizeOf(TVkDrawIndexedIndirectCommand)+SizeOf(TpvUInt32))-(SizeOf(TpvUInt32)*2),
+                               0);
 
- aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
-                                   TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
-                                   TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT),
-                                   0,nil,
-                                   1,@BufferMemoryBarriers[3],
-                                   0,nil);
+  BufferMemoryBarriers[3].sType:=VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+  BufferMemoryBarriers[3].pNext:=nil;
+  BufferMemoryBarriers[3].srcAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT);
+  BufferMemoryBarriers[3].dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
+  BufferMemoryBarriers[3].srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+  BufferMemoryBarriers[3].dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+  BufferMemoryBarriers[3].buffer:=fInstance.SolidPrimitiveIndirectDrawCommandBuffer.Handle;
+  BufferMemoryBarriers[3].offset:=0;
+  BufferMemoryBarriers[3].size:=VK_WHOLE_SIZE;
 
- aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,fPipeline.Handle);
+  aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                    TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT),
+                                    0,nil,
+                                    1,@BufferMemoryBarriers[3],
+                                    0,nil);
 
- aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE,
-                                      fPipelineLayout.Handle,
-                                      0,
-                                      1,
-                                      @fVulkanDescriptorSets[InFlightFrameIndex].Handle,
-                                      0,
-                                      nil);
+  aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,fPipeline.Handle);
 
- aCommandBuffer.CmdPushConstants(fPipelineLayout.Handle,
-                                 TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_COMPUTE_BIT),
-                                 0,
-                                 SizeOf(TPushConstants),
-                                 @PushConstants);
+  aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE,
+                                       fPipelineLayout.Handle,
+                                       0,
+                                       1,
+                                       @fVulkanDescriptorSets[InFlightFrameIndex].Handle,
+                                       0,
+                                       nil);
 
- aCommandBuffer.CmdDispatch((PushConstants.CountPrimitives+256) shr 8,1,1);
+  aCommandBuffer.CmdPushConstants(fPipelineLayout.Handle,
+                                  TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_COMPUTE_BIT),
+                                  0,
+                                  SizeOf(TPushConstants),
+                                  @PushConstants);
 
- BufferMemoryBarriers[0].sType:=VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
- BufferMemoryBarriers[0].pNext:=nil;
- BufferMemoryBarriers[0].srcAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
- BufferMemoryBarriers[0].dstAccessMask:=TVkAccessFlags(VK_ACCESS_HOST_WRITE_BIT) or TVkAccessFlags(VK_ACCESS_HOST_READ_BIT) or TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT) or TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT);
- BufferMemoryBarriers[0].srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
- BufferMemoryBarriers[0].dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
- BufferMemoryBarriers[0].buffer:=fInstance.SolidPrimitivePrimitiveBuffers[InFlightFrameIndex].Handle;
- BufferMemoryBarriers[0].offset:=0;
- BufferMemoryBarriers[0].size:=VK_WHOLE_SIZE;
+  aCommandBuffer.CmdDispatch((PushConstants.CountPrimitives+256) shr 8,1,1);
 
- BufferMemoryBarriers[1].sType:=VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
- BufferMemoryBarriers[1].pNext:=nil;
- BufferMemoryBarriers[1].srcAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
- BufferMemoryBarriers[1].dstAccessMask:=TVkAccessFlags(VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT);
- BufferMemoryBarriers[1].srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
- BufferMemoryBarriers[1].dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
- BufferMemoryBarriers[1].buffer:=fInstance.SolidPrimitiveVertexBuffer.Handle;
- BufferMemoryBarriers[1].offset:=0;
- BufferMemoryBarriers[1].size:=VK_WHOLE_SIZE;
+  BufferMemoryBarriers[0].sType:=VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+  BufferMemoryBarriers[0].pNext:=nil;
+  BufferMemoryBarriers[0].srcAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
+  BufferMemoryBarriers[0].dstAccessMask:=TVkAccessFlags(VK_ACCESS_HOST_WRITE_BIT) or TVkAccessFlags(VK_ACCESS_HOST_READ_BIT) or TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT) or TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT);
+  BufferMemoryBarriers[0].srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+  BufferMemoryBarriers[0].dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+  BufferMemoryBarriers[0].buffer:=fInstance.SolidPrimitivePrimitiveBuffers[InFlightFrameIndex].Handle;
+  BufferMemoryBarriers[0].offset:=0;
+  BufferMemoryBarriers[0].size:=VK_WHOLE_SIZE;
 
- BufferMemoryBarriers[2].sType:=VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
- BufferMemoryBarriers[2].pNext:=nil;
- BufferMemoryBarriers[2].srcAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
- BufferMemoryBarriers[2].dstAccessMask:=TVkAccessFlags(VK_ACCESS_INDEX_READ_BIT);
- BufferMemoryBarriers[2].srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
- BufferMemoryBarriers[2].dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
- BufferMemoryBarriers[2].buffer:=fInstance.SolidPrimitiveIndexBuffer.Handle;
- BufferMemoryBarriers[2].offset:=0;
- BufferMemoryBarriers[2].size:=VK_WHOLE_SIZE;
+  BufferMemoryBarriers[1].sType:=VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+  BufferMemoryBarriers[1].pNext:=nil;
+  BufferMemoryBarriers[1].srcAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
+  BufferMemoryBarriers[1].dstAccessMask:=TVkAccessFlags(VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT);
+  BufferMemoryBarriers[1].srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+  BufferMemoryBarriers[1].dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+  BufferMemoryBarriers[1].buffer:=fInstance.SolidPrimitiveVertexBuffer.Handle;
+  BufferMemoryBarriers[1].offset:=0;
+  BufferMemoryBarriers[1].size:=VK_WHOLE_SIZE;
 
- BufferMemoryBarriers[3].sType:=VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
- BufferMemoryBarriers[3].pNext:=nil;
- BufferMemoryBarriers[3].srcAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
- BufferMemoryBarriers[3].dstAccessMask:=TVkAccessFlags(VK_ACCESS_INDIRECT_COMMAND_READ_BIT);
- BufferMemoryBarriers[3].srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
- BufferMemoryBarriers[3].dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
- BufferMemoryBarriers[3].buffer:=fInstance.SolidPrimitiveIndirectDrawCommandBuffer.Handle;
- BufferMemoryBarriers[3].offset:=0;
- BufferMemoryBarriers[3].size:=VK_WHOLE_SIZE;
+  BufferMemoryBarriers[2].sType:=VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+  BufferMemoryBarriers[2].pNext:=nil;
+  BufferMemoryBarriers[2].srcAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
+  BufferMemoryBarriers[2].dstAccessMask:=TVkAccessFlags(VK_ACCESS_INDEX_READ_BIT);
+  BufferMemoryBarriers[2].srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+  BufferMemoryBarriers[2].dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+  BufferMemoryBarriers[2].buffer:=fInstance.SolidPrimitiveIndexBuffer.Handle;
+  BufferMemoryBarriers[2].offset:=0;
+  BufferMemoryBarriers[2].size:=VK_WHOLE_SIZE;
 
- aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
-                                   TVkPipelineStageFlags(VK_PIPELINE_STAGE_HOST_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_INPUT_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT),
-                                   TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT),
-                                   0,nil,
-                                   4,@BufferMemoryBarriers,
-                                   0,nil);
- 
+  BufferMemoryBarriers[3].sType:=VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+  BufferMemoryBarriers[3].pNext:=nil;
+  BufferMemoryBarriers[3].srcAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
+  BufferMemoryBarriers[3].dstAccessMask:=TVkAccessFlags(VK_ACCESS_INDIRECT_COMMAND_READ_BIT);
+  BufferMemoryBarriers[3].srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+  BufferMemoryBarriers[3].dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+  BufferMemoryBarriers[3].buffer:=fInstance.SolidPrimitiveIndirectDrawCommandBuffer.Handle;
+  BufferMemoryBarriers[3].offset:=0;
+  BufferMemoryBarriers[3].size:=VK_WHOLE_SIZE;
+
+  aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_HOST_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_INPUT_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT),
+                                    TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT),
+                                    0,nil,
+                                    4,@BufferMemoryBarriers,
+                                    0,nil);
+
+ end;
+
 end;
 
 end.
