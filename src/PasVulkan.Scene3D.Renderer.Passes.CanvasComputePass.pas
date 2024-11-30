@@ -387,7 +387,7 @@ begin
                                   SizeOf(TPushConstants),
                                   @PushConstants);
 
-  aCommandBuffer.CmdDispatch((PushConstants.CountPrimitives+256) shr 8,1,1);
+  aCommandBuffer.CmdDispatch((PushConstants.CountPrimitives+255) shr 8,1,1);
 
   BufferMemoryBarriers[0].sType:=VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
   BufferMemoryBarriers[0].pNext:=nil;
