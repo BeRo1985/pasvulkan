@@ -755,7 +755,19 @@ type { TpvScene3DRendererInstance }
        procedure UploadFrame(const aInFlightFrameIndex:TpvInt32);
        procedure ProcessAtmospheresForFrame(const aInFlightFrameIndex:TpvInt32;const aCommandBuffer:TpvVulkanCommandBuffer);
        procedure DrawFrame(const aSwapChainImageIndex,aInFlightFrameIndex:TpvInt32;const aFrameCounter:TpvInt64;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil);
+      public
        procedure InitializeSolidPrimitiveGraphicsPipeline(const aPipeline:TpvVulkanGraphicsPipeline);
+       procedure DrawSolidPrimitives(const aRendererInstance:TObject;
+                                     const aGraphicsPipeline:TpvVulkanGraphicsPipeline;
+                                     const aPreviousInFlightFrameIndex:TpvSizeInt;
+                                     const aInFlightFrameIndex:TpvSizeInt;
+                                     const aRenderPass:TpvScene3DRendererRenderPass;
+                                     const aViewBaseIndex:TpvSizeInt;
+                                     const aCountViews:TpvSizeInt;
+                                     const aFrameIndex:TpvSizeInt;
+                                     const aCommandBuffer:TpvVulkanCommandBuffer;
+                                     const aPipelineLayout:TpvVulkanPipelineLayout;
+                                     const aOnSetRenderPassResources:TpvScene3D.TOnSetRenderPassResources);
       public
        property VulkanViewUniformBuffers:TpvScene3D.TVulkanViewUniformBuffers read fVulkanViewUniformBuffers;
       public
@@ -7441,6 +7453,21 @@ begin
  aPipeline.VertexInputState.AddVertexInputAttributeDescription(7,0,VK_FORMAT_R32G32_SFLOAT,TVkPtrUInt(pointer(@PSolidPrimitiveVertex(nil)^.Offset1)));
  aPipeline.VertexInputState.AddVertexInputAttributeDescription(8,0,VK_FORMAT_R32G32_SFLOAT,TVkPtrUInt(pointer(@PSolidPrimitiveVertex(nil)^.Offset2)));
  aPipeline.VertexInputState.AddVertexInputAttributeDescription(9,0,VK_FORMAT_R32G32B32A32_SFLOAT,TVkPtrUInt(pointer(@PSolidPrimitiveVertex(nil)^.Color)));
+end;
+
+procedure TpvScene3DRendererInstance.DrawSolidPrimitives(const aRendererInstance:TObject;
+                                                         const aGraphicsPipeline:TpvVulkanGraphicsPipeline;
+                                                         const aPreviousInFlightFrameIndex:TpvSizeInt;
+                                                         const aInFlightFrameIndex:TpvSizeInt;
+                                                         const aRenderPass:TpvScene3DRendererRenderPass;
+                                                         const aViewBaseIndex:TpvSizeInt;
+                                                         const aCountViews:TpvSizeInt;
+                                                         const aFrameIndex:TpvSizeInt;
+                                                         const aCommandBuffer:TpvVulkanCommandBuffer;
+                                                         const aPipelineLayout:TpvVulkanPipelineLayout;
+                                                         const aOnSetRenderPassResources:TpvScene3D.TOnSetRenderPassResources);
+begin
+
 end;
 
 // R² sequence as 2D variant - https://extremelearning.com.au/unreasonable-effectiveness-of-quasirandom-sequences/

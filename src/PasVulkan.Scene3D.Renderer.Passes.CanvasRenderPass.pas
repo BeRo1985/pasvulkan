@@ -468,6 +468,18 @@ begin
                                                  fVulkanPipelineLayout,
                                                  OnSetRenderPassResources);
 
+  fInstance.DrawSolidPrimitives(fInstance,
+                                fVulkanSolidPrimitiveGraphicsPipeline,
+                                -1,
+                                aInFlightFrameIndex,
+                                TpvScene3DRendererRenderPass.View,
+                                InFlightFrameState^.FinalViewIndex,
+                                InFlightFrameState^.CountFinalViews,
+                                FrameGraph.DrawFrameIndex,
+                                aCommandBuffer,
+                                fVulkanPipelineLayout,
+                                OnSetRenderPassResources);
+
  end;
 
 end;
