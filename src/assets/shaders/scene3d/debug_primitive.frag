@@ -9,9 +9,8 @@ layout(location = 1) in float inEdgeDistance;
 
 layout(location = 0) out vec4 outFragColor;
 
-
 void main(){
-  float thickness = 3.0;
+  float thickness = 2.0;
   float d = 1.0 - clamp(abs(inEdgeDistance) / thickness, 0.0, 1.0);
   outFragColor = inColor * d;
 }

@@ -28,7 +28,7 @@ in gl_PerVertex {
 
 void main() {
 
-  float thickness = 3.0;
+  float thickness = 2.0;
 	vec2 lineStart = gl_in[0].gl_Position.xy / gl_in[0].gl_Position.w;
   vec2 lineEnd = gl_in[1].gl_Position.xy / gl_in[1].gl_Position.w;
 
