@@ -104,14 +104,17 @@ type { TpvScene3DRendererPassesCanvasRenderPass }
        fVulkanRenderPass:TpvVulkanRenderPass;
        fInstance:TpvScene3DRendererInstance;
        fResourceColor:TpvFrameGraph.TPass.TUsedImageResource;
+       fGeometryShaderSupport:boolean;
        fDebugPrimitiveVertexShaderModule:TpvVulkanShaderModule;
+       fDebugPrimitiveGeometryShaderModule:TpvVulkanShaderModule;
        fDebugPrimitiveFragmentShaderModule:TpvVulkanShaderModule;
-       fSolidPrimitiveVertexShaderModule:TpvVulkanShaderModule;
+       fSolidPrimitiveVertexShaderModule:TpvVulkanShaderModule;       
        fSolidPrimitiveFragmentShaderModule:TpvVulkanShaderModule;
        fPassVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fPassVulkanDescriptorPool:TpvVulkanDescriptorPool;
        fPassVulkanDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
        fVulkanPipelineShaderStageDebugPrimitiveVertex:TpvVulkanPipelineShaderStage;
+       fVulkanPipelineShaderStageDebugPrimitiveGeometry:TpvVulkanPipelineShaderStage;
        fVulkanPipelineShaderStageDebugPrimitiveFragment:TpvVulkanPipelineShaderStage;
        fVulkanPipelineShaderStageSolidPrimitiveVertex:TpvVulkanPipelineShaderStage;
        fVulkanPipelineShaderStageSolidPrimitiveFragment:TpvVulkanPipelineShaderStage;
@@ -158,6 +161,8 @@ inherited Create(aFrameGraph);
                                 TpvFrameGraph.TResourceTransition.TFlag.ExplicitOutputAttachment]
                               );
 
+ fGeometryShaderSupport:=fInstance.Renderer.VulkanDevice.PhysicalDevice.Features.GeometryShader<>VK_FALSE;
+
 end;
 
 destructor TpvScene3DRendererPassesCanvasRenderPass.Destroy;
@@ -180,6 +185,17 @@ begin
   fDebugPrimitiveVertexShaderModule:=TpvVulkanShaderModule.Create(fInstance.Renderer.VulkanDevice,Stream);
  finally
   Stream.Free;
+ end;
+
+ if fGeometryShaderSupport then begin
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('debug_primitive_geom.spv');
+  try
+   fDebugPrimitiveGeometryShaderModule:=TpvVulkanShaderModule.Create(fInstance.Renderer.VulkanDevice,Stream);
+  finally
+   Stream.Free;
+  end;
+ end else begin
+  fDebugPrimitiveGeometryShaderModule:=nil;
  end;
 
  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('debug_primitive_frag.spv');
@@ -205,6 +221,12 @@ begin
 
  fVulkanPipelineShaderStageDebugPrimitiveVertex:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_VERTEX_BIT,fDebugPrimitiveVertexShaderModule,'main');
 
+ if assigned(fDebugPrimitiveGeometryShaderModule) then begin
+  fVulkanPipelineShaderStageDebugPrimitiveGeometry:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_GEOMETRY_BIT,fDebugPrimitiveGeometryShaderModule,'main');
+ end else begin
+  fVulkanPipelineShaderStageDebugPrimitiveGeometry:=nil;
+ end; 
+
  fVulkanPipelineShaderStageDebugPrimitiveFragment:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_FRAGMENT_BIT,fDebugPrimitiveFragmentShaderModule,'main');
 
  fVulkanPipelineShaderStageSolidPrimitiveVertex:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_VERTEX_BIT,fSolidPrimitiveVertexShaderModule,'main');
@@ -222,6 +244,8 @@ begin
 
  FreeAndNil(fVulkanPipelineShaderStageDebugPrimitiveVertex);
 
+ FreeAndNil(fVulkanPipelineShaderStageDebugPrimitiveGeometry);
+
  FreeAndNil(fVulkanPipelineShaderStageDebugPrimitiveFragment);
 
  FreeAndNil(fSolidPrimitiveVertexShaderModule);
@@ -229,6 +253,8 @@ begin
  FreeAndNil(fSolidPrimitiveFragmentShaderModule);
 
  FreeAndNil(fDebugPrimitiveVertexShaderModule);
+
+ FreeAndNil(fDebugPrimitiveGeometryShaderModule);
 
  FreeAndNil(fDebugPrimitiveFragmentShaderModule);
 
@@ -271,7 +297,7 @@ begin
  end;
 
  fVulkanPipelineLayout:=TpvVulkanPipelineLayout.Create(fInstance.Renderer.VulkanDevice);
- fVulkanPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),0,SizeOf(TPushConstants));
+ fVulkanPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT) or IfThen(fGeometryShaderSupport,TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_GEOMETRY_BIT),0),0,SizeOf(TPushConstants));
  fVulkanPipelineLayout.AddDescriptorSetLayout(fInstance.Renderer.Scene3D.GlobalVulkanDescriptorSetLayout);
  fVulkanPipelineLayout.AddDescriptorSetLayout(fPassVulkanDescriptorSetLayout);
  fVulkanPipelineLayout.Initialize;
@@ -292,6 +318,9 @@ begin
 
    if PipelineIndex=0 then begin
     VulkanGraphicsPipeline.AddStage(fVulkanPipelineShaderStageDebugPrimitiveVertex);
+    if assigned(fVulkanPipelineShaderStageDebugPrimitiveGeometry) then begin
+     VulkanGraphicsPipeline.AddStage(fVulkanPipelineShaderStageDebugPrimitiveGeometry);
+    end;
     VulkanGraphicsPipeline.AddStage(fVulkanPipelineShaderStageDebugPrimitiveFragment);
    end else begin
     VulkanGraphicsPipeline.AddStage(fVulkanPipelineShaderStageSolidPrimitiveVertex);
@@ -338,7 +367,7 @@ begin
    VulkanGraphicsPipeline.ColorBlendState.BlendConstants[1]:=0.0;
    VulkanGraphicsPipeline.ColorBlendState.BlendConstants[2]:=0.0;
    VulkanGraphicsPipeline.ColorBlendState.BlendConstants[3]:=0.0;
-   if PipelineIndex=0 then begin
+   if (PipelineIndex=0) and not fGeometryShaderSupport then begin
     // Debug primitives uses no blending, since they are simply just native GPU lines, not anti-aliased 
     VulkanGraphicsPipeline.ColorBlendState.AddColorBlendAttachmentState(false,
                                                                         VK_BLEND_FACTOR_ZERO,
@@ -451,7 +480,7 @@ begin
   fOnSetRenderPassResourcesDone:=false;
 
   aCommandBuffer.CmdPushConstants(fVulkanPipelineLayout.Handle,
-                                  TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_VERTEX_BIT) or TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_FRAGMENT_BIT),
+                                  TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_VERTEX_BIT) or TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_FRAGMENT_BIT) or IfThen(fGeometryShaderSupport,TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_GEOMETRY_BIT),0),
                                   0,
                                   SizeOf(TPushConstants),
                                   @PushConstants);

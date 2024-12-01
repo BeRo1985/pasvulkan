@@ -18,11 +18,17 @@ layout (push_constant) uniform PushConstants {
   vec2 viewPortSize;
 } pushConstants;
 
+in gl_PerVertex {
+	vec4 gl_Position;
+	float gl_PointSize;  
+  float gl_ClipDistance[];
+};
+
 /* clang-format on */
 
 void main() {
 
-  float thickness = 1.0;
+  float thickness = 3.0;
 	vec2 lineStart = gl_in[0].gl_Position.xy / gl_in[0].gl_Position.w;
   vec2 lineEnd = gl_in[1].gl_Position.xy / gl_in[1].gl_Position.w;
 
