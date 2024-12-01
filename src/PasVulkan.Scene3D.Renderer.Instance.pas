@@ -7466,7 +7466,26 @@ procedure TpvScene3DRendererInstance.DrawSolidPrimitives(const aRendererInstance
                                                          const aCommandBuffer:TpvVulkanCommandBuffer;
                                                          const aPipelineLayout:TpvVulkanPipelineLayout;
                                                          const aOnSetRenderPassResources:TpvScene3D.TOnSetRenderPassResources);
+const Offsets:TVkDeviceSize=0;
 begin
+
+ if (aViewBaseIndex>=0) and (aCountViews>0) and (fSolidPrimitivePrimitiveDynamicArrays[aInFlightFrameIndex].Count>0) then begin
+
+  fScene3D.SetGlobalResources(aCommandBuffer,aPipelineLayout,aRendererInstance,aRenderPass,aPreviousInFlightFrameIndex,aInFlightFrameIndex);
+
+  if assigned(aOnSetRenderPassResources) then begin
+   aOnSetRenderPassResources(aCommandBuffer,aPipelineLayout,aRendererInstance,aRenderPass,aPreviousInFlightFrameIndex,aInFlightFrameIndex);
+  end;
+
+  aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,aGraphicsPipeline.Handle);
+
+  aCommandBuffer.CmdBindVertexBuffers(0,1,@fSolidPrimitiveVertexBuffer.Handle,@Offsets);
+
+  aCommandBuffer.CmdBindIndexBuffer(fSolidPrimitiveIndexBuffer.Handle,0,VK_INDEX_TYPE_UINT32);
+
+  aCommandBuffer.CmdDrawIndexedIndirect(fSolidPrimitiveIndirectDrawCommandBuffer.Handle,0,1,SizeOf(TVkDrawIndexedIndirectCommand));
+
+ end;
 
 end;
 
