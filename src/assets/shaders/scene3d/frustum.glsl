@@ -50,4 +50,42 @@ bool frustumCullingSphereTest(const in Frustum frustum, vec4 sphere){
   return true;
 }
 
+bool clipLineToFrustum(in Frustum frustum, inout vec3 start, inout vec3 end){
+
+  // Iterate over the relevant frustum planes
+  for(int planeIndex = 0; planeIndex <= frustum.maximumPlaneSide; planeIndex++){
+    vec4 plane = frustum.planes[planeIndex];
+
+    // Compute distances of the line's endpoints to the current plane
+    float distStart = dot(vec4(start, 1.0), plane);
+    float distEnd = dot(vec4(end, 1.0), plane);
+
+    // If both points are inside, skip to the next plane
+    if((distStart >= 0.0) && (distEnd >= 0.0)){
+        continue;
+    }
+
+    // If the line is fully outside this plane, truncate it to empty
+    if((distStart < 0.0) && (distEnd < 0.0)){
+        start = vec3(0.0); // Set to invalid or sentinel value
+        end = vec3(0.0);
+        return false;
+    }
+
+    // Otherwise, compute the intersection point
+    float t = distStart / (distStart - distEnd);
+    vec3 intersection = mix(start, end, t);
+
+    // Replace the point outside with the intersection
+    if(distStart < 0.0){
+      start = intersection;
+    }else{
+      end = intersection;
+    }
+
+  }
+
+  return true;
+}
+
 #endif

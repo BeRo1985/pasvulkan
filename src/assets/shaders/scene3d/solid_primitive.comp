@@ -6,6 +6,7 @@
 #extension GL_ARB_shading_language_420pack : enable
 #extension GL_GOOGLE_include_directive : enable
 #extension GL_EXT_samplerless_texture_functions : enable
+#extension GL_EXT_control_flow_attributes : enable
 
 /* clang-format off */
 
@@ -88,7 +89,86 @@ vec2 screenSpaceToClipSpace(const vec2 screenSpace) {
   return fma(screenSpace / pushConstants.viewPortSize, vec2(2.0), vec2(-1.0));
 }
 
+shared mat4 viewProjectionMatrices[8]; // 8 view projection matrices for 8 views, that should be enough
+shared mat4 inverseViewProjectionMatrices[8]; // 8 inverse view projection matrices for 8 views, that should be enough
+
+// Define frustum plane equations in clip space
+const vec4 frustumPlanes[6] = {
+  vec4( 1.0,  0.0,  0.0, -1.0), // Right plane: x - w <= 0
+  vec4(-1.0,  0.0,  0.0, -1.0), // Left plane:  x + w >= 0
+  vec4( 0.0,  1.0,  0.0, -1.0), // Top plane:    y - w <= 0
+  vec4( 0.0, -1.0,  0.0, -1.0), // Bottom plane: y + w >= 0
+  vec4( 0.0,  0.0,  1.0, -1.0), // Far plane:    z - w <= 0
+  vec4( 0.0,  0.0, -1.0, -1.0)  // Near plane:   z + w >= 0
+};
+
+// Function to clip the line segment against the frustum planes
+bool clipLineToFrustum(inout vec4 start, inout vec4 end) {
+
+  // Initialize t0 and t1 for parametric line
+  float t0 = 0.0;
+  float t1 = 1.0;
+  vec4 d = end - start;
+
+  // Clip against the six frustum planes in clip space
+  for(int i = 0; i < 6; i++){
+    vec4 plane = frustumPlanes[i];
+    float denominator = dot(plane, d);
+    float numerator = -dot(plane, start);
+    if(denominator == 0.0){
+      // Line is parallel to plane
+      if(numerator < 0.0){
+        // Line is outside the plane
+        return false;
+      }
+      // Line is inside the plane, continue to next plane
+    } else {
+      float t = numerator / denominator;
+      if(denominator < 0.0){
+        // Entering half-space
+        if(t > t1){
+          return false;
+        }
+        if(t > t0){
+          t0 = t;
+        }
+      } else {
+        // Exiting half-space
+        if(t < t0){
+          return false;
+        }
+        if(t < t1){
+          t1 = t;
+        }
+      }
+    }
+  }
+
+  if(t0 > t1){
+    // Line is outside the frustum
+    return false;
+  }
+
+  // Update the start and end points based on t0 and t1
+  vec4 clippedStart = start + (t0 * d);
+  vec4 clippedEnd = start + (t1 * d);
+
+  start = clippedStart;
+  end = clippedEnd;
+
+  return true;
+}
+
+
 void main(){
+
+  if((gl_LocalInvocationID.x < pushConstants.countViews) && (gl_LocalInvocationID.x < 8u)){
+    uint viewIndex = gl_LocalInvocationID.x;
+    inverseViewProjectionMatrices[viewIndex] = inverse(viewProjectionMatrices[viewIndex] = uView.views[pushConstants.viewBaseIndex + viewIndex].projectionMatrix * uView.views[pushConstants.viewBaseIndex + viewIndex].viewMatrix);
+  }
+
+  barrier();
+  memoryBarrierShared();
 
   uint primitiveIndex = gl_GlobalInvocationID.x;
   
@@ -123,9 +203,7 @@ void main(){
           // Ensure that the point is visible in all views at the correct positions
           for(int viewIndex = 0; viewIndex < int(pushConstants.countViews); viewIndex++){
 
-            mat4 viewProjectionMatrix = uView.views[viewBaseIndex + uint(viewIndex)].projectionMatrix * uView.views[viewBaseIndex + uint(viewIndex)].viewMatrix;
-
-            vec4 centerClip = viewProjectionMatrix * vec4(center3D, 1.0);
+            vec4 centerClip = viewProjectionMatrices[viewIndex] * vec4(center3D, 1.0);
 
             visible = visible || all(greaterThanEqual(centerClip.xyz, vec3(-centerClip.w)));
 
@@ -160,18 +238,39 @@ void main(){
           vec3 lineEnd3D = uintBitsToFloat(primitive.position1.xyz);
           vec2 lineEndOffset = uintBitsToFloat(primitive.offset1Offset2.xy);
 
-          visible = false;
+          visible = true;
 
           // Ensure that the line is visible in all views at the correct positions
           for(int viewIndex = 0; viewIndex < int(pushConstants.countViews); viewIndex++){
 
-            mat4 viewProjectionMatrix = uView.views[viewBaseIndex + uint(viewIndex)].projectionMatrix * uView.views[viewBaseIndex + uint(viewIndex)].viewMatrix;
+            mat4 viewProjectionMatrix = viewProjectionMatrices[viewIndex];
 
             vec4 lineStartClip = viewProjectionMatrix * vec4(lineStart3D, 1.0);
             vec4 lineEndClip = viewProjectionMatrix * vec4(lineEnd3D, 1.0);
 
-            visible = visible || (all(greaterThanEqual(lineStartClip.xyz, vec3(-lineStartClip.w))) ||
-                                  all(greaterThanEqual(lineEndClip.xyz, vec3(-lineEndClip.w))));
+            if(any(lessThan(lineStartClip.xyz, vec3(-lineStartClip.w))) || 
+               any(lessThan(lineEndClip.xyz, vec3(-lineEndClip.w))) ||
+               any(greaterThan(lineStartClip.xyz, vec3(lineStartClip.w))) ||
+               any(greaterThan(lineEndClip.xyz, vec3(lineEndClip.w)))){
+
+              if(clipLineToFrustum(lineStartClip, lineEndClip)){
+
+                mat4 inverseViewProjectionMatrix = inverseViewProjectionMatrices[viewIndex];
+
+                vec4 lineStart3DClip = inverseViewProjectionMatrix * lineStartClip; 
+                lineStart3D = lineStart3DClip.xyz / lineStart3DClip.w;
+
+                vec4 lineEnd3DClip = inverseViewProjectionMatrix * lineEndClip; 
+                lineEnd3D = lineEnd3DClip.xyz / lineEnd3DClip.w;
+
+              }else{
+
+                visible = false;
+                break;
+
+              }
+
+            }
 
             vec2 lineStartScreen = clipSpaceToScreenSpace((lineStartClip.xy / lineStartClip.w) + lineStartOffset);
             vec2 lineEndScreen = clipSpaceToScreenSpace((lineEndClip.xy / lineEndClip.w) + lineEndOffset);
@@ -183,6 +282,9 @@ void main(){
             aabb.zw = max(aabb.zw, lineEndScreen);
 
           }
+
+          primitive.position0.xyz = floatBitsToUint(lineStart3D);
+          primitive.position1.xyz = floatBitsToUint(lineEnd3D);
 
           float lineThickness = uintBitsToFloat(primitive.position1.w) + 1.0; // Add 1.0 to the line tickness for anti-aliasing
 
@@ -217,7 +319,7 @@ void main(){
           // Ensure that the triangle is visible in all views at the correct positions
           for(int viewIndex = 0; viewIndex < int(pushConstants.countViews); viewIndex++){
 
-            mat4 viewProjectionMatrix = uView.views[viewBaseIndex + uint(viewIndex)].projectionMatrix * uView.views[viewBaseIndex + uint(viewIndex)].viewMatrix;
+            mat4 viewProjectionMatrix = viewProjectionMatrices[viewIndex];
 
             vec4 triangleVertex0Clip = viewProjectionMatrix * vec4(triangleVertex03D, 1.0);
             vec4 triangleVertex1Clip = viewProjectionMatrix * vec4(triangleVertex13D, 1.0);
@@ -274,7 +376,7 @@ void main(){
           // Ensure that the triangle is visible in all views at the correct positions
           for(int viewIndex = 0; viewIndex < int(pushConstants.countViews); viewIndex++){
 
-            mat4 viewProjectionMatrix = uView.views[viewBaseIndex + uint(viewIndex)].projectionMatrix * uView.views[viewBaseIndex + uint(viewIndex)].viewMatrix;
+            mat4 viewProjectionMatrix = viewProjectionMatrices[viewIndex];
 
             vec4 triangleVertex0Clip = viewProjectionMatrix * vec4(triangleVertex03D, 1.0);
             vec4 triangleVertex1Clip = viewProjectionMatrix * vec4(triangleVertex13D, 1.0);
