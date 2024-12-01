@@ -469,7 +469,7 @@ void main(){
     }    
 
     // Check if the primitive is visible at all (culling)
-    visible = visible && (all(lessThanEqual(aabb.xy, vec2(1.0))) && all(greaterThanEqual(aabb.zw, vec2(0.0))) && all(lessThanEqual(aabb.xy, aabb.zw)));
+    visible = visible && (all(lessThanEqual(aabb.xy, vec2(1.0))) && all(greaterThanEqual(aabb.zw, vec2(-1.0))) && all(lessThanEqual(aabb.xy, aabb.zw)));
 
     // If the primitive is visible, generate the vertices and indices
     uint firstVertex = 0u;
