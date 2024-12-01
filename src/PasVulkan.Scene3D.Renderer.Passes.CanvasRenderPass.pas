@@ -396,6 +396,7 @@ procedure TpvScene3DRendererPassesCanvasRenderPass.ReleaseVolatileResources;
 var Index:TpvSizeInt;
 begin
  FreeAndNil(fVulkanDebugPrimitiveGraphicsPipeline);
+ FreeAndNil(fVulkanSolidPrimitiveGraphicsPipeline);
  FreeAndNil(fVulkanPipelineLayout);
  for Index:=0 to fInstance.Renderer.CountInFlightFrames-1 do begin
   FreeAndNil(fPassVulkanDescriptorSets[Index]);
