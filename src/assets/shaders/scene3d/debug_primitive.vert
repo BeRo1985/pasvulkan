@@ -8,7 +8,7 @@ layout(location = 0) in vec3 inPosition;
 layout(location = 1) in vec4 inColor;
 
 layout(location = 0) out vec4 outColor;
-layout(location = 1) out float outEdgeDistance;
+layout(location = 1) out vec2 outEdgeDistances;
 
 /* clang-format off */
 layout (push_constant) uniform PushConstants {
@@ -43,7 +43,7 @@ out gl_PerVertex {
 void main() {
   uint viewIndex = pushConstants.viewBaseIndex + uint(gl_ViewIndex);
   outColor = inColor;
-  outEdgeDistance = 0.0;
+  outEdgeDistances = vec2(0.0);
   gl_Position = (uView.views[viewIndex].projectionMatrix * uView.views[viewIndex].viewMatrix) * vec4(inPosition, 1.0);
   gl_PointSize = 1.0;
 }
