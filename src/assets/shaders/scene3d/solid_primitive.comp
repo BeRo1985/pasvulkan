@@ -85,7 +85,7 @@ vec2 clipSpaceToScreenSpace(const vec2 clipSpace) {
 }
 
 vec2 screenSpaceToClipSpace(const vec2 screenSpace) {
-  return fma(screenSpace / pushConstants.viewPortSize, vec2(2.0), vec2(1.0));
+  return fma(screenSpace / pushConstants.viewPortSize, vec2(2.0), vec2(-1.0));
 }
 
 void main(){
