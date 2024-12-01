@@ -29,7 +29,7 @@ void main(){
 
       float d = distance(inPosition, inPosition0) - inLineThicknessOrPointSize;
       
-      float alpha = clamp(d / fwidth(d), 0.0, 1.0);
+      float alpha = 1.0 - clamp(d / fwidth(d), 0.0, 1.0);
 
       outputColor = vec4(inColor.xyzw) * alpha; // Premultiplied alpha
 
@@ -45,7 +45,7 @@ void main(){
 
       float d = length(pa - (ba * (clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0)))) - inLineThicknessOrPointSize;
 
-      float alpha = clamp(d / fwidth(d), 0.0, 1.0);
+      float alpha = 1.0 - clamp(d / fwidth(d), 0.0, 1.0);
 
       outputColor = vec4(inColor.xyzw) * alpha; // Premultiplied alpha
 
@@ -68,7 +68,7 @@ void main(){
                        vec2(dot(pq2, pq2), s * ((v2.x * e2.y) - (v2.y * e2.x))));
       float d = -sqrt(t.x)*sign(t.y);
 
-      float alpha = clamp(d / fwidth(d), 0.0, 1.0);
+      float alpha = 1.0 - clamp(d / fwidth(d), 0.0, 1.0);
 
       outputColor = vec4(inColor.xyzw) * alpha; // Premultiplied alpha
 
@@ -114,7 +114,7 @@ void main(){
 
       }
 
-      float alpha = clamp(d / fwidth(d), 0.0, 1.0);
+      float alpha = 1.0 - clamp(d / fwidth(d), 0.0, 1.0);
 
       outputColor = vec4(inColor.xyzw) * alpha; // Premultiplied alpha
 

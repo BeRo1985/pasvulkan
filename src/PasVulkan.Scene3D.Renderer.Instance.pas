@@ -1816,7 +1816,7 @@ begin
  end;
 
  fSolidPrimitiveIndirectDrawCommandBuffer:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
-                                                                  SizeOf(TVkDrawIndexedIndirectCommand)*MaxSolidPrimitives,
+                                                                  RoundDownToPowerOfTwo(SizeOf(TVkDrawIndexedIndirectCommand)+16),
                                                                   TVkBufferUsageFlags(VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
                                                                   TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
                                                                   [],
