@@ -433,7 +433,6 @@ end;
 procedure TpvScene3DRendererPassesCanvasRenderPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;
                                                             const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
 var InFlightFrameState:TpvScene3DRendererInstance.PInFlightFrameState;
-    PreviousInFlightFrameIndex:TpvSizeInt;
     PushConstants:TPushConstants;
 begin
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
@@ -450,12 +449,6 @@ begin
  if InFlightFrameState^.Ready then begin
 
   fOnSetRenderPassResourcesDone:=false;
-
-  if fInstance.Renderer.VelocityBufferNeeded then begin
-   PreviousInFlightFrameIndex:=IfThen(aFrameIndex=0,aInFlightFrameIndex,FrameGraph.DrawPreviousInFlightFrameIndex);
-  end else begin
-   PreviousInFlightFrameIndex:=-1;
-  end;
 
   aCommandBuffer.CmdPushConstants(fVulkanPipelineLayout.Handle,
                                   TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_VERTEX_BIT) or TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_FRAGMENT_BIT),
