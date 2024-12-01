@@ -1088,29 +1088,39 @@ var Colors:array[0..7] of TpvVector4;
    DrawFilledCircle(fModelMatrix.MulHomogen(TpvVector3.Null),6.0,Colors[0],32);
   end;
  end;
+var v:TpvVector4;
 begin
  fMatrix:=aMatrix;
  Update(fOperation=TOperation.Scale);
- if fGraphicsInitialized and not
-    ((fViewMode<>TViewMode.Orthographic) and
-     (fModelViewProjectionMatrix.MulHomogen(TpvVector3.Null).z<1e-3)) then begin
-  if aInFlightFrameIndex>=0 then begin
+ if fGraphicsInitialized then begin
+  case fViewMode of
+   TViewMode.Orthographic:begin
+    v:=TpvVector4.InlineableCreate(0.0,0.0,0.0,1.0);
+   end;
+   TViewMode.Perspective:begin
+    v:=fModelViewProjectionMatrix*TpvVector4.InlineableCreate(0.0,0.0,0.0,1.0);
+   end;
+   else begin
+    v:=TpvVector4.InlineableCreate(0.0,0.0,0.0,1.0);
+   end;
   end;
-  ComputeColors;
-  case fOperation of
-   TOperation.Rotate:begin
-    DrawRotationGizmo;
-   end;
-   TOperation.Translate:begin
-    DrawTranslationGizmo;
-   end;
-   TOperation.Scale:begin
-    DrawScaleGizmo;
-   end;
-   TOperation.Bounds:begin
-   end;
-   else {TOperation.None:}begin
+  if abs(v.z)<=v.w then begin
+   ComputeColors;
+   case fOperation of
+    TOperation.Rotate:begin
+     DrawRotationGizmo;
+    end;
+    TOperation.Translate:begin
+     DrawTranslationGizmo;
+    end;
+    TOperation.Scale:begin
+     DrawScaleGizmo;
+    end;
+    TOperation.Bounds:begin
+    end;
+    else {TOperation.None:}begin
 
+    end;
    end;
   end;
  end;
