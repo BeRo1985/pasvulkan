@@ -43,7 +43,7 @@ void main(){
 
       vec2 pa = p - a, ba = b - a;
 
-      float d = length(pa - (ba * (clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0)))) - inLineThicknessOrPointSize;
+      float d = length(pa - (ba * (clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0)))) - (inLineThicknessOrPointSize * 0.5);
 
       float alpha = 1.0 - clamp(d / fwidth(d), 0.0, 1.0);
 
@@ -89,7 +89,7 @@ void main(){
 
         vec2 pa = p - a, ba = b - a;
 
-        d = min(d, length(pa - (ba * (clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0)))) - inLineThicknessOrPointSize);
+        d = min(d, length(pa - (ba * (clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0)))) - (inLineThicknessOrPointSize * 0.5));
 
       }
 
@@ -100,7 +100,7 @@ void main(){
 
         vec2 pa = p - a, ba = b - a;
 
-        d = min(d, length(pa - (ba * (clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0)))) - inLineThicknessOrPointSize);
+        d = min(d, length(pa - (ba * (clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0)))) - (inLineThicknessOrPointSize * 0.5));
 
       }
 
@@ -110,7 +110,7 @@ void main(){
 
         vec2 pa = p - a, ba = b - a;
 
-        d = min(d, length(pa - (ba * (clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0)))) - inLineThicknessOrPointSize);
+        d = min(d, length(pa - (ba * (clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0)))) - (inLineThicknessOrPointSize * 0.5));
 
       }
 
