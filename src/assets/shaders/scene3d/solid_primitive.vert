@@ -210,7 +210,7 @@ void main() {
 
     default:{
 
-      outPosition0 = outPosition1 = outPosition2 = vec2(0.0);
+      outPosition0 = outPosition1 = outPosition2 = outPosition3 = vec2(0.0);
 
       outLineThicknessOrPointSize = 0.0;
 
