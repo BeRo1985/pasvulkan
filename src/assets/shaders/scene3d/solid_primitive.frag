@@ -146,10 +146,8 @@ void main(){
         vec2 t = min(min(vec2(dot(pq0, pq0), s * ((v0.x * e0.y) - (v0.y * e0.x))),
                         vec2(dot(pq1, pq1), s * ((v1.x * e1.y) - (v1.y * e1.x)))),
                         vec2(dot(pq2, pq2), s * ((v2.x * e2.y) - (v2.y * e2.x))));
-        float d = -sqrt(t.x)*sign(t.y);
-        
         d = -sqrt(t.x)*sign(t.y);
-
+        
       } 
 
       {
