@@ -801,22 +801,13 @@ var Colors:array[0..7] of TpvVector4;
                                                                  0.0);
  end;
  procedure DrawCircle(const aCenter:TpvVector3;const aRadius:TpvFloat;const aColor:TpvVector4;const aSegments:TpvSizeInt;const aWidth:TpvScalar);
- var Index:TpvSizeInt;
-     a0,a1:TpvScalar;
  begin
-  if aInFlightFrameIndex>=0 then begin
-   for Index:=0 to aSegments-1 do begin
-    a0:=(Index/aSegments)*TwoPI;
-    a1:=((Index+1)/aSegments)*TwoPI;
-    TpvScene3DRendererInstance(fRendererInstance).AddSolidLine3D(aInFlightFrameIndex,
-                                                                 aCenter,
+  TpvScene3DRendererInstance(fRendererInstance).AddSolidPoint3D(aInFlightFrameIndex,
                                                                  aCenter,
                                                                  aColor,
-                                                                 aWidth,
-                                                                 TpvVector2.InlineableCreate(sin(a0)*aRadius,cos(a0)*aRadius)/fViewPort.zw,
-                                                                 TpvVector2.InlineableCreate(sin(a1)*aRadius,cos(a1)*aRadius)/fViewPort.zw);
-   end;
-  end;
+                                                                 aRadius,
+                                                                 TpvVector2.Null,
+                                                                 aWidth);
  end;
  procedure DrawHatchedAxis(const aAxis:TpvVector3);
  var Index:TpvSizeInt;

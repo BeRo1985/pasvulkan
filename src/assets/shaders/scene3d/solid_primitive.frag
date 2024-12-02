@@ -40,7 +40,7 @@ void main(){
     case PRIMITIVE_TOPOLOGY_POINT_WIREFRAME:{
 
       float d = distance(inPosition, inPosition0);
-      d = max(-(d - inLineThicknessOrPointSize), d - inInnerRadius);
+      d = max(d - inLineThicknessOrPointSize, inInnerRadius - d);
 
       float alpha = 1.0 - clamp(d / fwidth(d), 0.0, 1.0);
 
