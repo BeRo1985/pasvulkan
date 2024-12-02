@@ -3,13 +3,9 @@
 #extension GL_EXT_multiview : enable
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_ARB_shading_language_420pack : enable
+#extension GL_GOOGLE_include_directive : enable
 
-#define PRIMITIVE_TOPOLOGY_POINT 0u
-#define PRIMITIVE_TOPOLOGY_LINE 1u
-#define PRIMITIVE_TOPOLOGY_TRIANGLE 2u
-#define PRIMITIVE_TOPOLOGY_TRIANGLE_WIREFRAME 3u
-#define PRIMITIVE_TOPOLOGY_QUAD 4u
-#define PRIMITIVE_TOPOLOGY_QUAD_WIREFRAME 5u
+#include "solid_primitive.glsl"
 
 layout(location = 0) in vec4 inColor;
 layout(location = 1) in vec2 inPosition;
@@ -18,7 +14,8 @@ layout(location = 3) in vec2 inPosition1;
 layout(location = 4) in vec2 inPosition2;
 layout(location = 5) in vec2 inPosition3;
 layout(location = 6) in float inLineThicknessOrPointSize;
-layout(location = 7) flat in uint inPrimitiveTopology;
+layout(location = 7) in float inInnerRadius;
+layout(location = 8) flat in uint inPrimitiveTopology;
 
 layout(location = 0) out vec4 outFragColor;
 
@@ -32,6 +29,19 @@ void main(){
 
       float d = distance(inPosition, inPosition0) - inLineThicknessOrPointSize;
       
+      float alpha = 1.0 - clamp(d / fwidth(d), 0.0, 1.0);
+
+      outputColor = vec4(inColor.xyzw) * alpha; // Premultiplied alpha
+
+      break;
+
+    }
+
+    case PRIMITIVE_TOPOLOGY_POINT_WIREFRAME:{
+
+      float d = distance(inPosition, inPosition0);
+      d = max(-(d - inLineThicknessOrPointSize), d - inInnerRadius);
+
       float alpha = 1.0 - clamp(d / fwidth(d), 0.0, 1.0);
 
       outputColor = vec4(inColor.xyzw) * alpha; // Premultiplied alpha

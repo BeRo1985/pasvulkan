@@ -439,11 +439,12 @@ type { TpvScene3DRendererInstance }
             TSolidPrimitiveVertex=packed record
              public
               const PrimitiveTopologyPoint=0;
-                    PrimitiveTopologyLine=1;
-                    PrimitiveTopologyTriangle=2;
-                    PrimitiveTopologyTriangleWireframe=3;
-                    PrimitiveTopologyQuad=4;
-                    PrimitiveTopologyQuadWireframe=5;
+                    PrimitiveTopologyPointWireframe=1;
+                    PrimitiveTopologyLine=2;
+                    PrimitiveTopologyTriangle=3;
+                    PrimitiveTopologyTriangleWireframe=4;
+                    PrimitiveTopologyQuad=5;
+                    PrimitiveTopologyQuadWireframe=6;
              public
               // uvec4-wise structure ordering so that the shaders can access it uvec4-wise
               case boolean of
@@ -459,7 +460,7 @@ type { TpvScene3DRendererInstance }
                 LineThicknessorPointSize:TpvFloat;    // + 4 = 48
 
                 Position2:TpvVector3;                 // +12 = 60
-                Unused1:TpvUInt32;                    // + 4 = 64
+                InnerRadius:TpvFloat;                 // + 4 = 64
 
                 Position3:TpvVector3;                 // +12 = 76
                 Unused2:TpvUInt32;                    // + 4 = 80
@@ -737,11 +738,11 @@ type { TpvScene3DRendererInstance }
        procedure AcquireVolatileResources;
        procedure ReleaseVolatileResources;
        procedure ClearSolid(const aInFlightFrameIndex:TpvSizeInt);
-       function AddSolidPoint2D(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector2;const aColor:TpvVector4;const aSize:TpvScalar;const aPositionOffset:TpvVector2):Boolean;
+       function AddSolidPoint2D(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector2;const aColor:TpvVector4;const aSize:TpvScalar;const aPositionOffset:TpvVector2;const aLineWidth:TpvScalar):Boolean;
        function AddSolidLine2D(const aInFlightFrameIndex:TpvSizeInt;const aStartPosition,aEndPosition:TpvVector2;const aColor:TpvVector4;const aSize:TpvScalar;const aStartPositionOffset,aEndPositionOffset:TpvVector2):Boolean;
        function AddSolidTriangle2D(const aInFlightFrameIndex:TpvSizeInt;const aPosition0,aPosition1,aPosition2:TpvVector2;const aColor:TpvVector4;const aPosition0Offset,aPosition1Offset,aPosition2Offset:TpvVector2;const aLineWidth:TpvScalar=0.0):Boolean;
        function AddSolidQuad2D(const aInFlightFrameIndex:TpvSizeInt;const aPosition0,aPosition1,aPosition2,aPosition3:TpvVector2;const aColor:TpvVector4;const aPosition0Offset,aPosition1Offset,aPosition2Offset,aPosition3Offset:TpvVector2;const aLineWidth:TpvScalar=0.0):Boolean;
-       function AddSolidPoint3D(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aColor:TpvVector4;const aSize:TpvScalar;const aPositionOffset:TpvVector2):Boolean;
+       function AddSolidPoint3D(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aColor:TpvVector4;const aSize:TpvScalar;const aPositionOffset:TpvVector2;const aLineWidth:TpvScalar):Boolean;
        function AddSolidLine3D(const aInFlightFrameIndex:TpvSizeInt;const aStartPosition,aEndPosition:TpvVector3;const aColor:TpvVector4;const aSize:TpvScalar;const aStartPositionOffset,aEndPositionOffset:TpvVector2):Boolean;
        function AddSolidTriangle3D(const aInFlightFrameIndex:TpvSizeInt;const aPosition0,aPosition1,aPosition2:TpvVector3;const aColor:TpvVector4;const aPosition0Offset,aPosition1Offset,aPosition2Offset:TpvVector2;const aLineWidth:TpvScalar=0.0):Boolean;
        function AddSolidQuad3D(const aInFlightFrameIndex:TpvSizeInt;const aPosition0,aPosition1,aPosition2,aPosition3:TpvVector3;const aColor:TpvVector4;const aPosition0Offset,aPosition1Offset,aPosition2Offset,aPosition3Offset:TpvVector2;const aLineWidth:TpvScalar=0.0):Boolean;
@@ -5485,7 +5486,7 @@ begin
  fSolidPrimitivePrimitiveDynamicArrays[aInFlightFrameIndex].ClearNoFree;
 end;
 
-function TpvScene3DRendererInstance.AddSolidPoint2D(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector2;const aColor:TpvVector4;const aSize:TpvScalar;const aPositionOffset:TpvVector2):Boolean;
+function TpvScene3DRendererInstance.AddSolidPoint2D(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector2;const aColor:TpvVector4;const aSize:TpvScalar;const aPositionOffset:TpvVector2;const aLineWidth:TpvScalar):Boolean;
 var Primitive:PSolidPrimitivePrimitive;
     PrimitiveItems:TSolidPrimitivePrimitiveDynamicArray;
 begin
@@ -5496,8 +5497,15 @@ begin
   Primitive^.Position0:=TpvVector3.InlineableCreate(aPosition,0.0);
   Primitive^.Offset0:=aPositionOffset;
   Primitive^.Color:=aColor;
-  Primitive^.PrimitiveTopology:=TSolidPrimitivePrimitive.PrimitiveTopologyPoint or 8;
-  Primitive^.LineThicknessOrPointSize:=aSize;
+  if aLineWidth>0.0 then begin
+   Primitive^.PrimitiveTopology:=TSolidPrimitivePrimitive.PrimitiveTopologyPointWireframe or 8;
+   Primitive^.LineThicknessOrPointSize:=aSize+(aLineWidth*0.5);
+   Primitive^.InnerRadius:=aSize-(aLineWidth*0.5);
+  end else begin
+   Primitive^.PrimitiveTopology:=TSolidPrimitivePrimitive.PrimitiveTopologyPoint or 8;
+   Primitive^.LineThicknessOrPointSize:=aSize;
+   Primitive^.InnerRadius:=aSize;
+  end;
   result:=true;
  end else begin
   result:=false;
@@ -5581,7 +5589,7 @@ begin
  end;
 end;
 
-function TpvScene3DRendererInstance.AddSolidPoint3D(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aColor:TpvVector4;const aSize:TpvScalar;const aPositionOffset:TpvVector2):Boolean;
+function TpvScene3DRendererInstance.AddSolidPoint3D(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aColor:TpvVector4;const aSize:TpvScalar;const aPositionOffset:TpvVector2;const aLineWidth:TpvScalar):Boolean;
 var Primitive:PSolidPrimitivePrimitive;
     PrimitiveItems:TSolidPrimitivePrimitiveDynamicArray;
 begin
@@ -5592,8 +5600,15 @@ begin
   Primitive^.Position0:=aPosition;
   Primitive^.Offset0:=aPositionOffset;
   Primitive^.Color:=aColor;
-  Primitive^.PrimitiveTopology:=TSolidPrimitivePrimitive.PrimitiveTopologyPoint;
-  Primitive^.LineThicknessOrPointSize:=aSize;
+  if aLineWidth>0.0 then begin
+   Primitive^.PrimitiveTopology:=TSolidPrimitivePrimitive.PrimitiveTopologyPointWireframe;
+   Primitive^.LineThicknessOrPointSize:=aSize+(aLineWidth*0.5);
+   Primitive^.InnerRadius:=aSize-(aLineWidth*0.5);
+  end else begin
+   Primitive^.PrimitiveTopology:=TSolidPrimitivePrimitive.PrimitiveTopologyPoint;
+   Primitive^.LineThicknessOrPointSize:=aSize;
+   Primitive^.InnerRadius:=aSize;
+  end;
   result:=true;
  end else begin
   result:=false;
@@ -7525,11 +7540,12 @@ begin
  aPipeline.VertexInputState.AddVertexInputAttributeDescription(4,0,VK_FORMAT_R32G32B32_SFLOAT,TVkPtrUInt(pointer(@PSolidPrimitiveVertex(nil)^.Position1)));
  aPipeline.VertexInputState.AddVertexInputAttributeDescription(5,0,VK_FORMAT_R32_SFLOAT,TVkPtrUInt(pointer(@PSolidPrimitiveVertex(nil)^.LineThicknessorPointSize)));
  aPipeline.VertexInputState.AddVertexInputAttributeDescription(6,0,VK_FORMAT_R32G32B32_SFLOAT,TVkPtrUInt(pointer(@PSolidPrimitiveVertex(nil)^.Position2)));
- aPipeline.VertexInputState.AddVertexInputAttributeDescription(7,0,VK_FORMAT_R32G32B32_SFLOAT,TVkPtrUInt(pointer(@PSolidPrimitiveVertex(nil)^.Position3)));
- aPipeline.VertexInputState.AddVertexInputAttributeDescription(8,0,VK_FORMAT_R32G32_SFLOAT,TVkPtrUInt(pointer(@PSolidPrimitiveVertex(nil)^.Offset1)));
- aPipeline.VertexInputState.AddVertexInputAttributeDescription(9,0,VK_FORMAT_R32G32_SFLOAT,TVkPtrUInt(pointer(@PSolidPrimitiveVertex(nil)^.Offset2)));
- aPipeline.VertexInputState.AddVertexInputAttributeDescription(10,0,VK_FORMAT_R32G32_SFLOAT,TVkPtrUInt(pointer(@PSolidPrimitiveVertex(nil)^.Offset3)));
- aPipeline.VertexInputState.AddVertexInputAttributeDescription(11,0,VK_FORMAT_R32G32B32A32_SFLOAT,TVkPtrUInt(pointer(@PSolidPrimitiveVertex(nil)^.Color)));
+ aPipeline.VertexInputState.AddVertexInputAttributeDescription(7,0,VK_FORMAT_R32_SFLOAT,TVkPtrUInt(pointer(@PSolidPrimitiveVertex(nil)^.InnerRadius)));
+ aPipeline.VertexInputState.AddVertexInputAttributeDescription(8,0,VK_FORMAT_R32G32B32_SFLOAT,TVkPtrUInt(pointer(@PSolidPrimitiveVertex(nil)^.Position3)));
+ aPipeline.VertexInputState.AddVertexInputAttributeDescription(9,0,VK_FORMAT_R32G32_SFLOAT,TVkPtrUInt(pointer(@PSolidPrimitiveVertex(nil)^.Offset1)));
+ aPipeline.VertexInputState.AddVertexInputAttributeDescription(10,0,VK_FORMAT_R32G32_SFLOAT,TVkPtrUInt(pointer(@PSolidPrimitiveVertex(nil)^.Offset2)));
+ aPipeline.VertexInputState.AddVertexInputAttributeDescription(11,0,VK_FORMAT_R32G32_SFLOAT,TVkPtrUInt(pointer(@PSolidPrimitiveVertex(nil)^.Offset3)));
+ aPipeline.VertexInputState.AddVertexInputAttributeDescription(12,0,VK_FORMAT_R32G32B32A32_SFLOAT,TVkPtrUInt(pointer(@PSolidPrimitiveVertex(nil)^.Color)));
 end;
 
 procedure TpvScene3DRendererInstance.DrawSolidPrimitives(const aRendererInstance:TObject;

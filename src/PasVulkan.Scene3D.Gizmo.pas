@@ -797,7 +797,8 @@ var Colors:array[0..7] of TpvVector4;
                                                                  aCenter,
                                                                  aColor,
                                                                  aRadius,
-                                                                 TpvVector2.Null);
+                                                                 TpvVector2.Null,
+                                                                 0.0);
  end;
  procedure DrawCircle(const aCenter:TpvVector3;const aRadius:TpvFloat;const aColor:TpvVector4;const aSegments:TpvSizeInt;const aWidth:TpvScalar);
  var Index:TpvSizeInt;

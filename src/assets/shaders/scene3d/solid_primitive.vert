@@ -3,13 +3,9 @@
 #extension GL_EXT_multiview : enable
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_ARB_shading_language_420pack : enable
+#extension GL_GOOGLE_include_directive : enable
 
-#define PRIMITIVE_TOPOLOGY_POINT 0u
-#define PRIMITIVE_TOPOLOGY_LINE 1u
-#define PRIMITIVE_TOPOLOGY_TRIANGLE 2u
-#define PRIMITIVE_TOPOLOGY_TRIANGLE_WIREFRAME 3u
-#define PRIMITIVE_TOPOLOGY_QUAD 4u
-#define PRIMITIVE_TOPOLOGY_QUAD_WIREFRAME 5u
+#include "solid_primitive.glsl"
 
 layout(location = 0) in vec2 inPosition; // Position
 layout(location = 1) in vec2 inOffset0; // Line start offset or center of point offset or triangle vertex 0 offset
@@ -18,11 +14,12 @@ layout(location = 3) in uint inPrimitiveTopology; // Primitive topology
 layout(location = 4) in vec3 inPosition1; // Line end or triangle vertex 1
 layout(location = 5) in float inLineThicknessOrPointSize; // Line thickness or point size  
 layout(location = 6) in vec3 inPosition2; // Triangle vertex 2 
-layout(location = 7) in vec3 inPosition3; // Quad vertex 3 
-layout(location = 8) in vec2 inOffset1; // Line end offset or triangle vertex 1 offset
-layout(location = 9) in vec2 inOffset2; // Triangle vertex 2 offset
-layout(location = 10) in vec2 inOffset3; // Quad vertex 3 offset
-layout(location = 11) in vec4 inColor; // Color of the primitive
+layout(location = 7) in float inInnerRadius; // Inner radius of the primitive
+layout(location = 8) in vec3 inPosition3; // Quad vertex 3 
+layout(location = 9) in vec2 inOffset1; // Line end offset or triangle vertex 1 offset
+layout(location = 10) in vec2 inOffset2; // Triangle vertex 2 offset
+layout(location = 11) in vec2 inOffset3; // Quad vertex 3 offset
+layout(location = 12) in vec4 inColor; // Color of the primitive
 
 layout(location = 0) out vec4 outColor;
 layout(location = 1) out vec2 outPosition;
@@ -31,7 +28,8 @@ layout(location = 3) out vec2 outPosition1;
 layout(location = 4) out vec2 outPosition2;
 layout(location = 5) out vec2 outPosition3;
 layout(location = 6) out float outLineThicknessOrPointSize;
-layout(location = 7) flat out uint outPrimitiveTopology;
+layout(location = 7) out float outInnerRadius;
+layout(location = 8) flat out uint outPrimitiveTopology;
 
 /* clang-format off */
 layout(push_constant) uniform PushConstants {
@@ -77,7 +75,8 @@ void main() {
 
   switch(outPrimitiveTopology = inPrimitiveTopology & 0x7u){
 
-    case PRIMITIVE_TOPOLOGY_POINT:{
+    case PRIMITIVE_TOPOLOGY_POINT:
+    case PRIMITIVE_TOPOLOGY_POINT_WIREFRAME:{
 
       if(threeDimensional){
 
@@ -92,10 +91,11 @@ void main() {
 
       }
 
-      outPosition1 = vec2(0.0); // Not needed for points
+      outPosition1 = outPosition2 = outPosition3 = vec2(0.0); // Not needed for points
 
       outLineThicknessOrPointSize = inLineThicknessOrPointSize;
-      
+
+      outInnerRadius = ((inPrimitiveTopology & 0x7u) == PRIMITIVE_TOPOLOGY_POINT_WIREFRAME) ? inInnerRadius : 0.0;
 
       break;
 
@@ -124,6 +124,10 @@ void main() {
       }
 
       outLineThicknessOrPointSize = inLineThicknessOrPointSize;
+
+      outPosition2 = outPosition3 = vec2(0.0); // Not needed for lines
+
+      outInnerRadius = 0.0;
       
       break;
 
@@ -159,7 +163,11 @@ void main() {
 
       }
 
-      outLineThicknessOrPointSize = (outPrimitiveTopology == PRIMITIVE_TOPOLOGY_TRIANGLE) ? 0.0 : inLineThicknessOrPointSize;
+      outLineThicknessOrPointSize = ((inPrimitiveTopology & 0x7u) == PRIMITIVE_TOPOLOGY_TRIANGLE_WIREFRAME) ? inLineThicknessOrPointSize : 0;
+
+      outPosition3 = vec2(0.0); // Not needed for triangles
+
+      outInnerRadius = 0.0;
 
       break;
 
@@ -203,6 +211,8 @@ void main() {
       }
 
       outLineThicknessOrPointSize = (outPrimitiveTopology == PRIMITIVE_TOPOLOGY_QUAD) ? 0.0 : inLineThicknessOrPointSize;
+
+      outInnerRadius = 0.0;
 
       break;
 
