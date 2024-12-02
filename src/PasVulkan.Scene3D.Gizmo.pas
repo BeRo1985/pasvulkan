@@ -955,14 +955,6 @@ var Colors:array[0..7] of TpvVector4;
      Dir:=(Origin-WorldDirSSpace).Normalize*6.0;
      OrtogonalDir:=TpvVector2.InlineableCreate(-Dir.y,Dir.x);
      a:=WorldDirSSpace+Dir;
-(*   TpvScene3DRendererInstance(fRendererInstance).AddSolidTriangle2D(aInFlightFrameIndex,
-                                                                      {ScreenSpaceToClipSpace}(WorldDirSSpace-Dir)/fViewPort.zw,
-                                                                      {ScreenSpaceToClipSpace}(a+OrtogonalDir)/fViewPort.zw,
-                                                                      {ScreenSpaceToClipSpace}(a-OrtogonalDir)/fViewPort.zw,
-                                                                      Colors[Index+1],
-                                                                      TpvVector2.Null,
-                                                                      TpvVector2.Null,
-                                                                      TpvVector2.Null);*)
      v:=fModelMatrix.MulHomogen(DirAxis*fScreenFactor);
      TpvScene3DRendererInstance(fRendererInstance).AddSolidTriangle3D(aInFlightFrameIndex,
                                                                       v,
@@ -971,7 +963,7 @@ var Colors:array[0..7] of TpvVector4;
                                                                       Colors[Index+1],
                                                                       (-Dir)/fViewPort.zw,
                                                                       (Dir+OrtogonalDir)/fViewPort.zw,
-                                                                      (Dir-OrtogonalDir)/fViewPort.zw);//}
+                                                                      (Dir-OrtogonalDir)/fViewPort.zw);
      if fAxisFactors[Index]<0.0 then begin
       DrawHatchedAxis(DirAxis);
      end;

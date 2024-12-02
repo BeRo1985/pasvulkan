@@ -603,6 +603,9 @@ void main(){
     uint firstVertex = 0u;
     if(visible){
 
+      // Premultiply the color with the alpha value
+      primitive.color.xyz = uvec3(floatBitsToUint(floatBitsToUint(primitive.color.xyz) * uintBitsToFloat(primitive.color.w))); 
+     
       // Generate the quad vertices for the current primitive 
       firstVertex = atomicAdd(destinationDrawIndexedIndirectCommand.drawIndexedIndirectCommand.cmd1.y, 4u); // Each primitive has 4 vertices for a quad of two triangles
       {
