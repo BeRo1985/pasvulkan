@@ -544,6 +544,7 @@ void main(){
 
           // Line end
           vec2 lineEnd2D = fma(uintBitsToFloat(primitive.position1.xy), vec2(2.0, -2.0), vec2(-1.0, 1.0));
+          primitive.position1.xy = floatBitsToUint(lineEnd2D);
           vec2 lineEndOffset = uintBitsToFloat(primitive.offset1Offset2.xy) * vec2(2.0, -2.0);
           primitive.offset1Offset2.xy = floatBitsToUint(lineEndOffset);
 
@@ -563,6 +564,22 @@ void main(){
 
           aabb.xy = screenSpaceToClipSpace(aabb.xy);
           aabb.zw = screenSpaceToClipSpace(aabb.zw);
+
+          {
+
+            // In this case, we can use the special vertices to draw the line to reduce overdraw
+
+            useSpecialVertices = true;
+
+            vec2 direction = normalize(lineEndScreen - lineStartScreen) * fma(lineThickness, 1.0, 1.0); // 0.7071067811865475, 1.0);
+            vec2 normal = vec2(-direction.y, direction.x);
+
+            specialVertices[0] = screenSpaceToClipSpace((lineStartScreen - direction) - normal);
+            specialVertices[1] = screenSpaceToClipSpace((lineStartScreen - direction) + normal);
+            specialVertices[2] = screenSpaceToClipSpace((lineEndScreen + direction) + normal);
+            specialVertices[3] = screenSpaceToClipSpace((lineEndScreen + direction) - normal);
+            
+          }
 
           break;
 
