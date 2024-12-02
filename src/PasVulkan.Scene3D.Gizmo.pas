@@ -792,23 +792,12 @@ var Colors:array[0..7] of TpvVector4;
   end;
  end;
  procedure DrawFilledCircle(const aCenter:TpvVector3;const aRadius:TpvFloat;const aColor:TpvVector4;const aSegments:TpvSizeInt);
- var Index:TpvSizeInt;
-     a0,a1:TpvScalar;
  begin
-  if aInFlightFrameIndex>=0 then begin
-   for Index:=0 to aSegments-1 do begin
-    a0:=(Index/aSegments)*TwoPI;
-    a1:=((Index+1)/aSegments)*TwoPI;
-    TpvScene3DRendererInstance(fRendererInstance).AddSolidTriangle3D(aInFlightFrameIndex,
-                                                                     aCenter,
-                                                                     aCenter,
-                                                                     aCenter,
-                                                                     aColor,
-                                                                     TpvVector2.Null,
-                                                                     TpvVector2.InlineableCreate(sin(a0)*aRadius,cos(a0)*aRadius)/fViewPort.zw,
-                                                                     TpvVector2.InlineableCreate(sin(a1)*aRadius,cos(a1)*aRadius)/fViewPort.zw);
-   end;
-  end;
+  TpvScene3DRendererInstance(fRendererInstance).AddSolidPoint3D(aInFlightFrameIndex,
+                                                                 aCenter,
+                                                                 aColor,
+                                                                 aRadius,
+                                                                 TpvVector2.Null);
  end;
  procedure DrawCircle(const aCenter:TpvVector3;const aRadius:TpvFloat;const aColor:TpvVector4;const aSegments:TpvSizeInt;const aWidth:TpvScalar);
  var Index:TpvSizeInt;
@@ -994,50 +983,6 @@ var Colors:array[0..7] of TpvVector4;
                                                                   TpvVector2.Null,
                                                                   TpvVector2.Null,
                                                                   1.0);
-{    TpvScene3DRendererInstance(fRendererInstance).AddSolidTriangle3D(aInFlightFrameIndex,
-                                                                      Quad[0],
-                                                                      Quad[1],
-                                                                      Quad[2],
-                                                                      Colors[Index+4],
-                                                                      TpvVector2.Null,
-                                                                      TpvVector2.Null,
-                                                                      TpvVector2.Null);
-     TpvScene3DRendererInstance(fRendererInstance).AddSolidTriangle3D(aInFlightFrameIndex,
-                                                                      Quad[0],
-                                                                      Quad[2],
-                                                                      Quad[3],
-                                                                      Colors[Index+4],
-                                                                      TpvVector2.Null,
-                                                                      TpvVector2.Null,
-                                                                      TpvVector2.Null);}
-{    TpvScene3DRendererInstance(fRendererInstance).AddSolidLine3D(aInFlightFrameIndex,
-                                                                  Quad[0],
-                                                                  Quad[1],
-                                                                  Colors[Index+1],
-                                                                  1.0,
-                                                                  TpvVector2.Null,
-                                                                  TpvVector2.Null);
-     TpvScene3DRendererInstance(fRendererInstance).AddSolidLine3D(aInFlightFrameIndex,
-                                                                  Quad[1],
-                                                                  Quad[2],
-                                                                  Colors[Index+1],
-                                                                  1.0,
-                                                                  TpvVector2.Null,
-                                                                  TpvVector2.Null);
-     TpvScene3DRendererInstance(fRendererInstance).AddSolidLine3D(aInFlightFrameIndex,
-                                                                  Quad[2],
-                                                                  Quad[3],
-                                                                  Colors[Index+1],
-                                                                  1.0,
-                                                                  TpvVector2.Null,
-                                                                  TpvVector2.Null);
-     TpvScene3DRendererInstance(fRendererInstance).AddSolidLine3D(aInFlightFrameIndex,
-                                                                  Quad[3],
-                                                                  Quad[0],
-                                                                  Colors[Index+1],
-                                                                  1.0,
-                                                                  TpvVector2.Null,
-                                                                  TpvVector2.Null);//}
     end;
    end;
   end;
