@@ -8,15 +8,8 @@
 #define PRIMITIVE_TOPOLOGY_LINE 1u
 #define PRIMITIVE_TOPOLOGY_TRIANGLE 2u
 #define PRIMITIVE_TOPOLOGY_TRIANGLE_WIREFRAME 3u
-
-/*
-  uvec4 position; // xy = Clip space position, zw = Offset0
-  uvec4 position0; // xyz = Position, w = Primitive topology
-  uvec4 position1; // xyz = Position, w = Line thickness or point size
-  uvec4 position2; // xyz = Position, w = unused 
-  uvec4 offset1Offset2; // xy = Offset1, zw = Offset2
-  uvec4 color; // xyzw = Color
-*/
+#define PRIMITIVE_TOPOLOGY_QUAD 4u
+#define PRIMITIVE_TOPOLOGY_QUAD_WIREFRAME 5u
 
 layout(location = 0) in vec2 inPosition; // Position
 layout(location = 1) in vec2 inOffset0; // Line start offset or center of point offset or triangle vertex 0 offset
@@ -25,17 +18,20 @@ layout(location = 3) in uint inPrimitiveTopology; // Primitive topology
 layout(location = 4) in vec3 inPosition1; // Line end or triangle vertex 1
 layout(location = 5) in float inLineThicknessOrPointSize; // Line thickness or point size  
 layout(location = 6) in vec3 inPosition2; // Triangle vertex 2 
-layout(location = 7) in vec2 inOffset1; // Line end offset or triangle vertex 1 offset
-layout(location = 8) in vec2 inOffset2; // Triangle vertex 2 offset
-layout(location = 9) in vec4 inColor; // Color of the primitive
+layout(location = 7) in vec3 inPosition3; // Quad vertex 3 
+layout(location = 8) in vec2 inOffset1; // Line end offset or triangle vertex 1 offset
+layout(location = 9) in vec2 inOffset2; // Triangle vertex 2 offset
+layout(location = 10) in vec2 inOffset3; // Quad vertex 3 offset
+layout(location = 11) in vec4 inColor; // Color of the primitive
 
 layout(location = 0) out vec4 outColor;
 layout(location = 1) out vec2 outPosition;
 layout(location = 2) out vec2 outPosition0;
 layout(location = 3) out vec2 outPosition1;
 layout(location = 4) out vec2 outPosition2;
-layout(location = 5) out float outLineThicknessOrPointSize;
-layout(location = 6) flat out uint outPrimitiveTopology;
+layout(location = 5) out vec2 outPosition3;
+layout(location = 6) out float outLineThicknessOrPointSize;
+layout(location = 7) flat out uint outPrimitiveTopology;
 
 /* clang-format off */
 layout(push_constant) uniform PushConstants {
@@ -77,9 +73,9 @@ void main() {
 
   mat4 viewProjectionMatrix = uView.views[viewIndex].projectionMatrix * uView.views[viewIndex].viewMatrix;
 
-  bool threeDimensional = (inPrimitiveTopology & 0x4u) == 0u;
+  bool threeDimensional = (inPrimitiveTopology & 0x8u) == 0u;
 
-  switch(outPrimitiveTopology = inPrimitiveTopology & 0x3u){
+  switch(outPrimitiveTopology = inPrimitiveTopology & 0x7u){
 
     case PRIMITIVE_TOPOLOGY_POINT:{
 
@@ -169,6 +165,49 @@ void main() {
 
     }
 
+    case PRIMITIVE_TOPOLOGY_QUAD:
+    case PRIMITIVE_TOPOLOGY_QUAD_WIREFRAME:{
+
+      if(threeDimensional){
+
+        // Quad vertex 0
+        vec4 position0 = viewProjectionMatrix * vec4(inPosition0, 1.0);
+        outPosition0 = clipSpaceToScreenSpace((position0.xy / position0.w) + inOffset0);
+
+        // Quad vertex 1
+        vec4 position1 = viewProjectionMatrix * vec4(inPosition1, 1.0);
+        outPosition1 = clipSpaceToScreenSpace((position1.xy / position1.w) + inOffset1);
+
+        // Quad vertex 2
+        vec4 position2 = viewProjectionMatrix * vec4(inPosition2, 1.0);
+        outPosition2 = clipSpaceToScreenSpace((position2.xy / position2.w) + inOffset2);
+
+        // Quad vertex 3
+        vec4 position3 = viewProjectionMatrix * vec4(inPosition3, 1.0);
+        outPosition3 = clipSpaceToScreenSpace((position3.xy / position3.w) + inOffset3);
+
+      }else{
+
+        // Quad vertex 0
+        outPosition0 = clipSpaceToScreenSpace(inPosition0.xy + inOffset0);
+
+        // Quad vertex 1
+        outPosition1 = clipSpaceToScreenSpace(inPosition1.xy + inOffset1);
+
+        // Quad vertex 2
+        outPosition2 = clipSpaceToScreenSpace(inPosition2.xy + inOffset2);
+
+        // Quad vertex 3
+        outPosition3 = clipSpaceToScreenSpace(inPosition3.xy + inOffset3);
+
+      }
+
+      outLineThicknessOrPointSize = (outPrimitiveTopology == PRIMITIVE_TOPOLOGY_QUAD) ? 0.0 : inLineThicknessOrPointSize;
+
+      break;
+
+    }
+
     default:{
 
       outPosition0 = outPosition1 = outPosition2 = vec2(0.0);
@@ -182,7 +221,7 @@ void main() {
   } 
     
   outPosition = clipSpaceToScreenSpace(inPosition);
-    
+
   gl_Position = vec4(inPosition, 0.0, 1.0);
 
   gl_PointSize = 1.0; 

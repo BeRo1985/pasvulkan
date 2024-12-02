@@ -16,13 +16,17 @@ layout(local_size_x = 256, local_size_y = 1, local_size_z = 1) in;
 #define PRIMITIVE_TOPOLOGY_LINE 1u
 #define PRIMITIVE_TOPOLOGY_TRIANGLE 2u
 #define PRIMITIVE_TOPOLOGY_TRIANGLE_WIREFRAME 3u
+#define PRIMITIVE_TOPOLOGY_QUAD 4u
+#define PRIMITIVE_TOPOLOGY_QUAD_WIREFRAME 5u
 
 struct Vertex {
   uvec4 position; // xy = Clip space position, zw = Offset0
   uvec4 position0; // xyz = Position, w = Primitive topology
   uvec4 position1; // xyz = Position, w = Line thickness or point size
   uvec4 position2; // xyz = Position, w = unused 
+  uvec4 position3; // xyz = Position, w = unused 
   uvec4 offset1Offset2; // xy = Offset1, zw = Offset2
+  uvec4 offset3; // xy = Offset3, zw = unused
   uvec4 color; // Color
 };
 
@@ -423,6 +427,150 @@ void main(){
 
         }
 
+        case PRIMITIVE_TOPOLOGY_QUAD: {
+
+          // Quad
+
+          // Quad vertex 0
+          vec3 quadVertex03D = uintBitsToFloat(primitive.position0.xyz);
+          vec2 quadVertex0Offset = uintBitsToFloat(primitive.position.zw) * vec2(2.0, -2.0);
+          primitive.position.zw = floatBitsToUint(quadVertex0Offset);
+
+          // Quad vertex 1
+          vec3 quadVertex13D = uintBitsToFloat(primitive.position1.xyz);
+          vec2 quadVertex1Offset = uintBitsToFloat(primitive.offset1Offset2.xy) * vec2(2.0, -2.0);
+          primitive.offset1Offset2.xy = floatBitsToUint(quadVertex1Offset);
+
+          // Quad vertex 2
+          vec3 quadVertex23D = uintBitsToFloat(primitive.position2.xyz);
+          vec2 quadVertex2Offset = uintBitsToFloat(primitive.offset1Offset2.zw) * vec2(2.0, -2.0);
+          primitive.offset1Offset2.zw = floatBitsToUint(quadVertex2Offset);
+
+          // Quad vertex 3
+          vec3 quadVertex33D = uintBitsToFloat(primitive.position3.xyz);
+          vec2 quadVertex3Offset = uintBitsToFloat(primitive.offset3.xy) * vec2(2.0, -2.0);
+          primitive.offset3.xy = floatBitsToUint(quadVertex3Offset);
+
+          visible = false;
+
+          // Ensure that the quad is visible in all views at the correct positions
+          for(int viewIndex = 0; viewIndex < int(pushConstants.countViews); viewIndex++){
+
+            mat4 viewProjectionMatrix = viewProjectionMatrices[viewIndex];
+
+            vec4 quadVertex0Clip = viewProjectionMatrix * vec4(quadVertex03D, 1.0);
+            vec4 quadVertex1Clip = viewProjectionMatrix * vec4(quadVertex13D, 1.0);
+            vec4 quadVertex2Clip = viewProjectionMatrix * vec4(quadVertex23D, 1.0);
+            vec4 quadVertex3Clip = viewProjectionMatrix * vec4(quadVertex33D, 1.0);
+
+            // Check if the quad is visible in the current view (not behind the camera)
+            visible = visible || (all(greaterThanEqual(quadVertex0Clip.xyz, vec3(-quadVertex0Clip.w))) ||
+                                  all(greaterThanEqual(quadVertex1Clip.xyz, vec3(-quadVertex1Clip.w))) || 
+                                  all(greaterThanEqual(quadVertex2Clip.xyz, vec3(-quadVertex2Clip.w))) ||
+                                  all(greaterThanEqual(quadVertex3Clip.xyz, vec3(-quadVertex3Clip.w))));
+
+            vec2 quadVertex0Screen = clipSpaceToScreenSpace((quadVertex0Clip.xy / quadVertex0Clip.w) + quadVertex0Offset);
+            vec2 quadVertex1Screen = clipSpaceToScreenSpace((quadVertex1Clip.xy / quadVertex1Clip.w) + quadVertex1Offset);
+            vec2 quadVertex2Screen = clipSpaceToScreenSpace((quadVertex2Clip.xy / quadVertex2Clip.w) + quadVertex2Offset);
+            vec2 quadVertex3Screen = clipSpaceToScreenSpace((quadVertex3Clip.xy / quadVertex3Clip.w) + quadVertex3Offset);
+
+            aabb.xy = min(aabb.xy, quadVertex0Screen);
+            aabb.zw = max(aabb.zw, quadVertex0Screen);
+
+            aabb.xy = min(aabb.xy, quadVertex1Screen);
+            aabb.zw = max(aabb.zw, quadVertex1Screen);
+
+            aabb.xy = min(aabb.xy, quadVertex2Screen);
+            aabb.zw = max(aabb.zw, quadVertex2Screen);
+
+            aabb.xy = min(aabb.xy, quadVertex3Screen);
+            aabb.zw = max(aabb.zw, quadVertex3Screen);
+
+          }
+
+          // Add the radius to the AABB
+          aabb.xyzw += vec2(-1.0, 1.0).xxyy;
+
+          aabb.xy = screenSpaceToClipSpace(aabb.xy);
+          aabb.zw = screenSpaceToClipSpace(aabb.zw);
+
+          break;
+
+        }
+
+        case PRIMITIVE_TOPOLOGY_QUAD_WIREFRAME: {
+
+          // Quad wireframe
+
+          // Quad vertex 0
+          vec3 quadVertex03D = uintBitsToFloat(primitive.position0.xyz);
+          vec2 quadVertex0Offset = uintBitsToFloat(primitive.position.zw) * vec2(2.0, -2.0);
+          primitive.position.zw = floatBitsToUint(quadVertex0Offset);
+
+          // Quad vertex 1
+          vec3 quadVertex13D = uintBitsToFloat(primitive.position1.xyz);
+          vec2 quadVertex1Offset = uintBitsToFloat(primitive.offset1Offset2.xy) * vec2(2.0, -2.0);
+          primitive.offset1Offset2.xy = floatBitsToUint(quadVertex1Offset);
+
+          // Quad vertex 2
+          vec3 quadVertex23D = uintBitsToFloat(primitive.position2.xyz);
+          vec2 quadVertex2Offset = uintBitsToFloat(primitive.offset1Offset2.zw) * vec2(2.0, -2.0);
+          primitive.offset1Offset2.zw = floatBitsToUint(quadVertex2Offset);
+
+          // Quad vertex 3
+          vec3 quadVertex33D = uintBitsToFloat(primitive.position3.xyz);
+          vec2 quadVertex3Offset = uintBitsToFloat(primitive.offset3.xy) * vec2(2.0, -2.0);
+          primitive.offset3.xy = floatBitsToUint(quadVertex3Offset);
+
+          visible = false;
+
+          // Ensure that the quad is visible in all views at the correct positions
+          for(int viewIndex = 0; viewIndex < int(pushConstants.countViews); viewIndex++){
+
+            mat4 viewProjectionMatrix = viewProjectionMatrices[viewIndex];
+
+            vec4 quadVertex0Clip = viewProjectionMatrix * vec4(quadVertex03D, 1.0);
+            vec4 quadVertex1Clip = viewProjectionMatrix * vec4(quadVertex13D, 1.0);
+            vec4 quadVertex2Clip = viewProjectionMatrix * vec4(quadVertex23D, 1.0);
+            vec4 quadVertex3Clip = viewProjectionMatrix * vec4(quadVertex33D, 1.0);
+
+            // Check if the quad is visible in the current view (not behind the camera)
+            visible = visible || (all(greaterThanEqual(quadVertex0Clip.xyz, vec3(-quadVertex0Clip.w))) ||
+                                  all(greaterThanEqual(quadVertex1Clip.xyz, vec3(-quadVertex1Clip.w))) || 
+                                  all(greaterThanEqual(quadVertex2Clip.xyz, vec3(-quadVertex2Clip.w))) ||
+                                  all(greaterThanEqual(quadVertex3Clip.xyz, vec3(-quadVertex3Clip.w))));
+
+            vec2 quadVertex0Screen = clipSpaceToScreenSpace((quadVertex0Clip.xy / quadVertex0Clip.w) + quadVertex0Offset);
+            vec2 quadVertex1Screen = clipSpaceToScreenSpace((quadVertex1Clip.xy / quadVertex1Clip.w) + quadVertex1Offset);
+            vec2 quadVertex2Screen = clipSpaceToScreenSpace((quadVertex2Clip.xy / quadVertex2Clip.w) + quadVertex2Offset);
+            vec2 quadVertex3Screen = clipSpaceToScreenSpace((quadVertex3Clip.xy / quadVertex3Clip.w) + quadVertex3Offset);
+
+            aabb.xy = min(aabb.xy, quadVertex0Screen);
+            aabb.zw = max(aabb.zw, quadVertex0Screen);
+
+            aabb.xy = min(aabb.xy, quadVertex1Screen);
+            aabb.zw = max(aabb.zw, quadVertex1Screen);
+
+            aabb.xy = min(aabb.xy, quadVertex2Screen);
+            aabb.zw = max(aabb.zw, quadVertex2Screen);
+
+            aabb.xy = min(aabb.xy, quadVertex3Screen);
+            aabb.zw = max(aabb.zw, quadVertex3Screen);
+
+          }
+
+          float lineThickness = uintBitsToFloat(primitive.position1.w) + 1.0; // Add 1.0 to the line tickness for anti-aliasing
+
+          // Add the line thickness to the AABB
+          aabb.xyzw += vec2(-lineThickness, lineThickness).xxyy;
+
+          aabb.xy = screenSpaceToClipSpace(aabb.xy);
+          aabb.zw = screenSpaceToClipSpace(aabb.zw);
+
+          break;
+
+        }
+
         default:{
           // Do nothing
           break;
@@ -587,6 +735,118 @@ void main(){
 
         }
 
+        case PRIMITIVE_TOPOLOGY_QUAD: {
+
+          // Quad
+
+          // Quad vertex 0
+          vec2 quadVertex02D = fma(uintBitsToFloat(primitive.position0.xy), vec2(2.0, -2.0), vec2(-1.0, 1.0));
+          primitive.position0.xy = floatBitsToUint(quadVertex02D);
+          vec2 quadVertex0Offset = uintBitsToFloat(primitive.position.zw) * vec2(2.0, -2.0);
+          primitive.position.zw = floatBitsToUint(quadVertex0Offset);
+
+          // Quad vertex 1
+          vec2 quadVertex12D = fma(uintBitsToFloat(primitive.position1.xy), vec2(2.0, -2.0), vec2(-1.0, 1.0));
+          primitive.position1.xy = floatBitsToUint(quadVertex12D);
+          vec2 quadVertex1Offset = uintBitsToFloat(primitive.offset1Offset2.xy) * vec2(2.0, -2.0);
+          primitive.offset1Offset2.xy = floatBitsToUint(quadVertex1Offset);
+
+          // Quad vertex 2
+          vec2 quadVertex22D = fma(uintBitsToFloat(primitive.position2.xy), vec2(2.0, -2.0), vec2(-1.0, 1.0));
+          primitive.position2.xy = floatBitsToUint(quadVertex22D);
+          vec2 quadVertex2Offset = uintBitsToFloat(primitive.offset1Offset2.zw) * vec2(2.0, -2.0);
+          primitive.offset1Offset2.zw = floatBitsToUint(quadVertex2Offset);
+
+          // Quad vertex 3
+          vec2 quadVertex32D = fma(uintBitsToFloat(primitive.position3.xy), vec2(2.0, -2.0), vec2(-1.0, 1.0));
+          primitive.position3.xy = floatBitsToUint(quadVertex32D);
+          vec2 quadVertex3Offset = uintBitsToFloat(primitive.offset3.xy) * vec2(2.0, -2.0);
+          primitive.offset3.xy = floatBitsToUint(quadVertex3Offset);
+
+          vec2 quadVertex0Screen = clipSpaceToScreenSpace(quadVertex02D.xy + quadVertex0Offset);
+          vec2 quadVertex1Screen = clipSpaceToScreenSpace(quadVertex12D.xy + quadVertex1Offset);
+          vec2 quadVertex2Screen = clipSpaceToScreenSpace(quadVertex22D.xy + quadVertex2Offset);
+          vec2 quadVertex3Screen = clipSpaceToScreenSpace(quadVertex32D.xy + quadVertex3Offset);
+
+          aabb.xy = min(aabb.xy, quadVertex0Screen);
+          aabb.zw = max(aabb.zw, quadVertex0Screen);
+
+          aabb.xy = min(aabb.xy, quadVertex1Screen);
+          aabb.zw = max(aabb.zw, quadVertex1Screen);
+
+          aabb.xy = min(aabb.xy, quadVertex2Screen);
+          aabb.zw = max(aabb.zw, quadVertex2Screen);
+
+          aabb.xy = min(aabb.xy, quadVertex3Screen);
+          aabb.zw = max(aabb.zw, quadVertex3Screen);
+
+          // Add the radius to the AABB
+          aabb.xyzw += vec2(-1.0, 1.0).xxyy;
+
+          aabb.xy = screenSpaceToClipSpace(aabb.xy);
+          aabb.zw = screenSpaceToClipSpace(aabb.zw);
+
+          break;
+
+        }
+
+        case PRIMITIVE_TOPOLOGY_QUAD_WIREFRAME: {
+
+          // Quad wireframe
+
+          // Quad vertex 0
+          vec2 quadVertex02D = fma(uintBitsToFloat(primitive.position0.xy), vec2(2.0, -2.0), vec2(-1.0, 1.0));
+          primitive.position0.xy = floatBitsToUint(quadVertex02D);
+          vec2 quadVertex0Offset = uintBitsToFloat(primitive.position.zw) * vec2(2.0, -2.0);
+          primitive.position.zw = floatBitsToUint(quadVertex0Offset);
+
+          // Quad vertex 1
+          vec2 quadVertex12D = fma(uintBitsToFloat(primitive.position1.xy), vec2(2.0, -2.0), vec2(-1.0, 1.0));
+          primitive.position1.xy = floatBitsToUint(quadVertex12D);
+          vec2 quadVertex1Offset = uintBitsToFloat(primitive.offset1Offset2.xy) * vec2(2.0, -2.0);
+          primitive.offset1Offset2.xy = floatBitsToUint(quadVertex1Offset);
+
+          // Quad vertex 2
+          vec2 quadVertex22D = fma(uintBitsToFloat(primitive.position2.xy), vec2(2.0, -2.0), vec2(-1.0, 1.0));
+          primitive.position2.xy = floatBitsToUint(quadVertex22D);
+          vec2 quadVertex2Offset = uintBitsToFloat(primitive.offset1Offset2.zw) * vec2(2.0, -2.0);
+          primitive.offset1Offset2.zw = floatBitsToUint(quadVertex2Offset);
+
+          // Quad vertex 3
+          vec2 quadVertex32D = fma(uintBitsToFloat(primitive.position3.xy), vec2(2.0, -2.0), vec2(-1.0, 1.0));
+          primitive.position3.xy = floatBitsToUint(quadVertex32D);
+          vec2 quadVertex3Offset = uintBitsToFloat(primitive.offset3.xy) * vec2(2.0, -2.0);
+          primitive.offset3.xy = floatBitsToUint(quadVertex3Offset);
+
+          vec2 quadVertex0Screen = clipSpaceToScreenSpace(quadVertex02D.xy + quadVertex0Offset);
+          vec2 quadVertex1Screen = clipSpaceToScreenSpace(quadVertex12D.xy + quadVertex1Offset);
+          vec2 quadVertex2Screen = clipSpaceToScreenSpace(quadVertex22D.xy + quadVertex2Offset);
+          vec2 quadVertex3Screen = clipSpaceToScreenSpace(quadVertex32D.xy + quadVertex3Offset);
+
+          aabb.xy = min(aabb.xy, quadVertex0Screen);
+          aabb.zw = max(aabb.zw, quadVertex0Screen);
+
+          aabb.xy = min(aabb.xy, quadVertex1Screen);
+          aabb.zw = max(aabb.zw, quadVertex1Screen);
+
+          aabb.xy = min(aabb.xy, quadVertex2Screen);
+          aabb.zw = max(aabb.zw, quadVertex2Screen);
+
+          aabb.xy = min(aabb.xy, quadVertex3Screen);
+          aabb.zw = max(aabb.zw, quadVertex3Screen);
+
+          float lineThickness = uintBitsToFloat(primitive.position1.w) + 1.0; // Add 1.0 to the line tickness for anti-aliasing
+
+          // Add the line thickness to the AABB
+          aabb.xyzw += vec2(-lineThickness, lineThickness).xxyy;
+
+          aabb.xy = screenSpaceToClipSpace(aabb.xy);
+          aabb.zw = screenSpaceToClipSpace(aabb.zw);
+
+          break;
+
+        }
+
         default:{
           // Do nothing
           break;
@@ -615,7 +875,9 @@ void main(){
           primitive.position0,
           primitive.position1,
           primitive.position2,
+          primitive.position3,
           primitive.offset1Offset2,
+          primitive.offset3,
           primitive.color
         );
 
@@ -624,7 +886,9 @@ void main(){
           primitive.position0,
           primitive.position1,
           primitive.position2,
+          primitive.position3,
           primitive.offset1Offset2,
+          primitive.offset3,
           primitive.color
         );
 
@@ -633,7 +897,9 @@ void main(){
           primitive.position0,
           primitive.position1,
           primitive.position2,
+          primitive.position3,
           primitive.offset1Offset2,
+          primitive.offset3,
           primitive.color
         );
 
@@ -642,7 +908,9 @@ void main(){
           primitive.position0,
           primitive.position1,
           primitive.position2,
+          primitive.position3,
           primitive.offset1Offset2,
+          primitive.offset3,
           primitive.color
         );
 
