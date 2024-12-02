@@ -983,6 +983,17 @@ var Colors:array[0..7] of TpvVector4;
                                                                   TpvVector2.Null,
                                                                   TpvVector2.Null,
                                                                   TpvVector2.Null);
+     TpvScene3DRendererInstance(fRendererInstance).AddSolidQuad3D(aInFlightFrameIndex,
+                                                                  Quad[0],
+                                                                  Quad[1],
+                                                                  Quad[2],
+                                                                  Quad[3],
+                                                                  Colors[Index+1],
+                                                                  TpvVector2.Null,
+                                                                  TpvVector2.Null,
+                                                                  TpvVector2.Null,
+                                                                  TpvVector2.Null,
+                                                                  1.0);
 {    TpvScene3DRendererInstance(fRendererInstance).AddSolidTriangle3D(aInFlightFrameIndex,
                                                                       Quad[0],
                                                                       Quad[1],
@@ -999,7 +1010,7 @@ var Colors:array[0..7] of TpvVector4;
                                                                       TpvVector2.Null,
                                                                       TpvVector2.Null,
                                                                       TpvVector2.Null);}
-     TpvScene3DRendererInstance(fRendererInstance).AddSolidLine3D(aInFlightFrameIndex,
+{    TpvScene3DRendererInstance(fRendererInstance).AddSolidLine3D(aInFlightFrameIndex,
                                                                   Quad[0],
                                                                   Quad[1],
                                                                   Colors[Index+1],
@@ -1026,7 +1037,7 @@ var Colors:array[0..7] of TpvVector4;
                                                                   Colors[Index+1],
                                                                   1.0,
                                                                   TpvVector2.Null,
-                                                                  TpvVector2.Null);
+                                                                  TpvVector2.Null);//}
     end;
    end;
   end;

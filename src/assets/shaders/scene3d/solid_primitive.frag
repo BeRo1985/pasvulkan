@@ -199,7 +199,7 @@ void main(){
 
         vec2 pa = p - a, ba = b - a;
 
-        d = min(d, length(pa - (ba * (clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0))) - (inLineThicknessOrPointSize * 0.5)));
+        d = min(d, length(pa - (ba * (clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0)))) - (inLineThicknessOrPointSize * 0.5));
 
       }
 
@@ -210,7 +210,7 @@ void main(){
 
         vec2 pa = p - a, ba = b - a;
 
-        d = min(d, length(pa - (ba * (clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0))) - (inLineThicknessOrPointSize * 0.5)));
+        d = min(d, length(pa - (ba * (clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0)))) - (inLineThicknessOrPointSize * 0.5));
 
       }
 
@@ -221,7 +221,7 @@ void main(){
 
         vec2 pa = p - a, ba = b - a;
 
-        d = min(d, length(pa - (ba * (clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0))) - (inLineThicknessOrPointSize * 0.5)));
+        d = min(d, length(pa - (ba * (clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0)))) - (inLineThicknessOrPointSize * 0.5));
 
       }
 
