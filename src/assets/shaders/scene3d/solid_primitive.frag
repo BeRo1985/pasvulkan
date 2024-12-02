@@ -54,9 +54,17 @@ void main(){
       
       vec2 p = inPosition, a = inPosition0, b = inPosition1;
 
+#if 0
+      // Rounded line
       vec2 pa = p - a, ba = b - a;
-
       float d = length(pa - (ba * (clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0)))) - (inLineThicknessOrPointSize * 0.5);
+#else
+      // Line with square ends 
+      float l = length(b - a);
+      vec2 c = (b - a) / l, q = (p - ((a + b) * 0.5));
+      q = abs(mat2(c.x, -c.y, c.y, c.x) * q) - vec2(l, inLineThicknessOrPointSize) * 0.5;
+      float d = length(max(q, 0.0)) + min(max(q.x, q.y),0.0);          
+#endif
 
       float alpha = 1.0 - clamp(d / fwidth(d), 0.0, 1.0);
 
