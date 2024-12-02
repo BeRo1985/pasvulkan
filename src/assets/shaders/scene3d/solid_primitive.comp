@@ -182,8 +182,8 @@ void main(){
 
     Primitive primitive = sourcePrimitives.primitives[primitiveIndex];
     
-    uint primitiveTopology = primitive.position0.w & 3u;
-    bool threeDimensional = (primitive.position0.w & 4u) == 0u;
+    uint primitiveTopology = primitive.position0.w & 7u;
+    bool threeDimensional = (primitive.position0.w & 8u) == 0u;
 
     // Initialize the AABB with infinity and -infinity
     vec4 aabb = vec4(uintBitsToFloat(0x7f800000u), uintBitsToFloat(0x7f800000u), uintBitsToFloat(0xff800000u), uintBitsToFloat(0xff800000u));

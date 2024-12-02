@@ -973,7 +973,17 @@ var Colors:array[0..7] of TpvVector4;
       Quad[QuadIndex]:=fModelMatrix.MulHomogen(((DirPlaneX*QuadUV[QuadIndex*2])+
                                                 (DirPlaneY*QuadUV[(QuadIndex*2)+1]))*fScreenFactor);
      end;
-     TpvScene3DRendererInstance(fRendererInstance).AddSolidTriangle3D(aInFlightFrameIndex,
+     TpvScene3DRendererInstance(fRendererInstance).AddSolidQuad3D(aInFlightFrameIndex,
+                                                                  Quad[0],
+                                                                  Quad[1],
+                                                                  Quad[2],
+                                                                  Quad[3],
+                                                                  Colors[Index+4],
+                                                                  TpvVector2.Null,
+                                                                  TpvVector2.Null,
+                                                                  TpvVector2.Null,
+                                                                  TpvVector2.Null);
+{    TpvScene3DRendererInstance(fRendererInstance).AddSolidTriangle3D(aInFlightFrameIndex,
                                                                       Quad[0],
                                                                       Quad[1],
                                                                       Quad[2],
@@ -988,7 +998,7 @@ var Colors:array[0..7] of TpvVector4;
                                                                       Colors[Index+4],
                                                                       TpvVector2.Null,
                                                                       TpvVector2.Null,
-                                                                      TpvVector2.Null);
+                                                                      TpvVector2.Null);}
      TpvScene3DRendererInstance(fRendererInstance).AddSolidLine3D(aInFlightFrameIndex,
                                                                   Quad[0],
                                                                   Quad[1],
