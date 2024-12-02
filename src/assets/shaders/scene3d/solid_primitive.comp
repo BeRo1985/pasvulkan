@@ -608,7 +608,7 @@ void main(){
       {
 
         destinationVertices.vertices[firstVertex] = Vertex(
-          uvec4(floatBitsToUint(aabb.xy), primitive.position.wz),
+          uvec4(floatBitsToUint(aabb.xy), primitive.position.zw),
           primitive.position0,
           primitive.position1,
           primitive.position2,
@@ -617,7 +617,7 @@ void main(){
         );
 
         destinationVertices.vertices[firstVertex + 1u] = Vertex(
-          uvec4(floatBitsToUint(aabb.zy), primitive.position.wz),
+          uvec4(floatBitsToUint(aabb.zy), primitive.position.zw),
           primitive.position0,
           primitive.position1,
           primitive.position2,
@@ -626,7 +626,7 @@ void main(){
         );
 
         destinationVertices.vertices[firstVertex + 2u] = Vertex(
-          uvec4(floatBitsToUint(aabb.zw), primitive.position.wz),
+          uvec4(floatBitsToUint(aabb.zw), primitive.position.zw),
           primitive.position0,
           primitive.position1,
           primitive.position2,
@@ -635,7 +635,7 @@ void main(){
         );
 
         destinationVertices.vertices[firstVertex + 3u] = Vertex(
-          uvec4(floatBitsToUint(aabb.xw), primitive.position.wz),
+          uvec4(floatBitsToUint(aabb.xw), primitive.position.zw),
           primitive.position0,
           primitive.position1,
           primitive.position2,

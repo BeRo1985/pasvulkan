@@ -446,17 +446,24 @@ type { TpvScene3DRendererInstance }
               // uvec4-wise structure ordering so that the shaders can access it uvec4-wise
               case boolean of
                false:(
+
                 Position:TpvVector2;                  //   8    8
                 Offset0:TpvVector2;                   // + 8 = 16
+
                 Position0:TpvVector3;                 // +12 = 28
                 PrimitiveTopology:TpvUInt32;          // + 4 = 32
+
                 Position1:TpvVector3;                 // +12 = 44
                 LineThicknessorPointSize:TpvFloat;    // + 4 = 48
+
                 Position2:TpvVector3;                 // +12 = 60
                 Unused:TpvUInt32;                     // + 4 = 64
+
                 Offset1:TpvVector2;                   // + 8 = 72
                 Offset2:TpvVector2;                   // + 8 = 80
+
                 Color:TpvVector4;                     // +16 = 96
+
                );                                     //  ==   ==
                true:(                                 //  96   96 per vertex
                 Padding:array[0..95] of TpvUInt8;
