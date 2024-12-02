@@ -185,6 +185,10 @@ void main(){
 
     bool visible = true;
 
+    bool useSpecialVertices = false;
+
+    vec2 specialVertices[4];
+
     if(threeDimensional){
 
       switch(primitiveTopology){
@@ -301,6 +305,30 @@ void main(){
 
           aabb.xy = screenSpaceToClipSpace(aabb.xy);
           aabb.zw = screenSpaceToClipSpace(aabb.zw);
+
+          if(pushConstants.countViews == 1){
+
+            // When there is only one view, we can use the special vertices to draw the line to reduce overdraw
+
+            useSpecialVertices = true;
+
+            mat4 viewProjectionMatrix = viewProjectionMatrices[0];
+
+            vec4 lineStartClip = viewProjectionMatrix * vec4(lineStart3D, 1.0);
+            vec4 lineEndClip = viewProjectionMatrix * vec4(lineEnd3D, 1.0);
+
+            vec2 lineStartScreen = clipSpaceToScreenSpace((lineStartClip.xy / lineStartClip.w) + lineStartOffset);
+            vec2 lineEndScreen = clipSpaceToScreenSpace((lineEndClip.xy / lineEndClip.w) + lineEndOffset);
+
+            vec2 direction = normalize(lineEndScreen - lineStartScreen) * fma(lineThickness, 1.0, 1.0); // 0.7071067811865475, 1.0);
+            vec2 normal = vec2(-direction.y, direction.x);
+
+            specialVertices[0] = screenSpaceToClipSpace((lineStartScreen - direction) - normal);
+            specialVertices[1] = screenSpaceToClipSpace((lineStartScreen - direction) + normal);
+            specialVertices[2] = screenSpaceToClipSpace((lineEndScreen + direction) + normal);
+            specialVertices[3] = screenSpaceToClipSpace((lineEndScreen + direction) - normal);
+            
+          }
 
           break;
 
@@ -688,7 +716,7 @@ void main(){
       {
 
         destinationVertices.vertices[firstVertex] = Vertex(
-          uvec4(floatBitsToUint(aabb.xy), primitive.position.zw),
+          uvec4(floatBitsToUint(useSpecialVertices ? specialVertices[0] : aabb.xy), primitive.position.zw),
           primitive.position0,
           primitive.position1,
           primitive.position2,
@@ -699,7 +727,7 @@ void main(){
         );
 
         destinationVertices.vertices[firstVertex + 1u] = Vertex(
-          uvec4(floatBitsToUint(aabb.zy), primitive.position.zw),
+          uvec4(floatBitsToUint(useSpecialVertices ? specialVertices[1] : aabb.zy), primitive.position.zw),
           primitive.position0,
           primitive.position1,
           primitive.position2,
@@ -710,7 +738,7 @@ void main(){
         );
 
         destinationVertices.vertices[firstVertex + 2u] = Vertex(
-          uvec4(floatBitsToUint(aabb.zw), primitive.position.zw),
+          uvec4(floatBitsToUint(useSpecialVertices ? specialVertices[2] : aabb.zw), primitive.position.zw),
           primitive.position0,
           primitive.position1,
           primitive.position2,
@@ -721,7 +749,7 @@ void main(){
         );
 
         destinationVertices.vertices[firstVertex + 3u] = Vertex(
-          uvec4(floatBitsToUint(aabb.xw), primitive.position.zw),
+          uvec4(floatBitsToUint(useSpecialVertices ? specialVertices[3] : aabb.xw), primitive.position.zw),
           primitive.position0,
           primitive.position1,
           primitive.position2,
