@@ -129,18 +129,18 @@ type { TpvScene3DGizmo }
               Up
              );
       private
-       const SelectionColor:TpvVector4=(x:1.0;y:0.5;z:0.125;w:0.54);
+       const SelectionColor:TpvVector4=(x:1.0;y:0.5;z:0.125;w:0.25);
              InactiveColor:TpvVector4=(x:0.6;y:0.6;z:0.6;w:0.6);
-             BlackColor:TpvVector4=(x:0.0;y:0.0;z:0.0;w:0.5);
+             BlackColor:TpvVector4=(x:0.0;y:0.0;z:0.0;w:0.25);
              WhiteColor:TpvVector4=(x:1.0;y:1.0;z:1.0;w:1.0);
              TranslationColor:TpvVector4=(x:1.0;y:1.0;z:1.0;w:1.0);
              //TranslationColor:TpvVector4=(x:0.6666;y:0.6666;z:0.6666;w:0.6666);
              RotationColor:TpvVector4=(x:1.0;y:0.5;z:0.125;w:1.0);
-             RotationHalfAlphaColor:TpvVector4=(x:1.0;y:0.5;z:0.125;w:0.5);
+             RotationHalfAlphaColor:TpvVector4=(x:1.0;y:0.5;z:0.125;w:0.25);
              GrayColor:TpvVector4=(x:0.25;y:0.25;z:0.25;w:1.0);
-             PlaneColors:array[0..2] of TpvVector4=((x:1.0;y:0.0;z:0.0;w:0.54),
-                                                    (x:0.0;y:1.0;z:0.0;w:0.54),
-                                                    (x:0.0;y:0.0;z:1.0;w:0.54));
+             PlaneColors:array[0..2] of TpvVector4=((x:1.0;y:0.0;z:0.0;w:0.25),
+                                                    (x:0.0;y:1.0;z:0.0;w:0.25),
+                                                    (x:0.0;y:0.0;z:1.0;w:0.25));
              DirectionColors:array[0..2] of TpvVector4=((x:0.6666;y:0.0;z:0.0;w:1.0),
                                                         (x:0.0;y:0.6666;z:0.0;w:1.0),
                                                         (x:0.0;y:0.0;z:0.6666;w:1.0));
