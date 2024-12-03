@@ -856,7 +856,8 @@ var Colors:array[0..7] of TpvVector4;
     CirclePos3D[Index]:=fModelMatrix.MulHomogen(TpvVector3.InlineableCreate(AxisPos[AxisIndex],AxisPos[(AxisIndex+1) mod 3],AxisPos[(AxisIndex+2) mod 3])*fScreenFactor);
     CirclePos[Index]:=WorldToPosition(TpvVector3.InlineableCreate(AxisPos[AxisIndex],AxisPos[(AxisIndex+1) mod 3],AxisPos[(AxisIndex+2) mod 3])*fScreenFactor,fModelViewProjectionMatrix);
    end;
-   fRadiusSquareCenter:=Max(fRadiusSquareCenter,WorldToPosition(fModelMatrix.Translation.xyz,fViewProjectionMatrix).DistanceTo(CirclePos[0]));
+   fRadiusSquareCenter:=Max(fRadiusSquareCenter,
+                             WorldToPosition(fModelMatrix.Translation.xyz,fViewProjectionMatrix).DistanceTo(CirclePos[0]));
    if aInFlightFrameIndex>=0 then begin
     for Index:=0 to HalfCircleSegmentCount-2 do begin
      TpvScene3DRendererInstance(fRendererInstance).AddSolidLine3D(aInFlightFrameIndex,
@@ -870,7 +871,25 @@ var Colors:array[0..7] of TpvVector4;
    end;
   end;
   if aInFlightFrameIndex>=0 then begin
-   DrawCircle(fModelMatrix.Translation.xyz,fRadiusSquareCenter,Colors[0],64,3.0);
+   //DrawCircle(fModelMatrix.Translation.xyz,fRadiusSquareCenter,Colors[0],64,3.0);
+   begin
+    for Index:=0 to HalfCircleSegmentCount do begin
+     ng:=TwoPI*(Index/HalfCircleSegmentCount);
+     AxisPos:=TpvVector3.InlineableCreate(cos(ng),sin(ng),0.0);
+     CirclePos3D[Index]:=fModelMatrix.Translation.xyz+
+                         (((fInverseViewMatrix.Right.xyz*AxisPos.x)+
+                           (fInverseViewMatrix.Up.xyz*AxisPos.y))*fScreenFactor);
+    end;
+    for Index:=0 to HalfCircleSegmentCount-1 do begin
+     TpvScene3DRendererInstance(fRendererInstance).AddSolidLine3D(aInFlightFrameIndex,
+                                                                      CirclePos3D[Index],
+                                                                      CirclePos3D[Index+1],
+                                                                      Colors[0],
+                                                                      3.0,
+                                                                      TpvVector2.Null,
+                                                                      TpvVector2.Null);
+    end;
+   end;
    if fUsing then begin
     CirclePos3D[0]:=fModelMatrix.Translation.xyz;
     for Index:=1 to HalfCircleSegmentCount do begin
