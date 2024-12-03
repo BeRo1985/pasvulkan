@@ -314,12 +314,12 @@ procedure TpvScene3DGizmo.ComputeCameraRay(out aRayOrigin,aRayDirection:TpvVecto
 var m:TpvVector4;
 begin
  m:=fInverseViewProjectionMatrix*TpvVector4.InlineableCreate((((fMousePosition.x-fViewPort.x)/fViewPort.z)*2.0)-1.0,
-                                                             -((((fMousePosition.y-fViewPort.y)/fViewPort.w)*2.0)-1.0),
+                                                             ((((fMousePosition.y-fViewPort.y)/fViewPort.w)*2.0)-1.0),
                                                              -1.0,
                                                              1.0);
  aRayOrigin:=m.xyz/m.w;
  m:=fInverseViewProjectionMatrix*TpvVector4.InlineableCreate((((fMousePosition.x-fViewPort.x)/fViewPort.z)*2.0)-1.0,
-                                                             -((((fMousePosition.y-fViewPort.y)/fViewPort.w)*2.0)-1.0),
+                                                             ((((fMousePosition.y-fViewPort.y)/fViewPort.w)*2.0)-1.0),
                                                              1.0-Epsilon,
                                                              1.0);
  aRayDirection:=((m.xyz/m.w)-aRayOrigin).Normalize;
