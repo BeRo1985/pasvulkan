@@ -416,8 +416,8 @@ begin
  SegA.y:=SegA.y/fAspectRatio;
  SegB.y:=SegB.y/fAspectRatio;
  SegAOrtho:=TpvVector4.InlineableCreate(-SegA.y,SegA.x,0.0,0.0);
- SegAOrtho.xy:=SegAOrtho.xy.Normalize;
- result:=SegA.xy.Length+SegAOrtho.xyz.Dot(SegB.xyz);
+ SegAOrtho.xyz:=SegAOrtho.xyz.Normalize;
+ result:=SegA.xy.Length+abs(SegAOrtho.xyz.Dot(SegB.xyz));
 end;
 
 procedure TpvScene3DGizmo.ComputeTripodAxisAndVisibility(const aAxisIndex:TpvSizeInt;out aDirAxis,aDirPlaneX,aDirPlaneY:TpvVector3;out aBelowAxisLimit,aBelowPlaneLimit:boolean);
