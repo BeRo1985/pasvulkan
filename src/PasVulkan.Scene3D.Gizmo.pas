@@ -220,6 +220,7 @@ type { TpvScene3DGizmo }
        procedure ComputeCameraRay(out aRayOrigin,aRayDirection:TpvVector3);
        procedure Update(const aForceLocal:boolean);
        function WorldToPosition(const aWorldPosition:TpvVector3;const aMatrix:TpvMatrix4x4):TpvVector2;
+       function WorldToPositionEx(const aWorldPosition:TpvVector3;const aMatrix:TpvMatrix4x4):TpvVector2;
        function ScreenSpaceToClipSpace(const aPoint:TpvVector2):TpvVector2;
        function GetSegmentLengthClipSpace(const aStart,aEnd:TpvVector3):TpvScalar;
        function GetParallelogram(const aO,aA,aB:TpvVector3):TpvScalar;
@@ -349,7 +350,7 @@ begin
   fScreenFactor:=fGizmoSizeClipSpace/GetSegmentLengthClipSpace(TpvVector3.Null,fInverseModelMatrix.MulBasis(fInverseViewMatrix.Right.xyz));
  end;
  begin
-  fScreenSquareCenter:=WorldToPosition(TpvVector3.Null,fModelViewProjectionMatrix);
+  fScreenSquareCenter:=WorldToPositionEx(TpvVector3.Null,fModelViewProjectionMatrix);
   fScreenSquareMin:=fScreenSquareCenter-TpvVector2.InlineableCreate(10.0,10.0);
   fScreenSquareMax:=fScreenSquareCenter+TpvVector2.InlineableCreate(10.0,10.0);
  end;
@@ -362,6 +363,14 @@ begin
  t:=aMatrix*TpvVector4.Create(aWorldPosition.xyz,1.0);
  t:=((t/t.w)*0.5)+TpvVector4.Create(0.5,0.5,0.0,0.0);
  t.y:=1.0-t.y;
+ result:=(t.xy*fViewPort.zw)+fViewPort.xy;
+end;
+
+function TpvScene3DGizmo.WorldToPositionEx(const aWorldPosition:TpvVector3;const aMatrix:TpvMatrix4x4):TpvVector2;
+var t:TpvVector4;
+begin
+ t:=aMatrix*TpvVector4.Create(aWorldPosition.xyz,1.0);
+ t:=((t/t.w)*0.5)+TpvVector4.Create(0.5,0.5,0.0,0.0);
  result:=(t.xy*fViewPort.zw)+fViewPort.xy;
 end;
 
@@ -548,7 +557,7 @@ begin
   Dist:=IdealPosOnCircle.Dot(fRayDirection);
   if Dist<=Epsilon then begin
    IdealPosOnCircle:=fInverseModelMatrix.MulBasis(IdealPosOnCircle);
-   IdealPosOnCircleScreen:=WorldToPosition(IdealPosOnCircle*fScreenFactor,fModelViewProjectionMatrix);
+   IdealPosOnCircleScreen:=WorldToPositionEx(IdealPosOnCircle*fScreenFactor,fModelViewProjectionMatrix);
    if fMousePosition.DistanceTo(IdealPosOnCircleScreen)<8.0 then begin
     case Index of
      0:begin
@@ -591,8 +600,8 @@ begin
   ComputeTripodAxisAndVisibility(Index,DirAxis,DirPlaneX,DirPlaneY,BelowAxisLimit,BelowPlaneLimit);
   if BelowAxisLimit and
      (PointOnSegment(fMousePosition,
-                     WorldToPosition(DirAxis*0.1*fScreenFactor,fModelViewProjectionMatrix),
-                     WorldToPosition(DirAxis*fScreenFactor,fModelViewProjectionMatrix)).DistanceTo(fMousePosition)<12.0) then begin
+                     WorldToPositionEx(DirAxis*0.1*fScreenFactor,fModelViewProjectionMatrix),
+                     WorldToPositionEx(DirAxis*fScreenFactor,fModelViewProjectionMatrix)).DistanceTo(fMousePosition)<12.0) then begin
    case Index of
     0:begin
      result:=TAction.MoveX;
@@ -656,8 +665,8 @@ begin
   DirPlaneY:=fModelMatrix.MulBasis(DirPlaneY);}
   if BelowAxisLimit and
      (PointOnSegment(fMousePosition,
-                     WorldToPosition(DirAxis*0.1*fScreenFactor,fModelViewProjectionMatrix),
-                     WorldToPosition(DirAxis*fScreenFactor,fModelViewProjectionMatrix)).DistanceTo(fMousePosition)<12.0) then begin
+                     WorldToPositionEx(DirAxis*0.1*fScreenFactor,fModelViewProjectionMatrix),
+                     WorldToPositionEx(DirAxis*fScreenFactor,fModelViewProjectionMatrix)).DistanceTo(fMousePosition)<12.0) then begin
    case Index of
     0:begin
      result:=TAction.ScaleX;
@@ -1317,6 +1326,7 @@ function TpvScene3DGizmo.MouseAction(const aMatrix:TpvMatrix4x4;
    aNewMatrix^:=DeltaMatrixScale*fModelLocalMatrix;
   end;
  end;
+var v:TpvVector4;
 begin
  fMatrix:=aMatrix;
  fMousePosition:=aMousePosition;
@@ -1327,11 +1337,18 @@ begin
  if assigned(aNewMatrix) then begin
   aNewMatrix^:=fMatrix;
  end;
- if (fViewMode<>TViewMode.Orthographic) and
-    (fModelViewProjectionMatrix.MulHomogen(TpvVector3.Null).z<1e-3) then begin
-  fAction:=TAction.None;
-  result:=false;
- end else begin
+ case fViewMode of
+  TViewMode.Orthographic:begin
+   v:=TpvVector4.InlineableCreate(0.0,0.0,0.0,1.0);
+  end;
+  TViewMode.Perspective:begin
+   v:=fModelViewProjectionMatrix*TpvVector4.InlineableCreate(0.0,0.0,0.0,1.0);
+  end;
+  else begin
+   v:=TpvVector4.InlineableCreate(0.0,0.0,0.0,1.0);
+  end;
+ end;
+ if abs(v.z)<=v.w then begin
   case fOperation of
    TOperation.Rotate:begin
     case aMouseAction of
@@ -1441,6 +1458,9 @@ begin
     result:=false;
    end;
   end;
+ end else begin
+  fAction:=TAction.None;
+  result:=false;
  end;
 end;
 
