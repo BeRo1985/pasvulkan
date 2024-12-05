@@ -4467,6 +4467,7 @@ type { TPOCAScene3DGroupAnimation }
        destructor Destroy; override;
       published
        function createChannel(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TpvInt32):TPOCAValue;
+       function finish(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TpvInt32):TPOCAValue;
      end;
 
 { TPOCAScene3DGroupAnimation }
@@ -4509,6 +4510,12 @@ begin
  end else begin
   result:=POCAValueNull;
  end;
+end;
+
+function TPOCAScene3DGroupAnimation.finish(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TpvInt32):TPOCAValue;
+begin
+ fAnimation.Finish;
+ result:=POCAValueNull;
 end;
 
 type { TPOCAScene3DGroup }
