@@ -487,6 +487,33 @@ begin
  if aVulkanDevice.PhysicalDevice.Properties.limits.maxDrawIndirectCount<TpvInt64($40000000) then begin
   raise EpvApplication.Create('Application','The value of maxDrawIndirectCount is too low, must be at least 1073741824.',LOG_ERROR);
  end;
+ if aVulkanDevice.PhysicalDevice.Features.drawIndirectFirstInstance=VK_FALSE then begin
+  raise EpvApplication.Create('Application','Support for drawIndirectFirstInstance is needed',LOG_ERROR);
+ end;
+ if aVulkanDevice.PhysicalDevice.Features.fullDrawIndexUint32=VK_FALSE then begin
+  raise EpvApplication.Create('Application','Support for fullDrawIndexUint32 is needed',LOG_ERROR);
+ end;
+ if aVulkanDevice.PhysicalDevice.Features.multiViewport=VK_FALSE then begin
+  raise EpvApplication.Create('Application','Support for multiViewport is needed',LOG_ERROR);
+ end;
+ if aVulkanDevice.PhysicalDevice.Features.sampleRateShading=VK_FALSE then begin
+  raise EpvApplication.Create('Application','Support for sampleRateShading is needed',LOG_ERROR);
+ end;
+ if aVulkanDevice.PhysicalDevice.Features.samplerAnisotropy=VK_FALSE then begin
+  raise EpvApplication.Create('Application','Support for samplerAnisotropy is needed',LOG_ERROR);
+ end;
+ if aVulkanDevice.PhysicalDevice.Features.shaderSampledImageArrayDynamicIndexing=VK_FALSE then begin
+  raise EpvApplication.Create('Application','Support for shaderSampledImageArrayDynamicIndexing is needed',LOG_ERROR);
+ end;
+ if aVulkanDevice.PhysicalDevice.Features.shaderStorageBufferArrayDynamicIndexing=VK_FALSE then begin
+  raise EpvApplication.Create('Application','Support for shaderStorageBufferArrayDynamicIndexing is needed',LOG_ERROR);
+ end;
+ if aVulkanDevice.PhysicalDevice.Features.shaderStorageImageArrayDynamicIndexing=VK_FALSE then begin
+  raise EpvApplication.Create('Application','Support for shaderStorageImageArrayDynamicIndexing is needed',LOG_ERROR);
+ end;
+ if aVulkanDevice.PhysicalDevice.Features.shaderUniformBufferArrayDynamicIndexing=VK_FALSE then begin
+  raise EpvApplication.Create('Application','Support for shaderUniformBufferArrayDynamicIndexing is needed',LOG_ERROR);
+ end;
  if (((aVulkanDevice.Instance.APIVersion and VK_API_VERSION_WITHOUT_PATCH_MASK)<VK_API_VERSION_1_2) and
      (aVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_KHR_DRAW_INDIRECT_COUNT_EXTENSION_NAME)<0)) or
     (((aVulkanDevice.Instance.APIVersion and VK_API_VERSION_WITHOUT_PATCH_MASK)>=VK_API_VERSION_1_2) and
