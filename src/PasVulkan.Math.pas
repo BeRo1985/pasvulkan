@@ -695,6 +695,7 @@ type PpvScalar=^TpvScalar;
        Scale:TpvVector3;
        Skew:TpvVector3; // XY XZ YZ
        Rotation:TpvQuaternion;
+       class function Create:TpvDecomposedMatrix3x3; static;
        function Lerp(const b:TpvDecomposedMatrix3x3;const t:TpvScalar):TpvDecomposedMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
        function Nlerp(const b:TpvDecomposedMatrix3x3;const t:TpvScalar):TpvDecomposedMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
        function Slerp(const b:TpvDecomposedMatrix3x3;const t:TpvScalar):TpvDecomposedMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
@@ -819,6 +820,7 @@ type PpvScalar=^TpvScalar;
        Scale:TpvVector3;
        Skew:TpvVector3; // XY XZ YZ
        Rotation:TpvQuaternion;
+       class function Create:TpvDecomposedMatrix4x4; static;
        function Lerp(const b:TpvDecomposedMatrix4x4;const t:TpvScalar):TpvDecomposedMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
        function Nlerp(const b:TpvDecomposedMatrix4x4;const t:TpvScalar):TpvDecomposedMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
        function Slerp(const b:TpvDecomposedMatrix4x4;const t:TpvScalar):TpvDecomposedMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
@@ -7196,6 +7198,14 @@ begin
  result.RawComponents[1,1]:=RawComponents[1,1];
 end;
 
+class function TpvDecomposedMatrix3x3.Create:TpvDecomposedMatrix3x3;
+begin
+ result.Scale:=TpvVector3.Create(1.0,1.0,1.0);
+ result.Skew:=TpvVector3.Create(0.0,0.0,0.0);
+ result.Rotation:=TpvQuaternion.Create(0.0,0.0,0.0,1.0);
+ result.Valid:=true;
+end;
+
 function TpvDecomposedMatrix3x3.Lerp(const b:TpvDecomposedMatrix3x3;const t:TpvScalar):TpvDecomposedMatrix3x3;
 begin
  if t<=0.0 then begin
@@ -8606,6 +8616,16 @@ begin
 
  end;
 
+end;
+
+class function TpvDecomposedMatrix4x4.Create:TpvDecomposedMatrix4x4;
+begin
+ result.Perspective:=TpvVector4.Create(0.0,0.0,0.0,1.0);
+ result.Translation:=TpvVector3.Create(0.0,0.0,0.0);
+ result.Scale:=TpvVector3.Create(1.0,1.0,1.0);
+ result.Skew:=TpvVector3.Create(0.0,0.0,0.0);
+ result.Rotation:=TpvQuaternion.Create(0.0,0.0,0.0,1.0);
+ result.Valid:=true;
 end;
 
 function TpvDecomposedMatrix4x4.Lerp(const b:TpvDecomposedMatrix4x4;const t:TpvScalar):TpvDecomposedMatrix4x4;
