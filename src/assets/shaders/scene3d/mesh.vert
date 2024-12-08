@@ -158,7 +158,7 @@ void main() {
     position = (instanceMatrix * vec4(position, 1.0)).xyz;
     tangentSpace = transpose(inverse(mat3(instanceMatrix))) * tangentSpace;   
 #ifdef VELOCITY  
-    previousPosition = (instanceMatrices[(gl_InstanceIndex << 1) | 1]* vec4(previousPosition, 1.0)).xyz;
+    previousPosition = (instanceMatrices[(gl_InstanceIndex << 1) | 1] * vec4(previousPosition, 1.0)).xyz;
 #endif
   }
 

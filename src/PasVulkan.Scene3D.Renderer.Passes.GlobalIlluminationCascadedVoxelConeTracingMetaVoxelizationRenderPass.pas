@@ -236,7 +236,7 @@ begin
   Stream.Free;
  end;
 
- if fInstance.Renderer.Scene3D.RaytracingActive then begin
+{if fInstance.Renderer.Scene3D.RaytracingActive then begin
   case fInstance.Renderer.GlobalIlluminationVoxelCountCascades of
    1:begin
     Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_raytracing_voxelization_1_geom.spv');
@@ -263,7 +263,7 @@ begin
     Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_raytracing_voxelization_8_geom.spv');
    end;
   end;
- end else begin
+ end else}begin
   case fInstance.Renderer.GlobalIlluminationVoxelCountCascades of
    1:begin
     Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_voxelization_1_geom.spv');
@@ -297,9 +297,9 @@ begin
   Stream.Free;
  end;
 
- if fInstance.Renderer.Scene3D.RaytracingActive then begin
+{if fInstance.Renderer.Scene3D.RaytracingActive then begin
   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_raytracing_voxelization_frag.spv');
- end else begin
+ end else }begin
   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_voxelization_frag.spv');
  end;
  try
