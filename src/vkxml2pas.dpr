@@ -4561,7 +4561,8 @@ begin
          if (TypeDefinition^.Name<>'VkBaseInStructure') and
             (TypeDefinition^.Name<>'VkBaseOutStructure') and
             (TypeDefinition^.Name<>'VkSubpassEndInfoKHR') and
-            (TypeDefinition^.Name<>'VkExportMetalObjectsInfoEXT') then begin
+            (TypeDefinition^.Name<>'VkExportMetalObjectsInfoEXT') and
+            (TypeDefinition^.Name<>'VkPipelineCreateInfoKHR') then begin
           RecordConstructorCodeStringList.Add(CodeParameterLine);
           RecordConstructorStringList.Add(ParameterLine);
          end;
@@ -4571,7 +4572,8 @@ begin
           (TypeDefinition^.Name<>'VkBaseOutStructure') and
           (TypeDefinition^.Name<>'VkSubpassEndInfoKHR') and
           (TypeDefinition^.Name<>'VkSubpassEndInfo') and
-          (TypeDefinition^.Name<>'VkExportMetalObjectsInfoEXT') then begin
+          (TypeDefinition^.Name<>'VkExportMetalObjectsInfoEXT') and
+          (TypeDefinition^.Name<>'VkPipelineCreateInfoKHR') then begin
         if HasArray then begin
          RecordConstructorCodeStringList.Add('var ArrayItemCount:TVkInt32;');
         end;
