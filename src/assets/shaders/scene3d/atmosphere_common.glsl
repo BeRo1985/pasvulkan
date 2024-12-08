@@ -176,7 +176,7 @@ struct AtmosphereParameters {
  
   vec4 MieAbsorption; // w = sun direction Z
   
-  vec4 AbsorptionExtinction;
+  vec4 AbsorptionExtinction; // w = fade factor
  
   vec4 GroundAlbedo;
  

@@ -645,7 +645,7 @@ void main() {
 
   }else{
 
-    outInscattering = vec4(0.0, 0.0, 0.0, 1.0);
+    outInscattering = vec4(0.0, 0.0, 0.0, 0.0);
 #ifdef DUALBLEND
     outTransmittance = vec4(1.0, 1.0, 1.0, 0.0);
 #endif
