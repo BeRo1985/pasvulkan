@@ -27,8 +27,8 @@ layout(set = 1, binding = 0, std140) uniform uboViews {
   View views[256]; // 65536 / (64 * 4) = 256
 } uView;
 
-layout(set = 1, binding = 1, rgba32f) uniform image2DArray uImageAccumulated;
-layout(set = 1, binding = 2, r32ui) uniform writeonly uimage2DArray uImageOutput;
+layout(set = 1, binding = 1, r32ui) uniform writeonly uimage2DArray uImageOutput;
+layout(set = 1, binding = 2, rgba32ui) uniform uimage2DArray uImagePositionNormals; // xyz = position, w = normal (xyz)
 
 #define PATHTRACING_PUSHCONSTANTS
 #include "pathtracing.glsl"
@@ -38,6 +38,8 @@ layout(set = 1, binding = 2, r32ui) uniform writeonly uimage2DArray uImageOutput
 #include "floatint.glsl"
 
 #include "rgb9e5.glsl"
+
+#include "rgb10a2.glsl"
 
 layout(location = 0) rayPayloadEXT RayPayload payload;
 
@@ -125,6 +127,9 @@ void main(){
 
   float tMin = uintBitsToFloat(0x00000001u); // Minimum positive subnormal value
   float tMax = uintBitsToFloat(0x7F7FFFFFu); // Maximum positive normal value
+
+  vec3 position = vec3(uintBitsToFloat(0x7F800000u)); 
+  vec3 normal = vec3(0.0);
   
   for(uint sampleIndex = 0; sampleIndex < samplesPerPixels; sampleIndex++){
 
@@ -177,7 +182,8 @@ void main(){
       absorption = payload.absorption;
 
       if(depthIndex == 0u){
-        // TODO: Store information about the first intersection for denoising
+        position = payload.position;
+        normal = payload.normal;
       }
 
       if(payload.stop){
@@ -192,10 +198,8 @@ void main(){
 
   radiance /= float(samplesPerPixels);
 
-  vec4 accumlated = vec4((pushConstants.frameIndex == 0u) ? vec3(0.0) : vec3(imageLoad(uImageAccumulated, ivec3(launchID.xyz)).xyz) + radiance, 1.0);
+  imageStore(uImageOutput, ivec3(launchID.xyz), uvec4(encodeRGB9E5(radiance.xyz)));
 
-  imageStore(uImageAccumulated, ivec3(launchID.xyz), accumlated);
-
-  imageStore(uImageOutput, ivec3(launchID.xyz), uvec4(encodeRGB9E5(accumlated.xyz)));
+  imageStore(uImagePositionNormals, ivec3(launchID.xyz), uvec4(floatBitsToUint(position), encodeRGB10A2_SNORM(vec4(normal, 0.0))));
 
 }

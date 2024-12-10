@@ -18,7 +18,7 @@ struct RayPayload {
 	vec3 radiance;
 	vec3 absorption;
 	vec3 beta;
-	vec3 worldPos;
+	vec3 position;
 	vec3 normal;
 	vec3 ffnormal;
 	uint depth;
