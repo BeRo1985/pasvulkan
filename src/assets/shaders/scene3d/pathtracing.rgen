@@ -17,10 +17,7 @@ precision highp int;
 
 #include "pathtracing.glsl"
 
-layout(location = 0) rayPayloadInEXT RayPayload payload;
-layout(location = 1) rayPayloadEXT bool isShadowed;
-
-hitAttributeEXT vec2 hit;
+layout(location = 0) rayPayloadEXT RayPayload payload;
 
 void main(){
 
