@@ -26,4 +26,16 @@ struct RayPayload {
 	float eta;
 };
 
+#ifdef PATHTRACING_PUSHCONSTANTS
+layout (push_constant) uniform PushConstants {
+  uint viewBaseIndex;
+  uint countViews;
+  uint countAllViews;
+  uint frameIndex;
+  vec4 jitter;
+  uvec4 timeSecondsTimeFractionalSecondWidthHeight; // x = timeSeconds (uint), y = timeFractionalSecond (float), z = width, w = height
+  uvec4 samplesPerPixelsMaxDepth; // x = samples per pixel, y = max depth, zw = unused
+} pushConstants;
+#endif
+
 #endif
