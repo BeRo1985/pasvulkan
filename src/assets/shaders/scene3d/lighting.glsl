@@ -9,6 +9,7 @@
 #endif
 #endif
 
+#ifdef LIGHTS
 float getLightIESProfileTangentAngle(const in Light light, const in vec3 pointToLightDirection){
   if((light.metaData.x & (1u << 17u)) != 0u){
     // 2D light profile
@@ -32,6 +33,7 @@ float applyLightIESProfile(const in Light light, const in vec3 pointToLightDirec
             ).x
           : 1.0;
 }  
+#endif
 
 #elif defined(LIGHTING_INITIALIZATION)
 

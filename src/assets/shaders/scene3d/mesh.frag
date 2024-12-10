@@ -14,7 +14,7 @@
 
 #ifdef USE_MATERIAL_BUFFER_REFERENCE
 #elif defined(USE_MATERIAL_SSBO)
-#endif
+#endif 
 
 #extension GL_EXT_multiview : enable
 #extension GL_ARB_separate_shader_objects : enable
@@ -607,10 +607,10 @@ void main() {
           volumeAttenuationColor = uintBitsToFloat(material.volumeAttenuationColorAnisotropyStrengthAnisotropyRotation.xyz);        
         }
         if((flags & (1u << 14u)) != 0u){
-          volumeDispersion = uintBitsToFloat(material.dispersionUnused.x);
+          volumeDispersion = uintBitsToFloat(material.dispersionShadowCastMaskShadowReceiveMaskUnused.x);
         }
       }
-#endif
+#endif 
 
       vec3 imageLightBasedLightDirection = vec3(0.0, 0.0, -1.0);
 
@@ -1012,7 +1012,7 @@ void main() {
   #include "voxelization_fragment.glsl"   
 #endif
 
-}
+} 
 
 /*oid main() {
   outFragColor = vec4(vec3(mix(0.25, 1.0, max(0.0, dot(workNormal, vec3(0.0, 0.0, 1.0))))), 1.0);

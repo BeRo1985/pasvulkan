@@ -1099,12 +1099,12 @@ type EpvScene3D=class(Exception);
                        AnisotropyStrength:TpvUInt16; // Half float
                        AnisotropyRotation:TpvUInt16; // Half float
                       // uvec4 End
-                      // uvec4 Dispersion
+                      // uvec4 Begin
                        Dispersion:TpvFloat;
-                       Unused0:TpvUInt32;
-                       Unused1:TpvUInt32;
-                       Unused2:TpvUInt32;
-                      // uvec4 Dispersion End
+                       ShadowCastMask:TpvUInt32;
+                       ShadowReceiveMask:TpvUInt32;
+                       Unused:TpvUInt32;
+                      // uvec4 End
                       // uvec4 Hologram Blocks begin
                        HologramDirectionX:TpvUInt16; // b0.x
                        HologramDirectionY:TpvUInt16; // b0.y
@@ -1301,9 +1301,9 @@ type EpvScene3D=class(Exception);
                      AnisotropyStrength:0;
                      AnisotropyRotation:0;
                      Dispersion:0.0;
-                     Unused0:0;
-                     Unused1:0;
-                     Unused2:0;
+                     ShadowCastMask:TpvUInt32($ffffffff);
+                     ShadowReceiveMask:TpvUInt32($ffffffff);
+                     Unused:0;
                      HologramDirectionX:0;
                      HologramDirectionY:0;
                      HologramDirectionZ:0;

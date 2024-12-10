@@ -19,7 +19,7 @@ struct Material {
   vec4 iorIridescenceFactorIridescenceIorIridescenceThicknessMinimum;
   vec4 iridescenceThicknessMaximumTransmissionFactorVolumeThicknessFactorVolumeAttenuationDistance;
   uvec4 volumeAttenuationColorAnisotropyStrengthAnisotropyRotation;
-  uvec4 dispersionUnused; // x = dispersion, y, z, w = unused
+  uvec4 dispersionShadowCastMaskShadowReceiveMaskUnused;
   uvec4 hologramBlock0;
   uvec4 hologramBlock1;
   uvec4 hologramBlock2;
@@ -72,7 +72,7 @@ layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer Ma
   vec4 iorIridescenceFactorIridescenceIorIridescenceThicknessMinimum;
   vec4 iridescenceThicknessMaximumTransmissionFactorVolumeThicknessFactorVolumeAttenuationDistance;
   uvec4 volumeAttenuationColorAnisotropyStrengthAnisotropyRotation;
-  uvec4 dispersionUnused; // x = dispersion, y, z, w = unused
+  uvec4 dispersionShadowCastMaskShadowReceiveMaskUnused;
   uvec4 hologramBlock0;
   uvec4 hologramBlock1;
   uvec4 hologramBlock2;
