@@ -328,7 +328,7 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
 
      TpvVectorPathFillRule=
       (
-       NonZero,
+       NonZero=0,
        EvenOdd
       );
 
@@ -336,7 +336,7 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
 
      TpvVectorPathSegmentType=
       (
-       Line,
+       Line=0,
        QuadraticCurve,
        CubicCurve
       );
