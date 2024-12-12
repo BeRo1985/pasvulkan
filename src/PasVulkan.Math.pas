@@ -778,7 +778,7 @@ type PpvScalar=^TpvScalar;
        function Determinant:TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
        function Inverse:TpvMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
        function Transpose:TpvMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
-       function Adjoint:TpvMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
+       function Adjugate:TpvMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
        function EulerAngles:TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
        function Normalize:TpvMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
        function OrthoNormalize:TpvMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
@@ -956,7 +956,7 @@ type PpvScalar=^TpvScalar;
        function SimpleInverse:TpvMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
        function Inverse:TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
        function Transpose:TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
-       function Adjoint:TpvMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
+       function Adjugate:TpvMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
        function EulerAngles:TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
        function Normalize:TpvMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
        function OrthoNormalize:TpvMatrix4x4; //{$ifdef CAN_INLINE}inline;{$endif}
@@ -8169,7 +8169,7 @@ begin
  result.RawComponents[2,2]:=RawComponents[2,2];
 end;
 
-function TpvMatrix3x3.Adjoint:TpvMatrix3x3;
+function TpvMatrix3x3.Adjugate:TpvMatrix3x3;
 begin
  result.RawVectors[0]:=RawVectors[1].Cross(RawVectors[2]);
  result.RawVectors[1]:=RawVectors[2].Cross(RawVectors[0]);
@@ -12579,7 +12579,7 @@ begin
 end;
 {$ifend}
 
-function TpvMatrix4x4.Adjoint:TpvMatrix3x3;
+function TpvMatrix4x4.Adjugate:TpvMatrix3x3;
 begin
  result.RawVectors[0]:=RawVectors[1].xyz.Cross(RawVectors[2].xyz);
  result.RawVectors[1]:=RawVectors[2].xyz.Cross(RawVectors[0].xyz);
