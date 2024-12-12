@@ -86,7 +86,7 @@ layout(set = 1, binding = 0, std140) uniform uboViews {
 #include "globaldescriptorset.glsl"
 #undef PLANETS
 
-#include "adjoint.glsl"
+#include "adjugate.glsl"
 
 #include "planet_grass.glsl"
 
@@ -131,7 +131,7 @@ void main(){
   viewSpacePosition.xyz /= viewSpacePosition.w;
 
   outBlock.position = position;         
-  outBlock.normal = normalize(adjoint(pushConstants.modelMatrix) * normal);
+  outBlock.normal = normalize(adjugate(pushConstants.modelMatrix) * normal);
   outBlock.tangentSign = tangentSign;
   outBlock.texCoord = texCoordUV;
   outBlock.worldSpacePosition = worldSpacePosition;

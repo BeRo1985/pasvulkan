@@ -137,7 +137,7 @@ vec3 hash33(vec3 p) {
   return fract(vec3((p3.x + p3.y) * p3.z, (p3.x + p3.z) * p3.y, (p3.y + p3.z) * p3.x));
 }
 
-#include "adjoint.glsl"
+#include "adjugate.glsl"
 
 #ifdef RAYTRACING
   #include "raytracing.glsl"
@@ -633,7 +633,7 @@ void main() {
     vec3 viewBitangent = cross(viewNormal, viewTangent);
     mat3 viewTBN = mat3(viewTangent, viewBitangent, viewNormal);
 #ifdef RAYTRACING
-    mat3 worldTBN = adjoint(inverseViewMatrix) * viewTBN;
+    mat3 worldTBN = adjugate(inverseViewMatrix) * viewTBN;
 #if 1
     vec3 rayOrigin = fetchWorldPosition(texCoord.xy); 
 #else   

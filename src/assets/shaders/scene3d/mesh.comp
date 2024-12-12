@@ -129,7 +129,7 @@ vec2 unpackSnorm2x16Ex(uint v){
 }
 #endif
 
-#include "adjoint.glsl"
+#include "adjugate.glsl"
 
 void main() {
   uint vertexIndex = gl_GlobalInvocationID.x;
@@ -221,7 +221,7 @@ void main() {
       }
 
       // Construct normal matrix
-      mat3 normalMatrix = adjoint(modelNodeMatrix);
+      mat3 normalMatrix = adjugate(modelNodeMatrix);
 
       // Transform tangent space
       tangentSpace = normalMatrix * tangentSpace;

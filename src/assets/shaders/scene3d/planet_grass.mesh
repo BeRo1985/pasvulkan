@@ -166,7 +166,7 @@ layout(location = 0) out OutBlock {
 
 #endif // defined(MESH_SHADER_EMULATION)
 
-#include "adjoint.glsl"
+#include "adjugate.glsl"
 
 #include "planet_textures.glsl"
 
@@ -269,7 +269,7 @@ void main() {
     
     inverseModelViewMatrix = inverse(viewMatrix * pushConstants.modelMatrix);
     
-    normalModelMatrix = adjoint(pushConstants.modelMatrix);
+    normalModelMatrix = adjugate(pushConstants.modelMatrix);
 
 #if 1
     // The actual standard approach
@@ -520,7 +520,7 @@ void main() {
 
   ////////////////////////////////////////////////////////////////////////////////
 
-  //mat3 planetNormalMatrix = adjoint(pushConstants.modelMatrix);
+  //mat3 planetNormalMatrix = adjugate(pushConstants.modelMatrix);
 
   ////////////////////////////////////////////////////////////////////////////////
 

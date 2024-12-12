@@ -92,7 +92,7 @@ out gl_PerVertex {
 
 /* clang-format on */
 
-#include "adjoint.glsl"
+#include "adjugate.glsl"
 
 void main() {
 
@@ -158,7 +158,7 @@ void main() {
     mat4 instanceMatrix = instanceMatrices[gl_InstanceIndex << 1]; 
     modelScale *= vec3(length(instanceMatrix[0].xyz), length(instanceMatrix[1].xyz), length(instanceMatrix[2].xyz)); // needed for transmissive materials
     position = (instanceMatrix * vec4(position, 1.0)).xyz;
-    tangentSpace = adjoint(instanceMatrix) * tangentSpace;   
+    tangentSpace = adjugate(instanceMatrix) * tangentSpace;   
 #ifdef VELOCITY  
     previousPosition = (instanceMatrices[(gl_InstanceIndex << 1) | 1] * vec4(previousPosition, 1.0)).xyz;
 #endif
