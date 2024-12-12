@@ -117,7 +117,7 @@ layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer Pl
 
   mat4 modelMatrix;
 
-  mat4 normalMatrix; // normalMatrix = mat4(transpose(inverse(mat3(modelMatrix)))) for to save computation in the shader, and mat4 instead of mat3 for alignment/padding rules of std430
+  mat4 normalMatrix; // normalMatrix = mat4(adjoint(modelMatrix))) for to save computation in the shader, and mat4 instead of mat3 for alignment/padding rules of std430
 
   vec4 bottomRadiusTopRadiusHeightMapScale; // x = bottomRadius, y = topRadius, z = heightMapScale, w = unused
 

@@ -18387,7 +18387,8 @@ begin
   if assigned(InFlightFrameData) then begin
 
    fPlanetData.ModelMatrix:=InFlightFrameData.fModelMatrix;
-   fPlanetData.NormalMatrix:=TpvMatrix4x4.Create(InFlightFrameData.fModelMatrix.ToMatrix3x3.Inverse.Transpose);
+   fPlanetData.NormalMatrix:=TpvMatrix4x4.Create(InFlightFrameData.fModelMatrix.Adjoint);
+// fPlanetData.NormalMatrix:=TpvMatrix4x4.Create(InFlightFrameData.fModelMatrix.ToMatrix3x3.Inverse.Transpose);
    fPlanetData.BottomRadius:=fBottomRadius;
    fPlanetData.TopRadius:=fTopRadius;
    fPlanetData.HeightMapScale:=fHeightMapScale;

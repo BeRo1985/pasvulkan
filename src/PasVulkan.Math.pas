@@ -778,6 +778,7 @@ type PpvScalar=^TpvScalar;
        function Determinant:TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
        function Inverse:TpvMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
        function Transpose:TpvMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
+       function Adjoint:TpvMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
        function EulerAngles:TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
        function Normalize:TpvMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
        function OrthoNormalize:TpvMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
@@ -955,6 +956,7 @@ type PpvScalar=^TpvScalar;
        function SimpleInverse:TpvMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
        function Inverse:TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
        function Transpose:TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       function Adjoint:TpvMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
        function EulerAngles:TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
        function Normalize:TpvMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
        function OrthoNormalize:TpvMatrix4x4; //{$ifdef CAN_INLINE}inline;{$endif}
@@ -8167,6 +8169,22 @@ begin
  result.RawComponents[2,2]:=RawComponents[2,2];
 end;
 
+function TpvMatrix3x3.Adjoint:TpvMatrix3x3;
+begin
+ result.RawVectors[0]:=RawVectors[1].Cross(RawVectors[2]);
+ result.RawVectors[1]:=RawVectors[2].Cross(RawVectors[0]);
+ result.RawVectors[2]:=RawVectors[0].Cross(RawVectors[1]);
+{result.RawComponents[0,0]:=(RawComponents[1,1]*RawComponents[2,2])-(RawComponents[1,2]*RawComponents[2,1]);
+ result.RawComponents[0,1]:=(RawComponents[1,2]*RawComponents[2,0])-(RawComponents[1,0]*RawComponents[2,2]);
+ result.RawComponents[0,2]:=(RawComponents[1,0]*RawComponents[2,1])-(RawComponents[1,1]*RawComponents[2,0]);
+ result.RawComponents[1,0]:=(RawComponents[0,2]*RawComponents[2,1])-(RawComponents[0,1]*RawComponents[2,2]);
+ result.RawComponents[1,1]:=(RawComponents[0,0]*RawComponents[2,2])-(RawComponents[0,2]*RawComponents[2,0]);
+ result.RawComponents[1,2]:=(RawComponents[0,1]*RawComponents[2,0])-(RawComponents[0,0]*RawComponents[2,1]);
+ result.RawComponents[2,0]:=(RawComponents[0,1]*RawComponents[1,2])-(RawComponents[0,2]*RawComponents[1,1]);
+ result.RawComponents[2,1]:=(RawComponents[0,2]*RawComponents[1,0])-(RawComponents[0,0]*RawComponents[1,2]);
+ result.RawComponents[2,2]:=(RawComponents[0,0]*RawComponents[1,1])-(RawComponents[0,1]*RawComponents[1,0]);}
+end;
+
 function TpvMatrix3x3.EulerAngles:TpvVector3;
 var v0,v1:TpvVector3;
 begin
@@ -12560,6 +12578,22 @@ begin
  result.RawComponents[3,3]:=RawComponents[3,3];
 end;
 {$ifend}
+
+function TpvMatrix4x4.Adjoint:TpvMatrix3x3;
+begin
+ result.RawVectors[0]:=RawVectors[1].xyz.Cross(RawVectors[2].xyz);
+ result.RawVectors[1]:=RawVectors[2].xyz.Cross(RawVectors[0].xyz);
+ result.RawVectors[2]:=RawVectors[0].xyz.Cross(RawVectors[1].xyz);
+{result.RawComponents[0,0]:=(RawComponents[1,1]*RawComponents[2,2])-(RawComponents[1,2]*RawComponents[2,1]);
+ result.RawComponents[0,1]:=(RawComponents[1,2]*RawComponents[2,0])-(RawComponents[1,0]*RawComponents[2,2]);
+ result.RawComponents[0,2]:=(RawComponents[1,0]*RawComponents[2,1])-(RawComponents[1,1]*RawComponents[2,0]);
+ result.RawComponents[1,0]:=(RawComponents[0,2]*RawComponents[2,1])-(RawComponents[0,1]*RawComponents[2,2]);
+ result.RawComponents[1,1]:=(RawComponents[0,0]*RawComponents[2,2])-(RawComponents[0,2]*RawComponents[2,0]);
+ result.RawComponents[1,2]:=(RawComponents[0,1]*RawComponents[2,0])-(RawComponents[0,0]*RawComponents[2,1]);
+ result.RawComponents[2,0]:=(RawComponents[0,1]*RawComponents[1,2])-(RawComponents[0,2]*RawComponents[1,1]);
+ result.RawComponents[2,1]:=(RawComponents[0,2]*RawComponents[1,0])-(RawComponents[0,0]*RawComponents[1,2]);
+ result.RawComponents[2,2]:=(RawComponents[0,0]*RawComponents[1,1])-(RawComponents[0,1]*RawComponents[1,0]);}
+end;
 
 function TpvMatrix4x4.EulerAngles:TpvVector3;
 var v0,v1:TpvVector3;

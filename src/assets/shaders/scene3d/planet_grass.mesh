@@ -166,6 +166,8 @@ layout(location = 0) out OutBlock {
 
 #endif // defined(MESH_SHADER_EMULATION)
 
+#include "adjoint.glsl"
+
 #include "planet_textures.glsl"
 
 #include "pcg.glsl"
@@ -267,7 +269,7 @@ void main() {
     
     inverseModelViewMatrix = inverse(viewMatrix * pushConstants.modelMatrix);
     
-    normalModelMatrix = transpose(inverse(mat3(pushConstants.modelMatrix)));
+    normalModelMatrix = adjoint(pushConstants.modelMatrix);
 
 #if 1
     // The actual standard approach
@@ -518,7 +520,7 @@ void main() {
 
   ////////////////////////////////////////////////////////////////////////////////
 
-  //mat3 planetNormalMatrix = transpose(inverse(mat3(pushConstants.modelMatrix)));
+  //mat3 planetNormalMatrix = adjoint(pushConstants.modelMatrix);
 
   ////////////////////////////////////////////////////////////////////////////////
 
