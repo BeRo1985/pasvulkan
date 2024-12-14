@@ -69,11 +69,8 @@ uses SysUtils,
      PasVulkan.Utils,
      Generics.Collections;
 
-type
-
-{ TpvDynamicArray }
-
- TpvDynamicArray<T>=record
+type { TpvDynamicArray }
+     TpvDynamicArray<T>=record
       public
        type PT=^T;
             TItemArray=array of T;
