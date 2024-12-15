@@ -646,6 +646,11 @@ type { TpvScene3DRendererInstance }
        fLuminanceEvents:array[0..MaxInFlightFrames-1] of TpvVulkanEvent;
        fLuminanceEventReady:array[0..MaxInFlightFrames-1] of boolean;
       private
+       fLensFactor:TpvScalar;
+       fBloomFactor:TpvScalar;
+       fLensflareFactor:TpvScalar;
+       fLensNormalization:boolean;
+      private
        fTAAHistoryColorImages:TArray2DImages;
        fTAAHistoryDepthImages:TArray2DImages;
        fTAAHistoryVelocityImages:TArray2DImages;
@@ -887,6 +892,11 @@ type { TpvScene3DRendererInstance }
        property MaximumLuminance:TpvScalar read fMaximumLuminance write fMaximumLuminance;
        property LuminanceFactor:TpvScalar read fLuminanceFactor write fLuminanceFactor;
        property LuminanceExponent:TpvScalar read fLuminanceExponent write fLuminanceExponent;
+      public
+       property LensFactor:TpvScalar read fLensFactor write fLensFactor;
+       property BloomFactor:TpvScalar read fBloomFactor write fBloomFactor;
+       property LensflareFactor:TpvScalar read fLensflareFactor write fLensflareFactor;
+       property LensNormalization:boolean read fLensNormalization write fLensNormalization;
       public
        property TAAHistoryColorImages:TArray2DImages read fTAAHistoryColorImages;
        property TAAHistoryDepthImages:TArray2DImages read fTAAHistoryDepthImages;
@@ -1808,6 +1818,11 @@ begin
  fMaximumLuminance:=16777216.0;
  fLuminanceFactor:=1.0;
  fLuminanceExponent:=1.0;
+
+ fLensFactor:=0.4; 
+ fBloomFactor:=0.9;
+ fLensflareFactor:=0.1;
+ fLensNormalization:=true;
 
  for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
 
