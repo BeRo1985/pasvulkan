@@ -158,7 +158,7 @@ struct VolumetricCloudParameters {
 struct AtmosphereCullingParameters {
   uvec4 innerOuterFadeDistancesCountFacesMode; // x = inner fade distance, y = outer fade distance, z = count faces, w = mode (0 = Disabled, 1 = Sphere, 2 = AABB, 3 = Convex Hull)
   mat4 inversedTransform; // Inversed transform matrix 
-  vec4 boundingSphere; // x = center, y = radius 
+  vec4 boundingSphere; // xyz = center, w = radius 
   vec4 facePlanes[32]; // maximal 32 faces, but for AABB [0] is the center and [1] is the extent, for Sphere [0] is the center (xyz) with radius (w)
 };
 
@@ -178,9 +178,9 @@ struct AtmosphereParameters {
   
   vec4 AbsorptionExtinction; // w = fade factor
  
-  vec4 GroundAlbedo;
+  vec4 GroundAlbedo; // w = intensity
  
-  vec4 SolarIlluminance;
+  vec4 SolarIlluminance; // w = intensity
  
   float BottomRadius;
   float TopRadius;
@@ -196,6 +196,11 @@ struct AtmosphereParameters {
   float AbsorptionDensity1LinearTerm;
   int RaymarchingMinSteps;
   int RaymarchingMaxSteps;
+
+  float maxShadowDistance;
+  float unused0;
+  float unused1;
+  float unused2;
 
   AtmosphereCullingParameters CullingParameters;
 
@@ -604,7 +609,7 @@ float getShadow(in AtmosphereParameters Atmosphere, vec3 p){
     p = (Atmosphere.transform * vec4(p, 1.0)).xyz;
     inWorldSpacePosition = p;
     workNormal = normalize(p);
-    return getFastCascadedShadow();
+    return getFastCascadedShadow((Atmosphere.maxShadowDistance > 0.0) ? Atmosphere.maxShadowDistance : 1e7);
   }else{
     return 1.0;
   }

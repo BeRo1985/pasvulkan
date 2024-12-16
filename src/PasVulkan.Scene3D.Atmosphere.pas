@@ -435,6 +435,7 @@ type TpvScene3DAtmosphere=class;
               MuSMin:TpvFloat;
               RaymarchingMinSteps:TpvInt32;
               RaymarchingMaxSteps:TpvInt32;
+              MaxShadowDistance:TpvFloat;
               AtmosphereCullingParameters:TAtmosphereCullingParameters;
               VolumetricClouds:TVolumetricCloudParameters;
               procedure InitializeEarthAtmosphere(const aEarthBottomRadius:TpvFloat=6360.0;
@@ -579,29 +580,49 @@ type TpvScene3DAtmosphere=class;
             { TGPUAtmosphereParameters }
             TGPUAtmosphereParameters=packed record
              public
+
               Transform:TpvMatrix4x4; // Transform of the atmosphere for the case that the atmosphere is not centered at the origin (e.g. multiple planets)
+
               InverseTransform:TpvMatrix4x4; // Transform of the atmosphere for the case that the atmosphere is not centered at the origin (e.g. multiple planets)
+
               RayleighScattering:TpvVector4; // w = Mu_S_min
+
               MieScattering:TpvVector4; // w = sun direction X
+
               MieExtinction:TpvVector4; // w = sun direction Y
+
               MieAbsorption:TpvVector4; // w = sun direction Z
-              AbsorptionExtinction:TpvVector4; // w = Fade factor, 0.0 = no atmosphere, 1.0 = full atmosphere  
+
+              AbsorptionExtinction:TpvVector4; // w = Fade factor, 0.0 = no atmosphere, 1.0 = full atmosphere
+
               GroundAlbedo:TpvVector4; // w = intensity
-              SolarIrradiance:TpvVector4;
+
+              SolarIrradiance:TpvVector4; // w = intensity
+
               BottomRadius:TpvFloat;
               TopRadius:TpvFloat;
               RayleighDensityExpScale:TpvFloat;
               MieDensityExpScale:TpvFloat;
+
               MiePhaseG:TpvFloat;
               AbsorptionDensity0LayerWidth:TpvFloat;
               AbsorptionDensity0ConstantTerm:TpvFloat;
               AbsorptionDensity0LinearTerm:TpvFloat;
+
               AbsorptionDensity1ConstantTerm:TpvFloat;
               AbsorptionDensity1LinearTerm:TpvFloat;              
               RaymarchingMinSteps:TpvInt32;
               RaymarchingMaxSteps:TpvInt32;
+
+              MaxShadowDistance:TpvFloat;
+              Unused0:TpvInt32;
+              Unused1:TpvInt32;
+              Unused2:TpvInt32;
+
               AtmosphereCullingParameters:TGPUAtmosphereCullingParameters;
+
               VolumetricClouds:TGPUVolumetricCloudParameters;
+
               procedure Assign(const aAtmosphereParameters:TAtmosphereParameters);
             end;
             PGPUAtmosphereParameters=^TGPUAtmosphereParameters;
@@ -1361,6 +1382,9 @@ begin
  RaymarchingMinSteps:=4;
  RaymarchingMaxSteps:=14;
 
+ // Maximal shadow distance, none for now
+ MaxShadowDistance:=0.0;
+
  // Atmosphere culling
  FillChar(AtmosphereCullingParameters,SizeOf(TAtmosphereCullingParameters),#0);
 
@@ -1432,6 +1456,8 @@ begin
   //SunDirection.xyz:=JSONToVector3(JSONRootObject.Properties['sundirection'],SunDirection.xyz);
 
   //MuSMin:=TPasJSON.GetNumber(JSONRootObject.Properties['musmin'],MuSMin);
+
+  MaxShadowDistance:=TPasJSON.GetNumber(JSONRootObject.Properties['maxshadowdistance'],MaxShadowDistance);
 
   LoadRaymarching(JSONRootObject.Properties['raymarching']);
 
@@ -1506,7 +1532,8 @@ begin
  result.Add('absorptionextinction',Vector3ToJSON(AbsorptionExtinction.xyz));
  //result.Add('sundirection',Vector3ToJSON(SunDirection.xyz));
  //result.Add('musmin',TPasJSONItemNumber.Create(MuSMin));
- result.Add('raymarching',SaveRaymarching); 
+ result.Add('maxshadowdistance',TPasJSONItemNumber.Create(MaxShadowDistance));
+ result.Add('raymarching',SaveRaymarching);
  result.Add('volumetricclouds',VolumetricClouds.SaveToJSON);
 end;
 
@@ -1785,6 +1812,8 @@ begin
 
  RaymarchingMinSteps:=aAtmosphereParameters.RaymarchingMinSteps;
  RaymarchingMaxSteps:=aAtmosphereParameters.RaymarchingMaxSteps;
+
+ MaxShadowDistance:=aAtmosphereParameters.MaxShadowDistance;
 
  AtmosphereCullingParameters.Assign(aAtmosphereParameters.AtmosphereCullingParameters);
 

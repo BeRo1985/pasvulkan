@@ -537,7 +537,7 @@ vec4 shadowCascadeVisualizationColor(){
 
 vec3 lightDirection;
 
-float getCascadedShadow(){
+float getCascadedShadow(float maxDistance){
 #if defined(RAYTRACING)
   vec3 rayOrigin = inWorldSpacePosition, rayNormal = workNormal;
   float rayOffset = 0.0;
@@ -552,15 +552,15 @@ float getCascadedShadow(){
     for(int i = 0; i < countSamples; i++){
       vec2 sampleXY = (shadowDiscRotationMatrix * BlueNoise2DDisc[(i + int(shadowDiscRandomValues.y)) & BlueNoise2DDiscMask]) * 1e-2;
       vec3 sampleDirection = normalize(lightNormal + (sampleXY.x * lightTangent) + (sampleXY.y * lightBitangent));
-      shadow += getRaytracedHardShadow(rayOrigin, rayNormal, sampleDirection, rayOffset, 10000000.0);
+      shadow += getRaytracedHardShadow(rayOrigin, rayNormal, sampleDirection, rayOffset, maxDistance);
     }
     return shadow / float(countSamples);                    
   }else{
     // Hard shadow 
-    return getRaytracedHardShadow(rayOrigin, rayNormal, normalize(-lightDirection), rayOffset, 10000000.0);
+    return getRaytracedHardShadow(rayOrigin, rayNormal, normalize(-lightDirection), rayOffset, maxDistance);
   }
 #else
-  return getRaytracedHardShadow(rayOrigin, rayNormal, normalize(-lightDirection), rayOffset, 10000000.0);
+  return getRaytracedHardShadow(rayOrigin, rayNormal, normalize(-lightDirection), rayOffset, maxDistance);
 #endif
 #else
 #ifdef UseReceiverPlaneDepthBias
@@ -621,11 +621,11 @@ float getCascadedShadow(){
 } 
 
 
-float getFastCascadedShadow(){
+float getFastCascadedShadow(float maxDistance){
 #if defined(RAYTRACING)
   vec3 rayOrigin = inWorldSpacePosition, rayNormal = workNormal;
   float rayOffset = 0.0;
-  return getRaytracedFastHardShadow(rayOrigin, rayNormal, normalize(-lightDirection), rayOffset, 10000000.0);
+  return getRaytracedFastHardShadow(rayOrigin, rayNormal, normalize(-lightDirection), rayOffset, maxDistance);
 #else
 #ifdef UseReceiverPlaneDepthBias
   // Outside of doCascadedShadowMapShadow as an own loop, for the reason, that the partial derivative based
@@ -686,11 +686,11 @@ float getFastCascadedShadow(){
 
 } 
 
-float getFastFurthestCascadedShadow(){
+float getFastFurthestCascadedShadow(float maxDistance){
 #if defined(RAYTRACING)
   vec3 rayOrigin = inWorldSpacePosition, rayNormal = workNormal;
   float rayOffset = 0.0;
-  return getRaytracedFastHardShadow(rayOrigin, rayNormal, normalize(-lightDirection), rayOffset, 10000000.0);
+  return getRaytracedFastHardShadow(rayOrigin, rayNormal, normalize(-lightDirection), rayOffset, maxDistance);
 #else
   // Check just the furthest cascaded shadow map slice as requested.
   int cascadedShadowMapIndex = NUM_SHADOW_CASCADES - 1;
