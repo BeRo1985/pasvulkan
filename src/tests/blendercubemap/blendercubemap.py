@@ -39,6 +39,14 @@ bpy.context.scene.render.resolution_x = 4096
 bpy.context.scene.render.resolution_y = 4096
 bpy.context.scene.render.image_settings.file_format = 'PNG'
 
+# Set FOV to 90 degrees
+for camera_name in camera_names:
+    camera = bpy.data.objects.get(camera_name)
+    if not camera or not camera.data.type == 'CAMERA':
+        continue
+    camera.data.type = 'PERSP'
+    camera.data.angle = mathutils.radians(90)
+
 # Matrix assignment and rendering
 for i, matrix in enumerate(CubeMapMatrices):
     # Get the camera
