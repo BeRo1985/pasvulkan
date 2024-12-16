@@ -1440,6 +1440,7 @@ type EpvScene3D=class(Exception);
               fColor:TpvVector3;
               fLightProfileTexture:TpvScene3D.TTexture;
               fExtendedLightProfile:boolean;
+              fLimitDistance:boolean;
               fCastShadows:boolean;
               fVisible:boolean;
               fAlways:boolean;
@@ -1453,6 +1454,7 @@ type EpvScene3D=class(Exception);
               property Color:TpvVector3 read fColor write fColor;
               property LightProfileTexture:TpvScene3D.TTexture read fLightProfileTexture write fLightProfileTexture;
               property ExtendedLightProfile:boolean read fExtendedLightProfile write fExtendedLightProfile;
+              property LimitDistance:boolean read fLimitDistance write fLimitDistance;
               property CastShadows:boolean read fCastShadows write fCastShadows;
               property Visible:boolean read fVisible write fVisible;
               property Always:boolean read fAlways write fAlways;
@@ -1461,7 +1463,7 @@ type EpvScene3D=class(Exception);
             PLightData=^TLightData;
             TLightItem=packed record
              // uvec4 MetaData; begin
-              TypeLightProfile:TpvUInt32;
+              TypeFlagsLightProfile:TpvUInt32;
               ShadowMapIndex:TpvUInt32;
 {             InnerConeCosinus:TpvFloat;
               OuterConeCosinus:TpvFloat;}
@@ -10113,6 +10115,7 @@ begin
  fDataPointer:=@fData;
  fData.fLightProfileTexture:=nil;
  fData.fExtendedLightProfile:=false;
+ fData.fLimitDistance:=false;
  fGeneration:=0;
  fIgnore:=false;
 end;
@@ -15367,6 +15370,7 @@ begin
  fData.fVisible:=true;
  fData.fLightProfileTexture:=nil;
  fData.fExtendedLightProfile:=false;
+ fData.fLimitDistance:=false;
 end;
 
 destructor TpvScene3D.TGroup.TLight.Destroy;
@@ -15516,6 +15520,7 @@ begin
  fData.fVisible:=true;
  fData.fLightProfileTexture:=nil;
  fData.fExtendedLightProfile:=false;
+ fData.fLimitDistance:=false;
  fData.fCastShadows:=false;
  fData.fGeneration:=1;
  if assigned(aSourceLight) then begin
@@ -30596,12 +30601,15 @@ begin
        if (Intensity>0.0) and (Light.fRadius>0.0) then begin
         Light.fLightItemIndex:=aLightItemArray.AddNewIndex;
         LightItem:=@aLightItemArray.Items[Light.fLightItemIndex];
-        LightItem^.TypeLightProfile:=(TpvUInt32(Light.fDataPointer^.Type_) and $f);
+        LightItem^.TypeFlagsLightProfile:=(TpvUInt32(Light.fDataPointer^.Type_) and $f);
+        if Light.fDataPointer^.fLimitDistance then begin
+         LightItem^.TypeFlagsLightProfile:=LightItem^.TypeFlagsLightProfile or (TpvUInt32(1) shl 5);
+        end;
         if assigned(Light.fDataPointer^.fLightProfileTexture) then begin
-         LightItem^.TypeLightProfile:=LightItem^.TypeLightProfile or
-                                      (TpvUInt32(1) shl 16) or
-                                      (TpvUInt32(ord(Light.fDataPointer^.fExtendedLightProfile) and 1) shl 17) or
-                                      (TpvUInt32(Light.fDataPointer^.fLightProfileTexture.fID and $3fff) shl 18);
+         LightItem^.TypeFlagsLightProfile:=LightItem^.TypeFlagsLightProfile or
+                                           (TpvUInt32(1) shl 16) or
+                                           (TpvUInt32(ord(Light.fDataPointer^.fExtendedLightProfile) and 1) shl 17) or
+                                           (TpvUInt32(Light.fDataPointer^.fLightProfileTexture.fID and $3fff) shl 18);
         end;
         LightItem^.ShadowMapIndex:=0;
         InnerConeAngleCosinus:=cos(Light.fDataPointer^.InnerConeAngle);

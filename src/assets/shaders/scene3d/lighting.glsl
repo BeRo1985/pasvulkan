@@ -110,6 +110,7 @@ float applyLightIESProfile(const in Light light, const in vec3 pointToLightDirec
             vec3 rayOrigin = inWorldSpacePosition.xyz;
             vec3 rayNormal = triangleNormal;
             float rayOffset = 0.0;
+            float rayDistance = ((light.metaData.x & (1u << 5u)) != 0u) ? abs(light.directionRange.w) : 1e+7; 
 #endif
 #if !defined(REFLECTIVESHADOWMAPOUTPUT)
             if (/*(uShadows != 0) &&*/receiveShadows && ((light.metaData.y & 0x80000000u) == 0u) && (uCascadedShadowMaps.metaData.x != SHADOWMAP_MODE_NONE)){ // && ((lightAttenuation > 0.0) || ((flags & (1u << 11u)) != 0u))) {
@@ -117,7 +118,7 @@ float applyLightIESProfile(const in Light light, const in vec3 pointToLightDirec
 #if !defined(REFLECTIVESHADOWMAPOUTPUT)
 #if defined(RAYTRACING)
                 case 1u: { // Directional 
-                  lightAttenuation *= getRaytracedHardShadow(rayOrigin, rayNormal, pointToLightDirection, rayOffset, 10000000.0);
+                  lightAttenuation *= getRaytracedHardShadow(rayOrigin, rayNormal, pointToLightDirection, rayOffset, rayDistance);
                   break;
                 }
                 case 2u: {  // Point
@@ -127,7 +128,7 @@ float applyLightIESProfile(const in Light light, const in vec3 pointToLightDirec
                   // Fall-through, because same raytracing attempt as for view directional lights.
                 }
                 case 5u: { // View directional
-                  lightAttenuation *= getRaytracedHardShadow(rayOrigin, rayNormal, pointToLightDirection, rayOffset, min(10000000.0, length(pointToLightVector)));
+                  lightAttenuation *= getRaytracedHardShadow(rayOrigin, rayNormal, pointToLightDirection, rayOffset, min(rayDistance, length(pointToLightVector)));
                   break;
                 }
 #elif 0
