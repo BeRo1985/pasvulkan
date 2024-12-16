@@ -168,15 +168,15 @@ float applyLightIESProfile(const in Light light, const in vec3 pointToLightDirec
                     for(int i = 0; i < countSamples; i++){
                       vec2 sampleXY = (shadowDiscRotationMatrix * BlueNoise2DDisc[(i + int(shadowDiscRandomValues.y)) & BlueNoise2DDiscMask]) * 1e-2;
                       vec3 sampleDirection = normalize(lightNormal + (sampleXY.x * lightTangent) + (sampleXY.y * lightBitangent));
-                      shadow += getRaytracedHardShadow(rayOrigin, rayNormal, sampleDirection, rayOffset, 10000000.0);
+                      shadow += getRaytracedHardShadow(rayOrigin, rayNormal, sampleDirection, rayOffset, rayDistance);
                     }
                     lightAttenuation *= shadow / float(countSamples);                    
                   }else{
                     // Hard shadow 
-                    lightAttenuation *= getRaytracedHardShadow(rayOrigin, rayNormal, pointToLightDirection, rayOffset, 10000000.0);
+                    lightAttenuation *= getRaytracedHardShadow(rayOrigin, rayNormal, pointToLightDirection, rayOffset, rayDistance);
                   }
 #else
-                  lightAttenuation *= getRaytracedHardShadow(rayOrigin, rayNormal, pointToLightDirection, rayOffset, 10000000.0);
+                  lightAttenuation *= getRaytracedHardShadow(rayOrigin, rayNormal, pointToLightDirection, rayOffset, rayDistance);
 #endif
 #else
                   float viewSpaceDepth = -inViewSpacePosition.z;

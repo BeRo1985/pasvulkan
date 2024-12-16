@@ -123,12 +123,17 @@ vec4 raytracingTextureFetch(const in Material material, const in int textureInde
 }
 
 // This function handles the rayProceedEXT loop with alpha handling based on the material properties
-void rayProceedEXTAlphaHandlingBasedLoop(in rayQueryEXT rayQuery, const in bool closest, out float resultAlpha){
+void rayProceedEXTAlphaHandlingBasedLoop(in rayQueryEXT rayQuery, const in bool closest, out float resultAlpha/*, const in float maxDistance*/){
 
   resultAlpha = 1.0;
 
   bool done = false;
   while((!done) && rayQueryProceedEXT(rayQuery)){
+
+/*  if((maxDistance > 0.0) && (rayQueryGetIntersectionTEXT(rayQuery, false) > maxDistance)){
+      // Continue with the next intersection, since the current intersection is too far away
+      continue;
+    }*/
 
     uint intersectionType = rayQueryGetIntersectionTypeEXT(rayQuery, false);
     
@@ -310,9 +315,14 @@ bool tracePrimaryBasicGeometryRay(vec3 position,
   rayQueryInitializeEXT(rayQuery, uRaytracingTopLevelAccelerationStructure, flags, cullMask, position, minDistance, direction, maxDistance);
 
   float temporaryAlpha;
-  rayProceedEXTAlphaHandlingBasedLoop(rayQuery, true, temporaryAlpha);
+  rayProceedEXTAlphaHandlingBasedLoop(rayQuery, true, temporaryAlpha/*, maxDistance*/);
 
   bool result = rayQueryGetIntersectionTypeEXT(rayQuery, true) != gl_RayQueryCommittedIntersectionNoneEXT;
+
+/*// Check if the intersection is too far away, if maxDistance is set, if yes, then we have no intersection
+  if(result && (maxDistance > 0.0) && (rayQueryGetIntersectionTEXT(rayQuery, true) > maxDistance)){
+    result = false;
+  }*/
 
   if(result){
 
@@ -527,9 +537,15 @@ float getRaytracedHardShadow(vec3 position, vec3 normal, vec3 direction, float m
 
   float result;
 
-  rayProceedEXTAlphaHandlingBasedLoop(rayQuery, false, result);
+  rayProceedEXTAlphaHandlingBasedLoop(rayQuery, false, result/*, maxDistance*/);
 
   if(rayQueryGetIntersectionTypeEXT(rayQuery, true) != gl_RayQueryCommittedIntersectionNoneEXT){
+/*  // If we have an intersection, then we have a shadow, so we return 0.0, but we need to check if the intersection is too far away, if maxDistance is set
+    if((maxDistance > 0.0) && (rayQueryGetIntersectionTEXT(rayQuery, true) > maxDistance)){
+      // Do nothing 
+    }else{ 
+      result = 0.0;
+    }*/
     result = 0.0;
   } 
     
