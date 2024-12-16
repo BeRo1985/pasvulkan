@@ -7579,7 +7579,7 @@ begin
 
  if (aViewBaseIndex>=0) and (aCountViews>0) and (fSolidPrimitivePrimitiveDynamicArrays[aInFlightFrameIndex].Count>0) then begin
 
-  fScene3D.SetGlobalResources(aCommandBuffer,aPipelineLayout,aRendererInstance,aRenderPass,aPreviousInFlightFrameIndex,aInFlightFrameIndex);
+//fScene3D.SetGlobalResources(aCommandBuffer,aPipelineLayout,aRendererInstance,aRenderPass,aPreviousInFlightFrameIndex,aInFlightFrameIndex);
 
   if assigned(aOnSetRenderPassResources) then begin
    aOnSetRenderPassResources(aCommandBuffer,aPipelineLayout,aRendererInstance,aRenderPass,aPreviousInFlightFrameIndex,aInFlightFrameIndex);

@@ -33274,7 +33274,7 @@ begin
   VertexStagePushConstants^.Jitter:=TpvVector4.Null;
 
   fSetGlobalResourcesDone[aRenderPass]:=false;}
-  SetGlobalResources(aCommandBuffer,aPipelineLayout,aRendererInstance,aRenderPass,aPreviousInFlightFrameIndex,aInFlightFrameIndex);
+//SetGlobalResources(aCommandBuffer,aPipelineLayout,aRendererInstance,aRenderPass,aPreviousInFlightFrameIndex,aInFlightFrameIndex);
 
   if assigned(aOnSetRenderPassResources) then begin
    aOnSetRenderPassResources(aCommandBuffer,aPipelineLayout,aRendererInstance,aRenderPass,aPreviousInFlightFrameIndex,aInFlightFrameIndex);
