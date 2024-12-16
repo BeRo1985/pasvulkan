@@ -197,6 +197,7 @@ begin
  end else begin
   fDebugPrimitiveGeometryShaderModule:=nil;
  end;
+ fInstance.Renderer.VulkanDevice.DebugUtils.SetObjectName(fDebugPrimitiveGeometryShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DRendererPassesCanvasRenderPass.DebugPrimitiveGeometryShaderModule');
 
  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('debug_primitive_frag.spv');
  try
@@ -204,6 +205,7 @@ begin
  finally
   Stream.Free;
  end;
+  fInstance.Renderer.VulkanDevice.DebugUtils.SetObjectName(fDebugPrimitiveFragmentShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DRendererPassesCanvasRenderPass.DebugPrimitiveFragmentShaderModule');
 
  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('solid_primitive_vert.spv');
  try
@@ -211,6 +213,7 @@ begin
  finally
   Stream.Free;
  end;
+ fInstance.Renderer.VulkanDevice.DebugUtils.SetObjectName(fSolidPrimitiveVertexShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DRendererPassesCanvasRenderPass.SolidPrimitiveVertexShaderModule');
 
  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('solid_primitive_frag.spv');
  try
@@ -218,6 +221,7 @@ begin
  finally
   Stream.Free;
  end;
+ fInstance.Renderer.VulkanDevice.DebugUtils.SetObjectName(fSolidPrimitiveFragmentShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DRendererPassesCanvasRenderPass.SolidPrimitiveFragmentShaderModule');
 
  fVulkanPipelineShaderStageDebugPrimitiveVertex:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_VERTEX_BIT,fDebugPrimitiveVertexShaderModule,'main');
 
@@ -277,10 +281,12 @@ begin
                                            TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                            []);
  fPassVulkanDescriptorSetLayout.Initialize;
+ fInstance.Renderer.VulkanDevice.DebugUtils.SetObjectName(fPassVulkanDescriptorSetLayout.Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT,'TpvScene3DRendererPassesCanvasRenderPass.DescriptorSetLayout');
 
  fPassVulkanDescriptorPool:=TpvVulkanDescriptorPool.Create(fInstance.Renderer.VulkanDevice,TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),fInstance.Renderer.CountInFlightFrames);
  fPassVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,1*fInstance.Renderer.CountInFlightFrames);
  fPassVulkanDescriptorPool.Initialize;
+ fInstance.Renderer.VulkanDevice.DebugUtils.SetObjectName(fPassVulkanDescriptorPool.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'TpvScene3DRendererPassesCanvasRenderPass.DescriptorPool');
 
  for InFlightFrameIndex:=0 to FrameGraph.CountInFlightFrames-1 do begin
   fPassVulkanDescriptorSets[InFlightFrameIndex]:=TpvVulkanDescriptorSet.Create(fPassVulkanDescriptorPool,
@@ -301,6 +307,7 @@ begin
  fVulkanPipelineLayout.AddDescriptorSetLayout(fInstance.Renderer.Scene3D.GlobalVulkanDescriptorSetLayout);
  fVulkanPipelineLayout.AddDescriptorSetLayout(fPassVulkanDescriptorSetLayout);
  fVulkanPipelineLayout.Initialize;
+ fInstance.Renderer.VulkanDevice.DebugUtils.SetObjectName(fVulkanPipelineLayout.Handle,VK_OBJECT_TYPE_PIPELINE_LAYOUT,'TpvScene3DRendererPassesCanvasRenderPass.PipelineLayout');
 
  for PipelineIndex:=0 to 1 do begin
 
@@ -412,8 +419,10 @@ begin
   finally
    if PipelineIndex=0 then begin
     fVulkanDebugPrimitiveGraphicsPipeline:=VulkanGraphicsPipeline;
+    fInstance.Renderer.VulkanDevice.DebugUtils.SetObjectName(VulkanGraphicsPipeline.Handle,VK_OBJECT_TYPE_PIPELINE,'TpvScene3DRendererPassesCanvasRenderPass.DebugPrimitiveGraphicsPipeline');
    end else begin
     fVulkanSolidPrimitiveGraphicsPipeline:=VulkanGraphicsPipeline;
+    fInstance.Renderer.VulkanDevice.DebugUtils.SetObjectName(VulkanGraphicsPipeline.Handle,VK_OBJECT_TYPE_PIPELINE,'TpvScene3DRendererPassesCanvasRenderPass.SolidPrimitiveGraphicsPipeline');
    end;
   end;
 
