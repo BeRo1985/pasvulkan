@@ -19,6 +19,14 @@ layout(location = 8) flat in uint inPrimitiveTopology;
 
 layout(location = 0) out vec4 outFragColor;
 
+layout(push_constant) uniform PushConstants {
+  uint viewBaseIndex;
+  uint countViews;
+  uint countAllViews;
+  uint dummy;
+  vec2 viewPortSize;
+} pushConstants;
+
 void main(){
   
   vec4 outputColor = vec4(0.0);

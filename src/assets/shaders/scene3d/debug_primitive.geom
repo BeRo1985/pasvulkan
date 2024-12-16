@@ -10,7 +10,7 @@ layout(location = 0) out vec4 outColor;
 layout(location = 1) out vec2 outEdgeDistances;
 
 /* clang-format off */
-layout (push_constant) uniform PushConstants {
+layout(push_constant) uniform PushConstants {
   uint viewBaseIndex;
   uint countViews;
   uint countAllViews;

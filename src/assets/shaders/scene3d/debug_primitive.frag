@@ -9,7 +9,7 @@ layout(location = 1) in vec2 inEdgeDistances;
 
 layout(location = 0) out vec4 outputColor;
 
-layout (push_constant) uniform PushConstants {
+layout(push_constant) uniform PushConstants {
   uint viewBaseIndex;
   uint countViews;
   uint countAllViews;
