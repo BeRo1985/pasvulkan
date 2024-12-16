@@ -1549,6 +1549,7 @@ type EpvScene3D=class(Exception);
               property Color:TpvVector3 read fData.fColor write fData.fColor;
               property LightProfileTexture:TpvScene3D.TTexture read fData.fLightProfileTexture write fData.fLightProfileTexture;
               property ExtendedLightProfile:boolean read fData.fExtendedLightProfile write fData.fExtendedLightProfile;
+              property LimitDistance:boolean read fData.fLimitDistance write fData.fLimitDistance;
               property CastShadows:boolean read fData.fCastShadows write fData.fCastShadows;
               property Generation:TpvUInt64 read fData.fGeneration write fData.fGeneration;
              published
