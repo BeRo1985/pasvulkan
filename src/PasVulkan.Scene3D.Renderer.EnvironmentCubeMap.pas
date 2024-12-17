@@ -95,7 +95,7 @@ type { TpvScene3DRendererEnvironmentCubeMap }
        fHeight:TpvInt32;
       public
 
-       constructor Create(const aVulkanDevice:TpvVulkanDevice;const aVulkanPipelineCache:TpvVulkanPipelineCache;const aSampler:TpvVulkanSampler;const aLightDirection:TpvVector3;const aIntensityFactor:TpvFloat;const aImageFormat:TVkFormat=TVkFormat(VK_FORMAT_R16G16B16A16_SFLOAT);const aTexture:TpvVulkanTexture=nil;const aEnvironmentMode:TpvScene3DEnvironmentMode=TpvScene3DEnvironmentMode.Sky;const aName:TpvUTF8String='');
+       constructor Create(const aVulkanDevice:TpvVulkanDevice;const aVulkanPipelineCache:TpvVulkanPipelineCache;const aSampler:TpvVulkanSampler;const aLightDirection:TpvVector3;const aIntensityFactor:TpvFloat;const aForEnvMap:Boolean;const aImageFormat:TVkFormat=TVkFormat(VK_FORMAT_R16G16B16A16_SFLOAT);const aTexture:TpvVulkanTexture=nil;const aEnvironmentMode:TpvScene3DEnvironmentMode=TpvScene3DEnvironmentMode.Sky;const aName:TpvUTF8String='');
 
        destructor Destroy; override;
 
@@ -123,7 +123,7 @@ implementation
 
 { TpvScene3DRendererEnvironmentCubeMap }
 
-constructor TpvScene3DRendererEnvironmentCubeMap.Create(const aVulkanDevice:TpvVulkanDevice;const aVulkanPipelineCache:TpvVulkanPipelineCache;const aSampler:TpvVulkanSampler;const aLightDirection:TpvVector3;const aIntensityFactor:TpvFloat;const aImageFormat:TVkFormat;const aTexture:TpvVulkanTexture;const aEnvironmentMode:TpvScene3DEnvironmentMode;const aName:TpvUTF8String);
+constructor TpvScene3DRendererEnvironmentCubeMap.Create(const aVulkanDevice:TpvVulkanDevice;const aVulkanPipelineCache:TpvVulkanPipelineCache;const aSampler:TpvVulkanSampler;const aLightDirection:TpvVector3;const aIntensityFactor:TpvFloat;const aForEnvMap:Boolean;const aImageFormat:TVkFormat;const aTexture:TpvVulkanTexture;const aEnvironmentMode:TpvScene3DEnvironmentMode;const aName:TpvUTF8String);
 var Index,FaceIndex,MipMaps,CountMipMapLevelSets,MipMapLevelSetIndex:TpvSizeInt;
     Stream:TStream;
     MemoryRequirements:TVkMemoryRequirements;
@@ -217,16 +217,42 @@ begin
   end;
  end else begin
   case aEnvironmentMode of
-   TpvScene3DEnvironmentMode.Starlight:begin
+   TpvScene3DEnvironmentMode.Starlight,TpvScene3DEnvironmentMode.CachedStarlight:begin
     Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cubemap_starlight_'+FormatVariant+'comp.spv');
-    case pvApplication.VulkanDevice.PhysicalDevice.Properties.vendorID of
-     TVkUInt32(TpvVulkanVendorID.NVIDIA),TVkUInt32(TpvVulkanVendorID.AMD):begin
-      fWidth:=4096;
-      fHeight:=4096;
+    case pvApplication.VulkanDevice.PhysicalDevice.Properties.deviceType of
+     TVkPhysicalDeviceType.VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU:begin
+      if aForEnvMap then begin
+       // EnvMap (for IBL-Lighting)
+       fWidth:=1024;
+       fHeight:=1024;
+      end else begin
+       // SkyBox
+       if aEnvironmentMode=TpvScene3DEnvironmentMode.Starlight then begin
+        // Not yet anyway, because it will be rendered in real-time then, so 64x64 dummy cube map
+        fWidth:=64;
+        fHeight:=64;
+       end else begin
+        // But for the cached version, it should be a bigger cube map texture
+        if TVkUInt64(pvApplication.VulkanDevice.MemoryManager.MaximumMemoryMappableDeviceLocalHeapSize)>=(TVkUInt64(16) shl 30) then begin
+         fWidth:=4096;
+         fHeight:=4096;
+        end else begin
+         fWidth:=2048;
+         fHeight:=2048;
+        end;
+       end;
+      end;
      end;
      else begin
-      fWidth:=2048;
-      fHeight:=2048;
+      if aForEnvMap then begin
+       // EnvMap (for IBL-Lighting)
+       fWidth:=512;
+       fHeight:=512;
+      end else begin
+       // SkyBox
+       fWidth:=1024;
+       fHeight:=1024;
+      end;
      end;
     end;
    end;
