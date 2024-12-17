@@ -71,6 +71,7 @@ vec3 starfield(vec3 rayDirection){
     v.z += v.x * v.y;
     v.w += v.y * v.z;
     vec4 random = vec4(intBitsToFloat(ivec4(uvec4(((v >> 9u) & uvec4(0x007fffffu)) | uvec4(0x3f800000u))))) - vec4(1.0);
+    // random.w *= starfieldFBMNoiseHash31(ivec3(v.xyz)).x;
     random.w *= random.w; 
     random.w *= random.w; 
     random.w *= random.w; 
@@ -78,7 +79,7 @@ vec3 starfield(vec3 rayDirection){
     float chroma = fma(random.z - 0.5, positionBrightnessInverseSharpness.z * 0.1, 0.5);
     result += vec3((1.0 - chroma) + pow(chroma, 5.0), 0.5, chroma) * 
               exp(positionBrightnessInverseSharpness.w * star) * 
-              vec3(positionBrightnessInverseSharpness.z) * fma(random.w, random.w, 0.1);
+              vec3(positionBrightnessInverseSharpness.z) * fma(random.w, random.w, 0.0);
     positionBrightnessInverseSharpness *= vec3(0.25, 2.0, 1.75).xxyz;
   }
   return pow(result, vec3(1.0));
