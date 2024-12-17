@@ -1,6 +1,7 @@
 #ifndef ENV_STARLIGHT_GLSL
 #define ENV_STARLIGHT_GLSL
 
+
 uint starfieldFBMNoiseHash11(const in uint v){
   uint s = (v * 747796405u) + 2891336453u;
   uint w = ((s >> ((s >> 28u) + 4u)) ^ s) * 277803737u;
@@ -36,6 +37,16 @@ float starfieldFBM(vec3 p, const int steps) {
 }
         
 vec3 starfield(vec3 rayDirection){
+  vec4 c = vec4(vec3(0.0), 0.015625);
+  for(float t = 0.1; t < 1.6; t += 0.25){
+    vec3 p = abs(vec3(1.7) - mod((vec3(0.1, 0.2, 1.0)) + (rayDirection * (t * 0.5)), vec3(3.4))), a = vec3(0.0);
+    for(int i = 0; i < 16; i++){
+      a.xy = vec2(a.x + abs((a.z = length(p = (abs(p) / dot(p, p)) - vec3(0.5))) - a.y), a.z);
+    }       
+    c = vec4(c.xyz + (((pow(vec3(t), vec3(t / 6.4, 1.0 + (t / 6.4), 2.0 + (t / 6.4)).zyx) * pow(a.x, 3.0) * 0.002) + vec3(1.0)) * c.w), c.w * 0.785);
+  }
+  c.xyz = clamp(pow(c.xyz, vec3(1.0)) * (1.0 / 256.0), vec3(0.0), vec3(2.0));
+  c.xyz += pow(vec3((max(vec3(0.0), (starfieldFBM(rayDirection.yxz * vec3(7.0, 13.0, 1.0), 4) - 0.5) * vec3(1.0, 2.0, 3.0)) * 2.0)), vec3(1.0)) * (1.0 / 256.0);
   vec3 absoluteRayDirection = abs(rayDirection);
   vec4 params = (absoluteRayDirection.x < absoluteRayDirection.y) 
                   ? ((absoluteRayDirection.y < absoluteRayDirection.z)
@@ -46,19 +57,9 @@ vec3 starfield(vec3 rayDirection){
                       :	vec4(rayDirection.xyz, 0.0));
   vec2 uv = params.xy / (max(1e-5, abs(params.z)) * sign(params.z));
   vec4 positionBrightnessInverseSharpness = vec4((uv + vec2(2.0)) * 128.0, 1.0, -20.0);
-  vec4 c = vec4(vec3(0.0), 0.015625);
-  for(float t = 0.1; t < 1.6; t += 0.25){
-    vec3 p = abs(vec3(1.7) - mod((vec3(0.1, 0.2, 1.0)) + (rayDirection * (t * 0.5)), vec3(3.4))), a = vec3(0.0);
-    for(int i = 0; i < 16; i++){
-      a.xy = vec2(a.x + abs((a.z = length(p = (abs(p) / dot(p, p)) - vec3(0.5))) - a.y), a.z);
-    }       
-    c = vec4(c.xyz + (((pow(vec3(t), vec3(t / 6.4, 1.0 + (t / 6.4), 2.0 + (t / 6.4)).zyx) * pow(a.x, 3.0) * 0.002) + vec3(1.0)) * c.w), c.w * 0.785);
-  }
-  c.xyz = clamp(pow(c.xyz, vec3(1.0)) * (1.0 / 64.0), vec3(0.0), vec3(2.0));
-  c.xyz += pow(vec3((max(vec3(0.0), (starfieldFBM(rayDirection.yxz * vec3(7.0, 13.0, 1.0), 4) - 0.5) * vec3(1.0, 2.0, 3.0)) * 2.0)), vec3(1.0)) * (1.0 / 128.0);
   vec3 result = c.xyz;
   uint s = uint(params.w);
-  for(uint i = 0u; i < 2u; i++){
+  for(uint i = 0u; i < 1u; i++){
     uvec4 v = uvec4(uvec2(positionBrightnessInverseSharpness.xy), s, i);
     v = (v * 1664525u) + 1013904223u;
     v.x += v.y * v.w;
@@ -71,14 +72,17 @@ vec3 starfield(vec3 rayDirection){
     v.z += v.x * v.y;
     v.w += v.y * v.z;
     vec4 random = vec4(intBitsToFloat(ivec4(uvec4(((v >> 9u) & uvec4(0x007fffffu)) | uvec4(0x3f800000u))))) - vec4(1.0);
+    random.w *= random.w; 
+    random.w *= random.w; 
+    random.w *= random.w; 
     float star = length(fma(random.xy - 0.5, vec2(-0.9), fract(positionBrightnessInverseSharpness.xy) - 0.5));
     float chroma = fma(random.z - 0.5, positionBrightnessInverseSharpness.z * 0.1, 0.5);
-    result += vec3(1. - chroma + pow(chroma, 5.), .5, chroma) * 
+    result += vec3((1.0 - chroma) + pow(chroma, 5.0), 0.5, chroma) * 
               exp(positionBrightnessInverseSharpness.w * star) * 
               vec3(positionBrightnessInverseSharpness.z) * fma(random.w, random.w, 0.1);
     positionBrightnessInverseSharpness *= vec3(0.25, 2.0, 1.75).xxyz;
   }
-  return result;
+  return pow(result, vec3(1.0));
 }
              
 vec3 getStarlight(
@@ -91,7 +95,8 @@ vec3 getStarlight(
 #endif
                  ){
 
-  return clamp(starfield(direction), vec3(0.0), vec3(65504.0));      
+  return clamp(starfield(direction), vec3(0.0), vec3(65504.0));    
+  
 
 } 
 
