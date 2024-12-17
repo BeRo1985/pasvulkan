@@ -628,7 +628,7 @@ void main() {
     {
       float fadeFactor = clamp(uAtmosphereParameters.atmosphereParameters.AbsorptionExtinction.w, 0.0, 1.0);
       inscattering *= fadeFactor;
-      transmittance = mix(transmittance, vec3(1.0), fadeFactor); 
+      transmittance = mix(vec3(1.0), transmittance, fadeFactor); 
     } 
 
     if(atmosphereCullingFactor < 1.0){
