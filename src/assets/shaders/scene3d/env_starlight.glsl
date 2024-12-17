@@ -1,7 +1,6 @@
 #ifndef ENV_STARLIGHT_GLSL
 #define ENV_STARLIGHT_GLSL
 
-
 uint starfieldFBMNoiseHash11(const in uint v){
   uint s = (v * 747796405u) + 2891336453u;
   uint w = ((s >> ((s >> 28u) + 4u)) ^ s) * 277803737u;
@@ -45,8 +44,8 @@ vec3 starfield(vec3 rayDirection){
     }       
     c = vec4(c.xyz + (((pow(vec3(t), vec3(t / 6.4, 1.0 + (t / 6.4), 2.0 + (t / 6.4)).zyx) * pow(a.x, 3.0) * 0.002) + vec3(1.0)) * c.w), c.w * 0.785);
   }
-  c.xyz = clamp(pow(c.xyz, vec3(1.0)) * (1.0 / 256.0), vec3(0.0), vec3(2.0));
-  c.xyz += pow(vec3((max(vec3(0.0), (starfieldFBM(rayDirection.yxz * vec3(7.0, 13.0, 1.0), 4) - 0.5) * vec3(1.0, 2.0, 3.0)) * 2.0)), vec3(1.0)) * (1.0 / 256.0);
+  c.xyz = clamp(pow(c.xyz, vec3(1.0)) * (1.0 / 32.0), vec3(0.0), vec3(2.0));
+  c.xyz += pow(vec3((max(vec3(0.0), (starfieldFBM(rayDirection.yxz * vec3(7.0, 13.0, 1.0), 4) - 0.5) * vec3(1.0, 2.0, 3.0)) * 2.0)), vec3(1.0)) * (1.0 / 128.0);
   vec3 absoluteRayDirection = abs(rayDirection);
   vec4 params = (absoluteRayDirection.x < absoluteRayDirection.y) 
                   ? ((absoluteRayDirection.y < absoluteRayDirection.z)
