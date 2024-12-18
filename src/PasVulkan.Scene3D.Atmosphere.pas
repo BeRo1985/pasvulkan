@@ -3870,8 +3870,7 @@ begin
                                                           0,
                                                           SizeOf(TGPUAtmosphereParameters));
 
-   IsVisible:=fAtmosphereParameters.AbsorptionExtinction.w>1e-7;
-
+   IsVisible:=fGPUAtmosphereParameters.AbsorptionExtinction.w>1e-7;
 
   end;
 
