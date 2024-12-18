@@ -177,6 +177,15 @@ void addScatteringSample(const in vec3 inscattering, const in vec3 transmittance
 
 void main() {
 
+  // Early out if the atmosphere is not present 
+  if(uAtmosphereParameters.atmosphereParameters.AbsorptionExtinction.w < 1e-7){
+    outInscattering = vec4(0.0, 0.0, 0.0, 0.0);
+#ifdef DUALBLEND
+    outTransmittance = vec4(1.0, 1.0, 1.0, 0.0);
+#endif
+    return;
+  }
+
   int viewIndex = pushConstants.baseViewIndex + int(gl_ViewIndex);
   View view = uView.views[viewIndex];
 
