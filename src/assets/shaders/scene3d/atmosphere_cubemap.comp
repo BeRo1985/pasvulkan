@@ -157,7 +157,7 @@ void main() {
     {
       float fadeFactor = clamp(atmosphereParameters.AbsorptionExtinction.w, 0.0, 1.0);
       inscattering *= fadeFactor;
-      transmittance = mix(transmittance, vec3(1.0), fadeFactor); 
+      transmittance = mix(vec3(1.0), transmittance, fadeFactor); 
     } 
 
     vec4 outputColor = vec4(inscattering, 1.0 - clamp(dot(transmittance, vec3(1.0 / 3.0)), 0.0, 1.0));
