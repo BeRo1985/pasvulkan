@@ -12304,8 +12304,8 @@ var Index,FileNameLength,DroppedFileCount,CountInputs,OtherIndex:TpvSizeInt;
    VK_DIVIDE:begin
     NativeEvent.KeyCode:=KEYCODE_SLASH;
    end;
-   VK_NUMPAD0..VK_NUMPAD8:begin
-    NativeEvent.KeyCode:=(VirtualKey-ord('0'))+KEYCODE_KP0;
+   VK_NUMPAD0..VK_NUMPAD9:begin
+    NativeEvent.KeyCode:=(VirtualKey-VK_NUMPAD0)+KEYCODE_KP0;
    end;
    VK_BACK:begin
     NativeEvent.KeyCode:=KEYCODE_BACKSPACE;
