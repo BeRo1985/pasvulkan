@@ -1931,6 +1931,23 @@ uses PasVulkan.Scene3D,
 type TVector3Array=TpvDynamicArray<TpvVector3>;
      TIndexArray=TpvDynamicArray<TpvUInt32>;
 
+procedure FlipBrushesY(var aBrushes:TpvScene3DPlanet.TBrushes);
+var Index,y:TpvSizeInt;
+    NewBrushes:TpvScene3DPlanet.PBrushes;
+begin
+ GetMem(NewBrushes,SizeOf(TpvScene3DPlanet.TBrushes));
+ try
+  for Index:=0 to 255 do begin
+   for y:=0 to 255 do begin
+    NewBrushes^[Index,y]:=aBrushes[Index,255-y];
+   end;
+  end;
+  aBrushes:=NewBrushes^;
+ finally
+  FreeMem(NewBrushes); 
+ end; 
+end;
+
 procedure ConvertPNGStreamsToBrushes(const aPNGStreams:array of TStream;out aBrushes:TpvScene3DPlanet.TBrushes);
 var PNGIndex,PixelIndex:TpvSizeInt; 
     PNGPixelFormat:TpvPNGPixelFormat;
@@ -1993,6 +2010,8 @@ begin
    end;
   end;
  end;
+
+ FlipBrushesY(aBrushes);
 
 end;
 
@@ -2089,6 +2108,8 @@ begin
    end;
   end;
  end;
+
+ FlipBrushesY(aBrushes);
 
 end;
 
