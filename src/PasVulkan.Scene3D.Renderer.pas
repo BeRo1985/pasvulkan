@@ -261,7 +261,7 @@ type TpvScene3DRenderer=class;
        property SurfaceSampleCountFlagBits:TVkSampleCountFlagBits read fSurfaceSampleCountFlagBits;
        property CountSurfaceMSAASamples:TpvSizeInt read fCountSurfaceMSAASamples;
        property SupersampleWaterWhenMSAA:Boolean read fSupersampleWaterWhenMSAA;
-       property AnimatedAtmosphereNoise:Boolean read fAnimatedAtmosphereNoise;
+       property AnimatedAtmosphereNoise:Boolean read fAnimatedAtmosphereNoise write fAnimatedAtmosphereNoise;
        property GlobalIlluminationCaching:Boolean read fGlobalIlluminationCaching write fGlobalIlluminationCaching;
        property GlobalIlluminationRadianceHintsSpread:TpvScalar read fGlobalIlluminationRadianceHintsSpread write fGlobalIlluminationRadianceHintsSpread;
        property GlobalIlluminationVoxelGridSize:TpvInt32 read fGlobalIlluminationVoxelGridSize write SetGlobalIlluminationVoxelGridSize;
