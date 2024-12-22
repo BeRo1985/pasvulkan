@@ -170,6 +170,7 @@ type TpvScene3DRenderer=class;
        fSurfaceSampleCountFlagBits:TVkSampleCountFlagBits;
        fCountSurfaceMSAASamples:TpvSizeInt;
        fSupersampleWaterWhenMSAA:Boolean;
+       fAnimatedAtmosphereNoise:Boolean;
        fGlobalIlluminationCaching:Boolean;
        fGlobalIlluminationRadianceHintsSpread:TpvScalar;
        fGlobalIlluminationVoxelGridSize:TpvInt32;
@@ -260,6 +261,7 @@ type TpvScene3DRenderer=class;
        property SurfaceSampleCountFlagBits:TVkSampleCountFlagBits read fSurfaceSampleCountFlagBits;
        property CountSurfaceMSAASamples:TpvSizeInt read fCountSurfaceMSAASamples;
        property SupersampleWaterWhenMSAA:Boolean read fSupersampleWaterWhenMSAA;
+       property AnimatedAtmosphereNoise:Boolean read fAnimatedAtmosphereNoise;
        property GlobalIlluminationCaching:Boolean read fGlobalIlluminationCaching write fGlobalIlluminationCaching;
        property GlobalIlluminationRadianceHintsSpread:TpvScalar read fGlobalIlluminationRadianceHintsSpread write fGlobalIlluminationRadianceHintsSpread;
        property GlobalIlluminationVoxelGridSize:TpvInt32 read fGlobalIlluminationVoxelGridSize write SetGlobalIlluminationVoxelGridSize;
@@ -437,6 +439,8 @@ begin
  fVirtualRealityHUDHeight:=1152;
 
  fSupersampleWaterWhenMSAA:=true;
+
+ fAnimatedAtmosphereNoise:=true;
 
  fGlobalIlluminationCaching:=true;
 

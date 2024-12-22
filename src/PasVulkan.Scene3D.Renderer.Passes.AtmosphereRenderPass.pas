@@ -552,7 +552,11 @@ begin
  fPushConstants.BaseViewIndex:=InFlightFrameState^.FinalUnjitteredViewIndex;
  fPushConstants.CountViews:=InFlightFrameState^.CountFinalViews;
 
- fPushConstants.FrameIndex:=aFrameIndex;
+ if fInstance.Renderer.AnimatedAtmosphereNoise then begin
+  fPushConstants.FrameIndex:=aFrameIndex;
+ end else begin
+  fPushConstants.FrameIndex:=0;
+ end;
 
  fPushConstants.Flags:=0;
  if TpvScene3DRenderer(TpvScene3DRendererInstance(fInstance).Renderer).FastSky then begin
