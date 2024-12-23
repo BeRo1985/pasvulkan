@@ -13336,6 +13336,7 @@ begin
  fTargetHashMap.Clear;
  for Index:=0 to fTargets.Count-1 do begin
   Target:=fTargets[Index];
+  Target.fIndex:=Index;
   fTargetHashMap.Add(Target.Name,Target);
  end;
 
