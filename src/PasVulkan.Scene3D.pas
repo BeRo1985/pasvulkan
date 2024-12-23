@@ -2078,12 +2078,14 @@ type EpvScene3D=class(Exception);
                                         PTargetVertex=^TTargetVertex;
                                         TTargetVertices=TpvDynamicArrayList<TTargetVertex>;
                                   private
+                                   fIndex:TpvSizeInt;
                                    fName:TpvUTF8String;
                                    fVertices:TTargetVertices;
                                   public
                                    constructor Create; reintroduce;
                                    destructor Destroy; override;
                                   published
+                                   property Index:TpvSizeInt read fIndex;
                                    property Name:TpvUTF8String read fName write fName;
                                    property Vertices:TTargetVertices read fVertices;
                                  end;
@@ -12860,6 +12862,7 @@ end;
 constructor TpvScene3D.TGroup.TMesh.TPrimitive.TTarget.Create;
 begin
  inherited Create;
+ fIndex:=-1;
  fName:='';
  fVertices:=TpvScene3D.TGroup.TMesh.TPrimitive.TTarget.TTargetVertices.Create;
 end;
@@ -13382,7 +13385,7 @@ begin
     end;
     fTargetHashMap.Add(Target.Name,Target);
    finally
-    fTargets.Add(Target);
+    Target.fIndex:=fTargets.Add(Target);
    end; 
   end;
 
@@ -14962,7 +14965,8 @@ begin
           SourceMeshPrimitiveTarget:=SourceMeshPrimitive.Targets[TargetIndex];
 
           DestinationMeshPrimitiveTarget:=TpvScene3D.TGroup.TMesh.TPrimitive.TTarget.Create;
-          DestinationMeshPrimitiveTarget.fName:=IntToStr(DestinationMeshPrimitive.fTargets.Add(DestinationMeshPrimitiveTarget));
+          DestinationMeshPrimitiveTarget.fIndex:=DestinationMeshPrimitive.fTargets.Add(DestinationMeshPrimitiveTarget);
+          DestinationMeshPrimitiveTarget.fName:=IntToStr(DestinationMeshPrimitiveTarget.fIndex);
           if TargetIndex<length(TargetNames) then begin
            DestinationMeshPrimitiveTarget.fName:=TargetNames[TargetIndex];
           end;
@@ -20166,7 +20170,7 @@ begin
      try
       Target.fVertices.Resize(aSourceModel.FileHeader.CountVertices);
      finally
-      MeshPrimitive.fTargets.Add(Target);
+      Target.fIndex:=MeshPrimitive.fTargets.Add(Target);
      end;
     end;
    end;
