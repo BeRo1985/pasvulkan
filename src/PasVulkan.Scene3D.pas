@@ -2088,6 +2088,7 @@ type EpvScene3D=class(Exception);
                                    property Vertices:TTargetVertices read fVertices;
                                  end;
                                  TTargets=TpvObjectGenericList<TTarget>;
+                                 TTargetHashMap=TpvStringHashMap<TTarget>;
                                  { TNodeMeshPrimitiveInstance }
                                  TNodeMeshPrimitiveInstance=class
                                   private
@@ -2110,6 +2111,7 @@ type EpvScene3D=class(Exception);
                             fMaterialID:TpvInt64;
                             fMaterial:TpvScene3D.TMaterial;
                             fTargets:TpvScene3D.TGroup.TMesh.TPrimitive.TTargets;
+                            fTargetHashMap:TpvScene3D.TGroup.TMesh.TPrimitive.TTargetHashMap;
                             fMorphTargetBaseIndex:TpvSizeUInt;
                             fStartBufferVertexOffset:TpvSizeUInt;
                             fStartBufferIndexOffset:TpvSizeUInt;
@@ -2138,6 +2140,7 @@ type EpvScene3D=class(Exception);
                             property MaterialID:TpvInt64 read fMaterialID write fMaterialID;
                             property Material:TpvScene3D.TMaterial read fMaterial write fMaterial;
                             property Targets:TpvScene3D.TGroup.TMesh.TPrimitive.TTargets read fTargets;
+                            property TargetHashMap:TpvScene3D.TGroup.TMesh.TPrimitive.TTargetHashMap read fTargetHashMap;
                             property MorphTargetBaseIndex:TpvSizeUInt read fMorphTargetBaseIndex write fMorphTargetBaseIndex;
                             property StartBufferVertexOffset:TpvSizeUInt read fStartBufferVertexOffset write fStartBufferVertexOffset;
                             property StartBufferIndexOffset:TpvSizeUInt read fStartBufferIndexOffset write fStartBufferIndexOffset;
@@ -12881,6 +12884,8 @@ begin
 
  fTargets:=TpvScene3D.TGroup.TMesh.TPrimitive.TTargets.Create(true);
 
+ fTargetHashMap:=TpvScene3D.TGroup.TMesh.TPrimitive.TTargetHashMap.Create(nil);
+
  fMorphTargetBaseIndex:=0;
 
  fStartBufferVertexOffset:=0;
@@ -12909,6 +12914,8 @@ begin
  FreeAndNil(fNodeMeshPrimitiveInstances);
 
  FreeAndNil(fTargets);
+
+ FreeAndNil(fTargetHashMap);
 
  inherited Destroy;
 
@@ -13299,6 +13306,7 @@ end;
 
 procedure TpvScene3D.TGroup.TMesh.TPrimitive.Finish;
 var Index:TpvSizeInt;
+    Target:TpvScene3D.TGroup.TMesh.TPrimitive.TTarget;
 begin
 
  if assigned(fTemporaryVertices) and assigned(fTemporaryIndices) then begin
@@ -13321,6 +13329,12 @@ begin
  FreeAndNil(fTemporaryVertices);
 
  FreeAndNil(fTemporaryIndices);
+
+ fTargetHashMap.Clear;
+ for Index:=0 to fTargets.Count-1 do begin
+  Target:=fTargets[Index];
+  fTargetHashMap.Add(Target.Name,Target);
+ end;
 
 end;
 
@@ -13366,6 +13380,7 @@ begin
     if OtherCount>0 then begin
      StreamIO.ReadWithCheck(Target.fVertices.ItemArray[0],OtherCount*SizeOf(TpvScene3D.TGroup.TMesh.TPrimitive.TTarget.TTargetVertex));
     end;
+    fTargetHashMap.Add(Target.Name,Target);
    finally
     fTargets.Add(Target);
    end; 
@@ -14951,6 +14966,7 @@ begin
           if TargetIndex<length(TargetNames) then begin
            DestinationMeshPrimitiveTarget.fName:=TargetNames[TargetIndex];
           end;
+          DestinationMeshPrimitive.fTargetHashMap.Add(DestinationMeshPrimitiveTarget.Name,DestinationMeshPrimitiveTarget);
 
           AccessorIndex:=SourceMeshPrimitiveTarget['POSITION'];
           if AccessorIndex>=0 then begin
