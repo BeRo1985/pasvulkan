@@ -2078,13 +2078,15 @@ type EpvScene3D=class(Exception);
                                         PTargetVertex=^TTargetVertex;
                                         TTargetVertices=TpvDynamicArrayList<TTargetVertex>;
                                   private
+                                   fPrimitive:TPrimitive;
                                    fIndex:TpvSizeInt;
                                    fName:TpvUTF8String;
                                    fVertices:TTargetVertices;
                                   public
-                                   constructor Create; reintroduce;
+                                   constructor Create(const aPrimitive:TPrimitive); reintroduce;
                                    destructor Destroy; override;
                                   published
+                                   property Primitive:TPrimitive read fPrimitive;
                                    property Index:TpvSizeInt read fIndex;
                                    property Name:TpvUTF8String read fName write fName;
                                    property Vertices:TTargetVertices read fVertices;
@@ -12859,9 +12861,10 @@ end;
 
 { TpvScene3D.TGroup.TMesh.TPrimitive.TTarget }
 
-constructor TpvScene3D.TGroup.TMesh.TPrimitive.TTarget.Create;
+constructor TpvScene3D.TGroup.TMesh.TPrimitive.TTarget.Create(const aPrimitive:TPrimitive);
 begin
  inherited Create;
+ fPrimitive:=aPrimitive;
  fIndex:=-1;
  fName:='';
  fVertices:=TpvScene3D.TGroup.TMesh.TPrimitive.TTarget.TTargetVertices.Create;
@@ -13376,7 +13379,7 @@ begin
 
   Count:=StreamIO.ReadInt64;
   for Index:=0 to Count-1 do begin
-   Target:=TpvScene3D.TGroup.TMesh.TPrimitive.TTarget.Create;
+   Target:=TpvScene3D.TGroup.TMesh.TPrimitive.TTarget.Create(self);
    try
     Target.fName:=StreamIO.ReadUTF8String;
     OtherCount:=StreamIO.ReadInt64;
@@ -14965,7 +14968,7 @@ begin
 
           SourceMeshPrimitiveTarget:=SourceMeshPrimitive.Targets[TargetIndex];
 
-          DestinationMeshPrimitiveTarget:=TpvScene3D.TGroup.TMesh.TPrimitive.TTarget.Create;
+          DestinationMeshPrimitiveTarget:=TpvScene3D.TGroup.TMesh.TPrimitive.TTarget.Create(DestinationMeshPrimitive);
           DestinationMeshPrimitiveTarget.fIndex:=DestinationMeshPrimitive.fTargets.Add(DestinationMeshPrimitiveTarget);
           DestinationMeshPrimitiveTarget.fName:=IntToStr(DestinationMeshPrimitiveTarget.fIndex);
           if TargetIndex<length(TargetNames) then begin
@@ -20167,7 +20170,7 @@ begin
    // Create morph targets
    for AnimationIndex:=0 to length(aSourceModel.Animations)-1 do begin
     for FrameIndex:=0 to length(aSourceModel.Animations[AnimationIndex].Frames)-1 do begin
-     Target:=TpvScene3D.TGroup.TMesh.TPrimitive.TTarget.Create;
+     Target:=TpvScene3D.TGroup.TMesh.TPrimitive.TTarget.Create(MeshPrimitive);
      try
       Target.fVertices.Resize(aSourceModel.FileHeader.CountVertices);
      finally
