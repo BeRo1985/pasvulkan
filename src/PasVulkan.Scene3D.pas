@@ -2455,6 +2455,7 @@ type EpvScene3D=class(Exception);
                             fOverwrites:TNodeOverwrites;
                             fCountOverwrites:TpvSizeInt;
                             fOverwriteWeightsSum:TpvDoubleDynamicArray;
+                            fOverwriteWeightsAdditiveSum:TpvDoubleDynamicArray;
                             fWorkWeights:TpvFloatDynamicArray;
                             fWorkMatrix:TpvMatrix4x4;
                             fLight:TpvScene3D.TLight;
@@ -22188,6 +22189,7 @@ begin
    InstanceNode.fFlags:=[];
    SetLength(InstanceNode.fWorkWeights,Node.fWeights.Count);
    SetLength(InstanceNode.fOverwriteWeightsSum,Node.fWeights.Count);
+   SetLength(InstanceNode.fOverwriteWeightsAdditiveSum,Node.fWeights.Count);
    SetLength(InstanceNode.fOverwrites,fGroup.fAnimations.Count+1);
    for OtherIndex:=0 to fGroup.fAnimations.Count do begin
     SetLength(InstanceNode.fOverwrites[OtherIndex].Weights,Node.fWeights.Count);
@@ -25312,11 +25314,20 @@ procedure TpvScene3D.TGroup.TInstance.Update(const aInFlightFrameIndex:TpvSizeIn
         for OtherIndex:=0 to length(InstanceNode.fOverwriteWeightsSum)-1 do begin
          InstanceNode.fOverwriteWeightsSum[OtherIndex]:=0.0;
         end;
+        for OtherIndex:=0 to length(InstanceNode.fOverwriteWeightsAdditiveSum)-1 do begin
+         InstanceNode.fOverwriteWeightsAdditiveSum[OtherIndex]:=0.0;
+        end;
        end;
-       for OtherIndex:=0 to Min(length(InstanceNode.fOverwriteWeightsSum),Node.fWeights.Count)-1 do begin
-        InstanceNode.fOverwriteWeightsSum[OtherIndex]:=InstanceNode.fOverwriteWeightsSum[OtherIndex]+(Node.fWeights.Items[OtherIndex]*Factor);
+       if Additive then begin
+        for OtherIndex:=0 to Min(length(InstanceNode.fOverwriteWeightsAdditiveSum),Node.fWeights.Count)-1 do begin
+         InstanceNode.fOverwriteWeightsAdditiveSum[OtherIndex]:=InstanceNode.fOverwriteWeightsAdditiveSum[OtherIndex]+(Node.fWeights.Items[OtherIndex]*Factor);
+        end;
+       end else begin
+        for OtherIndex:=0 to Min(length(InstanceNode.fOverwriteWeightsSum),Node.fWeights.Count)-1 do begin
+         InstanceNode.fOverwriteWeightsSum[OtherIndex]:=InstanceNode.fOverwriteWeightsSum[OtherIndex]+(Node.fWeights.Items[OtherIndex]*Factor);
+        end;
+        WeightsFactorSum:=WeightsFactorSum+Factor;
        end;
-       WeightsFactorSum:=WeightsFactorSum+Factor;
       end;
      end else begin
       if TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.Translation in Overwrite^.Flags then begin
@@ -25346,17 +25357,32 @@ procedure TpvScene3D.TGroup.TInstance.Update(const aInFlightFrameIndex:TpvSizeIn
         for OtherIndex:=0 to length(InstanceNode.fOverwriteWeightsSum)-1 do begin
          InstanceNode.fOverwriteWeightsSum[OtherIndex]:=0.0;
         end;
+        for OtherIndex:=0 to length(InstanceNode.fOverwriteWeightsAdditiveSum)-1 do begin
+         InstanceNode.fOverwriteWeightsAdditiveSum[OtherIndex]:=0.0;
+        end;
        end;
-       if TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.DefaultWeights in Overwrite^.Flags then begin
-        for OtherIndex:=0 to Min(length(InstanceNode.fOverwriteWeightsSum),Node.fWeights.Count)-1 do begin
-         InstanceNode.fOverwriteWeightsSum[OtherIndex]:=InstanceNode.fOverwriteWeightsSum[OtherIndex]+(Node.fWeights.Items[OtherIndex]*Factor);
+       if Additive then begin
+        if TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.DefaultWeights in Overwrite^.Flags then begin
+         for OtherIndex:=0 to Min(length(InstanceNode.fOverwriteWeightsAdditiveSum),Node.fWeights.Count)-1 do begin
+          InstanceNode.fOverwriteWeightsAdditiveSum[OtherIndex]:=InstanceNode.fOverwriteWeightsAdditiveSum[OtherIndex]+(Node.fWeights.Items[OtherIndex]*Factor);
+         end;
+        end else begin
+         for OtherIndex:=0 to Min(length(InstanceNode.fOverwriteWeightsAdditiveSum),Node.fWeights.Count)-1 do begin
+          InstanceNode.fOverwriteWeightsAdditiveSum[OtherIndex]:=InstanceNode.fOverwriteWeightsAdditiveSum[OtherIndex]+(Overwrite^.Weights[OtherIndex]*Factor);
+         end;
         end;
        end else begin
-        for OtherIndex:=0 to Min(length(InstanceNode.fOverwriteWeightsSum),length(Overwrite^.Weights))-1 do begin
-         InstanceNode.fOverwriteWeightsSum[OtherIndex]:=InstanceNode.fOverwriteWeightsSum[OtherIndex]+(Overwrite^.Weights[OtherIndex]*Factor);
+        if TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.DefaultWeights in Overwrite^.Flags then begin
+         for OtherIndex:=0 to Min(length(InstanceNode.fOverwriteWeightsSum),Node.fWeights.Count)-1 do begin
+          InstanceNode.fOverwriteWeightsSum[OtherIndex]:=InstanceNode.fOverwriteWeightsSum[OtherIndex]+(Node.fWeights.Items[OtherIndex]*Factor);
+         end;
+        end else begin
+         for OtherIndex:=0 to Min(length(InstanceNode.fOverwriteWeightsSum),Node.fWeights.Count)-1 do begin
+          InstanceNode.fOverwriteWeightsSum[OtherIndex]:=InstanceNode.fOverwriteWeightsSum[OtherIndex]+(Overwrite^.Weights[OtherIndex]*Factor);
+         end;
         end;
+        WeightsFactorSum:=WeightsFactorSum+Factor;
        end;
-       WeightsFactorSum:=WeightsFactorSum+Factor;
       end;
      end;
     end;
@@ -25374,11 +25400,17 @@ procedure TpvScene3D.TGroup.TInstance.Update(const aInFlightFrameIndex:TpvSizeIn
    if WeightsFactorSum>0.0 then begin
     Factor:=1.0/WeightsFactorSum;
     for Index:=0 to Min(length(InstanceNode.fWorkWeights),Node.fWeights.Count)-1 do begin
-     InstanceNode.fWorkWeights[Index]:=InstanceNode.fOverwriteWeightsSum[Index]*Factor;
+     InstanceNode.fWorkWeights[Index]:=(InstanceNode.fOverwriteWeightsSum[Index]*Factor)+InstanceNode.fOverwriteWeightsAdditiveSum[Index];
     end;
    end else begin
-    for Index:=0 to Min(length(InstanceNode.fWorkWeights),Node.fWeights.Count)-1 do begin
-     InstanceNode.fWorkWeights[Index]:=Node.fWeights.Items[Index];
+    if FirstWeights then begin
+     for Index:=0 to Min(length(InstanceNode.fWorkWeights),Node.fWeights.Count)-1 do begin
+      InstanceNode.fWorkWeights[Index]:=Node.fWeights.Items[Index];
+     end;
+    end else begin
+     for Index:=0 to Min(length(InstanceNode.fWorkWeights),Node.fWeights.Count)-1 do begin
+      InstanceNode.fWorkWeights[Index]:=Node.fWeights.Items[Index]+InstanceNode.fOverwriteWeightsAdditiveSum[Index];
+     end;
     end;
    end;
   end else begin
