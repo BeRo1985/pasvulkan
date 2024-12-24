@@ -5505,11 +5505,11 @@ begin
   end;
   SDL_SCANCODE_AMPERSAND:begin
    result:=KEYCODE_AMPERSAND;
-  end;
+  end;}
   SDL_SCANCODE_APOSTROPHE:begin
    result:=KEYCODE_APOSTROPHE;
   end;
-  SDL_SCANCODE_LEFTPAREN:begin
+{ SDL_SCANCODE_LEFTPAREN:begin
    result:=KEYCODE_LEFTPAREN;
   end;
   SDL_SCANCODE_RIGHTPAREN:begin
@@ -5688,10 +5688,10 @@ begin
   end;
   SDL_SCANCODE_RIGHTBRACE:begin
    result:=KEYCODE_RIGHTBRACE;
-  end;
-  SDL_SCANCODE_TILDE:begin
-   result:=KEYCODE_TILDE;
   end;}
+  SDL_SCANCODE_GRAVE:begin
+   result:=KEYCODE_TILDE;
+  end;
   SDL_SCANCODE_DELETE:begin
    result:=KEYCODE_DELETE;
   end;
@@ -6184,81 +6184,77 @@ begin
   SDL_SCANCODE_SLEEP:begin
    result:=KEYCODE_SLEEP;
   end;
+  SDL_SCANCODE_INTERNATIONAL1:begin
+   result:=KEYCODE_INTERNATIONAL1;
+  end;
+  SDL_SCANCODE_INTERNATIONAL2:begin
+   result:=KEYCODE_INTERNATIONAL2;
+  end;
+  SDL_SCANCODE_INTERNATIONAL3:begin
+   result:=KEYCODE_INTERNATIONAL3;
+  end;
+  SDL_SCANCODE_INTERNATIONAL4:begin
+   result:=KEYCODE_INTERNATIONAL4;
+  end;
+  SDL_SCANCODE_INTERNATIONAL5:begin
+   result:=KEYCODE_INTERNATIONAL5;
+  end;
+  SDL_SCANCODE_INTERNATIONAL6:begin
+   result:=KEYCODE_INTERNATIONAL6;
+  end;
+  SDL_SCANCODE_INTERNATIONAL7:begin
+   result:=KEYCODE_INTERNATIONAL7;
+  end;
+  SDL_SCANCODE_INTERNATIONAL8:begin
+   result:=KEYCODE_INTERNATIONAL8;
+  end;
+  SDL_SCANCODE_INTERNATIONAL9:begin
+   result:=KEYCODE_INTERNATIONAL9;
+  end;
+  SDL_SCANCODE_LANG1:begin
+   result:=KEYCODE_LANG1;
+  end;
+  SDL_SCANCODE_LANG2:begin
+   result:=KEYCODE_LANG2;
+  end;
+  SDL_SCANCODE_LANG3:begin
+   result:=KEYCODE_LANG3;
+  end;
+  SDL_SCANCODE_LANG4:begin
+   result:=KEYCODE_LANG4;
+  end;
+  SDL_SCANCODE_LANG5:begin
+   result:=KEYCODE_LANG5;
+  end;
+  SDL_SCANCODE_LANG6:begin
+   result:=KEYCODE_LANG6;
+  end;
+  SDL_SCANCODE_LANG7:begin
+   result:=KEYCODE_LANG7;
+  end;
+  SDL_SCANCODE_LANG8:begin
+   result:=KEYCODE_LANG8;
+  end;
+  SDL_SCANCODE_LANG9:begin
+   result:=KEYCODE_LANG9;
+  end;
+  SDL_SCANCODE_LOCKINGCAPSLOCK:begin
+   result:=KEYCODE_LOCKINGCAPSLOCK;
+  end;
+  SDL_SCANCODE_LOCKINGNUMLOCK:begin
+   result:=KEYCODE_LOCKINGNUMLOCK;
+  end;
+  SDL_SCANCODE_LOCKINGSCROLLLOCK:begin
+   result:=KEYCODE_LOCKINGSCROLLLOCK;
+  end;
+  SDL_SCANCODE_NONUSBACKSLASH:begin
+   result:=KEYCODE_NONUSBACKSLASH;
+  end;
+  SDL_SCANCODE_NONUSHASH:begin
+   result:=KEYCODE_NONUSHASH;
+  end;
   else begin
-   case aScanCode of
-    SDL_SCANCODE_INTERNATIONAL1:begin
-     result:=KEYCODE_INTERNATIONAL1;
-    end;
-    SDL_SCANCODE_INTERNATIONAL2:begin
-     result:=KEYCODE_INTERNATIONAL2;
-    end;
-    SDL_SCANCODE_INTERNATIONAL3:begin
-     result:=KEYCODE_INTERNATIONAL3;
-    end;
-    SDL_SCANCODE_INTERNATIONAL4:begin
-     result:=KEYCODE_INTERNATIONAL4;
-    end;
-    SDL_SCANCODE_INTERNATIONAL5:begin
-     result:=KEYCODE_INTERNATIONAL5;
-    end;
-    SDL_SCANCODE_INTERNATIONAL6:begin
-     result:=KEYCODE_INTERNATIONAL6;
-    end;
-    SDL_SCANCODE_INTERNATIONAL7:begin
-     result:=KEYCODE_INTERNATIONAL7;
-    end;
-    SDL_SCANCODE_INTERNATIONAL8:begin
-     result:=KEYCODE_INTERNATIONAL8;
-    end;
-    SDL_SCANCODE_INTERNATIONAL9:begin
-     result:=KEYCODE_INTERNATIONAL9;
-    end;
-    SDL_SCANCODE_LANG1:begin
-     result:=KEYCODE_LANG1;
-    end;
-    SDL_SCANCODE_LANG2:begin
-     result:=KEYCODE_LANG2;
-    end;
-    SDL_SCANCODE_LANG3:begin
-     result:=KEYCODE_LANG3;
-    end;
-    SDL_SCANCODE_LANG4:begin
-     result:=KEYCODE_LANG4;
-    end;
-    SDL_SCANCODE_LANG5:begin
-     result:=KEYCODE_LANG5;
-    end;
-    SDL_SCANCODE_LANG6:begin
-     result:=KEYCODE_LANG6;
-    end;
-    SDL_SCANCODE_LANG7:begin
-     result:=KEYCODE_LANG7;
-    end;
-    SDL_SCANCODE_LANG8:begin
-     result:=KEYCODE_LANG8;
-    end;
-    SDL_SCANCODE_LANG9:begin
-     result:=KEYCODE_LANG9;
-    end;
-    SDL_SCANCODE_LOCKINGCAPSLOCK:begin
-     result:=KEYCODE_LOCKINGCAPSLOCK;
-    end;
-    SDL_SCANCODE_LOCKINGNUMLOCK:begin
-     result:=KEYCODE_LOCKINGNUMLOCK;
-    end;
-    SDL_SCANCODE_LOCKINGSCROLLLOCK:begin
-     result:=KEYCODE_LOCKINGSCROLLLOCK;
-    end;
-    SDL_SCANCODE_NONUSBACKSLASH:begin
-     result:=KEYCODE_NONUSBACKSLASH;
-    end;
-    SDL_SCANCODE_NONUSHASH:begin
-     result:=KEYCODE_NONUSHASH;
-    end;
-    else begin
-     result:=KEYCODE_UNKNOWN;
-    end;
-   end;
+   result:=KEYCODE_UNKNOWN;
   end;
  end;
 end;
