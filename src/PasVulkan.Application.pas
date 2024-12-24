@@ -570,9 +570,11 @@ type EpvApplication=class(Exception)
       public
        KeyEventType:TpvApplicationInputKeyEventType;
        KeyCode:TpvInt32;
+       ScanCode:TpvInt32;
        KeyModifiers:TpvApplicationInputKeyModifiers;
        constructor Create(const aKeyEventType:TpvApplicationInputKeyEventType;
                           const aKeyCode:TpvInt32;
+                          const aScanCode:TpvInt32;
                           const aKeyModifiers:TpvApplicationInputKeyModifiers);
      end;
 
@@ -920,6 +922,7 @@ type EpvApplication=class(Exception)
        TpvApplicationNativeEventKind.KeyUp,
        TpvApplicationNativeEventKind.KeyTyped:(
         KeyCode:TpvInt32;
+        ScanCode:TpvInt32;
         KeyModifiers:TpvApplicationInputKeyModifiers;
         KeyRepeat:Boolean;
        );
@@ -1023,6 +1026,7 @@ type EpvApplication=class(Exception)
        fKeyCodeNameHashmap:TpvApplicationInputKeycodeStringHashMap;
 {$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
        function TranslateSDLKeyCode(const aKeyCode,aScanCode:TpvInt32):TpvInt32;
+       function TranslateSDLScanCode(const aKeyCode,aScanCode:TpvInt32):TpvInt32;
        function TranslateSDLKeyModifier(const aKeyModifier:TpvInt32):TpvApplicationInputKeyModifiers;
 {$else}
 {$ifend}
@@ -3220,10 +3224,12 @@ end;
 
 constructor TpvApplicationInputKeyEvent.Create(const aKeyEventType:TpvApplicationInputKeyEventType;
                                                const aKeyCode:TpvInt32;
+                                               const aScanCode:TpvInt32;
                                                const aKeyModifiers:TpvApplicationInputKeyModifiers);
 begin
  KeyEventType:=aKeyEventType;
  KeyCode:=aKeyCode;
+ ScanCode:=aScanCode;
  KeyModifiers:=aKeyModifiers;
 end;
 
@@ -5464,6 +5470,799 @@ begin
  end;
 end;
 
+function TpvApplicationInput.TranslateSDLScanCode(const aKeyCode,aScanCode:TpvInt32):TpvInt32;
+begin
+ case aScanCode of
+  SDL_SCANCODE_BACKSPACE:begin
+   result:=KEYCODE_BACKSPACE;
+  end;
+  SDL_SCANCODE_TAB:begin
+   result:=KEYCODE_TAB;
+  end;
+  SDL_SCANCODE_RETURN:begin
+   result:=KEYCODE_RETURN;
+  end;
+  SDL_SCANCODE_PAUSE:begin
+   result:=KEYCODE_PAUSE;
+  end;
+  SDL_SCANCODE_ESCAPE:begin
+   result:=KEYCODE_ESCAPE;
+  end;
+  SDL_SCANCODE_SPACE:begin
+   result:=KEYCODE_SPACE;
+  end;
+{ SDL_SCANCODE_EXCLAIM:begin
+   result:=KEYCODE_EXCLAIM;
+  end;
+  SDL_SCANCODE_QUOTEDBL:begin
+   result:=KEYCODE_QUOTEDBL;
+  end;
+  SDL_SCANCODE_HASH:begin
+   result:=KEYCODE_HASH;
+  end;
+  SDL_SCANCODE_DOLLAR:begin
+   result:=KEYCODE_DOLLAR;
+  end;
+  SDL_SCANCODE_AMPERSAND:begin
+   result:=KEYCODE_AMPERSAND;
+  end;
+  SDL_SCANCODE_APOSTROPHE:begin
+   result:=KEYCODE_APOSTROPHE;
+  end;
+  SDL_SCANCODE_LEFTPAREN:begin
+   result:=KEYCODE_LEFTPAREN;
+  end;
+  SDL_SCANCODE_RIGHTPAREN:begin
+   result:=KEYCODE_RIGHTPAREN;
+  end;
+  SDL_SCANCODE_ASTERISK:begin
+   result:=KEYCODE_ASTERISK;
+  end;
+  SDL_SCANCODE_PLUS:begin
+   result:=KEYCODE_PLUS;
+  end;}
+  SDL_SCANCODE_COMMA:begin
+   result:=KEYCODE_COMMA;
+  end;
+  SDL_SCANCODE_MINUS:begin
+   result:=KEYCODE_MINUS;
+  end;
+  SDL_SCANCODE_PERIOD:begin
+   result:=KEYCODE_PERIOD;
+  end;
+  SDL_SCANCODE_SLASH:begin
+   result:=KEYCODE_SLASH;
+  end;
+  SDL_SCANCODE_0:begin
+   result:=KEYCODE_0;
+  end;
+  SDL_SCANCODE_1:begin
+   result:=KEYCODE_1;
+  end;
+  SDL_SCANCODE_2:begin
+   result:=KEYCODE_2;
+  end;
+  SDL_SCANCODE_3:begin
+   result:=KEYCODE_3;
+  end;
+  SDL_SCANCODE_4:begin
+   result:=KEYCODE_4;
+  end;
+  SDL_SCANCODE_5:begin
+   result:=KEYCODE_5;
+  end;
+  SDL_SCANCODE_6:begin
+   result:=KEYCODE_6;
+  end;
+  SDL_SCANCODE_7:begin
+   result:=KEYCODE_7;
+  end;
+  SDL_SCANCODE_8:begin
+   result:=KEYCODE_8;
+  end;
+  SDL_SCANCODE_9:begin
+   result:=KEYCODE_9;
+  end;
+{ SDL_SCANCODE_COLON:begin
+   result:=KEYCODE_COLON;
+  end;}
+  SDL_SCANCODE_SEMICOLON:begin
+   result:=KEYCODE_SEMICOLON;
+  end;
+{ SDL_SCANCODE_LESS:begin
+   result:=KEYCODE_LESS;
+  end;}
+  SDL_SCANCODE_EQUALS:begin
+   result:=KEYCODE_EQUALS;
+  end;
+{ SDL_SCANCODE_GREATER:begin
+   result:=KEYCODE_GREATER;
+  end;
+  SDL_SCANCODE_QUESTION:begin
+   result:=KEYCODE_QUESTION;
+  end;
+  SDL_SCANCODE_AT:begin
+   result:=KEYCODE_AT;
+  end;}
+  SDL_SCANCODE_LEFTBRACKET:begin
+   result:=KEYCODE_LEFTBRACKET;
+  end;
+  SDL_SCANCODE_BACKSLASH:begin
+   result:=KEYCODE_BACKSLASH;
+  end;
+  SDL_SCANCODE_RIGHTBRACKET:begin
+   result:=KEYCODE_RIGHTBRACKET;
+  end;
+{ SDL_SCANCODE_CARET:begin
+   result:=KEYCODE_CARET;
+  end;
+  SDL_SCANCODE_UNDERSCORE:begin
+   result:=KEYCODE_UNDERSCORE;
+  end;
+  SDL_SCANCODE_BACKQUOTE:begin
+   result:=KEYCODE_BACKQUOTE;
+  end;}
+  SDL_SCANCODE_a:begin
+   result:=KEYCODE_a;
+  end;
+  SDL_SCANCODE_b:begin
+   result:=KEYCODE_b;
+  end;
+  SDL_SCANCODE_c:begin
+   result:=KEYCODE_c;
+  end;
+  SDL_SCANCODE_d:begin
+   result:=KEYCODE_d;
+  end;
+  SDL_SCANCODE_e:begin
+   result:=KEYCODE_e;
+  end;
+  SDL_SCANCODE_f:begin
+   result:=KEYCODE_f;
+  end;
+  SDL_SCANCODE_g:begin
+   result:=KEYCODE_g;
+  end;
+  SDL_SCANCODE_h:begin
+   result:=KEYCODE_h;
+  end;
+  SDL_SCANCODE_i:begin
+   result:=KEYCODE_i;
+  end;
+  SDL_SCANCODE_j:begin
+   result:=KEYCODE_j;
+  end;
+  SDL_SCANCODE_k:begin
+   result:=KEYCODE_k;
+  end;
+  SDL_SCANCODE_l:begin
+   result:=KEYCODE_l;
+  end;
+  SDL_SCANCODE_m:begin
+   result:=KEYCODE_m;
+  end;
+  SDL_SCANCODE_n:begin
+   result:=KEYCODE_n;
+  end;
+  SDL_SCANCODE_o:begin
+   result:=KEYCODE_o;
+  end;
+  SDL_SCANCODE_p:begin
+   result:=KEYCODE_p;
+  end;
+  SDL_SCANCODE_q:begin
+   result:=KEYCODE_q;
+  end;
+  SDL_SCANCODE_r:begin
+   result:=KEYCODE_r;
+  end;
+  SDL_SCANCODE_s:begin
+   result:=KEYCODE_s;
+  end;
+  SDL_SCANCODE_t:begin
+   result:=KEYCODE_t;
+  end;
+  SDL_SCANCODE_u:begin
+   result:=KEYCODE_u;
+  end;
+  SDL_SCANCODE_v:begin
+   result:=KEYCODE_v;
+  end;
+  SDL_SCANCODE_w:begin
+   result:=KEYCODE_w;
+  end;
+  SDL_SCANCODE_x:begin
+   result:=KEYCODE_x;
+  end;
+  SDL_SCANCODE_y:begin
+   result:=KEYCODE_y;
+  end;
+  SDL_SCANCODE_z:begin
+   result:=KEYCODE_z;
+  end;
+{ SDL_SCANCODE_LEFTBRACE:begin
+   result:=KEYCODE_LEFTBRACE;
+  end;
+  SDL_SCANCODE_PIPE:begin
+   result:=KEYCODE_PIPE;
+  end;
+  SDL_SCANCODE_RIGHTBRACE:begin
+   result:=KEYCODE_RIGHTBRACE;
+  end;
+  SDL_SCANCODE_TILDE:begin
+   result:=KEYCODE_TILDE;
+  end;}
+  SDL_SCANCODE_DELETE:begin
+   result:=KEYCODE_DELETE;
+  end;
+  SDL_SCANCODE_F1:begin
+   result:=KEYCODE_F1;
+  end;
+  SDL_SCANCODE_F2:begin
+   result:=KEYCODE_F2;
+  end;
+  SDL_SCANCODE_F3:begin
+   result:=KEYCODE_F3;
+  end;
+  SDL_SCANCODE_F4:begin
+   result:=KEYCODE_F4;
+  end;
+  SDL_SCANCODE_F5:begin
+   result:=KEYCODE_F5;
+  end;
+  SDL_SCANCODE_F6:begin
+   result:=KEYCODE_F6;
+  end;
+  SDL_SCANCODE_F7:begin
+   result:=KEYCODE_F7;
+  end;
+  SDL_SCANCODE_F8:begin
+   result:=KEYCODE_F8;
+  end;
+  SDL_SCANCODE_F9:begin
+   result:=KEYCODE_F9;
+  end;
+  SDL_SCANCODE_F10:begin
+   result:=KEYCODE_F10;
+  end;
+  SDL_SCANCODE_F11:begin
+   result:=KEYCODE_F11;
+  end;
+  SDL_SCANCODE_F12:begin
+   result:=KEYCODE_F12;
+  end;
+  SDL_SCANCODE_F13:begin
+   result:=KEYCODE_F13;
+  end;
+  SDL_SCANCODE_F14:begin
+   result:=KEYCODE_F14;
+  end;
+  SDL_SCANCODE_F15:begin
+   result:=KEYCODE_F15;
+  end;
+  SDL_SCANCODE_F16:begin
+   result:=KEYCODE_F16;
+  end;
+  SDL_SCANCODE_F17:begin
+   result:=KEYCODE_F17;
+  end;
+  SDL_SCANCODE_F18:begin
+   result:=KEYCODE_F18;
+  end;
+  SDL_SCANCODE_F19:begin
+   result:=KEYCODE_F19;
+  end;
+  SDL_SCANCODE_F20:begin
+   result:=KEYCODE_F20;
+  end;
+  SDL_SCANCODE_F21:begin
+   result:=KEYCODE_F21;
+  end;
+  SDL_SCANCODE_F22:begin
+   result:=KEYCODE_F22;
+  end;
+  SDL_SCANCODE_F23:begin
+   result:=KEYCODE_F23;
+  end;
+  SDL_SCANCODE_F24:begin
+   result:=KEYCODE_F24;
+  end;
+  SDL_SCANCODE_KP_0:begin
+   result:=KEYCODE_KP0;
+  end;
+  SDL_SCANCODE_KP_1:begin
+   result:=KEYCODE_KP1;
+  end;
+  SDL_SCANCODE_KP_2:begin
+   result:=KEYCODE_KP2;
+  end;
+  SDL_SCANCODE_KP_3:begin
+   result:=KEYCODE_KP3;
+  end;
+  SDL_SCANCODE_KP_4:begin
+   result:=KEYCODE_KP4;
+  end;
+  SDL_SCANCODE_KP_5:begin
+   result:=KEYCODE_KP5;
+  end;
+  SDL_SCANCODE_KP_6:begin
+   result:=KEYCODE_KP6;
+  end;
+  SDL_SCANCODE_KP_7:begin
+   result:=KEYCODE_KP7;
+  end;
+  SDL_SCANCODE_KP_8:begin
+   result:=KEYCODE_KP8;
+  end;
+  SDL_SCANCODE_KP_9:begin
+   result:=KEYCODE_KP9;
+  end;
+  SDL_SCANCODE_KP_PERIOD:begin
+   result:=KEYCODE_KP_PERIOD;
+  end;
+  SDL_SCANCODE_KP_DIVIDE:begin
+   result:=KEYCODE_KP_DIVIDE;
+  end;
+  SDL_SCANCODE_KP_MULTIPLY:begin
+   result:=KEYCODE_KP_MULTIPLY;
+  end;
+  SDL_SCANCODE_KP_MINUS:begin
+   result:=KEYCODE_KP_MINUS;
+  end;
+  SDL_SCANCODE_KP_PLUS:begin
+   result:=KEYCODE_KP_PLUS;
+  end;
+  SDL_SCANCODE_KP_ENTER:begin
+   result:=KEYCODE_KP_ENTER;
+  end;
+  SDL_SCANCODE_KP_EQUALS:begin
+   result:=KEYCODE_KP_EQUALS;
+  end;
+  SDL_SCANCODE_UP:begin
+   result:=KEYCODE_UP;
+  end;
+  SDL_SCANCODE_DOWN:begin
+   result:=KEYCODE_DOWN;
+  end;
+  SDL_SCANCODE_RIGHT:begin
+   result:=KEYCODE_RIGHT;
+  end;
+  SDL_SCANCODE_LEFT:begin
+   result:=KEYCODE_LEFT;
+  end;
+  SDL_SCANCODE_INSERT:begin
+   result:=KEYCODE_INSERT;
+  end;
+  SDL_SCANCODE_HOME:begin
+   result:=KEYCODE_HOME;
+  end;
+  SDL_SCANCODE_END:begin
+   result:=KEYCODE_END;
+  end;
+  SDL_SCANCODE_PAGEUP:begin
+   result:=KEYCODE_PAGEUP;
+  end;
+  SDL_SCANCODE_PAGEDOWN:begin
+   result:=KEYCODE_PAGEDOWN;
+  end;
+  SDL_SCANCODE_CAPSLOCK:begin
+   result:=KEYCODE_CAPSLOCK;
+  end;
+  SDL_SCANCODE_NUMLOCKCLEAR:begin
+   result:=KEYCODE_NUMLOCK;
+  end;
+  SDL_SCANCODE_SCROLLLOCK:begin
+   result:=KEYCODE_SCROLLLOCK;
+  end;
+  SDL_SCANCODE_RSHIFT:begin
+   result:=KEYCODE_RSHIFT;
+  end;
+  SDL_SCANCODE_LSHIFT:begin
+   result:=KEYCODE_LSHIFT;
+  end;
+  SDL_SCANCODE_RCTRL:begin
+   result:=KEYCODE_RCTRL;
+  end;
+  SDL_SCANCODE_LCTRL:begin
+   result:=KEYCODE_LCTRL;
+  end;
+  SDL_SCANCODE_RALT:begin
+   result:=KEYCODE_RALT;
+  end;
+  SDL_SCANCODE_LALT:begin
+   result:=KEYCODE_LALT;
+  end;
+  SDL_SCANCODE_MODE:begin
+   result:=KEYCODE_MODE;
+  end;
+  SDL_SCANCODE_HELP:begin
+   result:=KEYCODE_HELP;
+  end;
+  SDL_SCANCODE_PRINTSCREEN:begin
+   result:=KEYCODE_PRINTSCREEN;
+  end;
+  SDL_SCANCODE_SYSREQ:begin
+   result:=KEYCODE_SYSREQ;
+  end;
+  SDL_SCANCODE_MENU:begin
+   result:=KEYCODE_MENU;
+  end;
+  SDL_SCANCODE_POWER:begin
+   result:=KEYCODE_POWER;
+  end;
+  SDL_SCANCODE_APPLICATION:begin
+   result:=KEYCODE_APPLICATION;
+  end;
+  SDL_SCANCODE_SELECT:begin
+   result:=KEYCODE_SELECT;
+  end;
+  SDL_SCANCODE_STOP:begin
+   result:=KEYCODE_STOP;
+  end;
+  SDL_SCANCODE_AGAIN:begin
+   result:=KEYCODE_AGAIN;
+  end;
+  SDL_SCANCODE_UNDO:begin
+   result:=KEYCODE_UNDO;
+  end;
+  SDL_SCANCODE_CUT:begin
+   result:=KEYCODE_CUT;
+  end;
+  SDL_SCANCODE_COPY:begin
+   result:=KEYCODE_COPY;
+  end;
+  SDL_SCANCODE_PASTE:begin
+   result:=KEYCODE_PASTE;
+  end;
+  SDL_SCANCODE_FIND:begin
+   result:=KEYCODE_FIND;
+  end;
+  SDL_SCANCODE_MUTE:begin
+   result:=KEYCODE_MUTE;
+  end;
+  SDL_SCANCODE_VOLUMEUP:begin
+   result:=KEYCODE_VOLUMEUP;
+  end;
+  SDL_SCANCODE_VOLUMEDOWN:begin
+   result:=KEYCODE_VOLUMEDOWN;
+  end;
+  SDL_SCANCODE_KP_EQUALSAS400:begin
+   result:=KEYCODE_KP_EQUALSAS400;
+  end;
+  SDL_SCANCODE_ALTERASE:begin
+   result:=KEYCODE_ALTERASE;
+  end;
+  SDL_SCANCODE_CANCEL:begin
+   result:=KEYCODE_CANCEL;
+  end;
+  SDL_SCANCODE_CLEAR:begin
+   result:=KEYCODE_CLEAR;
+  end;
+  SDL_SCANCODE_PRIOR:begin
+   result:=KEYCODE_PRIOR;
+  end;
+  SDL_SCANCODE_RETURN2:begin
+   result:=KEYCODE_RETURN2;
+  end;
+  SDL_SCANCODE_SEPARATOR:begin
+   result:=KEYCODE_SEPARATOR;
+  end;
+  SDL_SCANCODE_OUT:begin
+   result:=KEYCODE_OUT;
+  end;
+  SDL_SCANCODE_OPER:begin
+   result:=KEYCODE_OPER;
+  end;
+  SDL_SCANCODE_CLEARAGAIN:begin
+   result:=KEYCODE_CLEARAGAIN;
+  end;
+  SDL_SCANCODE_CRSEL:begin
+   result:=KEYCODE_CRSEL;
+  end;
+  SDL_SCANCODE_EXSEL:begin
+   result:=KEYCODE_EXSEL;
+  end;
+  SDL_SCANCODE_KP_00:begin
+   result:=KEYCODE_KP_00;
+  end;
+  SDL_SCANCODE_KP_000:begin
+   result:=KEYCODE_KP_000;
+  end;
+  SDL_SCANCODE_THOUSANDSSEPARATOR:begin
+   result:=KEYCODE_THOUSANDSSEPARATOR;
+  end;
+  SDL_SCANCODE_DECIMALSEPARATOR:begin
+   result:=KEYCODE_DECIMALSEPARATOR;
+  end;
+  SDL_SCANCODE_CURRENCYUNIT:begin
+   result:=KEYCODE_CURRENCYUNIT;
+  end;
+  SDL_SCANCODE_CURRENCYSUBUNIT:begin
+   result:=KEYCODE_CURRENCYSUBUNIT;
+  end;
+  SDL_SCANCODE_KP_LEFTPAREN:begin
+   result:=KEYCODE_KP_LEFTPAREN;
+  end;
+  SDL_SCANCODE_KP_RIGHTPAREN:begin
+   result:=KEYCODE_KP_RIGHTPAREN;
+  end;
+  SDL_SCANCODE_KP_LEFTBRACE:begin
+   result:=KEYCODE_KP_LEFTBRACE;
+  end;
+  SDL_SCANCODE_KP_RIGHTBRACE:begin
+   result:=KEYCODE_KP_RIGHTBRACE;
+  end;
+  SDL_SCANCODE_KP_TAB:begin
+   result:=KEYCODE_KP_TAB;
+  end;
+  SDL_SCANCODE_KP_BACKSPACE:begin
+   result:=KEYCODE_KP_BACKSPACE;
+  end;
+  SDL_SCANCODE_KP_A:begin
+   result:=KEYCODE_KP_A;
+  end;
+  SDL_SCANCODE_KP_B:begin
+   result:=KEYCODE_KP_B;
+  end;
+  SDL_SCANCODE_KP_C:begin
+   result:=KEYCODE_KP_C;
+  end;
+  SDL_SCANCODE_KP_D:begin
+   result:=KEYCODE_KP_D;
+  end;
+  SDL_SCANCODE_KP_E:begin
+   result:=KEYCODE_KP_E;
+  end;
+  SDL_SCANCODE_KP_F:begin
+   result:=KEYCODE_KP_F;
+  end;
+  SDL_SCANCODE_KP_XOR:begin
+   result:=KEYCODE_KP_XOR;
+  end;
+  SDL_SCANCODE_KP_POWER:begin
+   result:=KEYCODE_KP_POWER;
+  end;
+  SDL_SCANCODE_KP_PERCENT:begin
+   result:=KEYCODE_KP_PERCENT;
+  end;
+  SDL_SCANCODE_KP_LESS:begin
+   result:=KEYCODE_KP_LESS;
+  end;
+  SDL_SCANCODE_KP_GREATER:begin
+   result:=KEYCODE_KP_GREATER;
+  end;
+  SDL_SCANCODE_KP_AMPERSAND:begin
+   result:=KEYCODE_KP_AMPERSAND;
+  end;
+  SDL_SCANCODE_KP_DBLAMPERSAND:begin
+   result:=KEYCODE_KP_DBLAMPERSAND;
+  end;
+  SDL_SCANCODE_KP_VERTICALBAR:begin
+   result:=KEYCODE_KP_VERTICALBAR;
+  end;
+  SDL_SCANCODE_KP_DBLVERTICALBAR:begin
+   result:=KEYCODE_KP_DBLVERTICALBAR;
+  end;
+  SDL_SCANCODE_KP_COLON:begin
+   result:=KEYCODE_KP_COLON;
+  end;
+  SDL_SCANCODE_KP_COMMA:begin
+   result:=KEYCODE_KP_COMMA;
+  end;
+  SDL_SCANCODE_KP_HASH:begin
+   result:=KEYCODE_KP_HASH;
+  end;
+  SDL_SCANCODE_KP_SPACE:begin
+   result:=KEYCODE_KP_SPACE;
+  end;
+  SDL_SCANCODE_KP_AT:begin
+   result:=KEYCODE_KP_AT;
+  end;
+  SDL_SCANCODE_KP_EXCLAM:begin
+   result:=KEYCODE_KP_EXCLAM;
+  end;
+  SDL_SCANCODE_KP_MEMSTORE:begin
+   result:=KEYCODE_KP_MEMSTORE;
+  end;
+  SDL_SCANCODE_KP_MEMRECALL:begin
+   result:=KEYCODE_KP_MEMRECALL;
+  end;
+  SDL_SCANCODE_KP_MEMCLEAR:begin
+   result:=KEYCODE_KP_MEMCLEAR;
+  end;
+  SDL_SCANCODE_KP_MEMADD:begin
+   result:=KEYCODE_KP_MEMADD;
+  end;
+  SDL_SCANCODE_KP_MEMSUBTRACT:begin
+   result:=KEYCODE_KP_MEMSUBTRACT;
+  end;
+  SDL_SCANCODE_KP_MEMMULTIPLY:begin
+   result:=KEYCODE_KP_MEMMULTIPLY;
+  end;
+  SDL_SCANCODE_KP_MEMDIVIDE:begin
+   result:=KEYCODE_KP_MEMDIVIDE;
+  end;
+  SDL_SCANCODE_KP_PLUSMINUS:begin
+   result:=KEYCODE_KP_PLUSMINUS;
+  end;
+  SDL_SCANCODE_KP_CLEAR:begin
+   result:=KEYCODE_KP_CLEAR;
+  end;
+  SDL_SCANCODE_KP_CLEARENTRY:begin
+   result:=KEYCODE_KP_CLEARENTRY;
+  end;
+  SDL_SCANCODE_KP_BINARY:begin
+   result:=KEYCODE_KP_BINARY;
+  end;
+  SDL_SCANCODE_KP_OCTAL:begin
+   result:=KEYCODE_KP_OCTAL;
+  end;
+  SDL_SCANCODE_KP_DECIMAL:begin
+   result:=KEYCODE_KP_DECIMAL;
+  end;
+  SDL_SCANCODE_KP_HEXADECIMAL:begin
+   result:=KEYCODE_KP_HEXADECIMAL;
+  end;
+  SDL_SCANCODE_LGUI:begin
+   result:=KEYCODE_LGUI;
+  end;
+  SDL_SCANCODE_RGUI:begin
+   result:=KEYCODE_RGUI;
+  end;
+  SDL_SCANCODE_AUDIONEXT:begin
+   result:=KEYCODE_AUDIONEXT;
+  end;
+  SDL_SCANCODE_AUDIOPREV:begin
+   result:=KEYCODE_AUDIOPREV;
+  end;
+  SDL_SCANCODE_AUDIOSTOP:begin
+   result:=KEYCODE_AUDIOSTOP;
+  end;
+  SDL_SCANCODE_AUDIOPLAY:begin
+   result:=KEYCODE_AUDIOPLAY;
+  end;
+  SDL_SCANCODE_AUDIOMUTE:begin
+   result:=KEYCODE_AUDIOMUTE;
+  end;
+  SDL_SCANCODE_MEDIASELECT:begin
+   result:=KEYCODE_MEDIASELECT;
+  end;
+  SDL_SCANCODE_WWW:begin
+   result:=KEYCODE_WWW;
+  end;
+  SDL_SCANCODE_MAIL:begin
+   result:=KEYCODE_MAIL;
+  end;
+  SDL_SCANCODE_CALCULATOR:begin
+   result:=KEYCODE_CALCULATOR;
+  end;
+  SDL_SCANCODE_COMPUTER:begin
+   result:=KEYCODE_COMPUTER;
+  end;
+  SDL_SCANCODE_AC_SEARCH:begin
+   result:=KEYCODE_AC_SEARCH;
+  end;
+  SDL_SCANCODE_AC_HOME:begin
+   result:=KEYCODE_AC_HOME;
+  end;
+  SDL_SCANCODE_AC_BACK:begin
+   result:=KEYCODE_AC_BACK;
+  end;
+  SDL_SCANCODE_AC_FORWARD:begin
+   result:=KEYCODE_AC_FORWARD;
+  end;
+  SDL_SCANCODE_AC_STOP:begin
+   result:=KEYCODE_AC_STOP;
+  end;
+  SDL_SCANCODE_AC_REFRESH:begin
+   result:=KEYCODE_AC_REFRESH;
+  end;
+  SDL_SCANCODE_AC_BOOKMARKS:begin
+   result:=KEYCODE_AC_BOOKMARKS;
+  end;
+  SDL_SCANCODE_BRIGHTNESSDOWN:begin
+   result:=KEYCODE_BRIGHTNESSDOWN;
+  end;
+  SDL_SCANCODE_BRIGHTNESSUP:begin
+   result:=KEYCODE_BRIGHTNESSUP;
+  end;
+  SDL_SCANCODE_DISPLAYSWITCH:begin
+   result:=KEYCODE_DISPLAYSWITCH;
+  end;
+  SDL_SCANCODE_KBDILLUMTOGGLE:begin
+   result:=KEYCODE_KBDILLUMTOGGLE;
+  end;
+  SDL_SCANCODE_KBDILLUMDOWN:begin
+   result:=KEYCODE_KBDILLUMDOWN;
+  end;
+  SDL_SCANCODE_KBDILLUMUP:begin
+   result:=KEYCODE_KBDILLUMUP;
+  end;
+  SDL_SCANCODE_EJECT:begin
+   result:=KEYCODE_EJECT;
+  end;
+  SDL_SCANCODE_SLEEP:begin
+   result:=KEYCODE_SLEEP;
+  end;
+  else begin
+   case aScanCode of
+    SDL_SCANCODE_INTERNATIONAL1:begin
+     result:=KEYCODE_INTERNATIONAL1;
+    end;
+    SDL_SCANCODE_INTERNATIONAL2:begin
+     result:=KEYCODE_INTERNATIONAL2;
+    end;
+    SDL_SCANCODE_INTERNATIONAL3:begin
+     result:=KEYCODE_INTERNATIONAL3;
+    end;
+    SDL_SCANCODE_INTERNATIONAL4:begin
+     result:=KEYCODE_INTERNATIONAL4;
+    end;
+    SDL_SCANCODE_INTERNATIONAL5:begin
+     result:=KEYCODE_INTERNATIONAL5;
+    end;
+    SDL_SCANCODE_INTERNATIONAL6:begin
+     result:=KEYCODE_INTERNATIONAL6;
+    end;
+    SDL_SCANCODE_INTERNATIONAL7:begin
+     result:=KEYCODE_INTERNATIONAL7;
+    end;
+    SDL_SCANCODE_INTERNATIONAL8:begin
+     result:=KEYCODE_INTERNATIONAL8;
+    end;
+    SDL_SCANCODE_INTERNATIONAL9:begin
+     result:=KEYCODE_INTERNATIONAL9;
+    end;
+    SDL_SCANCODE_LANG1:begin
+     result:=KEYCODE_LANG1;
+    end;
+    SDL_SCANCODE_LANG2:begin
+     result:=KEYCODE_LANG2;
+    end;
+    SDL_SCANCODE_LANG3:begin
+     result:=KEYCODE_LANG3;
+    end;
+    SDL_SCANCODE_LANG4:begin
+     result:=KEYCODE_LANG4;
+    end;
+    SDL_SCANCODE_LANG5:begin
+     result:=KEYCODE_LANG5;
+    end;
+    SDL_SCANCODE_LANG6:begin
+     result:=KEYCODE_LANG6;
+    end;
+    SDL_SCANCODE_LANG7:begin
+     result:=KEYCODE_LANG7;
+    end;
+    SDL_SCANCODE_LANG8:begin
+     result:=KEYCODE_LANG8;
+    end;
+    SDL_SCANCODE_LANG9:begin
+     result:=KEYCODE_LANG9;
+    end;
+    SDL_SCANCODE_LOCKINGCAPSLOCK:begin
+     result:=KEYCODE_LOCKINGCAPSLOCK;
+    end;
+    SDL_SCANCODE_LOCKINGNUMLOCK:begin
+     result:=KEYCODE_LOCKINGNUMLOCK;
+    end;
+    SDL_SCANCODE_LOCKINGSCROLLLOCK:begin
+     result:=KEYCODE_LOCKINGSCROLLLOCK;
+    end;
+    SDL_SCANCODE_NONUSBACKSLASH:begin
+     result:=KEYCODE_NONUSBACKSLASH;
+    end;
+    SDL_SCANCODE_NONUSHASH:begin
+     result:=KEYCODE_NONUSHASH;
+    end;
+    else begin
+     result:=KEYCODE_UNKNOWN;
+    end;
+   end;
+  end;
+ end;
+end;
+
 function TpvApplicationInput.TranslateSDLKeyModifier(const aKeyModifier:TpvInt32):TpvApplicationInputKeyModifiers;
 begin
  result:=[];
@@ -5531,7 +6330,7 @@ end;
 
 procedure TpvApplicationInput.ProcessEvents;
 {$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
-var Index,PointerID,KeyCode,Position:TpvInt32;
+var Index,PointerID,KeyCode,ScanCode,Position:TpvInt32;
     KeyModifiers:TpvApplicationInputKeyModifiers;
     Event:PpvApplicationEvent;
     SDLEvent:PSDL_Event;
@@ -5547,14 +6346,14 @@ begin
     fCurrentEventTime:=fEventTimes[fEventCount];
     case SDLEvent^.type_ of
      SDL_QUITEV:begin
-      if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Down,KEYCODE_QUIT,[]))) and assigned(fProcessor) then begin
-       fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Down,KEYCODE_QUIT,[]));
+      if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Down,KEYCODE_QUIT,KEYCODE_QUIT,[]))) and assigned(fProcessor) then begin
+       fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Down,KEYCODE_QUIT,KEYCODE_QUIT,[]));
       end;
-      if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Typed,KEYCODE_QUIT,[]))) and assigned(fProcessor) then begin
-       fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Typed,KEYCODE_QUIT,[]));
+      if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Typed,KEYCODE_QUIT,KEYCODE_QUIT,[]))) and assigned(fProcessor) then begin
+       fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Typed,KEYCODE_QUIT,KEYCODE_QUIT,[]));
       end;
-      if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Up,KEYCODE_QUIT,[]))) and assigned(fProcessor) then begin
-       fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Up,KEYCODE_QUIT,[]));
+      if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Up,KEYCODE_QUIT,KEYCODE_QUIT,[]))) and assigned(fProcessor) then begin
+       fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Up,KEYCODE_QUIT,KEYCODE_QUIT,[]));
       end;
      end;
      SDL_DROPFILE:begin
@@ -5568,14 +6367,15 @@ begin
      end;
      SDL_KEYDOWN,SDL_KEYUP,SDL_KEYTYPED:begin
       KeyCode:=TranslateSDLKeyCode(SDLEvent^.key.keysym.sym,SDLEvent^.key.keysym.scancode);
+      ScanCode:=TranslateSDLScanCode(SDLEvent^.key.keysym.sym,SDLEvent^.key.keysym.scancode);
       KeyModifiers:=TranslateSDLKeyModifier(SDLEvent^.key.keysym.modifier);
       case SDLEvent^.type_ of
        SDL_KEYDOWN:begin
         fKeyDown[KeyCode and $ffff]:=true;
         inc(fKeyDownCount);
         fJustKeyDown[KeyCode and $ffff]:=true;
-        if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Down,KeyCode,KeyModifiers))) and assigned(fProcessor) then begin
-         fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Down,KeyCode,KeyModifiers));
+        if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Down,KeyCode,ScanCode,KeyModifiers))) and assigned(fProcessor) then begin
+         fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Down,KeyCode,ScanCode,KeyModifiers));
         end;
        end;
        SDL_KEYUP:begin
@@ -5584,13 +6384,13 @@ begin
          dec(fKeyDownCount);
         end;
         fJustKeyDown[KeyCode and $ffff]:=false;
-        if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Up,KeyCode,KeyModifiers))) and assigned(fProcessor) then begin
-         fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Up,KeyCode,KeyModifiers));
+        if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Up,KeyCode,ScanCode,KeyModifiers))) and assigned(fProcessor) then begin
+         fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Up,KeyCode,ScanCode,KeyModifiers));
         end;
        end;
        SDL_KEYTYPED:begin
-        if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Typed,KeyCode,KeyModifiers))) and assigned(fProcessor) then begin
-         fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Typed,KeyCode,KeyModifiers));
+        if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Typed,KeyCode,ScanCode,KeyModifiers))) and assigned(fProcessor) then begin
+         fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Typed,KeyCode,ScanCode,KeyModifiers));
         end;
        end;
       end;
@@ -5605,8 +6405,8 @@ begin
          break;
         end;
         else begin
-         if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Unicode,KeyCode,KeyModifiers))) and assigned(fProcessor) then begin
-          fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Unicode,KeyCode,KeyModifiers));
+         if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Unicode,KeyCode,ScanCode,KeyModifiers))) and assigned(fProcessor) then begin
+          fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Unicode,KeyCode,ScanCode,KeyModifiers));
          end;
         end;
        end;
@@ -5766,7 +6566,7 @@ begin
  fEventCount:=0;
 end;
 {$else}
-var Index,PointerID,KeyCode,Position:TpvInt32;
+var Index,PointerID,KeyCode,ScanCode,Position:TpvInt32;
     KeyModifiers:TpvApplicationInputKeyModifiers;
     Event:PpvApplicationEvent;
     NativeEvent:PpvApplicationNativeEvent;
@@ -5782,14 +6582,14 @@ begin
     fCurrentEventTime:=fEventTimes[fEventCount];
     case NativeEvent^.Kind of
      TpvApplicationNativeEventKind.Quit:begin
-      if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Down,KEYCODE_QUIT,[]))) and assigned(fProcessor) then begin
-       fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Down,KEYCODE_QUIT,[]));
+      if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Down,KEYCODE_QUIT,KEYCODE_QUIT,[]))) and assigned(fProcessor) then begin
+       fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Down,KEYCODE_QUIT,KEYCODE_QUIT,[]));
       end;
-      if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Typed,KEYCODE_QUIT,[]))) and assigned(fProcessor) then begin
-       fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Typed,KEYCODE_QUIT,[]));
+      if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Typed,KEYCODE_QUIT,KEYCODE_QUIT,[]))) and assigned(fProcessor) then begin
+       fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Typed,KEYCODE_QUIT,KEYCODE_QUIT,[]));
       end;
-      if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Up,KEYCODE_QUIT,[]))) and assigned(fProcessor) then begin
-       fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Up,KEYCODE_QUIT,[]));
+      if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Up,KEYCODE_QUIT,KEYCODE_QUIT,[]))) and assigned(fProcessor) then begin
+       fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Up,KEYCODE_QUIT,KEYCODE_QUIT,[]));
       end;
      end;
      TpvApplicationNativeEventKind.DropFile:begin
@@ -5805,14 +6605,15 @@ begin
      TpvApplicationNativeEventKind.KeyUp,
      TpvApplicationNativeEventKind.KeyTyped:begin
       KeyCode:=NativeEvent^.KeyCode;
+      ScanCode:=NativeEvent^.ScanCode;
       KeyModifiers:=NativeEvent^.KeyModifiers;
       case NativeEvent^.Kind of
        TpvApplicationNativeEventKind.KeyDown:begin
         fKeyDown[KeyCode and $ffff]:=true;
         inc(fKeyDownCount);
         fJustKeyDown[KeyCode and $ffff]:=true;
-        if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Down,KeyCode,KeyModifiers))) and assigned(fProcessor) then begin
-         fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Down,KeyCode,KeyModifiers));
+        if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Down,KeyCode,ScanCode,KeyModifiers))) and assigned(fProcessor) then begin
+         fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Down,KeyCode,ScanCode,KeyModifiers));
         end;
        end;
        TpvApplicationNativeEventKind.KeyUp:begin
@@ -5821,13 +6622,13 @@ begin
          dec(fKeyDownCount);
         end;
         fJustKeyDown[KeyCode and $ffff]:=false;
-        if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Up,KeyCode,KeyModifiers))) and assigned(fProcessor) then begin
-         fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Up,KeyCode,KeyModifiers));
+        if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Up,KeyCode,ScanCode,KeyModifiers))) and assigned(fProcessor) then begin
+         fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Up,KeyCode,ScanCode,KeyModifiers));
         end;
        end;
        TpvApplicationNativeEventKind.KeyTyped:begin
-        if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Typed,KeyCode,KeyModifiers))) and assigned(fProcessor) then begin
-         fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Typed,KeyCode,KeyModifiers));
+        if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Typed,KeyCode,ScanCode,KeyModifiers))) and assigned(fProcessor) then begin
+         fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Typed,KeyCode,ScanCode,KeyModifiers));
         end;
        end;
        else begin
@@ -5837,8 +6638,8 @@ begin
      TpvApplicationNativeEventKind.UnicodeCharTyped:begin
       KeyModifiers:=[];
       KeyCode:=NativeEvent^.CharVal;
-      if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Unicode,KeyCode,KeyModifiers))) and assigned(fProcessor) then begin
-       fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Unicode,KeyCode,KeyModifiers));
+      if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Unicode,KeyCode,ScanCode,KeyModifiers))) and assigned(fProcessor) then begin
+       fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Unicode,KeyCode,ScanCode,KeyModifiers));
       end;
      end;
      TpvApplicationNativeEventKind.TextInput:begin
@@ -5851,8 +6652,8 @@ begin
          break;
         end;
         else begin
-         if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Unicode,KeyCode,KeyModifiers))) and assigned(fProcessor) then begin
-          fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Unicode,KeyCode,KeyModifiers));
+         if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Unicode,KeyCode,KeyCode,KeyModifiers))) and assigned(fProcessor) then begin
+          fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Unicode,KeyCode,KeyCode,KeyModifiers));
          end;
         end;
        end;
@@ -12400,6 +13201,8 @@ var Index,FileNameLength,DroppedFileCount,CountInputs,OtherIndex:TpvSizeInt;
     NativeEvent.KeyCode:=KEYCODE_UNKNOWN;
    end;
   end;
+
+  NativeEvent.ScanCode:=NativeEvent.KeyCode;
 
   NativeEvent.KeyModifiers:=[];
 
