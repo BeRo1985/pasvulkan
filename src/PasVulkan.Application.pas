@@ -13040,20 +13040,20 @@ var Index,FileNameLength,DroppedFileCount,CountInputs,OtherIndex:TpvSizeInt;
          KEYCODE_F8, // $42
          KEYCODE_F9, // $43
          KEYCODE_F10, // $44
-         KEYCODE_NUMLOCKCLEAR, // $45
+         KEYCODE_NUMLOCK, // $45
          KEYCODE_SCROLLLOCK, // $46
-         KEYCODE_KP_7, // $47
-         KEYCODE_KP_8, // $48
-         KEYCODE_KP_9, // $49
+         KEYCODE_KP7, // $47
+         KEYCODE_KP8, // $48
+         KEYCODE_KP9, // $49
          KEYCODE_KP_MINUS, // $4a
-         KEYCODE_KP_4, // $4b
-         KEYCODE_KP_5, // $4c
-         KEYCODE_KP_6, // $4d
+         KEYCODE_KP4, // $4b
+         KEYCODE_KP5, // $4c
+         KEYCODE_KP6, // $4d
          KEYCODE_KP_PLUS, // $4e
-         KEYCODE_KP_1, // $4f
-         KEYCODE_KP_2, // $50
-         KEYCODE_KP_3, // $51
-         KEYCODE_KP_0, // $52
+         KEYCODE_KP1, // $4f
+         KEYCODE_KP2, // $50
+         KEYCODE_KP3, // $51
+         KEYCODE_KP0, // $52
          KEYCODE_KP_PERIOD, // $53
          KEYCODE_UNKNOWN, // $54
          KEYCODE_UNKNOWN, // $55
@@ -13115,7 +13115,7 @@ var Index,FileNameLength,DroppedFileCount,CountInputs,OtherIndex:TpvSizeInt;
          KEYCODE_UNKNOWN, // $e00d
          KEYCODE_UNKNOWN, // $e00e
          KEYCODE_UNKNOWN, // $e00f
-         KEYCODE_MEDIA_PREVIOUS_TRACK, // $e010
+         KEYCODE_AUDIOPREV, // $e010
          KEYCODE_UNKNOWN, // $e011
          KEYCODE_UNKNOWN, // $e012
          KEYCODE_UNKNOWN, // $e013
@@ -13124,7 +13124,7 @@ var Index,FileNameLength,DroppedFileCount,CountInputs,OtherIndex:TpvSizeInt;
          KEYCODE_UNKNOWN, // $e016
          KEYCODE_CUT, // $e017
          KEYCODE_COPY, // $e018
-         KEYCODE_MEDIA_NEXT_TRACK, // $e019
+         KEYCODE_AUDIONEXT, // $e019
          KEYCODE_UNKNOWN, // $e01a
          KEYCODE_UNKNOWN, // $e01b
          KEYCODE_KP_ENTER, // $e01c
@@ -13133,9 +13133,9 @@ var Index,FileNameLength,DroppedFileCount,CountInputs,OtherIndex:TpvSizeInt;
          KEYCODE_UNKNOWN, // $e01f
          KEYCODE_MUTE, // $e020
          KEYCODE_UNKNOWN, // $e021 // LaunchApp2
-         KEYCODE_MEDIA_PLAY_PAUSE, // $e022
+         KEYCODE_AUDIOPLAY, // $e022
          KEYCODE_UNKNOWN, // $e023
-         KEYCODE_MEDIA_STOP, // $e024
+         KEYCODE_AUDIOSTOP, // $e024
          KEYCODE_UNKNOWN, // $e025
          KEYCODE_UNKNOWN, // $e026
          KEYCODE_UNKNOWN, // $e027
@@ -13143,7 +13143,7 @@ var Index,FileNameLength,DroppedFileCount,CountInputs,OtherIndex:TpvSizeInt;
          KEYCODE_UNKNOWN, // $e029
          KEYCODE_UNKNOWN, // $e02a
          KEYCODE_UNKNOWN, // $e02b
-         KEYCODE_MEDIA_EJECT, // $e02c
+         KEYCODE_EJECT, // $e02c
          KEYCODE_UNKNOWN, // $e02d
          KEYCODE_VOLUMEDOWN, // $e02e
          KEYCODE_UNKNOWN, // $e02f
@@ -13168,7 +13168,7 @@ var Index,FileNameLength,DroppedFileCount,CountInputs,OtherIndex:TpvSizeInt;
          KEYCODE_UNKNOWN, // $e042
          KEYCODE_UNKNOWN, // $e043
          KEYCODE_UNKNOWN, // $e044
-         KEYCODE_NUMLOCKCLEAR, // $e045
+         KEYCODE_NUMLOCK, // $e045
          KEYCODE_PAUSE, // $e046
          KEYCODE_HOME, // $e047
          KEYCODE_UP, // $e048
@@ -13206,9 +13206,9 @@ var Index,FileNameLength,DroppedFileCount,CountInputs,OtherIndex:TpvSizeInt;
          KEYCODE_AC_STOP, // $e068
          KEYCODE_AC_FORWARD, // $e069
          KEYCODE_AC_BACK, // $e06a
-         /*0xe06b*/ SDL_SCANCODE_LanuchApp1
-         /*0xe06c*/ SDL_SCANCODE_LaunchMail
-         KEYCODE_MEDIA_SELECT, // $e06d
+         KEYCODE_APPLICATION, // $e06b
+         KEYCODE_MAIL, // $e06c
+         KEYCODE_MEDIASELECT, // $e06d
          KEYCODE_UNKNOWN, // $e06e
          KEYCODE_UNKNOWN, // $e06f
          KEYCODE_UNKNOWN, // $e070
