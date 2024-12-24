@@ -687,7 +687,7 @@ const SDL2LibName={$if defined(Win32)}
       SDLK_PERCENT=ord('%');
       SDLK_DOLLAR=ord('$');
       SDLK_AMPERSAND=ord('&');
-      SDLK_QUOTE=ord('''');
+      SDLK_APOSTROPHE=ord('''');
       SDLK_LEFTPAREN=ord('(');
       SDLK_RIGHTPAREN=ord(')');
       SDLK_ASTERISK=ord('*');
@@ -746,6 +746,10 @@ const SDL2LibName={$if defined(Win32)}
       SDLK_x=ord('x');
       SDLK_y=ord('y');
       SDLK_z=ord('z');
+      SDLK_LEFTBRACE=ord('{');
+      SDLK_PIPE=ord('|');
+      SDLK_RIGHTBRACE=ord('}');
+      SDLK_TILDE=ord('~');
 
       SDL_SCANCODE_TO_KEYCODE=1 shl 30;
 
