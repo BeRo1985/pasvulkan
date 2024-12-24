@@ -5690,7 +5690,7 @@ begin
    result:=KEYCODE_RIGHTBRACE;
   end;}
   SDL_SCANCODE_GRAVE:begin
-   result:=KEYCODE_TILDE;
+   result:=KEYCODE_GRAVE;
   end;
   SDL_SCANCODE_DELETE:begin
    result:=KEYCODE_DELETE;
