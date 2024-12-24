@@ -13226,10 +13226,10 @@ var Index,FileNameLength,DroppedFileCount,CountInputs,OtherIndex:TpvSizeInt;
          KEYCODE_UNKNOWN, // $e07c
          KEYCODE_UNKNOWN, // $e07d
          KEYCODE_UNKNOWN, // $e07e
-         KEYCODE_UNKNOWN, // $e07f
+         KEYCODE_UNKNOWN  // $e07f
         );
  var VirtualKey:WPARAM;
-     ScanCode:DWORD;
+     ScanCode,KeyFlags:DWORD;
      Extended:Boolean;
  begin
 
@@ -13238,6 +13238,7 @@ var Index,FileNameLength,DroppedFileCount,CountInputs,OtherIndex:TpvSizeInt;
   VirtualKey:=aWParam;
   ScanCode:=(aLParam and $00ff0000) shr 16;
   Extended:=(aLParam and $01000000)<>0;
+  KeyFlags:=aLParam shr 16;
 
   case VirtualKey of
    VK_SHIFT:begin
@@ -13457,7 +13458,22 @@ var Index,FileNameLength,DroppedFileCount,CountInputs,OtherIndex:TpvSizeInt;
    end;
   end;
 
-  NativeEvent.ScanCode:=NativeEvent.KeyCode;
+  ScanCode:=ScanCode and not $80;
+
+  if ScanCode<>0 then begin
+   if (KeyFlags and KF_EXTENDED)=KF_EXTENDED then begin
+    ScanCode:=ScanCode or $e000;
+   end else if ScanCode=$45 then begin
+    ScanCode:=$e046;
+   end;
+  end else begin
+   ScanCode:=MapVirtualKey(aWParam and $ffff,MAPVK_VK_TO_VSC_EX);
+   if ScanCode=$e11d then begin
+    ScanCode:=$e046;
+   end;
+  end;
+
+  NativeEvent.ScanCode:=ScanCodes[(ScanCode and $ff) or IfThen((ScanCode and $ff00)<>0,$80,$90)];
 
   NativeEvent.KeyModifiers:=[];
 
