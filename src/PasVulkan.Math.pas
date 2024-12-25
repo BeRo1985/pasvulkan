@@ -1891,15 +1891,46 @@ function DecodeQTangentUI32(const aValue:TpvUInt32):TpvMatrix3x3;
 function TessellateTriangle(const aIndex,aResolution:TpvSizeInt;const aInputVertices:PpvVector3Array;const aOutputVertices:PpvVector3Array):TpvMatrix3x3;
 function IndirectTessellateTriangle(const aIndex,aResolution:TpvSizeInt;const aInputVertices:PPpvVector3Array;const aOutputVertices:PPpvVector3Array):TpvMatrix3x3;
 
+function EaseInSine(x:TpvScalar):TpvScalar;
+function EaseOutSine(x:TpvScalar):TpvScalar;
+function EaseInOutSine(x:TpvScalar):TpvScalar;
+
+function EaseInQuad(x:TpvScalar):TpvScalar;
+function EaseOutQuad(x:TpvScalar):TpvScalar;
+function EaseInOutQuad(x:TpvScalar):TpvScalar;
+
+function EaseInCubic(x:TpvScalar):TpvScalar;
+function EaseOutCubic(x:TpvScalar):TpvScalar;
+function EaseInOutCubic(x:TpvScalar):TpvScalar;
+
+function EaseInQuart(x:TpvScalar):TpvScalar;
+function EaseOutQuart(x:TpvScalar):TpvScalar;
+function EaseInOutQuart(x:TpvScalar):TpvScalar;
+
+function EaseInQuint(x:TpvScalar):TpvScalar;
+function EaseOutQuint(x:TpvScalar):TpvScalar;
+function EaseInOutQuint(x:TpvScalar):TpvScalar;
+
+function EaseInExpo(x:TpvScalar):TpvScalar;
+function EaseOutExpo(x:TpvScalar):TpvScalar;
+function EaseInOutExpo(x:TpvScalar):TpvScalar;
+
 function EaseInCircle(x:TpvScalar):TpvScalar;
 function EaseOutCircle(x:TpvScalar):TpvScalar;
+function EaseInOutCircle(x:TpvScalar):TpvScalar;
+
 function EaseInBack(x:TpvScalar):TpvScalar;
 function EaseOutBack(x:TpvScalar):TpvScalar;
 function EaseInOutBack(x:TpvScalar):TpvScalar;
+
 function EaseInElastic(x:TpvScalar):TpvScalar;
 function EaseOutElastic(x:TpvScalar):TpvScalar;
+function EaseInOutElastic(x:TpvScalar):TpvScalar;
+
 function EaseOutBounce(x:TpvScalar):TpvScalar;
 function EaseInBounce(x:TpvScalar):TpvScalar;
+function EaseInOutBounce(x:TpvScalar):TpvScalar;
+
 function LerpEaseOutBounce(const aTime,aDuration,aMin,aMax:TpvScalar):TpvScalar;
 
 implementation
@@ -21422,6 +21453,156 @@ begin
 
 end;
 
+(*
+function EaseInSine(x:TpvScalar):TpvScalar;
+function EaseOutSine(x:TpvScalar):TpvScalar;
+function EaseInOutSine(x:TpvScalar):TpvScalar;
+
+function EaseInQuad(x:TpvScalar):TpvScalar;
+function EaseOutQuad(x:TpvScalar):TpvScalar;
+function EaseInOutQuad(x:TpvScalar):TpvScalar;
+
+function EaseInCubic(x:TpvScalar):TpvScalar;
+function EaseOutCubic(x:TpvScalar):TpvScalar;
+function EaseInOutCubic(x:TpvScalar):TpvScalar;
+
+function EaseInQuart(x:TpvScalar):TpvScalar;
+function EaseOutQuart(x:TpvScalar):TpvScalar;
+function EaseInOutQuart(x:TpvScalar):TpvScalar;
+
+function EaseInQuint(x:TpvScalar):TpvScalar;
+function EaseOutQuint(x:TpvScalar):TpvScalar;
+function EaseInOutQuint(x:TpvScalar):TpvScalar;
+
+function EaseInExpo(x:TpvScalar):TpvScalar;
+function EaseOutExpo(x:TpvScalar):TpvScalar;
+function EaseInOutExpo(x:TpvScalar):TpvScalar;
+*)
+
+function EaseInSine(x:TpvScalar):TpvScalar;
+begin
+ result:=1.0-cos((x*PI)*0.5);
+end;
+
+function EaseOutSine(x:TpvScalar):TpvScalar;
+begin
+ result:=sin((x*PI)*0.5);
+end;
+
+function EaseInOutSine(x:TpvScalar):TpvScalar;
+begin
+ result:=0.5*(1.0-cos(x*PI));
+end;
+
+function EaseInQuad(x:TpvScalar):TpvScalar;
+begin
+ result:=sqr(x);
+end;
+
+function EaseOutQuad(x:TpvScalar):TpvScalar;
+begin
+ result:=1.0-sqr(1.0-x);
+end;
+
+function EaseInOutQuad(x:TpvScalar):TpvScalar;
+begin
+ if x<0.5 then begin
+  result:=2.0*sqr(x);
+ end else begin
+  result:=1.0-(2.0*sqr(1.0-x));
+ end;
+end;
+
+function EaseInCubic(x:TpvScalar):TpvScalar;
+begin
+ result:=sqr(x)*x;
+end;
+
+function EaseOutCubic(x:TpvScalar):TpvScalar;
+begin
+ result:=1.0-(sqr(1.0-x)*(1.0-x));
+end;
+
+function EaseInOutCubic(x:TpvScalar):TpvScalar;
+begin
+ if x<0.5 then begin
+  result:=4.0*sqr(x)*x;
+ end else begin
+  result:=1.0-((4.0*sqr(1.0-x)*(1.0-x)));
+ end;
+end;
+
+function EaseInQuart(x:TpvScalar):TpvScalar;
+begin
+ result:=sqr(sqr(x));
+end;
+
+function EaseOutQuart(x:TpvScalar):TpvScalar;
+begin
+ result:=1.0-sqr(sqr(1.0-x));
+end;
+
+function EaseInOutQuart(x:TpvScalar):TpvScalar;
+begin
+ if x<0.5 then begin
+  result:=8.0*sqr(sqr(x));
+ end else begin
+  result:=1.0-(8.0*sqr(sqr(1.0-x)));
+ end;
+end;
+
+function EaseInQuint(x:TpvScalar):TpvScalar;
+begin
+ result:=sqr(sqr(x))*x;
+end;
+
+function EaseOutQuint(x:TpvScalar):TpvScalar;
+begin
+ result:=1.0-(sqr(sqr(1.0-x))*(1.0-x));
+end;
+
+function EaseInOutQuint(x:TpvScalar):TpvScalar;
+begin
+ if x<0.5 then begin
+  result:=16.0*sqr(sqr(x))*x;
+ end else begin
+  result:=1.0-(16.0*sqr(sqr(1.0-x))*(1.0-x));
+ end;
+end;
+
+function EaseInExpo(x:TpvScalar):TpvScalar;
+begin
+ if x<=0.0 then begin
+  result:=0.0;
+ end else begin
+  result:=Power(2.0,10.0*(x-1.0));
+ end;
+end;
+
+function EaseOutExpo(x:TpvScalar):TpvScalar;
+begin
+ if x>=1.0 then begin
+  result:=1.0;
+ end else begin
+  result:=1.0-Power(2.0,-10.0*x);
+ end;
+end;
+
+function EaseInOutExpo(x:TpvScalar):TpvScalar;
+begin
+ if x<=0.0 then begin
+  result:=0.0;
+ end else if x>=1.0 then begin
+  result:=1.0;
+ end else begin
+  if x<0.5 then begin
+   result:=0.5*Power(2.0,(20.0*x)-10.0);
+  end else begin
+   result:=0.5*(2.0-Power(2.0,10.0-(20.0*x)));
+  end;
+ end;
+end;
+
 function EaseInCircle(x:TpvScalar):TpvScalar;
 begin
  result:=1.0-sqrt(1.0-sqr(x));
@@ -21430,6 +21611,15 @@ end;
 function EaseOutCircle(x:TpvScalar):TpvScalar;
 begin
  result:=sqrt(1.0-sqr(x-1.0));
+end;
+
+function EaseInOutCircle(x:TpvScalar):TpvScalar;
+begin
+ if x<0.5 then begin
+  result:=0.5*(1.0-sqrt(1.0-sqr(x*2.0)));
+ end else begin
+  result:=0.5*(sqrt(1.0-sqr((x*2.0)-2.0))+1.0);
+ end;
 end;
 
 function EaseInBack(x:TpvScalar):TpvScalar;
@@ -21482,6 +21672,22 @@ begin
  end;
 end;
 
+function EaseInOutElastic(x:TpvScalar):TpvScalar;
+const c4=(2.0*PI)/4.5;
+begin
+ if x<=0.0 then begin
+  result:=0.0;
+ end else if x>=1.0 then begin
+  result:=1.0;
+ end else begin
+  if x<0.5 then begin
+   result:=-(Power(2.0,(20*x)-10)*sin(((20*x)-11.125)*c4))*0.5;
+  end else begin
+   result:=(Power(2.0,(-20)*x)*sin(((20*x)-11.125)*c4))*0.5+1.0;
+  end;
+ end;
+end;
+
 function EaseOutBounce(x:TpvScalar):TpvScalar;
 const n1=7.5625;
       d1=2.75;
@@ -21512,6 +21718,15 @@ end;
 function EaseInBounce(x:TpvScalar):TpvScalar;
 begin
  result:=1.0-EaseOutBounce(1.0-x);
+end;
+
+function EaseInOutBounce(x:TpvScalar):TpvScalar;
+begin
+ if x<0.5 then begin
+  result:=EaseInBounce(x*2.0)*0.5;
+ end else begin
+  result:=(EaseOutBounce((x*2.0)-1.0)*0.5)+0.5;
+ end;
 end;
 
 function LerpEaseOutBounce(const aTime,aDuration,aMin,aMax:TpvScalar):TpvScalar;
