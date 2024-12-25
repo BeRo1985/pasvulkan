@@ -1891,6 +1891,17 @@ function DecodeQTangentUI32(const aValue:TpvUInt32):TpvMatrix3x3;
 function TessellateTriangle(const aIndex,aResolution:TpvSizeInt;const aInputVertices:PpvVector3Array;const aOutputVertices:PpvVector3Array):TpvMatrix3x3;
 function IndirectTessellateTriangle(const aIndex,aResolution:TpvSizeInt;const aInputVertices:PPpvVector3Array;const aOutputVertices:PPpvVector3Array):TpvMatrix3x3;
 
+function EaseInCircle(x:TpvScalar):TpvScalar;
+function EaseOutCircle(x:TpvScalar):TpvScalar;
+function EaseInBack(x:TpvScalar):TpvScalar;
+function EaseOutBack(x:TpvScalar):TpvScalar;
+function EaseInOutBack(x:TpvScalar):TpvScalar;
+function EaseInElastic(x:TpvScalar):TpvScalar;
+function EaseOutElastic(x:TpvScalar):TpvScalar;
+function EaseOutBounce(x:TpvScalar):TpvScalar;
+function EaseInBounce(x:TpvScalar):TpvScalar;
+function LerpEaseOutBounce(const aTime,aDuration,aMin,aMax:TpvScalar):TpvScalar;
+
 implementation
 
 function RoundDownToPowerOfTwo(x:TpvUInt32):TpvUInt32;
@@ -21409,6 +21420,129 @@ begin
  // Return the barycentric coordinates for other possible calculations like texture coordinate interpolation and the like.
  // result is already set
 
+end;
+
+function EaseInCircle(x:TpvScalar):TpvScalar;
+begin
+ result:=1.0-sqrt(1.0-sqr(x));
+end;
+
+function EaseOutCircle(x:TpvScalar):TpvScalar;
+begin
+ result:=sqrt(1.0-sqr(x-1.0));
+end;
+
+function EaseInBack(x:TpvScalar):TpvScalar;
+const c1=1.70158;
+      c3=c1+1.0;
+begin
+ result:=(c3*(x*x*x))-(c1*x*x);
+end;
+
+function EaseOutBack(x:TpvScalar):TpvScalar;
+const c1=1.70158;
+      c3=c1+1.0;
+begin
+ x:=x-1.0;
+ result:=1.0+(c3*(x*x*x))+(c1*x*x);
+end;
+
+function EaseInOutBack(x:TpvScalar):TpvScalar;
+const c1=1.70158;
+      c2=c1*1.525;
+begin
+ if x<0.5 then begin
+  result:=(sqr(2.0*x)*(((c2+1.0)*2.0*x)-c2))*0.5;
+ end else begin
+  result:=((sqr((2.0*x)-2.0)*((c2+1.0)*((x*2.0)-2.0)+c2))+2.0)*0.5;
+ end;
+end;
+
+function EaseInElastic(x:TpvScalar):TpvScalar;
+const c4=(2.0*PI)/3.0;
+begin
+ if x<=0.0 then begin
+  result:=0.0;
+ end else if x>=1.0 then begin
+  result:=1.0;
+ end else begin
+  result:=-Power(2.0,(10*x)-10)*sin(((x*10)-10.75)*c4);
+ end;
+end;
+
+function EaseOutElastic(x:TpvScalar):TpvScalar;
+const c4=(2.0*PI)/3.0;
+begin
+ if x<=0.0 then begin
+  result:=0.0;
+ end else if x>=1.0 then begin
+  result:=1.0;
+ end else begin
+  result:=(Power(2.0,(-10)*x)*sin(((x*10)-0.75)*c4))+1;
+ end;
+end;
+
+function EaseOutBounce(x:TpvScalar):TpvScalar;
+const n1=7.5625;
+      d1=2.75;
+      d11=1.0/d1;
+      d12=2.0/d1;
+      d13=2.5/d1;
+      d14=1.5/d1;
+      d15=2.25/d1;
+      d16=2.625/d1;
+begin
+ if x<=0.0 then begin
+  result:=0.0;
+ end else if x>=1.0 then begin
+  result:=1.0;
+ end else begin
+  if x<d11 then begin
+   result:=n1*sqr(x);
+  end else if x<d12 then begin
+   result:=(n1*sqr(x-d14))+0.75;
+  end else if x<d13 then begin
+   result:=(n1*sqr(x-d15))+0.9375;
+  end else begin
+   result:=(n1*sqr(x-d16))+0.984375;
+  end;
+ end;
+end;
+
+function EaseInBounce(x:TpvScalar):TpvScalar;
+begin
+ result:=1.0-EaseOutBounce(1.0-x);
+end;
+
+function LerpEaseOutBounce(const aTime,aDuration,aMin,aMax:TpvScalar):TpvScalar;
+const b1=4/11;
+      b2=6/11;
+      b3=8/11;
+      b4=3/4;
+      b5=9/11;
+      b6=10/11;
+      b7=15/16;
+      b8=21/22;
+      b9=63/64;
+      b0=1.0/(b1*b1);
+var Time:TpvScalar;
+begin
+ Time:=aTime/aDuration;
+ if Time<=0.0 then begin
+  Time:=0.0;
+ end else if Time>=1.0 then begin
+  Time:=1.0;
+ end;
+ if Time<b1 then begin
+  result:=sqr(Time)*b0;
+ end else if Time<b3 then begin
+	result:=(sqr(Time-b2)*b0)+b4;
+ end else if Time<b6 then begin
+  result:=(sqr(Time-b5)*b0)+b7;
+ end else begin
+	result:=(sqr(Time-b8)*b0)+b9;
+ end;
+ result:=(aMin*(1.0-result))+(result*aMax);
 end;
 
 initialization
