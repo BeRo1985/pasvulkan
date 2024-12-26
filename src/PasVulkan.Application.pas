@@ -65,6 +65,9 @@ unit PasVulkan.Application;
   {$ifend}
  {$endif}
 {$endif}
+{$ifdef fpc}
+ {$packenum 4}
+{$endif}
 
 interface
 
