@@ -305,7 +305,7 @@ type TpvScene3DPlanets=class;
               fNormalMapImage:TpvScene3DRendererMipmapImage2D; // A2B10G10R10_UNORM_PACK32
               fBlendMapImage:TpvScene3DRendererArray2DImage; // R8G8B8A8_UNORM
               fGrassMapImage:TpvScene3DRendererImage2D; // R32_FLOAT
-              fDownloadBuffer:TpvVulkanBuffer;
+              fTransferBuffer:TpvVulkanBuffer;
               fWaterHeightMapImage:TpvScene3DRendererImage2D; // R32_SFLOAT
               fWaterHeightMapBuffers:array[0..1] of TpvVulkanBuffer; // Double-buffered
               fWaterFlowMapBuffer:TpvVulkanBuffer;
@@ -392,6 +392,12 @@ type TpvScene3DPlanets=class;
                                  const aTransferHeightMap:Boolean;
                                  const aTransferBlendMap:Boolean;
                                  const aTransferGrass:Boolean);
+              procedure Upload(const aQueue:TpvVulkanQueue;
+                               const aCommandBuffer:TpvVulkanCommandBuffer;
+                               const aFence:TpvVulkanFence;
+                               const aTransferHeightMap:Boolean;
+                               const aTransferBlendMap:Boolean;
+                               const aTransferGrass:Boolean);
               procedure TransferTo(const aCommandBuffer:TpvVulkanCommandBuffer;
                                    const aInFlightFrameData:TData;
                                    const aTransferHeightMap:Boolean;
@@ -2420,7 +2426,7 @@ begin
 
  fGrassMapImage:=nil;
 
- fDownloadBuffer:=nil;
+ fTransferBuffer:=nil;
 
  fWaterHeightMapImage:=nil;
 
@@ -2584,7 +2590,7 @@ begin
 
   if fInFlightFrameIndex<0 then begin
     
-   fDownloadBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
+   fTransferBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
                                            Max(
                                             Max(
                                              fPlanet.fHeightMapResolution*fPlanet.fHeightMapResolution*SizeOf(TpvFloat),
@@ -2609,8 +2615,8 @@ begin
                                            [TpvVulkanBufferFlag.PersistentMappedIfPossible,TpvVulkanBufferFlag.PreferDedicatedAllocation],
                                            0,
                                            pvAllocationGroupIDScene3DPlanetStatic,
-                                           'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fDownloadBuffer');
-   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fDownloadBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fDownloadBuffer');
+                                           'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fTransferBuffer');
+   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fTransferBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fTransferBuffer');
 
   end;
 
@@ -3258,7 +3264,7 @@ begin
 
  end;
 
- FreeAndNil(fDownloadBuffer);
+ FreeAndNil(fTransferBuffer);
 
  FreeAndNil(fBlendMiniMapBuffer);
 
@@ -3886,9 +3892,9 @@ begin
                                                                                     TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
                                                                                     VK_QUEUE_FAMILY_IGNORED,
                                                                                     VK_QUEUE_FAMILY_IGNORED,
-                                                                                    fDownloadBuffer.Handle,
+                                                                                    fTransferBuffer.Handle,
                                                                                     0,
-                                                                                    fDownloadBuffer.Size);
+                                                                                    fTransferBuffer.Size);
      inc(CountBufferMemoryBarriers);
 
     end;
@@ -3913,9 +3919,9 @@ begin
                                                                                     TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
                                                                                     VK_QUEUE_FAMILY_IGNORED,
                                                                                     VK_QUEUE_FAMILY_IGNORED,
-                                                                                    fDownloadBuffer.Handle,
+                                                                                    fTransferBuffer.Handle,
                                                                                     0,
-                                                                                    fDownloadBuffer.Size);
+                                                                                    fTransferBuffer.Size);
      inc(CountBufferMemoryBarriers);
 
     end;
@@ -3940,9 +3946,9 @@ begin
                                                                                     TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
                                                                                     VK_QUEUE_FAMILY_IGNORED,
                                                                                     VK_QUEUE_FAMILY_IGNORED,
-                                                                                    fDownloadBuffer.Handle,
+                                                                                    fTransferBuffer.Handle,
                                                                                     0,
-                                                                                    fDownloadBuffer.Size);
+                                                                                    fTransferBuffer.Size);
      inc(CountBufferMemoryBarriers);
 
     end;
@@ -3963,9 +3969,9 @@ begin
                                                                                     TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
                                                                                     VK_QUEUE_FAMILY_IGNORED,
                                                                                     VK_QUEUE_FAMILY_IGNORED,
-                                                                                    fDownloadBuffer.Handle,
+                                                                                    fTransferBuffer.Handle,
                                                                                     0,
-                                                                                    fDownloadBuffer.Size);
+                                                                                    fTransferBuffer.Size);
      inc(CountBufferMemoryBarriers);
 
     end;
@@ -4001,7 +4007,7 @@ begin
 
      aCommandBuffer.CmdCopyImageToBuffer(fHeightMapImage.VulkanImage.Handle,
                                          VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                                         fDownloadBuffer.Handle,
+                                         fTransferBuffer.Handle,
                                          1,
                                          @BufferImageCopy);
 
@@ -4018,7 +4024,7 @@ begin
 
      aCommandBuffer.CmdCopyImageToBuffer(fNormalMapImage.VulkanImage.Handle,
                                          VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                                         fDownloadBuffer.Handle,
+                                         fTransferBuffer.Handle,
                                          1,
                                          @BufferImageCopy);
 
@@ -4035,7 +4041,7 @@ begin
 
      aCommandBuffer.CmdCopyImageToBuffer(fBlendMapImage.VulkanImage.Handle,
                                          VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                                         fDownloadBuffer.Handle,
+                                         fTransferBuffer.Handle,
                                          1,
                                          @BufferImageCopy);
 
@@ -4052,7 +4058,7 @@ begin
 
      aCommandBuffer.CmdCopyImageToBuffer(fGrassMapImage.VulkanImage.Handle,
                                          VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                                         fDownloadBuffer.Handle,
+                                         fTransferBuffer.Handle,
                                          1,
                                          @BufferImageCopy);
 
@@ -4091,9 +4097,9 @@ begin
                                                                                     0,//TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT) or TVkAccessFlags(VK_ACCESS_MEMORY_WRITE_BIT),
                                                                                     VK_QUEUE_FAMILY_IGNORED,
                                                                                     VK_QUEUE_FAMILY_IGNORED,
-                                                                                    fDownloadBuffer.Handle,
+                                                                                    fTransferBuffer.Handle,
                                                                                     0,
-                                                                                    fDownloadBuffer.Size);
+                                                                                    fTransferBuffer.Size);
      inc(CountBufferMemoryBarriers);
 
     end;
@@ -4118,9 +4124,9 @@ begin
                                                                                     0,//TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT) or TVkAccessFlags(VK_ACCESS_MEMORY_WRITE_BIT),
                                                                                     VK_QUEUE_FAMILY_IGNORED,
                                                                                     VK_QUEUE_FAMILY_IGNORED,
-                                                                                    fDownloadBuffer.Handle,
+                                                                                    fTransferBuffer.Handle,
                                                                                     0,
-                                                                                    fDownloadBuffer.Size);
+                                                                                    fTransferBuffer.Size);
      inc(CountBufferMemoryBarriers);
 
     end;
@@ -4145,9 +4151,9 @@ begin
                                                                                     0,//TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT) or TVkAccessFlags(VK_ACCESS_MEMORY_WRITE_BIT),
                                                                                     VK_QUEUE_FAMILY_IGNORED,
                                                                                     VK_QUEUE_FAMILY_IGNORED,
-                                                                                    fDownloadBuffer.Handle,
+                                                                                    fTransferBuffer.Handle,
                                                                                     0,
-                                                                                    fDownloadBuffer.Size);
+                                                                                    fTransferBuffer.Size);
      inc(CountBufferMemoryBarriers);
 
     end;
@@ -4168,9 +4174,9 @@ begin
                                                                                     0,//TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT) or TVkAccessFlags(VK_ACCESS_MEMORY_WRITE_BIT),
                                                                                     VK_QUEUE_FAMILY_IGNORED,
                                                                                     VK_QUEUE_FAMILY_IGNORED,
-                                                                                    fDownloadBuffer.Handle,
+                                                                                    fTransferBuffer.Handle,
                                                                                     0,
-                                                                                    fDownloadBuffer.Size);
+                                                                                    fTransferBuffer.Size);
      inc(CountBufferMemoryBarriers);
 
     end;
@@ -4212,7 +4218,7 @@ begin
       fPlanet.fVulkanDevice.MemoryStaging.Download(aQueue,
                                                    aCommandBuffer,
                                                    aFence,
-                                                   fDownloadBuffer,
+                                                   fTransferBuffer,
                                                    0,
                                                    fHeightMapData[0],
                                                    fPlanet.fHeightMapResolution*fPlanet.fHeightMapResolution*SizeOf(TpvFloat));
@@ -4229,7 +4235,7 @@ begin
       fPlanet.fVulkanDevice.MemoryStaging.Download(aQueue,
                                                    aCommandBuffer,
                                                    aFence,
-                                                   fDownloadBuffer,
+                                                   fTransferBuffer,
                                                    0,
                                                    fNormalMapData[0],
                                                    fPlanet.fHeightMapResolution*fPlanet.fHeightMapResolution*SizeOf(TpvHalfFloatVector4));
@@ -4245,7 +4251,7 @@ begin
       fPlanet.fVulkanDevice.MemoryStaging.Download(aQueue,
                                                    aCommandBuffer,
                                                    aFence,
-                                                   fDownloadBuffer,
+                                                   fTransferBuffer,
                                                    0,
                                                    fBlendMapData[0],
                                                    fPlanet.fBlendMapResolution*fPlanet.fBlendMapResolution*SizeOf(TpvScene3DPlanet.TBlendMapValue));
@@ -4261,7 +4267,7 @@ begin
       fPlanet.fVulkanDevice.MemoryStaging.Download(aQueue,
                                                    aCommandBuffer,
                                                    aFence,
-                                                   fDownloadBuffer,
+                                                   fTransferBuffer,
                                                    0,
                                                    fGrassMapData[0],
                                                    fPlanet.fGrassMapResolution*fPlanet.fGrassMapResolution*SizeOf(TpvFloat));
@@ -4272,6 +4278,524 @@ begin
      end;
 
     end;
+
+   end;
+
+  end;
+
+ end;
+
+end;
+
+
+procedure TpvScene3DPlanet.TData.Upload(const aQueue:TpvVulkanQueue;
+                                        const aCommandBuffer:TpvVulkanCommandBuffer;
+                                        const aFence:TpvVulkanFence;
+                                        const aTransferHeightMap:Boolean;
+                                        const aTransferBlendMap:Boolean;
+                                        const aTransferGrass:Boolean);
+type TWhat=
+      (
+       HeightMap,
+       NormalMap,
+       BlendMap,
+       GrassMap
+      );
+     TWhatSet=set of TWhat;
+var CountImageMemoryBarriers,CountBufferMemoryBarriers:TpvSizeInt;
+    ImageSubresourceRange:TVkImageSubresourceRange;
+    ImageMemoryBarriers:array[0..5] of TVkImageMemoryBarrier;
+    BufferMemoryBarriers:array[0..5] of TVkBufferMemoryBarrier;
+    BufferImageCopy:TVkBufferImageCopy;
+    WhatSet:TWhatSet;
+    What:TWhat;
+begin
+
+ if assigned(fPlanet.fVulkanDevice) then begin
+
+  WhatSet:=[];
+  if aTransferHeightMap then begin
+   WhatSet:=WhatSet+[TWhat.HeightMap,TWhat.NormalMap];
+  end;
+  if aTransferBlendMap then begin
+   Include(WhatSet,TWhat.BlendMap);
+  end;
+  if aTransferGrass then begin
+   Include(WhatSet,TWhat.GrassMap);
+  end;
+
+  for What in WhatSet do begin
+
+   if assigned(aQueue) and assigned(aFence) then begin
+
+    case What of
+
+     TWhat.HeightMap:begin
+
+      if length(fHeightMapData)<>(fPlanet.fHeightMapResolution*fPlanet.fHeightMapResolution) then begin
+       SetLength(fHeightMapData,fPlanet.fHeightMapResolution*fPlanet.fHeightMapResolution);
+      end;
+
+      fPlanet.fVulkanDevice.MemoryStaging.Upload(aQueue,
+                                                 aCommandBuffer,
+                                                 aFence,
+                                                 fHeightMapData[0],
+                                                 fTransferBuffer,
+                                                 0,
+                                                 fPlanet.fHeightMapResolution*fPlanet.fHeightMapResolution*SizeOf(TpvFloat));
+
+
+     end;
+
+     TWhat.NormalMap:begin
+
+      if length(fNormalMapData)<>(fPlanet.fHeightMapResolution*fPlanet.fHeightMapResolution) then begin
+       SetLength(fNormalMapData,fPlanet.fHeightMapResolution*fPlanet.fHeightMapResolution);
+      end;
+
+      fPlanet.fVulkanDevice.MemoryStaging.Upload(aQueue,
+                                                 aCommandBuffer,
+                                                 aFence,
+                                                 fNormalMapData[0],
+                                                 fTransferBuffer,
+                                                 0,
+                                                 fPlanet.fHeightMapResolution*fPlanet.fHeightMapResolution*SizeOf(TpvHalfFloatVector4));
+
+     end;
+
+     TWhat.BlendMap:begin
+
+      if length(fBlendMapData)<>(fPlanet.fBlendMapResolution*fPlanet.fBlendMapResolution) then begin
+       SetLength(fBlendMapData,fPlanet.fBlendMapResolution*fPlanet.fBlendMapResolution);
+      end;
+
+      fPlanet.fVulkanDevice.MemoryStaging.Upload(aQueue,
+                                                 aCommandBuffer,
+                                                 aFence,
+                                                 fBlendMapData[0],
+                                                 fTransferBuffer,
+                                                 0,
+                                                 fPlanet.fBlendMapResolution*fPlanet.fBlendMapResolution*SizeOf(TpvScene3DPlanet.TBlendMapValue));
+
+     end;
+
+     TWhat.GrassMap:begin
+
+      if length(fGrassMapData)<>(fPlanet.fGrassMapResolution*fPlanet.fGrassMapResolution) then begin
+       SetLength(fGrassMapData,fPlanet.fGrassMapResolution*fPlanet.fGrassMapResolution);
+      end;
+
+      fPlanet.fVulkanDevice.MemoryStaging.Upload(aQueue,
+                                                 aCommandBuffer,
+                                                 aFence,
+                                                 fGrassMapData[0],
+                                                 fTransferBuffer,
+                                                 0,
+                                                 fPlanet.fGrassMapResolution*fPlanet.fGrassMapResolution*SizeOf(TpvFloat));
+
+     end;
+
+     else begin
+     end;
+
+    end;
+
+    aCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+    aCommandBuffer.BeginRecording;
+
+   end;
+
+   case What of
+{   TWhat.HeightMap:begin
+     if not aTransferHeightMap thenbegin
+      continue;
+     end;
+     fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'Planet Upload HeightMap',[0.25,0.75,0.5,1.0]);
+    end;//}
+{   TWhat.NormalMap:begin
+     if not aTransferHeightMap thenbegin
+      continue;
+     end;
+     fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'Planet Upload NormalMap',[0.75,0.25,0.5,1.0]);
+    end;//}
+    TWhat.BlendMap:begin
+     if not aTransferBlendMap then begin
+      continue;
+     end;
+     fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'Planet Upload BlendMap',[0.75,0.5,0.25,1.0]);
+    end;
+    TWhat.GrassMap:begin
+     if not aTransferGrass then begin
+      continue;
+     end;
+     fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'Planet Upload GrassMap',[0.25,0.5,0.75,1.0]);
+    end;
+    else begin
+     continue;
+    end;
+   end;
+
+   ////////////////////////////
+
+   case What of
+    TWhat.BlendMap:begin
+     ImageSubresourceRange:=TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                            0,
+                                                            1,
+                                                            0,
+                                                            TpvScene3DPlanet.CountBlendMapLayers);
+    end;
+    else begin
+     ImageSubresourceRange:=TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                            0,
+                                                            1,
+                                                            0,
+                                                            1);
+    end;
+   end;
+
+   ////////////////////////////
+
+   CountImageMemoryBarriers:=0;
+
+   CountBufferMemoryBarriers:=0;
+
+   case What of
+
+    TWhat.HeightMap:begin
+
+     ImageMemoryBarriers[CountImageMemoryBarriers]:=TVkImageMemoryBarrier.Create(0,//TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                                                 TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                                                                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                                                 VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                                                                 VK_QUEUE_FAMILY_IGNORED,
+                                                                                 VK_QUEUE_FAMILY_IGNORED,
+                                                                                 fHeightMapImage.VulkanImage.Handle,
+                                                                                 TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                                                 0,
+                                                                                                                 1,
+                                                                                                                 0,
+                                                                                                                 1));
+     inc(CountImageMemoryBarriers);
+
+     BufferMemoryBarriers[CountBufferMemoryBarriers]:=TVkBufferMemoryBarrier.Create(0,//TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT) or TVkAccessFlags(VK_ACCESS_MEMORY_WRITE_BIT),
+                                                                                    TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT),
+                                                                                    VK_QUEUE_FAMILY_IGNORED,
+                                                                                    VK_QUEUE_FAMILY_IGNORED,
+                                                                                    fTransferBuffer.Handle,
+                                                                                    0,
+                                                                                    fTransferBuffer.Size);
+     inc(CountBufferMemoryBarriers);
+
+    end;
+
+    TWhat.NormalMap:begin
+
+     ImageMemoryBarriers[CountImageMemoryBarriers]:=TVkImageMemoryBarrier.Create(0,//TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                                                 TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                                                                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                                                 VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                                                                 VK_QUEUE_FAMILY_IGNORED,
+                                                                                 VK_QUEUE_FAMILY_IGNORED,
+                                                                                 fNormalMapImage.VulkanImage.Handle,
+                                                                                 TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                                                 0,
+                                                                                                                 1,
+                                                                                                                 0,
+                                                                                                                 1));
+     inc(CountImageMemoryBarriers);
+
+     BufferMemoryBarriers[CountBufferMemoryBarriers]:=TVkBufferMemoryBarrier.Create(0,//TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT) or TVkAccessFlags(VK_ACCESS_MEMORY_WRITE_BIT),
+                                                                                    TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT),
+                                                                                    VK_QUEUE_FAMILY_IGNORED,
+                                                                                    VK_QUEUE_FAMILY_IGNORED,
+                                                                                    fTransferBuffer.Handle,
+                                                                                    0,
+                                                                                    fTransferBuffer.Size);
+     inc(CountBufferMemoryBarriers);
+
+    end;
+
+    TWhat.BlendMap:begin
+
+     ImageMemoryBarriers[CountImageMemoryBarriers]:=TVkImageMemoryBarrier.Create(0,//TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                                                 TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                                                                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                                                 VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                                                                 VK_QUEUE_FAMILY_IGNORED,
+                                                                                 VK_QUEUE_FAMILY_IGNORED,
+                                                                                 fBlendMapImage.VulkanImage.Handle,
+                                                                                 TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                                                 0,
+                                                                                                                 1,
+                                                                                                                 0,
+                                                                                                                 TpvScene3DPlanet.CountBlendMapLayers));
+     inc(CountImageMemoryBarriers);
+
+     BufferMemoryBarriers[CountBufferMemoryBarriers]:=TVkBufferMemoryBarrier.Create(0,//TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT) or TVkAccessFlags(VK_ACCESS_MEMORY_WRITE_BIT),
+                                                                                    TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT),
+                                                                                    VK_QUEUE_FAMILY_IGNORED,
+                                                                                    VK_QUEUE_FAMILY_IGNORED,
+                                                                                    fTransferBuffer.Handle,
+                                                                                    0,
+                                                                                    fTransferBuffer.Size);
+     inc(CountBufferMemoryBarriers);
+
+    end;
+
+    TWhat.GrassMap:begin
+
+     ImageMemoryBarriers[CountImageMemoryBarriers]:=TVkImageMemoryBarrier.Create(0,//TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                                                 TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                                                                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                                                 VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                                                                                 VK_QUEUE_FAMILY_IGNORED,
+                                                                                 VK_QUEUE_FAMILY_IGNORED,
+                                                                                 fGrassMapImage.VulkanImage.Handle,
+                                                                                 ImageSubresourceRange);
+     inc(CountImageMemoryBarriers);
+
+     BufferMemoryBarriers[CountBufferMemoryBarriers]:=TVkBufferMemoryBarrier.Create(0,//TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT) or TVkAccessFlags(VK_ACCESS_MEMORY_WRITE_BIT),
+                                                                                    TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT),
+                                                                                    VK_QUEUE_FAMILY_IGNORED,
+                                                                                    VK_QUEUE_FAMILY_IGNORED,
+                                                                                    fTransferBuffer.Handle,
+                                                                                    0,
+                                                                                    fTransferBuffer.Size);
+     inc(CountBufferMemoryBarriers);
+
+    end;
+
+    else begin
+    end;
+
+   end;
+
+   if (CountImageMemoryBarriers>0) or (CountBufferMemoryBarriers>0) then begin
+
+    aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
+                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                      0,
+                                      0,nil,
+                                      CountBufferMemoryBarriers,@BufferMemoryBarriers[0],
+                                      CountImageMemoryBarriers,@ImageMemoryBarriers[0]);
+
+   end;
+
+   ////////////////////////////
+
+   case What of
+
+    TWhat.HeightMap:begin
+
+     BufferImageCopy:=TVkBufferImageCopy.Create(0,
+                                                fPlanet.fHeightMapResolution,
+                                                fPlanet.fHeightMapResolution,
+                                                TVkImageSubresourceLayers.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),0,0,1),
+                                                TVkOffset3D.Create(0,0,0),
+                                                TVkExtent3D.Create(fPlanet.fHeightMapResolution,fPlanet.fHeightMapResolution,1));
+
+     aCommandBuffer.CmdCopyBufferToImage(fTransferBuffer.Handle,
+                                         fHeightMapImage.VulkanImage.Handle,
+                                         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                         1,
+                                         @BufferImageCopy);
+
+    end;
+
+    TWhat.NormalMap:begin
+
+     BufferImageCopy:=TVkBufferImageCopy.Create(0,
+                                                fPlanet.fHeightMapResolution,
+                                                fPlanet.fHeightMapResolution,
+                                                TVkImageSubresourceLayers.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),0,0,1),
+                                                TVkOffset3D.Create(0,0,0),
+                                                TVkExtent3D.Create(fPlanet.fHeightMapResolution,fPlanet.fHeightMapResolution,1));
+
+     aCommandBuffer.CmdCopyBufferToImage(fTransferBuffer.Handle,
+                                         fNormalMapImage.VulkanImage.Handle,
+                                         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                         1,
+                                         @BufferImageCopy);
+
+    end;
+
+    TWhat.BlendMap:begin
+
+     BufferImageCopy:=TVkBufferImageCopy.Create(0,
+                                                fPlanet.fBlendMapResolution,
+                                                fPlanet.fBlendMapResolution,
+                                                TVkImageSubresourceLayers.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),0,0,TpvScene3DPlanet.CountBlendMapLayers),
+                                                TVkOffset3D.Create(0,0,0),
+                                                TVkExtent3D.Create(fPlanet.fBlendMapResolution,fPlanet.fBlendMapResolution,1));
+
+     aCommandBuffer.CmdCopyBufferToImage(fTransferBuffer.Handle,
+                                         fBlendMapImage.VulkanImage.Handle,
+                                         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                         1,
+                                         @BufferImageCopy);
+
+    end;
+
+    TWhat.GrassMap:begin
+
+     BufferImageCopy:=TVkBufferImageCopy.Create(0,
+                                                fPlanet.fGrassMapResolution,
+                                                fPlanet.fGrassMapResolution,
+                                                TVkImageSubresourceLayers.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),0,0,1),
+                                                TVkOffset3D.Create(0,0,0),
+                                                TVkExtent3D.Create(fPlanet.fGrassMapResolution,fPlanet.fGrassMapResolution,1));
+
+     aCommandBuffer.CmdCopyBufferToImage(fTransferBuffer.Handle,
+                                         fGrassMapImage.VulkanImage.Handle,
+                                         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                         1,
+                                         @BufferImageCopy);
+
+    end;
+
+    else begin
+    end;
+
+   end;
+
+   ////////////////////////////
+
+   CountImageMemoryBarriers:=0;
+
+   CountBufferMemoryBarriers:=0;
+
+   case What of
+
+    TWhat.HeightMap:begin
+
+     ImageMemoryBarriers[CountImageMemoryBarriers]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                                                                                 0, //TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                                                 VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                                                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                                                 VK_QUEUE_FAMILY_IGNORED,
+                                                                                 VK_QUEUE_FAMILY_IGNORED,
+                                                                                 fHeightMapImage.VulkanImage.Handle,
+                                                                                 TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                                                 0,
+                                                                                                                 1,
+                                                                                                                 0,
+                                                                                                                 1));
+     inc(CountImageMemoryBarriers);
+
+     BufferMemoryBarriers[CountBufferMemoryBarriers]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT),
+                                                                                    0,//TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT) or TVkAccessFlags(VK_ACCESS_MEMORY_WRITE_BIT),
+                                                                                    VK_QUEUE_FAMILY_IGNORED,
+                                                                                    VK_QUEUE_FAMILY_IGNORED,
+                                                                                    fTransferBuffer.Handle,
+                                                                                    0,
+                                                                                    fTransferBuffer.Size);
+     inc(CountBufferMemoryBarriers);
+
+    end;
+
+    TWhat.NormalMap:begin
+
+     ImageMemoryBarriers[CountImageMemoryBarriers]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                                                                                 0,//TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                                                 VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                                                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                                                 VK_QUEUE_FAMILY_IGNORED,
+                                                                                 VK_QUEUE_FAMILY_IGNORED,
+                                                                                 fNormalMapImage.VulkanImage.Handle,
+                                                                                 TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                                                 0,
+                                                                                                                 1,
+                                                                                                                 0,
+                                                                                                                 1));
+     inc(CountImageMemoryBarriers);
+
+     BufferMemoryBarriers[CountBufferMemoryBarriers]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT),
+                                                                                    0,//TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT) or TVkAccessFlags(VK_ACCESS_MEMORY_WRITE_BIT),
+                                                                                    VK_QUEUE_FAMILY_IGNORED,
+                                                                                    VK_QUEUE_FAMILY_IGNORED,
+                                                                                    fTransferBuffer.Handle,
+                                                                                    0,
+                                                                                    fTransferBuffer.Size);
+     inc(CountBufferMemoryBarriers);
+
+    end;
+
+    TWhat.BlendMap:begin
+
+     ImageMemoryBarriers[CountImageMemoryBarriers]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                                                                                 0,//TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                                                 VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                                                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                                                 VK_QUEUE_FAMILY_IGNORED,
+                                                                                 VK_QUEUE_FAMILY_IGNORED,
+                                                                                 fBlendMapImage.VulkanImage.Handle,
+                                                                                 TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                                                 0,
+                                                                                                                 1,
+                                                                                                                 0,
+                                                                                                                 TpvScene3DPlanet.CountBlendMapLayers));
+     inc(CountImageMemoryBarriers);
+
+     BufferMemoryBarriers[CountBufferMemoryBarriers]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT),
+                                                                                    0,//TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT) or TVkAccessFlags(VK_ACCESS_MEMORY_WRITE_BIT),
+                                                                                    VK_QUEUE_FAMILY_IGNORED,
+                                                                                    VK_QUEUE_FAMILY_IGNORED,
+                                                                                    fTransferBuffer.Handle,
+                                                                                    0,
+                                                                                    fTransferBuffer.Size);
+     inc(CountBufferMemoryBarriers);
+
+    end;
+
+    TWhat.GrassMap:begin
+
+     ImageMemoryBarriers[CountImageMemoryBarriers]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                                                                                 0,//TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                                                 VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                                                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                                                 VK_QUEUE_FAMILY_IGNORED,
+                                                                                 VK_QUEUE_FAMILY_IGNORED,
+                                                                                 fGrassMapImage.VulkanImage.Handle,
+                                                                                 ImageSubresourceRange);
+     inc(CountImageMemoryBarriers);
+
+     BufferMemoryBarriers[CountBufferMemoryBarriers]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT),
+                                                                                    0,//TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT) or TVkAccessFlags(VK_ACCESS_MEMORY_WRITE_BIT),
+                                                                                    VK_QUEUE_FAMILY_IGNORED,
+                                                                                    VK_QUEUE_FAMILY_IGNORED,
+                                                                                    fTransferBuffer.Handle,
+                                                                                    0,
+                                                                                    fTransferBuffer.Size);
+     inc(CountBufferMemoryBarriers);
+
+    end;
+
+    else begin
+    end;
+
+   end;
+
+   if (CountImageMemoryBarriers>0) or (CountBufferMemoryBarriers>0) then begin
+
+    aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
+                                      0,
+                                      0,nil,
+                                      CountBufferMemoryBarriers,@BufferMemoryBarriers[0],
+                                      CountImageMemoryBarriers,@ImageMemoryBarriers[0]);
+
+   end;
+
+   ////////////////////////////
+
+   fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
+
+   if assigned(aQueue) and assigned(aFence) then begin
+
+    aCommandBuffer.EndRecording;
+
+    aCommandBuffer.Execute(aQueue,TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),nil,nil,aFence,true);
 
    end;
 
