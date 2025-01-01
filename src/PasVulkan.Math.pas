@@ -216,6 +216,11 @@ type PpvScalar=^TpvScalar;
        function SquaredLength:TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
        function Normalize:TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
        function Abs:TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
+       function Truncate:TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
+       function Round:TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
+       function Floor:TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
+       function Ceil:TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
+       function Fract:TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
        function DistanceTo(const aToVector:TpvVector2):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
        function Dot(const aWithVector:TpvVector2):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
        function Cross(const aVector:TpvVector2):TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
@@ -292,6 +297,7 @@ type PpvScalar=^TpvScalar;
        function Round:TpvVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
        function Floor:TpvVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
        function Ceil:TpvVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       function Fract:TpvVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
        function Dot({$ifdef fpc}constref{$else}const{$endif} aWithVector:TpvVector3):TpvScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
        function AngleTo(const aToVector:TpvVector3):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
        function Cross({$ifdef fpc}constref{$else}const{$endif} aOtherVector:TpvVector3):TpvVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
@@ -2772,6 +2778,36 @@ begin
  result.y:=System.Abs(y);
 end;
 
+function TpvVector2.Truncate:TpvVector2;
+begin
+ result.x:=System.Trunc(x);
+ result.y:=System.Trunc(y);
+end;
+
+function TpvVector2.Round:TpvVector2;
+begin
+ result.x:=System.Round(x);
+ result.y:=System.Round(y);
+end;
+
+function TpvVector2.Floor:TpvVector2;
+begin
+ result.x:=Math.Floor(x);
+ result.y:=Math.Floor(y);
+end;
+
+function TpvVector2.Ceil:TpvVector2;
+begin
+ result.x:=Math.Ceil(x);
+ result.y:=Math.Ceil(y);
+end;
+
+function TpvVector2.Fract:TpvVector2;
+begin
+ result.x:=System.Frac(x);
+ result.y:=System.Frac(y);
+end;
+
 function TpvVector2.DistanceTo(const aToVector:TpvVector2):TpvScalar;
 begin
  result:=sqrt(sqr(x-aToVector.x)+sqr(y-aToVector.y));
@@ -3891,6 +3927,13 @@ begin
  result.z:=Math.Ceil(z);
 end;
 {$ifend}
+
+function TpvVector3.Fract:TpvVector3;
+begin
+ result.x:=System.Frac(x);
+ result.y:=System.Frac(y);
+ result.z:=System.Frac(z);
+end;
 
 function TpvVector3.Dot({$ifdef fpc}constref{$else}const{$endif} aWithVector:TpvVector3):TpvScalar;
 {$if defined(SIMD) and defined(cpu386)}
