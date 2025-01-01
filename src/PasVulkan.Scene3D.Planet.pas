@@ -378,6 +378,9 @@ type TpvScene3DPlanets=class;
               fTiledMeshBoundingBoxes:TTiledMeshBoundingBoxes;
               fTiledMeshBoundingSpheres:TTiledMeshBoundingSpheres;
               fRaytracingTileQueue:Pointer;
+              fDirtyHeightMap:TPasMPBool32;
+              fDirtyBlendMap:TPasMPBool32;
+              fDirtyGrassMap:TPasMPBool32;
              public
               constructor Create(const aPlanet:TpvScene3DPlanet;const aInFlightFrameIndex:TpvInt32); reintroduce;
               destructor Destroy; override;
@@ -425,6 +428,10 @@ type TpvScene3DPlanets=class;
               property GrassMapData:TGrassMapData read fGrassMapData;
               property BlendMiniMapData:TBlendMapData read fBlendMiniMapData;
               property WaterMiniMapData:TWaterMapData read fWaterMiniMapData;
+             public
+              property DirtyHeightMap:TPasMPBool32 read fDirtyHeightMap write fDirtyHeightMap;
+              property DirtyBlendMap:TPasMPBool32 read fDirtyBlendMap write fDirtyBlendMap;
+              property DirtyGrassMap:TPasMPBool32 read fDirtyGrassMap write fDirtyGrassMap; 
              public
               property VisualMeshVertexBuffers:TDoubleBufferedVulkanBuffers read fVisualMeshVertexBuffers;
               property VisualMeshSlopeBuffers:TDoubleBufferedVulkanBuffers read fVisualMeshSlopeBuffers;
@@ -2515,6 +2522,12 @@ begin
  fRayIntersectionResultBuffer:=nil;
 
  fOwnershipHolderState:=TpvScene3DPlanet.TData.TOwnershipHolderState.Uninitialized;
+
+ fDirtyHeightMap:=false;
+ 
+ fDirtyBlendMap:=false;
+ 
+ fDirtyGrassMap:=false;
 
  if assigned(fPlanet.fVulkanDevice) then begin
 
@@ -18356,6 +18369,22 @@ begin
  UpdatedBlendMap:=false;
 
  UpdatedGrass:=false;
+
+ if assigned(fVulkanDevice) and
+    (fData.fDirtyHeightMap or fData.fDirtyBlendMap or fData.fDirtyGrassMap) then begin
+  fData.Upload(fVulkanComputeQueue,
+               fVulkanComputeCommandBuffer,
+               fVulkanComputeFence,
+               fData.fDirtyHeightMap,
+               fData.fDirtyBlendMap,
+               fData.fDirtyGrassMap);
+  UpdatedHeightMap:=UpdatedHeightMap or fData.fDirtyHeightMap;
+  UpdatedBlendMap:=UpdatedBlendMap or fData.fDirtyBlendMap;
+  UpdatedGrass:=UpdatedGrass or fData.fDirtyGrassMap;
+  fData.fDirtyHeightMap:=false;
+  fData.fDirtyBlendMap:=false;
+  fData.fDirtyGrassMap:=false;
+ end;
 
  if (aInFlightFrameIndex>=0) and (abs(fBlendMapModificationItems[aInFlightFrameIndex].Value)>1e-7) then begin
 
