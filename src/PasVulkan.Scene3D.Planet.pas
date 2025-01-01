@@ -320,12 +320,14 @@ type TpvScene3DPlanets=class;
               fWaterSimulationThreshold:TpvFloat;
               fWaterVisibilityBuffer:TpvVulkanBuffer;
               fBlendMiniMapBuffer:TpvVulkanBuffer;
+             public
               fHeightMapData:THeightMapData;
               fNormalMapData:TNormalMapData;
               fBlendMapData:TBlendMapData;
               fGrassMapData:TGrassMapData;
               fBlendMiniMapData:TBlendMapData;
               fWaterMiniMapData:TWaterMapData;
+             private
               fTileDirtyMap:TpvScene3DPlanet.TData.TTileDirtyMap;
               fTileExpandedDirtyMap:TpvScene3DPlanet.TData.TTileDirtyMap;
               fTileLODMapBuffer:TpvVulkanBuffer;
