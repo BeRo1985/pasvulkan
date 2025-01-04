@@ -11039,7 +11039,7 @@ type { TpvWin32AudioThread }
 
      TpvWin32AudioThread=class(TPasMPThread)
       private
-       const SampleRate=44100;
+       const SampleRate=48000;
              Channels=2;
              Bits=16;
              BufferSize=1024;
