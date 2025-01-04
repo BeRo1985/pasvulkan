@@ -707,22 +707,22 @@ type PpvAudioInt32=^TpvInt32;
      end;
 
      IpvAudioSoundSampleResource=interface(IpvResource)['{9E4ABC9F-7EBE-49D8-BD78-146A875F44FF}']
-       procedure FixUp;
-       procedure SetVirtualVoices(VirtualVoices:TpvInt32);
-       procedure SetRealVoices(RealVoices:TpvInt32);
-       function Play(Volume,Panning,Rate:TpvFloat;VoiceIndexPointer:TpvPointer=nil;PerreservedGlobalVoiceID:TpvID=0):TpvInt32;
-       function PlaySpatialization(Volume,Panning,Rate:TpvFloat;Spatialization:LongBool;const Position,Velocity:TpvVector3;const Local:LongBool=false;const VoiceIndexPointer:TpvPointer=nil;PerreservedGlobalVoiceID:TpvID=0):TpvInt32;
-       procedure RandomReseek(VoiceNumber:TpvInt32);
-       procedure ResetLoop(VoiceNumber:TpvInt32);
-       procedure Stop(VoiceNumber:TpvInt32);
-       procedure KeyOff(VoiceNumber:TpvInt32);
-       function SetVolume(VoiceNumber:TpvInt32;Volume:TpvFloat):TpvInt32;
-       function SetPanning(VoiceNumber:TpvInt32;Panning:TpvFloat):TpvInt32;
-       function SetRate(VoiceNumber:TpvInt32;Rate:TpvFloat):TpvInt32;
-       function SetPosition(VoiceNumber:TpvInt32;Spatialization:LongBool;const Origin,Velocity:TpvVector3;const Local:LongBool=false):TpvInt32;
-       function SetEffectMix(VoiceNumber:TpvInt32;Active:LongBool):TpvInt32;
-       function IsPlaying:boolean;
-       function IsVoicePlaying(VoiceNumber:TpvInt32):boolean;
+      procedure FixUp;
+      procedure SetVirtualVoices(VirtualVoices:TpvInt32);
+      procedure SetRealVoices(RealVoices:TpvInt32);
+      function Play(Volume,Panning,Rate:TpvFloat;VoiceIndexPointer:TpvPointer=nil;PerreservedGlobalVoiceID:TpvID=0):TpvInt32;
+      function PlaySpatialization(Volume,Panning,Rate:TpvFloat;Spatialization:LongBool;const Position,Velocity:TpvVector3;const Local:LongBool=false;const VoiceIndexPointer:TpvPointer=nil;PerreservedGlobalVoiceID:TpvID=0):TpvInt32;
+      procedure RandomReseek(VoiceNumber:TpvInt32);
+      procedure ResetLoop(VoiceNumber:TpvInt32);
+      procedure Stop(VoiceNumber:TpvInt32);
+      procedure KeyOff(VoiceNumber:TpvInt32);
+      function SetVolume(VoiceNumber:TpvInt32;Volume:TpvFloat):TpvInt32;
+      function SetPanning(VoiceNumber:TpvInt32;Panning:TpvFloat):TpvInt32;
+      function SetRate(VoiceNumber:TpvInt32;Rate:TpvFloat):TpvInt32;
+      function SetPosition(VoiceNumber:TpvInt32;Spatialization:LongBool;const Origin,Velocity:TpvVector3;const Local:LongBool=false):TpvInt32;
+      function SetEffectMix(VoiceNumber:TpvInt32;Active:LongBool):TpvInt32;
+      function IsPlaying:boolean;
+      function IsVoicePlaying(VoiceNumber:TpvInt32):boolean;
      end;
 
      TpvAudioSoundSampleResource=class(TpvResource,IpvAudioSoundSampleResource)
@@ -753,12 +753,12 @@ type PpvAudioInt32=^TpvInt32;
      end;
 
      IpvAudioSoundMusicResource=interface(IpvResource)['{4F43005B-109A-4DF4-808E-4ECAA3BF00A6}']
-       procedure Play(AVolume,APanning,ARate:TpvFloat;ALoop:boolean);
-       procedure Stop;
-       procedure SetVolume(AVolume:TpvFloat);
-       procedure SetPanning(APanning:TpvFloat);
-       procedure SetRate(ARate:TpvFloat);
-       function IsPlaying:boolean;
+      procedure Play(AVolume,APanning,ARate:TpvFloat;ALoop:boolean);
+      procedure Stop;
+      procedure SetVolume(AVolume:TpvFloat);
+      procedure SetPanning(APanning:TpvFloat);
+      procedure SetRate(ARate:TpvFloat);
+      function IsPlaying:boolean;
      end;
 
      TpvAudioSoundMusicResource=class(TpvResource,IpvAudioSoundMusicResource)
@@ -973,9 +973,13 @@ type PpvAudioInt32=^TpvInt32;
        procedure Process;
      end;
 
+     TpvAudioOnFillBuffer=procedure(const aBuffer:Pointer;const aCountSamples:TpvSizeInt) of object;
+
      { TpvAudio }
      TpvAudio=class
       private
+       fTemporaryBuffer:PpvAudioFloats;
+       fOnFillBuffer:TpvAudioOnFillBuffer;
        procedure CalcEvIndices(ev:TpvFloat;evidx:PpvAudioInt32s;var evmu:TpvFloat);
        procedure CalcAzIndices(evidx:TpvInt32;az:TpvFloat;azidx:PpvAudioInt32s;var azmu:TpvFloat);
        procedure GetLerpedHRTFCoefs(Elevation,Azimuth:TpvFloat;var LeftCoefs,RightCoefs:TpvAudioHRTFCoefs;var LeftDelay,RightDelay:TpvInt32);
@@ -1077,6 +1081,7 @@ type PpvAudioInt32=^TpvInt32;
        property MixerMasterVolume:TpvFloat read GetMixerMasterVolume write SetMixerMasterVolume;
        property MixerMusicVolume:TpvFloat read GetMixerMusicVolume write SetMixerMusicVolume;
        property MixerSampleVolume:TpvFloat read GetMixerSampleVolume write SetMixerSampleVolume;
+       property OnFillBuffer:TpvAudioOnFillBuffer read fOnFillBuffer write fOnFillBuffer;
      end;
 
 const AudioSpeakerLayoutMono:TpvAudioSpeakerLayout=
@@ -6426,6 +6431,8 @@ begin
  GetMem(MusicMixingBuffer,MixingBufferSize);
  GetMem(EffectMixingBuffer,MixingBufferSize);
  GetMem(OutputBuffer,OutputBufferSize);
+ GetMem(fTemporaryBuffer,BufferSamples*Channels*SizeOf(TpvAudioFloat));
+ fOnFillBuffer:=nil;
  SpatializationWaterLowPassCW:=Min(Max(2*sin(pi*(WATER_LOWPASS_FREQUENCY/SampleRate)),0.0),1.0);
  SpatializationWaterWaterBoostLowPassCW:=round(Min(Max(2*sin(pi*(WATER_BOOST_START_FREQUENCY/SampleRate)),0.0),1.0)*4096);
  SpatializationWaterWaterBoostHighPassCW:=round(Min(Max(2*sin(pi*(WATER_BOOST_END_FREQUENCY/SampleRate)),0.0),1.0)*4096);
@@ -6530,6 +6537,7 @@ begin
  FreeMem(OutputBuffer);
  FreeAndNil(GlobalVoiceManager);
  FreeAndNil(CommandQueue);
+ FreeMem(fTemporaryBuffer);
  FreeAndNil(WAVStreamDumpFinalMix);
  FreeAndNil(WAVStreamDumpSample);
  FreeAndNil(WAVStreamDumpMusic);
@@ -6741,8 +6749,9 @@ type pbyte=^TpvUInt8;
 var i,jl,jr,SampleValue,HighPass,CountSamples,ToDo,LowPassCoef,Coef,SampleIndex,VoiceIndex:TpvInt32;
     p:TpvPointer;
     pl,pll,plr:PpvAudioInt32;
-    ps:psmallint;
-    pb:pbyte;
+    ps:PpvInt16;
+    pb:PpvUInt8;
+    pf:PpvAudioFloat;
     Voice,NextVoice:TpvAudioSoundSampleVoice;
     StereoSampleValue:PpvAudioSoundSampleStereoValue;
     Sample:TpvAudioSoundSample;
@@ -6762,6 +6771,23 @@ begin
   FillChar(MixingBuffer^,MixingBufferSize,AnsiChar(#0));
   FillChar(MusicMixingBuffer^,MixingBufferSize,AnsiChar(#0));
   FillChar(EffectMixingBuffer^,MixingBufferSize,AnsiChar(#0));
+
+  if assigned(fOnFillBuffer) then begin
+   fOnFillBuffer(fTemporaryBuffer,BufferSamples);
+   pf:=@fTemporaryBuffer[0];
+   pl:=pointer(MixingBuffer);
+   for i:=1 to BufferSamples*2 do begin
+    SampleValue:=round(pf^*32768.0);
+    if SampleValue<-524288 then begin
+     SampleValue:=-524288;
+    end else if SampleValue>524287 then begin
+     SampleValue:=524287;
+    end;
+    inc(pl^,SampleValue);
+    inc(pl);
+    inc(pf);
+   end;
+  end;
 
   // Mixing all sample voices
   for SampleIndex:=0 to Samples.Count-1 do begin
