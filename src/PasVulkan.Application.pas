@@ -13476,7 +13476,7 @@ var Index,FileNameLength,DroppedFileCount,CountInputs,OtherIndex:TpvSizeInt;
    end;
   end;
 
-  NativeEvent.ScanCode:=ScanCodes[(ScanCode and $ff) or IfThen((ScanCode and $ff00)<>0,$80,$90)];
+  NativeEvent.ScanCode:=ScanCodes[(ScanCode and $ff) or IfThen((ScanCode and $ff00)<>0,$80,$00)];
 
   NativeEvent.KeyModifiers:=[];
 
