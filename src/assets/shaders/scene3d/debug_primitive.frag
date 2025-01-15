@@ -25,7 +25,7 @@ void main(){
 
   float thickness = 4.0;
 
-  float alpha = 1.0 - clamp( length(inEdgeDistances) / thickness, 0.0, 1.0);
+  float alpha = 1.0 - clamp(length(inEdgeDistances) / thickness, 0.0, 1.0);
 
   outputColor = vec4(inColor.xyzw) * alpha; // Premultiplied alpha
 
