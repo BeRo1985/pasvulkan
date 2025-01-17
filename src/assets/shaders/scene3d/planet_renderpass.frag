@@ -262,7 +262,9 @@ void main(){
     texturePlanetOctahedralMapArray(uArrayTextures[PLANET_TEXTURE_BLENDMAP], sphereNormal, 0),
     texturePlanetOctahedralMapArray(uArrayTextures[PLANET_TEXTURE_BLENDMAP], sphereNormal, 1)
   );
- 
+
+ layerMaterialGrass = clamp(texturePlanetOctahedralMap(uTextures[PLANET_TEXTURE_GRASSMAP], sphereNormal).x, 0.0, 1.0);
+
 #ifdef EXTERNAL_VERTICES
   workNormal = inBlock.normal.xyz;
 #else
@@ -348,7 +350,7 @@ void main(){
     }
 
     // Process the grass texture if the grass value is greater than 0.0
-    float grass = clamp(texturePlanetOctahedralMap(uTextures[PLANET_TEXTURE_GRASSMAP], sphereNormal).x, 0.0, 1.0);
+    float grass = layerMaterialGrass;
     if(grass > 0.0){
 
       // Normalize the weights before adding the grass texture

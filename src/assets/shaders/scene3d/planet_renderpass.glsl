@@ -109,6 +109,7 @@ PlanetData planetData = pushConstants.planetData; // For to avoid changing the c
 
 //PlanetMaterial layerMaterials[4];
 mat2x4 layerMaterialWeights;
+float layerMaterialGrass;
 
 void layerMaterialSetup(vec3 sphereNormal){
 
@@ -348,6 +349,45 @@ float getLayeredMultiplanarHeight(){
       heightWeightSum += vec2(multiplanarTexture(u2DTextures[(GetPlanetMaterialNormalHeightTextureIndex(layerMaterials[layerIndex]) << 1) | 0], GetPlanetMaterialScale(layerMaterials[layerIndex])).w, 1.0) * weight;
     }
   }
+  {
+
+    // Define the range for the soft transition
+    const float fadeStart = 0.0; // Begin of fading
+    const float fadeEnd = 1.0; // Full fading
+
+    // Calculate the factor for the default weight
+    const float defaultWeightFactor = clamp((fadeEnd - heightWeightSum.y) / (fadeEnd - fadeStart), 0.0, 1.0);
+
+    // Calculate the weight of the default ground texture
+    const float defaultWeight = defaultWeightFactor;   
+
+    if(defaultWeight > 0.0){   
+
+      const PlanetMaterial defaultMaterial = layerMaterials[15];
+      heightWeightSum += vec2(multiplanarTexture(u2DTextures[(GetPlanetMaterialNormalHeightTextureIndex(defaultMaterial) << 1) | 0], GetPlanetMaterialScale(defaultMaterial)).w, 1.0) * defaultWeight;
+
+    }  
+
+  }
+  if(layerMaterialGrass > 0.0){
+
+    // Normalize the weights before adding the grass texture
+    if(heightWeightSum.y > 0.0){
+      float factor = 1.0 / max(1e-7, heightWeightSum.y);
+      heightWeightSum *= factor;
+    } 
+
+    // Optional attenuation of the current textures based on the grass value
+    float f = pow(1.0 - layerMaterialGrass, 16.0);     
+    heightWeightSum *= f;
+
+    // Add the grass texture 
+    const float weight = layerMaterialGrass;
+    const PlanetMaterial grassMaterial = layerMaterials[14];
+    heightWeightSum += vec2(multiplanarTexture(u2DTextures[(GetPlanetMaterialNormalHeightTextureIndex(grassMaterial) << 1) | 0], GetPlanetMaterialScale(grassMaterial)).w, 1.0) * weight;
+    
+  }
+
   return heightWeightSum.x / max(1e-7, heightWeightSum.y);
 }
 
