@@ -353,7 +353,7 @@ float getLayeredMultiplanarHeight(){
 
 vec3 getLayeredMultiplanarOcclusionRoughnessMetallic(){
   vec4 occlusionRoughnessMetallicWeightSum = vec4(0.0);
-  [[unroll]] for(int layerIndex = 0; layerIndex < 4; layerIndex++){
+  [[unroll]] for(int layerIndex = 0; layerIndex < 8; layerIndex++){
     const float weight = getLayerWeight(layerIndex);
     if(weight > 0.0){
       occlusionRoughnessMetallicWeightSum += vec4(multiplanarTexture(u2DTextures[(GetPlanetMaterialOcclusionRoughnessMetallicTextureIndex(layerMaterials[layerIndex]) << 1) | 0], GetPlanetMaterialScale(layerMaterials[layerIndex])).xyz, 1.0) * weight;
