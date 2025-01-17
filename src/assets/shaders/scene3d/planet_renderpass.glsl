@@ -320,7 +320,7 @@ float getLayerWeight(const in int layerIndex){
 
 vec3 getLayeredMultiplanarAlbedo(){
   vec4 albedoWeightSum = vec4(0.0);
-  [[unroll]] for(int layerIndex = 0; layerIndex < 4; layerIndex++){
+  [[unroll]] for(int layerIndex = 0; layerIndex < 8; layerIndex++){
     const float weight = getLayerWeight(layerIndex);
     if(weight > 0.0){
       albedoWeightSum += vec4(multiplanarTexture(u2DTextures[(GetPlanetMaterialAlbedoTextureIndex(layerMaterials[layerIndex]) << 1) | 1], GetPlanetMaterialScale(layerMaterials[layerIndex])).xyz, 1.0) * weight;
@@ -331,7 +331,7 @@ vec3 getLayeredMultiplanarAlbedo(){
 
 vec3 getLayeredMultiplanarNormal(){
   vec4 normalWeightSum = vec4(0.0);
-  [[unroll]] for(int layerIndex = 0; layerIndex < 4; layerIndex++){
+  [[unroll]] for(int layerIndex = 0; layerIndex < 8; layerIndex++){
     const float weight = getLayerWeight(layerIndex);
     if(weight > 0.0){
       normalWeightSum += vec4(multiplanarTexture(u2DTextures[(GetPlanetMaterialNormalHeightTextureIndex(layerMaterials[layerIndex]) << 1) | 0], GetPlanetMaterialScale(layerMaterials[layerIndex])).xyz, 1.0) * weight;
@@ -342,7 +342,7 @@ vec3 getLayeredMultiplanarNormal(){
 
 float getLayeredMultiplanarHeight(){
   vec2 heightWeightSum = vec2(0.0);
-  [[unroll]] for(int layerIndex = 0; layerIndex < 4; layerIndex++){
+  [[unroll]] for(int layerIndex = 0; layerIndex < 8; layerIndex++){
     const float weight = getLayerWeight(layerIndex);
     if(weight > 0.0){
       heightWeightSum += vec2(multiplanarTexture(u2DTextures[(GetPlanetMaterialNormalHeightTextureIndex(layerMaterials[layerIndex]) << 1) | 0], GetPlanetMaterialScale(layerMaterials[layerIndex])).w, 1.0) * weight;
