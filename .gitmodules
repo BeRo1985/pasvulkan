@@ -25,3 +25,6 @@
 [submodule "externals/flre"]
 	path = externals/flre
 	url = https://github.com/BeRo1985/flre.git
+[submodule "externals/pasterm"]
+	path = externals/pasterm
+	url = https://github.com/BeRo1985/pasterm.git
