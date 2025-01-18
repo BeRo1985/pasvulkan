@@ -28,3 +28,6 @@
 [submodule "externals/pasterm"]
 	path = externals/pasterm
 	url = https://github.com/BeRo1985/pasterm.git
+[submodule "externals/pasriscv"]
+	path = externals/pasriscv
+	url = https://github.com/BeRo1985/pasriscv.git
