@@ -2285,6 +2285,7 @@ type EpvScene3D=class(Exception);
                      fDrawChoreographyBatchUniqueItemIndices:TSizeIntDynamicArray;
                      fUsedJoints:TpvScene3D.TGroup.TNode.TUsedJoints;
                      fRaytracingMask:TpvUInt8;
+                     fCastingShadows:Boolean;
                      procedure Finish;
                     public
                      constructor Create(const aGroup:TGroup;const aIndex:TpvSizeInt=-1); reintroduce;
@@ -2303,6 +2304,7 @@ type EpvScene3D=class(Exception);
                      property Skin:TSkin read fSkin write fSkin;
                      property Light:TpvScene3D.TGroup.TLight read fLight write fLight;
                      property RaytracingMask:TpvUInt8 read fRaytracingMask write fRaytracingMask;
+                     property CastingShadows:Boolean read fCastingShadows write fCastingShadows;
                    end;
                    { TUsedVisibleDrawNodes }
                    TUsedVisibleDrawNodes=TpvObjectGenericList<TpvScene3D.TGroup.TNode>;
@@ -2473,7 +2475,9 @@ type EpvScene3D=class(Exception);
                             fCullObjectID:TpvUInt32;
                             fRaytracingGroupInstanceNodeID:TpvUInt64;
                             fRaytracingMask:TpvUInt8;
+                            fCastingShadows:Boolean;
                             fInFlightFrameRaytracingMasks:array[0..MaxInFlightFrames-1] of TpvUInt32;
+                            fInFlightFrameCastingShadows:array[0..MaxInFlightFrames-1] of Boolean;
                            public
                             constructor Create(const aGroup:TpvScene3D.TGroup;
                                                const aGroupNode:TpvScene3D.TGroup.TNode;
@@ -2486,6 +2490,7 @@ type EpvScene3D=class(Exception);
                             property GroupNode:TpvScene3D.TGroup.TNode read fGroupNode;
                             property GroupInstance:TpvScene3D.TGroup.TInstance read fGroupInstance;
                             property RaytracingMask:TpvUInt8 read fRaytracingMask write fRaytracingMask;
+                            property CastingShadows:Boolean read fCastingShadows write fCastingShadows;
                            public
                             property WorkMatrix:TpvMatrix4x4 read fWorkMatrix;
                             property BoundingSpheres:TInstanceBoundingSpheres read fBoundingSpheres;
@@ -2970,6 +2975,7 @@ type EpvScene3D=class(Exception);
                      fPointerToBufferRanges:PBufferRanges;
                      fCacheVerticesNodeDirtyBitmap:array of TpvUInt32;
                      fRaytracingMask:TpvUInt8;
+                     fCastingShadows:Boolean;
                      procedure ConstructData(const aLock:boolean);
                      procedure AllocateData;
                      procedure ReleaseData;
@@ -3072,6 +3078,7 @@ type EpvScene3D=class(Exception);
                      property Cameras:TpvScene3D.TGroup.TInstance.TCameras read fCameras;
                      property Lights:TpvScene3D.TGroup.TInstance.TLights read fLights;
                      property RaytracingMask:TpvUInt8 read fRaytracingMask write fRaytracingMask;
+                     property CastingShadows:Boolean read fCastingShadows write fCastingShadows;
                     public
                      property Nodes:TpvScene3D.TGroup.TInstance.TNodes read fNodes;
                      property Skins:TpvScene3D.TGroup.TInstance.TSkins read fSkins;
@@ -3164,6 +3171,7 @@ type EpvScene3D=class(Exception);
               fCameraNodeIndices:TpvScene3D.TGroup.TCameraNodeIndices;
               fCachedVertexBufferMemoryBarriers:TVkBufferMemoryBarrierArray;
               fRaytracingMask:TpvUInt8;
+              fCastingShadows:Boolean;
               fOnNodeFilter:TpvScene3D.TGroup.TInstance.TOnNodeFilter;
               fNewLightMap:TpvScene3D.TGroup.TLights;
               fNewImageMap:TpvScene3D.TImages;
@@ -3293,6 +3301,7 @@ type EpvScene3D=class(Exception);
               property MaximumCountInstances:TpvSizeint read fMaximumCountInstances write fMaximumCountInstances;
               property OnNodeFilter:TpvScene3D.TGroup.TInstance.TOnNodeFilter read fOnNodeFilter write fOnNodeFilter;
               property RaytracingMask:TpvUInt8 read fRaytracingMask write fRaytracingMask;
+              property CastingShadow:Boolean read fCastingShadows write fCastingShadows;
             end;
             TGroups=TpvObjectGenericList<TpvScene3D.TGroup>;
             { THeadlessGroup }
@@ -3401,6 +3410,7 @@ type EpvScene3D=class(Exception);
               fUpdateDirty:TPasMPBool32;
               fInitialized:TPasMPBool32;
               fRaytracingMask:TpvUInt32;
+              fCastingShadows:Boolean;
              public
               constructor Create(const aSceneInstance:TpvScene3D;
                                  const aGroup:TpvScene3D.TGroup;
@@ -3479,7 +3489,7 @@ type EpvScene3D=class(Exception);
                (TFaceCullingMode.None,TFaceCullingMode.None)
               );
              PVMFSignature:TPVMFSignature=('P','V','M','F');
-             PVMFVersion=TpVUInt32($00000007);
+             PVMFVersion=TpVUInt32($00000008);
       private
        fLock:TPasMPSpinLock;
        fLoadLock:TPasMPSpinLock;
@@ -5979,6 +5989,8 @@ begin
 
  fRaytracingMask:=High(TpvUInt32);
 
+ fCastingShadows:=true;
+
 end;
 
 destructor TpvScene3D.TRaytracingGroupInstanceNode.Destroy;
@@ -5998,7 +6010,7 @@ var CountRenderInstances,CountPrimitives,RaytracingPrimitiveIndex,RendererInstan
     RaytracingBottomLevelAccelerationStructureInstance:TpvRaytracingBottomLevelAccelerationStructureInstance;
     GeometryInstanceFlags:TVkGeometryInstanceFlagsKHR;
     RaytracingPrimitive:TpvScene3D.TGroup.TMesh.TPrimitive;
-    DoubleSided,MustUpdate,MustUpdateAll,Opaque,CastingShadows,
+    DoubleSided,MustUpdate,MustUpdateAll,Opaque,CastingShadows,NodeCastingShadows,
     UsePretransformedVerticesForRaytracing:Boolean;
     VulkanShortTermDynamicBufferData:TVulkanShortTermDynamicBufferData;
     VulkanLongTermStaticBufferData:TVulkanLongTermStaticBufferData;
@@ -6050,6 +6062,8 @@ begin
   AllocationGroupID:=pvAllocationGroupIDScene3DRaytracingBLASStatic;
  end;
 
+ NodeCastingShadows:=fInstanceNode.fInFlightFrameCastingShadows[aInFlightFrameIndex];
+
  for BLASGroupVariant:=Low(TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroupVariant) to High(TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroupVariant) do begin
 
   BLASGroup:=@fBLASGroups[BLASGroupVariant];
@@ -6075,7 +6089,7 @@ begin
     CastingShadows:=false;
    end;
    else begin
-    CastingShadows:=true;
+    CastingShadows:=NodeCastingShadows;
    end;
   end;
 
@@ -6148,7 +6162,7 @@ begin
 
      if assigned(RaytracingPrimitive.Material) and
         (RaytracingPrimitive.Material.Data.DoubleSided=DoubleSided) and
-        (RaytracingPrimitive.Material.Data.CastingShadows=CastingShadows) and
+        ((RaytracingPrimitive.Material.Data.CastingShadows and NodeCastingShadows)=CastingShadows) and
         (fNode.fNodeMeshInstanceIndex>=0) and
         (fNode.fNodeMeshInstanceIndex<RaytracingPrimitive.fNodeMeshPrimitiveInstances.Count) then begin
 
@@ -8759,6 +8773,7 @@ end;
 
 procedure TpvScene3D.TMaterial.LoadFromStream(const aStream:TStream;const aImages,aSamplers,aTextures:TpvObjectList);
 var StreamIO:TpvStreamIO;
+    Flags:TpvUInt32;
 begin
 
  fVisible:=true;
@@ -8772,8 +8787,9 @@ begin
 
   fData.ShadingModel:=TpvScene3D.TMaterial.TShadingModel(TpvUInt32(StreamIO.ReadUInt32));
 
-  fData.CastingShadows:=StreamIO.ReadBoolean;
-  fData.ReceiveShadows:=StreamIO.ReadBoolean;
+  Flags:=StreamIO.ReadUInt32;
+  fData.CastingShadows:=(Flags and 1)<>0;
+  fData.ReceiveShadows:=(Flags and 2)<>0;
 
   fData.AlphaCutOff:=StreamIO.ReadFloat;
 
@@ -9087,6 +9103,7 @@ end;
 
 procedure TpvScene3D.TMaterial.SaveToStream(const aStream:TStream;const aImages,aSamplers,aTextures:TpvObjectList);
 var StreamIO:TpvStreamIO;
+    Flags:TpvUInt32;
 begin
  
  StreamIO:=TpvStreamIO.Create(aStream);
@@ -9096,8 +9113,14 @@ begin
 
   StreamIO.WriteUInt32(TpvUInt32(fData.ShadingModel));
 
-  StreamIO.WriteBoolean(fData.CastingShadows);
-  StreamIO.WriteBoolean(fData.ReceiveShadows);
+  Flags:=0;
+  if fData.CastingShadows then begin
+   Flags:=Flags or 1;
+  end;
+  if fData.ReceiveShadows then begin
+   Flags:=Flags or 2;
+  end;
+  StreamIO.WriteUInt32(Flags);
 
   StreamIO.WriteFloat(fData.AlphaCutOff);
 
@@ -15688,6 +15711,8 @@ begin
 
  fRaytracingMask:=$ff;
 
+ fCastingShadows:=true;
+
  fDrawChoreographyBatchItemIndices.Initialize;
 
  fDrawChoreographyBatchUniqueItemIndices.Initialize;
@@ -15752,6 +15777,7 @@ begin
   if (Flags and 4)<>0 then begin
    Include(fFlags,TpvScene3D.TGroup.TNode.TNodeFlag.WeightsAnimated);
   end;
+  fCastingShadows:=(Flags and 8)<>0;
 
   Count:=StreamIO.ReadInt64;
   fUsedByScenesListIndices.Clear;
@@ -15917,6 +15943,9 @@ begin
   end;
   if TpvScene3D.TGroup.TNode.TNodeFlag.WeightsAnimated in fFlags then begin
    Flags:=Flags or 4;
+  end;
+  if fCastingShadows then begin
+   Flags:=Flags or 8;
   end;
   StreamIO.WriteUInt32(Flags);
 
@@ -16601,6 +16630,8 @@ begin
  fOnNodeFilter:=nil;
 
  fRaytracingMask:=$ff;
+
+ fCastingShadows:=true;
 
  fNewLightMap:=TpvScene3D.TGroup.TLights.Create;
  fNewLightMap.OwnsObjects:=false;
@@ -18678,6 +18709,7 @@ procedure TpvScene3D.TGroup.LoadFromStream(const aStream:TStream);
 var StreamIO:TpvStreamIO;
     PMVFHeader:TpvScene3D.TPVMFHeader;
     HeaderPosition:TpvInt64;
+    Flags:TpvUInt32;
     Index,OtherIndex,Count,InFlightFrameIndex:TpvSizeInt;
     Camera:TpvScene3D.TGroup.TCamera;
     Light:TpvScene3D.TGroup.TLight;
@@ -18749,11 +18781,11 @@ begin
        CollectedMaterials:=TpvObjectList.Create(false);
        try
 
-        // Read culling
-        fCulling:=StreamIO.ReadBoolean;
-
-        // Read dynamic AABB tree culling
-        fDynamicAABBTreeCulling:=StreamIO.ReadBoolean;
+        // Read flags
+        Flags:=StreamIO.ReadUInt32;
+        fCulling:=(Flags and 1)<>0;
+        fDynamicAABBTreeCulling:=(Flags and 2)<>0;
+        fCastingShadows:=(Flags and 4)<>0;
 
         // Read morph target count
         fMorphTargetCount:=StreamIO.ReadInt64;
@@ -19288,6 +19320,7 @@ end;
 procedure TpvScene3D.TGroup.SaveToStream(const aStream:TStream;const aMetaData:TpvUInt64);
 var StreamIO:TpvStreamIO;
     PMVFHeader:TpvScene3D.TPVMFHeader;
+    Flags:TpvUInt32;
     HeaderPosition:TpvInt64;
     Index,OtherIndex,Count:TpvSizeInt;
     CollectedImages,CollectedSamplers,CollectedTextures,CollectedMaterials:TpvObjectList;
@@ -19339,11 +19372,18 @@ begin
        TpvScene3D.TGroup.TLight(fLights[Index]).PrepareSaveToStream(CollectedImages,CollectedSamplers,CollectedTextures);
       end;
 
-      // Write culling
-      StreamIO.WriteBoolean(fCulling);
-
-      // Write dynamic AABB tree culling
-      StreamIO.WriteBoolean(fDynamicAABBTreeCulling);
+      // Write flags
+      Flags:=0;
+      if fCulling then begin
+       Flags:=Flags or 1;
+      end;
+      if fDynamicAABBTreeCulling then begin
+       Flags:=Flags or 2;
+      end;
+      if fCastingShadows then begin
+       Flags:=Flags or 4;
+      end;
+      StreamIO.WriteUInt32(Flags);
 
       // Write morph target count 
       StreamIO.WriteInt64(fMorphTargetCount);
@@ -20747,6 +20787,10 @@ begin
                                                      fGroupNode.fRaytracingMask and
                                                      fGroupInstance.fRaytracingMask and
                                                      fRaytracingMask;
+ fInFlightFrameCastingShadows[aInFlightFrameIndex]:=fGroup.fCastingShadows and
+                                                    fGroupNode.fCastingShadows and
+                                                    fGroupInstance.fCastingShadows and
+                                                    fCastingShadows;
 end;
 
 { TpvScene3D.TGroup.TInstance.TLight }
@@ -22044,6 +22088,8 @@ begin
 
  fRaytracingMask:=$ff;
 
+ fCastingShadows:=true;
+
  fScene:=-1;
 
  fNodes:=nil;
@@ -22203,6 +22249,7 @@ begin
    InstanceNode.fAABBTreeProxy:=-1;
    InstanceNode.fRaytracingGroupInstanceNodeID:=0;
    InstanceNode.fRaytracingMask:=$ff;
+   InstanceNode.fCastingShadows:=true;
    if assigned(Node.fLight) then begin
     if (CountLightNodes+1)>Length(fLightNodes) then begin
      SetLength(fLightNodes,(CountLightNodes+1)+((CountLightNodes+2) shr 1));
@@ -27218,7 +27265,7 @@ begin
            DrawChoreographyBatchItem:=fDrawChoreographyBatchItems[DrawChoreographyBatchItemElementIndex];
            if DrawChoreographyBatchItem.fMaterial.fVisible and
               (DrawChoreographyBatchItem.fAlphaMode in aMaterialAlphaModes) and
-              ((not aShadowPass) or (aShadowPass and DrawChoreographyBatchItem.fMaterial.fData.CastingShadows)) and
+              ((not aShadowPass) or (aShadowPass and DrawChoreographyBatchItem.fMaterial.fData.CastingShadows and InstanceNode.fInFlightFrameCastingShadows[aInFlightFrameIndex])) and
              (DrawChoreographyBatchItem.fCountIndices>0) then begin
             DrawChoreographyBatchItemMaterialAlphaModeBuckets^[DrawChoreographyBatchItem.fAlphaMode,
                                                                DrawChoreographyBatchItem.fPrimitiveTopology,
@@ -27327,7 +27374,7 @@ begin
        DrawChoreographyBatchItem:=fDrawChoreographyBatchItems[DrawChoreographyBatchItemElementIndex];
        if DrawChoreographyBatchItem.fMaterial.fVisible and
           (DrawChoreographyBatchItem.fAlphaMode in aMaterialAlphaModes) and
-          ((not aShadowPass) or (aShadowPass and DrawChoreographyBatchItem.fMaterial.fData.CastingShadows)) and
+          ((not aShadowPass) or (aShadowPass and DrawChoreographyBatchItem.fMaterial.fData.CastingShadows and InstanceNode.fInFlightFrameCastingShadows[aInFlightFrameIndex])) and
          (DrawChoreographyBatchItem.fCountIndices>0) then begin
         DrawChoreographyBatchItemMaterialAlphaModeBuckets^[DrawChoreographyBatchItem.fAlphaMode,
                                                            DrawChoreographyBatchItem.fPrimitiveTopology,
