@@ -6166,7 +6166,7 @@ begin
 
      if assigned(RaytracingPrimitive.Material) and
         (RaytracingPrimitive.Material.Data.DoubleSided=DoubleSided) and
-        ((RaytracingPrimitive.Material.Data.CastingShadows and NodeCastingShadows)=CastingShadows) and
+        (RaytracingPrimitive.Material.Data.CastingShadows=CastingShadows) and
         (fNode.fNodeMeshInstanceIndex>=0) and
         (fNode.fNodeMeshInstanceIndex<RaytracingPrimitive.fNodeMeshPrimitiveInstances.Count) then begin
 
