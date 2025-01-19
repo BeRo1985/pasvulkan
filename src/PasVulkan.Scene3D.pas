@@ -3410,7 +3410,7 @@ type EpvScene3D=class(Exception);
               fUpdateDirty:TPasMPBool32;
               fInitialized:TPasMPBool32;
               fRaytracingMask:TpvUInt32;
-              fCastingShadows:Boolean;
+              fCastingShadows:TpvUInt32;
              public
               constructor Create(const aSceneInstance:TpvScene3D;
                                  const aGroup:TpvScene3D.TGroup;
@@ -5989,7 +5989,7 @@ begin
 
  fRaytracingMask:=High(TpvUInt32);
 
- fCastingShadows:=true;
+ fCastingShadows:=High(TpvUInt32);
 
 end;
 
@@ -6062,7 +6062,11 @@ begin
   AllocationGroupID:=pvAllocationGroupIDScene3DRaytracingBLASStatic;
  end;
 
- NodeCastingShadows:=fInstanceNode.fInFlightFrameCastingShadows[aInFlightFrameIndex];
+ if fCastingShadows<>(ord(fInstanceNode.fInFlightFrameCastingShadows[aInFlightFrameIndex]) and 1) then begin
+  fCastingShadows:=ord(fInstanceNode.fInFlightFrameCastingShadows[aInFlightFrameIndex]) and 1;
+  MustUpdateAll:=true;
+ end;
+ NodeCastingShadows:=fCastingShadows<>0;
 
  for BLASGroupVariant:=Low(TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroupVariant) to High(TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroupVariant) do begin
 
@@ -6089,7 +6093,7 @@ begin
     CastingShadows:=false;
    end;
    else begin
-    CastingShadows:=NodeCastingShadows;
+    CastingShadows:=true;
    end;
   end;
 
@@ -6108,7 +6112,6 @@ begin
   if CountPrimitives>0 then begin
 
    if assigned(BLASGroup^.fBLASGeometry) then begin
-
 
     MustUpdate:=MustUpdateAll;
 
