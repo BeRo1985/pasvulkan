@@ -6065,6 +6065,7 @@ begin
  if fCastingShadows<>(ord(fInstanceNode.fInFlightFrameCastingShadows[aInFlightFrameIndex]) and 1) then begin
   fCastingShadows:=ord(fInstanceNode.fInFlightFrameCastingShadows[aInFlightFrameIndex]) and 1;
   MustUpdateAll:=true;
+  fGeometryChanged:=true;
  end;
  NodeCastingShadows:=fCastingShadows<>0;
 
@@ -6313,7 +6314,7 @@ begin
 
    RaytracingMask:=fInstanceNode.fInFlightFrameRaytracingMasks[aInFlightFrameIndex];
 
-   if CastingShadows then begin
+   if CastingShadows and NodeCastingShadows then begin
     RaytracingMask:=RaytracingMask or (1 shl 0);
    end else begin
     RaytracingMask:=RaytracingMask and not (1 shl 0);
