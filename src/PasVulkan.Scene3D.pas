@@ -6062,12 +6062,17 @@ begin
   AllocationGroupID:=pvAllocationGroupIDScene3DRaytracingBLASStatic;
  end;
 
- if fCastingShadows<>(ord(fInstanceNode.fInFlightFrameCastingShadows[aInFlightFrameIndex]) and 1) then begin
-  fCastingShadows:=ord(fInstanceNode.fInFlightFrameCastingShadows[aInFlightFrameIndex]) and 1;
-  MustUpdateAll:=true;
+ RaytracingMask:=fInstanceNode.fInFlightFrameRaytracingMasks[aInFlightFrameIndex];
+ if fRaytracingMask<>RaytracingMask then begin
+  fRaytracingMask:=RaytracingMask;
   fGeometryChanged:=true;
  end;
- NodeCastingShadows:=fCastingShadows<>0;
+
+ NodeCastingShadows:=fInstanceNode.fInFlightFrameCastingShadows[aInFlightFrameIndex];
+ if fCastingShadows<>(ord(NodeCastingShadows) and 1) then begin
+  fCastingShadows:=ord(NodeCastingShadows) and 1;
+  fGeometryChanged:=true;
+ end;
 
  for BLASGroupVariant:=Low(TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroupVariant) to High(TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroupVariant) do begin
 
@@ -6312,7 +6317,7 @@ begin
     result:=true;
    end;
 
-   RaytracingMask:=fInstanceNode.fInFlightFrameRaytracingMasks[aInFlightFrameIndex];
+   RaytracingMask:=fRaytracingMask;
 
    if CastingShadows and NodeCastingShadows then begin
     RaytracingMask:=RaytracingMask or (1 shl 0);
@@ -6320,8 +6325,7 @@ begin
     RaytracingMask:=RaytracingMask and not (1 shl 0);
    end;
 
-   if fRaytracingMask<>RaytracingMask then begin
-    fRaytracingMask:=RaytracingMask;
+   if (BLASGroup^.fBLASInstances.Count>0) and (BLASGroup^.fBLASInstances[0].Mask<>RaytracingMask) then begin
     for BLASInstanceIndex:=0 to BLASGroup^.fBLASInstances.Count-1 do begin
      BLASGroup^.fBLASInstances[BLASInstanceIndex].Mask:=RaytracingMask;
     end;
