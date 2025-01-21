@@ -6,7 +6,7 @@ The Vulkan.pas binding header unit itself (including the vkxml2pas.dpr converter
 
 ## Support me
 
-[Support me at Patreon](https://www.patreon.com/bero)
+Creating is my passion, and with your support, I can keep it alive. Support my work and help me continue innovating. Every contribution makes a difference: [You can donate and support me here.](https://donate.rosseaux.com/) Thank you!
 
 ## About me / My contact details
 
