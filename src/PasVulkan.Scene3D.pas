@@ -2867,6 +2867,7 @@ type EpvScene3D=class(Exception);
                           TCullVisibleNodePath=array of TpvSizeInt;
                           TCullVisibleNodePaths=array[0..MaxInFlightFrames-1] of TCullVisibleNodePath;
                           TOnNodeFilter=function(const aInFlightFrameIndex:TpvSizeInt;const aRendererInstance:TObject;const aRenderPass:TpvScene3DRendererRenderPass;const aGroup:TpvScene3D.TGroup;const aGroupInstance:TpvScene3D.TGroup.TInstance;const aNode:TpvScene3D.TGroup.TNode;const aInstanceNode:TpvScene3D.TGroup.TInstance.TNode):boolean of object;
+                          TOnUpdate=function:boolean of object;
                           type TAABBTreeSkipListItem=record
                                 public
                                  AABB:TpvAABB;
@@ -2942,6 +2943,7 @@ type EpvScene3D=class(Exception);
                      fOnNodeMatrixPre:TOnNodeMatrix;
                      fOnNodeMatrixPost:TOnNodeMatrix;
                      fOnNodeFilter:TpvScene3D.TGroup.TInstance.TOnNodeFilter;
+                     fOnUpdate:TpvScene3D.TGroup.TInstance.TOnUpdate;
                      fUploaded:boolean;
                      fDirtyCounter:TPasMPInt32;
                      fPreparedMeshContentGeneration:TpvUInt64;
@@ -3099,6 +3101,7 @@ type EpvScene3D=class(Exception);
                      property OnNodeMatrixPre:TOnNodeMatrix read fOnNodeMatrixPre write fOnNodeMatrixPre;
                      property OnNodeMatrixPost:TOnNodeMatrix read fOnNodeMatrixPost write fOnNodeMatrixPost;
                      property OnNodeFilter:TpvScene3D.TGroup.TInstance.TOnNodeFilter read fOnNodeFilter write fOnNodeFilter;
+                     property OnUpdate:TpvScene3D.TGroup.TInstance.TOnUpdate read fOnUpdate write fOnUpdate;
                    end;
                    TMaterialsToDuplicate=TpvObjectGenericList<TpvScene3D.TMaterial>;
                    TMaterialIndexHashMap=TpvHashMap<TMaterial,TpvSizeInt>;
@@ -22350,6 +22353,8 @@ begin
 
  fOnNodeFilter:=nil;
 
+ fOnUpdate:=nil;
+
  fScenes:=nil;
 
  fDrawChoreographyBatchItems:=nil;
@@ -25906,6 +25911,10 @@ begin
   fModelMatrix:=(fAppendageTransform*
                  fAppendageInstance.fNodes[fAppendageNode.fIndex].fWorkMatrix)*
                  fAppendageInstance.fModelMatrix;
+  SetDirty;
+ end;
+
+ if assigned(fOnUpdate) and fOnUpdate then begin
   SetDirty;
  end;
 
@@ -30291,7 +30300,7 @@ begin
     OK:=true;
 
     // Check if all required dependencies are usable, ready and already processed
-    if GroupInstance.fRequiredDependencies.Count=0 then begin
+    if GroupInstance.fRequiredDependencies.Count>0 then begin
      for OtherIndex:=0 to GroupInstance.fRequiredDependencies.Count-1 do begin
       OtherGroupInstance:=GroupInstance.fRequiredDependencies[OtherIndex];
       if (OtherGroupInstance<>GroupInstance.fAppendageInstance) and
