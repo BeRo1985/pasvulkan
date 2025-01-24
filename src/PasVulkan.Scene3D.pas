@@ -2867,7 +2867,7 @@ type EpvScene3D=class(Exception);
                           TCullVisibleNodePath=array of TpvSizeInt;
                           TCullVisibleNodePaths=array[0..MaxInFlightFrames-1] of TCullVisibleNodePath;
                           TOnNodeFilter=function(const aInFlightFrameIndex:TpvSizeInt;const aRendererInstance:TObject;const aRenderPass:TpvScene3DRendererRenderPass;const aGroup:TpvScene3D.TGroup;const aGroupInstance:TpvScene3D.TGroup.TInstance;const aNode:TpvScene3D.TGroup.TNode;const aInstanceNode:TpvScene3D.TGroup.TInstance.TNode):boolean of object;
-                          TOnUpdate=function:boolean of object;
+                          TOnUpdate=function(const aInFlightFrameIndex:TpvSizeInt):boolean of object;
                           type TAABBTreeSkipListItem=record
                                 public
                                  AABB:TpvAABB;
@@ -25914,7 +25914,7 @@ begin
   SetDirty;
  end;
 
- if assigned(fOnUpdate) and fOnUpdate then begin
+ if assigned(fOnUpdate) and fOnUpdate(aInFlightFrameIndex) then begin
   SetDirty;
  end;
 
