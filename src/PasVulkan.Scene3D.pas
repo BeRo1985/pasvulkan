@@ -3817,6 +3817,8 @@ type EpvScene3D=class(Exception);
        procedure Initialize;
        procedure AddToFreeQueue(const aObject:TObject;const aFrameDelay:TpvInt32=-1);
        procedure DumpMemoryUsage(const aStringList:TStringList);
+       procedure AddProceduralTextureImageHook(const aName:TpvUTF8String;const aHook:TImage.THook);
+       procedure RemoveProceduralTextureImageHook(const aName:TpvUTF8String);
        procedure Upload;
        procedure Unload;
        procedure StoreAnimationStates;
@@ -29370,6 +29372,26 @@ begin
 
  aStringList.Add('');
 
+end;
+
+procedure TpvScene3D.AddProceduralTextureImageHook(const aName:TpvUTF8String;const aHook:TImage.THook);
+begin
+ fImageListLock.Acquire;
+ try
+  fProceduralTextureImageHookStringHashMap.Add(aName,aHook);
+ finally
+  fImageListLock.Release;
+ end;
+end;
+
+procedure TpvScene3D.RemoveProceduralTextureImageHook(const aName:TpvUTF8String);
+begin
+ fImageListLock.Acquire;
+ try
+  fProceduralTextureImageHookStringHashMap.Delete(aName);
+ finally
+  fImageListLock.Release;
+ end;
 end;
 
 procedure TpvScene3D.NewImageDescriptorGeneration;
