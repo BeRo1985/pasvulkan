@@ -3763,8 +3763,10 @@ type EpvScene3D=class(Exception);
        fLoadGLTFTimeDurationLock:TPasMPInt32;
        fLoadGLTFTimeDuration:TpvDouble;
        fDrawDataGeneration:TPasMPUInt64;
+      public
        procedure NewImageDescriptorGeneration;
        procedure NewMaterialDataGeneration;
+      private
        procedure CollectLights(const aTreeNodes:TpvBVHDynamicAABBTree.TTreeNodes;
                                             const aRoot:TpvSizeInt;
                                             var aLightItemArray:TpvScene3D.TLightItems;
