@@ -2914,6 +2914,7 @@ type EpvScene3D=class(Exception);
                      fAppendageInstance:TpvScene3D.TGroup.TInstance;
                      fAppendageNode:TpvScene3D.TGroup.TNode;
                      fAppendageTransform:TpvMatrix4x4;
+                     fAppendageIgnoreScale:boolean;
                      fActive:boolean;
                      fUpdateDynamic:TPasMPBool32;
                      fOrder:TpvInt64;
@@ -3037,7 +3038,7 @@ type EpvScene3D=class(Exception);
                      function AddRequiredDependency(const aInstance:TpvScene3D.TGroup.TInstance):Boolean;
                      function RemoveRequiredDependency(const aInstance:TpvScene3D.TGroup.TInstance):Boolean;
                     public
-                     function AttachTo(const aInstance:TpvScene3D.TGroup.TInstance;const aNode:TpvScene3D.TGroup.TNode;const aTransform:TpvMatrix4x4):Boolean;
+                     function AttachTo(const aInstance:TpvScene3D.TGroup.TInstance;const aNode:TpvScene3D.TGroup.TNode;const aTransform:TpvMatrix4x4;const aIgnoreScale:Boolean):Boolean;
                      function DetachFrom:Boolean;
                     public
                      procedure Check(const aInFlightFrameIndex:TpvSizeInt);
@@ -22109,6 +22110,8 @@ begin
 
  fAppendageTransform:=TpvMatrix4x4.Identity;
 
+ fAppendageIgnoreScale:=false;
+
  fUseRenderInstances:=false;
 
  fUseSortedRenderInstances:=false;
@@ -23521,7 +23524,7 @@ begin
  end;
 end;
 
-function TpvScene3D.TGroup.TInstance.AttachTo(const aInstance:TpvScene3D.TGroup.TInstance;const aNode:TpvScene3D.TGroup.TNode;const aTransform:TpvMatrix4x4):Boolean;
+function TpvScene3D.TGroup.TInstance.AttachTo(const aInstance:TpvScene3D.TGroup.TInstance;const aNode:TpvScene3D.TGroup.TNode;const aTransform:TpvMatrix4x4;const aIgnoreScale:Boolean):Boolean;
 var OtherInstance:TpvScene3D.TGroup.TInstance;
 begin
  if assigned(aInstance) and (aInstance<>self) and assigned(aNode) then begin
@@ -23532,6 +23535,7 @@ begin
     try
      fAppendageNode:=aNode;
      fAppendageTransform:=aTransform;
+     fAppendageIgnoreScale:=aIgnoreScale;
     finally
      aInstance.fAttachmentAppendageLock.Release;
     end;
@@ -23559,6 +23563,7 @@ begin
      fAppendageInstance:=aInstance;
      fAppendageNode:=aNode;
      fAppendageTransform:=aTransform;
+     fAppendageIgnoreScale:=aIgnoreScale;
      if not aInstance.fAttachments.Contains(self) then begin
       aInstance.fAttachments.Add(self);
      end;
@@ -25935,6 +25940,11 @@ begin
   fModelMatrix:=(fAppendageTransform*
                  fAppendageInstance.fNodes[fAppendageNode.fIndex].fWorkMatrix)*
                  fAppendageInstance.fModelMatrix;
+  if fAppendageIgnoreScale then begin
+   fModelMatrix.Tangent.xyz:=fModelMatrix.Tangent.xyz.Normalize;
+   fModelMatrix.Bitangent.xyz:=fModelMatrix.Bitangent.xyz.Normalize;
+   fModelMatrix.Normal.xyz:=fModelMatrix.Normal.xyz.Normalize;
+  end;
   SetDirty;
  end;
 
