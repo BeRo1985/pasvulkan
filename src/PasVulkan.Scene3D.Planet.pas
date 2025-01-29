@@ -147,8 +147,10 @@ type TpvScene3DPlanets=class;
              SelectedBrushIndex:TpvUInt32;
              SelectedBrushRotation:TpvFloat;
 
+             MinMaxHeightFactor:TpvVector4;
+
              SelectedInnerRadius:TpvFloat;
-             Reserved0_:TpvUInt32;
+             HeightFactorExponent:TpvFloat;
              Reserved1_:TpvUInt32;
              Reserved2_:TpvUInt32;
 
@@ -18994,6 +18996,8 @@ begin
    fPlanetData.SelectedBrushIndex:=InFlightFrameData.fSelectedBrush;
    fPlanetData.SelectedBrushRotation:=InFlightFrameData.BrushRotation*TwoPI;
    fPlanetData.SelectedInnerRadius:=Max(InFlightFrameData.BrushInnerRadius,1e-6);
+   fPlanetData.HeightFactorExponent:=1.0;
+   fPlanetData.MinMaxHeightFactor:=TpvVector4.InlineableCreate(0.0,0.0,1.0,1.0);
 
    for MaterialIndex:=Low(TpvScene3DPlanet.TMaterials) to High(TpvScene3DPlanet.TMaterials) do begin
     Material:=@fMaterials[MaterialIndex];

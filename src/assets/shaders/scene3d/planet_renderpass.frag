@@ -391,7 +391,9 @@ void main(){
 
   vec3 normal = normalize(mat3(workTangent, workBitangent, workNormal) * normalize(fma(normalHeight.xyz, vec3(2.0), vec3(-1.0))));
  
-  cavity = clamp(occlusionRoughnessMetallic.x, 0.0, 1.0);
+  float surfaceHeight = texturePlanetOctahedralMap(uTextures[PLANET_TEXTURE_HEIGHTMAP], sphereNormal).x;
+
+  cavity = clamp(occlusionRoughnessMetallic.x, 0.0, 1.0) * mix(planetData.minMaxHeightFactor.y, planetData.minMaxHeightFactor.w, pow(clamp((surfaceHeight - planetData.minMaxHeightFactor.x) / (planetData.minMaxHeightFactor.z - planetData.minMaxHeightFactor.x), 0.0, 1.0), planetData.heightFactorExponent));
     
   vec2 metallicRoughness = clamp(occlusionRoughnessMetallic.zy, vec2(0.0, 1e-3), vec2(1.0));
 

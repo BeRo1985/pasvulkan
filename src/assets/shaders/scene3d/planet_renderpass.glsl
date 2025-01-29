@@ -2,49 +2,8 @@
 #define PLANET_RENDERPASS_GLSL
 
 #if !defined(USE_BUFFER_REFERENCE) 
-#if 0
-struct PlanetMaterial {
-  uint albedo;
-  uint normalHeight;
-  uint occlusionRoughnessMetallic;
-  float scale;
-}; 
-#define GetPlanetMaterialAlbedoTextureIndex(m) (m).albedo
-#define GetPlanetMaterialNormalHeightTextureIndex(m) (m).normalHeight
-#define GetPlanetMaterialOcclusionRoughnessMetallicTextureIndex(m) (m).occlusionRoughnessMetallic
-#define GetPlanetMaterialScale(m) (m).scale
-#else
-#define PlanetMaterial uvec4  // x = albedo, y = normalHeight, z = occlusionRoughnessMetallic, w = scale (float)
-#define GetPlanetMaterialAlbedoTextureIndex(m) (m).x
-#define GetPlanetMaterialNormalHeightTextureIndex(m) (m).y
-#define GetPlanetMaterialOcclusionRoughnessMetallicTextureIndex(m) (m).z
-#define GetPlanetMaterialScale(m) (uintBitsToFloat((m).w))
-#endif
-
-layout(set = 2, binding = 1, std430) readonly buffer PlanetData {
-
-  mat4 modelMatrix;
-
-  mat4 normalMatrix; // normalMatrix = mat4(adjugate(modelMatrix)) for to save computation in the shader, and mat4 instead of mat3 for alignment/padding rules of std430
-
-  vec4 bottomRadiusTopRadiusHeightMapScale; // x = bottomRadius, y = topRadius, z = heightMapScale, w = unused
-
-  uvec4 flagsResolutions; // x = flags, y = resolution (2x 16-bit: tile map resolution, tile resolution)
-
-  uvec4 verticesIndices; // xy = vertices device address, zw = indices device address
-
-  vec4 selected; // xyz = octahedral map coordinates, w = radius   
-
-  uvec4 selectedColorBrushIndexBrushRotation; // xy = selected color (16-bit half float vec4), z = brush index, w = brush rotation
-
-  float selectedInnerRadius;
-  uint reserved0;
-  uint reserved1;
-  uint reserved2;
-
-  PlanetMaterial materials[16];
-
-} planetData;
+#undef USE_PLANET_BUFFER_REFERENCE
+#include "planet_data.glsl"
 #endif
 
 #if defined(PLANET_WATER)
