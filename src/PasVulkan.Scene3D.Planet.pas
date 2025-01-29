@@ -385,6 +385,8 @@ type TpvScene3DPlanets=class;
               fDirtyHeightMap:TPasMPBool32;
               fDirtyBlendMap:TPasMPBool32;
               fDirtyGrassMap:TPasMPBool32;
+              fMinMaxHeightFactor:TpvVector4;
+              fHeightFactorExponent:TpvFloat;
              public
               constructor Create(const aPlanet:TpvScene3DPlanet;const aInFlightFrameIndex:TpvInt32); reintroduce;
               destructor Destroy; override;
@@ -472,6 +474,8 @@ type TpvScene3DPlanets=class;
               property DisplacementMappingActive:Boolean read fDisplacementMappingActive write fDisplacementMappingActive;
               property ParallaxMappingActive:Boolean read fParallaxMappingActive write fParallaxMappingActive;
               property LODActive:Boolean read fLODActive write fLODActive;
+              property MinMaxHeightFactor:TpvVector4 read fMinMaxHeightFactor write fMinMaxHeightFactor;
+              property HeightFactorExponent:TpvFloat read fHeightFactorExponent write fHeightFactorExponent;
             end;
             TInFlightFrameDataList=TpvObjectGenericList<TData>;
             { TSerializedData }
@@ -2532,6 +2536,10 @@ begin
  fDirtyBlendMap:=false;
  
  fDirtyGrassMap:=false;
+
+ fMinMaxHeightFactor:=TpvVector4.InlineableCreate(0.0,0.0,1.0,1.0);
+
+ fHeightFactorExponent:=1.0;
 
  if assigned(fPlanet.fVulkanDevice) then begin
 
@@ -5217,6 +5225,8 @@ begin
  fParallaxMappingActive:=aData.fParallaxMappingActive;
  fLODActive:=aData.fLODActive;
  fVisualMeshVertexBufferRenderIndex:=aData.fVisualMeshVertexBufferRenderIndex;
+ fMinMaxHeightFactor:=aData.fMinMaxHeightFactor;
+ fHeightFactorExponent:=aData.fHeightFactorExponent;
 end;
 
 { TpvScene3DPlanet.TSerializedData }
@@ -18994,10 +19004,10 @@ begin
    fPlanetData.SelectedColor.z:=0.0;
    fPlanetData.SelectedColor.w:=0.5;
    fPlanetData.SelectedBrushIndex:=InFlightFrameData.fSelectedBrush;
-   fPlanetData.SelectedBrushRotation:=InFlightFrameData.BrushRotation*TwoPI;
-   fPlanetData.SelectedInnerRadius:=Max(InFlightFrameData.BrushInnerRadius,1e-6);
-   fPlanetData.HeightFactorExponent:=1.0;
-   fPlanetData.MinMaxHeightFactor:=TpvVector4.InlineableCreate(0.0,0.0,1.0,1.0);
+   fPlanetData.SelectedBrushRotation:=InFlightFrameData.fBrushRotation*TwoPI;
+   fPlanetData.SelectedInnerRadius:=Max(InFlightFrameData.fBrushInnerRadius,1e-6);
+   fPlanetData.HeightFactorExponent:=InFlightFrameData.fHeightFactorExponent;
+   fPlanetData.MinMaxHeightFactor:=InFlightFrameData.fMinMaxHeightFactor;
 
    for MaterialIndex:=Low(TpvScene3DPlanet.TMaterials) to High(TpvScene3DPlanet.TMaterials) do begin
     Material:=@fMaterials[MaterialIndex];
