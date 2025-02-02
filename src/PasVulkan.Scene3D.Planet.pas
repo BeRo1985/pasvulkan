@@ -2282,8 +2282,8 @@ begin
  result.x:=((aTexel.x mod aTexSize.x)+aTexSize.x) mod aTexSize.x;
  result.y:=((aTexel.y mod aTexSize.y)+aTexSize.y) mod aTexSize.y;
  if ((((Abs(aTexel.x div aTexSize.x)+(Ord(aTexel.x<0) and 1)) xor (Abs(aTexel.y div aTexSize.y)+(Ord(aTexel.y<0) and 1))) and 1)<>0) then begin
-  result.x:=aTexSize.x-(result.x+1);
-  result.y:=aTexSize.y-(result.y+1);
+  result.x:=((aTexSize.x-(result.x+2))+aTexSize.x) mod aTexSize.x;
+  result.y:=((aTexSize.y-(result.y+2))+aTexSize.y) mod aTexSize.y;
  end;
 end;
 
@@ -2292,8 +2292,8 @@ begin
  aWrappedTexelX:=((aTexelX mod aTexSizeX)+aTexSizeX) mod aTexSizeX;
  aWrappedTexelY:=((aTexelY mod aTexSizeY)+aTexSizeY) mod aTexSizeY;
  if ((((Abs(aTexelX div aTexSizeX)+(Ord(aTexelX<0) and 1)) xor (Abs(aTexelY div aTexSizeY)+(Ord(aTexelY<0) and 1))) and 1)<>0) then begin
-  aWrappedTexelX:=aTexSizeX-(aWrappedTexelX+1);
-  aWrappedTexelY:=aTexSizeY-(aWrappedTexelY+1);
+  aWrappedTexelX:=((aTexSizeX-(aWrappedTexelX+2))+aTexSizeX) mod aTexSizeX;
+  aWrappedTexelY:=((aTexSizeY-(aWrappedTexelY+2))+aTexSizeY) mod aTexSizeY;
  end;
 end;
 
