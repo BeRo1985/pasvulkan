@@ -40,7 +40,7 @@ layout(push_constant) uniform PushConstants {
 #include "octahedral.glsl"
 
 vec3 getNormal(const ivec2 p){
-  const uvec2 globalXY = uvec2(wrapOctahedralTexelCoordinates(p, ivec2(pushConstants.tileMapResolution * pushConstants.tileResolution)));
+  const uvec2 globalXY = uvec2(wrapOctahedralTexelCoordinatesForNormal(p, ivec2(pushConstants.tileMapResolution * pushConstants.tileResolution)));
   const uvec2 tileMapXY = globalXY / uvec2(pushConstants.tileResolution);
   const uvec2 tileXY = globalXY - (tileMapXY * uvec2(pushConstants.tileResolution));
   const uint tileIndex = (tileMapXY.y * pushConstants.tileMapResolution) + tileMapXY.x;

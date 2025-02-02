@@ -34,8 +34,36 @@ vec2 wrapOctahedralCoordinates(vec2 uv){
 }
 
 ivec2 wrapOctahedralTexelCoordinates(const in ivec2 texel, const in ivec2 texSize) {
+  ivec2 tiledSize = texSize * 2; 
+  ivec2 tiledWrapped = ((texel % tiledSize) + tiledSize) % tiledSize;
+  ivec2 isWrapped = ivec2(greaterThanEqual(tiledWrapped, texSize));
+  if((isWrapped.x ^ isWrapped.y) != 0){
+    tiledWrapped = texSize - ((tiledWrapped % texSize) + ivec2(1));
+  }
+  return ((tiledWrapped % texSize) + texSize) % texSize;
+}  
+
+ivec2 wrapOctahedralTexelCoordinates(const in ivec2 texel, const in ivec2 texSize, const int offset) {
+  ivec2 tiledSize = texSize * 2; 
+  ivec2 tiledWrapped = ((texel % tiledSize) + tiledSize) % tiledSize;
+  ivec2 isWrapped = ivec2(greaterThanEqual(tiledWrapped, texSize));
+  if((isWrapped.x ^ isWrapped.y) != 0){
+    tiledWrapped = texSize - ((tiledWrapped % texSize) + ivec2(offset));
+  }
+  return ((tiledWrapped % texSize) + texSize) % texSize;
+}  
+ 
+/*ivec2 wrapOctahedralTexelCoordinates2(const in ivec2 texel, const in ivec2 texSize) {
   ivec2 wrapped = ((texel % texSize) + texSize) % texSize;
-  return ((((abs(texel.x / texSize.x) + int(texel.x < 0)) ^ (abs(texel.y / texSize.y) + int(texel.y < 0))) & 1) != 0) ? (((texSize - wrapped) + texSize) % texSize) : wrapped;
+  return ((((abs(texel.x / texSize.x) + int(texel.x < 0)) ^ (abs(texel.y / texSize.y) + int(texel.y < 0))) & 1) != 0) ? (((texSize - (wrapped + ivec2(1))) + texSize) % texSize) : wrapped;
+}*/
+
+ivec2 wrapOctahedralTexelCoordinatesForNormal(const in ivec2 texel, const in ivec2 texSize) {  
+  return wrapOctahedralTexelCoordinates(texel, texSize, 1);
+}
+
+ivec2 wrapOctahedralTexelCoordinatesForGrass(const in ivec2 texel, const in ivec2 texSize) {  
+  return wrapOctahedralTexelCoordinates(texel, texSize, 1);
 }
 
 /*ivec2 wrapOctahedralTexelCoordinates(const in ivec2 texel, const in ivec2 texSize) {

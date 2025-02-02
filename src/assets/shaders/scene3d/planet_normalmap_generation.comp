@@ -45,7 +45,7 @@ void main(){
 
     float scaleFactor = pushConstants.heightMapScale / pushConstants.planetGroundRadius;
 
-    ivec2 xy = wrapOctahedralTexelCoordinates(texel, texSize);
+    ivec2 xy = wrapOctahedralTexelCoordinatesForNormal(texel, texSize);
 
 #if 1
   
@@ -59,15 +59,15 @@ void main(){
       // d(-1,  0) e( 0,  0) f( 1,  0)
       // g(-1,  1) h( 0,  1) i( 1,  1)
 
-      ivec2 axy = wrapOctahedralTexelCoordinates(texel + ivec2(-1, -1), texSize);
-      ivec2 bxy = wrapOctahedralTexelCoordinates(texel + ivec2(0, -1), texSize);
-      ivec2 cxy = wrapOctahedralTexelCoordinates(texel + ivec2(1, -1), texSize);
-      ivec2 dxy = wrapOctahedralTexelCoordinates(texel + ivec2(-1, 0), texSize);
-      ivec2 exy = wrapOctahedralTexelCoordinates(texel + ivec2(0, 0), texSize);
-      ivec2 fxy = wrapOctahedralTexelCoordinates(texel + ivec2(1, 0), texSize);
-      ivec2 gxy = wrapOctahedralTexelCoordinates(texel + ivec2(-1, 1), texSize);
-      ivec2 hxy = wrapOctahedralTexelCoordinates(texel + ivec2(0, 1), texSize);
-      ivec2 ixy = wrapOctahedralTexelCoordinates(texel + ivec2(1, 1), texSize);
+      ivec2 axy = wrapOctahedralTexelCoordinatesForNormal(texel + ivec2(-1, -1), texSize);
+      ivec2 bxy = wrapOctahedralTexelCoordinatesForNormal(texel + ivec2(0, -1), texSize);
+      ivec2 cxy = wrapOctahedralTexelCoordinatesForNormal(texel + ivec2(1, -1), texSize);
+      ivec2 dxy = wrapOctahedralTexelCoordinatesForNormal(texel + ivec2(-1, 0), texSize);
+      ivec2 exy = wrapOctahedralTexelCoordinatesForNormal(texel + ivec2(0, 0), texSize);
+      ivec2 fxy = wrapOctahedralTexelCoordinatesForNormal(texel + ivec2(1, 0), texSize);
+      ivec2 gxy = wrapOctahedralTexelCoordinatesForNormal(texel + ivec2(-1, 1), texSize);
+      ivec2 hxy = wrapOctahedralTexelCoordinatesForNormal(texel + ivec2(0, 1), texSize);
+      ivec2 ixy = wrapOctahedralTexelCoordinatesForNormal(texel + ivec2(1, 1), texSize);
 
       vec3 a = octPlanetUnsignedDecode(vec2(axy) * invTexSize) * fma(imageLoad(uImageHeightMap, axy).x, scaleFactor, 1.0);
       vec3 b = octPlanetUnsignedDecode(vec2(bxy) * invTexSize) * fma(imageLoad(uImageHeightMap, bxy).x, scaleFactor, 1.0);
@@ -95,10 +95,10 @@ void main(){
 
 #else
 
-    ivec2 xy00 = wrapOctahedralTexelCoordinates(texel + ivec2(-1, 0), texSize);
-    ivec2 xy01 = wrapOctahedralTexelCoordinates(texel + ivec2(1, 0), texSize);
-    ivec2 xy10 = wrapOctahedralTexelCoordinates(texel + ivec2(0, -1), texSize);
-    ivec2 xy11 = wrapOctahedralTexelCoordinates(texel + ivec2(0, 1), texSize);
+    ivec2 xy00 = wrapOctahedralTexelCoordinatesForNormal(texel + ivec2(-1, 0), texSize);
+    ivec2 xy01 = wrapOctahedralTexelCoordinatesForNormal(texel + ivec2(1, 0), texSize);
+    ivec2 xy10 = wrapOctahedralTexelCoordinatesForNormal(texel + ivec2(0, -1), texSize);
+    ivec2 xy11 = wrapOctahedralTexelCoordinatesForNormal(texel + ivec2(0, 1), texSize);
 
     vec3 p = octPlanetUnsignedDecode(vec2(xy00) * invTexSize) * fma(imageLoad(uImageHeightMap, xy).x, scaleFactor, 1.0);
     vec3 p00 = octPlanetUnsignedDecode(vec2(xy00) * invTexSize) * fma(imageLoad(uImageHeightMap, xy00).x, scaleFactor, 1.0);
