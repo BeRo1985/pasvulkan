@@ -47,7 +47,7 @@ void main(){
 
     ivec2 xy = wrapOctahedralTexelCoordinatesForNormal(texel, texSize);
 
-#if 1
+#if 0
   
     vec3 normal;
 

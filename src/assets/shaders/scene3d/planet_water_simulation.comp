@@ -89,13 +89,13 @@ layout(set = 0, binding = 4, std430) coherent buffer WaterMaxHeightDifference {
 vec2 texelSize = 1.0 / vec2(pushConstants.waterHeightMapResolution);
 
 uint getIndex(uvec2 position, ivec2 offset){
-  const ivec2 intPosition = wrapOctahedralTexelCoordinates(ivec2(position) + offset, ivec2(pushConstants.waterHeightMapResolution));  
+  const ivec2 intPosition = wrapOctahedralTexelCoordinatesForWater(ivec2(position) + offset, ivec2(pushConstants.waterHeightMapResolution));  
   return (intPosition.y * pushConstants.waterHeightMapResolution) + intPosition.x;
 }
 
 #if defined(OUTFLOW)
 vec2 readHeight(ivec2 p, const in vec3 referenceNormal, const in bool includeSphericalElevationDifference){
-  p = clamp(wrapOctahedralTexelCoordinates(p, ivec2(pushConstants.waterHeightMapResolution)), ivec2(0), ivec2(pushConstants.waterHeightMapResolution - 1));
+  p = clamp(wrapOctahedralTexelCoordinatesForWater(p, ivec2(pushConstants.waterHeightMapResolution)), ivec2(0), ivec2(pushConstants.waterHeightMapResolution - 1));
   uint index = (uint(p.y) * pushConstants.waterHeightMapResolution) + uint(p.x);
   const float planetHeight = mix(
     pushConstants.bottomRadius,

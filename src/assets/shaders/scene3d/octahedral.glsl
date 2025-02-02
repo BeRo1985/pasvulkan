@@ -66,6 +66,24 @@ ivec2 wrapOctahedralTexelCoordinatesForGrass(const in ivec2 texel, const in ivec
   return wrapOctahedralTexelCoordinates(texel, texSize, 1);
 }
 
+ivec2 wrapOctahedralTexelCoordinatesForWater(const in ivec2 texel, const in ivec2 texSize) {  
+  ivec2 t = wrapOctahedralTexelCoordinates(texel, texSize, 2);
+/*if((t.x != texSize.x) && (t.y != texSize.y)){
+    // Handle singularities
+    if(t.x == 0){
+      t.x = 1;
+    }else if(t.x == (texSize.x - 1)){
+      t.x = texSize.x - 2;
+    }
+    if(t.y == 0){
+      t.y = 1;
+    }else if(t.y == (texSize.y - 1)){
+      t.y = texSize.y - 2;
+    }
+  }*/
+  return t;
+}
+
 /*ivec2 wrapOctahedralTexelCoordinates(const in ivec2 texel, const in ivec2 texSize) {
   ivec2 wrapped = ((texel % texSize) + texSize) % texSize;
   return ((((abs(texel.x / texSize.x) + int(texel.x < 0)) ^ (abs(texel.y / texSize.y) + int(texel.y < 0))) & 1) != 0) ? (texSize - (wrapped + ivec2(1))) : wrapped;
