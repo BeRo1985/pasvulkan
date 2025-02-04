@@ -461,18 +461,38 @@ begin
  RotationSpeed:=aDeltaTime*1.0;
  MovementSpeed:=aDeltaTime*1.0*fCameraSpeed;
 
- if fKeyPitchInc or fKeyPitchDec or fKeyYawInc or fKeyYawDec or fKeyRollInc or fKeyRollDec then begin
-  fCameraMatrix:=(TpvMatrix4x4.CreateFromQuaternion(TpvQuaternion.CreateFromEuler(TpvVector3.Create(Directions[fKeyPitchInc,fKeyPitchDec],
-                                                                                                    Directions[fKeyYawDec,fKeyYawInc],
-                                                                                                    Directions[fKeyRollInc,fKeyRollDec])*-RotationSpeed).Normalize)*fCameraMatrix).OrthoNormalize;
+ case fCameraMode of
+  TCameraMode.VelocityCamera:begin
+   fVelocityCamera.KeyLeft:=fKeyLeft;
+   fVelocityCamera.KeyRight:=fKeyRight;
+   fVelocityCamera.KeyUp:=fKeyUp;
+   fVelocityCamera.KeyDown:=fKeyDown;
+   fVelocityCamera.KeyForward:=fKeyForwards;
+   fVelocityCamera.KeyBackward:=fKeyBackwards;
+   fVelocityCamera.KeyPitchUp:=fKeyPitchInc;
+   fVelocityCamera.KeyPitchDown:=fKeyPitchDec;
+   fVelocityCamera.KeyYawLeft:=fKeyYawInc;
+   fVelocityCamera.KeyYawRight:=fKeyYawDec;
+   fVelocityCamera.KeyRollLeft:=fKeyRollInc;
+   fVelocityCamera.KeyRollRight:=fKeyRollDec;
+   fVelocityCamera.Update(aDeltaTime);
+  end;
+  else begin
+   if fKeyPitchInc or fKeyPitchDec or fKeyYawInc or fKeyYawDec or fKeyRollInc or fKeyRollDec then begin
+    fCameraMatrix:=(TpvMatrix4x4.CreateFromQuaternion(TpvQuaternion.CreateFromEuler(TpvVector3.Create(Directions[fKeyPitchInc,fKeyPitchDec],
+                                                                                                      Directions[fKeyYawDec,fKeyYawInc],
+                                                                                                      Directions[fKeyRollInc,fKeyRollDec])*-RotationSpeed).Normalize)*fCameraMatrix).OrthoNormalize;
+   end;
+   if fKeyLeft or fKeyRight or fKeyForwards or fKeyBackwards or fKeyUp or fKeyDown then begin
+    fCameraMatrix:=fCameraMatrix*
+                   TpvMatrix4x4.CreateTranslation((fCameraMatrix.ToMatrix3x3*
+                                                   TpvVector3.InlineableCreate(Directions[fKeyLeft,fKeyRight],
+                                                                               Directions[fKeyDown,fKeyUp],
+                                                                               Directions[fKeyForwards,fKeyBackwards]))*MovementSpeed);
+   end;
+  end;
  end;
- if fKeyLeft or fKeyRight or fKeyForwards or fKeyBackwards or fKeyUp or fKeyDown then begin
-  fCameraMatrix:=fCameraMatrix*
-                 TpvMatrix4x4.CreateTranslation((fCameraMatrix.ToMatrix3x3*
-                                                 TpvVector3.InlineableCreate(Directions[fKeyLeft,fKeyRight],
-                                                                             Directions[fKeyDown,fKeyUp],
-                                                                             Directions[fKeyForwards,fKeyBackwards]))*MovementSpeed);
- end;
+
 
  fRendererInstance.Update(InFlightFrameIndex,pvApplication.UpdateFrameCounter);
 
@@ -755,6 +775,9 @@ begin
    KEYCODE_P:begin
     fCameraMode:=TCameraMode.FirstPerson;
    end;
+   KEYCODE_Z:begin
+    fCameraMode:=TCameraMode.VelocityCamera;
+   end;
    KEYCODE_L:begin
     pvApplication.CatchMouse:=not pvApplication.CatchMouse;
     pvApplication.VisibleMouseCursor:=not pvApplication.CatchMouse;
@@ -871,6 +894,8 @@ begin
    fUpdateLock.Acquire;
    try
     case fCameraMode of
+     TCameraMode.VelocityCamera:begin
+     end;
      TCameraMode.FirstPerson:begin
       fCameraMatrix:=TpvMatrix4x4.CreateFromQuaternion(TpvQuaternion.CreateFromEuler(TpvVector3.InlineableCreate(aPointerEvent.RelativePosition.y,aPointerEvent.RelativePosition.x,0.0)*0.002)).Transpose*fCameraMatrix;
       if abs(PpvVector3(pointer(@fCameraMatrix.RawComponents[2,0]))^.y*PpvVector3(pointer(@fCameraMatrix.RawComponents[1,0]))^.y)<0.5 then begin
@@ -905,6 +930,8 @@ begin
   fUpdateLock.Acquire;
   try
    case fCameraMode of
+    TCameraMode.VelocityCamera:begin
+    end;
     TCameraMode.FirstPerson:begin
      fCameraMatrix:=fCameraMatrix*TpvMatrix4x4.CreateTranslation((fCameraMatrix.ToMatrix3x3*TpvVector3.ZAxis).Normalize*(aRelativeAmount.x+aRelativeAmount.y)*fCameraSpeed);
     end;
