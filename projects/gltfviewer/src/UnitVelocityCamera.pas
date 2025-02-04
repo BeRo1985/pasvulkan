@@ -265,29 +265,35 @@ begin
   if fKeyBackward then begin
    fForce:=fForce+(OrientationMatrix.Forwards*fLinearVelocitySpeed);
   end;
+
+  // Roll: Rotation around the forward axis
   if fKeyRollLeft then begin
-   fTorque.x:=fTorque.x+fAngularVelocitySpeed;
+   fTorque.x:=fTorque+(OrientationMatrix.Forwards*fAngularVelocitySpeed);
   end;
   if fKeyRollRight then begin
-   fTorque.x:=fTorque.x-fAngularVelocitySpeed;
+   fTorque.x:=fTorque-(OrientationMatrix.Forwards*fAngularVelocitySpeed);
   end;
+
+  // Pitch: Rotation around the right axis
   if fKeyPitchUp then begin
-   fTorque.y:=fTorque.y+fAngularVelocitySpeed;
+   fTorque.y:=fTorque+(OrientationMatrix.Right*fAngularVelocitySpeed);
   end;
   if fKeyPitchDown then begin
-   fTorque.y:=fTorque.y-fAngularVelocitySpeed;
+   fTorque.y:=fTorque-(OrientationMatrix.Right*fAngularVelocitySpeed);
   end;
+
+  // Yaw: Rotation around the up axis
   if fKeyYawLeft then begin
-   fTorque.z:=fTorque.z+fAngularVelocitySpeed;
+   fTorque.z:=fTorque+(OrientationMatrix.Up*fAngularVelocitySpeed);
   end;
   if fKeyYawRight then begin
-   fTorque.z:=fTorque.z-fAngularVelocitySpeed;
+   fTorque.z:=fTorque-(OrientationMatrix.Up*fAngularVelocitySpeed);
   end;
 
   // Integration of forces
   fLinearVelocity:=fLinearVelocity+(fForce*fTimeStep);
   fAngularVelocity:=fAngularVelocity+(fTorque*fTimeStep);
-
+  
   // Damping
   fLinearVelocity:=fLinearVelocity/(1.0+(fLinearVelocityDamping*fTimeStep));
   fAngularVelocity:=fAngularVelocity/(1.0+(fAngularVelocityDamping*fTimeStep));
