@@ -70,6 +70,7 @@ type { TVelocityCamera }
        constructor Create; reintroduce;
        destructor Destroy; override;
        procedure Reset;
+       procedure SetPositionAndOrientation(const aPosition:TpvVector3;const aOrientation:TpvQuaternion);
        procedure Update(const aDeltaTime:TpvDouble);
        procedure AddForce(const aForce:TpvVector3);
        procedure AddTorque(const aTorque:TpvVector3);
@@ -195,6 +196,17 @@ begin
 
  fFirstUpdate:=true;
 
+end;
+
+procedure TVelocityCamera.SetPositionAndOrientation(const aPosition:TpvVector3;const aOrientation:TpvQuaternion);
+begin
+ fLastPosition:=aPosition;
+ fLastOrientation:=aOrientation;
+ fPosition:=aPosition;
+ fOrientation:=aOrientation;
+ fInterpolatedPosition:=aPosition;
+ fInterpolatedOrientation:=aOrientation;
+ fFirstUpdate:=true;
 end;
 
 procedure TVelocityCamera.Update(const aDeltaTime:TpvDouble);
