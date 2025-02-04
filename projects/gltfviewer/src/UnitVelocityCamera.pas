@@ -229,26 +229,26 @@ begin
   fLastOrientation:=fOrientation;
 
   // Get orientation matrix
-  OrientationMatrix:=fOrientation.ToMatrix3x3;
+  OrientationMatrix:=TpvMatrix3x3.CreateFromQuaternion(fOrientation);
 
   // Process key input
   if fKeyLeft then begin
-   fForce:=fForce+(OrientationMatrix[0]*fCameraSpeed);
+   fForce:=fForce-(OrientationMatrix.Right*fCameraSpeed);
   end; 
   if fKeyRight then begin
-   fForce:=fForce-(OrientationMatrix[0]*fCameraSpeed);
+   fForce:=fForce-(OrientationMatrix.Right*fCameraSpeed);
   end;
   if fKeyUp then begin
-   fForce:=fForce+(OrientationMatrix[1]*fCameraSpeed);
+   fForce:=fForce+(OrientationMatrix.Up*fCameraSpeed);
   end;
   if fKeyDown then begin
-   fForce:=fForce-(OrientationMatrix[1]*fCameraSpeed);
+   fForce:=fForce-(OrientationMatrix.Up*fCameraSpeed);
   end;
   if fKeyForward then begin
-   fForce:=fForce+(OrientationMatrix[2]*fCameraSpeed);
+   fForce:=fForce+(OrientationMatrix.Forwards*fCameraSpeed);
   end;
   if fKeyBackward then begin
-   fForce:=fForce-(OrientationMatrix[2]*fCameraSpeed);
+   fForce:=fForce-(OrientationMatrix.Forwards*fCameraSpeed);
   end;
   if fKeyRollLeft then begin
    fTorque.x:=fTorque.x+(fCameraSpeed*0.1);
