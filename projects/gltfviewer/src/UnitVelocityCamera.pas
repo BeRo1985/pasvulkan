@@ -260,10 +260,10 @@ begin
    fForce:=fForce-(OrientationMatrix.Up*fLinearVelocitySpeed);
   end;
   if fKeyForward then begin
-   fForce:=fForce+(OrientationMatrix.Forwards*fLinearVelocitySpeed);
+   fForce:=fForce-(OrientationMatrix.Forwards*fLinearVelocitySpeed);
   end;
   if fKeyBackward then begin
-   fForce:=fForce-(OrientationMatrix.Forwards*fLinearVelocitySpeed);
+   fForce:=fForce+(OrientationMatrix.Forwards*fLinearVelocitySpeed);
   end;
   if fKeyRollLeft then begin
    fTorque.x:=fTorque.x+fAngularVelocitySpeed;
