@@ -127,8 +127,8 @@ begin
  fTimeAccumulator:=0.0;
  fTimeStep:=1.0/60.0;
 
- fLinearVelocityDamping:=0.25;
- fAngularVelocityDamping:=0.25;
+ fLinearVelocityDamping:=1.0;
+ fAngularVelocityDamping:=1.0;
 
  fFirstUpdate:=true;
 
@@ -145,7 +145,7 @@ begin
  fKeyYawLeft:=false;
  fKeyYawRight:=false;
 
- fLinearVelocitySpeed:=1.0;
+ fLinearVelocitySpeed:=20.0;
  fAngularVelocitySpeed:=1.0;
 
 end;
@@ -251,7 +251,7 @@ begin
    fForce:=fForce-(OrientationMatrix.Right*fLinearVelocitySpeed);
   end; 
   if fKeyRight then begin
-   fForce:=fForce-(OrientationMatrix.Right*fLinearVelocitySpeed);
+   fForce:=fForce+(OrientationMatrix.Right*fLinearVelocitySpeed);
   end;
   if fKeyUp then begin
    fForce:=fForce+(OrientationMatrix.Up*fLinearVelocitySpeed);
