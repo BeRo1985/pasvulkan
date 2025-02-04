@@ -1,0 +1,220 @@
+unit UnitVelocityCamera;
+{$ifdef fpc}
+ {$mode delphi}
+ {$ifdef cpu386}
+  {$asmmode intel}
+ {$endif}
+ {$ifdef cpuamd64}
+  {$asmmode intel}
+ {$endif}
+{$else}
+ {$ifdef conditionalexpressions}
+  {$if CompilerVersion>=24.0}
+   {$legacyifend on}
+  {$ifend}
+ {$endif}
+{$endif}
+{$if defined(Win32) or defined(Win64)}
+ {$define Windows}
+{$ifend}
+
+{$scopedenums on}
+
+{$define UseMomentBasedOrderIndependentTransparency}
+
+interface
+
+uses SysUtils,
+     Classes,
+     Math,
+     Vulkan,
+     PasVulkan.Types,
+     PasVulkan.Math;
+
+type { TVelocityCamera }
+     TVelocityCamera=class 
+      private
+       fLastPosition:TpvVector3;
+       fLastOrientation:TpvQuaternion;
+       fPosition:TpvVector3;
+       fOrientation:TpvQuaternion;
+       fInterpolatedPosition:TpvVector3;
+       fInterpolatedOrientation:TpvQuaternion;
+       fLinearVelocity:TpvVector3;
+       fAngularVelocity:TpvVector3;
+       fForce:TpvVector3;
+       fTorque:TpvVector3;
+       fLinearVelocityDamping:TpvScalar;
+       fAngularVelocityDamping:TpvScalar;
+       fTimeAccumulator:TpvDouble;
+       fTimeStep:TpvDouble;
+       fFirstUpdate:boolean;
+       function GetViewMatrix:TpvMatrix4x4;
+      public
+       constructor Create; reintroduce;
+       destructor Destroy; override;
+       procedure Reset;
+       procedure Update(const aDeltaTime:TpvDouble);
+       procedure AddForce(const aForce:TpvVector3);
+       procedure AddTorque(const aTorque:TpvVector3);
+      public
+       property Position:TpvVector3 read fPosition write fPosition;
+       property Orientation:TpvQuaternion read fOrientation write fOrientation;
+       property LinearVelocity:TpvVector3 read fLinearVelocity write fLinearVelocity;
+       property AngularVelocity:TpvVector3 read fAngularVelocity write fAngularVelocity;
+       property Force:TpvVector3 read fForce write fForce;
+       property Torque:TpvVector3 read fTorque write fTorque;
+       property LinearVelocityDamping:TpvScalar read fLinearVelocityDamping write fLinearVelocityDamping;
+       property AngularVelocityDamping:TpvScalar read fAngularVelocityDamping write fAngularVelocityDamping;
+       property ViewMatrix:TpvMatrix4x4 read GetViewMatrix;
+     end;   
+
+implementation
+
+{ TVelocityCamera }
+
+constructor TVelocityCamera.Create;
+begin
+ inherited Create;
+
+ fLastPosition:=TpvVector3.Origin;
+ fLastOrientation:=TpvQuaternion.Identity;
+
+ fPosition:=TpvVector3.Origin;
+ fOrientation:=TpvQuaternion.Identity;
+
+ fInterpolatedPosition:=TpvVector3.Origin;
+ fInterpolatedOrientation:=TpvQuaternion.Identity;
+ 
+ fLinearVelocity:=TpvVector3.Null;
+ fAngularVelocity:=TpvVector3.Null;
+
+ fForce:=TpvVector3.Null;
+ fTorque:=TpvVector3.Null;
+
+ fTimeAccumulator:=0.0;
+ fTimeStep:=1.0/60.0;
+
+ fLinearVelocityDamping:=0.25;
+ fAngularVelocityDamping:=0.25;
+
+ fFirstUpdate:=true;
+
+end;
+
+destructor TVelocityCamera.Destroy;
+begin
+ inherited Destroy;
+end;
+
+function TVelocityCamera.GetViewMatrix:TpvMatrix4x4;
+begin
+ result:=TpvMatrix4x4.CreateFromQuaternion(fInterpolatedOrientation);
+ result.Components[3,0]:=fInterpolatedPosition.x;
+ result.Components[3,1]:=fInterpolatedPosition.y;
+ result.Components[3,2]:=fInterpolatedPosition.z; 
+end;
+
+procedure TVelocityCamera.Reset;
+begin
+
+ fLastPosition:=TpvVector3.Origin;
+ fLastOrientation:=TpvQuaternion.Identity;
+
+ fPosition:=TpvVector3.Origin;
+ fOrientation:=TpvQuaternion.Identity;
+
+ fInterpolatedPosition:=TpvVector3.Origin;
+ fInterpolatedOrientation:=TpvQuaternion.Identity;
+ 
+ fLinearVelocity:=TpvVector3.Null;
+ fAngularVelocity:=TpvVector3.Null;
+
+ fForce:=TpvVector3.Null;
+ fTorque:=TpvVector3.Null;
+
+ fFirstUpdate:=true;
+
+end;
+
+procedure TVelocityCamera.Update(const aDeltaTime:TpvDouble);
+const OneDiv3=1.0/3.0;
+      OneDiv6=1.0/6.0;
+var Alpha,DeltaTimeDiv6,DeltaTimeDiv3:TpvDouble;
+    Positions:array[0..3] of TpvVector3;
+    Quaternions:array[0..3] of TpvQuaternion;
+    HalfSpinQuaternion:TpvQuaternion;
+begin
+ 
+ DeltaTimeDiv6:=fTimeStep*OneDiv6;
+ DeltaTimeDiv3:=fTimeStep*OneDiv3;
+
+ if fFirstUpdate then begin
+  fFirstUpdate:=false;
+  fLastPosition:=fPosition;
+  fLastOrientation:=fOrientation;
+  fInterpolatedPosition:=fPosition;
+  fInterpolatedOrientation:=fOrientation;
+ end;
+
+ // Accumulate time with delta time
+ fTimeAccumulator:=fTimeAccumulator+aDeltaTime;
+
+ // While time accumulator is greater or equal to time step, for proper fixed time step integration
+ while fTimeAccumulator>=fTimeStep do begin
+
+  // Decrease time accumulator wrapped around the time step
+  fTimeAccumulator:=fTimeAccumulator-fTimeStep;
+
+  // Save last position and orientation
+  fLastPosition:=fPosition;
+  fLastOrientation:=fOrientation;
+
+  // Integration of forces
+  fLinearVelocity:=fLinearVelocity+(fForce*fTimeStep);
+  fAngularVelocity:=fAngularVelocity+(fTorque*fTimeStep);
+
+  // Damping
+  fLinearVelocity:=fLinearVelocity/(1.0+(fLinearVelocityDamping*fTimeStep));
+  fAngularVelocity:=fAngularVelocity/(1.0+(fAngularVelocityDamping*fTimeStep));
+
+  // Integration of linear velocity (RK4)
+  Positions[0]:=fLinearVelocity;
+  Positions[1]:=Positions[0]+(fLinearVelocity*(fTimeStep*0.5));
+  Positions[2]:=Positions[1]+(fLinearVelocity*(fTimeStep*0.5));
+  Positions[3]:=Positions[2]+(fLinearVelocity*fTimeStep);
+  fPosition:=fPosition+(((Positions[0]+Positions[3])*DeltaTimeDiv6)+((Positions[1]+Positions[2])*DeltaTimeDiv3));
+
+  // Integration of angular velocity (RK4)
+  HalfSpinQuaternion.x:=fAngularVelocity.x*0.5;
+  HalfSpinQuaternion.y:=fAngularVelocity.y*0.5;
+  HalfSpinQuaternion.z:=fAngularVelocity.z*0.5;
+  HalfSpinQuaternion.w:=0;
+  Quaternions[0]:=HalfSpinQuaternion*fOrientation.Normalize;
+  Quaternions[1]:=HalfSpinQuaternion*(fOrientation+(Quaternions[0]*(fTimeStep*0.5))).Normalize;
+  Quaternions[2]:=HalfSpinQuaternion*(fOrientation+(Quaternions[1]*(fTimeStep*0.5))).Normalize;
+  Quaternions[3]:=HalfSpinQuaternion*(fOrientation+(Quaternions[2]*fTimeStep)).Normalize;
+  fOrientation:=(fOrientation+(((Quaternions[0]+Quaternions[3])*DeltaTimeDiv6)+((Quaternions[1]+Quaternions[2])*DeltaTimeDiv3))).Normalize;
+
+ end;
+
+ // Interpolation factor (based on time accumulator and time step)
+ Alpha:=fTimeAccumulator/fTimeStep;
+
+ // Interpolate between last and current position and orientation
+ fInterpolatedPosition:=fLastPosition.Lerp(fPosition,Alpha);
+ fInterpolatedOrientation:=fLastOrientation.Slerp(fOrientation,Alpha);
+
+end;
+
+procedure TVelocityCamera.AddForce(const aForce:TpvVector3);
+begin
+ fForce:=fForce+aForce;
+end;
+
+procedure TVelocityCamera.AddTorque(const aTorque:TpvVector3);
+begin
+ fTorque:=fTorque+aTorque;
+end;
+
+end.
