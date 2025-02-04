@@ -268,26 +268,26 @@ begin
 
   // Roll: Rotation around the forward axis
   if fKeyRollLeft then begin
-   fTorque.x:=fTorque+(OrientationMatrix.Forwards*fAngularVelocitySpeed);
+   fTorque:=fTorque+(OrientationMatrix.Forwards*fAngularVelocitySpeed);
   end;
   if fKeyRollRight then begin
-   fTorque.x:=fTorque-(OrientationMatrix.Forwards*fAngularVelocitySpeed);
+   fTorque:=fTorque-(OrientationMatrix.Forwards*fAngularVelocitySpeed);
   end;
 
   // Pitch: Rotation around the right axis
   if fKeyPitchUp then begin
-   fTorque.y:=fTorque+(OrientationMatrix.Right*fAngularVelocitySpeed);
+   fTorque:=fTorque+(OrientationMatrix.Right*fAngularVelocitySpeed);
   end;
   if fKeyPitchDown then begin
-   fTorque.y:=fTorque-(OrientationMatrix.Right*fAngularVelocitySpeed);
+   fTorque:=fTorque-(OrientationMatrix.Right*fAngularVelocitySpeed);
   end;
 
   // Yaw: Rotation around the up axis
   if fKeyYawLeft then begin
-   fTorque.z:=fTorque+(OrientationMatrix.Up*fAngularVelocitySpeed);
+   fTorque:=fTorque+(OrientationMatrix.Up*fAngularVelocitySpeed);
   end;
   if fKeyYawRight then begin
-   fTorque.z:=fTorque-(OrientationMatrix.Up*fAngularVelocitySpeed);
+   fTorque:=fTorque-(OrientationMatrix.Up*fAngularVelocitySpeed);
   end;
 
   // Integration of forces
