@@ -49,7 +49,8 @@ type { TVelocityCamera }
        fTimeAccumulator:TpvDouble;
        fTimeStep:TpvDouble;
        fFirstUpdate:boolean;
-       fCameraSpeed:TpvScalar;
+       fLinearVelocitySpeed:TpvScalar;
+       fAngularVelocitySpeed:TpvScalar;
       private
        fKeyLeft:boolean;
        fKeyRight:boolean;
@@ -82,7 +83,8 @@ type { TVelocityCamera }
        property LinearVelocityDamping:TpvScalar read fLinearVelocityDamping write fLinearVelocityDamping;
        property AngularVelocityDamping:TpvScalar read fAngularVelocityDamping write fAngularVelocityDamping;
        property ViewMatrix:TpvMatrix4x4 read GetViewMatrix;
-       property CameraSpeed:TpvScalar read fCameraSpeed write fCameraSpeed;
+       property LinearVelocitySpeed:TpvScalar read fLinearVelocitySpeed write fLinearVelocitySpeed;
+       property AngularVelocitySpeed:TpvScalar read fAngularVelocitySpeed write fAngularVelocitySpeed;
       public 
        property KeyLeft:boolean read fKeyLeft write fKeyLeft;
        property KeyRight:boolean read fKeyRight write fKeyRight;
@@ -129,8 +131,6 @@ begin
 
  fFirstUpdate:=true;
 
- fCameraSpeed:=1.0;
-
  fKeyLeft:=false;
  fKeyRight:=false;
  fKeyUp:=false;
@@ -143,6 +143,9 @@ begin
  fKeyPitchDown:=false;
  fKeyYawLeft:=false;
  fKeyYawRight:=false;
+
+ fLinearVelocitySpeed:=1.0;
+ fAngularVelocitySpeed:=1.0;
 
 end;
 
@@ -233,40 +236,40 @@ begin
 
   // Process key input
   if fKeyLeft then begin
-   fForce:=fForce-(OrientationMatrix.Right*fCameraSpeed);
+   fForce:=fForce-(OrientationMatrix.Right*fLinearVelocitySpeed);
   end; 
   if fKeyRight then begin
-   fForce:=fForce-(OrientationMatrix.Right*fCameraSpeed);
+   fForce:=fForce-(OrientationMatrix.Right*fLinearVelocitySpeed);
   end;
   if fKeyUp then begin
-   fForce:=fForce+(OrientationMatrix.Up*fCameraSpeed);
+   fForce:=fForce+(OrientationMatrix.Up*fLinearVelocitySpeed);
   end;
   if fKeyDown then begin
-   fForce:=fForce-(OrientationMatrix.Up*fCameraSpeed);
+   fForce:=fForce-(OrientationMatrix.Up*fLinearVelocitySpeed);
   end;
   if fKeyForward then begin
-   fForce:=fForce+(OrientationMatrix.Forwards*fCameraSpeed);
+   fForce:=fForce+(OrientationMatrix.Forwards*fLinearVelocitySpeed);
   end;
   if fKeyBackward then begin
-   fForce:=fForce-(OrientationMatrix.Forwards*fCameraSpeed);
+   fForce:=fForce-(OrientationMatrix.Forwards*fLinearVelocitySpeed);
   end;
   if fKeyRollLeft then begin
-   fTorque.x:=fTorque.x+(fCameraSpeed*0.1);
+   fTorque.x:=fTorque.x+fAngularVelocitySpeed;
   end;
   if fKeyRollRight then begin
-   fTorque.x:=fTorque.x-(fCameraSpeed*0.1);
+   fTorque.x:=fTorque.x-fAngularVelocitySpeed;
   end;
   if fKeyPitchUp then begin
-   fTorque.y:=fTorque.y+(fCameraSpeed*0.1);
+   fTorque.y:=fTorque.y+fAngularVelocitySpeed;
   end;
   if fKeyPitchDown then begin
-   fTorque.y:=fTorque.y-(fCameraSpeed*0.1);
+   fTorque.y:=fTorque.y-fAngularVelocitySpeed;
   end;
   if fKeyYawLeft then begin
-   fTorque.z:=fTorque.z+(fCameraSpeed*0.1);
+   fTorque.z:=fTorque.z+fAngularVelocitySpeed;
   end;
   if fKeyYawRight then begin
-   fTorque.z:=fTorque.z-(fCameraSpeed*0.1);
+   fTorque.z:=fTorque.z-fAngularVelocitySpeed;
   end;
 
   // Integration of forces
