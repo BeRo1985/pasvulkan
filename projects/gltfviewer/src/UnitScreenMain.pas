@@ -605,6 +605,7 @@ begin
   case fCameraMode of
    TCameraMode.VelocityCamera:begin
     ViewMatrix:=fVelocityCamera.Matrix.SimpleInverse;//TpvMatrix4x4.CreateTranslation(-fCameraPosition)*TpvMatrix4x4.CreateFromQuaternion(fCameraOrientation);
+    fCameraMatrix:=ViewMatrix.SimpleInverse;
    end;
    TCameraMode.FirstPerson:begin
     ViewMatrix:=fCameraMatrix.SimpleInverse;//TpvMatrix4x4.CreateTranslation(-fCameraPosition)*TpvMatrix4x4.CreateFromQuaternion(fCameraOrientation);
