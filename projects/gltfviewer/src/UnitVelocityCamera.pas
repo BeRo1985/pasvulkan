@@ -49,6 +49,21 @@ type { TVelocityCamera }
        fTimeAccumulator:TpvDouble;
        fTimeStep:TpvDouble;
        fFirstUpdate:boolean;
+       fCameraSpeed:TpvScalar;
+      private
+       fKeyLeft:boolean;
+       fKeyRight:boolean;
+       fKeyUp:boolean;
+       fKeyDown:boolean;
+       fKeyForward:boolean;
+       fKeyBackward:boolean;
+       fKeyRollLeft:boolean;
+       fKeyRollRight:boolean;
+       fKeyPitchUp:boolean;
+       fKeyPitchDown:boolean;
+       fKeyYawLeft:boolean;
+       fKeyYawRight:boolean;
+      private
        function GetViewMatrix:TpvMatrix4x4;
       public
        constructor Create; reintroduce;
@@ -67,6 +82,20 @@ type { TVelocityCamera }
        property LinearVelocityDamping:TpvScalar read fLinearVelocityDamping write fLinearVelocityDamping;
        property AngularVelocityDamping:TpvScalar read fAngularVelocityDamping write fAngularVelocityDamping;
        property ViewMatrix:TpvMatrix4x4 read GetViewMatrix;
+       property CameraSpeed:TpvScalar read fCameraSpeed write fCameraSpeed;
+      public 
+       property KeyLeft:boolean read fKeyLeft write fKeyLeft;
+       property KeyRight:boolean read fKeyRight write fKeyRight;
+       property KeyUp:boolean read fKeyUp write fKeyUp;
+       property KeyDown:boolean read fKeyDown write fKeyDown;
+       property KeyForward:boolean read fKeyForward write fKeyForward;
+       property KeyBackward:boolean read fKeyBackward write fKeyBackward;
+       property KeyRollLeft:boolean read fKeyRollLeft write fKeyRollLeft;
+       property KeyRollRight:boolean read fKeyRollRight write fKeyRollRight;
+       property KeyPitchUp:boolean read fKeyPitchUp write fKeyPitchUp;
+       property KeyPitchDown:boolean read fKeyPitchDown write fKeyPitchDown;
+       property KeyYawLeft:boolean read fKeyYawLeft write fKeyYawLeft;
+       property KeyYawRight:boolean read fKeyYawRight write fKeyYawRight;       
      end;   
 
 implementation
@@ -99,6 +128,21 @@ begin
  fAngularVelocityDamping:=0.25;
 
  fFirstUpdate:=true;
+
+ fCameraSpeed:=1.0;
+
+ fKeyLeft:=false;
+ fKeyRight:=false;
+ fKeyUp:=false;
+ fKeyDown:=false;
+ fKeyForward:=false;
+ fKeyBackward:=false;
+ fKeyRollLeft:=false;
+ fKeyRollRight:=false;
+ fKeyPitchUp:=false;
+ fKeyPitchDown:=false;
+ fKeyYawLeft:=false;
+ fKeyYawRight:=false;
 
 end;
 
@@ -133,6 +177,19 @@ begin
  fForce:=TpvVector3.Null;
  fTorque:=TpvVector3.Null;
 
+ fKeyLeft:=false;
+ fKeyRight:=false;
+ fKeyUp:=false;
+ fKeyDown:=false;
+ fKeyForward:=false;
+ fKeyBackward:=false;
+ fKeyRollLeft:=false;
+ fKeyRollRight:=false;
+ fKeyPitchUp:=false;
+ fKeyPitchDown:=false;
+ fKeyYawLeft:=false;
+ fKeyYawRight:=false;
+
  fFirstUpdate:=true;
 
 end;
@@ -144,6 +201,7 @@ var Alpha,DeltaTimeDiv6,DeltaTimeDiv3:TpvDouble;
     Positions:array[0..3] of TpvVector3;
     Quaternions:array[0..3] of TpvQuaternion;
     HalfSpinQuaternion:TpvQuaternion;
+    OrientationMatrix:TpvMatrix3x3;
 begin
  
  DeltaTimeDiv6:=fTimeStep*OneDiv6;
@@ -170,6 +228,47 @@ begin
   fLastPosition:=fPosition;
   fLastOrientation:=fOrientation;
 
+  // Get orientation matrix
+  OrientationMatrix:=fOrientation.ToMatrix3x3;
+
+  // Process key input
+  if fKeyLeft then begin
+   fForce:=fForce+(OrientationMatrix[0]*fCameraSpeed);
+  end; 
+  if fKeyRight then begin
+   fForce:=fForce-(OrientationMatrix[0]*fCameraSpeed);
+  end;
+  if fKeyUp then begin
+   fForce:=fForce+(OrientationMatrix[1]*fCameraSpeed);
+  end;
+  if fKeyDown then begin
+   fForce:=fForce-(OrientationMatrix[1]*fCameraSpeed);
+  end;
+  if fKeyForward then begin
+   fForce:=fForce+(OrientationMatrix[2]*fCameraSpeed);
+  end;
+  if fKeyBackward then begin
+   fForce:=fForce-(OrientationMatrix[2]*fCameraSpeed);
+  end;
+  if fKeyRollLeft then begin
+   fTorque.x:=fTorque.x+(fCameraSpeed*0.1);
+  end;
+  if fKeyRollRight then begin
+   fTorque.x:=fTorque.x-(fCameraSpeed*0.1);
+  end;
+  if fKeyPitchUp then begin
+   fTorque.y:=fTorque.y+(fCameraSpeed*0.1);
+  end;
+  if fKeyPitchDown then begin
+   fTorque.y:=fTorque.y-(fCameraSpeed*0.1);
+  end;
+  if fKeyYawLeft then begin
+   fTorque.z:=fTorque.z+(fCameraSpeed*0.1);
+  end;
+  if fKeyYawRight then begin
+   fTorque.z:=fTorque.z-(fCameraSpeed*0.1);
+  end;
+
   // Integration of forces
   fLinearVelocity:=fLinearVelocity+(fForce*fTimeStep);
   fAngularVelocity:=fAngularVelocity+(fTorque*fTimeStep);
@@ -195,6 +294,10 @@ begin
   Quaternions[2]:=HalfSpinQuaternion*(fOrientation+(Quaternions[1]*(fTimeStep*0.5))).Normalize;
   Quaternions[3]:=HalfSpinQuaternion*(fOrientation+(Quaternions[2]*fTimeStep)).Normalize;
   fOrientation:=(fOrientation+(((Quaternions[0]+Quaternions[3])*DeltaTimeDiv6)+((Quaternions[1]+Quaternions[2])*DeltaTimeDiv3))).Normalize;
+
+  // Reset forces and torques
+  fForce:=TpvVector3.Null;
+  fTorque:=TpvVector3.Null;
 
  end;
 

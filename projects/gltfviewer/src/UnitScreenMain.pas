@@ -48,7 +48,8 @@ type { TScreenMain }
       public
        type TCameraMode=(
              Orbit,
-             FirstPerson
+             FirstPerson,
+             VelocityCamera
             );
             PCameraMode=^TCameraMode;
             { TInFlightFrameState }
@@ -100,6 +101,7 @@ type { TScreenMain }
        fLoadedFileName:string;
        fLoadDelay:TpvInt32;
        fResetCameraOnLoad:Boolean;
+       fVelocityCamera:TVelocityCamera;
       public
 
        constructor Create; override;
@@ -176,6 +178,8 @@ begin
  fResetCameraOnLoad:=false;
 
  fCameraMode:=TCameraMode.Orbit;
+
+ fVelocityCamera:=TVelocityCamera.Create;
 
  fKeyLeft:=false;
  fKeyRight:=false;
@@ -327,6 +331,7 @@ begin
  FreeAndNil(fPrimaryDirectionalLight);
  FreeAndNil(fScene3D);
  FreeAndNil(fUpdateLock);
+ FreeAndNil(fVelocityCamera);
  inherited Destroy;
 end;
 
