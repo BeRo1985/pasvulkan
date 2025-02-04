@@ -65,7 +65,7 @@ type { TVelocityCamera }
        fKeyYawLeft:boolean;
        fKeyYawRight:boolean;
       private
-       function GetViewMatrix:TpvMatrix4x4;
+       function GetMatrix:TpvMatrix4x4;
       public
        constructor Create; reintroduce;
        destructor Destroy; override;
@@ -82,7 +82,7 @@ type { TVelocityCamera }
        property Torque:TpvVector3 read fTorque write fTorque;
        property LinearVelocityDamping:TpvScalar read fLinearVelocityDamping write fLinearVelocityDamping;
        property AngularVelocityDamping:TpvScalar read fAngularVelocityDamping write fAngularVelocityDamping;
-       property ViewMatrix:TpvMatrix4x4 read GetViewMatrix;
+       property Matrix:TpvMatrix4x4 read GetMatrix;
        property LinearVelocitySpeed:TpvScalar read fLinearVelocitySpeed write fLinearVelocitySpeed;
        property AngularVelocitySpeed:TpvScalar read fAngularVelocitySpeed write fAngularVelocitySpeed;
       public 
@@ -154,7 +154,7 @@ begin
  inherited Destroy;
 end;
 
-function TVelocityCamera.GetViewMatrix:TpvMatrix4x4;
+function TVelocityCamera.GetMatrix:TpvMatrix4x4;
 begin
  result:=TpvMatrix4x4.CreateFromQuaternion(fInterpolatedOrientation);
  result.Components[3,0]:=fInterpolatedPosition.x;

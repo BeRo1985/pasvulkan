@@ -583,6 +583,9 @@ begin
   Bounds:=(fScene3D.BoundingBox.Max-fScene3D.BoundingBox.Min)*0.5;
 
   case fCameraMode of
+   TCameraMode.VelocityCamera:begin
+    ViewMatrix:=fVelocityCamera.Matrix.SimpleInverse;//TpvMatrix4x4.CreateTranslation(-fCameraPosition)*TpvMatrix4x4.CreateFromQuaternion(fCameraOrientation);
+   end;
    TCameraMode.FirstPerson:begin
     ViewMatrix:=fCameraMatrix.SimpleInverse;//TpvMatrix4x4.CreateTranslation(-fCameraPosition)*TpvMatrix4x4.CreateFromQuaternion(fCameraOrientation);
    end;
