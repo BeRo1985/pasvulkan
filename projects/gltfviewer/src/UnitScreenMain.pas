@@ -834,13 +834,13 @@ begin
    KEYCODE_LEFT,KEYCODE_A:begin
     fKeyLeft:=aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Down;
    end;
-   KEYCODE_RIGHT,KEYCODE_S:begin
+   KEYCODE_RIGHT,KEYCODE_D:begin
     fKeyRight:=aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Down;
    end;
    KEYCODE_UP,KEYCODE_W:begin
     fKeyForwards:=aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Down;
    end;
-   KEYCODE_DOWN,KEYCODE_D:begin
+   KEYCODE_DOWN,KEYCODE_S:begin
     fKeyBackwards:=aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Down;
    end;
    KEYCODE_PAGEUP,KEYCODE_R:begin
