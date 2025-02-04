@@ -778,6 +778,7 @@ begin
    end;
    KEYCODE_Z:begin
     fCameraMode:=TCameraMode.VelocityCamera;
+    fVelocityCamera.SetPositionAndOrientation(fCameraMatrix.Translation.xyz,fCameraMatrix.ToQuaternion);
    end;
    KEYCODE_L:begin
     pvApplication.CatchMouse:=not pvApplication.CatchMouse;
