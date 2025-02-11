@@ -84,7 +84,9 @@ void main(){
 
 #if 1
   // The actual standard approach
-  vec3 cameraPosition = inverseViewMatrix[3].xyz;
+  mat4 modelViewMatrix = mat4(uView.views[viewIndex].viewMatrix * planetModelMatrix); 
+  mat4 inverseModelViewMatrix = inverse(modelViewMatrix);
+  vec3 cameraPosition = inverseModelViewMatrix[3].xyz; //inverseViewMatrix[3].xyz;
 #else
   // This approach assumes that the view matrix has no scaling or skewing, but only rotation and translation.
   vec3 cameraPosition = (-viewMatrix[3].xyz) * mat3(viewMatrix);

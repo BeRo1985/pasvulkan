@@ -12169,7 +12169,11 @@ end;
 
 function TpvMatrix4x4.Translate(const aVector:TpvVector3):TpvMatrix4x4; 
 begin
- result:=self*TpvMatrix4x4.CreateTranslation(aVector);
+// result:=self*TpvMatrix4x4.CreateTranslation(aVector);
+ result:=self;
+ result.RawComponents[3,0]:=result.RawComponents[3,0]+aVector.x;
+ result.RawComponents[3,1]:=result.RawComponents[3,1]+aVector.y;
+ result.RawComponents[3,2]:=result.RawComponents[3,2]+aVector.z;
 end;
 
 function TpvMatrix4x4.SimpleInverse:TpvMatrix4x4;
