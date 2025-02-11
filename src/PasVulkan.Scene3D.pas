@@ -3491,6 +3491,8 @@ type EpvScene3D=class(Exception);
             TDeltaTimes=array[0..MaxInFlightFrames-1] of TDeltaTime;
             PDeltaTimes=^TDeltaTimes;
             TParallelGroupInstanceUpdateQueue=TpvDynamicQueue<TpvScene3D.TGroup.TInstance>;
+            TCameraOffsets=array[0..MaxInFlightFrames-1] of TpvVector3D;
+            PCameraOffsets=^TCameraOffsets;
       public
        const DoubleSidedFaceCullingModes:array[TDoubleSided,TFrontFacesInversed] of TFaceCullingMode=
               (
@@ -3771,7 +3773,7 @@ type EpvScene3D=class(Exception);
        fLoadGLTFTimeDuration:TpvDouble;
        fDrawDataGeneration:TPasMPUInt64;
        fCameraOffset:TpvVector3D;
-       fCameraOffsets:array[0..MaxInFlightFrames-1] of TpvVector3D;
+       fCameraOffsets:TCameraOffsets;
       public
        procedure NewImageDescriptorGeneration;
        procedure NewMaterialDataGeneration;
@@ -4016,6 +4018,7 @@ type EpvScene3D=class(Exception);
        property VulkanFrameGraphStagingFence:TpvVulkanFence read fVulkanFrameGraphStagingFence;
       public
        property CameraOffset:TpvVector3D read fCameraOffset write fCameraOffset;
+       property CameraOffsets:TCameraOffsets read fCameraOffsets write fCameraOffsets;
       published
        property RendererInstanceIDManager:TRendererInstanceIDManager read fRendererInstanceIDManager;
        property PotentiallyVisibleSet:TpvScene3D.TPotentiallyVisibleSet read fPotentiallyVisibleSet;
@@ -30476,6 +30479,8 @@ begin
  TotalCPUTime:=0;
 
  fCountLights[aInFlightFrameIndex]:=0;
+
+ fCameraOffsets[aInFlightFrameIndex]:=fCameraOffset;
 
  TpvScene3DPlanets(fPlanets).Lock.AcquireRead;
  try
