@@ -13106,7 +13106,7 @@ begin
 
         begin
 
-         fPlanetPushConstants.ModelMatrix:=Planet.fInFlightFrameDataList[aInFlightFrameIndex].ModelMatrix;
+         fPlanetPushConstants.ModelMatrix:=Planet.fInFlightFrameDataList[aInFlightFrameIndex].ModelMatrix*TpvMatrix4x4.CreateTranslation(TpvScene3D(fScene3D).CameraOffsets[aInFlightFrameIndex].ToVector);
          fPlanetPushConstants.BaseViewIndex:=BaseViewIndex;
          fPlanetPushConstants.CountViews:=CountViews;
          fPlanetPushConstants.AdditionalViewIndex:=AdditionalViewIndex;
@@ -13418,7 +13418,7 @@ begin
            Planet.fRendererViewInstanceHashMap.TryGet(TpvScene3DPlanet.TRendererViewInstance.TKey.Create(fRendererInstance,RenderPass),
                                                       RendererViewInstance) then begin
 
-         fGrassPushConstants.ModelMatrix:=Planet.fInFlightFrameDataList[aInFlightFrameIndex].fModelMatrix;
+         fGrassPushConstants.ModelMatrix:=Planet.fInFlightFrameDataList[aInFlightFrameIndex].fModelMatrix*TpvMatrix4x4.CreateTranslation(TpvScene3D(fScene3D).CameraOffsets[aInFlightFrameIndex].ToVector);
          fGrassPushConstants.ViewBaseIndex:=BaseViewIndex;
          fGrassPushConstants.CountViews:=CountViews;
          fGrassPushConstants.Time:=Modulo(TpvScene3D(Planet.Scene3D).SceneTimes^[aInFlightFrameIndex],65536.0);
@@ -14088,7 +14088,7 @@ begin
     if Planet.fRendererInstanceHashMap.TryGet(TpvScene3DPlanet.TRendererInstance.TKey.Create(fRendererInstance),RendererInstance) and
        Planet.fRendererViewInstanceHashMap.TryGet(TpvScene3DPlanet.TRendererViewInstance.TKey.Create(fRendererInstance,TpvScene3DRendererRenderPass.View),RendererViewInstance) then begin
 
-     fPushConstants.ModelMatrix:=Planet.fInFlightFrameDataList[aInFlightFrameIndex].fModelMatrix;
+     fPushConstants.ModelMatrix:=Planet.fInFlightFrameDataList[aInFlightFrameIndex].fModelMatrix*TpvMatrix4x4.CreateTranslation(TpvScene3D(fScene3D).CameraOffsets[aInFlightFrameIndex].ToVector);
      fPushConstants.ViewBaseIndex:=InFlightFrameState^.FinalViewIndex;
      fPushConstants.CountViews:=InFlightFrameState^.CountFinalViews;
      fPushConstants.Time:=Modulo(TpvScene3D(Planet.Scene3D).SceneTimes^[aInFlightFrameIndex],65536.0);
@@ -15152,7 +15152,7 @@ begin
       InverseViewMatrix:=@TpvScene3DRendererInstance(fRendererInstance).Views[aInFlightFrameIndex].Items[aViewBaseIndex].InverseViewMatrix;
       ProjectionMatrix:=@TpvScene3DRendererInstance(fRendererInstance).Views[aInFlightFrameIndex].Items[aViewBaseIndex].ProjectionMatrix;
 
-      Sphere.Center:=(Planet.fInFlightFrameDataList[aInFlightFrameIndex].fModelMatrix*TpvVector4.InlineableCreate(0.0,0.0,0.0,1.0)).xyz;
+      Sphere.Center:=((Planet.fInFlightFrameDataList[aInFlightFrameIndex].fModelMatrix*TpvMatrix4x4.CreateTranslation(TpvScene3D(fScene3D).CameraOffsets[aInFlightFrameIndex].ToVector))*TpvVector4.InlineableCreate(0.0,0.0,0.0,1.0)).xyz;
       Sphere.Radius:=Planet.fBottomRadius;
 
       Center:=ViewMatrix^.MulHomogen(Sphere.Center);
@@ -15339,7 +15339,7 @@ begin
       InverseViewMatrix:=@TpvScene3DRendererInstance(fRendererInstance).Views[aInFlightFrameIndex].Items[aViewBaseIndex].InverseViewMatrix;
       ProjectionMatrix:=@TpvScene3DRendererInstance(fRendererInstance).Views[aInFlightFrameIndex].Items[aViewBaseIndex].ProjectionMatrix;
 
-      fGrassPushConstants.ModelMatrix:=Planet.fInFlightFrameDataList[aInFlightFrameIndex].fModelMatrix;
+      fGrassPushConstants.ModelMatrix:=Planet.fInFlightFrameDataList[aInFlightFrameIndex].fModelMatrix*TpvMatrix4x4.CreateTranslation(TpvScene3D(fScene3D).CameraOffsets[aInFlightFrameIndex].ToVector);
       fGrassPushConstants.ViewBaseIndex:=aViewBaseIndex;
       fGrassPushConstants.CountViews:=aCountViews;
       fGrassPushConstants.Time:=Modulo(TpvScene3D(Planet.Scene3D).SceneTimes^[aInFlightFrameIndex],65536.0);
@@ -18900,7 +18900,7 @@ begin
 
      if aMainViewPort then begin
 
-      m:=(fPlanetData.ModelMatrix*TpvScene3DRendererInstance(aRendererInstance).InFlightFrameStates[aInFlightFrameIndex].MainViewMatrix).Inverse;
+      m:=((fPlanetData.ModelMatrix*TpvMatrix4x4.CreateTranslation(TpvScene3D(fScene3D).CameraOffsets[aInFlightFrameIndex].ToVector))*TpvScene3DRendererInstance(aRendererInstance).InFlightFrameStates[aInFlightFrameIndex].MainViewMatrix).Inverse;
 
       RelativeCameraPosition:=m.RawVectors[3].xyz;
 
@@ -18974,7 +18974,7 @@ begin
 
   if assigned(InFlightFrameData) then begin
 
-   fPlanetData.ModelMatrix:=InFlightFrameData.fModelMatrix;
+   fPlanetData.ModelMatrix:=InFlightFrameData.fModelMatrix*TpvMatrix4x4.CreateTranslation(TpvScene3D(fScene3D).CameraOffsets[aInFlightFrameIndex].ToVector);
    fPlanetData.NormalMatrix:=TpvMatrix4x4.Create(InFlightFrameData.fModelMatrix.Adjugate);
 // fPlanetData.NormalMatrix:=TpvMatrix4x4.Create(InFlightFrameData.fModelMatrix.ToMatrix3x3.Inverse.Transpose);
    fPlanetData.BottomRadius:=fBottomRadius;
