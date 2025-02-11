@@ -2837,6 +2837,7 @@ type EpvScene3D=class(Exception);
                             fBoundingSphere:TpvSphere;
                             fActiveMask:TPasMPUInt32;
                             fLights:TpvScene3D.TLights;
+                            fApplyCameraRelativeTransform:TPasMPBool32;
                            public
                             constructor Create(const aInstance:TpvScene3D.TGroup.TInstance); reintroduce;
                             destructor Destroy; override;
@@ -2849,6 +2850,7 @@ type EpvScene3D=class(Exception);
                             property ModelMatrix:TpvMatrix4x4 read fModelMatrix write fModelMatrix;
                             property ModelMatrices:TRenderInstanceMatrixInstances read fModelMatrices;
                             property NodeCullObjectIDs:TpvUInt32DynamicArray read fNodeCullObjectIDs;
+                            property ApplyCameraRelativeTransform:TPasMPBool32 read fApplyCameraRelativeTransform write fApplyCameraRelativeTransform;
                            published
                             property Active:Boolean read fActive write fActive;
                             property ActiveMask:TPasMPUInt32 read fActiveMask write fActiveMask;
@@ -21762,6 +21764,8 @@ begin
 
  fActive:=true;
 
+ fApplyCameraRelativeTransform:=true;
+
  fFirst:=true;
 
  fIndex:=-1;
@@ -26253,7 +26257,7 @@ begin
       RenderInstance:=fRenderInstances[Index];
       if RenderInstance.fActive then begin
        TPasMPInterlocked.BitwiseOr(RenderInstance.fActiveMask,TpvUInt32(1) shl aInFlightFrameIndex);
-       if fApplyCameraRelativeTransform then begin
+       if fApplyCameraRelativeTransform and RenderInstance.fApplyCameraRelativeTransform then begin
         RenderInstance.fModelMatrices[aInFlightFrameIndex]:=RenderInstance.fModelMatrix.Translate(fSceneInstance.CameraOffset.ToVector);
        end else begin
         RenderInstance.fModelMatrices[aInFlightFrameIndex]:=RenderInstance.fModelMatrix;
