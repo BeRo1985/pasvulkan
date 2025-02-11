@@ -3862,7 +3862,7 @@ begin
    
    fGPUAtmosphereParameters.Assign(fAtmosphereParameters);
 
-   fGPUAtmosphereParameters.Transform:=fGPUAtmosphereParameters.Transform*TpvMatrix4x4.CreateTranslation(TpvScene3D(fScene3D).CameraOffsets[aInFlightFrameIndex].ToVector);
+   fGPUAtmosphereParameters.Transform:=fGPUAtmosphereParameters.Transform.Translate(TpvScene3D(fScene3D).CameraOffsets[aInFlightFrameIndex].ToVector);
    fGPUAtmosphereParameters.InverseTransform:=fGPUAtmosphereParameters.Transform.Inverse;
 
    TpvScene3D(fScene3D).VulkanDevice.MemoryStaging.Upload(aTransferQueue,

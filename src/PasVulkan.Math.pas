@@ -959,6 +959,7 @@ type PpvScalar=^TpvScalar;
        procedure SetRow(const pIndex:TpvInt32;const pValue:TpvVector4); {$ifdef CAN_INLINE}inline;{$endif}
       public
        function Determinant:TpvScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       function Translate(const aVector:TpvVector3):TpvMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
        function SimpleInverse:TpvMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
        function Inverse:TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
        function Transpose:TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
@@ -12165,6 +12166,11 @@ begin
          (RawComponents[0,3]*(((((-(RawComponents[1,0]*RawComponents[2,1]*RawComponents[3,2]))+(RawComponents[1,0]*RawComponents[2,2]*RawComponents[3,1])+(RawComponents[2,0]*RawComponents[1,1]*RawComponents[3,2]))-(RawComponents[2,0]*RawComponents[1,2]*RawComponents[3,1]))-(RawComponents[3,0]*RawComponents[1,1]*RawComponents[2,2]))+(RawComponents[3,0]*RawComponents[1,2]*RawComponents[2,1])));
 end;
 {$ifend}
+
+function TpvMatrix4x4.Translate(const aVector:TpvVector3):TpvMatrix4x4; 
+begin
+ result:=self*TpvMatrix4x4.CreateTranslation(aVector);
+end;
 
 function TpvMatrix4x4.SimpleInverse:TpvMatrix4x4;
 begin
