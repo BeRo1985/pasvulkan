@@ -2984,6 +2984,7 @@ type EpvScene3D=class(Exception);
                      fCacheVerticesNodeDirtyBitmap:array of TpvUInt32;
                      fRaytracingMask:TpvUInt8;
                      fCastingShadows:Boolean;
+                     fApplyCameraRelativeTransform:TPasMPBool32;
                      procedure ConstructData(const aLock:boolean);
                      procedure AllocateData;
                      procedure ReleaseData;
@@ -3093,6 +3094,7 @@ type EpvScene3D=class(Exception);
                      property UserData:pointer read fUserData write fUserData;
                      property RawModelMatrix:TpvMatrix4x4 read fModelMatrix write fModelMatrix;
                      property ModelMatrix:TpvMatrix4x4 read fModelMatrix write SetModelMatrix;
+                     property ApplyCameraRelativeTransform:TPasMPBool32 read fApplyCameraRelativeTransform write fApplyCameraRelativeTransform;
                      property RenderInstances:TRenderInstances read fRenderInstances;
                      property PerInFlightFrameRenderInstances:PPerInFlightFrameRenderInstances read fPointerToPerInFlightFrameRenderInstances;
                      property BoundingBox:TpvAABB read fBoundingBox;
@@ -22102,6 +22104,8 @@ begin
 
  fHeadless:=aHeadless;
 
+ fApplyCameraRelativeTransform:=true;
+
  fOrder:=-1;
 
  fDependencyLock:=TPasMPSpinLock.Create;
@@ -25960,7 +25964,7 @@ begin
   SetDirty;
  end;
 
- if fUseRenderInstances then begin
+ if fUseRenderInstances or not fApplyCameraRelativeTransform then begin
   fWorkModelMatrix:=fModelMatrix;
  end else begin
   fWorkModelMatrix:=fModelMatrix.Translate(fSceneInstance.CameraOffset.ToVector);
@@ -26249,7 +26253,11 @@ begin
       RenderInstance:=fRenderInstances[Index];
       if RenderInstance.fActive then begin
        TPasMPInterlocked.BitwiseOr(RenderInstance.fActiveMask,TpvUInt32(1) shl aInFlightFrameIndex);
-       RenderInstance.fModelMatrices[aInFlightFrameIndex]:=RenderInstance.fModelMatrix.Translate(fSceneInstance.CameraOffset.ToVector);
+       if fApplyCameraRelativeTransform then begin
+        RenderInstance.fModelMatrices[aInFlightFrameIndex]:=RenderInstance.fModelMatrix.Translate(fSceneInstance.CameraOffset.ToVector);
+       end else begin
+        RenderInstance.fModelMatrices[aInFlightFrameIndex]:=RenderInstance.fModelMatrix;
+       end;
        RenderInstance.fBoundingBox:=TemporaryBoundingBox.HomogenTransform(RenderInstance.fModelMatrix);
        RenderInstance.fBoundingSphere:=TpvSphere.CreateFromAABB(RenderInstance.fBoundingBox);
        if First then begin
