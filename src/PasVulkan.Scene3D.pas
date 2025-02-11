@@ -2956,6 +2956,7 @@ type EpvScene3D=class(Exception);
                      fFrameUploadedMeshContentGenerations:array[0..MaxInFlightFrames-1] of TpvUInt64;
                      fVisitedState:array[-1..MaxInFlightFrames-1] of TPasMPInt32;
                      fModelMatrix:TpvMatrix4x4;
+                     fWorkModelMatrix:TpvMatrix4x4;
 //                   fModelMatrices:array[-1..MaxInFlightFrames-1] of TpvMatrix4x4;
                      fNodeMatrices:TNodeMatrices;
                      fMorphTargetVertexWeights:TMorphTargetVertexWeights;
@@ -22131,6 +22132,8 @@ begin
 
  fModelMatrix:=TpvMatrix4x4.Identity;
 
+ fWorkModelMatrix:=TpvMatrix4x4.Identity;
+
  fDirtyCounter:=1;
 
  fRaytracingMask:=$ff;
@@ -25549,7 +25552,7 @@ procedure TpvScene3D.TGroup.TInstance.Update(const aInFlightFrameIndex:TpvSizeIn
   Dirty:=fUpdateDynamic and (Dirty or (assigned(Node.fSkin) or (Node.fWeights.Count>0)));
   if aInFlightFrameIndex>=0 then begin
    if assigned(Node.fLight) then begin
-    LightMatrix:=Matrix*fModelMatrix;
+    LightMatrix:=Matrix*fWorkModelMatrix;
     InstanceLight:=fLights[Node.fLight.fIndex];
     if assigned(InstanceNode.fLight) then begin
      Light:=InstanceNode.fLight;
@@ -25733,7 +25736,7 @@ procedure TpvScene3D.TGroup.TInstance.Update(const aInFlightFrameIndex:TpvSizeIn
    end else begin
     InverseMatrix:=TpvMatrix4x4.Identity;
    end;
-   ModelNodeMatrixEx:=aInstanceNode.fWorkMatrix*fModelMatrix;
+   ModelNodeMatrixEx:=aInstanceNode.fWorkMatrix*fWorkModelMatrix;
    DynamicBoundingBox.Min:=TpvVector3.InlineableCreate(Infinity,Infinity,Infinity);
    DynamicBoundingBox.Max:=TpvVector3.InlineableCreate(-Infinity,-Infinity,-Infinity);
    for PrimitiveIndex:=0 to Mesh.fPrimitives.Count-1 do begin
@@ -25771,7 +25774,7 @@ procedure TpvScene3D.TGroup.TInstance.Update(const aInFlightFrameIndex:TpvSizeIn
    if OK then begin
     aInstanceNode.fBoundingBoxes[aInFlightFrameIndex]:=DynamicBoundingBox;
    end else begin
-    aInstanceNode.fBoundingBoxes[aInFlightFrameIndex]:=Mesh.fBoundingBox.HomogenTransform(aInstanceNode.fWorkMatrix*fModelMatrix);
+    aInstanceNode.fBoundingBoxes[aInFlightFrameIndex]:=Mesh.fBoundingBox.HomogenTransform(aInstanceNode.fWorkMatrix*fWorkModelMatrix);
    end;
    aInstanceNode.fBoundingBoxFilled[aInFlightFrameIndex]:=true;
   end;
@@ -25816,7 +25819,7 @@ procedure TpvScene3D.TGroup.TInstance.Update(const aInFlightFrameIndex:TpvSizeIn
    end;
 
    // Transform the final bounding box using the node and model matrices and store it in the instance node.
-   aInstanceNode.fBoundingBoxes[aInFlightFrameIndex]:=BoundingBox.HomogenTransform(aInstanceNode.fWorkMatrix*fModelMatrix);
+   aInstanceNode.fBoundingBoxes[aInFlightFrameIndex]:=BoundingBox.HomogenTransform(aInstanceNode.fWorkMatrix*fWorkModelMatrix);
 
    // Indicate that the bounding box has been calculated for the instance node.
    aInstanceNode.fBoundingBoxFilled[aInFlightFrameIndex]:=true;
@@ -25955,6 +25958,12 @@ begin
    fModelMatrix.Normal.xyz:=fModelMatrix.Normal.xyz.Normalize;
   end;
   SetDirty;
+ end;
+
+ if fUseRenderInstances then begin
+  fWorkModelMatrix:=fModelMatrix;
+ end else begin
+  fWorkModelMatrix:=fModelMatrix.Translate(fSceneInstance.CameraOffset.ToVector);
  end;
 
  if assigned(fOnUpdate) and fOnUpdate(aInFlightFrameIndex) then begin
@@ -26110,11 +26119,7 @@ begin
 // EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
 //   inc(TotalCPUTime,EndCPUTime-StartCPUTime);
 
-   if fUseRenderInstances then begin
-    fNodeMatrices[0]:=fModelMatrix;
-   end else begin
-    fNodeMatrices[0]:=fModelMatrix.Translate(fSceneInstance.CameraOffset.ToVector);
-   end;
+   fNodeMatrices[0]:=fWorkModelMatrix;
 
 // StartCPUTime:=pvApplication.HighResolutionTimer.GetTime;
    for Index:=0 to fGroup.fNodes.Count-1 do begin
@@ -26148,7 +26153,7 @@ begin
       if assigned(Node.fSkin) then begin
        ProcessSkinNode(Node,InstanceNode);
       end else begin
-       InstanceNode.fBoundingBoxes[aInFlightFrameIndex]:=Node.fMesh.fBoundingBox.HomogenTransform(InstanceNode.fWorkMatrix*fModelMatrix);
+       InstanceNode.fBoundingBoxes[aInFlightFrameIndex]:=Node.fMesh.fBoundingBox.HomogenTransform(InstanceNode.fWorkMatrix*fNodeMatrices[0]);
        InstanceNode.fBoundingBoxFilled[aInFlightFrameIndex]:=true;
       end;
      end else begin
@@ -26210,9 +26215,9 @@ begin
 
   end;
 
-  fBoundingBox:=fGroup.fBoundingBox.HomogenTransform(fModelMatrix);
+  fBoundingBox:=fGroup.fBoundingBox.HomogenTransform(fNodeMatrices[0]);
   if fGroup.fHasStaticBoundingBox then begin
-   fBoundingBox.DirectCombine(fGroup.fStaticBoundingBox.HomogenTransform(fModelMatrix));
+   fBoundingBox.DirectCombine(fGroup.fStaticBoundingBox.HomogenTransform(fNodeMatrices[0]));
   end;
   if assigned(Scene) and (aInFlightFrameIndex>=-1) then begin
    for Index:=0 to Scene.fNodes.Count-1 do begin
@@ -26244,7 +26249,7 @@ begin
       RenderInstance:=fRenderInstances[Index];
       if RenderInstance.fActive then begin
        TPasMPInterlocked.BitwiseOr(RenderInstance.fActiveMask,TpvUInt32(1) shl aInFlightFrameIndex);
-       RenderInstance.fModelMatrices[aInFlightFrameIndex]:=RenderInstance.fModelMatrix;
+       RenderInstance.fModelMatrices[aInFlightFrameIndex]:=RenderInstance.fModelMatrix.Translate(fSceneInstance.CameraOffset.ToVector);
        RenderInstance.fBoundingBox:=TemporaryBoundingBox.HomogenTransform(RenderInstance.fModelMatrix);
        RenderInstance.fBoundingSphere:=TpvSphere.CreateFromAABB(RenderInstance.fBoundingBox);
        if First then begin
@@ -26264,7 +26269,7 @@ begin
        PerInFlightFrameRenderInstance^.PotentiallyVisibleSetNodeIndex:=RenderInstance.fPotentiallyVisibleSetNodeIndex;
        PerInFlightFrameRenderInstance^.BoundingBox:=RenderInstance.fBoundingBox;
        PerInFlightFrameRenderInstance^.RenderInstance:=RenderInstance;
-       PerInFlightFrameRenderInstance^.ModelMatrix:=RenderInstance.fModelMatrix.Translate(fSceneInstance.CameraOffset.ToVector);
+       PerInFlightFrameRenderInstance^.ModelMatrix:=RenderInstance.fModelMatrix;
        if RenderInstance.fFirst then begin
         RenderInstance.fFirst:=false;
         PerInFlightFrameRenderInstance^.PreviousModelMatrix:=RenderInstance.fModelMatrix;

@@ -89,7 +89,8 @@ void main(){
   vec3 cameraPosition = inverseModelViewMatrix[3].xyz; //inverseViewMatrix[3].xyz;
 #else
   // This approach assumes that the view matrix has no scaling or skewing, but only rotation and translation.
-  vec3 cameraPosition = (-viewMatrix[3].xyz) * mat3(viewMatrix);
+  mat4 modelViewMatrix = mat4(uView.views[viewIndex].viewMatrix * planetModelMatrix); 
+  vec3 cameraPosition = (-modelViewMatrix[3].xyz) * mat3(modelViewMatrix);
 #endif
 
   bool underWater = map(cameraPosition) <= 0.0;
