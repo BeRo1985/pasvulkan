@@ -122,7 +122,6 @@ type TpvVector2D=record
 
      TpvVector3D=record
       public
-       x,y,z:TpvDouble;
        constructor Create(const aFrom:TpvVector3); overload;
        constructor Create(const aX,aY,aZ:TpvDouble); overload;
        class operator Equal(const aLeft,aRight:TpvVector3D):boolean;
@@ -141,12 +140,15 @@ type TpvVector2D=record
        function Normalize:TpvVector3D;
        function Perpendicular:TpvVector3D;
        function ToVector:TpvVector3;
+      public
+       case TpvInt32 of
+        0:(x,y,z:TpvDouble);
+        1:(xy:TpvVector2D);
      end;
      PpvVector3D=^TpvVector3D;
 
      TpvVector4D=record
       public
-       x,y,z,w:TpvDouble;
        constructor Create(const aFrom:TpvVector4); overload;
        constructor Create(const aX,aY,aZ,aW:TpvDouble); overload;
        class operator Equal(const aLeft,aRight:TpvVector4D):boolean;
@@ -161,12 +163,16 @@ type TpvVector2D=record
        function SquaredLength:TpvDouble;
        function Lerp(const aWith:TpvVector4D;const aTime:TpvDouble):TpvVector4D;
        function ToVector:TpvVector4;
+      public
+       case TpvInt32 of
+        0:(x,y,z,w:TpvDouble);
+        1:(xyz:TpvVector3D);
+        2:(xy:TpvVector2D);
      end;
      PpvVector4D=^TpvVector4D;
 
      TpvQuaternionD=record
       public
-       x,y,z,w:TpvDouble;
        constructor Create(const aFrom:TpvQuaternion); overload;
        constructor Create(const aX,aY,aZ,aW:TpvDouble); overload;
        constructor Create(const aMatrix:TpvMatrix3x3); overload;
@@ -194,6 +200,12 @@ type TpvVector2D=record
        function ToMatrix4x4:TpvMatrix4x4;
        function ToVector:TpvVector4;
        function ToQuaternion:TpvQuaternion;
+      public
+       case TpvInt32 of
+        0:(x,y,z,w:TpvDouble);
+        1:(Vector:TpvVector4D);
+        2:(xyz:TpvVector3D);
+        3:(xy:TpvVector2D);
      end;
      PpvQuaternionD=^TpvQuaternionD;
 
