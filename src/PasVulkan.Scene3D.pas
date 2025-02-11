@@ -79,6 +79,7 @@ uses {$ifdef Windows}
      PasVulkan.Types,
      PasVulkan.Utils,
      PasVulkan.Math,
+     PasVulkan.Math.Double,
      PasVulkan.Streams,
      PasVulkan.Hash.xxHash64,
      PasVulkan.Collections,
@@ -3769,6 +3770,8 @@ type EpvScene3D=class(Exception);
        fLoadGLTFTimeDurationLock:TPasMPInt32;
        fLoadGLTFTimeDuration:TpvDouble;
        fDrawDataGeneration:TPasMPUInt64;
+       fCameraOffset:TpvVector3D;
+       fCameraOffsets:array[0..MaxInFlightFrames-1] of TpvVector3D;
       public
        procedure NewImageDescriptorGeneration;
        procedure NewMaterialDataGeneration;
@@ -4011,6 +4014,8 @@ type EpvScene3D=class(Exception);
        property VulkanFrameGraphStagingCommandPool:TpvVulkanCommandPool read fVulkanFrameGraphStagingCommandPool;
        property VulkanFrameGraphStagingCommandBuffer:TpvVulkanCommandBuffer read fVulkanFrameGraphStagingCommandBuffer;
        property VulkanFrameGraphStagingFence:TpvVulkanFence read fVulkanFrameGraphStagingFence;
+      public
+       property CameraOffset:TpvVector3D read fCameraOffset write fCameraOffset;
       published
        property RendererInstanceIDManager:TRendererInstanceIDManager read fRendererInstanceIDManager;
        property PotentiallyVisibleSet:TpvScene3D.TPotentiallyVisibleSet read fPotentiallyVisibleSet;
@@ -27855,6 +27860,11 @@ begin
  fInitialCountJointBlocks:=fInitialCountVertices div 16;
 
  fPotentiallyVisibleSet:=TpvScene3D.TPotentiallyVisibleSet.Create;
+
+ fCameraOffset:=TpvVector3D.Create(0.0,0.0,0.0);
+ for Index:=0 to fCountInFlightFrames-1 do begin
+  fCameraOffsets[Index]:=TpvVector3D.Create(0.0,0.0,0.0);
+ end;
 
  for Index:=0 to fCountInFlightFrames-1 do begin
   fDebugPrimitiveVertexDynamicArrays[Index]:=TpvScene3D.TDebugPrimitiveVertexDynamicArray.Create;
