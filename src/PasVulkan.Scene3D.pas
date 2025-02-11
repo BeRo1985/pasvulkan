@@ -26110,7 +26110,11 @@ begin
 // EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
 //   inc(TotalCPUTime,EndCPUTime-StartCPUTime);
 
-   fNodeMatrices[0]:=fModelMatrix;
+   if fUseRenderInstances then begin
+    fNodeMatrices[0]:=fModelMatrix;
+   end else begin
+    fNodeMatrices[0]:=fModelMatrix*TpvMatrix4x4.CreateTranslation(fSceneInstance.CameraOffset.ToVector);
+   end;
 
 // StartCPUTime:=pvApplication.HighResolutionTimer.GetTime;
    for Index:=0 to fGroup.fNodes.Count-1 do begin
@@ -26260,14 +26264,14 @@ begin
        PerInFlightFrameRenderInstance^.PotentiallyVisibleSetNodeIndex:=RenderInstance.fPotentiallyVisibleSetNodeIndex;
        PerInFlightFrameRenderInstance^.BoundingBox:=RenderInstance.fBoundingBox;
        PerInFlightFrameRenderInstance^.RenderInstance:=RenderInstance;
-       PerInFlightFrameRenderInstance^.ModelMatrix:=RenderInstance.fModelMatrix;
+       PerInFlightFrameRenderInstance^.ModelMatrix:=RenderInstance.fModelMatrix*TpvMatrix4x4.CreateTranslation(fSceneInstance.CameraOffset.ToVector);
        if RenderInstance.fFirst then begin
         RenderInstance.fFirst:=false;
         PerInFlightFrameRenderInstance^.PreviousModelMatrix:=RenderInstance.fModelMatrix;
        end else begin
         PerInFlightFrameRenderInstance^.PreviousModelMatrix:=RenderInstance.fPreviousModelMatrix;
        end;
-       RenderInstance.fPreviousModelMatrix:=RenderInstance.fModelMatrix;
+       RenderInstance.fPreviousModelMatrix:=RenderInstance.fModelMatrix*TpvMatrix4x4.CreateTranslation(fSceneInstance.CameraOffset.ToVector);
        RenderInstance.UpdateLights;
       end else begin
        if fUseSortedRenderInstances and
