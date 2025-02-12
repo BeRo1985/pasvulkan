@@ -106,6 +106,10 @@ type TpvVector2D=record
        x,y:TpvDouble;
        constructor Create(const aFrom:TpvVector2); overload;
        constructor Create(const aX,aY:TpvDouble); overload;
+       class operator Implicit(const aFrom:TpvVector2):TpvVector2D;
+       class operator Implicit(const aFrom:TpvVector2D):TpvVector2;
+       class operator Explicit(const aFrom:TpvVector2):TpvVector2D;
+       class operator Explicit(const aFrom:TpvVector2D):TpvVector2;
        class operator Equal(const aLeft,aRight:TpvVector2D):boolean;
        class operator NotEqual(const aLeft,aRight:TpvVector2D):boolean;
        class operator Add(const aLeft,aRight:TpvVector2D):TpvVector2D;
@@ -129,6 +133,10 @@ type TpvVector2D=record
       public
        constructor Create(const aFrom:TpvVector3); overload;
        constructor Create(const aX,aY,aZ:TpvDouble); overload;
+       class operator Implicit(const aFrom:TpvVector3):TpvVector3D;
+       class operator Implicit(const aFrom:TpvVector3D):TpvVector3;
+       class operator Explicit(const aFrom:TpvVector3):TpvVector3D;
+       class operator Explicit(const aFrom:TpvVector3D):TpvVector3;
        class operator Equal(const aLeft,aRight:TpvVector3D):boolean;
        class operator NotEqual(const aLeft,aRight:TpvVector3D):boolean;
        class operator Add(const aLeft,aRight:TpvVector3D):TpvVector3D;
@@ -159,6 +167,10 @@ type TpvVector2D=record
       public
        constructor Create(const aFrom:TpvVector4); overload;
        constructor Create(const aX,aY,aZ,aW:TpvDouble); overload;
+       class operator Implicit(const aFrom:TpvVector4):TpvVector4D;
+       class operator Implicit(const aFrom:TpvVector4D):TpvVector4;
+       class operator Explicit(const aFrom:TpvVector4):TpvVector4D;
+       class operator Explicit(const aFrom:TpvVector4D):TpvVector4;
        class operator Equal(const aLeft,aRight:TpvVector4D):boolean;
        class operator NotEqual(const aLeft,aRight:TpvVector4D):boolean;
        class operator Add(const aLeft,aRight:TpvVector4D):TpvVector4D;
@@ -189,6 +201,10 @@ type TpvVector2D=record
        constructor Create(const aX,aY,aZ,aW:TpvDouble); overload;
        constructor Create(const aMatrix:TpvMatrix3x3); overload;
        constructor Create(const aMatrix:TpvMatrix4x4); overload;
+       class operator Implicit(const aFrom:TpvQuaternion):TpvQuaternionD;
+       class operator Implicit(const aFrom:TpvQuaternionD):TpvQuaternion;
+       class operator Explicit(const aFrom:TpvQuaternion):TpvQuaternionD;
+       class operator Explicit(const aFrom:TpvQuaternionD):TpvQuaternion;
        class operator Equal(const aLeft,aRight:TpvQuaternionD):boolean;
        class operator NotEqual(const aLeft,aRight:TpvQuaternionD):boolean;
        class operator Add(const aLeft,aRight:TpvQuaternionD):TpvQuaternionD;
@@ -248,6 +264,26 @@ type TpvVector2D=record
        constructor Create(const aFrom:TpvQuaternion); overload;
        constructor Create(const aFrom:TpvQuaternionD); overload;
        constructor Create(const aFrom:TpvDecomposedMatrix3x3D); overload;
+       class operator Implicit(const aFrom:TpvMatrix3x3):TpvMatrix3x3D;
+       class operator Implicit(const aFrom:TpvMatrix3x3D):TpvMatrix3x3;
+       class operator Implicit(const aFrom:TpvMatrix4x4):TpvMatrix3x3D;
+       class operator Implicit(const aFrom:TpvMatrix3x3D):TpvMatrix4x4;
+       class operator Implicit(const aFrom:TpvQuaternion):TpvMatrix3x3D;
+       class operator Implicit(const aFrom:TpvQuaternionD):TpvMatrix3x3D;
+       class operator Implicit(const aFrom:TpvDecomposedMatrix3x3D):TpvMatrix3x3D;
+       class operator Implicit(const aFrom:TpvMatrix3x3D):TpvQuaternion;
+       class operator Implicit(const aFrom:TpvMatrix3x3D):TpvQuaternionD;
+       class operator Implicit(const aFrom:TpvMatrix3x3D):TpvDecomposedMatrix3x3D;
+       class operator Explicit(const aFrom:TpvMatrix3x3):TpvMatrix3x3D;
+       class operator Explicit(const aFrom:TpvMatrix3x3D):TpvMatrix3x3;
+       class operator Explicit(const aFrom:TpvMatrix4x4):TpvMatrix3x3D;
+       class operator Explicit(const aFrom:TpvMatrix3x3D):TpvMatrix4x4;
+       class operator Explicit(const aFrom:TpvQuaternion):TpvMatrix3x3D;
+       class operator Explicit(const aFrom:TpvQuaternionD):TpvMatrix3x3D;
+       class operator Explicit(const aFrom:TpvDecomposedMatrix3x3D):TpvMatrix3x3D;
+       class operator Explicit(const aFrom:TpvMatrix3x3D):TpvQuaternion;
+       class operator Explicit(const aFrom:TpvMatrix3x3D):TpvQuaternionD;
+       class operator Explicit(const aFrom:TpvMatrix3x3D):TpvDecomposedMatrix3x3D;
        class operator Equal(const aLeft,aRight:TpvMatrix3x3D):boolean;
        class operator NotEqual(const aLeft,aRight:TpvMatrix3x3D):boolean;
        class operator Add(const aLeft,aRight:TpvMatrix3x3D):TpvMatrix3x3D;
@@ -306,6 +342,26 @@ type TpvVector2D=record
        constructor Create(const aFrom:TpvQuaternion); overload;
        constructor Create(const aFrom:TpvQuaternionD); overload;
        constructor Create(const aFrom:TpvDecomposedMatrix4x4D); overload;
+       class operator Implicit(const aFrom:TpvMatrix3x3):TpvMatrix4x4D;
+       class operator Implicit(const aFrom:TpvMatrix4x4D):TpvMatrix3x3;
+       class operator Implicit(const aFrom:TpvMatrix4x4):TpvMatrix4x4D;
+       class operator Implicit(const aFrom:TpvMatrix4x4D):TpvMatrix4x4;
+       class operator Implicit(const aFrom:TpvQuaternion):TpvMatrix4x4D;
+       class operator Implicit(const aFrom:TpvQuaternionD):TpvMatrix4x4D;
+       class operator Implicit(const aFrom:TpvDecomposedMatrix4x4D):TpvMatrix4x4D;
+       class operator Implicit(const aFrom:TpvMatrix4x4D):TpvQuaternion;
+       class operator Implicit(const aFrom:TpvMatrix4x4D):TpvQuaternionD;
+       class operator Implicit(const aFrom:TpvMatrix4x4D):TpvDecomposedMatrix4x4D;
+       class operator Explicit(const aFrom:TpvMatrix3x3):TpvMatrix4x4D;
+       class operator Explicit(const aFrom:TpvMatrix4x4D):TpvMatrix3x3;
+       class operator Explicit(const aFrom:TpvMatrix4x4):TpvMatrix4x4D;
+       class operator Explicit(const aFrom:TpvMatrix4x4D):TpvMatrix4x4;
+       class operator Explicit(const aFrom:TpvQuaternion):TpvMatrix4x4D;
+       class operator Explicit(const aFrom:TpvQuaternionD):TpvMatrix4x4D;
+       class operator Explicit(const aFrom:TpvDecomposedMatrix4x4D):TpvMatrix4x4D;
+       class operator Explicit(const aFrom:TpvMatrix4x4D):TpvQuaternion;
+       class operator Explicit(const aFrom:TpvMatrix4x4D):TpvQuaternionD;
+       class operator Explicit(const aFrom:TpvMatrix4x4D):TpvDecomposedMatrix4x4D;
        class operator Equal(const aLeft,aRight:TpvMatrix4x4D):boolean;
        class operator NotEqual(const aLeft,aRight:TpvMatrix4x4D):boolean;
        class operator Add(const aLeft,aRight:TpvMatrix4x4D):TpvMatrix4x4D;
@@ -354,6 +410,30 @@ constructor TpvVector2D.Create(const aX,aY:TpvDouble);
 begin
  x:=aX;
  y:=aY;
+end;
+
+class operator TpvVector2D.Implicit(const aFrom:TpvVector2):TpvVector2D;
+begin
+ result.x:=aFrom.x;
+ result.y:=aFrom.y;
+end;
+
+class operator TpvVector2D.Implicit(const aFrom:TpvVector2D):TpvVector2;
+begin
+ result.x:=aFrom.x;
+ result.y:=aFrom.y;
+end;
+
+class operator TpvVector2D.Explicit(const aFrom:TpvVector2):TpvVector2D;
+begin
+ result.x:=aFrom.x;
+ result.y:=aFrom.y;
+end;
+
+class operator TpvVector2D.Explicit(const aFrom:TpvVector2D):TpvVector2;
+begin
+ result.x:=aFrom.x;
+ result.y:=aFrom.y;
 end;
 
 class operator TpvVector2D.Equal(const aLeft,aRight:TpvVector2D):boolean;
@@ -490,6 +570,34 @@ begin
  x:=aX;
  y:=aY;
  z:=aZ;
+end;
+
+class operator TpvVector3D.Implicit(const aFrom:TpvVector3):TpvVector3D;
+begin
+ result.x:=aFrom.x;
+ result.y:=aFrom.y;
+ result.z:=aFrom.z;
+end;
+
+class operator TpvVector3D.Implicit(const aFrom:TpvVector3D):TpvVector3;
+begin
+ result.x:=aFrom.x;
+ result.y:=aFrom.y;
+ result.z:=aFrom.z;
+end;
+
+class operator TpvVector3D.Explicit(const aFrom:TpvVector3):TpvVector3D;
+begin
+ result.x:=aFrom.x;
+ result.y:=aFrom.y;
+ result.z:=aFrom.z;
+end;
+
+class operator TpvVector3D.Explicit(const aFrom:TpvVector3D):TpvVector3;
+begin
+ result.x:=aFrom.x;
+ result.y:=aFrom.y;
+ result.z:=aFrom.z;
 end;
 
 class operator TpvVector3D.Equal(const aLeft,aRight:TpvVector3D):boolean;
@@ -662,6 +770,38 @@ begin
  y:=aY;
  z:=aZ;
  w:=aW;
+end;
+
+class operator TpvVector4D.Implicit(const aFrom:TpvVector4):TpvVector4D;
+begin
+ result.x:=aFrom.x;
+ result.y:=aFrom.y;
+ result.z:=aFrom.z;
+ result.w:=aFrom.w;
+end;
+
+class operator TpvVector4D.Implicit(const aFrom:TpvVector4D):TpvVector4;
+begin
+ result.x:=aFrom.x;
+ result.y:=aFrom.y;
+ result.z:=aFrom.z;
+ result.w:=aFrom.w;
+end;
+
+class operator TpvVector4D.Explicit(const aFrom:TpvVector4):TpvVector4D;
+begin
+ result.x:=aFrom.x;
+ result.y:=aFrom.y;
+ result.z:=aFrom.z;
+ result.w:=aFrom.w;
+end;
+
+class operator TpvVector4D.Explicit(const aFrom:TpvVector4D):TpvVector4;
+begin
+ result.x:=aFrom.x;
+ result.y:=aFrom.y;
+ result.z:=aFrom.z;
+ result.w:=aFrom.w;
 end;
 
 class operator TpvVector4D.Equal(const aLeft,aRight:TpvVector4D):boolean;
@@ -906,6 +1046,38 @@ begin
  end;
 end;
 
+class operator TpvQuaternionD.Implicit(const aFrom:TpvQuaternion):TpvQuaternionD;
+begin
+ result.x:=aFrom.x;
+ result.y:=aFrom.y;
+ result.z:=aFrom.z;
+ result.w:=aFrom.w;
+end;
+
+class operator TpvQuaternionD.Implicit(const aFrom:TpvQuaternionD):TpvQuaternion;
+begin
+ result.x:=aFrom.x;
+ result.y:=aFrom.y;
+ result.z:=aFrom.z;
+ result.w:=aFrom.w;
+end;
+
+class operator TpvQuaternionD.Explicit(const aFrom:TpvQuaternion):TpvQuaternionD;
+begin
+ result.x:=aFrom.x;
+ result.y:=aFrom.y;
+ result.z:=aFrom.z;
+ result.w:=aFrom.w;
+end;
+
+class operator TpvQuaternionD.Explicit(const aFrom:TpvQuaternionD):TpvQuaternion;
+begin
+ result.x:=aFrom.x;
+ result.y:=aFrom.y;
+ result.z:=aFrom.z;
+ result.w:=aFrom.w;
+end;
+
 class operator TpvQuaternionD.Equal(const aLeft,aRight:TpvQuaternionD):boolean;
 begin
  result:=SameValue(aLeft.x,aRight.x) and
@@ -1135,7 +1307,6 @@ function TpvQuaternionD.Sqlerp(const aB,aC,aD:TpvQuaternionD;const aTime:TpvDoub
 begin
  result:=Slerp(aD,aTime).Slerp(aB.Slerp(aC,aTime),(2.0*aTime)*(1.0-aTime));
 end;
-
 
 function TpvQuaternionD.ToMatrix3x3:TpvMatrix3x3;
 var qx2,qy2,qz2,qxqx2,qxqy2,qxqz2,qxqw2,qyqy2,qyqz2,qyqw2,qzqz2,qzqw2:TpvDouble;
@@ -1397,6 +1568,184 @@ begin
  self:=TpvMatrix3x3D.Create(aFrom.Scale.x,0.0,0.0,
                             0.0,aFrom.Scale.y,0.0,
                             0.0,0.0,aFrom.Scale.z)*self;
+end;
+
+class operator TpvMatrix3x3D.Implicit(const aFrom:TpvMatrix3x3):TpvMatrix3x3D;
+begin
+ result.RawComponents[0,0]:=aFrom.RawComponents[0,0];
+ result.RawComponents[0,1]:=aFrom.RawComponents[0,1];
+ result.RawComponents[0,2]:=aFrom.RawComponents[0,2];
+ result.RawComponents[1,0]:=aFrom.RawComponents[1,0];
+ result.RawComponents[1,1]:=aFrom.RawComponents[1,1];
+ result.RawComponents[1,2]:=aFrom.RawComponents[1,2];
+ result.RawComponents[2,0]:=aFrom.RawComponents[2,0];
+ result.RawComponents[2,1]:=aFrom.RawComponents[2,1];
+ result.RawComponents[2,2]:=aFrom.RawComponents[2,2];
+end;
+
+class operator TpvMatrix3x3D.Implicit(const aFrom:TpvMatrix3x3D):TpvMatrix3x3;
+begin
+ result.RawComponents[0,0]:=aFrom.RawComponents[0,0];
+ result.RawComponents[0,1]:=aFrom.RawComponents[0,1];
+ result.RawComponents[0,2]:=aFrom.RawComponents[0,2];
+ result.RawComponents[1,0]:=aFrom.RawComponents[1,0];
+ result.RawComponents[1,1]:=aFrom.RawComponents[1,1];
+ result.RawComponents[1,2]:=aFrom.RawComponents[1,2];
+ result.RawComponents[2,0]:=aFrom.RawComponents[2,0];
+ result.RawComponents[2,1]:=aFrom.RawComponents[2,1];
+ result.RawComponents[2,2]:=aFrom.RawComponents[2,2];
+end;
+
+class operator TpvMatrix3x3D.Implicit(const aFrom:TpvMatrix4x4):TpvMatrix3x3D;
+begin
+ result.RawComponents[0,0]:=aFrom.RawComponents[0,0];
+ result.RawComponents[0,1]:=aFrom.RawComponents[0,1];
+ result.RawComponents[0,2]:=aFrom.RawComponents[0,2];
+ result.RawComponents[1,0]:=aFrom.RawComponents[1,0];
+ result.RawComponents[1,1]:=aFrom.RawComponents[1,1];
+ result.RawComponents[1,2]:=aFrom.RawComponents[1,2];
+ result.RawComponents[2,0]:=aFrom.RawComponents[2,0];
+ result.RawComponents[2,1]:=aFrom.RawComponents[2,1];
+ result.RawComponents[2,2]:=aFrom.RawComponents[2,2];
+end;
+
+class operator TpvMatrix3x3D.Implicit(const aFrom:TpvMatrix3x3D):TpvMatrix4x4;
+begin
+ result.RawComponents[0,0]:=aFrom.RawComponents[0,0];
+ result.RawComponents[0,1]:=aFrom.RawComponents[0,1];
+ result.RawComponents[0,2]:=aFrom.RawComponents[0,2];
+ result.RawComponents[0,3]:=0.0;
+ result.RawComponents[1,0]:=aFrom.RawComponents[1,0];
+ result.RawComponents[1,1]:=aFrom.RawComponents[1,1];
+ result.RawComponents[1,2]:=aFrom.RawComponents[1,2];
+ result.RawComponents[1,3]:=0.0;
+ result.RawComponents[2,0]:=aFrom.RawComponents[2,0];
+ result.RawComponents[2,1]:=aFrom.RawComponents[2,1];
+ result.RawComponents[2,2]:=aFrom.RawComponents[2,2];
+ result.RawComponents[2,3]:=0.0;
+ result.RawComponents[3,0]:=0.0;
+ result.RawComponents[3,1]:=0.0;
+ result.RawComponents[3,2]:=0.0;
+ result.RawComponents[3,3]:=1.0;
+end;
+
+class operator TpvMatrix3x3D.Implicit(const aFrom:TpvQuaternion):TpvMatrix3x3D;
+begin
+ result:=TpvMatrix3x3D.Create(aFrom);
+end;
+
+class operator TpvMatrix3x3D.Implicit(const aFrom:TpvQuaternionD):TpvMatrix3x3D;
+begin
+ result:=TpvMatrix3x3D.Create(aFrom);
+end;
+
+class operator TpvMatrix3x3D.Implicit(const aFrom:TpvDecomposedMatrix3x3D):TpvMatrix3x3D;
+begin
+ result:=TpvMatrix3x3D.Create(aFrom);
+end;
+
+class operator TpvMatrix3x3D.Implicit(const aFrom:TpvMatrix3x3D):TpvQuaternion;
+begin
+ result:=aFrom.ToQuaternionD.ToQuaternion;
+end;
+
+class operator TpvMatrix3x3D.Implicit(const aFrom:TpvMatrix3x3D):TpvQuaternionD;
+begin
+ result:=aFrom.ToQuaternionD;
+end;
+
+class operator TpvMatrix3x3D.Implicit(const aFrom:TpvMatrix3x3D):TpvDecomposedMatrix3x3D;
+begin
+ result:=aFrom.Decompose;
+end;
+
+class operator TpvMatrix3x3D.Explicit(const aFrom:TpvMatrix3x3):TpvMatrix3x3D;
+begin
+ result.RawComponents[0,0]:=aFrom.RawComponents[0,0];
+ result.RawComponents[0,1]:=aFrom.RawComponents[0,1];
+ result.RawComponents[0,2]:=aFrom.RawComponents[0,2];
+ result.RawComponents[1,0]:=aFrom.RawComponents[1,0];
+ result.RawComponents[1,1]:=aFrom.RawComponents[1,1];
+ result.RawComponents[1,2]:=aFrom.RawComponents[1,2];
+ result.RawComponents[2,0]:=aFrom.RawComponents[2,0];
+ result.RawComponents[2,1]:=aFrom.RawComponents[2,1];
+ result.RawComponents[2,2]:=aFrom.RawComponents[2,2];
+end;
+
+class operator TpvMatrix3x3D.Explicit(const aFrom:TpvMatrix3x3D):TpvMatrix3x3;
+begin
+ result.RawComponents[0,0]:=aFrom.RawComponents[0,0];
+ result.RawComponents[0,1]:=aFrom.RawComponents[0,1];
+ result.RawComponents[0,2]:=aFrom.RawComponents[0,2];
+ result.RawComponents[1,0]:=aFrom.RawComponents[1,0];
+ result.RawComponents[1,1]:=aFrom.RawComponents[1,1];
+ result.RawComponents[1,2]:=aFrom.RawComponents[1,2];
+ result.RawComponents[2,0]:=aFrom.RawComponents[2,0];
+ result.RawComponents[2,1]:=aFrom.RawComponents[2,1];
+ result.RawComponents[2,2]:=aFrom.RawComponents[2,2];
+end;
+
+class operator TpvMatrix3x3D.Explicit(const aFrom:TpvMatrix4x4):TpvMatrix3x3D;
+begin
+ result.RawComponents[0,0]:=aFrom.RawComponents[0,0];
+ result.RawComponents[0,1]:=aFrom.RawComponents[0,1];
+ result.RawComponents[0,2]:=aFrom.RawComponents[0,2];
+ result.RawComponents[1,0]:=aFrom.RawComponents[1,0];
+ result.RawComponents[1,1]:=aFrom.RawComponents[1,1];
+ result.RawComponents[1,2]:=aFrom.RawComponents[1,2];
+ result.RawComponents[2,0]:=aFrom.RawComponents[2,0];
+ result.RawComponents[2,1]:=aFrom.RawComponents[2,1];
+ result.RawComponents[2,2]:=aFrom.RawComponents[2,2];
+end;
+
+class operator TpvMatrix3x3D.Explicit(const aFrom:TpvMatrix3x3D):TpvMatrix4x4;
+begin
+ result.RawComponents[0,0]:=aFrom.RawComponents[0,0];
+ result.RawComponents[0,1]:=aFrom.RawComponents[0,1];
+ result.RawComponents[0,2]:=aFrom.RawComponents[0,2];
+ result.RawComponents[0,3]:=0.0;
+ result.RawComponents[1,0]:=aFrom.RawComponents[1,0];
+ result.RawComponents[1,1]:=aFrom.RawComponents[1,1];
+ result.RawComponents[1,2]:=aFrom.RawComponents[1,2];
+ result.RawComponents[1,3]:=0.0;
+ result.RawComponents[2,0]:=aFrom.RawComponents[2,0];
+ result.RawComponents[2,1]:=aFrom.RawComponents[2,1];
+ result.RawComponents[2,2]:=aFrom.RawComponents[2,2];
+ result.RawComponents[2,3]:=0.0;
+ result.RawComponents[3,0]:=0.0;
+ result.RawComponents[3,1]:=0.0;
+ result.RawComponents[3,2]:=0.0;
+ result.RawComponents[3,3]:=1.0;
+end;
+
+class operator TpvMatrix3x3D.Explicit(const aFrom:TpvQuaternion):TpvMatrix3x3D;
+begin
+ result:=TpvMatrix3x3D.Create(aFrom);
+end;
+
+class operator TpvMatrix3x3D.Explicit(const aFrom:TpvQuaternionD):TpvMatrix3x3D;
+begin
+ result:=TpvMatrix3x3D.Create(aFrom);
+end;
+
+class operator TpvMatrix3x3D.Explicit(const aFrom:TpvDecomposedMatrix3x3D):TpvMatrix3x3D;
+begin
+ result:=TpvMatrix3x3D.Create(aFrom);
+end;
+
+class operator TpvMatrix3x3D.Explicit(const aFrom:TpvMatrix3x3D):TpvQuaternion;
+begin
+ result:=aFrom.ToQuaternionD.ToQuaternion;
+end;
+
+class operator TpvMatrix3x3D.Explicit(const aFrom:TpvMatrix3x3D):TpvQuaternionD;
+begin
+ result:=aFrom.ToQuaternionD;
+end;
+
+class operator TpvMatrix3x3D.Explicit(const aFrom:TpvMatrix3x3D):TpvDecomposedMatrix3x3D;
+begin
+ result:=aFrom.Decompose;
 end;
 
 class operator TpvMatrix3x3D.Equal(const aLeft,aRight:TpvMatrix3x3D):boolean;
@@ -2014,6 +2363,212 @@ begin
                             0.0,0.0,aFrom.Scale.z,0.0,
                             0.0,0.0,0.0,1.0)*self;
 
+end;
+
+class operator TpvMatrix4x4D.Implicit(const aFrom:TpvMatrix3x3):TpvMatrix4x4D;
+begin
+ result.RawComponents[0,0]:=aFrom.RawComponents[0,0];
+ result.RawComponents[0,1]:=aFrom.RawComponents[0,1];
+ result.RawComponents[0,2]:=aFrom.RawComponents[0,2];
+ result.RawComponents[0,3]:=0.0;
+ result.RawComponents[1,0]:=aFrom.RawComponents[1,0];
+ result.RawComponents[1,1]:=aFrom.RawComponents[1,1];
+ result.RawComponents[1,2]:=aFrom.RawComponents[1,2];
+ result.RawComponents[1,3]:=0.0;
+ result.RawComponents[2,0]:=aFrom.RawComponents[2,0];
+ result.RawComponents[2,1]:=aFrom.RawComponents[2,1];
+ result.RawComponents[2,2]:=aFrom.RawComponents[2,2];
+ result.RawComponents[2,3]:=0.0;
+ result.RawComponents[3,0]:=0.0;
+ result.RawComponents[3,1]:=0.0;
+ result.RawComponents[3,2]:=0.0;
+ result.RawComponents[3,3]:=1.0;
+end;
+
+class operator TpvMatrix4x4D.Implicit(const aFrom:TpvMatrix4x4D):TpvMatrix3x3;
+begin
+ result.RawComponents[0,0]:=aFrom.RawComponents[0,0];
+ result.RawComponents[0,1]:=aFrom.RawComponents[0,1];
+ result.RawComponents[0,2]:=aFrom.RawComponents[0,2];
+ result.RawComponents[1,0]:=aFrom.RawComponents[1,0];
+ result.RawComponents[1,1]:=aFrom.RawComponents[1,1];
+ result.RawComponents[1,2]:=aFrom.RawComponents[1,2];
+ result.RawComponents[2,0]:=aFrom.RawComponents[2,0];
+ result.RawComponents[2,1]:=aFrom.RawComponents[2,1];
+ result.RawComponents[2,2]:=aFrom.RawComponents[2,2];
+end;
+
+class operator TpvMatrix4x4D.Implicit(const aFrom:TpvMatrix4x4):TpvMatrix4x4D;
+begin
+ result.RawComponents[0,0]:=aFrom.RawComponents[0,0];
+ result.RawComponents[0,1]:=aFrom.RawComponents[0,1];
+ result.RawComponents[0,2]:=aFrom.RawComponents[0,2];
+ result.RawComponents[0,3]:=aFrom.RawComponents[0,3];
+ result.RawComponents[1,0]:=aFrom.RawComponents[1,0];
+ result.RawComponents[1,1]:=aFrom.RawComponents[1,1];
+ result.RawComponents[1,2]:=aFrom.RawComponents[1,2];
+ result.RawComponents[1,3]:=aFrom.RawComponents[1,3];
+ result.RawComponents[2,0]:=aFrom.RawComponents[2,0];
+ result.RawComponents[2,1]:=aFrom.RawComponents[2,1];
+ result.RawComponents[2,2]:=aFrom.RawComponents[2,2];
+ result.RawComponents[2,3]:=aFrom.RawComponents[2,3];
+ result.RawComponents[3,0]:=aFrom.RawComponents[3,0];
+ result.RawComponents[3,1]:=aFrom.RawComponents[3,1];
+ result.RawComponents[3,2]:=aFrom.RawComponents[3,2];
+ result.RawComponents[3,3]:=aFrom.RawComponents[3,3];
+end;
+
+class operator TpvMatrix4x4D.Implicit(const aFrom:TpvMatrix4x4D):TpvMatrix4x4;
+begin
+ result.RawComponents[0,0]:=aFrom.RawComponents[0,0];
+ result.RawComponents[0,1]:=aFrom.RawComponents[0,1];
+ result.RawComponents[0,2]:=aFrom.RawComponents[0,2];
+ result.RawComponents[0,3]:=aFrom.RawComponents[0,3];
+ result.RawComponents[1,0]:=aFrom.RawComponents[1,0];
+ result.RawComponents[1,1]:=aFrom.RawComponents[1,1];
+ result.RawComponents[1,2]:=aFrom.RawComponents[1,2];
+ result.RawComponents[1,3]:=aFrom.RawComponents[1,3];
+ result.RawComponents[2,0]:=aFrom.RawComponents[2,0];
+ result.RawComponents[2,1]:=aFrom.RawComponents[2,1];
+ result.RawComponents[2,2]:=aFrom.RawComponents[2,2];
+ result.RawComponents[2,3]:=aFrom.RawComponents[2,3];
+ result.RawComponents[3,0]:=aFrom.RawComponents[3,0];
+ result.RawComponents[3,1]:=aFrom.RawComponents[3,1];
+ result.RawComponents[3,2]:=aFrom.RawComponents[3,2];
+ result.RawComponents[3,3]:=aFrom.RawComponents[3,3];
+end;
+
+class operator TpvMatrix4x4D.Implicit(const aFrom:TpvQuaternion):TpvMatrix4x4D;
+begin
+ result:=TpvMatrix4x4D.Create(aFrom);
+end;
+
+class operator TpvMatrix4x4D.Implicit(const aFrom:TpvQuaternionD):TpvMatrix4x4D;
+begin
+ result:=TpvMatrix4x4D.Create(aFrom);
+end;
+
+class operator TpvMatrix4x4D.Implicit(const aFrom:TpvDecomposedMatrix4x4D):TpvMatrix4x4D;
+begin
+ result:=TpvMatrix4x4D.Create(aFrom);
+end;
+
+class operator TpvMatrix4x4D.Implicit(const aFrom:TpvMatrix4x4D):TpvQuaternion;
+begin
+ result:=aFrom.ToQuaternionD.ToQuaternion;
+end;
+
+class operator TpvMatrix4x4D.Implicit(const aFrom:TpvMatrix4x4D):TpvQuaternionD;
+begin
+ result:=aFrom.ToQuaternionD;
+end;
+
+class operator TpvMatrix4x4D.Implicit(const aFrom:TpvMatrix4x4D):TpvDecomposedMatrix4x4D;
+begin
+ result:=aFrom.Decompose;
+end;
+
+class operator TpvMatrix4x4D.Explicit(const aFrom:TpvMatrix3x3):TpvMatrix4x4D;
+begin
+ result.RawComponents[0,0]:=aFrom.RawComponents[0,0];
+ result.RawComponents[0,1]:=aFrom.RawComponents[0,1];
+ result.RawComponents[0,2]:=aFrom.RawComponents[0,2];
+ result.RawComponents[0,3]:=0.0;
+ result.RawComponents[1,0]:=aFrom.RawComponents[1,0];
+ result.RawComponents[1,1]:=aFrom.RawComponents[1,1];
+ result.RawComponents[1,2]:=aFrom.RawComponents[1,2];
+ result.RawComponents[1,3]:=0.0;
+ result.RawComponents[2,0]:=aFrom.RawComponents[2,0];
+ result.RawComponents[2,1]:=aFrom.RawComponents[2,1];
+ result.RawComponents[2,2]:=aFrom.RawComponents[2,2];
+ result.RawComponents[2,3]:=0.0;
+ result.RawComponents[3,0]:=0.0;
+ result.RawComponents[3,1]:=0.0;
+ result.RawComponents[3,2]:=0.0;
+ result.RawComponents[3,3]:=1.0;
+end;
+
+class operator TpvMatrix4x4D.Explicit(const aFrom:TpvMatrix4x4D):TpvMatrix3x3;
+begin
+ result.RawComponents[0,0]:=aFrom.RawComponents[0,0];
+ result.RawComponents[0,1]:=aFrom.RawComponents[0,1];
+ result.RawComponents[0,2]:=aFrom.RawComponents[0,2];
+ result.RawComponents[1,0]:=aFrom.RawComponents[1,0];
+ result.RawComponents[1,1]:=aFrom.RawComponents[1,1];
+ result.RawComponents[1,2]:=aFrom.RawComponents[1,2];
+ result.RawComponents[2,0]:=aFrom.RawComponents[2,0];
+ result.RawComponents[2,1]:=aFrom.RawComponents[2,1];
+ result.RawComponents[2,2]:=aFrom.RawComponents[2,2];
+end;
+
+class operator TpvMatrix4x4D.Explicit(const aFrom:TpvMatrix4x4):TpvMatrix4x4D;
+begin
+ result.RawComponents[0,0]:=aFrom.RawComponents[0,0];
+ result.RawComponents[0,1]:=aFrom.RawComponents[0,1];
+ result.RawComponents[0,2]:=aFrom.RawComponents[0,2];
+ result.RawComponents[0,3]:=aFrom.RawComponents[0,3];
+ result.RawComponents[1,0]:=aFrom.RawComponents[1,0];
+ result.RawComponents[1,1]:=aFrom.RawComponents[1,1];
+ result.RawComponents[1,2]:=aFrom.RawComponents[1,2];
+ result.RawComponents[1,3]:=aFrom.RawComponents[1,3];
+ result.RawComponents[2,0]:=aFrom.RawComponents[2,0];
+ result.RawComponents[2,1]:=aFrom.RawComponents[2,1];
+ result.RawComponents[2,2]:=aFrom.RawComponents[2,2];
+ result.RawComponents[2,3]:=aFrom.RawComponents[2,3];
+ result.RawComponents[3,0]:=aFrom.RawComponents[3,0];
+ result.RawComponents[3,1]:=aFrom.RawComponents[3,1];
+ result.RawComponents[3,2]:=aFrom.RawComponents[3,2];
+ result.RawComponents[3,3]:=aFrom.RawComponents[3,3];
+end;
+
+class operator TpvMatrix4x4D.Explicit(const aFrom:TpvMatrix4x4D):TpvMatrix4x4;
+begin
+ result.RawComponents[0,0]:=aFrom.RawComponents[0,0];
+ result.RawComponents[0,1]:=aFrom.RawComponents[0,1];
+ result.RawComponents[0,2]:=aFrom.RawComponents[0,2];
+ result.RawComponents[0,3]:=aFrom.RawComponents[0,3];
+ result.RawComponents[1,0]:=aFrom.RawComponents[1,0];
+ result.RawComponents[1,1]:=aFrom.RawComponents[1,1];
+ result.RawComponents[1,2]:=aFrom.RawComponents[1,2];
+ result.RawComponents[1,3]:=aFrom.RawComponents[1,3];
+ result.RawComponents[2,0]:=aFrom.RawComponents[2,0];
+ result.RawComponents[2,1]:=aFrom.RawComponents[2,1];
+ result.RawComponents[2,2]:=aFrom.RawComponents[2,2];
+ result.RawComponents[2,3]:=aFrom.RawComponents[2,3];
+ result.RawComponents[3,0]:=aFrom.RawComponents[3,0];
+ result.RawComponents[3,1]:=aFrom.RawComponents[3,1];
+ result.RawComponents[3,2]:=aFrom.RawComponents[3,2];
+ result.RawComponents[3,3]:=aFrom.RawComponents[3,3];
+end;
+
+class operator TpvMatrix4x4D.Explicit(const aFrom:TpvQuaternion):TpvMatrix4x4D;
+begin
+ result:=TpvMatrix4x4D.Create(aFrom);
+end;
+
+class operator TpvMatrix4x4D.Explicit(const aFrom:TpvQuaternionD):TpvMatrix4x4D;
+begin
+ result:=TpvMatrix4x4D.Create(aFrom);
+end;
+
+class operator TpvMatrix4x4D.Explicit(const aFrom:TpvDecomposedMatrix4x4D):TpvMatrix4x4D;
+begin
+ result:=TpvMatrix4x4D.Create(aFrom);
+end;
+
+class operator TpvMatrix4x4D.Explicit(const aFrom:TpvMatrix4x4D):TpvQuaternion;
+begin
+ result:=aFrom.ToQuaternionD.ToQuaternion;
+end;
+
+class operator TpvMatrix4x4D.Explicit(const aFrom:TpvMatrix4x4D):TpvQuaternionD;
+begin
+ result:=aFrom.ToQuaternionD;
+end;
+
+class operator TpvMatrix4x4D.Explicit(const aFrom:TpvMatrix4x4D):TpvDecomposedMatrix4x4D;
+begin
+ result:=aFrom.Decompose;
 end;
 
 class operator TpvMatrix4x4D.Equal(const aLeft,aRight:TpvMatrix4x4D):boolean;
