@@ -408,6 +408,34 @@ type TpvVector2D=record
      end;
      PpvMatrix4x4D=^TpvMatrix4x4D;
 
+     TpvTransform3D=record
+      public
+       Position:TpvVector3D;
+       Orientation:TpvQuaternionD;
+       Scale:TpvVector3D;
+       constructor Create(const aPosition:TpvVector3D;const aOrientation:TpvQuaternionD;const aScale:TpvVector3D); overload;
+       constructor Create(const aPosition:TpvVector3D;const aOrientation:TpvQuaternionD); overload;
+       constructor Create(const aPosition:TpvVector3D); overload;
+       constructor Create(const aFrom:TpvMatrix4x4); overload;
+       constructor Create(const aFrom:TpvMatrix4x4D); overload;
+       class operator Implicit(const aFrom:TpvMatrix4x4):TpvTransform3D;
+       class operator Implicit(const aFrom:TpvMatrix4x4D):TpvTransform3D;
+       class operator Implicit(const aFrom:TpvTransform3D):TpvMatrix4x4;
+       class operator Implicit(const aFrom:TpvTransform3D):TpvMatrix4x4D;
+       class operator Explicit(const aFrom:TpvMatrix4x4):TpvTransform3D;
+       class operator Explicit(const aFrom:TpvMatrix4x4D):TpvTransform3D;
+       class operator Explicit(const aFrom:TpvTransform3D):TpvMatrix4x4;
+       class operator Explicit(const aFrom:TpvTransform3D):TpvMatrix4x4D;
+       class operator Equal(const aLeft,aRight:TpvTransform3D):boolean;
+       class operator NotEqual(const aLeft,aRight:TpvTransform3D):boolean;
+       function Lerp(const aWith:TpvTransform3D;const aTime:TpvDouble):TpvTransform3D;
+       function Nlerp(const aWith:TpvTransform3D;const aTime:TpvDouble):TpvTransform3D;
+       function Slerp(const aWith:TpvTransform3D;const aTime:TpvDouble):TpvTransform3D;
+       function Elerp(const aWith:TpvTransform3D;const aTime:TpvDouble):TpvTransform3D;
+       function Sqlerp(const aB,aC,aD:TpvTransform3D;const aTime:TpvDouble):TpvTransform3D;
+     end;
+     PpvTransform3D=^TpvTransform3D;
+
 implementation
 
 { TpvVector2D }
@@ -3221,5 +3249,148 @@ begin
  result:=TpvMatrix4x4D.Create(Decompose.Sqlerp(aB.Decompose,aC.Decompose,aD.Decompose,aTime));
 end;
 
+constructor TpvTransform3D.Create(const aPosition:TpvVector3D;const aOrientation:TpvQuaternionD;const aScale:TpvVector3D);
+begin
+ Position:=aPosition;
+ Orientation:=aOrientation;
+ Scale:=aScale;
+end;
+
+constructor TpvTransform3D.Create(const aPosition:TpvVector3D;const aOrientation:TpvQuaternionD);
+begin
+ Position:=aPosition;
+ Orientation:=aOrientation;
+ Scale:=TpvVector3D.Create(1.0,1.0,1.0);
+end;
+
+constructor TpvTransform3D.Create(const aPosition:TpvVector3D);
+begin
+ Position:=aPosition;
+ Orientation:=TpvQuaternionD.Create(0.0,0.0,0.0,1.0);
+ Scale:=TpvVector3D.Create(1.0,1.0,1.0);
+end;
+
+constructor TpvTransform3D.Create(const aFrom:TpvMatrix4x4);
+begin
+ Position:=aFrom.Translation.xyz;
+ Orientation:=aFrom.ToQuaternion;
+ Scale.x:=aFrom.Right.xyz.Length;
+ Scale.y:=aFrom.Up.xyz.Length;
+ Scale.z:=aFrom.Forwards.xyz.Length;
+end;
+
+constructor TpvTransform3D.Create(const aFrom:TpvMatrix4x4D);
+begin
+ Position:=aFrom.Translation.xyz;
+ Orientation:=aFrom.ToQuaternionD;
+ Scale.x:=aFrom.Right.xyz.Length;
+ Scale.y:=aFrom.Up.xyz.Length;
+ Scale.z:=aFrom.Forwards.xyz.Length;
+end;
+
+class operator TpvTransform3D.Implicit(const aFrom:TpvMatrix4x4):TpvTransform3D;
+begin
+ result:=TpvTransform3D.Create(aFrom);
+end;
+
+class operator TpvTransform3D.Implicit(const aFrom:TpvMatrix4x4D):TpvTransform3D;
+begin
+ result:=TpvTransform3D.Create(aFrom);
+end;
+
+class operator TpvTransform3D.Implicit(const aFrom:TpvTransform3D):TpvMatrix4x4;
+begin
+ result:=TpvMatrix4x4.CreateFromQuaternion(aFrom.Orientation.ToQuaternion);
+ result.Right.xyz:=result.Right.xyz*aFrom.Scale.x;
+ result.Up.xyz:=result.Up.xyz*aFrom.Scale.y;
+ result.Forwards.xyz:=result.Forwards.xyz*aFrom.Scale.z;
+ result.Translation.xyz:=aFrom.Position;
+end;
+
+class operator TpvTransform3D.Implicit(const aFrom:TpvTransform3D):TpvMatrix4x4D;
+begin
+ result:=TpvMatrix4x4D.Create(aFrom.Orientation);
+ result.Right.xyz:=result.Right.xyz*aFrom.Scale.x;
+ result.Up.xyz:=result.Up.xyz*aFrom.Scale.y;
+ result.Forwards.xyz:=result.Forwards.xyz*aFrom.Scale.z;
+ result.Translation.xyz:=aFrom.Position;
+end;
+
+class operator TpvTransform3D.Explicit(const aFrom:TpvMatrix4x4):TpvTransform3D;
+begin
+ result:=TpvTransform3D.Create(aFrom);
+end;
+
+class operator TpvTransform3D.Explicit(const aFrom:TpvMatrix4x4D):TpvTransform3D;
+begin
+ result:=TpvTransform3D.Create(aFrom);
+end;
+
+class operator TpvTransform3D.Explicit(const aFrom:TpvTransform3D):TpvMatrix4x4;
+begin
+ result:=TpvMatrix4x4.CreateFromQuaternion(aFrom.Orientation.ToQuaternion);
+ result.Right.xyz:=result.Right.xyz*aFrom.Scale.x;
+ result.Up.xyz:=result.Up.xyz*aFrom.Scale.y;
+ result.Forwards.xyz:=result.Forwards.xyz*aFrom.Scale.z;
+ result.Translation.xyz:=aFrom.Position;
+end;
+
+class operator TpvTransform3D.Explicit(const aFrom:TpvTransform3D):TpvMatrix4x4D;
+begin
+ result:=TpvMatrix4x4D.Create(aFrom.Orientation);
+ result.Right.xyz:=result.Right.xyz*aFrom.Scale.x;
+ result.Up.xyz:=result.Up.xyz*aFrom.Scale.y;
+ result.Forwards.xyz:=result.Forwards.xyz*aFrom.Scale.z;
+ result.Translation.xyz:=aFrom.Position;
+end;
+
+class operator TpvTransform3D.Equal(const aLeft,aRight:TpvTransform3D):boolean;
+begin
+ result:=(aLeft.Position=aRight.Position) and
+         (aLeft.Orientation=aRight.Orientation) and
+         (aLeft.Scale=aRight.Scale);
+end;
+
+class operator TpvTransform3D.NotEqual(const aLeft,aRight:TpvTransform3D):boolean;
+begin
+ result:=(aLeft.Position<>aRight.Position) or
+         (aLeft.Orientation<>aRight.Orientation) or
+         (aLeft.Scale<>aRight.Scale);
+end;
+
+function TpvTransform3D.Lerp(const aWith:TpvTransform3D;const aTime:TpvDouble):TpvTransform3D;
+begin
+ result.Position:=Position.Lerp(aWith.Position,aTime);
+ result.Orientation:=Orientation.Lerp(aWith.Orientation,aTime);
+ result.Scale:=Scale.Lerp(aWith.Scale,aTime);
+end;
+
+function TpvTransform3D.Nlerp(const aWith:TpvTransform3D;const aTime:TpvDouble):TpvTransform3D;
+begin
+ result.Position:=Position.Lerp(aWith.Position,aTime);
+ result.Orientation:=Orientation.Nlerp(aWith.Orientation,aTime);
+ result.Scale:=Scale.Lerp(aWith.Scale,aTime);
+end;
+
+function TpvTransform3D.Slerp(const aWith:TpvTransform3D;const aTime:TpvDouble):TpvTransform3D;
+begin
+ result.Position:=Position.Lerp(aWith.Position,aTime);
+ result.Orientation:=Orientation.Slerp(aWith.Orientation,aTime);
+ result.Scale:=Scale.Lerp(aWith.Scale,aTime);
+end;
+
+function TpvTransform3D.Elerp(const aWith:TpvTransform3D;const aTime:TpvDouble):TpvTransform3D;
+begin
+ result.Position:=Position.Lerp(aWith.Position,aTime);
+ result.Orientation:=Orientation.Elerp(aWith.Orientation,aTime);
+ result.Scale:=Scale.Lerp(aWith.Scale,aTime);
+end;
+
+function TpvTransform3D.Sqlerp(const aB,aC,aD:TpvTransform3D;const aTime:TpvDouble):TpvTransform3D;
+begin
+ result.Position:=Position.Lerp(aB.Position,aTime);
+ result.Orientation:=Orientation.Sqlerp(aB.Orientation,aC.Orientation,aD.Orientation,aTime);
+ result.Scale:=Scale.Lerp(aB.Scale,aTime);
+end;
 
 end.
