@@ -138,12 +138,23 @@ affineZX, affineZY, affineZZ, fineZ
  
 */
 
-vec3 dsfpTransformPosition(mat4 modelPacked, mat4 viewPacked, vec4 vertexPosition){
-  vec3 modelCoarse = modelPacked[3].xyz, modelFine = vec3(modelPacked[0].w, modelPacked[1].w, modelPacked[2].w);
-  vec3 viewCoarse = viewPacked[3].xyz, viewFine = vec3(viewPacked[0].w, viewPacked[1].w, viewPacked[2].w);
-  vec3 displacement = dsfpVec3PreciseSum(modelCoarse, modelFine, -viewCoarse, -viewFine);
-  mat4 modelView = mat4(mat3(viewPacked) * mat4x3(modelPacked[0].xyz, modelPacked[1].xyz, modelPacked[2].xyz, displacement)); 
-  return (modelView * vertexPosition).xyz;
+vec4 dsfpTransformPosition(mat4 modelPacked, mat4 viewPacked, vec4 vertexPosition){
+  if((modelPacked[3].w > 0.0) || (viewPacked[3].w > 0.0)){
+    // When [3][3] are positive, we have normal matrices, so we can use the standard approach. 
+    return (modelPacked * viewPacked) * vertexPosition;  
+  }else{
+    // When [3][3] are negative, we have the packed matrices for double-single floating point matrices, so we 
+    // need to use the precise sum approach. 
+    vec3 modelCoarse = modelPacked[3].xyz, modelFine = vec3(modelPacked[0].w, modelPacked[1].w, modelPacked[2].w);
+    vec3 viewCoarse = viewPacked[3].xyz, viewFine = vec3(viewPacked[0].w, viewPacked[1].w, viewPacked[2].w);
+    vec3 displacement = dsfpVec3PreciseSum(modelCoarse, modelFine, -viewCoarse, -viewFine);
+//  mat4 modelView = mat4(mat3(viewPacked) * mat4x3(modelPacked[0].xyz, modelPacked[1].xyz, modelPacked[2].xyz, displacement)); 
+    mat4 modelView = mat4(
+      mat4(vec4(viewPacked[0].xyz, 0.0), vec4(viewPacked[1].xyz, 0.0), vec4(viewPacked[2].xyz, 0.0), vec4(0.0, 0.0, 0.0, 1.0)) *
+      mat4(vec4(modelPacked[0].xyz, 0.0), vec4(modelPacked[1].xyz, 0.0), vec4(modelPacked[2].xyz, 0.0), vec4(displacement, 1.0))
+    );
+    return modelView * vertexPosition;
+  }
 } 
 
 // Clean the 4x4 matrix by removing the fine components, for direct usage after it.
