@@ -281,6 +281,23 @@ type TpvVector2D=record
         3:(Tangent,Bitangent,Normal:TpvVector3D);
      end;
 
+     TpvDecomposedMatrix4x4D=record
+      public
+       Valid:boolean;
+       Perspective:TpvVector4D;
+       Translation:TpvVector3D;
+       Scale:TpvVector3D;
+       Skew:TpvVector3D; // XY XZ YZ
+       Rotation:TpvQuaternionD;
+       class function Create:TpvDecomposedMatrix4x4D; static;
+       function Lerp(const aWith:TpvDecomposedMatrix4x4D;const aTime:TpvDouble):TpvDecomposedMatrix4x4D; 
+       function Nlerp(const aWith:TpvDecomposedMatrix4x4D;const aTime:TpvDouble):TpvDecomposedMatrix4x4D;
+       function Slerp(const aWith:TpvDecomposedMatrix4x4D;const aTime:TpvDouble):TpvDecomposedMatrix4x4D;
+       function Elerp(const aWith:TpvDecomposedMatrix4x4D;const aTime:TpvDouble):TpvDecomposedMatrix4x4D;
+       function Sqlerp(const aB,aC,aD:TpvDecomposedMatrix4x4D;const aTime:TpvDouble):TpvDecomposedMatrix4x4D;
+     end;     
+     PpvDecomposedMatrix4x4D=^TpvDecomposedMatrix4x4D;
+
 implementation
 
 { TpvVector2D }
@@ -1695,6 +1712,81 @@ end;
 function TpvMatrix3x3D.Sqlerp(const aB,aC,aD:TpvMatrix3x3D;const aTime:TpvDouble):TpvMatrix3x3D;
 begin
  result:=TpvMatrix3x3D.Create(Decompose.Sqlerp(aB.Decompose,aC.Decompose,aD.Decompose,aTime));
+end;
+
+class function TpvDecomposedMatrix4x4D.Create:TpvDecomposedMatrix4x4D;
+begin
+ result.Perspective:=TpvVector4D.Create(0.0,0.0,0.0,1.0);
+ result.Translation:=TpvVector3D.Create(0.0,0.0,0.0);
+ result.Scale:=TpvVector3D.Create(1.0,1.0,1.0);
+ result.Skew:=TpvVector3D.Create(0.0,0.0,0.0);
+ result.Rotation:=TpvQuaternionD.Create(0.0,0.0,0.0,1.0);
+ result.Valid:=true;
+end;
+
+function TpvDecomposedMatrix4x4D.Lerp(const aWith:TpvDecomposedMatrix4x4D;const aTime:TpvDouble):TpvDecomposedMatrix4x4D;
+begin
+ if aTime<=0.0 then begin
+  result:=self;
+ end else if aTime>=1.0 then begin
+  result:=aWith;
+ end else begin
+  result.Perspective:=Perspective.Lerp(aWith.Perspective,aTime);
+  result.Translation:=Translation.Lerp(aWith.Translation,aTime);
+  result.Scale:=Scale.Lerp(aWith.Scale,aTime);
+  result.Skew:=Skew.Lerp(aWith.Skew,aTime);
+  result.Rotation:=Rotation.Lerp(aWith.Rotation,aTime);
+ end;
+end;
+
+function TpvDecomposedMatrix4x4D.Nlerp(const aWith:TpvDecomposedMatrix4x4D;const aTime:TpvDouble):TpvDecomposedMatrix4x4D;
+begin
+ if aTime<=0.0 then begin
+  result:=self;
+ end else if aTime>=1.0 then begin
+  result:=aWith;
+ end else begin
+  result.Perspective:=Perspective.Lerp(aWith.Perspective,aTime);
+  result.Translation:=Translation.Lerp(aWith.Translation,aTime);
+  result.Scale:=Scale.Lerp(aWith.Scale,aTime);
+  result.Skew:=Skew.Lerp(aWith.Skew,aTime);
+  result.Rotation:=Rotation.Nlerp(aWith.Rotation,aTime);
+ end;
+end;
+
+function TpvDecomposedMatrix4x4D.Slerp(const aWith:TpvDecomposedMatrix4x4D;const aTime:TpvDouble):TpvDecomposedMatrix4x4D;
+begin
+ if aTime<=0.0 then begin
+  result:=self;
+ end else if aTime>=1.0 then begin
+  result:=aWith;
+ end else begin
+  result.Perspective:=Perspective.Lerp(aWith.Perspective,aTime);
+  result.Translation:=Translation.Lerp(aWith.Translation,aTime);
+  result.Scale:=Scale.Lerp(aWith.Scale,aTime);
+  result.Skew:=Skew.Lerp(aWith.Skew,aTime);
+  result.Rotation:=Rotation.Slerp(aWith.Rotation,aTime);
+ end;
+end;
+
+function TpvDecomposedMatrix4x4D.Elerp(const aWith:TpvDecomposedMatrix4x4D;const aTime:TpvDouble):TpvDecomposedMatrix4x4D;
+begin
+ if aTime<=0.0 then begin
+  result:=self;
+ end else if aTime>=1.0 then begin
+  result:=aWith;
+ end else begin
+  result.Perspective:=Perspective.Lerp(aWith.Perspective,aTime);
+  result.Translation:=Translation.Lerp(aWith.Translation,aTime);
+  result.Scale:=Scale.Lerp(aWith.Scale,aTime);
+  result.Skew:=Skew.Lerp(aWith.Skew,aTime);
+  result.Rotation:=Rotation.Elerp(aWith.Rotation,aTime);
+ end;
+end;
+
+function TpvDecomposedMatrix4x4D.Sqlerp(const aB,aC,aD:TpvDecomposedMatrix4x4D;const aTime:TpvDouble):TpvDecomposedMatrix4x4D;
+begin
+ result:=Slerp(aD,aTime).Slerp(aB.Slerp(aC,aTime),(2.0*aTime)*(1.0-aTime));
 end;
 
 end.
