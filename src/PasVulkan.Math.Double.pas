@@ -339,6 +339,7 @@ type TpvVector2D=record
      TpvMatrix4x4D=record
       public
        constructor Create(const aXX,aXY,aXZ,aXW,aYX,aYY,aYZ,aYW,aZX,aZY,aZZ,aZW,aWX,aWY,aWZ,aWW:TpvDouble); overload;
+       constructor Create(const aTangent,aBitangent,aNormal,aTranslation:TpvVector3D); overload;
        constructor Create(const aFrom:TpvMatrix3x3); overload;
        constructor Create(const aFrom:TpvMatrix4x4); overload;
        constructor Create(const aFrom:TpvQuaternion); overload;
@@ -378,6 +379,8 @@ type TpvVector2D=record
        class operator Divide(const aLeft,aRight:TpvMatrix4x4D):TpvMatrix4x4D;
        class operator Divide(const aLeft:TpvMatrix4x4D;const aRight:TpvDouble):TpvMatrix4x4D;
        class operator Negative(const aMatrix:TpvMatrix4x4D):TpvMatrix4x4D;
+       function MulBasis(const aVector:TpvVector3):TpvVector3; overload;
+       function MulBasis(const aVector:TpvVector3D):TpvVector3D; overload;
        function MulHomogen(const aVector:TpvVector3):TpvVector3; overload;
        function MulHomogen(const aVector:TpvVector3D):TpvVector3D; overload;
        function MulInverse(const aVector:TpvVector3):TpvVector3; overload;
@@ -2224,6 +2227,26 @@ begin
  RawComponents[3,3]:=aWW;
 end;
 
+constructor TpvMatrix4x4D.Create(const aTangent,aBitangent,aNormal,aTranslation:TpvVector3D);
+begin
+ RawComponents[0,0]:=aTangent.x;
+ RawComponents[0,1]:=aTangent.y;
+ RawComponents[0,2]:=aTangent.z;
+ RawComponents[0,3]:=0.0;
+ RawComponents[1,0]:=aBitangent.x;
+ RawComponents[1,1]:=aBitangent.y;
+ RawComponents[1,2]:=aBitangent.z;
+ RawComponents[1,3]:=0.0;
+ RawComponents[2,0]:=aNormal.x;
+ RawComponents[2,1]:=aNormal.y;
+ RawComponents[2,2]:=aNormal.z;
+ RawComponents[2,3]:=0.0;
+ RawComponents[3,0]:=aTranslation.x;
+ RawComponents[3,1]:=aTranslation.y;
+ RawComponents[3,2]:=aTranslation.z;
+ RawComponents[3,3]:=1.0;
+end;
+
 constructor TpvMatrix4x4D.Create(const aFrom:TpvMatrix3x3);
 begin
  RawComponents[0,0]:=aFrom.RawComponents[0,0];
@@ -2810,6 +2833,20 @@ begin
  result.RawComponents[3,1]:=-aMatrix.RawComponents[3,1];
  result.RawComponents[3,2]:=-aMatrix.RawComponents[3,2];
  result.RawComponents[3,3]:=-aMatrix.RawComponents[3,3];
+end;
+
+function TpvMatrix4x4D.MulBasis(const aVector:TpvVector3):TpvVector3;
+begin
+ result.x:=(RawComponents[0,0]*aVector.x)+(RawComponents[1,0]*aVector.y)+(RawComponents[2,0]*aVector.z);
+ result.y:=(RawComponents[0,1]*aVector.x)+(RawComponents[1,1]*aVector.y)+(RawComponents[2,1]*aVector.z);
+ result.z:=(RawComponents[0,2]*aVector.x)+(RawComponents[1,2]*aVector.y)+(RawComponents[2,2]*aVector.z);
+end;
+
+function TpvMatrix4x4D.MulBasis(const aVector:TpvVector3D):TpvVector3D;
+begin
+ result.x:=(RawComponents[0,0]*aVector.x)+(RawComponents[1,0]*aVector.y)+(RawComponents[2,0]*aVector.z);
+ result.y:=(RawComponents[0,1]*aVector.x)+(RawComponents[1,1]*aVector.y)+(RawComponents[2,1]*aVector.z);
+ result.z:=(RawComponents[0,2]*aVector.x)+(RawComponents[1,2]*aVector.y)+(RawComponents[2,2]*aVector.z);
 end;
 
 function TpvMatrix4x4D.MulHomogen(const aVector:TpvVector3):TpvVector3;
