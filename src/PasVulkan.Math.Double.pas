@@ -266,6 +266,8 @@ type TpvVector2D=record
        function Determinant:TpvDouble;
        function Inverse:TpvMatrix3x3D;
        function ToMatrix3x3:TpvMatrix3x3;       
+       function ToQuaternionD:TpvQuaternionD;
+       function Decompose:TpvDecomposedMatrix3x3D;
       public
        case TpvInt32 of
         0:(RawComponents:array[0..2,0..2] of TpvDouble);
@@ -1542,5 +1544,112 @@ begin
  result.RawComponents[2,1]:=RawComponents[2,1];
  result.RawComponents[2,2]:=RawComponents[2,2];
 end;
+
+function TpvMatrix3x3D.ToQuaternionD:TpvQuaternionD;
+var t,s:TpvDouble;
+begin
+ t:=RawComponents[0,0]+(RawComponents[1,1]+RawComponents[2,2]);
+ if t>2.9999999 then begin
+  result.x:=0.0;
+  result.y:=0.0;
+  result.z:=0.0;
+  result.w:=1.0;
+ end else if t>0.0000001 then begin
+  s:=sqrt(1.0+t)*2.0;
+  result.x:=(RawComponents[1,2]-RawComponents[2,1])/s;
+  result.y:=(RawComponents[2,0]-RawComponents[0,2])/s;
+  result.z:=(RawComponents[0,1]-RawComponents[1,0])/s;
+  result.w:=s*0.25;
+ end else if (RawComponents[0,0]>RawComponents[1,1]) and (RawComponents[0,0]>RawComponents[2,2]) then begin
+  s:=sqrt(1.0+(RawComponents[0,0]-(RawComponents[1,1]+RawComponents[2,2])))*2.0;
+  result.x:=s*0.25;
+  result.y:=(RawComponents[1,0]+RawComponents[0,1])/s;
+  result.z:=(RawComponents[2,0]+RawComponents[0,2])/s;
+  result.w:=(RawComponents[1,2]-RawComponents[2,1])/s;
+ end else if RawComponents[1,1]>RawComponents[2,2] then begin
+  s:=sqrt(1.0+(RawComponents[1,1]-(RawComponents[0,0]+RawComponents[2,2])))*2.0;
+  result.x:=(RawComponents[1,0]+RawComponents[0,1])/s;
+  result.y:=s*0.25;
+  result.z:=(RawComponents[2,1]+RawComponents[1,2])/s;
+  result.w:=(RawComponents[2,0]-RawComponents[0,2])/s;
+ end else begin
+  s:=sqrt(1.0+(RawComponents[2,2]-(RawComponents[0,0]+RawComponents[1,1])))*2.0;
+  result.x:=(RawComponents[2,0]+RawComponents[0,2])/s;
+  result.y:=(RawComponents[2,1]+RawComponents[1,2])/s;
+  result.z:=s*0.25;
+  result.w:=(RawComponents[0,1]-RawComponents[1,0])/s;
+ end;
+ t:=sqrt(sqr(result.x)+sqr(result.y)+sqr(result.z)+sqr(result.w));
+ if t>0.0 then begin
+  result.x:=result.x/t;
+  result.y:=result.y/t;
+  result.z:=result.z/t;
+  result.w:=result.w/t;
+ end;
+end;
+
+function TpvMatrix3x3D.Decompose:TpvDecomposedMatrix3x3D;
+var LocalMatrix:TpvMatrix3x3D;
+begin
+
+ if (RawComponents[0,0]=1.0) and
+    (RawComponents[0,1]=0.0) and
+    (RawComponents[0,2]=0.0) and
+    (RawComponents[1,0]=0.0) and
+    (RawComponents[1,1]=1.0) and
+    (RawComponents[1,2]=0.0) and
+    (RawComponents[2,0]=0.0) and
+    (RawComponents[2,1]=0.0) and
+    (RawComponents[2,2]=1.0) then begin
+
+  result.Scale:=TpvVector3D.Create(1.0,1.0,1.0);
+  result.Skew:=TpvVector3D.Create(0.0,0.0,0.0);
+  result.Rotation:=TpvQuaternionD.Create(0.0,0.0,0.0,1.0);
+  
+  result.Valid:=true;
+
+ end else if Determinant=0.0 then begin
+  
+  result.Valid:=false;
+
+ end else begin
+  
+  LocalMatrix:=self;
+  
+  result.Scale.x:=LocalMatrix.Right.Length;
+  LocalMatrix.Right:=LocalMatrix.Right.Normalize;
+  
+  result.Skew.x:=LocalMatrix.Right.Dot(LocalMatrix.Up);
+  LocalMatrix.Up:=LocalMatrix.Up-(LocalMatrix.Right*result.Skew.x);
+  
+  result.Scale.y:=LocalMatrix.Up.Length;
+  LocalMatrix.Up:=LocalMatrix.Up.Normalize;
+  
+  result.Skew.x:=result.Skew.x/result.Scale.y;
+  
+  result.Skew.y:=LocalMatrix.Right.Dot(LocalMatrix.Forwards);
+  LocalMatrix.Forwards:=LocalMatrix.Forwards-(LocalMatrix.Right*result.Skew.y);
+  result.Skew.z:=LocalMatrix.Up.Dot(LocalMatrix.Forwards);
+  LocalMatrix.Forwards:=LocalMatrix.Forwards-(LocalMatrix.Up*result.Skew.z);
+  
+  result.Scale.z:=LocalMatrix.Forwards.Length;
+  LocalMatrix.Forwards:=LocalMatrix.Forwards.Normalize;
+
+  result.Skew.y:=result.Skew.y/result.Scale.z;
+  result.Skew.z:=result.Skew.z/result.Scale.z;
+
+  if LocalMatrix.Right.Dot(LocalMatrix.Up.Cross(LocalMatrix.Forwards))<0.0 then begin
+   result.Scale.x:=-result.Scale.x;
+   LocalMatrix:=-LocalMatrix;
+  end;
+
+  result.Rotation:=LocalMatrix.ToQuaternionD;
+
+  result.Valid:=true;
+
+ end;
+
+end;
+
 
 end.
