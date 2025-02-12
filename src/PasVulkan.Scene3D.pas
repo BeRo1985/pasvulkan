@@ -2831,6 +2831,7 @@ type EpvScene3D=class(Exception);
                             fPotentiallyVisibleSetNodeIndex:TpvScene3D.TPotentiallyVisibleSet.TNodeIndex;
                             fModelMatrix:TpvMatrix4x4;
                             fPreviousModelMatrix:TpvMatrix4x4;
+                            fWorkModelMatrix:TpvMatrix4x4;
                             fModelMatrices:TRenderInstanceMatrixInstances;
                             fNodeCullObjectIDs:TpvUInt32DynamicArray;
                             fBoundingBox:TpvAABB;
@@ -3700,6 +3701,7 @@ type EpvScene3D=class(Exception);
        fRaytracingTLAS:TpvRaytracingTopLevelAccelerationStructure;
        fRaytracingTLASAccelerationStructures:array[-1..MaxInFlightFrames-1] of TVkAccelerationStructureKHR;
        fRaytracingTLASGenerations:array[-1..MaxInFlightFrames-1] of TpvUInt64;
+       fRaytracingCameraOffset:TpvVector3D;
        fBufferRangeAllocatorLock:TPasMPCriticalSection;
        fVulkanDynamicVertexBufferData:TGPUDynamicVertexDynamicArray;
        fVulkanStaticVertexBufferData:TGPUStaticVertexDynamicArray;
@@ -25968,10 +25970,14 @@ begin
   SetDirty;
  end;
 
- if fUseRenderInstances or not fApplyCameraRelativeTransform then begin
+ if fUseRenderInstances then begin
   fWorkModelMatrix:=fModelMatrix;
  end else begin
-  fWorkModelMatrix:=fModelMatrix.Translate(fSceneInstance.CameraOffset.ToVector);
+  if fApplyCameraRelativeTransform then begin
+   fWorkModelMatrix:=fModelMatrix.Translate(fSceneInstance.CameraOffset.ToVector);
+  end else begin
+   fWorkModelMatrix:=fModelMatrix;
+  end;
  end;
 
  if assigned(fOnUpdate) and fOnUpdate(aInFlightFrameIndex) then begin
@@ -26258,11 +26264,12 @@ begin
       if RenderInstance.fActive then begin
        TPasMPInterlocked.BitwiseOr(RenderInstance.fActiveMask,TpvUInt32(1) shl aInFlightFrameIndex);
        if fApplyCameraRelativeTransform and RenderInstance.fApplyCameraRelativeTransform then begin
-        RenderInstance.fModelMatrices[aInFlightFrameIndex]:=RenderInstance.fModelMatrix.Translate(fSceneInstance.CameraOffset.ToVector);
+        RenderInstance.fWorkModelMatrix:=RenderInstance.fModelMatrix.Translate(fSceneInstance.CameraOffset.ToVector);
        end else begin
-        RenderInstance.fModelMatrices[aInFlightFrameIndex]:=RenderInstance.fModelMatrix;
+        RenderInstance.fWorkModelMatrix:=RenderInstance.fModelMatrix;
        end;
-       RenderInstance.fBoundingBox:=TemporaryBoundingBox.HomogenTransform(RenderInstance.fModelMatrix);
+       RenderInstance.fModelMatrices[aInFlightFrameIndex]:=RenderInstance.fWorkModelMatrix;
+       RenderInstance.fBoundingBox:=TemporaryBoundingBox.HomogenTransform(RenderInstance.fWorkModelMatrix);
        RenderInstance.fBoundingSphere:=TpvSphere.CreateFromAABB(RenderInstance.fBoundingBox);
        if First then begin
         First:=false;
@@ -26281,14 +26288,14 @@ begin
        PerInFlightFrameRenderInstance^.PotentiallyVisibleSetNodeIndex:=RenderInstance.fPotentiallyVisibleSetNodeIndex;
        PerInFlightFrameRenderInstance^.BoundingBox:=RenderInstance.fBoundingBox;
        PerInFlightFrameRenderInstance^.RenderInstance:=RenderInstance;
-       PerInFlightFrameRenderInstance^.ModelMatrix:=RenderInstance.fModelMatrix;
+       PerInFlightFrameRenderInstance^.ModelMatrix:=RenderInstance.fWorkModelMatrix;
        if RenderInstance.fFirst then begin
         RenderInstance.fFirst:=false;
-        PerInFlightFrameRenderInstance^.PreviousModelMatrix:=RenderInstance.fModelMatrix;
+        PerInFlightFrameRenderInstance^.PreviousModelMatrix:=RenderInstance.fWorkModelMatrix;
        end else begin
         PerInFlightFrameRenderInstance^.PreviousModelMatrix:=RenderInstance.fPreviousModelMatrix;
        end;
-       RenderInstance.fPreviousModelMatrix:=RenderInstance.fModelMatrix;
+       RenderInstance.fPreviousModelMatrix:=RenderInstance.fWorkModelMatrix;
        RenderInstance.UpdateLights;
       end else begin
        if fUseSortedRenderInstances and
@@ -27810,6 +27817,8 @@ begin
  for Index:=Low(fRaytracingTLASGenerations) to High(fRaytracingTLASGenerations) do begin
   fRaytracingTLASGenerations[Index]:=High(TpvUInt64);
  end;
+
+ fRaytracingCameraOffset:=TpvVector3D.Create(0.0,0.0,0.0);
 
  fBufferRangeAllocatorLock:=TPasMPCriticalSection.Create;
 
@@ -32369,6 +32378,11 @@ begin
     BLASListChanged:=false; // Assume, that the BLAS list has not changed yet
 
     MustUpdateTLAS:=false;
+
+    if fRaytracingCameraOffset<>fCameraOffsets[aInFlightFrameIndex] then begin
+     fRaytracingCameraOffset:=fCameraOffsets[aInFlightFrameIndex];
+     MustUpdateTLAS:=true;
+    end;
 
     //////////////////////////////////////////////////////////////////////////////
     // Create empty blas with invalid geometry for empty TLAS, when there are   //
