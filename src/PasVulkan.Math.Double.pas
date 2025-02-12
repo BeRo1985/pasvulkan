@@ -393,6 +393,7 @@ type TpvVector2D=record
        function ToMatrix4x4:TpvMatrix4x4;
        function ToQuaternionD:TpvQuaternionD;
        function Decompose:TpvDecomposedMatrix4x4D;
+       function ToDoubleSingleFloatingPointMatrix4x4:TpvMatrix4x4;
        function Lerp(const aWith:TpvMatrix4x4D;const aTime:TpvDouble):TpvMatrix4x4D;
        function Nlerp(const aWith:TpvMatrix4x4D;const aTime:TpvDouble):TpvMatrix4x4D;
        function Slerp(const aWith:TpvMatrix4x4D;const aTime:TpvDouble):TpvMatrix4x4D;
@@ -3075,6 +3076,39 @@ begin
   result.z:=result.z/t;
   result.w:=result.w/t;
  end;
+end;
+
+function TpvMatrix4x4D.ToDoubleSingleFloatingPointMatrix4x4:TpvMatrix4x4;
+begin
+
+ // Right vector / Tangent
+ result.RawComponents[0,0]:=RawComponents[0,0];
+ result.RawComponents[0,1]:=RawComponents[0,1];
+ result.RawComponents[0,2]:=RawComponents[0,2];
+
+ // Up vector / Bitangent
+ result.RawComponents[1,0]:=RawComponents[1,0];
+ result.RawComponents[1,1]:=RawComponents[1,1];
+ result.RawComponents[1,2]:=RawComponents[1,2];
+
+ // Forward vector / Normal
+ result.RawComponents[2,0]:=RawComponents[2,0];
+ result.RawComponents[2,1]:=RawComponents[2,1];
+ result.RawComponents[2,2]:=RawComponents[2,2];
+
+ // Translation (coarse part)
+ result.RawComponents[3,0]:=RawComponents[3,0];
+ result.RawComponents[3,1]:=RawComponents[3,1];
+ result.RawComponents[3,2]:=RawComponents[3,2];
+
+ // Set the last column and row
+ result.RawComponents[3,3]:=-RawComponents[3,3]; // For to signaling the matrix as a double single floating point matrix
+
+ // Now extract the resuidual translation (fine part, while the coarse part is the matrix itself)
+ result.RawComponents[0,3]:=result.RawComponents[0,3]-RawComponents[0,3]; 
+ result.RawComponents[1,3]:=result.RawComponents[1,3]-RawComponents[1,3];
+ result.RawComponents[2,3]:=result.RawComponents[2,3]-RawComponents[2,3];
+
 end;
 
 function TpvMatrix4x4D.Decompose:TpvDecomposedMatrix4x4D;
