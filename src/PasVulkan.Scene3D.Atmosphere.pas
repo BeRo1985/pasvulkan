@@ -71,6 +71,7 @@ uses SysUtils,
      PasJSON,
      PasVulkan.Types,
      PasVulkan.Math,
+     PasVulkan.Math.Double,
      PasVulkan.Application,
      PasVulkan.Framework,
      PasVulkan.Collections,
@@ -414,7 +415,7 @@ type TpvScene3DAtmosphere=class;
             { TAtmosphereParameters }
             TAtmosphereParameters=packed record             
              public
-              Transform:TpvMatrix4x4; // Transform of the atmosphere for the case that the atmosphere is not centered at the origin (e.g. multiple planets)
+              Transform:TpvMatrix4x4D; // Transform of the atmosphere for the case that the atmosphere is not centered at the origin (e.g. multiple planets)
               RayleighDensity:TDensityProfile;
               MieDensity:TDensityProfile;
               AbsorptionDensity:TDensityProfile;

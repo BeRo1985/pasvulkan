@@ -301,6 +301,7 @@ type TpvVector2D=record
        function Transpose:TpvMatrix3x3D;
        function Determinant:TpvDouble;
        function Inverse:TpvMatrix3x3D;
+       function Adjugate:TpvMatrix3x3D;
        function ToMatrix3x3:TpvMatrix3x3;       
        function ToQuaternionD:TpvQuaternionD;
        function Decompose:TpvDecomposedMatrix3x3D;
@@ -312,9 +313,10 @@ type TpvVector2D=record
       public
        case TpvInt32 of
         0:(RawComponents:array[0..2,0..2] of TpvDouble);
-        1:(Columns:array[0..2] of TpvVector3D);
-        2:(Right,Up,Forwards:TpvVector3D);
-        3:(Tangent,Bitangent,Normal:TpvVector3D);
+        1:(RawVectors:array[0..2] of TpvVector3D);
+        2:(Columns:array[0..2] of TpvVector3D);
+        3:(Right,Up,Forwards:TpvVector3D);
+        4:(Tangent,Bitangent,Normal:TpvVector3D);
      end;
 
      TpvDecomposedMatrix4x4D=record
@@ -381,6 +383,7 @@ type TpvVector2D=record
        function Transpose:TpvMatrix4x4D;
        function Determinant:TpvDouble;
        function Inverse:TpvMatrix4x4D;
+       function Adjugate:TpvMatrix4x4D;
        function ToMatrix4x4:TpvMatrix4x4;
        function ToQuaternionD:TpvQuaternionD;
        function Decompose:TpvDecomposedMatrix4x4D;
@@ -392,9 +395,10 @@ type TpvVector2D=record
       public
        case TpvInt32 of
         0:(RawComponents:array[0..3,0..3] of TpvDouble);
-        1:(Columns:array[0..3] of TpvVector4D);
-        2:(Right,Up,Forwards,Translation:TpvVector4D);
-        3:(Tangent,Bitangent,Normal,Offset:TpvVector4D);
+        1:(RawVectors:array[0..3] of TpvVector4D);
+        2:(Columns:array[0..3] of TpvVector4D);
+        3:(Right,Up,Forwards,Translation:TpvVector4D);
+        4:(Tangent,Bitangent,Normal,Offset:TpvVector4D);
      end;
      PpvMatrix4x4D=^TpvMatrix4x4D;
 
@@ -1947,6 +1951,22 @@ begin
  end; 
 end;
 
+function TpvMatrix3x3D.Adjugate:TpvMatrix3x3D;
+begin
+ result.RawVectors[0]:=RawVectors[1].Cross(RawVectors[2]);
+ result.RawVectors[1]:=RawVectors[2].Cross(RawVectors[0]);
+ result.RawVectors[2]:=RawVectors[0].Cross(RawVectors[1]);
+{result.RawComponents[0,0]:=(RawComponents[1,1]*RawComponents[2,2])-(RawComponents[1,2]*RawComponents[2,1]);
+ result.RawComponents[0,1]:=(RawComponents[1,2]*RawComponents[2,0])-(RawComponents[1,0]*RawComponents[2,2]);
+ result.RawComponents[0,2]:=(RawComponents[1,0]*RawComponents[2,1])-(RawComponents[1,1]*RawComponents[2,0]);
+ result.RawComponents[1,0]:=(RawComponents[0,2]*RawComponents[2,1])-(RawComponents[0,1]*RawComponents[2,2]);
+ result.RawComponents[1,1]:=(RawComponents[0,0]*RawComponents[2,2])-(RawComponents[0,2]*RawComponents[2,0]);
+ result.RawComponents[1,2]:=(RawComponents[0,1]*RawComponents[2,0])-(RawComponents[0,0]*RawComponents[2,1]);
+ result.RawComponents[2,0]:=(RawComponents[0,1]*RawComponents[1,2])-(RawComponents[0,2]*RawComponents[1,1]);
+ result.RawComponents[2,1]:=(RawComponents[0,2]*RawComponents[1,0])-(RawComponents[0,0]*RawComponents[1,2]);
+ result.RawComponents[2,2]:=(RawComponents[0,0]*RawComponents[1,1])-(RawComponents[0,1]*RawComponents[1,0]);}
+end;
+
 function TpvMatrix3x3D.ToMatrix3x3:TpvMatrix3x3;
 begin
  result.RawComponents[0,0]:=RawComponents[0,0];
@@ -2871,6 +2891,29 @@ begin
   result.RawComponents[3,2]:=(((((-(RawComponents[0,0]*RawComponents[1,1]*RawComponents[3,2]))+(RawComponents[0,0]*RawComponents[1,2]*RawComponents[3,1])+(RawComponents[1,0]*RawComponents[0,1]*RawComponents[3,2]))-(RawComponents[1,0]*RawComponents[0,2]*RawComponents[3,1]))-(RawComponents[3,0]*RawComponents[0,1]*RawComponents[1,2]))+(RawComponents[3,0]*RawComponents[0,2]*RawComponents[1,1]))*d;
   result.RawComponents[3,3]:=(((((RawComponents[0,0]*RawComponents[1,1]*RawComponents[2,2])-(RawComponents[0,0]*RawComponents[1,2]*RawComponents[2,1]))-(RawComponents[1,0]*RawComponents[0,1]*RawComponents[2,2]))+(RawComponents[1,0]*RawComponents[0,2]*RawComponents[2,1])+(RawComponents[2,0]*RawComponents[0,1]*RawComponents[1,2]))-(RawComponents[2,0]*RawComponents[0,2]*RawComponents[1,1]))*d;
  end;
+end;
+
+function TpvMatrix4x4D.Adjugate:TpvMatrix4x4D;
+begin
+{result.RawVectors[0]:=RawVectors[1].Cross(RawVectors[2]);
+ result.RawVectors[1]:=RawVectors[2].Cross(RawVectors[0]);
+ result.RawVectors[2]:=RawVectors[0].Cross(RawVectors[1]);}
+ result.RawComponents[0,0]:=(RawComponents[1,1]*RawComponents[2,2])-(RawComponents[1,2]*RawComponents[2,1]);
+ result.RawComponents[0,1]:=(RawComponents[1,2]*RawComponents[2,0])-(RawComponents[1,0]*RawComponents[2,2]);
+ result.RawComponents[0,2]:=(RawComponents[1,0]*RawComponents[2,1])-(RawComponents[1,1]*RawComponents[2,0]);
+ result.RawComponents[0,3]:=0.0;
+ result.RawComponents[1,0]:=(RawComponents[0,2]*RawComponents[2,1])-(RawComponents[0,1]*RawComponents[2,2]);
+ result.RawComponents[1,1]:=(RawComponents[0,0]*RawComponents[2,2])-(RawComponents[0,2]*RawComponents[2,0]);
+ result.RawComponents[1,2]:=(RawComponents[0,1]*RawComponents[2,0])-(RawComponents[0,0]*RawComponents[2,1]);
+ result.RawComponents[1,3]:=0.0;
+ result.RawComponents[2,0]:=(RawComponents[0,1]*RawComponents[1,2])-(RawComponents[0,2]*RawComponents[1,1]);
+ result.RawComponents[2,1]:=(RawComponents[0,2]*RawComponents[1,0])-(RawComponents[0,0]*RawComponents[1,2]);
+ result.RawComponents[2,2]:=(RawComponents[0,0]*RawComponents[1,1])-(RawComponents[0,1]*RawComponents[1,0]);
+ result.RawComponents[2,3]:=0.0;
+ result.RawComponents[3,0]:=0.0;
+ result.RawComponents[3,1]:=0.0;
+ result.RawComponents[3,2]:=0.0;
+ result.RawComponents[3,3]:=0.0;
 end;
 
 function TpvMatrix4x4D.ToMatrix4x4:TpvMatrix4x4;
