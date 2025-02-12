@@ -268,6 +268,11 @@ type TpvVector2D=record
        function ToMatrix3x3:TpvMatrix3x3;       
        function ToQuaternionD:TpvQuaternionD;
        function Decompose:TpvDecomposedMatrix3x3D;
+       function Lerp(const aWith:TpvMatrix3x3D;const aTime:TpvDouble):TpvMatrix3x3D;
+       function Nlerp(const aWith:TpvMatrix3x3D;const aTime:TpvDouble):TpvMatrix3x3D;
+       function Slerp(const aWith:TpvMatrix3x3D;const aTime:TpvDouble):TpvMatrix3x3D;
+       function Elerp(const aWith:TpvMatrix3x3D;const aTime:TpvDouble):TpvMatrix3x3D;
+       function Sqlerp(const aB,aC,aD:TpvMatrix3x3D;const aTime:TpvDouble):TpvMatrix3x3D;
       public
        case TpvInt32 of
         0:(RawComponents:array[0..2,0..2] of TpvDouble);
@@ -1651,5 +1656,45 @@ begin
 
 end;
 
+function TpvMatrix3x3D.Lerp(const aWith:TpvMatrix3x3D;const aTime:TpvDouble):TpvMatrix3x3D;
+var InverseTime:TpvDouble;
+begin
+ if aTime<=0.0 then begin
+  result:=self;
+ end else if aTime>=1.0 then begin
+  result:=aWith;
+ end else begin
+  InverseTime:=1.0-aTime;
+  result.RawComponents[0,0]:=(RawComponents[0,0]*InverseTime)+(aWith.RawComponents[0,0]*aTime);
+  result.RawComponents[0,1]:=(RawComponents[0,1]*InverseTime)+(aWith.RawComponents[0,1]*aTime);
+  result.RawComponents[0,2]:=(RawComponents[0,2]*InverseTime)+(aWith.RawComponents[0,2]*aTime);
+  result.RawComponents[1,0]:=(RawComponents[1,0]*InverseTime)+(aWith.RawComponents[1,0]*aTime);
+  result.RawComponents[1,1]:=(RawComponents[1,1]*InverseTime)+(aWith.RawComponents[1,1]*aTime);
+  result.RawComponents[1,2]:=(RawComponents[1,2]*InverseTime)+(aWith.RawComponents[1,2]*aTime);
+  result.RawComponents[2,0]:=(RawComponents[2,0]*InverseTime)+(aWith.RawComponents[2,0]*aTime);
+  result.RawComponents[2,1]:=(RawComponents[2,1]*InverseTime)+(aWith.RawComponents[2,1]*aTime);
+  result.RawComponents[2,2]:=(RawComponents[2,2]*InverseTime)+(aWith.RawComponents[2,2]*aTime);
+ end;
+end;
+
+function TpvMatrix3x3D.Nlerp(const aWith:TpvMatrix3x3D;const aTime:TpvDouble):TpvMatrix3x3D;
+begin
+ result:=TpvMatrix3x3D.Create(Decompose.Nlerp(aWith.Decompose,aTime));
+end;
+
+function TpvMatrix3x3D.Slerp(const aWith:TpvMatrix3x3D;const aTime:TpvDouble):TpvMatrix3x3D;
+begin
+ result:=TpvMatrix3x3D.Create(Decompose.Slerp(aWith.Decompose,aTime));
+end;
+
+function TpvMatrix3x3D.Elerp(const aWith:TpvMatrix3x3D;const aTime:TpvDouble):TpvMatrix3x3D;
+begin
+ result:=TpvMatrix3x3D.Create(Decompose.Elerp(aWith.Decompose,aTime));
+end;
+
+function TpvMatrix3x3D.Sqlerp(const aB,aC,aD:TpvMatrix3x3D;const aTime:TpvDouble):TpvMatrix3x3D;
+begin
+ result:=TpvMatrix3x3D.Create(Decompose.Sqlerp(aB.Decompose,aC.Decompose,aD.Decompose,aTime));
+end;
 
 end.
