@@ -52,7 +52,7 @@ dsfp dsfpMul(dsfp a, dsfp b){
   return result;
 }
 
-dsfp dfspDiv(dsfp a, dsfp b) {
+dsfp dsfpDiv(dsfp a, dsfp b) {
   dsfp result;
   float q1 = a.x / b.x;
   dsfp bq1 = dsfpMul(b, dsfp(q1, 0.0));
