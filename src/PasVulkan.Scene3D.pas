@@ -3497,8 +3497,6 @@ type EpvScene3D=class(Exception);
             TDeltaTimes=array[0..MaxInFlightFrames-1] of TDeltaTime;
             PDeltaTimes=^TDeltaTimes;
             TParallelGroupInstanceUpdateQueue=TpvDynamicQueue<TpvScene3D.TGroup.TInstance>;
-            TCameraOffsets=array[0..MaxInFlightFrames-1] of TpvVector3D;
-            PCameraOffsets=^TCameraOffsets;
       public
        const DoubleSidedFaceCullingModes:array[TDoubleSided,TFrontFacesInversed] of TFaceCullingMode=
               (
@@ -3701,7 +3699,6 @@ type EpvScene3D=class(Exception);
        fRaytracingTLAS:TpvRaytracingTopLevelAccelerationStructure;
        fRaytracingTLASAccelerationStructures:array[-1..MaxInFlightFrames-1] of TVkAccelerationStructureKHR;
        fRaytracingTLASGenerations:array[-1..MaxInFlightFrames-1] of TpvUInt64;
-       fRaytracingCameraOffset:TpvVector3D;
        fBufferRangeAllocatorLock:TPasMPCriticalSection;
        fVulkanDynamicVertexBufferData:TGPUDynamicVertexDynamicArray;
        fVulkanStaticVertexBufferData:TGPUStaticVertexDynamicArray;
@@ -3779,8 +3776,6 @@ type EpvScene3D=class(Exception);
        fLoadGLTFTimeDurationLock:TPasMPInt32;
        fLoadGLTFTimeDuration:TpvDouble;
        fDrawDataGeneration:TPasMPUInt64;
-       fCameraOffset:TpvVector3D;
-       fCameraOffsets:TCameraOffsets;
       public
        procedure NewImageDescriptorGeneration;
        procedure NewMaterialDataGeneration;
@@ -4023,9 +4018,6 @@ type EpvScene3D=class(Exception);
        property VulkanFrameGraphStagingCommandPool:TpvVulkanCommandPool read fVulkanFrameGraphStagingCommandPool;
        property VulkanFrameGraphStagingCommandBuffer:TpvVulkanCommandBuffer read fVulkanFrameGraphStagingCommandBuffer;
        property VulkanFrameGraphStagingFence:TpvVulkanFence read fVulkanFrameGraphStagingFence;
-      public
-       property CameraOffset:TpvVector3D read fCameraOffset write fCameraOffset;
-       property CameraOffsets:TCameraOffsets read fCameraOffsets write fCameraOffsets;
       published
        property RendererInstanceIDManager:TRendererInstanceIDManager read fRendererInstanceIDManager;
        property PotentiallyVisibleSet:TpvScene3D.TPotentiallyVisibleSet read fPotentiallyVisibleSet;
@@ -25970,15 +25962,7 @@ begin
   SetDirty;
  end;
 
- if fUseRenderInstances then begin
-  fWorkModelMatrix:=fModelMatrix;
- end else begin
-  if fApplyCameraRelativeTransform then begin
-   fWorkModelMatrix:=fModelMatrix.Translate(fSceneInstance.CameraOffset.ToVector);
-  end else begin
-   fWorkModelMatrix:=fModelMatrix;
-  end;
- end;
+ fWorkModelMatrix:=fModelMatrix;
 
  if assigned(fOnUpdate) and fOnUpdate(aInFlightFrameIndex) then begin
   SetDirty;
@@ -26263,11 +26247,7 @@ begin
       RenderInstance:=fRenderInstances[Index];
       if RenderInstance.fActive then begin
        TPasMPInterlocked.BitwiseOr(RenderInstance.fActiveMask,TpvUInt32(1) shl aInFlightFrameIndex);
-       if fApplyCameraRelativeTransform and RenderInstance.fApplyCameraRelativeTransform then begin
-        RenderInstance.fWorkModelMatrix:=RenderInstance.fModelMatrix.Translate(fSceneInstance.CameraOffset.ToVector);
-       end else begin
-        RenderInstance.fWorkModelMatrix:=RenderInstance.fModelMatrix;
-       end;
+       RenderInstance.fWorkModelMatrix:=RenderInstance.fModelMatrix;
        RenderInstance.fModelMatrices[aInFlightFrameIndex]:=RenderInstance.fWorkModelMatrix;
        RenderInstance.fBoundingBox:=TemporaryBoundingBox.HomogenTransform(RenderInstance.fWorkModelMatrix);
        RenderInstance.fBoundingSphere:=TpvSphere.CreateFromAABB(RenderInstance.fBoundingBox);
@@ -27818,8 +27798,6 @@ begin
   fRaytracingTLASGenerations[Index]:=High(TpvUInt64);
  end;
 
- fRaytracingCameraOffset:=TpvVector3D.Create(0.0,0.0,0.0);
-
  fBufferRangeAllocatorLock:=TPasMPCriticalSection.Create;
 
  if assigned(fVulkanDevice) then begin
@@ -27893,11 +27871,6 @@ begin
  fInitialCountJointBlocks:=fInitialCountVertices div 16;
 
  fPotentiallyVisibleSet:=TpvScene3D.TPotentiallyVisibleSet.Create;
-
- fCameraOffset:=TpvVector3D.Create(0.0,0.0,0.0);
- for Index:=0 to fCountInFlightFrames-1 do begin
-  fCameraOffsets[Index]:=TpvVector3D.Create(0.0,0.0,0.0);
- end;
 
  for Index:=0 to fCountInFlightFrames-1 do begin
   fDebugPrimitiveVertexDynamicArrays[Index]:=TpvScene3D.TDebugPrimitiveVertexDynamicArray.Create;
@@ -30510,8 +30483,6 @@ begin
 
  fCountLights[aInFlightFrameIndex]:=0;
 
- fCameraOffsets[aInFlightFrameIndex]:=fCameraOffset;
-
  TpvScene3DPlanets(fPlanets).Lock.AcquireRead;
  try
   for Index:=0 to TpvScene3DPlanets(fPlanets).Count-1 do begin
@@ -32378,11 +32349,6 @@ begin
     BLASListChanged:=false; // Assume, that the BLAS list has not changed yet
 
     MustUpdateTLAS:=false;
-
-    if fRaytracingCameraOffset<>fCameraOffsets[aInFlightFrameIndex] then begin
-     fRaytracingCameraOffset:=fCameraOffsets[aInFlightFrameIndex];
-     MustUpdateTLAS:=true;
-    end;
 
     //////////////////////////////////////////////////////////////////////////////
     // Create empty blas with invalid geometry for empty TLAS, when there are   //

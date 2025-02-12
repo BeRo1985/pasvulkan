@@ -111,4 +111,33 @@ bool dfspGreaterThanEqual(dsfp a, dsfp b){
   }
 }
 
+vec3 dsfpVec3TwoSum(vec3 hi, vec3 lo, out vec3 o){
+  vec3 s = hi + lo;
+  vec3 v = s - hi;
+  o = (hi - (s - v)) + (lo - v);
+  return s;
+}
+
+vec3 dsfpVec3PreciseSum(vec3 ah, vec3 al, vec3 bh, vec3 bl){
+  vec3 dh, dl;
+  vec3 ch = dsfpVec3TwoSum(ah, bh, dh);
+  vec3 cl = dsfpVec3TwoSum(al, bl, dl);
+  vec3 chcldh = ch + (cl + dh);
+  vec3 e = (cl + dh) - (chcldh - ch);
+  return chcldh + (dl + e);
+}
+
+vec3 dsfpTransformPosition(mat4 modelPacked, mat4 viewPacked, vec4 vertexPosition){
+  vec3 modelCoarse = modelPacked[3].xyz, modelFine = vec3(modelPacked[0].w, modelPacked[1].w, modelPacked[2].w);
+  vec3 viewCoarse = viewPacked[3].xyz, viewFine = vec3(viewPacked[0].w, viewPacked[1].w, viewPacked[2].w);
+  vec3 displacement = dsfpVec3PreciseSum(modelCoarse, modelFine, -viewCoarse, -viewFine);
+  mat4 modelView = mat4(mat3(viewPacked) * mat4x3(modelPacked[0].xyz, modelPacked[1].xyz, modelPacked[2].xyz, displacement)); 
+  return (modelView * vertexPosition).xyz;
+} 
+
+// Clean the 4x4 matrix by removing the fine components, for direct usage after it.
+mat4 dsfpMatrixClean(mat4 m){
+  return mat4(vec4(m[0].xyz, 0.0), vec4(m[1].xyz, 0.0), vec4(m[2].xyz, 0.0), m[3].xyzw);
+}
+
 #endif
