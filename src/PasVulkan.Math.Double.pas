@@ -113,9 +113,14 @@ type TpvVector2D=record
        class operator Multiply(const aLeft:TpvVector2D;const aRight:TpvDouble):TpvVector2D;
        class operator Divide(const aLeft:TpvVector2D;const aRight:TpvDouble):TpvVector2D;
        class operator Negative(const aVector:TpvVector2D):TpvVector2D;
+       function Dot(const aWith:TpvVector2D):TpvDouble;
        function Length:TpvDouble;
        function SquaredLength:TpvDouble;
+       function Normalize:TpvVector2D;
        function Lerp(const aWith:TpvVector2D;const aTime:TpvDouble):TpvVector2D;
+       function Nlerp(const aWith:TpvVector2D;const aTime:TpvDouble):TpvVector2D;
+       function Slerp(const aWith:TpvVector2D;const aTime:TpvDouble):TpvVector2D;
+       function Sqlerp(const aB,aC,aD:TpvVector2D;const aTime:TpvDouble):TpvVector2D;
        function ToVector:TpvVector2;
      end;
      PpvVector2D=^TpvVector2D;
@@ -136,9 +141,12 @@ type TpvVector2D=record
        function Dot(const aWith:TpvVector3D):TpvDouble;
        function Length:TpvDouble;
        function SquaredLength:TpvDouble;
-       function Lerp(const aWith:TpvVector3D;const aTime:TpvDouble):TpvVector3D;
        function Normalize:TpvVector3D;
        function Perpendicular:TpvVector3D;
+       function Lerp(const aWith:TpvVector3D;const aTime:TpvDouble):TpvVector3D;
+       function Nlerp(const aWith:TpvVector3D;const aTime:TpvDouble):TpvVector3D;
+       function Slerp(const aWith:TpvVector3D;const aTime:TpvDouble):TpvVector3D;
+       function Sqlerp(const aB,aC,aD:TpvVector3D;const aTime:TpvDouble):TpvVector3D;
        function ToVector:TpvVector3;
       public
        case TpvInt32 of
@@ -161,7 +169,11 @@ type TpvVector2D=record
        function Dot(const aWith:TpvVector4D):TpvDouble;
        function Length:TpvDouble;
        function SquaredLength:TpvDouble;
+       function Normalize:TpvVector4D;
        function Lerp(const aWith:TpvVector4D;const aTime:TpvDouble):TpvVector4D;
+       function Nlerp(const aWith:TpvVector4D;const aTime:TpvDouble):TpvVector4D;
+       function Slerp(const aWith:TpvVector4D;const aTime:TpvDouble):TpvVector4D;
+       function Sqlerp(const aB,aC,aD:TpvVector4D;const aTime:TpvDouble):TpvVector4D;
        function ToVector:TpvVector4;
       public
        case TpvInt32 of
@@ -192,10 +204,14 @@ type TpvVector2D=record
        function Normalize:TpvQuaternionD;
        function Conjugate:TpvQuaternionD;
        function Inverse:TpvQuaternionD;
+       function Log:TpvQuaternionD;
+       function Exp:TpvQuaternionD; 
        function Lerp(const aWith:TpvQuaternionD;const aTime:TpvDouble):TpvQuaternionD;
        function Nlerp(const aWith:TpvQuaternionD;const aTime:TpvDouble):TpvQuaternionD;
        function Slerp(const aWith:TpvQuaternionD;const aTime:TpvDouble):TpvQuaternionD;
        function ApproximatedSlerp(const aWith:TpvQuaternionD;const aTime:TpvDouble):TpvQuaternionD;
+       function Elerp(const aWith:TpvQuaternionD;const aTime:TpvDouble):TpvQuaternionD;
+       function Sqlerp(const aB,aC,aD:TpvQuaternionD;const aTime:TpvDouble):TpvQuaternionD;
        function ToMatrix3x3:TpvMatrix3x3;
        function ToMatrix4x4:TpvMatrix4x4;
        function ToVector:TpvVector4;
@@ -208,6 +224,55 @@ type TpvVector2D=record
         3:(xy:TpvVector2D);
      end;
      PpvQuaternionD=^TpvQuaternionD;
+
+     TpvDecomposedMatrix3x3D=record
+      public
+       Valid:boolean;
+       Scale:TpvVector3D;
+       Skew:TpvVector3D; // XY XZ YZ
+       Rotation:TpvQuaternionD;
+       class function Create:TpvDecomposedMatrix3x3D; static;
+       function Lerp(const aWith:TpvDecomposedMatrix3x3D;const aTime:TpvDouble):TpvDecomposedMatrix3x3D; 
+       function Nlerp(const aWith:TpvDecomposedMatrix3x3D;const aTime:TpvDouble):TpvDecomposedMatrix3x3D;
+       function Slerp(const aWith:TpvDecomposedMatrix3x3D;const aTime:TpvDouble):TpvDecomposedMatrix3x3D;
+       function Elerp(const aWith:TpvDecomposedMatrix3x3D;const aTime:TpvDouble):TpvDecomposedMatrix3x3D;
+       function Sqlerp(const aB,aC,aD:TpvDecomposedMatrix3x3D;const aTime:TpvDouble):TpvDecomposedMatrix3x3D;
+     end;      
+     PpvDecomposedMatrix3x3D=^TpvDecomposedMatrix3x3D;
+
+     TpvMatrix3x3D=record
+      public
+       constructor Create(const aXX,aXY,aXZ,aYX,aYY,aYZ,aZX,aZY,aZZ:TpvDouble); overload;
+       constructor Create(const aFrom:TpvMatrix3x3); overload;
+       constructor Create(const aFrom:TpvMatrix4x4); overload;
+       constructor Create(const aFrom:TpvQuaternion); overload;
+       constructor Create(const aFrom:TpvQuaternionD); overload;
+       constructor Create(const aFrom:TpvDecomposedMatrix3x3D); overload;
+       class operator Equal(const aLeft,aRight:TpvMatrix3x3D):boolean;
+       class operator NotEqual(const aLeft,aRight:TpvMatrix3x3D):boolean;
+       class operator Add(const aLeft,aRight:TpvMatrix3x3D):TpvMatrix3x3D;
+       class operator Subtract(const aLeft,aRight:TpvMatrix3x3D):TpvMatrix3x3D;
+       class operator Multiply(const aLeft,aRight:TpvMatrix3x3D):TpvMatrix3x3D;
+       class operator Multiply(const aLeft:TpvMatrix3x3D;const aRight:TpvDouble):TpvMatrix3x3D;
+       class operator Multiply(const aLeft:TpvDouble;const aRight:TpvMatrix3x3D):TpvMatrix3x3D;
+       class operator Multiply(const aLeft:TpvMatrix3x3D;const aRight:TpvVector3D):TpvVector3D;
+       class operator Multiply(const aLeft:TpvVector3D;const aRight:TpvMatrix3x3D):TpvVector3D;
+       class operator Multiply(const aLeft:TpvMatrix3x3D;const aRight:TpvVector4D):TpvVector4D;
+       class operator Multiply(const aLeft:TpvVector4D;const aRight:TpvMatrix3x3D):TpvVector4D;
+       class operator Divide(const aLeft,aRight:TpvMatrix3x3D):TpvMatrix3x3D;
+       class operator Divide(const aLeft:TpvMatrix3x3D;const aRight:TpvDouble):TpvMatrix3x3D;
+       class operator Negative(const aMatrix:TpvMatrix3x3D):TpvMatrix3x3D;
+       function Transpose:TpvMatrix3x3D;
+       function Determinant:TpvDouble;
+       function Inverse:TpvMatrix3x3D;
+       function ToMatrix3x3:TpvMatrix3x3;       
+      public
+       case TpvInt32 of
+        0:(RawComponents:array[0..2,0..2] of TpvDouble);
+        1:(Columns:array[0..2] of TpvVector3D);
+        2:(Right,Up,Forwards:TpvVector3D);
+        3:(Tangent,Bitangent,Normal:TpvVector3D);
+     end;
 
 implementation
 
@@ -267,6 +332,11 @@ begin
  result.y:=-aVector.y;
 end;
 
+function TpvVector2D.Dot(const aWith:TpvVector2D):TpvDouble;
+begin
+ result:=(x*aWith.x)+(y*aWith.y);
+end;
+
 function TpvVector2D.Length:TpvDouble;
 begin
  result:=sqrt(sqr(x)+sqr(y));
@@ -275,6 +345,17 @@ end;
 function TpvVector2D.SquaredLength:TpvDouble;
 begin
  result:=sqr(x)+sqr(y);
+end;
+
+function TpvVector2D.Normalize:TpvVector2D;
+var l:TpvDouble;
+begin
+ l:=Length;
+ if l>0.0 then begin
+  result:=self/l;
+ end else begin
+  result:=self;
+ end; 
 end;
 
 function TpvVector2D.Lerp(const aWith:TpvVector2D;const aTime:TpvDouble):TpvVector2D;
@@ -289,6 +370,38 @@ begin
   result.x:=(x*InverseTime)+(aWith.x*aTime);
   result.y:=(y*InverseTime)+(aWith.y*aTime);
  end;
+end;
+
+function TpvVector2D.Nlerp(const aWith:TpvVector2D;const aTime:TpvDouble):TpvVector2D;
+begin
+ result:=Lerp(aWith,aTime).Normalize;
+end;
+
+function TpvVector2D.Slerp(const aWith:TpvVector2D;const aTime:TpvDouble):TpvVector2D;
+var DotProduct,Theta,Sinus,Cosinus:TpvDouble;
+begin
+ if aTime<=0.0 then begin
+  result:=self;
+ end else if aTime>=1.0 then begin
+  result:=aWith;
+ end else if self=aWith then begin
+  result:=aWith;
+ end else begin
+  DotProduct:=Dot(aWith);
+  if DotProduct<-1.0 then begin
+   DotProduct:=-1.0;
+  end else if DotProduct>1.0 then begin
+   DotProduct:=1.0;
+  end;
+  Theta:=ArcCos(DotProduct)*aTime;
+  SinCos(Theta,Sinus,Cosinus);
+  result:=(self*Cosinus)+((aWith-(self*DotProduct)).Normalize*Sinus);
+ end;
+end;
+
+function TpvVector2D.Sqlerp(const aB,aC,aD:TpvVector2D;const aTime:TpvDouble):TpvVector2D;
+begin
+ result:=Slerp(aD,aTime).Slerp(aB.Slerp(aC,aTime),(2.0*aTime)*(1.0-aTime));
 end;
 
 function TpvVector2D.ToVector:TpvVector2;
@@ -389,17 +502,6 @@ begin
  result:=sqr(x)+sqr(y)+sqr(z);
 end;
 
-function TpvVector3D.Lerp(const aWith:TpvVector3D;const aTime:TpvDouble):TpvVector3D;
-begin
- if aTime<=0.0 then begin
-  result:=self;
- end else if aTime>=1.0 then begin
-  result:=aWith;
- end else begin
-  result:=(self*(1.0-aTime))+(aWith*aTime);
- end;
-end;
-
 function TpvVector3D.Normalize:TpvVector3D;
 begin
  result:=self/Length;
@@ -426,6 +528,49 @@ begin
   p.z:=1.0;
  end;
  result:=p-(v*v.Dot(p));
+end;
+
+function TpvVector3D.Lerp(const aWith:TpvVector3D;const aTime:TpvDouble):TpvVector3D;
+begin
+ if aTime<=0.0 then begin
+  result:=self;
+ end else if aTime>=1.0 then begin
+  result:=aWith;
+ end else begin
+  result:=(self*(1.0-aTime))+(aWith*aTime);
+ end;
+end;
+
+function TpvVector3D.Nlerp(const aWith:TpvVector3D;const aTime:TpvDouble):TpvVector3D;
+begin
+ result:=Lerp(aWith,aTime).Normalize;
+end;
+
+function TpvVector3D.Slerp(const aWith:TpvVector3D;const aTime:TpvDouble):TpvVector3D;
+var DotProduct,Theta,Sinus,Cosinus:TpvDouble;
+begin
+ if aTime<=0.0 then begin
+  result:=self;
+ end else if aTime>=1.0 then begin
+  result:=aWith;
+ end else if self=aWith then begin
+  result:=aWith;
+ end else begin
+  DotProduct:=Dot(aWith);
+  if DotProduct<-1.0 then begin
+   DotProduct:=-1.0;
+  end else if DotProduct>1.0 then begin
+   DotProduct:=1.0;
+  end;
+  Theta:=ArcCos(DotProduct)*aTime;
+  SinCos(Theta,Sinus,Cosinus);
+  result:=(self*Cosinus)+((aWith-(self*DotProduct)).Normalize*Sinus);
+ end;
+end;
+
+function TpvVector3D.Sqlerp(const aB,aC,aD:TpvVector3D;const aTime:TpvDouble):TpvVector3D;
+begin
+ result:=Slerp(aD,aTime).Slerp(aB.Slerp(aC,aTime),(2.0*aTime)*(1.0-aTime));
 end;
 
 function TpvVector3D.ToVector:TpvVector3;
@@ -524,6 +669,17 @@ begin
  result:=sqr(x)+sqr(y)+sqr(z)+sqr(w);
 end;
 
+function TpvVector4D.Normalize:TpvVector4D;
+var l:TpvDouble;
+begin
+ l:=Length;
+ if l>0.0 then begin
+  result:=self/l;
+ end else begin
+  result:=self;
+ end;
+end;
+
 function TpvVector4D.Lerp(const aWith:TpvVector4D;const aTime:TpvDouble):TpvVector4D;
 var InverseTime:TpvDouble;
 begin
@@ -538,6 +694,38 @@ begin
   result.z:=(z*InverseTime)+(aWith.z*aTime);
   result.w:=(w*InverseTime)+(aWith.w*aTime);
  end;
+end;
+
+function TpvVector4D.Nlerp(const aWith:TpvVector4D;const aTime:TpvDouble):TpvVector4D;
+begin
+ result:=Lerp(aWith,aTime).Normalize;
+end;
+
+function TpvVector4D.Slerp(const aWith:TpvVector4D;const aTime:TpvDouble):TpvVector4D;
+var DotProduct,Theta,Sinus,Cosinus:TpvDouble;
+begin
+ if aTime<=0.0 then begin
+  result:=self;
+ end else if aTime>=1.0 then begin
+  result:=aWith;
+ end else if self=aWith then begin
+  result:=aWith;
+ end else begin
+  DotProduct:=Dot(aWith);
+  if DotProduct<-1.0 then begin
+   DotProduct:=-1.0;
+  end else if DotProduct>1.0 then begin
+   DotProduct:=1.0;
+  end;
+  Theta:=ArcCos(DotProduct)*aTime;
+  SinCos(Theta,Sinus,Cosinus);
+  result:=(self*Cosinus)+((aWith-(self*DotProduct)).Normalize*Sinus);
+ end;
+end;
+
+function TpvVector4D.Sqlerp(const aB,aC,aD:TpvVector4D;const aTime:TpvDouble):TpvVector4D;
+begin
+ result:=Slerp(aD,aTime).Slerp(aB.Slerp(aC,aTime),(2.0*aTime)*(1.0-aTime));
 end;
 
 function TpvVector4D.ToVector:TpvVector4;
@@ -764,6 +952,43 @@ begin
  result.w:=w*InverseLength;
 end;
 
+function TpvQuaternionD.Exp:TpvQuaternionD;
+var Angle,Sinus,Coefficent:TpvDouble;
+begin
+ Angle:=sqrt(sqr(x)+sqr(y)+sqr(z));
+ SinCos(Angle,Sinus,Coefficent);
+ result.w:=cos(Angle);
+ if System.Abs(Sinus)>1e-6 then begin
+  Coefficent:=Sinus/Angle;
+  result.x:=x*Coefficent;
+  result.y:=y*Coefficent;
+  result.z:=z*Coefficent;
+ end else begin
+  result.x:=x;
+  result.y:=y;
+  result.z:=z;
+ end;
+end;
+
+function TpvQuaternionD.Log:TpvQuaternionD;
+var Theta,SinTheta,Coefficent:TpvDouble;
+begin
+ result.x:=x;
+ result.y:=y;
+ result.z:=z;
+ result.w:=0.0;
+ if System.Abs(w)<1.0 then begin
+  Theta:=ArcCos(w);
+  SinCos(Theta,SinTheta,Coefficent);
+  if System.Abs(SinTheta)>1e-6 then begin
+   Coefficent:=Theta/SinTheta;
+   result.x:=result.x*Coefficent;
+   result.y:=result.y*Coefficent;
+   result.z:=result.z*Coefficent;
+  end;
+ end;
+end;
+
 function TpvQuaternionD.Lerp(const aWith:TpvQuaternionD;const aTime:TpvDouble):TpvQuaternionD;
 var InverseTime:TpvDouble;
 begin
@@ -822,6 +1047,29 @@ begin
   result:=Nlerp(aWith,o);
  end;
 end;
+
+function TpvQuaternionD.Elerp(const aWith:TpvQuaternionD;const aTime:TpvDouble):TpvQuaternionD;
+var SignFactor:TpvDouble;
+begin
+ if Dot(aWith)<0.0 then begin
+  SignFactor:=-1.0;
+ end else begin
+  SignFactor:=1.0;
+ end;
+ if aTime<=0.0 then begin
+  result:=self;
+ end else if aTime>=1.0 then begin
+  result:=aWith*SignFactor;
+ end else begin
+  result:=((Log*(1.0-aTime))+((aWith*SignFactor).Log*aTime)).Exp;
+ end;
+end;
+
+function TpvQuaternionD.Sqlerp(const aB,aC,aD:TpvQuaternionD;const aTime:TpvDouble):TpvQuaternionD;
+begin
+ result:=Slerp(aD,aTime).Slerp(aB.Slerp(aC,aTime),(2.0*aTime)*(1.0-aTime));
+end;
+
 
 function TpvQuaternionD.ToMatrix3x3:TpvMatrix3x3;
 var qx2,qy2,qz2,qxqx2,qxqy2,qxqz2,qxqw2,qyqy2,qyqz2,qyqw2,qzqz2,qzqw2:TpvDouble;
@@ -900,6 +1148,399 @@ begin
  result.y:=y;
  result.z:=z;
  result.w:=w;
+end;
+
+class function TpvDecomposedMatrix3x3D.Create:TpvDecomposedMatrix3x3D;
+begin
+ result.Scale:=TpvVector3D.Create(1.0,1.0,1.0);
+ result.Skew:=TpvVector3D.Create(0.0,0.0,0.0);
+ result.Rotation:=TpvQuaternionD.Create(0.0,0.0,0.0,1.0);
+ result.Valid:=true;
+end;
+
+function TpvDecomposedMatrix3x3D.Lerp(const aWith:TpvDecomposedMatrix3x3D;const aTime:TpvDouble):TpvDecomposedMatrix3x3D;
+begin
+ if aTime<=0.0 then begin
+  result:=self;
+ end else if aTime>=1.0 then begin
+  result:=aWith;
+ end else begin
+  result.Scale:=Scale.Lerp(aWith.Scale,aTime);
+  result.Skew:=Skew.Lerp(aWith.Skew,aTime);
+  result.Rotation:=Rotation.Lerp(aWith.Rotation,aTime);
+ end;
+end;
+
+function TpvDecomposedMatrix3x3D.Nlerp(const aWith:TpvDecomposedMatrix3x3D;const aTime:TpvDouble):TpvDecomposedMatrix3x3D;
+begin
+ if aTime<=0.0 then begin
+  result:=self;
+ end else if aTime>=1.0 then begin
+  result:=aWith;
+ end else begin
+  result.Scale:=Scale.Lerp(aWith.Scale,aTime);
+  result.Skew:=Skew.Lerp(aWith.Skew,aTime);
+  result.Rotation:=Rotation.Nlerp(aWith.Rotation,aTime);
+ end;
+end;
+
+function TpvDecomposedMatrix3x3D.Slerp(const aWith:TpvDecomposedMatrix3x3D;const aTime:TpvDouble):TpvDecomposedMatrix3x3D;
+begin
+ if aTime<=0.0 then begin
+  result:=self;
+ end else if aTime>=1.0 then begin
+  result:=aWith;
+ end else begin
+  result.Scale:=Scale.Lerp(aWith.Scale,aTime);
+  result.Skew:=Skew.Lerp(aWith.Skew,aTime);
+  result.Rotation:=Rotation.Slerp(aWith.Rotation,aTime);
+ end;
+end;
+
+function TpvDecomposedMatrix3x3D.Elerp(const aWith:TpvDecomposedMatrix3x3D;const aTime:TpvDouble):TpvDecomposedMatrix3x3D;
+begin
+ if aTime<=0.0 then begin
+  result:=self;
+ end else if aTime>=1.0 then begin
+  result:=aWith;
+ end else begin
+  result.Scale:=Scale.Lerp(aWith.Scale,aTime);
+  result.Skew:=Skew.Lerp(aWith.Skew,aTime);
+  result.Rotation:=Rotation.Elerp(aWith.Rotation,aTime);
+ end;
+end;
+
+function TpvDecomposedMatrix3x3D.Sqlerp(const aB,aC,aD:TpvDecomposedMatrix3x3D;const aTime:TpvDouble):TpvDecomposedMatrix3x3D;
+begin
+ result:=Slerp(aD,aTime).Slerp(aB.Slerp(aC,aTime),(2.0*aTime)*(1.0-aTime));
+end;
+
+constructor TpvMatrix3x3D.Create(const aXX,aXY,aXZ,aYX,aYY,aYZ,aZX,aZY,aZZ:TpvDouble);
+begin
+ RawComponents[0,0]:=aXX;
+ RawComponents[0,1]:=aXY;
+ RawComponents[0,2]:=aXZ;
+ RawComponents[1,0]:=aYX;
+ RawComponents[1,1]:=aYY;
+ RawComponents[1,2]:=aYZ;
+ RawComponents[2,0]:=aZX;
+ RawComponents[2,1]:=aZY;
+ RawComponents[2,2]:=aZZ;
+end;
+
+constructor TpvMatrix3x3D.Create(const aFrom:TpvMatrix3x3);
+begin
+ RawComponents[0,0]:=aFrom.RawComponents[0,0];
+ RawComponents[0,1]:=aFrom.RawComponents[0,1];
+ RawComponents[0,2]:=aFrom.RawComponents[0,2];
+ RawComponents[1,0]:=aFrom.RawComponents[1,0];
+ RawComponents[1,1]:=aFrom.RawComponents[1,1];
+ RawComponents[1,2]:=aFrom.RawComponents[1,2];
+ RawComponents[2,0]:=aFrom.RawComponents[2,0];
+ RawComponents[2,1]:=aFrom.RawComponents[2,1];
+ RawComponents[2,2]:=aFrom.RawComponents[2,2];
+end;
+
+constructor TpvMatrix3x3D.Create(const aFrom:TpvMatrix4x4);
+begin
+ RawComponents[0,0]:=aFrom.RawComponents[0,0];
+ RawComponents[0,1]:=aFrom.RawComponents[0,1];
+ RawComponents[0,2]:=aFrom.RawComponents[0,2];
+ RawComponents[1,0]:=aFrom.RawComponents[1,0];
+ RawComponents[1,1]:=aFrom.RawComponents[1,1];
+ RawComponents[1,2]:=aFrom.RawComponents[1,2];
+ RawComponents[2,0]:=aFrom.RawComponents[2,0];
+ RawComponents[2,1]:=aFrom.RawComponents[2,1];
+ RawComponents[2,2]:=aFrom.RawComponents[2,2];
+end;
+
+constructor TpvMatrix3x3D.Create(const aFrom:TpvQuaternion);
+var qx2,qy2,qz2,qxqx2,qxqy2,qxqz2,qxqw2,qyqy2,qyqz2,qyqw2,qzqz2,qzqw2:TpvDouble;
+    From:TpvQuaternion;
+begin
+ From:=aFrom.Normalize;
+ qx2:=From.x+From.x;
+ qy2:=From.y+From.y;
+ qz2:=From.z+From.z;
+ qxqx2:=From.x*qx2;
+ qxqy2:=From.x*qy2;
+ qxqz2:=From.x*qz2;
+ qxqw2:=From.w*qx2;
+ qyqy2:=From.y*qy2;
+ qyqz2:=From.y*qz2;
+ qyqw2:=From.w*qy2;
+ qzqz2:=From.z*qz2;
+ qzqw2:=From.w*qz2;
+ RawComponents[0,0]:=1.0-(qyqy2+qzqz2);
+ RawComponents[0,1]:=qxqy2+qzqw2;
+ RawComponents[0,2]:=qxqz2-qyqw2;
+ RawComponents[1,0]:=qxqy2-qzqw2;
+ RawComponents[1,1]:=1.0-(qxqx2+qzqz2);
+ RawComponents[1,2]:=qyqz2+qxqw2;
+ RawComponents[2,0]:=qxqz2+qyqw2;
+ RawComponents[2,1]:=qyqz2-qxqw2;
+ RawComponents[2,2]:=1.0-(qxqx2+qyqy2);
+end;
+
+constructor TpvMatrix3x3D.Create(const aFrom:TpvQuaternionD);
+var qx2,qy2,qz2,qxqx2,qxqy2,qxqz2,qxqw2,qyqy2,qyqz2,qyqw2,qzqz2,qzqw2:TpvDouble;
+    From:TpvQuaternionD;
+begin
+ From:=aFrom.Normalize;
+ qx2:=From.x+From.x;
+ qy2:=From.y+From.y;
+ qz2:=From.z+From.z;
+ qxqx2:=From.x*qx2;
+ qxqy2:=From.x*qy2;
+ qxqz2:=From.x*qz2;
+ qxqw2:=From.w*qx2;
+ qyqy2:=From.y*qy2;
+ qyqz2:=From.y*qz2;
+ qyqw2:=From.w*qy2;
+ qzqz2:=From.z*qz2;
+ qzqw2:=From.w*qz2;
+ RawComponents[0,0]:=1.0-(qyqy2+qzqz2);
+ RawComponents[0,1]:=qxqy2+qzqw2;
+ RawComponents[0,2]:=qxqz2-qyqw2;
+ RawComponents[1,0]:=qxqy2-qzqw2;
+ RawComponents[1,1]:=1.0-(qxqx2+qzqz2);
+ RawComponents[1,2]:=qyqz2+qxqw2;
+ RawComponents[2,0]:=qxqz2+qyqw2;
+ RawComponents[2,1]:=qyqz2-qxqw2;
+ RawComponents[2,2]:=1.0-(qxqx2+qyqy2);
+end;
+
+constructor TpvMatrix3x3D.Create(const aFrom:TpvDecomposedMatrix3x3D);
+begin
+ self:=TpvMatrix3x3D.Create(aFrom.Rotation);
+ if aFrom.Skew.z<>0.0 then begin // YZ
+  self:=TpvMatrix3x3D.Create(1.0,0.0,0.0,
+                             0.0,1.0,0.0,
+                             0.0,aFrom.Skew.z,1.0)*self;
+ end;
+ if aFrom.Skew.y<>0.0 then begin // XZ
+  self:=TpvMatrix3x3D.Create(1.0,0.0,0.0,
+                             0.0,1.0,0.0,
+                             aFrom.Skew.y,0.0,1.0)*self;
+ end;
+ if aFrom.Skew.x<>0.0 then begin // XY
+  self:=TpvMatrix3x3D.Create(1.0,0.0,0.0,
+                             aFrom.Skew.x,1.0,0.0,
+                             0.0,0.0,1.0)*self;
+ end;
+ self:=TpvMatrix3x3D.Create(aFrom.Scale.x,0.0,0.0,
+                            0.0,aFrom.Scale.y,0.0,
+                            0.0,0.0,aFrom.Scale.z)*self;
+end;
+
+class operator TpvMatrix3x3D.Equal(const aLeft,aRight:TpvMatrix3x3D):boolean;
+begin
+ result:=(aLeft.RawComponents[0,0]=aRight.RawComponents[0,0]) and
+         (aLeft.RawComponents[0,1]=aRight.RawComponents[0,1]) and
+         (aLeft.RawComponents[0,2]=aRight.RawComponents[0,2]) and
+         (aLeft.RawComponents[1,0]=aRight.RawComponents[1,0]) and
+         (aLeft.RawComponents[1,1]=aRight.RawComponents[1,1]) and
+         (aLeft.RawComponents[1,2]=aRight.RawComponents[1,2]) and
+         (aLeft.RawComponents[2,0]=aRight.RawComponents[2,0]) and
+         (aLeft.RawComponents[2,1]=aRight.RawComponents[2,1]) and
+         (aLeft.RawComponents[2,2]=aRight.RawComponents[2,2]);
+end;
+
+class operator TpvMatrix3x3D.NotEqual(const aLeft,aRight:TpvMatrix3x3D):boolean;
+begin
+ result:=(aLeft.RawComponents[0,0]<>aRight.RawComponents[0,0]) or
+         (aLeft.RawComponents[0,1]<>aRight.RawComponents[0,1]) or
+         (aLeft.RawComponents[0,2]<>aRight.RawComponents[0,2]) or
+         (aLeft.RawComponents[1,0]<>aRight.RawComponents[1,0]) or
+         (aLeft.RawComponents[1,1]<>aRight.RawComponents[1,1]) or
+         (aLeft.RawComponents[1,2]<>aRight.RawComponents[1,2]) or
+         (aLeft.RawComponents[2,0]<>aRight.RawComponents[2,0]) or
+         (aLeft.RawComponents[2,1]<>aRight.RawComponents[2,1]) or
+         (aLeft.RawComponents[2,2]<>aRight.RawComponents[2,2]);
+end;
+
+class operator TpvMatrix3x3D.Add(const aLeft,aRight:TpvMatrix3x3D):TpvMatrix3x3D;
+begin
+ result.RawComponents[0,0]:=aLeft.RawComponents[0,0]+aRight.RawComponents[0,0];
+ result.RawComponents[0,1]:=aLeft.RawComponents[0,1]+aRight.RawComponents[0,1];
+ result.RawComponents[0,2]:=aLeft.RawComponents[0,2]+aRight.RawComponents[0,2];
+ result.RawComponents[1,0]:=aLeft.RawComponents[1,0]+aRight.RawComponents[1,0];
+ result.RawComponents[1,1]:=aLeft.RawComponents[1,1]+aRight.RawComponents[1,1];
+ result.RawComponents[1,2]:=aLeft.RawComponents[1,2]+aRight.RawComponents[1,2];
+ result.RawComponents[2,0]:=aLeft.RawComponents[2,0]+aRight.RawComponents[2,0];
+ result.RawComponents[2,1]:=aLeft.RawComponents[2,1]+aRight.RawComponents[2,1];
+ result.RawComponents[2,2]:=aLeft.RawComponents[2,2]+aRight.RawComponents[2,2];
+end;
+
+class operator TpvMatrix3x3D.Subtract(const aLeft,aRight:TpvMatrix3x3D):TpvMatrix3x3D;
+begin
+ result.RawComponents[0,0]:=aLeft.RawComponents[0,0]-aRight.RawComponents[0,0];
+ result.RawComponents[0,1]:=aLeft.RawComponents[0,1]-aRight.RawComponents[0,1];
+ result.RawComponents[0,2]:=aLeft.RawComponents[0,2]-aRight.RawComponents[0,2];
+ result.RawComponents[1,0]:=aLeft.RawComponents[1,0]-aRight.RawComponents[1,0];
+ result.RawComponents[1,1]:=aLeft.RawComponents[1,1]-aRight.RawComponents[1,1];
+ result.RawComponents[1,2]:=aLeft.RawComponents[1,2]-aRight.RawComponents[1,2];
+ result.RawComponents[2,0]:=aLeft.RawComponents[2,0]-aRight.RawComponents[2,0];
+ result.RawComponents[2,1]:=aLeft.RawComponents[2,1]-aRight.RawComponents[2,1];
+ result.RawComponents[2,2]:=aLeft.RawComponents[2,2]-aRight.RawComponents[2,2];
+end;
+
+class operator TpvMatrix3x3D.Multiply(const aLeft,aRight:TpvMatrix3x3D):TpvMatrix3x3D;
+begin
+ result.RawComponents[0,0]:=(aLeft.RawComponents[0,0]*aRight.RawComponents[0,0])+(aLeft.RawComponents[0,1]*aRight.RawComponents[1,0])+(aLeft.RawComponents[0,2]*aRight.RawComponents[2,0]);
+ result.RawComponents[0,1]:=(aLeft.RawComponents[0,0]*aRight.RawComponents[0,1])+(aLeft.RawComponents[0,1]*aRight.RawComponents[1,1])+(aLeft.RawComponents[0,2]*aRight.RawComponents[2,1]);
+ result.RawComponents[0,2]:=(aLeft.RawComponents[0,0]*aRight.RawComponents[0,2])+(aLeft.RawComponents[0,1]*aRight.RawComponents[1,2])+(aLeft.RawComponents[0,2]*aRight.RawComponents[2,2]);
+ result.RawComponents[1,0]:=(aLeft.RawComponents[1,0]*aRight.RawComponents[0,0])+(aLeft.RawComponents[1,1]*aRight.RawComponents[1,0])+(aLeft.RawComponents[1,2]*aRight.RawComponents[2,0]);
+ result.RawComponents[1,1]:=(aLeft.RawComponents[1,0]*aRight.RawComponents[0,1])+(aLeft.RawComponents[1,1]*aRight.RawComponents[1,1])+(aLeft.RawComponents[1,2]*aRight.RawComponents[2,1]);
+ result.RawComponents[1,2]:=(aLeft.RawComponents[1,0]*aRight.RawComponents[0,2])+(aLeft.RawComponents[1,1]*aRight.RawComponents[1,2])+(aLeft.RawComponents[1,2]*aRight.RawComponents[2,2]);
+ result.RawComponents[2,0]:=(aLeft.RawComponents[2,0]*aRight.RawComponents[0,0])+(aLeft.RawComponents[2,1]*aRight.RawComponents[1,0])+(aLeft.RawComponents[2,2]*aRight.RawComponents[2,0]);
+ result.RawComponents[2,1]:=(aLeft.RawComponents[2,0]*aRight.RawComponents[0,1])+(aLeft.RawComponents[2,1]*aRight.RawComponents[1,1])+(aLeft.RawComponents[2,2]*aRight.RawComponents[2,1]);
+ result.RawComponents[2,2]:=(aLeft.RawComponents[2,0]*aRight.RawComponents[0,2])+(aLeft.RawComponents[2,1]*aRight.RawComponents[1,2])+(aLeft.RawComponents[2,2]*aRight.RawComponents[2,2]);
+end;
+
+class operator TpvMatrix3x3D.Multiply(const aLeft:TpvMatrix3x3D;const aRight:TpvDouble):TpvMatrix3x3D;
+begin
+ result.RawComponents[0,0]:=aLeft.RawComponents[0,0]*aRight;
+ result.RawComponents[0,1]:=aLeft.RawComponents[0,1]*aRight;
+ result.RawComponents[0,2]:=aLeft.RawComponents[0,2]*aRight;
+ result.RawComponents[1,0]:=aLeft.RawComponents[1,0]*aRight;
+ result.RawComponents[1,1]:=aLeft.RawComponents[1,1]*aRight;
+ result.RawComponents[1,2]:=aLeft.RawComponents[1,2]*aRight;
+ result.RawComponents[2,0]:=aLeft.RawComponents[2,0]*aRight;
+ result.RawComponents[2,1]:=aLeft.RawComponents[2,1]*aRight;
+ result.RawComponents[2,2]:=aLeft.RawComponents[2,2]*aRight;
+end;
+
+class operator TpvMatrix3x3D.Multiply(const aLeft:TpvDouble;const aRight:TpvMatrix3x3D):TpvMatrix3x3D;
+begin
+ result.RawComponents[0,0]:=aLeft*aRight.RawComponents[0,0];
+ result.RawComponents[0,1]:=aLeft*aRight.RawComponents[0,1];
+ result.RawComponents[0,2]:=aLeft*aRight.RawComponents[0,2];
+ result.RawComponents[1,0]:=aLeft*aRight.RawComponents[1,0];
+ result.RawComponents[1,1]:=aLeft*aRight.RawComponents[1,1];
+ result.RawComponents[1,2]:=aLeft*aRight.RawComponents[1,2];
+ result.RawComponents[2,0]:=aLeft*aRight.RawComponents[2,0];
+ result.RawComponents[2,1]:=aLeft*aRight.RawComponents[2,1];
+ result.RawComponents[2,2]:=aLeft*aRight.RawComponents[2,2];
+end;
+
+class operator TpvMatrix3x3D.Multiply(const aLeft:TpvMatrix3x3D;const aRight:TpvVector3D):TpvVector3D;
+begin
+ result.x:=(aLeft.RawComponents[0,0]*aRight.x)+(aLeft.RawComponents[1,0]*aRight.y)+(aLeft.RawComponents[2,0]*aRight.z);
+ result.y:=(aLeft.RawComponents[0,1]*aRight.x)+(aLeft.RawComponents[1,1]*aRight.y)+(aLeft.RawComponents[2,1]*aRight.z);
+ result.z:=(aLeft.RawComponents[0,2]*aRight.x)+(aLeft.RawComponents[1,2]*aRight.y)+(aLeft.RawComponents[2,2]*aRight.z);
+end;
+
+class operator TpvMatrix3x3D.Multiply(const aLeft:TpvVector3D;const aRight:TpvMatrix3x3D):TpvVector3D;
+begin
+ result.x:=(aLeft.x*aRight.RawComponents[0,0])+(aLeft.y*aRight.RawComponents[0,1])+(aLeft.z*aRight.RawComponents[0,2]);
+ result.y:=(aLeft.x*aRight.RawComponents[1,0])+(aLeft.y*aRight.RawComponents[1,1])+(aLeft.z*aRight.RawComponents[1,2]);
+ result.z:=(aLeft.x*aRight.RawComponents[2,0])+(aLeft.y*aRight.RawComponents[2,1])+(aLeft.z*aRight.RawComponents[2,2]);
+end;
+
+class operator TpvMatrix3x3D.Multiply(const aLeft:TpvMatrix3x3D;const aRight:TpvVector4D):TpvVector4D;
+begin
+ result.x:=(aLeft.RawComponents[0,0]*aRight.x)+(aLeft.RawComponents[1,0]*aRight.y)+(aLeft.RawComponents[2,0]*aRight.z);
+ result.y:=(aLeft.RawComponents[0,1]*aRight.x)+(aLeft.RawComponents[1,1]*aRight.y)+(aLeft.RawComponents[2,1]*aRight.z);
+ result.z:=(aLeft.RawComponents[0,2]*aRight.x)+(aLeft.RawComponents[1,2]*aRight.y)+(aLeft.RawComponents[2,2]*aRight.z);
+ result.w:=aRight.w;
+end;
+
+class operator TpvMatrix3x3D.Multiply(const aLeft:TpvVector4D;const aRight:TpvMatrix3x3D):TpvVector4D;
+begin
+ result.x:=(aLeft.x*aRight.RawComponents[0,0])+(aLeft.y*aRight.RawComponents[0,1])+(aLeft.z*aRight.RawComponents[0,2]);
+ result.y:=(aLeft.x*aRight.RawComponents[1,0])+(aLeft.y*aRight.RawComponents[1,1])+(aLeft.z*aRight.RawComponents[1,2]);
+ result.z:=(aLeft.x*aRight.RawComponents[2,0])+(aLeft.y*aRight.RawComponents[2,1])+(aLeft.z*aRight.RawComponents[2,2]);
+ result.w:=aLeft.w;
+end;
+
+class operator TpvMatrix3x3D.Divide(const aLeft,aRight:TpvMatrix3x3D):TpvMatrix3x3D;
+begin
+ result:=aLeft*aRight.Inverse;
+end;
+
+class operator TpvMatrix3x3D.Divide(const aLeft:TpvMatrix3x3D;const aRight:TpvDouble):TpvMatrix3x3D;
+begin
+ result.RawComponents[0,0]:=aLeft.RawComponents[0,0]/aRight;
+ result.RawComponents[0,1]:=aLeft.RawComponents[0,1]/aRight;
+ result.RawComponents[0,2]:=aLeft.RawComponents[0,2]/aRight;
+ result.RawComponents[1,0]:=aLeft.RawComponents[1,0]/aRight;
+ result.RawComponents[1,1]:=aLeft.RawComponents[1,1]/aRight;
+ result.RawComponents[1,2]:=aLeft.RawComponents[1,2]/aRight;
+ result.RawComponents[2,0]:=aLeft.RawComponents[2,0]/aRight;
+ result.RawComponents[2,1]:=aLeft.RawComponents[2,1]/aRight;
+ result.RawComponents[2,2]:=aLeft.RawComponents[2,2]/aRight;
+end;
+
+class operator TpvMatrix3x3D.Negative(const aMatrix:TpvMatrix3x3D):TpvMatrix3x3D;
+begin
+ result.RawComponents[0,0]:=-aMatrix.RawComponents[0,0];
+ result.RawComponents[0,1]:=-aMatrix.RawComponents[0,1];
+ result.RawComponents[0,2]:=-aMatrix.RawComponents[0,2];
+ result.RawComponents[1,0]:=-aMatrix.RawComponents[1,0];
+ result.RawComponents[1,1]:=-aMatrix.RawComponents[1,1];
+ result.RawComponents[1,2]:=-aMatrix.RawComponents[1,2];
+ result.RawComponents[2,0]:=-aMatrix.RawComponents[2,0];
+ result.RawComponents[2,1]:=-aMatrix.RawComponents[2,1];
+ result.RawComponents[2,2]:=-aMatrix.RawComponents[2,2];
+end;
+
+function TpvMatrix3x3D.Transpose:TpvMatrix3x3D;
+begin
+ result.RawComponents[0,0]:=RawComponents[0,0];
+ result.RawComponents[0,1]:=RawComponents[1,0];
+ result.RawComponents[0,2]:=RawComponents[2,0];
+ result.RawComponents[1,0]:=RawComponents[0,1];
+ result.RawComponents[1,1]:=RawComponents[1,1];
+ result.RawComponents[1,2]:=RawComponents[2,1];
+ result.RawComponents[2,0]:=RawComponents[0,2];
+ result.RawComponents[2,1]:=RawComponents[1,2];
+ result.RawComponents[2,2]:=RawComponents[2,2];
+end;
+
+function TpvMatrix3x3D.Determinant:TpvDouble;
+begin
+ result:=(((((RawComponents[0,0]*RawComponents[1,1]*RawComponents[2,2])+
+             (RawComponents[0,1]*RawComponents[1,2]*RawComponents[2,0]))+
+            (RawComponents[0,2]*RawComponents[1,0]*RawComponents[2,1]))-
+           (RawComponents[0,2]*RawComponents[1,1]*RawComponents[2,0]))-
+          (RawComponents[0,1]*RawComponents[1,0]*RawComponents[2,2]))-
+         (RawComponents[0,0]*RawComponents[1,2]*RawComponents[2,1]);
+end;
+
+function TpvMatrix3x3D.Inverse:TpvMatrix3x3D;
+var DeterminantValue:TpvDouble;
+begin
+ DeterminantValue:=Determinant;
+ if DeterminantValue<>0.0 then begin
+  DeterminantValue:=1.0/DeterminantValue;
+  result.RawComponents[0,0]:=(((RawComponents[1,1]*RawComponents[2,2])-(RawComponents[1,2]*RawComponents[2,1]))*DeterminantValue);
+  result.RawComponents[0,1]:=(((RawComponents[0,2]*RawComponents[2,1])-(RawComponents[0,1]*RawComponents[2,2]))*DeterminantValue);
+  result.RawComponents[0,2]:=(((RawComponents[0,1]*RawComponents[1,2])-(RawComponents[0,2]*RawComponents[1,1]))*DeterminantValue);
+  result.RawComponents[1,0]:=(((RawComponents[1,2]*RawComponents[2,0])-(RawComponents[1,0]*RawComponents[2,2]))*DeterminantValue);
+  result.RawComponents[1,1]:=(((RawComponents[0,0]*RawComponents[2,2])-(RawComponents[0,2]*RawComponents[2,0]))*DeterminantValue);
+  result.RawComponents[1,2]:=(((RawComponents[1,0]*RawComponents[0,2])-(RawComponents[0,0]*RawComponents[1,2]))*DeterminantValue);
+  result.RawComponents[2,0]:=(((RawComponents[1,0]*RawComponents[2,1])-(RawComponents[1,1]*RawComponents[2,0]))*DeterminantValue);
+  result.RawComponents[2,1]:=(((RawComponents[0,1]*RawComponents[2,0])-(RawComponents[0,0]*RawComponents[2,1]))*DeterminantValue);
+  result.RawComponents[2,2]:=(((RawComponents[0,0]*RawComponents[1,1])-(RawComponents[0,1]*RawComponents[1,0]))*DeterminantValue);
+ end else begin
+  result:=TpvMatrix3x3D.Create(0.0,0.0,0.0,
+                               0.0,0.0,0.0,
+                               0.0,0.0,0.0);
+ end; 
+end;
+
+function TpvMatrix3x3D.ToMatrix3x3:TpvMatrix3x3;
+begin
+ result.RawComponents[0,0]:=RawComponents[0,0];
+ result.RawComponents[0,1]:=RawComponents[0,1];
+ result.RawComponents[0,2]:=RawComponents[0,2];
+ result.RawComponents[1,0]:=RawComponents[1,0];
+ result.RawComponents[1,1]:=RawComponents[1,1];
+ result.RawComponents[1,2]:=RawComponents[1,2];
+ result.RawComponents[2,0]:=RawComponents[2,0];
+ result.RawComponents[2,1]:=RawComponents[2,1];
+ result.RawComponents[2,2]:=RawComponents[2,2];
 end;
 
 end.
