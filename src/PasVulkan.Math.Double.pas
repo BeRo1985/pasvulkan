@@ -345,6 +345,7 @@ type TpvVector2D=record
        constructor Create(const aFrom:TpvQuaternion); overload;
        constructor Create(const aFrom:TpvQuaternionD); overload;
        constructor Create(const aFrom:TpvDecomposedMatrix4x4D); overload;
+       constructor CreateTranslation(const aTranslation:TpvVector3D);
        class operator Implicit(const aFrom:TpvMatrix3x3):TpvMatrix4x4D;
        class operator Implicit(const aFrom:TpvMatrix4x4D):TpvMatrix3x3;
        class operator Implicit(const aFrom:TpvMatrix4x4):TpvMatrix4x4D;
@@ -2410,6 +2411,26 @@ begin
                             0.0,0.0,aFrom.Scale.z,0.0,
                             0.0,0.0,0.0,1.0)*self;
 
+end;
+
+constructor TpvMatrix4x4D.CreateTranslation(const aTranslation:TpvVector3D);
+begin
+ RawComponents[0,0]:=1.0;
+ RawComponents[0,1]:=0.0;
+ RawComponents[0,2]:=0.0;
+ RawComponents[0,3]:=0.0;
+ RawComponents[1,0]:=0.0;
+ RawComponents[1,1]:=1.0;
+ RawComponents[1,2]:=0.0;
+ RawComponents[1,3]:=0.0;
+ RawComponents[2,0]:=0.0;
+ RawComponents[2,1]:=0.0;
+ RawComponents[2,2]:=1.0;
+ RawComponents[2,3]:=0.0;
+ RawComponents[3,0]:=aTranslation.x;
+ RawComponents[3,1]:=aTranslation.y;
+ RawComponents[3,2]:=aTranslation.z;
+ RawComponents[3,3]:=1.0;
 end;
 
 class operator TpvMatrix4x4D.Implicit(const aFrom:TpvMatrix3x3):TpvMatrix4x4D;
