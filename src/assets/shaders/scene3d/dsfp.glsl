@@ -127,6 +127,17 @@ vec3 dsfpVec3PreciseSum(vec3 ah, vec3 al, vec3 bh, vec3 bl){
   return chcldh + (dl + e);
 }
 
+/* 
+
+The packed matrix is a 4x4 matrix with the following layout:
+
+affineXX, affineXY, affineXZ, fineX
+affineYX, affineYY, affineYZ, fineY
+affineZX, affineZY, affineZZ, fineZ
+ coarseX,  coarseY,  coarseZ, 1.0
+ 
+*/
+
 vec3 dsfpTransformPosition(mat4 modelPacked, mat4 viewPacked, vec4 vertexPosition){
   vec3 modelCoarse = modelPacked[3].xyz, modelFine = vec3(modelPacked[0].w, modelPacked[1].w, modelPacked[2].w);
   vec3 viewCoarse = viewPacked[3].xyz, viewFine = vec3(viewPacked[0].w, viewPacked[1].w, viewPacked[2].w);
