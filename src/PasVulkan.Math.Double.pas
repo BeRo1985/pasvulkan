@@ -376,6 +376,8 @@ type TpvVector2D=record
        class operator Divide(const aLeft,aRight:TpvMatrix4x4D):TpvMatrix4x4D;
        class operator Divide(const aLeft:TpvMatrix4x4D;const aRight:TpvDouble):TpvMatrix4x4D;
        class operator Negative(const aMatrix:TpvMatrix4x4D):TpvMatrix4x4D;
+       function MulHomogen(const aVector:TpvVector3):TpvVector3; overload;
+       function MulHomogen(const aVector:TpvVector3D):TpvVector3D; overload;
        function Transpose:TpvMatrix4x4D;
        function Determinant:TpvDouble;
        function Inverse:TpvMatrix4x4D;
@@ -2786,6 +2788,32 @@ begin
  result.RawComponents[3,1]:=-aMatrix.RawComponents[3,1];
  result.RawComponents[3,2]:=-aMatrix.RawComponents[3,2];
  result.RawComponents[3,3]:=-aMatrix.RawComponents[3,3];
+end;
+
+function TpvMatrix4x4D.MulHomogen(const aVector:TpvVector3):TpvVector3;
+var w:TpvDouble;
+begin
+ w:=(RawComponents[0,3]*aVector.x)+(RawComponents[1,3]*aVector.y)+(RawComponents[2,3]*aVector.z)+RawComponents[3,3];
+ if w<>0.0 then begin
+  result.x:=((RawComponents[0,0]*aVector.x)+(RawComponents[1,0]*aVector.y)+(RawComponents[2,0]*aVector.z)+RawComponents[3,0])/w;
+  result.y:=((RawComponents[0,1]*aVector.x)+(RawComponents[1,1]*aVector.y)+(RawComponents[2,1]*aVector.z)+RawComponents[3,1])/w;
+  result.z:=((RawComponents[0,2]*aVector.x)+(RawComponents[1,2]*aVector.y)+(RawComponents[2,2]*aVector.z)+RawComponents[3,2])/w;
+ end else begin
+  result:=aVector;
+ end;
+end;
+
+function TpvMatrix4x4D.MulHomogen(const aVector:TpvVector3D):TpvVector3D;
+var w:TpvDouble;
+begin
+ w:=(RawComponents[0,3]*aVector.x)+(RawComponents[1,3]*aVector.y)+(RawComponents[2,3]*aVector.z)+RawComponents[3,3];
+ if w<>0.0 then begin
+  result.x:=((RawComponents[0,0]*aVector.x)+(RawComponents[1,0]*aVector.y)+(RawComponents[2,0]*aVector.z)+RawComponents[3,0])/w;
+  result.y:=((RawComponents[0,1]*aVector.x)+(RawComponents[1,1]*aVector.y)+(RawComponents[2,1]*aVector.z)+RawComponents[3,1])/w;
+  result.z:=((RawComponents[0,2]*aVector.x)+(RawComponents[1,2]*aVector.y)+(RawComponents[2,2]*aVector.z)+RawComponents[3,2])/w;
+ end else begin
+  result:=aVector;
+ end;
 end;
 
 function TpvMatrix4x4D.Transpose:TpvMatrix4x4D;

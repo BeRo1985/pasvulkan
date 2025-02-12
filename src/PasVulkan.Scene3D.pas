@@ -2829,8 +2829,8 @@ type EpvScene3D=class(Exception);
                             fFirst:Boolean;
                             fIndex:TpvSizeInt;
                             fPotentiallyVisibleSetNodeIndex:TpvScene3D.TPotentiallyVisibleSet.TNodeIndex;
-                            fModelMatrix:TpvMatrix4x4;
-                            fPreviousModelMatrix:TpvMatrix4x4;
+                            fModelMatrix:TpvMatrix4x4D;
+                            fPreviousModelMatrix:TpvMatrix4x4D;
                             fWorkModelMatrix:TpvMatrix4x4;
                             fModelMatrices:TRenderInstanceMatrixInstances;
                             fNodeCullObjectIDs:TpvUInt32DynamicArray;
@@ -2848,7 +2848,7 @@ type EpvScene3D=class(Exception);
                             procedure UpdateLights;
                             procedure RemoveLights;
                            public
-                            property ModelMatrix:TpvMatrix4x4 read fModelMatrix write fModelMatrix;
+                            property ModelMatrix:TpvMatrix4x4D read fModelMatrix write fModelMatrix;
                             property ModelMatrices:TRenderInstanceMatrixInstances read fModelMatrices;
                             property NodeCullObjectIDs:TpvUInt32DynamicArray read fNodeCullObjectIDs;
                             property ApplyCameraRelativeTransform:TPasMPBool32 read fApplyCameraRelativeTransform write fApplyCameraRelativeTransform;
@@ -2958,7 +2958,7 @@ type EpvScene3D=class(Exception);
                      fFramePreparedMeshContentGenerations:array[0..MaxInFlightFrames-1] of TpvUInt64;
                      fFrameUploadedMeshContentGenerations:array[0..MaxInFlightFrames-1] of TpvUInt64;
                      fVisitedState:array[-1..MaxInFlightFrames-1] of TPasMPInt32;
-                     fModelMatrix:TpvMatrix4x4;
+                     fModelMatrix:TpvMatrix4x4D;
                      fWorkModelMatrix:TpvMatrix4x4;
 //                   fModelMatrices:array[-1..MaxInFlightFrames-1] of TpvMatrix4x4;
                      fNodeMatrices:TNodeMatrices;
@@ -2997,7 +2997,7 @@ type EpvScene3D=class(Exception);
                      function GetAnimationState(const aIndex:TPasGLTFSizeInt):TpvScene3D.TGroup.TInstance.PAnimationState;
                      procedure SetScene(const aScene:TpvSizeInt);
                      function GetScene:TpvScene3D.TGroup.TScene;
-                     procedure SetModelMatrix(const aModelMatrix:TpvMatrix4x4);
+                     procedure SetModelMatrix(const aModelMatrix:TpvMatrix4x4D);
                      procedure PreparePerInFlightFrameRenderInstances(const aInFlightFrameIndex:TpvSizeInt;
                                                                       const aRenderPass:TpvScene3DRendererRenderPass;
                                                                       const aViewNodeIndices:TpvScene3D.TPotentiallyVisibleSet.TViewNodeIndices;
@@ -3095,8 +3095,8 @@ type EpvScene3D=class(Exception);
                      property Nodes:TpvScene3D.TGroup.TInstance.TNodes read fNodes;
                      property Skins:TpvScene3D.TGroup.TInstance.TSkins read fSkins;
                      property UserData:pointer read fUserData write fUserData;
-                     property RawModelMatrix:TpvMatrix4x4 read fModelMatrix write fModelMatrix;
-                     property ModelMatrix:TpvMatrix4x4 read fModelMatrix write SetModelMatrix;
+                     property RawModelMatrix:TpvMatrix4x4D read fModelMatrix write fModelMatrix;
+                     property ModelMatrix:TpvMatrix4x4D read fModelMatrix write SetModelMatrix;
                      property ApplyCameraRelativeTransform:TPasMPBool32 read fApplyCameraRelativeTransform write fApplyCameraRelativeTransform;
                      property RenderInstances:TRenderInstances read fRenderInstances;
                      property PerInFlightFrameRenderInstances:PPerInFlightFrameRenderInstances read fPointerToPerInFlightFrameRenderInstances;
@@ -27041,9 +27041,9 @@ begin
 
 end;
 
-procedure TpvScene3D.TGroup.TInstance.SetModelMatrix(const aModelMatrix:TpvMatrix4x4);
+procedure TpvScene3D.TGroup.TInstance.SetModelMatrix(const aModelMatrix:TpvMatrix4x4D);
 begin
- if not CompareMem(@fModelMatrix,@aModelMatrix,SizeOf(TpvMatrix4x4)) then begin
+ if not CompareMem(@fModelMatrix,@aModelMatrix,SizeOf(TpvMatrix4x4D)) then begin
   fModelMatrix:=aModelMatrix;
   SetDirty;
  end;

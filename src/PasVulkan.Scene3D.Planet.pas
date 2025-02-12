@@ -75,6 +75,7 @@ uses Classes,
      PasDblStrUtils,
      PasVulkan.Types,
      PasVulkan.Math,
+     PasVulkan.Math.Double,
      PasVulkan.Utils,
      PasVulkan.Framework,
      PasVulkan.Application,
@@ -354,7 +355,7 @@ type TpvScene3DPlanets=class;
               fRayIntersectionResultBuffer:TpvVulkanBuffer;
               fCountTriangleIndices:TVkUInt32;
               fCountDirtyTiles:TVkUInt32;
-              fModelMatrix:TpvMatrix4x4;
+              fModelMatrix:TpvMatrix4x4D;
               fReady:TPasMPBool32;
               fInitialized:TPasMPBool32;
               fForceAllTilesDirty:TPasMPBool32;
@@ -463,7 +464,7 @@ type TpvScene3DPlanets=class;
               property TileGenerations:TTileGenerations read fTileGenerations;
               property TiledMeshBoundingBoxes:TTiledMeshBoundingBoxes read fTiledMeshBoundingBoxes;
               property TiledMeshBoundingSpheres:TTiledMeshBoundingSpheres read fTiledMeshBoundingSpheres;
-              property ModelMatrix:TpvMatrix4x4 read fModelMatrix write fModelMatrix;
+              property ModelMatrix:TpvMatrix4x4D read fModelMatrix write fModelMatrix;
               property Ready:TPasMPBool32 read fReady write fReady;
               property SelectedRegion:TpvVector4Property read fSelectedRegionProperty;
               property SelectedGroundTexture:TpvUInt32 read fSelectedGroundTexture write fSelectedGroundTexture;
