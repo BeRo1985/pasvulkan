@@ -344,7 +344,7 @@ begin
  end;
 end;
 
-function Matrix4x4ToJSON(const aMatrix:TpvMatrix4x4D):TPasJSONItemArray;
+function Matrix4x4DToJSON(const aMatrix:TpvMatrix4x4D):TPasJSONItemArray;
 begin
  result:=TPasJSONItemArray.Create;
  result.Add(TPasJSONItemNumber.Create(aMatrix.RawComponents[0,0]));
