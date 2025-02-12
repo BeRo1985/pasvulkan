@@ -141,7 +141,7 @@ affineZX, affineZY, affineZZ, fineZ
 vec4 dsfpTransformPosition(mat4 modelPacked, mat4 viewPacked, vec4 vertexPosition){
   if((modelPacked[3].w > 0.0) || (viewPacked[3].w > 0.0)){
     // When [3][3] are positive, we have normal matrices, so we can use the standard approach. 
-    return (modelPacked * viewPacked) * vertexPosition;  
+    return (viewPacked * modelPacked) * vertexPosition;  
   }else{
     // When [3][3] are negative, we have the packed matrices for double-single floating point matrices, so we 
     // need to use the precise sum approach. 
