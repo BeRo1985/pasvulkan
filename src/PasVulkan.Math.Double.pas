@@ -380,6 +380,8 @@ type TpvVector2D=record
        class operator Negative(const aMatrix:TpvMatrix4x4D):TpvMatrix4x4D;
        function MulHomogen(const aVector:TpvVector3):TpvVector3; overload;
        function MulHomogen(const aVector:TpvVector3D):TpvVector3D; overload;
+       function MulInverse(const aVector:TpvVector3):TpvVector3; overload;
+       function MulInverse(const aVector:TpvVector3D):TpvVector3D; overload;
        function Transpose:TpvMatrix4x4D;
        function Determinant:TpvDouble;
        function Inverse:TpvMatrix4x4D;
@@ -2834,6 +2836,16 @@ begin
  end else begin
   result:=aVector;
  end;
+end;
+
+function TpvMatrix4x4D.MulInverse(const aVector:TpvVector3):TpvVector3;
+begin
+ result:=Inverse.MulHomogen(aVector);
+end;
+
+function TpvMatrix4x4D.MulInverse(const aVector:TpvVector3D):TpvVector3D;
+begin
+ result:=Inverse.MulHomogen(aVector);
 end;
 
 function TpvMatrix4x4D.Transpose:TpvMatrix4x4D;

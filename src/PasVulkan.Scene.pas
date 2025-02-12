@@ -66,6 +66,7 @@ uses Classes,
      PasMP,
      PasVulkan.Types,
      PasVulkan.Math,
+     PasVulkan.Math.Double,
      PasVulkan.Collections,
      PasVulkan.Scene3D,
      PasVulkan.Utils;
@@ -285,17 +286,17 @@ type TpvScene=class;
      TpvSceneNode3D=class(TpvSceneNode)
       private
        fLastNode3DParent:TpvSceneNode3D;
-       fTransform:TpvMatrix4x4;
-       fCachedWorldTransform:TpvMatrix4x4;
-       fLastCachedWorldTransform:TpvMatrix4x4;
-       fInterpolatedCachedWorldTransform:TpvMatrix4x4;
+       fTransform:TpvMatrix4x4D;
+       fCachedWorldTransform:TpvMatrix4x4D;
+       fLastCachedWorldTransform:TpvMatrix4x4D;
+       fInterpolatedCachedWorldTransform:TpvMatrix4x4D;
        fBounds:TpvAABB;
       protected
        procedure UpdateCachedWorldTransform; virtual;
        procedure RecursiveUpdateCachedWorldTransform; virtual;
-       procedure SetTransform(const aValue:TpvMatrix4x4); virtual;
-       function GetWorldTransform:TpvMatrix4x4; virtual;
-       procedure SetWorldTransform(const aWorldTransform:TpvMatrix4x4); virtual;
+       procedure SetTransform(const aValue:TpvMatrix4x4D); virtual;
+       function GetWorldTransform:TpvMatrix4x4D; virtual;
+       procedure SetWorldTransform(const aWorldTransform:TpvMatrix4x4D); virtual;
        procedure UpdateBounds; virtual;
       public
        constructor Create(const aParent:TpvSceneNode;const aData:TObject=nil); override;
@@ -306,11 +307,11 @@ type TpvScene=class;
        procedure EndUpdate(const aDeltaTime:TpvDouble); override;
        procedure Interpolate(const aAlpha:TpvDouble); override;
       public
-       property Transform:TpvMatrix4x4 read fTransform write SetTransform;
-       property WorldTransform:TpvMatrix4x4 read GetWorldTransform write SetWorldTransform;
-       property CachedWorldTransform:TpvMatrix4x4 read fCachedWorldTransform;
-       property LastCachedWorldTransform:TpvMatrix4x4 read fLastCachedWorldTransform;
-       property InterpolatedCachedWorldTransform:TpvMatrix4x4 read fInterpolatedCachedWorldTransform;
+       property Transform:TpvMatrix4x4D read fTransform write SetTransform;
+       property WorldTransform:TpvMatrix4x4D read GetWorldTransform write SetWorldTransform;
+       property CachedWorldTransform:TpvMatrix4x4D read fCachedWorldTransform;
+       property LastCachedWorldTransform:TpvMatrix4x4D read fLastCachedWorldTransform;
+       property InterpolatedCachedWorldTransform:TpvMatrix4x4D read fInterpolatedCachedWorldTransform;
        property Bounds:TpvAABB read fBounds write fBounds;
      end;
 
@@ -1322,13 +1323,13 @@ begin
  end;
 end;
 
-procedure TpvSceneNode3D.SetTransform(const aValue:TpvMatrix4x4);
+procedure TpvSceneNode3D.SetTransform(const aValue:TpvMatrix4x4D);
 begin
  fTransform:=aValue;
  RecursiveUpdateCachedWorldTransform;
 end;
 
-function TpvSceneNode3D.GetWorldTransform:TpvMatrix4x4;
+function TpvSceneNode3D.GetWorldTransform:TpvMatrix4x4D;
 begin
  if assigned(fLastNode3DParent) then begin
   result:=fLastNode3DParent.GetWorldTransform*fTransform;
@@ -1337,7 +1338,7 @@ begin
  end;
 end;
 
-procedure TpvSceneNode3D.SetWorldTransform(const aWorldTransform:TpvMatrix4x4);
+procedure TpvSceneNode3D.SetWorldTransform(const aWorldTransform:TpvMatrix4x4D);
 begin
  if assigned(fLastNode3DParent) then begin
   fTransform:=fLastNode3DParent.GetWorldTransform.Inverse*aWorldTransform;
