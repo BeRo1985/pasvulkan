@@ -71,6 +71,7 @@ uses Classes,
      Vulkan,
      PasVulkan.Types,
      PasVulkan.Math,
+     PasVulkan.Math.Double,
      PasVulkan.Framework,
      PasVulkan.Application,
      PasVulkan.Resources,
@@ -530,7 +531,7 @@ type { TpvScene3DRendererInstance }
        fFrustumClusterGridCountTotalViews:TpvInt32;
        fZNear:TpvFloat;
        fZFar:TpvFloat;
-       fCameraViewMatrices:array[0..MaxInFlightFrames-1] of TpvMatrix4x4;
+       fCameraViewMatrices:array[0..MaxInFlightFrames-1] of TpvMatrix4x4D;
        fInFlightFrameStates:TInFlightFrameStates;
        fPointerToInFlightFrameStates:PInFlightFrameStates;
        fMeshFragmentSpecializationConstants:TMeshFragmentSpecializationConstants;
@@ -730,8 +731,8 @@ type { TpvScene3DRendererInstance }
       private
        function GetCameraPreset(const aInFlightFrameIndex:TpvInt32):TpvScene3DRendererCameraPreset; inline;
       private
-       function GetCameraViewMatrix(const aInFlightFrameIndex:TpvInt32):TpvMatrix4x4; inline;
-       procedure SetCameraViewMatrix(const aInFlightFrameIndex:TpvInt32;const aCameraViewMatrix:TpvMatrix4x4); inline;
+       function GetCameraViewMatrix(const aInFlightFrameIndex:TpvInt32):TpvMatrix4x4D; inline;
+       procedure SetCameraViewMatrix(const aInFlightFrameIndex:TpvInt32;const aCameraViewMatrix:TpvMatrix4x4D); inline;
       public
        constructor Create(const aParent:TpvScene3DRendererBaseObject;const aVirtualReality:TpvVirtualReality=nil;const aExternalImageFormat:TVkFormat=VK_FORMAT_UNDEFINED); reintroduce;
        destructor Destroy; override;
@@ -797,7 +798,7 @@ type { TpvScene3DRendererInstance }
        property MeshStagePushConstants:TpvScene3D.TMeshStagePushConstantArray read fMeshStagePushConstants write fMeshStagePushConstants;
        property DrawChoreographyBatchItemFrameBuckets:TpvScene3D.TDrawChoreographyBatchItemFrameBuckets read fDrawChoreographyBatchItemFrameBuckets write fDrawChoreographyBatchItemFrameBuckets;
       public
-       property CameraViewMatrices[const aInFlightFrameIndex:TpvInt32]:TpvMatrix4x4 read GetCameraViewMatrix write SetCameraViewMatrix;
+       property CameraViewMatrices[const aInFlightFrameIndex:TpvInt32]:TpvMatrix4x4D read GetCameraViewMatrix write SetCameraViewMatrix;
        property InFlightFrameStates:PInFlightFrameStates read fPointerToInFlightFrameStates;
        property Views:TpvScene3DRendererInstance.TViews read fViews;
        property MeshFragmentSpecializationConstants:TMeshFragmentSpecializationConstants read fMeshFragmentSpecializationConstants;
@@ -5717,12 +5718,12 @@ begin
  result:=fCameraPresets[aInFlightFrameIndex];
 end;
 
-function TpvScene3DRendererInstance.GetCameraViewMatrix(const aInFlightFrameIndex:TpvInt32):TpvMatrix4x4;
+function TpvScene3DRendererInstance.GetCameraViewMatrix(const aInFlightFrameIndex:TpvInt32):TpvMatrix4x4D;
 begin
  result:=fCameraViewMatrices[aInFlightFrameIndex];
 end;
 
-procedure TpvScene3DRendererInstance.SetCameraViewMatrix(const aInFlightFrameIndex:TpvInt32;const aCameraViewMatrix:TpvMatrix4x4);
+procedure TpvScene3DRendererInstance.SetCameraViewMatrix(const aInFlightFrameIndex:TpvInt32;const aCameraViewMatrix:TpvMatrix4x4D);
 begin
  fCameraViewMatrices[aInFlightFrameIndex]:=aCameraViewMatrix;
 end;
@@ -6084,7 +6085,7 @@ begin
 
 //CameraPositon:=-fViews.Items[InFlightFrameState^.FinalViewIndex].ViewMatrix.Translation.xyz;
 
- CameraPositon:=fCameraViewMatrices[aInFlightFrameIndex].SimpleInverse.Translation.xyz;
+ CameraPositon:=TpvMatrix4x4(fCameraViewMatrices[aInFlightFrameIndex]*TpvScene3D(fScene3D).InverseOriginTransforms[aInFlightFrameIndex]).SimpleInverse.Translation.xyz;
 
  zNear:=abs(fZNear);
  zFar:=IfThen(IsInfinite(fZFar),1024.0,abs(fZFar));
@@ -6763,7 +6764,7 @@ begin
 
  if fViews[aInFlightFrameIndex].Count=0 then begin
 
-  ViewMatrix:=fCameraViewMatrices[aInFlightFrameIndex];
+  ViewMatrix:=TpvMatrix4x4(fCameraViewMatrices[aInFlightFrameIndex]*TpvScene3D(fScene3D).InverseOriginTransforms[aInFlightFrameIndex]);
 
   if assigned(fVirtualReality) then begin
 
