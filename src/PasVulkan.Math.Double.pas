@@ -437,7 +437,21 @@ type TpvVector2D=record
      end;
      PpvTransform3D=^TpvTransform3D;
 
+procedure SplitDouble(const a:TpvDouble;out aHi,aLo:TpvFloat);
+
 implementation
+
+// http://andrewthall.org/papers/df64_qf128.pdf
+procedure SplitDouble(const a:TpvDouble;out aHi,aLo:TpvFloat);
+const SPLITER:TpvDouble=(1 shl 29)+1; 
+var t,tHi,tLo:TpvDouble;
+begin
+ t:=a*SPLITER;
+ tHi:=t-(t-a);
+ tLo:=a-tHi;
+ aHi:=tHi;
+ aLo:=tLo;
+end;
 
 { TpvVector2D }
 
@@ -3096,18 +3110,13 @@ begin
  result.RawComponents[2,1]:=RawComponents[2,1];
  result.RawComponents[2,2]:=RawComponents[2,2];
 
- // Translation (coarse part)
- result.RawComponents[3,0]:=RawComponents[3,0];
- result.RawComponents[3,1]:=RawComponents[3,1];
- result.RawComponents[3,2]:=RawComponents[3,2];
+ // Translation
+ SplitDouble(RawComponents[3,0],result.RawComponents[3,0],result.RawComponents[0,3]);
+ SplitDouble(RawComponents[3,1],result.RawComponents[3,1],result.RawComponents[1,3]);
+ SplitDouble(RawComponents[3,2],result.RawComponents[3,2],result.RawComponents[2,3]);
 
  // Set the last column and row
  result.RawComponents[3,3]:=-RawComponents[3,3]; // For to signaling the matrix as a double single floating point matrix
-
- // Now extract the resuidual translation (fine part, while the coarse part is the matrix itself)
- result.RawComponents[0,3]:=result.RawComponents[0,3]-RawComponents[0,3]; 
- result.RawComponents[1,3]:=result.RawComponents[1,3]-RawComponents[1,3];
- result.RawComponents[2,3]:=result.RawComponents[2,3]-RawComponents[2,3];
 
 end;
 

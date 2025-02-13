@@ -232,6 +232,8 @@ vec3 workTangent, workBitangent, workNormal;
 
 #include "math.glsl" 
  
+#include "dsfp.glsl"
+
 #define TRANSPARENCY_GLOBALS
 #include "transparency.glsl"
 #undef TRANSPARENCY_GLOBALS

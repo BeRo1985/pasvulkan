@@ -207,7 +207,9 @@ uint viewIndex = pushConstants.viewBaseIndex;
 #endif // defined(MULTIVIEW)
 #endif // defined(MESH_SHADER_EMULATION)
 
-mat4 viewMatrix = uView.views[viewIndex].viewMatrix;
+#include "dsfp.glsl"
+
+mat4 viewMatrix = dsfpMatrixClean(uView.views[viewIndex].viewMatrix);
 mat4 projectionMatrix = uView.views[viewIndex].projectionMatrix;
 mat4 inverseViewMatrix = uView.views[viewIndex].inverseViewMatrix;
 

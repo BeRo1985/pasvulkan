@@ -62,6 +62,8 @@ layout (set = 0, binding = 5, std430) buffer FrustumClusterGridIndexListCounters
 
 /* clang-format on */
 
+#include "dsfp.glsl" 
+
 shared LightDecalMetaInfo sharedLightDecalMetaInfos[8 * 8 * 8];
 
 void main() {
@@ -128,8 +130,8 @@ void main() {
               vec3 clusterAABBMax = frustumClusterGridAABBs[clusterIndex].maxViewSpaceBounds.xyz;
               // For also considering skewed etc. transforms, so that we don't just transform the sphere center 
               // without scaling the radius in the worst case
-              vec4 lightAABBMin = worldSpaceToViewSpaceMatrix * vec4(lightMetaInfo.minBounds.xyz, 1.0);
-              vec4 lightAABBMax = worldSpaceToViewSpaceMatrix * vec4(lightMetaInfo.maxBounds.xyz, 1.0);
+              vec4 lightAABBMin = dsfpTransformPosition(worldSpaceToViewSpaceMatrix, vec4(lightMetaInfo.minBounds.xyz, 1.0));
+              vec4 lightAABBMax = dsfpTransformPosition(worldSpaceToViewSpaceMatrix, vec4(lightMetaInfo.maxBounds.xyz, 1.0));
               lightAABBMin /= lightAABBMin.w;
               lightAABBMax /= lightAABBMax.w;
               vec4 lightSphere = vec4((lightAABBMin.xyz + lightAABBMax.xyz) * 0.5, length((lightAABBMax.xyz - lightAABBMin.xyz) * 0.5));
@@ -152,8 +154,8 @@ void main() {
               vec3 clusterAABBMax = frustumClusterGridAABBs[clusterIndex].maxViewSpaceBounds.xyz;
               // For also considering skewed etc. transforms, so that we don't just transform the sphere center 
               // without scaling the radius in the worst case
-              vec4 lightAABBMin = worldSpaceToViewSpaceMatrix * vec4(lightMetaInfo.minBounds.xyz, 1.0);
-              vec4 lightAABBMax = worldSpaceToViewSpaceMatrix * vec4(lightMetaInfo.maxBounds.xyz, 1.0);
+              vec4 lightAABBMin = dsfpTransformPosition(worldSpaceToViewSpaceMatrix, vec4(lightMetaInfo.minBounds.xyz, 1.0));
+              vec4 lightAABBMax = dsfpTransformPosition(worldSpaceToViewSpaceMatrix, vec4(lightMetaInfo.maxBounds.xyz, 1.0));
               lightAABBMin /= lightAABBMin.w;
               lightAABBMax /= lightAABBMax.w;
               vec4 lightSphere = vec4((lightAABBMin.xyz + lightAABBMax.xyz) * 0.5, length((lightAABBMax.xyz - lightAABBMin.xyz) * 0.5));

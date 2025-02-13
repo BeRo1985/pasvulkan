@@ -145,6 +145,8 @@ layout(set = 3, binding = 2) uniform sampler2DArray uTextureWaterAcceleration;
 
 #include "math.glsl"
 
+#include "dsfp.glsl"
+
 #ifdef RAYTRACING
   #include "raytracing.glsl"
 #endif

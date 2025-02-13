@@ -573,7 +573,7 @@ vec3 getIBLVolumeRefraction(vec3 n, vec3 v, float perceptualRoughness, vec3 base
       vec3 refractedRayExit = position + transmissionRay;
 
       // Project refracted vector on the framebuffer, while mapping to normalized device coordinates.
-      vec4 ndcPos = uView.views[inViewIndex].projectionMatrix * uView.views[inViewIndex].viewMatrix * vec4(refractedRayExit, 1.0);
+      vec4 ndcPos = uView.views[inViewIndex].projectionMatrix * dsfpTransformPosition(uView.views[inViewIndex].viewMatrix, vec4(refractedRayExit, 1.0));
       vec2 refractionCoords = fma(ndcPos.xy / ndcPos.w, vec2(0.5), vec2(0.5));
 
       vec3 transmittedLight = getTransmissionSample(refractionCoords, perceptualRoughness, iorValues[i]);
@@ -588,7 +588,7 @@ vec3 getIBLVolumeRefraction(vec3 n, vec3 v, float perceptualRoughness, vec3 base
     vec3 refractedRayExit = position + transmissionRay;
 
     // Project refracted vector on the framebuffer, while mapping to normalized device coordinates.
-    vec4 ndcPos = uView.views[inViewIndex].projectionMatrix * uView.views[inViewIndex].viewMatrix * vec4(refractedRayExit, 1.0);
+    vec4 ndcPos = uView.views[inViewIndex].projectionMatrix * dsfpTransformPosition(uView.views[inViewIndex].viewMatrix, vec4(refractedRayExit, 1.0));
     vec2 refractionCoords = fma(ndcPos.xy / ndcPos.w, vec2(0.5), vec2(0.5));
 
     vec3 transmittedLight = getTransmissionSample(refractionCoords, perceptualRoughness, ior);
@@ -631,9 +631,9 @@ bool castScreenSpaceRay(vec3 worldSpaceRayOrigin,
                         vec3 worldSpaceRayDirection,
                         out vec2 hitUV){
 
-  vec3 rayOrigin = (viewMatrix * vec4(worldSpaceRayOrigin, 1.0)).xyz;
+  vec3 rayOrigin = dsfpTransformPosition(viewMatrix, vec4(worldSpaceRayOrigin, 1.0)).xyz;
 
-  vec3 rayDirection = normalize((viewMatrix * vec4(worldSpaceRayDirection, 0.0)).xyz);
+  vec3 rayDirection = normalize((dsfpMatrixClean(viewMatrix) * vec4(worldSpaceRayDirection, 0.0)).xyz);
 
   vec3 viewDirection = normalize(rayDirection);
 
@@ -722,9 +722,9 @@ bool castScreenSpaceRay(vec3 worldSpaceRayOrigin,
   const ivec2 lod0Size = ivec2(textureSize(uPassTextures[2], 0).xy);
   const vec2 invLOD0Size = vec2(1.0) / vec2(lod0Size);
 
-  vec3 rayOrigin = (viewMatrix * vec4(worldSpaceRayOrigin, 1.0)).xyz;
+  vec3 rayOrigin = dsfpTransformPosition(viewMatrix, vec4(worldSpaceRayOrigin, 1.0)).xyz;
 
-  vec3 rayDirection = normalize((viewMatrix * vec4(worldSpaceRayDirection, 0.0)).xyz);
+  vec3 rayDirection = normalize((dsfpMatrixClean(viewMatrix) * vec4(worldSpaceRayDirection, 0.0)).xyz);
 
   vec2 nearPlaneTemporary = (inverseProjectionMatrix * vec4(0.0, 0.0, (projectionMatrix[2][3] < -1e-7) ? 1.0 : 0.0, 1.0)).zw;
   float nearPlane = nearPlaneTemporary.x / nearPlaneTemporary.y;
@@ -846,9 +846,9 @@ vec4 getScreenSpaceReflection(vec3 worldSpacePosition,
   float viewIndex = float(gl_ViewIndex);
 
   // Compute the ray origin and direction in view space.
-  vec3 rayOrigin = (viewMatrix * vec4(worldSpacePosition, 1.0)).xyz;
+  vec3 rayOrigin = dsfpTransformPosition(viewMatrix, vec4(worldSpacePosition, 1.0)).xyz;
 
-  vec3 rayDirection = (viewMatrix * vec4(worldSpaceReflectionVector, 0.0)).xyz;
+  vec3 rayDirection = (dsfpMatrixClean(viewMatrix) * vec4(worldSpaceReflectionVector, 0.0)).xyz;
 
   // First, perform a linear search to find the first intersection point. 
 

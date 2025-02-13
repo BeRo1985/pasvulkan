@@ -58,6 +58,8 @@ vec3 lineIntersectionToZPlane(vec3 firstPoint, vec3 secondPoint, float zValueVie
   return fma(lineDirection, vec3((zValueViewSpace - firstPoint.z) / lineDirection.z), firstPoint);
 }
 
+#include "dsfp.glsl"
+
 void main() {
   //
 
@@ -118,14 +120,14 @@ void main() {
   // Calculate the world space min and max bounds for the AABB
   mat4 viewSpaceToWorldSpaceMatrix = view.inverseViewMatrix;
   vec4 aabbCorners[8] = {
-    viewSpaceToWorldSpaceMatrix * vec4(aabbViewSpaceMin.x, aabbViewSpaceMin.y, aabbViewSpaceMin.z, 1.0),  //
-    viewSpaceToWorldSpaceMatrix * vec4(aabbViewSpaceMin.x, aabbViewSpaceMin.y, aabbViewSpaceMax.z, 1.0),  //
-    viewSpaceToWorldSpaceMatrix * vec4(aabbViewSpaceMin.x, aabbViewSpaceMax.y, aabbViewSpaceMin.z, 1.0),  //
-    viewSpaceToWorldSpaceMatrix * vec4(aabbViewSpaceMin.x, aabbViewSpaceMax.y, aabbViewSpaceMax.z, 1.0),  //
-    viewSpaceToWorldSpaceMatrix * vec4(aabbViewSpaceMax.x, aabbViewSpaceMin.y, aabbViewSpaceMin.z, 1.0),  //
-    viewSpaceToWorldSpaceMatrix * vec4(aabbViewSpaceMax.x, aabbViewSpaceMin.y, aabbViewSpaceMax.z, 1.0),  //
-    viewSpaceToWorldSpaceMatrix * vec4(aabbViewSpaceMax.x, aabbViewSpaceMax.y, aabbViewSpaceMin.z, 1.0),  //
-    viewSpaceToWorldSpaceMatrix * vec4(aabbViewSpaceMax.x, aabbViewSpaceMax.y, aabbViewSpaceMax.z, 1.0),  //
+    dsfpTransformPosition(viewSpaceToWorldSpaceMatrix, vec4(aabbViewSpaceMin.x, aabbViewSpaceMin.y, aabbViewSpaceMin.z, 1.0)),  //
+    dsfpTransformPosition(viewSpaceToWorldSpaceMatrix, vec4(aabbViewSpaceMin.x, aabbViewSpaceMin.y, aabbViewSpaceMax.z, 1.0)),  //
+    dsfpTransformPosition(viewSpaceToWorldSpaceMatrix, vec4(aabbViewSpaceMin.x, aabbViewSpaceMax.y, aabbViewSpaceMin.z, 1.0)),  //
+    dsfpTransformPosition(viewSpaceToWorldSpaceMatrix, vec4(aabbViewSpaceMin.x, aabbViewSpaceMax.y, aabbViewSpaceMax.z, 1.0)),  //
+    dsfpTransformPosition(viewSpaceToWorldSpaceMatrix, vec4(aabbViewSpaceMax.x, aabbViewSpaceMin.y, aabbViewSpaceMin.z, 1.0)),  //
+    dsfpTransformPosition(viewSpaceToWorldSpaceMatrix, vec4(aabbViewSpaceMax.x, aabbViewSpaceMin.y, aabbViewSpaceMax.z, 1.0)),  //
+    dsfpTransformPosition(viewSpaceToWorldSpaceMatrix, vec4(aabbViewSpaceMax.x, aabbViewSpaceMax.y, aabbViewSpaceMin.z, 1.0)),  //
+    dsfpTransformPosition(viewSpaceToWorldSpaceMatrix, vec4(aabbViewSpaceMax.x, aabbViewSpaceMax.y, aabbViewSpaceMax.z, 1.0)),  //
   };
   aabbCorners[0] /= aabbCorners[0].w;
   aabbCorners[1] /= aabbCorners[1].w;

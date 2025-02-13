@@ -2831,7 +2831,7 @@ type EpvScene3D=class(Exception);
                             fPotentiallyVisibleSetNodeIndex:TpvScene3D.TPotentiallyVisibleSet.TNodeIndex;
                             fModelMatrix:TpvMatrix4x4D;
                             fPreviousModelMatrix:TpvMatrix4x4D;
-                            fWorkModelMatrix:TpvMatrix4x4;
+                            fWorkModelMatrix:TpvMatrix4x4D;
                             fModelMatrices:TRenderInstanceMatrixInstances;
                             fNodeCullObjectIDs:TpvUInt32DynamicArray;
                             fBoundingBox:TpvAABB;
@@ -25962,11 +25962,11 @@ begin
   SetDirty;
  end;
 
- fWorkModelMatrix:=fModelMatrix;
-
  if assigned(fOnUpdate) and fOnUpdate(aInFlightFrameIndex) then begin
   SetDirty;
  end;
+
+ fWorkModelMatrix:=fModelMatrix;
 
  if fActive then begin
   if fUseRenderInstances then begin
@@ -26268,12 +26268,12 @@ begin
        PerInFlightFrameRenderInstance^.PotentiallyVisibleSetNodeIndex:=RenderInstance.fPotentiallyVisibleSetNodeIndex;
        PerInFlightFrameRenderInstance^.BoundingBox:=RenderInstance.fBoundingBox;
        PerInFlightFrameRenderInstance^.RenderInstance:=RenderInstance;
-       PerInFlightFrameRenderInstance^.ModelMatrix:=RenderInstance.fWorkModelMatrix;
+       PerInFlightFrameRenderInstance^.ModelMatrix:=RenderInstance.fWorkModelMatrix.ToDoubleSingleFloatingPointMatrix4x4;
        if RenderInstance.fFirst then begin
         RenderInstance.fFirst:=false;
-        PerInFlightFrameRenderInstance^.PreviousModelMatrix:=RenderInstance.fWorkModelMatrix;
+        PerInFlightFrameRenderInstance^.PreviousModelMatrix:=RenderInstance.fWorkModelMatrix.ToDoubleSingleFloatingPointMatrix4x4;
        end else begin
-        PerInFlightFrameRenderInstance^.PreviousModelMatrix:=RenderInstance.fPreviousModelMatrix;
+        PerInFlightFrameRenderInstance^.PreviousModelMatrix:=RenderInstance.fPreviousModelMatrix.ToDoubleSingleFloatingPointMatrix4x4;
        end;
        RenderInstance.fPreviousModelMatrix:=RenderInstance.fWorkModelMatrix;
        RenderInstance.UpdateLights;

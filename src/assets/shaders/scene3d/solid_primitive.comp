@@ -80,6 +80,8 @@ layout(std140, set = 0, binding = 4) uniform uboViews {
 
 /* clang-format on */
 
+#include "dsfp.glsl"
+
 vec2 clipSpaceToScreenSpace(const vec2 clipSpace) {
   return fma(clipSpace, vec2(0.5), vec2(0.5)) * pushConstants.viewPortSize;
 }
@@ -163,7 +165,7 @@ void main(){
 
   if((gl_LocalInvocationID.x < pushConstants.countViews) && (gl_LocalInvocationID.x < 8u)){
     uint viewIndex = gl_LocalInvocationID.x;
-    inverseViewProjectionMatrices[viewIndex] = inverse(viewProjectionMatrices[viewIndex] = uView.views[pushConstants.viewBaseIndex + viewIndex].projectionMatrix * uView.views[pushConstants.viewBaseIndex + viewIndex].viewMatrix);
+    inverseViewProjectionMatrices[viewIndex] = inverse(viewProjectionMatrices[viewIndex] = uView.views[pushConstants.viewBaseIndex + viewIndex].projectionMatrix * dsfpMatrixClean(uView.views[pushConstants.viewBaseIndex + viewIndex].viewMatrix));
   }
 
   barrier();

@@ -131,6 +131,8 @@ vec2 unpackSnorm2x16Ex(uint v){
 
 #include "adjugate.glsl"
 
+#include "dsfp.glsl" 
+
 void main() {
   uint vertexIndex = gl_GlobalInvocationID.x;
   // uint vertexIndex = uint((((gl_GlobalInvocationID.z * gl_WorkGroupSize.y) + gl_GlobalInvocationID.y) * gl_WorkGroupSize.x) + gl_GlobalInvocationID.x);

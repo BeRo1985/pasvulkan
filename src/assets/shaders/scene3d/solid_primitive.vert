@@ -60,6 +60,8 @@ out gl_PerVertex {
 
 /* clang-format on */
 
+#include "dsfp.glsl"
+
 vec2 clipSpaceToScreenSpace(const vec2 clipSpace) {
   return fma(clipSpace, vec2(0.5), vec2(0.5)) * pushConstants.viewPortSize;
 }
@@ -69,7 +71,7 @@ void main() {
   uint viewIndex = pushConstants.viewBaseIndex + uint(gl_ViewIndex);
   outColor = inColor;
 
-  mat4 viewProjectionMatrix = uView.views[viewIndex].projectionMatrix * uView.views[viewIndex].viewMatrix;
+  mat4 viewProjectionMatrix = uView.views[viewIndex].projectionMatrix * dsfpMatrixClean(uView.views[viewIndex].viewMatrix);
 
   bool threeDimensional = (inPrimitiveTopology & 0x8u) == 0u;
 

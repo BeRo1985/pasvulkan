@@ -66,6 +66,8 @@ layout (push_constant) uniform PushConstants {
 
 #include "mesh_pushconstants.glsl" 
 
+#include "dsfp.glsl" 
+
 //#endif
 
 // Global descriptor set
@@ -93,6 +95,11 @@ out gl_PerVertex {
 /* clang-format on */
 
 #include "adjugate.glsl"
+
+const mat4 identityMatrix = mat4(1.0, 0.0, 0.0, 0.0,
+                                 0.0, 1.0, 0.0, 0.0,
+                                 0.0, 0.0, 1.0, 0.0,
+                                 0.0, 0.0, 0.0, 1.0);
 
 void main() {
 
@@ -144,30 +151,64 @@ void main() {
 #endif
 
   vec3 modelScale = inModelScale; 
-  vec3 position = inPosition;
+
+  vec4 clipSpacePosition;
+
 #ifdef VELOCITY  
-  vec3 previousPosition = inPreviousPosition;
+  vec4 previousClipSpacePosition;
 #endif
+
+  vec3 worldSpacePosition;
+
+  vec4 viewSpacePosition;
 
   // gl_InstanceIndex is always 0 for non-instanced rendering, where we don't need to do this anyway then, and skip the transformations 
   // for to save some cycles and memory bandwidth, given the branch is always not taken in the current thread warp on the GPU.
   if(gl_InstanceIndex > 0){  
+    
     // The base mesh data is assumed to be non-pretransformed by its origin. If it is pretransformed by its origin, it will be treated
     // as a delta transformation. It is because the mesh vertices are pretransformed by a compute shader, but this was originally only 
     // for non-instanced meshes. Therefore, the original to-be-instanced mesh data should be non-pretransformed by its origin.
+    
     mat4 instanceMatrix = instanceMatrices[gl_InstanceIndex << 1]; 
+
     modelScale *= vec3(length(instanceMatrix[0].xyz), length(instanceMatrix[1].xyz), length(instanceMatrix[2].xyz)); // needed for transmissive materials
-    position = (instanceMatrix * vec4(position, 1.0)).xyz;
+
     tangentSpace = adjugate(instanceMatrix) * tangentSpace;   
+
+    clipSpacePosition = view.projectionMatrix * (viewSpacePosition = dsfpTransformPosition(instanceMatrix, view.viewMatrix, vec4(inPosition, 1.0)));
+    viewSpacePosition.xyz /= viewSpacePosition.w;
+
+    //worldSpacePosition = (instanceMatrix * vec4(position, 1.0)).xyz;
+    worldSpacePosition = dsfpTransformPosition(instanceMatrix, vec4(inPosition, 1.0)).xyz;
+
 #ifdef VELOCITY  
-    previousPosition = (instanceMatrices[(gl_InstanceIndex << 1) | 1] * vec4(previousPosition, 1.0)).xyz;
+    if(uint(inGeneration) != uint(inPreviousGeneration)){
+      previousClipSpacePosition = clipSpacePosition;
+    }else{  
+      View previousView = uView.views[viewIndex + pushConstants.countAllViews];
+//    vec4 previousPosition = (instanceMatrices[(gl_InstanceIndex << 1) | 1] * vec4(previousPosition, 1.0));
+      previousClipSpacePosition = previousView.projectionMatrix * dsfpTransformPosition(instanceMatrices[(gl_InstanceIndex << 1) | 1], previousView.viewMatrix, vec4(inPreviousPosition, 1.0));
+    }
 #endif
+
+  }else{
+
+    worldSpacePosition = inPosition;
+
+    clipSpacePosition = view.projectionMatrix * (viewSpacePosition = view.viewMatrix * vec4(inPosition, 1.0));
+    viewSpacePosition.xyz /= viewSpacePosition.w;
+
+#ifdef VELOCITY  
+    if(uint(inGeneration) != uint(inPreviousGeneration)){
+      previousClipSpacePosition = clipSpacePosition;
+    }else{  
+      View previousView = uView.views[viewIndex + pushConstants.countAllViews];
+      previousClipSpacePosition = (previousView.projectionMatrix * previousView.viewMatrix) * vec4(inPreviousPosition, 1.0);
+    }
+#endif
+
   }
-
-  vec3 worldSpacePosition = position;
-
-  vec4 viewSpacePosition = view.viewMatrix * vec4(position, 1.0);
-  viewSpacePosition.xyz /= viewSpacePosition.w;
 
   outWorldSpacePosition = worldSpacePosition;
   outViewSpacePosition = viewSpacePosition.xyz;
@@ -186,27 +227,26 @@ void main() {
 #endif
 
 #ifdef VOXELIZATION
+
   gl_Position = vec4(0.0, 0.0, 0.0, 1.0); // Overrided by geometry shader anyway
-#elif defined(VELOCITY)
 
-  outCurrentClipSpace = (view.projectionMatrix * view.viewMatrix) * vec4(position, 1.0);
+#else
 
-  View previousView = uView.views[viewIndex + pushConstants.countAllViews];
-  if(uint(inGeneration) != uint(inPreviousGeneration)){
-    outPreviousClipSpace = outCurrentClipSpace;
-  }else{  
-    outPreviousClipSpace = (previousView.projectionMatrix * previousView.viewMatrix) * vec4(previousPosition, 1.0);
-  }
+#if defined(VELOCITY)
 
-  gl_Position = outCurrentClipSpace;
+  outCurrentClipSpace = clipSpacePosition;
 
+  outPreviousClipSpace = previousClipSpacePosition;
+  
   outJitter = pushConstants.jitter;
 
 #else
   
-  gl_Position = (view.projectionMatrix * view.viewMatrix) * vec4(position, 1.0);
-  
   outJitter = pushConstants.jitter.xy;
+
+#endif
+
+  gl_Position = clipSpacePosition;
 
 #endif
 

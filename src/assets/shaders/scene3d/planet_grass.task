@@ -130,6 +130,8 @@ taskPayloadSharedEXT TaskData taskData;
 
 #include "floatint.glsl"
 
+#include "dsfp.glsl"
+
 void main() {
  
   /////////////////////////////////////////////////////////////////////////
@@ -270,7 +272,7 @@ void main() {
       for(uint viewIndex = 0u; viewIndex < countViews; viewIndex++){
         
         mat4 viewMatrix = uView.views[pushConstants.viewBaseIndex + viewIndex].viewMatrix;      
-        vec4 viewSpaceBoundingSphere = vec4((viewMatrix * vec4(boundingSphere.xyz, 1.0)).xyz, boundingSphere.w);
+        vec4 viewSpaceBoundingSphere = vec4(dsfpTransformPosition(viewMatrix, vec4(boundingSphere.xyz, 1.0)).xyz, boundingSphere.w);
 
         if(frustumCullingSphereTest(frustums[viewIndex], viewSpaceBoundingSphere)){
         

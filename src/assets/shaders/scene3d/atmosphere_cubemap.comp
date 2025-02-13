@@ -71,7 +71,7 @@ void main() {
 
     vec3 upVector = pushConstants.upVector.xyz;
 
-    vec3 worldPos = (atmosphereParameters.inverseTransform * vec4(cameraPosition, 1.0)).xyz;
+    vec3 worldPos = (dsfpMatrixClean(atmosphereParameters.inverseTransform) * vec4(cameraPosition, 1.0)).xyz;
 
     vec3 worldDir = direction; 
 
