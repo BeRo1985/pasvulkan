@@ -394,6 +394,14 @@ type TpvVector2D=record
        function ToQuaternionD:TpvQuaternionD;
        function Decompose:TpvDecomposedMatrix4x4D;
        function ToDoubleSingleFloatingPointMatrix4x4:TpvMatrix4x4;
+       function Normalize:TpvMatrix4x4D;
+       function OrthoNormalize:TpvMatrix4x4D;
+       function RobustOrthoNormalize(const Tolerance:TpvDouble=1e-3):TpvMatrix4x4D;
+       function SimpleLerp(const aWith:TpvMatrix4x4D;const aTime:TpvDouble):TpvMatrix4x4D;
+       function SimpleNlerp(const aWith:TpvMatrix4x4D;const aTime:TpvDouble):TpvMatrix4x4D;
+       function SimpleSlerp(const aWith:TpvMatrix4x4D;const aTime:TpvDouble):TpvMatrix4x4D;
+       function SimpleElerp(const aWith:TpvMatrix4x4D;const aTime:TpvDouble):TpvMatrix4x4D;
+       function SimpleSqlerp(const aB,aC,aD:TpvMatrix4x4D;const aTime:TpvDouble):TpvMatrix4x4D;
        function Lerp(const aWith:TpvMatrix4x4D;const aTime:TpvDouble):TpvMatrix4x4D;
        function Nlerp(const aWith:TpvMatrix4x4D;const aTime:TpvDouble):TpvMatrix4x4D;
        function Slerp(const aWith:TpvMatrix4x4D;const aTime:TpvDouble):TpvMatrix4x4D;
@@ -3242,6 +3250,213 @@ begin
 
  end;
 
+end;
+
+function TpvMatrix4x4D.Normalize:TpvMatrix4x4D;
+begin
+ result.Right.xyz:=Right.xyz.Normalize;
+ result.RawComponents[0,3]:=RawComponents[0,3];
+ result.Up.xyz:=Up.xyz.Normalize;
+ result.RawComponents[1,3]:=RawComponents[1,3];
+ result.Forwards.xyz:=Forwards.xyz.Normalize;
+ result.RawComponents[2,3]:=RawComponents[2,3];
+ result.Translation:=Translation;
+end;
+
+function TpvMatrix4x4D.OrthoNormalize:TpvMatrix4x4D;
+begin
+ result.Normal.xyz:=Normal.xyz.Normalize;
+ result.Tangent.xyz:=(Tangent.xyz-(result.Normal.xyz*Tangent.xyz.Dot(result.Normal.xyz))).Normalize;
+ result.Bitangent.xyz:=result.Normal.xyz.Cross(result.Tangent.xyz).Normalize;
+ result.Bitangent.xyz:=result.Bitangent.xyz-(result.Normal.xyz*result.Bitangent.xyz.Dot(result.Normal.xyz));
+ result.Bitangent.xyz:=(result.Bitangent.xyz-(result.Tangent.xyz*result.Bitangent.xyz.Dot(result.Tangent.xyz))).Normalize;
+ result.Tangent.xyz:=result.Bitangent.xyz.Cross(result.Normal.xyz).Normalize;
+ result.Normal.xyz:=result.Tangent.xyz.Cross(result.Bitangent.xyz).Normalize;
+ result.RawComponents[0,3]:=RawComponents[0,3];
+ result.RawComponents[1,3]:=RawComponents[1,3];
+ result.RawComponents[2,3]:=RawComponents[2,3];
+ result.RawComponents[3,3]:=RawComponents[3,3];
+ result.RawComponents[3,0]:=RawComponents[3,0];
+ result.RawComponents[3,1]:=RawComponents[3,1];
+ result.RawComponents[3,2]:=RawComponents[3,2];
+end;
+
+function TpvMatrix4x4D.RobustOrthoNormalize(const Tolerance:TpvDouble):TpvMatrix4x4D;
+var Bisector,Axis:TpvVector3D;
+begin
+ begin
+  if Normal.xyz.Length<Tolerance then begin
+   // Degenerate case, compute new Normal.xyz
+   Normal.xyz:=Tangent.xyz.Cross(Bitangent.xyz);
+   if Normal.xyz.Length<Tolerance then begin
+    result.Tangent.xyz:=TpvVector3.XAxis;
+    result.Bitangent.xyz:=TpvVector3.YAxis;
+    result.Normal.xyz:=TpvVector3.ZAxis;
+    result.RawComponents[0,3]:=RawComponents[0,3];
+    result.RawComponents[1,3]:=RawComponents[1,3];
+    result.RawComponents[2,3]:=RawComponents[2,3];
+    result.RawComponents[3,3]:=RawComponents[3,3];
+    result.RawComponents[3,0]:=RawComponents[3,0];
+    result.RawComponents[3,1]:=RawComponents[3,1];
+    result.RawComponents[3,2]:=RawComponents[3,2];
+    exit;
+   end;
+  end;
+  result.Normal.xyz:=Normal.xyz.Normalize;
+ end;
+ begin
+  // Project Tangent.xyz and Bitangent.xyz onto the Normal.xyz orthogonal plane
+  result.Tangent.xyz:=Tangent.xyz-(result.Normal.xyz*Tangent.xyz.Dot(result.Normal.xyz));
+  result.Bitangent.xyz:=Bitangent.xyz-(result.Normal.xyz*Bitangent.xyz.Dot(result.Normal.xyz));
+ end;
+ begin
+  // Check for several degenerate cases
+  if result.Tangent.xyz.Length<Tolerance then begin
+   if result.Bitangent.xyz.Length<Tolerance then begin
+    result.Tangent.xyz:=result.Normal.xyz.Normalize;
+    if (result.Tangent.xyz.x<=result.Tangent.xyz.y) and (result.Tangent.xyz.x<=result.Tangent.xyz.z) then begin
+     result.Tangent.xyz:=TpvVector3.XAxis;
+    end else if (result.Tangent.xyz.y<=result.Tangent.xyz.x) and (result.Tangent.xyz.y<=result.Tangent.xyz.z) then begin
+     result.Tangent.xyz:=TpvVector3.YAxis;
+    end else begin
+     result.Tangent.xyz:=TpvVector3.ZAxis;
+    end;
+    result.Tangent.xyz:=result.Tangent.xyz-(result.Normal.xyz*result.Tangent.xyz.Dot(result.Normal.xyz));
+    result.Bitangent.xyz:=result.Normal.xyz.Cross(result.Tangent.xyz).Normalize;
+   end else begin
+    result.Tangent.xyz:=result.Bitangent.xyz.Cross(result.Normal.xyz).Normalize;
+   end;
+  end else begin
+   result.Tangent.xyz:=result.Tangent.xyz.Normalize;
+   if result.Bitangent.xyz.Length<Tolerance then begin
+    result.Bitangent.xyz:=result.Normal.xyz.Cross(result.Tangent.xyz).Normalize;
+   end else begin
+    result.Bitangent.xyz:=result.Bitangent.xyz.Normalize;
+    Bisector:=result.Tangent.xyz+result.Bitangent.xyz;
+    if Bisector.Length<Tolerance then begin
+     Bisector:=result.Tangent.xyz;
+    end else begin
+     Bisector:=Bisector.Normalize;
+    end;
+    Axis:=Bisector.Cross(result.Normal.xyz).Normalize;
+    if Axis.Dot(Tangent.xyz)>0.0 then begin
+     result.Tangent.xyz:=(Bisector+Axis).Normalize;
+     result.Bitangent.xyz:=(Bisector-Axis).Normalize;
+    end else begin
+     result.Tangent.xyz:=(Bisector-Axis).Normalize;
+     result.Bitangent.xyz:=(Bisector+Axis).Normalize;
+    end;
+   end;
+  end;
+ end;
+ result.Bitangent.xyz:=result.Normal.xyz.Cross(result.Tangent.xyz).Normalize;
+ result.Tangent.xyz:=result.Bitangent.xyz.Cross(result.Normal.xyz).Normalize;
+ result.Normal.xyz:=result.Tangent.xyz.Cross(result.Bitangent.xyz).Normalize;
+ result.RawComponents[0,3]:=RawComponents[0,3];
+ result.RawComponents[1,3]:=RawComponents[1,3];
+ result.RawComponents[2,3]:=RawComponents[2,3];
+ result.RawComponents[3,3]:=RawComponents[3,3];
+ result.RawComponents[3,0]:=RawComponents[3,0];
+ result.RawComponents[3,1]:=RawComponents[3,1];
+ result.RawComponents[3,2]:=RawComponents[3,2];
+end;
+
+
+function TpvMatrix4x4D.SimpleLerp(const aWith:TpvMatrix4x4D;const aTime:TpvDouble):TpvMatrix4x4D;
+begin
+ if aTime<=0.0 then begin
+  result:=self;
+ end else if aTime>=1.0 then begin
+  result:=aWith;
+ end else begin
+  result:=(self*(1.0-aTime))+(aWith*aTime);
+ end;
+end;
+
+function TpvMatrix4x4D.SimpleNlerp(const aWith:TpvMatrix4x4D;const aTime:TpvDouble):TpvMatrix4x4D;
+var InvT:TpvDouble;
+    Scale:TpvVector3D;
+begin
+ if aTime<=0.0 then begin
+  result:=self;
+ end else if aTime>=1.0 then begin
+  result:=aWith;
+ end else begin
+  Scale:=TpvVector3.Create(Right.xyz.Length,
+                           Up.xyz.Length,
+                           Forwards.xyz.Length).Lerp(TpvVector3.Create(aWith.Right.xyz.Length,
+                                                                       aWith.Up.xyz.Length,
+                                                                       aWith.Forwards.xyz.Length),
+                                                     aTime);
+  result:=TpvMatrix4x4D.Create(Normalize.ToQuaternionD.Nlerp(aWith.Normalize.ToQuaternionD,aTime));
+  result.Right.xyz:=result.Right.xyz*Scale.x;
+  result.Up.xyz:=result.Up.xyz*Scale.y;
+  result.Forwards.xyz:=result.Forwards.xyz*Scale.z;
+  result.Translation:=Translation.Lerp(aWith.Translation,aTime);
+  InvT:=1.0-aTime;
+  result.RawComponents[0,3]:=(RawComponents[0,3]*InvT)+(aWith.RawComponents[0,3]*aTime);
+  result.RawComponents[1,3]:=(RawComponents[1,3]*InvT)+(aWith.RawComponents[1,3]*aTime);
+  result.RawComponents[2,3]:=(RawComponents[2,3]*InvT)+(aWith.RawComponents[2,3]*aTime);
+ end;
+end;
+
+function TpvMatrix4x4D.SimpleSlerp(const aWith:TpvMatrix4x4D;const aTime:TpvDouble):TpvMatrix4x4D;
+var InvT:TpvDouble;
+    Scale:TpvVector3D;
+begin
+ if aTime<=0.0 then begin
+  result:=self;
+ end else if aTime>=1.0 then begin
+  result:=aWith;
+ end else begin
+  Scale:=TpvVector3.Create(Right.xyz.Length,
+                           Up.xyz.Length,
+                           Forwards.xyz.Length).Lerp(TpvVector3.Create(aWith.Right.xyz.Length,
+                                                                       aWith.Up.xyz.Length,
+                                                                       aWith.Forwards.xyz.Length),
+                                                     aTime);
+  result:=TpvMatrix4x4D.Create(Normalize.ToQuaternionD.Slerp(aWith.Normalize.ToQuaternionD,aTime));
+  result.Right.xyz:=result.Right.xyz*Scale.x;
+  result.Up.xyz:=result.Up.xyz*Scale.y;
+  result.Forwards.xyz:=result.Forwards.xyz*Scale.z;
+  result.Translation:=Translation.Lerp(aWith.Translation,aTime);
+  InvT:=1.0-aTime;
+  result.RawComponents[0,3]:=(RawComponents[0,3]*InvT)+(aWith.RawComponents[0,3]*aTime);
+  result.RawComponents[1,3]:=(RawComponents[1,3]*InvT)+(aWith.RawComponents[1,3]*aTime);
+  result.RawComponents[2,3]:=(RawComponents[2,3]*InvT)+(aWith.RawComponents[2,3]*aTime);
+ end;
+end;
+
+function TpvMatrix4x4D.SimpleElerp(const aWith:TpvMatrix4x4D;const aTime:TpvDouble):TpvMatrix4x4D;
+var InvT:TpvDouble;
+    Scale:TpvVector3D;
+begin
+ if aTime<=0.0 then begin
+  result:=self;
+ end else if aTime>=1.0 then begin
+  result:=aWith;
+ end else begin
+  Scale:=TpvVector3.Create(Right.xyz.Length,
+                           Up.xyz.Length,
+                           Forwards.xyz.Length).Lerp(TpvVector3.Create(aWith.Right.xyz.Length,
+                                                                       aWith.Up.xyz.Length,
+                                                                       aWith.Forwards.xyz.Length),
+                                                     aTime);
+  result:=TpvMatrix4x4D.Create(Normalize.ToQuaternionD.Elerp(aWith.Normalize.ToQuaternionD,aTime));
+  result.Right.xyz:=result.Right.xyz*Scale.x;
+  result.Up.xyz:=result.Up.xyz*Scale.y;
+  result.Forwards.xyz:=result.Forwards.xyz*Scale.z;
+  result.Translation:=Translation.Lerp(aWith.Translation,aTime);
+  InvT:=1.0-aTime;
+  result.RawComponents[0,3]:=(RawComponents[0,3]*InvT)+(aWith.RawComponents[0,3]*aTime);
+  result.RawComponents[1,3]:=(RawComponents[1,3]*InvT)+(aWith.RawComponents[1,3]*aTime);
+  result.RawComponents[2,3]:=(RawComponents[2,3]*InvT)+(aWith.RawComponents[2,3]*aTime);
+ end;
+end;
+
+function TpvMatrix4x4D.SimpleSqlerp(const aB,aC,aD:TpvMatrix4x4D;const aTime:TpvDouble):TpvMatrix4x4D;
+begin
+ result:=SimpleSlerp(aD,aTime).SimpleSlerp(aB.SimpleSlerp(aC,aTime),(2.0*aTime)*(1.0-aTime));
 end;
 
 function TpvMatrix4x4D.Lerp(const aWith:TpvMatrix4x4D;const aTime:TpvDouble):TpvMatrix4x4D;
