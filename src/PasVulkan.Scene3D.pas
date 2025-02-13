@@ -3907,7 +3907,7 @@ type EpvScene3D=class(Exception);
                       const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes=[TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Blend,TpvScene3D.TMaterial.TAlphaMode.Mask];
                       const aJitter:PpvVector4=nil;
                       const aDisocclusions:Boolean=false);
-       procedure GetZNearZFar(const aViewMatrix:TpvMatrix4x4;
+       procedure GetZNearZFar(const aViewMatrix:TpvMatrix4x4D;
                               const aAspectRatio:TpvScalar;
                               out aZNear:TpvScalar;
                               out aZFar:TpvScalar);
@@ -33586,21 +33586,21 @@ begin
   fVulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
 end;
 
-procedure TpvScene3D.GetZNearZFar(const aViewMatrix:TpvMatrix4x4;
+procedure TpvScene3D.GetZNearZFar(const aViewMatrix:TpvMatrix4x4D;
                                   const aAspectRatio:TpvScalar;
                                   out aZNear:TpvScalar;
                                   out aZFar:TpvScalar);
 var x,y,z:TpVInt32;
-    InverseViewMatrix:TpvMatrix4x4;
-    CameraPosition,CameraDirection,Corner:TpvVector3;
+    InverseViewMatrix:TpvMatrix4x4D;
+    CameraPosition,CameraDirection,Corner:TpvVector3D;
     Dot:TpvScalar;
 begin
 
  InverseViewMatrix:=aViewMatrix.Inverse;
 
- CameraPosition:=PpvVector3(@InverseViewMatrix.RawComponents[3,0])^;
+ CameraPosition:=PpvVector3D(@InverseViewMatrix.RawComponents[3,0])^;
 
- CameraDirection:=-PpvVector3(@InverseViewMatrix.RawComponents[2,0])^.Normalize;
+ CameraDirection:=-PpvVector3D(@InverseViewMatrix.RawComponents[2,0])^.Normalize;
 
  Corner:=fBoundingBox.Min;
  Dot:=CameraDirection.Dot(Corner-CameraPosition);
@@ -33610,7 +33610,7 @@ begin
  for x:=0 to 1 do begin
   for y:=0 to 1 do begin
    for z:=0 to 1 do begin
-    Corner:=TpvVector3.Create(fBoundingBox.MinMax[x].x,fBoundingBox.MinMax[y].y,fBoundingBox.MinMax[z].z);
+    Corner:=TpvVector3D.Create(fBoundingBox.MinMax[x].x,fBoundingBox.MinMax[y].y,fBoundingBox.MinMax[z].z);
     Dot:=CameraDirection.Dot(Corner-CameraPosition);
     aZNear:=Min(aZNear,Dot);
     aZFar:=Max(aZFar,Dot);
