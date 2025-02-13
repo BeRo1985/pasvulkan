@@ -34036,7 +34036,19 @@ end;
 
 function TpvScene3D.TransformOrigin(const aMatrix:TpvMatrix4x4D;const aInFlightFrameIndex:TpvSizeInt;const aInverse:Boolean):TpvMatrix4x4D;
 begin
- result:=fInverseOriginTransforms[aInFlightFrameIndex]*aMatrix;
+{result:=aMatrix;
+ if aInverse then begin
+  result:=result.Inverse;
+ end;
+ result:=result*fOriginTransforms[aInFlightFrameIndex];
+ if aInverse then begin
+  result:=result.Inverse;
+ end;}
+ if aInverse then begin
+  result:=aMatrix*fOriginTransforms[aInFlightFrameIndex];
+ end else begin
+  result:=aMatrix*fInverseOriginTransforms[aInFlightFrameIndex];
+ end;
 end;
 
 procedure TpvScene3D.GetProfilerTimes(out aCPUTime,aGPUTime:TpvDouble);
