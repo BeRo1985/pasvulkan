@@ -26268,12 +26268,12 @@ begin
        PerInFlightFrameRenderInstance^.PotentiallyVisibleSetNodeIndex:=RenderInstance.fPotentiallyVisibleSetNodeIndex;
        PerInFlightFrameRenderInstance^.BoundingBox:=RenderInstance.fBoundingBox;
        PerInFlightFrameRenderInstance^.RenderInstance:=RenderInstance;
-       PerInFlightFrameRenderInstance^.ModelMatrix:=RenderInstance.fWorkModelMatrix.ToDoubleSingleFloatingPointMatrix4x4;
+       PerInFlightFrameRenderInstance^.ModelMatrix:=RenderInstance.fWorkModelMatrix;
        if RenderInstance.fFirst then begin
         RenderInstance.fFirst:=false;
-        PerInFlightFrameRenderInstance^.PreviousModelMatrix:=RenderInstance.fWorkModelMatrix.ToDoubleSingleFloatingPointMatrix4x4;
+        PerInFlightFrameRenderInstance^.PreviousModelMatrix:=RenderInstance.fWorkModelMatrix;
        end else begin
-        PerInFlightFrameRenderInstance^.PreviousModelMatrix:=RenderInstance.fPreviousModelMatrix.ToDoubleSingleFloatingPointMatrix4x4;
+        PerInFlightFrameRenderInstance^.PreviousModelMatrix:=RenderInstance.fPreviousModelMatrix;
        end;
        RenderInstance.fPreviousModelMatrix:=RenderInstance.fWorkModelMatrix;
        RenderInstance.UpdateLights;

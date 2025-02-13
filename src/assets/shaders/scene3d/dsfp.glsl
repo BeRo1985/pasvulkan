@@ -154,6 +154,9 @@ affineZX, affineZY, affineZZ, fineZ
 
 vec4 dsfpTransformPosition(mat4 matrixPacked, vec4 vertexPosition){
 
+  return matrixPacked * vertexPosition;  
+
+#if 0  
   // [3][3] signals if the matrix is a normal matrix or a packed matrix.
   
   if(matrixPacked[3].w > 0.0){
@@ -206,9 +209,14 @@ vec4 dsfpTransformPosition(mat4 matrixPacked, vec4 vertexPosition){
 
   }
 
+#endif
 } 
 
 vec4 dsfpTransformPosition(mat4 modelPacked, mat4 viewPacked, vec4 vertexPosition){
+
+  return (viewPacked * modelPacked) * vertexPosition;  
+
+#if 0
 
   // [3][3] signals if the matrix is a normal matrix or a packed matrix.
   
@@ -281,11 +289,16 @@ vec4 dsfpTransformPosition(mat4 modelPacked, mat4 viewPacked, vec4 vertexPositio
 
   }
 
+#endif
+
 } 
 
 // Clean the 4x4 matrix by removing the fine components, for direct usage after it.
 mat4 dsfpMatrixClean(mat4 m){
+  return m;
+#if 0    
   return mat4(vec4(m[0].xyz, 0.0), vec4(m[1].xyz, 0.0), vec4(m[2].xyz, 0.0), vec4(m[3].xyz, abs(m[3].w)));
+#endif
 }
 
 #endif
