@@ -121,8 +121,6 @@ layout(set = 2, binding = 0) uniform sampler2D uTextures[]; // 0 = height map, 1
 
 #include "math.glsl"
 
-#include "dsfp.glsl"
-
 #include "srgb.glsl"
 
 #ifdef RAYTRACING

@@ -93,8 +93,6 @@ layout(set = 1, binding = 0, std140) uniform uboViews {
 #include "octahedralmap.glsl"
 #include "tangentspacebasis.glsl" 
 
-#include "dsfp.glsl"
-
 uint viewIndex = pushConstants.viewBaseIndex + uint(gl_ViewIndex);
 mat4 viewMatrix = uView.views[viewIndex].viewMatrix;
 mat4 projectionMatrix = uView.views[viewIndex].projectionMatrix;
@@ -112,11 +110,11 @@ void main(){
   vec3 cameraPosition = (-viewMatrix[3].xyz) * mat3(viewMatrix);
 #endif   
 
-//vec3 position = (pushConstants.modelMatrix * vec4(inPosition, 1.0)).xyz;
+  vec3 position = (pushConstants.modelMatrix * vec4(inPosition, 1.0)).xyz;
 //vec3 position = (pushConstants.modelMatrix * vec4(uintBitsToFloat(inPositionXYZNormalXYZTexCoordU.xyz), 1.0)).xyz;
 
-  vec3 worldSpacePosition = dsfpTransformPosition(pushConstants.modelMatrix, vec4(inPosition, 1.0)).xyz; 
-  
+  vec3 worldSpacePosition = position;
+
   // Decode the normal and texture U coordinate from a single 32-bit unsigned integer.
 /*uvec4 encodedNormalTexCoordU = (uvec4(inNormalXYZTexCoordU) >> uvec4(0u, 10u, 20u, 30u)) & uvec2(0x3ffu, 0x3u).xxxy;
   vec3 normal = normalize(max(vec3((-(encodedNormalTexCoordU.xyz & ivec3(0x200u))) | (encodedNormalTexCoordU.xyz & ivec3(0x1ffu))) / vec3(ivec3(0x1ffu)), vec3(-1.0)));*/
@@ -129,11 +127,10 @@ void main(){
   
   vec2 texCoordUV = vec2((abs(inNormalXYZTexCoordU.w) > 1e-3) ? 1.0 : 0.0, inTexCoordV);
     
-  vec4 viewSpacePosition = dsfpTransformPosition(pushConstants.modelMatrix, viewMatrix, vec4(inPosition, 1.0));
-  vec4 clipSpacePosition = projectionMatrix * viewSpacePosition;
+  vec4 viewSpacePosition = viewMatrix * vec4(position, 1.0);
   viewSpacePosition.xyz /= viewSpacePosition.w;
 
-  outBlock.position = worldSpacePosition;         
+  outBlock.position = position;         
   outBlock.normal = normalize(adjugate(pushConstants.modelMatrix) * normal);
   outBlock.tangentSign = tangentSign;
   outBlock.texCoord = texCoordUV;
@@ -142,15 +139,14 @@ void main(){
   outBlock.cameraRelativePosition = worldSpacePosition - cameraPosition;
   outBlock.jitter = pushConstants.jitter;
 #ifdef VELOCITY
-  outBlock.currentClipSpace = clipSpacePosition;
-//outBlock.previousClipSpace = (uView.views[viewIndex + pushConstants.countAllViews].projectionMatrix * uView.views[viewIndex + pushConstants.countAllViews].viewMatrix) * vec4(position, 1.0);
-  outBlock.previousClipSpace = uView.views[viewIndex + pushConstants.countAllViews].projectionMatrix * dsfpTransformPosition(pushConstants.modelMatrix, uView.views[viewIndex + pushConstants.countAllViews].viewMatrix, vec4(inPosition, 1.0));
+  outBlock.currentClipSpace = viewProjectionMatrix * vec4(position, 1.0);
+  outBlock.previousClipSpace = (uView.views[viewIndex + pushConstants.countAllViews].projectionMatrix * uView.views[viewIndex + pushConstants.countAllViews].viewMatrix) * vec4(position, 1.0);
 #endif
 
 #if defined(RAYTRACING)
   outWorldSpacePosition = worldSpacePosition;
 #endif
 
-  gl_Position = clipSpacePosition;
+  gl_Position = viewProjectionMatrix * vec4(position, 1.0);
 
 }

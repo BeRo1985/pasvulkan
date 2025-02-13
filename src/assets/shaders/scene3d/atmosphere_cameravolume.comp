@@ -47,7 +47,7 @@ layout(set = 2, binding = 3, std430) buffer AtmosphereParametersBuffer {
 } uAtmosphereParameters;
 
 const float aerialPerspectiveStartDepthKM = 0.0; 
- 
+
 void main() {
 
   ivec2 size = imageSize(uDestinationTexture).xy;
@@ -64,7 +64,7 @@ void main() {
 
     View view = uView.views[pushConstants.baseViewIndex + viewIndex];
 
-    mat4 inverseViewMatrix = dsfpMatrixClean(view.inverseViewMatrix);
+    mat4 inverseViewMatrix = view.inverseViewMatrix;
     mat4 inverseProjectionMatrix = view.inverseProjectionMatrix;
 
     mat4 skyInvViewProjMat = inverseViewMatrix * inverseProjectionMatrix;
@@ -76,7 +76,7 @@ void main() {
     //seedSampleSeedT(uBlueNoise, ivec2(coord), pushConstants.frameIndex);
 
     vec3 worldPos, worldDir;
-    GetCameraPositionDirection(worldPos, worldDir, dsfpMatrixClean(view.viewMatrix), view.projectionMatrix, inverseViewMatrix, view.inverseProjectionMatrix, uv);
+    GetCameraPositionDirection(worldPos, worldDir, view.viewMatrix, view.projectionMatrix, view.inverseViewMatrix, view.inverseProjectionMatrix, uv);
 
     worldPos = (uAtmosphereParameters.atmosphereParameters.inverseTransform * vec4(worldPos, 1.0)).xyz;
     worldDir = normalize((uAtmosphereParameters.atmosphereParameters.inverseTransform * vec4(worldDir, 0.0)).xyz);

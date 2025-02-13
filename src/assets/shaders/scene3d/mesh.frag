@@ -231,8 +231,6 @@ layout (set = 1, binding = 8, std430) readonly buffer FrustumClusterGridData {
 vec3 workTangent, workBitangent, workNormal;
 
 #include "math.glsl" 
- 
-#include "dsfp.glsl"
 
 #define TRANSPARENCY_GLOBALS
 #include "transparency.glsl"

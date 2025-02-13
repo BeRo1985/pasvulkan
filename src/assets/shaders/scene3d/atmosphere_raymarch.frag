@@ -199,7 +199,7 @@ void main() {
   }
 
   vec3 worldPos, worldDir;
-  GetCameraPositionDirection(worldPos, worldDir, dsfpMatrixClean(view.viewMatrix), view.projectionMatrix, dsfpMatrixClean(view.inverseViewMatrix), view.inverseProjectionMatrix, uv);
+  GetCameraPositionDirection(worldPos, worldDir, view.viewMatrix, view.projectionMatrix, view.inverseViewMatrix, view.inverseProjectionMatrix, uv);
   
   worldPos = (uAtmosphereParameters.atmosphereParameters.inverseTransform * vec4(worldPos, 1.0)).xyz;
   worldDir = normalize((uAtmosphereParameters.atmosphereParameters.inverseTransform * vec4(worldDir, 0.0)).xyz);
@@ -336,7 +336,7 @@ void main() {
     if(depthIsZFar){
       atmosphereCullingFactor = 1.0;
     }else{
-      vec4 t = (dsfpMatrixClean(view.inverseViewMatrix) * view.inverseProjectionMatrix) * vec4(fma(uv, vec2(2.0), vec2(-1.0)), depthBufferValue, 1.0);
+      vec4 t = (view.inverseViewMatrix * view.inverseProjectionMatrix) * vec4(fma(uv, vec2(2.0), vec2(-1.0)), depthBufferValue, 1.0);
       atmosphereCullingFactor = getAtmosphereCullingFactor(uAtmosphereParameters.atmosphereParameters.CullingParameters, t.xyz /= t.w, worldPos);
     }
   }else{
@@ -430,7 +430,7 @@ void main() {
       if(length(worldPos) >= uAtmosphereParameters.atmosphereParameters.TopRadius){
 
         vec4 aabb;     
-        vec3 transformedCenter = dsfpTransformPosition(uAtmosphereParameters.atmosphereParameters.transform, view.viewMatrix, vec4(vec3(0.0), 1.0)).xyz;
+        vec3 transformedCenter = ((view.viewMatrix * uAtmosphereParameters.atmosphereParameters.transform) * vec4(vec3(0.0), 1.0)).xyz;
         if(projectSphere(transformedCenter, uAtmosphereParameters.atmosphereParameters.TopRadius, 0.01, view.projectionMatrix, aabb, false)){
 
           // camera volume is 32x32 by width and height and 32 by depth, by default
@@ -455,7 +455,7 @@ void main() {
           }
         }
 
-        mat4 inverseViewProjectionMatrix = dsfpMatrixClean(view.inverseViewMatrix) * view.inverseProjectionMatrix;
+        mat4 inverseViewProjectionMatrix = view.inverseViewMatrix * view.inverseProjectionMatrix;
 
         vec4 depthBufferWorldPos = inverseViewProjectionMatrix * vec4(fma(vec2(uv), vec2(2.0), vec2(-1.0)), depthBufferValue, 1.0);
         depthBufferWorldPos /= depthBufferWorldPos.w;
@@ -538,7 +538,7 @@ void main() {
       vec3 localWorldPos = worldPos + (worldDir * cloudsDepth); // move to the clouds depth as starting point
       if(MoveToTopAtmosphere(localWorldPos, worldDir, uAtmosphereParameters.atmosphereParameters.TopRadius)){
 
-        mat4 skyInvViewProjMat = dsfpMatrixClean(view.inverseViewMatrix) * view.inverseProjectionMatrix;
+        mat4 skyInvViewProjMat = view.inverseViewMatrix * view.inverseProjectionMatrix;
         const bool ground = false;
         const float sampleCountIni = 0.0;
         const bool variableSampleCount = true;
@@ -577,7 +577,7 @@ void main() {
     // This is critical to be after the above to not disrupt above atmosphere tests and voxel selection.
     if(MoveToTopAtmosphere(worldPos, worldDir, uAtmosphereParameters.atmosphereParameters.TopRadius)){
 
-      mat4 skyInvViewProjMat = dsfpMatrixClean(view.inverseViewMatrix) * view.inverseProjectionMatrix; 
+      mat4 skyInvViewProjMat = view.inverseViewMatrix * view.inverseProjectionMatrix; 
       const bool ground = false;
       const float sampleCountIni = 0.0;
       const bool variableSampleCount = true;

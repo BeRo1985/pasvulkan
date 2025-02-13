@@ -143,7 +143,6 @@ vec3 hash33(vec3 p) {
   #include "raytracing.glsl"
   #include "tangentspacebasis.glsl"
   #include "pcg.glsl"
-  #include "dsfp.glsl"
 
 vec2 Hammersley(const in int index, const in int numSamples) {
 #if 1
@@ -545,7 +544,7 @@ void main() {
 
   vec3 primaryRayOrigin = inverseViewMatrix[3].xyz;
 
-  vec3 primaryRayDirection = normalize((dsfpMatrixClean(inverseViewMatrix) * cameraDirection).xyz);
+  vec3 primaryRayDirection = normalize((inverseViewMatrix * cameraDirection).xyz);
 
 #else
 
@@ -638,7 +637,7 @@ void main() {
 #if 1
     vec3 rayOrigin = fetchWorldPosition(texCoord.xy); 
 #else   
-    vec4 rayOrigin = dsfpTransformPosition(inverseViewMatrix, vec4(position.xyz, 1.0));
+    vec4 rayOrigin = inverseViewMatrix * vec4(position.xyz, 1.0);
     rayOrigin.xyz /= rayOrigin.w;
 #endif    
     for (int i = 0; i < countKernelSamples; i += stepKernelSamples) {

@@ -66,8 +66,6 @@ layout (push_constant) uniform PushConstants {
 
 #include "mesh_pushconstants.glsl" 
 
-#include "dsfp.glsl" 
-
 //#endif
 
 // Global descriptor set
@@ -176,19 +174,17 @@ void main() {
 
     tangentSpace = adjugate(instanceMatrix) * tangentSpace;   
 
-    clipSpacePosition = view.projectionMatrix * (viewSpacePosition = dsfpTransformPosition(instanceMatrix, view.viewMatrix, vec4(inPosition, 1.0)));
+    clipSpacePosition = view.projectionMatrix * (viewSpacePosition = ((view.viewMatrix * instanceMatrix) * vec4(inPosition, 1.0)));
     viewSpacePosition.xyz /= viewSpacePosition.w;
 
-    //worldSpacePosition = (instanceMatrix * vec4(position, 1.0)).xyz;
-    worldSpacePosition = dsfpTransformPosition(instanceMatrix, vec4(inPosition, 1.0)).xyz;
+    worldSpacePosition = (instanceMatrix * vec4(inPosition, 1.0)).xyz;
 
 #ifdef VELOCITY  
     if(uint(inGeneration) != uint(inPreviousGeneration)){
       previousClipSpacePosition = clipSpacePosition;
     }else{  
       View previousView = uView.views[viewIndex + pushConstants.countAllViews];
-//    vec4 previousPosition = (instanceMatrices[(gl_InstanceIndex << 1) | 1] * vec4(previousPosition, 1.0));
-      previousClipSpacePosition = previousView.projectionMatrix * dsfpTransformPosition(instanceMatrices[(gl_InstanceIndex << 1) | 1], previousView.viewMatrix, vec4(inPreviousPosition, 1.0));
+      previousClipSpacePosition = previousView.projectionMatrix * ((previousView.viewMatrix * instanceMatrices[(gl_InstanceIndex << 1) | 1]) * vec4(inPreviousPosition, 1.0));
     }
 #endif
 

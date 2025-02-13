@@ -101,8 +101,6 @@ layout(std140, set = 1, binding = 0) uniform uboViews {
   #undef TRANSPARENCY_GLOBALS
 #endif
 
-#include "dsfp.glsl"
-
 void main() {
 
 #ifdef VOXELIZATION

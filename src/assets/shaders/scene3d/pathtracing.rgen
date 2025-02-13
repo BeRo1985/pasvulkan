@@ -41,8 +41,6 @@ layout(set = 1, binding = 2, rgba32ui) uniform uimage2DArray uImagePositionNorma
 
 #include "rgb10a2.glsl"
 
-#include "dsfp.glsl"
-
 layout(location = 0) rayPayloadEXT RayPayload payload;
 
 bool ProjectionMatrixIsReversedZ(const in mat4 projectionMatrix){
@@ -68,7 +66,7 @@ void GetCameraPositionDirection(out vec3 origin,
 
   bool reversedZ = ProjectionMatrixIsReversedZ(view.projectionMatrix);
 
-  mat4 inverseViewProjectionMatrix = dsfpMatrixClean(view.inverseViewMatrix) * view.inverseProjectionMatrix;
+  mat4 inverseViewProjectionMatrix = view.inverseViewMatrix * view.inverseProjectionMatrix;
 
   vec4 nearPlane = inverseViewProjectionMatrix * vec4(fma(uv, vec2(2.0), vec2(-1.0)), reversedZ ? 1.0 : 0.0, 1.0);
   nearPlane /= nearPlane.w;
@@ -106,7 +104,7 @@ void GetCameraPositionDirection(out vec3 origin,
 
 #endif
 
-  direction = normalize((dsfpMatrixClean(view.inverseViewMatrix) * cameraDirection).xyz);
+  direction = normalize((view.inverseViewMatrix * cameraDirection).xyz);
 
 #endif
 

@@ -7,7 +7,6 @@
 #endif
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_ARB_shading_language_420pack : enable
-#extension GL_GOOGLE_include_directive : enable
 #if defined(SHADERDEBUG) && !defined(VELOCITY)
 #extension GL_EXT_debug_printf : enable
 #endif
@@ -69,8 +68,6 @@ out gl_PerVertex {
 
 /* clang-format on */
 
-#include "dsfp.glsl"
-
 void main() {
 #ifdef VOXELIZATION
   uint viewIndex = pushConstants.viewBaseIndex;
@@ -88,8 +85,7 @@ void main() {
 #ifdef VOXELIZATION
   outWorldSpacePosition = position;
 #else
-  vec4 viewSpacePosition = dsfpTransformPosition(view.viewMatrix, vec4(position, 1.0));
-  vec4 clipSpacePosition = view.projectionMatrix * viewSpacePosition;
+  vec4 viewSpacePosition = view.viewMatrix * vec4(position, 1.0);
   viewSpacePosition /= viewSpacePosition.w;
   outViewSpacePosition = viewSpacePosition.xyz;
 #endif
@@ -99,7 +95,7 @@ void main() {
 #ifdef VOXELIZATION
   gl_Position = vec4(0.0, 0.0, 0.0, 1.0); // Overrided by geometry shader anyway
 #else
-  gl_Position = clipSpacePosition;
+  gl_Position = (view.projectionMatrix * view.viewMatrix) * vec4(position, 1.0);
 #endif
   gl_PointSize = 1.0;
 }

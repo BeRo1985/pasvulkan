@@ -23,8 +23,6 @@
 
 #include "math.glsl"
 
-#include "dsfp.glsl"
-
 float SampleSegmentT = 0.3;
 
 struct CloudPhaseParameters {

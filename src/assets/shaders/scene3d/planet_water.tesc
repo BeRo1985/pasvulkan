@@ -52,12 +52,10 @@ layout(set = 1, binding = 0, std140) uniform uboViews {
   View views[256];
 } uView;
  
-#include "dsfp.glsl"
-
 uint viewIndex = pushConstants.viewBaseIndex + uint(gl_ViewIndex);
-mat4 viewMatrix = dsfpMatrixClean(uView.views[viewIndex].viewMatrix);
+mat4 viewMatrix = uView.views[viewIndex].viewMatrix;
 mat4 projectionMatrix = uView.views[viewIndex].projectionMatrix;
-mat4 inverseViewMatrix = dsfpMatrixClean(uView.views[viewIndex].inverseViewMatrix);
+mat4 inverseViewMatrix = uView.views[viewIndex].inverseViewMatrix;
 // mat4 inverseProjectionMatrix = uView.views[viewIndex].inverseProjectionMatrix;
 mat4 viewProjectionMatrix = projectionMatrix * viewMatrix;
 

@@ -77,8 +77,6 @@ float planetTopRadius = planetData.bottomRadiusTopRadiusHeightMapScale.y;
 mat4 planetModelMatrix = planetData.modelMatrix;
 mat4 planetInverseModelMatrix = inverse(planetModelMatrix);
 
-#include "dsfp.glsl"
-
 #include "planet_water.glsl"
 //#endif
 
@@ -86,13 +84,10 @@ void main(){
 
 #if 1
   // The actual standard approach
-  mat4 modelViewMatrix = mat4(dsfpMatrixClean(uView.views[viewIndex].viewMatrix) * dsfpMatrixClean(planetModelMatrix)); 
-  mat4 inverseModelViewMatrix = inverse(modelViewMatrix);
-  vec3 cameraPosition = inverseModelViewMatrix[3].xyz; //inverseViewMatrix[3].xyz;
+  vec3 cameraPosition = inverseViewMatrix[3].xyz;
 #else
   // This approach assumes that the view matrix has no scaling or skewing, but only rotation and translation.
-  mat4 modelViewMatrix = mat4(dsfpMatrixClean(uView.views[viewIndex].viewMatrix) * dsfpMatrixClean(planetModelMatrix)); 
-  vec3 cameraPosition = (-modelViewMatrix[3].xyz) * mat3(modelViewMatrix);
+  vec3 cameraPosition = (-viewMatrix[3].xyz) * mat3(viewMatrix);
 #endif
 
   bool underWater = map(cameraPosition) <= 0.0;
@@ -167,11 +162,9 @@ void main(){
     waterVisible = (waterVisibilityBuffer.bitmap[tileIndex >> 5u] & (1u << (tileIndex & 31u))) != 0u;
   }
 
-  mat4 m = dsfpMatrixClean(planetData.modelMatrix);
-
-  outBlock.position = (m * vec4(localPosition, 1.0)).xyz;
+  outBlock.position = (planetData.modelMatrix * vec4(localPosition, 1.0)).xyz;
   outBlock.normal = sphereNormal;
-  outBlock.planetCenterToCamera = inverseViewMatrix[3].xyz - (m * vec2(0.0, 1.0).xxxy).xyz; 
+  outBlock.planetCenterToCamera = inverseViewMatrix[3].xyz - (planetData.modelMatrix * vec2(0.0, 1.0).xxxy).xyz; 
   outBlock.flags = (underWater ? (1u << 0u) : 0u) |
                    (visible ? (1u << 1u) : 0u) |
                    (waterVisible ? (1u << 2u) : 0u) | 

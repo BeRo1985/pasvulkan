@@ -81,8 +81,6 @@ layout(set = 2, binding = 0) uniform sampler2D uPlanetTextures[]; // 0 = height 
 #include "octahedralmap.glsl"
 #include "tangentspacebasis.glsl" 
 
-#include "dsfp.glsl" 
-
 uint viewIndex = pushConstants.viewBaseIndex + uint(gl_ViewIndex);
 mat4 viewMatrix = uView.views[viewIndex].viewMatrix;
 mat4 projectionMatrix = uView.views[viewIndex].projectionMatrix;
@@ -139,16 +137,17 @@ void main(){
 
   vec3 localPosition = sphereNormal * ((sphereHeight > 1e-6) ? clamp(sphereHeight, planetData.bottomRadiusTopRadiusHeightMapScale.x * 0.5, planetData.bottomRadiusTopRadiusHeightMapScale.y) : 1e-6);
 
-  vec3 worldSpacePosition = dsfpTransformPosition(planetData.modelMatrix, vec4(localPosition, 1.0)).xyz;
+  vec3 position = (planetData.modelMatrix * vec4(localPosition, 1.0)).xyz;
+
+  vec3 worldSpacePosition = position;
 
   vec3 normal = sphereNormal;
 
-  vec4 viewSpacePosition = dsfpTransformPosition(planetData.modelMatrix, viewMatrix, vec4(localPosition, 1.0));
-  vec4 clipSpacePosition = projectionMatrix * viewSpacePosition;
+  vec4 viewSpacePosition = viewMatrix * vec4(position, 1.0);
   viewSpacePosition.xyz /= viewSpacePosition.w;
 
   outBlock.localPosition = localPosition;
-  outBlock.position = worldSpacePosition;
+  outBlock.position = position;
   outBlock.sphereNormal = sphereNormal;      
   outBlock.normal = normalize((planetData.normalMatrix * vec4(normal, 0.0)).xyz);
   outBlock.worldSpacePosition = worldSpacePosition;
@@ -159,6 +158,6 @@ void main(){
   outBlock.waterOverSurface = (sphereHeightData.y > 1e-6) ? 1.0 : 0.0;
   outBlock.underWater = ((inBlocks[0].flags & (1u << 0u)) != 0u) ? 1.0 : 0.0;
 
-	gl_Position = clipSpacePosition;
+	gl_Position = viewProjectionMatrix * vec4(position, 1.0);
   
 }

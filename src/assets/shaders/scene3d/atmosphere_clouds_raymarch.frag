@@ -953,7 +953,7 @@ void main(){
   vec2 uv = inTexCoord; 
 
   vec3 worldPos, worldDir;
-  GetCameraPositionDirection(worldPos, worldDir, dsfpMatrixClean(view.viewMatrix), view.projectionMatrix, dsfpMatrixClean(view.inverseViewMatrix), view.inverseProjectionMatrix, uv);
+  GetCameraPositionDirection(worldPos, worldDir, view.viewMatrix, view.projectionMatrix, view.inverseViewMatrix, view.inverseProjectionMatrix, uv);
   
   worldPos = (uAtmosphereParameters.atmosphereParameters.inverseTransform * vec4(worldPos, 1.0)).xyz;
   worldDir = normalize((uAtmosphereParameters.atmosphereParameters.inverseTransform * vec4(worldDir, 0.0)).xyz);
