@@ -64,6 +64,7 @@ layout(set = 3, binding = 1) readonly buffer WaterVisibilityBuffer {
 //#endif
 
 uint viewIndex = pushConstants.viewBaseIndex + uint(gl_ViewIndex);
+mat4 viewMatrix = uView.views[viewIndex].viewMatrix; 
 mat4 inverseViewMatrix = uView.views[viewIndex].inverseViewMatrix; 
 
 //#ifdef UNDERWATER
@@ -82,15 +83,9 @@ mat4 planetInverseModelMatrix = inverse(planetModelMatrix);
 
 void main(){ 
 
-#if 1
-  // The actual standard approach
-  vec3 cameraPosition = inverseViewMatrix[3].xyz;
-#else
-  // This approach assumes that the view matrix has no scaling or skewing, but only rotation and translation.
-  vec3 cameraPosition = (-viewMatrix[3].xyz) * mat3(viewMatrix);
-#endif
-
-  bool underWater = map(cameraPosition) <= 0.0;
+  vec3 planetSpaceCameraPosition = (planetInverseModelMatrix * vec4(inverseViewMatrix[3].xyz, 1.0)).xyz;
+  
+  bool underWater = map(planetSpaceCameraPosition) <= 0.0;
 
 #ifdef UNDERWATER
 

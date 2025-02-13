@@ -1529,7 +1529,7 @@ type EpvScene3D=class(Exception);
               fPosition:TpvVector3;
               fDirection:TpvVector3;
               fRadius:TpvScalar;
-              fMatrix:TpvMatrix4x4;
+              fMatrix:TpvMatrix4x4D;
               fViewSpacePosition:TpvVector3;
               fBoundingBox:TpvAABB;
               fBoundingSphere:TpvSphere;
@@ -1561,7 +1561,7 @@ type EpvScene3D=class(Exception);
               property ShadowMapIndex:TpvInt32 read fShadowMapIndex write fShadowMapIndex;
              public
               property Visible:boolean read fVisible write fVisible;
-              property Matrix:TpvMatrix4x4 read fMatrix write fMatrix;
+              property Matrix:TpvMatrix4x4D read fMatrix write fMatrix;
               property ViewSpacePosition:TpvVector3 read fViewSpacePosition write fViewSpacePosition;
             end;
             TLights=TpvObjectGenericList<TpvScene3D.TLight>;
@@ -10315,9 +10315,9 @@ begin
      AABB.Max:=TpvVector3.InlineableCreate(Infinity,Infinity,Infinity);
     end else begin
      OppositeLength:=Tan(Data^.fOuterConeAngle{*0.5})*Radius;
-     OBB.Center:=fMatrix*TpvVector3.InlineableCreate(0.0,0.0,-Radius*0.5);
+     OBB.Center:=fMatrix.MulHomogen(TpvVector3.InlineableCreate(0.0,0.0,-Radius*0.5));
      OBB.HalfExtents:=TpvVector3.InlineableCreate(OppositeLength,OppositeLength,Radius*0.5);
-     OBB.Matrix:=fMatrix.ToMatrix3x3;
+     OBB.Matrix:=fMatrix.ToMatrix4x4.ToMatrix3x3;
      AABB:=TpvAABB.CreateFromOBB(OBB);
     end;
    end;
