@@ -624,7 +624,7 @@ type TpvScene3DAtmosphere=class;
 
               VolumetricClouds:TGPUVolumetricCloudParameters;
 
-              procedure Assign(const aAtmosphereParameters:TAtmosphereParameters);
+              procedure Assign(const aAtmosphereParameters:TAtmosphereParameters;const aScene3D:TObject;const aInFlightFrameIndex:TpvSizeInt);
             end;
             PGPUAtmosphereParameters=^TGPUAtmosphereParameters;
             { TRendererInstance }
@@ -1783,10 +1783,10 @@ end;
 
 { TpvScene3DAtmosphere.TGPUAtmosphereParameters }
 
-procedure TpvScene3DAtmosphere.TGPUAtmosphereParameters.Assign(const aAtmosphereParameters:TAtmosphereParameters);
+procedure TpvScene3DAtmosphere.TGPUAtmosphereParameters.Assign(const aAtmosphereParameters:TAtmosphereParameters;const aScene3D:TObject;const aInFlightFrameIndex:TpvSizeInt);
 begin
 
- Transform:=aAtmosphereParameters.Transform;
+ Transform:=aAtmosphereParameters.Transform*TpvScene3D(aScene3D).InverseOriginTransforms[aInFlightFrameIndex];
  InverseTransform:=Transform.Inverse;
 
  SolarIrradiance:=aAtmosphereParameters.SolarIrradiance;
@@ -3861,7 +3861,7 @@ begin
 
   if assigned(fAtmosphereParametersBuffers[aInFlightFrameIndex]) then begin
    
-   fGPUAtmosphereParameters.Assign(fAtmosphereParameters);
+   fGPUAtmosphereParameters.Assign(fAtmosphereParameters,fScene3D,aInFlightFrameIndex);
 
 {  fGPUAtmosphereParameters.Transform:=fGPUAtmosphereParameters.Transform;
    fGPUAtmosphereParameters.InverseTransform:=fGPUAtmosphereParameters.Transform.Inverse;}

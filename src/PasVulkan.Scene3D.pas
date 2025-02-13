@@ -3780,6 +3780,7 @@ type EpvScene3D=class(Exception);
        fLoadGLTFTimeDurationLock:TPasMPInt32;
        fLoadGLTFTimeDuration:TpvDouble;
        fDrawDataGeneration:TPasMPUInt64;
+       fRaytracingOriginTransform:TOriginTransform;
        fOriginTransform:TOriginTransform;
        fInverseOriginTransform:TOriginTransform;
        fOriginTransforms:TOriginTransforms;
@@ -25979,7 +25980,11 @@ begin
   SetDirty;
  end;
 
- fWorkModelMatrix:=fModelMatrix;
+ if (aInFlightFrameIndex>=0) and not fUseRenderInstances then begin
+  fWorkModelMatrix:=fModelMatrix*fSceneInstance.InverseOriginTransforms[aInFlightFrameIndex];
+ end else begin
+  fWorkModelMatrix:=fModelMatrix;
+ end;
 
  if fActive then begin
   if fUseRenderInstances then begin
@@ -26260,7 +26265,7 @@ begin
       RenderInstance:=fRenderInstances[Index];
       if RenderInstance.fActive then begin
        TPasMPInterlocked.BitwiseOr(RenderInstance.fActiveMask,TpvUInt32(1) shl aInFlightFrameIndex);
-       RenderInstance.fWorkModelMatrix:=RenderInstance.fModelMatrix;
+       RenderInstance.fWorkModelMatrix:=RenderInstance.fModelMatrix*fSceneInstance.InverseOriginTransforms[aInFlightFrameIndex];
        RenderInstance.fModelMatrices[aInFlightFrameIndex]:=RenderInstance.fWorkModelMatrix;
        RenderInstance.fBoundingBox:=TemporaryBoundingBox.HomogenTransform(RenderInstance.fWorkModelMatrix);
        RenderInstance.fBoundingSphere:=TpvSphere.CreateFromAABB(RenderInstance.fBoundingBox);
@@ -27980,6 +27985,8 @@ begin
  FillChar(fDeltaTimes,SizeOf(TDeltaTimes),#0);
 
  fPointerToDeltaTimes:=@fDeltaTimes;
+
+ fRaytracingOriginTransform:=TpvMatrix4x4.Identity;
 
  fOriginTransform:=TpvMatrix4x4.Identity;
  fInverseOriginTransform:=TpvMatrix4x4.Identity;
@@ -32376,6 +32383,12 @@ begin
     BLASListChanged:=false; // Assume, that the BLAS list has not changed yet
 
     MustUpdateTLAS:=false;
+
+    // Check if there is a new origin transform
+    if fRaytracingOriginTransform<>fOriginTransforms[aInFlightFrameIndex] then begin
+     fRaytracingOriginTransform:=fOriginTransforms[aInFlightFrameIndex];
+     MustUpdateTLAS:=true;
+    end;
 
     //////////////////////////////////////////////////////////////////////////////
     // Create empty blas with invalid geometry for empty TLAS, when there are   //
