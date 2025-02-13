@@ -6085,7 +6085,7 @@ begin
 
 //CameraPositon:=-fViews.Items[InFlightFrameState^.FinalViewIndex].ViewMatrix.Translation.xyz;
 
- CameraPositon:=TpvMatrix4x4(fCameraViewMatrices[aInFlightFrameIndex]*TpvScene3D(fScene3D).InverseOriginTransforms[aInFlightFrameIndex]).SimpleInverse.Translation.xyz;
+ CameraPositon:=TpvMatrix4x4(TpvScene3D(fScene3D).TransformOrigin(fCameraViewMatrices[aInFlightFrameIndex],aInFlightFrameIndex,true)).SimpleInverse.Translation.xyz;
 
  zNear:=abs(fZNear);
  zFar:=IfThen(IsInfinite(fZFar),1024.0,abs(fZFar));
@@ -6764,7 +6764,7 @@ begin
 
  if fViews[aInFlightFrameIndex].Count=0 then begin
 
-  ViewMatrix:=TpvMatrix4x4(fCameraViewMatrices[aInFlightFrameIndex]*TpvScene3D(fScene3D).InverseOriginTransforms[aInFlightFrameIndex]);
+  ViewMatrix:=TpvMatrix4x4(TpvScene3D(fScene3D).TransformOrigin(fCameraViewMatrices[aInFlightFrameIndex],aInFlightFrameIndex,true));
 
   if assigned(fVirtualReality) then begin
 

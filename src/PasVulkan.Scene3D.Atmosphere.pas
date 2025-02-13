@@ -1786,7 +1786,7 @@ end;
 procedure TpvScene3DAtmosphere.TGPUAtmosphereParameters.Assign(const aAtmosphereParameters:TAtmosphereParameters;const aScene3D:TObject;const aInFlightFrameIndex:TpvSizeInt);
 begin
 
- Transform:=aAtmosphereParameters.Transform*TpvScene3D(aScene3D).InverseOriginTransforms[aInFlightFrameIndex];
+ Transform:=TpvScene3D(aScene3D).TransformOrigin(aAtmosphereParameters.Transform,aInFlightFrameIndex,false);
  InverseTransform:=Transform.Inverse;
 
  SolarIrradiance:=aAtmosphereParameters.SolarIrradiance;

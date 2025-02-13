@@ -3948,6 +3948,8 @@ type EpvScene3D=class(Exception);
        procedure GetProfilerTimes(out aCPUTime,aGPUTime:TpvDouble);
        procedure DumpProfiler(const aStringList:TStringList=nil);
       public
+       function TransformOrigin(const aMatrix:TpvMatrix4x4D;const aInFlightFrameIndex:TpvSizeInt;const aInverse:Boolean):TpvMatrix4x4D;
+      public
        property BoundingBox:TpvAABB read fBoundingBox;
        property InFlightFrameBoundingBoxes:TInFlightFrameAABBs read fInFlightFrameBoundingBoxes;
        property GlobalVulkanInstanceMatrixBuffers:TGlobalVulkanInstanceMatrixBuffers read fGlobalVulkanInstanceMatrixBuffers;
@@ -25981,7 +25983,7 @@ begin
  end;
 
  if (aInFlightFrameIndex>=0) and not fUseRenderInstances then begin
-  fWorkModelMatrix:=fModelMatrix*fSceneInstance.InverseOriginTransforms[aInFlightFrameIndex];
+  fWorkModelMatrix:=fSceneInstance.TransformOrigin(fModelMatrix,aInFlightFrameIndex,false);
  end else begin
   fWorkModelMatrix:=fModelMatrix;
  end;
@@ -26265,7 +26267,7 @@ begin
       RenderInstance:=fRenderInstances[Index];
       if RenderInstance.fActive then begin
        TPasMPInterlocked.BitwiseOr(RenderInstance.fActiveMask,TpvUInt32(1) shl aInFlightFrameIndex);
-       RenderInstance.fWorkModelMatrix:=RenderInstance.fModelMatrix*fSceneInstance.InverseOriginTransforms[aInFlightFrameIndex];
+       RenderInstance.fWorkModelMatrix:=fSceneInstance.TransformOrigin(RenderInstance.fModelMatrix,aInFlightFrameIndex,false);
        RenderInstance.fModelMatrices[aInFlightFrameIndex]:=RenderInstance.fWorkModelMatrix;
        RenderInstance.fBoundingBox:=TemporaryBoundingBox.HomogenTransform(RenderInstance.fWorkModelMatrix);
        RenderInstance.fBoundingSphere:=TpvSphere.CreateFromAABB(RenderInstance.fBoundingBox);
@@ -34030,6 +34032,11 @@ begin
    end;
   end;
  end;
+end;
+
+function TpvScene3D.TransformOrigin(const aMatrix:TpvMatrix4x4D;const aInFlightFrameIndex:TpvSizeInt;const aInverse:Boolean):TpvMatrix4x4D;
+begin
+ result:=fInverseOriginTransforms[aInFlightFrameIndex]*aMatrix;
 end;
 
 procedure TpvScene3D.GetProfilerTimes(out aCPUTime,aGPUTime:TpvDouble);
