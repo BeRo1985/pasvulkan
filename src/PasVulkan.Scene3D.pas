@@ -3497,6 +3497,10 @@ type EpvScene3D=class(Exception);
             TDeltaTimes=array[0..MaxInFlightFrames-1] of TDeltaTime;
             PDeltaTimes=^TDeltaTimes;
             TParallelGroupInstanceUpdateQueue=TpvDynamicQueue<TpvScene3D.TGroup.TInstance>;
+            TOriginTransform=TpvMatrix4x4D;
+            POriginTransform=^TOriginTransform;
+            TOriginTransforms=array[0..MaxInFlightFrames-1] of TOriginTransform;
+            POriginTransforms=^TOriginTransforms;
       public
        const DoubleSidedFaceCullingModes:array[TDoubleSided,TFrontFacesInversed] of TFaceCullingMode=
               (
@@ -3776,6 +3780,10 @@ type EpvScene3D=class(Exception);
        fLoadGLTFTimeDurationLock:TPasMPInt32;
        fLoadGLTFTimeDuration:TpvDouble;
        fDrawDataGeneration:TPasMPUInt64;
+       fOriginTransform:TOriginTransform;
+       fInverseOriginTransform:TOriginTransform;
+       fOriginTransforms:TOriginTransforms;
+       fInverseOriginTransforms:TOriginTransforms;
       public
        procedure NewImageDescriptorGeneration;
        procedure NewMaterialDataGeneration;
@@ -3953,6 +3961,11 @@ type EpvScene3D=class(Exception);
        property SkyBoxBrightnessFactor:TpvScalar read fSkyBoxBrightnessFactor write fSkyBoxBrightnessFactor;
        property LightIntensityFactor:TpvScalar read fLightIntensityFactor write fLightIntensityFactor;
        property EmissiveIntensityFactor:TpvScalar read fEmissiveIntensityFactor write fEmissiveIntensityFactor;
+      public
+       property OriginTransform:TOriginTransform read fOriginTransform write fOriginTransform;
+       property InverseOriginTransform:TOriginTransform read fInverseOriginTransform write fInverseOriginTransform;
+       property OriginTransforms:TOriginTransforms read fOriginTransforms write fOriginTransforms;
+       property InverseOriginTransforms:TOriginTransforms read fInverseOriginTransforms write fInverseOriginTransforms;
       public
        property DefaultSampler:TSampler read fDefaultSampler;
        property DefaultNonRepeatSampler:TSampler read fDefaultNonRepeatSampler;
@@ -27968,6 +27981,14 @@ begin
 
  fPointerToDeltaTimes:=@fDeltaTimes;
 
+ fOriginTransform:=TpvMatrix4x4.Identity;
+ fInverseOriginTransform:=TpvMatrix4x4.Identity;
+
+ for Index:=0 to fCountInFlightFrames-1 do begin
+  fOriginTransforms[Index]:=fOriginTransform;
+  fInverseOriginTransforms[Index]:=fInverseOriginTransform;
+ end;
+
  fSkyBoxTextureImage:=nil;
 
  fSkyBoxMode:=TpvScene3DEnvironmentMode.Sky;
@@ -30482,6 +30503,12 @@ begin
  TotalCPUTime:=0;
 
  fCountLights[aInFlightFrameIndex]:=0;
+
+ fInverseOriginTransform:=fOriginTransform.Inverse;
+
+ fOriginTransforms[aInFlightFrameIndex]:=fOriginTransform;
+
+ fInverseOriginTransforms[aInFlightFrameIndex]:=fInverseOriginTransform;
 
  TpvScene3DPlanets(fPlanets).Lock.AcquireRead;
  try
