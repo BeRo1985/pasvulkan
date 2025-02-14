@@ -6932,7 +6932,7 @@ begin
   InFlightFrameState^.Jitter.zw:=GetJitterOffset(aFrameCounter-1);
  end;
 
- InFlightFrameState^.SkyBoxOrientation:=TpvMatrix4x4(TpvScene3D(fScene3D).TransformOrigin(fScene3D.SkyBoxOrientation,aInFlightFrameIndex,false));
+ InFlightFrameState^.SkyBoxOrientation:=TpvMatrix4x4(TpvScene3D(fScene3D).TransformOrigin(fScene3D.SkyBoxOrientation,aInFlightFrameIndex,true));
 
  case Renderer.GlobalIlluminationMode of
 
