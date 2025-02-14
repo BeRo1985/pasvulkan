@@ -155,6 +155,16 @@ layout(set = 2, binding = 6, std430) buffer AtmosphereParametersBuffer {
 
 #include "textureutils.glsl"
 
+vec2 intersectSphere(vec3 rayOrigin, vec3 rayDirection, vec4 sphere){
+  vec3 v = rayOrigin - sphere.xyz;
+  float b = dot(v, rayDirection),
+        c = dot(v, v) - (sphere.w * sphere.w),
+        d = (b * b) - c;
+  return (d < 0.0) 
+             ? vec2(-1.0)                                // No intersection
+             : ((vec2(-1.0, 1.0) * sqrt(d)) - vec2(b));  // Intersection
+}        
+
 int countScatteringSamples = 0;
 mat2x3 scatteringSamples[8] = mat2x3[8](
   mat2x3(vec3(0.0), vec3(1.0)),
@@ -198,11 +208,11 @@ void main() {
     seedSampleSeedT(uBlueNoise, ivec2(gl_FragCoord.xy), pushConstants.frameIndex);
   }
 
-  vec3 worldPos, worldDir;
-  GetCameraPositionDirection(worldPos, worldDir, view.viewMatrix, view.projectionMatrix, view.inverseViewMatrix, view.inverseProjectionMatrix, uv);
+  vec3 rayOrigin, rayDirection;
+  GetCameraPositionDirection(rayOrigin, rayDirection, view.viewMatrix, view.projectionMatrix, view.inverseViewMatrix, view.inverseProjectionMatrix, uv);
   
-  worldPos = (uAtmosphereParameters.atmosphereParameters.inverseTransform * vec4(worldPos, 1.0)).xyz;
-  worldDir = normalize((uAtmosphereParameters.atmosphereParameters.inverseTransform * vec4(worldDir, 0.0)).xyz);
+  vec3 worldPos = (uAtmosphereParameters.atmosphereParameters.inverseTransform * vec4(rayOrigin, 1.0)).xyz;
+  vec3 worldDir = normalize((uAtmosphereParameters.atmosphereParameters.inverseTransform * vec4(rayDirection, 0.0)).xyz);
 
   vec3 originalWorldPos = worldPos; 
 
@@ -283,6 +293,40 @@ void main() {
 
 #endif
 
+  bool atmosphereVisible;
+
+  bool reversedZ = ProjectionMatrixIsReversedZ(view.projectionMatrix);
+ 
+  // Get the ray length to the farthest depth value
+  float rayLength = uintBitsToFloat(0x7f800000u); // +inf
+  {
+    vec4 ClipSpace = vec4(fma(uv, vec2(2.0), vec2(-1.0)), depthBufferValue, 1.0);
+    if((reversedZ && (ClipSpace.z > 0.0)) || (!reversedZ && (ClipSpace.z < 1.0))){
+      vec4 p = (uAtmosphereParameters.atmosphereParameters.inverseTransform * view.inverseViewMatrix * view.inverseProjectionMatrix) * ClipSpace;
+      p.xyz /= p.w;
+      if(!(any(isinf(p)) || any(isnan(p)))){
+        rayLength = length(p.xyz - worldPos);
+      }
+    }
+  }
+
+  // Check if the camera is outside the atmosphere or inside the atmosphere
+  if(length(worldPos) > uAtmosphereParameters.atmosphereParameters.TopRadius){
+    
+    // The camera is outside the atmosphere, so we must check if the ray intersects the atmosphere at all
+
+    // It is visible if rayLength intersects the atmosphere at all and the ray is not behind the farthest depth value
+    vec2 tTopSolutions = intersectSphere(worldPos, worldDir, vec2(0.0, uAtmosphereParameters.atmosphereParameters.TopRadius).xxxy);
+    atmosphereVisible = (tTopSolutions.x > 0.0) && (tTopSolutions.x < rayLength);
+
+  }else{
+    
+    // Otherwise the camera is inside the atmosphere, so it is always visible, since the atmosphere is a sphere
+
+    atmosphereVisible = true;
+
+  }
+  
   vec3 sunDirection = normalize(getSunDirection(uAtmosphereParameters.atmosphereParameters));
 
 #ifdef SHADOWS
@@ -416,7 +460,7 @@ void main() {
 
 #endif
   
-  if(needAerialPerspective && needToProcess){
+  if(needAerialPerspective && needToProcess && atmosphereVisible){
 
     // When fast aerial perspective is used and no clouds are present at this fragment pixel, we can use a precomputed camera volume to get the
     // inscattering and transmittance values
@@ -526,7 +570,7 @@ void main() {
     needToRayMarch = false;
   }*/
 
-  if(needToRayMarch && needToProcess){
+  if(needToRayMarch && needToProcess && atmosphereVisible){
 /*
     if(cloudsValid){
 
@@ -558,7 +602,7 @@ void main() {
           mieRayPhase,
           skyInvViewProjMat,
           -1.0, // infinite depth for ray length threshold
-          ProjectionMatrixIsReversedZ(view.projectionMatrix)
+          reversedZ
         );
 
         addScatteringSample(ss.L, ss.Transmittance);
@@ -597,7 +641,7 @@ void main() {
         mieRayPhase,
         skyInvViewProjMat,
         targetDepth,
-        ProjectionMatrixIsReversedZ(view.projectionMatrix)
+        reversedZ
       );
 
       addScatteringSample(ss.L, ss.Transmittance);
