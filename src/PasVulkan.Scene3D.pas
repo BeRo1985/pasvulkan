@@ -10278,7 +10278,7 @@ begin
    if fIndex>=0 then begin
     try
      if (fIndex+1)<fSceneInstance.fLights.Count then begin
-      OtherLight:=fSceneInstance.fLights[fSceneInstance.fManualLights.Count-1];
+      OtherLight:=fSceneInstance.fLights[fSceneInstance.fLights.Count-1];
       OtherLight.fIndex:=fIndex;
       fSceneInstance.fLights[fIndex]:=OtherLight;
       fIndex:=fSceneInstance.fLights.Count-1;
