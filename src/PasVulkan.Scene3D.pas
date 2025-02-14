@@ -3780,6 +3780,8 @@ type EpvScene3D=class(Exception);
        fLoadGLTFTimeDurationLock:TPasMPInt32;
        fLoadGLTFTimeDuration:TpvDouble;
        fDrawDataGeneration:TPasMPUInt64;
+       fUpdatedOriginTransform:TPasMPBool32;
+       fLastOriginTransform:TOriginTransform;
        fRaytracingOriginTransform:TOriginTransform;
        fOriginTransform:TOriginTransform;
        fInverseOriginTransform:TOriginTransform;
@@ -25983,6 +25985,9 @@ begin
  end;
 
  if (aInFlightFrameIndex>=0) and not fUseRenderInstances then begin
+  if fSceneInstance.fUpdatedOriginTransform then begin
+   SetDirty;
+  end;
   fWorkModelMatrix:=fSceneInstance.TransformOrigin(fModelMatrix,aInFlightFrameIndex,false);
 //fWorkModelMatrix:=fModelMatrix*TpvMatrix4x4D.CreateTranslation(TpvVector3D.Create(0.0,80.0,80.0));
  end else begin
@@ -27988,6 +27993,10 @@ begin
  FillChar(fDeltaTimes,SizeOf(TDeltaTimes),#0);
 
  fPointerToDeltaTimes:=@fDeltaTimes;
+
+ fUpdatedOriginTransform:=false;
+
+ fLastOriginTransform:=TpvMatrix4x4.Identity;
 
  fRaytracingOriginTransform:=TpvMatrix4x4.Identity;
 
@@ -30513,6 +30522,11 @@ begin
  TotalCPUTime:=0;
 
  fCountLights[aInFlightFrameIndex]:=0;
+
+ fUpdatedOriginTransform:=fLastOriginTransform<>fOriginTransform;
+ if fUpdatedOriginTransform then begin
+  fLastOriginTransform:=fOriginTransform;
+ end;
 
  fInverseOriginTransform:=fOriginTransform.Inverse;
 
