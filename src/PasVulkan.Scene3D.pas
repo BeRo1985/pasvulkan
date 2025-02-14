@@ -3638,8 +3638,9 @@ type EpvScene3D=class(Exception);
        fLightAABBTreeStates:array[-1..MaxInFlightFrames-1] of TpvBVHDynamicAABBTree.TState;
        fLightAABBTreeStateGenerations:array[-1..MaxInFlightFrames-1] of TpvUInt64;
        fLightBuffers:TpvScene3D.TLightBuffers;
-       fLightsLock:TPasMPSlimReaderWriterLock;
+       fLightDataLock:TPasMPSlimReaderWriterLock;
        fLights:TpvScene3D.TLights;
+       fLightsLock:TPasMPSlimReaderWriterLock;
        fManualLights:TpvScene3D.TLights;
        fAABBTree:TpvBVHDynamicAABBTree;
        fAABBTreeLock:TPasMPSlimReaderWriterLock;
@@ -21883,7 +21884,7 @@ begin
  fActiveMask:=0;
 
  if length(fInstance.fLightNodes)>0 then begin
-  fSceneInstance.fLightsLock.Acquire;
+  fSceneInstance.fLightDataLock.Acquire;
   try
    fLights:=TpvScene3D.TLights.Create(true);
    for Index:=0 to length(fInstance.fLightNodes)-1 do begin
@@ -21897,7 +21898,7 @@ begin
     end;
    end;
   finally
-   fSceneInstance.fLightsLock.Release;
+   fSceneInstance.fLightDataLock.Release;
   end;
  end else begin
   fLights:=nil;
@@ -22040,26 +22041,26 @@ begin
      if (not CompareMem(@Light.fMatrix,@LightMatrix,SizeOf(TpvMatrix4x4D))) or
         (Light.fDataPointer<>InstanceNode.fLight.fDataPointer) or
         (Light.fGeneration<>InstanceNode.fLight.fGeneration) then begin
-      fSceneInstance.fLightsLock.Acquire;
+      fSceneInstance.fLightDataLock.Acquire;
       try
        Light.fMatrix:=LightMatrix;
        Light.fDataPointer:=InstanceNode.fLight.fDataPointer;
        Light.fGeneration:=InstanceNode.fLight.fGeneration;
        Light.Update(aInFlightFrameIndex);
       finally
-       fSceneInstance.fLightsLock.Release;
+       fSceneInstance.fLightDataLock.Release;
       end;
      end;
     end else begin
      if Light.fDataPointer^.fVisible or (Light.fDataPointer<>@Light.fData) then begin
-      fSceneInstance.fLightsLock.Acquire;
+      fSceneInstance.fLightDataLock.Acquire;
       try
        Light.fData.fVisible:=false;
        Light.fDataPointer:=@Light.fData;
        Light.fVisible:=false;
        Light.Update(aInFlightFrameIndex);
       finally
-       fSceneInstance.fLightsLock.Release;
+       fSceneInstance.fLightDataLock.Release;
       end;
      end;
     end;
@@ -22073,7 +22074,7 @@ var Index:TpvSizeInt;
     Light:TpvScene3D.TLight;
 begin
  if assigned(fLights) and (length(fInstance.fLightNodes)>0) then begin
-  fSceneInstance.fLightsLock.Acquire;
+  fSceneInstance.fLightDataLock.Acquire;
   try
    for Index:=0 to fLights.Count-1 do begin
     Light:=fLights[Index];
@@ -22085,7 +22086,7 @@ begin
     end;
    end;
   finally
-   fSceneInstance.fLightsLock.Release;
+   fSceneInstance.fLightDataLock.Release;
   end;
  end;
 end;
@@ -25668,7 +25669,7 @@ procedure TpvScene3D.TGroup.TInstance.Update(const aInFlightFrameIndex:TpvSizeIn
      if (not CompareMem(@Light.fMatrix,@LightMatrix,SizeOf(TpvMatrix4x4D))) or
         (Light.fDataPointer<>InstanceLight.fEffectiveData) or
         (Light.fGeneration<>InstanceLight.fEffectiveData.fGeneration) then begin
-      fGroup.fSceneInstance.fLightsLock.Acquire;
+      fGroup.fSceneInstance.fLightDataLock.Acquire;
       try
        Light.fMatrix:=LightMatrix;
        Light.fDataPointer:=InstanceLight.fEffectiveData;
@@ -25676,11 +25677,11 @@ procedure TpvScene3D.TGroup.TInstance.Update(const aInFlightFrameIndex:TpvSizeIn
        Light.fIgnore:=fUseRenderInstances;
        Light.Update(aInFlightFrameIndex);
       finally
-       fGroup.fSceneInstance.fLightsLock.Release;
+       fGroup.fSceneInstance.fLightDataLock.Release;
       end;
      end;
     end else begin
-     fGroup.fSceneInstance.fLightsLock.Acquire;
+     fGroup.fSceneInstance.fLightDataLock.Acquire;
      try
       Light:=TpvScene3D.TLight.Create(fSceneInstance,false);
       try
@@ -25696,7 +25697,7 @@ procedure TpvScene3D.TGroup.TInstance.Update(const aInFlightFrameIndex:TpvSizeIn
        InstanceNode.fLight:=Light;
       end;
      finally
-      fGroup.fSceneInstance.fLightsLock.Release;
+      fGroup.fSceneInstance.fLightDataLock.Release;
      end;
     end;
    end;
@@ -26477,11 +26478,11 @@ begin
   for Index:=0 to fNodes.Count-1 do begin
    InstanceNode:=fNodes.RawItems[Index];
    if assigned(InstanceNode.fLight) then begin
-    fGroup.fSceneInstance.fLightsLock.Acquire;
+    fGroup.fSceneInstance.fLightDataLock.Acquire;
     try
      FreeAndNil(InstanceNode.fLight);
     finally
-     fGroup.fSceneInstance.fLightsLock.Release;
+     fGroup.fSceneInstance.fLightDataLock.Release;
     end;
    end;
    if assigned(fAABBTree) and (InstanceNode.fAABBTreeProxy>=0) then begin
@@ -28462,6 +28463,8 @@ begin
   fLightBuffers[Index]:=TpvScene3D.TLightBuffer.Create(self,Index);
  end;
 
+ fLightDataLock:=TPasMPSlimReaderWriterLock.Create;
+
  fLightsLock:=TPasMPSlimReaderWriterLock.Create;
 
  fLights:=TpvScene3D.TLights.Create(false);
@@ -28999,6 +29002,8 @@ begin
  FreeAndNil(fManualLights);
 
  FreeAndNil(fLightsLock);
+
+ FreeAndNil(fLightDataLock);
 
  fLastProcessFrameTimerQueryResults:=nil;
 
