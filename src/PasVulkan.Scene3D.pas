@@ -1519,8 +1519,11 @@ type EpvScene3D=class(Exception);
             TLight=class
              private
               fSceneInstance:TpvScene3D;
+              fIndex:TpvSizeInt;
+              fManualIndex:TpvSizeInt;
               fVisible:boolean;
               fIgnore:boolean;
+              fManual:boolean;
               fData:TpvScene3D.TLightData;
               fDataPointer:TpvScene3D.PLightData;
               fLight:pointer;
@@ -1538,11 +1541,13 @@ type EpvScene3D=class(Exception);
               fLightItemIndex:TpvSizeInt;
               fGeneration:TpvUInt64;
              public
-              constructor Create(const aSceneInstance:TpvScene3D); reintroduce;
+              constructor Create(const aSceneInstance:TpvScene3D;const aManual:Boolean=true); reintroduce;
               destructor Destroy; override;
+              procedure AfterConstruction; override;
+              procedure BeforeDestruction; override;
               procedure Assign(const aFrom:TpvScene3D.TLightData); overload;
               procedure Assign(const aFrom:TpvScene3D.TLight); overload;
-              procedure Update;
+              procedure Update(const aInFlightFrameIndex:TpvSizeInt=-1);
              public
               property Data:TpvScene3D.TLightData read fData write fData;
               property DataPointer:TpvScene3D.PLightData read fDataPointer write fDataPointer;
@@ -2845,7 +2850,7 @@ type EpvScene3D=class(Exception);
                             procedure AfterConstruction; override;
                             procedure BeforeDestruction; override;
                             procedure Remove;
-                            procedure UpdateLights;
+                            procedure UpdateLights(const aInFlightFrameIndex:TpvSizeInt);
                             procedure RemoveLights;
                            public
                             property ModelMatrix:TpvMatrix4x4D read fModelMatrix write fModelMatrix;
@@ -3622,8 +3627,8 @@ type EpvScene3D=class(Exception);
        fMaterialDataUpdatedGenerations:array[0..MaxInFlightFrames-1] of TpvUInt64;
        fMaterialDataGeneration:TpvUInt64;
        fMaterialDataGenerationLock:TPasMPSpinLock;
-       fLights:TInFlightFrameLights;
-       fCountLights:TCountInFlightFrameLights;
+       fInFrameFrameLights:TInFlightFrameLights;
+       fCountInFrameFrameLights:TCountInFlightFrameLights;
        fGroupListLock:TPasMPCriticalSection;
        fGroups:TGroups;
        fGroupInstanceListLock:TPasMPCriticalSection;
@@ -3634,6 +3639,8 @@ type EpvScene3D=class(Exception);
        fLightAABBTreeStateGenerations:array[-1..MaxInFlightFrames-1] of TpvUInt64;
        fLightBuffers:TpvScene3D.TLightBuffers;
        fLightsLock:TPasMPSlimReaderWriterLock;
+       fLights:TpvScene3D.TLights;
+       fManualLights:TpvScene3D.TLights;
        fAABBTree:TpvBVHDynamicAABBTree;
        fAABBTreeLock:TPasMPSlimReaderWriterLock;
        fAABBTreeStates:array[-1..MaxInFlightFrames-1] of TpvBVHDynamicAABBTree.TState;
@@ -3981,8 +3988,8 @@ type EpvScene3D=class(Exception);
        property DefaultParticleImage:TImage read fDefaultParticleImage;
        property DefaultParticleTexture:TTexture read fDefaultParticleTexture;
        property EmptyMaterial:TpvScene3D.TMaterial read fEmptyMaterial;
-       property Lights:TInFlightFrameLights read fLights;
-       property CountLights:TCountInFlightFrameLights read fCountLights;
+       property Lights:TInFlightFrameLights read fInFrameFrameLights;
+       property CountLights:TCountInFlightFrameLights read fCountInFrameFrameLights;
       published
        property VulkanStagingQueue:TpvVulkanQueue read fVulkanStagingQueue;
        property VulkanStagingCommandPool:TpvVulkanCommandPool read fVulkanStagingCommandPool;
@@ -10201,10 +10208,12 @@ end;
 
 { TpvScene3D.TLight }
 
-constructor TpvScene3D.TLight.Create(const aSceneInstance:TpvScene3D);
+constructor TpvScene3D.TLight.Create(const aSceneInstance:TpvScene3D;const aManual:Boolean);
 begin
  inherited Create;
  fSceneInstance:=aSceneInstance;
+ fIndex:=-1;
+ fManualIndex:=-1;
  fAABBTreeProxy:=-1;
  fInstanceLight:=nil;
  fDataPointer:=@fData;
@@ -10212,6 +10221,7 @@ begin
  fData.fExtendedLightProfile:=false;
  fData.fLimitDistance:=false;
  fGeneration:=0;
+ fManual:=aManual;
  fIgnore:=false;
 end;
 
@@ -10232,6 +10242,76 @@ begin
  inherited Destroy;
 end;
 
+procedure TpvScene3D.TLight.AfterConstruction;
+begin
+
+ inherited AfterConstruction;
+
+ if assigned(fSceneInstance) and assigned(fSceneInstance.fLightsLock) then begin
+
+  fSceneInstance.fLightsLock.Acquire;
+  try
+
+   fIndex:=fSceneInstance.fLights.Add(self);
+
+   if fManual then begin
+    fIndex:=fSceneInstance.fManualLights.Add(self);
+   end;
+
+  finally
+   fSceneInstance.fLightsLock.Release;
+  end;
+ end;
+
+end;
+
+procedure TpvScene3D.TLight.BeforeDestruction;
+var OtherLight:TpvScene3D.TLight;
+begin
+
+ if assigned(fSceneInstance) and assigned(fSceneInstance.fLightsLock) then begin
+
+  fSceneInstance.fLightsLock.Acquire;
+  try
+
+   if fIndex>=0 then begin
+    try
+     if (fIndex+1)<fSceneInstance.fLights.Count then begin
+      OtherLight:=fSceneInstance.fLights[fSceneInstance.fManualLights.Count-1];
+      OtherLight.fIndex:=fIndex;
+      fSceneInstance.fLights[fIndex]:=OtherLight;
+      fIndex:=fSceneInstance.fLights.Count-1;
+     end;
+     fSceneInstance.fLights.Extract(fIndex);
+    finally
+     fIndex:=-1;
+    end;
+   end;
+
+   if fManualIndex>=0 then begin
+    try
+     if (fManualIndex+1)<fSceneInstance.fManualLights.Count then begin
+      OtherLight:=fSceneInstance.fManualLights[fSceneInstance.fManualLights.Count-1];
+      OtherLight.fManualIndex:=fManualIndex;
+      fSceneInstance.fManualLights[fIndex]:=OtherLight;
+      fManualIndex:=fSceneInstance.fManualLights.Count-1;
+     end;
+     fSceneInstance.fManualLights.Extract(fManualIndex);
+    finally
+     fManualIndex:=-1;
+    end;
+   end;
+
+  finally
+   fSceneInstance.fLightsLock.Release;
+  end;
+
+ end;
+
+ inherited BeforeDestruction;
+
+end;
+
 procedure TpvScene3D.TLight.Assign(const aFrom:TpvScene3D.TLightData);
 begin
  fData:=aFrom;
@@ -10242,7 +10322,7 @@ begin
  Assign(aFrom.fData);
 end;
 
-procedure TpvScene3D.TLight.Update;
+procedure TpvScene3D.TLight.Update(const aInFlightFrameIndex:TpvSizeInt);
 const DownZ:TpvVector3=(x:0.0;y:0.0;z:-1.0);
       LinearRGBLuminance:TpvVector3=(x:0.2126;y:0.7152;z:0.0722);
       MinLuminance=1e-4;
@@ -10255,12 +10335,20 @@ var Position,Direction:TpvVector3;
     AABB:TpvAABB;
     Radius,Luminance,OppositeLength:TpvScalar;
     Data:TpvScene3D.PLightData;
+    Matrix64:TpvMatrix4x4D;
+    Matrix32:TpvMatrix4x4;
 begin
  Data:=fDataPointer;
  fGeneration:=Data^.fGeneration;
  if Data^.fVisible and not fIgnore then begin
-  Position:=(fMatrix*TpvVector3.Origin).xyz;
-  Direction:=(((fMatrix*DownZ).xyz)-Position).Normalize;
+  if fManual and (aInFlightFrameIndex>=0) then begin
+   Matrix64:=fSceneInstance.TransformOrigin(fMatrix,aInFlightFrameIndex,false);
+   Matrix32:=Matrix64;
+  end else begin
+   Matrix32:=fMatrix;
+  end;
+  Position:=(Matrix32*TpvVector3.Origin).xyz;
+  Direction:=(((Matrix32*DownZ).xyz)-Position).Normalize;
   fPosition:=Position;
   fDirection:=Direction;
   case Data^.Type_ of
@@ -21799,7 +21887,7 @@ begin
   try
    fLights:=TpvScene3D.TLights.Create(true);
    for Index:=0 to length(fInstance.fLightNodes)-1 do begin
-    Light:=TpvScene3D.TLight.Create(fSceneInstance);
+    Light:=TpvScene3D.TLight.Create(fSceneInstance,false);
     try
      Light.fData.fVisible:=false;
      Light.fDataPointer:=@Light.fData;
@@ -21936,11 +22024,11 @@ begin
  Free;
 end;
 
-procedure TpvScene3D.TGroup.TInstance.TRenderInstance.UpdateLights;
+procedure TpvScene3D.TGroup.TInstance.TRenderInstance.UpdateLights(const aInFlightFrameIndex:TpvSizeInt);
 var Index:TpvSizeInt;
     Light:TpvScene3D.TLight;
     InstanceNode:TpvScene3D.TGroup.TInstance.TNode;
-    LightMatrix:TpvMatrix4x4;
+    LightMatrix:TpvMatrix4x4D;
 begin
  if assigned(fLights) and (length(fInstance.fLightNodes)>0) then begin
   for Index:=0 to fLights.Count-1 do begin
@@ -21949,7 +22037,7 @@ begin
     InstanceNode:=fInstance.fNodes[fInstance.fLightNodes[Index]];
     if fInstance.fActive and fActive and assigned(InstanceNode) and assigned(InstanceNode.fLight) then begin
      LightMatrix:=InstanceNode.fLight.Matrix*fWorkModelMatrix;
-     if (not CompareMem(@Light.fMatrix,@LightMatrix,SizeOf(TpvMatrix4x4))) or
+     if (not CompareMem(@Light.fMatrix,@LightMatrix,SizeOf(TpvMatrix4x4D))) or
         (Light.fDataPointer<>InstanceNode.fLight.fDataPointer) or
         (Light.fGeneration<>InstanceNode.fLight.fGeneration) then begin
       fSceneInstance.fLightsLock.Acquire;
@@ -21957,7 +22045,7 @@ begin
        Light.fMatrix:=LightMatrix;
        Light.fDataPointer:=InstanceNode.fLight.fDataPointer;
        Light.fGeneration:=InstanceNode.fLight.fGeneration;
-       Light.Update;
+       Light.Update(aInFlightFrameIndex);
       finally
        fSceneInstance.fLightsLock.Release;
       end;
@@ -21969,7 +22057,7 @@ begin
        Light.fData.fVisible:=false;
        Light.fDataPointer:=@Light.fData;
        Light.fVisible:=false;
-       Light.Update;
+       Light.Update(aInFlightFrameIndex);
       finally
        fSceneInstance.fLightsLock.Release;
       end;
@@ -21993,7 +22081,7 @@ begin
      Light.fData.fVisible:=false;
      Light.fDataPointer:=@Light.fData;
      Light.fVisible:=false;
-     Light.Update;
+     Light.Update(-1);
     end;
    end;
   finally
@@ -25351,7 +25439,8 @@ procedure TpvScene3D.TGroup.TInstance.Update(const aInFlightFrameIndex:TpvSizeIn
  end;
  procedure ProcessNode(const aNodeIndex:TpvSizeInt;const aMatrix:TpvMatrix4x4;aDirty:boolean);
  var Index,OtherIndex,RotationCounter:TpvSizeInt;
-     Matrix,LightMatrix:TpvMatrix4x4;
+     Matrix:TpvMatrix4x4;
+     LightMatrix:TpvMatrix4x4D;
      InstanceNode:TpvScene3D.TGroup.TInstance.TNode;
      Node:TpvScene3D.TGroup.TNode;
      Translation,Scale:TpvVector3;
@@ -25576,7 +25665,7 @@ procedure TpvScene3D.TGroup.TInstance.Update(const aInFlightFrameIndex:TpvSizeIn
     InstanceLight:=fLights[Node.fLight.fIndex];
     if assigned(InstanceNode.fLight) then begin
      Light:=InstanceNode.fLight;
-     if (not CompareMem(@Light.fMatrix,@LightMatrix,SizeOf(TpvMatrix4x4))) or
+     if (not CompareMem(@Light.fMatrix,@LightMatrix,SizeOf(TpvMatrix4x4D))) or
         (Light.fDataPointer<>InstanceLight.fEffectiveData) or
         (Light.fGeneration<>InstanceLight.fEffectiveData.fGeneration) then begin
       fGroup.fSceneInstance.fLightsLock.Acquire;
@@ -25585,7 +25674,7 @@ procedure TpvScene3D.TGroup.TInstance.Update(const aInFlightFrameIndex:TpvSizeIn
        Light.fDataPointer:=InstanceLight.fEffectiveData;
        Light.fGeneration:=InstanceLight.fEffectiveData.fGeneration;
        Light.fIgnore:=fUseRenderInstances;
-       Light.Update;
+       Light.Update(aInFlightFrameIndex);
       finally
        fGroup.fSceneInstance.fLightsLock.Release;
       end;
@@ -25593,7 +25682,7 @@ procedure TpvScene3D.TGroup.TInstance.Update(const aInFlightFrameIndex:TpvSizeIn
     end else begin
      fGroup.fSceneInstance.fLightsLock.Acquire;
      try
-      Light:=TpvScene3D.TLight.Create(fSceneInstance);
+      Light:=TpvScene3D.TLight.Create(fSceneInstance,false);
       try
        Light.fLight:=Node.fLight;
        Light.fInstanceLight:=InstanceLight;
@@ -25602,7 +25691,7 @@ procedure TpvScene3D.TGroup.TInstance.Update(const aInFlightFrameIndex:TpvSizeIn
        Light.fGeneration:=InstanceLight.fEffectiveData.fGeneration;
        Light.fMatrix:=LightMatrix;
        Light.fIgnore:=fUseRenderInstances;
-       Light.Update;
+       Light.Update(aInFlightFrameIndex);
       finally
        InstanceNode.fLight:=Light;
       end;
@@ -26302,7 +26391,7 @@ begin
         PerInFlightFrameRenderInstance^.PreviousModelMatrix:=RenderInstance.fPreviousModelMatrix;
        end;
        RenderInstance.fPreviousModelMatrix:=RenderInstance.fWorkModelMatrix;
-       RenderInstance.UpdateLights;
+       RenderInstance.UpdateLights(aInFlightFrameIndex);
       end else begin
        if fUseSortedRenderInstances and
           (not RenderInstance.fFirst) and
@@ -28076,12 +28165,12 @@ begin
 //fPrimaryLightDirection:=TpvVector3.InlineableCreate(0.333333333333,-0.666666666666,-0.666666666666).Normalize;
 
  for Index:=0 to fCountInFlightFrames-1 do begin
-  fLights[Index]:=TpvScene3D.TLights.Create;
-  fLights[Index].OwnsObjects:=true;
+  fInFrameFrameLights[Index]:=TpvScene3D.TLights.Create;
+  fInFrameFrameLights[Index].OwnsObjects:=true;
  end;
 
  for Index:=0 to fCountInFlightFrames-1 do begin
-  fCountLights[Index]:=0;
+  fCountInFrameFrameLights[Index]:=0;
  end;
 
  fGroupListLock:=TPasMPCriticalSection.Create;
@@ -28374,6 +28463,10 @@ begin
  end;
 
  fLightsLock:=TPasMPSlimReaderWriterLock.Create;
+
+ fLights:=TpvScene3D.TLights.Create(false);
+
+ fManualLights:=TpvScene3D.TLights.Create(false);
 
  fAABBTree:=TpvBVHDynamicAABBTree.Create;
 
@@ -28674,7 +28767,7 @@ begin
  FreeAndNil(fGroupListLock);
 
  for Index:=0 to fCountInFlightFrames-1 do begin
-  FreeAndNil(fLights[Index]);
+  FreeAndNil(fInFrameFrameLights[Index]);
  end;
 
  while fMaterials.Count>0 do begin
@@ -28897,6 +28990,13 @@ begin
  FreeAndNil(fBlueNoise2DTexture);
 
  FreeAndNil(fAABBTreeLock);
+
+ while fLights.Count>0 do begin
+  fLights[fLights.Count-1].Free;
+ end;
+ FreeAndNil(fLights);
+
+ FreeAndNil(fManualLights);
 
  FreeAndNil(fLightsLock);
 
@@ -30521,7 +30621,7 @@ begin
 
  TotalCPUTime:=0;
 
- fCountLights[aInFlightFrameIndex]:=0;
+ fCountInFrameFrameLights[aInFlightFrameIndex]:=0;
 
  fUpdatedOriginTransform:=fLastOriginTransform<>fOriginTransform;
  if fUpdatedOriginTransform then begin
@@ -30770,6 +30870,12 @@ begin
   end;
 
   fInFlightFrameBoundingBoxes[aInFlightFrameIndex]:=fBoundingBox;
+
+  if (aInFlightFrameIndex>=0) and fUpdatedOriginTransform then begin
+   for Index:=0 to fManualLights.Count-1 do begin
+    fManualLights[Index].Update(aInFlightFrameIndex);
+   end;
+  end;
 
  end;
 
