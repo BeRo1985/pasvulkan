@@ -30913,11 +30913,21 @@ var Index,ItemID:TpvSizeInt;
     Material:TpvScene3D.TMaterial;
     MaterialIDDirtyMap:TpvScene3D.PMaterialIDDirtyMap;
     Planet:TpvScene3DPlanet;
+    DebugPrimitiveVertexDynamicArray:TpvScene3D.TDebugPrimitiveVertexDynamicArray;
+    Matrix:TpvMatrix4x4D;
 begin
 
  fPrimaryLightDirections[aInFlightFrameIndex]:=fPrimaryLightDirection;
 
  fPrimaryShadowMapLightDirections[aInFlightFrameIndex]:=fPrimaryShadowMapLightDirection;
+
+ if fOriginTransforms[aInFlightFrameIndex]<>TpvMatrix4x4.Identity then begin
+  DebugPrimitiveVertexDynamicArray:=fDebugPrimitiveVertexDynamicArrays[aInFlightFrameIndex];
+  Matrix:=fInverseOriginTransforms[aInFlightFrameIndex];
+  for Index:=0 to DebugPrimitiveVertexDynamicArray.Count-1 do begin
+   DebugPrimitiveVertexDynamicArray.ItemArray[Index].Position:=Matrix.MulHomogen(DebugPrimitiveVertexDynamicArray.ItemArray[Index].Position);
+  end;
+ end;
 
  if assigned(fVulkanDevice) then begin
 
