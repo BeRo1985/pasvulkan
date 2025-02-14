@@ -388,6 +388,7 @@ type TpvVector2D=record
        function MulInverse(const aVector:TpvVector3D):TpvVector3D; overload;
        function Transpose:TpvMatrix4x4D;
        function Determinant:TpvDouble;
+       function SimpleInverse:TpvMatrix4x4D;
        function Inverse:TpvMatrix4x4D;
        function Adjugate:TpvMatrix4x4D;
        function ToMatrix4x4:TpvMatrix4x4;
@@ -2983,6 +2984,26 @@ begin
          (RawComponents[0,1]*(((((-(RawComponents[1,0]*RawComponents[2,2]*RawComponents[3,3]))+(RawComponents[1,0]*RawComponents[2,3]*RawComponents[3,2])+(RawComponents[2,0]*RawComponents[1,2]*RawComponents[3,3]))-(RawComponents[2,0]*RawComponents[1,3]*RawComponents[3,2]))-(RawComponents[3,0]*RawComponents[1,2]*RawComponents[2,3]))+(RawComponents[3,0]*RawComponents[1,3]*RawComponents[2,2])))+
          (RawComponents[0,2]*(((((RawComponents[1,0]*RawComponents[2,1]*RawComponents[3,3])-(RawComponents[1,0]*RawComponents[2,3]*RawComponents[3,1]))-(RawComponents[2,0]*RawComponents[1,1]*RawComponents[3,3]))+(RawComponents[2,0]*RawComponents[1,3]*RawComponents[3,1])+(RawComponents[3,0]*RawComponents[1,1]*RawComponents[2,3]))-(RawComponents[3,0]*RawComponents[1,3]*RawComponents[2,1])))+
          (RawComponents[0,3]*(((((-(RawComponents[1,0]*RawComponents[2,1]*RawComponents[3,2]))+(RawComponents[1,0]*RawComponents[2,2]*RawComponents[3,1])+(RawComponents[2,0]*RawComponents[1,1]*RawComponents[3,2]))-(RawComponents[2,0]*RawComponents[1,2]*RawComponents[3,1]))-(RawComponents[3,0]*RawComponents[1,1]*RawComponents[2,2]))+(RawComponents[3,0]*RawComponents[1,2]*RawComponents[2,1])));
+end;
+
+function TpvMatrix4x4D.SimpleInverse:TpvMatrix4x4D;
+begin
+ result.RawComponents[0,0]:=RawComponents[0,0];
+ result.RawComponents[0,1]:=RawComponents[1,0];
+ result.RawComponents[0,2]:=RawComponents[2,0];
+ result.RawComponents[0,3]:=RawComponents[0,3];
+ result.RawComponents[1,0]:=RawComponents[0,1];
+ result.RawComponents[1,1]:=RawComponents[1,1];
+ result.RawComponents[1,2]:=RawComponents[2,1];
+ result.RawComponents[1,3]:=RawComponents[1,3];
+ result.RawComponents[2,0]:=RawComponents[0,2];
+ result.RawComponents[2,1]:=RawComponents[1,2];
+ result.RawComponents[2,2]:=RawComponents[2,2];
+ result.RawComponents[2,3]:=RawComponents[2,3];
+ result.RawComponents[3,0]:=-PpvVector3D(pointer(@RawComponents[3,0]))^.Dot(TpvVector3D.Create(RawComponents[0,0],RawComponents[0,1],RawComponents[0,2]));
+ result.RawComponents[3,1]:=-PpvVector3D(pointer(@RawComponents[3,0]))^.Dot(TpvVector3D.Create(RawComponents[1,0],RawComponents[1,1],RawComponents[1,2]));
+ result.RawComponents[3,2]:=-PpvVector3D(pointer(@RawComponents[3,0]))^.Dot(TpvVector3D.Create(RawComponents[2,0],RawComponents[2,1],RawComponents[2,2]));
+ result.RawComponents[3,3]:=RawComponents[3,3];
 end;
 
 function TpvMatrix4x4D.Inverse:TpvMatrix4x4D;
