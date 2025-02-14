@@ -34191,9 +34191,9 @@ end;
 function TpvScene3D.TransformDirection(const aDirection:TpvVector3D;const aInFlightFrameIndex:TpvSizeInt;const aInverse:Boolean):TpvVector3D;
 begin
  if aInverse then begin
-  result:=fOriginTransforms[aInFlightFrameIndex].MulBasis(aDirection);
- end else begin
   result:=fInverseOriginTransforms[aInFlightFrameIndex].MulBasis(aDirection);
+ end else begin
+  result:=fOriginTransforms[aInFlightFrameIndex].MulBasis(aDirection);
  end;
 end;
 
