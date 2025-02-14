@@ -3959,6 +3959,7 @@ type EpvScene3D=class(Exception);
        procedure DumpProfiler(const aStringList:TStringList=nil);
       public
        function TransformOrigin(const aMatrix:TpvMatrix4x4D;const aInFlightFrameIndex:TpvSizeInt;const aInverse:Boolean):TpvMatrix4x4D;
+       function TransformDirection(const aDirection:TpvVector3D;const aInFlightFrameIndex:TpvSizeInt;const aInverse:Boolean):TpvVector3D;
       public
        property BoundingBox:TpvAABB read fBoundingBox;
        property InFlightFrameBoundingBoxes:TInFlightFrameAABBs read fInFlightFrameBoundingBoxes;
@@ -34184,6 +34185,15 @@ begin
   result:=fOriginTransforms[aInFlightFrameIndex]*aMatrix;
  end else begin
   result:=aMatrix*fInverseOriginTransforms[aInFlightFrameIndex];
+ end;
+end;
+
+function TpvScene3D.TransformDirection(const aDirection:TpvVector3D;const aInFlightFrameIndex:TpvSizeInt;const aInverse:Boolean):TpvVector3D;
+begin
+ if aInverse then begin
+  result:=fOriginTransforms[aInFlightFrameIndex].MulBasis(aDirection);
+ end else begin
+  result:=fInverseOriginTransforms[aInFlightFrameIndex].MulBasis(aDirection);
  end;
 end;
 

@@ -1784,7 +1784,10 @@ end;
 { TpvScene3DAtmosphere.TGPUAtmosphereParameters }
 
 procedure TpvScene3DAtmosphere.TGPUAtmosphereParameters.Assign(const aAtmosphereParameters:TAtmosphereParameters;const aScene3D:TObject;const aInFlightFrameIndex:TpvSizeInt);
+var SunDirection:TpvVector3D;
 begin
+
+ SunDirection:=TpvScene3D(aScene3D).TransformDirection(TpvVector3D.Create(aAtmosphereParameters.SunDirection.xyz),aInFlightFrameIndex,false);
 
  Transform:=TpvScene3D(aScene3D).TransformOrigin(aAtmosphereParameters.Transform,aInFlightFrameIndex,false);
  InverseTransform:=Transform.Inverse;
@@ -1797,9 +1800,9 @@ begin
  RayleighScattering:=TpvVector4.InlineableCreate(aAtmosphereParameters.RayleighScattering.xyz,aAtmosphereParameters.MuSMin);
 
  MieDensityExpScale:=aAtmosphereParameters.MieDensity.Layers[1].ExpScale;
- MieScattering:=TpvVector4.InlineableCreate(aAtmosphereParameters.MieScattering.xyz,aAtmosphereParameters.SunDirection.x);
- MieExtinction:=TpvVector4.InlineableCreate(aAtmosphereParameters.MieExtinction.xyz,aAtmosphereParameters.SunDirection.y);
- MieAbsorption:=TpvVector4.InlineableCreate(aAtmosphereParameters.AbsorptionExtinction.xyz,aAtmosphereParameters.SunDirection.z);
+ MieScattering:=TpvVector4.InlineableCreate(aAtmosphereParameters.MieScattering.xyz,SunDirection.x);
+ MieExtinction:=TpvVector4.InlineableCreate(aAtmosphereParameters.MieExtinction.xyz,SunDirection.y);
+ MieAbsorption:=TpvVector4.InlineableCreate(aAtmosphereParameters.AbsorptionExtinction.xyz,SunDirection.z);
  MiePhaseG:=aAtmosphereParameters.MiePhaseFunctionG;
 
  AbsorptionDensity0LayerWidth:=aAtmosphereParameters.AbsorptionDensity.Layers[0].Width;
