@@ -10256,7 +10256,7 @@ begin
    fIndex:=fSceneInstance.fLights.Add(self);
 
    if fManual then begin
-    fIndex:=fSceneInstance.fManualLights.Add(self);
+    fManualIndex:=fSceneInstance.fManualLights.Add(self);
    end;
 
   finally
