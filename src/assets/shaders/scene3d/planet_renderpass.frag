@@ -37,6 +37,7 @@ layout(location = 2) in InBlock {
   vec3 position;
   vec3 sphereNormal;
   vec3 normal;
+  vec3 triplanarPosition;
 //vec3 worldSpacePosition;
   vec3 viewSpacePosition;
 //vec3 cameraRelativePosition;
@@ -48,6 +49,8 @@ layout(location = 2) in InBlock {
 } inBlock;
 
 #define inViewSpacePosition inBlock.viewSpacePosition
+
+#define inTriplanarPosition inBlock.triplanarPosition
 
 //#define inWorldSpacePosition inBlock.worldSpacePosition
 
@@ -63,6 +66,7 @@ layout(location = 0) in InBlock {
   vec3 position;
   vec3 sphereNormal;
   vec3 normal;
+  vec3 triplanarPosition;
   vec3 worldSpacePosition;
   vec3 viewSpacePosition;
   vec3 cameraRelativePosition;
@@ -74,6 +78,7 @@ layout(location = 0) in InBlock {
 } inBlock;
 
 #define inViewSpacePosition inBlock.viewSpacePosition
+#define inTriplanarPosition inBlock.triplanarPosition
 #define inWorldSpacePosition inBlock.worldSpacePosition
 #define inCameraRelativePosition inBlock.cameraRelativePosition
 
@@ -292,7 +297,7 @@ void main(){
   tangentSpaceViewDirection = normalize(tangentSpaceBasis * viewDirection);
   tangentSpaceViewDirectionXYOverZ = tangentSpaceViewDirection.xy / tangentSpaceViewDirection.z;
 
-  multiplanarSetup(inBlock.position, dFdx(inBlock.position), dFdy(inBlock.position), workNormal);
+  multiplanarSetup(inBlock.triplanarPosition, dFdx(inBlock.triplanarPosition), dFdy(inBlock.triplanarPosition), workNormal);
 
   if((planetData.flagsResolutions.x & (1u << 2u)) != 0){
     parallaxMapping();

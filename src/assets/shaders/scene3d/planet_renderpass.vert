@@ -24,6 +24,7 @@ layout(location = 2) out OutBlock {
   vec3 position;
   vec3 sphereNormal;
   vec3 normal;
+  vec3 triplanarPosition;
 //vec3 worldSpacePosition;
   vec3 viewSpacePosition;
 //vec3 cameraRelativePosition;
@@ -40,6 +41,7 @@ layout(location = 0) out OutBlock {
   vec3 position;
   vec3 sphereNormal;
   vec3 normal;
+  vec3 triplanarPosition;
   vec3 worldSpacePosition;
   vec3 viewSpacePosition;
   vec3 cameraRelativePosition;
@@ -96,6 +98,8 @@ void main(){
 
   vec3 position = (planetData.modelMatrix * vec4(inVector, 1.0)).xyz;
 
+  vec3 triplanarPosition = (planetData.triplanarMatrix * vec4(inVector, 1.0)).xyz;
+ 
   vec3 worldSpacePosition = position;
 
   vec3 normal = octSignedDecode(inOctahedralEncodedNormal);
@@ -118,6 +122,7 @@ void main(){
   outBlock.position = position;         
   outBlock.sphereNormal = sphereNormal;
   outBlock.normal = normalize((planetData.normalMatrix * vec4(normal, 0.0)).xyz);
+  outBlock.triplanarPosition = triplanarPosition;
 #if !defined(RAYTRACING)
   outBlock.worldSpacePosition = worldSpacePosition;
 #endif

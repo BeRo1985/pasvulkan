@@ -21946,7 +21946,7 @@ begin
    if assigned(Light) then begin
     InstanceNode:=fInstance.fNodes[fInstance.fLightNodes[Index]];
     if fInstance.fActive and fActive and assigned(InstanceNode) and assigned(InstanceNode.fLight) then begin
-     LightMatrix:=InstanceNode.fLight.Matrix*fModelMatrix;
+     LightMatrix:=InstanceNode.fLight.Matrix*fWorkModelMatrix;
      if (not CompareMem(@Light.fMatrix,@LightMatrix,SizeOf(TpvMatrix4x4))) or
         (Light.fDataPointer<>InstanceNode.fLight.fDataPointer) or
         (Light.fGeneration<>InstanceNode.fLight.fGeneration) then begin
@@ -25984,6 +25984,7 @@ begin
 
  if (aInFlightFrameIndex>=0) and not fUseRenderInstances then begin
   fWorkModelMatrix:=fSceneInstance.TransformOrigin(fModelMatrix,aInFlightFrameIndex,false);
+//fWorkModelMatrix:=fModelMatrix*TpvMatrix4x4D.CreateTranslation(TpvVector3D.Create(0.0,80.0,80.0));
  end else begin
   fWorkModelMatrix:=fModelMatrix;
  end;
@@ -26610,7 +26611,7 @@ begin
    end;
    ModelNodeMatrixEx:=aInstanceNode.fWorkMatrix;
    if not aRelative then begin
-    ModelNodeMatrixEx:=ModelNodeMatrixEx*fModelMatrix;
+    ModelNodeMatrixEx:=ModelNodeMatrixEx*fWorkModelMatrix;
    end;
    for PrimitiveIndex:=0 to Mesh.fPrimitives.Count-1 do begin
     Primitive:=Mesh.fPrimitives[PrimitiveIndex];
@@ -34036,19 +34037,19 @@ end;
 
 function TpvScene3D.TransformOrigin(const aMatrix:TpvMatrix4x4D;const aInFlightFrameIndex:TpvSizeInt;const aInverse:Boolean):TpvMatrix4x4D;
 begin
-{result:=aMatrix;
+ result:=aMatrix;
  if aInverse then begin
   result:=result.Inverse;
  end;
- result:=result*fOriginTransforms[aInFlightFrameIndex];
+ result:=result*fInverseOriginTransforms[aInFlightFrameIndex];
  if aInverse then begin
   result:=result.Inverse;
- end;}
- if aInverse then begin
+ end;
+{if aInverse then begin
   result:=aMatrix*fOriginTransforms[aInFlightFrameIndex];
  end else begin
   result:=aMatrix*fInverseOriginTransforms[aInFlightFrameIndex];
- end;
+ end;}
 end;
 
 procedure TpvScene3D.GetProfilerTimes(out aCPUTime,aGPUTime:TpvDouble);

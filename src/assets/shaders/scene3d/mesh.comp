@@ -131,10 +131,10 @@ vec2 unpackSnorm2x16Ex(uint v){
 
 #include "adjugate.glsl"
 
-void main() {
+void main(){
   uint vertexIndex = gl_GlobalInvocationID.x;
   // uint vertexIndex = uint((((gl_GlobalInvocationID.z * gl_WorkGroupSize.y) + gl_GlobalInvocationID.y) * gl_WorkGroupSize.x) + gl_GlobalInvocationID.x);
-  if (vertexIndex < pushConstants.countIndices) {
+  if(vertexIndex < pushConstants.countIndices){
 
     vertexIndex = inIndices[vertexIndex + pushConstants.indexOffset];
 
@@ -153,22 +153,7 @@ void main() {
       const uint inFlags = inPackedVertex.normalTangentFlagsGeneration.z;
       const uint inGeneration = inPackedVertex.normalTangentFlagsGeneration.w;
 
-#ifdef RAYTRACING
-      mat4 raytracingNodeMatrix = mat4(
-        1.0, 0.0, 0.0, 0.0,  
-        0.0, 1.0, 0.0, 0.0,
-        0.0, 0.0, 1.0, 0.0,
-        0.0, 0.0, 0.0, 1.0
-      );
-#endif
-
-      // Get node matrix
-      mat4 nodeMatrix = nodeMatrices[inNodeIndex];
-      
-      // Get model node matrix and multiply it with the node matrix
-      mat4 modelNodeMatrix = nodeMatrices[inRootNode] * nodeMatrix;
-
-      vec3 position = inPosition;
+     vec3 position = inPosition;
 
       // Decode tangent space
       mat3 tangentSpace;
@@ -180,13 +165,13 @@ void main() {
       // mat3 tangentSpace = mat3(inTangent.xyz, cross(inTangent.xyz, inNormal) * inTangent.w, inNormal);
 
       // Process morph target vertices (a linked list of morph target vertices)
-      if (inMorphTargetVertexBaseIndex != 0xffffffffu) {
+      if(inMorphTargetVertexBaseIndex != 0xffffffffu){
         vec4 normal = vec4(tangentSpace[2], 0.0);
         vec4 tangent = vec4(tangentSpace[0], sign(dot(cross(tangentSpace[2], tangentSpace[0]), tangentSpace[1])));
         vec3 originalNormal = normal.xyz, originalTangent = tangent.xyz; // Needed for morph target blending, since absolute normal and tangent are stored in the morph target vertices, instead of the deltas originally, because for better precision with 16-bit octahedral normals and tangents. 
         uint morphTargetVertexIndex = inMorphTargetVertexBaseIndex;
         uint protectionCounter = 0x0ffffu;
-        while ((morphTargetVertexIndex != 0xffffffffu) && (protectionCounter-- > 0u)) {
+        while((morphTargetVertexIndex != 0xffffffffu) && (protectionCounter-- > 0u)){
           MorphTargetVertex morphTargetVertex = morphTargetVertices[morphTargetVertexIndex];
           float weight = morphTargetWeights[morphTargetVertex.position.w];
           if(weight != 0.0){ // since octehedron decoding can be somewhat costly, we only do it when the weight is not zero
@@ -201,24 +186,35 @@ void main() {
         tangentSpace = mat3(tangent.xyz, normalize(cross(normal.xyz, tangent.xyz) * tangent.w), normal.xyz);
       }
 
-      // Process joints (an array list of joint blocks with 4 joints and 4 weights each)  
-      if (inCountJointBlocks > 0u) {
+      // Base matrix initialization
+      mat4 baseMatrix = mat4(
+        1.0, 0.0, 0.0, 0.0,  
+        0.0, 1.0, 0.0, 0.0,
+        0.0, 0.0, 1.0, 0.0,
+        0.0, 0.0, 0.0, 1.0
+      );
+
+      // Get node matrix
+      mat4 nodeMatrix = nodeMatrices[inNodeIndex];
+
+      // Process joints (an array list of joint blocks with 4 joints and 4 weights each) and apply on base matrix  
+      if(inCountJointBlocks > 0u){
         mat4 inverseNodeMatrix = inverse(nodeMatrix);
         mat4 skinMatrix = mat4(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
-        for (uint jointBlockBaseIndex = inJointBlockBaseIndex, endJointBlockBaseIndex = jointBlockBaseIndex + inCountJointBlocks;  //
-             jointBlockBaseIndex < endJointBlockBaseIndex;                                                                         //
-             jointBlockBaseIndex++) {
+        for(uint jointBlockBaseIndex = inJointBlockBaseIndex, endJointBlockBaseIndex = jointBlockBaseIndex + inCountJointBlocks;  //
+            jointBlockBaseIndex < endJointBlockBaseIndex;                                                                         //
+            jointBlockBaseIndex++){
           JointBlock jointBlock = jointBlocks[jointBlockBaseIndex];
           skinMatrix += ((inverseNodeMatrix * nodeMatrices[jointBlock.joints.x]) * jointBlock.weights.x) +  //
                         ((inverseNodeMatrix * nodeMatrices[jointBlock.joints.y]) * jointBlock.weights.y) +  //
                         ((inverseNodeMatrix * nodeMatrices[jointBlock.joints.z]) * jointBlock.weights.z) +  //
                         ((inverseNodeMatrix * nodeMatrices[jointBlock.joints.w]) * jointBlock.weights.w);
         }
-#ifdef RAYTRACING
-        raytracingNodeMatrix *= skinMatrix;
-#endif
-        modelNodeMatrix *= skinMatrix;
+        baseMatrix *= skinMatrix;
       }
+
+      // Construct model node matrix (model matrix * node matrix * base matrix)
+      mat4 modelNodeMatrix = nodeMatrices[inRootNode] * (nodeMatrix * baseMatrix);
 
       // Construct normal matrix
       mat3 normalMatrix = adjugate(modelNodeMatrix);
@@ -264,8 +260,8 @@ void main() {
       {
         // For ray tracing we need the position in node space, not world nor model space, since BLAS references have transform matrices already,
         // so we can't transform them again with modelNodeMatrix or modelMatrix, which includes also the world space model transform,
-        // raytracingNodeMatrix is without that, so we use that here.
-        vec4 p = raytracingNodeMatrix * vec4(position.xyz, 1.0);
+        // baseMatrix is without that, so we use that here.
+        vec4 p = baseMatrix * vec4(position.xyz, 1.0);
         vec3 finalPosition = p.xyz / p.w;
         OutRayTracingVertex outRayTracingVertex;
         outRayTracingVertex.position = uvec4(uvec3(floatBitsToUint(finalPosition.xyz)), uint(vertexIndex));
