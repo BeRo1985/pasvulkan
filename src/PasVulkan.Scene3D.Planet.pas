@@ -131,6 +131,8 @@ type TpvScene3DPlanets=class;
 
              NormalMatrix:TpvMatrix4x4;
 
+             TriplanarNormalMatrix:TpvMatrix4x4;
+
              BottomRadius:TpvFloat;
              TopRadius:TpvFloat;
              HeightMapScale:TpvFloat;
@@ -18979,7 +18981,8 @@ begin
 
    fPlanetData.ModelMatrix:=TpvScene3D(fScene3D).TransformOrigin(InFlightFrameData.fModelMatrix,aInFlightFrameIndex,false);
    fPlanetData.TriplanarMatrix:=InFlightFrameData.fModelMatrix;
-   fPlanetData.NormalMatrix:=TpvMatrix4x4.Create(fPlanetData.TriplanarMatrix.Adjugate);
+   fPlanetData.NormalMatrix:=TpvMatrix4x4.Create(fPlanetData.ModelMatrix.Adjugate);
+   fPlanetData.TriplanarNormalMatrix:=TpvMatrix4x4.Create(fPlanetData.TriplanarMatrix.Adjugate);
 // fPlanetData.NormalMatrix:=TpvMatrix4x4.Create(InFlightFrameData.fModelMatrix.ToMatrix3x3.Inverse.Transpose);
    fPlanetData.BottomRadius:=fBottomRadius;
    fPlanetData.TopRadius:=fTopRadius;

@@ -24,6 +24,7 @@ layout(location = 2) out OutBlock {
   vec3 position;
   vec3 sphereNormal;
   vec3 normal;
+  vec3 triplanarNormal;
   vec3 triplanarPosition;
 //vec3 worldSpacePosition;
   vec3 viewSpacePosition;
@@ -41,6 +42,7 @@ layout(location = 0) out OutBlock {
   vec3 position;
   vec3 sphereNormal;
   vec3 normal;
+  vec3 triplanarNormal;
   vec3 triplanarPosition;
   vec3 worldSpacePosition;
   vec3 viewSpacePosition;
@@ -122,6 +124,7 @@ void main(){
   outBlock.position = position;         
   outBlock.sphereNormal = sphereNormal;
   outBlock.normal = normalize((planetData.normalMatrix * vec4(normal, 0.0)).xyz);
+  outBlock.triplanarNormal = normalize((planetData.triplanarNormalMatrix * vec4(normal, 0.0)).xyz);
   outBlock.triplanarPosition = triplanarPosition;
 #if !defined(RAYTRACING)
   outBlock.worldSpacePosition = worldSpacePosition;

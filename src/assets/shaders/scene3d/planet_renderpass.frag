@@ -37,6 +37,7 @@ layout(location = 2) in InBlock {
   vec3 position;
   vec3 sphereNormal;
   vec3 normal;
+  vec3 triplanarNormal;
   vec3 triplanarPosition;
 //vec3 worldSpacePosition;
   vec3 viewSpacePosition;
@@ -66,6 +67,7 @@ layout(location = 0) in InBlock {
   vec3 position;
   vec3 sphereNormal;
   vec3 normal;
+  vec3 triplanarNormal;
   vec3 triplanarPosition;
   vec3 worldSpacePosition;
   vec3 viewSpacePosition;
@@ -272,8 +274,10 @@ void main(){
 
 #ifdef EXTERNAL_VERTICES
   workNormal = inBlock.normal.xyz;
+  vec3 triplanarNormal = inBlock.triplanarNormal.xyz;
 #else
   workNormal = normalize((planetData.normalMatrix * vec4(normalize(fma(texturePlanetOctahedralMap(uTextures[PLANET_TEXTURE_NORMALMAP], sphereNormal).xyz, vec3(2.0), vec3(-1.0))), 0.0)).xyz);
+  vec3 triplanarNormal = normalize((planetData.triplanarNormalMatrix * vec4(normalize(fma(texturePlanetOctahedralMap(uTextures[PLANET_TEXTURE_NORMALMAP], sphereNormal).xyz, vec3(2.0), vec3(-1.0))), 0.0)).xyz);
 #endif
   vec3 workTangent = normalize(cross((abs(workNormal.y) < 0.999999) ? vec3(0.0, 1.0, 0.0) : vec3(0.0, 0.0, 1.0), workNormal));
   vec3 workBitangent = normalize(cross(workNormal, workTangent));
@@ -297,7 +301,7 @@ void main(){
   tangentSpaceViewDirection = normalize(tangentSpaceBasis * viewDirection);
   tangentSpaceViewDirectionXYOverZ = tangentSpaceViewDirection.xy / tangentSpaceViewDirection.z;
 
-  multiplanarSetup(inBlock.triplanarPosition, dFdx(inBlock.triplanarPosition), dFdy(inBlock.triplanarPosition), workNormal);
+  multiplanarSetup(inBlock.triplanarPosition, dFdx(inBlock.triplanarPosition), dFdy(inBlock.triplanarPosition), triplanarNormal);
 
   if((planetData.flagsResolutions.x & (1u << 2u)) != 0){
     parallaxMapping();

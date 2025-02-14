@@ -33,6 +33,8 @@ layout(set = 2, binding = 1, std430) readonly buffer PlanetData
 
   mat4 normalMatrix; // normalMatrix = mat4(adjugate(modelMatrix))) for to save computation in the shader, and mat4 instead of mat3 for alignment/padding rules of std430
 
+  mat4 triplanarNormalMatrix;
+
   vec4 bottomRadiusTopRadiusHeightMapScale; // x = bottomRadius, y = topRadius, z = heightMapScale, w = unused
 
   uvec4 flagsResolutions; // x = flags, y = resolution (2x 16-bit: tile map resolution, tile resolution)
