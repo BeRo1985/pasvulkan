@@ -621,9 +621,9 @@ float getCascadedShadow(float maxDistance){
 } 
 
 
-float getFastCascadedShadow(float maxDistance){
+float getFastCascadedShadow(float maxDistance, mat4 rayTransform){
 #if defined(RAYTRACING)
-  vec3 rayOrigin = inWorldSpacePosition, rayNormal = workNormal;
+  vec3 rayOrigin = (rayTransform * vec4(inWorldSpacePosition, 1.0)).xyz, rayNormal = (rayTransform * vec4(workNormal, 0.0)).xyz;
   float rayOffset = 0.0;
   return getRaytracedFastHardShadow(rayOrigin, rayNormal, normalize(-lightDirection), rayOffset, maxDistance);
 #else

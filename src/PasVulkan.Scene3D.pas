@@ -32445,6 +32445,7 @@ var InstanceIndex,GeometryIndex,CountBLASInstances,CountBLASGeometries,
     MemoryBarrier:TVkMemoryBarrier;
     BufferMemoryBarriers:array[0..1] of TVkBufferMemoryBarrier; 
     BufferCopy:TVkBufferCopy;
+    UpdatedOriginTransform:Boolean;
 {   VulkanShortTermDynamicBufferData:TVulkanShortTermDynamicBufferData;
     VulkanLongTermStaticBufferData:TVulkanLongTermStaticBufferData;//}
 begin
@@ -32524,7 +32525,8 @@ begin
     MustUpdateTLAS:=false;
 
     // Check if there is a new origin transform
-    if fRaytracingOriginTransform<>fOriginTransforms[aInFlightFrameIndex] then begin
+    UpdatedOriginTransform:=fRaytracingOriginTransform<>fOriginTransforms[aInFlightFrameIndex];
+    if UpdatedOriginTransform then begin
      fRaytracingOriginTransform:=fOriginTransforms[aInFlightFrameIndex];
      MustUpdateTLAS:=true;
     end;
@@ -32784,6 +32786,11 @@ begin
         MustHandlePlanets:=true;
         for PlanetTile in Planet.RaytracingTileQueue do begin
          PlanetTile.Update(aInFlightFrameIndex);
+        end;
+       end;
+       if UpdatedOriginTransform then begin
+        for PlanetTile in Planet.RaytracingTiles do begin
+         PlanetTile.UpdateTransform(aInFlightFrameIndex);
         end;
        end;
        inc(CountPlanetTiles,Planet.TileMapResolution*Planet.TileMapResolution);

@@ -1217,6 +1217,7 @@ type TpvScene3DPlanets=class;
                      destructor Destroy; override;
                      function CheckAndUpdateGeneration(const aInFlightFrameIndex:TpvSizeInt):Boolean;
                      function Update(const aInFlightFrameIndex:TpvSizeInt):Boolean;
+                     function UpdateTransform(const aInFlightFrameIndex:TpvSizeInt):Boolean;
                     public
                      property TileIndex:TpvSizeInt read fTileIndex;
                      property BLASGeometry:TpvRaytracingBottomLevelAccelerationStructureGeometry read fBLASGeometry;
@@ -1243,6 +1244,7 @@ type TpvScene3DPlanets=class;
               destructor Destroy; override;
               function CheckAndUpdateGeneration(const aInFlightFrameIndex:TpvSizeInt):Boolean;
               function Update(const aInFlightFrameIndex:TpvSizeInt):Boolean;
+              function UpdateTransform(const aInFlightFrameIndex:TpvSizeInt):Boolean;
              public
               property Planet:TpvScene3DPlanet read fPlanet;
               property TileIndex:TpvSizeInt read fTileIndex;
@@ -12269,7 +12271,7 @@ begin
 
  MustBeUpdated:=false;
 
- if not (assigned(fBLASGeometry) and assigned(fBLAS) and assigned(fBLASBuffer) and assigned(fBLASInstance)) then begin
+ if not (assigned(fBLASGeometry) and assigned(fBLAS) and assigned(BLASBuffer) and assigned(fBLASInstance)) then begin
 
   MustBeUpdated:=true;
 
@@ -12353,7 +12355,7 @@ begin
 
  fBLASScratchSize:=Max(1,Max(fBLAS.BuildSizesInfo.buildScratchSize,fBLAS.BuildSizesInfo.updateScratchSize));
 
- fBLASInstance.Transform:=TpvScene3D(fPlanet.fScene3D).TransformOrigin(fPlanet.fData.ModelMatrix,aInFlightFrameIndex,false);
+ fBLASInstance.Transform:=TpvScene3D(fPlanet.fScene3D).TransformOrigin(fPlanet.fData.ModelMatrix,aInFlightFrameIndex,true);
 
  if CheckAndUpdateGeneration(aInFlightFrameIndex) then begin
   MustBeUpdated:=true;
@@ -12361,6 +12363,12 @@ begin
 
  fMustUpdate:=MustBeUpdated;
 
+end;
+
+function TpvScene3DPlanet.TRaytracingTile.TLODLevel.UpdateTransform(const aInFlightFrameIndex:TpvSizeInt):Boolean;
+begin
+ fBLASInstance.Transform:=TpvScene3D(fPlanet.fScene3D).TransformOrigin(fPlanet.fData.ModelMatrix,aInFlightFrameIndex,false);
+ result:=true;
 end;
 
 { TpvScene3DPlanet.TRaytracingTile }
@@ -12550,6 +12558,26 @@ begin
 *)
 
  fMustUpdate:=MustBeUpdated;
+
+end;
+
+function TpvScene3DPlanet.TRaytracingTile.UpdateTransform(const aInFlightFrameIndex:TpvSizeInt):Boolean;
+var MustBeUpdated:Boolean;
+    LODLevelIndex:TpvSizeInt;
+    LODLevel:TLODLevel;
+begin
+
+ result:=false;
+
+ for LODLevelIndex:=0 to fPlanet.fCountVisualMeshLODLevels-1 do begin
+
+  LODLevel:=fLODLevels[LODLevelIndex];
+
+  if LODLevel.UpdateTransform(aInFlightFrameIndex) then begin
+   result:=true;
+  end;
+
+ end;
 
 end;
 
