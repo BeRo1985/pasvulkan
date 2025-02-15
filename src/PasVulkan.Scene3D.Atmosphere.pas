@@ -742,7 +742,7 @@ type TpvScene3DAtmosphere=class;
        fScene3D:TObject;
        fAtmosphereParameters:TAtmosphereParameters;
        fPointerToAtmosphereParameters:PAtmosphereParameters;
-       fGPUAtmosphereParameters:TGPUAtmosphereParameters;
+       fGPUAtmosphereParameters:array[0..MaxInFlightFrames-1] of TGPUAtmosphereParameters;
        fAtmosphereParametersBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
        fWeatherMapTexture:TpvScene3DRendererImageCubeMap;
        fWeatherMapTextureDescriptorPool:TpvVulkanDescriptorPool;
@@ -768,10 +768,11 @@ type TpvScene3DAtmosphere=class;
        function HandleRelease:boolean;
        procedure Upload;
        procedure Unload;
-       procedure Update(const aInFlightFrameIndex:TpvSizeInt;
-                        const aTransferQueue:TpvVulkanQueue;
-                        const aTransferCommandBuffer:TpvVulkanCommandBuffer;
-                        const aTransferFence:TpvVulkanFence);
+       procedure Update(const aInFlightFrameIndex:TpvSizeInt);
+       procedure UploadFrame(const aInFlightFrameIndex:TpvSizeInt;
+                             const aTransferQueue:TpvVulkanQueue;
+                             const aTransferCommandBuffer:TpvVulkanCommandBuffer;
+                             const aTransferFence:TpvVulkanFence);
        function IsInFlightFrameVisible(const aInFlightFrameIndex:TpvSizeInt):Boolean;
        function GetRenderInstance(const aRendererInstance:TObject):TpvScene3DAtmosphere.TRendererInstance;
        procedure ProcessSimulation(const aCommandBuffer:TpvVulkanCommandBuffer;
@@ -3858,40 +3859,49 @@ begin
  end;
 end;
 
-procedure TpvScene3DAtmosphere.Update(const aInFlightFrameIndex:TpvSizeInt;
-                                      const aTransferQueue:TpvVulkanQueue;
-                                      const aTransferCommandBuffer:TpvVulkanCommandBuffer;
-                                      const aTransferFence:TpvVulkanFence);
+procedure TpvScene3DAtmosphere.Update(const aInFlightFrameIndex:TpvSizeInt);
 var IsVisible:boolean;
 begin
 
- IsVisible:=fReady and fUploaded;
+ IsVisible:=fReady;
 
  if IsVisible then begin
 
-  if assigned(fAtmosphereParametersBuffers[aInFlightFrameIndex]) then begin
-   
-   fGPUAtmosphereParameters.Assign(fAtmosphereParameters,fScene3D,aInFlightFrameIndex);
+  fGPUAtmosphereParameters[aInFlightFrameIndex].Assign(fAtmosphereParameters,fScene3D,aInFlightFrameIndex);
 
-{  fGPUAtmosphereParameters.Transform:=fGPUAtmosphereParameters.Transform;
-   fGPUAtmosphereParameters.InverseTransform:=fGPUAtmosphereParameters.Transform.Inverse;}
+{ fGPUAtmosphereParameters[aInFlightFrameIndex].Transform:=fGPUAtmosphereParameters[aInFlightFrameIndex].Transform;
+  fGPUAtmosphereParameters[aInFlightFrameIndex].InverseTransform:=fGPUAtmosphereParameters[aInFlightFrameIndex].Transform.Inverse;}
+
+  IsVisible:=fGPUAtmosphereParameters[aInFlightFrameIndex].AbsorptionExtinction.w>1e-7;
+
+ end;
+
+ fInFlightFrameVisible[aInFlightFrameIndex]:=IsVisible;
+
+end;
+
+procedure TpvScene3DAtmosphere.UploadFrame(const aInFlightFrameIndex:TpvSizeInt;
+                                           const aTransferQueue:TpvVulkanQueue;
+                                           const aTransferCommandBuffer:TpvVulkanCommandBuffer;
+                                           const aTransferFence:TpvVulkanFence);
+begin
+
+ if fUploaded and fInFlightFrameVisible[aInFlightFrameIndex] then begin
+
+  if assigned(fAtmosphereParametersBuffers[aInFlightFrameIndex]) then begin
 
    TpvScene3D(fScene3D).VulkanDevice.MemoryStaging.Upload(aTransferQueue,
                                                           aTransferCommandBuffer,
                                                           aTransferFence,
-                                                          fGPUAtmosphereParameters,
+                                                          fGPUAtmosphereParameters[aInFlightFrameIndex],
                                                           fAtmosphereParametersBuffers[aInFlightFrameIndex],
                                                           0,
                                                           SizeOf(TGPUAtmosphereParameters));
-
-   IsVisible:=fGPUAtmosphereParameters.AbsorptionExtinction.w>1e-7;
 
   end;
 
  end;
 
- fInFlightFrameVisible[aInFlightFrameIndex]:=IsVisible;
- 
 end;
 
 function TpvScene3DAtmosphere.IsInFlightFrameVisible(const aInFlightFrameIndex:TpvSizeInt):Boolean;

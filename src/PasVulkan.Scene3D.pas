@@ -30659,13 +30659,7 @@ begin
   for Index:=0 to TpvScene3DAtmospheres(fAtmospheres).Count-1 do begin
    Atmosphere:=TpvScene3DAtmospheres(fAtmospheres).Items[Index];
    if Atmosphere.Ready then begin
-    if not Atmosphere.Uploaded then begin
-     Atmosphere.Upload;
-    end;
-    Atmosphere.Update(aInFlightFrameIndex,
-                      fVulkanStagingQueue,
-                      fVulkanStagingCommandBuffer,
-                      fVulkanStagingFence);
+    Atmosphere.Update(aInFlightFrameIndex);
    end;
   end;
  finally
@@ -31481,6 +31475,7 @@ var Index,ItemID,PlanetIndex:TpvSizeInt;
     Size:TVkDeviceSize;
     Group:TpvScene3D.TGroup;
     Planet:TpvScene3DPlanet;
+    Atmosphere:TpvScene3DAtmosphere;
     MaterialIDDirtyMap:PMaterialIDDirtyMap;
     DirtyBits,MinMaterialID,MaxMaterialID:TpvUInt32;
     MaterialBufferDataOffset,MaterialBufferDataSize:TpvSizeUInt;
@@ -31502,7 +31497,25 @@ begin
    TpvScene3DPlanets(fPlanets).Lock.ReleaseRead;
   end;
 
-  for Group in fGroups do begin
+  TpvScene3DAtmospheres(fAtmospheres).Lock.AcquireRead;
+  try
+   for Index:=0 to TpvScene3DAtmospheres(fAtmospheres).Count-1 do begin
+    Atmosphere:=TpvScene3DAtmospheres(fAtmospheres).Items[Index];
+    if Atmosphere.Ready then begin
+     if not Atmosphere.Uploaded then begin
+      Atmosphere.Upload;
+     end;
+     Atmosphere.UploadFrame(aInFlightFrameIndex,
+                            fVulkanStagingQueue,
+                            fVulkanStagingCommandBuffer,
+                            fVulkanStagingFence);
+    end;
+   end;
+  finally
+   TpvScene3DAtmospheres(fAtmospheres).Lock.ReleaseRead;
+  end;
+
+ for Group in fGroups do begin
    Group.UploadFrame(aInFlightFrameIndex);
   end;
 
