@@ -168,6 +168,10 @@ struct AtmosphereParameters {
  
   mat4 inverseTransform;
  
+  mat4 originTransform;
+
+  mat4 inverseOriginTransform;
+
   vec4 RayleighScattering; // w = Mu_S_min
  
   vec4 MieScattering; // w = sun direction X
@@ -295,7 +299,9 @@ float getAtmosphereCullingFactor(const in AtmosphereCullingParameters CullingPar
 }
 
 vec3 getSunDirection(const in AtmosphereParameters atmosphereParameters){
-  return vec3(atmosphereParameters.MieScattering.w, atmosphereParameters.MieExtinction.w, atmosphereParameters.MieAbsorption.w);
+  vec3 sunDirection = vec3(atmosphereParameters.MieScattering.w, atmosphereParameters.MieExtinction.w, atmosphereParameters.MieAbsorption.w); 
+  sunDirection = normalize(atmosphereParameters.originTransform * vec4(sunDirection, 0.0)).xyz; // Transform the sun direction to the world space
+  return sunDirection;
 }
 
 struct SingleScatteringResult {

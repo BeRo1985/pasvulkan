@@ -586,6 +586,10 @@ type TpvScene3DAtmosphere=class;
 
               InverseTransform:TpvMatrix4x4; // Transform of the atmosphere for the case that the atmosphere is not centered at the origin (e.g. multiple planets)
 
+              OriginTransform:TpvMatrix4x4;
+
+              InverseOriginTransform:TpvMatrix4x4;
+
               RayleighScattering:TpvVector4; // w = Mu_S_min
 
               MieScattering:TpvVector4; // w = sun direction X
@@ -1791,6 +1795,9 @@ begin
 
  Transform:=TpvScene3D(aScene3D).TransformOrigin(aAtmosphereParameters.Transform,aInFlightFrameIndex,false);
  InverseTransform:=Transform.Inverse;
+
+ OriginTransform:=TpvScene3D(aScene3D).OriginTransforms[aInFlightFrameIndex];
+ InverseOriginTransform:=TpvScene3D(aScene3D).InverseOriginTransforms[aInFlightFrameIndex];
 
  SolarIrradiance:=aAtmosphereParameters.SolarIrradiance;
 
