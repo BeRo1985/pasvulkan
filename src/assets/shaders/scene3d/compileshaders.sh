@@ -339,6 +339,10 @@ compileshaderarguments=(
   "-V solid_primitive.vert -o ${tempPath}/solid_primitive_vert.spv"
   "-V solid_primitive.frag -o ${tempPath}/solid_primitive_frag.spv"
 
+  "-V space_lines.comp -o ${tempPath}/space_lines_comp.spv"
+  "-V space_lines.vert -o ${tempPath}/space_lines_vert.spv"
+  "-V space_lines.frag -o ${tempPath}/space_lines_frag.spv"
+
   "-V particle.vert -o ${tempPath}/particle_vert.spv"
   "-V particle.vert -DVOXELIZATION -o ${tempPath}/particle_voxelization_vert.spv"
   "-V particle.vert -DRAYTRACING -o ${tempPath}/particle_raytracing_vert.spv"
