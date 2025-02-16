@@ -1089,6 +1089,7 @@ uses PasVulkan.Scene3D.Atmosphere,
      PasVulkan.Scene3D.Renderer.Passes.ReflectionProbeMipMapComputePass,
      PasVulkan.Scene3D.Renderer.Passes.ReflectionProbeComputePass,
 //   PasVulkan.Scene3D.Renderer.Passes.PlanetWaterPrepassComputePass,
+     PasVulkan.Scene3D.Renderer.Passes.ForwardComputePass,
      PasVulkan.Scene3D.Renderer.Passes.ForwardRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.AtmosphereCloudRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.AtmosphereRenderPass,
@@ -1203,6 +1204,7 @@ type TpvScene3DRendererInstancePasses=class
        fReflectionProbeComputePassCharlie:TpvScene3DRendererPassesReflectionProbeComputePass;
        fReflectionProbeComputePassLambertian:TpvScene3DRendererPassesReflectionProbeComputePass;
 //     fPlanetWaterPrepassComputePass:TpvScene3DRendererPassesPlanetWaterPrepassComputePass;
+       fForwardComputePass:TpvScene3DRendererPassesForwardComputePass;
        fForwardRenderPass:TpvScene3DRendererPassesForwardRenderPass;
        fAtmosphereCloudRenderPass:TpvScene3DRendererPassesAtmosphereCloudRenderPass;
        fAtmosphereRenderPass:TpvScene3DRendererPassesAtmosphereRenderPass;
@@ -3898,7 +3900,10 @@ begin
 
  end;
 
+ TpvScene3DRendererInstancePasses(fPasses).fForwardComputePass:=TpvScene3DRendererPassesForwardComputePass.Create(fFrameGraph,self);
+
  TpvScene3DRendererInstancePasses(fPasses).fForwardRenderPass:=TpvScene3DRendererPassesForwardRenderPass.Create(fFrameGraph,self);
+ TpvScene3DRendererInstancePasses(fPasses).fForwardRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fForwardComputePass);
  TpvScene3DRendererInstancePasses(fPasses).fForwardRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fAtmosphereProcessCustomPass);
 {TpvScene3DRendererInstancePasses(fPasses).fForwardRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fMeshComputePass);
  if assigned(TpvScene3DRendererInstancePasses(fPasses).fRaytracingBuildUpdatePass) then begin
