@@ -1273,6 +1273,18 @@ begin
                                    [TpvScene3D.TMaterial.TAlphaMode.Opaque],
                                    @InFlightFrameState^.Jitter);
 
+  fInstance.DrawSpaceLines(fInstance,
+                           fVulkanSpaceLinesGraphicsPipeline,
+                           -1,
+                           aInFlightFrameIndex,
+                           TpvScene3DRendererRenderPass.View,
+                           InFlightFrameState^.FinalViewIndex,
+                           InFlightFrameState^.CountFinalViews,
+                           FrameGraph.DrawFrameIndex,
+                           aCommandBuffer,
+                           fVulkanPipelineLayout,
+                           OnSetRenderPassResources);
+
   if ((fInstance.Renderer.TransparencyMode=TpvScene3DRendererTransparencyMode.Direct) and not fInstance.Renderer.Scene3D.HasTransmission) or not (fInstance.Renderer.UseOITAlphaTest or fInstance.Renderer.Scene3D.HasTransmission) then begin
    fInstance.Renderer.Scene3D.Draw(fInstance,
                                    fVulkanGraphicsPipelines[false,TpvScene3D.TMaterial.TAlphaMode.Mask],
