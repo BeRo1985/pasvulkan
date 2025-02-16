@@ -111,6 +111,9 @@ type { TpvScene3DRendererInstance }
              MaxSolidPrimitives=1 shl 20;
              MaxSolidPrimitiveVertices=MaxSolidPrimitives*4;
              MaxSolidPrimitiveIndices=MaxSolidPrimitives*6;
+             MaxSpaceLines=1 shl 20;
+             MaxSpaceLinesVertices=MaxSpaceLines*4;
+             MaxSpaceLinesIndices=MaxSpaceLines*6;
        type { TInFlightFrameState }
             TInFlightFrameState=record
 
@@ -497,6 +500,47 @@ type { TpvScene3DRendererInstance }
             end;
             TSolidPrimitiveIndexDynamicArrays=array[0..MaxInFlightFrames-1] of TSolidPrimitiveIndexDynamicArray;
             TSolidPrimitiveVulkanBuffers=array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
+            { TSpaceLinesVertex }
+            TSpaceLinesVertex=packed record
+             public
+              // uvec4-wise structure ordering so that the shaders can access it uvec4-wise
+              case boolean of
+               false:(
+
+                Position:TpvVector3;                  //  12   12
+                LineThickness:TpvFloat;               // + 4 = 16
+
+                Position0:TpvVector3;                 // +12 = 28
+                ZMin:TpvFloat;                        // + 4 = 32
+
+                Position1:TpvVector3;                 // +12 = 44
+                ZMax:TpvFloat;                        // + 4 = 48
+
+                Color:TpvVector4;                     // +16 = 64
+
+               );                                     //  ==   ==
+               true:(                                 //  64  64 per vertex
+                Padding:array[0..63] of TpvUInt8;
+               );
+            end;
+            PSpaceLinesVertex=^TSpaceLinesVertex;
+            TSpaceLinesVertices=array of TSpaceLinesVertex;
+            TSpaceLinesVertexDynamicArray=class(TpvDynamicArrayList<TSpaceLinesVertex>)
+            end;
+            TSpaceLinesVertexDynamicArrays=array[0..MaxInFlightFrames-1] of TSpaceLinesVertexDynamicArray;
+            // For space lines, the primitive structure is just the same as the vertex structure for simplicity
+            TSpaceLinesPrimitive=TSpaceLinesVertex;
+            PSpaceLinesPrimitive=^TSpaceLinesPrimitive;
+            TSpaceLinesPrimitives=TSpaceLinesVertices;
+            TSpaceLinesPrimitiveDynamicArray=TSpaceLinesVertexDynamicArray;
+            TSpaceLinesPrimitiveDynamicArrays=TSpaceLinesVertexDynamicArrays;
+            TSpaceLinesIndex=TpvUInt32;
+            PSpaceLinesIndex=^TSpaceLinesIndex;
+            TSpaceLinesIndices=array of TSpaceLinesIndex;
+            TSpaceLinesIndexDynamicArray=class(TpvDynamicArrayList<TSpaceLinesIndex>)
+            end;
+            TSpaceLinesIndexDynamicArrays=array[0..MaxInFlightFrames-1] of TSpaceLinesIndexDynamicArray;
+            TSpaceLinesVulkanBuffers=array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
       private
        fScene3D:TpvScene3D;
        fID:TpvUInt32;
@@ -716,6 +760,12 @@ type { TpvScene3DRendererInstance }
        fSolidPrimitiveVertexBuffer:TpvVulkanBuffer;
        fSolidPrimitiveIndexBuffer:TpvVulkanBuffer;
       private
+       fSpaceLinesPrimitiveDynamicArrays:TSpaceLinesPrimitiveDynamicArrays;
+       fSpaceLinesPrimitiveBuffers:TSpaceLinesVulkanBuffers;
+       fSpaceLinesIndirectDrawCommandBuffer:TpvVulkanBuffer;
+       fSpaceLinesVertexBuffer:TpvVulkanBuffer;
+       fSpaceLinesIndexBuffer:TpvVulkanBuffer;
+      private
        function GetPixelAmountFactor:TpvDouble;
        procedure SetPixelAmountFactor(const aPixelAmountFactor:TpvDouble);
       private
@@ -743,6 +793,8 @@ type { TpvScene3DRendererInstance }
        procedure ReleasePersistentResources;
        procedure AcquireVolatileResources;
        procedure ReleaseVolatileResources;
+       procedure ClearSpaceLines(const aInFlightFrameIndex:TpvSizeInt);
+       function AddSpaceLine(const aInFlightFrameIndex:TpvSizeInt;const aStartPosition,aEndPosition:TpvVector3;const aColor:TpvVector4;const aSize:TpvScalar;const aZMin:TpvScalar=0.0;const aZMax:TpvScalar=Infinity):Boolean;
        procedure ClearSolid(const aInFlightFrameIndex:TpvSizeInt);
        function AddSolidPoint2D(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector2;const aColor:TpvVector4;const aSize:TpvScalar;const aPositionOffset:TpvVector2;const aLineWidth:TpvScalar):Boolean;
        function AddSolidLine2D(const aInFlightFrameIndex:TpvSizeInt;const aStartPosition,aEndPosition:TpvVector2;const aColor:TpvVector4;const aSize:TpvScalar;const aStartPositionOffset,aEndPositionOffset:TpvVector2):Boolean;
@@ -792,6 +844,19 @@ type { TpvScene3DRendererInstance }
                                      const aCommandBuffer:TpvVulkanCommandBuffer;
                                      const aPipelineLayout:TpvVulkanPipelineLayout;
                                      const aOnSetRenderPassResources:TpvScene3D.TOnSetRenderPassResources);
+      public
+       procedure InitializeSpaceLinesGraphicsPipeline(const aPipeline:TpvVulkanGraphicsPipeline);
+       procedure DrawSpaceLines(const aRendererInstance:TObject;
+                                const aGraphicsPipeline:TpvVulkanGraphicsPipeline;
+                                const aPreviousInFlightFrameIndex:TpvSizeInt;
+                                const aInFlightFrameIndex:TpvSizeInt;
+                                const aRenderPass:TpvScene3DRendererRenderPass;
+                                const aViewBaseIndex:TpvSizeInt;
+                                const aCountViews:TpvSizeInt;
+                                const aFrameIndex:TpvSizeInt;
+                                const aCommandBuffer:TpvVulkanCommandBuffer;
+                                const aPipelineLayout:TpvVulkanPipelineLayout;
+                                const aOnSetRenderPassResources:TpvScene3D.TOnSetRenderPassResources);
       public
        property VulkanViewUniformBuffers:TpvScene3D.TVulkanViewUniformBuffers read fVulkanViewUniformBuffers;
       public
@@ -924,6 +989,12 @@ type { TpvScene3DRendererInstance }
        property SolidPrimitiveIndirectDrawCommandBuffer:TpvVulkanBuffer read fSolidPrimitiveIndirectDrawCommandBuffer;
        property SolidPrimitiveVertexBuffer:TpvVulkanBuffer read fSolidPrimitiveVertexBuffer;
        property SolidPrimitiveIndexBuffer:TpvVulkanBuffer read fSolidPrimitiveIndexBuffer;
+      public
+       property SpaceLinesPrimitiveDynamicArrays:TSpaceLinesPrimitiveDynamicArrays read fSpaceLinesPrimitiveDynamicArrays;
+       property SpaceLinesPrimitiveBuffers:TSpaceLinesVulkanBuffers read fSpaceLinesPrimitiveBuffers;
+       property SpaceLinesIndirectDrawCommandBuffer:TpvVulkanBuffer read fSpaceLinesIndirectDrawCommandBuffer;
+       property SpaceLinesVertexBuffer:TpvVulkanBuffer read fSpaceLinesVertexBuffer;
+       property SpaceLinesIndexBuffer:TpvVulkanBuffer read fSpaceLinesIndexBuffer;
       public
        property PerInFlightFrameGPUDrawIndexedIndirectCommandDynamicArrays:TpvScene3D.TPerInFlightFrameGPUDrawIndexedIndirectCommandDynamicArrays read fPerInFlightFrameGPUDrawIndexedIndirectCommandDynamicArrays write fPerInFlightFrameGPUDrawIndexedIndirectCommandDynamicArrays;
        property PerInFlightFrameGPUDrawIndexedIndirectCommandBufferSizes:TpvScene3D.TPerInFlightFrameGPUDrawIndexedIndirectCommandSizeValues read fPerInFlightFrameGPUDrawIndexedIndirectCommandBufferSizes;
@@ -1903,6 +1974,83 @@ begin
                                                     0,
                                                     'fSolidPrimitiveIndexBuffers');
 
+ for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
+
+  fSpaceLinesPrimitiveDynamicArrays[InFlightFrameIndex]:=TSpaceLinesPrimitiveDynamicArray.Create;
+
+  fSpaceLinesPrimitiveBuffers[InFlightFrameIndex]:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
+                                                                          SizeOf(TSpaceLinesPrimitive)*MaxSpaceLines,
+                                                                          TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT),
+                                                                          TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                                          [],
+                                                                          0,
+                                                                          TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                                                          0,
+                                                                          0,
+                                                                          0,
+                                                                          0,
+                                                                          0,
+                                                                          0,
+                                                                          [TpvVulkanBufferFlag.PersistentMappedIfPossible],
+                                                                          0,
+                                                                          0,
+                                                                          'fSpaceLinesPrimitiveBuffers');
+
+ end;
+
+ fSpaceLinesIndirectDrawCommandBuffer:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
+                                                              RoundDownToPowerOfTwo(SizeOf(TVkDrawIndexedIndirectCommand)+16),
+                                                              TVkBufferUsageFlags(VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
+                                                              TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                              [],
+                                                              0,
+                                                              TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                              0,
+                                                              0,
+                                                              0,
+                                                              0,
+                                                              0,
+                                                              0,
+                                                              [],
+                                                              0,
+                                                              0,
+                                                              'fSpaceLinesIndirectDrawCommandBuffer');
+
+ fSpaceLinesVertexBuffer:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
+                                                 SizeOf(TSpaceLinesVertex)*MaxSpaceLinesVertices,
+                                                 TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
+                                                 TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                 [],
+                                                 0,
+                                                 TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                 0,
+                                                 0,
+                                                 0,
+                                                 0,
+                                                 0,
+                                                 0,
+                                                 [],
+                                                 0,
+                                                 0,
+                                                 'fSpaceLinesVertexBuffers');
+
+ fSpaceLinesIndexBuffer:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
+                                                SizeOf(TpvUInt32)*MaxSpaceLinesIndices,
+                                                TVkBufferUsageFlags(VK_BUFFER_USAGE_INDEX_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
+                                                TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                [],
+                                                0,
+                                                TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                0,
+                                                0,
+                                                0,
+                                                0,
+                                                0,
+                                                0,
+                                                [],
+                                                0,
+                                                0,
+                                                'fSpaceLinesIndexBuffers');
 
  fFrameGraph:=TpvFrameGraph.Create(Renderer.VulkanDevice,Renderer.CountInFlightFrames);
 
@@ -2197,6 +2345,17 @@ begin
  FreeAndNil(fSolidPrimitiveVertexBuffer);
 
  FreeAndNil(fSolidPrimitiveIndexBuffer);
+
+ for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
+  FreeAndNil(fSpaceLinesPrimitiveDynamicArrays[InFlightFrameIndex]);
+  FreeAndNil(fSpaceLinesPrimitiveBuffers[InFlightFrameIndex]);
+ end;
+
+ FreeAndNil(fSpaceLinesIndirectDrawCommandBuffer);
+
+ FreeAndNil(fSpaceLinesVertexBuffer);
+
+ FreeAndNil(fSpaceLinesIndexBuffer);
 
  for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
   fViews[InFlightFrameIndex].Finalize;
@@ -5497,6 +5656,30 @@ begin
 
 end;
 
+procedure TpvScene3DRendererInstance.ClearSpaceLines(const aInFlightFrameIndex:TpvSizeInt);
+begin
+ fSpaceLinesPrimitiveDynamicArrays[aInFlightFrameIndex].ClearNoFree;
+end;
+
+function TpvScene3DRendererInstance.AddSpaceLine(const aInFlightFrameIndex:TpvSizeInt;const aStartPosition,aEndPosition:TpvVector3;const aColor:TpvVector4;const aSize:TpvScalar;const aZMin:TpvScalar=0.0;const aZMax:TpvScalar=Infinity):Boolean;
+var Primitive:PSpaceLinesPrimitive;
+    PrimitiveItems:TSpaceLinesPrimitiveDynamicArray;
+begin
+ PrimitiveItems:=fSpaceLinesPrimitiveDynamicArrays[aInFlightFrameIndex];
+ if assigned(PrimitiveItems) and (PrimitiveItems.Count<MaxSpaceLines) then begin
+  Primitive:=pointer(PrimitiveItems.AddNew);
+  Primitive^.Position:=TpvVector3.Null;
+  Primitive^.LineThickness:=aSize;
+  Primitive^.ZMin:=aZMin;
+  Primitive^.Position1:=aEndPosition;
+  Primitive^.ZMax:=aZMax;
+  Primitive^.Color:=aColor;
+  result:=true;
+ end else begin
+  result:=false;
+ end;
+end;
+
 procedure TpvScene3DRendererInstance.ClearSolid(const aInFlightFrameIndex:TpvSizeInt);
 begin
  fSolidPrimitivePrimitiveDynamicArrays[aInFlightFrameIndex].ClearNoFree;
@@ -7152,6 +7335,18 @@ begin
 
  end;
 
+ if fSpaceLinesPrimitiveDynamicArrays[aInFlightFrameIndex].Count>0 then begin
+
+  Renderer.VulkanDevice.MemoryStaging.Upload(fScene3D.VulkanStagingQueue,
+                                             fScene3D.VulkanStagingCommandBuffer,
+                                             fScene3D.VulkanStagingFence,
+                                             fSpaceLinesPrimitiveDynamicArrays[aInFlightFrameIndex].ItemArray[0],
+                                             fSpaceLinesPrimitiveBuffers[aInFlightFrameIndex],
+                                             0,
+                                             fSpaceLinesPrimitiveDynamicArrays[aInFlightFrameIndex].Count*SizeOf(TSpaceLinesPrimitive));
+
+ end;
+
  case Renderer.GlobalIlluminationMode of
 
   TpvScene3DRendererGlobalIlluminationMode.CascadedRadianceHints:begin
@@ -7543,6 +7738,52 @@ begin
  aWaitSemaphore:=fVulkanRenderSemaphores[aInFlightFrameIndex];
 
  TPasMPInterlocked.Write(fInFlightFrameStates[aInFlightFrameIndex].Ready,false);
+
+end;
+
+procedure TpvScene3DRendererInstance.InitializeSpaceLinesGraphicsPipeline(const aPipeline:TpvVulkanGraphicsPipeline);
+begin
+ aPipeline.VertexInputState.AddVertexInputBindingDescription(0,SizeOf(TSpaceLinesVertex),VK_VERTEX_INPUT_RATE_VERTEX);
+ aPipeline.VertexInputState.AddVertexInputAttributeDescription(0,0,VK_FORMAT_R32G32B32_SFLOAT,TVkPtrUInt(pointer(@PSpaceLinesVertex(nil)^.Position)));
+ aPipeline.VertexInputState.AddVertexInputAttributeDescription(1,0,VK_FORMAT_R32_SFLOAT,TVkPtrUInt(pointer(@PSpaceLinesVertex(nil)^.LineThickness)));
+ aPipeline.VertexInputState.AddVertexInputAttributeDescription(2,0,VK_FORMAT_R32G32B32_SFLOAT,TVkPtrUInt(pointer(@PSpaceLinesVertex(nil)^.Position0)));
+ aPipeline.VertexInputState.AddVertexInputAttributeDescription(3,0,VK_FORMAT_R32_SFLOAT,TVkPtrUInt(pointer(@PSpaceLinesVertex(nil)^.ZMin)));
+ aPipeline.VertexInputState.AddVertexInputAttributeDescription(4,0,VK_FORMAT_R32G32B32_SFLOAT,TVkPtrUInt(pointer(@PSpaceLinesVertex(nil)^.Position1)));
+ aPipeline.VertexInputState.AddVertexInputAttributeDescription(5,0,VK_FORMAT_R32_SFLOAT,TVkPtrUInt(pointer(@PSpaceLinesVertex(nil)^.ZMax)));
+ aPipeline.VertexInputState.AddVertexInputAttributeDescription(6,0,VK_FORMAT_R32G32B32A32_SFLOAT,TVkPtrUInt(pointer(@PSpaceLinesVertex(nil)^.Color)));
+end;
+
+procedure TpvScene3DRendererInstance.DrawSpaceLines(const aRendererInstance:TObject;
+                                                    const aGraphicsPipeline:TpvVulkanGraphicsPipeline;
+                                                    const aPreviousInFlightFrameIndex:TpvSizeInt;
+                                                    const aInFlightFrameIndex:TpvSizeInt;
+                                                    const aRenderPass:TpvScene3DRendererRenderPass;
+                                                    const aViewBaseIndex:TpvSizeInt;
+                                                    const aCountViews:TpvSizeInt;
+                                                    const aFrameIndex:TpvSizeInt;
+                                                    const aCommandBuffer:TpvVulkanCommandBuffer;
+                                                    const aPipelineLayout:TpvVulkanPipelineLayout;
+                                                    const aOnSetRenderPassResources:TpvScene3D.TOnSetRenderPassResources);
+const Offsets:TVkDeviceSize=0;
+begin
+
+ if (aViewBaseIndex>=0) and (aCountViews>0) and (fSpaceLinesPrimitiveDynamicArrays[aInFlightFrameIndex].Count>0) then begin
+
+//fScene3D.SetGlobalResources(aCommandBuffer,aPipelineLayout,aRendererInstance,aRenderPass,aPreviousInFlightFrameIndex,aInFlightFrameIndex);
+
+  if assigned(aOnSetRenderPassResources) then begin
+   aOnSetRenderPassResources(aCommandBuffer,aPipelineLayout,aRendererInstance,aRenderPass,aPreviousInFlightFrameIndex,aInFlightFrameIndex);
+  end;
+
+  aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,aGraphicsPipeline.Handle);
+
+  aCommandBuffer.CmdBindVertexBuffers(0,1,@fSpaceLinesVertexBuffer.Handle,@Offsets);
+
+  aCommandBuffer.CmdBindIndexBuffer(fSpaceLinesIndexBuffer.Handle,0,VK_INDEX_TYPE_UINT32);
+
+  aCommandBuffer.CmdDrawIndexedIndirect(fSpaceLinesIndirectDrawCommandBuffer.Handle,0,1,SizeOf(TVkDrawIndexedIndirectCommand));
+
+ end;
 
 end;
 
