@@ -108,7 +108,7 @@ type { TpvScene3DRendererPassesCanvasRenderPass }
        fDebugPrimitiveVertexShaderModule:TpvVulkanShaderModule;
        fDebugPrimitiveGeometryShaderModule:TpvVulkanShaderModule;
        fDebugPrimitiveFragmentShaderModule:TpvVulkanShaderModule;
-       fSolidPrimitiveVertexShaderModule:TpvVulkanShaderModule;       
+       fSolidPrimitiveVertexShaderModule:TpvVulkanShaderModule;
        fSolidPrimitiveFragmentShaderModule:TpvVulkanShaderModule;
        fPassVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fPassVulkanDescriptorPool:TpvVulkanDescriptorPool;
