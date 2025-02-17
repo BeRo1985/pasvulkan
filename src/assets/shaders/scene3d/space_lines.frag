@@ -21,8 +21,9 @@ layout(push_constant) uniform PushConstants {
   uint viewBaseIndex;
   uint countViews;
   uint countAllViews;
-  uint dummy;
-  vec2 viewPortSize;
+  uint frameIndex;
+  vec4 jitter;
+  uvec4 timeSecondsTimeFractionalSecondWidthHeight; // x = timeSeconds (uint), y = timeFractionalSecond (float), z = width, w = height
 } pushConstants;
 
 void main(){
@@ -34,7 +35,7 @@ void main(){
 #if 0
   // Rounded line
   vec2 pa = p - a, ba = b - a;
-  float d = length(pa - (ba * (clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0)))) - (inLineThicknessOrPointSize * 0.5);
+  float d = length(pa - (ba * (clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0)))) - (inLineThickness * 0.5);
 #else
   // Line with square ends 
   float l = length(b - a);
@@ -45,9 +46,9 @@ void main(){
 
   float alpha = 1.0 - clamp(d / fwidth(d), 0.0, 1.0);
 
-  if((outZ < outZMinMax.x) || (outZ > outZMinMax.y)){
+/*if((outZ < outZMinMax.x) || (outZ > outZMinMax.y)){
     alpha = 0.0; 
-  }
+  }*/
 
   outputColor = vec4(inColor.xyzw) * alpha; // Premultiplied alpha
 

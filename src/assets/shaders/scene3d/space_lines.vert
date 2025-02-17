@@ -5,7 +5,7 @@
 #extension GL_ARB_shading_language_420pack : enable
 #extension GL_GOOGLE_include_directive : enable
 
-#include "solid_primitive.glsl"
+#include "space_lines.glsl"
 
 layout(location = 0) in vec3 inPosition; // Position
 layout(location = 1) in float inLineThickness; // Line thickness or point size  
@@ -28,8 +28,9 @@ layout(push_constant) uniform PushConstants {
   uint viewBaseIndex;
   uint countViews;
   uint countAllViews;
-  uint dummy;
-  vec2 viewPortSize;
+  uint frameIndex;
+  vec4 jitter;
+  uvec4 timeSecondsTimeFractionalSecondWidthHeight; // x = timeSeconds (uint), y = timeFractionalSecond (float), z = width, w = height
 } pushConstants;
 
 // Global descriptor set
@@ -52,8 +53,10 @@ out gl_PerVertex {
 
 /* clang-format on */
 
+vec2 viewPortSize = vec2(pushConstants.timeSecondsTimeFractionalSecondWidthHeight.zw);
+
 vec2 clipSpaceToScreenSpace(const vec2 clipSpace) {
-  return fma(clipSpace, vec2(0.5), vec2(0.5)) * pushConstants.viewPortSize;
+  return fma(clipSpace, vec2(0.5), vec2(0.5)) * viewPortSize;
 }
 
 void main() {
@@ -69,7 +72,11 @@ void main() {
   vec2 screenSpacePosition0 = outPosition0 = clipSpaceToScreenSpace(clipSpacePosition0.xy / clipSpacePosition0.w);
   vec2 screenSpacePosition1 = outPosition1 = clipSpaceToScreenSpace(clipSpacePosition1.xy / clipSpacePosition1.w);
 
-  vec2 normal = normalize(screenSpacePosition1.xy - screenSpacePosition0.xy);
+  vec2 normal = screenSpacePosition1.xy - screenSpacePosition0.xy;
+  if(length(normal) > 0.0){
+    normal = normalize(normal);
+  }
+
   vec2 tangent = vec2(-normal.y, normal.x);
   
   vec2 linePosition0 = screenSpacePosition0 + (((inPosition.x * tangent) + (inPosition.y * normal)) * inLineThickness);
@@ -85,7 +92,7 @@ void main() {
   outLineThickness = inLineThickness;
 
   vec4 clipSpacePosition = mix(clipSpacePosition0, clipSpacePosition1, inPosition.z);
-  gl_Position = clipSpacePosition = vec4(fma(linePosition, vec2(2.0) / pushConstants.viewPortSize, vec2(-1.0)) * clipSpacePosition.w, clipSpacePosition.zw);
+  gl_Position = clipSpacePosition = vec4(fma(linePosition, vec2(2.0) / viewPortSize, vec2(-1.0)) * clipSpacePosition.w, clipSpacePosition.zw);
   
   gl_PointSize = 1.0; 
 

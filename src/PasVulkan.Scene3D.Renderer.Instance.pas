@@ -5675,6 +5675,7 @@ begin
   Primitive:=pointer(PrimitiveItems.AddNew);
   Primitive^.Position:=TpvVector3.Null;
   Primitive^.LineThickness:=aSize;
+  Primitive^.Position0:=aStartPosition;
   Primitive^.ZMin:=aZMin;
   Primitive^.Position1:=aEndPosition;
   Primitive^.ZMax:=aZMax;
