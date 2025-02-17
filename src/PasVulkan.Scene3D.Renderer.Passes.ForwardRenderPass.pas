@@ -83,6 +83,15 @@ uses SysUtils,
 
 type { TpvScene3DRendererPassesForwardRenderPass }
      TpvScene3DRendererPassesForwardRenderPass=class(TpvFrameGraph.TRenderPass)
+      public
+       type TSpaceLinesPushConstants=packed record
+             ViewBaseIndex:TpvUInt32;
+             CountViews:TpvUInt32;
+             CountAllViews:TpvUInt32;
+             Dummy:TpvUInt32;
+             ViewPortSize:TpvVector2;
+            end;
+            PSpaceLinesPushConstants=^TSpaceLinesPushConstants;      
       private
        fOnSetRenderPassResourcesDone:boolean;
        procedure OnSetRenderPassResources(const aCommandBuffer:TpvVulkanCommandBuffer;
@@ -124,11 +133,13 @@ type { TpvScene3DRendererPassesForwardRenderPass }
        fVulkanGraphicsPipelines:array[boolean,TpvScene3D.TMaterial.TAlphaMode] of TpvScene3D.TGraphicsPipelines;
        fVulkanSpaceLinesGraphicsPipeline:TpvVulkanGraphicsPipeline;
        fVulkanPipelineLayout:TpvVulkanPipelineLayout;
+       fVulkanSpaceLinesPipelineLayout:TpvVulkanPipelineLayout;
        fSkyBox:TpvScene3DRendererSkyBox;
        fPlanetDepthPrePass:TpvScene3DPlanet.TRenderPass;
        fPlanetOpaquePass:TpvScene3DPlanet.TRenderPass;
        fVoxelVisualization:TpvScene3DRendererVoxelVisualization;
        fVoxelMeshVisualization:TpvScene3DRendererVoxelMeshVisualization;
+       fSpaceLinesPushConstants:TSpaceLinesPushConstants;
       public
        constructor Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance); reintroduce;
        destructor Destroy; override;
@@ -763,6 +774,12 @@ begin
  end;
  fVulkanPipelineLayout.Initialize;
 
+ fVulkanSpaceLinesPipelineLayout:=TpvVulkanPipelineLayout.Create(fInstance.Renderer.VulkanDevice);
+ fVulkanSpaceLinesPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),0,SizeOf(TSpaceLinesPushConstants));
+ fVulkanSpaceLinesPipelineLayout.AddDescriptorSetLayout(fInstance.Renderer.Scene3D.GlobalVulkanDescriptorSetLayout);
+ fVulkanSpaceLinesPipelineLayout.AddDescriptorSetLayout(fPassVulkanDescriptorSetLayout);
+ fVulkanSpaceLinesPipelineLayout.Initialize;
+
  for DepthPrePass:=false to fUseDepthPrepass do begin
   for AlphaMode:=Low(TpvScene3D.TMaterial.TAlphaMode) to High(TpvScene3D.TMaterial.TAlphaMode) do begin
    for PrimitiveTopology:=Low(TpvScene3D.TPrimitiveTopology) to High(TpvScene3D.TPrimitiveTopology) do begin
@@ -962,7 +979,7 @@ begin
                                                            fInstance.Renderer.VulkanPipelineCache,
                                                            0,
                                                            [],
-                                                           fVulkanPipelineLayout,
+                                                           fVulkanSpaceLinesPipelineLayout,
                                                            fVulkanRenderPass,
                                                            VulkanRenderPassSubpassIndex,
                                                            nil,
@@ -1098,8 +1115,9 @@ begin
    end;
   end;
  end;
- FreeAndNil(fVulkanPipelineLayout);
  FreeAndNil(fVulkanSpaceLinesGraphicsPipeline);
+ FreeAndNil(fVulkanPipelineLayout);
+ FreeAndNil(fVulkanSpaceLinesPipelineLayout);
  for Index:=0 to fInstance.Renderer.CountInFlightFrames-1 do begin
   FreeAndNil(fPassVulkanDescriptorSets[Index]);
   FreeAndNil(fIBLDescriptors[Index]);
@@ -1273,17 +1291,51 @@ begin
                                    [TpvScene3D.TMaterial.TAlphaMode.Opaque],
                                    @InFlightFrameState^.Jitter);
 
-  fInstance.DrawSpaceLines(fInstance,
-                           fVulkanSpaceLinesGraphicsPipeline,
-                           -1,
-                           aInFlightFrameIndex,
-                           TpvScene3DRendererRenderPass.View,
-                           InFlightFrameState^.FinalViewIndex,
-                           InFlightFrameState^.CountFinalViews,
-                           FrameGraph.DrawFrameIndex,
-                           aCommandBuffer,
-                           fVulkanPipelineLayout,
-                           OnSetRenderPassResources);
+  begin
+
+   fSpaceLinesPushConstants.ViewBaseIndex:=fInstance.InFlightFrameStates^[aInFlightFrameIndex].FinalViewIndex;
+   fSpaceLinesPushConstants.CountViews:=fInstance.InFlightFrameStates^[aInFlightFrameIndex].CountFinalViews;
+   fSpaceLinesPushConstants.CountAllViews:=fInstance.InFlightFrameStates^[aInFlightFrameIndex].CountViews;
+   fSpaceLinesPushConstants.ViewPortSize:=TpvVector2.Create(fResourceColor.Width,fResourceColor.Height);
+  
+   aCommandBuffer.CmdPushConstants(fVulkanSpaceLinesPipelineLayout.Handle,
+                                   TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_VERTEX_BIT) or TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_FRAGMENT_BIT),
+                                   0,
+                                   SizeOf(TSpaceLinesPushConstants),
+                                   @fSpaceLinesPushConstants);
+
+   aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                        fVulkanSpaceLinesPipelineLayout.Handle,
+                                        0,
+                                        1,
+                                        @fInstance.Scene3D.GlobalVulkanDescriptorSets[aInFlightFrameIndex].Handle,
+                                        0,
+                                        nil);
+
+    aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                         fVulkanSpaceLinesPipelineLayout.Handle,
+                                         1,
+                                         1,
+                                         @fPassVulkanDescriptorSets[aInFlightFrameIndex].Handle,
+                                         0,
+                                         nil);
+
+    fInstance.DrawSpaceLines(fInstance,
+                            fVulkanSpaceLinesGraphicsPipeline,
+                            -1,
+                            aInFlightFrameIndex,
+                            TpvScene3DRendererRenderPass.View,
+                            InFlightFrameState^.FinalViewIndex,
+                            InFlightFrameState^.CountFinalViews,
+                            FrameGraph.DrawFrameIndex,
+                            aCommandBuffer,
+                            fVulkanSpaceLinesPipelineLayout,
+                            nil);
+
+   // Set flag to false, because we have to call OnSetRenderPassResources for the next draw call, as space lines were drawn with a different pipeline
+   fOnSetRenderPassResourcesDone:=false;
+
+  end;
 
   if ((fInstance.Renderer.TransparencyMode=TpvScene3DRendererTransparencyMode.Direct) and not fInstance.Renderer.Scene3D.HasTransmission) or not (fInstance.Renderer.UseOITAlphaTest or fInstance.Renderer.Scene3D.HasTransmission) then begin
    fInstance.Renderer.Scene3D.Draw(fInstance,

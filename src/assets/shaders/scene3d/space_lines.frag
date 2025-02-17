@@ -21,9 +21,8 @@ layout(push_constant) uniform PushConstants {
   uint viewBaseIndex;
   uint countViews;
   uint countAllViews;
-  uint frameIndex;
-  vec4 jitter;
-  uvec4 timeSecondsTimeFractionalSecondWidthHeight; // x = timeSeconds (uint), y = timeFractionalSecond (float), z = width, w = height
+  uint dummy;
+  vec2 viewPortSize;
 } pushConstants;
 
 void main(){
@@ -46,9 +45,9 @@ void main(){
 
   float alpha = 1.0 - clamp(d / fwidth(d), 0.0, 1.0);
 
-/*if((outZ < outZMinMax.x) || (outZ > outZMinMax.y)){
+  if((outZ < outZMinMax.x) || (outZ > outZMinMax.y)){
     alpha = 0.0; 
-  }*/
+  }
 
   outputColor = vec4(inColor.xyzw) * alpha; // Premultiplied alpha
 

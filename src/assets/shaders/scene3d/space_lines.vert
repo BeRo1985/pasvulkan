@@ -28,9 +28,8 @@ layout(push_constant) uniform PushConstants {
   uint viewBaseIndex;
   uint countViews;
   uint countAllViews;
-  uint frameIndex;
-  vec4 jitter;
-  uvec4 timeSecondsTimeFractionalSecondWidthHeight; // x = timeSeconds (uint), y = timeFractionalSecond (float), z = width, w = height
+  uint dummy;
+  vec2 viewPortSize;
 } pushConstants;
 
 // Global descriptor set
@@ -53,10 +52,8 @@ out gl_PerVertex {
 
 /* clang-format on */
 
-vec2 viewPortSize = vec2(pushConstants.timeSecondsTimeFractionalSecondWidthHeight.zw);
-
 vec2 clipSpaceToScreenSpace(const vec2 clipSpace) {
-  return fma(clipSpace, vec2(0.5), vec2(0.5)) * viewPortSize;
+  return fma(clipSpace, vec2(0.5), vec2(0.5)) * pushConstants.viewPortSize;
 }
 
 void main() {
@@ -92,7 +89,7 @@ void main() {
   outLineThickness = inLineThickness;
 
   vec4 clipSpacePosition = mix(clipSpacePosition0, clipSpacePosition1, inPosition.z);
-  gl_Position = clipSpacePosition = vec4(fma(linePosition, vec2(2.0) / viewPortSize, vec2(-1.0)) * clipSpacePosition.w, clipSpacePosition.zw);
+  gl_Position = clipSpacePosition = vec4(fma(linePosition, vec2(2.0) / pushConstants.viewPortSize, vec2(-1.0)) * clipSpacePosition.w, clipSpacePosition.zw);
   
   gl_PointSize = 1.0; 
 
