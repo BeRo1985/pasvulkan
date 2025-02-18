@@ -380,6 +380,8 @@ type TpvVector2D=record
        class operator Divide(const aLeft,aRight:TpvMatrix4x4D):TpvMatrix4x4D;
        class operator Divide(const aLeft:TpvMatrix4x4D;const aRight:TpvDouble):TpvMatrix4x4D;
        class operator Negative(const aMatrix:TpvMatrix4x4D):TpvMatrix4x4D;
+       function MulInverted({$ifdef fpc}constref{$else}const{$endif} a:TpvVector3D):TpvVector3D; overload;
+       function MulInverted({$ifdef fpc}constref{$else}const{$endif} a:TpvVector4D):TpvVector4D; overload;
        function MulBasis(const aVector:TpvVector3):TpvVector3; overload;
        function MulBasis(const aVector:TpvVector3D):TpvVector3D; overload;
        function MulHomogen(const aVector:TpvVector3):TpvVector3; overload;
@@ -2906,6 +2908,29 @@ begin
  result.RawComponents[3,1]:=-aMatrix.RawComponents[3,1];
  result.RawComponents[3,2]:=-aMatrix.RawComponents[3,2];
  result.RawComponents[3,3]:=-aMatrix.RawComponents[3,3];
+end;
+
+function TpvMatrix4x4D.MulInverted({$ifdef fpc}constref{$else}const{$endif} a:TpvVector3D):TpvVector3D;
+var p:TpvVector3D;
+begin
+ p.x:=a.x-RawComponents[3,0];
+ p.y:=a.y-RawComponents[3,1];
+ p.z:=a.z-RawComponents[3,2];
+ result.x:=(RawComponents[0,0]*p.x)+(RawComponents[0,1]*p.y)+(RawComponents[0,2]*p.z);
+ result.y:=(RawComponents[1,0]*p.x)+(RawComponents[1,1]*p.y)+(RawComponents[1,2]*p.z);
+ result.z:=(RawComponents[2,0]*p.x)+(RawComponents[2,1]*p.y)+(RawComponents[2,2]*p.z);
+end;
+
+function TpvMatrix4x4D.MulInverted({$ifdef fpc}constref{$else}const{$endif} a:TpvVector4D):TpvVector4D;
+var p:TpvVector3D;
+begin
+ p.x:=a.x-RawComponents[3,0];
+ p.y:=a.y-RawComponents[3,1];
+ p.z:=a.z-RawComponents[3,2];
+ result.x:=(RawComponents[0,0]*p.x)+(RawComponents[0,1]*p.y)+(RawComponents[0,2]*p.z);
+ result.y:=(RawComponents[1,0]*p.x)+(RawComponents[1,1]*p.y)+(RawComponents[1,2]*p.z);
+ result.z:=(RawComponents[2,0]*p.x)+(RawComponents[2,1]*p.y)+(RawComponents[2,2]*p.z);
+ result.w:=a.w;
 end;
 
 function TpvMatrix4x4D.MulBasis(const aVector:TpvVector3):TpvVector3;
