@@ -16417,6 +16417,8 @@ end;
 
 initialization
  
+ VulkanDisableFloatingPointExceptions;
+
  // Check if a debugger is present
  pvDebuggerPresent:=IsDebuggerPresent;
  
