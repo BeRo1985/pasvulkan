@@ -865,7 +865,12 @@ type EpvScene3D=class(Exception);
             TImageClass=class of TImage;
             TImages=TpvObjectGenericList<TImage>;
             { TProceduralTextureImageHookStringHashMap }
-            TProceduralTextureImageHookStringHashMap=TpvStringHashMap<TImage.THook>;
+            TProceduralTextureImageHook=record
+             Hook:TImage.THook;
+             AllocateTexture:Boolean;
+            end;
+            PProceduralTextureImageHook=^TProceduralTextureImageHook;
+            TProceduralTextureImageHookStringHashMap=TpvStringHashMap<TProceduralTextureImageHook>;
             { TSampler }
             TSampler=class(TBaseObject)
              public
@@ -3514,6 +3519,7 @@ type EpvScene3D=class(Exception);
               );
              PVMFSignature:TPVMFSignature=('P','V','M','F');
              PVMFVersion=TpVUInt32($00000008);
+             ProceduralTextureImageHookDefault:TProceduralTextureImageHook=(Hook:nil;AllocateTexture:true);
       private
        fLock:TPasMPSpinLock;
        fLoadLock:TPasMPSpinLock;
@@ -3845,7 +3851,7 @@ type EpvScene3D=class(Exception);
        procedure Initialize;
        procedure AddToFreeQueue(const aObject:TObject;const aFrameDelay:TpvInt32=-1);
        procedure DumpMemoryUsage(const aStringList:TStringList);
-       procedure AddProceduralTextureImageHook(const aName:TpvUTF8String;const aHook:TImage.THook);
+       procedure AddProceduralTextureImageHook(const aName:TpvUTF8String;const aHook:TImage.THook;const aAllocateTexture:Boolean);
        procedure RemoveProceduralTextureImageHook(const aName:TpvUTF8String);
        procedure Upload;
        procedure Unload;
@@ -6529,7 +6535,7 @@ destructor TpvScene3D.TImage.Destroy;
 begin
  Unload;
  fIESTexture.Data:=nil;
- FreeAndNil(fTexture);
+ TpvReferenceCountedObject.DecRefOrFreeAndNil(fTexture);
  FreeAndNil(fLock);
  FreeAndNil(fResourceDataStream);
  inherited Destroy;
@@ -6605,7 +6611,8 @@ const WhiteTexturePixels:array[0..63] of TpvUInt32=(TpvUInt32($ffffffff),TpvUInt
                                                               TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080));
 var TemporaryPixels:array of TpvUInt32;
     x,y,w,h:TpvInt32;
-    ProceduralTextureImageHook:TImage.THook;
+    ProceduralTextureImageHook:TProceduralTextureImageHook;
+    HasProceduralTextureImageHook:boolean;
     ProceduralTextureImageHookOK:boolean;
 begin
  if (not fDataLoaded) and not fInLoadData then begin
@@ -6616,22 +6623,33 @@ begin
     try
      if (fReferenceCounter>0) and not fDataLoaded then begin
       try
-       FreeAndNil(fTexture); // to avoid memory leaks already beforehand
+       TpvReferenceCountedObject.DecRefOrFreeAndNil(fTexture); // to avoid memory leaks already beforehand
        if assigned(fSceneInstance.fVulkanDevice) then begin
-        fTexture:=TpvVulkanTexture.Create(fSceneInstance.fVulkanDevice);
-        fTexture.DoFreeDataAfterFinish:=false;
-        if length(fName)>0 then begin
-         ProceduralTextureImageHook:=fSceneInstance.fProceduralTextureImageHookStringHashMap[fName];
-        end else begin
-         ProceduralTextureImageHook:=nil;
+        HasProceduralTextureImageHook:=(length(fName)>0) and fSceneInstance.fProceduralTextureImageHookStringHashMap.TryGet(fName,ProceduralTextureImageHook);
+        if not HasProceduralTextureImageHook then begin
+         ProceduralTextureImageHook:=ProceduralTextureImageHookDefault;
         end;
-        if assigned(ProceduralTextureImageHook) then begin
-         fTexture.Name:='TpvScene3D.TImage["'+fName+'"]';
-         ProceduralTextureImageHookOK:=ProceduralTextureImageHook(self);
+        if ProceduralTextureImageHook.AllocateTexture or not HasProceduralTextureImageHook then begin
+         fTexture:=TpvVulkanTexture.Create(fSceneInstance.fVulkanDevice);
+         fTexture.DoFreeDataAfterFinish:=false;
+         fTexture.IncRef;
+        end else begin
+         fTexture:=nil;
+        end;
+        if HasProceduralTextureImageHook and assigned(ProceduralTextureImageHook.Hook) then begin
+         if assigned(fTexture) then begin
+          fTexture.Name:='TpvScene3D.TImage["'+fName+'"]';
+          ProceduralTextureImageHookOK:=ProceduralTextureImageHook.Hook(self);
+         end else begin
+          ProceduralTextureImageHookOK:=ProceduralTextureImageHook.Hook(self);
+          if length(fTexture.Name)=0 then begin
+           fTexture.Name:='TpvScene3D.TImage["'+fName+'"]';
+          end;
+         end;
         end else begin
          ProceduralTextureImageHookOK:=false;
         end;
-        if not ProceduralTextureImageHookOK then begin
+        if not (HasProceduralTextureImageHook and ProceduralTextureImageHookOK) then begin
          case fKind of
           TpvScene3D.TImage.TKind.WhiteTexture:begin
            fTexture.Name:='TpvScene3D.TImage.TKind.WhiteTexture';
@@ -28030,7 +28048,7 @@ begin
 
  fImageHashMap:=TImageHashMap.Create(nil);
 
- fProceduralTextureImageHookStringHashMap:=TProceduralTextureImageHookStringHashMap.Create(nil);
+ fProceduralTextureImageHookStringHashMap:=TProceduralTextureImageHookStringHashMap.Create(ProceduralTextureImageHookDefault);
 
  fSamplerListLock:=TPasMPCriticalSection.Create;
 
@@ -29547,11 +29565,14 @@ begin
 
 end;
 
-procedure TpvScene3D.AddProceduralTextureImageHook(const aName:TpvUTF8String;const aHook:TImage.THook);
+procedure TpvScene3D.AddProceduralTextureImageHook(const aName:TpvUTF8String;const aHook:TImage.THook;const aAllocateTexture:Boolean);
+var ProceduralTextureImageHook:TProceduralTextureImageHook;
 begin
  fImageListLock.Acquire;
  try
-  fProceduralTextureImageHookStringHashMap.Add(aName,aHook);
+  ProceduralTextureImageHook.Hook:=aHook;
+  ProceduralTextureImageHook.AllocateTexture:=aAllocateTexture;
+  fProceduralTextureImageHookStringHashMap.Add(aName,ProceduralTextureImageHook);
  finally
   fImageListLock.Release;
  end;

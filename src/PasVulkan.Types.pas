@@ -416,6 +416,7 @@ type PPpvInt8=^PpvInt8;
        function GetReferenceCountedObject:TpvReferenceCountedObject; inline;
        function IncRef:TpvInt32; {$ifdef ReleaseBuild}inline;{$endif}
        function DecRef:TpvInt32; {$ifdef ReleaseBuild}inline;{$endif}
+       function SafeDecRef:TpvInt32; {$ifdef ReleaseBuild}inline;{$endif}
        function DecRefWithoutFree:TpvInt32; {$ifdef ReleaseBuild}inline;{$endif}
        class procedure DecRefOrFreeAndNil(var aObject); static; {$ifdef ReleaseBuild}inline;{$endif}
        property ReferenceCounter:TpvInt32 read fReferenceCounter;
@@ -1507,6 +1508,13 @@ end;
 function TpvReferenceCountedObject.DecRef:TpvInt32;
 begin
  result:=_Release;
+end;
+
+function TpvReferenceCountedObject.SafeDecRef:TpvInt32;
+begin
+ if assigned(self) then begin
+  result:=_Release;
+ end;
 end;
 
 function TpvReferenceCountedObject.DecRefWithoutFree:TpvInt32;
