@@ -11578,6 +11578,7 @@ var Index:TpvSizeInt;
 {$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
     SDLJoystick:PSDL_Joystick;
     SDLGameController:PSDL_GameController;
+    XDGDataDirectories,XDGDataDirectory:String;
     GameControllerDBFilePath:String;
     GameControllerDBStream:TStream;
     GameControllerDBMemoryStream:TMemoryStream;
@@ -11596,26 +11597,49 @@ begin
   GameControllerDBFilePath:=IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0)))+'gamecontrollerdb.txt';
   if not FileExists(GameControllerDBFilePath) then begin
 {$ifdef Unix}
-   GameControllerDBFilePath:=IncludeTrailingPathDelimiter(GetEnvironmentVariable('HOME'))+'/.local/share/AutismPowered/SDL2GameControllerMapper/gamecontrollerdb.txt';
+   GameControllerDBFilePath:=IncludeTrailingPathDelimiter(GetEnvironmentVariable('HOME'))+'.steam/root/steamapps/common/Steamworks SDK Redist/gamecontrollerdb.txt';
    if not FileExists(GameControllerDBFilePath) then begin
-    GameControllerDBFilePath:=IncludeTrailingPathDelimiter(GetEnvironmentVariable('HOME'))+'/.steam/root/steamapps/common/Steamworks SDK Redist/gamecontrollerdb.txt';
-    if not FileExists(GameControllerDBFilePath) then begin
-     GameControllerDBFilePath:=IncludeTrailingPathDelimiter(GetEnvironmentVariable('HOME'))+'/.config/gamecontrollerdb.txt';
-     if not FileExists(GameControllerDBFilePath) then begin
-      GameControllerDBFilePath:='/usr/share/gamecontrollerdb/gamecontrollerdb.txt';
-      if not FileExists(GameControllerDBFilePath) then begin
-       GameControllerDBFilePath:='/usr/local/share/gamecontrollerdb/gamecontrollerdb.txt';
-      end;
+    XDGDataDirectories:=GetEnvironmentVariable('XDG_DATA_DIRS');
+    if length(XDGDataDirectories)=0 then begin
+     XDGDataDirectories:=IncludeTrailingPathDelimiter(GetEnvironmentVariable('HOME'))+'.local/share/:/usr/local/share/:/usr/share/';
+    end else begin
+     XDGDataDirectories:=XDGDataDirectories+':'+IncludeTrailingPathDelimiter(GetEnvironmentVariable('HOME'))+'.local/share/:'+GetEnvironmentVariable('HOME')+'.config/:/usr/local/share/:/usr/share/';
+    end;
+    while length(XDGDataDirectories)>0 do begin
+     Index:=Pos(':',XDGDataDirectories);
+     if Index>0 then begin
+      XDGDataDirectory:=Copy(XDGDataDirectories,1,Index-1);
+      XDGDataDirectories:=Copy(XDGDataDirectories,Index+1,MaxInt);
+     end else begin
+      XDGDataDirectory:=XDGDataDirectories;
+      XDGDataDirectories:='';
      end;
+     GameControllerDBFilePath:=IncludeTrailingPathDelimiter(XDGDataDirectory)+'SDL2/gamecontrollerdb.txt';
+     if FileExists(GameControllerDBFilePath) then begin
+      break;
+     end;
+     GameControllerDBFilePath:=IncludeTrailingPathDelimiter(XDGDataDirectory)+'sdl2/gamecontrollerdb.txt';
+     if FileExists(GameControllerDBFilePath) then begin
+      break;
+     end;
+     GameControllerDBFilePath:=IncludeTrailingPathDelimiter(XDGDataDirectory)+'gamecontrollerdb/gamecontrollerdb.txt';
+     if FileExists(GameControllerDBFilePath) then begin
+      break;
+     end;
+     GameControllerDBFilePath:=IncludeTrailingPathDelimiter(XDGDataDirectory)+'gamecontrollerdb.txt';
+     if FileExists(GameControllerDBFilePath) then begin
+      break;
+     end;
+{    GameControllerDBFilePath:=IncludeTrailingPathDelimiter(XDGDataDirectory)+'AutismPowered/SDL2GameControllerMapper/gamecontrollerdb.txt';
+     if FileExists(GameControllerDBFilePath) then begin
+      break;
+     end;}
     end;
    end;   
 {$else} // Windows
    GameControllerDBFilePath:='C:\Program Files\Steam\steamapps\common\Steamworks SDK Redist\gamecontrollerdb.txt';
    if not FileExists(GameControllerDBFilePath) then begin
     GameControllerDBFilePath:='C:\Program Files (x86)\Steam\steamapps\common\Steamworks SDK Redist\gamecontrollerdb.txt';
-    if not FileExists(GameControllerDBFilePath) then begin
-     GameControllerDBFilePath:='C:\Program Files\Steam\steamapps\common\Steamworks SDK Redist\gamecontrollerdb.txt';
-    end;
    end;
 {$endif}   
   end;
