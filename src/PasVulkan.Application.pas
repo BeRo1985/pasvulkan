@@ -14084,6 +14084,9 @@ var Index:TpvInt32;
 {$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
     SDL2Flags:TpvUInt32;
     SDL2HintParameter:TpvUTF8String;
+    SDL2ControllerMappingDBStream:TStream;
+    SDL2ControllerMappingDBMemoryStream:TMemoryStream;
+    SDL2ControllerMappingDBSDLRWOps:PSDL_RWops;
 {$elseif defined(Windows) and not defined(PasVulkanHeadless)}
     ScreenDC:HDC;
 {$ifend}
@@ -14612,6 +14615,31 @@ begin
   SDL_EventState(SDL_KEYUP,SDL_ENABLE);
   SDL_EventState(SDL_QUITEV,SDL_ENABLE);
   SDL_EventState(SDL_WINDOWEVENT,SDL_ENABLE);}
+  if fAssets.ExistAsset('gamecontrollerdb.txt') then begin
+   SDL2ControllerMappingDBStream:=fAssets.GetAssetStream('gamecontrollerdb.txt');
+   if assigned(SDL2ControllerMappingDBStream) then begin
+    try
+     SDL2ControllerMappingDBMemoryStream:=TMemoryStream.Create;
+     try
+      SDL2ControllerMappingDBStream.Seek(0,soBeginning);
+      if SDL2ControllerMappingDBMemoryStream.CopyFrom(SDL2ControllerMappingDBStream,SDL2ControllerMappingDBStream.Size)=SDL2ControllerMappingDBStream.Size then begin
+       SDL2ControllerMappingDBSDLRWOps:=SDL_RWFromConstMem(SDL2ControllerMappingDBMemoryStream.Memory,SDL2ControllerMappingDBMemoryStream.Size);
+       if assigned(SDL2ControllerMappingDBSDLRWOps) then begin
+        try
+         SDL_GameControllerAddMappingsFromRW(SDL2ControllerMappingDBSDLRWOps,SDL_FALSE);
+        finally
+         SDL_FreeRW(SDL2ControllerMappingDBSDLRWOps);
+        end;
+       end;
+      end;
+     finally
+      FreeAndNil(SDL2ControllerMappingDBMemoryStream);
+     end;
+    finally
+     FreeAndNil(SDL2ControllerMappingDBStream);
+    end;
+   end;
+  end;
 {$else}
 {$ifend}
 
