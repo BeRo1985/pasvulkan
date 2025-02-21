@@ -11668,6 +11668,7 @@ begin
 {$endif}   
   end;
   if FileExists(GameControllerDBFilePath) then begin
+   pvApplication.Log(LOG_VERBOSE,'TpvApplication.UpdateJoysticks','SDL2 game controller database "'+GameControllerDBFilePath+'" used.');
    GameControllerDBStream:=TMemoryStream.Create;
    try
     TMemoryStream(GameControllerDBStream).LoadFromFile(GameControllerDBFilePath);
@@ -11676,13 +11677,16 @@ begin
      FreeAndNil(GameControllerDBStream);
     finally
      if fAssets.ExistAsset('gamecontrollerdb.txt') then begin
+      pvApplication.Log(LOG_VERBOSE,'TpvApplication.UpdateJoysticks','Internal asset SDL2 game controller database used.');
       GameControllerDBStream:=fAssets.GetAssetStream('gamecontrollerdb.txt');
      end;
     end;
    end;
   end else if fAssets.ExistAsset('gamecontrollerdb.txt') then begin
+   pvApplication.Log(LOG_VERBOSE,'TpvApplication.UpdateJoysticks','Internal asset SDL2 game controller database used.');
    GameControllerDBStream:=fAssets.GetAssetStream('gamecontrollerdb.txt');
   end else begin
+   pvApplication.Log(LOG_VERBOSE,'TpvApplication.UpdateJoysticks','No SDL2 game controller database used.');
    GameControllerDBStream:=nil;
   end;
   if assigned(GameControllerDBStream) then begin
