@@ -11578,6 +11578,7 @@ var Index:TpvSizeInt;
 {$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
     SDLJoystick:PSDL_Joystick;
     SDLGameController:PSDL_GameController;
+    GameControllerDBFilePath:String;
     GameControllerDBStream:TStream;
     GameControllerDBMemoryStream:TMemoryStream;
     SDLRW:PSDL_RWops;
@@ -11592,27 +11593,70 @@ var Index:TpvSizeInt;
 begin
 {$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
  if aInitial then begin
-  if Assets.ExistAsset('gamecontrollerdb.txt') then begin
-   GameControllerDBStream:=Assets.GetAssetStream('gamecontrollerdb.txt');
-   if assigned(GameControllerDBStream) then begin
+  GameControllerDBFilePath:=IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0)))+'gamecontrollerdb.txt';
+  if not FileExists(GameControllerDBFilePath) then begin
+{$ifdef Unix}
+   GameControllerDBFilePath:=IncludeTrailingPathDelimiter(GetEnvironmentVariable('HOME'))+'/.local/share/AutismPowered/SDL2GameControllerMapper/gamecontrollerdb.txt';
+   if not FileExists(GameControllerDBFilePath) then begin
+    GameControllerDBFilePath:=IncludeTrailingPathDelimiter(GetEnvironmentVariable('HOME'))+'/.steam/root/steamapps/common/Steamworks SDK Redist/gamecontrollerdb.txt';
+    if not FileExists(GameControllerDBFilePath) then begin
+     GameControllerDBFilePath:=IncludeTrailingPathDelimiter(GetEnvironmentVariable('HOME'))+'/.config/gamecontrollerdb.txt';
+     if not FileExists(GameControllerDBFilePath) then begin
+      GameControllerDBFilePath:='/usr/share/gamecontrollerdb/gamecontrollerdb.txt';
+      if not FileExists(GameControllerDBFilePath) then begin
+       GameControllerDBFilePath:='/usr/local/share/gamecontrollerdb/gamecontrollerdb.txt';
+      end;
+     end;
+    end;
+   end;   
+{$else} // Windows
+   GameControllerDBFilePath:='C:\Program Files\Steam\steamapps\common\Steamworks SDK Redist\gamecontrollerdb.txt';
+   if not FileExists(GameControllerDBFilePath) then begin
+    GameControllerDBFilePath:='C:\Program Files (x86)\Steam\steamapps\common\Steamworks SDK Redist\gamecontrollerdb.txt';
+    if not FileExists(GameControllerDBFilePath) then begin
+     GameControllerDBFilePath:='C:\Program Files\Steam\steamapps\common\Steamworks SDK Redist\gamecontrollerdb.txt';
+    end;
+   end;
+{$endif}   
+  end;
+  if FileExists(GameControllerDBFilePath) then begin
+   GameControllerDBStream:=TMemoryStream.Create;
+   try
+    TMemoryStream(GameControllerDBStream).LoadFromFile(GameControllerDBFilePath);
+   except
     try
-     GameControllerDBMemoryStream:=TMemoryStream.Create;
-     try
-      GameControllerDBMemoryStream.CopyFrom(GameControllerDBStream,GameControllerDBStream.Size);
+     FreeAndNil(GameControllerDBStream);
+    finally
+     if fAssets.ExistAsset('gamecontrollerdb.txt') then begin
+      GameControllerDBStream:=fAssets.GetAssetStream('gamecontrollerdb.txt');
+     end;
+    end;
+   end;
+  end else if fAssets.ExistAsset('gamecontrollerdb.txt') then begin
+   GameControllerDBStream:=fAssets.GetAssetStream('gamecontrollerdb.txt');
+  end else begin
+   GameControllerDBStream:=nil;
+  end;
+  if assigned(GameControllerDBStream) then begin
+   try
+    GameControllerDBMemoryStream:=TMemoryStream.Create;
+    try
+     GameControllerDBStream.Seek(0,soBeginning);
+     if GameControllerDBMemoryStream.CopyFrom(GameControllerDBStream,GameControllerDBStream.Size)=GameControllerDBStream.Size then begin
       SDLRW:=SDL_RWFromConstMem(GameControllerDBMemoryStream.Memory,GameControllerDBMemoryStream.Size);
       if assigned(SDLRW) then begin
        try
-        SDL_GameControllerAddMappingsFromRW(SDLRW,0);
+        SDL_GameControllerAddMappingsFromRW(SDLRW,SDL_FALSE);
        finally
         SDL_FreeRW(SDLRW);
        end;
       end;
-     finally
-      FreeAndNil(GameControllerDBMemoryStream);
      end;
     finally
-     FreeAndNil(GameControllerDBStream);
+     FreeAndNil(GameControllerDBMemoryStream);
     end;
+   finally
+    FreeAndNil(GameControllerDBStream);
    end;
   end;
   for Index:=0 to SDL_NumJoysticks-1 do begin
@@ -14084,9 +14128,6 @@ var Index:TpvInt32;
 {$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
     SDL2Flags:TpvUInt32;
     SDL2HintParameter:TpvUTF8String;
-    SDL2ControllerMappingDBStream:TStream;
-    SDL2ControllerMappingDBMemoryStream:TMemoryStream;
-    SDL2ControllerMappingDBSDLRWOps:PSDL_RWops;
 {$elseif defined(Windows) and not defined(PasVulkanHeadless)}
     ScreenDC:HDC;
 {$ifend}
@@ -14615,32 +14656,6 @@ begin
   SDL_EventState(SDL_KEYUP,SDL_ENABLE);
   SDL_EventState(SDL_QUITEV,SDL_ENABLE);
   SDL_EventState(SDL_WINDOWEVENT,SDL_ENABLE);}
-  if fAssets.ExistAsset('gamecontrollerdb.txt') then begin
-   SDL2ControllerMappingDBStream:=fAssets.GetAssetStream('gamecontrollerdb.txt');
-   if assigned(SDL2ControllerMappingDBStream) then begin
-    try
-     SDL2ControllerMappingDBMemoryStream:=TMemoryStream.Create;
-     try
-      SDL2ControllerMappingDBStream.Seek(0,soBeginning);
-      if SDL2ControllerMappingDBMemoryStream.CopyFrom(SDL2ControllerMappingDBStream,SDL2ControllerMappingDBStream.Size)=SDL2ControllerMappingDBStream.Size then begin
-       SDL2ControllerMappingDBSDLRWOps:=SDL_RWFromConstMem(SDL2ControllerMappingDBMemoryStream.Memory,SDL2ControllerMappingDBMemoryStream.Size);
-       if assigned(SDL2ControllerMappingDBSDLRWOps) then begin
-        try
-         SDL_GameControllerAddMappingsFromRW(SDL2ControllerMappingDBSDLRWOps,SDL_FALSE);
-        finally
-         SDL_FreeRW(SDL2ControllerMappingDBSDLRWOps);
-        end;
-       end;
-      end;
-     finally
-      FreeAndNil(SDL2ControllerMappingDBMemoryStream);
-     end;
-    finally
-     FreeAndNil(SDL2ControllerMappingDBStream);
-    end;
-   end;
-  end;
-{$else}
 {$ifend}
 
   FillChar(fFrameTimesHistoryDeltaTimes,SizeOf(fFrameTimesHistoryDeltaTimes),#0);
