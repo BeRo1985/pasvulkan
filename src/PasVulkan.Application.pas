@@ -4268,6 +4268,24 @@ begin
    GAME_CONTROLLER_BUTTON_DPAD_RIGHT:begin
     result:=SDL_GameControllerGetButton(fGameController,SDL_CONTROLLER_BUTTON_DPAD_RIGHT)<>0;
    end;
+   GAME_CONTROLLER_BUTTON_MISC1:begin
+    result:=SDL_GameControllerGetButton(fGameController,SDL_CONTROLLER_BUTTON_MISC1)<>0;
+   end;
+   GAME_CONTROLLER_BUTTON_PADDLE1:begin
+    result:=SDL_GameControllerGetButton(fGameController,SDL_CONTROLLER_BUTTON_PADDLE1)<>0;
+   end;
+   GAME_CONTROLLER_BUTTON_PADDLE2:begin
+    result:=SDL_GameControllerGetButton(fGameController,SDL_CONTROLLER_BUTTON_PADDLE2)<>0;
+   end;
+   GAME_CONTROLLER_BUTTON_PADDLE3:begin
+    result:=SDL_GameControllerGetButton(fGameController,SDL_CONTROLLER_BUTTON_PADDLE3)<>0;
+   end;
+   GAME_CONTROLLER_BUTTON_PADDLE4:begin
+    result:=SDL_GameControllerGetButton(fGameController,SDL_CONTROLLER_BUTTON_PADDLE4)<>0;
+   end;
+   GAME_CONTROLLER_BUTTON_TOUCHPAD:begin
+    result:=SDL_GameControllerGetButton(fGameController,GAME_CONTROLLER_BUTTON_TOUCHPAD)<>0;
+   end;
    else begin
     result:=false;
    end;
