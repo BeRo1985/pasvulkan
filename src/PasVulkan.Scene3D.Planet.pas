@@ -8076,7 +8076,7 @@ begin
 
  fLastTimeAccumulator:=-1.0;
 
- fTimeStep:=1.0/60.0;
+ fTimeStep:=1.0/30.0;
 
 end;
 
