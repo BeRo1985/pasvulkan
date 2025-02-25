@@ -26174,7 +26174,7 @@ var Index,OtherIndex,PerInFlightFrameRenderInstanceIndex:TpvSizeInt;
     Node:TpvScene3D.TGroup.TNode;
     InstanceNode:TpvScene3D.TGroup.TInstance.TNode;
     InstanceMaterial:TpvScene3D.TGroup.TInstance.TMaterial;
-    IsActive,HasMaterialUpdate,Dirty,First:boolean;
+    IsActive,HasMaterialUpdate,Dirty,First,CanUpdate:boolean;
     RenderInstance:TpvScene3D.TGroup.TInstance.TRenderInstance;
     PerInFlightFrameRenderInstance:TpvScene3D.TGroup.TInstance.PPerInFlightFrameRenderInstance;
     AABBTreeState:TpvBVHDynamicAABBTree.PState;
@@ -26235,21 +26235,26 @@ begin
  if fActive and fSceneInstance.fUpdateCulling.fActive then begin
   TemporaryVector:=fGroup.fBoundingBox.Max-fGroup.fBoundingBox.Min;
   if fUseRenderInstances and (fRenderInstances.Count>0) then begin
-   IsActive:=false;
+   CanUpdate:=false;
    for Index:=0 to fRenderInstances.Count-1 do begin
     RenderInstance:=fRenderInstances[Index];
     if RenderInstance.fActive then begin
      RenderInstance.fWorkActive:=fSceneInstance.fUpdateCulling.Check(RenderInstance.ModelMatrix,TemporaryVector);
      if RenderInstance.fWorkActive then begin
-      IsActive:=true;
+      CanUpdate:=true;
      end;
     end else begin
      RenderInstance.fWorkActive:=false;
     end;
    end;
   end else if not fUseRenderInstances then begin
-   IsActive:=fSceneInstance.fUpdateCulling.Check(fModelMatrix,TemporaryVector);
+   CanUpdate:=fSceneInstance.fUpdateCulling.Check(fModelMatrix,TemporaryVector);
+  end else begin
+   CanUpdate:=true;
   end;
+  IsActive:=CanUpdate;
+ end else begin
+  CanUpdate:=fActive;
  end;
 
  if aInFlightFrameIndex>=0 then begin
