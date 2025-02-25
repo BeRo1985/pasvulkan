@@ -5988,7 +5988,7 @@ begin
  fActive:=false;
  fViewMatrix:=TpvMatrix4x4.Identity;
  fProjectionMatrix:=TpvMatrix4x4.Identity;
- fCameraPosition:=TpvVector3.Zero;
+ fCameraPosition:=TpvVector3.Origin;
  fRadius:=0.0;
 end;
 
