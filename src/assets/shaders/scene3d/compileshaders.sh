@@ -1205,6 +1205,7 @@ for index in ${!compileshaderarguments[@]}; do
     fi
     ${glslangValidatorPath} -g $parameters #--target-env spirv1.5 >/dev/null
     if [ $? -ne 0 ]; then
+      echo "Compiling: ${glslangValidatorPath} -g $parameters"
       echo "Error encountered. Stopping compilation."
       kill -s TERM 0
       exit 1
