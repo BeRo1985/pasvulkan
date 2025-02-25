@@ -3378,6 +3378,8 @@ type EpvScene3D=class(Exception);
               fProjectionMatrix:TpvMatrix4x4D; // Projection matrix for culling (for VR, the FOV should be larger than it is actually, so that the frustum should be contain both eyes)
               fCameraPosition:TpvVector3D;     // Camera position for culling (needed for shadows behind the camera, since things behind the camera are not inside the frustum)
               fRadius:TpvDouble;               // Radius for culling (needed for shadows behind the camera, since things behind the camera are not inside the frustum), 0 = no additional radius check
+              fFrustum:TpvFrustumD;
+              fFrustumValid:TPasMPBool32;
              public
               constructor Create(const aSceneInstance:TpvScene3D); reintroduce;
               destructor Destroy; override;
@@ -5990,10 +5992,11 @@ begin
  inherited Create;
  fSceneInstance:=aSceneInstance;
  fActive:=false;
- fViewMatrix:=TpvMatrix4x4.Identity;
- fProjectionMatrix:=TpvMatrix4x4.Identity;
+ fViewMatrix:=TpvMatrix4x4.Null;
+ fProjectionMatrix:=TpvMatrix4x4.Null;
  fCameraPosition:=TpvVector3.Origin;
  fRadius:=0.0;
+ fFrustumValid:=false;
 end;
 
 destructor TpvScene3D.TUpdateCulling.Destroy;
@@ -6003,6 +6006,10 @@ end;
 
 procedure TpvScene3D.TUpdateCulling.UpdateFrustum;
 begin
+ fFrustumValid:=not IsZero(fViewMatrix.RawComponents[3,3]);
+ if fFrustumValid then begin
+  fFrustum.Init(fViewMatrix,fProjectionMatrix);
+ end;
 end;
 
 function TpvScene3D.TUpdateCulling.Check(const aTransform:TpvMatrix4x4D;const aRadius:TpvDouble):boolean;
@@ -6010,8 +6017,8 @@ var Center:TpvVector3D;
 begin
  Center:=aTransform.Translation.xyz;
  result:=(fRadius<=0.0) or ((Center-fCameraPosition).Length<=(fRadius+aRadius));
- if result then begin 
-//result:=TpvFrustum.CheckSphere(fViewMatrix,fProjectionMatrix,aCenter,aRadius);
+ if result and fFrustumValid then begin
+  result:=fFrustum.SphereInFrustum(Center,aRadius)<>TpvFrustumD.COMPLETE_OUT;
  end;
 end;
 
