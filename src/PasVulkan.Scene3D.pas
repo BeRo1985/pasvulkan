@@ -6017,7 +6017,7 @@ var Center:TpvVector3D;
 begin
  Center:=aTransform.Translation.xyz;
  result:=(fRadius<=0.0) or ((Center-fCameraPosition).Length<=(fRadius+aRadius));
- if result and fFrustumValid then begin
+ if (not result) and fFrustumValid then begin
   result:=fFrustum.SphereInFrustum(Center,aRadius)<>TpvFrustumD.COMPLETE_OUT;
  end;
 end;
@@ -6036,7 +6036,7 @@ begin
  ClosestPoint.y:=Min(Max(fCameraPosition.y,AABBMin.y),AABBMax.y);
  ClosestPoint.z:=Min(Max(fCameraPosition.z,AABBMin.z),AABBMax.z);
  result:=(fRadius<=0.0) or ((ClosestPoint-fCameraPosition).Length<=fRadius);
- if result and fFrustumValid then begin
+ if (not result) and fFrustumValid then begin
   result:=fFrustum.AABBInFrustum(AABBMin,AABBMax)<>TpvFrustumD.COMPLETE_OUT;
  end;
 end;
