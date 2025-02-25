@@ -2836,6 +2836,7 @@ type EpvScene3D=class(Exception);
                             fInstance:TpvScene3D.TGroup.TInstance;
                             fSceneInstance:TpvScene3D;
                             fActive:Boolean;
+                            fWorkActive:Boolean;
                             fFirst:Boolean;
                             fIndex:TpvSizeInt;
                             fPotentiallyVisibleSetNodeIndex:TpvScene3D.TPotentiallyVisibleSet.TNodeIndex;
@@ -3380,6 +3381,8 @@ type EpvScene3D=class(Exception);
              public
               constructor Create(const aSceneInstance:TpvScene3D); reintroduce;
               destructor Destroy; override;
+              function Check(const aTransform:TpvMatrix4x4D;const aRadius:TpvDouble):boolean; overload;     // Check a sphere
+              function Check(const aTransform:TpvMatrix4x4D;const aExtents:TpvVector3D):boolean; overload; // Check a box
              public
               property SceneInstance:TpvScene3D read fSceneInstance;
               property Active:TPasMPBool32 read fActive write fActive;
@@ -5995,6 +5998,24 @@ end;
 destructor TpvScene3D.TUpdateCulling.Destroy;
 begin
  inherited Destroy;
+end;
+
+function TpvScene3D.TUpdateCulling.Check(const aTransform:TpvMatrix4x4D;const aRadius:TpvDouble):boolean;
+var Center:TpvVector3D;
+begin
+ Center:=aTransform.Translation.xyz;
+ result:=(fRadius<=0.0) or ((Center-fCameraPosition).Length<=(fRadius+aRadius));
+ if result then begin 
+//result:=TpvFrustum.CheckSphere(fViewMatrix,fProjectionMatrix,aCenter,aRadius);
+ end;
+end;
+
+function TpvScene3D.TUpdateCulling.Check(const aTransform:TpvMatrix4x4D;const aExtents:TpvVector3D):boolean;
+var Radius:TpvDouble;
+begin
+ // Just as sphere for now. TODO: Implement box culling 
+ Radius:=aExtents.Length;
+ result:=Check(aTransform,Radius);
 end;
 
 { TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroup }
@@ -21926,6 +21947,8 @@ begin
 
  fActive:=true;
 
+ fWorkActive:=true;
+
  fApplyCameraRelativeTransform:=true;
 
  fFirst:=true;
@@ -26117,6 +26140,7 @@ var Index,OtherIndex,PerInFlightFrameRenderInstanceIndex:TpvSizeInt;
     AABBTreeNodePotentiallyVisibleSet:TpvScene3D.TPotentiallyVisibleSet.TNodeIndex;
 /// StartCPUTime,EndCPUTime:TpvHighResolutionTime;
     TemporaryBoundingBox:TpvAABB;
+    TemporaryVector:TpvVector3;
 begin
 
  if assigned(fAppendageInstance) and assigned(fAppendageNode) then begin
@@ -26151,9 +26175,9 @@ begin
     IsActive:=false;
     for Index:=0 to fRenderInstances.Count-1 do begin
      RenderInstance:=fRenderInstances[Index];
-     if RenderInstance.fActive then begin
+     RenderInstance.fWorkActive:=RenderInstance.fActive;
+     if RenderInstance.fWorkActive then begin
       IsActive:=true;
-      break;
      end;
     end;
    end else begin
@@ -26164,7 +26188,27 @@ begin
   end;   
  end else begin
   IsActive:=false;
- end; 
+ end;
+
+ if fActive and fSceneInstance.fUpdateCulling.fActive then begin
+  TemporaryVector:=fGroup.fBoundingBox.Max-fGroup.fBoundingBox.Min;
+  if fUseRenderInstances and (fRenderInstances.Count>0) then begin
+   IsActive:=false;
+   for Index:=0 to fRenderInstances.Count-1 do begin
+    RenderInstance:=fRenderInstances[Index];
+    if RenderInstance.fActive then begin
+     RenderInstance.fWorkActive:=fSceneInstance.fUpdateCulling.Check(RenderInstance.ModelMatrix,TemporaryVector);
+     if RenderInstance.fWorkActive then begin
+      IsActive:=true;
+     end;
+    end else begin
+     RenderInstance.fWorkActive:=false;
+    end;
+   end;
+  end else if not fUseRenderInstances then begin
+   IsActive:=fSceneInstance.fUpdateCulling.Check(fModelMatrix,TemporaryVector);
+  end;
+ end;
 
  if aInFlightFrameIndex>=0 then begin
 
@@ -26422,7 +26466,7 @@ begin
     try
      for Index:=0 to fRenderInstances.Count-1 do begin
       RenderInstance:=fRenderInstances[Index];
-      if RenderInstance.fActive then begin
+      if RenderInstance.fWorkActive then begin
        TPasMPInterlocked.BitwiseOr(RenderInstance.fActiveMask,TpvUInt32(1) shl aInFlightFrameIndex);
        RenderInstance.fWorkModelMatrix:=fSceneInstance.TransformOrigin(RenderInstance.fModelMatrix,aInFlightFrameIndex,false);
        RenderInstance.fModelMatrices[aInFlightFrameIndex]:=RenderInstance.fWorkModelMatrix;
