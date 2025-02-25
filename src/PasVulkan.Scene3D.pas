@@ -32608,7 +32608,7 @@ var InstanceIndex,GeometryIndex,CountBLASInstances,CountBLASGeometries,
     UseEmptyBLASInstance,MustTLASUpdate:Boolean;
     RaytracingGroupInstanceNodeQueueItem:TRaytracingGroupInstanceNodeQueueItem;
     RaytracingGroupInstanceNode:TRaytracingGroupInstanceNode;
-//  RaytracingBottomLevelAccelerationStructureInstance:TpvRaytracingBottomLevelAccelerationStructureInstance;
+    RaytracingBottomLevelAccelerationStructureInstance:TpvRaytracingBottomLevelAccelerationStructureInstance;
     BLASGroupVariant:TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroupVariant;
     BLASGroup:TpvScene3D.TRaytracingGroupInstanceNode.PBLASGroup;
     ScratchSize,ScratchPassSize:TVkDeviceSize;
@@ -33056,6 +33056,10 @@ begin
            PlanetTileLODLevel:=PlanetTile.LODLevels[PlanetTileLODLevelIndex];
 
            Assert(Assigned(PlanetTileLODLevel.BLASInstance));
+           if PlanetTileLODLevel.BLASInstance.InstanceCustomIndex<>RaytracingBLASGeometryInfoBufferItemIndex then begin
+            PlanetTileLODLevel.BLASInstance.InstanceCustomIndex:=RaytracingBLASGeometryInfoBufferItemIndex;
+            MustUpdateTLAS:=true;
+           end;
            PlanetTile.RaytracingBLASInstanceIndex:=fRaytracingBLASInstances.Add(PlanetTileLODLevel.BLASInstance);
 
            Assert(RaytracingBLASGeometryInfoOffsetBufferItemIndex<length(fRaytracingBLASGeometryInfoOffsetBufferItems));
@@ -33095,8 +33099,12 @@ begin
 
         for InstanceIndex:=0 to BLASGroup^.fBLASInstances.Count-1 do begin
 
-         BLASGroup^.fBLASInstances.Items[InstanceIndex].InstanceCustomIndex:=RaytracingBLASGeometryInfoBufferItemIndex;
-         fRaytracingBLASInstances.Add(BLASGroup^.fBLASInstances.Items[InstanceIndex]);
+         RaytracingBottomLevelAccelerationStructureInstance:=BLASGroup^.fBLASInstances.Items[InstanceIndex];
+         if RaytracingBottomLevelAccelerationStructureInstance.InstanceCustomIndex<>RaytracingBLASGeometryInfoBufferItemIndex then begin
+          RaytracingBottomLevelAccelerationStructureInstance.InstanceCustomIndex:=RaytracingBLASGeometryInfoBufferItemIndex;
+          MustUpdateTLAS:=true;
+         end;
+         fRaytracingBLASInstances.Add(RaytracingBottomLevelAccelerationStructureInstance);
 
          Assert(RaytracingBLASGeometryInfoOffsetBufferItemIndex<length(fRaytracingBLASGeometryInfoOffsetBufferItems));
          fRaytracingBLASGeometryInfoOffsetBufferItems[RaytracingBLASGeometryInfoOffsetBufferItemIndex]:=RaytracingBLASGeometryInfoBufferItemIndex;
