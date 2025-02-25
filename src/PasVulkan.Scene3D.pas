@@ -33095,6 +33095,7 @@ begin
 
         for InstanceIndex:=0 to BLASGroup^.fBLASInstances.Count-1 do begin
 
+         BLASGroup^.fBLASInstances.Items[InstanceIndex].InstanceCustomIndex:=RaytracingBLASGeometryInfoBufferItemIndex;
          fRaytracingBLASInstances.Add(BLASGroup^.fBLASInstances.Items[InstanceIndex]);
 
          Assert(RaytracingBLASGeometryInfoOffsetBufferItemIndex<length(fRaytracingBLASGeometryInfoOffsetBufferItems));
@@ -33122,6 +33123,7 @@ begin
 
      if UseEmptyBLASInstance and assigned(fRaytracingEmptyBLASInstance) then begin
 
+      fRaytracingEmptyBLASInstance.InstanceCustomIndex:=RaytracingBLASGeometryInfoBufferItemIndex;
       fRaytracingBLASInstances.Add(fRaytracingEmptyBLASInstance);
 
       Assert(RaytracingBLASGeometryInfoOffsetBufferItemIndex<length(fRaytracingBLASGeometryInfoOffsetBufferItems));
@@ -33233,6 +33235,13 @@ begin
               (fRaytracingBLASInstances[PlanetTile.RaytracingBLASInstanceIndex]<>PlanetTileLODLevel.BLASInstance) then begin
             fRaytracingBLASInstances[PlanetTile.RaytracingBLASInstanceIndex]:=PlanetTileLODLevel.BLASInstance;
             MustUpdateTLAS:=true;
+           end;
+
+           if assigned(fRaytracingBLASInstances[PlanetTile.RaytracingBLASInstanceIndex]) then begin
+            if fRaytracingBLASInstances[PlanetTile.RaytracingBLASInstanceIndex].InstanceCustomIndex<>PlanetTile.RaytracingBLASGeometryInfoBufferItemIndex then begin
+             fRaytracingBLASInstances[PlanetTile.RaytracingBLASInstanceIndex].InstanceCustomIndex:=PlanetTile.RaytracingBLASGeometryInfoBufferItemIndex;
+             MustUpdateTLAS:=true;
+            end;
            end;
 
            RaytracingBLASGeometryInfoBufferItemIndex:=PlanetTile.RaytracingBLASGeometryInfoBufferItemIndex;
