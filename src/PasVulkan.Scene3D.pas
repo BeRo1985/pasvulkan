@@ -33091,7 +33091,7 @@ begin
 
        BLASGroup:=@RaytracingGroupInstanceNode.fBLASGroups[BLASGroupVariant];
 
-       if assigned(BLASGroup^.fBLASGeometry) and assigned(BLASGroup^.fBLAS) and assigned(BLASGroup^.fBLASInstances) then begin
+       if assigned(BLASGroup^.fBLASGeometry) and assigned(BLASGroup^.fBLAS) and assigned(BLASGroup^.fBLASInstances) and (BLASGroup^.fBLASInstances.Count>0) then begin
 
         for InstanceIndex:=0 to BLASGroup^.fBLASInstances.Count-1 do begin
 
