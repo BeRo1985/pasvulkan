@@ -3381,6 +3381,7 @@ type EpvScene3D=class(Exception);
              public
               constructor Create(const aSceneInstance:TpvScene3D); reintroduce;
               destructor Destroy; override;
+              procedure UpdateFrustum;
               function Check(const aTransform:TpvMatrix4x4D;const aRadius:TpvDouble):boolean; overload;     // Check a sphere
               function Check(const aTransform:TpvMatrix4x4D;const aExtents:TpvVector3D):boolean; overload; // Check a box
              public
@@ -5998,6 +5999,10 @@ end;
 destructor TpvScene3D.TUpdateCulling.Destroy;
 begin
  inherited Destroy;
+end;
+
+procedure TpvScene3D.TUpdateCulling.UpdateFrustum;
+begin
 end;
 
 function TpvScene3D.TUpdateCulling.Check(const aTransform:TpvMatrix4x4D;const aRadius:TpvDouble):boolean;
@@ -30750,6 +30755,10 @@ begin
  fOriginTransforms[aInFlightFrameIndex]:=fOriginTransform;
 
  fInverseOriginTransforms[aInFlightFrameIndex]:=fInverseOriginTransform;
+
+ if fUpdateCulling.fActive then begin
+  fUpdateCulling.UpdateFrustum;
+ end;
 
  TpvScene3DPlanets(fPlanets).Lock.AcquireRead;
  try
