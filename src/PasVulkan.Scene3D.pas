@@ -3461,6 +3461,7 @@ type EpvScene3D=class(Exception);
               fUpdateCounter:TpvUInt64;
               fUpdateDirty:TPasMPBool32;
               fInitialized:TPasMPBool32;
+              fInUsage:TPasMPBool32;
               fRaytracingMask:TpvUInt32;
               fCastingShadows:TpvUInt32;
              public
@@ -6124,6 +6125,8 @@ begin
 
  fInitialized:=false;
 
+ fInUsage:=false;
+
  fRaytracingMask:=High(TpvUInt32);
 
  fCastingShadows:=High(TpvUInt32);
@@ -6167,8 +6170,20 @@ begin
  // Otherwise the BLASes would contain empty or even random data (when using uninitialized memory), which would cause incorrect 
  // raytracing results.
  if (not fInitialized) and not (fInstance.fActives[aInFlightFrameIndex] and fInstanceNode.fBoundingBoxFilled[aInFlightFrameIndex]) then begin
+  result:=fInUsage;
+  if result then begin
+   fInUsage:=false;
+   for BLASGroupVariant:=Low(TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroupVariant) to High(TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroupVariant) do begin
+    BLASGroup:=@fBLASGroups[BLASGroupVariant];
+    while BLASGroup^.fBLASInstances.Count>0 do begin
+     BLASGroup^.fBLASInstances.Delete(BLASGroup^.fBLASInstances.Count-1);
+    end;
+   end;
+  end;
   exit;
  end;
+
+ fInUsage:=true;
 
  MatricesDynamicArray:=@fSceneInstance.fVulkanNodeMatricesBufferData[aInFlightFrameIndex];
 
