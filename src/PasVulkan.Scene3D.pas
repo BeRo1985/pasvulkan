@@ -6023,8 +6023,7 @@ begin
 end;
 
 function TpvScene3D.TUpdateCulling.Check(const aTransform:TpvMatrix4x4D;const aExtents:TpvVector3D):boolean;
-var Center,Temp,Extents,AABBMin,AABBMax:TpvVector3D;
-    Radius:TpvDouble;
+var Center,Temp,Extents,AABBMin,AABBMax,ClosestPoint:TpvVector3D;
 begin
  Center:=aTransform.Translation.xyz;
  Temp:=aExtents;
@@ -6033,8 +6032,10 @@ begin
  Extents.z:=(abs(aTransform.RawComponents[0,2])*Temp.x)+(abs(aTransform.RawComponents[1,2])*Temp.y)+(abs(aTransform.RawComponents[2,2])*Temp.z);
  AABBMin:=Center-Extents;
  AABBMax:=Center+Extents;
- Radius:=aExtents.Length;
- result:=(fRadius<=0.0) or ((Center-fCameraPosition).Length<=(fRadius+Radius));
+ ClosestPoint.x:=Min(Max(fCameraPosition.x,AABBMin.x),AABBMax.x);
+ ClosestPoint.y:=Min(Max(fCameraPosition.y,AABBMin.y),AABBMax.y);
+ ClosestPoint.z:=Min(Max(fCameraPosition.z,AABBMin.z),AABBMax.z);
+ result:=(fRadius<=0.0) or ((ClosestPoint-fCameraPosition).Length<=fRadius);
  if result and fFrustumValid then begin
   result:=fFrustum.AABBInFrustum(AABBMin,AABBMax)<>TpvFrustumD.COMPLETE_OUT;
  end;
