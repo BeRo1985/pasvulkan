@@ -26629,6 +26629,7 @@ begin
    for Index:=0 to fRenderInstances.Count-1 do begin
     RenderInstance:=fRenderInstances[Index];
     RenderInstance.fFirst:=true;
+    TPasMPInterlocked.BitwiseAnd(RenderInstance.fActiveMask,not (TpvUInt32(1) shl aInFlightFrameIndex));
     RenderInstance.fPotentiallyVisibleSetNodeIndex:=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex;
    end;
   finally
