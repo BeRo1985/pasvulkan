@@ -221,7 +221,7 @@ type EpvScene3D=class(Exception);
               PBRUnlitColorTexture=18,
               PBRAnisotropyTexture=19
              );
-            TVertexAttributeBinBoundingBoxesdingLocations=class
+            TVertexAttributeBindingLocations=class
              public
               const Position=0;
                     NodeIndex=1;
@@ -3367,6 +3367,27 @@ type EpvScene3D=class(Exception);
             PSceneTimes=^TSceneTimes;
             TInFlightFrameMaterialBufferDataGenerations=array[0..MaxInFlightFrames-1] of TMaterialGenerations;
             TSetGlobalResourcesDone=array[TpvScene3DRendererRenderPass] of boolean;
+            { TUpdateCulling }
+            TUpdateCulling=class
+             public
+             private
+              fSceneInstance:TpvScene3D;
+              fActive:TPasMPBool32;            // Indicates if culling is active at updating. Render culling is another thing.   
+              fViewMatrix:TpvMatrix4x4D;       // View matrix for culling
+              fProjectionMatrix:TpvMatrix4x4D; // Projection matrix for culling (for VR, the FOV should be larger than it is actually, so that the frustum should be contain both eyes)
+              fCameraPosition:TpvVector3D;     // Camera position for culling (needed for shadows behind the camera, since things behind the camera are not inside the frustum)
+              fRadius:TpvDouble;               // Radius for culling (needed for shadows behind the camera, since things behind the camera are not inside the frustum), 0 = no additional radius check
+             public
+              constructor Create(const aSceneInstance:TpvScene3D); reintroduce;
+              destructor Destroy; override;
+             public
+              property SceneInstance:TpvScene3D read fSceneInstance;
+              property Active:TPasMPBool32 read fActive write fActive;
+              property ViewMatrix:TpvMatrix4x4D read fViewMatrix write fViewMatrix;
+              property ProjectionMatrix:TpvMatrix4x4D read fProjectionMatrix write fProjectionMatrix;
+              property CameraPosition:TpvVector3D read fCameraPosition write fCameraPosition;
+              property Radius:TpvDouble read fRadius write fRadius;
+            end;
             { TRaytracingGroupInstanceNode }
             TRaytracingGroupInstanceNode=class
              public
@@ -3801,6 +3822,7 @@ type EpvScene3D=class(Exception);
        fInverseOriginTransform:TOriginTransform;
        fOriginTransforms:TOriginTransforms;
        fInverseOriginTransforms:TOriginTransforms;
+       fUpdateCulling:TpvScene3D.TUpdateCulling;
       public
        procedure NewImageDescriptorGeneration;
        procedure NewMaterialDataGeneration;
@@ -4005,6 +4027,8 @@ type EpvScene3D=class(Exception);
        property VulkanStagingFence:TpvVulkanFence read fVulkanStagingFence;
       public
        property MaxCullObjectID:TpvUInt32 read fMaxCullObjectID;
+      public
+       property UpdateCulling:TpvScene3D.TUpdateCulling read fUpdateCulling;
       public
        property InFlightFrameDataTransferQueues:TpvInFlightFrameTransferQueues read fInFlightFrameDataTransferQueues;
       public
@@ -5953,6 +5977,24 @@ begin
    end;
   end;
  end;
+end;
+
+{ TpvScene3D.TUpdateCulling }
+
+constructor TpvScene3D.TUpdateCulling.Create(const aSceneInstance:TpvScene3D);
+begin
+ inherited Create;
+ fSceneInstance:=aSceneInstance;
+ fActive:=false;
+ fViewMatrix:=TpvMatrix4x4.Identity;
+ fProjectionMatrix:=TpvMatrix4x4.Identity;
+ fCameraPosition:=TpvVector3.Zero;
+ fRadius:=0.0;
+end;
+
+destructor TpvScene3D.TUpdateCulling.Destroy;
+begin
+ inherited Destroy;
 end;
 
 { TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroup }
@@ -28117,6 +28159,8 @@ begin
   fInverseOriginTransforms[Index]:=fInverseOriginTransform;
  end;
 
+ fUpdateCulling:=TUpdateCulling.Create(self);
+
  fSkyBoxTextureImage:=nil;
 
  fSkyBoxMode:=TpvScene3DEnvironmentMode.Sky;
@@ -28880,6 +28924,8 @@ begin
    FreeAndNil(fInFlightFrameDataTransferQueues[Index]);
   end;
  end;
+
+ FreeAndNil(fUpdateCulling);
 
  fObjectListLock.Acquire;
  try
