@@ -6016,10 +6016,8 @@ function TpvScene3D.TUpdateCulling.Check(const aTransform:TpvMatrix4x4D;const aR
 var Center:TpvVector3D;
 begin
  Center:=aTransform.Translation.xyz;
- result:=(fRadius<=0.0) or ((Center-fCameraPosition).Length<=(fRadius+aRadius));
- if (not result) and fFrustumValid then begin
-  result:=fFrustum.SphereInFrustum(Center,aRadius)<>TpvFrustumD.COMPLETE_OUT;
- end;
+ result:=((fRadius>0.0) and ((Center-fCameraPosition).Length<=(fRadius+aRadius))) or
+         (fFrustumValid and (fFrustum.SphereInFrustum(Center,aRadius)<>TpvFrustumD.COMPLETE_OUT));
 end;
 
 function TpvScene3D.TUpdateCulling.Check(const aTransform:TpvMatrix4x4D;const aExtents:TpvVector3D):boolean;
@@ -6035,11 +6033,9 @@ begin
  ClosestPoint.x:=Min(Max(fCameraPosition.x,AABBMin.x),AABBMax.x);
  ClosestPoint.y:=Min(Max(fCameraPosition.y,AABBMin.y),AABBMax.y);
  ClosestPoint.z:=Min(Max(fCameraPosition.z,AABBMin.z),AABBMax.z);
- result:=(fRadius<=0.0) or ((ClosestPoint-fCameraPosition).Length<=fRadius);
- if (not result) and fFrustumValid then begin
-  result:=fFrustum.SphereInFrustum(Center,Temp.Length)<>TpvFrustumD.COMPLETE_OUT;
-//result:=fFrustum.AABBInFrustum(AABBMin,AABBMax)<>TpvFrustumD.COMPLETE_OUT;
- end;
+ result:=((fRadius>0.0) and ((ClosestPoint-fCameraPosition).Length<=fRadius)) or
+         (fFrustumValid and (fFrustum.SphereInFrustum(Center,Temp.Length)<>TpvFrustumD.COMPLETE_OUT));
+//       (fFrustumValid and (fFrustum.AABBInFrustum(AABBMin,AABBMax)<>TpvFrustumD.COMPLETE_OUT));
 end;
 
 { TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroup }
