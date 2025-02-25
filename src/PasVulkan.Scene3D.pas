@@ -6023,11 +6023,21 @@ begin
 end;
 
 function TpvScene3D.TUpdateCulling.Check(const aTransform:TpvMatrix4x4D;const aExtents:TpvVector3D):boolean;
-var Radius:TpvDouble;
+var Center,Temp,Extents,AABBMin,AABBMax:TpvVector3D;
+    Radius:TpvDouble;
 begin
- // Just as sphere for now. TODO: Implement box culling 
+ Center:=aTransform.Translation.xyz;
+ Temp:=aExtents;
+ Extents.x:=(abs(aTransform.RawComponents[0,0])*Temp.x)+(abs(aTransform.RawComponents[1,0])*Temp.y)+(abs(aTransform.RawComponents[2,0])*Temp.z);
+ Extents.y:=(abs(aTransform.RawComponents[0,1])*Temp.x)+(abs(aTransform.RawComponents[1,1])*Temp.y)+(abs(aTransform.RawComponents[2,1])*Temp.z);
+ Extents.z:=(abs(aTransform.RawComponents[0,2])*Temp.x)+(abs(aTransform.RawComponents[1,2])*Temp.y)+(abs(aTransform.RawComponents[2,2])*Temp.z);
+ AABBMin:=Center-Extents;
+ AABBMax:=Center+Extents;
  Radius:=aExtents.Length;
- result:=Check(aTransform,Radius);
+ result:=(fRadius<=0.0) or ((Center-fCameraPosition).Length<=(fRadius+Radius));
+ if result and fFrustumValid then begin
+  result:=fFrustum.AABBInFrustum(AABBMin,AABBMax)<>TpvFrustumD.COMPLETE_OUT;
+ end;
 end;
 
 { TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroup }
