@@ -6037,7 +6037,8 @@ begin
  ClosestPoint.z:=Min(Max(fCameraPosition.z,AABBMin.z),AABBMax.z);
  result:=(fRadius<=0.0) or ((ClosestPoint-fCameraPosition).Length<=fRadius);
  if (not result) and fFrustumValid then begin
-  result:=fFrustum.AABBInFrustum(AABBMin,AABBMax)<>TpvFrustumD.COMPLETE_OUT;
+  result:=fFrustum.SphereInFrustum(Center,Temp.Length)<>TpvFrustumD.COMPLETE_OUT;
+//result:=fFrustum.AABBInFrustum(AABBMin,AABBMax)<>TpvFrustumD.COMPLETE_OUT;
  end;
 end;
 
