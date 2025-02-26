@@ -259,6 +259,7 @@ type TpvVector2D=record
      TpvMatrix3x3D=record
       public
        constructor Create(const aXX,aXY,aXZ,aYX,aYY,aYZ,aZX,aZY,aZZ:TpvDouble); overload;
+       constructor Create(const aTangent,aBitangent,aNormal:TpvVector3D); overload;
        constructor Create(const aFrom:TpvMatrix3x3); overload;
        constructor Create(const aFrom:TpvMatrix4x4); overload;
        constructor Create(const aFrom:TpvQuaternion); overload;
@@ -1529,6 +1530,13 @@ begin
  RawComponents[2,0]:=aZX;
  RawComponents[2,1]:=aZY;
  RawComponents[2,2]:=aZZ;
+end;
+
+constructor TpvMatrix3x3D.Create(const aTangent,aBitangent,aNormal:TpvVector3D);
+begin
+ Tangent:=aTangent;
+ Bitangent:=aBitangent;
+ Normal:=aNormal;
 end;
 
 constructor TpvMatrix3x3D.Create(const aFrom:TpvMatrix3x3);
