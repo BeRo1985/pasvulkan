@@ -161,8 +161,8 @@ void rayProceedEXTAlphaHandlingBasedLoop(in rayQueryEXT rayQuery, const in bool 
           
           int geometryID = rayQueryGetIntersectionGeometryIndexEXT(rayQuery, false);
           
-          uint geometryInstanceOffset = uint(rayQueryGetIntersectionInstanceCustomIndexEXT(rayQuery, false));
-//        uint geometryInstanceOffset = uRaytracingData.geometryInstanceOffsets.geometryInstanceOffsets[instanceID];
+          int geometryInstanceOffset = rayQueryGetIntersectionInstanceCustomIndexEXT(rayQuery, false);
+//        int geometryInstanceOffset = int(uRaytracingData.geometryInstanceOffsets.geometryInstanceOffsets[instanceID]);
           
           RaytracingGeometryItem geometryItem = uRaytracingData.geometryItems.geometryItems[geometryInstanceOffset + geometryID];
 
@@ -337,8 +337,8 @@ bool tracePrimaryBasicGeometryRay(vec3 position,
         
         int geometryID = rayQueryGetIntersectionGeometryIndexEXT(rayQuery, true);
         
-        uint geometryInstanceOffset = uint(rayQueryGetIntersectionInstanceCustomIndexEXT(rayQuery, true));
-///     uint geometryInstanceOffset = uRaytracingData.geometryInstanceOffsets.geometryInstanceOffsets[instanceID];
+        int geometryInstanceOffset = rayQueryGetIntersectionInstanceCustomIndexEXT(rayQuery, true);
+///     int geometryInstanceOffset = int(uRaytracingData.geometryInstanceOffsets.geometryInstanceOffsets[instanceID]);
         
         RaytracingGeometryItem geometryItem = uRaytracingData.geometryItems.geometryItems[geometryInstanceOffset + geometryID];
 

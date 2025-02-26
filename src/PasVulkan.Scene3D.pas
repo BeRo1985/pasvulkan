@@ -32996,7 +32996,9 @@ begin
     //////////////////////////////////////////////////////////////////////////////
 
     if (not assigned(fRaytracingBLASGeometryInfoBufferItemBuffers[fRaytracingBLASGeometryInfoBufferRingIndex and 1])) or
-       (not assigned(fRaytracingBLASGeometryInfoOffsetBufferItemBuffers[fRaytracingBLASGeometryInfoBufferRingIndex and 1])) then begin
+       (not assigned(fRaytracingBLASGeometryInfoOffsetBufferItemBuffers[fRaytracingBLASGeometryInfoBufferRingIndex and 1])) or
+       (not assigned(fRaytracingBLASGeometryInfoBufferItemBuffers[(fRaytracingBLASGeometryInfoBufferRingIndex+1) and 1])) or
+       (not assigned(fRaytracingBLASGeometryInfoOffsetBufferItemBuffers[(fRaytracingBLASGeometryInfoBufferRingIndex+1) and 1])) then begin
      BLASListChanged:=true;
     end;
 
