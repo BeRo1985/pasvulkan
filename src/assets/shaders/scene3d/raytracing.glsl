@@ -157,7 +157,7 @@ void rayProceedEXTAlphaHandlingBasedLoop(in rayQueryEXT rayQuery, const in bool 
 
           // With possible transparent triangles we need to check the material alpha cut-off and alpha blending
 
-          int instanceID = rayQueryGetIntersectionInstanceIdEXT(rayQuery, false);
+          //int instanceID = rayQueryGetIntersectionInstanceIdEXT(rayQuery, false);
           
           int geometryID = rayQueryGetIntersectionGeometryIndexEXT(rayQuery, false);
           
@@ -333,7 +333,7 @@ bool tracePrimaryBasicGeometryRay(vec3 position,
     
       case gl_RayQueryCandidateIntersectionTriangleEXT:{
 
-        int instanceID = rayQueryGetIntersectionInstanceIdEXT(rayQuery, true);
+        //int instanceID = rayQueryGetIntersectionInstanceIdEXT(rayQuery, true);
         
         int geometryID = rayQueryGetIntersectionGeometryIndexEXT(rayQuery, true);
         
