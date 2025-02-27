@@ -113,7 +113,11 @@ float applyLightIESProfile(const in Light light, const in vec3 pointToLightDirec
             float rayDistance = ((light.metaData.x & (1u << 5u)) != 0u) ? abs(light.directionRange.w) : 1e+7; 
 #endif
 #if !defined(REFLECTIVESHADOWMAPOUTPUT)
-            if (/*(uShadows != 0) &&*/receiveShadows && ((light.metaData.y & 0x80000000u) == 0u) && (uCascadedShadowMaps.metaData.x != SHADOWMAP_MODE_NONE)){ // && ((lightAttenuation > 0.0) || ((flags & (1u << 11u)) != 0u))) {
+            if (/*(uShadows != 0) &&*/receiveShadows && ((light.metaData.y & 0x80000000u) == 0u) 
+#if !defined(RAYTRACING)
+                 && (uCascadedShadowMaps.metaData.x != SHADOWMAP_MODE_NONE)
+#endif
+               ){ // && ((lightAttenuation > 0.0) || ((flags & (1u << 11u)) != 0u))) {
               switch (lightType) {
 #if !defined(REFLECTIVESHADOWMAPOUTPUT)
 #if defined(RAYTRACING)

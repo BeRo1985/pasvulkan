@@ -521,14 +521,13 @@ begin
 
  InFlightFrameState:=@fInstance.InFlightFrameStates^[aInFlightFrameIndex];
 
- if InFlightFrameState^.Ready then begin
+ if InFlightFrameState^.Ready and (InFlightFrameState^.CascadedShadowMapViewIndex>=0) then begin
 
   fOnSetRenderPassResourcesDone:=false;
 
   if fInstance.Renderer.ShadowMode<>TpvScene3DRendererShadowMode.None then begin
 
-   if not fInstance.Renderer.Scene3D.RaytracingActive then
-   begin
+   if not fInstance.Renderer.Scene3D.RaytracingActive then begin
 
     fPlanetShadowMapPass.Draw(aInFlightFrameIndex,
                               aFrameIndex,

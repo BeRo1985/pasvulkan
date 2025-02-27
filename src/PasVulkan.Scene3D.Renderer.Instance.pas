@@ -160,11 +160,23 @@ type { TpvScene3DRendererInstance }
              ZNear:TpvFloat;
              ZFar:TpvFloat;
 
+             RealZNear:TpvFloat;
+             RealZFar:TpvFloat;
+
+             AdjustedZNear:TpvFloat;
+             AdjustedZFar:TpvFloat;
+
+             DoNeedRefitNearFarPlanes:Boolean;
+
              Jitter:TpvVector4;
 
              SkyBoxOrientation:TpvMatrix4x4;
 
              CameraReset:Boolean;
+
+             SceneWorldSpaceBoundingBox:TpvAABB;
+
+             SceneWorldSpaceSphere:TpvSphere;
 
             end;
             PInFlightFrameState=^TInFlightFrameState;
@@ -354,8 +366,6 @@ type { TpvScene3DRendererInstance }
                      );
              private
               fInstance:TpvScene3DRendererInstance;
-              fSceneWorldSpaceBoundingBox:TpvAABB;
-              fSceneWorldSpaceSphere:TpvSphere;
               fLightForwardVector:TpvVector3;
               fLightSideVector:TpvVector3;
               fLightUpVector:TpvVector3;
@@ -769,6 +779,7 @@ type { TpvScene3DRendererInstance }
        function GetPixelAmountFactor:TpvDouble;
        procedure SetPixelAmountFactor(const aPixelAmountFactor:TpvDouble);
       private
+       procedure CalculateSceneBounds(const aInFlightFrameIndex:TpvInt32);
        procedure CalculateCascadedShadowMaps(const aInFlightFrameIndex:TpvInt32);
        procedure UpdateGlobalIlluminationCascadedRadianceHints(const aInFlightFrameIndex:TpvInt32);
        procedure UploadGlobalIlluminationCascadedRadianceHints(const aInFlightFrameIndex:TpvInt32);
@@ -1326,43 +1337,15 @@ begin
 
  Renderer:=fInstance.Renderer;
 
- fSceneWorldSpaceBoundingBox:=Renderer.Scene3D.InFlightFrameBoundingBoxes[aInFlightFrameIndex];
-
- fSceneWorldSpaceSphere:=TpvSphere.CreateFromAABB(fSceneWorldSpaceBoundingBox);
-
  InFlightFrameState:=@fInstance.fInFlightFrameStates[aInFlightFrameIndex];
 
- if IsInfinite(fInstance.fZFar) then begin
-  RealZNear:=0.1;
-  RealZFar:=16.0;
-  for Index:=0 to fInstance.fCountRealViews[aInFlightFrameIndex]-1 do begin
-   fViewMatrix:=fInstance.fViews[aInFlightFrameIndex].Items[Index].ViewMatrix.SimpleInverse;
-   if fSceneWorldSpaceSphere.Contains(fViewMatrix.Translation.xyz) then begin
-    if fSceneWorldSpaceSphere.RayIntersection(fViewMatrix.Translation.xyz,-fViewMatrix.Forwards.xyz,Value) then begin
-     Value:=Value*2.0;
-    end else begin
-     Value:=fSceneWorldSpaceSphere.Radius;
-    end;
-   end else begin
-    Value:=fSceneWorldSpaceSphere.Center.DistanceTo(fViewMatrix.Translation.xyz)+fSceneWorldSpaceSphere.Radius;
-   end;
-   RealZFar:=Max(RealZFar,Value);
-  end;
-{ RealZNear:=0.1;
-  RealZFar:=1024.0;}
-  zNear:=RealZNear;
-  zFar:=RealZFar;
-  DoNeedRefitNearFarPlanes:=true;
- end else begin
-  zNear:=abs(fInstance.fZNear);
-  zFar:=abs(fInstance.fZFar);
-  RealZNear:=zNear;
-  RealZFar:=zFar;
-  DoNeedRefitNearFarPlanes:=fInstance.fZFar<0.0;
- end;
+ zNear:=InFlightFrameState^.AdjustedZNear;
+ zFar:=InFlightFrameState^.AdjustedZFar;
 
- InFlightFrameState^.ZNear:=Min(RealZNear,1e-4);
- InFlightFrameState^.ZFar:=RealZFar;
+ RealZNear:=InFlightFrameState^.RealZNear;
+ RealZFar:=InFlightFrameState^.RealZFar;
+
+ DoNeedRefitNearFarPlanes:=InFlightFrameState^.DoNeedRefitNearFarPlanes;
 
  CascadedShadowMapSplitLambda:=0.95;
 
@@ -1476,7 +1459,7 @@ begin
   fLightViewMatrix.RawComponents[3,1]:=-fLightUpVector.Dot(fOrigin);
   fLightViewMatrix.RawComponents[3,2]:=-fLightForwardVector.Dot(fOrigin);
 
-  fLightSpaceWorldAABB:=fSceneWorldSpaceBoundingBox.HomogenTransform(fLightViewMatrix);
+  fLightSpaceWorldAABB:=InFlightFrameState^.SceneWorldSpaceBoundingBox.HomogenTransform(fLightViewMatrix);
 
   fFrustumAABB.Min.x:=Math.Max(fFrustumAABB.Min.x,fLightSpaceWorldAABB.Min.x);
   fFrustumAABB.Min.y:=Math.Max(fFrustumAABB.Min.y,fLightSpaceWorldAABB.Min.y);
@@ -5946,6 +5929,62 @@ begin
  result:=fViews[aInFlightFrameIndex].Add(aViews);
 end;
 
+procedure TpvScene3DRendererInstance.CalculateSceneBounds(const aInFlightFrameIndex:TpvInt32);
+var Index:TpvSizeInt;
+    LocalZNear,LocalZFar,RealZNear,RealZFar,Value:TpvScalar;
+    DoNeedRefitNearFarPlanes:boolean;
+    InFlightFrameState:PInFlightFrameState;
+    ViewMatrix:TpvMatrix4x4;
+begin
+
+ InFlightFrameState:=@fInFlightFrameStates[aInFlightFrameIndex];
+
+ InFlightFrameState^.SceneWorldSpaceBoundingBox:=fScene3D.InFlightFrameBoundingBoxes[aInFlightFrameIndex];
+
+ InFlightFrameState^.SceneWorldSpaceSphere:=TpvSphere.CreateFromAABB(InFlightFrameState^.SceneWorldSpaceBoundingBox);
+
+ if IsInfinite(fZFar) then begin
+  RealZNear:=0.1;
+  RealZFar:=16.0;
+  for Index:=0 to fCountRealViews[aInFlightFrameIndex]-1 do begin
+   ViewMatrix:=fViews[aInFlightFrameIndex].Items[Index].ViewMatrix.SimpleInverse;
+   if InFlightFrameState^.SceneWorldSpaceSphere.Contains(ViewMatrix.Translation.xyz) then begin
+    if InFlightFrameState^.SceneWorldSpaceSphere.RayIntersection(ViewMatrix.Translation.xyz,-ViewMatrix.Forwards.xyz,Value) then begin
+     Value:=Value*2.0;
+    end else begin
+     Value:=InFlightFrameState^.SceneWorldSpaceSphere.Radius;
+    end;
+   end else begin
+    Value:=InFlightFrameState^.SceneWorldSpaceSphere.Center.DistanceTo(ViewMatrix.Translation.xyz)+InFlightFrameState^.SceneWorldSpaceSphere.Radius;
+   end;
+   RealZFar:=Max(RealZFar,Value);
+  end;
+{ RealZNear:=0.1;
+  RealZFar:=1024.0;}
+  LocalZNear:=RealZNear;
+  LocalZFar:=RealZFar;
+  DoNeedRefitNearFarPlanes:=true;
+ end else begin
+  LocalZNear:=abs(fZNear);
+  LocalZFar:=abs(fZFar);
+  RealZNear:=LocalZNear;
+  RealZFar:=LocalZFar;
+  DoNeedRefitNearFarPlanes:=fZFar<0.0;
+ end;
+
+ InFlightFrameState^.ZNear:=Min(RealZNear,1e-4);
+ InFlightFrameState^.ZFar:=RealZFar;
+
+ InFlightFrameState^.DoNeedRefitNearFarPlanes:=DoNeedRefitNearFarPlanes;
+
+ InFlightFrameState^.AdjustedZNear:=LocalZNear;
+ InFlightFrameState^.AdjustedZFar:=LocalZFar;
+
+ InFlightFrameState^.RealZNear:=RealZNear;
+ InFlightFrameState^.RealZFar:=RealZFar;
+
+end;
+
 procedure TpvScene3DRendererInstance.CalculateCascadedShadowMaps(const aInFlightFrameIndex:TpvInt32);
 begin
  fCascadedShadowMapBuilder.Calculate(aInFlightFrameIndex);
@@ -7089,6 +7128,8 @@ begin
 
  end;
 
+ CalculateSceneBounds(aInFlightFrameIndex);
+
  if Renderer.GlobalIlluminationMode=TpvScene3DRendererGlobalIlluminationMode.CameraReflectionProbe then begin
   AddCameraReflectionProbeViews(aInFlightFrameIndex);
  end else begin
@@ -7112,7 +7153,12 @@ begin
 
  end;
 
- CalculateCascadedShadowMaps(aInFlightFrameIndex);
+ if (Renderer.ShadowMode<>TpvScene3DRendererShadowMode.None) and not Renderer.Scene3D.RaytracingActive then begin
+  CalculateCascadedShadowMaps(aInFlightFrameIndex);
+ end else begin
+  InFlightFrameState^.CascadedShadowMapViewIndex:=-1;
+  InFlightFrameState^.CountCascadedShadowMapViews:=0;
+ end;
 
  InFlightFrameState^.CountViews:=fViews[aInFlightFrameIndex].Count;
 
