@@ -6734,13 +6734,7 @@ begin
          FirstInstanceID:=GroupInstance.fVulkanPerInFlightFrameFirstInstances[aInFlightFrameIndex,fID,aRenderPass];
 
          FirstInstanceCommandIndex:=GPUDrawIndexedIndirectCommandDynamicArray^.Count;
-         if (FirstInstanceCommandIndex=65551) and (CountInstances=37) then begin
-          Sleep(0);
-         end;
          GPUDrawIndexedIndirectCommandDynamicArray^.SetCount(FirstInstanceCommandIndex+CountInstances);
-         if GPUDrawIndexedIndirectCommandDynamicArray.Count=65551 then begin
-          Sleep(0);
-         end;
 
          for InstanceIndex:=0 to CountInstances-1 do begin
           GPUDrawIndexedIndirectCommand:=@GPUDrawIndexedIndirectCommandDynamicArray^.ItemArray[FirstInstanceCommandIndex+InstanceIndex];
