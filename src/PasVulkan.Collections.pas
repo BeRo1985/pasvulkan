@@ -1109,8 +1109,8 @@ end;
 
 procedure TpvDynamicArray<T>.SetCount(const aCount:TpvSizeInt);
 begin
- if length(Items)<Count then begin
-  SetLength(Items,Count+((Count+1) shr 1));
+ if length(Items)<aCount then begin
+  SetLength(Items,aCount+((aCount+1) shr 1));
  end;
  Count:=aCount;
 end;
