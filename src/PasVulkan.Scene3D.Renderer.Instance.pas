@@ -7717,7 +7717,7 @@ begin
  fFrustumClusterGridPushConstants.TileSizeX:=fFrustumClusterGridTileSizeX;
  fFrustumClusterGridPushConstants.TileSizeY:=fFrustumClusterGridTileSizeY;
  fFrustumClusterGridPushConstants.ZNear:=InFlightFrameStates[aInFlightFrameIndex].ZNear;
- fFrustumClusterGridPushConstants.ZFar:=InFlightFrameStates[aInFlightFrameIndex].ZFar;
+ fFrustumClusterGridPushConstants.ZFar:=Min(InFlightFrameStates[aInFlightFrameIndex].ZFar,1024.0);
  fFrustumClusterGridPushConstants.ViewRect:=TpvVector4.InlineableCreate(0.0,0.0,fScaledWidth,fScaledHeight);
  fFrustumClusterGridPushConstants.CountLights:=fScene3D.LightBuffers[aInFlightFrameIndex].LightItems.Count;
  fFrustumClusterGridPushConstants.Size:=fFrustumClusterGridSizeX*fFrustumClusterGridSizeY*fFrustumClusterGridSizeZ;
