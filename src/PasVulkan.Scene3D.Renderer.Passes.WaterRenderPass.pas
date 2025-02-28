@@ -137,6 +137,8 @@ inherited Create(aFrameGraph);
   MultiviewMask:=fInstance.SurfaceMultiviewMask;
  end;
 
+ SeparateCommandBuffer:=true;
+
  Queue:=aFrameGraph.UniversalQueue;
 
  Size:=TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,

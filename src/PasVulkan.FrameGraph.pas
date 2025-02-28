@@ -222,8 +222,28 @@ type EpvFrameGraph=class(Exception);
               class operator NotEqual(const aLeft,aRight:TImageSize):boolean;
             end;
             PImageSize=^TImageSize;
+            TQueue=class;
             TPhysicalPass=class;
             TPhysicalPasses=TpvObjectGenericList<TPhysicalPass>;
+            TPhysicalPassCrossEvent=class
+             private
+              fFrameGraph:TpvFrameGraph;
+              fQueue:TQueue;
+              fFromPhysicalPass:TPhysicalPass;
+              fToPhysicalPass:TPhysicalPass;
+              fStageMask:TVkPipelineStageFlags;
+              fEvents:array[0..MaxInFlightFrames-1] of TpvVulkanEvent;
+             public
+              constructor Create(const aFrameGraph:TpvFrameGraph;
+                                 const aQueue:TQueue;
+                                 const aFromPhysicalPass:TPhysicalPass;
+                                 const aToPhysicalPass:TPhysicalPass;
+                                 const aStageMask:TVkPipelineStageFlags); reintroduce;
+              destructor Destroy; override;
+              procedure AcquireVolatileResources;
+              procedure ReleaseVolatileResources;
+            end;
+            TPhysicalPassCrossEvents=TpvObjectGenericList<TPhysicalPassCrossEvent>;
             TQueue=class
              public
               type TVkSubmitInfos=array of TVkSubmitInfo;
@@ -247,6 +267,7 @@ type EpvFrameGraph=class(Exception);
                      fWaitingSemaphoreDstStageMasks:TWaitingSemaphoreDstStageMasks;
                      fSubmitInfos:array[0..MaxInFlightFrames-1] of TVkSubmitInfo;
                      fSubmitInfoIndex:TpvSizeInt;
+                     fMustResetEvents:Boolean;
                     public
                      constructor Create(const aQueue:TQueue); reintroduce;
                      destructor Destroy; override;
@@ -255,7 +276,7 @@ type EpvFrameGraph=class(Exception);
                      procedure AcquireVolatileResources;
                      procedure ReleaseVolatileResources;
                    end;
-                   TCommandBuffers=TpvObjectGenericList<TCommandBuffer>;
+                   TCommandBuffers=TpvObjectGenericList<TCommandBuffer>;                   
              private
               fFrameGraph:TpvFrameGraph;
               fPhysicalQueue:TpvVulkanQueue;
@@ -263,8 +284,10 @@ type EpvFrameGraph=class(Exception);
               fCommandPool:TpvVulkanCommandPool;
               fCommandBufferCommandPool:TpvVulkanCommandPool;
               fCommandBuffers:TCommandBuffers;
+              fResetBuffer:TCommandBuffer;
               fSubmitInfos:TVkSubmitInfos;
               fCountSubmitInfos:TPasMPInt32;
+              fPhysicalPassCrossEvents:TPhysicalPassCrossEvents;
              public
               constructor Create(const aFrameGraph:TpvFrameGraph;
                                  const aPhysicalQueue:TpvVulkanQueue); reintroduce;
@@ -273,6 +296,7 @@ type EpvFrameGraph=class(Exception);
               procedure ReleasePersistentResources;
               procedure AcquireVolatileResources;
               procedure ReleaseVolatileResources;
+              procedure ResetEvents(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt);
              published
               property FrameGraph:TpvFrameGraph read fFrameGraph;
               property PhysicalQueue:TpvVulkanQueue read fPhysicalQueue;
@@ -727,6 +751,12 @@ type EpvFrameGraph=class(Exception);
                           PBarrierMapItem=^TBarrierMapItem;
                           TBarrierMapItemDynamicArray=TpvDynamicArray<TBarrierMapItem>;
                           TVkEventDynamicArray=TpvDynamicArray<TVkEvent>;
+                          TPassEvent=record
+                           Event:TpvVulkanEvent;
+                           StageMask:TVkPipelineStageFlags;
+                          end;
+                          PPassEvent=^TPassEvent;
+                          TPassEventDynamicArray=TpvDynamicArray<TPassEvent>;
                     private
                      fFrameGraph:TpvFrameGraph;
                      fSrcStageMask:TVkPipelineStageFlags;
@@ -739,7 +769,7 @@ type EpvFrameGraph=class(Exception);
                      fWorkMemoryBarrierDynamicArray:array[0..MaxInFlightFrames-1] of TVkMemoryBarrierDynamicArray;
                      fWorkBufferMemoryBarrierDynamicArray:array[0..MaxInFlightFrames-1] of TVkBufferMemoryBarrierDynamicArray;
                      fWorkImageMemoryBarrierDynamicArray:array[0..MaxInFlightFrames-1] of TVkImageMemoryBarrierDynamicArray;
-                     fFromPhysicalPasses:TPhysicalPasses;
+                     fPhysicalPassCrossEvents:TPhysicalPassCrossEvents;
                      fWorkFromPhysicalPassesEventHandles:array[0..MaxInFlightFrames-1] of TVkEventDynamicArray;
                     public
                      constructor Create(const aFrameGraph:TpvFrameGraph;
@@ -761,12 +791,6 @@ type EpvFrameGraph=class(Exception);
                     public
                      procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer);
                    end;
-                   TResetEvent=record
-                    Handle:TVkEvent;
-                    StageMask:TVkPipelineStageFlags;
-                   end;
-                   PResetEvent=^TResetEvent;
-                   TResetEvents=TpvDynamicArray<TResetEvent>;
              private
               fFrameGraph:TpvFrameGraph;
               fIndex:TpvSizeInt;
@@ -780,11 +804,8 @@ type EpvFrameGraph=class(Exception);
               fEventPipelineBarrierGroups:TPipelineBarrierGroups;
               fBeforePipelineBarrierGroups:TPipelineBarrierGroups;
               fAfterPipelineBarrierGroups:TPipelineBarrierGroups;
-              fEvents:array[0..MaxInFlightFrames-1] of TpvVulkanEvent;
-              fEventSrcStageMask:TVkPipelineStageFlags;
-              fEventDstStageMask:TVkPipelineStageFlags;
-              fResetEvents:array[0..MaxInFlightFrames-1] of TResetEvents;
-              procedure ResetEvents(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt);
+              fIncomingEvents:TPhysicalPassCrossEvents;
+              fOutgoingEvents:TPhysicalPassCrossEvents;
               procedure SetEvents(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt);
              public
               constructor Create(const aFrameGraph:TpvFrameGraph;const aQueue:TQueue); reintroduce; virtual;
@@ -1220,6 +1241,7 @@ type EpvFrameGraph=class(Exception);
        fTryToMergeSubpasses:boolean;
        fPhysicalPasses:TPhysicalPasses;
        fRootPhysicalPass:TPhysicalPass;
+       fPhysicalPassCrossEvents:TPhysicalPassCrossEvents;
        fDrawToWaitOnSemaphores:array[0..MaxInFlightFrames-1] of TVulkanSemaphores;
        fDrawToWaitOnSemaphoreHandles:array[0..MaxInFlightFrames-1] of TVulkanSemaphoreHandles;
        fDrawToSignalSemaphoreHandles:array[0..MaxInFlightFrames-1] of TVulkanSemaphoreHandles;
@@ -1530,6 +1552,8 @@ begin
 
  fWaitingSemaphoreDstStageMasks.Initialize;
 
+ fMustResetEvents:=false;
+
 end;
 
 destructor TpvFrameGraph.TQueue.TCommandBuffer.Destroy;
@@ -1585,6 +1609,55 @@ begin
  end;
 end;
 
+{ TpvFrameGraph.TPhysicalPassCrossEvent }
+
+constructor TpvFrameGraph.TPhysicalPassCrossEvent.Create(const aFrameGraph:TpvFrameGraph;
+                                                         const aQueue:TQueue;
+                                                         const aFromPhysicalPass:TPhysicalPass;
+                                                         const aToPhysicalPass:TPhysicalPass;
+                                                         const aStageMask:TVkPipelineStageFlags);
+var Index:TpvSizeInt;
+begin
+
+ inherited Create;
+
+ fFrameGraph:=aFrameGraph;
+ fQueue:=aQueue;
+ fFromPhysicalPass:=aFromPhysicalPass;
+ fToPhysicalPass:=aToPhysicalPass;
+ fStageMask:=aStageMask;
+
+ for Index:=0 to MaxInFlightFrames-1 do begin
+  fEvents[Index]:=nil;
+ end;
+
+end;
+
+destructor TpvFrameGraph.TPhysicalPassCrossEvent.Destroy;
+var Index:TpvSizeInt;
+begin
+ for Index:=0 to MaxInFlightFrames-1 do begin
+  FreeAndNil(fEvents[Index]);
+ end;
+ inherited Destroy;
+end;
+
+procedure TpvFrameGraph.TPhysicalPassCrossEvent.AcquireVolatileResources;
+var Index:TpvSizeInt;
+begin
+ for Index:=0 to fFrameGraph.CountInFlightFrames-1 do begin
+  fEvents[Index]:=TpvVulkanEvent.Create(fFrameGraph.fVulkanDevice);
+ end;
+end;
+
+procedure TpvFrameGraph.TPhysicalPassCrossEvent.ReleaseVolatileResources;
+var Index:TpvSizeInt;
+begin
+ for Index:=0 to MaxInFlightFrames-1 do begin
+  FreeAndNil(fEvents[Index]);
+ end;
+end;
+
 { TpvFrameGraph.TQueue }
 
 constructor TpvFrameGraph.TQueue.Create(const aFrameGraph:TpvFrameGraph;
@@ -1610,6 +1683,10 @@ begin
  fCommandBuffers:=TCommandBuffers.Create;
  fCommandBuffers.OwnsObjects:=true;
 
+ fResetBuffer:=nil;
+
+ fPhysicalPassCrossEvents:=TPhysicalPassCrossEvents.Create(false);
+
 end;
 
 destructor TpvFrameGraph.TQueue.Destroy;
@@ -1622,6 +1699,8 @@ begin
  FreeAndNil(fCommandBufferCommandPool);
 
  FreeAndNil(fCommandPool);
+
+ FreeAndNil(fPhysicalPassCrossEvents);
 
  inherited Destroy;
 
@@ -1662,6 +1741,14 @@ begin
   CommandBuffer.ReleaseVolatileResources;
  end;
  FreeAndNil(fCommandBufferCommandPool);
+end;
+
+procedure TpvFrameGraph.TQueue.ResetEvents(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt);
+var PhysicalPassCrossEvent:TPhysicalPassCrossEvent;
+begin
+ for PhysicalPassCrossEvent in fPhysicalPassCrossEvents do begin
+  aCommandBuffer.CmdResetEvent(PhysicalPassCrossEvent.fEvents[aInFlightFrameIndex].Handle,PhysicalPassCrossEvent.fStageMask);
+ end;
 end;
 
 { TpvFrameGraph.TExternalData }
@@ -3434,14 +3521,13 @@ begin
   fWorkImageMemoryBarrierDynamicArray[Index].Initialize;
   fWorkFromPhysicalPassesEventHandles[Index].Initialize;
  end;
- fFromPhysicalPasses:=TPhysicalPasses.Create;
- fFromPhysicalPasses.OwnsObjects:=false;
+ fPhysicalPassCrossEvents:=TPhysicalPassCrossEvents.Create(false);
 end;
 
 destructor TpvFrameGraph.TPhysicalPass.TPipelineBarrierGroup.Destroy;
 var InFlightFrameIndex:TpvSizeInt;
 begin
- FreeAndNil(fFromPhysicalPasses);
+ FreeAndNil(fPhysicalPassCrossEvents);
  fBarrierMapItemDynamicArray.Finalize;
  fMemoryBarrierDynamicArray.Finalize;
  fBufferMemoryBarrierDynamicArray.Finalize;
@@ -3471,14 +3557,25 @@ var InFlightFrameIndex,
     MemoryBarrier:PVkMemoryBarrier;
     BufferMemoryBarrier:PVkBufferMemoryBarrier;
     ImageMemoryBarrier:PVkImageMemoryBarrier;
+    PassEvent:PPassEvent;
+    PhysicalPassCrossEvent:TPhysicalPassCrossEvent;
+    WaitEventsSrcStageMask:TVkPipelineStageFlags;
 begin
+
  for InFlightFrameIndex:=0 to fFrameGraph.CountInFlightFrames-1 do begin
+
   fWorkMemoryBarrierDynamicArray[InFlightFrameIndex].Assign(fMemoryBarrierDynamicArray);
+
   fWorkBufferMemoryBarrierDynamicArray[InFlightFrameIndex].Assign(fBufferMemoryBarrierDynamicArray);
+
   fWorkImageMemoryBarrierDynamicArray[InFlightFrameIndex].Assign(fImageMemoryBarrierDynamicArray);
+
   for BarrierMapItemIndex:=0 to fBarrierMapItemDynamicArray.Count-1 do begin
+
    BarrierMapItem:=@fBarrierMapItemDynamicArray.Items[BarrierMapItemIndex];
+
    case BarrierMapItem^.Kind of
+
     TBarrierMapItemKind.Memory:begin
      Assert((BarrierMapItem^.BarrierIndex>=0) and (BarrierMapItem^.BarrierIndex<fMemoryBarrierDynamicArray.Count));
      MemoryBarrier:=@fWorkMemoryBarrierDynamicArray[InFlightFrameIndex].Items[BarrierMapItem^.BarrierIndex];
@@ -3486,6 +3583,7 @@ begin
       // Nothing needed to do
      end;
     end;
+
     TBarrierMapItemKind.Buffer:begin
      Assert((BarrierMapItem^.BarrierIndex>=0) and (BarrierMapItem^.BarrierIndex<fBufferMemoryBarrierDynamicArray.Count));
      BufferMemoryBarrier:=@fWorkBufferMemoryBarrierDynamicArray[InFlightFrameIndex].Items[BarrierMapItem^.BarrierIndex];
@@ -3496,6 +3594,7 @@ begin
       Assert(false);
      end;
     end;
+
     TBarrierMapItemKind.Image:begin
      Assert((BarrierMapItem^.BarrierIndex>=0) and (BarrierMapItem^.BarrierIndex<fImageMemoryBarrierDynamicArray.Count));
      ImageMemoryBarrier:=@fWorkImageMemoryBarrierDynamicArray[InFlightFrameIndex].Items[BarrierMapItem^.BarrierIndex];
@@ -3506,21 +3605,40 @@ begin
       Assert(false);
      end;
     end;
+
     else begin
      Assert(false);
     end;
+
    end;
+
   end;
-  fWorkFromPhysicalPassesEventHandles[InFlightFrameIndex].Clear;
-  for PhysicalPass in fFromPhysicalPasses do begin
-   if not assigned(PhysicalPass.fEvents[InFlightFrameIndex]) then begin
-    PhysicalPass.fEvents[InFlightFrameIndex]:=TpvVulkanEvent.Create(fFrameGraph.fVulkanDevice);
-    fFrameGraph.fVulkanDevice.DebugUtils.SetObjectName(PhysicalPass.fEvents[InFlightFrameIndex].Handle,TVkObjectType.VK_OBJECT_TYPE_EVENT,PhysicalPass.ClassName+'['+IntToStr(InFlightFrameIndex)+']');
+
+  begin
+
+  end;
+
+  if fPhysicalPassCrossEvents.Count>0 then begin
+
+   WaitEventsSrcStageMask:=0;
+
+   fWorkFromPhysicalPassesEventHandles[InFlightFrameIndex].Clear;
+
+   for PhysicalPassCrossEvent in fPhysicalPassCrossEvents do begin
+    fWorkFromPhysicalPassesEventHandles[InFlightFrameIndex].Add(PhysicalPassCrossEvent.fEvents[InFlightFrameIndex].Handle);
+    WaitEventsSrcStageMask:=WaitEventsSrcStageMask or PhysicalPassCrossEvent.fStageMask;
    end;
-   fWorkFromPhysicalPassesEventHandles[InFlightFrameIndex].Add(PhysicalPass.fEvents[InFlightFrameIndex].Handle);
+
+   if fSrcStageMask<>WaitEventsSrcStageMask then begin
+    raise EpvFrameGraph.Create('Src stage mask mismatch');
+   end;
+
+   fWorkFromPhysicalPassesEventHandles[InFlightFrameIndex].Finish;
+
   end;
-  fWorkFromPhysicalPassesEventHandles[InFlightFrameIndex].Finish;
+
  end;
+
 end;
 
 procedure TpvFrameGraph.TPhysicalPass.TPipelineBarrierGroup.ReleaseVolatileResources;
@@ -3622,46 +3740,29 @@ begin
  fAfterPipelineBarrierGroups:=TPipelineBarrierGroups.Create;
  fAfterPipelineBarrierGroups.OwnsObjects:=true;
 
- for InFlightFrameIndex:=0 to fFrameGraph.CountInFlightFrames-1 do begin
-  fEvents[InFlightFrameIndex]:=nil;
-  fResetEvents[InFlightFrameIndex].Initialize;
- end;
+ fIncomingEvents:=TPhysicalPassCrossEvents.Create(false);
 
- fEventSrcStageMask:=0;
-
- fEventDstStageMask:=0;
+ fOutgoingEvents:=TPhysicalPassCrossEvents.Create(false);
 
 end;
 
 destructor TpvFrameGraph.TPhysicalPass.Destroy;
-var InFlightFrameIndex,Index:TpvSizeInt;
 begin
- for InFlightFrameIndex:=0 to fFrameGraph.CountInFlightFrames-1 do begin
-  fResetEvents[InFlightFrameIndex].Finalize;
-  FreeAndNil(fEvents[InFlightFrameIndex]);
- end;
  FreeAndNil(fEventPipelineBarrierGroups);
  FreeAndNil(fBeforePipelineBarrierGroups);
  FreeAndNil(fAfterPipelineBarrierGroups);
  FreeAndNil(fInputDependencies);
  FreeAndNil(fOutputDependencies);
+ FreeAndNil(fIncomingEvents);
+ FreeAndNil(fOutgoingEvents);
  inherited Destroy;
 end;
 
-procedure TpvFrameGraph.TPhysicalPass.ResetEvents(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt);
-var ResetEventIndex:TpvSizeInt;
-    ResetEvent:PResetEvent;
-begin
- for ResetEventIndex:=0 to fResetEvents[aInFlightFrameIndex].Count-1 do begin
-  ResetEvent:=@fResetEvents[aInFlightFrameIndex].Items[ResetEventIndex];
-  aCommandBuffer.CmdResetEvent(ResetEvent^.Handle,ResetEvent^.StageMask);
- end;
-end;
-
 procedure TpvFrameGraph.TPhysicalPass.SetEvents(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt);
+var PhysicalPassCrossEvent:TPhysicalPassCrossEvent;
 begin
- if assigned(fEvents[aInFlightFrameIndex]) then begin
-  aCommandBuffer.CmdSetEvent(fEvents[aInFlightFrameIndex].Handle,fEventSrcStageMask);
+ for PhysicalPassCrossEvent in fOutgoingEvents do begin
+  aCommandBuffer.CmdSetEvent(PhysicalPassCrossEvent.fEvents[aInFlightFrameIndex].Handle,PhysicalPassCrossEvent.fStageMask);
  end;
 end;
 
@@ -3711,9 +3812,6 @@ procedure TpvFrameGraph.TPhysicalPass.ReleaseVolatileResources;
 var InFlightFrameIndex,Index:TpvSizeInt;
     PipelineBarrierGroup:TPipelineBarrierGroup;
 begin
- for InFlightFrameIndex:=0 to fFrameGraph.CountInFlightFrames-1 do begin
-  FreeAndNil(fEvents[InFlightFrameIndex]);
- end;
  for PipelineBarrierGroup in fEventPipelineBarrierGroups do begin
   PipelineBarrierGroup.ReleaseVolatileResources;
  end;
@@ -3786,7 +3884,7 @@ begin
  fComputePass.AddStartMarker(fQueue,aCommandBuffer);
  fEventPipelineBarrierGroups.Execute(aCommandBuffer);
  fBeforePipelineBarrierGroups.Execute(aCommandBuffer);
- ResetEvents(aCommandBuffer,fFrameGraph.fDrawInFlightFrameIndex);
+//ResetEvents(aCommandBuffer,fFrameGraph.fDrawInFlightFrameIndex);
  if fComputePass.fDoubleBufferedEnabledState[fFrameGraph.fDrawFrameIndex and 1] then begin
   fComputePass.Execute(aCommandBuffer,fFrameGraph.fDrawInFlightFrameIndex,fFrameGraph.fDrawFrameIndex);
  end;
@@ -3847,7 +3945,7 @@ begin
  fTransferPass.AddStartMarker(fQueue,aCommandBuffer);
  fEventPipelineBarrierGroups.Execute(aCommandBuffer);
  fBeforePipelineBarrierGroups.Execute(aCommandBuffer);
- ResetEvents(aCommandBuffer,fFrameGraph.fDrawInFlightFrameIndex);
+//ResetEvents(aCommandBuffer,fFrameGraph.fDrawInFlightFrameIndex);
  if fTransferPass.fDoubleBufferedEnabledState[fFrameGraph.fDrawFrameIndex and 1] then begin
   fTransferPass.Execute(aCommandBuffer,fFrameGraph.fDrawInFlightFrameIndex,fFrameGraph.fDrawFrameIndex);
  end;
@@ -3908,7 +4006,7 @@ begin
  fCustomPass.AddStartMarker(fQueue,aCommandBuffer);
  fEventPipelineBarrierGroups.Execute(aCommandBuffer);
  fBeforePipelineBarrierGroups.Execute(aCommandBuffer);
- ResetEvents(aCommandBuffer,fFrameGraph.fDrawInFlightFrameIndex);
+//ResetEvents(aCommandBuffer,fFrameGraph.fDrawInFlightFrameIndex);
  if fCustomPass.fDoubleBufferedEnabledState[fFrameGraph.fDrawFrameIndex and 1] then begin
   fCustomPass.Execute(aCommandBuffer,fFrameGraph.fDrawInFlightFrameIndex,fFrameGraph.fDrawFrameIndex);
  end;
@@ -4328,7 +4426,7 @@ begin
  end;
  fEventPipelineBarrierGroups.Execute(aCommandBuffer);
  fBeforePipelineBarrierGroups.Execute(aCommandBuffer);
- ResetEvents(aCommandBuffer,fFrameGraph.fDrawInFlightFrameIndex);
+//ResetEvents(aCommandBuffer,fFrameGraph.fDrawInFlightFrameIndex);
  if (fSubpasses.Count>1) or
     ((fSubpasses.Count=1) and (fSubpasses[0].fRenderPass.fDoubleBufferedEnabledState[fFrameGraph.fDrawFrameIndex and 1])) then begin
   if fHasVulkanSurfaceFrameBuffers then begin
@@ -4498,6 +4596,8 @@ begin
 
  fLastCPUTimeValues:=nil;
 
+ fPhysicalPassCrossEvents:=TPhysicalPassCrossEvents.Create(true);
+
 end;
 
 destructor TpvFrameGraph.Destroy;
@@ -4537,6 +4637,8 @@ begin
  FreeAndNil(fVulkanUniversalQueueCommandBuffer);
 
  FreeAndNil(fAllQueueCommandBuffers);
+
+ FreeAndNil(fPhysicalPassCrossEvents);
 
  FreeAndNil(fQueues);
 
@@ -5512,16 +5614,22 @@ type TEventBeforeAfter=(Event,Before,After);
      PhysicalPassWithCrossQueueDependencies:boolean;
      ResourceTransition:TResourceTransition;
  begin
+
   for Queue in fQueues do begin
+
    CommandBuffer:=nil;
+
    for PhysicalPass in Queue.fPhysicalPasses do begin
+
     PhysicalPassWithCrossQueueDependencies:=false;
+
     for OtherPhysicalPass in PhysicalPass.fInputDependencies do begin
      if Queue<>OtherPhysicalPass.fQueue then begin
       PhysicalPassWithCrossQueueDependencies:=true;
       break;
      end;
     end;
+
     if not PhysicalPassWithCrossQueueDependencies then begin
      for OtherPhysicalPass in PhysicalPass.fOutputDependencies do begin
       if Queue<>OtherPhysicalPass.fQueue then begin
@@ -5530,6 +5638,7 @@ type TEventBeforeAfter=(Event,Before,After);
       end;
      end;
     end;
+
     if (not assigned(CommandBuffer)) or
        (PhysicalPass.fSeparateCommandBuffer or
         PhysicalPassWithCrossQueueDependencies) then begin
@@ -5537,14 +5646,20 @@ type TEventBeforeAfter=(Event,Before,After);
      Queue.fCommandBuffers.Add(CommandBuffer);
      fAllQueueCommandBuffers.Add(CommandBuffer);
     end;
+
     CommandBuffer.fPhysicalPasses.Add(PhysicalPass);
+
     PhysicalPass.fQueueCommandBuffer:=CommandBuffer;
+
     if PhysicalPass.fSeparateCommandBuffer or
        PhysicalPassWithCrossQueueDependencies then begin
      CommandBuffer:=nil;
     end;
+
    end;
+
   end;
+
  end;
  procedure CreateResourceAliasGroupData;
  var MinimumTopologicalSortIndex:TpvSizeInt;
@@ -5736,6 +5851,7 @@ type TEventBeforeAfter=(Event,Before,After);
       BarrierMapItem:TPhysicalPass.TPipelineBarrierGroup.TBarrierMapItem;
       BufferMemoryBarrier:TVkBufferMemoryBarrier;
       ImageMemoryBarrier:TVkImageMemoryBarrier;
+      PhysicalPassCrossEvent,CurrentPhysicalPassCrossEvent:TPhysicalPassCrossEvent;
   begin
    case aBeforeAfter of
     TEventBeforeAfter.Event:begin
@@ -5773,12 +5889,34 @@ type TEventBeforeAfter=(Event,Before,After);
                                                                      aDependencyFlags);
     PipelineBarrierGroups.Add(PipelineBarrierGroup);
    end;
-   if assigned(aFromPhysicalPass) then begin
-    if PipelineBarrierGroup.fFromPhysicalPasses.IndexOf(aFromPhysicalPass)<0 then begin
-     PipelineBarrierGroup.fFromPhysicalPasses.Add(aFromPhysicalPass);
+   if aBeforeAfter=TEventBeforeAfter.Event then begin
+    if assigned(aFromPhysicalPass) and assigned(aToPhysicalPass) then begin
+     PhysicalPassCrossEvent:=nil;
+     for CurrentPhysicalPassCrossEvent in PipelineBarrierGroup.fPhysicalPassCrossEvents do begin
+      if (CurrentPhysicalPassCrossEvent.fFromPhysicalPass=aFromPhysicalPass) and
+         (CurrentPhysicalPassCrossEvent.fToPhysicalPass=aToPhysicalPass) then begin
+       PhysicalPassCrossEvent:=CurrentPhysicalPassCrossEvent;
+       break;
+      end;
+     end;
+     if assigned(PhysicalPassCrossEvent) then begin
+      PhysicalPassCrossEvent.fStageMask:=PhysicalPassCrossEvent.fStageMask or aSrcStageMask;
+     end else begin
+      PhysicalPassCrossEvent:=TPhysicalPassCrossEvent.Create(Self,
+                                                             aFromPhysicalPass.fQueue,
+                                                             aFromPhysicalPass,
+                                                             aToPhysicalPass,
+                                                             aSrcStageMask);
+      try
+       aFromPhysicalPass.fQueue.fPhysicalPassCrossEvents.Add(PhysicalPassCrossEvent);
+       aFromPhysicalPass.fOutgoingEvents.Add(PhysicalPassCrossEvent);
+       aFromPhysicalPass.fIncomingEvents.Add(PhysicalPassCrossEvent);
+       PipelineBarrierGroup.fPhysicalPassCrossEvents.Add(PhysicalPassCrossEvent);
+      finally
+       fPhysicalPassCrossEvents.Add(PhysicalPassCrossEvent);
+      end;
+     end;
     end;
-    aFromPhysicalPass.fEventSrcStageMask:=aFromPhysicalPass.fEventSrcStageMask or aSrcStageMask;
-    aFromPhysicalPass.fEventDstStageMask:=aFromPhysicalPass.fEventDstStageMask or aDstStageMask;
    end;
    if aResourcePhysicalData is TResourcePhysicalImageData then begin
     FillChar(ImageMemoryBarrier,SizeOf(TVkImageMemoryBarrier),#0);
@@ -5858,6 +5996,7 @@ type TEventBeforeAfter=(Event,Before,After);
      RealTransition,
      NeedBarriers,
      NeedSemaphore:boolean;
+     Queue:TQueue;
  begin
 
   for ResourceAliasGroup in fResourceAliasGroups do begin
@@ -6821,6 +6960,33 @@ type TEventBeforeAfter=(Event,Before,After);
   end;
 
  end;
+ procedure CreateQueueResetCommandBuffers;
+ var Queue:TQueue;
+     CommandBuffer:TQueue.TCommandBuffer;
+     WaitingSemaphoreIndex:TpvSizeInt;
+     WaitingSemaphore:TQueue.TCommandBuffer.PWaitingSemaphore;
+ begin
+  for Queue in fQueues do begin
+   if Queue.fPhysicalPassCrossEvents.Count>0 then begin
+    CommandBuffer:=TQueue.TCommandBuffer.Create(Queue);
+    try
+     CommandBuffer.fMustResetEvents:=true;
+     Queue.fCommandBuffers.Add(CommandBuffer);
+     fAllQueueCommandBuffers.Add(CommandBuffer);
+    finally
+     Queue.fResetBuffer:=CommandBuffer;
+    end;
+    for CommandBuffer in Queue.fCommandBuffers do begin
+     if CommandBuffer<>Queue.fResetBuffer then begin
+      WaitingSemaphoreIndex:=Queue.fResetBuffer.fWaitingSemaphores.AddNewIndex;
+      WaitingSemaphore:=@Queue.fResetBuffer.fWaitingSemaphores.Items[WaitingSemaphoreIndex];
+      WaitingSemaphore^.SignallingCommandBuffer:=CommandBuffer;
+      WaitingSemaphore^.DstStageMask:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
+     end;
+    end;
+   end;
+  end;
+ end;
  procedure CreateQueueCommandBuffersExternalSemaphoreDependencies;
  var Queue:TQueue;
      CommandBuffer:TQueue.TCommandBuffer;
@@ -6907,6 +7073,8 @@ begin
 
  fPhysicalPasses.Clear;
 
+ fPhysicalPassCrossEvents.Clear;
+
  IndexingPasses;
 
  ResolveExplicitPassDependencies;
@@ -6944,6 +7112,8 @@ begin
  SortPhysicalRenderPassSubpassDependencies;
 
  CreatePhysicalRenderPasses;
+
+ CreateQueueResetCommandBuffers;
 
  CreateQueueCommandBuffersExternalSemaphoreDependencies;
 
@@ -7002,11 +7172,14 @@ var InFlightFrameIndex,
     SubmitInfo:PVkSubmitInfo;
     WaitingSemaphore:TQueue.TCommandBuffer.PWaitingSemaphore;
     Semaphore:TpvVulkanSemaphore;
-    ResetEvent:TPhysicalPass.TResetEvent;
+    PhysicalPassCrossEvent:TPhysicalPassCrossEvent;
     Queue:TQueue;
 begin
  for ResourceAliasGroup in fResourceAliasGroups do begin
   ResourceAliasGroup.AcquireVolatileResources;
+ end;
+ for PhysicalPassCrossEvent in fPhysicalPassCrossEvents do begin
+  PhysicalPassCrossEvent.AcquireVolatileResources;
  end;
  for PhysicalPass in fPhysicalPasses do begin
   PhysicalPass.AcquireVolatileResources;
@@ -7108,27 +7281,6 @@ begin
    fDrawToSignalSubmitInfos[InFlightFrameIndex].pWaitDstStageMask:=nil;
   end;
  end;
- for PhysicalPass in fPhysicalPasses do begin
-  for InFlightFrameIndex:=0 to fCountInFlightFrames-1 do begin
-   PhysicalPass.fResetEvents[InFlightFrameIndex].Clear;
-  end;
- end;
- if assigned(fRootPhysicalPass) then begin
-  for InFlightFrameIndex:=0 to fCountInFlightFrames-1 do begin
-   for PhysicalPass in fPhysicalPasses do begin
-    if assigned(PhysicalPass.fEvents[InFlightFrameIndex]) then begin
-     ResetEvent.Handle:=PhysicalPass.fEvents[InFlightFrameIndex].Handle;
-     ResetEvent.StageMask:=PhysicalPass.fEventSrcStageMask;
-     fRootPhysicalPass.fResetEvents[InFlightFrameIndex].Add(ResetEvent);
-    end;
-   end;
-  end;
- end;
- for PhysicalPass in fPhysicalPasses do begin
-  for InFlightFrameIndex:=0 to fCountInFlightFrames-1 do begin
-   PhysicalPass.fResetEvents[InFlightFrameIndex].Finish;
-  end;
- end;
 end;
 
 procedure TpvFrameGraph.ReleaseVolatileResources;
@@ -7137,12 +7289,16 @@ var InFlightFrameIndex,
     ResourceAliasGroup:TResourceAliasGroup;
     PhysicalPass:TPhysicalPass;
     Queue:TQueue;
+    PhysicalPassCrossEvent:TPhysicalPassCrossEvent;
 begin
  for Queue in fQueues do begin
   Queue.ReleaseVolatileResources;
  end;
  for PhysicalPass in fPhysicalPasses do begin
   PhysicalPass.ReleaseVolatileResources;
+ end;
+ for PhysicalPassCrossEvent in fPhysicalPassCrossEvents do begin
+  PhysicalPassCrossEvent.ReleaseVolatileResources;
  end;
  for ResourceAliasGroup in fResourceAliasGroups do begin
   ResourceAliasGroup.ReleaseVolatileResources;
@@ -7219,6 +7375,9 @@ begin
   CommandBuffer:=Queue.fCommandBuffers[CommandBufferIndex];
   VulkanCommandBuffer:=CommandBuffer.fCommandBuffers[fDrawInFlightFrameIndex];
   VulkanCommandBuffer.BeginRecording(TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+  if CommandBuffer.fMustResetEvents then begin
+   Queue.ResetEvents(VulkanCommandBuffer,fDrawInFlightFrameIndex);
+  end;
   for PhysicalPassIndex:=0 to CommandBuffer.fPhysicalPasses.Count-1 do begin
    PhysicalPass:=CommandBuffer.fPhysicalPasses[PhysicalPassIndex];
    if assigned(PhysicalPass) then begin

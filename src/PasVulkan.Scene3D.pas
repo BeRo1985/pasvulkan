@@ -3615,6 +3615,7 @@ type EpvScene3D=class(Exception);
        fVulkanBeginFrameSemaphores:array[0..MaxInFlightFrames-1] of TpvVulkanSemaphore;
        fVulkanProcessFrameSemaphores:array[0..MaxInFlightFrames-1] of TpvVulkanSemaphore;
        fVulkanEndFrameSemaphores:array[0..MaxInFlightFrames-1] of TpvVulkanSemaphore;
+       fVulkanPlanetSimulationFrameSemaphores:array[0..MaxInFlightFrames-1] of TpvVulkanSemaphore;
 {      fVulkanLightItemsStagingBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
        fVulkanLightTreeStagingBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
        fVulkanLightMetaInfoStagingBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;}
@@ -28593,6 +28594,7 @@ begin
    fVulkanBeginFrameSemaphores[Index]:=TpvVulkanSemaphore.Create(fVulkanDevice);
    fVulkanProcessFrameSemaphores[Index]:=TpvVulkanSemaphore.Create(fVulkanDevice);
    fVulkanEndFrameSemaphores[Index]:=TpvVulkanSemaphore.Create(fVulkanDevice);
+   fVulkanPlanetSimulationFrameSemaphores[Index]:=TpvVulkanSemaphore.Create(fVulkanDevice);
   end;
 
   fVulkanProcessFrameQueue:=fVulkanDevice.UniversalQueue;
@@ -28836,6 +28838,7 @@ begin
   FreeAndNil(fVulkanBeginFrameSemaphores[Index]);
   FreeAndNil(fVulkanProcessFrameSemaphores[Index]);
   FreeAndNil(fVulkanEndFrameSemaphores[Index]);
+  FreeAndNil(fVulkanPlanetSimulationFrameSemaphores[Index]);
  end;
 
  for Index:=0 to fCountInFlightFrames-1 do begin
