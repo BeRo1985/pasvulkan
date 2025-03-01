@@ -249,7 +249,6 @@ type EpvFrameGraph=class(Exception);
              private 
               fFrameGraph:TpvFrameGraph;
               fInFlightFrameSemaphores:TInFlightFrameSemaphores;
-              fStageMask:TVkPipelineStageFlags;
              public
               constructor Create(const aFrameGraph:TpvFrameGraph); reintroduce;
               destructor Destroy; override;
@@ -257,9 +256,23 @@ type EpvFrameGraph=class(Exception);
               property FrameGraph:TpvFrameGraph read fFrameGraph;
              public   
               property InFlightFrameSemaphores:TInFlightFrameSemaphores read fInFlightFrameSemaphores write fInFlightFrameSemaphores;
-              property StageMask:TVkPipelineStageFlags read fStageMask write fStageMask;
             end;
             TExternalWaitingOnSemaphores=TpvObjectGenericList<TExternalWaitingOnSemaphore>;
+            TExternalWaitingOnSemaphoreReference=class
+             private
+              fFrameGraph:TpvFrameGraph;
+              fExternalWaitingOnSemaphore:TExternalWaitingOnSemaphore;
+              fStageMask:TVkPipelineStageFlags;
+             public
+              constructor Create(const aFrameGraph:TpvFrameGraph;
+                                 const aExternalWaitingOnSemaphore:TExternalWaitingOnSemaphore;
+                                 const aStageMask:TVkPipelineStageFlags=TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT)); reintroduce;
+              destructor Destroy; override;
+             published
+              property ExternalWaitingOnSemaphore:TExternalWaitingOnSemaphore read fExternalWaitingOnSemaphore write fExternalWaitingOnSemaphore;
+              property StageMask:TVkPipelineStageFlags read fStageMask write fStageMask;
+            end;
+            TExternalWaitingOnSemaphoreReferences=TpvObjectGenericList<TExternalWaitingOnSemaphoreReference>;
             TQueue=class
              public
               type TVkSubmitInfos=array of TVkSubmitInfo;
@@ -815,7 +828,7 @@ type EpvFrameGraph=class(Exception);
               fSeparateCommandBuffer:boolean;
               fHasSecondaryBuffers:boolean;
               fQueue:TQueue;
-              fExternalWaitingOnSemaphores:TExternalWaitingOnSemaphores;
+              fExternalWaitingOnSemaphoreReferences:TExternalWaitingOnSemaphoreReferences;
               fInputDependencies:TPhysicalPasses;
               fOutputDependencies:TPhysicalPasses;
               fQueueCommandBuffer:TQueue.TCommandBuffer;
@@ -1061,7 +1074,7 @@ type EpvFrameGraph=class(Exception);
               fTimerQueryIndices:TTimerQueryIndices;
               fCPUTimeValues:TCPUTimeValues;
               fDoubleBufferedEnabledState:array[0..1] of longbool;
-              fExternalWaitingOnSemaphores:TExternalWaitingOnSemaphores;
+              fExternalWaitingOnSemaphoreReferences:TExternalWaitingOnSemaphoreReferences;
               function GetSeparatePhysicalPass:boolean; inline;
               procedure SetSeparatePhysicalPass(const aSeparatePhysicalPass:boolean);
               function GetSeparateCommandBuffer:boolean; inline;
@@ -1096,7 +1109,7 @@ type EpvFrameGraph=class(Exception);
              public
               constructor Create(const aFrameGraph:TpvFrameGraph); reintroduce; virtual;
               destructor Destroy; override;              
-              procedure AddExternalWaitingOnSemaphore(const aExternalWaitingOnSemaphore:TExternalWaitingOnSemaphore);
+              procedure AddExternalWaitingOnSemaphore(const aExternalWaitingOnSemaphore:TExternalWaitingOnSemaphore;const aStageMask:TVkPipelineStageFlags=TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT));
               procedure AddExplicitPassDependency(const aPass:TPass;const aDstStageMask:TVkPipelineStageFlags=TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT)); overload;
               procedure AddExplicitPassDependency(const aPassName:TpvRawByteString;const aDstStageMask:TVkPipelineStageFlags=TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT)); overload;
               function AddImageInput(const aResourceTypeName:TpvRawByteString;
@@ -1684,11 +1697,27 @@ constructor TpvFrameGraph.TExternalWaitingOnSemaphore.Create(const aFrameGraph:T
 begin
  inherited Create; 
  fFrameGraph:=aFrameGraph;
- FillChar(fInFlightFrameSemaphores,SizeOf(TInFlightFrameSemaphores),#0);
- fStageMask:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
+ FillChar(fInFlightFrameSemaphores,SizeOf(TInFlightFrameSemaphores),#0); 
 end;
 
 destructor TpvFrameGraph.TExternalWaitingOnSemaphore.Destroy;
+begin
+ inherited Destroy;
+end;
+
+{ TpvFrameGraph.TExternalWaitingOnSemaphoreReference }
+
+constructor TpvFrameGraph.TExternalWaitingOnSemaphoreReference.Create(const aFrameGraph:TpvFrameGraph;
+                                                                      const aExternalWaitingOnSemaphore:TExternalWaitingOnSemaphore;
+                                                                      const aStageMask:TVkPipelineStageFlags);
+begin
+ inherited Create;
+ fFrameGraph:=aFrameGraph;
+ fExternalWaitingOnSemaphore:=aExternalWaitingOnSemaphore;
+ fStageMask:=aStageMask;
+end;
+
+destructor TpvFrameGraph.TExternalWaitingOnSemaphoreReference.Destroy;
 begin
  inherited Destroy;
 end;
@@ -2952,7 +2981,7 @@ begin
  fNextPasses:=TPassList.Create;
  fNextPasses.OwnsObjects:=false;
 
- fExternalWaitingOnSemaphores:=TExternalWaitingOnSemaphores.Create(false);
+ fExternalWaitingOnSemaphoreReferences:=TExternalWaitingOnSemaphoreReferences.Create(true);
  
  fFlags:=[TFlag.Enabled];
 
@@ -2985,15 +3014,16 @@ begin
 
  FreeAndNil(fExplicitPassDependencies);
 
- FreeAndNil(fExternalWaitingOnSemaphores);
+ FreeAndNil(fExternalWaitingOnSemaphoreReferences);
 
  inherited Destroy;
 
 end;
 
-procedure TpvFrameGraph.TPass.AddExternalWaitingOnSemaphore(const aExternalWaitingOnSemaphore:TExternalWaitingOnSemaphore);
+procedure TpvFrameGraph.TPass.AddExternalWaitingOnSemaphore(const aExternalWaitingOnSemaphore:TExternalWaitingOnSemaphore;const aStageMask:TVkPipelineStageFlags); 
+var ExternalWaitingOnSemaphoreReference:TExternalWaitingOnSemaphoreReference;
 begin
- fExternalWaitingOnSemaphores.Add(aExternalWaitingOnSemaphore);
+ fExternalWaitingOnSemaphoreReferences.Add(ExternalWaitingOnSemaphoreReference.Create(fFrameGraph,aExternalWaitingOnSemaphore,aStageMask));
 end;
 
 function TpvFrameGraph.TPass.GetSeparatePhysicalPass:boolean;
@@ -3767,7 +3797,7 @@ begin
 
  fQueue:=aQueue;
 
- fExternalWaitingOnSemaphores:=TExternalWaitingOnSemaphores.Create(false);
+ fExternalWaitingOnSemaphoreReferences:=TExternalWaitingOnSemaphoreReferences.Create(false);
 
  fInputDependencies:=TPhysicalPasses.Create;
  fInputDependencies.OwnsObjects:=false;
@@ -3797,7 +3827,7 @@ begin
  FreeAndNil(fEventPipelineBarrierGroups);
  FreeAndNil(fBeforePipelineBarrierGroups);
  FreeAndNil(fAfterPipelineBarrierGroups);
- FreeAndNil(fExternalWaitingOnSemaphores);
+ FreeAndNil(fExternalWaitingOnSemaphoreReferences);
  FreeAndNil(fInputDependencies);
  FreeAndNil(fOutputDependencies);
  FreeAndNil(fIncomingEvents);
@@ -5331,7 +5361,7 @@ type TEventBeforeAfter=(Event,Before,After);
      ResourceTransition:TResourceTransition;
      Compatible:boolean;
      OutputAttachmentImagesResources:TOutputAttachmentImagesResources;
-     ExternalWaitingOnSemaphore:TExternalWaitingOnSemaphore;
+     ExternalWaitingOnSemaphoreReference:TExternalWaitingOnSemaphoreReference;
  begin
   // Create physical passes together with merging render passes to sub passes of a real
   // physical render pass
@@ -5346,8 +5376,8 @@ type TEventBeforeAfter=(Event,Before,After);
     if Pass is TComputePass then begin
      Pass.fPhysicalPass:=TPhysicalComputePass.Create(self,TComputePass(Pass));
      Pass.fPhysicalPass.fIndex:=fPhysicalPasses.Add(Pass.fPhysicalPass);
-     for ExternalWaitingOnSemaphore in Pass.fExternalWaitingOnSemaphores do begin
-      Pass.fPhysicalPass.fExternalWaitingOnSemaphores.Add(ExternalWaitingOnSemaphore);
+     for ExternalWaitingOnSemaphoreReference in Pass.fExternalWaitingOnSemaphoreReferences do begin
+      Pass.fPhysicalPass.fExternalWaitingOnSemaphoreReferences.Add(ExternalWaitingOnSemaphoreReference);
      end;
      Pass.fPhysicalPass.fSeparateCommandBuffer:=Pass.GetSeparateCommandBuffer;
      Pass.fPhysicalPass.fHasSecondaryBuffers:=Pass.GetHasSecondaryBuffers;
@@ -5355,8 +5385,8 @@ type TEventBeforeAfter=(Event,Before,After);
     end else if Pass is TTransferPass then begin
      Pass.fPhysicalPass:=TPhysicalTransferPass.Create(self,TTransferPass(Pass));
      Pass.fPhysicalPass.fIndex:=fPhysicalPasses.Add(Pass.fPhysicalPass);
-     for ExternalWaitingOnSemaphore in Pass.fExternalWaitingOnSemaphores do begin
-      Pass.fPhysicalPass.fExternalWaitingOnSemaphores.Add(ExternalWaitingOnSemaphore);
+     for ExternalWaitingOnSemaphoreReference in Pass.fExternalWaitingOnSemaphoreReferences do begin
+      Pass.fPhysicalPass.fExternalWaitingOnSemaphoreReferences.Add(ExternalWaitingOnSemaphoreReference);
      end;
      Pass.fPhysicalPass.fSeparateCommandBuffer:=Pass.GetSeparateCommandBuffer;
      Pass.fPhysicalPass.fHasSecondaryBuffers:=Pass.GetHasSecondaryBuffers;
@@ -5364,8 +5394,8 @@ type TEventBeforeAfter=(Event,Before,After);
     end else if Pass is TCustomPass then begin
      Pass.fPhysicalPass:=TPhysicalCustomPass.Create(self,TCustomPass(Pass));
      Pass.fPhysicalPass.fIndex:=fPhysicalPasses.Add(Pass.fPhysicalPass);
-     for ExternalWaitingOnSemaphore in Pass.fExternalWaitingOnSemaphores do begin
-      Pass.fPhysicalPass.fExternalWaitingOnSemaphores.Add(ExternalWaitingOnSemaphore);
+     for ExternalWaitingOnSemaphoreReference in Pass.fExternalWaitingOnSemaphoreReferences do begin
+      Pass.fPhysicalPass.fExternalWaitingOnSemaphoreReferences.Add(ExternalWaitingOnSemaphoreReference);
      end;
      Pass.fPhysicalPass.fSeparateCommandBuffer:=Pass.GetSeparateCommandBuffer;
      Pass.fPhysicalPass.fHasSecondaryBuffers:=Pass.GetHasSecondaryBuffers;
@@ -5381,8 +5411,8 @@ type TEventBeforeAfter=(Event,Before,After);
      PhysicalRenderPass:=TPhysicalRenderPass.Create(self,Pass.fQueue);
      Pass.fPhysicalPass:=PhysicalRenderPass;
      Pass.fPhysicalPass.fIndex:=fPhysicalPasses.Add(Pass.fPhysicalPass);
-     for ExternalWaitingOnSemaphore in Pass.fExternalWaitingOnSemaphores do begin
-      Pass.fPhysicalPass.fExternalWaitingOnSemaphores.Add(ExternalWaitingOnSemaphore);
+     for ExternalWaitingOnSemaphoreReference in Pass.fExternalWaitingOnSemaphoreReferences do begin
+      Pass.fPhysicalPass.fExternalWaitingOnSemaphoreReferences.Add(ExternalWaitingOnSemaphoreReference);
      end;
      Pass.fPhysicalPass.fSeparateCommandBuffer:=Pass.GetSeparateCommandBuffer;
      Pass.fPhysicalPass.fHasSecondaryBuffers:=Pass.GetHasSecondaryBuffers;
@@ -5391,13 +5421,13 @@ type TEventBeforeAfter=(Event,Before,After);
      PhysicalRenderPass.fMultiview:=TRenderPass(Pass).fMultiviewMask<>0;
      inc(Index);
      if fTryToMergeSubpasses and
-        (Pass.fExternalWaitingOnSemaphores.Count=0) and
+        (Pass.fExternalWaitingOnSemaphoreReferences.Count=0) and
         ((Pass.fFlags*[TPass.TFlag.SeparatePhysicalPass,
                        TPass.TFlag.SeparateCommandBuffer,
                        TPass.TFlag.Toggleable])=[]) then begin
       while Index<Count do begin
        OtherPass:=fTopologicalSortedPasses[Index];
-       if (OtherPass.fExternalWaitingOnSemaphores.Count=0) and
+       if (OtherPass.fExternalWaitingOnSemaphoreReferences.Count=0) and
           ((OtherPass.fFlags*[TPass.TFlag.SeparatePhysicalPass,
                               TPass.TFlag.SeparateCommandBuffer,
                               TPass.TFlag.Toggleable])=[]) and
@@ -5704,7 +5734,7 @@ type TEventBeforeAfter=(Event,Before,After);
     if (not assigned(CommandBuffer)) or
        (PhysicalPass.fSeparateCommandBuffer or
         PhysicalPassWithCrossQueueDependencies) or
-       (PhysicalPass.fExternalWaitingOnSemaphores.Count>0) then begin
+       (PhysicalPass.fExternalWaitingOnSemaphoreReferences.Count>0) then begin
      CommandBuffer:=TQueue.TCommandBuffer.Create(Queue);
      Queue.fCommandBuffers.Add(CommandBuffer);
      fAllQueueCommandBuffers.Add(CommandBuffer);
@@ -5716,7 +5746,7 @@ type TEventBeforeAfter=(Event,Before,After);
 
     if PhysicalPass.fSeparateCommandBuffer or
        PhysicalPassWithCrossQueueDependencies or
-       (PhysicalPass.fExternalWaitingOnSemaphores.Count>0) then begin
+       (PhysicalPass.fExternalWaitingOnSemaphoreReferences.Count>0) then begin
      CommandBuffer:=nil;
     end;
 
@@ -7027,17 +7057,18 @@ type TEventBeforeAfter=(Event,Before,After);
  end;
  procedure HandleExternalWaitingSemaphores;
  var PhysicalPass:TPhysicalPass;
+     ExternalWaitingOnSemaphoreReference:TExternalWaitingOnSemaphoreReference;
      ExternalWaitingOnSemaphore:TExternalWaitingOnSemaphore;
      WaitingSemaphoreIndex:TpvSizeInt;
      WaitingSemaphore:TQueue.TCommandBuffer.PWaitingSemaphore;
  begin
   for PhysicalPass in fPhysicalPasses do begin
-   for ExternalWaitingOnSemaphore in PhysicalPass.fExternalWaitingOnSemaphores do begin
+   for ExternalWaitingOnSemaphoreReference in PhysicalPass.fExternalWaitingOnSemaphoreReferences do begin
     WaitingSemaphoreIndex:=PhysicalPass.fQueueCommandBuffer.fWaitingSemaphores.AddNewIndex;
     WaitingSemaphore:=@PhysicalPass.fQueueCommandBuffer.fWaitingSemaphores.Items[WaitingSemaphoreIndex];
-    WaitingSemaphore^.ExternalWaitingOnSemaphore:=ExternalWaitingOnSemaphore;
+    WaitingSemaphore^.ExternalWaitingOnSemaphore:=ExternalWaitingOnSemaphoreReference.fExternalWaitingOnSemaphore;
     WaitingSemaphore^.SignallingCommandBuffer:=nil;
-    WaitingSemaphore^.DstStageMask:=ExternalWaitingOnSemaphore.fStageMask;
+    WaitingSemaphore^.DstStageMask:=ExternalWaitingOnSemaphoreReference.fStageMask;
    end;
   end;
  end;
