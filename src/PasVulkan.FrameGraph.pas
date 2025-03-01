@@ -249,6 +249,7 @@ type EpvFrameGraph=class(Exception);
              private 
               fFrameGraph:TpvFrameGraph;
               fInFlightFrameSemaphores:TInFlightFrameSemaphores;
+              fStageMask:TVkPipelineStageFlags;
              public
               constructor Create(const aFrameGraph:TpvFrameGraph); reintroduce;
               destructor Destroy; override;
@@ -256,6 +257,7 @@ type EpvFrameGraph=class(Exception);
               property FrameGraph:TpvFrameGraph read fFrameGraph;
              public   
               property InFlightFrameSemaphores:TInFlightFrameSemaphores read fInFlightFrameSemaphores write fInFlightFrameSemaphores;
+              property StageMask:TVkPipelineStageFlags read fStageMask write fStageMask;
             end;
             TExternalWaitingOnSemaphores=TpvObjectGenericList<TExternalWaitingOnSemaphore>;
             TQueue=class
@@ -1683,6 +1685,7 @@ begin
  inherited Create; 
  fFrameGraph:=aFrameGraph;
  FillChar(fInFlightFrameSemaphores,SizeOf(TInFlightFrameSemaphores),#0);
+ fStageMask:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
 end;
 
 destructor TpvFrameGraph.TExternalWaitingOnSemaphore.Destroy;
@@ -7034,7 +7037,7 @@ type TEventBeforeAfter=(Event,Before,After);
     WaitingSemaphore:=@PhysicalPass.fQueueCommandBuffer.fWaitingSemaphores.Items[WaitingSemaphoreIndex];
     WaitingSemaphore^.ExternalWaitingOnSemaphore:=ExternalWaitingOnSemaphore;
     WaitingSemaphore^.SignallingCommandBuffer:=nil;
-    WaitingSemaphore^.DstStageMask:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
+    WaitingSemaphore^.DstStageMask:=ExternalWaitingOnSemaphore.fStageMask;
    end;
   end;
  end;
