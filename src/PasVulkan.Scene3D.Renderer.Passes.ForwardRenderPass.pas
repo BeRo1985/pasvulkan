@@ -1291,7 +1291,9 @@ begin
                                    [TpvScene3D.TMaterial.TAlphaMode.Opaque],
                                    @InFlightFrameState^.Jitter);
 
-  begin
+  if (InFlightFrameState^.FinalViewIndex>=0) and (InFlightFrameState^.CountFinalViews>0) and (fInstance.SpaceLinesPrimitiveDynamicArrays[aInFlightFrameIndex].Count>0) then begin
+
+   FrameGraph.VulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'Space Lines',[0.45,0.25,0.3725,1.0]);
 
    fSpaceLinesPushConstants.ViewBaseIndex:=fInstance.InFlightFrameStates^[aInFlightFrameIndex].FinalViewIndex;
    fSpaceLinesPushConstants.CountViews:=fInstance.InFlightFrameStates^[aInFlightFrameIndex].CountFinalViews;
@@ -1334,6 +1336,8 @@ begin
 
    // Set flag to false, because we have to call OnSetRenderPassResources for the next draw call, as space lines were drawn with a different pipeline
    fOnSetRenderPassResourcesDone:=false;
+
+   FrameGraph.VulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
 
   end;
 
