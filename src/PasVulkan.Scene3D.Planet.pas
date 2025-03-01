@@ -1838,11 +1838,11 @@ type TpvScene3DPlanets=class;
        procedure EnqueueBlendMapModification(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aRadius,aBorderRadius,aValue:TpvScalar;const aReplace:Boolean);
        procedure EnqueueGrassMapModification(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aRadius,aBorderRadius,aValue:TpvScalar);
        procedure EnqueueWaterModification(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aRadius,aBorderRadius,aValue:TpvScalar);
-       procedure PrepareSimulation(const aQueue:TpvVulkanQueue;
-                                   const aCommandBuffer:TpvVulkanCommandBuffer;
-                                   const aFence:TpvVulkanFence;
-                                   const aInFlightFrameIndex:TpvSizeInt);
-       procedure ProcessSimulation(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt);
+       procedure PrepareWaterSimulation(const aQueue:TpvVulkanQueue;
+                                        const aCommandBuffer:TpvVulkanCommandBuffer;
+                                        const aFence:TpvVulkanFence;
+                                        const aInFlightFrameIndex:TpvSizeInt);
+       procedure ProcessWaterSimulation(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt);
        procedure BeginFrame(const aInFlightFrameIndex:TpvSizeInt;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil);
        procedure EndFrame(const aInFlightFrameIndex:TpvSizeInt;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil);
        procedure ExportPhysicsMeshToBIN(const aStream:TStream); overload;
@@ -19142,10 +19142,10 @@ begin
  end;
 end;
 
-procedure TpvScene3DPlanet.PrepareSimulation(const aQueue:TpvVulkanQueue;
-                                             const aCommandBuffer:TpvVulkanCommandBuffer;
-                                             const aFence:TpvVulkanFence;
-                                             const aInFlightFrameIndex:TpvSizeInt);
+procedure TpvScene3DPlanet.PrepareWaterSimulation(const aQueue:TpvVulkanQueue;
+                                                  const aCommandBuffer:TpvVulkanCommandBuffer;
+                                                  const aFence:TpvVulkanFence;
+                                                  const aInFlightFrameIndex:TpvSizeInt);
 var InFlightFrameData:TData;
 begin
  if assigned(fVulkanDevice) and (aInFlightFrameIndex>=0) then begin
@@ -19156,7 +19156,7 @@ begin
  end;
 end;
 
-procedure TpvScene3DPlanet.ProcessSimulation(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt);
+procedure TpvScene3DPlanet.ProcessWaterSimulation(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt);
 var InFlightFrameData:TData;
 begin
  if assigned(fVulkanDevice) and (aInFlightFrameIndex>=0) then begin

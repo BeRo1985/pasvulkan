@@ -3920,8 +3920,8 @@ type EpvScene3D=class(Exception);
                                       const aPipelineLayout:TpvVulkanPipelineLayout);
        procedure UpdatePlanetBufRefArray(const aCommandBuffer:TpvVulkanCommandBuffer;
                                          const aInFlightFrameIndex:TpvSizeInt);
-       procedure ProcessPlanetSimulations(const aCommandBuffer:TpvVulkanCommandBuffer;
-                                          const aInFlightFrameIndex:TpvSizeInt);
+       procedure ProcessPlanetWaterSimulations(const aCommandBuffer:TpvVulkanCommandBuffer;
+                                               const aInFlightFrameIndex:TpvSizeInt);
        procedure ProcessAtmosphereSimulations(const aCommandBuffer:TpvVulkanCommandBuffer;
                                               const aInFlightFrameIndex:TpvSizeInt);
        procedure UpdateRaytracing(const aCommandBuffer:TpvVulkanCommandBuffer;
@@ -31416,10 +31416,10 @@ begin
    for PlanetIndex:=0 to TpvScene3DPlanets(fPlanets).Count-1 do begin
     Planet:=TpvScene3DPlanets(fPlanets).Items[PlanetIndex];
     if Planet.Ready then begin
-     Planet.PrepareSimulation(fVulkanFrameGraphStagingQueue,
-                              fVulkanFrameGraphStagingCommandBuffer,
-                              fVulkanFrameGraphStagingFence,
-                              aInFlightFrameIndex);
+     Planet.PrepareWaterSimulation(fVulkanFrameGraphStagingQueue,
+                                   fVulkanFrameGraphStagingCommandBuffer,
+                                   fVulkanFrameGraphStagingFence,
+                                   aInFlightFrameIndex);
      //Planet.ProcessFrame(aInFlightFrameIndex,aWaitSemaphore,nil);
     end;
    end;
@@ -31455,8 +31455,8 @@ begin
 
    fProcessFrameTimerQueryPlanetSimulationIndex:=fProcessFrameTimerQueries[aInFlightFrameIndex].Start(fVulkanProcessFrameQueue,CommandBuffer,'Planet Simulation');
    BeginTime:=pvApplication.HighResolutionTimer.GetTime;
-   fVulkanDevice.DebugUtils.CmdBufLabelBegin(CommandBuffer,'Planet Simulation',[0.25,1.0,0.5,1.0]);
-   ProcessPlanetSimulations(CommandBuffer,aInFlightFrameIndex);
+   fVulkanDevice.DebugUtils.CmdBufLabelBegin(CommandBuffer,'Planet Water Simulation',[0.25,1.0,0.5,1.0]);
+   ProcessPlanetWaterSimulations(CommandBuffer,aInFlightFrameIndex);
    fVulkanDevice.DebugUtils.CmdBufLabelEnd(CommandBuffer);
    fLastProcessFrameCPUTimeValues[fProcessFrameTimerQueryPlanetSimulationIndex]:=pvApplication.HighResolutionTimer.GetTime-BeginTime;
    fProcessFrameTimerQueries[aInFlightFrameIndex].Stop(fVulkanProcessFrameQueue,CommandBuffer);
@@ -32565,8 +32565,8 @@ begin
 
 end;
 
-procedure TpvScene3D.ProcessPlanetSimulations(const aCommandBuffer:TpvVulkanCommandBuffer;
-                                              const aInFlightFrameIndex:TpvSizeInt);
+procedure TpvScene3D.ProcessPlanetWaterSimulations(const aCommandBuffer:TpvVulkanCommandBuffer;
+                                                   const aInFlightFrameIndex:TpvSizeInt);
 var PlanetIndex:TpvSizeInt;
     Planet:TpvScene3DPlanet;
 begin
@@ -32575,7 +32575,7 @@ begin
   for PlanetIndex:=0 to TpvScene3DPlanets(fPlanets).Count-1 do begin
    Planet:=TpvScene3DPlanets(fPlanets).Items[PlanetIndex];
    if Planet.Ready then begin
-    Planet.ProcessSimulation(aCommandBuffer,aInFlightFrameIndex);
+    Planet.ProcessWaterSimulation(aCommandBuffer,aInFlightFrameIndex);
    end;
   end;
  finally
