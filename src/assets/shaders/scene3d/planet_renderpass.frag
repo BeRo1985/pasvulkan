@@ -133,8 +133,8 @@ layout (set = 1, binding = 10, std430) readonly buffer FrustumClusterGridData {
 // Per planet descriptor set
 
 // Aliased textures, because some are array textures and some are not 
-layout(set = 2, binding = 0) uniform sampler2D uTextures[]; // 0 = height map, 1 = normal map, 2 = blend map, 3 = grass map, 4 = water map
-layout(set = 2, binding = 0) uniform sampler2DArray uArrayTextures[]; // 0 = height map, 1 = normal map, 2 = blend map, 3 = grass map, 4 = water map
+layout(set = 2, binding = 0) uniform sampler2D uPlanetTextures[]; // 0 = height map, 1 = normal map, 2 = blend map, 3 = grass map, 4 = water map
+layout(set = 2, binding = 0) uniform sampler2DArray uPlanetArrayTextures[]; // 0 = height map, 1 = normal map, 2 = blend map, 3 = grass map, 4 = water map
 
 #include "planet_textures.glsl"
 #include "planet_renderpass.glsl"
@@ -266,18 +266,18 @@ void main(){
   layerMaterialSetup(sphereNormal);
   
   layerMaterialWeights = mat2x4(
-    texturePlanetOctahedralMapArray(uArrayTextures[PLANET_TEXTURE_BLENDMAP], sphereNormal, 0),
-    texturePlanetOctahedralMapArray(uArrayTextures[PLANET_TEXTURE_BLENDMAP], sphereNormal, 1)
+    texturePlanetOctahedralMapArray(uPlanetArrayTextures[PLANET_TEXTURE_BLENDMAP], sphereNormal, 0),
+    texturePlanetOctahedralMapArray(uPlanetArrayTextures[PLANET_TEXTURE_BLENDMAP], sphereNormal, 1)
   );
 
- layerMaterialGrass = clamp(texturePlanetOctahedralMap(uTextures[PLANET_TEXTURE_GRASSMAP], sphereNormal).x, 0.0, 1.0);
+ layerMaterialGrass = clamp(texturePlanetOctahedralMap(uPlanetTextures[PLANET_TEXTURE_GRASSMAP], sphereNormal).x, 0.0, 1.0);
 
 #ifdef EXTERNAL_VERTICES
   workNormal = inBlock.normal.xyz;
   vec3 triplanarNormal = inBlock.triplanarNormal.xyz;
 #else
-  workNormal = normalize((planetData.normalMatrix * vec4(normalize(fma(texturePlanetOctahedralMap(uTextures[PLANET_TEXTURE_NORMALMAP], sphereNormal).xyz, vec3(2.0), vec3(-1.0))), 0.0)).xyz);
-  vec3 triplanarNormal = normalize((planetData.triplanarNormalMatrix * vec4(normalize(fma(texturePlanetOctahedralMap(uTextures[PLANET_TEXTURE_NORMALMAP], sphereNormal).xyz, vec3(2.0), vec3(-1.0))), 0.0)).xyz);
+  workNormal = normalize((planetData.normalMatrix * vec4(normalize(fma(texturePlanetOctahedralMap(uPlanetTextures[PLANET_TEXTURE_NORMALMAP], sphereNormal).xyz, vec3(2.0), vec3(-1.0))), 0.0)).xyz);
+  vec3 triplanarNormal = normalize((planetData.triplanarNormalMatrix * vec4(normalize(fma(texturePlanetOctahedralMap(uPlanetTextures[PLANET_TEXTURE_NORMALMAP], sphereNormal).xyz, vec3(2.0), vec3(-1.0))), 0.0)).xyz);
 #endif
   vec3 workTangent = normalize(cross((abs(workNormal.y) < 0.999999) ? vec3(0.0, 1.0, 0.0) : vec3(0.0, 0.0, 1.0), workNormal));
   vec3 workBitangent = normalize(cross(workNormal, workTangent));
@@ -400,7 +400,7 @@ void main(){
 
   vec3 normal = normalize(mat3(workTangent, workBitangent, workNormal) * normalize(fma(normalHeight.xyz, vec3(2.0), vec3(-1.0))));
  
-  float surfaceHeight = texturePlanetOctahedralMap(uTextures[PLANET_TEXTURE_HEIGHTMAP], sphereNormal).x;
+  float surfaceHeight = texturePlanetOctahedralMap(uPlanetTextures[PLANET_TEXTURE_HEIGHTMAP], sphereNormal).x;
 
   cavity = clamp(occlusionRoughnessMetallic.x, 0.0, 1.0) * mix(planetData.minMaxHeightFactor.y, planetData.minMaxHeightFactor.w, pow(clamp((surfaceHeight - planetData.minMaxHeightFactor.x) / (planetData.minMaxHeightFactor.z - planetData.minMaxHeightFactor.x), 0.0, 1.0), planetData.heightFactorExponent));
     
@@ -507,12 +507,12 @@ void main(){
 
       vec2 uv = vec2(dot(o, t), dot(o, b)) / planetData.selected.w;
 
-      float d = smoothstep(1.0, 1.0 - (1.0 / length(vec2(textureSize(uArrayTextures[PLANET_TEXTURE_BRUSHES], 0).xy))), max(abs(uv.x), abs(uv.y)));
+      float d = smoothstep(1.0, 1.0 - (1.0 / length(vec2(textureSize(uPlanetArrayTextures[PLANET_TEXTURE_BRUSHES], 0).xy))), max(abs(uv.x), abs(uv.y)));
 
       d *= smoothstep(-1e-4, 1e-4, dot(p, n)); // When we are on the back side of the planet, we need to clear the brush, but smoothly.
 
       if(d > 0.0){
-        d *= textureLod(uArrayTextures[PLANET_TEXTURE_BRUSHES], vec3(fma(uv, vec2(0.5), vec2(0.5)), float(brushIndex)), 0.0).x;
+        d *= textureLod(uPlanetArrayTextures[PLANET_TEXTURE_BRUSHES], vec3(fma(uv, vec2(0.5), vec2(0.5)), float(brushIndex)), 0.0).x;
       } 
 
       c.xyz = mix(c.xyz, mix(vec3(1.0) - clamp(c.zxy, vec3(1.0), vec3(1.0)), selectedColor.xyz, selectedColor.w), d);

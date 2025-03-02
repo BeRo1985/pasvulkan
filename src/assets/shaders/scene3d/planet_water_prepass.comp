@@ -40,6 +40,7 @@ layout(set = 1, binding = 0, r32ui) uniform uimage2DArray uImageWaterAcceleratio
 // Per planet descriptor set
 
 layout(set = 2, binding = 0) uniform sampler2D uPlanetTextures[]; 
+layout(set = 2, binding = 0) uniform sampler2DArray uPlanetArrayTextures[]; 
 
 #include "planet_textures.glsl"
 

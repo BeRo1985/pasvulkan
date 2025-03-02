@@ -66,6 +66,7 @@ layout(set = PASS_DESCRIPTOR_SET, binding = 0, std140) uniform uboViews {
 } uView;
 
 layout(set = PLANET_DESCRIPTOR_SET, binding = 0) uniform sampler2D uPlanetTextures[]; // 0 = height map, 1 = normal map, 2 = tangent bitangent map
+layout(set = PLANET_DESCRIPTOR_SET, binding = 0) uniform sampler2DArray uPlanetArrayTextures[]; // 0 = height map, 1 = normal map, 2 = tangent bitangent map
 
 layout(set = INSTANCE_DESCRIPTOR_SET, binding = 1, std430) readonly buffer VisualMeshVertices {
   uvec4 vertices[]; // xyz = 32-bit float vertex position, w = 2x 16-bit signed normalized octahedral-encoded normal
