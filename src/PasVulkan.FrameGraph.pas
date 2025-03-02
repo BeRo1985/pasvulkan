@@ -249,13 +249,15 @@ type EpvFrameGraph=class(Exception);
              private 
               fFrameGraph:TpvFrameGraph;
               fInFlightFrameSemaphores:TInFlightFrameSemaphores;
+              function GetInFlightFrameSemaphore(const aIndex:TpvSizeInt):TpvVulkanSemaphore;
+              procedure SetInFlightFrameSemaphore(const aIndex:TpvSizeInt;const aInFlightFrameSemaphore:TpvVulkanSemaphore); 
              public
               constructor Create(const aFrameGraph:TpvFrameGraph); reintroduce;
               destructor Destroy; override;
              published
               property FrameGraph:TpvFrameGraph read fFrameGraph;
              public   
-              property InFlightFrameSemaphores:TInFlightFrameSemaphores read fInFlightFrameSemaphores write fInFlightFrameSemaphores;
+              property InFlightFrameSemaphores[const aIndex:TpvSizeInt]:TpvVulkanSemaphore read GetInFlightFrameSemaphore write SetInFlightFrameSemaphore;
             end;
             TExternalWaitingOnSemaphores=TpvObjectGenericList<TExternalWaitingOnSemaphore>;
             TExternalWaitingOnSemaphoreReference=class
@@ -1705,6 +1707,16 @@ begin
  inherited Destroy;
 end;
 
+function TpvFrameGraph.TExternalWaitingOnSemaphore.GetInFlightFrameSemaphore(const aIndex:TpvSizeInt):TpvVulkanSemaphore;
+begin
+ result:=fInFlightFrameSemaphores[aIndex];
+end;
+
+procedure TpvFrameGraph.TExternalWaitingOnSemaphore.SetInFlightFrameSemaphore(const aIndex:TpvSizeInt;const aInFlightFrameSemaphore:TpvVulkanSemaphore);
+begin
+ fInFlightFrameSemaphores[aIndex]:=aInFlightFrameSemaphore;
+end;
+
 { TpvFrameGraph.TExternalWaitingOnSemaphoreReference }
 
 constructor TpvFrameGraph.TExternalWaitingOnSemaphoreReference.Create(const aFrameGraph:TpvFrameGraph;
@@ -3023,7 +3035,7 @@ end;
 procedure TpvFrameGraph.TPass.AddExternalWaitingOnSemaphore(const aExternalWaitingOnSemaphore:TExternalWaitingOnSemaphore;const aStageMask:TVkPipelineStageFlags); 
 var ExternalWaitingOnSemaphoreReference:TExternalWaitingOnSemaphoreReference;
 begin
- fExternalWaitingOnSemaphoreReferences.Add(ExternalWaitingOnSemaphoreReference.Create(fFrameGraph,aExternalWaitingOnSemaphore,aStageMask));
+ fExternalWaitingOnSemaphoreReferences.Add(TExternalWaitingOnSemaphoreReference.Create(fFrameGraph,aExternalWaitingOnSemaphore,aStageMask));
 end;
 
 function TpvFrameGraph.TPass.GetSeparatePhysicalPass:boolean;

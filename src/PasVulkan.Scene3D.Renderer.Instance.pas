@@ -592,6 +592,7 @@ type { TpvScene3DRendererInstance }
        fCameraPresets:array[0..MaxInFlightFrames-1] of TpvScene3DRendererCameraPreset;
        fCameraPreset:TpvScene3DRendererCameraPreset;
        fUseDebugBlit:boolean;
+       fWaterRenderPassExternalWaitingOnSemaphore:TpvFrameGraph.TExternalWaitingOnSemaphore;
       private
        fMeshStagePushConstants:TpvScene3D.TMeshStagePushConstantArray;
        fDrawChoreographyBatchItemFrameBuckets:TpvScene3D.TDrawChoreographyBatchItemFrameBuckets;
@@ -2308,6 +2309,8 @@ begin
 
  fImageBasedLightingReflectionProbeCubeMaps:=nil;
 
+ fWaterRenderPassExternalWaitingOnSemaphore:=nil;
+
 end;
 
 destructor TpvScene3DRendererInstance.Destroy;
@@ -2317,6 +2320,8 @@ var InFlightFrameIndex,CascadeIndex,ImageIndex:TpvSizeInt;
     PrimitiveTopology:TpvScene3D.TPrimitiveTopology;
     FaceCullingMode:TpvScene3D.TFaceCullingMode;
 begin
+
+ FreeAndNil(fWaterRenderPassExternalWaitingOnSemaphore);
 
  FreeAndNil(fFrameGraph);
 
@@ -3962,6 +3967,19 @@ begin
 
  TpvScene3DRendererInstancePasses(fPasses).fWaterRenderPass:=TpvScene3DRendererPassesWaterRenderPass.Create(fFrameGraph,self);
  TpvScene3DRendererInstancePasses(fPasses).fWaterRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fDepthMipMapComputePass);
+ if fScene3D.PlanetWaterSimulationUseParallelQueue then begin
+  FreeAndNil(fWaterRenderPassExternalWaitingOnSemaphore);
+  fWaterRenderPassExternalWaitingOnSemaphore:=TpvFrameGraph.TExternalWaitingOnSemaphore.Create(fFrameGraph);
+  try
+   for InFlightFrameIndex:=0 to fFrameGraph.CountInFlightFrames-1 do begin
+    fWaterRenderPassExternalWaitingOnSemaphore.InFlightFrameSemaphores[InFlightFrameIndex]:=fScene3D.PlanetWaterSimulationSemaphores[InFlightFrameIndex];
+   end;
+  finally
+   TpvScene3DRendererInstancePasses(fPasses).fWaterRenderPass.AddExternalWaitingOnSemaphore(fWaterRenderPassExternalWaitingOnSemaphore);
+  end;
+ end else begin
+  fWaterRenderPassExternalWaitingOnSemaphore:=nil;
+ end;
 
  PreLastPass:=nil;
  LastPass:=TpvScene3DRendererInstancePasses(fPasses).fWaterRenderPass;

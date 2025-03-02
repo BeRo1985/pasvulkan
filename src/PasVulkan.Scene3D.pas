@@ -3539,6 +3539,8 @@ type EpvScene3D=class(Exception);
             POriginTransform=^TOriginTransform;
             TOriginTransforms=array[0..MaxInFlightFrames-1] of TOriginTransform;
             POriginTransforms=^TOriginTransforms;
+            TPlanetWaterSimulationCommandBuffers=array[0..MaxInFlightFrames-1] of TpvVulkanCommandBuffer;
+            TPlanetWaterSimulationSemaphores=array[0..MaxInFlightFrames-1] of TpvVulkanSemaphore;
       public
        const DoubleSidedFaceCullingModes:array[TDoubleSided,TFrontFacesInversed] of TFaceCullingMode=
               (
@@ -3587,6 +3589,12 @@ type EpvScene3D=class(Exception);
        fPlanetWaterCullDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fPlanetWaterPrepassDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fPlanetWaterRenderDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
+       fPlanetWaterSimulationUseParallelQueue:TPasMPBool32;
+       fPlanetWaterSimulationQueue:TpvVulkanQueue;
+       fPlanetWaterSimulationQueueFamilyIndex:TpvInt32;
+       fPlanetWaterSimulationCommandPool:TpvVulkanCommandPool;
+       fPlanetWaterSimulationCommandBuffers:TPlanetWaterSimulationCommandBuffers;
+       fPlanetWaterSimulationSemaphores:TPlanetWaterSimulationSemaphores;
        fMeshComputeVulkanDescriptorSet0Layout:TpvVulkanDescriptorSetLayout;
        fMeshComputeVulkanDescriptorSet1Layout:TpvVulkanDescriptorSetLayout;
        fVulkanStagingQueue:TpvVulkanQueue;
@@ -4096,6 +4104,10 @@ type EpvScene3D=class(Exception);
        property PlanetWaterCullDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fPlanetWaterCullDescriptorSetLayout;
        property PlanetWaterPrepassDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fPlanetWaterPrepassDescriptorSetLayout;
        property PlanetWaterRenderDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fPlanetWaterRenderDescriptorSetLayout;
+       property PlanetWaterSimulationUseParallelQueue:TPasMPBool32 read fPlanetWaterSimulationUseParallelQueue;
+      public
+       property PlanetWaterSimulationSemaphores:TPlanetWaterSimulationSemaphores read fPlanetWaterSimulationSemaphores;
+      published
        property MeshComputeVulkanDescriptorSet0Layout:TpvVulkanDescriptorSetLayout read fMeshComputeVulkanDescriptorSet0Layout;
        property MeshComputeVulkanDescriptorSet1Layout:TpvVulkanDescriptorSetLayout read fMeshComputeVulkanDescriptorSet1Layout;
        property GlobalVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fGlobalVulkanDescriptorSetLayout;
@@ -28432,6 +28444,54 @@ begin
 
   fPlanetWaterRenderDescriptorSetLayout:=TpvScene3DPlanet.CreatePlanetWaterRenderDescriptorSetLayout(fVulkanDevice);
 
+  // Use parallel queue for planet water simulation, when there are dedicated queues for compute and transfer detected and RenderDoc is not detected,
+  // because RenderDoc does not support parallel queues while its operatings.
+  fPlanetWaterSimulationUseParallelQueue:=(not fVulkanDevice.PhysicalDevice.RenderDocDetected) and
+                                          //false and
+                                          (fVulkanDevice.UniversalQueueFamilyIndex<>fVulkanDevice.ComputeQueueFamilyIndex) and
+                                          (fVulkanDevice.GraphicsQueueFamilyIndex<>fVulkanDevice.ComputeQueueFamilyIndex) and
+                                          (fVulkanDevice.UniversalQueueFamilyIndex<>fVulkanDevice.TransferQueueFamilyIndex) and
+                                          (fVulkanDevice.GraphicsQueueFamilyIndex<>fVulkanDevice.TransferQueueFamilyIndex);
+
+  if fPlanetWaterSimulationUseParallelQueue then begin
+
+   fPlanetWaterSimulationQueue:=fVulkanDevice.ComputeQueue;
+
+   fPlanetWaterSimulationQueueFamilyIndex:=fVulkanDevice.ComputeQueueFamilyIndex;
+
+   fPlanetWaterSimulationCommandPool:=TpvVulkanCommandPool.Create(fVulkanDevice,
+                                                                  fPlanetWaterSimulationQueueFamilyIndex,
+                                                                  TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
+   fVulkanDevice.DebugUtils.SetObjectName(fPlanetWaterSimulationCommandPool.Handle,VK_OBJECT_TYPE_COMMAND_POOL,'TpvScene3D.fPlanetWaterSimulationCommandPool');
+
+   for InFlightFrameIndex:=0 to fCountInFlightFrames-1 do begin                                                          
+   
+    fPlanetWaterSimulationCommandBuffers[InFlightFrameIndex]:=TpvVulkanCommandBuffer.Create(fPlanetWaterSimulationCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+    fVulkanDevice.DebugUtils.SetObjectName(fPlanetWaterSimulationCommandBuffers[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_COMMAND_BUFFER,'TpvScene3D.fPlanetWaterSimulationCommandBuffers['+IntToStr(InFlightFrameIndex)+']');
+
+    fPlanetWaterSimulationSemaphores[InFlightFrameIndex]:=TpvVulkanSemaphore.Create(fVulkanDevice);
+    fVulkanDevice.DebugUtils.SetObjectName(fPlanetWaterSimulationSemaphores[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_SEMAPHORE,'TpvScene3D.fPlanetWaterSimulationSemaphores['+IntToStr(InFlightFrameIndex)+']');
+
+   end;
+
+  end else begin
+
+   fPlanetWaterSimulationQueue:=nil;
+
+   fPlanetWaterSimulationQueueFamilyIndex:=-1;
+
+   fPlanetWaterSimulationCommandPool:=nil;
+
+   for InFlightFrameIndex:=0 to fCountInFlightFrames-1 do begin
+
+    fPlanetWaterSimulationCommandBuffers[InFlightFrameIndex]:=nil;
+
+    fPlanetWaterSimulationSemaphores[InFlightFrameIndex]:=nil;
+
+   end; 
+
+  end;                                         
+
   fMeshComputeVulkanDescriptorSet0Layout:=TpvVulkanDescriptorSetLayout.Create(fVulkanDevice);
 
   // Group - Vertices
@@ -28816,7 +28876,21 @@ var Index,InFlightFrameIndex:TpvSizeInt;
 begin
 
  if assigned(fVulkanDevice) then begin
+
   TpvScene3DAtmosphereGlobals(fAtmosphereGlobals).DeallocateResources;
+
+  for InFlightFrameIndex:=0 to fCountInFlightFrames-1 do begin
+
+   FreeAndNil(fPlanetWaterSimulationCommandBuffers[InFlightFrameIndex]);
+
+   FreeAndNil(fPlanetWaterSimulationSemaphores[InFlightFrameIndex]);
+
+  end; 
+
+  FreeAndNil(fPlanetWaterSimulationCommandPool);
+
+  fPlanetWaterSimulationQueue:=nil;
+
  end;
 
  FreeAndNil(fMeshCompute);
@@ -31353,7 +31427,7 @@ begin
    TpvScene3DPlanets(fPlanets).Lock.ReleaseRead;
   end;
 
- if assigned(aWaitFence) then begin
+  if assigned(aWaitFence) then begin
 
    FillChar(SubmitInfo,SizeOf(TVkSubmitInfo),#0);
    SubmitInfo.sType:=VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -31392,8 +31466,8 @@ var PlanetIndex,PassIndex:TpvSizeInt;
     Planet:TpvScene3DPlanet;
     SubmitInfo:TVkSubmitInfo;
     WaitDstStageFlags:TVkPipelineStageFlags;
-    CommandBuffer:TpvVulkanCommandBuffer;
-    CommandBufferHandle:TVkCommandBuffer;
+    PlanetWaterSimulationCommandBuffer,CommandBuffer:TpvVulkanCommandBuffer;
+    PlanetWaterSimulationCommandBufferHandle,CommandBufferHandle:TVkCommandBuffer;
     BeginTime:TpvHighResolutionTime;
     VulkanShortTermDynamicBufferData:TVulkanShortTermDynamicBufferData;
     VulkanLongTermStaticBufferData:TVulkanLongTermStaticBufferData;
@@ -31427,6 +31501,36 @@ begin
    TpvScene3DPlanets(fPlanets).Lock.ReleaseRead;
   end;
 
+(*if fPlanetWaterSimulationUseParallelQueue then begin
+
+   CommandBuffer:=fPlanetWaterSimulationCommandBuffers[aInFlightFrameIndex];
+
+   CommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+   CommandBuffer.BeginRecording(TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT));
+
+   fVulkanDevice.DebugUtils.CmdBufLabelBegin(CommandBuffer,'Planet Water Simulation',[0.25,1.0,0.5,1.0]);
+   ProcessPlanetWaterSimulations(CommandBuffer,aInFlightFrameIndex);
+   fVulkanDevice.DebugUtils.CmdBufLabelEnd(CommandBuffer);
+
+   CommandBuffer.EndRecording;
+
+   CommandBufferHandle:=CommandBuffer.Handle;
+
+   FillChar(SubmitInfo,SizeOf(TVkSubmitInfo),#0);
+   SubmitInfo.sType:=VK_STRUCTURE_TYPE_SUBMIT_INFO;
+   SubmitInfo.pNext:=nil;
+   SubmitInfo.waitSemaphoreCount:=0;
+   SubmitInfo.pWaitSemaphores:=nil;
+   SubmitInfo.pWaitDstStageMask:=nil;
+   SubmitInfo.commandBufferCount:=1;
+   SubmitInfo.pCommandBuffers:=@CommandBufferHandle;
+   SubmitInfo.signalSemaphoreCount:=1;
+   SubmitInfo.pSignalSemaphores:=@fPlanetWaterSimulationSemaphores[aInFlightFrameIndex].Handle;
+
+   fPlanetWaterSimulationQueue.Submit(1,@SubmitInfo,nil);
+
+  end;*)
+
   begin
 
    if fProcessFrameTimerQueries[aInFlightFrameIndex].Update then begin
@@ -31434,6 +31538,19 @@ begin
    end;
 
    fProcessFrameTimerQueries[aInFlightFrameIndex].Reset;
+
+   if fPlanetWaterSimulationUseParallelQueue then begin
+
+    PlanetWaterSimulationCommandBuffer:=fPlanetWaterSimulationCommandBuffers[aInFlightFrameIndex];
+
+    PlanetWaterSimulationCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+    PlanetWaterSimulationCommandBuffer.BeginRecording(TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT));
+
+   end else begin
+
+    PlanetWaterSimulationCommandBuffer:=nil;
+
+   end;
 
    CommandBuffer:=fVulkanProcessFrameCommandBuffers[aInFlightFrameIndex];
 
@@ -31453,13 +31570,44 @@ begin
    fLastProcessFrameCPUTimeValues[fProcessFrameTimerQueryUploadFrameDataIndex]:=pvApplication.HighResolutionTimer.GetTime-BeginTime;
    fProcessFrameTimerQueries[aInFlightFrameIndex].Stop(fVulkanProcessFrameQueue,CommandBuffer);
 
-   fProcessFrameTimerQueryPlanetSimulationIndex:=fProcessFrameTimerQueries[aInFlightFrameIndex].Start(fVulkanProcessFrameQueue,CommandBuffer,'Planet Simulation');
-   BeginTime:=pvApplication.HighResolutionTimer.GetTime;
-   fVulkanDevice.DebugUtils.CmdBufLabelBegin(CommandBuffer,'Planet Water Simulation',[0.25,1.0,0.5,1.0]);
-   ProcessPlanetWaterSimulations(CommandBuffer,aInFlightFrameIndex);
-   fVulkanDevice.DebugUtils.CmdBufLabelEnd(CommandBuffer);
-   fLastProcessFrameCPUTimeValues[fProcessFrameTimerQueryPlanetSimulationIndex]:=pvApplication.HighResolutionTimer.GetTime-BeginTime;
-   fProcessFrameTimerQueries[aInFlightFrameIndex].Stop(fVulkanProcessFrameQueue,CommandBuffer);
+   if fPlanetWaterSimulationUseParallelQueue then begin
+
+    fProcessFrameTimerQueryPlanetSimulationIndex:=fProcessFrameTimerQueries[aInFlightFrameIndex].Start(fPlanetWaterSimulationQueue,PlanetWaterSimulationCommandBuffer,'Planet Simulation');
+    BeginTime:=pvApplication.HighResolutionTimer.GetTime;
+    fVulkanDevice.DebugUtils.CmdBufLabelBegin(PlanetWaterSimulationCommandBuffer,'Planet Water Simulation',[0.25,1.0,0.5,1.0]);
+    ProcessPlanetWaterSimulations(PlanetWaterSimulationCommandBuffer,aInFlightFrameIndex);
+    fVulkanDevice.DebugUtils.CmdBufLabelEnd(PlanetWaterSimulationCommandBuffer);
+    fLastProcessFrameCPUTimeValues[fProcessFrameTimerQueryPlanetSimulationIndex]:=pvApplication.HighResolutionTimer.GetTime-BeginTime;
+    fProcessFrameTimerQueries[aInFlightFrameIndex].Stop(fPlanetWaterSimulationQueue,PlanetWaterSimulationCommandBuffer);
+
+    PlanetWaterSimulationCommandBuffer.EndRecording;
+
+    PlanetWaterSimulationCommandBufferHandle:=PlanetWaterSimulationCommandBuffer.Handle;
+
+    FillChar(SubmitInfo,SizeOf(TVkSubmitInfo),#0);
+    SubmitInfo.sType:=VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    SubmitInfo.pNext:=nil;
+    SubmitInfo.waitSemaphoreCount:=0;
+    SubmitInfo.pWaitSemaphores:=nil;
+    SubmitInfo.pWaitDstStageMask:=nil;
+    SubmitInfo.commandBufferCount:=1;
+    SubmitInfo.pCommandBuffers:=@PlanetWaterSimulationCommandBufferHandle;
+    SubmitInfo.signalSemaphoreCount:=1;
+    SubmitInfo.pSignalSemaphores:=@fPlanetWaterSimulationSemaphores[aInFlightFrameIndex].Handle;
+
+    fPlanetWaterSimulationQueue.Submit(1,@SubmitInfo,nil);
+
+   end else begin
+
+    fProcessFrameTimerQueryPlanetSimulationIndex:=fProcessFrameTimerQueries[aInFlightFrameIndex].Start(fVulkanProcessFrameQueue,CommandBuffer,'Planet Simulation');
+    BeginTime:=pvApplication.HighResolutionTimer.GetTime;
+    fVulkanDevice.DebugUtils.CmdBufLabelBegin(CommandBuffer,'Planet Water Simulation',[0.25,1.0,0.5,1.0]);
+    ProcessPlanetWaterSimulations(CommandBuffer,aInFlightFrameIndex);
+    fVulkanDevice.DebugUtils.CmdBufLabelEnd(CommandBuffer);
+    fLastProcessFrameCPUTimeValues[fProcessFrameTimerQueryPlanetSimulationIndex]:=pvApplication.HighResolutionTimer.GetTime-BeginTime;
+    fProcessFrameTimerQueries[aInFlightFrameIndex].Stop(fVulkanProcessFrameQueue,CommandBuffer);
+
+   end;
 
    fProcessFrameTimerQueryAtmosphereSimulationIndex:=fProcessFrameTimerQueries[aInFlightFrameIndex].Start(fVulkanProcessFrameQueue,CommandBuffer,'Atmosphere Simulation');
    BeginTime:=pvApplication.HighResolutionTimer.GetTime;
@@ -31586,10 +31734,11 @@ begin
 end;
 
 procedure TpvScene3D.EndFrame(const aInFlightFrameIndex:TpvSizeInt;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence);
-var PlanetIndex:TpvSizeInt;
+var PlanetIndex,CountSemaphores:TpvSizeInt;
     Planet:TpvScene3DPlanet;
     SubmitInfo:TVkSubmitInfo;
-    WaitDstStageFlags:TVkPipelineStageFlags;
+    Semaphores:array[0..1] of TVkSemaphore;
+    WaitDstStageFlags:array[0..1] of TVkPipelineStageFlags;
 begin
 
  if assigned(fVulkanDevice) then begin
@@ -31615,11 +31764,21 @@ begin
    FillChar(SubmitInfo,SizeOf(TVkSubmitInfo),#0);
    SubmitInfo.sType:=VK_STRUCTURE_TYPE_SUBMIT_INFO;
    SubmitInfo.pNext:=nil;
+   CountSemaphores:=0;
    if assigned(aWaitSemaphore) then begin
-    WaitDstStageFlags:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
-    SubmitInfo.waitSemaphoreCount:=1;
-    SubmitInfo.pWaitSemaphores:=@aWaitSemaphore.Handle;
-    SubmitInfo.pWaitDstStageMask:=@WaitDstStageFlags;
+    Semaphores[CountSemaphores]:=aWaitSemaphore.Handle;
+    WaitDstStageFlags[CountSemaphores]:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
+    inc(CountSemaphores);
+   end;
+   if fPlanetWaterSimulationUseParallelQueue then begin
+    Semaphores[CountSemaphores]:=fPlanetWaterSimulationSemaphores[aInFlightFrameIndex].Handle;
+    WaitDstStageFlags[CountSemaphores]:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
+    inc(CountSemaphores);
+   end;
+   if CountSemaphores>0 then begin
+    SubmitInfo.waitSemaphoreCount:=CountSemaphores;
+    SubmitInfo.pWaitSemaphores:=@Semaphores[0];
+    SubmitInfo.pWaitDstStageMask:=@WaitDstStageFlags[0];
    end else begin
     SubmitInfo.waitSemaphoreCount:=0;
     SubmitInfo.pWaitSemaphores:=nil;
