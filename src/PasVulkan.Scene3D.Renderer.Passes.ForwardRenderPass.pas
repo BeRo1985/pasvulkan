@@ -1033,6 +1033,16 @@ begin
                                                                        TVkColorComponentFlags(VK_COLOR_COMPONENT_G_BIT) or
                                                                        TVkColorComponentFlags(VK_COLOR_COMPONENT_B_BIT) or
                                                                        TVkColorComponentFlags(VK_COLOR_COMPONENT_A_BIT));
+   if fInstance.Renderer.VelocityBufferNeeded then begin
+    VulkanGraphicsPipeline.ColorBlendState.AddColorBlendAttachmentState(false,
+                                                                        VK_BLEND_FACTOR_ZERO,
+                                                                        VK_BLEND_FACTOR_ZERO,
+                                                                        VK_BLEND_OP_ADD,
+                                                                        VK_BLEND_FACTOR_ZERO,
+                                                                        VK_BLEND_FACTOR_ZERO,
+                                                                        VK_BLEND_OP_ADD,
+                                                                        0);
+   end;
 
    VulkanGraphicsPipeline.DepthStencilState.DepthTestEnable:=true;
    VulkanGraphicsPipeline.DepthStencilState.DepthWriteEnable:=false;
