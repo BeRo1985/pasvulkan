@@ -1,0 +1,241 @@
+#version 450 core
+
+#pragma shader_stage(compute)
+
+// Water simulation based on "Fast Hydraulic Erosion Simulation and Visualization on GPU" by Xing Mei, Philippe Decaudin, Bao-Gang Hu
+// Link: https://hal.inria.fr/inria-00402079/document
+
+// But yet without the erosion part of the terrain part, just the water flow simulation for now.
+
+#extension GL_ARB_separate_shader_objects : enable
+#extension GL_ARB_shading_language_420pack : enable
+#extension GL_EXT_control_flow_attributes : enable
+#extension GL_EXT_samplerless_texture_functions : enable
+#extension GL_GOOGLE_include_directive : enable
+
+#if 0
+// 16-bit floats
+#extension GL_EXT_shader_explicit_arithmetic_types_float16 : enable
+#extension GL_EXT_shader_explicit_arithmetic_types_int16 : enable
+#extension GL_EXT_shader_16bit_storage : enable
+#endif
+
+/* clang-format off */
+
+layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+
+layout(push_constant) uniform PushConstants {
+  float attenuation;
+  float strength;
+  float minTotalFlow;
+  float initialWaterLevel;    
+  float pipeLengthSquared;
+  float crossSectionalPipeArea;
+  float gravity;
+  float evaporation;
+  float compensationFactor;
+  float bottomRadius;
+  float topRadius;
+  uint planetHeightMapResolution;
+  uint waterHeightMapResolution;  
+  uint frameIndex;
+  float deltaTime;
+} pushConstants;
+
+layout(set = 0, binding = 0) uniform sampler2D uPlanetHeightmap;
+
+#if 0
+#define _float float16_t
+#define _vec4 f16vec4
+#else
+#define _float float
+#define _vec4 vec4
+#endif
+
+layout(set = 0, binding = 1, std430) readonly buffer InWaterHeightMap {
+  _float values[];
+} inWaterHeightMap;
+
+layout(set = 0, binding = 2, std430) writeonly buffer OutWaterHeightMap {
+  _float values[];
+} outWaterHeightMap;
+
+layout(set = 0, binding = 3, std430) readonly buffer WaterFlowMap {
+  _vec4 values[];
+} waterFlowMap;
+
+layout(set = 0, binding = 4, std430) coherent buffer WaterMaxHeightDifference {
+  uint value;
+} waterMaxHeightDifference;
+
+#include "octahedral.glsl"
+#include "octahedralmap.glsl"
+
+#include "floatint.glsl"
+
+vec2 texelSize = 1.0 / vec2(pushConstants.waterHeightMapResolution);
+
+uint getIndex(uvec2 position, ivec2 offset){
+  const ivec2 intPosition = wrapOctahedralTexelCoordinatesForWater(ivec2(position) + offset, ivec2(pushConstants.waterHeightMapResolution));  
+  return (intPosition.y * pushConstants.waterHeightMapResolution) + intPosition.x;
+}
+
+shared vec4 sharedFlowMapValues[18][18]; // 16x16 + 1x1 for the border on each side for the 3x3 kernel 
+
+shared float sharedHeightDifferences[16 * 16];
+
+void main(){
+
+  if(pushConstants.frameIndex != 0){
+    const ivec2 xy = ivec2(gl_LocalInvocationID.xy);
+    const ivec2 position = (ivec2(gl_WorkGroupID.xy) * 16) + xy;
+    sharedFlowMapValues[xy.y + 1][xy.x + 1] = waterFlowMap.values[getIndex(uvec2(position), ivec2(0, 0))];
+    if((xy.x == 0) || (xy.y == 0) || (xy.x == 15) || (xy.y == 15)){
+      if(xy.x == 0){
+        sharedFlowMapValues[xy.y + 1][0] = waterFlowMap.values[getIndex(position, ivec2(-1,  0))];
+      }
+      if(xy.x == 15){
+        sharedFlowMapValues[xy.y + 1][17] = waterFlowMap.values[getIndex(position, ivec2( 1,  0))];
+      }
+      if(xy.y == 0){
+        sharedFlowMapValues[0][xy.x + 1] = waterFlowMap.values[getIndex(position, ivec2( 0, -1))];
+      }
+      if(xy.y == 15){
+        sharedFlowMapValues[17][xy.x + 1] = waterFlowMap.values[getIndex(position, ivec2( 0,  1))];
+      }
+      if((xy.x == 0) && (xy.y == 0)){
+        sharedFlowMapValues[0][0] = waterFlowMap.values[getIndex(position, ivec2(-1, -1))];
+      }
+      if((xy.x == 15) && (xy.y == 0)){
+        sharedFlowMapValues[0][17] = waterFlowMap.values[getIndex(position, ivec2( 1, -1))];
+      }
+      if((xy.x == 0) && (xy.y == 15)){
+        sharedFlowMapValues[17][0] = waterFlowMap.values[getIndex(position, ivec2(-1,  1))];
+      }
+      if((xy.x == 15) && (xy.y == 15)){
+        sharedFlowMapValues[17][17] = waterFlowMap.values[getIndex(position, ivec2( 1,  1))];
+      }
+    }
+  }
+
+  memoryBarrierShared();
+  barrier();
+
+  const uvec2 position = uvec2(gl_GlobalInvocationID.xy);
+
+  if(all(lessThan(position, uvec2(pushConstants.waterHeightMapResolution)))){
+
+    const uint index = (position.y * pushConstants.waterHeightMapResolution) + position.x;
+
+    float waterOutHeight;
+
+    if(pushConstants.frameIndex == 0){
+
+      // The first frame is a special case and the easy one, we just need to initialize the water height map.     
+      waterOutHeight = pushConstants.initialWaterLevel;
+
+      // Initialize the shared height difference to zero for the first frame.
+      sharedHeightDifferences[gl_LocalInvocationIndex] = 0.0;
+
+    }else{
+
+      // Calculate the total inflow
+      const float totalInFlow = dot(vec4(waterFlowMap.values[index]), vec4(1.0));
+       
+      // Calculate the total outflow
+      const float totalOutFlow = sharedFlowMapValues[gl_LocalInvocationID.y + 1][gl_LocalInvocationID.x + 2].z + // ivec2( 1,  0)
+                                 sharedFlowMapValues[gl_LocalInvocationID.y + 2][gl_LocalInvocationID.x + 1].w + // ivec2( 0,  1)
+                                 sharedFlowMapValues[gl_LocalInvocationID.y + 1][gl_LocalInvocationID.x + 0].x + // ivec2(-1,  0)
+                                 sharedFlowMapValues[gl_LocalInvocationID.y + 0][gl_LocalInvocationID.x + 1].y;  // ivec2( 0, -1)
+
+      // Read the water height from the input water height map
+      const float inWaterHeight = inWaterHeightMap.values[index];
+
+      // Calculate the new water height
+      waterOutHeight = max(0.0, (inWaterHeight + (((totalOutFlow - totalInFlow) * pushConstants.deltaTime) / pushConstants.pipeLengthSquared)) * (1.0 - clamp(pushConstants.evaporation * pushConstants.deltaTime, 0.0, 1.0)));
+
+      // Calculate the absolute height differences
+      sharedHeightDifferences[gl_LocalInvocationIndex] = abs(inWaterHeight - waterOutHeight);
+
+    }
+
+    outWaterHeightMap.values[index] = _float(waterOutHeight);
+
+    // Perform a parallel max reduction to calculate the total absolute height differences
+
+    memoryBarrierShared();
+    barrier();
+
+#if 0    
+
+    // Automatic unrolled version of the parallel max reduction
+    
+    [[unroll]] for(uint i = 128u; i > 0u; i >>= 1u){
+      if(gl_LocalInvocationIndex < i){
+        sharedHeightDifferences[gl_LocalInvocationIndex] = max(sharedHeightDifferences[gl_LocalInvocationIndex], sharedHeightDifferences[gl_LocalInvocationIndex + i]);
+      }
+      memoryBarrierShared();
+      barrier();
+    }
+
+#else
+
+    // Manual unrolled version of the parallel max reduction
+
+    if(gl_LocalInvocationIndex < 128){
+      sharedHeightDifferences[gl_LocalInvocationIndex] = max(sharedHeightDifferences[gl_LocalInvocationIndex], sharedHeightDifferences[gl_LocalInvocationIndex + 128]);
+    }
+    memoryBarrierShared();
+    barrier();
+
+    if(gl_LocalInvocationIndex < 64){
+      sharedHeightDifferences[gl_LocalInvocationIndex] = max(sharedHeightDifferences[gl_LocalInvocationIndex], sharedHeightDifferences[gl_LocalInvocationIndex + 64]);
+    }
+    memoryBarrierShared();
+    barrier();
+
+    if(gl_LocalInvocationIndex < 32){
+      sharedHeightDifferences[gl_LocalInvocationIndex] = max(sharedHeightDifferences[gl_LocalInvocationIndex], sharedHeightDifferences[gl_LocalInvocationIndex + 32]);
+    }
+    memoryBarrierShared();
+    barrier();
+
+    if(gl_LocalInvocationIndex < 16){
+      sharedHeightDifferences[gl_LocalInvocationIndex] = max(sharedHeightDifferences[gl_LocalInvocationIndex], sharedHeightDifferences[gl_LocalInvocationIndex + 16]);
+    }
+    memoryBarrierShared();
+    barrier();
+
+    if(gl_LocalInvocationIndex < 8){
+      sharedHeightDifferences[gl_LocalInvocationIndex] = max(sharedHeightDifferences[gl_LocalInvocationIndex], sharedHeightDifferences[gl_LocalInvocationIndex + 8]);
+    }
+    memoryBarrierShared();
+    barrier();
+
+    if(gl_LocalInvocationIndex < 4){
+      sharedHeightDifferences[gl_LocalInvocationIndex] = max(sharedHeightDifferences[gl_LocalInvocationIndex], sharedHeightDifferences[gl_LocalInvocationIndex + 4]);
+    }
+    memoryBarrierShared();
+    barrier();
+
+    if(gl_LocalInvocationIndex < 2){
+      sharedHeightDifferences[gl_LocalInvocationIndex] = max(sharedHeightDifferences[gl_LocalInvocationIndex], sharedHeightDifferences[gl_LocalInvocationIndex + 2]);
+    }
+    memoryBarrierShared();
+    barrier();
+
+    if(gl_LocalInvocationIndex < 1){
+      sharedHeightDifferences[gl_LocalInvocationIndex] = max(sharedHeightDifferences[gl_LocalInvocationIndex], sharedHeightDifferences[gl_LocalInvocationIndex + 1]);
+    }
+    memoryBarrierShared();
+    barrier();
+
+#endif
+
+    if(gl_LocalInvocationIndex == 0){
+      atomicMax(waterMaxHeightDifference.value, floatBitsToUint(sharedHeightDifferences[0]));
+    }    
+
+  }
+
+}

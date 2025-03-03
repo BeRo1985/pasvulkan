@@ -31572,7 +31572,7 @@ begin
 
    if fPlanetWaterSimulationUseParallelQueue then begin
 
-    fProcessFrameTimerQueryPlanetSimulationIndex:=fProcessFrameTimerQueries[aInFlightFrameIndex].Start(fPlanetWaterSimulationQueue,PlanetWaterSimulationCommandBuffer,'Planet Simulation');
+    fProcessFrameTimerQueryPlanetSimulationIndex:=fProcessFrameTimerQueries[aInFlightFrameIndex].Start(fPlanetWaterSimulationQueue,PlanetWaterSimulationCommandBuffer,'Planet Water Simulation');
     BeginTime:=pvApplication.HighResolutionTimer.GetTime;
     fVulkanDevice.DebugUtils.CmdBufLabelBegin(PlanetWaterSimulationCommandBuffer,'Planet Water Simulation',[0.25,1.0,0.5,1.0]);
     ProcessPlanetWaterSimulations(PlanetWaterSimulationCommandBuffer,aInFlightFrameIndex);
@@ -31599,7 +31599,7 @@ begin
 
    end else begin
 
-    fProcessFrameTimerQueryPlanetSimulationIndex:=fProcessFrameTimerQueries[aInFlightFrameIndex].Start(fVulkanProcessFrameQueue,CommandBuffer,'Planet Simulation');
+    fProcessFrameTimerQueryPlanetSimulationIndex:=fProcessFrameTimerQueries[aInFlightFrameIndex].Start(fVulkanProcessFrameQueue,CommandBuffer,'Planet Water Simulation');
     BeginTime:=pvApplication.HighResolutionTimer.GetTime;
     fVulkanDevice.DebugUtils.CmdBufLabelBegin(CommandBuffer,'Planet Water Simulation',[0.25,1.0,0.5,1.0]);
     ProcessPlanetWaterSimulations(CommandBuffer,aInFlightFrameIndex);

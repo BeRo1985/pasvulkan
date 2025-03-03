@@ -428,8 +428,11 @@ compileshaderarguments=(
 
   "-V planet_water_modification.comp -o ${tempPath}/planet_water_modification_comp.spv"
   
-  "-V planet_water_simulation.comp -o ${tempPath}/planet_water_simulation_pass1_comp.spv"
-  "-V planet_water_simulation.comp -DOUTFLOW -o ${tempPath}/planet_water_simulation_pass2_comp.spv"
+# "-V planet_water_simulation.comp -o ${tempPath}/planet_water_simulation_pass1_comp.spv"
+# "-V planet_water_simulation.comp -DOUTFLOW -o ${tempPath}/planet_water_simulation_pass2_comp.spv"
+
+  "-V planet_water_simulation_velocity.comp -o ${tempPath}/planet_water_simulation_pass1_comp.spv"
+  "-V planet_water_simulation_outflow.comp -o ${tempPath}/planet_water_simulation_pass2_comp.spv"
 
   "-V planet_water_interpolation.comp -DOUTFLOW -o ${tempPath}/planet_water_interpolation_comp.spv"
 
