@@ -17119,13 +17119,15 @@ begin
 
  FreeAndNil(fPerInFlightFrameTileLODLevels);
 
- fRendererViewInstanceListLock.Acquire;
- try
-  while fRendererViewInstances.Count>0 do begin
-   fRendererViewInstances[fRendererViewInstances.Count-1].Free;
+ if assigned(fRendererViewInstanceListLock) and assigned(fRendererViewInstances) then begin
+  fRendererViewInstanceListLock.Acquire;
+  try
+   while fRendererViewInstances.Count>0 do begin
+    fRendererViewInstances[fRendererViewInstances.Count-1].Free;
+   end;
+  finally
+   fRendererViewInstanceListLock.Release;
   end;
- finally
-  fRendererViewInstanceListLock.Release;
  end;
 
  FreeAndNil(fRendererViewInstanceListLock);
@@ -17134,13 +17136,15 @@ begin
 
  FreeAndNil(fRendererViewInstanceHashMap);
 
- fRendererInstanceListLock.Acquire;
- try
-  while fRendererInstances.Count>0 do begin
-   fRendererInstances[fRendererInstances.Count-1].Free;
+ if assigned(fRendererInstanceListLock) and assigned(fRendererInstances) then begin
+  fRendererInstanceListLock.Acquire;
+  try
+   while fRendererInstances.Count>0 do begin
+    fRendererInstances[fRendererInstances.Count-1].Free;
+   end;
+  finally
+   fRendererInstanceListLock.Release;
   end;
- finally
-  fRendererInstanceListLock.Release;
  end;
 
  FreeAndNil(fRendererInstanceListLock);
