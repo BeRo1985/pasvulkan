@@ -807,6 +807,8 @@ addParticleFragmentVariants(){
   addParticleFragmentZVariants "${1}_raytracing" "$2 -DRAYTRACING" # Raytracing
 
   addParticleFragmentVoxelizationVariants "${1}" "$2"
+
+  addParticleFragmentVoxelizationVariants "${1}_raytracing" "$2 -DRAYTRACING" # Raytracing
   
 }
 

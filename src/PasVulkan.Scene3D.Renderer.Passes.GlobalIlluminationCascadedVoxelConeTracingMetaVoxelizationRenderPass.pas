@@ -231,7 +231,7 @@ begin
  end;
  try
   fParticleVertexShaderModule:=TpvVulkanShaderModule.Create(fInstance.Renderer.VulkanDevice,Stream);
-//fFrameGraph.VulkanDevice.DebugMarker.SetObjectName(fParticleVertexShaderModule.Handle,TVkDebugReportObjectTypeEXT.VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT,'fParticleVertexShaderModule');
+  FrameGraph.VulkanDevice.DebugUtils.SetObjectName(fParticleVertexShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'fParticleVertexShaderModule');
  finally
   Stream.Free;
  end;
@@ -293,18 +293,19 @@ begin
  end;
  try
   fParticleGeometryShaderModule:=TpvVulkanShaderModule.Create(fInstance.Renderer.VulkanDevice,Stream);
+  FrameGraph.VulkanDevice.DebugUtils.SetObjectName(fParticleGeometryShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'fParticleGeometryShaderModule');
  finally
   Stream.Free;
  end;
 
-{if fInstance.Renderer.Scene3D.RaytracingActive then begin
+ if fInstance.Renderer.Scene3D.RaytracingActive then begin
   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_raytracing_voxelization_frag.spv');
- end else }begin
+ end else begin
   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_voxelization_frag.spv');
  end;
  try
   fParticleFragmentShaderModule:=TpvVulkanShaderModule.Create(fInstance.Renderer.VulkanDevice,Stream);
-//fFrameGraph.VulkanDevice.DebugMarker.SetObjectName(fParticleFragmentShaderModule.Handle,TVkDebugReportObjectTypeEXT.VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT,'fParticleFragmentShaderModule');
+  FrameGraph.VulkanDevice.DebugUtils.SetObjectName(fParticleFragmentShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'fParticleFragmentShaderModule');
  finally
   Stream.Free;
  end;
@@ -315,7 +316,6 @@ begin
 
  fVulkanPipelineShaderStageParticleFragment:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_FRAGMENT_BIT,fParticleFragmentShaderModule,'main');
 //ParticleFragmentSpecializationConstants.SetPipelineShaderStage(fVulkanPipelineShaderStageParticleFragment);
-
 
 end;
 
