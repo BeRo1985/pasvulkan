@@ -22,7 +22,9 @@
 
 /* clang-format off */
 
-layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+#define WORKGROUP_SIZE 16
+
+layout(local_size_x = WORKGROUP_SIZE, local_size_y = WORKGROUP_SIZE, local_size_z = 1) in;
 
 layout(push_constant) uniform PushConstants {
   float attenuation;
@@ -75,47 +77,31 @@ layout(set = 0, binding = 4, std430) coherent buffer WaterMaxHeightDifference {
 
 vec2 texelSize = 1.0 / vec2(pushConstants.waterHeightMapResolution);
 
-uint getIndex(uvec2 position, ivec2 offset){
-  const ivec2 intPosition = wrapOctahedralTexelCoordinatesForWater(ivec2(position) + offset, ivec2(pushConstants.waterHeightMapResolution));  
+uint getIndex(ivec2 position){
+  const ivec2 intPosition = wrapOctahedralTexelCoordinatesForWater(ivec2(position), ivec2(pushConstants.waterHeightMapResolution));  
   return (intPosition.y * pushConstants.waterHeightMapResolution) + intPosition.x;
 }
 
-shared vec4 sharedFlowMapValues[18][18]; // 16x16 + 1x1 for the border on each side for the 3x3 kernel 
+shared vec4 sharedFlowMapValues[WORKGROUP_SIZE + 2][WORKGROUP_SIZE + 2]; // WORKGROUP_SIZE x WORKGROUP_SIZE + 1x1 for the border on each side for the 3x3 kernel 
 
-shared float sharedHeightDifferences[16 * 16];
+shared float sharedHeightDifferences[WORKGROUP_SIZE * WORKGROUP_SIZE];
 
 void main(){
 
   if(pushConstants.frameIndex != 0){
-    const ivec2 xy = ivec2(gl_LocalInvocationID.xy);
-    const ivec2 position = (ivec2(gl_WorkGroupID.xy) * 16) + xy;
-    sharedFlowMapValues[xy.y + 1][xy.x + 1] = waterFlowMap.values[getIndex(uvec2(position), ivec2(0, 0))];
-    if((xy.x == 0) || (xy.y == 0) || (xy.x == 15) || (xy.y == 15)){
-      if(xy.x == 0){
-        sharedFlowMapValues[xy.y + 1][0] = waterFlowMap.values[getIndex(position, ivec2(-1,  0))];
-      }
-      if(xy.x == 15){
-        sharedFlowMapValues[xy.y + 1][17] = waterFlowMap.values[getIndex(position, ivec2( 1,  0))];
-      }
-      if(xy.y == 0){
-        sharedFlowMapValues[0][xy.x + 1] = waterFlowMap.values[getIndex(position, ivec2( 0, -1))];
-      }
-      if(xy.y == 15){
-        sharedFlowMapValues[17][xy.x + 1] = waterFlowMap.values[getIndex(position, ivec2( 0,  1))];
-      }
-      if((xy.x == 0) && (xy.y == 0)){
-        sharedFlowMapValues[0][0] = waterFlowMap.values[getIndex(position, ivec2(-1, -1))];
-      }
-      if((xy.x == 15) && (xy.y == 0)){
-        sharedFlowMapValues[0][17] = waterFlowMap.values[getIndex(position, ivec2( 1, -1))];
-      }
-      if((xy.x == 0) && (xy.y == 15)){
-        sharedFlowMapValues[17][0] = waterFlowMap.values[getIndex(position, ivec2(-1,  1))];
-      }
-      if((xy.x == 15) && (xy.y == 15)){
-        sharedFlowMapValues[17][17] = waterFlowMap.values[getIndex(position, ivec2( 1,  1))];
-      }
+
+    const ivec2 localPos = ivec2(gl_LocalInvocationID.xy);
+    const ivec2 tileOrigin = (ivec2(gl_WorkGroupID.xy) * WORKGROUP_SIZE) - ivec2(1, 1);
+      
+    const int dimension = WORKGROUP_SIZE + 2;
+    const int totalElements = dimension * dimension;
+    const int threadID = (localPos.y * WORKGROUP_SIZE) + localPos.x;
+          
+    for(int i = threadID; i < totalElements; i += 256){
+      ivec2 t = ivec2(i % dimension, i / dimension);
+      sharedFlowMapValues[t.y][t.x] = waterFlowMap.values[getIndex(tileOrigin + t)];
     }
+
   }
 
   memoryBarrierShared();
@@ -166,9 +152,9 @@ void main(){
     memoryBarrierShared();
     barrier();
 
-#if 0    
+#if WORKGROUP_SIZE != 16   
 
-    // Automatic unrolled version of the parallel max reduction
+    // Automatic unrolled version of the parallel max reduction for WORKGROUP_SIZE != 16
     
     [[unroll]] for(uint i = 128u; i > 0u; i >>= 1u){
       if(gl_LocalInvocationIndex < i){
@@ -180,7 +166,7 @@ void main(){
 
 #else
 
-    // Manual unrolled version of the parallel max reduction
+    // Manual unrolled version of the parallel max reduction for WORKGROUP_SIZE == 16
 
     if(gl_LocalInvocationIndex < 128){
       sharedHeightDifferences[gl_LocalInvocationIndex] = max(sharedHeightDifferences[gl_LocalInvocationIndex], sharedHeightDifferences[gl_LocalInvocationIndex + 128]);
