@@ -11311,7 +11311,7 @@ end;
 
 function TpvApplication.GetPercentileXthFrameTime(const aPercentileXth:TpvDouble):TpvDouble;
 var FrameTimes:TpvDoubleDynamicArray;
-    Index:TpvSizeInt;
+    Index,Count:TpvSizeInt;
     TotalTimeTaken,DestinationAccumulatedTime,Sample,Factor:TpvDouble;
 begin
 
@@ -11324,23 +11324,25 @@ begin
 
  result:=0.0;
 
- if fFrameTimesHistoryCount>0 then begin
+ Count:=fFrameTimesHistoryCount;
+
+ if Count>0 then begin
 
   FrameTimes:=nil;
   try
 
-   SetLength(FrameTimes,fFrameTimesHistoryCount);
+   SetLength(FrameTimes,Count);
 
-   for Index:=0 to length(FrameTimes)-1 do begin
+   for Index:=0 to Count-1 do begin
     FrameTimes[Index]:=fFrameTimesHistoryDeltaTimes[((fFrameTimesHistoryIndex+FrameTimesHistorySize)-(Index+1)) and FrameTimesHistoryMask];
    end;
 
-   if fFrameTimesHistoryCount>1 then begin
-    TpvTypedSort<TpvDouble>.IntroSort(@FrameTimes[0],0,length(FrameTimes)-1,TpvApplicationGetPercentile95thFrameTimeCompare);
+   if Count>1 then begin
+    TpvTypedSort<TpvDouble>.IntroSort(@FrameTimes[0],0,Count-1,TpvApplicationGetPercentile95thFrameTimeCompare);
    end;
 
    TotalTimeTaken:=0.0;
-   for Index:=0 to length(FrameTimes)-1 do begin
+   for Index:=0 to Count-1 do begin
     TotalTimeTaken:=TotalTimeTaken+FrameTimes[Index];
    end;
 
@@ -11355,7 +11357,7 @@ begin
 
    TotalTimeTaken:=0.0;
    result:=-1.0; // -1.0 means that there is no valid result, should never happen
-   for Index:=0 to length(FrameTimes)-1 do begin
+   for Index:=0 to Count-1 do begin
     Sample:=FrameTimes[Index];
     if TotalTimeTaken>=DestinationAccumulatedTime then begin
      result:=Sample;
@@ -11364,19 +11366,10 @@ begin
      TotalTimeTaken:=TotalTimeTaken+Sample;
     end;
    end;
-
-   if result<0.0 then begin
-    FrameTimes:=nil;
-    TotalTimeTaken:=0.0;
-    result:=-1.0; // -1.0 means that there is no valid result, should never happen
-    for Index:=0 to length(FrameTimes)-1 do begin
-     Sample:=FrameTimes[Index];
-     if TotalTimeTaken>=DestinationAccumulatedTime then begin
-      result:=Sample;
-      break;
-     end else begin
-      TotalTimeTaken:=TotalTimeTaken+Sample;
-     end;
+   if (result<0.0) and (Count>0) then begin
+    if TotalTimeTaken>=DestinationAccumulatedTime then begin
+    end else begin
+     result:=FrameTimes[Min(Max(Ceil(Count*Factor),0),Count)-1];
     end;
    end;
 
