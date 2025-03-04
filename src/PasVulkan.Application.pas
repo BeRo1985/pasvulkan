@@ -11355,22 +11355,15 @@ begin
 
    DestinationAccumulatedTime:=TotalTimeTaken*Factor;
 
+   result:=FrameTimes[Count-1]; // default to the slowest frame time
+
    TotalTimeTaken:=0.0;
-   result:=-1.0; // -1.0 means that there is no valid result, should never happen
    for Index:=0 to Count-1 do begin
     Sample:=FrameTimes[Index];
+    TotalTimeTaken:=TotalTimeTaken+Sample;
     if TotalTimeTaken>=DestinationAccumulatedTime then begin
      result:=Sample;
      break;
-    end else begin
-     TotalTimeTaken:=TotalTimeTaken+Sample;
-    end;
-   end;
-   if (result<0.0) and (Count>0) then begin
-    if TotalTimeTaken>=DestinationAccumulatedTime then begin
-     result:=FrameTimes[Count-1];
-    end else begin
-     result:=FrameTimes[Min(Max(Ceil(Count*Factor),0),Count)-1];
     end;
    end;
 
@@ -11430,7 +11423,7 @@ begin
 
    end else begin
      
-    result:=-1.0; // -1.0 means that there is no valid result, should never happen 
+    result:=fFrameTimesHistoryDeltaTimes[((fFrameTimesHistoryIndex+FrameTimesHistorySize)-1) and FrameTimesHistoryMask];
 
    end;
 
