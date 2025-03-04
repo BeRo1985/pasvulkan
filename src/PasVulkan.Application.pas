@@ -11354,7 +11354,7 @@ begin
    DestinationAccumulatedTime:=TotalTimeTaken*Factor;
 
    TotalTimeTaken:=0.0;
-   result:=-1.0; // -1.0 means that there is no valid result, should never happen 
+   result:=-1.0; // -1.0 means that there is no valid result, should never happen
    for Index:=0 to length(FrameTimes)-1 do begin
     Sample:=FrameTimes[Index];
     if TotalTimeTaken>=DestinationAccumulatedTime then begin
@@ -11367,6 +11367,17 @@ begin
 
    if result<0.0 then begin
     FrameTimes:=nil;
+    TotalTimeTaken:=0.0;
+    result:=-1.0; // -1.0 means that there is no valid result, should never happen
+    for Index:=0 to length(FrameTimes)-1 do begin
+     Sample:=FrameTimes[Index];
+     if TotalTimeTaken>=DestinationAccumulatedTime then begin
+      result:=Sample;
+      break;
+     end else begin
+      TotalTimeTaken:=TotalTimeTaken+Sample;
+     end;
+    end;
    end;
 
   finally
