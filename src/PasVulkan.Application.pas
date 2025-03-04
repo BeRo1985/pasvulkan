@@ -1859,6 +1859,8 @@ type EpvApplication=class(Exception)
 
        function GetPercentileXthFrameTime(const aPercentileXth:TpvDouble):TpvDouble;
 
+       function GetMedianFrameTime(const aTime:TpvDouble):TpvDouble;
+
        procedure Initialize;
 
        procedure Terminate;
@@ -11320,7 +11322,7 @@ begin
  // But in reality, the user experienced 1 hour at 60 fps and another hour at 0.000277778 fps.
  // The accurate 95-p is 0.000277778 fps (3600000 mspf), not 60 fps.
 
- result:=-1.0;
+ result:=0.0;
 
  if fFrameTimesHistoryCount>0 then begin
 
@@ -11352,6 +11354,7 @@ begin
    DestinationAccumulatedTime:=TotalTimeTaken*Factor;
 
    TotalTimeTaken:=0.0;
+   result:=-1.0; // -1.0 means that there is no valid result, should never happen 
    for Index:=0 to length(FrameTimes)-1 do begin
     Sample:=FrameTimes[Index];
     if TotalTimeTaken>=DestinationAccumulatedTime then begin
@@ -11362,6 +11365,10 @@ begin
     end;
    end;
 
+   if result<0.0 then begin
+    FrameTimes:=nil;
+   end;
+
   finally
    FrameTimes:=nil;
   end;
@@ -11370,6 +11377,66 @@ begin
 
 end;
 
+function TpvApplication.GetMedianFrameTime(const aTime:TpvDouble):TpvDouble;
+var FrameTimes:TpvDoubleDynamicArray;
+    Index,Count:TpvSizeInt;
+    Sum:TpvDouble;
+begin
+ 
+ result:=0.0;
+
+ // Don't solely rely on the count of samples. Median is a better measure of central tendency
+ // than the mean (average) for frame times, as it is less sensitive to outliers.
+ 
+ if fFrameTimesHistoryCount>0 then begin
+
+  FrameTimes:=nil;
+  try
+
+   // Count the number of frame times to use, based on the time
+   Count:=0;
+   Sum:=0.0;
+   for Index:=0 to fFrameTimesHistoryCount-1 do begin
+    Sum:=Sum+fFrameTimesHistoryDeltaTimes[((fFrameTimesHistoryIndex+FrameTimesHistorySize)-(Index+1)) and FrameTimesHistoryMask];
+    if Sum<=aTime then begin
+     inc(Count);
+    end else begin
+     break;
+    end;
+   end; 
+
+   if Count>0 then begin
+
+    SetLength(FrameTimes,Count);
+
+    for Index:=0 to Count-1 do begin
+     FrameTimes[Index]:=fFrameTimesHistoryDeltaTimes[((fFrameTimesHistoryIndex+FrameTimesHistorySize)-(Index+1)) and FrameTimesHistoryMask];
+    end;
+
+    if Count>1 then begin
+     TpvTypedSort<TpvDouble>.IntroSort(@FrameTimes[0],0,length(FrameTimes)-1,TpvApplicationGetPercentile95thFrameTimeCompare);
+    end;
+
+    if (Count and 1)=0 then begin
+     result:=(FrameTimes[Count shr 1]+FrameTimes[(Count shr 1)-1])*0.5;
+    end else begin
+     result:=FrameTimes[Count shr 1];
+    end;
+
+   end else begin
+     
+    result:=-1.0; // -1.0 means that there is no valid result, should never happen 
+
+   end;
+
+  finally
+   FrameTimes:=nil;
+  end;
+
+ end;
+
+end;
+   
 procedure TpvApplication.FrameRateLimiter;
 var LastTime,NowTime,FrameTime,TargetInterval,SleepDuration:TpvHighResolutionTime;
 begin
