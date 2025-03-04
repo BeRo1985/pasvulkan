@@ -11368,6 +11368,7 @@ begin
    end;
    if (result<0.0) and (Count>0) then begin
     if TotalTimeTaken>=DestinationAccumulatedTime then begin
+     result:=FrameTimes[Count-1];
     end else begin
      result:=FrameTimes[Min(Max(Ceil(Count*Factor),0),Count)-1];
     end;
