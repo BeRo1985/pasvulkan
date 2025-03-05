@@ -826,9 +826,9 @@ begin
   if Min(abs(SelfLength),abs(ToVectorLength))<1e-7 then begin
    result:=(self*(1.0-aTime))+(aWith*aTime);
   end else begin
-   result:=TpvQuaternionD.Identity.Slerp(TpvQuaternionD.CreateFromToRotation(self.Normalize,
-                                                                             aWith.Normalize),
-                                         aTime)*self.Normalize*
+   result:=(TpvQuaternionD.Create(0.0,0.0,0.0,1.0).Slerp(TpvQuaternionD.CreateFromToRotation(self.Normalize,
+                                                                                             aWith.Normalize),
+                                                         aTime)*self.Normalize).ToVector.xyz*
            ((SelfLength*(1.0-aTime))+(ToVectorLength*aTime));
   end;
 { DotProduct:=self.Dot(aWith);
