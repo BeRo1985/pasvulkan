@@ -352,6 +352,8 @@ type TpvVector2D=record
        constructor Create(const aFrom:TpvQuaternionD); overload;
        constructor Create(const aFrom:TpvDecomposedMatrix4x4D); overload;
        constructor CreateTranslation(const aTranslation:TpvVector3D);
+       constructor CreateInverseLookAt(const Eye,Center,Up:TpvVector3D);
+       constructor CreateLookAt(const Eye,Center,Up:TpvVector3D);
        class operator Implicit(const aFrom:TpvMatrix3x3):TpvMatrix4x4D;
        class operator Implicit(const aFrom:TpvMatrix4x4D):TpvMatrix3x3;
        class operator Implicit(const aFrom:TpvMatrix4x4):TpvMatrix4x4D;
@@ -2597,6 +2599,56 @@ begin
  RawComponents[3,2]:=aTranslation.z;
  RawComponents[3,3]:=1.0;
 end;
+
+constructor TpvMatrix4x4D.CreateInverseLookAt(const Eye,Center,Up:TpvVector3D);
+var RightVector,UpVector,ForwardVector:TpvVector3D;
+begin
+ ForwardVector:=(Eye-Center).Normalize;
+ RightVector:=(Up.Cross(ForwardVector)).Normalize;
+ UpVector:=(ForwardVector.Cross(RightVector)).Normalize;
+ RawComponents[0,0]:=RightVector.x;
+ RawComponents[0,1]:=RightVector.y;
+ RawComponents[0,2]:=RightVector.z;
+ RawComponents[0,3]:=0.0;
+ RawComponents[1,0]:=UpVector.x;
+ RawComponents[1,1]:=UpVector.y;
+ RawComponents[1,2]:=UpVector.z;
+ RawComponents[1,3]:=0.0;
+ RawComponents[2,0]:=ForwardVector.x;
+ RawComponents[2,1]:=ForwardVector.y;
+ RawComponents[2,2]:=ForwardVector.z;
+ RawComponents[2,3]:=0.0;
+ RawComponents[3,0]:=Eye.x;
+ RawComponents[3,1]:=Eye.y;
+ RawComponents[3,2]:=Eye.z;
+ RawComponents[3,3]:=1.0;
+end;
+
+constructor TpvMatrix4x4D.CreateLookAt(const Eye,Center,Up:TpvVector3D);
+var RightVector,UpVector,ForwardVector:TpvVector3D;
+begin
+ ForwardVector:=(Center-Eye).Normalize;
+ RightVector:=(Up.Cross(ForwardVector)).Normalize;
+ UpVector:=(ForwardVector.Cross(RightVector)).Normalize;
+ RawComponents[0,0]:=RightVector.x;
+ RawComponents[1,0]:=RightVector.y;
+ RawComponents[2,0]:=RightVector.z;
+ RawComponents[3,0]:=-((RightVector.x*Eye.x)+(RightVector.y*Eye.y)+(RightVector.z*Eye.z));
+ RawComponents[0,1]:=UpVector.x;
+ RawComponents[1,1]:=UpVector.y;
+ RawComponents[2,1]:=UpVector.z;
+ RawComponents[3,1]:=-((UpVector.x*Eye.x)+(UpVector.y*Eye.y)+(UpVector.z*Eye.z));
+ RawComponents[0,2]:=ForwardVector.x;
+ RawComponents[1,2]:=ForwardVector.y;
+ RawComponents[2,2]:=ForwardVector.z;
+ RawComponents[3,2]:=-((ForwardVector.x*Eye.x)+(ForwardVector.y*Eye.y)+(ForwardVector.z*Eye.z));
+ RawComponents[0,3]:=0.0;
+ RawComponents[1,3]:=0.0;
+ RawComponents[2,3]:=0.0;
+ RawComponents[3,3]:=1.0;
+end;
+
+
 
 class operator TpvMatrix4x4D.Implicit(const aFrom:TpvMatrix3x3):TpvMatrix4x4D;
 begin
