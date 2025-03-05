@@ -151,6 +151,7 @@ type TpvVector2D=record
        function SquaredLength:TpvDouble;
        function Normalize:TpvVector3D;
        function Perpendicular:TpvVector3D;
+       function Orthogonal:TpvVector3D;
        function Lerp(const aWith:TpvVector3D;const aTime:TpvDouble):TpvVector3D;
        function Nlerp(const aWith:TpvVector3D;const aTime:TpvDouble):TpvVector3D;
        function Slerp(const aWith:TpvVector3D;const aTime:TpvDouble):TpvVector3D;
@@ -201,6 +202,8 @@ type TpvVector2D=record
        constructor Create(const aX,aY,aZ,aW:TpvDouble); overload;
        constructor Create(const aMatrix:TpvMatrix3x3); overload;
        constructor Create(const aMatrix:TpvMatrix4x4); overload;
+       constructor CreateFromAxisAngle(const aAxis:TpvVector3D;const aAngle:TpvDouble);
+       constructor CreateFromToRotation(const aFromDirection,aToDirection:TpvVector3D);
        class operator Implicit(const aFrom:TpvQuaternion):TpvQuaternionD;
        class operator Implicit(const aFrom:TpvQuaternionD):TpvQuaternion;
        class operator Explicit(const aFrom:TpvQuaternion):TpvQuaternionD;
@@ -212,6 +215,8 @@ type TpvVector2D=record
        class operator Multiply(const aLeft,aRight:TpvQuaternionD):TpvQuaternionD;
        class operator Multiply(const aLeft:TpvQuaternionD;const aRight:TpvDouble):TpvQuaternionD;
        class operator Multiply(const aLeft:TpvDouble;const aRight:TpvQuaternionD):TpvQuaternionD;
+       class operator Multiply(const aLeft:TpvQuaternionD;const aRight:TpvVector3D):TpvVector3D;
+       class operator Multiply(const aLeft:TpvVector3D;const aRight:TpvQuaternionD):TpvVector3D;
        class operator Divide(const aLeft,aRight:TpvQuaternionD):TpvQuaternionD;
        class operator Negative(const aQuaternion:TpvQuaternionD):TpvQuaternionD;
        function Dot(const aWith:TpvQuaternionD):TpvDouble;
@@ -771,6 +776,22 @@ begin
  result:=p-(v*v.Dot(p));
 end;
 
+function TpvVector3D.Orthogonal:TpvVector3D;
+var a,p:TpvVector3D;
+begin
+ a:=Normalize;
+ p.x:=System.abs(a.x);
+ p.y:=System.abs(a.y);
+ p.z:=System.abs(a.z);
+ if (p.x<=p.y) and (p.x<=p.z) then begin
+  result:=TpvVector3D.Create(0.0,a.z,-a.y);
+ end else if p.y<p.z then begin
+  result:=TpvVector3D.Create(a.z,0.0,-a.x);
+ end else begin
+  result:=TpvVector3D.Create(a.y,-a.x,0.0);
+ end;
+end;
+
 function TpvVector3D.Lerp(const aWith:TpvVector3D;const aTime:TpvDouble):TpvVector3D;
 begin
  if aTime<=0.0 then begin
@@ -786,26 +807,42 @@ function TpvVector3D.Nlerp(const aWith:TpvVector3D;const aTime:TpvDouble):TpvVec
 begin
  result:=Lerp(aWith,aTime).Normalize;
 end;
-
+   
 function TpvVector3D.Slerp(const aWith:TpvVector3D;const aTime:TpvDouble):TpvVector3D;
-var DotProduct,Theta,Sinus,Cosinus:TpvDouble;
+const EPSILON=1e-5;
+var DotProduct,Theta,Sinus,Cosinus,LenV1,LenV2:TpvDouble;
+    nv1,nv2:TpvVector3D;
+    q:TpvQuaternionD;
 begin
  if aTime<=0.0 then begin
   result:=self;
  end else if aTime>=1.0 then begin
   result:=aWith;
- end else if self=aWith then begin
-  result:=aWith;
  end else begin
-  DotProduct:=Dot(aWith);
-  if DotProduct<-1.0 then begin
-   DotProduct:=-1.0;
-  end else if DotProduct>1.0 then begin
-   DotProduct:=1.0;
+  LenV1:=Length;
+  LenV2:=aWith.Length;
+  if (LenV1<EPSILON) or (LenV2<EPSILON) then begin
+   result:=(self*(1.0-aTime))+(aWith*aTime);
+  end else begin
+   DotProduct:=Dot(aWith)/(LenV1*LenV2);
+   if DotProduct<-1.0 then begin
+    DotProduct:=-1.0;
+   end else if DotProduct>1.0 then begin
+    DotProduct:=1.0;
+   end;
+   if DotProduct>(1.0-EPSILON) then begin
+    result:=(self*(1.0-aTime))+(aWith*aTime);
+   end else if DotProduct<(EPSILON-1.0) then begin
+    nv1:=self/LenV1;
+    result:=(TpvQuaternionD.CreateFromAxisAngle(Orthogonal,aTime*PI)*nv1)*((LenV1*(1.0-aTime))+(LenV2*aTime));
+   end else begin
+    nv1:=self/LenV1;
+    nv2:=aWith/LenV2;
+    Theta:=ArcCos(DotProduct)*aTime;
+    SinCos(Theta,Sinus,Cosinus);
+    result:=(nv1*Cosinus)+((nv2-(nv1*DotProduct)).Normalize*Sinus)*((LenV1*(1.0-aTime))+(LenV2*aTime));
+   end;
   end;
-  Theta:=ArcCos(DotProduct)*aTime;
-  SinCos(Theta,Sinus,Cosinus);
-  result:=(self*Cosinus)+((aWith-(self*DotProduct)).Normalize*Sinus);
  end;
 end;
 
@@ -1113,6 +1150,54 @@ begin
  end;
 end;
 
+constructor TpvQuaternionD.CreateFromAxisAngle(const aAxis:TpvVector3D;const aAngle:TpvDouble);
+var sa2,l:TpvDouble;    
+begin
+ SinCos(aAngle*0.5,sa2,w);
+ x:=aAxis.x*sa2;
+ y:=aAxis.y*sa2;
+ z:=aAxis.z*sa2;
+ l:=sqrt(sqr(x)+sqr(y)+sqr(z)+sqr(w));
+ if l>0.0 then begin
+  x:=x/l;
+  y:=y/l;
+  z:=z/l;
+  w:=w/l;
+ end;
+end;
+
+constructor TpvQuaternionD.CreateFromToRotation(const aFromDirection,aToDirection:TpvVector3D);
+var FromDirection,ToDirection,t:TpvVector3D;
+    DotProduct,Len:TpvDouble;
+begin
+ FromDirection:=aFromDirection.Normalize;
+ ToDirection:=aToDirection.Normalize;
+ DotProduct:=FromDirection.Dot(ToDirection);
+ if abs(DotProduct)>=1.0 then begin
+  if DotProduct>0.0 then begin
+   x:=0.0;
+   y:=0.0;
+   z:=0.0;
+   w:=1.0;
+  end else begin
+   self:=TpvQuaternionD.CreateFromAxisAngle(FromDirection.Perpendicular,PI);
+  end;
+ end else begin
+  t:=FromDirection.Cross(ToDirection);
+  x:=t.x;
+  y:=t.y;
+  z:=t.z;
+  w:=DotProduct+sqrt(FromDirection.SquaredLength*ToDirection.SquaredLength);
+  Len:=sqrt(sqr(x)+sqr(y)+sqr(z)+sqr(w));
+  if Len>0.0 then begin
+   x:=x/Len;
+   y:=y/Len;
+   z:=z/Len;
+   w:=w/Len;
+  end;
+ end;
+end;
+
 class operator TpvQuaternionD.Implicit(const aFrom:TpvQuaternion):TpvQuaternionD;
 begin
  result.x:=aFrom.x;
@@ -1199,6 +1284,24 @@ begin
  result.y:=aLeft*aRight.y;
  result.z:=aLeft*aRight.z;
  result.w:=aLeft*aRight.w;
+end;
+
+class operator TpvQuaternionD.Multiply(const aLeft:TpvQuaternionD;const aRight:TpvVector3D):TpvVector3D;
+var t,qv:TpvVector3D;
+begin
+ qv:=TpvVector3D.Create(aLeft.x,aLeft.y,aLeft.z);
+ t:=qv.Cross(aRight)*2.0;
+ result:=(aRight+(t*aLeft.w))+qv.Cross(t);
+end;
+
+class operator TpvQuaternionD.Multiply(const aLeft:TpvVector3D;const aRight:TpvQuaternionD):TpvVector3D;
+var qt:TpvQuaternionD;
+    t,qv:TpvVector3D;
+begin
+ qt:=aRight.Inverse;
+ qv:=TpvVector3D.Create(qt.x,qt.y,qt.z);
+ t:=qv.Cross(aLeft)*2.0;
+ result:=(aLeft+(t*qt.w))+qv.Cross(t);
 end;
 
 class operator TpvQuaternionD.Divide(const aLeft,aRight:TpvQuaternionD):TpvQuaternionD;
