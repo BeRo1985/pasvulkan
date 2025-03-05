@@ -371,6 +371,8 @@ type TpvScene3DPlanets=class;
               fOwnershipHolderState:TpvScene3DPlanet.TData.TOwnershipHolderState;
               fSelectedRegion:TpvVector4;
               fSelectedRegionProperty:TpvVector4Property;
+              fSelectedColor:TpvVector4;
+              fSelectedColorProperty:TpvVector4Property;
               fSelectedGroundTexture:TpvUInt32;
               fSelectedBrush:TpvUInt32;
               fBrushRotation:TpvScalar;
@@ -471,6 +473,7 @@ type TpvScene3DPlanets=class;
               property ModelMatrix:TpvMatrix4x4D read fModelMatrix write fModelMatrix;
               property Ready:TPasMPBool32 read fReady write fReady;
               property SelectedRegion:TpvVector4Property read fSelectedRegionProperty;
+              property SelectedColor:TpvVector4Property read fSelectedColorProperty;
               property SelectedGroundTexture:TpvUInt32 read fSelectedGroundTexture write fSelectedGroundTexture;
               property SelectedBrush:TpvUInt32 read fSelectedBrush write fSelectedBrush;
               property BrushRotation:TpvScalar read fBrushRotation write fBrushRotation;
@@ -3251,6 +3254,10 @@ begin
 
  fSelectedRegionProperty:=TpvVector4Property.Create(@fSelectedRegion);
 
+ fSelectedColor:=TpvVector4.InlineableCreate(1.0,0.0,0.0,0.5);
+
+ fSelectedColorProperty:=TpvVector4Property.Create(@fSelectedColor);
+
  fSelectedGroundTexture:=0;
 
  fSelectedBrush:=0;
@@ -3376,6 +3383,8 @@ begin
  FreeAndNil(fRayIntersectionResultBuffer);
 
  FreeAndNil(fSelectedRegionProperty);
+
+ FreeAndNil(fSelectedColorProperty);
 
  inherited Destroy;
 
@@ -5223,6 +5232,7 @@ end;
 procedure TpvScene3DPlanet.TData.Assign(const aData:TData);
 begin
  fSelectedRegion:=aData.fSelectedRegion;
+ fSelectedColor:=aData.fSelectedColor;
  fSelectedGroundTexture:=aData.fSelectedGroundTexture;
  fSelectedBrush:=aData.fSelectedBrush;
  fBrushRotation:=aData.fBrushRotation;
@@ -19048,10 +19058,10 @@ begin
     fPlanetData.Indices:=0;
    end;
    fPlanetData.Selected:=InFlightFrameData.SelectedRegion.Vector;
-   fPlanetData.SelectedColor.x:=1.0;
-   fPlanetData.SelectedColor.y:=0.0;
-   fPlanetData.SelectedColor.z:=0.0;
-   fPlanetData.SelectedColor.w:=0.5;
+   fPlanetData.SelectedColor.x:=InFlightFrameData.fSelectedColor.x;
+   fPlanetData.SelectedColor.y:=InFlightFrameData.fSelectedColor.y;
+   fPlanetData.SelectedColor.z:=InFlightFrameData.fSelectedColor.z;
+   fPlanetData.SelectedColor.w:=InFlightFrameData.fSelectedColor.w;
    fPlanetData.SelectedBrushIndex:=InFlightFrameData.fSelectedBrush;
    fPlanetData.SelectedBrushRotation:=InFlightFrameData.fBrushRotation*TwoPI;
    fPlanetData.SelectedInnerRadius:=Max(InFlightFrameData.fBrushInnerRadius,1e-6);
