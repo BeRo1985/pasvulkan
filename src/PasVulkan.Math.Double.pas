@@ -811,40 +811,35 @@ begin
 end;
    
 function TpvVector3D.Slerp(const aWith:TpvVector3D;const aTime:TpvDouble):TpvVector3D;
-const EPSILON=1e-5;
-var DotProduct,Theta,Sinus,Cosinus,LenV1,LenV2:TpvDouble;
-    nv1,nv2:TpvVector3D;
-    q:TpvQuaternionD;
+var //DotProduct,Theta,Sinus,Cosinus:TpvDouble;
+    SelfLength,ToVectorLength:TpvDouble;
 begin
  if aTime<=0.0 then begin
   result:=self;
  end else if aTime>=1.0 then begin
   result:=aWith;
+ end else if self=aWith then begin
+  result:=aWith;
  end else begin
-  LenV1:=Length;
-  LenV2:=aWith.Length;
-  if (LenV1<EPSILON) or (LenV2<EPSILON) then begin
+  SelfLength:=Length;
+  ToVectorLength:=aWith.Length;
+  if Min(abs(SelfLength),abs(ToVectorLength))<1e-7 then begin
    result:=(self*(1.0-aTime))+(aWith*aTime);
   end else begin
-   DotProduct:=Dot(aWith)/(LenV1*LenV2);
-   if DotProduct<-1.0 then begin
-    DotProduct:=-1.0;
-   end else if DotProduct>1.0 then begin
-    DotProduct:=1.0;
-   end;
-   if DotProduct>(1.0-EPSILON) then begin
-    result:=(self*(1.0-aTime))+(aWith*aTime);
-   end else if DotProduct<(EPSILON-1.0) then begin
-    nv1:=self/LenV1;
-    result:=(TpvQuaternionD.CreateFromAxisAngle(Orthogonal,aTime*PI)*nv1)*((LenV1*(1.0-aTime))+(LenV2*aTime));
-   end else begin
-    nv1:=self/LenV1;
-    nv2:=aWith/LenV2;
-    Theta:=ArcCos(DotProduct)*aTime;
-    SinCos(Theta,Sinus,Cosinus);
-    result:=(nv1*Cosinus)+((nv2-(nv1*DotProduct)).Normalize*Sinus)*((LenV1*(1.0-aTime))+(LenV2*aTime));
-   end;
+   result:=TpvQuaternionD.Identity.Slerp(TpvQuaternionD.CreateFromToRotation(self.Normalize,
+                                                                             aWith.Normalize),
+                                         aTime)*self.Normalize*
+           ((SelfLength*(1.0-aTime))+(ToVectorLength*aTime));
   end;
+{ DotProduct:=self.Dot(aWith);
+  if DotProduct<-1.0 then begin
+   DotProduct:=-1.0;
+  end else if DotProduct>1.0 then begin
+   DotProduct:=1.0;
+  end;
+  Theta:=ArcCos(DotProduct)*aTime;
+  SinCos(Theta,Sinus,Cosinus);
+  result:=(self*Cosinus)+((aWith-(self*DotProduct)).Normalize*Sinus);}  
  end;
 end;
 
