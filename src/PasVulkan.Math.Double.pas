@@ -237,6 +237,10 @@ type TpvVector2D=record
        function ToMatrix4x4:TpvMatrix4x4;
        function ToVector:TpvVector4;
        function ToQuaternion:TpvQuaternion;
+       function ToEuler:TpvVector3D;
+       function ToPitch:TpvDouble;
+       function ToYaw:TpvDouble;
+       function ToRoll:TpvDouble;
       public
        case TpvInt32 of
         0:(x,y,z,w:TpvDouble);
@@ -1552,6 +1556,66 @@ begin
  result.y:=y;
  result.z:=z;
  result.w:=w;
+end;
+
+function TpvQuaternionD.ToEuler:TpvVector3D;
+var t:TpvDouble;
+begin
+ // Order of rotations: Roll (Z), Pitch (X), Yaw (Y)
+ t:=2.0*((x*w)-(y*z));
+ if t<-0.995 then begin
+  result.x:=-HalfPI;
+  result.y:=0.0;
+  result.z:=-ArcTan2(2.0*((x*z)-(y*w)),1.0-(2.0*(sqr(y)+sqr(z))));
+ end else if t>0.995 then begin
+  result.x:=HalfPI;
+  result.y:=0.0;
+  result.z:=ArcTan2(2.0*((x*z)-(y*w)),1.0-(2.0*(sqr(y)+sqr(z))));
+ end else begin
+  result.x:=ArcSin(t);
+  result.y:=ArcTan2(2.0*((x*z)+(y*w)),1.0-(2.0*(sqr(x)+sqr(y))));
+  result.z:=ArcTan2(2.0*((x*y)+(z*w)),1.0-(2.0*(sqr(x)+sqr(z))));
+ end;
+end;
+
+function TpvQuaternionD.ToPitch:TpvDouble;
+var t:TpvDouble;
+begin
+ // Order of rotations: Roll (Z), Pitch (X), Yaw (Y)
+ t:=2.0*((x*w)-(y*z));
+ if t<-0.995 then begin
+  result:=-HalfPI;
+ end else if t>0.995 then begin
+  result:=HalfPI;
+ end else begin
+  result:=ArcSin(t);
+ end;
+end;
+
+function TpvQuaternionD.ToYaw:TpvDouble;
+var t:TpvDouble;
+begin
+ // Order of rotations: Roll (Z), Pitch (X), Yaw (Y)
+ t:=2.0*((x*w)-(y*z));
+ if System.abs(t)>0.995 then begin
+  result:=0.0;
+ end else begin
+  result:=ArcTan2(2.0*((x*z)+(y*w)),1.0-(2.0*(sqr(x)+sqr(y))));
+ end;
+end;
+
+function TpvQuaternionD.ToRoll:TpvDouble;
+var t:TpvDouble;
+begin
+ // Order of rotations: Roll (Z), Pitch (X), Yaw (Y)
+ t:=2.0*((x*w)-(y*z));
+ if t<-0.995 then begin
+  result:=-ArcTan2(2.0*((x*z)-(y*w)),1.0-(2.0*(sqr(y)+sqr(z))));
+ end else if t>0.995 then begin
+  result:=ArcTan2(2.0*((x*z)-(y*w)),1.0-(2.0*(sqr(y)+sqr(z))));
+ end else begin
+  result:=ArcTan2(2.0*((x*y)+(z*w)),1.0-(2.0*(sqr(x)+sqr(z))));
+ end;
 end;
 
 class function TpvDecomposedMatrix3x3D.Create:TpvDecomposedMatrix3x3D;
