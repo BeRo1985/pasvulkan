@@ -115,11 +115,15 @@ const EPSILON={$ifdef UseDouble}1e-14{$else}1e-5{$endif}; // actually {$ifdef Us
 
       OnePI=PI;
 
+      QuarterPI=PI*0.25;
+
       HalfPI=PI*0.5;
 
       TwoPI=PI*2.0;
 
       OneOverPI=1.0/PI;
+
+      OneOverQuarterPI=1.0/QuarterPI;
 
       OneOverHalfPI=1.0/HalfPI;
 

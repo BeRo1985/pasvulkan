@@ -122,10 +122,6 @@ const SampleFixUp=1024;
       ResamplerBufferSize=1 shl ResamplerBufferBits;
       ResamplerBufferMask=ResamplerBufferSize-1;
 
-      HalfPI=pi*0.5;
-
-      TwoPI=pi*2.0;
-
       WorldUnitsToMeters=1.0;
 
       MetersToWorldUnits=1.0;
