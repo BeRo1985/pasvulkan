@@ -17801,7 +17801,7 @@ begin
                           TVkShaderStageFlags(VK_SHADER_STAGE_TASK_BIT_EXT),
                           0);
 
- result:=TpvVulkanDescriptorSetLayout.Create(aVulkanDevice);
+ result:=TpvVulkanDescriptorSetLayout.Create(aVulkanDevice,0,true);
 
  // Height map + normal map + blend map + grass map + water map
  result.AddBinding(0,
@@ -17809,7 +17809,7 @@ begin
                    6,
                    ShaderStageFlags,
                    [],
-                   0);
+                   TVkDescriptorBindingFlags(VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT_EXT));
 
  // Planet data
  result.AddBinding(1,
