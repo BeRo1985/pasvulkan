@@ -1350,7 +1350,7 @@ end;
 function TpvQuaternionD.Inverse:TpvQuaternionD;
 var InverseLength:TpvDouble;
 begin
- InverseLength:=1.0/SquaredLength;
+ InverseLength:=1.0/sqrt(sqr(x)+sqr(y)+sqr(z)+sqr(w));
  result.x:=-x*InverseLength;
  result.y:=-y*InverseLength;
  result.z:=-z*InverseLength;
