@@ -3635,15 +3635,31 @@ begin
  result.RawComponents[3,2]:=RawComponents[3,2];
 end;
 
-
 function TpvMatrix4x4D.SimpleLerp(const aWith:TpvMatrix4x4D;const aTime:TpvDouble):TpvMatrix4x4D;
+var InvTime:TpvDouble;
 begin
  if aTime<=0.0 then begin
   result:=self;
  end else if aTime>=1.0 then begin
   result:=aWith;
  end else begin
-  result:=(self*(1.0-aTime))+(aWith*aTime);
+  InvTime:=1.0-aTime;
+  result.RawComponents[0,0]:=(RawComponents[0,0]*InvTime)+(aWith.RawComponents[0,0]*aTime);
+  result.RawComponents[0,1]:=(RawComponents[0,1]*InvTime)+(aWith.RawComponents[0,1]*aTime);
+  result.RawComponents[0,2]:=(RawComponents[0,2]*InvTime)+(aWith.RawComponents[0,2]*aTime);
+  result.RawComponents[0,3]:=(RawComponents[0,3]*InvTime)+(aWith.RawComponents[0,3]*aTime);
+  result.RawComponents[1,0]:=(RawComponents[1,0]*InvTime)+(aWith.RawComponents[1,0]*aTime);
+  result.RawComponents[1,1]:=(RawComponents[1,1]*InvTime)+(aWith.RawComponents[1,1]*aTime);
+  result.RawComponents[1,2]:=(RawComponents[1,2]*InvTime)+(aWith.RawComponents[1,2]*aTime);
+  result.RawComponents[1,3]:=(RawComponents[1,3]*InvTime)+(aWith.RawComponents[1,3]*aTime);
+  result.RawComponents[2,0]:=(RawComponents[2,0]*InvTime)+(aWith.RawComponents[2,0]*aTime);
+  result.RawComponents[2,1]:=(RawComponents[2,1]*InvTime)+(aWith.RawComponents[2,1]*aTime);
+  result.RawComponents[2,2]:=(RawComponents[2,2]*InvTime)+(aWith.RawComponents[2,2]*aTime);
+  result.RawComponents[2,3]:=(RawComponents[2,3]*InvTime)+(aWith.RawComponents[2,3]*aTime);
+  result.RawComponents[3,0]:=(RawComponents[3,0]*InvTime)+(aWith.RawComponents[3,0]*aTime);
+  result.RawComponents[3,1]:=(RawComponents[3,1]*InvTime)+(aWith.RawComponents[3,1]*aTime);
+  result.RawComponents[3,2]:=(RawComponents[3,2]*InvTime)+(aWith.RawComponents[3,2]*aTime);
+  result.RawComponents[3,3]:=(RawComponents[3,3]*InvTime)+(aWith.RawComponents[3,3]*aTime);
  end;
 end;
 
