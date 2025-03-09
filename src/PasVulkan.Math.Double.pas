@@ -149,6 +149,7 @@ type TpvVector2D=record
        function Dot(const aWith:TpvVector3D):TpvDouble;
        function Length:TpvDouble;
        function SquaredLength:TpvDouble;
+       function DistanceTo(const aWith:TpvVector3D):TpvDouble;
        function Normalize:TpvVector3D;
        function Perpendicular:TpvVector3D;
        function Orthogonal:TpvVector3D;
@@ -757,6 +758,11 @@ end;
 function TpvVector3D.Normalize:TpvVector3D;
 begin
  result:=self/Length;
+end;
+
+function TpvVector3D.DistanceTo(const aWith:TpvVector3D):TpvDouble;
+begin
+ result:=(self-aWith).Length;
 end;
 
 function TpvVector3D.Perpendicular:TpvVector3D;
