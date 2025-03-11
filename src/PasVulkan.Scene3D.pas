@@ -1170,6 +1170,7 @@ type EpvScene3D=class(Exception);
                      DoubleSided:boolean;
                      CastingShadows:boolean;
                      ReceiveShadows:boolean;
+                     ForceRayOpaque:boolean;
                      NormalTexture:TTextureReference;
                      NormalTextureScale:TpvFloat;
                      OcclusionTexture:TTextureReference;
@@ -1201,6 +1202,7 @@ type EpvScene3D=class(Exception);
                      DoubleSided:false;
                      CastingShadows:true;
                      ReceiveShadows:true;
+                     ForceRayOpaque:false;
                      NormalTexture:(Texture:nil;TexCoord:0;Transform:(Active:false;Offset:(x:0.0;y:0.0);Rotation:0.0;Scale:(x:1.0;y:1.0)));
                      NormalTextureScale:1.0;
                      OcclusionTexture:(Texture:nil;TexCoord:0;Transform:(Active:false;Offset:(x:0.0;y:0.0);Rotation:0.0;Scale:(x:1.0;y:1.0)));
@@ -6368,6 +6370,10 @@ begin
        end;
       end;
 
+      if RaytracingPrimitive.Material.Data.ForceRayOpaque then begin
+       Opaque:=true;
+      end;
+
       BLASGroup^.fAllOpaque:=BLASGroup^.fAllOpaque and Opaque;
 
       IndexOffset:=fInstance.fBufferRanges.VulkanDrawIndexBufferRange.Offset+RaytracingPrimitive.fNodeMeshPrimitiveInstances[fNode.fNodeMeshInstanceIndex].fStartBufferDrawIndexOffset;
@@ -8998,6 +9004,7 @@ begin
   Flags:=StreamIO.ReadUInt32;
   fData.CastingShadows:=(Flags and 1)<>0;
   fData.ReceiveShadows:=(Flags and 2)<>0;
+  fData.ForceRayOpaque:=(Flags and 4)<>0;
 
   fData.AlphaCutOff:=StreamIO.ReadFloat;
 
@@ -9328,6 +9335,9 @@ begin
   if fData.ReceiveShadows then begin
    Flags:=Flags or 2;
   end;
+  if fData.ForceRayOpaque then begin
+   Flags:=Flags or 4;
+  end;
   StreamIO.WriteUInt32(Flags);
 
   StreamIO.WriteFloat(fData.AlphaCutOff);
@@ -9572,6 +9582,7 @@ begin
 
   fData.CastingShadows:=pos('_noshadowcasting',LowerCaseName)=0;
   fData.ReceiveShadows:=pos('_noshadowreceive',LowerCaseName)=0;
+  fData.ForceRayOpaque:=pos('_forcerayopaque',LowerCaseName)=0;
 
   begin
    fData.AlphaCutOff:=aSourceMaterial.AlphaCutOff;
@@ -10086,6 +10097,10 @@ begin
  fShaderData:=DefaultShaderData;
 
  fShaderData.Flags:=0;
+
+ if fData.ForceRayOpaque then begin
+  fShaderData.Flags:=fShaderData.Flags or (TpvUInt32(1) shl 28);
+ end;
 
  if fData.CastingShadows then begin
   fShaderData.Flags:=fShaderData.Flags or (TpvUInt32(1) shl 29);
