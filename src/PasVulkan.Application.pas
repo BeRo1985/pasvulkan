@@ -585,35 +585,7 @@ type EpvApplication=class(Exception)
      end;
      PpvApplicationInputKey=^TpvApplicationInputKey;
 
-     TpvApplicationInputKeyShortcut=class;
-
-     TpvApplicationInputKeyShortcuts=TpvObjectGenericList<TpvApplicationInputKeyShortcut>;
-
-     TpvApplicationInputKeyShortcutHashMap=TpvHashMap<TpvApplicationInputKey,TpvApplicationInputKeyShortcut>;
-      
-     TpvApplicationInputKeyAction=class
-      private
-       fApplication:TpvApplication; 
-       fID:TpvUInt64;
-       fName:TpvUTF8String;
-       fDescription:TpvUTF8String;
-       fKeyShortcuts:TpvApplicationInputKeyShortcuts;
-      public
-       constructor Create(const aApplication:TpvApplication;
-                          const aName:TpvUTF8String='';
-                          const aDescription:TpvUTF8String=''); reintroduce;
-       destructor Destroy; override;
-       procedure AfterConstruction; override;
-       procedure BeforeDestruction; override;
-       procedure AddKeyShortcut(const aShortcut:TpvApplicationInputKeyShortcut);
-       procedure RemoveKeyShortcut(const aShortcut:TpvApplicationInputKeyShortcut);
-       function HasKeyShortcut(const aShortcut:TpvApplicationInputKeyShortcut):boolean;       
-      published
-       property ID:TpvUInt64 read fID write fID;
-       property Name:TpvUTF8String read fName write fName;
-       property Description:TpvUTF8String read fDescription write fDescription;
-       property KeyShortcuts:TpvApplicationInputKeyShortcuts read fKeyShortcuts write fKeyShortcuts;
-     end; 
+     TpvApplicationInputKeyAction=class;
 
      TpvApplicationInputKeyActions=TpvObjectGenericList<TpvApplicationInputKeyAction>;
 
@@ -640,6 +612,34 @@ type EpvApplication=class(Exception)
        property ScanCode:TpvInt32 read fKey.ScanCode write fKey.ScanCode;
        property KeyModifiers:TpvApplicationInputKeyModifiers read fKey.KeyModifiers write fKey.KeyModifiers;
      end;
+
+     TpvApplicationInputKeyShortcuts=TpvObjectGenericList<TpvApplicationInputKeyShortcut>;
+
+     TpvApplicationInputKeyShortcutHashMap=TpvHashMap<TpvApplicationInputKey,TpvApplicationInputKeyShortcut>;
+
+     TpvApplicationInputKeyAction=class
+      private
+       fApplication:TpvApplication; 
+       fID:TpvUInt64;
+       fName:TpvUTF8String;
+       fDescription:TpvUTF8String;
+       fKeyShortcuts:TpvApplicationInputKeyShortcuts;
+      public
+       constructor Create(const aApplication:TpvApplication;
+                          const aName:TpvUTF8String='';
+                          const aDescription:TpvUTF8String=''); reintroduce;
+       destructor Destroy; override;
+       procedure AfterConstruction; override;
+       procedure BeforeDestruction; override;
+       procedure AddKeyShortcut(const aShortcut:TpvApplicationInputKeyShortcut);
+       procedure RemoveKeyShortcut(const aShortcut:TpvApplicationInputKeyShortcut);
+       function HasKeyShortcut(const aShortcut:TpvApplicationInputKeyShortcut):boolean;       
+      published
+       property ID:TpvUInt64 read fID write fID;
+       property Name:TpvUTF8String read fName write fName;
+       property Description:TpvUTF8String read fDescription write fDescription;
+       property KeyShortcuts:TpvApplicationInputKeyShortcuts read fKeyShortcuts write fKeyShortcuts;
+     end; 
 
      TpvApplicationInputKeyEvent=record
       public
