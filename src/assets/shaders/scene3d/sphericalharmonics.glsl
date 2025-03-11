@@ -1093,6 +1093,34 @@ void SHC3CoefficientsL1ExtractSpecularDirectionalLight(const in SHC3Coefficients
   modifiedSqrtRoughness = clamp(sqrtRoughness / sqrt(avgL1len), SH_VALUE(0.0), SH_VALUE(1.0));
 }
 
+void SHCoefficientsL1ExtractAndSubtractDominantAmbientAndDirectionalLights(inout SHCoefficientsL1 sh, out SH_VEC3 ambient, out SH_VEC3 direction, out SH_VALUE directional){
+  SH_VEC3 avgL1 = SH_VEC3(sh.coefficients[3], sh.coefficients[1], sh.coefficients[2]) * SH_VALUE(0.5);
+  SH_VALUE avgL1len = max(SH_VALUE(1e-5), length(avgL1));
+  direction = avgL1 / avgL1len;
+  directional = SH_VALUE(EvaluateSHCoefficientsL1(sh, direction));
+  SHCoefficientsL1 t = ProjectOntoSHCoefficientsL1(direction, -directional);
+  directional = SH_VALUE(directional * SH_PI);
+  sh = SHCoefficientsL1Sub(sh, t);
+  ambient = SH_VEC3(sh.coefficients[0], sh.coefficients[0], sh.coefficients[0]);
+  sh.coefficients[0] = SH_VALUE(0.0);
+}
+
+void SHC3CoefficientsL1ExtractAndSubtractDominantAmbientAndDirectionalLights(inout SHC3CoefficientsL1 sh, out SH_VEC3 ambient, out SH_VEC3 direction, out SH_VEC3 directional){
+  SH_VEC3 avgL1 = SH_VEC3(
+    dot(sh.coefficients[3] / sh.coefficients[0], SH_VEC3(1.0 / 3.0)),
+    dot(sh.coefficients[1] / sh.coefficients[0], SH_VEC3(1.0 / 3.0)),
+    dot(sh.coefficients[2] / sh.coefficients[0], SH_VEC3(1.0 / 3.0))
+  ) * SH_VALUE(0.5);
+  SH_VALUE avgL1len = max(SH_VALUE(1e-5), length(avgL1));
+  direction = avgL1 / avgL1len;
+  directional = SH_VEC3(EvaluateSHC3CoefficientsL1(sh, direction));
+  SHC3CoefficientsL1 t = ProjectOntoSHC3CoefficientsL1(direction, -directional);
+  directional = SH_VEC3(directional * SH_PI);
+  sh = SHC3CoefficientsL1Sub(sh, t);
+  ambient = SH_VEC3(sh.coefficients[0]);
+  sh.coefficients[0] = SH_VEC3(0.0);
+}
+
 SHCoefficientsL1 SHCoefficientsL1Rotate(const in SHCoefficientsL1 sh, const in mat3 rotation) {
   const SH_VALUE r00 = SH_VALUE(rotation[0][0]);
   const SH_VALUE r10 = SH_VALUE(rotation[1][0]);
