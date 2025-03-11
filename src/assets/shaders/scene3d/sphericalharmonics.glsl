@@ -1093,6 +1093,26 @@ void SHC3CoefficientsL1ExtractSpecularDirectionalLight(const in SHC3Coefficients
   modifiedSqrtRoughness = clamp(sqrtRoughness / sqrt(avgL1len), SH_VALUE(0.0), SH_VALUE(1.0));
 }
 
+void SHCoefficientsL2ExtractSpecularDirectionalLight(const in SHCoefficientsL2 sh, const in SH_VALUE sqrtRoughness, out SH_VEC3 direction, out SH_VALUE intensity, out SH_VALUE modifiedSqrtRoughness) {
+  SH_VEC3 avgL1 = SH_VEC3(sh.coefficients[3], sh.coefficients[1], sh.coefficients[2]) * SH_VALUE(0.5);
+  SH_VALUE avgL1len = max(SH_VALUE(1e-5), length(avgL1));
+  direction = avgL1 / avgL1len;
+  intensity = SH_VALUE(EvaluateSHCoefficientsL2(sh, direction) * SH_PI);
+  modifiedSqrtRoughness = clamp(sqrtRoughness / sqrt(avgL1len), SH_VALUE(0.0), SH_VALUE(1.0));
+}
+
+void SHC3CoefficientsL2ExtractSpecularDirectionalLight(const in SHC3CoefficientsL2 sh, const in SH_VALUE sqrtRoughness, out SH_VEC3 direction, out SH_VEC3 color, out SH_VALUE modifiedSqrtRoughness) {
+  SH_VEC3 avgL1 = SH_VEC3(
+    dot(sh.coefficients[3] / sh.coefficients[0], SH_VEC3(1.0 / 3.0)),
+    dot(sh.coefficients[1] / sh.coefficients[0], SH_VEC3(1.0 / 3.0)),
+    dot(sh.coefficients[2] / sh.coefficients[0], SH_VEC3(1.0 / 3.0))
+  ) * SH_VALUE(0.5);
+  SH_VALUE avgL1len = max(SH_VALUE(1e-5), length(avgL1));
+  direction = avgL1 / avgL1len;
+  color = SH_VEC3(EvaluateSHC3CoefficientsL2(sh, direction) * SH_PI);
+  modifiedSqrtRoughness = clamp(sqrtRoughness / sqrt(avgL1len), SH_VALUE(0.0), SH_VALUE(1.0));
+}
+
 void SHCoefficientsL1ExtractAndSubtractDominantAmbientAndDirectionalLights(inout SHCoefficientsL1 sh, out SH_VEC3 ambient, out SH_VEC3 direction, out SH_VALUE directional, const in SH_VALUE sqrtRoughness, out SH_VALUE modifiedSqrtRoughness) {
   SH_VEC3 avgL1 = SH_VEC3(sh.coefficients[3], sh.coefficients[1], sh.coefficients[2]) * SH_VALUE(0.5);
   SH_VALUE avgL1len = max(SH_VALUE(1e-5), length(avgL1));
@@ -1118,6 +1138,36 @@ void SHC3CoefficientsL1ExtractAndSubtractDominantAmbientAndDirectionalLights(ino
   SHC3CoefficientsL1 t = ProjectOntoSHC3CoefficientsL1(direction, -directional);
   directional = SH_VEC3(directional * SH_PI);
   sh = SHC3CoefficientsL1Sub(sh, t);
+  ambient = SH_VEC3(sh.coefficients[0]);
+  sh.coefficients[0] = SH_VEC3(0.0);
+  modifiedSqrtRoughness = clamp(sqrtRoughness / sqrt(avgL1len), SH_VALUE(0.0), SH_VALUE(1.0));
+}
+
+void SHCoefficientsL2ExtractAndSubtractDominantAmbientAndDirectionalLights(inout SHCoefficientsL2 sh, out SH_VEC3 ambient, out SH_VEC3 direction, out SH_VALUE directional, const in SH_VALUE sqrtRoughness, out SH_VALUE modifiedSqrtRoughness) {
+  SH_VEC3 avgL1 = SH_VEC3(sh.coefficients[3], sh.coefficients[1], sh.coefficients[2]) * SH_VALUE(0.5);
+  SH_VALUE avgL1len = max(SH_VALUE(1e-5), length(avgL1));
+  direction = avgL1 / avgL1len;
+  directional = SH_VALUE(EvaluateSHCoefficientsL2(sh, direction));
+  SHCoefficientsL2 t = ProjectOntoSHCoefficientsL2(direction, -directional);
+  directional = SH_VALUE(directional * SH_PI);
+  sh = SHCoefficientsL2Sub(sh, t);
+  ambient = SH_VEC3(sh.coefficients[0], sh.coefficients[0], sh.coefficients[0]);
+  sh.coefficients[0] = SH_VALUE(0.0);
+  modifiedSqrtRoughness = clamp(sqrtRoughness / sqrt(avgL1len), SH_VALUE(0.0), SH_VALUE(1.0));
+}
+
+void SHC3CoefficientsL2ExtractAndSubtractDominantAmbientAndDirectionalLights(inout SHC3CoefficientsL2 sh, out SH_VEC3 ambient, out SH_VEC3 direction, out SH_VEC3 directional, const in SH_VALUE sqrtRoughness, out SH_VALUE modifiedSqrtRoughness) {
+  SH_VEC3 avgL1 = SH_VEC3(
+    dot(sh.coefficients[3] / sh.coefficients[0], SH_VEC3(1.0 / 3.0)),
+    dot(sh.coefficients[1] / sh.coefficients[0], SH_VEC3(1.0 / 3.0)),
+    dot(sh.coefficients[2] / sh.coefficients[0], SH_VEC3(1.0 / 3.0))
+  ) * SH_VALUE(0.5);
+  SH_VALUE avgL1len = max(SH_VALUE(1e-5), length(avgL1));
+  direction = avgL1 / avgL1len;
+  directional = SH_VEC3(EvaluateSHC3CoefficientsL2(sh, direction));
+  SHC3CoefficientsL2 t = ProjectOntoSHC3CoefficientsL2(direction, -directional);
+  directional = SH_VEC3(directional * SH_PI);
+  sh = SHC3CoefficientsL2Sub(sh, t);
   ambient = SH_VEC3(sh.coefficients[0]);
   sh.coefficients[0] = SH_VEC3(0.0);
   modifiedSqrtRoughness = clamp(sqrtRoughness / sqrt(avgL1len), SH_VALUE(0.0), SH_VALUE(1.0));
