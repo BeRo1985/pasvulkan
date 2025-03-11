@@ -6936,14 +6936,14 @@ begin
     case NativeEvent^.Kind of
      TpvApplicationNativeEventKind.Quit:begin
       KeyShortcut:=nil;
-      if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Down,KEYCODE_QUIT,KEYCODE_QUIT,[]))) and assigned(fProcessor) then begin
-       fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Down,KEYCODE_QUIT,KEYCODE_QUIT,[]));
+      if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Down,KEYCODE_QUIT,KEYCODE_QUIT,[],KeyShortcut))) and assigned(fProcessor) then begin
+       fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Down,KEYCODE_QUIT,KEYCODE_QUIT,[],KeyShortcut));
       end;
-      if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Typed,KEYCODE_QUIT,KEYCODE_QUIT,[]))) and assigned(fProcessor) then begin
-       fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Typed,KEYCODE_QUIT,KEYCODE_QUIT,[]));
+      if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Typed,KEYCODE_QUIT,KEYCODE_QUIT,[],KeyShortcut))) and assigned(fProcessor) then begin
+       fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Typed,KEYCODE_QUIT,KEYCODE_QUIT,[],KeyShortcut));
       end;
-      if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Up,KEYCODE_QUIT,KEYCODE_QUIT,[]))) and assigned(fProcessor) then begin
-       fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Up,KEYCODE_QUIT,KEYCODE_QUIT,[]));
+      if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Up,KEYCODE_QUIT,KEYCODE_QUIT,[],KeyShortcut))) and assigned(fProcessor) then begin
+       fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Up,KEYCODE_QUIT,KEYCODE_QUIT,[],KeyShortcut));
       end;
      end;
      TpvApplicationNativeEventKind.DropFile:begin
@@ -7011,8 +7011,8 @@ begin
         else begin
          ScanCode:=0;
          KeyShortcut:=GetKeyShortCut(KeyCode,ScanCode,KeyModifiers);
-         if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Unicode,KeyCode,ScanCode,KeyModifiers,KeyModifiers))) and assigned(fProcessor) then begin
-          fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Unicode,KeyCode,ScanCode,KeyModifiers,KeyModifiers));
+         if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Unicode,KeyCode,ScanCode,KeyModifiers,KeyShortcut))) and assigned(fProcessor) then begin
+          fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Unicode,KeyCode,ScanCode,KeyModifiers,KeyShortcut));
          end;
         end;
        end;
