@@ -1020,11 +1020,10 @@ void SHCoefficientsL1ExtractSpecularDirectionalLight(const in SHCoefficientsL1 s
 }
 
 void SHRGBCoefficientsL1ExtractSpecularDirectionalLight(const in SHRGBCoefficientsL1 sh, const in SH_VALUE sqrtRoughness, out SH_VEC3 direction, out SH_RGB color, out SH_VALUE modifiedSqrtRoughness) {
-  SH_VEC3 lumCoefficients = SH_VEC3(0.2126, 0.7152, 0.0722);
   SH_VEC3 avgL1 = SH_VEC3(
-    dot(sh.coefficients[3] / sh.coefficients[0], lumCoefficients),
-    dot(sh.coefficients[1] / sh.coefficients[0], lumCoefficients),
-    dot(sh.coefficients[2] / sh.coefficients[0], lumCoefficients)
+    dot(sh.coefficients[3] / sh.coefficients[0], SH_VEC3(1.0 / 3.0)),
+    dot(sh.coefficients[1] / sh.coefficients[0], SH_VEC3(1.0 / 3.0)),
+    dot(sh.coefficients[2] / sh.coefficients[0], SH_VEC3(1.0 / 3.0))
   ) * 0.5;
   SH_VALUE avgL1len = max(1e-5, length(avgL1));
   direction = avgL1 / avgL1len;
@@ -1033,40 +1032,54 @@ void SHRGBCoefficientsL1ExtractSpecularDirectionalLight(const in SHRGBCoefficien
 }
 
 SHCoefficientsL1 SHCoefficientsL1Rotate(const in SHCoefficientsL1 sh, const in mat3 rotation) {
-  vec3 t = rotation * SH_VEC3(sh.coefficients[3], sh.coefficients[1], sh.coefficients[2]);
+  const SH_VALUE r00 = rotation[0][0];
+  const SH_VALUE r10 = rotation[1][0];
+  const SH_VALUE r20 = -rotation[2][0];
+  const SH_VALUE r01 = rotation[0][1];
+  const SH_VALUE r11 = rotation[1][1];
+  const SH_VALUE r21 = -rotation[2][1];
+  const SH_VALUE r02 = -rotation[0][2];
+  const SH_VALUE r12 = -rotation[1][2];
+  const SH_VALUE r22 = rotation[2][2];
   return SHCoefficientsL1(
-    SH_VALUE[SH_L1_COUNT_COEFFICIENTS](      
+    SH_VALUE[SH_L1_COUNT_COEFFICIENTS](
       sh.coefficients[0],
-      t.y,
-      t.z,
-      t.x      
+      ((r11 * sh.coefficients[1]) - (r12 * sh.coefficients[2]) + (r10 * sh.coefficients[3])),
+      ((-r21 * sh.coefficients[1]) + (r22 * sh.coefficients[2]) - (r20 * sh.coefficients[3])),
+      ((r01 * sh.coefficients[1]) - (r02 * sh.coefficients[2]) + (r00 * sh.coefficients[3]))
     )
-  );
+  );  
 }
 
 SHRGBCoefficientsL1 SHRGBCoefficientsL1Rotate(const in SHRGBCoefficientsL1 sh, const in mat3 rotation) {
-  vec3 tr = rotation * vec3(sh.coefficients[3].x, sh.coefficients[1].x, sh.coefficients[2].x);
-  vec3 tg = rotation * vec3(sh.coefficients[3].y, sh.coefficients[1].y, sh.coefficients[2].y);
-  vec3 tb = rotation * vec3(sh.coefficients[3].z, sh.coefficients[1].z, sh.coefficients[2].z);
+  const SH_VALUE r00 = rotation[0][0];
+  const SH_VALUE r10 = rotation[1][0];
+  const SH_VALUE r20 = -rotation[2][0];
+  const SH_VALUE r01 = rotation[0][1];
+  const SH_VALUE r11 = rotation[1][1];
+  const SH_VALUE r21 = -rotation[2][1];
+  const SH_VALUE r02 = -rotation[0][2];
+  const SH_VALUE r12 = -rotation[1][2];
+  const SH_VALUE r22 = rotation[2][2];
   return SHRGBCoefficientsL1(
     SH_RGB[SH_L1_COUNT_COEFFICIENTS](
       sh.coefficients[0],
-      vec3(tr.y, tg.y, tb.y),
-      vec3(tr.z, tg.z, tb.z),
-      vec3(tr.x, tg.x, tb.x)
+      ((r11 * sh.coefficients[1]) - (r12 * sh.coefficients[2]) + (r10 * sh.coefficients[3])),
+      ((-r21 * sh.coefficients[1]) + (r22 * sh.coefficients[2]) - (r20 * sh.coefficients[3])),
+      ((r01 * sh.coefficients[1]) - (r02 * sh.coefficients[2]) + (r00 * sh.coefficients[3]))
     )
-  ); 
+  );  
 }
 
 SHCoefficientsL2 SHCoefficientsL2Rotate(const in SHCoefficientsL2 sh, const in mat3 rotation) {
   const SH_VALUE r00 = rotation[0][0];
-  const SH_VALUE r10 = rotation[0][1];
-  const SH_VALUE r20 = -rotation[0][2];
-  const SH_VALUE r01 = rotation[1][0];
+  const SH_VALUE r10 = rotation[1][0];
+  const SH_VALUE r20 = -rotation[2][0];
+  const SH_VALUE r01 = rotation[0][1];
   const SH_VALUE r11 = rotation[1][1];
-  const SH_VALUE r21 = -rotation[1][2];
-  const SH_VALUE r02 = -rotation[2][0];
-  const SH_VALUE r12 = -rotation[2][1];
+  const SH_VALUE r21 = -rotation[2][1];
+  const SH_VALUE r02 = -rotation[0][2];
+  const SH_VALUE r12 = -rotation[1][2];
   const SH_VALUE r22 = rotation[2][2];
   SHCoefficientsL2 result;
   result.coefficients[0] = sh.coefficients[0];
@@ -1128,13 +1141,13 @@ SHCoefficientsL2 SHCoefficientsL2Rotate(const in SHCoefficientsL2 sh, const in m
 
 SHRGBCoefficientsL2 SHRGBCoefficientsL2Rotate(const in SHRGBCoefficientsL2 sh, const in mat3 rotation) {
   const SH_VALUE r00 = rotation[0][0];
-  const SH_VALUE r10 = rotation[0][1];
-  const SH_VALUE r20 = -rotation[0][2];
-  const SH_VALUE r01 = rotation[1][0];
+  const SH_VALUE r10 = rotation[1][0];
+  const SH_VALUE r20 = -rotation[2][0];
+  const SH_VALUE r01 = rotation[0][1];
   const SH_VALUE r11 = rotation[1][1];
-  const SH_VALUE r21 = -rotation[1][2];
-  const SH_VALUE r02 = -rotation[2][0];
-  const SH_VALUE r12 = -rotation[2][1];
+  const SH_VALUE r21 = -rotation[2][1];
+  const SH_VALUE r02 = -rotation[0][2];
+  const SH_VALUE r12 = -rotation[1][2];
   const SH_VALUE r22 = rotation[2][2];
   SHRGBCoefficientsL2 result;
   result.coefficients[0] = sh.coefficients[0];
