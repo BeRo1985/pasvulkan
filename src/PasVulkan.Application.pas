@@ -2260,6 +2260,14 @@ type EpvApplication=class(Exception)
 
      end;
 
+const pvApplicationInputKeyModifierKeyShortcutMask:TpvApplicationInputKeyModifiers=
+       [
+        TpvApplicationInputKeyModifier.SHIFT,
+        TpvApplicationInputKeyModifier.CTRL,
+        TpvApplicationInputKeyModifier.ALT,
+        TpvApplicationInputKeyModifier.META
+       ]; 
+
 var pvApplication:TpvApplication=nil;
 
     pvDebuggerPresent:Boolean=false;
@@ -4952,17 +4960,19 @@ end;
 function TpvApplicationInput.GetKeyShortcut(const aKeyCode:TpvInt32;
                                             const aScanCode:TpvInt32;
                                             const aKeyModifiers:TpvApplicationInputKeyModifiers):TpvApplicationInputKeyShortcut;
-var Key:TpvApplicationInputKey;
+var KeyModifiers:TpvApplicationInputKeyModifiers;
+    Key:TpvApplicationInputKey;
 begin
+ KeyModifiers:=aKeyModifiers*pvApplicationInputKeyModifierKeyShortcutMask;
 
- Key:=TpvApplicationInputKey.Create(aKeyCode,aScanCode,aKeyModifiers);
+ Key:=TpvApplicationInputKey.Create(aKeyCode,aScanCode,KeyModifiers);
  result:=fKeyShortcutHashMap[Key];
  if assigned(result) then begin
   exit;
  end;
 
  if aKeyCode>=0 then begin
-  Key:=TpvApplicationInputKey.Create(aKeyCode,-1,aKeyModifiers);
+  Key:=TpvApplicationInputKey.Create(aKeyCode,-1,KeyModifiers);
   result:=fKeyShortcutHashMap[Key];
   if assigned(result) then begin
    exit;
@@ -4970,7 +4980,7 @@ begin
  end;
 
  if aScanCode>=0 then begin
-  Key:=TpvApplicationInputKey.Create(-1,aScanCode,aKeyModifiers);
+  Key:=TpvApplicationInputKey.Create(-1,aScanCode,KeyModifiers);
   result:=fKeyShortcutHashMap[Key];
   if assigned(result) then begin
    exit;
@@ -4982,9 +4992,11 @@ end;
 function TpvApplicationInput.AddKeyShortcut(const aKeyCode:TpvInt32;
                                             const aScanCode:TpvInt32;
                                             const aKeyModifiers:TpvApplicationInputKeyModifiers):TpvApplicationInputKeyShortcut;
-var Key:TpvApplicationInputKey;
+var KeyModifiers:TpvApplicationInputKeyModifiers;
+    Key:TpvApplicationInputKey;
 begin
- Key:=TpvApplicationInputKey.Create(aKeyCode,aScanCode,aKeyModifiers);
+ KeyModifiers:=aKeyModifiers*pvApplicationInputKeyModifierKeyShortcutMask;
+ Key:=TpvApplicationInputKey.Create(aKeyCode,aScanCode,KeyModifiers);
  result:=fKeyShortcutHashMap[Key];
  if not assigned(result) then begin
   inc(fKeyShortcutIDCounter);
@@ -5017,10 +5029,12 @@ end;
 procedure TpvApplicationInput.RemoveKeyShortcut(const aKeyCode:TpvInt32;
                                                 const aScanCode:TpvInt32;
                                                 const aKeyModifiers:TpvApplicationInputKeyModifiers);
-var Key:TpvApplicationInputKey;
+var KeyModifiers:TpvApplicationInputKeyModifiers;
+    Key:TpvApplicationInputKey;
     Shortcut:TpvApplicationInputKeyShortcut;
 begin
- Key:=TpvApplicationInputKey.Create(aKeyCode,aScanCode,aKeyModifiers);
+ KeyModifiers:=aKeyModifiers*pvApplicationInputKeyModifierKeyShortcutMask;
+ Key:=TpvApplicationInputKey.Create(aKeyCode,aScanCode,KeyModifiers);
  Shortcut:=fKeyShortcutHashMap[Key];
  if assigned(Shortcut) then begin
   RemoveKeyShortcut(Shortcut);
