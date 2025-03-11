@@ -528,7 +528,6 @@ type EpvApplication=class(Exception)
 
      TpvApplicationOnStep=procedure(const aVulkanApplication:TpvApplication) of object;
 
-     PpvApplicationDisplayOrientation=^TpvApplicationDisplayOrientation;
      TpvApplicationDisplayOrientation=
       (
        LandscapeLeft,
@@ -536,11 +535,11 @@ type EpvApplication=class(Exception)
        Portrait,
        PortraitUpsideDown
       );
+     PpvApplicationDisplayOrientation=^TpvApplicationDisplayOrientation;
 
-     PpvApplicationDisplayOrientations=^TpvApplicationDisplayOrientations;
      TpvApplicationDisplayOrientations=set of TpvApplicationDisplayOrientation;
+     PpvApplicationDisplayOrientations=^TpvApplicationDisplayOrientations;
 
-     PpvApplicationInputKeyEventType=^TpvApplicationInputKeyEventType;
      TpvApplicationInputKeyEventType=
       (
        Down,
@@ -548,8 +547,8 @@ type EpvApplication=class(Exception)
        Typed,
        Unicode
       );
+     PpvApplicationInputKeyEventType=^TpvApplicationInputKeyEventType;
 
-     PpvApplicationInputKeyModifier=^TpvApplicationInputKeyModifier;
      TpvApplicationInputKeyModifier=
       (
        LSHIFT,
@@ -570,24 +569,93 @@ type EpvApplication=class(Exception)
        ALT,
        META
       );
+     PpvApplicationInputKeyModifier=^TpvApplicationInputKeyModifier;
 
-     PpvApplicationInputKeyModifiers=^TpvApplicationInputKeyModifiers;
      TpvApplicationInputKeyModifiers=set of TpvApplicationInputKeyModifier;
+     PpvApplicationInputKeyModifiers=^TpvApplicationInputKeyModifiers;
 
-     PpvApplicationInputKeyEvent=^TpvApplicationInputKeyEventType;
+     TpvApplicationInputKey=packed record
+      public
+       KeyCode:TpvInt32;
+       ScanCode:TpvInt32;
+       KeyModifiers:TpvApplicationInputKeyModifiers;
+       constructor Create(const aKeyCode:TpvInt32;
+                          const aScanCode:TpvInt32;
+                          const aKeyModifiers:TpvApplicationInputKeyModifiers);
+     end;
+     PpvApplicationInputKey=^TpvApplicationInputKey;
+
+     TpvApplicationInputKeyShortcut=class;
+
+     TpvApplicationInputKeyShortcuts=TpvObjectGenericList<TpvApplicationInputKeyShortcut>;
+
+     TpvApplicationInputKeyShortcutHashMap=TpvHashMap<TpvApplicationInputKey,TpvApplicationInputKeyShortcut>;
+      
+     TpvApplicationInputKeyAction=class
+      private
+       fApplication:TpvApplication; 
+       fID:TpvUInt64;
+       fName:TpvUTF8String;
+       fDescription:TpvUTF8String;
+       fKeyShortcuts:TpvApplicationInputKeyShortcuts;
+      public
+       constructor Create(const aApplication:TpvApplication;
+                          const aName:TpvUTF8String='';
+                          const aDescription:TpvUTF8String=''); reintroduce;
+       destructor Destroy; override;
+       procedure AfterConstruction; override;
+       procedure BeforeDestruction; override;
+       procedure AddKeyShortcut(const aShortcut:TpvApplicationInputKeyShortcut);
+       procedure RemoveKeyShortcut(const aShortcut:TpvApplicationInputKeyShortcut);
+       function HasKeyShortcut(const aShortcut:TpvApplicationInputKeyShortcut):boolean;       
+      published
+       property ID:TpvUInt64 read fID write fID;
+       property Name:TpvUTF8String read fName write fName;
+       property Description:TpvUTF8String read fDescription write fDescription;
+       property KeyShortcuts:TpvApplicationInputKeyShortcuts read fKeyShortcuts write fKeyShortcuts;
+     end; 
+
+     TpvApplicationInputKeyActions=TpvObjectGenericList<TpvApplicationInputKeyAction>;
+
+     TpvApplicationInputKeyShortcut=class
+      private
+       fApplication:TpvApplication;
+       fID:TpvUInt64;
+       fKey:TpvApplicationInputKey;
+       fKeyActions:TpvApplicationInputKeyActions;
+      public
+       constructor Create(const aApplication:TpvApplication;
+                          const aKeyCode:TpvInt32;
+                          const aScanCode:TpvInt32;
+                          const aKeyModifiers:TpvApplicationInputKeyModifiers); reintroduce;
+       destructor Destroy; override;
+       procedure AfterConstruction; override;
+       procedure BeforeDestruction; override;
+       procedure AddKeyAction(const aAction:TpvApplicationInputKeyAction);
+       procedure RemoveKeyAction(const aAction:TpvApplicationInputKeyAction);
+       function HasKeyAction(const aAction:TpvApplicationInputKeyAction):boolean;
+      published
+       property ID:TpvUInt64 read fID write fID;
+       property KeyCode:TpvInt32 read fKey.KeyCode write fKey.KeyCode;
+       property ScanCode:TpvInt32 read fKey.ScanCode write fKey.ScanCode;
+       property KeyModifiers:TpvApplicationInputKeyModifiers read fKey.KeyModifiers write fKey.KeyModifiers;
+     end;
+
      TpvApplicationInputKeyEvent=record
       public
        KeyEventType:TpvApplicationInputKeyEventType;
        KeyCode:TpvInt32;
        ScanCode:TpvInt32;
        KeyModifiers:TpvApplicationInputKeyModifiers;
+       KeyShortcut:TpvApplicationInputKeyShortcut;
        constructor Create(const aKeyEventType:TpvApplicationInputKeyEventType;
                           const aKeyCode:TpvInt32;
                           const aScanCode:TpvInt32;
-                          const aKeyModifiers:TpvApplicationInputKeyModifiers);
+                          const aKeyModifiers:TpvApplicationInputKeyModifiers;
+                          const aKeyShortcut:TpvApplicationInputKeyShortcut);
      end;
+     PpvApplicationInputKeyEvent=^TpvApplicationInputKeyEventType;
 
-     PpvApplicationInputPointerEventType=^TpvApplicationInputPointerEventType;
      TpvApplicationInputPointerEventType=
       (
        Down,
@@ -595,8 +663,8 @@ type EpvApplication=class(Exception)
        Motion,
        Drag
       );
+     PpvApplicationInputPointerEventType=^TpvApplicationInputPointerEventType;
 
-     PpvApplicationInputPointerButton=^TpvApplicationInputPointerButton;
      TpvApplicationInputPointerButton=
       (
        None,
@@ -606,11 +674,11 @@ type EpvApplication=class(Exception)
        X1,
        X2
       );
+     PpvApplicationInputPointerButton=^TpvApplicationInputPointerButton;
 
-     PpvApplicationInputPointerButtons=^TpvApplicationInputPointerButtons;
      TpvApplicationInputPointerButtons=set of TpvApplicationInputPointerButton;
+     PpvApplicationInputPointerButtons=^TpvApplicationInputPointerButtons;
 
-     PpvApplicationInputPointerEvent=^TpvApplicationInputPointerEventType;
      TpvApplicationInputPointerEvent=record
       public
        PointerEventType:TpvApplicationInputPointerEventType;
@@ -636,6 +704,7 @@ type EpvApplication=class(Exception)
                           const aButtons:TpvApplicationInputPointerButtons;
                           const aKeyModifiers:TpvApplicationInputKeyModifiers); overload;
      end;
+     PpvApplicationInputPointerEvent=^TpvApplicationInputPointerEventType;
 
      TpvApplicationInputProcessor=class
       public
@@ -1033,6 +1102,9 @@ type EpvApplication=class(Exception)
        fTextInput:longbool;
        fLastTextInput:longbool;
        fKeyCodeNameHashmap:TpvApplicationInputKeycodeStringHashMap;
+       fKeyShortcuts:TpvApplicationInputKeyShortcuts;
+       fKeyShortcutHashMap:TpvApplicationInputKeyShortcutHashMap;
+       fKeyShortcutIDCounter:TpvUInt64;
 {$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
        function TranslateSDLKeyCode(const aKeyCode,aScanCode:TpvInt32):TpvInt32;
        function TranslateSDLScanCode(const aKeyCode,aScanCode:TpvInt32):TpvInt32;
@@ -1044,6 +1116,17 @@ type EpvApplication=class(Exception)
       public
        constructor Create(const aVulkanApplication:TpvApplication); reintroduce;
        destructor Destroy; override;
+       procedure ClearKeyDefinitions;
+       function GetKeyShortcut(const aKeyCode:TpvInt32;
+                               const aScanCode:TpvInt32;
+                               const aKeyModifiers:TpvApplicationInputKeyModifiers):TpvApplicationInputKeyShortcut;
+       function AddKeyShortcut(const aKeyCode:TpvInt32;
+                               const aScanCode:TpvInt32;
+                               const aKeyModifiers:TpvApplicationInputKeyModifiers):TpvApplicationInputKeyShortcut;
+       procedure RemoveKeyShortcut(const aKeyShortcut:TpvApplicationInputKeyShortcut); overload;
+       procedure RemoveKeyShortcut(const aKeyCode:TpvInt32;
+                                   const aScanCode:TpvInt32;
+                                   const aKeyModifiers:TpvApplicationInputKeyModifiers); overload;
        function KeyCodeToString(const aKeyCode:TpvInt32):TpvApplicationRawByteString;
        function StringToKeyCode(const aString:TpvApplicationRawByteString):TpvInt32;
        function GetAccelerometerX:TpvFloat;
@@ -3233,15 +3316,165 @@ begin
  inherited Destroy;
 end;
 
+constructor TpvApplicationInputKey.Create(const aKeyCode:TpvInt32;
+                                          const aScanCode:TpvInt32;
+                                          const aKeyModifiers:TpvApplicationInputKeyModifiers);
+begin
+ KeyCode:=aKeyCode;
+ ScanCode:=aScanCode;
+ KeyModifiers:=aKeyModifiers;
+end;
+
+constructor TpvApplicationInputKeyShortcut.Create(const aApplication:TpvApplication;
+                                                  const aKeyCode:TpvInt32;
+                                                  const aScanCode:TpvInt32;
+                                                  const aKeyModifiers:TpvApplicationInputKeyModifiers);
+begin
+ inherited Create;
+ fApplication:=aApplication;
+ fKey:=TpvApplicationInputKey.Create(aKeyCode,aScanCode,aKeyModifiers);
+ fKeyActions:=TpvApplicationInputKeyActions.Create(false);
+end;
+
+destructor TpvApplicationInputKeyShortcut.Destroy;
+begin
+ FreeAndNil(fKeyActions);
+ inherited Destroy;
+end;
+
+procedure TpvApplicationInputKeyShortcut.AfterConstruction;
+var Action:TpvApplicationInputKeyAction;
+begin
+ inherited AfterConstruction;
+ for Action in fKeyActions do begin
+  if Action.fKeyShortcuts.IndexOf(self)<0 then begin
+   Action.fKeyShortcuts.Add(self);
+  end;
+ end;
+end;
+
+procedure TpvApplicationInputKeyShortcut.BeforeDestruction;
+var Index:TpvInt32;
+    Action:TpvApplicationInputKeyAction;
+begin
+ for Action in fKeyActions do begin
+  Index:=Action.fKeyShortcuts.IndexOf(self);
+  if Index>=0 then begin
+   Action.fKeyShortcuts.Delete(Index);
+  end;
+ end;
+ inherited BeforeDestruction;
+end;
+
+procedure TpvApplicationInputKeyShortcut.AddKeyAction(const aAction:TpvApplicationInputKeyAction);
+begin
+ if fKeyActions.IndexOf(aAction)<0 then begin
+  fKeyActions.Add(aAction);
+  if aAction.fKeyShortcuts.IndexOf(self)<0 then begin
+   aAction.fKeyShortcuts.Add(self);
+  end; 
+ end;
+end;
+
+procedure TpvApplicationInputKeyShortcut.RemoveKeyAction(const aAction:TpvApplicationInputKeyAction);
+var Index:TpvInt32;
+begin
+ Index:=fKeyActions.IndexOf(aAction);
+ if Index>=0 then begin
+  fKeyActions.Delete(Index);
+  Index:=aAction.fKeyShortcuts.IndexOf(self);
+  if Index>=0 then begin
+   aAction.fKeyShortcuts.Delete(Index);
+  end;
+ end;
+end;
+
+function TpvApplicationInputKeyShortcut.HasKeyAction(const aAction:TpvApplicationInputKeyAction):boolean;
+begin
+ result:=fKeyActions.IndexOf(aAction)>=0;
+end;
+
+constructor TpvApplicationInputKeyAction.Create(const aApplication:TpvApplication;
+                                                const aName:TpvUTF8String;
+                                                const aDescription:TpvUTF8String);
+begin
+ inherited Create;
+ fApplication:=aApplication;
+ fID:=0;
+ fName:=aName;
+ fDescription:=aDescription;
+ fKeyShortcuts:=TpvApplicationInputKeyShortcuts.Create(false);
+end;
+
+destructor TpvApplicationInputKeyAction.Destroy;
+begin
+ FreeAndNil(fKeyShortcuts);
+ inherited Destroy;
+end;
+
+procedure TpvApplicationInputKeyAction.AfterConstruction;
+var Shortcut:TpvApplicationInputKeyShortcut;
+begin
+ inherited AfterConstruction;
+ for Shortcut in fKeyShortcuts do begin
+  if Shortcut.fKeyActions.IndexOf(self)<0 then begin
+   Shortcut.fKeyActions.Add(self);
+  end;
+ end;
+end;
+
+procedure TpvApplicationInputKeyAction.BeforeDestruction;
+var Index:TpvInt32;
+    Shortcut:TpvApplicationInputKeyShortcut;
+begin
+ for Shortcut in fKeyShortcuts do begin
+  Index:=Shortcut.fKeyActions.IndexOf(self);
+  if Index>=0 then begin
+   Shortcut.fKeyActions.Delete(Index);
+  end;
+ end;
+ inherited BeforeDestruction;
+end;
+
+procedure TpvApplicationInputKeyAction.AddKeyShortcut(const aShortcut:TpvApplicationInputKeyShortcut);
+begin
+ if fKeyShortcuts.IndexOf(aShortcut)<0 then begin
+  fKeyShortcuts.Add(aShortcut);
+  if aShortcut.fKeyActions.IndexOf(self)<0 then begin
+   aShortcut.fKeyActions.Add(self);
+  end; 
+ end;
+end;
+
+procedure TpvApplicationInputKeyAction.RemoveKeyShortcut(const aShortcut:TpvApplicationInputKeyShortcut);
+var Index:TpvInt32;
+begin
+ Index:=fKeyShortcuts.IndexOf(aShortcut);
+ if Index>=0 then begin
+  fKeyShortcuts.Delete(Index);
+  Index:=aShortcut.fKeyActions.IndexOf(self);
+  if Index>=0 then begin
+   aShortcut.fKeyActions.Delete(Index);
+  end;
+ end;
+end;
+
+function TpvApplicationInputKeyAction.HasKeyShortcut(const aShortcut:TpvApplicationInputKeyShortcut):boolean;
+begin
+ result:=fKeyShortcuts.IndexOf(aShortcut)>=0;
+end;
+
 constructor TpvApplicationInputKeyEvent.Create(const aKeyEventType:TpvApplicationInputKeyEventType;
                                                const aKeyCode:TpvInt32;
                                                const aScanCode:TpvInt32;
-                                               const aKeyModifiers:TpvApplicationInputKeyModifiers);
+                                               const aKeyModifiers:TpvApplicationInputKeyModifiers;
+                                               const aKeyShortcut:TpvApplicationInputKeyShortcut);
 begin
  KeyEventType:=aKeyEventType;
  KeyCode:=aKeyCode;
  ScanCode:=aScanCode;
  KeyModifiers:=aKeyModifiers;
+ KeyShortcut:=aKeyShortcut;
 end;
 
 constructor TpvApplicationInputPointerEvent.Create(const aPointerEventType:TpvApplicationInputPointerEventType;
@@ -4679,16 +4912,105 @@ begin
  fMainJoystick:=nil;
  fTextInput:=false;
  fLastTextInput:=false;
+ fKeyShortcuts:=TpvApplicationInputKeyShortcuts.Create(true);
+ fKeyShortcutHashMap:=TpvApplicationInputKeyShortcutHashMap.Create(nil);
+ fKeyShortcutIDCounter:=0;
 end;
 
 destructor TpvApplicationInput.Destroy;
 begin
+ FreeAndNil(fKeyShortcuts);
+ FreeAndNil(fKeyShortcutHashMap);
  FreeAndNil(fJoysticks);
  FreeAndNil(fJoystickIDHashMap);
  FreeAndNil(fKeyCodeNameHashmap);
  fEvents:=nil;
  fCriticalSection.Free;
  inherited Destroy;
+end;
+
+procedure TpvApplicationInput.ClearKeyDefinitions;
+begin
+ fKeyShortcuts.Clear;
+ fKeyShortcutHashMap.Clear;
+end;
+
+function TpvApplicationInput.GetKeyShortcut(const aKeyCode:TpvInt32;
+                                            const aScanCode:TpvInt32;
+                                            const aKeyModifiers:TpvApplicationInputKeyModifiers):TpvApplicationInputKeyShortcut;
+var Key:TpvApplicationInputKey;
+begin
+
+ Key:=TpvApplicationInputKey.Create(aKeyCode,aScanCode,aKeyModifiers);
+ result:=fKeyShortcutHashMap[Key];
+ if assigned(result) then begin
+  exit;
+ end;
+
+ if aKeyCode>=0 then begin
+  Key:=TpvApplicationInputKey.Create(aKeyCode,-1,aKeyModifiers);
+  result:=fKeyShortcutHashMap[Key];
+  if assigned(result) then begin
+   exit;
+  end;
+ end;
+
+ if aScanCode>=0 then begin
+  Key:=TpvApplicationInputKey.Create(-1,aScanCode,aKeyModifiers);
+  result:=fKeyShortcutHashMap[Key];
+  if assigned(result) then begin
+   exit;
+  end;
+ end;
+
+end;
+
+function TpvApplicationInput.AddKeyShortcut(const aKeyCode:TpvInt32;
+                                            const aScanCode:TpvInt32;
+                                            const aKeyModifiers:TpvApplicationInputKeyModifiers):TpvApplicationInputKeyShortcut;
+var Key:TpvApplicationInputKey;
+begin
+ Key:=TpvApplicationInputKey.Create(aKeyCode,aScanCode,aKeyModifiers);
+ result:=fKeyShortcutHashMap[Key];
+ if not assigned(result) then begin
+  inc(fKeyShortcutIDCounter);
+  result:=TpvApplicationInputKeyShortcut.Create(pvApplication,aKeyCode,aScanCode,aKeyModifiers);
+  try
+   result.fID:=fKeyShortcutIDCounter;
+   fKeyShortcutHashMap.Add(Key,result);
+  finally
+   fKeyShortcuts.Add(result);
+  end;
+ end;
+end;
+
+procedure TpvApplicationInput.RemoveKeyShortcut(const aKeyShortcut:TpvApplicationInputKeyShortcut);
+var Index:TpvInt32;
+begin
+ if assigned(aKeyShortcut) then begin
+  Index:=fKeyShortcuts.IndexOf(aKeyShortcut);
+  if Index>=0 then begin
+   try
+    fKeyShortcuts.Delete(Index);
+    fKeyShortcutHashMap.Delete(aKeyShortcut.fKey);
+   finally
+    aKeyShortcut.Free;
+   end;
+  end;
+ end;
+end;
+
+procedure TpvApplicationInput.RemoveKeyShortcut(const aKeyCode:TpvInt32;
+                                                const aScanCode:TpvInt32;
+                                                const aKeyModifiers:TpvApplicationInputKeyModifiers);
+var Key:TpvApplicationInputKey;
+    Shortcut:TpvApplicationInputKeyShortcut;
+begin
+ Key:=TpvApplicationInputKey.Create(aKeyCode,aScanCode,aKeyModifiers);
+ Shortcut:=fKeyShortcutHashMap[Key];
+ if assigned(Shortcut) then begin
+  RemoveKeyShortcut(Shortcut);
+ end;
 end;
 
 function TpvApplicationInput.KeyCodeToString(const aKeyCode:TpvInt32):TpvApplicationRawByteString;
@@ -6360,6 +6682,7 @@ var Index,PointerID,KeyCode,ScanCode,Position:TpvInt32;
     Event:PpvApplicationEvent;
     SDLEvent:PSDL_Event;
     OK:boolean;
+    KeyShortcut:TpvApplicationInputKeyShortcut;
 begin
  fCriticalSection.Acquire;
  try
@@ -6371,14 +6694,15 @@ begin
     fCurrentEventTime:=fEventTimes[fEventCount];
     case SDLEvent^.type_ of
      SDL_QUITEV:begin
-      if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Down,KEYCODE_QUIT,KEYCODE_QUIT,[]))) and assigned(fProcessor) then begin
-       fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Down,KEYCODE_QUIT,KEYCODE_QUIT,[]));
+      KeyShortcut:=nil;
+      if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Down,KEYCODE_QUIT,KEYCODE_QUIT,[],KeyShortcut))) and assigned(fProcessor) then begin
+       fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Down,KEYCODE_QUIT,KEYCODE_QUIT,[],KeyShortcut));
       end;
-      if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Typed,KEYCODE_QUIT,KEYCODE_QUIT,[]))) and assigned(fProcessor) then begin
-       fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Typed,KEYCODE_QUIT,KEYCODE_QUIT,[]));
+      if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Typed,KEYCODE_QUIT,KEYCODE_QUIT,[],KeyShortcut))) and assigned(fProcessor) then begin
+       fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Typed,KEYCODE_QUIT,KEYCODE_QUIT,[],KeyShortcut));
       end;
-      if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Up,KEYCODE_QUIT,KEYCODE_QUIT,[]))) and assigned(fProcessor) then begin
-       fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Up,KEYCODE_QUIT,KEYCODE_QUIT,[]));
+      if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Up,KEYCODE_QUIT,KEYCODE_QUIT,[],KeyShortcut))) and assigned(fProcessor) then begin
+       fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Up,KEYCODE_QUIT,KEYCODE_QUIT,[],KeyShortcut));
       end;
      end;
      SDL_DROPFILE:begin
@@ -6394,13 +6718,14 @@ begin
       KeyCode:=TranslateSDLKeyCode(SDLEvent^.key.keysym.sym,SDLEvent^.key.keysym.scancode);
       ScanCode:=TranslateSDLScanCode(SDLEvent^.key.keysym.sym,SDLEvent^.key.keysym.scancode);
       KeyModifiers:=TranslateSDLKeyModifier(SDLEvent^.key.keysym.modifier);
+      KeyShortcut:=GetKeyShortCut(KeyCode,ScanCode,KeyModifiers);
       case SDLEvent^.type_ of
        SDL_KEYDOWN:begin
         fKeyDown[KeyCode and $ffff]:=true;
         inc(fKeyDownCount);
         fJustKeyDown[KeyCode and $ffff]:=true;
-        if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Down,KeyCode,ScanCode,KeyModifiers))) and assigned(fProcessor) then begin
-         fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Down,KeyCode,ScanCode,KeyModifiers));
+        if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Down,KeyCode,ScanCode,KeyModifiers,KeyShortcut))) and assigned(fProcessor) then begin
+         fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Down,KeyCode,ScanCode,KeyModifiers,KeyShortcut));
         end;
        end;
        SDL_KEYUP:begin
@@ -6409,13 +6734,13 @@ begin
          dec(fKeyDownCount);
         end;
         fJustKeyDown[KeyCode and $ffff]:=false;
-        if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Up,KeyCode,ScanCode,KeyModifiers))) and assigned(fProcessor) then begin
-         fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Up,KeyCode,ScanCode,KeyModifiers));
+        if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Up,KeyCode,ScanCode,KeyModifiers,KeyShortcut))) and assigned(fProcessor) then begin
+         fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Up,KeyCode,ScanCode,KeyModifiers,KeyShortcut));
         end;
        end;
        SDL_KEYTYPED:begin
-        if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Typed,KeyCode,ScanCode,KeyModifiers))) and assigned(fProcessor) then begin
-         fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Typed,KeyCode,ScanCode,KeyModifiers));
+        if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Typed,KeyCode,ScanCode,KeyModifiers,KeyShortcut))) and assigned(fProcessor) then begin
+         fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Typed,KeyCode,ScanCode,KeyModifiers,KeyShortcut));
         end;
        end;
       end;
@@ -6430,8 +6755,10 @@ begin
          break;
         end;
         else begin
-         if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Unicode,KeyCode,ScanCode,KeyModifiers))) and assigned(fProcessor) then begin
-          fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Unicode,KeyCode,ScanCode,KeyModifiers));
+         ScanCode:=0;
+         KeyShortcut:=GetKeyShortCut(KeyCode,ScanCode,KeyModifiers);
+         if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Unicode,KeyCode,ScanCode,KeyModifiers,KeyShortcut))) and assigned(fProcessor) then begin
+          fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Unicode,KeyCode,ScanCode,KeyModifiers,KeyShortcut));
          end;
         end;
        end;
@@ -6596,6 +6923,7 @@ var Index,PointerID,KeyCode,ScanCode,Position:TpvInt32;
     Event:PpvApplicationEvent;
     NativeEvent:PpvApplicationNativeEvent;
     OK:boolean;
+    KeyShortcut:TpvApplicationInputKeyShortcut;
 begin
  fCriticalSection.Acquire;
  try
@@ -6607,6 +6935,7 @@ begin
     fCurrentEventTime:=fEventTimes[fEventCount];
     case NativeEvent^.Kind of
      TpvApplicationNativeEventKind.Quit:begin
+      KeyShortcut:=nil;
       if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Down,KEYCODE_QUIT,KEYCODE_QUIT,[]))) and assigned(fProcessor) then begin
        fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Down,KEYCODE_QUIT,KEYCODE_QUIT,[]));
       end;
@@ -6632,13 +6961,14 @@ begin
       KeyCode:=NativeEvent^.KeyCode;
       ScanCode:=NativeEvent^.ScanCode;
       KeyModifiers:=NativeEvent^.KeyModifiers;
+      KeyShortcut:=GetKeyShortCut(KeyCode,ScanCode,KeyModifiers);
       case NativeEvent^.Kind of
        TpvApplicationNativeEventKind.KeyDown:begin
         fKeyDown[KeyCode and $ffff]:=true;
         inc(fKeyDownCount);
         fJustKeyDown[KeyCode and $ffff]:=true;
-        if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Down,KeyCode,ScanCode,KeyModifiers))) and assigned(fProcessor) then begin
-         fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Down,KeyCode,ScanCode,KeyModifiers));
+        if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Down,KeyCode,ScanCode,KeyModifiers,KeyShortcut))) and assigned(fProcessor) then begin
+         fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Down,KeyCode,ScanCode,KeyModifiers,KeyShortcut));
         end;
        end;
        TpvApplicationNativeEventKind.KeyUp:begin
@@ -6647,13 +6977,13 @@ begin
          dec(fKeyDownCount);
         end;
         fJustKeyDown[KeyCode and $ffff]:=false;
-        if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Up,KeyCode,ScanCode,KeyModifiers))) and assigned(fProcessor) then begin
-         fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Up,KeyCode,ScanCode,KeyModifiers));
+        if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Up,KeyCode,ScanCode,KeyModifiers,KeyShortcut))) and assigned(fProcessor) then begin
+         fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Up,KeyCode,ScanCode,KeyModifiers,KeyShortcut));
         end;
        end;
        TpvApplicationNativeEventKind.KeyTyped:begin
-        if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Typed,KeyCode,ScanCode,KeyModifiers))) and assigned(fProcessor) then begin
-         fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Typed,KeyCode,ScanCode,KeyModifiers));
+        if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Typed,KeyCode,ScanCode,KeyModifiers,KeyShortcut))) and assigned(fProcessor) then begin
+         fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Typed,KeyCode,ScanCode,KeyModifiers,KeyShortcut));
         end;
        end;
        else begin
@@ -6663,8 +6993,10 @@ begin
      TpvApplicationNativeEventKind.UnicodeCharTyped:begin
       KeyModifiers:=[];
       KeyCode:=NativeEvent^.CharVal;
-      if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Unicode,KeyCode,ScanCode,KeyModifiers))) and assigned(fProcessor) then begin
-       fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Unicode,KeyCode,ScanCode,KeyModifiers));
+      ScanCode:=0;
+      KeyShortcut:=GetKeyShortCut(KeyCode,ScanCode,KeyModifiers);
+      if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Unicode,KeyCode,ScanCode,KeyModifiers,KeyShortcut))) and assigned(fProcessor) then begin
+       fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Unicode,KeyCode,ScanCode,KeyModifiers,KeyShortcut));
       end;
      end;
      TpvApplicationNativeEventKind.TextInput:begin
@@ -6677,8 +7009,10 @@ begin
          break;
         end;
         else begin
-         if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Unicode,KeyCode,KeyCode,KeyModifiers))) and assigned(fProcessor) then begin
-          fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Unicode,KeyCode,KeyCode,KeyModifiers));
+         ScanCode:=0;
+         KeyShortcut:=GetKeyShortCut(KeyCode,ScanCode,KeyModifiers);
+         if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Unicode,KeyCode,ScanCode,KeyModifiers,KeyModifiers))) and assigned(fProcessor) then begin
+          fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Unicode,KeyCode,ScanCode,KeyModifiers,KeyModifiers));
          end;
         end;
        end;
