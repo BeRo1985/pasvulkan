@@ -450,6 +450,38 @@ SHC3CoefficientsL1 SHC3CoefficientsL1FromL2(const in SHC3CoefficientsL2 sh){
   );
 }
 
+SHCoefficientsL2 SHCoefficientsL1ToL2(const in SHCoefficientsL1 sh){
+  return SHCoefficientsL2(
+    SH_VALUE[SH_L2_COUNT_COEFFICIENTS](
+      sh.coefficients[0],
+      sh.coefficients[1],
+      sh.coefficients[2],
+      sh.coefficients[3],
+      SH_VALUE(0.0),
+      SH_VALUE(0.0),
+      SH_VALUE(0.0),
+      SH_VALUE(0.0),
+      SH_VALUE(0.0)
+    )
+  );
+}
+
+SHC3CoefficientsL2 SHC3CoefficientsL1ToL2(const in SHC3CoefficientsL1 sh){
+  return SHC3CoefficientsL2(
+    SH_VEC3[SH_L2_COUNT_COEFFICIENTS](
+      sh.coefficients[0],
+      sh.coefficients[1],
+      sh.coefficients[2],
+      sh.coefficients[3],
+      SH_VEC3(0.0, 0.0, 0.0),
+      SH_VEC3(0.0, 0.0, 0.0),
+      SH_VEC3(0.0, 0.0, 0.0),
+      SH_VEC3(0.0, 0.0, 0.0),
+      SH_VEC3(0.0, 0.0, 0.0)
+    )
+  );
+}
+
 SHC3CoefficientsL1 SHC3CoefficientsL1FromSHCoefficientsL1(const in SHCoefficientsL1 sh){
   return SHC3CoefficientsL1(
     SH_VEC3[SH_L1_COUNT_COEFFICIENTS](
@@ -1227,4 +1259,237 @@ SHC3CoefficientsL2 SHC3CoefficientsL2Rotate(const in SHC3CoefficientsL2 sh, cons
   return result;
 }
 
+SHCoefficientsL2 SHCoefficientsL2Multiply(const in SHCoefficientsL2 f, const in SHCoefficientsL2 g) {
+  SHCoefficientsL2 y;
+
+  SH_VALUE tf, tg, t;
+  
+  // [0,0]: 0,
+  y.coefficients[0] = SH_VALUE(0.282094792935999980) * f.coefficients[0] * g.coefficients[0];
+
+  // [1,1]: 0,6,8,
+  tf = (SH_VALUE(0.282094791773000010) * f.coefficients[0]) + (SH_VALUE(-0.126156626101000010) * f.coefficients[6]) + (SH_VALUE(-0.218509686119999990) * f.coefficients[8]);
+  tg = (SH_VALUE(0.282094791773000010) * g.coefficients[0]) + (SH_VALUE(-0.126156626101000010) * g.coefficients[6]) + (SH_VALUE(-0.218509686119999990) * g.coefficients[8]);
+  y.coefficients[1] = (tf * g.coefficients[1]) + (tg * f.coefficients[1]);
+  t = f.coefficients[1] * g.coefficients[1];
+  y.coefficients[0] += (SH_VALUE(0.282094791773000010) * t);
+  y.coefficients[6] = (SH_VALUE(-0.126156626101000010) * t);
+  y.coefficients[8] = (SH_VALUE(-0.218509686119999990) * t);
+
+  // [1,2]: 5,
+  tf = (SH_VALUE(0.218509686118000010) * f.coefficients[5]);
+  tg = (SH_VALUE(0.218509686118000010) * g.coefficients[5]);
+  y.coefficients[1] += (tf * g.coefficients[2]) + (tg * f.coefficients[2]);
+  y.coefficients[2] = (tf * g.coefficients[1]) + (tg * f.coefficients[1]);
+  t = (f.coefficients[1] * g.coefficients[2]) + (f.coefficients[2] * g.coefficients[1]);
+  y.coefficients[5] = (SH_VALUE(0.218509686118000010) * t);
+
+  // [1,3]: 4,
+  tf = (SH_VALUE(0.218509686114999990) * f.coefficients[4]);
+  tg = (SH_VALUE(0.218509686114999990) * g.coefficients[4]);
+  y.coefficients[1] += (tf * g.coefficients[3]) + (tg * f.coefficients[3]);
+  y.coefficients[3] = (tf * g.coefficients[1]) + (tg * f.coefficients[1]);
+  t = (f.coefficients[1] * g.coefficients[3]) + (f.coefficients[3] * g.coefficients[1]);
+  y.coefficients[4] = (SH_VALUE(0.218509686114999990) * t);
+
+  // [2,2]: 0,6,
+  tf = (SH_VALUE(0.282094795249000000) * f.coefficients[0]) + (SH_VALUE(0.252313259986999990) * f.coefficients[6]);
+  tg = (SH_VALUE(0.282094795249000000) * g.coefficients[0]) + (SH_VALUE(0.252313259986999990) * g.coefficients[6]);
+  y.coefficients[2] += (tf * g.coefficients[2]) + (tg * f.coefficients[2]);
+  t = f.coefficients[2] * g.coefficients[2];
+  y.coefficients[0] += (SH_VALUE(0.282094795249000000) * t);
+  y.coefficients[6] += (SH_VALUE(0.252313259986999990) * t);
+
+  // [2,3]: 7,
+  tf = (SH_VALUE(0.218509686118000010) * f.coefficients[7]);
+  tg = (SH_VALUE(0.218509686118000010) * g.coefficients[7]);
+  y.coefficients[2] += (tf * g.coefficients[3]) + (tg * f.coefficients[3]);
+  y.coefficients[3] += (tf * g.coefficients[2]) + (tg * f.coefficients[2]);
+  t = (f.coefficients[2] * g.coefficients[3]) + (f.coefficients[3] * g.coefficients[2]);
+  y.coefficients[7] = (SH_VALUE(0.218509686118000010) * t);
+
+  // [3,3]: 0,6,8,
+  tf = (SH_VALUE(0.282094791773000010) * f.coefficients[0]) + (SH_VALUE(-0.126156626101000010) * f.coefficients[6]) + (SH_VALUE(0.218509686119999990) * f.coefficients[8]);
+  tg = (SH_VALUE(0.282094791773000010) * g.coefficients[0]) + (SH_VALUE(-0.126156626101000010) * g.coefficients[6]) + (SH_VALUE(0.218509686119999990) * g.coefficients[8]);
+  y.coefficients[3] += (tf * g.coefficients[3]) + (tg * f.coefficients[3]);
+  t = f.coefficients[3] * g.coefficients[3];
+  y.coefficients[0] += (SH_VALUE(0.282094791773000010) * t);
+  y.coefficients[6] += (SH_VALUE(-0.126156626101000010) * t);
+  y.coefficients[8] += (SH_VALUE(0.218509686119999990) * t);
+
+  // [4,4]: 0,6,
+  tf = (SH_VALUE(0.282094791770000020) * f.coefficients[0]) + (SH_VALUE(-0.180223751576000010) * f.coefficients[6]);
+  tg = (SH_VALUE(0.282094791770000020) * g.coefficients[0]) + (SH_VALUE(-0.180223751576000010) * g.coefficients[6]);
+  y.coefficients[4] += (tf * g.coefficients[4]) + (tg * f.coefficients[4]);
+  t = f.coefficients[4] * g.coefficients[4];
+  y.coefficients[0] += (SH_VALUE(0.282094791770000020) * t);
+  y.coefficients[6] += (SH_VALUE(-0.180223751576000010) * t);
+
+  // [4,5]: 7,
+  tf = (SH_VALUE(0.156078347226000000) * f.coefficients[7]);
+  tg = (SH_VALUE(0.156078347226000000) * g.coefficients[7]);
+  y.coefficients[4] += (tf * g.coefficients[5]) + (tg * f.coefficients[5]);
+  y.coefficients[5] += (tf * g.coefficients[4]) + (tg * f.coefficients[4]);
+  t = (f.coefficients[4] * g.coefficients[5]) + (f.coefficients[5] * g.coefficients[4]);
+  y.coefficients[7] += (SH_VALUE(0.156078347226000000) * t);
+
+  // [5,5]: 0,6,8,
+  tf = (SH_VALUE(0.282094791773999990) * f.coefficients[0]) + (SH_VALUE(0.090111875786499998) * f.coefficients[6]) + (SH_VALUE(-0.156078347227999990) * f.coefficients[8]);
+  tg = (SH_VALUE(0.282094791773999990) * g.coefficients[0]) + (SH_VALUE(0.090111875786499998) * g.coefficients[6]) + (SH_VALUE(-0.156078347227999990) * g.coefficients[8]);
+  y.coefficients[5] += (tf * g.coefficients[5]) + (tg * f.coefficients[5]);
+  t = f.coefficients[5] * g.coefficients[5];
+  y.coefficients[0] += (SH_VALUE(0.282094791773999990) * t);
+  y.coefficients[6] += (SH_VALUE(0.090111875786499998) * t);
+  y.coefficients[8] += (SH_VALUE(-0.156078347227999990) * t);
+
+  // [6,6]: 0,6,
+  tf = (SH_VALUE(0.282094797560000000) * f.coefficients[0]);
+  tg = (SH_VALUE(0.282094797560000000) * g.coefficients[0]);
+  y.coefficients[6] += (tf * g.coefficients[6]) + (tg * f.coefficients[6]);
+  t = f.coefficients[6] * g.coefficients[6];
+  y.coefficients[0] += (SH_VALUE(0.282094797560000000) * t);
+  y.coefficients[6] += (SH_VALUE(0.180223764527000010) * t);
+
+  // [7,7]: 0,6,8,
+  tf = (SH_VALUE(0.282094791773999990) * f.coefficients[0]) + (SH_VALUE(0.090111875786499998) * f.coefficients[6]) + (SH_VALUE(0.156078347227999990) * f.coefficients[8]);
+  tg = (SH_VALUE(0.282094791773999990) * g.coefficients[0]) + (SH_VALUE(0.090111875786499998) * g.coefficients[6]) + (SH_VALUE(0.156078347227999990) * g.coefficients[8]);
+  y.coefficients[7] += (tf * g.coefficients[7]) + (tg * f.coefficients[7]);
+  t = f.coefficients[7] * g.coefficients[7];
+  y.coefficients[0] += (SH_VALUE(0.282094791773999990) * t);
+  y.coefficients[6] += (SH_VALUE(0.090111875786499998) * t);
+  y.coefficients[8] += (SH_VALUE(0.156078347227999990) * t);
+
+  // [8,8]: 0,6,
+  tf = (SH_VALUE(0.282094791770000020) * f.coefficients[0]) + (SH_VALUE(-0.180223751576000010) * f.coefficients[6]);
+  tg = (SH_VALUE(0.282094791770000020) * g.coefficients[0]) + (SH_VALUE(-0.180223751576000010) * g.coefficients[6]);
+  y.coefficients[8] += (tf * g.coefficients[8]) + (tg * f.coefficients[8]);
+  t = f.coefficients[8] * g.coefficients[8];
+  y.coefficients[0] += (SH_VALUE(0.282094791770000020) * t);
+  y.coefficients[6] += (SH_VALUE(-0.180223751576000010) * t);
+
+  return y;
+
+}
+
+SHC3CoefficientsL2 SHCoefficientsL2Multiply(const in SHC3CoefficientsL2 f, const in SHC3CoefficientsL2 g) {
+  
+  SHC3CoefficientsL2 y;
+
+  SH_VEC3 tf, tg, t;
+  
+  // [0,0]: 0,
+  y.coefficients[0] = SH_VALUE(0.282094792935999980) * f.coefficients[0] * g.coefficients[0];
+
+  // [1,1]: 0,6,8,
+  tf = (SH_VALUE(0.282094791773000010) * f.coefficients[0]) + (SH_VALUE(-0.126156626101000010) * f.coefficients[6]) + (SH_VALUE(-0.218509686119999990) * f.coefficients[8]);
+  tg = (SH_VALUE(0.282094791773000010) * g.coefficients[0]) + (SH_VALUE(-0.126156626101000010) * g.coefficients[6]) + (SH_VALUE(-0.218509686119999990) * g.coefficients[8]);
+  y.coefficients[1] = (tf * g.coefficients[1]) + (tg * f.coefficients[1]);
+  t = f.coefficients[1] * g.coefficients[1];
+  y.coefficients[0] += (SH_VALUE(0.282094791773000010) * t);
+  y.coefficients[6] = (SH_VALUE(-0.126156626101000010) * t);
+  y.coefficients[8] = (SH_VALUE(-0.218509686119999990) * t);
+
+  // [1,2]: 5,
+  tf = (SH_VALUE(0.218509686118000010) * f.coefficients[5]);
+  tg = (SH_VALUE(0.218509686118000010) * g.coefficients[5]);
+  y.coefficients[1] += (tf * g.coefficients[2]) + (tg * f.coefficients[2]);
+  y.coefficients[2] = (tf * g.coefficients[1]) + (tg * f.coefficients[1]);
+  t = (f.coefficients[1] * g.coefficients[2]) + (f.coefficients[2] * g.coefficients[1]);
+  y.coefficients[5] = (SH_VALUE(0.218509686118000010) * t);
+
+  // [1,3]: 4,
+  tf = (SH_VALUE(0.218509686114999990) * f.coefficients[4]);
+  tg = (SH_VALUE(0.218509686114999990) * g.coefficients[4]);
+  y.coefficients[1] += (tf * g.coefficients[3]) + (tg * f.coefficients[3]);
+  y.coefficients[3] = (tf * g.coefficients[1]) + (tg * f.coefficients[1]);
+  t = (f.coefficients[1] * g.coefficients[3]) + (f.coefficients[3] * g.coefficients[1]);
+  y.coefficients[4] = (SH_VALUE(0.218509686114999990) * t);
+
+  // [2,2]: 0,6,
+  tf = (SH_VALUE(0.282094795249000000) * f.coefficients[0]) + (SH_VALUE(0.252313259986999990) * f.coefficients[6]);
+  tg = (SH_VALUE(0.282094795249000000) * g.coefficients[0]) + (SH_VALUE(0.252313259986999990) * g.coefficients[6]);
+  y.coefficients[2] += (tf * g.coefficients[2]) + (tg * f.coefficients[2]);
+  t = f.coefficients[2] * g.coefficients[2];
+  y.coefficients[0] += (SH_VALUE(0.282094795249000000) * t);
+  y.coefficients[6] += (SH_VALUE(0.252313259986999990) * t);
+
+  // [2,3]: 7,
+  tf = (SH_VALUE(0.218509686118000010) * f.coefficients[7]);
+  tg = (SH_VALUE(0.218509686118000010) * g.coefficients[7]);
+  y.coefficients[2] += (tf * g.coefficients[3]) + (tg * f.coefficients[3]);
+  y.coefficients[3] += (tf * g.coefficients[2]) + (tg * f.coefficients[2]);
+  t = (f.coefficients[2] * g.coefficients[3]) + (f.coefficients[3] * g.coefficients[2]);
+  y.coefficients[7] = (SH_VALUE(0.218509686118000010) * t);
+
+  // [3,3]: 0,6,8,
+  tf = (SH_VALUE(0.282094791773000010) * f.coefficients[0]) + (SH_VALUE(-0.126156626101000010) * f.coefficients[6]) + (SH_VALUE(0.218509686119999990) * f.coefficients[8]);
+  tg = (SH_VALUE(0.282094791773000010) * g.coefficients[0]) + (SH_VALUE(-0.126156626101000010) * g.coefficients[6]) + (SH_VALUE(0.218509686119999990) * g.coefficients[8]);
+  y.coefficients[3] += (tf * g.coefficients[3]) + (tg * f.coefficients[3]);
+  t = f.coefficients[3] * g.coefficients[3];
+  y.coefficients[0] += (SH_VALUE(0.282094791773000010) * t);
+  y.coefficients[6] += (SH_VALUE(-0.126156626101000010) * t);
+  y.coefficients[8] += (SH_VALUE(0.218509686119999990) * t);
+
+  // [4,4]: 0,6,
+  tf = (SH_VALUE(0.282094791770000020) * f.coefficients[0]) + (SH_VALUE(-0.180223751576000010) * f.coefficients[6]);
+  tg = (SH_VALUE(0.282094791770000020) * g.coefficients[0]) + (SH_VALUE(-0.180223751576000010) * g.coefficients[6]);
+  y.coefficients[4] += (tf * g.coefficients[4]) + (tg * f.coefficients[4]);
+  t = f.coefficients[4] * g.coefficients[4];
+  y.coefficients[0] += (SH_VALUE(0.282094791770000020) * t);
+  y.coefficients[6] += (SH_VALUE(-0.180223751576000010) * t);
+
+  // [4,5]: 7,
+  tf = (SH_VALUE(0.156078347226000000) * f.coefficients[7]);
+  tg = (SH_VALUE(0.156078347226000000) * g.coefficients[7]);
+  y.coefficients[4] += (tf * g.coefficients[5]) + (tg * f.coefficients[5]);
+  y.coefficients[5] += (tf * g.coefficients[4]) + (tg * f.coefficients[4]);
+  t = (f.coefficients[4] * g.coefficients[5]) + (f.coefficients[5] * g.coefficients[4]);
+  y.coefficients[7] += (SH_VALUE(0.156078347226000000) * t);
+
+  // [5,5]: 0,6,8,
+  tf = (SH_VALUE(0.282094791773999990) * f.coefficients[0]) + (SH_VALUE(0.090111875786499998) * f.coefficients[6]) + (SH_VALUE(-0.156078347227999990) * f.coefficients[8]);
+  tg = (SH_VALUE(0.282094791773999990) * g.coefficients[0]) + (SH_VALUE(0.090111875786499998) * g.coefficients[6]) + (SH_VALUE(-0.156078347227999990) * g.coefficients[8]);
+  y.coefficients[5] += (tf * g.coefficients[5]) + (tg * f.coefficients[5]);
+  t = f.coefficients[5] * g.coefficients[5];
+  y.coefficients[0] += (SH_VALUE(0.282094791773999990) * t);
+  y.coefficients[6] += (SH_VALUE(0.090111875786499998) * t);
+  y.coefficients[8] += (SH_VALUE(-0.156078347227999990) * t);
+
+  // [6,6]: 0,6,
+  tf = (SH_VALUE(0.282094797560000000) * f.coefficients[0]);
+  tg = (SH_VALUE(0.282094797560000000) * g.coefficients[0]);
+  y.coefficients[6] += (tf * g.coefficients[6]) + (tg * f.coefficients[6]);
+  t = f.coefficients[6] * g.coefficients[6];
+  y.coefficients[0] += (SH_VALUE(0.282094797560000000) * t);
+  y.coefficients[6] += (SH_VALUE(0.180223764527000010) * t);
+
+  // [7,7]: 0,6,8,
+  tf = (SH_VALUE(0.282094791773999990) * f.coefficients[0]) + (SH_VALUE(0.090111875786499998) * f.coefficients[6]) + (SH_VALUE(0.156078347227999990) * f.coefficients[8]);
+  tg = (SH_VALUE(0.282094791773999990) * g.coefficients[0]) + (SH_VALUE(0.090111875786499998) * g.coefficients[6]) + (SH_VALUE(0.156078347227999990) * g.coefficients[8]);
+  y.coefficients[7] += (tf * g.coefficients[7]) + (tg * f.coefficients[7]);
+  t = f.coefficients[7] * g.coefficients[7];
+  y.coefficients[0] += (SH_VALUE(0.282094791773999990) * t);
+  y.coefficients[6] += (SH_VALUE(0.090111875786499998) * t);
+  y.coefficients[8] += (SH_VALUE(0.156078347227999990) * t);
+
+  // [8,8]: 0,6,
+  tf = (SH_VALUE(0.282094791770000020) * f.coefficients[0]) + (SH_VALUE(-0.180223751576000010) * f.coefficients[6]);
+  tg = (SH_VALUE(0.282094791770000020) * g.coefficients[0]) + (SH_VALUE(-0.180223751576000010) * g.coefficients[6]);
+  y.coefficients[8] += (tf * g.coefficients[8]) + (tg * f.coefficients[8]);
+  t = f.coefficients[8] * g.coefficients[8];
+  y.coefficients[0] += (SH_VALUE(0.282094791770000020) * t);
+  y.coefficients[6] += (SH_VALUE(-0.180223751576000010) * t);
+
+  return y;
+
+}
+
+SHCoefficientsL1 SHCoefficientsL1Multiply(const in SHCoefficientsL1 f, const in SHCoefficientsL1 g) {
+  return SHCoefficientsL1FromL2(SHCoefficientsL2Multiply(SHCoefficientsL1ToL2(f), SHCoefficientsL1ToL2(g)));
+}
+
+SHC3CoefficientsL1 SHC3CoefficientsL1Multiply(const in SHC3CoefficientsL1 f, const in SHC3CoefficientsL1 g) {
+  return SHC3CoefficientsL1FromL2(SHCoefficientsL2Multiply(SHC3CoefficientsL1ToL2(f), SHC3CoefficientsL1ToL2(g)));
+}  
+  
 #endif
