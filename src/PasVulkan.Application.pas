@@ -1105,6 +1105,8 @@ type EpvApplication=class(Exception)
        fKeyShortcuts:TpvApplicationInputKeyShortcuts;
        fKeyShortcutHashMap:TpvApplicationInputKeyShortcutHashMap;
        fKeyShortcutIDCounter:TpvUInt64;
+       fKeyActions:TpvApplicationInputKeyActions;
+       fKeyActionIDCounter:TpvUInt64;
 {$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
        function TranslateSDLKeyCode(const aKeyCode,aScanCode:TpvInt32):TpvInt32;
        function TranslateSDLScanCode(const aKeyCode,aScanCode:TpvInt32):TpvInt32;
@@ -1127,6 +1129,9 @@ type EpvApplication=class(Exception)
        procedure RemoveKeyShortcut(const aKeyCode:TpvInt32;
                                    const aScanCode:TpvInt32;
                                    const aKeyModifiers:TpvApplicationInputKeyModifiers); overload;
+       function AddKeyAction(const aName:TpvUTF8String='';
+                             const aDescription:TpvUTF8String=''):TpvApplicationInputKeyAction;
+       procedure RemoveKeyAction(const aKeyAction:TpvApplicationInputKeyAction); overload;
        function KeyCodeToString(const aKeyCode:TpvInt32):TpvApplicationRawByteString;
        function StringToKeyCode(const aString:TpvApplicationRawByteString):TpvInt32;
        function GetAccelerometerX:TpvFloat;
@@ -1172,6 +1177,9 @@ type EpvApplication=class(Exception)
        function GetJoystick(const aID:TpvInt64=-1):TpvApplicationJoystick;
        function GetJoystickByID(const aID:TpvInt64=-1):TpvApplicationJoystick;
        function GetJoystickByIndex(const aIndex:TpvSizeInt=-1):TpvApplicationJoystick;
+      published
+       property KeyShortcuts:TpvApplicationInputKeyShortcuts read fKeyShortcuts;
+       property KeyActions:TpvApplicationInputKeyActions read fKeyActions; 
      end;
 
      TpvApplicationLifecycleListener=class
@@ -4915,10 +4923,13 @@ begin
  fKeyShortcuts:=TpvApplicationInputKeyShortcuts.Create(true);
  fKeyShortcutHashMap:=TpvApplicationInputKeyShortcutHashMap.Create(nil);
  fKeyShortcutIDCounter:=0;
+ fKeyActions:=TpvApplicationInputKeyActions.Create;
+ fKeyActionIDCounter:=0; 
 end;
 
 destructor TpvApplicationInput.Destroy;
 begin
+ FreeAndNil(fKeyActions);
  FreeAndNil(fKeyShortcuts);
  FreeAndNil(fKeyShortcutHashMap);
  FreeAndNil(fJoysticks);
@@ -4933,6 +4944,9 @@ procedure TpvApplicationInput.ClearKeyDefinitions;
 begin
  fKeyShortcuts.Clear;
  fKeyShortcutHashMap.Clear;
+ fKeyShortcutIDCounter:=0;
+ fKeyActions.Clear;
+ fKeyActionIDCounter:=0;
 end;
 
 function TpvApplicationInput.GetKeyShortcut(const aKeyCode:TpvInt32;
@@ -5010,6 +5024,33 @@ begin
  Shortcut:=fKeyShortcutHashMap[Key];
  if assigned(Shortcut) then begin
   RemoveKeyShortcut(Shortcut);
+ end;
+end;
+
+function TpvApplicationInput.AddKeyAction(const aName:TpvUTF8String;
+                                          const aDescription:TpvUTF8String):TpvApplicationInputKeyAction;
+begin
+ inc(fKeyActionIDCounter);
+ result:=TpvApplicationInputKeyAction.Create(pvApplication,aName,aDescription);
+ try
+  result.fID:=fKeyActionIDCounter;
+ finally 
+  fKeyActions.Add(result);
+ end; 
+end;
+
+procedure TpvApplicationInput.RemoveKeyAction(const aKeyAction:TpvApplicationInputKeyAction);
+var Index:TpvInt32;
+begin
+ if assigned(aKeyAction) then begin
+  Index:=fKeyActions.IndexOf(aKeyAction);
+  if Index>=0 then begin
+   try
+    fKeyActions.Delete(Index);
+   finally
+    aKeyAction.Free;
+   end;
+  end;
  end;
 end;
 
