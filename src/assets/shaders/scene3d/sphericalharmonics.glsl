@@ -31,6 +31,13 @@ const SH_VALUE SH_COSINE_A0 = SH_VALUE(SH_PI);
 const SH_VALUE SH_COSINE_A1 = SH_VALUE((SH_VALUE(2.0) * SH_PI) / SH_VALUE(3.0));
 const SH_VALUE SH_COSINE_A2 = SH_VALUE(SH_PI * SH_VALUE(0.25));
 
+/*
+  const float g_sh1 = 0.2820947917738781;                                                     // 0.5 * sqrt(1.0 / pi)
+  const float g_sh2 = 0.4886025119029199;                                                     // 0.5 * sqrt(3.0 / pi) 
+  const float g_sh3 = 1.0925484305920790;                                                     // 0.5 * sqrt(15.0 / pi) 
+  const float g_sh4 = 0.3153915652525200;                                                     // 0.25 * sqrt(5.0 / pi) 
+  const float g_sh5 = 0.5462742152960395;                                                     // 0.25 * sqrt(15.0 / pi) 
+*/
 const SH_VALUE SH_BASIS_L0 = SH_VALUE(1.0 / (2.0 * SH_SQRT_PI));
 const SH_VALUE SH_BASIS_L1 = SH_VALUE(sqrt(3.0) / (2.0 * SH_SQRT_PI));
 const SH_VALUE SH_BASIS_L2_MN2 = SH_VALUE(sqrt(15.0) / (2.0 * SH_SQRT_PI));
