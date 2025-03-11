@@ -174,8 +174,9 @@ void rayProceedEXTAlphaHandlingBasedLoop(in rayQueryEXT rayQuery, const in bool 
     
               Material material = uMaterials.materials[geometryItem.materialIndex]; // <= buffer reference, so practically a pointer inside the shader here
 
-              // Check if alpha cut-off or alpha blending is used
-              if((material.alphaCutOffFlagsTex0Tex1.y & ((1u << 4u) | (1u << 5u))) != 0u){ 
+              // Check if alpha cut-off or alpha blending is used and if the material is forced opaque for this intersection, if yes, then we can skip the alpha handling
+              if(((material.alphaCutOffFlagsTex0Tex1.y & ((1u << 4u) | (1u << 5u))) != 0u) && // Check if alpha cut-off or alpha blending is used 
+                 ((material.alphaCutOffFlagsTex0Tex1.y & (1u << 28u)) == 0u)){                // Check if the material is not forced opaque for this intersection
 
                 int primitiveID = rayQueryGetIntersectionPrimitiveIndexEXT(rayQuery, false);
 
