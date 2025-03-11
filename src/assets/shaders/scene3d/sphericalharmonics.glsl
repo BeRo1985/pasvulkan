@@ -1121,7 +1121,7 @@ void SHCoefficientsL1ExtractAndSubtractDominantAmbientAndDirectionalLights(inout
   SHCoefficientsL1 t = ProjectOntoSHCoefficientsL1(direction, -directional);
   directional = SH_VALUE(directional * SH_PI);
   sh = SHCoefficientsL1Sub(sh, t);
-  ambient = SH_VEC3(sh.coefficients[0], sh.coefficients[0], sh.coefficients[0]);
+  ambient = SH_VEC3(sh.coefficients[0] * SH_PI);
   sh.coefficients[0] = SH_VALUE(0.0);
   modifiedSqrtRoughness = clamp(sqrtRoughness / sqrt(avgL1len), SH_VALUE(0.0), SH_VALUE(1.0));
 }
@@ -1138,7 +1138,7 @@ void SHC3CoefficientsL1ExtractAndSubtractDominantAmbientAndDirectionalLights(ino
   SHC3CoefficientsL1 t = ProjectOntoSHC3CoefficientsL1(direction, -directional);
   directional = SH_VEC3(directional * SH_PI);
   sh = SHC3CoefficientsL1Sub(sh, t);
-  ambient = SH_VEC3(sh.coefficients[0]);
+  ambient = SH_VEC3(sh.coefficients[0] * SH_PI);
   sh.coefficients[0] = SH_VEC3(0.0);
   modifiedSqrtRoughness = clamp(sqrtRoughness / sqrt(avgL1len), SH_VALUE(0.0), SH_VALUE(1.0));
 }
@@ -1151,7 +1151,7 @@ void SHCoefficientsL2ExtractAndSubtractDominantAmbientAndDirectionalLights(inout
   SHCoefficientsL2 t = ProjectOntoSHCoefficientsL2(direction, -directional);
   directional = SH_VALUE(directional * SH_PI);
   sh = SHCoefficientsL2Sub(sh, t);
-  ambient = SH_VEC3(sh.coefficients[0], sh.coefficients[0], sh.coefficients[0]);
+  ambient = SH_VEC3(sh.coefficients[0] * SH_PI);
   sh.coefficients[0] = SH_VALUE(0.0);
   modifiedSqrtRoughness = clamp(sqrtRoughness / sqrt(avgL1len), SH_VALUE(0.0), SH_VALUE(1.0));
 }
@@ -1168,7 +1168,7 @@ void SHC3CoefficientsL2ExtractAndSubtractDominantAmbientAndDirectionalLights(ino
   SHC3CoefficientsL2 t = ProjectOntoSHC3CoefficientsL2(direction, -directional);
   directional = SH_VEC3(directional * SH_PI);
   sh = SHC3CoefficientsL2Sub(sh, t);
-  ambient = SH_VEC3(sh.coefficients[0]);
+  ambient = SH_VEC3(sh.coefficients[0] * SH_PI);
   sh.coefficients[0] = SH_VEC3(0.0);
   modifiedSqrtRoughness = clamp(sqrtRoughness / sqrt(avgL1len), SH_VALUE(0.0), SH_VALUE(1.0));
 }
