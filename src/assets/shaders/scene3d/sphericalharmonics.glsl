@@ -17,13 +17,11 @@
   #define SH_VEC2 f16vec2
   #define SH_VEC3 f16vec3
   #define SH_VEC4 f16vec4
-  #define SH_RGB f16vec3
 #else
   #define SH_VALUE float
   #define SH_VEC2 vec2
   #define SH_VEC3 vec3
   #define SH_VEC4 vec4
-  #define SH_RGB vec3
 #endif
 
 const SH_VALUE SH_PI = SH_VALUE(3.141592653589793);
@@ -48,7 +46,7 @@ struct SHCoefficientsL1 {
 #define PackedSHCoefficientsL1 uvec2
 
 struct SHRGBCoefficientsL1 {
-  SH_RGB coefficients[SH_L1_COUNT_COEFFICIENTS];
+  SH_VEC3 coefficients[SH_L1_COUNT_COEFFICIENTS];
 };
 
 struct PackedSHRGBCoefficientsL1 {
@@ -60,7 +58,7 @@ struct SHCoefficientsL2 {
 };
 
 struct SHRGBCoefficientsL2 {
-  SH_RGB coefficients[SH_L2_COUNT_COEFFICIENTS];
+  SH_VEC3 coefficients[SH_L2_COUNT_COEFFICIENTS];
 };
 
 SHCoefficientsL1 SHCoefficientsL1Zero() {
@@ -106,18 +104,18 @@ SHCoefficientsL1 SHCoefficientsL1Unpack(const in PackedSHCoefficientsL1 packed) 
 
 SHRGBCoefficientsL1 SHRGBCoefficientsL1Zero() {
   return SHRGBCoefficientsL1(
-    SH_RGB[SH_L1_COUNT_COEFFICIENTS](
-      SH_RGB(0.0, 0.0, 0.0),
-      SH_RGB(0.0, 0.0, 0.0),
-      SH_RGB(0.0, 0.0, 0.0),
-      SH_RGB(0.0, 0.0, 0.0)
+    SH_VEC3[SH_L1_COUNT_COEFFICIENTS](
+      SH_VEC3(0.0, 0.0, 0.0),
+      SH_VEC3(0.0, 0.0, 0.0),
+      SH_VEC3(0.0, 0.0, 0.0),
+      SH_VEC3(0.0, 0.0, 0.0)
     )
   );
 }
 
-SHRGBCoefficientsL1 SHRGBCoefficientsL1Create(const in SH_RGB c0, const in SH_RGB c1, const in SH_RGB c2, const in SH_RGB c3) {
+SHRGBCoefficientsL1 SHRGBCoefficientsL1Create(const in SH_VEC3 c0, const in SH_VEC3 c1, const in SH_VEC3 c2, const in SH_VEC3 c3) {
   return SHRGBCoefficientsL1(
-    SH_RGB[SH_L1_COUNT_COEFFICIENTS](
+    SH_VEC3[SH_L1_COUNT_COEFFICIENTS](
       c0,
       c1,
       c2,
@@ -141,11 +139,11 @@ SHRGBCoefficientsL1 SHRGBCoefficientsL1Unpack(const in PackedSHRGBCoefficientsL1
   vec4 unpacked1 = vec4(unpackHalf2x16(packed.coefficients[1].x), unpackHalf2x16(packed.coefficients[1].y));
   vec4 unpacked2 = vec4(unpackHalf2x16(packed.coefficients[2].x), unpackHalf2x16(packed.coefficients[2].y));
   return SHRGBCoefficientsL1(
-    SH_RGB[SH_L1_COUNT_COEFFICIENTS](
-      SH_RGB(unpacked0.x, unpacked0.y, unpacked0.z),
-      SH_RGB(unpacked0.w, unpacked1.x, unpacked1.y),
-      SH_RGB(unpacked1.z, unpacked1.w, unpacked2.x),
-      SH_RGB(unpacked2.y, unpacked2.z, unpacked2.w)
+    SH_VEC3[SH_L1_COUNT_COEFFICIENTS](
+      SH_VEC3(unpacked0.x, unpacked0.y, unpacked0.z),
+      SH_VEC3(unpacked0.w, unpacked1.x, unpacked1.y),
+      SH_VEC3(unpacked1.z, unpacked1.w, unpacked2.x),
+      SH_VEC3(unpacked2.y, unpacked2.z, unpacked2.w)
     )
   );
 }
@@ -184,23 +182,23 @@ SHCoefficientsL2 SHCoefficientsL2Create(const in SH_VALUE c0, const in SH_VALUE 
 
 SHRGBCoefficientsL2 SHRGBCoefficientsL2Zero() {
   return SHRGBCoefficientsL2(
-    SH_RGB[SH_L2_COUNT_COEFFICIENTS](
-      SH_RGB(0.0, 0.0, 0.0),
-      SH_RGB(0.0, 0.0, 0.0),
-      SH_RGB(0.0, 0.0, 0.0),
-      SH_RGB(0.0, 0.0, 0.0),
-      SH_RGB(0.0, 0.0, 0.0),
-      SH_RGB(0.0, 0.0, 0.0),
-      SH_RGB(0.0, 0.0, 0.0),
-      SH_RGB(0.0, 0.0, 0.0),
-      SH_RGB(0.0, 0.0, 0.0)
+    SH_VEC3[SH_L2_COUNT_COEFFICIENTS](
+      SH_VEC3(0.0, 0.0, 0.0),
+      SH_VEC3(0.0, 0.0, 0.0),
+      SH_VEC3(0.0, 0.0, 0.0),
+      SH_VEC3(0.0, 0.0, 0.0),
+      SH_VEC3(0.0, 0.0, 0.0),
+      SH_VEC3(0.0, 0.0, 0.0),
+      SH_VEC3(0.0, 0.0, 0.0),
+      SH_VEC3(0.0, 0.0, 0.0),
+      SH_VEC3(0.0, 0.0, 0.0)
     )
   );
 }
 
-SHRGBCoefficientsL2 SHRGBCoefficientsL2Create(const in SH_RGB c0, const in SH_RGB c1, const in SH_RGB c2, const in SH_RGB c3, const in SH_RGB c4, const in SH_RGB c5, const in SH_RGB c6, const in SH_RGB c7, const in SH_RGB c8) {
+SHRGBCoefficientsL2 SHRGBCoefficientsL2Create(const in SH_VEC3 c0, const in SH_VEC3 c1, const in SH_VEC3 c2, const in SH_VEC3 c3, const in SH_VEC3 c4, const in SH_VEC3 c5, const in SH_VEC3 c6, const in SH_VEC3 c7, const in SH_VEC3 c8) {
   return SHRGBCoefficientsL2(
-    SH_RGB[SH_L2_COUNT_COEFFICIENTS](
+    SH_VEC3[SH_L2_COUNT_COEFFICIENTS](
       c0,
       c1,
       c2,
@@ -227,7 +225,7 @@ SHCoefficientsL1 SHCoefficientsL1Add(const in SHCoefficientsL1 a, const in SHCoe
 
 SHRGBCoefficientsL1 SHRGBCoefficientsL1Add(const in SHRGBCoefficientsL1 a, const in SHRGBCoefficientsL1 b) {
   return SHRGBCoefficientsL1(
-    SH_RGB[SH_L1_COUNT_COEFFICIENTS](
+    SH_VEC3[SH_L1_COUNT_COEFFICIENTS](
       a.coefficients[0] + b.coefficients[0],
       a.coefficients[1] + b.coefficients[1],
       a.coefficients[2] + b.coefficients[2],
@@ -254,7 +252,7 @@ SHCoefficientsL2 SHCoefficientsL2Add(const in SHCoefficientsL2 a, const in SHCoe
 
 SHRGBCoefficientsL2 SHRGBCoefficientsL2Add(const in SHRGBCoefficientsL2 a, const in SHRGBCoefficientsL2 b) {
   return SHRGBCoefficientsL2(
-    SH_RGB[SH_L2_COUNT_COEFFICIENTS](
+    SH_VEC3[SH_L2_COUNT_COEFFICIENTS](
       a.coefficients[0] + b.coefficients[0],
       a.coefficients[1] + b.coefficients[1],
       a.coefficients[2] + b.coefficients[2],
@@ -281,7 +279,7 @@ SHCoefficientsL1 SHCoefficientsL1Sub(const in SHCoefficientsL1 a, const in SHCoe
 
 SHRGBCoefficientsL1 SHRGBCoefficientsL1Sub(const in SHRGBCoefficientsL1 a, const in SHRGBCoefficientsL1 b) {
   return SHRGBCoefficientsL1(
-    SH_RGB[SH_L1_COUNT_COEFFICIENTS](
+    SH_VEC3[SH_L1_COUNT_COEFFICIENTS](
       a.coefficients[0] - b.coefficients[0],
       a.coefficients[1] - b.coefficients[1],
       a.coefficients[2] - b.coefficients[2],
@@ -308,7 +306,7 @@ SHCoefficientsL2 SHCoefficientsL2Sub(const in SHCoefficientsL2 a, const in SHCoe
 
 SHRGBCoefficientsL2 SHRGBCoefficientsL2Sub(const in SHRGBCoefficientsL2 a, const in SHRGBCoefficientsL2 b) {
   return SHRGBCoefficientsL2(
-    SH_RGB[SH_L2_COUNT_COEFFICIENTS](
+    SH_VEC3[SH_L2_COUNT_COEFFICIENTS](
       a.coefficients[0] - b.coefficients[0],
       a.coefficients[1] - b.coefficients[1],
       a.coefficients[2] - b.coefficients[2],
@@ -335,7 +333,7 @@ SHCoefficientsL1 SHCoefficientsL1Mul(const in SHCoefficientsL1 a, const in SH_VA
 
 SHRGBCoefficientsL1 SHRGBCoefficientsL1Mul(const in SHRGBCoefficientsL1 a, const in SH_VALUE b) {
   return SHRGBCoefficientsL1(
-    SH_RGB[SH_L1_COUNT_COEFFICIENTS](
+    SH_VEC3[SH_L1_COUNT_COEFFICIENTS](
       a.coefficients[0] * b,
       a.coefficients[1] * b,
       a.coefficients[2] * b,
@@ -362,7 +360,7 @@ SHCoefficientsL2 SHCoefficientsL2Mul(const in SHCoefficientsL2 a, const in SH_VA
 
 SHRGBCoefficientsL2 SHRGBCoefficientsL2Mul(const in SHRGBCoefficientsL2 a, const in SH_VALUE b) {
   return SHRGBCoefficientsL2(
-    SH_RGB[SH_L2_COUNT_COEFFICIENTS](
+    SH_VEC3[SH_L2_COUNT_COEFFICIENTS](
       a.coefficients[0] * b,
       a.coefficients[1] * b,
       a.coefficients[2] * b,
@@ -389,7 +387,7 @@ SHCoefficientsL1 SHCoefficientsL1Div(const in SHCoefficientsL1 a, const in SH_VA
 
 SHRGBCoefficientsL1 SHRGBCoefficientsL1Div(const in SHRGBCoefficientsL1 a, const in SH_VALUE b) {
   return SHRGBCoefficientsL1(
-    SH_RGB[SH_L1_COUNT_COEFFICIENTS](
+    SH_VEC3[SH_L1_COUNT_COEFFICIENTS](
       a.coefficients[0] / b,
       a.coefficients[1] / b,
       a.coefficients[2] / b,
@@ -416,7 +414,7 @@ SHCoefficientsL2 SHCoefficientsL2Div(const in SHCoefficientsL2 a, const in SH_VA
 
 SHRGBCoefficientsL2 SHRGBCoefficientsL2Div(const in SHRGBCoefficientsL2 a, const in SH_VALUE b) {
   return SHRGBCoefficientsL2(
-    SH_RGB[SH_L2_COUNT_COEFFICIENTS](
+    SH_VEC3[SH_L2_COUNT_COEFFICIENTS](
       a.coefficients[0] / b,
       a.coefficients[1] / b,
       a.coefficients[2] / b,
@@ -443,7 +441,7 @@ SHCoefficientsL1 SHCoefficientsL1FromL2(const in SHCoefficientsL2 sh){
 
 SHRGBCoefficientsL1 SHRGBCoefficientsL1FromL2(const in SHRGBCoefficientsL2 sh){
   return SHRGBCoefficientsL1(
-    SH_RGB[SH_L1_COUNT_COEFFICIENTS](
+    SH_VEC3[SH_L1_COUNT_COEFFICIENTS](
       sh.coefficients[0],
       sh.coefficients[1],
       sh.coefficients[2],
@@ -454,27 +452,27 @@ SHRGBCoefficientsL1 SHRGBCoefficientsL1FromL2(const in SHRGBCoefficientsL2 sh){
 
 SHRGBCoefficientsL1 SHRGBCoefficientsL1FromSHCoefficientsL1(const in SHCoefficientsL1 sh){
   return SHRGBCoefficientsL1(
-    SH_RGB[SH_L1_COUNT_COEFFICIENTS](
-      SH_RGB(sh.coefficients[0]),
-      SH_RGB(sh.coefficients[1]),
-      SH_RGB(sh.coefficients[2]),
-      SH_RGB(sh.coefficients[3])
+    SH_VEC3[SH_L1_COUNT_COEFFICIENTS](
+      SH_VEC3(sh.coefficients[0]),
+      SH_VEC3(sh.coefficients[1]),
+      SH_VEC3(sh.coefficients[2]),
+      SH_VEC3(sh.coefficients[3])
     )
   );
 }
 
 SHRGBCoefficientsL2 SHRGBCoefficientsL2FromSHCoefficientsL2(const in SHCoefficientsL2 sh){
   return SHRGBCoefficientsL2(
-    SH_RGB[SH_L2_COUNT_COEFFICIENTS](
-      SH_RGB(sh.coefficients[0]),
-      SH_RGB(sh.coefficients[1]),
-      SH_RGB(sh.coefficients[2]),
-      SH_RGB(sh.coefficients[3]),
-      SH_RGB(sh.coefficients[4]),
-      SH_RGB(sh.coefficients[5]),
-      SH_RGB(sh.coefficients[6]),
-      SH_RGB(sh.coefficients[7]),
-      SH_RGB(sh.coefficients[8])
+    SH_VEC3[SH_L2_COUNT_COEFFICIENTS](
+      SH_VEC3(sh.coefficients[0]),
+      SH_VEC3(sh.coefficients[1]),
+      SH_VEC3(sh.coefficients[2]),
+      SH_VEC3(sh.coefficients[3]),
+      SH_VEC3(sh.coefficients[4]),
+      SH_VEC3(sh.coefficients[5]),
+      SH_VEC3(sh.coefficients[6]),
+      SH_VEC3(sh.coefficients[7]),
+      SH_VEC3(sh.coefficients[8])
     )
   );
 }
@@ -492,7 +490,7 @@ SHCoefficientsL1 SHCoefficientsL1Lerp(const in SHCoefficientsL1 a, const in SHCo
 
 SHRGBCoefficientsL1 SHRGBCoefficientsL1Lerp(const in SHRGBCoefficientsL1 a, const in SHRGBCoefficientsL1 b, const in SH_VALUE t) {
   return SHRGBCoefficientsL1(
-    SH_RGB[SH_L1_COUNT_COEFFICIENTS](
+    SH_VEC3[SH_L1_COUNT_COEFFICIENTS](
       mix(a.coefficients[0], b.coefficients[0], t),
       mix(a.coefficients[1], b.coefficients[1], t),
       mix(a.coefficients[2], b.coefficients[2], t),
@@ -519,7 +517,7 @@ SHCoefficientsL2 SHCoefficientsL2Lerp(const in SHCoefficientsL2 a, const in SHCo
 
 SHRGBCoefficientsL2 SHRGBCoefficientsL2Lerp(const in SHRGBCoefficientsL2 a, const in SHRGBCoefficientsL2 b, const in SH_VALUE t) {
   return SHRGBCoefficientsL2(
-    SH_RGB[SH_L2_COUNT_COEFFICIENTS](
+    SH_VEC3[SH_L2_COUNT_COEFFICIENTS](
       mix(a.coefficients[0], b.coefficients[0], t),
       mix(a.coefficients[1], b.coefficients[1], t),
       mix(a.coefficients[2], b.coefficients[2], t),
@@ -544,13 +542,13 @@ SHCoefficientsL1 ProjectOntoSHCoefficientsL1(SH_VEC3 direction, SH_VALUE value) 
   );
 }
 
-SHRGBCoefficientsL1 ProjectOntoSHRGBCoefficientsL1(SH_VEC3 direction, SH_RGB value) {
+SHRGBCoefficientsL1 ProjectOntoSHRGBCoefficientsL1(SH_VEC3 direction, SH_VEC3 value) {
   return SHRGBCoefficientsL1(
-    SH_RGB[SH_L1_COUNT_COEFFICIENTS](
-      SH_RGB(value * SH_BASIS_L0),
-      SH_RGB(value * SH_BASIS_L1 * direction.y),
-      SH_RGB(value * SH_BASIS_L1 * direction.z),
-      SH_RGB(value * SH_BASIS_L1 * direction.x)
+    SH_VEC3[SH_L1_COUNT_COEFFICIENTS](
+      SH_VEC3(value * SH_BASIS_L0),
+      SH_VEC3(value * SH_BASIS_L1 * direction.y),
+      SH_VEC3(value * SH_BASIS_L1 * direction.z),
+      SH_VEC3(value * SH_BASIS_L1 * direction.x)
     )
   );
 }
@@ -571,18 +569,18 @@ SHCoefficientsL2 ProjectOntoSHCoefficientsL2(SH_VEC3 direction, SH_VALUE value) 
   );
 }
 
-SHRGBCoefficientsL2 ProjectOntoSHRGBCoefficientsL2(SH_VEC3 direction, SH_RGB value) {
+SHRGBCoefficientsL2 ProjectOntoSHRGBCoefficientsL2(SH_VEC3 direction, SH_VEC3 value) {
   return SHRGBCoefficientsL2(
-    SH_RGB[SH_L2_COUNT_COEFFICIENTS](
-      SH_RGB(value * SH_BASIS_L0),
-      SH_RGB(value * SH_BASIS_L1 * direction.y),
-      SH_RGB(value * SH_BASIS_L1 * direction.z),
-      SH_RGB(value * SH_BASIS_L1 * direction.x),
-      SH_RGB(value * SH_BASIS_L2_MN2 * direction.x * direction.y),
-      SH_RGB(value * SH_BASIS_L2_MN1 * direction.y * direction.z),
-      SH_RGB(value * SH_BASIS_L2_M0 * ((3.0 * (direction.z * direction.z)) - 1.0)),
-      SH_RGB(value * SH_BASIS_L2_M1 * direction.x * direction.z),
-      SH_RGB(value * SH_BASIS_L2_M2 * ((direction.x * direction.x) - (direction.y * direction.y)))
+    SH_VEC3[SH_L2_COUNT_COEFFICIENTS](
+      SH_VEC3(value * SH_BASIS_L0),
+      SH_VEC3(value * SH_BASIS_L1 * direction.y),
+      SH_VEC3(value * SH_BASIS_L1 * direction.z),
+      SH_VEC3(value * SH_BASIS_L1 * direction.x),
+      SH_VEC3(value * SH_BASIS_L2_MN2 * direction.x * direction.y),
+      SH_VEC3(value * SH_BASIS_L2_MN1 * direction.y * direction.z),
+      SH_VEC3(value * SH_BASIS_L2_M0 * ((3.0 * (direction.z * direction.z)) - 1.0)),
+      SH_VEC3(value * SH_BASIS_L2_M1 * direction.x * direction.z),
+      SH_VEC3(value * SH_BASIS_L2_M2 * ((direction.x * direction.x) - (direction.y * direction.y)))
     )
   );
 }
@@ -594,7 +592,7 @@ SH_VALUE DotSHCoefficientsL1(const in SHCoefficientsL1 a, const in SHCoefficient
          (a.coefficients[3] * b.coefficients[3]);
 }
 
-SH_RGB DotSHRGBCoefficientsL1(const in SHRGBCoefficientsL1 a, const in SHRGBCoefficientsL1 b) {
+SH_VEC3 DotSHRGBCoefficientsL1(const in SHRGBCoefficientsL1 a, const in SHRGBCoefficientsL1 b) {
   return (a.coefficients[0] * b.coefficients[0]) +
          (a.coefficients[1] * b.coefficients[1]) +
          (a.coefficients[2] * b.coefficients[2]) +
@@ -613,7 +611,7 @@ SH_VALUE DotSHCoefficientsL2(const in SHCoefficientsL2 a, const in SHCoefficient
          (a.coefficients[8] * b.coefficients[8]);
 }
 
-SH_RGB DotSHRGBCoefficientsL2(const in SHRGBCoefficientsL2 a, const in SHRGBCoefficientsL2 b) {
+SH_VEC3 DotSHRGBCoefficientsL2(const in SHRGBCoefficientsL2 a, const in SHRGBCoefficientsL2 b) {
   return (a.coefficients[0] * b.coefficients[0]) +
          (a.coefficients[1] * b.coefficients[1]) +
          (a.coefficients[2] * b.coefficients[2]) +
@@ -634,8 +632,8 @@ SH_VALUE EvaluateSHCoefficientsL1(const in SHCoefficientsL1 sh, const in SH_VEC3
   );
 }
 
-SH_RGB EvaluateSHRGBCoefficientsL1(const in SHRGBCoefficientsL1 sh, const in SH_VEC3 direction) {
-  return SH_RGB(
+SH_VEC3 EvaluateSHRGBCoefficientsL1(const in SHRGBCoefficientsL1 sh, const in SH_VEC3 direction) {
+  return SH_VEC3(
     (sh.coefficients[0] * SH_BASIS_L0) +
     (sh.coefficients[1] * SH_BASIS_L1 * direction.y) +
     (sh.coefficients[2] * SH_BASIS_L1 * direction.z) +
@@ -657,8 +655,8 @@ SH_VALUE EvaluateSHCoefficientsL2(const in SHCoefficientsL2 sh, const in SH_VEC3
   );    
 }
 
-SH_RGB EvaluateSHRGBCoefficientsL2(const in SHRGBCoefficientsL2 sh, const in SH_VEC3 direction) {
-  return SH_RGB(
+SH_VEC3 EvaluateSHRGBCoefficientsL2(const in SHRGBCoefficientsL2 sh, const in SH_VEC3 direction) {
+  return SH_VEC3(
     (sh.coefficients[0] * SH_BASIS_L0) +
     (sh.coefficients[1] * SH_BASIS_L1 * direction.y) +
     (sh.coefficients[2] * SH_BASIS_L1 * direction.z) +
@@ -684,7 +682,7 @@ SHCoefficientsL1 SHCoefficientsL1ConvolveWithZonalHarmonics(const in SHCoefficie
 
 SHRGBCoefficientsL1 SHRGBCoefficientsL1ConvolveWithZonalHarmonics(const in SHRGBCoefficientsL1 sh, const in SH_VEC2 zonalHarmonics) {
   return SHRGBCoefficientsL1(
-    SH_RGB[SH_L1_COUNT_COEFFICIENTS](
+    SH_VEC3[SH_L1_COUNT_COEFFICIENTS](
       sh.coefficients[0] * zonalHarmonics.x,
       sh.coefficients[1] * zonalHarmonics.y,
       sh.coefficients[2] * zonalHarmonics.y,
@@ -711,7 +709,7 @@ SHCoefficientsL2 SHCoefficientsL2ConvolveWithZonalHarmonics(const in SHCoefficie
 
 SHRGBCoefficientsL2 SHRGBCoefficientsL2ConvolveWithZonalHarmonics(const in SHRGBCoefficientsL2 sh, const in SH_VEC3 zonalHarmonics) {
   return SHRGBCoefficientsL2(
-    SH_RGB[SH_L2_COUNT_COEFFICIENTS](
+    SH_VEC3[SH_L2_COUNT_COEFFICIENTS](
       sh.coefficients[0] * zonalHarmonics.x,
       sh.coefficients[1] * zonalHarmonics.y,
       sh.coefficients[2] * zonalHarmonics.y,
@@ -738,11 +736,11 @@ SHCoefficientsL1 SHCoefficientsL1ConvolveWithCosineLobe(const in SHCoefficientsL
 
 SHRGBCoefficientsL1 SHRGBCoefficientsL1ConvolveWithCosineLobe(const in SHRGBCoefficientsL1 sh) {
   return SHRGBCoefficientsL1(
-    SH_RGB[SH_L1_COUNT_COEFFICIENTS](
-      SH_RGB(sh.coefficients[0] * SH_COSINE_A0),
-      SH_RGB(sh.coefficients[1] * SH_COSINE_A1),
-      SH_RGB(sh.coefficients[2] * SH_COSINE_A1),
-      SH_RGB(sh.coefficients[3] * SH_COSINE_A1)
+    SH_VEC3[SH_L1_COUNT_COEFFICIENTS](
+      SH_VEC3(sh.coefficients[0] * SH_COSINE_A0),
+      SH_VEC3(sh.coefficients[1] * SH_COSINE_A1),
+      SH_VEC3(sh.coefficients[2] * SH_COSINE_A1),
+      SH_VEC3(sh.coefficients[3] * SH_COSINE_A1)
     )
   );
 }
@@ -765,16 +763,16 @@ SHCoefficientsL2 SHCoefficientsL2ConvolveWithCosineLobe(const in SHCoefficientsL
 
 SHRGBCoefficientsL2 SHRGBCoefficientsL2ConvolveWithCosineLobe(const in SHRGBCoefficientsL2 sh) {
   return SHRGBCoefficientsL2(
-    SH_RGB[SH_L2_COUNT_COEFFICIENTS](
-      SH_RGB(sh.coefficients[0] * SH_COSINE_A0),
-      SH_RGB(sh.coefficients[1] * SH_COSINE_A1),
-      SH_RGB(sh.coefficients[2] * SH_COSINE_A1),
-      SH_RGB(sh.coefficients[3] * SH_COSINE_A1),
-      SH_RGB(sh.coefficients[4] * SH_COSINE_A2),
-      SH_RGB(sh.coefficients[5] * SH_COSINE_A2),
-      SH_RGB(sh.coefficients[6] * SH_COSINE_A2),
-      SH_RGB(sh.coefficients[7] * SH_COSINE_A2),
-      SH_RGB(sh.coefficients[8] * SH_COSINE_A2)
+    SH_VEC3[SH_L2_COUNT_COEFFICIENTS](
+      SH_VEC3(sh.coefficients[0] * SH_COSINE_A0),
+      SH_VEC3(sh.coefficients[1] * SH_COSINE_A1),
+      SH_VEC3(sh.coefficients[2] * SH_COSINE_A1),
+      SH_VEC3(sh.coefficients[3] * SH_COSINE_A1),
+      SH_VEC3(sh.coefficients[4] * SH_COSINE_A2),
+      SH_VEC3(sh.coefficients[5] * SH_COSINE_A2),
+      SH_VEC3(sh.coefficients[6] * SH_COSINE_A2),
+      SH_VEC3(sh.coefficients[7] * SH_COSINE_A2),
+      SH_VEC3(sh.coefficients[8] * SH_COSINE_A2)
     )
   );
 }
@@ -813,7 +811,7 @@ void SHCoefficientsL1ApproximateDirectionalLight(const in SHCoefficientsL1 sh, o
   intensity = SH_VALUE(DotSHCoefficientsL1(dirSH, sh) * (867.0 / (316.0 * SH_PI)));
 }
 
-void SHRGBCoefficientsL1ApproximateDirectionalLight(const in SHRGBCoefficientsL1 sh, out SH_VEC3 direction, out SH_RGB color) {
+void SHRGBCoefficientsL1ApproximateDirectionalLight(const in SHRGBCoefficientsL1 sh, out SH_VEC3 direction, out SH_VEC3 color) {
   SHRGBCoefficientsL1 dirSH = ProjectOntoSHRGBCoefficientsL1(direction = SHRGBCoefficientsL1GetOptimalLinearDirection(sh), SH_VEC3(1.0));
   dirSH.coefficients[0] = SH_VEC3(0.0);
   color = SH_VEC3(DotSHRGBCoefficientsL1(dirSH, sh) * (867.0 / (316.0 * SH_PI)));
@@ -828,7 +826,7 @@ SH_VALUE SHRCoefficientsL1CalculateIrradiance(const in SHCoefficientsL1 sh, cons
   return EvaluateSHCoefficientsL1(SHCoefficientsL1ConvolveWithCosineLobe(sh), normal);
 }
 
-SH_RGB SHRGBCoefficientsL1CalculateIrradiance(const in SHRGBCoefficientsL1 sh, const in SH_VEC3 normal) {
+SH_VEC3 SHRGBCoefficientsL1CalculateIrradiance(const in SHRGBCoefficientsL1 sh, const in SH_VEC3 normal) {
   return EvaluateSHRGBCoefficientsL1(SHRGBCoefficientsL1ConvolveWithCosineLobe(sh), normal);
 }
 
@@ -836,7 +834,7 @@ SH_VALUE SHRCoefficientsL2CalculateIrradiance(const in SHCoefficientsL2 sh, cons
   return EvaluateSHCoefficientsL2(SHCoefficientsL2ConvolveWithCosineLobe(sh), normal);
 }
 
-SH_RGB SHRGBCoefficientsL2CalculateIrradiance(const in SHRGBCoefficientsL2 sh, const in SH_VEC3 normal) {
+SH_VEC3 SHRGBCoefficientsL2CalculateIrradiance(const in SHRGBCoefficientsL2 sh, const in SH_VEC3 normal) {
   return EvaluateSHRGBCoefficientsL2(SHRGBCoefficientsL2ConvolveWithCosineLobe(sh), normal);
 }
 
@@ -854,7 +852,7 @@ SH_VALUE SHRCoefficientsL1CalculateIrradianceGeomerics(const in SHCoefficientsL1
   return R0 * (a + (SH_VALUE(1.0) - a) * (p + SH_VALUE(1.0)) * pow(abs(q), p));
 }
 
-SH_RGB SHRGBCoefficientsL1CalculateIrradianceGeomerics(const in SHRGBCoefficientsL1 sh, const in SH_VEC3 normal) {
+SH_VEC3 SHRGBCoefficientsL1CalculateIrradianceGeomerics(const in SHRGBCoefficientsL1 sh, const in SH_VEC3 normal) {
   return SH_VEC3(
     SHRCoefficientsL1CalculateIrradianceGeomerics(
       SHCoefficientsL1(
@@ -902,7 +900,7 @@ SH_VALUE SHRCoefficientsL2CalculateIrradianceGeomerics(const in SHCoefficientsL2
   return R0 * (a + (SH_VALUE(1.0) - a) * (p + SH_VALUE(1.0)) * pow(abs(q), p));
 }
 
-SH_RGB SHRGBCoefficientsL2CalculateIrradianceGeomerics(const in SHRGBCoefficientsL2 sh, const in SH_VEC3 normal) {
+SH_VEC3 SHRGBCoefficientsL2CalculateIrradianceGeomerics(const in SHRGBCoefficientsL2 sh, const in SH_VEC3 normal) {
   return SH_VEC3(
     SHRCoefficientsL2CalculateIrradianceGeomerics(
       SHCoefficientsL2(
@@ -965,7 +963,7 @@ SH_VALUE SHCoefficientsL1CalculateIrradianceL3ZoneHarmonicsHallucinate(const in 
   return baseIrradiance + (SH_VALUE(SH_PI * 0.25) * zonalL2Coeff * zhDir);
 }
 
-SH_RGB SHRGBCoefficientsL1CalculateIrradianceL3ZoneHarmonicsHallucinate(const in SHRGBCoefficientsL1 sh, const in SH_VEC3 normal) {
+SH_VEC3 SHRGBCoefficientsL1CalculateIrradianceL3ZoneHarmonicsHallucinate(const in SHRGBCoefficientsL1 sh, const in SH_VEC3 normal) {
   SH_VEC3 lumCoefficients = SH_VEC3(0.2126, 0.7152, 0.0722);
   SH_VEC3 zonalAxis = normalize(SH_VEC3(dot(sh.coefficients[3], lumCoefficients), dot(sh.coefficients[1], lumCoefficients), dot(sh.coefficients[2], lumCoefficients)));
   SH_VEC3 ratio = SH_VEC3(
@@ -976,7 +974,7 @@ SH_RGB SHRGBCoefficientsL1CalculateIrradianceL3ZoneHarmonicsHallucinate(const in
   SH_VEC3 zonalL2Coeff = sh.coefficients[0] * ((SH_VALUE(0.08) * ratio) + (SH_VALUE(0.6) * (ratio * ratio)));
   SH_VALUE fZ = dot(zonalAxis, normal);
   SH_VALUE zhDir = sqrt(SH_VALUE(5.0 / (16.0 * SH_PI))) * ((SH_VALUE(3.0) * (fZ * fZ)) - SH_VALUE(1.0));
-  SH_RGB baseIrradiance = SHRGBCoefficientsL1CalculateIrradiance(sh, normal);
+  SH_VEC3 baseIrradiance = SHRGBCoefficientsL1CalculateIrradiance(sh, normal);
   return baseIrradiance + (SH_VALUE(SH_PI * 0.25) * zonalL2Coeff * zhDir);
 }
 
@@ -990,7 +988,7 @@ SH_VALUE SHCoefficientsL2CalculateIrradianceL3ZoneHarmonicsHallucinate(const in 
   return baseIrradiance + (SH_VALUE(SH_PI * 0.25) * zonalL2Coeff * zhDir);
 }
 
-SH_RGB SHRGBCoefficientsL2CalculateIrradianceL3ZoneHarmonicsHallucinate(const in SHRGBCoefficientsL2 sh, const in SH_VEC3 normal) {
+SH_VEC3 SHRGBCoefficientsL2CalculateIrradianceL3ZoneHarmonicsHallucinate(const in SHRGBCoefficientsL2 sh, const in SH_VEC3 normal) {
   SH_VEC3 lumCoefficients = SH_VEC3(0.2126, 0.7152, 0.0722);
   SH_VEC3 zonalAxis = normalize(SH_VEC3(dot(sh.coefficients[3], lumCoefficients), dot(sh.coefficients[1], lumCoefficients), dot(sh.coefficients[2], lumCoefficients)));
   SH_VEC3 ratio = SH_VEC3(
@@ -1001,7 +999,7 @@ SH_RGB SHRGBCoefficientsL2CalculateIrradianceL3ZoneHarmonicsHallucinate(const in
   SH_VEC3 zonalL2Coeff = sh.coefficients[0] * ((SH_VALUE(0.08) * ratio) + (SH_VALUE(0.6) * (ratio * ratio)));
   SH_VALUE fZ = dot(zonalAxis, normal);
   SH_VALUE zhDir = sqrt(SH_VALUE(5.0 / (16.0 * SH_PI))) * ((SH_VALUE(3.0) * (fZ * fZ)) - SH_VALUE(1.0));
-  SH_RGB baseIrradiance = SHRGBCoefficientsL2CalculateIrradiance(sh, normal);
+  SH_VEC3 baseIrradiance = SHRGBCoefficientsL2CalculateIrradiance(sh, normal);
   return baseIrradiance + (SH_VALUE(SH_PI * 0.25) * zonalL2Coeff * zhDir);
 }
 
@@ -1041,7 +1039,7 @@ void SHCoefficientsL1ExtractSpecularDirectionalLight(const in SHCoefficientsL1 s
   modifiedSqrtRoughness = clamp(sqrtRoughness / sqrt(avgL1len), SH_VALUE(0.0), SH_VALUE(1.0));
 }
 
-void SHRGBCoefficientsL1ExtractSpecularDirectionalLight(const in SHRGBCoefficientsL1 sh, const in SH_VALUE sqrtRoughness, out SH_VEC3 direction, out SH_RGB color, out SH_VALUE modifiedSqrtRoughness) {
+void SHRGBCoefficientsL1ExtractSpecularDirectionalLight(const in SHRGBCoefficientsL1 sh, const in SH_VALUE sqrtRoughness, out SH_VEC3 direction, out SH_VEC3 color, out SH_VALUE modifiedSqrtRoughness) {
   SH_VEC3 avgL1 = SH_VEC3(
     dot(sh.coefficients[3] / sh.coefficients[0], SH_VEC3(1.0 / 3.0)),
     dot(sh.coefficients[1] / sh.coefficients[0], SH_VEC3(1.0 / 3.0)),
@@ -1084,7 +1082,7 @@ SHRGBCoefficientsL1 SHRGBCoefficientsL1Rotate(const in SHRGBCoefficientsL1 sh, c
   const SH_VALUE r12 = SH_VALUE(-rotation[1][2]);
   const SH_VALUE r22 = SH_VALUE(rotation[2][2]);
   return SHRGBCoefficientsL1(
-    SH_RGB[SH_L1_COUNT_COEFFICIENTS](
+    SH_VEC3[SH_L1_COUNT_COEFFICIENTS](
       sh.coefficients[0],
       ((r11 * sh.coefficients[1]) - (r12 * sh.coefficients[2]) + (r10 * sh.coefficients[3])),
       ((-r21 * sh.coefficients[1]) + (r22 * sh.coefficients[2]) - (r20 * sh.coefficients[3])),
