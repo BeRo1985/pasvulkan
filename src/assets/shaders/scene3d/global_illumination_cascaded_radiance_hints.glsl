@@ -571,7 +571,6 @@ vec4 globalIlluminationCascadeVisualizationColor(const vec3 pWorldPosition){
   return lColor;
 }
 
-
 void globalIlluminationVolumeLookUp(out vec3 pSphericalHarmonics[9], const vec3 pWorldPosition, const vec3 pOffset, const vec3 pNormal){
   vec3 lWorldSpacePosition = pWorldPosition + (pOffset * ((globalIlluminationVolumeAABBMax[0].xyz - globalIlluminationVolumeAABBMin[0].xyz) * uGlobalIlluminationVolumeSizeInvVector));
   int lCascadeIndex = 0;      
