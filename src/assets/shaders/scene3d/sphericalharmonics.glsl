@@ -1093,7 +1093,7 @@ void SHC3CoefficientsL1ExtractSpecularDirectionalLight(const in SHC3Coefficients
   modifiedSqrtRoughness = clamp(sqrtRoughness / sqrt(avgL1len), SH_VALUE(0.0), SH_VALUE(1.0));
 }
 
-void SHCoefficientsL1ExtractAndSubtractDominantAmbientAndDirectionalLights(inout SHCoefficientsL1 sh, out SH_VEC3 ambient, out SH_VEC3 direction, out SH_VALUE directional){
+void SHCoefficientsL1ExtractAndSubtractDominantAmbientAndDirectionalLights(inout SHCoefficientsL1 sh, out SH_VEC3 ambient, out SH_VEC3 direction, out SH_VALUE directional, const in SH_VALUE sqrtRoughness, out SH_VALUE modifiedSqrtRoughness) {
   SH_VEC3 avgL1 = SH_VEC3(sh.coefficients[3], sh.coefficients[1], sh.coefficients[2]) * SH_VALUE(0.5);
   SH_VALUE avgL1len = max(SH_VALUE(1e-5), length(avgL1));
   direction = avgL1 / avgL1len;
@@ -1103,9 +1103,10 @@ void SHCoefficientsL1ExtractAndSubtractDominantAmbientAndDirectionalLights(inout
   sh = SHCoefficientsL1Sub(sh, t);
   ambient = SH_VEC3(sh.coefficients[0], sh.coefficients[0], sh.coefficients[0]);
   sh.coefficients[0] = SH_VALUE(0.0);
+  modifiedSqrtRoughness = clamp(sqrtRoughness / sqrt(avgL1len), SH_VALUE(0.0), SH_VALUE(1.0));
 }
 
-void SHC3CoefficientsL1ExtractAndSubtractDominantAmbientAndDirectionalLights(inout SHC3CoefficientsL1 sh, out SH_VEC3 ambient, out SH_VEC3 direction, out SH_VEC3 directional){
+void SHC3CoefficientsL1ExtractAndSubtractDominantAmbientAndDirectionalLights(inout SHC3CoefficientsL1 sh, out SH_VEC3 ambient, out SH_VEC3 direction, out SH_VEC3 directional, const in SH_VALUE sqrtRoughness, out SH_VALUE modifiedSqrtRoughness) {
   SH_VEC3 avgL1 = SH_VEC3(
     dot(sh.coefficients[3] / sh.coefficients[0], SH_VEC3(1.0 / 3.0)),
     dot(sh.coefficients[1] / sh.coefficients[0], SH_VEC3(1.0 / 3.0)),
@@ -1119,6 +1120,7 @@ void SHC3CoefficientsL1ExtractAndSubtractDominantAmbientAndDirectionalLights(ino
   sh = SHC3CoefficientsL1Sub(sh, t);
   ambient = SH_VEC3(sh.coefficients[0]);
   sh.coefficients[0] = SH_VEC3(0.0);
+  modifiedSqrtRoughness = clamp(sqrtRoughness / sqrt(avgL1len), SH_VALUE(0.0), SH_VALUE(1.0));
 }
 
 SHCoefficientsL1 SHCoefficientsL1Rotate(const in SHCoefficientsL1 sh, const in mat3 rotation) {
