@@ -33721,10 +33721,14 @@ begin
     // Update BLAS instances for TLAS                                          //
     /////////////////////////////////////////////////////////////////////////////
 
+    BeginCPUTime:=pvApplication.HighResolutionTimer.GetTime;
     fRaytracingAccelerationStructureInstanceList.ClearNoFree;
     for InstanceIndex:=0 to fRaytracingBLASInstances.Count-1 do begin
-     fRaytracingAccelerationStructureInstanceList.Add(fRaytracingBLASInstances[InstanceIndex].AccelerationStructureInstance);
+     fRaytracingAccelerationStructureInstanceList.Add(fRaytracingBLASInstances[InstanceIndex].AccelerationStructureInstance^);
     end;
+    EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
+    PartCPUTime:=EndCPUTime-BeginCPUTime;
+    CPUTimeMS:=pvApplication.HighResolutionTimer.ToFloatSeconds(PartCPUTime)*1000.0;
 
     fRaytracingTLASBLASInstancesBufferSize:=RoundUpToPowerOfTwo64(Max(1,fRaytracingAccelerationStructureInstanceList.Count)*SizeOf(TVkAccelerationStructureInstanceKHR));
 

@@ -312,6 +312,7 @@ type EpvRaytracing=class(Exception);
        fDevice:TpvVulkanDevice;
        fAccelerationStructure:TpvRaytracingBottomLevelAccelerationStructure;
        fAccelerationStructureInstance:TVkAccelerationStructureInstanceKHR;
+       fAccelerationStructureInstancePointer:PVkAccelerationStructureInstanceKHR;
        function GetTransform:TpvMatrix4x4;
        procedure SetTransform(const aTransform:TpvMatrix4x4);
        function GetInstanceCustomIndex:TpvUInt32;
@@ -333,7 +334,8 @@ type EpvRaytracing=class(Exception);
                           const aMask:TVkUInt32;
                           const aInstanceShaderBindingTableRecordOffset:TVkUInt32;
                           const aFlags:TVkGeometryInstanceFlagsKHR;
-                          const aAccelerationStructure:TpvRaytracingBottomLevelAccelerationStructure); reintroduce;
+                          const aAccelerationStructure:TpvRaytracingBottomLevelAccelerationStructure;
+                          const aAccelerationStructureInstancePointer:PVkAccelerationStructureInstanceKHR=nil); reintroduce;
        destructor Destroy; override;
       public
        property Transform:TpvMatrix4x4 read GetTransform write SetTransform;
@@ -346,7 +348,7 @@ type EpvRaytracing=class(Exception);
        property AccelerationStructure:TpvRaytracingBottomLevelAccelerationStructure read GetAccelerationStructure write SetAccelerationStructure;
        property AccelerationStructureDeviceAddress:TVkDeviceAddress read GetAccelerationStructureDeviceAddress write SetAccelerationStructureDeviceAddress;
       public
-       property AccelerationStructureInstance:TVkAccelerationStructureInstanceKHR read fAccelerationStructureInstance write fAccelerationStructureInstance; 
+       property AccelerationStructureInstance:PVkAccelerationStructureInstanceKHR read fAccelerationStructureInstancePointer;
      end;
 
      TpvRaytracingBottomLevelAccelerationStructureInstanceList=TpvObjectGenericList<TpvRaytracingBottomLevelAccelerationStructureInstance>;
@@ -1250,22 +1252,29 @@ constructor TpvRaytracingBottomLevelAccelerationStructureInstance.Create(const a
                                                                          const aMask:TVkUInt32;
                                                                          const aInstanceShaderBindingTableRecordOffset:TVkUInt32;
                                                                          const aFlags:TVkGeometryInstanceFlagsKHR;
-                                                                         const aAccelerationStructure:TpvRaytracingBottomLevelAccelerationStructure);
+                                                                         const aAccelerationStructure:TpvRaytracingBottomLevelAccelerationStructure;
+                                                                         const aAccelerationStructureInstancePointer:PVkAccelerationStructureInstanceKHR);
 begin
 
  inherited Create;
 
  fDevice:=aDevice;
 
- FillChar(fAccelerationStructureInstance,SizeOf(TVkAccelerationStructureInstanceKHR),#0);
+ if assigned(aAccelerationStructureInstancePointer) then begin
+  fAccelerationStructureInstancePointer:=aAccelerationStructureInstancePointer;
+ end else begin
+  fAccelerationStructureInstancePointer:=@fAccelerationStructureInstance;
+ end;
+
+ FillChar(fAccelerationStructureInstancePointer^,SizeOf(TVkAccelerationStructureInstanceKHR),#0);
 
  SetTransform(aTransform);
 
- fAccelerationStructureInstance.instanceCustomIndex:=aInstanceCustomIndex;
- fAccelerationStructureInstance.mask:=aMask;
- fAccelerationStructureInstance.instanceShaderBindingTableRecordOffset:=aInstanceShaderBindingTableRecordOffset;
- fAccelerationStructureInstance.flags:=aFlags;
- fAccelerationStructureInstance.accelerationStructureReference:=0;
+ fAccelerationStructureInstancePointer^.instanceCustomIndex:=aInstanceCustomIndex;
+ fAccelerationStructureInstancePointer^.mask:=aMask;
+ fAccelerationStructureInstancePointer^.instanceShaderBindingTableRecordOffset:=aInstanceShaderBindingTableRecordOffset;
+ fAccelerationStructureInstancePointer^.flags:=aFlags;
+ fAccelerationStructureInstancePointer^.accelerationStructureReference:=0;
 
  fAccelerationStructure:=nil;
  
@@ -1280,86 +1289,86 @@ end;
 
 function TpvRaytracingBottomLevelAccelerationStructureInstance.GetTransform:TpvMatrix4x4;
 begin
-{PVkTransformMatrixKHR(Pointer(@result))^:=fAccelerationStructureInstance.transform;
+{PVkTransformMatrixKHR(Pointer(@result))^:=fAccelerationStructureInstancePointer^.transform;
  result.RawComponents[3,0]:=0.0;
  result.RawComponents[3,1]:=0.0;
  result.RawComponents[3,2]:=0.0;
  result.RawComponents[3,3]:=1.0;}
  // Row-order => Column-order
- result.RawComponents[0,0]:=fAccelerationStructureInstance.transform.matrix[0,0];
- result.RawComponents[0,1]:=fAccelerationStructureInstance.transform.matrix[1,0];
- result.RawComponents[0,2]:=fAccelerationStructureInstance.transform.matrix[2,0];
+ result.RawComponents[0,0]:=fAccelerationStructureInstancePointer^.transform.matrix[0,0];
+ result.RawComponents[0,1]:=fAccelerationStructureInstancePointer^.transform.matrix[1,0];
+ result.RawComponents[0,2]:=fAccelerationStructureInstancePointer^.transform.matrix[2,0];
  result.RawComponents[0,3]:=0.0;
- result.RawComponents[1,0]:=fAccelerationStructureInstance.transform.matrix[0,1];
- result.RawComponents[1,1]:=fAccelerationStructureInstance.transform.matrix[1,1];
- result.RawComponents[1,2]:=fAccelerationStructureInstance.transform.matrix[2,1];
+ result.RawComponents[1,0]:=fAccelerationStructureInstancePointer^.transform.matrix[0,1];
+ result.RawComponents[1,1]:=fAccelerationStructureInstancePointer^.transform.matrix[1,1];
+ result.RawComponents[1,2]:=fAccelerationStructureInstancePointer^.transform.matrix[2,1];
  result.RawComponents[1,3]:=0.0;
- result.RawComponents[2,0]:=fAccelerationStructureInstance.transform.matrix[0,2];
- result.RawComponents[2,1]:=fAccelerationStructureInstance.transform.matrix[1,2];
- result.RawComponents[2,2]:=fAccelerationStructureInstance.transform.matrix[2,2];
+ result.RawComponents[2,0]:=fAccelerationStructureInstancePointer^.transform.matrix[0,2];
+ result.RawComponents[2,1]:=fAccelerationStructureInstancePointer^.transform.matrix[1,2];
+ result.RawComponents[2,2]:=fAccelerationStructureInstancePointer^.transform.matrix[2,2];
  result.RawComponents[2,3]:=0.0;
- result.RawComponents[3,0]:=fAccelerationStructureInstance.transform.matrix[0,3];
- result.RawComponents[3,1]:=fAccelerationStructureInstance.transform.matrix[1,3];
- result.RawComponents[3,2]:=fAccelerationStructureInstance.transform.matrix[2,3];
+ result.RawComponents[3,0]:=fAccelerationStructureInstancePointer^.transform.matrix[0,3];
+ result.RawComponents[3,1]:=fAccelerationStructureInstancePointer^.transform.matrix[1,3];
+ result.RawComponents[3,2]:=fAccelerationStructureInstancePointer^.transform.matrix[2,3];
  result.RawComponents[3,3]:=1.0;
 end;
 
 procedure TpvRaytracingBottomLevelAccelerationStructureInstance.SetTransform(const aTransform:TpvMatrix4x4);
 begin
-//fAccelerationStructureInstance.transform:=PVkTransformMatrixKHR(Pointer(@aTransform))^;
+//fAccelerationStructureInstancePointer^.transform:=PVkTransformMatrixKHR(Pointer(@aTransform))^;
  // Column-order => Row-order
- fAccelerationStructureInstance.transform.matrix[0,0]:=aTransform.RawComponents[0,0];
- fAccelerationStructureInstance.transform.matrix[0,1]:=aTransform.RawComponents[1,0];
- fAccelerationStructureInstance.transform.matrix[0,2]:=aTransform.RawComponents[2,0];
- fAccelerationStructureInstance.transform.matrix[0,3]:=aTransform.RawComponents[3,0];
- fAccelerationStructureInstance.transform.matrix[1,0]:=aTransform.RawComponents[0,1];
- fAccelerationStructureInstance.transform.matrix[1,1]:=aTransform.RawComponents[1,1];
- fAccelerationStructureInstance.transform.matrix[1,2]:=aTransform.RawComponents[2,1];
- fAccelerationStructureInstance.transform.matrix[1,3]:=aTransform.RawComponents[3,1];
- fAccelerationStructureInstance.transform.matrix[2,0]:=aTransform.RawComponents[0,2];
- fAccelerationStructureInstance.transform.matrix[2,1]:=aTransform.RawComponents[1,2];
- fAccelerationStructureInstance.transform.matrix[2,2]:=aTransform.RawComponents[2,2];
- fAccelerationStructureInstance.transform.matrix[2,3]:=aTransform.RawComponents[3,2];
+ fAccelerationStructureInstancePointer^.transform.matrix[0,0]:=aTransform.RawComponents[0,0];
+ fAccelerationStructureInstancePointer^.transform.matrix[0,1]:=aTransform.RawComponents[1,0];
+ fAccelerationStructureInstancePointer^.transform.matrix[0,2]:=aTransform.RawComponents[2,0];
+ fAccelerationStructureInstancePointer^.transform.matrix[0,3]:=aTransform.RawComponents[3,0];
+ fAccelerationStructureInstancePointer^.transform.matrix[1,0]:=aTransform.RawComponents[0,1];
+ fAccelerationStructureInstancePointer^.transform.matrix[1,1]:=aTransform.RawComponents[1,1];
+ fAccelerationStructureInstancePointer^.transform.matrix[1,2]:=aTransform.RawComponents[2,1];
+ fAccelerationStructureInstancePointer^.transform.matrix[1,3]:=aTransform.RawComponents[3,1];
+ fAccelerationStructureInstancePointer^.transform.matrix[2,0]:=aTransform.RawComponents[0,2];
+ fAccelerationStructureInstancePointer^.transform.matrix[2,1]:=aTransform.RawComponents[1,2];
+ fAccelerationStructureInstancePointer^.transform.matrix[2,2]:=aTransform.RawComponents[2,2];
+ fAccelerationStructureInstancePointer^.transform.matrix[2,3]:=aTransform.RawComponents[3,2];
 end;
 
 function TpvRaytracingBottomLevelAccelerationStructureInstance.GetInstanceCustomIndex:TVkUInt32;
 begin
- result:=fAccelerationStructureInstance.instanceCustomIndex;
+ result:=fAccelerationStructureInstancePointer^.instanceCustomIndex;
 end;
 
 procedure TpvRaytracingBottomLevelAccelerationStructureInstance.SetInstanceCustomIndex(const aInstanceCustomIndex:TVkUInt32);
 begin
- fAccelerationStructureInstance.instanceCustomIndex:=aInstanceCustomIndex;
+ fAccelerationStructureInstancePointer^.instanceCustomIndex:=aInstanceCustomIndex;
 end;
 
 function TpvRaytracingBottomLevelAccelerationStructureInstance.GetMask:TVkUInt32;
 begin
- result:=fAccelerationStructureInstance.mask;
+ result:=fAccelerationStructureInstancePointer^.mask;
 end;
 
 procedure TpvRaytracingBottomLevelAccelerationStructureInstance.SetMask(const aMask:TVkUInt32);
 begin
- fAccelerationStructureInstance.mask:=aMask;
+ fAccelerationStructureInstancePointer^.mask:=aMask;
 end;
 
 function TpvRaytracingBottomLevelAccelerationStructureInstance.GetInstanceShaderBindingTableRecordOffset:TVkUInt32;
 begin
- result:=fAccelerationStructureInstance.instanceShaderBindingTableRecordOffset;
+ result:=fAccelerationStructureInstancePointer^.instanceShaderBindingTableRecordOffset;
 end;
 
 procedure TpvRaytracingBottomLevelAccelerationStructureInstance.SetInstanceShaderBindingTableRecordOffset(const aInstanceShaderBindingTableRecordOffset:TVkUInt32);
 begin
- fAccelerationStructureInstance.instanceShaderBindingTableRecordOffset:=aInstanceShaderBindingTableRecordOffset;
+ fAccelerationStructureInstancePointer^.instanceShaderBindingTableRecordOffset:=aInstanceShaderBindingTableRecordOffset;
 end;
 
 function TpvRaytracingBottomLevelAccelerationStructureInstance.GetFlags:TVkGeometryInstanceFlagsKHR;
 begin
- result:=fAccelerationStructureInstance.flags;
+ result:=fAccelerationStructureInstancePointer^.flags;
 end;
 
 procedure TpvRaytracingBottomLevelAccelerationStructureInstance.SetFlags(const aFlags:TVkGeometryInstanceFlagsKHR);
 begin
- fAccelerationStructureInstance.flags:=aFlags;
+ fAccelerationStructureInstancePointer^.flags:=aFlags;
 end;
 
 function TpvRaytracingBottomLevelAccelerationStructureInstance.GetAccelerationStructure:TpvRaytracingBottomLevelAccelerationStructure;
@@ -1382,11 +1391,11 @@ begin
    AddressInfo.pNext:=nil;
    AddressInfo.accelerationStructure:=fAccelerationStructure.AccelerationStructure;
 
-   fAccelerationStructureInstance.accelerationStructureReference:=fDevice.Commands.Commands.GetAccelerationStructureDeviceAddressKHR(fDevice.Handle,@AddressInfo);
+   fAccelerationStructureInstancePointer^.accelerationStructureReference:=fDevice.Commands.Commands.GetAccelerationStructureDeviceAddressKHR(fDevice.Handle,@AddressInfo);
 
   end else begin
 
-   fAccelerationStructureInstance.accelerationStructureReference:=0;
+   fAccelerationStructureInstancePointer^.accelerationStructureReference:=0;
 
   end;
 
@@ -1396,12 +1405,12 @@ end;
 
 function TpvRaytracingBottomLevelAccelerationStructureInstance.GetAccelerationStructureDeviceAddress:TVkDeviceAddress;
 begin
- result:=fAccelerationStructureInstance.accelerationStructureReference;
+ result:=fAccelerationStructureInstancePointer^.accelerationStructureReference;
 end;
 
 procedure TpvRaytracingBottomLevelAccelerationStructureInstance.SetAccelerationStructureDeviceAddress(const aAccelerationStructureDeviceAddress:TVkDeviceAddress);
 begin
- fAccelerationStructureInstance.accelerationStructureReference:=aAccelerationStructureDeviceAddress;
+ fAccelerationStructureInstancePointer^.accelerationStructureReference:=aAccelerationStructureDeviceAddress;
 end;
 
 { TpvRaytracingTopLevelAccelerationStructure }
