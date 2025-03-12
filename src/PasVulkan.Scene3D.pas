@@ -29223,6 +29223,10 @@ begin
 
  FreeAndNil(fBufferRangeAllocatorLock);
 
+ while fRaytracingGroupInstanceNodeArrayList.Count>0 do begin
+  fRaytracingGroupInstanceNodeArrayList[fRaytracingGroupInstanceNodeArrayList.Count-1].Free;
+ end;
+
  FreeAndNil(fRaytracingTLAS);
 
  FreeAndNil(fRaytracingTLASScratchBuffer);
