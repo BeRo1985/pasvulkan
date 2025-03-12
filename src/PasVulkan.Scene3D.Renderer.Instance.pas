@@ -567,6 +567,8 @@ type { TpvScene3DRendererInstance }
        fReflectiveShadowMapHeight:TpvInt32;
        fCascadedShadowMapWidth:TpvInt32;
        fCascadedShadowMapHeight:TpvInt32;
+       fCascadedShadowMapCenter:TpvVector3D;
+       fCascadedShadowMapRadius:TpvDouble;
        fCountSurfaceViews:TpvInt32;
        fSurfaceMultiviewMask:TpvUInt32;
        fLeft:TpvInt32;
@@ -1040,6 +1042,10 @@ type { TpvScene3DRendererInstance }
        property ReflectiveShadowMapHeight:TpvInt32 read fReflectiveShadowMapHeight write fReflectiveShadowMapHeight;
        property CascadedShadowMapWidth:TpvInt32 read fCascadedShadowMapWidth write fCascadedShadowMapWidth;
        property CascadedShadowMapHeight:TpvInt32 read fCascadedShadowMapHeight write fCascadedShadowMapHeight;
+      public
+       property CascadedShadowMapCenter:TpvVector3D read fCascadedShadowMapCenter write fCascadedShadowMapCenter;
+       property CascadedShadowMapRadius:TpvDouble read fCascadedShadowMapRadius write fCascadedShadowMapRadius;
+      published
        property Left:TpvInt32 read fLeft write fLeft;
        property Top:TpvInt32 read fTop write fTop;
        property Width:TpvInt32 read fWidth write fWidth;
@@ -1327,7 +1333,7 @@ var CascadedShadowMapIndex,Index,ViewIndex:TpvSizeInt;
     MinZ,MaxZ,
     Ratio,SplitValue,UniformSplitValue,LogSplitValue,
     FadeStartValue,LastValue,Value,TexelSizeAtOneMeter,
-    zNear,zFar,RealZNear,RealZFar:TpvScalar;
+    zNear,zFar,RealZNear,RealZFar:TpvDouble;
     DoNeedRefitNearFarPlanes:boolean;
     InFlightFrameState:PInFlightFrameState;
     Renderer:TpvScene3DRenderer;
@@ -1340,11 +1346,17 @@ begin
 
  InFlightFrameState:=@fInstance.fInFlightFrameStates[aInFlightFrameIndex];
 
+ if IsInfinite(fInstance.fCascadedShadowMapRadius) then begin
+  MaxZ:=fInstance.fCascadedShadowMapRadius;
+ end else begin
+  MaxZ:=fInstance.fCascadedShadowMapCenter.Length+fInstance.fCascadedShadowMapRadius;
+ end;
+
  zNear:=InFlightFrameState^.AdjustedZNear;
- zFar:=InFlightFrameState^.AdjustedZFar;
+ zFar:=Min(MaxZ,InFlightFrameState^.AdjustedZFar);
 
  RealZNear:=InFlightFrameState^.RealZNear;
- RealZFar:=InFlightFrameState^.RealZFar;
+ RealZFar:=Min(MaxZ,InFlightFrameState^.RealZFar);
 
  DoNeedRefitNearFarPlanes:=InFlightFrameState^.DoNeedRefitNearFarPlanes;
 
@@ -1865,6 +1877,10 @@ begin
   fCascadedShadowMapHeight:=Renderer.ShadowMapSize;
 
  end;
+
+ fCascadedShadowMapCenter:=TpvVector3.Null;
+
+ fCascadedShadowMapRadius:=Infinity;
 
  for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
   fCameraViewMatrices[InFlightFrameIndex]:=TpvMatrix4x4.Identity;
