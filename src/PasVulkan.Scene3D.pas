@@ -3707,6 +3707,7 @@ type EpvScene3D=class(Exception);
        fReferencedPlanetDataBufRefArray:array[0..MaxInFlightFrames-1] of TVkDeviceAddressArray;
        fReferencedPlanetDataBufRefArrayVulkanBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
        fRaytracingLock:TPasMPCriticalSection;
+       fRaytracingUpdateStructuresLock:TPasMPCriticalSection;
        fRaytracingBLASListChanged:TPasMPBool32;
        fRaytracingMustUpdateTLAS:TPasMPBool32;
        fRaytracingPrimitiveIDCounter:TpvUInt64;
@@ -6446,14 +6447,19 @@ begin
    end;
 
    if not assigned(BLASGroup^.fBLAS) then begin
-    BLASGroup^.fBLAS:=TpvRaytracingBottomLevelAccelerationStructure.Create(fSceneInstance.fVulkanDevice,
-                                                                           BLASGroup^.fBLASGeometry,
-                                                                           IfThen(fDynamicGeometry,
-                                                                                  TVkBuildAccelerationStructureFlagsKHR(VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_BUILD_BIT_KHR) or
-                                                                                  TVkBuildAccelerationStructureFlagsKHR(VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_UPDATE_BIT_KHR),
-                                                                                  TVkBuildAccelerationStructureFlagsKHR(VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR) or
-                                                                                  TVkBuildAccelerationStructureFlagsKHR(VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_COMPACTION_BIT_KHR)),
-                                                                           fDynamicGeometry);
+    fSceneInstance.fRaytracingUpdateStructuresLock.Acquire;
+    try
+     BLASGroup^.fBLAS:=TpvRaytracingBottomLevelAccelerationStructure.Create(fSceneInstance.fVulkanDevice,
+                                                                            BLASGroup^.fBLASGeometry,
+                                                                            IfThen(fDynamicGeometry,
+                                                                                   TVkBuildAccelerationStructureFlagsKHR(VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_BUILD_BIT_KHR) or
+                                                                                   TVkBuildAccelerationStructureFlagsKHR(VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_UPDATE_BIT_KHR),
+                                                                                   TVkBuildAccelerationStructureFlagsKHR(VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR) or
+                                                                                   TVkBuildAccelerationStructureFlagsKHR(VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_COMPACTION_BIT_KHR)),
+                                                                            fDynamicGeometry);
+    finally
+     fSceneInstance.fRaytracingUpdateStructuresLock.Release;
+    end;
     BLASGroup^.fAccelerationStructureSize:=BLASGroup^.fBLAS.BuildSizesInfo.accelerationStructureSize;
     fDirty:=true;
     fUpdateDirty:=false;
@@ -6464,7 +6470,12 @@ begin
       (BLASGroup^.fAccelerationStructureSize>0) then begin
 
     if assigned(pvApplication) then begin
-     pvApplication.WaitForPreviousFrame(true); // wait on previous frame to avoid destroy still-in-usage buffers.
+     fSceneInstance.fRaytracingUpdateStructuresLock.Acquire;
+     try
+      pvApplication.WaitForPreviousFrame(true); // wait on previous frame to avoid destroy still-in-usage buffers.
+     finally
+      fSceneInstance.fRaytracingUpdateStructuresLock.Release;
+     end;
     end;
 
     BLASGroup^.fBLAS.Finalize;
@@ -27986,6 +27997,8 @@ begin
 
  fRaytracingLock:=TPasMPCriticalSection.Create;
 
+ fRaytracingUpdateStructuresLock:=TPasMPCriticalSection.Create;
+
  fRaytracingPrimitiveIDCounter:=0;
 
  fRaytracingGroupInstanceNodeIDCounter:=0;
@@ -29202,6 +29215,8 @@ begin
  FreeAndNil(fRaytracingGroupInstanceNodeArrayList);
 
  FreeAndNil(fRaytracingGroupInstanceNodeArrayListLock);
+
+ FreeAndNil(fRaytracingUpdateStructuresLock);
 
  FreeAndNil(fRaytracingLock);
 
