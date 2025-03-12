@@ -3711,6 +3711,7 @@ type EpvScene3D=class(Exception);
        fRaytracingMustUpdateTLAS:TPasMPBool32;
        fRaytracingPrimitiveIDCounter:TpvUInt64;
        fRaytracingGroupInstanceNodeIDCounter:TpvUInt64;
+       fUpdateRaytracingRaytracingGroupInstanceNodeUpdateStructuresParallelForJobInFlightFrameIndex:TpvSizeInt;
        fRaytracingGroupInstanceNodeArrayList:TRaytracingGroupInstanceNodeArrayList;
        fRaytracingGroupInstanceNodeArrayListLock:TPasMPSlimReaderWriterLock;
        fRaytracingGroupInstanceNodeDirtyArray:TRaytracingGroupInstanceNodeArray;
@@ -3864,6 +3865,7 @@ type EpvScene3D=class(Exception);
       private
        procedure ParallelGroupInstanceUpdateFunction;
        procedure ParallelGroupInstanceUpdateParallelJobFunction(const Job:PPasMPJob;const ThreadIndex:TPasMPInt32);
+       procedure UpdateRaytracingRaytracingGroupInstanceNodeUpdateStructuresParallelForJob(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
       public
        class function DetectFileType(const aMemory:pointer;const aSize:TpvSizeInt):TpvScene3D.TFileType; overload; static;
        class function DetectFileType(const aStream:TStream):TpvScene3D.TFileType; overload; static;
@@ -5670,7 +5672,7 @@ begin
    MutuallyVisible:=NodeA.fAABB.Intersect(NodeB.fAABB);
 
    if not MutuallyVisible then begin
-    fPasMPInstance.Invoke(fPasMPInstance.ParallelFor(@NodeIndexPair,0,TpvScene3D.TPotentiallyVisibleSet.CountRayCheckTapPoints*TpvScene3D.TPotentiallyVisibleSet.CountRayCheckTapPoints,NodePairVisibilityCheckRayParallelForJob,1,PasMPDefaultDepth,nil,0,0));
+    fPasMPInstance.Invoke(fPasMPInstance.ParallelFor(@NodeIndexPair,0,TpvScene3D.TPotentiallyVisibleSet.CountRayCheckTapPoints*TpvScene3D.TPotentiallyVisibleSet.CountRayCheckTapPoints-1,NodePairVisibilityCheckRayParallelForJob,1,PasMPDefaultDepth,nil,0,0));
     MutuallyVisible:=GetNodeVisibility(NodeAIndex,NodeBIndex) or GetNodeVisibility(NodeBIndex,NodeAIndex);
    end;
 
@@ -32745,6 +32747,34 @@ begin
  end;
 end;
 
+procedure TpvScene3D.UpdateRaytracingRaytracingGroupInstanceNodeUpdateStructuresParallelForJob(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
+var RaytracingGroupInstanceNodeIndex:TPasMPNativeInt;
+    RaytracingGroupInstanceNode:TRaytracingGroupInstanceNode;
+    BLASListChanged,MustUpdateTLAS:TPasMPBool32;
+begin
+ BLASListChanged:=false;
+ MustUpdateTLAS:=false;
+ for RaytracingGroupInstanceNodeIndex:=aFromIndex to aToIndex do begin
+  RaytracingGroupInstanceNode:=fRaytracingGroupInstanceNodeArrayList.RawItems[RaytracingGroupInstanceNodeIndex];
+  if RaytracingGroupInstanceNode.UpdateStructures(fUpdateRaytracingRaytracingGroupInstanceNodeUpdateStructuresParallelForJobInFlightFrameIndex,false) then begin
+   BLASListChanged:=true;
+  end;
+  if RaytracingGroupInstanceNode.fDirty then begin
+   RaytracingGroupInstanceNode.fDirty:=false;
+   fRaytracingGroupInstanceNodeDirtyArray[TPasMPInterlocked.Add(fRaytracingGroupInstanceNodeDirtyArrayCount,1)]:=RaytracingGroupInstanceNode;
+  end;
+  if RaytracingGroupInstanceNode.fGeometryChanged then begin
+   MustUpdateTLAS:=true;
+  end;
+ end;
+ if BLASListChanged then begin
+  TPasMPInterlocked.Write(fRaytracingBLASListChanged,true);
+ end;
+ if MustUpdateTLAS then begin
+  TPasMPInterlocked.Write(fRaytracingMustUpdateTLAS,true);
+ end;
+end;
+
 procedure TpvScene3D.UpdateRaytracing(const aCommandBuffer:TpvVulkanCommandBuffer;
                                       const aInFlightFrameIndex:TpvSizeInt;
                                       const aLabels:Boolean);
@@ -33082,18 +33112,9 @@ begin
     end;
 
     BeginCPUTime:=pvApplication.HighResolutionTimer.GetTime;
-    for RaytracingGroupInstanceNodeIndex:=0 to fRaytracingGroupInstanceNodeArrayList.Count-1 do begin
-     RaytracingGroupInstanceNode:=fRaytracingGroupInstanceNodeArrayList.RawItems[RaytracingGroupInstanceNodeIndex];
-     if RaytracingGroupInstanceNode.UpdateStructures(aInFlightFrameIndex,false) then begin
-      fRaytracingBLASListChanged:=true;
-     end;
-     if RaytracingGroupInstanceNode.fDirty then begin
-      RaytracingGroupInstanceNode.fDirty:=false;
-      fRaytracingGroupInstanceNodeDirtyArray[TPasMPInterlocked.Add(fRaytracingGroupInstanceNodeDirtyArrayCount,1)]:=RaytracingGroupInstanceNode;
-     end;
-     if RaytracingGroupInstanceNode.fGeometryChanged then begin
-      fRaytracingMustUpdateTLAS:=true;
-     end;
+    fUpdateRaytracingRaytracingGroupInstanceNodeUpdateStructuresParallelForJobInFlightFrameIndex:=aInFlightFrameIndex;
+    if fRaytracingGroupInstanceNodeArrayList.Count>0 then begin
+     fPasMPInstance.Invoke(fPasMPInstance.ParallelFor(self,0,fRaytracingGroupInstanceNodeArrayList.Count-1,UpdateRaytracingRaytracingGroupInstanceNodeUpdateStructuresParallelForJob,1,PasMPDefaultDepth,nil,0,0));
     end;
     EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
     PartCPUTime:=EndCPUTime-BeginCPUTime;
