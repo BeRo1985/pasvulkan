@@ -6188,7 +6188,7 @@ end;
 
 function TpvScene3D.TRaytracingGroupInstanceNode.UpdateStructures(const aInFlightFrameIndex:TpvSizeInt;const aForce:Boolean):Boolean;
 var CountRenderInstances,CountPrimitives,RaytracingPrimitiveIndex,RendererInstanceIndex,
-    BLASInstanceIndex,IndexOffset:TpvSizeInt;
+    BLASInstanceIndex,IndexOffset,BLASArrayIndex:TpvSizeInt;
     BLASGroupVariant:TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroupVariant;
     BLASGroup:TpvScene3D.TRaytracingGroupInstanceNode.PBLASGroup;
     RaytracingBottomLevelAccelerationStructureInstance:TpvRaytracingBottomLevelAccelerationStructureInstance;
@@ -6545,6 +6545,10 @@ begin
    if (BLASGroup^.fBLASInstances.Count>0) and (BLASGroup^.fBLASInstances[0].Mask<>RaytracingMask) then begin
     for BLASInstanceIndex:=0 to BLASGroup^.fBLASInstances.Count-1 do begin
      BLASGroup^.fBLASInstances[BLASInstanceIndex].Mask:=RaytracingMask;
+     BLASArrayIndex:=BLASGroup^.fBLASInstances[BLASInstanceIndex].Tag;
+     if BLASArrayIndex>=0 then begin
+      fSceneInstance.fRaytracingAccelerationStructureInstanceList.ItemArray[BLASArrayIndex].Mask:=RaytracingMask;
+     end;
     end;
    end;
 
@@ -6556,6 +6560,7 @@ begin
                                                                                                                      0,
                                                                                                                      GeometryInstanceFlags,
                                                                                                                      BLASGroup^.fBLAS);
+    RaytracingBottomLevelAccelerationStructureInstance.Tag:=-1;
     BLASGroup^.fBLASInstances.Add(RaytracingBottomLevelAccelerationStructureInstance);
     result:=true;
    end;
@@ -6579,13 +6584,21 @@ begin
      BLASInstanceIndex:=0;
 
      for RendererInstanceIndex:=0 to Min(CountRenderInstances,PerInFlightFrameRenderInstanceDynamicArray^.Count)-1 do begin
-      BLASGroup^.fBLASInstances[BLASInstanceIndex].Transform:=Matrix*PerInFlightFrameRenderInstanceDynamicArray^.Items[RendererInstanceIndex].ModelMatrix;
+      BLASGroup^.fBLASInstances[BLASInstanceIndex].Transform:=Matrix*PerInFlightFrameRenderInstanceDynamicArray^.Items[RendererInstanceIndex].ModelMatrix;;
+      BLASArrayIndex:=BLASGroup^.fBLASInstances[BLASInstanceIndex].Tag;
+      if BLASArrayIndex>=0 then begin
+       fSceneInstance.fRaytracingAccelerationStructureInstanceList.ItemArray[BLASArrayIndex].Transform:=BLASGroup^.fBLASInstances[BLASInstanceIndex].AccelerationStructureInstance^.transform;
+      end;
       inc(BLASInstanceIndex);
      end;
 
     end else begin
 
      BLASGroup^.fBLASInstances[0].Transform:=Matrix;
+     BLASArrayIndex:=BLASGroup^.fBLASInstances[0].Tag;
+     if BLASArrayIndex>=0 then begin
+      fSceneInstance.fRaytracingAccelerationStructureInstanceList.ItemArray[BLASArrayIndex].Transform:=BLASGroup^.fBLASInstances[0].AccelerationStructureInstance^.transform;
+     end;
 
     end;
 
@@ -33192,6 +33205,8 @@ begin
 
      fRaytracingBLASGeometryInfoBufferRingIndex:=(fRaytracingBLASGeometryInfoBufferRingIndex+1) and 1;
 
+     fRaytracingAccelerationStructureInstanceList.ClearNoFree;
+
      fRaytracingBLASInstances.ClearNoFree;
 
      CountBLASInstances:=0;
@@ -33230,7 +33245,7 @@ begin
      end;
 
      if fRaytracingAccelerationStructureInstanceList.Count<CountBLASInstances then begin
-      fRaytracingAccelerationStructureInstanceList.Resize(CountBLASInstances);
+      fRaytracingAccelerationStructureInstanceList.Reserve(CountBLASInstances);
      end;
 
      RaytracingBLASGeometryInfoBufferItemIndex:=0;
@@ -33264,6 +33279,7 @@ begin
             fRaytracingMustUpdateTLAS:=true;
            end;
            PlanetTile.RaytracingBLASInstanceIndex:=fRaytracingBLASInstances.Add(PlanetTileLODLevel.BLASInstance);
+           fRaytracingAccelerationStructureInstanceList.Add(PlanetTileLODLevel.BLASInstance.AccelerationStructureInstance^);
 
            Assert(RaytracingBLASGeometryInfoOffsetBufferItemIndex<length(fRaytracingBLASGeometryInfoOffsetBufferItems));
            fRaytracingBLASGeometryInfoOffsetBufferItems[RaytracingBLASGeometryInfoOffsetBufferItemIndex]:=RaytracingBLASGeometryInfoBufferItemIndex;
@@ -33310,6 +33326,7 @@ begin
           fRaytracingMustUpdateTLAS:=true;
          end;
          fRaytracingBLASInstances.Add(RaytracingBottomLevelAccelerationStructureInstance);
+         RaytracingBottomLevelAccelerationStructureInstance.Tag:=fRaytracingAccelerationStructureInstanceList.Add(RaytracingBottomLevelAccelerationStructureInstance.AccelerationStructureInstance^);
 
          Assert(RaytracingBLASGeometryInfoOffsetBufferItemIndex<length(fRaytracingBLASGeometryInfoOffsetBufferItems));
          fRaytracingBLASGeometryInfoOffsetBufferItems[RaytracingBLASGeometryInfoOffsetBufferItemIndex]:=RaytracingBLASGeometryInfoBufferItemIndex;
@@ -33339,6 +33356,7 @@ begin
 
       fRaytracingEmptyBLASInstance.InstanceCustomIndex:=RaytracingBLASGeometryInfoBufferItemIndex;
       fRaytracingBLASInstances.Add(fRaytracingEmptyBLASInstance);
+      fRaytracingAccelerationStructureInstanceList.Add(fRaytracingEmptyBLASInstance.AccelerationStructureInstance^);
 
       Assert(RaytracingBLASGeometryInfoOffsetBufferItemIndex<length(fRaytracingBLASGeometryInfoOffsetBufferItems));
       fRaytracingBLASGeometryInfoOffsetBufferItems[RaytracingBLASGeometryInfoOffsetBufferItemIndex]:=RaytracingBLASGeometryInfoBufferItemIndex;
@@ -33454,6 +33472,7 @@ begin
            if (PlanetTile.RaytracingBLASInstanceIndex>=0) and
               (fRaytracingBLASInstances[PlanetTile.RaytracingBLASInstanceIndex]<>PlanetTileLODLevel.BLASInstance) then begin
             fRaytracingBLASInstances[PlanetTile.RaytracingBLASInstanceIndex]:=PlanetTileLODLevel.BLASInstance;
+            fRaytracingAccelerationStructureInstanceList[PlanetTile.RaytracingBLASInstanceIndex]:=fRaytracingEmptyBLASInstance.AccelerationStructureInstance^;
             fRaytracingMustUpdateTLAS:=true;
            end;
 
@@ -33725,14 +33744,14 @@ begin
     // Update BLAS instances for TLAS                                          //
     /////////////////////////////////////////////////////////////////////////////
 
-    BeginCPUTime:=pvApplication.HighResolutionTimer.GetTime;
+{   BeginCPUTime:=pvApplication.HighResolutionTimer.GetTime;
     fRaytracingAccelerationStructureInstanceList.ClearNoFree;
     for InstanceIndex:=0 to fRaytracingBLASInstances.Count-1 do begin
      fRaytracingAccelerationStructureInstanceList.Add(fRaytracingBLASInstances[InstanceIndex].AccelerationStructureInstance^);
     end;
     EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
     PartCPUTime:=EndCPUTime-BeginCPUTime;
-    CPUTimeMS:=pvApplication.HighResolutionTimer.ToFloatSeconds(PartCPUTime)*1000.0;
+    CPUTimeMS:=pvApplication.HighResolutionTimer.ToFloatSeconds(PartCPUTime)*1000.0;}
 
     fRaytracingTLASBLASInstancesBufferSize:=RoundUpToPowerOfTwo64(Max(1,fRaytracingAccelerationStructureInstanceList.Count)*SizeOf(TVkAccelerationStructureInstanceKHR));
 

@@ -313,6 +313,7 @@ type EpvRaytracing=class(Exception);
        fAccelerationStructure:TpvRaytracingBottomLevelAccelerationStructure;
        fAccelerationStructureInstance:TVkAccelerationStructureInstanceKHR;
        fAccelerationStructureInstancePointer:PVkAccelerationStructureInstanceKHR;
+       fTag:TpvPtrInt;
        function GetTransform:TpvMatrix4x4;
        procedure SetTransform(const aTransform:TpvMatrix4x4);
        function GetInstanceCustomIndex:TpvUInt32;
@@ -347,6 +348,7 @@ type EpvRaytracing=class(Exception);
        property Flags:TVkGeometryInstanceFlagsKHR read GetFlags write SetFlags;
        property AccelerationStructure:TpvRaytracingBottomLevelAccelerationStructure read GetAccelerationStructure write SetAccelerationStructure;
        property AccelerationStructureDeviceAddress:TVkDeviceAddress read GetAccelerationStructureDeviceAddress write SetAccelerationStructureDeviceAddress;
+       property Tag:TpvPtrInt read fTag write fTag;
       public
        property AccelerationStructureInstance:PVkAccelerationStructureInstanceKHR read fAccelerationStructureInstancePointer;
      end;
@@ -1279,6 +1281,8 @@ begin
  fAccelerationStructure:=nil;
  
  SetAccelerationStructure(aAccelerationStructure);
+
+ fTag:=0;
 
 end;
 
