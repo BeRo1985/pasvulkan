@@ -3490,6 +3490,8 @@ type EpvScene3D=class(Exception);
             end;
             { TRaytracingGroupInstanceNodeArrayList }
             TRaytracingGroupInstanceNodeArrayList=TpvObjectGenericList<TRaytracingGroupInstanceNode>;
+            { TRaytracingGroupInstanceNodeArray }
+            TRaytracingGroupInstanceNodeArray=array of TRaytracingGroupInstanceNode;
             { TRaytracingGroupInstanceNodeHashMap }
             TRaytracingGroupInstanceNodeHashMap=TpvHashMap<TpvUInt64,TRaytracingGroupInstanceNode>;
             { TRaytracingGroupInstanceNodeExistHashMap }
@@ -3711,7 +3713,8 @@ type EpvScene3D=class(Exception);
        fRaytracingGroupInstanceNodeIDCounter:TpvUInt64;
        fRaytracingGroupInstanceNodeArrayList:TRaytracingGroupInstanceNodeArrayList;
        fRaytracingGroupInstanceNodeArrayListLock:TPasMPSlimReaderWriterLock;
-       fRaytracingGroupInstanceNodeDirtyArrayList:TRaytracingGroupInstanceNodeArrayList;
+       fRaytracingGroupInstanceNodeDirtyArray:TRaytracingGroupInstanceNodeArray;
+       fRaytracingGroupInstanceNodeDirtyArrayCount:TPasMPInt32;
        fRaytracingGroupInstanceNodeHashMap:TRaytracingGroupInstanceNodeHashMap;
        fRaytracingGroupInstanceNodeExistHashMap:TRaytracingGroupInstanceNodeExistHashMap;
        fRaytracingGroupInstanceNodeAddQueue:TRaytracingGroupInstanceNodeQueue;
@@ -27989,7 +27992,7 @@ begin
 
  fRaytracingGroupInstanceNodeArrayListLock:=TPasMPSlimReaderWriterLock.Create;
 
- fRaytracingGroupInstanceNodeDirtyArrayList:=TRaytracingGroupInstanceNodeArrayList.Create(false);
+ fRaytracingGroupInstanceNodeDirtyArray:=nil;
 
  fRaytracingGroupInstanceNodeHashMap:=TRaytracingGroupInstanceNodeHashMap.Create(nil);
 
@@ -29192,7 +29195,7 @@ begin
 
  FreeAndNil(fRaytracingGroupInstanceNodeExistHashMap);
 
- FreeAndNil(fRaytracingGroupInstanceNodeDirtyArrayList);
+ fRaytracingGroupInstanceNodeDirtyArray:=nil;
 
  FreeAndNil(fRaytracingGroupInstanceNodeArrayList);
 
@@ -32845,7 +32848,7 @@ begin
      pvApplication.WaitForPreviousFrame(true);
     end;
 
-    fRaytracingGroupInstanceNodeDirtyArrayList.ClearNoFree; // Clear the dirty array list
+    fRaytracingGroupInstanceNodeDirtyArrayCount:=0; // Clear the dirty array list
 
     fRaytracingBLASListChanged:=false; // Assume, that the BLAS list has not changed yet
 
@@ -33074,6 +33077,10 @@ begin
     // Update structures of all RaytracingActive group instance nodes           //
     //////////////////////////////////////////////////////////////////////////////
 
+    if length(fRaytracingGroupInstanceNodeDirtyArray)<fRaytracingGroupInstanceNodeArrayList.Count then begin
+     SetLength(fRaytracingGroupInstanceNodeDirtyArray,fRaytracingGroupInstanceNodeArrayList.Count*2);
+    end;
+
     BeginCPUTime:=pvApplication.HighResolutionTimer.GetTime;
     for RaytracingGroupInstanceNodeIndex:=0 to fRaytracingGroupInstanceNodeArrayList.Count-1 do begin
      RaytracingGroupInstanceNode:=fRaytracingGroupInstanceNodeArrayList.RawItems[RaytracingGroupInstanceNodeIndex];
@@ -33082,7 +33089,7 @@ begin
      end;
      if RaytracingGroupInstanceNode.fDirty then begin
       RaytracingGroupInstanceNode.fDirty:=false;
-      fRaytracingGroupInstanceNodeDirtyArrayList.Add(RaytracingGroupInstanceNode);
+      fRaytracingGroupInstanceNodeDirtyArray[TPasMPInterlocked.Add(fRaytracingGroupInstanceNodeDirtyArrayCount,1)]:=RaytracingGroupInstanceNode;
      end;
      if RaytracingGroupInstanceNode.fGeometryChanged then begin
       fRaytracingMustUpdateTLAS:=true;
@@ -33497,13 +33504,13 @@ begin
 
     end;   //}
 
-    if fRaytracingGroupInstanceNodeDirtyArrayList.Count>0 then begin
+    if fRaytracingGroupInstanceNodeDirtyArrayCount>0 then begin
 
  //  BLASAccelerationStructureSize:=0;
 
-     for RaytracingGroupInstanceNodeIndex:=0 to fRaytracingGroupInstanceNodeDirtyArrayList.Count-1 do begin
+     for RaytracingGroupInstanceNodeIndex:=0 to fRaytracingGroupInstanceNodeDirtyArrayCount-1 do begin
 
-      RaytracingGroupInstanceNode:=fRaytracingGroupInstanceNodeDirtyArrayList[RaytracingGroupInstanceNodeIndex];
+      RaytracingGroupInstanceNode:=fRaytracingGroupInstanceNodeDirtyArray[RaytracingGroupInstanceNodeIndex];
 
       if assigned(RaytracingGroupInstanceNode) then begin
 
@@ -33635,10 +33642,10 @@ begin
 
     end;//}
 
-    if fRaytracingGroupInstanceNodeDirtyArrayList.Count>0 then begin
+    if fRaytracingGroupInstanceNodeDirtyArrayCount>0 then begin
 
-     for RaytracingGroupInstanceNodeIndex:=0 to fRaytracingGroupInstanceNodeDirtyArrayList.Count-1 do begin
-      RaytracingGroupInstanceNode:=fRaytracingGroupInstanceNodeDirtyArrayList[RaytracingGroupInstanceNodeIndex];
+     for RaytracingGroupInstanceNodeIndex:=0 to fRaytracingGroupInstanceNodeDirtyArrayCount-1 do begin
+      RaytracingGroupInstanceNode:=fRaytracingGroupInstanceNodeDirtyArray[RaytracingGroupInstanceNodeIndex];
       if assigned(RaytracingGroupInstanceNode) then begin
        for BLASGroupVariant:=Low(TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroupVariant) to High(TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroupVariant) do begin
         BLASGroup:=@RaytracingGroupInstanceNode.fBLASGroups[BLASGroupVariant];
