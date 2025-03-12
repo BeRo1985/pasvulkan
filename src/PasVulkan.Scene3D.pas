@@ -3449,6 +3449,7 @@ type EpvScene3D=class(Exception);
               fSceneInstance:TpvScene3D;
               fPrevious:TRaytracingGroupInstanceNode;
               fNext:TRaytracingGroupInstanceNode;
+              fIndex:TpvSizeInt;
               fID:TpvUInt64;
               fGroup:TpvScene3D.TGroup;
               fInstance:TpvScene3D.TGroup.TInstance;
@@ -3473,6 +3474,8 @@ type EpvScene3D=class(Exception);
                                  const aNode:TpvScene3D.TGroup.TNode;
                                  const aInstanceNode:TpvScene3D.TGroup.TInstance.TNode); reintroduce;
               destructor Destroy; override;
+              procedure AfterConstruction; override;
+              procedure BeforeDestruction; override;
               function UpdateStructures(const aInFlightFrameIndex:TpvSizeInt;const aForce:Boolean):Boolean;
              published
               property SceneInstance:TpvScene3D read fSceneInstance;
@@ -3726,6 +3729,8 @@ type EpvScene3D=class(Exception);
        fRaytracingPrimitiveIDCounter:TpvUInt64;
        fRaytracingGroupInstanceNodeIDCounter:TpvUInt64;
        fRaytracingGroupInstanceNodeList:TRaytracingGroupInstanceNodeList;
+       fRaytracingGroupInstanceNodeArrayList:TRaytracingGroupInstanceNodeArrayList;
+       fRaytracingGroupInstanceNodeArrayListLock:TPasMPSlimReaderWriterLock;
        fRaytracingGroupInstanceNodeDirtyArrayList:TRaytracingGroupInstanceNodeArrayList;
        fRaytracingGroupInstanceNodeHashMap:TRaytracingGroupInstanceNodeHashMap;
        fRaytracingGroupInstanceNodeExistHashMap:TRaytracingGroupInstanceNodeExistHashMap;
@@ -6115,6 +6120,8 @@ begin
 
  inherited Create;
 
+ fIndex:=-1;
+
  fSceneInstance:=aSceneInstance;
 
  fGroup:=aGroup;
@@ -6156,6 +6163,41 @@ begin
   fBLASGroups[BLASGroupVariant].Finalize;
  end;
  inherited Destroy;
+end;
+
+procedure TpvScene3D.TRaytracingGroupInstanceNode.AfterConstruction;
+begin
+ inherited AfterConstruction;
+ if assigned(fSceneInstance) then begin
+  fSceneInstance.fRaytracingGroupInstanceNodeArrayListLock.Acquire;
+  try
+   fIndex:=fSceneInstance.fRaytracingGroupInstanceNodeArrayList.Add(self);
+  finally
+   fSceneInstance.fRaytracingGroupInstanceNodeArrayListLock.Release;
+  end;
+ end;
+end;
+
+procedure TpvScene3D.TRaytracingGroupInstanceNode.BeforeDestruction;
+var OtherNode:TpvScene3D.TRaytracingGroupInstanceNode;
+begin
+ if assigned(fSceneInstance) and (fIndex>=0) then begin
+  fSceneInstance.fRaytracingGroupInstanceNodeArrayListLock.Acquire;
+  try
+   if (fIndex+1)<fSceneInstance.fRaytracingGroupInstanceNodeArrayList.Count then begin
+    OtherNode:=fSceneInstance.fRaytracingGroupInstanceNodeArrayList.RawItems[fSceneInstance.fRaytracingGroupInstanceNodeArrayList.Count-1];
+    OtherNode.fIndex:=fIndex;
+    fIndex:=fSceneInstance.fRaytracingGroupInstanceNodeArrayList.Count-1;
+    fSceneInstance.fRaytracingGroupInstanceNodeArrayList.RawItems[OtherNode.fIndex]:=OtherNode;
+    fSceneInstance.fRaytracingGroupInstanceNodeArrayList.RawItems[fIndex]:=self;
+   end;
+   fSceneInstance.fRaytracingGroupInstanceNodeArrayList.ExtractIndex(fIndex);
+   fIndex:=-1;
+  finally
+   fSceneInstance.fRaytracingGroupInstanceNodeArrayListLock.Release;
+  end;
+ end;
+ inherited BeforeDestruction;
 end;
 
 function TpvScene3D.TRaytracingGroupInstanceNode.UpdateStructures(const aInFlightFrameIndex:TpvSizeInt;const aForce:Boolean):Boolean;
@@ -28032,6 +28074,10 @@ begin
 
  fRaytracingGroupInstanceNodeList:=TRaytracingGroupInstanceNodeList.Create(self);
 
+ fRaytracingGroupInstanceNodeArrayList:=TRaytracingGroupInstanceNodeArrayList.Create(false);
+
+ fRaytracingGroupInstanceNodeArrayListLock:=TPasMPSlimReaderWriterLock.Create;
+
  fRaytracingGroupInstanceNodeDirtyArrayList:=TRaytracingGroupInstanceNodeArrayList.Create(false);
 
  fRaytracingGroupInstanceNodeHashMap:=TRaytracingGroupInstanceNodeHashMap.Create(nil);
@@ -29234,6 +29280,10 @@ begin
  FreeAndNil(fRaytracingGroupInstanceNodeDirtyArrayList);
 
  FreeAndNil(fRaytracingGroupInstanceNodeList);
+
+ FreeAndNil(fRaytracingGroupInstanceNodeArrayList);
+
+ FreeAndNil(fRaytracingGroupInstanceNodeArrayListLock);
 
  FreeAndNil(fRaytracingLock);
 
@@ -32808,6 +32858,8 @@ var InstanceIndex,GeometryIndex,CountBLASInstances,CountBLASGeometries,
     BufferMemoryBarriers:array[0..1] of TVkBufferMemoryBarrier; 
     BufferCopy:TVkBufferCopy;
     UpdatedOriginTransform:Boolean;
+    BeginCPUTime,EndCPUTime,PartCPUTime:TpvHighResolutionTime;
+    CPUTimeMS:TpvDouble;
 {   VulkanShortTermDynamicBufferData:TVulkanShortTermDynamicBufferData;
     VulkanLongTermStaticBufferData:TVulkanLongTermStaticBufferData;//}
 begin
@@ -33111,6 +33163,7 @@ begin
     // Update structures of all RaytracingActive group instance nodes           //
     //////////////////////////////////////////////////////////////////////////////
 
+    BeginCPUTime:=pvApplication.HighResolutionTimer.GetTime;
     Count:=0;
     RaytracingGroupInstanceNode:=fRaytracingGroupInstanceNodeList.fFirst;
     while assigned(RaytracingGroupInstanceNode) do begin
@@ -33129,6 +33182,9 @@ begin
     end;
     if Count>0 then begin
     end;
+    EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
+    PartCPUTime:=EndCPUTime-BeginCPUTime;
+    CPUTimeMS:=pvApplication.HighResolutionTimer.ToFloatSeconds(PartCPUTime)*1000.0;
 
     //////////////////////////////////////////////////////////////////////////////
     // Update structures of all planets                                         //
