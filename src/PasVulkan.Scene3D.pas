@@ -33287,6 +33287,7 @@ begin
 
      end;//}
 
+     BeginCPUTime:=pvApplication.HighResolutionTimer.GetTime;
      for RaytracingGroupInstanceNodeIndex:=0 to fRaytracingGroupInstanceNodeArrayList.Count-1 do begin
 
       RaytracingGroupInstanceNode:=fRaytracingGroupInstanceNodeArrayList.RawItems[RaytracingGroupInstanceNodeIndex];
@@ -33326,6 +33327,9 @@ begin
       end;
 
      end;
+     EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
+     PartCPUTime:=EndCPUTime-BeginCPUTime;
+     CPUTimeMS:=pvApplication.HighResolutionTimer.ToFloatSeconds(PartCPUTime)*1000.0;
 
      if UseEmptyBLASInstance and assigned(fRaytracingEmptyBLASInstance) then begin
 
