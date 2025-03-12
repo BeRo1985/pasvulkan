@@ -3447,8 +3447,6 @@ type EpvScene3D=class(Exception);
                    TBLASGroups=array[TBLASGroupVariant] of TBLASGroup;
              private
               fSceneInstance:TpvScene3D;
-              fPrevious:TRaytracingGroupInstanceNode;
-              fNext:TRaytracingGroupInstanceNode;
               fIndex:TpvSizeInt;
               fID:TpvUInt64;
               fGroup:TpvScene3D.TGroup;
@@ -3479,8 +3477,6 @@ type EpvScene3D=class(Exception);
               function UpdateStructures(const aInFlightFrameIndex:TpvSizeInt;const aForce:Boolean):Boolean;
              published
               property SceneInstance:TpvScene3D read fSceneInstance;
-              property Previous:TRaytracingGroupInstanceNode read fPrevious;
-              property Next:TRaytracingGroupInstanceNode read fNext; 
               property Group:TpvScene3D.TGroup read fGroup;
               property Instance:TpvScene3D.TGroup.TInstance read fInstance;
               property Node:TpvScene3D.TGroup.TNode read fNode;
@@ -3491,23 +3487,6 @@ type EpvScene3D=class(Exception);
               property DynamicGeometry:Boolean read fDynamicGeometry;
               property Dirty:TPasMPBool32 read fDirty;
               property UpdateDirty:TPasMPBool32 read fUpdateDirty;
-            end;
-            { TRaytracingGroupInstanceNodeList }
-            TRaytracingGroupInstanceNodeList=class
-             private
-              fSceneInstance:TpvScene3D;
-              fFirst:TRaytracingGroupInstanceNode;
-              fLast:TRaytracingGroupInstanceNode;
-             public
-              constructor Create(const aSceneInstance:TpvScene3D); reintroduce;
-              destructor Destroy; override;
-              procedure Clear(const aFree:Boolean);
-              procedure Add(const aRaytracingGroupInstanceNode:TRaytracingGroupInstanceNode);
-              procedure Remove(const aRaytracingGroupInstanceNode:TRaytracingGroupInstanceNode);
-             published
-              property SceneInstance:TpvScene3D read fSceneInstance;
-              property First:TRaytracingGroupInstanceNode read fFirst;
-              property Last:TRaytracingGroupInstanceNode read fLast; 
             end;
             { TRaytracingGroupInstanceNodeArrayList }
             TRaytracingGroupInstanceNodeArrayList=TpvObjectGenericList<TRaytracingGroupInstanceNode>;
@@ -6608,73 +6587,6 @@ begin
 
  fInitialized:=true;
 
-end;
-
-{ TpvScene3D.TRaytracingGroupInstanceNodeList }
-
-constructor TpvScene3D.TRaytracingGroupInstanceNodeList.Create(const aSceneInstance:TpvScene3D);
-begin
- inherited Create;
- fSceneInstance:=aSceneInstance;
- fFirst:=nil;
- fLast:=nil;
-end;
-
-destructor TpvScene3D.TRaytracingGroupInstanceNodeList.Destroy;
-begin
- Clear(true);
- inherited Destroy;
-end;
-
-procedure TpvScene3D.TRaytracingGroupInstanceNodeList.Clear(const aFree:Boolean);
-var Current,Next:TpvScene3D.TRaytracingGroupInstanceNode;
-begin
-
- Current:=fFirst;
- while assigned(Current) do begin
-  Next:=Current.fNext;
-  if aFree then begin
-   FreeAndNil(Current);
-  end else begin
-   Current.fPrevious:=nil;
-   Current.fNext:=nil;
-  end;
-  Current:=Next;
- end;
-
- fFirst:=nil;
- fLast:=nil;
-
-end;
-
-procedure TpvScene3D.TRaytracingGroupInstanceNodeList.Add(const aRaytracingGroupInstanceNode:TpvScene3D.TRaytracingGroupInstanceNode);
-begin
- if assigned(fLast) then begin
-  aRaytracingGroupInstanceNode.fPrevious:=fLast;
-  fLast.fNext:=aRaytracingGroupInstanceNode;
-  fLast:=aRaytracingGroupInstanceNode;
- end else begin
-  fFirst:=aRaytracingGroupInstanceNode;
-  fLast:=aRaytracingGroupInstanceNode;
-  aRaytracingGroupInstanceNode.fPrevious:=nil;
- end;
- aRaytracingGroupInstanceNode.fNext:=nil;
-end;
-
-procedure TpvScene3D.TRaytracingGroupInstanceNodeList.Remove(const aRaytracingGroupInstanceNode:TpvScene3D.TRaytracingGroupInstanceNode);
-begin
- if assigned(aRaytracingGroupInstanceNode.fPrevious) then begin
-  aRaytracingGroupInstanceNode.fPrevious.fNext:=aRaytracingGroupInstanceNode.fNext;
- end else if fFirst=aRaytracingGroupInstanceNode then begin
-  fFirst:=aRaytracingGroupInstanceNode.fNext;
- end;
- if assigned(aRaytracingGroupInstanceNode.fNext) then begin
-  aRaytracingGroupInstanceNode.fNext.fPrevious:=aRaytracingGroupInstanceNode.fPrevious;
- end else if fLast=aRaytracingGroupInstanceNode then begin
-  fLast:=aRaytracingGroupInstanceNode.fPrevious;
- end;
- aRaytracingGroupInstanceNode.fPrevious:=nil;
- aRaytracingGroupInstanceNode.fNext:=nil;
 end;
 
 { TpvScene3D.TRaytracingGroupInstanceNodeQueueItem }
