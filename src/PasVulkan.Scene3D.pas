@@ -23894,47 +23894,49 @@ begin
 end;
 
 procedure TpvScene3D.TGroup.TInstance.Update(const aInFlightFrameIndex:TpvSizeInt);
- procedure ResetLights;
+ procedure ResetLights(const aResetOverwrites:Boolean);
  var Index:TPasGLTFSizeInt;
      InstanceLight:TpvScene3D.TGroup.TInstance.TLight;
  begin
   for Index:=0 to fLights.Count-1 do begin
    InstanceLight:=fLights[Index];
-   if assigned(InstanceLight) then begin
+   if assigned(InstanceLight) and aResetOverwrites then begin
     InstanceLight.fCountOverwrites:=0;
    end;
   end;
  end;
- procedure ResetCameras;
+ procedure ResetCameras(const aResetOverwrites:Boolean);
  var Index:TPasGLTFSizeInt;
      InstanceCamera:TpvScene3D.TGroup.TInstance.TCamera;
  begin
   for Index:=0 to fCameras.Count-1 do begin
    InstanceCamera:=fCameras[Index];
-   if assigned(InstanceCamera) then begin
+   if assigned(InstanceCamera) and aResetOverwrites then begin
     InstanceCamera.fCountOverwrites:=0;
    end;
   end;
  end;
- procedure ResetMaterials;
+ procedure ResetMaterials(const aResetOverwrites:Boolean);
  var Index:TPasGLTFSizeInt;
      InstanceMaterial:TpvScene3D.TGroup.TInstance.TMaterial;
  begin
   for Index:=0 to fMaterials.Count-1 do begin
    InstanceMaterial:=fMaterials[Index];
-   if assigned(InstanceMaterial) then begin
+   if assigned(InstanceMaterial) and aResetOverwrites then begin
     InstanceMaterial.fCountOverwrites:=0;
    end;
   end;
  end;
- procedure ResetNodes;
+ procedure ResetNodes(const aResetOverwrites:Boolean);
  var Index:TPasGLTFSizeInt;
      InstanceNode:TpvScene3D.TGroup.TInstance.TNode;
  begin
   for Index:=0 to fNodes.Count-1 do begin
    InstanceNode:=fNodes.RawItems[Index];
    InstanceNode.fProcessed:=false;
-   InstanceNode.fCountOverwrites:=0;
+   if aResetOverwrites then begin
+    InstanceNode.fCountOverwrites:=0;
+   end;
   end;
  end;
  procedure ProcessBaseOverwrite(const aFactor:TPasGLTFFloat);
@@ -26203,7 +26205,7 @@ var Index,OtherIndex,PerInFlightFrameRenderInstanceIndex:TpvSizeInt;
     Node:TpvScene3D.TGroup.TNode;
     InstanceNode:TpvScene3D.TGroup.TInstance.TNode;
     InstanceMaterial:TpvScene3D.TGroup.TInstance.TMaterial;
-    IsActive,HasMaterialUpdate,Dirty,First,CanUpdate:boolean;
+    IsActive,HasMaterialUpdate,Dirty,First,CanUpdate,ActiveAnimationProcessing:boolean;
     RenderInstance:TpvScene3D.TGroup.TInstance.TRenderInstance;
     PerInFlightFrameRenderInstance:TpvScene3D.TGroup.TInstance.PPerInFlightFrameRenderInstance;
     AABBTreeState:TpvBVHDynamicAABBTree.PState;
@@ -26310,20 +26312,22 @@ begin
     fLightNodes[Index]:=-1;
    end;}
 
-   ResetLights;
+   ActiveAnimationProcessing:=fUpdateDynamic;
 
-   ResetCameras;
+   ResetLights(ActiveAnimationProcessing);
 
-   ResetMaterials;
+   ResetCameras(ActiveAnimationProcessing);
 
-   ResetNodes;
+   ResetMaterials(ActiveAnimationProcessing);
+
+   ResetNodes(ActiveAnimationProcessing);
 
    for Index:=0 to length(fSkins)-1 do begin
     fSkins[Index].Used:=false;
    end;
 
 // StartCPUTime:=pvApplication.HighResolutionTimer.GetTime;
-   begin
+   if ActiveAnimationProcessing then begin
 
     WeightSum:=0.0;
 
