@@ -33229,6 +33229,10 @@ begin
       SetLength(fRaytracingBLASGeometryInfoOffsetBufferItems,CountBLASInstances*2);
      end;
 
+     if fRaytracingAccelerationStructureInstanceList.Count<CountBLASInstances then begin
+      fRaytracingAccelerationStructureInstanceList.Resize(CountBLASInstances);
+     end;
+
      RaytracingBLASGeometryInfoBufferItemIndex:=0;
      RaytracingBLASGeometryInfoOffsetBufferItemIndex:=0;
 
