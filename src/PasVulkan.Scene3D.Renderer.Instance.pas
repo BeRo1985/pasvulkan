@@ -3643,6 +3643,7 @@ begin
 
  TpvScene3DRendererInstancePasses(fPasses).fAtmosphereProcessCustomPass:=TpvScene3DRendererPassesAtmosphereProcessCustomPass.Create(fFrameGraph,self);
  case Renderer.ShadowMode of
+  TpvScene3DRendererShadowMode.None,
   TpvScene3DRendererShadowMode.PCF,TpvScene3DRendererShadowMode.DPCF,TpvScene3DRendererShadowMode.PCSS:begin
    TpvScene3DRendererInstancePasses(fPasses).fAtmosphereProcessCustomPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fCascadedShadowMapRenderPass);
   end;
@@ -3662,6 +3663,7 @@ begin
    TpvScene3DRendererInstancePasses(fPasses).fMeshCullPass0ComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fRaytracingBuildUpdatePass);
   end;}
   case Renderer.ShadowMode of
+   TpvScene3DRendererShadowMode.None,
    TpvScene3DRendererShadowMode.PCF,TpvScene3DRendererShadowMode.DPCF,TpvScene3DRendererShadowMode.PCSS:begin
     TpvScene3DRendererInstancePasses(fPasses).fMeshCullPass0ComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fCascadedShadowMapRenderPass);
    end;
@@ -3863,6 +3865,7 @@ begin
    TpvScene3DRendererInstancePasses(fPasses).fReflectionProbeRenderPass:=TpvScene3DRendererPassesReflectionProbeRenderPass.Create(fFrameGraph,self);
    TpvScene3DRendererInstancePasses(fPasses).fReflectionProbeRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fAtmosphereProcessCustomPass);
    case Renderer.ShadowMode of
+    TpvScene3DRendererShadowMode.None,
     TpvScene3DRendererShadowMode.PCF,TpvScene3DRendererShadowMode.DPCF,TpvScene3DRendererShadowMode.PCSS:begin
      TpvScene3DRendererInstancePasses(fPasses).fReflectionProbeRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fCascadedShadowMapRenderPass);
     end;
@@ -3932,6 +3935,7 @@ begin
   end;
  end;
  case Renderer.ShadowMode of
+  TpvScene3DRendererShadowMode.None,
   TpvScene3DRendererShadowMode.PCF,TpvScene3DRendererShadowMode.DPCF,TpvScene3DRendererShadowMode.PCSS:begin
    TpvScene3DRendererInstancePasses(fPasses).fForwardRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fCascadedShadowMapRenderPass);
   end;
