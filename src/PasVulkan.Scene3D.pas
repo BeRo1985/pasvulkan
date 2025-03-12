@@ -3726,6 +3726,8 @@ type EpvScene3D=class(Exception);
        fReferencedPlanetDataBufRefArray:array[0..MaxInFlightFrames-1] of TVkDeviceAddressArray;
        fReferencedPlanetDataBufRefArrayVulkanBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
        fRaytracingLock:TPasMPCriticalSection;
+       fRaytracingBLASListChanged:TPasMPBool32;
+       fRaytracingMustUpdateTLAS:TPasMPBool32;
        fRaytracingPrimitiveIDCounter:TpvUInt64;
        fRaytracingGroupInstanceNodeIDCounter:TpvUInt64;
        fRaytracingGroupInstanceNodeArrayList:TRaytracingGroupInstanceNodeArrayList;
@@ -32839,7 +32841,7 @@ var InstanceIndex,GeometryIndex,CountBLASInstances,CountBLASGeometries,
     RaytracingGroupInstanceNodeIndex,
     PlanetIndex,CountPlanetTiles,PlanetTileIndex,
     PlanetTileLODLevelIndex,FirstIndex,Count:TpvSizeInt;
-    MustWaitForPreviousFrame,BLASListChanged,MustUpdateTLAS,MustHandlePlanets,
+    MustWaitForPreviousFrame,MustHandlePlanets,
     UseEmptyBLASInstance,MustTLASUpdate:Boolean;
     RaytracingGroupInstanceNodeQueueItem:TRaytracingGroupInstanceNodeQueueItem;
     RaytracingGroupInstanceNode:TRaytracingGroupInstanceNode;
@@ -32933,15 +32935,15 @@ begin
 
     fRaytracingGroupInstanceNodeDirtyArrayList.ClearNoFree; // Clear the dirty array list
 
-    BLASListChanged:=false; // Assume, that the BLAS list has not changed yet
+    fRaytracingBLASListChanged:=false; // Assume, that the BLAS list has not changed yet
 
-    MustUpdateTLAS:=false;
+    fRaytracingMustUpdateTLAS:=false;
 
     // Check if there is a new origin transform
     UpdatedOriginTransform:=fRaytracingOriginTransform<>fOriginTransforms[aInFlightFrameIndex];
     if UpdatedOriginTransform then begin
      fRaytracingOriginTransform:=fOriginTransforms[aInFlightFrameIndex];
-     MustUpdateTLAS:=true;
+     fRaytracingMustUpdateTLAS:=true;
     end;
 
     //////////////////////////////////////////////////////////////////////////////
@@ -33106,7 +33108,7 @@ begin
 
     if not assigned(fRaytracingEmptyBLASInstance) then begin
 
-     BLASListChanged:=true;
+     fRaytracingBLASListChanged:=true;
 
      fRaytracingEmptyBLASInstance:=TpvRaytracingBottomLevelAccelerationStructureInstance.Create(fVulkanDevice,
                                                                                                 TpvMatrix4x4.Identity,
@@ -33130,7 +33132,7 @@ begin
       finally
        FreeAndNil(RaytracingGroupInstanceNode);
       end;
-      BLASListChanged:=true;
+      fRaytracingBLASListChanged:=true;
      end;
     end;
 
@@ -33149,7 +33151,7 @@ begin
                                                                        RaytracingGroupInstanceNodeQueueItem.fInstance.fGroup.fNodes.RawItems[RaytracingGroupInstanceNodeQueueItem.fNode],
                                                                        RaytracingGroupInstanceNodeQueueItem.fInstance.fNodes.RawItems[RaytracingGroupInstanceNodeQueueItem.fNode]);
       try
-       BLASListChanged:=true;
+       fRaytracingBLASListChanged:=true;
       finally
        fRaytracingGroupInstanceNodeHashMap.Add(RaytracingGroupInstanceNodeQueueItem.fRaytracingGroupInstanceNodeID,RaytracingGroupInstanceNode);
       end;
@@ -33164,14 +33166,14 @@ begin
     for RaytracingGroupInstanceNodeIndex:=0 to fRaytracingGroupInstanceNodeArrayList.Count-1 do begin
      RaytracingGroupInstanceNode:=fRaytracingGroupInstanceNodeArrayList.RawItems[RaytracingGroupInstanceNodeIndex];
      if RaytracingGroupInstanceNode.UpdateStructures(aInFlightFrameIndex,false) then begin
-      BLASListChanged:=true;
+      fRaytracingBLASListChanged:=true;
      end;
      if RaytracingGroupInstanceNode.fDirty then begin
       RaytracingGroupInstanceNode.fDirty:=false;
       fRaytracingGroupInstanceNodeDirtyArrayList.Add(RaytracingGroupInstanceNode);
      end;
      if RaytracingGroupInstanceNode.fGeometryChanged then begin
-      MustUpdateTLAS:=true;
+      fRaytracingMustUpdateTLAS:=true;
      end;
     end;
     EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
@@ -33215,7 +33217,7 @@ begin
        (fRaytracingPlanetListGeneration<>TpvScene3DPlanets(fPlanets).Generation) then begin
      fRaytracingCountPlanetTiles:=CountPlanetTiles;
      fRaytracingPlanetListGeneration:=TpvScene3DPlanets(fPlanets).Generation;
-     BLASListChanged:=true;
+     fRaytracingBLASListChanged:=true;
     end;
 
     //////////////////////////////////////////////////////////////////////////////
@@ -33228,10 +33230,10 @@ begin
        (not assigned(fRaytracingBLASGeometryInfoOffsetBufferItemBuffers[fRaytracingBLASGeometryInfoBufferRingIndex and 1])) or
        (not assigned(fRaytracingBLASGeometryInfoBufferItemBuffers[(fRaytracingBLASGeometryInfoBufferRingIndex+1) and 1])) or
        (not assigned(fRaytracingBLASGeometryInfoOffsetBufferItemBuffers[(fRaytracingBLASGeometryInfoBufferRingIndex+1) and 1])) then begin
-     BLASListChanged:=true;
+     fRaytracingBLASListChanged:=true;
     end;
 
-    if BLASListChanged then begin
+    if fRaytracingBLASListChanged then begin
 
      fRaytracingBLASGeometryInfoBufferRingIndex:=(fRaytracingBLASGeometryInfoBufferRingIndex+1) and 1;
 
@@ -33300,7 +33302,7 @@ begin
            Assert(Assigned(PlanetTileLODLevel.BLASInstance));
            if PlanetTileLODLevel.BLASInstance.InstanceCustomIndex<>RaytracingBLASGeometryInfoBufferItemIndex then begin
             PlanetTileLODLevel.BLASInstance.InstanceCustomIndex:=RaytracingBLASGeometryInfoBufferItemIndex;
-            MustUpdateTLAS:=true;
+            fRaytracingMustUpdateTLAS:=true;
            end;
            PlanetTile.RaytracingBLASInstanceIndex:=fRaytracingBLASInstances.Add(PlanetTileLODLevel.BLASInstance);
 
@@ -33345,7 +33347,7 @@ begin
          RaytracingBottomLevelAccelerationStructureInstance:=BLASGroup^.fBLASInstances.Items[InstanceIndex];
          if RaytracingBottomLevelAccelerationStructureInstance.InstanceCustomIndex<>RaytracingBLASGeometryInfoBufferItemIndex then begin
           RaytracingBottomLevelAccelerationStructureInstance.InstanceCustomIndex:=RaytracingBLASGeometryInfoBufferItemIndex;
-          MustUpdateTLAS:=true;
+          fRaytracingMustUpdateTLAS:=true;
          end;
          fRaytracingBLASInstances.Add(RaytracingBottomLevelAccelerationStructureInstance);
 
@@ -33489,13 +33491,13 @@ begin
            if (PlanetTile.RaytracingBLASInstanceIndex>=0) and
               (fRaytracingBLASInstances[PlanetTile.RaytracingBLASInstanceIndex]<>PlanetTileLODLevel.BLASInstance) then begin
             fRaytracingBLASInstances[PlanetTile.RaytracingBLASInstanceIndex]:=PlanetTileLODLevel.BLASInstance;
-            MustUpdateTLAS:=true;
+            fRaytracingMustUpdateTLAS:=true;
            end;
 
            if assigned(fRaytracingBLASInstances[PlanetTile.RaytracingBLASInstanceIndex]) then begin
             if fRaytracingBLASInstances[PlanetTile.RaytracingBLASInstanceIndex].InstanceCustomIndex<>PlanetTile.RaytracingBLASGeometryInfoBufferItemIndex then begin
              fRaytracingBLASInstances[PlanetTile.RaytracingBLASInstanceIndex].InstanceCustomIndex:=PlanetTile.RaytracingBLASGeometryInfoBufferItemIndex;
-             MustUpdateTLAS:=true;
+             fRaytracingMustUpdateTLAS:=true;
             end;
            end;
 
@@ -33504,7 +33506,7 @@ begin
             FirstIndex:=Planet.TiledVisualMeshIndexGroups[PlanetTileLODLevel.TileIndex].FirstIndex;
             if fRaytracingBLASGeometryInfoBufferItems[RaytracingBLASGeometryInfoBufferItemIndex].IndexOffset<>FirstIndex then begin
              fRaytracingBLASGeometryInfoBufferItems[RaytracingBLASGeometryInfoBufferItemIndex].IndexOffset:=FirstIndex;
-             MustUpdateTLAS:=true;
+             fRaytracingMustUpdateTLAS:=true;
             end;
            end;
 
@@ -33796,7 +33798,7 @@ begin
                                                                );
      fVulkanDevice.DebugUtils.SetObjectName(fRaytracingTLASBLASInstancesBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.fRaytracingVulkanTLASBLASInstancesBuffer');
 
-     MustUpdateTLAS:=true;
+     fRaytracingMustUpdateTLAS:=true;
 
     end;
 
@@ -33829,7 +33831,7 @@ begin
                                                                                      );
      fVulkanDevice.DebugUtils.SetObjectName(fRaytracingTLASBLASInstancesBuffers[aInFlightFrameIndex].Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.fRaytracingVulkanTLASBLASInstancesBuffers['+IntToStr(aInFlightFrameIndex)+']');
 
-     MustUpdateTLAS:=true;
+     fRaytracingMustUpdateTLAS:=true;
 
     end;
 
@@ -33931,7 +33933,7 @@ begin
 
     if assigned(fRaytracingTLAS) then begin
 
-     if BLASListChanged or
+     if fRaytracingBLASListChanged or
         (fRaytracingTLAS.Instances.data.deviceAddress<>fRaytracingTLASBLASInstancesBuffer.DeviceAddress) or
         (fRaytracingTLAS.CountInstances<>fRaytracingAccelerationStructureInstanceList.Count) then begin
 
@@ -34041,7 +34043,7 @@ begin
     // Build TLAS                                                              //
     /////////////////////////////////////////////////////////////////////////////
 
-    if MustUpdateTLAS or BLASListChanged then begin
+    if fRaytracingMustUpdateTLAS or fRaytracingBLASListChanged then begin
 
      fRaytracingTLAS.Build(aCommandBuffer,
                            fRaytracingTLASScratchBuffer,
