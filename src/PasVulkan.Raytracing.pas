@@ -385,7 +385,7 @@ type EpvRaytracing=class(Exception);
      { TpvRaytracingGeometryInfoManager }
      TpvRaytracingGeometryInfoManager=class
       public
-       type TOnDefragmentMove=procedure(const aSender:TpvRaytracingGeometryInfoManager;const aObject:Pointer;const aOldOffset,aNewOffset,aSize:TpvInt64) of object;            
+       type TOnDefragmentMove=procedure(const aSender:TpvRaytracingGeometryInfoManager;const aObject:TObject;const aOldOffset,aNewOffset,aSize:TpvInt64) of object;            
             TObjectList=TpvDynamicArrayList<TObject>;
       private
        fLock:TPasMPCriticalSection;
