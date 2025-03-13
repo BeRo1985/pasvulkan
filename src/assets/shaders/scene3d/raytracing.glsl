@@ -156,13 +156,18 @@ void rayProceedEXTAlphaHandlingBasedLoop(in rayQueryEXT rayQuery, const in bool 
         }else{
 
           // With possible transparent triangles we need to check the material alpha cut-off and alpha blending
-
-          //int instanceID = rayQueryGetIntersectionInstanceIdEXT(rayQuery, false);
           
           int geometryID = rayQueryGetIntersectionGeometryIndexEXT(rayQuery, false);
           
           int geometryInstanceOffset = rayQueryGetIntersectionInstanceCustomIndexEXT(rayQuery, false);
-//        int geometryInstanceOffset = int(uRaytracingData.geometryInstanceOffsets.geometryInstanceOffsets[instanceID]);
+
+          // Instance Custom Index has a limited range of 24 bits, so we need to check if it is the special value 0x00ffffff, 
+          // which means that the geometryInstanceOffset is stored in the instance ID instead, for to have a full integer range.
+          // Need for very large scenes with many instances and geometry items. 
+          if(geometryInstanceOffset == 0x00ffffff){
+            int instanceID = rayQueryGetIntersectionInstanceIdEXT(rayQuery, true);
+            geometryInstanceOffset = int(uRaytracingData.geometryInstanceOffsets.geometryInstanceOffsets[instanceID]);
+          }
           
           RaytracingGeometryItem geometryItem = uRaytracingData.geometryItems.geometryItems[geometryInstanceOffset + geometryID];
 
@@ -334,12 +339,17 @@ bool tracePrimaryBasicGeometryRay(vec3 position,
     
       case gl_RayQueryCandidateIntersectionTriangleEXT:{
 
-        //int instanceID = rayQueryGetIntersectionInstanceIdEXT(rayQuery, true);
-        
         int geometryID = rayQueryGetIntersectionGeometryIndexEXT(rayQuery, true);
         
         int geometryInstanceOffset = rayQueryGetIntersectionInstanceCustomIndexEXT(rayQuery, true);
-///     int geometryInstanceOffset = int(uRaytracingData.geometryInstanceOffsets.geometryInstanceOffsets[instanceID]);
+
+        // Instance Custom Index has a limited range of 24 bits, so we need to check if it is the special value 0x00ffffff, 
+        // which means that the geometryInstanceOffset is stored in the instance ID instead, for to have a full integer range 
+        // Need for very large scenes with many instances and geometry items. 
+        if(geometryInstanceOffset == 0x00ffffff){
+          int instanceID = rayQueryGetIntersectionInstanceIdEXT(rayQuery, true);
+          geometryInstanceOffset = int(uRaytracingData.geometryInstanceOffsets.geometryInstanceOffsets[instanceID]);
+        }
         
         RaytracingGeometryItem geometryItem = uRaytracingData.geometryItems.geometryItems[geometryInstanceOffset + geometryID];
 
