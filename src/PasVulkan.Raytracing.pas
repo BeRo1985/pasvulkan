@@ -69,7 +69,8 @@ uses SysUtils,
      PasVulkan.Types,
      PasVulkan.Math,
      PasVulkan.Collections,
-     PasVulkan.Framework;
+     PasVulkan.Framework,
+     PasVulkan.BufferRangeAllocator;
 
 type EpvRaytracing=class(Exception);
 
@@ -380,6 +381,104 @@ type EpvRaytracing=class(Exception);
        property CountInstances:TVkUInt32 read fCountInstances;
       published
      end;
+
+     { TpvRaytracingGeometryInfoManager }
+     TpvRaytracingGeometryInfoManager=class
+      public
+       type TOnDefragmentMove=procedure(const aSender:TpvRaytracingGeometryInfoManager;const aObject:Pointer;const aOldOffset,aNewOffset,aSize:TpvInt64) of object;            
+            TObjectList=TpvDynamicArrayList<TObject>;
+      private
+       fLock:TPasMPCriticalSection;
+       fObjectList:TObjectList;
+       fGeometryInfoList:TpvRaytracingBLASGeometryInfoBufferItemList;
+       fBufferRangeAllocator:TpvBufferRangeAllocator;
+       fSizeDirty:TPasMPBool32;
+       fDirty:TPasMPBool32;
+       fOnDefragmentMove:TOnDefragmentMove;
+       procedure BufferRangeAllocatorOnResize(const aSender:TpvBufferRangeAllocator;const aNewCapacity:TpvInt64);
+       procedure BufferRangeAllocatorOnDefragmentMove(const aSender:TpvBufferRangeAllocator;const aOldOffset,aNewOffset,aSize:TpvInt64);
+      public
+       constructor Create; reintroduce;
+       destructor Destroy; override;
+       function AllocateGeometryInfoRange(const aObject:TObject;const aCount:TpvSizeInt):TpvSizeInt;
+       procedure FreeGeometryInfoRange(const aOffset:TpvSizeInt);
+       function GetGeometryInfo(const aIndex:TpvSizeInt):PpvRaytracingBLASGeometryInfoBufferItem;
+       procedure Defragment;
+      published
+       property ObjectList:TObjectList read fObjectList;
+       property GeometryInfoList:TpvRaytracingBLASGeometryInfoBufferItemList read fGeometryInfoList;       
+       property BufferRangeAllocator:TpvBufferRangeAllocator read fBufferRangeAllocator; 
+       property OnDefragmentMove:TOnDefragmentMove read fOnDefragmentMove write fOnDefragmentMove;
+      public
+       property SizeDirty:TPasMPBool32 read fSizeDirty write fSizeDirty; 
+       property Dirty:TPasMPBool32 read fDirty write fDirty;
+     end;  
+
+(*
+     { TpvRaytracingBLASInstanceManager }
+     TpvRaytracingBLASInstanceManager=class
+      public
+       type { TBLASInstance }
+            TBLASInstance=class
+             public
+              type TBLASInstanceKind=
+                    (
+                     None,
+                     Mesh,
+                     Particle,
+                     Planet
+                    );
+                   TKind=TBLASInstanceKind; // Workaround for FreePascal, for some reason it doesn't like a direct duplicate equal-name type definition even with different scope, which can trigger a linker error because of duplicate symbol names, so we need to use a different name for the type definition, and use a type alias for the actual type name
+             private
+              fBLASInstanceManager:TpvRaytracingBLASInstanceManager;
+              fIndex:TpvSizeInt;
+              fKind:TBLASInstanceKind;
+              fAccelerationStructureInstance:TpvRaytracingBottomLevelAccelerationStructureInstance;
+              fAccelerationStructureInstanceIndex:TpvSizeInt;
+              fGeometryInfoOffset:TpvSizeInt;
+              fCountGeometryInfos:TpvSizeInt;
+              fGeometryInfos:TpvRaytracingBLASGeometryInfoBufferItemList;
+             public
+              constructor Create(const aBLASInstanceManger:TpvRaytracingBLASInstanceManager); reintroduce;
+              destructor Destroy; override; 
+              procedure AfterConstruction; override;
+              procedure BeforeDestruction; override;
+              procedure AddGeometryInfo(const aGeometryInfo:TpvRaytracingBLASGeometryInfoBufferItem);
+              procedure AddGeometryInfos(const aGeometryInfos:TpvRaytracingBLASGeometryInfoBufferItems);
+              procedure RemoveGeometryInfo(const aGeometryInfo:TpvRaytracingBLASGeometryInfoBufferItem);
+              procedure RemoveGeometryInfos(const aGeometryInfos:TpvRaytracingBLASGeometryInfoBufferItems);
+              procedure ClearGeometryInfos;
+             published
+              property BLASInstanceManager:TpvRaytracingBLASInstanceManager read fBLASInstanceManager;
+              property Index:TpvSizeInt read fIndex;
+              property Kind:TBLASInstanceKind read fKind write fKind;
+              property AccelerationStructureInstance:TpvRaytracingBottomLevelAccelerationStructureInstance read fAccelerationStructureInstance;
+              property AccelerationStructureInstanceIndex:TpvSizeInt read fAccelerationStructureInstanceIndex write fAccelerationStructureInstanceIndex; 
+              property GeometryInfoOffset:TpvSizeInt read fGeometryInfoOffset write fGeometryInfoOffset;
+              property CountGeometryInfos:TpvSizeInt read fCountGeometryInfos write fCountGeometryInfos;
+              property GeometryInfos:TpvRaytracingBLASGeometryInfoBufferItemList read fGeometryInfos;
+            end;
+            TBLASInstanceList=TpvObjectGenericList<TBLASInstance>;
+            TAccelerationStructureInstanceArrayList=TpvDynamicArrayList<TVkAccelerationStructureInstanceKHR>;
+            TGeometryOffsetArrayList=TpvDynamicArrayList<TVkInt32>; // Instance offset index for first geometry buffer item per BLAS instance, when >= 24 bits are needed, since instance custom index is only 24 bits 
+            TGeometryInfoArrayList=TpvRaytracingBLASGeometryInfoBufferItemList; // Geometry info buffer item list
+      private
+       fDevice:TpvVulkanDevice;
+       fLock:TPasMPCriticalSection;
+       fBLASInstances:TBLASInstanceList;
+       fAccelerationStructureInstanceArrayList:TAccelerationStructureInstanceArrayList;
+       fGeometryOffsetArrayList:TGeometryOffsetArrayList; // As buffer on the GPU, contains the geometry info offset per BLAS instance, when >= 24 bits are needed, since the instance custom index is only 24 bits, we need to store the offset of the first geometry buffer item per BLAS instance, when >= 24 bits are needed
+       fGeometryInfoArrayList:TGeometryInfoArrayList; // As a buffer on the GPU, containing the geometry info buffer items
+       fNeedFullRebuild:TPasMPBool32; // when new instances are added or removed, a full rebuild is needed, for to keep the instance custom index, geometry info offset and geometry info buffer item list in sync
+      public
+       constructor Create(const aDevice:TpvVulkanDevice); reintroduce;
+       destructor Destroy; override;
+       function AcquireBLASInstance:TBLASInstance;
+       procedure AddBLASInstance(const aBLASInstance:TBLASInstance);
+       procedure ReleaseBLASInstance(const aBLASInstance:TBLASInstance);
+       procedure Update;
+     end;
+*)
 
 implementation
 
@@ -1536,6 +1635,119 @@ end;
 procedure TpvRaytracingTopLevelAccelerationStructure.UpdateInstanceAddress(const aInstanceAddress:TVkDeviceAddress);
 begin
  fInstances.Data.deviceAddress:=aInstanceAddress;
+end;
+
+{ TpvRaytracingGeometryInfoManager }
+
+constructor TpvRaytracingGeometryInfoManager.Create;
+begin
+ inherited Create;
+ fLock:=TPasMPCriticalSection.Create;
+ fObjectList:=TObjectList.Create;
+ fGeometryInfoList:=TpvRaytracingBLASGeometryInfoBufferItemList.Create;
+ fBufferRangeAllocator:=TpvBufferRangeAllocator.Create;
+ fBufferRangeAllocator.OnResize:=BufferRangeAllocatorOnResize;
+ fSizeDirty:=false;
+ fDirty:=false;
+ fOnDefragmentMove:=nil;
+end;
+
+destructor TpvRaytracingGeometryInfoManager.Destroy;
+begin
+ FreeAndNil(fBufferRangeAllocator);
+ FreeAndNil(fGeometryInfoList);
+ FreeAndNil(fObjectList);
+ FreeAndNil(fLock);
+ inherited Destroy;
+end;
+
+procedure TpvRaytracingGeometryInfoManager.BufferRangeAllocatorOnResize(const aSender:TpvBufferRangeAllocator;const aNewCapacity:TpvInt64);
+begin
+ fObjectList.Resize(aNewCapacity);
+ fGeometryInfoList.Resize(aNewCapacity);
+ fSizeDirty:=true;
+end;
+
+procedure TpvRaytracingGeometryInfoManager.BufferRangeAllocatorOnDefragmentMove(const aSender:TpvBufferRangeAllocator;const aOldOffset,aNewOffset,aSize:TpvInt64);
+var Index:TpvSizeInt;
+    Object_:TObject;
+begin
+
+ Object_:=fObjectList.Items[aOldOffset];
+
+ // Check for overlapping moves
+ if (aOldOffset<aNewOffset) and ((aOldOffset+aSize)>aNewOffset) then begin
+  // Copy from front to back or back to front, depending on it is safe for overlapping moves
+  if (aOldOffset+aSize)<aNewOffset then begin
+   for Index:=0 to aSize-1 do begin
+    fObjectList.Items[aOldOffset+Index]:=fObjectList.Items[aNewOffset+Index];
+    fGeometryInfoList.Items[aOldOffset+Index]:=fGeometryInfoList.Items[aNewOffset+Index];
+   end;
+  end else begin
+   for Index:=aSize-1 downto 0 do begin
+    fObjectList.Items[aOldOffset+Index]:=fObjectList.Items[aNewOffset+Index];
+    fGeometryInfoList.Items[aOldOffset+Index]:=fGeometryInfoList.Items[aNewOffset+Index];
+   end;
+  end;
+ end else begin
+  for Index:=0 to aSize-1 do begin
+   fObjectList.Items[aOldOffset+Index]:=fObjectList.Items[aNewOffset+Index];
+   fGeometryInfoList.Items[aOldOffset+Index]:=fGeometryInfoList.Items[aNewOffset+Index];
+  end;
+ end; 
+
+ if assigned(fOnDefragmentMove) then begin
+  fOnDefragmentMove(self,Object_,aOldOffset,aNewOffset,aSize);
+ end;
+
+end;
+
+function TpvRaytracingGeometryInfoManager.AllocateGeometryInfoRange(const aObject:TObject;const aCount:TpvSizeInt):TpvSizeInt;
+begin
+ fLock.Acquire;
+ try
+  result:=fBufferRangeAllocator.Allocate(aCount);
+  if result>=0 then begin
+   fObjectList.Items[result]:=aObject;
+   fDirty:=true;
+  end;
+ finally
+  fLock.Release;
+ end;
+end;
+
+procedure TpvRaytracingGeometryInfoManager.FreeGeometryInfoRange(const aOffset:TpvSizeInt);
+begin
+ fLock.Acquire;
+ try
+  if (aOffset>=0) and (aOffset<fGeometryInfoList.Count) then begin
+   fBufferRangeAllocator.Release(aOffset);
+   fObjectList.Items[aOffset]:=nil;
+   fDirty:=true;
+  end;  
+ finally
+  fLock.Release;
+ end;
+end;
+
+function TpvRaytracingGeometryInfoManager.GetGeometryInfo(const aIndex:TpvSizeInt):PpvRaytracingBLASGeometryInfoBufferItem;
+begin
+ if (aIndex>=0) and (aIndex<fGeometryInfoList.Count) then begin
+  result:=@fGeometryInfoList.ItemArray[aIndex];
+ end else begin
+  result:=nil;
+ end;
+end;
+
+procedure TpvRaytracingGeometryInfoManager.Defragment;
+begin
+ fLock.Acquire;
+ try
+  fBufferRangeAllocator.Defragment(BufferRangeAllocatorOnDefragmentMove);
+  fDirty:=true;
+ finally
+  fLock.Release;
+ end;
 end;
 
 end.
