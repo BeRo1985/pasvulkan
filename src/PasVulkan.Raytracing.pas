@@ -1838,9 +1838,15 @@ begin
 
   if fInBLASManagerIndex>=0 then begin
 
+   if fBLASManager.fGeometryOffsetArrayList.Count<=fInBLASManagerIndex then begin
+    fBLASManager.fGeometryOffsetArrayList.Resize((fInBLASManagerIndex+1)*2);
+   end;
+
+   fBLASManager.fGeometryOffsetArrayList[InBLASManagerIndex]:=fBLAS.GeometryInfoBaseIndex;
+
    // Ensure that the acceleration structure instance list has enough space for the new acceleration structure instance
    if fBLASManager.fAccelerationStructureInstanceKHRArrayList.Count<=fInBLASManagerIndex then begin
-    
+
     fBLASManager.fAccelerationStructureInstanceKHRArrayList.Resize((fInBLASManagerIndex+1)*2);
 
     // Full reassign needed, because the list has been resized with possible new memory address and the pointers to the 
@@ -1895,6 +1901,7 @@ begin
    fBLASManager.fBLASInstanceList.Items[OtherBLASInstance.fInBLASManagerIndex]:=OtherBLASInstance;
    fBLASManager.fBLASInstanceList.Items[fInBLASManagerIndex]:=self;
    fBLASManager.fAccelerationStructureInstanceKHRArrayList.Exchange(OtherBLASInstance.fInBLASManagerIndex,fInBLASManagerIndex);
+   fBLASManager.fGeometryOffsetArrayList.Exchange(OtherBLASInstance.fInBLASManagerIndex,fInBLASManagerIndex);
   end;
   fBLASManager.fBLASInstanceList.ExtractIndex(fInBLASManagerIndex);
   fInBLASManagerIndex:=-1;
@@ -2108,6 +2115,9 @@ begin
   InstanceCustomIndex:=BLASInstance.AccelerationStructureInstance.InstanceCustomIndex;
   if (InstanceCustomIndex>=0) and (InstanceCustomIndex>=aOldOffset) and (InstanceCustomIndex<(aOldOffset+aSize)) then begin
    BLASInstance.AccelerationStructureInstance.InstanceCustomIndex:=aNewOffset+(InstanceCustomIndex-aOldOffset);
+  end;
+  if (fGeometryOffsetArrayList[BLASInstance.fInBLASManagerIndex]>=0) and (fGeometryOffsetArrayList[BLASInstance.fInBLASManagerIndex]>=aOldOffset) and (fGeometryOffsetArrayList[BLASInstance.fInBLASManagerIndex]<(aOldOffset+aSize)) then begin
+   fGeometryOffsetArrayList[BLASInstance.fInBLASManagerIndex]:=aNewOffset+(fGeometryOffsetArrayList[BLASInstance.fInBLASManagerIndex]-aOldOffset);
   end;
  end;
 
