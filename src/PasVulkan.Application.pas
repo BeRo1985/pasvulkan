@@ -1415,6 +1415,8 @@ type EpvApplication=class(Exception)
 
        fExternalStoragePath:TpvUTF8String;
 
+       fVulkanEventLock:TPasMPCriticalSection;
+
        fPasMPInstance:TPasMP;
 
        fPasMPProfilerSuppressGaps:TPasMPBool32;
@@ -8472,6 +8474,8 @@ begin
 
  fExternalStoragePath:='';
 
+ fVulkanEventLock:=TPasMPCriticalSection.Create;
+
  if assigned(GlobalPasMP) then begin
   fPasMPInstance:=GlobalPasMP;
   fDoDestroyGlobalPasMPInstance:=false;
@@ -8793,6 +8797,8 @@ begin
  end;
 
  fPasMPInstance:=nil;
+
+ FreeAndNil(fVulkanEventLock);
 
  pvApplication:=nil;
 
@@ -10626,22 +10632,31 @@ end;
 
 function TpvApplication.WaitForPreviousFrame(const aBlocking:Boolean):Boolean;
 var InFlightFenceIndex:TpvSizeInt;
+    OK:Boolean;
 begin
  result:=false;
  InFlightFenceIndex:=fVulkanInFlightFenceIndices[fPreviousInFlightFrameIndex];
  if (InFlightFenceIndex>=0) and
     fVulkanWaitFencesReady[InFlightFenceIndex] then begin
-  if fVulkanWaitFences[InFlightFenceIndex].GetStatus<>VK_SUCCESS then begin
-   if fBlocking then begin
-    fVulkanWaitFences[InFlightFenceIndex].WaitFor;
-   end else begin
-    exit;
+  fVulkanEventLock.Acquire;
+  try
+   if fVulkanWaitFences[InFlightFenceIndex].GetStatus<>VK_SUCCESS then begin
+    if fBlocking then begin
+     fVulkanWaitFences[InFlightFenceIndex].WaitFor;
+     OK:=true;
+    end else begin
+     OK:=false;
+    end;
    end;
+   if OK then begin
+    fVulkanWaitFences[InFlightFenceIndex].Reset;
+    fVulkanWaitFencesReady[InFlightFenceIndex]:=false;
+    fVulkanInFlightFenceIndices[fPreviousInFlightFrameIndex]:=-1;
+   end;
+  finally
+   fVulkanEventLock.Release;
   end;
-  fVulkanWaitFences[InFlightFenceIndex].Reset;
-  fVulkanWaitFencesReady[InFlightFenceIndex]:=false;
-  fVulkanInFlightFenceIndices[fPreviousInFlightFrameIndex]:=-1;
-  result:=true;
+  result:=OK;
  end;
 end;
 

@@ -1206,13 +1206,7 @@ type TpvScene3DPlanets=class;
                      fLODIndex:TpvSizeInt;
                      fTileIndex:TpvSizeInt;
                      fRaytracingTile:TRaytracingTile;
-                     fBLASGeometry:TpvRaytracingBottomLevelAccelerationStructureGeometry;
-                     fBLAS:TpvRaytracingBottomLevelAccelerationStructure;
-                     fBLASScratchSize:TVkDeviceSize;
-                     fBLASBuffer:TpvVulkanBuffer;
-                     fBLASInstance:TpvRaytracingBottomLevelAccelerationStructureInstance;
-                     fScratchOffset:TVkDeviceSize;
-                     fScratchPass:TpvUInt64;
+                     fBLAS:TpvRaytracingBLASManager.TBLAS;
                      fGeneration:TpvUInt64;
                      fMustUpdate:Boolean;
                     public
@@ -1221,15 +1215,10 @@ type TpvScene3DPlanets=class;
                      function CheckAndUpdateGeneration(const aInFlightFrameIndex:TpvSizeInt):Boolean;
                      function Update(const aInFlightFrameIndex:TpvSizeInt):Boolean;
                      function UpdateTransform(const aInFlightFrameIndex:TpvSizeInt):Boolean;
+                     function SetActive(const aInFlightFrameIndex:TpvSizeInt;const aActive:Boolean):Boolean;
                     public
                      property TileIndex:TpvSizeInt read fTileIndex;
-                     property BLASGeometry:TpvRaytracingBottomLevelAccelerationStructureGeometry read fBLASGeometry;
-                     property BLAS:TpvRaytracingBottomLevelAccelerationStructure read fBLAS;
-                     property BLASScratchSize:TVkDeviceSize read fBLASScratchSize;
-                     property BLASBuffer:TpvVulkanBuffer read fBLASBuffer;
-                     property BLASInstance:TpvRaytracingBottomLevelAccelerationStructureInstance read fBLASInstance;
-                     property ScratchOffset:TVkDeviceSize read fScratchOffset write fScratchOffset;
-                     property ScratchPass:TpvUInt64 read fScratchPass write fScratchPass;
+                     property BLAS:TpvRaytracingBLASManager.TBLAS read fBLAS;
                    end;
                    TLODLevels=TpvObjectGenericList<TLODLevel>;
              public
@@ -1241,6 +1230,7 @@ type TpvScene3DPlanets=class;
               fRaytracingBLASInstanceIndex:TpvSizeInt;
               fRaytracingBLASGeometryInfoBufferItemIndex:TpvSizeInt;
               fLODLevels:TLODLevels;
+              fActiveLODLevelIndex:TpvSizeInt;
              private
              public
               constructor Create(const aPlanet:TpvScene3DPlanet;const aTileIndex:TpvSizeInt);
@@ -1248,6 +1238,7 @@ type TpvScene3DPlanets=class;
               function CheckAndUpdateGeneration(const aInFlightFrameIndex:TpvSizeInt):Boolean;
               function Update(const aInFlightFrameIndex:TpvSizeInt):Boolean;
               function UpdateTransform(const aInFlightFrameIndex:TpvSizeInt):Boolean;
+              function UpdateLOD(const aInFlightFrameIndex:TpvSizeInt;const aLODLevelIndex:TpvSizeInt=-1):Boolean;
              public
               property Planet:TpvScene3DPlanet read fPlanet;
               property TileIndex:TpvSizeInt read fTileIndex;
@@ -1668,6 +1659,7 @@ type TpvScene3DPlanets=class;
             TPerInFlightFrameTileLODLevels=TpvObjectGenericList<TTileLODLevels>;
       private
        fScene3D:TObject;
+       fIndex:TpvSizeInt;
        fVulkanDevice:TpvVulkanDevice;
        fVulkanMemoryStagingQueue:TpvVulkanDeviceMemoryStagingQueue;
        fVulkanComputeQueue:TpvVulkanQueue;
@@ -12248,26 +12240,14 @@ begin
 
  fTileIndex:=fRaytracingTile.fTileIndex+(fLODIndex*fPlanet.fTileMapResolution*fPlanet.fTileMapResolution);
 
- fBLASGeometry:=nil;
-
  fBLAS:=nil;
-
- fBLASBuffer:=nil;
-
- fBLASInstance:=nil;
 
 end;
 
 destructor TpvScene3DPlanet.TRaytracingTile.TLODLevel.Destroy;
 begin
 
- FreeAndNil(fBLASInstance);
-
  FreeAndNil(fBLAS);
-
- FreeAndNil(fBLASBuffer);
-
- FreeAndNil(fBLASGeometry);
 
  inherited Destroy;
 
@@ -12285,74 +12265,46 @@ end;
 
 function TpvScene3DPlanet.TRaytracingTile.TLODLevel.Update(const aInFlightFrameIndex:TpvSizeInt):Boolean;
 var MustBeUpdated:Boolean;
+    GeometryInfo:PpvRaytracingBLASGeometryInfoBufferItem;
 begin
 
  result:=false;
 
  MustBeUpdated:=false;
 
- if not (assigned(fBLASGeometry) and assigned(fBLAS) and assigned(BLASBuffer) and assigned(fBLASInstance)) then begin
+ if not assigned(fBLAS) then begin
 
   MustBeUpdated:=true;
 
-  if not assigned(fBLASGeometry) then begin
+  fBLAS:=TpvScene3D(fPlanet.fScene3D).RaytracingBLASManager.AcquireBLAS(TVkBuildAccelerationStructureFlagsKHR(VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR){ or
+                                                                        TVkBuildAccelerationStructureFlagsKHR(VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_UPDATE_BIT_KHR)} {or
+                                                                        TVkBuildAccelerationStructureFlagsKHR(VK_BUILD_ACCELERATION_STRUCTURE_LOW_MEMORY_BIT_KHR)},
+                                                                        true,
+                                                                        pvAllocationGroupIDScene3DRaytracing,
+                                                                        'Planet');
 
-   fBLASGeometry:=TpvRaytracingBottomLevelAccelerationStructureGeometry.Create(fPlanet.fVulkanDevice);
-   fBLASGeometry.AddTriangles(fPlanet.fData.fVisualMeshVertexBuffers[fPlanet.fInFlightFrameDataList[aInFlightFrameIndex].fVisualMeshVertexBufferRenderIndex and 1],
-                              0,
-                              fPlanet.fTileMapResolution*fPlanet.fTileMapResolution*fPlanet.fVisualTileResolution*fPlanet.fVisualTileResolution,
-                              SizeOf(TpvScene3DPlanet.TMeshVertex),
-                              fPlanet.fData.fVisualMeshIndexBuffer,
-                              fPlanet.fTiledVisualMeshIndexGroups[fTileIndex].FirstIndex*SizeOf(TVkUInt32),
-                              fPlanet.fTiledVisualMeshIndexGroups[fTileIndex].CountIndices,
-                              true,
-                              nil,
-                              0);
+  fBLAS.AccelerationStructureGeometry.AddTriangles(fPlanet.fData.fVisualMeshVertexBuffers[fPlanet.fInFlightFrameDataList[aInFlightFrameIndex].fVisualMeshVertexBufferRenderIndex and 1],
+                                                   0,
+                                                   fPlanet.fTileMapResolution*fPlanet.fTileMapResolution*fPlanet.fVisualTileResolution*fPlanet.fVisualTileResolution,
+                                                   SizeOf(TpvScene3DPlanet.TMeshVertex),
+                                                   fPlanet.fData.fVisualMeshIndexBuffer,
+                                                   fPlanet.fTiledVisualMeshIndexGroups[fTileIndex].FirstIndex*SizeOf(TVkUInt32),
+                                                   fPlanet.fTiledVisualMeshIndexGroups[fTileIndex].CountIndices,
+                                                   true,
+                                                   nil,
+                                                   0);
 
+  fBLAS.Initialize;
+
+  GeometryInfo:=fBLAS.GetGeometryInfo(0);
+  if assigned(GeometryInfo) then begin
+   GeometryInfo^:=TpvRaytracingBLASGeometryInfoBufferItem.Create(TpvRaytracingBLASGeometryInfoBufferItem.TypePlanet,
+                                                                 fPlanet.fIndex,
+                                                                 0,
+                                                                 fPlanet.TiledVisualMeshIndexGroups[TileIndex].FirstIndex);
   end;
 
-  if not assigned(fBLAS) then begin
-   fBLAS:=TpvRaytracingBottomLevelAccelerationStructure.Create(fPlanet.fVulkanDevice,
-                                                               fBLASGeometry,
-                                                               TVkBuildAccelerationStructureFlagsKHR(VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR){ or
-                                                               TVkBuildAccelerationStructureFlagsKHR(VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_UPDATE_BIT_KHR)} {or
-                                                               TVkBuildAccelerationStructureFlagsKHR(VK_BUILD_ACCELERATION_STRUCTURE_LOW_MEMORY_BIT_KHR)},
-                                                               true);
-  end;
-
-  if (not assigned(fBLASBuffer)) or
-     (fBLASBuffer.Size<fBLAS.AccelerationStructureSize) then begin
-
-   fBLAS.Finalize;
-
-   FreeAndNil(fBLASBuffer);
-
-   fBLASBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
-                                       fBLAS.AccelerationStructureSize,
-                                       TVkBufferUsageFlags(VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR) or TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT),
-                                       TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                       [],
-                                       0,
-                                       TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
-                                       0,
-                                       0,
-                                       0,
-                                       0,
-                                       0,
-                                       0,
-                                       [],
-                                       0,
-                                       pvAllocationGroupIDScene3DRaytracing,
-                                       'TpvScene3D.fRaytracingVulkanPlanetBLASBuffer');
-
-   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fBLASBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.fRaytracingVulkanPlanetBLASBuffer');
-
-   fBLAS.Initialize(fBLASBuffer,
-                    0);
-
-  end;
-
-  if not assigned(fBLASInstance) then begin
+{ if not assigned(fBLASInstance) then begin
 
    fBLASInstance:=TpvRaytracingBottomLevelAccelerationStructureInstance.Create(fPlanet.fVulkanDevice,
                                                                                TpvMatrix4x4.Identity,
@@ -12362,20 +12314,18 @@ begin
                                                                                0,
                                                                                fBLAS);
 
-  end;
+  end;}
 
  end;
 
- if assigned(fBLASGeometry) then begin
-  if fBLASGeometry.Geometries.ItemArray[0].geometry.triangles.vertexData.deviceAddress<>fPlanet.fData.fVisualMeshVertexBuffers[fPlanet.fInFlightFrameDataList[aInFlightFrameIndex].fVisualMeshVertexBufferRenderIndex and 1].DeviceAddress then begin
-   fBLASGeometry.Geometries.ItemArray[0].geometry.triangles.vertexData.deviceAddress:=fPlanet.fData.fVisualMeshVertexBuffers[fPlanet.fInFlightFrameDataList[aInFlightFrameIndex].fVisualMeshVertexBufferRenderIndex and 1].DeviceAddress;
+ if assigned(fBLAS) and assigned(fBLAS.AccelerationStructureGeometry) then begin
+  if fBLAS.AccelerationStructureGeometry.Geometries.ItemArray[0].geometry.triangles.vertexData.deviceAddress<>fPlanet.fData.fVisualMeshVertexBuffers[fPlanet.fInFlightFrameDataList[aInFlightFrameIndex].fVisualMeshVertexBufferRenderIndex and 1].DeviceAddress then begin
+   fBLAS.AccelerationStructureGeometry.Geometries.ItemArray[0].geometry.triangles.vertexData.deviceAddress:=fPlanet.fData.fVisualMeshVertexBuffers[fPlanet.fInFlightFrameDataList[aInFlightFrameIndex].fVisualMeshVertexBufferRenderIndex and 1].DeviceAddress;
    //fBLAS.Update(fBLASGeometry,true);
   end;
  end;
 
- fBLASScratchSize:=Max(1,Max(fBLAS.BuildSizesInfo.buildScratchSize,fBLAS.BuildSizesInfo.updateScratchSize));
-
- fBLASInstance.Transform:=TpvScene3D(fPlanet.fScene3D).TransformOrigin(fPlanet.fData.ModelMatrix,aInFlightFrameIndex,true);
+//fBLASInstance.Transform:=TpvScene3D(fPlanet.fScene3D).TransformOrigin(fPlanet.fData.ModelMatrix,aInFlightFrameIndex,true);
 
  if CheckAndUpdateGeneration(aInFlightFrameIndex) then begin
   MustBeUpdated:=true;
@@ -12387,9 +12337,31 @@ end;
 
 function TpvScene3DPlanet.TRaytracingTile.TLODLevel.UpdateTransform(const aInFlightFrameIndex:TpvSizeInt):Boolean;
 begin
- fBLASInstance.Transform:=TpvScene3D(fPlanet.fScene3D).TransformOrigin(fPlanet.fData.ModelMatrix,aInFlightFrameIndex,false);
+ if assigned(fBLAS) and (fBLAS.BLASInstanceList.Count>0) then begin
+  fBLAS.BLASInstanceList.RawItems[0].AccelerationStructureInstance.Transform:=TpvScene3D(fPlanet.fScene3D).TransformOrigin(fPlanet.fData.ModelMatrix,aInFlightFrameIndex,false);
+ end;
  result:=true;
 end;
+
+function TpvScene3DPlanet.TRaytracingTile.TLODLevel.SetActive(const aInFlightFrameIndex:TpvSizeInt;const aActive:Boolean):Boolean;
+begin
+ if assigned(fBLAS) then begin
+  if (fBLAS.BLASInstanceList.Count>0) and not aActive then begin
+   fBLAS.ReleaseBLASInstance(fBLAS.BLASInstanceList[fBLAS.BLASInstanceList.Count-1]);
+  end else if aActive then begin
+   if fBLAS.BLASInstanceList.Count=0 then begin
+    fBLAS.AcquireBLASInstance(TpvScene3D(fPlanet.fScene3D).TransformOrigin(fPlanet.fData.ModelMatrix,aInFlightFrameIndex,false),
+                              $ff,
+                              0,
+                              0);
+   end else begin
+    fBLAS.BLASInstanceList.RawItems[0].AccelerationStructureInstance.Transform:=TpvScene3D(fPlanet.fScene3D).TransformOrigin(fPlanet.fData.ModelMatrix,aInFlightFrameIndex,false);
+   end;
+  end;
+ end;
+ result:=true;
+end;
+
 
 { TpvScene3DPlanet.TRaytracingTile }
 
@@ -12416,6 +12388,8 @@ begin
  FillChar(fNewGenerations,SizeOf(fNewGenerations),#$ff);
 
  fMustUpdate:=false;
+
+ fActiveLODLevelIndex:=-1;
 
  fRaytracingBLASInstanceIndex:=-1;
 
@@ -12595,6 +12569,34 @@ begin
 
   if LODLevel.UpdateTransform(aInFlightFrameIndex) then begin
    result:=true;
+  end;
+
+ end;
+
+end;
+
+function TpvScene3DPlanet.TRaytracingTile.UpdateLOD(const aInFlightFrameIndex:TpvSizeInt;const aLODLevelIndex:TpvSizeInt=-1):Boolean;
+var ActiveLODLevelIndex:TpvSizeInt;
+begin
+
+ result:=true;
+
+ if aLODLevelIndex<0 then begin
+  ActiveLODLevelIndex:=fPlanet.fPerInFlightFrameTileLODLevels[aInFlightFrameIndex][fTileIndex];
+ end else begin
+  ActiveLODLevelIndex:=aLODLevelIndex;
+ end;
+
+ if fActiveLODLevelIndex<>ActiveLODLevelIndex then begin
+
+  if fActiveLODLevelIndex>=0 then begin
+   fLODLevels[fActiveLODLevelIndex].SetActive(aInFlightFrameIndex,false);
+  end;
+
+  fActiveLODLevelIndex:=ActiveLODLevelIndex;
+
+  if fActiveLODLevelIndex>=0 then begin
+   fLODLevels[fActiveLODLevelIndex].SetActive(aInFlightFrameIndex,true);
   end;
 
  end;
@@ -16631,6 +16633,8 @@ begin
 
  fScene3D:=aScene3D;
 
+ fIndex:=-1;
+
  fVulkanDevice:=TpvScene3D(fScene3D).VulkanDevice;
 
  fAtmosphere:=nil;
@@ -17277,7 +17281,7 @@ begin
  if assigned(fScene3D) then begin
   TpvScene3DPlanets(TpvScene3D(fScene3D).Planets).Lock.AcquireWrite;
   try
-   TpvScene3DPlanets(TpvScene3D(fScene3D).Planets).Add(self);
+   fIndex:=TpvScene3DPlanets(TpvScene3D(fScene3D).Planets).Add(self);
   finally
    TpvScene3DPlanets(TpvScene3D(fScene3D).Planets).Lock.ReleaseWrite;
   end;
@@ -17285,15 +17289,20 @@ begin
 end;
 
 procedure TpvScene3DPlanet.BeforeDestruction;
-var Index:TpvSizeInt;
+var OtherPlanet:TpvScene3DPlanet;
 begin
  if assigned(fScene3D) then begin
   TpvScene3DPlanets(TpvScene3D(fScene3D).Planets).Lock.AcquireWrite;
   try
-   Index:=TpvScene3DPlanets(TpvScene3D(fScene3D).Planets).IndexOf(self);
-   if Index>=0 then begin
-    TpvScene3DPlanets(TpvScene3D(fScene3D).Planets).Extract(Index); // not delete or remove, since we don't want to free ourself here already.
+   if (fIndex+1)<TpvScene3DPlanets(TpvScene3D(fScene3D).Planets).Count then begin
+    OtherPlanet:=TpvScene3DPlanets(TpvScene3D(fScene3D).Planets).Items[TpvScene3DPlanets(TpvScene3D(fScene3D).Planets).Count-1];
+    OtherPlanet.fIndex:=fIndex;
+    fIndex:=TpvScene3DPlanets(TpvScene3D(fScene3D).Planets).Count-1;
+    TpvScene3DPlanets(TpvScene3D(fScene3D).Planets).Items[OtherPlanet.fIndex]:=OtherPlanet;
+    TpvScene3DPlanets(TpvScene3D(fScene3D).Planets).Items[fIndex]:=self;
    end;
+   TpvScene3DPlanets(TpvScene3D(fScene3D).Planets).ExtractIndex(fIndex);
+   fIndex:=-1;
   finally
    TpvScene3DPlanets(TpvScene3D(fScene3D).Planets).Lock.ReleaseWrite;
   end;

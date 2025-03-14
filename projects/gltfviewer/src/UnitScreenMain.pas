@@ -198,6 +198,8 @@ begin
 
  fScene3D:=TpvScene3D.Create(pvApplication.ResourceManager,nil,nil,pvApplication.VulkanDevice,TpvScene3DRenderer.CheckBufferDeviceAddress(pvApplication.VulkanDevice),fCountInFlightFrames,nil,UnitApplication.Application.VirtualReality);
 
+ fScene3D.PasMPInstance:=pvApplication.PasMPInstance;
+
  fScene3D.InitialCountVertices:=65536;
  fScene3D.InitialCountIndices:=65536;
  fScene3D.InitialCountMorphTargetVertices:=65536;
