@@ -12459,98 +12459,6 @@ begin
 
  end;
 
-(*if not (assigned(fBLASGeometry) and assigned(fBLAS) and assigned(fBLASBuffer) and assigned(fBLASInstance)) then begin
-
-  MustBeUpdated:=true;
-
-  if not assigned(fBLASGeometry) then begin
-
-   fBLASGeometry:=TpvRaytracingBottomLevelAccelerationStructureGeometry.Create(fPlanet.fVulkanDevice);
-   fBLASGeometry.AddTriangles(fPlanet.fData.fVisualMeshVertexBuffers[fPlanet.fInFlightFrameDataList[aInFlightFrameIndex].fVisualMeshVertexBufferRenderIndex and 1],
-                              0,
-                              fPlanet.fTileMapResolution*fPlanet.fTileMapResolution*fPlanet.fVisualTileResolution*fPlanet.fVisualTileResolution,
-                              SizeOf(TpvScene3DPlanet.TMeshVertex),
-                              fPlanet.fData.fVisualMeshIndexBuffer,
-                              fPlanet.fTiledVisualMeshIndexGroups[fTileIndex].FirstIndex*SizeOf(TVkUInt32),
-                              fPlanet.fTiledVisualMeshIndexGroups[fTileIndex].CountIndices,
-                              true,
-                              nil,
-                              0);
-
-  end;
-
-  if not assigned(fBLAS) then begin
-   fBLAS:=TpvRaytracingBottomLevelAccelerationStructure.Create(fPlanet.fVulkanDevice,
-                                                               fBLASGeometry,
-                                                               TVkBuildAccelerationStructureFlagsKHR(VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR){ or
-                                                               TVkBuildAccelerationStructureFlagsKHR(VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_UPDATE_BIT_KHR)} {or
-                                                               TVkBuildAccelerationStructureFlagsKHR(VK_BUILD_ACCELERATION_STRUCTURE_LOW_MEMORY_BIT_KHR)},
-                                                               true);
-  end;
-
-  if (not assigned(fBLASBuffer)) or
-     (fBLASBuffer.Size<fBLAS.AccelerationStructureSize) then begin
-
-   fBLAS.Finalize;
-
-   FreeAndNil(fBLASBuffer);
-
-   fBLASBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
-                                       fBLAS.AccelerationStructureSize,
-                                       TVkBufferUsageFlags(VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR) or TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT),
-                                       TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                       [],
-                                       0,
-                                       TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
-                                       0,
-                                       0,
-                                       0,
-                                       0,
-                                       0,
-                                       0,
-                                       [],
-                                       0,
-                                       pvAllocationGroupIDScene3DRaytracing,
-                                       'TpvScene3D.fRaytracingVulkanPlanetBLASBuffer');
-
-   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fBLASBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.fRaytracingVulkanPlanetBLASBuffer');
-
-   fBLAS.Initialize(fBLASBuffer,
-                    0);
-
-  end;
-
-  if not assigned(fBLASInstance) then begin
-
-   fBLASInstance:=TpvRaytracingBottomLevelAccelerationStructureInstance.Create(fPlanet.fVulkanDevice,
-                                                                               TpvMatrix4x4.Identity,
-                                                                               0,
-                                                                               $ff,
-                                                                               0,
-                                                                               0,
-                                                                               fBLAS);
-
-  end;
-
- end;
-
- if assigned(fBLASGeometry) then begin
-  if fBLASGeometry.Geometries.ItemArray[0].geometry.triangles.vertexData.deviceAddress<>fPlanet.fData.fVisualMeshVertexBuffers[fPlanet.fInFlightFrameDataList[aInFlightFrameIndex].fVisualMeshVertexBufferRenderIndex and 1].DeviceAddress then begin
-   fBLASGeometry.Geometries.ItemArray[0].geometry.triangles.vertexData.deviceAddress:=fPlanet.fData.fVisualMeshVertexBuffers[fPlanet.fInFlightFrameDataList[aInFlightFrameIndex].fVisualMeshVertexBufferRenderIndex and 1].DeviceAddress;
-   //fBLAS.Update(fBLASGeometry,true);
-  end;
- end;
-
- fBLASScratchSize:=Max(1,Max(fBLAS.BuildSizesInfo.buildScratchSize,fBLAS.BuildSizesInfo.updateScratchSize));
-
- fBLASInstance.Transform:=TpvScene3D(fScene3D).TransformOrigin(fPlanet.fData.ModelMatrix,aInFlightFrameIndex,false);
-
- if CheckAndUpdateGeneration(aInFlightFrameIndex) then begin
-  MustBeUpdated:=true;
- end;
-
-*)
-
  fMustUpdate:=MustBeUpdated;
 
 end;
@@ -12586,6 +12494,8 @@ begin
  end else begin
   ActiveLODLevelIndex:=aLODLevelIndex;
  end;
+
+ ActiveLODLevelIndex:=Min(Max(ActiveLODLevelIndex,0),Max(0,fLODLevels.Count-1));
 
  if fActiveLODLevelIndex<>ActiveLODLevelIndex then begin
 
