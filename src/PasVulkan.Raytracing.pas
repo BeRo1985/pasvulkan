@@ -1827,39 +1827,41 @@ begin
  
  inherited AfterConstruction;
 
- // Add to manager-global BLAS instance list
- if assigned(fBLASManager) then begin
-  fInBLASManagerIndex:=fBLASManager.fBLASInstanceList.Add(self);
- end;
-
   // Add to BLAS-own BLAS instance list
  if assigned(fBLAS) then begin
   fInBLASIndex:=fBLAS.fBLASInstanceList.Add(self);
  end;
 
- if fInBLASManagerIndex>=0 then begin
+ // Add to manager-global BLAS instance list
+ if assigned(fBLASManager) then begin
 
-  // Ensure that the acceleration structure instance list has enough space for the new acceleration structure instance
-  if fBLASManager.fAccelerationStructureInstanceKHRArrayList.Count<=fInBLASManagerIndex then begin
-   
-   fBLASManager.fAccelerationStructureInstanceKHRArrayList.Resize((fInBLASManagerIndex+1)*2);
+  fInBLASManagerIndex:=fBLASManager.fBLASInstanceList.Add(self);
 
-   // Full reassign needed, because the list has been resized with possible new memory address and the pointers to the 
-   // internal structures can be invalid
-   fBLASManager.fAccelerationStructureInstanceKHRArrayListFullReassign:=true; 
+  if fInBLASManagerIndex>=0 then begin
 
-  end; 
-   
-  // Copy the TpvRaytracingBottomLevelAccelerationStructureInstance own VKAccelerationStructureInstanceKHR content into 
-  // the global VKAccelerationStructureInstanceKHR array list
-  fBLASManager.fAccelerationStructureInstanceKHRArrayList.ItemArray[fInBLASManagerIndex]:=fAccelerationStructureInstance.fAccelerationStructureInstance;
+   // Ensure that the acceleration structure instance list has enough space for the new acceleration structure instance
+   if fBLASManager.fAccelerationStructureInstanceKHRArrayList.Count<=fInBLASManagerIndex then begin
+    
+    fBLASManager.fAccelerationStructureInstanceKHRArrayList.Resize((fInBLASManagerIndex+1)*2);
 
-  // Set the acceleration structure instance pointer to the global VKAccelerationStructureInstanceKHR array list, so that
-  // so that the TpvRaytracingBottomLevelAccelerationStructureInstance own VKAccelerationStructureInstanceKHR instance isn't used anymore
-  // from now on. This is needed, because the global VKAccelerationStructureInstanceKHR array list is used as direct memory data source
-  // for the GPU-side geometry info buffer.
-  fAccelerationStructureInstance.fAccelerationStructureInstancePointer:=@fBLASManager.fAccelerationStructureInstanceKHRArrayList.ItemArray[fInBLASManagerIndex];
-  
+    // Full reassign needed, because the list has been resized with possible new memory address and the pointers to the 
+    // internal structures can be invalid
+    fBLASManager.fAccelerationStructureInstanceKHRArrayListFullReassign:=true; 
+
+   end; 
+    
+   // Copy the TpvRaytracingBottomLevelAccelerationStructureInstance own VKAccelerationStructureInstanceKHR content into 
+   // the global VKAccelerationStructureInstanceKHR array list
+   fBLASManager.fAccelerationStructureInstanceKHRArrayList.ItemArray[fInBLASManagerIndex]:=fAccelerationStructureInstance.fAccelerationStructureInstance;
+
+   // Set the acceleration structure instance pointer to the global VKAccelerationStructureInstanceKHR array list, so that
+   // so that the TpvRaytracingBottomLevelAccelerationStructureInstance own VKAccelerationStructureInstanceKHR instance isn't used anymore
+   // from now on. This is needed, because the global VKAccelerationStructureInstanceKHR array list is used as direct memory data source
+   // for the GPU-side geometry info buffer.
+   fAccelerationStructureInstance.fAccelerationStructureInstancePointer:=@fBLASManager.fAccelerationStructureInstanceKHRArrayList.ItemArray[fInBLASManagerIndex];
+
+  end;
+
  end;
 
 end;
@@ -1892,6 +1894,7 @@ begin
    fInBLASManagerIndex:=fBLASManager.fBLASInstanceList.Count-1;
    fBLASManager.fBLASInstanceList.Items[OtherBLASInstance.fInBLASManagerIndex]:=OtherBLASInstance;
    fBLASManager.fBLASInstanceList.Items[fInBLASManagerIndex]:=self;
+   fBLASManager.fAccelerationStructureInstanceKHRArrayList.Exchange(OtherBLASInstance.fInBLASManagerIndex,fInBLASManagerIndex);
   end;
   fBLASManager.fBLASInstanceList.ExtractIndex(fInBLASManagerIndex);
   fInBLASManagerIndex:=-1;
