@@ -33071,13 +33071,12 @@ begin
          PlanetTile.Update(aInFlightFrameIndex);
         end;
        end;
+       for PlanetTile in Planet.RaytracingTiles do begin
+        PlanetTile.UpdateLOD(aInFlightFrameIndex);
+       end;
        if UpdatedOriginTransform then begin
         for PlanetTile in Planet.RaytracingTiles do begin
          PlanetTile.UpdateTransform(aInFlightFrameIndex);
-        end;
-       end else begin
-        for PlanetTile in Planet.RaytracingTiles do begin
-         PlanetTile.UpdateLOD(aInFlightFrameIndex);
         end;
        end;
        inc(CountPlanetTiles,Planet.TileMapResolution*Planet.TileMapResolution);

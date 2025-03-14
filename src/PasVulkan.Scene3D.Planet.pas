@@ -12476,7 +12476,7 @@ begin
  result:=true;
 
  if aLODLevelIndex<0 then begin
-  ActiveLODLevelIndex:=fPlanet.fPerInFlightFrameTileLODLevels[aInFlightFrameIndex][fTileIndex];
+  ActiveLODLevelIndex:=fPlanet.fPerInFlightFrameTileLODLevels.RawItems[aInFlightFrameIndex].ItemArray[fTileIndex];
  end else begin
   ActiveLODLevelIndex:=aLODLevelIndex;
  end;
