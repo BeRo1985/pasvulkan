@@ -351,7 +351,7 @@ type EpvRaytracing=class(Exception);
        property AccelerationStructureDeviceAddress:TVkDeviceAddress read GetAccelerationStructureDeviceAddress write SetAccelerationStructureDeviceAddress;
        property Tag:TpvPtrInt read fTag write fTag;
       public
-       property AccelerationStructureInstance:PVkAccelerationStructureInstanceKHR read fAccelerationStructureInstancePointer;
+       property AccelerationStructureInstance:PVkAccelerationStructureInstanceKHR read fAccelerationStructureInstancePointer write fAccelerationStructureInstancePointer;
      end;
 
      TpvRaytracingBottomLevelAccelerationStructureInstanceList=TpvObjectGenericList<TpvRaytracingBottomLevelAccelerationStructureInstance>;
@@ -385,7 +385,7 @@ type EpvRaytracing=class(Exception);
      { TpvRaytracingGeometryInfoManager }
      TpvRaytracingGeometryInfoManager=class
       public
-       type TOnDefragmentMove=procedure(const aSender:TpvRaytracingGeometryInfoManager;const aObject:TObject;const aOldOffset,aNewOffset,aSize:TpvInt64) of object;            
+       type TOnDefragmentMove=procedure(const aSender:TpvRaytracingGeometryInfoManager;const aObject:TObject;const aOldOffset,aNewOffset,aSize:TpvInt64) of object;
             TObjectList=TpvDynamicArrayList<TObject>;
       private
        fLock:TPasMPCriticalSection;
@@ -413,72 +413,109 @@ type EpvRaytracing=class(Exception);
        property SizeDirty:TPasMPBool32 read fSizeDirty write fSizeDirty; 
        property Dirty:TPasMPBool32 read fDirty write fDirty;
      end;  
-
-(*
-     { TpvRaytracingBLASInstanceManager }
-     TpvRaytracingBLASInstanceManager=class
-      public
-       type { TBLASInstance }
-            TBLASInstance=class
+     
+     { TpvRaytracingBLASManager }
+     TpvRaytracingBLASManager=class
+      public 
+       type { TBLAS }
+            TBLAS=class
              public
-              type TBLASInstanceKind=
-                    (
-                     None,
-                     Mesh,
-                     Particle,
-                     Planet
-                    );
-                   TKind=TBLASInstanceKind; // Workaround for FreePascal, for some reason it doesn't like a direct duplicate equal-name type definition even with different scope, which can trigger a linker error because of duplicate symbol names, so we need to use a different name for the type definition, and use a type alias for the actual type name
+              type { TBLASInstance }
+                   TBLASInstance=class
+                    private
+                     fBLASManager:TpvRaytracingBLASManager;
+                     fBLAS:TBLAS;
+                     fInBLASManagerIndex:TpvSizeInt;
+                     fInBLASIndex:TpvSizeInt;
+                     fAccelerationStructureInstance:TpvRaytracingBottomLevelAccelerationStructureInstance;
+                    public
+                     constructor Create(const aBLAS:TBLAS;
+                                        const aTransform:TpvMatrix4x4;
+                                        const aMask:TVkUInt32;
+                                        const aInstanceShaderBindingTableRecordOffset:TVkUInt32;
+                                        const aFlags:TVkGeometryInstanceFlagsKHR); reintroduce;
+                     destructor Destroy; override;
+                     procedure AfterConstruction; override;
+                     procedure BeforeDestruction; override;
+                    public
+                     property BLASManager:TpvRaytracingBLASManager read fBLASManager;
+                     property BLAS:TBLAS read fBLAS;
+                     property InBLASManagerIndex:TpvSizeInt read fInBLASManagerIndex;
+                     property InBLASIndex:TpvSizeInt read fInBLASIndex;
+                     property AccelerationStructureInstance:TpvRaytracingBottomLevelAccelerationStructureInstance read fAccelerationStructureInstance;
+                   end; 
+                   TBLASInstanceList=TpvObjectGenericList<TBLASInstance>;                   
              private
-              fBLASInstanceManager:TpvRaytracingBLASInstanceManager;
-              fIndex:TpvSizeInt;
-              fKind:TBLASInstanceKind;
-              fAccelerationStructureInstance:TpvRaytracingBottomLevelAccelerationStructureInstance;
-              fAccelerationStructureInstanceIndex:TpvSizeInt;
-              fGeometryInfoOffset:TpvSizeInt;
-              fCountGeometryInfos:TpvSizeInt;
-              fGeometryInfos:TpvRaytracingBLASGeometryInfoBufferItemList;
+              fBLASManager:TpvRaytracingBLASManager;
+              fInBLASManagerIndex:TpvSizeInt;
+              fAccelerationStructureGeometry:TpvRaytracingBottomLevelAccelerationStructureGeometry;
+              fAccelerationStructure:TpvRaytracingBottomLevelAccelerationStructure;
+              fAccelerationStructureIndex:TpvSizeInt;
+              fAccelerationStructureScratchSize:TVkDeviceSize;
+              fAccelerationStructureBuffer:TpvVulkanBuffer;
+              fScratchOffset:TVkDeviceSize;
+              fScratchPass:TpvUInt64;
+              fGeometryInfoBaseIndex:TpvSizeInt;
+              fCountGeometries:TpvSizeInt;
+              fBLASInstanceList:TBLASInstanceList;
              public
-              constructor Create(const aBLASInstanceManger:TpvRaytracingBLASInstanceManager); reintroduce;
-              destructor Destroy; override; 
+              constructor Create(const aBLASManager:TpvRaytracingBLASManager); reintroduce;
+              destructor Destroy; override;
               procedure AfterConstruction; override;
-              procedure BeforeDestruction; override;
-              procedure AddGeometryInfo(const aGeometryInfo:TpvRaytracingBLASGeometryInfoBufferItem);
-              procedure AddGeometryInfos(const aGeometryInfos:TpvRaytracingBLASGeometryInfoBufferItems);
-              procedure RemoveGeometryInfo(const aGeometryInfo:TpvRaytracingBLASGeometryInfoBufferItem);
-              procedure RemoveGeometryInfos(const aGeometryInfos:TpvRaytracingBLASGeometryInfoBufferItems);
-              procedure ClearGeometryInfos;
-             published
-              property BLASInstanceManager:TpvRaytracingBLASInstanceManager read fBLASInstanceManager;
-              property Index:TpvSizeInt read fIndex;
-              property Kind:TBLASInstanceKind read fKind write fKind;
-              property AccelerationStructureInstance:TpvRaytracingBottomLevelAccelerationStructureInstance read fAccelerationStructureInstance;
-              property AccelerationStructureInstanceIndex:TpvSizeInt read fAccelerationStructureInstanceIndex write fAccelerationStructureInstanceIndex; 
-              property GeometryInfoOffset:TpvSizeInt read fGeometryInfoOffset write fGeometryInfoOffset;
-              property CountGeometryInfos:TpvSizeInt read fCountGeometryInfos write fCountGeometryInfos;
-              property GeometryInfos:TpvRaytracingBLASGeometryInfoBufferItemList read fGeometryInfos;
+              procedure BeforeDestruction; override;              
+              procedure Initialize;
+              function GetGeometryInfo(const aIndex:TpvSizeInt):PpvRaytracingBLASGeometryInfoBufferItem;
+              function AcquireBLASInstance(const aTransform:TpvMatrix4x4;
+                                           const aMask:TVkUInt32;
+                                           const aInstanceShaderBindingTableRecordOffset:TVkUInt32;
+                                           const aFlags:TVkGeometryInstanceFlagsKHR):TBLASInstance;
+              procedure ReleaseBLASInstance(const aBLASInstance:TBLASInstance);
+             public
+              property BLASManager:TpvRaytracingBLASManager read fBLASManager;
+              property InBLASManagerIndex:TpvSizeInt read fInBLASManagerIndex;
+              property AccelerationStructureGeometry:TpvRaytracingBottomLevelAccelerationStructureGeometry read fAccelerationStructureGeometry;
+              property AccelerationStructure:TpvRaytracingBottomLevelAccelerationStructure read fAccelerationStructure write fAccelerationStructure;
+              property AccelerationStructureIndex:TpvSizeInt read fAccelerationStructureIndex write fAccelerationStructureIndex;
+              property AccelerationStructureScratchSize:TVkDeviceSize read fAccelerationStructureScratchSize write fAccelerationStructureScratchSize;
+              property AccelerationStructureBuffer:TpvVulkanBuffer read fAccelerationStructureBuffer write fAccelerationStructureBuffer;
+              property BLASInstanceList:TBLASInstanceList read fBLASInstanceList;
+              property ScratchOffset:TVkDeviceSize read fScratchOffset write fScratchOffset;
+              property ScratchPass:TpvUInt64 read fScratchPass write fScratchPass;
+              property GeometryInfoBaseIndex:TpvSizeInt read fGeometryInfoBaseIndex write fGeometryInfoBaseIndex;
+              property CountGeometries:TpvSizeInt read fCountGeometries write fCountGeometries;
             end;
-            TBLASInstanceList=TpvObjectGenericList<TBLASInstance>;
-            TAccelerationStructureInstanceArrayList=TpvDynamicArrayList<TVkAccelerationStructureInstanceKHR>;
-            TGeometryOffsetArrayList=TpvDynamicArrayList<TVkInt32>; // Instance offset index for first geometry buffer item per BLAS instance, when >= 24 bits are needed, since instance custom index is only 24 bits 
+            TBLASList=TpvObjectGenericList<TBLAS>;
+            TGeometryOffsetArrayList=TpvDynamicArrayList<TVkInt32>; // Instance offset index for first geometry buffer item per BLAS instance, when >= 24 bits are needed, since instance custom index is only 24 bits
             TGeometryInfoArrayList=TpvRaytracingBLASGeometryInfoBufferItemList; // Geometry info buffer item list
-      private
-       fDevice:TpvVulkanDevice;
-       fLock:TPasMPCriticalSection;
-       fBLASInstances:TBLASInstanceList;
-       fAccelerationStructureInstanceArrayList:TAccelerationStructureInstanceArrayList;
-       fGeometryOffsetArrayList:TGeometryOffsetArrayList; // As buffer on the GPU, contains the geometry info offset per BLAS instance, when >= 24 bits are needed, since the instance custom index is only 24 bits, we need to store the offset of the first geometry buffer item per BLAS instance, when >= 24 bits are needed
-       fGeometryInfoArrayList:TGeometryInfoArrayList; // As a buffer on the GPU, containing the geometry info buffer items
-       fNeedFullRebuild:TPasMPBool32; // when new instances are added or removed, a full rebuild is needed, for to keep the instance custom index, geometry info offset and geometry info buffer item list in sync
-      public
-       constructor Create(const aDevice:TpvVulkanDevice); reintroduce;
-       destructor Destroy; override;
-       function AcquireBLASInstance:TBLASInstance;
-       procedure AddBLASInstance(const aBLASInstance:TBLASInstance);
-       procedure ReleaseBLASInstance(const aBLASInstance:TBLASInstance);
-       procedure Update;
-     end;
-*)
+            TVkAccelerationStructureInstanceKHRArrayList=TpvDynamicArrayList<TVkAccelerationStructureInstanceKHR>;
+       private 
+        fDevice:TpvVulkanDevice;
+        fLock:TPasMPCriticalSection;
+        fBLASList:TBLASList;
+        fBLASInstanceList:TBLAS.TBLASInstanceList;
+        fAccelerationStructureInstanceKHRArrayList:TVkAccelerationStructureInstanceKHRArrayList;
+        fAccelerationStructureInstanceKHRArrayListFullReassign:TPasMPBool32;
+        fGeometryInfoManager:TpvRaytracingGeometryInfoManager;
+        fGeometryOffsetArrayList:TGeometryOffsetArrayList; // As buffer on the GPU, contains the geometry info offset per BLAS instance, when >= 24 bits are needed, since the instance custom index is only 24 bits, we need to store the offset of the first geometry buffer item per BLAS instance, when >= 24 bits are needed
+        fGeometryInfoArrayList:TGeometryInfoArrayList; // As a buffer on the GPU, containing the geometry info buffer items
+        fDirty:TPasMPBool32;
+        procedure GeometryInfoManagerOnDefragmentMove(const aSender:TpvRaytracingGeometryInfoManager;const aObject:TObject;const aOldOffset,aNewOffset,aSize:TpvInt64);
+       public
+        constructor Create(const aDevice:TpvVulkanDevice); reintroduce;
+        destructor Destroy; override;
+        function AcquireBLAS:TBLAS;
+        procedure ReleaseBLAS(const aBLAS:TBLAS);
+        procedure Update;
+       public
+        property Device:TpvVulkanDevice read fDevice;
+        property BLASList:TBLASList read fBLASList;
+        property BLASInstanceList:TBLAS.TBLASInstanceList read fBLASInstanceList;
+        property AccelerationStructureInstanceKHRArrayList:TVkAccelerationStructureInstanceKHRArrayList read fAccelerationStructureInstanceKHRArrayList;
+        property GeometryInfoManager:TpvRaytracingGeometryInfoManager read fGeometryInfoManager;
+        property GeometryOffsetArrayList:TGeometryOffsetArrayList read fGeometryOffsetArrayList;
+        property GeometryInfoArrayList:TGeometryInfoArrayList read fGeometryInfoArrayList;
+        property Dirty:TPasMPBool32 read fDirty write fDirty; 
+      end;   
 
 implementation
 
@@ -1748,6 +1785,352 @@ begin
  finally
   fLock.Release;
  end;
+end;
+
+{ TpvRaytracingBLASManager.TBLAS.TBLASInstance }
+
+constructor TpvRaytracingBLASManager.TBLAS.TBLASInstance.Create(const aBLAS:TBLAS;
+                                                                const aTransform:TpvMatrix4x4;
+                                                                const aMask:TVkUInt32;
+                                                                const aInstanceShaderBindingTableRecordOffset:TVkUInt32;
+                                                                const aFlags:TVkGeometryInstanceFlagsKHR);
+begin
+ inherited Create;
+
+ fBLASManager:=aBLAS.fBLASManager;
+
+ fBLAS:=aBLAS;
+
+ fInBLASManagerIndex:=-1;
+
+ fInBLASIndex:=-1;
+
+ fAccelerationStructureInstance:=TpvRaytracingBottomLevelAccelerationStructureInstance.Create(fBLASManager.fDevice,
+                                                                                              aTransform,
+                                                                                              fBLAS.GeometryInfoBaseIndex, // Instance custom index is the base index for accessing the geometry info buffer items for this BLAS
+                                                                                              aMask,
+                                                                                              aInstanceShaderBindingTableRecordOffset,
+                                                                                              aFlags,
+                                                                                              fBLAS.fAccelerationStructure,
+                                                                                              nil);      
+
+end;
+
+destructor TpvRaytracingBLASManager.TBLAS.TBLASInstance.Destroy;
+begin
+ FreeAndNil(fAccelerationStructureInstance);
+ inherited Destroy;
+end;
+
+procedure TpvRaytracingBLASManager.TBLAS.TBLASInstance.AfterConstruction;
+begin
+ 
+ inherited AfterConstruction;
+
+ // Add to manager-global BLAS instance list
+ if assigned(fBLASManager) then begin
+  fInBLASManagerIndex:=fBLASManager.fBLASInstanceList.Add(self);
+ end;
+
+  // Add to BLAS-own BLAS instance list
+ if assigned(fBLAS) then begin
+  fInBLASIndex:=fBLAS.fBLASInstanceList.Add(self);
+ end;
+
+ if fInBLASManagerIndex>=0 then begin
+
+  // Ensure that the acceleration structure instance list has enough space for the new acceleration structure instance
+  if fBLASManager.fAccelerationStructureInstanceKHRArrayList.Count<=fInBLASManagerIndex then begin
+   
+   fBLASManager.fAccelerationStructureInstanceKHRArrayList.Resize((fInBLASManagerIndex+1)*2);
+
+   // Full reassign needed, because the list has been resized with possible new memory address and the pointers to the 
+   // internal structures can be invalid
+   fBLASManager.fAccelerationStructureInstanceKHRArrayListFullReassign:=true; 
+
+  end; 
+   
+  // Copy the TpvRaytracingBottomLevelAccelerationStructureInstance own VKAccelerationStructureInstanceKHR content into 
+  // the global VKAccelerationStructureInstanceKHR array list
+  fBLASManager.fAccelerationStructureInstanceKHRArrayList.ItemArray[fInBLASManagerIndex]:=fAccelerationStructureInstance.fAccelerationStructureInstance;
+
+  // Set the acceleration structure instance pointer to the global VKAccelerationStructureInstanceKHR array list, so that
+  // so that the TpvRaytracingBottomLevelAccelerationStructureInstance own VKAccelerationStructureInstanceKHR instance isn't used anymore
+  // from now on. This is needed, because the global VKAccelerationStructureInstanceKHR array list is used as direct memory data source
+  // for the GPU-side geometry info buffer.
+  fAccelerationStructureInstance.fAccelerationStructureInstancePointer:=@fBLASManager.fAccelerationStructureInstanceKHRArrayList.ItemArray[fInBLASManagerIndex];
+  
+ end;
+
+end;
+
+procedure TpvRaytracingBLASManager.TBLAS.TBLASInstance.BeforeDestruction;
+var OtherBLASInstance:TBLASInstance;
+begin
+
+ if assigned(fAccelerationStructureInstance) then begin
+
+  // Copy the global VKAccelerationStructureInstanceKHR array list content back into the TpvRaytracingBottomLevelAccelerationStructureInstance 
+  // own VKAccelerationStructureInstanceKHR instance, for the case that the instance is destroyed and the acceleration structure instance
+  // is still used by the BLAS instance.
+  if assigned(fBLASManager) and (fInBLASManagerIndex>=0) then begin
+   fAccelerationStructureInstance.fAccelerationStructureInstance:=fBLASManager.fAccelerationStructureInstanceKHRArrayList.ItemArray[fInBLASManagerIndex];
+  end;
+
+  // Set the acceleration structure instance pointer back to the own VKAccelerationStructureInstanceKHR instance, so that the
+  // TpvRaytracingBottomLevelAccelerationStructureInstance own VKAccelerationStructureInstanceKHR instance is used again, to avoid
+  // dangling pointers.
+  fAccelerationStructureInstance.fAccelerationStructureInstancePointer:=@fAccelerationStructureInstance.fAccelerationStructureInstance;
+
+ end; 
+
+ // Remove from manager-global BLAS instance list 
+ if assigned(fBLASManager) and (fInBLASManagerIndex>=0) then begin
+  if (fInBLASManagerIndex+1)<fBLASManager.fBLASInstanceList.Count then begin
+   OtherBLASInstance:=fBLASManager.fBLASInstanceList.Items[fBLASManager.fBLASInstanceList.Count-1];
+   OtherBLASInstance.fInBLASManagerIndex:=fInBLASManagerIndex;
+   fInBLASManagerIndex:=fBLASManager.fBLASInstanceList.Count-1;
+   fBLASManager.fBLASInstanceList.Items[OtherBLASInstance.fInBLASManagerIndex]:=OtherBLASInstance;
+   fBLASManager.fBLASInstanceList.Items[fInBLASManagerIndex]:=self;
+  end;
+  fBLASManager.fBLASInstanceList.ExtractIndex(fInBLASManagerIndex);
+  fInBLASManagerIndex:=-1;
+ end;
+
+ // Remove from BLAS-own BLAS instance list
+ if assigned(fBLAS) and (fInBLASIndex>=0) then begin
+  if (fInBLASIndex+1)<fBLAS.fBLASInstanceList.Count then begin
+   OtherBLASInstance:=fBLAS.fBLASInstanceList.Items[fBLAS.fBLASInstanceList.Count-1];
+   OtherBLASInstance.fInBLASIndex:=fInBLASIndex;
+   fInBLASIndex:=fBLAS.fBLASInstanceList.Count-1;
+   fBLAS.fBLASInstanceList.Items[OtherBLASInstance.fInBLASIndex]:=OtherBLASInstance;
+   fBLAS.fBLASInstanceList.Items[fInBLASIndex]:=self;
+  end;
+  fBLAS.fBLASInstanceList.ExtractIndex(fInBLASIndex); 
+  fInBLASIndex:=-1;
+ end;
+
+ inherited BeforeDestruction;
+end;
+
+ { TpvRaytracingBLASManager.TBLAS }
+
+constructor TpvRaytracingBLASManager.TBLAS.Create(const aBLASManager:TpvRaytracingBLASManager);
+begin
+ inherited Create;
+
+ fBLASManager:=aBLASManager;
+ 
+ fInBLASManagerIndex:=-1;
+ 
+ fAccelerationStructureGeometry:=nil;
+ 
+ fAccelerationStructure:=nil;
+ 
+ fAccelerationStructureIndex:=-1;
+ 
+ fAccelerationStructureScratchSize:=0;
+ 
+ fAccelerationStructureBuffer:=nil;
+ 
+ fScratchOffset:=0;
+ 
+ fScratchPass:=0;
+ 
+ fGeometryInfoBaseIndex:=-1;
+
+ fCountGeometries:=0;
+ 
+ fBLASInstanceList:=TBLASInstanceList.Create(false);
+
+end;
+
+destructor TpvRaytracingBLASManager.TBLAS.Destroy;
+begin
+
+ while fBLASInstanceList.Count>0 do begin
+  fBLASInstanceList[fBLASInstanceList.Count-1].Free;
+ end;
+
+ if (fGeometryInfoBaseIndex>=0) and (fGeometryInfoBaseIndex<fBLASManager.fGeometryInfoArrayList.Count) then begin
+  fBLASManager.fGeometryInfoManager.FreeGeometryInfoRange(fGeometryInfoBaseIndex);
+ end;
+
+ FreeAndNil(fAccelerationStructureGeometry);
+
+ FreeAndNil(fAccelerationStructure);
+
+ FreeAndNil(fAccelerationStructureBuffer);
+
+ FreeAndNil(fBLASInstanceList);
+
+ inherited Destroy;
+
+end;
+
+procedure TpvRaytracingBLASManager.TBLAS.AfterConstruction;
+begin
+ inherited AfterConstruction;
+ if assigned(fBLASManager) then begin
+  fInBLASManagerIndex:=fBLASManager.fBLASList.Add(self);
+ end;
+end;
+
+procedure TpvRaytracingBLASManager.TBLAS.BeforeDestruction;
+var OtherBLAS:TBLAS;
+begin
+ if assigned(fBLASManager) and (fInBLASManagerIndex>=0) then begin
+  if (fInBLASManagerIndex+1)<fBLASManager.fBLASList.Count then begin
+   OtherBLAS:=fBLASManager.fBLASList.Items[fBLASManager.fBLASList.Count-1];
+   OtherBLAS.fInBLASManagerIndex:=fInBLASManagerIndex;
+   fInBLASManagerIndex:=fBLASManager.fBLASList.Count-1;
+   fBLASManager.fBLASList.Items[OtherBLAS.fInBLASManagerIndex]:=OtherBLAS;
+   fBLASManager.fBLASList.Items[fInBLASManagerIndex]:=self;
+  end;
+  fBLASManager.fBLASList.ExtractIndex(fInBLASManagerIndex);
+  fInBLASManagerIndex:=-1;
+ end;
+ inherited BeforeDestruction;
+end;
+
+procedure TpvRaytracingBLASManager.TBLAS.Initialize;
+begin
+
+ if fGeometryInfoBaseIndex<0 then begin
+
+  fCountGeometries:=fAccelerationStructureGeometry.Geometries.Count;
+
+  fGeometryInfoBaseIndex:=fBLASManager.fGeometryInfoManager.AllocateGeometryInfoRange(self,fCountGeometries);
+
+ end;
+
+end;
+
+function TpvRaytracingBLASManager.TBLAS.GetGeometryInfo(const aIndex:TpvSizeInt):PpvRaytracingBLASGeometryInfoBufferItem;
+begin
+ if fGeometryInfoBaseIndex>=0 then begin
+  result:=fBLASManager.fGeometryInfoManager.GetGeometryInfo(fGeometryInfoBaseIndex+aIndex);
+ end else begin
+  result:=nil;
+ end; 
+end;
+
+function TpvRaytracingBLASManager.TBLAS.AcquireBLASInstance(const aTransform:TpvMatrix4x4;
+                                                            const aMask:TVkUInt32;
+                                                            const aInstanceShaderBindingTableRecordOffset:TVkUInt32;
+                                                            const aFlags:TVkGeometryInstanceFlagsKHR):TBLASInstance;
+begin
+ result:=TBLASInstance.Create(self,
+                              aTransform,
+                              aMask,
+                              aInstanceShaderBindingTableRecordOffset,
+                              aFlags);
+end;
+
+procedure TpvRaytracingBLASManager.TBLAS.ReleaseBLASInstance(const aBLASInstance:TBLASInstance);
+begin
+ fBLASInstanceList.Remove(aBLASInstance);
+end;
+
+{ TpvRaytracingBLASManager }
+
+constructor TpvRaytracingBLASManager.Create(const aDevice:TpvVulkanDevice);
+begin
+ inherited Create;
+
+ fDevice:=aDevice;
+
+ fLock:=TPasMPCriticalSection.Create;
+
+ fBLASList:=TBLASList.Create(false);
+
+ fBLASInstanceList:=TBLAS.TBLASInstanceList.Create(false);
+
+ fAccelerationStructureInstanceKHRArrayList:=TVkAccelerationStructureInstanceKHRArrayList.Create;
+
+ fAccelerationStructureInstanceKHRArrayListFullReassign:=false;
+
+ fGeometryInfoManager:=TpvRaytracingGeometryInfoManager.Create;
+ fGeometryInfoManager.OnDefragmentMove:=GeometryInfoManagerOnDefragmentMove;
+
+ fGeometryOffsetArrayList:=TGeometryOffsetArrayList.Create;
+
+ fGeometryInfoArrayList:=TGeometryInfoArrayList.Create;
+
+ fDirty:=false;
+
+end;
+
+destructor TpvRaytracingBLASManager.Destroy;
+begin
+
+ while fBLASInstanceList.Count>0 do begin
+  fBLASInstanceList[fBLASInstanceList.Count-1].Free;
+ end;
+
+ while fBLASList.Count>0 do begin
+  fBLASList[fBLASList.Count-1].Free;
+ end;
+
+ FreeAndNil(fGeometryInfoArrayList);
+  
+ FreeAndNil(fGeometryOffsetArrayList);
+ 
+ FreeAndNil(fGeometryInfoManager);
+ 
+ FreeAndNil(fAccelerationStructureInstanceKHRArrayList);
+
+ FreeAndNil(fBLASList);
+ 
+ FreeAndNil(fLock);
+
+ inherited Destroy;
+end;
+
+procedure TpvRaytracingBLASManager.GeometryInfoManagerOnDefragmentMove(const aSender:TpvRaytracingGeometryInfoManager;const aObject:TObject;const aOldOffset,aNewOffset,aSize:TpvInt64);
+var Index,InstanceCustomIndex:TpvSizeInt;
+    BLAS:TBLAS;
+    BLASInstance:TBLAS.TBLASInstance;
+begin
+ for Index:=0 to fBLASList.Count-1 do begin
+  BLAS:=fBLASList.Items[Index];
+  if (BLAS.fGeometryInfoBaseIndex>=0) and (BLAS.fGeometryInfoBaseIndex>=aOldOffset) and (BLAS.fGeometryInfoBaseIndex<(aOldOffset+aSize)) then begin
+   BLAS.fGeometryInfoBaseIndex:=aNewOffset+(BLAS.fGeometryInfoBaseIndex-aOldOffset);
+  end;
+ end;
+ for Index:=0 to fBLASInstanceList.Count-1 do begin
+  BLASInstance:=fBLASInstanceList.Items[Index];
+  InstanceCustomIndex:=BLASInstance.AccelerationStructureInstance.InstanceCustomIndex;
+  if (InstanceCustomIndex>=0) and (InstanceCustomIndex>=aOldOffset) and (InstanceCustomIndex<(aOldOffset+aSize)) then begin
+   BLASInstance.AccelerationStructureInstance.InstanceCustomIndex:=aNewOffset+(InstanceCustomIndex-aOldOffset);
+  end;
+ end;
+end;
+
+function TpvRaytracingBLASManager.AcquireBLAS:TBLAS;
+begin
+ result:=TBLAS.Create(self);
+end;
+
+procedure TpvRaytracingBLASManager.ReleaseBLAS(const aBLAS:TBLAS);
+begin
+ fBLASList.Remove(aBLAS);
+end;
+
+procedure TpvRaytracingBLASManager.Update;
+var Index:TpvSizeInt;    
+begin
+
+ // After resizing fAccelerationStructureInstanceKHRArrayList, we need to reassign the acceleration structure instance pointers, because the memory address
+ // of the array may have changed
+ if fAccelerationStructureInstanceKHRArrayListFullReassign then begin
+  fAccelerationStructureInstanceKHRArrayListFullReassign:=false;
+  Assert(fAccelerationStructureInstanceKHRArrayList.Count=fBLASInstanceList.Count,'Different count of acceleration structure instances and BLAS instances');
+  for Index:=0 to fAccelerationStructureInstanceKHRArrayList.Count-1 do begin
+   fBLASInstanceList.RawItems[Index].AccelerationStructureInstance.AccelerationStructureInstance:=@fAccelerationStructureInstanceKHRArrayList.ItemArray[Index];
+  end;
+ end; 
+
 end;
 
 end.
