@@ -486,7 +486,6 @@ type EpvRaytracing=class(Exception);
             end;
             TBLASList=TpvObjectGenericList<TBLAS>;
             TGeometryOffsetArrayList=TpvDynamicArrayList<TVkInt32>; // Instance offset index for first geometry buffer item per BLAS instance, when >= 24 bits are needed, since instance custom index is only 24 bits
-            TGeometryInfoArrayList=TpvRaytracingBLASGeometryInfoBufferItemList; // Geometry info buffer item list
             TVkAccelerationStructureInstanceKHRArrayList=TpvDynamicArrayList<TVkAccelerationStructureInstanceKHR>;
        private 
         fDevice:TpvVulkanDevice;
@@ -497,7 +496,6 @@ type EpvRaytracing=class(Exception);
         fAccelerationStructureInstanceKHRArrayListFullReassign:TPasMPBool32;
         fGeometryInfoManager:TpvRaytracingGeometryInfoManager;
         fGeometryOffsetArrayList:TGeometryOffsetArrayList; // As buffer on the GPU, contains the geometry info offset per BLAS instance, when >= 24 bits are needed, since the instance custom index is only 24 bits, we need to store the offset of the first geometry buffer item per BLAS instance, when >= 24 bits are needed
-        fGeometryInfoArrayList:TGeometryInfoArrayList; // As a buffer on the GPU, containing the geometry info buffer items
         fDirty:TPasMPBool32;
         procedure GeometryInfoManagerOnDefragmentMove(const aSender:TpvRaytracingGeometryInfoManager;const aObject:TObject;const aOldOffset,aNewOffset,aSize:TpvInt64);
        public
@@ -513,8 +511,7 @@ type EpvRaytracing=class(Exception);
         property AccelerationStructureInstanceKHRArrayList:TVkAccelerationStructureInstanceKHRArrayList read fAccelerationStructureInstanceKHRArrayList;
         property GeometryInfoManager:TpvRaytracingGeometryInfoManager read fGeometryInfoManager;
         property GeometryOffsetArrayList:TGeometryOffsetArrayList read fGeometryOffsetArrayList;
-        property GeometryInfoArrayList:TGeometryInfoArrayList read fGeometryInfoArrayList;
-        property Dirty:TPasMPBool32 read fDirty write fDirty; 
+        property Dirty:TPasMPBool32 read fDirty write fDirty;
       end;   
 
 implementation
@@ -1958,7 +1955,7 @@ begin
   fBLASInstanceList[fBLASInstanceList.Count-1].Free;
  end;
 
- if (fGeometryInfoBaseIndex>=0) and (fGeometryInfoBaseIndex<fBLASManager.fGeometryInfoArrayList.Count) then begin
+ if fGeometryInfoBaseIndex>=0 then begin
   fBLASManager.fGeometryInfoManager.FreeGeometryInfoRange(fGeometryInfoBaseIndex);
  end;
 
@@ -2063,8 +2060,6 @@ begin
 
  fGeometryOffsetArrayList:=TGeometryOffsetArrayList.Create;
 
- fGeometryInfoArrayList:=TGeometryInfoArrayList.Create;
-
  fDirty:=false;
 
 end;
@@ -2080,8 +2075,6 @@ begin
   fBLASList[fBLASList.Count-1].Free;
  end;
 
- FreeAndNil(fGeometryInfoArrayList);
-  
  FreeAndNil(fGeometryOffsetArrayList);
  
  FreeAndNil(fGeometryInfoManager);
