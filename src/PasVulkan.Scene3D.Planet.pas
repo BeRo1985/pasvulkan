@@ -12304,18 +12304,6 @@ begin
                                                                  fPlanet.TiledVisualMeshIndexGroups[TileIndex].FirstIndex);
   end;
 
-{ if not assigned(fBLASInstance) then begin
-
-   fBLASInstance:=TpvRaytracingBottomLevelAccelerationStructureInstance.Create(fPlanet.fVulkanDevice,
-                                                                               TpvMatrix4x4.Identity,
-                                                                               0,
-                                                                               $ff,
-                                                                               0,
-                                                                               0,
-                                                                               fBLAS);
-
-  end;}
-
  end;
 
  if assigned(fBLAS) and assigned(fBLAS.AccelerationStructureGeometry) then begin
@@ -12324,8 +12312,6 @@ begin
    //fBLAS.Update(fBLASGeometry,true);
   end;
  end;
-
-//fBLASInstance.Transform:=TpvScene3D(fPlanet.fScene3D).TransformOrigin(fPlanet.fData.ModelMatrix,aInFlightFrameIndex,true);
 
  if CheckAndUpdateGeneration(aInFlightFrameIndex) then begin
   MustBeUpdated:=true;
