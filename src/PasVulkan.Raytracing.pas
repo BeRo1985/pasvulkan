@@ -2138,13 +2138,17 @@ begin
      (fAccelerationStructureBuffer.Size<fAccelerationStructureSize)) and
     (fAccelerationStructureSize>0) then begin
 
-  if assigned(pvApplication) then begin
-   pvApplication.WaitForPreviousFrame(true); // wait on previous frame to avoid destroy still-in-usage buffers.
+  if assigned(fAccelerationStructureBuffer) or (fAccelerationStructure.AccelerationStructure<>VK_NULL_HANDLE) then begin
+
+   if assigned(pvApplication) then begin
+    pvApplication.WaitForPreviousFrame(true); // wait on previous frame to avoid destroy still-in-usage buffers.
+   end;
+
+   fAccelerationStructure.Finalize;
+
+   FreeAndNil(fAccelerationStructureBuffer);
+
   end;
-
-  fAccelerationStructure.Finalize;
-
-  FreeAndNil(fAccelerationStructureBuffer);
 
   fAccelerationStructureBuffer:=TpvVulkanBuffer.Create(fBLASManager.fVulkanDevice,
                                                        fAccelerationStructureSize,

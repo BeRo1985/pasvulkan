@@ -6297,7 +6297,7 @@ begin
 
   if CountPrimitives>0 then begin
 
-   if assigned(BLASGroup^.fBLAS) and assigned(BLASGroup^.fBLAS.AccelerationStructureGeometry) then begin
+   if assigned(BLASGroup^.fBLAS) and assigned(BLASGroup^.fBLAS.AccelerationStructureGeometry) and (BLASGroup^.fBLAS.CountGeometries>0) then begin
 
     MustUpdate:=MustUpdateAll;
 
