@@ -1835,6 +1835,8 @@ begin
  // Add to manager-global BLAS instance list
  if assigned(fBLASManager) then begin
 
+  TPasMPInterlocked.Write(fBLASManager.fDirty,TPasMPBool32(true));
+
   fInBLASManagerIndex:=fBLASManager.fBLASInstanceList.Add(self);
 
   if fInBLASManagerIndex>=0 then begin
@@ -1888,6 +1890,7 @@ begin
 
  // Remove from manager-global BLAS instance list 
  if assigned(fBLASManager) and (fInBLASManagerIndex>=0) then begin
+  TPasMPInterlocked.Write(fBLASManager.fDirty,TPasMPBool32(true));
   if (fInBLASManagerIndex+1)<fBLASManager.fBLASInstanceList.Count then begin
    OtherBLASInstance:=fBLASManager.fBLASInstanceList.Items[fBLASManager.fBLASInstanceList.Count-1];
    OtherBLASInstance.fInBLASManagerIndex:=fInBLASManagerIndex;
@@ -1975,6 +1978,7 @@ procedure TpvRaytracingBLASManager.TBLAS.AfterConstruction;
 begin
  inherited AfterConstruction;
  if assigned(fBLASManager) then begin
+  TPasMPInterlocked.Write(fBLASManager.fDirty,TPasMPBool32(true));
   fInBLASManagerIndex:=fBLASManager.fBLASList.Add(self);
  end;
 end;
@@ -1983,6 +1987,7 @@ procedure TpvRaytracingBLASManager.TBLAS.BeforeDestruction;
 var OtherBLAS:TBLAS;
 begin
  if assigned(fBLASManager) and (fInBLASManagerIndex>=0) then begin
+  TPasMPInterlocked.Write(fBLASManager.fDirty,TPasMPBool32(true));
   if (fInBLASManagerIndex+1)<fBLASManager.fBLASList.Count then begin
    OtherBLAS:=fBLASManager.fBLASList.Items[fBLASManager.fBLASList.Count-1];
    OtherBLAS.fInBLASManagerIndex:=fInBLASManagerIndex;
@@ -2095,12 +2100,16 @@ var Index,InstanceCustomIndex:TpvSizeInt;
     BLAS:TBLAS;
     BLASInstance:TBLAS.TBLASInstance;
 begin
+
+ TPasMPInterlocked.Write(fDirty,TPasMPBool32(true));
+
  for Index:=0 to fBLASList.Count-1 do begin
   BLAS:=fBLASList.Items[Index];
   if (BLAS.fGeometryInfoBaseIndex>=0) and (BLAS.fGeometryInfoBaseIndex>=aOldOffset) and (BLAS.fGeometryInfoBaseIndex<(aOldOffset+aSize)) then begin
    BLAS.fGeometryInfoBaseIndex:=aNewOffset+(BLAS.fGeometryInfoBaseIndex-aOldOffset);
   end;
  end;
+
  for Index:=0 to fBLASInstanceList.Count-1 do begin
   BLASInstance:=fBLASInstanceList.Items[Index];
   InstanceCustomIndex:=BLASInstance.AccelerationStructureInstance.InstanceCustomIndex;
@@ -2108,6 +2117,7 @@ begin
    BLASInstance.AccelerationStructureInstance.InstanceCustomIndex:=aNewOffset+(InstanceCustomIndex-aOldOffset);
   end;
  end;
+
 end;
 
 function TpvRaytracingBLASManager.AcquireBLAS:TBLAS;
@@ -2133,6 +2143,10 @@ begin
    fBLASInstanceList.RawItems[Index].AccelerationStructureInstance.AccelerationStructureInstance:=@fAccelerationStructureInstanceKHRArrayList.ItemArray[Index];
   end;
  end; 
+
+ if TPasMPInterlocked.CompareExchange(fDirty,TPasMPBool32(false),TPasMPBool32(true)) then begin
+
+ end;
 
 end;
 
