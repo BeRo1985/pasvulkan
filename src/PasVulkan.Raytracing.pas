@@ -1933,7 +1933,7 @@ begin
  
  fInBLASManagerIndex:=-1;
  
- fAccelerationStructureGeometry:=nil;
+ fAccelerationStructureGeometry:=TpvRaytracingBottomLevelAccelerationStructureGeometry.Create(fBLASManager.fDevice);
  
  fAccelerationStructure:=nil;
  
