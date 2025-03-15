@@ -588,6 +588,7 @@ type EpvRaytracing=class(Exception);
                             const aAllocationGroupID:TpvUInt64=0;
                             const aName:TpvUTF8String=''):TBLAS;
        procedure ReleaseBLAS(const aBLAS:TBLAS);
+       procedure Reset(const aInFlightFrameIndex:TpvSizeInt);
        procedure Update(const aStagingQueue:TpvVulkanQueue;
                         const aStagingCommandBuffer:TpvVulkanCommandBuffer;
                         const aStagingFence:TpvVulkanFence;
@@ -3236,6 +3237,11 @@ begin
 
  end;
 
+end;
+
+procedure TpvRaytracingBLASManager.Reset(const aInFlightFrameIndex:TpvSizeInt);
+begin
+ TPasMPInterlocked.BitwiseAnd(fUpdateRaytracingFrameDoneMask,TpvUInt32(not TpvUInt32(TpvUInt32(1) shl aInFlightFrameIndex)));
 end;
 
 procedure TpvRaytracingBLASManager.Update(const aStagingQueue:TpvVulkanQueue;
