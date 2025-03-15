@@ -510,6 +510,27 @@ type EpvRaytracing=class(Exception);
               property CountGeometries:TpvSizeInt read fCountGeometries write fCountGeometries;
             end;
             TBottomLevelAccelerationStructureList=TpvObjectGenericList<TBottomLevelAccelerationStructure>;
+            { TBottomLevelAccelerationStructureQueue }
+            TBottomLevelAccelerationStructureQueue=class
+             private
+              fRaytracing:TpvRaytracing;
+              fItems:array of TBottomLevelAccelerationStructure;
+              fCapacity:TPasMPInt32;
+              fCount:TPasMPInt32;
+              fLock:TPasMPSlimReaderWriterLock;
+              function GetItem(const aIndex:TPasMPInt32):TBottomLevelAccelerationStructure;
+              procedure SetItem(const aIndex:TPasMPInt32;const aValue:TBottomLevelAccelerationStructure);
+             public
+              constructor Create(const aRaytracing:TpvRaytracing); reintroduce;
+              destructor Destroy; override;
+              procedure Clear;
+              procedure Enqueue(const aBottomLevelAccelerationStructure:TBottomLevelAccelerationStructure);
+             published
+              property Raytracing:TpvRaytracing read fRaytracing;
+              property Items[const aIndex:TPasMPInt32]:TBottomLevelAccelerationStructure read GetItem write SetItem; default;
+              property Capacity:TPasMPInt32 read fCapacity;
+              property Count:TPasMPInt32 read fCount; 
+            end;  
             TGeometryOffsetArrayList=TpvDynamicArrayList<TVkUInt32>; // Instance offset index for first geometry buffer item per BLAS instance, when >= 24 bits are needed, since instance custom index is only 24 bits
             TTopLevelAccelerationStructures=array[-1..MaxInFlightFrames-1] of TVkAccelerationStructureKHR;
             TDoubleBufferedVulkanBuffer=array[0..1] of TpvVulkanBuffer;
@@ -523,8 +544,8 @@ type EpvRaytracing=class(Exception);
        fLock:TPasMPCriticalSection;
        fBottomLevelAccelerationStructureList:TBottomLevelAccelerationStructureList;
        fBottomLevelAccelerationStructureInstanceList:TBottomLevelAccelerationStructure.TBottomLevelAccelerationStructureInstanceList;
-       fBottomLevelAccelerationStructureQueue:TBottomLevelAccelerationStructureList; // Queue for building or updating acceleration structures
-       fBottomLevelAccelerationStructureQueueLock:TPasMPSlimReaderWriterLock;
+       fBottomLevelAccelerationStructureQueue:TBottomLevelAccelerationStructureQueue; // Queue for building or updating acceleration structures
+       fBottomLevelAccelerationStructureQueueLock:TPasMPMultipleReaderSingleWriterLock;
        fAccelerationStructureInstanceKHRArrayList:TpvRaytracingAccelerationStructureInstanceArrayList;
        fGeometryInfoManager:TpvRaytracingGeometryInfoManager;
        fGeometryOffsetArrayList:TGeometryOffsetArrayList; // As buffer on the GPU, contains the geometry info offset per BLAS instance, when >= 24 bits are needed, since the instance custom index is only 24 bits, we need to store the offset of the first geometry buffer item per BLAS instance, when >= 24 bits are needed
@@ -2305,14 +2326,94 @@ begin
   end else begin
    fEnqueueState:=TEnqueueState.Build;
   end;
-  fRaytracing.fBottomLevelAccelerationStructureQueueLock.Acquire;
-  try
-   fRaytracing.fBottomLevelAccelerationStructureQueue.Add(self);
-  finally
-   fRaytracing.fBottomLevelAccelerationStructureQueueLock.Release;
-  end;
+  fRaytracing.fBottomLevelAccelerationStructureQueue.Enqueue(self);
  end;
 end;    
+
+{ TpvRaytracing.TBottomLevelAccelerationStructureQueue }
+
+constructor TpvRaytracing.TBottomLevelAccelerationStructureQueue.Create(const aRaytracing:TpvRaytracing);
+begin
+ inherited Create;
+
+ fRaytracing:=aRaytracing;
+
+ fItems:=nil;
+
+ fCapacity:=0;
+ 
+ fCount:=0;
+ 
+ fLock:=TPasMPSlimReaderWriterLock.Create;
+
+end;
+
+destructor TpvRaytracing.TBottomLevelAccelerationStructureQueue.Destroy;
+begin
+
+ FreeAndNil(fLock);
+
+ fItems:=nil;
+
+ inherited Destroy;
+
+end;
+
+function TpvRaytracing.TBottomLevelAccelerationStructureQueue.GetItem(const aIndex:TPasMPInt32):TBottomLevelAccelerationStructure;
+begin
+ if (aIndex>=0) and (aIndex<fCount) then begin
+  result:=fItems[aIndex];
+ end else begin
+  result:=nil;
+ end;
+end;
+
+procedure TpvRaytracing.TBottomLevelAccelerationStructureQueue.SetItem(const aIndex:TPasMPInt32;const aValue:TBottomLevelAccelerationStructure);
+begin
+ if (aIndex>=0) and (aIndex<fCount) then begin
+  fItems[aIndex]:=aValue;
+ end;
+end;
+
+procedure TpvRaytracing.TBottomLevelAccelerationStructureQueue.Clear;
+begin
+ TPasMPInterlocked.Write(fCount,0); 
+end;
+
+procedure TpvRaytracing.TBottomLevelAccelerationStructureQueue.Enqueue(const aBottomLevelAccelerationStructure:TBottomLevelAccelerationStructure);
+var Index:TPasMPInt32;
+begin
+ 
+ // Atomically reserve an index for the new item.
+ Index:=TPasMPInterlocked.Add(fCount,1);
+ 
+ // If the index is beyond the current capacity, resize.
+ if fCapacity<=Index then begin
+  
+  fLock.Acquire;
+  try
+ 
+   // Check again, since another thread may have resized the array in the meantime.
+   if fCapacity<=Index then begin
+
+    // Calculate new capacity and ensure that it is at least as large as the index with 1.5 times the size as growth factor with rounding up. 
+    fCapacity:=(Index+1)+((Index+2) shr 1);
+
+    // Resize the array.
+    SetLength(fItems,fCapacity);
+
+   end;
+
+  finally
+   fLock.Release;
+  end;
+
+ end; 
+ 
+ // Now it is safe to store the new item.
+ fItems[Index]:=aBottomLevelAccelerationStructure;
+
+end;
 
 { TpvRaytracing }
 
@@ -2332,9 +2433,9 @@ begin
 
  fBottomLevelAccelerationStructureInstanceList:=TBottomLevelAccelerationStructure.TBottomLevelAccelerationStructureInstanceList.Create(false);
 
- fBottomLevelAccelerationStructureQueue:=TBottomLevelAccelerationStructureList.Create(false);
+ fBottomLevelAccelerationStructureQueue:=TBottomLevelAccelerationStructureQueue.Create(self);
 
- fBottomLevelAccelerationStructureQueueLock:=TPasMPSlimReaderWriterLock.Create;
+ fBottomLevelAccelerationStructureQueueLock:=TPasMPMultipleReaderSingleWriterLock.Create;
 
  fAccelerationStructureInstanceKHRArrayList:=TpvRaytracingAccelerationStructureInstanceArrayList.Create;
 
@@ -2851,7 +2952,7 @@ begin
 
  for BLASQueueIndex:=0 to fBottomLevelAccelerationStructureQueue.Count-1 do begin
 
-  BLAS:=fBottomLevelAccelerationStructureQueue.RawItems[BLASQueueIndex];
+  BLAS:=fBottomLevelAccelerationStructureQueue.fItems[BLASQueueIndex];
 
   if assigned(BLAS) and (BLAS.CountGeometries>0) then begin
 
@@ -2935,7 +3036,7 @@ begin
 
  for BLASQueueIndex:=0 to fBottomLevelAccelerationStructureQueue.Count-1 do begin
 
-  BLAS:=fBottomLevelAccelerationStructureQueue.RawItems[BLASQueueIndex];
+  BLAS:=fBottomLevelAccelerationStructureQueue.fItems[BLASQueueIndex];
 
   if assigned(BLAS) then begin
 
@@ -3333,7 +3434,7 @@ begin
   fLock.Acquire;
   try
 
-   fBottomLevelAccelerationStructureQueue.ClearNoFree;
+   fBottomLevelAccelerationStructureQueue.Clear;
 
    if aLabels then begin
     fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'TpvRaytracing.Update',[1.0,0.5,0.25,1.0]);
