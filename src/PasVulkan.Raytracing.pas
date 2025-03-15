@@ -2153,10 +2153,9 @@ begin
   TPasMPInterlocked.Write(fRaytracing.fDirty,TPasMPBool32(true));
   if (fInRaytracingIndex+1)<fRaytracing.fBottomLevelAccelerationStructureList.Count then begin
    OtherBLAS:=fRaytracing.fBottomLevelAccelerationStructureList.Items[fRaytracing.fBottomLevelAccelerationStructureList.Count-1];
+   fRaytracing.fBottomLevelAccelerationStructureList.Exchange(fInRaytracingIndex,OtherBLAS.fInRaytracingIndex);
    OtherBLAS.fInRaytracingIndex:=fInRaytracingIndex;
    fInRaytracingIndex:=fRaytracing.fBottomLevelAccelerationStructureList.Count-1;
-   fRaytracing.fBottomLevelAccelerationStructureList.Items[OtherBLAS.fInRaytracingIndex]:=OtherBLAS;
-   fRaytracing.fBottomLevelAccelerationStructureList.Items[fInRaytracingIndex]:=self;
   end;
   fRaytracing.fBottomLevelAccelerationStructureList.ExtractIndex(fInRaytracingIndex);
   fInRaytracingIndex:=-1;
