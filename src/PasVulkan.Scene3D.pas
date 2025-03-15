@@ -3703,8 +3703,6 @@ type EpvScene3D=class(Exception);
        fRaytracingGroupInstanceNodeIDCounter:TpvUInt64;
        fRaytracingGroupInstanceNodeArrayList:TRaytracingGroupInstanceNodeArrayList;
        fRaytracingGroupInstanceNodeArrayListLock:TPasMPSlimReaderWriterLock;
-       fRaytracingGroupInstanceNodeDirtyArray:TRaytracingGroupInstanceNodeArray;
-       fRaytracingGroupInstanceNodeDirtyArrayCount:TPasMPInt32;
        fRaytracingGroupInstanceNodeHashMap:TRaytracingGroupInstanceNodeHashMap;
        fRaytracingGroupInstanceNodeExistHashMap:TRaytracingGroupInstanceNodeExistHashMap;
        fRaytracingGroupInstanceNodeAddQueue:TRaytracingGroupInstanceNodeQueue;
@@ -27977,8 +27975,6 @@ begin
 
  fRaytracingGroupInstanceNodeArrayListLock:=TPasMPSlimReaderWriterLock.Create;
 
- fRaytracingGroupInstanceNodeDirtyArray:=nil;
-
  fRaytracingGroupInstanceNodeHashMap:=TRaytracingGroupInstanceNodeHashMap.Create(nil);
 
  fRaytracingGroupInstanceNodeExistHashMap:=TRaytracingGroupInstanceNodeExistHashMap.Create(false);
@@ -29072,8 +29068,6 @@ begin
  FreeAndNil(fRaytracingGroupInstanceNodeHashMap);
 
  FreeAndNil(fRaytracingGroupInstanceNodeExistHashMap);
-
- fRaytracingGroupInstanceNodeDirtyArray:=nil;
 
  FreeAndNil(fRaytracingGroupInstanceNodeArrayList);
 
@@ -32632,6 +32626,8 @@ end;
 procedure TpvScene3D.UpdateRaytracingRaytracingGroupInstanceNodeUpdateStructuresParallelForJob(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
 var RaytracingGroupInstanceNodeIndex:TPasMPNativeInt;
     RaytracingGroupInstanceNode:TRaytracingGroupInstanceNode;
+    BLASGroupVariant:TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroupVariant;
+    BLASGroup:TpvScene3D.TRaytracingGroupInstanceNode.PBLASGroup;
     BLASListChanged,MustUpdateTLAS:TPasMPBool32;
 begin
  BLASListChanged:=false;
@@ -32643,7 +32639,12 @@ begin
   end;
   if RaytracingGroupInstanceNode.fDirty then begin
    RaytracingGroupInstanceNode.fDirty:=false;
-   fRaytracingGroupInstanceNodeDirtyArray[TPasMPInterlocked.Add(fRaytracingGroupInstanceNodeDirtyArrayCount,1)]:=RaytracingGroupInstanceNode;
+   for BLASGroupVariant:=Low(TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroupVariant) to High(TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroupVariant) do begin
+    BLASGroup:=@RaytracingGroupInstanceNode.fBLASGroups[BLASGroupVariant];
+    if assigned(BLASGroup^.fBLAS) and (BLASGroup^.fBLAS.CountGeometries>0) then begin
+     BLASGroup^.fBLAS.Enqueue(RaytracingGroupInstanceNode.fUpdateDirty);
+    end;
+   end;
   end;
   if RaytracingGroupInstanceNode.fGeometryChanged then begin
    MustUpdateTLAS:=true;
@@ -32663,11 +32664,8 @@ begin
 end;
 
 procedure TpvScene3D.RaytracingOnUpdate(const aSender:TObject);
-var PlanetIndex,CountPlanetTiles,PlanetTileLODLevelIndex,
-    RaytracingGroupInstanceNodeIndex:TpvSizeInt;
-    BLASGroupVariant:TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroupVariant;
-    BLASGroup:TpvScene3D.TRaytracingGroupInstanceNode.PBLASGroup;
-    UpdatedOriginTransform,MustHandlePlanets:Boolean;
+var PlanetIndex,CountPlanetTiles,PlanetTileLODLevelIndex:TpvSizeInt;
+    UpdatedOriginTransform:Boolean;
     RaytracingGroupInstanceNodeQueueItem:TRaytracingGroupInstanceNodeQueueItem;
     RaytracingGroupInstanceNode:TRaytracingGroupInstanceNode;
     BeginCPUTime,EndCPUTime,PartCPUTime:TpvHighResolutionTime;
@@ -32675,7 +32673,6 @@ var PlanetIndex,CountPlanetTiles,PlanetTileLODLevelIndex,
     Planet:TpvScene3DPlanet;
     PlanetTile:TpvScene3DPlanet.TRaytracingTile;
     PlanetTileLODLevel:TpvScene3DPlanet.TRaytracingTile.TLODLevel;
-    PlanetTileLODLevels:TpvScene3DPlanet.TTileLODLevels;
 begin
 
   // Check if there is a new origin transform
@@ -32689,8 +32686,6 @@ begin
  // Update structures of all planets                                         //
  //////////////////////////////////////////////////////////////////////////////
 
- MustHandlePlanets:=false;
-
  TpvScene3DPlanets(fPlanets).Lock.AcquireRead;
  try
 
@@ -32700,7 +32695,6 @@ begin
    Planet:=TpvScene3DPlanets(fPlanets).Items[PlanetIndex];
    if assigned(Planet) and Planet.Ready then begin
     if Planet.RaytracingTileQueue.Count>0 then begin
-     MustHandlePlanets:=true;
      for PlanetTile in Planet.RaytracingTileQueue do begin
       PlanetTile.Update(fRaytracing.InFlightFrameIndex);
       for PlanetTileLODLevelIndex:=0 to PlanetTile.LODLevels.Count-1 do begin
@@ -32777,12 +32771,6 @@ begin
  // Update structures of all RaytracingActive group instance nodes           //
  //////////////////////////////////////////////////////////////////////////////
 
- fRaytracingGroupInstanceNodeDirtyArrayCount:=0; // Clear the dirty array list
-
- if length(fRaytracingGroupInstanceNodeDirtyArray)<fRaytracingGroupInstanceNodeArrayList.Count then begin
-  SetLength(fRaytracingGroupInstanceNodeDirtyArray,fRaytracingGroupInstanceNodeArrayList.Count*2);
- end;
-
  BeginCPUTime:=pvApplication.HighResolutionTimer.GetTime;
  fUpdateRaytracingRaytracingGroupInstanceNodeUpdateStructuresParallelForJobInFlightFrameIndex:=fRaytracing.InFlightFrameIndex;
  if fRaytracingGroupInstanceNodeArrayList.Count>0 then begin
@@ -32795,20 +32783,6 @@ begin
  EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
  PartCPUTime:=EndCPUTime-BeginCPUTime;
  CPUTimeMS:=pvApplication.HighResolutionTimer.ToFloatSeconds(PartCPUTime)*1000.0;
-
- if fRaytracingGroupInstanceNodeDirtyArrayCount>0 then begin
-  for RaytracingGroupInstanceNodeIndex:=0 to fRaytracingGroupInstanceNodeDirtyArrayCount-1 do begin
-   RaytracingGroupInstanceNode:=fRaytracingGroupInstanceNodeDirtyArray[RaytracingGroupInstanceNodeIndex];
-   if assigned(RaytracingGroupInstanceNode) then begin
-    for BLASGroupVariant:=Low(TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroupVariant) to High(TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroupVariant) do begin
-     BLASGroup:=@RaytracingGroupInstanceNode.fBLASGroups[BLASGroupVariant];
-     if assigned(BLASGroup^.fBLAS) and (BLASGroup^.fBLAS.CountGeometries>0) then begin
-      BLASGroup^.fBLAS.Enqueue(RaytracingGroupInstanceNode.fUpdateDirty);
-     end;
-    end;
-   end;
-  end;
- end;
 
 end;
 
