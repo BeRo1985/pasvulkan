@@ -32760,7 +32760,7 @@ begin
                                                                     RaytracingGroupInstanceNodeQueueItem.fInstance.fGroup.fNodes.RawItems[RaytracingGroupInstanceNodeQueueItem.fNode],
                                                                     RaytracingGroupInstanceNodeQueueItem.fInstance.fNodes.RawItems[RaytracingGroupInstanceNodeQueueItem.fNode]);
    try
-   fRaytracing.MarkBottomLevelAccelerationStructureListAsChanged;
+    fRaytracing.MarkBottomLevelAccelerationStructureListAsChanged;
    finally
     fRaytracingGroupInstanceNodeHashMap.Add(RaytracingGroupInstanceNodeQueueItem.fRaytracingGroupInstanceNodeID,RaytracingGroupInstanceNode);
    end;
