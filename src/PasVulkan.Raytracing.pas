@@ -2287,10 +2287,10 @@ function TpvRaytracing.TBottomLevelAccelerationStructure.AcquireInstance(const a
                                                                          const aFlags:TVkGeometryInstanceFlagsKHR):TInstance;
 begin
  result:=TInstance.Create(self,
-                              aTransform,
-                              aMask,
-                              aInstanceShaderBindingTableRecordOffset,
-                              aFlags);
+                          aTransform,
+                          aMask,
+                          aInstanceShaderBindingTableRecordOffset,
+                          aFlags);
 end;
 
 procedure TpvRaytracing.TBottomLevelAccelerationStructure.ReleaseInstance(const aInstance:TInstance);
