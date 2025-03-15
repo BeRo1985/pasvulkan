@@ -1206,7 +1206,7 @@ type TpvScene3DPlanets=class;
                      fLODIndex:TpvSizeInt;
                      fTileIndex:TpvSizeInt;
                      fRaytracingTile:TRaytracingTile;
-                     fBLAS:TpvRaytracingBLASManager.TBLAS;
+                     fBLAS:TpvRaytracing.TBottomLevelAccelerationStructure;
                      fGeneration:TpvUInt64;
                      fMustUpdate:Boolean;
                     public
@@ -1218,7 +1218,7 @@ type TpvScene3DPlanets=class;
                      function SetActive(const aInFlightFrameIndex:TpvSizeInt;const aActive:Boolean):Boolean;
                     public
                      property TileIndex:TpvSizeInt read fTileIndex;
-                     property BLAS:TpvRaytracingBLASManager.TBLAS read fBLAS;
+                     property BLAS:TpvRaytracing.TBottomLevelAccelerationStructure read fBLAS;
                    end;
                    TLODLevels=TpvObjectGenericList<TLODLevel>;
              public
@@ -12276,7 +12276,7 @@ begin
 
   MustBeUpdated:=true;
 
-  fBLAS:=TpvScene3D(fPlanet.fScene3D).RaytracingBLASManager.AcquireBLAS(TVkBuildAccelerationStructureFlagsKHR(VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR){ or
+  fBLAS:=TpvScene3D(fPlanet.fScene3D).RaytracingBLASManager.AcquireBottomLevelAccelerationStructure(TVkBuildAccelerationStructureFlagsKHR(VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR){ or
                                                                         TVkBuildAccelerationStructureFlagsKHR(VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_UPDATE_BIT_KHR)} {or
                                                                         TVkBuildAccelerationStructureFlagsKHR(VK_BUILD_ACCELERATION_STRUCTURE_LOW_MEMORY_BIT_KHR)},
                                                                         true,
@@ -12323,8 +12323,8 @@ end;
 
 function TpvScene3DPlanet.TRaytracingTile.TLODLevel.UpdateTransform(const aInFlightFrameIndex:TpvSizeInt):Boolean;
 begin
- if assigned(fBLAS) and (fBLAS.BLASInstanceList.Count>0) then begin
-  fBLAS.BLASInstanceList.RawItems[0].AccelerationStructureInstance.Transform:=TpvScene3D(fPlanet.fScene3D).TransformOrigin(fPlanet.fData.ModelMatrix,aInFlightFrameIndex,false);
+ if assigned(fBLAS) and (fBLAS.BottomLevelAccelerationStructureInstanceList.Count>0) then begin
+  fBLAS.BottomLevelAccelerationStructureInstanceList.RawItems[0].AccelerationStructureInstance.Transform:=TpvScene3D(fPlanet.fScene3D).TransformOrigin(fPlanet.fData.ModelMatrix,aInFlightFrameIndex,false);
  end;
  result:=true;
 end;
@@ -12332,16 +12332,16 @@ end;
 function TpvScene3DPlanet.TRaytracingTile.TLODLevel.SetActive(const aInFlightFrameIndex:TpvSizeInt;const aActive:Boolean):Boolean;
 begin
  if assigned(fBLAS) then begin
-  if (fBLAS.BLASInstanceList.Count>0) and not aActive then begin
-   fBLAS.ReleaseBLASInstance(fBLAS.BLASInstanceList[fBLAS.BLASInstanceList.Count-1]);
+  if (fBLAS.BottomLevelAccelerationStructureInstanceList.Count>0) and not aActive then begin
+   fBLAS.ReleaseInstance(fBLAS.BottomLevelAccelerationStructureInstanceList[fBLAS.BottomLevelAccelerationStructureInstanceList.Count-1]);
   end else if aActive then begin
-   if fBLAS.BLASInstanceList.Count=0 then begin
-    fBLAS.AcquireBLASInstance(TpvScene3D(fPlanet.fScene3D).TransformOrigin(fPlanet.fData.ModelMatrix,aInFlightFrameIndex,false),
+   if fBLAS.BottomLevelAccelerationStructureInstanceList.Count=0 then begin
+    fBLAS.AcquireInstance(TpvScene3D(fPlanet.fScene3D).TransformOrigin(fPlanet.fData.ModelMatrix,aInFlightFrameIndex,false),
                               $ff,
                               0,
                               0);
    end else begin
-    fBLAS.BLASInstanceList.RawItems[0].AccelerationStructureInstance.Transform:=TpvScene3D(fPlanet.fScene3D).TransformOrigin(fPlanet.fData.ModelMatrix,aInFlightFrameIndex,false);
+    fBLAS.BottomLevelAccelerationStructureInstanceList.RawItems[0].AccelerationStructureInstance.Transform:=TpvScene3D(fPlanet.fScene3D).TransformOrigin(fPlanet.fData.ModelMatrix,aInFlightFrameIndex,false);
    end;
   end;
  end;
