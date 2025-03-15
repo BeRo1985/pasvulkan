@@ -2034,8 +2034,8 @@ begin
   if (fInRaytracingIndex+1)<fRaytracing.fBottomLevelAccelerationStructureInstanceList.Count then begin
    OtherBLASInstance:=fRaytracing.fBottomLevelAccelerationStructureInstanceList.Items[fRaytracing.fBottomLevelAccelerationStructureInstanceList.Count-1];
    fRaytracing.fBottomLevelAccelerationStructureInstanceList.Exchange(fInRaytracingIndex,OtherBLASInstance.fInRaytracingIndex);
-   fRaytracing.fAccelerationStructureInstanceKHRArrayList.Exchange(OtherBLASInstance.fInRaytracingIndex,fInRaytracingIndex);
-   fRaytracing.fGeometryOffsetArrayList.Exchange(OtherBLASInstance.fInRaytracingIndex,fInRaytracingIndex);
+   fRaytracing.fAccelerationStructureInstanceKHRArrayList.Exchange(fInRaytracingIndex,OtherBLASInstance.fInRaytracingIndex);
+   fRaytracing.fGeometryOffsetArrayList.Exchange(fInRaytracingIndex,OtherBLASInstance.fInRaytracingIndex);
    OtherBLASInstance.fInRaytracingIndex:=fInRaytracingIndex;
    fInRaytracingIndex:=fRaytracing.fBottomLevelAccelerationStructureInstanceList.Count-1;
   end;
