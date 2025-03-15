@@ -2603,7 +2603,7 @@ const EmptyVertex:array[0..3] of TpvUInt32=($7fc00000,$7fc00000,$7fc00000,$7fc00
 begin
 
  //////////////////////////////////////////////////////////////////////////////
- // Create empty blas with invalid geometry for empty TopLevelAccelerationStructure, when there are   //
+ // Create empty blas with invalid geometry for empty tlas, when there are   //
  // no RaytracingActive group instance nodes.                                //
  //////////////////////////////////////////////////////////////////////////////
 
@@ -2980,7 +2980,7 @@ var BufferMemoryBarriers:array[0..1] of TVkBufferMemoryBarrier;
 begin
 
  /////////////////////////////////////////////////////////////////////////////
- // Update BLAS instances for TopLevelAccelerationStructure                                          //
+ // Update BLAS instances for top level acceleration structure              //
  /////////////////////////////////////////////////////////////////////////////
 
  fTopLevelAccelerationStructureBottomLevelAccelerationStructureInstancesBufferSize:=RoundUpToPowerOfTwo64(Max(1,fAccelerationStructureInstanceKHRArrayList.Count)*SizeOf(TVkAccelerationStructureInstanceKHR));
@@ -2995,23 +2995,23 @@ begin
   FreeAndNil(fTopLevelAccelerationStructureBottomLevelAccelerationStructureInstancesBuffer);
 
   fTopLevelAccelerationStructureBottomLevelAccelerationStructureInstancesBuffer:=TpvVulkanBuffer.Create(fVulkanDevice,
-                                                             fTopLevelAccelerationStructureBottomLevelAccelerationStructureInstancesBufferSize,
-                                                             TVkBufferUsageFlags(VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR) or TVkBufferUsageFlags(VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR) or TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR) or TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT),
-                                                             TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                                             [],
-                                                             0,
-                                                             TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
-                                                             0,
-                                                             0,
-                                                             0,
-                                                             0,
-                                                             0,
-                                                             0,
-                                                             [TpvVulkanBufferFlag.PersistentMappedIfPossible],
-                                                             0,
-                                                             pvAllocationGroupIDScene3DRaytracingScratch,
-                                                             'TpvRaytracing.TLASBLASInstancesBuffer'
-                                                            );
+                                                                                                        fTopLevelAccelerationStructureBottomLevelAccelerationStructureInstancesBufferSize,
+                                                                                                        TVkBufferUsageFlags(VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR) or TVkBufferUsageFlags(VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR) or TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR) or TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT),
+                                                                                                        TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                                                                        [],
+                                                                                                        0,
+                                                                                                        TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                                                                                        0,
+                                                                                                        0,
+                                                                                                        0,
+                                                                                                        0,
+                                                                                                        0,
+                                                                                                        0,
+                                                                                                        [TpvVulkanBufferFlag.PersistentMappedIfPossible],
+                                                                                                        0,
+                                                                                                        pvAllocationGroupIDScene3DRaytracingScratch,
+                                                                                                        'TpvRaytracing.TLASBLASInstancesBuffer'
+                                                                                                       );
   fVulkanDevice.DebugUtils.SetObjectName(fTopLevelAccelerationStructureBottomLevelAccelerationStructureInstancesBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvRaytracing.TLASBLASInstancesBuffer');
 
   fMustUpdateTopLevelAccelerationStructure:=true;
@@ -3028,23 +3028,23 @@ begin
   FreeAndNil(fTopLevelAccelerationStructureBottomLevelAccelerationStructureInstancesBuffers[fInFlightFrameIndex]);
 
   fTopLevelAccelerationStructureBottomLevelAccelerationStructureInstancesBuffers[fInFlightFrameIndex]:=TpvVulkanBuffer.Create(fVulkanDevice,
-                                                                                   fTopLevelAccelerationStructureBottomLevelAccelerationStructureInstancesBufferSize,
-                                                                                   TVkBufferUsageFlags(VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR) or TVkBufferUsageFlags(VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR) or TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT),
-                                                                                   TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                                                                   [],
-                                                                                   0,
-                                                                                   TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
-                                                                                   0,
-                                                                                   0,
-                                                                                   0,
-                                                                                   0,
-                                                                                   0,
-                                                                                   0,
-                                                                                   [TpvVulkanBufferFlag.PersistentMappedIfPossible],
-                                                                                   0,
-                                                                                   pvAllocationGroupIDScene3DRaytracingScratch,
-                                                                                   'TpvRaytracing.TLASBLASInstancesBuffers['+IntToStr(fInFlightFrameIndex)+']'
-                                                                                  );
+                                                                                                                              fTopLevelAccelerationStructureBottomLevelAccelerationStructureInstancesBufferSize,
+                                                                                                                              TVkBufferUsageFlags(VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR) or TVkBufferUsageFlags(VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR) or TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT),
+                                                                                                                              TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                                                                                              [],
+                                                                                                                              0,
+                                                                                                                              TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                                                                                                              0,
+                                                                                                                              0,
+                                                                                                                              0,
+                                                                                                                              0,
+                                                                                                                              0,
+                                                                                                                              0,
+                                                                                                                              [TpvVulkanBufferFlag.PersistentMappedIfPossible],
+                                                                                                                              0,
+                                                                                                                              pvAllocationGroupIDScene3DRaytracingScratch,
+                                                                                                                              'TpvRaytracing.TLASBLASInstancesBuffers['+IntToStr(fInFlightFrameIndex)+']'
+                                                                                                                             );
   fVulkanDevice.DebugUtils.SetObjectName(fTopLevelAccelerationStructureBottomLevelAccelerationStructureInstancesBuffers[fInFlightFrameIndex].Handle,VK_OBJECT_TYPE_BUFFER,'TpvRaytracing.TLASBLASInstancesBuffers['+IntToStr(fInFlightFrameIndex)+']');
 
   fMustUpdateTopLevelAccelerationStructure:=true;
@@ -3147,7 +3147,7 @@ procedure TpvRaytracing.CreateOrUpdateTopLevelAccelerationStructure;
 begin
 
  /////////////////////////////////////////////////////////////////////////////
- // Create or update TopLevelAccelerationStructure                                                   //
+ // Create or update top level acceleration structure                       //
  /////////////////////////////////////////////////////////////////////////////
 
  fMustTopLevelAccelerationStructureUpdate:=false;
@@ -3159,9 +3159,9 @@ begin
      (fTopLevelAccelerationStructure.CountInstances<>fAccelerationStructureInstanceKHRArrayList.Count) then begin
 
    fTopLevelAccelerationStructure.Update(fTopLevelAccelerationStructureBottomLevelAccelerationStructureInstancesBuffer.DeviceAddress,
-                          fAccelerationStructureInstanceKHRArrayList.Count,
-                          TVkBuildAccelerationStructureFlagsKHR(VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR),
-                          false);
+                                         fAccelerationStructureInstanceKHRArrayList.Count,
+                                         TVkBuildAccelerationStructureFlagsKHR(VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR),
+                                         false);
 
    fMustTopLevelAccelerationStructureUpdate:=true;
 
