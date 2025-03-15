@@ -422,7 +422,8 @@ type EpvRaytracing=class(Exception);
        type { TBLAS }
             TBLAS=class
              public
-              type { TBLASInstance }
+              type TEnqueueState=(None,Build,Update);
+                   { TBLASInstance }
                    TBLASInstance=class
                     private
                      fBLASManager:TpvRaytracingBLASManager;
@@ -467,6 +468,7 @@ type EpvRaytracing=class(Exception);
               fGeometryInfoBaseIndex:TpvSizeInt;
               fCountGeometries:TpvSizeInt;
               fBLASInstanceList:TBLASInstanceList;
+              fEnqueueState:TEnqueueState;
               procedure UpdateBuffer;
              public
               constructor Create(const aBLASManager:TpvRaytracingBLASManager;
@@ -485,6 +487,7 @@ type EpvRaytracing=class(Exception);
                                            const aInstanceShaderBindingTableRecordOffset:TVkUInt32;
                                            const aFlags:TVkGeometryInstanceFlagsKHR):TBLASInstance;
               procedure ReleaseBLASInstance(const aBLASInstance:TBLASInstance);
+              procedure Enqueue(const aUpdate:Boolean=false); // Enqueue for building or updating acceleration structure
              public
               property BLASManager:TpvRaytracingBLASManager read fBLASManager;
               property InBLASManagerIndex:TpvSizeInt read fInBLASManagerIndex;
@@ -506,6 +509,7 @@ type EpvRaytracing=class(Exception);
             end;
             TBLASList=TpvObjectGenericList<TBLAS>;
             TGeometryOffsetArrayList=TpvDynamicArrayList<TVkUInt32>; // Instance offset index for first geometry buffer item per BLAS instance, when >= 24 bits are needed, since instance custom index is only 24 bits
+            TBLASQueue=TpvDynamicQueue<TBLAS>;
       private     
        procedure ReassignAccelerationStructureInstancePointers;
       private 
@@ -513,6 +517,8 @@ type EpvRaytracing=class(Exception);
        fLock:TPasMPCriticalSection;
        fBLASList:TBLASList;
        fBLASInstanceList:TBLAS.TBLASInstanceList;
+       fBLASQueue:TBLASQueue; // Queue for building or updating acceleration structures
+       fBLASQueueLock:TPasMPSlimReaderWriterLock;
        fAccelerationStructureInstanceKHRArrayList:TpvRaytracingAccelerationStructureInstanceArrayList;
        fGeometryInfoManager:TpvRaytracingGeometryInfoManager;
        fGeometryOffsetArrayList:TGeometryOffsetArrayList; // As buffer on the GPU, contains the geometry info offset per BLAS instance, when >= 24 bits are needed, since the instance custom index is only 24 bits, we need to store the offset of the first geometry buffer item per BLAS instance, when >= 24 bits are needed
@@ -2216,6 +2222,23 @@ begin
  aBLASInstance.Free;
 end;
 
+procedure TpvRaytracingBLASManager.TBLAS.Enqueue(const aUpdate:Boolean);
+begin
+ if fEnqueueState=TEnqueueState.None then begin
+  if aUpdate then begin
+   fEnqueueState:=TEnqueueState.Update;
+  end else begin
+   fEnqueueState:=TEnqueueState.Build;
+  end;
+  fBLASManager.fBLASQueueLock.Acquire;
+  try
+   fBLASManager.fBLASQueue.Enqueue(self);
+  finally
+   fBLASManager.fBLASQueueLock.Release;
+  end;
+ end;
+end;    
+
 { TpvRaytracingBLASManager }
 
 constructor TpvRaytracingBLASManager.Create(const aDevice:TpvVulkanDevice);
@@ -2230,6 +2253,10 @@ begin
  fBLASList:=TBLASList.Create(false);
 
  fBLASInstanceList:=TBLAS.TBLASInstanceList.Create(false);
+
+ fBLASQueue.Initialize; 
+
+ fBLASQueueLock:=TPasMPSlimReaderWriterLock.Create;
 
  fAccelerationStructureInstanceKHRArrayList:=TpvRaytracingAccelerationStructureInstanceArrayList.Create;
 
@@ -2258,6 +2285,10 @@ begin
  FreeAndNil(fGeometryInfoManager);
  
  FreeAndNil(fAccelerationStructureInstanceKHRArrayList);
+
+ FreeAndNil(fBLASQueueLock);
+
+ fBLASQueue.Finalize; 
 
  FreeAndNil(fBLASList);
  
