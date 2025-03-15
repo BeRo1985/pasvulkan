@@ -527,10 +527,11 @@ type EpvRaytracing=class(Exception);
               procedure Enqueue(const aBottomLevelAccelerationStructure:TBottomLevelAccelerationStructure);
              published
               property Raytracing:TpvRaytracing read fRaytracing;
-              property Items[const aIndex:TPasMPInt32]:TBottomLevelAccelerationStructure read GetItem write SetItem; default;
               property Capacity:TPasMPInt32 read fCapacity;
-              property Count:TPasMPInt32 read fCount; 
-            end;  
+              property Count:TPasMPInt32 read fCount;
+             public
+              property Items[const aIndex:TPasMPInt32]:TBottomLevelAccelerationStructure read GetItem write SetItem; default;
+            end;
             TGeometryOffsetArrayList=TpvDynamicArrayList<TVkUInt32>; // Instance offset index for first geometry buffer item per BLAS instance, when >= 24 bits are needed, since instance custom index is only 24 bits
             TTopLevelAccelerationStructures=array[-1..MaxInFlightFrames-1] of TVkAccelerationStructureKHR;
             TDoubleBufferedVulkanBuffer=array[0..1] of TpvVulkanBuffer;
