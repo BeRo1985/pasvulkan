@@ -1948,7 +1948,7 @@ begin
   fInBottomLevelAccelerationStructureIndex:=fBottomLevelAccelerationStructure.fBottomLevelAccelerationStructureInstanceList.Add(self);
  end;
 
- // Add to manager-global BottomLevelAccelerationStructure instance list
+ // Add to global BottomLevelAccelerationStructure instance list
  if assigned(fRaytracing) then begin
 
   TPasMPInterlocked.Write(fRaytracing.fDirty,TPasMPBool32(true));
@@ -2028,17 +2028,16 @@ begin
 
  end; 
 
- // Remove from manager-global BottomLevelAccelerationStructure instance list
+ // Remove from global BottomLevelAccelerationStructure instance list
  if assigned(fRaytracing) and (fInRaytracingIndex>=0) then begin
   TPasMPInterlocked.Write(fRaytracing.fDirty,TPasMPBool32(true));
   if (fInRaytracingIndex+1)<fRaytracing.fBottomLevelAccelerationStructureInstanceList.Count then begin
    OtherBLASInstance:=fRaytracing.fBottomLevelAccelerationStructureInstanceList.Items[fRaytracing.fBottomLevelAccelerationStructureInstanceList.Count-1];
-   OtherBLASInstance.fInRaytracingIndex:=fInRaytracingIndex;
-   fInRaytracingIndex:=fRaytracing.fBottomLevelAccelerationStructureInstanceList.Count-1;
-   fRaytracing.fBottomLevelAccelerationStructureInstanceList.Items[OtherBLASInstance.fInRaytracingIndex]:=OtherBLASInstance;
-   fRaytracing.fBottomLevelAccelerationStructureInstanceList.Items[fInRaytracingIndex]:=self;
+   fRaytracing.fBottomLevelAccelerationStructureInstanceList.Exchange(fInRaytracingIndex,OtherBLASInstance.fInRaytracingIndex);
    fRaytracing.fAccelerationStructureInstanceKHRArrayList.Exchange(OtherBLASInstance.fInRaytracingIndex,fInRaytracingIndex);
    fRaytracing.fGeometryOffsetArrayList.Exchange(OtherBLASInstance.fInRaytracingIndex,fInRaytracingIndex);
+   OtherBLASInstance.fInRaytracingIndex:=fInRaytracingIndex;
+   fInRaytracingIndex:=fRaytracing.fBottomLevelAccelerationStructureInstanceList.Count-1;
   end;
   fRaytracing.fBottomLevelAccelerationStructureInstanceList.ExtractIndex(fInRaytracingIndex);
   fRaytracing.fAccelerationStructureInstanceKHRArrayList.Delete(fInRaytracingIndex);
@@ -2050,10 +2049,9 @@ begin
  if assigned(fBottomLevelAccelerationStructure) and (fInBottomLevelAccelerationStructureIndex>=0) then begin
   if (fInBottomLevelAccelerationStructureIndex+1)<fBottomLevelAccelerationStructure.fBottomLevelAccelerationStructureInstanceList.Count then begin
    OtherBLASInstance:=fBottomLevelAccelerationStructure.fBottomLevelAccelerationStructureInstanceList.Items[fBottomLevelAccelerationStructure.fBottomLevelAccelerationStructureInstanceList.Count-1];
+   fBottomLevelAccelerationStructure.fBottomLevelAccelerationStructureInstanceList.Exchange(fInBottomLevelAccelerationStructureIndex,OtherBLASInstance.fInBottomLevelAccelerationStructureIndex);
    OtherBLASInstance.fInBottomLevelAccelerationStructureIndex:=fInBottomLevelAccelerationStructureIndex;
    fInBottomLevelAccelerationStructureIndex:=fBottomLevelAccelerationStructure.fBottomLevelAccelerationStructureInstanceList.Count-1;
-   fBottomLevelAccelerationStructure.fBottomLevelAccelerationStructureInstanceList.Items[OtherBLASInstance.fInBottomLevelAccelerationStructureIndex]:=OtherBLASInstance;
-   fBottomLevelAccelerationStructure.fBottomLevelAccelerationStructureInstanceList.Items[fInBottomLevelAccelerationStructureIndex]:=self;
   end;
   fBottomLevelAccelerationStructure.fBottomLevelAccelerationStructureInstanceList.ExtractIndex(fInBottomLevelAccelerationStructureIndex);
   fInBottomLevelAccelerationStructureIndex:=-1;
