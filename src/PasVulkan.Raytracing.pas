@@ -2038,6 +2038,8 @@ begin
    fRaytracing.fGeometryOffsetArrayList.Exchange(fInRaytracingIndex,OtherBLASInstance.fInRaytracingIndex);
    OtherBLASInstance.fInRaytracingIndex:=fInRaytracingIndex;
    fInRaytracingIndex:=fRaytracing.fBottomLevelAccelerationStructureInstanceList.Count-1;
+   OtherBLASInstance.fAccelerationStructureInstance.fAccelerationStructureInstancePointer:=@fRaytracing.fAccelerationStructureInstanceKHRArrayList.ItemArray[OtherBLASInstance.fInRaytracingIndex];
+   fAccelerationStructureInstance.fAccelerationStructureInstancePointer:=@fRaytracing.fAccelerationStructureInstanceKHRArrayList.ItemArray[fInRaytracingIndex];
   end;
   fRaytracing.fBottomLevelAccelerationStructureInstanceList.ExtractIndex(fInRaytracingIndex);
   fRaytracing.fAccelerationStructureInstanceKHRArrayList.Delete(fInRaytracingIndex);
