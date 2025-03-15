@@ -506,36 +506,49 @@ type EpvRaytracing=class(Exception);
             end;
             TBLASList=TpvObjectGenericList<TBLAS>;
             TGeometryOffsetArrayList=TpvDynamicArrayList<TVkUInt32>; // Instance offset index for first geometry buffer item per BLAS instance, when >= 24 bits are needed, since instance custom index is only 24 bits
-       private     
-        procedure ReassignAccelerationStructureInstancePointers;
-       private 
-        fVulkanDevice:TpvVulkanDevice;
-        fLock:TPasMPCriticalSection;
-        fBLASList:TBLASList;
-        fBLASInstanceList:TBLAS.TBLASInstanceList;
-        fAccelerationStructureInstanceKHRArrayList:TpvRaytracingAccelerationStructureInstanceArrayList;
-        fGeometryInfoManager:TpvRaytracingGeometryInfoManager;
-        fGeometryOffsetArrayList:TGeometryOffsetArrayList; // As buffer on the GPU, contains the geometry info offset per BLAS instance, when >= 24 bits are needed, since the instance custom index is only 24 bits, we need to store the offset of the first geometry buffer item per BLAS instance, when >= 24 bits are needed
-        fDirty:TPasMPBool32;
-        procedure GeometryInfoManagerOnDefragmentMove(const aSender:TpvRaytracingGeometryInfoManager;const aObject:TObject;const aOldOffset,aNewOffset,aSize:TpvInt64);
-       public
-        constructor Create(const aDevice:TpvVulkanDevice); reintroduce;
-        destructor Destroy; override;
-        function AcquireBLAS(const aFlags:TVkBuildAccelerationStructureFlagsKHR=0;
-                             const aDynamicGeometry:Boolean=false;
-                             const aAllocationGroupID:TpvUInt64=0;
-                             const aName:TpvUTF8String=''):TBLAS;
-        procedure ReleaseBLAS(const aBLAS:TBLAS);
-        procedure Update;
-       public
-        property Device:TpvVulkanDevice read fVulkanDevice;
-        property BLASList:TBLASList read fBLASList;
-        property BLASInstanceList:TBLAS.TBLASInstanceList read fBLASInstanceList;
-        property AccelerationStructureInstanceKHRArrayList:TpvRaytracingAccelerationStructureInstanceArrayList read fAccelerationStructureInstanceKHRArrayList;
-        property GeometryInfoManager:TpvRaytracingGeometryInfoManager read fGeometryInfoManager;
-        property GeometryOffsetArrayList:TGeometryOffsetArrayList read fGeometryOffsetArrayList;
-        property Dirty:TPasMPBool32 read fDirty write fDirty;
-      end;   
+      private     
+       procedure ReassignAccelerationStructureInstancePointers;
+      private 
+       fVulkanDevice:TpvVulkanDevice;
+       fLock:TPasMPCriticalSection;
+       fBLASList:TBLASList;
+       fBLASInstanceList:TBLAS.TBLASInstanceList;
+       fAccelerationStructureInstanceKHRArrayList:TpvRaytracingAccelerationStructureInstanceArrayList;
+       fGeometryInfoManager:TpvRaytracingGeometryInfoManager;
+       fGeometryOffsetArrayList:TGeometryOffsetArrayList; // As buffer on the GPU, contains the geometry info offset per BLAS instance, when >= 24 bits are needed, since the instance custom index is only 24 bits, we need to store the offset of the first geometry buffer item per BLAS instance, when >= 24 bits are needed
+       fDirty:TPasMPBool32;
+       procedure GeometryInfoManagerOnDefragmentMove(const aSender:TpvRaytracingGeometryInfoManager;const aObject:TObject;const aOldOffset,aNewOffset,aSize:TpvInt64);
+      public
+       constructor Create(const aDevice:TpvVulkanDevice); reintroduce;
+       destructor Destroy; override;
+       function AcquireBLAS(const aFlags:TVkBuildAccelerationStructureFlagsKHR=0;
+                            const aDynamicGeometry:Boolean=false;
+                            const aAllocationGroupID:TpvUInt64=0;
+                            const aName:TpvUTF8String=''):TBLAS;
+       procedure ReleaseBLAS(const aBLAS:TBLAS);
+       procedure Update;
+      public
+       property Device:TpvVulkanDevice read fVulkanDevice;
+       property BLASList:TBLASList read fBLASList;
+       property BLASInstanceList:TBLAS.TBLASInstanceList read fBLASInstanceList;
+       property AccelerationStructureInstanceKHRArrayList:TpvRaytracingAccelerationStructureInstanceArrayList read fAccelerationStructureInstanceKHRArrayList;
+       property GeometryInfoManager:TpvRaytracingGeometryInfoManager read fGeometryInfoManager;
+       property GeometryOffsetArrayList:TGeometryOffsetArrayList read fGeometryOffsetArrayList;
+       property Dirty:TPasMPBool32 read fDirty write fDirty;
+     end;   
+
+     { TpvRaytracingManager }
+     TpvRaytracingManager=class
+      private
+       fVulkanDevice:TpvVulkanDevice;
+       fBLASManager:TpvRaytracingBLASManager;
+      public
+       constructor Create(const aDevice:TpvVulkanDevice); reintroduce;
+       destructor Destroy; override;
+      published
+       property Device:TpvVulkanDevice read fVulkanDevice;
+       property BLASManager:TpvRaytracingBLASManager read fBLASManager;
+     end; 
 
 implementation
 
@@ -2311,6 +2324,28 @@ begin
  if TPasMPInterlocked.CompareExchange(fDirty,TPasMPBool32(false),TPasMPBool32(true)) then begin
 
  end;
+
+end;
+
+{ TpvRaytracingManager }
+
+constructor TpvRaytracingManager.Create(const aDevice:TpvVulkanDevice);
+begin
+ 
+ inherited Create;
+ 
+ fVulkanDevice:=aDevice;
+ 
+ fBLASManager:=TpvRaytracingBLASManager.Create(fVulkanDevice);
+
+end;
+
+destructor TpvRaytracingManager.Destroy;
+begin
+
+ FreeAndNil(fBLASManager);
+
+ inherited Destroy;
 
 end;
 
