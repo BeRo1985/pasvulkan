@@ -3483,12 +3483,4 @@ begin
 
 end;
 
-{begin
-
- if TPasMPInterlocked.CompareExchange(fDirty,TPasMPBool32(false),TPasMPBool32(true)) then begin
-
- end;
-
-end;}
-
 end.
