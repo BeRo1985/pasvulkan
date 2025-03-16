@@ -1263,6 +1263,7 @@ type EpvVulkanException=class(Exception);
        fUMA:boolean;
        fCompleteDeviceMemoryMappable:boolean;
        fCompleteTotalMemoryMappable:boolean;
+       fVideoRAMSize:TVkDeviceSize;
        fMaximumMemoryMappableDeviceLocalHeapSize:TVkDeviceSize;
        fMaximumMemoryMappableNonDeviceLocalHeapSize:TVkDeviceSize;
       public
@@ -1344,6 +1345,8 @@ type EpvVulkanException=class(Exception);
        property CompleteDeviceMemoryMappable:boolean read fCompleteDeviceMemoryMappable; //< Complete GPU device memory mappable (approximated by the Vulkan memory property flags
 
        property CompleteTotalMemoryMappable:boolean read fCompleteTotalMemoryMappable; //< Complete total CPU and GPU memory mappable (approximated by the Vulkan memory property flags
+
+       property VideoRAMSize:TVkDeviceSize read fVideoRAMSize;
 
        property MaximumMemoryMappableDeviceLocalHeapSize:TVkDeviceSize read fMaximumMemoryMappableDeviceLocalHeapSize;
 
@@ -13531,6 +13534,7 @@ begin
  fUMA:=true;
  fCompleteDeviceMemoryMappable:=true;
  fCompleteTotalMemoryMappable:=true;
+ fVideoRAMSize:=0;
  fMaximumMemoryMappableDeviceLocalHeapSize:=Low(TVkDeviceSize);
  fMaximumMemoryMappableNonDeviceLocalHeapSize:=Low(TVkDeviceSize);
  HeapMemoryPropertyFlags:=nil;
@@ -13558,6 +13562,9 @@ begin
    end;
    if (MemoryPropertyFlags and VulkanHostVisibleCoherentMemoryPropertyFlags)<>VulkanHostVisibleCoherentMemoryPropertyFlags then begin
     fCompleteTotalMemoryMappable:=false;
+   end;
+   if (MemoryPropertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT))<>0 then begin
+    inc(fVideoRAMSize,fDevice.fPhysicalDevice.fMemoryProperties.memoryHeaps[HeapIndex].size);
    end;
    if (MemoryPropertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))<>0 then begin
     if (MemoryPropertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT))<>0 then begin
