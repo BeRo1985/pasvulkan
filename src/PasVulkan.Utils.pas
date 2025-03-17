@@ -188,7 +188,11 @@ type TpvSwap<T>=class
        property Cyclic:Boolean read fCyclic;
        property CountKeys:TpvSizeInt read fCountKeys;
      end;
-     
+
+var pvCacheStoragePath:TpvUTF8String='';
+    pvLocalStoragePath:TpvUTF8String='';
+    pvRoamingStoragePath:TpvUTF8String='';
+
 procedure DebugBreakPoint;
 
 {$ifdef fpc}
@@ -211,6 +215,10 @@ function IsPathSeparator(const aChar:AnsiChar):Boolean;
 function ExpandRelativePath(const aRelativePath:TpvRawByteString;const aBasePath:TpvRawByteString=''):TpvRawByteString;
 function ConvertPathToRelative(aAbsolutePath,aBasePath:TpvRawByteString):TpvRawByteString;
 function ExtractFilePath(aPath:TpvRawByteString):TpvRawByteString;
+
+function GetCacheFileName(const aCacheStoragePath,aFileName:TpvUTF8String;const aRootPath:TpvUTF8String=''):TpvUTF8String;
+
+function EnsureDirectoryExistsForFileName(const aFileName:TpvUTF8String):Boolean;
 
 function SizeToHumanReadableString(const aSize:TpvUInt64):TpvRawByteString;
 
@@ -1860,6 +1868,29 @@ begin
   if IsPathSeparator(result[Index]) then begin
    SetLength(result,Index);
    exit;
+  end;
+ end;
+end;
+
+function GetCacheFileName(const aCacheStoragePath,aFileName:TpvUTF8String;const aRootPath:TpvUTF8String):TpvUTF8String;
+begin
+ if length(aCacheStoragePath)>0 then begin
+  result:=ExpandRelativePath(ConvertPathToRelative(aFileName,aRootPath),
+                             TpvUTF8String(IncludeTrailingPathDelimiter(String(aCacheStoragePath))));
+ end else begin
+  result:=aFileName;
+ end;
+end;
+
+function EnsureDirectoryExistsForFileName(const aFileName:TpvUTF8String):Boolean;
+var FilePath:String;
+begin
+ FilePath:=ExtractFilePath(String(aFileName));
+ result:=DirectoryExists(FilePath);
+ if not result then begin
+  result:=ForceDirectories(FilePath);
+  if result then begin
+   result:=DirectoryExists(FilePath);
   end;
  end;
 end;

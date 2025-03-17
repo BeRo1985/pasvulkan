@@ -14798,6 +14798,10 @@ begin
  fExternalStoragePath:='/';
 {$ifend}
 
+ pvCacheStoragePath:=fCacheStoragePath;
+ pvLocalStoragePath:=fLocalStoragePath;
+ pvRoamingStoragePath:=fRoamingStoragePath;
+
 {$if not defined(Release)}
  Log(LOG_VERBOSE,'PasVulkanApplication','Cache storage data path: '+fCacheStoragePath);
  Log(LOG_VERBOSE,'PasVulkanApplication','Local storage data path: '+fLocalStoragePath);
