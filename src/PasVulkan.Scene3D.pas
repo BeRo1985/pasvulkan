@@ -19969,15 +19969,16 @@ var POCACodeString:TpvUTF8String;
        POCACall(POCAContext,POCACode,nil,0,POCAValueNull,POCAInstance^.Globals.Namespace);
       except
        on e:EPOCASyntaxError do begin
-        // Ignore
+        pvApplication.Log(LOG_ERROR,'TpvScene3D.TGroup.AssignFromGLTF','['+e.ClassName+']: '+e.Message);
        end;
        on e:EPOCARuntimeError do begin
-        // Ignore
+        pvApplication.Log(LOG_ERROR,'TpvScene3D.TGroup.AssignFromGLTF','['+e.ClassName+']: '+e.Message);
        end;
        on e:EPOCAScriptError do begin
-        // Ignore
+        pvApplication.Log(LOG_ERROR,'TpvScene3D.TGroup.AssignFromGLTF','['+e.ClassName+']: '+e.Message);
        end;
        on e:Exception do begin
+        pvApplication.Log(LOG_ERROR,'TpvScene3D.TGroup.AssignFromGLTF','['+e.ClassName+']: '+e.Message);
         raise;
        end;
       end;
