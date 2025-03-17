@@ -212,6 +212,7 @@ procedure IndirectIntroSort(const pItems:TpvPointer;const pLeft,pRight:TpvInt32;
 function MatchPattern(Input,Pattern:PAnsiChar):boolean;
 
 function IsPathSeparator(const aChar:AnsiChar):Boolean;
+function CorrectPathSeparators(const aPath:TpvRawByteString):TpvRawByteString;
 function ExpandRelativePath(const aRelativePath:TpvRawByteString;const aBasePath:TpvRawByteString=''):TpvRawByteString;
 function ConvertPathToRelative(aAbsolutePath,aBasePath:TpvRawByteString):TpvRawByteString;
 function ExtractFilePath(aPath:TpvRawByteString):TpvRawByteString;
@@ -1695,6 +1696,18 @@ begin
  end;
 end;
 
+function CorrectPathSeparators(const aPath:TpvRawByteString):TpvRawByteString;
+const DestinationPathSeparator={$ifdef Windows}'\'{$else}'/'{$endif};
+var Index:TpvInt32;
+begin
+ result:=aPath;
+ for Index:=1 to length(result) do begin
+  if IsPathSeparator(result[Index]) then begin
+   result[Index]:=DestinationPathSeparator;
+  end;
+ end;
+end;
+
 function ExpandRelativePath(const aRelativePath:TpvRawByteString;const aBasePath:TpvRawByteString=''):TpvRawByteString;
 var InputIndex,OutputIndex:TpvInt32;
     InputPath:TpvRawByteString;
@@ -1888,7 +1901,7 @@ function ForceDirectories(const aDirectory:TpvUTF8String):Boolean;
 var Index:TpvInt32;
     Directory:TpvUTF8String;
 begin
- Directory:=IncludeTrailingPathDelimiter(aDirectory);
+ Directory:=IncludeTrailingPathDelimiter(CorrectPathSeparators(aDirectory));
  for Index:=1 to length(Directory) do begin
   if IsPathSeparator(Directory[Index]) then begin
    try
@@ -1911,7 +1924,7 @@ end;
 function EnsureDirectoryExistsForFileName(const aFileName:TpvUTF8String):Boolean;
 var FilePath:String;
 begin
- FilePath:=ExtractFilePath(String(aFileName));
+ FilePath:=ExtractFilePath(String(CorrectPathSeparators(aFileName)));
  result:=DirectoryExists(FilePath);
  if not result then begin
   result:=ForceDirectories(FilePath);
