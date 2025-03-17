@@ -1882,6 +1882,32 @@ begin
  end;
 end;
 
+{$if not defined(fpc)}
+// Delphi's ForceDirectories is not working as expected, so we need to implement our own 
+function ForceDirectories(const aDirectory:TpvUTF8String):Boolean;
+var Index:TpvInt32;
+    Directory:TpvUTF8String;
+begin
+ Directory:=IncludeTrailingPathDelimiter(aDirectory);
+ for Index:=1 to length(Directory) do begin
+  if IsPathSeparator(Directory[Index]) then begin
+   try
+    if not DirectoryExists(copy(Directory,1,Index)) then begin
+     if not CreateDir(copy(Directory,1,Index)) then begin
+      result:=false;
+      exit;
+     end;
+    end;
+   except
+    result:=false;
+    exit;
+   end;
+  end;
+ end;
+ result:=true;
+end;
+{$ifend}
+
 function EnsureDirectoryExistsForFileName(const aFileName:TpvUTF8String):Boolean;
 var FilePath:String;
 begin
