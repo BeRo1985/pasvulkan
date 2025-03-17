@@ -20767,8 +20767,9 @@ begin
     case TpvScene3D.DetectFileType(aStream) of
      TpvScene3D.TFileType.PVMF:begin
       // our own native but version dependent format (can be changed every time, but is for fast loading without further time-costing
-      // post-processing) 
-      LoadFromStream(aStream); 
+      // post-processing)
+      LoadFromStream(aStream);
+      result:=true;
      end;
      TpvScene3D.TFileType.GLTF:begin
       GLTF:=TPasGLTF.TDocument.Create;
@@ -20819,6 +20820,9 @@ begin
      else begin
      end;
     end;
+   end;
+   if not result then begin
+    pvApplication.Log(LOG_DEBUG,'TpvScene3D.TGroup.BeginLoad("'+FileName+'")','Error!');
    end;
   finally
    pvApplication.Log(LOG_DEBUG,'TpvScene3D.TGroup.BeginLoad("'+FileName+'")','Leaving...');
