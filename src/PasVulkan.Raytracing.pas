@@ -67,6 +67,7 @@ uses SysUtils,
      Vulkan,
      PasMP,
      PasVulkan.Types,
+     PasVulkan.Utils,
      PasVulkan.Math,
      PasVulkan.Application,
      PasVulkan.Collections,
@@ -2058,10 +2059,8 @@ begin
    fRaytracing.fBottomLevelAccelerationStructureInstanceList.Exchange(fInRaytracingIndex,OtherBLASInstance.fInRaytracingIndex);
    fRaytracing.fAccelerationStructureInstanceKHRArrayList.Exchange(fInRaytracingIndex,OtherBLASInstance.fInRaytracingIndex);
    fRaytracing.fGeometryOffsetArrayList.Exchange(fInRaytracingIndex,OtherBLASInstance.fInRaytracingIndex);
-   OtherBLASInstance.fInRaytracingIndex:=fInRaytracingIndex;
-   fInRaytracingIndex:=fRaytracing.fBottomLevelAccelerationStructureInstanceList.Count-1;
-   OtherBLASInstance.fAccelerationStructureInstance.fAccelerationStructureInstancePointer:=@fRaytracing.fAccelerationStructureInstanceKHRArrayList.ItemArray[OtherBLASInstance.fInRaytracingIndex];
-   fAccelerationStructureInstance.fAccelerationStructureInstancePointer:=@fRaytracing.fAccelerationStructureInstanceKHRArrayList.ItemArray[fInRaytracingIndex];
+   TpvSwap<TpvSizeInt>.Swap(fInRaytracingIndex,OtherBLASInstance.fInRaytracingIndex);
+   TpvSwap<PVkAccelerationStructureInstanceKHR>.Swap(fAccelerationStructureInstance.fAccelerationStructureInstancePointer,OtherBLASInstance.fAccelerationStructureInstance.fAccelerationStructureInstancePointer);
   end;
   fRaytracing.fBottomLevelAccelerationStructureInstanceList.ExtractIndex(fInRaytracingIndex);
   fRaytracing.fAccelerationStructureInstanceKHRArrayList.Delete(fInRaytracingIndex);
