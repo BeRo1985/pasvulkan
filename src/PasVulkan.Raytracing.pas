@@ -422,7 +422,15 @@ type EpvRaytracing=class(Exception);
      { TpvRaytracing }
      TpvRaytracing=class
       public 
-       type { TBottomLevelAccelerationStructure }
+       type { TDelayedFreeListItem }
+            TDelayedFreeItem=record
+             Object_:TObject;
+             Delay:TpvSizeInt; // Delay in iterations
+            end;
+            PDelayedFreeItem=^TDelayedFreeItem;
+            TDelayedFreeItemQueue=TpvDynamicQueue<TDelayedFreeItem>;
+            PDelayedFreeItemQueue=^TDelayedFreeItemQueue;
+            { TBottomLevelAccelerationStructure }
             TBottomLevelAccelerationStructure=class
              public
               type TEnqueueState=(None,Build,Update);
@@ -545,6 +553,8 @@ type EpvRaytracing=class(Exception);
        fCountInFlightFrames:TpvSizeInt;
        fLock:TPasMPCriticalSection;
        fDataLock:TPasMPSlimReaderWriterLock;
+       fDelayedFreeItemQueues:array[0..1] of TDelayedFreeItemQueue;
+       fDelayedFreeItemQueueIndex:TpvSizeInt;
        fBottomLevelAccelerationStructureList:TBottomLevelAccelerationStructureList;
        fBottomLevelAccelerationStructureInstanceList:TBottomLevelAccelerationStructure.TBottomLevelAccelerationStructureInstanceList;
        fBottomLevelAccelerationStructureQueue:TBottomLevelAccelerationStructureQueue; // Queue for building or updating acceleration structures
@@ -598,6 +608,7 @@ type EpvRaytracing=class(Exception);
       private
        procedure GeometryInfoManagerOnDefragmentMove(const aSender:TpvRaytracingGeometryInfoManager;const aObject:TObject;const aOldOffset,aNewOffset,aSize:TpvInt64);
       private
+       procedure ProcessDelayedFreeQueue;
        procedure HostMemoryBarrier;
        procedure WaitForPreviousFrame;
        procedure HandleEmptyBottomLevelAccelerationStructure;
@@ -2464,7 +2475,7 @@ begin
  fLock:=TPasMPCriticalSection.Create;
 
  fDataLock:=TPasMPSlimReaderWriterLock.Create;
-
+ 
  fBottomLevelAccelerationStructureList:=TBottomLevelAccelerationStructureList.Create(false);
 
  fBottomLevelAccelerationStructureInstanceList:=TBottomLevelAccelerationStructure.TBottomLevelAccelerationStructureInstanceList.Create(false);
@@ -2535,11 +2546,25 @@ begin
   fTopLevelAccelerationStructureGenerations[Index]:=High(TpvUInt64);
  end;
 
+ for Index:=0 to 1 do begin
+  fDelayedFreeItemQueues[Index].Initialize;
+ end; 
+
+ fDelayedFreeItemQueueIndex:=0;
+
 end;
 
 destructor TpvRaytracing.Destroy;
 var Index:TpvSizeInt;
+    DelayedFreeItem:TDelayedFreeItem;
 begin
+
+ for Index:=0 to 1 do begin
+  while fDelayedFreeItemQueues[Index].Dequeue(DelayedFreeItem) do begin
+   FreeAndNil(DelayedFreeItem.Object_);
+  end;
+  fDelayedFreeItemQueues[Index].Finalize;
+ end; 
 
  FreeAndNil(fTopLevelAccelerationStructureBottomLevelAccelerationStructureInstancesBuffer);
 
@@ -2683,6 +2708,49 @@ begin
   end;
  end; 
 end; 
+
+// Processes the delayed free queue, ensuring objects are only freed when their 
+// delay counter reaches zero. Objects with remaining delay are re-enqueued 
+// into the next queue for processing in future iterations. This mechanism 
+// allows deferred destruction of objects while avoiding immediate deallocation.
+// The function alternates between two queues to manage the lifecycle of delayed 
+// free items efficiently.
+procedure TpvRaytracing.ProcessDelayedFreeQueue;
+var SourceDelayedFreeQueue,DestinationDelayedFreeQueue:PDelayedFreeItemQueue;
+    DelayedFreeItem:TDelayedFreeItem;
+begin
+
+ fDataLock.Acquire;
+ try
+
+  // Get the current queue to process items from
+  SourceDelayedFreeQueue:=@fDelayedFreeItemQueues[fDelayedFreeItemQueueIndex];
+
+  // Get the destination queue for items that still have a delay remaining
+  DestinationDelayedFreeQueue:=@fDelayedFreeItemQueues[(fDelayedFreeItemQueueIndex+1) and 1];
+
+  // Switch to the next queue for the next iteration, by swapping the indices of the queues (0 -> 1 and 1 -> 0)
+  fDelayedFreeItemQueueIndex:=(fDelayedFreeItemQueueIndex+1) and 1;
+
+  // Process all items in the source queue
+  while SourceDelayedFreeQueue^.Dequeue(DelayedFreeItem) do begin
+
+   // If the delay counter is greater than zero, decrement and re-enqueue with keeping the order of the items, 
+   // otherwise free the associated object  
+   if DelayedFreeItem.Delay>0 then begin   
+    dec(DelayedFreeItem.Delay);
+    DestinationDelayedFreeQueue^.Enqueue(DelayedFreeItem);
+   end else begin  
+    FreeAndNil(DelayedFreeItem.Object_);
+   end;
+
+  end;
+
+ finally
+  fDataLock.Release;
+ end;
+  
+end;
 
 procedure TpvRaytracing.HostMemoryBarrier;
 var MemoryBarrier:TVkMemoryBarrier;
@@ -3481,6 +3549,8 @@ begin
    fBottomLevelAccelerationStructureListChanged:=false; // Assume, that the BLAS list has not changed yet
 
    fMustUpdateTopLevelAccelerationStructure:=false;
+
+   ProcessDelayedFreeQueue;
 
    HostMemoryBarrier;
 
