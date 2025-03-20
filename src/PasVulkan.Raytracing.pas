@@ -544,6 +544,7 @@ type EpvRaytracing=class(Exception);
        fVulkanDevice:TpvVulkanDevice;
        fCountInFlightFrames:TpvSizeInt;
        fLock:TPasMPCriticalSection;
+       fDataLock:TPasMPSlimReaderWriterLock;
        fBottomLevelAccelerationStructureList:TBottomLevelAccelerationStructureList;
        fBottomLevelAccelerationStructureInstanceList:TBottomLevelAccelerationStructure.TBottomLevelAccelerationStructureInstanceList;
        fBottomLevelAccelerationStructureQueue:TBottomLevelAccelerationStructureQueue; // Queue for building or updating acceleration structures
@@ -1966,67 +1967,78 @@ begin
  
  inherited AfterConstruction;
 
-  // Add to BottomLevelAccelerationStructure-own BottomLevelAccelerationStructure instance list
- if assigned(fBottomLevelAccelerationStructure) then begin
-  fInBottomLevelAccelerationStructureIndex:=fBottomLevelAccelerationStructure.fBottomLevelAccelerationStructureInstanceList.Add(self);
- end;
-
- // Add to global BottomLevelAccelerationStructure instance list
  if assigned(fRaytracing) then begin
+  fRaytracing.fDataLock.Acquire;
+ end;
+ try
 
-  TPasMPInterlocked.Write(fRaytracing.fDirty,TPasMPBool32(true));
+  // Add to BottomLevelAccelerationStructure-own BottomLevelAccelerationStructure instance list
+  if assigned(fBottomLevelAccelerationStructure) then begin
+   fInBottomLevelAccelerationStructureIndex:=fBottomLevelAccelerationStructure.fBottomLevelAccelerationStructureInstanceList.Add(self);
+  end;
 
-  fInRaytracingIndex:=fRaytracing.fBottomLevelAccelerationStructureInstanceList.Add(self);
+  // Add to global BottomLevelAccelerationStructure instance list
+  if assigned(fRaytracing) then begin
 
-  if fInRaytracingIndex>=0 then begin
+   TPasMPInterlocked.Write(fRaytracing.fDirty,TPasMPBool32(true));
 
-   if fRaytracing.fGeometryOffsetArrayList.Count<=fInRaytracingIndex then begin
-    fRaytracing.fGeometryOffsetArrayList.Resize(fInRaytracingIndex+1);
-   end;
+   fInRaytracingIndex:=fRaytracing.fBottomLevelAccelerationStructureInstanceList.Add(self);
 
-   fRaytracing.fGeometryOffsetArrayList[InRaytracingIndex]:=fBottomLevelAccelerationStructure.GeometryInfoBaseIndex;
+   if fInRaytracingIndex>=0 then begin
 
-   // Ensure that the acceleration structure instance list has enough space for the new acceleration structure instance
-   if fRaytracing.fAccelerationStructureInstanceKHRArrayList.Count<=fInRaytracingIndex then begin
-
-    // Save old pointer to the first item of the acceleration structure instance array list
-    if fRaytracing.fAccelerationStructureInstanceKHRArrayList.Count>0 then begin
-     OldPointer:=@fRaytracing.fAccelerationStructureInstanceKHRArrayList.ItemArray[0];
-    end else begin
-     OldPointer:=nil;
+    if fRaytracing.fGeometryOffsetArrayList.Count<=fInRaytracingIndex then begin
+     fRaytracing.fGeometryOffsetArrayList.Resize(fInRaytracingIndex+1);
     end;
-    
-    fRaytracing.fAccelerationStructureInstanceKHRArrayList.Resize(fInRaytracingIndex+1);
 
-    if assigned(OldPointer) then begin
+    fRaytracing.fGeometryOffsetArrayList[InRaytracingIndex]:=fBottomLevelAccelerationStructure.GeometryInfoBaseIndex;
 
-     // Get new pointer to the first item of the acceleration structure instance array list 
-     NewPointer:=@fRaytracing.fAccelerationStructureInstanceKHRArrayList.ItemArray[0];
+    // Ensure that the acceleration structure instance list has enough space for the new acceleration structure instance
+    if fRaytracing.fAccelerationStructureInstanceKHRArrayList.Count<=fInRaytracingIndex then begin
 
-     if OldPointer<>NewPointer then begin
+     // Save old pointer to the first item of the acceleration structure instance array list
+     if fRaytracing.fAccelerationStructureInstanceKHRArrayList.Count>0 then begin
+      OldPointer:=@fRaytracing.fAccelerationStructureInstanceKHRArrayList.ItemArray[0];
+     end else begin
+      OldPointer:=nil;
+     end;
+     
+     fRaytracing.fAccelerationStructureInstanceKHRArrayList.Resize(fInRaytracingIndex+1);
 
-      // Full reassign needed, because the list has been resized with possible new memory address and the pointers to the 
-      // internal structures can be invalid
-      fRaytracing.ReassignAccelerationStructureInstancePointers;
+     if assigned(OldPointer) then begin
+
+      // Get new pointer to the first item of the acceleration structure instance array list 
+      NewPointer:=@fRaytracing.fAccelerationStructureInstanceKHRArrayList.ItemArray[0];
+
+      if OldPointer<>NewPointer then begin
+
+       // Full reassign needed, because the list has been resized with possible new memory address and the pointers to the 
+       // internal structures can be invalid
+       fRaytracing.ReassignAccelerationStructureInstancePointers;
+
+      end; 
 
      end; 
 
     end; 
+     
+    // Copy the TpvRaytracingBottomLevelAccelerationStructureInstance own VKAccelerationStructureInstanceKHR content into 
+    // the global VKAccelerationStructureInstanceKHR array list
+    fRaytracing.fAccelerationStructureInstanceKHRArrayList.ItemArray[fInRaytracingIndex]:=fAccelerationStructureInstance.fAccelerationStructureInstance;
 
-   end; 
-    
-   // Copy the TpvRaytracingBottomLevelAccelerationStructureInstance own VKAccelerationStructureInstanceKHR content into 
-   // the global VKAccelerationStructureInstanceKHR array list
-   fRaytracing.fAccelerationStructureInstanceKHRArrayList.ItemArray[fInRaytracingIndex]:=fAccelerationStructureInstance.fAccelerationStructureInstance;
+    // Set the acceleration structure instance pointer to the global VKAccelerationStructureInstanceKHR array list, so that
+    // so that the TpvRaytracingBottomLevelAccelerationStructureInstance own VKAccelerationStructureInstanceKHR instance isn't used anymore
+    // from now on. This is needed, because the global VKAccelerationStructureInstanceKHR array list is used as direct memory data source
+    // for the GPU-side geometry info buffer.
+    fAccelerationStructureInstance.fAccelerationStructureInstancePointer:=@fRaytracing.fAccelerationStructureInstanceKHRArrayList.ItemArray[fInRaytracingIndex];
 
-   // Set the acceleration structure instance pointer to the global VKAccelerationStructureInstanceKHR array list, so that
-   // so that the TpvRaytracingBottomLevelAccelerationStructureInstance own VKAccelerationStructureInstanceKHR instance isn't used anymore
-   // from now on. This is needed, because the global VKAccelerationStructureInstanceKHR array list is used as direct memory data source
-   // for the GPU-side geometry info buffer.
-   fAccelerationStructureInstance.fAccelerationStructureInstancePointer:=@fRaytracing.fAccelerationStructureInstanceKHRArrayList.ItemArray[fInRaytracingIndex];
+   end;
 
   end;
 
+ finally
+  if assigned(fRaytracing) then begin
+   fRaytracing.fDataLock.Release;
+  end;
  end;
 
 end;
@@ -2035,52 +2047,64 @@ procedure TpvRaytracing.TBottomLevelAccelerationStructure.TInstance.BeforeDestru
 var OtherBLASInstance:TInstance;
 begin
 
- if assigned(fAccelerationStructureInstance) then begin
+ if assigned(fRaytracing) then begin
+  fRaytracing.fDataLock.Acquire;
+ end;
+ try
+   
+  if assigned(fAccelerationStructureInstance) then begin
 
-  // Copy the global VKAccelerationStructureInstanceKHR array list content back into the TpvRaytracingBottomLevelAccelerationStructureInstance 
-  // own VKAccelerationStructureInstanceKHR instance, for the case that the instance is destroyed and the acceleration structure instance
-  // is still used by the BottomLevelAccelerationStructure instance.
+   // Copy the global VKAccelerationStructureInstanceKHR array list content back into the TpvRaytracingBottomLevelAccelerationStructureInstance 
+   // own VKAccelerationStructureInstanceKHR instance, for the case that the instance is destroyed and the acceleration structure instance
+   // is still used by the BottomLevelAccelerationStructure instance.
+   if assigned(fRaytracing) and (fInRaytracingIndex>=0) then begin
+    fAccelerationStructureInstance.fAccelerationStructureInstance:=fRaytracing.fAccelerationStructureInstanceKHRArrayList.ItemArray[fInRaytracingIndex];
+   end;
+
+   // Set the acceleration structure instance pointer back to the own VKAccelerationStructureInstanceKHR instance, so that the
+   // TpvRaytracingBottomLevelAccelerationStructureInstance own VKAccelerationStructureInstanceKHR instance is used again, to avoid
+   // dangling pointers.
+   fAccelerationStructureInstance.fAccelerationStructureInstancePointer:=@fAccelerationStructureInstance.fAccelerationStructureInstance;
+
+  end; 
+
+  // Remove from global BottomLevelAccelerationStructure instance list
   if assigned(fRaytracing) and (fInRaytracingIndex>=0) then begin
-   fAccelerationStructureInstance.fAccelerationStructureInstance:=fRaytracing.fAccelerationStructureInstanceKHRArrayList.ItemArray[fInRaytracingIndex];
+   TPasMPInterlocked.Write(fRaytracing.fDirty,TPasMPBool32(true));
+   if (fInRaytracingIndex+1)<fRaytracing.fBottomLevelAccelerationStructureInstanceList.Count then begin
+    OtherBLASInstance:=fRaytracing.fBottomLevelAccelerationStructureInstanceList.Items[fRaytracing.fBottomLevelAccelerationStructureInstanceList.Count-1];
+    fRaytracing.fBottomLevelAccelerationStructureInstanceList.Exchange(fInRaytracingIndex,OtherBLASInstance.fInRaytracingIndex);
+    fRaytracing.fAccelerationStructureInstanceKHRArrayList.Exchange(fInRaytracingIndex,OtherBLASInstance.fInRaytracingIndex);
+    fRaytracing.fGeometryOffsetArrayList.Exchange(fInRaytracingIndex,OtherBLASInstance.fInRaytracingIndex);
+    TpvSwap<TpvSizeInt>.Swap(fInRaytracingIndex,OtherBLASInstance.fInRaytracingIndex);
+    TpvSwap<PVkAccelerationStructureInstanceKHR>.Swap(fAccelerationStructureInstance.fAccelerationStructureInstancePointer,OtherBLASInstance.fAccelerationStructureInstance.fAccelerationStructureInstancePointer);
+   end;
+   fRaytracing.fBottomLevelAccelerationStructureInstanceList.ExtractIndex(fInRaytracingIndex);
+   fRaytracing.fAccelerationStructureInstanceKHRArrayList.Delete(fInRaytracingIndex);
+   fRaytracing.fGeometryOffsetArrayList.Delete(fInRaytracingIndex);
+   fInRaytracingIndex:=-1;
   end;
 
-  // Set the acceleration structure instance pointer back to the own VKAccelerationStructureInstanceKHR instance, so that the
-  // TpvRaytracingBottomLevelAccelerationStructureInstance own VKAccelerationStructureInstanceKHR instance is used again, to avoid
-  // dangling pointers.
-  fAccelerationStructureInstance.fAccelerationStructureInstancePointer:=@fAccelerationStructureInstance.fAccelerationStructureInstance;
+  // Remove from BottomLevelAccelerationStructure-own BottomLevelAccelerationStructure instance list
+  if assigned(fBottomLevelAccelerationStructure) and (fInBottomLevelAccelerationStructureIndex>=0) then begin
+   if (fInBottomLevelAccelerationStructureIndex+1)<fBottomLevelAccelerationStructure.fBottomLevelAccelerationStructureInstanceList.Count then begin
+    OtherBLASInstance:=fBottomLevelAccelerationStructure.fBottomLevelAccelerationStructureInstanceList.Items[fBottomLevelAccelerationStructure.fBottomLevelAccelerationStructureInstanceList.Count-1];
+    fBottomLevelAccelerationStructure.fBottomLevelAccelerationStructureInstanceList.Exchange(fInBottomLevelAccelerationStructureIndex,OtherBLASInstance.fInBottomLevelAccelerationStructureIndex);
+    OtherBLASInstance.fInBottomLevelAccelerationStructureIndex:=fInBottomLevelAccelerationStructureIndex;
+    fInBottomLevelAccelerationStructureIndex:=fBottomLevelAccelerationStructure.fBottomLevelAccelerationStructureInstanceList.Count-1;
+   end;
+   fBottomLevelAccelerationStructure.fBottomLevelAccelerationStructureInstanceList.ExtractIndex(fInBottomLevelAccelerationStructureIndex);
+   fInBottomLevelAccelerationStructureIndex:=-1;
+  end;
 
+ finally
+  if assigned(fRaytracing) then begin
+   fRaytracing.fDataLock.Release;
+  end;
  end; 
 
- // Remove from global BottomLevelAccelerationStructure instance list
- if assigned(fRaytracing) and (fInRaytracingIndex>=0) then begin
-  TPasMPInterlocked.Write(fRaytracing.fDirty,TPasMPBool32(true));
-  if (fInRaytracingIndex+1)<fRaytracing.fBottomLevelAccelerationStructureInstanceList.Count then begin
-   OtherBLASInstance:=fRaytracing.fBottomLevelAccelerationStructureInstanceList.Items[fRaytracing.fBottomLevelAccelerationStructureInstanceList.Count-1];
-   fRaytracing.fBottomLevelAccelerationStructureInstanceList.Exchange(fInRaytracingIndex,OtherBLASInstance.fInRaytracingIndex);
-   fRaytracing.fAccelerationStructureInstanceKHRArrayList.Exchange(fInRaytracingIndex,OtherBLASInstance.fInRaytracingIndex);
-   fRaytracing.fGeometryOffsetArrayList.Exchange(fInRaytracingIndex,OtherBLASInstance.fInRaytracingIndex);
-   TpvSwap<TpvSizeInt>.Swap(fInRaytracingIndex,OtherBLASInstance.fInRaytracingIndex);
-   TpvSwap<PVkAccelerationStructureInstanceKHR>.Swap(fAccelerationStructureInstance.fAccelerationStructureInstancePointer,OtherBLASInstance.fAccelerationStructureInstance.fAccelerationStructureInstancePointer);
-  end;
-  fRaytracing.fBottomLevelAccelerationStructureInstanceList.ExtractIndex(fInRaytracingIndex);
-  fRaytracing.fAccelerationStructureInstanceKHRArrayList.Delete(fInRaytracingIndex);
-  fRaytracing.fGeometryOffsetArrayList.Delete(fInRaytracingIndex);
-  fInRaytracingIndex:=-1;
- end;
-
- // Remove from BottomLevelAccelerationStructure-own BottomLevelAccelerationStructure instance list
- if assigned(fBottomLevelAccelerationStructure) and (fInBottomLevelAccelerationStructureIndex>=0) then begin
-  if (fInBottomLevelAccelerationStructureIndex+1)<fBottomLevelAccelerationStructure.fBottomLevelAccelerationStructureInstanceList.Count then begin
-   OtherBLASInstance:=fBottomLevelAccelerationStructure.fBottomLevelAccelerationStructureInstanceList.Items[fBottomLevelAccelerationStructure.fBottomLevelAccelerationStructureInstanceList.Count-1];
-   fBottomLevelAccelerationStructure.fBottomLevelAccelerationStructureInstanceList.Exchange(fInBottomLevelAccelerationStructureIndex,OtherBLASInstance.fInBottomLevelAccelerationStructureIndex);
-   OtherBLASInstance.fInBottomLevelAccelerationStructureIndex:=fInBottomLevelAccelerationStructureIndex;
-   fInBottomLevelAccelerationStructureIndex:=fBottomLevelAccelerationStructure.fBottomLevelAccelerationStructureInstanceList.Count-1;
-  end;
-  fBottomLevelAccelerationStructure.fBottomLevelAccelerationStructureInstanceList.ExtractIndex(fInBottomLevelAccelerationStructureIndex);
-  fInBottomLevelAccelerationStructureIndex:=-1;
- end;
-
  inherited BeforeDestruction;
+
 end;
 
  { TpvRaytracing.TBottomLevelAccelerationStructure }
@@ -2165,7 +2189,12 @@ begin
  inherited AfterConstruction;
  if assigned(fRaytracing) then begin
   TPasMPInterlocked.Write(fRaytracing.fDirty,TPasMPBool32(true));
-  fInRaytracingIndex:=fRaytracing.fBottomLevelAccelerationStructureList.Add(self);
+  fRaytracing.fDataLock.Acquire;
+  try
+   fInRaytracingIndex:=fRaytracing.fBottomLevelAccelerationStructureList.Add(self);
+  finally
+   fRaytracing.fDataLock.Release;
+  end;
  end;
 end;
 
@@ -2174,14 +2203,19 @@ var OtherBLAS:TBottomLevelAccelerationStructure;
 begin
  if assigned(fRaytracing) and (fInRaytracingIndex>=0) then begin
   TPasMPInterlocked.Write(fRaytracing.fDirty,TPasMPBool32(true));
-  if (fInRaytracingIndex+1)<fRaytracing.fBottomLevelAccelerationStructureList.Count then begin
-   OtherBLAS:=fRaytracing.fBottomLevelAccelerationStructureList.Items[fRaytracing.fBottomLevelAccelerationStructureList.Count-1];
-   fRaytracing.fBottomLevelAccelerationStructureList.Exchange(fInRaytracingIndex,OtherBLAS.fInRaytracingIndex);
-   OtherBLAS.fInRaytracingIndex:=fInRaytracingIndex;
-   fInRaytracingIndex:=fRaytracing.fBottomLevelAccelerationStructureList.Count-1;
+  fRaytracing.fDataLock.Acquire;
+  try
+   if (fInRaytracingIndex+1)<fRaytracing.fBottomLevelAccelerationStructureList.Count then begin
+    OtherBLAS:=fRaytracing.fBottomLevelAccelerationStructureList.Items[fRaytracing.fBottomLevelAccelerationStructureList.Count-1];
+    fRaytracing.fBottomLevelAccelerationStructureList.Exchange(fInRaytracingIndex,OtherBLAS.fInRaytracingIndex);
+    OtherBLAS.fInRaytracingIndex:=fInRaytracingIndex;
+    fInRaytracingIndex:=fRaytracing.fBottomLevelAccelerationStructureList.Count-1;
+   end;
+   fRaytracing.fBottomLevelAccelerationStructureList.ExtractIndex(fInRaytracingIndex);
+   fInRaytracingIndex:=-1;
+  finally
+   fRaytracing.fDataLock.Release;
   end;
-  fRaytracing.fBottomLevelAccelerationStructureList.ExtractIndex(fInRaytracingIndex);
-  fInRaytracingIndex:=-1;
  end;
  inherited BeforeDestruction;
 end;
@@ -2429,6 +2463,8 @@ begin
 
  fLock:=TPasMPCriticalSection.Create;
 
+ fDataLock:=TPasMPSlimReaderWriterLock.Create;
+
  fBottomLevelAccelerationStructureList:=TBottomLevelAccelerationStructureList.Create(false);
 
  fBottomLevelAccelerationStructureInstanceList:=TBottomLevelAccelerationStructure.TBottomLevelAccelerationStructureInstanceList.Create(false);
@@ -2555,6 +2591,8 @@ begin
   FreeAndNil(fBottomLevelAccelerationStructureGeometryInfoBufferItemBuffers[Index]);
   FreeAndNil(fBottomLevelAccelerationStructureGeometryInfoOffsetBufferItemBuffers[Index]);
  end;
+
+ FreeAndNil(fDataLock);
 
  FreeAndNil(fLock);
 
