@@ -646,6 +646,8 @@ type EpvRaytracing=class(Exception);
        procedure Initialize;
        procedure DelayedFreeObject(const aObject:TObject;const aDelay:TpvSizeInt=-1); // -1 = count of in-flight frames
        procedure DelayedFreeAccelerationStructure(const aAccelerationStructure:TVkAccelerationStructureKHR;const aDelay:TpvSizeInt=-1); // -1 = count of in-flight frames
+       procedure FreeAccelerationStructureConditionallyWithBuffer(var aAccelerationStructure;var aBuffer:TpvVulkanBuffer;const aSize:TVkDeviceSize);
+       procedure FreeObject(var aObject);
        procedure Reset(const aInFlightFrameIndex:TpvSizeInt);
        procedure MarkBottomLevelAccelerationStructureListAsChanged;
        procedure MarkTopLevelAccelerationStructureAsDirty;
@@ -2284,27 +2286,11 @@ begin
  end else begin
 
   if assigned(fAccelerationStructure) then begin
-   if fRaytracing.fSafeRelease then begin
-    FreeAndNil(fAccelerationStructure);
-   end else begin
-    try
-     fRaytracing.DelayedFreeObject(fAccelerationStructure);
-    finally
-     fAccelerationStructure:=nil;
-    end;
-   end;
+   fRaytracing.FreeObject(fAccelerationStructure);
   end;
 
   if assigned(fAccelerationStructureBuffer) then begin
-   if fRaytracing.fSafeRelease then begin
-    FreeAndNil(fAccelerationStructureBuffer);
-   end else begin
-    try
-     fRaytracing.DelayedFreeObject(fAccelerationStructureBuffer);
-    finally
-     fAccelerationStructureBuffer:=nil;
-    end;
-   end;
+   fRaytracing.FreeObject(fAccelerationStructureBuffer);
   end;
 
  end;
@@ -2333,38 +2319,7 @@ begin
     (fAccelerationStructureSize>0) then begin
 
   if assigned(fAccelerationStructureBuffer) or (fAccelerationStructure.AccelerationStructure<>VK_NULL_HANDLE) then begin
-
-   if fRaytracing.fSafeRelease then begin
-
-    if assigned(pvApplication) then begin
-     pvApplication.WaitForPreviousFrame(true); // wait on previous frame to avoid destroy still-in-usage buffers.
-    end;
-    fAccelerationStructure.Finalize;
-
-    if assigned(fAccelerationStructureBuffer) and (fAccelerationStructureBuffer.Size<fAccelerationStructureSize) then begin
-     FreeAndNil(fAccelerationStructureBuffer);
-    end;
-
-   end else begin
-
-    if assigned(fAccelerationStructureBuffer) and (fAccelerationStructureBuffer.Size<fAccelerationStructureSize) then begin
-     try
-      fRaytracing.DelayedFreeObject(fAccelerationStructureBuffer,2);
-     finally
-      fAccelerationStructureBuffer:=nil;
-     end;
-    end;
-
-    if fAccelerationStructure.fAccelerationStructure<>VK_NULL_HANDLE then begin
-     try
-      fRaytracing.DelayedFreeAccelerationStructure(fAccelerationStructure.fAccelerationStructure,1);
-     finally
-      fAccelerationStructure.fAccelerationStructure:=VK_NULL_HANDLE;
-     end;
-    end;
-
-   end;
-
+   fRaytracing.FreeAccelerationStructureConditionallyWithBuffer(fAccelerationStructure,fAccelerationStructureBuffer,fAccelerationStructureSize);
   end;
 
   if not assigned(fAccelerationStructureBuffer) then begin
@@ -2894,23 +2849,27 @@ procedure TpvRaytracing.WaitForPreviousFrame;
 var MustWaitForPreviousFrame:Boolean;
 begin
 
- /////////////////////////////////////////////////////////////////////////////
- // Wait for previous frame, when there are changes in the BLAS list, since //
- // it is necessary at Vulkan, that buffers are not in use, when they are   //
- // destroyed. Therefore we should wait for the previous frame for to be    //
- // sure, that the buffers are not in use anymore.                          //
- /////////////////////////////////////////////////////////////////////////////
+ if fSafeRelease then begin
 
- MustWaitForPreviousFrame:=assigned(fOnMustWaitForPreviousFrame) and fOnMustWaitForPreviousFrame(self);
+  /////////////////////////////////////////////////////////////////////////////
+  // Wait for previous frame, when there are changes in the BLAS list, since //
+  // it is necessary at Vulkan, that buffers are not in use, when they are   //
+  // destroyed. Therefore we should wait for the previous frame for to be    //
+  // sure, that the buffers are not in use anymore.                          //
+  /////////////////////////////////////////////////////////////////////////////
 
- if not fEmptyInitialized then begin
-  MustWaitForPreviousFrame:=true;
- end;
+  MustWaitForPreviousFrame:=assigned(fOnMustWaitForPreviousFrame) and fOnMustWaitForPreviousFrame(self);
 
- if fSafeRelease and MustWaitForPreviousFrame and assigned(pvApplication) then begin
-  // Wait for previous frame, when there are changes in the BLAS list, since it is necessary at Vulkan, that buffers are not in use,
-  // when they are destroyed. Therefore we should wait for the previous frame for to be sure, that the buffers are not in use anymore.
-  pvApplication.WaitForPreviousFrame(true);
+  if not fEmptyInitialized then begin
+   MustWaitForPreviousFrame:=true;
+  end;
+
+  if MustWaitForPreviousFrame and assigned(pvApplication) then begin
+   // Wait for previous frame, when there are changes in the BLAS list, since it is necessary at Vulkan, that buffers are not in use,
+   // when they are destroyed. Therefore we should wait for the previous frame for to be sure, that the buffers are not in use anymore.
+   pvApplication.WaitForPreviousFrame(true);
+  end;
+
  end;
 
 end;
@@ -3079,14 +3038,7 @@ begin
 
   if (not assigned(fBottomLevelAccelerationStructureGeometryInfoOffsetBufferItemBuffers[fBottomLevelAccelerationStructureGeometryInfoBufferRingIndex and 1])) or
      (fBottomLevelAccelerationStructureGeometryInfoOffsetBufferItemBuffers[fBottomLevelAccelerationStructureGeometryInfoBufferRingIndex and 1].Size<(Max(1,fGeometryOffsetArrayList.Count)*SizeOf(TVkUInt32))) then begin
-   if fSafeRelease then begin
-    if assigned(pvApplication) then begin
-     pvApplication.WaitForPreviousFrame(true);
-    end;
-    FreeAndNil(fBottomLevelAccelerationStructureGeometryInfoOffsetBufferItemBuffers[fBottomLevelAccelerationStructureGeometryInfoBufferRingIndex and 1]);
-   end else begin
-    DelayedFreeObject(fBottomLevelAccelerationStructureGeometryInfoOffsetBufferItemBuffers[fBottomLevelAccelerationStructureGeometryInfoBufferRingIndex and 1]);
-   end;
+   FreeObject(fBottomLevelAccelerationStructureGeometryInfoOffsetBufferItemBuffers[fBottomLevelAccelerationStructureGeometryInfoBufferRingIndex and 1]);
    fBottomLevelAccelerationStructureGeometryInfoOffsetBufferItemBuffers[fBottomLevelAccelerationStructureGeometryInfoBufferRingIndex and 1]:=TpvVulkanBuffer.Create(fVulkanDevice,
                                                                                                                                 RoundUpToPowerOfTwo64(Max(1,fGeometryOffsetArrayList.Count)*SizeOf(TVkUInt32)*2),
                                                                                                                                 TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT),
@@ -3119,14 +3071,7 @@ begin
 
   if (not assigned(fBottomLevelAccelerationStructureGeometryInfoBufferItemBuffers[fBottomLevelAccelerationStructureGeometryInfoBufferRingIndex and 1])) or
      (fBottomLevelAccelerationStructureGeometryInfoBufferItemBuffers[fBottomLevelAccelerationStructureGeometryInfoBufferRingIndex and 1].Size<(Max(1,fGeometryInfoManager.GeometryInfoList.Count)*SizeOf(TpvRaytracingBLASGeometryInfoBufferItem))) then begin
-   if fSafeRelease then begin
-    if assigned(pvApplication) then begin
-     pvApplication.WaitForPreviousFrame(true);
-    end;
-    FreeAndNil(fBottomLevelAccelerationStructureGeometryInfoBufferItemBuffers[fBottomLevelAccelerationStructureGeometryInfoBufferRingIndex and 1]);
-   end else begin
-    DelayedFreeObject(fBottomLevelAccelerationStructureGeometryInfoBufferItemBuffers[fBottomLevelAccelerationStructureGeometryInfoBufferRingIndex and 1]);
-   end;
+   FreeObject(fBottomLevelAccelerationStructureGeometryInfoBufferItemBuffers[fBottomLevelAccelerationStructureGeometryInfoBufferRingIndex and 1]);
    fBottomLevelAccelerationStructureGeometryInfoBufferItemBuffers[fBottomLevelAccelerationStructureGeometryInfoBufferRingIndex and 1]:=TpvVulkanBuffer.Create(fVulkanDevice,
                                                                                                                           RoundUpToPowerOfTwo64(Max(1,fGeometryInfoManager.GeometryInfoList.Count)*SizeOf(TpvRaytracingBLASGeometryInfoBufferItem)*2),
                                                                                                                           TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT),
@@ -3214,15 +3159,8 @@ begin
     (fBottomLevelAccelerationStructureScratchBuffer.Size<fScratchSize) or // Grow when it would be needed
     ((fScratchSize>0) and (fScratchSize<(fBottomLevelAccelerationStructureScratchBuffer.Size shr 1))) then begin // Shrink when it would be useful (when it could be smaller by at least than the half)
 
-  if fSafeRelease then begin
-   if assigned(pvApplication) then begin
-    pvApplication.WaitForPreviousFrame(true); // wait on previous frame to avoid destroy still-in-usage buffers.
-   end;
-   FreeAndNil(fBottomLevelAccelerationStructureScratchBuffer);
-  end else begin
-   DelayedFreeObject(fBottomLevelAccelerationStructureScratchBuffer);
-  end;
-  
+  FreeObject(fBottomLevelAccelerationStructureScratchBuffer);
+
   fBottomLevelAccelerationStructureScratchBuffer:=TpvVulkanBuffer.Create(fVulkanDevice,
                                                                          RoundUpToPowerOfTwo64(fScratchSize),
                                                                          TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT),
@@ -3317,14 +3255,7 @@ begin
  if (not assigned(fTopLevelAccelerationStructureBottomLevelAccelerationStructureInstancesBuffer)) or
     (fTopLevelAccelerationStructureBottomLevelAccelerationStructureInstancesBuffer.Size<fTopLevelAccelerationStructureBottomLevelAccelerationStructureInstancesBufferSize) then begin
 
-  if fSafeRelease then begin
-   if assigned(pvApplication) then begin
-    pvApplication.WaitForPreviousFrame(true); // wait on previous frame to avoid destroy still-in-usage buffers.
-   end;
-   FreeAndNil(fTopLevelAccelerationStructureBottomLevelAccelerationStructureInstancesBuffer);
-  end else begin
-   DelayedFreeObject(fTopLevelAccelerationStructureBottomLevelAccelerationStructureInstancesBuffer);
-  end; 
+  FreeObject(fTopLevelAccelerationStructureBottomLevelAccelerationStructureInstancesBuffer);
 
   fTopLevelAccelerationStructureBottomLevelAccelerationStructureInstancesBuffer:=TpvVulkanBuffer.Create(fVulkanDevice,
                                                                                                         fTopLevelAccelerationStructureBottomLevelAccelerationStructureInstancesBufferSize,
@@ -3353,14 +3284,7 @@ begin
  if (not assigned(fTopLevelAccelerationStructureBottomLevelAccelerationStructureInstancesBuffers[fInFlightFrameIndex])) or
     (fTopLevelAccelerationStructureBottomLevelAccelerationStructureInstancesBuffers[fInFlightFrameIndex].Size<fTopLevelAccelerationStructureBottomLevelAccelerationStructureInstancesBufferSize) then begin
 
-  if fSafeRelease then begin
-   if assigned(pvApplication) then begin
-    pvApplication.WaitForPreviousFrame(true); // wait on previous frame to avoid destroy still-in-usage buffers.
-   end;
-   FreeAndNil(fTopLevelAccelerationStructureBottomLevelAccelerationStructureInstancesBuffers[fInFlightFrameIndex]);
-  end else begin
-   DelayedFreeObject(fTopLevelAccelerationStructureBottomLevelAccelerationStructureInstancesBuffers[fInFlightFrameIndex]);
-  end; 
+  FreeObject(fTopLevelAccelerationStructureBottomLevelAccelerationStructureInstancesBuffers[fInFlightFrameIndex]);
 
   fTopLevelAccelerationStructureBottomLevelAccelerationStructureInstancesBuffers[fInFlightFrameIndex]:=TpvVulkanBuffer.Create(fVulkanDevice,
                                                                                                                               fTopLevelAccelerationStructureBottomLevelAccelerationStructureInstancesBufferSize,
@@ -3528,36 +3452,7 @@ begin
     (fTopLevelAccelerationStructureBuffer.Size<Size) or
     fMustTopLevelAccelerationStructureUpdate then begin
 
-  if fSafeRelease then begin
-
-   if assigned(pvApplication) then begin
-    pvApplication.WaitForPreviousFrame(true); // wait on previous frame to avoid destroy still-in-usage buffers.
-   end;
-   fTopLevelAccelerationStructure.Finalize;
-
-   if assigned(fTopLevelAccelerationStructureBuffer) and (fTopLevelAccelerationStructureBuffer.Size<Size) then begin
-    FreeAndNil(fTopLevelAccelerationStructureBuffer);
-   end;
-
-  end else begin
-
-   if assigned(fTopLevelAccelerationStructureBuffer) and (fTopLevelAccelerationStructureBuffer.Size<Size) then begin
-    try
-     DelayedFreeObject(fTopLevelAccelerationStructureBuffer,2);
-    finally
-     fTopLevelAccelerationStructureBuffer:=nil;
-    end;
-   end;
-
-   if fTopLevelAccelerationStructure.fAccelerationStructure<>VK_NULL_HANDLE then begin
-    try
-     DelayedFreeAccelerationStructure(fTopLevelAccelerationStructure.fAccelerationStructure,1);
-    finally
-     fTopLevelAccelerationStructure.fAccelerationStructure:=VK_NULL_HANDLE;
-    end;
-   end;
-
-  end;
+  FreeAccelerationStructureConditionallyWithBuffer(fTopLevelAccelerationStructure,fTopLevelAccelerationStructureBuffer,Size);
 
   if not assigned(fTopLevelAccelerationStructureBuffer) then begin
    fTopLevelAccelerationStructureBuffer:=TpvVulkanBuffer.Create(fVulkanDevice,
@@ -3598,14 +3493,7 @@ begin
  if (not assigned(fTopLevelAccelerationStructureScratchBuffer)) or
     (fTopLevelAccelerationStructureScratchBuffer.Size<Max(1,Max(fTopLevelAccelerationStructure.BuildSizesInfo.buildScratchSize,fTopLevelAccelerationStructure.BuildSizesInfo.updateScratchSize))) then begin
 
-  if fSafeRelease then begin
-   if assigned(pvApplication) then begin
-    pvApplication.WaitForPreviousFrame(true); // wait on previous frame to avoid destroy still-in-usage buffers.
-   end;
-   FreeAndNil(fTopLevelAccelerationStructureScratchBuffer);
-  end else begin
-   DelayedFreeObject(fTopLevelAccelerationStructureScratchBuffer);
-  end; 
+  FreeObject(fTopLevelAccelerationStructureScratchBuffer);
 
   fTopLevelAccelerationStructureScratchBuffer:=TpvVulkanBuffer.Create(fVulkanDevice,
                                                                       RoundUpToPowerOfTwo64(Max(1,Max(fTopLevelAccelerationStructure.BuildSizesInfo.buildScratchSize,fTopLevelAccelerationStructure.BuildSizesInfo.updateScratchSize))),
@@ -3688,6 +3576,80 @@ begin
    fDataLock.Release;
   end;
  end;
+end;
+
+procedure TpvRaytracing.FreeAccelerationStructureConditionallyWithBuffer(var aAccelerationStructure;var aBuffer:TpvVulkanBuffer;const aSize:TVkDeviceSize);
+begin
+
+ if assigned(TObject(aAccelerationStructure)) or (assigned(aBuffer) and (aBuffer.Size<aSize)) then begin
+
+  if fSafeRelease then begin
+
+   if assigned(pvApplication) then begin
+    pvApplication.WaitForPreviousFrame(true); // wait on previous frame to avoid destroy still-in-usage buffers.
+   end;
+
+   if assigned(TObject(aAccelerationStructure)) then begin
+    TpvRaytracingAccelerationStructure(aAccelerationStructure).Finalize;
+   end;
+
+   if assigned(aBuffer) and (aBuffer.Size<aSize) then begin
+    try
+     aBuffer.Free;
+    finally
+     aBuffer:=nil;
+    end;
+   end;
+
+  end else begin
+
+   if assigned(aBuffer) and (aBuffer.Size<aSize) then begin
+    try
+     DelayedFreeObject(aBuffer,2);
+    finally
+     aBuffer:=nil;
+    end;
+   end;
+
+   if assigned(TObject(aAccelerationStructure)) and (TpvRaytracingAccelerationStructure(aAccelerationStructure).fAccelerationStructure<>VK_NULL_HANDLE) then begin
+    try
+     DelayedFreeAccelerationStructure(TpvRaytracingAccelerationStructure(aAccelerationStructure).fAccelerationStructure,1);
+    finally
+     TpvRaytracingAccelerationStructure(aAccelerationStructure).fAccelerationStructure:=VK_NULL_HANDLE;
+    end;
+   end;
+
+  end;
+
+ end;
+
+end;
+
+procedure TpvRaytracing.FreeObject(var aObject);
+begin
+
+ if assigned(TObject(aObject)) then begin
+
+  if fSafeRelease then begin
+
+   if assigned(pvApplication) then begin
+    pvApplication.WaitForPreviousFrame(true); // wait on previous frame to avoid destroy still-in-usage buffers.
+   end;
+
+   FreeAndNil(TObject(aObject));
+
+  end else begin
+
+   try
+    DelayedFreeObject(TObject(aObject));
+   finally
+    TObject(aObject):=nil;
+   end;
+
+  end;
+
+ end;
+
 end;
 
 procedure TpvRaytracing.Reset(const aInFlightFrameIndex:TpvSizeInt);
