@@ -632,6 +632,7 @@ type EpvRaytracing=class(Exception);
                                                         const aName:TpvUTF8String=''):TBottomLevelAccelerationStructure;
        procedure ReleaseBottomLevelAccelerationStructure(const aBLAS:TBottomLevelAccelerationStructure);
        procedure Initialize;
+       procedure DelayedFree(const aObject:TObject;const aDelay:TpvSizeInt=-1); // -1 = count of in-flight frames
        procedure Reset(const aInFlightFrameIndex:TpvSizeInt);
        procedure MarkBottomLevelAccelerationStructureListAsChanged;
        procedure MarkTopLevelAccelerationStructureAsDirty;
@@ -3499,6 +3500,25 @@ begin
 
 end;
 
+procedure TpvRaytracing.DelayedFree(const aObject:TObject;const aDelay:TpvSizeInt);
+var DelayedFreeItem:TDelayedFreeItem;
+begin
+ if assigned(aObject) then begin
+  fDataLock.Acquire;
+  try
+   DelayedFreeItem.Object_:=aObject;
+   if aDelay<0 then begin
+    DelayedFreeItem.Delay:=fCountInFlightFrames;
+   end else begin 
+    DelayedFreeItem.Delay:=aDelay;
+   end; 
+   fDelayedFreeItemQueues[fDelayedFreeItemQueueIndex and 1].Enqueue(DelayedFreeItem);
+  finally
+   fDataLock.Release;
+  end;
+ end;
+end;
+ 
 procedure TpvRaytracing.Reset(const aInFlightFrameIndex:TpvSizeInt);
 begin
  TPasMPInterlocked.BitwiseAnd(fUpdateRaytracingFrameDoneMask,TpvUInt32(not TpvUInt32(TpvUInt32(1) shl aInFlightFrameIndex)));
