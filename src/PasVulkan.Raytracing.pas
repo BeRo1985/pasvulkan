@@ -2270,12 +2270,30 @@ end;
 destructor TpvRaytracing.TBottomLevelAccelerationStructure.Destroy;
 begin
 
- if assigned(fAccelerationStructure) then begin
-  fAccelerationStructure.Finalize;
- end;
+ if assigned(fRaytracing) then begin
 
- if assigned(fCompactedAccelerationStructure) then begin
-  fCompactedAccelerationStructure.Finalize;
+  fRaytracing.FreeAccelerationStructureConditionallyWithBuffer(fAccelerationStructure,fAccelerationStructureBuffer,VK_WHOLE_SIZE);
+  if assigned(fAccelerationStructure) then begin
+   fAccelerationStructure.fAccelerationStructure:=VK_NULL_HANDLE;
+  end;
+  fAccelerationStructureBuffer:=nil;
+
+  fRaytracing.FreeAccelerationStructureConditionallyWithBuffer(fCompactedAccelerationStructure,fCompactedAccelerationStructureBuffer,VK_WHOLE_SIZE);
+  if assigned(fCompactedAccelerationStructure) then begin
+   fCompactedAccelerationStructure.fAccelerationStructure:=VK_NULL_HANDLE;
+  end;
+  fCompactedAccelerationStructureBuffer:=nil;
+
+ end else begin
+
+  if assigned(fAccelerationStructure) then begin
+   fAccelerationStructure.Finalize;
+  end;
+
+  if assigned(fCompactedAccelerationStructure) then begin
+   fCompactedAccelerationStructure.Finalize;
+  end;
+
  end;
 
  while fBottomLevelAccelerationStructureInstanceList.Count>0 do begin
@@ -2737,22 +2755,6 @@ var Index:TpvSizeInt;
     DelayedFreeAccelerationStructureItem:TDelayedFreeAccelerationStructureItem;
 begin
 
- for Index:=0 to 1 do begin
-  while fDelayedFreeAccelerationStructureItemQueues[Index].Dequeue(DelayedFreeAccelerationStructureItem) do begin
-   if DelayedFreeAccelerationStructureItem.AccelerationStructure<>VK_NULL_HANDLE then begin
-    fDevice.Commands.Commands.DestroyAccelerationStructureKHR(fDevice.Handle,DelayedFreeAccelerationStructureItem.AccelerationStructure,nil);
-   end;
-  end;
-  fDelayedFreeAccelerationStructureItemQueues[Index].Finalize;
- end;
-
- for Index:=0 to 1 do begin
-  while fDelayedFreeItemQueues[Index].Dequeue(DelayedFreeItem) do begin
-   FreeAndNil(DelayedFreeItem.Object_);
-  end;
-  fDelayedFreeItemQueues[Index].Finalize;
- end; 
-
  FreeAndNil(fCompactedSizeQueryPool);
 
  FreeAndNil(fTopLevelAccelerationStructureBottomLevelAccelerationStructureInstancesBuffer);
@@ -2777,6 +2779,22 @@ begin
 
  while fBottomLevelAccelerationStructureList.Count>0 do begin
   fBottomLevelAccelerationStructureList[fBottomLevelAccelerationStructureList.Count-1].Free;
+ end;
+
+ for Index:=0 to 1 do begin
+  while fDelayedFreeAccelerationStructureItemQueues[Index].Dequeue(DelayedFreeAccelerationStructureItem) do begin
+   if DelayedFreeAccelerationStructureItem.AccelerationStructure<>VK_NULL_HANDLE then begin
+    fDevice.Commands.Commands.DestroyAccelerationStructureKHR(fDevice.Handle,DelayedFreeAccelerationStructureItem.AccelerationStructure,nil);
+   end;
+  end;
+  fDelayedFreeAccelerationStructureItemQueues[Index].Finalize;
+ end;
+
+ for Index:=0 to 1 do begin
+  while fDelayedFreeItemQueues[Index].Dequeue(DelayedFreeItem) do begin
+   FreeAndNil(DelayedFreeItem.Object_);
+  end;
+  fDelayedFreeItemQueues[Index].Finalize;
  end;
 
  FreeAndNil(fGeometryOffsetArrayList);
