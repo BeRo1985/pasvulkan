@@ -3080,10 +3080,9 @@ begin
                                      0,
                                      SizeOf(EmptyIndices));
 
-  fEmptyBottomLevelAccelerationStructure:=AcquireBottomLevelAccelerationStructure(TVkBuildAccelerationStructureFlagsKHR(VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR) or
-                                                                                  TVkBuildAccelerationStructureFlagsKHR(VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_COMPACTION_BIT_KHR),
+  fEmptyBottomLevelAccelerationStructure:=AcquireBottomLevelAccelerationStructure(TVkBuildAccelerationStructureFlagsKHR(VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR),
                                                                                   false,
-                                                                                  true,
+                                                                                  false,
                                                                                   pvAllocationGroupIDScene3DRaytracing,
                                                                                   'Empty');
 
