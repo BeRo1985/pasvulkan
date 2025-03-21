@@ -333,6 +333,7 @@ type EpvRaytracing=class(Exception);
        procedure SetFlags(const aFlags:TVkGeometryInstanceFlagsKHR);
        function GetAccelerationStructure:TpvRaytracingBottomLevelAccelerationStructure;
        procedure SetAccelerationStructure(const aAccelerationStructure:TpvRaytracingBottomLevelAccelerationStructure);
+       procedure ForceSetAccelerationStructure(const aAccelerationStructure:TpvRaytracingBottomLevelAccelerationStructure);
        function GetAccelerationStructureDeviceAddress:TVkDeviceAddress;
        procedure SetAccelerationStructureDeviceAddress(const aAccelerationStructureDeviceAddress:TVkDeviceAddress); 
       public
@@ -1724,13 +1725,13 @@ end;
 procedure TpvRaytracingBottomLevelAccelerationStructureInstance.SetAccelerationStructure(const aAccelerationStructure:TpvRaytracingBottomLevelAccelerationStructure);
 var AddressInfo:TVkAccelerationStructureDeviceAddressInfoKHR;
 begin
- 
- if fAccelerationStructure<>aAccelerationStructure then begin
+
+ if (fAccelerationStructure<>aAccelerationStructure) then begin
 
   fAccelerationStructure:=aAccelerationStructure;
 
   if assigned(fAccelerationStructure) then begin
-  
+
    FillChar(AddressInfo,SizeOf(TVkAccelerationStructureDeviceAddressInfoKHR),#0);
    AddressInfo.sType:=VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_DEVICE_ADDRESS_INFO_KHR;
    AddressInfo.pNext:=nil;
@@ -1744,7 +1745,30 @@ begin
 
   end;
 
- end; 
+ end;
+
+end;
+
+procedure TpvRaytracingBottomLevelAccelerationStructureInstance.ForceSetAccelerationStructure(const aAccelerationStructure:TpvRaytracingBottomLevelAccelerationStructure);
+var AddressInfo:TVkAccelerationStructureDeviceAddressInfoKHR;
+begin
+
+ fAccelerationStructure:=aAccelerationStructure;
+
+ if assigned(fAccelerationStructure) then begin
+
+  FillChar(AddressInfo,SizeOf(TVkAccelerationStructureDeviceAddressInfoKHR),#0);
+  AddressInfo.sType:=VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_DEVICE_ADDRESS_INFO_KHR;
+  AddressInfo.pNext:=nil;
+  AddressInfo.accelerationStructure:=fAccelerationStructure.AccelerationStructure;
+
+  fAccelerationStructureInstancePointer^.accelerationStructureReference:=fDevice.Commands.Commands.GetAccelerationStructureDeviceAddressKHR(fDevice.Handle,@AddressInfo);
+
+ end else begin
+
+  fAccelerationStructureInstancePointer^.accelerationStructureReference:=0;
+
+ end;
 
 end;
 
@@ -3296,7 +3320,7 @@ begin
       BottomLevelAccelerationStructure.fCompactedAccelerationStructureBuffer:=nil;
 
       for InstanceIndex:=0 to BottomLevelAccelerationStructure.fBottomLevelAccelerationStructureInstanceList.Count-1 do begin
-       BottomLevelAccelerationStructure.fBottomLevelAccelerationStructureInstanceList.RawItems[InstanceIndex].fAccelerationStructureInstance.SetAccelerationStructure(BottomLevelAccelerationStructure.fAccelerationStructure);
+       BottomLevelAccelerationStructure.fBottomLevelAccelerationStructureInstanceList.RawItems[InstanceIndex].fAccelerationStructureInstance.ForceSetAccelerationStructure(BottomLevelAccelerationStructure.fAccelerationStructure);
       end;
 
       fBottomLevelAccelerationStructureListChanged:=true;
