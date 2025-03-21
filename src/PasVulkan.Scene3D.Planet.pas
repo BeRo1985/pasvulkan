@@ -12277,11 +12277,12 @@ begin
   MustBeUpdated:=true;
 
   fBLAS:=TpvScene3D(fPlanet.fScene3D).RaytracingBLASManager.AcquireBottomLevelAccelerationStructure(TVkBuildAccelerationStructureFlagsKHR(VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR){ or
-                                                                        TVkBuildAccelerationStructureFlagsKHR(VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_UPDATE_BIT_KHR)} {or
-                                                                        TVkBuildAccelerationStructureFlagsKHR(VK_BUILD_ACCELERATION_STRUCTURE_LOW_MEMORY_BIT_KHR)},
-                                                                        true,
-                                                                        pvAllocationGroupIDScene3DRaytracing,
-                                                                        'Planet');
+                                                                                                    TVkBuildAccelerationStructureFlagsKHR(VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_UPDATE_BIT_KHR)} {or
+                                                                                                    TVkBuildAccelerationStructureFlagsKHR(VK_BUILD_ACCELERATION_STRUCTURE_LOW_MEMORY_BIT_KHR)},
+                                                                                                    true,
+                                                                                                    false,
+                                                                                                    pvAllocationGroupIDScene3DRaytracing,
+                                                                                                    'Planet');
 
   fBLAS.AccelerationStructureGeometry.AddTriangles(fPlanet.fData.fVisualMeshVertexBuffers[fPlanet.fInFlightFrameDataList[aInFlightFrameIndex].fVisualMeshVertexBufferRenderIndex and 1],
                                                    0,

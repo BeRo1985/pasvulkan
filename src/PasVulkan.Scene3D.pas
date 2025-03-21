@@ -6338,14 +6338,15 @@ begin
     try
 
      BLASGroup^.fBLAS:=TpvRaytracing.TBottomLevelAccelerationStructure.Create(fSceneInstance.fRaytracing,
-                                                             IfThen(fDynamicGeometry,
-                                                                    TVkBuildAccelerationStructureFlagsKHR(VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_BUILD_BIT_KHR) or
-                                                                    TVkBuildAccelerationStructureFlagsKHR(VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_UPDATE_BIT_KHR),
-                                                                    TVkBuildAccelerationStructureFlagsKHR(VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR) or
-                                                                    TVkBuildAccelerationStructureFlagsKHR(VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_COMPACTION_BIT_KHR)),
-                                                             fDynamicGeometry,
-                                                             AllocationGroupID,
-                                                             'BLASGroup');
+                                                                              IfThen(fDynamicGeometry,
+                                                                                     TVkBuildAccelerationStructureFlagsKHR(VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_BUILD_BIT_KHR) or
+                                                                                     TVkBuildAccelerationStructureFlagsKHR(VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_UPDATE_BIT_KHR),
+                                                                                     TVkBuildAccelerationStructureFlagsKHR(VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR) or
+                                                                                     TVkBuildAccelerationStructureFlagsKHR(VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_COMPACTION_BIT_KHR)),
+                                                                              fDynamicGeometry,
+                                                                              not fDynamicGeometry,
+                                                                              AllocationGroupID,
+                                                                              'BLASGroup');
 
      BLASGroup^.fMaterialIDs.Clear;
 

@@ -474,6 +474,7 @@ type EpvRaytracing=class(Exception);
               fAllocationGroupID:TpvUInt64;
               fFlags:TVkBuildAccelerationStructureFlagsKHR;
               fDynamicGeometry:Boolean;
+              fCompactable:Boolean;
               fAccelerationStructureGeometry:TpvRaytracingBottomLevelAccelerationStructureGeometry;
               fAccelerationStructure:TpvRaytracingBottomLevelAccelerationStructure;
               fAccelerationStructureSize:TVkDeviceSize;
@@ -493,6 +494,7 @@ type EpvRaytracing=class(Exception);
               constructor Create(const aBLASManager:TpvRaytracing;
                                  const aFlags:TVkBuildAccelerationStructureFlagsKHR=0;
                                  const aDynamicGeometry:Boolean=false;
+                                 const aCompactable:Boolean=false;
                                  const aAllocationGroupID:TpvUInt64=0;
                                  const aName:TpvUTF8String=''); reintroduce;
               destructor Destroy; override;
@@ -512,6 +514,7 @@ type EpvRaytracing=class(Exception);
               property InRaytracingIndex:TpvSizeInt read fInRaytracingIndex;
               property Flags:TVkBuildAccelerationStructureFlagsKHR read fFlags write fFlags;
               property DynamicGeometry:Boolean read fDynamicGeometry write fDynamicGeometry;
+              property Compactable:Boolean read fCompactable write fCompactable;
               property AccelerationStructureGeometry:TpvRaytracingBottomLevelAccelerationStructureGeometry read fAccelerationStructureGeometry;
               property AccelerationStructure:TpvRaytracingBottomLevelAccelerationStructure read fAccelerationStructure write fAccelerationStructure;
               property AccelerationStructureSize:TVkDeviceSize read fAccelerationStructureSize write fAccelerationStructureSize;
@@ -640,6 +643,7 @@ type EpvRaytracing=class(Exception);
        destructor Destroy; override;
        function AcquireBottomLevelAccelerationStructure(const aFlags:TVkBuildAccelerationStructureFlagsKHR=0;
                                                         const aDynamicGeometry:Boolean=false;
+                                                        const aCompactable:Boolean=false;
                                                         const aAllocationGroupID:TpvUInt64=0;
                                                         const aName:TpvUTF8String=''):TBottomLevelAccelerationStructure;
        procedure ReleaseBottomLevelAccelerationStructure(const aBLAS:TBottomLevelAccelerationStructure);
@@ -2143,6 +2147,7 @@ end;
 constructor TpvRaytracing.TBottomLevelAccelerationStructure.Create(const aBLASManager:TpvRaytracing;
                                                                    const aFlags:TVkBuildAccelerationStructureFlagsKHR;
                                                                    const aDynamicGeometry:Boolean;
+                                                                   const aCompactable:Boolean;
                                                                    const aAllocationGroupID:TpvUInt64;
                                                                    const aName:TpvUTF8String);
 begin
@@ -2159,6 +2164,8 @@ begin
  fFlags:=aFlags;
 
  fDynamicGeometry:=aDynamicGeometry;
+
+ fCompactable:=aCompactable;
 
  fAccelerationStructureGeometry:=TpvRaytracingBottomLevelAccelerationStructureGeometry.Create(fRaytracing.fVulkanDevice);
  
@@ -2706,10 +2713,16 @@ end;
 
 function TpvRaytracing.AcquireBottomLevelAccelerationStructure(const aFlags:TVkBuildAccelerationStructureFlagsKHR;
                                                                const aDynamicGeometry:Boolean;
+                                                               const aCompactable:Boolean;
                                                                const aAllocationGroupID:TpvUInt64;
                                                                const aName:TpvUTF8String):TBottomLevelAccelerationStructure;
 begin
- result:=TBottomLevelAccelerationStructure.Create(self,aFlags,aDynamicGeometry,aAllocationGroupID,aName);
+ result:=TBottomLevelAccelerationStructure.Create(self,
+                                                  aFlags,
+                                                  aDynamicGeometry,
+                                                  aCompactable,
+                                                  aAllocationGroupID,
+                                                  aName);
 end;
 
 procedure TpvRaytracing.ReleaseBottomLevelAccelerationStructure(const aBLAS:TBottomLevelAccelerationStructure);
@@ -2943,9 +2956,10 @@ begin
                                      SizeOf(EmptyIndices));
 
   fEmptyBottomLevelAccelerationStructure:=AcquireBottomLevelAccelerationStructure(TVkBuildAccelerationStructureFlagsKHR(VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR),
-                                    false,
-                                    pvAllocationGroupIDScene3DRaytracing,
-                                    'Empty');
+                                                                                  false,
+                                                                                  true,
+                                                                                  pvAllocationGroupIDScene3DRaytracing,
+                                                                                  'Empty');
 
   fEmptyBottomLevelAccelerationStructure.AccelerationStructureGeometry.AddTriangles(fEmptyVertexBuffer,
                                                                   0,
