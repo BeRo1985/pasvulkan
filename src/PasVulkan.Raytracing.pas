@@ -302,7 +302,8 @@ type EpvRaytracing=class(Exception);
        constructor Create(const aDevice:TpvVulkanDevice;
                           const aGeometry:TpvRaytracingBottomLevelAccelerationStructureGeometry=nil;
                           const aFlags:TVkBuildAccelerationStructureFlagsKHR=0;
-                          const aDynamicGeometry:Boolean=false); reintroduce;
+                          const aDynamicGeometry:Boolean=false;
+                          const aAccelerationStructureSize:TVkDeviceSize=0); reintroduce;
        destructor Destroy; override;
        procedure Update(const aGeometry:TpvRaytracingBottomLevelAccelerationStructureGeometry;
                         const aFlags:TVkBuildAccelerationStructureFlagsKHR=0;
@@ -422,7 +423,13 @@ type EpvRaytracing=class(Exception);
      { TpvRaytracing }
      TpvRaytracing=class
       public 
-       type { TDelayedFreeListItem }
+       type TCompactIterationState=
+             (
+              Query,
+              Querying,
+              Compact
+             );
+            { TDelayedFreeListItem }
             TDelayedFreeItem=record
              Object_:TObject;
              Delay:TpvSizeInt; // Delay in iterations
@@ -441,7 +448,21 @@ type EpvRaytracing=class(Exception);
             { TBottomLevelAccelerationStructure }
             TBottomLevelAccelerationStructure=class
              public
-              type TEnqueueState=(None,Build,Update);
+              type TEnqueueState=
+                    (
+                     None,
+                     Build,
+                     Update
+                    );
+                   TCompactState=
+                    (
+                     None,
+                     Query,
+                     Querying,
+                     Compact,
+                     Compacting,
+                     Compacted
+                    );
                    { TInstance }
                    TInstance=class
                     private
@@ -478,17 +499,22 @@ type EpvRaytracing=class(Exception);
               fAccelerationStructureGeometry:TpvRaytracingBottomLevelAccelerationStructureGeometry;
               fAccelerationStructure:TpvRaytracingBottomLevelAccelerationStructure;
               fAccelerationStructureSize:TVkDeviceSize;
+              fCompactedAccelerationStructure:TpvRaytracingBottomLevelAccelerationStructure;
+              fCompactedAccelerationStructureSize:TVkDeviceSize;
               fBuildScratchSize:TVkDeviceSize;
               fUpdateScratchSize:TVkDeviceSize;
               fScratchSize:TVkDeviceSize;
               fAccelerationStructureScratchSize:TVkDeviceSize;
               fAccelerationStructureBuffer:TpvVulkanBuffer;
+              fCompactedAccelerationStructureBuffer:TpvVulkanBuffer;
               fScratchOffset:TVkDeviceSize;
               fScratchPass:TpvUInt64;
               fGeometryInfoBaseIndex:TpvSizeInt;
               fCountGeometries:TpvSizeInt;
               fBottomLevelAccelerationStructureInstanceList:TBottomLevelAccelerationStructureInstanceList;
               fEnqueueState:TEnqueueState;
+              fCompactState:TCompactState;
+              fInRaytracingCompactIndex:TpvSizeInt;
               procedure UpdateBuffer;
              public
               constructor Create(const aBLASManager:TpvRaytracing;
@@ -499,7 +525,8 @@ type EpvRaytracing=class(Exception);
                                  const aName:TpvUTF8String=''); reintroduce;
               destructor Destroy; override;
               procedure AfterConstruction; override;
-              procedure BeforeDestruction; override;              
+              procedure BeforeDestruction; override;
+              procedure RemoveFromCompactList;
               procedure Initialize;
               procedure Update;
               function GetGeometryInfo(const aIndex:TpvSizeInt):PpvRaytracingBLASGeometryInfoBufferItem;
@@ -509,6 +536,7 @@ type EpvRaytracing=class(Exception);
                                        const aFlags:TVkGeometryInstanceFlagsKHR):TInstance;
               procedure ReleaseInstance(const aInstance:TInstance);
               procedure Enqueue(const aUpdate:Boolean=false); // Enqueue for building or updating acceleration structure
+              procedure EnqueueForCompacting;
              public
               property Raytracing:TpvRaytracing read fRaytracing;
               property InRaytracingIndex:TpvSizeInt read fInRaytracingIndex;
@@ -571,6 +599,7 @@ type EpvRaytracing=class(Exception);
        fDelayedFreeAccelerationStructureItemQueues:array[0..1] of TDelayedFreeAccelerationStructureItemQueue;
        fDelayedFreeAccelerationStructureItemQueueIndex:TpvSizeInt;
        fBottomLevelAccelerationStructureList:TBottomLevelAccelerationStructureList;
+       fBottomLevelAccelerationStructureCompactList:TBottomLevelAccelerationStructureList;
        fBottomLevelAccelerationStructureInstanceList:TBottomLevelAccelerationStructure.TBottomLevelAccelerationStructureInstanceList;
        fBottomLevelAccelerationStructureQueue:TBottomLevelAccelerationStructureQueue; // Queue for building or updating acceleration structures
        fBottomLevelAccelerationStructureQueueLock:TPasMPMultipleReaderSingleWriterLock;
@@ -601,6 +630,7 @@ type EpvRaytracing=class(Exception);
        fTopLevelAccelerationStructures:TTopLevelAccelerationStructures;
        fTopLevelAccelerationStructureGenerations:array[-1..MaxInFlightFrames-1] of TpvUInt64;
        fCompactedSizeQueryPool:TpvRaytracingCompactedSizeQueryPool;
+       fCompactIterationState:TCompactIterationState;
       private
        fStagingQueue:TpvVulkanQueue;
        fStagingCommandBuffer:TpvVulkanCommandBuffer;
@@ -628,6 +658,7 @@ type EpvRaytracing=class(Exception);
        procedure HostMemoryBarrier;
        procedure WaitForPreviousFrame;
        procedure HandleEmptyBottomLevelAccelerationStructure;
+       procedure ProcessCompacting;
        procedure ProcessContentUpdate;
        procedure BuildOrUpdateBottomLevelAccelerationStructureMetaData;
        procedure CollectAndCalculateSizesForAccelerationStructures;
@@ -714,7 +745,7 @@ begin
 
  fCount:=0;
 
- fAccelerationStructures:=TpvRaytracingAccelerationStructureList.Create;
+ fAccelerationStructures:=TpvRaytracingAccelerationStructureList.Create(false);
 
  fAccelerationStructureList:=TAccelerationStructureList.Create;
 
@@ -781,7 +812,7 @@ begin
  if not fAccelerationStructureIndexHashMap.ExistKey(aAccelerationStructure.AccelerationStructure) then begin
   fAccelerationStructures.Add(aAccelerationStructure);
   fAccelerationStructureList.Add(aAccelerationStructure.fAccelerationStructure);
-  fAccelerationStructureIndexHashMap[aAccelerationStructure.AccelerationStructure]:=fCount;
+  fAccelerationStructureIndexHashMap[aAccelerationStructure.fAccelerationStructure]:=fCount;
   inc(fCount);
  end; 
 end;
@@ -895,7 +926,7 @@ end;
 function TpvRaytracingCompactedSizeQueryPool.GetCompactedSizeByAccelerationStructure(const aAccelerationStructure:TpvRaytracingAccelerationStructure):TVkDeviceSize;
 var Index:TpvSizeInt;
 begin
- Index:=fResultAccelerationStructureIndexHashMap[aAccelerationStructure.AccelerationStructure];
+ Index:=fResultAccelerationStructureIndexHashMap[aAccelerationStructure.fAccelerationStructure];
  if (Index>=0) and (Index<fCompactedSizes.Count) then begin
   result:=fCompactedSizes[Index];
  end else begin
@@ -1436,7 +1467,8 @@ end;
 constructor TpvRaytracingBottomLevelAccelerationStructure.Create(const aDevice:TpvVulkanDevice;
                                                                  const aGeometry:TpvRaytracingBottomLevelAccelerationStructureGeometry;
                                                                  const aFlags:TVkBuildAccelerationStructureFlagsKHR;
-                                                                 const aDynamicGeometry:Boolean);
+                                                                 const aDynamicGeometry:Boolean;
+                                                                 const aAccelerationStructureSize:TVkDeviceSize);
 var Index:TpvSizeInt;
     MaxPrimCount:TpvUInt32DynamicArray;
 begin
@@ -1483,7 +1515,7 @@ begin
   FillChar(fBuildSizesInfo,SizeOf(TVkAccelerationStructureBuildSizesInfoKHR),#0);
   fBuildSizesInfo.sType:=VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR;
   fBuildSizesInfo.pNext:=nil;
-  fBuildSizesInfo.accelerationStructureSize:=0;
+  fBuildSizesInfo.accelerationStructureSize:=aAccelerationStructureSize;
   fBuildSizesInfo.updateScratchSize:=0;
   fBuildSizesInfo.buildScratchSize:=0;
 
@@ -2174,6 +2206,10 @@ begin
 
  fAccelerationStructureSize:=0;
 
+ fCompactedAccelerationStructure:=nil;
+
+ fCompactedAccelerationStructureSize:=0;
+
  fBuildScratchSize:=0;
 
  fUpdateScratchSize:=0;
@@ -2183,7 +2219,9 @@ begin
  fAccelerationStructureScratchSize:=0;
  
  fAccelerationStructureBuffer:=nil;
- 
+
+ fCompactedAccelerationStructureBuffer:=nil;
+
  fScratchOffset:=0;
  
  fScratchPass:=0;
@@ -2194,6 +2232,12 @@ begin
  
  fBottomLevelAccelerationStructureInstanceList:=TBottomLevelAccelerationStructureInstanceList.Create(false);
 
+ fEnqueueState:=TEnqueueState.None;
+
+ fCompactState:=TCompactState.None;
+
+ fInRaytracingCompactIndex:=-1;
+
 end;
 
 destructor TpvRaytracing.TBottomLevelAccelerationStructure.Destroy;
@@ -2201,6 +2245,10 @@ begin
 
  if assigned(fAccelerationStructure) then begin
   fAccelerationStructure.Finalize;
+ end;
+
+ if assigned(fCompactedAccelerationStructure) then begin
+  fCompactedAccelerationStructure.Finalize;
  end;
 
  while fBottomLevelAccelerationStructureInstanceList.Count>0 do begin
@@ -2216,6 +2264,10 @@ begin
  FreeAndNil(fAccelerationStructure);
 
  FreeAndNil(fAccelerationStructureBuffer);
+
+ FreeAndNil(fCompactedAccelerationStructure);
+
+ FreeAndNil(fCompactedAccelerationStructureBuffer);
 
  FreeAndNil(fBottomLevelAccelerationStructureInstanceList);
 
@@ -2240,23 +2292,71 @@ end;
 procedure TpvRaytracing.TBottomLevelAccelerationStructure.BeforeDestruction;
 var OtherBLAS:TBottomLevelAccelerationStructure;
 begin
- if assigned(fRaytracing) and (fInRaytracingIndex>=0) then begin
-  TPasMPInterlocked.Write(fRaytracing.fDirty,TPasMPBool32(true));
+ if assigned(fRaytracing) and ((fInRaytracingIndex>=0) or (fInRaytracingCompactIndex>=0)) then begin
+
   fRaytracing.fDataLock.Acquire;
   try
-   if (fInRaytracingIndex+1)<fRaytracing.fBottomLevelAccelerationStructureList.Count then begin
-    OtherBLAS:=fRaytracing.fBottomLevelAccelerationStructureList.Items[fRaytracing.fBottomLevelAccelerationStructureList.Count-1];
-    fRaytracing.fBottomLevelAccelerationStructureList.Exchange(fInRaytracingIndex,OtherBLAS.fInRaytracingIndex);
-    OtherBLAS.fInRaytracingIndex:=fInRaytracingIndex;
-    fInRaytracingIndex:=fRaytracing.fBottomLevelAccelerationStructureList.Count-1;
+
+   if fInRaytracingIndex>=0 then begin
+    TPasMPInterlocked.Write(fRaytracing.fDirty,TPasMPBool32(true));
+    if (fInRaytracingIndex+1)<fRaytracing.fBottomLevelAccelerationStructureList.Count then begin
+     OtherBLAS:=fRaytracing.fBottomLevelAccelerationStructureList.Items[fRaytracing.fBottomLevelAccelerationStructureList.Count-1];
+     fRaytracing.fBottomLevelAccelerationStructureList.Exchange(fInRaytracingIndex,OtherBLAS.fInRaytracingIndex);
+     OtherBLAS.fInRaytracingIndex:=fInRaytracingIndex;
+     fInRaytracingIndex:=fRaytracing.fBottomLevelAccelerationStructureList.Count-1;
+    end;
+    fRaytracing.fBottomLevelAccelerationStructureList.ExtractIndex(fInRaytracingIndex);
+    fInRaytracingIndex:=-1;
    end;
-   fRaytracing.fBottomLevelAccelerationStructureList.ExtractIndex(fInRaytracingIndex);
-   fInRaytracingIndex:=-1;
+
+   if fInRaytracingCompactIndex>=0 then begin
+    TPasMPInterlocked.Write(fRaytracing.fDirty,TPasMPBool32(true));
+    if (fInRaytracingCompactIndex+1)<fRaytracing.fBottomLevelAccelerationStructureCompactList.Count then begin
+     OtherBLAS:=fRaytracing.fBottomLevelAccelerationStructureCompactList.Items[fRaytracing.fBottomLevelAccelerationStructureCompactList.Count-1];
+     fRaytracing.fBottomLevelAccelerationStructureCompactList.Exchange(fInRaytracingCompactIndex,OtherBLAS.fInRaytracingCompactIndex);
+     OtherBLAS.fInRaytracingCompactIndex:=fInRaytracingCompactIndex;
+     fInRaytracingCompactIndex:=fRaytracing.fBottomLevelAccelerationStructureCompactList.Count-1;
+    end;
+    fRaytracing.fBottomLevelAccelerationStructureCompactList.ExtractIndex(fInRaytracingCompactIndex);
+    fInRaytracingCompactIndex:=-1;
+   end;
+
   finally
    fRaytracing.fDataLock.Release;
   end;
+
  end;
+
  inherited BeforeDestruction;
+
+end;
+
+procedure TpvRaytracing.TBottomLevelAccelerationStructure.RemoveFromCompactList;
+var OtherBLAS:TBottomLevelAccelerationStructure;
+begin
+
+ if assigned(fRaytracing) and (fInRaytracingCompactIndex>=0) then begin
+
+  fRaytracing.fDataLock.Acquire;
+  try
+
+   if fInRaytracingCompactIndex>=0 then begin
+    if (fInRaytracingCompactIndex+1)<fRaytracing.fBottomLevelAccelerationStructureCompactList.Count then begin
+     OtherBLAS:=fRaytracing.fBottomLevelAccelerationStructureCompactList.Items[fRaytracing.fBottomLevelAccelerationStructureCompactList.Count-1];
+     fRaytracing.fBottomLevelAccelerationStructureCompactList.Exchange(fInRaytracingCompactIndex,OtherBLAS.fInRaytracingCompactIndex);
+     OtherBLAS.fInRaytracingCompactIndex:=fInRaytracingCompactIndex;
+     fInRaytracingCompactIndex:=fRaytracing.fBottomLevelAccelerationStructureCompactList.Count-1;
+    end;
+    fRaytracing.fBottomLevelAccelerationStructureCompactList.ExtractIndex(fInRaytracingCompactIndex);
+    fInRaytracingCompactIndex:=-1;
+   end;
+
+  finally
+   fRaytracing.fDataLock.Release;
+  end;
+
+ end;
+
 end;
 
 procedure TpvRaytracing.TBottomLevelAccelerationStructure.Initialize;
@@ -2299,6 +2399,10 @@ begin
 
   if assigned(fAccelerationStructureBuffer) then begin
    fRaytracing.FreeObject(fAccelerationStructureBuffer);
+  end;
+
+  if assigned(fCompactedAccelerationStructureBuffer) then begin
+   fRaytracing.FreeObject(fCompactedAccelerationStructureBuffer);
   end;
 
  end;
@@ -2396,6 +2500,14 @@ begin
   fRaytracing.fBottomLevelAccelerationStructureQueue.Enqueue(self);
  end;
 end;    
+
+procedure TpvRaytracing.TBottomLevelAccelerationStructure.EnqueueForCompacting;
+begin
+ if fCompactable and (fCompactState=TCompactState.None) and (fInRaytracingCompactIndex<0) then begin
+  fCompactState:=TCompactState.Query;
+  fInRaytracingCompactIndex:=fRaytracing.fBottomLevelAccelerationStructureCompactList.Add(self);
+ end;
+end;
 
 { TpvRaytracing.TBottomLevelAccelerationStructureQueue }
 
@@ -2502,6 +2614,8 @@ begin
  
  fBottomLevelAccelerationStructureList:=TBottomLevelAccelerationStructureList.Create(false);
 
+ fBottomLevelAccelerationStructureCompactList:=TBottomLevelAccelerationStructureList.Create(false);
+
  fBottomLevelAccelerationStructureInstanceList:=TBottomLevelAccelerationStructure.TBottomLevelAccelerationStructureInstanceList.Create(false);
 
  fBottomLevelAccelerationStructureQueue:=TBottomLevelAccelerationStructureQueue.Create(self);
@@ -2584,6 +2698,8 @@ begin
 
  fCompactedSizeQueryPool:=TpvRaytracingCompactedSizeQueryPool.Create(fDevice);
 
+ fCompactIterationState:=TCompactIterationState.Query;
+
 end;
 
 destructor TpvRaytracing.Destroy;
@@ -2644,6 +2760,10 @@ begin
 
  FreeAndNil(fBottomLevelAccelerationStructureQueue);
 
+ FreeAndNil(fBottomLevelAccelerationStructureCompactList);
+
+ FreeAndNil(fBottomLevelAccelerationStructureInstanceList);
+ 
  FreeAndNil(fBottomLevelAccelerationStructureList);
 
  FreeAndNil(fTopLevelAccelerationStructure);
@@ -3022,6 +3142,183 @@ begin
 
 end;
 
+procedure TpvRaytracing.ProcessCompacting;
+var Index,InstanceIndex:TpvSizeInt;
+    BottomLevelAccelerationStructure:TBottomLevelAccelerationStructure;
+    First:Boolean;
+    Size:TVkDeviceSize;
+begin
+
+ exit; // TODO: Make it work
+
+ /////////////////////////////////////////////////////////////////////////////
+ // Compact acceleration structures                                         //
+ /////////////////////////////////////////////////////////////////////////////
+
+ repeat
+
+  // Compact state machine of three states for compacting acceleration structures
+
+  case fCompactIterationState of
+
+   // Pass #1: Query the size of the compacted acceleration structures
+   TCompactIterationState.Query:begin
+
+    if fBottomLevelAccelerationStructureCompactList.Count>0 then begin
+     First:=true;
+     for Index:=0 to fBottomLevelAccelerationStructureCompactList.Count-1 do begin
+      BottomLevelAccelerationStructure:=fBottomLevelAccelerationStructureCompactList.RawItems[Index];
+      if assigned(BottomLevelAccelerationStructure) and
+         assigned(BottomLevelAccelerationStructure.fAccelerationStructure) and
+         assigned(BottomLevelAccelerationStructure.fAccelerationStructureBuffer) and
+         (not (assigned(BottomLevelAccelerationStructure.fCompactedAccelerationStructure) or
+               assigned(BottomLevelAccelerationStructure.fCompactedAccelerationStructureBuffer))) and
+         (BottomLevelAccelerationStructure.fCompactState=TBottomLevelAccelerationStructure.TCompactState.Query) then begin
+       BottomLevelAccelerationStructure.fCompactState:=TBottomLevelAccelerationStructure.TCompactState.Querying;
+       if First then begin
+        First:=false;
+        fCompactedSizeQueryPool.Reset;
+       end;
+       fCompactedSizeQueryPool.AddAccelerationStructure(BottomLevelAccelerationStructure.fAccelerationStructure);
+      end;
+     end;
+     if not First then begin
+      fCompactedSizeQueryPool.Query(fCommandBuffer);
+      fCompactIterationState:=TCompactIterationState.Querying;
+     end;
+    end;
+
+   end;
+
+   // Pass #2: Get the results of the compacted acceleration structures and execute the compaction
+   TCompactIterationState.Querying:begin
+
+    fCompactedSizeQueryPool.GetResults;
+
+    // Must traverse the list in reverse order, because we may remove items from the list
+    for Index:=fBottomLevelAccelerationStructureCompactList.Count-1 downto 0 do begin
+
+     BottomLevelAccelerationStructure:=fBottomLevelAccelerationStructureCompactList.RawItems[Index];
+
+     if assigned(BottomLevelAccelerationStructure) and
+        assigned(BottomLevelAccelerationStructure.fAccelerationStructure) and
+        assigned(BottomLevelAccelerationStructure.fAccelerationStructureBuffer) and
+        (not (assigned(BottomLevelAccelerationStructure.fCompactedAccelerationStructure) or
+              assigned(BottomLevelAccelerationStructure.fCompactedAccelerationStructureBuffer))) and
+        (BottomLevelAccelerationStructure.fCompactState=TBottomLevelAccelerationStructure.TCompactState.Querying) then begin
+
+      Size:=fCompactedSizeQueryPool.GetCompactedSizeByAccelerationStructure(BottomLevelAccelerationStructure.fAccelerationStructure);
+
+      if Size>0 then begin
+
+       if Size<BottomLevelAccelerationStructure.fAccelerationStructureBuffer.Size then begin
+
+        FreeObject(BottomLevelAccelerationStructure.fCompactedAccelerationStructure);
+        FreeObject(BottomLevelAccelerationStructure.fCompactedAccelerationStructureBuffer);
+
+        BottomLevelAccelerationStructure.fCompactedAccelerationStructureSize:=Size;
+        BottomLevelAccelerationStructure.fCompactState:=TBottomLevelAccelerationStructure.TCompactState.Compact;
+
+        BottomLevelAccelerationStructure.fCompactedAccelerationStructureBuffer:=TpvVulkanBuffer.Create(fDevice,
+                                                                                                       BottomLevelAccelerationStructure.fCompactedAccelerationStructureSize,
+                                                                                                       TVkBufferUsageFlags(VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR) or TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT),
+                                                                                                       TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                                                                       [],
+                                                                                                       0,
+                                                                                                       TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                                                                       0,
+                                                                                                       0,
+                                                                                                       0,
+                                                                                                       0,
+                                                                                                       0,
+                                                                                                       0,
+                                                                                                       [],
+                                                                                                       256,
+                                                                                                       BottomLevelAccelerationStructure.fAllocationGroupID,
+                                                                                                       BottomLevelAccelerationStructure.fName+'.BLASCompactedBuffer'
+                                                                                                      );
+        fDevice.DebugUtils.SetObjectName(BottomLevelAccelerationStructure.fCompactedAccelerationStructureBuffer.Handle,VK_OBJECT_TYPE_BUFFER,BottomLevelAccelerationStructure.fName+'.BLASCompactedBuffer');
+
+        BottomLevelAccelerationStructure.fCompactedAccelerationStructure:=TpvRaytracingBottomLevelAccelerationStructure.Create(fDevice,
+                                                                                                                               nil,
+                                                                                                                               BottomLevelAccelerationStructure.fFlags,
+                                                                                                                               BottomLevelAccelerationStructure.fDynamicGeometry,
+                                                                                                                               BottomLevelAccelerationStructure.fCompactedAccelerationStructureSize);
+
+        BottomLevelAccelerationStructure.fCompactedAccelerationStructure.Initialize(BottomLevelAccelerationStructure.fCompactedAccelerationStructureBuffer,0);
+
+        BottomLevelAccelerationStructure.fCompactedAccelerationStructure.CopyFrom(fCommandBuffer,
+                                                                                  BottomLevelAccelerationStructure.fAccelerationStructure,
+                                                                                  true);
+
+       end else begin
+        BottomLevelAccelerationStructure.RemoveFromCompactList;
+        BottomLevelAccelerationStructure.fCompactState:=TBottomLevelAccelerationStructure.TCompactState.Compacted;
+       end;
+      end else begin
+       BottomLevelAccelerationStructure.RemoveFromCompactList;
+       BottomLevelAccelerationStructure.fCompactState:=TBottomLevelAccelerationStructure.TCompactState.Compacted;
+      end;
+     end;
+    end;
+
+    TpvRaytracingAccelerationStructure.MemoryBarrier(fCommandBuffer);
+
+    fCompactIterationState:=TCompactIterationState.Compact;
+
+   end;
+
+   // Pass #3: Take the compacted acceleration structures into use and free the old ones
+   TCompactIterationState.Compact:begin
+
+    // Must traverse the list in reverse order, because we may remove items from the list
+    for Index:=fBottomLevelAccelerationStructureCompactList.Count-1 downto 0 do begin
+
+     BottomLevelAccelerationStructure:=fBottomLevelAccelerationStructureCompactList.RawItems[Index];
+
+     if assigned(BottomLevelAccelerationStructure) and
+        assigned(BottomLevelAccelerationStructure.fAccelerationStructure) and
+        assigned(BottomLevelAccelerationStructure.fAccelerationStructureBuffer) and
+        assigned(BottomLevelAccelerationStructure.fCompactedAccelerationStructure) and
+        assigned(BottomLevelAccelerationStructure.fCompactedAccelerationStructureBuffer) and
+        (BottomLevelAccelerationStructure.fCompactState=TBottomLevelAccelerationStructure.TCompactState.Compact) then begin
+
+      BottomLevelAccelerationStructure.RemoveFromCompactList;
+      BottomLevelAccelerationStructure.fCompactState:=TBottomLevelAccelerationStructure.TCompactState.Compacted;
+
+      FreeAccelerationStructureConditionallyWithBuffer(BottomLevelAccelerationStructure.fAccelerationStructure,BottomLevelAccelerationStructure.fAccelerationStructureBuffer,VK_WHOLE_SIZE);
+
+      BottomLevelAccelerationStructure.fAccelerationStructure.fAccelerationStructure:=BottomLevelAccelerationStructure.fCompactedAccelerationStructure.fAccelerationStructure;
+      BottomLevelAccelerationStructure.fCompactedAccelerationStructure.fAccelerationStructure:=VK_NULL_HANDLE;
+      FreeObject(BottomLevelAccelerationStructure.fCompactedAccelerationStructure);
+
+      BottomLevelAccelerationStructure.fAccelerationStructureBuffer:=BottomLevelAccelerationStructure.fCompactedAccelerationStructureBuffer;
+      BottomLevelAccelerationStructure.fCompactedAccelerationStructureBuffer:=nil;
+
+      for InstanceIndex:=0 to BottomLevelAccelerationStructure.fBottomLevelAccelerationStructureInstanceList.Count-1 do begin
+       BottomLevelAccelerationStructure.fBottomLevelAccelerationStructureInstanceList.RawItems[InstanceIndex].fAccelerationStructureInstance.SetAccelerationStructure(BottomLevelAccelerationStructure.fAccelerationStructure);
+      end;
+
+      fBottomLevelAccelerationStructureListChanged:=true;
+
+     end;
+
+    end;
+
+   end;
+
+   else begin
+
+   end;
+
+  end;
+
+  break;
+
+ until false;
+
+end;
+
 procedure TpvRaytracing.ProcessContentUpdate;
 begin
 
@@ -3243,6 +3540,9 @@ begin
                                      nil,
                                      fAccelerationStructureBuildQueue);
 
+    if BLAS.fCompactable and (BLAS.fEnqueueState=TBottomLevelAccelerationStructure.TEnqueueState.Build) and not BLAS.fDynamicGeometry then begin
+     BLAS.EnqueueForCompacting;
+    end;
 
    end;
 
@@ -3600,7 +3900,7 @@ end;
 procedure TpvRaytracing.FreeAccelerationStructureConditionallyWithBuffer(var aAccelerationStructure;var aBuffer:TpvVulkanBuffer;const aSize:TVkDeviceSize);
 begin
 
- if assigned(TObject(aAccelerationStructure)) or (assigned(aBuffer) and (aBuffer.Size<aSize)) then begin
+ if assigned(TObject(aAccelerationStructure)) or (assigned(aBuffer) and ((aSize=VK_WHOLE_SIZE) or (aBuffer.Size<aSize))) then begin
 
   if fSafeRelease then begin
 
@@ -3612,7 +3912,7 @@ begin
     TpvRaytracingAccelerationStructure(aAccelerationStructure).Finalize;
    end;
 
-   if assigned(aBuffer) and (aBuffer.Size<aSize) then begin
+   if assigned(aBuffer) and ((aSize=VK_WHOLE_SIZE) or (aBuffer.Size<aSize)) then begin
     try
      aBuffer.Free;
     finally
@@ -3622,7 +3922,7 @@ begin
 
   end else begin
 
-   if assigned(aBuffer) and (aBuffer.Size<aSize) then begin
+   if assigned(aBuffer) and ((aSize=VK_WHOLE_SIZE) or (aBuffer.Size<aSize)) then begin
     try
      DelayedFreeObject(aBuffer,2);
     finally
@@ -3729,6 +4029,8 @@ begin
    WaitForPreviousFrame;
 
    HandleEmptyBottomLevelAccelerationStructure;
+
+   ProcessCompacting;
 
    ProcessContentUpdate;
 
