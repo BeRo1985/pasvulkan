@@ -593,6 +593,7 @@ type EpvRaytracing=class(Exception);
        fDevice:TpvVulkanDevice;
        fCountInFlightFrames:TpvSizeInt;
        fSafeRelease:TPasMPBool32;
+       fUseCompacting:TPasMPBool32;
        fLock:TPasMPCriticalSection;
        fDataLock:TPasMPSlimReaderWriterLock;
        fDelayedFreeItemQueues:array[0..1] of TDelayedFreeItemQueue;
@@ -698,6 +699,8 @@ type EpvRaytracing=class(Exception);
        property Device:TpvVulkanDevice read fDevice;
       public
        property SafeRelease:TPasMPBool32 read fSafeRelease write fSafeRelease;
+      public
+       property UseCompacting:TPasMPBool32 read fUseCompacting write fUseCompacting;
       public
        property BottomLevelAccelerationStructureList:TBottomLevelAccelerationStructureList read fBottomLevelAccelerationStructureList;
       public
@@ -2527,7 +2530,7 @@ end;
 
 procedure TpvRaytracing.TBottomLevelAccelerationStructure.EnqueueForCompacting;
 begin
- if fCompactable and (fCompactState=TCompactState.None) and (fInRaytracingCompactIndex<0) then begin
+ if fRaytracing.fUseCompacting and fCompactable and (fCompactState=TCompactState.None) and (fInRaytracingCompactIndex<0) then begin
   fCompactState:=TCompactState.Query;
   fInRaytracingCompactIndex:=fRaytracing.fBottomLevelAccelerationStructureCompactList.Add(self);
  end;
@@ -2631,6 +2634,8 @@ begin
  fCountInFlightFrames:=aCountInFlightFrames;
 
  fSafeRelease:=false;
+
+ fUseCompacting:=false;
 
  fLock:=TPasMPCriticalSection.Create;
 
@@ -3173,173 +3178,188 @@ var Index,InstanceIndex:TpvSizeInt;
     Size:TVkDeviceSize;
 begin
 
- exit; // TODO: Make it work
-
  /////////////////////////////////////////////////////////////////////////////
  // Compact acceleration structures                                         //
  /////////////////////////////////////////////////////////////////////////////
 
- repeat
+ if fUseCompacting then begin
 
-  // Compact state machine of three states for compacting acceleration structures
+  repeat
 
-  case fCompactIterationState of
+   // Compact state machine of three states for compacting acceleration structures
 
-   // Pass #1: Query the size of the compacted acceleration structures
-   TCompactIterationState.Query:begin
+   case fCompactIterationState of
 
-    if fBottomLevelAccelerationStructureCompactList.Count>0 then begin
-     First:=true;
-     for Index:=0 to fBottomLevelAccelerationStructureCompactList.Count-1 do begin
+    // Pass #1: Query the size of the compacted acceleration structures
+    TCompactIterationState.Query:begin
+
+     if fBottomLevelAccelerationStructureCompactList.Count>0 then begin
+      First:=true;
+      for Index:=0 to fBottomLevelAccelerationStructureCompactList.Count-1 do begin
+       BottomLevelAccelerationStructure:=fBottomLevelAccelerationStructureCompactList.RawItems[Index];
+       if assigned(BottomLevelAccelerationStructure) and
+          assigned(BottomLevelAccelerationStructure.fAccelerationStructure) and
+          assigned(BottomLevelAccelerationStructure.fAccelerationStructureBuffer) and
+          (not (assigned(BottomLevelAccelerationStructure.fCompactedAccelerationStructure) or
+                assigned(BottomLevelAccelerationStructure.fCompactedAccelerationStructureBuffer))) and
+          (BottomLevelAccelerationStructure.fCompactState=TBottomLevelAccelerationStructure.TCompactState.Query) then begin
+        BottomLevelAccelerationStructure.fCompactState:=TBottomLevelAccelerationStructure.TCompactState.Querying;
+        if First then begin
+         First:=false;
+         fCompactedSizeQueryPool.Reset;
+        end;
+        fCompactedSizeQueryPool.AddAccelerationStructure(BottomLevelAccelerationStructure.fAccelerationStructure);
+       end;
+      end;
+      if not First then begin
+       fCompactedSizeQueryPool.Query(fCommandBuffer);
+       fCompactIterationState:=TCompactIterationState.Querying;
+      end;
+     end;
+
+    end;
+
+    // Pass #2: Get the results of the compacted acceleration structures and execute the compaction
+    TCompactIterationState.Querying:begin
+
+     fCompactedSizeQueryPool.GetResults;
+
+     // Must traverse the list in reverse order, because we may remove items from the list
+     for Index:=fBottomLevelAccelerationStructureCompactList.Count-1 downto 0 do begin
+
       BottomLevelAccelerationStructure:=fBottomLevelAccelerationStructureCompactList.RawItems[Index];
+
       if assigned(BottomLevelAccelerationStructure) and
          assigned(BottomLevelAccelerationStructure.fAccelerationStructure) and
          assigned(BottomLevelAccelerationStructure.fAccelerationStructureBuffer) and
          (not (assigned(BottomLevelAccelerationStructure.fCompactedAccelerationStructure) or
                assigned(BottomLevelAccelerationStructure.fCompactedAccelerationStructureBuffer))) and
-         (BottomLevelAccelerationStructure.fCompactState=TBottomLevelAccelerationStructure.TCompactState.Query) then begin
-       BottomLevelAccelerationStructure.fCompactState:=TBottomLevelAccelerationStructure.TCompactState.Querying;
-       if First then begin
-        First:=false;
-        fCompactedSizeQueryPool.Reset;
-       end;
-       fCompactedSizeQueryPool.AddAccelerationStructure(BottomLevelAccelerationStructure.fAccelerationStructure);
-      end;
-     end;
-     if not First then begin
-      fCompactedSizeQueryPool.Query(fCommandBuffer);
-      fCompactIterationState:=TCompactIterationState.Querying;
-     end;
-    end;
+         (BottomLevelAccelerationStructure.fCompactState=TBottomLevelAccelerationStructure.TCompactState.Querying) then begin
 
-   end;
+       Size:=fCompactedSizeQueryPool.GetCompactedSizeByAccelerationStructure(BottomLevelAccelerationStructure.fAccelerationStructure);
 
-   // Pass #2: Get the results of the compacted acceleration structures and execute the compaction
-   TCompactIterationState.Querying:begin
+       if Size>0 then begin
 
-    fCompactedSizeQueryPool.GetResults;
+        if Size<BottomLevelAccelerationStructure.fAccelerationStructureBuffer.Size then begin
 
-    // Must traverse the list in reverse order, because we may remove items from the list
-    for Index:=fBottomLevelAccelerationStructureCompactList.Count-1 downto 0 do begin
+         FreeObject(BottomLevelAccelerationStructure.fCompactedAccelerationStructure);
+         FreeObject(BottomLevelAccelerationStructure.fCompactedAccelerationStructureBuffer);
 
-     BottomLevelAccelerationStructure:=fBottomLevelAccelerationStructureCompactList.RawItems[Index];
+         BottomLevelAccelerationStructure.fCompactedAccelerationStructureSize:=Size;
+         BottomLevelAccelerationStructure.fCompactState:=TBottomLevelAccelerationStructure.TCompactState.Compact;
 
-     if assigned(BottomLevelAccelerationStructure) and
-        assigned(BottomLevelAccelerationStructure.fAccelerationStructure) and
-        assigned(BottomLevelAccelerationStructure.fAccelerationStructureBuffer) and
-        (not (assigned(BottomLevelAccelerationStructure.fCompactedAccelerationStructure) or
-              assigned(BottomLevelAccelerationStructure.fCompactedAccelerationStructureBuffer))) and
-        (BottomLevelAccelerationStructure.fCompactState=TBottomLevelAccelerationStructure.TCompactState.Querying) then begin
+         BottomLevelAccelerationStructure.fCompactedAccelerationStructureBuffer:=TpvVulkanBuffer.Create(fDevice,
+                                                                                                        BottomLevelAccelerationStructure.fCompactedAccelerationStructureSize,
+                                                                                                        TVkBufferUsageFlags(VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR) or TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT),
+                                                                                                        TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                                                                        [],
+                                                                                                        0,
+                                                                                                        TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                                                                        0,
+                                                                                                        0,
+                                                                                                        0,
+                                                                                                        0,
+                                                                                                        0,
+                                                                                                        0,
+                                                                                                        [],
+                                                                                                        256,
+                                                                                                        BottomLevelAccelerationStructure.fAllocationGroupID,
+                                                                                                        BottomLevelAccelerationStructure.fName+'.BLASCompactedBuffer'
+                                                                                                       );
+         fDevice.DebugUtils.SetObjectName(BottomLevelAccelerationStructure.fCompactedAccelerationStructureBuffer.Handle,VK_OBJECT_TYPE_BUFFER,BottomLevelAccelerationStructure.fName+'.BLASCompactedBuffer');
 
-      Size:=fCompactedSizeQueryPool.GetCompactedSizeByAccelerationStructure(BottomLevelAccelerationStructure.fAccelerationStructure);
+         BottomLevelAccelerationStructure.fCompactedAccelerationStructure:=TpvRaytracingBottomLevelAccelerationStructure.Create(fDevice,
+                                                                                                                                nil,
+                                                                                                                                BottomLevelAccelerationStructure.fFlags,
+                                                                                                                                BottomLevelAccelerationStructure.fDynamicGeometry,
+                                                                                                                                BottomLevelAccelerationStructure.fCompactedAccelerationStructureSize);
 
-      if Size>0 then begin
+         BottomLevelAccelerationStructure.fCompactedAccelerationStructure.Initialize(BottomLevelAccelerationStructure.fCompactedAccelerationStructureBuffer,0);
 
-       if Size<BottomLevelAccelerationStructure.fAccelerationStructureBuffer.Size then begin
+         BottomLevelAccelerationStructure.fCompactedAccelerationStructure.CopyFrom(fCommandBuffer,
+                                                                                   BottomLevelAccelerationStructure.fAccelerationStructure,
+                                                                                   true);
 
-        FreeObject(BottomLevelAccelerationStructure.fCompactedAccelerationStructure);
-        FreeObject(BottomLevelAccelerationStructure.fCompactedAccelerationStructureBuffer);
-
-        BottomLevelAccelerationStructure.fCompactedAccelerationStructureSize:=Size;
-        BottomLevelAccelerationStructure.fCompactState:=TBottomLevelAccelerationStructure.TCompactState.Compact;
-
-        BottomLevelAccelerationStructure.fCompactedAccelerationStructureBuffer:=TpvVulkanBuffer.Create(fDevice,
-                                                                                                       BottomLevelAccelerationStructure.fCompactedAccelerationStructureSize,
-                                                                                                       TVkBufferUsageFlags(VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR) or TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT),
-                                                                                                       TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                                                                                       [],
-                                                                                                       0,
-                                                                                                       TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
-                                                                                                       0,
-                                                                                                       0,
-                                                                                                       0,
-                                                                                                       0,
-                                                                                                       0,
-                                                                                                       0,
-                                                                                                       [],
-                                                                                                       256,
-                                                                                                       BottomLevelAccelerationStructure.fAllocationGroupID,
-                                                                                                       BottomLevelAccelerationStructure.fName+'.BLASCompactedBuffer'
-                                                                                                      );
-        fDevice.DebugUtils.SetObjectName(BottomLevelAccelerationStructure.fCompactedAccelerationStructureBuffer.Handle,VK_OBJECT_TYPE_BUFFER,BottomLevelAccelerationStructure.fName+'.BLASCompactedBuffer');
-
-        BottomLevelAccelerationStructure.fCompactedAccelerationStructure:=TpvRaytracingBottomLevelAccelerationStructure.Create(fDevice,
-                                                                                                                               nil,
-                                                                                                                               BottomLevelAccelerationStructure.fFlags,
-                                                                                                                               BottomLevelAccelerationStructure.fDynamicGeometry,
-                                                                                                                               BottomLevelAccelerationStructure.fCompactedAccelerationStructureSize);
-
-        BottomLevelAccelerationStructure.fCompactedAccelerationStructure.Initialize(BottomLevelAccelerationStructure.fCompactedAccelerationStructureBuffer,0);
-
-        BottomLevelAccelerationStructure.fCompactedAccelerationStructure.CopyFrom(fCommandBuffer,
-                                                                                  BottomLevelAccelerationStructure.fAccelerationStructure,
-                                                                                  true);
-
+        end else begin
+         BottomLevelAccelerationStructure.RemoveFromCompactList;
+         BottomLevelAccelerationStructure.fCompactState:=TBottomLevelAccelerationStructure.TCompactState.Compacted;
+        end;
        end else begin
         BottomLevelAccelerationStructure.RemoveFromCompactList;
         BottomLevelAccelerationStructure.fCompactState:=TBottomLevelAccelerationStructure.TCompactState.Compacted;
        end;
-      end else begin
+      end;
+     end;
+
+     TpvRaytracingAccelerationStructure.MemoryBarrier(fCommandBuffer);
+
+     fCompactIterationState:=TCompactIterationState.Compact;
+
+    end;
+
+    // Pass #3: Take the compacted acceleration structures into use and free the old ones
+    TCompactIterationState.Compact:begin
+
+     // Must traverse the list in reverse order, because we may remove items from the list
+     for Index:=fBottomLevelAccelerationStructureCompactList.Count-1 downto 0 do begin
+
+      BottomLevelAccelerationStructure:=fBottomLevelAccelerationStructureCompactList.RawItems[Index];
+
+      if assigned(BottomLevelAccelerationStructure) and
+         assigned(BottomLevelAccelerationStructure.fAccelerationStructure) and
+         assigned(BottomLevelAccelerationStructure.fAccelerationStructureBuffer) and
+         assigned(BottomLevelAccelerationStructure.fCompactedAccelerationStructure) and
+         assigned(BottomLevelAccelerationStructure.fCompactedAccelerationStructureBuffer) and
+         (BottomLevelAccelerationStructure.fCompactState=TBottomLevelAccelerationStructure.TCompactState.Compact) then begin
+
        BottomLevelAccelerationStructure.RemoveFromCompactList;
        BottomLevelAccelerationStructure.fCompactState:=TBottomLevelAccelerationStructure.TCompactState.Compacted;
+
+       FreeAccelerationStructureConditionallyWithBuffer(BottomLevelAccelerationStructure.fAccelerationStructure,BottomLevelAccelerationStructure.fAccelerationStructureBuffer,VK_WHOLE_SIZE);
+
+       BottomLevelAccelerationStructure.fAccelerationStructure.fAccelerationStructure:=BottomLevelAccelerationStructure.fCompactedAccelerationStructure.fAccelerationStructure;
+       BottomLevelAccelerationStructure.fCompactedAccelerationStructure.fAccelerationStructure:=VK_NULL_HANDLE;
+       FreeObject(BottomLevelAccelerationStructure.fCompactedAccelerationStructure);
+
+       BottomLevelAccelerationStructure.fAccelerationStructureBuffer:=BottomLevelAccelerationStructure.fCompactedAccelerationStructureBuffer;
+       BottomLevelAccelerationStructure.fCompactedAccelerationStructureBuffer:=nil;
+
+       for InstanceIndex:=0 to BottomLevelAccelerationStructure.fBottomLevelAccelerationStructureInstanceList.Count-1 do begin
+        BottomLevelAccelerationStructure.fBottomLevelAccelerationStructureInstanceList.RawItems[InstanceIndex].fAccelerationStructureInstance.ForceSetAccelerationStructure(BottomLevelAccelerationStructure.fAccelerationStructure);
+       end;
+
+       fBottomLevelAccelerationStructureListChanged:=true;
+
       end;
-     end;
-    end;
-
-    TpvRaytracingAccelerationStructure.MemoryBarrier(fCommandBuffer);
-
-    fCompactIterationState:=TCompactIterationState.Compact;
-
-   end;
-
-   // Pass #3: Take the compacted acceleration structures into use and free the old ones
-   TCompactIterationState.Compact:begin
-
-    // Must traverse the list in reverse order, because we may remove items from the list
-    for Index:=fBottomLevelAccelerationStructureCompactList.Count-1 downto 0 do begin
-
-     BottomLevelAccelerationStructure:=fBottomLevelAccelerationStructureCompactList.RawItems[Index];
-
-     if assigned(BottomLevelAccelerationStructure) and
-        assigned(BottomLevelAccelerationStructure.fAccelerationStructure) and
-        assigned(BottomLevelAccelerationStructure.fAccelerationStructureBuffer) and
-        assigned(BottomLevelAccelerationStructure.fCompactedAccelerationStructure) and
-        assigned(BottomLevelAccelerationStructure.fCompactedAccelerationStructureBuffer) and
-        (BottomLevelAccelerationStructure.fCompactState=TBottomLevelAccelerationStructure.TCompactState.Compact) then begin
-
-      BottomLevelAccelerationStructure.RemoveFromCompactList;
-      BottomLevelAccelerationStructure.fCompactState:=TBottomLevelAccelerationStructure.TCompactState.Compacted;
-
-      FreeAccelerationStructureConditionallyWithBuffer(BottomLevelAccelerationStructure.fAccelerationStructure,BottomLevelAccelerationStructure.fAccelerationStructureBuffer,VK_WHOLE_SIZE);
-
-      BottomLevelAccelerationStructure.fAccelerationStructure.fAccelerationStructure:=BottomLevelAccelerationStructure.fCompactedAccelerationStructure.fAccelerationStructure;
-      BottomLevelAccelerationStructure.fCompactedAccelerationStructure.fAccelerationStructure:=VK_NULL_HANDLE;
-      FreeObject(BottomLevelAccelerationStructure.fCompactedAccelerationStructure);
-
-      BottomLevelAccelerationStructure.fAccelerationStructureBuffer:=BottomLevelAccelerationStructure.fCompactedAccelerationStructureBuffer;
-      BottomLevelAccelerationStructure.fCompactedAccelerationStructureBuffer:=nil;
-
-      for InstanceIndex:=0 to BottomLevelAccelerationStructure.fBottomLevelAccelerationStructureInstanceList.Count-1 do begin
-       BottomLevelAccelerationStructure.fBottomLevelAccelerationStructureInstanceList.RawItems[InstanceIndex].fAccelerationStructureInstance.ForceSetAccelerationStructure(BottomLevelAccelerationStructure.fAccelerationStructure);
-      end;
-
-      fBottomLevelAccelerationStructureListChanged:=true;
 
      end;
 
     end;
 
+    else begin
+
+    end;
+
    end;
 
-   else begin
+   break;
 
+  until false;
+
+ end else begin
+
+  if fBottomLevelAccelerationStructureCompactList.Count>0 then begin
+
+   // Must traverse the list in reverse order, because we may remove items from the list
+   for Index:=fBottomLevelAccelerationStructureCompactList.Count-1 downto 0 do begin
+    BottomLevelAccelerationStructure:=fBottomLevelAccelerationStructureCompactList.RawItems[Index];
+    BottomLevelAccelerationStructure.RemoveFromCompactList;
+    BottomLevelAccelerationStructure.fCompactState:=TBottomLevelAccelerationStructure.TCompactState.Compacted;
    end;
 
   end;
 
-  break;
-
- until false;
+ end;
 
 end;
 
@@ -3564,7 +3584,7 @@ begin
                                      nil,
                                      fAccelerationStructureBuildQueue);
 
-    if BLAS.fCompactable and (BLAS.fEnqueueState=TBottomLevelAccelerationStructure.TEnqueueState.Build) and not BLAS.fDynamicGeometry then begin
+    if fUseCompacting and BLAS.fCompactable and (BLAS.fEnqueueState=TBottomLevelAccelerationStructure.TEnqueueState.Build) and not BLAS.fDynamicGeometry then begin
      BLAS.EnqueueForCompacting;
     end;
 
@@ -3760,12 +3780,15 @@ begin
      (fTopLevelAccelerationStructure.Instances.data.deviceAddress<>fTopLevelAccelerationStructureBottomLevelAccelerationStructureInstancesBuffer.DeviceAddress) or
      (fTopLevelAccelerationStructure.CountInstances<>fAccelerationStructureInstanceKHRArrayList.Count) then begin
 
+   if (fTopLevelAccelerationStructure.Instances.data.deviceAddress<>fTopLevelAccelerationStructureBottomLevelAccelerationStructureInstancesBuffer.DeviceAddress) or
+      (fTopLevelAccelerationStructure.CountInstances<>fAccelerationStructureInstanceKHRArrayList.Count) then begin
+    fMustTopLevelAccelerationStructureUpdate:=true;
+   end;
+
    fTopLevelAccelerationStructure.Update(fTopLevelAccelerationStructureBottomLevelAccelerationStructureInstancesBuffer.DeviceAddress,
                                          fAccelerationStructureInstanceKHRArrayList.Count,
                                          TVkBuildAccelerationStructureFlagsKHR(VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR),
                                          false);
-
-   //fMustTopLevelAccelerationStructureUpdate:=true;
 
   end;
 
