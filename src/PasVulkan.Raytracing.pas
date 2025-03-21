@@ -2166,11 +2166,11 @@ begin
    TPasMPInterlocked.Write(fRaytracing.fDirty,TPasMPBool32(true));
    if (fInRaytracingIndex+1)<fRaytracing.fBottomLevelAccelerationStructureInstanceList.Count then begin
     OtherBLASInstance:=fRaytracing.fBottomLevelAccelerationStructureInstanceList.Items[fRaytracing.fBottomLevelAccelerationStructureInstanceList.Count-1];
+    OtherBLASInstance.fInRaytracingIndex:=fInRaytracingIndex;
+    fInRaytracingIndex:=fRaytracing.fBottomLevelAccelerationStructureInstanceList.Count-1;
     fRaytracing.fBottomLevelAccelerationStructureInstanceList.Exchange(fInRaytracingIndex,OtherBLASInstance.fInRaytracingIndex);
     fRaytracing.fAccelerationStructureInstanceKHRArrayList.Exchange(fInRaytracingIndex,OtherBLASInstance.fInRaytracingIndex);
     fRaytracing.fGeometryOffsetArrayList.Exchange(fInRaytracingIndex,OtherBLASInstance.fInRaytracingIndex);
-    OtherBLASInstance.fInRaytracingIndex:=fInRaytracingIndex;
-    fInRaytracingIndex:=fRaytracing.fBottomLevelAccelerationStructureInstanceList.Count-1;
     OtherBLASInstance.fAccelerationStructureInstance.fAccelerationStructureInstancePointer:=@fRaytracing.fAccelerationStructureInstanceKHRArrayList.ItemArray[OtherBLASInstance.fInRaytracingIndex];
     fAccelerationStructureInstance.fAccelerationStructureInstancePointer:=@fRaytracing.fAccelerationStructureInstanceKHRArrayList.ItemArray[fInRaytracingIndex];
    end;
@@ -3418,33 +3418,33 @@ begin
      (fBottomLevelAccelerationStructureGeometryInfoOffsetBufferItemBuffers[fBottomLevelAccelerationStructureGeometryInfoBufferRingIndex and 1].Size<(Max(1,fGeometryOffsetArrayList.Count)*SizeOf(TVkUInt32))) then begin
    FreeObject(fBottomLevelAccelerationStructureGeometryInfoOffsetBufferItemBuffers[fBottomLevelAccelerationStructureGeometryInfoBufferRingIndex and 1]);
    fBottomLevelAccelerationStructureGeometryInfoOffsetBufferItemBuffers[fBottomLevelAccelerationStructureGeometryInfoBufferRingIndex and 1]:=TpvVulkanBuffer.Create(fDevice,
-                                                                                                                                RoundUpToPowerOfTwo64(Max(1,fGeometryOffsetArrayList.Count)*SizeOf(TVkUInt32)*2),
-                                                                                                                                TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT),
-                                                                                                                                TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                                                                                                                [],
-                                                                                                                                0,
-                                                                                                                                TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
-                                                                                                                                0,
-                                                                                                                                0,
-                                                                                                                                0,
-                                                                                                                                0,
-                                                                                                                                0,
-                                                                                                                                0,
-                                                                                                                                [TpvVulkanBufferFlag.PersistentMappedIfPossible],
-                                                                                                                                0,
-                                                                                                                                pvAllocationGroupIDScene3DRaytracing,
-                                                                                                                                'TpvRaytracing.BLASGeometryInfoOffsetBufferItemBuffer'
-                                                                                                                               );
+                                                                                                                                                                    RoundUpToPowerOfTwo64(Max(1,fGeometryOffsetArrayList.Count)*SizeOf(TVkUInt32)*2),
+                                                                                                                                                                    TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT),
+                                                                                                                                                                    TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                                                                                                                                    [],
+                                                                                                                                                                    0,
+                                                                                                                                                                    TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                                                                                                                                                    0,
+                                                                                                                                                                    0,
+                                                                                                                                                                    0,
+                                                                                                                                                                    0,
+                                                                                                                                                                    0,
+                                                                                                                                                                    0,
+                                                                                                                                                                    [TpvVulkanBufferFlag.PersistentMappedIfPossible],
+                                                                                                                                                                    0,
+                                                                                                                                                                    pvAllocationGroupIDScene3DRaytracing,
+                                                                                                                                                                    'TpvRaytracing.BLASGeometryInfoOffsetBufferItemBuffer'
+                                                                                                                                                                   );
    fDevice.DebugUtils.SetObjectName(fBottomLevelAccelerationStructureGeometryInfoOffsetBufferItemBuffers[fBottomLevelAccelerationStructureGeometryInfoBufferRingIndex and 1].Handle,VK_OBJECT_TYPE_BUFFER,'TpvRaytracing.BLASGeometryInfoOffsetBufferItemBuffer');
   end;
   if fGeometryOffsetArrayList.Count>0 then begin
    fDevice.MemoryStaging.Upload(fStagingQueue,
-                                      fStagingCommandBuffer,
-                                      fStagingFence,
-                                      fGeometryOffsetArrayList.ItemArray[0],
-                                      fBottomLevelAccelerationStructureGeometryInfoOffsetBufferItemBuffers[fBottomLevelAccelerationStructureGeometryInfoBufferRingIndex and 1],
-                                      0,
-                                      fGeometryOffsetArrayList.Count*SizeOf(TVkUInt32));
+                                fStagingCommandBuffer,
+                                fStagingFence,
+                                fGeometryOffsetArrayList.ItemArray[0],
+                                fBottomLevelAccelerationStructureGeometryInfoOffsetBufferItemBuffers[fBottomLevelAccelerationStructureGeometryInfoBufferRingIndex and 1],
+                                0,
+                                fGeometryOffsetArrayList.Count*SizeOf(TVkUInt32));
   end;
 
   if (not assigned(fBottomLevelAccelerationStructureGeometryInfoBufferItemBuffers[fBottomLevelAccelerationStructureGeometryInfoBufferRingIndex and 1])) or

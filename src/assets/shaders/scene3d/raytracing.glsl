@@ -160,15 +160,22 @@ void rayProceedEXTAlphaHandlingBasedLoop(in rayQueryEXT rayQuery, const in bool 
           int geometryID = rayQueryGetIntersectionGeometryIndexEXT(rayQuery, false);
           
           int geometryInstanceOffset = rayQueryGetIntersectionInstanceCustomIndexEXT(rayQuery, false);
+          int additionalInstanceDataID = 0; // 0 = no additional instance data
 
-          // Instance Custom Index has a limited range of 24 bits, so we need to check if it is the special value 0x00ffffff, 
-          // which means that the geometryInstanceOffset is stored in the instance ID instead, for to have a full integer range.
-          // Need for very large scenes with many instances and geometry items. 
-          if(geometryInstanceOffset == 0x00ffffff){
-            int instanceID = rayQueryGetIntersectionInstanceIdEXT(rayQuery, true);
-            geometryInstanceOffset = int(uRaytracingData.geometryInstanceOffsets.geometryInstanceOffsets[instanceID]);
+          // The custom index is only 24 bits long. We reserve the highest (24th) bit as a flag:
+          // - If the 24th bit is set, the actual geometry instance offset is not stored directly here but in an external buffer,
+          //   indexed by the BLAS instance ID. In this case, the lower 23 bits represent an additional instance data index
+          //   (used for per-instance shader effects or other custom instance data).
+          // - If the 24th bit is not set, the custom index directly provides the geometry instance offset, which saves memory bandwidth at shader execution time.
+          //
+          // This mechanism allows us to support a full integer range for geometry offsets in very large scenes,
+          // while also optionally associating extra instance-specific data.
+          if((geometryInstanceOffset & 0x00800000) != 0){
+            additionalInstanceDataID = geometryInstanceOffset & 0x007fffff; 
+            const int instanceID = rayQueryGetIntersectionInstanceIdEXT(rayQuery, false);
+            geometryInstanceOffset = int(uRaytracingData.geometryInstanceOffsets.geometryInstanceOffsets[instanceID]);     
           }
-          
+
           RaytracingGeometryItem geometryItem = uRaytracingData.geometryItems.geometryItems[geometryInstanceOffset + geometryID];
 
           switch(geometryItem.objectType){
@@ -342,13 +349,20 @@ bool tracePrimaryBasicGeometryRay(vec3 position,
         int geometryID = rayQueryGetIntersectionGeometryIndexEXT(rayQuery, true);
         
         int geometryInstanceOffset = rayQueryGetIntersectionInstanceCustomIndexEXT(rayQuery, true);
+        int additionalInstanceDataID = 0; // 0 = no additional instance data
 
-        // Instance Custom Index has a limited range of 24 bits, so we need to check if it is the special value 0x00ffffff, 
-        // which means that the geometryInstanceOffset is stored in the instance ID instead, for to have a full integer range 
-        // Need for very large scenes with many instances and geometry items. 
-        if(geometryInstanceOffset == 0x00ffffff){
-          int instanceID = rayQueryGetIntersectionInstanceIdEXT(rayQuery, true);
-          geometryInstanceOffset = int(uRaytracingData.geometryInstanceOffsets.geometryInstanceOffsets[instanceID]);
+        // The custom index is only 24 bits long. We reserve the highest (24th) bit as a flag:
+        // - If the 24th bit is set, the actual geometry instance offset is not stored directly here but in an external buffer,
+        //   indexed by the BLAS instance ID. In this case, the lower 23 bits represent an additional instance data index
+        //   (used for per-instance shader effects or other custom instance data).
+        // - If the 24th bit is not set, the custom index directly provides the geometry instance offset, which saves memory bandwidth at shader execution time.
+        //
+        // This mechanism allows us to support a full integer range for geometry offsets in very large scenes,
+        // while also optionally associating extra instance-specific data.
+        if((geometryInstanceOffset & 0x00800000) != 0){
+          additionalInstanceDataID = geometryInstanceOffset & 0x007fffff; 
+          const int instanceID = rayQueryGetIntersectionInstanceIdEXT(rayQuery, true);
+          geometryInstanceOffset = int(uRaytracingData.geometryInstanceOffsets.geometryInstanceOffsets[instanceID]);     
         }
         
         RaytracingGeometryItem geometryItem = uRaytracingData.geometryItems.geometryItems[geometryInstanceOffset + geometryID];
