@@ -2026,7 +2026,9 @@ constructor TpvRaytracing.TBottomLevelAccelerationStructure.TInstance.Create(con
                                                                              const aMask:TVkUInt32;
                                                                              const aInstanceShaderBindingTableRecordOffset:TVkUInt32;
                                                                              const aFlags:TVkGeometryInstanceFlagsKHR);
+var InstanceCustomIndex:TVkInt32;
 begin
+
  inherited Create;
 
  fRaytracing:=aBottomLevelAccelerationStructure.fRaytracing;
@@ -2037,9 +2039,14 @@ begin
 
  fInBottomLevelAccelerationStructureIndex:=-1;
 
+ InstanceCustomIndex:=fBottomLevelAccelerationStructure.GeometryInfoBaseIndex;
+ if InstanceCustomIndex>=$00800000 then begin
+  InstanceCustomIndex:=$00800000;
+ end;
+
  fAccelerationStructureInstance:=TpvRaytracingBottomLevelAccelerationStructureInstance.Create(fRaytracing.fDevice,
                                                                                               aTransform,
-                                                                                              fBottomLevelAccelerationStructure.GeometryInfoBaseIndex, // Instance custom index is the base index for accessing the geometry info buffer items for this BottomLevelAccelerationStructure
+                                                                                              InstanceCustomIndex,
                                                                                               aMask,
                                                                                               aInstanceShaderBindingTableRecordOffset,
                                                                                               aFlags,
@@ -2873,8 +2880,12 @@ begin
  for Index:=0 to fBottomLevelAccelerationStructureInstanceList.Count-1 do begin
   BLASInstance:=fBottomLevelAccelerationStructureInstanceList.Items[Index];
   InstanceCustomIndex:=BLASInstance.AccelerationStructureInstance.InstanceCustomIndex;
-  if (InstanceCustomIndex>=0) and (InstanceCustomIndex>=aOldOffset) and (InstanceCustomIndex<(aOldOffset+aSize)) then begin
-   BLASInstance.AccelerationStructureInstance.InstanceCustomIndex:=aNewOffset+(InstanceCustomIndex-aOldOffset);
+  if (InstanceCustomIndex>=0) and (InstanceCustomIndex<$00800000) and (InstanceCustomIndex>=aOldOffset) and (InstanceCustomIndex<(aOldOffset+aSize)) then begin
+   InstanceCustomIndex:=aNewOffset+(InstanceCustomIndex-aOldOffset);
+   if InstanceCustomIndex>=$00800000 then begin
+    InstanceCustomIndex:=$00800000;
+   end;
+   BLASInstance.AccelerationStructureInstance.InstanceCustomIndex:=InstanceCustomIndex;
   end;
   if (fGeometryOffsetArrayList[BLASInstance.fInRaytracingIndex]>=0) and (fGeometryOffsetArrayList[BLASInstance.fInRaytracingIndex]>=aOldOffset) and (fGeometryOffsetArrayList[BLASInstance.fInRaytracingIndex]<(aOldOffset+aSize)) then begin
    fGeometryOffsetArrayList[BLASInstance.fInRaytracingIndex]:=aNewOffset+(fGeometryOffsetArrayList[BLASInstance.fInRaytracingIndex]-aOldOffset);
@@ -3149,22 +3160,22 @@ begin
   FreeAndNil(fEmptyBottomLevelAccelerationStructureScratchBuffer);
 
   fEmptyBottomLevelAccelerationStructureScratchBuffer:=TpvVulkanBuffer.Create(fDevice,
-                                                            Max(1,Max(fEmptyBottomLevelAccelerationStructure.BuildScratchSize,fEmptyBottomLevelAccelerationStructure.UpdateScratchSize)),
-                                                            TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT),
-                                                            TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                                            [],
-                                                            0,
-                                                            TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
-                                                            0,
-                                                            0,
-                                                            0,
-                                                            0,
-                                                            0,
-                                                            0,
-                                                            [],
-                                                            fDevice.PhysicalDevice.AccelerationStructurePropertiesKHR.minAccelerationStructureScratchOffsetAlignment,
-                                                            pvAllocationGroupIDScene3DRaytracing,
-                                                            'TpvRaytracing.EmptyBLASScratchBuffer');
+                                                                              Max(1,Max(fEmptyBottomLevelAccelerationStructure.BuildScratchSize,fEmptyBottomLevelAccelerationStructure.UpdateScratchSize)),
+                                                                              TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT),
+                                                                              TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                                              [],
+                                                                              0,
+                                                                              TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                                              0,
+                                                                              0,
+                                                                              0,
+                                                                              0,
+                                                                              0,
+                                                                              0,
+                                                                              [],
+                                                                              fDevice.PhysicalDevice.AccelerationStructurePropertiesKHR.minAccelerationStructureScratchOffsetAlignment,
+                                                                              pvAllocationGroupIDScene3DRaytracing,
+                                                                              'TpvRaytracing.EmptyBLASScratchBuffer');
 
   fDevice.DebugUtils.SetObjectName(fEmptyBottomLevelAccelerationStructureScratchBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvRaytracing.EmptyBLASScratchBuffer');
 
