@@ -364,6 +364,8 @@ type EpvScene3D=class(Exception);
             end;
             PFreeQueueItem=^TFreeQueueItem;
             TFreeQueue=TpvDynamicArrayList<TFreeQueueItem>;
+            TGlobalVulkanInstanceCounts=array[0..MaxInFlightFrames-1] of TPasMPUInt32;
+            PGlobalVulkanInstanceCounts=^TGlobalVulkanInstanceCounts;
             TGlobalVulkanInstanceMatrixBuffers=array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
             TGlobalVulkanInstanceMatrixDynamicArray=TpvDynamicArray<TpvMatrix4x4>;
             PGlobalVulkanInstanceMatrixDynamicArray=^TGlobalVulkanInstanceMatrixDynamicArray;
@@ -3588,6 +3590,7 @@ type EpvScene3D=class(Exception);
        fImageDescriptorProcessedGeneration:TpvUInt64;
 //     fGlobalVulkanViewUniformStagingBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
        fGlobalRenderInstanceCullDataDynamicArrays:TGlobalRenderInstanceCullDataDynamicArrays;
+       fGlobalVulkanInstanceCounts:TGlobalVulkanInstanceCounts;
        fGlobalVulkanInstanceMatrixDynamicArrays:TGlobalVulkanInstanceMatrixDynamicArrays;
        fGlobalVulkanInstanceMatrixBuffers:TGlobalVulkanInstanceMatrixBuffers;
        fGlobalVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
@@ -4024,6 +4027,7 @@ type EpvScene3D=class(Exception);
        property Atmospheres:TObject read fAtmospheres;
        property AtmosphereGlobals:TObject read fAtmosphereGlobals;
       public
+       property GlobalVulkanInstanceCounts:TGlobalVulkanInstanceCounts read fGlobalVulkanInstanceCounts write fGlobalVulkanInstanceCounts;
        property GlobalVulkanInstanceMatrixDynamicArrays:TGlobalVulkanInstanceMatrixDynamicArrays read fGlobalVulkanInstanceMatrixDynamicArrays;
        property GlobalRenderInstanceCullDataDynamicArrays:TGlobalRenderInstanceCullDataDynamicArrays read fGlobalRenderInstanceCullDataDynamicArrays;
       public
@@ -27296,7 +27300,7 @@ procedure TpvScene3D.TGroup.TInstance.PreparePerInFlightFrameRenderInstances(con
                                                                              const aPotentiallyVisibleSetCulling:boolean;
                                                                              out aFirstInstance:TpvSizeInt;
                                                                              out aInstancesCount:TpvSizeInt);
-var PerInFlightFrameRenderInstanceIndex,FrustumIndex,ViewIndex:TpvSizeInt;
+var PerInFlightFrameRenderInstanceIndex,FrustumIndex,ViewIndex,InstancesCount:TpvSizeInt;
     ViewPotentiallyVisibleSetNodeIndex:TpvScene3D.TPotentiallyVisibleSet.TNodeIndex;
     DoCulling,PotentiallyVisible:boolean;
     GlobalVulkanInstanceMatrixDynamicArray:PGlobalVulkanInstanceMatrixDynamicArray;
@@ -27304,6 +27308,7 @@ var PerInFlightFrameRenderInstanceIndex,FrustumIndex,ViewIndex:TpvSizeInt;
     GlobalRenderInstanceCullData:PCullData;
     PerInFlightFrameRenderInstanceDynamicArray:TpvScene3D.TGroup.TInstance.PPerInFlightFrameRenderInstanceDynamicArray;
     PerInFlightFrameRenderInstance:TpvScene3D.TGroup.TInstance.PPerInFlightFrameRenderInstance;
+    GlobalVulkanInstanceCount:PPasMPUInt32;
 begin
 
  if fUseRenderInstances then begin
@@ -27312,8 +27317,11 @@ begin
 
   GlobalRenderInstanceCullDataDynamicArray:=@fSceneInstance.fGlobalRenderInstanceCullDataDynamicArrays[aInFlightFrameIndex];
 
-  aFirstInstance:=GlobalVulkanInstanceMatrixDynamicArray^.Count shr 1;
-  aInstancesCount:=0;
+  GlobalVulkanInstanceCount:=@fSceneInstance.fGlobalVulkanInstanceCounts[aInFlightFrameIndex];
+
+  aFirstInstance:=GlobalVulkanInstanceCount^; //GlobalVulkanInstanceMatrixDynamicArray^.Count shr 1;
+
+  InstancesCount:=0;
 
   DoCulling:=fGroup.fCulling and ((length(aFrustums)>0) or aPotentiallyVisibleSetCulling);
 
@@ -27358,10 +27366,14 @@ begin
     GlobalVulkanInstanceMatrixDynamicArray^.Add(PerInFlightFrameRenderInstance^.PreviousModelMatrix);
     GlobalRenderInstanceCullData:=Pointer(GlobalRenderInstanceCullDataDynamicArray^.AddNew);
     GlobalRenderInstanceCullData^.RenderInstance:=PerInFlightFrameRenderInstance.RenderInstance;
-    inc(aInstancesCount);
+    inc(InstancesCount);
    end;
 
   end;
+
+  inc(GlobalVulkanInstanceCount^,InstancesCount);
+
+  aInstancesCount:=InstancesCount;
 
  end else begin
 
@@ -28001,6 +28013,7 @@ begin
  end;
 
  for Index:=0 to fCountInFlightFrames-1 do begin
+  fGlobalVulkanInstanceCounts[Index]:=1;
   fGlobalVulkanInstanceMatrixDynamicArrays[Index].Initialize;
   fGlobalVulkanInstanceMatrixDynamicArrays[Index].Resize(65536);
   fGlobalVulkanInstanceMatrixDynamicArrays[Index].Count:=0;
@@ -30549,6 +30562,8 @@ procedure TpvScene3D.ResetFrame(const aInFlightFrameIndex:TpvSizeInt);
 var GlobalVulkanInstanceMatrixDynamicArray:PGlobalVulkanInstanceMatrixDynamicArray;
     GlobalRenderInstanceCullDataDynamicArray:PGlobalRenderInstanceCullDataDynamicArray;
 begin
+
+ fGlobalVulkanInstanceCounts[aInFlightFrameIndex]:=1;
 
  GlobalVulkanInstanceMatrixDynamicArray:=@fGlobalVulkanInstanceMatrixDynamicArrays[aInFlightFrameIndex];
  if GlobalVulkanInstanceMatrixDynamicArray^.Count<2 then begin
