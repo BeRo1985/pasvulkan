@@ -373,7 +373,7 @@ type EpvScene3D=class(Exception);
             TGlobalVulkanInstanceMatrixDynamicArrays=array[0..MaxInFlightFrames-1] of TGlobalVulkanInstanceMatrixDynamicArray;
             TGlobalVulkanInstanceEffectDataIndexBuffers=array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
             TGlobalVulkanInstanceEffectDataIndexDynamicArray=TpvDynamicArray<TpvUInt32>;
-            PGlobalVulkanInstanceEffectDataIndexDynamicArray=^TGlobalVulkanInstanceMatrixDynamicArray;
+            PGlobalVulkanInstanceEffectDataIndexDynamicArray=^TGlobalVulkanInstanceEffectDataIndexDynamicArray;
             TGlobalVulkanInstanceEffectDataIndexDynamicArrays=array[0..MaxInFlightFrames-1] of TGlobalVulkanInstanceEffectDataIndexDynamicArray;
             TCullData=record
              RenderInstance:TObject;
@@ -1696,8 +1696,8 @@ type EpvScene3D=class(Exception);
                0:(
                 DrawIndexedIndirectCommand:TVkDrawIndexedIndirectCommand;
                 ObjectIndex:TpvUInt32;
-                NodeIndex:TpvUInt32;
-                Padding0:TpvUInt32;
+                Flags:TpvUInt32;
+                InstanceEffectDataIndex:TpvUInt32;
                 BoundingSphere:TpvVector4;
                 Padding1:array[0..3] of TpvUInt32;
                );

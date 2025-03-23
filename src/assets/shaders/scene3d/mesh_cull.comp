@@ -27,7 +27,7 @@ struct VkDrawIndexedIndirectCommand {
 
 struct DrawIndexedIndirectCommand {
   uvec4 cmd0; // indexCount_instanceCount_firstIndex_vertexOffset; // x = indexCount, y = instanceCount, z = firstIndex, w = vertexOffset  
-  uvec4 cmd1; // firstInstance_padding0_padding1_padding2; // x = firstInstance, y = objectIndex, z = added flag, w = padding/unused
+  uvec4 cmd1; // firstInstance_padding0_padding1_padding2; // x = firstInstance, y = objectIndex, z = flags, w = padding/unused
   vec4 boundingSphere; // xyz = center, w = radius
   vec4 aabb; // 2D AABB in screen space, xy = min, zw = max
 }; // 64 bytes per draw indexed indirect command, dividable by 32 bytes for better GPU cache line alignment 
@@ -156,7 +156,7 @@ void main(){
   uint sourceIndex = pushConstants.baseDrawIndexedIndirectCommandIndex + invocationIndex;
 
   const uvec4 cmd0 = inputDrawIndexedIndirectCommands.commands[sourceIndex].cmd0;
-  const uvec4 cmd1 = inputDrawIndexedIndirectCommands.commands[sourceIndex].cmd1;
+  uvec4 cmd1 = inputDrawIndexedIndirectCommands.commands[sourceIndex].cmd1;
 
   if((pushConstants.skipCulling == 0u) &&  // If it is the first frame or the like, just don't cull anything
      ((cmd1.y < pushConstants.countObjectIndices) && // Check if the object index is in the valid range, since
@@ -168,7 +168,13 @@ void main(){
     return; 
   }
 
-  inputDrawIndexedIndirectCommands.commands[sourceIndex].cmd1.z = 1u; // Mark as added
+  if(((cmd1.z & 2u) | cmd0.w) != 0u){
+    // It has instance effects, so it is not a candidate for HiZ depth buffer culling, since it can have holes in the depth buffer through the
+    // instance effects, so just pass it through to the next pass as non-added, so that the next pass can handle it properly.
+    return;
+  }
+  
+  inputDrawIndexedIndirectCommands.commands[sourceIndex].cmd1.z = (cmd1.z |= 1u); // Mark as added
 
   uint destinationIndex = pushConstants.baseDrawIndexedIndirectCommandIndex + atomicAdd(outputDrawIndexedIndirectCommandCounts.counts[pushConstants.drawCallIndex], 1u);
   
@@ -333,7 +339,7 @@ void main(){
 
   // Manage disocclusion in the output buffer. This step helps optimize depth pre-pass by minimizing depth-buffer overdraw and avoiding redundant rendering 
   // in the depth buffer. This is necessary because a complete depth pre-pass is needed for things like e.g. screen space ambient occlusion and the like.
-  if((cmd1.z == 0u) &&                                                                    // Just when not already added in the previous pass to the global output buffer part
+  if(((cmd1.z & 1u) == 0u) &&                                                             // Just when not already added in the previous pass to the global output buffer part
      (pushConstants.baseDrawIndexedIndirectCommandIndexForDisocclusions != 0xffffffffu)){ // Just when enabled
 
     uint destinationIndex = pushConstants.baseDrawIndexedIndirectCommandIndexForDisocclusions + atomicAdd(outputDrawIndexedIndirectCommandCounts.counts[pushConstants.drawCallIndexForDisocclusions], 1u);
