@@ -78,13 +78,14 @@ layout(location = 6) in vec2 inTexCoord1;
 layout(location = 7) in vec4 inColor0;
 layout(location = 8) in vec3 inModelScale;
 layout(location = 9) flat in uint inMaterialID;
-layout(location = 10) flat in vec3 inAABBMin;
-layout(location = 11) flat in vec3 inAABBMax;
-layout(location = 12) flat in uint inCascadeIndex; 
-layout(location = 13) in vec3 inVoxelPosition; 
-layout(location = 14) flat in vec3 inVertex0;
-layout(location = 15) flat in vec3 inVertex1;
-layout(location = 16) flat in vec3 inVertex2;
+layout(location = 10) flat in uint inInstanceIndex;
+layout(location = 11) flat in vec3 inAABBMin;
+layout(location = 12) flat in vec3 inAABBMax;
+layout(location = 13) flat in uint inCascadeIndex; 
+layout(location = 14) in vec3 inVoxelPosition; 
+layout(location = 15) flat in vec3 inVertex0;
+layout(location = 16) flat in vec3 inVertex1;
+layout(location = 17) flat in vec3 inVertex2;
 #else
 #ifdef HAVE_PERVERTEX
 layout(location = 0) pervertexEXT in vec3 inWorldSpacePositionPerVertex[];
@@ -100,15 +101,16 @@ layout(location = 6) in vec2 inTexCoord1;
 layout(location = 7) in vec4 inColor0;
 layout(location = 8) in vec3 inModelScale;
 layout(location = 9) flat in uint inMaterialID;
-layout(location = 10) flat in int inViewIndex;
-layout(location = 11) flat in uint inFrameIndex;
+layout(location = 10) flat in uint inInstanceIndex;
+layout(location = 11) flat in int inViewIndex;
+layout(location = 12) flat in uint inFrameIndex;
 
 #ifdef VELOCITY
-layout(location = 12) flat in vec4 inJitter;
-layout(location = 13) in vec4 inPreviousClipSpace;
-layout(location = 14) in vec4 inCurrentClipSpace;
+layout(location = 13) flat in vec4 inJitter;
+layout(location = 14) in vec4 inPreviousClipSpace;
+layout(location = 15) in vec4 inCurrentClipSpace;
 #else
-layout(location = 12) flat in vec2 inJitter;
+layout(location = 13) flat in vec2 inJitter;
 #endif // VELOCITY
 
 #endif // VOXELIZATION

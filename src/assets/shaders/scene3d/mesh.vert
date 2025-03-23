@@ -40,15 +40,16 @@ layout(location = 6) out vec2 outTexCoord1;
 layout(location = 7) out vec4 outColor0;
 layout(location = 8) out vec3 outModelScale;
 layout(location = 9) flat out uint outMaterialID;
+layout(location = 10) flat out uint outInstanceIndex;
 #ifndef VOXELIZATION
-layout(location = 10) flat out int outViewIndex;
-layout(location = 11) flat out uint outFrameIndex;
+layout(location = 11) flat out int outViewIndex;
+layout(location = 12) flat out uint outFrameIndex;
 #ifdef VELOCITY
-layout(location = 12) flat out vec4 outJitter;
-layout(location = 13) out vec4 outPreviousClipSpace;
-layout(location = 14) out vec4 outCurrentClipSpace;
+layout(location = 13) flat out vec4 outJitter;
+layout(location = 14) out vec4 outPreviousClipSpace;
+layout(location = 15) out vec4 outCurrentClipSpace;
 #else
-layout(location = 12) flat out vec2 outJitter;
+layout(location = 13) flat out vec2 outJitter;
 #endif // VELOCITY
 #endif // VOXELIZATION
 
@@ -160,15 +161,17 @@ void main() {
 
   vec4 viewSpacePosition;
 
+  const uint instanceIndex = (outInstanceIndex = uint(gl_InstanceIndex));
+
   // gl_InstanceIndex is always 0 for non-instanced rendering, where we don't need to do this anyway then, and skip the transformations 
   // for to save some cycles and memory bandwidth, given the branch is always not taken in the current thread warp on the GPU.
-  if(gl_InstanceIndex > 0){  
+  if(instanceIndex > 0u){  
     
     // The base mesh data is assumed to be non-pretransformed by its origin. If it is pretransformed by its origin, it will be treated
     // as a delta transformation. It is because the mesh vertices are pretransformed by a compute shader, but this was originally only 
     // for non-instanced meshes. Therefore, the original to-be-instanced mesh data should be non-pretransformed by its origin.
     
-    mat4 instanceMatrix = instanceMatrices[gl_InstanceIndex << 1]; 
+    mat4 instanceMatrix = instanceMatrices[instanceIndex << 1u]; 
 
     modelScale *= vec3(length(instanceMatrix[0].xyz), length(instanceMatrix[1].xyz), length(instanceMatrix[2].xyz)); // needed for transmissive materials
 
@@ -184,7 +187,7 @@ void main() {
       previousClipSpacePosition = clipSpacePosition;
     }else{  
       View previousView = uView.views[viewIndex + pushConstants.countAllViews];
-      previousClipSpacePosition = previousView.projectionMatrix * ((previousView.viewMatrix * instanceMatrices[(gl_InstanceIndex << 1) | 1]) * vec4(inPreviousPosition, 1.0));
+      previousClipSpacePosition = previousView.projectionMatrix * ((previousView.viewMatrix * instanceMatrices[(instanceIndex << 1u) | 1u]) * vec4(inPreviousPosition, 1.0));
     }
 #endif
 
