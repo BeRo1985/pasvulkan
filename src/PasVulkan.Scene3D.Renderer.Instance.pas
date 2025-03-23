@@ -6827,7 +6827,6 @@ begin
           GPUDrawIndexedIndirectCommand^.Flags:=0;
           GPUDrawIndexedIndirectCommand^.InstanceEffectDataIndex:=GlobalVulkanInstanceEffectDataIndexDynamicArray^.ItemArray[FirstInstanceID+InstanceIndex];
           GPUDrawIndexedIndirectCommand^.BoundingSphere:=BoundingSphere^.Vector4;
-
          end;
 
         end else begin
