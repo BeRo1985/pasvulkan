@@ -18,7 +18,7 @@ layout(location = 6) in vec2 inTexCoord1[];
 layout(location = 7) in vec4 inColor0[];
 layout(location = 8) in vec3 intModelScale[];
 layout(location = 9) flat in uint inMaterialID[];
-layout(location = 10) flat in uint inInstanceIndex[];
+layout(location = 10) flat in uint inInstanceEffectIndex[];
 
 layout(location = 0) out vec3 outWorldSpacePosition;
 layout(location = 1) out vec3 outViewSpacePosition;
@@ -30,7 +30,7 @@ layout(location = 6) out vec2 outTexCoord1;
 layout(location = 7) out vec4 outColor0;
 layout(location = 8) out vec3 outModelScale;
 layout(location = 9) flat out uint outMaterialID;
-layout(location = 10) flat out uint outInstanceIndex;
+layout(location = 10) flat out uint outInstanceEffectIndex;
 layout(location = 11) flat out vec3 outAABBMin;
 layout(location = 12) flat out vec3 outAABBMax;
 layout(location = 13) flat out uint outCascadeIndex;
@@ -139,7 +139,7 @@ void main(){
 
       outMaterialID = inMaterialID[currentVertexIndex];
 
-      outInstanceIndex = inInstanceIndex[currentVertexIndex];
+      outInstanceEffectIndex = inInstanceEffectIndex[currentVertexIndex];
 
       outAABBMin = aabbMin;
 

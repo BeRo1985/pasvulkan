@@ -78,7 +78,7 @@ layout(location = 6) in vec2 inTexCoord1;
 layout(location = 7) in vec4 inColor0;
 layout(location = 8) in vec3 inModelScale;
 layout(location = 9) flat in uint inMaterialID;
-layout(location = 10) flat in uint inInstanceIndex;
+layout(location = 10) flat in uint inInstanceEffectIndex;
 layout(location = 11) flat in vec3 inAABBMin;
 layout(location = 12) flat in vec3 inAABBMax;
 layout(location = 13) flat in uint inCascadeIndex; 
@@ -101,7 +101,7 @@ layout(location = 6) in vec2 inTexCoord1;
 layout(location = 7) in vec4 inColor0;
 layout(location = 8) in vec3 inModelScale;
 layout(location = 9) flat in uint inMaterialID;
-layout(location = 10) flat in uint inInstanceIndex;
+layout(location = 10) flat in uint inInstanceEffectIndex;
 layout(location = 11) flat in int inViewIndex;
 layout(location = 12) flat in uint inFrameIndex;
 
