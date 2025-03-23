@@ -31035,6 +31035,15 @@ begin
 
  fInverseOriginTransforms[aInFlightFrameIndex]:=fInverseOriginTransform;
 
+ if fInstanceEffectDataDynamicArray.Count>0 then begin
+  if fInFlightFrameInstanceEffectDataDynamicArrays[aInFlightFrameIndex].Count<fInstanceEffectDataDynamicArray.Count then begin
+   fInFlightFrameInstanceEffectDataDynamicArrays[aInFlightFrameIndex].Resize(fInstanceEffectDataDynamicArray.Count);
+  end;
+  Move(fInstanceEffectDataDynamicArray.ItemArray[0],
+       fInFlightFrameInstanceEffectDataDynamicArrays[aInFlightFrameIndex].ItemArray[0],
+       fInstanceEffectDataDynamicArray.Count*SizeOf(TVkUInt32));
+ end;
+
  if fUpdateCulling.fActive then begin
   fUpdateCulling.UpdateFrustum;
  end;
