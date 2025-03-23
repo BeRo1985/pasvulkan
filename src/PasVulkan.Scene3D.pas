@@ -6557,9 +6557,9 @@ begin
       try
        while BLASGroup^.fBLAS.BottomLevelAccelerationStructureInstanceList.Count<CountRenderInstances do begin
         BLASGroup^.fBLAS.AcquireInstance(fInstance.ModelMatrix,
-                                             RaytracingMask,
-                                             0,
-                                             GeometryInstanceFlags);
+                                         RaytracingMask,
+                                         0,
+                                         GeometryInstanceFlags);
         result:=true;
        end;
       finally
@@ -6586,7 +6586,7 @@ begin
        BLASInstanceIndex:=0;
 
        for RendererInstanceIndex:=0 to Min(CountRenderInstances,PerInFlightFrameRenderInstanceDynamicArray^.Count)-1 do begin
-        BLASGroup^.fBLAS.BottomLevelAccelerationStructureInstanceList.RawItems[BLASInstanceIndex].AccelerationStructureInstance.Transform:=Matrix*PerInFlightFrameRenderInstanceDynamicArray^.Items[RendererInstanceIndex].ModelMatrix;;
+        BLASGroup^.fBLAS.BottomLevelAccelerationStructureInstanceList.RawItems[BLASInstanceIndex].AccelerationStructureInstance.Transform:=Matrix*PerInFlightFrameRenderInstanceDynamicArray^.Items[RendererInstanceIndex].ModelMatrix;
         inc(BLASInstanceIndex);
        end;
 
