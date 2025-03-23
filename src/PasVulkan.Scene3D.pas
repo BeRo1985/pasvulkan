@@ -2860,6 +2860,7 @@ type EpvScene3D=class(Exception);
                           TRenderInstance=class
                            public
                             type TRenderInstanceMatrixInstances=array[-1..MaxInFlightFrames-1] of TpvMatrix4x4;
+                                 TRenderInstanceEffectDataIndices=array[-1..MaxInFlightFrames-1] of TpvUInt32;
                            private
                             fInstance:TpvScene3D.TGroup.TInstance;
                             fSceneInstance:TpvScene3D;
@@ -2878,6 +2879,8 @@ type EpvScene3D=class(Exception);
                             fActiveMask:TPasMPUInt32;
                             fLights:TpvScene3D.TLights;
                             fApplyCameraRelativeTransform:TPasMPBool32;
+                            fInstanceEffectDataIndex:TpvUInt32;
+                            fInstanceEffectDataIndices:TRenderInstanceEffectDataIndices;
                            public
                             constructor Create(const aInstance:TpvScene3D.TGroup.TInstance); reintroduce;
                             destructor Destroy; override;
@@ -2891,6 +2894,9 @@ type EpvScene3D=class(Exception);
                             property ModelMatrices:TRenderInstanceMatrixInstances read fModelMatrices;
                             property NodeCullObjectIDs:TpvUInt32DynamicArray read fNodeCullObjectIDs;
                             property ApplyCameraRelativeTransform:TPasMPBool32 read fApplyCameraRelativeTransform write fApplyCameraRelativeTransform;
+                           public
+                            property InstanceEffectDataIndex:TpvUInt32 read fInstanceEffectDataIndex write fInstanceEffectDataIndex;
+                            property InstanceEffectDataIndices:TRenderInstanceEffectDataIndices read fInstanceEffectDataIndices;
                            published
                             property Active:Boolean read fActive write fActive;
                             property ActiveMask:TPasMPUInt32 read fActiveMask write fActiveMask;
@@ -2902,6 +2908,7 @@ type EpvScene3D=class(Exception);
                            RenderInstance:TObject;
                            ModelMatrix:TpvMatrix4x4;
                            PreviousModelMatrix:TpvMatrix4x4;
+                           InstanceEffectDataIndex:TpvUInt32;
                           end;
                           PPerInFlightFrameRenderInstance=^TPerInFlightFrameRenderInstance;
                           TPerInFlightFrameRenderInstanceDynamicArray=TpvDynamicArray<TPerInFlightFrameRenderInstance>;
@@ -22019,8 +22026,11 @@ begin
 
  fPreviousModelMatrix:=TpvMatrix4x4.Identity;
 
+ fInstanceEffectDataIndex:=0;
+
  for Index:=-1 to MaxInFlightFrames-1 do begin
   fModelMatrices[Index]:=TpvMatrix4x4.Identity;
+  fInstanceEffectDataIndices[Index]:=0;
  end;
 
  fActiveMask:=0;
@@ -26537,6 +26547,7 @@ begin
        TPasMPInterlocked.BitwiseOr(RenderInstance.fActiveMask,TpvUInt32(1) shl aInFlightFrameIndex);
        RenderInstance.fWorkModelMatrix:=fSceneInstance.TransformOrigin(RenderInstance.fModelMatrix,aInFlightFrameIndex,false);
        RenderInstance.fModelMatrices[aInFlightFrameIndex]:=RenderInstance.fWorkModelMatrix;
+       RenderInstance.fInstanceEffectDataIndices[aInFlightFrameIndex]:=RenderInstance.fInstanceEffectDataIndex;
        RenderInstance.fBoundingBox:=TemporaryBoundingBox.HomogenTransform(RenderInstance.fWorkModelMatrix);
        RenderInstance.fBoundingSphere:=TpvSphere.CreateFromAABB(RenderInstance.fBoundingBox);
        if First then begin
@@ -26563,6 +26574,7 @@ begin
        end else begin
         PerInFlightFrameRenderInstance^.PreviousModelMatrix:=RenderInstance.fPreviousModelMatrix;
        end;
+       PerInFlightFrameRenderInstance^.InstanceEffectDataIndex:=RenderInstance.fInstanceEffectDataIndex;
        RenderInstance.fPreviousModelMatrix:=RenderInstance.fWorkModelMatrix;
        RenderInstance.UpdateLights(aInFlightFrameIndex);
       end else begin
@@ -27414,7 +27426,7 @@ begin
    if PotentiallyVisible then begin
     GlobalVulkanInstanceMatrixDynamicArray^.Add(PerInFlightFrameRenderInstance^.ModelMatrix);
     GlobalVulkanInstanceMatrixDynamicArray^.Add(PerInFlightFrameRenderInstance^.PreviousModelMatrix);
-    GlobalVulkanInstanceEffectDataIndexDynamicArray^.Add(0);
+    GlobalVulkanInstanceEffectDataIndexDynamicArray^.Add(PerInFlightFrameRenderInstance^.InstanceEffectDataIndex);
     GlobalRenderInstanceCullData:=Pointer(GlobalRenderInstanceCullDataDynamicArray^.AddNew);
     GlobalRenderInstanceCullData^.RenderInstance:=PerInFlightFrameRenderInstance.RenderInstance;
     inc(InstancesCount);
