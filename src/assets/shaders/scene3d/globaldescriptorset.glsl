@@ -98,6 +98,21 @@ layout(set = 0, binding = 3, std430) readonly buffer Materials {
 #include "planet_data.glsl"
 #endif
 
+struct InstanceEffectData { 
+  vec4 SelectedDissolveDitheredTransparencyUnused;
+  vec4 SelectedColorIntensity;
+  vec4 DissolveColor0Scale;
+  vec4 DissolveColor1Width;  
+};
+
+layout(set = 0, binding = 4, std430) readonly buffer InstanceEffectDataBuffer {
+  InstanceEffectData instanceEffectData[];
+};
+
+layout(set = 0, binding = 5, std430) readonly buffer InstanceEffectDataIndexBuffer {
+  uint instanceEffectDataIndices[];
+};
+
 #ifdef RAYTRACING
 
 layout(buffer_reference, std430, buffer_reference_align = 8) readonly buffer ReferencedPlanetDataArray {
@@ -161,9 +176,9 @@ layout(buffer_reference, std430, buffer_reference_align = 4) readonly buffer Ray
   uint planetIndices[];
 };
 
-layout(set = 0, binding = 4) uniform accelerationStructureEXT uRaytracingTopLevelAccelerationStructure;
+layout(set = 0, binding = 6) uniform accelerationStructureEXT uRaytracingTopLevelAccelerationStructure;
 
-layout(set = 0, std140, binding = 5) uniform RaytracingData {
+layout(set = 0, binding = 7, std140) uniform RaytracingData {
   RaytracingGeometryInstanceOffsets geometryInstanceOffsets;
   RaytracingGeometryItems geometryItems;
   RaytracingMeshStaticVertices meshStaticVertices;
@@ -173,15 +188,15 @@ layout(set = 0, std140, binding = 5) uniform RaytracingData {
   ReferencedPlanetDataArray referencedPlanetDataArray;
 } uRaytracingData;
 
-layout(set = 0, binding = 6) uniform sampler2D u2DTextures[];
+layout(set = 0, binding = 8) uniform sampler2D u2DTextures[];
 
-layout(set = 0, binding = 6) uniform samplerCube uCubeTextures[];
+layout(set = 0, binding = 8) uniform samplerCube uCubeTextures[];
 
 #else
 
-layout(set = 0, binding = 4) uniform sampler2D u2DTextures[];
+layout(set = 0, binding = 6) uniform sampler2D u2DTextures[];
 
-layout(set = 0, binding = 4) uniform samplerCube uCubeTextures[];
+layout(set = 0, binding = 6) uniform samplerCube uCubeTextures[];
 
 #endif // RAYTRACING
 
