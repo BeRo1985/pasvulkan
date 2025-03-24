@@ -618,6 +618,69 @@ type EpvScene3D=class(Exception);
              MetaData:TpvUInt64;
             end;
             PPVMFHeader=^TPVMFHeader;
+            { TInstanceEffect }
+            TInstanceEffect=class
+             private
+              fSceneInstance:TpvScene3D;
+              fIndex:TpvSizeInt;
+              fDataIndex:TpvUInt32;
+              function GetDataPointer:PInstanceEffectData;
+              function GetSelected:TpvFloat;
+              procedure SetSelected(const aValue:TpvFloat);
+              function GetDissolve:TpvFloat;
+              procedure SetDissolve(const aValue:TpvFloat);
+              function GetDitheredTransparency:TpvFloat;
+              procedure SetDitheredTransparency(const aValue:TpvFloat);
+              function GetSelectedColorIntensity:TpvVector4;
+              procedure SetSelectedColorIntensity(const aValue:TpvVector4);
+              function GetSelectedColor:TpvVector3;
+              procedure SetSelectedColor(const aValue:TpvVector3);
+              function GetSelectedIntensity:TpvFloat;
+              procedure SetSelectedIntensity(const aValue:TpvFloat);
+              function GetDissolveColor0Scale:TpvVector4;
+              procedure SetDissolveColor0Scale(const aValue:TpvVector4);
+              function GetDissolveColor0:TpvVector3;
+              procedure SetDissolveColor0(const aValue:TpvVector3);
+              function GetDissolveScale:TpvFloat;
+              procedure SetDissolveScale(const aValue:TpvFloat);
+              function GetDissolveColor1Width:TpvVector4;
+              procedure SetDissolveColor1Width(const aValue:TpvVector4);
+              function GetDissolveColor1:TpvVector3;
+              procedure SetDissolveColor1(const aValue:TpvVector3);
+              function GetDissolveWidth:TpvFloat;
+              procedure SetDissolveWidth(const aValue:TpvFloat);
+             public
+              constructor Create(const aSceneInstance:TpvScene3D); reintroduce;
+              destructor Destroy; override;
+              procedure AfterConstruction; override;
+              procedure BeforeDestruction; override;
+             published
+              property SceneInstance:TpvScene3D read fSceneInstance;
+              property ListIndex:TpvSizeInt read fIndex;
+              property DataIndex:TpvUInt32 read fDataIndex;
+             public
+              property Data:PInstanceEffectData read GetDataPointer;
+             published
+              property Selected:TpvFloat read GetSelected write SetSelected;
+              property Dissolve:TpvFloat read GetDissolve write SetDissolve;
+              property DitheredTransparency:TpvFloat read GetDitheredTransparency write SetDitheredTransparency;
+             public
+              property SelectedColorIntensity:TpvVector4 read GetSelectedColorIntensity write SetSelectedColorIntensity;
+              property SelectedColor:TpvVector3 read GetSelectedColor write SetSelectedColor;
+             published
+              property SelectedIntensity:TpvFloat read GetSelectedIntensity write SetSelectedIntensity;
+             public
+              property DissolveColor0Scale:TpvVector4 read GetDissolveColor0Scale write SetDissolveColor0Scale;
+              property DissolveColor0:TpvVector3 read GetDissolveColor0 write SetDissolveColor0;
+             published
+              property DissolveScale:TpvFloat read GetDissolveScale write SetDissolveScale;
+             public
+              property DissolveColor1Width:TpvVector4 read GetDissolveColor1Width write SetDissolveColor1Width;
+              property DissolveColor1:TpvVector3 read GetDissolveColor1 write SetDissolveColor1;
+             published
+              property DissolveWidth:TpvFloat read GetDissolveWidth write SetDissolveWidth;
+            end;
+            TInstanceEffectList=TpvObjectGenericList<TInstanceEffect>;
             { TBaseObject }
             TBaseObject=class(TpvResource)
              private
@@ -3753,6 +3816,8 @@ type EpvScene3D=class(Exception);
        fInstanceEffectDataFreeIndexQueue:TInstanceEffectDataFreeIndexQueue;
        fInstanceEffectDataIndexCounter:TpvUInt32;
        fInstanceEffectDataIndexLock:TPasMPSpinLock;
+       fInstanceEffectListLock:TPasMPSpinLock;
+       fInstanceEffectList:TInstanceEffectList;
        fReferencedPlanetDataBufRefArray:array[0..MaxInFlightFrames-1] of TVkDeviceAddressArray;
        fReferencedPlanetDataBufRefArrayVulkanBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
       private
@@ -5166,6 +5231,216 @@ begin
  Color.z:=aColor.z;
  Color.w:=aColor.w;
 end;
+
+{ TpvScene3D.TInstanceEffect }
+
+constructor TpvScene3D.TInstanceEffect.Create(const aSceneInstance:TpvScene3D);
+begin
+ inherited Create;
+ fSceneInstance:=aSceneInstance;
+ fIndex:=-1; // Will be set by AfterConstruction
+ fDataIndex:=fSceneInstance.AcquireInstanceEffectIndex;
+end;
+
+destructor TpvScene3D.TInstanceEffect.Destroy;
+begin
+ if fDataIndex>0 then begin
+  try
+   fSceneInstance.ReleaseInstanceEffectIndex(fDataIndex);
+  finally
+   fDataIndex:=0;
+  end; 
+ end;
+ inherited Destroy;
+end;
+
+procedure TpvScene3D.TInstanceEffect.AfterConstruction;
+begin
+ inherited AfterConstruction;
+ fSceneInstance.fInstanceEffectListLock.Acquire;
+ try
+  fIndex:=fSceneInstance.fInstanceEffectList.Add(self);
+ finally
+  fSceneInstance.fInstanceEffectListLock.Release;
+ end;
+end;
+
+procedure TpvScene3D.TInstanceEffect.BeforeDestruction;
+var OtherInstanceEffect:TInstanceEffect;
+begin
+ fSceneInstance.fInstanceEffectListLock.Acquire;
+ try
+  if fIndex>=0 then begin
+   if (fIndex+1)<fSceneInstance.fInstanceEffectList.Count then begin
+    OtherInstanceEffect:=fSceneInstance.fInstanceEffectList[fSceneInstance.fInstanceEffectList.Count-1];
+    OtherInstanceEffect.fIndex:=fIndex;
+    fIndex:=fSceneInstance.fInstanceEffectList.Count-1;
+    fSceneInstance.fInstanceEffectList[OtherInstanceEffect.fIndex]:=OtherInstanceEffect;
+    fSceneInstance.fInstanceEffectList[fIndex]:=self;    
+   end;
+   fSceneInstance.fInstanceEffectList.ExtractIndex(fIndex);
+   fIndex:=-1;
+  end;
+ finally
+  fSceneInstance.fInstanceEffectListLock.Release;
+ end;
+ inherited BeforeDestruction;
+end;
+
+function TpvScene3D.TInstanceEffect.GetDataPointer:PInstanceEffectData;
+begin
+ if (fDataIndex>=0) and (fDataIndex<TpvUInt32(fSceneInstance.fInstanceEffectDataDynamicArray.Count)) then begin
+  result:=@fSceneInstance.fInstanceEffectDataDynamicArray.ItemArray[fDataIndex];
+ end else begin
+  result:=nil;
+ end;
+end;
+
+function TpvScene3D.TInstanceEffect.GetSelected:TpvFloat;
+begin
+ result:=Data^.Selected;
+end;
+
+procedure TpvScene3D.TInstanceEffect.SetSelected(const aValue:TpvFloat);
+begin
+ if Data^.Selected<>aValue then begin
+  Data^.Selected:=aValue;
+ end;
+end;
+
+function TpvScene3D.TInstanceEffect.GetDissolve:TpvFloat;
+begin
+ result:=Data^.Dissolve;
+end;
+
+procedure TpvScene3D.TInstanceEffect.SetDissolve(const aValue:TpvFloat);
+begin
+ if Data^.Dissolve<>aValue then begin
+  Data^.Dissolve:=aValue;
+ end;
+end;
+
+function TpvScene3D.TInstanceEffect.GetDitheredTransparency:TpvFloat;
+begin
+ result:=Data^.DitheredTransparency;
+end;
+
+procedure TpvScene3D.TInstanceEffect.SetDitheredTransparency(const aValue:TpvFloat);
+begin
+ if Data^.DitheredTransparency<>aValue then begin
+  Data^.DitheredTransparency:=aValue;
+ end;
+end;
+
+function TpvScene3D.TInstanceEffect.GetSelectedColorIntensity:TpvVector4;
+begin
+ result:=Data^.SelectedColorIntensity;
+end;
+
+procedure TpvScene3D.TInstanceEffect.SetSelectedColorIntensity(const aValue:TpvVector4);
+begin
+ if Data^.SelectedColorIntensity<>aValue then begin
+  Data^.SelectedColorIntensity:=aValue;
+ end;
+end;
+
+function TpvScene3D.TInstanceEffect.GetSelectedColor:TpvVector3;
+begin
+ result:=Data^.SelectedColorIntensity.xyz;
+end;
+
+procedure TpvScene3D.TInstanceEffect.SetSelectedColor(const aValue:TpvVector3);
+begin
+ if Data^.SelectedColorIntensity.xyz<>aValue then begin
+  Data^.SelectedColorIntensity.xyz:=aValue;
+ end;
+end;
+
+function TpvScene3D.TInstanceEffect.GetSelectedIntensity:TpvFloat;
+begin
+ result:=Data^.SelectedColorIntensity.w;
+end;
+
+procedure TpvScene3D.TInstanceEffect.SetSelectedIntensity(const aValue:TpvFloat);
+begin
+ if Data^.SelectedColorIntensity.w<>aValue then begin
+  Data^.SelectedColorIntensity.w:=aValue;
+ end;
+end;
+
+function TpvScene3D.TInstanceEffect.GetDissolveColor0Scale:TpvVector4;
+begin
+ result:=Data^.DissolveColor0Scale;
+end;
+
+procedure TpvScene3D.TInstanceEffect.SetDissolveColor0Scale(const aValue:TpvVector4);
+begin
+ if Data^.DissolveColor0Scale<>aValue then begin
+  Data^.DissolveColor0Scale:=aValue;
+ end;
+end;
+
+function TpvScene3D.TInstanceEffect.GetDissolveColor0:TpvVector3;
+begin
+ result:=Data^.DissolveColor0Scale.xyz;
+end;
+
+procedure TpvScene3D.TInstanceEffect.SetDissolveColor0(const aValue:TpvVector3);
+begin
+ if Data^.DissolveColor0Scale.xyz<>aValue then begin
+  Data^.DissolveColor0Scale.xyz:=aValue;
+ end;
+end;
+
+function TpvScene3D.TInstanceEffect.GetDissolveScale:TpvFloat;
+begin
+ result:=Data^.DissolveColor0Scale.w;
+end;
+
+procedure TpvScene3D.TInstanceEffect.SetDissolveScale(const aValue:TpvFloat);
+begin
+ if Data^.DissolveColor0Scale.w<>aValue then begin
+  Data^.DissolveColor0Scale.w:=aValue;
+ end;
+end;
+
+function TpvScene3D.TInstanceEffect.GetDissolveColor1Width:TpvVector4;
+begin
+ result:=Data^.DissolveColor1Width;
+end;
+
+procedure TpvScene3D.TInstanceEffect.SetDissolveColor1Width(const aValue:TpvVector4);
+begin
+ if Data^.DissolveColor1Width<>aValue then begin
+  Data^.DissolveColor1Width:=aValue;
+ end;
+end;
+
+function TpvScene3D.TInstanceEffect.GetDissolveColor1:TpvVector3;
+begin
+ result:=Data^.DissolveColor1Width.xyz;
+end;
+
+procedure TpvScene3D.TInstanceEffect.SetDissolveColor1(const aValue:TpvVector3);
+begin
+ if Data^.DissolveColor1Width.xyz<>aValue then begin
+  Data^.DissolveColor1Width.xyz:=aValue;
+ end;
+end;
+
+function TpvScene3D.TInstanceEffect.GetDissolveWidth:TpvFloat;
+begin
+ result:=Data^.DissolveColor1Width.w;
+end;
+
+procedure TpvScene3D.TInstanceEffect.SetDissolveWidth(const aValue:TpvFloat);
+begin
+ if Data^.DissolveColor1Width.w<>aValue then begin
+  Data^.DissolveColor1Width.w:=aValue;
+ end;
+end;
+
+{ TpvScene3D.TInstanceEffectList }
 
 { TpvScene3D.TBaseObject }
 
@@ -28095,6 +28370,10 @@ begin
  
  fInstanceEffectDataIndexLock:=TPasMPSpinLock.Create;
 
+ fInstanceEffectListLock:=TPasMPSpinLock.Create;
+
+ fInstanceEffectList:=TInstanceEffectList.Create(true);
+
  for Index:=0 to fCountInFlightFrames-1 do begin
 
   fGlobalVulkanInstanceCounts[Index]:=1;
@@ -29024,6 +29303,12 @@ begin
  end;
  FreeAndNil(fGroups);
  FreeAndNil(fGroupListLock);
+
+ while fInstanceEffectList.Count>0 do begin
+  fInstanceEffectList[fInstanceEffectList.Count-1].Free;
+ end;
+ FreeAndNil(fInstanceEffectList);
+ FreeAndNil(fInstanceEffectListLock);
 
  FreeAndNil(fInstanceEffectDataDynamicArray);
 
