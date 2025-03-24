@@ -905,16 +905,21 @@ void main() {
   }
 #endif // !VOXELIZATION
 #endif
-  if(inInstanceEffectIndex > 0u){
-    if(!applyInstanceEffect(uint(inInstanceEffectIndex), color, vec2(texCoords[0]), uvec2(gl_FragCoord.xy), false)){
-      color.w = 0.0;
-    }
-  }
   float alpha = ((flags & (1u << 31u)) != 0u) 
                    ? 1.0 // Force alpha to 1.0, if actually a opaque material is used, but with transmission in the transparency pass
                    : color.w * inColor0.w, 
         outputAlpha = ((flags & 32u) != 0) ? alpha : 1.0; // AMD GPUs under Linux doesn't like mix(1.0, alpha, float(int(uint((flags >> 5u) & 1u)))); due to the unsigned int stuff
   vec4 finalColor = vec4(color.xyz * inColor0.xyz, outputAlpha);
+  if(inInstanceEffectIndex > 0u){
+    if(!applyInstanceEffect(uint(inInstanceEffectIndex), finalColor, vec2(texCoords[0]), uvec2(gl_FragCoord.xy), false)){
+      if((flags & (1u << 31u)) == 0u){ 
+        finalColor.w = alpha = 0.0;
+        if((flags & 32u) != 0){
+          outputAlpha = 0.0;
+        }
+      }
+    }
+  }
 #if !(defined(WBOIT) || defined(MBOIT) || defined(VOXELIZATION))
 #ifndef BLEND 
   outFragColor = vec4(clamp(finalColor.xyz, vec3(-65504.0), vec3(65504.0)), finalColor.w);
