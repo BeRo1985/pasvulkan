@@ -76,4 +76,30 @@ uvec4 pcgHash44(uvec4 v){
   return v;
 }
 
+float pcgHash(const in vec2 p){
+  return uintBitsToFloat(((pcgHash21(floatBitsToUint(p)) >> 9u) & 0x007fffffu) | 0x3f800000u) - 1.0;
+}
+
+float pcgTileableNoise(in vec2 p, in float scale){
+  p *= scale;
+  vec2 f = fract(p);
+  p = floor(p);
+  f = (f * f) * fma(f, vec2(-2.0), vec2(3.0));
+  const vec2 o = vec2(0.0, 1.0);
+  return mix(mix(pcgHash(mod(p + o.xx, vec2(scale))), pcgHash(mod(p + o.yx, vec2(scale))), f.x),
+             mix(pcgHash(mod(p + o.xy, vec2(scale))), pcgHash(mod(p + o.yy, vec2(scale))), f.x), f.y);    
+}
+
+float pcgTileableFBM(in vec2 p, in float scale, in uint octaves){
+  vec2 sum = vec2(0.0);
+  float amplitude = 1.0;
+  float frequency = 1.0;
+  for(uint i = 0u; i < octaves; i++){
+    sum += vec2(pcgTileableNoise(p * frequency, scale), 1.0) * amplitude;
+    amplitude *= 0.5;
+    frequency *= 2.0;
+  }
+  return sum.x / sum.y;
+}
+
 #endif

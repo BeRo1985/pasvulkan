@@ -364,6 +364,8 @@ float hologramNoise(float x){
   return smoothstep(0.0, 0.25, hologramNoiseFunction(x, 4096u));
 }
 
+#include "instanceeffect.glsl"
+
 void main() {
 #ifdef VOXELIZATION
   if(any(lessThan(inWorldSpacePosition.xyz, inAABBMin.xyz)) || 
@@ -456,6 +458,12 @@ void main() {
 #if defined(ALPHATEST) || defined(LOOPOIT) || defined(LOCKOIT) || defined(WBOIT) || defined(MBOIT) || defined(DFAOIT)
   uint flags = material.alphaCutOffFlagsTex0Tex1.y;
   float alpha = ((flags & (1u << 31u)) != 0u) ? 1.0 : (textureFetch(0, vec4(1.0), true).w * material.baseColorFactor.w * inColor0.w);
+  if((inInstanceEffectIndex > 0u) && ((flags & (1u << 31u)) != 0u)){
+    vec4 dummyColor = vec4(1.0);
+    if(!applyInstanceEffect(uint(inInstanceEffectIndex), dummyColor, vec2(texCoords[0]), uvec2(gl_FragCoord.xy), false)){
+      alpha = 0.0;
+    }
+  }
 #endif
 #else
   
@@ -897,6 +905,11 @@ void main() {
   }
 #endif // !VOXELIZATION
 #endif
+  if(inInstanceEffectIndex > 0u){
+    if(!applyInstanceEffect(uint(inInstanceEffectIndex), color, vec2(texCoords[0]), uvec2(gl_FragCoord.xy), false)){
+      color.w = 0.0;
+    }
+  }
   float alpha = ((flags & (1u << 31u)) != 0u) 
                    ? 1.0 // Force alpha to 1.0, if actually a opaque material is used, but with transmission in the transparency pass
                    : color.w * inColor0.w, 
