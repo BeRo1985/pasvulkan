@@ -530,6 +530,7 @@ type EpvScene3D=class(Exception);
             end;
             PInstanceEffectData=^TInstanceEffectData;
             TInstanceEffectDataDynamicArray=TpvDynamicArrayList<TInstanceEffectData>;
+            TInstanceEffectDataFreeIndexQueue=TpvDynamicQueue<TpvUInt32>;
             { TDebugPrimitiveVertex }
             TDebugPrimitiveVertex=packed record
              public
@@ -3749,6 +3750,9 @@ type EpvScene3D=class(Exception);
        fEmissiveIntensityFactor:TpvScalar;
        fInstanceEffectDataDynamicArray:TInstanceEffectDataDynamicArray;
        fInFlightFrameInstanceEffectDataDynamicArrays:array[0..MaxInFlightFrames-1] of TInstanceEffectDataDynamicArray;
+       fInstanceEffectDataFreeIndexQueue:TInstanceEffectDataFreeIndexQueue;
+       fInstanceEffectDataIndexCounter:TpvUInt32;
+       fInstanceEffectDataIndexLock:TPasMPSpinLock;
        fReferencedPlanetDataBufRefArray:array[0..MaxInFlightFrames-1] of TVkDeviceAddressArray;
        fReferencedPlanetDataBufRefArrayVulkanBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
       private
@@ -3905,6 +3909,8 @@ type EpvScene3D=class(Exception);
        procedure DumpMemoryUsage(const aStringList:TStringList);
        procedure AddProceduralTextureImageHook(const aName:TpvUTF8String;const aHook:TImage.THook;const aAllocateTexture:Boolean);
        procedure RemoveProceduralTextureImageHook(const aName:TpvUTF8String);
+       function AcquireInstanceEffectIndex:TpvUInt32;
+       procedure ReleaseInstanceEffectIndex(const aIndex:TpvUInt32);
        procedure Upload;
        procedure Unload;
        procedure StoreAnimationStates;
@@ -28083,6 +28089,12 @@ begin
   fInFlightFrameInstanceEffectDataDynamicArrays[Index].Add(fInstanceEffectDataDynamicArray);
  end;
 
+ fInstanceEffectDataFreeIndexQueue.Initialize;
+
+ fInstanceEffectDataIndexCounter:=1;
+ 
+ fInstanceEffectDataIndexLock:=TPasMPSpinLock.Create;
+
  for Index:=0 to fCountInFlightFrames-1 do begin
 
   fGlobalVulkanInstanceCounts[Index]:=1;
@@ -29019,6 +29031,10 @@ begin
   FreeAndNil(fInFlightFrameInstanceEffectDataDynamicArrays[Index]);
  end;
 
+ fInstanceEffectDataFreeIndexQueue.Finalize;
+ 
+ FreeAndNil(fInstanceEffectDataIndexLock);
+
  for Index:=0 to fCountInFlightFrames-1 do begin
   FreeAndNil(fInFrameFrameLights[Index]);
  end;
@@ -29785,6 +29801,43 @@ begin
   fProceduralTextureImageHookStringHashMap.Delete(aName);
  finally
   fImageListLock.Release;
+ end;
+end;
+
+function TpvScene3D.AcquireInstanceEffectIndex:TpvUInt32;
+begin
+ fInstanceEffectDataIndexLock.Acquire;
+ try
+  if fInstanceEffectDataFreeIndexQueue.Dequeue(result) then begin
+   fInstanceEffectDataDynamicArray.ItemArray[result]:=TpvScene3D.EmptyInstanceEffectData;
+  end else begin
+   result:=fInstanceEffectDataIndexCounter;
+   if fInstanceEffectDataIndexCounter=TpvUInt32($ffffffff) then begin
+    raise EpvScene3D.Create('Instance effect index counter overflow');
+   end else begin
+    inc(fInstanceEffectDataIndexCounter);
+    while fInstanceEffectDataDynamicArray.Count<fInstanceEffectDataIndexCounter do begin
+     fInstanceEffectDataDynamicArray.Add(TpvScene3D.EmptyInstanceEffectData);
+    end;
+   end;
+  end;
+ finally
+  fInstanceEffectDataIndexLock.Release;
+ end; 
+end;
+
+procedure TpvScene3D.ReleaseInstanceEffectIndex(const aIndex:TpvUInt32);
+begin
+ if aIndex>0 then begin
+  fInstanceEffectDataIndexLock.Acquire;
+  try
+   if aIndex<fInstanceEffectDataIndexCounter then begin
+    fInstanceEffectDataFreeIndexQueue.Enqueue(aIndex);
+    fInstanceEffectDataDynamicArray.ItemArray[aIndex]:=TpvScene3D.EmptyInstanceEffectData;
+   end;
+  finally
+   fInstanceEffectDataIndexLock.Release;
+  end;
  end;
 end;
 
