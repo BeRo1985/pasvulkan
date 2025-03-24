@@ -472,9 +472,12 @@ type EpvRaytracing=class(Exception);
                      fInRaytracingIndex:TpvSizeInt;
                      fInBottomLevelAccelerationStructureIndex:TpvSizeInt;
                      fAccelerationStructureInstance:TpvRaytracingBottomLevelAccelerationStructureInstance;
+                     function GetInstanceCustomIndex:TVkInt32;
+                     procedure SetInstanceCustomIndex(const aInstanceCustomIndex:TVkInt32);
                     public
                      constructor Create(const aBottomLevelAccelerationStructure:TBottomLevelAccelerationStructure;
                                         const aTransform:TpvMatrix4x4;
+                                        const aInstanceCustomIndex:TVkInt32;
                                         const aMask:TVkUInt32;
                                         const aInstanceShaderBindingTableRecordOffset:TVkUInt32;
                                         const aFlags:TVkGeometryInstanceFlagsKHR); reintroduce;
@@ -484,6 +487,7 @@ type EpvRaytracing=class(Exception);
                     public
                      property Raytracing:TpvRaytracing read fRaytracing;
                      property BottomLevelAccelerationStructure:TBottomLevelAccelerationStructure read fBottomLevelAccelerationStructure;
+                     property InstanceCustomIndex:TVkInt32 read GetInstanceCustomIndex write SetInstanceCustomIndex;
                      property InRaytracingIndex:TpvSizeInt read fInRaytracingIndex;
                      property InBottomLevelAccelerationStructureIndex:TpvSizeInt read fInBottomLevelAccelerationStructureIndex;
                      property AccelerationStructureInstance:TpvRaytracingBottomLevelAccelerationStructureInstance read fAccelerationStructureInstance;
@@ -532,6 +536,7 @@ type EpvRaytracing=class(Exception);
               procedure Update;
               function GetGeometryInfo(const aIndex:TpvSizeInt):PpvRaytracingBLASGeometryInfoBufferItem;
               function AcquireInstance(const aTransform:TpvMatrix4x4;
+                                       const aInstanceCustomIndex:TVkInt32;
                                        const aMask:TVkUInt32;
                                        const aInstanceShaderBindingTableRecordOffset:TVkUInt32;
                                        const aFlags:TVkGeometryInstanceFlagsKHR):TInstance;
@@ -2023,6 +2028,7 @@ end;
 
 constructor TpvRaytracing.TBottomLevelAccelerationStructure.TInstance.Create(const aBottomLevelAccelerationStructure:TBottomLevelAccelerationStructure;
                                                                              const aTransform:TpvMatrix4x4;
+                                                                             const aInstanceCustomIndex:TpvInt32;
                                                                              const aMask:TVkUInt32;
                                                                              const aInstanceShaderBindingTableRecordOffset:TVkUInt32;
                                                                              const aFlags:TVkGeometryInstanceFlagsKHR);
@@ -2039,9 +2045,13 @@ begin
 
  fInBottomLevelAccelerationStructureIndex:=-1;
 
- InstanceCustomIndex:=fBottomLevelAccelerationStructure.GeometryInfoBaseIndex;
- if InstanceCustomIndex>=$00800000 then begin
-  InstanceCustomIndex:=$00800000;
+ if aInstanceCustomIndex>=0 then begin
+  InstanceCustomIndex:=aInstanceCustomIndex;
+ end else begin
+  InstanceCustomIndex:=fBottomLevelAccelerationStructure.fGeometryInfoBaseIndex;
+  if InstanceCustomIndex>=$00800000 then begin
+   InstanceCustomIndex:=$00800000;
+  end;
  end;
 
  fAccelerationStructureInstance:=TpvRaytracingBottomLevelAccelerationStructureInstance.Create(fRaytracing.fDevice,
@@ -2090,7 +2100,7 @@ begin
      fRaytracing.fGeometryOffsetArrayList.Resize(fInRaytracingIndex+1);
     end;
 
-    fRaytracing.fGeometryOffsetArrayList[InRaytracingIndex]:=fBottomLevelAccelerationStructure.GeometryInfoBaseIndex;
+    fRaytracing.fGeometryOffsetArrayList[InRaytracingIndex]:=fBottomLevelAccelerationStructure.fGeometryInfoBaseIndex;
 
     // Ensure that the acceleration structure instance list has enough space for the new acceleration structure instance
     if fRaytracing.fAccelerationStructureInstanceKHRArrayList.Count<=fInRaytracingIndex then begin
@@ -2209,6 +2219,26 @@ begin
 
 end;
 
+function TpvRaytracing.TBottomLevelAccelerationStructure.TInstance.GetInstanceCustomIndex:TVkInt32;
+var Temporary:TVkUInt32;
+begin
+ Temporary:=fAccelerationStructureInstance.fAccelerationStructureInstancePointer^.instanceCustomIndex;
+ if (Temporary and TVkUInt32($00800000))<>0 then begin
+  result:=TVkInt32(TVkUInt32(Temporary and TVkUInt32($007fffff)));
+ end else begin
+  result:=-1;
+ end;
+end;
+
+procedure TpvRaytracing.TBottomLevelAccelerationStructure.TInstance.SetInstanceCustomIndex(const aInstanceCustomIndex:TVkInt32);
+begin
+ if aInstanceCustomIndex>=0 then begin
+  fAccelerationStructureInstance.fAccelerationStructureInstancePointer^.instanceCustomIndex:=(TVkUInt32(aInstanceCustomIndex) and TVkUInt32($007fffff)) or TVkUInt32($00800000);
+ end else{if (fAccelerationStructureInstance.fAccelerationStructureInstancePointer^.instanceCustomIndex and TVkUInt32($00800000))<>0 then}begin
+  fAccelerationStructureInstance.fAccelerationStructureInstancePointer^.instanceCustomIndex:=fBottomLevelAccelerationStructure.fGeometryInfoBaseIndex;
+ end;
+end;
+
  { TpvRaytracing.TBottomLevelAccelerationStructure }
 
 constructor TpvRaytracing.TBottomLevelAccelerationStructure.Create(const aBLASManager:TpvRaytracing;
@@ -2259,7 +2289,7 @@ begin
  fScratchOffset:=0;
  
  fScratchPass:=0;
- 
+
  fGeometryInfoBaseIndex:=-1;
 
  fCountGeometries:=0;
@@ -2525,12 +2555,14 @@ begin
 end;
 
 function TpvRaytracing.TBottomLevelAccelerationStructure.AcquireInstance(const aTransform:TpvMatrix4x4;
+                                                                         const aInstanceCustomIndex:TVkInt32;
                                                                          const aMask:TVkUInt32;
                                                                          const aInstanceShaderBindingTableRecordOffset:TVkUInt32;
                                                                          const aFlags:TVkGeometryInstanceFlagsKHR):TInstance;
 begin
  result:=TInstance.Create(self,
                           aTransform,
+                          aInstanceCustomIndex,
                           aMask,
                           aInstanceShaderBindingTableRecordOffset,
                           aFlags);
@@ -3188,9 +3220,10 @@ begin
   TpvRaytracingAccelerationStructure.MemoryBarrier(fCommandBuffer);
 
   fEmptyBottomLevelAccelerationStructureInstance:=fEmptyBottomLevelAccelerationStructure.AcquireInstance(TpvMatrix4x4.Identity,
-                                                                         $ff,
-                                                                         0,
-                                                                         0);
+                                                                                                         -1,
+                                                                                                         $ff,
+                                                                                                         0,
+                                                                                                         0);
 
   fBottomLevelAccelerationStructureListChanged:=true;
 

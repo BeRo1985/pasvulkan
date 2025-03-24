@@ -12338,9 +12338,10 @@ begin
   end else if aActive then begin
    if fBLAS.BottomLevelAccelerationStructureInstanceList.Count=0 then begin
     fBLAS.AcquireInstance(TpvScene3D(fPlanet.fScene3D).TransformOrigin(fPlanet.fData.ModelMatrix,aInFlightFrameIndex,false),
-                              $ff,
-                              0,
-                              0);
+                          -1,
+                          $ff,
+                          0,
+                          0);
    end else begin
     fBLAS.BottomLevelAccelerationStructureInstanceList.RawItems[0].AccelerationStructureInstance.Transform:=TpvScene3D(fPlanet.fScene3D).TransformOrigin(fPlanet.fData.ModelMatrix,aInFlightFrameIndex,false);
    end;

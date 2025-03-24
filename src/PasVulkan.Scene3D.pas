@@ -6497,7 +6497,9 @@ var CountRenderInstances,CountPrimitives,RaytracingPrimitiveIndex,RendererInstan
     Matrix:TpvMatrix4x4;
     MatricesDynamicArray:PMatricesDynamicArray;
     PerInFlightFrameRenderInstanceDynamicArray:TpvScene3D.TGroup.TInstance.PPerInFlightFrameRenderInstanceDynamicArray;
+    PerInFlightFrameRenderInstance:TpvScene3D.TGroup.TInstance.PPerInFlightFrameRenderInstance;
     GeometryInfo:PpvRaytracingBLASGeometryInfoBufferItem;
+    BLASInstance:TpvRaytracing.TBottomLevelAccelerationStructure.TInstance;
 begin
 
  result:=false;
@@ -6840,6 +6842,7 @@ begin
       try
        while BLASGroup^.fBLAS.BottomLevelAccelerationStructureInstanceList.Count<CountRenderInstances do begin
         BLASGroup^.fBLAS.AcquireInstance(fInstance.ModelMatrix,
+                                         -1,
                                          RaytracingMask,
                                          0,
                                          GeometryInstanceFlags);
@@ -6869,13 +6872,22 @@ begin
        BLASInstanceIndex:=0;
 
        for RendererInstanceIndex:=0 to Min(CountRenderInstances,PerInFlightFrameRenderInstanceDynamicArray^.Count)-1 do begin
-        BLASGroup^.fBLAS.BottomLevelAccelerationStructureInstanceList.RawItems[BLASInstanceIndex].AccelerationStructureInstance.Transform:=Matrix*PerInFlightFrameRenderInstanceDynamicArray^.Items[RendererInstanceIndex].ModelMatrix;
+        BLASInstance:=BLASGroup^.fBLAS.BottomLevelAccelerationStructureInstanceList.RawItems[BLASInstanceIndex];
+        PerInFlightFrameRenderInstance:=@PerInFlightFrameRenderInstanceDynamicArray^.Items[RendererInstanceIndex];
+        BLASInstance.AccelerationStructureInstance.Transform:=Matrix*PerInFlightFrameRenderInstance^.ModelMatrix;
+        if PerInFlightFrameRenderInstance^.InstanceEffectDataIndex>0 then begin
+         BLASInstance.InstanceCustomIndex:=PerInFlightFrameRenderInstance^.InstanceEffectDataIndex;
+        end else begin
+         BLASInstance.InstanceCustomIndex:=-1;
+        end;
         inc(BLASInstanceIndex);
        end;
 
       end else begin
 
-       BLASGroup^.fBLAS.BottomLevelAccelerationStructureInstanceList.RawItems[0].AccelerationStructureInstance.Transform:=Matrix;
+       BLASInstance:=BLASGroup^.fBLAS.BottomLevelAccelerationStructureInstanceList.RawItems[0];
+       BLASInstance.AccelerationStructureInstance.Transform:=Matrix;
+       BLASInstance.InstanceCustomIndex:=-1;
 
       end;
 
