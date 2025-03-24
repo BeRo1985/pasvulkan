@@ -18,6 +18,8 @@
 
 #include "octahedralmap.glsl"
 
+#include "instanceeffect.glsl"
+
 void raytracingCorrectSmoothNormal(inout vec3 smoothNormal, const in vec3 geometricNormal, const in vec3 worldSpacePosition, const in vec3 objectRayOrigin){
   vec3 direction = worldSpacePosition - objectRayOrigin;
   vec3 reflected = reflect(direction, smoothNormal);
@@ -225,6 +227,13 @@ void rayProceedEXTAlphaHandlingBasedLoop(in rayQueryEXT rayQuery, const in bool 
                 if((material.alphaCutOffFlagsTex0Tex1.y & (1u << 4u)) != 0u){
                   // Mask / Alpha Test
                   float alpha = raytracingTextureFetch(material, 0, vec4(1.0), true, texCoords).w * material.baseColorFactor.w * vertexColor.w;
+                  if(additionalInstanceDataID > 0){
+                    // Apply instance effect
+                    vec4 dummyColor = vec4(1.0);
+                    if(!applyInstanceEffect(uint(additionalInstanceDataID), dummyColor, texCoords[0], uvec2(0u), true)){
+                      alpha = 0.0;
+                    }
+                  }
                   if(alpha >= uintBitsToFloat(material.alphaCutOffFlagsTex0Tex1.x)){
                     rayQueryConfirmIntersectionEXT(rayQuery);
                     resultAlpha = 0.0;
@@ -235,6 +244,13 @@ void rayProceedEXTAlphaHandlingBasedLoop(in rayQueryEXT rayQuery, const in bool 
                 }else if((material.alphaCutOffFlagsTex0Tex1.y & (1u << 5u)) != 0u){
                   // Blend / Alpha Blend
                   float alpha = raytracingTextureFetch(material, 0, vec4(1.0), true, texCoords).w * material.baseColorFactor.w * vertexColor.w;
+                  if(additionalInstanceDataID > 0){
+                    // Apply instance effect
+                    vec4 dummyColor = vec4(1.0);
+                    if(!applyInstanceEffect(uint(additionalInstanceDataID), dummyColor, texCoords[0], uvec2(0u), true)){
+                      alpha = 0.0;
+                    }
+                  }
                   resultAlpha *= (1.0 - clamp(alpha, 0.0, 1.0));
                 }else{
                   // Opaque, but should not happen here, since we have already checked above for opaque hits
