@@ -31415,7 +31415,7 @@ begin
   end;
   Move(fInstanceEffectDataDynamicArray.ItemArray[0],
        fInFlightFrameInstanceEffectDataDynamicArrays[aInFlightFrameIndex].ItemArray[0],
-       fInstanceEffectDataDynamicArray.Count*SizeOf(TVkUInt32));
+       fInstanceEffectDataDynamicArray.Count*SizeOf(TInstanceEffectData));
  end;
 
  if fUpdateCulling.fActive then begin
