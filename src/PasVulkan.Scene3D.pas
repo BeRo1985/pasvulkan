@@ -3976,6 +3976,8 @@ type EpvScene3D=class(Exception);
        procedure RemoveProceduralTextureImageHook(const aName:TpvUTF8String);
        function AcquireInstanceEffectIndex:TpvUInt32;
        procedure ReleaseInstanceEffectIndex(const aIndex:TpvUInt32);
+       function AcquireInstanceEffect:TpvScene3D.TInstanceEffect;
+       procedure ReleaseInstanceEffect(const aInstanceEffect:TpvScene3D.TInstanceEffect); 
        procedure Upload;
        procedure Unload;
        procedure StoreAnimationStates;
@@ -30124,6 +30126,16 @@ begin
    fInstanceEffectDataIndexLock.Release;
   end;
  end;
+end;
+
+function TpvScene3D.AcquireInstanceEffect:TpvScene3D.TInstanceEffect;
+begin
+ result:=TpvScene3D.TInstanceEffect.Create(self);
+end;
+
+procedure TpvScene3D.ReleaseInstanceEffect(const aInstanceEffect:TpvScene3D.TInstanceEffect);
+begin
+ aInstanceEffect.Free;
 end;
 
 procedure TpvScene3D.NewImageDescriptorGeneration;
