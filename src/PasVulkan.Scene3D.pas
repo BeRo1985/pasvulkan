@@ -32728,7 +32728,7 @@ begin
     case fBufferStreamingMode of
 
      TBufferStreamingMode.Direct:begin
-      fGlobalVulkanInstanceEffectDataIndexBuffers[aInFlightFrameIndex].UpdateData(fGlobalVulkanInstanceEffectDataIndexDynamicArrays[aInFlightFrameIndex].Items[0],
+      fGlobalVulkanInstanceEffectDataIndexBuffers[aInFlightFrameIndex].UpdateData(fGlobalVulkanInstanceEffectDataIndexDynamicArrays[aInFlightFrameIndex].ItemArray[0],
                                                                                   0,
                                                                                   fGlobalVulkanInstanceEffectDataIndexDynamicArrays[aInFlightFrameIndex].Count*SizeOf(TpvUInt32),
                                                                                   FlushUpdateData
@@ -32739,7 +32739,7 @@ begin
       fVulkanDevice.MemoryStaging.Upload(fVulkanStagingQueue,
                                          fVulkanStagingCommandBuffer,
                                          fVulkanStagingFence,
-                                         fGlobalVulkanInstanceEffectDataIndexDynamicArrays[aInFlightFrameIndex].Items[0],
+                                         fGlobalVulkanInstanceEffectDataIndexDynamicArrays[aInFlightFrameIndex].ItemArray[0],
                                          fGlobalVulkanInstanceEffectDataIndexBuffers[aInFlightFrameIndex],
                                          0,
                                          fGlobalVulkanInstanceEffectDataIndexDynamicArrays[aInFlightFrameIndex].Count*SizeOf(TpvUInt32));
