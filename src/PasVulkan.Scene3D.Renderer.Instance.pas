@@ -6757,7 +6757,7 @@ var DrawChoreographyBatchItemIndex,DrawChoreographyBatchRangeIndex,InstanceIndex
     DrawChoreographyBatchRangeItem:TpvScene3D.PDrawChoreographyBatchRange;
     GPUDrawIndexedIndirectCommand:TpvScene3D.PGPUDrawIndexedIndirectCommand;
 //  GlobalVulkanInstanceMatrixDynamicArray:TpvScene3D.PGlobalVulkanInstanceMatrixDynamicArray;
-    GlobalVulkanInstanceEffectDataIndexDynamicArray:TpvScene3D.PGlobalVulkanInstanceEffectDataIndexDynamicArray;
+    GlobalVulkanInstanceDataIndexDynamicArray:TpvScene3D.PGlobalVulkanInstanceDataIndexDynamicArray;
     GlobalRenderInstanceCullDataDynamicArray:TpvScene3D.PGlobalRenderInstanceCullDataDynamicArray;
 //  GlobalRenderInstanceCullData:TpvScene3D.PCullData;
 //  RenderInstance:TpvScene3D.TGroup.TInstance.TRenderInstance;
@@ -6770,7 +6770,7 @@ begin
 
 //GlobalVulkanInstanceMatrixDynamicArray:=@fScene3D.GlobalVulkanInstanceMatrixDynamicArrays[aInFlightFrameIndex];
 
- GlobalVulkanInstanceEffectDataIndexDynamicArray:=@fScene3D.GlobalVulkanInstanceEffectDataIndexDynamicArrays[aInFlightFrameIndex];
+ GlobalVulkanInstanceDataIndexDynamicArray:=@fScene3D.GlobalVulkanGPUInstanceDataIndexDynamicArrays[aInFlightFrameIndex];
 
  GlobalRenderInstanceCullDataDynamicArray:=@fScene3D.GlobalRenderInstanceCullDataDynamicArrays[aInFlightFrameIndex];
 
@@ -6825,7 +6825,7 @@ begin
           GPUDrawIndexedIndirectCommand^.DrawIndexedIndirectCommand.firstInstance:=FirstInstanceID+InstanceIndex;
           GPUDrawIndexedIndirectCommand^.ObjectIndex:=TpvScene3D.TGroup.TInstance.TRenderInstance(GlobalRenderInstanceCullDataDynamicArray^.ItemArray[FirstInstanceID+InstanceIndex].RenderInstance).NodeCullObjectIDs[NodeIndex];
           GPUDrawIndexedIndirectCommand^.Flags:=0;
-          GPUDrawIndexedIndirectCommand^.InstanceEffectDataIndex:=GlobalVulkanInstanceEffectDataIndexDynamicArray^.ItemArray[FirstInstanceID+InstanceIndex];
+          GPUDrawIndexedIndirectCommand^.InstanceDataIndex:=GlobalVulkanInstanceDataIndexDynamicArray^.ItemArray[FirstInstanceID+InstanceIndex];
           GPUDrawIndexedIndirectCommand^.BoundingSphere:=BoundingSphere^.Vector4;
          end;
 
@@ -6839,7 +6839,7 @@ begin
          GPUDrawIndexedIndirectCommand^.DrawIndexedIndirectCommand.firstInstance:=0;
          GPUDrawIndexedIndirectCommand^.ObjectIndex:=DrawChoreographyBatchItem.ObjectIndex;
          GPUDrawIndexedIndirectCommand^.Flags:=0;
-         GPUDrawIndexedIndirectCommand^.InstanceEffectDataIndex:=0;
+         GPUDrawIndexedIndirectCommand^.InstanceDataIndex:=0;
          GPUDrawIndexedIndirectCommand^.BoundingSphere:=BoundingSphere^.Vector4;
 
         end;

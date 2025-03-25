@@ -371,10 +371,10 @@ type EpvScene3D=class(Exception);
             TGlobalVulkanInstanceMatrixDynamicArray=TpvDynamicArray<TpvMatrix4x4>;
             PGlobalVulkanInstanceMatrixDynamicArray=^TGlobalVulkanInstanceMatrixDynamicArray;
             TGlobalVulkanInstanceMatrixDynamicArrays=array[0..MaxInFlightFrames-1] of TGlobalVulkanInstanceMatrixDynamicArray;
-            TGlobalVulkanInstanceEffectDataIndexBuffers=array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
-            TGlobalVulkanInstanceEffectDataIndexDynamicArray=TpvDynamicArray<TpvUInt32>;
-            PGlobalVulkanInstanceEffectDataIndexDynamicArray=^TGlobalVulkanInstanceEffectDataIndexDynamicArray;
-            TGlobalVulkanInstanceEffectDataIndexDynamicArrays=array[0..MaxInFlightFrames-1] of TGlobalVulkanInstanceEffectDataIndexDynamicArray;
+            TGlobalVulkanInstanceDataIndexBuffers=array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
+            TGlobalVulkanInstanceDataIndexDynamicArray=TpvDynamicArray<TpvUInt32>;
+            PGlobalVulkanInstanceDataIndexDynamicArray=^TGlobalVulkanInstanceDataIndexDynamicArray;
+            TGlobalVulkanInstanceDataIndexDynamicArrays=array[0..MaxInFlightFrames-1] of TGlobalVulkanInstanceDataIndexDynamicArray;
             TCullData=record
              RenderInstance:TObject;
             end;
@@ -511,8 +511,8 @@ type EpvScene3D=class(Exception);
             end;
             PGPUCachedRaytracingVertex=^TGPUCachedRaytracingVertex;
             TGPUCachedRaytracingVertices=array of TGPUCachedRaytracingVertex;
-            { TInstanceEffectData }
-            TInstanceEffectData=packed record // 64 bytes per instance effect data for now, can be extended later
+            { TGPUInstanceData }
+            TGPUInstanceData=packed record // 64 bytes per instance data for now, can be extended later
              
              // vec4 begin
              Selected:TpvFloat;
@@ -528,9 +528,9 @@ type EpvScene3D=class(Exception);
              DissolveColor1Width:TpvVector4; // xyz = color1 (RGB), w = width
 
             end;
-            PInstanceEffectData=^TInstanceEffectData;
-            TInstanceEffectDataDynamicArray=TpvDynamicArrayList<TInstanceEffectData>;
-            TInstanceEffectDataFreeIndexQueue=TpvDynamicQueue<TpvUInt32>;
+            PGPUInstanceData=^TGPUInstanceData;
+            TGPUInstanceDataDynamicArray=TpvDynamicArrayList<TGPUInstanceData>;
+            TGPUInstanceDataFreeIndexQueue=TpvDynamicQueue<TpvUInt32>;
             { TDebugPrimitiveVertex }
             TDebugPrimitiveVertex=packed record
              public
@@ -618,13 +618,13 @@ type EpvScene3D=class(Exception);
              MetaData:TpvUInt64;
             end;
             PPVMFHeader=^TPVMFHeader;
-            { TInstanceEffect }
-            TInstanceEffect=class
+            { TInstanceData }
+            TInstanceData=class
              private
               fSceneInstance:TpvScene3D;
               fIndex:TpvSizeInt;
-              fDataIndex:TpvUInt32;
-              function GetDataPointer:PInstanceEffectData;
+              fGPUInstanceDataIndex:TpvUInt32;
+              function GetGPUInstanceDataPointer:PGPUInstanceData;
               function GetSelected:TpvFloat;
               procedure SetSelected(const aValue:TpvFloat);
               function GetDissolve:TpvFloat;
@@ -656,10 +656,10 @@ type EpvScene3D=class(Exception);
               procedure BeforeDestruction; override;
              published
               property SceneInstance:TpvScene3D read fSceneInstance;
-              property ListIndex:TpvSizeInt read fIndex;
-              property DataIndex:TpvUInt32 read fDataIndex;
+              property Index:TpvSizeInt read fIndex;
+              property GPUInstanceDataIndex:TpvUInt32 read fGPUInstanceDataIndex;
              public
-              property Data:PInstanceEffectData read GetDataPointer;
+              property GPUInstanceData:PGPUInstanceData read GetGPUInstanceDataPointer;
              published
               property Selected:TpvFloat read GetSelected write SetSelected;
               property Dissolve:TpvFloat read GetDissolve write SetDissolve;
@@ -680,7 +680,7 @@ type EpvScene3D=class(Exception);
              published
               property DissolveWidth:TpvFloat read GetDissolveWidth write SetDissolveWidth;
             end;
-            TInstanceEffectList=TpvObjectGenericList<TInstanceEffect>;
+            TInstanceDataList=TpvObjectGenericList<TInstanceData>;
             { TBaseObject }
             TBaseObject=class(TpvResource)
              private
@@ -1761,7 +1761,7 @@ type EpvScene3D=class(Exception);
                 DrawIndexedIndirectCommand:TVkDrawIndexedIndirectCommand;
                 ObjectIndex:TpvUInt32;
                 Flags:TpvUInt32;
-                InstanceEffectDataIndex:TpvUInt32;
+                InstanceDataIndex:TpvUInt32;
                 BoundingSphere:TpvVector4;
                 Padding1:array[0..3] of TpvUInt32;
                );
@@ -2924,7 +2924,7 @@ type EpvScene3D=class(Exception);
                           TRenderInstance=class
                            public
                             type TRenderInstanceMatrixInstances=array[-1..MaxInFlightFrames-1] of TpvMatrix4x4;
-                                 TRenderInstanceEffectDataIndices=array[-1..MaxInFlightFrames-1] of TpvUInt32;
+                                 TRenderInstanceDataIndices=array[-1..MaxInFlightFrames-1] of TpvUInt32;
                            private
                             fInstance:TpvScene3D.TGroup.TInstance;
                             fSceneInstance:TpvScene3D;
@@ -2943,8 +2943,8 @@ type EpvScene3D=class(Exception);
                             fActiveMask:TPasMPUInt32;
                             fLights:TpvScene3D.TLights;
                             fApplyCameraRelativeTransform:TPasMPBool32;
-                            fInstanceEffectDataIndex:TpvUInt32;
-                            fInstanceEffectDataIndices:TRenderInstanceEffectDataIndices;
+                            fInstanceDataIndex:TpvUInt32;
+                            fInstanceDataIndices:TRenderInstanceDataIndices;
                            public
                             constructor Create(const aInstance:TpvScene3D.TGroup.TInstance); reintroduce;
                             destructor Destroy; override;
@@ -2959,8 +2959,8 @@ type EpvScene3D=class(Exception);
                             property NodeCullObjectIDs:TpvUInt32DynamicArray read fNodeCullObjectIDs;
                             property ApplyCameraRelativeTransform:TPasMPBool32 read fApplyCameraRelativeTransform write fApplyCameraRelativeTransform;
                            public
-                            property InstanceEffectDataIndex:TpvUInt32 read fInstanceEffectDataIndex write fInstanceEffectDataIndex;
-                            property InstanceEffectDataIndices:TRenderInstanceEffectDataIndices read fInstanceEffectDataIndices;
+                            property InstanceDataIndex:TpvUInt32 read fInstanceDataIndex write fInstanceDataIndex;
+                            property InstanceDataIndices:TRenderInstanceDataIndices read fInstanceDataIndices;
                            published
                             property Active:Boolean read fActive write fActive;
                             property ActiveMask:TPasMPUInt32 read fActiveMask write fActiveMask;
@@ -2972,7 +2972,7 @@ type EpvScene3D=class(Exception);
                            RenderInstance:TObject;
                            ModelMatrix:TpvMatrix4x4;
                            PreviousModelMatrix:TpvMatrix4x4;
-                           InstanceEffectDataIndex:TpvUInt32;
+                           InstanceDataIndex:TpvUInt32;
                           end;
                           PPerInFlightFrameRenderInstance=^TPerInFlightFrameRenderInstance;
                           TPerInFlightFrameRenderInstanceDynamicArray=TpvDynamicArray<TPerInFlightFrameRenderInstance>;
@@ -3624,7 +3624,7 @@ type EpvScene3D=class(Exception);
              PVMFSignature:TPVMFSignature=('P','V','M','F');
              PVMFVersion=TpVUInt32($00000008);
              ProceduralTextureImageHookDefault:TProceduralTextureImageHook=(Hook:nil;AllocateTexture:true);
-             EmptyInstanceEffectData:TInstanceEffectData=
+             EmptyGPUInstanceData:TGPUInstanceData=
               (
 
                Selected:0.0;
@@ -3703,8 +3703,8 @@ type EpvScene3D=class(Exception);
        fGlobalVulkanInstanceCounts:TGlobalVulkanInstanceCounts;
        fGlobalVulkanInstanceMatrixDynamicArrays:TGlobalVulkanInstanceMatrixDynamicArrays;
        fGlobalVulkanInstanceMatrixBuffers:TGlobalVulkanInstanceMatrixBuffers;
-       fGlobalVulkanInstanceEffectDataIndexDynamicArrays:TGlobalVulkanInstanceEffectDataIndexDynamicArrays;
-       fGlobalVulkanInstanceEffectDataIndexBuffers:TGlobalVulkanInstanceEffectDataIndexBuffers;
+       fGlobalVulkanInstanceDataIndexDynamicArrays:TGlobalVulkanInstanceDataIndexDynamicArrays;
+       fGlobalVulkanInstanceDataIndexBuffers:TGlobalVulkanInstanceDataIndexBuffers;
        fGlobalVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fGlobalVulkanDescriptorPool:TpvVulkanDescriptorPool;
        fGlobalVulkanDescriptorSets:TGlobalVulkanDescriptorSets;
@@ -3724,7 +3724,7 @@ type EpvScene3D=class(Exception);
 //     fVulkanMaterialDataStagingBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
        fVulkanMaterialDataBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
        fVulkanMaterialUniformBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
-       fVulkanInstanceEffectDataBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
+       fVulkanGPUInstanceDataBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
        fTechniques:TpvTechniques;
        fParallelGroupInstanceUpdateQueue:TParallelGroupInstanceUpdateQueue;
        fParallelGroupInstanceUpdateQueueLock:TPasMPSlimReaderWriterLock;
@@ -3811,13 +3811,13 @@ type EpvScene3D=class(Exception);
        fSkyBoxBrightnessFactor:TpvScalar;
        fLightIntensityFactor:TpvScalar;
        fEmissiveIntensityFactor:TpvScalar;
-       fInstanceEffectDataDynamicArray:TInstanceEffectDataDynamicArray;
-       fInFlightFrameInstanceEffectDataDynamicArrays:array[0..MaxInFlightFrames-1] of TInstanceEffectDataDynamicArray;
-       fInstanceEffectDataFreeIndexQueue:TInstanceEffectDataFreeIndexQueue;
-       fInstanceEffectDataIndexCounter:TpvUInt32;
-       fInstanceEffectDataIndexLock:TPasMPSpinLock;
-       fInstanceEffectListLock:TPasMPSpinLock;
-       fInstanceEffectList:TInstanceEffectList;
+       fGPUInstanceDataDynamicArray:TGPUInstanceDataDynamicArray;
+       fInFlightFrameGPUInstanceDataDynamicArrays:array[0..MaxInFlightFrames-1] of TGPUInstanceDataDynamicArray;
+       fGPUInstanceDataFreeIndexQueue:TGPUInstanceDataFreeIndexQueue;
+       fGPUInstanceDataIndexCounter:TpvUInt32;
+       fGPUInstanceDataIndexLock:TPasMPSpinLock;
+       fInstanceDataListLock:TPasMPSpinLock;
+       fInstanceDataList:TInstanceDataList;
        fReferencedPlanetDataBufRefArray:array[0..MaxInFlightFrames-1] of TVkDeviceAddressArray;
        fReferencedPlanetDataBufRefArrayVulkanBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
       private
@@ -3974,10 +3974,10 @@ type EpvScene3D=class(Exception);
        procedure DumpMemoryUsage(const aStringList:TStringList);
        procedure AddProceduralTextureImageHook(const aName:TpvUTF8String;const aHook:TImage.THook;const aAllocateTexture:Boolean);
        procedure RemoveProceduralTextureImageHook(const aName:TpvUTF8String);
-       function AcquireInstanceEffectIndex:TpvUInt32;
-       procedure ReleaseInstanceEffectIndex(const aIndex:TpvUInt32);
-       function AcquireInstanceEffect:TpvScene3D.TInstanceEffect;
-       procedure ReleaseInstanceEffect(const aInstanceEffect:TpvScene3D.TInstanceEffect); 
+       function AcquireGPUInstanceDataIndex:TpvUInt32;
+       procedure ReleaseGPUInstanceDataIndex(const aIndex:TpvUInt32);
+       function AcquireInstanceData:TpvScene3D.TInstanceData;
+       procedure ReleaseInstanceData(const aInstanceData:TpvScene3D.TInstanceData);
        procedure Upload;
        procedure Unload;
        procedure StoreAnimationStates;
@@ -4109,7 +4109,7 @@ type EpvScene3D=class(Exception);
        property LightIntensityFactor:TpvScalar read fLightIntensityFactor write fLightIntensityFactor;
        property EmissiveIntensityFactor:TpvScalar read fEmissiveIntensityFactor write fEmissiveIntensityFactor;
       public
-       property InstanceEffectDataDynamicArray:TInstanceEffectDataDynamicArray read fInstanceEffectDataDynamicArray;
+       property GPUInstanceDataDynamicArray:TGPUInstanceDataDynamicArray read fGPUInstanceDataDynamicArray;
       public
        property OriginTransform:TOriginTransform read fOriginTransform write fOriginTransform;
        property InverseOriginTransform:TOriginTransform read fInverseOriginTransform write fInverseOriginTransform;
@@ -4155,7 +4155,7 @@ type EpvScene3D=class(Exception);
       public
        property GlobalVulkanInstanceCounts:TGlobalVulkanInstanceCounts read fGlobalVulkanInstanceCounts write fGlobalVulkanInstanceCounts;
        property GlobalVulkanInstanceMatrixDynamicArrays:TGlobalVulkanInstanceMatrixDynamicArrays read fGlobalVulkanInstanceMatrixDynamicArrays;
-       property GlobalVulkanInstanceEffectDataIndexDynamicArrays:TGlobalVulkanInstanceEffectDataIndexDynamicArrays read fGlobalVulkanInstanceEffectDataIndexDynamicArrays;
+       property GlobalVulkanGPUInstanceDataIndexDynamicArrays:TGlobalVulkanInstanceDataIndexDynamicArrays read fGlobalVulkanInstanceDataIndexDynamicArrays;
        property GlobalRenderInstanceCullDataDynamicArrays:TGlobalRenderInstanceCullDataDynamicArrays read fGlobalRenderInstanceCullDataDynamicArrays;
       public
        property LastProcessFrameTimerQueryResults:TpvTimerQuery.TResults read fLastProcessFrameTimerQueryResults;
@@ -5234,215 +5234,215 @@ begin
  Color.w:=aColor.w;
 end;
 
-{ TpvScene3D.TInstanceEffect }
+{ TpvScene3D.TInstanceData }
 
-constructor TpvScene3D.TInstanceEffect.Create(const aSceneInstance:TpvScene3D);
+constructor TpvScene3D.TInstanceData.Create(const aSceneInstance:TpvScene3D);
 begin
  inherited Create;
  fSceneInstance:=aSceneInstance;
  fIndex:=-1; // Will be set by AfterConstruction
- fDataIndex:=fSceneInstance.AcquireInstanceEffectIndex;
+ fGPUInstanceDataIndex:=fSceneInstance.AcquireGPUInstanceDataIndex;
 end;
 
-destructor TpvScene3D.TInstanceEffect.Destroy;
+destructor TpvScene3D.TInstanceData.Destroy;
 begin
- if fDataIndex>0 then begin
+ if fGPUInstanceDataIndex>0 then begin
   try
-   fSceneInstance.ReleaseInstanceEffectIndex(fDataIndex);
+   fSceneInstance.ReleaseGPUInstanceDataIndex(fGPUInstanceDataIndex);
   finally
-   fDataIndex:=0;
+   fGPUInstanceDataIndex:=0;
   end; 
  end;
  inherited Destroy;
 end;
 
-procedure TpvScene3D.TInstanceEffect.AfterConstruction;
+procedure TpvScene3D.TInstanceData.AfterConstruction;
 begin
  inherited AfterConstruction;
- fSceneInstance.fInstanceEffectListLock.Acquire;
+ fSceneInstance.fInstanceDataListLock.Acquire;
  try
-  fIndex:=fSceneInstance.fInstanceEffectList.Add(self);
+  fIndex:=fSceneInstance.fInstanceDataList.Add(self);
  finally
-  fSceneInstance.fInstanceEffectListLock.Release;
+  fSceneInstance.fInstanceDataListLock.Release;
  end;
 end;
 
-procedure TpvScene3D.TInstanceEffect.BeforeDestruction;
-var OtherInstanceEffect:TInstanceEffect;
+procedure TpvScene3D.TInstanceData.BeforeDestruction;
+var OtherInstanceData:TInstanceData;
 begin
- fSceneInstance.fInstanceEffectListLock.Acquire;
+ fSceneInstance.fInstanceDataListLock.Acquire;
  try
   if fIndex>=0 then begin
-   if (fIndex+1)<fSceneInstance.fInstanceEffectList.Count then begin
-    OtherInstanceEffect:=fSceneInstance.fInstanceEffectList[fSceneInstance.fInstanceEffectList.Count-1];
-    OtherInstanceEffect.fIndex:=fIndex;
-    fIndex:=fSceneInstance.fInstanceEffectList.Count-1;
-    fSceneInstance.fInstanceEffectList[OtherInstanceEffect.fIndex]:=OtherInstanceEffect;
-    fSceneInstance.fInstanceEffectList[fIndex]:=self;    
+   if (fIndex+1)<fSceneInstance.fInstanceDataList.Count then begin
+    OtherInstanceData:=fSceneInstance.fInstanceDataList[fSceneInstance.fInstanceDataList.Count-1];
+    OtherInstanceData.fIndex:=fIndex;
+    fIndex:=fSceneInstance.fInstanceDataList.Count-1;
+    fSceneInstance.fInstanceDataList[OtherInstanceData.fIndex]:=OtherInstanceData;
+    fSceneInstance.fInstanceDataList[fIndex]:=self;
    end;
-   fSceneInstance.fInstanceEffectList.ExtractIndex(fIndex);
+   fSceneInstance.fInstanceDataList.ExtractIndex(fIndex);
    fIndex:=-1;
   end;
  finally
-  fSceneInstance.fInstanceEffectListLock.Release;
+  fSceneInstance.fInstanceDataListLock.Release;
  end;
  inherited BeforeDestruction;
 end;
 
-function TpvScene3D.TInstanceEffect.GetDataPointer:PInstanceEffectData;
+function TpvScene3D.TInstanceData.GetGPUInstanceDataPointer:PGPUInstanceData;
 begin
- if (fDataIndex>=0) and (fDataIndex<TpvUInt32(fSceneInstance.fInstanceEffectDataDynamicArray.Count)) then begin
-  result:=@fSceneInstance.fInstanceEffectDataDynamicArray.ItemArray[fDataIndex];
+ if (fGPUInstanceDataIndex>=0) and (fGPUInstanceDataIndex<TpvUInt32(fSceneInstance.fGPUInstanceDataDynamicArray.Count)) then begin
+  result:=@fSceneInstance.fGPUInstanceDataDynamicArray.ItemArray[fGPUInstanceDataIndex];
  end else begin
   result:=nil;
  end;
 end;
 
-function TpvScene3D.TInstanceEffect.GetSelected:TpvFloat;
+function TpvScene3D.TInstanceData.GetSelected:TpvFloat;
 begin
- result:=Data^.Selected;
+ result:=GPUInstanceData^.Selected;
 end;
 
-procedure TpvScene3D.TInstanceEffect.SetSelected(const aValue:TpvFloat);
+procedure TpvScene3D.TInstanceData.SetSelected(const aValue:TpvFloat);
 begin
- if Data^.Selected<>aValue then begin
-  Data^.Selected:=aValue;
+ if GPUInstanceData^.Selected<>aValue then begin
+  GPUInstanceData^.Selected:=aValue;
  end;
 end;
 
-function TpvScene3D.TInstanceEffect.GetDissolve:TpvFloat;
+function TpvScene3D.TInstanceData.GetDissolve:TpvFloat;
 begin
- result:=Data^.Dissolve;
+ result:=GPUInstanceData^.Dissolve;
 end;
 
-procedure TpvScene3D.TInstanceEffect.SetDissolve(const aValue:TpvFloat);
+procedure TpvScene3D.TInstanceData.SetDissolve(const aValue:TpvFloat);
 begin
- if Data^.Dissolve<>aValue then begin
-  Data^.Dissolve:=aValue;
+ if GPUInstanceData^.Dissolve<>aValue then begin
+  GPUInstanceData^.Dissolve:=aValue;
  end;
 end;
 
-function TpvScene3D.TInstanceEffect.GetDitheredTransparency:TpvFloat;
+function TpvScene3D.TInstanceData.GetDitheredTransparency:TpvFloat;
 begin
- result:=Data^.DitheredTransparency;
+ result:=GPUInstanceData^.DitheredTransparency;
 end;
 
-procedure TpvScene3D.TInstanceEffect.SetDitheredTransparency(const aValue:TpvFloat);
+procedure TpvScene3D.TInstanceData.SetDitheredTransparency(const aValue:TpvFloat);
 begin
- if Data^.DitheredTransparency<>aValue then begin
-  Data^.DitheredTransparency:=aValue;
+ if GPUInstanceData^.DitheredTransparency<>aValue then begin
+  GPUInstanceData^.DitheredTransparency:=aValue;
  end;
 end;
 
-function TpvScene3D.TInstanceEffect.GetSelectedColorIntensity:TpvVector4;
+function TpvScene3D.TInstanceData.GetSelectedColorIntensity:TpvVector4;
 begin
- result:=Data^.SelectedColorIntensity;
+ result:=GPUInstanceData^.SelectedColorIntensity;
 end;
 
-procedure TpvScene3D.TInstanceEffect.SetSelectedColorIntensity(const aValue:TpvVector4);
+procedure TpvScene3D.TInstanceData.SetSelectedColorIntensity(const aValue:TpvVector4);
 begin
- if Data^.SelectedColorIntensity<>aValue then begin
-  Data^.SelectedColorIntensity:=aValue;
+ if GPUInstanceData^.SelectedColorIntensity<>aValue then begin
+  GPUInstanceData^.SelectedColorIntensity:=aValue;
  end;
 end;
 
-function TpvScene3D.TInstanceEffect.GetSelectedColor:TpvVector3;
+function TpvScene3D.TInstanceData.GetSelectedColor:TpvVector3;
 begin
- result:=Data^.SelectedColorIntensity.xyz;
+ result:=GPUInstanceData^.SelectedColorIntensity.xyz;
 end;
 
-procedure TpvScene3D.TInstanceEffect.SetSelectedColor(const aValue:TpvVector3);
+procedure TpvScene3D.TInstanceData.SetSelectedColor(const aValue:TpvVector3);
 begin
- if Data^.SelectedColorIntensity.xyz<>aValue then begin
-  Data^.SelectedColorIntensity.xyz:=aValue;
+ if GPUInstanceData^.SelectedColorIntensity.xyz<>aValue then begin
+  GPUInstanceData^.SelectedColorIntensity.xyz:=aValue;
  end;
 end;
 
-function TpvScene3D.TInstanceEffect.GetSelectedIntensity:TpvFloat;
+function TpvScene3D.TInstanceData.GetSelectedIntensity:TpvFloat;
 begin
- result:=Data^.SelectedColorIntensity.w;
+ result:=GPUInstanceData^.SelectedColorIntensity.w;
 end;
 
-procedure TpvScene3D.TInstanceEffect.SetSelectedIntensity(const aValue:TpvFloat);
+procedure TpvScene3D.TInstanceData.SetSelectedIntensity(const aValue:TpvFloat);
 begin
- if Data^.SelectedColorIntensity.w<>aValue then begin
-  Data^.SelectedColorIntensity.w:=aValue;
+ if GPUInstanceData^.SelectedColorIntensity.w<>aValue then begin
+  GPUInstanceData^.SelectedColorIntensity.w:=aValue;
  end;
 end;
 
-function TpvScene3D.TInstanceEffect.GetDissolveColor0Scale:TpvVector4;
+function TpvScene3D.TInstanceData.GetDissolveColor0Scale:TpvVector4;
 begin
- result:=Data^.DissolveColor0Scale;
+ result:=GPUInstanceData^.DissolveColor0Scale;
 end;
 
-procedure TpvScene3D.TInstanceEffect.SetDissolveColor0Scale(const aValue:TpvVector4);
+procedure TpvScene3D.TInstanceData.SetDissolveColor0Scale(const aValue:TpvVector4);
 begin
- if Data^.DissolveColor0Scale<>aValue then begin
-  Data^.DissolveColor0Scale:=aValue;
+ if GPUInstanceData^.DissolveColor0Scale<>aValue then begin
+  GPUInstanceData^.DissolveColor0Scale:=aValue;
  end;
 end;
 
-function TpvScene3D.TInstanceEffect.GetDissolveColor0:TpvVector3;
+function TpvScene3D.TInstanceData.GetDissolveColor0:TpvVector3;
 begin
- result:=Data^.DissolveColor0Scale.xyz;
+ result:=GPUInstanceData^.DissolveColor0Scale.xyz;
 end;
 
-procedure TpvScene3D.TInstanceEffect.SetDissolveColor0(const aValue:TpvVector3);
+procedure TpvScene3D.TInstanceData.SetDissolveColor0(const aValue:TpvVector3);
 begin
- if Data^.DissolveColor0Scale.xyz<>aValue then begin
-  Data^.DissolveColor0Scale.xyz:=aValue;
+ if GPUInstanceData^.DissolveColor0Scale.xyz<>aValue then begin
+  GPUInstanceData^.DissolveColor0Scale.xyz:=aValue;
  end;
 end;
 
-function TpvScene3D.TInstanceEffect.GetDissolveScale:TpvFloat;
+function TpvScene3D.TInstanceData.GetDissolveScale:TpvFloat;
 begin
- result:=Data^.DissolveColor0Scale.w;
+ result:=GPUInstanceData^.DissolveColor0Scale.w;
 end;
 
-procedure TpvScene3D.TInstanceEffect.SetDissolveScale(const aValue:TpvFloat);
+procedure TpvScene3D.TInstanceData.SetDissolveScale(const aValue:TpvFloat);
 begin
- if Data^.DissolveColor0Scale.w<>aValue then begin
-  Data^.DissolveColor0Scale.w:=aValue;
+ if GPUInstanceData^.DissolveColor0Scale.w<>aValue then begin
+  GPUInstanceData^.DissolveColor0Scale.w:=aValue;
  end;
 end;
 
-function TpvScene3D.TInstanceEffect.GetDissolveColor1Width:TpvVector4;
+function TpvScene3D.TInstanceData.GetDissolveColor1Width:TpvVector4;
 begin
- result:=Data^.DissolveColor1Width;
+ result:=GPUInstanceData^.DissolveColor1Width;
 end;
 
-procedure TpvScene3D.TInstanceEffect.SetDissolveColor1Width(const aValue:TpvVector4);
+procedure TpvScene3D.TInstanceData.SetDissolveColor1Width(const aValue:TpvVector4);
 begin
- if Data^.DissolveColor1Width<>aValue then begin
-  Data^.DissolveColor1Width:=aValue;
+ if GPUInstanceData^.DissolveColor1Width<>aValue then begin
+  GPUInstanceData^.DissolveColor1Width:=aValue;
  end;
 end;
 
-function TpvScene3D.TInstanceEffect.GetDissolveColor1:TpvVector3;
+function TpvScene3D.TInstanceData.GetDissolveColor1:TpvVector3;
 begin
- result:=Data^.DissolveColor1Width.xyz;
+ result:=GPUInstanceData^.DissolveColor1Width.xyz;
 end;
 
-procedure TpvScene3D.TInstanceEffect.SetDissolveColor1(const aValue:TpvVector3);
+procedure TpvScene3D.TInstanceData.SetDissolveColor1(const aValue:TpvVector3);
 begin
- if Data^.DissolveColor1Width.xyz<>aValue then begin
-  Data^.DissolveColor1Width.xyz:=aValue;
+ if GPUInstanceData^.DissolveColor1Width.xyz<>aValue then begin
+  GPUInstanceData^.DissolveColor1Width.xyz:=aValue;
  end;
 end;
 
-function TpvScene3D.TInstanceEffect.GetDissolveWidth:TpvFloat;
+function TpvScene3D.TInstanceData.GetDissolveWidth:TpvFloat;
 begin
- result:=Data^.DissolveColor1Width.w;
+ result:=GPUInstanceData^.DissolveColor1Width.w;
 end;
 
-procedure TpvScene3D.TInstanceEffect.SetDissolveWidth(const aValue:TpvFloat);
+procedure TpvScene3D.TInstanceData.SetDissolveWidth(const aValue:TpvFloat);
 begin
- if Data^.DissolveColor1Width.w<>aValue then begin
-  Data^.DissolveColor1Width.w:=aValue;
+ if GPUInstanceData^.DissolveColor1Width.w<>aValue then begin
+  GPUInstanceData^.DissolveColor1Width.w:=aValue;
  end;
 end;
 
-{ TpvScene3D.TInstanceEffectList }
+{ TpvScene3D.TInstanceDataList }
 
 { TpvScene3D.TBaseObject }
 
@@ -6875,8 +6875,8 @@ begin
         BLASInstance:=BLASGroup^.fBLAS.BottomLevelAccelerationStructureInstanceList.RawItems[BLASInstanceIndex];
         PerInFlightFrameRenderInstance:=@PerInFlightFrameRenderInstanceDynamicArray^.Items[RendererInstanceIndex];
         BLASInstance.AccelerationStructureInstance.Transform:=Matrix*PerInFlightFrameRenderInstance^.ModelMatrix;
-        if PerInFlightFrameRenderInstance^.InstanceEffectDataIndex>0 then begin
-         BLASInstance.InstanceCustomIndex:=PerInFlightFrameRenderInstance^.InstanceEffectDataIndex;
+        if PerInFlightFrameRenderInstance^.InstanceDataIndex>0 then begin
+         BLASInstance.InstanceCustomIndex:=PerInFlightFrameRenderInstance^.InstanceDataIndex;
         end else begin
          BLASInstance.InstanceCustomIndex:=-1;
         end;
@@ -22321,11 +22321,11 @@ begin
 
  fPreviousModelMatrix:=TpvMatrix4x4.Identity;
 
- fInstanceEffectDataIndex:=0;
+ fInstanceDataIndex:=0;
 
  for Index:=-1 to MaxInFlightFrames-1 do begin
   fModelMatrices[Index]:=TpvMatrix4x4.Identity;
-  fInstanceEffectDataIndices[Index]:=0;
+  fInstanceDataIndices[Index]:=0;
  end;
 
  fActiveMask:=0;
@@ -26842,7 +26842,7 @@ begin
        TPasMPInterlocked.BitwiseOr(RenderInstance.fActiveMask,TpvUInt32(1) shl aInFlightFrameIndex);
        RenderInstance.fWorkModelMatrix:=fSceneInstance.TransformOrigin(RenderInstance.fModelMatrix,aInFlightFrameIndex,false);
        RenderInstance.fModelMatrices[aInFlightFrameIndex]:=RenderInstance.fWorkModelMatrix;
-       RenderInstance.fInstanceEffectDataIndices[aInFlightFrameIndex]:=RenderInstance.fInstanceEffectDataIndex;
+       RenderInstance.fInstanceDataIndices[aInFlightFrameIndex]:=RenderInstance.fInstanceDataIndex;
        RenderInstance.fBoundingBox:=TemporaryBoundingBox.HomogenTransform(RenderInstance.fWorkModelMatrix);
        RenderInstance.fBoundingSphere:=TpvSphere.CreateFromAABB(RenderInstance.fBoundingBox);
        if First then begin
@@ -26869,7 +26869,7 @@ begin
        end else begin
         PerInFlightFrameRenderInstance^.PreviousModelMatrix:=RenderInstance.fPreviousModelMatrix;
        end;
-       PerInFlightFrameRenderInstance^.InstanceEffectDataIndex:=RenderInstance.fInstanceEffectDataIndex;
+       PerInFlightFrameRenderInstance^.InstanceDataIndex:=RenderInstance.fInstanceDataIndex;
        RenderInstance.fPreviousModelMatrix:=RenderInstance.fWorkModelMatrix;
        RenderInstance.UpdateLights(aInFlightFrameIndex);
       end else begin
@@ -27658,7 +27658,7 @@ var PerInFlightFrameRenderInstanceIndex,FrustumIndex,ViewIndex,InstancesCount:Tp
     ViewPotentiallyVisibleSetNodeIndex:TpvScene3D.TPotentiallyVisibleSet.TNodeIndex;
     DoCulling,PotentiallyVisible:boolean;
     GlobalVulkanInstanceMatrixDynamicArray:PGlobalVulkanInstanceMatrixDynamicArray;
-    GlobalVulkanInstanceEffectDataIndexDynamicArray:PGlobalVulkanInstanceEffectDataIndexDynamicArray;
+    GlobalVulkanGPUInstanceDataIndexDynamicArray:PGlobalVulkanInstanceDataIndexDynamicArray;
     GlobalRenderInstanceCullDataDynamicArray:PGlobalRenderInstanceCullDataDynamicArray;
     GlobalRenderInstanceCullData:PCullData;
     PerInFlightFrameRenderInstanceDynamicArray:TpvScene3D.TGroup.TInstance.PPerInFlightFrameRenderInstanceDynamicArray;
@@ -27670,7 +27670,7 @@ begin
 
   GlobalVulkanInstanceMatrixDynamicArray:=@fSceneInstance.fGlobalVulkanInstanceMatrixDynamicArrays[aInFlightFrameIndex];
 
-  GlobalVulkanInstanceEffectDataIndexDynamicArray:=@fSceneInstance.fGlobalVulkanInstanceEffectDataIndexDynamicArrays[aInFlightFrameIndex];
+  GlobalVulkanGPUInstanceDataIndexDynamicArray:=@fSceneInstance.fGlobalVulkanInstanceDataIndexDynamicArrays[aInFlightFrameIndex];
 
   GlobalRenderInstanceCullDataDynamicArray:=@fSceneInstance.fGlobalRenderInstanceCullDataDynamicArrays[aInFlightFrameIndex];
 
@@ -27721,7 +27721,7 @@ begin
    if PotentiallyVisible then begin
     GlobalVulkanInstanceMatrixDynamicArray^.Add(PerInFlightFrameRenderInstance^.ModelMatrix);
     GlobalVulkanInstanceMatrixDynamicArray^.Add(PerInFlightFrameRenderInstance^.PreviousModelMatrix);
-    GlobalVulkanInstanceEffectDataIndexDynamicArray^.Add(PerInFlightFrameRenderInstance^.InstanceEffectDataIndex);
+    GlobalVulkanGPUInstanceDataIndexDynamicArray^.Add(PerInFlightFrameRenderInstance^.InstanceDataIndex);
     GlobalRenderInstanceCullData:=Pointer(GlobalRenderInstanceCullDataDynamicArray^.AddNew);
     GlobalRenderInstanceCullData^.RenderInstance:=PerInFlightFrameRenderInstance.RenderInstance;
     inc(InstancesCount);
@@ -28370,23 +28370,23 @@ begin
   end;
  end;
 
- fInstanceEffectDataDynamicArray:=TInstanceEffectDataDynamicArray.Create;
- fInstanceEffectDataDynamicArray.Add(EmptyInstanceEffectData);
+ fGPUInstanceDataDynamicArray:=TGPUInstanceDataDynamicArray.Create;
+ fGPUInstanceDataDynamicArray.Add(EmptyGPUInstanceData);
 
  for Index:=0 to fCountInFlightFrames-1 do begin
-  fInFlightFrameInstanceEffectDataDynamicArrays[Index]:=TInstanceEffectDataDynamicArray.Create;
-  fInFlightFrameInstanceEffectDataDynamicArrays[Index].Add(fInstanceEffectDataDynamicArray);
+  fInFlightFrameGPUInstanceDataDynamicArrays[Index]:=TGPUInstanceDataDynamicArray.Create;
+  fInFlightFrameGPUInstanceDataDynamicArrays[Index].Add(fGPUInstanceDataDynamicArray);
  end;
 
- fInstanceEffectDataFreeIndexQueue.Initialize;
+ fGPUInstanceDataFreeIndexQueue.Initialize;
 
- fInstanceEffectDataIndexCounter:=1;
+ fGPUInstanceDataIndexCounter:=1;
  
- fInstanceEffectDataIndexLock:=TPasMPSpinLock.Create;
+ fGPUInstanceDataIndexLock:=TPasMPSpinLock.Create;
 
- fInstanceEffectListLock:=TPasMPSpinLock.Create;
+ fInstanceDataListLock:=TPasMPSpinLock.Create;
 
- fInstanceEffectList:=TInstanceEffectList.Create(true);
+ fInstanceDataList:=TInstanceDataList.Create(true);
 
  for Index:=0 to fCountInFlightFrames-1 do begin
 
@@ -28398,10 +28398,10 @@ begin
   fGlobalVulkanInstanceMatrixDynamicArrays[Index].Add(TpvMatrix4x4.Identity);
   fGlobalVulkanInstanceMatrixDynamicArrays[Index].Add(TpvMatrix4x4.Identity);
 
-  fGlobalVulkanInstanceEffectDataIndexDynamicArrays[Index].Initialize;
-  fGlobalVulkanInstanceEffectDataIndexDynamicArrays[Index].Resize(65536);
-  fGlobalVulkanInstanceEffectDataIndexDynamicArrays[Index].Count:=65536;
-  fGlobalVulkanInstanceEffectDataIndexDynamicArrays[Index].Add(0);
+  fGlobalVulkanInstanceDataIndexDynamicArrays[Index].Initialize;
+  fGlobalVulkanInstanceDataIndexDynamicArrays[Index].Resize(65536);
+  fGlobalVulkanInstanceDataIndexDynamicArrays[Index].Count:=65536;
+  fGlobalVulkanInstanceDataIndexDynamicArrays[Index].Add(0);
 
   fGlobalRenderInstanceCullDataDynamicArrays[Index].Initialize;
   fGlobalRenderInstanceCullDataDynamicArrays[Index].Resize(65536);
@@ -29318,21 +29318,21 @@ begin
  FreeAndNil(fGroups);
  FreeAndNil(fGroupListLock);
 
- while fInstanceEffectList.Count>0 do begin
-  fInstanceEffectList[fInstanceEffectList.Count-1].Free;
+ while fInstanceDataList.Count>0 do begin
+  fInstanceDataList[fInstanceDataList.Count-1].Free;
  end;
- FreeAndNil(fInstanceEffectList);
- FreeAndNil(fInstanceEffectListLock);
+ FreeAndNil(fInstanceDataList);
+ FreeAndNil(fInstanceDataListLock);
 
- FreeAndNil(fInstanceEffectDataDynamicArray);
+ FreeAndNil(fGPUInstanceDataDynamicArray);
 
  for Index:=0 to fCountInFlightFrames-1 do begin
-  FreeAndNil(fInFlightFrameInstanceEffectDataDynamicArrays[Index]);
+  FreeAndNil(fInFlightFrameGPUInstanceDataDynamicArrays[Index]);
  end;
 
- fInstanceEffectDataFreeIndexQueue.Finalize;
+ fGPUInstanceDataFreeIndexQueue.Finalize;
  
- FreeAndNil(fInstanceEffectDataIndexLock);
+ FreeAndNil(fGPUInstanceDataIndexLock);
 
  for Index:=0 to fCountInFlightFrames-1 do begin
   FreeAndNil(fInFrameFrameLights[Index]);
@@ -29456,7 +29456,7 @@ begin
 
  for Index:=0 to fCountInFlightFrames-1 do begin
   fGlobalVulkanInstanceMatrixDynamicArrays[Index].Finalize;
-  fGlobalVulkanInstanceEffectDataIndexDynamicArrays[Index].Finalize;
+  fGlobalVulkanInstanceDataIndexDynamicArrays[Index].Finalize;
   fGlobalRenderInstanceCullDataDynamicArrays[Index].Finalize;
  end;
 
@@ -30103,51 +30103,51 @@ begin
  end;
 end;
 
-function TpvScene3D.AcquireInstanceEffectIndex:TpvUInt32;
+function TpvScene3D.AcquireGPUInstanceDataIndex:TpvUInt32;
 begin
- fInstanceEffectDataIndexLock.Acquire;
+ fGPUInstanceDataIndexLock.Acquire;
  try
-  if fInstanceEffectDataFreeIndexQueue.Dequeue(result) then begin
-   fInstanceEffectDataDynamicArray.ItemArray[result]:=TpvScene3D.EmptyInstanceEffectData;
+  if fGPUInstanceDataFreeIndexQueue.Dequeue(result) then begin
+   fGPUInstanceDataDynamicArray.ItemArray[result]:=TpvScene3D.EmptyGPUInstanceData;
   end else begin
-   result:=fInstanceEffectDataIndexCounter;
-   if fInstanceEffectDataIndexCounter=TpvUInt32($ffffffff) then begin
-    raise EpvScene3D.Create('Instance effect index counter overflow');
+   result:=fGPUInstanceDataIndexCounter;
+   if fGPUInstanceDataIndexCounter=TpvUInt32($ffffffff) then begin
+    raise EpvScene3D.Create('Instance data index counter overflow');
    end else begin
-    inc(fInstanceEffectDataIndexCounter);
-    while fInstanceEffectDataDynamicArray.Count<fInstanceEffectDataIndexCounter do begin
-     fInstanceEffectDataDynamicArray.Add(TpvScene3D.EmptyInstanceEffectData);
+    inc(fGPUInstanceDataIndexCounter);
+    while fGPUInstanceDataDynamicArray.Count<fGPUInstanceDataIndexCounter do begin
+     fGPUInstanceDataDynamicArray.Add(TpvScene3D.EmptyGPUInstanceData);
     end;
    end;
   end;
  finally
-  fInstanceEffectDataIndexLock.Release;
+  fGPUInstanceDataIndexLock.Release;
  end; 
 end;
 
-procedure TpvScene3D.ReleaseInstanceEffectIndex(const aIndex:TpvUInt32);
+procedure TpvScene3D.ReleaseGPUInstanceDataIndex(const aIndex:TpvUInt32);
 begin
  if aIndex>0 then begin
-  fInstanceEffectDataIndexLock.Acquire;
+  fGPUInstanceDataIndexLock.Acquire;
   try
-   if aIndex<fInstanceEffectDataIndexCounter then begin
-    fInstanceEffectDataFreeIndexQueue.Enqueue(aIndex);
-    fInstanceEffectDataDynamicArray.ItemArray[aIndex]:=TpvScene3D.EmptyInstanceEffectData;
+   if aIndex<fGPUInstanceDataIndexCounter then begin
+    fGPUInstanceDataFreeIndexQueue.Enqueue(aIndex);
+    fGPUInstanceDataDynamicArray.ItemArray[aIndex]:=TpvScene3D.EmptyGPUInstanceData;
    end;
   finally
-   fInstanceEffectDataIndexLock.Release;
+   fGPUInstanceDataIndexLock.Release;
   end;
  end;
 end;
 
-function TpvScene3D.AcquireInstanceEffect:TpvScene3D.TInstanceEffect;
+function TpvScene3D.AcquireInstanceData:TpvScene3D.TInstanceData;
 begin
- result:=TpvScene3D.TInstanceEffect.Create(self);
+ result:=TpvScene3D.TInstanceData.Create(self);
 end;
 
-procedure TpvScene3D.ReleaseInstanceEffect(const aInstanceEffect:TpvScene3D.TInstanceEffect);
+procedure TpvScene3D.ReleaseInstanceData(const aInstanceData:TpvScene3D.TInstanceData);
 begin
- aInstanceEffect.Free;
+ aInstanceData.Free;
 end;
 
 procedure TpvScene3D.NewImageDescriptorGeneration;
@@ -30747,68 +30747,68 @@ begin
 
               TBufferStreamingMode.Direct:begin
 
-               fVulkanInstanceEffectDataBuffers[Index]:=TpvVulkanBuffer.Create(fVulkanDevice,
-                                                                               Max(1,fInFlightFrameInstanceEffectDataDynamicArrays[Index].Count)*SizeOf(TInstanceEffectData),
-                                                                               TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or
-                                                                               TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or
-                                                                               TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT_KHR),
-                                                                               TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                                                               [],
-                                                                               TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
-                                                                               TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
-                                                                               0,
-                                                                               0,
-                                                                               0,
-                                                                               0,
-                                                                               0,
-                                                                               0,
-                                                                               [TpvVulkanBufferFlag.PersistentMapped,TpvVulkanBufferFlag.OwnSingleMemoryChunk,TpvVulkanBufferFlag.DedicatedAllocation],
-                                                                               0,
-                                                                               pvAllocationGroupIDScene3DDynamic,
-                                                                               'TpvScene3D.fVulkanInstanceEffectDataBuffers['+IntToStr(Index)+']');
+               fVulkanGPUInstanceDataBuffers[Index]:=TpvVulkanBuffer.Create(fVulkanDevice,
+                                                                            Max(1,fInFlightFrameGPUInstanceDataDynamicArrays[Index].Count)*SizeOf(TGPUInstanceData),
+                                                                            TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or
+                                                                            TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or
+                                                                            TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT_KHR),
+                                                                            TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                                            [],
+                                                                            TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                                                            TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                                                            0,
+                                                                            0,
+                                                                            0,
+                                                                            0,
+                                                                            0,
+                                                                            0,
+                                                                            [TpvVulkanBufferFlag.PersistentMapped,TpvVulkanBufferFlag.OwnSingleMemoryChunk,TpvVulkanBufferFlag.DedicatedAllocation],
+                                                                            0,
+                                                                            pvAllocationGroupIDScene3DDynamic,
+                                                                            'TpvScene3D.fVulkanGPUInstanceDataBuffers['+IntToStr(Index)+']');
 
-                fVulkanDevice.DebugUtils.SetObjectName(fVulkanInstanceEffectDataBuffers[Index].Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.fVulkanInstanceEffectDataBuffers['+IntToStr(Index)+']');
+                fVulkanDevice.DebugUtils.SetObjectName(fVulkanGPUInstanceDataBuffers[Index].Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.fVulkanGPUInstanceDataBuffers['+IntToStr(Index)+']');
 
                 fVulkanDevice.MemoryStaging.Upload(UniversalQueue,
                                                    UniversalCommandBuffer,
                                                    UniversalFence,
-                                                   fInFlightFrameInstanceEffectDataDynamicArrays[Index].ItemArray[0],
-                                                   fVulkanInstanceEffectDataBuffers[Index],
+                                                   fInFlightFrameGPUInstanceDataDynamicArrays[Index].ItemArray[0],
+                                                   fVulkanGPUInstanceDataBuffers[Index],
                                                    0,
-                                                   Max(1,fInFlightFrameInstanceEffectDataDynamicArrays[Index].Count)*SizeOf(TInstanceEffectData));
+                                                   Max(1,fInFlightFrameGPUInstanceDataDynamicArrays[Index].Count)*SizeOf(TGPUInstanceData));
               end;
 
               TBufferStreamingMode.Staging:begin
 
-               fVulkanInstanceEffectDataBuffers[Index]:=TpvVulkanBuffer.Create(fVulkanDevice,
-                                                                               Max(1,fInFlightFrameInstanceEffectDataDynamicArrays[Index].Count)*SizeOf(TInstanceEffectData),
-                                                                               TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or
-                                                                               TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or
-                                                                               TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT_KHR),
-                                                                               TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                                                               [],
-                                                                               0,
-                                                                               TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
-                                                                               0,
-                                                                               TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
-                                                                               0,
-                                                                               0,
-                                                                               0,
-                                                                               0,
-                                                                               [TpvVulkanBufferFlag.OwnSingleMemoryChunk,TpvVulkanBufferFlag.DedicatedAllocation],
-                                                                               0,
-                                                                               pvAllocationGroupIDScene3DDynamic,
-                                                                               'TpvScene3D.fVulkanInstanceEffectDataBuffers['+IntToStr(Index)+']');
+               fVulkanGPUInstanceDataBuffers[Index]:=TpvVulkanBuffer.Create(fVulkanDevice,
+                                                                            Max(1,fInFlightFrameGPUInstanceDataDynamicArrays[Index].Count)*SizeOf(TGPUInstanceData),
+                                                                            TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or
+                                                                            TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or
+                                                                            TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT_KHR),
+                                                                            TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                                            [],
+                                                                            0,
+                                                                            TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                                            0,
+                                                                            TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                                                            0,
+                                                                            0,
+                                                                            0,
+                                                                            0,
+                                                                            [TpvVulkanBufferFlag.OwnSingleMemoryChunk,TpvVulkanBufferFlag.DedicatedAllocation],
+                                                                            0,
+                                                                            pvAllocationGroupIDScene3DDynamic,
+                                                                            'TpvScene3D.fVulkanGPUInstanceDataBuffers['+IntToStr(Index)+']');
 
-                fVulkanDevice.DebugUtils.SetObjectName(fVulkanInstanceEffectDataBuffers[Index].Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.fVulkanInstanceEffectDataBuffers['+IntToStr(Index)+']');
+                fVulkanDevice.DebugUtils.SetObjectName(fVulkanGPUInstanceDataBuffers[Index].Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.fVulkanGPUInstanceDataBuffers['+IntToStr(Index)+']');
 
                 fVulkanDevice.MemoryStaging.Upload(UniversalQueue,
                                                    UniversalCommandBuffer,
                                                    UniversalFence,
-                                                   fInFlightFrameInstanceEffectDataDynamicArrays[Index].ItemArray[0],
-                                                   fVulkanInstanceEffectDataBuffers[Index],
+                                                   fInFlightFrameGPUInstanceDataDynamicArrays[Index].ItemArray[0],
+                                                   fVulkanGPUInstanceDataBuffers[Index],
                                                    0,
-                                                   Max(1,fInFlightFrameInstanceEffectDataDynamicArrays[Index].Count)*SizeOf(TInstanceEffectData));
+                                                   Max(1,fInFlightFrameGPUInstanceDataDynamicArrays[Index].Count)*SizeOf(TGPUInstanceData));
 
               end;
 
@@ -30822,66 +30822,66 @@ begin
 
               TBufferStreamingMode.Direct:begin
 
-               fGlobalVulkanInstanceEffectDataIndexBuffers[Index]:=TpvVulkanBuffer.Create(fVulkanDevice,
-                                                                                          Max(1,fGlobalVulkanInstanceEffectDataIndexDynamicArrays[Index].Count)*SizeOf(TVkUInt32),
-                                                                                          TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or
-                                                                                          TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or
-                                                                                          TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT_KHR),
-                                                                                          TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                                                                          [],
-                                                                                          TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
-                                                                                          TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
-                                                                                          0,
-                                                                                          0,
-                                                                                          0,
-                                                                                          0,
-                                                                                          0,
-                                                                                          0,
-                                                                                          [TpvVulkanBufferFlag.PersistentMapped,TpvVulkanBufferFlag.OwnSingleMemoryChunk,TpvVulkanBufferFlag.DedicatedAllocation],
-                                                                                          0,
-                                                                                          pvAllocationGroupIDScene3DDynamic,
-                                                                                          'TpvScene3D.fGlobalVulkanInstanceEffectDataIndexBuffers['+IntToStr(Index)+']');
+               fGlobalVulkanInstanceDataIndexBuffers[Index]:=TpvVulkanBuffer.Create(fVulkanDevice,
+                                                                                    Max(1,fGlobalVulkanInstanceDataIndexDynamicArrays[Index].Count)*SizeOf(TVkUInt32),
+                                                                                    TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or
+                                                                                    TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or
+                                                                                    TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT_KHR),
+                                                                                    TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                                                    [],
+                                                                                    TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                                                                    TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                                                                    0,
+                                                                                    0,
+                                                                                    0,
+                                                                                    0,
+                                                                                    0,
+                                                                                    0,
+                                                                                    [TpvVulkanBufferFlag.PersistentMapped,TpvVulkanBufferFlag.OwnSingleMemoryChunk,TpvVulkanBufferFlag.DedicatedAllocation],
+                                                                                    0,
+                                                                                    pvAllocationGroupIDScene3DDynamic,
+                                                                                    'TpvScene3D.fGlobalVulkanInstanceDataIndexBuffers['+IntToStr(Index)+']');
 
-                fVulkanDevice.DebugUtils.SetObjectName(fGlobalVulkanInstanceEffectDataIndexBuffers[Index].Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.fGlobalVulkanInstanceEffectDataIndexBuffers['+IntToStr(Index)+']');
+                fVulkanDevice.DebugUtils.SetObjectName(fGlobalVulkanInstanceDataIndexBuffers[Index].Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.fGlobalVulkanInstanceDataIndexBuffers['+IntToStr(Index)+']');
 
                 fVulkanDevice.MemoryStaging.Zero(UniversalQueue,
                                                  UniversalCommandBuffer,
                                                  UniversalFence,
-                                                 fGlobalVulkanInstanceEffectDataIndexBuffers[Index],
+                                                 fGlobalVulkanInstanceDataIndexBuffers[Index],
                                                  0,
-                                                 fGlobalVulkanInstanceEffectDataIndexBuffers[Index].Size);
+                                                 fGlobalVulkanInstanceDataIndexBuffers[Index].Size);
               end;
 
               TBufferStreamingMode.Staging:begin
 
-               fGlobalVulkanInstanceEffectDataIndexBuffers[Index]:=TpvVulkanBuffer.Create(fVulkanDevice,
-                                                                                          Max(1,fGlobalVulkanInstanceEffectDataIndexDynamicArrays[Index].Count)*SizeOf(TVkUInt32),
-                                                                                          TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or
-                                                                                          TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or
-                                                                                          TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT_KHR),
-                                                                                          TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                                                                          [],
-                                                                                          0,
-                                                                                          TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
-                                                                                          0,
-                                                                                          TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
-                                                                                          0,
-                                                                                          0,
-                                                                                          0,
-                                                                                          0,
-                                                                                          [TpvVulkanBufferFlag.OwnSingleMemoryChunk,TpvVulkanBufferFlag.DedicatedAllocation],
-                                                                                          0,
-                                                                                          pvAllocationGroupIDScene3DDynamic,
-                                                                                          'TpvScene3D.fGlobalVulkanInstanceEffectDataIndexBuffers['+IntToStr(Index)+']');
+               fGlobalVulkanInstanceDataIndexBuffers[Index]:=TpvVulkanBuffer.Create(fVulkanDevice,
+                                                                                    Max(1,fGlobalVulkanInstanceDataIndexDynamicArrays[Index].Count)*SizeOf(TVkUInt32),
+                                                                                    TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or
+                                                                                    TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or
+                                                                                    TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT_KHR),
+                                                                                    TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                                                    [],
+                                                                                    0,
+                                                                                    TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                                                    0,
+                                                                                    TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                                                                    0,
+                                                                                    0,
+                                                                                    0,
+                                                                                    0,
+                                                                                    [TpvVulkanBufferFlag.OwnSingleMemoryChunk,TpvVulkanBufferFlag.DedicatedAllocation],
+                                                                                    0,
+                                                                                    pvAllocationGroupIDScene3DDynamic,
+                                                                                    'TpvScene3D.fGlobalVulkanInstanceDataIndexBuffers['+IntToStr(Index)+']');
 
-                fVulkanDevice.DebugUtils.SetObjectName(fGlobalVulkanInstanceEffectDataIndexBuffers[Index].Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.fGlonalVulkanInstanceEffectDataIndexBuffers['+IntToStr(Index)+']');
+                fVulkanDevice.DebugUtils.SetObjectName(fGlobalVulkanInstanceDataIndexBuffers[Index].Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.fGlobalVulkanInstanceDataIndexBuffers['+IntToStr(Index)+']');
 
                 fVulkanDevice.MemoryStaging.Zero(UniversalQueue,
                                                  UniversalCommandBuffer,
                                                  UniversalFence,
-                                                 fGlobalVulkanInstanceEffectDataIndexBuffers[Index],
+                                                 fGlobalVulkanInstanceDataIndexBuffers[Index],
                                                  0,
-                                                 fGlobalVulkanInstanceEffectDataIndexBuffers[Index].Size);
+                                                 fGlobalVulkanInstanceDataIndexBuffers[Index].Size);
 
               end;
 
@@ -30975,7 +30975,7 @@ begin
                                                                  1,
                                                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
                                                                  [],
-                                                                 [fVulkanInstanceEffectDataBuffers[Index].DescriptorBufferInfo],
+                                                                 [fVulkanGPUInstanceDataBuffers[Index].DescriptorBufferInfo],
                                                                  [],
                                                                  false);
          fGlobalVulkanDescriptorSets[Index].WriteToDescriptorSet(5,
@@ -30983,7 +30983,7 @@ begin
                                                                  1,
                                                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
                                                                  [],
-                                                                 [fGlobalVulkanInstanceEffectDataIndexBuffers[Index].DescriptorBufferInfo],
+                                                                 [fGlobalVulkanInstanceDataIndexBuffers[Index].DescriptorBufferInfo],
                                                                  [],
                                                                  false);
          if fRaytracingActive then begin
@@ -31103,9 +31103,9 @@ begin
 
      for Index:=0 to fCountInFlightFrames-1 do begin
 
-      FreeAndNil(fVulkanInstanceEffectDataBuffers[Index]);
+      FreeAndNil(fVulkanGPUInstanceDataBuffers[Index]);
 
-      FreeAndNil(fGlobalVulkanInstanceEffectDataIndexBuffers[Index]);
+      FreeAndNil(fGlobalVulkanInstanceDataIndexBuffers[Index]);
 
      end;
 
@@ -31199,7 +31199,7 @@ end;
 
 procedure TpvScene3D.ResetFrame(const aInFlightFrameIndex:TpvSizeInt);
 var GlobalVulkanInstanceMatrixDynamicArray:PGlobalVulkanInstanceMatrixDynamicArray;
-    GlobalVulkanInstanceEffectDataIndexDynamicArray:PGlobalVulkanInstanceEffectDataIndexDynamicArray;
+    GlobalVulkanInstanceDataIndexDynamicArray:PGlobalVulkanInstanceDataIndexDynamicArray;
     GlobalRenderInstanceCullDataDynamicArray:PGlobalRenderInstanceCullDataDynamicArray;
 begin
 
@@ -31213,12 +31213,12 @@ begin
  end;
  GlobalVulkanInstanceMatrixDynamicArray^.Count:=2;
 
- GlobalVulkanInstanceEffectDataIndexDynamicArray:=@fGlobalVulkanInstanceEffectDataIndexDynamicArrays[aInFlightFrameIndex];
- if GlobalVulkanInstanceEffectDataIndexDynamicArray^.Count<1 then begin
-  GlobalVulkanInstanceEffectDataIndexDynamicArray^.Count:=0;
-  GlobalVulkanInstanceEffectDataIndexDynamicArray.Add(0);
+ GlobalVulkanInstanceDataIndexDynamicArray:=@fGlobalVulkanInstanceDataIndexDynamicArrays[aInFlightFrameIndex];
+ if GlobalVulkanInstanceDataIndexDynamicArray^.Count<1 then begin
+  GlobalVulkanInstanceDataIndexDynamicArray^.Count:=0;
+  GlobalVulkanInstanceDataIndexDynamicArray.Add(0);
  end;
- GlobalVulkanInstanceEffectDataIndexDynamicArray^.Count:=1;
+ GlobalVulkanInstanceDataIndexDynamicArray^.Count:=1;
 
  GlobalRenderInstanceCullDataDynamicArray:=@fGlobalRenderInstanceCullDataDynamicArrays[aInFlightFrameIndex];
  if GlobalRenderInstanceCullDataDynamicArray^.Count<1 then begin
@@ -31409,13 +31409,13 @@ begin
 
  fInverseOriginTransforms[aInFlightFrameIndex]:=fInverseOriginTransform;
 
- if fInstanceEffectDataDynamicArray.Count>0 then begin
-  if fInFlightFrameInstanceEffectDataDynamicArrays[aInFlightFrameIndex].Count<fInstanceEffectDataDynamicArray.Count then begin
-   fInFlightFrameInstanceEffectDataDynamicArrays[aInFlightFrameIndex].Resize(fInstanceEffectDataDynamicArray.Count);
+ if fGPUInstanceDataDynamicArray.Count>0 then begin
+  if fInFlightFrameGPUInstanceDataDynamicArrays[aInFlightFrameIndex].Count<fGPUInstanceDataDynamicArray.Count then begin
+   fInFlightFrameGPUInstanceDataDynamicArrays[aInFlightFrameIndex].Resize(fGPUInstanceDataDynamicArray.Count);
   end;
-  Move(fInstanceEffectDataDynamicArray.ItemArray[0],
-       fInFlightFrameInstanceEffectDataDynamicArrays[aInFlightFrameIndex].ItemArray[0],
-       fInstanceEffectDataDynamicArray.Count*SizeOf(TInstanceEffectData));
+  Move(fGPUInstanceDataDynamicArray.ItemArray[0],
+       fInFlightFrameGPUInstanceDataDynamicArrays[aInFlightFrameIndex].ItemArray[0],
+       fGPUInstanceDataDynamicArray.Count*SizeOf(TGPUInstanceData));
  end;
 
  if fUpdateCulling.fActive then begin
@@ -32543,61 +32543,61 @@ begin
 
   LightBuffers[aInFlightFrameIndex].UploadFrame;
 
-  if fInFlightFrameInstanceEffectDataDynamicArrays[aInFlightFrameIndex].Count>0 then begin
+  if fInFlightFrameGPUInstanceDataDynamicArrays[aInFlightFrameIndex].Count>0 then begin
 
-   if assigned(fVulkanInstanceEffectDataBuffers[aInFlightFrameIndex]) then begin
+   if assigned(fVulkanGPUInstanceDataBuffers[aInFlightFrameIndex]) then begin
 
-    Size:=Max(1,fInFlightFrameInstanceEffectDataDynamicArrays[aInFlightFrameIndex].Count)*SizeOf(TInstanceEffectData);
-    if fVulkanInstanceEffectDataBuffers[aInFlightFrameIndex].Size<Size then begin
+    Size:=Max(1,fInFlightFrameGPUInstanceDataDynamicArrays[aInFlightFrameIndex].Count)*SizeOf(TGPUInstanceData);
+    if fVulkanGPUInstanceDataBuffers[aInFlightFrameIndex].Size<Size then begin
 
-     FreeAndNil(fVulkanInstanceEffectDataBuffers[aInFlightFrameIndex]);
+     FreeAndNil(fVulkanGPUInstanceDataBuffers[aInFlightFrameIndex]);
 
      case fBufferStreamingMode of
 
       TBufferStreamingMode.Direct:begin
-       fVulkanInstanceEffectDataBuffers[aInFlightFrameIndex]:=TpvVulkanBuffer.Create(fVulkanDevice,
-                                                                                     Size,
-                                                                                     TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or
-                                                                                     TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or
-                                                                                     TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT_KHR),
-                                                                                     TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                                                                     [],
-                                                                                     TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
-                                                                                     TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
-                                                                                     0,
-                                                                                     0,
-                                                                                     0,
-                                                                                     0,
-                                                                                     0,
-                                                                                     0,
-                                                                                     [TpvVulkanBufferFlag.PersistentMapped,TpvVulkanBufferFlag.OwnSingleMemoryChunk,TpvVulkanBufferFlag.DedicatedAllocation],
-                                                                                     0,
-                                                                                     pvAllocationGroupIDScene3DDynamic,
-                                                                                     'TpvScene3D.fVulkanInstanceEffectDataBuffers['+IntToStr(aInFlightFrameIndex)+']');
-       fVulkanDevice.DebugUtils.SetObjectName(fVulkanInstanceEffectDataBuffers[aInFlightFrameIndex].Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.fVulkanInstanceEffectDataBuffers['+IntToStr(aInFlightFrameIndex)+']');
+       fVulkanGPUInstanceDataBuffers[aInFlightFrameIndex]:=TpvVulkanBuffer.Create(fVulkanDevice,
+                                                                                  Size,
+                                                                                  TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or
+                                                                                  TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or
+                                                                                  TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT_KHR),
+                                                                                  TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                                                  [],
+                                                                                  TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                                                                  TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                                                                  0,
+                                                                                  0,
+                                                                                  0,
+                                                                                  0,
+                                                                                  0,
+                                                                                  0,
+                                                                                  [TpvVulkanBufferFlag.PersistentMapped,TpvVulkanBufferFlag.OwnSingleMemoryChunk,TpvVulkanBufferFlag.DedicatedAllocation],
+                                                                                  0,
+                                                                                  pvAllocationGroupIDScene3DDynamic,
+                                                                                  'TpvScene3D.fVulkanGPUInstanceDataBuffers['+IntToStr(aInFlightFrameIndex)+']');
+       fVulkanDevice.DebugUtils.SetObjectName(fVulkanGPUInstanceDataBuffers[aInFlightFrameIndex].Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.fVulkanGPUInstanceDataBuffers['+IntToStr(aInFlightFrameIndex)+']');
       end;
 
       TBufferStreamingMode.Staging:begin
-       fVulkanInstanceEffectDataBuffers[aInFlightFrameIndex]:=TpvVulkanBuffer.Create(fVulkanDevice,
-                                                                                     Size,
-                                                                                     TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or
-                                                                                     TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or
-                                                                                     TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT_KHR),
-                                                                                     TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                                                                     [],
-                                                                                     0,
-                                                                                     TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
-                                                                                     0,
-                                                                                     TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
-                                                                                     0,
-                                                                                     0,
-                                                                                     0,
-                                                                                     0,
-                                                                                     [TpvVulkanBufferFlag.OwnSingleMemoryChunk,TpvVulkanBufferFlag.DedicatedAllocation],
-                                                                                     0,
-                                                                                     pvAllocationGroupIDScene3DDynamic,
-                                                                                     'TpvScene3D.fVulkanInstanceEffectDataBuffers['+IntToStr(aInFlightFrameIndex)+']');
-       fVulkanDevice.DebugUtils.SetObjectName(fVulkanInstanceEffectDataBuffers[aInFlightFrameIndex].Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.fVulkanInstanceEffectDataBuffers['+IntToStr(aInFlightFrameIndex)+']');
+       fVulkanGPUInstanceDataBuffers[aInFlightFrameIndex]:=TpvVulkanBuffer.Create(fVulkanDevice,
+                                                                                  Size,
+                                                                                  TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or
+                                                                                  TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or
+                                                                                  TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT_KHR),
+                                                                                  TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                                                  [],
+                                                                                  0,
+                                                                                  TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                                                  0,
+                                                                                  TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                                                                  0,
+                                                                                  0,
+                                                                                  0,
+                                                                                  0,
+                                                                                  [TpvVulkanBufferFlag.OwnSingleMemoryChunk,TpvVulkanBufferFlag.DedicatedAllocation],
+                                                                                  0,
+                                                                                  pvAllocationGroupIDScene3DDynamic,
+                                                                                  'TpvScene3D.fVulkanGPUInstanceDataBuffers['+IntToStr(aInFlightFrameIndex)+']');
+       fVulkanDevice.DebugUtils.SetObjectName(fVulkanGPUInstanceDataBuffers[aInFlightFrameIndex].Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.fVulkanGPUInstanceDataBuffers['+IntToStr(aInFlightFrameIndex)+']');
       end;
 
       else begin
@@ -32611,20 +32611,20 @@ begin
                                                                            1,
                                                                            TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
                                                                            [],
-                                                                           [fVulkanInstanceEffectDataBuffers[aInFlightFrameIndex].DescriptorBufferInfo],
+                                                                           [fVulkanGPUInstanceDataBuffers[aInFlightFrameIndex].DescriptorBufferInfo],
                                                                            [],
                                                                            true);
 
     end;
 
-    if fInFlightFrameInstanceEffectDataDynamicArrays[aInFlightFrameIndex].Count>0 then begin
+    if fInFlightFrameGPUInstanceDataDynamicArrays[aInFlightFrameIndex].Count>0 then begin
 
      case fBufferStreamingMode of
 
       TBufferStreamingMode.Direct:begin
-       fVulkanInstanceEffectDataBuffers[aInFlightFrameIndex].UpdateData(fInFlightFrameInstanceEffectDataDynamicArrays[aInFlightFrameIndex].ItemArray[0],
+       fVulkanGPUInstanceDataBuffers[aInFlightFrameIndex].UpdateData(fInFlightFrameGPUInstanceDataDynamicArrays[aInFlightFrameIndex].ItemArray[0],
                                                                         0,
-                                                                        fInFlightFrameInstanceEffectDataDynamicArrays[aInFlightFrameIndex].Count*SizeOf(TInstanceEffectData),
+                                                                        fInFlightFrameGPUInstanceDataDynamicArrays[aInFlightFrameIndex].Count*SizeOf(TGPUInstanceData),
                                                                         FlushUpdateData
                                                                        );
       end;
@@ -32633,10 +32633,10 @@ begin
        fVulkanDevice.MemoryStaging.Upload(fVulkanStagingQueue,
                                           fVulkanStagingCommandBuffer,
                                           fVulkanStagingFence,
-                                          fInFlightFrameInstanceEffectDataDynamicArrays[aInFlightFrameIndex].ItemArray[0],
-                                          fVulkanInstanceEffectDataBuffers[aInFlightFrameIndex],
+                                          fInFlightFrameGPUInstanceDataDynamicArrays[aInFlightFrameIndex].ItemArray[0],
+                                          fVulkanGPUInstanceDataBuffers[aInFlightFrameIndex],
                                           0,
-                                          fInFlightFrameInstanceEffectDataDynamicArrays[aInFlightFrameIndex].Count*SizeOf(TInstanceEffectData));
+                                          fInFlightFrameGPUInstanceDataDynamicArrays[aInFlightFrameIndex].Count*SizeOf(TGPUInstanceData));
       end;
 
       else begin
@@ -32651,61 +32651,61 @@ begin
 
   end;
 
-  if fGlobalVulkanInstanceEffectDataIndexDynamicArrays[aInFlightFrameIndex].Count>0 then begin
+  if fGlobalVulkanInstanceDataIndexDynamicArrays[aInFlightFrameIndex].Count>0 then begin
 
-   if assigned(fGlobalVulkanInstanceEffectDataIndexBuffers[aInFlightFrameIndex]) then begin
+   if assigned(fGlobalVulkanInstanceDataIndexBuffers[aInFlightFrameIndex]) then begin
 
-    Size:=Max(1,fGlobalVulkanInstanceEffectDataIndexDynamicArrays[aInFlightFrameIndex].Count)*SizeOf(TpvUInt32);
-    if fGlobalVulkanInstanceEffectDataIndexBuffers[aInFlightFrameIndex].Size<Size then begin
+    Size:=Max(1,fGlobalVulkanInstanceDataIndexDynamicArrays[aInFlightFrameIndex].Count)*SizeOf(TpvUInt32);
+    if fGlobalVulkanInstanceDataIndexBuffers[aInFlightFrameIndex].Size<Size then begin
 
-     FreeAndNil(fGlobalVulkanInstanceEffectDataIndexBuffers[aInFlightFrameIndex]);
+     FreeAndNil(fGlobalVulkanInstanceDataIndexBuffers[aInFlightFrameIndex]);
 
      case fBufferStreamingMode of
 
       TBufferStreamingMode.Direct:begin
-       fGlobalVulkanInstanceEffectDataIndexBuffers[aInFlightFrameIndex]:=TpvVulkanBuffer.Create(fVulkanDevice,
-                                                                                                Size,
-                                                                                                TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or
-                                                                                                TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or
-                                                                                                TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT_KHR),
-                                                                                                TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                                                                                [],
-                                                                                                TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
-                                                                                                TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
-                                                                                                0,
-                                                                                                0,
-                                                                                                0,
-                                                                                                0,
-                                                                                                0,
-                                                                                                0,
-                                                                                                [TpvVulkanBufferFlag.PersistentMapped,TpvVulkanBufferFlag.OwnSingleMemoryChunk,TpvVulkanBufferFlag.DedicatedAllocation],
-                                                                                                0,
-                                                                                                pvAllocationGroupIDScene3DDynamic,
-                                                                                                'TpvScene3D.fGlobalVulkanInstanceEffectDataIndexBuffers['+IntToStr(aInFlightFrameIndex)+']');
-       fVulkanDevice.DebugUtils.SetObjectName(fGlobalVulkanInstanceEffectDataIndexBuffers[aInFlightFrameIndex].Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.fGlobalVulkanInstanceEffectDataIndexBuffers['+IntToStr(aInFlightFrameIndex)+']');
+       fGlobalVulkanInstanceDataIndexBuffers[aInFlightFrameIndex]:=TpvVulkanBuffer.Create(fVulkanDevice,
+                                                                                          Size,
+                                                                                          TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or
+                                                                                          TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or
+                                                                                          TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT_KHR),
+                                                                                          TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                                                          [],
+                                                                                          TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                                                                          TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                                                                          0,
+                                                                                          0,
+                                                                                          0,
+                                                                                          0,
+                                                                                          0,
+                                                                                          0,
+                                                                                          [TpvVulkanBufferFlag.PersistentMapped,TpvVulkanBufferFlag.OwnSingleMemoryChunk,TpvVulkanBufferFlag.DedicatedAllocation],
+                                                                                          0,
+                                                                                          pvAllocationGroupIDScene3DDynamic,
+                                                                                          'TpvScene3D.fGlobalVulkanInstanceDataIndexBuffers['+IntToStr(aInFlightFrameIndex)+']');
+       fVulkanDevice.DebugUtils.SetObjectName(fGlobalVulkanInstanceDataIndexBuffers[aInFlightFrameIndex].Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.fGlobalVulkanInstanceDataIndexBuffers['+IntToStr(aInFlightFrameIndex)+']');
       end;
 
       TBufferStreamingMode.Staging:begin
-       fGlobalVulkanInstanceEffectDataIndexBuffers[aInFlightFrameIndex]:=TpvVulkanBuffer.Create(fVulkanDevice,
-                                                                                                Size,
-                                                                                                TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or
-                                                                                                TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or
-                                                                                                TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT_KHR),
-                                                                                                TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                                                                                [],
-                                                                                                0,
-                                                                                                TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
-                                                                                                0,
-                                                                                                TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
-                                                                                                0,
-                                                                                                0,
-                                                                                                0,
-                                                                                                0,
-                                                                                                [TpvVulkanBufferFlag.OwnSingleMemoryChunk,TpvVulkanBufferFlag.DedicatedAllocation],
-                                                                                                0,
-                                                                                                pvAllocationGroupIDScene3DDynamic,
-                                                                                                'TpvScene3D.fGlobalVulkanInstanceEffectDataIndexBuffers['+IntToStr(aInFlightFrameIndex)+']');
-       fVulkanDevice.DebugUtils.SetObjectName(fGlobalVulkanInstanceEffectDataIndexBuffers[aInFlightFrameIndex].Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.fGlobalVulkanInstanceEffectDataIndexBuffers['+IntToStr(aInFlightFrameIndex)+']');
+       fGlobalVulkanInstanceDataIndexBuffers[aInFlightFrameIndex]:=TpvVulkanBuffer.Create(fVulkanDevice,
+                                                                                          Size,
+                                                                                          TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or
+                                                                                          TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or
+                                                                                          TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT_KHR),
+                                                                                          TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                                                          [],
+                                                                                          0,
+                                                                                          TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                                                          0,
+                                                                                          TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                                                                          0,
+                                                                                          0,
+                                                                                          0,
+                                                                                          0,
+                                                                                          [TpvVulkanBufferFlag.OwnSingleMemoryChunk,TpvVulkanBufferFlag.DedicatedAllocation],
+                                                                                          0,
+                                                                                          pvAllocationGroupIDScene3DDynamic,
+                                                                                          'TpvScene3D.fGlobalVulkanInstanceDataIndexBuffers['+IntToStr(aInFlightFrameIndex)+']');
+       fVulkanDevice.DebugUtils.SetObjectName(fGlobalVulkanInstanceDataIndexBuffers[aInFlightFrameIndex].Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.fGlobalVulkanInstanceDataIndexBuffers['+IntToStr(aInFlightFrameIndex)+']');
       end;
 
       else begin
@@ -32719,7 +32719,7 @@ begin
                                                                            1,
                                                                            TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
                                                                            [],
-                                                                           [fGlobalVulkanInstanceEffectDataIndexBuffers[aInFlightFrameIndex].DescriptorBufferInfo],
+                                                                           [fGlobalVulkanInstanceDataIndexBuffers[aInFlightFrameIndex].DescriptorBufferInfo],
                                                                            [],
                                                                            true);
 
@@ -32728,9 +32728,9 @@ begin
     case fBufferStreamingMode of
 
      TBufferStreamingMode.Direct:begin
-      fGlobalVulkanInstanceEffectDataIndexBuffers[aInFlightFrameIndex].UpdateData(fGlobalVulkanInstanceEffectDataIndexDynamicArrays[aInFlightFrameIndex].ItemArray[0],
+      fGlobalVulkanInstanceDataIndexBuffers[aInFlightFrameIndex].UpdateData(fGlobalVulkanInstanceDataIndexDynamicArrays[aInFlightFrameIndex].ItemArray[0],
                                                                                   0,
-                                                                                  fGlobalVulkanInstanceEffectDataIndexDynamicArrays[aInFlightFrameIndex].Count*SizeOf(TpvUInt32),
+                                                                                  fGlobalVulkanInstanceDataIndexDynamicArrays[aInFlightFrameIndex].Count*SizeOf(TpvUInt32),
                                                                                   FlushUpdateData
                                                                                  );
      end;
@@ -32739,10 +32739,10 @@ begin
       fVulkanDevice.MemoryStaging.Upload(fVulkanStagingQueue,
                                          fVulkanStagingCommandBuffer,
                                          fVulkanStagingFence,
-                                         fGlobalVulkanInstanceEffectDataIndexDynamicArrays[aInFlightFrameIndex].ItemArray[0],
-                                         fGlobalVulkanInstanceEffectDataIndexBuffers[aInFlightFrameIndex],
+                                         fGlobalVulkanInstanceDataIndexDynamicArrays[aInFlightFrameIndex].ItemArray[0],
+                                         fGlobalVulkanInstanceDataIndexBuffers[aInFlightFrameIndex],
                                          0,
-                                         fGlobalVulkanInstanceEffectDataIndexDynamicArrays[aInFlightFrameIndex].Count*SizeOf(TpvUInt32));
+                                         fGlobalVulkanInstanceDataIndexDynamicArrays[aInFlightFrameIndex].Count*SizeOf(TpvUInt32));
      end;
 
      else begin
