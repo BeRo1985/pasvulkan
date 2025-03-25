@@ -18,7 +18,7 @@
 
 #include "octahedralmap.glsl"
 
-#include "instanceeffect.glsl"
+#include "instancedataeffect.glsl"
 
 void raytracingCorrectSmoothNormal(inout vec3 smoothNormal, const in vec3 geometricNormal, const in vec3 worldSpacePosition, const in vec3 objectRayOrigin){
   vec3 direction = worldSpacePosition - objectRayOrigin;
@@ -230,7 +230,7 @@ void rayProceedEXTAlphaHandlingBasedLoop(in rayQueryEXT rayQuery, const in bool 
                   if(additionalInstanceDataID > 0){
                     // Apply instance effect
                     vec4 dummyColor = vec4(1.0);
-                    if(!applyInstanceEffect(uint(additionalInstanceDataID), dummyColor, texCoords[0], uvec2(0u), true)){
+                    if(!applyInstanceDataEffect(uint(additionalInstanceDataID), dummyColor, texCoords[0], uvec2(0u), true)){
                       alpha = 0.0;
                     }
                   }
@@ -247,7 +247,7 @@ void rayProceedEXTAlphaHandlingBasedLoop(in rayQueryEXT rayQuery, const in bool 
                   if(additionalInstanceDataID > 0){
                     // Apply instance effect
                     vec4 dummyColor = vec4(1.0);
-                    if(!applyInstanceEffect(uint(additionalInstanceDataID), dummyColor, texCoords[0], uvec2(0u), true)){
+                    if(!applyInstanceDataEffect(uint(additionalInstanceDataID), dummyColor, texCoords[0], uvec2(0u), true)){
                       alpha = 0.0;
                     }
                   }

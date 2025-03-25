@@ -1,11 +1,11 @@
-#ifndef INSTANCEEFFECT_GLSL
-#define INSTANCEEFFECT_GLSL
+#ifndef INSTANCEDATAEFFECT_GLSL
+#define INSTANCEDATAEFFECT_GLSL
 
 #include "pcg.glsl"
 
-bool applyInstanceEffect(const in uint instanceEffectIndex, inout vec4 color, const in vec2 uv, const in uvec2 fragCoord, const bool forRaytracing){
+bool applyInstanceDataEffect(const in uint instanceDataIndex, inout vec4 color, const in vec2 uv, const in uvec2 fragCoord, const bool forRaytracing){
   
-  if(instanceEffectIndex == 0u){
+  if(instanceDataIndex == 0u){
 
     // No effect
 
@@ -15,16 +15,16 @@ bool applyInstanceEffect(const in uint instanceEffectIndex, inout vec4 color, co
     
     bool visible = true;
     
-    InstanceEffectData instanceEffect = instanceEffectData[instanceEffectIndex];
+    InstanceData instanceDataItem = instanceDataItems[instanceDataIndex];
 
     // First, apply selection highlight effect
-    color.xyz = mix(color.xyz, instanceEffect.SelectedColorIntensity.xyz * instanceEffect.SelectedColorIntensity.w, instanceEffect.SelectedDissolveDitheredTransparencyUnused.x);
+    color.xyz = mix(color.xyz, instanceDataItem.SelectedColorIntensity.xyz * instanceDataItem.SelectedColorIntensity.w, instanceDataItem.SelectedDissolveDitheredTransparencyUnused.x);
     
     // Then, apply dissolve effect
-    const float dissolve = instanceEffect.SelectedDissolveDitheredTransparencyUnused.y;
+    const float dissolve = instanceDataItem.SelectedDissolveDitheredTransparencyUnused.y;
     if(dissolve > 0.0){
-      const vec4 color0Scale = instanceEffect.DissolveColor0Scale;
-      const vec4 color1Width = instanceEffect.DissolveColor1Width;
+      const vec4 color0Scale = instanceDataItem.DissolveColor0Scale;
+      const vec4 color1Width = instanceDataItem.DissolveColor1Width;
       float edgeWidth = mix(1.0, 0.25, smoothstep(0.0, 1.0, dissolve)) * color1Width.w;
       float threshold = (pcgTileableNoise(uv.xy, color0Scale.w) + (pcgTileableNoise(uv.yx * 2.0, color0Scale.w) * 0.5)) / 1.5;
       float process = mix(0.0 - edgeWidth, 1.0, dissolve);
@@ -38,7 +38,7 @@ bool applyInstanceEffect(const in uint instanceEffectIndex, inout vec4 color, co
 
     // Finally, apply dithered transparency effect
     if(visible){
-      const float ditheredTransparency = instanceEffect.SelectedDissolveDitheredTransparencyUnused.z;
+      const float ditheredTransparency = instanceDataItem.SelectedDissolveDitheredTransparencyUnused.z;
       if(ditheredTransparency > 0.0){
         if(forRaytracing){
           color.w *= clamp(1.0 - ditheredTransparency, 0.0, 1.0); // Invert

@@ -98,19 +98,19 @@ layout(set = 0, binding = 3, std430) readonly buffer Materials {
 #include "planet_data.glsl"
 #endif
 
-struct InstanceEffectData { 
+struct InstanceData { 
   vec4 SelectedDissolveDitheredTransparencyUnused;
   vec4 SelectedColorIntensity;
   vec4 DissolveColor0Scale;
   vec4 DissolveColor1Width;  
 };
 
-layout(set = 0, binding = 4, std430) readonly buffer InstanceEffectDataBuffer {
-  InstanceEffectData instanceEffectData[];
+layout(set = 0, binding = 4, std430) readonly buffer InstanceDataBuffer {
+  InstanceData instanceDataItems[];
 };
 
-layout(set = 0, binding = 5, std430) readonly buffer InstanceEffectDataIndexBuffer {
-  uint instanceEffectDataIndices[];
+layout(set = 0, binding = 5, std430) readonly buffer InstanceDataIndexBuffer {
+  uint instanceDataIndices[];
 };
 
 #ifdef RAYTRACING

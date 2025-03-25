@@ -40,7 +40,7 @@ layout(location = 6) out vec2 outTexCoord1;
 layout(location = 7) out vec4 outColor0;
 layout(location = 8) out vec3 outModelScale;
 layout(location = 9) flat out uint outMaterialID;
-layout(location = 10) flat out uint outInstanceEffectIndex;
+layout(location = 10) flat out uint outInstanceDataIndex;
 #ifndef VOXELIZATION
 layout(location = 11) flat out int outViewIndex;
 layout(location = 12) flat out uint outFrameIndex;
@@ -86,8 +86,8 @@ layout(set = 0, binding = 0, std430) readonly buffer InstanceMatrices {
   mat4 instanceMatrices[]; // pair-wise: 0 = base, 1 = previous (for velocity)
 };
 
-layout(set = 0, binding = 5, std430) readonly buffer InstanceEffectDataIndexBuffer {
-  uint instanceEffectDataIndices[];
+layout(set = 0, binding = 5, std430) readonly buffer InstanceDataIndexBuffer {
+  uint instanceDataIndices[];
 };
 
 out gl_PerVertex {
@@ -171,7 +171,7 @@ void main() {
   // for to save some cycles and memory bandwidth, given the branch is always not taken in the current thread warp on the GPU.
   if(instanceIndex > 0u){  
 
-    outInstanceEffectIndex = instanceEffectDataIndices[instanceIndex];
+    outInstanceDataIndex = instanceDataIndices[instanceIndex];
 
     // The base mesh data is assumed to be non-pretransformed by its origin. If it is pretransformed by its origin, it will be treated
     // as a delta transformation. It is because the mesh vertices are pretransformed by a compute shader, but this was originally only 
@@ -201,7 +201,7 @@ void main() {
 
     // The instance effect index is always 0 for non-instanced rendering, since the instance effect data is only for instanced meshes. And
     // instance effect data #0 is the default instance effect data, which is the identity effect with no effect at all.
-    outInstanceEffectIndex = 0u;
+    outInstanceDataIndex = 0u;
 
     // Otherwise, the mesh data is assumed to be non-pretransformed by its origin, and the mesh vertices are pretransformed by a compute shader.
 

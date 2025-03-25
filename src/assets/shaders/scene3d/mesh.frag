@@ -78,7 +78,7 @@ layout(location = 6) in vec2 inTexCoord1;
 layout(location = 7) in vec4 inColor0;
 layout(location = 8) in vec3 inModelScale;
 layout(location = 9) flat in uint inMaterialID;
-layout(location = 10) flat in uint inInstanceEffectIndex;
+layout(location = 10) flat in uint inInstanceDataIndex;
 layout(location = 11) flat in vec3 inAABBMin;
 layout(location = 12) flat in vec3 inAABBMax;
 layout(location = 13) flat in uint inCascadeIndex; 
@@ -101,7 +101,7 @@ layout(location = 6) in vec2 inTexCoord1;
 layout(location = 7) in vec4 inColor0;
 layout(location = 8) in vec3 inModelScale;
 layout(location = 9) flat in uint inMaterialID;
-layout(location = 10) flat in uint inInstanceEffectIndex;
+layout(location = 10) flat in uint inInstanceDataIndex;
 layout(location = 11) flat in int inViewIndex;
 layout(location = 12) flat in uint inFrameIndex;
 
@@ -364,7 +364,7 @@ float hologramNoise(float x){
   return smoothstep(0.0, 0.25, hologramNoiseFunction(x, 4096u));
 }
 
-#include "instanceeffect.glsl"
+#include "instancedataeffect.glsl"
 
 void main() {
 #ifdef VOXELIZATION
@@ -458,9 +458,9 @@ void main() {
 #if defined(ALPHATEST) || defined(LOOPOIT) || defined(LOCKOIT) || defined(WBOIT) || defined(MBOIT) || defined(DFAOIT)
   uint flags = material.alphaCutOffFlagsTex0Tex1.y;
   float alpha = ((flags & (1u << 31u)) != 0u) ? 1.0 : (textureFetch(0, vec4(1.0), true).w * material.baseColorFactor.w * inColor0.w);
-  if((inInstanceEffectIndex > 0u) && ((flags & (1u << 31u)) != 0u)){
+  if((inInstanceDataIndex > 0u) && ((flags & (1u << 31u)) != 0u)){
     vec4 dummyColor = vec4(1.0);
-    if(!applyInstanceEffect(uint(inInstanceEffectIndex), dummyColor, vec2(texCoords[0]), uvec2(gl_FragCoord.xy), false)){
+    if(!applyInstanceDataEffect(uint(inInstanceDataIndex), dummyColor, vec2(texCoords[0]), uvec2(gl_FragCoord.xy), false)){
       alpha = 0.0;
     }
   }
@@ -910,8 +910,8 @@ void main() {
                    : color.w * inColor0.w, 
         outputAlpha = ((flags & 32u) != 0) ? alpha : 1.0; // AMD GPUs under Linux doesn't like mix(1.0, alpha, float(int(uint((flags >> 5u) & 1u)))); due to the unsigned int stuff
   vec4 finalColor = vec4(color.xyz * inColor0.xyz, outputAlpha);
-  if(inInstanceEffectIndex > 0u){
-    if(!applyInstanceEffect(uint(inInstanceEffectIndex), finalColor, vec2(texCoords[0]), uvec2(gl_FragCoord.xy), false)){
+  if(inInstanceDataIndex > 0u){
+    if(!applyInstanceDataEffect(uint(inInstanceDataIndex), finalColor, vec2(texCoords[0]), uvec2(gl_FragCoord.xy), false)){
       if((flags & (1u << 31u)) == 0u){ 
         finalColor.w = alpha = 0.0;
         if((flags & 32u) != 0){
