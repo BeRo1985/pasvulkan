@@ -141,7 +141,9 @@ type TpvVector2D=record
        class operator NotEqual(const aLeft,aRight:TpvVector3D):boolean;
        class operator Add(const aLeft,aRight:TpvVector3D):TpvVector3D;
        class operator Subtract(const aLeft,aRight:TpvVector3D):TpvVector3D;
+       class operator Multiply(const aLeft,aRight:TpvVector3D):TpvVector3D;
        class operator Multiply(const aLeft:TpvVector3D;const aRight:TpvDouble):TpvVector3D;
+       class operator Divide(const aLeft,aRight:TpvVector3D):TpvVector3D;
        class operator Divide(const aLeft:TpvVector3D;const aRight:TpvDouble):TpvVector3D;
        class operator Negative(const aVector:TpvVector3D):TpvVector3D;
        function Cross(const aWith:TpvVector3D):TpvVector3D;
@@ -707,11 +709,25 @@ begin
  result.z:=aLeft.z-aRight.z;
 end;
 
+class operator TpvVector3D.Multiply(const aLeft,aRight:TpvVector3D):TpvVector3D;
+begin
+ result.x:=aLeft.x*aRight.x;
+ result.y:=aLeft.y*aRight.y;
+ result.z:=aLeft.z*aRight.z;
+end;
+
 class operator TpvVector3D.Multiply(const aLeft:TpvVector3D;const aRight:TpvDouble):TpvVector3D;
 begin
  result.x:=aLeft.x*aRight;
  result.y:=aLeft.y*aRight;
  result.z:=aLeft.z*aRight;
+end;
+
+class operator TpvVector3D.Divide(const aLeft,aRight:TpvVector3D):TpvVector3D;
+begin
+ result.x:=aLeft.x/aRight.x;
+ result.y:=aLeft.y/aRight.y;
+ result.z:=aLeft.z/aRight.z;
 end;
 
 class operator TpvVector3D.Divide(const aLeft:TpvVector3D;const aRight:TpvDouble):TpvVector3D;
