@@ -3875,7 +3875,6 @@ begin
 end;
 
 procedure POCAInitMatrix4x4(aContext:PPOCAContext);
-var Hash:TPOCAValue;
 begin
  POCAMatrix4x4GhostPointer:=@POCAMatrix4x4Ghost;
  POCAInitMatrix4x4Hash(aContext);
