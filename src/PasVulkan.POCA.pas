@@ -92,12 +92,12 @@ procedure InitializeForPOCAContext(const aContext:PPOCAContext);
 
 implementation
 
-// Pointers to the ghost types as forward declarations, for to avoid circular references and more complicated code 
+// Pointers to the ghost types as forward declarations, for to avoid circular references and more complicated code
 var POCAVector2GhostPointer:PPOCAGhostType=nil;
     POCAVector3GhostPointer:PPOCAGhostType=nil;
     POCAVector4GhostPointer:PPOCAGhostType=nil;
     POCAQuaternionGhostPointer:PPOCAGhostType=nil;
-    
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Vector2
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -351,7 +351,7 @@ begin
   B:=POCAGhostFastGetPointer(aArguments^[0]);
   C:=POCAGhostFastGetPointer(aArguments^[1]);
   D:=POCAGhostFastGetPointer(aArguments^[2]);
-  Time:=POCAGetNumberValue(aContext,aArguments^[3]); 
+  Time:=POCAGetNumberValue(aContext,aArguments^[3]);
   result:=POCANewVector2(aContext,A^.Sqlerp(B^,C^,D^,Time));
  end else begin
   result:=POCAValueNull;
@@ -786,7 +786,7 @@ begin
   end else begin
    Vector3.z:=0.0;
   end;
- end; 
+ end;
  result:=POCANewVector3(aContext,Vector3);
 end;
 
@@ -1066,6 +1066,7 @@ end;
 function POCAVector3FunctionOpMul(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:pointer):TPOCAValue;
 var Vector3,OtherVector3:PpvVector3D;
     Factor:TpvDouble;
+    Quaternion:PpvQuaternionD;
 begin
  if (aCountArguments=2) and (POCAGhostGetType(aArguments^[0])=@POCAVector3Ghost) and (POCAGetValueType(aArguments^[1])=pvtNUMBER) then begin
   Vector3:=POCAGhostFastGetPointer(aArguments^[0]);
@@ -1075,6 +1076,14 @@ begin
   Vector3:=POCAGhostFastGetPointer(aArguments^[0]);
   OtherVector3:=POCAGhostFastGetPointer(aArguments^[1]);
   result:=POCANewVector3(aContext,Vector3^*OtherVector3^);
+ end else if (aCountArguments=2) and (POCAGhostGetType(aArguments^[0])=@POCAVector3Ghost) and (POCAGhostGetType(aArguments^[1])=POCAQuaternionGhostPointer) then begin
+  Vector3:=POCAGhostFastGetPointer(aArguments^[0]);
+  Quaternion:=POCAGhostFastGetPointer(aArguments^[1]);
+  result:=POCANewVector3(aContext,Vector3^*Quaternion^);
+ end else if (aCountArguments=2) and (POCAGhostGetType(aArguments^[0])=POCAQuaternionGhostPointer) and (POCAGhostGetType(aArguments^[1])=@POCAVector3Ghost) then begin
+  Quaternion:=POCAGhostFastGetPointer(aArguments^[0]);
+  Vector3:=POCAGhostFastGetPointer(aArguments^[1]);
+  result:=POCANewVector3(aContext,Quaternion^*Vector3^);
  end else begin
   result:=POCAValueNull;
  end;
@@ -1950,7 +1959,7 @@ begin
   Quaternion.x:=Vector4^.x;
   Quaternion.y:=Vector4^.y;
   Quaternion.z:=Vector4^.z;
-  Quaternion.w:=Vector4^.w;  
+  Quaternion.w:=Vector4^.w;
  end else begin
   if aCountArguments>0 then begin
    Quaternion.x:=POCAGetNumberValue(aContext,aArguments^[0]);
@@ -2289,6 +2298,7 @@ end;
 function POCAQuaternionFunctionOpMul(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:pointer):TPOCAValue;
 var Quaternion,OtherQuaternion:PpvQuaternionD;
     Factor:TpvDouble;
+    Vector3:PpvVector3D;
 begin
  if (aCountArguments=2) and (POCAGhostGetType(aArguments^[0])=@POCAQuaternionGhost) and (POCAGetValueType(aArguments^[1])=pvtNUMBER) then begin
   Quaternion:=POCAGhostFastGetPointer(aArguments^[0]);
@@ -2298,6 +2308,14 @@ begin
   Quaternion:=POCAGhostFastGetPointer(aArguments^[0]);
   OtherQuaternion:=POCAGhostFastGetPointer(aArguments^[1]);
   result:=POCANewQuaternion(aContext,Quaternion^*OtherQuaternion^);
+ end else if (aCountArguments=2) and (POCAGhostGetType(aArguments^[0])=@POCAQuaternionGhost) and (POCAGhostGetType(aArguments^[1])=POCAVector3GhostPointer) then begin
+  Quaternion:=POCAGhostFastGetPointer(aArguments^[0]);
+  Vector3:=POCAGhostFastGetPointer(aArguments^[1]);
+  result:=POCANewVector3(aContext,Quaternion^*Vector3^);
+ end else if (aCountArguments=2) and (POCAGhostGetType(aArguments^[0])=POCAVector3GhostPointer) and (POCAGhostGetType(aArguments^[1])=@POCAQuaternionGhost) then begin
+  Quaternion:=POCAGhostFastGetPointer(aArguments^[1]);
+  Vector3:=POCAGhostFastGetPointer(aArguments^[0]);
+  result:=POCANewVector3(aContext,Vector3^*Quaternion^);
  end else begin
   result:=POCAValueNull;
  end;
@@ -2452,3 +2470,4 @@ begin
 end;
 
 end.
+
