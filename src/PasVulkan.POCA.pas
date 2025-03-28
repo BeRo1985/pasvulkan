@@ -123,6 +123,7 @@ function POCANewMatrix4x4(const aContext:PPOCAContext;const aM00:TpvDouble=1.0;c
 function POCAGetMatrix4x4Value(const aValue:TPOCAValue):TpvMatrix4x4D;
 
 procedure InitializeForPOCAContext(const aContext:PPOCAContext);
+procedure FinalizeForPOCAContext(const aContext:PPOCAContext);
 
 implementation
 
