@@ -3897,10 +3897,15 @@ begin
  aContext^.Instance^.Globals.HostDataFreeable:=true;
 
  POCAInitVector2(aContext);
+
  POCAInitVector3(aContext);
+
  POCAInitVector4(aContext);
+
  POCAInitQuaternion(aContext);
+
  POCAInitMatrix3x3(aContext);
+
  POCAInitMatrix4x4(aContext);
 
 end;
