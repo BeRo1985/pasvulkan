@@ -251,11 +251,11 @@ var Vector2:TpvVector2D;
 begin
  if (aCountArguments>0) and (POCAGhostGetType(aArguments^[0])=@POCAVector2Ghost) then begin
   Vector2:=PpvVector2D(POCAGhostFastGetPointer(aArguments^[0]))^;
- end else if (aCountArguments>0) and (POCAGhostGetType(aArguments^[0])=POCAVector3GhostPointer) then begin
+ end else if assigned(POCAVector3GhostPointer) and (aCountArguments>0) and (POCAGhostGetType(aArguments^[0])=POCAVector3GhostPointer) then begin
   Vector3:=POCAGhostFastGetPointer(aArguments^[0]);
   Vector2.x:=Vector3^.x;
   Vector2.y:=Vector3^.y;
- end else if (aCountArguments>0) and (POCAGhostGetType(aArguments^[0])=POCAVector4GhostPointer) then begin
+ end else if assigned(POCAVector4GhostPointer) and (aCountArguments>0) and (POCAGhostGetType(aArguments^[0])=POCAVector4GhostPointer) then begin
   Vector4:=POCAGhostFastGetPointer(aArguments^[0]);
   Vector2.x:=Vector4^.x;
   Vector2.y:=Vector4^.y;
@@ -807,7 +807,7 @@ var Vector3:TpvVector3D;
 begin
  if (aCountArguments>0) and (POCAGhostGetType(aArguments^[0])=@POCAVector3Ghost) then begin
   Vector3:=PpvVector3D(POCAGhostFastGetPointer(aArguments^[0]))^;
- end else if (aCountArguments>0) and (POCAGhostGetType(aArguments^[0])=POCAVector2GhostPointer) then begin
+ end else if assigned(POCAVector2GhostPointer) and (aCountArguments>0) and (POCAGhostGetType(aArguments^[0])=POCAVector2GhostPointer) then begin
   Vector2:=POCAGhostFastGetPointer(aArguments^[0]);
   Vector3.x:=Vector2^.x;
   Vector3.y:=Vector2^.y;
@@ -816,7 +816,7 @@ begin
   end else begin
    Vector3.z:=0.0;
   end;
- end else if (aCountArguments>0) and (POCAGhostGetType(aArguments^[0])=POCAVector4GhostPointer) then begin
+ end else if assigned(POCAVector4GhostPointer) and (aCountArguments>0) and (POCAGhostGetType(aArguments^[0])=POCAVector4GhostPointer) then begin
   Vector4:=POCAGhostFastGetPointer(aArguments^[0]);
   Vector3:=Vector4^.xyz;
  end else begin
@@ -1127,19 +1127,19 @@ begin
   Vector3:=POCAGhostFastGetPointer(aArguments^[0]);
   OtherVector3:=POCAGhostFastGetPointer(aArguments^[1]);
   result:=POCANewVector3(aContext,Vector3^*OtherVector3^);
- end else if (aCountArguments=2) and (POCAGhostGetType(aArguments^[0])=@POCAVector3Ghost) and (POCAGhostGetType(aArguments^[1])=POCAMatrix3x3GhostPointer) then begin
+ end else if assigned(POCAMatrix3x3GhostPointer) and (aCountArguments=2) and (POCAGhostGetType(aArguments^[0])=@POCAVector3Ghost) and (POCAGhostGetType(aArguments^[1])=POCAMatrix3x3GhostPointer) then begin
   Vector3:=POCAGhostFastGetPointer(aArguments^[0]);
   Matrix3x3:=POCAGhostFastGetPointer(aArguments^[1]);
   result:=POCANewVector3(aContext,Vector3^*Matrix3x3^);
- end else if (aCountArguments=2) and (POCAGhostGetType(aArguments^[0])=@POCAVector3Ghost) and (POCAGhostGetType(aArguments^[1])=POCAMatrix4x4GhostPointer) then begin
+ end else if assigned(POCAMatrix4x4GhostPointer) and (aCountArguments=2) and (POCAGhostGetType(aArguments^[0])=@POCAVector3Ghost) and (POCAGhostGetType(aArguments^[1])=POCAMatrix4x4GhostPointer) then begin
   Vector3:=POCAGhostFastGetPointer(aArguments^[0]);
   Matrix4x4:=POCAGhostFastGetPointer(aArguments^[1]);
   result:=POCANewVector3(aContext,(Vector3^*Matrix4x4^).xyz);
- end else if (aCountArguments=2) and (POCAGhostGetType(aArguments^[0])=@POCAVector3Ghost) and (POCAGhostGetType(aArguments^[1])=POCAQuaternionGhostPointer) then begin
+ end else if assigned(POCAQuaternionGhostPointer) and (aCountArguments=2) and (POCAGhostGetType(aArguments^[0])=@POCAVector3Ghost) and (POCAGhostGetType(aArguments^[1])=POCAQuaternionGhostPointer) then begin
   Vector3:=POCAGhostFastGetPointer(aArguments^[0]);
   Quaternion:=POCAGhostFastGetPointer(aArguments^[1]);
   result:=POCANewVector3(aContext,Vector3^*Quaternion^);
- end else if (aCountArguments=2) and (POCAGhostGetType(aArguments^[0])=POCAQuaternionGhostPointer) and (POCAGhostGetType(aArguments^[1])=@POCAVector3Ghost) then begin
+ end else if assigned(POCAQuaternionGhostPointer) and (aCountArguments=2) and (POCAGhostGetType(aArguments^[0])=POCAQuaternionGhostPointer) and (POCAGhostGetType(aArguments^[1])=@POCAVector3Ghost) then begin
   Quaternion:=POCAGhostFastGetPointer(aArguments^[0]);
   Vector3:=POCAGhostFastGetPointer(aArguments^[1]);
   result:=POCANewVector3(aContext,Quaternion^*Vector3^);
@@ -1399,7 +1399,7 @@ var Vector4:TpvVector4D;
 begin
  if (aCountArguments>0) and (POCAGhostGetType(aArguments^[0])=@POCAVector4Ghost) then begin
   Vector4:=PpvVector4D(POCAGhostFastGetPointer(aArguments^[0]))^;
- end else if (aCountArguments>0) and (POCAGhostGetType(aArguments^[0])=POCAVector2GhostPointer) then begin
+ end else if assigned(POCAVector2GhostPointer) and (aCountArguments>0) and (POCAGhostGetType(aArguments^[0])=POCAVector2GhostPointer) then begin
   Vector2:=POCAGhostFastGetPointer(aArguments^[0]);
   Vector4.x:=Vector2^.x;
   Vector4.y:=Vector2^.y;
@@ -1413,7 +1413,7 @@ begin
   end else begin
    Vector4.w:=0.0;
   end;
- end else if (aCountArguments>0) and (POCAGhostGetType(aArguments^[0])=POCAVector3GhostPointer) then begin
+ end else if assigned(POCAVector3GhostPointer) and (aCountArguments>0) and (POCAGhostGetType(aArguments^[0])=POCAVector3GhostPointer) then begin
   Vector3:=POCAGhostFastGetPointer(aArguments^[0]);
   Vector4.xyz:=Vector3^;
   if aCountArguments>1 then begin
@@ -1991,7 +1991,7 @@ var Quaternion:TpvQuaternionD;
 begin
  if (aCountArguments>0) and (POCAGhostGetType(aArguments^[0])=@POCAQuaternionGhost) then begin
   Quaternion:=PpvQuaternionD(POCAGhostFastGetPointer(aArguments^[0]))^;
- end else if (aCountArguments>0) and (POCAGhostGetType(aArguments^[0])=POCAVector2GhostPointer) then begin
+ end else if assigned(POCAVector2GhostPointer) and (aCountArguments>0) and (POCAGhostGetType(aArguments^[0])=POCAVector2GhostPointer) then begin
   Vector2:=POCAGhostFastGetPointer(aArguments^[0]);
   Quaternion.x:=Vector2^.x;
   Quaternion.y:=Vector2^.y;
@@ -2005,7 +2005,7 @@ begin
   end else begin
    Quaternion.w:=0.0;
   end;
- end else if (aCountArguments>0) and (POCAGhostGetType(aArguments^[0])=POCAVector3GhostPointer) then begin
+ end else if assigned(POCAVector3GhostPointer) and (aCountArguments>0) and (POCAGhostGetType(aArguments^[0])=POCAVector3GhostPointer) then begin
   Vector3:=POCAGhostFastGetPointer(aArguments^[0]);
   Quaternion.xyz:=Vector3^;
   if aCountArguments>1 then begin
@@ -2013,7 +2013,7 @@ begin
   end else begin
    Quaternion.w:=0.0;
   end;
- end else if (aCountArguments>0) and (POCAGhostGetType(aArguments^[0])=POCAVector4GhostPointer) then begin
+ end else if assigned(POCAVector4GhostPointer) and (aCountArguments>0) and (POCAGhostGetType(aArguments^[0])=POCAVector4GhostPointer) then begin
   Vector4:=POCAGhostFastGetPointer(aArguments^[0]);
   Quaternion.x:=Vector4^.x;
   Quaternion.y:=Vector4^.y;
@@ -2367,11 +2367,11 @@ begin
   Quaternion:=POCAGhostFastGetPointer(aArguments^[0]);
   OtherQuaternion:=POCAGhostFastGetPointer(aArguments^[1]);
   result:=POCANewQuaternion(aContext,Quaternion^*OtherQuaternion^);
- end else if (aCountArguments=2) and (POCAGhostGetType(aArguments^[0])=@POCAQuaternionGhost) and (POCAGhostGetType(aArguments^[1])=POCAVector3GhostPointer) then begin
+ end else if assigned(POCAVector3GhostPointer) and (aCountArguments=2) and (POCAGhostGetType(aArguments^[0])=@POCAQuaternionGhost) and (POCAGhostGetType(aArguments^[1])=POCAVector3GhostPointer) then begin
   Quaternion:=POCAGhostFastGetPointer(aArguments^[0]);
   Vector3:=POCAGhostFastGetPointer(aArguments^[1]);
   result:=POCANewVector3(aContext,Quaternion^*Vector3^);
- end else if (aCountArguments=2) and (POCAGhostGetType(aArguments^[0])=POCAVector3GhostPointer) and (POCAGhostGetType(aArguments^[1])=@POCAQuaternionGhost) then begin
+ end else if assigned(POCAVector3GhostPointer) and (aCountArguments=2) and (POCAGhostGetType(aArguments^[0])=POCAVector3GhostPointer) and (POCAGhostGetType(aArguments^[1])=@POCAQuaternionGhost) then begin
   Quaternion:=POCAGhostFastGetPointer(aArguments^[1]);
   Vector3:=POCAGhostFastGetPointer(aArguments^[0]);
   result:=POCANewVector3(aContext,Vector3^*Quaternion^);
@@ -2683,7 +2683,7 @@ var Matrix3x3:TpvMatrix3x3D;
 begin
  if (aCountArguments=1) and (POCAGhostGetType(aArguments^[0])=@POCAMatrix3x3Ghost) then begin
   Matrix3x3:=PpvMatrix3x3D(POCAGhostFastGetPointer(aArguments^[0]))^;
- end else if (aCountArguments=1) and (POCAGhostGetType(aArguments^[0])=POCAMatrix4x4GhostPointer) then begin
+ end else if assigned(POCAMatrix4x4GhostPointer) and (aCountArguments=1) and (POCAGhostGetType(aArguments^[0])=POCAMatrix4x4GhostPointer) then begin
   Matrix4x4:=POCAGhostFastGetPointer(aArguments^[0]);
   Matrix3x3.RawComponents[0,0]:=Matrix4x4^.RawComponents[0,0];
   Matrix3x3.RawComponents[0,1]:=Matrix4x4^.RawComponents[0,1];
@@ -2869,19 +2869,19 @@ begin
   Matrix3x3:=POCAGhostFastGetPointer(aArguments^[0]);
   OtherMatrix3x3:=POCAGhostFastGetPointer(aArguments^[1]);
   result:=POCANewMatrix3x3(aContext,Matrix3x3^*OtherMatrix3x3^);
- end else if (aCountArguments=2) and (POCAGhostGetType(aArguments^[0])=@POCAMatrix3x3Ghost) and (POCAGhostGetType(aArguments^[1])=POCAVector3GhostPointer) then begin
+ end else if assigned(POCAVector3GhostPointer) and (aCountArguments=2) and (POCAGhostGetType(aArguments^[0])=@POCAMatrix3x3Ghost) and (POCAGhostGetType(aArguments^[1])=POCAVector3GhostPointer) then begin
   Matrix3x3:=POCAGhostFastGetPointer(aArguments^[0]);
   Vector3:=POCAGhostFastGetPointer(aArguments^[1]);
   result:=POCANewVector3(aContext,Matrix3x3^*Vector3^);
- end else if (aCountArguments=2) and (POCAGhostGetType(aArguments^[0])=POCAVector3GhostPointer) and (POCAGhostGetType(aArguments^[1])=@POCAMatrix3x3Ghost) then begin
+ end else if assigned(POCAVector3GhostPointer) and (aCountArguments=2) and (POCAGhostGetType(aArguments^[0])=POCAVector3GhostPointer) and (POCAGhostGetType(aArguments^[1])=@POCAMatrix3x3Ghost) then begin
   Matrix3x3:=POCAGhostFastGetPointer(aArguments^[1]);
   Vector3:=POCAGhostFastGetPointer(aArguments^[0]);
   result:=POCANewVector3(aContext,Vector3^*Matrix3x3^);
- end else if (aCountArguments=2) and (POCAGhostGetType(aArguments^[0])=POCAMatrix4x4GhostPointer) and (POCAGhostGetType(aArguments^[1])=@POCAQuaternionGhost) then begin
+ end else if assigned(POCAMatrix4x4GhostPointer) and (aCountArguments=2) and (POCAGhostGetType(aArguments^[0])=POCAMatrix4x4GhostPointer) and (POCAGhostGetType(aArguments^[1])=@POCAQuaternionGhost) then begin
   Matrix3x3:=POCAGhostFastGetPointer(aArguments^[0]);
   Quaternion:=POCAGhostFastGetPointer(aArguments^[1]);
   result:=POCANewMatrix3x3(aContext,Matrix3x3^*Quaternion^);
- end else if (aCountArguments=2) and (POCAGhostGetType(aArguments^[0])=@POCAQuaternionGhost) and (POCAGhostGetType(aArguments^[1])=POCAMatrix4x4GhostPointer) then begin
+ end else if assigned(POCAMatrix4x4GhostPointer) and (aCountArguments=2) and (POCAGhostGetType(aArguments^[0])=@POCAQuaternionGhost) and (POCAGhostGetType(aArguments^[1])=POCAMatrix4x4GhostPointer) then begin
   Matrix3x3:=POCAGhostFastGetPointer(aArguments^[1]);
   Quaternion:=POCAGhostFastGetPointer(aArguments^[0]);
   result:=POCANewMatrix3x3(aContext,Quaternion^*Matrix3x3^);
@@ -3375,7 +3375,7 @@ var Matrix4x4:TpvMatrix4x4D;
 begin
  if (aCountArguments=1) and (POCAGhostGetType(aArguments^[0])=@POCAMatrix4x4Ghost) then begin
   Matrix4x4:=PpvMatrix4x4D(POCAGhostFastGetPointer(aArguments^[0]))^;
- end else if (aCountArguments=1) and (POCAGhostGetType(aArguments^[0])=POCAMatrix3x3GhostPointer) then begin
+ end else if assigned(POCAMatrix3x3GhostPointer) and (aCountArguments=1) and (POCAGhostGetType(aArguments^[0])=POCAMatrix3x3GhostPointer) then begin
   Matrix3x3:=POCAGhostFastGetPointer(aArguments^[0]);
   Matrix4x4.RawComponents[0,0]:=Matrix3x3^.RawComponents[0,0];
   Matrix4x4.RawComponents[0,1]:=Matrix3x3^.RawComponents[0,1];
@@ -3604,19 +3604,19 @@ begin
   Matrix4x4:=POCAGhostFastGetPointer(aArguments^[0]);
   OtherMatrix4x4:=POCAGhostFastGetPointer(aArguments^[1]);
   result:=POCANewMatrix4x4(aContext,Matrix4x4^*OtherMatrix4x4^);
- end else if (aCountArguments=2) and (POCAGhostGetType(aArguments^[0])=@POCAMatrix4x4Ghost) and (POCAGhostGetType(aArguments^[1])=POCAVector3GhostPointer) then begin
+ end else if assigned(POCAVector3GhostPointer) and (aCountArguments=2) and (POCAGhostGetType(aArguments^[0])=@POCAMatrix4x4Ghost) and (POCAGhostGetType(aArguments^[1])=POCAVector3GhostPointer) then begin
   Matrix4x4:=POCAGhostFastGetPointer(aArguments^[0]);
   Vector3:=POCAGhostFastGetPointer(aArguments^[1]);
   result:=POCANewVector3(aContext,(Matrix4x4^*Vector3^).xyz);
- end else if (aCountArguments=2) and (POCAGhostGetType(aArguments^[0])=POCAVector3GhostPointer) and (POCAGhostGetType(aArguments^[1])=@POCAMatrix4x4Ghost) then begin
+ end else if assigned(POCAVector3GhostPointer) and (aCountArguments=2) and (POCAGhostGetType(aArguments^[0])=POCAVector3GhostPointer) and (POCAGhostGetType(aArguments^[1])=@POCAMatrix4x4Ghost) then begin
   Matrix4x4:=POCAGhostFastGetPointer(aArguments^[1]);
   Vector3:=POCAGhostFastGetPointer(aArguments^[0]);
   result:=POCANewVector3(aContext,(Vector3^*Matrix4x4^).xyz);
- end else if (aCountArguments=2) and (POCAGhostGetType(aArguments^[0])=POCAMatrix4x4GhostPointer) and (POCAGhostGetType(aArguments^[1])=@POCAQuaternionGhost) then begin
+ end else if assigned(POCAMatrix4x4GhostPointer) and (aCountArguments=2) and (POCAGhostGetType(aArguments^[0])=POCAMatrix4x4GhostPointer) and (POCAGhostGetType(aArguments^[1])=@POCAQuaternionGhost) then begin
   Matrix4x4:=POCAGhostFastGetPointer(aArguments^[0]);
   Quaternion:=POCAGhostFastGetPointer(aArguments^[1]);
   result:=POCANewMatrix4x4(aContext,Matrix4x4^*Quaternion^);
- end else if (aCountArguments=2) and (POCAGhostGetType(aArguments^[0])=@POCAQuaternionGhost) and (POCAGhostGetType(aArguments^[1])=POCAMatrix4x4GhostPointer) then begin
+ end else if assigned(POCAMatrix4x4GhostPointer) and (aCountArguments=2) and (POCAGhostGetType(aArguments^[0])=@POCAQuaternionGhost) and (POCAGhostGetType(aArguments^[1])=POCAMatrix4x4GhostPointer) then begin
   Matrix4x4:=POCAGhostFastGetPointer(aArguments^[1]);
   Quaternion:=POCAGhostFastGetPointer(aArguments^[0]);
   result:=POCANewMatrix4x4(aContext,Quaternion^*Matrix4x4^);
@@ -3896,12 +3896,12 @@ begin
  aContext^.Instance^.Globals.HostData:=HostData;
  aContext^.Instance^.Globals.HostDataFreeable:=true;
 
- POCAInitVector2(aContext);
+//POCAInitVector2(aContext);
  POCAInitVector3(aContext);
- POCAInitVector4(aContext);
- POCAInitQuaternion(aContext);
- POCAInitMatrix3x3(aContext);
- POCAInitMatrix4x4(aContext);
+//POCAInitVector4(aContext);
+//POCAInitQuaternion(aContext);
+//POCAInitMatrix3x3(aContext);
+//POCAInitMatrix4x4(aContext);
 
 end;
 
