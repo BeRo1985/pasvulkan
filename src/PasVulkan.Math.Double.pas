@@ -336,6 +336,7 @@ type TpvVector2D=record
         3:(Right,Up,Forwards:TpvVector3D);
         4:(Tangent,Bitangent,Normal:TpvVector3D);
      end;
+     PpvMatrix3x3D=^TpvMatrix3x3D;
 
      TpvDecomposedMatrix4x4D=record
       public
