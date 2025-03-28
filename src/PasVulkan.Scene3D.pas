@@ -104,7 +104,8 @@ uses {$ifdef Windows}
      PasVulkan.FileFormats.SAM,
      PasVulkan.FileFormats.IES,
      PasVulkan.Scene3D.Renderer.Globals,
-     POCA;
+     POCA,
+     PasVulkan.POCA;
 
 type EpvScene3D=class(Exception);
 
@@ -20311,29 +20312,34 @@ var POCACodeString:TpvUTF8String;
     try
      POCAContext:=POCAContextCreate(POCAInstance);
      try
+      InitializeForPOCAContext(POCAContext);
       try
-       POCAScene3DGroup:=TPOCAScene3DGroup.Create(POCAInstance,POCAContext,nil,nil,false);
-       POCAScene3DGroup.fGroup:=self;
-       POCAHashSet(POCAContext,
-                   POCAInstance.Globals.Namespace,
-                   POCANewUniqueString(POCAContext,'Group'),
-                   POCANewNativeObject(POCAContext,POCAScene3DGroup));
-       POCACode:=POCACompile(POCAInstance,POCAContext,Code,'<CODE>');
-       POCACall(POCAContext,POCACode,nil,0,POCAValueNull,POCAInstance^.Globals.Namespace);
-      except
-       on e:EPOCASyntaxError do begin
-        pvApplication.Log(LOG_ERROR,'TpvScene3D.TGroup.AssignFromGLTF','['+e.ClassName+']: '+e.Message);
+       try
+        POCAScene3DGroup:=TPOCAScene3DGroup.Create(POCAInstance,POCAContext,nil,nil,false);
+        POCAScene3DGroup.fGroup:=self;
+        POCAHashSet(POCAContext,
+                    POCAInstance.Globals.Namespace,
+                    POCANewUniqueString(POCAContext,'Group'),
+                    POCANewNativeObject(POCAContext,POCAScene3DGroup));
+        POCACode:=POCACompile(POCAInstance,POCAContext,Code,'<CODE>');
+        POCACall(POCAContext,POCACode,nil,0,POCAValueNull,POCAInstance^.Globals.Namespace);
+       except
+        on e:EPOCASyntaxError do begin
+         pvApplication.Log(LOG_ERROR,'TpvScene3D.TGroup.AssignFromGLTF','['+e.ClassName+']: '+e.Message);
+        end;
+        on e:EPOCARuntimeError do begin
+         pvApplication.Log(LOG_ERROR,'TpvScene3D.TGroup.AssignFromGLTF','['+e.ClassName+']: '+e.Message);
+        end;
+        on e:EPOCAScriptError do begin
+         pvApplication.Log(LOG_ERROR,'TpvScene3D.TGroup.AssignFromGLTF','['+e.ClassName+']: '+e.Message);
+        end;
+        on e:Exception do begin
+         pvApplication.Log(LOG_ERROR,'TpvScene3D.TGroup.AssignFromGLTF','['+e.ClassName+']: '+e.Message);
+         raise;
+        end;
        end;
-       on e:EPOCARuntimeError do begin
-        pvApplication.Log(LOG_ERROR,'TpvScene3D.TGroup.AssignFromGLTF','['+e.ClassName+']: '+e.Message);
-       end;
-       on e:EPOCAScriptError do begin
-        pvApplication.Log(LOG_ERROR,'TpvScene3D.TGroup.AssignFromGLTF','['+e.ClassName+']: '+e.Message);
-       end;
-       on e:Exception do begin
-        pvApplication.Log(LOG_ERROR,'TpvScene3D.TGroup.AssignFromGLTF','['+e.ClassName+']: '+e.Message);
-        raise;
-       end;
+      finally
+       FinalizeForPOCAContext(POCAContext);
       end;
      finally
       POCAContextDestroy(POCAContext);
