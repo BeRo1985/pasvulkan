@@ -84,6 +84,10 @@ function POCANewVector4(const aContext:PPOCAContext;const aVector4:TpvVector4D):
 function POCANewVector4(const aContext:PPOCAContext;const aX:TpvDouble=0.0;const aY:TpvDouble=0.0;const aZ:TpvDouble=0.0;const aW:TpvDouble=0.0):TPOCAValue; overload;
 function POCAGetVector4Value(const aValue:TPOCAValue):TpvVector4D;
 
+function POCANewQuaternion(const aContext:PPOCAContext;const aQuaternion:TpvQuaternionD):TPOCAValue; overload;
+function POCANewQuaternion(const aContext:PPOCAContext;const aX:TpvDouble=0.0;const aY:TpvDouble=0.0;const aZ:TpvDouble=0.0;const aW:TpvDouble=1.0):TPOCAValue; overload;
+function POCAGetQuaternionValue(const aValue:TPOCAValue):TpvQuaternionD;
+
 procedure InitializeForPOCAContext(const aContext:PPOCAContext);
 
 implementation
@@ -92,6 +96,7 @@ implementation
 var POCAVector2GhostPointer:PPOCAGhostType=nil;
     POCAVector3GhostPointer:PPOCAGhostType=nil;
     POCAVector4GhostPointer:PPOCAGhostType=nil;
+    POCAQuaternionGhostPointer:PPOCAGhostType=nil;
     
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Vector2
@@ -176,7 +181,7 @@ begin
  POCAGhostSetHashValue(result,POCAVector2Hash);
 end;
 
-function POCANewVector2(const aContext:PPOCAContext;const aX:TpvDouble=0.0;const aY:TpvDouble=0.0):TPOCAValue; overload;
+function POCANewVector2(const aContext:PPOCAContext;const aX:TpvDouble;const aY:TpvDouble):TPOCAValue; overload;
 begin
  result:=POCANewVector2(aContext,TpvVector2D.Create(aX,aY));
 end;
@@ -732,7 +737,7 @@ begin
  POCAGhostSetHashValue(result,POCAVector3Hash);
 end;
 
-function POCANewVector3(const aContext:PPOCAContext;const aX:TpvDouble=0.0;const aY:TpvDouble=0.0;const aZ:TpvDouble=0.0):TPOCAValue; overload;
+function POCANewVector3(const aContext:PPOCAContext;const aX:TpvDouble;const aY:TpvDouble;const aZ:TpvDouble):TPOCAValue; overload;
 begin
  result:=POCANewVector3(aContext,TpvVector3D.Create(aX,aY,aZ));
 end;
@@ -1305,7 +1310,7 @@ begin
  POCAGhostSetHashValue(result,POCAVector4Hash);
 end;
 
-function POCANewVector4(const aContext:PPOCAContext;const aX:TpvDouble=0.0;const aY:TpvDouble=0.0;const aZ:TpvDouble=0.0;const aW:TpvDouble=0.0):TPOCAValue; overload;
+function POCANewVector4(const aContext:PPOCAContext;const aX:TpvDouble;const aY:TpvDouble;const aZ:TpvDouble;const aW:TpvDouble):TPOCAValue; overload;
 begin
  result:=POCANewVector4(aContext,TpvVector4D.Create(aX,aY,aZ,aW));
 end;
@@ -1800,6 +1805,593 @@ begin
 end;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Quaternion
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+var POCAQuaternionHash,POCAQuaternionHashEvents:TPOCAValue;
+
+procedure POCAQuaternionGhostDestroy(const aGhost:PPOCAGhost);
+begin
+ if assigned(aGhost) and assigned(aGhost^.Ptr) then begin
+  FreeMem(aGhost^.Ptr);
+ end;
+end;
+
+function POCAQuaternionGhostExistKey(const aContext:PPOCAContext;const aGhost:PPOCAGhost;const aKey:TPOCAValue):longbool;
+var s:TpvUTF8String;
+begin
+ s:=POCAGetStringValue(aContext,aKey);
+ if s='x' then begin
+  result:=true;
+ end else if s='y' then begin
+  result:=true;
+ end else if s='z' then begin
+  result:=true;
+ end else if s='w' then begin
+  result:=true;
+ end else begin
+  result:=false;
+ end;
+end;
+
+function POCAQuaternionGhostGetKey(const aContext:PPOCAContext;const aGhost:PPOCAGhost;const aKey:TPOCAValue;out aValue:TPOCAValue):longbool;
+var Quaternion:PpvQuaternionD;
+    s:TpvUTF8String;
+begin
+ Quaternion:=PpvQuaternionD(PPOCAGhost(aGhost)^.Ptr);
+ s:=POCAGetStringValue(aContext,aKey);
+ if s='x' then begin
+  aValue.Num:=Quaternion^.x;
+  result:=true;
+ end else if s='y' then begin
+  aValue.Num:=Quaternion^.y;
+  result:=true;
+ end else if s='z'then begin
+  aValue.Num:=Quaternion^.z;
+  result:=true;
+ end else if s='w' then begin
+  aValue.Num:=Quaternion^.w;
+  result:=true;
+ end else begin
+  result:=false;
+ end;
+end;
+
+function POCAQuaternionGhostSetKey(const aContext:PPOCAContext;const aGhost:PPOCAGhost;const aKey:TPOCAValue;const aValue:TPOCAValue):longbool;
+var Quaternion:PpvQuaternionD;
+    s:TpvUTF8String;
+begin
+ Quaternion:=PpvQuaternionD(PPOCAGhost(aGhost)^.Ptr);
+ s:=POCAGetStringValue(aContext,aKey);
+ if s='x' then begin
+  Quaternion^.x:=POCAGetNumberValue(aContext,aValue);
+  result:=true;
+ end else if s='y' then begin
+  Quaternion^.y:=POCAGetNumberValue(aContext,aValue);
+  result:=true;
+ end else if s='z' then begin
+  Quaternion^.z:=POCAGetNumberValue(aContext,aValue);
+  result:=true;
+ end else if s='w' then begin
+  Quaternion^.w:=POCAGetNumberValue(aContext,aValue);
+  result:=true;
+ end else begin
+  result:=false;
+ end;
+end;
+
+const POCAQuaternionGhost:TPOCAGhostType=
+       (
+        Destroy:POCAQuaternionGhostDestroy;
+        CanDestroy:nil;
+        Mark:nil;
+        ExistKey:POCAQuaternionGhostExistKey;
+        GetKey:POCAQuaternionGhostGetKey;
+        SetKey:POCAQuaternionGhostSetKey;
+        Name:'Quaternion'
+       );
+
+function POCANewQuaternion(const aContext:PPOCAContext;const aQuaternion:TpvQuaternionD):TPOCAValue; overload;
+var Quaternion:PpvQuaternionD;
+begin
+ Quaternion:=nil;
+ GetMem(Quaternion,SizeOf(TpvQuaternionD));
+ Quaternion^:=aQuaternion;
+ result:=POCANewGhost(aContext,@POCAQuaternionGhost,Quaternion,nil,pgptRAW);
+ POCAGhostSetHashValue(result,POCAQuaternionHash);
+end;
+
+function POCANewQuaternion(const aContext:PPOCAContext;const aX:TpvDouble;const aY:TpvDouble;const aZ:TpvDouble;const aW:TpvDouble):TPOCAValue; overload;
+begin
+ result:=POCANewQuaternion(aContext,TpvQuaternionD.Create(aX,aY,aZ,aW));
+end;
+
+function POCAGetQuaternionValue(const aValue:TPOCAValue):TpvQuaternionD;
+begin
+ if POCAGhostGetType(aValue)=@POCAQuaternionGhost then begin
+  result:=PpvQuaternionD(POCAGhostFastGetPointer(aValue))^;
+ end else begin
+  result:=TpvQuaternionD.Create(0.0,0.0,0.0,0.0);
+ end;
+end;
+
+function POCAQuaternionFunctionCREATE(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:pointer):TPOCAValue;
+var Quaternion:TpvQuaternionD;
+    Vector2:PpvVector2D;
+    Vector3:PpvVector3D;
+    Vector4:PpvVector4D;
+begin
+ if (aCountArguments>0) and (POCAGhostGetType(aArguments^[0])=@POCAQuaternionGhost) then begin
+  Quaternion:=PpvQuaternionD(POCAGhostFastGetPointer(aArguments^[0]))^;
+ end else if (aCountArguments>0) and (POCAGhostGetType(aArguments^[0])=POCAVector2GhostPointer) then begin
+  Vector2:=POCAGhostFastGetPointer(aArguments^[0]);
+  Quaternion.x:=Vector2^.x;
+  Quaternion.y:=Vector2^.y;
+  if aCountArguments>1 then begin
+   Quaternion.z:=POCAGetNumberValue(aContext,aArguments^[1]);
+  end else begin
+   Quaternion.z:=0.0;
+  end;
+  if aCountArguments>2 then begin
+   Quaternion.w:=POCAGetNumberValue(aContext,aArguments^[2]);
+  end else begin
+   Quaternion.w:=0.0;
+  end;
+ end else if (aCountArguments>0) and (POCAGhostGetType(aArguments^[0])=POCAVector3GhostPointer) then begin
+  Vector3:=POCAGhostFastGetPointer(aArguments^[0]);
+  Quaternion.xyz:=Vector3^;
+  if aCountArguments>1 then begin
+   Quaternion.w:=POCAGetNumberValue(aContext,aArguments^[1]);
+  end else begin
+   Quaternion.w:=0.0;
+  end;
+ end else if (aCountArguments>0) and (POCAGhostGetType(aArguments^[0])=POCAVector4GhostPointer) then begin
+  Vector4:=POCAGhostFastGetPointer(aArguments^[0]);
+  Quaternion.x:=Vector4^.x;
+  Quaternion.y:=Vector4^.y;
+  Quaternion.z:=Vector4^.z;
+  Quaternion.w:=Vector4^.w;  
+ end else begin
+  if aCountArguments>0 then begin
+   Quaternion.x:=POCAGetNumberValue(aContext,aArguments^[0]);
+  end else begin
+   Quaternion.x:=0.0;
+  end;
+  if aCountArguments>1 then begin
+   Quaternion.y:=POCAGetNumberValue(aContext,aArguments^[1]);
+  end else begin
+   Quaternion.y:=0.0;
+  end;
+  if aCountArguments>2 then begin
+   Quaternion.z:=POCAGetNumberValue(aContext,aArguments^[2]);
+  end else begin
+   Quaternion.z:=0.0;
+  end;
+  if aCountArguments>3 then begin
+   Quaternion.w:=POCAGetNumberValue(aContext,aArguments^[3]);
+  end else begin
+   Quaternion.w:=0.0;
+  end;
+ end;
+ result:=POCANewQuaternion(aContext,Quaternion);
+end;
+
+function POCAQuaternionFunctionLength(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:pointer):TPOCAValue;
+var Quaternion:PpvQuaternionD;
+begin
+ if POCAGhostGetType(aThis)=@POCAQuaternionGhost then begin
+  Quaternion:=POCAGhostFastGetPointer(aThis);
+  result:=POCANewNumber(aContext,Quaternion^.Length);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAQuaternionFunctionSquaredLength(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:pointer):TPOCAValue;
+var Quaternion:PpvQuaternionD;
+begin
+ if POCAGhostGetType(aThis)=@POCAQuaternionGhost then begin
+  Quaternion:=POCAGhostFastGetPointer(aThis);
+  result:=POCANewNumber(aContext,Quaternion^.SquaredLength);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAQuaternionFunctionNormalize(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:pointer):TPOCAValue;
+var Quaternion:PpvQuaternionD;
+begin
+ if POCAGhostGetType(aThis)=@POCAQuaternionGhost then begin
+  Quaternion:=POCAGhostFastGetPointer(aThis);
+  result:=POCANewQuaternion(aContext,Quaternion^.Normalize);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAQuaternionFunctionDot(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:pointer):TPOCAValue;
+var Quaternion:PpvQuaternionD;
+    OtherQuaternion:PpvQuaternionD;
+begin
+ if (aCountArguments=1) and (POCAGhostGetType(aThis)=@POCAQuaternionGhost) and (POCAGhostGetType(aArguments^[0])=@POCAQuaternionGhost) then begin
+  Quaternion:=POCAGhostFastGetPointer(aThis);
+  OtherQuaternion:=POCAGhostFastGetPointer(aArguments^[0]);
+  result.Num:=Quaternion^.Dot(OtherQuaternion^);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAQuaternionFunctionCross(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:pointer):TPOCAValue;
+var Quaternion:PpvQuaternionD;
+    OtherQuaternion:PpvQuaternionD;
+    Temporary:TpvQuaternionD;
+begin
+ if (aCountArguments=1) and (POCAGhostGetType(aThis)=@POCAQuaternionGhost) and (POCAGhostGetType(aArguments^[0])=@POCAQuaternionGhost) then begin
+  Quaternion:=POCAGhostFastGetPointer(aThis);
+  OtherQuaternion:=POCAGhostFastGetPointer(aArguments^[0]);
+  Temporary.xyz:=Quaternion^.xyz.Cross(OtherQuaternion^.xyz);
+  Temporary.w:=1.0;
+  result:=POCANewQuaternion(aContext,Temporary);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAQuaternionFunctionLerp(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:pointer):TPOCAValue;
+var Quaternion:PpvQuaternionD;
+    OtherQuaternion:PpvQuaternionD;
+    Time:TpvDouble;
+begin
+ if (aCountArguments=2) and (POCAGhostGetType(aThis)=@POCAQuaternionGhost) and (POCAGhostGetType(aArguments^[0])=@POCAQuaternionGhost) and (POCAGetValueType(aArguments^[1])=pvtNUMBER) then begin
+  Quaternion:=POCAGhostFastGetPointer(aThis);
+  OtherQuaternion:=POCAGhostFastGetPointer(aArguments^[0]);
+  Time:=POCAGetNumberValue(aContext,aArguments^[1]);
+  result:=POCANewQuaternion(aContext,Quaternion^.Lerp(OtherQuaternion^,Time));
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAQuaternionFunctionNlerp(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:pointer):TPOCAValue;
+var Quaternion:PpvQuaternionD;
+    OtherQuaternion:PpvQuaternionD;
+    Time:TpvDouble;
+begin
+ if (aCountArguments=2) and (POCAGhostGetType(aThis)=@POCAQuaternionGhost) and (POCAGhostGetType(aArguments^[0])=@POCAQuaternionGhost) and (POCAGetValueType(aArguments^[1])=pvtNUMBER) then begin
+  Quaternion:=POCAGhostFastGetPointer(aThis);
+  OtherQuaternion:=POCAGhostFastGetPointer(aArguments^[0]);
+  Time:=POCAGetNumberValue(aContext,aArguments^[1]);
+  result:=POCANewQuaternion(aContext,Quaternion^.Nlerp(OtherQuaternion^,Time));
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAQuaternionFunctionSlerp(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:pointer):TPOCAValue;
+var Quaternion:PpvQuaternionD;
+    OtherQuaternion:PpvQuaternionD;
+    Time:TpvDouble;
+begin
+ if (aCountArguments=2) and (POCAGhostGetType(aThis)=@POCAQuaternionGhost) and (POCAGhostGetType(aArguments^[0])=@POCAQuaternionGhost) and (POCAGetValueType(aArguments^[1])=pvtNUMBER) then begin
+  Quaternion:=POCAGhostFastGetPointer(aThis);
+  OtherQuaternion:=POCAGhostFastGetPointer(aArguments^[0]);
+  Time:=POCAGetNumberValue(aContext,aArguments^[1]);
+  result:=POCANewQuaternion(aContext,Quaternion^.Slerp(OtherQuaternion^,Time));
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAQuaternionFunctionSqlerp(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:pointer):TPOCAValue;
+var A,B,C,D:PpvQuaternionD;
+    Time:TpvDouble;
+begin
+ if (aCountArguments=4) and (POCAGhostGetType(aThis)=@POCAQuaternionGhost) and (POCAGhostGetType(aArguments^[0])=@POCAQuaternionGhost) and (POCAGhostGetType(aArguments^[1])=@POCAQuaternionGhost) and (POCAGhostGetType(aArguments^[2])=@POCAQuaternionGhost) and (POCAGetValueType(aArguments^[3])=pvtNUMBER) then begin
+  A:=POCAGhostFastGetPointer(aThis);
+  B:=POCAGhostFastGetPointer(aArguments^[0]);
+  C:=POCAGhostFastGetPointer(aArguments^[1]);
+  D:=POCAGhostFastGetPointer(aArguments^[2]);
+  Time:=POCAGetNumberValue(aContext,aArguments^[3]);
+  result:=POCANewQuaternion(aContext,A^.Sqlerp(B^,C^,D^,Time));
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAQuaternionFunctionAdd(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:pointer):TPOCAValue;
+var Quaternion:PpvQuaternionD;
+    OtherQuaternion:PpvQuaternionD;
+begin
+ if (aCountArguments=1) and (POCAGhostGetType(aThis)=@POCAQuaternionGhost) and (POCAGhostGetType(aArguments^[0])=@POCAQuaternionGhost) then begin
+  Quaternion:=POCAGhostFastGetPointer(aThis);
+  OtherQuaternion:=POCAGhostFastGetPointer(aArguments^[0]);
+  Quaternion^:=Quaternion^+OtherQuaternion^;
+  result:=aThis;
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAQuaternionFunctionSub(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:pointer):TPOCAValue;
+var Quaternion:PpvQuaternionD;
+    OtherQuaternion:PpvQuaternionD;
+begin
+ if (aCountArguments=1) and (POCAGhostGetType(aThis)=@POCAQuaternionGhost) and (POCAGhostGetType(aArguments^[0])=@POCAQuaternionGhost) then begin
+  Quaternion:=POCAGhostFastGetPointer(aThis);
+  OtherQuaternion:=POCAGhostFastGetPointer(aArguments^[0]);
+  Quaternion^:=Quaternion^-OtherQuaternion^;
+  result:=aThis;
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAQuaternionFunctionMul(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:pointer):TPOCAValue;
+var Quaternion,OtherQuaternion:PpvQuaternionD;
+    Factor:TpvDouble;
+begin
+ if (aCountArguments=1) and (POCAGhostGetType(aThis)=@POCAQuaternionGhost) and (POCAGetValueType(aArguments^[0])=pvtNUMBER) then begin
+  Quaternion:=POCAGhostFastGetPointer(aThis);
+  Factor:=POCAGetNumberValue(aContext,aArguments^[0]);
+  Quaternion^:=Quaternion^*Factor;
+  result:=aThis;
+ end else if (aCountArguments=1) and (POCAGhostGetType(aThis)=@POCAQuaternionGhost) and (POCAGhostGetType(aArguments^[0])=@POCAQuaternionGhost) then begin
+  Quaternion:=POCAGhostFastGetPointer(aThis);
+  OtherQuaternion:=POCAGhostFastGetPointer(aArguments^[0]);
+  Quaternion^:=Quaternion^*OtherQuaternion^;
+  result:=aThis;
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAQuaternionFunctionDiv(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:pointer):TPOCAValue;
+var Quaternion,OtherQuaternion:PpvQuaternionD;
+    Factor:TpvDouble;
+begin
+ if (aCountArguments=1) and (POCAGhostGetType(aThis)=@POCAQuaternionGhost) and (POCAGetValueType(aArguments^[0])=pvtNUMBER) then begin
+  Quaternion:=POCAGhostFastGetPointer(aThis);
+  Factor:=POCAGetNumberValue(aContext,aArguments^[0]);
+  Quaternion^.x:=Quaternion^.x/Factor;
+  Quaternion^.y:=Quaternion^.y/Factor;
+  Quaternion^.z:=Quaternion^.z/Factor;
+  Quaternion^.w:=Quaternion^.w/Factor;
+  result:=aThis;
+ end else if (aCountArguments=1) and (POCAGhostGetType(aThis)=@POCAQuaternionGhost) and (POCAGhostGetType(aArguments^[0])=@POCAQuaternionGhost) then begin
+  Quaternion:=POCAGhostFastGetPointer(aThis);
+  OtherQuaternion:=POCAGhostFastGetPointer(aArguments^[0]);
+  Quaternion^:=Quaternion^/OtherQuaternion^;
+  result:=aThis;
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAQuaternionFunctionNeg(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:pointer):TPOCAValue;
+var Quaternion:PpvQuaternionD;
+begin
+ if (aCountArguments=0) and (POCAGhostGetType(aThis)=@POCAQuaternionGhost) then begin
+  Quaternion:=POCAGhostFastGetPointer(aThis);
+  Quaternion^:=-Quaternion^;
+  result:=aThis;
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAQuaternionFunctionEqual(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:pointer):TPOCAValue;
+var Quaternion,OtherQuaternion:PpvQuaternionD;
+begin
+ if (aCountArguments=1) and (POCAGhostGetType(aThis)=@POCAQuaternionGhost) and (POCAGhostGetType(aArguments^[0])=@POCAQuaternionGhost) then begin
+  Quaternion:=POCAGhostFastGetPointer(aThis);
+  OtherQuaternion:=POCAGhostFastGetPointer(aArguments^[0]);
+  result:=POCANewNumber(aContext,ord(Quaternion^=OtherQuaternion^) and 1);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAQuaternionFunctionNotEqual(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:pointer):TPOCAValue;
+var Quaternion,OtherQuaternion:PpvQuaternionD;
+begin
+ if (aCountArguments=1) and (POCAGhostGetType(aThis)=@POCAQuaternionGhost) and (POCAGhostGetType(aArguments^[0])=@POCAQuaternionGhost) then begin
+  Quaternion:=POCAGhostFastGetPointer(aThis);
+  OtherQuaternion:=POCAGhostFastGetPointer(aArguments^[0]);
+  result:=POCANewNumber(aContext,ord(Quaternion^<>OtherQuaternion^) and 1);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAQuaternionFunctionToString(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:pointer):TPOCAValue;
+var Quaternion:PpvQuaternionD;
+    s:TpvUTF8String;
+begin
+ if (aCountArguments=0) and (POCAGhostGetType(aThis)=@POCAQuaternionGhost) then begin
+  Quaternion:=POCAGhostFastGetPointer(aThis);
+  s:='['+ConvertDoubleToString(Quaternion^.x,omStandard,-1)+','+ConvertDoubleToString(Quaternion^.y,omStandard,-1)+','+ConvertDoubleToString(Quaternion^.z,omStandard,-1)+','+ConvertDoubleToString(Quaternion^.w,omStandard,-1)+']';
+  result:=POCANewString(aContext,s);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+// "THIS" is null, because it is a binary operator, so the first argument is the first operand and the second argument is the second operand
+function POCAQuaternionFunctionOpAdd(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:pointer):TPOCAValue;
+var Quaternion,OtherQuaternion:PpvQuaternionD;
+begin
+ if (aCountArguments=2) and (POCAGhostGetType(aArguments^[0])=@POCAQuaternionGhost) and (POCAGhostGetType(aArguments^[1])=@POCAQuaternionGhost) then begin
+  Quaternion:=POCAGhostFastGetPointer(aArguments^[0]);
+  OtherQuaternion:=POCAGhostFastGetPointer(aArguments^[1]);
+  result:=POCANewQuaternion(aContext,Quaternion^+OtherQuaternion^);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAQuaternionFunctionOpSub(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:pointer):TPOCAValue;
+var Quaternion,OtherQuaternion:PpvQuaternionD;
+begin
+ if (aCountArguments=2) and (POCAGhostGetType(aArguments^[0])=@POCAQuaternionGhost) and (POCAGhostGetType(aArguments^[1])=@POCAQuaternionGhost) then begin
+  Quaternion:=POCAGhostFastGetPointer(aArguments^[0]);
+  OtherQuaternion:=POCAGhostFastGetPointer(aArguments^[1]);
+  result:=POCANewQuaternion(aContext,Quaternion^-OtherQuaternion^);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAQuaternionFunctionOpMul(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:pointer):TPOCAValue;
+var Quaternion,OtherQuaternion:PpvQuaternionD;
+    Factor:TpvDouble;
+begin
+ if (aCountArguments=2) and (POCAGhostGetType(aArguments^[0])=@POCAQuaternionGhost) and (POCAGetValueType(aArguments^[1])=pvtNUMBER) then begin
+  Quaternion:=POCAGhostFastGetPointer(aArguments^[0]);
+  Factor:=POCAGetNumberValue(aContext,aArguments^[1]);
+  result:=POCANewQuaternion(aContext,Quaternion^*Factor);
+ end else if (aCountArguments=2) and (POCAGhostGetType(aArguments^[0])=@POCAQuaternionGhost) and (POCAGhostGetType(aArguments^[1])=@POCAQuaternionGhost) then begin
+  Quaternion:=POCAGhostFastGetPointer(aArguments^[0]);
+  OtherQuaternion:=POCAGhostFastGetPointer(aArguments^[1]);
+  result:=POCANewQuaternion(aContext,Quaternion^*OtherQuaternion^);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAQuaternionFunctionOpDiv(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:pointer):TPOCAValue;
+var Quaternion,OtherQuaternion:PpvQuaternionD;
+    Factor:TpvDouble;
+begin
+ if (aCountArguments=2) and (POCAGhostGetType(aArguments^[0])=@POCAQuaternionGhost) and (POCAGetValueType(aArguments^[1])=pvtNUMBER) then begin
+  Quaternion:=POCAGhostFastGetPointer(aArguments^[0]);
+  Factor:=POCAGetNumberValue(aContext,aArguments^[1]);
+  result:=POCANewQuaternion(aContext,Quaternion^.x/Factor,Quaternion^.y/Factor,Quaternion^.z/Factor,Quaternion^.w/Factor);
+ end else if (aCountArguments=2) and (POCAGhostGetType(aArguments^[0])=@POCAQuaternionGhost) and (POCAGhostGetType(aArguments^[1])=@POCAQuaternionGhost) then begin
+  Quaternion:=POCAGhostFastGetPointer(aArguments^[0]);
+  OtherQuaternion:=POCAGhostFastGetPointer(aArguments^[1]);
+  result:=POCANewQuaternion(aContext,Quaternion^/OtherQuaternion^);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAQuaternionFunctionOpEqual(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:pointer):TPOCAValue;
+var Quaternion,OtherQuaternion:PpvQuaternionD;
+begin
+ if (aCountArguments=2) and (POCAGhostGetType(aArguments^[0])=@POCAQuaternionGhost) and (POCAGhostGetType(aArguments^[1])=@POCAQuaternionGhost) then begin
+  Quaternion:=POCAGhostFastGetPointer(aArguments^[0]);
+  OtherQuaternion:=POCAGhostFastGetPointer(aArguments^[1]);
+  result:=POCANewNumber(aContext,ord(Quaternion^=OtherQuaternion^) and 1);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAQuaternionFunctionOpNotEqual(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:pointer):TPOCAValue;
+var Quaternion,OtherQuaternion:PpvQuaternionD;
+begin
+ if (aCountArguments=2) and (POCAGhostGetType(aArguments^[0])=@POCAQuaternionGhost) and (POCAGhostGetType(aArguments^[1])=@POCAQuaternionGhost) then begin
+  Quaternion:=POCAGhostFastGetPointer(aArguments^[0]);
+  OtherQuaternion:=POCAGhostFastGetPointer(aArguments^[1]);
+  result:=POCANewNumber(aContext,ord(Quaternion^<>OtherQuaternion^) and 1);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAQuaternionFunctionOpNeg(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:pointer):TPOCAValue;
+var Quaternion:PpvQuaternionD;
+begin
+ if (aCountArguments=1) and (POCAGhostGetType(aArguments^[0])=@POCAQuaternionGhost) then begin
+  Quaternion:=POCAGhostFastGetPointer(aArguments^[0]);
+  result:=POCANewQuaternion(aContext,-Quaternion^);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAQuaternionFunctionOpSqrt(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:pointer):TPOCAValue;
+var Quaternion:PpvQuaternionD;
+begin
+ if (aCountArguments=1) and (POCAGhostGetType(aArguments^[0])=@POCAQuaternionGhost) then begin
+  Quaternion:=POCAGhostFastGetPointer(aArguments^[0]);
+  result:=POCANewQuaternion(aContext,Sqrt(Quaternion^.x),Sqrt(Quaternion^.y),Sqrt(Quaternion^.z));
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAQuaternionFunctionOpToString(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:pointer):TPOCAValue;
+var Quaternion:PpvQuaternionD;
+    s:TpvUTF8String;
+begin
+ if (aCountArguments=1) and (POCAGhostGetType(aArguments^[0])=@POCAQuaternionGhost) then begin
+  Quaternion:=POCAGhostFastGetPointer(aArguments^[0]);
+  s:='['+ConvertDoubleToString(Quaternion^.x,omStandard,-1)+','+ConvertDoubleToString(Quaternion^.y,omStandard,-1)+','+ConvertDoubleToString(Quaternion^.z,omStandard,-1)+','+ConvertDoubleToString(Quaternion^.w,omStandard,-1)+']';
+  result:=POCANewString(aContext,s);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+procedure POCAInitQuaternionHash(aContext:PPOCAContext);
+begin
+
+ POCAQuaternionGhostPointer:=@POCAQuaternionGhost;
+
+ POCAQuaternionHash:=POCANewHash(aContext);
+ POCAArrayPush(aContext^.Instance^.Globals.RootArray,POCAQuaternionHash);
+ POCAAddNativeFunction(aContext,POCAQuaternionHash,'length',POCAQuaternionFunctionLength);
+ POCAAddNativeFunction(aContext,POCAQuaternionHash,'squaredLength',POCAQuaternionFunctionSquaredLength);
+ POCAAddNativeFunction(aContext,POCAQuaternionHash,'normalize',POCAQuaternionFunctionNormalize);
+ POCAAddNativeFunction(aContext,POCAQuaternionHash,'dot',POCAQuaternionFunctionDot);
+ POCAAddNativeFunction(aContext,POCAQuaternionHash,'cross',POCAQuaternionFunctionCross);
+ POCAAddNativeFunction(aContext,POCAQuaternionHash,'lerp',POCAQuaternionFunctionLerp);
+ POCAAddNativeFunction(aContext,POCAQuaternionHash,'nlerp',POCAQuaternionFunctionNlerp);
+ POCAAddNativeFunction(aContext,POCAQuaternionHash,'slerp',POCAQuaternionFunctionSlerp);
+ POCAAddNativeFunction(aContext,POCAQuaternionHash,'sqlerp',POCAQuaternionFunctionSqlerp);
+ POCAAddNativeFunction(aContext,POCAQuaternionHash,'add',POCAQuaternionFunctionAdd);
+ POCAAddNativeFunction(aContext,POCAQuaternionHash,'sub',POCAQuaternionFunctionSub);
+ POCAAddNativeFunction(aContext,POCAQuaternionHash,'mul',POCAQuaternionFunctionMul);
+ POCAAddNativeFunction(aContext,POCAQuaternionHash,'div',POCAQuaternionFunctionDiv);
+ POCAAddNativeFunction(aContext,POCAQuaternionHash,'neg',POCAQuaternionFunctionNeg);
+ POCAAddNativeFunction(aContext,POCAQuaternionHash,'equal',POCAQuaternionFunctionEqual);
+ POCAAddNativeFunction(aContext,POCAQuaternionHash,'notEqual',POCAQuaternionFunctionNotEqual);
+ POCAAddNativeFunction(aContext,POCAQuaternionHash,'toString',POCAQuaternionFunctionToString);
+
+ POCAQuaternionHashEvents:=POCANewHash(aContext);
+ POCAArrayPush(aContext^.Instance^.Globals.RootArray,POCAQuaternionHashEvents);
+ POCAAddNativeFunction(aContext,POCAQuaternionHashEvents,'__add',POCAQuaternionFunctionOpAdd);
+ POCAAddNativeFunction(aContext,POCAQuaternionHashEvents,'__sub',POCAQuaternionFunctionOpSub);
+ POCAAddNativeFunction(aContext,POCAQuaternionHashEvents,'__mul',POCAQuaternionFunctionOpMul);
+ POCAAddNativeFunction(aContext,POCAQuaternionHashEvents,'__div',POCAQuaternionFunctionOpDiv);
+ POCAAddNativeFunction(aContext,POCAQuaternionHashEvents,'__eq',POCAQuaternionFunctionOpEqual);
+ POCAAddNativeFunction(aContext,POCAQuaternionHashEvents,'__neq',POCAQuaternionFunctionOpNotEqual);
+ POCAAddNativeFunction(aContext,POCAQuaternionHashEvents,'__neg',POCAQuaternionFunctionOpNeg);
+ POCAAddNativeFunction(aContext,POCAQuaternionHashEvents,'__sqrt',POCAQuaternionFunctionOpSqrt);
+ POCAAddNativeFunction(aContext,POCAQuaternionHashEvents,'__tostring',POCAQuaternionFunctionOpToString);
+
+ POCAHashSetHashEvents(aContext,POCAQuaternionHash,POCAQuaternionHashEvents);
+
+end;
+
+procedure POCAInitQuaternionNamespace(aContext:PPOCAContext);
+var Hash:TPOCAValue;
+begin
+ Hash:=POCANewHash(aContext);
+ POCAArrayPush(aContext^.Instance^.Globals.RootArray,Hash);
+ POCAAddNativeFunction(aContext,Hash,'create',POCAQuaternionFunctionCREATE);
+ POCAHashSetString(aContext,aContext^.Instance^.Globals.Namespace,'Quaternion',Hash);
+end;
+
+procedure POCAInitQuaternion(aContext:PPOCAContext);
+begin
+ POCAInitQuaternionHash(aContext);
+ POCAInitQuaternionNamespace(aContext);
+end;
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Initialization
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -1808,6 +2400,7 @@ begin
  POCAInitVector2(aContext);
  POCAInitVector3(aContext);
  POCAInitVector4(aContext);
+ POCAInitQuaternion(aContext);
 end;
 
 end.
