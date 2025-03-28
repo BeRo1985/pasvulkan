@@ -1076,6 +1076,8 @@ end;
 function POCAVector3FunctionOpMul(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:pointer):TPOCAValue;
 var Vector3,OtherVector3:PpvVector3D;
     Factor:TpvDouble;
+    Matrix3x3:PpvMatrix3x3;
+    Matrix4x4:PpvMatrix4x4;
     Quaternion:PpvQuaternionD;
 begin
  if (aCountArguments=2) and (POCAGhostGetType(aArguments^[0])=@POCAVector3Ghost) and (POCAGetValueType(aArguments^[1])=pvtNUMBER) then begin
@@ -1086,6 +1088,14 @@ begin
   Vector3:=POCAGhostFastGetPointer(aArguments^[0]);
   OtherVector3:=POCAGhostFastGetPointer(aArguments^[1]);
   result:=POCANewVector3(aContext,Vector3^*OtherVector3^);
+ end else if (aCountArguments=2) and (POCAGhostGetType(aArguments^[0])=@POCAVector3Ghost) and (POCAGhostGetType(aArguments^[1])=POCAMatrix3x3GhostPointer) then begin
+  Vector3:=POCAGhostFastGetPointer(aArguments^[0]);
+  Matrix3x3:=POCAGhostFastGetPointer(aArguments^[1]);
+  result:=POCANewVector3(aContext,Vector3^*Matrix3x3^);
+ end else if (aCountArguments=2) and (POCAGhostGetType(aArguments^[0])=@POCAVector3Ghost) and (POCAGhostGetType(aArguments^[1])=POCAMatrix4x4GhostPointer) then begin
+  Vector3:=POCAGhostFastGetPointer(aArguments^[0]);
+  Matrix4x4:=POCAGhostFastGetPointer(aArguments^[1]);
+  result:=POCANewVector3(aContext,(Vector3^*Matrix4x4^).xyz);
  end else if (aCountArguments=2) and (POCAGhostGetType(aArguments^[0])=@POCAVector3Ghost) and (POCAGhostGetType(aArguments^[1])=POCAQuaternionGhostPointer) then begin
   Vector3:=POCAGhostFastGetPointer(aArguments^[0]);
   Quaternion:=POCAGhostFastGetPointer(aArguments^[1]);
