@@ -95,8 +95,8 @@ type TPOCAHostData=record
      end;
      PPOCAHostData=^TPOCAHostData;   
 
-function POCAGetHostData(const aContext:PPOCAContext):PPOCAHostData;
-procedure POCASetHostData(const aContext:PPOCAContext;const aHostData:PPOCAHostData);       
+function POCAGetHostData(const aContext:PPOCAContext):PPOCAHostData; inline;
+procedure POCASetHostData(const aContext:PPOCAContext;const aHostData:PPOCAHostData); inline;
 
 function POCANewVector2(const aContext:PPOCAContext;const aVector2:TpvVector2D):TPOCAValue; overload;
 function POCANewVector2(const aContext:PPOCAContext;const aX:TpvDouble=0.0;const aY:TpvDouble=0.0):TPOCAValue; overload;
