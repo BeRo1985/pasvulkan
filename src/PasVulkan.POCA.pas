@@ -227,6 +227,7 @@ begin
  GetMem(Vector2,SizeOf(TpvVector2D));
  Vector2^:=aVector2;
  result:=POCANewGhost(aContext,@POCAVector2Ghost,Vector2,nil,pgptRAW);
+ POCATemporarySave(aContext,result);
  POCAGhostSetHashValue(result,POCAGetHostData(aContext)^.Vector2Hash);
 end;
 
@@ -783,6 +784,7 @@ begin
  GetMem(Vector3,SizeOf(TpvVector3D));
  Vector3^:=aVector3;
  result:=POCANewGhost(aContext,@POCAVector3Ghost,Vector3,nil,pgptRAW);
+ POCATemporarySave(aContext,result);
  POCAGhostSetHashValue(result,POCAGetHostData(aContext)^.Vector3Hash);
 end;
 
@@ -1375,6 +1377,7 @@ begin
  GetMem(Vector4,SizeOf(TpvVector4D));
  Vector4^:=aVector4;
  result:=POCANewGhost(aContext,@POCAVector4Ghost,Vector4,nil,pgptRAW);
+ POCATemporarySave(aContext,result);
  POCAGhostSetHashValue(result,POCAGetHostData(aContext)^.Vector4Hash);
 end;
 
@@ -1966,6 +1969,7 @@ begin
  GetMem(Quaternion,SizeOf(TpvQuaternionD));
  Quaternion^:=aQuaternion;
  result:=POCANewGhost(aContext,@POCAQuaternionGhost,Quaternion,nil,pgptRAW);
+ POCATemporarySave(aContext,result);
  POCAGhostSetHashValue(result,POCAGetHostData(aContext)^.QuaternionHash);
 end;
 
@@ -2649,6 +2653,7 @@ begin
  GetMem(Matrix3x3,SizeOf(TpvMatrix3x3D));
  Matrix3x3^:=aMatrix3x3;
  result:=POCANewGhost(aContext,@POCAMatrix3x3Ghost,Matrix3x3,nil,pgptRAW);
+ POCATemporarySave(aContext,result);
  POCAGhostSetHashValue(result,POCAGetHostData(aContext)^.Matrix3x3Hash);
 end;
 
@@ -3334,6 +3339,7 @@ begin
  GetMem(Matrix4x4,SizeOf(TpvMatrix4x4D));
  Matrix4x4^:=aMatrix4x4;
  result:=POCANewGhost(aContext,@POCAMatrix4x4Ghost,Matrix4x4,nil,pgptRAW);
+ POCATemporarySave(aContext,result);
  POCAGhostSetHashValue(result,POCAGetHostData(aContext)^.Matrix4x4Hash);
 end;
 
