@@ -1976,6 +1976,50 @@ begin
  result:=POCANewQuaternion(aContext,Quaternion);
 end;
 
+function POCAQuaternionFunctionConjugate(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:pointer):TPOCAValue;
+var Quaternion:PpvQuaternionD;
+begin
+ if POCAGhostGetType(aThis)=@POCAQuaternionGhost then begin
+  Quaternion:=POCAGhostFastGetPointer(aThis);
+  result:=POCANewQuaternion(aContext,Quaternion^.Conjugate);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAQuaternionFunctionInverse(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:pointer):TPOCAValue;
+var Quaternion:PpvQuaternionD;
+begin
+ if POCAGhostGetType(aThis)=@POCAQuaternionGhost then begin
+  Quaternion:=POCAGhostFastGetPointer(aThis);
+  result:=POCANewQuaternion(aContext,Quaternion^.Inverse);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAQuaternionFunctionLog(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:pointer):TPOCAValue;
+var Quaternion:PpvQuaternionD;
+begin
+ if POCAGhostGetType(aThis)=@POCAQuaternionGhost then begin
+  Quaternion:=POCAGhostFastGetPointer(aThis);
+  result:=POCANewQuaternion(aContext,Quaternion^.Log);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAQuaternionFunctionExp(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:pointer):TPOCAValue;
+var Quaternion:PpvQuaternionD;
+begin
+ if POCAGhostGetType(aThis)=@POCAQuaternionGhost then begin
+  Quaternion:=POCAGhostFastGetPointer(aThis);
+  result:=POCANewQuaternion(aContext,Quaternion^.Exp);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
 function POCAQuaternionFunctionLength(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:pointer):TPOCAValue;
 var Quaternion:PpvQuaternionD;
 begin
@@ -2342,6 +2386,10 @@ begin
 
  POCAQuaternionHash:=POCANewHash(aContext);
  POCAArrayPush(aContext^.Instance^.Globals.RootArray,POCAQuaternionHash);
+ POCAAddNativeFunction(aContext,POCAQuaternionHash,'conjugate',POCAQuaternionFunctionConjugate);
+ POCAAddNativeFunction(aContext,POCAQuaternionHash,'inverse',POCAQuaternionFunctionInverse);
+ POCAAddNativeFunction(aContext,POCAQuaternionHash,'log',POCAQuaternionFunctionLog);
+ POCAAddNativeFunction(aContext,POCAQuaternionHash,'exp',POCAQuaternionFunctionExp);
  POCAAddNativeFunction(aContext,POCAQuaternionHash,'length',POCAQuaternionFunctionLength);
  POCAAddNativeFunction(aContext,POCAQuaternionHash,'squaredLength',POCAQuaternionFunctionSquaredLength);
  POCAAddNativeFunction(aContext,POCAQuaternionHash,'normalize',POCAQuaternionFunctionNormalize);
