@@ -1821,40 +1821,40 @@ begin
 
  HostData:=POCAGetHostData(aContext);
  
- HostData^.Vector3Hash:=POCANewHash(aContext);
- POCAArrayPush(aContext^.Instance^.Globals.RootArray,HostData^.Vector3Hash);
- POCAAddNativeFunction(aContext,HostData^.Vector3Hash,'length',POCAVector4FunctionLength);
- POCAAddNativeFunction(aContext,HostData^.Vector3Hash,'squaredLength',POCAVector4FunctionSquaredLength);
- POCAAddNativeFunction(aContext,HostData^.Vector3Hash,'normalize',POCAVector4FunctionNormalize);
- POCAAddNativeFunction(aContext,HostData^.Vector3Hash,'dot',POCAVector4FunctionDot);
- POCAAddNativeFunction(aContext,HostData^.Vector3Hash,'cross',POCAVector4FunctionCross);
- POCAAddNativeFunction(aContext,HostData^.Vector3Hash,'distanceTo',POCAVector4FunctionDistanceTo);
- POCAAddNativeFunction(aContext,HostData^.Vector3Hash,'lerp',POCAVector4FunctionLerp);
- POCAAddNativeFunction(aContext,HostData^.Vector3Hash,'nlerp',POCAVector4FunctionNlerp);
- POCAAddNativeFunction(aContext,HostData^.Vector3Hash,'slerp',POCAVector4FunctionSlerp);
- POCAAddNativeFunction(aContext,HostData^.Vector3Hash,'sqlerp',POCAVector4FunctionSqlerp);
- POCAAddNativeFunction(aContext,HostData^.Vector3Hash,'add',POCAVector4FunctionAdd);
- POCAAddNativeFunction(aContext,HostData^.Vector3Hash,'sub',POCAVector4FunctionSub);
- POCAAddNativeFunction(aContext,HostData^.Vector3Hash,'mul',POCAVector4FunctionMul);
- POCAAddNativeFunction(aContext,HostData^.Vector3Hash,'div',POCAVector4FunctionDiv);
- POCAAddNativeFunction(aContext,HostData^.Vector3Hash,'neg',POCAVector4FunctionNeg);
- POCAAddNativeFunction(aContext,HostData^.Vector3Hash,'equal',POCAVector4FunctionEqual);
- POCAAddNativeFunction(aContext,HostData^.Vector3Hash,'notEqual',POCAVector4FunctionNotEqual);
- POCAAddNativeFunction(aContext,HostData^.Vector3Hash,'toString',POCAVector4FunctionToString);
+ HostData^.Vector4Hash:=POCANewHash(aContext);
+ POCAArrayPush(aContext^.Instance^.Globals.RootArray,HostData^.Vector4Hash);
+ POCAAddNativeFunction(aContext,HostData^.Vector4Hash,'length',POCAVector4FunctionLength);
+ POCAAddNativeFunction(aContext,HostData^.Vector4Hash,'squaredLength',POCAVector4FunctionSquaredLength);
+ POCAAddNativeFunction(aContext,HostData^.Vector4Hash,'normalize',POCAVector4FunctionNormalize);
+ POCAAddNativeFunction(aContext,HostData^.Vector4Hash,'dot',POCAVector4FunctionDot);
+ POCAAddNativeFunction(aContext,HostData^.Vector4Hash,'cross',POCAVector4FunctionCross);
+ POCAAddNativeFunction(aContext,HostData^.Vector4Hash,'distanceTo',POCAVector4FunctionDistanceTo);
+ POCAAddNativeFunction(aContext,HostData^.Vector4Hash,'lerp',POCAVector4FunctionLerp);
+ POCAAddNativeFunction(aContext,HostData^.Vector4Hash,'nlerp',POCAVector4FunctionNlerp);
+ POCAAddNativeFunction(aContext,HostData^.Vector4Hash,'slerp',POCAVector4FunctionSlerp);
+ POCAAddNativeFunction(aContext,HostData^.Vector4Hash,'sqlerp',POCAVector4FunctionSqlerp);
+ POCAAddNativeFunction(aContext,HostData^.Vector4Hash,'add',POCAVector4FunctionAdd);
+ POCAAddNativeFunction(aContext,HostData^.Vector4Hash,'sub',POCAVector4FunctionSub);
+ POCAAddNativeFunction(aContext,HostData^.Vector4Hash,'mul',POCAVector4FunctionMul);
+ POCAAddNativeFunction(aContext,HostData^.Vector4Hash,'div',POCAVector4FunctionDiv);
+ POCAAddNativeFunction(aContext,HostData^.Vector4Hash,'neg',POCAVector4FunctionNeg);
+ POCAAddNativeFunction(aContext,HostData^.Vector4Hash,'equal',POCAVector4FunctionEqual);
+ POCAAddNativeFunction(aContext,HostData^.Vector4Hash,'notEqual',POCAVector4FunctionNotEqual);
+ POCAAddNativeFunction(aContext,HostData^.Vector4Hash,'toString',POCAVector4FunctionToString);
 
- HostData^.Vector3HashEvents:=POCANewHash(aContext);
- POCAArrayPush(aContext^.Instance^.Globals.RootArray,HostData^.Vector3HashEvents);
- POCAAddNativeFunction(aContext,HostData^.Vector3HashEvents,'__add',POCAVector4FunctionOpAdd);
- POCAAddNativeFunction(aContext,HostData^.Vector3HashEvents,'__sub',POCAVector4FunctionOpSub);
- POCAAddNativeFunction(aContext,HostData^.Vector3HashEvents,'__mul',POCAVector4FunctionOpMul);
- POCAAddNativeFunction(aContext,HostData^.Vector3HashEvents,'__div',POCAVector4FunctionOpDiv);
- POCAAddNativeFunction(aContext,HostData^.Vector3HashEvents,'__eq',POCAVector4FunctionOpEqual);
- POCAAddNativeFunction(aContext,HostData^.Vector3HashEvents,'__neq',POCAVector4FunctionOpNotEqual);
- POCAAddNativeFunction(aContext,HostData^.Vector3HashEvents,'__neg',POCAVector4FunctionOpNeg);
- POCAAddNativeFunction(aContext,HostData^.Vector3HashEvents,'__sqrt',POCAVector4FunctionOpSqrt);
- POCAAddNativeFunction(aContext,HostData^.Vector3HashEvents,'__tostring',POCAVector4FunctionOpToString);
+ HostData^.Vector4HashEvents:=POCANewHash(aContext);
+ POCAArrayPush(aContext^.Instance^.Globals.RootArray,HostData^.Vector4HashEvents);
+ POCAAddNativeFunction(aContext,HostData^.Vector4HashEvents,'__add',POCAVector4FunctionOpAdd);
+ POCAAddNativeFunction(aContext,HostData^.Vector4HashEvents,'__sub',POCAVector4FunctionOpSub);
+ POCAAddNativeFunction(aContext,HostData^.Vector4HashEvents,'__mul',POCAVector4FunctionOpMul);
+ POCAAddNativeFunction(aContext,HostData^.Vector4HashEvents,'__div',POCAVector4FunctionOpDiv);
+ POCAAddNativeFunction(aContext,HostData^.Vector4HashEvents,'__eq',POCAVector4FunctionOpEqual);
+ POCAAddNativeFunction(aContext,HostData^.Vector4HashEvents,'__neq',POCAVector4FunctionOpNotEqual);
+ POCAAddNativeFunction(aContext,HostData^.Vector4HashEvents,'__neg',POCAVector4FunctionOpNeg);
+ POCAAddNativeFunction(aContext,HostData^.Vector4HashEvents,'__sqrt',POCAVector4FunctionOpSqrt);
+ POCAAddNativeFunction(aContext,HostData^.Vector4HashEvents,'__tostring',POCAVector4FunctionOpToString);
 
- POCAHashSetHashEvents(aContext,HostData^.Vector3Hash,HostData^.Vector3HashEvents);
+ POCAHashSetHashEvents(aContext,HostData^.Vector4Hash,HostData^.Vector4HashEvents);
 
 end;
 
@@ -3896,12 +3896,12 @@ begin
  aContext^.Instance^.Globals.HostData:=HostData;
  aContext^.Instance^.Globals.HostDataFreeable:=true;
 
-//POCAInitVector2(aContext);
+ POCAInitVector2(aContext);
  POCAInitVector3(aContext);
-//POCAInitVector4(aContext);
-//POCAInitQuaternion(aContext);
-//POCAInitMatrix3x3(aContext);
-//POCAInitMatrix4x4(aContext);
+ POCAInitVector4(aContext);
+ POCAInitQuaternion(aContext);
+ POCAInitMatrix3x3(aContext);
+ POCAInitMatrix4x4(aContext);
 
 end;
 
