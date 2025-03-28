@@ -80,6 +80,10 @@ function POCANewVector3(const aContext:PPOCAContext;const aVector3:TpvVector3D):
 function POCANewVector3(const aContext:PPOCAContext;const aX:TpvDouble=0.0;const aY:TpvDouble=0.0;const aZ:TpvDouble=0.0):TPOCAValue; overload;
 function POCAGetVector3Value(const aValue:TPOCAValue):TpvVector3D;
 
+function POCANewVector4(const aContext:PPOCAContext;const aVector4:TpvVector4D):TPOCAValue; overload;
+function POCANewVector4(const aContext:PPOCAContext;const aX:TpvDouble=0.0;const aY:TpvDouble=0.0;const aZ:TpvDouble=0.0;const aW:TpvDouble=0.0):TPOCAValue; overload;
+function POCAGetVector4Value(const aValue:TPOCAValue):TpvVector4D;
+
 procedure InitializeForPOCAContext(const aContext:PPOCAContext);
 
 implementation
@@ -189,6 +193,7 @@ end;
 function POCAVector2FunctionCREATE(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:pointer):TPOCAValue;
 var Vector2:TpvVector2D;
     Vector3:PpvVector3D;
+    Vector4:PpvVector4D;
 begin
  if (aCountArguments>0) and (POCAGhostGetType(aArguments^[0])=@POCAVector2Ghost) then begin
   Vector2:=PpvVector2D(POCAGhostFastGetPointer(aArguments^[0]))^;
@@ -196,6 +201,10 @@ begin
   Vector3:=POCAGhostFastGetPointer(aArguments^[0]);
   Vector2.x:=Vector3^.x;
   Vector2.y:=Vector3^.y;
+ end else if (aCountArguments>0) and (POCAGhostGetType(aArguments^[0])=POCAVector4GhostPointer) then begin
+  Vector4:=POCAGhostFastGetPointer(aArguments^[0]);
+  Vector2.x:=Vector4^.x;
+  Vector2.y:=Vector4^.y;
  end else begin
   if aCountArguments>0 then begin
    Vector2.x:=POCAGetNumberValue(aContext,aArguments^[0]);
@@ -740,18 +749,22 @@ end;
 function POCAVector3FunctionCREATE(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:pointer):TPOCAValue;
 var Vector3:TpvVector3D;
     Vector2:PpvVector2D;
+    Vector4:PpvVector4D;
 begin
  if (aCountArguments>0) and (POCAGhostGetType(aArguments^[0])=@POCAVector3Ghost) then begin
   Vector3:=PpvVector3D(POCAGhostFastGetPointer(aArguments^[0]))^;
  end else if (aCountArguments>0) and (POCAGhostGetType(aArguments^[0])=POCAVector2GhostPointer) then begin
   Vector2:=POCAGhostFastGetPointer(aArguments^[0]);
   Vector3.x:=Vector2^.x;
-  Vector3.y:=Vector2^.y;  
+  Vector3.y:=Vector2^.y;
   if aCountArguments>1 then begin
    Vector3.z:=POCAGetNumberValue(aContext,aArguments^[1]);
   end else begin
    Vector3.z:=0.0;
   end;
+ end else if (aCountArguments>0) and (POCAGhostGetType(aArguments^[0])=POCAVector4GhostPointer) then begin
+  Vector4:=POCAGhostFastGetPointer(aArguments^[0]);
+  Vector3:=Vector4^.xyz;
  end else begin
   if aCountArguments>0 then begin
    Vector3.x:=POCAGetNumberValue(aContext,aArguments^[0]);
@@ -1196,6 +1209,597 @@ begin
 end;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Vector4
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+var POCAVector4Hash,POCAVector4HashEvents:TPOCAValue;
+
+procedure POCAVector4GhostDestroy(const aGhost:PPOCAGhost);
+begin
+ if assigned(aGhost) and assigned(aGhost^.Ptr) then begin
+  FreeMem(aGhost^.Ptr);
+ end;
+end;
+
+function POCAVector4GhostExistKey(const aContext:PPOCAContext;const aGhost:PPOCAGhost;const aKey:TPOCAValue):longbool;
+var s:TpvUTF8String;
+begin
+ s:=POCAGetStringValue(aContext,aKey);
+ if (s='x') or (s='r') then begin
+  result:=true;
+ end else if (s='y') or (s='g') then begin
+  result:=true;
+ end else if (s='z') or (s='b') then begin
+  result:=true;
+ end else if (s='w') or (s='a') then begin
+  result:=true;
+ end else begin
+  result:=false;
+ end;
+end;
+
+function POCAVector4GhostGetKey(const aContext:PPOCAContext;const aGhost:PPOCAGhost;const aKey:TPOCAValue;out aValue:TPOCAValue):longbool;
+var Vector4:PpvVector4D;
+    s:TpvUTF8String;
+begin
+ Vector4:=PpvVector4D(PPOCAGhost(aGhost)^.Ptr);
+ s:=POCAGetStringValue(aContext,aKey);
+ if (s='x') or (s='r') then begin
+  aValue.Num:=Vector4^.x;
+  result:=true;
+ end else if (s='y') or (s='g') then begin
+  aValue.Num:=Vector4^.y;
+  result:=true;
+ end else if (s='z') or (s='b') then begin
+  aValue.Num:=Vector4^.z;
+  result:=true;
+ end else if (s='w') or (s='a') then begin
+  aValue.Num:=Vector4^.w;
+  result:=true;
+ end else begin
+  result:=false;
+ end;
+end;
+
+function POCAVector4GhostSetKey(const aContext:PPOCAContext;const aGhost:PPOCAGhost;const aKey:TPOCAValue;const aValue:TPOCAValue):longbool;
+var Vector4:PpvVector4D;
+    s:TpvUTF8String;
+begin
+ Vector4:=PpvVector4D(PPOCAGhost(aGhost)^.Ptr);
+ s:=POCAGetStringValue(aContext,aKey);
+ if (s='x') or (s='r') then begin
+  Vector4^.x:=POCAGetNumberValue(aContext,aValue);
+  result:=true;
+ end else if (s='y') or (s='g') then begin
+  Vector4^.y:=POCAGetNumberValue(aContext,aValue);
+  result:=true;
+ end else if (s='z') or (s='b') then begin
+  Vector4^.z:=POCAGetNumberValue(aContext,aValue);
+  result:=true;
+ end else if (s='w') or (s='a') then begin
+  Vector4^.w:=POCAGetNumberValue(aContext,aValue);
+  result:=true;
+ end else begin
+  result:=false;
+ end;
+end;
+
+const POCAVector4Ghost:TPOCAGhostType=
+       (
+        Destroy:POCAVector4GhostDestroy;
+        CanDestroy:nil;
+        Mark:nil;
+        ExistKey:POCAVector4GhostExistKey;
+        GetKey:POCAVector4GhostGetKey;
+        SetKey:POCAVector4GhostSetKey;
+        Name:'Vector4'
+       );
+
+function POCANewVector4(const aContext:PPOCAContext;const aVector4:TpvVector4D):TPOCAValue; overload;
+var Vector4:PpvVector4D;
+begin
+ Vector4:=nil;
+ GetMem(Vector4,SizeOf(TpvVector4D));
+ Vector4^:=aVector4;
+ result:=POCANewGhost(aContext,@POCAVector4Ghost,Vector4,nil,pgptRAW);
+ POCAGhostSetHashValue(result,POCAVector4Hash);
+end;
+
+function POCANewVector4(const aContext:PPOCAContext;const aX:TpvDouble=0.0;const aY:TpvDouble=0.0;const aZ:TpvDouble=0.0;const aW:TpvDouble=0.0):TPOCAValue; overload;
+begin
+ result:=POCANewVector4(aContext,TpvVector4D.Create(aX,aY,aZ,aW));
+end;
+
+function POCAGetVector4Value(const aValue:TPOCAValue):TpvVector4D;
+begin
+ if POCAGhostGetType(aValue)=@POCAVector4Ghost then begin
+  result:=PpvVector4D(POCAGhostFastGetPointer(aValue))^;
+ end else begin
+  result:=TpvVector4D.Create(0.0,0.0,0.0,0.0);
+ end;
+end;
+
+function POCAVector4FunctionCREATE(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:pointer):TPOCAValue;
+var Vector4:TpvVector4D;
+    Vector2:PpvVector2D;
+    Vector3:PpvVector3D;
+begin
+ if (aCountArguments>0) and (POCAGhostGetType(aArguments^[0])=@POCAVector4Ghost) then begin
+  Vector4:=PpvVector4D(POCAGhostFastGetPointer(aArguments^[0]))^;
+ end else if (aCountArguments>0) and (POCAGhostGetType(aArguments^[0])=POCAVector2GhostPointer) then begin
+  Vector2:=POCAGhostFastGetPointer(aArguments^[0]);
+  Vector4.x:=Vector2^.x;
+  Vector4.y:=Vector2^.y;
+  if aCountArguments>1 then begin
+   Vector4.z:=POCAGetNumberValue(aContext,aArguments^[1]);
+  end else begin
+   Vector4.z:=0.0;
+  end;
+  if aCountArguments>2 then begin
+   Vector4.w:=POCAGetNumberValue(aContext,aArguments^[2]);
+  end else begin
+   Vector4.w:=0.0;
+  end;
+ end else if (aCountArguments>0) and (POCAGhostGetType(aArguments^[0])=POCAVector3GhostPointer) then begin
+  Vector3:=POCAGhostFastGetPointer(aArguments^[0]);
+  Vector4.xyz:=Vector3^;
+  if aCountArguments>1 then begin
+   Vector4.w:=POCAGetNumberValue(aContext,aArguments^[1]);
+  end else begin
+   Vector4.w:=0.0;
+  end;
+ end else begin
+  if aCountArguments>0 then begin
+   Vector4.x:=POCAGetNumberValue(aContext,aArguments^[0]);
+  end else begin
+   Vector4.x:=0.0;
+  end;
+  if aCountArguments>1 then begin
+   Vector4.y:=POCAGetNumberValue(aContext,aArguments^[1]);
+  end else begin
+   Vector4.y:=0.0;
+  end;
+  if aCountArguments>2 then begin
+   Vector4.z:=POCAGetNumberValue(aContext,aArguments^[2]);
+  end else begin
+   Vector4.z:=0.0;
+  end;
+  if aCountArguments>3 then begin
+   Vector4.w:=POCAGetNumberValue(aContext,aArguments^[3]);
+  end else begin
+   Vector4.w:=0.0;
+  end;
+ end;
+ result:=POCANewVector4(aContext,Vector4);
+end;
+
+function POCAVector4FunctionLength(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:pointer):TPOCAValue;
+var Vector4:PpvVector4D;
+begin
+ if POCAGhostGetType(aThis)=@POCAVector4Ghost then begin
+  Vector4:=POCAGhostFastGetPointer(aThis);
+  result:=POCANewNumber(aContext,Vector4^.Length);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAVector4FunctionSquaredLength(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:pointer):TPOCAValue;
+var Vector4:PpvVector4D;
+begin
+ if POCAGhostGetType(aThis)=@POCAVector4Ghost then begin
+  Vector4:=POCAGhostFastGetPointer(aThis);
+  result:=POCANewNumber(aContext,Vector4^.SquaredLength);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAVector4FunctionNormalize(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:pointer):TPOCAValue;
+var Vector4:PpvVector4D;
+begin
+ if POCAGhostGetType(aThis)=@POCAVector4Ghost then begin
+  Vector4:=POCAGhostFastGetPointer(aThis);
+  result:=POCANewVector4(aContext,Vector4^.Normalize);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAVector4FunctionDot(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:pointer):TPOCAValue;
+var Vector4:PpvVector4D;
+    OtherVector4:PpvVector4D;
+begin
+ if (aCountArguments=1) and (POCAGhostGetType(aThis)=@POCAVector4Ghost) and (POCAGhostGetType(aArguments^[0])=@POCAVector4Ghost) then begin
+  Vector4:=POCAGhostFastGetPointer(aThis);
+  OtherVector4:=POCAGhostFastGetPointer(aArguments^[0]);
+  result.Num:=Vector4^.Dot(OtherVector4^);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAVector4FunctionCross(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:pointer):TPOCAValue;
+var Vector4:PpvVector4D;
+    OtherVector4:PpvVector4D;
+    Temporary:TpvVector4D;
+begin
+ if (aCountArguments=1) and (POCAGhostGetType(aThis)=@POCAVector4Ghost) and (POCAGhostGetType(aArguments^[0])=@POCAVector4Ghost) then begin
+  Vector4:=POCAGhostFastGetPointer(aThis);
+  OtherVector4:=POCAGhostFastGetPointer(aArguments^[0]);
+  Temporary.xyz:=Vector4^.xyz.Cross(OtherVector4^.xyz);
+  Temporary.w:=1.0;
+  result:=POCANewVector4(aContext,Temporary);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAVector4FunctionDistanceTo(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:pointer):TPOCAValue;
+var Vector4:PpvVector4D;
+    OtherVector4:PpvVector4D;
+begin
+ if (aCountArguments=1) and (POCAGhostGetType(aThis)=@POCAVector4Ghost) and (POCAGhostGetType(aArguments^[0])=@POCAVector4Ghost) then begin
+  Vector4:=POCAGhostFastGetPointer(aThis);
+  OtherVector4:=POCAGhostFastGetPointer(aArguments^[0]);
+  result.Num:=(Vector4^-OtherVector4^).Length;
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAVector4FunctionLerp(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:pointer):TPOCAValue;
+var Vector4:PpvVector4D;
+    OtherVector4:PpvVector4D;
+    Time:TpvDouble;
+begin
+ if (aCountArguments=2) and (POCAGhostGetType(aThis)=@POCAVector4Ghost) and (POCAGhostGetType(aArguments^[0])=@POCAVector4Ghost) and (POCAGetValueType(aArguments^[1])=pvtNUMBER) then begin
+  Vector4:=POCAGhostFastGetPointer(aThis);
+  OtherVector4:=POCAGhostFastGetPointer(aArguments^[0]);
+  Time:=POCAGetNumberValue(aContext,aArguments^[1]);
+  result:=POCANewVector4(aContext,Vector4^.Lerp(OtherVector4^,Time));
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAVector4FunctionNlerp(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:pointer):TPOCAValue;
+var Vector4:PpvVector4D;
+    OtherVector4:PpvVector4D;
+    Time:TpvDouble;
+begin
+ if (aCountArguments=2) and (POCAGhostGetType(aThis)=@POCAVector4Ghost) and (POCAGhostGetType(aArguments^[0])=@POCAVector4Ghost) and (POCAGetValueType(aArguments^[1])=pvtNUMBER) then begin
+  Vector4:=POCAGhostFastGetPointer(aThis);
+  OtherVector4:=POCAGhostFastGetPointer(aArguments^[0]);
+  Time:=POCAGetNumberValue(aContext,aArguments^[1]);
+  result:=POCANewVector4(aContext,Vector4^.Nlerp(OtherVector4^,Time));
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAVector4FunctionSlerp(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:pointer):TPOCAValue;
+var Vector4:PpvVector4D;
+    OtherVector4:PpvVector4D;
+    Time:TpvDouble;
+begin
+ if (aCountArguments=2) and (POCAGhostGetType(aThis)=@POCAVector4Ghost) and (POCAGhostGetType(aArguments^[0])=@POCAVector4Ghost) and (POCAGetValueType(aArguments^[1])=pvtNUMBER) then begin
+  Vector4:=POCAGhostFastGetPointer(aThis);
+  OtherVector4:=POCAGhostFastGetPointer(aArguments^[0]);
+  Time:=POCAGetNumberValue(aContext,aArguments^[1]);
+  result:=POCANewVector4(aContext,Vector4^.Slerp(OtherVector4^,Time));
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAVector4FunctionSqlerp(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:pointer):TPOCAValue;
+var A,B,C,D:PpvVector4D;
+    Time:TpvDouble;
+begin
+ if (aCountArguments=4) and (POCAGhostGetType(aThis)=@POCAVector4Ghost) and (POCAGhostGetType(aArguments^[0])=@POCAVector4Ghost) and (POCAGhostGetType(aArguments^[1])=@POCAVector4Ghost) and (POCAGhostGetType(aArguments^[2])=@POCAVector4Ghost) and (POCAGetValueType(aArguments^[3])=pvtNUMBER) then begin
+  A:=POCAGhostFastGetPointer(aThis);
+  B:=POCAGhostFastGetPointer(aArguments^[0]);
+  C:=POCAGhostFastGetPointer(aArguments^[1]);
+  D:=POCAGhostFastGetPointer(aArguments^[2]);
+  Time:=POCAGetNumberValue(aContext,aArguments^[3]);
+  result:=POCANewVector4(aContext,A^.Sqlerp(B^,C^,D^,Time));
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAVector4FunctionAdd(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:pointer):TPOCAValue;
+var Vector4:PpvVector4D;
+    OtherVector4:PpvVector4D;
+begin
+ if (aCountArguments=1) and (POCAGhostGetType(aThis)=@POCAVector4Ghost) and (POCAGhostGetType(aArguments^[0])=@POCAVector4Ghost) then begin
+  Vector4:=POCAGhostFastGetPointer(aThis);
+  OtherVector4:=POCAGhostFastGetPointer(aArguments^[0]);
+  Vector4^:=Vector4^+OtherVector4^;
+  result:=aThis;
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAVector4FunctionSub(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:pointer):TPOCAValue;
+var Vector4:PpvVector4D;
+    OtherVector4:PpvVector4D;
+begin
+ if (aCountArguments=1) and (POCAGhostGetType(aThis)=@POCAVector4Ghost) and (POCAGhostGetType(aArguments^[0])=@POCAVector4Ghost) then begin
+  Vector4:=POCAGhostFastGetPointer(aThis);
+  OtherVector4:=POCAGhostFastGetPointer(aArguments^[0]);
+  Vector4^:=Vector4^-OtherVector4^;
+  result:=aThis;
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAVector4FunctionMul(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:pointer):TPOCAValue;
+var Vector4,OtherVector4:PpvVector4D;
+    Factor:TpvDouble;
+begin
+ if (aCountArguments=1) and (POCAGhostGetType(aThis)=@POCAVector4Ghost) and (POCAGetValueType(aArguments^[0])=pvtNUMBER) then begin
+  Vector4:=POCAGhostFastGetPointer(aThis);
+  Factor:=POCAGetNumberValue(aContext,aArguments^[0]);
+  Vector4^:=Vector4^*Factor;
+  result:=aThis;
+ end else if (aCountArguments=1) and (POCAGhostGetType(aThis)=@POCAVector4Ghost) and (POCAGhostGetType(aArguments^[0])=@POCAVector4Ghost) then begin
+  Vector4:=POCAGhostFastGetPointer(aThis);
+  OtherVector4:=POCAGhostFastGetPointer(aArguments^[0]);
+  Vector4^:=Vector4^*OtherVector4^;
+  result:=aThis;
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAVector4FunctionDiv(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:pointer):TPOCAValue;
+var Vector4,OtherVector4:PpvVector4D;
+    Factor:TpvDouble;
+begin
+ if (aCountArguments=1) and (POCAGhostGetType(aThis)=@POCAVector4Ghost) and (POCAGetValueType(aArguments^[0])=pvtNUMBER) then begin
+  Vector4:=POCAGhostFastGetPointer(aThis);
+  Factor:=POCAGetNumberValue(aContext,aArguments^[0]);
+  Vector4^:=Vector4^/Factor;
+  result:=aThis;
+ end else if (aCountArguments=1) and (POCAGhostGetType(aThis)=@POCAVector4Ghost) and (POCAGhostGetType(aArguments^[0])=@POCAVector4Ghost) then begin
+  Vector4:=POCAGhostFastGetPointer(aThis);
+  OtherVector4:=POCAGhostFastGetPointer(aArguments^[0]);
+  Vector4^:=Vector4^/OtherVector4^;
+  result:=aThis;
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAVector4FunctionNeg(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:pointer):TPOCAValue;
+var Vector4:PpvVector4D;
+begin
+ if (aCountArguments=0) and (POCAGhostGetType(aThis)=@POCAVector4Ghost) then begin
+  Vector4:=POCAGhostFastGetPointer(aThis);
+  Vector4^:=-Vector4^;
+  result:=aThis;
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAVector4FunctionEqual(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:pointer):TPOCAValue;
+var Vector4,OtherVector4:PpvVector4D;
+begin
+ if (aCountArguments=1) and (POCAGhostGetType(aThis)=@POCAVector4Ghost) and (POCAGhostGetType(aArguments^[0])=@POCAVector4Ghost) then begin
+  Vector4:=POCAGhostFastGetPointer(aThis);
+  OtherVector4:=POCAGhostFastGetPointer(aArguments^[0]);
+  result:=POCANewNumber(aContext,ord(Vector4^=OtherVector4^) and 1);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAVector4FunctionNotEqual(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:pointer):TPOCAValue;
+var Vector4,OtherVector4:PpvVector4D;
+begin
+ if (aCountArguments=1) and (POCAGhostGetType(aThis)=@POCAVector4Ghost) and (POCAGhostGetType(aArguments^[0])=@POCAVector4Ghost) then begin
+  Vector4:=POCAGhostFastGetPointer(aThis);
+  OtherVector4:=POCAGhostFastGetPointer(aArguments^[0]);
+  result:=POCANewNumber(aContext,ord(Vector4^<>OtherVector4^) and 1);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAVector4FunctionToString(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:pointer):TPOCAValue;
+var Vector4:PpvVector4D;
+    s:TpvUTF8String;
+begin
+ if (aCountArguments=0) and (POCAGhostGetType(aThis)=@POCAVector4Ghost) then begin
+  Vector4:=POCAGhostFastGetPointer(aThis);
+  s:='['+ConvertDoubleToString(Vector4^.x,omStandard,-1)+','+ConvertDoubleToString(Vector4^.y,omStandard,-1)+','+ConvertDoubleToString(Vector4^.z,omStandard,-1)+','+ConvertDoubleToString(Vector4^.w,omStandard,-1)+']';
+  result:=POCANewString(aContext,s);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+// "THIS" is null, because it is a binary operator, so the first argument is the first operand and the second argument is the second operand
+function POCAVector4FunctionOpAdd(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:pointer):TPOCAValue;
+var Vector4,OtherVector4:PpvVector4D;
+begin
+ if (aCountArguments=2) and (POCAGhostGetType(aArguments^[0])=@POCAVector4Ghost) and (POCAGhostGetType(aArguments^[1])=@POCAVector4Ghost) then begin
+  Vector4:=POCAGhostFastGetPointer(aArguments^[0]);
+  OtherVector4:=POCAGhostFastGetPointer(aArguments^[1]);
+  result:=POCANewVector4(aContext,Vector4^+OtherVector4^);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAVector4FunctionOpSub(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:pointer):TPOCAValue;
+var Vector4,OtherVector4:PpvVector4D;
+begin
+ if (aCountArguments=2) and (POCAGhostGetType(aArguments^[0])=@POCAVector4Ghost) and (POCAGhostGetType(aArguments^[1])=@POCAVector4Ghost) then begin
+  Vector4:=POCAGhostFastGetPointer(aArguments^[0]);
+  OtherVector4:=POCAGhostFastGetPointer(aArguments^[1]);
+  result:=POCANewVector4(aContext,Vector4^-OtherVector4^);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAVector4FunctionOpMul(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:pointer):TPOCAValue;
+var Vector4,OtherVector4:PpvVector4D;
+    Factor:TpvDouble;
+begin
+ if (aCountArguments=2) and (POCAGhostGetType(aArguments^[0])=@POCAVector4Ghost) and (POCAGetValueType(aArguments^[1])=pvtNUMBER) then begin
+  Vector4:=POCAGhostFastGetPointer(aArguments^[0]);
+  Factor:=POCAGetNumberValue(aContext,aArguments^[1]);
+  result:=POCANewVector4(aContext,Vector4^*Factor);
+ end else if (aCountArguments=2) and (POCAGhostGetType(aArguments^[0])=@POCAVector4Ghost) and (POCAGhostGetType(aArguments^[1])=@POCAVector4Ghost) then begin
+  Vector4:=POCAGhostFastGetPointer(aArguments^[0]);
+  OtherVector4:=POCAGhostFastGetPointer(aArguments^[1]);
+  result:=POCANewVector4(aContext,Vector4^*OtherVector4^);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAVector4FunctionOpDiv(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:pointer):TPOCAValue;
+var Vector4,OtherVector4:PpvVector4D;
+    Factor:TpvDouble;
+begin
+ if (aCountArguments=2) and (POCAGhostGetType(aArguments^[0])=@POCAVector4Ghost) and (POCAGetValueType(aArguments^[1])=pvtNUMBER) then begin
+  Vector4:=POCAGhostFastGetPointer(aArguments^[0]);
+  Factor:=POCAGetNumberValue(aContext,aArguments^[1]);
+  result:=POCANewVector4(aContext,Vector4^/Factor);
+ end else if (aCountArguments=2) and (POCAGhostGetType(aArguments^[0])=@POCAVector4Ghost) and (POCAGhostGetType(aArguments^[1])=@POCAVector4Ghost) then begin
+  Vector4:=POCAGhostFastGetPointer(aArguments^[0]);
+  OtherVector4:=POCAGhostFastGetPointer(aArguments^[1]);
+  result:=POCANewVector4(aContext,Vector4^/OtherVector4^);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAVector4FunctionOpEqual(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:pointer):TPOCAValue;
+var Vector4,OtherVector4:PpvVector4D;
+begin
+ if (aCountArguments=2) and (POCAGhostGetType(aArguments^[0])=@POCAVector4Ghost) and (POCAGhostGetType(aArguments^[1])=@POCAVector4Ghost) then begin
+  Vector4:=POCAGhostFastGetPointer(aArguments^[0]);
+  OtherVector4:=POCAGhostFastGetPointer(aArguments^[1]);
+  result:=POCANewNumber(aContext,ord(Vector4^=OtherVector4^) and 1);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAVector4FunctionOpNotEqual(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:pointer):TPOCAValue;
+var Vector4,OtherVector4:PpvVector4D;
+begin
+ if (aCountArguments=2) and (POCAGhostGetType(aArguments^[0])=@POCAVector4Ghost) and (POCAGhostGetType(aArguments^[1])=@POCAVector4Ghost) then begin
+  Vector4:=POCAGhostFastGetPointer(aArguments^[0]);
+  OtherVector4:=POCAGhostFastGetPointer(aArguments^[1]);
+  result:=POCANewNumber(aContext,ord(Vector4^<>OtherVector4^) and 1);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAVector4FunctionOpNeg(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:pointer):TPOCAValue;
+var Vector4:PpvVector4D;
+begin
+ if (aCountArguments=1) and (POCAGhostGetType(aArguments^[0])=@POCAVector4Ghost) then begin
+  Vector4:=POCAGhostFastGetPointer(aArguments^[0]);
+  result:=POCANewVector4(aContext,-Vector4^);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAVector4FunctionOpSqrt(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:pointer):TPOCAValue;
+var Vector4:PpvVector4D;
+begin
+ if (aCountArguments=1) and (POCAGhostGetType(aArguments^[0])=@POCAVector4Ghost) then begin
+  Vector4:=POCAGhostFastGetPointer(aArguments^[0]);
+  result:=POCANewVector4(aContext,Sqrt(Vector4^.x),Sqrt(Vector4^.y),Sqrt(Vector4^.z));
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAVector4FunctionOpToString(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:pointer):TPOCAValue;
+var Vector4:PpvVector4D;
+    s:TpvUTF8String;
+begin
+ if (aCountArguments=1) and (POCAGhostGetType(aArguments^[0])=@POCAVector4Ghost) then begin
+  Vector4:=POCAGhostFastGetPointer(aArguments^[0]);
+  s:='['+ConvertDoubleToString(Vector4^.x,omStandard,-1)+','+ConvertDoubleToString(Vector4^.y,omStandard,-1)+','+ConvertDoubleToString(Vector4^.z,omStandard,-1)+','+ConvertDoubleToString(Vector4^.w,omStandard,-1)+']';
+  result:=POCANewString(aContext,s);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+procedure POCAInitVector4Hash(aContext:PPOCAContext);
+begin
+
+ POCAVector4GhostPointer:=@POCAVector4Ghost;
+
+ POCAVector4Hash:=POCANewHash(aContext);
+ POCAArrayPush(aContext^.Instance^.Globals.RootArray,POCAVector4Hash);
+ POCAAddNativeFunction(aContext,POCAVector4Hash,'length',POCAVector4FunctionLength);
+ POCAAddNativeFunction(aContext,POCAVector4Hash,'squaredLength',POCAVector4FunctionSquaredLength);
+ POCAAddNativeFunction(aContext,POCAVector4Hash,'normalize',POCAVector4FunctionNormalize);
+ POCAAddNativeFunction(aContext,POCAVector4Hash,'dot',POCAVector4FunctionDot);
+ POCAAddNativeFunction(aContext,POCAVector4Hash,'cross',POCAVector4FunctionCross);
+ POCAAddNativeFunction(aContext,POCAVector4Hash,'distanceTo',POCAVector4FunctionDistanceTo);
+ POCAAddNativeFunction(aContext,POCAVector4Hash,'lerp',POCAVector4FunctionLerp);
+ POCAAddNativeFunction(aContext,POCAVector4Hash,'nlerp',POCAVector4FunctionNlerp);
+ POCAAddNativeFunction(aContext,POCAVector4Hash,'slerp',POCAVector4FunctionSlerp);
+ POCAAddNativeFunction(aContext,POCAVector4Hash,'sqlerp',POCAVector4FunctionSqlerp);
+ POCAAddNativeFunction(aContext,POCAVector4Hash,'add',POCAVector4FunctionAdd);
+ POCAAddNativeFunction(aContext,POCAVector4Hash,'sub',POCAVector4FunctionSub);
+ POCAAddNativeFunction(aContext,POCAVector4Hash,'mul',POCAVector4FunctionMul);
+ POCAAddNativeFunction(aContext,POCAVector4Hash,'div',POCAVector4FunctionDiv);
+ POCAAddNativeFunction(aContext,POCAVector4Hash,'neg',POCAVector4FunctionNeg);
+ POCAAddNativeFunction(aContext,POCAVector4Hash,'equal',POCAVector4FunctionEqual);
+ POCAAddNativeFunction(aContext,POCAVector4Hash,'notEqual',POCAVector4FunctionNotEqual);
+ POCAAddNativeFunction(aContext,POCAVector4Hash,'toString',POCAVector4FunctionToString);
+
+ POCAVector4HashEvents:=POCANewHash(aContext);
+ POCAArrayPush(aContext^.Instance^.Globals.RootArray,POCAVector4HashEvents);
+ POCAAddNativeFunction(aContext,POCAVector4HashEvents,'__add',POCAVector4FunctionOpAdd);
+ POCAAddNativeFunction(aContext,POCAVector4HashEvents,'__sub',POCAVector4FunctionOpSub);
+ POCAAddNativeFunction(aContext,POCAVector4HashEvents,'__mul',POCAVector4FunctionOpMul);
+ POCAAddNativeFunction(aContext,POCAVector4HashEvents,'__div',POCAVector4FunctionOpDiv);
+ POCAAddNativeFunction(aContext,POCAVector4HashEvents,'__eq',POCAVector4FunctionOpEqual);
+ POCAAddNativeFunction(aContext,POCAVector4HashEvents,'__neq',POCAVector4FunctionOpNotEqual);
+ POCAAddNativeFunction(aContext,POCAVector4HashEvents,'__neg',POCAVector4FunctionOpNeg);
+ POCAAddNativeFunction(aContext,POCAVector4HashEvents,'__sqrt',POCAVector4FunctionOpSqrt);
+ POCAAddNativeFunction(aContext,POCAVector4HashEvents,'__tostring',POCAVector4FunctionOpToString);
+
+ POCAHashSetHashEvents(aContext,POCAVector4Hash,POCAVector4HashEvents);
+
+end;
+
+procedure POCAInitVector4Namespace(aContext:PPOCAContext);
+var Hash:TPOCAValue;
+begin
+ Hash:=POCANewHash(aContext);
+ POCAArrayPush(aContext^.Instance^.Globals.RootArray,Hash);
+ POCAAddNativeFunction(aContext,Hash,'create',POCAVector4FunctionCREATE);
+ POCAHashSetString(aContext,aContext^.Instance^.Globals.Namespace,'Vector4',Hash);
+end;
+
+procedure POCAInitVector4(aContext:PPOCAContext);
+begin
+ POCAInitVector4Hash(aContext);
+ POCAInitVector4Namespace(aContext);
+end;
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Initialization
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -1203,6 +1807,7 @@ procedure InitializeForPOCAContext(const aContext:PPOCAContext);
 begin
  POCAInitVector2(aContext);
  POCAInitVector3(aContext);
+ POCAInitVector4(aContext);
 end;
 
 end.
