@@ -222,6 +222,17 @@ begin
  end;
 end;
 
+function POCAVector2FunctionSquaredLength(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:pointer):TPOCAValue;
+var Vector2:PpvVector2D;
+begin
+ if POCAGhostGetType(aThis)=@POCAVector2Ghost then begin
+  Vector2:=POCAGhostFastGetPointer(aThis);
+  result:=POCANewNumber(aContext,Vector2^.SquaredLength);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
 function POCAVector2FunctionNormalize(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:pointer):TPOCAValue;
 var Vector2:PpvVector2D;
 begin
@@ -267,6 +278,67 @@ begin
   Vector2:=POCAGhostFastGetPointer(aThis);
   OtherVector2:=POCAGhostFastGetPointer(aArguments^[0]);
   result.Num:=(Vector2^-OtherVector2^).Length;
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAVector2FunctionLerp(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:pointer):TPOCAValue;
+var Vector2:PpvVector2D;
+    OtherVector2:PpvVector2D;
+    Time:TpvDouble;
+begin
+ if (aCountArguments=2) and (POCAGhostGetType(aThis)=@POCAVector2Ghost) and (POCAGhostGetType(aArguments^[0])=@POCAVector2Ghost) and (POCAGetValueType(aArguments^[1])=pvtNUMBER) then begin
+  Vector2:=POCAGhostFastGetPointer(aThis);
+  OtherVector2:=POCAGhostFastGetPointer(aArguments^[0]);
+  Time:=POCAGetNumberValue(aContext,aArguments^[1]);
+  result:=POCANewVector2(aContext,Vector2^.Lerp(OtherVector2^,Time));
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAVector2FunctionNlerp(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:pointer):TPOCAValue;
+var Vector2:PpvVector2D;
+    OtherVector2:PpvVector2D;
+    Time:TpvDouble;
+begin
+ if (aCountArguments=2) and (POCAGhostGetType(aThis)=@POCAVector2Ghost) and (POCAGhostGetType(aArguments^[0])=@POCAVector2Ghost) and (POCAGetValueType(aArguments^[1])=pvtNUMBER) then begin
+  Vector2:=POCAGhostFastGetPointer(aThis);
+  OtherVector2:=POCAGhostFastGetPointer(aArguments^[0]);
+  Time:=POCAGetNumberValue(aContext,aArguments^[1]);
+  result:=POCANewVector2(aContext,Vector2^.Nlerp(OtherVector2^,Time));
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAVector2FunctionSlerp(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:pointer):TPOCAValue;
+var Vector2:PpvVector2D;
+    OtherVector2:PpvVector2D;
+    Time:TpvDouble;
+begin
+ if (aCountArguments=2) and (POCAGhostGetType(aThis)=@POCAVector2Ghost) and (POCAGhostGetType(aArguments^[0])=@POCAVector2Ghost) and (POCAGetValueType(aArguments^[1])=pvtNUMBER) then begin
+  Vector2:=POCAGhostFastGetPointer(aThis);
+  OtherVector2:=POCAGhostFastGetPointer(aArguments^[0]);
+  Time:=POCAGetNumberValue(aContext,aArguments^[1]);
+  result:=POCANewVector2(aContext,Vector2^.Slerp(OtherVector2^,Time));
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAVector2FunctionSqlerp(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:pointer):TPOCAValue;
+var A,B,C,D:PpvVector2D;
+    Time:TpvDouble;
+begin
+ if (aCountArguments=4) and (POCAGhostGetType(aThis)=@POCAVector2Ghost) and (POCAGhostGetType(aArguments^[0])=@POCAVector2Ghost) and (POCAGhostGetType(aArguments^[1])=@POCAVector2Ghost) and (POCAGhostGetType(aArguments^[2])=@POCAVector2Ghost) and (POCAGetValueType(aArguments^[3])=pvtNUMBER) then begin
+  A:=POCAGhostFastGetPointer(aThis);
+  B:=POCAGhostFastGetPointer(aArguments^[0]);
+  C:=POCAGhostFastGetPointer(aArguments^[1]);
+  D:=POCAGhostFastGetPointer(aArguments^[2]);
+  Time:=POCAGetNumberValue(aContext,aArguments^[3]); 
+  result:=POCANewVector2(aContext,A^.Sqlerp(B^,C^,D^,Time));
  end else begin
   result:=POCAValueNull;
  end;
@@ -513,10 +585,15 @@ begin
  POCAVector2Hash:=POCANewHash(aContext);
  POCAArrayPush(aContext^.Instance^.Globals.RootArray,POCAVector2Hash);
  POCAAddNativeFunction(aContext,POCAVector2Hash,'length',POCAVector2FunctionLength);
+ POCAAddNativeFunction(aContext,POCAVector2Hash,'squaredLength',POCAVector2FunctionSquaredLength);
  POCAAddNativeFunction(aContext,POCAVector2Hash,'normalize',POCAVector2FunctionNormalize);
  POCAAddNativeFunction(aContext,POCAVector2Hash,'dot',POCAVector2FunctionDot);
  POCAAddNativeFunction(aContext,POCAVector2Hash,'cross',POCAVector2FunctionCross);
  POCAAddNativeFunction(aContext,POCAVector2Hash,'distanceTo',POCAVector2FunctionDistanceTo);
+ POCAAddNativeFunction(aContext,POCAVector2Hash,'lerp',POCAVector2FunctionLerp);
+ POCAAddNativeFunction(aContext,POCAVector2Hash,'nlerp',POCAVector2FunctionNlerp);
+ POCAAddNativeFunction(aContext,POCAVector2Hash,'slerp',POCAVector2FunctionSlerp);
+ POCAAddNativeFunction(aContext,POCAVector2Hash,'sqlerp',POCAVector2FunctionSqlerp);
  POCAAddNativeFunction(aContext,POCAVector2Hash,'add',POCAVector2FunctionAdd);
  POCAAddNativeFunction(aContext,POCAVector2Hash,'sub',POCAVector2FunctionSub);
  POCAAddNativeFunction(aContext,POCAVector2Hash,'mul',POCAVector2FunctionMul);
@@ -706,6 +783,17 @@ begin
  end;
 end;
 
+function POCAVector3FunctionSquaredLength(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:pointer):TPOCAValue;
+var Vector3:PpvVector3D;
+begin
+ if POCAGhostGetType(aThis)=@POCAVector3Ghost then begin
+  Vector3:=POCAGhostFastGetPointer(aThis);
+  result:=POCANewNumber(aContext,Vector3^.SquaredLength);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
 function POCAVector3FunctionNormalize(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:pointer):TPOCAValue;
 var Vector3:PpvVector3D;
 begin
@@ -751,6 +839,67 @@ begin
   Vector3:=POCAGhostFastGetPointer(aThis);
   OtherVector3:=POCAGhostFastGetPointer(aArguments^[0]);
   result.Num:=(Vector3^-OtherVector3^).Length;
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAVector3FunctionLerp(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:pointer):TPOCAValue;
+var Vector3:PpvVector3D;
+    OtherVector3:PpvVector3D;
+    Time:TpvDouble;
+begin
+ if (aCountArguments=2) and (POCAGhostGetType(aThis)=@POCAVector3Ghost) and (POCAGhostGetType(aArguments^[0])=@POCAVector3Ghost) and (POCAGetValueType(aArguments^[1])=pvtNUMBER) then begin
+  Vector3:=POCAGhostFastGetPointer(aThis);
+  OtherVector3:=POCAGhostFastGetPointer(aArguments^[0]);
+  Time:=POCAGetNumberValue(aContext,aArguments^[1]);
+  result:=POCANewVector3(aContext,Vector3^.Lerp(OtherVector3^,Time));
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAVector3FunctionNlerp(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:pointer):TPOCAValue;
+var Vector3:PpvVector3D;
+    OtherVector3:PpvVector3D;
+    Time:TpvDouble;
+begin
+ if (aCountArguments=2) and (POCAGhostGetType(aThis)=@POCAVector3Ghost) and (POCAGhostGetType(aArguments^[0])=@POCAVector3Ghost) and (POCAGetValueType(aArguments^[1])=pvtNUMBER) then begin
+  Vector3:=POCAGhostFastGetPointer(aThis);
+  OtherVector3:=POCAGhostFastGetPointer(aArguments^[0]);
+  Time:=POCAGetNumberValue(aContext,aArguments^[1]);
+  result:=POCANewVector3(aContext,Vector3^.Nlerp(OtherVector3^,Time));
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAVector3FunctionSlerp(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:pointer):TPOCAValue;
+var Vector3:PpvVector3D;
+    OtherVector3:PpvVector3D;
+    Time:TpvDouble;
+begin
+ if (aCountArguments=2) and (POCAGhostGetType(aThis)=@POCAVector3Ghost) and (POCAGhostGetType(aArguments^[0])=@POCAVector3Ghost) and (POCAGetValueType(aArguments^[1])=pvtNUMBER) then begin
+  Vector3:=POCAGhostFastGetPointer(aThis);
+  OtherVector3:=POCAGhostFastGetPointer(aArguments^[0]);
+  Time:=POCAGetNumberValue(aContext,aArguments^[1]);
+  result:=POCANewVector3(aContext,Vector3^.Slerp(OtherVector3^,Time));
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAVector3FunctionSqlerp(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:pointer):TPOCAValue;
+var A,B,C,D:PpvVector3D;
+    Time:TpvDouble;
+begin
+ if (aCountArguments=4) and (POCAGhostGetType(aThis)=@POCAVector3Ghost) and (POCAGhostGetType(aArguments^[0])=@POCAVector3Ghost) and (POCAGhostGetType(aArguments^[1])=@POCAVector3Ghost) and (POCAGhostGetType(aArguments^[2])=@POCAVector3Ghost) and (POCAGetValueType(aArguments^[3])=pvtNUMBER) then begin
+  A:=POCAGhostFastGetPointer(aThis);
+  B:=POCAGhostFastGetPointer(aArguments^[0]);
+  C:=POCAGhostFastGetPointer(aArguments^[1]);
+  D:=POCAGhostFastGetPointer(aArguments^[2]);
+  Time:=POCAGetNumberValue(aContext,aArguments^[3]);
+  result:=POCANewVector3(aContext,A^.Sqlerp(B^,C^,D^,Time));
  end else begin
   result:=POCAValueNull;
  end;
@@ -997,10 +1146,15 @@ begin
  POCAVector3Hash:=POCANewHash(aContext);
  POCAArrayPush(aContext^.Instance^.Globals.RootArray,POCAVector3Hash);
  POCAAddNativeFunction(aContext,POCAVector3Hash,'length',POCAVector3FunctionLength);
+ POCAAddNativeFunction(aContext,POCAVector3Hash,'squaredLength',POCAVector3FunctionSquaredLength);
  POCAAddNativeFunction(aContext,POCAVector3Hash,'normalize',POCAVector3FunctionNormalize);
  POCAAddNativeFunction(aContext,POCAVector3Hash,'dot',POCAVector3FunctionDot);
  POCAAddNativeFunction(aContext,POCAVector3Hash,'cross',POCAVector3FunctionCross);
  POCAAddNativeFunction(aContext,POCAVector3Hash,'distanceTo',POCAVector3FunctionDistanceTo);
+ POCAAddNativeFunction(aContext,POCAVector3Hash,'lerp',POCAVector3FunctionLerp);
+ POCAAddNativeFunction(aContext,POCAVector3Hash,'nlerp',POCAVector3FunctionNlerp);
+ POCAAddNativeFunction(aContext,POCAVector3Hash,'slerp',POCAVector3FunctionSlerp);
+ POCAAddNativeFunction(aContext,POCAVector3Hash,'sqlerp',POCAVector3FunctionSqlerp);
  POCAAddNativeFunction(aContext,POCAVector3Hash,'add',POCAVector3FunctionAdd);
  POCAAddNativeFunction(aContext,POCAVector3Hash,'sub',POCAVector3FunctionSub);
  POCAAddNativeFunction(aContext,POCAVector3Hash,'mul',POCAVector3FunctionMul);
