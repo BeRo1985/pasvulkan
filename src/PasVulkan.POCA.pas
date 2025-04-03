@@ -122,6 +122,9 @@ function POCANewMatrix4x4(const aContext:PPOCAContext;const aMatrix4x4:TpvMatrix
 function POCANewMatrix4x4(const aContext:PPOCAContext;const aM00:TpvDouble=1.0;const aM01:TpvDouble=0.0;const aM02:TpvDouble=0.0;const aM03:TpvDouble=0.0;const aM10:TpvDouble=0.0;const aM11:TpvDouble=1.0;const aM12:TpvDouble=0.0;const aM13:TpvDouble=0.0;const aM20:TpvDouble=0.0;const aM21:TpvDouble=0.0;const aM22:TpvDouble=1.0;const aM23:TpvDouble=0.0;const aM30:TpvDouble=0.0;const aM31:TpvDouble=0.0;const aM32:TpvDouble=0.0;const aM33:TpvDouble=1.0):TPOCAValue; overload;
 function POCAGetMatrix4x4Value(const aValue:TPOCAValue):TpvMatrix4x4D;
 
+function POCANewCanvas(const aContext:PPOCAContext;const aCanvas:TObject):TPOCAValue; overload;
+function POCAGetCanvasValue(const aValue:TPOCAValue):TObject;
+
 procedure InitializeForPOCAContext(const aContext:PPOCAContext);
 procedure FinalizeForPOCAContext(const aContext:PPOCAContext);
 
@@ -3910,6 +3913,20 @@ const POCACanvasGhost:TPOCAGhostType=
         SetKey:nil;
         Name:'Canvas'
        );
+
+function POCANewCanvas(const aContext:PPOCAContext;const aCanvas:TObject):TPOCAValue;
+begin
+ result:=POCANewGhost(aContext,@POCACanvasGhost,aCanvas);
+end;
+
+function POCAGetCanvasValue(const aValue:TPOCAValue):TObject;
+begin
+ if POCAGhostGetType(aValue)=@POCACanvasGhost then begin
+  result:=TObject(POCAGhostFastGetPointer(aValue));
+ end else begin
+  result:=nil;
+ end;
+end;
 
 function POCAInitCanvasBlendMode(aContext:PPOCAContext):TPOCAValue;
 begin
