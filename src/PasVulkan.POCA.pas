@@ -127,6 +127,13 @@ procedure FinalizeForPOCAContext(const aContext:PPOCAContext);
 
 implementation
 
+uses PasVulkan.VectorPath,
+     PasVulkan.SignedDistanceField2D,
+     PasVulkan.Canvas,
+     PasVulkan.Sprites,
+     PasVulkan.TrueTypeFont,
+     PasVulkan.Font;
+
 // Pointers to the ghost types as forward declarations, for to avoid circular references and more complicated code
 var POCAVector2GhostPointer:PPOCAGhostType=nil;
     POCAVector3GhostPointer:PPOCAGhostType=nil;
@@ -134,6 +141,7 @@ var POCAVector2GhostPointer:PPOCAGhostType=nil;
     POCAQuaternionGhostPointer:PPOCAGhostType=nil;
     POCAMatrix3x3GhostPointer:PPOCAGhostType=nil;
     POCAMatrix4x4GhostPointer:PPOCAGhostType=nil;
+    POCACanvasGhostPointer:PPOCAGhostType=nil;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Host data
@@ -3889,6 +3897,134 @@ begin
 end;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Canvas
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+const POCACanvasGhost:TPOCAGhostType=
+       (
+        Destroy:nil;
+        CanDestroy:nil;
+        Mark:nil;
+        ExistKey:nil;
+        GetKey:nil;
+        SetKey:nil;
+        Name:'Canvas'
+       );
+
+function POCAInitCanvasBlendMode(aContext:PPOCAContext):TPOCAValue;
+begin
+ result:=POCANewHash(aContext);
+ POCAHashSetString(aContext,result,'None',POCANewNumber(aContext,TPOCAInt32(TpvCanvasBlendingMode.None)));
+ POCAHashSetString(aContext,result,'NoDiscard',POCANewNumber(aContext,TPOCAInt32(TpvCanvasBlendingMode.NoDiscard)));
+ POCAHashSetString(aContext,result,'AlphaBlending',POCANewNumber(aContext,TPOCAInt32(TpvCanvasBlendingMode.AlphaBlending)));
+ POCAHashSetString(aContext,result,'AdditiveBlending',POCANewNumber(aContext,TPOCAInt32(TpvCanvasBlendingMode.AdditiveBlending)));
+ POCAHashSetString(aContext,result,'OnlyDepth',POCANewNumber(aContext,TPOCAInt32(TpvCanvasBlendingMode.OnlyDepth)));
+end;
+
+function POCAInitCanvasLineJoin(aContext:PPOCAContext):TPOCAValue;
+begin
+ result:=POCANewHash(aContext);
+ POCAHashSetString(aContext,result,'Bevel',POCANewNumber(aContext,TPOCAInt32(TpvCanvasLineJoin.Bevel)));
+ POCAHashSetString(aContext,result,'Miter',POCANewNumber(aContext,TPOCAInt32(TpvCanvasLineJoin.Miter)));
+ POCAHashSetString(aContext,result,'Round',POCANewNumber(aContext,TPOCAInt32(TpvCanvasLineJoin.Round)));
+end;
+
+function POCAInitCanvasLineCap(aContext:PPOCAContext):TPOCAValue;
+begin
+ result:=POCANewHash(aContext);
+ POCAHashSetString(aContext,result,'Butt',POCANewNumber(aContext,TPOCAInt32(TpvCanvasLineCap.Butt)));
+ POCAHashSetString(aContext,result,'Square',POCANewNumber(aContext,TPOCAInt32(TpvCanvasLineCap.Square)));
+ POCAHashSetString(aContext,result,'Round',POCANewNumber(aContext,TPOCAInt32(TpvCanvasLineCap.Round)));
+end;
+
+function POCAInitCanvasFillRule(aContext:PPOCAContext):TPOCAValue;
+begin
+ result:=POCANewHash(aContext);
+ POCAHashSetString(aContext,result,'DoNotMatter',POCANewNumber(aContext,TPOCAInt32(TpvCanvasFillRule.DoNotMatter)));
+ POCAHashSetString(aContext,result,'NonZero',POCANewNumber(aContext,TPOCAInt32(TpvCanvasFillRule.NonZero)));
+ POCAHashSetString(aContext,result,'EvenOdd',POCANewNumber(aContext,TPOCAInt32(TpvCanvasFillRule.EvenOdd)));
+end;
+
+function POCAInitCanvasFillStyle(aContext:PPOCAContext):TPOCAValue;
+begin
+ result:=POCANewHash(aContext);
+ POCAHashSetString(aContext,result,'Color',POCANewNumber(aContext,TPOCAInt32(TpvCanvasFillStyle.Color)));
+ POCAHashSetString(aContext,result,'Image',POCANewNumber(aContext,TPOCAInt32(TpvCanvasFillStyle.Image)));
+ POCAHashSetString(aContext,result,'LinearGradient',POCANewNumber(aContext,TPOCAInt32(TpvCanvasFillStyle.LinearGradient)));
+ POCAHashSetString(aContext,result,'RadialGradient',POCANewNumber(aContext,TPOCAInt32(TpvCanvasFillStyle.RadialGradient)));
+end;
+
+function POCAInitCanvasFillWrapMode(aContext:PPOCAContext):TPOCAValue;
+begin
+ result:=POCANewHash(aContext);
+ POCAHashSetString(aContext,result,'None',POCANewNumber(aContext,TPOCAInt32(TpvCanvasFillWrapMode.None)));
+ POCAHashSetString(aContext,result,'WrappedRepeat',POCANewNumber(aContext,TPOCAInt32(TpvCanvasFillWrapMode.WrappedRepeat)));
+ POCAHashSetString(aContext,result,'MirroredRepeat',POCANewNumber(aContext,TPOCAInt32(TpvCanvasFillWrapMode.MirroredRepeat)));
+end;
+
+function POCAInitCanvasTextHorizontalAlignment(aContext:PPOCAContext):TPOCAValue;
+begin
+ result:=POCANewHash(aContext);
+ POCAHashSetString(aContext,result,'Leading',POCANewNumber(aContext,TPOCAInt32(TpvCanvasTextHorizontalAlignment.Leading)));
+ POCAHashSetString(aContext,result,'Center',POCANewNumber(aContext,TPOCAInt32(TpvCanvasTextHorizontalAlignment.Center)));
+ POCAHashSetString(aContext,result,'Tailing',POCANewNumber(aContext,TPOCAInt32(TpvCanvasTextHorizontalAlignment.Tailing)));
+end;
+
+function POCAInitCanvasTextVerticalAlignment(aContext:PPOCAContext):TPOCAValue;
+begin
+ result:=POCANewHash(aContext);
+ POCAHashSetString(aContext,result,'Leading',POCANewNumber(aContext,TPOCAInt32(TpvCanvasTextVerticalAlignment.Leading)));
+ POCAHashSetString(aContext,result,'Middle',POCANewNumber(aContext,TPOCAInt32(TpvCanvasTextVerticalAlignment.Middle)));
+ POCAHashSetString(aContext,result,'Tailing',POCANewNumber(aContext,TPOCAInt32(TpvCanvasTextVerticalAlignment.Tailing)));
+end;
+
+function POCAInitCanvasVectorPathFillRule(aContext:PPOCAContext):TPOCAValue;
+begin
+ result:=POCANewHash(aContext);
+ POCAHashSetString(aContext,result,'NonZero',POCANewNumber(aContext,TPOCAInt32(TpvVectorPathFillRule.NonZero)));
+ POCAHashSetString(aContext,result,'EvenOdd',POCANewNumber(aContext,TPOCAInt32(TpvVectorPathFillRule.EvenOdd)));
+end;
+
+function POCAInitCanvasSignedDistanceField2DVariant(aContext:PPOCAContext):TPOCAValue;
+begin
+ result:=POCANewHash(aContext);
+ POCAHashSetString(aContext,result,'SDF',POCANewNumber(aContext,TPOCAInt32(TpvSignedDistanceField2DVariant.SDF)));
+ POCAHashSetString(aContext,result,'SSAASDF',POCANewNumber(aContext,TPOCAInt32(TpvSignedDistanceField2DVariant.SSAASDF)));
+ POCAHashSetString(aContext,result,'GSDF',POCANewNumber(aContext,TPOCAInt32(TpvSignedDistanceField2DVariant.GSDF)));
+ POCAHashSetString(aContext,result,'MSDF',POCANewNumber(aContext,TPOCAInt32(TpvSignedDistanceField2DVariant.MSDF)));
+ POCAHashSetString(aContext,result,'Default',POCANewNumber(aContext,TPOCAInt32(TpvSignedDistanceField2DVariant.Default)));
+end;
+
+procedure POCAInitCanvasNamespace(aContext:PPOCAContext);
+var Hash:TPOCAValue;
+begin
+ Hash:=POCANewHash(aContext);
+ POCAArrayPush(aContext^.Instance^.Globals.RootArray,Hash);
+ POCAHashSetString(aContext,Hash,'BlendingMode',POCAInitCanvasBlendMode(aContext));
+ POCAHashSetString(aContext,Hash,'LineJoin',POCAInitCanvasLineJoin(aContext));
+ POCAHashSetString(aContext,Hash,'LineCap',POCAInitCanvasLineCap(aContext));
+ POCAHashSetString(aContext,Hash,'FillRule',POCAInitCanvasFillRule(aContext));
+ POCAHashSetString(aContext,Hash,'FillStyle',POCAInitCanvasFillStyle(aContext));
+ POCAHashSetString(aContext,Hash,'FillWrapMode',POCAInitCanvasFillWrapMode(aContext));
+ POCAHashSetString(aContext,Hash,'TextHorizontalAlignment',POCAInitCanvasTextHorizontalAlignment(aContext));
+ POCAHashSetString(aContext,Hash,'TextVerticalAlignment',POCAInitCanvasTextVerticalAlignment(aContext));
+ POCAHashSetString(aContext,Hash,'VectorPathFillRule',POCAInitCanvasVectorPathFillRule(aContext));
+ POCAHashSetString(aContext,Hash,'SignedDistanceField2DVariant',POCAInitCanvasSignedDistanceField2DVariant(aContext));
+ POCAHashSetString(aContext,aContext^.Instance^.Globals.Namespace,'Canvas',Hash);
+end;
+
+procedure POCAInitCanvasHash(aContext:PPOCAContext);
+begin
+end;
+
+procedure POCAInitCanvas(aContext:PPOCAContext);
+begin
+ POCACanvasGhostPointer:=@POCACanvasGhost;
+ POCAInitCanvasHash(aContext);
+ POCAInitCanvasNamespace(aContext);
+end;
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Initialization
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -3913,6 +4049,8 @@ begin
  POCAInitMatrix3x3(aContext);
 
  POCAInitMatrix4x4(aContext);
+
+ POCAInitCanvas(aContext);
 
 end;
 
