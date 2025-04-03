@@ -609,6 +609,20 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
 
      TpvCanvasVulkanGraphicsPipelines=array[TpvCanvasBlendingMode,0..3] of TpvVulkanGraphicsPipeline;
 
+     { TpvCanvasFont }
+     TpvCanvasFont=class
+      private
+       fVulkanFontSpriteAtlas:TpvSpriteAtlas;
+       fVulkanFont:TpvFont;
+      public
+       constructor Create; reintroduce;
+       constructor CreateFromTTF(const aFileName:String;const aDPI,aAtlasSize:TpvInt32;const aFirstCodePoint,aLastCodePoint:TpvUInt32);
+       destructor Destroy; override;
+      published
+       property VulkanFontSpriteAtlas:TpvSpriteAtlas read fVulkanFontSpriteAtlas write fVulkanFontSpriteAtlas;
+       property VulkanFont:TpvFont read fVulkanFont write fVulkanFont;
+     end;
+
      TpvCanvas=class
       private
        fDevice:TpvVulkanDevice;
@@ -850,8 +864,10 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
 
 implementation
 
-uses PasVulkan.Assets,
+uses PasVulkan.Application,
+     PasVulkan.Assets,
      PasVulkan.Streams,
+     PasVulkan.TrueTypeFont,
      PasDblStrUtils;
 
 const pcvvaomSolid=0;
@@ -3512,6 +3528,59 @@ begin
  finally
   TPasMPInterlocked.Write(fLock,0);
  end;
+end;
+
+constructor TpvCanvasFont.Create;
+begin
+ inherited Create;
+ fVulkanFontSpriteAtlas:=nil;
+ fVulkanFont:=nil;
+end;
+
+constructor TpvCanvasFont.CreateFromTTF(const aFileName:String;const aDPI,aAtlasSize:TpvInt32;const aFirstCodePoint,aLastCodePoint:TpvUInt32);
+var Stream:TStream;
+    TrueTypeFont:TpvTrueTypeFont;
+begin
+
+ inherited Create;
+
+ fVulkanFontSpriteAtlas:=TpvSpriteAtlas.Create(pvApplication.VulkanDevice,false,false);
+ fVulkanFontSpriteAtlas.MipMaps:=false;
+ fVulkanFontSpriteAtlas.UseConvexHullTrimming:=false;
+
+ if pvApplication.Assets.ExistAsset(aFileName) then begin
+  Stream:=pvApplication.Assets.GetAssetStream(aFileName);
+  try
+   TrueTypeFont:=TpvTrueTypeFont.Create(Stream,aDPI);
+   try
+    TrueTypeFont.Size:=aAtlasSize;
+    TrueTypeFont.Hinting:=false;
+    fVulkanFont:=TpvFont.CreateFromTrueTypeFont(fVulkanFontSpriteAtlas,
+                                                TrueTypeFont,
+                                                [TpvFontCodePointRange.Create(aFirstCodePoint,aLastCodePoint)],
+                                                true,
+                                                2,
+                                                1,
+                                                false,
+                                                TpvSignedDistanceField2DVariant.SDF);
+   finally
+    TrueTypeFont.Free;
+   end;
+  finally
+   Stream.Free;
+  end;
+ end else begin
+  fVulkanFont:=nil;
+ end;
+end;
+
+destructor TpvCanvasFont.Destroy;
+begin
+ if assigned(fVulkanFontSpriteAtlas) then begin
+  FreeAndNil(fVulkanFont);
+  FreeAndNil(fVulkanFontSpriteAtlas);
+ end;
+ inherited Destroy;
 end;
 
 constructor TpvCanvas.Create(const aDevice:TpvVulkanDevice;
