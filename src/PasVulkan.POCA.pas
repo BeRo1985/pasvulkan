@@ -4074,7 +4074,7 @@ const POCASpriteGhost:TPOCAGhostType=
 
 function POCANewSprite(const aContext:PPOCAContext;const aSprite:TpvSprite):TPOCAValue;
 begin
- result:=POCANewGhost(aContext,@POCASpriteGhost,aSprite);
+ result:=POCANewGhost(aContext,@POCASpriteGhost,aSprite,nil,pgptRAW);
  POCATemporarySave(aContext,result);
  POCAGhostSetHashValue(result,POCAGetHostData(aContext)^.SpriteHash);
 end;
@@ -4132,7 +4132,9 @@ const POCASpriteAtlasGhost:TPOCAGhostType=
 
 function POCANewSpriteAtlas(const aContext:PPOCAContext;const aSpriteAtlas:TpvSpriteAtlas):TPOCAValue;
 begin
- result:=POCANewGhost(aContext,@POCASpriteAtlasGhost,aSpriteAtlas);
+ result:=POCANewGhost(aContext,@POCASpriteAtlasGhost,aSpriteAtlas,nil,pgptRAW);
+ POCATemporarySave(aContext,result);
+ POCAGhostSetHashValue(result,POCAGetHostData(aContext)^.SpriteAtlasHash);
 end;
 
 function POCAGetSpriteAtlasValue(const aValue:TPOCAValue):TpvSpriteAtlas;
@@ -4476,7 +4478,7 @@ const POCATextureGhost:TPOCAGhostType=
 
 function POCANewTexture(const aContext:PPOCAContext;const aTexture:TpvVulkanTexture):TPOCAValue;
 begin
- result:=POCANewGhost(aContext,@POCATextureGhost,aTexture);
+ result:=POCANewGhost(aContext,@POCATextureGhost,aTexture,nil,pgptRAW);
  POCATemporarySave(aContext,result);
  POCAGhostSetHashValue(result,POCAGetHostData(aContext)^.TextureHash);
 end;
@@ -4634,7 +4636,9 @@ const POCAFontGhost:TPOCAGhostType=
 
 function POCANewFont(const aContext:PPOCAContext;const aFont:TpvFont):TPOCAValue;
 begin
- result:=POCANewGhost(aContext,@POCAFontGhost,aFont);
+ result:=POCANewGhost(aContext,@POCAFontGhost,aFont,nil,pgptRAW);
+ POCATemporarySave(aContext,result);
+//POCAGhostSetHashValue(result,POCAGetHostData(aContext)^.FontHash);
 end;
 
 function POCAGetFontValue(const aValue:TPOCAValue):TpvFont;
@@ -4667,9 +4671,9 @@ const POCACanvasFontGhost:TPOCAGhostType=
 
 function POCANewCanvasFont(const aContext:PPOCAContext;const aCanvasFont:TpvCanvasFont):TPOCAValue;
 begin
- result:=POCANewGhost(aContext,@POCACanvasFontGhost,aCanvasFont);
+ result:=POCANewGhost(aContext,@POCACanvasFontGhost,aCanvasFont,nil,pgptRAW);
  POCATemporarySave(aContext,result);
- POCAGhostSetHashValue(result,POCAGetHostData(aContext)^.CanvasHash);
+ POCAGhostSetHashValue(result,POCAGetHostData(aContext)^.CanvasFontHash);
 end;
 
 function POCAGetCanvasFontValue(const aValue:TPOCAValue):TpvCanvasFont;
@@ -4780,7 +4784,7 @@ const POCACanvasShapeGhost:TPOCAGhostType=
 
 function POCANewCanvasShape(const aContext:PPOCAContext;const aCanvasShape:TpvCanvasShape):TPOCAValue;
 begin
- result:=POCANewGhost(aContext,@POCACanvasShapeGhost,aCanvasShape);
+ result:=POCANewGhost(aContext,@POCACanvasShapeGhost,aCanvasShape,nil,pgptRAW);
  POCATemporarySave(aContext,result);
  POCAGhostSetHashValue(result,POCAGetHostData(aContext)^.CanvasShapeHash);
 end;
@@ -4837,7 +4841,9 @@ const POCACanvasGhost:TPOCAGhostType=
 
 function POCANewCanvas(const aContext:PPOCAContext;const aCanvas:TpvCanvas):TPOCAValue;
 begin
- result:=POCANewGhost(aContext,@POCACanvasGhost,aCanvas);
+ result:=POCANewGhost(aContext,@POCACanvasGhost,aCanvas,nil,pgptRAW);
+ POCATemporarySave(aContext,result);
+ POCAGhostSetHashValue(result,POCAGetHostData(aContext)^.CanvasHash);
 end;
 
 function POCAGetCanvasValue(const aValue:TPOCAValue):TpvCanvas;
