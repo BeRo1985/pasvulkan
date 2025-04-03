@@ -9233,4 +9233,3 @@ initialization
  POCACanvasFontGhostPointer:=@POCACanvasFontGhost;
  POCACanvasGhostPointer:=@POCACanvasGhost;
 end.
-
