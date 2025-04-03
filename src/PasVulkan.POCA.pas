@@ -4669,8 +4669,86 @@ begin
  end;
 end;
 
+function POCACanvasFontFunctionCREATE(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var CanvasFont:TpvCanvasFont;
+    FileName:TpvUTF8String;
+    DPI,AtlasSize:TpvInt32;
+    FirstCodePoint,LastCodePoint:TpvUInt32;
+begin
+
+ if aCountArguments>0 then begin
+  FileName:=POCAGetStringValue(aContext,aArguments^[0]);
+ end else begin
+  POCARuntimeError(aContext,'Invalid arguments');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ if aCountArguments>1 then begin
+  DPI:=trunc(POCAGetNumberValue(aContext,aArguments^[1]));
+ end else begin
+  DPI:=72;  
+ end;
+
+ if aCountArguments>2 then begin
+  AtlasSize:=trunc(POCAGetNumberValue(aContext,aArguments^[2]));
+ end else begin
+  AtlasSize:=2048;  
+ end;
+
+ if aCountArguments>3 then begin
+  FirstCodePoint:=trunc(POCAGetNumberValue(aContext,aArguments^[3]));
+ end else begin
+  FirstCodePoint:=0;  
+ end;
+
+ if aCountArguments>4 then begin
+  LastCodePoint:=trunc(POCAGetNumberValue(aContext,aArguments^[4]));
+ end else begin
+  LastCodePoint:=255;  
+ end;
+
+ CanvasFont:=TpvCanvasFont.CreateFromTTF(FileName,DPI,AtlasSize,FirstCodePoint,LastCodePoint);
+
+ result:=POCANewCanvasFont(aContext,CanvasFont);
+
+end;
+
+function POCACanvasFontFunctionDESTROY(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var CanvasFont:TpvCanvasFont;
+begin
+ if POCAGhostGetType(aThis)=@POCACanvasFontGhost then begin
+  CanvasFont:=TpvCanvasFont(POCAGhostFastGetPointer(aThis));
+  if assigned(CanvasFont) then begin
+   CanvasFont.Free;
+   PPOCAGhost(POCAGetValueReferencePointer(aThis))^.Ptr:=nil; // For to avoid double free
+  end;
+ end;
+ result.CastedUInt64:=POCAValueNullCastedUInt64;
+end;
+
+procedure POCAInitCanvasFontHash(aContext:PPOCAContext);
+var HostData:PPOCAHostData;
+begin
+ HostData:=POCAGetHostData(aContext);
+ HostData^.CanvasFontHash:=POCANewHash(aContext);
+ POCAArrayPush(aContext^.Instance^.Globals.RootArray,HostData^.CanvasFontHash);
+ POCAAddNativeFunction(aContext,HostData^.CanvasFontHash,'destroy',POCACanvasFontFunctionDESTROY); 
+end;
+
+procedure POCAInitCanvasFontNamespace(aContext:PPOCAContext);
+var Hash:TPOCAValue;
+begin
+ Hash:=POCANewHash(aContext);
+ POCAArrayPush(aContext^.Instance^.Globals.RootArray,Hash);
+ POCAAddNativeFunction(aContext,Hash,'create',POCACanvasFontFunctionCREATE);
+ POCAHashSetString(aContext,aContext^.Instance^.Globals.Namespace,'CanvasFont',Hash);
+end;
+
 procedure POCAInitCanvasFont(aContext:PPOCAContext);
 begin
+ POCAInitCanvasFontHash(aContext);
+ POCAInitCanvasFontNamespace(aContext);
 end;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
