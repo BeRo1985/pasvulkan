@@ -160,7 +160,7 @@ begin
  end;
 end;
 
-function POCAVector2GhostExistKey(const aContext:PPOCAContext;const aGhost:PPOCAGhost;const aKey:TPOCAValue):longbool;
+function POCAVector2GhostExistKey(const aContext:PPOCAContext;const aGhost:PPOCAGhost;const aKey:TPOCAValue):TPOCABool32;
 var s:TpvUTF8String;
 begin
  s:=POCAGetStringValue(aContext,aKey);
@@ -175,7 +175,7 @@ begin
  end;
 end;
 
-function POCAVector2GhostGetKey(const aContext:PPOCAContext;const aGhost:PPOCAGhost;const aKey:TPOCAValue;out aValue:TPOCAValue):longbool;
+function POCAVector2GhostGetKey(const aContext:PPOCAContext;const aGhost:PPOCAGhost;const aKey:TPOCAValue;out aValue:TPOCAValue):TPOCABool32;
 var Vector2:PpvVector2D;
     s:TpvUTF8String;
 begin
@@ -192,7 +192,7 @@ begin
  end;
 end;
 
-function POCAVector2GhostSetKey(const aContext:PPOCAContext;const aGhost:PPOCAGhost;const aKey:TPOCAValue;const aValue:TPOCAValue):longbool;
+function POCAVector2GhostSetKey(const aContext:PPOCAContext;const aGhost:PPOCAGhost;const aKey:TPOCAValue;const aValue:TPOCAValue):TPOCABool32;
 var Vector2:PpvVector2D;
     s:TpvUTF8String;
 begin
@@ -711,7 +711,7 @@ begin
  end;
 end;
 
-function POCAVector3GhostExistKey(const aContext:PPOCAContext;const aGhost:PPOCAGhost;const aKey:TPOCAValue):longbool;
+function POCAVector3GhostExistKey(const aContext:PPOCAContext;const aGhost:PPOCAGhost;const aKey:TPOCAValue):TPOCABool32;
 var s:TpvUTF8String;
 begin
  s:=POCAGetStringValue(aContext,aKey);
@@ -726,7 +726,7 @@ begin
  end;
 end;
 
-function POCAVector3GhostGetKey(const aContext:PPOCAContext;const aGhost:PPOCAGhost;const aKey:TPOCAValue;out aValue:TPOCAValue):longbool;
+function POCAVector3GhostGetKey(const aContext:PPOCAContext;const aGhost:PPOCAGhost;const aKey:TPOCAValue;out aValue:TPOCAValue):TPOCABool32;
 var Vector3:PpvVector3D;
     s:TpvUTF8String;
 begin
@@ -746,7 +746,7 @@ begin
  end;
 end;
 
-function POCAVector3GhostSetKey(const aContext:PPOCAContext;const aGhost:PPOCAGhost;const aKey:TPOCAValue;const aValue:TPOCAValue):longbool;
+function POCAVector3GhostSetKey(const aContext:PPOCAContext;const aGhost:PPOCAGhost;const aKey:TPOCAValue;const aValue:TPOCAValue):TPOCABool32;
 var Vector3:PpvVector3D;
     s:TpvUTF8String;
 begin
@@ -1296,7 +1296,7 @@ begin
  end;
 end;
 
-function POCAVector4GhostExistKey(const aContext:PPOCAContext;const aGhost:PPOCAGhost;const aKey:TPOCAValue):longbool;
+function POCAVector4GhostExistKey(const aContext:PPOCAContext;const aGhost:PPOCAGhost;const aKey:TPOCAValue):TPOCABool32;
 var s:TpvUTF8String;
 begin
  s:=POCAGetStringValue(aContext,aKey);
@@ -1313,7 +1313,7 @@ begin
  end;
 end;
 
-function POCAVector4GhostGetKey(const aContext:PPOCAContext;const aGhost:PPOCAGhost;const aKey:TPOCAValue;out aValue:TPOCAValue):longbool;
+function POCAVector4GhostGetKey(const aContext:PPOCAContext;const aGhost:PPOCAGhost;const aKey:TPOCAValue;out aValue:TPOCAValue):TPOCABool32;
 var Vector4:PpvVector4D;
     s:TpvUTF8String;
 begin
@@ -1336,7 +1336,7 @@ begin
  end;
 end;
 
-function POCAVector4GhostSetKey(const aContext:PPOCAContext;const aGhost:PPOCAGhost;const aKey:TPOCAValue;const aValue:TPOCAValue):longbool;
+function POCAVector4GhostSetKey(const aContext:PPOCAContext;const aGhost:PPOCAGhost;const aKey:TPOCAValue;const aValue:TPOCAValue):TPOCABool32;
 var Vector4:PpvVector4D;
     s:TpvUTF8String;
 begin
@@ -1888,7 +1888,7 @@ begin
  end;
 end;
 
-function POCAQuaternionGhostExistKey(const aContext:PPOCAContext;const aGhost:PPOCAGhost;const aKey:TPOCAValue):longbool;
+function POCAQuaternionGhostExistKey(const aContext:PPOCAContext;const aGhost:PPOCAGhost;const aKey:TPOCAValue):TPOCABool32;
 var s:TpvUTF8String;
 begin
  s:=POCAGetStringValue(aContext,aKey);
@@ -1905,7 +1905,7 @@ begin
  end;
 end;
 
-function POCAQuaternionGhostGetKey(const aContext:PPOCAContext;const aGhost:PPOCAGhost;const aKey:TPOCAValue;out aValue:TPOCAValue):longbool;
+function POCAQuaternionGhostGetKey(const aContext:PPOCAContext;const aGhost:PPOCAGhost;const aKey:TPOCAValue;out aValue:TPOCAValue):TPOCABool32;
 var Quaternion:PpvQuaternionD;
     s:TpvUTF8String;
 begin
@@ -1928,7 +1928,7 @@ begin
  end;
 end;
 
-function POCAQuaternionGhostSetKey(const aContext:PPOCAContext;const aGhost:PPOCAGhost;const aKey:TPOCAValue;const aValue:TPOCAValue):longbool;
+function POCAQuaternionGhostSetKey(const aContext:PPOCAContext;const aGhost:PPOCAGhost;const aKey:TPOCAValue;const aValue:TPOCAValue):TPOCABool32;
 var Quaternion:PpvQuaternionD;
     s:TpvUTF8String;
 begin
@@ -2533,7 +2533,7 @@ begin
  end;
 end;
 
-function POCAMatrix3x3GhostExistKey(const aContext:PPOCAContext;const aGhost:PPOCAGhost;const aKey:TPOCAValue):longbool;
+function POCAMatrix3x3GhostExistKey(const aContext:PPOCAContext;const aGhost:PPOCAGhost;const aKey:TPOCAValue):TPOCABool32;
 var s:TpvUTF8String;
 begin
  s:=POCAGetStringValue(aContext,aKey);
@@ -2560,7 +2560,7 @@ begin
  end;
 end;
 
-function POCAMatrix3x3GhostGetKey(const aContext:PPOCAContext;const aGhost:PPOCAGhost;const aKey:TPOCAValue;out aValue:TPOCAValue):longbool;
+function POCAMatrix3x3GhostGetKey(const aContext:PPOCAContext;const aGhost:PPOCAGhost;const aKey:TPOCAValue;out aValue:TPOCAValue):TPOCABool32;
 var Matrix3x3:PpvMatrix3x3D;
     s:TpvUTF8String;
 begin
@@ -2598,7 +2598,7 @@ begin
  end;
 end;
 
-function POCAMatrix3x3GhostSetKey(const aContext:PPOCAContext;const aGhost:PPOCAGhost;const aKey:TPOCAValue;const aValue:TPOCAValue):longbool;
+function POCAMatrix3x3GhostSetKey(const aContext:PPOCAContext;const aGhost:PPOCAGhost;const aKey:TPOCAValue;const aValue:TPOCAValue):TPOCABool32;
 var Matrix3x3:PpvMatrix3x3D;
     s:TpvUTF8String;
 begin
@@ -3163,7 +3163,7 @@ begin
  end;
 end;
 
-function POCAMatrix4x4GhostExistKey(const aContext:PPOCAContext;const aGhost:PPOCAGhost;const aKey:TPOCAValue):longbool;
+function POCAMatrix4x4GhostExistKey(const aContext:PPOCAContext;const aGhost:PPOCAGhost;const aKey:TPOCAValue):TPOCABool32;
 var s:TpvUTF8String;
 begin
  s:=POCAGetStringValue(aContext,aKey);
@@ -3204,7 +3204,7 @@ begin
  end;
 end;
 
-function POCAMatrix4x4GhostGetKey(const aContext:PPOCAContext;const aGhost:PPOCAGhost;const aKey:TPOCAValue;out aValue:TPOCAValue):longbool;
+function POCAMatrix4x4GhostGetKey(const aContext:PPOCAContext;const aGhost:PPOCAGhost;const aKey:TPOCAValue;out aValue:TPOCAValue):TPOCABool32;
 var Matrix4x4:PpvMatrix4x4D;
     s:TpvUTF8String;
 begin
@@ -3263,7 +3263,7 @@ begin
  end;
 end;
 
-function POCAMatrix4x4GhostSetKey(const aContext:PPOCAContext;const aGhost:PPOCAGhost;const aKey:TPOCAValue;const aValue:TPOCAValue):longbool;
+function POCAMatrix4x4GhostSetKey(const aContext:PPOCAContext;const aGhost:PPOCAGhost;const aKey:TPOCAValue;const aValue:TPOCAValue):TPOCABool32;
 var Matrix4x4:PpvMatrix4x4D;
     s:TpvUTF8String;
 begin
