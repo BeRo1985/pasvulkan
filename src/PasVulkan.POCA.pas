@@ -70,10 +70,19 @@ uses SysUtils,
      PasVulkan.Types,
      PasVulkan.Math,
      PasVulkan.Math.Double,
+     PasVulkan.Framework,
      POCA;
 
 type TPOCAHostData=record
       
+      GraphicsQueue:TpvVulkanQueue;
+      GraphicsCommandBuffer:TpvVulkanCommandBuffer;
+      GraphicsCommandBufferFence:TpvVulkanFence;
+
+      TransferQueue:TpvVulkanQueue;
+      TransferCommandBuffer:TpvVulkanCommandBuffer;
+      TransferCommandBufferFence:TpvVulkanFence;
+
       Vector2Hash:TPOCAValue;
       Vector2HashEvents:TPOCAValue;
 
@@ -170,7 +179,8 @@ procedure FinalizeForPOCAContext(const aContext:PPOCAContext);
 
 implementation
 
-uses PasVulkan.VectorPath,
+uses PasVulkan.Application,
+     PasVulkan.VectorPath,
      PasVulkan.SignedDistanceField2D,
      PasVulkan.Canvas,
      PasVulkan.Sprites,
@@ -3942,6 +3952,8 @@ const POCASpriteGhost:TPOCAGhostType=
 function POCANewSprite(const aContext:PPOCAContext;const aSprite:TObject):TPOCAValue;
 begin
  result:=POCANewGhost(aContext,@POCASpriteGhost,aSprite);
+ POCATemporarySave(aContext,result);
+ POCAGhostSetHashValue(result,POCAGetHostData(aContext)^.SpriteHash);
 end;
 
 function POCAGetSpriteValue(const aValue:TPOCAValue):TObject;
@@ -3953,8 +3965,31 @@ begin
  end;
 end;
 
+function POCASpriteFunctionCREATE(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+begin
+ result.CastedUInt64:=POCAValueNullCastedUInt64; 
+end;
+
+procedure POCAInitSpriteHash(aContext:PPOCAContext);
+var HostData:PPOCAHostData;
+begin
+ HostData:=POCAGetHostData(aContext);
+ HostData^.SpriteHash:=POCANewHash(aContext);
+ POCAArrayPush(aContext^.Instance^.Globals.RootArray,HostData^.SpriteHash);
+end;
+
+procedure POCAInitSpriteNamespace(aContext:PPOCAContext);
+var Hash:TPOCAValue;
+begin
+ Hash:=POCANewHash(aContext);
+ POCAArrayPush(aContext^.Instance^.Globals.RootArray,Hash);
+ POCAAddNativeFunction(aContext,Hash,'create',POCASpriteFunctionCREATE);
+ POCAHashSetString(aContext,aContext^.Instance^.Globals.Namespace,'Sprite',Hash);
+end;
+
 procedure POCAInitSprite(aContext:PPOCAContext);
 begin
+ POCAInitSpriteHash(aContext);
 end;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -3986,8 +4021,319 @@ begin
  end;
 end;
 
+function POCASpriteAtlasFunctionCREATE(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var SpriteAtlas:TpvSpriteAtlas;
+    sRGB:Boolean;
+    Depth16Bit:Boolean;
+    MipMaps:Boolean;
+    UseConvexHullTrimming:Boolean;
+begin
+ if aCountArguments>0 then begin
+  sRGB:=POCAGetBooleanValue(aContext,aArguments^[0]);
+ end else begin
+  sRGB:=true;  
+ end;
+ if aCountArguments>1 then begin
+  Depth16Bit:=POCAGetBooleanValue(aContext,aArguments^[1]);
+ end else begin
+  Depth16Bit:=false;  
+ end;
+ if aCountArguments>2 then begin
+  MipMaps:=POCAGetBooleanValue(aContext,aArguments^[2]);
+ end else begin
+  MipMaps:=true;  
+ end;
+ if aCountArguments>3 then begin
+  UseConvexHullTrimming:=POCAGetBooleanValue(aContext,aArguments^[3]);
+ end else begin
+  UseConvexHullTrimming:=false;  
+ end;
+ SpriteAtlas:=TpvSpriteAtlas.Create(pvApplication.VulkanDevice,sRGB,Depth16Bit);
+ SpriteAtlas.MipMaps:=MipMaps;
+ SpriteAtlas.UseConvexHullTrimming:=UseConvexHullTrimming;
+ result:=POCANewSpriteAtlas(aContext,SpriteAtlas);
+ POCATemporarySave(aContext,result);
+ POCAGhostSetHashValue(result,POCAGetHostData(aContext)^.SpriteAtlasHash); 
+end;
+
+function POCASpriteAtlasFunctionDESTROY(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var SpriteAtlas:TpvSpriteAtlas;
+begin
+ if POCAGhostGetType(aThis)=@POCASpriteAtlasGhost then begin
+  SpriteAtlas:=TpvSpriteAtlas(POCAGhostFastGetPointer(aThis));
+  if assigned(SpriteAtlas) then begin
+   SpriteAtlas.Free;
+   PPOCAGhost(POCAGetValueReferencePointer(aThis))^.Ptr:=nil; // For to avoid double free
+  end;
+ end;
+ result.CastedUInt64:=POCAValueNullCastedUInt64;
+end;
+
+function POCASpriteAtlasFunctionLOAD(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var SpriteAtlas:TpvSpriteAtlas;
+    Sprite:TpvSprite;
+    Name,FileName:TpvUTF8String;
+    AutomaticTrim:Boolean;
+    Padding,TrimPadding:TpvInt32;
+    Stream:TStream;
+begin
+
+ if POCAGhostGetType(aThis)<>@POCASpriteAtlasGhost then begin
+  POCARuntimeError(aContext,'Invalid SpriteAtlas object');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end; 
+
+ if aCountArguments>0 then begin
+  Name:=POCAGetStringValue(aContext,aArguments^[0]);
+ end else begin
+  POCARuntimeError(aContext,'Invalid arguments');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ if aCountArguments>1 then begin
+  FileName:=POCAGetStringValue(aContext,aArguments^[1]);
+ end else begin
+  POCARuntimeError(aContext,'Invalid arguments');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ if aCountArguments>2 then begin
+  AutomaticTrim:=POCAGetBooleanValue(aContext,aArguments^[2]);
+ end else begin
+  AutomaticTrim:=false;  
+ end;
+
+ if aCountArguments>3 then begin
+  Padding:=trunc(POCAGetNumberValue(aContext,aArguments^[3]));
+ end else begin
+  Padding:=0;  
+ end;
+
+ if aCountArguments>4 then begin
+  TrimPadding:=trunc(POCAGetNumberValue(aContext,aArguments^[4]));
+ end else begin
+  TrimPadding:=0;  
+ end;
+
+ SpriteAtlas:=TpvSpriteAtlas(POCAGhostFastGetPointer(aThis));
+ if pvApplication.Assets.ExistAsset(String(FileName)) then begin
+  Stream:=pvApplication.Assets.GetAssetStream(String(FileName));
+  try
+   Sprite:=SpriteAtlas.LoadSprite(String(Name),Stream,AutomaticTrim,Padding,TrimPadding);
+   result:=POCANewSprite(aContext,Sprite);
+  finally
+   FreeAndNil(Stream);
+  end;
+ end else begin
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+ end;
+
+end; 
+
+function POCASpriteAtlasFunctionLOADSIGNEDDISTANCEFIELDSPRITE(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var SpriteAtlas:TpvSpriteAtlas;
+    Sprite:TpvSprite;
+    Name,SVGPath:TpvUTF8String;
+    ImageWidth,ImageHeight:Integer;
+    Scale,OffsetX,OffsetY:TpvDouble;
+    VectorPathFillRule:TpvVectorPathFillRule;
+    AutomaticTrim:Boolean;
+    Padding,TrimPadding:TpvInt32;
+    SDFVariant:TpvSignedDistanceField2DVariant;
+    ProtectBorder:Boolean;
+begin
+ if POCAGhostGetType(aThis)<>@POCASpriteAtlasGhost then begin
+  POCARuntimeError(aContext,'Invalid SpriteAtlas object');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end; 
+
+ if aCountArguments>0 then begin
+  Name:=POCAGetStringValue(aContext,aArguments^[0]);
+ end else begin
+  POCARuntimeError(aContext,'Invalid arguments');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ if aCountArguments>1 then begin
+  SVGPath:=POCAGetStringValue(aContext,aArguments^[1]);
+ end else begin
+  POCARuntimeError(aContext,'Invalid arguments');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ if aCountArguments>2 then begin
+  ImageWidth:=trunc(POCAGetNumberValue(aContext,aArguments^[2]));
+ end else begin
+  ImageWidth:=64;
+ end;
+
+ if aCountArguments>3 then begin
+  ImageHeight:=trunc(POCAGetNumberValue(aContext,aArguments^[3]));
+ end else begin
+  ImageHeight:=64;
+ end;
+
+ if aCountArguments>4 then begin
+  AutomaticTrim:=POCAGetBooleanValue(aContext,aArguments^[4]);
+ end else begin
+  AutomaticTrim:=true;  
+ end;
+
+ if aCountArguments>5 then begin
+  Padding:=trunc(POCAGetNumberValue(aContext,aArguments^[5]));
+ end else begin
+  Padding:=2;  
+ end;
+
+ if aCountArguments>6 then begin
+  TrimPadding:=trunc(POCAGetNumberValue(aContext,aArguments^[6]));
+ end else begin
+  TrimPadding:=0;  
+ end;
+
+ if aCountArguments>7 then begin
+  Scale:=POCAGetNumberValue(aContext,aArguments^[7]);
+ end else begin
+  Scale:=1.0;  
+ end;
+
+ if aCountArguments>8 then begin
+  OffsetX:=POCAGetNumberValue(aContext,aArguments^[8]);
+ end else begin
+  OffsetX:=0.0;  
+ end;
+
+ if aCountArguments>9 then begin
+  OffsetY:=POCAGetNumberValue(aContext,aArguments^[9]);
+ end else begin
+  OffsetY:=0.0;  
+ end;
+
+ if aCountArguments>10 then begin
+  VectorPathFillRule:=TpvVectorPathFillRule(TPOCAInt32(trunc(POCAGetNumberValue(aContext,aArguments^[10]))));
+ end else begin
+  VectorPathFillRule:=TpvVectorPathFillRule.NonZero;  
+ end;
+
+ if aCountArguments>11 then begin
+  SDFVariant:=TpvSignedDistanceField2DVariant(TPOCAInt32(trunc(POCAGetNumberValue(aContext,aArguments^[11]))));
+ end else begin
+  SDFVariant:=TpvSignedDistanceField2DVariant.Default;  
+ end;
+
+ if aCountArguments>12 then begin
+  ProtectBorder:=POCAGetBooleanValue(aContext,aArguments^[12]);
+ end else begin
+  ProtectBorder:=false;  
+ end; 
+
+ SpriteAtlas:=TpvSpriteAtlas(POCAGhostFastGetPointer(aThis));
+
+ Sprite:=SpriteAtlas.LoadSignedDistanceFieldSprite(Name,
+                                                   SVGPath,
+                                                   ImageWidth,
+                                                   ImageHeight,
+                                                   Scale,
+                                                   OffsetX,
+                                                   OffsetY,
+                                                   VectorPathFillRule,
+                                                   AutomaticTrim,
+                                                   Padding,
+                                                   TrimPadding,
+                                                   SDFVariant,
+                                                   ProtectBorder);
+ result:=POCANewSprite(aContext,Sprite);
+
+end;
+
+function POCASpriteAtlasFunctionGET(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var SpriteAtlas:TpvSpriteAtlas;
+    Sprite:TpvSprite;
+    Name:TpvUTF8String;
+begin
+ if POCAGhostGetType(aThis)<>@POCASpriteAtlasGhost then begin
+  POCARuntimeError(aContext,'Invalid SpriteAtlas object');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end; 
+
+ if aCountArguments>0 then begin
+  Name:=POCAGetStringValue(aContext,aArguments^[0]);
+ end else begin
+  POCARuntimeError(aContext,'Invalid arguments');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ SpriteAtlas:=TpvSpriteAtlas(POCAGhostFastGetPointer(aThis));
+ Sprite:=SpriteAtlas.Sprites[Name];
+ if assigned(Sprite) then begin
+  result:=POCANewSprite(aContext,Sprite);
+ end else begin
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+ end;
+
+end;
+
+function POCASpriteAtlasFunctionUPLOAD(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var SpriteAtlas:TpvSpriteAtlas;
+    HostData:PPOCAHostData;
+begin
+
+ if POCAGhostGetType(aThis)<>@POCASpriteAtlasGhost then begin
+  POCARuntimeError(aContext,'Invalid SpriteAtlas object');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end; 
+
+ HostData:=POCAGetHostData(aContext);
+
+ SpriteAtlas:=TpvSpriteAtlas(POCAGhostFastGetPointer(aThis));
+ if not SpriteAtlas.Uploaded then begin
+  SpriteAtlas.Upload(HostData^.GraphicsQueue,
+                     HostData^.GraphicsCommandBuffer,
+                     HostData^.GraphicsCommandBufferFence,
+                     HostData^.TransferQueue,
+                     HostData^.TransferCommandBuffer,
+                     HostData^.TransferCommandBufferFence);
+ end;
+ 
+ result:=aThis;
+
+end;
+
+procedure POCAInitSpriteAtlasHash(aContext:PPOCAContext);
+var HostData:PPOCAHostData;
+begin
+ HostData:=POCAGetHostData(aContext);
+ HostData^.SpriteAtlasHash:=POCANewHash(aContext);
+ POCAArrayPush(aContext^.Instance^.Globals.RootArray,HostData^.SpriteAtlasHash);
+ POCAAddNativeFunction(aContext,HostData^.SpriteAtlasHash,'destroy',POCASpriteAtlasFunctionDESTROY); 
+ POCAAddNativeFunction(aContext,HostData^.SpriteAtlasHash,'load',POCASpriteAtlasFunctionLOAD);
+ POCAAddNativeFunction(aContext,HostData^.SpriteAtlasHash,'loadSignedDistanceFieldSprite',POCASpriteAtlasFunctionLOADSIGNEDDISTANCEFIELDSPRITE);
+ POCAAddNativeFunction(aContext,HostData^.SpriteAtlasHash,'get',POCASpriteAtlasFunctionGET);
+ POCAAddNativeFunction(aContext,HostData^.SpriteAtlasHash,'upload',POCASpriteAtlasFunctionUPLOAD);
+end;
+
+procedure POCAInitSpriteAtlasNamespace(aContext:PPOCAContext);
+var Hash:TPOCAValue;
+begin
+ Hash:=POCANewHash(aContext);
+ POCAArrayPush(aContext^.Instance^.Globals.RootArray,Hash);
+ POCAAddNativeFunction(aContext,Hash,'create',POCASpriteAtlasFunctionCREATE);
+ POCAHashSetString(aContext,aContext^.Instance^.Globals.Namespace,'SpriteAtlas',Hash);
+end;
+
 procedure POCAInitSpriteAtlas(aContext:PPOCAContext);
 begin
+ POCAInitSpriteAtlasHash(aContext);
+ POCAInitSpriteAtlasNamespace(aContext);
 end;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
