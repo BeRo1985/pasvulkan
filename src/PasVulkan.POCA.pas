@@ -4927,6 +4927,4215 @@ begin
  POCAHashSetString(aContext,result,'Default',POCANewNumber(aContext,TPOCAInt32(TpvSignedDistanceField2DVariant.Default)));
 end;
 
+function POCACanvasFunctionGETWIDTH(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Canvas:TpvCanvas;
+begin
+
+ if POCAGhostGetType(aThis)<>@POCACanvasGhost then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas:=TpvCanvas(POCAGhostFastGetPointer(aThis));
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas is null');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ result.Num:=Canvas.Width;
+
+end;
+
+function POCACanvasFunctionGETHEIGHT(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Canvas:TpvCanvas;
+begin
+
+ if POCAGhostGetType(aThis)<>@POCACanvasGhost then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas:=TpvCanvas(POCAGhostFastGetPointer(aThis));
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas is null');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ result.Num:=Canvas.Height;
+
+end;
+
+function POCACanvasFunctionCLEAR(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Canvas:TpvCanvas;
+    Color:TpvVector4;
+begin
+
+ if POCAGhostGetType(aThis)<>@POCACanvasGhost then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas:=TpvCanvas(POCAGhostFastGetPointer(aThis));
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas is null');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ if (aCountArguments>0) and (POCAGhostGetType(aArguments^[0])=POCAVector4GhostPointer) then begin
+  Color:=POCAGetVector4Value(aArguments^[0]); 
+ end else begin
+  if aCountArguments>0 then begin
+   Color.x:=POCAGetNumberValue(aContext,aArguments^[0]);
+  end else begin
+   Color.x:=0.0;
+  end;
+  if aCountArguments>1 then begin
+   Color.y:=POCAGetNumberValue(aContext,aArguments^[1]);
+  end else begin
+   Color.y:=0.0;
+  end;
+  if aCountArguments>2 then begin
+   Color.z:=POCAGetNumberValue(aContext,aArguments^[2]);
+  end else begin
+   Color.z:=0.0;
+  end;
+  if aCountArguments>3 then begin
+   Color.w:=POCAGetNumberValue(aContext,aArguments^[3]);
+  end else begin
+   Color.w:=1.0; 
+  end; 
+ end;
+
+ Canvas.Color:=Color;
+ Canvas.DrawFilledRectangle(TpvRect.CreateAbsolute(0,0,Canvas.Width,Canvas.Height));
+
+ result:=aThis;
+
+end;
+
+function POCACanvasFunctionDRAWFILLEDCIRCLE(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var ArgumentIndex:TPOCAInt32;
+    Canvas:TpvCanvas;
+    Center:TpvVector2;
+    Radius:TpvFloat;
+begin
+
+ if POCAGhostGetType(aThis)<>@POCACanvasGhost then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas:=TpvCanvas(POCAGhostFastGetPointer(aThis));
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas is null');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ ArgumentIndex:=0;
+ 
+ // Check for Centter
+ if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
+  Center:=POCAGetVector2Value(aArguments^[0]);
+  inc(ArgumentIndex);
+ end else begin
+  if ArgumentIndex<aCountArguments then begin
+   Center.x:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   Center.x:=0.0;
+  end;
+  if ArgumentIndex<aCountArguments then begin
+   Center.y:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   Center.y:=0.0;
+  end;
+ end;
+
+ // Check for Radius
+ if ArgumentIndex<aCountArguments then begin
+  Radius:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+  inc(ArgumentIndex);
+ end else begin
+  Radius:=0.0;
+ end;
+ 
+ Canvas.DrawFilledCircle(Center,Radius);
+
+ result:=aThis;
+
+end;
+
+function POCACanvasFunctionDRAWFILLEDELLIPSE(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var ArgumentIndex:TPOCAInt32;
+    Canvas:TpvCanvas;
+    Center:TpvVector2;
+    Radius:TpvVector2;
+begin
+
+ if POCAGhostGetType(aThis)<>@POCACanvasGhost then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas:=TpvCanvas(POCAGhostFastGetPointer(aThis));
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas is null');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ ArgumentIndex:=0;
+ 
+ // Check for Center
+ if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
+  Center:=POCAGetVector2Value(aArguments^[0]);
+  inc(ArgumentIndex);
+ end else begin
+  if ArgumentIndex<aCountArguments then begin
+   Center.x:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   Center.x:=0.0;
+  end;
+  if ArgumentIndex<aCountArguments then begin
+   Center.y:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   Center.y:=0.0;
+  end;
+ end;
+
+ // Check for Radius
+ if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
+  Radius:=POCAGetVector2Value(aArguments^[ArgumentIndex]);
+  inc(ArgumentIndex);
+ end else begin
+  if ArgumentIndex<aCountArguments then begin
+   Radius.x:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   Radius.x:=0.0;
+  end;
+  if ArgumentIndex<aCountArguments then begin
+   Radius.y:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   Radius.y:=0.0;
+  end;
+ end;
+
+ Canvas.DrawFilledEllipse(Center,Radius);
+
+ result:=aThis;
+
+end;
+
+function POCACanvasFunctionDRAWFILLEDRECTANGLE(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var ArgumentIndex:TPOCAInt32;
+    Canvas:TpvCanvas;
+    LeftTop:TpvVector2;
+    WidthHeight:TpvVector2;
+begin
+
+ if POCAGhostGetType(aThis)<>@POCACanvasGhost then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas:=TpvCanvas(POCAGhostFastGetPointer(aThis));
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas is null');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ ArgumentIndex:=0;
+ 
+ // Check for LeftTop
+ if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
+  LeftTop:=POCAGetVector2Value(aArguments^[0]);
+  inc(ArgumentIndex);
+ end else begin
+  if ArgumentIndex<aCountArguments then begin
+   LeftTop.x:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   LeftTop.x:=0.0;
+  end;
+  if ArgumentIndex<aCountArguments then begin
+   LeftTop.y:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   LeftTop.y:=0.0;
+  end;
+ end;
+
+ // Check for WidthHeight
+ if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
+  WidthHeight:=POCAGetVector2Value(aArguments^[ArgumentIndex]);
+  inc(ArgumentIndex);
+ end else begin
+  if ArgumentIndex<aCountArguments then begin
+   WidthHeight.x:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   WidthHeight.x:=0.0;
+  end;
+  if ArgumentIndex<aCountArguments then begin
+   WidthHeight.y:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   WidthHeight.y:=0.0;
+  end;
+ end;
+
+ Canvas.DrawFilledRectangle(TpvRect.CreateRelative(LeftTop,WidthHeight));
+
+ result:=aThis;
+
+end;
+
+function POCACanvasFunctionDRAWFILLEDRECTANGLECENTER(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var ArgumentIndex:TPOCAInt32;
+    Canvas:TpvCanvas;
+    Center:TpvVector2;
+    Bounds:TpvVector2;
+begin
+
+ if POCAGhostGetType(aThis)<>@POCACanvasGhost then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas:=TpvCanvas(POCAGhostFastGetPointer(aThis));
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas is null');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ ArgumentIndex:=0;
+ 
+ // Check for Center
+ if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
+  Center:=POCAGetVector2Value(aArguments^[0]);
+  inc(ArgumentIndex);
+ end else begin
+  if ArgumentIndex<aCountArguments then begin
+   Center.x:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   Center.x:=0.0;
+  end;
+  if ArgumentIndex<aCountArguments then begin
+   Center.y:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   Center.y:=0.0;
+  end;
+ end;
+
+ // Check for Bounds
+ if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
+  Bounds:=POCAGetVector2Value(aArguments^[ArgumentIndex]);
+  inc(ArgumentIndex);
+ end else begin
+  if ArgumentIndex<aCountArguments then begin
+   Bounds.x:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   Bounds.x:=0.0;
+  end;
+  if ArgumentIndex<aCountArguments then begin
+   Bounds.y:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   Bounds.y:=0.0;
+  end;
+ end;
+
+ Canvas.DrawFilledRectangle(Center,Bounds);
+
+ result:=aThis;
+
+end;
+
+function POCACanvasFunctionDRAWFILLEDROUNDEDRECTANGLE(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var ArgumentIndex:TPOCAInt32;
+    Canvas:TpvCanvas;
+    LeftTop:TpvVector2;
+    WidthHeight:TpvVector2;
+    Radius:TpvFloat;
+begin
+
+ if POCAGhostGetType(aThis)<>@POCACanvasGhost then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas:=TpvCanvas(POCAGhostFastGetPointer(aThis));
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas is null');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ ArgumentIndex:=0;
+ 
+ // Check for LeftTop
+ if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
+  LeftTop:=POCAGetVector2Value(aArguments^[0]);
+  inc(ArgumentIndex);
+ end else begin
+  if ArgumentIndex<aCountArguments then begin
+   LeftTop.x:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   LeftTop.x:=0.0;
+  end;
+  if ArgumentIndex<aCountArguments then begin
+   LeftTop.y:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   LeftTop.y:=0.0;
+  end;
+ end;
+
+ // Check for WidthHeight
+ if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
+  WidthHeight:=POCAGetVector2Value(aArguments^[ArgumentIndex]);
+  inc(ArgumentIndex);
+ end else begin
+  if ArgumentIndex<aCountArguments then begin
+   WidthHeight.x:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   WidthHeight.x:=0.0;
+  end;
+  if ArgumentIndex<aCountArguments then begin
+   WidthHeight.y:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   WidthHeight.y:=0.0;
+  end;
+ end;
+
+ // Check for Radius
+ if ArgumentIndex<aCountArguments then begin
+  Radius:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+  inc(ArgumentIndex);
+ end else begin
+  Radius:=0.0;
+ end;
+
+ Canvas.DrawFilledRoundedRectangle(TpvRect.CreateRelative(LeftTop,WidthHeight),Radius);
+
+ result:=aThis;
+
+end;
+
+function POCACanvasFunctionDRAWFILLEDROUNDEDRECTANGLECENTER(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var ArgumentIndex:TPOCAInt32;
+    Canvas:TpvCanvas;
+    Center:TpvVector2;
+    Bounds:TpvVector2;
+    Radius:TpvFloat;
+begin
+
+ if POCAGhostGetType(aThis)<>@POCACanvasGhost then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas:=TpvCanvas(POCAGhostFastGetPointer(aThis));
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas is null');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ ArgumentIndex:=0;
+ 
+ // Check for Center
+ if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
+  Center:=POCAGetVector2Value(aArguments^[0]);
+  inc(ArgumentIndex);
+ end else begin
+  if ArgumentIndex<aCountArguments then begin
+   Center.x:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   Center.x:=0.0;
+  end;
+  if ArgumentIndex<aCountArguments then begin
+   Center.y:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   Center.y:=0.0;
+  end;
+ end;
+
+ // Check for Bounds
+ if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
+  Bounds:=POCAGetVector2Value(aArguments^[ArgumentIndex]);
+  inc(ArgumentIndex);
+ end else begin
+  if ArgumentIndex<aCountArguments then begin
+   Bounds.x:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   Bounds.x:=0.0;
+  end;
+  if ArgumentIndex<aCountArguments then begin
+   Bounds.y:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   Bounds.y:=0.0;
+  end;
+ end;
+
+ // Check for Radius
+ if ArgumentIndex<aCountArguments then begin
+  Radius:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+  inc(ArgumentIndex);
+ end else begin
+  Radius:=0.0;
+ end;
+
+ Canvas.DrawFilledRoundedRectangle(Center,Bounds,Radius);
+
+ result:=aThis;
+
+end;
+
+function POCACanvasFunctionDRAWFILLEDCIRCLEARCRINGSEGMENT(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var ArgumentIndex:TPOCAInt32;
+    Canvas:TpvCanvas;
+    Center:TpvVector2;
+    InnerRadius:TpvFloat;
+    OuterRadius:TpvFloat;
+    StartAngle:TpvFloat;
+    EndAngle:TpvFloat;
+    GapThickness:TpvFloat;
+begin
+
+ if POCAGhostGetType(aThis)<>@POCACanvasGhost then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas:=TpvCanvas(POCAGhostFastGetPointer(aThis));
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas is null');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ ArgumentIndex:=0;
+ 
+ // Check for Center
+ if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
+  Center:=POCAGetVector2Value(aArguments^[0]);
+  inc(ArgumentIndex);
+ end else begin
+  if ArgumentIndex<aCountArguments then begin
+   Center.x:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   Center.x:=0.0;
+  end;
+  if ArgumentIndex<aCountArguments then begin
+   Center.y:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   Center.y:=0.0;
+  end;
+ end;
+
+ // Check for InnerRadius
+ if ArgumentIndex<aCountArguments then begin
+  InnerRadius:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+  inc(ArgumentIndex);
+ end else begin
+  InnerRadius:=0.0;
+ end;
+
+ // Check for OuterRadius
+ if ArgumentIndex<aCountArguments then begin
+  OuterRadius:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+  inc(ArgumentIndex);
+ end else begin
+  OuterRadius:=0.0;
+ end;
+
+ // Check for StartAngle
+ if ArgumentIndex<aCountArguments then begin
+  StartAngle:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+  inc(ArgumentIndex);
+ end else begin
+  StartAngle:=0.0;
+ end;
+
+ // Check for EndAngle
+ if ArgumentIndex<aCountArguments then begin
+  EndAngle:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+  inc(ArgumentIndex);
+ end else begin
+  EndAngle:=0.0;
+ end;
+
+ // Check for GapThickness
+ if ArgumentIndex<aCountArguments then begin
+  GapThickness:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+  inc(ArgumentIndex);
+ end else begin
+  GapThickness:=0.0;
+ end;
+
+ Canvas.DrawFilledCircleArcRingSegment(Center,InnerRadius,OuterRadius,StartAngle,EndAngle,GapThickness);
+
+ result:=aThis;
+
+end;
+
+function POCACanvasFunctionDRAWTEXTUREDRECTANGLE(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var ArgumentIndex:TPOCAInt32;
+    Canvas:TpvCanvas;
+    Texture:TpvVulkanTexture;
+    LeftTop:TpvVector2;
+    WidthHeight:TpvVector2;
+    RotationAngle:TpvFloat;
+    TextureArrayLayer:TpvInt32;
+begin
+
+ if POCAGhostGetType(aThis)<>@POCACanvasGhost then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas:=TpvCanvas(POCAGhostFastGetPointer(aThis));
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas is null');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ ArgumentIndex:=0;
+ 
+ // Check for Texture
+ if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCATextureGhostPointer) then begin
+  Texture:=TpvVulkanTexture(POCAGhostFastGetPointer(aArguments^[0]));
+  inc(ArgumentIndex);
+ end else begin
+  Texture:=nil;
+ end;
+
+ // Check for LeftTop
+ if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
+  LeftTop:=POCAGetVector2Value(aArguments^[ArgumentIndex]);
+  inc(ArgumentIndex);
+ end else begin
+  if ArgumentIndex<aCountArguments then begin
+   LeftTop.x:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   LeftTop.x:=0.0;
+  end;
+  if ArgumentIndex<aCountArguments then begin
+   LeftTop.y:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   LeftTop.y:=0.0;
+  end;
+ end;
+
+ // Check for WidthHeight
+ if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
+  WidthHeight:=POCAGetVector2Value(aArguments^[ArgumentIndex]);
+  inc(ArgumentIndex);
+ end else begin
+  if ArgumentIndex<aCountArguments then begin
+   WidthHeight.x:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   WidthHeight.x:=0.0;
+  end;
+  if ArgumentIndex<aCountArguments then begin
+   WidthHeight.y:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   WidthHeight.y:=0.0;
+  end;
+ end;
+
+ // Check for RotationAngle
+ if ArgumentIndex<aCountArguments then begin
+  RotationAngle:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+  inc(ArgumentIndex);
+ end else begin
+  RotationAngle:=0.0;
+ end;
+
+ // Check for TextureArrayLayer
+ if ArgumentIndex<aCountArguments then begin
+  TextureArrayLayer:=trunc(POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]));
+  inc(ArgumentIndex);
+ end else begin
+  TextureArrayLayer:=0;
+ end;
+
+ Canvas.DrawTexturedRectangle(Texture,TpvRect.CreateRelative(LeftTop,WidthHeight),RotationAngle,TextureArrayLayer);
+
+ result:=aThis;
+
+end;
+
+function POCACanvasFunctionDRAWTEXTUREDRECTANGLECENTER(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var ArgumentIndex:TPOCAInt32;
+    Canvas:TpvCanvas;
+    Texture:TpvVulkanTexture;
+    Center:TpvVector2;
+    Bounds:TpvVector2;
+    RotationAngle:TpvFloat;
+    TextureArrayLayer:TpvInt32;
+begin
+
+ if POCAGhostGetType(aThis)<>@POCACanvasGhost then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas:=TpvCanvas(POCAGhostFastGetPointer(aThis));
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas is null');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ ArgumentIndex:=0;
+ 
+ // Check for Texture
+ if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCATextureGhostPointer) then begin
+  Texture:=TpvVulkanTexture(POCAGhostFastGetPointer(aArguments^[0]));
+  inc(ArgumentIndex);
+ end else begin
+  Texture:=nil;
+ end;
+
+ // Check for Center
+ if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
+  Center:=POCAGetVector2Value(aArguments^[ArgumentIndex]);
+  inc(ArgumentIndex);
+ end else begin
+  if ArgumentIndex<aCountArguments then begin
+   Center.x:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   Center.x:=0.0;
+  end;
+  if ArgumentIndex<aCountArguments then begin
+   Center.y:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   Center.y:=0.0;
+  end;
+ end;
+
+ // Check for Bounds
+ if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
+  Bounds:=POCAGetVector2Value(aArguments^[ArgumentIndex]);
+  inc(ArgumentIndex);
+ end else begin
+  if ArgumentIndex<aCountArguments then begin
+   Bounds.x:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   Bounds.x:=0.0;
+  end;
+  if ArgumentIndex<aCountArguments then begin
+   Bounds.y:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   Bounds.y:=0.0;
+  end;
+ end;
+
+ // Check for RotationAngle
+ if ArgumentIndex<aCountArguments then begin
+  RotationAngle:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+  inc(ArgumentIndex);
+ end else begin
+  RotationAngle:=0.0;
+ end;
+
+ // Check for TextureArrayLayer
+ if ArgumentIndex<aCountArguments then begin
+  TextureArrayLayer:=trunc(POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]));
+  inc(ArgumentIndex);
+ end else begin
+  TextureArrayLayer:=0;
+ end;
+
+ Canvas.DrawTexturedRectangle(Texture,Center,Bounds,RotationAngle,TextureArrayLayer);
+
+ result:=aThis;
+
+end;
+
+function POCACanvasFunctionDRAWSPRITE(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var ArgumentIndex:TPOCAInt32;
+    Canvas:TpvCanvas;
+    Sprite:TpvSprite;
+    SrcLeftTop:TpvVector2;
+    SrcWidthHeight:TpvVector2;
+    DestLeftTop:TpvVector2;
+    DestWidthHeight:TpvVector2;
+begin
+
+ if POCAGhostGetType(aThis)<>@POCACanvasGhost then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas:=TpvCanvas(POCAGhostFastGetPointer(aThis));
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas is null');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ ArgumentIndex:=0;
+ 
+ // Check for Sprite
+ if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCASpriteGhostPointer) then begin
+  Sprite:=TpvSprite(POCAGhostFastGetPointer(aArguments^[0]));
+  inc(ArgumentIndex);
+ end else begin
+  Sprite:=nil;
+ end;
+
+ // Check for SrcLeftTop
+ if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
+  SrcLeftTop:=POCAGetVector2Value(aArguments^[ArgumentIndex]);
+  inc(ArgumentIndex);
+ end else begin
+  if ArgumentIndex<aCountArguments then begin
+   SrcLeftTop.x:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   SrcLeftTop.x:=0.0;
+  end;
+  if ArgumentIndex<aCountArguments then begin
+   SrcLeftTop.y:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   SrcLeftTop.y:=0.0;
+  end;
+ end;
+
+ // Check for SrcWidthHeight
+ if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
+  SrcWidthHeight:=POCAGetVector2Value(aArguments^[ArgumentIndex]);
+  inc(ArgumentIndex);
+ end else begin
+  if ArgumentIndex<aCountArguments then begin
+   SrcWidthHeight.x:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   SrcWidthHeight.x:=0.0;
+  end;
+  if ArgumentIndex<aCountArguments then begin
+   SrcWidthHeight.y:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   SrcWidthHeight.y:=0.0;
+  end;
+ end;
+
+ // Check for DestLeftTop
+ if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
+  DestLeftTop:=POCAGetVector2Value(aArguments^[ArgumentIndex]);
+  inc(ArgumentIndex);
+ end else begin
+  if ArgumentIndex<aCountArguments then begin
+   DestLeftTop.x:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   DestLeftTop.x:=0.0;
+  end;
+  if ArgumentIndex<aCountArguments then begin
+   DestLeftTop.y:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   DestLeftTop.y:=0.0;
+  end;
+ end;
+
+ // Check for DestWidthHeight
+ if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
+  DestWidthHeight:=POCAGetVector2Value(aArguments^[ArgumentIndex]);
+  inc(ArgumentIndex);
+ end else begin
+  if ArgumentIndex<aCountArguments then begin
+   DestWidthHeight.x:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   DestWidthHeight.x:=0.0;
+  end;
+  if ArgumentIndex<aCountArguments then begin
+   DestWidthHeight.y:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   DestWidthHeight.y:=0.0;
+  end;
+ end;
+
+ Canvas.DrawSprite(Sprite,TpvRect.CreateRelative(SrcLeftTop,SrcWidthHeight),TpvRect.CreateRelative(DestLeftTop,DestWidthHeight));
+
+ result:=aThis;
+
+end;
+
+function POCACanvasFunctionDRAWSPRITEORIGINROTATION(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var ArgumentIndex:TPOCAInt32;
+    Canvas:TpvCanvas;
+    Sprite:TpvSprite;
+    SrcLeftTop:TpvVector2;
+    SrcWidthHeight:TpvVector2;
+    DestLeftTop:TpvVector2;
+    DestWidthHeight:TpvVector2;
+    Origin:TpvVector2;
+    RotationAngle:TpvFloat;
+begin
+
+ if POCAGhostGetType(aThis)<>@POCACanvasGhost then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas:=TpvCanvas(POCAGhostFastGetPointer(aThis));
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas is null');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ ArgumentIndex:=0;
+ 
+ // Check for Sprite
+ if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCASpriteGhostPointer) then begin
+  Sprite:=TpvSprite(POCAGhostFastGetPointer(aArguments^[0]));
+  inc(ArgumentIndex);
+ end else begin
+  Sprite:=nil;
+ end;
+
+ // Check for SrcLeftTop
+ if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
+  SrcLeftTop:=POCAGetVector2Value(aArguments^[ArgumentIndex]);
+  inc(ArgumentIndex);
+ end else begin
+  if ArgumentIndex<aCountArguments then begin
+   SrcLeftTop.x:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   SrcLeftTop.x:=0.0;
+  end;
+  if ArgumentIndex<aCountArguments then begin
+   SrcLeftTop.y:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   SrcLeftTop.y:=0.0;
+  end;
+ end;
+
+ // Check for SrcWidthHeight
+ if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
+  SrcWidthHeight:=POCAGetVector2Value(aArguments^[ArgumentIndex]);
+  inc(ArgumentIndex);
+ end else begin
+  if ArgumentIndex<aCountArguments then begin
+   SrcWidthHeight.x:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   SrcWidthHeight.x:=0.0;
+  end;
+  if ArgumentIndex<aCountArguments then begin
+   SrcWidthHeight.y:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   SrcWidthHeight.y:=0.0;
+  end;
+ end;
+
+ // Check for DestLeftTop
+ if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
+  DestLeftTop:=POCAGetVector2Value(aArguments^[ArgumentIndex]);
+  inc(ArgumentIndex);
+ end else begin
+  if ArgumentIndex<aCountArguments then begin
+   DestLeftTop.x:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   DestLeftTop.x:=0.0;
+  end;
+  if ArgumentIndex<aCountArguments then begin
+   DestLeftTop.y:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   DestLeftTop.y:=0.0;
+  end;
+ end;
+
+ // Check for DestWidthHeight
+ if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
+  DestWidthHeight:=POCAGetVector2Value(aArguments^[ArgumentIndex]);
+  inc(ArgumentIndex);
+ end else begin
+  if ArgumentIndex<aCountArguments then begin
+   DestWidthHeight.x:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   DestWidthHeight.x:=0.0;
+  end;
+  if ArgumentIndex<aCountArguments then begin
+   DestWidthHeight.y:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   DestWidthHeight.y:=0.0;
+  end;
+ end;
+
+ // Check for Origin
+ if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
+  Origin:=POCAGetVector2Value(aArguments^[ArgumentIndex]);
+  inc(ArgumentIndex);
+ end else begin
+  if ArgumentIndex<aCountArguments then begin
+   Origin.x:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   Origin.x:=0.0;
+  end;
+  if ArgumentIndex<aCountArguments then begin
+   Origin.y:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   Origin.y:=0.0;
+  end;
+ end;
+
+ // Check for RotationAngle
+ if ArgumentIndex<aCountArguments then begin
+  RotationAngle:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+  inc(ArgumentIndex);
+ end else begin
+  RotationAngle:=0.0;
+ end;
+
+ Canvas.DrawSprite(Sprite,TpvRect.CreateRelative(SrcLeftTop,SrcWidthHeight),TpvRect.CreateRelative(DestLeftTop,DestWidthHeight),Origin,RotationAngle);
+
+ result:=aThis;
+
+end;
+
+function POCACanvasFunctionDRAWSPRITEPOSITION(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var ArgumentIndex:TPOCAInt32;
+    Canvas:TpvCanvas;
+    Sprite:TpvSprite;
+    Position:TpvVector2;
+begin
+
+ if POCAGhostGetType(aThis)<>@POCACanvasGhost then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas:=TpvCanvas(POCAGhostFastGetPointer(aThis));
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas is null');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ ArgumentIndex:=0;
+ 
+ // Check for Sprite
+ if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCASpriteGhostPointer) then begin
+  Sprite:=TpvSprite(POCAGhostFastGetPointer(aArguments^[0]));
+  inc(ArgumentIndex);
+ end else begin
+  Sprite:=nil;
+ end;
+
+ // Check for Position
+ if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
+  Position:=POCAGetVector2Value(aArguments^[ArgumentIndex]);
+  inc(ArgumentIndex);
+ end else begin
+  if ArgumentIndex<aCountArguments then begin
+   Position.x:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   Position.x:=0.0;
+  end;
+  if ArgumentIndex<aCountArguments then begin
+   Position.y:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   Position.y:=0.0;
+  end;
+ end;
+
+ Canvas.DrawSprite(Sprite,Position);
+
+ result:=aThis;
+
+end;
+
+function POCACanvasFunctionDRAWTEXT(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var ArgumentIndex:TPOCAInt32;
+    Canvas:TpvCanvas;
+    Text:TpvUTF8String;
+    Position:TpvVector2;
+begin
+
+ if POCAGhostGetType(aThis)<>@POCACanvasGhost then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas:=TpvCanvas(POCAGhostFastGetPointer(aThis));
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas is null');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ ArgumentIndex:=0;
+ 
+ // Check for Text
+ if ArgumentIndex<aCountArguments then begin
+  Text:=POCAGetStringValue(aContext,aArguments^[0]);
+  inc(ArgumentIndex);
+ end else begin
+  Text:='';
+ end;
+
+ // Check for Position
+ if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
+  Position:=POCAGetVector2Value(aArguments^[ArgumentIndex]);
+  inc(ArgumentIndex);
+ end else begin
+  if ArgumentIndex<aCountArguments then begin
+   Position.x:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   Position.x:=0.0;
+  end;
+  if ArgumentIndex<aCountArguments then begin
+   Position.y:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   Position.y:=0.0;
+  end;
+ end;
+
+ Canvas.DrawText(Text,Position);
+
+ result:=aThis;
+
+end;
+
+function POCACanvasFunctionDRAWTEXTCODEPOINT(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var ArgumentIndex:TPOCAInt32;
+    Canvas:TpvCanvas;
+    TextCodePoint:TpvUInt32;
+    Position:TpvVector2;
+begin
+
+ if POCAGhostGetType(aThis)<>@POCACanvasGhost then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas:=TpvCanvas(POCAGhostFastGetPointer(aThis));
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas is null');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ ArgumentIndex:=0;
+ 
+ // Check for TextCodePoint
+ if ArgumentIndex<aCountArguments then begin
+  TextCodePoint:=trunc(POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]));
+  inc(ArgumentIndex);
+ end else begin
+  TextCodePoint:=0;
+ end;
+
+ // Check for Position
+ if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
+  Position:=POCAGetVector2Value(aArguments^[ArgumentIndex]);
+  inc(ArgumentIndex);
+ end else begin
+  if ArgumentIndex<aCountArguments then begin
+   Position.x:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   Position.x:=0.0;
+  end;
+  if ArgumentIndex<aCountArguments then begin
+   Position.y:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   Position.y:=0.0;
+  end;
+ end;
+
+ Canvas.DrawTextCodePoint(TextCodePoint,Position);
+
+ result:=aThis;
+
+end;
+
+function POCACanvasFunctionTEXTWIDTH(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var ArgumentIndex:TPOCAInt32;
+    Canvas:TpvCanvas;
+    Text:TpvUTF8String;
+begin
+
+ if POCAGhostGetType(aThis)<>@POCACanvasGhost then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas:=TpvCanvas(POCAGhostFastGetPointer(aThis));
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas is null');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ ArgumentIndex:=0;
+ 
+ // Check for Text
+ if ArgumentIndex<aCountArguments then begin
+  Text:=POCAGetStringValue(aContext,aArguments^[ArgumentIndex]);
+  inc(ArgumentIndex);
+ end else begin
+  Text:='';
+ end;
+
+ result.Num:=Canvas.TextWidth(Text);
+
+end;
+
+function POCACanvasFunctionTEXTHEIGHT(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var ArgumentIndex:TPOCAInt32;
+    Canvas:TpvCanvas;
+    Text:TpvUTF8String;
+begin
+
+ if POCAGhostGetType(aThis)<>@POCACanvasGhost then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas:=TpvCanvas(POCAGhostFastGetPointer(aThis));
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas is null');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ ArgumentIndex:=0;
+ 
+ // Check for Text
+ if ArgumentIndex<aCountArguments then begin
+  Text:=POCAGetStringValue(aContext,aArguments^[ArgumentIndex]);
+  inc(ArgumentIndex);
+ end else begin
+  Text:='';
+ end;
+
+ result.Num:=Canvas.TextHeight(Text);
+
+end;
+
+function POCACanvasFunctionTEXTSIZE(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var ArgumentIndex:TPOCAInt32;
+    Canvas:TpvCanvas;
+    Text:TpvUTF8String;
+    WidthHeight:TpvVector2;
+begin
+
+ if POCAGhostGetType(aThis)<>@POCACanvasGhost then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas:=TpvCanvas(POCAGhostFastGetPointer(aThis));
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas is null');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ ArgumentIndex:=0;
+ 
+ // Check for Text
+ if ArgumentIndex<aCountArguments then begin
+  Text:=POCAGetStringValue(aContext,aArguments^[ArgumentIndex]);
+  inc(ArgumentIndex);
+ end else begin
+  Text:='';
+ end;
+
+ WidthHeight:=Canvas.TextSize(Text);
+
+ result:=POCANewVector2(aContext,WidthHeight);
+
+end;
+
+function POCACanvasFunctionTEXTROWHEIGHT(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var ArgumentIndex:TPOCAInt32;
+    Canvas:TpvCanvas;
+    Percent:TpvDouble;
+begin
+
+ if POCAGhostGetType(aThis)<>@POCACanvasGhost then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas:=TpvCanvas(POCAGhostFastGetPointer(aThis));
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas is null');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ ArgumentIndex:=0;
+ 
+ // Check for Percent
+ if ArgumentIndex<aCountArguments then begin
+  Percent:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+  inc(ArgumentIndex);
+ end else begin
+  Percent:=0.0;
+ end;
+
+ result.Num:=Canvas.TextRowHeight(Percent);
+
+end;
+
+function POCACanvasFunctionBEGINPATH(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Canvas:TpvCanvas;
+begin
+
+ if POCAGhostGetType(aThis)<>@POCACanvasGhost then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas:=TpvCanvas(POCAGhostFastGetPointer(aThis));
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas is null');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas.BeginPath;
+
+ result:=aThis;
+
+end;
+
+function POCACanvasFunctionMOVETO(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var ArgumentIndex:TPOCAInt32;
+    Canvas:TpvCanvas;
+    Position:TpvVector2;
+begin
+
+ if POCAGhostGetType(aThis)<>@POCACanvasGhost then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas:=TpvCanvas(POCAGhostFastGetPointer(aThis));
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas is null');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ ArgumentIndex:=0;
+ 
+ // Check for Position
+ if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
+  Position:=POCAGetVector2Value(aArguments^[ArgumentIndex]);
+  inc(ArgumentIndex);
+ end else begin
+  if ArgumentIndex<aCountArguments then begin
+   Position.x:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   Position.x:=0.0;
+  end;
+  if ArgumentIndex<aCountArguments then begin
+   Position.y:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   Position.y:=0.0;
+  end;
+ end;
+
+ Canvas.MoveTo(Position);
+
+ result:=aThis;
+
+end;
+
+function POCACanvasFunctionLINETO(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var ArgumentIndex:TPOCAInt32;
+    Canvas:TpvCanvas;
+    Position:TpvVector2;
+begin
+
+ if POCAGhostGetType(aThis)<>@POCACanvasGhost then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas:=TpvCanvas(POCAGhostFastGetPointer(aThis));
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas is null');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ ArgumentIndex:=0;
+ 
+ // Check for Position
+ if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
+  Position:=POCAGetVector2Value(aArguments^[ArgumentIndex]);
+  inc(ArgumentIndex);
+ end else begin
+  if ArgumentIndex<aCountArguments then begin
+   Position.x:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   Position.x:=0.0;
+  end;
+  if ArgumentIndex<aCountArguments then begin
+   Position.y:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   Position.y:=0.0;
+  end;
+ end;
+
+ Canvas.LineTo(Position);
+
+ result:=aThis;
+
+end;
+
+function POCACanvasFunctionQUADRATICCURVETO(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var ArgumentIndex:TPOCAInt32;
+    Canvas:TpvCanvas;
+    ControlPoint:TpvVector2;
+    Position:TpvVector2;
+begin
+
+ if POCAGhostGetType(aThis)<>@POCACanvasGhost then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas:=TpvCanvas(POCAGhostFastGetPointer(aThis));
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas is null');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ ArgumentIndex:=0;
+ 
+ // Check for ControlPoint
+ if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
+  ControlPoint:=POCAGetVector2Value(aArguments^[ArgumentIndex]);
+  inc(ArgumentIndex);
+ end else begin
+  if ArgumentIndex<aCountArguments then begin
+   ControlPoint.x:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   ControlPoint.x:=0.0;
+  end;
+  if ArgumentIndex<aCountArguments then begin
+   ControlPoint.y:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   ControlPoint.y:=0.0;
+  end;
+ end;
+
+ // Check for Position
+ if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
+  Position:=POCAGetVector2Value(aArguments^[ArgumentIndex]);
+  inc(ArgumentIndex);
+ end else begin
+  if ArgumentIndex<aCountArguments then begin
+   Position.x:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   Position.x:=0.0;
+  end;
+  if ArgumentIndex<aCountArguments then begin
+   Position.y:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   Position.y:=0.0;
+  end;
+ end;
+
+ Canvas.QuadraticCurveTo(ControlPoint,Position);
+
+ result:=aThis;
+
+end;
+
+function POCACanvasFunctionCUBICCURVETO(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var ArgumentIndex:TPOCAInt32;
+    Canvas:TpvCanvas;
+    ControlPoint1:TpvVector2;
+    ControlPoint2:TpvVector2;
+    Position:TpvVector2;
+begin
+
+ if POCAGhostGetType(aThis)<>@POCACanvasGhost then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas:=TpvCanvas(POCAGhostFastGetPointer(aThis));
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas is null');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ ArgumentIndex:=0;
+ 
+ // Check for ControlPoint1
+ if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
+  ControlPoint1:=POCAGetVector2Value(aArguments^[ArgumentIndex]);
+  inc(ArgumentIndex);
+ end else begin
+  if ArgumentIndex<aCountArguments then begin
+   ControlPoint1.x:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   ControlPoint1.x:=0.0;
+  end;
+  if ArgumentIndex<aCountArguments then begin
+   ControlPoint1.y:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   ControlPoint1.y:=0.0;
+  end;
+ end;
+
+ // Check for ControlPoint2
+ if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
+  ControlPoint2:=POCAGetVector2Value(aArguments^[ArgumentIndex]);
+  inc(ArgumentIndex);
+ end else begin
+  if ArgumentIndex<aCountArguments then begin
+   ControlPoint2.x:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   ControlPoint2.x:=0.0;
+  end;
+  if ArgumentIndex<aCountArguments then begin
+   ControlPoint2.y:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   ControlPoint2.y:=0.0;
+  end;
+ end;
+
+ // Check for Position
+ if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
+  Position:=POCAGetVector2Value(aArguments^[ArgumentIndex]);
+  inc(ArgumentIndex);
+ end else begin
+  if ArgumentIndex<aCountArguments then begin
+   Position.x:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   Position.x:=0.0;
+  end;
+  if ArgumentIndex<aCountArguments then begin
+   Position.y:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   Position.y:=0.0;
+  end;
+ end;
+
+ Canvas.CubicCurveTo(ControlPoint1,ControlPoint2,Position);
+
+ result:=aThis;
+
+end;
+
+function POCACanvasFunctionARC(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var ArgumentIndex:TPOCAInt32;
+    Canvas:TpvCanvas;
+    Center:TpvVector2;
+    Radius:TpvDouble;
+    StartAngle:TpvDouble;
+    EndAngle:TpvDouble;
+    Clockwise:Boolean;
+begin
+
+ if POCAGhostGetType(aThis)<>@POCACanvasGhost then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas:=TpvCanvas(POCAGhostFastGetPointer(aThis));
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas is null');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ ArgumentIndex:=0;
+ 
+ // Check for Center
+ if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
+  Center:=POCAGetVector2Value(aArguments^[ArgumentIndex]);
+  inc(ArgumentIndex);
+ end else begin
+  if ArgumentIndex<aCountArguments then begin
+   Center.x:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   Center.x:=0.0;
+  end;
+  if ArgumentIndex<aCountArguments then begin
+   Center.y:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   Center.y:=0.0;
+  end;
+ end;
+
+ // Check for Radius
+ if ArgumentIndex<aCountArguments then begin
+  Radius:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+  inc(ArgumentIndex);
+ end else begin
+  Radius:=0.0;
+ end;
+
+ // Check for StartAngle
+ if ArgumentIndex<aCountArguments then begin
+  StartAngle:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+  inc(ArgumentIndex);
+ end else begin
+  StartAngle:=0.0;
+ end;
+
+ // Check for EndAngle
+ if ArgumentIndex<aCountArguments then begin
+  EndAngle:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+  inc(ArgumentIndex);
+ end else begin
+  EndAngle:=0.0;
+ end;
+
+ // Check for Clockwise
+ if ArgumentIndex<aCountArguments then begin
+  Clockwise:=(POCAGetBooleanValue(aContext,aArguments^[ArgumentIndex]));
+ end else begin
+  Clockwise:=false;
+ end;
+
+ Canvas.Arc(Center,Radius,StartAngle,EndAngle,Clockwise);
+
+ result:=aThis;
+
+end;
+
+function POCACanvasFunctionARCTO(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var ArgumentIndex:TPOCAInt32;
+    Canvas:TpvCanvas;
+    Position1:TpvVector2;
+    Position2:TpvVector2;
+    Radius:TpvDouble;
+begin
+
+ if POCAGhostGetType(aThis)<>@POCACanvasGhost then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas:=TpvCanvas(POCAGhostFastGetPointer(aThis));
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas is null');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ ArgumentIndex:=0;
+ 
+ // Check for Position1
+ if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
+  Position1:=POCAGetVector2Value(aArguments^[ArgumentIndex]);
+  inc(ArgumentIndex);
+ end else begin
+  if ArgumentIndex<aCountArguments then begin
+   Position1.x:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   Position1.x:=0.0;
+  end;
+  if ArgumentIndex<aCountArguments then begin
+   Position1.y:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   Position1.y:=0.0;
+  end;
+ end;
+
+ // Check for Position2
+ if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
+  Position2:=POCAGetVector2Value(aArguments^[ArgumentIndex]);
+  inc(ArgumentIndex);
+ end else begin
+  if ArgumentIndex<aCountArguments then begin
+   Position2.x:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   Position2.x:=0.0;
+  end;
+  if ArgumentIndex<aCountArguments then begin
+   Position2.y:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   Position2.y:=0.0;
+  end;
+ end;
+
+ // Check for Radius
+ if ArgumentIndex<aCountArguments then begin
+  Radius:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+  inc(ArgumentIndex);
+ end else begin
+  Radius:=0;
+ end;
+
+ Canvas.ArcTo(Position1,Position2,Radius);
+
+ result:=aThis;
+
+end;
+
+function POCACanvasFunctionELLIPSE(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var ArgumentIndex:TPOCAInt32;
+    Canvas:TpvCanvas;
+    Center:TpvVector2;
+    Radius:TpvVector2;
+begin
+
+ if POCAGhostGetType(aThis)<>@POCACanvasGhost then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas:=TpvCanvas(POCAGhostFastGetPointer(aThis));
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas is null');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ ArgumentIndex:=0;
+ 
+ // Check for Center
+ if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
+  Center:=POCAGetVector2Value(aArguments^[ArgumentIndex]);
+  inc(ArgumentIndex);
+ end else begin
+  if ArgumentIndex<aCountArguments then begin
+   Center.x:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   Center.x:=0.0;
+  end;
+  if ArgumentIndex<aCountArguments then begin
+   Center.y:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   Center.y:=0.0;
+  end;
+ end;
+
+ // Check for Radius
+ if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
+  Radius:=POCAGetVector2Value(aArguments^[ArgumentIndex]);
+  inc(ArgumentIndex);
+ end else begin
+  if ArgumentIndex<aCountArguments then begin
+   Radius.x:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   Radius.x:=0.0;
+  end;
+  if ArgumentIndex<aCountArguments then begin
+   Radius.y:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   Radius.y:=0.0;
+  end;
+ end;
+
+ Canvas.Ellipse(Center,Radius);
+
+ result:=aThis;
+
+end;
+
+function POCACanvasFunctionCIRCLE(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var ArgumentIndex:TPOCAInt32;
+    Canvas:TpvCanvas;
+    Center:TpvVector2;
+    Radius:TpvDouble;
+begin
+
+ if POCAGhostGetType(aThis)<>@POCACanvasGhost then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas:=TpvCanvas(POCAGhostFastGetPointer(aThis));
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas is null');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ ArgumentIndex:=0;
+ 
+ // Check for Center
+ if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
+  Center:=POCAGetVector2Value(aArguments^[ArgumentIndex]);
+  inc(ArgumentIndex);
+ end else begin
+  if ArgumentIndex<aCountArguments then begin
+   Center.x:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   Center.x:=0.0;
+  end;
+  if ArgumentIndex<aCountArguments then begin
+   Center.y:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   Center.y:=0.0;
+  end;
+ end;
+
+ // Check for Radius
+ if ArgumentIndex<aCountArguments then begin
+  Radius:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+  inc(ArgumentIndex);
+ end else begin
+  Radius:=0.0;
+ end;
+
+ Canvas.Circle(Center,Radius);
+
+ result:=aThis;
+
+end;
+
+function POCACanvasFunctionRECTANGLE(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var ArgumentIndex:TPOCAInt32;
+    Canvas:TpvCanvas;
+    LeftTop:TpvVector2;
+    WidthHeight:TpvVector2;
+begin
+
+ if POCAGhostGetType(aThis)<>@POCACanvasGhost then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas:=TpvCanvas(POCAGhostFastGetPointer(aThis));
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas is null');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ ArgumentIndex:=0;
+ 
+ // Check for LeftTop
+ if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
+  LeftTop:=POCAGetVector2Value(aArguments^[ArgumentIndex]);
+  inc(ArgumentIndex);
+ end else begin
+  if ArgumentIndex<aCountArguments then begin
+   LeftTop.x:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   LeftTop.x:=0.0;
+  end;
+  if ArgumentIndex<aCountArguments then begin
+   LeftTop.y:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   LeftTop.y:=0.0;
+  end;
+ end;
+
+ // Check for WidthHeight
+ if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
+  WidthHeight:=POCAGetVector2Value(aArguments^[ArgumentIndex]);
+  inc(ArgumentIndex);
+ end else begin
+  if ArgumentIndex<aCountArguments then begin
+   WidthHeight.x:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   WidthHeight.x:=0.0;
+  end;
+  if ArgumentIndex<aCountArguments then begin
+   WidthHeight.y:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   WidthHeight.y:=0.0;
+  end;
+ end;
+
+ Canvas.Rectangle(TpvRect.CreateRelative(LeftTop,WidthHeight));
+
+ result:=aThis;
+
+end;
+
+function POCACanvasFunctionRECTANGLECENTER(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var ArgumentIndex:TPOCAInt32;
+    Canvas:TpvCanvas;
+    Center:TpvVector2;
+    Bounds:TpvVector2;
+begin
+
+ if POCAGhostGetType(aThis)<>@POCACanvasGhost then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas:=TpvCanvas(POCAGhostFastGetPointer(aThis));
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas is null');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ ArgumentIndex:=0;
+ 
+ // Check for Center
+ if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
+  Center:=POCAGetVector2Value(aArguments^[ArgumentIndex]);
+  inc(ArgumentIndex);
+ end else begin
+  if ArgumentIndex<aCountArguments then begin
+   Center.x:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   Center.x:=0.0;
+  end;
+  if ArgumentIndex<aCountArguments then begin
+   Center.y:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   Center.y:=0.0;
+  end;
+ end;
+
+ // Check for Bounds
+ if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
+  Bounds:=POCAGetVector2Value(aArguments^[ArgumentIndex]);
+  inc(ArgumentIndex);
+ end else begin
+  if ArgumentIndex<aCountArguments then begin
+   Bounds.x:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   Bounds.x:=0.0;
+  end;
+  if ArgumentIndex<aCountArguments then begin
+   Bounds.y:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   Bounds.y:=0.0;
+  end;
+ end;
+
+ Canvas.Rectangle(Center,Bounds);
+
+ result:=aThis;
+
+end;
+
+function POCACanvasFunctionROUNDEDRECTANGLE(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var ArgumentIndex:TPOCAInt32;
+    Canvas:TpvCanvas;
+    LeftTop:TpvVector2;
+    WidthHeight:TpvVector2;
+    Radius:TpvDouble;
+begin
+
+ if POCAGhostGetType(aThis)<>@POCACanvasGhost then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas:=TpvCanvas(POCAGhostFastGetPointer(aThis));
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas is null');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ ArgumentIndex:=0;
+ 
+ // Check for LeftTop
+ if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
+  LeftTop:=POCAGetVector2Value(aArguments^[ArgumentIndex]);
+  inc(ArgumentIndex);
+ end else begin
+  if ArgumentIndex<aCountArguments then begin
+   LeftTop.x:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   LeftTop.x:=0.0;
+  end;
+  if ArgumentIndex<aCountArguments then begin
+   LeftTop.y:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   LeftTop.y:=0.0;
+  end;
+ end;
+
+ // Check for WidthHeight
+ if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
+  WidthHeight:=POCAGetVector2Value(aArguments^[ArgumentIndex]);
+  inc(ArgumentIndex);
+ end else begin
+  if ArgumentIndex<aCountArguments then begin
+   WidthHeight.x:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   WidthHeight.x:=0.0;
+  end;
+  if ArgumentIndex<aCountArguments then begin
+   WidthHeight.y:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   WidthHeight.y:=0.0;
+  end;
+ end;
+
+ // Check for Radius
+ if ArgumentIndex<aCountArguments then begin
+  Radius:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+  inc(ArgumentIndex);
+ end else begin
+  Radius:=0.0;
+ end;
+
+ Canvas.RoundedRectangle(TpvRect.CreateRelative(LeftTop,WidthHeight),Radius);
+
+ result:=aThis;
+
+end;
+
+function POCACanvasFunctionROUNDEDRECTANGLECENTER(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var ArgumentIndex:TPOCAInt32;
+    Canvas:TpvCanvas;
+    Center:TpvVector2;
+    Bounds:TpvVector2;
+    Radius:TpvDouble;
+begin
+
+ if POCAGhostGetType(aThis)<>@POCACanvasGhost then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas:=TpvCanvas(POCAGhostFastGetPointer(aThis));
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas is null');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ ArgumentIndex:=0;
+ 
+ // Check for Center
+ if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
+  Center:=POCAGetVector2Value(aArguments^[ArgumentIndex]);
+  inc(ArgumentIndex);
+ end else begin
+  if ArgumentIndex<aCountArguments then begin
+   Center.x:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   Center.x:=0.0;
+  end;
+  if ArgumentIndex<aCountArguments then begin
+   Center.y:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   Center.y:=0.0;
+  end;
+ end;
+
+ // Check for Bounds
+ if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
+  Bounds:=POCAGetVector2Value(aArguments^[ArgumentIndex]);
+  inc(ArgumentIndex);
+ end else begin
+  if ArgumentIndex<aCountArguments then begin
+   Bounds.x:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   Bounds.x:=0.0;
+  end;
+  if ArgumentIndex<aCountArguments then begin
+   Bounds.y:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   Bounds.y:=0.0;
+  end;
+ end;
+
+ // Check for Radius
+ if ArgumentIndex<aCountArguments then begin
+  Radius:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+  inc(ArgumentIndex);
+ end else begin
+  Radius:=0.0;
+ end;
+
+ Canvas.RoundedRectangle(Center,Bounds,Radius);
+
+ result:=aThis;
+
+end;
+
+function POCACanvasFunctionCLOSEPATH(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Canvas:TpvCanvas;
+begin
+
+ if POCAGhostGetType(aThis)<>@POCACanvasGhost then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas:=TpvCanvas(POCAGhostFastGetPointer(aThis));
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas is null');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas.ClosePath;
+
+ result:=aThis;
+
+end;
+
+function POCACanvasFunctionENDPATH(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Canvas:TpvCanvas;
+begin
+
+ if POCAGhostGetType(aThis)<>@POCACanvasGhost then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas:=TpvCanvas(POCAGhostFastGetPointer(aThis));
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas is null');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas.EndPath;
+
+ result:=aThis;
+
+end;
+
+function POCACanvasFunctionSTROKE(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Canvas:TpvCanvas;
+begin
+
+ if POCAGhostGetType(aThis)<>@POCACanvasGhost then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas:=TpvCanvas(POCAGhostFastGetPointer(aThis));
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas is null');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas.Stroke;
+
+ result:=aThis;
+
+end;
+
+function POCACanvasFunctionFILL(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Canvas:TpvCanvas;
+begin
+
+ if POCAGhostGetType(aThis)<>@POCACanvasGhost then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas:=TpvCanvas(POCAGhostFastGetPointer(aThis));
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas is null');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas.Fill;
+
+ result:=aThis;
+
+end;
+
+function POCACanvasFunctionPUSH(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Canvas:TpvCanvas;
+begin
+
+ if POCAGhostGetType(aThis)<>@POCACanvasGhost then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas:=TpvCanvas(POCAGhostFastGetPointer(aThis));
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas is null');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas.Push;
+
+ result:=aThis;
+
+end;
+
+function POCACanvasFunctionPOP(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Canvas:TpvCanvas;
+begin
+
+ if POCAGhostGetType(aThis)<>@POCACanvasGhost then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas:=TpvCanvas(POCAGhostFastGetPointer(aThis));
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas is null');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas.Pop;
+
+ result:=aThis;
+
+end;
+
+function POCACanvasFunctionFLUSH(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Canvas:TpvCanvas;
+begin
+
+ if POCAGhostGetType(aThis)<>@POCACanvasGhost then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas:=TpvCanvas(POCAGhostFastGetPointer(aThis));
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas is null');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas.Flush;
+
+ result:=aThis;
+
+end;
+
+function POCACanvasFunctionGETCLIPRECT(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Canvas:TpvCanvas;
+    LeftTop:TpvVector2;
+    WidthHeight:TpvVector2;
+begin    
+
+ if POCAGhostGetType(aThis)<>@POCACanvasGhost then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas:=TpvCanvas(POCAGhostFastGetPointer(aThis));
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas is null');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+ 
+ LeftTop:=Canvas.ClipRect.LeftTop;
+ WidthHeight:=Canvas.ClipRect.RightBottom-LeftTop;
+ 
+ result:=POCANewHash(aContext);
+ POCAHashSetString(aContext,result,'leftTop',POCANewVector2(aContext,LeftTop));
+ POCAHashSetString(aContext,result,'widthHeight',POCANewVector2(aContext,WidthHeight));
+  
+end;
+
+function POCACanvasFunctionSETCLIPRECT(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var ArgumentIndex:TPOCAInt32;
+    Canvas:TpvCanvas;
+    LeftTop:TpvVector2;
+    WidthHeight:TpvVector2;
+begin
+
+ if POCAGhostGetType(aThis)<>@POCACanvasGhost then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas:=TpvCanvas(POCAGhostFastGetPointer(aThis));
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas is null');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ ArgumentIndex:=0;
+ 
+ // Check for LeftTop
+ if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
+  LeftTop:=POCAGetVector2Value(aArguments^[ArgumentIndex]);
+  inc(ArgumentIndex);
+ end else begin
+  if ArgumentIndex<aCountArguments then begin
+   LeftTop.x:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   LeftTop.x:=0.0;
+  end;
+  if ArgumentIndex<aCountArguments then begin
+   LeftTop.y:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   LeftTop.y:=0.0;
+  end;
+ end;
+
+ // Check for WidthHeight
+ if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
+  WidthHeight:=POCAGetVector2Value(aArguments^[ArgumentIndex]);
+  inc(ArgumentIndex);
+ end else begin
+  if ArgumentIndex<aCountArguments then begin
+   WidthHeight.x:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   WidthHeight.x:=0.0;
+  end;
+  if ArgumentIndex<aCountArguments then begin
+   WidthHeight.y:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   WidthHeight.y:=0.0;
+  end;
+ end;
+
+ Canvas.ClipRect:=TpvRect.CreateRelative(LeftTop,WidthHeight);
+
+ result:=aThis;
+
+end;
+
+function POCACanvasFunctionSETSCISSOR(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var ArgumentIndex:TPOCAInt32;
+    Canvas:TpvCanvas;
+    Left,Top,Width,Height:TpvInt32;
+begin
+
+ if POCAGhostGetType(aThis)<>@POCACanvasGhost then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas:=TpvCanvas(POCAGhostFastGetPointer(aThis));
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas is null');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ ArgumentIndex:=0;
+ 
+ // Check for Left
+ if ArgumentIndex<aCountArguments then begin
+  Left:=trunc(POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]));
+  inc(ArgumentIndex);
+ end else begin
+  Left:=0;
+ end;
+
+ // Check for Top
+ if ArgumentIndex<aCountArguments then begin
+  Top:=trunc(POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]));
+  inc(ArgumentIndex);
+ end else begin
+  Top:=0;
+ end;
+
+ // Check for Width
+ if ArgumentIndex<aCountArguments then begin
+  Width:=trunc(POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]));
+  inc(ArgumentIndex);
+ end else begin
+  Width:=0;
+ end;
+
+ // Check for Height
+ if ArgumentIndex<aCountArguments then begin
+  Height:=trunc(POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]));
+  inc(ArgumentIndex);
+ end else begin
+  Height:=0;
+ end;
+
+ Canvas.SetScissor(Left,Top,Width,Height);
+
+ result:=aThis;
+
+end;
+
+function POCACanvasFunctionGETBLENDINGMODE(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Canvas:TpvCanvas;
+    BlendingMode:TpvCanvasBlendingMode;
+begin
+
+ if POCAGhostGetType(aThis)<>@POCACanvasGhost then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas:=TpvCanvas(POCAGhostFastGetPointer(aThis));
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas is null');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ BlendingMode:=Canvas.BlendingMode;
+
+ result.Num:=TpvInt32(BlendingMode);
+
+end;
+
+function POCACanvasFunctionSETBLENDINGMODE(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var ArgumentIndex:TPOCAInt32;
+    Canvas:TpvCanvas;
+    BlendingMode:TpvCanvasBlendingMode;
+begin
+
+ if POCAGhostGetType(aThis)<>@POCACanvasGhost then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas:=TpvCanvas(POCAGhostFastGetPointer(aThis));
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas is null');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ ArgumentIndex:=0;
+ 
+ // Check for BlendingMode
+ if ArgumentIndex<aCountArguments then begin
+  BlendingMode:=TpvCanvasBlendingMode(trunc(POCAGetNumberValue(aContext,aArguments^[ArgumentIndex])));
+  inc(ArgumentIndex);
+ end else begin
+  BlendingMode:=TpvCanvasBlendingMode.None;
+ end;
+
+ Canvas.BlendingMode:=BlendingMode;
+
+ result:=aThis;
+
+end;
+
+function POCACanvasFunctionGETLINECAP(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Canvas:TpvCanvas;
+    LineCap:TpvCanvasLineCap;
+begin
+
+ if POCAGhostGetType(aThis)<>@POCACanvasGhost then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas:=TpvCanvas(POCAGhostFastGetPointer(aThis));
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas is null');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ LineCap:=Canvas.LineCap;
+
+ result.Num:=TpvInt32(LineCap);
+
+end;
+
+function POCACanvasFunctionSETLINECAP(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var ArgumentIndex:TPOCAInt32;
+    Canvas:TpvCanvas;
+    LineCap:TpvCanvasLineCap;
+begin
+
+ if POCAGhostGetType(aThis)<>@POCACanvasGhost then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas:=TpvCanvas(POCAGhostFastGetPointer(aThis));
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas is null');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ ArgumentIndex:=0;
+ 
+ // Check for LineCap
+ if ArgumentIndex<aCountArguments then begin
+  LineCap:=TpvCanvasLineCap(trunc(POCAGetNumberValue(aContext,aArguments^[ArgumentIndex])));
+  inc(ArgumentIndex);
+ end else begin
+  LineCap:=TpvCanvasLineCap.Butt;
+ end;
+
+ Canvas.LineCap:=LineCap;
+
+ result:=aThis;
+
+end;
+
+function POCACanvasFunctionGETLINEJOIN(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Canvas:TpvCanvas;
+    LineJoin:TpvCanvasLineJoin;
+begin
+
+ if POCAGhostGetType(aThis)<>@POCACanvasGhost then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas:=TpvCanvas(POCAGhostFastGetPointer(aThis));
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas is null');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ LineJoin:=Canvas.LineJoin;
+
+ result.Num:=TpvInt32(LineJoin);
+
+end;
+
+function POCACanvasFunctionSETLINEJOIN(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var ArgumentIndex:TPOCAInt32;
+    Canvas:TpvCanvas;
+    LineJoin:TpvCanvasLineJoin;
+begin
+
+ if POCAGhostGetType(aThis)<>@POCACanvasGhost then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas:=TpvCanvas(POCAGhostFastGetPointer(aThis));
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas is null');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ ArgumentIndex:=0;
+ 
+ // Check for LineJoin
+ if ArgumentIndex<aCountArguments then begin
+  LineJoin:=TpvCanvasLineJoin(trunc(POCAGetNumberValue(aContext,aArguments^[ArgumentIndex])));
+  inc(ArgumentIndex);
+ end else begin
+  LineJoin:=TpvCanvasLineJoin.Miter;
+ end;
+
+ Canvas.LineJoin:=LineJoin;
+
+ result:=aThis;
+
+end;
+
+function POCACanvasFunctionGETLINEWIDTH(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Canvas:TpvCanvas;
+    LineWidth:TpvDouble;
+begin
+
+ if POCAGhostGetType(aThis)<>@POCACanvasGhost then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas:=TpvCanvas(POCAGhostFastGetPointer(aThis));
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas is null');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ LineWidth:=Canvas.LineWidth;
+
+ result.Num:=LineWidth;
+
+end;
+
+function POCACanvasFunctionSETLINEWIDTH(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var ArgumentIndex:TPOCAInt32;
+    Canvas:TpvCanvas;
+    LineWidth:TpvDouble;
+begin
+
+ if POCAGhostGetType(aThis)<>@POCACanvasGhost then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas:=TpvCanvas(POCAGhostFastGetPointer(aThis));
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas is null');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ ArgumentIndex:=0;
+ 
+ // Check for LineWidth
+ if ArgumentIndex<aCountArguments then begin
+  LineWidth:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+  inc(ArgumentIndex);
+ end else begin
+  LineWidth:=0.0;
+ end;
+
+ Canvas.LineWidth:=LineWidth;
+
+ result:=aThis;
+
+end;
+
+function POCACanvasFunctionGETMITERLIMIT(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Canvas:TpvCanvas;
+    MiterLimit:TpvDouble;
+begin
+
+ if POCAGhostGetType(aThis)<>@POCACanvasGhost then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas:=TpvCanvas(POCAGhostFastGetPointer(aThis));
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas is null');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ MiterLimit:=Canvas.MiterLimit;
+
+ result.Num:=MiterLimit;
+
+end;
+
+function POCACanvasFunctionSETMITERLIMIT(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var ArgumentIndex:TPOCAInt32;
+    Canvas:TpvCanvas;
+    MiterLimit:TpvDouble;
+begin
+
+ if POCAGhostGetType(aThis)<>@POCACanvasGhost then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas:=TpvCanvas(POCAGhostFastGetPointer(aThis));
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas is null');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ ArgumentIndex:=0;
+ 
+ // Check for MiterLimit
+ if ArgumentIndex<aCountArguments then begin
+  MiterLimit:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+  inc(ArgumentIndex);
+ end else begin
+  MiterLimit:=0.0;
+ end;
+
+ Canvas.MiterLimit:=MiterLimit;
+
+ result:=aThis;
+
+end;
+
+function POCACanvasFunctionGETZPOSITION(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Canvas:TpvCanvas;
+    ZPosition:TpvDouble;
+begin
+
+ if POCAGhostGetType(aThis)<>@POCACanvasGhost then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas:=TpvCanvas(POCAGhostFastGetPointer(aThis));
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas is null');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ ZPosition:=Canvas.ZPosition;
+
+ result.Num:=ZPosition;
+
+end;
+
+function POCACanvasFunctionSETZPOSITION(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var ArgumentIndex:TPOCAInt32;
+    Canvas:TpvCanvas;
+    ZPosition:TpvDouble;
+begin
+
+ if POCAGhostGetType(aThis)<>@POCACanvasGhost then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas:=TpvCanvas(POCAGhostFastGetPointer(aThis));
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas is null');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ ArgumentIndex:=0;
+ 
+ // Check for ZPosition
+ if ArgumentIndex<aCountArguments then begin
+  ZPosition:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+  inc(ArgumentIndex);
+ end else begin
+  ZPosition:=0.0;
+ end;
+
+ Canvas.ZPosition:=ZPosition;
+
+ result:=aThis;
+
+end;
+
+function POCACanvasFunctionGETTEXTHORIZONTALALIGNMENT(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Canvas:TpvCanvas;
+    TextHorizontalAlignment:TpvCanvasTextHorizontalAlignment;
+begin
+
+ if POCAGhostGetType(aThis)<>@POCACanvasGhost then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas:=TpvCanvas(POCAGhostFastGetPointer(aThis));
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas is null');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ TextHorizontalAlignment:=Canvas.TextHorizontalAlignment;
+
+ result.Num:=TpvInt32(TextHorizontalAlignment);
+
+end;
+
+function POCACanvasFunctionSETTEXTHORIZONTALALIGNMENT(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var ArgumentIndex:TPOCAInt32;
+    Canvas:TpvCanvas;
+    TextHorizontalAlignment:TpvCanvasTextHorizontalAlignment;
+begin
+
+ if POCAGhostGetType(aThis)<>@POCACanvasGhost then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas:=TpvCanvas(POCAGhostFastGetPointer(aThis));
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas is null');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ ArgumentIndex:=0;
+ 
+ // Check for TextHorizontalAlignment
+ if ArgumentIndex<aCountArguments then begin
+  TextHorizontalAlignment:=TpvCanvasTextHorizontalAlignment(trunc(POCAGetNumberValue(aContext,aArguments^[ArgumentIndex])));
+  inc(ArgumentIndex);
+ end else begin
+  TextHorizontalAlignment:=TpvCanvasTextHorizontalAlignment.Leading;
+ end;
+
+ Canvas.TextHorizontalAlignment:=TextHorizontalAlignment;
+
+ result:=aThis;
+
+end;
+
+function POCACanvasFunctionGETTEXTVERTICALALIGNMENT(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Canvas:TpvCanvas;
+    TextVerticalAlignment:TpvCanvasTextVerticalAlignment;
+begin
+
+ if POCAGhostGetType(aThis)<>@POCACanvasGhost then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas:=TpvCanvas(POCAGhostFastGetPointer(aThis));
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas is null');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ TextVerticalAlignment:=Canvas.TextVerticalAlignment;
+
+ result.Num:=TpvInt32(TextVerticalAlignment);
+
+end;
+
+function POCACanvasFunctionSETTEXTVERTICALALIGNMENT(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var ArgumentIndex:TPOCAInt32;
+    Canvas:TpvCanvas;
+    TextVerticalAlignment:TpvCanvasTextVerticalAlignment;
+begin
+
+ if POCAGhostGetType(aThis)<>@POCACanvasGhost then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas:=TpvCanvas(POCAGhostFastGetPointer(aThis));
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas is null');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ ArgumentIndex:=0;
+ 
+ // Check for TextVerticalAlignment
+ if ArgumentIndex<aCountArguments then begin
+  TextVerticalAlignment:=TpvCanvasTextVerticalAlignment(trunc(POCAGetNumberValue(aContext,aArguments^[ArgumentIndex])));
+  inc(ArgumentIndex);
+ end else begin
+  TextVerticalAlignment:=TpvCanvasTextVerticalAlignment.Leading;
+ end;
+
+ Canvas.TextVerticalAlignment:=TextVerticalAlignment;
+
+ result:=aThis;
+
+end;
+
+function POCACanvasFunctionGETFONT(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Canvas:TpvCanvas;
+    Font:TpvFont;
+begin
+
+ if POCAGhostGetType(aThis)<>@POCACanvasGhost then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas:=TpvCanvas(POCAGhostFastGetPointer(aThis));
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas is null');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Font:=Canvas.Font;
+
+ if assigned(Font) then begin
+  result:=POCANewFont(aContext,Font);
+ end else begin
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+ end;
+
+end;
+
+function POCACanvasFunctionSETFONT(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var ArgumentIndex:TPOCAInt32;
+    Canvas:TpvCanvas;
+    Font:TpvFont;
+begin
+
+ if POCAGhostGetType(aThis)<>@POCACanvasGhost then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas:=TpvCanvas(POCAGhostFastGetPointer(aThis));
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas is null');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ ArgumentIndex:=0;
+ 
+ // Check for Font
+ if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAFontGhostPointer) then begin
+  Font:=TpvFont(POCAGhostFastGetPointer(aArguments^[ArgumentIndex]));
+  inc(ArgumentIndex);
+ end else begin
+  Font:=nil;
+ end;
+
+ Canvas.Font:=Font;
+
+ result:=aThis;
+
+end;
+
+function POCACanvasFunctionGETFONTSIZE(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Canvas:TpvCanvas;
+    FontSize:TpvDouble;
+begin
+
+ if POCAGhostGetType(aThis)<>@POCACanvasGhost then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas:=TpvCanvas(POCAGhostFastGetPointer(aThis));
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas is null');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ FontSize:=Canvas.FontSize;
+
+ result.Num:=FontSize;
+
+end; 
+
+function POCACanvasFunctionSETFONTSIZE(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var ArgumentIndex:TPOCAInt32;
+    Canvas:TpvCanvas;
+    FontSize:TpvDouble;
+begin 
+
+ if POCAGhostGetType(aThis)<>@POCACanvasGhost then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas:=TpvCanvas(POCAGhostFastGetPointer(aThis));
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas is null');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ ArgumentIndex:=0;
+ 
+ // Check for FontSize
+ if ArgumentIndex<aCountArguments then begin
+  FontSize:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+  inc(ArgumentIndex);
+ end else begin
+  FontSize:=0.0;
+ end;
+
+ Canvas.FontSize:=FontSize;
+
+ result:=aThis;
+
+end; 
+
+function POCACanvasFunctionGETTEXTURE(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Canvas:TpvCanvas;
+    Texture:TObject;
+begin
+
+ if POCAGhostGetType(aThis)<>@POCACanvasGhost then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas:=TpvCanvas(POCAGhostFastGetPointer(aThis));
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas is null');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Texture:=Canvas.Texture;
+
+ if assigned(Texture) and (Texture is TpvVulkanTexture) then begin
+  result:=POCANewTexture(aContext,TpvVulkanTexture(Texture));
+ end else begin
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+ end;
+
+end;
+
+function POCACanvasFunctionSETTEXTURE(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var ArgumentIndex:TPOCAInt32;
+    Canvas:TpvCanvas;
+    Texture:TpvVulkanTexture;
+begin
+
+ if POCAGhostGetType(aThis)<>@POCACanvasGhost then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas:=TpvCanvas(POCAGhostFastGetPointer(aThis));
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas is null');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ ArgumentIndex:=0;
+ 
+ // Check for Texture
+ if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCATextureGhostPointer) then begin
+  Texture:=TpvVulkanTexture(POCAGhostFastGetPointer(aArguments^[ArgumentIndex]));
+  inc(ArgumentIndex);
+ end else begin
+  Texture:=nil;
+ end;
+
+ Canvas.Texture:=Texture;
+
+ result:=aThis;
+
+end;
+
+function POCACanvasFunctionGETMASKTEXTURE(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Canvas:TpvCanvas;
+    MaskTexture:TObject;
+begin
+
+ if POCAGhostGetType(aThis)<>@POCACanvasGhost then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas:=TpvCanvas(POCAGhostFastGetPointer(aThis));
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas is null');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ MaskTexture:=Canvas.MaskTexture;
+
+ if assigned(MaskTexture) and (MaskTexture is TpvVulkanTexture) then begin
+  result:=POCANewTexture(aContext,TpvVulkanTexture(MaskTexture));
+ end else begin
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+ end;
+
+end; 
+
+function POCACanvasFunctionSETMASKTEXTURE(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var ArgumentIndex:TPOCAInt32;
+    Canvas:TpvCanvas;
+    MaskTexture:TpvVulkanTexture;
+begin
+
+ if POCAGhostGetType(aThis)<>@POCACanvasGhost then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas:=TpvCanvas(POCAGhostFastGetPointer(aThis));
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas is null');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ ArgumentIndex:=0;
+ 
+ // Check for MaskTexture
+ if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCATextureGhostPointer) then begin
+  MaskTexture:=TpvVulkanTexture(POCAGhostFastGetPointer(aArguments^[ArgumentIndex]));
+  inc(ArgumentIndex);
+ end else begin
+  MaskTexture:=nil;
+ end;
+
+ Canvas.MaskTexture:=MaskTexture;
+
+ result:=aThis;
+
+end;
+
+function POCACanvasFunctionGETFILLSTYLE(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Canvas:TpvCanvas;
+    FillStyle:TpvCanvasFillStyle;
+begin
+
+ if POCAGhostGetType(aThis)<>@POCACanvasGhost then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas:=TpvCanvas(POCAGhostFastGetPointer(aThis));
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas is null');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ FillStyle:=Canvas.FillStyle;
+
+ result.Num:=TpvInt32(FillStyle);
+
+end;
+
+function POCACanvasFunctionSETFILLSTYLE(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var ArgumentIndex:TPOCAInt32;
+    Canvas:TpvCanvas;
+    FillStyle:TpvCanvasFillStyle;
+begin
+
+ if POCAGhostGetType(aThis)<>@POCACanvasGhost then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas:=TpvCanvas(POCAGhostFastGetPointer(aThis));
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas is null');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ ArgumentIndex:=0;
+ 
+ // Check for FillStyle
+ if ArgumentIndex<aCountArguments then begin
+  FillStyle:=TpvCanvasFillStyle(trunc(POCAGetNumberValue(aContext,aArguments^[ArgumentIndex])));
+  inc(ArgumentIndex);
+ end else begin
+  FillStyle:=TpvCanvasFillStyle.Color;
+ end;
+
+ Canvas.FillStyle:=FillStyle;
+
+ result:=aThis;
+
+end;
+
+function POCACanvasFunctionGETFILLRULE(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Canvas:TpvCanvas;
+    FillRule:TpvCanvasFillRule;
+begin
+
+ if POCAGhostGetType(aThis)<>@POCACanvasGhost then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas:=TpvCanvas(POCAGhostFastGetPointer(aThis));
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas is null');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ FillRule:=Canvas.FillRule;
+
+ result.Num:=TpvInt32(FillRule);
+
+end;
+
+function POCACanvasFunctionSETFILLRULE(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var ArgumentIndex:TPOCAInt32;
+    Canvas:TpvCanvas;
+    FillRule:TpvCanvasFillRule;
+begin
+
+ if POCAGhostGetType(aThis)<>@POCACanvasGhost then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas:=TpvCanvas(POCAGhostFastGetPointer(aThis));
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas is null');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ ArgumentIndex:=0;
+ 
+ // Check for FillRule
+ if ArgumentIndex<aCountArguments then begin
+  FillRule:=TpvCanvasFillRule(trunc(POCAGetNumberValue(aContext,aArguments^[ArgumentIndex])));
+  inc(ArgumentIndex);
+ end else begin
+  FillRule:=TpvCanvasFillRule.EvenOdd;
+ end;
+
+ Canvas.FillRule:=FillRule;
+
+ result:=aThis;
+
+end;
+
+function POCACanvasFunctionGETFILLWRAPMODE(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Canvas:TpvCanvas;
+    FillWrapMode:TpvCanvasFillWrapMode;
+begin
+
+ if POCAGhostGetType(aThis)<>@POCACanvasGhost then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas:=TpvCanvas(POCAGhostFastGetPointer(aThis));
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas is null');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ FillWrapMode:=Canvas.FillWrapMode;
+
+ result.Num:=TpvInt32(FillWrapMode);
+
+end;
+
+function POCACanvasFunctionSETFILLWRAPMODE(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var ArgumentIndex:TPOCAInt32;
+    Canvas:TpvCanvas;
+    FillWrapMode:TpvCanvasFillWrapMode;
+begin
+
+ if POCAGhostGetType(aThis)<>@POCACanvasGhost then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas:=TpvCanvas(POCAGhostFastGetPointer(aThis));
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas is null');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ ArgumentIndex:=0;
+ 
+ // Check for FillWrapMode
+ if ArgumentIndex<aCountArguments then begin
+  FillWrapMode:=TpvCanvasFillWrapMode(trunc(POCAGetNumberValue(aContext,aArguments^[ArgumentIndex])));
+  inc(ArgumentIndex);
+ end else begin
+  FillWrapMode:=TpvCanvasFillWrapMode.None;
+ end;
+
+ Canvas.FillWrapMode:=FillWrapMode;
+
+ result:=aThis;
+
+end;
+
+function POCACanvasFunctionGETCOLOR(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Canvas:TpvCanvas;
+    Color:TpvVector4;
+begin
+
+ if POCAGhostGetType(aThis)<>@POCACanvasGhost then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas:=TpvCanvas(POCAGhostFastGetPointer(aThis));
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas is null');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Color:=Canvas.Color;
+
+ result:=POCANewVector4(aContext,Color);
+
+end;
+
+function POCACanvasFunctionSETCOLOR(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var ArgumentIndex:TPOCAInt32;
+    Canvas:TpvCanvas;
+    Color:TpvVector4;
+begin
+
+ if POCAGhostGetType(aThis)<>@POCACanvasGhost then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas:=TpvCanvas(POCAGhostFastGetPointer(aThis));
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas is null');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ ArgumentIndex:=0;
+ 
+ // Check for Color
+ if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector4GhostPointer) then begin
+  Color:=POCAGetVector4Value(aArguments^[ArgumentIndex]);
+  inc(ArgumentIndex);
+ end else begin
+  if ArgumentIndex<aCountArguments then begin
+   Color.x:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   Color.x:=0.0;
+  end;
+  if ArgumentIndex<aCountArguments then begin
+   Color.y:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   Color.y:=0.0;
+  end;
+  if ArgumentIndex<aCountArguments then begin
+   Color.z:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   Color.z:=0.0;
+  end;
+  if ArgumentIndex<aCountArguments then begin
+   Color.w:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   Color.w:=1.0;
+  end;
+ end;
+
+ Canvas.Color:=Color;
+
+ result:=aThis;
+
+end;
+
+function POCACanvasFunctionGETSTARTCOLOR(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Canvas:TpvCanvas;
+    StartColor:TpvVector4;
+begin
+ if POCAGhostGetType(aThis)<>@POCACanvasGhost then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas:=TpvCanvas(POCAGhostFastGetPointer(aThis));
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas is null');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ StartColor:=Canvas.StartColor;
+
+ result:=POCANewVector4(aContext,StartColor);
+
+end;
+
+function POCACanvasFunctionSETSTARTCOLOR(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var ArgumentIndex:TPOCAInt32;
+    Canvas:TpvCanvas;
+    StartColor:TpvVector4;
+begin
+
+ if POCAGhostGetType(aThis)<>@POCACanvasGhost then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas:=TpvCanvas(POCAGhostFastGetPointer(aThis));
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas is null');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ ArgumentIndex:=0;
+ 
+ // Check for StartColor
+ if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector4GhostPointer) then begin
+  StartColor:=POCAGetVector4Value(aArguments^[ArgumentIndex]);
+  inc(ArgumentIndex);
+ end else begin
+  if ArgumentIndex<aCountArguments then begin
+   StartColor.x:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   StartColor.x:=0.0;
+  end;
+  if ArgumentIndex<aCountArguments then begin
+   StartColor.y:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   StartColor.y:=0.0;
+  end;
+  if ArgumentIndex<aCountArguments then begin
+   StartColor.z:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   StartColor.z:=0.0;
+  end;
+  if ArgumentIndex<aCountArguments then begin
+   StartColor.w:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   StartColor.w:=1.0;
+  end;
+ end;
+
+ Canvas.StartColor:=StartColor;
+
+ result:=aThis;
+
+end;
+
+function POCACanvasFunctionGETSTOPCOLOR(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Canvas:TpvCanvas;
+    StopColor:TpvVector4;
+begin
+
+ if POCAGhostGetType(aThis)<>@POCACanvasGhost then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas:=TpvCanvas(POCAGhostFastGetPointer(aThis));
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas is null');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ StopColor:=Canvas.StopColor;
+
+ result:=POCANewVector4(aContext,StopColor);
+
+end;
+
+function POCACanvasFunctionSETSTOPCOLOR(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var ArgumentIndex:TPOCAInt32;
+    Canvas:TpvCanvas;
+    StopColor:TpvVector4;
+begin
+
+ if POCAGhostGetType(aThis)<>@POCACanvasGhost then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas:=TpvCanvas(POCAGhostFastGetPointer(aThis));
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas is null');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ ArgumentIndex:=0;
+ 
+ // Check for StopColor
+ if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector4GhostPointer) then begin
+  StopColor:=POCAGetVector4Value(aArguments^[ArgumentIndex]);
+  inc(ArgumentIndex);
+ end else begin
+  if ArgumentIndex<aCountArguments then begin
+   StopColor.x:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   StopColor.x:=0.0;
+  end;
+  if ArgumentIndex<aCountArguments then begin
+   StopColor.y:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   StopColor.y:=0.0;
+  end;
+  if ArgumentIndex<aCountArguments then begin
+   StopColor.z:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   StopColor.z:=0.0;
+  end;
+  if ArgumentIndex<aCountArguments then begin
+   StopColor.w:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   StopColor.w:=1.0;
+  end;
+ end;
+
+ Canvas.StopColor:=StopColor;
+
+ result:=aThis;
+
+end;
+
+function POCAGetMatrix4x4Argument(aContext:PPOCAContext;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;var aArgumentIndex:TPOCAInt32):TpvMatrix4x4D;
+begin
+ if (aArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[aArgumentIndex])=POCAMatrix4x4GhostPointer) then begin
+  result:=POCAGetMatrix4x4Value(aArguments^[aArgumentIndex]);
+  inc(aArgumentIndex); 
+ end else begin
+  if aArgumentIndex<aCountArguments then begin
+   result.RawComponents[0,0]:=POCAGetNumberValue(aContext,aArguments^[aArgumentIndex]);
+   inc(aArgumentIndex);
+  end else begin
+   result.RawComponents[0,0]:=1.0;
+  end; 
+  if aArgumentIndex<aCountArguments then begin
+   result.RawComponents[0,1]:=POCAGetNumberValue(aContext,aArguments^[aArgumentIndex]);
+   inc(aArgumentIndex);
+  end else begin
+   result.RawComponents[0,1]:=0.0;
+  end;
+  if aArgumentIndex<aCountArguments then begin
+   result.RawComponents[0,2]:=POCAGetNumberValue(aContext,aArguments^[aArgumentIndex]);
+   inc(aArgumentIndex);
+  end else begin
+   result.RawComponents[0,2]:=0.0;
+  end;
+  if aArgumentIndex<aCountArguments then begin
+   result.RawComponents[0,3]:=POCAGetNumberValue(aContext,aArguments^[aArgumentIndex]);
+   inc(aArgumentIndex);
+  end else begin
+   result.RawComponents[0,3]:=0.0;
+  end;
+  if aArgumentIndex<aCountArguments then begin
+   result.RawComponents[1,0]:=POCAGetNumberValue(aContext,aArguments^[aArgumentIndex]);
+   inc(aArgumentIndex);
+  end else begin
+   result.RawComponents[1,0]:=0.0;
+  end;
+  if aArgumentIndex<aCountArguments then begin
+   result.RawComponents[1,1]:=POCAGetNumberValue(aContext,aArguments^[aArgumentIndex]);
+   inc(aArgumentIndex);
+  end else begin
+   result.RawComponents[1,1]:=1.0;
+  end;
+  if aArgumentIndex<aCountArguments then begin
+   result.RawComponents[1,2]:=POCAGetNumberValue(aContext,aArguments^[aArgumentIndex]);
+   inc(aArgumentIndex);
+  end else begin
+   result.RawComponents[1,2]:=0.0;
+  end;
+  if aArgumentIndex<aCountArguments then begin
+   result.RawComponents[1,3]:=POCAGetNumberValue(aContext,aArguments^[aArgumentIndex]);
+   inc(aArgumentIndex);
+  end else begin
+   result.RawComponents[1,3]:=0.0;
+  end;
+  if aArgumentIndex<aCountArguments then begin
+   result.RawComponents[2,0]:=POCAGetNumberValue(aContext,aArguments^[aArgumentIndex]);
+   inc(aArgumentIndex);
+  end else begin
+   result.RawComponents[2,0]:=0.0;
+  end;
+  if aArgumentIndex<aCountArguments then begin
+   result.RawComponents[2,1]:=POCAGetNumberValue(aContext,aArguments^[aArgumentIndex]);
+   inc(aArgumentIndex);
+  end else begin
+   result.RawComponents[2,1]:=0.0;
+  end;
+  if aArgumentIndex<aCountArguments then begin
+   result.RawComponents[2,2]:=POCAGetNumberValue(aContext,aArguments^[aArgumentIndex]);
+   inc(aArgumentIndex);
+  end else begin
+   result.RawComponents[2,2]:=1.0;
+  end;
+  if aArgumentIndex<aCountArguments then begin
+   result.RawComponents[2,3]:=POCAGetNumberValue(aContext,aArguments^[aArgumentIndex]);
+   inc(aArgumentIndex);
+  end else begin
+   result.RawComponents[2,3]:=0.0;
+  end;
+  if aArgumentIndex<aCountArguments then begin
+   result.RawComponents[3,0]:=POCAGetNumberValue(aContext,aArguments^[aArgumentIndex]);
+   inc(aArgumentIndex);
+  end else begin
+   result.RawComponents[3,0]:=0.0;
+  end;
+  if aArgumentIndex<aCountArguments then begin
+   result.RawComponents[3,1]:=POCAGetNumberValue(aContext,aArguments^[aArgumentIndex]);
+   inc(aArgumentIndex);
+  end else begin
+   result.RawComponents[3,1]:=0.0;
+  end;
+  if aArgumentIndex<aCountArguments then begin
+   result.RawComponents[3,2]:=POCAGetNumberValue(aContext,aArguments^[aArgumentIndex]);
+   inc(aArgumentIndex);
+  end else begin
+   result.RawComponents[3,2]:=0.0;
+  end;
+  if aArgumentIndex<aCountArguments then begin
+   result.RawComponents[3,3]:=POCAGetNumberValue(aContext,aArguments^[aArgumentIndex]);
+   inc(aArgumentIndex);
+  end else begin
+   result.RawComponents[3,3]:=1.0;
+  end;
+ end;
+end;
+
+function POCACanvasFunctionGETPROJECTIONMATRIX(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Canvas:TpvCanvas;
+    ProjectionMatrix:TpvMatrix4x4D;
+begin
+
+ if POCAGhostGetType(aThis)<>@POCACanvasGhost then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas:=TpvCanvas(POCAGhostFastGetPointer(aThis));
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas is null');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ ProjectionMatrix:=Canvas.ProjectionMatrix;
+
+ result:=POCANewMatrix4x4(aContext,ProjectionMatrix);
+
+end;
+
+function POCACanvasFunctionSETPROJECTIONMATRIX(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var ArgumentIndex:TPOCAInt32;
+    Canvas:TpvCanvas;
+    ProjectionMatrix:TpvMatrix4x4D;
+begin
+
+ if POCAGhostGetType(aThis)<>@POCACanvasGhost then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas:=TpvCanvas(POCAGhostFastGetPointer(aThis));
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas is null');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ ArgumentIndex:=0;
+ 
+ // Check for ProjectionMatrix
+ ProjectionMatrix:=POCAGetMatrix4x4Argument(aContext,aArguments,aCountArguments,ArgumentIndex);
+
+ Canvas.ProjectionMatrix:=ProjectionMatrix;
+
+ result:=aThis;
+
+end;
+
+function POCACanvasFunctionGETVIEWMATRIX(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Canvas:TpvCanvas;
+    ViewMatrix:TpvMatrix4x4D;
+begin
+
+ if POCAGhostGetType(aThis)<>@POCACanvasGhost then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas:=TpvCanvas(POCAGhostFastGetPointer(aThis));
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas is null');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ ViewMatrix:=Canvas.ViewMatrix;
+
+ result:=POCANewMatrix4x4(aContext,ViewMatrix);
+
+end;
+
+function POCACanvasFunctionSETVIEWMATRIX(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var ArgumentIndex:TPOCAInt32;
+    Canvas:TpvCanvas;
+    ViewMatrix:TpvMatrix4x4D;
+begin
+
+ if POCAGhostGetType(aThis)<>@POCACanvasGhost then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas:=TpvCanvas(POCAGhostFastGetPointer(aThis));
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas is null');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ ArgumentIndex:=0;
+ 
+ // Check for ViewMatrix
+ ViewMatrix:=POCAGetMatrix4x4Argument(aContext,aArguments,aCountArguments,ArgumentIndex);
+
+ Canvas.ViewMatrix:=ViewMatrix;
+
+ result:=aThis;
+
+end; 
+
+function POCACanvasFunctionGETMODELMATRIX(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Canvas:TpvCanvas;
+    ModelMatrix:TpvMatrix4x4D;
+begin
+
+ if POCAGhostGetType(aThis)<>@POCACanvasGhost then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas:=TpvCanvas(POCAGhostFastGetPointer(aThis));
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas is null');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ ModelMatrix:=Canvas.ModelMatrix;
+
+ result:=POCANewMatrix4x4(aContext,ModelMatrix);
+
+end;
+
+function POCACanvasFunctionSETMODELMATRIX(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var ArgumentIndex:TPOCAInt32;
+    Canvas:TpvCanvas;
+    ModelMatrix:TpvMatrix4x4D;
+begin
+
+ if POCAGhostGetType(aThis)<>@POCACanvasGhost then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas:=TpvCanvas(POCAGhostFastGetPointer(aThis));
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas is null');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ ArgumentIndex:=0;
+ 
+ // Check for ModelMatrix
+ ModelMatrix:=POCAGetMatrix4x4Argument(aContext,aArguments,aCountArguments,ArgumentIndex);
+
+ Canvas.ModelMatrix:=ModelMatrix;
+
+ result:=aThis;
+
+end;
+
+function POCACanvasFunctionGETFILLMATRIX(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Canvas:TpvCanvas;
+    FillMatrix:TpvMatrix4x4D;
+begin
+ if POCAGhostGetType(aThis)<>@POCACanvasGhost then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas:=TpvCanvas(POCAGhostFastGetPointer(aThis));
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas is null');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ FillMatrix:=Canvas.FillMatrix;
+
+ result:=POCANewMatrix4x4(aContext,FillMatrix);
+
+end;
+
+function POCACanvasFunctionSETFILLMATRIX(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var ArgumentIndex:TPOCAInt32;
+    Canvas:TpvCanvas;
+    FillMatrix:TpvMatrix4x4D;
+begin
+
+ if POCAGhostGetType(aThis)<>@POCACanvasGhost then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas:=TpvCanvas(POCAGhostFastGetPointer(aThis));
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas is null');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ ArgumentIndex:=0;
+ 
+ // Check for FillMatrix
+ FillMatrix:=POCAGetMatrix4x4Argument(aContext,aArguments,aCountArguments,ArgumentIndex);
+
+ Canvas.FillMatrix:=FillMatrix;
+
+ result:=aThis;
+
+end;
+
+function POCACanvasFunctionGETMASKMATRIX(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Canvas:TpvCanvas;
+    MaskMatrix:TpvMatrix4x4D;
+begin
+
+ if POCAGhostGetType(aThis)<>@POCACanvasGhost then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas:=TpvCanvas(POCAGhostFastGetPointer(aThis));
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas is null');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ MaskMatrix:=Canvas.MaskMatrix;
+
+ result:=POCANewMatrix4x4(aContext,MaskMatrix);
+
+end;
+
+function POCACanvasFunctionSETMASKMATRIX(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var ArgumentIndex:TPOCAInt32;
+    Canvas:TpvCanvas;
+    MaskMatrix:TpvMatrix4x4D;
+begin
+
+ if POCAGhostGetType(aThis)<>@POCACanvasGhost then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas:=TpvCanvas(POCAGhostFastGetPointer(aThis));
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas is null');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ ArgumentIndex:=0;
+ 
+ // Check for MaskMatrix
+ MaskMatrix:=POCAGetMatrix4x4Argument(aContext,aArguments,aCountArguments,ArgumentIndex);
+
+ Canvas.MaskMatrix:=MaskMatrix;
+
+ result:=aThis;
+
+end; 
+
+function POCACanvasFunctionSETSTROKEPATTERN(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var ArgumentIndex:TPOCAInt32;
+    Canvas:TpvCanvas;
+    StrokePattern:TpvUTF8String;
+begin
+
+ if POCAGhostGetType(aThis)<>@POCACanvasGhost then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas:=TpvCanvas(POCAGhostFastGetPointer(aThis));
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas is null');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ ArgumentIndex:=0;
+ 
+ // Check for StrokePattern
+ if ArgumentIndex<aCountArguments then begin
+  StrokePattern:=POCAGetStringValue(aContext,aArguments^[ArgumentIndex]);
+  inc(ArgumentIndex);
+ end else begin
+  StrokePattern:='';
+ end;
+
+ Canvas.StrokePattern:=StrokePattern;
+
+ result:=aThis;
+
+end;
+
+function POCACanvasFunctionDRAWSHAPE(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var ArgumentIndex:TPOCAInt32;
+    Canvas:TpvCanvas;
+    Shape:TpvCanvasShape;
+begin
+
+ if POCAGhostGetType(aThis)<>@POCACanvasGhost then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas:=TpvCanvas(POCAGhostFastGetPointer(aThis));
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas is null');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ ArgumentIndex:=0;
+ 
+ // Check for Shape
+ if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCACanvasShapeGhostPointer) then begin
+  Shape:=TpvCanvasShape(POCAGhostFastGetPointer(aArguments^[ArgumentIndex]));
+  inc(ArgumentIndex);
+ end else begin
+  Shape:=nil;
+ end;
+
+ Canvas.DrawShape(Shape);
+
+ result:=aThis;
+
+end;
+
+function POCACanvasFunctionGETSTROKESHAPE(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Canvas:TpvCanvas;
+    Shape:TpvCanvasShape;
+begin
+
+ if POCAGhostGetType(aThis)<>@POCACanvasGhost then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas:=TpvCanvas(POCAGhostFastGetPointer(aThis));
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas is null');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Shape:=Canvas.GetStrokeShape;
+
+ result:=POCANewCanvasShape(aContext,Shape);
+
+end;
+
+function POCACanvasFunctionGETFILLSHAPE(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Canvas:TpvCanvas;
+    Shape:TpvCanvasShape;
+begin
+
+ if POCAGhostGetType(aThis)<>@POCACanvasGhost then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas:=TpvCanvas(POCAGhostFastGetPointer(aThis));
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas is null');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Shape:=Canvas.GetFillShape;
+
+ result:=POCANewCanvasShape(aContext,Shape);
+
+end;
+
+procedure POCAInitCanvasHash(aContext:PPOCAContext);
+var HostData:PPOCAHostData;
+begin
+
+ HostData:=POCAGetHostData(aContext);
+ HostData^.CanvasHash:=POCANewHash(aContext);
+ POCAArrayPush(aContext^.Instance^.Globals.RootArray,HostData^.CanvasHash);
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'getWidth',POCACanvasFunctionGETWIDTH); 
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'getHeight',POCACanvasFunctionGETHEIGHT); 
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'clear',POCACanvasFunctionCLEAR);
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'drawFilledCircle',POCACanvasFunctionDRAWFILLEDCIRCLE);
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'drawFilledEllipse',POCACanvasFunctionDRAWFILLEDELLIPSE);
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'drawFilledRectangle',POCACanvasFunctionDRAWFILLEDRECTANGLE);
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'drawFilledRectangleCenter',POCACanvasFunctionDRAWFILLEDRECTANGLECENTER);
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'drawFilledRoundedRectangle',POCACanvasFunctionDRAWFILLEDROUNDEDRECTANGLE);
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'drawFilledRoundedRectangleCenter',POCACanvasFunctionDRAWFILLEDROUNDEDRECTANGLECENTER);
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'drawFilledCircleArcRingSegment',POCACanvasFunctionDRAWFILLEDCIRCLEARCRINGSEGMENT);
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'drawTexturedRectangle',POCACanvasFunctionDRAWTEXTUREDRECTANGLE);
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'drawTexturedRectangleCenter',POCACanvasFunctionDRAWTEXTUREDRECTANGLECENTER);
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'drawSprite',POCACanvasFunctionDRAWSPRITE);
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'drawSpriteOriginRotation',POCACanvasFunctionDRAWSPRITEORIGINROTATION);
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'drawSpritePosition',POCACanvasFunctionDRAWSPRITEPOSITION);
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'drawText',POCACanvasFunctionDRAWTEXT);
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'drawTextCodePoint',POCACanvasFunctionDRAWTEXTCODEPOINT);
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'textWidth',POCACanvasFunctionTEXTWIDTH);
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'textHeight',POCACanvasFunctionTEXTHEIGHT);
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'textSize',POCACanvasFunctionTEXTSIZE);
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'textRowHeight',POCACanvasFunctionTEXTROWHEIGHT);
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'beginPath',POCACanvasFunctionBEGINPATH);
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'moveTo',POCACanvasFunctionMOVETO);
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'lineTo',POCACanvasFunctionLINETO);
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'quadraticCurveTo',POCACanvasFunctionQUADRATICCURVETO);
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'cubicCurveTo',POCACanvasFunctionCUBICCURVETO);
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'arc',POCACanvasFunctionARC);
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'arcTo',POCACanvasFunctionARCTO);
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'ellipse',POCACanvasFunctionELLIPSE);
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'circle',POCACanvasFunctionCIRCLE);
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'rectangle',POCACanvasFunctionRECTANGLE);
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'rectangleCenter',POCACanvasFunctionRECTANGLECENTER);
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'roundedRectangle',POCACanvasFunctionROUNDEDRECTANGLE);
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'roundedRectangleCenter',POCACanvasFunctionROUNDEDRECTANGLECENTER);
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'closePath',POCACanvasFunctionCLOSEPATH);
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'endPath',POCACanvasFunctionENDPATH);
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'stroke',POCACanvasFunctionSTROKE);
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'fill',POCACanvasFunctionFILL);
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'push',POCACanvasFunctionPUSH);
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'pop',POCACanvasFunctionPOP);
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'flush',POCACanvasFunctionFLUSH);
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'getClipRect',POCACanvasFunctionGETCLIPRECT);
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'setClipRect',POCACanvasFunctionSETCLIPRECT);
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'setScissor',POCACanvasFunctionSETSCISSOR);
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'getBlendingMode',POCACanvasFunctionGETBLENDINGMODE);
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'setBlendingMode',POCACanvasFunctionSETBLENDINGMODE);
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'getLineCap',POCACanvasFunctionGETLINECAP);
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'setLineCap',POCACanvasFunctionSETLINECAP);
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'getLineJoin',POCACanvasFunctionGETLINEJOIN);
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'setLineJoin',POCACanvasFunctionSETLINEJOIN);
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'getLineWidth',POCACanvasFunctionGETLINEWIDTH);
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'setLineWidth',POCACanvasFunctionSETLINEWIDTH);
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'getMiterLimit',POCACanvasFunctionGETMITERLIMIT);
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'setMiterLimit',POCACanvasFunctionSETMITERLIMIT);
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'getZPosition',POCACanvasFunctionGETZPOSITION);
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'setZPosition',POCACanvasFunctionSETZPOSITION);
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'getTextHorizontalAlignment',POCACanvasFunctionGETTEXTHORIZONTALALIGNMENT);
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'setTextHorizontalAlignment',POCACanvasFunctionSETTEXTHORIZONTALALIGNMENT);
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'getTextVerticalAlignment',POCACanvasFunctionGETTEXTVERTICALALIGNMENT);
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'setTextVerticalAlignment',POCACanvasFunctionSETTEXTVERTICALALIGNMENT);
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'getFont',POCACanvasFunctionGETFONT);
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'setFont',POCACanvasFunctionSETFONT);
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'getFontSize',POCACanvasFunctionGETFONTSIZE);
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'setFontSize',POCACanvasFunctionSETFONTSIZE);
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'getTexture',POCACanvasFunctionGETTEXTURE);
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'setTexture',POCACanvasFunctionSETTEXTURE);
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'getMaskTexture',POCACanvasFunctionGETMASKTEXTURE);
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'setMaskTexture',POCACanvasFunctionSETMASKTEXTURE);
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'getFillStyle',POCACanvasFunctionGETFILLSTYLE);
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'setFillStyle',POCACanvasFunctionSETFILLSTYLE);
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'getFillRule',POCACanvasFunctionGETFILLRULE);
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'setFillRule',POCACanvasFunctionSETFILLRULE);
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'getFillWrapMode',POCACanvasFunctionGETFILLWRAPMODE);
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'setFillWrapMode',POCACanvasFunctionSETFILLWRAPMODE);
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'getColor',POCACanvasFunctionGETCOLOR);
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'setColor',POCACanvasFunctionSETCOLOR);
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'getStartColor',POCACanvasFunctionGETSTARTCOLOR);
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'setStartColor',POCACanvasFunctionSETSTARTCOLOR);
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'getStopColor',POCACanvasFunctionGETSTOPCOLOR);
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'setStopColor',POCACanvasFunctionSETSTOPCOLOR);
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'getProjectionMatrix',POCACanvasFunctionGETPROJECTIONMATRIX);
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'setProjectionMatrix',POCACanvasFunctionSETPROJECTIONMATRIX);
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'getViewMatrix',POCACanvasFunctionGETVIEWMATRIX);
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'setViewMatrix',POCACanvasFunctionSETVIEWMATRIX);
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'getModelMatrix',POCACanvasFunctionGETMODELMATRIX);
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'setModelMatrix',POCACanvasFunctionSETMODELMATRIX);
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'getFillMatrix',POCACanvasFunctionGETFILLMATRIX);
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'setFillMatrix',POCACanvasFunctionSETFILLMATRIX);
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'getMaskMatrix',POCACanvasFunctionGETMASKMATRIX);
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'setMaskMatrix',POCACanvasFunctionSETMASKMATRIX);
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'setStrokePattern',POCACanvasFunctionSETSTROKEPATTERN);
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'drawShape',POCACanvasFunctionDRAWSHAPE);
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'getStrokeShape',POCACanvasFunctionGETSTROKESHAPE);
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'getFillShape',POCACanvasFunctionGETFILLSHAPE);
+
+end; 
+
 procedure POCAInitCanvasNamespace(aContext:PPOCAContext);
 var Hash:TPOCAValue;
 begin
@@ -4943,10 +9152,6 @@ begin
  POCAHashSetString(aContext,Hash,'VectorPathFillRule',POCAInitCanvasVectorPathFillRule(aContext));
  POCAHashSetString(aContext,Hash,'SignedDistanceField2DVariant',POCAInitCanvasSignedDistanceField2DVariant(aContext));
  POCAHashSetString(aContext,aContext^.Instance^.Globals.Namespace,'Canvas',Hash);
-end;
-
-procedure POCAInitCanvasHash(aContext:PPOCAContext);
-begin
 end;
 
 procedure POCAInitCanvas(aContext:PPOCAContext);
