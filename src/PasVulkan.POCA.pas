@@ -4668,6 +4668,8 @@ const POCACanvasFontGhost:TPOCAGhostType=
 function POCANewCanvasFont(const aContext:PPOCAContext;const aCanvasFont:TpvCanvasFont):TPOCAValue;
 begin
  result:=POCANewGhost(aContext,@POCACanvasFontGhost,aCanvasFont);
+ POCATemporarySave(aContext,result);
+ POCAGhostSetHashValue(result,POCAGetHostData(aContext)^.CanvasHash);
 end;
 
 function POCAGetCanvasFontValue(const aValue:TPOCAValue):TpvCanvasFont;
