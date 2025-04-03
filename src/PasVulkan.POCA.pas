@@ -4647,50 +4647,6 @@ begin
 end;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// CanvasShape
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-const POCACanvasShapeGhost:TPOCAGhostType=
-       (
-        Destroy:nil;
-        CanDestroy:nil;
-        Mark:nil;
-        ExistKey:nil;
-        GetKey:nil;
-        SetKey:nil;
-        Name:'CanvasShape'
-       );
-
-function POCANewCanvasShape(const aContext:PPOCAContext;const aCanvasShape:TpvCanvasShape):TPOCAValue;
-begin
- result:=POCANewGhost(aContext,@POCACanvasShapeGhost,aCanvasShape);
- POCATemporarySave(aContext,result);
- POCAGhostSetHashValue(result,POCAGetHostData(aContext)^.CanvasShapeHash);
-end;
-
-function POCAGetCanvasShapeValue(const aValue:TPOCAValue):TpvCanvasShape;
-begin
- if POCAGhostGetType(aValue)=@POCACanvasShapeGhost then begin
-  result:=TpvCanvasShape(POCAGhostFastGetPointer(aValue));
- end else begin
-  result:=nil;
- end;
-end;
-
-procedure POCAInitCanvasShapeHash(aContext:PPOCAContext);
-var HostData:PPOCAHostData;
-begin
- HostData:=POCAGetHostData(aContext);
- HostData^.CanvasShapeHash:=POCANewHash(aContext);
- POCAArrayPush(aContext^.Instance^.Globals.RootArray,HostData^.CanvasShapeHash);
-end;
-
-procedure POCAInitCanvasShape(aContext:PPOCAContext);
-begin
- POCAInitCanvasShapeHash(aContext);
-end;
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // CanvasFont
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -4799,6 +4755,63 @@ procedure POCAInitCanvasFont(aContext:PPOCAContext);
 begin
  POCAInitCanvasFontHash(aContext);
  POCAInitCanvasFontNamespace(aContext);
+end;
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// CanvasShape
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+const POCACanvasShapeGhost:TPOCAGhostType=
+       (
+        Destroy:nil;
+        CanDestroy:nil;
+        Mark:nil;
+        ExistKey:nil;
+        GetKey:nil;
+        SetKey:nil;
+        Name:'CanvasShape'
+       );
+
+function POCANewCanvasShape(const aContext:PPOCAContext;const aCanvasShape:TpvCanvasShape):TPOCAValue;
+begin
+ result:=POCANewGhost(aContext,@POCACanvasShapeGhost,aCanvasShape);
+ POCATemporarySave(aContext,result);
+ POCAGhostSetHashValue(result,POCAGetHostData(aContext)^.CanvasShapeHash);
+end;
+
+function POCAGetCanvasShapeValue(const aValue:TPOCAValue):TpvCanvasShape;
+begin
+ if POCAGhostGetType(aValue)=@POCACanvasShapeGhost then begin
+  result:=TpvCanvasShape(POCAGhostFastGetPointer(aValue));
+ end else begin
+  result:=nil;
+ end;
+end;
+
+function POCACanvasShapeFunctionDESTROY(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var CanvasShape:TpvCanvasShape;
+begin
+ if POCAGhostGetType(aThis)=@POCACanvasShapeGhost then begin
+  CanvasShape:=TpvCanvasShape(POCAGhostFastGetPointer(aThis));
+  if assigned(CanvasShape) then begin
+   CanvasShape.Free;
+   PPOCAGhost(POCAGetValueReferencePointer(aThis))^.Ptr:=nil; // For to avoid double free
+  end;
+ end;
+ result.CastedUInt64:=POCAValueNullCastedUInt64;
+end;
+
+procedure POCAInitCanvasShapeHash(aContext:PPOCAContext);
+var HostData:PPOCAHostData;
+begin
+ HostData:=POCAGetHostData(aContext);
+ HostData^.CanvasShapeHash:=POCANewHash(aContext);
+ POCAArrayPush(aContext^.Instance^.Globals.RootArray,HostData^.CanvasShapeHash);
+end;
+
+procedure POCAInitCanvasShape(aContext:PPOCAContext);
+begin
+ POCAInitCanvasShapeHash(aContext);
 end;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
