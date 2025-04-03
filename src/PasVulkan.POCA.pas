@@ -223,12 +223,18 @@ function POCAVector2GhostExistKey(const aContext:PPOCAContext;const aGhost:PPOCA
 var s:TpvUTF8String;
 begin
  s:=POCAGetStringValue(aContext,aKey);
- if (s='x') or (s='r') then begin
-  result:=true;
- end else if (s='y') or (s='g') then begin
-  result:=true;
- end else if (s='z') or (s='b') then begin
-  result:=true;
+ if length(s)=1 then begin
+  case s[1] of
+   'x','r':begin
+    result:=true;
+   end;
+   'y','g':begin
+    result:=true;
+   end;
+   else begin
+    result:=false;
+   end;
+  end;
  end else begin
   result:=false;
  end;
@@ -240,12 +246,20 @@ var Vector2:PpvVector2D;
 begin
  Vector2:=PpvVector2D(PPOCAGhost(aGhost)^.Ptr);
  s:=POCAGetStringValue(aContext,aKey);
- if (s='x') or (s='r') then begin
-  aValue.Num:=Vector2^.x;
-  result:=true;
- end else if (s='y') or (s='g') then begin
-  aValue.Num:=Vector2^.y;
-  result:=true;
+ if length(s)=1 then begin
+  case s[1] of
+   'x','r':begin
+    aValue.Num:=Vector2^.x;
+    result:=true;
+   end;
+   'y','g':begin
+    aValue.Num:=Vector2^.y;
+    result:=true;
+   end;
+   else begin
+    result:=false;
+   end;
+  end; 
  end else begin
   result:=false;
  end;
@@ -257,12 +271,20 @@ var Vector2:PpvVector2D;
 begin
  Vector2:=PpvVector2D(PPOCAGhost(aGhost)^.Ptr);
  s:=POCAGetStringValue(aContext,aKey);
- if (s='x') or (s='r') then begin
-  Vector2^.x:=POCAGetNumberValue(aContext,aValue);
-  result:=true;
- end else if (s='y') or (s='g') then begin
-  Vector2^.y:=POCAGetNumberValue(aContext,aValue);
-  result:=true;
+ if length(s)=1 then begin
+  case s[1] of
+   'x','r':begin
+    Vector2^.x:=POCAGetNumberValue(aContext,aValue);
+    result:=true;
+   end;
+   'y','g':begin
+    Vector2^.y:=POCAGetNumberValue(aContext,aValue);
+    result:=true;
+   end;
+   else begin
+    result:=false;
+   end;
+  end;
  end else begin
   result:=false;
  end;
@@ -773,12 +795,21 @@ function POCAVector3GhostExistKey(const aContext:PPOCAContext;const aGhost:PPOCA
 var s:TpvUTF8String;
 begin
  s:=POCAGetStringValue(aContext,aKey);
- if (s='x') or (s='r') then begin
-  result:=true;
- end else if (s='y') or (s='g') then begin
-  result:=true;
- end else if (s='z') or (s='b') then begin
-  result:=true;
+ if length(s)=1 then begin
+  case s[1] of
+   'x','r':begin
+    result:=true;
+   end;
+   'y','g':begin
+    result:=true;
+   end;
+   'z','b':begin
+    result:=true;
+   end;
+   else begin
+    result:=false;
+   end;
+  end; 
  end else begin
   result:=false;
  end;
@@ -790,40 +821,58 @@ var Vector3:PpvVector3D;
 begin
  Vector3:=PpvVector3D(PPOCAGhost(aGhost)^.Ptr);
  s:=POCAGetStringValue(aContext,aKey);
- if (s='x') or (s='r') then begin
-  aValue.Num:=Vector3^.x;
-  result:=true;
- end else if (s='y') or (s='g') then begin
-  aValue.Num:=Vector3^.y;
-  result:=true;
- end else if (s='z') or (s='b') then begin
-  aValue.Num:=Vector3^.z;
-  result:=true;
+ if length(s)=1 then begin
+  case s[1] of
+   'x','r':begin
+    aValue.Num:=Vector3^.x;
+    result:=true;
+   end;
+   'y','g':begin
+    aValue.Num:=Vector3^.y;
+    result:=true;
+   end;
+   'z','b':begin
+    aValue.Num:=Vector3^.z;
+    result:=true;
+   end;
+   else begin
+    result:=false;
+   end;
+  end; 
  end else begin
   result:=false;
  end;
 end;
-
+ 
 function POCAVector3GhostSetKey(const aContext:PPOCAContext;const aGhost:PPOCAGhost;const aKey:TPOCAValue;const aValue:TPOCAValue;const aCacheIndex:PPOCAUInt32):TPOCABool32;
 var Vector3:PpvVector3D;
     s:TpvUTF8String;
 begin
  Vector3:=PpvVector3D(PPOCAGhost(aGhost)^.Ptr);
  s:=POCAGetStringValue(aContext,aKey);
- if (s='x') or (s='r') then begin
-  Vector3^.x:=POCAGetNumberValue(aContext,aValue);
-  result:=true;
- end else if (s='y') or (s='g') then begin
-  Vector3^.y:=POCAGetNumberValue(aContext,aValue);
-  result:=true;
- end else if (s='z') or (s='b') then begin
-  Vector3^.z:=POCAGetNumberValue(aContext,aValue);
-  result:=true;
+ if length(s)=1 then begin
+  case s[1] of
+   'x','r':begin
+    Vector3^.x:=POCAGetNumberValue(aContext,aValue);
+    result:=true;
+   end;
+   'y','g':begin
+    Vector3^.y:=POCAGetNumberValue(aContext,aValue);
+    result:=true;
+   end;
+   'z','b':begin
+    Vector3^.z:=POCAGetNumberValue(aContext,aValue);
+    result:=true;
+   end;
+   else begin
+    result:=false;
+   end;
+  end; 
  end else begin
   result:=false;
  end;
 end;
-
+ 
 const POCAVector3Ghost:TPOCAGhostType=
        (
         Destroy:POCAVector3GhostDestroy;
@@ -1357,14 +1406,24 @@ function POCAVector4GhostExistKey(const aContext:PPOCAContext;const aGhost:PPOCA
 var s:TpvUTF8String;
 begin
  s:=POCAGetStringValue(aContext,aKey);
- if (s='x') or (s='r') then begin
-  result:=true;
- end else if (s='y') or (s='g') then begin
-  result:=true;
- end else if (s='z') or (s='b') then begin
-  result:=true;
- end else if (s='w') or (s='a') then begin
-  result:=true;
+ if length(s)=1 then begin
+  case s[1] of
+   'x','r':begin
+    result:=true;
+   end;
+   'y','g':begin
+    result:=true;
+   end;
+   'z','b':begin
+    result:=true;
+   end;
+   'w','a':begin
+    result:=true;
+   end;
+   else begin
+    result:=false;
+   end;
+  end; 
  end else begin
   result:=false;
  end;
@@ -1376,18 +1435,28 @@ var Vector4:PpvVector4D;
 begin
  Vector4:=PpvVector4D(PPOCAGhost(aGhost)^.Ptr);
  s:=POCAGetStringValue(aContext,aKey);
- if (s='x') or (s='r') then begin
-  aValue.Num:=Vector4^.x;
-  result:=true;
- end else if (s='y') or (s='g') then begin
-  aValue.Num:=Vector4^.y;
-  result:=true;
- end else if (s='z') or (s='b') then begin
-  aValue.Num:=Vector4^.z;
-  result:=true;
- end else if (s='w') or (s='a') then begin
-  aValue.Num:=Vector4^.w;
-  result:=true;
+ if length(s)=1 then begin
+  case s[1] of
+   'x','r':begin
+    aValue.Num:=Vector4^.x;
+    result:=true;
+   end;
+   'y','g':begin
+    aValue.Num:=Vector4^.y;
+    result:=true;
+   end;
+   'z','b':begin
+    aValue.Num:=Vector4^.z;
+    result:=true;
+   end;
+   'w','a':begin
+    aValue.Num:=Vector4^.w;
+    result:=true;
+   end;
+   else begin
+    result:=false;
+   end;
+  end; 
  end else begin
   result:=false;
  end;
@@ -1399,21 +1468,31 @@ var Vector4:PpvVector4D;
 begin
  Vector4:=PpvVector4D(PPOCAGhost(aGhost)^.Ptr);
  s:=POCAGetStringValue(aContext,aKey);
- if (s='x') or (s='r') then begin
-  Vector4^.x:=POCAGetNumberValue(aContext,aValue);
-  result:=true;
- end else if (s='y') or (s='g') then begin
-  Vector4^.y:=POCAGetNumberValue(aContext,aValue);
-  result:=true;
- end else if (s='z') or (s='b') then begin
-  Vector4^.z:=POCAGetNumberValue(aContext,aValue);
-  result:=true;
- end else if (s='w') or (s='a') then begin
-  Vector4^.w:=POCAGetNumberValue(aContext,aValue);
-  result:=true;
+ if length(s)=1 then begin
+  case s[1] of
+   'x','r':begin
+    Vector4^.x:=POCAGetNumberValue(aContext,aValue);
+    result:=true;
+   end;
+   'y','g':begin
+    Vector4^.y:=POCAGetNumberValue(aContext,aValue);
+    result:=true;
+   end;
+   'z','b':begin
+    Vector4^.z:=POCAGetNumberValue(aContext,aValue);
+    result:=true;
+   end;
+   'w','a':begin
+    Vector4^.w:=POCAGetNumberValue(aContext,aValue);
+    result:=true;
+   end;
+   else begin
+    result:=false;
+   end;
+  end; 
  end else begin
   result:=false;
- end;
+ end; 
 end;
 
 const POCAVector4Ghost:TPOCAGhostType=
@@ -1948,14 +2027,24 @@ function POCAQuaternionGhostExistKey(const aContext:PPOCAContext;const aGhost:PP
 var s:TpvUTF8String;
 begin
  s:=POCAGetStringValue(aContext,aKey);
- if s='x' then begin
-  result:=true;
- end else if s='y' then begin
-  result:=true;
- end else if s='z' then begin
-  result:=true;
- end else if s='w' then begin
-  result:=true;
+ if length(s)=1 then begin
+  case s[1] of
+   'x':begin
+    result:=true;
+   end;
+   'y':begin
+    result:=true;
+   end;
+   'z':begin
+    result:=true;
+   end;
+   'w':begin
+    result:=true;
+   end;
+   else begin
+    result:=false;
+   end;
+  end; 
  end else begin
   result:=false;
  end;
@@ -1967,18 +2056,28 @@ var Quaternion:PpvQuaternionD;
 begin
  Quaternion:=PpvQuaternionD(PPOCAGhost(aGhost)^.Ptr);
  s:=POCAGetStringValue(aContext,aKey);
- if s='x' then begin
-  aValue.Num:=Quaternion^.x;
-  result:=true;
- end else if s='y' then begin
-  aValue.Num:=Quaternion^.y;
-  result:=true;
- end else if s='z'then begin
-  aValue.Num:=Quaternion^.z;
-  result:=true;
- end else if s='w' then begin
-  aValue.Num:=Quaternion^.w;
-  result:=true;
+ if length(s)=1 then begin
+  case s[1] of
+   'x':begin
+    aValue.Num:=Quaternion^.x;
+    result:=true;
+   end;
+   'y':begin
+    aValue.Num:=Quaternion^.y;
+    result:=true;
+   end;
+   'z':begin
+    aValue.Num:=Quaternion^.z;
+    result:=true;
+   end;
+   'w':begin
+    aValue.Num:=Quaternion^.w;
+    result:=true;
+   end;
+   else begin
+    result:=false;
+   end;
+  end; 
  end else begin
   result:=false;
  end;
@@ -1990,18 +2089,28 @@ var Quaternion:PpvQuaternionD;
 begin
  Quaternion:=PpvQuaternionD(PPOCAGhost(aGhost)^.Ptr);
  s:=POCAGetStringValue(aContext,aKey);
- if s='x' then begin
-  Quaternion^.x:=POCAGetNumberValue(aContext,aValue);
-  result:=true;
- end else if s='y' then begin
-  Quaternion^.y:=POCAGetNumberValue(aContext,aValue);
-  result:=true;
- end else if s='z' then begin
-  Quaternion^.z:=POCAGetNumberValue(aContext,aValue);
-  result:=true;
- end else if s='w' then begin
-  Quaternion^.w:=POCAGetNumberValue(aContext,aValue);
-  result:=true;
+ if length(s)=1 then begin
+  case s[1] of
+   'x':begin
+    Quaternion^.x:=POCAGetNumberValue(aContext,aValue);
+    result:=true;
+   end;
+   'y':begin
+    Quaternion^.y:=POCAGetNumberValue(aContext,aValue);
+    result:=true;
+   end;
+   'z':begin
+    Quaternion^.z:=POCAGetNumberValue(aContext,aValue);
+    result:=true;
+   end;
+   'w':begin
+    Quaternion^.w:=POCAGetNumberValue(aContext,aValue);
+    result:=true;
+   end;
+   else begin
+    result:=false;
+   end;
+  end; 
  end else begin
   result:=false;
  end;
