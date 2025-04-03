@@ -71,6 +71,13 @@ uses SysUtils,
      PasVulkan.Math,
      PasVulkan.Math.Double,
      PasVulkan.Framework,
+     PasVulkan.Application,
+     PasVulkan.VectorPath,
+     PasVulkan.SignedDistanceField2D,
+     PasVulkan.Canvas,
+     PasVulkan.Sprites,
+     PasVulkan.TrueTypeFont,
+     PasVulkan.Font,
      POCA;
 
 type TPOCAHostData=record
@@ -116,6 +123,9 @@ type TPOCAHostData=record
       CanvasFontHash:TPOCAValue;
       CanvasFontHashEvents:TPOCAValue;
 
+      CanvasShapeHash:TPOCAValue;
+      CanvasShapeHashEvents:TPOCAValue;
+
       CanvasHash:TPOCAValue;
       CanvasHashEvents:TPOCAValue;
 
@@ -134,6 +144,7 @@ var POCAVector2GhostPointer:PPOCAGhostType=nil;
     POCATextureGhostPointer:PPOCAGhostType=nil;
     POCAFontGhostPointer:PPOCAGhostType=nil;
     POCACanvasFontGhostPointer:PPOCAGhostType=nil;
+    POCACanvasShapeGhostPointer:PPOCAGhostType=nil;
     POCACanvasGhostPointer:PPOCAGhostType=nil;
 
 function POCAGetHostData(const aContext:PPOCAContext):PPOCAHostData; //inline;
@@ -163,36 +174,31 @@ function POCANewMatrix4x4(const aContext:PPOCAContext;const aMatrix4x4:TpvMatrix
 function POCANewMatrix4x4(const aContext:PPOCAContext;const aM00:TpvDouble=1.0;const aM01:TpvDouble=0.0;const aM02:TpvDouble=0.0;const aM03:TpvDouble=0.0;const aM10:TpvDouble=0.0;const aM11:TpvDouble=1.0;const aM12:TpvDouble=0.0;const aM13:TpvDouble=0.0;const aM20:TpvDouble=0.0;const aM21:TpvDouble=0.0;const aM22:TpvDouble=1.0;const aM23:TpvDouble=0.0;const aM30:TpvDouble=0.0;const aM31:TpvDouble=0.0;const aM32:TpvDouble=0.0;const aM33:TpvDouble=1.0):TPOCAValue; overload;
 function POCAGetMatrix4x4Value(const aValue:TPOCAValue):TpvMatrix4x4D;
 
-function POCANewSprite(const aContext:PPOCAContext;const aSprite:TObject):TPOCAValue;
-function POCAGetSpriteValue(const aValue:TPOCAValue):TObject;
+function POCANewSprite(const aContext:PPOCAContext;const aSprite:TpvSprite):TPOCAValue;
+function POCAGetSpriteValue(const aValue:TPOCAValue):TpvSprite;
 
-function POCANewSpriteAtlas(const aContext:PPOCAContext;const aSpriteAtlas:TObject):TPOCAValue;
-function POCAGetSpriteAtlasValue(const aValue:TPOCAValue):TObject;
+function POCANewSpriteAtlas(const aContext:PPOCAContext;const aSpriteAtlas:TpvSpriteAtlas):TPOCAValue;
+function POCAGetSpriteAtlasValue(const aValue:TPOCAValue):TpvSpriteAtlas;
 
-function POCANewTexture(const aContext:PPOCAContext;const aTexture:TObject):TPOCAValue;
-function POCAGetTextureValue(const aValue:TPOCAValue):TObject;
+function POCANewTexture(const aContext:PPOCAContext;const aTexture:TpvVulkanTexture):TPOCAValue;
+function POCAGetTextureValue(const aValue:TPOCAValue):TpvVulkanTexture;
 
-function POCANewFont(const aContext:PPOCAContext;const aFont:TObject):TPOCAValue;
-function POCAGetFontValue(const aValue:TPOCAValue):TObject;
+function POCANewFont(const aContext:PPOCAContext;const aFont:TpvFont):TPOCAValue;
+function POCAGetFontValue(const aValue:TPOCAValue):TpvFont;
 
-function POCANewCanvasFont(const aContext:PPOCAContext;const aCanvasFont:TObject):TPOCAValue;
-function POCAGetCanvasFontValue(const aValue:TPOCAValue):TObject;
+function POCANewCanvasFont(const aContext:PPOCAContext;const aCanvasFont:TpvCanvasFont):TPOCAValue;
+function POCAGetCanvasFontValue(const aValue:TPOCAValue):TpvCanvasFont;
 
-function POCANewCanvas(const aContext:PPOCAContext;const aCanvas:TObject):TPOCAValue;
-function POCAGetCanvasValue(const aValue:TPOCAValue):TObject;
+function POCANewCanvasShape(const aContext:PPOCAContext;const aCanvasShape:TpvCanvasShape):TPOCAValue;
+function POCAGetCanvasShapeValue(const aValue:TPOCAValue):TpvCanvasShape;
+
+function POCANewCanvas(const aContext:PPOCAContext;const aCanvas:TpvCanvas):TPOCAValue;
+function POCAGetCanvasValue(const aValue:TPOCAValue):TpvCanvas;
 
 procedure InitializeForPOCAContext(const aContext:PPOCAContext);
 procedure FinalizeForPOCAContext(const aContext:PPOCAContext);
 
 implementation
-
-uses PasVulkan.Application,
-     PasVulkan.VectorPath,
-     PasVulkan.SignedDistanceField2D,
-     PasVulkan.Canvas,
-     PasVulkan.Sprites,
-     PasVulkan.TrueTypeFont,
-     PasVulkan.Font;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Host data
@@ -4065,17 +4071,17 @@ const POCASpriteGhost:TPOCAGhostType=
         Name:'Sprite'
        );
 
-function POCANewSprite(const aContext:PPOCAContext;const aSprite:TObject):TPOCAValue;
+function POCANewSprite(const aContext:PPOCAContext;const aSprite:TpvSprite):TPOCAValue;
 begin
  result:=POCANewGhost(aContext,@POCASpriteGhost,aSprite);
  POCATemporarySave(aContext,result);
  POCAGhostSetHashValue(result,POCAGetHostData(aContext)^.SpriteHash);
 end;
 
-function POCAGetSpriteValue(const aValue:TPOCAValue):TObject;
+function POCAGetSpriteValue(const aValue:TPOCAValue):TpvSprite;
 begin
  if POCAGhostGetType(aValue)=@POCASpriteGhost then begin
-  result:=TObject(POCAGhostFastGetPointer(aValue));
+  result:=TpvSprite(POCAGhostFastGetPointer(aValue));
  end else begin
   result:=nil;
  end;
@@ -4123,15 +4129,15 @@ const POCASpriteAtlasGhost:TPOCAGhostType=
         Name:'SpriteAtlas'
        );
 
-function POCANewSpriteAtlas(const aContext:PPOCAContext;const aSpriteAtlas:TObject):TPOCAValue;
+function POCANewSpriteAtlas(const aContext:PPOCAContext;const aSpriteAtlas:TpvSpriteAtlas):TPOCAValue;
 begin
  result:=POCANewGhost(aContext,@POCASpriteAtlasGhost,aSpriteAtlas);
 end;
 
-function POCAGetSpriteAtlasValue(const aValue:TPOCAValue):TObject;
+function POCAGetSpriteAtlasValue(const aValue:TPOCAValue):TpvSpriteAtlas;
 begin
  if POCAGhostGetType(aValue)=@POCASpriteAtlasGhost then begin
-  result:=TObject(POCAGhostFastGetPointer(aValue));
+  result:=TpvSpriteAtlas(POCAGhostFastGetPointer(aValue));
  end else begin
   result:=nil;
  end;
@@ -4467,17 +4473,17 @@ const POCATextureGhost:TPOCAGhostType=
         Name:'Texture'
        );
 
-function POCANewTexture(const aContext:PPOCAContext;const aTexture:TObject):TPOCAValue;
+function POCANewTexture(const aContext:PPOCAContext;const aTexture:TpvVulkanTexture):TPOCAValue;
 begin
  result:=POCANewGhost(aContext,@POCATextureGhost,aTexture);
  POCATemporarySave(aContext,result);
  POCAGhostSetHashValue(result,POCAGetHostData(aContext)^.TextureHash);
 end;
 
-function POCAGetTextureValue(const aValue:TPOCAValue):TObject;
+function POCAGetTextureValue(const aValue:TPOCAValue):TpvVulkanTexture;
 begin
  if POCAGhostGetType(aValue)=@POCATextureGhost then begin
-  result:=TObject(POCAGhostFastGetPointer(aValue));
+  result:=TpvVulkanTexture(POCAGhostFastGetPointer(aValue));
  end else begin
   result:=nil;
  end;
@@ -4622,15 +4628,15 @@ const POCAFontGhost:TPOCAGhostType=
         Name:'Font'
        );
 
-function POCANewFont(const aContext:PPOCAContext;const aFont:TObject):TPOCAValue;
+function POCANewFont(const aContext:PPOCAContext;const aFont:TpvFont):TPOCAValue;
 begin
  result:=POCANewGhost(aContext,@POCAFontGhost,aFont);
 end;
 
-function POCAGetFontValue(const aValue:TPOCAValue):TObject;
+function POCAGetFontValue(const aValue:TPOCAValue):TpvFont;
 begin
  if POCAGhostGetType(aValue)=@POCAFontGhost then begin
-  result:=TObject(POCAGhostFastGetPointer(aValue));
+  result:=TpvFont(POCAGhostFastGetPointer(aValue));
  end else begin
   result:=nil;
  end;
@@ -4638,6 +4644,50 @@ end;
 
 procedure POCAInitFont(aContext:PPOCAContext);
 begin
+end;
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// CanvasShape
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+const POCACanvasShapeGhost:TPOCAGhostType=
+       (
+        Destroy:nil;
+        CanDestroy:nil;
+        Mark:nil;
+        ExistKey:nil;
+        GetKey:nil;
+        SetKey:nil;
+        Name:'CanvasShape'
+       );
+
+function POCANewCanvasShape(const aContext:PPOCAContext;const aCanvasShape:TpvCanvasShape):TPOCAValue;
+begin
+ result:=POCANewGhost(aContext,@POCACanvasShapeGhost,aCanvasShape);
+ POCATemporarySave(aContext,result);
+ POCAGhostSetHashValue(result,POCAGetHostData(aContext)^.CanvasShapeHash);
+end;
+
+function POCAGetCanvasShapeValue(const aValue:TPOCAValue):TpvCanvasShape;
+begin
+ if POCAGhostGetType(aValue)=@POCACanvasShapeGhost then begin
+  result:=TpvCanvasShape(POCAGhostFastGetPointer(aValue));
+ end else begin
+  result:=nil;
+ end;
+end;
+
+procedure POCAInitCanvasShapeHash(aContext:PPOCAContext);
+var HostData:PPOCAHostData;
+begin
+ HostData:=POCAGetHostData(aContext);
+ HostData^.CanvasShapeHash:=POCANewHash(aContext);
+ POCAArrayPush(aContext^.Instance^.Globals.RootArray,HostData^.CanvasShapeHash);
+end;
+
+procedure POCAInitCanvasShape(aContext:PPOCAContext);
+begin
+ POCAInitCanvasShapeHash(aContext);
 end;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -4655,15 +4705,15 @@ const POCACanvasFontGhost:TPOCAGhostType=
         Name:'CanvasFont'
        );
 
-function POCANewCanvasFont(const aContext:PPOCAContext;const aCanvasFont:TObject):TPOCAValue;
+function POCANewCanvasFont(const aContext:PPOCAContext;const aCanvasFont:TpvCanvasFont):TPOCAValue;
 begin
  result:=POCANewGhost(aContext,@POCACanvasFontGhost,aCanvasFont);
 end;
 
-function POCAGetCanvasFontValue(const aValue:TPOCAValue):TObject;
+function POCAGetCanvasFontValue(const aValue:TPOCAValue):TpvCanvasFont;
 begin
  if POCAGhostGetType(aValue)=@POCACanvasFontGhost then begin
-  result:=TObject(POCAGhostFastGetPointer(aValue));
+  result:=TpvCanvasFont(POCAGhostFastGetPointer(aValue));
  end else begin
   result:=nil;
  end;
@@ -4766,15 +4816,15 @@ const POCACanvasGhost:TPOCAGhostType=
         Name:'Canvas'
        );
 
-function POCANewCanvas(const aContext:PPOCAContext;const aCanvas:TObject):TPOCAValue;
+function POCANewCanvas(const aContext:PPOCAContext;const aCanvas:TpvCanvas):TPOCAValue;
 begin
  result:=POCANewGhost(aContext,@POCACanvasGhost,aCanvas);
 end;
 
-function POCAGetCanvasValue(const aValue:TPOCAValue):TObject;
+function POCAGetCanvasValue(const aValue:TPOCAValue):TpvCanvas;
 begin
  if POCAGhostGetType(aValue)=@POCACanvasGhost then begin
-  result:=TObject(POCAGhostFastGetPointer(aValue));
+  result:=TpvCanvas(POCAGhostFastGetPointer(aValue));
  end else begin
   result:=nil;
  end;
@@ -4927,6 +4977,8 @@ begin
  POCAInitFont(aContext);
 
  POCAInitCanvasFont(aContext);
+
+ POCAInitCanvasShape(aContext);
 
  POCAInitCanvas(aContext);
 
