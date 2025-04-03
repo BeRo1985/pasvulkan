@@ -107,6 +107,9 @@ type TPOCAHostData=record
       SpriteAtlasHash:TPOCAValue;
       SpriteAtlasHashEvents:TPOCAValue;
 
+      TextureHash:TPOCAValue;
+      TextureHashEvents:TPOCAValue;
+
       FontHash:TPOCAValue;
       FontHashEvents:TPOCAValue;
 
@@ -128,6 +131,7 @@ var POCAVector2GhostPointer:PPOCAGhostType=nil;
     POCAMatrix4x4GhostPointer:PPOCAGhostType=nil;
     POCASpriteGhostPointer:PPOCAGhostType=nil;
     POCASpriteAtlasGhostPointer:PPOCAGhostType=nil;
+    POCATextureGhostPointer:PPOCAGhostType=nil;
     POCAFontGhostPointer:PPOCAGhostType=nil;
     POCACanvasFontGhostPointer:PPOCAGhostType=nil;
     POCACanvasGhostPointer:PPOCAGhostType=nil;
@@ -164,6 +168,9 @@ function POCAGetSpriteValue(const aValue:TPOCAValue):TObject;
 
 function POCANewSpriteAtlas(const aContext:PPOCAContext;const aSpriteAtlas:TObject):TPOCAValue;
 function POCAGetSpriteAtlasValue(const aValue:TPOCAValue):TObject;
+
+function POCANewTexture(const aContext:PPOCAContext;const aTexture:TObject):TPOCAValue;
+function POCAGetTextureValue(const aValue:TPOCAValue):TObject;
 
 function POCANewFont(const aContext:PPOCAContext;const aFont:TObject):TPOCAValue;
 function POCAGetFontValue(const aValue:TPOCAValue):TObject;
@@ -4337,6 +4344,161 @@ begin
 end;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Texture
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+const POCATextureGhost:TPOCAGhostType=
+       (
+        Destroy:nil;
+        CanDestroy:nil;
+        Mark:nil;
+        ExistKey:nil;
+        GetKey:nil;
+        SetKey:nil;
+        Name:'Texture'
+       );
+
+function POCANewTexture(const aContext:PPOCAContext;const aTexture:TObject):TPOCAValue;
+begin
+ result:=POCANewGhost(aContext,@POCATextureGhost,aTexture);
+ POCATemporarySave(aContext,result);
+ POCAGhostSetHashValue(result,POCAGetHostData(aContext)^.TextureHash);
+end;
+
+function POCAGetTextureValue(const aValue:TPOCAValue):TObject;
+begin
+ if POCAGhostGetType(aValue)=@POCATextureGhost then begin
+  result:=TObject(POCAGhostFastGetPointer(aValue));
+ end else begin
+  result:=nil;
+ end;
+end;
+
+function POCATextureFunctionCREATE(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Texture:TpvVulkanTexture;
+    FileName:TpvUTF8String;
+    MipMaps,sRGB,AdditionalSRGB:Boolean;
+    Stream:TStream;
+    HostData:PPOCAHostData;
+    Queue:TpvVulkanQueue;
+    CommandBufferPool:TpvVulkanCommandPool;
+    CommandBuffer:TpvVulkanCommandBuffer;
+    Fence:TpvVulkanFence;
+begin
+
+ if aCountArguments>0 then begin
+  FileName:=POCAGetStringValue(aContext,aArguments^[0]);
+ end else begin
+  POCARuntimeError(aContext,'Invalid arguments');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ if aCountArguments>1 then begin
+  FileName:=POCAGetStringValue(aContext,aArguments^[1]);
+ end else begin
+  POCARuntimeError(aContext,'Invalid arguments');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ if aCountArguments>2 then begin
+  MipMaps:=POCAGetBooleanValue(aContext,aArguments^[2]);
+ end else begin
+  MipMaps:=true;  
+ end;
+
+ if aCountArguments>3 then begin
+  sRGB:=POCAGetBooleanValue(aContext,aArguments^[3]);
+ end else begin
+  sRGB:=true;  
+ end;
+
+ if aCountArguments>4 then begin
+  AdditionalSRGB:=POCAGetBooleanValue(aContext,aArguments^[4]);
+ end else begin
+  AdditionalSRGB:=false;  
+ end;
+
+ if pvApplication.Assets.ExistAsset(String(FileName)) then begin
+  Stream:=pvApplication.Assets.GetAssetStream(String(FileName));
+  try
+   HostData:=POCAGetHostData(aContext);
+   Queue:=pvApplication.VulkanDevice.UniversalQueue;
+   CommandBufferPool:=TpvVulkanCommandPool.Create(pvApplication.VulkanDevice,pvApplication.VulkanDevice.UniversalQueueFamilyIndex,TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
+   try
+    CommandBuffer:=TpvVulkanCommandBuffer.Create(CommandBufferPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+    try
+     Fence:=TpvVulkanFence.Create(pvApplication.VulkanDevice);
+     try
+      Texture:=TpvVulkanTexture.CreateFromImage(pvApplication.VulkanDevice,
+                                                Queue,
+                                                CommandBuffer,
+                                                Fence,
+                                                Queue,
+                                                CommandBuffer,
+                                                Fence,
+                                                Stream,
+                                                MipMaps,
+                                                sRGB,
+                                                AdditionalSRGB);
+      result:=POCANewTexture(aContext,Texture);
+     finally
+      FreeAndNil(Fence);
+     end;
+    finally
+     FreeAndNil(CommandBuffer);
+    end;
+   finally
+    FreeAndNil(CommandBufferPool);
+   end;
+  finally  
+   FreeAndNil(Stream);
+  end;
+ end else begin
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+ end;
+
+end;
+
+function POCATextureFunctionDESTROY(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Texture:TpvVulkanTexture;
+begin
+ if POCAGhostGetType(aThis)=@POCATextureGhost then begin
+  Texture:=TpvVulkanTexture(POCAGhostFastGetPointer(aThis));
+  if assigned(Texture) then begin
+   Texture.Free;
+   PPOCAGhost(POCAGetValueReferencePointer(aThis))^.Ptr:=nil; // For to avoid double free
+  end;
+ end;
+ result.CastedUInt64:=POCAValueNullCastedUInt64;
+end;
+
+procedure POCAInitTextureHash(aContext:PPOCAContext);
+var HostData:PPOCAHostData;
+begin
+ HostData:=POCAGetHostData(aContext);
+ HostData^.TextureHash:=POCANewHash(aContext);
+ POCAArrayPush(aContext^.Instance^.Globals.RootArray,HostData^.TextureHash);
+ POCAAddNativeFunction(aContext,HostData^.TextureHash,'destroy',POCATextureFunctionDESTROY); 
+end;
+
+procedure POCAInitTextureNamespace(aContext:PPOCAContext);
+var Hash:TPOCAValue;
+begin
+ Hash:=POCANewHash(aContext);
+ POCAArrayPush(aContext^.Instance^.Globals.RootArray,Hash);
+ POCAAddNativeFunction(aContext,Hash,'create',POCATextureFunctionCREATE);
+ POCAHashSetString(aContext,aContext^.Instance^.Globals.Namespace,'Texture',Hash);
+end;
+
+procedure POCAInitTexture(aContext:PPOCAContext);
+begin
+ POCAInitTextureHash(aContext);
+ POCAInitTextureNamespace(aContext);
+end;
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Font
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -4573,6 +4735,8 @@ begin
 
  POCAInitSpriteAtlas(aContext);
 
+ POCAInitTexture(aContext);
+
  POCAInitFont(aContext);
 
  POCAInitCanvasFont(aContext);
@@ -4607,6 +4771,7 @@ initialization
  POCAMatrix4x4GhostPointer:=@POCAMatrix4x4Ghost;
  POCASpriteGhostPointer:=@POCASpriteGhost;
  POCASpriteAtlasGhostPointer:=@POCASpriteAtlasGhost;
+ POCATextureGhostPointer:=@POCATextureGhost;
  POCAFontGhostPointer:=@POCAFontGhost;
  POCACanvasFontGhostPointer:=@POCACanvasFontGhost;
  POCACanvasGhostPointer:=@POCACanvasGhost;
