@@ -116,6 +116,7 @@ type TPOCAHostData=record
 
       TextureHash:TPOCAValue;
       TextureHashEvents:TPOCAValue;
+      TextureNameSpace:TPOCAValue;
 
       FontHash:TPOCAValue;
       FontHashEvents:TPOCAValue;
@@ -4599,9 +4600,12 @@ begin
 end;
 
 procedure POCAInitTextureNamespace(aContext:PPOCAContext);
-var Hash:TPOCAValue;
+var HostData:PPOCAHostData;
+    Hash:TPOCAValue;
 begin
+ HostData:=POCAGetHostData(aContext);
  Hash:=POCANewHash(aContext);
+ HostData^.TextureNameSpace:=Hash;
  POCAArrayPush(aContext^.Instance^.Globals.RootArray,Hash);
  POCAAddNativeFunction(aContext,Hash,'create',POCATextureFunctionCREATE);
  POCAHashSetString(aContext,aContext^.Instance^.Globals.Namespace,'Texture',Hash);
