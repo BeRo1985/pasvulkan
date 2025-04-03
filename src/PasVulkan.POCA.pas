@@ -92,8 +92,36 @@ type TPOCAHostData=record
       Matrix4x4Hash:TPOCAValue;
       Matrix4x4HashEvents:TPOCAValue;
 
+      SpriteHash:TPOCAValue;
+      SpriteHashEvents:TPOCAValue;
+
+      SpriteAtlasHash:TPOCAValue;
+      SpriteAtlasHashEvents:TPOCAValue;
+
+      FontHash:TPOCAValue;
+      FontHashEvents:TPOCAValue;
+
+      CanvasFontHash:TPOCAValue;
+      CanvasFontHashEvents:TPOCAValue;
+
+      CanvasHash:TPOCAValue;
+      CanvasHashEvents:TPOCAValue;
+
      end;
      PPOCAHostData=^TPOCAHostData;   
+
+// Pointers to the ghost types as forward declarations, for to avoid circular references and more complicated code
+var POCAVector2GhostPointer:PPOCAGhostType=nil;
+    POCAVector3GhostPointer:PPOCAGhostType=nil;
+    POCAVector4GhostPointer:PPOCAGhostType=nil;
+    POCAQuaternionGhostPointer:PPOCAGhostType=nil;
+    POCAMatrix3x3GhostPointer:PPOCAGhostType=nil;
+    POCAMatrix4x4GhostPointer:PPOCAGhostType=nil;
+    POCASpriteGhostPointer:PPOCAGhostType=nil;
+    POCASpriteAtlasGhostPointer:PPOCAGhostType=nil;
+    POCAFontGhostPointer:PPOCAGhostType=nil;
+    POCACanvasFontGhostPointer:PPOCAGhostType=nil;
+    POCACanvasGhostPointer:PPOCAGhostType=nil;
 
 function POCAGetHostData(const aContext:PPOCAContext):PPOCAHostData; //inline;
 procedure POCASetHostData(const aContext:PPOCAContext;const aHostData:PPOCAHostData); //inline;
@@ -122,7 +150,19 @@ function POCANewMatrix4x4(const aContext:PPOCAContext;const aMatrix4x4:TpvMatrix
 function POCANewMatrix4x4(const aContext:PPOCAContext;const aM00:TpvDouble=1.0;const aM01:TpvDouble=0.0;const aM02:TpvDouble=0.0;const aM03:TpvDouble=0.0;const aM10:TpvDouble=0.0;const aM11:TpvDouble=1.0;const aM12:TpvDouble=0.0;const aM13:TpvDouble=0.0;const aM20:TpvDouble=0.0;const aM21:TpvDouble=0.0;const aM22:TpvDouble=1.0;const aM23:TpvDouble=0.0;const aM30:TpvDouble=0.0;const aM31:TpvDouble=0.0;const aM32:TpvDouble=0.0;const aM33:TpvDouble=1.0):TPOCAValue; overload;
 function POCAGetMatrix4x4Value(const aValue:TPOCAValue):TpvMatrix4x4D;
 
-function POCANewCanvas(const aContext:PPOCAContext;const aCanvas:TObject):TPOCAValue; overload;
+function POCANewSprite(const aContext:PPOCAContext;const aSprite:TObject):TPOCAValue;
+function POCAGetSpriteValue(const aValue:TPOCAValue):TObject;
+
+function POCANewSpriteAtlas(const aContext:PPOCAContext;const aSpriteAtlas:TObject):TPOCAValue;
+function POCAGetSpriteAtlasValue(const aValue:TPOCAValue):TObject;
+
+function POCANewFont(const aContext:PPOCAContext;const aFont:TObject):TPOCAValue;
+function POCAGetFontValue(const aValue:TPOCAValue):TObject;
+
+function POCANewCanvasFont(const aContext:PPOCAContext;const aCanvasFont:TObject):TPOCAValue;
+function POCAGetCanvasFontValue(const aValue:TPOCAValue):TObject;
+
+function POCANewCanvas(const aContext:PPOCAContext;const aCanvas:TObject):TPOCAValue;
 function POCAGetCanvasValue(const aValue:TPOCAValue):TObject;
 
 procedure InitializeForPOCAContext(const aContext:PPOCAContext);
@@ -136,15 +176,6 @@ uses PasVulkan.VectorPath,
      PasVulkan.Sprites,
      PasVulkan.TrueTypeFont,
      PasVulkan.Font;
-
-// Pointers to the ghost types as forward declarations, for to avoid circular references and more complicated code
-var POCAVector2GhostPointer:PPOCAGhostType=nil;
-    POCAVector3GhostPointer:PPOCAGhostType=nil;
-    POCAVector4GhostPointer:PPOCAGhostType=nil;
-    POCAQuaternionGhostPointer:PPOCAGhostType=nil;
-    POCAMatrix3x3GhostPointer:PPOCAGhostType=nil;
-    POCAMatrix4x4GhostPointer:PPOCAGhostType=nil;
-    POCACanvasGhostPointer:PPOCAGhostType=nil;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Host data
@@ -706,7 +737,6 @@ end;
 
 procedure POCAInitVector2(aContext:PPOCAContext);
 begin
- POCAVector2GhostPointer:=@POCAVector2Ghost;
  POCAInitVector2Hash(aContext);
  POCAInitVector2Namespace(aContext);
 end;
@@ -1291,7 +1321,6 @@ end;
 
 procedure POCAInitVector3(aContext:PPOCAContext);
 begin
- POCAVector3GhostPointer:=@POCAVector3Ghost;
  POCAInitVector3Hash(aContext);
  POCAInitVector3Namespace(aContext);
 end;
@@ -1883,7 +1912,6 @@ end;
 
 procedure POCAInitVector4(aContext:PPOCAContext);
 begin
- POCAVector4GhostPointer:=@POCAVector4Ghost;
  POCAInitVector4Hash(aContext);
  POCAInitVector4Namespace(aContext);
 end;
@@ -2528,7 +2556,6 @@ end;
 
 procedure POCAInitQuaternion(aContext:PPOCAContext);
 begin
- POCAQuaternionGhostPointer:=@POCAQuaternionGhost;
  POCAInitQuaternionHash(aContext);
  POCAInitQuaternionNamespace(aContext);
 end;
@@ -3158,7 +3185,6 @@ end;
 procedure POCAInitMatrix3x3(aContext:PPOCAContext);
 var Hash:TPOCAValue;
 begin
- POCAMatrix3x3GhostPointer:=@POCAMatrix3x3Ghost;
  POCAInitMatrix3x3Hash(aContext);
  POCAInitMatrix3x3Namespace(aContext);
 end;
@@ -3894,9 +3920,140 @@ end;
 
 procedure POCAInitMatrix4x4(aContext:PPOCAContext);
 begin
- POCAMatrix4x4GhostPointer:=@POCAMatrix4x4Ghost;
  POCAInitMatrix4x4Hash(aContext);
  POCAInitMatrix4x4Namespace(aContext);
+end;
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Sprite
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+const POCASpriteGhost:TPOCAGhostType=
+       (
+        Destroy:nil;
+        CanDestroy:nil;
+        Mark:nil;
+        ExistKey:nil;
+        GetKey:nil;
+        SetKey:nil;
+        Name:'Sprite'
+       );
+
+function POCANewSprite(const aContext:PPOCAContext;const aSprite:TObject):TPOCAValue;
+begin
+ result:=POCANewGhost(aContext,@POCASpriteGhost,aSprite);
+end;
+
+function POCAGetSpriteValue(const aValue:TPOCAValue):TObject;
+begin
+ if POCAGhostGetType(aValue)=@POCASpriteGhost then begin
+  result:=TObject(POCAGhostFastGetPointer(aValue));
+ end else begin
+  result:=nil;
+ end;
+end;
+
+procedure POCAInitSprite(aContext:PPOCAContext);
+begin
+end;
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// SpriteAtlas
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+const POCASpriteAtlasGhost:TPOCAGhostType=
+       (
+        Destroy:nil;
+        CanDestroy:nil;
+        Mark:nil;
+        ExistKey:nil;
+        GetKey:nil;
+        SetKey:nil;
+        Name:'SpriteAtlas'
+       );
+
+function POCANewSpriteAtlas(const aContext:PPOCAContext;const aSpriteAtlas:TObject):TPOCAValue;
+begin
+ result:=POCANewGhost(aContext,@POCASpriteAtlasGhost,aSpriteAtlas);
+end;
+
+function POCAGetSpriteAtlasValue(const aValue:TPOCAValue):TObject;
+begin
+ if POCAGhostGetType(aValue)=@POCASpriteAtlasGhost then begin
+  result:=TObject(POCAGhostFastGetPointer(aValue));
+ end else begin
+  result:=nil;
+ end;
+end;
+
+procedure POCAInitSpriteAtlas(aContext:PPOCAContext);
+begin
+end;
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Font
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+const POCAFontGhost:TPOCAGhostType=
+       (
+        Destroy:nil;
+        CanDestroy:nil;
+        Mark:nil;
+        ExistKey:nil;
+        GetKey:nil;
+        SetKey:nil;
+        Name:'Font'
+       );
+
+function POCANewFont(const aContext:PPOCAContext;const aFont:TObject):TPOCAValue;
+begin
+ result:=POCANewGhost(aContext,@POCAFontGhost,aFont);
+end;
+
+function POCAGetFontValue(const aValue:TPOCAValue):TObject;
+begin
+ if POCAGhostGetType(aValue)=@POCAFontGhost then begin
+  result:=TObject(POCAGhostFastGetPointer(aValue));
+ end else begin
+  result:=nil;
+ end;
+end;
+
+procedure POCAInitFont(aContext:PPOCAContext);
+begin
+end;
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// CanvasFont
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+const POCACanvasFontGhost:TPOCAGhostType=
+       (
+        Destroy:nil;
+        CanDestroy:nil;
+        Mark:nil;
+        ExistKey:nil;
+        GetKey:nil;
+        SetKey:nil;
+        Name:'CanvasFont'
+       );
+
+function POCANewCanvasFont(const aContext:PPOCAContext;const aCanvasFont:TObject):TPOCAValue;
+begin
+ result:=POCANewGhost(aContext,@POCACanvasFontGhost,aCanvasFont);
+end;
+
+function POCAGetCanvasFontValue(const aValue:TPOCAValue):TObject;
+begin
+ if POCAGhostGetType(aValue)=@POCACanvasFontGhost then begin
+  result:=TObject(POCAGhostFastGetPointer(aValue));
+ end else begin
+  result:=nil;
+ end;
+end;
+
+procedure POCAInitCanvasFont(aContext:PPOCAContext);
+begin
 end;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -4036,7 +4193,6 @@ end;
 
 procedure POCAInitCanvas(aContext:PPOCAContext);
 begin
- POCACanvasGhostPointer:=@POCACanvasGhost;
  POCAInitCanvasHash(aContext);
  POCAInitCanvasNamespace(aContext);
 end;
@@ -4067,6 +4223,14 @@ begin
 
  POCAInitMatrix4x4(aContext);
 
+ POCAInitSprite(aContext);
+
+ POCAInitSpriteAtlas(aContext);
+
+ POCAInitFont(aContext);
+
+ POCAInitCanvasFont(aContext);
+
  POCAInitCanvas(aContext);
 
 end;
@@ -4088,5 +4252,17 @@ begin
  end;
 end;
 
+initialization
+ POCAVector2GhostPointer:=@POCAVector2Ghost;
+ POCAVector3GhostPointer:=@POCAVector3Ghost;
+ POCAVector4GhostPointer:=@POCAVector4Ghost;
+ POCAQuaternionGhostPointer:=@POCAQuaternionGhost;
+ POCAMatrix3x3GhostPointer:=@POCAMatrix3x3Ghost;
+ POCAMatrix4x4GhostPointer:=@POCAMatrix4x4Ghost;
+ POCASpriteGhostPointer:=@POCASpriteGhost;
+ POCASpriteAtlasGhostPointer:=@POCASpriteAtlasGhost;
+ POCAFontGhostPointer:=@POCAFontGhost;
+ POCACanvasFontGhostPointer:=@POCACanvasFontGhost;
+ POCACanvasGhostPointer:=@POCACanvasGhost;
 end.
 
