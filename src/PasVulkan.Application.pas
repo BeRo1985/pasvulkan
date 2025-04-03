@@ -526,6 +526,13 @@ const MaxSwapChainImages=3;
       POINTEREVENT_MOTION=2;
       POINTEREVENT_DRAG=3;
 
+      POINTERBUTTON_NONE=-1;
+      POINTERBUTTON_LEFT=0;
+      POINTERBUTTON_RIGHT=1;
+      POINTERBUTTON_MIDDLE=2;
+      POINTERBUTTON_X1=3;
+      POINTERBUTTON_X2=4;
+
 type EpvApplication=class(Exception)
       private
        fTag:string;

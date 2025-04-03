@@ -196,6 +196,12 @@ function POCAGetCanvasShapeValue(const aValue:TPOCAValue):TpvCanvasShape;
 function POCANewCanvas(const aContext:PPOCAContext;const aCanvas:TpvCanvas):TPOCAValue;
 function POCAGetCanvasValue(const aValue:TPOCAValue):TpvCanvas;
 
+function POCANewInputEventHash(const aContext:PPOCAContext):TPOCAValue;
+function POCASetInputEventHashNone(const aContext:PPOCAContext;const aHash:TPOCAValue):TPOCAValue;
+function POCASetInputEventHashKey(const aContext:PPOCAContext;const aHash:TPOCAValue;const aKeyEvent:TpvApplicationInputKeyEvent):TPOCAValue;
+function POCASetInputEventHashPointer(const aContext:PPOCAContext;const aHash:TPOCAValue;const aPointerEvent:TpvApplicationInputPointerEvent):TPOCAValue;
+function POCASetInputEventHashScroll(const aContext:PPOCAContext;const aHash:TPOCAValue;const aRelativeAmount:TpvVector2):TPOCAValue;
+
 procedure InitializeForPOCAContext(const aContext:PPOCAContext);
 procedure FinalizeForPOCAContext(const aContext:PPOCAContext);
 
@@ -9624,6 +9630,19 @@ begin
  result:=Hash;
 end;
 
+function POCAInitInputPointerButtons(aContext:PPOCAContext):TPOCAValue;
+var Hash:TPOCAValue;
+begin
+ Hash:=POCANewHash(aContext);
+ POCAHashSetString(aContext,Hash,'POINTERBUTTON_NONE',POCANewNumber(aContext,POINTERBUTTON_NONE));
+ POCAHashSetString(aContext,Hash,'POINTERBUTTON_LEFT',POCANewNumber(aContext,POINTERBUTTON_LEFT));
+ POCAHashSetString(aContext,Hash,'POINTERBUTTON_MIDDLE',POCANewNumber(aContext,POINTERBUTTON_MIDDLE));
+ POCAHashSetString(aContext,Hash,'POINTERBUTTON_RIGHT',POCANewNumber(aContext,POINTERBUTTON_RIGHT));
+ POCAHashSetString(aContext,Hash,'POINTERBUTTON_X1',POCANewNumber(aContext,POINTERBUTTON_X1));
+ POCAHashSetString(aContext,Hash,'POINTERBUTTON_X2',POCANewNumber(aContext,POINTERBUTTON_X2));
+ result:=Hash;
+end;
+
 procedure POCAInitInputNamespace(aContext:PPOCAContext);
 var Hash:TPOCAValue;
 begin
@@ -9638,12 +9657,180 @@ begin
  POCAHashSetString(aContext,Hash,'KeyEventTypes',POCAInitInputKeyEventTypes(aContext));
  POCAHashSetString(aContext,Hash,'KeyModifiers',POCAInitInputKeyModifiers(aContext));
  POCAHashSetString(aContext,Hash,'PointerEventTypes',POCAInitInputPointerEventTypes(aContext)); 
+ POCAHashSetString(aContext,Hash,'PointerButtons',POCAInitInputPointerButtons(aContext));
  POCAHashSetString(aContext,aContext^.Instance^.Globals.Namespace,'Input',Hash);
 end;
 
 procedure POCAInitInput(aContext:PPOCAContext);
 begin
  POCAInitInputNamespace(aContext);
+end;
+
+function ConvertKeyModifiers(const aKeyModifiers:TpvApplicationInputKeyModifiers):TpvUInt32;
+begin
+ result:=0;
+ if TpvApplicationInputKeyModifier.LSHIFT in aKeyModifiers then begin
+  result:=result or (TpvUInt32(1) shl KEYMODIFIER_LSHIFT);
+ end;
+ if TpvApplicationInputKeyModifier.RSHIFT in aKeyModifiers then begin
+  result:=result or (TpvUInt32(1) shl KEYMODIFIER_RSHIFT);
+ end;
+ if TpvApplicationInputKeyModifier.LCTRL in aKeyModifiers then begin
+  result:=result or (TpvUInt32(1) shl KEYMODIFIER_LCTRL);
+ end;
+ if TpvApplicationInputKeyModifier.RCTRL in aKeyModifiers then begin
+  result:=result or (TpvUInt32(1) shl KEYMODIFIER_RCTRL);
+ end;
+ if TpvApplicationInputKeyModifier.LALT in aKeyModifiers then begin
+  result:=result or (TpvUInt32(1) shl KEYMODIFIER_LALT);
+ end;
+ if TpvApplicationInputKeyModifier.RALT in aKeyModifiers then begin
+  result:=result or (TpvUInt32(1) shl KEYMODIFIER_RALT);
+ end;
+ if TpvApplicationInputKeyModifier.LMETA in aKeyModifiers then begin
+  result:=result or (TpvUInt32(1) shl KEYMODIFIER_LMETA);
+ end;
+ if TpvApplicationInputKeyModifier.RMETA in aKeyModifiers then begin
+  result:=result or (TpvUInt32(1) shl KEYMODIFIER_RMETA);
+ end; if TpvApplicationInputKeyModifier.NUM in aKeyModifiers then begin
+  result:=result or (TpvUInt32(1) shl KEYMODIFIER_NUM);
+ end;
+ if TpvApplicationInputKeyModifier.CAPS in aKeyModifiers then begin
+  result:=result or (TpvUInt32(1) shl KEYMODIFIER_CAPS);
+ end;
+ if TpvApplicationInputKeyModifier.SCROLL in aKeyModifiers then begin
+  result:=result or (TpvUInt32(1) shl KEYMODIFIER_SCROLL);
+ end;
+ if TpvApplicationInputKeyModifier.MODE in aKeyModifiers then begin
+  result:=result or (TpvUInt32(1) shl KEYMODIFIER_MODE);
+ end;
+ if TpvApplicationInputKeyModifier.RESERVED in aKeyModifiers then begin
+  result:=result or (TpvUInt32(1) shl KEYMODIFIER_RESERVED);
+ end;
+ if TpvApplicationInputKeyModifier.CTRL in aKeyModifiers then begin
+  result:=result or (TpvUInt32(1) shl KEYMODIFIER_CTRL);
+ end;
+ if TpvApplicationInputKeyModifier.SHIFT in aKeyModifiers then begin
+  result:=result or (TpvUInt32(1) shl KEYMODIFIER_SHIFT);
+ end;
+ if TpvApplicationInputKeyModifier.ALT in aKeyModifiers then begin
+  result:=result or (TpvUInt32(1) shl KEYMODIFIER_ALT);
+ end;
+ if TpvApplicationInputKeyModifier.META in aKeyModifiers then begin
+  result:=result or (TpvUInt32(1) shl KEYMODIFIER_META);
+ end;
+end;
+
+class function ConvertPointerButton(const aPointerButton:TpvApplicationInputPointerButton):TpvUInt32;
+begin
+ case aPointerButton of
+  TpvApplicationInputPointerButton.Left:begin
+   result:=POINTERBUTTON_LEFT;
+  end;
+  TpvApplicationInputPointerButton.Middle:begin
+   result:=POINTERBUTTON_MIDDLE;
+  end;
+  TpvApplicationInputPointerButton.Right:begin
+   result:=POINTERBUTTON_RIGHT;
+  end;
+  TpvApplicationInputPointerButton.X1:begin
+   result:=POINTERBUTTON_X1;
+  end;
+  TpvApplicationInputPointerButton.X2:begin
+   result:=POINTERBUTTON_X2;
+  end;
+  else begin
+   result:=POINTERBUTTON_NONE;
+  end;
+ end;
+end;
+
+function ConvertPointerButtons(const aPointerButtons:TpvApplicationInputPointerButtons):TpvUInt32;
+begin
+ result:=0;
+ if TpvApplicationInputPointerButton.None in aPointerButtons then begin
+  result:=result or (TpvUInt32(1) shl POINTERBUTTON_NONE);
+ end;
+ if TpvApplicationInputPointerButton.Left in aPointerButtons then begin
+  result:=result or (TpvUInt32(1) shl POINTERBUTTON_LEFT);
+ end;
+ if TpvApplicationInputPointerButton.Middle in aPointerButtons then begin
+  result:=result or (TpvUInt32(1) shl POINTERBUTTON_MIDDLE);
+ end;
+ if TpvApplicationInputPointerButton.Right in aPointerButtons then begin
+  result:=result or (TpvUInt32(1) shl POINTERBUTTON_RIGHT);
+ end;
+ if TpvApplicationInputPointerButton.X1 in aPointerButtons then begin
+  result:=result or (TpvUInt32(1) shl POINTERBUTTON_X1);
+ end;
+ if TpvApplicationInputPointerButton.X2 in aPointerButtons then begin
+  result:=result or (TpvUInt32(1) shl POINTERBUTTON_X2);
+ end;
+end;
+
+function POCANewInputEventHash(const aContext:PPOCAContext):TPOCAValue;
+begin
+ result:=POCANewHash(aContext);
+end;
+
+function POCASetInputEventHashNone(const aContext:PPOCAContext;const aHash:TPOCAValue):TPOCAValue;
+begin
+ POCAHashSetString(aContext,aHash,'EventType',POCANewNumber(aContext,EVENT_NONE));
+ result:=aHash;
+end;
+
+function POCASetInputEventHashKey(const aContext:PPOCAContext;const aHash:TPOCAValue;const aKeyEvent:TpvApplicationInputKeyEvent):TPOCAValue;
+begin
+ POCAHashSetString(aContext,aHash,'EventType',POCANewNumber(aContext,EVENT_KEY));
+ case aKeyEvent.KeyEventType of
+  TpvApplicationInputKeyEventType.Down:begin
+   POCAHashSetString(aContext,aHash,'KeyEventType',POCANewNumber(aContext,KEYEVENT_DOWN));
+  end;
+  TpvApplicationInputKeyEventType.Up:begin
+   POCAHashSetString(aContext,aHash,'KeyEventType',POCANewNumber(aContext,KEYEVENT_UP));
+  end;
+  TpvApplicationInputKeyEventType.Typed:begin
+   POCAHashSetString(aContext,aHash,'KeyEventType',POCANewNumber(aContext,KEYEVENT_TYPED));
+  end;
+  else {TpvApplicationInputKeyEventType.Unicode:}begin
+   POCAHashSetString(aContext,aHash,'KeyEventType',POCANewNumber(aContext,KEYEVENT_UNICODE));
+  end;
+ end;
+ POCAHashSetString(aContext,aHash,'KeyCode',POCANewNumber(aContext,aKeyEvent.KeyCode));
+ POCAHashSetString(aContext,aHash,'ScanCode',POCANewNumber(aContext,aKeyEvent.ScanCode));
+ POCAHashSetString(aContext,aHash,'KeyModifiers',POCANewNumber(aContext,ConvertKeyModifiers(aKeyEvent.KeyModifiers)));
+end;
+
+function POCASetInputEventHashPointer(const aContext:PPOCAContext;const aHash:TPOCAValue;const aPointerEvent:TpvApplicationInputPointerEvent):TPOCAValue;
+begin
+ POCAHashSetString(aContext,aHash,'EventType',POCANewNumber(aContext,EVENT_POINTER));
+ case aPointerEvent.PointerEventType of
+  TpvApplicationInputPointerEventType.Down:begin
+   POCAHashSetString(aContext,aHash,'PointerEventType',POCANewNumber(aContext,POINTEREVENT_DOWN));
+  end;
+  TpvApplicationInputPointerEventType.Up:begin
+   POCAHashSetString(aContext,aHash,'PointerEventType',POCANewNumber(aContext,POINTEREVENT_UP));
+  end;
+  TpvApplicationInputPointerEventType.Motion:begin
+   POCAHashSetString(aContext,aHash,'PointerEventType',POCANewNumber(aContext,POINTEREVENT_MOTION));
+  end;
+  else {TpvApplicationInputPointerEventType.Drag:}begin
+   POCAHashSetString(aContext,aHash,'PointerEventType',POCANewNumber(aContext,POINTEREVENT_DRAG));
+  end;
+ end; 
+ POCAHashSetString(aContext,aHash,'Position',POCANewVector2(aContext,aPointerEvent.Position));
+ POCAHashSetString(aContext,aHash,'RelativePosition',POCANewVector2(aContext,aPointerEvent.RelativePosition));
+ POCAHashSetString(aContext,aHash,'Pressure',POCANewNumber(aContext,aPointerEvent.Pressure));
+ POCAHashSetString(aContext,aHash,'PointerID',POCANewNumber(aContext,aPointerEvent.PointerID));
+ POCAHashSetString(aContext,aHash,'Button',POCANewNumber(aContext,ConvertPointerButton(aPointerEvent.Button)));
+ POCAHashSetString(aContext,aHash,'Buttons',POCANewNumber(aContext,ConvertPointerButtons(aPointerEvent.Buttons)));
+ POCAHashSetString(aContext,aHash,'KeyModifiers',POCANewNumber(aContext,ConvertKeyModifiers(aPointerEvent.KeyModifiers)));
+end;
+
+function POCASetInputEventHashScroll(const aContext:PPOCAContext;const aHash:TPOCAValue;const aRelativeAmount:TpvVector2):TPOCAValue;
+begin
+ POCAHashSetString(aContext,aHash,'EventType',POCANewNumber(aContext,EVENT_SCROLLED));
+ POCAHashSetString(aContext,aHash,'RelativeAmount',POCANewVector2(aContext,aRelativeAmount));
 end;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
