@@ -9331,6 +9331,7 @@ begin
  POCAHashSetString(aContext,Hash,'KEYCODE_CAPSLOCK',POCANewNumber(aContext,KEYCODE_CAPSLOCK));
  POCAHashSetString(aContext,Hash,'KEYCODE_NUMLOCK',POCANewNumber(aContext,KEYCODE_NUMLOCK));
  POCAHashSetString(aContext,Hash,'KEYCODE_SCROLLLOCK',POCANewNumber(aContext,KEYCODE_SCROLLLOCK));
+{}
  POCAHashSetString(aContext,Hash,'KEYCODE_RSHIFT',POCANewNumber(aContext,KEYCODE_RSHIFT));
  POCAHashSetString(aContext,Hash,'KEYCODE_LSHIFT',POCANewNumber(aContext,KEYCODE_LSHIFT));
  POCAHashSetString(aContext,Hash,'KEYCODE_RCTRL',POCANewNumber(aContext,KEYCODE_RCTRL));
@@ -9515,6 +9516,7 @@ function POCAInitInputJoystickHats(aContext:PPOCAContext):TPOCAValue;
 var Hash:TPOCAValue;
 begin
  Hash:=POCANewHash(aContext);
+ POCAArrayPush(aContext^.Instance^.Globals.RootArray,Hash);
  POCAHashSetString(aContext,Hash,'JOYSTICK_HAT_CENTERED',POCANewNumber(aContext,JOYSTICK_HAT_CENTERED));
  POCAHashSetString(aContext,Hash,'JOYSTICK_HAT_LEFT',POCANewNumber(aContext,JOYSTICK_HAT_LEFT));
  POCAHashSetString(aContext,Hash,'JOYSTICK_HAT_RIGHT',POCANewNumber(aContext,JOYSTICK_HAT_RIGHT));
@@ -9532,6 +9534,7 @@ function POCAInitInputGameControllerBindTypes(aContext:PPOCAContext):TPOCAValue;
 var Hash:TPOCAValue;
 begin
  Hash:=POCANewHash(aContext);
+ POCAArrayPush(aContext^.Instance^.Globals.RootArray,Hash);
  POCAHashSetString(aContext,Hash,'GAME_CONTROLLER_BINDTYPE_NONE',POCANewNumber(aContext,GAME_CONTROLLER_BINDTYPE_NONE));
  POCAHashSetString(aContext,Hash,'GAME_CONTROLLER_BINDTYPE_BUTTON',POCANewNumber(aContext,GAME_CONTROLLER_BINDTYPE_BUTTON));
  POCAHashSetString(aContext,Hash,'GAME_CONTROLLER_BINDTYPE_AXIS',POCANewNumber(aContext,GAME_CONTROLLER_BINDTYPE_AXIS));
@@ -9543,6 +9546,7 @@ function POCAInitInputGameControllerAxes(aContext:PPOCAContext):TPOCAValue;
 var Hash:TPOCAValue;
 begin
  Hash:=POCANewHash(aContext);
+ POCAArrayPush(aContext^.Instance^.Globals.RootArray,Hash);
  POCAHashSetString(aContext,Hash,'GAME_CONTROLLER_AXIS_INVALID',POCANewNumber(aContext,GAME_CONTROLLER_AXIS_INVALID));
  POCAHashSetString(aContext,Hash,'GAME_CONTROLLER_AXIS_LEFTX',POCANewNumber(aContext,GAME_CONTROLLER_AXIS_LEFTX));
  POCAHashSetString(aContext,Hash,'GAME_CONTROLLER_AXIS_LEFTY',POCANewNumber(aContext,GAME_CONTROLLER_AXIS_LEFTY));
@@ -9558,6 +9562,7 @@ function POCAInitInputGameControllerButtons(aContext:PPOCAContext):TPOCAValue;
 var Hash:TPOCAValue;
 begin
  Hash:=POCANewHash(aContext);
+ POCAArrayPush(aContext^.Instance^.Globals.RootArray,Hash);
  POCAHashSetString(aContext,Hash,'GAME_CONTROLLER_BUTTON_INVALID',POCANewNumber(aContext,GAME_CONTROLLER_BUTTON_INVALID));
  POCAHashSetString(aContext,Hash,'GAME_CONTROLLER_BUTTON_A',POCANewNumber(aContext,GAME_CONTROLLER_BUTTON_A));
  POCAHashSetString(aContext,Hash,'GAME_CONTROLLER_BUTTON_B',POCANewNumber(aContext,GAME_CONTROLLER_BUTTON_B));
@@ -9588,6 +9593,7 @@ function POCAInitInputKeyEventTypes(aContext:PPOCAContext):TPOCAValue;
 var Hash:TPOCAValue;
 begin
  Hash:=POCANewHash(aContext);
+ POCAArrayPush(aContext^.Instance^.Globals.RootArray,Hash);
  POCAHashSetString(aContext,Hash,'KEYEVENT_DOWN',POCANewNumber(aContext,KEYEVENT_DOWN));
  POCAHashSetString(aContext,Hash,'KEYEVENT_UP',POCANewNumber(aContext,KEYEVENT_UP));
  POCAHashSetString(aContext,Hash,'KEYEVENT_TYPED',POCANewNumber(aContext,KEYEVENT_TYPED));
@@ -9599,6 +9605,7 @@ function POCAInitInputKeyModifiers(aContext:PPOCAContext):TPOCAValue;
 var Hash:TPOCAValue;
 begin
  Hash:=POCANewHash(aContext);
+ POCAArrayPush(aContext^.Instance^.Globals.RootArray,Hash);
  POCAHashSetString(aContext,Hash,'KEYMODIFIER_LSHIFT',POCANewNumber(aContext,KEYMODIFIER_LSHIFT));
  POCAHashSetString(aContext,Hash,'KEYMODIFIER_RSHIFT',POCANewNumber(aContext,KEYMODIFIER_RSHIFT));
  POCAHashSetString(aContext,Hash,'KEYMODIFIER_LCTRL',POCANewNumber(aContext,KEYMODIFIER_LCTRL));
@@ -9623,6 +9630,7 @@ function POCAInitInputPointerEventTypes(aContext:PPOCAContext):TPOCAValue;
 var Hash:TPOCAValue;
 begin
  Hash:=POCANewHash(aContext);
+ POCAArrayPush(aContext^.Instance^.Globals.RootArray,Hash);
  POCAHashSetString(aContext,Hash,'POINTEREVENT_DOWN',POCANewNumber(aContext,POINTEREVENT_DOWN));
  POCAHashSetString(aContext,Hash,'POINTEREVENT_UP',POCANewNumber(aContext,POINTEREVENT_UP));
  POCAHashSetString(aContext,Hash,'POINTEREVENT_MOTION',POCANewNumber(aContext,POINTEREVENT_MOTION));
@@ -9634,6 +9642,7 @@ function POCAInitInputPointerButtons(aContext:PPOCAContext):TPOCAValue;
 var Hash:TPOCAValue;
 begin
  Hash:=POCANewHash(aContext);
+ POCAArrayPush(aContext^.Instance^.Globals.RootArray,Hash);
  POCAHashSetString(aContext,Hash,'POINTERBUTTON_NONE',POCANewNumber(aContext,POINTERBUTTON_NONE));
  POCAHashSetString(aContext,Hash,'POINTERBUTTON_LEFT',POCANewNumber(aContext,POINTERBUTTON_LEFT));
  POCAHashSetString(aContext,Hash,'POINTERBUTTON_MIDDLE',POCANewNumber(aContext,POINTERBUTTON_MIDDLE));
@@ -9650,14 +9659,14 @@ begin
  POCAArrayPush(aContext^.Instance^.Globals.RootArray,Hash);
  POCAHashSetString(aContext,Hash,'EventTypes',POCAInitInputEventTypes(aContext));
  POCAHashSetString(aContext,Hash,'KeyCodes',POCAInitInputKeyCodes(aContext));
- POCAHashSetString(aContext,Hash,'JoystickHats',POCAInitInputJoystickHats(aContext));
+{POCAHashSetString(aContext,Hash,'JoystickHats',POCAInitInputJoystickHats(aContext));
  POCAHashSetString(aContext,Hash,'GameControllerBindTypes',POCAInitInputGameControllerBindTypes(aContext));
  POCAHashSetString(aContext,Hash,'GameControllerAxes',POCAInitInputGameControllerAxes(aContext));
  POCAHashSetString(aContext,Hash,'GameControllerButtons',POCAInitInputGameControllerButtons(aContext));
  POCAHashSetString(aContext,Hash,'KeyEventTypes',POCAInitInputKeyEventTypes(aContext));
  POCAHashSetString(aContext,Hash,'KeyModifiers',POCAInitInputKeyModifiers(aContext));
  POCAHashSetString(aContext,Hash,'PointerEventTypes',POCAInitInputPointerEventTypes(aContext)); 
- POCAHashSetString(aContext,Hash,'PointerButtons',POCAInitInputPointerButtons(aContext));
+ POCAHashSetString(aContext,Hash,'PointerButtons',POCAInitInputPointerButtons(aContext));       //}
  POCAHashSetString(aContext,aContext^.Instance^.Globals.Namespace,'Input',Hash);
 end;
 
