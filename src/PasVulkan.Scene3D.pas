@@ -20312,7 +20312,7 @@ var POCACodeString:TpvUTF8String;
     try
      POCAContext:=POCAContextCreate(POCAInstance);
      try
-//    InitializeForPOCAContext(POCAContext);
+      InitializeForPOCAContext(POCAContext);
       try
        try
         POCAScene3DGroup:=TPOCAScene3DGroup.Create(POCAInstance,POCAContext,nil,nil,false);
@@ -20339,7 +20339,7 @@ var POCACodeString:TpvUTF8String;
         end;
        end;
       finally
-//     FinalizeForPOCAContext(POCAContext);
+       FinalizeForPOCAContext(POCAContext);
       end;
      finally
       POCAContextDestroy(POCAContext);
