@@ -9730,7 +9730,7 @@ begin
  end;
 end;
 
-class function ConvertPointerButton(const aPointerButton:TpvApplicationInputPointerButton):TpvUInt32;
+function ConvertPointerButton(const aPointerButton:TpvApplicationInputPointerButton):TpvUInt32;
 begin
  case aPointerButton of
   TpvApplicationInputPointerButton.Left:begin
