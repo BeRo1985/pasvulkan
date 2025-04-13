@@ -583,7 +583,8 @@ type EpvScene3D=class(Exception);
              TextureID:TpvUInt32;           //    4
              Size:TpvVector2;               //    8
              Color:TpvHalfFloatVector4;     //    8
-             Unused:TpvUInt64;              //    8
+             Time:TpvFloat;                 //    4
+             Unused:TpvUInt32;              //    4
             end;                            // = 48 bytes per particle vertex
             PParticleVertex=^TParticleVertex;
             TParticleVertices=array[0..(MaxParticles*3)-1] of TParticleVertex;
@@ -33902,6 +33903,7 @@ begin
  aPipeline.VertexInputState.AddVertexInputAttributeDescription(3,0,VK_FORMAT_R32_UINT,TVkPtrUInt(pointer(@TpvScene3D.PParticleVertex(nil)^.TextureID)));
  aPipeline.VertexInputState.AddVertexInputAttributeDescription(4,0,VK_FORMAT_R32G32_SFLOAT,TVkPtrUInt(pointer(@TpvScene3D.PParticleVertex(nil)^.Size)));
  aPipeline.VertexInputState.AddVertexInputAttributeDescription(5,0,VK_FORMAT_R16G16B16A16_SFLOAT,TVkPtrUInt(pointer(@TpvScene3D.PParticleVertex(nil)^.Color)));
+ aPipeline.VertexInputState.AddVertexInputAttributeDescription(6,0,VK_FORMAT_R32_SFLOAT,TVkPtrUInt(pointer(@TpvScene3D.PParticleVertex(nil)^.Time)));
 end;
 
 procedure InitializeAnimationChannelTargetOverwriteGroupMap;
@@ -34118,6 +34120,7 @@ begin
     ParticleVertex^.TextureID:=TextureID;
     ParticleVertex^.Size:=Size;
     ParticleVertex^.Color:=HalfFloatColor;
+    ParticleVertex^.Time:=Time;
 
     ParticleVertex:=@ParticleVertices^[CountVertices+1];
     ParticleVertex^.Position:=Position;
@@ -34127,6 +34130,7 @@ begin
     ParticleVertex^.TextureID:=TextureID;
     ParticleVertex^.Size:=Size;
     ParticleVertex^.Color:=HalfFloatColor;
+    ParticleVertex^.Time:=Time;
 
     ParticleVertex:=@ParticleVertices^[CountVertices+2];
     ParticleVertex^.Position:=Position;
@@ -34136,6 +34140,7 @@ begin
     ParticleVertex^.TextureID:=TextureID;
     ParticleVertex^.Size:=Size;
     ParticleVertex^.Color:=HalfFloatColor;
+    ParticleVertex^.Time:=Time;
 
     inc(CountVertices,3);
 

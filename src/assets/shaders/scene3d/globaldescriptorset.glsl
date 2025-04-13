@@ -190,11 +190,15 @@ layout(set = 0, binding = 7, std140) uniform RaytracingData {
 
 layout(set = 0, binding = 8) uniform sampler2D u2DTextures[];
 
+layout(set = 0, binding = 8) uniform sampler3D u3DTextures[];
+
 layout(set = 0, binding = 8) uniform samplerCube uCubeTextures[];
 
 #else
 
 layout(set = 0, binding = 6) uniform sampler2D u2DTextures[];
+
+layout(set = 0, binding = 6) uniform sampler3D u3DTextures[];
 
 layout(set = 0, binding = 6) uniform samplerCube uCubeTextures[];
 

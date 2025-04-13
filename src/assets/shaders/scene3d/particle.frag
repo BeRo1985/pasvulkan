@@ -40,7 +40,7 @@
 #else
   layout(location = 0) in vec3 inViewSpacePosition;
 #endif
-layout(location = 1) in vec2 inTexCoord;
+layout(location = 1) in vec3 inTexCoord;
 layout(location = 2) in vec4 inColor;
 #ifdef VOXELIZATION
   layout(location = 3) in vec3 inNormal;
@@ -112,9 +112,12 @@ void main() {
     return;
   } 
 #endif 
-
-  vec4 baseColor = (any(lessThan(inTexCoord, vec2(0.0))) || any(greaterThan(inTexCoord, vec2(1.0)))) ? vec4(0.0) : (texture(u2DTextures[nonuniformEXT(((inTextureID & 0x3fff) << 1) | (int(1/*sRGB*/) & 1))], inTexCoord) * inColor);
-  vec4 emissionColor = baseColor ;
+  
+  vec4 baseColor = (any(lessThan(inTexCoord.xy, vec2(0.0))) || any(greaterThan(inTexCoord.xy, vec2(1.0)))) ? vec4(0.0) : 
+                   ((((inTextureID & 0x40000000u) != 0) ? 
+                     texture(u3DTextures[nonuniformEXT(((inTextureID & 0x3fff) << 1) | (int(1/*sRGB*/) & 1))], inTexCoord.xyz) :
+                     texture(u2DTextures[nonuniformEXT(((inTextureID & 0x3fff) << 1) | (int(1/*sRGB*/) & 1))], inTexCoord.xy )) * inColor);
+  vec4 emissionColor = baseColor;
   float alpha = baseColor.w;
 
   uint flags = (1u << 6u); // Double-sided
@@ -126,13 +129,21 @@ void main() {
 
   bool additiveBlending = (inTextureID & 0x80000000u) != 0; // Reuse the MSB of the texture ID to indicate additive blending
 
+  bool is3DTexture = (inTextureID & 0x40000000u) != 0; // Reuse the MSB of the texture ID to indicate 3D texture
+
 #ifdef DEPTHONLY
 #if defined(ALPHATEST) || defined(LOOPOIT) || defined(LOCKOIT) || defined(WBOIT) || defined(MBOIT) || defined(DFAOIT)
-  float alpha = (any(lessThan(inTexCoord, vec2(0.0))) || any(greaterThan(inTexCoord, vec2(1.0)))) ? 0.0 : (texture(u2DTextures[nonuniformEXT(((inTextureID & 0x3fff) << 1) | (int(1/*sRGB*/) & 1))], inTexCoord).w * inColor.w);  
+  float alpha = (any(lessThan(inTexCoord.xy, vec2(0.0))) || any(greaterThan(inTexCoord.xy, vec2(1.0)))) ? 0.0 : 
+                  ((((inTextureID & 0x40000000u) != 0) ? 
+                    texture(u3DTextures[nonuniformEXT(((inTextureID & 0x3fff) << 1) | (int(1/*sRGB*/) & 1))], inTexCoord.xyz).w :
+                    texture(u2DTextures[nonuniformEXT(((inTextureID & 0x3fff) << 1) | (int(1/*sRGB*/) & 1))], inTexCoord.xy ).w) * inColor.w);  
 #endif
 #else
-  vec4 finalColor = (any(lessThan(inTexCoord, vec2(0.0))) || any(greaterThan(inTexCoord, vec2(1.0)))) ? vec4(0.0) : (texture(u2DTextures[nonuniformEXT(((inTextureID & 0x3fff) << 1) | (int(1/*sRGB*/) & 1))], inTexCoord) * inColor);
-  float alpha = finalColor.w;
+ vec4 finalColor = (any(lessThan(inTexCoord.xy, vec2(0.0))) || any(greaterThan(inTexCoord.xy, vec2(1.0)))) ? vec4(0.0) : 
+                    ((((inTextureID & 0x40000000u) != 0) ? 
+                      texture(u3DTextures[nonuniformEXT(((inTextureID & 0x3fff) << 1) | (int(1/*sRGB*/) & 1))], inTexCoord.xyz) :
+                      texture(u2DTextures[nonuniformEXT(((inTextureID & 0x3fff) << 1) | (int(1/*sRGB*/) & 1))], inTexCoord.xy )) * inColor);
+  float alpha = finalColor.w; 
 #if !(defined(WBOIT) || defined(MBOIT))
 #ifndef BLEND 
   outFragColor = vec4(clamp(finalColor.xyz, vec3(-65504.0), vec3(65504.0)), finalColor.w);

@@ -17,13 +17,14 @@ layout(location = 2) in vec2 inQuadCoord;
 layout(location = 3) in uint inTextureID;
 layout(location = 4) in vec2 inSize;
 layout(location = 5) in vec4 inColor;
+layout(location = 6) in float inTime;
 
 #ifdef VOXELIZATION
 layout(location = 0) out vec3 outWorldSpacePosition;
 #else
 layout(location = 0) out vec3 outViewSpacePosition;
 #endif
-layout(location = 1) out vec2 outTexCoord;
+layout(location = 1) out vec3 outTexCoord;
 layout(location = 2) out vec4 outColor;
 layout(location = 3) flat out uint outTextureID;
 
@@ -89,7 +90,7 @@ void main() {
   viewSpacePosition /= viewSpacePosition.w;
   outViewSpacePosition = viewSpacePosition.xyz;
 #endif
-  outTexCoord = inQuadCoord;
+  outTexCoord = vec3(inQuadCoord, inTime);
   outColor = inColor;
   outTextureID = inTextureID;
 #ifdef VOXELIZATION
