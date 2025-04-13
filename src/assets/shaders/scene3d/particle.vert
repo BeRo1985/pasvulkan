@@ -82,7 +82,7 @@ void main() {
   vec2 sinCos = sin(vec2(inRotation) + vec2(0.0, 1.57079632679));
 /*coord = vec2((coord.x * sinCos.y) + (coord.y * sinCos.x), (coord.y * sinCos.y) - (coord.x * sinCos.x));
   vec3 position = inPosition + ((worldSpaceRight * coord.x) + (worldSpaceUp * coord.y));*/
-  vec3 position = inPosition + ((worldSpaceRight * (coord.x * sinCos.y) + (coord.y * sinCos.x)) + (worldSpaceUp * (coord.y * sinCos.y) - (coord.x * sinCos.x)));
+  vec3 position = inPosition + ((worldSpaceRight * ((coord.x * sinCos.y) + (coord.y * sinCos.x))) + (worldSpaceUp * ((coord.y * sinCos.y) - (coord.x * sinCos.x))));
 #ifdef VOXELIZATION
   outWorldSpacePosition = position;
 #else
