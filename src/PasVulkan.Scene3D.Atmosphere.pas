@@ -4209,6 +4209,7 @@ var Stream:TStream;
     CommandPool:TpvVulkanCommandPool;
     CommandBuffer:TpvVulkanCommandBuffer;
     Fence:TpvVulkanFence;
+    FormatVariant:TpvUTF8String;
 begin
 
  // Transmittance LUT pass descriptor set layout
@@ -4835,7 +4836,33 @@ begin
 
   // Cube map compute pipeline
 
-  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('atmosphere_cubemap_comp.spv');
+{ case aImageFormat of
+   VK_FORMAT_B10G11R11_UFLOAT_PACK32:begin
+    FormatVariant:='r11g11b10f';
+   end;
+   VK_FORMAT_R16G16B16A16_SFLOAT:begin
+    FormatVariant:='rgba16f';
+   end;
+   VK_FORMAT_R32G32B32A32_SFLOAT:begin
+    FormatVariant:='rgba32f';
+   end;
+   VK_FORMAT_E5B9G9R9_UFLOAT_PACK32:begin
+    FormatVariant:='rgb9e5';
+   end;
+   VK_FORMAT_R8G8B8A8_UNORM,
+   VK_FORMAT_B8G8R8A8_UNORM:begin
+    FormatVariant:='rgba8';
+   end;
+   else begin
+    Assert(false); // Unsupported format
+    FormatVariant:='';
+   end;
+  end;}
+
+  //VK_FORMAT_R16G16B16A16_SFLOAT
+  FormatVariant:='rgba16f';
+
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('atmosphere_cubemap_'+FormatVariant+'_comp.spv');
   try
    fCubeMapComputeShaderModule:=TpvVulkanShaderModule.Create(TpvScene3D(fScene3D).VulkanDevice,Stream);
   finally
