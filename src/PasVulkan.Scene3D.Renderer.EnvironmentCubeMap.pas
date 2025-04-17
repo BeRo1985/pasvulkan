@@ -184,20 +184,21 @@ begin
 
  // For mipmapping
  case aImageFormat of
+  VK_FORMAT_B10G11R11_UFLOAT_PACK32:begin
+   DownsampleFormatVariant:='r11g11b10f';
+  end;
   VK_FORMAT_R16G16B16A16_SFLOAT:begin
-   DownsampleFormatVariant:='rgba16f_';
+   DownsampleFormatVariant:='rgba16f';
   end;
   VK_FORMAT_R32G32B32A32_SFLOAT:begin
-   DownsampleFormatVariant:='rgba32f_';
-  end;
-  VK_FORMAT_B10G11R11_UFLOAT_PACK32:begin
-   DownsampleFormatVariant:='r11g11b10f_';
+   DownsampleFormatVariant:='rgba32f';
   end;
   VK_FORMAT_E5B9G9R9_UFLOAT_PACK32:begin
-   DownsampleFormatVariant:='rgb9e5_';
+   DownsampleFormatVariant:='rgb9e5';
   end;
-  VK_FORMAT_R8G8B8A8_UNORM:begin
-   DownsampleFormatVariant:='rgba8_';
+  VK_FORMAT_R8G8B8A8_UNORM,
+  VK_FORMAT_B8G8R8A8_UNORM:begin
+   DownsampleFormatVariant:='rgba8';
   end;
   else begin
    Assert(false); // Unsupported format
@@ -631,7 +632,7 @@ begin
 
         CountMipMapLevelSets:=Min(((MipMaps-1)+3) shr 2,8);
 
-        Stream:=pvScene3DShaderVirtualFileSystem.GetFile('downsample_cubemap_'+DownsampleFormatVariant+'comp.spv');
+        Stream:=pvScene3DShaderVirtualFileSystem.GetFile('downsample_cubemap_'+DownsampleFormatVariant+'_comp.spv');
         try
          DownsampleComputeShaderModule:=TpvVulkanShaderModule.Create(pvApplication.VulkanDevice,Stream);
         finally

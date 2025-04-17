@@ -11,7 +11,20 @@ layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
 /* clang-format on */
 
 #ifdef USE_RGB9E5
+#undef ALPHA
 layout(set = 0, binding = 0, r32ui) writeonly uniform uimageCube uDestinationTexture;
+#elif defined(USE_RGBA32F)
+#define ALPHA
+layout(set = 0, binding = 0, rgba32f) writeonly uniform imageCube uDestinationTexture;
+#elif defined(USE_RGBA16F)
+#define ALPHA
+layout(set = 0, binding = 0, rgba16f) writeonly uniform imageCube uDestinationTexture;
+#elif defined(USE_R11G11B10F)
+#undef ALPHA
+layout(set = 0, binding = 0, r11f_g11f_b10f) writeonly uniform imageCube uDestinationTexture;
+#elif defined(USE_RGBA8)
+#define ALPHA
+layout(set = 0, binding = 0, rgba8) writeonly uniform imageCube uDestinationTexture;
 #else
 layout(set = 0, binding = 0) writeonly uniform imageCube uDestinationTexture;
 #endif
