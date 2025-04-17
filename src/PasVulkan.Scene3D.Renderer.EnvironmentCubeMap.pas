@@ -173,53 +173,55 @@ begin
  
  fPushConstants.LightDirectionIntensityFactor:=TpvVector4.InlineableCreate(fLightDirection,fIntensityFactor);
 
- // For generation
- if aImageFormat=VK_FORMAT_E5B9G9R9_UFLOAT_PACK32 then begin
-  AdditionalImageFormat:=VK_FORMAT_R32_UINT;
-  FormatVariant:='rgb9e5_';
- end else begin
-  AdditionalImageFormat:=VK_FORMAT_UNDEFINED;
-  FormatVariant:='';
- end;
-
- // For mipmapping
  case aImageFormat of
   VK_FORMAT_B10G11R11_UFLOAT_PACK32:begin
    DownsampleFormatVariant:='r11g11b10f';
+   FormatVariant:='r11g11b10f';
+   AdditionalImageFormat:=VK_FORMAT_UNDEFINED;
   end;
   VK_FORMAT_R16G16B16A16_SFLOAT:begin
    DownsampleFormatVariant:='rgba16f';
+   FormatVariant:='rgba16f';
+   AdditionalImageFormat:=VK_FORMAT_UNDEFINED;
   end;
   VK_FORMAT_R32G32B32A32_SFLOAT:begin
    DownsampleFormatVariant:='rgba32f';
+   FormatVariant:='rgba32f';
+   AdditionalImageFormat:=VK_FORMAT_UNDEFINED;
   end;
   VK_FORMAT_E5B9G9R9_UFLOAT_PACK32:begin
    DownsampleFormatVariant:='rgb9e5';
+   FormatVariant:='rgb9e5';
+   AdditionalImageFormat:=VK_FORMAT_R32_UINT;
   end;
   VK_FORMAT_R8G8B8A8_UNORM,
   VK_FORMAT_B8G8R8A8_UNORM:begin
    DownsampleFormatVariant:='rgba8';
+   FormatVariant:='rgba8';
+   AdditionalImageFormat:=VK_FORMAT_UNDEFINED;
   end;
   else begin
    Assert(false); // Unsupported format
    DownsampleFormatVariant:='';
+   FormatVariant:='';
+   AdditionalImageFormat:=VK_FORMAT_UNDEFINED;
   end;
  end;
 
  if (aEnvironmentMode=TpvScene3DEnvironmentMode.Texture) and assigned(aTexture) then begin
   if aTexture.CountFaces=6 then begin
-   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cubemap_cubemap_'+FormatVariant+'comp.spv');
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cubemap_cubemap_'+FormatVariant+'_comp.spv');
    fWidth:=RoundDownToPowerOfTwo(aTexture.Width);
    fHeight:=RoundDownToPowerOfTwo(aTexture.Height);
   end else begin
-   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cubemap_equirectangularmap_'+FormatVariant+'comp.spv');
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cubemap_equirectangularmap_'+FormatVariant+'_comp.spv');
    fWidth:=RoundUpToPowerOfTwo(Min(Max(round(Max(aTexture.Width,aTexture.Height)/PI),512),8192));
    fHeight:=fWidth;
   end;
  end else begin
   case aEnvironmentMode of
    TpvScene3DEnvironmentMode.Starlight,TpvScene3DEnvironmentMode.CachedStarlight:begin
-    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cubemap_starlight_'+FormatVariant+'comp.spv');
+    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cubemap_starlight_'+FormatVariant+'_comp.spv');
     case pvApplication.VulkanDevice.PhysicalDevice.Properties.deviceType of
      TVkPhysicalDeviceType.VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU:begin
       if aForEnvMap then begin
@@ -260,12 +262,12 @@ begin
    else begin
     case pvApplication.VulkanDevice.PhysicalDevice.Properties.vendorID of
      TVkUInt32(TpvVulkanVendorID.NVIDIA),TVkUInt32(TpvVulkanVendorID.AMD):begin
-      Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cubemap_sky_'+FormatVariant+'comp.spv');
+      Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cubemap_sky_'+FormatVariant+'_comp.spv');
       fWidth:=256;
       fHeight:=256;
      end;
      else begin
-      Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cubemap_sky_fast_'+FormatVariant+'comp.spv');
+      Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cubemap_sky_fast_'+FormatVariant+'_comp.spv');
       fWidth:=128;
       fHeight:=128;
      end;
