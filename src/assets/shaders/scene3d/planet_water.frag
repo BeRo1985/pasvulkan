@@ -454,6 +454,13 @@ vec4 doShade(float opaqueDepth, float surfaceDepth, bool underWater){
   diffuseOcclusion = occlusion * ambientOcclusion;
   specularOcclusion = getSpecularOcclusion(clamp(dot(normal, viewDirection), 0.0, 1.0), diffuseOcclusion, alphaRoughness);
 
+  // Horizon specular occlusion
+  {
+    vec3 reflectedVector = reflect(-viewDirection, normal);
+    float horizon = min(1.0 + dot(reflectedVector, normal), 1.0);
+    specularOcclusion *= horizon * horizon;         
+  }
+
   const vec3 sheenColor = vec3(0.0);
   const float sheenRoughness = 0.0;
 

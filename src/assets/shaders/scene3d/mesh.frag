@@ -589,6 +589,13 @@ void main() {
       diffuseOcclusion = occlusion * ambientOcclusion;
       specularOcclusion = getSpecularOcclusion(clamp(dot(normal, viewDirection), 0.0, 1.0), diffuseOcclusion, alphaRoughness);
 
+      // Horizon specular occlusion
+      {
+        vec3 reflectedVector = reflect(-viewDirection, normal);
+        float horizon = min(1.0 + dot(reflectedVector, normal), 1.0);
+        specularOcclusion *= horizon * horizon;         
+      }
+
       if ((flags & (1u << 10u)) != 0u) {
         iridescenceFactor = material.iorIridescenceFactorIridescenceIorIridescenceThicknessMinimum.y * (((textureFlags.x & (1 << 12)) != 0) ? textureFetch(12, vec4(1.0), false).x : 1.0);
         iridescenceIor = material.iorIridescenceFactorIridescenceIorIridescenceThicknessMinimum.z;
