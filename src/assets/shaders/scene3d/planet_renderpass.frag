@@ -436,7 +436,8 @@ void main(){
 
   float alphaRoughness = perceptualRoughness * perceptualRoughness;
 
-  specularOcclusion = getSpecularOcclusion(clamp(dot(normal, viewDirection), 0.0, 1.0), occlusion, alphaRoughness);
+  diffuseOcclusion = occlusion * ambientOcclusion;
+  specularOcclusion = getSpecularOcclusion(clamp(dot(normal, viewDirection), 0.0, 1.0), diffuseOcclusion, alphaRoughness);
 
   const vec3 sheenColor = vec3(0.0);
   const float sheenRoughness = 0.0;
@@ -469,9 +470,9 @@ void main(){
   vec3 iblMetalFresnel = getIBLGGXFresnel(normal, viewDirection, perceptualRoughness, baseColor.xyz, 1.0);
   vec3 iblMetalBRDF = iblMetalFresnel * iblSpecularMetal;
   vec3 iblDielectricFresnel = getIBLGGXFresnel(normal, viewDirection, perceptualRoughness, F0Dielectric, specularWeight);
-  vec3 iblDielectricBRDF = mix(iblDiffuse, iblSpecularDielectric, iblDielectricFresnel);
-  vec3 iblResultColor = mix(iblDielectricBRDF, iblMetalBRDF, metallic);
-  colorOutput += iblResultColor * occlusion * ambientOcclusion;
+  vec3 iblDielectricBRDF = mix(iblDiffuse * diffuseOcclusion, iblSpecularDielectric * specularOcclusion, iblDielectricFresnel);
+  vec3 iblResultColor = mix(iblDielectricBRDF, iblMetalBRDF * specularOcclusion, metallic); // Dielectric/metallic mix
+  colorOutput += iblResultColor;
        
   //vec3(0.015625) * edgeFactor() * fma(clamp(dot(normal, vec3(0.0, 1.0, 0.0)), 0.0, 1.0), 1.0, 0.0), 1.0);
   vec4 c = vec4(colorOutput, 1.0);

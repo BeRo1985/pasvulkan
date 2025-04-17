@@ -44,9 +44,9 @@ float envMapMaxLevelGGX, envMapMaxLevelCharlie;
 
 #include "math.glsl"
 
-float specularOcclusion = 1.0;
-
 float ambientOcclusion = 1.0;
+float diffuseOcclusion = 1.0; 
+float specularOcclusion = 1.0;
 
 vec3 iridescenceFresnelDielectric = vec3(0.0);
 vec3 iridescenceFresnelMetallic = vec3(0.0);

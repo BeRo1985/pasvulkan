@@ -573,22 +573,21 @@ void main() {
       float transparency = 0.0;
       float refractiveAngle = 0.0;
       float shadow = 1.0;
-      float screenSpaceAmbientOcclusion = 1.0;
   #if defined(ALPHATEST) || defined(LOOPOIT) || defined(LOCKOIT) || defined(WBOIT) || defined(MBOIT) || defined(DFAOIT) || defined(BLEND) || defined(ENVMAP)
       ambientOcclusion = 1.0;
   #else      
       ivec2 ambientOcclusionTextureSize = ivec2(textureSize(uPassTextures[0], 0).xy);
   #if defined(GLOBAL_ILLUMINATION_CASCADED_RADIANCE_HINTS) || defined(GLOBAL_ILLUMINATION_CASCADED_VOXEL_CONE_TRACING)
-      screenSpaceAmbientOcclusion = texelFetch(uPassTextures[0], ivec3(min(ivec2(gl_FragCoord.xy), ambientOcclusionTextureSize - ivec2(1)), int(gl_ViewIndex)), 0).x;
-      ambientOcclusion = screenSpaceAmbientOcclusion;
-      //ambientOcclusion = ((textureFlags.x & (1 << 3)) != 0) ? 1.0 : screenSpaceAmbientOcclusion;
+      ambientOcclusion = texelFetch(uPassTextures[0], ivec3(min(ivec2(gl_FragCoord.xy), ambientOcclusionTextureSize - ivec2(1)), int(gl_ViewIndex)), 0).x;
   #else
       ambientOcclusion = ((textureFlags.x & (1 << 3)) != 0) ? 1.0 : texelFetch(uPassTextures[0], ivec3(min(ivec2(gl_FragCoord.xy), ambientOcclusionTextureSize - ivec2(1)), int(gl_ViewIndex)), 0).x;
-      screenSpaceAmbientOcclusion = ambientOcclusion;
   #endif
   #endif
 
       vec3 viewDirection = normalize(-inCameraRelativePosition);
+
+      diffuseOcclusion = occlusion * ambientOcclusion;
+      specularOcclusion = getSpecularOcclusion(clamp(dot(normal, viewDirection), 0.0, 1.0), diffuseOcclusion, alphaRoughness);
 
       if ((flags & (1u << 10u)) != 0u) {
         iridescenceFactor = material.iorIridescenceFactorIridescenceIorIridescenceThicknessMinimum.y * (((textureFlags.x & (1 << 12)) != 0) ? textureFetch(12, vec4(1.0), false).x : 1.0);
@@ -673,8 +672,6 @@ void main() {
 #endif
       }
 
-      specularOcclusion = getSpecularOcclusion(clamp(dot(normal, viewDirection), 0.0, 1.0), occlusion * ambientOcclusion, alphaRoughness);
-
 #ifdef ENABLE_ANISOTROPIC
       if (anisotropyActive = ((flags & (1u << 13u)) != 0u)) {
         vec2 ansitropicStrengthAnsitropicRotation = unpackHalf2x16(material.volumeAttenuationColorAnisotropyStrengthAnisotropyRotation.w);        
@@ -712,14 +709,14 @@ void main() {
         globalIlluminationVolumeLookUp(volumeSphericalHarmonics, inWorldSpacePosition.xyz, vec3(0.0), normal.xyz);
 #if 0
         vec3 shResidualDiffuse = max(vec3(0.0), globalIlluminationDecodeColor(globalIlluminationCompressedSphericalHarmonicsDecodeWithCosineLobe(normal, volumeSphericalHarmonics)));
-        colorOutput += shResidualDiffuse * baseColor.xyz * screenSpaceAmbientOcclusion * occlusion;
+        colorOutput += shResidualDiffuse * baseColor.xyz * diffuseOcclusion;
 #else
         vec3 shAmbient = vec3(0.0), shDominantDirectionalLightColor = vec3(0.0), shDominantDirectionalLightDirection = vec3(0.0);
         globalIlluminationSphericalHarmonicsExtractAndSubtract(volumeSphericalHarmonics, shAmbient, shDominantDirectionalLightColor, shDominantDirectionalLightDirection);
         vec3 shResidualDiffuse = max(vec3(0.0), globalIlluminationDecodeColor(globalIlluminationCompressedSphericalHarmonicsDecodeWithCosineLobe(normal, volumeSphericalHarmonics)));
-        colorOutput += shResidualDiffuse * baseColor.xyz * screenSpaceAmbientOcclusion * occlusion;
+        colorOutput += shResidualDiffuse * baseColor.xyz * diffuseOcclusion;
         doSingleLight(shDominantDirectionalLightColor,                    //
-                      vec3(screenSpaceAmbientOcclusion * occlusion),      //
+                      vec3(specularOcclusion),                            //
                       -shDominantDirectionalLightDirection,               //
                       normal.xyz,                                         //
                       baseColor.xyz,                                      //
@@ -747,11 +744,11 @@ void main() {
       {
         if(dot(baseColor.xyz, vec3(1.0)) > 1e-6){
           vec4 c = cvctIndirectDiffuseLight(inWorldSpacePosition.xyz, normal.xyz);
-          colorOutput += c.xyz * baseColor.xyz * screenSpaceAmbientOcclusion * occlusion * OneOverPI;
+          colorOutput += c.xyz * baseColor.xyz * diffuseOcclusion * OneOverPI;
           iblWeight = clamp(1.0 - c.w, 0.0, 1.0);
         }
         if(dot(F0Dielectric, vec3(1.0)) > 1e-6){
-          colorOutput += cvctIndirectSpecularLight(inWorldSpacePosition.xyz, normal.xyz, viewDirection, cvctRoughnessToVoxelConeTracingApertureAngle(perceptualRoughness), 1e+24) * F0Dielectric * occlusion * OneOverPI;
+          colorOutput += cvctIndirectSpecularLight(inWorldSpacePosition.xyz, normal.xyz, viewDirection, cvctRoughnessToVoxelConeTracingApertureAngle(perceptualRoughness), 1e+24) * F0Dielectric * specularOcclusion * OneOverPI;
         }
       }
 #endif
@@ -783,23 +780,22 @@ void main() {
       vec3 iblMetalFresnel = getIBLGGXFresnel(normal, viewDirection, perceptualRoughness, baseColor.xyz, 1.0);
       vec3 iblMetalBRDF = iblMetalFresnel * iblSpecularMetal;
       vec3 iblDielectricFresnel = getIBLGGXFresnel(normal, viewDirection, perceptualRoughness, F0Dielectric, specularWeight);
-      vec3 iblDielectricBRDF = mix(iblDiffuse, iblSpecularDielectric, iblDielectricFresnel);
+      vec3 iblDielectricBRDF = mix(iblDiffuse * diffuseOcclusion, iblSpecularDielectric * specularOcclusion, iblDielectricFresnel);
       if ((flags & (1u << 10u)) != 0u) {
         iblMetalBRDF = mix(iblMetalBRDF, iblSpecularMetal * iridescenceFresnelMetallic, iridescenceFactor);
-        iblDielectricBRDF = mix(iblDielectricBRDF, rgbMix(iblDiffuse, iblSpecularDielectric, iridescenceFresnelDielectric), iridescenceFactor);
+        iblDielectricBRDF = mix(iblDielectricBRDF, rgbMix(iblDiffuse * diffuseOcclusion, iblSpecularDielectric * specularOcclusion, iridescenceFresnelDielectric), iridescenceFactor);
       }
       vec3 iblSheen = vec3(0.0);
       float iblAlbedoSheenScaling = 1.0; 
       if ((flags & (1u << 7u)) != 0u) {
-        iblSheen = getIBLRadianceCharlie(normal, viewDirection, sheenRoughness, sheenColor);
+        iblSheen = getIBLRadianceCharlie(normal, viewDirection, sheenRoughness, sheenColor) * diffuseOcclusion;
         float NDotV = clamp(dot(normal, viewDirection), 0.0, 1.0);
         iblAlbedoSheenScaling = 1.0 - (max(max(sheenColor.x, sheenColor.y), sheenColor.z) * albedoSheenScalingLUT(NDotV, sheenRoughness));
       }
-      vec3 iblClearcoatBRDF = ((flags & (1u << 8u)) != 0u) ? getIBLRadianceGGX(clearcoatNormal, viewDirection, clearcoatRoughness) : vec3(0.0);
-      vec3 iblResultColor = mix(iblDielectricBRDF, iblMetalBRDF, metallic); // Dielectric/metallic mix
+      vec3 iblClearcoatBRDF = ((flags & (1u << 8u)) != 0u) ? (getIBLRadianceGGX(clearcoatNormal, viewDirection, clearcoatRoughness) * diffuseOcclusion) : vec3(0.0);
+      vec3 iblResultColor = mix(iblDielectricBRDF, iblMetalBRDF * specularOcclusion, metallic); // Dielectric/metallic mix
       iblResultColor = fma(iblResultColor, vec3(iblAlbedoSheenScaling), iblSheen); // Sheen modulation
       iblResultColor = mix(iblResultColor, iblClearcoatBRDF, clearcoatFactor * clearcoatFresnel); // Clearcoat modulation
-      iblResultColor *= occlusion * iblWeight; // Occlusion modulation 
       colorOutput += iblResultColor; // Add to the color output
 #endif
 #endif
