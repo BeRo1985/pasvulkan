@@ -203,14 +203,14 @@ void main(){
 #endif
 #endif
 
-  const vec3 baseColorSRGB = vec3(10.0, 60.0, 0.0); // vec3(74.0, 149.0, 0.0); 
+  const vec3 baseColorSRGB = vec3(58.0, 105.0, 23.0); // vec3(74.0, 149.0, 0.0); 
   const vec3 baseColorLinearRGB = convertSRGBToLinearRGB(baseColorSRGB * 0.00392156862745098);
 
   const float fakeSelfShadowing = clamp(inBlock.texCoord.y, 0.1, 1.0); 
 
-  vec4 albedo = vec4(baseColorLinearRGB * fakeSelfShadowing * fakeSelfShadowing, 1.0);  
+  vec4 albedo = vec4(baseColorLinearRGB * fakeSelfShadowing, 1.0);  
   vec3 baseColor = albedo.xyz;
-  vec4 occlusionRoughnessMetallic = vec4(1.0, 0.25, 0.0, 0.0);
+  vec4 occlusionRoughnessMetallic = vec4(1.0, 0.3, 0.0, 0.0);
 
 /*const vec3 baseColorSRGB = vec3(52.0, 106.0, 0.0); // vec3(74.0, 149.0, 0.0); 
   const vec3 baseColorLinearRGB = convertSRGBToLinearRGB(baseColorSRGB * 0.00392156862745098);
