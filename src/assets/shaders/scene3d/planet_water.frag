@@ -414,21 +414,26 @@ vec4 doShade(float opaqueDepth, float surfaceDepth, bool underWater){
   waterDepth = opaqueDepth - surfaceDepth;
 
   vec4 albedo = vec4(1.0);  
+  vec3 baseColor = vec3(1.0);
   vec4 occlusionRoughnessMetallic = vec4(1.0, 0.0, 0.9, 0.0);
 
   // The blade normal is rotated slightly to the left or right depending on the x texture coordinate for
   // to fake roundness of the blade without real more complex geometry
   vec3 normal = workNormal;
  
-  cavity = clamp(occlusionRoughnessMetallic.x, 0.0, 1.0);
+  float occlusion = clamp(occlusionRoughnessMetallic.x, 0.0, 1.0);
     
   vec2 metallicRoughness = clamp(occlusionRoughnessMetallic.zy, vec2(0.0, 1e-3), vec2(1.0));
 
+  float metallic = metallicRoughness.x;
+
   vec4 diffuseColorAlpha = vec4(max(vec3(0.0), albedo.xyz * (1.0 - metallicRoughness.x)), albedo.w);
 
-  vec3 F0 = mix(vec3(waterF0), albedo.xyz, metallicRoughness.x);
+  //vec3 F0Dielectric = mix(vec3(waterF0), albedo.xyz, metallicRoughness.x);
+  vec3 F0Dielectric = vec3(0.04);
 
   vec3 F90 = vec3(1.0);
+  vec3 F90Dielectric = vec3(1.0);
 
   float transparency = 0.0;
 
@@ -446,7 +451,7 @@ vec4 doShade(float opaqueDepth, float surfaceDepth, bool underWater){
 
   float alphaRoughness = perceptualRoughness * perceptualRoughness;
 
-  specularOcclusion = getSpecularOcclusion(clamp(dot(normal, viewDirection), 0.0, 1.0), cavity, alphaRoughness);
+  specularOcclusion = getSpecularOcclusion(clamp(dot(normal, viewDirection), 0.0, 1.0), occlusion, alphaRoughness);
 
   const vec3 sheenColor = vec3(0.0);
   const float sheenRoughness = 0.0;
@@ -481,8 +486,8 @@ vec4 doShade(float opaqueDepth, float surfaceDepth, bool underWater){
                                            viewDirection,
                                                  clamp(waterDepth * 0.1, 0.0, 0.25),//perceptualRoughness,
                                                  vec3(1.0), //diffuseColorAlpha.xyz, 
-                                                 vec3(0.04), //F0, 
-                                                 vec3(1.0), //F90,
+                                                 //vec3(0.04), //F0, 
+                                                 //vec3(1.0), //F90,
                                                  inWorldSpacePosition,
 /*                                          perceptualRoughness,
                                            diffuseColorAlpha.xyz, F0, F90,
@@ -547,17 +552,28 @@ vec4 doShade(float opaqueDepth, float surfaceDepth, bool underWater){
 #include "lighting.glsl"
 #undef LIGHTING_IMPLEMENTATION
 
-    diffuseOutput += getIBLRadianceLambertian(normal, viewDirection, perceptualRoughness, diffuseColorAlpha.xyz, F0, specularWeight) * iblWeight;
-    vec3 iblSpecular = getIBLRadianceGGX(normal, perceptualRoughness, F0, specularWeight, viewDirection, litIntensity, imageLightBasedLightDirection) * iblWeight;
-     
+    vec3 iblDiffuse = getIBLDiffuse(normal) * baseColor.xyz;
+    vec3 iblSpecularMetal = getIBLRadianceGGX(normal, viewDirection, perceptualRoughness);
+    vec3 iblSpecularDielectric = iblSpecularMetal;
+    vec3 iblMetalFresnel = getIBLGGXFresnel(normal, viewDirection, perceptualRoughness, baseColor.xyz, 1.0);
+    vec3 iblMetalBRDF = iblMetalFresnel * iblSpecularMetal;
+    vec3 iblDielectricFresnel = getIBLGGXFresnel(normal, viewDirection, perceptualRoughness, F0Dielectric, specularWeight);
+    vec3 iblDielectricBRDF = mix(iblDiffuse, iblSpecularDielectric, iblDielectricFresnel);
+    vec3 iblResultColor = mix(iblDielectricBRDF, iblMetalBRDF, metallic);
+    vec3 iblSpecular = iblResultColor * occlusion * ambientOcclusion;
+
+//    vec3 iblSpecular = getIBLRadianceGGX(normal, perceptualRoughness, F0Dielectric, specularWeight, viewDirection, litIntensity, imageLightBasedLightDirection) * iblWeight;
+
+    vec3 transmissionOutput = vec3(0.0);
+
 #if defined(TRANSMISSION)
 
-    transmissionOutput += getIBLVolumeRefraction(normal.xyz, 
+    transmissionOutput = getIBLVolumeRefraction(normal.xyz, 
                                                  viewDirection,
                                                  clamp(waterDepth * 0.01, 0.0, 1.0), //perceptualRoughness,
                                                  vec3(1.0), //diffuseColorAlpha.xyz, 
-                                                 vec3(waterF0), //F0, 
-                                                 vec3(1.0), //F90,
+                                                 //vec3(waterF0), //F0Dielectric, 
+                                                 //vec3(1.0), //F90,
                                                  inWorldSpacePosition,
                                                  waterIOR, 
                                                  volumeThickness, 
@@ -571,7 +587,7 @@ vec4 doShade(float opaqueDepth, float surfaceDepth, bool underWater){
                                    ? vec4(0.0) 
                                    : vec4(iblSpecular, 1.0); //getScreenSpaceReflection(worldSpacePosition, normal, -viewDirection, 0.0, vec4(iblSpecular, 1.0));
 
-    vec3 reflection = mix(screenSpaceReflection.xyz, screenSpaceReflection.xyz * albedo.xyz, screenSpaceReflection.w) +  diffuseOutput +  specularOutput;
+    vec3 reflection = mix(screenSpaceReflection.xyz, screenSpaceReflection.xyz * albedo.xyz, screenSpaceReflection.w) + colorOutput;
  
   // reflection = vec3(0.1);
 

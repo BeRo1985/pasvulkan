@@ -249,8 +249,8 @@ float applyLightIESProfile(const in Light light, const in vec3 pointToLightDirec
 #endif
             }
 #endif // !defined(REFLECTIVESHADOWMAPOUTPUT)
-            float lightAttenuationEx = lightAttenuation;
 #endif // SHADOWS
+            float lightAttenuationEx = lightAttenuation;
             lightAttenuation *= applyLightIESProfile(light, pointToLightDirection);
             switch (lightType) {
 #if !defined(REFLECTIVESHADOWMAPOUTPUT)
@@ -312,31 +312,13 @@ float applyLightIESProfile(const in Light light, const in vec3 pointToLightDirec
 #endif
                ){
 #if defined(REFLECTIVESHADOWMAPOUTPUT)
-              diffuseOutput += lightAttenuation * light.colorIntensity.xyz * light.colorIntensity.w * diffuseColorAlpha.xyz; // * clamp(dot(normal, pointToLightDirection), 0.0, 1.0);
+              colorOutput.xyz += lightAttenuation * light.colorIntensity.xyz * light.colorIntensity.w * baseColor.xyz; // * clamp(dot(normal, pointToLightDirection), 0.0, 1.0);
 #elif defined(PROCESSLIGHT)
               PROCESSLIGHT(light.colorIntensity.xyz * light.colorIntensity.w,  //
                             vec3(lightAttenuation),                            //
                             pointToLightDirection); 
 #else
-              doSingleLight(light.colorIntensity.xyz * light.colorIntensity.w,  //
-                            vec3(lightAttenuation),                             //
-                            pointToLightDirection,                              //
-                            normal.xyz,                                         //
-                            diffuseColorAlpha.xyz,                              //
-                            F0,                                                 //
-                            F90,                                                //
-                            viewDirection,                                      //
-                            refractiveAngle,                                    //
-                            transparency,                                       //
-                            alphaRoughness,                                     //
-                            cavity,                                             //
-                            sheenColor,                                         //
-                            sheenRoughness,                                     //
-                            clearcoatNormal,                                    //
-                            clearcoatF0,                                        //
-                            clearcoatRoughness,                                 //
-                            specularWeight);                                    //
-#endif
+              vec3 transmittedLight = vec3(0.0);
 #ifdef TRANSMISSION
 #ifndef TRANSMISSION_FORCED
               if((flags & (1u << 11u)) != 0u) 
@@ -388,14 +370,14 @@ float applyLightIESProfile(const in Light light, const in vec3 pointToLightDirec
                       }
                     }
                     lightAttenuation *= applyLightIESProfile(light, pointToLightDirection);
-                    vec3 transmittedLight = lightAttenuation * getPunctualRadianceTransmission(normal.xyz, viewDirection, pointToLightDirection, alphaRoughness, F0, F90, diffuseColorAlpha.xyz, iorValues[i]);
+                    vec3 partTransmittedLight = lightAttenuation * getPunctualRadianceTransmission(normal.xyz, viewDirection, pointToLightDirection, alphaRoughness, baseColor.xyz, iorValues[i]);
 #ifndef VOLUMEATTENUTATION_FORCED
                     if((flags & (1u << 12u)) != 0u)
 #endif
                     {
-                      transmittedLight = applyVolumeAttenuation(transmittedLight, length(transmissionRay), volumeAttenuationColor, volumeAttenuationDistance);
+                      partTransmittedLight = applyVolumeAttenuation(partTransmittedLight, length(transmissionRay), volumeAttenuationColor, volumeAttenuationDistance);
                     }
-                    transmissionOutput[i] += transmittedLight[i];
+                    transmittedLight[i] += partTransmittedLight[i];
                   }
                 }else{
                   vec3 transmissionRay = getVolumeTransmissionRay(normal.xyz, viewDirection, volumeThickness, ior);
@@ -436,17 +418,46 @@ float applyLightIESProfile(const in Light light, const in vec3 pointToLightDirec
                     }
                   }
                   lightAttenuation *= applyLightIESProfile(light, pointToLightDirection);
-                  vec3 transmittedLight = lightAttenuation * getPunctualRadianceTransmission(normal.xyz, viewDirection, pointToLightDirection, alphaRoughness, F0, F90, diffuseColorAlpha.xyz, ior);
+                  vec3 partTransmittedLight = lightAttenuation * getPunctualRadianceTransmission(normal.xyz, viewDirection, pointToLightDirection, alphaRoughness, baseColor.xyz, ior);
 #ifndef VOLUMEATTENUTATION_FORCED
                   if((flags & (1u << 12u)) != 0u) 
 #endif
                   {
-                    transmittedLight = applyVolumeAttenuation(transmittedLight, length(transmissionRay), volumeAttenuationColor, volumeAttenuationDistance);
+                    partTransmittedLight = applyVolumeAttenuation(partTransmittedLight, length(transmissionRay), volumeAttenuationColor, volumeAttenuationDistance);
                   }
-                  transmissionOutput += transmittedLight;
+                  transmittedLight += partTransmittedLight;
                 }  
               }
 #endif // TRANSMISSION
+              doSingleLight(light.colorIntensity.xyz * light.colorIntensity.w,  //
+                            vec3(lightAttenuation),                             //
+                            pointToLightDirection,                              //
+                            normal.xyz,                                         //
+                            baseColor.xyz,                                      //
+                            F0Dielectric,                                       //
+                            F90,                                                //
+                            F90Dielectric,                                      //
+                            viewDirection,                                      //
+                            refractiveAngle,                                    //
+                            transparency,                                       //
+                            alphaRoughness,                                     //                            
+                            metallic,                                           //
+                            sheenColor,                                         //
+                            sheenRoughness,                                     //
+                            clearcoatNormal,                                    //
+                            clearcoatFresnel,                                   //
+                            clearcoatFactor,                                    //
+                            clearcoatRoughness,                                 //
+                            specularWeight,                                     //
+#if defined(TRANSMISSION)
+                            transmittedLight,                                   //
+                            transmissionFactor
+#else
+                            vec3(0.0),                                        //
+                            0.0                            
+#endif
+                            );
+#endif
             }
 #if defined(REFLECTIVESHADOWMAPOUTPUT)
           }
@@ -469,14 +480,13 @@ float applyLightIESProfile(const in Light light, const in vec3 pointToLightDirec
                       vec3(1.0),                          //
                       normalize(-vec3(0.5, -1.0, -1.0)),  //
                       normal.xyz,                         //
-                      diffuseColorAlpha.xyz,              //
+                      baseColor.xyz,              //
                       F0,                                 //
                       F90,                                //
                       viewDirection,                      //
                       refractiveAngle,                    //
                       transparency,                       //
                       alphaRoughness,                     //
-                      cavity,                             //
                       sheenColor,                         //
                       sheenRoughness,                     //
                       clearcoatNormal,                    //
@@ -489,14 +499,13 @@ float applyLightIESProfile(const in Light light, const in vec3 pointToLightDirec
                     vec3(1.0),                          //
                     normalize(-vec3(0.5, -1.0, -1.0)),  //
                     normal.xyz,                         //
-                    diffuseColorAlpha.xyz,              //
+                    baseColor.xyz,                      //
                     F0,                                 //
                     F90,                                //
                     viewDirection,                      //
                     refractiveAngle,                    //
                     transparency,                       //
                     alphaRoughness,                     //
-                    cavity,                             //
                     sheenColor,                         //
                     sheenRoughness,                     //
                     clearcoatNormal,                    //

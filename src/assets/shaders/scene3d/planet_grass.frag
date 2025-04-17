@@ -209,6 +209,7 @@ void main(){
   const float fakeSelfShadowing = clamp(inBlock.texCoord.y, 0.1, 1.0); 
 
   vec4 albedo = vec4(baseColorLinearRGB, 1.0);  
+  vec3 baseColor = albedo.xyz;
   vec4 occlusionRoughnessMetallic = vec4(fakeSelfShadowing, 0.5, 0.0, 0.0);
 
   // The blade normal is rotated slightly to the left or right depending on the x texture coordinate for
@@ -216,15 +217,19 @@ void main(){
   vec3 bladeRelativeNormal = normalize(vec3(0.0, sin(vec2(radians(mix(-60.0, 60.0, inBlock.texCoord.x))) + vec2(0.0, 1.5707963267948966))));
   vec3 normal = normalize(mat3(workTangent, workBitangent, workNormal) * bladeRelativeNormal);
  
-  cavity = clamp(occlusionRoughnessMetallic.x, 0.0, 1.0);
+  float occlusion = clamp(occlusionRoughnessMetallic.x, 0.0, 1.0);
     
   vec2 metallicRoughness = clamp(occlusionRoughnessMetallic.zy, vec2(0.0, 1e-3), vec2(1.0));
 
+  float metallic = metallicRoughness.x;
+
   vec4 diffuseColorAlpha = vec4(max(vec3(0.0), albedo.xyz * (1.0 - metallicRoughness.x)), albedo.w);
 
-  vec3 F0 = mix(vec3(0.04), albedo.xyz, metallicRoughness.x);
+  //vec3 F0Dielectric = mix(vec3(0.04), albedo.xyz, metallicRoughness.x);
+  vec3 F0Dielectric = vec3(0.04);
 
   vec3 F90 = vec3(1.0);
+  vec3 F90Dielectric = vec3(1.0);
 
   float transparency = 0.0;
 
@@ -242,7 +247,7 @@ void main(){
 
   float alphaRoughness = perceptualRoughness * perceptualRoughness;
 
-  specularOcclusion = getSpecularOcclusion(clamp(dot(normal, viewDirection), 0.0, 1.0), cavity, alphaRoughness);
+  specularOcclusion = getSpecularOcclusion(clamp(dot(normal, viewDirection), 0.0, 1.0), occlusion, alphaRoughness);
 
   const vec3 sheenColor = vec3(0.0);
   const float sheenRoughness = 0.0;
@@ -269,11 +274,18 @@ void main(){
 #include "lighting.glsl"
 #undef LIGHTING_IMPLEMENTATION
 
-  diffuseOutput += getIBLRadianceLambertian(normal, viewDirection, perceptualRoughness, diffuseColorAlpha.xyz, F0, specularWeight) * iblWeight;
-  specularOutput += getIBLRadianceGGX(normal, perceptualRoughness, F0, specularWeight, viewDirection, litIntensity, imageLightBasedLightDirection) * iblWeight;
-       
+  vec3 iblDiffuse = getIBLDiffuse(normal) * baseColor.xyz;
+  vec3 iblSpecularMetal = getIBLRadianceGGX(normal, viewDirection, perceptualRoughness);
+  vec3 iblSpecularDielectric = iblSpecularMetal;
+  vec3 iblMetalFresnel = getIBLGGXFresnel(normal, viewDirection, perceptualRoughness, baseColor.xyz, 1.0);
+  vec3 iblMetalBRDF = iblMetalFresnel * iblSpecularMetal;
+  vec3 iblDielectricFresnel = getIBLGGXFresnel(normal, viewDirection, perceptualRoughness, F0Dielectric, specularWeight);
+  vec3 iblDielectricBRDF = mix(iblDiffuse, iblSpecularDielectric, iblDielectricFresnel);
+  vec3 iblResultColor = mix(iblDielectricBRDF, iblMetalBRDF, metallic);
+  colorOutput += iblResultColor * occlusion * ambientOcclusion;
+      
   //vec3(0.015625) * edgeFactor() * fma(clamp(dot(normal, vec3(0.0, 1.0, 0.0)), 0.0, 1.0), 1.0, 0.0), 1.0);
-  vec4 c = vec4(diffuseOutput + specularOutput, 1.0);
+  vec4 c = vec4(colorOutput, 1.0);
   
 #ifdef WIREFRAME
 /*if((planetData.flagsResolutions.x & (1u << 0u)) != 0){

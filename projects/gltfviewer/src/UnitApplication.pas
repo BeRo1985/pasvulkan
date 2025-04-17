@@ -117,7 +117,7 @@ begin
  fShadowMapSize:=2048;
  fTransparencyMode:=TpvScene3DRendererTransparencyMode.Auto;
  fAntialiasingMode:=TpvScene3DRendererAntialiasingMode.Auto;
- fDepthOfFieldMode:=TpvScene3DRendererDepthOfFieldMode.Auto;
+ fDepthOfFieldMode:=TpvScene3DRendererDepthOfFieldMode.None;
  fShadowMode:=TpvScene3DRendererShadowMode.Auto;
  fLensMode:=TpvScene3DRendererLensMode.Auto;
  VirtualRealityMode:=TpvVirtualReality.TMode.Disabled;
