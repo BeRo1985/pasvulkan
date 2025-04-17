@@ -210,7 +210,7 @@ void main(){
 
   vec4 albedo = vec4(baseColorLinearRGB, 1.0);  
   vec3 baseColor = albedo.xyz;
-  vec4 occlusionRoughnessMetallic = vec4(fakeSelfShadowing, 0.5, 0.0, 0.0);
+  vec4 occlusionRoughnessMetallic = vec4(fakeSelfShadowing, 0.25, 1.0, 0.0);
 
   // The blade normal is rotated slightly to the left or right depending on the x texture coordinate for
   // to fake roundness of the blade without real more complex geometry
