@@ -330,26 +330,26 @@ float applyLightIESProfile(const in Light light, const in vec3 pointToLightDirec
                   float realIOR = 1.0 / ior;
                   float iorDispersionSpread = 0.04 * volumeDispersion * (realIOR - 1.0);
                   vec3 iorValues = vec3(1.0 / (realIOR - iorDispersionSpread), ior, 1.0 / (realIOR + iorDispersionSpread));
-                  vec3 initalPointToLightVector = (lightType == 0u) ? pointToLightDirection : pointToLightVector;
+                  vec3 initialTransmittedPointToLightVector = (lightType == 0u) ? pointToLightDirection : pointToLightVector;
                   for(int i = 0; i < 3; i++){
                     vec3 transmissionRay = getVolumeTransmissionRay(normal.xyz, viewDirection, volumeThickness, iorValues[i]);
-                    pointToLightVector = initalPointToLightVector - transmissionRay;
-                    pointToLightDirection = normalize(pointToLightVector);
-                    float lightAttenuation = lightAttenuationEx;
+                    vec3 transmittedPointToLightVector = initialTransmittedPointToLightVector - transmissionRay;
+                    vec3 transmittedPointToLightDirection = normalize(transmittedPointToLightVector);
+                    float transmittedLightAttenuation = lightAttenuationEx;
                     switch (lightType) {
                       case 3u: {  // Spot 
     #if 1
-                        float angularAttenuation = clamp(fma(dot(normalize(light.directionRange.xyz), -pointToLightDirection), uintBitsToFloat(light.metaData.z), uintBitsToFloat(light.metaData.w)), 0.0, 1.0);
+                        float angularAttenuation = clamp(fma(dot(normalize(light.directionRange.xyz), -transmittedPointToLightDirection), uintBitsToFloat(light.metaData.z), uintBitsToFloat(light.metaData.w)), 0.0, 1.0);
     #else
                         // Just for as reference
                         float innerConeCosinus = uintBitsToFloat(light.metaData.z);
                         float outerConeCosinus = uintBitsToFloat(light.metaData.w);
-                        float actualCosinus = dot(normalize(light.directionRange.xyz), -pointToLightDirection);
+                        float actualCosinus = dot(normalize(light.directionRange.xyz), -transmittedPointToLightDirection);
                         float angularAttenuation = (actualCosinus > outerConeCosinus) ? 0.0 : ((actualCosinus < innerConeCosinus) ? ((actualCosinus - outerConeCosinus) / (innerConeCosinus - outerConeCosinus))) : 1.0;
     //                  float angularAttenuation = mix(0.0, mix((actualCosinus - outerConeCosinus) / (innerConeCosinus - outerConeCosinus), 1.0, step(innerConeCosinus, actualCosinus)), step(outerConeCosinus, actualCosinus));
     //                  float angularAttenuation = mix(0.0, mix(smoothstep(outerConeCosinus, innerConeCosinus, actualCosinus), 1.0, step(innerConeCosinus, actualCosinus)), step(outerConeCosinus, actualCosinus));
     #endif
-                        lightAttenuation *= angularAttenuation * angularAttenuation;
+                        transmittedLightAttenuation *= angularAttenuation * angularAttenuation;
                         break;
                       }
                     }
@@ -357,20 +357,20 @@ float applyLightIESProfile(const in Light light, const in vec3 pointToLightDirec
                       case 2u:    // Point
                       case 3u: {  // Spot
                         if (light.directionRange.w >= 0.0) {
-                          float currentDistance = length(pointToLightVector);
+                          float currentDistance = length(transmittedPointToLightVector);
                           if (currentDistance > 0.0) {
-                            lightAttenuation *= 1.0 / (currentDistance * currentDistance);
+                            transmittedLightAttenuation *= 1.0 / (currentDistance * currentDistance);
                             if (light.directionRange.w > 0.0) {
                               float distanceByRange = currentDistance / light.directionRange.w;
-                              lightAttenuation *= clamp(1.0 - (distanceByRange * distanceByRange * distanceByRange * distanceByRange), 0.0, 1.0);
+                              transmittedLightAttenuation *= clamp(1.0 - (distanceByRange * distanceByRange * distanceByRange * distanceByRange), 0.0, 1.0);
                             }
                           }
                         }
                         break;
                       }
                     }
-                    lightAttenuation *= applyLightIESProfile(light, pointToLightDirection);
-                    vec3 partTransmittedLight = lightAttenuation * getPunctualRadianceTransmission(normal.xyz, viewDirection, pointToLightDirection, alphaRoughness, baseColor.xyz, iorValues[i]);
+                    transmittedLightAttenuation *= applyLightIESProfile(light, transmittedPointToLightDirection);
+                    vec3 partTransmittedLight = transmittedLightAttenuation * getPunctualRadianceTransmission(normal.xyz, viewDirection, transmittedPointToLightDirection, alphaRoughness, baseColor.xyz, iorValues[i]);
 #ifndef VOLUMEATTENUTATION_FORCED
                     if((flags & (1u << 12u)) != 0u)
 #endif
@@ -381,23 +381,23 @@ float applyLightIESProfile(const in Light light, const in vec3 pointToLightDirec
                   }
                 }else{
                   vec3 transmissionRay = getVolumeTransmissionRay(normal.xyz, viewDirection, volumeThickness, ior);
-                  pointToLightVector = ((lightType == 0u) ? pointToLightDirection : pointToLightVector) - transmissionRay;
-                  pointToLightDirection = normalize(pointToLightVector);
-                  float lightAttenuation = lightAttenuationEx;
+                  vec3 transmittedPointToLightVector = ((lightType == 0u) ? pointToLightDirection : pointToLightVector) - transmissionRay;
+                  vec3 transmittedPointToLightDirection = normalize(transmittedPointToLightVector);
+                  float transmittedLightAttenuation = lightAttenuationEx;
                   switch (lightType) {
                     case 3u: {  // Spot
   #if 1
-                      float angularAttenuation = clamp(fma(dot(normalize(light.directionRange.xyz), -pointToLightDirection), uintBitsToFloat(light.metaData.z), uintBitsToFloat(light.metaData.w)), 0.0, 1.0);
+                      float angularAttenuation = clamp(fma(dot(normalize(light.directionRange.xyz), -transmittedPointToLightDirection), uintBitsToFloat(light.metaData.z), uintBitsToFloat(light.metaData.w)), 0.0, 1.0);
   #else
                       // Just for as reference
                       float innerConeCosinus = uintBitsToFloat(light.metaData.z);
                       float outerConeCosinus = uintBitsToFloat(light.metaData.w);
-                      float actualCosinus = dot(normalize(light.directionRange.xyz), -pointToLightDirection);
+                      float actualCosinus = dot(normalize(light.directionRange.xyz), -transmittedPointToLightDirection);
                       float angularAttenuation = (actualCosinus > outerConeCosinus) ? 0.0 : ((actualCosinus < innerConeCosinus) ? ((actualCosinus - outerConeCosinus) / (innerConeCosinus - outerConeCosinus))) : 1.0;
   //                  float angularAttenuation = mix(0.0, mix((actualCosinus - outerConeCosinus) / (innerConeCosinus - outerConeCosinus), 1.0, step(innerConeCosinus, actualCosinus)), step(outerConeCosinus, actualCosinus));
   //                  float angularAttenuation = mix(0.0, mix(smoothstep(outerConeCosinus, innerConeCosinus, actualCosinus), 1.0, step(innerConeCosinus, actualCosinus)), step(outerConeCosinus, actualCosinus));
   #endif
-                      lightAttenuation *= angularAttenuation * angularAttenuation;
+                      transmittedLightAttenuation *= angularAttenuation * angularAttenuation;
                       break;
                     }
                   }
@@ -405,20 +405,20 @@ float applyLightIESProfile(const in Light light, const in vec3 pointToLightDirec
                     case 2u:    // Point
                     case 3u: {  // Spot
                       if (light.directionRange.w >= 0.0) {
-                        float currentDistance = length(pointToLightVector);
+                        float currentDistance = length(transmittedPointToLightVector);
                         if (currentDistance > 0.0) {
-                          lightAttenuation *= 1.0 / (currentDistance * currentDistance);
+                          transmittedLightAttenuation *= 1.0 / (currentDistance * currentDistance);
                           if (light.directionRange.w > 0.0) {
                             float distanceByRange = currentDistance / light.directionRange.w;
-                            lightAttenuation *= clamp(1.0 - (distanceByRange * distanceByRange * distanceByRange * distanceByRange), 0.0, 1.0);
+                            transmittedLightAttenuation *= clamp(1.0 - (distanceByRange * distanceByRange * distanceByRange * distanceByRange), 0.0, 1.0);
                           }
                         }
                       }
                       break;
                     }
                   }
-                  lightAttenuation *= applyLightIESProfile(light, pointToLightDirection);
-                  vec3 partTransmittedLight = lightAttenuation * getPunctualRadianceTransmission(normal.xyz, viewDirection, pointToLightDirection, alphaRoughness, baseColor.xyz, ior);
+                  transmittedLightAttenuation *= applyLightIESProfile(light, transmittedPointToLightDirection);
+                  vec3 partTransmittedLight = transmittedLightAttenuation * getPunctualRadianceTransmission(normal.xyz, viewDirection, transmittedPointToLightDirection, alphaRoughness, baseColor.xyz, ior);
 #ifndef VOLUMEATTENUTATION_FORCED
                   if((flags & (1u << 12u)) != 0u) 
 #endif
