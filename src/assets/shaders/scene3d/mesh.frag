@@ -505,11 +505,11 @@ void main() {
         }
         case smPBRSpecularGlossiness: {
           metallic = 0.0;
+          ior = 0.0;
           vec4 specularGlossiness = textureFetch(1, vec4(1.0), true) * vec4(material.specularFactor.xyz, material.metallicRoughnessNormalScaleOcclusionStrengthFactor.y);
           baseColor = textureFetch(0, vec4(1.0), true) * material.baseColorFactor;
-          F0Dielectric = specularGlossiness.xyz;
           perceptualRoughness = clamp(1.0 - specularGlossiness.w, 1e-3, 1.0);
-          F0Dielectric = min(material.specularFactor.xyz, vec3(1.0));
+          F0Dielectric = min(specularGlossiness.xyz * material.specularFactor.xyz, vec3(1.0));
           break;
         }
       }
