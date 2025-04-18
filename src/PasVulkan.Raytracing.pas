@@ -2192,8 +2192,8 @@ begin
     fAccelerationStructureInstance.fAccelerationStructureInstancePointer:=@fRaytracing.fAccelerationStructureInstanceKHRArrayList.ItemArray[fInRaytracingIndex];
    end;
    fRaytracing.fBottomLevelAccelerationStructureInstanceList.ExtractIndex(fInRaytracingIndex);
-   fRaytracing.fAccelerationStructureInstanceKHRArrayList.Delete(fInRaytracingIndex);
-   fRaytracing.fGeometryOffsetArrayList.Delete(fInRaytracingIndex);
+// fRaytracing.fAccelerationStructureInstanceKHRArrayList.Delete(fInRaytracingIndex);
+// fRaytracing.fGeometryOffsetArrayList.Delete(fInRaytracingIndex);
    fInRaytracingIndex:=-1;
   end;
 
