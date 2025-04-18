@@ -2709,6 +2709,8 @@ begin
  fBottomLevelAccelerationStructureQueueLock:=TPasMPMultipleReaderSingleWriterLock.Create;
 
  fAccelerationStructureInstanceKHRArrayList:=TpvRaytracingAccelerationStructureInstanceArrayList.Create;
+ fAccelerationStructureInstanceKHRArrayList.Reserve(1048576);
+ fAccelerationStructureInstanceKHRArrayList.Resize(1048576);
 
  fGeometryInfoManager:=TpvRaytracingGeometryInfoManager.Create;
  fGeometryInfoManager.OnDefragmentMove:=GeometryInfoManagerOnDefragmentMove;
