@@ -3844,7 +3844,7 @@ begin
   end;
   Index:=(Index+Step) and Mask;
  until Index=Start;
- result:=nil;
+ result:=DeletedEntity;
 end;
 
 procedure TpvHashMap<TpvHashMapKey,TpvHashMapValue>.Resize;
@@ -4321,7 +4321,7 @@ begin
   end;
   Index:=(Index+Step) and Mask;
  until Index=Start;
- result:=nil;
+ result:=DeletedEntity;
 end;
 
 procedure TpvStringHashMap<TpvHashMapValue>.Resize;
