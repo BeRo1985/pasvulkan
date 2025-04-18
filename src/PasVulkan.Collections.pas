@@ -3795,23 +3795,25 @@ begin
 end;
 
 function TpvHashMap<TpvHashMapKey,TpvHashMapValue>.FindEntity(const aKey:TpvHashMapKey):PEntity;
-var Index,HashCode,Mask,Step:TpvSizeUInt;
+var Index,HashCode,Mask,Step,Start:TpvSizeUInt;
 begin
  HashCode:=HashKey(aKey);
  Mask:=(2 shl fLogSize)-1;
  Step:=((HashCode shl 1)+1) and Mask;
  Index:=HashCode shr (32-fLogSize);
+ Start:=Index;
  repeat
   result:=@fEntities[Index];
   if (result^.State=TEntity.Empty) or ((result^.State=TEntity.Used) and CompareKey(result^.Key,aKey)) then begin
    exit;
   end;
   Index:=(Index+Step) and Mask;
- until false;
+ until Index=Start;
+ result:=nil;
 end;
 
 function TpvHashMap<TpvHashMapKey,TpvHashMapValue>.FindEntityForAdd(const aKey:TpvHashMapKey):PEntity;
-var Index,HashCode,Mask,Step:TpvSizeUInt;
+var Index,HashCode,Mask,Step,Start:TpvSizeUInt;
     DeletedEntity:PEntity;
 begin
  HashCode:=HashKey(aKey);
@@ -3819,11 +3821,15 @@ begin
  Step:=((HashCode shl 1)+1) and Mask;
  Index:=HashCode shr (32-fLogSize);
  DeletedEntity:=nil;
+ Start:=Index;
  repeat
   result:=@fEntities[Index];
   case result^.State of
    TEntity.Empty:begin
-    break;
+    if assigned(DeletedEntity) then begin
+     result:=DeletedEntity;
+    end;
+    exit;
    end;
    TEntity.Deleted:begin
     if not assigned(DeletedEntity) then begin
@@ -3837,10 +3843,8 @@ begin
    end;
   end;
   Index:=(Index+Step) and Mask;
- until false;
- if assigned(DeletedEntity) then begin
-  result:=DeletedEntity;
- end;
+ until Index=Start;
+ result:=nil;
 end;
 
 procedure TpvHashMap<TpvHashMapKey,TpvHashMapValue>.Resize;
@@ -3885,38 +3889,47 @@ end;
 
 function TpvHashMap<TpvHashMapKey,TpvHashMapValue>.Add(const aKey:TpvHashMapKey;const aValue:TpvHashMapValue):PEntity;
 begin
- while fCountNonEmptyEntites>=(1 shl fLogSize) do begin
-  Resize;
- end;
- result:=FindEntityForAdd(aKey);
- case result^.State of
-  TEntity.Empty:begin
-   inc(fCountNonEmptyEntites);
+ repeat
+  while fCountNonEmptyEntites>=(1 shl fLogSize) do begin
+   Resize;
   end;
-  TEntity.Deleted:begin
-   dec(fCountDeletedEntites);
+  result:=FindEntityForAdd(aKey);
+  if assigned(result) then begin
+   case result^.State of
+    TEntity.Empty:begin
+     inc(fCountNonEmptyEntites);
+    end;
+    TEntity.Deleted:begin
+     dec(fCountDeletedEntites);
+    end;
+    else begin
+    end;
+   end;
+   result^.State:=TEntity.Used;
+   result^.Key:=aKey;
+   result^.Value:=aValue;
+   break;
+  end else begin
+   Resize;
   end;
-  else begin
-  end;
- end;
- result^.State:=TEntity.Used;
- result^.Key:=aKey;
- result^.Value:=aValue;
+ until false;
 end;
 
 function TpvHashMap<TpvHashMapKey,TpvHashMapValue>.Get(const aKey:TpvHashMapKey;const aCreateIfNotExist:boolean):PEntity;
 var Value:TpvHashMapValue;
 begin
  result:=FindEntity(aKey);
- case result^.State of
-  TEntity.Used:begin
-  end;
-  else {TEntity.Empty,TEntity.Deleted:}begin
-   if aCreateIfNotExist then begin
-    Initialize(Value);
-    result:=Add(aKey,Value);
-   end else begin
-    result:=nil;
+ if assigned(result) then begin
+  case result^.State of
+   TEntity.Used:begin
+   end;
+   else {TEntity.Empty,TEntity.Deleted:}begin
+    if aCreateIfNotExist then begin
+     Initialize(Value);
+     result:=Add(aKey,Value);
+    end else begin
+     result:=nil;
+    end;
    end;
   end;
  end;
@@ -3926,17 +3939,27 @@ function TpvHashMap<TpvHashMapKey,TpvHashMapValue>.TryGet(const aKey:TpvHashMapK
 var Entity:PEntity;
 begin
  Entity:=FindEntity(aKey);
- result:=Entity^.State=TEntity.Used;
- if result then begin
-  aValue:=Entity^.Value;
+ if assigned(Entity) then begin
+  result:=Entity^.State=TEntity.Used;
+  if result then begin
+   aValue:=Entity^.Value;
+  end else begin
+   Initialize(aValue);
+  end;
  end else begin
-  Initialize(aValue);
+  result:=false;
  end;
 end;
 
 function TpvHashMap<TpvHashMapKey,TpvHashMapValue>.ExistKey(const aKey:TpvHashMapKey):boolean;
+var Entity:PEntity;
 begin
- result:=FindEntity(aKey)^.State=TEntity.Used;
+ Entity:=FindEntity(aKey);
+ if assigned(Entity) then begin
+  result:=Entity^.State=TEntity.Used;
+ end else begin
+  result:=false;
+ end;
 end;
 
 function TpvHashMap<TpvHashMapKey,TpvHashMapValue>.Delete(const aKey:TpvHashMapKey):boolean;
@@ -3960,7 +3983,7 @@ function TpvHashMap<TpvHashMapKey,TpvHashMapValue>.GetValue(const aKey:TpvHashMa
 var Entity:PEntity;
 begin
  Entity:=FindEntity(aKey);
- if Entity^.State=TEntity.Used then begin
+ if assigned(Entity) and (Entity^.State=TEntity.Used) then begin
   result:=Entity^.Value;
  end else begin
   result:=fDefaultValue;
@@ -4249,23 +4272,25 @@ begin
 end;
 
 function TpvStringHashMap<TpvHashMapValue>.FindEntity(const aKey:TpvHashMapKey):PEntity;
-var Index,HashCode,Mask,Step:TpvSizeUInt;
+var Index,HashCode,Mask,Step,Start:TpvSizeUInt;
 begin
  HashCode:=HashKey(aKey);
  Mask:=(2 shl fLogSize)-1;
  Step:=((HashCode shl 1)+1) and Mask;
  Index:=HashCode shr (32-fLogSize);
+ Start:=Index;
  repeat
   result:=@fEntities[Index];
   if (result^.State=TEntity.Empty) or ((result^.State=TEntity.Used) and (result^.Key=aKey)) then begin
    exit;
   end;
   Index:=(Index+Step) and Mask;
- until false;
+ until Index=Start;
+ result:=nil;
 end;
 
 function TpvStringHashMap<TpvHashMapValue>.FindEntityForAdd(const aKey:TpvHashMapKey):PEntity;
-var Index,HashCode,Mask,Step:TpvSizeUInt;
+var Index,HashCode,Mask,Step,Start:TpvSizeUInt;
     DeletedEntity:PEntity;
 begin
  HashCode:=HashKey(aKey);
@@ -4273,11 +4298,15 @@ begin
  Step:=((HashCode shl 1)+1) and Mask;
  Index:=HashCode shr (32-fLogSize);
  DeletedEntity:=nil;
+ Start:=Index;
  repeat
   result:=@fEntities[Index];
   case result^.State of
    TEntity.Empty:begin
-    break;
+    if assigned(DeletedEntity) then begin
+     result:=DeletedEntity;
+    end;
+    exit;
    end;
    TEntity.Deleted:begin
     if not assigned(DeletedEntity) then begin
@@ -4291,10 +4320,8 @@ begin
    end;
   end;
   Index:=(Index+Step) and Mask;
- until false;
- if assigned(DeletedEntity) then begin
-  result:=DeletedEntity;
- end;
+ until Index=Start;
+ result:=nil;
 end;
 
 procedure TpvStringHashMap<TpvHashMapValue>.Resize;
@@ -4339,40 +4366,51 @@ end;
 
 function TpvStringHashMap<TpvHashMapValue>.Add(const aKey:TpvHashMapKey;const aValue:TpvHashMapValue):PEntity;
 begin
- while fCountNonEmptyEntites>=(1 shl fLogSize) do begin
-  Resize;
- end;
- result:=FindEntityForAdd(aKey);
- case result^.State of
-  TEntity.Empty:begin
-   inc(fCountNonEmptyEntites);
+ repeat
+  while fCountNonEmptyEntites>=(1 shl fLogSize) do begin
+   Resize;
   end;
-  TEntity.Deleted:begin
-   dec(fCountDeletedEntites);
+  result:=FindEntityForAdd(aKey);
+  if assigned(result) then begin
+   case result^.State of
+    TEntity.Empty:begin
+     inc(fCountNonEmptyEntites);
+    end;
+    TEntity.Deleted:begin
+     dec(fCountDeletedEntites);
+    end;
+    else begin
+    end;
+   end;
+   result^.State:=TEntity.Used;
+   result^.Key:=aKey;
+   result^.Value:=aValue;
+   break;
+  end else begin
+   Resize;
   end;
-  else begin
-  end;
- end;
- result^.State:=TEntity.Used;
- result^.Key:=aKey;
- result^.Value:=aValue;
+ until false;
 end;
 
 function TpvStringHashMap<TpvHashMapValue>.Get(const aKey:TpvHashMapKey;const aCreateIfNotExist:boolean):PEntity;
 var Value:TpvHashMapValue;
 begin
  result:=FindEntity(aKey);
- case result^.State of
-  TEntity.Used:begin
-  end;
-  else {TEntity.Empty,TEntity.Deleted:}begin
-   if aCreateIfNotExist then begin
-    Initialize(Value);
-    result:=Add(aKey,Value);
-   end else begin
-    result:=nil;
+ if assigned(result) then begin
+  case result^.State of
+   TEntity.Used:begin
+   end;
+   else {TEntity.Empty,TEntity.Deleted:}begin
+    if aCreateIfNotExist then begin
+     Initialize(Value);
+     result:=Add(aKey,Value);
+    end else begin
+     result:=nil;
+    end;
    end;
   end;
+ end else begin
+  result:=nil;
  end;
 end;
 
@@ -4380,33 +4418,47 @@ function TpvStringHashMap<TpvHashMapValue>.TryGet(const aKey:TpvHashMapKey;out a
 var Entity:PEntity;
 begin
  Entity:=FindEntity(aKey);
- result:=Entity^.State=TEntity.Used;
- if result then begin
-  aValue:=Entity^.Value;
+ if assigned(Entity) then begin
+  result:=Entity^.State=TEntity.Used;
+  if result then begin
+   aValue:=Entity^.Value;
+  end else begin
+   Initialize(aValue);
+  end;
  end else begin
-  Initialize(aValue);
+  result:=false;
  end;
 end;
 
 function TpvStringHashMap<TpvHashMapValue>.ExistKey(const aKey:TpvHashMapKey):boolean;
+var Entity:PEntity;
 begin
- result:=FindEntity(aKey)^.State=TEntity.Used;
+ Entity:=FindEntity(aKey);
+ if assigned(Entity) then begin
+  result:=Entity^.State=TEntity.Used;
+ end else begin
+  result:=false;
+ end;
 end;
 
 function TpvStringHashMap<TpvHashMapValue>.Delete(const aKey:TpvHashMapKey):boolean;
 var Entity:PEntity;
 begin
  Entity:=FindEntity(aKey);
- result:=Entity^.State=TEntity.Used;
- if result then begin
-  Entity^.State:=TEntity.Deleted;
-  Finalize(Entity^.Key);
-  Finalize(Entity^.Value);
-  inc(fCountDeletedEntites);
-  if fCanShrink and (fSize>=8) and (fCountDeletedEntites>=((fSize+3) shr 2)) then begin
-   dec(fCountNonEmptyEntites,fCountDeletedEntites);
-   Resize;
+ if assigned(Entity) then begin
+  result:=Entity^.State=TEntity.Used;
+  if result then begin
+   Entity^.State:=TEntity.Deleted;
+   Finalize(Entity^.Key);
+   Finalize(Entity^.Value);
+   inc(fCountDeletedEntites);
+   if fCanShrink and (fSize>=8) and (fCountDeletedEntites>=((fSize+3) shr 2)) then begin
+    dec(fCountNonEmptyEntites,fCountDeletedEntites);
+    Resize;
+   end;
   end;
+ end else begin
+  result:=false;
  end;
 end;
 
@@ -4414,7 +4466,7 @@ function TpvStringHashMap<TpvHashMapValue>.GetValue(const aKey:TpvHashMapKey):Tp
 var Entity:PEntity;
 begin
  Entity:=FindEntity(aKey);
- if Entity^.State=TEntity.Used then begin
+ if assigned(Entity) and (Entity^.State=TEntity.Used) then begin
   result:=Entity^.Value;
  end else begin
   result:=fDefaultValue;
