@@ -23,13 +23,13 @@
     </PublishOptions>
     <RunParams>
       <local>
-        <CommandLineParams Value="--antialiasing-mode none --depth-of-field-mode none --force-use-validation-layers \home\bero\Projects\GLTF\glTF-Sample-Assets\Models\SpecGlossVsMetalRough\glTF-Binary\SpecGlossVsMetalRough.glb"/>
+        <CommandLineParams Value="--antialiasing-mode smaa --depth-of-field-mode none --force-use-validation-layers \home\bero\Projects\GLTF\TransmissionTest.glb"/>
       </local>
       <FormatVersion Value="2"/>
       <Modes Count="1">
         <Mode0 Name="default">
           <local>
-            <CommandLineParams Value="--antialiasing-mode none --depth-of-field-mode none --force-use-validation-layers \home\bero\Projects\GLTF\glTF-Sample-Assets\Models\SpecGlossVsMetalRough\glTF-Binary\SpecGlossVsMetalRough.glb"/>
+            <CommandLineParams Value="--antialiasing-mode smaa --depth-of-field-mode none --force-use-validation-layers \home\bero\Projects\GLTF\TransmissionTest.glb"/>
           </local>
         </Mode0>
       </Modes>
