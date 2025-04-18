@@ -619,7 +619,7 @@ begin
    FileHeader.Signature:=CompressedFileSignature;
    FileHeader.Version:=CompressedFileVersion;
    FileHeader.Flags:=0; // Zero for now, because it is reserved for future use
-   if InSize<65536 then begin
+   if (InSize<65536) or (aCompressionMethod=TpvCompressionMethod.None) then begin
     FileHeader.Parts:=1;
    end else begin
     if aParts=0 then begin
