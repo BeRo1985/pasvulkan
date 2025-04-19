@@ -869,7 +869,7 @@ asm
  pextrd r9d,xmm2,3               // last raw byte2
  pextrd edi,xmm3,3               // last raw byte1
  pextrd ebx,xmm4,3               // last raw byte0
- jmp @ScalarLoop                  // fall back to scalar for tail
+ jmp @ScalarLoop                 // fall back to scalar for tail
 
 @Exit:
 end;

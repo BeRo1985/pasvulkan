@@ -249,8 +249,255 @@ begin
 
 end;
 
+{$ifdef cpuamd64}
+function TpvHashXXHash64ProcessAMD64(aData:pointer;aDataLength:TpvSizeUInt;aSeed:TpvUInt64):TpvUInt64; assembler; {$ifdef fpc}nostackframe; ms_abi_default;{$endif}
+asm
+{$ifndef fpc}
+ .noframe
+{$endif}
+ push r15
+ push r14
+ push r13
+ push r12
+ push rsi
+ push rdi
+ push rbp
+ push rbx
+ movabs r9,$c2b2ae3d27d4eb4f // -4417276706812531889
+ movabs r10,$27d4eb2f165667c5 // 2870177450012600261
+ movabs r14,$165667b19e3779f9 // 1609587929392839161
+ test rcx,rcx
+ je @L5
+ movabs r11,$9e3779b185ebca87 // -7046029288634856825
+ movabs rsi,$85ebca77c2b2ae63 // -8796714831421723037
+ cmp rdx,32
+ jb @L6
+ movabs rbp,$60ea27eeadc0b5d6 // 6983438078262162902
+ add rbp,r8
+ lea r13,[r8+r9]
+ movabs r12,$61c8864e7a143579 // 7046029288634856825
+ add r12,r8
+ lea rax,[rcx+rdx]
+ add rax,-31
+@L3:
+ mov r15,qword ptr [rcx]
+ imul r15,r9
+ add r15,rbp
+ rol r15,31
+ mov rbp,r15
+ imul rbp,r11
+ mov r14,qword ptr [rcx+8]
+ imul r14,r9
+ add r14,r13
+ rol r14,31
+ mov r13,r14
+ mov rbx,qword ptr [rcx+16]
+ imul rbx,r9
+ add rbx,r8
+ rol rbx,31
+ imul r13,r11
+ mov r8,rbx
+ imul r8,r11
+ mov rdi,qword ptr [rcx+24]
+ imul rdi,r9
+ add rdi,r12
+ rol rdi,31
+ mov r12,rdi
+ imul r12,r11
+ add rcx,32
+ cmp rcx,rax
+ jb @L3
+ rol rbp,1
+ rol r13,7
+ add r13,rbp
+ rol r8,12
+ rol r12,18
+ add r12,r8
+ add r12,r13
+ movabs rax,$def35b010f796ca9 // -2381459717836149591
+ imul r15,rax
+ rol r15,31
+ imul r15,r11
+ xor r15,r12
+ imul r15,r11
+ imul r14,rax
+ rol r14,31
+ add r15,rsi
+ imul r14,r11
+ xor r14,r15
+ imul r14,r11
+ add r14,rsi
+ imul rbx,rax
+ rol rbx,31
+ imul rbx,r11
+ xor rbx,r14
+ imul rbx,r11
+ add rbx,rsi
+ imul rdi,rax
+ rol rdi,31
+ imul rdi,r11
+ xor rdi,rbx
+ imul rdi,r11
+ add rdi,rdx
+ add rdi,rsi
+ movabs r14,$165667b19e3779f9 //1609587929392839161
+ and edx,31
+ cmp rdx,8
+ jae @L8
+ jmp @L13
+@L5:
+ add r8,r10
+ jmp @L25
+@L6:
+ add r8,r10
+ add r8,rdx
+ mov rdi,r8
+ and edx,31
+ cmp rdx,8
+ jb @L13
+@L8:
+ lea rbx,[rdx-8]
+ test bl,8
+ jne @L9
+ mov r8,qword ptr [rcx]
+ imul r8,r9
+ rol r8,31
+ imul r8,r11
+ add rcx,8
+ xor r8,rdi
+ rol r8,27
+ imul r8,r11
+ add r8,rsi
+ mov rdi,r8
+ mov rdx,rbx
+ cmp rbx,8
+ jae @L12
+ jmp @L14
+@L9:
+ cmp rbx,8
+ jb @L14
+@L12:
+ mov rax,qword ptr [rcx]
+ imul rax,r9
+ rol rax,31
+ imul rax,r11
+ xor rax,rdi
+ rol rax,27
+ imul rax,r11
+ add rax,rsi
+ mov rdi,qword ptr [rcx+8]
+ imul rdi,r9
+ rol rdi,31
+ imul rdi,r11
+ xor rdi,rax
+ add rcx,16
+ rol rdi,27
+ imul rdi,r11
+ add rdi,rsi
+ add rdx,-16
+ cmp rdx,7
+ ja @L12
+@L13:
+ mov rbx,rdx
+ mov r8,rdi
+@L14:
+ cmp rbx,4
+ jae @L15
+ test rbx,rbx
+ jne @L17
+ jmp @L25
+@L15:
+ mov eax,dword ptr [rcx]
+ imul rax,r11
+ xor rax,r8
+ add rcx,4
+ rol rax,23
+ imul rax,r9
+ add rax,r14
+ add rbx,-4
+ mov r8,rax
+ test rbx,rbx
+ je @L25
+@L17:
+ mov rdx,rbx
+ and rdx,3
+ je @L18
+ xor eax,eax
+@L20:
+ movzx esi,byte ptr [rcx+rax]
+ imul rsi,r10
+ xor rsi,r8
+ rol rsi,11
+ mov r8,rsi
+ imul r8,r11
+ inc rax
+ cmp rdx,rax
+ jne @L20
+ add rcx,rax
+ mov rdx,rbx
+ sub rdx,rax
+ cmp rbx,4
+ jae @L23
+ jmp @L25
+@L18:
+ mov rdx,rbx
+ cmp rbx,4
+ jb @L25
+@L23:
+ xor eax,eax
+@L24:
+ movzx esi,byte ptr [rcx+rax]
+ imul rsi,r10
+ xor rsi,r8
+ rol rsi,11
+ imul rsi,r11
+ movzx r8d,byte ptr [rcx+rax+1]
+ imul r8,r10
+ xor r8,rsi
+ rol r8,11
+ imul r8,r11
+ movzx esi,byte ptr [rcx+rax+2]
+ imul rsi,r10
+ xor rsi,r8
+ rol rsi,11
+ imul rsi,r11
+ movzx r8d,byte ptr [rcx+rax+3]
+ imul r8,r10
+ xor r8,rsi
+ rol r8,11
+ imul r8,r11
+ add rax,4
+ cmp rdx,rax
+ jne @L24
+@L25:
+ mov rax,r8
+ shr rax,33
+ xor rax,r8
+ imul rax,r9
+ mov rcx,rax
+ shr rcx,29
+ xor rcx,rax
+ imul rcx,r14
+ mov rax,rcx
+ shr rax,32
+ xor rax,rcx
+ pop rbx
+ pop rbp
+ pop rdi
+ pop rsi
+ pop r12
+ pop r13
+ pop r14
+ pop r15
+end;
+{$ifend}
+
 class function TpvHashXXHash64.Process(const aData:pointer;const aDataLength:TpvSizeUInt;const aSeed:TpvUInt64):TpvHashXXHash64.TMessageDigest;
-{$if true}
+{$if defined(cpuamd64)}
+begin
+ result:=TpvHashXXHash64ProcessAMD64(aData,aDataLength,aSeed);
+end;
+{$elseif true}
 var TotalLength:TpvSizeUInt;
     v1:TpvUInt64;
     v2:TpvUInt64;
