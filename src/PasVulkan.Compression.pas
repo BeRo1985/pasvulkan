@@ -152,9 +152,253 @@ end;
 
 ////////////////////////////////////////////////////////////////////////////////////////
 
+{$ifdef cpuamd64}
+procedure ForwardTransform32BitFloatDataAMD64(aInData,aOutData:pointer;aDataSize:TpvSizeInt); assembler; {$ifdef fpc}nostackframe; ms_abi_default;{$endif}
+const Data0:array[0..3] of TpvUInt32=($80000000,$80000000,$80000000,$80000000);
+      Data5:array[0..15] of TpvUInt8=(3,7,11,15,0,0,0,0,0,0,0,0,0,0,0,0);
+      Data6:array[0..15] of TpvUInt8=(2,6,10,14,0,0,0,0,0,0,0,0,0,0,0,0);
+      Data7:array[0..15] of TpvUInt8=(1,5,9,13,0,0,0,0,0,0,0,0,0,0,0,0);
+      Data8:array[0..15] of TpvUInt8=(0,4,8,12,0,0,0,0,0,0,0,0,0,0,0,0);
+asm
+{$ifndef fpc}
+ .noframe
+{$endif}
+
+ // Entry & quick-exit for too-small data
+ cmp r8,4
+ jb @EarlyExit // if <4 bytes, nothing to do
+
+ // Prologue: save callee-saved regs & stack space for xmm6/7
+ push r15
+ push r14
+ push r13
+ push r12
+ push rsi
+ push rdi
+ push rbp
+ push rbx
+ sub rsp,40
+ movdqa xmmword ptr [rsp+16],xmm7
+ movdqa xmmword ptr [rsp],xmm6
+
+ // Compute element counts & offsets
+ mov rax,r8
+ shr rax,2 // number of 32-bit floats
+ lea rsi,[rax+rax] // rsi = 2*count
+ lea r9,[rax+rax*2] // r9  = 3*count
+
+ // Choose scalar fallback for small blocks (<48 bytes)
+ cmp r8,48
+ jae @SIMDSetup // if >=48 bytes, go SIMD
+
+ // else prepare for small-loop
+ xor r8d,r8d
+
+@ScalarLoopInit:
+ xor r10d,r10d // inner byte-index = 0
+
+@ScalarElementLoop: // small-block loop: process each float
+ lea r11,[rdx+r8] // outBase = outPtr + byteOffset
+ add r9,r11 // update write pointers
+ add rsi,r11
+ lea rdi,[r8+rax] // outPtr+count
+ sub rax,r8
+ add rdi,rdx
+ lea rcx,[rcx+r8*4] // inPtr+byteOffset
+ xor edx,edx
+
+@ScalarProcess: // per-float transform (scalar)
+ mov r8d,dword ptr [rcx+rdx*4]
+ mov ebp,r8d
+ sar ebp,31 // sign bit to all bits
+ or ebp,$80000000 // make positive magnitude
+ xor ebp,r8d // xor to apply sign‐flip
+ mov ebx,ebp
+ sub ebx,r10d // delta = curr – prev
+ mov r8d,ebx
+ shr r8d,24 // extract highest byte
+ mov byte ptr [r11+rdx],r8b
+ mov r8d,ebx
+ shr r8d,16
+ mov byte ptr [rdi+rdx],r8b
+ mov byte ptr [rsi+rdx],bh
+ mov byte ptr [r9+rdx],bl
+ inc rdx
+ mov r10d,ebp // prev = curr
+ cmp rax,rdx
+ jne @ScalarProcess // loop floats
+
+@ScalarEpilogue: // restore & exit
+ movaps xmm6,xmmword ptr [rsp]
+ movaps xmm7,xmmword ptr [rsp+16]
+ add rsp,40
+ pop rbx
+ pop rbp
+ pop rdi
+ pop rsi
+ pop r12
+ pop r13
+ pop r14
+ pop r15
+
+@EarlyExit:
+ jmp @Exit
+
+ // SIMD path for larger blocks
+@SIMDSetup:
+ // prepare pointers & alignment for SIMD path
+ lea r11,[rdx+r9]  // out3_base = outPtr + 3*count
+ and r8,-4         // align count down to multiple of 4 floats
+ lea r10,[rdx+r8]  // out0_end   = outPtr + aligned_count
+ add r8,rcx        // in_end     = inPtr  + aligned_count*4
+ lea rbx,[rdx+rsi] // out2_base = outPtr + 2*count
+ lea r15,[rdx+rax] // out1_base = outPtr + 1*count
+
+ // Check if we should fall back to scalar (unaligned) loop
+ cmp r11,r8
+ setb r12b
+ cmp rcx,r10
+ setb r13b
+ cmp rbx,r8
+ setb r10b
+ cmp rcx,r11
+ setb bpl
+ cmp r15,r8
+ setb dil
+ cmp rcx,rbx
+ setb r14b
+ cmp rdx,r8
+ setb r11b
+ cmp rcx,r15
+ setb bl
+
+ xor r8d,r8d // clear flags
+ test r12b,r13b
+ jne @ScalarLoopInit // if any overlap, scalar fallback
+ and r10b,bpl
+ jne @ScalarLoopInit
+ and dil,r14b
+ jne @ScalarLoopInit
+ mov r10d,0
+ and r11b,bl
+ jne @ScalarElementLoop // scalar fallback if still unaligned
+
+ // Set up for SIMD: load constants & zero xmm0
+ mov r8,rax // total floats
+ and r8,-4 // multiple of 4
+ pxor xmm0,xmm0 // zero vector
+ movdqa xmm1,xmmword ptr [rip+Data0] // mask to flip sign bit
+ movd xmm2,dword ptr [rip+Data5] // shuffle control for byte 3
+ movd xmm3,dword ptr [rip+Data6] // byte 2
+ movd xmm4,dword ptr [rip+Data7] // byte 1
+ movd xmm5,dword ptr [rip+Data8] // byte 0
+
+ mov r10,r8 // element count
+ mov r11,rdx // dst_ptr
+ mov rdi,rcx // src_ptr
+
+@SIMDMainLoop:
+ // Load 4 floats, compute signed-magnitude, and delta pack
+ movdqa xmm6,xmm0 // save prev vector
+ movdqu xmm7,xmmword ptr [rdi] // load 4 raw floats
+ movdqa xmm0,xmm7
+ psrad xmm0,31 // sign mask (-1 or 0 per lane)
+ por xmm0,xmm1 // set MSB for magnitude
+ pxor xmm0,xmm7 // signed-magnitude: value xor sign-mask
+
+ // compute vector of differences between this and previous
+ movdqa xmm7,xmm0
+ palignr xmm7,xmm6,12 // shift-in previous high dword
+ movdqa xmm6,xmm0
+ psubd xmm6,xmm7 // deltas in xmm6
+
+ // scatter each delta byte-plane via pshufb + movd
+ movdqa xmm7,xmm6
+ pshufb xmm7,xmm2 // extract byte 3 of each delta
+ movd dword ptr [r11],xmm7
+
+ movdqa xmm7,xmm6
+ pshufb xmm7,xmm3 // byte 2
+ movd dword ptr [r11+rax],xmm7
+
+ movdqa xmm7,xmm6
+ pshufb xmm7,xmm4 // byte 1
+ movd dword ptr [r11+rax*2],xmm7
+
+ pshufb xmm6,xmm5 // byte 0 in xmm6
+ movd dword ptr [r11+r9],xmm6
+
+ // advance pointers and counters
+ add rdi,16 // next 4 floats
+ add r11,4 // next 4 output bytes per plane
+ add r10,-4 // subtract 4 elements
+ jne @SIMDMainLoop // loop until all aligned floats done
+
+ cmp rax,r8
+ je @ScalarEpilogue// if exactly aligned, skip scalar tail
+
+ // extract remaining count (1–3 floats) into r10d and fall into scalar
+ pextrd r10d,xmm0,3
+ jmp @ScalarElementLoop // scalar tail for 1–3 floats
+
+@Exit:
+end;
+
+(*
+procedure ForwardTransform32BitFloatDataAMD64(aInData,aOutData:pointer;aDataSize:TpvSizeInt); assembler; {$ifdef fpc}nostackframe; ms_abi_default;{$endif}
+asm
+{$ifndef fpc}
+ .noframe
+{$endif}
+ shr r8,2
+ je @Exit
+ push rdi
+ mov r11,rcx
+ mov r10,rdx
+ xor r9d,r9d
+ push rsi
+ xor eax,eax
+ lea rsi,[rdx+r8]
+ push rbx
+ lea rbx,[rdx+r8*2]
+ lea rdi,[rbx+r8]
+ jmp @LoopEntry
+@Loop:
+ mov r9d,edx
+@LoopEntry:
+ mov ecx,dword ptr [r11+rax*4]
+ mov edx,ecx
+ sar edx,31
+ or edx,$80000000
+ xor edx,ecx
+ mov ecx,edx
+ sub ecx,r9d
+ mov r9d,ecx
+ shr r9d,24
+ mov byte ptr [r10+rax],r9b
+ mov r9d,ecx
+ shr r9d,16
+ mov byte ptr [rsi+rax],r9b
+ mov byte ptr [rbx+rax],ch
+ mov byte ptr [rdi+rax],cl
+ add rax,1
+ cmp r8,rax
+ jne @Loop
+ pop rbx
+ pop rsi
+ pop rdi
+@Exit:
+end;*)
+{$endif}
+
 // This function transforms 32-bit float data to a better compressible format, together with preserving the order
 // before and after the transformation for better delta compression
 procedure ForwardTransform32BitFloatData(const aInData,aOutData:pointer;const aDataSize:TpvSizeInt);
+{$ifdef cpuamd64}
+begin
+ ForwardTransform32BitFloatDataAMD64(aInData,aOutData,aDataSize);
+end;
+{$else}
 var Index,Count:TpvSizeInt;
     Previous,Value,Delta:TpvUInt32;
 begin
@@ -171,6 +415,7 @@ begin
   PpvUInt8Array(aOutData)^[Index+(Count*3)]:=(Delta shr 0) and $ff;
  end;
 end;
+{$endif}
 
 procedure ForwardTransform32BitFloatData(const aStream:TStream);
 var InData,OutData:Pointer;
@@ -220,9 +465,94 @@ begin
  end;
 end;
 
+{$ifdef cpuamd64}
+procedure BackwardTransform32BitFloatDataAMD64(aInData,aOutData:pointer;aDataSize:TpvSizeInt); assembler; {$ifdef fpc}nostackframe; ms_abi_default;{$endif}
+asm
+{$ifndef fpc}
+ .noframe
+{$endif}
+
+ // Entry & quick-exit for too-small data (<4 bytes)
+ cmp r8,4
+ jb @Exit
+
+ // Prologue: save callee‑saved registers
+ push rsi
+ push rdi
+ push rbx
+
+ // Compute element count and split input planes
+ // r8d := byte‑count; shr r8,2 => float‑count
+ shr r8,2 // r8 = Count
+ lea rax,[r8+r8*2] // rax = 3*Count
+ mov r9,r8 // r9 =  Count
+ neg r9    // r9 = -Count
+
+ // Build pointers to each of the 4 byte‑planes in aInData:
+ //   rcx = base+0*Count,        [rcx + index]   plane 0 (MSB)
+ //   r8  = base+1*Count,        [r8  + index]   plane 1
+ //   r10 = base+2*Count,        [r10 + index]   plane 2
+ //   rax = base+3*Count,        [rax + index]   plane 3 (LSB)
+ add rax,rcx         // rax = aInData + 3*Count
+ lea r10,[rcx+r8*2]  // r10 = aInData + 2*Count
+ add r8,rcx          // r8  = aInData + 1*Count
+
+ // Initialize loop index and accumulator
+ xor r11d,r11d // index = 0
+ xor esi,esi // accumulator (previous sum) = 0
+
+@Loop:
+ // Load and shift each byte-plane into its position
+ movzx edi,byte ptr [rcx+r11] // load MSB byte
+ shl edi,24                   // shift to bits 24–31
+
+ movzx ebx,byte ptr [r8+r11]  // load next byte
+ shl ebx,16                   // shift to bits 16–23
+ or ebx,edi                   // combine MSB and next byte
+
+ movzx edi,byte ptr [r10+r11] // third byte
+ shl edi,8                    // shift to bits 8–15
+ or edi,ebx                   // combine top three bytes
+
+ movzx ebx,byte ptr [rax+r11] // LSB byte
+ or ebx,edi                   // full 32‑bit delta
+
+ // Accumulate delta to reconstruct original value
+ add esi,ebx                  // running sum = prev + delta
+
+ // Restore IEEE‑754 float bits from signed‑magnitude
+ mov edi,esi
+ shr edi,31                   // sign bit → all bits (-1 if negative)
+ dec edi                      // edi = (sign_mask - 1)
+ or edi,$80000000             // set MSB for magnitude
+ xor edi,esi                  // xor with sum to reapply sign
+
+ // Store the 32‑bit float result
+ mov dword ptr [rdx+r11*4],edi
+
+ // Increment index and loop
+ inc r11
+ mov rdi,r9
+ add rdi,r11
+ jne @Loop
+
+ // Epilogue: restore registers & exit
+ pop rbx
+ pop rdi
+ pop rsi
+
+@Exit:
+end;
+{$endif}
+
 // This function transforms 32-bit float data back from a better compressible format, together with preserving the order
 // before and after the transformation for better delta compression
 procedure BackwardTransform32BitFloatData(const aInData,aOutData:pointer;const aDataSize:TpvSizeInt);
+{$ifdef cpuamd64}
+begin
+ BackwardTransform32BitFloatDataAMD64(aInData,aOutData,aDataSize);
+end;
+{$else}
 var Index,Count:TpvSizeInt;
     Value:TpvUInt32;
 begin
@@ -236,6 +566,7 @@ begin
   PpvUInt32Array(aOutData)^[Index]:=Value xor TpvUInt32(TpvUInt32(TpvUInt32(Value shr 31)-1) or TpvUInt32($80000000));
  end;
 end;
+{$endif}
 
 procedure BackwardTransform32BitFloatData(const aStream:TStream);
 var InData,OutData:Pointer;
@@ -294,8 +625,12 @@ asm
 {$ifndef fpc}
  .noframe
 {$endif}
+
+ // Entry & quick-exit for too-small data (<4 bytes)
  cmp r8,4
- jb @LBB0_15
+ jb @EarlyExit
+
+ // Prologue: save callee‑saved registers & reserve stack for xmm registers
  push r15
  push r14
  push r13
@@ -309,63 +644,88 @@ asm
  movdqa xmmword ptr [rsp+48],xmm8
  movdqa xmmword ptr [rsp+32],xmm7
  movdqa xmmword ptr [rsp+16],xmm6
+
+ // Compute element count & plane offsets
  mov rax,r8
- shr rax,2
- lea r13,[rax+rax]
- lea r10,[rax+rax*2]
+ shr rax,2            // rax = Count (number of pixels)
+ lea r13,[rax+rax]    // r13 = 2*Count
+ lea r10,[rax+rax*2]  // r10 = 3*Count
+
+ // Choose scalar fallback for small blocks (<48 bytes)
  cmp r8,48
- jae @LBB0_3
- xor r8d,r8d
-@LBB0_4:
- xor r9d,r9d
- xor edi,edi
- xor ebx,ebx
- xor r11d,r11d
-@LBB0_12:
- lea rsi,[rdx+r11]
- add r10,rsi
- mov qword ptr [rsp+8],rsi
- add r13,rsi
- lea r15,[r11+rax]
- sub rax,r11
- add r15,rdx
- lea rcx,[rcx+r11*4]
- xor edx,edx
-@LBB0_13:
- mov r11d,dword ptr [rcx+rdx*4]
- mov ebp,r11d
- mov r12d,r11d
- mov r14,rax
- mov rax,r10
+ jae @SIMDSetup
+
+ // Scalar fallback initialization
+ xor r8d,r8d  // byte-index = 0
+
+@ScalarInit:
+ xor r9d,r9d        // deltaR_prev = 0
+ xor edi,edi        // deltaG_prev = 0
+ xor ebx,ebx        // deltaB_prev = 0
+ xor r11d,r11d      // deltaA_prev = 0
+
+ // Scalar element loop: process each pixel
+@ScalarLoop:
+ lea rsi,[rdx+r11]           // out_base = outPtr + index
+ add r10,rsi                 // update plane3 pointer
+ mov qword ptr [rsp+8],rsi   // save plane0 pointer
+ add r13,rsi                 // update plane2 pointer
+ lea r15,[r11+rax]           // temp = index + Count
+ sub rax,r11                 // remaining = Count - index
+ add r15,rdx                 // out_plane1 = outPtr + temp
+ lea rcx,[rcx+r11*4]         // inPtr + index*4
+ xor edx,edx                 // channel-loop idx = 0
+
+ // Scalar channel processing: R, G, B, A deltas
+@ScalarProcessChannels:
+ mov r11d,dword ptr [rcx+rdx*4]   // load pixel value
+ mov ebp,r11d                     // ebp = raw RGBA
+
+ // extract channels
+ mov r12d,r11d                    // r12d = raw pixel (for B)
+ mov r14,rax                      // save remaining count
+ mov rax,r10                      // swap registers for plane pointers
  mov r10,r13
- mov r13d,r11d
- mov esi,r11d
- shr esi,8
- shr ebp,16
- shr r12d,24
- sub r13d,r8d
+ mov r13d,r11d                    // r13d = raw pixel (for R)
+ mov esi,r11d                     // esi = raw pixel (for G)
+
+ shr esi,8                        // R = raw shr 0
+ shr ebp,16                       // G = raw shr 8
+ shr r12d,24                      // B = raw shr 16
+
+ sub r13d,r8d                     // deltaR = R - prevR
  mov r8d,esi
  sub r8d,r9d
- mov r9d,ebp
+
+ mov r9d,ebp                      // deltaG = G - prevG
  sub r9d,edi
- mov edi,r12d
+
+ mov edi,r12d                     // deltaB = B - prevB
  sub edi,ebx
- mov rbx,qword ptr [rsp+8]
+
+ mov rbx,qword ptr [rsp+8]        // write plane0 (R)
  mov byte ptr [rbx+rdx],r13b
- mov r13,r10
+
+ mov r13,r10                      // write plane1 (G)
  mov r10,rax
  mov rax,r14
  mov byte ptr [r15+rdx],r8b
- mov byte ptr [r13+rdx],r9b
- mov byte ptr [r10+rdx],dil
+
+ mov byte ptr [r13+rdx],r9b      // write plane2 (B)
+
+ mov byte ptr [r10+rdx],dil      // write plane3 (A)
+
+ // update prev channels
  mov r8d,r11d
  inc rdx
  mov r9d,esi
  mov edi,ebp
  mov ebx,r12d
  cmp r14,rdx
- jne @LBB0_13
-@LBB0_14:
+ jne @ScalarProcessChannels
+
+  // Scalar epilogue: restore xmm & regs
+@ScalarEpilogue:
  movaps xmm6,xmmword ptr [rsp+16]
  movaps xmm7,xmmword ptr [rsp+32]
  movaps xmm8,xmmword ptr [rsp+48]
@@ -379,102 +739,139 @@ asm
  pop r13
  pop r14
  pop r15
-@LBB0_15:
+
+@EarlyExit:
  jmp @Exit
-@LBB0_3:
- lea rsi,[rdx+r10]
- and r8,-4
- lea r11,[rdx+r8]
- add r8,rcx
- lea rdi,[rdx+r13]
- lea r14,[rdx+rax]
- cmp rsi,r8
+
+ // SIMD path for larger blocks
+@SIMDSetup:
+ // Compute pointers & align count to multiple of 4 pixels
+ lea rsi,[rdx+r10]  // simd_plane3 = outPtr + 3*Count
+ and r8,-4          // round Count down to multiple of 4
+ lea r11,[rdx+r8]   // simd_plane0_end
+ add r8,rcx         // simd_in_end = inPtr + aligned*4
+ lea rdi,[rdx+r13]  // simd_plane2 = outPtr + 2*Count
+ lea r14,[rdx+rax]  // simd_plane1 = outPtr + Count
+
+ // Overlap test: if any output region overlaps input, fallback
+ cmp rsi,r8   // plane3_base < in_end?
  setb r15b
- cmp rcx,r11
+ cmp rcx,r11  // plane0_start < plane0_end?
  setb r12b
- cmp rdi,r8
+ cmp rdi,r8   // plane2_base < in_end?
  setb r11b
- cmp rcx,rsi
+ cmp rcx,rsi  // in_start < plane3_base?
  setb sil
- cmp r14,r8
+ cmp r14,r8   // plane1_base < in_end
  setb bl
- cmp rcx,rdi
+ cmp rcx,rdi  // in_start < plane2_base?
  setb dil
- cmp rdx,r8
+ cmp rdx,r8   // index < in_end?
  setb bpl
- cmp rcx,r14
+ cmp rcx,r14  // in_start < plane1_base?
  setb r14b
- xor r8d,r8d
- test r15b,r12b
- jne @LBB0_4
- and r11b,sil
- jne @LBB0_4
- and bl,dil
- jne @LBB0_4
- mov r9d,0
+ xor r8d,r8d  // clear flags for next test
+
+ test r15b,r12b  // if plane3_base < in_end && in_start < plane0_end then
+ jne @ScalarInit // => scalar
+
+ and r11b,sil    // if (in_start < plane2_base)
+ jne @ScalarInit // then => scalar
+
+ and bl,dil      // if in_start < plane2_base
+ jne @ScalarInit // then => scalar
+
+ mov r9d,0     // prevR = prevG = prevB = prevA = 0
  mov edi,0
  mov ebx,0
  mov r11d,0
- and bpl,r14b
- jne @LBB0_12
- mov r11,rax
- and r11,-4
- pxor xmm0,xmm0
- movd xmm1,dword ptr [rip+Data]
- mov r8,rcx
- mov rsi,rdx
- mov rdi,r11
- pxor xmm2,xmm2
- pxor xmm3,xmm3
- pxor xmm4,xmm4
-@LBB0_9:
- movdqa xmm5,xmm4
- movdqa xmm4,xmm3
- movdqa xmm3,xmm2
- movdqa xmm2,xmm0
- movdqu xmm0,xmmword ptr [r8]
- movdqa xmm6,xmm0
- palignr xmm6,xmm2,12
- movdqa xmm2,xmm0
- psrld xmm2,8
+
+ and bpl,r14b        // if index < in_end && in_start < plane1_base
+ jne @ScalarLoop     // then => scalar
+
+ // SIMD setup: load shuffle mask & zero acc registers
+ mov r11,rax                    // loop count (pixels)
+ and r11,-4                     // ensure multiple of 4
+ pxor xmm0,xmm0                 // prev vector = 0
+ movd xmm1,dword ptr [rip+Data] // shuffle mask [0,4,8,12]
+ mov r8,rcx                     // src_ptr = inPtr
+ mov rsi,rdx                    // dst_plane0 = outPtr
+ mov rdi,r11                    // simd loop counter
+
+ pxor xmm2,xmm2                 // tmp0 = zero
+ pxor xmm3,xmm3                 // tmp1 = zero
+ pxor xmm4,xmm4                 // tmp2 = zero
+
+ // SIMD main loop
+@SIMDMainLoop:
+
+ // Rotate pipeline of previous vectors
+ movdqa xmm5,xmm4               // prev_plane0 <= prev_plane1
+ movdqa xmm4,xmm3               // prev_plane1 <= prev_plane2
+ movdqa xmm3,xmm2               // prev_plane2 <= prev_plane3
+ movdqa xmm2,xmm0               // prev_plane3 <= prev_vec
+
+ movdqu xmm0,xmmword ptr [r8]   // load 4 RGBA pixels into xmm0
+
+ movdqa xmm6,xmm0               // curr_vec = raw pixels
+ palignr xmm6,xmm2,12           // prevA = align(prev_plane3_vec, curr_vec), xmm6 = { prevA3, currA0, currA1, currA2 }
+
+ movdqa xmm2,xmm0               // tmp = raw pixels
+ psrld xmm2,8                   // shift bytes >>8 for B
  movdqa xmm7,xmm2
- palignr xmm7,xmm3,12
- movdqa xmm3,xmm0
- psrld xmm3,16
+ palignr xmm7,xmm3,12           // prevB, xmm7 = { prevB3, currB0, currB1, currB2 }
+
+ movdqa xmm3,xmm0               // tmp = raw pixels
+ psrld xmm3,16                  // shift bytes >>16 for G
  movdqa xmm8,xmm3
- palignr xmm8,xmm4,12
- movdqa xmm4,xmm0
- psrld xmm4,24
+ palignr xmm8,xmm4,12           // prevG, xmm8 = { prevG3, currG0, currG1, currG2 }
+
+ movdqa xmm4,xmm0               // tmp = raw pixels
+ psrld xmm4,24                  // shift bytes >>24 for R
  movdqa xmm9,xmm4
- palignr xmm9,xmm5,12
- movdqa xmm5,xmm0
- psubd xmm5,xmm6
- pshufb xmm5,xmm1
- movdqa xmm6,xmm2
- psubd xmm6,xmm7
- pshufb xmm6,xmm1
- movdqa xmm7,xmm3
- psubd xmm7,xmm8
- pshufb xmm7,xmm1
- movdqa xmm8,xmm4
- psubd xmm8,xmm9
- pshufb xmm8,xmm1
- movd dword ptr [rsi],xmm5
- movd dword ptr [rsi+rax],xmm6
- movd dword ptr [rsi+rax*2],xmm7
- movd dword ptr [rsi+r10],xmm8
- add rsi,4
- add r8,16
- add rdi,-4
- jne @LBB0_9
- cmp rax,r11
- je @LBB0_14
- pextrd r8d,xmm0,3
- pextrd r9d,xmm2,3
- pextrd edi,xmm3,3
- pextrd ebx,xmm4,3
- jmp @LBB0_12
- @Exit:
+ palignr xmm9,xmm5,12           // prevR, xmm9 = { prevR3, currR0, currR1, currR2 }
+
+ // delta = curr - prev for each channel
+ movdqa xmm5,xmm0                // reload raw into pipeline for packing for A
+ psubd xmm5,xmm6                 // deltaA = currA - prevA
+ pshufb xmm5,xmm1                // pack bytes for A
+
+ movdqa xmm6,xmm2                // reload byte2 into pipeline for packing for B
+ psubd xmm6,xmm7                 // deltaB = currB - prevB
+ pshufb xmm6,xmm1                // pack bytes for B
+
+ movdqa xmm7,xmm3                // reload byte3 into pipeline for packing for G
+ psubd xmm7,xmm8                 // deltaG = currG - prevG
+ pshufb xmm7,xmm1                // pack bytes for G
+
+ movdqa xmm8,xmm4                // reload byte4 into pipeline for packing for R
+ psubd xmm8,xmm9                 // deltaR = currR - prevR
+ pshufb xmm8,xmm1                // pack bytes for A
+
+ // store results per plane
+ movd dword ptr [rsi],xmm5       // plane3 (A)
+ movd dword ptr [rsi+rax],xmm6   // plane2 (G)
+ movd dword ptr [rsi+rax*2],xmm7 // plane1 (B)
+ movd dword ptr [rsi+r10],xmm8   // plane0 (R)
+
+ // advance pointers & loop
+ add rsi,4                       // advance plane3 ptr by 4 bytes
+ add r8,16                       // advance src_ptr by 4 pixels
+ add rdi,-4                      // decrement simd_loop counter
+ jne @SIMDMainLoop               // loop
+
+ // handle tail <4 pixels via scalar
+ cmp rax,r11                     // processed all aligned pixels?
+ je @ScalarEpilogue              // if yes, jump to SIMD epilogue
+
+ // handle tail (<4 pixels) by extracting last bytes
+ pextrd r8d,xmm0,3               // last raw pixel byte3
+ pextrd r9d,xmm2,3               // last raw byte2
+ pextrd edi,xmm3,3               // last raw byte1
+ pextrd ebx,xmm4,3               // last raw byte0
+ jmp @ScalarLoop                  // fall back to scalar for tail
+
+@Exit:
 end;
 {$endif}
 
@@ -574,59 +971,89 @@ asm
 {$ifndef fpc}
  .noframe
 {$endif}
+
+ // Entry & quick‑exit for too‑small data (<4 bytes)
  cmp r8,4
  jb @Exit
+
+ // Prologue: save callee‑saved registers
  push r15
  push r14
  push rsi
  push rdi
  push rbp
  push rbx
- shr r8,2
- lea rax,[r8+r8*2]
- mov r9,r8
- neg r9
- add rax,rcx
- lea r10,[rcx+r8*2]
- add r8,rcx
- xor r11d,r11d
- xor esi,esi
- xor edi,edi
- xor ebx,ebx
- xor ebp,ebp
+
+ // Compute element count & plane bases
+ shr r8,2             // r8 = Count (pixels)
+ lea rax,[r8+r8*2]    // rax = 3*Count
+ mov r9,r8            // r9 =  Count
+ neg r9               // r9 = -Count (for indexing)
+ add rax,rcx          // plane3 = aInData + 3*Count
+ lea r10,[rcx+r8*2]   // plane2 = aInData + 2*Count
+ add r8,rcx           // plane1 = aInData + 1*Count
+                      // plane0 = rcx
+
+ // Initialize loop index & accumulators for each channel
+ xor r11d,r11d        // idx = 0
+ xor esi,esi          // sumR = 0
+ xor edi,edi          // sumG = 0
+ xor ebx,ebx          // sumB = 0
+ xor ebp,ebp          // sumA = 0
+
 @Loop:
- movzx r14d,byte ptr [rcx+r11]
- add ebp,r14d
- movzx r14d,byte ptr [r8+r11]
- movzx ebx,bl
- add ebx,r14d
- movzx r14d,byte ptr [r10+r11]
- movzx edi,dil
- add edi,r14d
- movzx r14d,byte ptr [rax+r11]
- add esi,r14d
- movzx r14d,bpl
- mov r15d,ebx
+
+ // Load & accumulate delta for R channel
+ movzx r14d,byte ptr [rcx+r11]   // deltaR
+ add ebp,r14d                    // sumR += deltaR
+
+ // Load & accumulate delta for G channel
+ movzx r14d,byte ptr [r8+r11]    // deltaG
+ movzx ebx,bl                    // ebx := previous sumG & 0xFF
+ add ebx,r14d                    // sumG = (sumG + deltaG) & 0xFF
+
+ // Load & accumulate delta for B channel
+ movzx r14d,byte ptr [r10+r11]  // deltaB
+ movzx edi,dil                  // edi := previous sumB & 0xFF
+ add edi,r14d                   // sumB = (sumB + deltaB) & 0xFF
+
+ // Load & accumulate delta for A channel
+ movzx r14d,byte ptr [rax+r11]  // deltaA
+ add esi,r14d                   // sumA += deltaA
+
+ // Pack RGBA into a 32‑bit value:
+ //   low 8 bits = sumR & 0xFF
+ //   next byte  = sumG & 0xFF
+ //   next byte  = sumB & 0xFF
+ //   top byte   = sumA & 0xFF
+ movzx r14d,bpl                 // r14 = sumR & 0xFF
+ mov r15d,ebx                   // r15 = sumG
  shl r15d,8
- movzx r15d,r15w
+ movzx r15d,r15w                // combine G<<8 | R
  or r15d,r14d
- movzx r14d,dil
+ movzx r14d,dil                 // r14 = sumB & 0xFF
  shl r14d,16
- or r14d,r15d
- mov r15d,esi
+ or r14d,r15d                   // combine B<<(16) | previous
+ mov r15d,esi                   // r15 = sumA
  shl r15d,24
- or r15d,r14d
- mov dword ptr [rdx+r11*4],r15d
+ or r15d,r14d                   // final = A<<24 | B<<16 | G<<8 | R
+
+ mov dword ptr [rdx+r11*4],r15d // Store reconstructed pixel
+
+ // Next index & loop
  inc r11
  mov r14,r9
- add r14,r11
+ add r14,r11 // check r11 != Count
  jne @Loop
+
+ // Epilogue: restore registers & exit
  pop rbx
  pop rbp
  pop rdi
  pop rsi
  pop r14
  pop r15
+
 @Exit:
 end;
 {$endif}
