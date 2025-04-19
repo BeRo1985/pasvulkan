@@ -1919,6 +1919,7 @@ begin
  fLock:=TPasMPCriticalSection.Create;
  fObjectList:=TObjectList.Create;
  fGeometryInfoList:=TpvRaytracingBLASGeometryInfoBufferItemList.Create;
+ fGeometryInfoList.Reserve(1048576);
  fBufferRangeAllocator:=TpvBufferRangeAllocator.Create;
  fBufferRangeAllocator.OnResize:=BufferRangeAllocatorOnResize;
  fSizeDirty:=false;
@@ -2716,6 +2717,7 @@ begin
  fGeometryInfoManager.OnDefragmentMove:=GeometryInfoManagerOnDefragmentMove;
 
  fGeometryOffsetArrayList:=TGeometryOffsetArrayList.Create;
+ fGeometryOffsetArrayList.Reserve(1048576);
 
  fDirty:=false;
 
@@ -3137,12 +3139,12 @@ begin
   fDevice.DebugUtils.SetObjectName(fEmptyVertexBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvRaytracing.EmptyVertexBuffer');
 
   fDevice.MemoryStaging.Upload(fStagingQueue,
-                                     fStagingCommandBuffer,
-                                     fStagingFence,
-                                     EmptyVertex,
-                                     fEmptyVertexBuffer,
-                                     0,
-                                     SizeOf(EmptyVertex));
+                               fStagingCommandBuffer,
+                               fStagingFence,
+                               EmptyVertex,
+                               fEmptyVertexBuffer,
+                               0,
+                               SizeOf(EmptyVertex));
 
   fEmptyIndexBuffer:=TpvVulkanBuffer.Create(fDevice,
                                             SizeOf(EmptyIndices),
@@ -3165,12 +3167,12 @@ begin
   fDevice.DebugUtils.SetObjectName(fEmptyIndexBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvRaytracing.EmptyIndexBuffer');
 
   fDevice.MemoryStaging.Upload(fStagingQueue,
-                                     fStagingCommandBuffer,
-                                     fStagingFence,
-                                     EmptyIndices,
-                                     fEmptyIndexBuffer,
-                                     0,
-                                     SizeOf(EmptyIndices));
+                               fStagingCommandBuffer,
+                               fStagingFence,
+                               EmptyIndices,
+                               fEmptyIndexBuffer,
+                               0,
+                               SizeOf(EmptyIndices));
 
   fEmptyBottomLevelAccelerationStructure:=AcquireBottomLevelAccelerationStructure(TVkBuildAccelerationStructureFlagsKHR(VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR),
                                                                                   false,
@@ -3494,36 +3496,36 @@ begin
   end;
 
   if (not assigned(fBottomLevelAccelerationStructureGeometryInfoBufferItemBuffers[fBottomLevelAccelerationStructureGeometryInfoBufferRingIndex and 1])) or
-     (fBottomLevelAccelerationStructureGeometryInfoBufferItemBuffers[fBottomLevelAccelerationStructureGeometryInfoBufferRingIndex and 1].Size<(Max(1,fGeometryInfoManager.GeometryInfoList.Count)*SizeOf(TpvRaytracingBLASGeometryInfoBufferItem))) then begin
+     (fBottomLevelAccelerationStructureGeometryInfoBufferItemBuffers[fBottomLevelAccelerationStructureGeometryInfoBufferRingIndex and 1].Size<(Max(1,fGeometryInfoManager.fGeometryInfoList.Count)*SizeOf(TpvRaytracingBLASGeometryInfoBufferItem))) then begin
    FreeObject(fBottomLevelAccelerationStructureGeometryInfoBufferItemBuffers[fBottomLevelAccelerationStructureGeometryInfoBufferRingIndex and 1]);
    fBottomLevelAccelerationStructureGeometryInfoBufferItemBuffers[fBottomLevelAccelerationStructureGeometryInfoBufferRingIndex and 1]:=TpvVulkanBuffer.Create(fDevice,
-                                                                                                                          RoundUpToPowerOfTwo64(Max(1,fGeometryInfoManager.GeometryInfoList.Count)*SizeOf(TpvRaytracingBLASGeometryInfoBufferItem)*2),
-                                                                                                                          TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT),
-                                                                                                                          TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                                                                                                          [],
-                                                                                                                          0,
-                                                                                                                          TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
-                                                                                                                          0,
-                                                                                                                          0,
-                                                                                                                          0,
-                                                                                                                          0,
-                                                                                                                          0,
-                                                                                                                          0,
-                                                                                                                          [TpvVulkanBufferFlag.PersistentMappedIfPossible],
-                                                                                                                          0,
-                                                                                                                          pvAllocationGroupIDScene3DRaytracing,
-                                                                                                                          'TpvRaytracing.BLASGeometryInfoBufferItemBuffer'
-                                                                                                                         );
+                                                                                                                                                              RoundUpToPowerOfTwo64(Max(1,fGeometryInfoManager.fGeometryInfoList.Count)*SizeOf(TpvRaytracingBLASGeometryInfoBufferItem)*2),
+                                                                                                                                                              TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT),
+                                                                                                                                                              TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                                                                                                                              [],
+                                                                                                                                                              0,
+                                                                                                                                                              TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                                                                                                                                              0,
+                                                                                                                                                              0,
+                                                                                                                                                              0,
+                                                                                                                                                              0,
+                                                                                                                                                              0,
+                                                                                                                                                              0,
+                                                                                                                                                              [TpvVulkanBufferFlag.PersistentMappedIfPossible],
+                                                                                                                                                              0,
+                                                                                                                                                              pvAllocationGroupIDScene3DRaytracing,
+                                                                                                                                                              'TpvRaytracing.BLASGeometryInfoBufferItemBuffer'
+                                                                                                                                                             );
    fDevice.DebugUtils.SetObjectName(fBottomLevelAccelerationStructureGeometryInfoBufferItemBuffers[fBottomLevelAccelerationStructureGeometryInfoBufferRingIndex and 1].Handle,VK_OBJECT_TYPE_BUFFER,'TpvRaytracing.BLASGeometryInfoBufferItemBuffer');
   end;
-  if fGeometryInfoManager.GeometryInfoList.Count>0 then begin
+  if fGeometryInfoManager.fGeometryInfoList.Count>0 then begin
    fDevice.MemoryStaging.Upload(fStagingQueue,
-                                      fStagingCommandBuffer,
-                                      fStagingFence,
-                                      fGeometryInfoManager.GeometryInfoList.ItemArray[0],
-                                      fBottomLevelAccelerationStructureGeometryInfoBufferItemBuffers[fBottomLevelAccelerationStructureGeometryInfoBufferRingIndex and 1],
-                                      0,
-                                      fGeometryInfoManager.GeometryInfoList.Count*SizeOf(TpvRaytracingBLASGeometryInfoBufferItem));
+                                fStagingCommandBuffer,
+                                fStagingFence,
+                                fGeometryInfoManager.fGeometryInfoList.ItemArray[0],
+                                fBottomLevelAccelerationStructureGeometryInfoBufferItemBuffers[fBottomLevelAccelerationStructureGeometryInfoBufferRingIndex and 1],
+                                0,
+                                fGeometryInfoManager.fGeometryInfoList.Count*SizeOf(TpvRaytracingBLASGeometryInfoBufferItem));
   end;
 
  end;
