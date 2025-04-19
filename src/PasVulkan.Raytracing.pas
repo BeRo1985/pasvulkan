@@ -3740,12 +3740,12 @@ begin
  if fAccelerationStructureInstanceKHRArrayList.Count>0 then begin
 
   fDevice.MemoryStaging.Upload(fStagingQueue,
-                                     fStagingCommandBuffer,
-                                     fStagingFence,
-                                     fAccelerationStructureInstanceKHRArrayList.ItemArray[0],
-                                     fTopLevelAccelerationStructureBottomLevelAccelerationStructureInstancesBuffers[fInFlightFrameIndex],
-                                     0,
-                                     fAccelerationStructureInstanceKHRArrayList.Count*SizeOf(TVkAccelerationStructureInstanceKHR));
+                               fStagingCommandBuffer,
+                               fStagingFence,
+                               fAccelerationStructureInstanceKHRArrayList.ItemArray[0],
+                               fTopLevelAccelerationStructureBottomLevelAccelerationStructureInstancesBuffers[fInFlightFrameIndex],
+                               0,
+                               fAccelerationStructureInstanceKHRArrayList.Count*SizeOf(TVkAccelerationStructureInstanceKHR));
 
   // Copy in-flight-frame-wise fTopLevelAccelerationStructureBottomLevelAccelerationStructureInstancesBuffers to the single GPU-side fTopLevelAccelerationStructureBottomLevelAccelerationStructureInstancesBuffer
 
