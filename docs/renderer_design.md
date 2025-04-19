@@ -127,7 +127,7 @@ This pass determines the visibility of the remaining objects (potential *occlude
     The results of these tests (a list or buffer indicating whether each object is visible or occluded) are stored on the GPU. This visibility information is then used in the main rendering pass to draw only the objects that are potentially visible. Additionally, indirect draw commands 
     are written to a buffer for the objects that passed the occlusion test. This buffer contains the draw commands for the visible objects, which will be used in the main rendering passes. The indirect draw command buffer is a GPU-side structure that allows for efficient rendering of multiple objects in a single draw call, reducing CPU overhead and improving performance. 
 4.  **Render Rest Of Visible Objects Into the Depth Buffer:** 
-    The objects that are not occluded (i.e., those that passed the depth test) are rendered into the same depth buffer as well, for to construct the final depth buffer for the main rendering pass, so that early depth testing (early-Z testing) can be used to skip over occluded fragments in the main rendering pass. This is important for performance, as it allows the GPU to skip processing fragments that are occluded by other objects.
+    The objects that are not occluded (i.e., those that passed the depth test) are rendered into the same depth buffer as well, for to construct the final depth buffer for the main rendering passes, so that early depth testing (early-Z testing) can be used to skip over occluded fragments in the main rendering pass. This is important for performance, as it allows the GPU to skip processing fragments that are occluded by other objects.
 
 ### Main Rendering Pass
 
