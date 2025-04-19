@@ -287,9 +287,205 @@ end;
 
 ////////////////////////////////////////////////////////////////////////////////////////
 
+{$ifdef cpuamd64}
+procedure ForwardTransformRGBA8DataAMD64(const aInData,aOutData:pointer;const aDataSize:TpvSizeInt); assembler; {$ifdef fpc}nostackframe; ms_abi_default;{$endif}
+const Data:array[0..15] of TpvUInt8=(0,4,8,12,0,0,0,0,0,0,0,0,0,0,0,0);
+asm
+{$ifndef fpc}
+ .noframe
+{$endif}
+ cmp r8,4
+ jb @LBB0_15
+ push r15
+ push r14
+ push r13
+ push r12
+ push rsi
+ push rdi
+ push rbp
+ push rbx
+ sub rsp,88
+ movdqa xmmword ptr [rsp+64],xmm9
+ movdqa xmmword ptr [rsp+48],xmm8
+ movdqa xmmword ptr [rsp+32],xmm7
+ movdqa xmmword ptr [rsp+16],xmm6
+ mov rax,r8
+ shr rax,2
+ lea r13,[rax+rax]
+ lea r10,[rax+rax*2]
+ cmp r8,48
+ jae @LBB0_3
+ xor r8d,r8d
+@LBB0_4:
+ xor r9d,r9d
+ xor edi,edi
+ xor ebx,ebx
+ xor r11d,r11d
+@LBB0_12:
+ lea rsi,[rdx+r11]
+ add r10,rsi
+ mov qword ptr [rsp+8],rsi
+ add r13,rsi
+ lea r15,[r11+rax]
+ sub rax,r11
+ add r15,rdx
+ lea rcx,[rcx+r11*4]
+ xor edx,edx
+@LBB0_13:
+ mov r11d,dword ptr [rcx+rdx*4]
+ mov ebp,r11d
+ mov r12d,r11d
+ mov r14,rax
+ mov rax,r10
+ mov r10,r13
+ mov r13d,r11d
+ mov esi,r11d
+ shr esi,8
+ shr ebp,16
+ shr r12d,24
+ sub r13d,r8d
+ mov r8d,esi
+ sub r8d,r9d
+ mov r9d,ebp
+ sub r9d,edi
+ mov edi,r12d
+ sub edi,ebx
+ mov rbx,qword ptr [rsp+8]
+ mov byte ptr [rbx+rdx],r13b
+ mov r13,r10
+ mov r10,rax
+ mov rax,r14
+ mov byte ptr [r15+rdx],r8b
+ mov byte ptr [r13+rdx],r9b
+ mov byte ptr [r10+rdx],dil
+ mov r8d,r11d
+ inc rdx
+ mov r9d,esi
+ mov edi,ebp
+ mov ebx,r12d
+ cmp r14,rdx
+ jne @LBB0_13
+@LBB0_14:
+ movaps xmm6,xmmword ptr [rsp+16]
+ movaps xmm7,xmmword ptr [rsp+32]
+ movaps xmm8,xmmword ptr [rsp+48]
+ movaps xmm9,xmmword ptr [rsp+64]
+ add rsp,88
+ pop rbx
+ pop rbp
+ pop rdi
+ pop rsi
+ pop r12
+ pop r13
+ pop r14
+ pop r15
+@LBB0_15:
+ jmp @Exit
+@LBB0_3:
+ lea rsi,[rdx+r10]
+ and r8,-4
+ lea r11,[rdx+r8]
+ add r8,rcx
+ lea rdi,[rdx+r13]
+ lea r14,[rdx+rax]
+ cmp rsi,r8
+ setb r15b
+ cmp rcx,r11
+ setb r12b
+ cmp rdi,r8
+ setb r11b
+ cmp rcx,rsi
+ setb sil
+ cmp r14,r8
+ setb bl
+ cmp rcx,rdi
+ setb dil
+ cmp rdx,r8
+ setb bpl
+ cmp rcx,r14
+ setb r14b
+ xor r8d,r8d
+ test r15b,r12b
+ jne @LBB0_4
+ and r11b,sil
+ jne @LBB0_4
+ and bl,dil
+ jne @LBB0_4
+ mov r9d,0
+ mov edi,0
+ mov ebx,0
+ mov r11d,0
+ and bpl,r14b
+ jne @LBB0_12
+ mov r11,rax
+ and r11,-4
+ pxor xmm0,xmm0
+ movd xmm1,dword ptr [rip+Data]
+ mov r8,rcx
+ mov rsi,rdx
+ mov rdi,r11
+ pxor xmm2,xmm2
+ pxor xmm3,xmm3
+ pxor xmm4,xmm4
+@LBB0_9:
+ movdqa xmm5,xmm4
+ movdqa xmm4,xmm3
+ movdqa xmm3,xmm2
+ movdqa xmm2,xmm0
+ movdqu xmm0,xmmword ptr [r8]
+ movdqa xmm6,xmm0
+ palignr xmm6,xmm2,12
+ movdqa xmm2,xmm0
+ psrld xmm2,8
+ movdqa xmm7,xmm2
+ palignr xmm7,xmm3,12
+ movdqa xmm3,xmm0
+ psrld xmm3,16
+ movdqa xmm8,xmm3
+ palignr xmm8,xmm4,12
+ movdqa xmm4,xmm0
+ psrld xmm4,24
+ movdqa xmm9,xmm4
+ palignr xmm9,xmm5,12
+ movdqa xmm5,xmm0
+ psubd xmm5,xmm6
+ pshufb xmm5,xmm1
+ movdqa xmm6,xmm2
+ psubd xmm6,xmm7
+ pshufb xmm6,xmm1
+ movdqa xmm7,xmm3
+ psubd xmm7,xmm8
+ pshufb xmm7,xmm1
+ movdqa xmm8,xmm4
+ psubd xmm8,xmm9
+ pshufb xmm8,xmm1
+ movd dword ptr [rsi],xmm5
+ movd dword ptr [rsi+rax],xmm6
+ movd dword ptr [rsi+rax*2],xmm7
+ movd dword ptr [rsi+r10],xmm8
+ add rsi,4
+ add r8,16
+ add rdi,-4
+ jne @LBB0_9
+ cmp rax,r11
+ je @LBB0_14
+ pextrd r8d,xmm0,3
+ pextrd r9d,xmm2,3
+ pextrd edi,xmm3,3
+ pextrd ebx,xmm4,3
+ jmp @LBB0_12
+ @Exit:
+end;
+{$endif}
+
 // This function transforms RGBA8 data to a better compressible format, together with preserving the order
 // before and after the transformation for better delta compression
 procedure ForwardTransformRGBA8Data(const aInData,aOutData:pointer;const aDataSize:TpvSizeInt);
+{$ifdef cpuamd64}
+begin
+ ForwardTransformRGBA8DataAMD64(aInData,aOutData,aDataSize);
+end;
+{$else}
 var Index,Count:TpvSizeInt;
     Value:TpvUInt32;
     PreviousR,ValueR,DeltaR,
@@ -322,6 +518,7 @@ begin
   PpvUInt8Array(aOutData)^[Index+(Count*3)]:=DeltaA;
  end;
 end;
+{$endif}
 
 procedure ForwardTransformRGBA8Data(const aStream:TStream);
 var InData,OutData:Pointer;
@@ -371,9 +568,77 @@ begin
  end;
 end;
 
+{$ifdef cpuamd64}
+procedure BackwardTransformRGBA8DataAMD64(const aInData,aOutData:pointer;const aDataSize:TpvSizeInt); assembler; {$ifdef fpc}nostackframe; ms_abi_default;{$endif}
+asm
+{$ifndef fpc}
+ .noframe
+{$endif}
+ cmp r8,4
+ jb @Exit
+ push r15
+ push r14
+ push rsi
+ push rdi
+ push rbp
+ push rbx
+ shr r8,2
+ lea rax,[r8+r8*2]
+ mov r9,r8
+ neg r9
+ add rax,rcx
+ lea r10,[rcx+r8*2]
+ add r8,rcx
+ xor r11d,r11d
+ xor esi,esi
+ xor edi,edi
+ xor ebx,ebx
+ xor ebp,ebp
+@Loop:
+ movzx r14d,byte ptr [rcx+r11]
+ add ebp,r14d
+ movzx r14d,byte ptr [r8+r11]
+ movzx ebx,bl
+ add ebx,r14d
+ movzx r14d,byte ptr [r10+r11]
+ movzx edi,dil
+ add edi,r14d
+ movzx r14d,byte ptr [rax+r11]
+ add esi,r14d
+ movzx r14d,bpl
+ mov r15d,ebx
+ shl r15d,8
+ movzx r15d,r15w
+ or r15d,r14d
+ movzx r14d,dil
+ shl r14d,16
+ or r14d,r15d
+ mov r15d,esi
+ shl r15d,24
+ or r15d,r14d
+ mov dword ptr [rdx+r11*4],r15d
+ inc r11
+ mov r14,r9
+ add r14,r11
+ jne @Loop
+ pop rbx
+ pop rbp
+ pop rdi
+ pop rsi
+ pop r14
+ pop r15
+@Exit:
+end;
+{$endif}
+
 // This function transforms RGBA8 data back from a better compressible format, together with preserving the order
 // before and after the transformation for better delta compression
 procedure BackwardTransformRGBA8Data(const aInData,aOutData:pointer;const aDataSize:TpvSizeInt);
+{$ifdef cpuamd64}
+begin
+ BackwardTransformRGBA8DataAMD64(aInData,aOutData,aDataSize);
+end;
+{$else}
 var Index,Count:TpvSizeInt;
     ValueR,ValueG,ValueB,ValueA:TpvUInt8;
 begin
@@ -393,6 +658,7 @@ begin
                                     ((TpvUInt32(ValueA) and $ff) shl 24);
  end;
 end;
+{$endif}
 
 procedure BackwardTransformRGBA8Data(const aStream:TStream);
 var InData,OutData:Pointer;

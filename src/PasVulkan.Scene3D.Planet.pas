@@ -6487,22 +6487,25 @@ begin
    BlendMapDataChunkHeader.Flags:=1;
    OutStream.WriteBuffer(BlendMapDataChunkHeader,SizeOf(TBlendMapDataChunkHeader));
 
-   fBlendMapData.Seek(0,soBeginning);
-   GetMem(InData,fBlendMapData.Size);
-   try
-    fBlendMapData.ReadBuffer(InData^,fBlendMapData.Size);
-    GetMem(OutData,fBlendMapData.Size);
+   if (BlendMapDataChunkHeader.Flags and 1)<>0 then begin
+    fBlendMapData.Seek(0,soBeginning);
+    GetMem(InData,fBlendMapData.Size);
     try
-     ForwardTransformRGBA8Data(InData,OutData,fBlendMapData.Size);
-     OutStream.WriteBuffer(OutData^,fBlendMapData.Size);
+     fBlendMapData.ReadBuffer(InData^,fBlendMapData.Size);
+     GetMem(OutData,fBlendMapData.Size);
+     try
+      ForwardTransformRGBA8Data(InData,OutData,fBlendMapData.Size);
+      OutStream.WriteBuffer(OutData^,fBlendMapData.Size);
+     finally
+      FreeMem(OutData);
+     end;
     finally
-     FreeMem(OutData);
+     FreeMem(InData);
     end;
-   finally
-    FreeMem(InData);
+   end else begin
+    fBlendMapData.Seek(0,soBeginning);
+    OutStream.CopyFrom(fBlendMapData,fBlendMapData.Size);
    end;
-// fBlendMapData.Seek(0,soBeginning);
-// OutStream.CopyFrom(fBlendMapData,fBlendMapData.Size);
 
   end;
 

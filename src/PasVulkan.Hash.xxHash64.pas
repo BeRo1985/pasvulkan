@@ -380,57 +380,73 @@ const BufferSize=4194304; // four megabytes at once
 var Instance:TpvHashXXHash64;
     Buffer:pointer;
     BytesRead,Remaining,Position,FromIndex,ToIndex:TpvInt64;
+    OriginalMessageDigest:TMessageDigest;
 begin
- 
- GetMem(Buffer,BufferSize);
- try
 
-  Instance:=TpvHashXXHash64.Create(aSeed);
+ if aStream is TMemoryStream then begin
+
+  if aCheckSumPosition>=0 then begin
+   OriginalMessageDigest:=PMessageDigest(Pointer(@PpvUInt8Array(Pointer(TMemoryStream(aStream).Memory))^[aCheckSumPosition]))^;
+   PMessageDigest(Pointer(@PpvUInt8Array(Pointer(TMemoryStream(aStream).Memory))^[aCheckSumPosition]))^:=0;
+   result:=TpvHashXXHash64.Process(TMemoryStream(aStream).Memory,aStream.Size,aSeed);
+   PMessageDigest(Pointer(@PpvUInt8Array(Pointer(TMemoryStream(aStream).Memory))^[aCheckSumPosition]))^:=OriginalMessageDigest;
+  end else begin
+   result:=TpvHashXXHash64.Process(TMemoryStream(aStream).Memory,aStream.Size,aSeed);
+  end;
+
+ end else begin
+
+  GetMem(Buffer,BufferSize);
   try
-   
-   Position:=0;
 
-   Remaining:=aStream.Size;
+   Instance:=TpvHashXXHash64.Create(aSeed);
+   try
 
-   while Remaining>0 do begin
-    
-    BytesRead:=aStream.Read(Buffer^,Min(BufferSize,Remaining));
-    
-    if BytesRead>0 then begin
-      
-     // Blank out the checksum, so that the checksum isn't part of the checksum calculation itself
-     if aCheckSumPosition>=0 then begin
-      // 1D intersection test between (Position .. Position+BytesRead) and (aCheckSumPosition .. aCheckSumPosition+SizeOf(TMessageDigest)) 
-      if (Position<(aCheckSumPosition+SizeOf(TMessageDigest))) and ((Position+BytesRead)>aCheckSumPosition) then begin 
-       FromIndex:=Max(0,aCheckSumPosition-Position);
-       ToIndex:=Min(Max((aCheckSumPosition+SizeOf(TMessageDigest))-Position,0),BytesRead);
-       if FromIndex<ToIndex then begin
-        FillChar(PpvUInt8Array(Buffer)^[FromIndex],ToIndex-FromIndex,#0);
-       end; 
-      end;      
+    Position:=0;
+
+    Remaining:=aStream.Size;
+
+    while Remaining>0 do begin
+
+     BytesRead:=aStream.Read(Buffer^,Min(BufferSize,Remaining));
+
+     if BytesRead>0 then begin
+
+      // Blank out the checksum, so that the checksum isn't part of the checksum calculation itself
+      if aCheckSumPosition>=0 then begin
+       // 1D intersection test between (Position .. Position+BytesRead) and (aCheckSumPosition .. aCheckSumPosition+SizeOf(TMessageDigest))
+       if (Position<(aCheckSumPosition+SizeOf(TMessageDigest))) and ((Position+BytesRead)>aCheckSumPosition) then begin
+        FromIndex:=Max(0,aCheckSumPosition-Position);
+        ToIndex:=Min(Max((aCheckSumPosition+SizeOf(TMessageDigest))-Position,0),BytesRead);
+        if FromIndex<ToIndex then begin
+         FillChar(PpvUInt8Array(Buffer)^[FromIndex],ToIndex-FromIndex,#0);
+        end;
+       end;
+      end;
+
+      Instance.Update(Buffer,BytesRead);
+
+      dec(Remaining,BytesRead);
+      inc(Position,BytesRead);
+
+     end else begin
+
+      break;
+
      end;
-
-     Instance.Update(Buffer,BytesRead);
-     
-     dec(Remaining,BytesRead);     
-     inc(Position,BytesRead);
-
-    end else begin
-
-     break;
 
     end;
 
+    result:=Instance.Final;
+
+   finally
+    FreeAndNil(Instance);
    end;
 
-   result:=Instance.Final;
-
   finally
-   FreeAndNil(Instance);
+   FreeMem(Buffer);
   end;
- 
- finally
-  FreeMem(Buffer);
+
  end;
 
 end;
