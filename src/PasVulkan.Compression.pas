@@ -178,8 +178,8 @@ asm
  push rbp
  push rbx
  sub rsp,40
- movdqa xmmword ptr [rsp+16],xmm7
- movdqa xmmword ptr [rsp],xmm6
+ movdqa oword ptr [rsp+16],xmm7
+ movdqa oword ptr [rsp],xmm6
 
  // Compute element counts & offsets
  mov rax,r8
@@ -229,8 +229,8 @@ asm
  jne @ScalarProcess // loop floats
 
 @ScalarEpilogue: // restore & exit
- movaps xmm6,xmmword ptr [rsp]
- movaps xmm7,xmmword ptr [rsp+16]
+ movaps xmm6,oword ptr [rsp]
+ movaps xmm7,oword ptr [rsp+16]
  add rsp,40
  pop rbx
  pop rbp
@@ -287,7 +287,7 @@ asm
  mov r8,rax // total floats
  and r8,-4 // multiple of 4
  pxor xmm0,xmm0 // zero vector
- movdqa xmm1,xmmword ptr [rip+Data0] // mask to flip sign bit
+ movdqa xmm1,oword ptr [rip+Data0] // mask to flip sign bit
  movd xmm2,dword ptr [rip+Data5] // shuffle control for byte 3
  movd xmm3,dword ptr [rip+Data6] // byte 2
  movd xmm4,dword ptr [rip+Data7] // byte 1
@@ -300,7 +300,7 @@ asm
 @SIMDMainLoop:
  // Load 4 floats, compute signed-magnitude, and delta pack
  movdqa xmm6,xmm0 // save prev vector
- movdqu xmm7,xmmword ptr [rdi] // load 4 raw floats
+ movdqu xmm7,oword ptr [rdi] // load 4 raw floats
  movdqa xmm0,xmm7
  psrad xmm0,31 // sign mask (-1 or 0 per lane)
  por xmm0,xmm1 // set MSB for magnitude
@@ -640,10 +640,10 @@ asm
  push rbp
  push rbx
  sub rsp,88
- movdqa xmmword ptr [rsp+64],xmm9
- movdqa xmmword ptr [rsp+48],xmm8
- movdqa xmmword ptr [rsp+32],xmm7
- movdqa xmmword ptr [rsp+16],xmm6
+ movdqa oword ptr [rsp+64],xmm9
+ movdqa oword ptr [rsp+48],xmm8
+ movdqa oword ptr [rsp+32],xmm7
+ movdqa oword ptr [rsp+16],xmm6
 
  // Compute element count & plane offsets
  mov rax,r8
@@ -726,10 +726,10 @@ asm
 
   // Scalar epilogue: restore xmm & regs
 @ScalarEpilogue:
- movaps xmm6,xmmword ptr [rsp+16]
- movaps xmm7,xmmword ptr [rsp+32]
- movaps xmm8,xmmword ptr [rsp+48]
- movaps xmm9,xmmword ptr [rsp+64]
+ movaps xmm6,oword ptr [rsp+16]
+ movaps xmm7,oword ptr [rsp+32]
+ movaps xmm8,oword ptr [rsp+48]
+ movaps xmm9,oword ptr [rsp+64]
  add rsp,88
  pop rbx
  pop rbp
@@ -811,7 +811,7 @@ asm
  movdqa xmm3,xmm2               // prev_plane2 <= prev_plane3
  movdqa xmm2,xmm0               // prev_plane3 <= prev_vec
 
- movdqu xmm0,xmmword ptr [r8]   // load 4 RGBA pixels into xmm0
+ movdqu xmm0,oword ptr [r8]     // load 4 RGBA pixels into xmm0
 
  movdqa xmm6,xmm0               // curr_vec = raw pixels
  palignr xmm6,xmm2,12           // prevA = align(prev_plane3_vec, curr_vec), xmm6 = { prevA3, currA0, currA1, currA2 }
