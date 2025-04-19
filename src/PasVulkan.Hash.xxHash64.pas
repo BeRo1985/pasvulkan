@@ -263,19 +263,38 @@ asm
  push rdi
  push rbp
  push rbx
+{$ifdef fpc}
  movabs r9,$c2b2ae3d27d4eb4f // -4417276706812531889
  movabs r10,$27d4eb2f165667c5 // 2870177450012600261
  movabs r14,$165667b19e3779f9 // 1609587929392839161
+{$else}
+ mov r9,$c2b2ae3d27d4eb4f // -4417276706812531889
+ mov r10,$27d4eb2f165667c5 // 2870177450012600261
+ mov r14,$165667b19e3779f9 // 1609587929392839161
+{$endif}
  test rcx,rcx
  je @L5
+{$ifdef fpc}
  movabs r11,$9e3779b185ebca87 // -7046029288634856825
  movabs rsi,$85ebca77c2b2ae63 // -8796714831421723037
+{$else}
+ mov r11,$9e3779b185ebca87 // -7046029288634856825
+ mov rsi,$85ebca77c2b2ae63 // -8796714831421723037
+{$endif}
  cmp rdx,32
  jb @L6
+{$ifdef fpc}
  movabs rbp,$60ea27eeadc0b5d6 // 6983438078262162902
+{$else}
+ mov rbp,$60ea27eeadc0b5d6 // 6983438078262162902
+{$endif}
  add rbp,r8
  lea r13,[r8+r9]
+{$ifdef fpc}
  movabs r12,$61c8864e7a143579 // 7046029288634856825
+{$else}
+ mov r12,$61c8864e7a143579 // 7046029288634856825
+{$endif}
  add r12,r8
  lea rax,[rcx+rdx]
  add rax,-31
@@ -314,7 +333,11 @@ asm
  rol r12,18
  add r12,r8
  add r12,r13
+{$ifdef fpc}
  movabs rax,$def35b010f796ca9 // -2381459717836149591
+{$else}
+ mov rax,$def35b010f796ca9 // -2381459717836149591
+{$endif}
  imul r15,rax
  rol r15,31
  imul r15,r11
@@ -340,7 +363,11 @@ asm
  imul rdi,r11
  add rdi,rdx
  add rdi,rsi
+{$ifdef fpc}
  movabs r14,$165667b19e3779f9 //1609587929392839161
+{$else}
+ mov r14,$165667b19e3779f9 //1609587929392839161
+{$endif}
  and edx,31
  cmp rdx,8
  jae @L8
@@ -490,7 +517,7 @@ asm
  pop r14
  pop r15
 end;
-{$ifend}
+{$endif}
 
 class function TpvHashXXHash64.Process(const aData:pointer;const aDataLength:TpvSizeUInt;const aSeed:TpvUInt64):TpvHashXXHash64.TMessageDigest;
 {$if defined(cpuamd64)}
