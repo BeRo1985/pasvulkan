@@ -6833,15 +6833,15 @@ begin
       RaytracingMask:=RaytracingMask and not (1 shl 0);
      end;
 
-     if (BLASGroup^.fBLAS.BottomLevelAccelerationStructureInstanceList.Count>0) and (BLASGroup^.fBLAS.BottomLevelAccelerationStructureInstanceList.RawItems[0].AccelerationStructureInstance.Mask<>RaytracingMask) then begin
-      fSceneInstance.fRaytracing.AccelerationStructureInstanceKHRArrayListLock.AcquireRead;
-      try
+     fSceneInstance.fRaytracing.AccelerationStructureInstanceKHRArrayListLock.AcquireRead;
+     try
+      if (BLASGroup^.fBLAS.BottomLevelAccelerationStructureInstanceList.Count>0) and (BLASGroup^.fBLAS.BottomLevelAccelerationStructureInstanceList.RawItems[0].AccelerationStructureInstance.Mask<>RaytracingMask) then begin
        for BLASInstanceIndex:=0 to BLASGroup^.fBLAS.BottomLevelAccelerationStructureInstanceList.Count-1 do begin
         BLASGroup^.fBLAS.BottomLevelAccelerationStructureInstanceList.RawItems[BLASInstanceIndex].AccelerationStructureInstance.Mask:=RaytracingMask;
        end;
-      finally
-       fSceneInstance.fRaytracing.AccelerationStructureInstanceKHRArrayListLock.ReleaseRead;
       end;
+     finally
+      fSceneInstance.fRaytracing.AccelerationStructureInstanceKHRArrayListLock.ReleaseRead;
      end;
 
      if BLASGroup^.fBLAS.BottomLevelAccelerationStructureInstanceList.Count<CountRenderInstances then begin
