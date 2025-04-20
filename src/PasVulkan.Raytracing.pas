@@ -477,6 +477,7 @@ type EpvRaytracing=class(Exception);
                      fLastGeneration:TpvUInt64;
                      function GetInstanceCustomIndex:TVkInt32;
                      procedure SetInstanceCustomIndex(const aInstanceCustomIndex:TVkInt32);
+                     procedure SetInstanceCustomIndexEx(const aInstanceCustomIndex:TVkInt32);
                     public
                      constructor Create(const aBottomLevelAccelerationStructure:TBottomLevelAccelerationStructure;
                                         const aTransform:TpvMatrix4x4;
@@ -492,6 +493,7 @@ type EpvRaytracing=class(Exception);
                      property Raytracing:TpvRaytracing read fRaytracing;
                      property BottomLevelAccelerationStructure:TBottomLevelAccelerationStructure read fBottomLevelAccelerationStructure;
                      property InstanceCustomIndex:TVkInt32 read GetInstanceCustomIndex write SetInstanceCustomIndex;
+                     property InstanceCustomIndexEx:TVkInt32 read GetInstanceCustomIndex write SetInstanceCustomIndexEx;
                      property InRaytracingIndex:TpvSizeInt read fInRaytracingIndex;
                      property InBottomLevelAccelerationStructureIndex:TpvSizeInt read fInBottomLevelAccelerationStructureIndex;
                      property AccelerationStructureInstance:TpvRaytracingBottomLevelAccelerationStructureInstance read fAccelerationStructureInstance;
@@ -2313,6 +2315,15 @@ begin
  if fAccelerationStructureInstance.fAccelerationStructureInstancePointer^.instanceCustomIndex<>NewInstanceCustomIndex then begin
   fAccelerationStructureInstance.fAccelerationStructureInstancePointer^.instanceCustomIndex:=NewInstanceCustomIndex;
   inc(fGeneration);
+ end;
+end;
+
+procedure TpvRaytracing.TBottomLevelAccelerationStructure.TInstance.SetInstanceCustomIndexEx(const aInstanceCustomIndex:TVkInt32);
+begin
+ if aInstanceCustomIndex>=0 then begin
+  fAccelerationStructureInstance.fAccelerationStructureInstancePointer^.instanceCustomIndex:=(TVkUInt32(aInstanceCustomIndex) and TVkUInt32($007fffff)) or TVkUInt32($00800000);
+ end else{if (fAccelerationStructureInstance.fAccelerationStructureInstancePointer^.instanceCustomIndex and TVkUInt32($00800000))<>0 then}begin
+  fAccelerationStructureInstance.fAccelerationStructureInstancePointer^.instanceCustomIndex:=fBottomLevelAccelerationStructure.fGeometryInfoBaseIndex;
  end;
 end;
 

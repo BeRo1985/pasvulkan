@@ -6897,7 +6897,7 @@ begin
          end;
          if (BLASInstance.InstanceCustomIndex<>InstanceCustomIndex) or not BLASInstance.AccelerationStructureInstance.CompareTransform(InstanceMatrix) then begin
           BLASInstance.AccelerationStructureInstance.Transform:=InstanceMatrix;
-          BLASInstance.InstanceCustomIndex:=InstanceCustomIndex;
+          BLASInstance.InstanceCustomIndexEx:=InstanceCustomIndex;
           BLASInstance.NewGeneration;
          end;
          inc(BLASInstanceIndex);
@@ -6908,7 +6908,7 @@ begin
         BLASInstance:=BLASGroup^.fBLAS.BottomLevelAccelerationStructureInstanceList.RawItems[0];
         if (BLASInstance.InstanceCustomIndex>=0) or not BLASInstance.AccelerationStructureInstance.CompareTransform(Matrix) then begin
          BLASInstance.AccelerationStructureInstance.Transform:=Matrix;
-         BLASInstance.InstanceCustomIndex:=-1;
+         BLASInstance.InstanceCustomIndexEx:=-1;
          BLASInstance.NewGeneration;
         end;
 
