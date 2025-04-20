@@ -2250,6 +2250,7 @@ begin
 
   // Remove from global BottomLevelAccelerationStructure instance list
   if assigned(fRaytracing) and (fInRaytracingIndex>=0) then begin
+
    TPasMPInterlocked.Write(fRaytracing.fDirty,TPasMPBool32(true));
    if (fInRaytracingIndex+1)<fRaytracing.fBottomLevelAccelerationStructureInstanceList.Count then begin
 
@@ -2263,22 +2264,34 @@ begin
 
     fRaytracing.fGeometryOffsetArrayList.Exchange(fInRaytracingIndex,OtherBLASInstance.fInRaytracingIndex);
 
-    fRaytracing.fBottomLevelAccelerationStructureInstanceKHRArrayListLock.AcquireRead;
+    fRaytracing.fBottomLevelAccelerationStructureInstanceKHRArrayListLock.AcquireWrite;
     try
      fRaytracing.fBottomLevelAccelerationStructureInstanceKHRArrayList.Exchange(fInRaytracingIndex,OtherBLASInstance.fInRaytracingIndex);
      fRaytracing.fBottomLevelAccelerationStructureInstanceKHRArrayGenerationList.Exchange(fInRaytracingIndex,OtherBLASInstance.fInRaytracingIndex);
      OtherBLASInstance.fAccelerationStructureInstance.fAccelerationStructureInstancePointer:=@fRaytracing.fBottomLevelAccelerationStructureInstanceKHRArrayList.ItemArray[OtherBLASInstance.fInRaytracingIndex];
      fAccelerationStructureInstance.fAccelerationStructureInstancePointer:=@fRaytracing.fBottomLevelAccelerationStructureInstanceKHRArrayList.ItemArray[fInRaytracingIndex];
+     fRaytracing.fBottomLevelAccelerationStructureInstanceKHRArrayList.Delete(fInRaytracingIndex);
+     fRaytracing.fBottomLevelAccelerationStructureInstanceKHRArrayGenerationList.Delete(fInRaytracingIndex);
     finally
-     fRaytracing.fBottomLevelAccelerationStructureInstanceKHRArrayListLock.ReleaseRead;
+     fRaytracing.fBottomLevelAccelerationStructureInstanceKHRArrayListLock.ReleaseWrite;
+    end;
+
+   end else begin
+
+    fRaytracing.fBottomLevelAccelerationStructureInstanceKHRArrayListLock.AcquireWrite;
+    try
+     fRaytracing.fBottomLevelAccelerationStructureInstanceKHRArrayList.Delete(fInRaytracingIndex);
+     fRaytracing.fBottomLevelAccelerationStructureInstanceKHRArrayGenerationList.Delete(fInRaytracingIndex);
+    finally
+     fRaytracing.fBottomLevelAccelerationStructureInstanceKHRArrayListLock.ReleaseWrite;
     end;
 
    end;
 
    fRaytracing.fBottomLevelAccelerationStructureInstanceList.ExtractIndex(fInRaytracingIndex);
 
-// fRaytracing.fBottomLevelAccelerationStructureInstanceKHRArrayList.Delete(fInRaytracingIndex);
-// fRaytracing.fGeometryOffsetArrayList.Delete(fInRaytracingIndex);
+   fRaytracing.fGeometryOffsetArrayList.Delete(fInRaytracingIndex);
+
    fInRaytracingIndex:=-1;
 
   end;
@@ -2842,10 +2855,12 @@ begin
  fBottomLevelAccelerationStructureInstanceGenerationCounter:=0;
 
  fBottomLevelAccelerationStructureInstanceKHRArrayList:=TpvRaytracingAccelerationStructureInstanceArrayList.Create;
+ fBottomLevelAccelerationStructureInstanceKHRArrayList.CanShrink:=false;
  fBottomLevelAccelerationStructureInstanceKHRArrayList.Reserve(1048576);
 //fBottomLevelAccelerationStructureInstanceKHRArrayList.Resize(1048576);
 
  fBottomLevelAccelerationStructureInstanceKHRArrayGenerationList:=TpvRaytracingAccelerationStructureInstanceArrayGenerationList.Create;
+ fBottomLevelAccelerationStructureInstanceKHRArrayGenerationList.CanShrink:=false;
  fBottomLevelAccelerationStructureInstanceKHRArrayGenerationList.Reserve(1048576);
 
  for Index:=0 to fCountInFlightFrames-1 do begin
@@ -2859,6 +2874,7 @@ begin
  fGeometryInfoManager.OnDefragmentMove:=GeometryInfoManagerOnDefragmentMove;
 
  fGeometryOffsetArrayList:=TGeometryOffsetArrayList.Create;
+ fGeometryOffsetArrayList.CanShrink:=false;
  fGeometryOffsetArrayList.Reserve(1048576);
 
  fVulkanBufferCopyArray:=TVulkanBufferCopyArray.Create;
@@ -3973,7 +3989,8 @@ begin
 
    DestinationBuffer:=fTopLevelAccelerationStructureBottomLevelAccelerationStructureInstancesBuffers[fInFlightFrameIndex];
 
-   if (TpvVulkanBufferFlag.PersistentMapped in DestinationBuffer.BufferFlags) and
+   if false and
+      (TpvVulkanBufferFlag.PersistentMapped in DestinationBuffer.BufferFlags) and
       ((DestinationBuffer.MemoryPropertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))<>0) then begin
 
     Destination:=DestinationBuffer.Memory.MapMemory;

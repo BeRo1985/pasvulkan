@@ -179,6 +179,7 @@ type { TpvDynamicArray }
        fItems:TItemArray;
        fCount:TpvSizeInt;
        fAllocated:TpvSizeInt;
+       fCanShrink:Boolean;
        procedure SetCount(const aNewCount:TpvSizeInt);
        function GetItem(const aIndex:TpvSizeInt):T; inline;
        procedure SetItem(const aIndex:TpvSizeInt;const aItem:T); inline;
@@ -210,6 +211,7 @@ type { TpvDynamicArray }
        property Allocated:TpvSizeInt read fAllocated;
        property Items[const aIndex:TpvSizeInt]:T read GetItem write SetItem; default;
        property ItemArray:TItemArray read fItems;
+       property CanShrink:Boolean read fCanShrink write fCanShrink;
      end;
 
      TpvBaseList=class
@@ -1541,6 +1543,7 @@ begin
  fItems:=nil;
  fCount:=0;
  fAllocated:=0;
+ fCanShrink:=true;
  inherited Create;
 end;
 
@@ -1554,9 +1557,11 @@ end;
 
 procedure TpvDynamicArrayList<T>.Clear;
 begin
- SetLength(fItems,0);
+ if fCanShrink then begin
+  SetLength(fItems,0);
+  fAllocated:=0;
+ end;
  fCount:=0;
- fAllocated:=0;
 end;
 
 procedure TpvDynamicArrayList<T>.ClearNoFree;
@@ -1567,13 +1572,15 @@ end;
 procedure TpvDynamicArrayList<T>.SetCount(const aNewCount:TpvSizeInt);
 begin
  if aNewCount<=0 then begin
-  SetLength(fItems,0);
+  if fCanShrink then begin
+   SetLength(fItems,0);
+   fAllocated:=0;
+  end;
   fCount:=0;
-  fAllocated:=0;
  end else begin
   if aNewCount<fCount then begin
    fCount:=aNewCount;
-   if (fCount+fCount)<fAllocated then begin
+   if fCanShrink and ((fCount+fCount)<fAllocated) then begin
     fAllocated:=fCount+fCount;
     SetLength(fItems,fAllocated);
    end;
@@ -1766,7 +1773,7 @@ begin
  Move(fItems[aIndex+1],fItems[aIndex],(fCount-aIndex)*SizeOf(T));
  dec(fCount);
  FillChar(fItems[fCount],SizeOf(T),#0);
- if fCount<(fAllocated shr 1) then begin
+ if fCanShrink and (fCount<(fAllocated shr 1)) then begin
   fAllocated:=fAllocated shr 1;
   SetLength(fItems,fAllocated);
  end;
