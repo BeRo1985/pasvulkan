@@ -3989,7 +3989,7 @@ begin
 
    DestinationBuffer:=fTopLevelAccelerationStructureBottomLevelAccelerationStructureInstancesBuffers[fInFlightFrameIndex];
 
-   if false and
+   if //false and
       (TpvVulkanBufferFlag.PersistentMapped in DestinationBuffer.BufferFlags) and
       ((DestinationBuffer.MemoryPropertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))<>0) then begin
 
