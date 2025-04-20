@@ -6834,8 +6834,13 @@ begin
      end;
 
      if (BLASGroup^.fBLAS.BottomLevelAccelerationStructureInstanceList.Count>0) and (BLASGroup^.fBLAS.BottomLevelAccelerationStructureInstanceList.RawItems[0].AccelerationStructureInstance.Mask<>RaytracingMask) then begin
-      for BLASInstanceIndex:=0 to BLASGroup^.fBLAS.BottomLevelAccelerationStructureInstanceList.Count-1 do begin
-       BLASGroup^.fBLAS.BottomLevelAccelerationStructureInstanceList.RawItems[BLASInstanceIndex].AccelerationStructureInstance.Mask:=RaytracingMask;
+      fSceneInstance.fRaytracing.AccelerationStructureInstanceKHRArrayListLock.AcquireRead;
+      try
+       for BLASInstanceIndex:=0 to BLASGroup^.fBLAS.BottomLevelAccelerationStructureInstanceList.Count-1 do begin
+        BLASGroup^.fBLAS.BottomLevelAccelerationStructureInstanceList.RawItems[BLASInstanceIndex].AccelerationStructureInstance.Mask:=RaytracingMask;
+       end;
+      finally
+       fSceneInstance.fRaytracing.AccelerationStructureInstanceKHRArrayListLock.ReleaseRead;
       end;
      end;
 
@@ -6869,28 +6874,35 @@ begin
 
       end;
 
-      if fInstance.fUseRenderInstances then begin
+      fSceneInstance.fRaytracing.AccelerationStructureInstanceKHRArrayListLock.AcquireRead;
+      try
 
-       BLASInstanceIndex:=0;
+       if fInstance.fUseRenderInstances then begin
 
-       for RendererInstanceIndex:=0 to Min(CountRenderInstances,PerInFlightFrameRenderInstanceDynamicArray^.Count)-1 do begin
-        BLASInstance:=BLASGroup^.fBLAS.BottomLevelAccelerationStructureInstanceList.RawItems[BLASInstanceIndex];
-        PerInFlightFrameRenderInstance:=@PerInFlightFrameRenderInstanceDynamicArray^.Items[RendererInstanceIndex];
-        BLASInstance.AccelerationStructureInstance.Transform:=Matrix*PerInFlightFrameRenderInstance^.ModelMatrix;
-        if PerInFlightFrameRenderInstance^.InstanceDataIndex>0 then begin
-         BLASInstance.InstanceCustomIndex:=PerInFlightFrameRenderInstance^.InstanceDataIndex;
-        end else begin
-         BLASInstance.InstanceCustomIndex:=-1;
+        BLASInstanceIndex:=0;
+
+        for RendererInstanceIndex:=0 to Min(CountRenderInstances,PerInFlightFrameRenderInstanceDynamicArray^.Count)-1 do begin
+         BLASInstance:=BLASGroup^.fBLAS.BottomLevelAccelerationStructureInstanceList.RawItems[BLASInstanceIndex];
+         PerInFlightFrameRenderInstance:=@PerInFlightFrameRenderInstanceDynamicArray^.Items[RendererInstanceIndex];
+         BLASInstance.AccelerationStructureInstance.Transform:=Matrix*PerInFlightFrameRenderInstance^.ModelMatrix;
+         if PerInFlightFrameRenderInstance^.InstanceDataIndex>0 then begin
+          BLASInstance.InstanceCustomIndex:=PerInFlightFrameRenderInstance^.InstanceDataIndex;
+         end else begin
+          BLASInstance.InstanceCustomIndex:=-1;
+         end;
+         inc(BLASInstanceIndex);
         end;
-        inc(BLASInstanceIndex);
+
+       end else begin
+
+        BLASInstance:=BLASGroup^.fBLAS.BottomLevelAccelerationStructureInstanceList.RawItems[0];
+        BLASInstance.AccelerationStructureInstance.Transform:=Matrix;
+        BLASInstance.InstanceCustomIndex:=-1;
+
        end;
 
-      end else begin
-
-       BLASInstance:=BLASGroup^.fBLAS.BottomLevelAccelerationStructureInstanceList.RawItems[0];
-       BLASInstance.AccelerationStructureInstance.Transform:=Matrix;
-       BLASInstance.InstanceCustomIndex:=-1;
-
+      finally
+       fSceneInstance.fRaytracing.AccelerationStructureInstanceKHRArrayListLock.ReleaseRead;
       end;
 
      end;
