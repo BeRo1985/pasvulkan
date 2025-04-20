@@ -6834,7 +6834,7 @@ begin
       RaytracingMask:=RaytracingMask and not (1 shl 0);
      end;
 
-     fSceneInstance.fRaytracing.AccelerationStructureInstanceKHRArrayListLock.AcquireRead;
+     fSceneInstance.fRaytracing.BottomLevelAccelerationStructureInstanceKHRArrayListLock.AcquireRead;
      try
       if (BLASGroup^.fBLAS.BottomLevelAccelerationStructureInstanceList.Count>0) and (BLASGroup^.fBLAS.BottomLevelAccelerationStructureInstanceList.RawItems[0].AccelerationStructureInstance.Mask<>RaytracingMask) then begin
        for BLASInstanceIndex:=0 to BLASGroup^.fBLAS.BottomLevelAccelerationStructureInstanceList.Count-1 do begin
@@ -6846,7 +6846,7 @@ begin
        end;
       end;
      finally
-      fSceneInstance.fRaytracing.AccelerationStructureInstanceKHRArrayListLock.ReleaseRead;
+      fSceneInstance.fRaytracing.BottomLevelAccelerationStructureInstanceKHRArrayListLock.ReleaseRead;
      end;
 
      if BLASGroup^.fBLAS.BottomLevelAccelerationStructureInstanceList.Count<CountRenderInstances then begin
@@ -6879,7 +6879,7 @@ begin
 
       end;
 
-      fSceneInstance.fRaytracing.AccelerationStructureInstanceKHRArrayListLock.AcquireRead;
+      fSceneInstance.fRaytracing.BottomLevelAccelerationStructureInstanceKHRArrayListLock.AcquireRead;
       try
 
        if fInstance.fUseRenderInstances then begin
@@ -6895,7 +6895,7 @@ begin
          end else begin
           InstanceCustomIndex:=-1;
          end;
-         if (BLASInstance.InstanceCustomIndex<>InstanceCustomIndex) or not BLASInstance.AccelerationStructureInstance.CompareTransform(InstanceMatrix) then begin
+         if fGeometryChanged or (BLASInstance.InstanceCustomIndex<>InstanceCustomIndex) or not BLASInstance.AccelerationStructureInstance.CompareTransform(InstanceMatrix) then begin
           BLASInstance.AccelerationStructureInstance.Transform:=InstanceMatrix;
           BLASInstance.InstanceCustomIndexEx:=InstanceCustomIndex;
           BLASInstance.NewGeneration;
@@ -6906,7 +6906,7 @@ begin
        end else begin
 
         BLASInstance:=BLASGroup^.fBLAS.BottomLevelAccelerationStructureInstanceList.RawItems[0];
-        if (BLASInstance.InstanceCustomIndex>=0) or not BLASInstance.AccelerationStructureInstance.CompareTransform(Matrix) then begin
+        if fGeometryChanged or (BLASInstance.InstanceCustomIndex>=0) or not BLASInstance.AccelerationStructureInstance.CompareTransform(Matrix) then begin
          BLASInstance.AccelerationStructureInstance.Transform:=Matrix;
          BLASInstance.InstanceCustomIndexEx:=-1;
          BLASInstance.NewGeneration;
@@ -6915,7 +6915,7 @@ begin
        end;
 
       finally
-       fSceneInstance.fRaytracing.AccelerationStructureInstanceKHRArrayListLock.ReleaseRead;
+       fSceneInstance.fRaytracing.BottomLevelAccelerationStructureInstanceKHRArrayListLock.ReleaseRead;
       end;
 
      end;
@@ -33621,6 +33621,9 @@ begin
        PlanetTileLODLevel:=PlanetTile.LODLevels[PlanetTileLODLevelIndex];
        if assigned(PlanetTileLODLevel.BLAS) and (PlanetTileLODLevel.BLAS.CountGeometries>0) then begin
         PlanetTileLODLevel.BLAS.Enqueue(false);
+        if PlanetTileLODLevel.BLAS.BottomLevelAccelerationStructureInstanceList.Count>0 then begin
+         PlanetTileLODLevel.BLAS.BottomLevelAccelerationStructureInstanceList.RawItems[0].NewGeneration;
+        end;
        end;
       end;
      end;

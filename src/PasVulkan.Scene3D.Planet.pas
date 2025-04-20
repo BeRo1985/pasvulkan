@@ -12313,12 +12313,18 @@ begin
  if assigned(fBLAS) and assigned(fBLAS.AccelerationStructureGeometry) then begin
   if fBLAS.AccelerationStructureGeometry.Geometries.ItemArray[0].geometry.triangles.vertexData.deviceAddress<>fPlanet.fData.fVisualMeshVertexBuffers[fPlanet.fInFlightFrameDataList[aInFlightFrameIndex].fVisualMeshVertexBufferRenderIndex and 1].DeviceAddress then begin
    fBLAS.AccelerationStructureGeometry.Geometries.ItemArray[0].geometry.triangles.vertexData.deviceAddress:=fPlanet.fData.fVisualMeshVertexBuffers[fPlanet.fInFlightFrameDataList[aInFlightFrameIndex].fVisualMeshVertexBufferRenderIndex and 1].DeviceAddress;
+   if assigned(fBLAS) and (fBLAS.BottomLevelAccelerationStructureInstanceList.Count>0) then begin
+    fBLAS.BottomLevelAccelerationStructureInstanceList.RawItems[0].NewGeneration;
+   end;
    //fBLAS.Update(fBLASGeometry,true);
   end;
  end;
 
  if CheckAndUpdateGeneration(aInFlightFrameIndex) then begin
   MustBeUpdated:=true;
+  if assigned(fBLAS) and (fBLAS.BottomLevelAccelerationStructureInstanceList.Count>0) then begin
+   fBLAS.BottomLevelAccelerationStructureInstanceList.RawItems[0].NewGeneration;
+  end;
  end;
 
  fMustUpdate:=MustBeUpdated;
@@ -12326,14 +12332,20 @@ begin
 end;
 
 function TpvScene3DPlanet.TRaytracingTile.TLODLevel.UpdateTransform(const aInFlightFrameIndex:TpvSizeInt):Boolean;
+var Matrix:TpvMatrix4x4;
 begin
  if assigned(fBLAS) and (fBLAS.BottomLevelAccelerationStructureInstanceList.Count>0) then begin
-  fBLAS.BottomLevelAccelerationStructureInstanceList.RawItems[0].AccelerationStructureInstance.Transform:=TpvScene3D(fPlanet.fScene3D).TransformOrigin(fPlanet.fData.ModelMatrix,aInFlightFrameIndex,false);
+  Matrix:=TpvScene3D(fPlanet.fScene3D).TransformOrigin(fPlanet.fData.ModelMatrix,aInFlightFrameIndex,false);
+  if not fBLAS.BottomLevelAccelerationStructureInstanceList.RawItems[0].AccelerationStructureInstance.CompareTransform(Matrix) then begin
+   fBLAS.BottomLevelAccelerationStructureInstanceList.RawItems[0].AccelerationStructureInstance.Transform:=Matrix;
+   fBLAS.BottomLevelAccelerationStructureInstanceList.RawItems[0].NewGeneration;
+  end;
  end;
  result:=true;
 end;
 
 function TpvScene3DPlanet.TRaytracingTile.TLODLevel.SetActive(const aInFlightFrameIndex:TpvSizeInt;const aActive:Boolean):Boolean;
+var Matrix:TpvMatrix4x4;
 begin
  if assigned(fBLAS) then begin
   if (fBLAS.BottomLevelAccelerationStructureInstanceList.Count>0) and not aActive then begin
@@ -12346,7 +12358,11 @@ begin
                           0,
                           0);
    end else begin
-    fBLAS.BottomLevelAccelerationStructureInstanceList.RawItems[0].AccelerationStructureInstance.Transform:=TpvScene3D(fPlanet.fScene3D).TransformOrigin(fPlanet.fData.ModelMatrix,aInFlightFrameIndex,false);
+    Matrix:=TpvScene3D(fPlanet.fScene3D).TransformOrigin(fPlanet.fData.ModelMatrix,aInFlightFrameIndex,false);
+    if fBLAS.BottomLevelAccelerationStructureInstanceList.RawItems[0].AccelerationStructureInstance.CompareTransform(Matrix) then begin
+     fBLAS.BottomLevelAccelerationStructureInstanceList.RawItems[0].AccelerationStructureInstance.Transform:=Matrix;
+     fBLAS.BottomLevelAccelerationStructureInstanceList.RawItems[0].NewGeneration;
+    end;
    end;
   end;
  end;
