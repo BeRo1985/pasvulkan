@@ -6484,6 +6484,7 @@ end;
 function TpvScene3D.TRaytracingGroupInstanceNode.UpdateStructures(const aInFlightFrameIndex:TpvSizeInt;const aForce:Boolean):Boolean;
 var CountRenderInstances,CountPrimitives,RaytracingPrimitiveIndex,RendererInstanceIndex,
     BLASInstanceIndex,IndexOffset,BLASArrayIndex,GeometryIndex:TpvSizeInt;
+    InstanceCustomIndex:TpvInt32;
     BLASGroupVariant:TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroupVariant;
     BLASGroup:TpvScene3D.TRaytracingGroupInstanceNode.PBLASGroup;
     RaytracingBottomLevelAccelerationStructureInstance:TpvRaytracingBottomLevelAccelerationStructureInstance;
@@ -6496,7 +6497,7 @@ var CountRenderInstances,CountPrimitives,RaytracingPrimitiveIndex,RendererInstan
     AccelerationStructureGeometry:PVkAccelerationStructureGeometryKHR;
     AllocationGroupID:TpvUInt64;
     RaytracingMask:TpvUInt8;
-    Matrix:TpvMatrix4x4;
+    Matrix,InstanceMatrix:TpvMatrix4x4;
     MatricesDynamicArray:PMatricesDynamicArray;
     PerInFlightFrameRenderInstanceDynamicArray:TpvScene3D.TGroup.TInstance.PPerInFlightFrameRenderInstanceDynamicArray;
     PerInFlightFrameRenderInstance:TpvScene3D.TGroup.TInstance.PPerInFlightFrameRenderInstance;
@@ -6837,7 +6838,11 @@ begin
      try
       if (BLASGroup^.fBLAS.BottomLevelAccelerationStructureInstanceList.Count>0) and (BLASGroup^.fBLAS.BottomLevelAccelerationStructureInstanceList.RawItems[0].AccelerationStructureInstance.Mask<>RaytracingMask) then begin
        for BLASInstanceIndex:=0 to BLASGroup^.fBLAS.BottomLevelAccelerationStructureInstanceList.Count-1 do begin
-        BLASGroup^.fBLAS.BottomLevelAccelerationStructureInstanceList.RawItems[BLASInstanceIndex].AccelerationStructureInstance.Mask:=RaytracingMask;
+        BLASInstance:=BLASGroup^.fBLAS.BottomLevelAccelerationStructureInstanceList.RawItems[BLASInstanceIndex];
+        if BLASInstance.AccelerationStructureInstance.Mask<>RaytracingMask then begin
+         BLASInstance.AccelerationStructureInstance.Mask:=RaytracingMask;
+         BLASInstance.NewGeneration;
+        end;
        end;
       end;
      finally
@@ -6884,11 +6889,16 @@ begin
         for RendererInstanceIndex:=0 to Min(CountRenderInstances,PerInFlightFrameRenderInstanceDynamicArray^.Count)-1 do begin
          BLASInstance:=BLASGroup^.fBLAS.BottomLevelAccelerationStructureInstanceList.RawItems[BLASInstanceIndex];
          PerInFlightFrameRenderInstance:=@PerInFlightFrameRenderInstanceDynamicArray^.Items[RendererInstanceIndex];
-         BLASInstance.AccelerationStructureInstance.Transform:=Matrix*PerInFlightFrameRenderInstance^.ModelMatrix;
+         InstanceMatrix:=Matrix*PerInFlightFrameRenderInstance^.ModelMatrix;
          if PerInFlightFrameRenderInstance^.InstanceDataIndex>0 then begin
-          BLASInstance.InstanceCustomIndex:=PerInFlightFrameRenderInstance^.InstanceDataIndex;
+          InstanceCustomIndex:=PerInFlightFrameRenderInstance^.InstanceDataIndex;
          end else begin
-          BLASInstance.InstanceCustomIndex:=-1;
+          InstanceCustomIndex:=-1;
+         end;
+         if (BLASInstance.InstanceCustomIndex<>InstanceCustomIndex) or not BLASInstance.AccelerationStructureInstance.CompareTransform(InstanceMatrix) then begin
+          BLASInstance.AccelerationStructureInstance.Transform:=InstanceMatrix;
+          BLASInstance.InstanceCustomIndex:=InstanceCustomIndex;
+          BLASInstance.NewGeneration;
          end;
          inc(BLASInstanceIndex);
         end;
@@ -6896,8 +6906,11 @@ begin
        end else begin
 
         BLASInstance:=BLASGroup^.fBLAS.BottomLevelAccelerationStructureInstanceList.RawItems[0];
-        BLASInstance.AccelerationStructureInstance.Transform:=Matrix;
-        BLASInstance.InstanceCustomIndex:=-1;
+        if (BLASInstance.InstanceCustomIndex>=0) or not BLASInstance.AccelerationStructureInstance.CompareTransform(Matrix) then begin
+         BLASInstance.AccelerationStructureInstance.Transform:=Matrix;
+         BLASInstance.InstanceCustomIndex:=-1;
+         BLASInstance.NewGeneration;
+        end;
 
        end;
 

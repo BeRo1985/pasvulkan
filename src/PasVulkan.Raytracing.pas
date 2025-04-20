@@ -346,6 +346,7 @@ type EpvRaytracing=class(Exception);
                           const aAccelerationStructure:TpvRaytracingBottomLevelAccelerationStructure;
                           const aAccelerationStructureInstancePointer:PVkAccelerationStructureInstanceKHR=nil); reintroduce;
        destructor Destroy; override;
+       function CompareTransform(const aTransform:TpvMatrix4x4):Boolean;
       public
        property Transform:TpvMatrix4x4 read GetTransform write SetTransform;
       published
@@ -472,6 +473,8 @@ type EpvRaytracing=class(Exception);
                      fInRaytracingIndex:TpvSizeInt;
                      fInBottomLevelAccelerationStructureIndex:TpvSizeInt;
                      fAccelerationStructureInstance:TpvRaytracingBottomLevelAccelerationStructureInstance;
+                     fGeneration:TpVUInt64;
+                     fLastGeneration:TpvUInt64;
                      function GetInstanceCustomIndex:TVkInt32;
                      procedure SetInstanceCustomIndex(const aInstanceCustomIndex:TVkInt32);
                     public
@@ -484,6 +487,7 @@ type EpvRaytracing=class(Exception);
                      destructor Destroy; override;
                      procedure AfterConstruction; override;
                      procedure BeforeDestruction; override;
+                     procedure NewGeneration;
                     public
                      property Raytracing:TpvRaytracing read fRaytracing;
                      property BottomLevelAccelerationStructure:TBottomLevelAccelerationStructure read fBottomLevelAccelerationStructure;
@@ -491,7 +495,9 @@ type EpvRaytracing=class(Exception);
                      property InRaytracingIndex:TpvSizeInt read fInRaytracingIndex;
                      property InBottomLevelAccelerationStructureIndex:TpvSizeInt read fInBottomLevelAccelerationStructureIndex;
                      property AccelerationStructureInstance:TpvRaytracingBottomLevelAccelerationStructureInstance read fAccelerationStructureInstance;
-                   end; 
+                     property Generation:TpvUInt64 read fGeneration;
+                     property LastGeneration:TpvUInt64 read fLastGeneration;
+                   end;
                    TBottomLevelAccelerationStructureInstanceList=TpvObjectGenericList<TInstance>;
              private
               fRaytracing:TpvRaytracing;
@@ -1691,6 +1697,22 @@ begin
  fAccelerationStructureInstancePointer^.transform.matrix[2,3]:=aTransform.RawComponents[3,2];
 end;
 
+function TpvRaytracingBottomLevelAccelerationStructureInstance.CompareTransform(const aTransform:TpvMatrix4x4):Boolean;
+begin
+ result:=(fAccelerationStructureInstancePointer^.transform.matrix[0,0]=aTransform.RawComponents[0,0]) and
+         (fAccelerationStructureInstancePointer^.transform.matrix[0,1]=aTransform.RawComponents[1,0]) and
+         (fAccelerationStructureInstancePointer^.transform.matrix[0,2]=aTransform.RawComponents[2,0]) and
+         (fAccelerationStructureInstancePointer^.transform.matrix[0,3]=aTransform.RawComponents[3,0]) and
+         (fAccelerationStructureInstancePointer^.transform.matrix[1,0]=aTransform.RawComponents[0,1]) and
+         (fAccelerationStructureInstancePointer^.transform.matrix[1,1]=aTransform.RawComponents[1,1]) and
+         (fAccelerationStructureInstancePointer^.transform.matrix[1,2]=aTransform.RawComponents[2,1]) and
+         (fAccelerationStructureInstancePointer^.transform.matrix[1,3]=aTransform.RawComponents[3,1]) and
+         (fAccelerationStructureInstancePointer^.transform.matrix[2,0]=aTransform.RawComponents[0,2]) and
+         (fAccelerationStructureInstancePointer^.transform.matrix[2,1]=aTransform.RawComponents[1,2]) and
+         (fAccelerationStructureInstancePointer^.transform.matrix[2,2]=aTransform.RawComponents[2,2]) and
+         (fAccelerationStructureInstancePointer^.transform.matrix[2,3]=aTransform.RawComponents[3,2]);
+end;
+
 function TpvRaytracingBottomLevelAccelerationStructureInstance.GetInstanceCustomIndex:TVkUInt32;
 begin
  result:=fAccelerationStructureInstancePointer^.instanceCustomIndex;
@@ -2033,12 +2055,12 @@ end;
 
 { TpvRaytracing.TBottomLevelAccelerationStructure.TInstance }
 
-constructor TpvRaytracing.TBottomLevelAccelerationStructure.TInstance.Create(const aBottomLevelAccelerationStructure:TBottomLevelAccelerationStructure;
-                                                                             const aTransform:TpvMatrix4x4;
-                                                                             const aInstanceCustomIndex:TpvInt32;
-                                                                             const aMask:TVkUInt32;
-                                                                             const aInstanceShaderBindingTableRecordOffset:TVkUInt32;
-                                                                             const aFlags:TVkGeometryInstanceFlagsKHR);
+constructor TpvRaytracing.TBottomLevelAccelerationStructure.TInstance.Create(
+ const aBottomLevelAccelerationStructure: TBottomLevelAccelerationStructure;
+ const aTransform: TpvMatrix4x4; const aInstanceCustomIndex: TVkInt32;
+ const aMask: TVkUInt32;
+ const aInstanceShaderBindingTableRecordOffset: TVkUInt32;
+ const aFlags: TVkGeometryInstanceFlagsKHR);
 var InstanceCustomIndex:TVkInt32;
 begin
 
@@ -2069,6 +2091,10 @@ begin
                                                                                               aFlags,
                                                                                               fBottomLevelAccelerationStructure.fAccelerationStructure,
                                                                                               nil);      
+
+ fGeneration:=0;
+
+ fLastGeneration:=High(TpvUInt64);
 
 end;
 
@@ -2259,6 +2285,11 @@ begin
 
 end;
 
+procedure TpvRaytracing.TBottomLevelAccelerationStructure.TInstance.NewGeneration;
+begin
+ inc(fGeneration);
+end;
+
 function TpvRaytracing.TBottomLevelAccelerationStructure.TInstance.GetInstanceCustomIndex:TVkInt32;
 var Temporary:TVkUInt32;
 begin
@@ -2271,11 +2302,17 @@ begin
 end;
 
 procedure TpvRaytracing.TBottomLevelAccelerationStructure.TInstance.SetInstanceCustomIndex(const aInstanceCustomIndex:TVkInt32);
+var NewInstanceCustomIndex:TpvInt32;
 begin
+ NewInstanceCustomIndex:=fAccelerationStructureInstance.fAccelerationStructureInstancePointer^.instanceCustomIndex;
  if aInstanceCustomIndex>=0 then begin
-  fAccelerationStructureInstance.fAccelerationStructureInstancePointer^.instanceCustomIndex:=(TVkUInt32(aInstanceCustomIndex) and TVkUInt32($007fffff)) or TVkUInt32($00800000);
+  NewInstanceCustomIndex:=(TVkUInt32(aInstanceCustomIndex) and TVkUInt32($007fffff)) or TVkUInt32($00800000);
  end else{if (fAccelerationStructureInstance.fAccelerationStructureInstancePointer^.instanceCustomIndex and TVkUInt32($00800000))<>0 then}begin
-  fAccelerationStructureInstance.fAccelerationStructureInstancePointer^.instanceCustomIndex:=fBottomLevelAccelerationStructure.fGeometryInfoBaseIndex;
+  NewInstanceCustomIndex:=fBottomLevelAccelerationStructure.fGeometryInfoBaseIndex;
+ end;
+ if fAccelerationStructureInstance.fAccelerationStructureInstancePointer^.instanceCustomIndex<>NewInstanceCustomIndex then begin
+  fAccelerationStructureInstance.fAccelerationStructureInstancePointer^.instanceCustomIndex:=NewInstanceCustomIndex;
+  inc(fGeneration);
  end;
 end;
 
