@@ -717,6 +717,7 @@ type EpvRaytracing=class(Exception);
        procedure Reset(const aInFlightFrameIndex:TpvSizeInt);
        procedure MarkBottomLevelAccelerationStructureListAsChanged;
        procedure MarkTopLevelAccelerationStructureAsDirty;
+       function VerifyStructures:Boolean;
        procedure Update(const aStagingQueue:TpvVulkanQueue;
                         const aStagingCommandBuffer:TpvVulkanCommandBuffer;
                         const aStagingFence:TpvVulkanFence;
@@ -4462,6 +4463,147 @@ begin
  TPasMPInterlocked.Write(fMustUpdateTopLevelAccelerationStructure,true);
 end;
 
+function TpvRaytracing.VerifyStructures:Boolean;
+var BottomLevelAccelerationStructureIndex,GeometryIndex,InstanceIndex:TpvSizeInt;
+    CountBottomLevelAccelerationStructures,CountGeomInfo,CountInstances:TpvSizeInt;
+    BottomLevelAccelerationStructure:TpvRaytracing.TBottomLevelAccelerationStructure;
+    BottomLevelAccelerationStructureInstance:TpvRaytracing.TBottomLevelAccelerationStructure.TInstance;
+    GlobalBLASGeometryInfoBufferItem:PpvRaytracingBLASGeometryInfoBufferItem;
+    LocalBLASGeometryInfoBufferItem:TpvRaytracingBLASGeometryInfoBufferItem;
+    Offset:TVkUInt32;
+    AddrInfo:TVkAccelerationStructureDeviceAddressInfoKHR;
+    ExpectedAddr:TVkDeviceAddress;
+begin  
+ 
+ // Step 1: Verify BottomLevelAccelerationStructure list indices
+ CountBottomLevelAccelerationStructures:=fBottomLevelAccelerationStructureList.Count;
+ for BottomLevelAccelerationStructureIndex:=0 to CountBottomLevelAccelerationStructures-1 do begin
+  if fBottomLevelAccelerationStructureList.Items[BottomLevelAccelerationStructureIndex].InRaytracingIndex<>BottomLevelAccelerationStructureIndex then begin
+   result:=false;
+   exit;
+  end;
+ end;
+
+ // Step 2: Verify geometry-info ranges
+ CountGeomInfo:=fGeometryInfoManager.GeometryInfoList.Count;
+ for BottomLevelAccelerationStructureIndex:=0 to CountBottomLevelAccelerationStructures-1 do begin
+  BottomLevelAccelerationStructure:=fBottomLevelAccelerationStructureList.Items[BottomLevelAccelerationStructureIndex];
+  if BottomLevelAccelerationStructure.CountGeometries>0 then begin
+   if (BottomLevelAccelerationStructure.GeometryInfoBaseIndex<0) or ((BottomLevelAccelerationStructure.GeometryInfoBaseIndex+BottomLevelAccelerationStructure.CountGeometries)>CountGeomInfo) then begin
+    result:=false;
+    exit;
+   end;
+  end else begin
+   if BottomLevelAccelerationStructure.GeometryInfoBaseIndex<>-1 then begin
+    result:=false;
+    exit;
+   end;
+  end;
+ end;
+
+ // Step 3: Verify instance arrays
+ CountInstances:=fBottomLevelAccelerationStructureInstanceList.Count;
+ if (CountInstances<>fBottomLevelAccelerationStructureInstanceKHRArrayList.Count) or
+    (CountInstances<>fBottomLevelAccelerationStructureInstanceKHRArrayGenerationList.Count) or
+    (CountInstances<>fGeometryOffsetArrayList.Count) then begin
+  result:=false;
+  exit;
+ end;
+
+ for InstanceIndex:=0 to CountInstances-1 do begin
+
+  BottomLevelAccelerationStructureInstance:=fBottomLevelAccelerationStructureInstanceList.Items[InstanceIndex];
+
+  // a) Instance index matches
+  if BottomLevelAccelerationStructureInstance.InRaytracingIndex<>InstanceIndex then begin
+   result:=false;
+   exit;
+  end;
+
+  // b) Geometry-offset matches BottomLevelAccelerationStructure base index
+  Offset:=fGeometryOffsetArrayList[InstanceIndex];
+  if Offset<>BottomLevelAccelerationStructureInstance.BottomLevelAccelerationStructure.GeometryInfoBaseIndex then begin
+   result:=false;
+   exit;
+  end;
+
+  // c) Pointer into the global KHR array matches
+  if BottomLevelAccelerationStructureInstance.AccelerationStructureInstance<>@fBottomLevelAccelerationStructureInstanceKHRArrayList.ItemArray[InstanceIndex] then begin
+   result:=false;
+   exit;
+  end;
+
+ end;
+
+ // Step 4: Verify geometry-info data equality
+ for BottomLevelAccelerationStructureIndex:=0 to CountBottomLevelAccelerationStructures-1 do begin
+  BottomLevelAccelerationStructure:=fBottomLevelAccelerationStructureList.Items[BottomLevelAccelerationStructureIndex];
+
+  // Local list length must equal CountGeometries
+  if BottomLevelAccelerationStructure.CountGeometries<>BottomLevelAccelerationStructure.GeometryInfoBufferItemList.Count then begin
+   result:=false;
+   exit;
+  end;
+
+  for GeometryIndex:=0 to BottomLevelAccelerationStructure.CountGeometries-1 do begin
+   
+   // Fetch global item
+   GlobalBLASGeometryInfoBufferItem:=fGeometryInfoManager.GetGeometryInfo(BottomLevelAccelerationStructure.GeometryInfoBaseIndex+GeometryIndex);
+   
+   // Fetch local item
+   LocalBLASGeometryInfoBufferItem:=BottomLevelAccelerationStructure.GeometryInfoBufferItemList.Items[GeometryIndex];
+
+   // Compare fields
+   if (GlobalBLASGeometryInfoBufferItem^.Type_<>LocalBLASGeometryInfoBufferItem.Type_) or
+      (GlobalBLASGeometryInfoBufferItem^.ObjectIndex<>LocalBLASGeometryInfoBufferItem.ObjectIndex) or
+      (GlobalBLASGeometryInfoBufferItem^.MaterialIndex<>LocalBLASGeometryInfoBufferItem.MaterialIndex) or
+      (GlobalBLASGeometryInfoBufferItem^.IndexOffset<>LocalBLASGeometryInfoBufferItem.IndexOffset) then begin
+    result:=false;
+    exit;
+   end;
+
+  end;
+
+ end; 
+
+ // Step 5: Make sure every BLAS with geometry is actually built (non‑null Vulkan handle)
+ for BottomLevelAccelerationStructureIndex:=0 to CountBottomLevelAccelerationStructures-1 do begin
+  BottomLevelAccelerationStructure:=fBottomLevelAccelerationStructureList.Items[BottomLevelAccelerationStructureIndex];
+  if BottomLevelAccelerationStructure.CountGeometries>0 then begin
+   // If you’ve called Initialize(), Handle should be valid:
+   if BottomLevelAccelerationStructure.AccelerationStructure.AccelerationStructure=VK_NULL_HANDLE then begin
+    result:=false;
+    exit;
+   end;
+  end else begin
+   // Empty BLAS should either use your “empty” dummy or be VK_NULL_HANDLE
+   if (BottomLevelAccelerationStructure.AccelerationStructure.AccelerationStructure<>VK_NULL_HANDLE) and
+      (BottomLevelAccelerationStructure.AccelerationStructure.AccelerationStructure<>fEmptyBottomLevelAccelerationStructure.AccelerationStructure.AccelerationStructure) then begin
+    result:=false;
+    exit;
+   end;
+  end;
+ end; 
+
+ // Step 6: Verify each instance’s device‐address matches its BLAS’s device‐address
+ for InstanceIndex:=0 to CountInstances-1 do begin
+  BottomLevelAccelerationStructureInstance:=fBottomLevelAccelerationStructureInstanceList.Items[InstanceIndex];
+  // Query the BLAS’s address:
+  FillChar(AddrInfo,SizeOf(AddrInfo),#0);
+  AddrInfo.sType:=VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_DEVICE_ADDRESS_INFO_KHR;
+  AddrInfo.accelerationStructure:=BottomLevelAccelerationStructureInstance.BottomLevelAccelerationStructure.AccelerationStructure.AccelerationStructure;
+  ExpectedAddr:=fDevice.Commands.Commands.GetAccelerationStructureDeviceAddressKHR(fDevice.Handle,@AddrInfo);
+  if BottomLevelAccelerationStructureInstance.AccelerationStructureInstance.AccelerationStructureInstance.accelerationStructureReference<>ExpectedAddr then begin
+   result:=false;
+   exit;
+  end;
+ end;
+
+ // All checks passed
+ result:=true;   
+
+end;
+
 procedure TpvRaytracing.Update(const aStagingQueue:TpvVulkanQueue;
                                const aStagingCommandBuffer:TpvVulkanCommandBuffer;
                                const aStagingFence:TpvVulkanFence;
@@ -4530,6 +4672,8 @@ begin
     AllocateOrGrowTopLevelAccelerationStructureScratchBuffer;
 
     BuildOrUpdateTopLevelAccelerationStructure;
+
+    VerifyStructures;
 
    finally
     fDataLock.ReleaseRead;
