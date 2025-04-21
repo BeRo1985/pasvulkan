@@ -9659,7 +9659,7 @@ begin
  POCAArrayPush(aContext^.Instance^.Globals.RootArray,Hash);
  POCAHashSetString(aContext,Hash,'EventTypes',POCAInitInputEventTypes(aContext));
  POCAHashSetString(aContext,Hash,'KeyCodes',POCAInitInputKeyCodes(aContext));
-{POCAHashSetString(aContext,Hash,'JoystickHats',POCAInitInputJoystickHats(aContext));
+ POCAHashSetString(aContext,Hash,'JoystickHats',POCAInitInputJoystickHats(aContext));
  POCAHashSetString(aContext,Hash,'GameControllerBindTypes',POCAInitInputGameControllerBindTypes(aContext));
  POCAHashSetString(aContext,Hash,'GameControllerAxes',POCAInitInputGameControllerAxes(aContext));
  POCAHashSetString(aContext,Hash,'GameControllerButtons',POCAInitInputGameControllerButtons(aContext));
