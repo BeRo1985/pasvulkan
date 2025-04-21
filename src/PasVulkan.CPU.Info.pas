@@ -69,6 +69,8 @@ uses SysUtils,
      PasVulkan.Types;
 
 const CPUFeatures_X86_F16C_Mask=1 shl 0;
+      CPUFeatures_X86_SSE42_Mask=1 shl 1;
+      CPUFeatures_X86_PCLMUL_Mask=1 shl 2;
 
 type TCPUFeatures=TpvUInt32;
 
@@ -144,6 +146,12 @@ begin
  end;
  begin
   GetCPUID(1,CPUIDData);
+  if (CPUIDData.ECX and (TpvUInt32(1) shl 1))<>0 then begin
+   CPUFeatures:=CPUFeatures or CPUFeatures_X86_PCLMUL_Mask;
+  end;
+  if (CPUIDData.ECX and (TpvUInt32(1) shl 20))<>0 then begin
+   CPUFeatures:=CPUFeatures or CPUFeatures_X86_SSE42_Mask;
+  end;
   if (CPUIDData.ECX and (TpvUInt32(1) shl 29))<>0 then begin
    CPUFeatures:=CPUFeatures or CPUFeatures_X86_F16C_Mask;
   end;
