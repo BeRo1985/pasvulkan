@@ -68,11 +68,11 @@ uses SysUtils,
      PasVulkan.Types;
 
 // This RapidHash implementation is endian-dependent, so the results are not interchangeable between
-// different endian architectures. So use it only for internal purposes, like hash tables or similar, 
-// but not for external purposes like file hashes or similar. The RapidHash algorithm is not a 
-// cryptographic hash function as well, so don't use it for cryptographic purposes! However, big-endian
-// systems are mostly dead, so this is not a big problem, when you're using it for targets with the
-// same endian architecture.
+// different endian architectures. So be careful when using this hash function in a cross-platform / 
+// cross-endian-architecture context. The hash function is designed to be fast and efficient on little-endian
+// architectures, such as ARM, AArch64, RISC-V, x86 and x86-64. It is not optimized for older big-endian 
+// architectures, such as PowerPC or SPARC. These big-endian architectures are almost dead in the modern world
+// anyway, so this is not a big problem. 
 
 // Equivalent to the C implementation of RapidHash with the following defines:
 // #define RAPIDHASH_LITTLE_ENDIAN
