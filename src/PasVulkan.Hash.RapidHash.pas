@@ -78,6 +78,10 @@ uses SysUtils,
 // #define RAPIDHASH_LITTLE_ENDIAN
 // #define RAPIDHASH_UNROLLED
 // #define RAPIDHASH_FAST
+// and the secrets here are fixed to the following values:
+// #define RAPID_SECRET0 0x2d358dccaa6c78a5ULL
+// #define RAPID_SECRET1 0x8bb84b93962eacc9ULL
+// #define RAPID_SECRET2 0x4b33a62ed433d4a3ULL 
 
 type TpvHashRapidHash=class
       public
