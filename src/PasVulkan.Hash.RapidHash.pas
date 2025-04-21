@@ -73,8 +73,9 @@ uses SysUtils,
 // architectures, such as ARM, AArch64, RISC-V, x86 and x86-64. It is not optimized for older big-endian 
 // architectures, such as PowerPC or SPARC. These big-endian architectures are almost dead in the modern world
 // anyway, so this is not a big problem. Indeed ARM and AArch64 can be either little-endian or big-endian, but
-// the vast majority of ARM and AArch64 implementations and operating systems are little-endian. And RISC-V is
-// also practically always little-endian. So this implementation is optimized for little-endian architectures.
+// the vast majority of modern newer ARM and AArch64 implementations and operating systems are little-endian. 
+// And RISC-V is also practically always little-endian. So this implementation is optimized for little-endian 
+// architectures.
 
 // Equivalent to the C implementation of RapidHash with the following defines:
 // #define RAPIDHASH_LITTLE_ENDIAN
