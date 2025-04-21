@@ -98,6 +98,7 @@ uses {$if defined(Unix)}
      PUCU,
      Vulkan,
      PasVulkan.Types,
+     PasVulkan.Profiler,
      PasVulkan.Math,
      PasVulkan.Framework,
 {$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
