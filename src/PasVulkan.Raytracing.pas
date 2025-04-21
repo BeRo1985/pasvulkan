@@ -718,6 +718,7 @@ type EpvRaytracing=class(Exception);
        procedure MarkBottomLevelAccelerationStructureListAsChanged;
        procedure MarkTopLevelAccelerationStructureAsDirty;
        function VerifyStructures:Boolean;
+       procedure RefillStructures;  
        procedure Update(const aStagingQueue:TpvVulkanQueue;
                         const aStagingCommandBuffer:TpvVulkanCommandBuffer;
                         const aStagingFence:TpvVulkanFence;
@@ -3693,6 +3694,8 @@ begin
 
  if fBottomLevelAccelerationStructureListChanged then begin
 
+//RefillStructures;
+
   fBottomLevelAccelerationStructureGeometryInfoBufferRingIndex:=(fBottomLevelAccelerationStructureGeometryInfoBufferRingIndex+1) and 1;
 
   if (not assigned(fBottomLevelAccelerationStructureGeometryInfoOffsetBufferItemBuffers[fBottomLevelAccelerationStructureGeometryInfoBufferRingIndex and 1])) or
@@ -4665,6 +4668,97 @@ begin
 
  // All checks passed
  result:=true;   
+
+end;
+
+// Refill structures with geometry info and instance data
+procedure TpvRaytracing.RefillStructures;  
+var BottomLevelAccelerationStructureIndex,GeometryIndex,InstanceIndex:TpvSizeInt;
+    CountBottomLevelAccelerationStructures,CountGeometryInfos,CountInstances:TpvSizeInt;
+    BottomLevelAccelerationStructure:TpvRaytracing.TBottomLevelAccelerationStructure;
+    BottomLevelAccelerationStructureInstance:TpvRaytracing.TBottomLevelAccelerationStructure.TInstance;
+    GlobalBLASGeometryInfoBufferItem:PpvRaytracingBLASGeometryInfoBufferItem;
+    LocalBLASGeometryInfoBufferItem:PpvRaytracingBLASGeometryInfoBufferItem;
+    Offset:TVkUInt32;
+begin
+
+ // Step 1: Refill BottomLevelAccelerationStructure list indices
+ CountBottomLevelAccelerationStructures:=fBottomLevelAccelerationStructureList.Count;
+ for BottomLevelAccelerationStructureIndex:=0 to CountBottomLevelAccelerationStructures-1 do begin
+  fBottomLevelAccelerationStructureList.Items[BottomLevelAccelerationStructureIndex].fInRaytracingIndex:=BottomLevelAccelerationStructureIndex;
+ end;
+
+ // Step 2: Refill geometry-info ranges
+ CountGeometryInfos:=fGeometryInfoManager.GeometryInfoList.Count;
+ for BottomLevelAccelerationStructureIndex:=0 to CountBottomLevelAccelerationStructures-1 do begin
+  BottomLevelAccelerationStructure:=fBottomLevelAccelerationStructureList.Items[BottomLevelAccelerationStructureIndex];
+{ if BottomLevelAccelerationStructure.CountGeometries>0 then begin
+   BottomLevelAccelerationStructure.GeometryInfoBaseIndex:=fGeometryInfoManager.GeometryInfoList.Items[BottomLevelAccelerationStructure.GeometryInfoBaseIndex].GeometryInfoBaseIndex;
+  end else begin
+   BottomLevelAccelerationStructure.GeometryInfoBaseIndex:=-1;
+  end;}
+ end;
+
+ // Step 3: Refill instance arrays
+ CountInstances:=fBottomLevelAccelerationStructureInstanceList.Count;
+ for InstanceIndex:=0 to CountInstances-1 do begin
+
+  BottomLevelAccelerationStructureInstance:=fBottomLevelAccelerationStructureInstanceList.Items[InstanceIndex];
+
+  if BottomLevelAccelerationStructureInstance.fBottomLevelAccelerationStructure=fEmptyBottomLevelAccelerationStructure then begin
+   // Skip the empty one
+   continue;
+  end;
+
+  // a) Instance index matches
+  BottomLevelAccelerationStructureInstance.fInRaytracingIndex:=InstanceIndex;
+
+  // b) Geometry-offset matches BottomLevelAccelerationStructure base index
+  Offset:=fGeometryOffsetArrayList[InstanceIndex];
+  BottomLevelAccelerationStructureInstance.BottomLevelAccelerationStructure.GeometryInfoBaseIndex:=Offset;
+
+  // c) Pointer into the global KHR array matches
+  BottomLevelAccelerationStructureInstance.AccelerationStructureInstance.fAccelerationStructureInstancePointer:=@fBottomLevelAccelerationStructureInstanceKHRArrayList.ItemArray[InstanceIndex];
+
+  // d) Custom‑index <=> offset consistency
+  if (BottomLevelAccelerationStructureInstance.AccelerationStructureInstance.fAccelerationStructureInstancePointer^.instanceCustomIndex and TpvUInt32($00800000))=0 then begin
+   BottomLevelAccelerationStructureInstance.AccelerationStructureInstance.fAccelerationStructureInstancePointer^.instanceCustomIndex:=Offset;
+  end;
+
+ end; 
+
+ // Step 4: Refill geometry-info data equality
+ for BottomLevelAccelerationStructureIndex:=0 to CountBottomLevelAccelerationStructures-1 do begin
+
+  BottomLevelAccelerationStructure:=fBottomLevelAccelerationStructureList.Items[BottomLevelAccelerationStructureIndex];
+
+  if BottomLevelAccelerationStructure=fEmptyBottomLevelAccelerationStructure then begin
+   // Skip the empty one
+   continue;
+  end;
+
+  // Local list length must equal CountGeometries
+  if BottomLevelAccelerationStructure.CountGeometries<>BottomLevelAccelerationStructure.GeometryInfoBufferItemList.Count then begin
+   continue;
+  end;
+
+  for GeometryIndex:=0 to BottomLevelAccelerationStructure.CountGeometries-1 do begin
+   
+   // Fetch global item
+   GlobalBLASGeometryInfoBufferItem:=fGeometryInfoManager.GetGeometryInfo(BottomLevelAccelerationStructure.GeometryInfoBaseIndex+GeometryIndex);
+   
+   // Fetch local item
+   LocalBLASGeometryInfoBufferItem:=@BottomLevelAccelerationStructure.GeometryInfoBufferItemList.ItemArray[GeometryIndex];
+
+   // Refill fields
+   GlobalBLASGeometryInfoBufferItem^.Type_:=LocalBLASGeometryInfoBufferItem^.Type_;
+   GlobalBLASGeometryInfoBufferItem^.ObjectIndex:=LocalBLASGeometryInfoBufferItem^.ObjectIndex;
+   GlobalBLASGeometryInfoBufferItem^.MaterialIndex:=LocalBLASGeometryInfoBufferItem^.MaterialIndex;
+   GlobalBLASGeometryInfoBufferItem^.IndexOffset:=LocalBLASGeometryInfoBufferItem^.IndexOffset;
+
+  end;
+
+ end;
 
 end;
 
