@@ -3693,6 +3693,8 @@ begin
 
  if fBottomLevelAccelerationStructureListChanged then begin
 
+  VerifyStructures;
+
   fBottomLevelAccelerationStructureGeometryInfoBufferRingIndex:=(fBottomLevelAccelerationStructureGeometryInfoBufferRingIndex+1) and 1;
 
   if (not assigned(fBottomLevelAccelerationStructureGeometryInfoOffsetBufferItemBuffers[fBottomLevelAccelerationStructureGeometryInfoBufferRingIndex and 1])) or
@@ -4736,8 +4738,6 @@ begin
     AllocateOrGrowTopLevelAccelerationStructureScratchBuffer;
 
     BuildOrUpdateTopLevelAccelerationStructure;
-
-    VerifyStructures;
 
    finally
     fDataLock.ReleaseRead;
