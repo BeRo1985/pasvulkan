@@ -12308,6 +12308,11 @@ begin
                                                                  fPlanet.TiledVisualMeshIndexGroups[TileIndex].FirstIndex);
   end;
 
+  fBLAS.GeometryInfoBufferItemList.Add(TpvRaytracingBLASGeometryInfoBufferItem.Create(TpvRaytracingBLASGeometryInfoBufferItem.TypePlanet,
+                                                                                      fPlanet.fIndex,
+                                                                                      0,
+                                                                                      fPlanet.TiledVisualMeshIndexGroups[TileIndex].FirstIndex));
+
  end;
 
  if assigned(fBLAS) and assigned(fBLAS.AccelerationStructureGeometry) then begin

@@ -528,6 +528,7 @@ type EpvRaytracing=class(Exception);
               fScratchPass:TpvUInt64;
               fGeometryInfoBaseIndex:TpvSizeInt;
               fCountGeometries:TpvSizeInt;
+              fGeometryInfoBufferItemList:TpvRaytracingBLASGeometryInfoBufferItemList;
               fBottomLevelAccelerationStructureInstanceList:TBottomLevelAccelerationStructureInstanceList;
               fEnqueueState:TEnqueueState;
               fCompactState:TCompactState;
@@ -574,6 +575,7 @@ type EpvRaytracing=class(Exception);
               property ScratchPass:TpvUInt64 read fScratchPass write fScratchPass;
               property GeometryInfoBaseIndex:TpvSizeInt read fGeometryInfoBaseIndex write fGeometryInfoBaseIndex;
               property CountGeometries:TpvSizeInt read fCountGeometries write fCountGeometries;
+              property GeometryInfoBufferItemList:TpvRaytracingBLASGeometryInfoBufferItemList read fGeometryInfoBufferItemList;
             end;
             TBottomLevelAccelerationStructureList=TpvObjectGenericList<TBottomLevelAccelerationStructure>;
             { TBottomLevelAccelerationStructureQueue }
@@ -2428,6 +2430,8 @@ begin
 
  fInRaytracingCompactIndex:=-1;
 
+ fGeometryInfoBufferItemList:=TpvRaytracingBLASGeometryInfoBufferItemList.Create;
+
 end;
 
 destructor TpvRaytracing.TBottomLevelAccelerationStructure.Destroy;
@@ -2478,6 +2482,8 @@ begin
  FreeAndNil(fCompactedAccelerationStructureBuffer);
 
  FreeAndNil(fBottomLevelAccelerationStructureInstanceList);
+
+ FreeAndNil(fGeometryInfoBufferItemList);
 
  inherited Destroy;
 

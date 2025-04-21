@@ -6776,6 +6776,10 @@ begin
                                                                      0,
                                                                      BLASGroup^.fMaterialIDs.ItemArray[GeometryIndex],
                                                                      BLASGroup^.fIndexOffsets.ItemArray[GeometryIndex]);
+       BLASGroup.fBLAS.GeometryInfoBufferItemList.Add(TpvRaytracingBLASGeometryInfoBufferItem.Create(TpvRaytracingBLASGeometryInfoBufferItem.TypeMesh,
+                                                                                                     0,
+                                                                                                     BLASGroup^.fMaterialIDs.ItemArray[GeometryIndex],
+                                                                                                     BLASGroup^.fIndexOffsets.ItemArray[GeometryIndex]));
       end;
      end;
 
