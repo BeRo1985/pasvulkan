@@ -4831,9 +4831,9 @@ begin
 
     BuildOrUpdateTopLevelAccelerationStructure;
 
-    if fBottomLevelAccelerationStructureListChanged then begin
+{   if fBottomLevelAccelerationStructureListChanged then begin
      VerifyStructures;
-    end;
+    end;//}
 
    finally
     fDataLock.ReleaseRead;
