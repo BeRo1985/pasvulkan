@@ -83,7 +83,7 @@ type PSectionAddressHashItem=^TSectionAddressHashItem;
       GarbageCollectorNext:pointer;
       Next:PSectionAddressHashItem;
       ReturnAddress:pointer;
-      Name:TpvUTF8String;
+      Name:PAnsiChar; // Not a TpvUTF8String, because it is not a reference counted string, and all records should be non-managed types here for the "garbage collector"            
       Count:TpvInt64;
       TotalTime:TpvInt64;
       MinTime:TpvInt64;
@@ -246,6 +246,8 @@ end;
 class procedure TpvProfiler.SectionBegin(const Name:TpvUTF8String); {$ifdef cpu386}register;{$endif}
 {$ifdef PasVulkanProfiler}
 var CurrentReturnAddress:pointer;
+    NamePointer:PAnsiChar;
+    NameLength:TpvSizeInt; 
     ThreadStackItem:PThreadStackItem;
     SectionAddressHashItem:PSectionAddressHashItem;
     SectionBeginStack:PPThreadStackItem;
@@ -266,7 +268,19 @@ begin
  CriticalSection.Enter;
  try
   SectionAddressHashItem:=GetSectionAddressHashItem(CurrentReturnAddress);
-  SectionAddressHashItem^.Name:=Name;
+  NameLength:=Length(Name);
+  if NameLength=0 then begin
+   SectionAddressHashItem^.Name:=nil;
+  end else begin
+   GetMem(NamePointer,NameLength+1+SizeOf(pointer)); // additional space for the garbage collector next pointer
+   FillChar(NamePointer^,NameLength+1+SizeOf(pointer),AnsiChar(#0));
+   Pointer(NamePointer)^:=GarbageCollectorRoot;
+   GarbageCollectorRoot:=NamePointer;
+   inc(PpvUInt8(NamePointer),SizeOf(pointer)); // skip the garbage collector next pointer for payload of the string
+   Move(Name[1],NamePointer^,NameLength); // copy the string to the allocated memory
+   NamePointer[NameLength]:=#0; // add the null terminator
+   SectionAddressHashItem^.Name:=NamePointer; // assign the pointer to the string to the hash item
+  end;
   inc(SectionAddressHashItem^.Count);
   if assigned(FreeThreadStackItems) then begin
    ThreadStackItem:=FreeThreadStackItems;
@@ -519,4 +533,3 @@ finalization
  CriticalSection.Free;
 {$endif}
 end.
-
