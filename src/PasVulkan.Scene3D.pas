@@ -905,6 +905,7 @@ type EpvScene3D=class(Exception);
               fGroup:TGroup;
             end;
             { TImage }
+            TDataHashClass={$ifdef cpuamd64}TpvHashRapidHash{$else}TpvHashXXHash64{$endif};
             TImage=class(TBaseObject)
              public
               type TKind=
@@ -916,8 +917,8 @@ type EpvScene3D=class(Exception);
                      ResourceTexture=4
                     );
                    THashData=packed record
-                    MessageDigest:TpvHashXXHash64.TMessageDigest;
-                    FirstBytes:array[0..127-SizeOf(TpvHashXXHash64.TMessageDigest)] of TpvUInt8;
+                    MessageDigest:TDataHashClass.TMessageDigest;
+                    FirstBytes:array[0..127-SizeOf(TDataHashClass.TMessageDigest)] of TpvUInt8;
                    end;
                    PHashData=^THashData;
                    THook=function(const aImage:TImage):boolean of object;
@@ -7356,10 +7357,10 @@ function TpvScene3D.TImage.GetHashData:THashData;
 begin
  FillChar(result,SizeOf(THashData),#0);
  if fResourceDataStream.Size>0 then begin
-  result.MessageDigest:=TpvHashXXHash64.Process(fResourceDataStream.Memory,fResourceDataStream.Size,0);
+  result.MessageDigest:=TDataHashClass.Process(fResourceDataStream.Memory,fResourceDataStream.Size,0);
   Move(fResourceDataStream.Memory^,result.FirstBytes,Min(SizeOf(result.FirstBytes),fResourceDataStream.Size));
  end else if length(fIESTexture.Data)>0 then begin
-  result.MessageDigest:=TpvHashXXHash64.Process(@fIESTexture.Data[0],Length(fIESTexture.Data)*SizeOf(fIESTexture.Data[0]),0);
+  result.MessageDigest:=TDataHashClass.Process(@fIESTexture.Data[0],Length(fIESTexture.Data)*SizeOf(fIESTexture.Data[0]),0);
   Move(fIESTexture.Data[0],result.FirstBytes,Min(SizeOf(result.FirstBytes),Length(fIESTexture.Data)*SizeOf(fIESTexture.Data[0])));
  end;
 end;
