@@ -4528,7 +4528,7 @@ begin
   end;
 
   // c) Pointer into the global KHR array matches
-  if BottomLevelAccelerationStructureInstance.AccelerationStructureInstance<>@fBottomLevelAccelerationStructureInstanceKHRArrayList.ItemArray[InstanceIndex] then begin
+  if BottomLevelAccelerationStructureInstance.AccelerationStructureInstance.fAccelerationStructureInstancePointer<>@fBottomLevelAccelerationStructureInstanceKHRArrayList.ItemArray[InstanceIndex] then begin
    result:=false;
    exit;
   end;
