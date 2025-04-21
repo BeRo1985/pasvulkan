@@ -3362,15 +3362,15 @@ begin
                                                                                   'Empty');
 
   fEmptyBottomLevelAccelerationStructure.AccelerationStructureGeometry.AddTriangles(fEmptyVertexBuffer,
-                                                                  0,
-                                                                  3,
-                                                                  SizeOf(TpvVector4),
-                                                                  fEmptyIndexBuffer,
-                                                                  0,
-                                                                  3,
-                                                                  true,
-                                                                  nil,
-                                                                  0);
+                                                                                    0,
+                                                                                    3,
+                                                                                    SizeOf(TpvVector4),
+                                                                                    fEmptyIndexBuffer,
+                                                                                    0,
+                                                                                    3,
+                                                                                    true,
+                                                                                    nil,
+                                                                                    0);
 
   fEmptyBottomLevelAccelerationStructure.Initialize;
 
@@ -4537,7 +4537,13 @@ begin
 
  // Step 4: Verify geometry-info data equality
  for BottomLevelAccelerationStructureIndex:=0 to CountBottomLevelAccelerationStructures-1 do begin
+
   BottomLevelAccelerationStructure:=fBottomLevelAccelerationStructureList.Items[BottomLevelAccelerationStructureIndex];
+
+  if BottomLevelAccelerationStructure=fEmptyBottomLevelAccelerationStructure then begin
+   // Skip the empty one
+   continue;
+  end;
 
   // Local list length must equal CountGeometries
   if BottomLevelAccelerationStructure.CountGeometries<>BottomLevelAccelerationStructure.GeometryInfoBufferItemList.Count then begin
@@ -4568,7 +4574,14 @@ begin
 
  // Step 5: Make sure every BLAS with geometry is actually built (non‑null Vulkan handle)
  for BottomLevelAccelerationStructureIndex:=0 to CountBottomLevelAccelerationStructures-1 do begin
+
   BottomLevelAccelerationStructure:=fBottomLevelAccelerationStructureList.Items[BottomLevelAccelerationStructureIndex];
+
+  if BottomLevelAccelerationStructure=fEmptyBottomLevelAccelerationStructure then begin
+   // Skip the empty one
+   continue;
+  end;
+
   if BottomLevelAccelerationStructure.CountGeometries>0 then begin
    // If you’ve called Initialize(), Handle should be valid:
    if BottomLevelAccelerationStructure.AccelerationStructure.AccelerationStructure=VK_NULL_HANDLE then begin
