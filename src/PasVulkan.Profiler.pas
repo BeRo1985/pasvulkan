@@ -188,7 +188,7 @@ var ID,Hash,Index:TpvPtrUInt;
     Item:PThreadStackHashItem;
 begin
 {$ifdef windows}
- ID:=GetCurrentThread;
+ ID:=GetCurrentThreadID;
 {$else}
 {$ifdef fpc}
  ID:=GetThreadID;
@@ -206,8 +206,8 @@ begin
   end;
   Item:=Item^.Next;
  end;
- GetMem(Item,SizeOf(TThreadStackItem));
- FillChar(Item^,SizeOf(TThreadStackItem),AnsiChar(#0));
+ GetMem(Item,SizeOf(TThreadStackHashItem));
+ FillChar(Item^,SizeOf(TThreadStackHashItem),AnsiChar(#0));
  Item^.GarbageCollectorNext:=GarbageCollectorRoot;
  GarbageCollectorRoot:=Item;
  Item^.ID:=ID;
