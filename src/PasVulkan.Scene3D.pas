@@ -81,6 +81,7 @@ uses {$ifdef Windows}
      PasVulkan.Math,
      PasVulkan.Math.Double,
      PasVulkan.Streams,
+     PasVulkan.Hash.RapidHash,
      PasVulkan.Hash.xxHash64,
      PasVulkan.Collections,
      PasVulkan.HighResolutionTimer,
