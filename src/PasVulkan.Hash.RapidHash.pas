@@ -232,8 +232,13 @@ asm
  mov r10,rcx // R10 = key pointer (p)
 
  // Load secrets
+{$ifdef fpc}
  movabs r9,-8378864009470890807 // R9 = RAPID_SECRET1 (0x8bb84b93962eacc9)
  movabs rbx,3257665815644502181 // RBX = RAPID_SECRET0 (0x2d358dccaa6c78a5)
+{$else}
+ mov r9,-8378864009470890807    // R9 = RAPID_SECRET1 (0x8bb84b93962eacc9)
+ mov rbx,3257665815644502181    // RBX = RAPID_SECRET0 (0x2d358dccaa6c78a5)
+{$endif}
 
  // Initial seed calculation: seed ^= rapid_mix(seed^SECRET0, SECRET1) ^ len
  mov rax,r8  // RAX = initial seed
@@ -298,7 +303,11 @@ asm
 
 @Handle_Len_GreaterThan_16:
  // --- Handle Long Inputs (len > 16) ---
+{$ifdef fpc}
  movabs r15,5418857496715711651 // R15 = RAPID_SECRET2 (0x4b33a62ed433d4a3)
+{$else}
+ mov r15,5418857496715711651    // R15 = RAPID_SECRET2 (0x4b33a62ed433d4a3)
+{$endif}
  cmp rdi,49 // Check if len >= 49 (i.e., len > 48)
  jae @Handle_Len_GreaterThan_48 // If len > 48, jump to main loop processing
 
