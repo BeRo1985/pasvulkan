@@ -74,6 +74,11 @@ uses SysUtils,
 // systems are mostly dead, so this is not a big problem, when you're using it for targets with the
 // same endian architecture.
 
+// Equivalent to the C implementation of RapidHash with the following defines:
+// #define RAPIDHASH_LITTLE_ENDIAN
+// #define RAPIDHASH_UNROLLED
+// #define RAPIDHASH_FAST
+
 type TpvHashRapidHash=class
       public
        const RapidSeed=TpvUInt64($bdd89aa982704029);
@@ -118,9 +123,6 @@ asm
  // Multiply aA and aB
  mul rdx
  // Lo is in rax, Hi is in rdx 
- // Xor aA and aB with the result
- xor rax,qword ptr [r8]
- xor rdx,qword ptr [r9]
  // Store the result back to aA and aB
  mov qword ptr [r8],rax
  mov qword ptr [r9],rdx
@@ -136,9 +138,6 @@ asm
  // Multiply aA and aB
  mul rdx
  // Lo is in rax, Hi is in rdx 
- // Xor aA and aB with the result
- xor rax,qword ptr [r8]
- xor rdx,qword ptr [r9]
  // Store the result back to aA and aB
  mov qword ptr [r8],rax
  mov qword ptr [r9],rdx
@@ -163,8 +162,8 @@ begin
  lo:=t+(rm1 shl 32);
  inc(c,ord(lo<t) and 1);
  hi:=rh+(rm0 shr 32)+(rm1 shr 32)+c;
- aA:=aA xor lo;
- aB:=aB xor hi;
+ aA:=lo;
+ aB:=hi;
 end;
 {$endif}
 
