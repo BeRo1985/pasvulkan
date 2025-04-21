@@ -6605,8 +6605,6 @@ begin
    end;
   end;
 
-  BLASGroup^.fAllOpaque:=true;
-
   CountPrimitives:=0;
   if assigned(fNode.Mesh) then begin
    for RaytracingPrimitiveIndex:=0 to fNode.Mesh.fRaytracingPrimitives.Count-1 do begin
@@ -6696,6 +6694,8 @@ begin
      BLASGroup^.fMaterialIDs.Clear;
 
      BLASGroup^.fIndexOffsets.Clear;
+
+     BLASGroup^.fAllOpaque:=true;
 
      for RaytracingPrimitiveIndex:=0 to fNode.Mesh.fRaytracingPrimitives.Count-1 do begin
 
