@@ -4464,12 +4464,13 @@ begin
 end;
 
 function TpvRaytracing.VerifyStructures:Boolean;
-var BottomLevelAccelerationStructureIndex,GeometryIndex,InstanceIndex:TpvSizeInt;
-    CountBottomLevelAccelerationStructures,CountGeomInfo,CountInstances:TpvSizeInt;
+var BottomLevelAccelerationStructureIndex,GeometryIndex,InstanceIndex,
+    GeometryBaseIndex,GeometryItemIndex:TpvSizeInt;
+    CountBottomLevelAccelerationStructures,CountGeometryInfos,CountInstances:TpvSizeInt;
     BottomLevelAccelerationStructure:TpvRaytracing.TBottomLevelAccelerationStructure;
     BottomLevelAccelerationStructureInstance:TpvRaytracing.TBottomLevelAccelerationStructure.TInstance;
     GlobalBLASGeometryInfoBufferItem:PpvRaytracingBLASGeometryInfoBufferItem;
-    LocalBLASGeometryInfoBufferItem:TpvRaytracingBLASGeometryInfoBufferItem;
+    LocalBLASGeometryInfoBufferItem:PpvRaytracingBLASGeometryInfoBufferItem;
     Offset:TVkUInt32;
     AddrInfo:TVkAccelerationStructureDeviceAddressInfoKHR;
     ExpectedAddr:TVkDeviceAddress;
@@ -4485,11 +4486,11 @@ begin
  end;
 
  // Step 2: Verify geometry-info ranges
- CountGeomInfo:=fGeometryInfoManager.GeometryInfoList.Count;
+ CountGeometryInfos:=fGeometryInfoManager.GeometryInfoList.Count;
  for BottomLevelAccelerationStructureIndex:=0 to CountBottomLevelAccelerationStructures-1 do begin
   BottomLevelAccelerationStructure:=fBottomLevelAccelerationStructureList.Items[BottomLevelAccelerationStructureIndex];
   if BottomLevelAccelerationStructure.CountGeometries>0 then begin
-   if (BottomLevelAccelerationStructure.GeometryInfoBaseIndex<0) or ((BottomLevelAccelerationStructure.GeometryInfoBaseIndex+BottomLevelAccelerationStructure.CountGeometries)>CountGeomInfo) then begin
+   if (BottomLevelAccelerationStructure.GeometryInfoBaseIndex<0) or ((BottomLevelAccelerationStructure.GeometryInfoBaseIndex+BottomLevelAccelerationStructure.CountGeometries)>CountGeometryInfos) then begin
     result:=false;
     exit;
    end;
@@ -4514,6 +4515,11 @@ begin
 
   BottomLevelAccelerationStructureInstance:=fBottomLevelAccelerationStructureInstanceList.Items[InstanceIndex];
 
+  if BottomLevelAccelerationStructureInstance.fBottomLevelAccelerationStructure=fEmptyBottomLevelAccelerationStructure then begin
+   // Skip the empty one
+   continue;
+  end;
+
   // a) Instance index matches
   if BottomLevelAccelerationStructureInstance.InRaytracingIndex<>InstanceIndex then begin
    result:=false;
@@ -4531,6 +4537,51 @@ begin
   if BottomLevelAccelerationStructureInstance.AccelerationStructureInstance.fAccelerationStructureInstancePointer<>@fBottomLevelAccelerationStructureInstanceKHRArrayList.ItemArray[InstanceIndex] then begin
    result:=false;
    exit;
+  end;
+
+  // d) Custom‑index <=> offset consistency
+  if ((BottomLevelAccelerationStructureInstance.AccelerationStructureInstance.fAccelerationStructureInstancePointer^.instanceCustomIndex and TpvUInt32($00800000))=0) and
+     (BottomLevelAccelerationStructureInstance.AccelerationStructureInstance.fAccelerationStructureInstancePointer^.InstanceCustomIndex<>Offset) then begin
+   result:=false;
+   exit;
+  end;
+
+  // e) Make sure each instance really “sees” the same geometry‐info items
+  begin
+  
+   // Get the base index of the geometry info item in the global list, either from the instance or from the offset, depending on if the 24th bit is
+   // not set in the custom index, because when it is set, the instance custom index is used as the advanced meta data index, and the offset
+   // is used as the geometry info base index.
+   if (BottomLevelAccelerationStructureInstance.AccelerationStructureInstance.fAccelerationStructureInstancePointer^.instanceCustomIndex and TpvUInt32($00800000))=0 then begin
+    GeometryBaseIndex:=BottomLevelAccelerationStructureInstance.AccelerationStructureInstance.fAccelerationStructureInstancePointer^.instanceCustomIndex and TpvUInt32($007fffff);
+   end else begin
+    GeometryBaseIndex:=Offset;
+   end;
+
+   for GeometryIndex:=0 to BottomLevelAccelerationStructureInstance.BottomLevelAccelerationStructure.CountGeometries-1 do begin
+
+    // Get the index of the geometry info item in the global list
+    GeometryItemIndex:=GeometryBaseIndex+GeometryIndex;
+    if GeometryItemIndex>=CountGeometryInfos then begin
+     result:=false;
+     exit;
+    end;
+
+    // Fetch global and local item pointers
+    GlobalBLASGeometryInfoBufferItem:=@fGeometryInfoManager.GeometryInfoList.ItemArray[GeometryItemIndex];
+    LocalBLASGeometryInfoBufferItem:=@BottomLevelAccelerationStructureInstance.BottomLevelAccelerationStructure.GeometryInfoBufferItemList.ItemArray[GeometryIndex];
+
+    // Compare fields
+    if (GlobalBLASGeometryInfoBufferItem^.Type_<>LocalBLASGeometryInfoBufferItem^.Type_) or
+       (GlobalBLASGeometryInfoBufferItem^.ObjectIndex<>LocalBLASGeometryInfoBufferItem^.ObjectIndex) or
+       (GlobalBLASGeometryInfoBufferItem^.MaterialIndex<>LocalBLASGeometryInfoBufferItem^.MaterialIndex) or
+       (GlobalBLASGeometryInfoBufferItem^.IndexOffset<>LocalBLASGeometryInfoBufferItem^.IndexOffset) then begin
+     result:=false;
+     exit;
+    end;
+
+   end;
+
   end;
 
  end;
@@ -4557,13 +4608,13 @@ begin
    GlobalBLASGeometryInfoBufferItem:=fGeometryInfoManager.GetGeometryInfo(BottomLevelAccelerationStructure.GeometryInfoBaseIndex+GeometryIndex);
    
    // Fetch local item
-   LocalBLASGeometryInfoBufferItem:=BottomLevelAccelerationStructure.GeometryInfoBufferItemList.Items[GeometryIndex];
+   LocalBLASGeometryInfoBufferItem:=@BottomLevelAccelerationStructure.GeometryInfoBufferItemList.ItemArray[GeometryIndex];
 
    // Compare fields
-   if (GlobalBLASGeometryInfoBufferItem^.Type_<>LocalBLASGeometryInfoBufferItem.Type_) or
-      (GlobalBLASGeometryInfoBufferItem^.ObjectIndex<>LocalBLASGeometryInfoBufferItem.ObjectIndex) or
-      (GlobalBLASGeometryInfoBufferItem^.MaterialIndex<>LocalBLASGeometryInfoBufferItem.MaterialIndex) or
-      (GlobalBLASGeometryInfoBufferItem^.IndexOffset<>LocalBLASGeometryInfoBufferItem.IndexOffset) then begin
+   if (GlobalBLASGeometryInfoBufferItem^.Type_<>LocalBLASGeometryInfoBufferItem^.Type_) or
+      (GlobalBLASGeometryInfoBufferItem^.ObjectIndex<>LocalBLASGeometryInfoBufferItem^.ObjectIndex) or
+      (GlobalBLASGeometryInfoBufferItem^.MaterialIndex<>LocalBLASGeometryInfoBufferItem^.MaterialIndex) or
+      (GlobalBLASGeometryInfoBufferItem^.IndexOffset<>LocalBLASGeometryInfoBufferItem^.IndexOffset) then begin
     result:=false;
     exit;
    end;
