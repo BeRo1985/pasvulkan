@@ -66,7 +66,7 @@ uses {$ifdef windows}Windows,{$else}{$ifdef unix}BaseUnix,Unix,UnixType,{$endif}
 
 type TpvProfiler=class
       public
-       class procedure SectionBegin(const Name:ansistring); static; {$ifdef cpu386}register;{$endif}
+       class procedure SectionBegin(const Name:TpvUTF8String); static; {$ifdef cpu386}register;{$endif}
        class procedure SectionEnd; static;  {$ifdef cpu386}register;{$endif}
      end;
 
@@ -83,7 +83,7 @@ type PSectionAddressHashItem=^TSectionAddressHashItem;
       GarbageCollectorNext:pointer;
       Next:PSectionAddressHashItem;
       ReturnAddress:pointer;
-      Name:ansistring;
+      Name:TpvUTF8String;
       Count:TpvInt64;
       TotalTime:TpvInt64;
       MinTime:TpvInt64;
@@ -243,7 +243,7 @@ end;
 
 {$endif}
 
-class procedure TpvProfiler.SectionBegin(const Name:ansistring); {$ifdef cpu386}register;{$endif}
+class procedure TpvProfiler.SectionBegin(const Name:TpvUTF8String); {$ifdef cpu386}register;{$endif}
 {$ifdef PasVulkanProfiler}
 var CurrentReturnAddress:pointer;
     ThreadStackItem:PThreadStackItem;
@@ -377,7 +377,7 @@ end;
 
 procedure OutputResults;
 type TItem=record
-      Name:ansistring;
+      Name:TpvUTF8String;
       Count:TpvInt64;
       TotalTime:double;
       MinTime:double;
