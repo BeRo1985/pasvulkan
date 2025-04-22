@@ -1,4 +1,4 @@
-(******************************************************************************
+﻿(******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
  *                       Version see PasVulkan.Framework.pas                  *
@@ -1106,7 +1106,7 @@ asm
 
  // Main loop for processing 64-byte blocks
  add rdx,-128
- movdqa xmm0,oword ptr [rip+LC0] // load k1, k2 constants
+ movdqu xmm0,oword ptr [rip+LC0] // load k1, k2 constants
  mov r8,rdx
  shr r8,6
  lea rax,[r8+2]
@@ -1157,7 +1157,7 @@ asm
 
 @Entry_Fold128:
  // Fold 64->32 bits via k3,k4 constants
- movdqa xmm4,oword ptr [rip+LC1]
+ movdqu xmm4,oword ptr [rip+LC1]
  movdqa xmm0,xmm3
  pclmulqdq xmm0,xmm4,0
  pclmulqdq xmm3,xmm4,17
@@ -1213,7 +1213,7 @@ asm
  // Final Barrett reduction and extract CRC
  movdqa xmm1,xmm0                     // copy the 64-bit folded partial CRC into xmm1
  mov eax,4294967295                   // load 0xffffffff (the CRC bias) into EAX
- movdqa xmm3,oword ptr [rip+LC4]      // load the Barrett polynomial constant (k5) into xmm3
+ movdqu xmm3,oword ptr [rip+LC4]      // load the Barrett polynomial constant (k5) into xmm3
  movaps xmm6,oword ptr [rsp]          // restore one of the saved XMM regs from the stack
  psrldq xmm0,8                        // shift the current 64-bit CRC low by 8 bytes => brings high 32 bits into position
  movq xmm2,rax                        // broadcast the 32-bit bias (0xffffffff) into both halves of xmm2
@@ -1224,7 +1224,8 @@ asm
  movaps xmm8,oword ptr [rsp+32]       // restore another XMM reg
  movdqa xmm0,xmm1                     // move the reduced 64-bit value back into xmm0
  pand xmm1,xmm2                       // mask down to 32 bits by AND-ing with 0xffffffff
- pclmulqdq xmm1,oword ptr [rip+LC3],0 // multiply masked value by the second Barrett constant (k6)
+ movdqu xmm4,oword ptr [rip+LC3]      // load the second Barrett constant (k6)
+ pclmulqdq xmm1,xmm4,0                // multiply masked value by the second Barrett constant (k6)
  psrldq xmm0,4                        // shift xmm0 right by 4 bytes => isolate upper 32-bit half
  add rsp,56                           // pop restored XMM regs off the stack
  pxor xmm1,xmm0                       // XOR with the shifted half => finish the two-step Barrett reduction
