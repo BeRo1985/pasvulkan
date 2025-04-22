@@ -585,7 +585,7 @@ type EpvRaytracing=class(Exception);
               fItems:array of TBottomLevelAccelerationStructure;
               fCapacity:TPasMPInt32;
               fCount:TPasMPInt32;
-              fLock:TPasMPSlimReaderWriterLock;
+              fLock:TPasMPMultipleReaderSingleWriterLock;
               function GetItem(const aIndex:TPasMPInt32):TBottomLevelAccelerationStructure;
               procedure SetItem(const aIndex:TPasMPInt32;const aValue:TBottomLevelAccelerationStructure);
              public
@@ -2755,7 +2755,7 @@ begin
  
  fCount:=0;
  
- fLock:=TPasMPSlimReaderWriterLock.Create;
+ fLock:=TPasMPMultipleReaderSingleWriterLock.Create;
 
 end;
 
@@ -2793,21 +2793,27 @@ end;
 
 procedure TpvRaytracing.TBottomLevelAccelerationStructureQueue.Enqueue(const aBottomLevelAccelerationStructure:TBottomLevelAccelerationStructure);
 var Index:TPasMPInt32;
+    IsWrite:Boolean;
 begin
- 
- // Atomically reserve an index for the new item.
- Index:=TPasMPInterlocked.Add(fCount,1);
- 
- // If the index is beyond the current capacity, resize.
- if fCapacity<=Index then begin
-  
-  fLock.Acquire;
-  try
- 
+
+ IsWrite:=false;
+
+ fLock.AcquireRead;
+ try
+
+  // Atomically reserve an index for the new item.
+  Index:=TPasMPInterlocked.Add(fCount,1);
+
+  // If the index is beyond the current capacity, resize.
+  if fCapacity<=Index then begin
+
+   fLock.ReadToWrite;
+   IsWrite:=true;
+
    // Check again, since another thread may have resized the array in the meantime.
    if fCapacity<=Index then begin
 
-    // Calculate new capacity and ensure that it is at least as large as the index with 1.5 times the size as growth factor with rounding up. 
+    // Calculate new capacity and ensure that it is at least as large as the index with 1.5 times the size as growth factor with rounding up.
     fCapacity:=(Index+1)+((Index+2) shr 1);
 
     // Resize the array.
@@ -2815,14 +2821,18 @@ begin
 
    end;
 
-  finally
-   fLock.Release;
   end;
 
- end; 
- 
- // Now it is safe to store the new item.
- fItems[Index]:=aBottomLevelAccelerationStructure;
+  // Now it is safe to store the new item.
+  fItems[Index]:=aBottomLevelAccelerationStructure;
+
+ finally
+  if IsWrite then begin
+   fLock.ReleaseWrite;
+  end else begin
+   fLock.ReleaseRead;
+  end;
+ end;
 
 end;
 
