@@ -3512,17 +3512,18 @@ type EpvVulkanException=class(Exception);
       public
        constructor Create; overload;
        constructor Create(const aDevice:TpvVulkanDevice;const aExternal:boolean=false;const aName:TpvUTF8String=''); overload;
-       constructor CreateSimpleLinear2DTarget(const aDevice:TpvVulkanDevice;
-                                              const aQueue:TpvVulkanQueue;
-                                              const aCommandBuffer:TpvVulkanCommandBuffer;
-                                              const aFence:TpvVulkanFence;
-                                              const aFormat:TVkFormat;
-                                              const aWidth:TpvInt32;
-                                              const aHeight:TpvInt32;
-                                              const aUsageFlags:TpvVulkanTextureUsageFlags;
-                                              const aImageLayout:TVkImageLayout;
-                                              const aAllocationGroupID:TpvUInt64=0;
-                                              const aName:TpvUTF8String='');
+       constructor CreateSimple2DTarget(const aDevice:TpvVulkanDevice;
+                                        const aQueue:TpvVulkanQueue;
+                                        const aCommandBuffer:TpvVulkanCommandBuffer;
+                                        const aFence:TpvVulkanFence;
+                                        const aOptimal:Boolean;
+                                        const aFormat:TVkFormat;
+                                        const aWidth:TpvInt32;
+                                        const aHeight:TpvInt32;
+                                        const aUsageFlags:TpvVulkanTextureUsageFlags;
+                                        const aImageLayout:TVkImageLayout;
+                                        const aAllocationGroupID:TpvUInt64=0;
+                                        const aName:TpvUTF8String='');
        constructor CreateFromMemory(const aDevice:TpvVulkanDevice;
                                     const aGraphicsQueue:TpvVulkanQueue;
                                     const aGraphicsCommandBuffer:TpvVulkanCommandBuffer;
@@ -24371,17 +24372,18 @@ begin
 
 end;
 
-constructor TpvVulkanTexture.CreateSimpleLinear2DTarget(const aDevice:TpvVulkanDevice;
-                                                        const aQueue:TpvVulkanQueue;
-                                                        const aCommandBuffer:TpvVulkanCommandBuffer;
-                                                        const aFence:TpvVulkanFence;
-                                                        const aFormat:TVkFormat;
-                                                        const aWidth:TpvInt32;
-                                                        const aHeight:TpvInt32;
-                                                        const aUsageFlags:TpvVulkanTextureUsageFlags;
-                                                        const aImageLayout:TVkImageLayout;
-                                                        const aAllocationGroupID:TpvUInt64;
-                                                        const aName:TpvUTF8String);
+constructor TpvVulkanTexture.CreateSimple2DTarget(const aDevice:TpvVulkanDevice;
+                                                  const aQueue:TpvVulkanQueue;
+                                                  const aCommandBuffer:TpvVulkanCommandBuffer;
+                                                  const aFence:TpvVulkanFence;
+                                                  const aOptimal:Boolean;
+                                                  const aFormat:TVkFormat;
+                                                  const aWidth:TpvInt32;
+                                                  const aHeight:TpvInt32;
+                                                  const aUsageFlags:TpvVulkanTextureUsageFlags;
+                                                  const aImageLayout:TVkImageLayout;
+                                                  const aAllocationGroupID:TpvUInt64;
+                                                  const aName:TpvUTF8String);
 var MemoryRequirements:TVkMemoryRequirements;
     RequiresDedicatedAllocation,
     PrefersDedicatedAllocation:boolean;
@@ -24450,7 +24452,7 @@ begin
                                1,
                                1,
                                VK_SAMPLE_COUNT_1_BIT,
-                               VK_IMAGE_TILING_LINEAR,
+                               TVkImageTiling(IfThen(aOptimal,TpvUInt32(VK_IMAGE_TILING_OPTIMAL),TpvUInt32(VK_IMAGE_TILING_LINEAR))),
                                Usage,
                                VK_SHARING_MODE_EXCLUSIVE,
                                0,
