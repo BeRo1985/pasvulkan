@@ -3506,6 +3506,7 @@ type EpvVulkanException=class(Exception);
        fAllocationGroupID:TpvUInt64;
        fRawSize:TpvUInt64;
        fName:TpvUTF8String;
+       fPersistent:Boolean;
        procedure UpdateSRGBFormat;
        procedure SetSampler(const aSampler:TpvVulkanSampler);
       public
@@ -3536,7 +3537,8 @@ type EpvVulkanException=class(Exception);
                                     const aAdditionalSRGB:boolean=false;
                                     const aStreaming:boolean=false;
                                     const aAllocationGroupID:TpvUInt64=0;
-                                    const aName:TpvUTF8String='');
+                                    const aName:TpvUTF8String='';
+                                    const aPersistent:boolean=false);
        constructor CreateFromStream(const aDevice:TpvVulkanDevice;
                                     const aGraphicsQueue:TpvVulkanQueue;
                                     const aGraphicsCommandBuffer:TpvVulkanCommandBuffer;
@@ -3561,7 +3563,8 @@ type EpvVulkanException=class(Exception);
                                     const aAdditionalSRGB:boolean=false;
                                     const aStreaming:boolean=false;
                                     const aAllocationGroupID:TpvUInt64=0;
-                                    const aName:TpvUTF8String='');
+                                    const aName:TpvUTF8String='';
+                                    const aPersistent:boolean=false);
        constructor CreateFromKTX(const aDevice:TpvVulkanDevice;
                                  const aGraphicsQueue:TpvVulkanQueue;
                                  const aGraphicsCommandBuffer:TpvVulkanCommandBuffer;
@@ -3747,7 +3750,8 @@ type EpvVulkanException=class(Exception);
                                 const aDDSStructure:boolean=true;
                                 const aAdditionalSRGB:boolean=false;
                                 const aStreaming:boolean=false;
-                                const aAllocationGroupID:TpvUInt64=0);
+                                const aAllocationGroupID:TpvUInt64=0;
+                                const aPersistent:boolean=false);
        procedure LoadFromStream(const aFormat:TVkFormat;
                                 const aSampleCount:TVkSampleCountFlagBits;
                                 const aWidth:TpvInt32;
@@ -3764,7 +3768,8 @@ type EpvVulkanException=class(Exception);
                                 const aDDSStructure:boolean=true;
                                 const aAdditionalSRGB:boolean=false;
                                 const aStreaming:boolean=false;
-                                const aAllocationGroupID:TpvUInt64=0);
+                                const aAllocationGroupID:TpvUInt64=0;
+                                const aPersistent:boolean=false);
        procedure LoadFromKTX(const aStream:TStream;const aAdditionalSRGB:boolean=false;const aAllocationGroupID:TpvUInt64=0);
        procedure LoadFromKTX2(const aStream:TStream;const aAdditionalSRGB:boolean=false;const aAllocationGroupID:TpvUInt64=0);
        procedure LoadFromDDS(const aStream:TStream;const aAdditionalSRGB:boolean=false;const aAllocationGroupID:TpvUInt64=0);
@@ -24351,6 +24356,8 @@ begin
 
  fName:=aName;
 
+ fPersistent:=false;
+
 end;
 
 constructor TpvVulkanTexture.CreateFromMemory(const aDevice:TpvVulkanDevice;
@@ -24378,7 +24385,8 @@ constructor TpvVulkanTexture.CreateFromMemory(const aDevice:TpvVulkanDevice;
                                               const aAdditionalSRGB:boolean;
                                               const aStreaming:boolean;
                                               const aAllocationGroupID:TpvUInt64;
-                                              const aName:TpvUTF8String);
+                                              const aName:TpvUTF8String;
+                                              const aPersistent:boolean);
 begin
  Create(aDevice);
  fName:=aName;
@@ -24399,7 +24407,8 @@ begin
                 aDDSStructure,
                 aAdditionalSRGB,
                 aStreaming,
-                aAllocationGroupID);
+                aAllocationGroupID,
+                aPersistent);
  Finish(aGraphicsQueue,aGraphicsCommandBuffer,aGraphicsFence,aTransferQueue,aTransferCommandBuffer,aTransferFence);
 end;
 
@@ -24427,7 +24436,8 @@ constructor TpvVulkanTexture.CreateFromStream(const aDevice:TpvVulkanDevice;
                                               const aAdditionalSRGB:boolean;
                                               const aStreaming:boolean;
                                               const aAllocationGroupID:TpvUInt64;
-                                              const aName:TpvUTF8String);
+                                              const aName:TpvUTF8String;
+                                             const aPersistent:boolean);
 begin
  Create(aDevice);
  fName:=aName;
@@ -24447,7 +24457,8 @@ begin
                 aDDSStructure,
                 aAdditionalSRGB,
                 aStreaming,
-                aAllocationGroupID);
+                aAllocationGroupID,
+                aPersistent);
  Finish(aGraphicsQueue,aGraphicsCommandBuffer,aGraphicsFence,aTransferQueue,aTransferCommandBuffer,aTransferFence);
 end;
 
@@ -25966,7 +25977,8 @@ procedure TpvVulkanTexture.LoadFromMemory(const aFormat:TVkFormat;
                                           const aDDSStructure:boolean;
                                           const aAdditionalSRGB:boolean;
                                           const aStreaming:boolean;
-                                          const aAllocationGroupID:TpvUInt64);
+                                          const aAllocationGroupID:TpvUInt64;
+                                          const aPersistent:boolean);
 begin
 
  fFormat:=aFormat;
@@ -26016,6 +26028,8 @@ begin
 
  fAllocationGroupID:=aAllocationGroupID;
 
+ fPersistent:=aPersistent;
+
 end;
 
 procedure TpvVulkanTexture.LoadFromStream(const aFormat:TVkFormat;
@@ -26034,7 +26048,8 @@ procedure TpvVulkanTexture.LoadFromStream(const aFormat:TVkFormat;
                                           const aDDSStructure:boolean;
                                           const aAdditionalSRGB:boolean;
                                           const aStreaming:boolean;
-                                          const aAllocationGroupID:TpvUInt64);
+                                          const aAllocationGroupID:TpvUInt64;
+                                          const aPersistent:boolean);
 var Data:TpvPointer;
     DataSize:TpvUInt32;
 begin
@@ -26061,7 +26076,8 @@ begin
                  aDDSStructure,
                  aAdditionalSRGB,
                  aStreaming,
-                 aAllocationGroupID);
+                 aAllocationGroupID,
+                 aPersistent);
  finally
   FreeMem(Data);
  end;
@@ -28541,24 +28557,46 @@ begin
       if fStreaming then begin
        FreeAndNil(fStagingBuffer);
       end;
-      StagingBuffer:=TpvVulkanBuffer.Create(fDevice,
-                                            aDataSize,
-                                            TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT),
-                                            SharingMode,
-                                            QueueFamilyIndices,
-                                            TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
-                                            TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
-                                            0,
-                                            0,
-                                            0,
-                                            0,
-                                            0,
-                                            0,
-                                            [TpvVulkanBufferFlag.OwnSingleMemoryChunk,
-                                             TpvVulkanBufferFlag.DedicatedAllocation],
-                                            0,
-                                            pvAllocationGroupIDTemporaryStaging,
-                                            'StagingBuffer');
+      if fPersistent then begin
+       StagingBuffer:=TpvVulkanBuffer.Create(fDevice,
+                                             aDataSize,
+                                             TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT),
+                                             SharingMode,
+                                             QueueFamilyIndices,
+                                             TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                             TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                             0,
+                                             0,
+                                             0,
+                                             0,
+                                             0,
+                                             0,
+                                             [TpvVulkanBufferFlag.OwnSingleMemoryChunk,
+                                              TpvVulkanBufferFlag.DedicatedAllocation,
+                                              TpvVulkanBufferFlag.PersistentMappedIfPossible],
+                                             0,
+                                             pvAllocationGroupIDTemporaryStaging,
+                                             'StagingBuffer');
+      end else begin
+       StagingBuffer:=TpvVulkanBuffer.Create(fDevice,
+                                             aDataSize,
+                                             TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT),
+                                             SharingMode,
+                                             QueueFamilyIndices,
+                                             TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                             TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                             0,
+                                             0,
+                                             0,
+                                             0,
+                                             0,
+                                             0,
+                                             [TpvVulkanBufferFlag.OwnSingleMemoryChunk,
+                                              TpvVulkanBufferFlag.DedicatedAllocation],
+                                             0,
+                                             pvAllocationGroupIDTemporaryStaging,
+                                             'StagingBuffer');
+      end;
       fDevice.DebugUtils.SetObjectName(StagingBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvVulkanTexture.Upload.StagingBuffer');
       if fStreaming then begin
        fStagingBuffer:=StagingBuffer;
