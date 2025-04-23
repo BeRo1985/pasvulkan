@@ -82,7 +82,7 @@ type { TpvScene3DRendererImage2D }
        fFormat:TVkFormat;
       public
 
-       constructor Create(const aDevice:TpvVulkanDevice;const aWidth,aHeight:TpvInt32;const aFormat:TVkFormat;const aStorage:Boolean;const aSampleBits:TVkSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT);const aImageLayout:TVkImageLayout=TVkImageLayout(VK_IMAGE_LAYOUT_GENERAL);const aSharingMode:TVkSharingMode=TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE);const aQueueFamilyIndices:TpvVulkanQueueFamilyIndices=nil;const aAllocationGroupID:TpvUInt64=0;const aName:TpvUTF8String='');
+       constructor Create(const aDevice:TpvVulkanDevice;const aWidth,aHeight:TpvInt32;const aFormat:TVkFormat;const aStorage:Boolean;const aSampleBits:TVkSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT);const aImageLayout:TVkImageLayout=TVkImageLayout(VK_IMAGE_LAYOUT_GENERAL);const aSharingMode:TVkSharingMode=TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE);const aQueueFamilyIndices:TpvVulkanQueueFamilyIndices=nil;const aAllocationGroupID:TpvUInt64=0;const aName:TpvUTF8String='';const aOptimal:Boolean=true);
 
        destructor Destroy; override;
 
@@ -104,7 +104,7 @@ implementation
 
 { TpvScene3DRendererImage2D }
 
-constructor TpvScene3DRendererImage2D.Create(const aDevice:TpvVulkanDevice;const aWidth,aHeight:TpvInt32;const aFormat:TVkFormat;const aStorage:Boolean;const aSampleBits:TVkSampleCountFlagBits;const aImageLayout:TVkImageLayout;const aSharingMode:TVkSharingMode;const aQueueFamilyIndices:TpvVulkanQueueFamilyIndices;const aAllocationGroupID:TpvUInt64;const aName:TpvUTF8String);
+constructor TpvScene3DRendererImage2D.Create(const aDevice:TpvVulkanDevice;const aWidth,aHeight:TpvInt32;const aFormat:TVkFormat;const aStorage:Boolean;const aSampleBits:TVkSampleCountFlagBits;const aImageLayout:TVkImageLayout;const aSharingMode:TVkSharingMode;const aQueueFamilyIndices:TpvVulkanQueueFamilyIndices;const aAllocationGroupID:TpvUInt64;const aName:TpvUTF8String;const aOptimal:Boolean);
 var MemoryRequirements:TVkMemoryRequirements;
     RequiresDedicatedAllocation,
     PrefersDedicatedAllocation:boolean;
@@ -157,7 +157,7 @@ begin
                                      1,
                                      1,
                                      aSampleBits,
-                                     VK_IMAGE_TILING_OPTIMAL,
+                                     TVkImageTiling(IfThen(aOptimal,TpvUInt32(VK_IMAGE_TILING_OPTIMAL),TpvUInt32(VK_IMAGE_TILING_LINEAR))),
                                      TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT) or
                                      IfThen(aStorage,TVkImageUsageFlags(VK_IMAGE_USAGE_STORAGE_BIT),TVkImageUsageFlags(0)) or
                                      TVkImageUsageFlags(VK_IMAGE_USAGE_TRANSFER_SRC_BIT) or
