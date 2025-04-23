@@ -8561,6 +8561,8 @@ begin
  end;
  fLastTimeAccumulator:=fTimeAccumulator;
 
+ DoInterpolate:=true;
+
  if DoInterpolate then begin
    
   fInterpolationPushConstants.BottomRadius:=fPlanet.fBottomRadius;
