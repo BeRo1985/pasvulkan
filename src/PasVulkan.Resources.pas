@@ -389,7 +389,7 @@ procedure DeferredFreeAndNil(var aObject);
 
 implementation
 
-uses PasVulkan.Application,PasVulkan.Utils;
+uses PasVulkan.PasMP,PasVulkan.Application,PasVulkan.Utils;
 
 { TpvMetaResource }
 
@@ -1284,8 +1284,8 @@ begin
           PasMPDefaultDepth,
           nil,
           0,
-          0,
-          0,
+          PasMPAreaMaskBackgroundLoading,
+          PasMPAreaMaskUpdate or PasMPAreaMaskRender,
           true
          )
         );
@@ -1448,7 +1448,7 @@ begin
 
  if TPasMPInterlocked.Read(fCountQueueItems)>0 then begin
 
-  fRootJob:=pvApplication.PasMPInstance.Acquire(RootJobMethod,nil,nil,0,0);
+  fRootJob:=pvApplication.PasMPInstance.Acquire(RootJobMethod,nil,nil,0,PasMPAreaMaskBackgroundLoading,PasMPAreaMaskUpdate or PasMPAreaMaskRender);
   pvApplication.PasMPInstance.Run(fRootJob,true);
 
  end;

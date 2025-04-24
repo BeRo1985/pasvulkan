@@ -4228,7 +4228,8 @@ type EpvScene3D=class(Exception);
 
 implementation
 
-uses PasVulkan.Scene3D.Renderer.Instance,
+uses PasVulkan.PasMP,
+     PasVulkan.Scene3D.Renderer.Instance,
      PasVulkan.Scene3D.Planet,
      PasVulkan.Scene3D.Atmosphere,
      PasVulkan.Scene3D.MeshCompute,
@@ -5988,7 +5989,7 @@ begin
    MutuallyVisible:=NodeA.fAABB.Intersect(NodeB.fAABB);
 
    if not MutuallyVisible then begin
-    fPasMPInstance.Invoke(fPasMPInstance.ParallelFor(@NodeIndexPair,0,TpvScene3D.TPotentiallyVisibleSet.CountRayCheckTapPoints*TpvScene3D.TPotentiallyVisibleSet.CountRayCheckTapPoints-1,NodePairVisibilityCheckRayParallelForJob,1,PasMPDefaultDepth,nil,0,0));
+    fPasMPInstance.Invoke(fPasMPInstance.ParallelFor(@NodeIndexPair,0,TpvScene3D.TPotentiallyVisibleSet.CountRayCheckTapPoints*TpvScene3D.TPotentiallyVisibleSet.CountRayCheckTapPoints-1,NodePairVisibilityCheckRayParallelForJob,1,PasMPDefaultDepth,nil,0,0,0));
     MutuallyVisible:=GetNodeVisibility(NodeAIndex,NodeBIndex) or GetNodeVisibility(NodeBIndex,NodeAIndex);
    end;
 
@@ -6244,7 +6245,7 @@ begin
        end;
       end;
       if NodeIndexPairList.Count>0 then begin
-       fPasMPInstance.Invoke(fPasMPInstance.ParallelFor(NodeIndexPairList,0,NodeIndexPairList.Count-1,NodePairVisibilityCheckParallelForJob,1,PasMPDefaultDepth,nil,0,0));
+       fPasMPInstance.Invoke(fPasMPInstance.ParallelFor(NodeIndexPairList,0,NodeIndexPairList.Count-1,NodePairVisibilityCheckParallelForJob,1,PasMPDefaultDepth,nil,0,0,0));
       end;
      finally
       FreeAndNil(NodeIndexPairList);
@@ -31531,7 +31532,7 @@ begin
      SetLength(Jobs,Max(1,fPasMPInstance.CountJobWorkerThreads)+CountExtraJobs);
 
      for Index:=0 to length(Jobs)-(1+CountExtraJobs) do begin
-      Jobs[Index]:=fPasMPInstance.Acquire(ParallelGroupInstanceUpdateParallelJobFunction,nil,nil,0,TPasMPUInt32($f0000000));
+      Jobs[Index]:=fPasMPInstance.Acquire(ParallelGroupInstanceUpdateParallelJobFunction,nil,nil,0,PasMPAreaMaskUpdate or TPasMPUInt32($f0000000),PasMPAreaMaskRender);
      end;
 
      if (CountExtraJobs>0) and (fGroups.Count>0) then begin
@@ -33704,7 +33705,7 @@ begin
  fUpdateRaytracingRaytracingGroupInstanceNodeUpdateStructuresParallelForJobInFlightFrameIndex:=fRaytracing.InFlightFrameIndex;
  if fRaytracingGroupInstanceNodeArrayList.Count>0 then begin
   if assigned(fPasMPInstance) then begin
-   fPasMPInstance.Invoke(fPasMPInstance.ParallelFor(self,0,fRaytracingGroupInstanceNodeArrayList.Count-1,UpdateRaytracingRaytracingGroupInstanceNodeUpdateStructuresParallelForJob,1,PasMPDefaultDepth,nil,0,0));
+   fPasMPInstance.Invoke(fPasMPInstance.ParallelFor(self,0,fRaytracingGroupInstanceNodeArrayList.Count-1,UpdateRaytracingRaytracingGroupInstanceNodeUpdateStructuresParallelForJob,1,PasMPDefaultDepth,nil,PasMPAreaMaskRender,PasMPAreaMaskUpdate));
   end else begin
    UpdateRaytracingRaytracingGroupInstanceNodeUpdateStructuresParallelForJob(nil,0,nil,0,fRaytracingGroupInstanceNodeArrayList.Count-1);
   end;

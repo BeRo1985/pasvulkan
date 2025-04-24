@@ -2371,7 +2371,7 @@ procedure LogCrash(const aExceptionString:String);
 
 implementation
 
-uses PasVulkan.Utils,PasDblStrUtils,PasVulkan.Compression;
+uses PasVulkan.Utils,PasDblStrUtils,PasVulkan.Compression,PasVulkan.PasMP;
 
 const BoolToInt:array[boolean] of TpvInt32=(0,1);
 
@@ -12357,6 +12357,7 @@ var Index,Counter,Tries:TpvInt32;
 {$ifend}
     OK,Found:boolean;
     DoSkipNextFrameForRendering,ReadyForSwapChainLatency:boolean;
+    CurrentJobWorkerThread:TPasMPJobWorkerThread;
 begin
 
  if assigned(fPasMPInstance.Profiler) then begin
@@ -13272,7 +13273,7 @@ begin
         if fUseExtraUpdateThread and assigned(fUpdateThread) then begin
          fUpdateThread.Invoke;
         end else begin
-         fUpdateJob:=fPasMPInstance.Acquire(UpdateJobFunction);
+         fUpdateJob:=fPasMPInstance.Acquire(UpdateJobFunction,nil,nil,0,PasMPAreaMaskUpdate,PasMPAreaMaskRender);
          fPasMPInstance.Run(fUpdateJob);
         end;
 
@@ -13307,9 +13308,16 @@ begin
 
       if fVulkanBackBufferState=TVulkanBackBufferState.Present then begin
        try
+        CurrentJobWorkerThread:=fPasMPInstance.JobWorkerThread;
+        if assigned(CurrentJobWorkerThread) then begin
+         CurrentJobWorkerThread.AreaMask:=CurrentJobWorkerThread.AreaMask or PasMPAreaMaskRender;
+        end;
         BeginFrame(fUpdateDeltaTime);
         DrawJobFunction(nil,0);
         FinishFrame(fSwapChainImageIndex,fVulkanWaitSemaphore,fVulkanWaitFence);
+        if assigned(CurrentJobWorkerThread) then begin
+         CurrentJobWorkerThread.AreaMask:=CurrentJobWorkerThread.AreaMask and not PasMPAreaMaskRender;
+        end;
        finally
         if assigned(fVulkanDevice) then begin
          try
@@ -13396,10 +13404,17 @@ begin
          DrawJobFunction(nil,fPasMPInstance.GetJobWorkerThreadIndex);
          fUpdateThread.WaitForDone;
         end else begin
-         fUpdateJob:=fPasMPInstance.Acquire(UpdateJobFunction);
+         fUpdateJob:=fPasMPInstance.Acquire(UpdateJobFunction,nil,nil,0,PasMPAreaMaskUpdate,PasMPAreaMaskRender);
          try
           fPasMPInstance.Run(fUpdateJob);
+          CurrentJobWorkerThread:=fPasMPInstance.JobWorkerThread;
+          if assigned(CurrentJobWorkerThread) then begin
+           CurrentJobWorkerThread.AreaMask:=CurrentJobWorkerThread.AreaMask or PasMPAreaMaskRender;
+          end;
           DrawJobFunction(nil,fPasMPInstance.GetJobWorkerThreadIndex);
+          if assigned(CurrentJobWorkerThread) then begin
+           CurrentJobWorkerThread.AreaMask:=CurrentJobWorkerThread.AreaMask and not PasMPAreaMaskRender;
+          end;
          finally
           fPasMPInstance.WaitRelease(fUpdateJob);
          end;
