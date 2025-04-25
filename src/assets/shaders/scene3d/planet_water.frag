@@ -22,7 +22,7 @@ layout(early_fragment_tests) in;
       
 // MSAA_FAST = MSAA input but not MSAA output, so that the water isn't multisampled then.
 
-#define LIGHTCLUSTERS
+//#define LIGHTCLUSTERS
 #define FRUSTUMCLUSTERGRID
 
 #define LIGHTS 
