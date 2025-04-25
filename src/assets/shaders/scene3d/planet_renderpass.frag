@@ -16,7 +16,7 @@
 #define LIGHTS 
 #define SHADOWS
 
-//#define LIGHTCLUSTERS
+#define LIGHTCLUSTERS
 #define FRUSTUMCLUSTERGRID
 
 #include "bufferreference_definitions.glsl"
