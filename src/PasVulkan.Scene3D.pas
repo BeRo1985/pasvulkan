@@ -31732,7 +31732,7 @@ begin
  if (aRoot>=0) and (length(aTreeNodes)>0) then begin
   for LightIndex:=0 to fLights.Count-1 do begin
    Light:=fLights[LightIndex];
-   if Light.DataPointer^.fVisible and not Light.fIgnore then begin
+   if (aLightItemArray.Count<MaxVisibleLights) and (Light.DataPointer^.fVisible and not Light.fIgnore) then begin
     Light.fLightItemIndex:=aLightItemArray.AddNewIndex;
     case Light.fDataPointer^.Type_ of
      TpvScene3D.TLightData.TType.Directional,
