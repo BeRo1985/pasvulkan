@@ -3929,10 +3929,8 @@ type EpvScene3D=class(Exception);
        procedure NewImageDescriptorGeneration;
        procedure NewMaterialDataGeneration;
       private
-       procedure CollectLights(const aTreeNodes:TpvBVHDynamicAABBTree.TTreeNodes;
-                                            const aRoot:TpvSizeInt;
-                                            var aLightItemArray:TpvScene3D.TLightItems;
-                                            var aLightMetaInfoArray:TpvScene3D.TLightMetaInfos);
+       procedure CollectLights(var aLightItemArray:TpvScene3D.TLightItems;
+                               var aLightMetaInfoArray:TpvScene3D.TLightMetaInfos);
        procedure CullAndPrepareGroupInstances(const aInFlightFrameIndex:TpvSizeInt;
                                               const aRendererInstance:TObject;
                                               const aRenderPass:TpvScene3DRendererRenderPass;
@@ -31708,198 +31706,86 @@ begin
 
 end;
 
-procedure TpvScene3D.CollectLights(const aTreeNodes:TpvBVHDynamicAABBTree.TTreeNodes;
-                                   const aRoot:TpvSizeInt;
-                                   var aLightItemArray:TpvScene3D.TLightItems;
+procedure TpvScene3D.CollectLights(var aLightItemArray:TpvScene3D.TLightItems;
                                    var aLightMetaInfoArray:TpvScene3D.TLightMetaInfos);
-{type TStackItem=record
-      Node:TpvSizeInt;
-     end;
-     PStackItem=^TStackItem;
-     TStack=TpvDynamicFastStack<TStackItem>;}
-var{StackItem:TStack.PT;
-    Node:TpvSizeInt;
-    TreeNode:TpvBVHDynamicAABBTree.PTreeNode;}
-    LightIndex:TpvSizeInt;
+var LightIndex:TpvSizeInt;
     Light:TpvScene3D.TLight;
     LightItem:TpvScene3D.PLightItem;
     LightMetaInfo:TpvScene3D.PLightMetaInfo;
     InnerConeAngleCosinus,OuterConeAngleCosinus:TpvScalar;
-//  Stack:TStack;
     Intensity:TpvFloat;
 begin
  aLightItemArray.ClearNoFree;
- if (aRoot>=0) and (length(aTreeNodes)>0) then begin
-  for LightIndex:=0 to fLights.Count-1 do begin
-   Light:=fLights[LightIndex];
-   if (aLightItemArray.Count<MaxVisibleLights) and (Light.DataPointer^.fVisible and not Light.fIgnore) then begin
-    Light.fLightItemIndex:=aLightItemArray.AddNewIndex;
-    case Light.fDataPointer^.Type_ of
-     TpvScene3D.TLightData.TType.Directional,
-     TpvScene3D.TLightData.TType.PrimaryDirectional,
-     TpvScene3D.TLightData.TType.ViewDirectional:begin
-      // It is already in lux, nothing to do.
-      Intensity:=Light.fDataPointer^.fIntensity;
-     end;
-     TpvScene3D.TLightData.TType.Point:begin
-      // Intensity specified directly in candela, no conversion needed
-      Intensity:=Light.fDataPointer^.fIntensity;
-      // When the input value would be in lux:
-      // Intensity:=Light.fDataPointer^.fIntensity*(OneOverPI*0.25);
-     end;
-     TpvScene3D.TLightData.TType.Spot:begin
-      // Intensity specified directly in candela, no conversion needed
-      Intensity:=Light.fDataPointer^.fIntensity;
-      // When the input value would be in lux:
-      // Intensity:=Light.fDataPointer^.fIntensity*OneOverPI;
-     end;
-     else begin
-      // Turning unknown light types off in the end effect
-      Intensity:=0.0;
-     end;
+ for LightIndex:=0 to fLights.Count-1 do begin
+  Light:=fLights[LightIndex];
+  if (aLightItemArray.Count<MaxVisibleLights) and (Light.DataPointer^.fVisible and not Light.fIgnore) then begin
+   Light.fLightItemIndex:=aLightItemArray.AddNewIndex;
+   case Light.fDataPointer^.Type_ of
+    TpvScene3D.TLightData.TType.Directional,
+    TpvScene3D.TLightData.TType.PrimaryDirectional,
+    TpvScene3D.TLightData.TType.ViewDirectional:begin
+     // It is already in lux, nothing to do.
+     Intensity:=Light.fDataPointer^.fIntensity;
     end;
-    begin
-     Intensity:=Intensity*fLightIntensityFactor; // should included the bi-lux stuff, if needed
+    TpvScene3D.TLightData.TType.Point:begin
+     // Intensity specified directly in candela, no conversion needed
+     Intensity:=Light.fDataPointer^.fIntensity;
+     // When the input value would be in lux:
+     // Intensity:=Light.fDataPointer^.fIntensity*(OneOverPI*0.25);
     end;
+    TpvScene3D.TLightData.TType.Spot:begin
+     // Intensity specified directly in candela, no conversion needed
+     Intensity:=Light.fDataPointer^.fIntensity;
+     // When the input value would be in lux:
+     // Intensity:=Light.fDataPointer^.fIntensity*OneOverPI;
+    end;
+    else begin
+     // Turning unknown light types off in the end effect
+     Intensity:=0.0;
+    end;
+   end;
+   begin
+    Intensity:=Intensity*fLightIntensityFactor; // should included the bi-lux stuff, if needed
+   end;
 {   begin
-     // Scale the color to fit into the range of 16-bit floating point numbers,
-     // by halfing the value, so that the sun can be represented as 64000 "bi-lux"
-     // instead of 120000 lux.
-     Intensity:=Intensity*0.5;
-    end;}
-    if (Intensity>0.0) and (Light.fRadius>0.0) then begin
-     //Light.fLightItemIndex:=aLightItemArray.AddNewIndex;
-     LightItem:=@aLightItemArray.Items[Light.fLightItemIndex];
-     LightItem^.TypeFlagsLightProfile:=(TpvUInt32(Light.fDataPointer^.Type_) and $f);
-     if Light.fDataPointer^.fLimitDistance then begin
-      LightItem^.TypeFlagsLightProfile:=LightItem^.TypeFlagsLightProfile or (TpvUInt32(1) shl 5);
-     end;
-     if assigned(Light.fDataPointer^.fLightProfileTexture) then begin
-      LightItem^.TypeFlagsLightProfile:=LightItem^.TypeFlagsLightProfile or
-                                        (TpvUInt32(1) shl 16) or
-                                        (TpvUInt32(ord(Light.fDataPointer^.fExtendedLightProfile) and 1) shl 17) or
-                                        (TpvUInt32(Light.fDataPointer^.fLightProfileTexture.fID and $3fff) shl 18);
-     end;
-     LightItem^.ShadowMapIndex:=0;
-     InnerConeAngleCosinus:=cos(Light.fDataPointer^.InnerConeAngle);
-     OuterConeAngleCosinus:=cos(Light.fDataPointer^.OuterConeAngle);
-    {LightItem^.InnerConeCosinus:=InnerConeAngleCosinus;
-     LightItem^.OuterConeCosinus:=OuterConeAngleCosinus;}
-     LightItem^.LightAngleScale:=1.0/Max(1e-5,InnerConeAngleCosinus-OuterConeAngleCosinus);
-     LightItem^.LightAngleOffset:=-(OuterConeAngleCosinus*LightItem^.LightAngleScale);
-     LightItem^.ColorIntensity:=TpvVector4.InlineableCreate(Light.fDataPointer^.fColor,Intensity);
-     LightItem^.PositionRadius:=TpvVector4.InlineableCreate(Light.fPosition,Light.fRadius);
-     LightItem^.DirectionRange:=TpvVector4.InlineableCreate(Light.fDirection,Light.fDataPointer^.fRange);
-     LightItem^.TransformMatrix:=Light.fMatrix;
-     LightMetaInfo:=@aLightMetaInfoArray[Light.fLightItemIndex];
-     LightMetaInfo^.MinBounds:=TpvVector4.Create(Light.fBoundingBox.Min,TpvUInt32(Light.fDataPointer^.Type_));
-     LightMetaInfo^.MaxBounds:=TpvVector4.Create(Light.fBoundingBox.Max,IfThen(Light.fDataPointer^.fRange<0.0,-1.0,Light.fBoundingBox.Radius));
-    end else begin
-     Light.fLightItemIndex:=-1;
+    // Scale the color to fit into the range of 16-bit floating point numbers,
+    // by halfing the value, so that the sun can be represented as 64000 "bi-lux"
+    // instead of 120000 lux.
+    Intensity:=Intensity*0.5;
+   end;}
+   if (Intensity>0.0) and (Light.fRadius>0.0) then begin
+    //Light.fLightItemIndex:=aLightItemArray.AddNewIndex;
+    LightItem:=@aLightItemArray.Items[Light.fLightItemIndex];
+    LightItem^.TypeFlagsLightProfile:=(TpvUInt32(Light.fDataPointer^.Type_) and $f);
+    if Light.fDataPointer^.fLimitDistance then begin
+     LightItem^.TypeFlagsLightProfile:=LightItem^.TypeFlagsLightProfile or (TpvUInt32(1) shl 5);
     end;
+    if assigned(Light.fDataPointer^.fLightProfileTexture) then begin
+     LightItem^.TypeFlagsLightProfile:=LightItem^.TypeFlagsLightProfile or
+                                       (TpvUInt32(1) shl 16) or
+                                       (TpvUInt32(ord(Light.fDataPointer^.fExtendedLightProfile) and 1) shl 17) or
+                                       (TpvUInt32(Light.fDataPointer^.fLightProfileTexture.fID and $3fff) shl 18);
+    end;
+    LightItem^.ShadowMapIndex:=0;
+    InnerConeAngleCosinus:=cos(Light.fDataPointer^.InnerConeAngle);
+    OuterConeAngleCosinus:=cos(Light.fDataPointer^.OuterConeAngle);
+   {LightItem^.InnerConeCosinus:=InnerConeAngleCosinus;
+    LightItem^.OuterConeCosinus:=OuterConeAngleCosinus;}
+    LightItem^.LightAngleScale:=1.0/Max(1e-5,InnerConeAngleCosinus-OuterConeAngleCosinus);
+    LightItem^.LightAngleOffset:=-(OuterConeAngleCosinus*LightItem^.LightAngleScale);
+    LightItem^.ColorIntensity:=TpvVector4.InlineableCreate(Light.fDataPointer^.fColor,Intensity);
+    LightItem^.PositionRadius:=TpvVector4.InlineableCreate(Light.fPosition,Light.fRadius);
+    LightItem^.DirectionRange:=TpvVector4.InlineableCreate(Light.fDirection,Light.fDataPointer^.fRange);
+    LightItem^.TransformMatrix:=Light.fMatrix;
+    LightMetaInfo:=@aLightMetaInfoArray[Light.fLightItemIndex];
+    LightMetaInfo^.MinBounds:=TpvVector4.Create(Light.fBoundingBox.Min,TpvUInt32(Light.fDataPointer^.Type_));
+    LightMetaInfo^.MaxBounds:=TpvVector4.Create(Light.fBoundingBox.Max,IfThen(Light.fDataPointer^.fRange<0.0,-1.0,Light.fBoundingBox.Radius));
    end else begin
     Light.fLightItemIndex:=-1;
    end;
+  end else begin
+   Light.fLightItemIndex:=-1;
   end;
-(*Stack.Initialize;
-  try
-   StackItem:=Pointer(Stack.PushIndirect);
-   StackItem^.Node:=aRoot;
-   while Stack.PopIndirect(StackItem) do begin
-    Node:=StackItem^.Node;
-    while Node>=0 do begin
-     TreeNode:=@aTreeNodes[Node];
-     if TreeNode^.UserData<>0 then begin
-      Light:=TpvScene3D.TLight(Pointer(TreeNode^.UserData));
-      if {(aLightItemArray.Count<MaxVisibleLights) and}
-         ((Light.fLightItemIndex>=0) and (Light.fLightItemIndex<MaxVisibleLights)) and
-         (Light.DataPointer^.fVisible and not Light.fIgnore) then begin
-       case Light.fDataPointer^.Type_ of
-        TpvScene3D.TLightData.TType.Directional,
-        TpvScene3D.TLightData.TType.PrimaryDirectional,
-        TpvScene3D.TLightData.TType.ViewDirectional:begin
-         // It is already in lux, nothing to do.
-         Intensity:=Light.fDataPointer^.fIntensity;
-        end;
-        TpvScene3D.TLightData.TType.Point:begin
-         // Intensity specified directly in candela, no conversion needed
-         Intensity:=Light.fDataPointer^.fIntensity;
-         // When the input value would be in lux:
-         // Intensity:=Light.fDataPointer^.fIntensity*(OneOverPI*0.25);
-        end;
-        TpvScene3D.TLightData.TType.Spot:begin
-         // Intensity specified directly in candela, no conversion needed
-         Intensity:=Light.fDataPointer^.fIntensity;
-         // When the input value would be in lux:
-         // Intensity:=Light.fDataPointer^.fIntensity*OneOverPI;
-        end;
-        else begin
-         // Turning unknown light types off in the end effect
-         Intensity:=0.0;
-        end;
-       end;
-       begin
-        Intensity:=Intensity*fLightIntensityFactor; // should included the bi-lux stuff, if needed
-       end;
-{      begin
-        // Scale the color to fit into the range of 16-bit floating point numbers,
-        // by halfing the value, so that the sun can be represented as 64000 "bi-lux"
-        // instead of 120000 lux.
-        Intensity:=Intensity*0.5;
-       end;}
-       if (Intensity>0.0) and (Light.fRadius>0.0) then begin
-        //Light.fLightItemIndex:=aLightItemArray.AddNewIndex;
-        LightItem:=@aLightItemArray.Items[Light.fLightItemIndex];
-        LightItem^.TypeFlagsLightProfile:=(TpvUInt32(Light.fDataPointer^.Type_) and $f);
-        if Light.fDataPointer^.fLimitDistance then begin
-         LightItem^.TypeFlagsLightProfile:=LightItem^.TypeFlagsLightProfile or (TpvUInt32(1) shl 5);
-        end;
-        if assigned(Light.fDataPointer^.fLightProfileTexture) then begin
-         LightItem^.TypeFlagsLightProfile:=LightItem^.TypeFlagsLightProfile or
-                                           (TpvUInt32(1) shl 16) or
-                                           (TpvUInt32(ord(Light.fDataPointer^.fExtendedLightProfile) and 1) shl 17) or
-                                           (TpvUInt32(Light.fDataPointer^.fLightProfileTexture.fID and $3fff) shl 18);
-        end;
-        LightItem^.ShadowMapIndex:=0;
-        InnerConeAngleCosinus:=cos(Light.fDataPointer^.InnerConeAngle);
-        OuterConeAngleCosinus:=cos(Light.fDataPointer^.OuterConeAngle);
-       {LightItem^.InnerConeCosinus:=InnerConeAngleCosinus;
-        LightItem^.OuterConeCosinus:=OuterConeAngleCosinus;}
-        LightItem^.LightAngleScale:=1.0/Max(1e-5,InnerConeAngleCosinus-OuterConeAngleCosinus);
-        LightItem^.LightAngleOffset:=-(OuterConeAngleCosinus*LightItem^.LightAngleScale);
-        LightItem^.ColorIntensity:=TpvVector4.InlineableCreate(Light.fDataPointer^.fColor,Intensity);
-        LightItem^.PositionRadius:=TpvVector4.InlineableCreate(Light.fPosition,Light.fRadius);
-        LightItem^.DirectionRange:=TpvVector4.InlineableCreate(Light.fDirection,Light.fDataPointer^.fRange);
-        LightItem^.TransformMatrix:=Light.fMatrix;
-        LightMetaInfo:=@aLightMetaInfoArray[Light.fLightItemIndex];
-        LightMetaInfo^.MinBounds:=TpvVector4.Create(Light.fBoundingBox.Min,TpvUInt32(Light.fDataPointer^.Type_));
-        LightMetaInfo^.MaxBounds:=TpvVector4.Create(Light.fBoundingBox.Max,IfThen(Light.fDataPointer^.fRange<0.0,-1.0,Light.fBoundingBox.Radius));
-       end else begin
-        Light.fLightItemIndex:=-1;
-       end;
-      end else begin
-       Light.fLightItemIndex:=-1;
-      end;
-     end;
-     if TreeNode^.Children[0]>=0 then begin
-      if TreeNode^.Children[1]>=0 then begin
-       StackItem:=Stack.PushIndirect;
-       StackItem^.Node:=TreeNode^.Children[1];
-      end;
-      Node:=TreeNode^.Children[0];
-      continue;
-     end else begin
-      if TreeNode^.Children[1]>=0 then begin
-       Node:=TreeNode^.Children[1];
-       continue;
-      end;
-     end;
-     break;
-    end;
-   end;
-  finally
-   Stack.Finalize;
-  end;*)
  end;
 end;
 
@@ -32042,7 +31928,7 @@ begin
    end;
 
    LightBuffer:=fLightBuffers[aInFlightFrameIndex];
-   CollectLights(LightAABBTreeState^.TreeNodes,LightAABBTreeState^.Root,LightBuffer.fLightItems,LightBuffer.fLightMetaInfos);
+   CollectLights(LightBuffer.fLightItems,LightBuffer.fLightMetaInfos);
    fLightAABBTree.GetSkipListNodes(LightBuffer.fLightTree,GetLightUserDataIndex);
    LightBuffer.fNewLightAABBTreeGeneration:=fLightAABBTreeGeneration;
 
