@@ -3516,7 +3516,7 @@ type EpvVulkanException=class(Exception);
                                         const aQueue:TpvVulkanQueue;
                                         const aCommandBuffer:TpvVulkanCommandBuffer;
                                         const aFence:TpvVulkanFence;
-                                        const aOptimal:Boolean;
+                                        const aOptimal:Boolean;                                        
                                         const aFormat:TVkFormat;
                                         const aWidth:TpvInt32;
                                         const aHeight:TpvInt32;
@@ -3524,6 +3524,19 @@ type EpvVulkanException=class(Exception);
                                         const aImageLayout:TVkImageLayout;
                                         const aAllocationGroupID:TpvUInt64=0;
                                         const aName:TpvUTF8String='');
+       constructor CreateSimple2DArrayTarget(const aDevice:TpvVulkanDevice;
+                                             const aQueue:TpvVulkanQueue;
+                                             const aCommandBuffer:TpvVulkanCommandBuffer;
+                                             const aFence:TpvVulkanFence;
+                                             const aOptimal:Boolean;
+                                             const aFormat:TVkFormat;
+                                             const aWidth:TpvInt32;
+                                             const aHeight:TpvInt32;
+                                             const aCountArrayLayers:TpvInt32;
+                                             const aUsageFlags:TpvVulkanTextureUsageFlags;
+                                             const aImageLayout:TVkImageLayout;
+                                             const aAllocationGroupID:TpvUInt64=0;
+                                             const aName:TpvUTF8String='');
        constructor CreateFromMemory(const aDevice:TpvVulkanDevice;
                                     const aGraphicsQueue:TpvVulkanQueue;
                                     const aGraphicsCommandBuffer:TpvVulkanCommandBuffer;
@@ -24539,6 +24552,190 @@ begin
                                           1,
                                           0,
                                           1);
+     aDevice.DebugUtils.SetObjectName(fImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,aName+'.fVulkanImageView');
+
+   finally
+    FreeAndNil(Fence);
+   end;
+
+  finally
+   FreeAndNil(CommandBuffer);
+  end;
+
+ finally
+  FreeAndNil(CommandPool);
+ end;
+
+end;
+
+constructor TpvVulkanTexture.CreateSimple2DArrayTarget(const aDevice:TpvVulkanDevice;
+                                                       const aQueue:TpvVulkanQueue;
+                                                       const aCommandBuffer:TpvVulkanCommandBuffer;
+                                                       const aFence:TpvVulkanFence;
+                                                       const aOptimal:Boolean;
+                                                       const aFormat:TVkFormat;
+                                                       const aWidth:TpvInt32;
+                                                       const aHeight:TpvInt32;
+                                                       const aCountArrayLayers:TpvInt32;
+                                                       const aUsageFlags:TpvVulkanTextureUsageFlags;
+                                                       const aImageLayout:TVkImageLayout;
+                                                       const aAllocationGroupID:TpvUInt64=0;
+                                                       const aName:TpvUTF8String='');
+var MemoryRequirements:TVkMemoryRequirements;
+    RequiresDedicatedAllocation,
+    PrefersDedicatedAllocation:boolean;
+    MemoryBlockFlags:TpvVulkanDeviceMemoryBlockFlags;
+    ImageSubresourceRange:TVkImageSubresourceRange;
+    Queue:TpvVulkanQueue;
+    CommandPool:TpvVulkanCommandPool;
+    CommandBuffer:TpvVulkanCommandBuffer;
+    Fence:TpvVulkanFence;
+    ImageViewType:TVkImageViewType;
+    ImageAspectMask:TVkImageAspectFlags;
+    Usage:TVkImageUsageFlags;
+begin
+
+ Create(aDevice,false,aName);
+
+ fWidth:=aWidth;
+
+ fHeight:=aHeight;
+
+ fFormat:=aFormat;
+
+ fImageLayout:=aImageLayout;
+
+ case aFormat of
+  VK_FORMAT_D16_UNORM,
+  VK_FORMAT_D16_UNORM_S8_UINT,
+  VK_FORMAT_D24_UNORM_S8_UINT,
+  VK_FORMAT_D32_SFLOAT,
+  VK_FORMAT_D32_SFLOAT_S8_UINT:begin
+   ImageAspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_DEPTH_BIT);
+  end;
+  else begin
+   ImageAspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
+  end;
+ end;
+
+ ImageViewType:=TVkImageViewType(VK_IMAGE_VIEW_TYPE_2D);
+
+ fUsageFlags:=aUsageFlags;
+
+ Usage:=0;
+ if (TpvVulkanTextureUsageFlag.TransferDst in fUsageFlags) then begin
+  Usage:=Usage or TVkImageUsageFlags(VK_IMAGE_USAGE_TRANSFER_DST_BIT);
+ end;
+ if (TpvVulkanTextureUsageFlag.TransferSrc in fUsageFlags) then begin
+  Usage:=Usage or TVkImageUsageFlags(VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
+ end;
+ if TpvVulkanTextureUsageFlag.Sampled in fUsageFlags then begin
+  Usage:=Usage or TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT);
+ end;
+ if TpvVulkanTextureUsageFlag.ColorAttachment in fUsageFlags then begin
+  Usage:=Usage or TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
+ end;
+ if TpvVulkanTextureUsageFlag.Storage in fUsageFlags then begin
+  Usage:=Usage or TVkImageUsageFlags(VK_IMAGE_USAGE_STORAGE_BIT);
+ end;
+
+ fImage:=TpvVulkanImage.Create(aDevice,
+                               0, //TVkImageCreateFlags(VK_IMAGE_CREATE_3D_ARRAY_COMPATIBLE_BIT),
+                               VK_IMAGE_TYPE_2D,
+                               aFormat,
+                               aWidth,
+                               aHeight,
+                               1,
+                               1,
+                               aCountArrayLayers,
+                               VK_SAMPLE_COUNT_1_BIT,
+                               TVkImageTiling(IfThen(aOptimal,TpvUInt32(VK_IMAGE_TILING_OPTIMAL),TpvUInt32(VK_IMAGE_TILING_LINEAR))),
+                               Usage,
+                               VK_SHARING_MODE_EXCLUSIVE,
+                               0,
+                               nil,
+                               VK_IMAGE_LAYOUT_UNDEFINED
+                              );
+ aDevice.DebugUtils.SetObjectName(fImage.Handle,VK_OBJECT_TYPE_IMAGE,aName+'.fImage');
+
+ MemoryRequirements:=aDevice.MemoryManager.GetImageMemoryRequirements(fImage.Handle,
+                                                                      RequiresDedicatedAllocation,
+                                                                      PrefersDedicatedAllocation);
+
+ MemoryBlockFlags:=[];
+
+ if RequiresDedicatedAllocation or PrefersDedicatedAllocation then begin
+  Include(MemoryBlockFlags,TpvVulkanDeviceMemoryBlockFlag.DedicatedAllocation);
+ end;
+
+ fMemoryBlock:=aDevice.MemoryManager.AllocateMemoryBlock(MemoryBlockFlags,
+                                                         MemoryRequirements.size,
+                                                         MemoryRequirements.alignment,
+                                                         MemoryRequirements.memoryTypeBits,
+                                                         TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                         0,
+                                                         0,
+                                                         0,
+                                                         0,
+                                                         0,
+                                                         0,
+                                                         0,
+                                                         TpvVulkanDeviceMemoryAllocationType.ImageOptimal,
+                                                         @fImage.Handle,
+                                                         aAllocationGroupID,
+                                                         aName+'.fMemoryBlock');
+ if not assigned(fMemoryBlock) then begin
+  raise EpvVulkanMemoryAllocationException.Create('Memory for texture couldn''t be allocated!');
+ end;
+
+ fMemoryBlock.AssociatedObject:=self;
+
+ VulkanCheckResult(aDevice.Commands.BindImageMemory(aDevice.Handle,
+                                                    fImage.Handle,
+                                                    fMemoryBlock.MemoryChunk.Handle,
+                                                    fMemoryBlock.Offset));
+
+ Queue:=aDevice.GraphicsQueue;
+
+ CommandPool:=TpvVulkanCommandPool.Create(aDevice,
+                                          aDevice.GraphicsQueueFamilyIndex,
+                                          TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
+ try
+
+  CommandBuffer:=TpvVulkanCommandBuffer.Create(CommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+  try
+
+   Fence:=TpvVulkanFence.Create(aDevice);
+   try
+
+    FillChar(ImageSubresourceRange,SizeOf(TVkImageSubresourceRange),#0);
+    ImageSubresourceRange.aspectMask:=ImageAspectMask;
+    ImageSubresourceRange.baseMipLevel:=0;
+    ImageSubresourceRange.levelCount:=1;
+    ImageSubresourceRange.baseArrayLayer:=0;
+    ImageSubresourceRange.layerCount:=aCountArrayLayers;
+    fImage.SetLayout(ImageAspectMask,
+                     TVkImageLayout(VK_IMAGE_LAYOUT_UNDEFINED),
+                     aImageLayout,
+                     @ImageSubresourceRange,
+                     CommandBuffer,
+                     Queue,
+                     Fence,
+                     true);
+
+    fImageView:=TpvVulkanImageView.Create(aDevice,
+                                          fImage,
+                                          ImageViewType,
+                                          aFormat,
+                                          TVkComponentSwizzle(VK_COMPONENT_SWIZZLE_IDENTITY),
+                                          TVkComponentSwizzle(VK_COMPONENT_SWIZZLE_IDENTITY),
+                                          TVkComponentSwizzle(VK_COMPONENT_SWIZZLE_IDENTITY),
+                                          TVkComponentSwizzle(VK_COMPONENT_SWIZZLE_IDENTITY),
+                                          ImageAspectMask,
+                                          0,
+                                          1,
+                                          0,
+                                          aCountArrayLayers);
      aDevice.DebugUtils.SetObjectName(fImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,aName+'.fVulkanImageView');
 
    finally
