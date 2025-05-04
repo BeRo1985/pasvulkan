@@ -428,6 +428,7 @@ type TpvScene3DPlanets=class;
               property NormalMapImage:TpvScene3DRendererMipmapImage2D read fNormalMapImage;
               property BlendMapImage:TpvScene3DRendererArray2DImage read fBlendMapImage;
               property GrassMapImage:TpvScene3DRendererImage2D read fGrassMapImage;
+              property WaterHeightMapImage:TpvScene3DRendererImage2D read fWaterHeightMapImage;
               property TileLODMapBuffer:TpvVulkanBuffer read fTileLODMapBuffer;
               property TileDirtyMapBuffer:TpvVulkanBuffer read fTileDirtyMapBuffer;
               property TileExpandedDirtyMapBuffer:TpvVulkanBuffer read fTileExpandedDirtyMapBuffer;
