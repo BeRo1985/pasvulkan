@@ -3518,6 +3518,7 @@ type EpvVulkanException=class(Exception);
                                         const aFence:TpvVulkanFence;
                                         const aOptimal:Boolean;                                        
                                         const aFormat:TVkFormat;
+                                        const aSRGBFormat:TVkFormat;
                                         const aWidth:TpvInt32;
                                         const aHeight:TpvInt32;
                                         const aUsageFlags:TpvVulkanTextureUsageFlags;
@@ -3530,6 +3531,7 @@ type EpvVulkanException=class(Exception);
                                              const aFence:TpvVulkanFence;
                                              const aOptimal:Boolean;
                                              const aFormat:TVkFormat;
+                                             const aSRGBFormat:TVkFormat;
                                              const aWidth:TpvInt32;
                                              const aHeight:TpvInt32;
                                              const aCountArrayLayers:TpvInt32;
@@ -24391,6 +24393,7 @@ constructor TpvVulkanTexture.CreateSimple2DTarget(const aDevice:TpvVulkanDevice;
                                                   const aFence:TpvVulkanFence;
                                                   const aOptimal:Boolean;
                                                   const aFormat:TVkFormat;
+                                                  const aSRGBFormat:TVkFormat;
                                                   const aWidth:TpvInt32;
                                                   const aHeight:TpvInt32;
                                                   const aUsageFlags:TpvVulkanTextureUsageFlags;
@@ -24418,6 +24421,10 @@ begin
  fHeight:=aHeight;
 
  fFormat:=aFormat;
+
+ fSRGBFormat:=aSRGBFormat;
+
+ fAdditionalSRGB:=(aSRGBFormat=VK_FORMAT_R8G8B8A8_SRGB) or (aSRGBFormat=VK_FORMAT_B8G8R8A8_SRGB);
 
  fImageLayout:=aImageLayout;
 
@@ -24470,7 +24477,8 @@ begin
                                VK_SHARING_MODE_EXCLUSIVE,
                                0,
                                nil,
-                               VK_IMAGE_LAYOUT_UNDEFINED
+                               VK_IMAGE_LAYOUT_UNDEFINED,
+                               aSRGBFormat
                               );
  aDevice.DebugUtils.SetObjectName(fImage.Handle,VK_OBJECT_TYPE_IMAGE,aName+'.fImage');
 
@@ -24552,7 +24560,26 @@ begin
                                           1,
                                           0,
                                           1);
-     aDevice.DebugUtils.SetObjectName(fImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,aName+'.fVulkanImageView');
+    aDevice.DebugUtils.SetObjectName(fImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,aName+'.fVulkanImageView');
+
+    if aSRGBFormat<>VK_FORMAT_UNDEFINED then begin
+     fSRGBImageView:=TpvVulkanImageView.Create(aDevice,
+                                               fImage,
+                                               ImageViewType,
+                                               aSRGBFormat,
+                                               TVkComponentSwizzle(VK_COMPONENT_SWIZZLE_IDENTITY),
+                                               TVkComponentSwizzle(VK_COMPONENT_SWIZZLE_IDENTITY),
+                                               TVkComponentSwizzle(VK_COMPONENT_SWIZZLE_IDENTITY),
+                                               TVkComponentSwizzle(VK_COMPONENT_SWIZZLE_IDENTITY),
+                                               ImageAspectMask,
+                                               0,
+                                               1,
+                                               0,
+                                               1);
+     aDevice.DebugUtils.SetObjectName(fSRGBImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,aName+'.fVulkanSTGBImageView');
+    end else begin
+     fSRGBImageView:=nil;
+    end;
 
    finally
     FreeAndNil(Fence);
@@ -24574,6 +24601,7 @@ constructor TpvVulkanTexture.CreateSimple2DArrayTarget(const aDevice:TpvVulkanDe
                                                        const aFence:TpvVulkanFence;
                                                        const aOptimal:Boolean;
                                                        const aFormat:TVkFormat;
+                                                       const aSRGBFormat:TVkFormat;
                                                        const aWidth:TpvInt32;
                                                        const aHeight:TpvInt32;
                                                        const aCountArrayLayers:TpvInt32;
@@ -24602,6 +24630,10 @@ begin
  fHeight:=aHeight;
 
  fFormat:=aFormat;
+
+ fSRGBFormat:=aSRGBFormat;
+
+ fAdditionalSRGB:=(aSRGBFormat=VK_FORMAT_R8G8B8A8_SRGB) or (aSRGBFormat=VK_FORMAT_B8G8R8A8_SRGB);
 
  fImageLayout:=aImageLayout;
 
@@ -24654,7 +24686,8 @@ begin
                                VK_SHARING_MODE_EXCLUSIVE,
                                0,
                                nil,
-                               VK_IMAGE_LAYOUT_UNDEFINED
+                               VK_IMAGE_LAYOUT_UNDEFINED,
+                               aSRGBFormat
                               );
  aDevice.DebugUtils.SetObjectName(fImage.Handle,VK_OBJECT_TYPE_IMAGE,aName+'.fImage');
 
@@ -24736,7 +24769,26 @@ begin
                                           1,
                                           0,
                                           aCountArrayLayers);
-     aDevice.DebugUtils.SetObjectName(fImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,aName+'.fVulkanImageView');
+    aDevice.DebugUtils.SetObjectName(fImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,aName+'.fVulkanImageView');
+
+    if aSRGBFormat<>VK_FORMAT_UNDEFINED then begin
+     fSRGBImageView:=TpvVulkanImageView.Create(aDevice,
+                                               fImage,
+                                               ImageViewType,
+                                               aSRGBFormat,
+                                               TVkComponentSwizzle(VK_COMPONENT_SWIZZLE_IDENTITY),
+                                               TVkComponentSwizzle(VK_COMPONENT_SWIZZLE_IDENTITY),
+                                               TVkComponentSwizzle(VK_COMPONENT_SWIZZLE_IDENTITY),
+                                               TVkComponentSwizzle(VK_COMPONENT_SWIZZLE_IDENTITY),
+                                               ImageAspectMask,
+                                               0,
+                                               1,
+                                               0,
+                                               aCountArrayLayers);
+     aDevice.DebugUtils.SetObjectName(fSRGBImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,aName+'.fVulkanSTGBImageView');
+    end else begin
+     fSRGBImageView:=nil;
+    end;
 
    finally
     FreeAndNil(Fence);
