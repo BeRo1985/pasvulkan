@@ -24618,7 +24618,7 @@ begin
   end;
  end;
 
- ImageViewType:=TVkImageViewType(VK_IMAGE_VIEW_TYPE_2D);
+ ImageViewType:=TVkImageViewType(VK_IMAGE_VIEW_TYPE_2D_ARRAY);
 
  fUsageFlags:=aUsageFlags;
 
