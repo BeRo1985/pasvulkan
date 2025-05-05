@@ -438,6 +438,15 @@ type { TpvScene3DRendererInstance }
               constructor Create(const aFrameGraph:TpvFrameGraph;const aRendererInstance:TpvScene3DRendererInstance;const aParent:TObject); reintroduce; virtual;
             end;
             THUDCustomPassClass=class of THUDCustomPass;
+            { THUDComputePass }
+            THUDComputePass=class(TpvFrameGraph.TComputePass)
+             protected
+              fRendererInstance:TpvScene3DRendererInstance;
+              fParent:TObject;
+             public
+              constructor Create(const aFrameGraph:TpvFrameGraph;const aRendererInstance:TpvScene3DRendererInstance;const aParent:TObject); reintroduce; virtual;
+            end;
+            THUDComputePassClass=class of THUDComputePass;
             { THUDRenderPass }
             THUDRenderPass=class(TpvFrameGraph.TRenderPass)
              protected
@@ -736,6 +745,8 @@ type { TpvScene3DRendererInstance }
        fHUDSize:TpvFrameGraph.TImageSize;
        fHUDCustomPassClass:THUDCustomPassClass;
        fHUDCustomPassParent:TObject;
+       fHUDComputePassClass:THUDComputePassClass;
+       fHUDComputePassParent:TObject;
        fHUDRenderPassClass:THUDRenderPassClass;
        fHUDRenderPassParent:TObject;
       private
@@ -997,6 +1008,8 @@ type { TpvScene3DRendererInstance }
        property HUDSize:TpvFrameGraph.TImageSize read fHUDSize;
        property HUDCustomPassClass:THUDCustomPassClass read fHUDCustomPassClass write fHUDCustomPassClass;
        property HUDCustomPassParent:TObject read fHUDCustomPassParent write fHUDCustomPassParent;
+       property HUDComputePassClass:THUDComputePassClass read fHUDComputePassClass write fHUDComputePassClass;
+       property HUDComputePassParent:TObject read fHUDComputePassParent write fHUDComputePassParent;
        property HUDRenderPassClass:THUDRenderPassClass read fHUDRenderPassClass write fHUDRenderPassClass;
        property HUDRenderPassParent:TObject read fHUDRenderPassParent write fHUDRenderPassParent;
       public
@@ -1296,6 +1309,7 @@ type TpvScene3DRendererInstancePasses=class
        fCanvasComputePass:TpvScene3DRendererPassesCanvasComputePass;
        fCanvasRenderPass:TpvScene3DRendererPassesCanvasRenderPass;
        fHUDCustomPass:TpvScene3DRendererInstance.THUDCustomPass;
+       fHUDComputePass:TpvScene3DRendererInstance.THUDComputePass;
        fHUDRenderPass:TpvScene3DRendererInstance.THUDRenderPass;
        fHUDMipMapCustomPass:TpvScene3DRendererPassesHUDMipMapCustomPass;
        fContentProjectionRenderPass:TpvScene3DRendererPassesContentProjectionRenderPass;
@@ -1781,6 +1795,15 @@ begin
  fParent:=aParent;
 end;
 
+{ TpvScene3DRendererInstance.THUDComputePass }
+
+constructor TpvScene3DRendererInstance.THUDComputePass.Create(const aFrameGraph:TpvFrameGraph;const aRendererInstance:TpvScene3DRendererInstance;const aParent:TObject);
+begin
+ inherited Create(aFrameGraph);
+ fRendererInstance:=aRendererInstance;
+ fParent:=aParent;
+end;
+
 { TpvScene3DRendererInstance.THUDRenderPass }
 
 constructor TpvScene3DRendererInstance.THUDRenderPass.Create(const aFrameGraph:TpvFrameGraph;const aRendererInstance:TpvScene3DRendererInstance;const aParent:TObject);
@@ -1872,6 +1895,10 @@ begin
  fHUDCustomPassClass:=nil;
 
  fHUDCustomPassParent:=nil;
+
+ fHUDComputePassClass:=nil;
+
+ fHUDComputePassParent:=nil;
 
  fHUDRenderPassClass:=nil;
 
@@ -4395,13 +4422,24 @@ begin
   TpvScene3DRendererInstancePasses(fPasses).fHUDCustomPass:=nil;
  end;
 
+ if assigned(fHUDComputePassClass) then begin
+  TpvScene3DRendererInstancePasses(fPasses).fHUDComputePass:=fHUDComputePassClass.Create(fFrameGraph,self,fHUDComputePassParent);
+  TpvScene3DRendererInstancePasses(fPasses).fHUDComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fTonemappingRenderPass);
+  TpvScene3DRendererInstancePasses(fPasses).fHUDComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fCanvasRenderPass);
+ end else begin
+  TpvScene3DRendererInstancePasses(fPasses).fHUDComputePass:=nil;
+ end;
+
  if assigned(fHUDRenderPassClass) then begin
   TpvScene3DRendererInstancePasses(fPasses).fHUDRenderPass:=fHUDRenderPassClass.Create(fFrameGraph,self,fHUDRenderPassParent);
-  TpvScene3DRendererInstancePasses(fPasses).fHUDRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fTonemappingRenderPass);
-  TpvScene3DRendererInstancePasses(fPasses).fHUDRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fCanvasRenderPass);
   if assigned(TpvScene3DRendererInstancePasses(fPasses).fHUDCustomPass) then begin
    TpvScene3DRendererInstancePasses(fPasses).fHUDRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fHUDCustomPass);
   end;
+  if assigned(TpvScene3DRendererInstancePasses(fPasses).fHUDComputePass) then begin
+   TpvScene3DRendererInstancePasses(fPasses).fHUDRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fHUDComputePass);
+  end;
+  TpvScene3DRendererInstancePasses(fPasses).fHUDRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fTonemappingRenderPass);
+  TpvScene3DRendererInstancePasses(fPasses).fHUDRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fCanvasRenderPass);
 
   TpvScene3DRendererInstancePasses(fPasses).fHUDMipMapCustomPass:=TpvScene3DRendererPassesHUDMipMapCustomPass.Create(fFrameGraph,self);
   TpvScene3DRendererInstancePasses(fPasses).fHUDMipMapCustomPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fHUDRenderPass);
@@ -4425,6 +4463,9 @@ begin
   if assigned(TpvScene3DRendererInstancePasses(fPasses).fHUDCustomPass) then begin
    TpvScene3DRendererInstancePasses(fPasses).fDebugBlitRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fHUDCustomPass);
   end;
+  if assigned(TpvScene3DRendererInstancePasses(fPasses).fHUDComputePass) then begin
+   TpvScene3DRendererInstancePasses(fPasses).fDebugBlitRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fHUDComputePass);
+  end;
   if assigned(fHUDRenderPassClass) then begin
    TpvScene3DRendererInstancePasses(fPasses).fDebugBlitRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fHUDRenderPass);
    TpvScene3DRendererInstancePasses(fPasses).fDebugBlitRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fContentProjectionRenderPass);
@@ -4438,6 +4479,9 @@ begin
  TpvScene3DRendererInstancePasses(fPasses).fFrameBufferBlitRenderPass:=TpvScene3DRendererPassesFrameBufferBlitRenderPass.Create(fFrameGraph,self,true);
  if assigned(TpvScene3DRendererInstancePasses(fPasses).fHUDCustomPass) then begin
   TpvScene3DRendererInstancePasses(fPasses).fFrameBufferBlitRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fHUDCustomPass);
+ end;
+ if assigned(TpvScene3DRendererInstancePasses(fPasses).fHUDComputePass) then begin
+  TpvScene3DRendererInstancePasses(fPasses).fFrameBufferBlitRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fHUDComputePass);
  end;
  if assigned(fHUDRenderPassClass) then begin
   TpvScene3DRendererInstancePasses(fPasses).fFrameBufferBlitRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fHUDRenderPass);
