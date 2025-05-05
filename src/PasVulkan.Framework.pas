@@ -24463,7 +24463,7 @@ begin
  end;
 
  fImage:=TpvVulkanImage.Create(aDevice,
-                               0, //TVkImageCreateFlags(VK_IMAGE_CREATE_3D_ARRAY_COMPATIBLE_BIT),
+                               IfThen(aSRGBFormat<>VK_FORMAT_UNDEFINED,TVkImageCreateFlags(VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT),0),
                                VK_IMAGE_TYPE_2D,
                                aFormat,
                                aWidth,
@@ -24672,7 +24672,7 @@ begin
  end;
 
  fImage:=TpvVulkanImage.Create(aDevice,
-                               0, //TVkImageCreateFlags(VK_IMAGE_CREATE_3D_ARRAY_COMPATIBLE_BIT),
+                               IfThen(aSRGBFormat<>VK_FORMAT_UNDEFINED,TVkImageCreateFlags(VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT),0),
                                VK_IMAGE_TYPE_2D,
                                aFormat,
                                aWidth,
