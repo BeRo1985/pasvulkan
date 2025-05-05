@@ -24422,6 +24422,8 @@ begin
 
  fFormat:=aFormat;
 
+ fCountArrayLayers:=1;
+
  fSRGBFormat:=aSRGBFormat;
 
  fAdditionalSRGB:=(aSRGBFormat=VK_FORMAT_R8G8B8A8_SRGB) or (aSRGBFormat=VK_FORMAT_B8G8R8A8_SRGB);
@@ -24630,6 +24632,8 @@ begin
  fHeight:=aHeight;
 
  fFormat:=aFormat;
+
+ fCountArrayLayers:=aCountArrayLayers;
 
  fSRGBFormat:=aSRGBFormat;
 
