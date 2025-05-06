@@ -3869,7 +3869,7 @@ type EpvVulkanException=class(Exception);
        property SRGBImageView:TpvVulkanImageView read fSRGBImageView write fSRGBImageView;
        property ImageViewType:TVkImageViewType read fImageViewType;
        property Sampler:TpvVulkanSampler read fSampler write SetSampler;
-       property ExternalSampler:Boolean read fExternalSampler;
+       property ExternalSampler:Boolean read fExternalSampler write fExternalSampler;
        property MemoryBlock:TpvVulkanDeviceMemoryBlock read fMemoryBlock;
        property Width:TpvInt32 read fWidth write fWidth;
        property Height:TpvInt32 read fHeight write fHeight;
