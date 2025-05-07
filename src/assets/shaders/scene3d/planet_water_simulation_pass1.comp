@@ -140,7 +140,7 @@ void main(){
       float totalOutFlow;
 
       // Check that the wrapped coordinates are unique
-      if(any(equal(neighbours.xxx, neighbours.yzw)) || any(equal(neighbours.yyy, neighbours.xzw)) || any(equal(neighbours.zzz, neighbours.xyw))){
+      if(any(equal(neighbours.xxx, neighbours.yzw)) || any(equal(neighbours.yyy, neighbours.xzw)) || any(equal(neighbours.zzz, neighbours.xyw)) || any(equal(uvec4(sharedWrappedCoordinateIndices[gl_LocalInvocationID.y][gl_LocalInvocationID.x]), neighbours))){
 
         // If the wrapped coordinates are not unique, we need to check for duplicates and use each one only once
         // This is a bit tricky, but we can use the fact that the sharedFlowMapValues array is 2D and we can check for duplicates
@@ -159,7 +159,7 @@ void main(){
 
         // Check for duplicates and use each one only once
         // We can use a simple loop to check for duplicates and use each one only once
-        uvec4 uniqueCoordinateIndices = uvec4(0xffffffffu); 
+        uvec4 uniqueCoordinateIndices = uvec4(sharedWrappedCoordinateIndices[gl_LocalInvocationID.y][gl_LocalInvocationID.x]); 
         for(int i = 0, count = 0; i < 4; i++){
           if(!any(equal(uvec4(neighbours[i]), uniqueCoordinateIndices))){
             uniqueCoordinateIndices[count] = neighbours[i];
