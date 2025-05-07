@@ -67,7 +67,7 @@ ivec2 wrapOctahedralTexelCoordinatesForGrass(const in ivec2 texel, const in ivec
 }
 
 ivec2 wrapOctahedralTexelCoordinatesForWater(const in ivec2 texel, const in ivec2 texSize) {  
-  ivec2 t = wrapOctahedralTexelCoordinates(texel, texSize, 2);
+  ivec2 t = wrapOctahedralTexelCoordinates(texel, texSize, 1);
 /*if((t.x != texSize.x) && (t.y != texSize.y)){
     // Handle singularities
     if(t.x == 0){

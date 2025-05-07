@@ -73,12 +73,10 @@ layout(set = 0, binding = 4, std430) readonly buffer WaterMaxHeightDifference {
 #include "octahedral.glsl"
 #include "octahedralmap.glsl"
 
-#include "floatint.glsl"
-
 vec2 texelSize = 1.0 / vec2(pushConstants.waterHeightMapResolution);
 
-uint getIndex(uvec2 position, ivec2 offset){
-  const ivec2 intPosition = wrapOctahedralTexelCoordinatesForWater(ivec2(position) + offset, ivec2(pushConstants.waterHeightMapResolution));  
+uint getIndex(ivec2 position){
+  const ivec2 intPosition = wrapOctahedralTexelCoordinatesForWater(ivec2(position), ivec2(pushConstants.waterHeightMapResolution));  
   return (intPosition.y * pushConstants.waterHeightMapResolution) + intPosition.x;
 }
 
@@ -105,6 +103,9 @@ vec2 readHeight(ivec2 p){
 
 shared vec2 sharedHeights[WORKGROUP_SIZE + 2][WORKGROUP_SIZE + 2]; // WORKGROUP_SIZE x WORKGROUP_SIZE + 1x1 for the border on each side for the 3x3 kernel
 
+shared uint sharedWrappedCoordinateIndices[WORKGROUP_SIZE + 2][WORKGROUP_SIZE + 2];
+
+
 void main(){
 
   // Load all heights for the 3x3 kernel for the current thread, including the border, when it's not the first frame.
@@ -119,6 +120,7 @@ void main(){
           
     for(int i = threadID; i < totalElements; i += 256){
       ivec2 t = ivec2(i % dimension, i / dimension);
+      sharedWrappedCoordinateIndices[t.y][t.x] = getIndex(tileOrigin + t);
       sharedHeights[t.y][t.x] = readHeight(tileOrigin + t);
     }
 
@@ -148,13 +150,55 @@ void main(){
      
       const vec4 oldFlow = vec4(waterFlowMap.values[index]);
 
-      const vec4 heightDifferences = vec4(dot(centerHeight, vec2(1.0))) - 
-                                     vec4(
-                                       dot(sharedHeights[gl_LocalInvocationID.y + 1][gl_LocalInvocationID.x + 2], vec2(1.0)), // ivec2( 1,  0)
-                                       dot(sharedHeights[gl_LocalInvocationID.y + 2][gl_LocalInvocationID.x + 1], vec2(1.0)), // ivec2( 0,  1)
-                                       dot(sharedHeights[gl_LocalInvocationID.y + 1][gl_LocalInvocationID.x + 0], vec2(1.0)), // ivec2(-1,  0)
-                                       dot(sharedHeights[gl_LocalInvocationID.y + 0][gl_LocalInvocationID.x + 1], vec2(1.0))  // ivec2( 0, -1)
-                                     ); 
+      uvec4 neighbours = uvec4(
+        sharedWrappedCoordinateIndices[gl_LocalInvocationID.y + 1][gl_LocalInvocationID.x + 2], // ivec2( 1,  0)
+        sharedWrappedCoordinateIndices[gl_LocalInvocationID.y + 2][gl_LocalInvocationID.x + 1], // ivec2( 0,  1)
+        sharedWrappedCoordinateIndices[gl_LocalInvocationID.y + 1][gl_LocalInvocationID.x + 0], // ivec2(-1,  0)
+        sharedWrappedCoordinateIndices[gl_LocalInvocationID.y + 0][gl_LocalInvocationID.x + 1]  // ivec2( 0, -1)
+      );
+
+      vec4 heightDifferences;
+
+      // Check that the wrapped coordinates are unique
+      if(any(equal(neighbours.xxx, neighbours.yzw)) || any(equal(neighbours.yyy, neighbours.xzw)) || any(equal(neighbours.zzz, neighbours.xyw))){
+
+        // If the wrapped coordinates are not unique, we need to check for duplicates and use each one only once
+        // This is a bit tricky, but we can use the fact that the sharedHeights array is 2D and we can check for duplicates
+        // Check for duplicates and use each one only once
+
+        vec2 values[4] = vec2[4](
+          sharedHeights[gl_LocalInvocationID.y + 1][gl_LocalInvocationID.x + 2], // ivec2( 1,  0)
+          sharedHeights[gl_LocalInvocationID.y + 2][gl_LocalInvocationID.x + 1], // ivec2( 0,  1)
+          sharedHeights[gl_LocalInvocationID.y + 1][gl_LocalInvocationID.x + 0], // ivec2(-1,  0)
+          sharedHeights[gl_LocalInvocationID.y + 0][gl_LocalInvocationID.x + 1]  // ivec2( 0, -1)
+        );
+      
+        heightDifferences = vec4(0.0);
+
+        // Check for duplicates and use each one only once
+        // We can use a simple loop to check for duplicates and use each one only once
+        uvec4 uniqueCoordinateIndices = uvec4(0xffffffffu); 
+        for(int i = 0, count = 0; i < 4; i++){
+          if(!any(equal(uvec4(neighbours[i]), uniqueCoordinateIndices))){
+            uniqueCoordinateIndices[count] = neighbours[i];
+            heightDifferences[count] = dot(centerHeight, vec2(1.0)) - dot(values[i], vec2(1.0));
+            count++;
+          }
+        }
+
+      }else{
+
+        // If they are unique, we can use them to calculate the height differences directly for faster performance.
+
+        heightDifferences = vec4(dot(centerHeight, vec2(1.0))) - 
+                            vec4(
+                              dot(sharedHeights[gl_LocalInvocationID.y + 1][gl_LocalInvocationID.x + 2], vec2(1.0)), // ivec2( 1,  0)
+                              dot(sharedHeights[gl_LocalInvocationID.y + 2][gl_LocalInvocationID.x + 1], vec2(1.0)), // ivec2( 0,  1)
+                              dot(sharedHeights[gl_LocalInvocationID.y + 1][gl_LocalInvocationID.x + 0], vec2(1.0)), // ivec2(-1,  0)
+                              dot(sharedHeights[gl_LocalInvocationID.y + 0][gl_LocalInvocationID.x + 1], vec2(1.0))  // ivec2( 0, -1)
+                            ); 
+
+      }
 
       const vec4 newFlow = max(vec4(0.0), heightDifferences * pushConstants.crossSectionalPipeArea * pushConstants.gravity * pushConstants.compensationFactor * pushConstants.deltaTime);
 
