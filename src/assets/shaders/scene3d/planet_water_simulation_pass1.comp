@@ -86,7 +86,6 @@ shared uint sharedWrappedCoordinateIndices[WORKGROUP_SIZE + 2][WORKGROUP_SIZE + 
 
 shared float sharedHeightDifferences[WORKGROUP_SIZE * WORKGROUP_SIZE];
 
-
 void main(){
 
   if(pushConstants.frameIndex != 0){
