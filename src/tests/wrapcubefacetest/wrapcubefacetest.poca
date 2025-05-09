@@ -167,6 +167,14 @@ function wrapCubeFace(f, x, y, dx, dy, a, faceSize){
         }
         break;
       } 
+
+      default:{
+        // This should never happen
+        x = (((x % faceSize) + faceSize) % faceSize);
+        y = (((y % faceSize) + faceSize) % faceSize);
+        break;
+      }
+
     }
 
   }
