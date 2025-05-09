@@ -152,7 +152,7 @@ function wrapCubeFace(f, x, y, dx, dy, a, faceSize){
           x -= faceSize;
         }else if(y < 0){ // Y+ - moved off the top of Z- → onto Y+’s bottom edge (flipped)
           f = FACE_POS_Y;
-          x = faceSize - (x + 1);
+          x = faceSize - (ox + 1);
           y = -(oy + 1);
           dx = -odx;
           dy = -ody;
