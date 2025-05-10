@@ -37,7 +37,7 @@ layout(set = 2, binding = 1, std430) readonly buffer PlanetData
 
   vec4 bottomRadiusTopRadiusHeightMapScale; // x = bottomRadius, y = topRadius, z = heightMapScale, w = unused
 
-  uvec4 flagsResolutions; // x = flags, y = resolution (2x 16-bit: tile map resolution, tile resolution)
+  uvec4 flagsResolutions; // x = flags, y = resolution (2x 16-bit: tile map resolution, tile resolution), z = WaterMapResolution
 
   uvec4 verticesIndices; // xy = vertices device address, zw = indices device address
 

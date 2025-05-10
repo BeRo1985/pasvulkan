@@ -36,6 +36,12 @@ layout(location = 0) out OutBlock {
 #include "globaldescriptorset.glsl"
 #undef PLANETS
 
+layout(set = 3, binding = 2) buffer WaterHeightMapBuffer {
+  float values[];
+} uWaterHeightMap;
+
+#define HaveWaterHeightMapBuffer
+
 #define PLANET_WATER
 #include "planet_renderpass.glsl"
   
@@ -93,7 +99,7 @@ void main(){
                            0xffffffffu; 
   const bool underWater = (maskedFlags & (1u << 0u)) != 0u;
   const bool isVisible = (anyFlags & (1u << 1u)) != 0u;
-  const bool isWaterVisible = (anyFlags & (1u << 2u)) != 0u;
+  const bool isWaterVisible = true; //(anyFlags & (1u << 2u)) != 0u;
   const bool aboveGround = true;//(anyFlags & (1u << 3u)) != 0u; // Not used, since the vertex shader has a too roughly map processing resolution to determine this correctly in every case.   
   bool visible = isVisible && isWaterVisible && aboveGround && !underWater;
   if(visible){

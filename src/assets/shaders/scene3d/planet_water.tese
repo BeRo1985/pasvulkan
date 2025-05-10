@@ -73,6 +73,12 @@ layout(set = 1, binding = 0, std140) uniform uboViews {
 layout(set = 2, binding = 0) uniform sampler2D uPlanetTextures[]; // 0 = height map, 1 = normal map, 2 = tangent bitangent map
 layout(set = 2, binding = 0) uniform sampler2DArray uPlanetArrayTextures[];  // 0 = height map, 1 = normal map, 2 = tangent bitangent map
 
+layout(set = 3, binding = 2) buffer WaterHeightMapBuffer {
+  float values[];
+} uWaterHeightMap;
+
+#define HaveWaterHeightMapBuffer
+
 #define PLANET_WATER
 #include "planet_renderpass.glsl"
 

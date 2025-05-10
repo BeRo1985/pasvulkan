@@ -29602,7 +29602,7 @@ begin
    ImageMemoryBarrier^.subresourceRange.baseArrayLayer:=aSourceArrayLayer;
    ImageMemoryBarrier^.subresourceRange.layerCount:=Max(1,aSourceCountArrayLayers);
 
-   aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
+   aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
                                      0,
                                      0,nil,

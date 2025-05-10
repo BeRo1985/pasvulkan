@@ -72,6 +72,12 @@ mat4 inverseViewMatrix = uView.views[viewIndex].inverseViewMatrix;
 layout(set = 2, binding = 0) uniform sampler2D uPlanetTextures[]; // 0 = height map, 1 = normal map, 2 = tangent bitangent map
 layout(set = 2, binding = 0) uniform sampler2DArray uPlanetArrayTextures[];  // 0 = height map, 1 = normal map, 2 = tangent bitangent map
 
+layout(set = 3, binding = 2) buffer WaterHeightMapBuffer {
+  float values[];
+} uWaterHeightMap;
+
+#define HaveWaterHeightMapBuffer
+
 vec3 planetCenter = vec3(0.0);
 float planetBottomRadius = planetData.bottomRadiusTopRadiusHeightMapScale.x;
 float planetTopRadius = planetData.bottomRadiusTopRadiusHeightMapScale.y;

@@ -569,6 +569,7 @@ type { TpvScene3DRendererInstance }
             end;
             TSpaceLinesIndexDynamicArrays=array[0..MaxInFlightFrames-1] of TSpaceLinesIndexDynamicArray;
             TSpaceLinesVulkanBuffers=array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
+            TInFlightFrameSemaphores=array[0..MaxInFlightFrames-1] of TpvVulkanSemaphore;
       private
        fScene3D:TpvScene3D;
        fID:TpvUInt32;
@@ -613,6 +614,7 @@ type { TpvScene3DRendererInstance }
        fCameraPreset:TpvScene3DRendererCameraPreset;
        fUseDebugBlit:boolean;
        fWaterRenderPassExternalWaitingOnSemaphore:TpvFrameGraph.TExternalWaitingOnSemaphore;
+       fWaterSimulationSemaphores:TInFlightFrameSemaphores;
       private
        fMeshStagePushConstants:TpvScene3D.TMeshStagePushConstantArray;
        fDrawChoreographyBatchItemFrameBuckets:TpvScene3D.TDrawChoreographyBatchItemFrameBuckets;
@@ -1087,6 +1089,8 @@ type { TpvScene3DRendererInstance }
        property PixelAmountFactor:TpvDouble read GetPixelAmountFactor write SetPixelAmountFactor;
        property SizeFactor:TpvDouble read fSizeFactor write fSizeFactor;
        property UseDebugBlit:boolean read fUseDebugBlit write fUseDebugBlit;
+      public
+       property WaterSimulationSemaphores:TInFlightFrameSemaphores read fWaterSimulationSemaphores;
      end;
 
 implementation
@@ -2381,6 +2385,15 @@ begin
 
  fWaterRenderPassExternalWaitingOnSemaphore:=nil;
 
+ FillChar(fWaterSimulationSemaphores,SizeOf(TInFlightFrameSemaphores),#0);
+
+ if fScene3D.PlanetWaterSimulationUseParallelQueue then begin
+  for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
+   fWaterSimulationSemaphores[InFlightFrameIndex]:=TpvVulkanSemaphore.Create(Renderer.VulkanDevice,TVkSemaphoreCreateFlags(0));
+   Renderer.VulkanDevice.DebugUtils.SetObjectName(fWaterSimulationSemaphores[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_SEMAPHORE,'TpvScene3DRendererInstance.fWaterSimulationSemaphores['+IntToStr(InFlightFrameIndex)+']');
+  end;
+ end;
+
 end;
 
 destructor TpvScene3DRendererInstance.Destroy;
@@ -2390,6 +2403,10 @@ var InFlightFrameIndex,CascadeIndex,ImageIndex:TpvSizeInt;
     PrimitiveTopology:TpvScene3D.TPrimitiveTopology;
     FaceCullingMode:TpvScene3D.TFaceCullingMode;
 begin
+
+ for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
+  FreeAndNil(fWaterSimulationSemaphores[InFlightFrameIndex]);
+ end;
 
  FreeAndNil(fWaterRenderPassExternalWaitingOnSemaphore);
 
@@ -4046,10 +4063,10 @@ begin
   fWaterRenderPassExternalWaitingOnSemaphore:=TpvFrameGraph.TExternalWaitingOnSemaphore.Create(fFrameGraph);
   try
    for InFlightFrameIndex:=0 to fFrameGraph.CountInFlightFrames-1 do begin
-    fWaterRenderPassExternalWaitingOnSemaphore.InFlightFrameSemaphores[InFlightFrameIndex]:=fScene3D.PlanetWaterSimulationSemaphores[InFlightFrameIndex];
+    fWaterRenderPassExternalWaitingOnSemaphore.InFlightFrameSemaphores[InFlightFrameIndex]:=fWaterSimulationSemaphores[InFlightFrameIndex];
    end;
   finally
-   TpvScene3DRendererInstancePasses(fPasses).fWaterRenderPass.AddExternalWaitingOnSemaphore(fWaterRenderPassExternalWaitingOnSemaphore);
+   TpvScene3DRendererInstancePasses(fPasses).fWaterRenderPass.AddExternalWaitingOnSemaphore(fWaterRenderPassExternalWaitingOnSemaphore,TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT));
   end;
  end else begin
   fWaterRenderPassExternalWaitingOnSemaphore:=nil;

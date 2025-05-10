@@ -687,7 +687,7 @@ var f:TpvScalar;
 begin
  f:=-aGridSize;
  while f<=aGridSize do begin
- TpvScene3DRendererInstance(fRendererInstance).AddSolidLine3D(aInFlightFrameIndex,
+  TpvScene3DRendererInstance(fRendererInstance).AddSolidLine3D(aInFlightFrameIndex,
                                                                TpvVector3.InlineableCreate(f,0.0,-aGridSize),
                                                                TpvVector3.InlineableCreate(f,0.0,aGridSize),
                                                                TpvVector4.InlineableCreate(0.5,0.5,0.5,1.0),

@@ -11,17 +11,18 @@
 
 layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
 
-layout(set = 0, binding = 0) uniform texture2D uImageHeightMap;
+layout(set = 0, binding = 0) buffer InWaterHeightMap {
+  float values[];
+} inWaterHeightMap;
 
-layout(set = 0, binding = 1) uniform texture2D uImageWaterMap;
-
-layout(set = 0, binding = 2, std430) coherent buffer WaterVisibilityBuffer {
+layout(set = 0, binding = 1, std430) coherent buffer WaterVisibilityBuffer {
   uint bitmap[];
 } waterVisibilityBuffer;
 
 layout(push_constant) uniform PushConstants {
   uint tileMapResolution;
   uint tileShift;
+  uint size;
   float bottomRadius;
   float topRadius; 
   float maxWaterAdditionalWavesHeight;
@@ -33,12 +34,11 @@ void main(){
   
   uvec2 texel = uvec2(gl_GlobalInvocationID.xy);
 
-  uvec2 texSize = uvec2(textureSize(uImageHeightMap, 0).xy);
+  uvec2 texSize = uvec2(pushConstants.size);
 
   if(all(lessThan(texel, texSize))){
 
-    if((texelFetch(uImageWaterMap, ivec2(texel), 0).x + pushConstants.maxWaterAdditionalWavesHeight) > 0.0){
-//  if((texelFetch(uImageWaterMap, ivec2(texel), 0).x + pushConstants.maxWaterAdditionalWavesHeight) >= mix(pushConstants.bottomRadius, pushConstants.topRadius, clamp(texelFetch(uImageHeightMap, ivec2(texel), 0).x, 0.0, 1.0))){
+    if((inWaterHeightMap.values[(texel.y * texSize.x) + texel.x] + pushConstants.maxWaterAdditionalWavesHeight) > 0.0){
    
       const uvec2 tileMapXY = texel >> uvec2(pushConstants.tileShift);
    

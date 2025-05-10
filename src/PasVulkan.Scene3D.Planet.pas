@@ -140,7 +140,7 @@ type TpvScene3DPlanets=class;
 
              Flags:TpvUInt32;
              Resolutions:TpvUInt32;
-             Reserved1:TpvUInt32;
+             WaterMapResolution:TpvUInt32;
              Reserved2:TpvUInt32;
 
              Vertices:TVkDeviceAddress;
@@ -326,6 +326,7 @@ type TpvScene3DPlanets=class;
               fWaterSimulationMaximumCountUnderThresholdFrames:TpvSizeInt;
               fWaterSimulationThreshold:TpvFloat;
               fWaterVisibilityBuffer:TpvVulkanBuffer;
+              fWaterHeightMapBuffer:TpvVulkanBuffer;
               fBlendMiniMapBuffer:TpvVulkanBuffer;
              public
               fHeightMapData:THeightMapData;
@@ -1357,6 +1358,7 @@ type TpvScene3DPlanets=class;
               type TPushConstants=packed record
                     TileMapResolution:TpvUInt32;
                     TileShift:TpvUInt32;
+                    Size:TpvUInt32;
                     BottomRadius:TpvFloat;
                     TopRadius:TpvFloat;
                     MaxWaterAdditionalWavesHeight:TpvFloat;
@@ -2395,6 +2397,8 @@ end;
 constructor TpvScene3DPlanet.TData.Create(const aPlanet:TpvScene3DPlanet;const aInFlightFrameIndex:TpvInt32);
 var ImageSharingMode:TVkSharingMode;
     ImageQueueFamilyIndices:TpvVulkanQueueFamilyIndices;
+    WaterHeightMapImageSharingMode:TVkSharingMode;
+    WaterHeightMapImageQueueFamilyIndices:TpvVulkanQueueFamilyIndices;
 begin
 
  inherited Create;
@@ -2414,6 +2418,14 @@ begin
   end;
  end;
 
+{if TpvScene3D(fPlanet.Scene3D).PlanetWaterSimulationUseParallelQueue and assigned(fPlanet.fVulkanDevice) then begin
+  WaterHeightMapImageSharingMode:=TVkSharingMode(VK_SHARING_MODE_CONCURRENT);
+  WaterHeightMapImageQueueFamilyIndices:=[fPlanet.fVulkanDevice.UniversalQueueFamilyIndex,
+                                          fPlanet.fVulkanDevice.ComputeQueueFamilyIndex];
+ end else}begin
+  WaterHeightMapImageSharingMode:=TVkSharingMode.VK_SHARING_MODE_EXCLUSIVE;
+  WaterHeightMapImageQueueFamilyIndices:=[];
+ end;
  fInFlightFrameIndex:=aInFlightFrameIndex;
 
 {if fInFlightFrameIndex<0 then begin
@@ -2475,6 +2487,8 @@ begin
  fWaterSimulationThreshold:=5e-4;
 
  fWaterVisibilityBuffer:=nil;
+
+ fWaterHeightMapBuffer:=nil;
 
  fBlendMiniMapBuffer:=nil;
 
@@ -2686,8 +2700,8 @@ begin
                                                           true,
                                                           VK_SAMPLE_COUNT_1_BIT,
                                                           VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                                          ImageSharingMode,
-                                                          ImageQueueFamilyIndices,
+                                                          WaterHeightMapImageSharingMode,
+                                                          WaterHeightMapImageQueueFamilyIndices,
                                                           pvAllocationGroupIDScene3DPlanetStatic,
                                                           'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fWaterHeightMapImage');
    fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fWaterHeightMapImage.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fWaterHeightMapImage.Image');
@@ -2793,6 +2807,26 @@ begin
                                                                    'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fWaterMaxAbsoluteHeightDifferenceBuffer'
                                                                   ); 
    fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fWaterMaxAbsoluteHeightDifferenceBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fWaterMaxAbsoluteHeightDifferenceBuffer');
+
+   fWaterHeightMapBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
+                                                 fPlanet.fWaterMapResolution*fPlanet.fWaterMapResolution*SizeOf(TpvFloat),
+                                                 TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
+                                                 fPlanet.fGlobalBufferSharingMode,
+                                                 fPlanet.fGlobalBufferQueueFamilyIndices,
+                                                 0,
+                                                 TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                 0,
+                                                 0,
+                                                 0,
+                                                 0,
+                                                 0,
+                                                 0,
+                                                 [],
+                                                 0,
+                                                 pvAllocationGroupIDScene3DPlanetStatic,
+                                                 'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fWaterHeightMapBuffer'
+                                                );
+   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fWaterHeightMapBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fWaterHeightMapBuffer');
 
   end;
 
@@ -3315,6 +3349,8 @@ begin
  FreeAndNil(fWaterMaxAbsoluteHeightDifferenceBuffer);
 
  FreeAndNil(fWaterVisibilityBuffer);
+
+ FreeAndNil(fWaterHeightMapBuffer);
 
  FreeAndNil(fPhysicsMeshVertices);
 
@@ -5992,10 +6028,10 @@ begin
                                  0);
 
     // The same for fWaterMaxAbsoluteHeightDifferenceBuffer
-    aCommandBuffer.CmdFillBuffer(fPlanet.fData.fWaterMaxAbsoluteHeightDifferenceBuffer.Handle,
+{   aCommandBuffer.CmdFillBuffer(fPlanet.fData.fWaterMaxAbsoluteHeightDifferenceBuffer.Handle,
                                  0,
                                  VK_WHOLE_SIZE,
-                                 0);
+                                 0);}
 
    end;
 
@@ -7692,6 +7728,12 @@ begin
                                                [],
                                                0);
   fInterpolationDescriptorSetLayout.AddBinding(3, // OutWaterHeightMap
+                                               TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                               1,
+                                               TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                               [],
+                                               0);
+  fInterpolationDescriptorSetLayout.AddBinding(4, // OutWaterHeightMapImage
                                                TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
                                                1,
                                                TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
@@ -7783,7 +7825,7 @@ begin
                                                     1,
                                                     TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
                                                     [],
-                                                    [fPlanet.fData.fWaterHeightMapBuffers[Index].DescriptorBufferInfo],
+                                                    [fPlanet.fData.fWaterHeightMapBuffers[(Index+0) and 1].DescriptorBufferInfo],
                                                     [],
                                                     false);
    fWaterDescriptorSets[Index].WriteToDescriptorSet(2, // OutWaterHeightMap
@@ -7819,7 +7861,7 @@ begin
                                                                TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
                                                                2);
   fInterpolationDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),1*2);
-  fInterpolationDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),2*2);
+  fInterpolationDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),3*2);
   fInterpolationDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),1*2);
   fInterpolationDescriptorPool.Initialize;
 
@@ -7854,11 +7896,20 @@ begin
                                                             1,
                                                             TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
                                                             [],
-                                                            [fPlanet.fData.fWaterHeightMapBuffers[Index].DescriptorBufferInfo],
+                                                            [fPlanet.fData.fWaterHeightMapBuffers[(Index+0) and 1].DescriptorBufferInfo],
                                                             [],
-                                                            false);   
+                                                            false);
 
    fInterpolationDescriptorSets[Index].WriteToDescriptorSet(3, // OutWaterHeightMap
+                                                            0,
+                                                            1,
+                                                            TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                            [],
+                                                            [fPlanet.fData.fWaterHeightMapBuffer.DescriptorBufferInfo],
+                                                            [],
+                                                            false);
+
+   fInterpolationDescriptorSets[Index].WriteToDescriptorSet(4, // OutWaterHeightMapImage
                                                             0,
                                                             1,
                                                             TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
@@ -8153,7 +8204,7 @@ end;
 procedure TpvScene3DPlanet.TWaterSimulation.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aDeltaTime:TpvDouble;const aInFlightFrameIndex:TpvSizeInt);
 var SourceBufferIndex,DestinationBufferIndex:TpvSizeInt;
     ImageMemoryBarrier:TVkImageMemoryBarrier;
-    BufferMemoryBarriers:array[0..3] of TVkBufferMemoryBarrier;
+    BufferMemoryBarriers:array[0..4] of TVkBufferMemoryBarrier;
     WaterModificationItem:PWaterModificationItem;
     DoDownsample,DoInterpolate,First:Boolean;
 begin
@@ -8451,6 +8502,33 @@ begin
                              1);
 
   /////////////////////////////////////////////////////////////////////////////////////////
+  // Buffer memory barriers                                                              //
+  /////////////////////////////////////////////////////////////////////////////////////////
+
+  BufferMemoryBarriers[0]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                         TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                         VK_QUEUE_FAMILY_IGNORED,
+                                                         VK_QUEUE_FAMILY_IGNORED,
+                                                         fPlanet.fData.fWaterHeightMapBuffers[SourceBufferIndex].Handle,
+                                                         0,
+                                                         fPlanet.fData.fWaterHeightMapBuffers[SourceBufferIndex].Size);
+
+  BufferMemoryBarriers[1]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                         TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                         VK_QUEUE_FAMILY_IGNORED,
+                                                         VK_QUEUE_FAMILY_IGNORED,
+                                                         fPlanet.fData.fWaterHeightMapBuffers[DestinationBufferIndex].Handle,
+                                                         0,
+                                                         fPlanet.fData.fWaterHeightMapBuffers[DestinationBufferIndex].Size);
+
+  aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                    0,
+                                    0,nil,
+                                    0,@BufferMemoryBarriers[2],
+                                    0,nil);
+
+  /////////////////////////////////////////////////////////////////////////////////////////
   // Management stuff                                                                    //
   /////////////////////////////////////////////////////////////////////////////////////////
 
@@ -8527,7 +8605,7 @@ begin
                                                          fPlanet.fData.fWaterHeightMapBuffers[SourceBufferIndex].Size);
 
   BufferMemoryBarriers[1]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
-                                                         TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT) or TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT),
+                                                         TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                          VK_QUEUE_FAMILY_IGNORED,
                                                          VK_QUEUE_FAMILY_IGNORED,
                                                          fPlanet.fData.fWaterMiniMapBuffer.Handle,
@@ -8550,10 +8628,10 @@ begin
  end;
  fLastTimeAccumulator:=fTimeAccumulator;
 
- DoInterpolate:=true;
+ //DoInterpolate:=true;
 
  if DoInterpolate then begin
-   
+
   fInterpolationPushConstants.BottomRadius:=fPlanet.fBottomRadius;
   fInterpolationPushConstants.TopRadius:=fPlanet.fTopRadius;
   fInterpolationPushConstants.PlanetHeightMapResolution:=fPlanet.fHeightMapResolution;
@@ -8573,19 +8651,43 @@ begin
                                                                                    0,
                                                                                    1));
 
+  BufferMemoryBarriers[0]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                         TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                         VK_QUEUE_FAMILY_IGNORED,
+                                                         VK_QUEUE_FAMILY_IGNORED,
+                                                         fPlanet.fData.fWaterHeightMapBuffer.Handle,
+                                                         0,
+                                                         fPlanet.fData.fWaterHeightMapBuffer.Size);
+
+  BufferMemoryBarriers[1]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                         TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                         VK_QUEUE_FAMILY_IGNORED,
+                                                         VK_QUEUE_FAMILY_IGNORED,
+                                                         fPlanet.fData.fWaterHeightMapBuffers[0].Handle,
+                                                         0,
+                                                         fPlanet.fData.fWaterHeightMapBuffers[0].Size);
+
+  BufferMemoryBarriers[2]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                         TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                         VK_QUEUE_FAMILY_IGNORED,
+                                                         VK_QUEUE_FAMILY_IGNORED,
+                                                         fPlanet.fData.fWaterHeightMapBuffers[1].Handle,
+                                                         0,
+                                                         fPlanet.fData.fWaterHeightMapBuffers[1].Size);
+
   if TpvScene3D(fPlanet.fScene3D).PlanetWaterSimulationUseParallelQueue then begin
    aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
                                      0,
                                      0,nil,
-                                     0,nil,
+                                     3,@BufferMemoryBarriers[0],
                                      1,@ImageMemoryBarrier);
   end else begin
    aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
                                      0,
                                      0,nil,
-                                     0,nil,
+                                     3,@BufferMemoryBarriers[0],
                                      1,@ImageMemoryBarrier);
   end;
 
@@ -8603,11 +8705,11 @@ begin
                                   TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                                   0,
                                   SizeOf(TInterpolationPushConstants),
-                                  @fInterpolationPushConstants);   
+                                  @fInterpolationPushConstants);
 
   aCommandBuffer.CmdDispatch((fPlanet.fWaterMapResolution+15) shr 4,
                              (fPlanet.fWaterMapResolution+15) shr 4,
-                             1);  
+                             1);
 
   ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                    TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
@@ -8622,11 +8724,21 @@ begin
                                                                                    0,
                                                                                    1));
 
+  BufferMemoryBarriers[0]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                         TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                         VK_QUEUE_FAMILY_IGNORED,
+                                                         VK_QUEUE_FAMILY_IGNORED,
+                                                         fPlanet.fData.fWaterHeightMapBuffer.Handle,
+                                                         0,
+                                                         fPlanet.fData.fWaterHeightMapBuffer.Size);
+
   aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
-                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_HOST_BIT),
+                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or
+                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT) or
+                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_HOST_BIT),
                                     0,
                                     0,nil,
-                                    0,nil,
+                                    1,@BufferMemoryBarriers[0],
                                     1,@ImageMemoryBarrier);
 
  end;
@@ -13652,21 +13764,14 @@ begin
 
  fDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(fVulkanDevice);
 
- fDescriptorSetLayout.AddBinding(0, // Height map
-                                 TVkDescriptorType(VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE),
+ fDescriptorSetLayout.AddBinding(0, // Water map
+                                 TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
                                  1,
                                  TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                                  [],
                                  0);
 
- fDescriptorSetLayout.AddBinding(1, // Water map
-                                 TVkDescriptorType(VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE),
-                                 1,
-                                 TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
-                                 [],
-                                 0);
-
- fDescriptorSetLayout.AddBinding(2, // Water visibility buffer
+ fDescriptorSetLayout.AddBinding(1, // Water visibility buffer
                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
                                  1,
                                  TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
@@ -13693,8 +13798,7 @@ begin
  fDescriptorPool:=TpvVulkanDescriptorPool.Create(fVulkanDevice,
                                                  TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
                                                  1);
- fDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,2);
- fDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,1);
+ fDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,2);
  fDescriptorPool.Initialize;
 
  fVulkanDevice.DebugUtils.SetObjectName(fDescriptorPool.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'TpvScene3DPlanet.TWaterCullPass.fDescriptorPool');
@@ -13702,29 +13806,17 @@ begin
  fDescriptorSet:=TpvVulkanDescriptorSet.Create(fDescriptorPool,
                                                fDescriptorSetLayout);
 
+
  fDescriptorSet.WriteToDescriptorSet(0,
                                      0,
                                      1,
-                                     TVkDescriptorType(VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE),
-                                     [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,
-                                                                    fPlanet.fData.fHeightMapImage.VulkanImageViews[0].Handle,
-                                                                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
+                                     TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
                                      [],
+                                     [fPlanet.fData.fWaterHeightMapBuffer.DescriptorBufferInfo],
                                      [],
                                      false);
 
  fDescriptorSet.WriteToDescriptorSet(1,
-                                     0,
-                                     1,
-                                     TVkDescriptorType(VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE),
-                                     [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,
-                                                                    fPlanet.fData.fWaterHeightMapImage.VulkanImageView.Handle,
-                                                                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
-                                     [],
-                                     [],
-                                     false);
-
- fDescriptorSet.WriteToDescriptorSet(2,
                                      0,
                                      1,
                                      TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
@@ -13766,6 +13858,7 @@ begin
 
  fPushConstants.TileMapResolution:=fPlanet.fTileMapResolution;
  fPushConstants.TileShift:=fPlanet.fTileMapShift;
+ fPushConstants.Size:=fPlanet.fWaterMapResolution;
  fPushConstants.BottomRadius:=fPlanet.fBottomRadius;
  fPushConstants.TopRadius:=fPlanet.fTopRadius;
  fPushConstants.MaxWaterAdditionalWavesHeight:=0.25;
@@ -16433,6 +16526,15 @@ begin
    fWaterRenderDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(2,
                                                                        0,
                                                                        1,
+                                                                       TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                                       [],
+                                                                       [fPlanet.Data.fWaterHeightMapBuffer.DescriptorBufferInfo],
+                                                                       [],
+                                                                       false);
+
+   fWaterRenderDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(3,
+                                                                       0,
+                                                                       1,
                                                                        TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
                                                                        [TVkDescriptorImageInfo.Create(TpvScene3DRendererInstance(fRendererInstance).Renderer.ClampedNearestSampler.Handle,
                                                                                                       fVulkanWaterAccelerationImage.VulkanArrayImageView.Handle,
@@ -17998,6 +18100,15 @@ begin
                    [],
                    0);
  result.AddBinding(2,
+                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                   1,
+                   TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or
+                   TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT) or
+                   TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT) or
+                   TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                   [],
+                   0);
+ result.AddBinding(3,
                    TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
                    1,
                    TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or
@@ -18007,7 +18118,7 @@ begin
                    [],
                    0);
  result.Initialize;
- aVulkanDevice.DebugUtils.SetObjectName(result.Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT,'TpvScene3DPlanet.PlanetWaterWaterRenderDescriptorSetLayout');
+ aVulkanDevice.DebugUtils.SetObjectName(result.Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT,'TpvScene3DPlanet.PlanetWaterRenderDescriptorSetLayout');
 end;
 
 class function TpvScene3DPlanet.CreatePlanetWaterRenderDescriptorPool(const aVulkanDevice:TpvVulkanDevice;const aCountInFlightFrames:TpvSizeInt):TpvVulkanDescriptorPool;
@@ -18015,7 +18126,7 @@ begin
  result:=TpvVulkanDescriptorPool.Create(aVulkanDevice,
                                         TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
                                         aCountInFlightFrames);
- result.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),2*aCountInFlightFrames);
+ result.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),3*aCountInFlightFrames);
  result.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),1*aCountInFlightFrames);
  result.Initialize;
  aVulkanDevice.DebugUtils.SetObjectName(result.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'TpvScene3DPlanet.PlanetWaterRenderDescriptorPool');
@@ -18974,6 +19085,7 @@ begin
     fPlanetData.Flags:=fPlanetData.Flags or (1 shl 2);
    end;
    fPlanetData.Resolutions:=((fTileMapResolution and $ffff) shl 16) or (fVisualTileResolution and $ffff);
+   fPlanetData.WaterMapResolution:=fWaterMapResolution;
    if TpvScene3D(fScene3D).UseBufferDeviceAddress then begin
     fPlanetData.Vertices:=fData.fVisualMeshVertexBuffers[(fData.fVisualMeshVertexBufferUpdateIndex+1) and 1].DeviceAddress;
     fPlanetData.Indices:=fData.fVisualMeshIndexBuffer.DeviceAddress;
@@ -19111,7 +19223,7 @@ begin
   InFlightFrameData:=fInFlightFrameDataList[aInFlightFrameIndex];
   if assigned(InFlightFrameData) then begin
    fWaterSimulation.Execute(aCommandBuffer,TpvScene3D(fScene3D).DeltaTimes^[aInFlightFrameIndex],aInFlightFrameIndex);
-   fWaterCullPass.Execute(aCommandBuffer);
+// fWaterCullPass.Execute(aCommandBuffer);
   end;
  end;
 end;

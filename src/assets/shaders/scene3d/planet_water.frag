@@ -129,8 +129,14 @@ layout(set = 2, binding = 0) uniform sampler2DArray uPlanetArrayTextures[]; // 0
 
 // Per water render pass descriptor set
 
+layout(set = 3, binding = 2) buffer WaterHeightMapBuffer {
+  float values[];
+} uWaterHeightMap;
+
+#define HaveWaterHeightMapBuffer
+
 #if !(defined(TESSELLATION) || defined(UNDERWATER))
-layout(set = 3, binding = 2) uniform sampler2DArray uTextureWaterAcceleration;
+layout(set = 3, binding = 3) uniform sampler2DArray uTextureWaterAcceleration;
 #endif
 
 #define PLANET_WATER

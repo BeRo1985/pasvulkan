@@ -3619,6 +3619,7 @@ type EpvScene3D=class(Exception);
             POriginTransforms=^TOriginTransforms;
             TPlanetWaterSimulationCommandBuffers=array[0..MaxInFlightFrames-1] of TpvVulkanCommandBuffer;
             TPlanetWaterSimulationSemaphores=array[0..MaxInFlightFrames-1] of TpvVulkanSemaphore;
+            TVkSemaphoreArray=array of TVkSemaphore;
       public
        const DoubleSidedFaceCullingModes:array[TDoubleSided,TFrontFacesInversed] of TFaceCullingMode=
               (
@@ -3688,6 +3689,7 @@ type EpvScene3D=class(Exception);
        fPlanetWaterSimulationCommandPool:TpvVulkanCommandPool;
        fPlanetWaterSimulationCommandBuffers:TPlanetWaterSimulationCommandBuffers;
        fPlanetWaterSimulationSemaphores:TPlanetWaterSimulationSemaphores;
+       fPlanetWaterSimulationToSignalSemaphores:TVkSemaphoreArray;
        fMeshComputeVulkanDescriptorSet0Layout:TpvVulkanDescriptorSetLayout;
        fMeshComputeVulkanDescriptorSet1Layout:TpvVulkanDescriptorSetLayout;
        fVulkanStagingQueue:TpvVulkanQueue;
@@ -28796,6 +28798,8 @@ begin
                                           (fVulkanDevice.UniversalQueueFamilyIndex<>fVulkanDevice.TransferQueueFamilyIndex) and
                                           (fVulkanDevice.GraphicsQueueFamilyIndex<>fVulkanDevice.TransferQueueFamilyIndex);
 
+  fPlanetWaterSimulationToSignalSemaphores:=nil;
+
   if fPlanetWaterSimulationUseParallelQueue then begin
 
    fPlanetWaterSimulationQueue:=fVulkanDevice.ComputeQueue;
@@ -28833,7 +28837,9 @@ begin
 
    end; 
 
-  end;                                         
+   fPlanetWaterSimulationToSignalSemaphores:=nil;
+
+  end;
 
   fMeshComputeVulkanDescriptorSet0Layout:=TpvVulkanDescriptorSetLayout.Create(fVulkanDevice);
 
@@ -29236,6 +29242,8 @@ begin
    FreeAndNil(fPlanetWaterSimulationSemaphores[InFlightFrameIndex]);
 
   end; 
+
+  fPlanetWaterSimulationToSignalSemaphores:=nil;
 
   FreeAndNil(fPlanetWaterSimulationCommandPool);
 
@@ -32000,7 +32008,7 @@ begin
 end;
 
 procedure TpvScene3D.ProcessFrame(const aInFlightFrameIndex:TpvSizeInt;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence);
-var PlanetIndex,PassIndex:TpvSizeInt;
+var PlanetIndex,PassIndex,CountPlanetWaterSimulationToSignalSemaphores,Index:TpvSizeInt;
     Planet:TpvScene3DPlanet;
     SubmitInfo:TVkSubmitInfo;
     WaitDstStageFlags:TVkPipelineStageFlags;
@@ -32122,6 +32130,15 @@ begin
 
     PlanetWaterSimulationCommandBufferHandle:=PlanetWaterSimulationCommandBuffer.Handle;
 
+    CountPlanetWaterSimulationToSignalSemaphores:=1+fRendererInstanceList.Count;
+    if length(fPlanetWaterSimulationToSignalSemaphores)<CountPlanetWaterSimulationToSignalSemaphores then begin
+     SetLength(fPlanetWaterSimulationToSignalSemaphores,CountPlanetWaterSimulationToSignalSemaphores*2);
+    end;
+    fPlanetWaterSimulationToSignalSemaphores[0]:=fPlanetWaterSimulationSemaphores[aInFlightFrameIndex].Handle;
+    for Index:=0 to fRendererInstanceList.Count-1 do begin
+     fPlanetWaterSimulationToSignalSemaphores[Index+1]:=TpvScene3DRendererInstance(fRendererInstanceList.RawItems[Index]).WaterSimulationSemaphores[aInFlightFrameIndex].Handle;
+    end;
+
     FillChar(SubmitInfo,SizeOf(TVkSubmitInfo),#0);
     SubmitInfo.sType:=VK_STRUCTURE_TYPE_SUBMIT_INFO;
     SubmitInfo.pNext:=nil;
@@ -32130,8 +32147,10 @@ begin
     SubmitInfo.pWaitDstStageMask:=nil;
     SubmitInfo.commandBufferCount:=1;
     SubmitInfo.pCommandBuffers:=@PlanetWaterSimulationCommandBufferHandle;
-    SubmitInfo.signalSemaphoreCount:=1;
-    SubmitInfo.pSignalSemaphores:=@fPlanetWaterSimulationSemaphores[aInFlightFrameIndex].Handle;
+    if CountPlanetWaterSimulationToSignalSemaphores>0 then begin
+     SubmitInfo.signalSemaphoreCount:=CountPlanetWaterSimulationToSignalSemaphores;
+     SubmitInfo.pSignalSemaphores:=@fPlanetWaterSimulationToSignalSemaphores[0];
+    end;
 
     fPlanetWaterSimulationQueue.Submit(1,@SubmitInfo,nil);
 
@@ -32297,7 +32316,7 @@ begin
    TpvScene3DPlanets(fPlanets).Lock.ReleaseRead;
   end;
 
-  if assigned(aWaitFence) then begin
+  if assigned(aWaitFence) or fPlanetWaterSimulationUseParallelQueue then begin
 
    FillChar(SubmitInfo,SizeOf(TVkSubmitInfo),#0);
    SubmitInfo.sType:=VK_STRUCTURE_TYPE_SUBMIT_INFO;
