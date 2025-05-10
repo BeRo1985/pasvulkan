@@ -93,15 +93,15 @@ void main(){
         // d(-1,  0) e( 0,  0) f( 1,  0)
         // g(-1,  1) h( 0,  1) i( 1,  1)
 
-        ivec2 axy = wrapOctahedralTexelCoordinatesForNormal(ivec2(quadXY) + ivec2(-1, -1), ivec2(totalResolution));
-        ivec2 bxy = wrapOctahedralTexelCoordinatesForNormal(ivec2(quadXY) + ivec2( 0, -1), ivec2(totalResolution));
-        ivec2 cxy = wrapOctahedralTexelCoordinatesForNormal(ivec2(quadXY) + ivec2( 1, -1), ivec2(totalResolution));
-        ivec2 dxy = wrapOctahedralTexelCoordinatesForNormal(ivec2(quadXY) + ivec2(-1,  0), ivec2(totalResolution));
-        ivec2 exy = wrapOctahedralTexelCoordinatesForNormal(ivec2(quadXY) + ivec2( 0,  0), ivec2(totalResolution));
-        ivec2 fxy = wrapOctahedralTexelCoordinatesForNormal(ivec2(quadXY) + ivec2( 1,  0), ivec2(totalResolution));
-        ivec2 gxy = wrapOctahedralTexelCoordinatesForNormal(ivec2(quadXY) + ivec2(-1,  1), ivec2(totalResolution));
-        ivec2 hxy = wrapOctahedralTexelCoordinatesForNormal(ivec2(quadXY) + ivec2( 0,  1), ivec2(totalResolution));
-        ivec2 ixy = wrapOctahedralTexelCoordinatesForNormal(ivec2(quadXY) + ivec2( 1,  1), ivec2(totalResolution));
+        ivec2 axy = wrapOctahedralTexelCoordinates(ivec2(quadXY) + ivec2(-1, -1), ivec2(totalResolution));
+        ivec2 bxy = wrapOctahedralTexelCoordinates(ivec2(quadXY) + ivec2( 0, -1), ivec2(totalResolution));
+        ivec2 cxy = wrapOctahedralTexelCoordinates(ivec2(quadXY) + ivec2( 1, -1), ivec2(totalResolution));
+        ivec2 dxy = wrapOctahedralTexelCoordinates(ivec2(quadXY) + ivec2(-1,  0), ivec2(totalResolution));
+        ivec2 exy = wrapOctahedralTexelCoordinates(ivec2(quadXY) + ivec2( 0,  0), ivec2(totalResolution));
+        ivec2 fxy = wrapOctahedralTexelCoordinates(ivec2(quadXY) + ivec2( 1,  0), ivec2(totalResolution));
+        ivec2 gxy = wrapOctahedralTexelCoordinates(ivec2(quadXY) + ivec2(-1,  1), ivec2(totalResolution));
+        ivec2 hxy = wrapOctahedralTexelCoordinates(ivec2(quadXY) + ivec2( 0,  1), ivec2(totalResolution));
+        ivec2 ixy = wrapOctahedralTexelCoordinates(ivec2(quadXY) + ivec2( 1,  1), ivec2(totalResolution));
 
         float ah = getHeightAt(axy);
         float bh = getHeightAt(bxy);

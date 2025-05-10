@@ -232,7 +232,7 @@ uint tileVertexSize = pushConstants.tileResolution * pushConstants.tileResolutio
 
 uvec4 getTriangleRawVertex(ivec2 quadXY){
 
-  quadXY = wrapOctahedralTexelCoordinatesForGrass(ivec2(quadXY), ivec2(totalResolution));
+  quadXY = wrapOctahedralTexelCoordinates(ivec2(quadXY), ivec2(totalResolution));
   
   uvec2 tileMapXY = quadXY / uvec2(pushConstants.tileResolution);
 

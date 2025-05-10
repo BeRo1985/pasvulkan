@@ -79,7 +79,7 @@ layout(set = 0, binding = 4, std430) coherent buffer WaterMaxHeightDifference {
 vec2 texelSize = 1.0 / vec2(pushConstants.waterHeightMapResolution);
 
 uint getIndex(ivec2 position){
-  const ivec2 intPosition = wrapOctahedralTexelCoordinatesForWater(ivec2(position), ivec2(pushConstants.waterHeightMapResolution));  
+  const ivec2 intPosition = wrapOctahedralTexelCoordinates(ivec2(position), ivec2(pushConstants.waterHeightMapResolution));  
   return (intPosition.y * pushConstants.waterHeightMapResolution) + intPosition.x;
 }
 
