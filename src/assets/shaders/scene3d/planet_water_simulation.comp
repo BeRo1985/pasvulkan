@@ -28,19 +28,22 @@ layout(push_constant) uniform PushConstants {
   float attenuation;
   float strength;
   float minTotalFlow;
-  float initialWaterLevel;    
+  float initialWaterLevel;      
   float pipeLengthSquared;
   float crossSectionalPipeArea;
   float gravity;
-  float evaporation;
+  float evaporation;    
   float compensationFactor;
   float bottomRadius;
   float topRadius;
-  uint planetHeightMapResolution;
-  uint waterHeightMapResolution;  
-  uint frameIndex;
   float deltaTime;
+  uint planetHeightMapResolution;  
+  uint waterHeightMapResolution; 
+  uint waterHeightMapBorder;
+  uint frameIndex;
 } pushConstants;
+
+uint waterHeightMapResolutionWithBorder = pushConstants.waterHeightMapResolution + (pushConstants.waterHeightMapBorder * 2);
 
 layout(set = 0, binding = 0) uniform sampler2D uPlanetHeightmap;
 
@@ -93,6 +96,11 @@ uint getIndex(uvec2 position, ivec2 offset){
   return (intPosition.y * pushConstants.waterHeightMapResolution) + intPosition.x;
 }
 
+uint getFlowMapIndex(ivec2 position){
+  position = (((position + ivec2(int(pushConstants.waterHeightMapBorder))) % ivec2(int(waterHeightMapResolutionWithBorder))) + ivec2(int(waterHeightMapResolutionWithBorder))) % ivec2(int(waterHeightMapResolutionWithBorder));
+  return (position.y * waterHeightMapResolutionWithBorder) + position.x;
+}
+
 #if defined(OUTFLOW)
 vec2 readHeight(ivec2 p, const in vec3 referenceNormal, const in bool includeSphericalElevationDifference){
   p = clamp(wrapOctahedralTexelCoordinatesForWater(p, ivec2(pushConstants.waterHeightMapResolution)), ivec2(0), ivec2(pushConstants.waterHeightMapResolution - 1));
@@ -124,10 +132,14 @@ void main(){
 
   if(all(lessThan(position, uvec2(pushConstants.waterHeightMapResolution)))){
 
-    const uint index = (position.y * pushConstants.waterHeightMapResolution) + position.x;
-
 #if defined(OUTFLOW)
     
+    const ivec2 realPosition = ivec2(position) - ivec2(pushConstants.waterHeightMapBorder);
+
+    const ivec2 wrappedPosition = wrapOctahedralTexelCoordinatesForWater(realPosition, ivec2(pushConstants.waterHeightMapResolution));
+
+    const uint flowMapIndex = (position.y * waterHeightMapResolutionWithBorder) + position.x;
+
     vec4 outFlow;
 
     if(pushConstants.frameIndex == 0){
@@ -137,18 +149,18 @@ void main(){
 
     }else{
 
-      const vec3 centerNormal = normalize(octPlanetUnsignedDecode(vec2(position) * texelSize));
+      const vec3 centerNormal = normalize(octPlanetUnsignedDecode(vec2(wrappedPosition) * texelSize));
 
-      const vec2 centerHeight = readHeight(ivec2(position), centerNormal, false);
+      const vec2 centerHeight = readHeight(ivec2(realPosition), centerNormal, false);
      
-      const vec4 oldFlow = vec4(waterFlowMap.values[index]);
+      const vec4 oldFlow = vec4(waterFlowMap.values[flowMapIndex]);
 
       const vec4 heightDifferences = vec4(dot(centerHeight, vec2(1.0))) - 
                                      vec4(
-                                       dot(readHeight(ivec2(position) + ivec2( 1,  0), centerNormal, true), vec2(1.0)),
-                                       dot(readHeight(ivec2(position) + ivec2( 0,  1), centerNormal, true), vec2(1.0)),
-                                       dot(readHeight(ivec2(position) + ivec2(-1,  0), centerNormal, true), vec2(1.0)),
-                                       dot(readHeight(ivec2(position) + ivec2( 0, -1), centerNormal, true), vec2(1.0))
+                                       dot(readHeight(ivec2(realPosition) + ivec2( 1,  0), centerNormal, true), vec2(1.0)),
+                                       dot(readHeight(ivec2(realPosition) + ivec2( 0,  1), centerNormal, true), vec2(1.0)),
+                                       dot(readHeight(ivec2(realPosition) + ivec2(-1,  0), centerNormal, true), vec2(1.0)),
+                                       dot(readHeight(ivec2(realPosition) + ivec2( 0, -1), centerNormal, true), vec2(1.0))
                                      ); 
 
       const vec4 newFlow = max(vec4(0.0), heightDifferences * pushConstants.crossSectionalPipeArea * pushConstants.gravity * pushConstants.compensationFactor * pushConstants.deltaTime);
@@ -176,9 +188,11 @@ void main(){
      
     }
 
-    waterFlowMap.values[index] = _vec4(outFlow);
+    waterFlowMap.values[flowMapIndex] = _vec4(outFlow);
 
 #else
+
+    const uint heightMapIndex = (position.y * pushConstants.waterHeightMapResolution) + position.x;
 
     float waterOutHeight;
 
@@ -193,16 +207,16 @@ void main(){
     }else{
 
       // Calculate the total inflow
-      const float totalInFlow = dot(vec4(waterFlowMap.values[index]), vec4(1.0));
+      const float totalInFlow = dot(vec4(waterFlowMap.values[heightMapIndex]), vec4(1.0));
        
       // Calculate the total outflow
-      const float totalOutFlow = waterFlowMap.values[getIndex(position, ivec2( 1,  0))].z +
-                                 waterFlowMap.values[getIndex(position, ivec2( 0,  1))].w + 
-                                 waterFlowMap.values[getIndex(position, ivec2(-1,  0))].x + 
-                                 waterFlowMap.values[getIndex(position, ivec2( 0, -1))].y;
+      const float totalOutFlow = waterFlowMap.values[getFlowMapIndex(position, ivec2( 1,  0))].z +
+                                 waterFlowMap.values[getFlowMapIndex(position, ivec2( 0,  1))].w + 
+                                 waterFlowMap.values[getFlowMapIndex(position, ivec2(-1,  0))].x + 
+                                 waterFlowMap.values[getFlowMapIndex(position, ivec2( 0, -1))].y;
 
       // Read the water height from the input water height map
-      const float inWaterHeight = inWaterHeightMap.values[index];
+      const float inWaterHeight = inWaterHeightMap.values[heightMapIndex];
 
       // Calculate the new water height
       waterOutHeight = max(0.0, (inWaterHeight + (((totalOutFlow - totalInFlow) * pushConstants.deltaTime) / pushConstants.pipeLengthSquared)) * (1.0 - clamp(pushConstants.evaporation * pushConstants.deltaTime, 0.0, 1.0)));
@@ -212,7 +226,7 @@ void main(){
 
     }
 
-    outWaterHeightMap.values[index] = _float(waterOutHeight);
+    outWaterHeightMap.values[heightMapIndex] = _float(waterOutHeight);
 
 
     // Perform a parallel max reduction to calculate the total absolute height differences
