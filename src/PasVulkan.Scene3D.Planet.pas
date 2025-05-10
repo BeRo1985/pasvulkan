@@ -714,10 +714,11 @@ type TpvScene3DPlanets=class;
                     CompensationFactor:TpvFloat;
                     BottomRadius:TpvFloat;
                     TopRadius:TpvFloat;
+                    DeltaTime:TpvFloat;
                     PlanetHeightMapResolution:TpvUInt32;
                     WaterHeightMapResolution:TpvUInt32;
+                    WaterHeightMapBorder:TpvUInt32;
                     FrameIndex:TpvUInt32;
-                    DeltaTime:TpvFloat;
                    end;
                    PPushConstants=^TPushConstants;
                    TInterpolationPushConstants=packed record
@@ -1682,6 +1683,7 @@ type TpvScene3DPlanets=class;
        fBlendMapResolution:TpvInt32;
        fGrassMapResolution:TpvInt32;
        fWaterMapResolution:TpvInt32;
+       fWaterMapBorder:TpvInt32;
        fTileMapResolution:TpvInt32;
        fTileMapShift:TpvInt32;
        fTileMapBits:TpvInt32;
@@ -1872,6 +1874,7 @@ type TpvScene3DPlanets=class;
        property BlendMapResolution:TpvInt32 read fBlendMapResolution;
        property GrassMapResolution:TpvInt32 read fGrassMapResolution;
        property WaterMapResolution:TpvInt32 read fWaterMapResolution;
+       property WaterMapBorder:TpvInt32 read fWaterMapBorder;
        property TileMapResolution:TpvInt32 read fTileMapResolution;
        property VisualTileResolution:TpvInt32 read fVisualTileResolution;
        property PhysicsTileResolution:TpvInt32 read fPhysicsTileResolution;
@@ -2732,7 +2735,7 @@ begin
    fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fWaterHeightMapBuffers[1].Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fWaterHeightMapBuffers[1]');
 
    fWaterFlowMapBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
-                                               fPlanet.fWaterMapResolution*fPlanet.fWaterMapResolution*SizeOf(TpvVector4),
+                                               (fPlanet.fWaterMapResolution+(fPlanet.fWaterMapBorder*2))*(fPlanet.fWaterMapResolution+(fPlanet.fWaterMapBorder*2))*SizeOf(TpvVector4),
                                                TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
                                                fPlanet.fGlobalBufferSharingMode,
                                                fPlanet.fGlobalBufferQueueFamilyIndices,
@@ -8056,12 +8059,13 @@ begin
 
   fPushConstants.BottomRadius:=fPlanet.fBottomRadius;
   fPushConstants.TopRadius:=fPlanet.fTopRadius;
+  fPushConstants.DeltaTime:=1.0;
 
   fPushConstants.PlanetHeightMapResolution:=fPlanet.fHeightMapResolution;
   fPushConstants.WaterHeightMapResolution:=fPlanet.fWaterMapResolution;
+  fPushConstants.WaterHeightMapBorder:=fPlanet.fWaterMapBorder;
 
   fPushConstants.FrameIndex:=0;
-  fPushConstants.DeltaTime:=1.0;
 
   fModificationPushConstants.PositionRadius:=TpvVector4.Create(0.0,0.0,0.0,0.0);
   fModificationPushConstants.InnerRadius:=0.0;
@@ -8450,8 +8454,8 @@ begin
                                   SizeOf(TPushConstants),
                                   @fPushConstants);
 
-  aCommandBuffer.CmdDispatch((fPlanet.fWaterMapResolution+15) shr 4,
-                             (fPlanet.fWaterMapResolution+15) shr 4,
+  aCommandBuffer.CmdDispatch(((fPlanet.fWaterMapResolution+(fPlanet.fWaterMapBorder*2))+15) shr 4,
+                             ((fPlanet.fWaterMapResolution+(fPlanet.fWaterMapBorder*2))+15) shr 4,
                              1);
 
    BufferMemoryBarriers[3]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
@@ -16574,6 +16578,8 @@ begin
  fGrassMapResolution:=fHeightMapResolution;
 
  fWaterMapResolution:=fHeightMapResolution; // needs to be matched with fHeightMapResolution for now
+
+ fWaterMapBorder:=1;
 
  fTileMapResolution:=Min(Max(fHeightMapResolution shr 8,32),fHeightMapResolution);
 

@@ -30,19 +30,22 @@ layout(push_constant) uniform PushConstants {
   float attenuation;
   float strength;
   float minTotalFlow;
-  float initialWaterLevel;    
+  float initialWaterLevel;      
   float pipeLengthSquared;
   float crossSectionalPipeArea;
   float gravity;
-  float evaporation;
+  float evaporation;    
   float compensationFactor;
   float bottomRadius;
   float topRadius;
-  uint planetHeightMapResolution;
-  uint waterHeightMapResolution;  
-  uint frameIndex;
   float deltaTime;
+  uint planetHeightMapResolution;  
+  uint waterHeightMapResolution; 
+  uint waterHeightMapBorder;
+  uint frameIndex;
 } pushConstants;
+
+uint waterHeightMapResolutionWithBorder = pushConstants.waterHeightMapResolution + (pushConstants.waterHeightMapBorder * 2);
 
 layout(set = 0, binding = 0) uniform sampler2D uPlanetHeightmap;
 
@@ -103,7 +106,7 @@ vec2 readHeight(ivec2 p){
 
 shared vec2 sharedHeights[WORKGROUP_SIZE + 2][WORKGROUP_SIZE + 2]; // WORKGROUP_SIZE x WORKGROUP_SIZE + 1x1 for the border on each side for the 3x3 kernel
 
-shared uint sharedWrappedCoordinateIndices[WORKGROUP_SIZE + 2][WORKGROUP_SIZE + 2];
+shared uint sharedWrappedHeightMapCoordinateIndices[WORKGROUP_SIZE + 2][WORKGROUP_SIZE + 2];
 
 
 void main(){
@@ -112,7 +115,7 @@ void main(){
   if(pushConstants.frameIndex != 0){
 
     const ivec2 localPos = ivec2(gl_LocalInvocationID.xy);
-    const ivec2 tileOrigin = (ivec2(gl_WorkGroupID.xy) * WORKGROUP_SIZE) - ivec2(1, 1);
+    const ivec2 tileOrigin = ((ivec2(gl_WorkGroupID.xy) * WORKGROUP_SIZE) - ivec2(1, 1)) - ivec2(int(pushConstants.waterHeightMapBorder));
       
     const int dimension = WORKGROUP_SIZE + 2;
     const int totalElements = dimension * dimension;
@@ -120,7 +123,7 @@ void main(){
           
     for(int i = threadID; i < totalElements; i += 256){
       ivec2 t = ivec2(i % dimension, i / dimension);
-      sharedWrappedCoordinateIndices[t.y][t.x] = getIndex(tileOrigin + t);
+      sharedWrappedHeightMapCoordinateIndices[t.y][t.x] = getIndex(tileOrigin + t);
       sharedHeights[t.y][t.x] = readHeight(tileOrigin + t);
     }
 
@@ -131,9 +134,13 @@ void main(){
 
   const uvec2 position = uvec2(gl_GlobalInvocationID.xy);
 
-  if(all(lessThan(position, uvec2(pushConstants.waterHeightMapResolution)))){
+  if(all(lessThan(position, uvec2(waterHeightMapResolutionWithBorder)))){
 
-    const uint index = (position.y * pushConstants.waterHeightMapResolution) + position.x;
+    const ivec2 realPosition = ivec2(position) - ivec2(pushConstants.waterHeightMapBorder);
+
+    const ivec2 wrappedPosition = wrapOctahedralTexelCoordinatesForWater(realPosition, ivec2(pushConstants.waterHeightMapResolution));
+
+    const uint flowMapIndex = (position.y * waterHeightMapResolutionWithBorder) + position.x;
 
     vec4 outFlow;
 
@@ -144,23 +151,23 @@ void main(){
 
     }else{
 
-      const vec3 centerNormal = normalize(octPlanetUnsignedDecode(vec2(position) * texelSize));
+      const vec3 centerNormal = normalize(octPlanetUnsignedDecode(vec2(wrappedPosition) * texelSize));
 
       const vec2 centerHeight = sharedHeights[gl_LocalInvocationID.y + 1][gl_LocalInvocationID.x + 1]; // readHeight(ivec2(position));
      
-      const vec4 oldFlow = vec4(waterFlowMap.values[index]);
+      const vec4 oldFlow = vec4(waterFlowMap.values[flowMapIndex]);
 
       uvec4 neighbours = uvec4(
-        sharedWrappedCoordinateIndices[gl_LocalInvocationID.y + 1][gl_LocalInvocationID.x + 2], // ivec2( 1,  0)
-        sharedWrappedCoordinateIndices[gl_LocalInvocationID.y + 2][gl_LocalInvocationID.x + 1], // ivec2( 0,  1)
-        sharedWrappedCoordinateIndices[gl_LocalInvocationID.y + 1][gl_LocalInvocationID.x + 0], // ivec2(-1,  0)
-        sharedWrappedCoordinateIndices[gl_LocalInvocationID.y + 0][gl_LocalInvocationID.x + 1]  // ivec2( 0, -1)
+        sharedWrappedHeightMapCoordinateIndices[gl_LocalInvocationID.y + 1][gl_LocalInvocationID.x + 2], // ivec2( 1,  0)
+        sharedWrappedHeightMapCoordinateIndices[gl_LocalInvocationID.y + 2][gl_LocalInvocationID.x + 1], // ivec2( 0,  1)
+        sharedWrappedHeightMapCoordinateIndices[gl_LocalInvocationID.y + 1][gl_LocalInvocationID.x + 0], // ivec2(-1,  0)
+        sharedWrappedHeightMapCoordinateIndices[gl_LocalInvocationID.y + 0][gl_LocalInvocationID.x + 1]  // ivec2( 0, -1)
       );
 
       vec4 heightDifferences;
 
       // Check that the wrapped coordinates are unique
-      if(any(equal(neighbours.xxx, neighbours.yzw)) || any(equal(neighbours.yyy, neighbours.xzw)) || any(equal(neighbours.zzz, neighbours.xyw)) || any(equal(uvec4(sharedWrappedCoordinateIndices[gl_LocalInvocationID.y][gl_LocalInvocationID.x]), neighbours))){
+      if(any(equal(neighbours.xxx, neighbours.yzw)) || any(equal(neighbours.yyy, neighbours.xzw)) || any(equal(neighbours.zzz, neighbours.xyw)) || any(equal(uvec4(sharedWrappedHeightMapCoordinateIndices[gl_LocalInvocationID.y][gl_LocalInvocationID.x]), neighbours))){
 
         // If the wrapped coordinates are not unique, we need to check for duplicates and use each one only once
         // This is a bit tricky, but we can use the fact that the sharedHeights array is 2D and we can check for duplicates
@@ -177,7 +184,7 @@ void main(){
 
         // Check for duplicates and use each one only once
         // We can use a simple loop to check for duplicates and use each one only once
-        uvec4 uniqueCoordinateIndices = uvec4(sharedWrappedCoordinateIndices[gl_LocalInvocationID.y][gl_LocalInvocationID.x]); 
+        uvec4 uniqueCoordinateIndices = uvec4(sharedWrappedHeightMapCoordinateIndices[gl_LocalInvocationID.y][gl_LocalInvocationID.x]); 
         for(int i = 0, count = 0; i < 4; i++){
           if(!any(equal(uvec4(neighbours[i]), uniqueCoordinateIndices))){
             uniqueCoordinateIndices[count] = neighbours[i];
@@ -225,7 +232,7 @@ void main(){
      
     }
 
-    waterFlowMap.values[index] = _vec4(outFlow);
+    waterFlowMap.values[flowMapIndex] = _vec4(outFlow);
 
   }
 
