@@ -613,7 +613,7 @@ type { TpvScene3DRendererInstance }
        fCameraPresets:array[0..MaxInFlightFrames-1] of TpvScene3DRendererCameraPreset;
        fCameraPreset:TpvScene3DRendererCameraPreset;
        fUseDebugBlit:boolean;
-       fWaterRenderPassExternalWaitingOnSemaphore:TpvFrameGraph.TExternalWaitingOnSemaphore;
+       fWaterExternalWaitingOnSemaphore:TpvFrameGraph.TExternalWaitingOnSemaphore;
        fWaterSimulationSemaphores:TInFlightFrameSemaphores;
       private
        fMeshStagePushConstants:TpvScene3D.TMeshStagePushConstantArray;
@@ -1143,6 +1143,7 @@ uses PasVulkan.Scene3D.Atmosphere,
      PasVulkan.Scene3D.Renderer.Passes.AtmosphereRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.ForwardResolveRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.ForwardRenderMipMapComputePass,
+     PasVulkan.Scene3D.Renderer.Passes.WaterWaitCustomPass,
      PasVulkan.Scene3D.Renderer.Passes.WaterRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.DirectTransparencyRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.DirectTransparencyResolveRenderPass,
@@ -1257,6 +1258,7 @@ type TpvScene3DRendererInstancePasses=class
        fAtmosphereCloudRenderPass:TpvScene3DRendererPassesAtmosphereCloudRenderPass;
        fAtmosphereRenderPass:TpvScene3DRendererPassesAtmosphereRenderPass;
        fForwardResolveRenderPass:TpvScene3DRendererPassesForwardResolveRenderPass;
+       fWaterWaitCustomPass:TpvScene3DRendererPassesWaterWaitCustomPass;
        fWaterRenderPass:TpvScene3DRendererPassesWaterRenderPass;
        fForwardRenderMipMapComputePass:TpvScene3DRendererPassesForwardRenderMipMapComputePass;
        fDirectTransparencyRenderPass:TpvScene3DRendererPassesDirectTransparencyRenderPass;
@@ -2383,7 +2385,7 @@ begin
 
  fImageBasedLightingReflectionProbeCubeMaps:=nil;
 
- fWaterRenderPassExternalWaitingOnSemaphore:=nil;
+ fWaterExternalWaitingOnSemaphore:=nil;
 
  FillChar(fWaterSimulationSemaphores,SizeOf(TInFlightFrameSemaphores),#0);
 
@@ -2408,7 +2410,7 @@ begin
   FreeAndNil(fWaterSimulationSemaphores[InFlightFrameIndex]);
  end;
 
- FreeAndNil(fWaterRenderPassExternalWaitingOnSemaphore);
+ FreeAndNil(fWaterExternalWaitingOnSemaphore);
 
  FreeAndNil(fFrameGraph);
 
@@ -4054,24 +4056,28 @@ begin
  end;
 
 {TpvScene3DRendererInstancePasses(fPasses).fPlanetWaterPrepassComputePass:=TpvScene3DRendererPassesPlanetWaterPrepassComputePass.Create(fFrameGraph,self);
- TpvScene3DRendererInstancePasses(fPasses).fPlanetWaterPrepassComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fDepthMipMapComputePass);}
+TpvScene3DRendererInstancePasses(fPasses).fPlanetWaterPrepassComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fDepthMipMapComputePass);}
+
+ TpvScene3DRendererInstancePasses(fPasses).fWaterWaitCustomPass:=TpvScene3DRendererPassesWaterWaitCustomPass.Create(fFrameGraph,self);
+ TpvScene3DRendererInstancePasses(fPasses).fWaterWaitCustomPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fDepthMipMapComputePass);
+ if fScene3D.PlanetWaterSimulationUseParallelQueue then begin
+  FreeAndNil(fWaterExternalWaitingOnSemaphore);
+  fWaterExternalWaitingOnSemaphore:=TpvFrameGraph.TExternalWaitingOnSemaphore.Create(fFrameGraph);
+  try
+   for InFlightFrameIndex:=0 to fFrameGraph.CountInFlightFrames-1 do begin
+    fWaterExternalWaitingOnSemaphore.InFlightFrameSemaphores[InFlightFrameIndex]:=fWaterSimulationSemaphores[InFlightFrameIndex];
+   end;
+  finally
+// TpvScene3DRendererInstancePasses(fPasses).fWaterWaitCustomPass.AddExternalWaitingOnSemaphore(fWaterExternalWaitingOnSemaphore,TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT));
+   TpvScene3DRendererInstancePasses(fPasses).fWaterWaitCustomPass.AddExternalWaitingOnSemaphore(fWaterExternalWaitingOnSemaphore,TVkPipelineStageFlags(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT));
+  end;
+ end else begin
+  fWaterExternalWaitingOnSemaphore:=nil;
+ end;
 
  TpvScene3DRendererInstancePasses(fPasses).fWaterRenderPass:=TpvScene3DRendererPassesWaterRenderPass.Create(fFrameGraph,self);
  TpvScene3DRendererInstancePasses(fPasses).fWaterRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fDepthMipMapComputePass);
- if fScene3D.PlanetWaterSimulationUseParallelQueue then begin
-  FreeAndNil(fWaterRenderPassExternalWaitingOnSemaphore);
-  fWaterRenderPassExternalWaitingOnSemaphore:=TpvFrameGraph.TExternalWaitingOnSemaphore.Create(fFrameGraph);
-  try
-   for InFlightFrameIndex:=0 to fFrameGraph.CountInFlightFrames-1 do begin
-    fWaterRenderPassExternalWaitingOnSemaphore.InFlightFrameSemaphores[InFlightFrameIndex]:=fWaterSimulationSemaphores[InFlightFrameIndex];
-   end;
-  finally
-// TpvScene3DRendererInstancePasses(fPasses).fWaterRenderPass.AddExternalWaitingOnSemaphore(fWaterRenderPassExternalWaitingOnSemaphore,TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT));
-   TpvScene3DRendererInstancePasses(fPasses).fWaterRenderPass.AddExternalWaitingOnSemaphore(fWaterRenderPassExternalWaitingOnSemaphore,TVkPipelineStageFlags(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT));
-  end;
- end else begin
-  fWaterRenderPassExternalWaitingOnSemaphore:=nil;
- end;
+ TpvScene3DRendererInstancePasses(fPasses).fWaterRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fWaterWaitCustomPass);
 
  PreLastPass:=nil;
  LastPass:=TpvScene3DRendererInstancePasses(fPasses).fWaterRenderPass;
