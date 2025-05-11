@@ -15915,6 +15915,8 @@ var PlanetIndex:TpvSizeInt;
     InFlightFrameState:TpvScene3DRendererInstance.PInFlightFrameState;
     RendererInstance:TpvScene3DPlanet.TRendererInstance;
     RendererViewInstance:TpvScene3DPlanet.TRendererViewInstance;
+    BufferMemoryBarriers:array[0..3] of TVkBufferMemoryBarrier;
+    ImageMemoryBarriers:array[0..3] of TVkImageMemoryBarrier;
 begin
 
  InFlightFrameState:=@TpvScene3DRendererInstance(fRendererInstance).InFlightFrameStates[aInFlightFrameIndex];
@@ -15950,6 +15952,43 @@ begin
                                             nil);
 
       end;
+
+      // Barriers
+      BufferMemoryBarriers[0].sType:=VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+      BufferMemoryBarriers[0].pNext:=nil;
+      BufferMemoryBarriers[0].srcAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
+      BufferMemoryBarriers[0].dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
+      BufferMemoryBarriers[0].srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+      BufferMemoryBarriers[0].dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+      BufferMemoryBarriers[0].buffer:=Planet.fData.fWaterVisibilityBuffer.Handle;
+      BufferMemoryBarriers[0].offset:=0;
+      BufferMemoryBarriers[0].size:=Planet.fData.fWaterVisibilityBuffer.Size;
+
+      ImageMemoryBarriers[0].sType:=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+      ImageMemoryBarriers[0].pNext:=nil;
+      ImageMemoryBarriers[0].srcAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
+      ImageMemoryBarriers[0].dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
+      ImageMemoryBarriers[0].oldLayout:=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+      ImageMemoryBarriers[0].newLayout:=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+      ImageMemoryBarriers[0].srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+      ImageMemoryBarriers[0].dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+      ImageMemoryBarriers[0].image:=Planet.fData.fWaterHeightMapImage.VulkanImage.Handle;
+      ImageMemoryBarriers[0].subresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
+      ImageMemoryBarriers[0].subresourceRange.baseMipLevel:=0;
+      ImageMemoryBarriers[0].subresourceRange.levelCount:=1;
+      ImageMemoryBarriers[0].subresourceRange.baseArrayLayer:=0;
+      ImageMemoryBarriers[0].subresourceRange.layerCount:=1;
+
+      aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
+                                        TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_SHADER_BIT) or
+                                        TVkPipelineStageFlags(VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT) or
+                                        TVkPipelineStageFlags(VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT) or
+                                        TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT) or
+                                        TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                        0,
+                                        0,nil,
+                                        1,@BufferMemoryBarriers[0],
+                                        1,@ImageMemoryBarriers[0]);
 
       if Planet.fRendererInstanceHashMap.TryGet(TpvScene3DPlanet.TRendererInstance.TKey.Create(fRendererInstance),RendererInstance) and
          Planet.fRendererViewInstanceHashMap.TryGet(TpvScene3DPlanet.TRendererViewInstance.TKey.Create(fRendererInstance,TpvScene3DRendererRenderPass.View),RendererViewInstance) then begin
@@ -19234,7 +19273,7 @@ begin
   InFlightFrameData:=fInFlightFrameDataList[aInFlightFrameIndex];
   if assigned(InFlightFrameData) then begin
    fWaterSimulation.Execute(aCommandBuffer,TpvScene3D(fScene3D).DeltaTimes^[aInFlightFrameIndex],aInFlightFrameIndex);
-// fWaterCullPass.Execute(aCommandBuffer);
+   fWaterCullPass.Execute(aCommandBuffer);
   end;
  end;
 end;
