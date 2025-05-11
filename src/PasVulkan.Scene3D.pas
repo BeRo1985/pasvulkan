@@ -4203,6 +4203,8 @@ type EpvScene3D=class(Exception);
        property PlanetWaterPrepassDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fPlanetWaterPrepassDescriptorSetLayout;
        property PlanetWaterRenderDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fPlanetWaterRenderDescriptorSetLayout;
        property PlanetWaterSimulationUseParallelQueue:TPasMPBool32 read fPlanetWaterSimulationUseParallelQueue;
+       property PlanetWaterSimulationQueue:TpvVulkanQueue read fPlanetWaterSimulationQueue;
+       property PlanetWaterSimulationQueueFamilyIndex:TpvInt32 read fPlanetWaterSimulationQueueFamilyIndex;
       public
        property PlanetWaterSimulationSemaphores:TPlanetWaterSimulationSemaphores read fPlanetWaterSimulationSemaphores;
       published
