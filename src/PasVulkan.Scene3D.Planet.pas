@@ -2405,24 +2405,34 @@ begin
 
  fPlanet:=aPlanet;
 
- if fInFlightFrameIndex<0 then begin
-  ImageSharingMode:=TVkSharingMode.VK_SHARING_MODE_EXCLUSIVE;
-  ImageQueueFamilyIndices:=[];
+ if TpvScene3D(fPlanet.Scene3D).PlanetWaterSimulationUseParallelQueue and
+    assigned(fPlanet.fVulkanDevice) and
+    (TpvScene3D(fPlanet.Scene3D).PlanetWaterSimulationQueueFamilyIndex<>fPlanet.fVulkanDevice.UniversalQueueFamilyIndex) then begin
+  ImageSharingMode:=TVkSharingMode(VK_SHARING_MODE_CONCURRENT);
+  ImageQueueFamilyIndices:=[fPlanet.fVulkanDevice.UniversalQueueFamilyIndex,
+                            fPlanet.fVulkanDevice.ComputeQueueFamilyIndex];
  end else begin
-  if TpvScene3D(aPlanet.fScene3D).PlanetSingleBuffers then begin
+  if fInFlightFrameIndex<0 then begin
    ImageSharingMode:=TVkSharingMode.VK_SHARING_MODE_EXCLUSIVE;
    ImageQueueFamilyIndices:=[];
   end else begin
-   ImageSharingMode:=fPlanet.fInFlightFrameSharingMode;
-   ImageQueueFamilyIndices:=fPlanet.fInFlightFrameQueueFamilyIndices;
+   if TpvScene3D(aPlanet.fScene3D).PlanetSingleBuffers then begin
+    ImageSharingMode:=TVkSharingMode.VK_SHARING_MODE_EXCLUSIVE;
+    ImageQueueFamilyIndices:=[];
+   end else begin
+    ImageSharingMode:=fPlanet.fInFlightFrameSharingMode;
+    ImageQueueFamilyIndices:=fPlanet.fInFlightFrameQueueFamilyIndices;
+   end;
   end;
  end;
 
-{if TpvScene3D(fPlanet.Scene3D).PlanetWaterSimulationUseParallelQueue and assigned(fPlanet.fVulkanDevice) then begin
+ if TpvScene3D(fPlanet.Scene3D).PlanetWaterSimulationUseParallelQueue and
+    assigned(fPlanet.fVulkanDevice) and
+    (TpvScene3D(fPlanet.Scene3D).PlanetWaterSimulationQueueFamilyIndex<>fPlanet.fVulkanDevice.UniversalQueueFamilyIndex) then begin
   WaterHeightMapImageSharingMode:=TVkSharingMode(VK_SHARING_MODE_CONCURRENT);
   WaterHeightMapImageQueueFamilyIndices:=[fPlanet.fVulkanDevice.UniversalQueueFamilyIndex,
                                           fPlanet.fVulkanDevice.ComputeQueueFamilyIndex];
- end else}begin
+ end else begin
   WaterHeightMapImageSharingMode:=TVkSharingMode.VK_SHARING_MODE_EXCLUSIVE;
   WaterHeightMapImageQueueFamilyIndices:=[];
  end;
