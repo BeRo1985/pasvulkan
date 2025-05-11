@@ -28793,6 +28793,7 @@ begin
   // because RenderDoc does not support parallel queues while its operatings.
   fPlanetWaterSimulationUseParallelQueue:=aUseParallelQueues and
                                           (not fVulkanDevice.PhysicalDevice.RenderDocDetected) and
+                                          (length(fVulkanDevice.UniversalQueues)>=2) and
                                           (fVulkanDevice.UniversalQueueFamilyIndex<>fVulkanDevice.ComputeQueueFamilyIndex) and
                                           (fVulkanDevice.GraphicsQueueFamilyIndex<>fVulkanDevice.ComputeQueueFamilyIndex) and
                                           (fVulkanDevice.UniversalQueueFamilyIndex<>fVulkanDevice.TransferQueueFamilyIndex) and
@@ -28802,9 +28803,19 @@ begin
 
   if fPlanetWaterSimulationUseParallelQueue then begin
 
-   fPlanetWaterSimulationQueue:=fVulkanDevice.ComputeQueue;
+   if length(fVulkanDevice.UniversalQueues)>=2 then begin
 
-   fPlanetWaterSimulationQueueFamilyIndex:=fVulkanDevice.ComputeQueueFamilyIndex;
+    fPlanetWaterSimulationQueue:=VulkanDevice.UniversalQueues[1];
+
+    fPlanetWaterSimulationQueueFamilyIndex:=fVulkanDevice.UniversalQueueFamilyIndex;
+
+   end else begin
+
+    fPlanetWaterSimulationQueue:=fVulkanDevice.ComputeQueue;
+
+    fPlanetWaterSimulationQueueFamilyIndex:=fVulkanDevice.ComputeQueueFamilyIndex;
+
+   end;
 
    fPlanetWaterSimulationCommandPool:=TpvVulkanCommandPool.Create(fVulkanDevice,
                                                                   fPlanetWaterSimulationQueueFamilyIndex,
