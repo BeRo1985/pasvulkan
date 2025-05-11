@@ -28805,17 +28805,27 @@ begin
 
   if fPlanetWaterSimulationUseParallelQueue then begin
 
-   if length(fVulkanDevice.UniversalQueues)>=2 then begin
-
-    fPlanetWaterSimulationQueue:=VulkanDevice.UniversalQueues[1];
-
-    fPlanetWaterSimulationQueueFamilyIndex:=fVulkanDevice.UniversalQueueFamilyIndex;
-
-   end else begin
+   if TpvVulkanVendorID(fVulkanDevice.PhysicalDevice.Properties.vendorID)=TpvVulkanVendorID.NVIDIA then begin
 
     fPlanetWaterSimulationQueue:=fVulkanDevice.ComputeQueue;
 
     fPlanetWaterSimulationQueueFamilyIndex:=fVulkanDevice.ComputeQueueFamilyIndex;
+
+   end else begin
+
+    if length(fVulkanDevice.UniversalQueues)>=2 then begin
+
+     fPlanetWaterSimulationQueue:=VulkanDevice.UniversalQueues[1];
+
+     fPlanetWaterSimulationQueueFamilyIndex:=fVulkanDevice.UniversalQueueFamilyIndex;
+
+    end else begin
+
+     fPlanetWaterSimulationQueue:=fVulkanDevice.ComputeQueue;
+
+     fPlanetWaterSimulationQueueFamilyIndex:=fVulkanDevice.ComputeQueueFamilyIndex;
+
+    end;
 
    end;
 
