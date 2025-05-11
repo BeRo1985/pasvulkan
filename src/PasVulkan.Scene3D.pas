@@ -28793,11 +28793,11 @@ begin
   // because RenderDoc does not support parallel queues while its operatings.
   fPlanetWaterSimulationUseParallelQueue:=aUseParallelQueues and
                                           (not fVulkanDevice.PhysicalDevice.RenderDocDetected) and
-                                          (length(fVulkanDevice.UniversalQueues)>=2) and
-                                          (fVulkanDevice.UniversalQueueFamilyIndex<>fVulkanDevice.ComputeQueueFamilyIndex) and
-                                          (fVulkanDevice.GraphicsQueueFamilyIndex<>fVulkanDevice.ComputeQueueFamilyIndex) and
-                                          (fVulkanDevice.UniversalQueueFamilyIndex<>fVulkanDevice.TransferQueueFamilyIndex) and
-                                          (fVulkanDevice.GraphicsQueueFamilyIndex<>fVulkanDevice.TransferQueueFamilyIndex);
+                                          ((length(fVulkanDevice.UniversalQueues)>=2) or
+                                           (fVulkanDevice.UniversalQueueFamilyIndex<>fVulkanDevice.ComputeQueueFamilyIndex) and
+                                           (fVulkanDevice.GraphicsQueueFamilyIndex<>fVulkanDevice.ComputeQueueFamilyIndex) and
+                                           (fVulkanDevice.UniversalQueueFamilyIndex<>fVulkanDevice.TransferQueueFamilyIndex) and
+                                           (fVulkanDevice.GraphicsQueueFamilyIndex<>fVulkanDevice.TransferQueueFamilyIndex));
 
   fPlanetWaterSimulationToSignalSemaphores:=nil;
 
