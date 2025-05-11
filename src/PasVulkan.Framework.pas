@@ -671,6 +671,8 @@ type EpvVulkanException=class(Exception);
 
      TpvVulkanDeviceOnBeforeDeviceCreate=procedure(const aDevice:TpvVulkanDevice;const aDeviceCreateInfo:PVkDeviceCreateInfo) of object;
 
+     TpvVulkanQueueFamilyIndices=array of TpvUInt32;
+
      TpvVulkanDevice=class(TpvVulkanObject)
       private
        fInstance:TpvVulkanInstance;
@@ -696,6 +698,7 @@ type EpvVulkanException=class(Exception);
        fGraphicsQueueFamilyIndex:TpvInt32;
        fComputeQueueFamilyIndex:TpvInt32;
        fTransferQueueFamilyIndex:TpvInt32;
+       fAllQueueFamilyIndices:TpvVulkanQueueFamilyIndices;
        fQueueFamilyIndices:TVkUInt32DynamicArrayList;
        fQueueFamilyQueues:TpvVulkanQueueFamilyQueues;
        fUniversalQueue:TpvVulkanQueue;
@@ -766,6 +769,7 @@ type EpvVulkanException=class(Exception);
       public
        property AllocationCallbacks:PVkAllocationCallbacks read fAllocationCallbacks;
        property EnabledFeatures:PVkPhysicalDeviceFeatures read fPointerToEnabledFeatures;
+       property AllQueueFamilyIndices:TpvVulkanQueueFamilyIndices read fAllQueueFamilyIndices;
       published
        property Instance:TpvVulkanInstance read fInstance;
        property PhysicalDevice:TpvVulkanPhysicalDevice read fPhysicalDevice;
@@ -1353,8 +1357,6 @@ type EpvVulkanException=class(Exception);
        property MaximumMemoryMappableNonDeviceLocalHeapSize:TVkDeviceSize read fMaximumMemoryMappableNonDeviceLocalHeapSize;
 
      end;
-
-     TpvVulkanQueueFamilyIndices=array of TpvUInt32;
 
      TpvVulkanBufferUseTemporaryStagingBufferMode=
       (
@@ -10059,6 +10061,8 @@ begin
 
  fDeviceVulkan:=nil;
 
+ fAllQueueFamilyIndices:=nil;
+
  fQueueFamilyIndices:=TVkUInt32DynamicArrayList.Create;
 
  fQueueFamilyQueues:=nil;
@@ -10240,6 +10244,7 @@ begin
  end;
  FreeAndNil(fQueueFamilyIndices);
  fQueueFamilyQueues:=nil;
+ fAllQueueFamilyIndices:=nil;
  fUniversalQueues:=nil;
  fPresentQueues:=nil;
  fGraphicsQueues:=nil;
@@ -10565,12 +10570,14 @@ begin
 end;
 
 procedure TpvVulkanDevice.Initialize;
-var Index,SubIndex:TpvSizeInt;
+var Index,SubIndex,Count:TpvSizeInt;
     DeviceQueueCreateInfo:PVkDeviceQueueCreateInfo;
     SrcDeviceQueueCreateInfo:TpvVulkanDeviceQueueCreateInfo;
     DeviceCommands:PVulkanCommands;
     Queue:TVkQueue;
+    QueueFamily:TVkUInt32;
     DeviceCreateInfo:TVkDeviceCreateInfo;
+    Found:Boolean;
 begin
 
  if fDeviceHandle=VK_NULL_HANDLE then begin
@@ -10602,6 +10609,28 @@ begin
     DeviceQueueCreateInfo^.pQueuePriorities:=@SrcDeviceQueueCreateInfo.fQueuePriorities[0];
    end;
   end;
+  fQueueFamilyIndices.Finish;
+
+  fAllQueueFamilyIndices:=nil;
+  Count:=0;
+  for Index:=0 to fQueueFamilyIndices.Count-1 do begin
+   QueueFamily:=fQueueFamilyIndices.ItemArray[Index];
+   Found:=false;
+   for SubIndex:=0 to Count-1 do begin
+    if fAllQueueFamilyIndices[SubIndex]=QueueFamily then begin
+     Found:=true;
+     break;
+    end;
+   end;
+   if not Found then begin
+    inc(Count);
+    if length(fAllQueueFamilyIndices)<Count then begin
+     SetLength(fAllQueueFamilyIndices,Count*2);
+    end;
+    fAllQueueFamilyIndices[Count-1]:=QueueFamily;
+   end;
+  end;
+  SetLength(fAllQueueFamilyIndices,Count);
 
   FillChar(DeviceCreateInfo,SizeOf(TVkDeviceCreateInfo),#0);
   DeviceCreateInfo.sType:=VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;

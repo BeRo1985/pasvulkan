@@ -2407,10 +2407,10 @@ begin
 
  if TpvScene3D(fPlanet.Scene3D).PlanetWaterSimulationUseParallelQueue and
     assigned(fPlanet.fVulkanDevice) and
-    (TpvScene3D(fPlanet.Scene3D).PlanetWaterSimulationQueueFamilyIndex<>fPlanet.fVulkanDevice.UniversalQueueFamilyIndex) then begin
+    (TpvScene3D(fPlanet.Scene3D).PlanetWaterSimulationQueueFamilyIndex<>fPlanet.fVulkanDevice.UniversalQueueFamilyIndex) and
+    (length(fPlanet.fVulkanDevice.AllQueueFamilyIndices)>1) then begin
   ImageSharingMode:=TVkSharingMode(VK_SHARING_MODE_CONCURRENT);
-  ImageQueueFamilyIndices:=[fPlanet.fVulkanDevice.UniversalQueueFamilyIndex,
-                            fPlanet.fVulkanDevice.ComputeQueueFamilyIndex];
+  ImageQueueFamilyIndices:=fPlanet.fVulkanDevice.AllQueueFamilyIndices;
  end else begin
   if fInFlightFrameIndex<0 then begin
    ImageSharingMode:=TVkSharingMode.VK_SHARING_MODE_EXCLUSIVE;
@@ -2428,14 +2428,15 @@ begin
 
  if TpvScene3D(fPlanet.Scene3D).PlanetWaterSimulationUseParallelQueue and
     assigned(fPlanet.fVulkanDevice) and
-    (TpvScene3D(fPlanet.Scene3D).PlanetWaterSimulationQueueFamilyIndex<>fPlanet.fVulkanDevice.UniversalQueueFamilyIndex) then begin
+    (TpvScene3D(fPlanet.Scene3D).PlanetWaterSimulationQueueFamilyIndex<>fPlanet.fVulkanDevice.UniversalQueueFamilyIndex) and
+    (length(fPlanet.fVulkanDevice.AllQueueFamilyIndices)>1) then begin
   WaterHeightMapImageSharingMode:=TVkSharingMode(VK_SHARING_MODE_CONCURRENT);
-  WaterHeightMapImageQueueFamilyIndices:=[fPlanet.fVulkanDevice.UniversalQueueFamilyIndex,
-                                          fPlanet.fVulkanDevice.ComputeQueueFamilyIndex];
+  WaterHeightMapImageQueueFamilyIndices:=fPlanet.fVulkanDevice.AllQueueFamilyIndices;
  end else begin
   WaterHeightMapImageSharingMode:=TVkSharingMode.VK_SHARING_MODE_EXCLUSIVE;
   WaterHeightMapImageQueueFamilyIndices:=[];
  end;
+
  fInFlightFrameIndex:=aInFlightFrameIndex;
 
 {if fInFlightFrameIndex<0 then begin
@@ -16825,10 +16826,10 @@ begin
 
   if (not TpvScene3D(fScene3D).PlanetSingleBuffers) and
      (fVulkanDevice.UniversalQueueFamilyIndex<>fVulkanDevice.ComputeQueueFamilyIndex) and
+     (length(fVulkanDevice.AllQueueFamilyIndices)>1) and
      fVulkanDevice.PhysicalDevice.RenderDocDetected then begin
    fInFlightFrameSharingMode:=TVkSharingMode(VK_SHARING_MODE_CONCURRENT);
-   fInFlightFrameQueueFamilyIndices:=[fVulkanDevice.UniversalQueueFamilyIndex,
-                                      fVulkanDevice.ComputeQueueFamilyIndex];
+   fInFlightFrameQueueFamilyIndices:=fVulkanDevice.AllQueueFamilyIndices;
   end else begin
    fInFlightFrameSharingMode:=TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE);
    fInFlightFrameQueueFamilyIndices:=nil;
