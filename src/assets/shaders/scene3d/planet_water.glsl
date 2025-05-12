@@ -131,45 +131,13 @@ float getWaves(vec2 position, int iterations) {
   return result.x / result.y;
 }
 
-#undef HaveWaterHeightMapBuffer
-
-#ifdef HaveWaterHeightMapBuffer
-uint waterMapResolution = planetData.flagsResolutions.z;
-
-float getWaterHeightDataTexel(ivec2 uv){
-  uv = wrapOctahedralTexelCoordinates(uv, ivec2(waterMapResolution));
-  const uint index = (uint(uv.y) * waterMapResolution) + uint(uv.x);
-  return uWaterHeightMap.values[index];
-}
-#endif
-
 float getWaterHeightData(vec2 uv) {
-#ifdef HaveWaterHeightMapBuffer
-  uv *= vec2(float(waterMapResolution));
-  const ivec2 uv00 = ivec2(uv);
-  const ivec2 uv01 = uv00 + ivec2(0, 1);
-  const ivec2 uv10 = uv00 + ivec2(1, 0);
-  const ivec2 uv11 = uv00 + ivec2(1, 1);
-  const float h00 = getWaterHeightDataTexel(uv00);
-  const float h01 = getWaterHeightDataTexel(uv01);
-  const float h10 = getWaterHeightDataTexel(uv10);
-  const float h11 = getWaterHeightDataTexel(uv11);
-  const vec2 uvFraction = fract(uv);
-  const float h0 = mix(h00, h10, uvFraction.x);
-  const float h1 = mix(h01, h11, uvFraction.x);
-  return mix(h0, h1, uvFraction.y);  
-#else  
   return textureBicubicPlanetOctahedralMap(uPlanetTextures[PLANET_TEXTURE_WATERMAP], uv).x; // But for the water map, we use bicubic interpolation to get a smoother water surface 
-#endif  
 }
 
 float getWaterHeightData(vec3 n) {
-#ifdef HaveWaterHeightMapBuffer
-  return getWaterHeightData(octPlanetUnsignedEncode(n) + vec2(0.5 / float(waterMapResolution)));
-#else
   vec2 uv = octPlanetUnsignedEncode(n) + (vec2(0.5) / vec2(textureSize(uPlanetTextures[PLANET_TEXTURE_HEIGHTMAP], 0).xy));
   return textureBicubicPlanetOctahedralMap(uPlanetTextures[PLANET_TEXTURE_WATERMAP], uv).x; // But for the water map, we use bicubic interpolation to get a smoother water surface 
-#endif
 }
 
 vec2 getSphereHeightData(vec2 uv) {
@@ -179,11 +147,7 @@ vec2 getSphereHeightData(vec2 uv) {
       planetTopRadius,
       texturePlanetOctahedralMap(uPlanetTextures[PLANET_TEXTURE_HEIGHTMAP], uv).x  // Linear interpolation of the heightmap for to match the vertex-based rendering
     ),         
-#ifdef HaveWaterHeightMapBuffer
-    getWaterHeightData(uv)
-#else
     textureBicubicPlanetOctahedralMap(uPlanetTextures[PLANET_TEXTURE_WATERMAP], uv).x // But for the water map, we use bicubic interpolation to get a smoother water surface 
-#endif
   );
 }
 
@@ -195,11 +159,7 @@ vec2 getSphereHeightData(vec3 n) {
       planetTopRadius,
       texturePlanetOctahedralMap(uPlanetTextures[PLANET_TEXTURE_HEIGHTMAP], uv).x  // Linear interpolation of the heightmap for to match the vertex-based rendering
     ),         
-#ifdef HaveWaterHeightMapBuffer
     getWaterHeightData(uv)
-#else
-    textureBicubicPlanetOctahedralMap(uPlanetTextures[PLANET_TEXTURE_WATERMAP], uv).x // But for the water map, we use bicubic interpolation to get a smoother water surface 
-#endif
   );
 }
 

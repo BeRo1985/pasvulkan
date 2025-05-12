@@ -33,11 +33,7 @@ layout(set = 0, binding = 1, std430) readonly buffer InWaterHeightMapB {
   float values[];
 } inWaterHeightMapB;
 
-layout(set = 0, binding = 2, std430) buffer OutWaterHeightMap {
-  float values[];
-} outWaterHeightMap;
-
-layout(set = 0, binding = 3, r32f) writeonly uniform image2D uImageWaterMap;  
+layout(set = 0, binding = 2, r32f) writeonly uniform image2D uImageWaterMap;  
 
 #include "octahedral.glsl"
 #include "octahedralmap.glsl"
@@ -58,7 +54,7 @@ void main(){
       pushConstants.factor
     );
 
-    imageStore(uImageWaterMap, ivec2(position), vec4(outWaterHeightMap.values[index] = ((waterHeight < 1e-6) ? -1.0 : waterHeight)));
+    imageStore(uImageWaterMap, ivec2(position), vec4((waterHeight < 1e-6) ? -1.0 : waterHeight));
 
   }
 

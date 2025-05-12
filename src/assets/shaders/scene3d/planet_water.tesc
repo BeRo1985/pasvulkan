@@ -36,12 +36,6 @@ layout(location = 0) out OutBlock {
 #include "globaldescriptorset.glsl"
 #undef PLANETS
 
-layout(set = 3, binding = 2) buffer WaterHeightMapBuffer {
-  float values[];
-} uWaterHeightMap;
-
-#define HaveWaterHeightMapBuffer
-
 #define PLANET_WATER
 #include "planet_renderpass.glsl"
   
