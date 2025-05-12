@@ -2426,24 +2426,16 @@ begin
 
  fPlanet:=aPlanet;
 
- if TpvScene3D(fPlanet.Scene3D).PlanetWaterSimulationUseParallelQueue and
-    assigned(fPlanet.fVulkanDevice) and
-    (TpvScene3D(fPlanet.Scene3D).PlanetWaterSimulationQueueFamilyIndex<>fPlanet.fVulkanDevice.UniversalQueueFamilyIndex) and
-    (length(fPlanet.fVulkanDevice.AllQueueFamilyIndices)>1) then begin
-  ImageSharingMode:=TVkSharingMode(VK_SHARING_MODE_CONCURRENT);
-  ImageQueueFamilyIndices:=fPlanet.fVulkanDevice.AllQueueFamilyIndices;
+ if fInFlightFrameIndex<0 then begin
+  ImageSharingMode:=TVkSharingMode.VK_SHARING_MODE_EXCLUSIVE;
+  ImageQueueFamilyIndices:=[];
  end else begin
-  if fInFlightFrameIndex<0 then begin
+  if TpvScene3D(aPlanet.fScene3D).PlanetSingleBuffers then begin
    ImageSharingMode:=TVkSharingMode.VK_SHARING_MODE_EXCLUSIVE;
    ImageQueueFamilyIndices:=[];
   end else begin
-   if TpvScene3D(aPlanet.fScene3D).PlanetSingleBuffers then begin
-    ImageSharingMode:=TVkSharingMode.VK_SHARING_MODE_EXCLUSIVE;
-    ImageQueueFamilyIndices:=[];
-   end else begin
-    ImageSharingMode:=fPlanet.fInFlightFrameSharingMode;
-    ImageQueueFamilyIndices:=fPlanet.fInFlightFrameQueueFamilyIndices;
-   end;
+   ImageSharingMode:=fPlanet.fInFlightFrameSharingMode;
+   ImageQueueFamilyIndices:=fPlanet.fInFlightFrameQueueFamilyIndices;
   end;
  end;
 
