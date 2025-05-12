@@ -1200,6 +1200,7 @@ uses PasVulkan.Scene3D.Atmosphere,
      PasVulkan.Scene3D.Renderer.Passes.CanvasRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.HUDMipMapCustomPass,
      PasVulkan.Scene3D.Renderer.Passes.ContentProjectionRenderPass,
+     PasVulkan.Scene3D.Renderer.Passes.WaterReleaseCustomPass,
      PasVulkan.Scene3D.Renderer.Passes.DebugBlitRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.FrameBufferBlitRenderPass;
 
@@ -1319,6 +1320,7 @@ type TpvScene3DRendererInstancePasses=class
        fHUDRenderPass:TpvScene3DRendererInstance.THUDRenderPass;
        fHUDMipMapCustomPass:TpvScene3DRendererPassesHUDMipMapCustomPass;
        fContentProjectionRenderPass:TpvScene3DRendererPassesContentProjectionRenderPass;
+       fWaterReleaseCustomPass:TpvScene3DRendererPassesWaterReleaseCustomPass;
        fDebugBlitRenderPass:TpvScene3DRendererPassesDebugBlitRenderPass;
        fFrameBufferBlitRenderPass:TpvScene3DRendererPassesFrameBufferBlitRenderPass;
      end;
@@ -4481,6 +4483,20 @@ TpvScene3DRendererInstancePasses(fPasses).fPlanetWaterPrepassComputePass.AddExpl
 
  end;
 
+ TpvScene3DRendererInstancePasses(fPasses).fWaterReleaseCustomPass:=TpvScene3DRendererPassesWaterReleaseCustomPass.Create(fFrameGraph,self);
+ TpvScene3DRendererInstancePasses(fPasses).fWaterReleaseCustomPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fWaterRenderPass);
+ if assigned(TpvScene3DRendererInstancePasses(fPasses).fHUDCustomPass) then begin
+  TpvScene3DRendererInstancePasses(fPasses).fWaterReleaseCustomPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fHUDCustomPass);
+ end;
+ if assigned(TpvScene3DRendererInstancePasses(fPasses).fHUDComputePass) then begin
+  TpvScene3DRendererInstancePasses(fPasses).fWaterReleaseCustomPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fHUDComputePass);
+ end;
+ if assigned(fHUDRenderPassClass) then begin
+  TpvScene3DRendererInstancePasses(fPasses).fWaterReleaseCustomPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fHUDRenderPass);
+  TpvScene3DRendererInstancePasses(fPasses).fWaterReleaseCustomPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fContentProjectionRenderPass);
+ end;
+ TpvScene3DRendererInstancePasses(fPasses).fWaterReleaseCustomPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fCanvasRenderPass);
+
  if fUseDebugBlit then begin
 
   TpvScene3DRendererInstancePasses(fPasses).fDebugBlitRenderPass:=TpvScene3DRendererPassesDebugBlitRenderPass.Create(fFrameGraph,self);
@@ -4495,6 +4511,7 @@ TpvScene3DRendererInstancePasses(fPasses).fPlanetWaterPrepassComputePass.AddExpl
    TpvScene3DRendererInstancePasses(fPasses).fDebugBlitRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fContentProjectionRenderPass);
   end;
   TpvScene3DRendererInstancePasses(fPasses).fDebugBlitRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fCanvasRenderPass);
+  TpvScene3DRendererInstancePasses(fPasses).fDebugBlitRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fWaterReleaseCustomPass);
 
   fFrameGraph.RootPass:=TpvScene3DRendererInstancePasses(fPasses).fDebugBlitRenderPass;
 
@@ -4512,6 +4529,7 @@ TpvScene3DRendererInstancePasses(fPasses).fPlanetWaterPrepassComputePass.AddExpl
   TpvScene3DRendererInstancePasses(fPasses).fFrameBufferBlitRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fContentProjectionRenderPass);
  end;
  TpvScene3DRendererInstancePasses(fPasses).fFrameBufferBlitRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fCanvasRenderPass);
+ TpvScene3DRendererInstancePasses(fPasses).fFrameBufferBlitRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fWaterReleaseCustomPass);
 
  fFrameGraph.RootPass:=TpvScene3DRendererInstancePasses(fPasses).fFrameBufferBlitRenderPass;
 
