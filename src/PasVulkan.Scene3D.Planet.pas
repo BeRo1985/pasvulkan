@@ -371,6 +371,7 @@ type TpvScene3DPlanets=class;
               fGrassMapGeneration:TpvUInt64;
 //            fVisualMeshGeneration:TpvUInt64;
               fOwnershipHolderState:TpvScene3DPlanet.TData.TOwnershipHolderState;
+              fWaterOwnershipHolderState:TpvScene3DPlanet.TData.TOwnershipHolderState;
               fSelectedRegion:TpvVector4;
               fSelectedRegionProperty:TpvVector4Property;
               fSelectedColor:TpvVector4;
@@ -404,6 +405,10 @@ type TpvScene3DPlanets=class;
               procedure ReleaseOnUniversalQueue(const aCommandBuffer:TpvVulkanCommandBuffer);
               procedure AcquireOnComputeQueue(const aCommandBuffer:TpvVulkanCommandBuffer);
               procedure ReleaseOnComputeQueue(const aCommandBuffer:TpvVulkanCommandBuffer);
+              procedure WaterAcquireOnUniversalQueue(const aCommandBuffer:TpvVulkanCommandBuffer);
+              procedure WaterReleaseOnUniversalQueue(const aCommandBuffer:TpvVulkanCommandBuffer);
+              procedure WaterAcquireOnComputeQueue(const aCommandBuffer:TpvVulkanCommandBuffer);
+              procedure WaterReleaseOnComputeQueue(const aCommandBuffer:TpvVulkanCommandBuffer);
               procedure CopyHeightMapImageToHeightMapBuffer;
               procedure CheckDirtyMap;
               procedure Download(const aQueue:TpvVulkanQueue;
@@ -1805,6 +1810,7 @@ type TpvScene3DPlanets=class;
        fBrushesTexture:TpvVulkanTexture;
        fUsePlanetHeightMapBuffer:Boolean;
        fUseConcurrentWaterHeightMapImage:Boolean;
+       fMustTransferWaterHeightMapImageOwnership:Boolean;
       private
        procedure GenerateMeshIndices(const aTiledMeshIndices:TpvScene3DPlanet.TMeshIndices;
                                      const aTiledMeshIndexGroups:TpvScene3DPlanet.TTiledMeshIndexGroups;
@@ -2574,6 +2580,8 @@ begin
  fRayIntersectionResultBuffer:=nil;
 
  fOwnershipHolderState:=TpvScene3DPlanet.TData.TOwnershipHolderState.Uninitialized;
+
+ fWaterOwnershipHolderState:=TpvScene3DPlanet.TData.TOwnershipHolderState.Uninitialized;
 
  fDirtyHeightMap:=false;
  
@@ -3823,6 +3831,184 @@ begin
   end;
 
   fOwnershipHolderState:=TpvScene3DPlanet.TData.TOwnershipHolderState.ReleasedOnComputeQueue;
+
+ end;
+
+end;
+
+procedure TpvScene3DPlanet.TData.WaterAcquireOnUniversalQueue(const aCommandBuffer:TpvVulkanCommandBuffer);
+var ImageMemoryBarriers:array[0..0] of TVkImageMemoryBarrier;
+begin
+
+ if fWaterOwnershipHolderState=TpvScene3DPlanet.TData.TOwnershipHolderState.ReleasedOnComputeQueue then begin
+
+  if assigned(fPlanet.fVulkanDevice) and fPlanet.fMustTransferWaterHeightMapImageOwnership then begin
+
+   ImageMemoryBarriers[0]:=TVkImageMemoryBarrier.Create(0,
+                                                        TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                        fPlanet.fVulkanDevice.ComputeQueueFamilyIndex,
+                                                        fPlanet.fVulkanDevice.UniversalQueueFamilyIndex,
+                                                        fWaterHeightMapImage.VulkanImage.Handle,
+                                                        TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                        0,
+                                                                                        1,//fWaterHeightMapImage.MipMapLevels,
+                                                                                        0,
+                                                                                        1));
+
+   fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].WaterAcquireOnUniversalQueue',[0.5,0.25,0.25,1.0]);
+
+   aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
+                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT) or
+                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or
+                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT) or
+                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT) or
+                                     IfThen(TpvScene3D(fPlanet.fScene3D).MeshShaderSupport,
+                                            TVkShaderStageFlags(VK_SHADER_STAGE_MESH_BIT_EXT) or
+                                            TVkShaderStageFlags(VK_SHADER_STAGE_TASK_BIT_EXT),
+                                            0) or
+                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_SHADER_BIT) or
+                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_INPUT_BIT),
+                                     0,
+                                     0,nil,
+                                     0,nil,
+                                     1,@ImageMemoryBarriers[0]);
+
+   fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
+
+  end;
+
+  fWaterOwnershipHolderState:=TpvScene3DPlanet.TData.TOwnershipHolderState.AcquiredOnUniversalQueue;
+
+ end;
+
+end;
+
+procedure TpvScene3DPlanet.TData.WaterReleaseOnUniversalQueue(const aCommandBuffer:TpvVulkanCommandBuffer);
+var ImageMemoryBarriers:array[0..0] of TVkImageMemoryBarrier;
+begin
+
+ if fWaterOwnershipHolderState in [TpvScene3DPlanet.TData.TOwnershipHolderState.Uninitialized,TpvScene3DPlanet.TData.TOwnershipHolderState.AcquiredOnUniversalQueue] then begin
+
+  if assigned(fPlanet.fVulkanDevice) and fPlanet.fMustTransferWaterHeightMapImageOwnership then begin
+
+   ImageMemoryBarriers[0]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                        0,
+                                                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                        fPlanet.fVulkanDevice.UniversalQueueFamilyIndex,
+                                                        fPlanet.fVulkanDevice.ComputeQueueFamilyIndex,
+                                                        fWaterHeightMapImage.VulkanImage.Handle,
+                                                        TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                        0,
+                                                                                        1,//fWaterHeightMapImage.MipMapLevels,
+                                                                                        0,
+                                                                                        1));
+
+   fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].WaterReleaseOnUniversalQueue',[0.5,0.25,0.25,1.0]);
+
+   aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT) or
+                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or
+                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT) or
+                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT) or
+                                     IfThen(TpvScene3D(fPlanet.fScene3D).MeshShaderSupport,
+                                            TVkShaderStageFlags(VK_SHADER_STAGE_MESH_BIT_EXT) or
+                                            TVkShaderStageFlags(VK_SHADER_STAGE_TASK_BIT_EXT),
+                                            0) or
+                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_SHADER_BIT) or
+                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_INPUT_BIT),
+                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
+                                     0,
+                                     0,nil,
+                                     0,nil,
+                                     1,@ImageMemoryBarriers[0]);
+
+   fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
+
+  end;
+
+  fWaterOwnershipHolderState:=TpvScene3DPlanet.TData.TOwnershipHolderState.ReleasedOnUniversalQueue;
+
+ end;
+
+end;
+
+procedure TpvScene3DPlanet.TData.WaterAcquireOnComputeQueue(const aCommandBuffer:TpvVulkanCommandBuffer);
+var ImageMemoryBarriers:array[0..0] of TVkImageMemoryBarrier;
+begin
+
+ if fWaterOwnershipHolderState=TpvScene3DPlanet.TData.TOwnershipHolderState.ReleasedOnUniversalQueue then begin
+
+  if assigned(fPlanet.fVulkanDevice) and fPlanet.fMustTransferWaterHeightMapImageOwnership then begin
+
+   ImageMemoryBarriers[0]:=TVkImageMemoryBarrier.Create(0,
+                                                        TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                        fPlanet.fVulkanDevice.UniversalQueueFamilyIndex,
+                                                        fPlanet.fVulkanDevice.ComputeQueueFamilyIndex,
+                                                        fWaterHeightMapImage.VulkanImage.Handle,
+                                                        TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                        0,
+                                                                                        1,//fWaterHeightMapImage.MipMapLevels,
+                                                                                        0,
+                                                                                        1));
+
+      fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].WaterAcquireOnComputeQueue',[0.5,0.25,0.25,1.0]);
+
+   aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
+                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                     0,
+                                     0,nil,
+                                     0,nil,
+                                     1,@ImageMemoryBarriers[0]);
+
+   fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
+
+  end;
+
+  fWaterOwnershipHolderState:=TpvScene3DPlanet.TData.TOwnershipHolderState.AcquiredOnComputeQueue;
+
+ end;
+
+end;
+
+procedure TpvScene3DPlanet.TData.WaterReleaseOnComputeQueue(const aCommandBuffer:TpvVulkanCommandBuffer);
+var ImageMemoryBarriers:array[0..0] of TVkImageMemoryBarrier;
+begin
+
+ if fWaterOwnershipHolderState in [TpvScene3DPlanet.TData.TOwnershipHolderState.Uninitialized,TpvScene3DPlanet.TData.TOwnershipHolderState.AcquiredOnComputeQueue] then begin
+
+  if assigned(fPlanet.fVulkanDevice) and fPlanet.fMustTransferWaterHeightMapImageOwnership then begin
+
+   ImageMemoryBarriers[0]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                        0,
+                                                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                        fPlanet.fVulkanDevice.ComputeQueueFamilyIndex,
+                                                        fPlanet.fVulkanDevice.UniversalQueueFamilyIndex,
+                                                        fWaterHeightMapImage.VulkanImage.Handle,
+                                                        TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                        0,
+                                                                                        1,//fWaterHeightMapImage.MipMapLevels,
+                                                                                        0,
+                                                                                        1));
+
+   fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].WaterReleaseOnComputeQueue',[0.5,0.25,0.25,1.0]);
+
+   aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
+                                     0,
+                                     0,nil,
+                                     0,nil,
+                                     1,@ImageMemoryBarriers[0]);
+
+   fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
+
+  end;
+
+  fWaterOwnershipHolderState:=TpvScene3DPlanet.TData.TOwnershipHolderState.ReleasedOnComputeQueue;
 
  end;
 
@@ -7193,35 +7379,6 @@ begin
  fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
 
 end;
-
-(*
-            { TBlendMapDownsampling }
-            TBlendMapDownsampling=class
-             public
-              type TPushConstants=packed record
-                    TargetMipMapLevel:TpvUInt32;
-                   end;
-                   PPushConstants=^TPushConstants;
-             private
-              fPlanet:TpvScene3DPlanet;
-              fVulkanDevice:TpvVulkanDevice;
-              fComputeShaderModule:TpvVulkanShaderModule;
-              fComputeShaderStage:TpvVulkanPipelineShaderStage;
-              fPipeline:TpvVulkanComputePipeline;
-              fDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
-              fDescriptorPool:TpvVulkanDescriptorPool;
-              fDescriptorSet:TpvVulkanDescriptorSet;
-              fPipelineLayout:TpvVulkanPipelineLayout;
-              fPushConstants:TPushConstants;
-             public
-              constructor Create(const aPlanet:TpvScene3DPlanet); reintroduce;
-              destructor Destroy; override;
-              procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aSourceResolution:TpvUInt32;const aTargetResolution:TpvUInt32);
-             public
-              property PushConstants:TPushConstants read fPushConstants write fPushConstants;
-            end;
-
-*)
 
 { TpvScene3DPlanet.TBlendMapDownsampling }
 
@@ -17056,6 +17213,8 @@ begin
 
  fUseConcurrentWaterHeightMapImage:=false;
 
+ fMustTransferWaterHeightMapImageOwnership:=false;
+
  if assigned(fVulkanDevice) then begin
 
   if TpvScene3D(fScene3D).PlanetWaterSimulationUseParallelQueue and
@@ -17065,15 +17224,18 @@ begin
     TpvVulkanVendorID.NVIDIA:begin
      fUsePlanetHeightMapBuffer:=false;
      fUseConcurrentWaterHeightMapImage:=true;
+     fMustTransferWaterHeightMapImageOwnership:=false;
     end;
     else begin
      fUsePlanetHeightMapBuffer:=true;
      fUseConcurrentWaterHeightMapImage:=false;
+     fMustTransferWaterHeightMapImageOwnership:=true;
     end;
    end;
   end else begin
    fUsePlanetHeightMapBuffer:=false;
    fUseConcurrentWaterHeightMapImage:=false;
+   fMustTransferWaterHeightMapImageOwnership:=false;
   end;
 
   if (fVulkanDevice.UniversalQueueFamilyIndex<>fVulkanDevice.ComputeQueueFamilyIndex) or
