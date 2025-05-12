@@ -1804,6 +1804,7 @@ type TpvScene3DPlanets=class;
        fBrushes:TpvScene3DPlanet.TBrushes; 
        fBrushesTexture:TpvVulkanTexture;
        fUsePlanetHeightMapBuffer:Boolean;
+       fUseConcurrentWaterHeightMapImage:Boolean;
       private
        procedure GenerateMeshIndices(const aTiledMeshIndices:TpvScene3DPlanet.TMeshIndices;
                                      const aTiledMeshIndexGroups:TpvScene3DPlanet.TTiledMeshIndexGroups;
@@ -2439,10 +2440,7 @@ begin
   end;
  end;
 
- if TpvScene3D(fPlanet.Scene3D).PlanetWaterSimulationUseParallelQueue and
-    assigned(fPlanet.fVulkanDevice) and
-    (TpvScene3D(fPlanet.Scene3D).PlanetWaterSimulationQueueFamilyIndex<>fPlanet.fVulkanDevice.UniversalQueueFamilyIndex) and
-    (length(fPlanet.fVulkanDevice.AllQueueFamilyIndices)>1) then begin
+ if fPlanet.fUseConcurrentWaterHeightMapImage then begin
   WaterHeightMapImageSharingMode:=TVkSharingMode(VK_SHARING_MODE_CONCURRENT);
   WaterHeightMapImageQueueFamilyIndices:=fPlanet.fVulkanDevice.AllQueueFamilyIndices;
  end else begin
@@ -17056,9 +17054,26 @@ begin
 
  fUsePlanetHeightMapBuffer:=false;
 
+ fUseConcurrentWaterHeightMapImage:=false;
+
  if assigned(fVulkanDevice) then begin
 
-  fUsePlanetHeightMapBuffer:=TpvVulkanVendorID(fVulkanDevice.PhysicalDevice.Properties.vendorID)<>TpvVulkanVendorID.NVIDIA;
+  case TpvVulkanVendorID(fVulkanDevice.PhysicalDevice.Properties.vendorID) of
+   TpvVulkanVendorID.NVIDIA:begin
+    fUsePlanetHeightMapBuffer:=false;
+    if TpvScene3D(fScene3D).PlanetWaterSimulationUseParallelQueue and
+       (TpvScene3D(fScene3D).PlanetWaterSimulationQueueFamilyIndex<>fVulkanDevice.UniversalQueueFamilyIndex) and
+       (length(fVulkanDevice.AllQueueFamilyIndices)>1) then begin
+     fUseConcurrentWaterHeightMapImage:=true;
+    end else begin
+     fUseConcurrentWaterHeightMapImage:=false;
+    end;
+   end;
+   else begin
+    fUsePlanetHeightMapBuffer:=true;
+    fUseConcurrentWaterHeightMapImage:=false;
+   end;
+  end;
 
   if (fVulkanDevice.UniversalQueueFamilyIndex<>fVulkanDevice.ComputeQueueFamilyIndex) or
      (fVulkanDevice.UniversalQueueFamilyIndex<>fVulkanDevice.TransferQueueFamilyIndex) or
