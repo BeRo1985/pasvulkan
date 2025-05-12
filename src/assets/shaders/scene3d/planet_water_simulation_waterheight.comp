@@ -47,7 +47,19 @@ layout(push_constant) uniform PushConstants {
 
 uint waterHeightMapResolutionWithBorder = pushConstants.waterHeightMapResolution + (pushConstants.waterHeightMapBorder * 2);
 
+// Not used in this water simulation height pass, but used in the water simulation outflow pass
+/*
+#ifdef USE_HEIGHTMAP_BUFFER
+// For Non-NVIDIA GPUs where VK_SHARING_MODE_CONCURRENT on images costs performance, where the planet height map is hold in an additional buffer
+// and the height map is read from the buffer instead of the image. Costs more memory, but is faster on those GPUs. 
+layout(set = 0, binding = 0) readonly buffer InPlanetHeightMap {
+  float values[];
+} inPlanetHeightMap;
+#else
+// For NVIDIA GPUs where VK_SHARING_MODE_CONCURRENT on images is practically free
 layout(set = 0, binding = 0) uniform sampler2D uPlanetHeightmap;
+#endif
+*/
 
 #if 0
 #define _float float16_t

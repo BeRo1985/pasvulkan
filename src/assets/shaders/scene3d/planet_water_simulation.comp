@@ -2,6 +2,9 @@
 
 #pragma shader_stage(compute)
 
+// Not used more, but kept for reference, which is more readable than the optimized variants in planet_water_simulation_outflow.comp 
+// and planet_water_simulation_waterheight.comp . 
+
 // Water simulation based on "Fast Hydraulic Erosion Simulation and Visualization on GPU" by Xing Mei, Philippe Decaudin, Bao-Gang Hu
 // Link: https://hal.inria.fr/inria-00402079/document
 

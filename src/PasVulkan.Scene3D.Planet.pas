@@ -18978,11 +18978,13 @@ begin
 
     end;
 
-    BeginUpdate;
-    try
-     fData.CopyHeightMapImageToHeightMapBuffer;
-    finally
-     EndUpdate;
+    if assigned(fData.fHeightMapBuffer) then begin
+     BeginUpdate;
+     try
+      fData.CopyHeightMapImageToHeightMapBuffer;
+     finally
+      EndUpdate;
+     end;
     end;
 
     fData.fVisualMeshVertexBufferCopies.ClearNoFree;
