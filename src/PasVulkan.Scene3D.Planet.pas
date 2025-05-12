@@ -17058,21 +17058,22 @@ begin
 
  if assigned(fVulkanDevice) then begin
 
-  case TpvVulkanVendorID(fVulkanDevice.PhysicalDevice.Properties.vendorID) of
-   TpvVulkanVendorID.NVIDIA:begin
-    fUsePlanetHeightMapBuffer:=false;
-    if TpvScene3D(fScene3D).PlanetWaterSimulationUseParallelQueue and
-       (TpvScene3D(fScene3D).PlanetWaterSimulationQueueFamilyIndex<>fVulkanDevice.UniversalQueueFamilyIndex) and
-       (length(fVulkanDevice.AllQueueFamilyIndices)>1) then begin
+  if TpvScene3D(fScene3D).PlanetWaterSimulationUseParallelQueue and
+     (TpvScene3D(fScene3D).PlanetWaterSimulationQueueFamilyIndex<>fVulkanDevice.UniversalQueueFamilyIndex) and
+     (length(fVulkanDevice.AllQueueFamilyIndices)>1) then begin
+   case TpvVulkanVendorID(fVulkanDevice.PhysicalDevice.Properties.vendorID) of
+    TpvVulkanVendorID.NVIDIA:begin
+     fUsePlanetHeightMapBuffer:=false;
      fUseConcurrentWaterHeightMapImage:=true;
-    end else begin
+    end;
+    else begin
+     fUsePlanetHeightMapBuffer:=true;
      fUseConcurrentWaterHeightMapImage:=false;
     end;
    end;
-   else begin
-    fUsePlanetHeightMapBuffer:=true;
-    fUseConcurrentWaterHeightMapImage:=false;
-   end;
+  end else begin
+   fUsePlanetHeightMapBuffer:=false;
+   fUseConcurrentWaterHeightMapImage:=false;
   end;
 
   if (fVulkanDevice.UniversalQueueFamilyIndex<>fVulkanDevice.ComputeQueueFamilyIndex) or
