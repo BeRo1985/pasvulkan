@@ -2612,7 +2612,9 @@ begin
    fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fHeightMapImage.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fHeightMapImage.Image');
    fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fHeightMapImage.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fHeightMapImage.ImageView');
 
-   if fInFlightFrameIndex<0 then begin
+   if (fInFlightFrameIndex<0) and
+      (TpvVulkanVendorID(fPlanet.fVulkanDevice.PhysicalDevice.Properties.vendorID)<>TpvVulkanVendorID.NVIDIA) and
+      true then begin
     fHeightMapBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
                                              fPlanet.fHeightMapResolution*fPlanet.fHeightMapResolution*SizeOf(TpvFloat),
                                              TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
