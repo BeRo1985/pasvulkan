@@ -49,7 +49,9 @@ uint waterHeightMapResolutionWithBorder = pushConstants.waterHeightMapResolution
 
 #ifdef USE_HEIGHTMAP_BUFFER
 // For Non-NVIDIA GPUs where VK_SHARING_MODE_CONCURRENT on images costs performance, where the planet height map is hold in an additional buffer
-// and the height map is read from the buffer instead of the image. Costs more memory, but is faster on those GPUs. 
+// and the height map is read from the buffer instead of the image. Costs more memory, but is faster on those GPUs. It must be a complete copy of the
+// planet height map, because the actual height map is also used  at the rendering pass for the planet at the same time, so we need to have a copy of 
+// it in form of a buffer for the simulation pass for to be able to work it in parallel with the rendering pass. 
 layout(set = 0, binding = 0) readonly buffer InPlanetHeightMap {
   float values[];
 } inPlanetHeightMap;
