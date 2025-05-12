@@ -3851,8 +3851,7 @@ begin
 
   Count:=fCountDirtyTiles;
 
-  if true or
-     (Count=(fPlanet.fTileMapResolution*fPlanet.fTileMapResolution)) then begin
+  if Count=(fPlanet.fTileMapResolution*fPlanet.fTileMapResolution) then begin
    Count:=1;
    fBufferImageCopies[0]:=TVkBufferImageCopy.Create(0,
                                                     0,
@@ -3874,7 +3873,7 @@ begin
     TileY:=TileIndex div fPlanet.fTileMapResolution;
     TileX:=(TileIndex-(TileY*fPlanet.fTileMapResolution)) shl fPlanet.fTileMapShift;
     TileY:=TileY shl fPlanet.fTileMapShift;
-    Offset:=(TileY*fPlanet.fHeightMapResolution)+TileX;
+    Offset:=((TileY*fPlanet.fHeightMapResolution)+TileX)*SizeOf(TpvFloat);
     fBufferImageCopies[Index]:=TVkBufferImageCopy.Create(Offset,
                                                          fPlanet.fHeightMapResolution,
                                                          fPlanet.fHeightMapResolution,
@@ -17067,7 +17066,7 @@ begin
 
  if assigned(fVulkanDevice) then begin
 
-  fUsePlanetHeightMapBuffer:=true;//TpvVulkanVendorID(fVulkanDevice.PhysicalDevice.Properties.vendorID)<>TpvVulkanVendorID.NVIDIA;
+  fUsePlanetHeightMapBuffer:=TpvVulkanVendorID(fVulkanDevice.PhysicalDevice.Properties.vendorID)<>TpvVulkanVendorID.NVIDIA;
 
   if (fVulkanDevice.UniversalQueueFamilyIndex<>fVulkanDevice.ComputeQueueFamilyIndex) or
      (fVulkanDevice.UniversalQueueFamilyIndex<>fVulkanDevice.TransferQueueFamilyIndex) or
