@@ -1707,6 +1707,7 @@ type TpvScene3DPlanets=class;
        fTileMapResolution:TpvInt32;
        fTileMapShift:TpvInt32;
        fTileMapBits:TpvInt32;
+       fTileResolution:TpvInt32;
        fVisualTileResolution:TpvInt32;
        fPhysicsTileResolution:TpvInt32;
        fVisualResolution:TpvSizeInt;
@@ -3869,8 +3870,8 @@ begin
    for Index:=0 to Count-1 do begin
     TileIndex:=fTileDirtyQueueItems.ItemArray[Index];
     TileY:=TileIndex div fPlanet.fTileMapResolution;
-    TileX:=(TileIndex-(TileY*fPlanet.fTileMapResolution))*fPlanet.fVisualTileResolution;
-    TileY:=TileY*fPlanet.fVisualTileResolution;
+    TileX:=(TileIndex-(TileY*fPlanet.fTileMapResolution)) shl fPlanet.fTileMapShift;
+    TileY:=TileY shl fPlanet.fTileMapShift;
     Offset:=(TileY*fPlanet.fHeightMapResolution)+TileX;
     fBufferImageCopies[Index]:=TVkBufferImageCopy.Create(Offset,
                                                          fPlanet.fHeightMapResolution,
@@ -3882,8 +3883,8 @@ begin
                                                          TVkOffset3D.Create(TileX,
                                                                             TileY,
                                                                             0),
-                                                         TVkExtent3D.Create(fPlanet.fVisualTileResolution,
-                                                                            fPlanet.fVisualTileResolution,
+                                                         TVkExtent3D.Create(fPlanet.fTileResolution,
+                                                                            fPlanet.fTileResolution,
                                                                             1)
                                                         );
    end;
@@ -16940,6 +16941,8 @@ begin
  fTileMapShift:=IntLog2(fHeightMapResolution)-IntLog2(fTileMapResolution);
 
  fTileMapBits:=IntLog2(fTileMapResolution);
+
+ fTileResolution:=Max(1,RoundUpToPowerOfTwo(fHeightMapResolution) div fTileMapResolution);
 
  fVisualTileResolution:=Max(1,RoundUpToPowerOfTwo(Min(aVisualResolution,fHeightMapResolution)) div fTileMapResolution);
 
