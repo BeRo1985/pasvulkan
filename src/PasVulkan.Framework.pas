@@ -170,6 +170,7 @@ type EpvVulkanException=class(Exception);
      TpvVulkanVendorID=
       (
        Minimum=0,
+       Unknown=0,
        AMD=$1002,
        ImgTec=$1010,
        NVIDIA=$10de,
