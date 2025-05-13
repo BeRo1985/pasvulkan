@@ -8906,8 +8906,8 @@ begin
                                   SizeOf(TDownsamplePushConstants),
                                   @fDownsamplePushConstants);    
 
-  aCommandBuffer.CmdDispatch(((fPlanet.fWaterMapResolution shr 1)+15) shr 4,
-                             ((fPlanet.fWaterMapResolution shr 1)+15) shr 4,
+  aCommandBuffer.CmdDispatch(((fPlanet.fWaterMapResolution shr 1)+8) shr 3,
+                             ((fPlanet.fWaterMapResolution shr 1)+8) shr 3,
                              1);
 
   BufferMemoryBarriers[0]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
