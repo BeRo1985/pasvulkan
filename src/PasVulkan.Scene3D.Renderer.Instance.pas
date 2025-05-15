@@ -108,10 +108,10 @@ type { TpvScene3DRendererInstance }
                                                           GlobalIlluminationRadiantHintVolumeSize)*
                                                          GlobalIlluminationRadiantHintVolumeSize;
              MaxMultiIndirectDrawCalls=65536; //1048576; // as worst case
-             MaxSolidPrimitives=1 shl 20;
+             MaxSolidPrimitives=1 shl 16;
              MaxSolidPrimitiveVertices=MaxSolidPrimitives*4;
              MaxSolidPrimitiveIndices=MaxSolidPrimitives*6;
-             MaxSpaceLines=1 shl 20;
+             MaxSpaceLines=1 shl 16;
              MaxSpaceLinesVertices=MaxSpaceLines*4;
              MaxSpaceLinesIndices=MaxSpaceLines*6;
        type { TInFlightFrameState }
