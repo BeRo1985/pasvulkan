@@ -125,6 +125,7 @@ type EpvScene3D=class(Exception);
       public
        const MaxRendererInstances=32;
              MaxVisibleLights=65536;
+             InitialCountDebugPrimitiveVertices=1 shl 8;
              MaxDebugPrimitiveVertices=1 shl 20;
              MaxParticles=65536; // <= Must be power of two
              ParticleIndexMask=MaxParticles-1;
@@ -30358,7 +30359,7 @@ begin
 
           for Index:=0 to fCountInFlightFrames-1 do begin
            fVulkanDebugPrimitiveVertexBuffers[Index]:=TpvVulkanBuffer.Create(fVulkanDevice,
-                                                                             SizeOf(TpvScene3D.TDebugPrimitiveVertex)*MaxDebugPrimitiveVertices,
+                                                                             SizeOf(TpvScene3D.TDebugPrimitiveVertex)*InitialCountDebugPrimitiveVertices,
                                                                              TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT) or fAccelerationStructureInputBufferUsageFlags,
                                                                              TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
                                                                              [],
@@ -30507,7 +30508,7 @@ begin
 
           for Index:=0 to fCountInFlightFrames-1 do begin
            fVulkanDebugPrimitiveVertexBuffers[Index]:=TpvVulkanBuffer.Create(fVulkanDevice,
-                                                                             SizeOf(TpvScene3D.TDebugPrimitiveVertex)*MaxDebugPrimitiveVertices,
+                                                                             SizeOf(TpvScene3D.TDebugPrimitiveVertex)*InitialCountDebugPrimitiveVertices,
                                                                              TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT) or fAccelerationStructureInputBufferUsageFlags,
                                                                              TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
                                                                              [],
@@ -32897,13 +32898,78 @@ begin
   end;
 
   if fDebugPrimitiveVertexDynamicArrays[aInFlightFrameIndex].Count>0 then begin
+
+   Size:=SizeOf(TpvScene3D.TDebugPrimitiveVertex)*Min(fDebugPrimitiveVertexDynamicArrays[aInFlightFrameIndex].Count,TpvScene3D.MaxDebugPrimitiveVertices);
+   if fVulkanDebugPrimitiveVertexBuffers[aInFlightFrameIndex].Size<Size then begin
+
+    FreeAndNil(fVulkanDebugPrimitiveVertexBuffers[aInFlightFrameIndex]);
+
+    Size:=SizeOf(TpvScene3D.TDebugPrimitiveVertex)*Min(fDebugPrimitiveVertexDynamicArrays[aInFlightFrameIndex].Count+((fDebugPrimitiveVertexDynamicArrays[aInFlightFrameIndex].Count+1) shr 1),TpvScene3D.MaxDebugPrimitiveVertices);
+
+    case fBufferStreamingMode of
+
+     TBufferStreamingMode.Direct:begin
+
+       fVulkanDebugPrimitiveVertexBuffers[aInFlightFrameIndex]:=TpvVulkanBuffer.Create(fVulkanDevice,
+                                                                                       Size,
+                                                                                       TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT) or fAccelerationStructureInputBufferUsageFlags,
+                                                                                       TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                                                       [],
+                                                                                       TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                                                                       TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                                                                       0,
+                                                                                       0,
+                                                                                       0,
+                                                                                       0,
+                                                                                       0,
+                                                                                       0,
+                                                                                       [TpvVulkanBufferFlag.PersistentMapped],
+                                                                                       0,
+                                                                                       pvAllocationGroupIDScene3DDynamic,
+                                                                                       'TpvScene3D.fVulkanDebugPrimitiveVertexBuffers['+IntToStr(aInFlightFrameIndex)+']');
+       fVulkanDevice.DebugUtils.SetObjectName(fVulkanDebugPrimitiveVertexBuffers[aInFlightFrameIndex].Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.fVulkanDebugPrimitiveVertexBuffers['+IntToStr(aInFlightFrameIndex)+']');
+
+     end;
+
+     TBufferStreamingMode.Staging:begin
+
+       fVulkanDebugPrimitiveVertexBuffers[aInFlightFrameIndex]:=TpvVulkanBuffer.Create(fVulkanDevice,
+                                                                                       Size,
+                                                                                       TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT) or fAccelerationStructureInputBufferUsageFlags,
+                                                                                       TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                                                       [],
+                                                                                       0,
+                                                                                       TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                                                       0,
+                                                                                       TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                                                                       0,
+                                                                                       0,
+                                                                                       0,
+                                                                                       0,
+                                                                                       [],
+                                                                                       0,
+                                                                                       pvAllocationGroupIDScene3DDynamic,
+                                                                                       'TpvScene3D.fVulkanDebugPrimitiveVertexBuffers['+IntToStr(aInFlightFrameIndex)+']');
+       fVulkanDevice.DebugUtils.SetObjectName(fVulkanDebugPrimitiveVertexBuffers[Index].Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.fVulkanDebugPrimitiveVertexBuffers['+IntToStr(aInFlightFrameIndex)+']');
+
+     end;
+
+     else begin
+      Assert(false);
+     end;
+
+
+    end;
+   end;
+
    fVulkanDevice.MemoryStaging.Upload(fVulkanStagingQueue,
                                       fVulkanStagingCommandBuffer,
                                       fVulkanStagingFence,
                                       fDebugPrimitiveVertexDynamicArrays[aInFlightFrameIndex].ItemArray[0],
                                       fVulkanDebugPrimitiveVertexBuffers[aInFlightFrameIndex],
                                       0,
-                                      SizeOf(TpvScene3D.TDebugPrimitiveVertex)*Min(fDebugPrimitiveVertexDynamicArrays[aInFlightFrameIndex].Count,TpvScene3D.MaxDebugPrimitiveVertices));
+                                      Min(TVkSize(SizeOf(TpvScene3D.TDebugPrimitiveVertex)*fDebugPrimitiveVertexDynamicArrays[aInFlightFrameIndex].Count),TVkSize(fVulkanDebugPrimitiveVertexBuffers[aInFlightFrameIndex].Size)));
+
   end;
 
   if fCountInFlightFrameParticleVertices[aInFlightFrameIndex]>0 then begin
