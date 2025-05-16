@@ -95,6 +95,9 @@ type { TpvScene3DRendererPassesCanvasComputePass }
        fVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fVulkanDescriptorPool:TpvVulkanDescriptorPool;
        fVulkanDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
+       fSolidPrimitivePrimitiveBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer; 
+       fSolidPrimitiveVertexBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
+       fSolidPrimitiveIndexBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
        fPipelineLayout:TpvVulkanPipelineLayout;
        fPipeline:TpvVulkanComputePipeline;
       public
@@ -206,6 +209,9 @@ begin
                                             0);
 
  for InFlightFrameIndex:=0 to FrameGraph.CountInFlightFrames-1 do begin
+  fSolidPrimitivePrimitiveBuffers[InFlightFrameIndex]:=fInstance.SolidPrimitivePrimitiveBuffers[InFlightFrameIndex];
+  fSolidPrimitiveVertexBuffers[InFlightFrameIndex]:=fInstance.SolidPrimitiveVertexBuffer;
+  fSolidPrimitiveIndexBuffers[InFlightFrameIndex]:=fInstance.SolidPrimitiveIndexBuffer;
   fVulkanDescriptorSets[InFlightFrameIndex]:=TpvVulkanDescriptorSet.Create(fVulkanDescriptorPool,
                                                                            fVulkanDescriptorSetLayout);
   fVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(0,
@@ -286,6 +292,48 @@ begin
  InFlightFrameIndex:=aInFlightFrameIndex;
 
  if fInstance.SolidPrimitivePrimitiveDynamicArrays[aInFlightFrameIndex].Count>0 then begin
+
+  // Check if the buffers have changed since last frame, for example if the buffers were resized.
+  if (fSolidPrimitivePrimitiveBuffers[InFlightFrameIndex]<>fInstance.SolidPrimitivePrimitiveBuffers[InFlightFrameIndex]) or
+     (fSolidPrimitiveVertexBuffers[InFlightFrameIndex]<>fInstance.SolidPrimitiveVertexBuffer) or
+     (fSolidPrimitiveIndexBuffers[InFlightFrameIndex]<>fInstance.SolidPrimitiveIndexBuffer) then begin
+   if fSolidPrimitivePrimitiveBuffers[InFlightFrameIndex]<>fInstance.SolidPrimitivePrimitiveBuffers[InFlightFrameIndex] then begin
+    fSolidPrimitivePrimitiveBuffers[InFlightFrameIndex]:=fInstance.SolidPrimitivePrimitiveBuffers[InFlightFrameIndex];
+    fVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(0,
+                                                                   0,
+                                                                   1,
+                                                                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                                   [],
+                                                                   [fInstance.SolidPrimitivePrimitiveBuffers[InFlightFrameIndex].DescriptorBufferInfo],
+                                                                   [],
+                                                                   false
+                                                                  );
+   end;
+   if fSolidPrimitiveVertexBuffers[InFlightFrameIndex]<>fInstance.SolidPrimitiveVertexBuffer then begin
+    fSolidPrimitiveVertexBuffers[InFlightFrameIndex]:=fInstance.SolidPrimitiveVertexBuffer;
+    fVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(1,
+                                                                   0,
+                                                                   1,
+                                                                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                                   [],
+                                                                   [fInstance.SolidPrimitiveVertexBuffer.DescriptorBufferInfo],
+                                                                   [],
+                                                                   false
+                                                                  );
+   end;
+   if fSolidPrimitiveIndexBuffers[InFlightFrameIndex]<>fInstance.SolidPrimitiveIndexBuffer then begin
+    fVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(2,
+                                                                   0,
+                                                                   1,
+                                                                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                                   [],
+                                                                   [fInstance.SolidPrimitiveIndexBuffer.DescriptorBufferInfo],
+                                                                   [],
+                                                                   false
+                                                                  );
+   end;
+   fVulkanDescriptorSets[InFlightFrameIndex].Flush;
+  end;
 
   PushConstants.ViewBaseIndex:=fInstance.InFlightFrameStates^[aInFlightFrameIndex].FinalViewIndex;
   PushConstants.CountViews:=fInstance.InFlightFrameStates^[aInFlightFrameIndex].CountFinalViews;
