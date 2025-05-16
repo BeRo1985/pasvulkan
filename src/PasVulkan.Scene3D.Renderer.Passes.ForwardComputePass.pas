@@ -95,6 +95,9 @@ type { TpvScene3DRendererPassesForwardComputePass }
        fVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fVulkanDescriptorPool:TpvVulkanDescriptorPool;
        fVulkanDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
+       fSpaceLinesPrimitiveBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer; 
+       fSpaceLinesVertexBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
+       fSpaceLinesIndexBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
        fPipelineLayout:TpvVulkanPipelineLayout;
        fPipeline:TpvVulkanComputePipeline;
       public
@@ -206,6 +209,9 @@ begin
                                             0);
 
  for InFlightFrameIndex:=0 to FrameGraph.CountInFlightFrames-1 do begin
+  fSpaceLinesPrimitiveBuffers[InFlightFrameIndex]:=fInstance.SpaceLinesPrimitiveBuffers[InFlightFrameIndex];
+  fSpaceLinesVertexBuffers[InFlightFrameIndex]:=fInstance.SpaceLinesVertexBuffer;
+  fSpaceLinesIndexBuffers[InFlightFrameIndex]:=fInstance.SpaceLinesIndexBuffer;
   fVulkanDescriptorSets[InFlightFrameIndex]:=TpvVulkanDescriptorSet.Create(fVulkanDescriptorPool,
                                                                            fVulkanDescriptorSetLayout);
   fVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(0,
@@ -286,6 +292,48 @@ begin
  InFlightFrameIndex:=aInFlightFrameIndex;
 
  if fInstance.SpaceLinesPrimitiveDynamicArrays[aInFlightFrameIndex].Count>0 then begin
+
+  // Check if the buffers have changed since last frame, for example if the buffers were resized.
+  if (fSpaceLinesPrimitiveBuffers[InFlightFrameIndex]<>fInstance.SpaceLinesPrimitiveBuffers[InFlightFrameIndex]) or
+     (fSpaceLinesVertexBuffers[InFlightFrameIndex]<>fInstance.SpaceLinesVertexBuffer) or
+     (fSpaceLinesIndexBuffers[InFlightFrameIndex]<>fInstance.SpaceLinesIndexBuffer) then begin
+   if fSpaceLinesPrimitiveBuffers[InFlightFrameIndex]<>fInstance.SpaceLinesPrimitiveBuffers[InFlightFrameIndex] then begin
+    fSpaceLinesPrimitiveBuffers[InFlightFrameIndex]:=fInstance.SpaceLinesPrimitiveBuffers[InFlightFrameIndex];
+    fVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(0,
+                                                                   0,
+                                                                   1,
+                                                                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                                   [],
+                                                                   [fInstance.SpaceLinesPrimitiveBuffers[InFlightFrameIndex].DescriptorBufferInfo],
+                                                                   [],
+                                                                   false
+                                                                  );
+   end;
+   if fSpaceLinesVertexBuffers[InFlightFrameIndex]<>fInstance.SpaceLinesVertexBuffer then begin
+    fSpaceLinesVertexBuffers[InFlightFrameIndex]:=fInstance.SpaceLinesVertexBuffer;
+    fVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(1,
+                                                                   0,
+                                                                   1,
+                                                                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                                   [],
+                                                                   [fInstance.SpaceLinesVertexBuffer.DescriptorBufferInfo],
+                                                                   [],
+                                                                   false
+                                                                  );
+   end;
+   if fSpaceLinesIndexBuffers[InFlightFrameIndex]<>fInstance.SpaceLinesIndexBuffer then begin
+    fVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(2,
+                                                                   0,
+                                                                   1,
+                                                                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                                   [],
+                                                                   [fInstance.SpaceLinesIndexBuffer.DescriptorBufferInfo],
+                                                                   [],
+                                                                   false
+                                                                  );
+   end;
+   fVulkanDescriptorSets[InFlightFrameIndex].Flush;
+  end;
 
   PushConstants.ViewBaseIndex:=fInstance.InFlightFrameStates^[aInFlightFrameIndex].FinalViewIndex;
   PushConstants.CountViews:=fInstance.InFlightFrameStates^[aInFlightFrameIndex].CountFinalViews;
