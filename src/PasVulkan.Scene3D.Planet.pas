@@ -17439,7 +17439,7 @@ begin
                                                                         0,
                                                                         0,
                                                                         0,
-                                                                        [TpvVulkanBufferFlag.PersistentMappedIfPossible],
+                                                                        [TpvVulkanBufferFlag.PersistentMappedIfPossible,TpvVulkanBufferFlag.PreferDedicatedAllocation],
                                                                         0,
                                                                         pvAllocationGroupIDScene3DPlanetStatic,
                                                                         'TpvScene3DPlanet.TPlanetDataVulkanBuffers['+IntToStr(InFlightFrameIndex)+']'
