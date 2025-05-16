@@ -3136,10 +3136,10 @@ begin
                                                           0,
                                                           0,
                                                           0,
-                                                          [],
+                                                          [TpvVulkanBufferFlag.PreferDedicatedAllocation],
                                                           0,
                                                           pvAllocationGroupIDScene3DPlanetStatic,
-                                                          'TpvScene3DPlanet.VisualMeshDistanceBuffer['+IntToStr(fInFlightFrameIndex)+'][0]'
+                                                          'TpvScene3DPlanet.VisualMeshDistanceBuffers['+IntToStr(fInFlightFrameIndex)+'][0]'
                                                          );
     fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fVisualMeshDistanceBuffers[0].Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.VisualMeshDistanceBuffer['+IntToStr(fInFlightFrameIndex)+'][0]');
 
@@ -3156,10 +3156,10 @@ begin
                                                           0,
                                                           0,
                                                           0,
-                                                          [],
+                                                          [TpvVulkanBufferFlag.PreferDedicatedAllocation],
                                                           0,
                                                           pvAllocationGroupIDScene3DPlanetStatic,
-                                                          'TpvScene3DPlanet.VisualMeshDistanceBuffer['+IntToStr(fInFlightFrameIndex)+'][1]'
+                                                          'TpvScene3DPlanet.VisualMeshDistanceBuffers['+IntToStr(fInFlightFrameIndex)+'][1]'
                                                          );
     fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fVisualMeshDistanceBuffers[1].Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.VisualMeshDistanceBuffer['+IntToStr(fInFlightFrameIndex)+'][1]');
 
