@@ -26,6 +26,10 @@
   #define USE_MATERIAL_BUFFER_REFERENCE
 #endif
 
+#ifdef COMPUTE_SHADER
+layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+#endif
+
 #include "bufferreference_definitions.glsl"
 
 /* clang-format off */
@@ -110,11 +114,15 @@ vec3 inWorldSpacePosition, workNormal;
 
 #include "atmosphere_common.glsl"
 
+#ifndef COMPUTE_SHADER
 layout(location = 0) in vec2 inTexCoord;
+#endif
 
 #ifdef SHADOWMAP
 
+#ifndef COMPUTE_SHADER
 layout(location = 0) out vec4 outMSMCoefficients;
+#endif
 
 #else
 
@@ -176,6 +184,10 @@ layout(set = 2, binding = 7) uniform sampler3D uTextureCurlNoise;
 layout(set = 2, binding = 8) uniform samplerCube uTextureSkyLuminanceLUT;
 
 layout(set = 2, binding = 9) uniform samplerCube uTextureWeatherMap;
+
+#ifdef COMPUTE_SHADER
+layout(set = 2, binding = 10, rgba16) uniform image2D uDestinationTexture;
+#endif
 
 #ifdef SHADOWMAP
 #include "msm_16bit.glsl" 
@@ -944,13 +956,27 @@ void main(){
 
   layerLowWindRotation = layerLowCurlRotation = mat3(1.0);
 
+#ifdef COMPUTE_SHADER
+  int viewIndex = pushConstants.baseViewIndex;
+#else
   int viewIndex = pushConstants.baseViewIndex + int(gl_ViewIndex);
+#endif
   View view = uView.views[viewIndex];
 
 /*vec2 pixPos = vec2(gl_FragCoord.xy) + vec2(0.5);
   vec2 uv = pixPos / pushConstants.resolution;*/
 
+#ifdef COMPUTE_SHADER
+  ivec2 xy = ivec2(gl_GlobalInvocationID.xy);
+  ivec2 texSize = ivec2(imageSize(uDestinationTexture).xy);
+  if(any(lessThanEqual(xy, ivec2(0))) || any(greaterThanEqual(xy, texSize))){
+    return;
+  }
+
+  vec2 uv = (vec2(xy) + vec2(0.5)) / vec2(texSize);
+#else
   vec2 uv = inTexCoord; 
+#endif
 
   vec3 worldPos, worldDir;
   GetCameraPositionDirection(worldPos, worldDir, view.viewMatrix, view.projectionMatrix, view.inverseViewMatrix, view.inverseProjectionMatrix, uv);
@@ -1035,13 +1061,24 @@ void main(){
 #ifdef SHADOWMAP
   
   float depth;
-  if(traceVolumetricClouds(worldPos, worldDir, ivec2(gl_FragCoord), depth)){
+ if(traceVolumetricClouds(worldPos, 
+                          worldDir, 
+#ifdef COMPUTE_SHADER
+                          ivec2(gl_GlobalInvocationID.xy),
+#else
+                          ivec2(gl_FragCoord), 
+#endif
+                          depth)){
     vec4 clipSpace = view.projectionMatrix * view.viewMatrix * vec4(fma(worldDir, vec3(depth), worldPos), 1.0);
     depth = clamp(clipSpace.z / clipSpace.w, 0.0, 1.0); // 0.0 .. 1.0 range 
   }else{
     depth = 1.0;
   }
+#ifdef COMPUTE_SHADER
+  imageStore(uDestinationTexture, ivec2(gl_GlobalInvocationID.xy), encodeMSM16BitCoefficients(depth));
+#else  
   outMSMCoefficients = encodeMSM16BitCoefficients(depth);
+#endif  
 
 #else
 
