@@ -13,13 +13,16 @@ layout(push_constant) uniform PushConstants {
   float bloomFactor;
   float lensflaresFactor;
   float bloomLensflaresFactor;
+  
   int countGhosts;
   float lensStarRotationAngle;
   float aspectRatio;
   float inverseAspectRatio;
+  
   float dispersal;
   float haloWidth;
   float distortion;
+  
 } pushConstants;
 
 layout(input_attachment_index = 0, set = 0, binding = 0) uniform subpassInput uSubpassScene;
