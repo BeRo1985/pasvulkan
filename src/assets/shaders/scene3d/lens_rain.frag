@@ -203,7 +203,7 @@ void main(){
 
 	vec3 e = vec2(1.0, 0.0).xxy / vec3(textureSize(uInputTexture, 0).xy, 1.0);
 
-  float blur = mix(1.0 - center.y, 0.0, smoothstep(0.1, 0.2, center.x)) * pushConstants.factor * 0.75;
+  float blur = mix(1.0 - center.y, 0.0, smoothstep(0.1, 0.2, center.x)) * smoothstep(0.0, 0.5, pushConstants.factor) * 0.75;
   
   vec4 blurredColor = vec4(0.0);
   if(blur > 1e-4){      
