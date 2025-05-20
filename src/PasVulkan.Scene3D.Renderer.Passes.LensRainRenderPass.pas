@@ -345,8 +345,8 @@ end;
 procedure TpvScene3DRendererPassesLensRainRenderPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
 begin
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
- fPushConstants.Factor:=1.0;
- fPushConstants.Time:=0.0;
+ fPushConstants.Factor:=fInstance.LensRainPostEffectFactor;
+ fPushConstants.Time:=Modulo(fInstance.LensRainPostEffectTime,4096.0);
  aCommandBuffer.CmdPushConstants(fVulkanPipelineLayout.Handle,
                                  TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_FRAGMENT_BIT),
                                  0,
