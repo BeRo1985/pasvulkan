@@ -1,0 +1,19 @@
+#!/bin/bash
+set -euo pipefail
+IFS=$'\n\t'
+
+# ------------------------------------------------------------------------------
+# Compile shaders with Spir-V for Vulkan.
+# Make sure you have glslc and glslangValidator
+# (on Debian-based systems, just "apt install glslc glslang-tools").
+#
+# bash script using http://redsymbol.net/articles/unofficial-bash-strict-mode/
+# ------------------------------------------------------------------------------
+
+cd canvas
+./compileshaders.sh
+cd ..
+
+cd scene3d
+./compileshaders.sh
+cd ..
