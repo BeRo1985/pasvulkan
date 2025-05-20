@@ -801,6 +801,10 @@ type { TpvScene3DRendererInstance }
        fSpaceLinesVertexBuffer:TpvVulkanBuffer;
        fSpaceLinesIndexBuffer:TpvVulkanBuffer;
       private
+       fLensRainPostEffectActive:Boolean;
+       fLensRainPostEffectFactor:TpvFloat;
+       fLensRainPostEffectTime:TpvDouble;
+      private
        function GetPixelAmountFactor:TpvDouble;
        procedure SetPixelAmountFactor(const aPixelAmountFactor:TpvDouble);
       private
@@ -1037,6 +1041,10 @@ type { TpvScene3DRendererInstance }
        property SpaceLinesIndirectDrawCommandBuffer:TpvVulkanBuffer read fSpaceLinesIndirectDrawCommandBuffer;
        property SpaceLinesVertexBuffer:TpvVulkanBuffer read fSpaceLinesVertexBuffer;
        property SpaceLinesIndexBuffer:TpvVulkanBuffer read fSpaceLinesIndexBuffer;
+      public
+       property LensRainPostEffectActive:Boolean read fLensRainPostEffectActive write fLensRainPostEffectActive;
+       property LensRainPostEffectFactor:TpvFloat read fLensRainPostEffectFactor write fLensRainPostEffectFactor;
+       property LensRainPostEffectTime:TpvDouble read fLensRainPostEffectTime write fLensRainPostEffectTime;
       public
        property PerInFlightFrameGPUDrawIndexedIndirectCommandDynamicArrays:TpvScene3D.TPerInFlightFrameGPUDrawIndexedIndirectCommandDynamicArrays read fPerInFlightFrameGPUDrawIndexedIndirectCommandDynamicArrays write fPerInFlightFrameGPUDrawIndexedIndirectCommandDynamicArrays;
        property PerInFlightFrameGPUDrawIndexedIndirectCommandBufferSizes:TpvScene3D.TPerInFlightFrameGPUDrawIndexedIndirectCommandSizeValues read fPerInFlightFrameGPUDrawIndexedIndirectCommandBufferSizes;
@@ -1867,6 +1875,10 @@ begin
  fFrustumClusterGridSizeX:=16;
  fFrustumClusterGridSizeY:=16;
  fFrustumClusterGridSizeZ:=16;
+
+ fLensRainPostEffectActive:=false;
+ fLensRainPostEffectFactor:=0.0;
+ fLensRainPostEffectTime:=0.0;
 
  if assigned(fVirtualReality) then begin
 
@@ -4587,7 +4599,11 @@ TpvScene3DRendererInstancePasses(fPasses).fPlanetWaterPrepassComputePass.AddExpl
 
  end;
 
-//TpvScene3DRendererInstancePasses(fPasses).fLensRainRenderPass:=TpvScene3DRendererPassesLensRainRenderPass.Create(fFrameGraph,self);
+ if fLensRainPostEffectActive then begin
+  TpvScene3DRendererInstancePasses(fPasses).fLensRainRenderPass:=TpvScene3DRendererPassesLensRainRenderPass.Create(fFrameGraph,self);
+ end else begin
+  TpvScene3DRendererInstancePasses(fPasses).fLensRainRenderPass:=nil;
+ end;
 
  TpvScene3DRendererInstancePasses(fPasses).fTonemappingRenderPass:=TpvScene3DRendererPassesTonemappingRenderPass.Create(fFrameGraph,self);
  TpvScene3DRendererInstancePasses(fPasses).fTonemappingRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fLuminanceAverageComputePass);
