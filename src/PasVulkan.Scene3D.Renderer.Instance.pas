@@ -4587,6 +4587,8 @@ TpvScene3DRendererInstancePasses(fPasses).fPlanetWaterPrepassComputePass.AddExpl
 
  end;
 
+//TpvScene3DRendererInstancePasses(fPasses).fLensRainRenderPass:=TpvScene3DRendererPassesLensRainRenderPass.Create(fFrameGraph,self);
+
  TpvScene3DRendererInstancePasses(fPasses).fTonemappingRenderPass:=TpvScene3DRendererPassesTonemappingRenderPass.Create(fFrameGraph,self);
  TpvScene3DRendererInstancePasses(fPasses).fTonemappingRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fLuminanceAverageComputePass);
 
