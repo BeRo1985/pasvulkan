@@ -173,7 +173,9 @@ compileshaderarguments=(
   "-V lens_color.frag -o ${tempPath}/lens_color_frag.spv"
   "-V lens_dirt.frag -o ${tempPath}/lens_dirt_frag.spv"
   "-V lens_star.frag -o ${tempPath}/lens_star_frag.spv"
-  
+
+  "-V lens_rain.frag -o ${tempPath}/lens_rain_frag.spv"
+
   "-V mesh.comp -o ${tempPath}/mesh_comp.spv"
   "-V mesh.comp -DRAYTRACING -o ${tempPath}/mesh_raytracing_comp.spv"
 

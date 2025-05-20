@@ -197,27 +197,38 @@ vec2 getSample(vec2 uv){
 
 void main(){
 
-	vec2 uv = fma(inTexCoord, vec2(-2.0), vec2(1.0)) * vec2(1.0, -9.0 / 16.0); 
-    
-  vec2 center = getSample(uv);
+  if(pushConstants.factor > 1e-7){
 
-	vec3 e = vec2(1.0, 0.0).xxy / vec3(textureSize(uInputTexture, 0).xy, 1.0);
+    vec2 inputTextureSize = textureSize(uInputTexture, 0).xy;
 
-  float blur = mix(1.0 - center.y, 0.0, smoothstep(0.1, 0.2, center.x)) * smoothstep(0.0, 0.5, pushConstants.factor) * 0.75;
-  
-  vec4 blurredColor = vec4(0.0);
-  if(blur > 1e-4){      
-    // TODO
-  }  
+    vec2 uv = fma(inTexCoord, vec2(-2.0), vec2(1.0)) * vec2(1.0, -inputTextureSize.y / inputTextureSize.x); 
+      
+    vec2 center = getSample(uv);
+
+    vec3 e = vec2(1.0, 0.0).xxy / vec3(inputTextureSize, 1.0);
+
+    float blur = mix(1.0 - center.y, 0.0, smoothstep(0.1, 0.2, center.x)) * smoothstep(0.0, 0.5, pushConstants.factor) * 0.75;
     
-  outFragColor = mix(
-    textureLod(
-      uInputTexture, 
-      vec3(inTexCoord + ((vec2(getSample(uv + e.xz).x, getSample(uv + e.zy).x) - center.xx) * smoothstep(0.0, 0.1, pushConstants.factor)), float(gl_ViewIndex)),     
-      0.0
-    ),
-    blurredColor,
-    clamp(blur, 0.0, 1.0)
-  );
-    
+    vec4 blurredColor = vec4(0.0);
+    if(blur > 1e-4){      
+      // TODO
+    }  
+      
+    outFragColor = mix(
+      textureLod(
+        uInputTexture, 
+        vec3(inTexCoord + ((vec2(getSample(uv + e.xz).x, getSample(uv + e.zy).x) - center.xx) * smoothstep(0.0, 0.1, pushConstants.factor)), float(gl_ViewIndex)),     
+        0.0
+      ),
+      blurredColor,
+      clamp(blur, 0.0, 1.0)*0.0
+    );
+
+  }else{
+
+  //outFragColor = textureLod(uInputTexture, vec3(inTexCoord, float(gl_ViewIndex)), 0.0);
+    outFragColor = texelFetch(uInputTexture, ivec3(gl_FragCoord.xy, gl_ViewIndex), 0);
+
+  }
+      
 }
