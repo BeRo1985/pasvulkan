@@ -201,7 +201,7 @@ void main(){
 
     vec2 inputTextureSize = textureSize(uInputTexture, 0).xy;
 
-    vec2 uv = fma(inTexCoord, vec2(-2.0), vec2(1.0)) * vec2(1.0, -inputTextureSize.y / inputTextureSize.x); 
+    vec2 uv = fma(inTexCoord, vec2(-2.0), vec2(1.0)) * vec2(1.0, inputTextureSize.y / inputTextureSize.x); 
       
     vec2 center = getSample(uv);
 
