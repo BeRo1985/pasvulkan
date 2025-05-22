@@ -7937,20 +7937,28 @@ begin
 
       fRainMapData.CopyFrom(aStream,fRainMapResolution*fRainMapResolution*SizeOf(TpvUInt8));
 
+      BackwardTransformR8Data(fRainMapData);
+
      end else begin
 
       // The more complicated way, resize the data
 
       GetMem(InData,RainMapDataChunkHeader.Resolution*RainMapDataChunkHeader.Resolution*SizeOf(TpvUInt8));
       try
-       GetMem(OutData,fRainMapResolution*fRainMapResolution*SizeOf(TpvUInt8));
+       GetMem(DecodedInData,RainMapDataChunkHeader.Resolution*RainMapDataChunkHeader.Resolution*SizeOf(TpvUInt8));
        try
-        aStream.ReadBuffer(InData^,RainMapDataChunkHeader.Resolution*RainMapDataChunkHeader.Resolution*SizeOf(TpvUInt8));
-        ResizeR8(InData,RainMapDataChunkHeader.Resolution,RainMapDataChunkHeader.Resolution,
-                 OutData,fRainMapResolution,fRainMapResolution);
-        fRainMapData.WriteBuffer(OutData^,fRainMapResolution*fRainMapResolution*SizeOf(TpvUInt8));
+        GetMem(OutData,fRainMapResolution*fRainMapResolution*SizeOf(TpvUInt8));
+        try
+         aStream.ReadBuffer(InData^,RainMapDataChunkHeader.Resolution*RainMapDataChunkHeader.Resolution*SizeOf(TpvUInt8));
+         BackwardTransformR8Data(InData,DecodedInData,RainMapDataChunkHeader.Resolution*RainMapDataChunkHeader.Resolution*SizeOf(TpvFloat));
+         ResizeR8(DecodedInData,RainMapDataChunkHeader.Resolution,RainMapDataChunkHeader.Resolution,
+                  OutData,fRainMapResolution,fRainMapResolution);
+         fRainMapData.WriteBuffer(OutData^,fRainMapResolution*fRainMapResolution*SizeOf(TpvUInt8));
+        finally
+         FreeMem(OutData);
+        end;
        finally
-        FreeMem(OutData);
+        FreeMem(DecodedInData);
        end;
       finally
        FreeMem(InData);
@@ -7970,20 +7978,28 @@ begin
 
       fAtmosphereMapData.CopyFrom(aStream,fAtmosphereMapResolution*fAtmosphereMapResolution*SizeOf(TpvUInt8));
 
+      BackwardTransformR8Data(fAtmosphereMapData);
+
      end else begin
 
       // The more complicated way, resize the data
 
       GetMem(InData,AtmosphereMapDataChunkHeader.Resolution*AtmosphereMapDataChunkHeader.Resolution*SizeOf(TpvUInt8));
       try
-       GetMem(OutData,fAtmosphereMapResolution*fAtmosphereMapResolution*SizeOf(TpvUInt8));
+       GetMem(DecodedInData,AtmosphereMapDataChunkHeader.Resolution*AtmosphereMapDataChunkHeader.Resolution*SizeOf(TpvUInt8));
        try
-        aStream.ReadBuffer(InData^,AtmosphereMapDataChunkHeader.Resolution*AtmosphereMapDataChunkHeader.Resolution*SizeOf(TpvUInt8));
-        ResizeR8(InData,AtmosphereMapDataChunkHeader.Resolution,AtmosphereMapDataChunkHeader.Resolution,
-                 OutData,fAtmosphereMapResolution,fAtmosphereMapResolution);
-        fAtmosphereMapData.WriteBuffer(OutData^,fAtmosphereMapResolution*fAtmosphereMapResolution*SizeOf(TpvUInt8));
+        GetMem(OutData,fAtmosphereMapResolution*fAtmosphereMapResolution*SizeOf(TpvUInt8));
+        try
+         aStream.ReadBuffer(InData^,AtmosphereMapDataChunkHeader.Resolution*AtmosphereMapDataChunkHeader.Resolution*SizeOf(TpvUInt8));
+         BackwardTransformR8Data(InData,DecodedInData,AtmosphereMapDataChunkHeader.Resolution*AtmosphereMapDataChunkHeader.Resolution*SizeOf(TpvFloat));
+         ResizeR8(DecodedInData,AtmosphereMapDataChunkHeader.Resolution,AtmosphereMapDataChunkHeader.Resolution,
+                  OutData,fAtmosphereMapResolution,fAtmosphereMapResolution);
+         fAtmosphereMapData.WriteBuffer(OutData^,fAtmosphereMapResolution*fAtmosphereMapResolution*SizeOf(TpvUInt8));
+        finally
+         FreeMem(OutData);
+        end;
        finally
-        FreeMem(OutData);
+        FreeMem(DecodedInData);
        end;
       finally
        FreeMem(InData);
@@ -8193,7 +8209,19 @@ begin
    OutStream.WriteBuffer(RainMapDataChunkHeader,SizeOf(TRainMapDataChunkHeader));
 
    fRainMapData.Seek(0,soBeginning);
-   OutStream.CopyFrom(fRainMapData,fRainMapData.Size);
+   GetMem(InData,fRainMapData.Size);
+   try
+    fRainMapData.ReadBuffer(InData^,fRainMapData.Size);
+    GetMem(OutData,fRainMapData.Size);
+    try
+     ForwardTransformR8Data(InData,OutData,fRainMapData.Size);
+     OutStream.WriteBuffer(OutData^,fRainMapData.Size);
+    finally
+     FreeMem(OutData);
+    end;
+   finally
+    FreeMem(InData);
+   end;
 
   end;
 
@@ -8207,7 +8235,19 @@ begin
    OutStream.WriteBuffer(AtmosphereMapDataChunkHeader,SizeOf(TAtmosphereMapDataChunkHeader));
 
    fAtmosphereMapData.Seek(0,soBeginning);
-   OutStream.CopyFrom(fAtmosphereMapData,fAtmosphereMapData.Size);
+   GetMem(InData,fAtmosphereMapData.Size);
+   try
+    fAtmosphereMapData.ReadBuffer(InData^,fAtmosphereMapData.Size);
+    GetMem(OutData,fAtmosphereMapData.Size);
+    try
+     ForwardTransformR8Data(InData,OutData,fAtmosphereMapData.Size);
+     OutStream.WriteBuffer(OutData^,fAtmosphereMapData.Size);
+    finally
+     FreeMem(OutData);
+    end;
+   finally
+    FreeMem(InData);
+   end;
 
   end;
 
