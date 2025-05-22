@@ -8251,7 +8251,6 @@ begin
 
   end;
 
-
   begin
 
    Chunk.Signature:=TpvScene3DPlanet.TSerializedData.ChunkSignatureWaterHeightMapData;
