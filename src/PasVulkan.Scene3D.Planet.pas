@@ -2158,7 +2158,7 @@ begin
      end;
      if (PNGWidth<>256) or (PNGHeight<>256) then begin
       GetMem(p8,256*256);
-      ResizeMonoByte2D(PixelData,PNGWidth,PNGHeight,p8,256,256);
+      ResizeR8(PixelData,PNGWidth,PNGHeight,p8,256,256);
       FreeMem(PixelData);
       PixelData:=p8;
       PNGWidth:=256;
@@ -2255,7 +2255,7 @@ begin
       end;
       if QOIWidth<>256 then begin
        GetMem(p8,256*256);
-       ResizeMonoByte2D(PixelData,QOIWidth,QOIHeight,p8,256,256);
+       ResizeR8(PixelData,QOIWidth,QOIHeight,p8,256,256);
        FreeMem(PixelData);
        PixelData:=p8;
        QOIWidth:=256;
@@ -7353,8 +7353,8 @@ begin
        GetMem(OutData,fRainMapResolution*fRainMapResolution*SizeOf(TpvUInt8));
        try
         aStream.ReadBuffer(InData^,RainMapDataChunkHeader.Resolution*RainMapDataChunkHeader.Resolution*SizeOf(TpvUInt8));
-        ResizeMonoByte2D(InData,RainMapDataChunkHeader.Resolution,RainMapDataChunkHeader.Resolution,
-                         OutData,fRainMapResolution,fRainMapResolution);
+        ResizeR8(InData,RainMapDataChunkHeader.Resolution,RainMapDataChunkHeader.Resolution,
+                 OutData,fRainMapResolution,fRainMapResolution);
         fRainMapData.WriteBuffer(OutData^,fRainMapResolution*fRainMapResolution*SizeOf(TpvUInt8));
        finally
         FreeMem(OutData);

@@ -74,6 +74,8 @@ uses SysUtils,
 procedure ResizeMonoByte2D(const aInData:Pointer;const aInWidth,aInHeight:TpvSizeInt;const aOutData:Pointer;const aOutWidth,aOutHeight:TpvSizeInt);
 procedure ResizeMonoFloat2D(const aInData:Pointer;const aInWidth,aInHeight:TpvSizeInt;const aOutData:Pointer;const aOutWidth,aOutHeight:TpvSizeInt);
 
+procedure ResizeR8(const aSrc:pointer;const aSrcWidth,aSrcHeight:TpvInt32;const aDst:pointer;const aDstWidth,aDstHeight:TpvInt32);
+
 procedure ResizeRGBA32(const aSrc:pointer;const aSrcWidth,aSrcHeight:TpvSizeInt;const aDst:pointer;const aDstWidth,aDstHeight:TpvSizeInt);
 
 procedure RGBAAlphaBleeding(const aData:Pointer;const aWidth,aHeight:TpvSizeInt;const a16Bit:Boolean=false);
@@ -186,6 +188,161 @@ begin
 
  end; 
 
+end;
+
+procedure ResizeR8(const aSrc:pointer;const aSrcWidth,aSrcHeight:TpvInt32;const aDst:pointer;const aDstWidth,aDstHeight:TpvInt32);
+type PPixels=^TPixels;
+     TPixels=array[0..65535] of TpvUInt8;
+var DstX,DstY,SrcX,SrcY:TpvInt32;
+    Sum,w,Pixel,Weight,xUL,xUR,xLL,xLR,
+    Red,Remainder,WeightX,WeightY:TpvUInt32;
+    TempSrc,TempDst:PPixels;
+    UpsampleX,UpsampleY:longbool;
+    WeightShift,xa,xb,xc,xd,ya,yb,yc,yd:TpvInt32;
+    SourceTexelsPerOutPixel,WeightPerPixel,AccumlatorPerPixel,WeightDivider,fw,fh:TpvFloat;
+    XCache:array of TpvSizeInt;
+begin
+ XCache:=nil;
+ try
+  if (aSrcWidth=(aDstWidth*2)) and (aSrcHeight=(aDstHeight*2)) then begin
+   Remainder:=0;
+   TempDst:=pointer(aDst);
+   for DstY:=0 to aDstHeight-1 do begin
+    SrcY:=DstY*2;
+    TempSrc:=pointer(@pansichar(aSrc)[(SrcY*aSrcWidth) shl 2]);
+    for DstX:=0 to aDstWidth-1 do begin
+     xUL:=TempSrc^[0];
+     xUR:=TempSrc^[1];
+     xLL:=TempSrc^[aSrcWidth];
+     xLR:=TempSrc^[aSrcWidth+1];
+     Red:=(xUL+xUR+xLL+xLR)+(Remainder and $ff);
+     Remainder:=Red and $03;
+     TempDst[0]:=(Red and $03fc) shr 2;
+     TempDst:=pointer(@TempDst^[1]);
+     TempSrc:=pointer(@TempSrc^[2]);
+    end;
+   end;
+  end else begin
+   UpsampleX:=aSrcWidth<aDstWidth;
+   UpsampleY:=aDstHeight<aDstHeight;
+   WeightShift:=0;
+   SourceTexelsPerOutPixel:=((aSrcWidth/aDstWidth)+1)*((aSrcHeight/aDstHeight)+1);
+   WeightPerPixel:=SourceTexelsPerOutPixel*65536;
+   AccumlatorPerPixel:=WeightPerPixel*256;
+   WeightDivider:=AccumlatorPerPixel/4294967000.0;
+   if WeightDivider>1.0 then begin
+    WeightShift:=trunc(ceil(ln(WeightDivider)/ln(2.0)));
+   end;
+   WeightShift:=min(WeightShift,15);
+   fw:=(256*aSrcWidth)/aDstWidth;
+   fh:=(256*aSrcHeight)/aDstHeight;
+   if UpsampleX and UpsampleY then begin
+    if length(XCache)<TpvInt32(aDstWidth) then begin
+     SetLength(XCache,TpvInt32(aDstWidth));
+    end;
+    for DstX:=0 to aDstWidth-1 do begin
+     XCache[DstX]:=min(trunc(DstX*fw),(256*(aSrcWidth-1))-1);
+    end;
+    for DstY:=0 to aDstHeight-1 do begin
+     ya:=min(trunc(DstY*fh),(256*(aSrcHeight-1))-1);
+     yc:=ya shr 8;
+     TempDst:=pointer(@pansichar(aDst)[DstY*aDstWidth]);
+     for DstX:=0 to aDstWidth-1 do begin
+      xa:=XCache[DstX];
+      xc:=xa shr 8;
+      TempSrc:=pointer(@pansichar(aSrc)[(yc*aSrcWidth)+xc]);
+      Sum:=0;
+      WeightX:=TpvUInt32(TpvInt32(256-(xa and $ff)));
+      WeightY:=TpvUInt32(TpvInt32(256-(ya and $ff)));
+      for SrcY:=0 to 1 do begin
+       for SrcX:=0 to 1 do begin
+        Pixel:=TempSrc^[(SrcY*aSrcWidth)+SrcX];
+        Weight:=(WeightX*WeightY) shr WeightShift;
+        inc(Sum,Pixel*Weight);
+        WeightX:=256-WeightX;
+       end;
+       WeightY:=256-WeightY;
+      end;
+      TempDst^[0]:=(Sum shr 16) and $ff;
+      TempDst:=pointer(@TempDst^[1]);
+     end;
+    end;
+   end else begin
+    if length(XCache)<(TpvInt32(aDstWidth)*2) then begin
+     SetLength(XCache,TpvInt32(aDstWidth)*2);
+    end;
+    for DstX:=0 to aDstWidth-1 do begin
+     xa:=trunc(DstX*fw);
+     if UpsampleX then begin
+      xb:=xa+256;
+     end else begin
+      xb:=trunc((DstX+1)*fw);
+     end;
+     XCache[(DstX shl 1) or 0]:=min(xa,(256*aSrcWidth)-1);
+     XCache[(DstX shl 1) or 1]:=min(xb,(256*aSrcWidth)-1);
+    end;
+    for DstY:=0 to aDstHeight-1 do begin
+     ya:=trunc(DstY*fh);
+     if UpsampleY then begin
+      yb:=ya+256;
+     end else begin
+      yb:=trunc((DstY+1)*fh);
+     end;
+     TempDst:=pointer(@pansichar(aDst)[DstY*aDstWidth]);
+     yc:=ya shr 8;
+     yd:=yb shr 8;
+     for DstX:=0 to aDstWidth-1 do begin
+      xa:=XCache[(DstX shl 1) or 0];
+      xb:=XCache[(DstX shl 1) or 1];
+      xc:=xa shr 8;
+      xd:=xb shr 8;
+      Sum:=0;
+      w:=0;
+      for SrcY:=yc to yd do begin
+       if (SrcY<0) or (SrcY>=aSrcHeight) then begin
+        continue;
+       end;
+       WeightY:=256;
+       if yc<>yd then begin
+        if SrcY=yc then begin
+         WeightY:=256-(ya and $ff);
+        end else if SrcY=yd then begin
+         WeightY:=yb and $ff;
+        end;
+       end;
+       TempSrc:=pointer(@pansichar(aSrc)[(SrcY*aSrcWidth)+xc]);
+       for SrcX:=xc to xd do begin
+        if (SrcX<0) or (SrcX>=aSrcWidth) then begin
+         continue;
+        end;
+        WeightX:=256;
+        if xc<>xd then begin
+         if SrcX=xc then begin
+          WeightX:=256-(xa and $ff);
+         end else if SrcX=xd then begin
+          WeightX:=xb and $ff;
+         end;
+        end;
+        Pixel:=TempSrc^[0];
+        inc(PAnsiChar(TempSrc),SizeOf(TpvUInt8));
+        Weight:=(WeightX*WeightY) shr WeightShift;
+        inc(Sum,Pixel*Weight);
+        inc(w,Weight);
+       end;
+      end;
+      if w>0 then begin
+       TempDst^[0]:=Sum div w;
+      end else begin
+       TempDst^[0]:=0;
+      end;
+      TempDst:=pointer(@TempDst^[1]);
+     end;
+    end;
+   end;
+  end;
+ finally
+  XCache:=nil;
+ end;
 end;
 
 procedure ResizeRGBA32(const aSrc:pointer;const aSrcWidth,aSrcHeight:TpvSizeInt;const aDst:pointer;const aDstWidth,aDstHeight:TpvSizeInt);
