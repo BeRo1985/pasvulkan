@@ -124,6 +124,16 @@ procedure ForwardTransformRGBA8Data(const aStream:TStream); overload;
 procedure BackwardTransformRGBA8Data(const aInData,aOutData:pointer;const aDataSize:TpvSizeInt); overload;
 procedure BackwardTransformRGBA8Data(const aStream:TStream); overload;
 
+// This function transforms R8 data to a better compressible format, together with preserving the order
+// before and after the transformation for better delta compression
+procedure ForwardTransformR8Data(const aInData,aOutData:pointer;const aDataSize:TpvSizeInt); overload;
+procedure ForwardTransformR8Data(const aStream:TStream); overload;
+
+// This function transforms R8 data back from a better compressible format, together with preserving the order
+// before and after the transformation for better delta compression
+procedure BackwardTransformR8Data(const aInData,aOutData:pointer;const aDataSize:TpvSizeInt); overload;
+procedure BackwardTransformR8Data(const aStream:TStream); overload;
+
 function CompressStream(const aInStream:TStream;const aOutStream:TStream;const aCompressionMethod:TpvCompressionMethod=TpvCompressionMethod.LZBRRC;const aCompressionLevel:TpvUInt32=5;const aParts:TpvUInt32=0):boolean;
 
 function DecompressStream(const aInStream:TStream;const aOutStream:TStream):boolean;
@@ -943,7 +953,7 @@ begin
      aStream.ReadBuffer(InData^,Size);
      GetMem(OutData,Size);
      try
-      ForwardTransform32BitFloatData(InData,OutData,Size);
+      ForwardTransformRGBA8Data(InData,OutData,Size);
       aStream.Seek(0,soBeginning);
       aStream.WriteBuffer(OutData^,Size);
      finally
@@ -1113,7 +1123,134 @@ begin
      aStream.ReadBuffer(InData^,Size);
      GetMem(OutData,Size);
      try
-      BackwardTransform32BitFloatData(InData,OutData,Size);
+      BackwardTransformRGBA8Data(InData,OutData,Size);
+      aStream.Seek(0,soBeginning);
+      aStream.WriteBuffer(OutData^,Size);
+     finally
+      try
+       FreeMem(OutData);
+      finally
+       OutData:=nil;
+      end;
+     end;
+    finally
+     try
+      FreeMem(InData);
+     finally
+      InData:=nil;
+     end;
+    end;
+   end;
+  end;
+ end;
+end;
+
+////////////////////////////////////////////////////////////////////////////////////////
+
+// This function transforms R8 data to a better compressible format, together with preserving the order
+// before and after the transformation for better delta compression
+procedure ForwardTransformR8Data(const aInData,aOutData:pointer;const aDataSize:TpvSizeInt);
+var Index,Count:TpvSizeInt;
+    Previous,Value:TpvUInt8;
+begin
+ Count:=aDataSize;
+ Previous:=0;
+ for Index:=0 to Count-1 do begin
+  Value:=PpvUInt8Array(aInData)^[Index];
+  PpvUInt8Array(aOutData)^[Index]:=Value-Previous;
+  Previous:=Value;
+ end;
+end;
+
+procedure ForwardTransformR8Data(const aStream:TStream);
+var InData,OutData:Pointer;
+    Size:TpvSizeInt;
+begin
+ if assigned(aStream) then begin
+  Size:=aStream.Size;
+  if Size>0 then begin
+   if aStream is TMemoryStream then begin
+    GetMem(OutData,Size);
+    try
+     ForwardTransformR8Data(TMemoryStream(aStream).Memory,OutData,Size);
+     Move(OutData^,TMemoryStream(aStream).Memory^,Size);
+    finally
+     try
+      FreeMem(OutData);
+     finally
+      OutData:=nil;
+     end;
+    end;
+   end else begin
+    GetMem(InData,Size);
+    try
+     aStream.Seek(0,soBeginning);
+     aStream.ReadBuffer(InData^,Size);
+     GetMem(OutData,Size);
+     try
+      ForwardTransformR8Data(InData,OutData,Size);
+      aStream.Seek(0,soBeginning);
+      aStream.WriteBuffer(OutData^,Size);
+     finally
+      try
+       FreeMem(OutData);
+      finally
+       OutData:=nil;
+      end;
+     end;
+    finally
+     try
+      FreeMem(InData);
+     finally
+      InData:=nil;
+     end;
+    end;
+   end;
+  end;
+ end;
+end;
+
+// This function transforms R8 data back from a better compressible format, together with preserving the order
+// before and after the transformation for better delta compression
+procedure BackwardTransformR8Data(const aInData,aOutData:pointer;const aDataSize:TpvSizeInt);
+var Index,Count:TpvSizeInt;
+    Value:TpvUInt8;
+begin
+ Count:=aDataSize;
+ Value:=0;
+ for Index:=0 to Count-1 do begin
+  inc(Value,TpvUInt8(PpvUInt8Array(aInData)^[Index]));
+  PpvUInt8Array(aOutData)^[Index]:=Value;
+ end;
+end;
+
+procedure BackwardTransformR8Data(const aStream:TStream);
+var InData,OutData:Pointer;
+    Size:TpvSizeInt;
+begin
+ if assigned(aStream) then begin
+  Size:=aStream.Size;
+  if Size>0 then begin
+   if aStream is TMemoryStream then begin
+    GetMem(OutData,Size);
+    try
+     BackwardTransformR8Data(TMemoryStream(aStream).Memory,OutData,Size);
+     Move(OutData^,TMemoryStream(aStream).Memory^,Size);
+    finally
+     try
+      FreeMem(OutData);
+     finally
+      OutData:=nil;
+     end;
+    end;
+   end else begin
+    GetMem(InData,Size);
+    try
+     aStream.Seek(0,soBeginning);
+     aStream.ReadBuffer(InData^,Size);
+     GetMem(OutData,Size);
+     try
+      BackwardTransformR8Data(InData,OutData,Size);
       aStream.Seek(0,soBeginning);
       aStream.WriteBuffer(OutData^,Size);
      finally
