@@ -49,8 +49,12 @@ void main() {
     vec4 c = textureLod(uSourceTexture, direction, 0.0) * vec2(pushConstants.lightDirectionIntensityFactor.w, 1.0).xxxy;
 #ifdef USE_RGB9E5
     imageStore(uDestinationTexture, uvw, uvec4(encodeRGB9E5(c.xyz)));
-#else
+#elif defined(USE_RGBA16F)
     imageStore(uDestinationTexture, uvw, clamp(c, vec4(-65504.0), vec4(65504.0))); // Clamp to the range of 16-bit floating point numbers.
+#elif defined(USE_R11G11B10F)
+    imageStore(uDestinationTexture, uvw, clamp(c, vec4(0.0), vec4(65000.0))); // Clamp to the approximately representable range of 11-bit/10-bit floating point numbers.
+#else   
+    imageStore(uDestinationTexture, uvw, c); // Store the raw value, no conversion, no clamping, no encoding, just store the value as is.
 #endif
   }
 }
