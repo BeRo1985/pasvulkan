@@ -3762,7 +3762,7 @@ var Index:TpvSizeInt;
 begin
 
  if assigned(fTextureSourceImage) then begin
-  Size:=RoundDownToPowerOfTwo(Max(16,Round(Sqrt((fTextureSourceImage.Width*fTextureSourceImage.Height)/6.0))));
+  Size:=RoundUpToPowerOfTwo(Max(16,Round(Sqrt((fTextureSourceImage.Width*fTextureSourceImage.Height)/6.0))));
  end else begin
   Size:=8;
  end; 

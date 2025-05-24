@@ -19135,9 +19135,9 @@ begin
 
  fGrassMapResolution:=fHeightMapResolution;
 
- fRainMapResolution:=Max(256,(fHeightMapResolution+15) shr 2);
+ fRainMapResolution:=RoundUpToPowerOfTwo(Max(256,(fHeightMapResolution+3) shr 2));
 
- fAtmosphereMapResolution:=Max(256,(fHeightMapResolution+15) shr 2);
+ fAtmosphereMapResolution:=RoundUpToPowerOfTwo(Max(256,(fHeightMapResolution+3) shr 2));
 
  fWaterMapResolution:=fHeightMapResolution; // needs to be matched with fHeightMapResolution for now
 
