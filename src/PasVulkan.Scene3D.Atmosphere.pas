@@ -736,7 +736,8 @@ type TpvScene3DAtmosphere=class;
                              const aCascadedShadowMapImageView:TVkImageView;
                              const aCloudsInscatteringImageView:TVkImageView;
                              const aCloudsTransmittanceImageView:TVkImageView;
-                             const aCloudsDepthImageView:TVkImageView);
+                             const aCloudsDepthImageView:TVkImageView;
+                             var aPushConstants:TpvScene3DAtmosphereGlobals.TRaymarchingPushConstants);
              published
               property Atmosphere:TpvScene3DAtmosphere read fAtmosphere;
               property RendererInstance:TObject read fRendererInstance;
@@ -795,6 +796,8 @@ type TpvScene3DAtmosphere=class;
        fCloudWeatherMapPushConstants:TpvScene3DAtmosphereGlobals.TCloudWeatherMapPushConstants;
        fRainMap:TDirectionalMap;
        fAtmosphereMap:TDirectionalMap;
+       fUseRainMap:TPasMPBool32;
+       fUseAtmosphereMap:TPasMPBool32;
        fRendererInstances:TRendererInstances;
        fRendererInstanceHashMap:TRendererInstanceHashMap;
        fRendererInstanceListLock:TPasMPSlimReaderWriterLock;
@@ -837,11 +840,14 @@ type TpvScene3DAtmosphere=class;
                       const aCloudsInscatteringImageView:TVkImageView;
                       const aCloudsTransmittanceImageView:TVkImageView;
                       const aCloudsDepthImageView:TVkImageView;
-                      const aRendererInstance:TObject);
+                      const aRendererInstance:TObject;
+                      var aPushConstants:TpvScene3DAtmosphereGlobals.TRaymarchingPushConstants);
       public
        property AtmosphereParameters:PAtmosphereParameters read fPointerToAtmosphereParameters;
        property RainMap:TDirectionalMap read fRainMap;
        property AtmosphereMap:TDirectionalMap read fAtmosphereMap;
+       property UseRainMap:TPasMPBool32 read fUseRainMap write fUseRainMap;
+       property UseAtmosphereMap:TPasMPBool32 read fUseAtmosphereMap write fUseAtmosphereMap;
        property Ready:TPasMPBool32 read fReady;
        property Uploaded:LongBool read fUploaded;
        property Visible:Boolean read fVisible;
@@ -868,7 +874,8 @@ type TpvScene3DAtmosphere=class;
                       const aCloudsInscatteringImageView:TVkImageView;
                       const aCloudsTransmittanceImageView:TVkImageView;
                       const aCloudsDepthImageView:TVkImageView;
-                      const aRendererInstance:TObject);
+                      const aRendererInstance:TObject;
+                      var aPushConstants:TpvScene3DAtmosphereGlobals.TRaymarchingPushConstants);
       published
        property Scene3D:TObject read fScene3D;
        property Lock:TPasMPMultipleReaderSingleWriterLock read fLock;
@@ -3366,7 +3373,7 @@ begin
  end;
                                   
 
- if TpvScene3DRenderer(TpvScene3DRendererInstance(fRendererInstance).Renderer).FastSky then begin
+ if TpvScene3DRenderer(TpvScene3DRendererInstance(fRendererInstance).Renderer).FastSky and not fAtmosphere.fUseAtmosphereMap then begin
 
   // Sky view LUT
 
@@ -3477,7 +3484,7 @@ begin
 
  end;
 
- if TpvScene3DRenderer(TpvScene3DRendererInstance(fRendererInstance).Renderer).FastAerialPerspective then begin
+ if TpvScene3DRenderer(TpvScene3DRendererInstance(fRendererInstance).Renderer).FastAerialPerspective and not fAtmosphere.fUseAtmosphereMap then begin
 
   // Camera volume
 
@@ -3750,13 +3757,31 @@ procedure TpvScene3DAtmosphere.TRendererInstance.Draw(const aInFlightFrameIndex:
                                                       const aCascadedShadowMapImageView:TVkImageView;
                                                       const aCloudsInscatteringImageView:TVkImageView;
                                                       const aCloudsTransmittanceImageView:TVkImageView;
-                                                      const aCloudsDepthImageView:TVkImageView);
+                                                      const aCloudsDepthImageView:TVkImageView;
+                                                      var aPushConstants:TpvScene3DAtmosphereGlobals.TRaymarchingPushConstants);
 var DescriptorSets:array[0..2] of TVkDescriptorSet;
 begin
 
  TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'Atmosphere.Draw',[1.0,0.0,0.0,1.0]);
 
  SetImageViews(aInFlightFrameIndex,aDepthImageView,aCascadedShadowMapImageView,aCloudsInscatteringImageView,aCloudsTransmittanceImageView,aCloudsDepthImageView);
+
+ if TpvScene3DRenderer(TpvScene3DRendererInstance(fRendererInstance).Renderer).FastSky and not fAtmosphere.fUseAtmosphereMap then begin
+  aPushConstants.Flags:=aPushConstants.Flags or (TpvUInt32(1) shl 0);
+ end else begin
+  aPushConstants.Flags:=aPushConstants.Flags and not (TpvUInt32(1) shl 0);
+ end;
+ if TpvScene3DRenderer(TpvScene3DRendererInstance(fRendererInstance).Renderer).FastAerialPerspective and not fAtmosphere.fUseAtmosphereMap then begin
+  aPushConstants.Flags:=aPushConstants.Flags or (TpvUInt32(1) shl 1);
+ end else begin
+  aPushConstants.Flags:=aPushConstants.Flags and not (TpvUInt32(1) shl 1);
+ end;
+
+ aCommandBuffer.CmdPushConstants(TpvScene3DAtmosphereGlobals(TpvScene3D(fAtmosphere.fScene3D).AtmosphereGlobals).RaymarchingPipelineLayout.Handle,
+                                 TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_FRAGMENT_BIT),
+                                 0,
+                                 SizeOf(TpvScene3DAtmosphereGlobals.TRaymarchingPushConstants),
+                                 @aPushConstants);
 
  DescriptorSets[0]:=TpvScene3D(fAtmosphere.fScene3D).GlobalVulkanDescriptorSets[aInFlightFrameIndex].Handle;
  DescriptorSets[1]:=fGlobalDescriptorSets[aInFlightFrameIndex].Handle;
@@ -4134,6 +4159,10 @@ begin
 
  fAtmosphereMap:=TDirectionalMap.Create(fScene3D,self,'Atmosphere');
 
+ fUseRainMap:=true;
+
+ fUseAtmosphereMap:=false;
+
  fReady:=true;
 
 end;
@@ -4330,8 +4359,8 @@ begin
 
   fGPUAtmosphereParameters[aInFlightFrameIndex].Assign(fAtmosphereParameters,fScene3D,aInFlightFrameIndex);
 
-  fGPUAtmosphereParameters[aInFlightFrameIndex].Flags:=IfThen(assigned(fRainMap.fTextureSourceImage),1 shl 0,0) or
-                                                       IfThen(assigned(fAtmosphereMap.fTextureSourceImage),1 shl 1,0);
+  fGPUAtmosphereParameters[aInFlightFrameIndex].Flags:=IfThen(assigned(fRainMap.fTextureSourceImage) and fUseRainMap,1 shl 0,0) or
+                                                       IfThen(assigned(fAtmosphereMap.fTextureSourceImage) and fUseAtmosphereMap,1 shl 1,0);
 
 { fGPUAtmosphereParameters[aInFlightFrameIndex].Transform:=fGPUAtmosphereParameters[aInFlightFrameIndex].Transform;
   fGPUAtmosphereParameters[aInFlightFrameIndex].InverseTransform:=fGPUAtmosphereParameters[aInFlightFrameIndex].Transform.Inverse;}
@@ -4533,7 +4562,8 @@ procedure TpvScene3DAtmosphere.Draw(const aInFlightFrameIndex:TpvSizeInt;
                                     const aCloudsInscatteringImageView:TVkImageView;
                                     const aCloudsTransmittanceImageView:TVkImageView;
                                     const aCloudsDepthImageView:TVkImageView;
-                                    const aRendererInstance:TObject);
+                                    const aRendererInstance:TObject;
+                                    var aPushConstants:TpvScene3DAtmosphereGlobals.TRaymarchingPushConstants);
 var AtmosphereRendererInstance:TpvScene3DAtmosphere.TRendererInstance;
 begin
 
@@ -4542,7 +4572,7 @@ begin
   AtmosphereRendererInstance:=GetRenderInstance(aRendererInstance);
 
   if assigned(AtmosphereRendererInstance) then begin
-   AtmosphereRendererInstance.Draw(aInFlightFrameIndex,aCommandBuffer,aDepthImageView,aCascadedShadowMapImageView,aCloudsInscatteringImageView,aCloudsTransmittanceImageView,aCloudsDepthImageView);
+   AtmosphereRendererInstance.Draw(aInFlightFrameIndex,aCommandBuffer,aDepthImageView,aCascadedShadowMapImageView,aCloudsInscatteringImageView,aCloudsTransmittanceImageView,aCloudsDepthImageView,aPushConstants);
   end;
 
  end;
@@ -4623,7 +4653,8 @@ procedure TpvScene3DAtmospheres.Draw(const aInFlightFrameIndex:TpvSizeInt;
                                      const aCloudsInscatteringImageView:TVkImageView;
                                      const aCloudsTransmittanceImageView:TVkImageView;
                                      const aCloudsDepthImageView:TVkImageView;
-                                     const aRendererInstance:TObject);
+                                     const aRendererInstance:TObject;
+                                     var aPushConstants:TpvScene3DAtmosphereGlobals.TRaymarchingPushConstants);
 var Index:TpvSizeInt;
     Atmosphere:TpvScene3DAtmosphere;
 begin
@@ -4635,7 +4666,7 @@ begin
    for Index:=0 to Count-1 do begin
     Atmosphere:=Items[Index];
     if assigned(Atmosphere) then begin
-     Atmosphere.Draw(aInFlightFrameIndex,aCommandBuffer,aDepthImageView,aCascadedShadowMapImageView,aCloudsInscatteringImageView,aCloudsTransmittanceImageView,aCloudsDepthImageView,aRendererInstance);
+     Atmosphere.Draw(aInFlightFrameIndex,aCommandBuffer,aDepthImageView,aCascadedShadowMapImageView,aCloudsInscatteringImageView,aCloudsTransmittanceImageView,aCloudsDepthImageView,aRendererInstance,aPushConstants);
     end;
    end;
 

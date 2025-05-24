@@ -576,13 +576,6 @@ begin
  end;
  fPushConstants.CountSamples:=TpvScene3DRenderer(TpvScene3DRendererInstance(fInstance).Renderer).CountSurfaceMSAASamples;
 
- aCommandBuffer.CmdPushConstants(TpvScene3DAtmosphereGlobals(fInstance.Scene3D.AtmosphereGlobals).RaymarchingPipelineLayout.Handle,
-                                 TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_FRAGMENT_BIT),
-                                 0,
-                                 SizeOf(TpvScene3DAtmosphereGlobals.TRaymarchingPushConstants),
-                                 @fPushConstants);
-
-
  TpvScene3DAtmospheres(fInstance.Scene3D.Atmospheres).Draw(aInFlightFrameIndex,
                                                            aCommandBuffer,
                                                            fResourceDepth.VulkanImageViews[aInFlightFrameIndex].Handle,
@@ -590,7 +583,8 @@ begin
                                                            fResourceCloudsInscattering.VulkanImageViews[aInFlightFrameIndex].Handle,
                                                            fResourceCloudsTransmittance.VulkanImageViews[aInFlightFrameIndex].Handle,
                                                            fResourceCloudsDepth.VulkanImageViews[aInFlightFrameIndex].Handle,
-                                                           fInstance);
+                                                           fInstance,
+                                                           fPushConstants);
 
 end;
 
