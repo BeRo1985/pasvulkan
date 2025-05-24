@@ -27,6 +27,7 @@
 #else
  #undef SHADOWS_ENABLED
 #endif
+#define ATMOSPHEREMAP_ENABLED 
 
 // Push constants
 layout(push_constant, std140) uniform PushConstants {
@@ -58,19 +59,19 @@ const uint SHADOWMAP_MODE_MSM = 5;
 
 #define inFrameIndex pushConstants.frameIndex
 
-layout(set = 2, binding = 7, std140) uniform uboCascadedShadowMaps {
+layout(set = 2, binding = 8, std140) uniform uboCascadedShadowMaps {
   mat4 shadowMapMatrices[NUM_SHADOW_CASCADES];
   vec4 shadowMapSplitDepthsScales[NUM_SHADOW_CASCADES];
   vec4 constantBiasNormalBiasSlopeBiasClamp[NUM_SHADOW_CASCADES];
   uvec4 metaData; // x = type
 } uCascadedShadowMaps;
 
-layout(set = 2, binding = 8) uniform sampler2DArray uCascadedShadowMapTexture;
+layout(set = 2, binding = 9) uniform sampler2DArray uCascadedShadowMapTexture;
 
 #ifdef PCFPCSS
 
 // Yay! Binding Aliasing! :-)
-layout(set = 2, binding = 8) uniform sampler2DArrayShadow uCascadedShadowMapTextureShadow;
+layout(set = 2, binding = 9) uniform sampler2DArrayShadow uCascadedShadowMapTextureShadow;
 
 #endif // PCFPCSS
 #endif // !RAYTRACING 
@@ -120,13 +121,13 @@ layout(set = 2, binding = 0) uniform texture2D uDepthTexture;
 #endif
 
 #ifdef MULTIVIEW
-layout(set = 2, binding = 9) uniform texture2DArray uCloudsInscatteringTexture;
-layout(set = 2, binding = 10) uniform texture2DArray uCloudsTransmittanceTexture;
-layout(set = 2, binding = 11) uniform texture2DArray uCloudsDepthTexture;
+layout(set = 2, binding = 10) uniform texture2DArray uCloudsInscatteringTexture;
+layout(set = 2, binding = 11) uniform texture2DArray uCloudsTransmittanceTexture;
+layout(set = 2, binding = 12) uniform texture2DArray uCloudsDepthTexture;
 #else
-layout(set = 2, binding = 9) uniform texture2D uCloudsInscatteringTexture;
-layout(set = 2, binding = 10) uniform texture2D uCloudsTransmittanceTexture;
-layout(set = 2, binding = 11) uniform texture2D uCloudsDepthTexture;
+layout(set = 2, binding = 10) uniform texture2D uCloudsInscatteringTexture;
+layout(set = 2, binding = 11) uniform texture2D uCloudsTransmittanceTexture;
+layout(set = 2, binding = 12) uniform texture2D uCloudsDepthTexture;
 #endif
 
 /*
@@ -145,9 +146,11 @@ layout(set = 2, binding = 3) uniform sampler2DArray uSkyViewLUT;
 
 layout(set = 2, binding = 4) uniform sampler2DArray uCameraVolume;
 
-layout(set = 2, binding = 5) uniform sampler2D uBlueNoise;
+layout(set = 2, binding = 5) uniform samplerCube uAtmosphereMapTexture;
 
-layout(set = 2, binding = 6, std430) buffer AtmosphereParametersBuffer {
+layout(set = 2, binding = 6) uniform sampler2D uBlueNoise;
+
+layout(set = 2, binding = 7, std430) buffer AtmosphereParametersBuffer {
   AtmosphereParameters atmosphereParameters;
 } uAtmosphereParameters;
 
@@ -590,6 +593,7 @@ void main() {
         SingleScatteringResult ss = IntegrateScatteredLuminance(
           uTransmittanceLutTexture,
           uMultiScatteringTexture,
+          uAtmosphereMapTexture,
           uv, 
           localWorldPos, 
           worldDir, 
@@ -629,6 +633,7 @@ void main() {
       SingleScatteringResult ss = IntegrateScatteredLuminance(
         uTransmittanceLutTexture,
         uMultiScatteringTexture,
+        uAtmosphereMapTexture,
         uv, 
         worldPos, 
         worldDir, 

@@ -7726,6 +7726,16 @@ begin
 
  StartPosition:=aStream.Position;
 
+ if fRainMapResolution>0 then begin
+  fRainMapData.SetSize(fRainMapResolution*fRainMapResolution*SizeOf(TpvUInt8));
+  FillChar(fRainMapData.Memory^,fRainMapData.Size,#$00);
+ end;
+
+ if fAtmosphereMapResolution>0 then begin
+  fAtmosphereMapData.SetSize(fAtmosphereMapResolution*fAtmosphereMapResolution*SizeOf(TpvUInt8));
+  FillChar(fAtmosphereMapData.Memory^,fAtmosphereMapData.Size,#$ff);
+ end;
+
  aStream.ReadBuffer(Header.Signature,SizeOf(TpvScene3DPlanet.TSerializedData.TSignature));
 
  if Header.Signature=CompressedSignature then begin

@@ -206,7 +206,7 @@ struct AtmosphereParameters {
   int RaymarchingMaxSteps;
 
   float maxShadowDistance;
-  float unused0;
+  uint flags;
   float unused1;
   float unused2;
 
@@ -215,6 +215,9 @@ struct AtmosphereParameters {
   VolumetricCloudParameters VolumetricClouds;
 
 };
+
+const uint FLAGS_USE_RAIN_MAP = 1u << 0u;
+const uint FLAGS_USE_ATMOSPHERE_MAP = 1u << 1u; 
 
 float getAtmosphereCullingSDF(const in AtmosphereCullingParameters CullingParameters, vec3 p){
   if(CullingParameters.innerOuterFadeDistancesCountFacesMode.w == 0u){
@@ -889,10 +892,21 @@ SingleScatteringResult IntegrateScatteredLuminance(const in sampler2D Transmitta
       dt = NewT - t;
       t = NewT;
     }
-    vec3 P = WorldPos + t * WorldDir;
+    vec3 P = WorldPos + (t * WorldDir);
+
+#ifdef ATMOSPHEREMAP_ENABLED
+    // Evaluate atmosphere map, with AtmosphereMapTexture cube map with atmosphere visiblity values
+    const float atmosphereFactor = ((Atmosphere.flags & FLAGS_USE_ATMOSPHERE_MAP) != 0u) 
+                                     ? textureLod(AtmosphereMapTexture, normalize(P), 0.0).x // 0.0 = no atmosphere, 1.0 = full atmosphere    
+                                     : 1.0; // No atmosphere map, so use 1.0 as factor
+#endif
 
     MediumSampleRGB medium = sampleMediumRGB(P, Atmosphere);
-    const vec3 SampleOpticalDepth = medium.extinction * dt;
+    const vec3 SampleOpticalDepth = medium.extinction * 
+#ifdef ATMOSPHEREMAP_ENABLED
+                                    atmosphereFactor *
+#endif
+                                    dt;
     const vec3 SampleTransmittance = exp(-SampleOpticalDepth);
     OpticalDepth += SampleOpticalDepth;
 
@@ -956,13 +970,6 @@ SingleScatteringResult IntegrateScatteredLuminance(const in sampler2D Transmitta
       result.NewMultiScatStep1Out += throughput * (newMS - newMS * SampleTransmittance) / medium.extinction;
       //	result.NewMultiScatStep1Out += SampleTransmittance * throughput * newMS * dt;
     }
-
-#ifdef ATMOSPHEREMAP_ENABLED
-    // Evaluate atmosphere map, with AtmosphereMapTexture cube map with atmosphere visiblity values
-    float atmosphereFactor = textureLod(AtmosphereMapTexture, normalize(P), 0.0).x; // 0.0 = no atmosphere, 1.0 = full atmosphere    
-    S *= atmosphereFactor; // not throughput, but S, because we want to scale the light contribution, not the transmittance 
-    SampleTransmittance = mix(SampleTransmittance, 1.0, atmosphereFactor); // not multiply, but mix with 1.0
-#endif
 
 #if 0
     L += throughput * S * dt;

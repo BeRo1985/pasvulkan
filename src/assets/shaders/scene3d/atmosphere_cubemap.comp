@@ -13,6 +13,7 @@ layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
 /* clang-format on */
 
 #define MULTISCATAPPROX_ENABLED
+#define ATMOSPHEREMAP_ENABLED 
 #undef SHADOWS_ENABLED
 
 #include "globaldescriptorset.glsl"
@@ -56,7 +57,9 @@ layout(set = 2, binding = 2) uniform sampler2D uMultiScatteringTexture;
 
 layout(set = 2, binding = 3) uniform samplerCube uSkyLuminanceLUTTexture;
 
-layout(set = 2, binding = 4, std430) buffer AtmosphereParametersBuffer {
+layout(set = 2, binding = 4) uniform samplerCube uAtmosphereMapTexture;
+
+layout(set = 2, binding = 5, std430) buffer AtmosphereParametersBuffer {
   AtmosphereParameters atmosphereParameters;
 } uAtmosphereParameters;
 
@@ -139,6 +142,7 @@ void main() {
         SingleScatteringResult ss = IntegrateScatteredLuminance(
           uTransmittanceLutTexture,
           uMultiScatteringTexture,
+          uAtmosphereMapTexture,
           vec2(0.0), 
           worldPos, 
           worldDir, 

@@ -636,7 +636,7 @@ type TpvScene3DAtmosphere=class;
               RaymarchingMaxSteps:TpvInt32;
 
               MaxShadowDistance:TpvFloat;
-              Unused0:TpvInt32;
+              Flags:TpvUInt32;
               Unused1:TpvInt32;
               Unused2:TpvInt32;
 
@@ -1874,6 +1874,8 @@ begin
 
  MaxShadowDistance:=aAtmosphereParameters.MaxShadowDistance;
 
+ Flags:=0;
+
  AtmosphereCullingParameters.Assign(aAtmosphereParameters.AtmosphereCullingParameters);
 
  VolumetricClouds.Assign(aAtmosphereParameters.VolumetricClouds);
@@ -2045,7 +2047,7 @@ begin
  for InFlightFrameIndex:=0 to TpvScene3D(fAtmosphere.fScene3D).CountInFlightFrames-1 do begin
 
   fTransmittanceLUTPassDescriptorSets[InFlightFrameIndex]:=TpvVulkanDescriptorSet.Create(fTransmittanceLUTPassDescriptorPool,
-                                                                                         TpvScene3DAtmosphereGlobals(TpvScene3D(fAtmosphere.fScene3D).AtmosphereGlobals).fTransmittanceLUTPassDescriptorSetLayout);
+                                                                                           TpvScene3DAtmosphereGlobals(TpvScene3D(fAtmosphere.fScene3D).AtmosphereGlobals).fTransmittanceLUTPassDescriptorSetLayout);
 
   fTransmittanceLUTPassDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(0,
                                                                                0,
@@ -2214,7 +2216,7 @@ begin
                                                               TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT_EXT),
                                                               TpvScene3D(fAtmosphere.fScene3D).CountInFlightFrames*1);
  fSkyViewLUTPassDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,TpvScene3D(fAtmosphere.fScene3D).CountInFlightFrames*1);
- fSkyViewLUTPassDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,TpvScene3D(fAtmosphere.fScene3D).CountInFlightFrames*3);
+ fSkyViewLUTPassDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,TpvScene3D(fAtmosphere.fScene3D).CountInFlightFrames*4);
  fSkyViewLUTPassDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,TpvScene3D(fAtmosphere.fScene3D).CountInFlightFrames*1);
  fSkyViewLUTPassDescriptorPool.Initialize;
  TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.DebugUtils.SetObjectName(fSkyViewLUTPassDescriptorPool.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'SkyViewLUTPassDescriptorPool');
@@ -2260,13 +2262,24 @@ begin
   fSkyViewLUTPassDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(3,
                                                                          0,
                                                                          1,
+                                                                         TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                                                         [TVkDescriptorImageInfo.Create(TpvScene3DRenderer(fRendererInstance).Renderer.ClampedSampler.Handle,
+                                                                                                        fAtmosphere.fAtmosphereMap.fTexture.VulkanImageView.Handle,
+                                                                                                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
+                                                                         [],
+                                                                         [],
+                                                                         false);
+
+  fSkyViewLUTPassDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(4,
+                                                                         0,
+                                                                         1,
                                                                          TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
                                                                          [],
                                                                          [fAtmosphere.fAtmosphereParametersBuffers[InFlightFrameIndex].DescriptorBufferInfo],
                                                                          [],
                                                                          false);                                                             
 
-  fSkyViewLUTPassDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(4,
+  fSkyViewLUTPassDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(5,
                                                                          0,
                                                                          1,
                                                                          TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
@@ -2288,7 +2301,7 @@ begin
                                                                TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT_EXT),
                                                                TpvScene3D(fAtmosphere.fScene3D).CountInFlightFrames*1);
  fCameraVolumePassDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,TpvScene3D(fAtmosphere.fScene3D).CountInFlightFrames*1);
- fCameraVolumePassDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,TpvScene3D(fAtmosphere.fScene3D).CountInFlightFrames*3);
+ fCameraVolumePassDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,TpvScene3D(fAtmosphere.fScene3D).CountInFlightFrames*4);
  fCameraVolumePassDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,TpvScene3D(fAtmosphere.fScene3D).CountInFlightFrames*1);
  fCameraVolumePassDescriptorPool.Initialize;
  TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.DebugUtils.SetObjectName(fCameraVolumePassDescriptorPool.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'CameraVolumePassDescriptorPool');
@@ -2334,13 +2347,24 @@ begin
   fCameraVolumePassDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(3,
                                                                            0,
                                                                            1,
+                                                                           TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                                                           [TVkDescriptorImageInfo.Create(TpvScene3DRenderer(fRendererInstance).Renderer.ClampedSampler.Handle,
+                                                                                                          fAtmosphere.fAtmosphereMap.fTexture.VulkanImageView.Handle,
+                                                                                                          VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
+                                                                           [],
+                                                                           [],
+                                                                           false);
+
+  fCameraVolumePassDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(4,
+                                                                           0,
+                                                                           1,
                                                                            TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
                                                                            [],
                                                                            [fAtmosphere.fAtmosphereParametersBuffers[InFlightFrameIndex].DescriptorBufferInfo],
                                                                            [],
                                                                            false);                                                             
 
-  fCameraVolumePassDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(4,
+  fCameraVolumePassDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(5,
                                                                            0,
                                                                            1,
                                                                            TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
@@ -2362,7 +2386,7 @@ begin
                                                             TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT_EXT),
                                                             TpvScene3D(fAtmosphere.fScene3D).CountInFlightFrames*1);
  fCubeMapPassDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,TpvScene3D(fAtmosphere.fScene3D).CountInFlightFrames*1);
- fCubeMapPassDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,TpvScene3D(fAtmosphere.fScene3D).CountInFlightFrames*3);
+ fCubeMapPassDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,TpvScene3D(fAtmosphere.fScene3D).CountInFlightFrames*4);
  fCubeMapPassDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,TpvScene3D(fAtmosphere.fScene3D).CountInFlightFrames*1);
  fCubeMapPassDescriptorPool.Initialize;
  TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.DebugUtils.SetObjectName(fCubeMapPassDescriptorPool.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'CubeMapPassDescriptorPool');
@@ -2419,6 +2443,17 @@ begin
   fCubeMapPassDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(4,
                                                                       0,
                                                                       1,
+                                                                      TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                                                      [TVkDescriptorImageInfo.Create(TpvScene3DRenderer(fRendererInstance).Renderer.ClampedSampler.Handle,
+                                                                                                     fAtmosphere.fAtmosphereMap.fTexture.VulkanImageView.Handle,
+                                                                                                     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
+                                                                      [],
+                                                                      [],
+                                                                      false);
+
+  fCubeMapPassDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(5,
+                                                                      0,
+                                                                      1,
                                                                       TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
                                                                       [],
                                                                       [fAtmosphere.fAtmosphereParametersBuffers[InFlightFrameIndex].DescriptorBufferInfo],
@@ -2436,7 +2471,7 @@ begin
                                                                     TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT_EXT),
                                                                     TpvScene3D(fAtmosphere.fScene3D).CountInFlightFrames*1);
  fCloudRaymarchingPassDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,TpvScene3D(fAtmosphere.fScene3D).CountInFlightFrames*1);
- fCloudRaymarchingPassDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,TpvScene3D(fAtmosphere.fScene3D).CountInFlightFrames*9);                                                                    
+ fCloudRaymarchingPassDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,TpvScene3D(fAtmosphere.fScene3D).CountInFlightFrames*11);
  fCloudRaymarchingPassDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,TpvScene3D(fAtmosphere.fScene3D).CountInFlightFrames*1);
  fCloudRaymarchingPassDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,TpvScene3D(fAtmosphere.fScene3D).CountInFlightFrames*2);
  fCloudRaymarchingPassDescriptorPool.Initialize;
@@ -2570,6 +2605,30 @@ begin
                                                                                [],
                                                                                false);
 
+  // Rain map
+  fCloudRaymarchingPassDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(10,
+                                                                               0,
+                                                                               1,
+                                                                               TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                                                               [TVkDescriptorImageInfo.Create(TpvScene3DRenderer(fRendererInstance).Renderer.ClampedSampler.Handle,
+                                                                                                              fAtmosphere.fRainMap.fTexture.VulkanImageView.Handle,
+                                                                                                              VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
+                                                                               [],
+                                                                               [],
+                                                                               false);
+
+  // Atmosphere map
+  fCloudRaymarchingPassDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(11,
+                                                                               0,
+                                                                               1,
+                                                                               TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                                                               [TVkDescriptorImageInfo.Create(TpvScene3DRenderer(fRendererInstance).Renderer.ClampedSampler.Handle,
+                                                                                                              fAtmosphere.fAtmosphereMap.fTexture.VulkanImageView.Handle,
+                                                                                                              VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
+                                                                               [],
+                                                                               [],
+                                                                               false);
+
   //fCloudRaymarchingPassDescriptorSets[InFlightFrameIndex].Flush; // Not needed, because the descriptor set will be flushed when it is bound
 
   fCloudRaymarchingPassDescriptorSetFirsts[InFlightFrameIndex]:=true; // Will be set to false after the first flush, so that the further descriptor set updates will be updated directly instead of creating new descriptor sets
@@ -2583,7 +2642,7 @@ begin
                                                                TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT_EXT),
                                                                TpvScene3D(fAtmosphere.fScene3D).CountInFlightFrames*1);
  fRaymarchingPassDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,TpvScene3D(fAtmosphere.fScene3D).CountInFlightFrames*4);
- fRaymarchingPassDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,TpvScene3D(fAtmosphere.fScene3D).CountInFlightFrames*6);
+ fRaymarchingPassDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,TpvScene3D(fAtmosphere.fScene3D).CountInFlightFrames*7);
  fRaymarchingPassDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,TpvScene3D(fAtmosphere.fScene3D).CountInFlightFrames*1);
  fRaymarchingPassDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,TpvScene3D(fAtmosphere.fScene3D).CountInFlightFrames*1);
  fRaymarchingPassDescriptorPool.Initialize;
@@ -2663,8 +2722,8 @@ begin
                                                                           0,
                                                                           1,
                                                                           TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                                                                          [TVkDescriptorImageInfo.Create(TpvScene3DRenderer(fRendererInstance).Renderer.RepeatedSampler.Handle,
-                                                                                                         TpvScene3D(fAtmosphere.fScene3D).BlueNoise2DTexture.ImageView.Handle,
+                                                                          [TVkDescriptorImageInfo.Create(TpvScene3DRenderer(fRendererInstance).Renderer.ClampedSampler.Handle,
+                                                                                                         fAtmosphere.fAtmosphereMap.fTexture.VulkanImageView.Handle,
                                                                                                          VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
                                                                           [],
                                                                           [],
@@ -2673,13 +2732,24 @@ begin
   fRaymarchingPassDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(6,
                                                                           0,
                                                                           1,
+                                                                          TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                                                          [TVkDescriptorImageInfo.Create(TpvScene3DRenderer(fRendererInstance).Renderer.RepeatedSampler.Handle,
+                                                                                                         TpvScene3D(fAtmosphere.fScene3D).BlueNoise2DTexture.ImageView.Handle,
+                                                                                                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
+                                                                          [],
+                                                                          [],
+                                                                          false);
+
+  fRaymarchingPassDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(7,
+                                                                          0,
+                                                                          1,
                                                                           TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
                                                                           [],
                                                                           [fAtmosphere.fAtmosphereParametersBuffers[InFlightFrameIndex].DescriptorBufferInfo],
                                                                           [],
                                                                           false);
 
-  fRaymarchingPassDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(7,
+  fRaymarchingPassDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(8,
                                                                           0,
                                                                           1,
                                                                           TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
@@ -2688,20 +2758,11 @@ begin
                                                                           [],
                                                                           false);
 
-{ fRaymarchingPassDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(8,
-                                                                         0,
+{ fRaymarchingPassDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(9,
+                                                                          0,
                                                                           1,
                                                                           TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
                                                                           [TpvScene3DRendererInstance(fRendererInstance).CascadedShadowMapVulkanUniformBuffers[InFlightFrameIndex].DescriptorBufferInfo],
-                                                                          [],
-                                                                          [],
-                                                                          false);}
-
- {fRaymarchingPassDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(9,
-                                                                          0,
-                                                                          1,
-                                                                          TVkDescriptorType(VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE),
-                                                                          [...],
                                                                           [],
                                                                           [],
                                                                           false);}
@@ -2716,6 +2777,15 @@ begin
                                                                           false);}
 
  {fRaymarchingPassDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(11,
+                                                                          0,
+                                                                          1,
+                                                                          TVkDescriptorType(VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE),
+                                                                          [...],
+                                                                          [],
+                                                                          [],
+                                                                          false);}
+
+ {fRaymarchingPassDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(12,
                                                                           0,
                                                                           1,
                                                                           TVkDescriptorType(VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE),
@@ -2891,7 +2961,7 @@ begin
 
    fCloudRaymarchingPassCascadedShadowMapImageViews[aInFlightFrameIndex]:=aCascadedShadowMapImageView;
 
-{  fCloudRaymarchingPassDescriptorSets[aInFlightFrameIndex].WriteToDescriptorSet(10,
+{  fCloudRaymarchingPassDescriptorSets[aInFlightFrameIndex].WriteToDescriptorSet(11,
                                                                                  0,
                                                                                  1,
                                                                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
@@ -2948,7 +3018,7 @@ begin
 
    fRaymarchingPassCascadedShadowMapImageViews[aInFlightFrameIndex]:=aCascadedShadowMapImageView;
 
-   fRaymarchingPassDescriptorSets[aInFlightFrameIndex].WriteToDescriptorSet(8,
+   fRaymarchingPassDescriptorSets[aInFlightFrameIndex].WriteToDescriptorSet(9,
                                                                             0,
                                                                             1,
                                                                             TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
@@ -2965,7 +3035,7 @@ begin
 
    fRaymarchingPassCloudsInscatteringImageViews[aInFlightFrameIndex]:=aCloudsInscatteringImageView;
 
-   fRaymarchingPassDescriptorSets[aInFlightFrameIndex].WriteToDescriptorSet(9,
+   fRaymarchingPassDescriptorSets[aInFlightFrameIndex].WriteToDescriptorSet(10,
                                                                             0,
                                                                             1,
                                                                             TVkDescriptorType(VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE),
@@ -2982,7 +3052,7 @@ begin
 
    fRaymarchingPassCloudsTransmittanceImageViews[aInFlightFrameIndex]:=aCloudsTransmittanceImageView;
 
-   fRaymarchingPassDescriptorSets[aInFlightFrameIndex].WriteToDescriptorSet(10,
+   fRaymarchingPassDescriptorSets[aInFlightFrameIndex].WriteToDescriptorSet(11,
                                                                             0,
                                                                             1,
                                                                             TVkDescriptorType(VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE),
@@ -2999,7 +3069,7 @@ begin
 
    fRaymarchingPassCloudsDepthImageViews[aInFlightFrameIndex]:=aCloudsDepthImageView;
 
-   fRaymarchingPassDescriptorSets[aInFlightFrameIndex].WriteToDescriptorSet(11,
+   fRaymarchingPassDescriptorSets[aInFlightFrameIndex].WriteToDescriptorSet(12,
                                                                             0,
                                                                             1,
                                                                             TVkDescriptorType(VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE),
@@ -4260,6 +4330,9 @@ begin
 
   fGPUAtmosphereParameters[aInFlightFrameIndex].Assign(fAtmosphereParameters,fScene3D,aInFlightFrameIndex);
 
+  fGPUAtmosphereParameters[aInFlightFrameIndex].Flags:=IfThen(assigned(fRainMap.fTextureSourceImage),1 shl 0,0) or
+                                                       IfThen(assigned(fAtmosphereMap.fTextureSourceImage),1 shl 1,0);
+
 { fGPUAtmosphereParameters[aInFlightFrameIndex].Transform:=fGPUAtmosphereParameters[aInFlightFrameIndex].Transform;
   fGPUAtmosphereParameters[aInFlightFrameIndex].InverseTransform:=fGPUAtmosphereParameters[aInFlightFrameIndex].Transform.Inverse;}
 
@@ -4591,7 +4664,7 @@ begin
  fGlobalVulkanDescriptorSetLayout:=nil;
  fWeatherMapTextureDescriptorSetLayout:=nil;
  fDirectionalMapTextureInitializationDescriptorSetLayout:=nil;
-  fDirectionalMapTextureTransferDescriptorSetLayout:=nil;
+ fDirectionalMapTextureTransferDescriptorSetLayout:=nil;
 end;
 
 destructor TpvScene3DAtmosphereGlobals.Destroy;
@@ -4742,15 +4815,22 @@ begin
                                                 TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                                                 []);
 
-  // Atmosphere parameters
+  // Atmosphere map texture
   fSkyViewLUTPassDescriptorSetLayout.AddBinding(3,
+                                                VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                                1,
+                                                TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                                []);
+
+  // Atmosphere parameters
+  fSkyViewLUTPassDescriptorSetLayout.AddBinding(4,
                                                 VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
                                                 1,
                                                 TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                                                 []);
 
   // Blue noise texture 
-  fSkyViewLUTPassDescriptorSetLayout.AddBinding(4,
+  fSkyViewLUTPassDescriptorSetLayout.AddBinding(5,
                                                 VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
                                                 1,
                                                 TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
@@ -4787,15 +4867,22 @@ begin
                                                   TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                                                   []);
 
-  // Atmosphere parameters
+  // Atmosphere map texture
   fCameraVolumePassDescriptorSetLayout.AddBinding(3,
+                                                  VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                                  1,
+                                                  TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                                  []);
+
+  // Atmosphere parameters
+  fCameraVolumePassDescriptorSetLayout.AddBinding(4,
                                                   VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
                                                   1,
                                                   TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                                                   []);
 
   // Blue noise texture 
-  fCameraVolumePassDescriptorSetLayout.AddBinding(4,
+  fCameraVolumePassDescriptorSetLayout.AddBinding(5,
                                                   VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
                                                   1,
                                                   TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
@@ -4839,8 +4926,15 @@ begin
                                              TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                                              []);
 
-  // Atmosphere parameters
+  // Atmosphere map texture
   fCubeMapPassDescriptorSetLayout.AddBinding(4,
+                                             VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                             1,
+                                             TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                             []);
+
+  // Atmosphere parameters
+  fCubeMapPassDescriptorSetLayout.AddBinding(5,
                                              VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
                                              1,
                                              TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
@@ -4927,6 +5021,20 @@ begin
                                                       TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                                       []);
 
+  // Rain map texture
+  fCloudRaymarchingPassDescriptorSetLayout.AddBinding(10,
+                                                      VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                                      1,
+                                                      TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                                      []);
+
+  // Atmosphere map texture
+  fCloudRaymarchingPassDescriptorSetLayout.AddBinding(11,
+                                                      VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                                      1,
+                                                      TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                                      []);
+
   fCloudRaymarchingPassDescriptorSetLayout.Initialize;
   TpvScene3D(fScene3D).VulkanDevice.DebugUtils.SetObjectName(fCloudRaymarchingPassDescriptorSetLayout.Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT,'TpvScene3DAtmosphereGlobals.fCloudRaymarchingPassDescriptorSetLayout');
 
@@ -4964,58 +5072,64 @@ begin
                                                  1,
                                                  TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                                  []);
-
-  // Camera volume texture
+  // Atmosphere map texture
   fRaymarchingPassDescriptorSetLayout.AddBinding(4,
                                                  VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
                                                  1,
                                                  TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                                  []);
 
-  // Blue noise texture
+  // Camera volume texture
   fRaymarchingPassDescriptorSetLayout.AddBinding(5,
                                                  VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
                                                  1,
                                                  TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                                  []);
 
-  // Atmosphere parameters
+  // Blue noise texture
   fRaymarchingPassDescriptorSetLayout.AddBinding(6,
+                                                 VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                                 1,
+                                                 TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                                 []);
+
+  // Atmosphere parameters
+  fRaymarchingPassDescriptorSetLayout.AddBinding(7,
                                                  VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
                                                  1,
                                                  TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                                  []);
 
   // Cascaded shadow map UBO
-  fRaymarchingPassDescriptorSetLayout.AddBinding(7,
+  fRaymarchingPassDescriptorSetLayout.AddBinding(8,
                                                  VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
                                                  1,
                                                  TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                                  []);
 
   // Cascaded shadow map textures
-  fRaymarchingPassDescriptorSetLayout.AddBinding(8,
+  fRaymarchingPassDescriptorSetLayout.AddBinding(9,
                                                  VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
                                                  1,
                                                  TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                                  []);
 
   // Clouds inscattering texture
-  fRaymarchingPassDescriptorSetLayout.AddBinding(9,
+  fRaymarchingPassDescriptorSetLayout.AddBinding(10,
                                                  VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
                                                  1,
                                                  TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                                  []); 
 
   // Clouds transmittance texture
-  fRaymarchingPassDescriptorSetLayout.AddBinding(10,
+  fRaymarchingPassDescriptorSetLayout.AddBinding(11,
                                                  VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
                                                  1,
                                                  TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                                  []);
 
   // Clouds depth texture
-  fRaymarchingPassDescriptorSetLayout.AddBinding(11,
+  fRaymarchingPassDescriptorSetLayout.AddBinding(12,
                                                  VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
                                                  1,
                                                  TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),

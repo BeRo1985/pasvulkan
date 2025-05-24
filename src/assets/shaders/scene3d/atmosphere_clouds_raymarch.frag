@@ -185,8 +185,12 @@ layout(set = 2, binding = 8) uniform samplerCube uTextureSkyLuminanceLUT;
 
 layout(set = 2, binding = 9) uniform samplerCube uTextureWeatherMap;
 
+layout(set = 2, binding = 10) uniform samplerCube uTextureRainMap;
+
+layout(set = 2, binding = 11) uniform samplerCube uTextureAtmosphereMap;
+
 #ifdef COMPUTE_SHADER
-layout(set = 2, binding = 10, rgba16) uniform image2D uDestinationTexture;
+layout(set = 2, binding = 12, rgba16) uniform image2D uDestinationTexture;
 #endif
 
 #ifdef SHADOWMAP
@@ -347,10 +351,18 @@ mat3 layerLowWindRotation, layerLowCurlRotation;
 float getLowResCloudDensity(vec3 position, const in mat3 rotationMatrices[2], const in mat3 windRotation, const in vec4 weatherData, const float mipMapLevel){
             
   float height = length(position);
-  
+
   if((weatherData.x > 1e-4) && (height >= uAtmosphereParameters.atmosphereParameters.VolumetricClouds.LayerLow.StartHeight) && (height <= uAtmosphereParameters.atmosphereParameters.VolumetricClouds.LayerLow.EndHeight)){
 
     // Layer low clouds
+
+    // Evaluate atmosphere map, with AtmosphereMapTexture cube map with atmosphere visiblity values
+    const float atmosphereFactor = ((uAtmosphereParameters.atmosphereParameters.flags & FLAGS_USE_ATMOSPHERE_MAP) != 0u) 
+                                    ? textureLod(uTextureAtmosphereMap, normalize(position), 0.0).x // 0.0 = no atmosphere, 1.0 = full atmosphere    
+                                    : 1.0; // No atmosphere map, so return full atmosphere
+    if(atmosphereFactor < 1e-4){
+      return 0.0; // No atmosphere, so no clouds
+    }                                
 
     position = rotationMatrices[0] * position;
                        
@@ -379,6 +391,9 @@ float getLowResCloudDensity(vec3 position, const in mat3 rotationMatrices[2], co
   
     // Multiply the result by the cloud coverage attribute so that smaller clouds are lighter and more aesthetically pleasing
     baseCloudWithCoverage *= cloudCoverage;
+
+    // Apply the atmosphere factor to the base cloud with coverage
+    baseCloudWithCoverage *= atmosphereFactor;
     
     return clamp(baseCloudWithCoverage, 0.0, 1.0);
     
@@ -386,9 +401,17 @@ float getLowResCloudDensity(vec3 position, const in mat3 rotationMatrices[2], co
 
     // Layer high clouds
 
+    // Evaluate atmosphere map, with AtmosphereMapTexture cube map with atmosphere visiblity values
+    const float atmosphereFactor = ((uAtmosphereParameters.atmosphereParameters.flags & FLAGS_USE_ATMOSPHERE_MAP) != 0u) 
+                                    ? textureLod(uTextureAtmosphereMap, normalize(position), 0.0).x // 0.0 = no atmosphere, 1.0 = full atmosphere    
+                                    : 1.0; // No atmosphere map, so return full atmosphere
+    if(atmosphereFactor < 1e-4){
+      return 0.0; // No atmosphere, so no clouds
+    }                                
+
     position = rotationMatrices[1] * position;
     
-    return getLayerHighClouds(position, uAtmosphereParameters.atmosphereParameters.VolumetricClouds.LayerHigh, weatherData);
+    return getLayerHighClouds(position, uAtmosphereParameters.atmosphereParameters.VolumetricClouds.LayerHigh, weatherData) * atmosphereFactor;
     
   }else{
   
@@ -611,7 +634,7 @@ bool traceVolumetricClouds(vec3 rayOrigin,
   vec3 scattering = uAtmosphereParameters.atmosphereParameters.VolumetricClouds.Scattering.xyz;
   vec3 absorption = uAtmosphereParameters.atmosphereParameters.VolumetricClouds.Absorption.xyz;
   vec3 extinction = absorption + scattering;
-  
+
 #ifndef SHADOWMAP
 
   vec3 sunColor = uAtmosphereParameters.atmosphereParameters.SolarIlluminance.xyz;
