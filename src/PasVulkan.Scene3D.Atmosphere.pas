@@ -154,6 +154,10 @@ type TpvScene3DAtmosphere=class;
              WorleySeed:TpvFloat;
             end;
             PCloudWeatherMapPushConstants=^TCloudWeatherMapPushConstants;
+            TDirectionalMapTextureInitializationPushConstants=record
+             Value:TpvVector4;
+            end;
+            PDirectionalMapTextureInitializationPushConstants=^TDirectionalMapTextureInitializationPushConstants;
       private
        fScene3D:TObject;
        fAtmospheres:TpvScene3DAtmospheres;
@@ -167,6 +171,8 @@ type TpvScene3DAtmosphere=class;
        fRaymarchingPassDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fGlobalVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fWeatherMapTextureDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
+       fDirectionalMapTextureInitializationDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
+       fDirectionalMapTextureTransferDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fTransmittanceLUTComputeShaderModule:TpvVulkanShaderModule;
        fTransmittanceLUTComputeShaderStage:TpvVulkanPipelineShaderStage;
        fTransmittanceLUTComputePipelineLayout:TpvVulkanPipelineLayout;
@@ -200,6 +206,14 @@ type TpvScene3DAtmosphere=class;
        fCloudCurlTexture:TpvScene3DRendererMipmapImage3D;
        fCloudDetailTexture:TpvScene3DRendererMipmapImage3D;
        fCloudShapeTexture:TpvScene3DRendererMipmapImage3D;
+       fDirectionalMapTextureInitializationComputeShaderModule:TpvVulkanShaderModule;
+       fDirectionalMapTextureInitializationComputeShaderStage:TpvVulkanPipelineShaderStage;
+       fDirectionalMapTextureInitializationComputePipelineLayout:TpvVulkanPipelineLayout;
+       fDirectionalMapTextureInitializationComputePipeline:TpvVulkanComputePipeline;
+       fDirectionalMapTextureTransferComputeShaderModule:TpvVulkanShaderModule;
+       fDirectionalMapTextureTransferComputeShaderStage:TpvVulkanPipelineShaderStage;
+       fDirectionalMapTextureTransferComputePipelineLayout:TpvVulkanPipelineLayout;
+       fDirectionalMapTextureTransferComputePipeline:TpvVulkanComputePipeline;
       public
        constructor Create(const aScene3D:TObject);
        destructor Destroy; override;
@@ -219,6 +233,8 @@ type TpvScene3DAtmosphere=class;
        property RaymarchingPassDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fRaymarchingPassDescriptorSetLayout;
        property GlobalVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fGlobalVulkanDescriptorSetLayout;
        property WeatherMapTextureDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fWeatherMapTextureDescriptorSetLayout;
+       property DirectionalMapTextureInitializationDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fDirectionalMapTextureInitializationDescriptorSetLayout;
+       property DirectionalMapTextureTransferDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fDirectionalMapTextureTransferDescriptorSetLayout;
        property CloudRaymarchingPipelineLayout:TpvVulkanPipelineLayout read fCloudRaymarchingPipelineLayout;
        property RaymarchingPipelineLayout:TpvVulkanPipelineLayout read fRaymarchingPipelineLayout;
      end;
@@ -738,6 +754,32 @@ type TpvScene3DAtmosphere=class;
             TRendererInstances=TpvObjectGenericList<TRendererInstance>;
             { TRendererInstanceHashMap }
             TRendererInstanceHashMap=TpvHashMap<TRendererInstance.TKey,TRendererInstance>;
+            { TDirectionalMap }
+            TDirectionalMap=class
+             private
+              fScene3D:TObject;
+              fAtmosphere:TpvScene3DAtmosphere;
+              fName:TpvUTF8String;
+              fTexture:TpvScene3DRendererImageCubeMap;
+              fTextureInitializationDescriptorPool:TpvVulkanDescriptorPool;
+              fTextureInitializationDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
+              fTextureTransferDescriptorPool:TpvVulkanDescriptorPool;
+              fTextureTransferDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
+              fTextureGeneration:TpvUInt64;
+              fTextureLastGeneration:TpvUInt64;
+              fTextureSourceImage:TpvScene3DRendererImage2D;
+              fTextureSourceImageLast:TpvScene3DRendererImage2D;
+             public
+              constructor Create(const aScene3D:TObject;const aAtmosphere:TpvScene3DAtmosphere;const aName:TpvUTF8String); reintroduce;
+              destructor Destroy; override;
+              procedure AfterConstruction; override;
+              procedure BeforeDestruction; override;
+              procedure AcquireResources;
+              procedure ReleaseResources;
+              procedure Update(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt);
+             public
+              property TextureSourceImage:TpvScene3DRendererImage2D read fTextureSourceImage write fTextureSourceImage;
+            end;
       private
        fScene3D:TObject;
        fAtmosphereParameters:TAtmosphereParameters;
@@ -750,6 +792,8 @@ type TpvScene3DAtmosphere=class;
        fWeatherMapTextureGeneration:TpvUInt64;
        fWeatherMapTextureLastGeneration:TpvUInt64;
        fCloudWeatherMapPushConstants:TpvScene3DAtmosphereGlobals.TCloudWeatherMapPushConstants;
+       fRainMap:TDirectionalMap;
+       fAtmosphereMap:TDirectionalMap;
        fRendererInstances:TRendererInstances;
        fRendererInstanceHashMap:TRendererInstanceHashMap;
        fRendererInstanceListLock:TPasMPSlimReaderWriterLock;
@@ -795,6 +839,8 @@ type TpvScene3DAtmosphere=class;
                       const aRendererInstance:TObject);
       public
        property AtmosphereParameters:PAtmosphereParameters read fPointerToAtmosphereParameters;
+       property RainMap:TDirectionalMap read fRainMap;
+       property AtmosphereMap:TDirectionalMap read fAtmosphereMap;
        property Ready:TPasMPBool32 read fReady;
        property Uploaded:LongBool read fUploaded;
        property Visible:Boolean read fVisible;
@@ -3659,6 +3705,338 @@ begin
 
 end;
 
+{ TpvScene3DAtmosphere.TDirectionalMap }
+
+constructor TpvScene3DAtmosphere.TDirectionalMap.Create(const aScene3D:TObject;const aAtmosphere:TpvScene3DAtmosphere;const aName:TpvUTF8String);
+var Index:TpvSizeInt;
+begin
+
+ inherited Create;
+
+ fScene3D:=aScene3D;
+
+ fAtmosphere:=aAtmosphere;
+
+ fName:=aName;
+
+ fTexture:=nil;
+
+ fTextureInitializationDescriptorPool:=nil;
+ fTextureTransferDescriptorPool:=nil;
+
+ for Index:=0 to MaxInFlightFrames-1 do begin
+  fTextureInitializationDescriptorSets[Index]:=nil;
+  fTextureTransferDescriptorSets[Index]:=nil;
+ end;
+
+ fTextureSourceImage:=nil;
+ fTextureSourceImageLast:=nil;
+
+ fTextureGeneration:=0;
+ fTextureLastGeneration:=High(TpvUInt64);
+
+end;
+
+destructor TpvScene3DAtmosphere.TDirectionalMap.Destroy;
+begin
+ ReleaseResources;
+ FreeAndNil(fTextureInitializationDescriptorPool);
+ FreeAndNil(fTextureTransferDescriptorPool);
+ FreeAndNil(fTexture);
+ inherited Destroy;
+end;
+
+procedure TpvScene3DAtmosphere.TDirectionalMap.AfterConstruction;
+begin
+ inherited AfterConstruction;
+end;
+
+procedure TpvScene3DAtmosphere.TDirectionalMap.BeforeDestruction;
+begin
+ inherited BeforeDestruction;
+end;
+
+procedure TpvScene3DAtmosphere.TDirectionalMap.AcquireResources;
+var Index:TpvSizeInt;
+    Size:TpvInt32;
+begin
+
+ if assigned(fTextureSourceImage) then begin
+  Size:=RoundDownToPowerOfTwo(Max(16,Round(Sqrt((fTextureSourceImage.Width*fTextureSourceImage.Height)/6.0))));
+ end else begin
+  Size:=8;
+ end; 
+
+ fTexture:=TpvScene3DRendererImageCubeMap.Create(TpvScene3D(fScene3D).VulkanDevice,
+                                                 Size,
+                                                 Size,
+                                                 VK_FORMAT_R8_UNORM,
+                                                 true,
+                                                 VK_SAMPLE_COUNT_1_BIT,
+                                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                 VK_SHARING_MODE_EXCLUSIVE,
+                                                 nil,
+                                                 0,
+                                                 'TpvScene3DAtmosphere.TDirectionalMap["'+fName+'"]');
+
+ fTextureGeneration:=0;
+ fTextureLastGeneration:=High(TpvUInt64);
+
+ fTextureInitializationDescriptorPool:=TpvVulkanDescriptorPool.Create(TpvScene3D(fScene3D).VulkanDevice,
+                                                                      TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
+                                                                      TpvScene3D(fScene3D).CountInFlightFrames*2);
+ fTextureInitializationDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,TpvScene3D(fScene3D).CountInFlightFrames);
+ fTextureInitializationDescriptorPool.Initialize;
+ TpvScene3D(fScene3D).VulkanDevice.DebugUtils.SetObjectName(fTextureInitializationDescriptorPool.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'TpvScene3DAtmosphere.TDirectionalMap["'+fName+'"].fTextureInitializationDescriptorPool');
+
+ if assigned(fTextureSourceImage) then begin
+
+  fTextureTransferDescriptorPool:=TpvVulkanDescriptorPool.Create(TpvScene3D(fScene3D).VulkanDevice,
+                                                                 TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
+                                                                 TpvScene3D(fScene3D).CountInFlightFrames*2);
+  fTextureTransferDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,TpvScene3D(fScene3D).CountInFlightFrames);
+  fTextureTransferDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,TpvScene3D(fScene3D).CountInFlightFrames);
+  fTextureTransferDescriptorPool.Initialize;
+  TpvScene3D(fScene3D).VulkanDevice.DebugUtils.SetObjectName(fTextureTransferDescriptorPool.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'TpvScene3DAtmosphere.TDirectionalMap["'+fName+'"].fTextureTransferDescriptorPool');
+
+ end;
+
+ for Index:=0 to TpvScene3D(fScene3D).CountInFlightFrames-1 do begin
+
+  fTextureInitializationDescriptorSets[Index]:=TpvVulkanDescriptorSet.Create(fTextureInitializationDescriptorPool,
+                                                                              TpvScene3DAtmosphereGlobals(TpvScene3D(fScene3D).AtmosphereGlobals).fDirectionalMapTextureInitializationDescriptorSetLayout);
+
+  fTextureInitializationDescriptorSets[Index].WriteToDescriptorSet(0,
+                                                                   0,
+                                                                   1,
+                                                                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
+                                                                   [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,
+                                                                                                  fTexture.VulkanImageView.Handle,
+                                                                                                  VK_IMAGE_LAYOUT_GENERAL)],
+                                                                   [],
+                                                                   [],
+                                                                   false);
+
+  fTextureInitializationDescriptorSets[Index].Flush;
+
+  TpvScene3D(fScene3D).VulkanDevice.DebugUtils.SetObjectName(fTextureInitializationDescriptorSets[Index].Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET,'TpvScene3DAtmosphere.TDirectionalMap["'+fName+'"].fTextureInitializationDescriptorSets['+IntToStr(Index)+']');
+
+  if assigned(fTextureSourceImage) then begin
+
+   fTextureTransferDescriptorSets[Index]:=TpvVulkanDescriptorSet.Create(fTextureTransferDescriptorPool,
+                                                                         TpvScene3DAtmosphereGlobals(TpvScene3D(fScene3D).AtmosphereGlobals).fDirectionalMapTextureTransferDescriptorSetLayout);
+
+   fTextureTransferDescriptorSets[Index].WriteToDescriptorSet(0,
+                                                              0,
+                                                              1,
+                                                              TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
+                                                              [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,
+                                                                                             fTexture.VulkanImageView.Handle,
+                                                                                             VK_IMAGE_LAYOUT_GENERAL)],
+                                                              [],
+                                                              [],
+                                                              false);
+
+   fTextureTransferDescriptorSets[Index].WriteToDescriptorSet(1,
+                                                              0,
+                                                              1,
+                                                              TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                                              [TVkDescriptorImageInfo.Create(TpvScene3D(fScene3D).GeneralComputeSampler.Handle,
+                                                                                             fTextureSourceImage.VulkanImageView.Handle,
+                                                                                             VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
+                                                              [],
+                                                              [],
+                                                              false);
+
+   fTextureTransferDescriptorSets[Index].Flush;
+
+   TpvScene3D(fScene3D).VulkanDevice.DebugUtils.SetObjectName(fTextureTransferDescriptorSets[Index].Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET,'TpvScene3DAtmosphere.TDirectionalMap["'+fName+'"].fTextureTransferDescriptorSets['+IntToStr(Index)+']');
+
+  end;
+
+ end;
+
+end;
+
+procedure TpvScene3DAtmosphere.TDirectionalMap.ReleaseResources;
+var Index:TpvSizeInt;
+begin
+ 
+ for Index:=0 to MaxInFlightFrames-1 do begin
+  FreeAndNil(fTextureTransferDescriptorSets[Index]);
+  FreeAndNil(fTextureInitializationDescriptorSets[Index]);
+ end;
+
+ FreeAndNil(fTextureTransferDescriptorPool);
+ FreeAndNil(fTextureInitializationDescriptorPool);
+
+ FreeAndNil(fTexture);
+
+ fTextureSourceImage:=nil;
+ fTextureSourceImageLast:=nil;
+
+end;
+
+procedure TpvScene3DAtmosphere.TDirectionalMap.Update(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt);
+var ImageMemoryBarriers:array[0..1] of TVkImageMemoryBarrier;
+    DirectionalMapTextureInitializationPushConstants:TpvScene3DAtmosphereGlobals.TDirectionalMapTextureInitializationPushConstants;
+begin
+
+ // Two code paths, if a source image is assigned or not.
+ // If a source image is assigned, we need to transfer the data from the source image to the target image.
+ // If no source image is assigned, we just need to initialize the target image.  
+
+ if fTextureLastGeneration<>fTextureGeneration then begin
+
+  fTextureLastGeneration:=fTextureGeneration;
+
+  if assigned(fTextureSourceImage) then begin
+
+   TpvScene3D(fScene3D).VulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'TpvScene3DAtmosphere.TDirectionalMap.Update',[0.0,1.0,0.0,1.0]);
+
+   ImageMemoryBarriers[0]:=TVkImageMemoryBarrier.Create(0,
+                                                        TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT),
+                                                        VK_IMAGE_LAYOUT_UNDEFINED,
+                                                        VK_IMAGE_LAYOUT_GENERAL,
+                                                        VK_QUEUE_FAMILY_IGNORED,
+                                                        VK_QUEUE_FAMILY_IGNORED,
+                                                        fTexture.VulkanImage.Handle,
+                                                        TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                        0,
+                                                                                        1,
+                                                                                        0,
+                                                                                        6));
+
+   ImageMemoryBarriers[1]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                        TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT),
+                                                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                        VK_QUEUE_FAMILY_IGNORED,
+                                                        VK_QUEUE_FAMILY_IGNORED,
+                                                        fTextureSourceImage.VulkanImage.Handle,
+                                                        TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                        0,
+                                                                                        1,
+                                                                                        0,
+                                                                                        1));                                                                                     
+
+   aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                     0,
+                                     0,nil,
+                                     0,nil,
+                                     2,@ImageMemoryBarriers[0]);
+
+   aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,TpvScene3DAtmosphereGlobals(TpvScene3D(fScene3D).AtmosphereGlobals).fDirectionalMapTextureTransferComputePipeline.Handle);
+
+   aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE,
+                                        TpvScene3DAtmosphereGlobals(TpvScene3D(fScene3D).AtmosphereGlobals).fDirectionalMapTextureTransferComputePipelineLayout.Handle,
+                                        0,
+                                        1,@fTextureTransferDescriptorSets[aInFlightFrameIndex].Handle,
+                                        0,nil);
+
+   aCommandBuffer.CmdDispatch((fTexture.Width+15) shr 4,
+                              (fTexture.Height+15) shr 4,
+                              1);
+
+   ImageMemoryBarriers[0]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                        TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT),
+                                                        VK_IMAGE_LAYOUT_GENERAL,
+                                                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                        VK_QUEUE_FAMILY_IGNORED,
+                                                        VK_QUEUE_FAMILY_IGNORED,
+                                                        fTexture.VulkanImage.Handle,
+                                                        TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                        0,
+                                                                                        1,
+                                                                                        0,
+                                                                                        6));
+
+   aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT),
+                                     0,
+                                     0,nil,
+                                     0,nil,
+                                     1,@ImageMemoryBarriers[0]);         
+
+   TpvScene3D(fScene3D).VulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
+
+  end else begin
+
+   TpvScene3D(fScene3D).VulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'TpvScene3DAtmosphere.TDirectionalMap.Update',[0.0,1.0,0.0,1.0]);
+
+   ImageMemoryBarriers[0]:=TVkImageMemoryBarrier.Create(0,
+                                                        TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT),
+                                                        VK_IMAGE_LAYOUT_UNDEFINED,
+                                                        VK_IMAGE_LAYOUT_GENERAL,
+                                                        VK_QUEUE_FAMILY_IGNORED,
+                                                        VK_QUEUE_FAMILY_IGNORED,
+                                                        fTexture.VulkanImage.Handle,
+                                                        TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                        0,
+                                                                                        1,
+                                                                                        0,
+                                                                                        6));
+
+   aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                     0,
+                                     0,nil,
+                                     0,nil,
+                                     1,@ImageMemoryBarriers[0]);
+
+   aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,TpvScene3DAtmosphereGlobals(TpvScene3D(fScene3D).AtmosphereGlobals).fDirectionalMapTextureInitializationComputePipeline.Handle);
+
+   if fName='Rain' then begin
+    DirectionalMapTextureInitializationPushConstants.Value:=TpvVector4.InlineableCreate(0.0,0.0,0.0,0.0);
+   end else begin
+    DirectionalMapTextureInitializationPushConstants.Value:=TpvVector4.InlineableCreate(1.0,1.0,1.0,1.0);
+   end;
+
+   aCommandBuffer.CmdPushConstants(TpvScene3DAtmosphereGlobals(TpvScene3D(fScene3D).AtmosphereGlobals).fDirectionalMapTextureInitializationComputePipelineLayout.Handle,
+                                   TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_COMPUTE_BIT),
+                                   0,
+                                   SizeOf(TpvScene3DAtmosphereGlobals.TDirectionalMapTextureInitializationPushConstants),
+                                   @DirectionalMapTextureInitializationPushConstants);
+
+   aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE,
+                                        TpvScene3DAtmosphereGlobals(TpvScene3D(fScene3D).AtmosphereGlobals).fDirectionalMapTextureInitializationComputePipelineLayout.Handle,
+                                        0,
+                                        1,@fTextureInitializationDescriptorSets[aInFlightFrameIndex].Handle,
+                                        0,nil);
+
+   aCommandBuffer.CmdDispatch((fTexture.Width+15) shr 4,
+                              (fTexture.Height+15) shr 4,
+                              1);
+
+   ImageMemoryBarriers[0]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                        TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT),
+                                                        VK_IMAGE_LAYOUT_GENERAL,
+                                                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                        VK_QUEUE_FAMILY_IGNORED,
+                                                        VK_QUEUE_FAMILY_IGNORED,
+                                                        fTexture.VulkanImage.Handle,
+                                                        TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                        0,
+                                                                                        1,
+                                                                                        0,
+                                                                                        6));
+
+   aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT),
+                                     0,
+                                     0,nil,
+                                     0,nil,
+                                     1,@ImageMemoryBarriers[0]);     
+
+   TpvScene3D(fScene3D).VulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
+
+  end;
+
+ end;
+
+end;
+
 { TpvScene3DAtmosphere }
 
 constructor TpvScene3DAtmosphere.Create(const aScene3D:TObject);
@@ -3683,6 +4061,10 @@ begin
 
  FillChar(fInFlightFrameVisible,SizeOf(fInFlightFrameVisible),#0);
 
+ fRainMap:=TDirectionalMap.Create(fScene3D,self,'Rain');
+
+ fAtmosphereMap:=TDirectionalMap.Create(fScene3D,self,'Atmosphere');
+
  fReady:=true;
 
 end;
@@ -3691,6 +4073,10 @@ destructor TpvScene3DAtmosphere.Destroy;
 begin
 
  Unload;
+
+ FreeAndNil(fAtmosphereMap);
+
+ FreeAndNil(fRainMap);
 
  while fRendererInstances.Count>0 do begin
   fRendererInstances.Items[fRendererInstances.Count-1].Free;
@@ -3760,6 +4146,10 @@ var InFlightFrameIndex,Index:TpvSizeInt;
 begin
  
  if assigned(TpvScene3D(fScene3D).VulkanDevice) and not fUploaded then begin
+
+  fRainMap.AcquireResources;
+
+  fAtmosphereMap.AcquireResources;
  
   for InFlightFrameIndex:=0 to TpvScene3D(fScene3D).CountInFlightFrames-1 do begin
 
@@ -3855,6 +4245,8 @@ begin
   end;
   FreeAndNil(fWeatherMapTextureDescriptorPool);
   FreeAndNil(fWeatherMapTexture);
+  fAtmosphereMap.ReleaseResources;
+  fRainMap.ReleaseResources;
   fUploaded:=false;
  end;
 end;
@@ -3928,6 +4320,10 @@ var Index:TpvSizeInt;
 begin
 
  if fInFlightFrameVisible[aInFlightFrameIndex] then begin
+
+  fAtmosphereMap.Update(aCommandBuffer,aInFlightFrameIndex);
+
+  fRainMap.Update(aCommandBuffer,aInFlightFrameIndex);
 
   begin
 
@@ -4195,6 +4591,8 @@ begin
  fRaymarchingPassDescriptorSetLayout:=nil;
  fGlobalVulkanDescriptorSetLayout:=nil;
  fWeatherMapTextureDescriptorSetLayout:=nil;
+ fDirectionalMapTextureInitializationDescriptorSetLayout:=nil;
+  fDirectionalMapTextureTransferDescriptorSetLayout:=nil;
 end;
 
 destructor TpvScene3DAtmosphereGlobals.Destroy;
@@ -4667,6 +5065,51 @@ begin
  end;
 
  begin
+  
+  // Directional map texture initialization descriptor set layout
+
+  fDirectionalMapTextureInitializationDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(TpvScene3D(fScene3D).VulkanDevice);
+
+  // Directional map texture
+  fDirectionalMapTextureInitializationDescriptorSetLayout.AddBinding(0,
+                                                                     VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+                                                                     1,
+                                                                     TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                                                     []);
+
+  fDirectionalMapTextureInitializationDescriptorSetLayout.Initialize;
+
+  TpvScene3D(fScene3D).VulkanDevice.DebugUtils.SetObjectName(fDirectionalMapTextureInitializationDescriptorSetLayout.Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT,'TpvScene3DAtmosphereGlobals.fDirectionalMapTextureInitializationDescriptorSetLayout');
+
+ end; 
+
+ begin
+
+  // Directional map texture transfer descriptor set layout
+
+  fDirectionalMapTextureTransferDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(TpvScene3D(fScene3D).VulkanDevice);
+
+  // Directional map texture
+  fDirectionalMapTextureTransferDescriptorSetLayout.AddBinding(0,
+                                                               VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+                                                               1,
+                                                               TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                                               []);
+
+  // Source texture
+  fDirectionalMapTextureTransferDescriptorSetLayout.AddBinding(1,
+                                                               VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                                               1,
+                                                               TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                                               []);                                                             
+
+  fDirectionalMapTextureTransferDescriptorSetLayout.Initialize;
+
+  TpvScene3D(fScene3D).VulkanDevice.DebugUtils.SetObjectName(fDirectionalMapTextureTransferDescriptorSetLayout.Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT,'TpvScene3DAtmosphereGlobals.fDirectionalMapTextureTransferDescriptorSetLayout');
+
+ end;
+
+ begin
 
   // Transmittance LUT compute pipeline
 
@@ -5056,6 +5499,67 @@ begin
 
  end;
 
+ begin
+
+  // Directional map texture initialization compute pipeline
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cubemap_initialization_r8_comp.spv');
+  try
+   fDirectionalMapTextureInitializationComputeShaderModule:=TpvVulkanShaderModule.Create(TpvScene3D(fScene3D).VulkanDevice,Stream);
+  finally
+   Stream.Free;
+  end;
+
+  TpvScene3D(fScene3D).VulkanDevice.DebugUtils.SetObjectName(fDirectionalMapTextureInitializationComputeShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DAtmosphereGlobals.fDirectionalMapTextureInitializationShaderModule');
+  
+  fDirectionalMapTextureInitializationComputeShaderStage:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_COMPUTE_BIT,fDirectionalMapTextureInitializationComputeShaderModule,'main');
+
+  fDirectionalMapTextureInitializationComputePipelineLayout:=TpvVulkanPipelineLayout.Create(TpvScene3D(fScene3D).VulkanDevice);
+  fDirectionalMapTextureInitializationComputePipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),0,SizeOf(TDirectionalMapTextureInitializationPushConstants));
+  fDirectionalMapTextureInitializationComputePipelineLayout.AddDescriptorSetLayout(fDirectionalMapTextureInitializationDescriptorSetLayout);
+  fDirectionalMapTextureInitializationComputePipelineLayout.Initialize;
+  TpvScene3D(fScene3D).VulkanDevice.DebugUtils.SetObjectName(fDirectionalMapTextureInitializationComputePipelineLayout.Handle,VK_OBJECT_TYPE_PIPELINE_LAYOUT,'TpvScene3DAtmosphereGlobals.fDirectionalMapTextureInitializationPipelineLayout');
+
+  fDirectionalMapTextureInitializationComputePipeline:=TpvVulkanComputePipeline.Create(TpvScene3D(fScene3D).VulkanDevice,
+                                                                                TpvScene3D(fScene3D).VulkanPipelineCache,
+                                                                                0,
+                                                                                fDirectionalMapTextureInitializationComputeShaderStage,
+                                                                                fDirectionalMapTextureInitializationComputePipelineLayout,
+                                                                                nil,
+                                                                                0);
+  TpvScene3D(fScene3D).VulkanDevice.DebugUtils.SetObjectName(fDirectionalMapTextureInitializationComputePipeline.Handle,VK_OBJECT_TYPE_PIPELINE,'TpvScene3DAtmosphereGlobals.fDirectionalMapTextureInitializationPipeline');
+ 
+ end;
+
+ begin
+
+  // Directional map texture transfer compute pipeline
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cubemap_octahedralmap_planet_r8_comp.spv');
+  try
+   fDirectionalMapTextureTransferComputeShaderModule:=TpvVulkanShaderModule.Create(TpvScene3D(fScene3D).VulkanDevice,Stream);
+  finally
+   Stream.Free;
+  end;
+
+  TpvScene3D(fScene3D).VulkanDevice.DebugUtils.SetObjectName(fDirectionalMapTextureTransferComputeShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DAtmosphereGlobals.fDirectionalMapTextureTransferShaderModule');
+
+  fDirectionalMapTextureTransferComputeShaderStage:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_COMPUTE_BIT,fDirectionalMapTextureTransferComputeShaderModule,'main');
+
+  fDirectionalMapTextureTransferComputePipelineLayout:=TpvVulkanPipelineLayout.Create(TpvScene3D(fScene3D).VulkanDevice);
+  fDirectionalMapTextureTransferComputePipelineLayout.AddDescriptorSetLayout(fDirectionalMapTextureTransferDescriptorSetLayout);
+  fDirectionalMapTextureTransferComputePipelineLayout.Initialize;
+  TpvScene3D(fScene3D).VulkanDevice.DebugUtils.SetObjectName(fDirectionalMapTextureTransferComputePipelineLayout.Handle,VK_OBJECT_TYPE_PIPELINE_LAYOUT,'TpvScene3DAtmosphereGlobals.fDirectionalMapTextureTransferPipelineLayout');
+
+  fDirectionalMapTextureTransferComputePipeline:=TpvVulkanComputePipeline.Create(TpvScene3D(fScene3D).VulkanDevice,
+                                                                          TpvScene3D(fScene3D).VulkanPipelineCache,
+                                                                          0,
+                                                                          fDirectionalMapTextureTransferComputeShaderStage,
+                                                                          fDirectionalMapTextureTransferComputePipelineLayout,
+                                                                          nil,
+                                                                          0);
+  TpvScene3D(fScene3D).VulkanDevice.DebugUtils.SetObjectName(fDirectionalMapTextureTransferComputePipeline.Handle,VK_OBJECT_TYPE_PIPELINE,'TpvScene3DAtmosphereGlobals.fDirectionalMapTextureTransferPipeline');
+
+ end;
+
 end;
 
 procedure TpvScene3DAtmosphereGlobals.DeallocateResources;
@@ -5104,6 +5608,18 @@ begin
  FreeAndNil(fCloudWeatherMapComputeShaderStage);
  FreeAndNil(fCloudWeatherMapComputeShaderModule);
 
+ FreeAndNil(fDirectionalMapTextureInitializationComputePipeline);
+ FreeAndNil(fDirectionalMapTextureInitializationComputePipelineLayout);
+ FreeAndNil(fDirectionalMapTextureInitializationComputeShaderStage);
+ FreeAndNil(fDirectionalMapTextureInitializationComputeShaderModule);
+
+ FreeAndNil(fDirectionalMapTextureTransferComputePipeline);
+ FreeAndNil(fDirectionalMapTextureTransferComputePipelineLayout);
+ FreeAndNil(fDirectionalMapTextureTransferComputeShaderStage);
+ FreeAndNil(fDirectionalMapTextureTransferComputeShaderModule);
+
+ FreeAndNil(fDirectionalMapTextureTransferDescriptorSetLayout);
+ FreeAndNil(fDirectionalMapTextureInitializationDescriptorSetLayout);
  FreeAndNil(fWeatherMapTextureDescriptorSetLayout);
  FreeAndNil(fGlobalVulkanDescriptorSetLayout);
  FreeAndNil(fRaymarchingPassDescriptorSetLayout);

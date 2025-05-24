@@ -22,7 +22,7 @@ layout(push_constant, std140) uniform PushConstants {
   int baseViewIndex;
   int countViews;
   int dummy0;
-  int dummy1;
+  int dummy1; 
 } pushConstants;
 
 struct View {

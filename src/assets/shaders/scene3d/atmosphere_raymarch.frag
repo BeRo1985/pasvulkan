@@ -139,7 +139,7 @@ layout(input_attachment_index = 0, set = 2, binding = 0) uniform subpassInput uS
 
 layout(set = 2, binding = 1) uniform sampler2D uTransmittanceLutTexture;
 
-layout(set = 2, binding = 2) uniform sampler2D uMultiScatTexture;
+layout(set = 2, binding = 2) uniform sampler2D uMultiScatteringTexture;
 
 layout(set = 2, binding = 3) uniform sampler2DArray uSkyViewLUT;
 
@@ -589,7 +589,7 @@ void main() {
         const bool mieRayPhase = true;
         SingleScatteringResult ss = IntegrateScatteredLuminance(
           uTransmittanceLutTexture,
-          uMultiScatTexture,
+          uMultiScatteringTexture,
           uv, 
           localWorldPos, 
           worldDir, 
@@ -628,7 +628,7 @@ void main() {
       const bool mieRayPhase = true;
       SingleScatteringResult ss = IntegrateScatteredLuminance(
         uTransmittanceLutTexture,
-        uMultiScatTexture,
+        uMultiScatteringTexture,
         uv, 
         worldPos, 
         worldDir, 

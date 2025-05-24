@@ -23,6 +23,10 @@
 
 #include "math.glsl"
 
+#include "octahedral.glsl"
+
+#include "octahedralmap.glsl"
+
 float SampleSegmentT = 0.3;
 
 struct CloudPhaseParameters {
@@ -740,6 +744,9 @@ SingleScatteringResult IntegrateScatteredLuminance(const in sampler2D Transmitta
 #ifdef MULTISCATAPPROX_ENABLED
                                                    const in sampler2D MultiScatTexture, 
 #endif
+#ifdef ATMOSPHEREMAP_ENABLED
+                                                   const in samplerCube AtmosphereMapTexture,
+#endif
                                                    in vec2 uv, 
                                                    in vec3 WorldPos, 
                                                    in vec3 WorldDir, 
@@ -949,6 +956,13 @@ SingleScatteringResult IntegrateScatteredLuminance(const in sampler2D Transmitta
       result.NewMultiScatStep1Out += throughput * (newMS - newMS * SampleTransmittance) / medium.extinction;
       //	result.NewMultiScatStep1Out += SampleTransmittance * throughput * newMS * dt;
     }
+
+#ifdef ATMOSPHEREMAP_ENABLED
+    // Evaluate atmosphere map, with AtmosphereMapTexture cube map with atmosphere visiblity values
+    float atmosphereFactor = textureLod(AtmosphereMapTexture, normalize(P), 0.0).x; // 0.0 = no atmosphere, 1.0 = full atmosphere    
+    S *= atmosphereFactor; // not throughput, but S, because we want to scale the light contribution, not the transmittance 
+    SampleTransmittance = mix(SampleTransmittance, 1.0, atmosphereFactor); // not multiply, but mix with 1.0
+#endif
 
 #if 0
     L += throughput * S * dt;
