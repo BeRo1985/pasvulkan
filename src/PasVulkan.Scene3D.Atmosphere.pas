@@ -3937,7 +3937,7 @@ begin
 
    aCommandBuffer.CmdDispatch((fTexture.Width+15) shr 4,
                               (fTexture.Height+15) shr 4,
-                              1);
+                              6);
 
    ImageMemoryBarriers[0]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                         TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT),
@@ -4007,7 +4007,7 @@ begin
 
    aCommandBuffer.CmdDispatch((fTexture.Width+15) shr 4,
                               (fTexture.Height+15) shr 4,
-                              1);
+                              6);
 
    ImageMemoryBarriers[0]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                         TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT),
