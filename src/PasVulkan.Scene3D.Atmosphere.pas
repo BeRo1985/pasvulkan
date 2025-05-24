@@ -768,7 +768,6 @@ type TpvScene3DAtmosphere=class;
               fTextureGeneration:TpvUInt64;
               fTextureLastGeneration:TpvUInt64;
               fTextureSourceImage:TpvScene3DRendererImage2D;
-              fTextureSourceImageLast:TpvScene3DRendererImage2D;
              public
               constructor Create(const aScene3D:TObject;const aAtmosphere:TpvScene3DAtmosphere;const aName:TpvUTF8String); reintroduce;
               destructor Destroy; override;
@@ -779,6 +778,8 @@ type TpvScene3DAtmosphere=class;
               procedure Update(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt);
              public
               property TextureSourceImage:TpvScene3DRendererImage2D read fTextureSourceImage write fTextureSourceImage;
+              property TextureGeneration:TpvUInt64 read fTextureGeneration write fTextureGeneration;
+              property TextureLastGeneration:TpvUInt64 read fTextureLastGeneration write fTextureLastGeneration;
             end;
       private
        fScene3D:TObject;
@@ -3730,7 +3731,6 @@ begin
  end;
 
  fTextureSourceImage:=nil;
- fTextureSourceImageLast:=nil;
 
  fTextureGeneration:=0;
  fTextureLastGeneration:=High(TpvUInt64);
@@ -3873,7 +3873,6 @@ begin
  FreeAndNil(fTexture);
 
  fTextureSourceImage:=nil;
- fTextureSourceImageLast:=nil;
 
 end;
 

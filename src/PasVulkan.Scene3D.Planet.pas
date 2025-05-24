@@ -482,6 +482,9 @@ type TpvScene3DPlanets=class;
               property TiledMeshBoundingSpheresBuffer:TpvVulkanBuffer read fTiledMeshBoundingSpheresBuffer;
               property TiledVisualMeshIndexGroupsBuffer:TpvVulkanBuffer read fTiledVisualMeshIndexGroupsBuffer;
              public
+              property RainMapGeneration:TpvUInt64 read fRainMapGeneration;
+              property AtmosphereMapGeneration:TpvUInt64 read fAtmosphereMapGeneration;
+             public
               property HeightMapData:THeightMapData read fHeightMapData;
               property NormalMapData:TNormalMapData read fNormalMapData;
               property BlendMapData:TBlendMapData read fBlendMapData;
