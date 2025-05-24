@@ -374,12 +374,18 @@ void main() {
 
   //bool rayHitsAtmosphere = any(greaterThanEqual(raySphereIntersect(worldPos, worldDir, vec3(0.0), atmosphereParameters.TopRadius), vec2(0.0)));
 
-  bool needToRayMarch = false, needAerialPerspective = false, applyFastCloudIntegration = false, needToProcess = uAtmosphereParameters.atmosphereParameters.AbsorptionExtinction.w > 0.0;
+  bool needToRayMarch = false, 
+       needAerialPerspective = false, 
+       applyFastCloudIntegration = false, 
+       needToProcess = uAtmosphereParameters.atmosphereParameters.AbsorptionExtinction.w > 0.0,
+       useAtmosphereMap = ((uAtmosphereParameters.atmosphereParameters.flags & FLAGS_USE_ATMOSPHERE_MAP) != 0u) ? true : false;
 
   float targetDepth = uintBitsToFloat(0x7F800000u); // +inf
 
   float atmosphereCullingFactor;
-  if((((pushConstants.flags & FLAGS_USE_FAST_AERIAL_PERSPECTIVE) != 0u) || ((pushConstants.flags & FLAGS_SHADOWS) == 0u)) && (uAtmosphereParameters.atmosphereParameters.CullingParameters.innerOuterFadeDistancesCountFacesMode.w != 0u)){ 
+  if(((((pushConstants.flags & FLAGS_USE_FAST_AERIAL_PERSPECTIVE) != 0u) && !useAtmosphereMap) || 
+      ((pushConstants.flags & FLAGS_SHADOWS) == 0u)) && 
+      (uAtmosphereParameters.atmosphereParameters.CullingParameters.innerOuterFadeDistancesCountFacesMode.w != 0u)){ 
     if(depthIsZFar){
       atmosphereCullingFactor = 1.0;
     }else{
@@ -393,7 +399,7 @@ void main() {
   if(/*rayHitsAtmosphere &&*/ depthIsZFar){
 
     // When fast sky is used, we can use a precomputed sky view LUT to get the inscattering and transmittance values 
-    if(((pushConstants.flags & FLAGS_USE_FAST_SKY) != 0u) && needToProcess){
+    if(((pushConstants.flags & FLAGS_USE_FAST_SKY) != 0u) && needToProcess && !useAtmosphereMap){
       
       vec2 localUV;
       vec3 UpVector = normalize(worldPos);
@@ -454,6 +460,7 @@ void main() {
   // they are integrated in the ray marching later on
   if(cloudsValid && 
      (!needToRayMarch) && // When ray marching, clouds are integrated inbetween the atmosphere slices
+     (!useAtmosphereMap) && // When atmosphere map is used, clouds are integrated inbetween the atmosphere slices
      ((((pushConstants.flags & FLAGS_USE_FAST_SKY) != 0u) && !needAerialPerspective) /*||
       (((pushConstants.flags & FLAGS_USE_FAST_AERIAL_PERSPECTIVE) != 0u) && needAerialPerspective)*/)){
     addScatteringSample(cloudsInscattering.xyz, cloudsTransmittance.xyz);      
@@ -467,7 +474,7 @@ void main() {
 
     // When fast aerial perspective is used and no clouds are present at this fragment pixel, we can use a precomputed camera volume to get the
     // inscattering and transmittance values
-    if((pushConstants.flags & FLAGS_USE_FAST_AERIAL_PERSPECTIVE) != 0u){
+    if(((pushConstants.flags & FLAGS_USE_FAST_AERIAL_PERSPECTIVE) != 0u) && !useAtmosphereMap){
 
       // Fast aerial perspective approximation using a 3D texture
 
