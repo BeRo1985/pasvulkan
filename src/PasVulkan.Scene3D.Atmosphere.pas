@@ -3396,7 +3396,7 @@ begin
  end;
                                   
 
- if TpvScene3DRenderer(TpvScene3DRendererInstance(fRendererInstance).Renderer).FastSky and not fAtmosphere.fUseAtmosphereMap then begin
+ if TpvScene3DRenderer(TpvScene3DRendererInstance(fRendererInstance).Renderer).FastSky then begin
 
   // Sky view LUT
 
@@ -3507,7 +3507,7 @@ begin
 
  end;
 
- if TpvScene3DRenderer(TpvScene3DRendererInstance(fRendererInstance).Renderer).FastAerialPerspective and not fAtmosphere.fUseAtmosphereMap then begin
+ if TpvScene3DRenderer(TpvScene3DRendererInstance(fRendererInstance).Renderer).FastAerialPerspective then begin
 
   // Camera volume
 
@@ -3789,17 +3789,6 @@ begin
 
  SetImageViews(aInFlightFrameIndex,aDepthImageView,aCascadedShadowMapImageView,aCloudsInscatteringImageView,aCloudsTransmittanceImageView,aCloudsDepthImageView);
 
- if TpvScene3DRenderer(TpvScene3DRendererInstance(fRendererInstance).Renderer).FastSky and not fAtmosphere.fUseAtmosphereMap then begin
-  aPushConstants.Flags:=aPushConstants.Flags or (TpvUInt32(1) shl 0);
- end else begin
-  aPushConstants.Flags:=aPushConstants.Flags and not (TpvUInt32(1) shl 0);
- end;
- if TpvScene3DRenderer(TpvScene3DRendererInstance(fRendererInstance).Renderer).FastAerialPerspective and not fAtmosphere.fUseAtmosphereMap then begin
-  aPushConstants.Flags:=aPushConstants.Flags or (TpvUInt32(1) shl 1);
- end else begin
-  aPushConstants.Flags:=aPushConstants.Flags and not (TpvUInt32(1) shl 1);
- end;
-
  aCommandBuffer.CmdPushConstants(TpvScene3DAtmosphereGlobals(TpvScene3D(fAtmosphere.fScene3D).AtmosphereGlobals).RaymarchingPipelineLayout.Handle,
                                  TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_FRAGMENT_BIT),
                                  0,
@@ -4027,6 +4016,8 @@ begin
  end;
 
  FreeAndNil(fTextureScanDescriptorSet);
+
+ FreeAndNil(fTextureScanDescriptorPool);
 
  FreeAndNil(fTextureTransferDescriptorPool);
  FreeAndNil(fTextureInitializationDescriptorPool);
@@ -4395,7 +4386,7 @@ begin
 
  fUseRainMap:=true;
 
- fUseAtmosphereMap:=false;
+ fUseAtmosphereMap:=true;
 
  fReady:=true;
 
