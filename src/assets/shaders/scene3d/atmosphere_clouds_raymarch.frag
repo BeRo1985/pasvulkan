@@ -189,8 +189,13 @@ layout(set = 2, binding = 10) uniform samplerCube uTextureRainMap;
 
 layout(set = 2, binding = 11) uniform samplerCube uTextureAtmosphereMap;
 
+layout(set = 2, binding = 12, std430) buffer AtmosphereMapMinMaxBuffer {
+  float minValue;
+  float maxValue;
+} uAtmosphereMapMinMax;
+
 #ifdef COMPUTE_SHADER
-layout(set = 2, binding = 12, rgba16) uniform image2D uDestinationTexture;
+layout(set = 2, binding = 13, rgba16) uniform image2D uDestinationTexture;
 #endif
 
 #ifdef SHADOWMAP
@@ -203,7 +208,11 @@ layout(set = 2, binding = 12, rgba16) uniform image2D uDestinationTexture;
 
 bool useRainMap = ((uAtmosphereParameters.atmosphereParameters.flags & FLAGS_USE_RAIN_MAP) != 0u);
 
-bool useAtmosphereMap = ((uAtmosphereParameters.atmosphereParameters.flags & FLAGS_USE_ATMOSPHERE_MAP) != 0u);
+// Check if the atmosphere map should be used, if it is enabled in the flags and if the min and max values are not both 1.0,
+// which would indicate that the atmosphere can be considered fully existing everywhere (no atmosphere map lookups needed =>
+// faster and more performance).
+bool useAtmosphereMap = ((uAtmosphereParameters.atmosphereParameters.flags & FLAGS_USE_ATMOSPHERE_MAP) != 0u) && 
+                        (((abs(1.0 - uAtmosphereMapMinMax.minValue) > 1e-4) || (abs(1.0 - uAtmosphereMapMinMax.maxValue) > 1e-4)));
 
 //////////////////////////////////////////////////////////////////////////////////
 

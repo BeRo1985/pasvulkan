@@ -2493,7 +2493,7 @@ begin
                                                                     TpvScene3D(fAtmosphere.fScene3D).CountInFlightFrames*1);
  fCloudRaymarchingPassDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,TpvScene3D(fAtmosphere.fScene3D).CountInFlightFrames*1);
  fCloudRaymarchingPassDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,TpvScene3D(fAtmosphere.fScene3D).CountInFlightFrames*11);
- fCloudRaymarchingPassDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,TpvScene3D(fAtmosphere.fScene3D).CountInFlightFrames*1);
+ fCloudRaymarchingPassDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,TpvScene3D(fAtmosphere.fScene3D).CountInFlightFrames*2);
  fCloudRaymarchingPassDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,TpvScene3D(fAtmosphere.fScene3D).CountInFlightFrames*2);
  fCloudRaymarchingPassDescriptorPool.Initialize;
  TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.DebugUtils.SetObjectName(fCloudRaymarchingPassDescriptorPool.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'CloudRaymarchingPassDescriptorPool');
@@ -2649,6 +2649,16 @@ begin
                                                                                [],
                                                                                [],
                                                                                false);
+
+  // Atmosphere map min/max buffer
+  fCloudRaymarchingPassDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(12,
+                                                                               0,
+                                                                               1,
+                                                                               TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                                               [],
+                                                                               [fAtmosphere.fAtmosphereMapMinMaxBuffer.DescriptorBufferInfo],
+                                                                               [],
+                                                                               false);                                                                               
 
   //fCloudRaymarchingPassDescriptorSets[InFlightFrameIndex].Flush; // Not needed, because the descriptor set will be flushed when it is bound
 
@@ -5290,6 +5300,13 @@ begin
   // Atmosphere map texture
   fCloudRaymarchingPassDescriptorSetLayout.AddBinding(11,
                                                       VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                                      1,
+                                                      TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                                      []);
+
+  // Atmosphere map min max buffer
+  fCloudRaymarchingPassDescriptorSetLayout.AddBinding(12,
+                                                      VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
                                                       1,
                                                       TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                                       []);
