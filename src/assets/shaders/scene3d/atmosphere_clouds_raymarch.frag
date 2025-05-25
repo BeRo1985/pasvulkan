@@ -348,6 +348,8 @@ float getLayerHighClouds(const in vec3 p, const in VolumetricCloudLayerHigh clou
 
 mat3 layerLowWindRotation, layerLowCurlRotation;
 
+bool useAtmosphereMap = ((uAtmosphereParameters.atmosphereParameters.flags & FLAGS_USE_ATMOSPHERE_MAP) != 0u);
+
 float getLowResCloudDensity(vec3 position, const in mat3 rotationMatrices[2], const in mat3 windRotation, const in vec4 weatherData, const float mipMapLevel){
             
   float height = length(position);
@@ -357,7 +359,7 @@ float getLowResCloudDensity(vec3 position, const in mat3 rotationMatrices[2], co
     // Layer low clouds
 
     // Evaluate atmosphere map, with AtmosphereMapTexture cube map with atmosphere visiblity values
-    const float atmosphereFactor = ((uAtmosphereParameters.atmosphereParameters.flags & FLAGS_USE_ATMOSPHERE_MAP) != 0u) 
+    const float atmosphereFactor = useAtmosphereMap 
                                     ? textureLod(uTextureAtmosphereMap, normalize(position), 0.0).x // 0.0 = no atmosphere, 1.0 = full atmosphere    
                                     : 1.0; // No atmosphere map, so return full atmosphere
     if(atmosphereFactor < 1e-4){
@@ -402,7 +404,7 @@ float getLowResCloudDensity(vec3 position, const in mat3 rotationMatrices[2], co
     // Layer high clouds
 
     // Evaluate atmosphere map, with AtmosphereMapTexture cube map with atmosphere visiblity values
-    const float atmosphereFactor = ((uAtmosphereParameters.atmosphereParameters.flags & FLAGS_USE_ATMOSPHERE_MAP) != 0u) 
+    const float atmosphereFactor = useAtmosphereMap 
                                     ? textureLod(uTextureAtmosphereMap, normalize(position), 0.0).x // 0.0 = no atmosphere, 1.0 = full atmosphere    
                                     : 1.0; // No atmosphere map, so return full atmosphere
     if(atmosphereFactor < 1e-4){
