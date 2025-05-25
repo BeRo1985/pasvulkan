@@ -447,8 +447,6 @@ compileshaderarguments=(
 
   "-V planet_atmospheremap_modification.comp -o ${tempPath}/planet_atmospheremap_modification_comp.spv"
 
-  "-V planet_atmospheremap_scan.comp -o ${tempPath}/planet_atmospheremap_scan_comp.spv"
-
   "-V planet_watermap_initialization.comp -o ${tempPath}/planet_watermap_initialization_comp.spv"
 
   "-V planet_watermap_modification.comp -o ${tempPath}/planet_watermap_modification_comp.spv"
@@ -719,6 +717,7 @@ compileshaderarguments=(
   "-V planet_grass.frag -DPCFPCSS -DREFLECTIVESHADOWMAPOUTPUT -DRAYTRACING -DWIREFRAME -DVELOCITY -o ${tempPath}/planet_grass_raytracing_wireframe_velocity_pcfpcss_rsm_frag.spv"
 
   # Atmosphere
+  "-V atmosphere_map_scan.comp -o ${tempPath}/atmosphere_map_scan_comp.spv"
   "-V atmosphere_transmittancelut.comp -o ${tempPath}/atmosphere_transmittancelut_comp.spv"
   "-V atmosphere_multiscattering.comp -o ${tempPath}/atmosphere_multiscattering_comp.spv"
   "-V atmosphere_skyviewlut.comp -o ${tempPath}/atmosphere_skyviewlut_comp.spv"
