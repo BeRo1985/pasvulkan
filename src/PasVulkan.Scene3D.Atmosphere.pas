@@ -4007,9 +4007,7 @@ begin
                                                  1,
                                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
                                                  [],
-                                                 [TVkDescriptorBufferInfo.Create(fAtmosphere.fAtmosphereMapMinMaxBuffer.Handle,
-                                                                                    0,
-                                                                                    fAtmosphere.fAtmosphereMapMinMaxBuffer.Size)],
+                                                 [fAtmosphere.fAtmosphereMapMinMaxBuffer.DescriptorBufferInfo],
                                                  [],         
                                                  false);
   fTextureScanDescriptorSet.Flush;
@@ -4351,7 +4349,35 @@ begin
  
  FillChar(fAtmosphereParametersBuffers,SizeOf(fAtmosphereParametersBuffers),#0);
 
- fAtmosphereMapMinMaxBuffer:=nil;
+ if assigned(TpvScene3D(fScene3D).VulkanDevice) then begin
+
+  fAtmosphereMapMinMaxBuffer:=TpvVulkanBuffer.Create(TpvScene3D(fScene3D).VulkanDevice,
+                                                     SizeOf(TpvFloat)*2, // 2 floats for min and max
+                                                     TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or
+                                                     TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or
+                                                     TVkBufferUsageFlags(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT) or
+                                                     TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT_KHR),
+                                                     TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                     [],
+                                                     0,
+                                                     TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                     0,
+                                                     0,
+                                                     0,
+                                                     0,
+                                                     0,
+                                                     0,
+                                                     [TpvVulkanBufferFlag.PreferDedicatedAllocation],
+                                                     0,
+                                                     pvAllocationGroupIDScene3DDynamic);
+  TpvScene3D(fScene3D).VulkanDevice.DebugUtils.SetObjectName(fAtmosphereMapMinMaxBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DAtmosphere.fAtmosphereMapMinMaxBuffer');
+
+ end else begin
+
+  fAtmosphereMapMinMaxBuffer:=nil;
+
+ end;
+
 
  fRendererInstances:=TRendererInstances.Create(true);
  fRendererInstanceHashMap:=TRendererInstanceHashMap.Create(nil);
@@ -4383,6 +4409,8 @@ begin
  FreeAndNil(fAtmosphereMap);
 
  FreeAndNil(fRainMap);
+
+ FreeAndNil(fAtmosphereMapMinMaxBuffer);
 
  while fRendererInstances.Count>0 do begin
   fRendererInstances.Items[fRendererInstances.Count-1].Free;
@@ -4482,27 +4510,6 @@ begin
  
   end;
 
-  fAtmosphereMapMinMaxBuffer:=TpvVulkanBuffer.Create(TpvScene3D(fScene3D).VulkanDevice,
-                                                     SizeOf(TpvFloat)*2, // 2 floats for min and max
-                                                     TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or
-                                                     TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or
-                                                     TVkBufferUsageFlags(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT) or
-                                                     TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT_KHR),
-                                                     TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                                     [],
-                                                     0,
-                                                     TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
-                                                     0,
-                                                     0,
-                                                     0,
-                                                     0,
-                                                     0,
-                                                     0,
-                                                     [TpvVulkanBufferFlag.PreferDedicatedAllocation],
-                                                     0,
-                                                     pvAllocationGroupIDScene3DDynamic);
-  TpvScene3D(fScene3D).VulkanDevice.DebugUtils.SetObjectName(fAtmosphereMapMinMaxBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DAtmosphere.fAtmosphereMapMinMaxBuffer');
-
   fWeatherMapTexture:=TpvScene3DRendererImageCubeMap.Create(TpvScene3D(fScene3D).VulkanDevice,
                                                             1024,
                                                             1024,
@@ -4564,7 +4571,6 @@ procedure TpvScene3DAtmosphere.Unload;
 var InFlightFrameIndex,Index:TpvSizeInt;
 begin
  if fUploaded then begin
-  FreeAndNil(fAtmosphereMapMinMaxBuffer);
   for InFlightFrameIndex:=0 to TpvScene3D(fScene3D).CountInFlightFrames-1 do begin
    FreeAndNil(fAtmosphereParametersBuffers[InFlightFrameIndex]);
   end;
