@@ -303,14 +303,15 @@ vec3 scaleLayerHighCloudPosition(vec3 position){
 #include "rotation.glsl"
 
 vec4 getWeatherData(const in vec3 position, const in mat3 rotationMatrices[2], const float mipMapLevel){
+  const float wetness = useRainMap ? clamp(textureLod(uTextureRainMap, normalize(position), 0.0).x, 0.0, 1.0) : 0.0;
   return clamp(
     fma(
       vec4(
         textureLod(uTextureWeatherMap, normalize(rotationMatrices[0] * position), mipMapLevel).xyz,
         textureLod(uTextureWeatherMap, normalize(rotationMatrices[1] * position), mipMapLevel).w
       ),
-      uAtmosphereParameters.atmosphereParameters.VolumetricClouds.coverageTypeWetnessTopFactors, 
-      uAtmosphereParameters.atmosphereParameters.VolumetricClouds.coverageTypeWetnessTopOffsets
+      mix(uAtmosphereParameters.atmosphereParameters.VolumetricClouds.dryCoverageTypeWetnessTopFactors, uAtmosphereParameters.atmosphereParameters.VolumetricClouds.wetCoverageTypeWetnessTopFactors, wetness), 
+      mix(uAtmosphereParameters.atmosphereParameters.VolumetricClouds.dryCoverageTypeWetnessTopOffsets, uAtmosphereParameters.atmosphereParameters.VolumetricClouds.wetCoverageTypeWetnessTopOffsets, wetness)
     ),
     vec4(0.0),
     vec4(1.0)

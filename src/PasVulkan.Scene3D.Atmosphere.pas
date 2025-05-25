@@ -386,9 +386,13 @@ type TpvScene3DAtmosphere=class;
             TVolumetricCloudParameters=packed record
              public
           
-              CoverageTypeWetnessTopFactors:TpvVector4; // x = Coverage, y = Type, z = Wetness, w = Top
+              DryCoverageTypeWetnessTopFactors:TpvVector4; // x = Coverage, y = Type, z = Wetness, w = Top
           
-              CoverageTypeWetnessTopOffsets:TpvVector4; // x = Coverage, y = Type, z = Wetness, w = Top
+              DryCoverageTypeWetnessTopOffsets:TpvVector4; // x = Coverage, y = Type, z = Wetness, w = Top
+
+              WetCoverageTypeWetnessTopFactors:TpvVector4; // x = Coverage, y = Type, z = Wetness, w = Top
+          
+              WetCoverageTypeWetnessTopOffsets:TpvVector4; // x = Coverage, y = Type, z = Wetness, w = Top
           
               Scattering:TpvVector4; // w = unused
           
@@ -539,9 +543,13 @@ type TpvScene3DAtmosphere=class;
             TGPUVolumetricCloudParameters=packed record
              public
              
-              CoverageTypeWetnessTopFactors:TpvVector4; // x = Coverage, y = Type, z = Wetness, w = Top
+              DryCoverageTypeWetnessTopFactors:TpvVector4; // x = Coverage, y = Type, z = Wetness, w = Top
              
-              CoverageTypeWetnessTopOffsets:TpvVector4; // x = Coverage, y = Type, z = Wetness, w = Top
+              DryCoverageTypeWetnessTopOffsets:TpvVector4; // x = Coverage, y = Type, z = Wetness, w = Top
+             
+              WetCoverageTypeWetnessTopFactors:TpvVector4; // x = Coverage, y = Type, z = Wetness, w = Top
+             
+              WetCoverageTypeWetnessTopOffsets:TpvVector4; // x = Coverage, y = Type, z = Wetness, w = Top
              
               Scattering:TpvVector4; // w = unused
              
@@ -1264,8 +1272,10 @@ end;
 
 procedure TpvScene3DAtmosphere.TVolumetricCloudParameters.Initialize;
 begin
- CoverageTypeWetnessTopFactors:=TpvVector4.InlineableCreate(1.0,1.0,1.0,1.0);
- CoverageTypeWetnessTopOffsets:=TpvVector4.InlineableCreate(0.0,0.0,0.0,0.0);
+ DryCoverageTypeWetnessTopFactors:=TpvVector4.InlineableCreate(1.0,1.0,1.0,1.0);
+ DryCoverageTypeWetnessTopOffsets:=TpvVector4.InlineableCreate(0.0,0.0,0.0,0.0);
+ WetCoverageTypeWetnessTopFactors:=TpvVector4.InlineableCreate(1.0,1.0,1.0,1.0);
+ WetCoverageTypeWetnessTopOffsets:=TpvVector4.InlineableCreate(0.0,0.0,0.0,0.0);
  Scattering:=TpvVector4.InlineableCreate(1.0,1.0,1.0,0.0);
  Absorption:=TpvVector4.InlineableCreate(0.0,0.0,0.0,0.0);
  LightingDensity:=1.0;
@@ -1294,8 +1304,10 @@ var JSONRootObject:TPasJSONItemObject;
 begin
  if assigned(aJSON) and (aJSON is TPasJSONItemObject) then begin
   JSONRootObject:=TPasJSONItemObject(aJSON);
-  CoverageTypeWetnessTopFactors:=JSONToVector4(JSONRootObject.Properties['coveragetypewetnesstopfactors'],CoverageTypeWetnessTopFactors);
-  CoverageTypeWetnessTopOffsets:=JSONToVector4(JSONRootObject.Properties['coveragetypewetnesstopoffsets'],CoverageTypeWetnessTopOffsets);
+  DryCoverageTypeWetnessTopFactors:=JSONToVector4(JSONRootObject.Properties['drycoveragetypewetnesstopfactors'],JSONToVector4(JSONRootObject.Properties['coveragetypewetnesstopfactors'],DryCoverageTypeWetnessTopFactors));
+  DryCoverageTypeWetnessTopOffsets:=JSONToVector4(JSONRootObject.Properties['drycoveragetypewetnesstopoffsets'],JSONToVector4(JSONRootObject.Properties['coveragetypewetnesstopoffsets'],DryCoverageTypeWetnessTopOffsets));
+  WetCoverageTypeWetnessTopFactors:=JSONToVector4(JSONRootObject.Properties['wetcoveragetypewetnesstopfactors'],JSONToVector4(JSONRootObject.Properties['coveragetypewetnesstopfactors'],WetCoverageTypeWetnessTopFactors));
+  WetCoverageTypeWetnessTopOffsets:=JSONToVector4(JSONRootObject.Properties['wetcoveragetypewetnesstopoffsets'],JSONToVector4(JSONRootObject.Properties['coveragetypewetnesstopoffsets'],WetCoverageTypeWetnessTopOffsets));
   Scattering.xyz:=JSONToVector3(JSONRootObject.Properties['scattering'],Scattering.xyz);
   Absorption.xyz:=JSONToVector3(JSONRootObject.Properties['absorption'],Absorption.xyz);
   LightingDensity:=TPasJSON.GetNumber(JSONRootObject.Properties['lightingdensity'],LightingDensity);
@@ -1349,8 +1361,10 @@ end;
 function TpvScene3DAtmosphere.TVolumetricCloudParameters.SaveToJSON:TPasJSONItemObject;
 begin
  result:=TPasJSONItemObject.Create;
- result.Add('coveragetypewetnesstopfactors',Vector4ToJSON(CoverageTypeWetnessTopFactors));
- result.Add('coveragetypewetnesstopoffsets',Vector4ToJSON(CoverageTypeWetnessTopOffsets));
+ result.Add('drycoveragetypewetnesstopfactors',Vector4ToJSON(DryCoverageTypeWetnessTopFactors));
+ result.Add('drycoveragetypewetnesstopoffsets',Vector4ToJSON(DryCoverageTypeWetnessTopOffsets));
+ result.Add('wetcoveragetypewetnesstopfactors',Vector4ToJSON(WetCoverageTypeWetnessTopFactors));
+ result.Add('wetcoveragetypewetnesstopoffsets',Vector4ToJSON(WetCoverageTypeWetnessTopOffsets));
  result.Add('scattering',Vector3ToJSON(Scattering.xyz));
  result.Add('absorption',Vector3ToJSON(Absorption.xyz));
  result.Add('lightingdensity',TPasJSONItemNumber.Create(LightingDensity));
@@ -1789,8 +1803,11 @@ end;
 procedure TpvScene3DAtmosphere.TGPUVolumetricCloudParameters.Assign(const aVolumetricCloudParameters:TVolumetricCloudParameters);
 begin
  
- CoverageTypeWetnessTopFactors:=aVolumetricCloudParameters.CoverageTypeWetnessTopFactors; 
- CoverageTypeWetnessTopOffsets:=aVolumetricCloudParameters.CoverageTypeWetnessTopOffsets;
+ DryCoverageTypeWetnessTopFactors:=aVolumetricCloudParameters.DryCoverageTypeWetnessTopFactors; 
+ DryCoverageTypeWetnessTopOffsets:=aVolumetricCloudParameters.DryCoverageTypeWetnessTopOffsets;
+ 
+ WetCoverageTypeWetnessTopFactors:=aVolumetricCloudParameters.WetCoverageTypeWetnessTopFactors; 
+ WetCoverageTypeWetnessTopOffsets:=aVolumetricCloudParameters.WetCoverageTypeWetnessTopOffsets;
  
  Scattering:=aVolumetricCloudParameters.Scattering; 
  Absorption:=aVolumetricCloudParameters.Absorption;

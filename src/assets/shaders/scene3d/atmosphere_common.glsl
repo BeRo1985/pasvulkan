@@ -120,8 +120,11 @@ struct VolumetricCloudLayerHigh {
 
 struct VolumetricCloudParameters {
 
-  vec4 coverageTypeWetnessTopFactors; // x = Coverage, y = Type, z = Wetness, w = Top
-  vec4 coverageTypeWetnessTopOffsets; // x = Coverage, y = Type, z = Wetness, w = Top
+  vec4 dryCoverageTypeWetnessTopFactors; // x = Coverage, y = Type, z = Wetness, w = Top
+  vec4 dryCoverageTypeWetnessTopOffsets; // x = Coverage, y = Type, z = Wetness, w = Top
+
+  vec4 wetCoverageTypeWetnessTopFactors; // x = Coverage, y = Type, z = Wetness, w = Top
+  vec4 wetCoverageTypeWetnessTopOffsets; // x = Coverage, y = Type, z = Wetness, w = Top
 
   vec4 Scattering; 
   vec4 Absorption;
