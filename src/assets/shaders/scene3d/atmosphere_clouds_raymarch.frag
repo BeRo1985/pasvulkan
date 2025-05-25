@@ -199,6 +199,14 @@ layout(set = 2, binding = 12, rgba16) uniform image2D uDestinationTexture;
 
 #include "quaternion.glsl"
 
+//////////////////////////////////////////////////////////////////////////////////
+
+bool useRainMap = ((uAtmosphereParameters.atmosphereParameters.flags & FLAGS_USE_RAIN_MAP) != 0u);
+
+bool useAtmosphereMap = ((uAtmosphereParameters.atmosphereParameters.flags & FLAGS_USE_ATMOSPHERE_MAP) != 0u);
+
+//////////////////////////////////////////////////////////////////////////////////
+
 float bayer2(vec2 a){ 
   a = floor(a);
   return fract(dot(a, vec2(0.5, a.y * 0.75)));
@@ -347,8 +355,6 @@ float getLayerHighClouds(const in vec3 p, const in VolumetricCloudLayerHigh clou
 //////////////////////////////////////////////////////////////////////////
 
 mat3 layerLowWindRotation, layerLowCurlRotation;
-
-bool useAtmosphereMap = ((uAtmosphereParameters.atmosphereParameters.flags & FLAGS_USE_ATMOSPHERE_MAP) != 0u);
 
 float getLowResCloudDensity(vec3 position, const in mat3 rotationMatrices[2], const in mat3 windRotation, const in vec4 weatherData, const float mipMapLevel){
             
