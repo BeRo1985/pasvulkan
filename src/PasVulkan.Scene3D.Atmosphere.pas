@@ -4063,6 +4063,8 @@ begin
     // Set atmosphere map min/max buffer to $ffffffff and $00000000 values, for atomic min/max operations later
     // This is done to ensure that the min/max values are initialized to the maximum and minimum possible values 
 
+    TpvScene3D(fScene3D).VulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'TpvScene3DAtmosphere.TDirectionalMap.Update.ClearAtmosphereMapMinMaxBuffer',[0.25,1.0,0.0,1.0]);
+
     BufferMemoryBarrier:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT) or TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT) or TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
                                                        TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
                                                        VK_QUEUE_FAMILY_IGNORED,
@@ -4103,7 +4105,11 @@ begin
                                       1,@BufferMemoryBarrier,
                                       0,nil);
 
+    TpvScene3D(fScene3D).VulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
+
    end;
+
+   TpvScene3D(fScene3D).VulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'TpvScene3DAtmosphere.TDirectionalMap.Update.Barrier0',[0.0,0.5,1.0,1.0]);
 
    ImageMemoryBarriers[0]:=TVkImageMemoryBarrier.Create(0,
                                                         TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT),
@@ -4138,6 +4144,38 @@ begin
                                      0,nil,
                                      2,@ImageMemoryBarriers[0]);
 
+   TpvScene3D(fScene3D).VulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
+
+   //////////////////////////////////////////////////
+   
+   TpvScene3D(fScene3D).VulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'TpvScene3DAtmosphere.TDirectionalMap.Update.TextureScan',[0.0,0.75,1.0,1.0]);
+
+   aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,TpvScene3DAtmosphereGlobals(TpvScene3D(fScene3D).AtmosphereGlobals).fDirectionalMapTextureScanComputePipeline.Handle);
+
+   aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE,
+                                        TpvScene3DAtmosphereGlobals(TpvScene3D(fScene3D).AtmosphereGlobals).fDirectionalMapTextureScanComputePipelineLayout.Handle,
+                                        0,
+                                        1,@fTextureScanDescriptorSet.Handle,
+                                        0,nil);
+
+   aCommandBuffer.CmdDispatch((fTextureSourceImage.Width+15) shr 4,
+                              (fTextureSourceImage.Height+15) shr 4,
+                              1);
+
+   BufferMemoryBarrier:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                      TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                      VK_QUEUE_FAMILY_IGNORED,
+                                                      VK_QUEUE_FAMILY_IGNORED,
+                                                      fAtmosphere.fAtmosphereMapMinMaxBuffer.Handle,
+                                                      0,
+                                                      fAtmosphere.fAtmosphereMapMinMaxBuffer.Size); 
+
+   TpvScene3D(fScene3D).VulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);                          
+
+   //////////////////////////////////////////////////
+
+   TpvScene3D(fScene3D).VulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'TpvScene3DAtmosphere.TDirectionalMap.Update.TextureTransfer',[0.0,1.0,0.5,1.0]);
+    
    aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,TpvScene3DAtmosphereGlobals(TpvScene3D(fScene3D).AtmosphereGlobals).fDirectionalMapTextureTransferComputePipeline.Handle);
 
    aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE,
@@ -4167,8 +4205,10 @@ begin
                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT),
                                      0,
                                      0,nil,
-                                     0,nil,
+                                     1,@BufferMemoryBarrier,
                                      1,@ImageMemoryBarriers[0]);         
+
+   TpvScene3D(fScene3D).VulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
 
    TpvScene3D(fScene3D).VulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
 
@@ -4179,6 +4219,8 @@ begin
    if fType=TDirectionalMap.Atmosphere then begin
    
     // Set atmosphere map min/max buffer to one float values
+
+    TpvScene3D(fScene3D).VulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'TpvScene3DAtmosphere.TDirectionalMap.Update.ClearAtmosphereMapMinMaxBuffer',[0.25,1.0,0.0,1.0]);
 
     BufferMemoryBarrier:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT) or TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT) or TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
                                                        TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
@@ -4215,7 +4257,11 @@ begin
                                       1,@BufferMemoryBarrier,
                                       0,nil);
 
+    TpvScene3D(fScene3D).VulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
+
    end;
+
+   TpvScene3D(fScene3D).VulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'TpvScene3DAtmosphere.TDirectionalMap.Update.Initialization',[0.0,0.5,1.0,1.0]);
 
    ImageMemoryBarriers[0]:=TVkImageMemoryBarrier.Create(0,
                                                         TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT),
@@ -4280,6 +4326,8 @@ begin
                                      0,nil,
                                      0,nil,
                                      1,@ImageMemoryBarriers[0]);     
+
+   TpvScene3D(fScene3D).VulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
 
    TpvScene3D(fScene3D).VulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
 
