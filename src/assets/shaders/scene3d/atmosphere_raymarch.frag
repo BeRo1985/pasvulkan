@@ -59,19 +59,19 @@ const uint SHADOWMAP_MODE_MSM = 5;
 
 #define inFrameIndex pushConstants.frameIndex
 
-layout(set = 2, binding = 8, std140) uniform uboCascadedShadowMaps {
+layout(set = 2, binding = 9, std140) uniform uboCascadedShadowMaps {
   mat4 shadowMapMatrices[NUM_SHADOW_CASCADES];
   vec4 shadowMapSplitDepthsScales[NUM_SHADOW_CASCADES];
   vec4 constantBiasNormalBiasSlopeBiasClamp[NUM_SHADOW_CASCADES];
   uvec4 metaData; // x = type
 } uCascadedShadowMaps;
 
-layout(set = 2, binding = 9) uniform sampler2DArray uCascadedShadowMapTexture;
+layout(set = 2, binding = 10) uniform sampler2DArray uCascadedShadowMapTexture;
 
 #ifdef PCFPCSS
 
 // Yay! Binding Aliasing! :-)
-layout(set = 2, binding = 9) uniform sampler2DArrayShadow uCascadedShadowMapTextureShadow;
+layout(set = 2, binding = 10) uniform sampler2DArrayShadow uCascadedShadowMapTextureShadow;
 
 #endif // PCFPCSS
 #endif // !RAYTRACING 
@@ -121,13 +121,13 @@ layout(set = 2, binding = 0) uniform texture2D uDepthTexture;
 #endif
 
 #ifdef MULTIVIEW
-layout(set = 2, binding = 10) uniform texture2DArray uCloudsInscatteringTexture;
-layout(set = 2, binding = 11) uniform texture2DArray uCloudsTransmittanceTexture;
-layout(set = 2, binding = 12) uniform texture2DArray uCloudsDepthTexture;
+layout(set = 2, binding = 11) uniform texture2DArray uCloudsInscatteringTexture;
+layout(set = 2, binding = 12) uniform texture2DArray uCloudsTransmittanceTexture;
+layout(set = 2, binding = 13) uniform texture2DArray uCloudsDepthTexture;
 #else
-layout(set = 2, binding = 10) uniform texture2D uCloudsInscatteringTexture;
-layout(set = 2, binding = 11) uniform texture2D uCloudsTransmittanceTexture;
-layout(set = 2, binding = 12) uniform texture2D uCloudsDepthTexture;
+layout(set = 2, binding = 11) uniform texture2D uCloudsInscatteringTexture;
+layout(set = 2, binding = 12) uniform texture2D uCloudsTransmittanceTexture;
+layout(set = 2, binding = 13) uniform texture2D uCloudsDepthTexture;
 #endif
 
 /*
@@ -150,7 +150,12 @@ layout(set = 2, binding = 5) uniform samplerCube uAtmosphereMapTexture;
 
 layout(set = 2, binding = 6) uniform sampler2D uBlueNoise;
 
-layout(set = 2, binding = 7, std430) buffer AtmosphereParametersBuffer {
+layout(set = 2, binding = 7, std430) buffer AtmosphereMapMinMaxBuffer {
+  float minValue;
+  float maxValue;
+} uAtmosphereMapMinMax;
+
+layout(set = 2, binding = 8, std430) buffer AtmosphereParametersBuffer {
   AtmosphereParameters atmosphereParameters;
 } uAtmosphereParameters;
 
@@ -377,13 +382,22 @@ void main() {
   bool needToRayMarch = false, 
        needAerialPerspective = false, 
        applyFastCloudIntegration = false, 
-       needToProcess = uAtmosphereParameters.atmosphereParameters.AbsorptionExtinction.w > 0.0,
-       useAtmosphereMap = ((uAtmosphereParameters.atmosphereParameters.flags & FLAGS_USE_ATMOSPHERE_MAP) != 0u) ? true : false;
-
+       useAtmosphereMap = (uAtmosphereParameters.atmosphereParameters.flags & FLAGS_USE_ATMOSPHERE_MAP) != 0u,
+       needToProcess = (uAtmosphereParameters.atmosphereParameters.AbsorptionExtinction.w > 0.0) &&
+                       // When atmosphere map is used, but the min and max are near zero, then the atmosphere is not visible, so we can skip the processing
+                       !(useAtmosphereMap && 
+                         ((abs(0.0 - uAtmosphereMapMinMax.minValue) < 1e-4) && (abs(0.0 - uAtmosphereMapMinMax.maxValue) < 1e-4))),
+       // Fast sky and fast aerial perspective can only be used when the atmosphere map is not used or when the min and max values are near 1.0,
+       // because the fast sky and fast aerial perspective are not compatible with the atmosphere map, since they use systematically some
+       // aspects of the atmosphere, which are not compatible with the atmosphere map.
+       canUseFastStuff = useAtmosphereMap 
+                            ? ((abs(1.0 - uAtmosphereMapMinMax.minValue) < 1e-4) && (abs(1.0 - uAtmosphereMapMinMax.maxValue) < 1e-4))
+                            : true;
+  
   float targetDepth = uintBitsToFloat(0x7F800000u); // +inf
 
   float atmosphereCullingFactor;
-  if(((((pushConstants.flags & FLAGS_USE_FAST_AERIAL_PERSPECTIVE) != 0u) && !useAtmosphereMap) || 
+  if(((((pushConstants.flags & FLAGS_USE_FAST_AERIAL_PERSPECTIVE) != 0u) && canUseFastStuff) || 
       ((pushConstants.flags & FLAGS_SHADOWS) == 0u)) && 
       (uAtmosphereParameters.atmosphereParameters.CullingParameters.innerOuterFadeDistancesCountFacesMode.w != 0u)){ 
     if(depthIsZFar){
@@ -399,7 +413,7 @@ void main() {
   if(/*rayHitsAtmosphere &&*/ depthIsZFar){
 
     // When fast sky is used, we can use a precomputed sky view LUT to get the inscattering and transmittance values 
-    if(((pushConstants.flags & FLAGS_USE_FAST_SKY) != 0u) && needToProcess && !useAtmosphereMap){
+    if(((pushConstants.flags & FLAGS_USE_FAST_SKY) != 0u) && needToProcess && canUseFastStuff){
       
       vec2 localUV;
       vec3 UpVector = normalize(worldPos);
@@ -460,7 +474,7 @@ void main() {
   // they are integrated in the ray marching later on
   if(cloudsValid && 
      (!needToRayMarch) && // When ray marching, clouds are integrated inbetween the atmosphere slices
-     (!useAtmosphereMap) && // When atmosphere map is used, clouds are integrated inbetween the atmosphere slices
+     canUseFastStuff && // Wenn fast sky or fast aerial perspective can be used
      ((((pushConstants.flags & FLAGS_USE_FAST_SKY) != 0u) && !needAerialPerspective) /*||
       (((pushConstants.flags & FLAGS_USE_FAST_AERIAL_PERSPECTIVE) != 0u) && needAerialPerspective)*/)){
     addScatteringSample(cloudsInscattering.xyz, cloudsTransmittance.xyz);      
@@ -474,7 +488,7 @@ void main() {
 
     // When fast aerial perspective is used and no clouds are present at this fragment pixel, we can use a precomputed camera volume to get the
     // inscattering and transmittance values
-    if(((pushConstants.flags & FLAGS_USE_FAST_AERIAL_PERSPECTIVE) != 0u) && !useAtmosphereMap){
+    if(((pushConstants.flags & FLAGS_USE_FAST_AERIAL_PERSPECTIVE) != 0u) && canUseFastStuff){
 
       // Fast aerial perspective approximation using a 3D texture
 

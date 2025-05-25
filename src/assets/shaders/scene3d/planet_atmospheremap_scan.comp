@@ -14,19 +14,18 @@ layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
 layout(set = 0, binding = 0) uniform texture2D uImageAtmosphereMap;
 
 layout(set = 0, binding = 1, std430) buffer Data {
-  uint minValue;
+  // Casted float values to uint, so that it can be used for atomic min/max operations
+  uint minValue; 
   uint maxValue;
 } data; 
 
 /* clang-format on */
 
-#include "floatint.glsl"
-
 void main(){  
   ivec2 texel = ivec2(gl_GlobalInvocationID.xy);
   ivec2 texSize = ivec2(textureSize(uImageAtmosphereMap, 0).xy);
   if(all(greaterThanEqual(texel, ivec2(0))) && all(lessThan(texel, texSize))){
-    uint value = mapFloat(texelFetch(uImageAtmosphereMap, texel, 0).x);
+    uint value = floatBitsToUint(clamp(texelFetch(uImageAtmosphereMap, texel, 0).x, 0.0, 1.0)); // Convert to uint, but only positive values, so that it can be used for atomic min/max operations
     atomicMin(data.minValue, value);
     atomicMax(data.maxValue, value);
   }
