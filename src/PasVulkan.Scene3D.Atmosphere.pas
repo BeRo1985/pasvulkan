@@ -173,6 +173,7 @@ type TpvScene3DAtmosphere=class;
        fWeatherMapTextureDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fDirectionalMapTextureInitializationDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fDirectionalMapTextureTransferDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
+       fDirectionalMapTextureScanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fTransmittanceLUTComputeShaderModule:TpvVulkanShaderModule;
        fTransmittanceLUTComputeShaderStage:TpvVulkanPipelineShaderStage;
        fTransmittanceLUTComputePipelineLayout:TpvVulkanPipelineLayout;
@@ -214,6 +215,10 @@ type TpvScene3DAtmosphere=class;
        fDirectionalMapTextureTransferComputeShaderStage:TpvVulkanPipelineShaderStage;
        fDirectionalMapTextureTransferComputePipelineLayout:TpvVulkanPipelineLayout;
        fDirectionalMapTextureTransferComputePipeline:TpvVulkanComputePipeline;
+       fDirectionalMapTextureScanComputeShaderModule:TpvVulkanShaderModule;
+       fDirectionalMapTextureScanComputeShaderStage:TpvVulkanPipelineShaderStage;
+       fDirectionalMapTextureScanComputePipelineLayout:TpvVulkanPipelineLayout;
+       fDirectionalMapTextureScanComputePipeline:TpvVulkanComputePipeline;       
       public
        constructor Create(const aScene3D:TObject);
        destructor Destroy; override;
@@ -235,6 +240,7 @@ type TpvScene3DAtmosphere=class;
        property WeatherMapTextureDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fWeatherMapTextureDescriptorSetLayout;
        property DirectionalMapTextureInitializationDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fDirectionalMapTextureInitializationDescriptorSetLayout;
        property DirectionalMapTextureTransferDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fDirectionalMapTextureTransferDescriptorSetLayout;
+       property DirectionalMapTextureScanDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fDirectionalMapTextureScanDescriptorSetLayout;
        property CloudRaymarchingPipelineLayout:TpvVulkanPipelineLayout read fCloudRaymarchingPipelineLayout;
        property RaymarchingPipelineLayout:TpvVulkanPipelineLayout read fRaymarchingPipelineLayout;
      end;
@@ -4827,6 +4833,7 @@ begin
  fWeatherMapTextureDescriptorSetLayout:=nil;
  fDirectionalMapTextureInitializationDescriptorSetLayout:=nil;
  fDirectionalMapTextureTransferDescriptorSetLayout:=nil;
+ fDirectionalMapTextureScanDescriptorSetLayout:=nil;
 end;
 
 destructor TpvScene3DAtmosphereGlobals.Destroy;
@@ -5392,6 +5399,32 @@ begin
  end;
 
  begin
+   
+  // Directional map texture scan descriptor set layout
+
+  fDirectionalMapTextureScanDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(TpvScene3D(fScene3D).VulkanDevice);
+
+  // Directional map texture
+  fDirectionalMapTextureScanDescriptorSetLayout.AddBinding(0,
+                                                           VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
+                                                           1,
+                                                           TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                                           []);
+
+  // Min/max buffer
+  fDirectionalMapTextureScanDescriptorSetLayout.AddBinding(1,
+                                                           VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                                                           1,
+                                                           TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                                           []);      
+
+  fDirectionalMapTextureScanDescriptorSetLayout.Initialize;
+
+  TpvScene3D(fScene3D).VulkanDevice.DebugUtils.SetObjectName(fDirectionalMapTextureScanDescriptorSetLayout.Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT,'TpvScene3DAtmosphereGlobals.fDirectionalMapTextureScanDescriptorSetLayout');  
+  
+ end;
+
+ begin
 
   // Transmittance LUT compute pipeline
 
@@ -5842,6 +5875,36 @@ begin
 
  end;
 
+ begin
+   
+  // Directional map texture scan compute pipeline
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('atmosphere_map_scan_comp.spv');
+  try
+   fDirectionalMapTextureScanComputeShaderModule:=TpvVulkanShaderModule.Create(TpvScene3D(fScene3D).VulkanDevice,Stream);
+  finally
+   Stream.Free;
+  end;
+  TpvScene3D(fScene3D).VulkanDevice.DebugUtils.SetObjectName(fDirectionalMapTextureScanComputeShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DAtmosphereGlobals.fDirectionalMapTextureScanShaderModule');
+
+  fDirectionalMapTextureScanComputeShaderStage:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_COMPUTE_BIT,fDirectionalMapTextureScanComputeShaderModule,'main');
+
+  fDirectionalMapTextureScanComputePipelineLayout:=TpvVulkanPipelineLayout.Create(TpvScene3D(fScene3D).VulkanDevice);
+//fDirectionalMapTextureScanComputePipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),0,SizeOf(TDirectionalMapTextureScanPushConstants));
+  fDirectionalMapTextureScanComputePipelineLayout.AddDescriptorSetLayout(fDirectionalMapTextureScanDescriptorSetLayout);
+  fDirectionalMapTextureScanComputePipelineLayout.Initialize;
+  TpvScene3D(fScene3D).VulkanDevice.DebugUtils.SetObjectName(fDirectionalMapTextureScanComputePipelineLayout.Handle,VK_OBJECT_TYPE_PIPELINE_LAYOUT,'TpvScene3DAtmosphereGlobals.fDirectionalMapTextureScanPipelineLayout');
+
+  fDirectionalMapTextureScanComputePipeline:=TpvVulkanComputePipeline.Create(TpvScene3D(fScene3D).VulkanDevice,
+                                                                             TpvScene3D(fScene3D).VulkanPipelineCache,
+                                                                             0,
+                                                                             fDirectionalMapTextureScanComputeShaderStage,
+                                                                             fDirectionalMapTextureScanComputePipelineLayout,
+                                                                             nil,
+                                                                             0);
+  TpvScene3D(fScene3D).VulkanDevice.DebugUtils.SetObjectName(fDirectionalMapTextureScanComputePipeline.Handle,VK_OBJECT_TYPE_PIPELINE,'TpvScene3DAtmosphereGlobals.fDirectionalMapTextureScanPipeline');
+
+ end;
+
 end;
 
 procedure TpvScene3DAtmosphereGlobals.DeallocateResources;
@@ -5900,6 +5963,12 @@ begin
  FreeAndNil(fDirectionalMapTextureTransferComputeShaderStage);
  FreeAndNil(fDirectionalMapTextureTransferComputeShaderModule);
 
+ FreeAndNil(fDirectionalMapTextureScanComputePipeline);
+ FreeAndNil(fDirectionalMapTextureScanComputePipelineLayout);
+ FreeAndNil(fDirectionalMapTextureScanComputeShaderStage);
+ FreeAndNil(fDirectionalMapTextureScanComputeShaderModule);
+
+ FreeAndNil(fDirectionalMapTextureScanDescriptorSetLayout);
  FreeAndNil(fDirectionalMapTextureTransferDescriptorSetLayout);
  FreeAndNil(fDirectionalMapTextureInitializationDescriptorSetLayout);
  FreeAndNil(fWeatherMapTextureDescriptorSetLayout);
