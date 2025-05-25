@@ -777,6 +777,8 @@ type TpvScene3DAtmosphere=class;
               fTextureInitializationDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
               fTextureTransferDescriptorPool:TpvVulkanDescriptorPool;
               fTextureTransferDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
+              fTextureScanDescriptorPool:TpvVulkanDescriptorPool;
+              fTextureScanDescriptorSet:TpvVulkanDescriptorSet;
               fTextureGeneration:TpvUInt64;
               fTextureLastGeneration:TpvUInt64;
               fTextureSourceImage:TpvScene3DRendererImage2D;
@@ -3842,11 +3844,14 @@ begin
 
  fTextureInitializationDescriptorPool:=nil;
  fTextureTransferDescriptorPool:=nil;
+ fTextureScanDescriptorPool:=nil;
 
  for Index:=0 to MaxInFlightFrames-1 do begin
   fTextureInitializationDescriptorSets[Index]:=nil;
   fTextureTransferDescriptorSets[Index]:=nil;
  end;
+
+ fTextureScanDescriptorSet:=nil;
 
  fTextureSourceImage:=nil;
 
@@ -3974,6 +3979,44 @@ begin
 
  end;
 
+ if assigned(fTextureSourceImage) then begin
+   
+  fTextureScanDescriptorPool:=TpvVulkanDescriptorPool.Create(TpvScene3D(fScene3D).VulkanDevice,
+                                                             TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
+                                                             2);          
+  fTextureScanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,1);
+  fTextureScanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,1);
+  fTextureScanDescriptorPool.Initialize;
+  TpvScene3D(fScene3D).VulkanDevice.DebugUtils.SetObjectName(fTextureScanDescriptorPool.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'TpvScene3DAtmosphere.TDirectionalMap["'+fName+'"].fTextureScanDescriptorPool');
+
+  fTextureScanDescriptorSet:=TpvVulkanDescriptorSet.Create(fTextureScanDescriptorPool,
+                                                           TpvScene3DAtmosphereGlobals(TpvScene3D(fScene3D).AtmosphereGlobals).fDirectionalMapTextureScanDescriptorSetLayout);
+  
+  fTextureScanDescriptorSet.WriteToDescriptorSet(0,
+                                                 0,
+                                                 1,
+                                                 TVkDescriptorType(VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE),
+                                                 [TVkDescriptorImageInfo.Create(TpvScene3D(fScene3D).GeneralComputeSampler.Handle,
+                                                                                fTextureSourceImage.VulkanImageView.Handle,
+                                                                                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
+                                                 [],
+                                                 [],
+                                                 false);
+  fTextureScanDescriptorSet.WriteToDescriptorSet(1,
+                                                 0,
+                                                 1,
+                                                 TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                 [],
+                                                 [TVkDescriptorBufferInfo.Create(fAtmosphere.fAtmosphereMapMinMaxBuffer.Handle,
+                                                                                    0,
+                                                                                    fAtmosphere.fAtmosphereMapMinMaxBuffer.Size)],
+                                                 [],         
+                                                 false);
+  fTextureScanDescriptorSet.Flush;
+  TpvScene3D(fScene3D).VulkanDevice.DebugUtils.SetObjectName(fTextureScanDescriptorSet.Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET,'TpvScene3DAtmosphere.TDirectionalMap["'+fName+'"].fTextureScanDescriptorSet');
+
+ end;
+
 end;
 
 procedure TpvScene3DAtmosphere.TDirectionalMap.ReleaseResources;
@@ -3984,6 +4027,8 @@ begin
   FreeAndNil(fTextureTransferDescriptorSets[Index]);
   FreeAndNil(fTextureInitializationDescriptorSets[Index]);
  end;
+
+ FreeAndNil(fTextureScanDescriptorSet);
 
  FreeAndNil(fTextureTransferDescriptorPool);
  FreeAndNil(fTextureInitializationDescriptorPool);
@@ -5421,7 +5466,7 @@ begin
   fDirectionalMapTextureScanDescriptorSetLayout.Initialize;
 
   TpvScene3D(fScene3D).VulkanDevice.DebugUtils.SetObjectName(fDirectionalMapTextureScanDescriptorSetLayout.Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT,'TpvScene3DAtmosphereGlobals.fDirectionalMapTextureScanDescriptorSetLayout');  
-  
+
  end;
 
  begin
