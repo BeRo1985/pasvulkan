@@ -1889,6 +1889,8 @@ type TpvScene3DPlanets=class;
        fPhysicsHeightMapResolution:TpvInt32;
        fBlendMapResolution:TpvInt32;
        fGrassMapResolution:TpvInt32;
+       fRainAtmosphereMapResolution:TpvInt32;
+       fRainAtmosphereMapShift:TpvInt32;
        fRainMapResolution:TpvInt32;
        fAtmosphereMapResolution:TpvInt32;
        fWaterMapResolution:TpvInt32;
@@ -19151,9 +19153,13 @@ begin
 
  fGrassMapResolution:=fHeightMapResolution;
 
- fRainMapResolution:=RoundUpToPowerOfTwo(Max(256,(fHeightMapResolution+3) shr 2));
+ fRainAtmosphereMapShift:=2;
 
- fAtmosphereMapResolution:=RoundUpToPowerOfTwo(Max(256,(fHeightMapResolution+3) shr 2));
+ fRainAtmosphereMapResolution:=RoundUpToPowerOfTwo(Max(1,(fHeightMapResolution+((1 shl fRainAtmosphereMapShift)-1)) shr fRainAtmosphereMapShift));
+
+ fRainMapResolution:=fRainMapResolution; // needs to be matched with fRainAtmosphereMapResolution for now
+
+ fAtmosphereMapResolution:=fRainMapResolution; // needs to be matched with fRainAtmosphereMapResolution for now
 
  fWaterMapResolution:=fHeightMapResolution; // needs to be matched with fHeightMapResolution for now
 

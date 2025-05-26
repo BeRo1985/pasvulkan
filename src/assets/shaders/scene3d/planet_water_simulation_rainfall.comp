@@ -1,0 +1,76 @@
+#version 450 core
+
+#pragma shader_stage(compute)
+
+// Water simulation based on "Fast Hydraulic Erosion Simulation and Visualization on GPU" by Xing Mei, Philippe Decaudin, Bao-Gang Hu
+// Link: https://hal.inria.fr/inria-00402079/document
+
+// But yet without the erosion part of the terrain part, just the water flow simulation for now.
+
+#extension GL_ARB_separate_shader_objects : enable
+#extension GL_ARB_shading_language_420pack : enable
+#extension GL_EXT_control_flow_attributes : enable
+#extension GL_EXT_samplerless_texture_functions : enable
+#extension GL_GOOGLE_include_directive : enable
+
+#if 0
+// 16-bit floats
+#extension GL_EXT_shader_explicit_arithmetic_types_float16 : enable
+#extension GL_EXT_shader_explicit_arithmetic_types_int16 : enable
+#extension GL_EXT_shader_16bit_storage : enable
+#endif
+
+/* clang-format off */
+
+#define WORKGROUP_SIZE 16
+
+layout(local_size_x = WORKGROUP_SIZE, local_size_y = WORKGROUP_SIZE, local_size_z = 1) in;
+
+layout(push_constant) uniform PushConstants {
+  uint waterHeightMapResolution; // The resolution of the water height map
+  uint rainAtmosphereMapResolution; // The resolution of the rain atmosphere map
+  uint rainAtmosphereMapShift; // The shift for the rain atmosphere map relative to the water height map
+  uint frameIndex; // The current frame index, used for random number generation
+  float rainIntensity; // The rain intensity
+  float deltaTime; // The time step in seconds
+} pushConstants;
+
+#if 0
+#define _float float16_t
+#define _vec4 f16vec4
+#else
+#define _float float
+#define _vec4 vec4
+#endif
+
+layout(set = 0, binding = 0, std430) buffer WaterHeightMap {
+  _float values[];
+} waterHeightMap;
+
+layout(set = 0, binding = 1, std430) buffer RainAtmosphereMap {
+  _float values[];
+} rainAtmosphereMap;
+
+#include "pcg.glsl"
+
+#include "octahedral.glsl"
+
+void main(){
+
+  const uvec2 position = uvec2(gl_GlobalInvocationID.xy);
+
+  if(all(lessThan(position, uvec2(pushConstants.waterHeightMapResolution))) && (pushConstants.rainIntensity > 0.0)){
+
+    const uint heightMapIndex = (position.y * pushConstants.waterHeightMapResolution) + position.x;
+
+    const uint rainAtmosphereMapIndex = ((position.y << pushConstants.rainAtmosphereMapShift) * pushConstants.rainAtmosphereMapResolution) + (position.x << pushConstants.rainAtmosphereMapShift);
+
+    float rainMapValue = rainAtmosphereMap.values[rainAtmosphereMapIndex] * pushConstants.rainIntensity * pushConstants.deltaTime; 
+    if(rainMapValue > 0.0){
+      vec3 positionOctahedral = octPlanetUnsignedDecode((vec2(position) + vec2(0.5)) / vec2(pushConstants.waterHeightMapResolution));
+      waterHeightMap.values[heightMapIndex] += rainMapValue * pcgNoise(vec4(vec3(positionOctahedral) * 64.0, float(pushConstants.frameIndex) * 0.0001));    
+    }
+
+  }
+
+}

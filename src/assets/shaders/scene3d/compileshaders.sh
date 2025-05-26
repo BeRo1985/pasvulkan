@@ -447,6 +447,8 @@ compileshaderarguments=(
 
   "-V planet_atmospheremap_modification.comp -o ${tempPath}/planet_atmospheremap_modification_comp.spv"
 
+  "-V planet_rainatmospheremap.comp -o ${tempPath}/planet_rainatmospheremap_comp.spv"
+
   "-V planet_watermap_initialization.comp -o ${tempPath}/planet_watermap_initialization_comp.spv"
 
   "-V planet_watermap_modification.comp -o ${tempPath}/planet_watermap_modification_comp.spv"
@@ -489,7 +491,7 @@ compileshaderarguments=(
   "-V planet_water_simulation_outflow.comp -o ${tempPath}/planet_water_simulation_outflow_comp.spv"
   "-V planet_water_simulation_outflow.comp -DUSE_HEIGHTMAP_BUFFER -o ${tempPath}/planet_water_simulation_outflow_buffer_comp.spv"
   "-V planet_water_simulation_waterheight.comp -o ${tempPath}/planet_water_simulation_waterheight_comp.spv"
-  "-V planet_water_simulation_evaporation_rainfall.comp -o ${tempPath}/planet_water_simulation_evaporation_rainfall_comp.spv"
+  "-V planet_water_simulation_rainfall.comp -o ${tempPath}/planet_water_simulation_rainfall_comp.spv"
 
   "-V planet_water_interpolation.comp -DOUTFLOW -o ${tempPath}/planet_water_interpolation_comp.spv"
 
