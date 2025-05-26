@@ -19188,9 +19188,9 @@ begin
 
  fRainAtmosphereMapResolution:=RoundUpToPowerOfTwo(Max(1,(fHeightMapResolution+((1 shl fRainAtmosphereMapShift)-1)) shr fRainAtmosphereMapShift));
 
- fRainMapResolution:=fRainMapResolution; // needs to be matched with fRainAtmosphereMapResolution for now
+ fRainMapResolution:=fRainAtmosphereMapResolution; // needs to be matched with fRainAtmosphereMapResolution for now
 
- fAtmosphereMapResolution:=fRainMapResolution; // needs to be matched with fRainAtmosphereMapResolution for now
+ fAtmosphereMapResolution:=fRainAtmosphereMapResolution; // needs to be matched with fRainAtmosphereMapResolution for now
 
  fWaterMapResolution:=fHeightMapResolution; // needs to be matched with fHeightMapResolution for now
 
