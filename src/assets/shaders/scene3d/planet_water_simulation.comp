@@ -35,7 +35,8 @@ layout(push_constant) uniform PushConstants {
   float pipeLengthSquared;
   float crossSectionalPipeArea;
   float gravity;
-  float evaporation;    
+  float evaporation; 
+  float evaporationHeightCoefficient;
   float compensationFactor;
   float bottomRadius;
   float topRadius;
@@ -213,17 +214,21 @@ void main(){
       const float totalInFlow = dot(vec4(waterFlowMap.values[heightMapIndex]), vec4(1.0));
        
       // Calculate the total outflow
-      const float totalOutFlow = waterFlowMap.values[getFlowMapIndex(position, ivec2( 1,  0))].z +
-                                 waterFlowMap.values[getFlowMapIndex(position, ivec2( 0,  1))].w + 
-                                 waterFlowMap.values[getFlowMapIndex(position, ivec2(-1,  0))].x + 
-                                 waterFlowMap.values[getFlowMapIndex(position, ivec2( 0, -1))].y;
+      const float totalOutFlow = waterFlowMap.values[getFlowMapIndex(ivec2(position) + ivec2( 1,  0))].z +
+                                 waterFlowMap.values[getFlowMapIndex(ivec2(position) + ivec2( 0,  1))].w + 
+                                 waterFlowMap.values[getFlowMapIndex(ivec2(position) + ivec2(-1,  0))].x + 
+                                 waterFlowMap.values[getFlowMapIndex(ivec2(position) + ivec2( 0, -1))].y;
 
       // Read the water height from the input water height map
       const float inWaterHeight = inWaterHeightMap.values[heightMapIndex];
 
       // Calculate the new water height
-      waterOutHeight = max(0.0, (inWaterHeight + (((totalOutFlow - totalInFlow) * pushConstants.deltaTime) / pushConstants.pipeLengthSquared)) * (1.0 - clamp(pushConstants.evaporation * pushConstants.deltaTime, 0.0, 1.0)));
-
+      waterOutHeight = max(
+        0.0, 
+        (inWaterHeight + (((totalOutFlow - totalInFlow) * pushConstants.deltaTime) / pushConstants.pipeLengthSquared)) * 
+        (1.0 - clamp(pushConstants.evaporation * exp(-(inWaterHeight * pushConstants.evaporationHeightCoefficient)) * pushConstants.deltaTime, 0.0, 1.0))
+      );
+      
       // Calculate the absolute height differences
       sharedHeightDifferences[gl_LocalInvocationIndex] = abs(inWaterHeight - waterOutHeight);
 
