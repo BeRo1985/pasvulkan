@@ -335,6 +335,7 @@ type TpvScene3DPlanets=class;
               fGrassMapImage:TpvScene3DRendererImage2D; // R32_FLOAT
               fRainMapImage:TpvScene3DRendererImage2D; // R8_UNORM
               fAtmosphereMapImage:TpvScene3DRendererImage2D; // R8_UNORM
+              fRainAtmosphereMapBuffer:TpvVulkanBuffer;
               fTransferBuffer:TpvVulkanBuffer;
               fWaterHeightMapImage:TpvScene3DRendererImage2D; // R32_SFLOAT
               fWaterHeightMapBuffers:array[0..1] of TpvVulkanBuffer; // Double-buffered
@@ -473,6 +474,7 @@ type TpvScene3DPlanets=class;
               property GrassMapImage:TpvScene3DRendererImage2D read fGrassMapImage;
               property RainMapImage:TpvScene3DRendererImage2D read fRainMapImage;
               property AtmosphereMapImage:TpvScene3DRendererImage2D read fAtmosphereMapImage;
+              property RainAtmosphereMapBuffer:TpvVulkanBuffer read fRainAtmosphereMapBuffer;
               property WaterHeightMapImage:TpvScene3DRendererImage2D read fWaterHeightMapImage;
               property TileLODMapBuffer:TpvVulkanBuffer read fTileLODMapBuffer;
               property TileDirtyMapBuffer:TpvVulkanBuffer read fTileDirtyMapBuffer;
@@ -2697,6 +2699,8 @@ begin
 
  fAtmosphereMapImage:=nil;
 
+ fRainAtmosphereMapBuffer:=nil;
+
  fTransferBuffer:=nil;
 
  fWaterHeightMapImage:=nil;
@@ -2920,6 +2924,26 @@ begin
    fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fAtmosphereMapImage.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fAtmosphereMapImage.Image');
    fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fAtmosphereMapImage.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fAtmosphereMapImage.ImageView');
 
+   fRainAtmosphereMapBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
+                                                    fPlanet.fRainAtmosphereMapResolution*fPlanet.fRainAtmosphereMapResolution*SizeOf(TpvFloat),
+                                                    TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
+                                                    fPlanet.fGlobalBufferSharingMode,
+                                                    fPlanet.fGlobalBufferQueueFamilyIndices,
+                                                    0,
+                                                    TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                    0,
+                                                    0,
+                                                    0,
+                                                    0,
+                                                    0,
+                                                    0,
+                                                    [TpvVulkanBufferFlag.PreferDedicatedAllocation],
+                                                    0,
+                                                    pvAllocationGroupIDScene3DPlanetStatic,
+                                                    'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fRainAtmosphereMapBuffer'
+                                                   );
+           fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fRainAtmosphereMapBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fRainAtmosphereMapBuffer');
+
   end else if (fInFlightFrameIndex>=0) and TpvScene3D(fPlanet.fScene3D).PlanetSingleBuffers then begin
 
    fHeightMapImage:=fPlanet.fData.fHeightMapImage;
@@ -2929,6 +2953,7 @@ begin
    fGrassMapImage:=fPlanet.fData.fGrassMapImage;
    fRainMapImage:=fPlanet.fData.fRainMapImage;
    fAtmosphereMapImage:=fPlanet.fData.fAtmosphereMapImage;
+   fRainAtmosphereMapBuffer:=fPlanet.fData.fRainAtmosphereMapBuffer;
 
   end;
 
@@ -3612,6 +3637,8 @@ begin
 
   FreeAndNil(fAtmosphereMapImage);
 
+  FreeAndNil(fRainAtmosphereMapBuffer);
+
  end else begin
 
   fHeightMapImage:=nil;
@@ -3627,6 +3654,8 @@ begin
   fRainMapImage:=nil;
 
   fAtmosphereMapImage:=nil;
+
+  fRainAtmosphereMapBuffer:=nil;
 
  end;
 
@@ -3664,6 +3693,8 @@ begin
  fRainMapImage:=nil;
 
  fAtmosphereMapImage:=nil;
+
+ fRainAtmosphereMapBuffer:=nil;
 
  fWaterMiniMapData:=nil;
 

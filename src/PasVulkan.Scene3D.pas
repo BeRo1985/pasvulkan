@@ -27831,7 +27831,7 @@ begin
 
    DoCulling:=fGroup.fCulling and not fUseRenderInstances;
 
-   DrawChoreographyBatchItemMaterialAlphaModeBuckets:=@TpvScene3DRendererInstance(aRendererInstance).DrawChoreographyBatchItemFrameBuckets[aInFlightFrameIndex,aRenderPass];
+   DrawChoreographyBatchItemMaterialAlphaModeBuckets:=@TpvScene3DRendererInstance(aRendererInstance).DrawChoreographyBatchItemFrameBuckets[ aInFlightFrameIndex,aRenderPass];
 
    if assigned(fAABBTree) then begin
 
