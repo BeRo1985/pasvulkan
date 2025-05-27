@@ -10817,7 +10817,7 @@ begin
   fRainfallPushConstants.WaterHeightMapResolution:=fPlanet.fWaterMapResolution;
   fRainfallPushConstants.RainAtmosphereMapResolution:=fPlanet.fRainAtmosphereMapResolution;
   fRainfallPushConstants.RainAtmosphereMapShift:=fPlanet.fRainAtmosphereMapShift;
-  fRainfallPushConstants.RainIntensity:=1.0;
+  fRainfallPushConstants.RainIntensity:=0.001;
   fRainfallPushConstants.Scale:=128.0;
   fRainfallPushConstants.TimeScale:=1e-4;  
 
