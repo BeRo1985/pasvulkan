@@ -10800,8 +10800,8 @@ begin
   fPushConstants.PipeLengthSquared:=1.0;
   fPushConstants.CrossSectionalPipeArea:=1.0;
   fPushConstants.Gravity:=1.0;
-  fPushConstants.Evaporation:=0.0;
-  fPushConstants.EvaporationHeightCoefficient:=0.0;
+  fPushConstants.Evaporation:=0.005;
+  fPushConstants.EvaporationHeightCoefficient:=10.0;
   fPushConstants.CompensationFactor:=1.0;
 
   fPushConstants.BottomRadius:=fPlanet.fBottomRadius;
