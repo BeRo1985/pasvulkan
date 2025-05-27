@@ -396,6 +396,8 @@ type TpvScene3DPlanets=class;
               fRainMapGeneration:TpvUInt64;
               fAtmosphereMapGeneration:TpvUInt64;
               fRainAtmosphereMapGeneration:TpvUInt64;
+              fRainAtmosphereMapRainMapGeneration:TpvUInt64;
+              fRainAtmosphereMapAtmosphereMapGeneration:TpvUInt64;
 //            fVisualMeshGeneration:TpvUInt64;
               fOwnershipHolderState:TpvScene3DPlanet.TData.TOwnershipHolderState;
               fWaterOwnershipHolderState:TpvScene3DPlanet.TData.TOwnershipHolderState;
@@ -2710,6 +2712,9 @@ begin
   fAtmosphereMapGeneration:=High(TpvUInt64);
   fRainAtmosphereMapGeneration:=High(TpvUInt64);
  end;
+
+ fRainAtmosphereMapRainMapGeneration:=High(TpvUInt64) shr 1;
+ fRainAtmosphereMapAtmosphereMapGeneration:=High(TpvUInt64) shr 1;
 
  fHeightMapProcessedGeneration:=High(TpvUInt64);
 
@@ -21451,7 +21456,13 @@ begin
 
  end;
 
- if UpdatedRain or UpdatedAtmosphere then begin
+ if UpdatedAtmosphere or
+    UpdatedRain or
+    (fData.fRainAtmosphereMapRainMapGeneration<>fData.fRainMapGeneration) or
+    (fData.fRainAtmosphereMapAtmosphereMapGeneration<>fData.fAtmosphereMapGeneration) then begin
+
+  fData.fRainAtmosphereMapRainMapGeneration:=fData.fRainMapGeneration;
+  fData.fRainAtmosphereMapAtmosphereMapGeneration:=fData.fAtmosphereMapGeneration;
 
   if assigned(fVulkanDevice) then begin
 
