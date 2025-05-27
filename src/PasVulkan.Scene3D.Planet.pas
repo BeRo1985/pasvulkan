@@ -1004,6 +1004,7 @@ type TpvScene3DPlanets=class;
               fModificationPipelineLayout:TpvVulkanPipelineLayout;
               fDownsamplePipelineLayout:TpvVulkanPipelineLayout;
               fPushConstants:TPushConstants;
+              fRainfallPushConstants:TRainfallPushConstants;
               fInterpolationPushConstants:TInterpolationPushConstants;
               fModificationPushConstants:TModificationPushConstants;
               fDownsamplePushConstants:TDownsamplePushConstants;
@@ -10812,6 +10813,13 @@ begin
   fPushConstants.WaterHeightMapBorder:=fPlanet.fWaterMapBorder;
 
   fPushConstants.FrameIndex:=0;
+
+  fRainfallPushConstants.WaterHeightMapResolution:=fPlanet.fWaterMapResolution;
+  fRainfallPushConstants.RainAtmosphereMapResolution:=fPlanet.fRainAtmosphereMapResolution;
+  fRainfallPushConstants.RainAtmosphereMapShift:=fPlanet.fRainAtmosphereMapShift;
+  fRainfallPushConstants.RainIntensity:=1.0;
+  fRainfallPushConstants.Scale:=128.0;
+  fRainfallPushConstants.TimeScale:=1e-4;  
 
   fModificationPushConstants.PositionRadius:=TpvVector4.Create(0.0,0.0,0.0,0.0);
   fModificationPushConstants.InnerRadius:=0.0;
