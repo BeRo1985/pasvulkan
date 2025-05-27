@@ -11210,7 +11210,7 @@ begin
                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
                                     0,
                                     0,nil,
-                                    4,@BufferMemoryBarriers,
+                                    4,@BufferMemoryBarriers[0],
                                     0,nil);
 
   /////////////////////////////////////////////////////////////////////////////////////////
@@ -11249,7 +11249,7 @@ begin
   // Buffer memory barriers                                                              //
   /////////////////////////////////////////////////////////////////////////////////////////
 
-  BufferMemoryBarriers[2]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+  BufferMemoryBarriers[0]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                          TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                          VK_QUEUE_FAMILY_IGNORED,
                                                          VK_QUEUE_FAMILY_IGNORED,
@@ -11257,7 +11257,7 @@ begin
                                                          0,
                                                          fPlanet.fData.fWaterFlowMapBuffer.Size);
 
-  BufferMemoryBarriers[3]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+  BufferMemoryBarriers[1]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                          TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT) or TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT) or TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
                                                          VK_QUEUE_FAMILY_IGNORED,
                                                          VK_QUEUE_FAMILY_IGNORED,
@@ -11269,7 +11269,7 @@ begin
                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
                                     0,
                                     0,nil,
-                                    2,@BufferMemoryBarriers[2],
+                                    2,@BufferMemoryBarriers[0],
                                     0,nil);
 
   /////////////////////////////////////////////////////////////////////////////////////////
@@ -11306,7 +11306,51 @@ begin
                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
                                     0,
                                     0,nil,
-                                    0,@BufferMemoryBarriers[2],
+                                    2,@BufferMemoryBarriers[0],
+                                    0,nil);
+
+  /////////////////////////////////////////////////////////////////////////////////////////
+  // Rainfall                                                                            //
+  /////////////////////////////////////////////////////////////////////////////////////////
+
+  aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,fRainfallPipeline.Handle);
+
+  aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE,
+                                       fRainfallPipelineLayout.Handle,
+                                       0,
+                                       1,
+                                       @fRainfallDescriptorSets[DestinationBufferIndex].Handle,
+                                       0,
+                                       nil);
+
+  aCommandBuffer.CmdPushConstants(fRainfallPipelineLayout.Handle,
+                                  TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                  0,
+                                  SizeOf(TRainfallPushConstants),
+                                  @fRainfallPushConstants);
+
+  aCommandBuffer.CmdDispatch((fPlanet.fWaterMapResolution+15) shr 4,
+                             (fPlanet.fWaterMapResolution+15) shr 4,
+                             1);   
+
+
+  /////////////////////////////////////////////////////////////////////////////////////////
+  // Buffer memory barriers                                                              //
+  /////////////////////////////////////////////////////////////////////////////////////////
+
+  BufferMemoryBarriers[0]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                         TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                         VK_QUEUE_FAMILY_IGNORED,
+                                                         VK_QUEUE_FAMILY_IGNORED,
+                                                         fPlanet.fData.fWaterHeightMapBuffers[DestinationBufferIndex].Handle,
+                                                         0,
+                                                         fPlanet.fData.fWaterHeightMapBuffers[DestinationBufferIndex].Size);
+
+  aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                    0,
+                                    0,nil,
+                                    1,@BufferMemoryBarriers[0],
                                     0,nil);
 
   /////////////////////////////////////////////////////////////////////////////////////////
