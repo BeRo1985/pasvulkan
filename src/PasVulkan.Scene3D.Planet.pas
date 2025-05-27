@@ -11096,8 +11096,8 @@ begin
   fPushConstants.PipeLengthSquared:=sqr(1.0);
   fPushConstants.CrossSectionalPipeArea:=1.0;
   fPushConstants.Gravity:=9.81;
-  fPushConstants.Evaporation:=0.005;
-  fPushConstants.EvaporationHeightCoefficient:=1.0;
+  fPushConstants.Evaporation:=0.015;
+  fPushConstants.EvaporationHeightCoefficient:=0.0;
   fPushConstants.CompensationFactor:=60.0;//600.0;
   fPushConstants.DeltaTime:=fTimeStep;
 {$else}
