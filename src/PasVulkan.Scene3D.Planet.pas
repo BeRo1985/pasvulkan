@@ -929,6 +929,17 @@ type TpvScene3DPlanets=class;
                     FrameIndex:TpvUInt32;
                    end;
                    PPushConstants=^TPushConstants;
+                   TRainfallPushConstants=packed record
+                    WaterHeightMapResolution:TpvUInt32;
+                    RainAtmosphereMapResolution:TpvUInt32;
+                    RainAtmosphereMapShift:TpvUInt32;
+                    FrameIndex:TpvUInt32;
+                    RainIntensity:TpvFloat;
+                    Scale:TpvFloat;
+                    TimeScale:TpvFloat;
+                    DeltaTime:TpvFloat;
+                   end;
+                   PRainfallPushConstants=^TRainfallPushConstants;
                    TInterpolationPushConstants=packed record
                     BottomRadius:TpvFloat;
                     TopRadius:TpvFloat;
@@ -960,6 +971,9 @@ type TpvScene3DPlanets=class;
               fWaterHeightComputeShaderModule:TpvVulkanShaderModule;
               fWaterHeightComputeShaderStage:TpvVulkanPipelineShaderStage;
               fWaterHeightPipeline:TpvVulkanComputePipeline;
+              fRainfallComputeShaderModule:TpvVulkanShaderModule;
+              fRainfallComputeShaderStage:TpvVulkanPipelineShaderStage;
+              fRainfallPipeline:TpvVulkanComputePipeline;
               fInterpolationComputeShaderModule:TpvVulkanShaderModule;
               fInterpolationComputeShaderStage:TpvVulkanPipelineShaderStage;
               fInterpolationPipeline:TpvVulkanComputePipeline;              
@@ -972,6 +986,9 @@ type TpvScene3DPlanets=class;
               fDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
               fDescriptorPool:TpvVulkanDescriptorPool;
               fWaterDescriptorSets:array[0..1] of TpvVulkanDescriptorSet; // Double-buffered
+              fRainfallDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
+              fRainfallDescriptorPool:TpvVulkanDescriptorPool;
+              fRainfallDescriptorSets:array[0..1] of TpvVulkanDescriptorSet; 
               fInterpolationDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
               fInterpolationDescriptorPool:TpvVulkanDescriptorPool;
               fInterpolationDescriptorSets:array[0..1] of TpvVulkanDescriptorSet;
@@ -982,6 +999,7 @@ type TpvScene3DPlanets=class;
               fDownsampleDescriptorPool:TpvVulkanDescriptorPool;
               fDownsampleDescriptorSets:array[0..1] of TpvVulkanDescriptorSet;
               fPipelineLayout:TpvVulkanPipelineLayout;
+              fRainfallPipelineLayout:TpvVulkanPipelineLayout;
               fInterpolationPipelineLayout:TpvVulkanPipelineLayout;
               fModificationPipelineLayout:TpvVulkanPipelineLayout;
               fDownsamplePipelineLayout:TpvVulkanPipelineLayout;
@@ -10320,6 +10338,15 @@ begin
   fVulkanDevice.DebugUtils.SetObjectName(fWaterHeightComputeShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DPlanet.TWaterSimulation.fPass1ComputeShaderModule');
   fWaterHeightComputeShaderStage:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_COMPUTE_BIT,fWaterHeightComputeShaderModule,'main');
 
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_water_simulation_rainfall_comp.spv');
+  try
+   fRainfallComputeShaderModule:=TpvVulkanShaderModule.Create(fVulkanDevice,Stream);
+  finally
+   FreeAndNil(Stream);
+  end;
+  fVulkanDevice.DebugUtils.SetObjectName(fRainfallComputeShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DPlanet.TWaterSimulation.fRainfallComputeShaderModule');
+  fRainfallComputeShaderStage:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_COMPUTE_BIT,fRainfallComputeShaderModule,'main');
+
   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_water_interpolation_comp.spv');
   try
    fInterpolationComputeShaderModule:=TpvVulkanShaderModule.Create(fVulkanDevice,Stream);
@@ -10390,6 +10417,22 @@ begin
   fDescriptorSetLayout.Initialize;
   fVulkanDevice.DebugUtils.SetObjectName(fDescriptorSetLayout.Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT,'TpvScene3DPlanet.TWaterSimulation.fDescriptorSetLayout');
 
+  fRainfallDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(fVulkanDevice);
+  fRainfallDescriptorSetLayout.AddBinding(0, // WaterHeightMap
+                                          TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                          1,
+                                          TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                          [],
+                                          0);  
+  fRainfallDescriptorSetLayout.AddBinding(1, // RainAtmosphereMap
+                                          TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                          1,
+                                          TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                          [],
+                                          0);
+  fRainfallDescriptorSetLayout.Initialize;
+  fVulkanDevice.DebugUtils.SetObjectName(fRainfallDescriptorSetLayout.Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT,'TpvScene3DPlanet.TWaterSimulation.fRainfallDescriptorSetLayout');
+
   fInterpolationDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(fVulkanDevice);    
   fInterpolationDescriptorSetLayout.AddBinding(0, // InWaterHeightMapA
                                                TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
@@ -10450,6 +10493,13 @@ begin
   fPipelineLayout.Initialize;
 
   fVulkanDevice.DebugUtils.SetObjectName(fPipelineLayout.Handle,VK_OBJECT_TYPE_PIPELINE_LAYOUT,'TpvScene3DPlanet.TWaterSimulation.fPipelineLayout');
+
+  fRainfallPipelineLayout:=TpvVulkanPipelineLayout.Create(fVulkanDevice);
+  fRainfallPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),0,SizeOf(TRainfallPushConstants));
+  fRainfallPipelineLayout.AddDescriptorSetLayout(fRainfallDescriptorSetLayout);
+  fRainfallPipelineLayout.Initialize;
+
+  fVulkanDevice.DebugUtils.SetObjectName(fRainfallPipelineLayout.Handle,VK_OBJECT_TYPE_PIPELINE_LAYOUT,'TpvScene3DPlanet.TWaterSimulation.fRainfallPipelineLayout');
 
   fInterpolationPipelineLayout:=TpvVulkanPipelineLayout.Create(fVulkanDevice);
   fInterpolationPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),0,SizeOf(TInterpolationPushConstants));
@@ -10535,6 +10585,39 @@ begin
                                                     false);
    fWaterDescriptorSets[Index].Flush;
    fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fWaterDescriptorSets[Index].Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET,'TpvScene3DPlanet.TWaterSimulation.fPass2DescriptorSets['+IntToStr(Index)+']');
+
+  end;
+
+  fRainfallDescriptorPool:=TpvVulkanDescriptorPool.Create(fVulkanDevice,
+                                                          TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
+                                                          2); 
+  fRainfallDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),2*2);
+  fRainfallDescriptorPool.Initialize;
+  fVulkanDevice.DebugUtils.SetObjectName(fRainfallDescriptorPool.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'TpvScene3DPlanet.TWaterSimulation.fRainfallDescriptorPool');
+
+  for Index:=0 to 1 do begin
+
+   fRainfallDescriptorSets[Index]:=TpvVulkanDescriptorSet.Create(fRainfallDescriptorPool,fRainfallDescriptorSetLayout);
+
+   fRainfallDescriptorSets[Index].WriteToDescriptorSet(0, // WaterHeightMap
+                                                       0,
+                                                       1,
+                                                       TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                       [],
+                                                       [fPlanet.fData.fWaterHeightMapBuffers[Index].DescriptorBufferInfo],
+                                                       [],
+                                                       false);
+   fRainfallDescriptorSets[Index].WriteToDescriptorSet(1, // RainAtmosphereMap
+                                                       0,
+                                                       1,
+                                                       TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                       [],
+                                                       [fPlanet.fData.fRainAtmosphereMapBuffer.DescriptorBufferInfo],
+                                                       [],
+                                                       false);
+   fRainfallDescriptorSets[Index].Flush;
+
+   fVulkanDevice.DebugUtils.SetObjectName(fRainfallDescriptorSets[Index].Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET,'TpvScene3DPlanet.TWaterSimulation.fRainfallDescriptorSets['+IntToStr(Index)+']');
 
   end;
 
@@ -10677,6 +10760,14 @@ begin
                                                     nil,
                                                     0);
 
+  fRainfallPipeline:=TpvVulkanComputePipeline.Create(fVulkanDevice,
+                                                     pvApplication.VulkanPipelineCache,
+                                                     TVkPipelineCreateFlags(0),
+                                                     fRainfallComputeShaderStage,
+                                                     fRainfallPipelineLayout,
+                                                     nil,
+                                                     0);
+
   fInterpolationPipeline:=TpvVulkanComputePipeline.Create(fVulkanDevice,
                                                           pvApplication.VulkanPipelineCache,
                                                           TVkPipelineCreateFlags(0),
@@ -10759,6 +10850,8 @@ begin
 
  FreeAndNil(fOutFlowPipeline);
 
+ FreeAndNil(fRainfallPipeline);
+
  FreeAndNil(fDownsampleDescriptorSets[1]);
 
  FreeAndNil(fDownsampleDescriptorSets[0]);
@@ -10771,6 +10864,10 @@ begin
 
  FreeAndNil(fInterpolationDescriptorSets[0]);
 
+ FreeAndNil(fRainfallDescriptorSets[1]);
+
+ FreeAndNil(fRainfallDescriptorSets[0]);
+
  FreeAndNil(fWaterDescriptorSets[1]);
 
  FreeAndNil(fWaterDescriptorSets[0]);
@@ -10781,6 +10878,8 @@ begin
 
  FreeAndNil(fInterpolationDescriptorPool);
 
+ FreeAndNil(fRainfallDescriptorPool);
+
  FreeAndNil(fDescriptorPool);
 
  FreeAndNil(fDownsamplePipelineLayout);
@@ -10788,7 +10887,9 @@ begin
  FreeAndNil(fModificationPipelineLayout);
 
  FreeAndNil(fInterpolationPipelineLayout);
- 
+
+ FreeAndNil(fRainfallPipelineLayout);
+
  FreeAndNil(fPipelineLayout);
 
  FreeAndNil(fDownsampleDescriptorSetLayout);
@@ -10796,6 +10897,8 @@ begin
  FreeAndNil(fModificationDescriptorSetLayout);
 
  FreeAndNil(fInterpolationDescriptorSetLayout);
+
+ FreeAndNil(fRainfallDescriptorSetLayout);
 
  FreeAndNil(fDescriptorSetLayout);
 
@@ -10810,6 +10913,10 @@ begin
  FreeAndNil(fInterpolationComputeShaderStage);
 
  FreeAndNil(fInterpolationComputeShaderModule);
+
+ FreeAndNil(fRainfallComputeShaderStage);
+
+ FreeAndNil(fRainfallComputeShaderModule);
  
  FreeAndNil(fWaterHeightComputeShaderStage);
 
