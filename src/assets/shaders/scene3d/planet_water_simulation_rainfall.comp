@@ -65,12 +65,12 @@ void main(){
 
     const uint heightMapIndex = (position.y * pushConstants.waterHeightMapResolution) + position.x;
 
-    const uint rainAtmosphereMapIndex = ((position.y << pushConstants.rainAtmosphereMapShift) * pushConstants.rainAtmosphereMapResolution) + (position.x << pushConstants.rainAtmosphereMapShift);
+    const uint rainAtmosphereMapIndex = ((position.y >> pushConstants.rainAtmosphereMapShift) * pushConstants.rainAtmosphereMapResolution) + (position.x >> pushConstants.rainAtmosphereMapShift);
 
     float rainMapValue = rainAtmosphereMap.values[rainAtmosphereMapIndex] * pushConstants.rainIntensity * pushConstants.deltaTime; 
     if(rainMapValue > 0.0){
       vec3 positionOctahedral = octPlanetUnsignedDecode((vec2(position) + vec2(0.5)) / vec2(pushConstants.waterHeightMapResolution));
-      waterHeightMap.values[heightMapIndex] += rainMapValue * pcgNoise(vec4(vec3(positionOctahedral) * pushConstants.scale, float(pushConstants.frameIndex) * pushConstants.timeScale));
+      waterHeightMap.values[heightMapIndex] += rainMapValue * clamp(pcgNoise(vec4(vec3(positionOctahedral) * pushConstants.scale, float(pushConstants.frameIndex) * pushConstants.timeScale)), 0.0, 1.0);
     }
 
   }
