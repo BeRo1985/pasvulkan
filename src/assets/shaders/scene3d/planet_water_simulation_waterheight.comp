@@ -133,11 +133,21 @@ void main(){
       // Read the water height from the input water height map
       const float inWaterHeight = inWaterHeightMap.values[heightMapIndex];
 
-      // Calculate the new water height
+      // Calculate the rain fall value based on the rain atmosphere map and the rain intensity
+      const uint rainAtmosphereMapIndex = ((position.y >> pushConstants.rainAtmosphereMapShift) * pushConstants.rainAtmosphereMapResolution) + (position.x >> pushConstants.rainAtmosphereMapShift);
+      float rainFallValue = rainAtmosphereMap.values[rainAtmosphereMapIndex] * pushConstants.rainIntensity * pushConstants.deltaTime; 
+      if(rainFallValue > 0.0){
+        vec3 positionOctahedral = octPlanetUnsignedDecode((vec2(position) + vec2(0.5)) / vec2(pushConstants.waterHeightMapResolution));
+        rainFallValue *= clamp(pcgNoise(vec4(vec3(positionOctahedral) * pushConstants.scale, float(pushConstants.frameIndex) * pushConstants.timeScale)), 0.0, 1.0);
+      }
+
+      // Calculate the new water height, considering the inflow, outflow, evaporation, and rain fall in the same pass, while the paper does it in
+      // seperate passes. This is for efficiency reasons, so that we can do the whole simulation in fewer passes and with less memory bandwidth usage.
       waterOutHeight = max(
         0.0, 
-        (inWaterHeight + (((totalOutFlow - totalInFlow) * pushConstants.deltaTime) / pushConstants.pipeLengthSquared)) * 
-        (1.0 - clamp(pushConstants.evaporation * exp(-(inWaterHeight * pushConstants.evaporationHeightCoefficient)) * pushConstants.deltaTime, 0.0, 1.0))
+        ((inWaterHeight + (((totalOutFlow - totalInFlow) * pushConstants.deltaTime) / pushConstants.pipeLengthSquared)) * 
+         (1.0 - clamp(pushConstants.evaporation * exp(-(inWaterHeight * pushConstants.evaporationHeightCoefficient)) * pushConstants.deltaTime, 0.0, 1.0))) +
+         rainFallValue
       );
 
       // Calculate the absolute height differences

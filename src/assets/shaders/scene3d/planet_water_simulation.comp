@@ -28,23 +28,35 @@
 layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
 
 layout(push_constant) uniform PushConstants {
-  float attenuation;
-  float strength;
-  float minTotalFlow;
-  float initialWaterLevel;      
-  float pipeLengthSquared;
-  float crossSectionalPipeArea;
-  float gravity;
-  float evaporation; 
-  float evaporationHeightCoefficient;
-  float compensationFactor;
-  float bottomRadius;
-  float topRadius;
-  float deltaTime;
-  uint planetHeightMapResolution;  
-  uint waterHeightMapResolution; 
-  uint waterHeightMapBorder;
-  uint frameIndex;
+
+  float attenuation; // The attenuation factor for the water flow, used to scale the water flow based on the height difference
+  float strength; // The strength of the water flow, used to scale the water flow based on the height difference
+  float minTotalFlow; // The minimum total flow, used to prevent the water flow from being too low
+  float initialWaterLevel; // The initial water level, used to set the initial water height in the simulation     
+
+  float pipeLengthSquared; // The squared length of the pipe, used to calculate the water flow based on the height difference
+  float crossSectionalPipeArea; // The cross-sectional area of the pipe, used to calculate the water flow based on the height difference
+  float gravity; // The gravitational acceleration, used to calculate the water flow based on the height difference
+  float evaporation; // The evaporation rate, used to calculate the evaporation based on the water height   
+  
+  float evaporationHeightCoefficient; // The coefficient for the evaporation height, used to calculate the evaporation based on the water height (not in the original paper, but added for more controllable evaporation in game-related scenarios)
+  float compensationFactor; // The compensation factor for the
+  float bottomRadius; // The radius of the bottom of the planet height map
+  float topRadius; // The radius of the top of the planet height map
+  
+  float deltaTime; // The time step in seconds, used to scale the simulation time
+  float rainIntensity; // The rain intensity, used to scale the rain map values
+  float scale; // The scale of the noise, used to scale the noise values for the rain fall noise 
+  float timeScale; // The time scale for the rain fall simulation, used to scale the time step
+  
+  uint planetHeightMapResolution; // The resolution of the planet height map, used to calculate the indices for the height map  
+  uint waterHeightMapResolution; // The resolution of the water height map, used to calculate the indices for the water height map
+  uint waterHeightMapBorder; // The border size for the water height map, so that the solver does not need to handle the border cases of a octahedral map
+  uint rainAtmosphereMapResolution; // The resolution of the rain atmosphere map
+
+  uint rainAtmosphereMapShift; // The shift for the rain atmosphere map relative to the water height map
+  uint frameIndex; // The current frame index, used for random number generation
+
 } pushConstants;
 
 uint waterHeightMapResolutionWithBorder = pushConstants.waterHeightMapResolution + (pushConstants.waterHeightMapBorder * 2);
@@ -87,6 +99,12 @@ layout(set = 0, binding = 4, std430) coherent buffer WaterMaxHeightDifference {
 } waterMaxHeightDifference;
 
 #endif
+
+layout(set = 0, binding = 5, std430) buffer RainAtmosphereMap {
+  _float values[];
+} rainAtmosphereMap;
+
+#include "pcg.glsl"
 
 #include "octahedral.glsl"
 #include "octahedralmap.glsl"
@@ -222,11 +240,21 @@ void main(){
       // Read the water height from the input water height map
       const float inWaterHeight = inWaterHeightMap.values[heightMapIndex];
 
-      // Calculate the new water height
+      // Calculate the rain fall value based on the rain atmosphere map and the rain intensity
+      const uint rainAtmosphereMapIndex = ((position.y >> pushConstants.rainAtmosphereMapShift) * pushConstants.rainAtmosphereMapResolution) + (position.x >> pushConstants.rainAtmosphereMapShift);
+      float rainFallValue = rainAtmosphereMap.values[rainAtmosphereMapIndex] * pushConstants.rainIntensity * pushConstants.deltaTime; 
+      if(rainFallValue > 0.0){
+        vec3 positionOctahedral = octPlanetUnsignedDecode((vec2(position) + vec2(0.5)) / vec2(pushConstants.waterHeightMapResolution));
+        rainFallValue *= clamp(pcgNoise(vec4(vec3(positionOctahedral) * pushConstants.scale, float(pushConstants.frameIndex) * pushConstants.timeScale)), 0.0, 1.0);
+      }
+
+      // Calculate the new water height, considering the inflow, outflow, evaporation, and rain fall in the same pass, while the paper does it in
+      // seperate passes. This is for efficiency reasons, so that we can do the whole simulation in fewer passes and with less memory bandwidth usage.
       waterOutHeight = max(
         0.0, 
-        (inWaterHeight + (((totalOutFlow - totalInFlow) * pushConstants.deltaTime) / pushConstants.pipeLengthSquared)) * 
-        (1.0 - clamp(pushConstants.evaporation * exp(-(inWaterHeight * pushConstants.evaporationHeightCoefficient)) * pushConstants.deltaTime, 0.0, 1.0))
+        ((inWaterHeight + (((totalOutFlow - totalInFlow) * pushConstants.deltaTime) / pushConstants.pipeLengthSquared)) * 
+         (1.0 - clamp(pushConstants.evaporation * exp(-(inWaterHeight * pushConstants.evaporationHeightCoefficient)) * pushConstants.deltaTime, 0.0, 1.0))) +
+         rainFallValue
       );
       
       // Calculate the absolute height differences

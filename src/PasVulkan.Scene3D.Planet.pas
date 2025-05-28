@@ -910,23 +910,35 @@ type TpvScene3DPlanets=class;
             TWaterSimulation=class
              public
               type TPushConstants=packed record
-                    Attenuation:TpvFloat;
-                    Strength:TpvFloat;
-                    MinTotalFlow:TpvFloat;
-                    InitialWaterLevel:TpvFloat;
-                    PipeLengthSquared:TpvFloat;
-                    CrossSectionalPipeArea:TpvFloat;
-                    Gravity:TpvFloat;
-                    Evaporation:TpvFloat;
-                    EvaporationHeightCoefficient:TpvFloat;
-                    CompensationFactor:TpvFloat;
-                    BottomRadius:TpvFloat;
-                    TopRadius:TpvFloat;
-                    DeltaTime:TpvFloat;
-                    PlanetHeightMapResolution:TpvUInt32;
-                    WaterHeightMapResolution:TpvUInt32;
-                    WaterHeightMapBorder:TpvUInt32;
-                    FrameIndex:TpvUInt32;
+
+                    Attenuation:TpvFloat; // The attenuation factor for the water flow, used to scale the water flow based on the height difference
+                    Strength:TpvFloat; // The strength of the water flow, used to scale the water flow based on the height difference
+                    MinTotalFlow:TpvFloat; // The minimum total flow, used to prevent the water flow from being too low
+                    InitialWaterLevel:TpvFloat; // The initial water level, used to set the initial water height in the simulation
+
+                    PipeLengthSquared:TpvFloat; // The squared length of the pipe, used to calculate the water flow based on the height difference
+                    CrossSectionalPipeArea:TpvFloat; // The cross-sectional area of the pipe, used to calculate the water flow based on the height difference
+                    Gravity:TpvFloat; // The gravitational acceleration, used to calculate the water flow based on the height difference
+                    Evaporation:TpvFloat; // The evaporation rate, used to calculate the evaporation based on the water height
+
+                    EvaporationHeightCoefficient:TpvFloat; // The coefficient for the evaporation height, used to calculate the evaporation based on the water height (not in the original paper, but added for more controllable evaporation in game-related scenarios)
+                    CompensationFactor:TpvFloat; // The compensation factor for the water flow, used to scale the water flow based on the height difference
+                    BottomRadius:TpvFloat; // The radius of the bottom of the planet height map
+                    TopRadius:TpvFloat; // The radius of the top of the planet height map
+
+                    DeltaTime:TpvFloat; // The time step in seconds, used to scale the simulation time
+                    RainIntensity:TpvFloat; // The rain intensity, used to scale the rain map values
+                    Scale:TpvFloat; // The scale of the noise, used to scale the noise values for the rain fall noise 
+                    TimeScale:TpvFloat; // The time scale for the rain fall simulation, used to scale the time step
+
+                    PlanetHeightMapResolution:TpvUInt32; // The resolution of the planet height map, used to calculate the indices for the height map
+                    WaterHeightMapResolution:TpvUInt32; // The resolution of the water height map, used to calculate the indices for the water height map
+                    WaterHeightMapBorder:TpvUInt32; // The border size for the water height map, so that the solver does not need to handle the border cases of a octahedral map
+                    RainAtmosphereMapResolution:TpvUInt32; // The resolution of the rain atmosphere map
+
+                    RainAtmosphereMapShift:TpvUInt32; // The shift for the rain atmosphere map relative to the water height map
+                    FrameIndex:TpvUInt32; // The current frame index, used for random number generation
+
                    end;
                    PPushConstants=^TPushConstants;
                    TRainfallPushConstants=packed record
@@ -983,8 +995,8 @@ type TpvScene3DPlanets=class;
               fDownsampleComputeShaderModule:TpvVulkanShaderModule;
               fDownsampleComputeShaderStage:TpvVulkanPipelineShaderStage;
               fDownsamplePipeline:TpvVulkanComputePipeline;
-              fDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
-              fDescriptorPool:TpvVulkanDescriptorPool;
+              fWaterDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
+              fWaterDescriptorPool:TpvVulkanDescriptorPool;
               fWaterDescriptorSets:array[0..1] of TpvVulkanDescriptorSet; // Double-buffered
               fRainfallDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
               fRainfallDescriptorPool:TpvVulkanDescriptorPool;
@@ -2774,11 +2786,11 @@ begin
 
  fWaterFirst:=true;
 
- fWaterActive:=false;
+ fWaterActive:=true;
 
  fWaterSimulationCountUnderThresholdFrames:=0;
 
- fWaterSimulationMaximumCountUnderThresholdFrames:=16;
+ fWaterSimulationMaximumCountUnderThresholdFrames:=64;
 
  fWaterSimulationThreshold:=1e-6;
 
@@ -10375,48 +10387,54 @@ begin
   fVulkanDevice.DebugUtils.SetObjectName(fDownsampleComputeShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DPlanet.TWaterSimulation.fDownsampleComputeShaderModule');
   fDownsampleComputeShaderStage:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_COMPUTE_BIT,fDownsampleComputeShaderModule,'main');
 
-  fDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(fVulkanDevice);
+  fWaterDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(fVulkanDevice);
   if fPlanet.fUsePlanetHeightMapBuffer then begin
-   fDescriptorSetLayout.AddBinding(0, // InPlanetHeightMap
-                                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
-                                   1,
-                                   TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
-                                   [],
-                                   0);
+   fWaterDescriptorSetLayout.AddBinding(0, // InPlanetHeightMap
+                                        TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                        1,
+                                        TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                        [],
+                                        0);
   end else begin
-   fDescriptorSetLayout.AddBinding(0, // uPlanetHeightmap
-                                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                                   1,
-                                   TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
-                                   [],
-                                   0);
+   fWaterDescriptorSetLayout.AddBinding(0, // uPlanetHeightmap
+                                        TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                        1,
+                                        TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                        [],
+                                        0);
   end;                                   
-  fDescriptorSetLayout.AddBinding(1, // InWaterHeightMap
-                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
-                                  1,
-                                  TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
-                                  [],
-                                  0);
-  fDescriptorSetLayout.AddBinding(2, // OutWaterHeightMap
-                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
-                                  1,
-                                  TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
-                                  [],
-                                  0);
-  fDescriptorSetLayout.AddBinding(3, // WaterFlowMap
-                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
-                                  1,
-                                  TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
-                                  [],
-                                  0);
-  fDescriptorSetLayout.AddBinding(4, // fWaterMaxAbsoluteHeightDifferenceBuffer
-                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
-                                  1,
-                                  TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
-                                  [],
-                                  0);                                  
-  fDescriptorSetLayout.Initialize;
-  fVulkanDevice.DebugUtils.SetObjectName(fDescriptorSetLayout.Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT,'TpvScene3DPlanet.TWaterSimulation.fDescriptorSetLayout');
+  fWaterDescriptorSetLayout.AddBinding(1, // InWaterHeightMap
+                                       TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                       1,
+                                       TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                       [],
+                                       0);
+  fWaterDescriptorSetLayout.AddBinding(2, // OutWaterHeightMap
+                                       TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                       1,
+                                       TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                       [],
+                                       0);
+  fWaterDescriptorSetLayout.AddBinding(3, // WaterFlowMap
+                                       TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                       1,
+                                       TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                       [],
+                                       0);
+  fWaterDescriptorSetLayout.AddBinding(4, // fWaterMaxAbsoluteHeightDifferenceBuffer
+                                       TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                       1,
+                                       TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                       [],
+                                       0);
+  fWaterDescriptorSetLayout.AddBinding(5, // RainAtnosphereMap
+                                       TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                       1,
+                                       TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                       [],
+                                       0);
+  fWaterDescriptorSetLayout.Initialize;
+  fVulkanDevice.DebugUtils.SetObjectName(fWaterDescriptorSetLayout.Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT,'TpvScene3DPlanet.TWaterSimulation.fDescriptorSetLayout');
 
   fRainfallDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(fVulkanDevice);
   fRainfallDescriptorSetLayout.AddBinding(0, // WaterHeightMap
@@ -10490,7 +10508,7 @@ begin
 
   fPipelineLayout:=TpvVulkanPipelineLayout.Create(fVulkanDevice);
   fPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),0,SizeOf(TPushConstants));
-  fPipelineLayout.AddDescriptorSetLayout(fDescriptorSetLayout);
+  fPipelineLayout.AddDescriptorSetLayout(fWaterDescriptorSetLayout);
   fPipelineLayout.Initialize;
 
   fVulkanDevice.DebugUtils.SetObjectName(fPipelineLayout.Handle,VK_OBJECT_TYPE_PIPELINE_LAYOUT,'TpvScene3DPlanet.TWaterSimulation.fPipelineLayout');
@@ -10519,18 +10537,18 @@ begin
   fDownsamplePipelineLayout.AddDescriptorSetLayout(fDownsampleDescriptorSetLayout);
   fDownsamplePipelineLayout.Initialize;
 
-  fDescriptorPool:=TpvVulkanDescriptorPool.Create(fVulkanDevice,
-                                                  TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
-                                                  4);
-  fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),1*4);
-  fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),4*4);
-  fDescriptorPool.Initialize;
+  fWaterDescriptorPool:=TpvVulkanDescriptorPool.Create(fVulkanDevice,
+                                                       TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
+                                                       4);
+  fWaterDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),1*4);
+  fWaterDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),5*4);
+  fWaterDescriptorPool.Initialize;
 
-  fVulkanDevice.DebugUtils.SetObjectName(fDescriptorPool.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'TpvScene3DPlanet.TWaterSimulation.fDescriptorPool');
+  fVulkanDevice.DebugUtils.SetObjectName(fWaterDescriptorPool.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'TpvScene3DPlanet.TWaterSimulation.fDescriptorPool');
 
   for Index:=0 to 1 do begin
 
-   fWaterDescriptorSets[Index]:=TpvVulkanDescriptorSet.Create(fDescriptorPool,fDescriptorSetLayout);   
+   fWaterDescriptorSets[Index]:=TpvVulkanDescriptorSet.Create(fWaterDescriptorPool,fWaterDescriptorSetLayout);
    if fPlanet.fUsePlanetHeightMapBuffer then begin
     fWaterDescriptorSets[Index].WriteToDescriptorSet(0, // InPlanetHeightMap
                                                      0,
@@ -10582,6 +10600,14 @@ begin
                                                     TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
                                                     [],
                                                     [fPlanet.fData.fWaterMaxAbsoluteHeightDifferenceBuffer.DescriptorBufferInfo],
+                                                    [],
+                                                    false);
+   fWaterDescriptorSets[Index].WriteToDescriptorSet(5, // RainAtmosphereMap
+                                                    0,
+                                                    1,
+                                                    TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                    [],
+                                                    [fPlanet.fData.fRainAtmosphereMapBuffer.DescriptorBufferInfo],
                                                     [],
                                                     false);
    fWaterDescriptorSets[Index].Flush;
@@ -10793,7 +10819,7 @@ begin
                                                        nil,
                                                        0);
 
-  fPushConstants.Attenuation:=0.995;
+{ fPushConstants.Attenuation:=0.995;
   fPushConstants.Strength:=0.25;
   fPushConstants.MinTotalFlow:=-1e-4; //1e-4;
   fPushConstants.InitialWaterLevel:=0.0;//5e-2;
@@ -10802,16 +10828,45 @@ begin
   fPushConstants.Gravity:=1.0;
   fPushConstants.Evaporation:=0.005;
   fPushConstants.EvaporationHeightCoefficient:=0.0;
-  fPushConstants.CompensationFactor:=1.0;
+  fPushConstants.CompensationFactor:=1.0;}
+
+{$if true}
+  fPushConstants.Attenuation:=1.0;//0.995;
+  fPushConstants.Strength:=1.0;//0.25;
+  fPushConstants.MinTotalFlow:=1e-4;
+  fPushConstants.PipeLengthSquared:=sqr(1.0);
+  fPushConstants.CrossSectionalPipeArea:=1.0;
+  fPushConstants.Gravity:=9.81;
+  fPushConstants.Evaporation:=0.015;
+  fPushConstants.EvaporationHeightCoefficient:=0.0;
+  fPushConstants.CompensationFactor:=60.0;//600.0;
+{$else}
+  fPushConstants.Attenuation:=0.995;
+  fPushConstants.Strength:=0.25;
+  fPushConstants.MinTotalFlow:=-1e-4;
+  fPushConstants.PipeLengthSquared:=sqr(1.0);
+  fPushConstants.CrossSectionalPipeArea:=1.0;
+  fPushConstants.Gravity:=1.0;
+  fPushConstants.Evaporation:=0.0;//0.015;
+  fPushConstants.EvaporationHeightCoefficient:=0.0;
+  fPushConstants.CompensationFactor:=Ln(1.0/60)/Ln(fTimeStep);//600.0;
+  fPushConstants.DeltaTime:=1.0;
+{$ifend}
 
   fPushConstants.BottomRadius:=fPlanet.fBottomRadius;
   fPushConstants.TopRadius:=fPlanet.fTopRadius;
+
   fPushConstants.DeltaTime:=1.0;
+  fPushConstants.RainIntensity:=0.001;
+  fPushConstants.Scale:=128.0;
+  fPushConstants.TimeScale:=1e-4;
 
   fPushConstants.PlanetHeightMapResolution:=fPlanet.fHeightMapResolution;
   fPushConstants.WaterHeightMapResolution:=fPlanet.fWaterMapResolution;
   fPushConstants.WaterHeightMapBorder:=fPlanet.fWaterMapBorder;
+  fPushConstants.RainAtmosphereMapResolution:=fPlanet.fRainAtmosphereMapResolution;
 
+  fPushConstants.RainAtmosphereMapShift:=fPlanet.fRainAtmosphereMapShift;
   fPushConstants.FrameIndex:=0;
 
   fRainfallPushConstants.WaterHeightMapResolution:=fPlanet.fWaterMapResolution;
@@ -10819,7 +10874,7 @@ begin
   fRainfallPushConstants.RainAtmosphereMapShift:=fPlanet.fRainAtmosphereMapShift;
   fRainfallPushConstants.RainIntensity:=0.001;
   fRainfallPushConstants.Scale:=128.0;
-  fRainfallPushConstants.TimeScale:=1e-4;  
+  fRainfallPushConstants.TimeScale:=1e-4;
 
   fModificationPushConstants.PositionRadius:=TpvVector4.Create(0.0,0.0,0.0,0.0);
   fModificationPushConstants.InnerRadius:=0.0;
@@ -10888,7 +10943,7 @@ begin
 
  FreeAndNil(fRainfallDescriptorPool);
 
- FreeAndNil(fDescriptorPool);
+ FreeAndNil(fWaterDescriptorPool);
 
  FreeAndNil(fDownsamplePipelineLayout);
 
@@ -10908,7 +10963,7 @@ begin
 
  FreeAndNil(fRainfallDescriptorSetLayout);
 
- FreeAndNil(fDescriptorSetLayout);
+ FreeAndNil(fWaterDescriptorSetLayout);
 
  FreeAndNil(fDownsampleComputeShaderStage);
 
@@ -11089,31 +11144,9 @@ begin
   DestinationBufferIndex:=(SourceBufferIndex+1) and 1;
 
   fPushConstants.FrameIndex:=fPlanet.fData.fWaterFrameIndex;
-{$if true}
-  fPushConstants.Attenuation:=1.0;//0.995;
-  fPushConstants.Strength:=1.0;//0.25;
-  fPushConstants.MinTotalFlow:=1e-4;
-  fPushConstants.PipeLengthSquared:=sqr(1.0);
-  fPushConstants.CrossSectionalPipeArea:=1.0;
-  fPushConstants.Gravity:=9.81;
-  fPushConstants.Evaporation:=0.015;
-  fPushConstants.EvaporationHeightCoefficient:=0.0;
-  fPushConstants.CompensationFactor:=60.0;//600.0;
   fPushConstants.DeltaTime:=fTimeStep;
-{$else}
-  fPushConstants.Attenuation:=0.995;
-  fPushConstants.Strength:=0.25;
-  fPushConstants.MinTotalFlow:=-1e-4;
-  fPushConstants.PipeLengthSquared:=sqr(1.0);
-  fPushConstants.CrossSectionalPipeArea:=1.0;
-  fPushConstants.Gravity:=1.0;
-  fPushConstants.Evaporation:=0.0;//0.015;
-  fPushConstants.EvaporationHeightCoefficient:=0.0;
-  fPushConstants.CompensationFactor:=Ln(1.0/60)/Ln(fTimeStep);//600.0;
-  fPushConstants.DeltaTime:=1.0;
-{$ifend}
 
-  inc(fRainfallPushConstants.FrameIndex);
+  fRainfallPushConstants.FrameIndex:=fPlanet.fData.fWaterFrameIndex;
   fRainfallPushConstants.DeltaTime:=fTimeStep;
 
   /////////////////////////////////////////////////////////////////////////////////////////
@@ -11308,7 +11341,7 @@ begin
                                     0,nil,
                                     2,@BufferMemoryBarriers[0],
                                     0,nil);
-
+(*
   /////////////////////////////////////////////////////////////////////////////////////////
   // Rainfall                                                                            //
   /////////////////////////////////////////////////////////////////////////////////////////
@@ -11352,6 +11385,8 @@ begin
                                     0,nil,
                                     1,@BufferMemoryBarriers[0],
                                     0,nil);
+
+*)
 
   /////////////////////////////////////////////////////////////////////////////////////////
   // Management stuff                                                                    //
