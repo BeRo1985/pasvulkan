@@ -1,0 +1,84 @@
+#version 450 core
+
+#pragma shader_stage(compute)
+
+#extension GL_ARB_separate_shader_objects : enable
+#extension GL_ARB_shading_language_420pack : enable
+#extension GL_GOOGLE_include_directive : enable
+
+/* clang-format off */
+
+layout(local_size_x = 256, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 0, std430) buffer RainAtmosphereMapBuffer {
+  float values[];
+} rainAtmosphereMapBuffer;
+
+struct RainDrop {
+  vec4 position; // Position of the raindrop (xyz) and factor (w)
+};
+
+layout(set = 0, binding = 0, std430) buffer RainDropBuffer {
+  RainDrop data[]; // Array of raindrops
+} rainDropBuffer;
+
+layout(push_constant) uniform PushConstants {
+  mat4 planetModelMatrix; // Model matrix of the planet
+  vec4 cameraPosition; // Position of the camera 
+  float planetBottomRadius; // Bottom radius of the planet
+  float planetTopRadius; // Top radius of the planet
+  float spawnDistance; // Distance from the camera to spawn raindrops
+  float gravity; // Gravity factor
+  float deltaTime; // Time delta for simulation
+  uint countRainDrops; // Number of raindrops
+  uint frameIndex; // Current frame index
+} pushConstants;  
+
+/* clang-format on */
+
+#include "octahedral.glsl"
+#include "octahedralmap.glsl"
+#include "pcg.glsl"
+#include "floatint.glsl"
+
+shared mat4 sharedPlanetInverseModelMatrix;
+
+void main() {
+
+  uint index = gl_GlobalInvocationID.x;
+
+  if(gl_LocalInvocationIndex == 0){
+    // Calculate the inverse model matrix of the planet
+    sharedPlanetInverseModelMatrix = inverse(pushConstants.planetModelMatrix);
+  }
+  barrier();
+  memoryBarrierShared();
+
+  if(index < pushConstants.countRainDrops){
+    
+    RainDrop drop = rainDropBuffer.data[index];
+
+    vec3 position = (sharedPlanetInverseModelMatrix * vec4(drop.position.xyz, 1.0)).xyz;
+
+    // Update the position of the raindrop based on gravity
+    position.xyz -= normalize(position.xyz) * pushConstants.gravity * pushConstants.deltaTime;
+
+    float height = length(position); 
+
+    // Check if the raindrop is outside the planet's radius or inactive, if so, we need to (re-)spawn it
+    if((drop.position.w < 1e-7) || ((height < pushConstants.planetBottomRadius) || (height > pushConstants.planetTopRadius))){
+      
+      vec2 uv = octEqualAreaUnsignedEncode((sharedPlanetInverseModelMatrix * vec4(pushConstants.cameraPosition.xyz, 1.0)).xyz);
+      uvec4 random = pcgHash44(uvec4(floatBitsToUint(uv), pushConstants.frameIndex, index));
+      uv = wrapOctahedralCoordinates(uv + (makeFloat(random.xy) * pushConstants.spawnDistance));
+      position = normalize(octEqualAreaUnsignedDecode(uv)) * mix(pushConstants.planetBottomRadius, pushConstants.planetTopRadius, makeFloat(random.z));
+      
+    }
+
+    // Uüdate the raindrop position
+    drop.position.xyz = (pushConstants.planetModelMatrix * vec4(position.xyz, 1.0)).xyz;
+
+    rainDropBuffer.data[index] = drop;
+    
+  }
+}
