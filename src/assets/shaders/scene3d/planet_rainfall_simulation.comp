@@ -15,7 +15,7 @@ layout(set = 0, binding = 0, std430) buffer RainAtmosphereMapBuffer {
 } rainAtmosphereMapBuffer;
 
 struct RainDrop {
-  vec4 position; // Position of the raindrop (xyz) and factor (w)
+  vec4 position; // Position of the raindrop (xyz) and factor (w, set to 0.0 when out of frustum by the rainfall mesh generation compute shader)
 };
 
 layout(set = 0, binding = 1, std430) buffer RainDropBuffer {
@@ -66,7 +66,7 @@ void main() {
     float height = length(position); 
     
     // Check if the raindrop is outside the planet's radius or inactive or outside the view frustum, if so, we need to (re-)spawn it
-    if((drop.position.w < 1e-7) || ((height < pushConstants.planetBottomRadius) || (height > pushConstants.planetTopRadius)) || !isVisible){
+    if((drop.position.w < 1e-7) || ((height < pushConstants.planetBottomRadius) || (height > pushConstants.planetTopRadius))){
       
       vec2 uv = octEqualAreaUnsignedEncode((sharedPlanetInverseModelMatrix * vec4(pushConstants.cameraPosition.xyz, 1.0)).xyz);
       uvec4 random = pcgHash44(uvec4(floatBitsToUint(uv), pushConstants.frameIndex, index));
