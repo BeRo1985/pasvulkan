@@ -22,10 +22,6 @@ layout(set = 0, binding = 1, std430) buffer RainDropBuffer {
   RainDrop data[]; // Array of raindrops
 } rainDropBuffer;
 
-layout(set = 0, binding = 2, std140) uniform MetaDataBuffer {
-  mat4 cameraViewProjectionMatrix; // View-projection matrix of the camera
-} metaDataBuffer;
-
 layout(push_constant) uniform PushConstants {
   mat4 planetModelMatrix; // Model matrix of the planet
   vec4 cameraPosition; // Position of the camera 
@@ -37,8 +33,6 @@ layout(push_constant) uniform PushConstants {
   uint countRainDrops; // Number of raindrops
   uint frameIndex; // Current frame index
 } pushConstants;  
-
-
 
 /* clang-format on */
 
@@ -70,11 +64,6 @@ void main() {
     position.xyz -= normalize(position.xyz) * pushConstants.gravity * pushConstants.deltaTime;
 
     float height = length(position); 
-
-    // Determine if the raindrop is inside the view frustum of the main view (ignoring the second view of VR, since it is not noticable in this case)
-    vec4 ndc = metaDataBuffer.cameraViewProjectionMatrix * vec4(position, 1.0);
-    ndc /= ndc.w; // Normalize the NDC coordinates
-    bool isVisible = all(greaterThanEqual(ndc.xyz, vec3(-1.0))) && all(lessThanEqual(ndc.xyz, vec3(1.0)));
     
     // Check if the raindrop is outside the planet's radius or inactive or outside the view frustum, if so, we need to (re-)spawn it
     if((drop.position.w < 1e-7) || ((height < pushConstants.planetBottomRadius) || (height > pushConstants.planetTopRadius)) || !isVisible){
