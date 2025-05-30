@@ -31,7 +31,7 @@ layout(push_constant) uniform PushConstants {
   float gravity; // Gravity factor
   float deltaTime; // Time delta for simulation
   uint countRainDrops; // Number of raindrops
-  uint frameIndex; // Current frame index
+  uint frameIndex; // Current frame rainDropIndex
 } pushConstants;  
 
 /* clang-format on */
@@ -45,7 +45,7 @@ shared mat4 sharedPlanetInverseModelMatrix;
 
 void main() {
 
-  uint index = gl_GlobalInvocationID.x;
+  uint rainDropIndex = gl_GlobalInvocationID.x;
 
   if(gl_LocalInvocationIndex == 0){
     // Calculate the inverse model matrix of the planet
@@ -54,9 +54,9 @@ void main() {
   barrier();
   memoryBarrierShared();
 
-  if(index < pushConstants.countRainDrops){
+  if(rainDropIndex < pushConstants.countRainDrops){
     
-    RainDrop drop = rainDropBuffer.data[index];
+    RainDrop drop = rainDropBuffer.data[rainDropIndex];
 
     vec3 position = (sharedPlanetInverseModelMatrix * vec4(drop.position.xyz, 1.0)).xyz;
 
@@ -69,7 +69,7 @@ void main() {
     if((drop.position.w < 1e-7) || ((height < pushConstants.planetBottomRadius) || (height > pushConstants.planetTopRadius))){
       
       vec2 uv = octEqualAreaUnsignedEncode((sharedPlanetInverseModelMatrix * vec4(pushConstants.cameraPosition.xyz, 1.0)).xyz);
-      uvec4 random = pcgHash44(uvec4(floatBitsToUint(uv), pushConstants.frameIndex, index));
+      uvec4 random = pcgHash44(uvec4(floatBitsToUint(uv), pushConstants.frameIndex, rainDropIndex));
       uv = wrapOctahedralCoordinates(uv + (makeFloat(random.xy) * pushConstants.spawnDistance));
       position = normalize(octEqualAreaUnsignedDecode(uv)) * mix(pushConstants.planetBottomRadius, pushConstants.planetTopRadius, makeFloat(random.z));
       
@@ -78,7 +78,7 @@ void main() {
     // Update the raindrop position
     drop.position.xyz = (pushConstants.planetModelMatrix * vec4(position.xyz, 1.0)).xyz;
 
-    rainDropBuffer.data[index] = drop;
+    rainDropBuffer.data[rainDropIndex] = drop;
     
   }
 }

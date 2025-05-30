@@ -449,6 +449,14 @@ compileshaderarguments=(
 
   "-V planet_rainatmospheremap.comp -o ${tempPath}/planet_rainatmospheremap_comp.spv"
 
+  "-V planet_rainfall_simulation.comp -o ${tempPath}/planet_rainfall_simulation_comp.spv"
+
+  "-V planet_rainfall_lines.comp -o ${tempPath}/planet_rainfall_lines_comp.spv"
+
+  "-V planet_rainfall_lines.vert -o ${tempPath}/planet_rainfall_lines_vert.spv"
+  
+  "-V planet_rainfall_lines.frag -o ${tempPath}/planet_rainfall_lines_frag.spv"
+
   "-V planet_watermap_initialization.comp -o ${tempPath}/planet_watermap_initialization_comp.spv"
 
   "-V planet_watermap_modification.comp -o ${tempPath}/planet_watermap_modification_comp.spv"
