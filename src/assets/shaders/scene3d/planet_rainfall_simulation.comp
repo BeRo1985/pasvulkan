@@ -75,7 +75,7 @@ void main() {
       
     }
 
-    // Uüdate the raindrop position
+    // Update the raindrop position
     drop.position.xyz = (pushConstants.planetModelMatrix * vec4(position.xyz, 1.0)).xyz;
 
     rainDropBuffer.data[index] = drop;
