@@ -19167,6 +19167,8 @@ begin
   TpvScene3DPlanets(TpvScene3D(fScene3D).Planets).Lock.ReleaseRead;
  end;
 
+ TpvScene3D(fScene3D).VulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
+
 end;
 
 { TpvScene3DPlanet.TWaterWaitPass }
