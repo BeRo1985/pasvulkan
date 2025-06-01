@@ -108,7 +108,7 @@ void main() {
 
       // .. then we decode them back to 3D coordinates 
       position = vec4(
-        normalize(octEqualAreaUnsignedDecode(uv)) * mix(pushConstants.planetBottomRadius, pushConstants.planetTopRadius, makeFloat(random.z)), 
+        normalize(octEqualAreaUnsignedDecode(uv)) * mix(pushConstants.planetBottomRadius, pushConstants.planetTopRadius, makeAbsFloat(random.z)), 
         1.0 // Set the factor to 1.0 to indicate that the raindrop is active
       );
       
