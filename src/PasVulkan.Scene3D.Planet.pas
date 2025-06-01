@@ -18574,7 +18574,7 @@ begin
 end;
 
 procedure TpvScene3DPlanet.TRainStreakComputePass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
-var PlanetIndex,Level,CountBufferMemoryBarriers,ViewIndex:TpvSizeInt;
+var PlanetIndex,Level,CountBufferMemoryBarriers:TpvSizeInt;
     Planet:TpvScene3DPlanet;
     First:Boolean;
     InFlightFrameState:TpvScene3DRendererInstance.PInFlightFrameState;
@@ -18609,9 +18609,7 @@ begin
 
       end;
 
-      ViewIndex:=InFlightFrameState^.FinalUnjitteredViewIndex;
-
-      InverseViewMatrix:=@TpvScene3DRendererInstance(fRendererInstance).Views[aInFlightFrameIndex].Items[ViewIndex].InverseViewMatrix;
+      InverseViewMatrix:=@TpvScene3DRendererInstance(fRendererInstance).Views[aInFlightFrameIndex].Items[InFlightFrameState^.FinalViewIndex].InverseViewMatrix;
 
       // First the simulation pass for the rain streaks 
 
@@ -18714,9 +18712,9 @@ begin
 
       // Now the mesh generation pass for the rain streaks
 
-      fMeshGenerationPushConstants.ViewBaseIndex:=InFlightFrameState^.FinalUnjitteredViewIndex;
+      fMeshGenerationPushConstants.ViewBaseIndex:=InFlightFrameState^.FinalViewIndex;
       fMeshGenerationPushConstants.CountViews:=InFlightFrameState^.CountFinalViews;
-      fMeshGenerationPushConstants.CountAllViews:=TpvScene3DRendererInstance(fRendererInstance).Views[aInFlightFrameIndex].Count;
+      fMeshGenerationPushConstants.CountAllViews:=InFlightFrameState^.CountViews;
       fMeshGenerationPushConstants.CountRainDrops:=MaximumCountRainDrops;
       fMeshGenerationPushConstants.ViewPortSize:=TpvVector2.Create(TpvScene3DRendererInstance(fRendererInstance).ScaledWidth,TpvScene3DRendererInstance(fRendererInstance).ScaledHeight);
 
