@@ -179,8 +179,8 @@ void main(){
 
     Primitive primitive;
     primitive.position = floatBitsToUint(vec4(rainDrop.position.xyz, 1.0)); // Set the w component to 1.0 for the line thickness
-    primitive.position0 = uvec4(floatBitsToUint(primitive.position.xyz - (normalize(rainDrop.position.xyz) * 0.5)), 0xff800000u); // Set the w component to -infinity for the position 0
-    primitive.position1 = uvec4(floatBitsToUint(primitive.position.xyz + (normalize(rainDrop.position.xyz) * 0.5)), 0x7f800000u); // Set the w component to +infinity for the position 1
+    primitive.position0 = uvec4(floatBitsToUint(rainDrop.position.xyz - (normalize(rainDrop.position.xyz) * 0.5)), 0xff800000u); // Set the w component to -infinity for the position 0
+    primitive.position1 = uvec4(floatBitsToUint(rainDrop.position.xyz + (normalize(rainDrop.position.xyz) * 0.5)), 0x7f800000u); // Set the w component to +infinity for the position 1
     primitive.color = uvec4(floatBitsToUint(vec4(1.0, 1.0, 1.0, 0.5))); // Set the color to white with alpha 0.5
 
     // Initialize the AABB with infinity and -infinity
@@ -200,7 +200,7 @@ void main(){
     // Line end
     vec3 lineEnd3D = uintBitsToFloat(primitive.position1.xyz);
 
-    visible = true;
+    visible = false; // Assume the primitive is not visible until we check the views
 
     // Ensure that the line is visible in all views at the correct positions
     for(int viewIndex = 0; viewIndex < int(pushConstants.countViews); viewIndex++){
@@ -225,11 +225,12 @@ void main(){
           vec4 lineEnd3DClip = inverseViewProjectionMatrix * lineEndClip; 
           lineEnd3D = lineEnd3DClip.xyz / lineEnd3DClip.w;
 
+          visible = true; // The primitive is visible in this view
+
         }else{
 
-          visible = false;
-          break;
-
+          continue; // The primitive is not visible in this view, so skip to the next view
+        
         }
 
       }
