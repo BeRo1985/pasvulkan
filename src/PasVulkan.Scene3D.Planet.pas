@@ -19031,7 +19031,7 @@ begin
 
       fPushConstants.ViewBaseIndex:=aViewBaseIndex;
       fPushConstants.CountViews:=aCountViews;
-      fPushConstants.CountAllViews:=TpvScene3DRendererInstance(fRendererInstance).Views[aInFlightFrameIndex].Count;
+      fPushConstants.CountAllViews:=InFlightFrameState^.CountViews;
       fPushConstants.CountRainDrops:=MaximumCountRainDrops;
       fPushConstants.ViewPortSize:=TpvVector2.Create(TpvScene3DRendererInstance(fRendererInstance).ScaledWidth,TpvScene3DRendererInstance(fRendererInstance).ScaledHeight);
 
