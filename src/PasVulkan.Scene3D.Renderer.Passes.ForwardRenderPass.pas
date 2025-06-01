@@ -1298,13 +1298,6 @@ begin
                           InFlightFrameState^.CountFinalViews,
                           aCommandBuffer);
 
-   fPlanetRainStreakRenderPass.Draw(aInFlightFrameIndex,
-                                    aFrameIndex,
-                                    TpvScene3DRendererRenderPass.View,
-                                    InFlightFrameState^.FinalViewIndex,
-                                    InFlightFrameState^.CountFinalViews,
-                                    aCommandBuffer);
-
    fOnSetRenderPassResourcesDone:=false;
 
    fInstance.Renderer.Scene3D.Draw(fInstance,
@@ -1370,6 +1363,14 @@ begin
    FrameGraph.VulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
 
   end;
+
+  fPlanetRainStreakRenderPass.Draw(aInFlightFrameIndex,
+                                   aFrameIndex,
+                                   TpvScene3DRendererRenderPass.View,
+                                   InFlightFrameState^.FinalViewIndex,
+                                   InFlightFrameState^.CountFinalViews,
+                                   aCommandBuffer);
+  fOnSetRenderPassResourcesDone:=false;
 
   if ((fInstance.Renderer.TransparencyMode=TpvScene3DRendererTransparencyMode.Direct) and not fInstance.Renderer.Scene3D.HasTransmission) or
      (not (fInstance.Renderer.UseOITAlphaTest or fInstance.Renderer.Scene3D.HasTransmission)) then begin
