@@ -74,7 +74,12 @@ void main() {
     // Calculate the position of the raindrop in planet space using the inverse model matrix
     // This is done to ensure that the raindrop position is origin centered, so that length(position.xyz) is the distance from the center of the planet
     // and the height can be calculated correctly.
-    vec4 position = vec4((sharedPlanetInverseModelMatrix * vec4(drop.position.xyz, 1.0)).xyz, drop.position.w); 
+    vec4 position = vec4(
+      (sharedPlanetInverseModelMatrix * vec4(drop.position.xyz, 1.0)).xyz,
+      (pushConstants.frameIndex == 0) 
+        ? 0.0 // If this is the first frame, set the factor to 0.0 to indicate that the raindrop is inactive
+        : drop.position.w
+    ); 
 
     // Update the position of the raindrop based on gravity
     position.xyz -= normalize(position.xyz) * pushConstants.gravity * pushConstants.deltaTime;
