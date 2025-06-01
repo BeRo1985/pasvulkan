@@ -422,6 +422,7 @@ type EpvVulkanException=class(Exception);
        fVulkan13Properties:TVkPhysicalDeviceVulkan13Properties;
        fMultiviewFeaturesKHR:TVkPhysicalDeviceMultiviewFeaturesKHR;
        fMultiviewPropertiesKHR:TVkPhysicalDeviceMultiviewPropertiesKHR;
+       fPhysicalDeviceAddressBindingReportFeaturesEXT:TVkPhysicalDeviceAddressBindingReportFeaturesEXT;
        fMultiDrawFeaturesEXT:TVkPhysicalDeviceMultiDrawFeaturesEXT;
        fMultiDrawPropertiesEXT:TVkPhysicalDeviceMultiDrawPropertiesEXT;
 {      fFloatControlsPropertiesKHR:TVkPhysicalDeviceFloatControlsPropertiesKHR;
@@ -506,6 +507,7 @@ type EpvVulkanException=class(Exception);
        property Vulkan13Properties:TVkPhysicalDeviceVulkan13Properties read fVulkan13Properties;
        property MultiviewFeaturesKHR:TVkPhysicalDeviceMultiviewFeaturesKHR read fMultiviewFeaturesKHR;
        property MultiviewPropertiesKHR:TVkPhysicalDeviceMultiviewPropertiesKHR read fMultiviewPropertiesKHR;
+       property PhysicalDeviceAddressBindingReportFeaturesEXT:TVkPhysicalDeviceAddressBindingReportFeaturesEXT read fPhysicalDeviceAddressBindingReportFeaturesEXT;
        property MultiDrawFeaturesEXT:TVkPhysicalDeviceMultiDrawFeaturesEXT read fMultiDrawFeaturesEXT;
        property MultiDrawPropertiesEXT:TVkPhysicalDeviceMultiDrawPropertiesEXT read fMultiDrawPropertiesEXT;
        property SamplerFilterMinmaxPropertiesEXT:TVkPhysicalDeviceSamplerFilterMinmaxPropertiesEXT read fSamplerFilterMinmaxPropertiesEXT;
@@ -730,6 +732,7 @@ type EpvVulkanException=class(Exception);
        fVulkan12Features:TVkPhysicalDeviceVulkan12Features;
        fVulkan13Features:TVkPhysicalDeviceVulkan13Features;
        fMultiviewFeaturesKHR:TVkPhysicalDeviceMultiviewFeaturesKHR;
+       fPhysicalDeviceAddressBindingReportFeaturesEXT:TVkPhysicalDeviceAddressBindingReportFeaturesEXT;
        fMultiDrawFeaturesEXT:TVkPhysicalDeviceMultiDrawFeaturesEXT;
        fFragmentShaderInterlockFeaturesEXT:TVkPhysicalDeviceFragmentShaderInterlockFeaturesEXT;
        fBufferDeviceAddressFeaturesKHR:TVkPhysicalDeviceBufferDeviceAddressFeaturesKHR;
@@ -815,6 +818,7 @@ type EpvVulkanException=class(Exception);
        property Vulkan12Features:TVkPhysicalDeviceVulkan12Features read fVulkan12Features write fVulkan12Features;
        property Vulkan13Features:TVkPhysicalDeviceVulkan13Features read fVulkan13Features write fVulkan13Features;
        property MultiviewFeaturesKHR:TVkPhysicalDeviceMultiviewFeaturesKHR read fMultiviewFeaturesKHR write fMultiviewFeaturesKHR;
+       property PhysicalDeviceAddressBindingReportFeaturesEXT:TVkPhysicalDeviceAddressBindingReportFeaturesEXT read fPhysicalDeviceAddressBindingReportFeaturesEXT write fPhysicalDeviceAddressBindingReportFeaturesEXT;
        property MultiDrawFeaturesEXT:TVkPhysicalDeviceMultiDrawFeaturesEXT read fMultiDrawFeaturesEXT write fMultiDrawFeaturesEXT;
        property FragmentShaderInterlockFeaturesEXT:TVkPhysicalDeviceFragmentShaderInterlockFeaturesEXT read fFragmentShaderInterlockFeaturesEXT write fFragmentShaderInterlockFeaturesEXT;
        property BufferDeviceAddressFeaturesKHR:TVkPhysicalDeviceBufferDeviceAddressFeaturesKHR read fBufferDeviceAddressFeaturesKHR write fBufferDeviceAddressFeaturesKHR;
@@ -8735,6 +8739,15 @@ begin
  end;
 
  begin
+  FillChar(fPhysicalDeviceAddressBindingReportFeaturesEXT,SizeOf(TVkPhysicalDeviceAddressBindingReportFeaturesEXT),#0);
+  fPhysicalDeviceAddressBindingReportFeaturesEXT.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ADDRESS_BINDING_REPORT_FEATURES_EXT;
+  if AvailableExtensionNames.IndexOf(VK_EXT_DEVICE_ADDRESS_BINDING_REPORT_EXTENSION_NAME)>0 then begin
+   fPhysicalDeviceAddressBindingReportFeaturesEXT.pNext:=fFeatures2KHR.pNext;
+   fFeatures2KHR.pNext:=@fPhysicalDeviceAddressBindingReportFeaturesEXT;
+  end;
+ end;
+
+ begin
   FillChar(fMultiDrawFeaturesEXT,SizeOf(TVkPhysicalDeviceMultiDrawFeaturesEXT),#0);
   fMultiDrawFeaturesEXT.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTI_DRAW_FEATURES_EXT;
   if AvailableExtensionNames.IndexOf(VK_EXT_MULTI_DRAW_EXTENSION_NAME)>0 then begin
@@ -10704,6 +10717,25 @@ begin
      fMultiviewFeaturesKHR.multiviewGeometryShader:=PhysicalDevice.fMultiviewFeaturesKHR.multiviewGeometryShader;
 
     end;
+
+   end;
+
+  end;
+
+  /////////////////////////////////////////////////////////////////////////
+
+  begin
+
+   FillChar(fPhysicalDeviceAddressBindingReportFeaturesEXT,SizeOf(TVkPhysicalDeviceAddressBindingReportFeaturesEXT),#0);
+   fPhysicalDeviceAddressBindingReportFeaturesEXT.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ADDRESS_BINDING_REPORT_FEATURES_EXT;
+
+   if (fEnabledExtensionNames.IndexOf(VK_EXT_DEVICE_ADDRESS_BINDING_REPORT_EXTENSION_NAME)>=0) and
+      (PhysicalDevice.fPhysicalDeviceAddressBindingReportFeaturesEXT.reportAddressBinding<>VK_FALSE) then begin
+
+    fPhysicalDeviceAddressBindingReportFeaturesEXT.pNext:=DeviceCreateInfo.pNext;
+    DeviceCreateInfo.pNext:=@fPhysicalDeviceAddressBindingReportFeaturesEXT;
+
+    fPhysicalDeviceAddressBindingReportFeaturesEXT.reportAddressBinding:=PhysicalDevice.fPhysicalDeviceAddressBindingReportFeaturesEXT.reportAddressBinding;
 
    end;
 
