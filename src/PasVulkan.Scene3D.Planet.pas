@@ -18808,7 +18808,7 @@ begin
       // Now the mesh generation pass for the rain streaks
 
       fMeshGenerationPushConstants.ViewBaseIndex:=InFlightFrameState^.FinalUnjitteredViewIndex;
-      fMeshGenerationPushConstants.CountViews:=InFlightFrameState^.CountViews;
+      fMeshGenerationPushConstants.CountViews:=InFlightFrameState^.CountFinalViews;
       fMeshGenerationPushConstants.CountAllViews:=TpvScene3DRendererInstance(fRendererInstance).Views[aInFlightFrameIndex].Count;
       fMeshGenerationPushConstants.CountRainDrops:=MaximumCountRainDrops;
       fMeshGenerationPushConstants.ViewPortSize:=TpvVector2.Create(TpvScene3DRendererInstance(fRendererInstance).ScaledWidth,TpvScene3DRendererInstance(fRendererInstance).ScaledHeight);
