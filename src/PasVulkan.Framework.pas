@@ -8523,8 +8523,11 @@ begin
                                                      TVkDebugUtilsMessageSeverityFlagsEXT(VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT);
   fDebugUtilsMessengerCreateInfoEXT.messageType:=TVkDebugUtilsMessageTypeFlagsEXT(VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT) or
                                                  TVkDebugUtilsMessageTypeFlagsEXT(VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT) or
-                                                 TVkDebugUtilsMessageTypeFlagsEXT(VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT) or
-                                                 TVkDebugUtilsMessageTypeFlagsEXT(VK_DEBUG_UTILS_MESSAGE_TYPE_DEVICE_ADDRESS_BINDING_BIT_EXT);
+                                                 TVkDebugUtilsMessageTypeFlagsEXT(VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT);
+  if fEnabledExtensionNames.IndexOf(VK_EXT_DEVICE_ADDRESS_BINDING_REPORT_EXTENSION_NAME)>=0 then begin
+   fDebugUtilsMessengerCreateInfoEXT.messageType:=fDebugUtilsMessengerCreateInfoEXT.messageType or
+                                                  TVkDebugUtilsMessageTypeFlagsEXT(VK_DEBUG_UTILS_MESSAGE_TYPE_DEVICE_ADDRESS_BINDING_BIT_EXT);
+  end;
   fDebugUtilsMessengerCreateInfoEXT.pfnUserCallback:=@TpvVulkanInstanceDebugUtilsMessengerCallbackFunction;
   fDebugUtilsMessengerCreateInfoEXT.pUserData:=self;
   VulkanCheckResult(fInstanceVulkan.CreateDebugUtilsMessengerEXT(fInstanceHandle,@fDebugUtilsMessengerCreateInfoEXT,fAllocationCallbacks,@fDebugUtilsMessengerEXT));
@@ -10582,6 +10585,11 @@ var Index,SubIndex,Count:TpvSizeInt;
 begin
 
  if fDeviceHandle=VK_NULL_HANDLE then begin
+
+  if fInstance.fExtDebugUtilsEnabled and
+     (fPhysicalDevice.fAvailableExtensionNames.IndexOf(VK_EXT_DEVICE_ADDRESS_BINDING_REPORT_EXTENSION_NAME)>=0) then begin
+   fEnabledExtensionNames.Add(VK_EXT_DEVICE_ADDRESS_BINDING_REPORT_EXTENSION_NAME);
+  end;
 
   SetLength(fEnabledLayerNameStrings,fEnabledLayerNames.Count);
   SetLength(fRawEnabledLayerNameStrings,fEnabledLayerNames.Count);
