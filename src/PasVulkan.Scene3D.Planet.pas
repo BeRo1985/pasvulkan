@@ -2064,6 +2064,8 @@ type TpvScene3DPlanets=class;
        fBottomRadius:TpvFloat; // Start of the lowest planet ground
        fTopRadius:TpvFloat; // End of the atmosphere
        fHeightMapScale:TpvFloat; // Scale factor for the height map
+       fRainStreakSpawnDistance:TpvFloat;
+       fRainStreakGravity:TpvFloat;
        fGrassInvocationVariants:TpvUInt32;
        fMaxGrassVertices:TpvSizeInt;
        fMaxGrassIndices:TpvSizeInt;
@@ -2280,6 +2282,8 @@ type TpvScene3DPlanets=class;
        property Ready:TPasMPBool32 read fReady;
        property Data:TData read fData;
        property InFlightFrameDataList:TInFlightFrameDataList read fInFlightFrameDataList;
+       property RainStreakSpawnDistance:TpvFloat read fRainStreakSpawnDistance write fRainStreakSpawnDistance;
+       property RainStreakGravity:TpvFloat read fRainStreakGravity write fRainStreakGravity;
       public
        property PlanetData:PPlanetData read fPointerToPlanetData;
        property PlanetDataVulkanBuffers:TPlanetDataVulkanBuffers read fPlanetDataVulkanBuffers;
@@ -16059,7 +16063,7 @@ begin
   PreviousInFlightFrameIndex:=TpvScene3DRendererInstance(fRendererInstance).Scene3D.CountInFlightFrames-1;
  end;
 
- InFlightFrameState:=@TpvScene3DRendererInstance(fRendererInstance).InFlightFrameStates[aInFlightFrameIndex];
+ InFlightFrameState:=@TpvScene3DRendererInstance(fRendererInstance).InFlightFrameStates^[aInFlightFrameIndex];
 
  fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'TpvScene3DPlanet.TCullPass.Execute',[0.75,0.75,0.5,1.0]);
 
@@ -18632,7 +18636,228 @@ begin
 end;
 
 procedure TpvScene3DPlanet.TRainStreakComputePass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
+var PlanetIndex,Level,CountBufferMemoryBarriers,ViewIndex:TpvSizeInt;
+    Planet:TpvScene3DPlanet;
+    First:Boolean;
+    InFlightFrameState:TpvScene3DRendererInstance.PInFlightFrameState;
+    RendererInstance:TpvScene3DPlanet.TRendererInstance;
+    BufferMemoryBarriers:array[0..1] of TVkBufferMemoryBarrier;
+    InverseViewMatrix:PpvMatrix4x4;
+    DescriptorSets:array[0..1] of TVkDescriptorSet;
 begin
+
+ InFlightFrameState:=@TpvScene3DRendererInstance(fRendererInstance).InFlightFrameStates^[aInFlightFrameIndex];
+
+ TpvScene3D(fScene3D).VulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'TpvScene3DPlanet.TRainStreakComputePass.Execute',[0.75,0.25,0.5,1.0]);
+
+ TpvScene3DPlanets(TpvScene3D(fScene3D).Planets).Lock.AcquireRead;
+ try
+
+  First:=true;
+
+  for PlanetIndex:=0 to TpvScene3DPlanets(TpvScene3D(fScene3D).Planets).Count-1 do begin
+
+   Planet:=TpvScene3DPlanets(TpvScene3D(fScene3D).Planets).Items[PlanetIndex];
+
+   if Planet.fReady and Planet.fInFlightFrameReady[aInFlightFrameIndex] then begin
+
+   {if Planet.fRainStreaksEnabled then}begin
+
+     if Planet.fRendererInstanceHashMap.TryGet(TpvScene3DPlanet.TRendererInstance.TKey.Create(fRendererInstance),RendererInstance) then begin
+
+      if First then begin
+
+       First:=false;
+
+       aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,fSimulationPipeline.Handle);
+
+       aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE,
+                                            fSimulationPipelineLayout.Handle,
+                                            0,
+                                            1,
+                                            @RendererInstance.fRainStreakSimulationDescriptorSets[aInFlightFrameIndex].Handle,
+                                            0,
+                                            nil);
+
+      end;
+
+      ViewIndex:=InFlightFrameState^.FinalUnjitteredViewIndex;
+
+      InverseViewMatrix:=@TpvScene3DRendererInstance(fRendererInstance).Views[aInFlightFrameIndex].Items[ViewIndex].InverseViewMatrix;
+
+      // First the simulation pass for the rain streaks 
+
+      fSimulationPushConstants.PlanetModelMatrix:=TpvScene3D(fScene3D).TransformOrigin(Planet.fInFlightFrameDataList[aInFlightFrameIndex].fModelMatrix,aInFlightFrameIndex,false);
+      fSimulationPushConstants.CameraPosition:=TpvVector4.InlineableCreate(InverseViewMatrix^.Translation.xyz,1.0);
+      fSimulationPushConstants.PlanetBottomRadius:=Planet.fBottomRadius;
+      fSimulationPushConstants.PlanetTopRadius:=Planet.fTopRadius;
+      fSimulationPushConstants.SpawnDistance:=Planet.fRainStreakSpawnDistance;
+      fSimulationPushConstants.Gravity:=Planet.fRainStreakGravity;
+      fSimulationPushConstants.DeltaTime:=TpvScene3D(Planet.Scene3D).SceneTimes^[aInFlightFrameIndex];
+      fSimulationPushConstants.CountRainDrops:=MaximumCountRainDrops;
+      fSimulationPushConstants.FrameIndex:=aFrameIndex;
+
+      aCommandBuffer.CmdPushConstants(fSimulationPipelineLayout.Handle,
+                                      TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                      0,
+                                      SizeOf(TSimulationPushConstants),
+                                      @fSimulationPushConstants);
+
+      aCommandBuffer.CmdDispatch((MaximumCountRainDrops+255) shr 8,1,1);
+
+      // Barrier to ensure that the simulation pass writes are visible to the mesh generation pass and the draw indexed indirect command buffer
+
+      CountBufferMemoryBarriers:=0;
+
+      BufferMemoryBarriers[CountBufferMemoryBarriers]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                                                     TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                                                     VK_QUEUE_FAMILY_IGNORED,
+                                                                                     VK_QUEUE_FAMILY_IGNORED,
+                                                                                     RendererInstance.fVulkanRainDropBuffer.Handle,
+                                                                                     0,
+                                                                                     RendererInstance.fVulkanRainDropBuffer.Size);
+      inc(CountBufferMemoryBarriers);
+
+      BufferMemoryBarriers[CountBufferMemoryBarriers]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                                                     TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                                                                                     VK_QUEUE_FAMILY_IGNORED,
+                                                                                     VK_QUEUE_FAMILY_IGNORED,
+                                                                                     RendererInstance.fVulkanRainDropDrawIndexedIndirectCommandBuffer.Handle,
+                                                                                     0,
+                                                                                     RendererInstance.fVulkanRainDropDrawIndexedIndirectCommandBuffer.Size);
+      inc(CountBufferMemoryBarriers);
+
+      aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                        TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                        TVkDependencyFlags(0),
+                                        0,nil,
+                                        CountBufferMemoryBarriers,@BufferMemoryBarriers[0],
+                                        0,nil);
+
+      // Then fill the draw indexed indirect command buffer with vkCmdFillBuffer field-wise with initial values for the mesh generation compute pass
+
+      // Set indexCount to 0
+      aCommandBuffer.CmdFillBuffer(RendererInstance.fVulkanRainDropDrawIndexedIndirectCommandBuffer.Handle,
+                                   TVkDeviceSize(TpvPtrUInt(Pointer(@PVkDrawIndexedIndirectCommand(nil)^.indexCount))),
+                                   SizeOf(TVkUInt32),                                   
+                                   0);
+
+      // Set instanceCount to 1
+      aCommandBuffer.CmdFillBuffer(RendererInstance.fVulkanRainDropDrawIndexedIndirectCommandBuffer.Handle,
+                                   TVkDeviceSize(TpvPtrUInt(Pointer(@PVkDrawIndexedIndirectCommand(nil)^.instanceCount))),
+                                   SizeOf(TVkUInt32),
+                                   1);
+
+      // Set firstIndex + vertexOffset + firstInstance to 0
+      aCommandBuffer.CmdFillBuffer(RendererInstance.fVulkanRainDropDrawIndexedIndirectCommandBuffer.Handle,
+                                   TVkDeviceSize(TpvPtrUInt(Pointer(@PVkDrawIndexedIndirectCommand(nil)^.firstIndex))),
+                                   SizeOf(TVkUInt32)*3,
+                                   0);
+
+      // Then barrier to ensure that the mesh generation pass sees the initial values of the draw indexed indirect command buffer
+
+      CountBufferMemoryBarriers:=0;
+
+      BufferMemoryBarriers[CountBufferMemoryBarriers]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                                                                                     TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                                                     VK_QUEUE_FAMILY_IGNORED,
+                                                                                     VK_QUEUE_FAMILY_IGNORED,
+                                                                                     RendererInstance.fVulkanRainDropDrawIndexedIndirectCommandBuffer.Handle,
+                                                                                     0,
+                                                                                     RendererInstance.fVulkanRainDropDrawIndexedIndirectCommandBuffer.Size); 
+      inc(CountBufferMemoryBarriers); 
+
+      aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                        TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                        TVkDependencyFlags(0),
+                                        0,nil,
+                                        CountBufferMemoryBarriers,@BufferMemoryBarriers[0],
+                                        0,nil);
+
+      // Now the mesh generation pass for the rain streaks
+
+      fMeshGenerationPushConstants.ViewBaseIndex:=InFlightFrameState^.FinalUnjitteredViewIndex;
+      fMeshGenerationPushConstants.CountViews:=InFlightFrameState^.CountViews;
+      fMeshGenerationPushConstants.CountAllViews:=TpvScene3DRendererInstance(fRendererInstance).Views[aInFlightFrameIndex].Count;
+      fMeshGenerationPushConstants.CountRainDrops:=MaximumCountRainDrops;
+      fMeshGenerationPushConstants.ViewPortSize:=TpvVector2.Create(TpvScene3DRendererInstance(fRendererInstance).ScaledWidth,TpvScene3DRendererInstance(fRendererInstance).ScaledHeight);
+
+      aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,fMeshGenerationPipeline.Handle);
+
+      DescriptorSets[0]:=RendererInstance.fRainStreakMeshGenerationDescriptorSets[aInFlightFrameIndex].Handle;
+      DescriptorSets[1]:=TpvScene3DRendererInstance(fRendererInstance).ViewBuffersDescriptorSets[aInFlightFrameIndex].Handle;
+
+      aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE,
+                                           fMeshGenerationPipelineLayout.Handle,
+                                           0,
+                                           2,
+                                           @DescriptorSets[0],
+                                           0,
+                                           nil);
+
+      aCommandBuffer.CmdPushConstants(fMeshGenerationPipelineLayout.Handle,
+                                      TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                      0,
+                                      SizeOf(TMeshGenerationPushConstants),
+                                      @fMeshGenerationPushConstants); 
+
+      aCommandBuffer.CmdDispatch((MaximumCountRainDrops+255) shr 8,1,1);
+
+      // Barrier to ensure that the following draw indexed indirect command buffer and the vertex and fragment shader stages of the render pass
+      // are able to see the mesh generation pass writes
+
+      CountBufferMemoryBarriers:=0;
+
+      BufferMemoryBarriers[CountBufferMemoryBarriers]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                                                     TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT) or TVkAccessFlags(VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT),
+                                                                                     VK_QUEUE_FAMILY_IGNORED,
+                                                                                     VK_QUEUE_FAMILY_IGNORED,
+                                                                                     RendererInstance.fVulkanRainDropVerticesBuffer.Handle,
+                                                                                     0,
+                                                                                     RendererInstance.fVulkanRainDropVerticesBuffer.Size);
+      inc(CountBufferMemoryBarriers);
+
+      BufferMemoryBarriers[CountBufferMemoryBarriers]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                                                     TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT) or TVkAccessFlags(VK_ACCESS_INDEX_READ_BIT),
+                                                                                     VK_QUEUE_FAMILY_IGNORED,
+                                                                                     VK_QUEUE_FAMILY_IGNORED,
+                                                                                     RendererInstance.fVulkanRainDropIndicesBuffer.Handle,
+                                                                                     0,
+                                                                                     RendererInstance.fVulkanRainDropIndicesBuffer.Size);
+      inc(CountBufferMemoryBarriers);
+
+      BufferMemoryBarriers[CountBufferMemoryBarriers]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                                                     TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT) or TVkAccessFlags(VK_ACCESS_INDIRECT_COMMAND_READ_BIT),
+                                                                                     VK_QUEUE_FAMILY_IGNORED,
+                                                                                     VK_QUEUE_FAMILY_IGNORED,
+                                                                                     RendererInstance.fVulkanRainDropDrawIndexedIndirectCommandBuffer.Handle,
+                                                                                     0,
+                                                                                     RendererInstance.fVulkanRainDropDrawIndexedIndirectCommandBuffer.Size);
+      inc(CountBufferMemoryBarriers);
+
+      aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                        TVkPipelineStageFlags(VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT) or
+                                        TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_INPUT_BIT) or
+                                        TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_SHADER_BIT) or
+                                        TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT) or
+                                        TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                        TVkDependencyFlags(0),
+                                        0,nil,
+                                        CountBufferMemoryBarriers,@BufferMemoryBarriers[0],
+                                        0,nil);      
+      
+     end;
+
+    end;
+
+   end;
+
+  end;
+
+ finally
+  TpvScene3DPlanets(TpvScene3D(fScene3D).Planets).Lock.ReleaseRead;
+ end;
+
 end;
 
 (*
@@ -19303,7 +19528,7 @@ begin
 
        fPushConstants.ViewBaseIndex:=aViewBaseIndex;
        fPushConstants.CountViews:=aCountViews;
-       fPushConstants.CountAllViews:=TpvScene3DRendererInstance(fRendererInstance).InFlightFrameStates[aInFlightFrameIndex].CountViews;
+       fPushConstants.CountAllViews:=TpvScene3DRendererInstance(fRendererInstance).Views[aInFlightFrameIndex].Count;
        fPushConstants.CountQuadPointsInOneDirection:=64;
 
        fPushConstants.ResolutionXY:=(fWidth and $ffff) or ((fHeight and $ffff) shl 16);
@@ -20313,6 +20538,10 @@ begin
  fTopRadius:=aTopRadius;
 
  fHeightMapScale:=fTopRadius-fBottomRadius;
+
+ fRainStreakSpawnDistance:=0.1;
+
+ fRainStreakGravity:=9.82;
 
  fUsePlanetHeightMapBuffer:=false;
 
