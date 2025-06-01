@@ -4736,6 +4736,17 @@ begin
 
  if assigned(Renderer.VulkanDevice) then begin
 
+  fViewBuffersDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(Renderer.VulkanDevice);
+  fViewBuffersDescriptorSetLayout.AddBinding(0,
+                                             VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                                             1,
+                                             TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or
+                                             TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT) or
+                                             TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                             []);
+  fViewBuffersDescriptorSetLayout.Initialize;
+  Renderer.VulkanDevice.DebugUtils.SetObjectName(fViewBuffersDescriptorSetLayout.Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT,'TpvScene3DRendererInstance.fViewBuffersDescriptorSetLayout');
+
   begin
 
    if (Renderer.ShadowMode=TpvScene3DRendererShadowMode.MSM) and (Renderer.ShadowMapSampleCountFlagBits<>TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT)) then begin
@@ -5056,6 +5067,8 @@ begin
  end;
  FreeAndNil(fMeshCullPass0ComputeVulkanDescriptorPool);
  FreeAndNil(fMeshCullPass0ComputeVulkanDescriptorSetLayout);
+
+ FreeAndNil(fViewBuffersDescriptorSetLayout);
 
 end;
 
@@ -5850,17 +5863,6 @@ begin
 
  end;
 
- fViewBuffersDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(Renderer.VulkanDevice);
- fViewBuffersDescriptorSetLayout.AddBinding(0,
-                                            VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-                                            1,
-                                            TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or
-                                            TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT) or
-                                            TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
-                                            []);
- fViewBuffersDescriptorSetLayout.Initialize;
- Renderer.VulkanDevice.DebugUtils.SetObjectName(fViewBuffersDescriptorSetLayout.Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT,'TpvScene3DRendererInstance.fViewBuffersDescriptorSetLayout');                                          
-
  fViewBuffersDescriptorPool:=TpvVulkanDescriptorPool.Create(Renderer.VulkanDevice,
                                                               TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
                                                               Renderer.CountInFlightFrames);
@@ -5905,7 +5907,6 @@ begin
   FreeAndNil(fViewBuffersDescriptorSets[InFlightFrameIndex]);
  end;
  FreeAndNil(fViewBuffersDescriptorPool);
- FreeAndNil(fViewBuffersDescriptorSetLayout);
 
  case Renderer.AntialiasingMode of
 

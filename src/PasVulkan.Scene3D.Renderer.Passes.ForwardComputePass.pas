@@ -72,6 +72,7 @@ uses SysUtils,
      PasVulkan.Application,
      PasVulkan.FrameGraph,
      PasVulkan.Scene3D,
+     PasVulkan.Scene3D.Planet,
      PasVulkan.Scene3D.Renderer.Globals,
      PasVulkan.Scene3D.Renderer,
      PasVulkan.Scene3D.Renderer.Instance,
@@ -100,6 +101,7 @@ type { TpvScene3DRendererPassesForwardComputePass }
        fSpaceLinesIndexBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
        fPipelineLayout:TpvVulkanPipelineLayout;
        fPipeline:TpvVulkanComputePipeline;
+       fPlanetRainStreakComputePass:TpvScene3DPlanet.TRainStreakComputePass;
       public
        constructor Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance); reintroduce;
        destructor Destroy; override;
@@ -145,10 +147,15 @@ begin
 
  fVulkanPipelineShaderStageCompute:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_COMPUTE_BIT,fComputeShaderModule,'main');
 
+ fPlanetRainStreakComputePass:=TpvScene3DPlanet.TRainStreakComputePass.Create(fInstance.Renderer,
+                                                                              fInstance,
+                                                                              fInstance.Renderer.Scene3D);
+
 end;
 
 procedure TpvScene3DRendererPassesForwardComputePass.ReleasePersistentResources;
 begin
+ FreeAndNil(fPlanetRainStreakComputePass);
  FreeAndNil(fVulkanPipelineShaderStageCompute);
  FreeAndNil(fComputeShaderModule);
  inherited ReleasePersistentResources;
@@ -261,11 +268,14 @@ begin
   fVulkanDescriptorSets[InFlightFrameIndex].Flush;
  end;
 
+ fPlanetRainStreakComputePass.AllocateResources;
+
 end;
 
 procedure TpvScene3DRendererPassesForwardComputePass.ReleaseVolatileResources;
 var InFlightFrameIndex:TpvInt32;
 begin
+ fPlanetRainStreakComputePass.ReleaseResources;
  FreeAndNil(fPipeline);
  FreeAndNil(fPipelineLayout);
  for InFlightFrameIndex:=0 to FrameGraph.CountInFlightFrames-1 do begin
@@ -485,6 +495,8 @@ begin
                                     0,nil);
 
  end;
+
+ fPlanetRainStreakComputePass.Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
 
 end;
 

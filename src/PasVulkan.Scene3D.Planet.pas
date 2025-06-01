@@ -18700,16 +18700,6 @@ begin
 
        First:=false;
 
-       aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,fSimulationPipeline.Handle);
-
-       aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE,
-                                            fSimulationPipelineLayout.Handle,
-                                            0,
-                                            1,
-                                            @RendererInstance.fRainStreakSimulationDescriptorSets[aInFlightFrameIndex].Handle,
-                                            0,
-                                            nil);
-
       end;
 
       ViewIndex:=InFlightFrameState^.FinalUnjitteredViewIndex;
@@ -18727,6 +18717,16 @@ begin
       fSimulationPushConstants.DeltaTime:=TpvScene3D(Planet.Scene3D).SceneTimes^[aInFlightFrameIndex];
       fSimulationPushConstants.CountRainDrops:=MaximumCountRainDrops;
       fSimulationPushConstants.FrameIndex:=aFrameIndex;
+
+      aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,fSimulationPipeline.Handle);
+
+      aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE,
+                                           fSimulationPipelineLayout.Handle,
+                                           0,
+                                           1,
+                                           @RendererInstance.fRainStreakSimulationDescriptorSets[aInFlightFrameIndex].Handle,
+                                           0,
+                                           nil);
 
       aCommandBuffer.CmdPushConstants(fSimulationPipelineLayout.Handle,
                                       TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
@@ -19946,7 +19946,7 @@ begin
   fRainStreakSimulationDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(2,
                                                                                0,
                                                                                1,
-                                                                               TVkDescriptorType(VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE),
+                                                                               TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
                                                                                [TVkDescriptorImageInfo.Create(TpvScene3D(fScene3D).GeneralComputeSampler.Handle,
                                                                                                               fPlanet.fData.fHeightMapImage.VulkanImageView.Handle,
                                                                                                               VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
@@ -22179,7 +22179,7 @@ begin
                    [],
                    0);
  result.AddBinding(2, // ImageHeightMap
-                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE),
+                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
                    1,
                    TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                    [],
@@ -22194,7 +22194,7 @@ begin
                                         TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
                                         aCountInFlightFrames);
  result.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),2*aCountInFlightFrames);
- result.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE),1*aCountInFlightFrames);
+ result.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),1*aCountInFlightFrames);
  result.Initialize;
  aVulkanDevice.DebugUtils.SetObjectName(result.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'TpvScene3DPlanet.PlanetRainStreakSimulationDescriptorPool');
 end;
