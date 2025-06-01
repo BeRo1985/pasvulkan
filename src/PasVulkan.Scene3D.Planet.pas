@@ -1866,7 +1866,7 @@ type TpvScene3DPlanets=class;
                                           const aHeight:TpvInt32;
                                           const aVulkanSampleCountFlagBits:TVkSampleCountFlagBits);
               procedure ReleaseResources;
-              procedure Draw(const aInFlightFrameIndex,aFrameIndex:TpvSizeInt;const aRenderPass:TpvScene3DRendererRenderPass;const aViewBaseIndex,aCountViews:TpvSizeInt;const aCommandBuffer:TpvVulkanCommandBuffer);
+              function Draw(const aInFlightFrameIndex,aFrameIndex:TpvSizeInt;const aRenderPass:TpvScene3DRendererRenderPass;const aViewBaseIndex,aCountViews:TpvSizeInt;const aCommandBuffer:TpvVulkanCommandBuffer):Boolean;
              public
               property PushConstants:TPushConstants read fPushConstants write fPushConstants;
             end;
@@ -18983,23 +18983,16 @@ begin
  FreeAndNil(fPipeline);
 end;
 
-procedure TpvScene3DPlanet.TRainStreakRenderPass.Draw(const aInFlightFrameIndex,aFrameIndex:TpvSizeInt;const aRenderPass:TpvScene3DRendererRenderPass;const aViewBaseIndex,aCountViews:TpvSizeInt;const aCommandBuffer:TpvVulkanCommandBuffer);
+function TpvScene3DPlanet.TRainStreakRenderPass.Draw(const aInFlightFrameIndex,aFrameIndex:TpvSizeInt;const aRenderPass:TpvScene3DRendererRenderPass;const aViewBaseIndex,aCountViews:TpvSizeInt;const aCommandBuffer:TpvVulkanCommandBuffer):Boolean;
 const Offsets:array[0..0] of TVkDeviceSize=(0);
 var PlanetIndex,Level:TpvSizeInt;
     Planet:TpvScene3DPlanet;
     First:Boolean;
     InFlightFrameState:TpvScene3DRendererInstance.PInFlightFrameState;
     RendererInstance:TpvScene3DPlanet.TRendererInstance;
-    vkCmdDrawIndexedIndirectCount:TvkCmdDrawIndexedIndirectCount;
 begin
 
- if assigned(TpvScene3D(fScene3D).VulkanDevice.Commands.Commands.CmdDrawIndexedIndirectCount) then begin
-  vkCmdDrawIndexedIndirectCount:=TpvScene3D(fScene3D).VulkanDevice.Commands.Commands.CmdDrawIndexedIndirectCount;
- end else if assigned(TpvScene3D(fScene3D).VulkanDevice.Commands.Commands.CmdDrawIndexedIndirectCountKHR) then begin
-  vkCmdDrawIndexedIndirectCount:=addr(TpvScene3D(fScene3D).VulkanDevice.Commands.Commands.CmdDrawIndexedIndirectCountKHR);
- end else begin
-  vkCmdDrawIndexedIndirectCount:=nil;
- end;
+ result:=false;
 
  InFlightFrameState:=@TpvScene3DRendererInstance(fRendererInstance).InFlightFrameStates^[aInFlightFrameIndex];
 
@@ -19062,6 +19055,8 @@ begin
                                             1,
                                             SizeOf(TVkDrawIndexedIndirectCommand));
       
+      result:=true;
+
      end;
 
     end;

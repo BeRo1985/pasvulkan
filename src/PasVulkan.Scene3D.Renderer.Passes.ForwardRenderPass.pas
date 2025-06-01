@@ -1364,13 +1364,14 @@ begin
 
   end;
 
-  fPlanetRainStreakRenderPass.Draw(aInFlightFrameIndex,
-                                   aFrameIndex,
-                                   TpvScene3DRendererRenderPass.View,
-                                   InFlightFrameState^.FinalViewIndex,
-                                   InFlightFrameState^.CountFinalViews,
-                                   aCommandBuffer);
-  fOnSetRenderPassResourcesDone:=false;
+  if fPlanetRainStreakRenderPass.Draw(aInFlightFrameIndex,
+                                      aFrameIndex,
+                                      TpvScene3DRendererRenderPass.View,
+                                      InFlightFrameState^.FinalViewIndex,
+                                      InFlightFrameState^.CountFinalViews,
+                                      aCommandBuffer) then begin
+   fOnSetRenderPassResourcesDone:=false;
+  end;
 
   if ((fInstance.Renderer.TransparencyMode=TpvScene3DRendererTransparencyMode.Direct) and not fInstance.Renderer.Scene3D.HasTransmission) or
      (not (fInstance.Renderer.UseOITAlphaTest or fInstance.Renderer.Scene3D.HasTransmission)) then begin
