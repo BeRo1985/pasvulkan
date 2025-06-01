@@ -1954,9 +1954,19 @@ type TpvScene3DPlanets=class;
                    PKey=^TKey;
              private
               fPlanet:TpvScene3DPlanet;
+              fScene3D:TObject;
               fRendererInstance:TObject;
               fKey:TKey;
               fMinimumLODLevel:TpvSizeInt;
+              fCountInFlightFrames:TpvSizeInt;
+              fVulkanRainDropBuffer:TpvVulkanBuffer;
+              fVulkanRainDropDrawIndexedIndirectCommandBuffer:TpvVulkanBuffer;
+              fVulkanRainDropVerticesBuffer:TpvVulkanBuffer;
+              fVulkanRainDropIndicesBuffer:TpvVulkanBuffer;
+              fRainStreakSimulationDescriptorPool:TpvVulkanDescriptorPool;
+              fRainStreakSimulationDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
+              fRainStreakMeshGenerationDescriptorPool:TpvVulkanDescriptorPool;
+              fRainStreakMeshGenerationDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
              public
               constructor Create(const aPlanet:TpvScene3DPlanet;const aRendererInstance:TObject);
               destructor Destroy; override;
@@ -1992,10 +2002,6 @@ type TpvScene3DPlanets=class;
               fVulkanGrassVerticesBuffer:TpvVulkanBuffer;
               fVulkanGrassIndicesBuffer:TpvVulkanBuffer;
               fVulkanWaterAccelerationImage:TpvScene3DRendererArray2DImage;
-              fVulkanRainDropBuffer:TpvVulkanBuffer;
-              fVulkanRainDropDrawIndexedIndirectCommandBuffer:TpvVulkanBuffer;
-              fVulkanRainDropVerticesBuffer:TpvVulkanBuffer;
-              fVulkanRainDropIndicesBuffer:TpvVulkanBuffer;
               fPlanetCullDescriptorPool:TpvVulkanDescriptorPool;
               fPlanetCullDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
               fGrassCullDescriptorPool:TpvVulkanDescriptorPool;
@@ -2004,10 +2010,6 @@ type TpvScene3DPlanets=class;
               fWaterPrepassDescriptorSet:TpvVulkanDescriptorSet;
               fWaterRenderDescriptorPool:TpvVulkanDescriptorPool;
               fWaterRenderDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
-              fRainfallSimulationDescriptorPool:TpvVulkanDescriptorPool;
-              fRainfallSimulationDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
-              fRainfallMeshGenerationDescriptorPool:TpvVulkanDescriptorPool;
-              fRainfallMeshGenerationDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
              public
               constructor Create(const aPlanet:TpvScene3DPlanet;const aRendererInstance:TObject;const aRenderPass:TpvScene3DRendererRenderPass;const aMainViewPort:Boolean);
               destructor Destroy; override;
@@ -18529,8 +18531,8 @@ end;
 { TpvScene3DPlanet.TRainStreakComputePass }
 
 constructor TpvScene3DPlanet.TRainStreakComputePass.Create(const aRenderer:TObject;
-                                                         const aRendererInstance:TObject;
-                                                         const aScene3D:TObject);
+                                                           const aRendererInstance:TObject;
+                                                           const aScene3D:TObject);
 var Stream:TStream;
 begin
 
@@ -19360,6 +19362,7 @@ end;
 { TpvScene3DPlanet.TRendererInstance }
 
 constructor TpvScene3DPlanet.TRendererInstance.Create(const aPlanet:TpvScene3DPlanet;const aRendererInstance:TObject);
+var InFlightFrameIndex:TpvSizeInt;
 begin
 
  inherited Create;
@@ -19368,15 +19371,193 @@ begin
 
  fRendererInstance:=aRendererInstance;
 
+ fScene3D:=fPlanet.fScene3D;
+
  fKey:=TpvScene3DPlanet.TRendererInstance.TKey.Create(fRendererInstance);
 
+ fCountInFlightFrames:=TpvScene3DRendererInstance(fRendererInstance).Renderer.CountInFlightFrames;
+
  fMinimumLODLevel:=0;
+
+ fVulkanRainDropBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
+                                               MaximumCountRainDrops*SizeOf(TpvVector4),
+                                               TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or
+                                               TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or
+                                               TVkBufferUsageFlags(VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT),
+                                               TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                               [],
+                                               0,
+                                               TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                               0,
+                                               0,
+                                               0,
+                                               0,
+                                               0,
+                                               0,
+                                               [],
+                                               0,
+                                               pvAllocationGroupIDScene3DPlanetStatic,
+                                               'TpvScene3DPlanet.RainDropBuffer'
+                                              );
+
+ fVulkanRainDropDrawIndexedIndirectCommandBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
+                                                                         RoundUpToPowerOfTwo(SizeOf(TVkDrawIndexedIndirectCommand)),
+                                                                         TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or
+                                                                         TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or
+                                                                         TVkBufferUsageFlags(VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT),
+                                                                         TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                                         [],
+                                                                         0,
+                                                                         TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                                         0,
+                                                                         0,
+                                                                         0,
+                                                                         0,
+                                                                         0,
+                                                                         0,
+                                                                         [],
+                                                                         0,
+                                                                         pvAllocationGroupIDScene3DPlanetStatic,
+                                                                         'TpvScene3DPlanet.RainDropDrawIndexedIndirectCommandBuffer'
+                                                                        );
+
+ fVulkanRainDropVerticesBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
+                                                        MaximumCountRainDrops*SizeOf(TpvVector4)*4*4, // 4 vertices per rain drop, 4 components per vertex
+                                                        TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or
+                                                        TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or
+                                                        TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT),
+                                                        TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                        [],
+                                                        0,
+                                                        TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        [],
+                                                        0,
+                                                        pvAllocationGroupIDScene3DPlanetStatic,
+                                                        'TpvScene3DPlanet.RainDropVerticesBuffer'
+                                                       );
+
+ fVulkanRainDropIndicesBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
+                                                        MaximumCountRainDrops*SizeOf(TpvUInt32)*6, // 6 indices per rain drop
+                                                        TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or
+                                                        TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or
+                                                        TVkBufferUsageFlags(VK_BUFFER_USAGE_INDEX_BUFFER_BIT),
+                                                        TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                        [],
+                                                        0,
+                                                        TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        [],
+                                                        0,
+                                                        pvAllocationGroupIDScene3DPlanetStatic,
+                                                        'TpvScene3DPlanet.RainDropIndicesBuffer'
+                                                       );
+
+ fRainStreakSimulationDescriptorPool:=TpvScene3DPlanet.CreatePlanetRainStreakSimulationDescriptorPool(TpvScene3DRendererInstance(aRendererInstance).Renderer.VulkanDevice,TpvScene3DRendererInstance(aRendererInstance).Renderer.CountInFlightFrames);
+
+ fRainStreakMeshGenerationDescriptorPool:=TpvScene3DPlanet.CreatePlanetRainStreakMeshGenerationDescriptorPool(TpvScene3DRendererInstance(aRendererInstance).Renderer.VulkanDevice,TpvScene3DRendererInstance(aRendererInstance).Renderer.CountInFlightFrames);
+
+ for InFlightFrameIndex:=0 to fCountInFlightFrames-1 do begin
+  fRainStreakSimulationDescriptorSets[InFlightFrameIndex]:=TpvVulkanDescriptorSet.Create(fRainStreakSimulationDescriptorPool,TpvScene3D(fScene3D).PlanetRainStreakSimulationDescriptorSetLayout);
+  fRainStreakSimulationDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(0,
+                                                                               0,
+                                                                               1,
+                                                                               TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                                               [],
+                                                                               [fVulkanRainDropBuffer.DescriptorBufferInfo],
+                                                                               [],
+                                                                               false);
+  fRainStreakSimulationDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(1,
+                                                                               0,
+                                                                               1,
+                                                                               TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                                               [],
+                                                                               [fPlanet.fData.RainAtmosphereMapBuffer.DescriptorBufferInfo],
+                                                                               [],
+                                                                               false);
+  fRainStreakSimulationDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(2,
+                                                                               0,
+                                                                               1,
+                                                                               TVkDescriptorType(VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE),
+                                                                               [TVkDescriptorImageInfo.Create(TpvScene3D(fScene3D).GeneralComputeSampler.Handle,
+                                                                                                              fPlanet.fData.fHeightMapImage.VulkanImageView.Handle,
+                                                                                                              VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
+                                                                               [],
+                                                                               [],
+                                                                               false);
+  fRainStreakSimulationDescriptorSets[InFlightFrameIndex].Flush;
+  TpvScene3DRendererInstance(aRendererInstance).Renderer.VulkanDevice.DebugUtils.SetObjectName(fRainStreakSimulationDescriptorSets[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET,'TpvScene3DPlanet.TRendererInstance.fRainStreakSimulationDescriptorSets['+IntToStr(InFlightFrameIndex)+']');
+ end;
+ 
+ for InFlightFrameIndex:=0 to fCountInFlightFrames-1 do begin
+  fRainStreakMeshGenerationDescriptorSets[InFlightFrameIndex]:=TpvVulkanDescriptorSet.Create(fRainStreakMeshGenerationDescriptorPool,TpvScene3D(fScene3D).PlanetRainStreakMeshGenerationDescriptorSetLayout);
+  fRainStreakMeshGenerationDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(0, // RainDropBuffer
+                                                                                   0,
+                                                                                   1,
+                                                                                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                                                   [],
+                                                                                   [fVulkanRainDropBuffer.DescriptorBufferInfo],
+                                                                                   [],
+                                                                                   false);
+  fRainStreakMeshGenerationDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(1, // Vertex Buffer
+                                                                                   0,
+                                                                                   1,
+                                                                                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                                                   [],
+                                                                                   [fVulkanRainDropVerticesBuffer.DescriptorBufferInfo],
+                                                                                   [],
+                                                                                   false);
+  fRainStreakMeshGenerationDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(2, // Index Buffer
+                                                                                   0,
+                                                                                   1,
+                                                                                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                                                   [],
+                                                                                   [fVulkanRainDropIndicesBuffer.DescriptorBufferInfo],
+                                                                                   [],
+                                                                                   false);
+  fRainStreakMeshGenerationDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(3, // Draw Indirect Command Buffer
+                                                                                   0,
+                                                                                   1,
+                                                                                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                                                   [],
+                                                                                   [fVulkanRainDropDrawIndexedIndirectCommandBuffer.DescriptorBufferInfo],
+                                                                                   [],
+                                                                                   false);
+  fRainStreakMeshGenerationDescriptorSets[InFlightFrameIndex].Flush;
+  TpvScene3DRendererInstance(aRendererInstance).Renderer.VulkanDevice.DebugUtils.SetObjectName(fRainStreakMeshGenerationDescriptorSets[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET,'TpvScene3DPlanet.TRendererInstance.fRainStreakMeshGenerationDescriptorSets['+IntToStr(InFlightFrameIndex)+']');
+ end;
 
 end;
 
 destructor TpvScene3DPlanet.TRendererInstance.Destroy;
+var InFlightFrameIndex:TpvSizeInt;
 begin
+ 
+ for InFlightFrameIndex:=0 to fCountInFlightFrames-1 do begin
+  FreeAndNil(fRainStreakSimulationDescriptorSets[InFlightFrameIndex]);
+  FreeAndNil(fRainStreakMeshGenerationDescriptorSets[InFlightFrameIndex]);
+ end;
+
+ FreeAndNil(fVulkanRainDropBuffer);
+ FreeAndNil(fVulkanRainDropDrawIndexedIndirectCommandBuffer);
+ FreeAndNil(fVulkanRainDropVerticesBuffer);
+ FreeAndNil(fVulkanRainDropIndicesBuffer);
+
+ FreeAndNil(fRainStreakMeshGenerationDescriptorPool);
+ FreeAndNil(fRainStreakSimulationDescriptorPool);
+
  inherited Destroy;
+
 end;
 
 procedure TpvScene3DPlanet.TRendererInstance.AfterConstruction;
@@ -19621,90 +19802,6 @@ begin
   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fVulkanGrassIndicesBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.GrassIndicesBuffer');
 
  end;
-
- fVulkanRainDropBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
-                                               MaximumCountRainDrops*SizeOf(TpvVector4), 
-                                               TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or
-                                               TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or
-                                               TVkBufferUsageFlags(VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT),
-                                               TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                               [],
-                                               0,
-                                               TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
-                                               0,
-                                               0,
-                                               0,
-                                               0,
-                                               0,
-                                               0,
-                                               [],
-                                               0,
-                                               pvAllocationGroupIDScene3DPlanetStatic,
-                                               'TpvScene3DPlanet.RainDropBuffer'
-                                              );
-
- fVulkanRainDropDrawIndexedIndirectCommandBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
-                                                                         RoundUpToPowerOfTwo(SizeOf(TVkDrawIndexedIndirectCommand)),
-                                                                         TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or
-                                                                         TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or
-                                                                         TVkBufferUsageFlags(VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT),
-                                                                         TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                                                         [],
-                                                                         0,
-                                                                         TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
-                                                                         0,
-                                                                         0,
-                                                                         0,
-                                                                         0,
-                                                                         0,
-                                                                         0,
-                                                                         [],
-                                                                         0,
-                                                                         pvAllocationGroupIDScene3DPlanetStatic,
-                                                                         'TpvScene3DPlanet.RainDropDrawIndexedIndirectCommandBuffer'
-                                                                        );
- 
- fVulkanRainDropVerticesBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
-                                                        MaximumCountRainDrops*SizeOf(TpvVector4)*4*4, // 4 vertices per rain drop, 4 components per vertex
-                                                        TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or
-                                                        TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or
-                                                        TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT),
-                                                        TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                                        [],
-                                                        0,
-                                                        TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
-                                                        0,
-                                                        0,
-                                                        0,
-                                                        0,
-                                                        0,
-                                                        0,
-                                                        [],
-                                                        0,
-                                                        pvAllocationGroupIDScene3DPlanetStatic,
-                                                        'TpvScene3DPlanet.RainDropVerticesBuffer'
-                                                       );
- 
- fVulkanRainDropIndicesBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
-                                                        MaximumCountRainDrops*SizeOf(TpvUInt32)*6, // 6 indices per rain drop
-                                                        TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or
-                                                        TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or
-                                                        TVkBufferUsageFlags(VK_BUFFER_USAGE_INDEX_BUFFER_BIT),
-                                                        TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                                        [],
-                                                        0,
-                                                        TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
-                                                        0,
-                                                        0,
-                                                        0,
-                                                        0,
-                                                        0,
-                                                        0,
-                                                        [],
-                                                        0,
-                                                        pvAllocationGroupIDScene3DPlanetStatic,
-                                                        'TpvScene3DPlanet.RainDropIndicesBuffer'
-                                                       );
 
  fPlanetCullDescriptorPool:=TpvScene3DPlanet.CreatePlanetCullDescriptorPool(fPlanet.fVulkanDevice,
                                                                             TpvScene3DRendererInstance(fRendererInstance).Scene3D.CountInFlightFrames);
@@ -20004,10 +20101,6 @@ begin
   FreeAndNil(fPlanetCullDescriptorSets[InFlightFrameIndex]);
  end;
  FreeAndNil(fPlanetCullDescriptorPool);
- FreeAndNil(fVulkanRainDropBuffer);
- FreeAndNil(fVulkanRainDropDrawIndexedIndirectCommandBuffer);
- FreeAndNil(fVulkanRainDropVerticesBuffer);
- FreeAndNil(fVulkanRainDropIndicesBuffer); 
  for InFlightFrameIndex:=0 to MaxInFlightFrames-1 do begin
   FreeAndNil(fVulkanVisiblityBuffers[InFlightFrameIndex]);
  end;
@@ -21628,7 +21721,7 @@ begin
                    1,
                    TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                    [],
-                   0); 
+                   0);
  result.Initialize;
  aVulkanDevice.DebugUtils.SetObjectName(result.Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT,'TpvScene3DPlanet.PlanetRainStreakSimulationDescriptorSetLayout');
 end;
@@ -21671,12 +21764,6 @@ begin
                    TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                    [],
                    0);
- result.AddBinding(4, // View Uniform Buffer
-                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
-                   1,
-                   TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
-                   [],
-                   0);
  result.Initialize;
  aVulkanDevice.DebugUtils.SetObjectName(result.Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT,'TpvScene3DPlanet.PlanetRainStreakMeshGenerationDescriptorSetLayout');
 end;
@@ -21687,7 +21774,6 @@ begin
                                         TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
                                         aCountInFlightFrames);
  result.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),3*aCountInFlightFrames);
- result.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),1*aCountInFlightFrames);
  result.Initialize;
  aVulkanDevice.DebugUtils.SetObjectName(result.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'TpvScene3DPlanet.PlanetRainStreakMeshGenerationDescriptorPool');
 end;
