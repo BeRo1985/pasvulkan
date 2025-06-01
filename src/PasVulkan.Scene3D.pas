@@ -3684,6 +3684,8 @@ type EpvScene3D=class(Exception);
        fPlanetWaterCullDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fPlanetWaterPrepassDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fPlanetWaterRenderDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
+       fPlanetRainStreakSimulationDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
+       fPlanetRainStreakMeshGenerationDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fPlanetWaterSimulationUseParallelQueue:TPasMPBool32;
        fPlanetWaterSimulationQueue:TpvVulkanQueue;
        fPlanetWaterSimulationQueueFamilyIndex:TpvInt32;
@@ -4203,6 +4205,8 @@ type EpvScene3D=class(Exception);
        property PlanetWaterCullDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fPlanetWaterCullDescriptorSetLayout;
        property PlanetWaterPrepassDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fPlanetWaterPrepassDescriptorSetLayout;
        property PlanetWaterRenderDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fPlanetWaterRenderDescriptorSetLayout;
+       property PlanetRainStreakSimulationDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fPlanetRainStreakSimulationDescriptorSetLayout;
+       property PlanetRainStreakMeshGenerationDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fPlanetRainStreakMeshGenerationDescriptorSetLayout;
        property PlanetWaterSimulationUseParallelQueue:TPasMPBool32 read fPlanetWaterSimulationUseParallelQueue;
        property PlanetWaterSimulationQueue:TpvVulkanQueue read fPlanetWaterSimulationQueue;
        property PlanetWaterSimulationQueueFamilyIndex:TpvInt32 read fPlanetWaterSimulationQueueFamilyIndex;
@@ -28792,6 +28796,10 @@ begin
 
   fPlanetWaterRenderDescriptorSetLayout:=TpvScene3DPlanet.CreatePlanetWaterRenderDescriptorSetLayout(fVulkanDevice);
 
+  fPlanetRainStreakSimulationDescriptorSetLayout:=TpvScene3DPlanet.CreatePlanetRainStreakSimulationDescriptorSetLayout(fVulkanDevice);
+
+  fPlanetRainStreakMeshGenerationDescriptorSetLayout:=TpvScene3DPlanet.CreatePlanetRainStreakMeshGenerationDescriptorSetLayout(fVulkanDevice);
+
   // Use parallel queue for planet water simulation, when there are dedicated queues for compute and transfer detected and RenderDoc is not detected,
   // because RenderDoc does not support parallel queues while its operatings.
   fPlanetWaterSimulationUseParallelQueue:=aUseParallelQueues and
@@ -29353,6 +29361,10 @@ begin
  FreeAndNil(fPlanetWaterPrepassDescriptorSetLayout);
 
  FreeAndNil(fPlanetWaterRenderDescriptorSetLayout);
+
+ FreeAndNil(fPlanetRainStreakSimulationDescriptorSetLayout);
+
+ FreeAndNil(fPlanetRainStreakMeshGenerationDescriptorSetLayout);
 
  FreeAndNil(fMeshComputeVulkanDescriptorSet0Layout);
 

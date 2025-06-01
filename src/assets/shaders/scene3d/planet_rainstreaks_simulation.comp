@@ -18,11 +18,11 @@ layout(set = 0, binding = 0, std430) buffer RainDropBuffer {
   RainDrop data[]; // Array of raindrops
 } rainDropBuffer;
 
-layout(set = 1, binding = 0, std430) buffer RainAtmosphereMapBuffer {
+layout(set = 0, binding = 1, std430) buffer RainAtmosphereMapBuffer {
   float values[];
 } rainAtmosphereMapBuffer;
 
-layout(set = 1, binding = 1) uniform sampler2D uImageHeightMap; // Height map of the planet,
+layout(set = 0, binding = 2) uniform sampler2D uImageHeightMap; // Height map of the planet,
 
 layout(push_constant) uniform PushConstants {
   
@@ -116,5 +116,5 @@ void main() {
     rainDropBuffer.data[rainDropIndex] = drop;
     
   }
-  
+
 }

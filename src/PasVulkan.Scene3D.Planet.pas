@@ -1756,6 +1756,90 @@ type TpvScene3DPlanets=class;
              public
               property PushConstants:TPlanetPushConstants read fPlanetPushConstants write fPlanetPushConstants;
             end;
+            { TRainStreakComputePass } // Used by multiple TpvScene3DPlanet instances inside the TpvScene3D render passes per renderer instance
+            TRainStreakComputePass=class
+             public
+              type TSimulationPushConstants=packed record
+                    PlanetModelMatrix:TpvMatrix4x4;
+                    CameraPosition:TpvVector4;
+                    PlanetBottomRadius:TpvFloat;
+                    PlanetTopRadius:TpvFloat;
+                    SpawnDistance:TpvFloat;
+                    Gravity:TpvFloat;
+                    DeltaTime:TpvFloat;
+                    CountRainDrops:TpvUInt32;
+                    FrameIndex:TpvUInt32;
+                   end;
+                   PSimulationPushConstants=^TSimulationPushConstants;
+                   TMeshGenerationPushConstants=packed record
+                    ViewBaseIndex:TpvUInt32;
+                    CountViews:TpvUInt32;
+                    CountAllViews:TpvUInt32;
+                    CountRainDrops:TpvUInt32;
+                    ViewPortSize:TpvVector2;
+                   end;
+                   PMeshGenerationPushConstants=^TMeshGenerationPushConstants;
+             private
+              fRenderer:TObject;
+              fRendererInstance:TObject;
+              fScene3D:TObject;
+              fVulkanDevice:TpvVulkanDevice;
+              fSimulationComputeShaderModule:TpvVulkanShaderModule;
+              fSimulationComputeShaderStage:TpvVulkanPipelineShaderStage;
+              fMeshGenerationComputeShaderModule:TpvVulkanShaderModule;
+              fMeshGenerationComputeShaderStage:TpvVulkanPipelineShaderStage;
+              fSimulationPipelineLayout:TpvVulkanPipelineLayout;
+              fSimulationPipeline:TpvVulkanComputePipeline;
+              fMeshGenerationPipelineLayout:TpvVulkanPipelineLayout;
+              fMeshGenerationPipeline:TpvVulkanComputePipeline;
+              fSimulationPushConstants:TSimulationPushConstants;
+              fMeshGenerationPushConstants:TMeshGenerationPushConstants;              
+             public
+              constructor Create(const aRenderer:TObject;const aRendererInstance:TObject;const aScene3D:TObject); reintroduce;
+              destructor Destroy; override;
+              procedure AllocateResources;
+              procedure ReleaseResources;
+              procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
+             public
+              property SimulationPushConstants:TSimulationPushConstants read fSimulationPushConstants write fSimulationPushConstants;
+              property MeshGenerationPushConstants:TMeshGenerationPushConstants read fMeshGenerationPushConstants write fMeshGenerationPushConstants;
+            end;            
+            { TRainStreakRenderPass } // Used by multiple TpvScene3DPlanet instances inside the TpvScene3D render passes per renderer instance
+            TRainStreakRenderPass=class
+             public
+              type TPushConstants=packed record
+                    ViewBaseIndex:TpvUInt32;
+                    CountViews:TpvUInt32;
+                    CountAllViews:TpvUInt32;
+                    CountRainDrops:TpvUInt32;
+                    ViewPortSize:TpvVector2;
+                   end;
+                   PPushConstants=^TPushConstants;
+             private
+              fRenderer:TObject;
+              fRendererInstance:TObject;
+              fScene3D:TObject;
+              fVulkanDevice:TpvVulkanDevice;
+              fRenderPass:TpvVulkanRenderPass;
+              fVertexShaderModule:TpvVulkanShaderModule;
+              fFragmentShaderModule:TpvVulkanShaderModule;
+              fVertexShaderStage:TpvVulkanPipelineShaderStage;
+              fFragmentShaderStage:TpvVulkanPipelineShaderStage;
+              fDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
+              fDescriptorPool:TpvVulkanDescriptorPool;
+              fDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
+              fPipelineLayout:TpvVulkanPipelineLayout;
+              fPipeline:TpvVulkanGraphicsPipeline;
+              fPushConstants:TPushConstants;
+             public
+              constructor Create(const aRenderer:TObject;const aRendererInstance:TObject;const aScene3D:TObject); reintroduce;
+              destructor Destroy; override;
+              procedure AllocateResources(const aRenderPass:TpvVulkanRenderPass);
+              procedure ReleaseResources;
+              procedure Draw(const aInFlightFrameIndex,aFrameIndex:TpvSizeInt;const aRenderPass:TpvScene3DRendererRenderPass;const aViewBaseIndex,aCountViews:TpvSizeInt;const aCommandBuffer:TpvVulkanCommandBuffer);
+             public
+              property PushConstants:TPushConstants read fPushConstants write fPushConstants;
+            end;
             { TWaterWaitPass } // Used by multiple TpvScene3DPlanet instances inside the TpvScene3D render passes per renderer instance
             TWaterWaitPass=class
              public
@@ -1920,6 +2004,10 @@ type TpvScene3DPlanets=class;
               fWaterPrepassDescriptorSet:TpvVulkanDescriptorSet;
               fWaterRenderDescriptorPool:TpvVulkanDescriptorPool;
               fWaterRenderDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
+              fRainfallSimulationDescriptorPool:TpvVulkanDescriptorPool;
+              fRainfallSimulationDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
+              fRainfallMeshGenerationDescriptorPool:TpvVulkanDescriptorPool;
+              fRainfallMeshGenerationDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
              public
               constructor Create(const aPlanet:TpvScene3DPlanet;const aRendererInstance:TObject;const aRenderPass:TpvScene3DRendererRenderPass;const aMainViewPort:Boolean);
               destructor Destroy; override;
@@ -2108,6 +2196,10 @@ type TpvScene3DPlanets=class;
        class function CreatePlanetWaterPrepassDescriptorPool(const aVulkanDevice:TpvVulkanDevice;const aCountInFlightFrames:TpvSizeInt):TpvVulkanDescriptorPool; static;
        class function CreatePlanetWaterRenderDescriptorSetLayout(const aVulkanDevice:TpvVulkanDevice):TpvVulkanDescriptorSetLayout; static;
        class function CreatePlanetWaterRenderDescriptorPool(const aVulkanDevice:TpvVulkanDevice;const aCountInFlightFrames:TpvSizeInt):TpvVulkanDescriptorPool; static;
+       class function CreatePlanetRainStreakSimulationDescriptorSetLayout(const aVulkanDevice:TpvVulkanDevice):TpvVulkanDescriptorSetLayout; static;
+       class function CreatePlanetRainStreakSimulationDescriptorPool(const aVulkanDevice:TpvVulkanDevice;const aCountInFlightFrames:TpvSizeInt):TpvVulkanDescriptorPool; static;
+       class function CreatePlanetRainStreakMeshGenerationDescriptorSetLayout(const aVulkanDevice:TpvVulkanDevice):TpvVulkanDescriptorSetLayout; static;
+       class function CreatePlanetRainStreakMeshGenerationDescriptorPool(const aVulkanDevice:TpvVulkanDevice;const aCountInFlightFrames:TpvSizeInt):TpvVulkanDescriptorPool; static;       
        procedure BeginUpdate;
        procedure EndUpdate;
        procedure FlushUpdate;
@@ -8511,7 +8603,7 @@ begin
                                              TVkPipelineCreateFlags(0),
                                              fComputeShaderStage,
                                              fPipelineLayout,
-                                             nil,                                             
+                                             nil,
                                              0);
 
   fPushConstants.Dummy:=0;
@@ -17372,11 +17464,11 @@ begin
   end;
 
   fShaderStageFlags:=IfThen(TpvScene3D(fScene3D).MeshShaderSupport,
-                                 TVkShaderStageFlags(VK_SHADER_STAGE_MESH_BIT_EXT) or
-                                 TVkShaderStageFlags(VK_SHADER_STAGE_TASK_BIT_EXT),
-                                 0) or
-                          TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or
-                          TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT);
+                            TVkShaderStageFlags(VK_SHADER_STAGE_MESH_BIT_EXT) or
+                            TVkShaderStageFlags(VK_SHADER_STAGE_TASK_BIT_EXT),
+                            0) or
+                     TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or
+                     TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT);
 
   fDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(fVulkanDevice);
 
@@ -18339,6 +18431,282 @@ begin
 
  TpvScene3D(fScene3D).VulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
 
+end;
+
+(*
+            { TRainfallComputePass } // Used by multiple TpvScene3DPlanet instances inside the TpvScene3D render passes per renderer instance
+            TRainfallComputePass=class
+             public
+              type TSimulationPushConstants=packed record
+                    PlanetModelMatrix:TpvMatrix4x4;
+                    CameraPosition:TpvVector4;
+                    PlanetBottomRadius:TpvFloat;
+                    PlanetTopRadius:TpvFloat;
+                    SpawnDistance:TpvFloat;
+                    Gravity:TpvFloat;
+                    DeltaTime:TpvFloat;
+                    CountRainDrops:TpvUInt32;
+                    FrameIndex:TpvUInt32;
+                   end;
+                   PSimulationPushConstants=^TSimulationPushConstants;
+                   TMeshGenerationPushConstants=packed record
+                    ViewBaseIndex:TpvUInt32;
+                    CountViews:TpvUInt32;
+                    CountAllViews:TpvUInt32;
+                    CountRainDrops:TpvUInt32;
+                    ViewPortSize:TpvVector2;
+                   end;
+                   PMeshGenerationPushConstants=^TMeshGenerationPushConstants;
+             private
+              fRenderer:TObject;
+              fRendererInstance:TObject;
+              fScene3D:TObject;
+              fVulkanDevice:TpvVulkanDevice;
+              fSimulationComputeShaderModule:TpvVulkanShaderModule;
+              fSimulationComputeShaderStage:TpvVulkanPipelineShaderStage;
+              fMeshGenerationComputeShaderModule:TpvVulkanShaderModule;
+              fMeshGenerationComputeShaderStage:TpvVulkanPipelineShaderStage;
+              fSimulationPipelineLayout:TpvVulkanPipelineLayout;
+              fSimulationPipeline:TpvVulkanComputePipeline;
+              fMeshGenerationPipelineLayout:TpvVulkanPipelineLayout;
+              fMeshGenerationPipeline:TpvVulkanComputePipeline;
+              fSimulationDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
+              fSimulationDescriptorPool:TpvVulkanDescriptorPool;
+              fSimulationDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
+              fMeshGenerationDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
+              fMeshGenerationDescriptorPool:TpvVulkanDescriptorPool;
+              fMeshGenerationDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
+              fSimulationPushConstants:TSimulationPushConstants;
+              fMeshGenerationPushConstants:TMeshGenerationPushConstants;              
+             public
+              constructor Create(const aRenderer:TObject;const aRendererInstance:TObject;const aScene3D:TObject); reintroduce;
+              destructor Destroy; override;
+              procedure AllocateResources(const aRenderPass:TpvVulkanRenderPass);
+              procedure ReleaseResources;
+              procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
+             public
+              property SimulationPushConstants:TSimulationPushConstants read fSimulationPushConstants write fSimulationPushConstants;
+              property MeshGenerationPushConstants:TMeshGenerationPushConstants read fMeshGenerationPushConstants write fMeshGenerationPushConstants;
+            end;            
+            { TRainfallRenderPass } // Used by multiple TpvScene3DPlanet instances inside the TpvScene3D render passes per renderer instance
+            TRainfallRenderPass=class
+             public
+              type TPushConstants=packed record
+                    ViewBaseIndex:TpvUInt32;
+                    CountViews:TpvUInt32;
+                    CountAllViews:TpvUInt32;
+                    CountRainDrops:TpvUInt32;
+                    ViewPortSize:TpvVector2;
+                   end;
+                   PPushConstants=^TPushConstants;
+             private
+              fRenderer:TObject;
+              fRendererInstance:TObject;
+              fScene3D:TObject;
+              fVulkanDevice:TpvVulkanDevice;
+              fRenderPass:TpvVulkanRenderPass;
+              fVertexShaderModule:TpvVulkanShaderModule;
+              fFragmentShaderModule:TpvVulkanShaderModule;
+              fVertexShaderStage:TpvVulkanPipelineShaderStage;
+              fFragmentShaderStage:TpvVulkanPipelineShaderStage;
+              fDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
+              fDescriptorPool:TpvVulkanDescriptorPool;
+              fDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
+              fPipelineLayout:TpvVulkanPipelineLayout;
+              fPipeline:TpvVulkanGraphicsPipeline;
+              fPushConstants:TPushConstants;
+             public
+              constructor Create(const aRenderer:TObject;const aRendererInstance:TObject;const aScene3D:TObject); reintroduce;
+              destructor Destroy; override;
+              procedure AllocateResources(const aRenderPass:TpvVulkanRenderPass);
+              procedure ReleaseResources;
+              procedure Draw(const aInFlightFrameIndex,aFrameIndex:TpvSizeInt;const aRenderPass:TpvScene3DRendererRenderPass;const aViewBaseIndex,aCountViews:TpvSizeInt;const aCommandBuffer:TpvVulkanCommandBuffer);
+             public
+              property PushConstants:TPushConstants read fPushConstants write fPushConstants;
+            end;
+*)
+
+{ TpvScene3DPlanet.TRainStreakComputePass }
+
+constructor TpvScene3DPlanet.TRainStreakComputePass.Create(const aRenderer:TObject;
+                                                         const aRendererInstance:TObject;
+                                                         const aScene3D:TObject);
+var Stream:TStream;
+begin
+
+ inherited Create;
+
+ fRenderer:=aRenderer;
+
+ fRendererInstance:=aRendererInstance;
+
+ fScene3D:=aScene3D;
+
+ fVulkanDevice:=TpvScene3D(fScene3D).VulkanDevice;
+
+ Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_rainstreaks_simulation_comp.spv');
+ try
+  fSimulationComputeShaderModule:=TpvVulkanShaderModule.Create(fVulkanDevice,Stream);
+ finally
+  FreeAndNil(Stream);
+ end;
+ fVulkanDevice.DebugUtils.SetObjectName(fSimulationComputeShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DPlanet.TRainfallComputePass.fSimulationComputeShaderModule');
+
+ fSimulationComputeShaderStage:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_COMPUTE_BIT,fSimulationComputeShaderModule,'main');
+
+ Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_rainstreaks_meshgeneration_comp.spv');
+ try
+  fMeshGenerationComputeShaderModule:=TpvVulkanShaderModule.Create(fVulkanDevice,Stream);
+ finally
+  FreeAndNil(Stream);
+ end;
+ fVulkanDevice.DebugUtils.SetObjectName(fMeshGenerationComputeShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DPlanet.TRainfallComputePass.fMeshGenerationComputeShaderModule');
+ 
+ fMeshGenerationComputeShaderStage:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_COMPUTE_BIT,fMeshGenerationComputeShaderModule,'main'); 
+
+ fSimulationPipelineLayout:=TpvVulkanPipelineLayout.Create(fVulkanDevice);
+ fSimulationPipelineLayout.AddDescriptorSetLayout(TpvScene3D(fScene3D).PlanetRainStreakSimulationDescriptorSetLayout);
+ fSimulationPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                                0,
+                                                SizeOf(TSimulationPushConstants));
+ fSimulationPipelineLayout.Initialize;
+ fVulkanDevice.DebugUtils.SetObjectName(fSimulationPipelineLayout.Handle,VK_OBJECT_TYPE_PIPELINE_LAYOUT,'TpvScene3DPlanet.TRainfallComputePass.fSimulationPipelineLayout');
+  
+ fSimulationPipeline:=TpvVulkanComputePipeline.Create(fVulkanDevice,
+                                                      pvApplication.VulkanPipelineCache,
+                                                      TVkPipelineCreateFlags(0),
+                                                      fSimulationComputeShaderStage,
+                                                      fSimulationPipelineLayout,
+                                                      nil,
+                                                      0);
+ fVulkanDevice.DebugUtils.SetObjectName(fSimulationPipeline.Handle,VK_OBJECT_TYPE_PIPELINE,'TpvScene3DPlanet.TRainfallComputePass.fSimulationPipeline');
+
+ fMeshGenerationPipelineLayout:=TpvVulkanPipelineLayout.Create(fVulkanDevice);
+ fMeshGenerationPipelineLayout.AddDescriptorSetLayout(TpvScene3D(fScene3D).PlanetRainStreakMeshGenerationDescriptorSetLayout);
+ fMeshGenerationPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                                    0,
+                                                    SizeOf(TMeshGenerationPushConstants));
+ fMeshGenerationPipelineLayout.Initialize;
+ fVulkanDevice.DebugUtils.SetObjectName(fMeshGenerationPipelineLayout.Handle,VK_OBJECT_TYPE_PIPELINE_LAYOUT,'TpvScene3DPlanet.TRainfallComputePass.fMeshGenerationPipelineLayout');
+
+ fMeshGenerationPipeline:=TpvVulkanComputePipeline.Create(fVulkanDevice,
+                                                          pvApplication.VulkanPipelineCache,
+                                                          TVkPipelineCreateFlags(0),
+                                                          fMeshGenerationComputeShaderStage,
+                                                          fMeshGenerationPipelineLayout,
+                                                          nil,
+                                                          0);
+ fVulkanDevice.DebugUtils.SetObjectName(fMeshGenerationPipeline.Handle,VK_OBJECT_TYPE_PIPELINE,'TpvScene3DPlanet.TRainfallComputePass.fMeshGenerationPipeline');
+
+end;
+
+destructor TpvScene3DPlanet.TRainStreakComputePass.Destroy;
+begin
+
+ FreeAndNil(fSimulationPipeline);
+ FreeAndNil(fSimulationPipelineLayout);
+
+ FreeAndNil(fMeshGenerationPipeline);
+ FreeAndNil(fMeshGenerationPipelineLayout);
+
+ FreeAndNil(fMeshGenerationComputeShaderStage);
+
+ FreeAndNil(fMeshGenerationComputeShaderModule);
+
+ FreeAndNil(fSimulationComputeShaderStage);
+
+ FreeAndNil(fSimulationComputeShaderModule);
+
+ inherited Destroy;
+
+end;
+
+procedure TpvScene3DPlanet.TRainStreakComputePass.AllocateResources;
+begin
+end;
+
+procedure TpvScene3DPlanet.TRainStreakComputePass.ReleaseResources;
+begin
+end;
+
+procedure TpvScene3DPlanet.TRainStreakComputePass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
+begin
+end;
+
+(*
+            { TRainStreakRenderPass } // Used by multiple TpvScene3DPlanet instances inside the TpvScene3D render passes per renderer instance
+            TRainStreakRenderPass=class
+             public
+              type TPushConstants=packed record
+                    ViewBaseIndex:TpvUInt32;
+                    CountViews:TpvUInt32;
+                    CountAllViews:TpvUInt32;
+                    CountRainDrops:TpvUInt32;
+                    ViewPortSize:TpvVector2;
+                   end;
+                   PPushConstants=^TPushConstants;
+             private
+              fRenderer:TObject;
+              fRendererInstance:TObject;
+              fScene3D:TObject;
+              fVulkanDevice:TpvVulkanDevice;
+              fRenderPass:TpvVulkanRenderPass;
+              fVertexShaderModule:TpvVulkanShaderModule;
+              fFragmentShaderModule:TpvVulkanShaderModule;
+              fVertexShaderStage:TpvVulkanPipelineShaderStage;
+              fFragmentShaderStage:TpvVulkanPipelineShaderStage;
+              fDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
+              fDescriptorPool:TpvVulkanDescriptorPool;
+              fDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
+              fPipelineLayout:TpvVulkanPipelineLayout;
+              fPipeline:TpvVulkanGraphicsPipeline;
+              fPushConstants:TPushConstants;
+             public
+              constructor Create(const aRenderer:TObject;const aRendererInstance:TObject;const aScene3D:TObject); reintroduce;
+              destructor Destroy; override;
+              procedure AllocateResources(const aRenderPass:TpvVulkanRenderPass);
+              procedure ReleaseResources;
+              procedure Draw(const aInFlightFrameIndex,aFrameIndex:TpvSizeInt;const aRenderPass:TpvScene3DRendererRenderPass;const aViewBaseIndex,aCountViews:TpvSizeInt;const aCommandBuffer:TpvVulkanCommandBuffer);
+             public
+              property PushConstants:TPushConstants read fPushConstants write fPushConstants;
+            end;
+*)
+{ TpvScene3DPlanet.TRainStreakRenderPass }
+
+constructor TpvScene3DPlanet.TRainStreakRenderPass.Create(const aRenderer:TObject;
+                                                          const aRendererInstance:TObject;
+                                                          const aScene3D:TObject);
+begin
+
+ inherited Create;
+
+ fRenderer:=aRenderer;
+
+ fRendererInstance:=aRendererInstance;
+
+ fScene3D:=aScene3D;
+
+ fVulkanDevice:=TpvScene3D(fScene3D).VulkanDevice;
+
+end;
+
+destructor TpvScene3DPlanet.TRainStreakRenderPass.Destroy;
+begin
+
+ inherited Destroy;
+
+end;
+
+procedure TpvScene3DPlanet.TRainStreakRenderPass.AllocateResources(const aRenderPass:TpvVulkanRenderPass);
+begin
+end;
+
+procedure TpvScene3DPlanet.TRainStreakRenderPass.ReleaseResources;
+begin
+end;
+
+procedure TpvScene3DPlanet.TRainStreakRenderPass.Draw(const aInFlightFrameIndex,aFrameIndex:TpvSizeInt;const aRenderPass:TpvScene3DRendererRenderPass;const aViewBaseIndex,aCountViews:TpvSizeInt;const aCommandBuffer:TpvVulkanCommandBuffer);
+begin
 end;
 
 { TpvScene3DPlanet.TWaterWaitPass }
@@ -21239,6 +21607,92 @@ begin
  result.Initialize;
  aVulkanDevice.DebugUtils.SetObjectName(result.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'TpvScene3DPlanet.PlanetWaterRenderDescriptorPool');
 end;
+
+class function TpvScene3DPlanet.CreatePlanetRainStreakSimulationDescriptorSetLayout(const aVulkanDevice:TpvVulkanDevice):TpvVulkanDescriptorSetLayout;
+begin
+ result:=TpvVulkanDescriptorSetLayout.Create(aVulkanDevice);
+ result.AddBinding(0, // RainDropBuffer
+                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                   1,
+                   TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                   [],
+                   0);
+ result.AddBinding(1, // RainAtmosphereMapBuffer
+                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                   1,
+                   TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                   [],
+                   0);
+ result.AddBinding(2, // ImageHeightMap
+                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE),
+                   1,
+                   TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                   [],
+                   0); 
+ result.Initialize;
+ aVulkanDevice.DebugUtils.SetObjectName(result.Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT,'TpvScene3DPlanet.PlanetRainStreakSimulationDescriptorSetLayout');
+end;
+
+class function TpvScene3DPlanet.CreatePlanetRainStreakSimulationDescriptorPool(const aVulkanDevice:TpvVulkanDevice;const aCountInFlightFrames:TpvSizeInt):TpvVulkanDescriptorPool;
+begin
+ result:=TpvVulkanDescriptorPool.Create(aVulkanDevice,
+                                        TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
+                                        aCountInFlightFrames);
+ result.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),2*aCountInFlightFrames);
+ result.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE),1*aCountInFlightFrames);
+ result.Initialize;
+ aVulkanDevice.DebugUtils.SetObjectName(result.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'TpvScene3DPlanet.PlanetRainStreakSimulationDescriptorPool');
+end;
+
+class function TpvScene3DPlanet.CreatePlanetRainStreakMeshGenerationDescriptorSetLayout(const aVulkanDevice:TpvVulkanDevice):TpvVulkanDescriptorSetLayout;
+begin
+ result:=TpvVulkanDescriptorSetLayout.Create(aVulkanDevice);
+ result.AddBinding(0, // RainDropBuffer
+                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                   1,
+                   TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                   [],
+                   0);
+ result.AddBinding(1, // Vertex Buffer
+                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                   1,
+                   TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                   [],
+                   0);
+ result.AddBinding(2, // Index Buffer
+                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                   1,
+                   TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                   [],
+                   0);
+ result.AddBinding(3, // Draw Indirect Command Buffer
+                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                   1,
+                   TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                   [],
+                   0);
+ result.AddBinding(4, // View Uniform Buffer
+                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
+                   1,
+                   TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                   [],
+                   0);
+ result.Initialize;
+ aVulkanDevice.DebugUtils.SetObjectName(result.Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT,'TpvScene3DPlanet.PlanetRainStreakMeshGenerationDescriptorSetLayout');
+end;
+
+class function TpvScene3DPlanet.CreatePlanetRainStreakMeshGenerationDescriptorPool(const aVulkanDevice:TpvVulkanDevice;const aCountInFlightFrames:TpvSizeInt):TpvVulkanDescriptorPool;
+begin
+ result:=TpvVulkanDescriptorPool.Create(aVulkanDevice,
+                                        TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
+                                        aCountInFlightFrames);
+ result.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),3*aCountInFlightFrames);
+ result.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),1*aCountInFlightFrames);
+ result.Initialize;
+ aVulkanDevice.DebugUtils.SetObjectName(result.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'TpvScene3DPlanet.PlanetRainStreakMeshGenerationDescriptorPool');
+end;
+
+{ TpvScene3DPlanet }
 
 procedure TpvScene3DPlanet.BeginUpdate;
 begin
