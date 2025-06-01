@@ -652,7 +652,7 @@ begin
 
  for InFlightFrameIndex:=0 to FrameGraph.CountInFlightFrames-1 do begin
   fPassVulkanDescriptorSets[InFlightFrameIndex]:=TpvVulkanDescriptorSet.Create(fPassVulkanDescriptorPool,
-                                                                                 fPassVulkanDescriptorSetLayout);
+                                                                               fPassVulkanDescriptorSetLayout);
   fPassVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(0,
                                                                      0,
                                                                      1,
@@ -1337,15 +1337,15 @@ begin
                                         0,
                                         nil);
 
-    aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                         fVulkanSpaceLinesPipelineLayout.Handle,
-                                         1,
-                                         1,
-                                         @fPassVulkanDescriptorSets[aInFlightFrameIndex].Handle,
-                                         0,
-                                         nil);
+   aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                        fVulkanSpaceLinesPipelineLayout.Handle,
+                                        1,
+                                        1,
+                                        @fPassVulkanDescriptorSets[aInFlightFrameIndex].Handle,
+                                        0,
+                                        nil);
 
-    fInstance.DrawSpaceLines(fInstance,
+   fInstance.DrawSpaceLines(fInstance,
                             fVulkanSpaceLinesGraphicsPipeline,
                             -1,
                             aInFlightFrameIndex,
