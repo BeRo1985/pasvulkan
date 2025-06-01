@@ -137,6 +137,7 @@ type { TpvScene3DRendererPassesForwardRenderPass }
        fSkyBox:TpvScene3DRendererSkyBox;
        fPlanetDepthPrePass:TpvScene3DPlanet.TRenderPass;
        fPlanetOpaquePass:TpvScene3DPlanet.TRenderPass;
+       fPlanetRainStreakRenderPass:TpvScene3DPlanet.TRainStreakRenderPass;
        fVoxelVisualization:TpvScene3DRendererVoxelVisualization;
        fVoxelMeshVisualization:TpvScene3DRendererVoxelMeshVisualization;
        fSpaceLinesPushConstants:TSpaceLinesPushConstants;
@@ -504,6 +505,10 @@ begin
                                                         fResourceCascadedShadowMap,
                                                         fResourceSSAO);
 
+ fPlanetRainStreakRenderPass:=TpvScene3DPlanet.TRainStreakRenderPass.Create(fInstance.Renderer,
+                                                                            fInstance,
+                                                                            fInstance.Renderer.Scene3D);
+
  fVoxelVisualization:=nil;
  fVoxelMeshVisualization:=nil;
 
@@ -530,6 +535,8 @@ begin
  end; 
 
  FreeAndNil(fPlanetOpaquePass);
+
+ FreeAndNil(fPlanetRainStreakRenderPass);
 
  FreeAndNil(fSkyBox);
 
@@ -1082,6 +1089,11 @@ begin
                                      fInstance.ScaledHeight,
                                      fInstance.Renderer.SurfaceSampleCountFlagBits);
 
+ fPlanetRainStreakRenderPass.AllocateResources(fVulkanRenderPass,
+                                               fInstance.ScaledWidth,
+                                               fInstance.ScaledHeight,
+                                               fInstance.Renderer.SurfaceSampleCountFlagBits);
+
  if assigned(fVoxelVisualization) then begin
   fVoxelVisualization.AllocateResources(fVulkanRenderPass,
                                         fInstance.ScaledWidth,
@@ -1116,6 +1128,7 @@ begin
   fPlanetDepthPrePass.ReleaseResources;
  end;
  fPlanetOpaquePass.ReleaseResources;
+ fPlanetRainStreakRenderPass.ReleaseResources;
  for DepthPrePass:=false to fUseDepthPrepass do begin
   for AlphaMode:=Low(TpvScene3D.TMaterial.TAlphaMode) to High(TpvScene3D.TMaterial.TAlphaMode) do begin
    for PrimitiveTopology:=Low(TpvScene3D.TPrimitiveTopology) to High(TpvScene3D.TPrimitiveTopology) do begin
@@ -1284,6 +1297,13 @@ begin
                           InFlightFrameState^.FinalViewIndex,
                           InFlightFrameState^.CountFinalViews,
                           aCommandBuffer);
+
+   fPlanetRainStreakRenderPass.Draw(aInFlightFrameIndex,
+                                    aFrameIndex,
+                                    TpvScene3DRendererRenderPass.View,
+                                    InFlightFrameState^.FinalViewIndex,
+                                    InFlightFrameState^.CountFinalViews,
+                                    aCommandBuffer);
 
    fOnSetRenderPassResourcesDone:=false;
 
