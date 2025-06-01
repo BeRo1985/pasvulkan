@@ -19862,6 +19862,13 @@ begin
                                                'TpvScene3DPlanet.RainDropBuffer'
                                               );
 
+ fPlanet.fVulkanDevice.MemoryStaging.Zero(fPlanet.fVulkanUniversalQueue,
+                                          fPlanet.fVulkanUniversalCommandBuffer,
+                                          fPlanet.fVulkanUniversalFence,
+                                          fVulkanRainDropBuffer,
+                                          0,
+                                          fVulkanRainDropBuffer.Size);
+
  fVulkanRainDropDrawIndexedIndirectCommandBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
                                                                          RoundUpToPowerOfTwo(SizeOf(TVkDrawIndexedIndirectCommand)),
                                                                          TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or
@@ -19882,6 +19889,13 @@ begin
                                                                          pvAllocationGroupIDScene3DPlanetStatic,
                                                                          'TpvScene3DPlanet.RainDropDrawIndexedIndirectCommandBuffer'
                                                                         );
+
+ fPlanet.fVulkanDevice.MemoryStaging.Zero(fPlanet.fVulkanUniversalQueue,
+                                          fPlanet.fVulkanUniversalCommandBuffer,
+                                          fPlanet.fVulkanUniversalFence,
+                                          fVulkanRainDropDrawIndexedIndirectCommandBuffer,
+                                          0,
+                                          fVulkanRainDropDrawIndexedIndirectCommandBuffer.Size);
 
  fVulkanRainDropVerticesBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
                                                         MaximumCountRainDrops*SizeOf(TpvVector4)*4*4, // 4 vertices per rain drop, 4 components per vertex
@@ -19904,6 +19918,13 @@ begin
                                                         'TpvScene3DPlanet.RainDropVerticesBuffer'
                                                        );
 
+ fPlanet.fVulkanDevice.MemoryStaging.Zero(fPlanet.fVulkanUniversalQueue,
+                                          fPlanet.fVulkanUniversalCommandBuffer,
+                                          fPlanet.fVulkanUniversalFence,
+                                          fVulkanRainDropVerticesBuffer,
+                                          0,
+                                          fVulkanRainDropVerticesBuffer.Size);
+
  fVulkanRainDropIndicesBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
                                                         MaximumCountRainDrops*SizeOf(TpvUInt32)*6, // 6 indices per rain drop
                                                         TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or
@@ -19924,6 +19945,13 @@ begin
                                                         pvAllocationGroupIDScene3DPlanetStatic,
                                                         'TpvScene3DPlanet.RainDropIndicesBuffer'
                                                        );
+
+ fPlanet.fVulkanDevice.MemoryStaging.Zero(fPlanet.fVulkanUniversalQueue,
+                                          fPlanet.fVulkanUniversalCommandBuffer,
+                                          fPlanet.fVulkanUniversalFence,
+                                          fVulkanRainDropIndicesBuffer,
+                                          0,
+                                          fVulkanRainDropIndicesBuffer.Size);
 
  fRainStreakSimulationDescriptorPool:=TpvScene3DPlanet.CreatePlanetRainStreakSimulationDescriptorPool(TpvScene3DRendererInstance(aRendererInstance).Renderer.VulkanDevice,TpvScene3DRendererInstance(aRendererInstance).Renderer.CountInFlightFrames);
 
@@ -20217,7 +20245,6 @@ begin
                                              fVulkanGrassMetaDataBuffer,
                                              0,
                                              SizeOf(TGrassMetaData));
-
 
   fVulkanGrassVerticesBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
                                                      IfThen(aMainViewPort,fPlanet.fMaxGrassVertices*SizeOf(TpvScene3DPlanet.TGrassVertex),SizeOf(TpvScene3DPlanet.TGrassVertex)),
