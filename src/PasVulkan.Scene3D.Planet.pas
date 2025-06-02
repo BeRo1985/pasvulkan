@@ -1792,6 +1792,7 @@ type TpvScene3DPlanets=class;
                     Gravity:TpvFloat;
                     DeltaTime:TpvFloat;
                     CountRainDrops:TpvUInt32;
+                    RainAtmosphereResolution:TpvUInt32;
                     FrameIndex:TpvUInt32;
                    end;
                    PSimulationPushConstants=^TSimulationPushConstants;
@@ -18621,6 +18622,7 @@ begin
       fSimulationPushConstants.Gravity:=Planet.fRainStreakGravity;
       fSimulationPushConstants.DeltaTime:=TpvScene3D(Planet.Scene3D).SceneTimes^[aInFlightFrameIndex];
       fSimulationPushConstants.CountRainDrops:=MaximumCountRainDrops;
+      fSimulationPushConstants.RainAtmosphereResolution:=Planet.fRainAtmosphereMapResolution;
       fSimulationPushConstants.FrameIndex:=aFrameIndex;
 
       aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,fSimulationPipeline.Handle);

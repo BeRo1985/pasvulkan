@@ -200,7 +200,7 @@ void main(){
     // Line end
     vec3 lineEnd3D = uintBitsToFloat(primitive.position1.xyz);
 
-    visible = false; // Assume the primitive is not visible until we check the views
+//  visible = false; // Assume the primitive is not visible until we check the views
 
     // Ensure that the line is visible in all views at the correct positions
     for(int viewIndex = 0; viewIndex < int(pushConstants.countViews); viewIndex++){
@@ -210,7 +210,7 @@ void main(){
       vec4 lineStartClip = viewProjectionMatrix * vec4(lineStart3D, 1.0);
       vec4 lineEndClip = viewProjectionMatrix * vec4(lineEnd3D, 1.0);
 
-      if(any(lessThan(lineStartClip.xyz, vec3(-lineStartClip.w))) || 
+    /*if(any(lessThan(lineStartClip.xyz, vec3(-lineStartClip.w))) || 
          any(lessThan(lineEndClip.xyz, vec3(-lineEndClip.w))) ||
          any(greaterThan(lineStartClip.xyz, vec3(lineStartClip.w))) ||
          any(greaterThan(lineEndClip.xyz, vec3(lineEndClip.w)))){
@@ -232,6 +232,11 @@ void main(){
           continue; // The primitive is not visible in this view, so skip to the next view
         
         }
+
+      }else*/{
+
+        // The primitive is visible in this view, so we can use the clip space coordinates directly
+        visible = true;
 
       }
 
@@ -312,12 +317,11 @@ void main(){
     {  
 
       // Generate the quad indices for the current primitive
-//    uint firstIndex = atomicAdd(destinationDrawIndexedIndirectCommand.drawIndexedIndirectCommand.cmd0.x, 6u); // Each primitive has 6 indices for a quad of two triangles
       // We can't use atomicAdd here because the indices need to be in order to ensure that the rendering order is correct for the primitives,
       // so we generate degenerate indices for invisible primitives to keep the indices in sync with the vertices but not render the primitive.      
-      uint firstIndex = rainDropIndex * 6u; // Each primitive has 6 indices for a quad of two triangles
-      atomicAdd(destinationDrawIndexedIndirectCommand.drawIndexedIndirectCommand.cmd0.x, 6u); // But increment the index count for the draw command anyway, for the indirect draw call later
       if(visible){
+  
+        uint firstIndex = atomicAdd(destinationDrawIndexedIndirectCommand.drawIndexedIndirectCommand.cmd0.x, 6u); // Each primitive has 6 indices for a quad of two triangles
 
         destinationIndices.indices[firstIndex] = firstVertex;
         destinationIndices.indices[firstIndex + 1u] = firstVertex + 1u;
@@ -326,18 +330,6 @@ void main(){
         destinationIndices.indices[firstIndex + 3u] = firstVertex;
         destinationIndices.indices[firstIndex + 4u] = firstVertex + 2u;
         destinationIndices.indices[firstIndex + 5u] = firstVertex + 3u;
-
-      }else{
-
-        // If the primitive is not visible, output degenerate indices to keep the indices in sync with the vertices but not render the primitive
-
-        destinationIndices.indices[firstIndex] = firstVertex;
-        destinationIndices.indices[firstIndex + 1u] = firstVertex;
-        destinationIndices.indices[firstIndex + 2u] = firstVertex;
-
-        destinationIndices.indices[firstIndex + 3u] = firstVertex;
-        destinationIndices.indices[firstIndex + 4u] = firstVertex;
-        destinationIndices.indices[firstIndex + 5u] = firstVertex;
 
       }
 

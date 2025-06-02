@@ -37,6 +37,7 @@ layout(push_constant) uniform PushConstants {
 
   float deltaTime; // Time delta for simulation
   uint countRainDrops; // Number of raindrops
+  uint rainAtmosphereResolution; // Resolution of the rain atmosphere map
   uint frameIndex; // Current frame rainDropIndex
    
 } pushConstants;  
@@ -49,6 +50,22 @@ layout(push_constant) uniform PushConstants {
 #include "floatint.glsl"
 
 shared mat4 sharedPlanetInverseModelMatrix;
+
+float getRainAtmosphereFactor(const vec3 position) {
+  
+  // Get the octahedral coordinates of the position
+  vec2 uv = octEqualAreaUnsignedEncode(position);
+
+  // Calculate the integer coordinates for the UV mapping
+  ivec2 xy = clamp(ivec2(round(uv * vec2(pushConstants.rainAtmosphereResolution))), ivec2(0), ivec2(pushConstants.rainAtmosphereResolution - 1));
+
+  // Calculate the index in the rain atmosphere map buffer
+  uint index = uint(xy.x + (xy.y * pushConstants.rainAtmosphereResolution));
+
+  // Return the value from the rain atmosphere map buffer
+  return rainAtmosphereMapBuffer.values[index];
+
+}
 
 void main() {
 
@@ -112,6 +129,10 @@ void main() {
         1.0 // Set the factor to 1.0 to indicate that the raindrop is active
       );
       
+    }
+
+    if(position.w > 1e-7){
+      position.w *= getRainAtmosphereFactor(position.xyz); // Apply the rain atmosphere factor to the raindrop factor
     }
 
     // Update the raindrop position
