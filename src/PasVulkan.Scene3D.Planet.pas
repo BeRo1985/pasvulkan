@@ -18724,7 +18724,7 @@ begin
       fMeshGenerationPushConstants.LineThickness:=0.5;
       fMeshGenerationPushConstants.Padding:=0;
       fMeshGenerationPushConstants.ViewPortSize:=TpvVector2.InlineableCreate(TpvScene3DRendererInstance(fRendererInstance).ScaledWidth,TpvScene3DRendererInstance(fRendererInstance).ScaledHeight);
-      fMeshGenerationPushConstants.Color:=TpvVector4.InlineableCreate(1.0,1.0,1.0,0.01);
+      fMeshGenerationPushConstants.Color:=TpvVector4.InlineableCreate(1.0,1.0,1.0,0.1);
 
       aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,fMeshGenerationPipeline.Handle);
 
