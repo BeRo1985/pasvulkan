@@ -2104,6 +2104,8 @@ type TpvScene3DPlanets=class;
        fHeightMapScale:TpvFloat; // Scale factor for the height map
        fRainStreakSpawnDistance:TpvFloat;
        fRainStreakGravity:TpvFloat;
+       fRainStreakOcclusionOBBActive:TPasMPBool32;
+       fRainStreakOcclusionOBB:TpvOBB;
        fGrassInvocationVariants:TpvUInt32;
        fMaxGrassVertices:TpvSizeInt;
        fMaxGrassIndices:TpvSizeInt;
@@ -2322,7 +2324,10 @@ type TpvScene3DPlanets=class;
        property InFlightFrameDataList:TInFlightFrameDataList read fInFlightFrameDataList;
        property RainStreakSpawnDistance:TpvFloat read fRainStreakSpawnDistance write fRainStreakSpawnDistance;
        property RainStreakGravity:TpvFloat read fRainStreakGravity write fRainStreakGravity;
-      public
+      public      
+       property RainStreakOcclusionOBBActive:TPasMPBool32 read fRainStreakOcclusionOBBActive write fRainStreakOcclusionOBBActive;
+       property RainStreakOcclusionOBB:TpvOBB read fRainStreakOcclusionOBB write fRainStreakOcclusionOBB;
+      public      
        property PlanetData:PPlanetData read fPointerToPlanetData;
        property PlanetDataVulkanBuffers:TPlanetDataVulkanBuffers read fPlanetDataVulkanBuffers;
        property Materials:PMaterials read fPointerToMaterials;
@@ -19047,9 +19052,15 @@ begin
       fPushConstants.CountRainDrops:=MaximumCountRainDrops;
       fPushConstants.ViewPortSize:=TpvVector2.InlineableCreate(TpvScene3DRendererInstance(fRendererInstance).ScaledWidth,TpvScene3DRendererInstance(fRendererInstance).ScaledHeight);
       fPushConstants.Padding:=TpvVector2.Origin;
-      fPushConstants.OcclusionOBBCenter:=TpvVector4.InlineableCreate(0.0,0.0,0.0,0.0);
-      fPushConstants.OcclusionOBBHalfSize:=TpvVector4.InlineableCreate(0.0,0.0,0.0,0.0);
-      fPushConstants.OcclusionOBBOrientation:=TpvVector4.InlineableCreate(0.0,0.0,0.0,1.0);
+      if Planet.fRainStreakOcclusionOBBActive then begin
+       fPushConstants.OcclusionOBBCenter:=TpvVector4.InlineableCreate(Planet.fRainStreakOcclusionOBB.Center,0.0);
+       fPushConstants.OcclusionOBBHalfSize:=TpvVector4.InlineableCreate(Planet.fRainStreakOcclusionOBB.HalfExtents,1.0);
+       fPushConstants.OcclusionOBBOrientation:=Planet.fRainStreakOcclusionOBB.Matrix.ToQuaternion.Vector;
+      end else begin
+       fPushConstants.OcclusionOBBCenter:=TpvVector4.InlineableCreate(0.0,0.0,0.0,0.0);
+       fPushConstants.OcclusionOBBHalfSize:=TpvVector4.InlineableCreate(0.0,0.0,0.0,0.0);
+       fPushConstants.OcclusionOBBOrientation:=TpvVector4.InlineableCreate(0.0,0.0,0.0,1.0);
+      end;
 
       aCommandBuffer.CmdPushConstants(fPipelineLayout.Handle,
                                       fShaderStageFlags,
@@ -20722,6 +20733,11 @@ begin
  fRainStreakSpawnDistance:=0.25;
 
  fRainStreakGravity:=9.82;
+
+ fRainStreakOcclusionOBBActive:=false;
+
+ fRainStreakOcclusionOBB.Center:=TpvVector3.Origin;
+ fRainStreakOcclusionOBB.HalfExtents:=TpvVector3.Origin;
 
  fUsePlanetHeightMapBuffer:=false;
 
