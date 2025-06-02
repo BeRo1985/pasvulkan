@@ -18684,10 +18684,10 @@ begin
                                    SizeOf(TVkUInt32),
                                    1);
 
-      // Set firstIndex + vertexOffset + firstInstance to 0
+      // Set firstIndex + vertexOffset + firstInstance + countVertices to 0
       aCommandBuffer.CmdFillBuffer(RendererInstance.fVulkanRainDropDrawIndexedIndirectCommandBuffer.Handle,
                                    TVkDeviceSize(TpvPtrUInt(Pointer(@PVkDrawIndexedIndirectCommand(nil)^.firstIndex))),
-                                   SizeOf(TVkUInt32)*3,
+                                   (SizeOf(TVkDrawIndexedIndirectCommand)+SizeOf(TpvUInt32))-TpvPtrUInt(Pointer(@PVkDrawIndexedIndirectCommand(nil)^.firstIndex)),
                                    0);
 
       // Then barrier to ensure that the mesh generation pass sees the initial values of the draw indexed indirect command buffer
