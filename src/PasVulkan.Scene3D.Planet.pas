@@ -23208,8 +23208,8 @@ procedure TpvScene3DPlanet.Update(const aInFlightFrameIndex:TpvSizeInt);
 begin
  if aInFlightFrameIndex>=0 then begin
   fPerInFlightFrameRainStreakCounts[aInFlightFrameIndex]:=fRainStreakCount;
-  fPerInFlightFrameRainStreakSpawnBottomRadii[InFlightFrameIndex]:=fRainStreakSpawnBottomRadius;
-  fPerInFlightFrameRainStreakSpawnTopRadii[InFlightFrameIndex]:=fRainStreakSpawnTopRadius;
+  fPerInFlightFrameRainStreakSpawnBottomRadii[aInFlightFrameIndex]:=fRainStreakSpawnBottomRadius;
+  fPerInFlightFrameRainStreakSpawnTopRadii[aInFlightFrameIndex]:=fRainStreakSpawnTopRadius;
   fPerInFlightFrameRainStreakSpawnDistances[aInFlightFrameIndex]:=fRainStreakSpawnDistance;
   fPerInFlightFrameRainStreakGravities[aInFlightFrameIndex]:=fRainStreakGravity;
   fPerInFlightFrameRainStreakLineThicknesses[aInFlightFrameIndex]:=fRainStreakLineThickness;
