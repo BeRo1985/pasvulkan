@@ -19770,7 +19770,7 @@ begin
                                           fVulkanRainDropBuffer.Size);
 
  fVulkanRainDropDrawIndexedIndirectCommandBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
-                                                                         RoundUpToPowerOfTwo(SizeOf(TVkDrawIndexedIndirectCommand)),
+                                                                         RoundUpToPowerOfTwo(SizeOf(TVkDrawIndexedIndirectCommand)+SizeOf(TpvUInt32)),
                                                                          TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or
                                                                          TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or
                                                                          TVkBufferUsageFlags(VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT),
