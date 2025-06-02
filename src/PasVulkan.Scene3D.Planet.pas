@@ -2920,7 +2920,7 @@ begin
 
  fWaterFirst:=true;
 
- fWaterActive:=true;
+ fWaterActive:=false;
 
  fWaterSimulationCountUnderThresholdFrames:=0;
 
@@ -11252,8 +11252,8 @@ begin
 
  end;
 
- fTimeAccumulator:=Min(fTimeAccumulator+aDeltaTime,0.1); // Limit to 100ms for avoid too long frame times
-{if fPlanet.fData.fWaterActive and (fPlanet.fData.fWaterSimulationCountUnderThresholdFrames<fPlanet.fData.fWaterSimulationMaximumCountUnderThresholdFrames) then begin
+//fTimeAccumulator:=Min(fTimeAccumulator+aDeltaTime,0.1); // Limit to 100ms for avoid too long frame times
+ if fPlanet.fData.fWaterActive and (fPlanet.fData.fWaterSimulationCountUnderThresholdFrames<fPlanet.fData.fWaterSimulationMaximumCountUnderThresholdFrames) then begin
   fTimeAccumulator:=Min(fTimeAccumulator+aDeltaTime,0.1); // Limit to 100ms for avoid too long frame times
  end else if fPlanet.fData.fWaterFirst then begin
   fTimeAccumulator:=Min(Max(fTimeStep,fTimeAccumulator+aDeltaTime),0.1); // Limit to 100ms for avoid too long frame times
