@@ -106,7 +106,8 @@ type TpvScene3DPlanets=class;
      TpvScene3DPlanet=class
       public
        const CountBlendMapLayers=2; // with each four values
-             MaximumCountRainDrops=4096; // must be power of two
+             MaximumCountRainDrops=65536; // must be power of two
+             DefaultCountRainDrops=4096; // must be power of two
        type THeightValue=TpvFloat;
             PHeightValue=^THeightValue;
             THeightMap=array of THeightValue;
@@ -1797,14 +1798,21 @@ type TpvScene3DPlanets=class;
                    end;
                    PSimulationPushConstants=^TSimulationPushConstants;
                    TMeshGenerationPushConstants=packed record
+
                     ViewBaseIndex:TpvUInt32;
                     CountViews:TpvUInt32;
                     CountAllViews:TpvUInt32;
                     CountRainDrops:TpvUInt32;
+
                     LineThickness:TpvFloat;
-                    Padding:TpvUInt32;
+                    LineLength:TpvFloat;
                     ViewPortSize:TpvVector2;
+
                     Color:TpvVector4;
+
+                    ZNear:TpvFloat;
+                    ZFar:TpvFloat;
+
                    end;
                    PMeshGenerationPushConstants=^TMeshGenerationPushConstants;
              private
@@ -2102,15 +2110,23 @@ type TpvScene3DPlanets=class;
        fBottomRadius:TpvFloat; // Start of the lowest planet ground
        fTopRadius:TpvFloat; // End of the atmosphere
        fHeightMapScale:TpvFloat; // Scale factor for the height map
+       fRainStreakCount:TpvInt32;
        fRainStreakSpawnDistance:TpvFloat;
        fRainStreakGravity:TpvFloat;
        fRainStreakLineThickness:TpvFloat;
+       fRainStreakLineLength:TpvFloat;
+       fRainStreakZNear:TpvFloat;
+       fRainStreakZFar:TpvFloat;
        fRainStreakColor:TpvVector4;
        fRainStreakOcclusionOBBActive:TPasMPBool32;
        fRainStreakOcclusionOBB:TpvOBB;
+       fPerInFlightFrameRainStreakCounts:array[0..MaxInFlightFrames-1] of TpvInt32;
        fPerInFlightFrameRainStreakSpawnDistances:array[0..MaxInFlightFrames-1] of TpvFloat;
        fPerInFlightFrameRainStreakGravities:array[0..MaxInFlightFrames-1] of TpvFloat;
        fPerInFlightFrameRainStreakLineThicknesses:array[0..MaxInFlightFrames-1] of TpvFloat;
+       fPerInFlightFrameRainStreakLineLengths:array[0..MaxInFlightFrames-1] of TpvFloat;
+       fPerInFlightFrameRainStreakZNears:array[0..MaxInFlightFrames-1] of TpvFloat;
+       fPerInFlightFrameRainStreakZFars:array[0..MaxInFlightFrames-1] of TpvFloat;
        fPerInFlightFrameRainStreakColors:array[0..MaxInFlightFrames-1] of TpvVector4;
        fPerInFlightFrameRainStreakOcclusionOBBActives:array[0..MaxInFlightFrames-1] of TPasMPBool32;
        fPerInFlightFrameRainStreakOcclusionOBBs:array[0..MaxInFlightFrames-1] of TpvOBB;
@@ -2330,9 +2346,14 @@ type TpvScene3DPlanets=class;
        property Ready:TPasMPBool32 read fReady;
        property Data:TData read fData;
        property InFlightFrameDataList:TInFlightFrameDataList read fInFlightFrameDataList;
+      published
+       property RainStreakCount:TpvInt32 read fRainStreakCount write fRainStreakCount;
        property RainStreakSpawnDistance:TpvFloat read fRainStreakSpawnDistance write fRainStreakSpawnDistance;
        property RainStreakGravity:TpvFloat read fRainStreakGravity write fRainStreakGravity;
        property RainStreakLineThickness:TpvFloat read fRainStreakLineThickness write fRainStreakLineThickness;
+       property RainStreakLineLength:TpvFloat read fRainStreakLineLength write fRainStreakLineLength;
+       property RainStreakZNear:TpvFloat read fRainStreakZNear write fRainStreakZNear;
+       property RainStreakZFar:TpvFloat read fRainStreakZFar write fRainStreakZFar;
       public
        property RainStreakColor:TpvVector4 read fRainStreakColor write fRainStreakColor;
        property RainStreakOcclusionOBBActive:TPasMPBool32 read fRainStreakOcclusionOBBActive write fRainStreakOcclusionOBBActive;
@@ -18643,7 +18664,7 @@ begin
       fSimulationPushConstants.SpawnDistance:=Planet.fPerInFlightFrameRainStreakSpawnDistances[aInFlightFrameIndex];
       fSimulationPushConstants.Gravity:=Planet.fPerInFlightFrameRainStreakGravities[aInFlightFrameIndex];
       fSimulationPushConstants.DeltaTime:=TpvScene3D(Planet.Scene3D).DeltaTimes^[aInFlightFrameIndex];
-      fSimulationPushConstants.CountRainDrops:=MaximumCountRainDrops;
+      fSimulationPushConstants.CountRainDrops:=Min(Max(Planet.fPerInFlightFrameRainStreakCounts[aInFlightFrameIndex],0),MaximumCountRainDrops);
       fSimulationPushConstants.RainAtmosphereResolution:=Planet.fRainAtmosphereMapResolution;
       fSimulationPushConstants.FrameIndex:=aFrameIndex;
 
@@ -18663,7 +18684,7 @@ begin
                                       SizeOf(TSimulationPushConstants),
                                       @fSimulationPushConstants);
 
-      aCommandBuffer.CmdDispatch((MaximumCountRainDrops+255) shr 8,1,1);
+      aCommandBuffer.CmdDispatch((fSimulationPushConstants.CountRainDrops+255) shr 8,1,1);
 
       // Barrier to ensure that the simulation pass writes are visible to the mesh generation pass and the draw indexed indirect command buffer
 
@@ -18739,11 +18760,13 @@ begin
       fMeshGenerationPushConstants.ViewBaseIndex:=InFlightFrameState^.FinalViewIndex;
       fMeshGenerationPushConstants.CountViews:=InFlightFrameState^.CountFinalViews;
       fMeshGenerationPushConstants.CountAllViews:=InFlightFrameState^.CountViews;
-      fMeshGenerationPushConstants.CountRainDrops:=MaximumCountRainDrops;
+      fMeshGenerationPushConstants.CountRainDrops:=Min(Max(Planet.fPerInFlightFrameRainStreakCounts[aInFlightFrameIndex],0),MaximumCountRainDrops);
       fMeshGenerationPushConstants.LineThickness:=Planet.fPerInFlightFrameRainStreakLineThicknesses[aInFlightFrameIndex];
-      fMeshGenerationPushConstants.Padding:=0;
+      fMeshGenerationPushConstants.LineLength:=Planet.fPerInFlightFrameRainStreakLineLengths[aInFlightFrameIndex];
       fMeshGenerationPushConstants.ViewPortSize:=TpvVector2.InlineableCreate(TpvScene3DRendererInstance(fRendererInstance).ScaledWidth,TpvScene3DRendererInstance(fRendererInstance).ScaledHeight);
       fMeshGenerationPushConstants.Color:=Planet.fPerInFlightFrameRainStreakColors[aInFlightFrameIndex];
+      fMeshGenerationPushConstants.ZNear:=Planet.fPerInFlightFrameRainStreakZNears[aInFlightFrameIndex];
+      fMeshGenerationPushConstants.ZFar:=Planet.fPerInFlightFrameRainStreakZFars[aInFlightFrameIndex];
 
       aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,fMeshGenerationPipeline.Handle);
 
@@ -18764,7 +18787,7 @@ begin
                                       SizeOf(TMeshGenerationPushConstants),
                                       @fMeshGenerationPushConstants); 
 
-      aCommandBuffer.CmdDispatch((MaximumCountRainDrops+255) shr 8,1,1);
+      aCommandBuffer.CmdDispatch((fMeshGenerationPushConstants.CountRainDrops+255) shr 8,1,1);
 
       // Barrier to ensure that the following draw indexed indirect command buffer and the vertex and fragment shader stages of the render pass
       // are able to see the mesh generation pass writes
@@ -19059,7 +19082,7 @@ begin
       fPushConstants.ViewBaseIndex:=aViewBaseIndex;
       fPushConstants.CountViews:=aCountViews;
       fPushConstants.CountAllViews:=InFlightFrameState^.CountViews;
-      fPushConstants.CountRainDrops:=MaximumCountRainDrops;
+      fPushConstants.CountRainDrops:=Min(Max(Planet.fPerInFlightFrameRainStreakCounts[aInFlightFrameIndex],0),MaximumCountRainDrops);
       fPushConstants.ViewPortSize:=TpvVector2.InlineableCreate(TpvScene3DRendererInstance(fRendererInstance).ScaledWidth,TpvScene3DRendererInstance(fRendererInstance).ScaledHeight);
       fPushConstants.Padding:=TpvVector2.Origin;
       if Planet.fPerInFlightFrameRainStreakOcclusionOBBActives[aInFlightFrameIndex] then begin
@@ -20740,11 +20763,19 @@ begin
 
  fHeightMapScale:=fTopRadius-fBottomRadius;
 
+ fRainStreakCount:=DefaultCountRainDrops;
+
  fRainStreakSpawnDistance:=0.25;
 
  fRainStreakGravity:=9.82;
 
  fRainStreakLineThickness:=1.0;
+
+ fRainStreakLineLength:=0.5;
+
+ fRainStreakZNear:=-Infinity;
+
+ fRainStreakZFar:=Infinity;
 
  fRainStreakColor:=TpvVector4.Create(1.0,1.0,1.0,0.5);
 
@@ -20754,9 +20785,13 @@ begin
  fRainStreakOcclusionOBB.HalfExtents:=TpvVector3.Origin;
 
  for InFlightFrameIndex:=0 to MaxInFlightFrames-1 do begin
+  fPerInFlightFrameRainStreakCounts[InFlightFrameIndex]:=fRainStreakCount;
   fPerInFlightFrameRainStreakSpawnDistances[InFlightFrameIndex]:=fRainStreakSpawnDistance;
   fPerInFlightFrameRainStreakGravities[InFlightFrameIndex]:=fRainStreakGravity;
   fPerInFlightFrameRainStreakLineThicknesses[InFlightFrameIndex]:=fRainStreakLineThickness;
+  fPerInFlightFrameRainStreakLineLengths[InFlightFrameIndex]:=fRainStreakLineLength;
+  fPerInFlightFrameRainStreakZNears[InFlightFrameIndex]:=fRainStreakZNear;
+  fPerInFlightFrameRainStreakZFars[InFlightFrameIndex]:=fRainStreakZFar;
   fPerInFlightFrameRainStreakColors[InFlightFrameIndex]:=fRainStreakColor;
   fPerInFlightFrameRainStreakOcclusionOBBActives[InFlightFrameIndex]:=fRainStreakOcclusionOBBActive;
   fPerInFlightFrameRainStreakOcclusionOBBs[InFlightFrameIndex]:=fRainStreakOcclusionOBB;
@@ -23156,9 +23191,13 @@ end;
 procedure TpvScene3DPlanet.Update(const aInFlightFrameIndex:TpvSizeInt);
 begin
  if aInFlightFrameIndex>=0 then begin
+  fPerInFlightFrameRainStreakCounts[aInFlightFrameIndex]:=fRainStreakCount;
   fPerInFlightFrameRainStreakSpawnDistances[aInFlightFrameIndex]:=fRainStreakSpawnDistance;
   fPerInFlightFrameRainStreakGravities[aInFlightFrameIndex]:=fRainStreakGravity;
   fPerInFlightFrameRainStreakLineThicknesses[aInFlightFrameIndex]:=fRainStreakLineThickness;
+  fPerInFlightFrameRainStreakLineLengths[aInFlightFrameIndex]:=fRainStreakLineLength;
+  fPerInFlightFrameRainStreakZNears[aInFlightFrameIndex]:=fRainStreakZNear;
+  fPerInFlightFrameRainStreakZFars[aInFlightFrameIndex]:=fRainStreakZFar;
   fPerInFlightFrameRainStreakColors[aInFlightFrameIndex]:=fRainStreakColor;
   fPerInFlightFrameRainStreakOcclusionOBBActives[aInFlightFrameIndex]:=fRainStreakOcclusionOBBActive;
   fPerInFlightFrameRainStreakOcclusionOBBs[aInFlightFrameIndex]:=fRainStreakOcclusionOBB;
