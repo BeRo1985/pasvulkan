@@ -62,7 +62,10 @@ layout(push_constant) uniform PushConstants {
   uint countViews;
   uint countAllViews;
   uint countRainDrops;
+  float lineThickness; // Line thickness for the rain streaks
+  uint padding;
   vec2 viewPortSize;
+  vec4 color; // Color of the rain streaks
 } pushConstants;
 
 struct View {
@@ -178,10 +181,10 @@ void main(){
     // 0x7f800000u 
 
     Primitive primitive;
-    primitive.position = floatBitsToUint(vec4(rainDrop.position.xyz, 1.0)); // Set the w component to 1.0 for the line thickness
+    primitive.position = floatBitsToUint(vec4(rainDrop.position.xyz, pushConstants.lineThickness)); // Set the w component to 1.0 for the line thickness
     primitive.position0 = uvec4(floatBitsToUint(rainDrop.position.xyz - (normalize(rainDrop.position.xyz) * 0.5)), 0xff800000u); // Set the w component to -infinity for the position 0
     primitive.position1 = uvec4(floatBitsToUint(rainDrop.position.xyz + (normalize(rainDrop.position.xyz) * 0.5)), 0x7f800000u); // Set the w component to +infinity for the position 1
-    primitive.color = uvec4(floatBitsToUint(vec4(1.0, 1.0, 1.0, 0.1))); // Set the color to white with alpha 0.5
+    primitive.color = uvec4(floatBitsToUint(pushConstants.color));
 
     // Initialize the AABB with infinity and -infinity
     vec4 aabb = vec4(uintBitsToFloat(0x7f800000u), uintBitsToFloat(0x7f800000u), uintBitsToFloat(0xff800000u), uintBitsToFloat(0xff800000u));

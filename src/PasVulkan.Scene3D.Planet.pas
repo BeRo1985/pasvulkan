@@ -1801,7 +1801,10 @@ type TpvScene3DPlanets=class;
                     CountViews:TpvUInt32;
                     CountAllViews:TpvUInt32;
                     CountRainDrops:TpvUInt32;
+                    LineThickness:TpvFloat;
+                    Padding:TpvUInt32;
                     ViewPortSize:TpvVector2;
+                    Color:TpvVector4;
                    end;
                    PMeshGenerationPushConstants=^TMeshGenerationPushConstants;
              private
@@ -18718,7 +18721,10 @@ begin
       fMeshGenerationPushConstants.CountViews:=InFlightFrameState^.CountFinalViews;
       fMeshGenerationPushConstants.CountAllViews:=InFlightFrameState^.CountViews;
       fMeshGenerationPushConstants.CountRainDrops:=MaximumCountRainDrops;
-      fMeshGenerationPushConstants.ViewPortSize:=TpvVector2.Create(TpvScene3DRendererInstance(fRendererInstance).ScaledWidth,TpvScene3DRendererInstance(fRendererInstance).ScaledHeight);
+      fMeshGenerationPushConstants.LineThickness:=1.0;
+      fMeshGenerationPushConstants.Padding:=0;
+      fMeshGenerationPushConstants.ViewPortSize:=TpvVector2.InlineableCreate(TpvScene3DRendererInstance(fRendererInstance).ScaledWidth,TpvScene3DRendererInstance(fRendererInstance).ScaledHeight);
+      fMeshGenerationPushConstants.Color:=TpvVector4.InlineableCreate(0.1,0.1,0.1,0.1);
 
       aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,fMeshGenerationPipeline.Handle);
 
