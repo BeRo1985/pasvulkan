@@ -18574,14 +18574,14 @@ begin
 end;
 
 procedure TpvScene3DPlanet.TRainStreakComputePass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
-var PlanetIndex,Level,CountBufferMemoryBarriers:TpvSizeInt;
+var PlanetIndex,CountBufferMemoryBarriers:TpvSizeInt;
     Planet:TpvScene3DPlanet;
     First:Boolean;
     InFlightFrameState:TpvScene3DRendererInstance.PInFlightFrameState;
     RendererInstance:TpvScene3DPlanet.TRendererInstance;
-    BufferMemoryBarriers:array[0..1] of TVkBufferMemoryBarrier;
+    BufferMemoryBarriers:array[0..3] of TVkBufferMemoryBarrier;
     InverseViewMatrix:PpvMatrix4x4;
-    DescriptorSets:array[0..1] of TVkDescriptorSet;
+    DescriptorSets:array[0..3] of TVkDescriptorSet;
 begin
 
  InFlightFrameState:=@TpvScene3DRendererInstance(fRendererInstance).InFlightFrameStates^[aInFlightFrameIndex];
