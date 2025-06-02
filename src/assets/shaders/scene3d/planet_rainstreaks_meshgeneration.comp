@@ -181,7 +181,7 @@ void main(){
     primitive.position = floatBitsToUint(vec4(rainDrop.position.xyz, 1.0)); // Set the w component to 1.0 for the line thickness
     primitive.position0 = uvec4(floatBitsToUint(rainDrop.position.xyz - (normalize(rainDrop.position.xyz) * 0.5)), 0xff800000u); // Set the w component to -infinity for the position 0
     primitive.position1 = uvec4(floatBitsToUint(rainDrop.position.xyz + (normalize(rainDrop.position.xyz) * 0.5)), 0x7f800000u); // Set the w component to +infinity for the position 1
-    primitive.color = uvec4(floatBitsToUint(vec4(1.0, 1.0, 1.0, 0.5))); // Set the color to white with alpha 0.5
+    primitive.color = uvec4(floatBitsToUint(vec4(1.0, 1.0, 1.0, 0.1))); // Set the color to white with alpha 0.5
 
     // Initialize the AABB with infinity and -infinity
     vec4 aabb = vec4(uintBitsToFloat(0x7f800000u), uintBitsToFloat(0x7f800000u), uintBitsToFloat(0xff800000u), uintBitsToFloat(0xff800000u));
@@ -200,7 +200,7 @@ void main(){
     // Line end
     vec3 lineEnd3D = uintBitsToFloat(primitive.position1.xyz);
 
-//  visible = false; // Assume the primitive is not visible until we check the views
+    visible = false; // Assume the primitive is not visible until we check the views
 
     // Ensure that the line is visible in all views at the correct positions
     for(int viewIndex = 0; viewIndex < int(pushConstants.countViews); viewIndex++){
@@ -210,7 +210,7 @@ void main(){
       vec4 lineStartClip = viewProjectionMatrix * vec4(lineStart3D, 1.0);
       vec4 lineEndClip = viewProjectionMatrix * vec4(lineEnd3D, 1.0);
 
-    /*if(any(lessThan(lineStartClip.xyz, vec3(-lineStartClip.w))) || 
+      if(any(lessThan(lineStartClip.xyz, vec3(-lineStartClip.w))) || 
          any(lessThan(lineEndClip.xyz, vec3(-lineEndClip.w))) ||
          any(greaterThan(lineStartClip.xyz, vec3(lineStartClip.w))) ||
          any(greaterThan(lineEndClip.xyz, vec3(lineEndClip.w)))){
@@ -233,7 +233,7 @@ void main(){
         
         }
 
-      }else*/{
+      }else{
 
         // The primitive is visible in this view, so we can use the clip space coordinates directly
         visible = true;

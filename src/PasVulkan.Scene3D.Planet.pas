@@ -20705,7 +20705,7 @@ begin
 
  fHeightMapScale:=fTopRadius-fBottomRadius;
 
- fRainStreakSpawnDistance:=0.1;
+ fRainStreakSpawnDistance:=0.25;
 
  fRainStreakGravity:=9.82;
 
