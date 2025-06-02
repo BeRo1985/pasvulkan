@@ -18632,7 +18632,7 @@ begin
       fSimulationPushConstants.PlanetTopRadius:=Planet.fTopRadius;
       fSimulationPushConstants.SpawnDistance:=Planet.fRainStreakSpawnDistance;
       fSimulationPushConstants.Gravity:=Planet.fRainStreakGravity;
-      fSimulationPushConstants.DeltaTime:=TpvScene3D(Planet.Scene3D).SceneTimes^[aInFlightFrameIndex];
+      fSimulationPushConstants.DeltaTime:=TpvScene3D(Planet.Scene3D).DeltaTimes^[aInFlightFrameIndex];
       fSimulationPushConstants.CountRainDrops:=MaximumCountRainDrops;
       fSimulationPushConstants.RainAtmosphereResolution:=Planet.fRainAtmosphereMapResolution;
       fSimulationPushConstants.FrameIndex:=aFrameIndex;
