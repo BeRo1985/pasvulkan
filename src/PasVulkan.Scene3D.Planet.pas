@@ -1789,6 +1789,8 @@ type TpvScene3DPlanets=class;
                     CameraPosition:TpvVector4;
                     PlanetBottomRadius:TpvFloat;
                     PlanetTopRadius:TpvFloat;
+                    SpawnBottomRadius:TpvFloat;
+                    SpawnTopRadius:TpvFloat;
                     SpawnDistance:TpvFloat;
                     Gravity:TpvFloat;
                     DeltaTime:TpvFloat;
@@ -2111,6 +2113,8 @@ type TpvScene3DPlanets=class;
        fTopRadius:TpvFloat; // End of the atmosphere
        fHeightMapScale:TpvFloat; // Scale factor for the height map
        fRainStreakCount:TpvInt32;
+       fRainStreakSpawnBottomRadius:TpvFloat;
+       fRainStreakSpawnTopRadius:TpvFloat;
        fRainStreakSpawnDistance:TpvFloat;
        fRainStreakGravity:TpvFloat;
        fRainStreakLineThickness:TpvFloat;
@@ -2121,6 +2125,8 @@ type TpvScene3DPlanets=class;
        fRainStreakOcclusionOBBActive:TPasMPBool32;
        fRainStreakOcclusionOBB:TpvOBB;
        fPerInFlightFrameRainStreakCounts:array[0..MaxInFlightFrames-1] of TpvInt32;
+       fPerInFlightFrameRainStreakSpawnBottomRadii:array[0..MaxInFlightFrames-1] of TpvFloat;
+       fPerInFlightFrameRainStreakSpawnTopRadii:array[0..MaxInFlightFrames-1] of TpvFloat;
        fPerInFlightFrameRainStreakSpawnDistances:array[0..MaxInFlightFrames-1] of TpvFloat;
        fPerInFlightFrameRainStreakGravities:array[0..MaxInFlightFrames-1] of TpvFloat;
        fPerInFlightFrameRainStreakLineThicknesses:array[0..MaxInFlightFrames-1] of TpvFloat;
@@ -2348,6 +2354,8 @@ type TpvScene3DPlanets=class;
        property InFlightFrameDataList:TInFlightFrameDataList read fInFlightFrameDataList;
       published
        property RainStreakCount:TpvInt32 read fRainStreakCount write fRainStreakCount;
+       property RainStreakSpawnBottomRadius:TpvFloat read fRainStreakSpawnBottomRadius write fRainStreakSpawnBottomRadius;
+       property RainStreakSpawnTopRadius:TpvFloat read fRainStreakSpawnTopRadius write fRainStreakSpawnTopRadius;
        property RainStreakSpawnDistance:TpvFloat read fRainStreakSpawnDistance write fRainStreakSpawnDistance;
        property RainStreakGravity:TpvFloat read fRainStreakGravity write fRainStreakGravity;
        property RainStreakLineThickness:TpvFloat read fRainStreakLineThickness write fRainStreakLineThickness;
@@ -18661,6 +18669,8 @@ begin
       fSimulationPushConstants.CameraPosition:=TpvVector4.InlineableCreate(InverseViewMatrix^.Translation.xyz,1.0);
       fSimulationPushConstants.PlanetBottomRadius:=Planet.fBottomRadius;
       fSimulationPushConstants.PlanetTopRadius:=Planet.fTopRadius;
+      fSimulationPushConstants.SpawnBottomRadius:=Planet.fPerInFlightFrameRainStreakSpawnBottomRadii[aInFlightFrameIndex];
+      fSimulationPushConstants.SpawnTopRadius:=Planet.fPerInFlightFrameRainStreakSpawnTopRadii[aInFlightFrameIndex];
       fSimulationPushConstants.SpawnDistance:=Planet.fPerInFlightFrameRainStreakSpawnDistances[aInFlightFrameIndex];
       fSimulationPushConstants.Gravity:=Planet.fPerInFlightFrameRainStreakGravities[aInFlightFrameIndex];
       fSimulationPushConstants.DeltaTime:=TpvScene3D(Planet.Scene3D).DeltaTimes^[aInFlightFrameIndex];
@@ -20765,6 +20775,10 @@ begin
 
  fRainStreakCount:=DefaultCountRainDrops;
 
+ fRainStreakSpawnBottomRadius:=fBottomRadius;
+
+ fRainStreakSpawnTopRadius:=fTopRadius;
+
  fRainStreakSpawnDistance:=0.25;
 
  fRainStreakGravity:=9.82;
@@ -20786,6 +20800,8 @@ begin
 
  for InFlightFrameIndex:=0 to MaxInFlightFrames-1 do begin
   fPerInFlightFrameRainStreakCounts[InFlightFrameIndex]:=fRainStreakCount;
+  fPerInFlightFrameRainStreakSpawnBottomRadii[InFlightFrameIndex]:=fRainStreakSpawnBottomRadius;
+  fPerInFlightFrameRainStreakSpawnTopRadii[InFlightFrameIndex]:=fRainStreakSpawnTopRadius;
   fPerInFlightFrameRainStreakSpawnDistances[InFlightFrameIndex]:=fRainStreakSpawnDistance;
   fPerInFlightFrameRainStreakGravities[InFlightFrameIndex]:=fRainStreakGravity;
   fPerInFlightFrameRainStreakLineThicknesses[InFlightFrameIndex]:=fRainStreakLineThickness;
@@ -23192,6 +23208,8 @@ procedure TpvScene3DPlanet.Update(const aInFlightFrameIndex:TpvSizeInt);
 begin
  if aInFlightFrameIndex>=0 then begin
   fPerInFlightFrameRainStreakCounts[aInFlightFrameIndex]:=fRainStreakCount;
+  fPerInFlightFrameRainStreakSpawnBottomRadii[InFlightFrameIndex]:=fRainStreakSpawnBottomRadius;
+  fPerInFlightFrameRainStreakSpawnTopRadii[InFlightFrameIndex]:=fRainStreakSpawnTopRadius;
   fPerInFlightFrameRainStreakSpawnDistances[aInFlightFrameIndex]:=fRainStreakSpawnDistance;
   fPerInFlightFrameRainStreakGravities[aInFlightFrameIndex]:=fRainStreakGravity;
   fPerInFlightFrameRainStreakLineThicknesses[aInFlightFrameIndex]:=fRainStreakLineThickness;

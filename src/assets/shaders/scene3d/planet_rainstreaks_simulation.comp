@@ -32,11 +32,14 @@ layout(push_constant) uniform PushConstants {
 
   float planetBottomRadius; // Bottom radius of the planet
   float planetTopRadius; // Top radius of the planet
+  float spawnBottomRadius; // Bottom radius for spawning raindrops
+  float spawnTopRadius; // Top radius for spawning raindrops
+
   float spawnDistance; // Distance from the camera to spawn raindrops
   float gravity; // Gravity factor
-
   float deltaTime; // Time delta for simulation
   uint countRainDrops; // Number of raindrops
+
   uint rainAtmosphereResolution; // Resolution of the rain atmosphere map
   uint frameIndex; // Current frame rainDropIndex
    
@@ -115,7 +118,7 @@ void main() {
     );
 
     // Check if the raindrop is outside the planet's radius or inactive or outside the view frustum, if so, we need to (re-)spawn it
-    if((position.w < 1e-7) || ((height < planetHeight) || (height > pushConstants.planetTopRadius))){
+    if((position.w < 1e-7) || (height < planetHeight)){
       
       // Get a random value based on the raindrop index and the frame index
       uvec4 random = pcgHash44(uvec4(floatBitsToUint(uv), pushConstants.frameIndex, rainDropIndex));
@@ -125,7 +128,7 @@ void main() {
 
       // .. then we decode them back to 3D coordinates 
       position = vec4(
-        normalize(octEqualAreaUnsignedDecode(uv)) * mix(pushConstants.planetBottomRadius, pushConstants.planetTopRadius, makeAbsFloat(random.z)), 
+        normalize(octEqualAreaUnsignedDecode(uv)) * mix(pushConstants.spawnBottomRadius, pushConstants.spawnTopRadius, makeAbsFloat(random.z)), 
         1.0 // Set the factor to 1.0 to indicate that the raindrop is active
       );
       
