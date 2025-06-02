@@ -20781,7 +20781,7 @@ begin
 
  fRainStreakSpawnDistance:=0.25;
 
- fRainStreakGravity:=9.82;
+ fRainStreakGravity:=-9.81;
 
  fRainStreakLineThickness:=1.0;
 

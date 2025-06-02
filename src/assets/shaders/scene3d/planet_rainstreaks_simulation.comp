@@ -102,7 +102,7 @@ void main() {
     ); 
 
     // Update the position of the raindrop based on gravity
-    position.xyz -= normalize(position.xyz) * pushConstants.gravity * pushConstants.deltaTime;
+    position.xyz += normalize(position.xyz) * pushConstants.gravity * pushConstants.deltaTime;
 
     // Get the height of the raindrop position on the planet
     float height = length(position.xyz); 
