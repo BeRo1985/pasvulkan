@@ -1841,6 +1841,10 @@ type TpvScene3DPlanets=class;
                     CountAllViews:TpvUInt32;
                     CountRainDrops:TpvUInt32;
                     ViewPortSize:TpvVector2;
+                    Padding:TpvVector2;
+                    OcclusionOBBCenter:TpvVector4; // xyz = center, w = unused
+                    OcclusionOBBHalfSize:TpvVector4; // xyz = half size, w = unused
+                    OcclusionOBBOrientation:TpvVector4; // xyzw = quaternion orientation
                    end;
                    PPushConstants=^TPushConstants;
              private
@@ -19041,7 +19045,11 @@ begin
       fPushConstants.CountViews:=aCountViews;
       fPushConstants.CountAllViews:=InFlightFrameState^.CountViews;
       fPushConstants.CountRainDrops:=MaximumCountRainDrops;
-      fPushConstants.ViewPortSize:=TpvVector2.Create(TpvScene3DRendererInstance(fRendererInstance).ScaledWidth,TpvScene3DRendererInstance(fRendererInstance).ScaledHeight);
+      fPushConstants.ViewPortSize:=TpvVector2.InlineableCreate(TpvScene3DRendererInstance(fRendererInstance).ScaledWidth,TpvScene3DRendererInstance(fRendererInstance).ScaledHeight);
+      fPushConstants.Padding:=TpvVector2.Origin;
+      fPushConstants.OcclusionOBBCenter:=TpvVector4.InlineableCreate(0.0,0.0,0.0,0.0);
+      fPushConstants.OcclusionOBBHalfSize:=TpvVector4.InlineableCreate(0.0,0.0,0.0,0.0);
+      fPushConstants.OcclusionOBBOrientation:=TpvVector4.InlineableCreate(0.0,0.0,0.0,1.0);
 
       aCommandBuffer.CmdPushConstants(fPipelineLayout.Handle,
                                       fShaderStageFlags,
