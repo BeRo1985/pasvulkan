@@ -106,7 +106,7 @@ type TpvScene3DPlanets=class;
      TpvScene3DPlanet=class
       public
        const CountBlendMapLayers=2; // with each four values
-             MaximumCountRainDrops=16384; // must be power of two
+             MaximumCountRainDrops=1024; // must be power of two
        type THeightValue=TpvFloat;
             PHeightValue=^THeightValue;
             THeightMap=array of THeightValue;
@@ -18721,7 +18721,7 @@ begin
       fMeshGenerationPushConstants.CountViews:=InFlightFrameState^.CountFinalViews;
       fMeshGenerationPushConstants.CountAllViews:=InFlightFrameState^.CountViews;
       fMeshGenerationPushConstants.CountRainDrops:=MaximumCountRainDrops;
-      fMeshGenerationPushConstants.LineThickness:=0.5;
+      fMeshGenerationPushConstants.LineThickness:=1.0;
       fMeshGenerationPushConstants.Padding:=0;
       fMeshGenerationPushConstants.ViewPortSize:=TpvVector2.InlineableCreate(TpvScene3DRendererInstance(fRendererInstance).ScaledWidth,TpvScene3DRendererInstance(fRendererInstance).ScaledHeight);
       fMeshGenerationPushConstants.Color:=TpvVector4.InlineableCreate(1.0,1.0,1.0,0.1);
