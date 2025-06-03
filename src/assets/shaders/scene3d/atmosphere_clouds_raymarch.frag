@@ -666,6 +666,15 @@ bool traceVolumetricClouds(vec3 rayOrigin,
 
     float distanceToPlanetCenter = length(rayOrigin);
     
+#ifndef SHADOWMAP
+    // If the ray is outside the atmosphere, the ray length is set to infinity, so that the ray march code path handles the ray as if 
+    // it is in outer space without occluders, for to avoid artefacts at calculating the ray march steps in outer space when 
+    // for example asteroids are present.
+    if((!isinf(rayLength)) && ((rayLength - distanceToPlanetCenter) > uAtmosphereParameters.atmosphereParameters.VolumetricClouds.LayerHigh.EndHeight)){
+      rayLength = uintBitsToFloat(0x7f800000u); // INF      
+    }
+#endif
+
     vec3 viewNormal = normalize(rayOrigin);
     
     vec2 tMinMax = tTopSolutions;             
