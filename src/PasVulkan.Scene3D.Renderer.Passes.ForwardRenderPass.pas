@@ -137,7 +137,7 @@ type { TpvScene3DRendererPassesForwardRenderPass }
        fSkyBox:TpvScene3DRendererSkyBox;
        fPlanetDepthPrePass:TpvScene3DPlanet.TRenderPass;
        fPlanetOpaquePass:TpvScene3DPlanet.TRenderPass;
-       fPlanetRainStreakRenderPass:TpvScene3DPlanet.TRainStreakRenderPass;
+//     fPlanetRainStreakRenderPass:TpvScene3DPlanet.TRainStreakRenderPass;
        fVoxelVisualization:TpvScene3DRendererVoxelVisualization;
        fVoxelMeshVisualization:TpvScene3DRendererVoxelMeshVisualization;
        fSpaceLinesPushConstants:TSpaceLinesPushConstants;
@@ -505,9 +505,9 @@ begin
                                                         fResourceCascadedShadowMap,
                                                         fResourceSSAO);
 
- fPlanetRainStreakRenderPass:=TpvScene3DPlanet.TRainStreakRenderPass.Create(fInstance.Renderer,
+{fPlanetRainStreakRenderPass:=TpvScene3DPlanet.TRainStreakRenderPass.Create(fInstance.Renderer,
                                                                             fInstance,
-                                                                            fInstance.Renderer.Scene3D);
+                                                                            fInstance.Renderer.Scene3D);//}
 
  fVoxelVisualization:=nil;
  fVoxelMeshVisualization:=nil;
@@ -536,7 +536,7 @@ begin
 
  FreeAndNil(fPlanetOpaquePass);
 
- FreeAndNil(fPlanetRainStreakRenderPass);
+//FreeAndNil(fPlanetRainStreakRenderPass);
 
  FreeAndNil(fSkyBox);
 
@@ -1089,10 +1089,10 @@ begin
                                      fInstance.ScaledHeight,
                                      fInstance.Renderer.SurfaceSampleCountFlagBits);
 
- fPlanetRainStreakRenderPass.AllocateResources(fVulkanRenderPass,
+{fPlanetRainStreakRenderPass.AllocateResources(fVulkanRenderPass,
                                                fInstance.ScaledWidth,
                                                fInstance.ScaledHeight,
-                                               fInstance.Renderer.SurfaceSampleCountFlagBits);
+                                               fInstance.Renderer.SurfaceSampleCountFlagBits);//}
 
  if assigned(fVoxelVisualization) then begin
   fVoxelVisualization.AllocateResources(fVulkanRenderPass,
@@ -1128,7 +1128,7 @@ begin
   fPlanetDepthPrePass.ReleaseResources;
  end;
  fPlanetOpaquePass.ReleaseResources;
- fPlanetRainStreakRenderPass.ReleaseResources;
+ //fPlanetRainStreakRenderPass.ReleaseResources;
  for DepthPrePass:=false to fUseDepthPrepass do begin
   for AlphaMode:=Low(TpvScene3D.TMaterial.TAlphaMode) to High(TpvScene3D.TMaterial.TAlphaMode) do begin
    for PrimitiveTopology:=Low(TpvScene3D.TPrimitiveTopology) to High(TpvScene3D.TPrimitiveTopology) do begin
@@ -1364,14 +1364,14 @@ begin
 
   end;
 
-  if fPlanetRainStreakRenderPass.Draw(aInFlightFrameIndex,
+{ if fPlanetRainStreakRenderPass.Draw(aInFlightFrameIndex,
                                       aFrameIndex,
                                       TpvScene3DRendererRenderPass.View,
                                       InFlightFrameState^.FinalViewIndex,
                                       InFlightFrameState^.CountFinalViews,
                                       aCommandBuffer) then begin
    fOnSetRenderPassResourcesDone:=false;
-  end;
+  end;//}
 
   if ((fInstance.Renderer.TransparencyMode=TpvScene3DRendererTransparencyMode.Direct) and not fInstance.Renderer.Scene3D.HasTransmission) or
      (not (fInstance.Renderer.UseOITAlphaTest or fInstance.Renderer.Scene3D.HasTransmission)) then begin

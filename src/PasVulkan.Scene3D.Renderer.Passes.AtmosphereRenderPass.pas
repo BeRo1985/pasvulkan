@@ -76,7 +76,8 @@ uses SysUtils,
      PasVulkan.Scene3D.Renderer.Globals,
      PasVulkan.Scene3D.Renderer,
      PasVulkan.Scene3D.Renderer.Instance,
-     PasVulkan.Scene3D.Renderer.SkyBox;
+     PasVulkan.Scene3D.Renderer.SkyBox,
+     PasVulkan.Scene3D.Planet;
 
 type { TpvScene3DRendererPassesAtmosphereRenderPass }
      TpvScene3DRendererPassesAtmosphereRenderPass=class(TpvFrameGraph.TRenderPass)
