@@ -422,7 +422,7 @@ float getLowResCloudDensity(vec3 position, const in mat3 rotationMatrices[2], co
     baseCloudWithCoverage *= atmosphereFactor;
 
     // Apply the wetness factor to the base cloud with coverage
-    baseCloudWithCoverage *= getWeatherDensity(weatherData);
+    //baseCloudWithCoverage *= getWeatherDensity(weatherData);
     
     return clamp(baseCloudWithCoverage, 0.0, 1.0);
     
@@ -615,6 +615,9 @@ float sampleCloudDensityAlongCone(const in vec3 rayOrigin,
         // we use the high res cloud data to calculate the self occlusion of the cloud 
         vec3 curlOffsetVector = decodeCURL(textureLod(uTextureCurlNoise, scaleLayerLowCloudPosition(layerLowWindRotation * (rotationMatrices[0] * position)), mipMapLevel + 1.0).xyz) * (1.0 * uAtmosphereParameters.atmosphereParameters.VolumetricClouds.Scale);
         density = getHighResCloudDensity(position, rotationMatrices, layerLowWindRotation, curlOffsetVector, weatherData, density, mipMapLevel + 1.0); 
+      }
+      if(length(position) < uAtmosphereParameters.atmosphereParameters.VolumetricClouds.LayerHigh.StartHeight){
+        density *= getWeatherDensity(weatherData);  
       }
       densityAlongCone += density * uAtmosphereParameters.atmosphereParameters.VolumetricClouds.LightingDensity * uAtmosphereParameters.atmosphereParameters.VolumetricClouds.DensityScale;
     }
@@ -904,7 +907,13 @@ bool traceVolumetricClouds(vec3 rayOrigin,
             uAtmosphereParameters.atmosphereParameters.VolumetricClouds.LayerLow.AdvanceCurlAmplitude *
             1.0;
                                                           
-          density = getHighResCloudDensity(position, rotationMatrices, layerLowWindRotation, curlOffsetVector, weatherData, density, mipMapLevel);                                                                                  
+          density = getHighResCloudDensity(position, rotationMatrices, layerLowWindRotation, curlOffsetVector, weatherData, density, mipMapLevel);  
+
+          const bool isLowClouds = (length(position) < uAtmosphereParameters.atmosphereParameters.VolumetricClouds.LayerHigh.StartHeight);
+          if(isLowClouds){
+            density *= getWeatherDensity(weatherData);  
+          }
+
           density *= uAtmosphereParameters.atmosphereParameters.VolumetricClouds.ViewDensity * uAtmosphereParameters.atmosphereParameters.VolumetricClouds.DensityScale;
           
           if(density > 1e-4){
@@ -955,11 +964,13 @@ bool traceVolumetricClouds(vec3 rayOrigin,
                                       indirectScatteringIntensity *
                                       vec3(1.0);
             
-            vec3 sampledScattering = ((directScatting + indirectScattering) * scatteringCoefficient) *
-                                     ((heightFraction < uAtmosphereParameters.atmosphereParameters.VolumetricClouds.LayerHigh.StartHeight) 
-                                       ? getWeatherLuminance(weatherData) // Apply wetness weather luminance to the low clouds, not to the high clouds
-                                       : 1.0);
-             
+            vec3 sampledScattering = (directScatting + indirectScattering) * scatteringCoefficient;
+
+            if(isLowClouds){
+              // Apply wetness weather luminance to the low clouds, not to the high clouds
+              sampledScattering *= getWeatherLuminance(weatherData);
+            }                        
+                                       
             weightedDepth += vec2(length(position - rayOrigin), 1.0) * density; //min(transmittance.x, min(transmittance.y, transmittance.z)); 
                                                              
 #if 1
