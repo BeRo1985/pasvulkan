@@ -286,6 +286,14 @@ float getHeightFractionForPoint(const in vec3 position){
   }
 }
 
+float getWeatherDensity(vec4 weatherData){
+  return mix(1.0, uAtmosphereParameters.atmosphereParameters.VolumetricClouds.WetnessDensityFactor, weatherData.z);
+}
+
+float getWeatherLuminance(vec4 weatherData){
+  return mix(1.0, uAtmosphereParameters.atmosphereParameters.VolumetricClouds.WetnessLuminanceFactor, weatherData.z);
+}
+
 float getDensityHeightGradientForPoint(const in vec3 position, const in float heightFraction, const in vec4 weatherData){
   const vec3 weatherTypeMask = vec3(1.0 - clamp(weatherData.y * 2.0, 0.0, 1.0), 1.0 - (abs(weatherData.y - 0.5) * 2.0), clamp(weatherData.y - 0.5, 0.0, 1.0) * 2.0);
   const vec4 heightGradient = uAtmosphereParameters.atmosphereParameters.VolumetricClouds.LayerLow.heightGradients * weatherTypeMask;
@@ -412,6 +420,9 @@ float getLowResCloudDensity(vec3 position, const in mat3 rotationMatrices[2], co
 
     // Apply the atmosphere factor to the base cloud with coverage
     baseCloudWithCoverage *= atmosphereFactor;
+
+    // Apply the wetness factor to the base cloud with coverage
+    baseCloudWithCoverage *= getWeatherDensity(weatherData);
     
     return clamp(baseCloudWithCoverage, 0.0, 1.0);
     
@@ -470,7 +481,7 @@ float getHighResCloudDensity(vec3 position, const in mat3 rotationMatrices[2], c
     float highFrequencyNoiseModifer = mix(highFrequencyFBM, 
                                           1.0 - highFrequencyFBM, 
                                           clamp(heightFraction * 10.0, 0.0, 1.0));
-  
+    
     // Erode the base cloud shape with the distorted high-frequency Worley noises
     return clamp(remap(lowResDensity, highFrequencyNoiseModifer * 0.2, 1.0, 0.0, 1.0), 0.0, 1.0);
     
@@ -944,9 +955,12 @@ bool traceVolumetricClouds(vec3 rayOrigin,
                                       indirectScatteringIntensity *
                                       vec3(1.0);
             
-            vec3 sampledScattering = (directScatting + indirectScattering) * scatteringCoefficient;
+            vec3 sampledScattering = ((directScatting + indirectScattering) * scatteringCoefficient) *
+                                     ((heightFraction < uAtmosphereParameters.atmosphereParameters.VolumetricClouds.LayerHigh.StartHeight) 
+                                       ? getWeatherLuminance(weatherData) // Apply wetness weather luminance to the low clouds, not to the high clouds
+                                       : 1.0);
              
-            weightedDepth += vec2(length(position - rayOrigin), 1.0) * density;//min(transmittance.x, min(transmittance.y, transmittance.z)); 
+            weightedDepth += vec2(length(position - rayOrigin), 1.0) * density; //min(transmittance.x, min(transmittance.y, transmittance.z)); 
                                                              
 #if 1
             // See slide 28 at http://www.frostbite.com/2015/08/physically-based-unified-volumetric-rendering-in-frostbite/

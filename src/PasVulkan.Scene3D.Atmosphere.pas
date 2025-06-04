@@ -420,9 +420,9 @@ type TpvScene3DAtmosphere=class;
               IndirectScatteringIntensity:TpvFloat;
 
               AmbientLightIntensity:TpvFloat;
+              WetnessDensityFactor:TpvFloat;
+              WetnessLuminanceFactor:TpvFloat;
               Padding0:TpvFloat;
-              Padding1:TpvFloat;
-              Padding2:TpvFloat;
 
               LayerLow:TVolumetricCloudLayerLow;
           
@@ -576,9 +576,9 @@ type TpvScene3DAtmosphere=class;
               IndirectScatteringIntensity:TpvFloat;
 
               AmbientLightIntensity:TpvFloat;
+              WetnessDensityFactor:TpvFloat;
+              WetnessLuminanceFactor:TpvFloat;
               Padding0:TpvFloat;
-              Padding1:TpvFloat;
-              Padding2:TpvFloat;
 
               LayerLow:TGPUVolumetricCloudLayerLow;
               LayerHigh:TGPUVolumetricCloudLayerHigh;
@@ -1295,6 +1295,8 @@ begin
  DirectScatteringIntensity:=1.0;
  IndirectScatteringIntensity:=1.0;
  AmbientLightIntensity:=1.0;
+ WetnessDensityFactor:=2.0;
+ WetnessLuminanceFactor:=0.25;
  LayerLow.Initialize;
  LayerHigh.Initialize;
 end;
@@ -1327,6 +1329,8 @@ begin
   DirectScatteringIntensity:=TPasJSON.GetNumber(JSONRootObject.Properties['directscatteringintensity'],DirectScatteringIntensity);
   IndirectScatteringIntensity:=TPasJSON.GetNumber(JSONRootObject.Properties['indirectscatteringintensity'],IndirectScatteringIntensity);
   AmbientLightIntensity:=TPasJSON.GetNumber(JSONRootObject.Properties['ambientlightintensity'],AmbientLightIntensity);
+  WetnessDensityFactor:=TPasJSON.GetNumber(JSONRootObject.Properties['wetnessdensityfactor'],WetnessDensityFactor);
+  WetnessLuminanceFactor:=TPasJSON.GetNumber(JSONRootObject.Properties['wetnessluminancefactor'],WetnessLuminanceFactor);
   LayerLow.LoadFromJSON(JSONRootObject.Properties['layerlow']);
   LayerHigh.LoadFromJSON(JSONRootObject.Properties['layerhigh']);
  end;
@@ -1384,6 +1388,8 @@ begin
  result.Add('directscatteringintensity',TPasJSONItemNumber.Create(DirectScatteringIntensity));
  result.Add('indirectscatteringintensity',TPasJSONItemNumber.Create(IndirectScatteringIntensity));
  result.Add('ambientlightintensity',TPasJSONItemNumber.Create(AmbientLightIntensity));
+ result.Add('wetnessdensityfactor',TPasJSONItemNumber.Create(WetnessDensityFactor));
+ result.Add('wetnessluminancefactor',TPasJSONItemNumber.Create(WetnessLuminanceFactor));
  result.Add('layerlow',LayerLow.SaveToJSON);
  result.Add('layerhigh',LayerHigh.SaveToJSON);
 end;
@@ -1837,6 +1843,9 @@ begin
  DirectScatteringIntensity:=aVolumetricCloudParameters.DirectScatteringIntensity;
  IndirectScatteringIntensity:=aVolumetricCloudParameters.IndirectScatteringIntensity;
  AmbientLightIntensity:=aVolumetricCloudParameters.AmbientLightIntensity;
+ 
+ WetnessDensityFactor:=aVolumetricCloudParameters.WetnessDensityFactor;
+ WetnessLuminanceFactor:=aVolumetricCloudParameters.WetnessLuminanceFactor; 
 
  LayerLow.Assign(aVolumetricCloudParameters.LayerLow); 
  LayerHigh.Assign(aVolumetricCloudParameters.LayerHigh);
