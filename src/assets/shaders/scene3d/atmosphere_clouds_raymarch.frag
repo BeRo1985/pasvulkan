@@ -924,6 +924,8 @@ bool traceVolumetricClouds(vec3 rayOrigin,
 
             transmittance *= exp(-extinctionCoefficient * timeStep * extinction);     
 
+            weightedDepth += vec2(length(position - rayOrigin), 1.0) * density; //min(transmittance.x, min(transmittance.y, transmittance.z)); 
+
 #else
 
             float heightFraction = getHeightFractionForPoint(position);
@@ -1173,6 +1175,5 @@ void main(){
   outDepth = depth;
 
 #endif
-
 
 }
