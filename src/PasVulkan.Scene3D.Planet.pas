@@ -18771,7 +18771,11 @@ begin
       fMeshGenerationPushConstants.CountViews:=InFlightFrameState^.CountFinalViews;
       fMeshGenerationPushConstants.CountAllViews:=InFlightFrameState^.CountViews;
       fMeshGenerationPushConstants.CountRainDrops:=Min(Max(Planet.fPerInFlightFrameRainStreakCounts[aInFlightFrameIndex],0),MaximumCountRainDrops);
-      fMeshGenerationPushConstants.LineThickness:=Planet.fPerInFlightFrameRainStreakLineThicknesses[aInFlightFrameIndex]*(sqrt(sqr(TpvScene3DRendererInstance(fRendererInstance).ScaledWidth)+sqr(TpvScene3DRendererInstance(fRendererInstance).ScaledHeight))/sqrt(sqr(3840)+sqr(2160)));
+      if Planet.fPerInFlightFrameRainStreakLineThicknesses[aInFlightFrameIndex]<0.0 then begin
+       fMeshGenerationPushConstants.LineThickness:=abs(Planet.fPerInFlightFrameRainStreakLineThicknesses[aInFlightFrameIndex]);
+      end else begin
+       fMeshGenerationPushConstants.LineThickness:=Planet.fPerInFlightFrameRainStreakLineThicknesses[aInFlightFrameIndex]*(sqrt(sqr(TpvScene3DRendererInstance(fRendererInstance).ScaledWidth)+sqr(TpvScene3DRendererInstance(fRendererInstance).ScaledHeight))/sqrt(sqr(3840)+sqr(2160)));
+      end;
       fMeshGenerationPushConstants.LineLength:=Planet.fPerInFlightFrameRainStreakLineLengths[aInFlightFrameIndex];
       fMeshGenerationPushConstants.ViewPortSize:=TpvVector2.InlineableCreate(TpvScene3DRendererInstance(fRendererInstance).ScaledWidth,TpvScene3DRendererInstance(fRendererInstance).ScaledHeight);
       fMeshGenerationPushConstants.Color:=Planet.fPerInFlightFrameRainStreakColors[aInFlightFrameIndex];
