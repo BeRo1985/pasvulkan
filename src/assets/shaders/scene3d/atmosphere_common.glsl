@@ -152,7 +152,7 @@ struct VolumetricCloudParameters {
   float AmbientLightIntensity;
   float WetnessDensityFactor;
   float WetnessLuminanceFactor;
-  float Padding2;
+  float Padding;
   
   VolumetricCloudLayerLow LayerLow;
   VolumetricCloudLayerHigh LayerHigh;
@@ -210,7 +210,7 @@ struct AtmosphereParameters {
 
   float maxShadowDistance;
   uint flags;
-  float unused1;
+  float RainAtmosphereCubeMapLuminanceFactor; // Factor to multiply the rain atmosphere luminance by, this is used to adjust the rain atmosphere luminance based on the scene lighting for indirect lighting
   float unused2;
 
   AtmosphereCullingParameters CullingParameters;

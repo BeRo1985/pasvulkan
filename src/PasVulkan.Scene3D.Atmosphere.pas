@@ -463,6 +463,7 @@ type TpvScene3DAtmosphere=class;
               RaymarchingMinSteps:TpvInt32;
               RaymarchingMaxSteps:TpvInt32;
               MaxShadowDistance:TpvFloat;
+              RainAtmosphereCubeMapLuminanceFactor:TpvFloat;
               AtmosphereCullingParameters:TAtmosphereCullingParameters;
               VolumetricClouds:TVolumetricCloudParameters;
               procedure InitializeEarthAtmosphere(const aEarthBottomRadius:TpvFloat=6360.0;
@@ -651,8 +652,8 @@ type TpvScene3DAtmosphere=class;
 
               MaxShadowDistance:TpvFloat;
               Flags:TpvUInt32;
+              RainAtmosphereCubeMapLuminanceFactor:TpvFloat;
               Unused1:TpvInt32;
-              Unused2:TpvInt32;
 
               AtmosphereCullingParameters:TGPUAtmosphereCullingParameters;
 
@@ -1479,6 +1480,9 @@ begin
  // Maximal shadow distance, none for now
  MaxShadowDistance:=0.0;
 
+ // Rain atmosphere cubeMap luminance factor for darkening the atmosphere where rain is present, for indirect lighting
+ RainAtmosphereCubeMapLuminanceFactor:=0.1;  
+
  // Atmosphere culling
  FillChar(AtmosphereCullingParameters,SizeOf(TAtmosphereCullingParameters),#0);
 
@@ -1552,6 +1556,8 @@ begin
   //MuSMin:=TPasJSON.GetNumber(JSONRootObject.Properties['musmin'],MuSMin);
 
   MaxShadowDistance:=TPasJSON.GetNumber(JSONRootObject.Properties['maxshadowdistance'],MaxShadowDistance);
+
+  RainAtmosphereCubeMapLuminanceFactor:=TPasJSON.GetNumber(JSONRootObject.Properties['rainatmospherecubemapluminancefactor'],RainAtmosphereCubeMapLuminanceFactor);
 
   LoadRaymarching(JSONRootObject.Properties['raymarching']);
 
@@ -1627,6 +1633,7 @@ begin
  //result.Add('sundirection',Vector3ToJSON(SunDirection.xyz));
  //result.Add('musmin',TPasJSONItemNumber.Create(MuSMin));
  result.Add('maxshadowdistance',TPasJSONItemNumber.Create(MaxShadowDistance));
+ result.Add('rainatmospherecubemapluminancefactor',TPasJSONItemNumber.Create(RainAtmosphereCubeMapLuminanceFactor));
  result.Add('raymarching',SaveRaymarching);
  result.Add('volumetricclouds',VolumetricClouds.SaveToJSON);
 end;
@@ -1920,6 +1927,8 @@ begin
  RaymarchingMaxSteps:=aAtmosphereParameters.RaymarchingMaxSteps;
 
  MaxShadowDistance:=aAtmosphereParameters.MaxShadowDistance;
+
+ RainAtmosphereCubeMapLuminanceFactor:=aAtmosphereParameters.RainAtmosphereCubeMapLuminanceFactor;
 
  Flags:=0;
 
@@ -2433,7 +2442,7 @@ begin
                                                             TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT_EXT),
                                                             TpvScene3D(fAtmosphere.fScene3D).CountInFlightFrames*1);
  fCubeMapPassDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,TpvScene3D(fAtmosphere.fScene3D).CountInFlightFrames*1);
- fCubeMapPassDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,TpvScene3D(fAtmosphere.fScene3D).CountInFlightFrames*4);
+ fCubeMapPassDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,TpvScene3D(fAtmosphere.fScene3D).CountInFlightFrames*5);
  fCubeMapPassDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,TpvScene3D(fAtmosphere.fScene3D).CountInFlightFrames*1);
  fCubeMapPassDescriptorPool.Initialize;
  TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.DebugUtils.SetObjectName(fCubeMapPassDescriptorPool.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'CubeMapPassDescriptorPool');
@@ -2499,6 +2508,17 @@ begin
                                                                       false);
 
   fCubeMapPassDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(5,
+                                                                      0,
+                                                                      1,
+                                                                      TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                                                      [TVkDescriptorImageInfo.Create(TpvScene3DRenderer(fRendererInstance).Renderer.ClampedSampler.Handle,
+                                                                                                     fAtmosphere.fRAinMap.fTexture.VulkanImageView.Handle,
+                                                                                                     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
+                                                                      [],
+                                                                      [],
+                                                                      false);
+
+  fCubeMapPassDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(6,
                                                                       0,
                                                                       1,
                                                                       TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
@@ -5228,8 +5248,15 @@ begin
                                              TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                                              []);
 
-  // Atmosphere parameters
+  // Rain map texture
   fCubeMapPassDescriptorSetLayout.AddBinding(5,
+                                             VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                             1,
+                                             TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                             []);
+
+  // Atmosphere parameters
+  fCubeMapPassDescriptorSetLayout.AddBinding(6,
                                              VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
                                              1,
                                              TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
