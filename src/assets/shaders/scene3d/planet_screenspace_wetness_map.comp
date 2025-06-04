@@ -158,7 +158,11 @@ void main() {
   vec2 uv = fma((vec2(screenSpaceCoordinates.xy) + vec2(0.5)) / vec2(screenSize.xy), vec2(2.0), vec2(-1.0));
 
   // Fetch depth value from the depth map
+#ifdef MULTIVIEW
+  float depthValue = textureLod(uDepthMap, vec3(uv, screenSpaceCoordinates.z), 0.0).x;
+#else  
   float depthValue = textureLod(uDepthMap, uv, 0.0).x;
+#endif
 
   // If the depth is Z Far, we can skip further calculations, because there is no wetness at this depth
   if(depthValue >= zFarDepthValue){
