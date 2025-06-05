@@ -347,9 +347,9 @@
   uint oitCurrentDepth = floatBitsToUint(gl_FragCoord.z);
  #endif
  #ifdef MSAA
-  uint oitDepth = floatBitsToUint(subpassLoad(uOITImgDepth, gl_SampleID).r);
+  uint oitDepth = floatBitsToUint(subpassLoad(uOITImgDepth, gl_SampleID).x);
  #else
-  uint oitDepth = floatBitsToUint(subpassLoad(uOITImgDepth).r);
+  uint oitDepth = floatBitsToUint(subpassLoad(uOITImgDepth).x);
  #endif
   if(
 #ifdef USE_SPECIALIZATION_CONSTANTS
