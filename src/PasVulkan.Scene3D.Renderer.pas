@@ -626,6 +626,9 @@ begin
     (aVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_EXT_SAMPLER_FILTER_MINMAX_EXTENSION_NAME)>=0) then begin
   aVulkanDevice.EnabledExtensionNames.Add(VK_EXT_SAMPLER_FILTER_MINMAX_EXTENSION_NAME);
  end;
+ if aVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_EXT_SAMPLE_LOCATIONS_EXTENSION_NAME)>=0 then begin
+  aVulkanDevice.EnabledExtensionNames.Add(VK_EXT_SAMPLE_LOCATIONS_EXTENSION_NAME);
+ end;
 end;
 
 class function TpvScene3DRenderer.CheckBufferDeviceAddress(const aVulkanDevice:TpvVulkanDevice):boolean;
