@@ -127,7 +127,7 @@ float visibilityFactor(vec3 position){
     vec3 p = transformVectorByQuaternion(position.xyz - pushConstants.occlusionOBBCenter.xyz, pushConstants.occlusionOBBOrientation);
     vec3 q = abs(p) - pushConstants.occlusionOBBHalfSize.xyz;
     float d = length(max(q, 0.0)) + min(max(q.x, max(q.y, q.z)), 0.0);
-    return smoothstep(0.0, length(pushConstants.occlusionOBBHalfSize.xyz) * 0.03125, d);  
+    return smoothstep(0.0, pushConstants.occlusionOBBCenter.w, d);  
   }else{
     return 1.0; // OBB is not defined, so no occlusion
   }

@@ -2124,6 +2124,7 @@ type TpvScene3DPlanets=class;
        fRainStreakColor:TpvVector4;
        fRainStreakOcclusionOBBActive:TPasMPBool32;
        fRainStreakOcclusionOBB:TpvOBB;
+       fRainStreakOcclusionOBBFadeFactor:TpvFloat;
        fPerInFlightFrameRainStreakCounts:array[0..MaxInFlightFrames-1] of TpvInt32;
        fPerInFlightFrameRainStreakSpawnBottomRadii:array[0..MaxInFlightFrames-1] of TpvFloat;
        fPerInFlightFrameRainStreakSpawnTopRadii:array[0..MaxInFlightFrames-1] of TpvFloat;
@@ -2136,6 +2137,7 @@ type TpvScene3DPlanets=class;
        fPerInFlightFrameRainStreakColors:array[0..MaxInFlightFrames-1] of TpvVector4;
        fPerInFlightFrameRainStreakOcclusionOBBActives:array[0..MaxInFlightFrames-1] of TPasMPBool32;
        fPerInFlightFrameRainStreakOcclusionOBBs:array[0..MaxInFlightFrames-1] of TpvOBB;
+       fPerInFlightFrameRainStreakOcclusionOBBFadeFactors:array[0..MaxInFlightFrames-1] of TpvFloat;
        fGrassInvocationVariants:TpvUInt32;
        fMaxGrassVertices:TpvSizeInt;
        fMaxGrassIndices:TpvSizeInt;
@@ -2366,6 +2368,7 @@ type TpvScene3DPlanets=class;
        property RainStreakColor:TpvVector4 read fRainStreakColor write fRainStreakColor;
        property RainStreakOcclusionOBBActive:TPasMPBool32 read fRainStreakOcclusionOBBActive write fRainStreakOcclusionOBBActive;
        property RainStreakOcclusionOBB:TpvOBB read fRainStreakOcclusionOBB write fRainStreakOcclusionOBB;
+       property RainStreakOcclusionOBBFadeFactor:TpvFloat read fRainStreakOcclusionOBBFadeFactor write fRainStreakOcclusionOBBFadeFactor;
       public      
        property PlanetData:PPlanetData read fPointerToPlanetData;
        property PlanetDataVulkanBuffers:TPlanetDataVulkanBuffers read fPlanetDataVulkanBuffers;
@@ -19100,7 +19103,7 @@ begin
       fPushConstants.ViewPortSize:=TpvVector2.InlineableCreate(TpvScene3DRendererInstance(fRendererInstance).ScaledWidth,TpvScene3DRendererInstance(fRendererInstance).ScaledHeight);
       fPushConstants.Padding:=TpvVector2.Origin;
       if Planet.fPerInFlightFrameRainStreakOcclusionOBBActives[aInFlightFrameIndex] then begin
-       fPushConstants.OcclusionOBBCenter:=TpvVector4.InlineableCreate(Planet.fPerInFlightFrameRainStreakOcclusionOBBs[aInFlightFrameIndex].Center,0.0);
+       fPushConstants.OcclusionOBBCenter:=TpvVector4.InlineableCreate(Planet.fPerInFlightFrameRainStreakOcclusionOBBs[aInFlightFrameIndex].Center,Planet.fPerInFlightFrameRainStreakOcclusionOBBFadeFactors[aInFlightFrameIndex]);
        fPushConstants.OcclusionOBBHalfSize:=TpvVector4.InlineableCreate(Planet.fPerInFlightFrameRainStreakOcclusionOBBs[aInFlightFrameIndex].HalfExtents,1.0);
        fPushConstants.OcclusionOBBOrientation:=Planet.fPerInFlightFrameRainStreakOcclusionOBBs[aInFlightFrameIndex].Matrix.ToQuaternion.Vector;
       end else begin
@@ -20802,6 +20805,8 @@ begin
  fRainStreakOcclusionOBB.Center:=TpvVector3.Origin;
  fRainStreakOcclusionOBB.HalfExtents:=TpvVector3.Origin;
 
+ fRainStreakOcclusionOBBFadeFactor:=0.03125;
+
  for InFlightFrameIndex:=0 to MaxInFlightFrames-1 do begin
   fPerInFlightFrameRainStreakCounts[InFlightFrameIndex]:=fRainStreakCount;
   fPerInFlightFrameRainStreakSpawnBottomRadii[InFlightFrameIndex]:=fRainStreakSpawnBottomRadius;
@@ -20815,6 +20820,7 @@ begin
   fPerInFlightFrameRainStreakColors[InFlightFrameIndex]:=fRainStreakColor;
   fPerInFlightFrameRainStreakOcclusionOBBActives[InFlightFrameIndex]:=fRainStreakOcclusionOBBActive;
   fPerInFlightFrameRainStreakOcclusionOBBs[InFlightFrameIndex]:=fRainStreakOcclusionOBB;
+  fPerInFlightFrameRainStreakOcclusionOBBFadeFactors[InFlightFrameIndex]:=fRainStreakOcclusionOBBFadeFactor;
  end;
 
  fUsePlanetHeightMapBuffer:=false;
@@ -23210,6 +23216,7 @@ end;
 
 procedure TpvScene3DPlanet.Update(const aInFlightFrameIndex:TpvSizeInt);
 begin
+
  if aInFlightFrameIndex>=0 then begin
   fPerInFlightFrameRainStreakCounts[aInFlightFrameIndex]:=fRainStreakCount;
   fPerInFlightFrameRainStreakSpawnBottomRadii[aInFlightFrameIndex]:=fRainStreakSpawnBottomRadius;
@@ -23223,10 +23230,13 @@ begin
   fPerInFlightFrameRainStreakColors[aInFlightFrameIndex]:=fRainStreakColor;
   fPerInFlightFrameRainStreakOcclusionOBBActives[aInFlightFrameIndex]:=fRainStreakOcclusionOBBActive;
   fPerInFlightFrameRainStreakOcclusionOBBs[aInFlightFrameIndex]:=fRainStreakOcclusionOBB;
+  fPerInFlightFrameRainStreakOcclusionOBBFadeFactors[aInFlightFrameIndex]:=fRainStreakOcclusionOBBFadeFactor;
  end;
+
  if not TpvScene3D(fScene3D).PlanetSingleBuffers then begin
   ProcessModifications(aInFlightFrameIndex);
  end;
+
 end;
 
 procedure TpvScene3DPlanet.FrameUpdate(const aInFlightFrameIndex:TpvSizeInt);
