@@ -54,9 +54,7 @@ layout(set = 0, binding = 1) uniform sampler2D uDepthMap;
 #endif
 
 #ifdef MSAA
-layout(set = 0, binding = 2) uniform MSAAOffsets {
-  vec2 offsets[32]; // Offsets for the MSAA samples
-} msaaOffsets;
+#include "msaa_sample_positions.glsl"
 #endif
 
 // Planet descriptor set (for the rain and atmosphere maps)
@@ -267,7 +265,7 @@ void main() {
 
     // If depth samples are not the same, we need to compute the wetness for each sample separately
     for(int sampleIndex = 0; sampleIndex < pushConstants.countMSAASamples; sampleIndex++){
-      float wetnessFactor = computeWetnessAtDepth((vec2(screenSpaceCoordinates.xy) + msaaOffsets.offsets[sampleIndex]) / vec2(screenSize.xy),
+      float wetnessFactor = computeWetnessAtDepth((vec2(screenSpaceCoordinates.xy) + getMSAASamplePosition(int(pushConstants.countMSAASamples), sampleIndex)) / vec2(screenSize.xy),
                                                   depthSamples[sampleIndex],
                                                   inverseViewProjectionMatrix,
                                                   zFarDepthValue);

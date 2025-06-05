@@ -126,6 +126,8 @@ type TpvScene3DRenderer=class;
             PSphericalHarmonicsBufferData=^TSphericalHarmonicsBufferData;
             TSphericalHarmonicsMetaDataBufferData=TpvScene3DRendererImageBasedLightingSphericalHarmonics.TSphericalHarmonicsMetaDataBufferData;
             PSphericalHarmonicsMetaDataBufferData=^TSphericalHarmonicsMetaDataBufferData;
+            TSurfaceMSAASampleLocations=array[0..255] of TpvVector2;
+            PSurfaceMSAASampleLocations=^TSurfaceMSAASampleLocations;
       private
        fScene3D:TpvScene3D;
        fVulkanDevice:TpvVulkanDevice;
@@ -169,6 +171,7 @@ type TpvScene3DRenderer=class;
        fCountCascadedShadowMapMSAASamples:TpvSizeInt;
        fSurfaceSampleCountFlagBits:TVkSampleCountFlagBits;
        fCountSurfaceMSAASamples:TpvSizeInt;
+       fSurfaceMSAASampleLocations:TSurfaceMSAASampleLocations;
        fSupersampleWaterWhenMSAA:Boolean;
        fAnimatedAtmosphereNoise:Boolean;
        fGlobalIlluminationCaching:Boolean;
@@ -296,8 +299,9 @@ type TpvScene3DRenderer=class;
 {      property LensColorTexture:TpvVulkanTexture read fLensColorTexture;
        property LensDirtTexture:TpvVulkanTexture read fLensDirtTexture;
        property LensStarTexture:TpvVulkanTexture read fLensStarTexture;}
+      public
+       property SurfaceMSAASampleLocations:TSurfaceMSAASampleLocations read fSurfaceMSAASampleLocations;
      end;
-
 
 implementation
 
@@ -640,7 +644,8 @@ begin
 end;
 
 procedure TpvScene3DRenderer.Prepare;
-var SampleCounts:TVkSampleCountFlags;
+var Index:TpvSizeInt;
+    SampleCounts:TVkSampleCountFlags;
     FormatProperties:TVkFormatProperties;
 begin
 
@@ -949,6 +954,57 @@ begin
   fSurfaceSampleCountFlagBits:=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT);
   fCountSurfaceMSAASamples:=1;
  end;
+
+ case fSurfaceSampleCountFlagBits of 
+  TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT):begin
+   fSurfaceMSAASampleLocations[0]:=TpvVector2.InlineableCreate(0.5,0.5);
+  end;
+  TVkSampleCountFlagBits(VK_SAMPLE_COUNT_2_BIT):begin
+   fSurfaceMSAASampleLocations[0]:=TpvVector2.InlineableCreate(0.75,0.75);
+   fSurfaceMSAASampleLocations[1]:=TpvVector2.InlineableCreate(0.25,0.25);
+  end; 
+  TVkSampleCountFlagBits(VK_SAMPLE_COUNT_4_BIT):begin
+   fSurfaceMSAASampleLocations[0]:=TpvVector2.InlineableCreate(0.375,0.125);
+   fSurfaceMSAASampleLocations[1]:=TpvVector2.InlineableCreate(0.875,0.375);
+   fSurfaceMSAASampleLocations[2]:=TpvVector2.InlineableCreate(0.125,0.625);
+   fSurfaceMSAASampleLocations[3]:=TpvVector2.InlineableCreate(0.625,0.875);
+  end; 
+  TVkSampleCountFlagBits(VK_SAMPLE_COUNT_8_BIT):begin
+   fSurfaceMSAASampleLocations[0]:=TpvVector2.InlineableCreate(0.5625,0.3125);
+   fSurfaceMSAASampleLocations[1]:=TpvVector2.InlineableCreate(0.4375,0.6875);
+   fSurfaceMSAASampleLocations[2]:=TpvVector2.InlineableCreate(0.8125,0.5625);
+   fSurfaceMSAASampleLocations[3]:=TpvVector2.InlineableCreate(0.3125,0.1875);
+   fSurfaceMSAASampleLocations[4]:=TpvVector2.InlineableCreate(0.1875,0.8125);
+   fSurfaceMSAASampleLocations[5]:=TpvVector2.InlineableCreate(0.0625,0.4375);
+   fSurfaceMSAASampleLocations[6]:=TpvVector2.InlineableCreate(0.6875,0.9375);
+   fSurfaceMSAASampleLocations[7]:=TpvVector2.InlineableCreate(0.9375,0.0625);
+  end;
+  TVkSampleCountFlagBits(VK_SAMPLE_COUNT_16_BIT):begin
+   fSurfaceMSAASampleLocations[0]:=TpvVector2.InlineableCreate(0.5625,0.5625);
+   fSurfaceMSAASampleLocations[1]:=TpvVector2.InlineableCreate(0.4375,0.3125);
+   fSurfaceMSAASampleLocations[2]:=TpvVector2.InlineableCreate(0.3125,0.6250);
+   fSurfaceMSAASampleLocations[3]:=TpvVector2.InlineableCreate(0.7500,0.4375);
+   fSurfaceMSAASampleLocations[4]:=TpvVector2.InlineableCreate(0.1875,0.3750);
+   fSurfaceMSAASampleLocations[5]:=TpvVector2.InlineableCreate(0.6250,0.8125);
+   fSurfaceMSAASampleLocations[6]:=TpvVector2.InlineableCreate(0.8125,0.6875);
+   fSurfaceMSAASampleLocations[7]:=TpvVector2.InlineableCreate(0.6875,0.1875);
+   fSurfaceMSAASampleLocations[8]:=TpvVector2.InlineableCreate(0.3750,0.8750);
+   fSurfaceMSAASampleLocations[9]:=TpvVector2.InlineableCreate(0.5000,0.0625);
+   fSurfaceMSAASampleLocations[10]:=TpvVector2.InlineableCreate(0.2500,0.1250);
+   fSurfaceMSAASampleLocations[11]:=TpvVector2.InlineableCreate(0.1250,0.7500);
+   fSurfaceMSAASampleLocations[12]:=TpvVector2.InlineableCreate(0.0000,0.5000);
+   fSurfaceMSAASampleLocations[13]:=TpvVector2.InlineableCreate(0.9375,0.2500);
+   fSurfaceMSAASampleLocations[14]:=TpvVector2.InlineableCreate(0.8750,0.9375);
+   fSurfaceMSAASampleLocations[15]:=TpvVector2.InlineableCreate(0.0625,0.0000);
+  end; 
+  else begin
+   // Fallback to (0.5,0.5) sample location for all other sample counts, even if it is not the correct way to do it, because
+   // from 32 samples on, the sample locations are not standardized anymore, so we cannot use the standard sample locations
+   for Index:=0 to fCountSurfaceMSAASamples-1 do begin
+    fSurfaceMSAASampleLocations[Index]:=TpvVector2.InlineableCreate(0.5,0.5);
+   end; 
+  end;  
+ end; 
 
  if fTransparencyMode=TpvScene3DRendererTransparencyMode.Auto then begin
   case TpvVulkanVendorID(fVulkanDevice.PhysicalDevice.Properties.vendorID) of
