@@ -11,14 +11,14 @@
 // modification of the shader code. Indeed, not super efficient, but it works for now, as the dummy
 // wetness map is very small, so it does not take much memory and does not affect performance significantly.
 
+// And as additional note, this shader reads depth per-MSAA sample if MSAA is enabled, so there is no need 
+// for a pre-resolved depth map, if all samples match a single evaluation is used to reduce work, otherwise
+// each sample is computed to ensure correctness.
+
 // And as additional note, this shader needs a pre-resolved depth map, when MSAA is used. And for wetness
 // the discontinuity of the depth map at antialiasing edges is not a problem, as wet areas are usually large and
 // smooth transitions, so the discontinuity of the depth map does not affect the wetness map significantly.
 // Otherwise just tolerate it for now. 
-
-// The wetness map is initialized with 0.0 values, so that multiple planets could be present in the scene, and
-// we don't write never 0.0 values, just greater than 0.0 values. And we ignore Z-fighting situations
-// between planets for now, as we don't want to complicate the shader code with additional checks for that. 
 
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_ARB_shading_language_420pack : enable
@@ -33,16 +33,30 @@ layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
 
 #ifdef MULTIVIEW
 
+#ifdef MSAA
+layout(set = 0, binding = 0, r8) uniform image2DMSArray uWetnessMap;
+layout(set = 0, binding = 1) uniform sampler2DMSArray uDepthMap;
+#else
 layout(set = 0, binding = 0, r8) uniform image2DArray uWetnessMap;
-
 layout(set = 0, binding = 1) uniform sampler2DArray uDepthMap;
+#endif
 
 #else
 
+#ifdef MSAA
+layout(set = 0, binding = 0, r8) uniform image2DMS uWetnessMap;
+layout(set = 0, binding = 1) uniform sampler2DMS uDepthMap;
+#else
 layout(set = 0, binding = 0, r8) uniform image2D uWetnessMap;
-
 layout(set = 0, binding = 1) uniform sampler2D uDepthMap;
+#endif
 
+#endif
+
+#ifdef MSAA
+layout(set = 0, binding = 2) uniform MSAAOffsets {
+  vec2 offsets[32]; // Offsets for the MSAA samples
+} msaaOffsets;
 #endif
 
 // Planet descriptor set (for the rain and atmosphere maps)
@@ -73,7 +87,7 @@ layout(push_constant) uniform PushConstants {
   float planetRadius; // Radius of the planet including atmosphere and so on
   uint viewBaseIndex; // Base index for the view in multiview mode
   uint countViews; // Number of views in multiview mode
-  uint countAllViews; // Total number of views in the scene
+  uint countMSAASamples; // Number of MSAA samples, ignored if MSAA is not enabled
 } pushConstants;
 
 /* clang-format on */
@@ -119,29 +133,84 @@ float visibilityFactor(vec3 position){
   }
 }
 
+float computeWetnessAtDepth(const in vec2 uv,
+                            const float depthValue,
+                            const in mat4 inverseViewProjectionMatrix,
+                            const in float zFarDepthValue){
+
+  // If the depth is far plane, we can skip further calculations (must be a equality check, because
+  // the depth value can be 0.0 in reversed Z projection or 1.0 in non-reversed Z projection)
+  if(depthValue == zFarDepthValue){
+  
+    // If the depth is Z Far, we can skip further calculations, because there is no wetness at this depth
+    // and we can return 0.0 as the wetness factor.
+    return 0.0;
+
+  }else{
+
+    // Convert depth value to clip space coordinates
+    vec4 clipSpaceCoordinates = vec4(fma(uv, vec2(2.0), vec2(-1.0)), depthValue, 1.0);
+
+    // Convert clip space coordinates to world space coordinates
+    vec4 worldSpaceCoordinates = inverseViewProjectionMatrix * clipSpaceCoordinates;
+    worldSpaceCoordinates /= worldSpaceCoordinates.w;
+
+    // Convert world space coordinates to planet space by applying the inverse model matrix
+    vec3 planetSpaceCoordinates = (pushConstants.planetInverseModelMatrix * worldSpaceCoordinates).xyz;
+
+    // Calculate the distance from the center of the planet
+    float distanceFromCenter = length(planetSpaceCoordinates);
+
+    // If the distance is greater than the planet radius, we can skip further calculations
+    if(distanceFromCenter > pushConstants.planetRadius){
+      
+      // We can return 0.0 as the wetness factor in this case, because the point is outside the planet.
+      return 0.0;
+
+    }else{
+
+      // Get the rain and atmosphere map values
+      float rainFactor = texturePlanetOctahedralMap(uRainMap, planetSpaceCoordinates).x;
+      float atmosphereFactor = texturePlanetOctahedralMap(uAtmosphereMap, planetSpaceCoordinates).x;
+
+      // Combine the rain factor and atmosphere factor and apply visibility factor
+      float rainAtmosphereFactor = rainFactor * atmosphereFactor * visibilityFactor(planetSpaceCoordinates);
+
+      // Return the wetness factor
+      return rainAtmosphereFactor;
+
+    }
+
+  }
+
+}
+
 void main() {
 
+  // Get the screen space coordinates based on the global invocation ID
 #ifdef MULTIVIEW
-  
-  uvec3 screenSpaceCoordinates = uvec3(gl_GlobalInvocationID.xyz);
-  uvec3 screenSize = uvec3(imageSize(uWetnessMap).xyz);
-
+  ivec3 screenSpaceCoordinates = ivec3(gl_GlobalInvocationID.xyz);
 #else
-  
-  uvec2 screenSpaceCoordinates = uvec2(gl_GlobalInvocationID.xy);
-  uvec2 screenSize = uvec2(imageSize(uWetnessMap).xy);
-
+  ivec2 screenSpaceCoordinates = ivec2(gl_GlobalInvocationID.xy);
 #endif
 
-  if(any(greaterThanEqual(screenSpaceCoordinates, screenSize))) {
+  // Get the size of the wetness map in screen space coordinates
+#ifdef MULTIVIEW
+  ivec3 screenSize = ivec3(imageSize(uWetnessMap).xyz);
+#else
+  ivec2 screenSize = ivec2(imageSize(uWetnessMap).xy);
+#endif
+
+  if(any(greaterThanEqual(screenSpaceCoordinates, screenSize))){
     // If the screen space coordinates are out of bounds, do nothing
     return;
   }
 
   // Get the right view index for the matrices
-  uint viewIndex = pushConstants.viewBaseIndex; 
 #ifdef MULTIVIEW
-  viewIndex += screenSpaceCoordinates.z;
+  uint viewIndex = pushConstants.viewBaseIndex + screenSpaceCoordinates.z;
+#else
+  uint viewIndex = pushConstants.viewBaseIndex;
 #endif
 
   // Get the inverse view and inverse projection matrices for the current view
@@ -149,60 +218,100 @@ void main() {
   mat4 inverseProjectionMatrix = uView.views[viewIndex].inverseProjectionMatrix;
 
   // Get the Z Far depth value based on the projection matrix
-  float zFarDepthValue = GetZFarDepthValue(uView.views[viewIndex].projectionMatrix); 
+  float zFarDepthValue = GetZFarDepthValue(uView.views[viewIndex].projectionMatrix);
 
   // Combine the inverse matrices to get the inverse view-projection matrix
   mat4 inverseViewProjectionMatrix = inverseProjectionMatrix * inverseViewMatrix;
 
-  // Calculate NDC coordinates
-  vec2 uv = fma((vec2(screenSpaceCoordinates.xy) + vec2(0.5)) / vec2(screenSize.xy), vec2(2.0), vec2(-1.0));
+#ifdef MSAA
 
-  // Fetch depth value from the depth map
+  // If MSAA is enabled, we need to fetch the depth samples for each MSAA sample
+  #define MAX_MSAA_SAMPLES 32
+  float depthSamples[MAX_MSAA_SAMPLES];
+  for(int sampleIndex = 0; sampleIndex < pushConstants.countMSAASamples; sampleIndex++){
+#ifdef MULTIVIEW    
+    depthSamples[sampleIndex] = texelFetch(uDepthMap, ivec3(screenSpaceCoordinates.xyz), sampleIndex).x;
+#else
+    depthSamples[sampleIndex] = texelFetch(uDepthMap, screenSpaceCoordinates.xy, sampleIndex).x;
+#endif
+  }
+   
+  // Check if all depth samples are the same, because if they are, we can compute the wetness for all samples at once
+  // If they are not the same, we need to compute the wetness for each sample separately 
+  bool allSame = true;
+  for(int sampleIndex = 1; sampleIndex < pushConstants.countMSAASamples; sampleIndex++){
+    if(abs(depthSamples[sampleIndex] - depthSamples[0]) > 1e-6){
+      allSame = false;
+      break;
+    }
+  }
+
+  if(allSame){
+
+    // If all depth samples are the same, we can compute the wetness for all samples at once
+    float wetnessFactor = computeWetnessAtDepth((vec2(screenSpaceCoordinates.xy) + vec2(0.5)) / vec2(screenSize.xy),
+                                                depthSamples[0],
+                                                inverseViewProjectionMatrix,
+                                                zFarDepthValue);
+    if(wetnessFactor > 0.0){
+      for(int sampleIndex = 0; sampleIndex < pushConstants.countMSAASamples; sampleIndex++){
 #ifdef MULTIVIEW
-  float depthValue = textureLod(uDepthMap, vec3(uv, screenSpaceCoordinates.z), 0.0).x;
-#else  
-  float depthValue = textureLod(uDepthMap, uv, 0.0).x;
+        imageStore(uWetnessMap, ivec3(screenSpaceCoordinates.xyz), sampleIndex, vec4(wetnessFactor));
+#else
+        imageStore(uWetnessMap, ivec2(screenSpaceCoordinates.xy), sampleIndex, vec4(wetnessFactor));
+#endif  
+      }
+    }
+
+  }else{
+
+    // If depth samples are not the same, we need to compute the wetness for each sample separately
+    for(int sampleIndex = 0; sampleIndex < pushConstants.countMSAASamples; sampleIndex++){
+      float wetnessFactor = computeWetnessAtDepth((vec2(screenSpaceCoordinates.xy) + msaaOffsets.offsets[sampleIndex]) / vec2(screenSize.xy),
+                                                  depthSamples[sampleIndex],
+                                                  inverseViewProjectionMatrix,
+                                                  zFarDepthValue);
+      if(wetnessFactor > 0.0){
+#ifdef MULTIVIEW
+        imageStore(uWetnessMap, ivec3(screenSpaceCoordinates.xyz), sampleIndex, vec4(wetnessFactor));
+#else
+        imageStore(uWetnessMap, ivec2(screenSpaceCoordinates.xy), sampleIndex, vec4(wetnessFactor));
+#endif
+      }
+    }
+
+  }
+
+#else
+
+  // If MSAA is not enabled, we can compute the wetness for the single depth value
+
+#ifdef MULTIVIEW
+  float depthValue = texelFetch(uDepthMap, ivec3(screenSpaceCoordinates.xyz), 0).x;
+#else
+  float depthValue = texelFetch(uDepthMap, screenSpaceCoordinates.xy, 0).x;
 #endif
 
   // If the depth is Z Far, we can skip further calculations, because there is no wetness at this depth
-  if(depthValue >= zFarDepthValue){
+  if(depthValue == zFarDepthValue){
     return;
   }
 
-  // Convert depth value to clip space coordinates
-  vec4 clipSpaceCoordinates = vec4(fma(uv, vec2(0.5), vec2(0.5)), depthValue, 1.0);
-  
-  // Convert clip space coordinates to world space coordinates
-  vec4 worldSpaceCoordinates = inverseViewProjectionMatrix * clipSpaceCoordinates;
-  worldSpaceCoordinates /= worldSpaceCoordinates.w;
+  // Compute the wetness factor at the given depth value
+  float wetnessFactor = computeWetnessAtDepth((vec2(screenSpaceCoordinates.xy) + vec2(0.5)) / vec2(screenSize.xy), 
+                                              depthValue, 
+                                              inverseViewProjectionMatrix, 
+                                              zFarDepthValue);
 
-  // Convert world space coordinates to planet space by applying the inverse model matrix
-  vec3 planetSpaceCoordinates = (pushConstants.planetInverseModelMatrix * worldSpaceCoordinates).xyz;
-
-  // Calculate the distance from the center of the planet
-  float distanceFromCenter = length(planetSpaceCoordinates);
-
-  // If the distance is greater than the planet radius, we can skip further calculations, because there is no wetness at this distance
-  if (distanceFromCenter > pushConstants.planetRadius) {
-    return;
-  }
-
-  // Get the rain and atmosphere map values
-  float rainFactor = texturePlanetOctahedralMap(uRainMap, planetSpaceCoordinates).x;
-  float atmosphereFactor = texturePlanetOctahedralMap(uAtmosphereMap, planetSpaceCoordinates).x;
-
-  // Combine the rain factor and atmosphere factor into a single combined rain atmosphere factor 
-  // The visibility factor is applied to the rain atmosphere factor to account for occlusion by buildings or other objects in local view,
-  // for example, when the camera is inside a building or under a roof, the rain should not be at this position.
-  float rainAtmosphereFactor = rainFactor * atmosphereFactor * visibilityFactor(planetSpaceCoordinates);
-
-  // Store this factor in the wetness map. when greater than 0.0
-  if(rainAtmosphereFactor > 0.0){
+  // Store this factor in the wetness map when greater than 0.0
+  if(wetnessFactor > 0.0){
 #ifdef MULTIVIEW
-    imageStore(uWetnessMap, ivec3(screenSpaceCoordinates), vec4(rainAtmosphereFactor));
+    imageStore(uWetnessMap, ivec3(screenSpaceCoordinates.xyz), vec4(wetnessFactor));
 #else
-    imageStore(uWetnessMap, ivec2(screenSpaceCoordinates), vec4(rainAtmosphereFactor));
+    imageStore(uWetnessMap, ivec2(screenSpaceCoordinates.xy), vec4(wetnessFactor));
 #endif
   }
+
+#endif // MSAA
 
 }

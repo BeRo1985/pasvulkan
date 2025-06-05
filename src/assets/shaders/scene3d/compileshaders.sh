@@ -457,9 +457,11 @@ compileshaderarguments=(
 
   "-V planet_rainstreaks.frag -o ${tempPath}/planet_rainstreaks_frag.spv"
 
+  # Screenspace wetness map compute shaders for different configurations
   "-V planet_screenspace_wetness_map.comp -o ${tempPath}/planet_screenspace_wetness_map_comp.spv"
-
   "-V planet_screenspace_wetness_map.comp -DMULTIVIEW -o ${tempPath}/planet_screenspace_wetness_map_multiview_comp.spv"
+  "-V planet_screenspace_wetness_map.comp -DMSAA -o ${tempPath}/planet_screenspace_wetness_map_msaa_comp.spv"
+  "-V planet_screenspace_wetness_map.comp -DMSAA -DMULTIVIEW -o ${tempPath}/planet_screenspace_wetness_map_msaa_multiview_comp.spv"
 
   "-V planet_watermap_initialization.comp -o ${tempPath}/planet_watermap_initialization_comp.spv"
 
