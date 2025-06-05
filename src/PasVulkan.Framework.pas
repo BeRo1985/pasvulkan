@@ -428,6 +428,7 @@ type EpvVulkanException=class(Exception);
 {      fFloatControlsPropertiesKHR:TVkPhysicalDeviceFloatControlsPropertiesKHR;
        fFloat16Int8FeaturesKHR:TVkPhysicalDeviceFloat16Int8FeaturesKHR;
        fShaderFloat16Int8FeaturesKHR:TVkPhysicalDeviceShaderFloat16Int8Features;}
+       fSampleLocationsPropertiesEXT:TVkPhysicalDeviceSampleLocationsPropertiesEXT;
        fSamplerFilterMinmaxPropertiesEXT:TVkPhysicalDeviceSamplerFilterMinmaxPropertiesEXT;
        fConservativeRasterizationPropertiesEXT:TVkPhysicalDeviceConservativeRasterizationPropertiesEXT;
        fDescriptorIndexingFeaturesEXT:TVkPhysicalDeviceDescriptorIndexingFeaturesEXT;
@@ -510,6 +511,7 @@ type EpvVulkanException=class(Exception);
        property PhysicalDeviceAddressBindingReportFeaturesEXT:TVkPhysicalDeviceAddressBindingReportFeaturesEXT read fPhysicalDeviceAddressBindingReportFeaturesEXT;
        property MultiDrawFeaturesEXT:TVkPhysicalDeviceMultiDrawFeaturesEXT read fMultiDrawFeaturesEXT;
        property MultiDrawPropertiesEXT:TVkPhysicalDeviceMultiDrawPropertiesEXT read fMultiDrawPropertiesEXT;
+       property SampleLocationsPropertiesEXT:TVkPhysicalDeviceSampleLocationsPropertiesEXT read fSampleLocationsPropertiesEXT;
        property SamplerFilterMinmaxPropertiesEXT:TVkPhysicalDeviceSamplerFilterMinmaxPropertiesEXT read fSamplerFilterMinmaxPropertiesEXT;
        property ConservativeRasterizationPropertiesEXT:TVkPhysicalDeviceConservativeRasterizationPropertiesEXT read fConservativeRasterizationPropertiesEXT;
        property DescriptorIndexingFeaturesEXT:TVkPhysicalDeviceDescriptorIndexingFeaturesEXT read fDescriptorIndexingFeaturesEXT;
@@ -8921,6 +8923,13 @@ begin
  if fMultiDrawFeaturesEXT.multiDraw<>VK_FALSE then begin
   fMultiDrawPropertiesEXT.pNext:=fProperties2KHR.pNext;
   fProperties2KHR.pNext:=@fMultiDrawPropertiesEXT;
+ end;
+
+ FillChar(fSampleLocationsPropertiesEXT,SizeOf(TVkPhysicalDeviceSampleLocationsPropertiesEXT),#0);
+ fSampleLocationsPropertiesEXT.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLE_LOCATIONS_PROPERTIES_EXT;
+ if fAvailableExtensionNames.IndexOf(VK_EXT_SAMPLE_LOCATIONS_EXTENSION_NAME)>=0 then begin
+  fSampleLocationsPropertiesEXT.pNext:=fProperties2KHR.pNext;
+  fProperties2KHR.pNext:=@fSampleLocationsPropertiesEXT;
  end;
 
  FillChar(fSamplerFilterMinmaxPropertiesEXT,SizeOf(TVkPhysicalDeviceSamplerFilterMinmaxPropertiesEXT),#0);
