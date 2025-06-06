@@ -2633,6 +2633,7 @@ procedure TpvAudioSoundSampleVoice.UpdateTargetVolumes(aMixVolume:TpvInt32);
 var MixVolume,Pan:TpvInt32;
 begin
  MixVolume:=SARLongint(aMixVolume*fDynamicVolume,15);
+ MixVolume:=SARLongint(aMixVolume*SARLongint(fVolume,1),15);
  if fSpatialization then begin
   fVolumeLeft:=SARLongint(MixVolume*fMulLeft,15);
   fVolumeRight:=SARLongint(MixVolume*fMulRight,15);
