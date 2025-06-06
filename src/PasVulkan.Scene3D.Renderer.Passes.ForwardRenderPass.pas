@@ -613,39 +613,40 @@ begin
                                            TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                            []);
  fPassVulkanDescriptorSetLayout.AddBinding(3,
-                                             VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-                                             1,
-                                             TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
-                                             []);
+                                           VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                                           1,
+                                           TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                           []);
  fPassVulkanDescriptorSetLayout.AddBinding(4,
-                                             VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                                             1,
-                                             TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
-                                             []);
+                                           VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                           1,
+                                           TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                           []);
  fPassVulkanDescriptorSetLayout.AddBinding(5,
-                                             VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                                             2,
-                                             TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
-                                             []);
+                                           VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                           2,
+                                           TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                           [],
+                                           TVkDescriptorBindingFlags(VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT_EXT));
  fPassVulkanDescriptorSetLayout.AddBinding(6,
-                                             VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-                                             1,
-                                             TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
-                                             []);
+                                           VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                                           1,
+                                           TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                           []);
  fPassVulkanDescriptorSetLayout.AddBinding(7,
-                                             VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-                                             1,
-                                             TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
-                                             []);
+                                           VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                                           1,
+                                           TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                           []);
  fPassVulkanDescriptorSetLayout.AddBinding(8,
-                                             VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-                                             1,
-                                             TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
-                                             []);
+                                           VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                                           1,
+                                           TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                           []);
  fPassVulkanDescriptorSetLayout.Initialize;
 
  fPassVulkanDescriptorPool:=TpvVulkanDescriptorPool.Create(fInstance.Renderer.VulkanDevice,TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),fInstance.Renderer.CountInFlightFrames);
- fPassVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,13*fInstance.Renderer.CountInFlightFrames);
+ fPassVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,16*fInstance.Renderer.CountInFlightFrames);
  fPassVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,3*fInstance.Renderer.CountInFlightFrames);
  fPassVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,3*fInstance.Renderer.CountInFlightFrames);
  fPassVulkanDescriptorPool.Initialize;
