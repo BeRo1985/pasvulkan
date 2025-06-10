@@ -1042,16 +1042,31 @@ addMeshFragmentShadingShadowVariants(){
   addMeshFragmentShadingTransparencyVariants "${1}_pcfpcss" "$2 -DPCFPCSS"
 }
 
-# Add mesh fragment shader variants with different antialiasing techniques (if any)
-addMeshFragmentShadingAntialiasingVariants(){
+# Add mesh fragment shader variants either with or without wetness map usage
+addMeshFragmentShadingWetnessVariants(){
   
-  # No antialiasing or temporal antialiasing
+  # No usage of wetness map
   addMeshFragmentShadingShadowVariants "${1}" "$2"
 
   if [[ $2 != *"ENVMAP"* ]]; then
 
+    # Usage of wetness map
+    addMeshFragmentShadingShadowVariants "${1}_wetness" "$2 -DWETNESS"  
+
+  fi
+  
+}
+
+# Add mesh fragment shader variants with different antialiasing techniques (if any)
+addMeshFragmentShadingAntialiasingVariants(){
+  
+  # No antialiasing or temporal antialiasing
+  addMeshFragmentShadingWetnessVariants "${1}" "$2"
+
+  if [[ $2 != *"ENVMAP"* ]]; then
+
     # MSAA (Multi-sample anti-aliasing)
-    addMeshFragmentShadingShadowVariants "${1}_msaa" "$2 -DMSAA"  
+    addMeshFragmentShadingWetnessVariants "${1}_msaa" "$2 -DMSAA"  
 
   fi
   
