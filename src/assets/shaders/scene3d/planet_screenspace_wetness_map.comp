@@ -35,20 +35,20 @@ layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
 #ifdef MULTIVIEW
 
 #ifdef MSAA
-layout(set = 0, binding = 0, r8) uniform image2DMSArray uWetnessMap;
+layout(set = 0, binding = 0, rgba8ui) uniform uimage2DMSArray uWetnessMap;
 layout(set = 0, binding = 1) uniform texture2DMSArray uDepthMap;
 #else
-layout(set = 0, binding = 0, r8) uniform image2DArray uWetnessMap;
+layout(set = 0, binding = 0, rgba8ui) uniform uimage2DArray uWetnessMap;
 layout(set = 0, binding = 1) uniform texture2DArray uDepthMap;
 #endif
 
 #else
 
 #ifdef MSAA
-layout(set = 0, binding = 0, r8) uniform image2DMS uWetnessMap;
+layout(set = 0, binding = 0, rgba8ui) uniform uimage2DMS uWetnessMap;
 layout(set = 0, binding = 1) uniform texture2DMS uDepthMap;
 #else
-layout(set = 0, binding = 0, r8) uniform image2D uWetnessMap;
+layout(set = 0, binding = 0, rgba8ui) uniform uimage2D uWetnessMap;
 layout(set = 0, binding = 1) uniform texture2D uDepthMap;
 #endif
 
@@ -132,10 +132,10 @@ float visibilityFactor(vec3 position){
   }
 }
 
-float computeWetnessAtDepth(const in vec2 uv,
-                            const float depthValue,
-                            const in mat4 inverseViewProjectionMatrix,
-                            const in float zFarDepthValue){
+vec3 computeWetnessAtDepth(const in vec2 uv,
+                           const float depthValue,
+                           const in mat4 inverseViewProjectionMatrix,
+                           const in float zFarDepthValue){
 
   // If the depth is far plane, we can skip further calculations (must be a equality check, because
   // the depth value can be 0.0 in reversed Z projection or 1.0 in non-reversed Z projection)
@@ -143,7 +143,7 @@ float computeWetnessAtDepth(const in vec2 uv,
   
     // If the depth is Z Far, we can skip further calculations, because there is no wetness at this depth
     // and we can return 0.0 as the wetness factor.
-    return 0.0;
+    return vec3(0.0);
 
   }else{
 
@@ -164,7 +164,7 @@ float computeWetnessAtDepth(const in vec2 uv,
     if(distanceFromCenter > pushConstants.planetRadius){
       
       // We can return 0.0 as the wetness factor in this case, because the point is outside the planet.
-      return 0.0;
+      return vec3(0.0);
 
     }else{
 
@@ -175,8 +175,14 @@ float computeWetnessAtDepth(const in vec2 uv,
       // Combine the rain factor and atmosphere factor and apply visibility factor
       float rainAtmosphereFactor = rainFactor * atmosphereFactor * visibilityFactor(planetSpaceCoordinates);
 
+      // Get world space direction from the center of the planet to the point
+      vec3 worldSpaceDirectionFromPlanetCenter = normalize(planetSpaceCoordinates);
+
+      // Convert the direction to octahedral coordinates
+      vec2 directionOctahedral = octEqualAreaUnsignedEncode(worldSpaceDirectionFromPlanetCenter);
+      
       // Return the wetness factor
-      return rainAtmosphereFactor;
+      return vec3(rainAtmosphereFactor, directionOctahedral); 
 
     }
 
@@ -248,16 +254,27 @@ void main() {
   if(allSame){
 
     // If all depth samples are the same, we can compute the wetness for all samples at once
-    float wetnessFactor = computeWetnessAtDepth((vec2(screenSpaceCoordinates.xy) + vec2(0.5)) / vec2(screenSize.xy),
-                                                depthSamples[0],
-                                                inverseViewProjectionMatrix,
-                                                zFarDepthValue);
-    if(wetnessFactor > 0.0){
+    vec3 wetness = computeWetnessAtDepth((vec2(screenSpaceCoordinates.xy) + vec2(0.5)) / vec2(screenSize.xy),
+                                         depthSamples[0],
+                                         inverseViewProjectionMatrix,
+                                         zFarDepthValue);
+    if(wetness.x > 0.0){
+      wetness = clamp(wetness, vec3(0.0), vec3(1.0)); // Clamp the wetness factor to [0, 1] range
+      // Convert direction octahedral to 12.12 fixed-point format
+      // and store it in the wetness map as a uvec4 with the wetness factor in the green, blue and alpha channels 
+      uint directionOctahedralPacked =  (uint(round(wetness.y * 4095.0)) & 0xfffu) | ((uint(round(wetness.z * 4095.0)) & 0xfffu) << 12); // 12 bits each for octahedral direction X and Y components
+      uvec4 result = uvec4(
+        uint(round(wetness.x * 255.0)),  // Store as RGBA8 format, where R is the wetness factor scaled to [0, 255]
+        // Store the octahedral direction in the G, B and A channels (G+B+A = 24bits for 12.12 fixed-point)
+        (directionOctahedralPacked >> 0) & 0xffu,
+        (directionOctahedralPacked >> 8) & 0xffu,
+        (directionOctahedralPacked >> 16) & 0xffu
+      );
       for(int sampleIndex = 0; sampleIndex < pushConstants.countMSAASamples; sampleIndex++){
 #ifdef MULTIVIEW
-        imageStore(uWetnessMap, ivec3(screenSpaceCoordinates.xyz), sampleIndex, vec4(wetnessFactor));
+        imageStore(uWetnessMap, ivec3(screenSpaceCoordinates.xyz), sampleIndex, result);
 #else
-        imageStore(uWetnessMap, ivec2(screenSpaceCoordinates.xy), sampleIndex, vec4(wetnessFactor));
+        imageStore(uWetnessMap, ivec2(screenSpaceCoordinates.xy), sampleIndex, result);
 #endif  
       }
     }
@@ -266,15 +283,26 @@ void main() {
 
     // If depth samples are not the same, we need to compute the wetness for each sample separately
     for(int sampleIndex = 0; sampleIndex < pushConstants.countMSAASamples; sampleIndex++){
-      float wetnessFactor = computeWetnessAtDepth((vec2(screenSpaceCoordinates.xy) + getMSAASamplePosition(int(pushConstants.countMSAASamples), sampleIndex)) / vec2(screenSize.xy),
-                                                  depthSamples[sampleIndex],
-                                                  inverseViewProjectionMatrix,
-                                                  zFarDepthValue);
-      if(wetnessFactor > 0.0){
+      vec3 wetness = computeWetnessAtDepth((vec2(screenSpaceCoordinates.xy) + getMSAASamplePosition(int(pushConstants.countMSAASamples), sampleIndex)) / vec2(screenSize.xy),
+                                           depthSamples[sampleIndex],
+                                           inverseViewProjectionMatrix,
+                                           zFarDepthValue);
+      if(wetness.x > 0.0){
+        wetness = clamp(wetness, vec3(0.0), vec3(1.0)); // Clamp the wetness factor to [0, 1] range
+        // Convert direction octahedral to 12.12 fixed-point format
+        // and store it in the wetness map as a uvec4 with the wetness factor in the green, blue and alpha channels 
+        uint directionOctahedralPacked =  (uint(round(wetness.y * 4095.0)) & 0xfffu) | ((uint(round(wetness.z * 4095.0)) & 0xfffu) << 12); // 12 bits each for octahedral direction X and Y components
+        uvec4 result = uvec4(
+          uint(round(wetness.x * 255.0)),  // Store as RGBA8 format, where R is the wetness factor scaled to [0, 255]
+          // Store the octahedral direction in the G, B and A channels (G+B+A = 24bits for 12.12 fixed-point)
+          (directionOctahedralPacked >> 0) & 0xffu,
+          (directionOctahedralPacked >> 8) & 0xffu,
+          (directionOctahedralPacked >> 16) & 0xffu
+        );
 #ifdef MULTIVIEW
-        imageStore(uWetnessMap, ivec3(screenSpaceCoordinates.xyz), sampleIndex, vec4(wetnessFactor));
+        imageStore(uWetnessMap, ivec3(screenSpaceCoordinates.xyz), sampleIndex, result);
 #else
-        imageStore(uWetnessMap, ivec2(screenSpaceCoordinates.xy), sampleIndex, vec4(wetnessFactor));
+        imageStore(uWetnessMap, ivec2(screenSpaceCoordinates.xy), sampleIndex, result);
 #endif
       }
     }
@@ -297,17 +325,28 @@ void main() {
   }
 
   // Compute the wetness factor at the given depth value
-  float wetnessFactor = computeWetnessAtDepth((vec2(screenSpaceCoordinates.xy) + vec2(0.5)) / vec2(screenSize.xy), 
-                                              depthValue, 
-                                              inverseViewProjectionMatrix, 
-                                              zFarDepthValue);
+  vec3 wetness = computeWetnessAtDepth((vec2(screenSpaceCoordinates.xy) + vec2(0.5)) / vec2(screenSize.xy), 
+                                        depthValue, 
+                                        inverseViewProjectionMatrix, 
+                                        zFarDepthValue);
 
   // Store this factor in the wetness map when greater than 0.0
-  if(wetnessFactor > 0.0){
+  if(wetness.x > 0.0){
+    wetness = clamp(wetness, vec3(0.0), vec3(1.0)); // Clamp the wetness factor to [0, 1] range
+    // Convert direction octahedral to 12.12 fixed-point format
+    // and store it in the wetness map as a uvec4 with the wetness factor in the green, blue and alpha channels 
+    uint directionOctahedralPacked =  (uint(round(wetness.y * 4095.0)) & 0xfffu) | ((uint(round(wetness.z * 4095.0)) & 0xfffu) << 12); // 12 bits each for octahedral direction X and Y components
+    uvec4 result = uvec4(
+      uint(round(wetness.x * 255.0)),  // Store as RGBA8 format, where R is the wetness factor scaled to [0, 255]
+      // Store the octahedral direction in the G, B and A channels (G+B+A = 24bits for 12.12 fixed-point)
+      (directionOctahedralPacked >> 0) & 0xffu,
+      (directionOctahedralPacked >> 8) & 0xffu,
+      (directionOctahedralPacked >> 16) & 0xffu
+    );
 #ifdef MULTIVIEW
-    imageStore(uWetnessMap, ivec3(screenSpaceCoordinates.xyz), vec4(wetnessFactor));
+    imageStore(uWetnessMap, ivec3(screenSpaceCoordinates.xyz), result);
 #else
-    imageStore(uWetnessMap, ivec2(screenSpaceCoordinates.xy), vec4(wetnessFactor));
+    imageStore(uWetnessMap, ivec2(screenSpaceCoordinates.xy), result);
 #endif
   }
 
