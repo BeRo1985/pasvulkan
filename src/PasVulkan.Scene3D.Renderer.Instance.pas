@@ -1145,6 +1145,7 @@ uses PasVulkan.Scene3D.Atmosphere,
      PasVulkan.Scene3D.Renderer.Passes.ReflectionProbeMipMapComputePass,
      PasVulkan.Scene3D.Renderer.Passes.ReflectionProbeComputePass,
 //   PasVulkan.Scene3D.Renderer.Passes.PlanetWaterPrepassComputePass,
+     PasVulkan.Scene3D.Renderer.Passes.WetnessMapComputePass,
      PasVulkan.Scene3D.Renderer.Passes.ForwardComputePass,
      PasVulkan.Scene3D.Renderer.Passes.ForwardRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.AtmosphereCloudRenderPass,
@@ -1264,6 +1265,7 @@ type TpvScene3DRendererInstancePasses=class
        fReflectionProbeComputePassCharlie:TpvScene3DRendererPassesReflectionProbeComputePass;
        fReflectionProbeComputePassLambertian:TpvScene3DRendererPassesReflectionProbeComputePass;
 //     fPlanetWaterPrepassComputePass:TpvScene3DRendererPassesPlanetWaterPrepassComputePass;
+       fWetnessMapComputePass:TpvScene3DRendererPassesWetnessMapComputePass;
        fForwardComputePass:TpvScene3DRendererPassesForwardComputePass;
        fForwardRenderPass:TpvScene3DRendererPassesForwardRenderPass;
        fAtmosphereCloudRenderPass:TpvScene3DRendererPassesAtmosphereCloudRenderPass;
@@ -3230,6 +3232,16 @@ begin
                                   1
                                  );
 
+ fFrameGraph.AddImageResourceType('resourcetype_msaa_wetnessmap',
+                                  false,
+                                  VK_FORMAT_R8_UNORM,
+                                  Renderer.SurfaceSampleCountFlagBits,
+                                  TpvFrameGraph.TImageType.Color,
+                                  TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,fSizeFactor,fSizeFactor,1.0,fCountSurfaceViews),
+                                  TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_STORAGE_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_TRANSFER_DST_BIT),
+                                  1
+                                 );
+
  fFrameGraph.AddImageResourceType('resourcetype_msaa_color_optimized_non_alpha',
                                   false,
                                   VK_FORMAT_R16G16B16A16_SFLOAT,//Renderer.OptimizedNonAlphaFormat,
@@ -3558,6 +3570,16 @@ begin
                                   TpvFrameGraph.TImageType.Color,
                                   TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,fSizeFactor,fSizeFactor,1.0,fCountSurfaceViews),
                                   TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT),
+                                  1
+                                 );
+
+ fFrameGraph.AddImageResourceType('resourcetype_wetnessmap',
+                                  false,
+                                  VK_FORMAT_R8_UNORM,
+                                  TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
+                                  TpvFrameGraph.TImageType.Color,
+                                  TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,fSizeFactor,fSizeFactor,1.0,fCountSurfaceViews),
+                                  TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_STORAGE_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_TRANSFER_DST_BIT),
                                   1
                                  );
 
@@ -4156,9 +4178,25 @@ begin
 
  end;
 
+ if true then begin
+  TpvScene3DRendererInstancePasses(fPasses).fWetnessMapComputePass:=TpvScene3DRendererPassesWetnessMapComputePass.Create(fFrameGraph,self);
+  if Renderer.EarlyDepthPrepassNeeded then begin
+   TpvScene3DRendererInstancePasses(fPasses).fWetnessMapComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fDepthPrepassRenderPass);
+   TpvScene3DRendererInstancePasses(fPasses).fWetnessMapComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fDepthMipMapComputePass);
+  end;
+ end else begin
+  TpvScene3DRendererInstancePasses(fPasses).fWetnessMapComputePass:=nil;
+ end;
+
  TpvScene3DRendererInstancePasses(fPasses).fForwardComputePass:=TpvScene3DRendererPassesForwardComputePass.Create(fFrameGraph,self);
+ if assigned(TpvScene3DRendererInstancePasses(fPasses).fWetnessMapComputePass) then begin
+  TpvScene3DRendererInstancePasses(fPasses).fForwardComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fWetnessMapComputePass);
+ end;
 
  TpvScene3DRendererInstancePasses(fPasses).fForwardRenderPass:=TpvScene3DRendererPassesForwardRenderPass.Create(fFrameGraph,self);
+ if assigned(TpvScene3DRendererInstancePasses(fPasses).fWetnessMapComputePass) then begin
+  TpvScene3DRendererInstancePasses(fPasses).fForwardRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fWetnessMapComputePass);
+ end;
  TpvScene3DRendererInstancePasses(fPasses).fForwardRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fForwardComputePass);
  TpvScene3DRendererInstancePasses(fPasses).fForwardRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fAtmosphereProcessCustomPass);
 {TpvScene3DRendererInstancePasses(fPasses).fForwardRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fMeshComputePass);
