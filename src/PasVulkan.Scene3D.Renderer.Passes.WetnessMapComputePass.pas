@@ -277,7 +277,7 @@ begin
                                     TVkDependencyFlags(0),
                                     0,nil,
                                     0,nil,
-                                    CountImageMemoryBarriers,ImageMemoryBarriers);
+                                    CountImageMemoryBarriers,@ImageMemoryBarriers);
 
  end;
 
@@ -317,7 +317,7 @@ begin
                                     TVkDependencyFlags(0),
                                     0,nil,
                                     0,nil,
-                                    CountImageMemoryBarriers,ImageMemoryBarriers);
+                                    CountImageMemoryBarriers,@ImageMemoryBarriers);
 
  end;
 
