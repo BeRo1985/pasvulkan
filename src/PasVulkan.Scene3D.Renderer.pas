@@ -137,6 +137,7 @@ type TpvScene3DRenderer=class;
        fGPUCulling:Boolean;
        fGPUShadowCulling:Boolean;
        fEarlyDepthPrepassNeeded:Boolean;
+       fWetnessMapActive:Boolean;
        fScreenSpaceAmbientOcclusion:Boolean;
        fAntialiasingMode:TpvScene3DRendererAntialiasingMode;
        fShadowMode:TpvScene3DRendererShadowMode;
@@ -229,6 +230,7 @@ type TpvScene3DRenderer=class;
        property GPUCulling:Boolean read fGPUCulling;
        property GPUShadowCulling:Boolean read fGPUShadowCulling;
        property EarlyDepthPrepassNeeded:Boolean read fEarlyDepthPrepassNeeded;
+       property WetnessMapActive:Boolean read fWetnessMapActive write fWetnessMapActive;
        property ScreenSpaceAmbientOcclusion:Boolean read fScreenSpaceAmbientOcclusion write fScreenSpaceAmbientOcclusion;
        property AntialiasingMode:TpvScene3DRendererAntialiasingMode read fAntialiasingMode write fAntialiasingMode;
        property ShadowMode:TpvScene3DRendererShadowMode read fShadowMode write fShadowMode;
@@ -412,6 +414,8 @@ begin
  end else begin
   fCountInFlightFrames:=pvApplication.CountInFlightFrames;
  end;
+
+ fWetnessMapActive:=false;
 
  fScreenSpaceAmbientOcclusion:=true;
 
@@ -657,7 +661,7 @@ begin
 
  fEarlyDepthPrepassNeeded:=false;
 
- if fScreenSpaceAmbientOcclusion then begin
+ if fWetnessMapActive or fScreenSpaceAmbientOcclusion then begin
   fEarlyDepthPrepassNeeded:=true;
  end;
 

@@ -4178,7 +4178,7 @@ begin
 
  end;
 
- if true then begin
+ if Renderer.WetnessMapActive then begin
   TpvScene3DRendererInstancePasses(fPasses).fWetnessMapComputePass:=TpvScene3DRendererPassesWetnessMapComputePass.Create(fFrameGraph,self);
   if Renderer.EarlyDepthPrepassNeeded then begin
    TpvScene3DRendererInstancePasses(fPasses).fWetnessMapComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fDepthPrepassRenderPass);

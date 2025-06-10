@@ -319,7 +319,7 @@ procedure TpvScene3DRendererPassesForwardRenderPass.AcquirePersistentResources;
 var Index:TpvSizeInt;
     Stream:TStream;
     MeshFragmentSpecializationConstants:TpvScene3DRendererInstance.TMeshFragmentSpecializationConstants;
-    VelocityVariant:TpvUTF8String;
+    VelocityVariant,WetnessMapVariant:TpvUTF8String;
 begin
  inherited AcquirePersistentResources;
 
@@ -351,6 +351,12 @@ begin
 
  end;
 
+ if fInstance.Renderer.WetnessMapActive then begin
+  WetnessMapVariant:='wetness_';
+ end else begin
+  WetnessMapVariant:='';
+ end;
+
  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_'+fInstance.Renderer.MeshFragTypeName+'_shading_'+fInstance.Renderer.MeshFragGlobalIlluminationTypeName+fInstance.Renderer.MeshFragShadowTypeName+VelocityVariant+'_frag.spv');
  try
   fMeshFragmentShaderModule:=TpvVulkanShaderModule.Create(fInstance.Renderer.VulkanDevice,Stream);
@@ -362,27 +368,27 @@ begin
   if fInstance.Renderer.SurfaceSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_'+fInstance.Renderer.MeshFragTypeName+'_shading_'+fInstance.Renderer.MeshFragGlobalIlluminationTypeName+fInstance.Renderer.MeshFragShadowTypeName+VelocityVariant+'_alphatest_demote_frag.spv');
   end else begin
-   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_'+fInstance.Renderer.MeshFragTypeName+'_shading_'+fInstance.Renderer.MeshFragGlobalIlluminationTypeName+'msaa_'+fInstance.Renderer.MeshFragShadowTypeName+VelocityVariant+'_alphatest_demote_frag.spv');
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_'+fInstance.Renderer.MeshFragTypeName+'_shading_'+fInstance.Renderer.MeshFragGlobalIlluminationTypeName+'msaa_'+WetnessMapVariant+fInstance.Renderer.MeshFragShadowTypeName+VelocityVariant+'_alphatest_demote_frag.spv');
   end;
  end else if fInstance.Renderer.UseNoDiscard then begin
   if fInstance.ZFar<0.0 then begin
    if fInstance.Renderer.SurfaceSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
     Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_'+fInstance.Renderer.MeshFragTypeName+'_reversedz_shading_'+fInstance.Renderer.MeshFragGlobalIlluminationTypeName+fInstance.Renderer.MeshFragShadowTypeName+VelocityVariant+'_alphatest_nodiscard_frag.spv');
    end else begin
-    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_'+fInstance.Renderer.MeshFragTypeName+'_reversedz_shading_'+fInstance.Renderer.MeshFragGlobalIlluminationTypeName+'msaa_'+fInstance.Renderer.MeshFragShadowTypeName+VelocityVariant+'_alphatest_nodiscard_frag.spv');
+    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_'+fInstance.Renderer.MeshFragTypeName+'_reversedz_shading_'+fInstance.Renderer.MeshFragGlobalIlluminationTypeName+'msaa_'+WetnessMapVariant+fInstance.Renderer.MeshFragShadowTypeName+VelocityVariant+'_alphatest_nodiscard_frag.spv');
    end;
   end else begin
    if fInstance.Renderer.SurfaceSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
     Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_'+fInstance.Renderer.MeshFragTypeName+'_shading_'+fInstance.Renderer.MeshFragGlobalIlluminationTypeName+fInstance.Renderer.MeshFragShadowTypeName+VelocityVariant+'_alphatest_nodiscard_frag.spv');
    end else begin
-    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_'+fInstance.Renderer.MeshFragTypeName+'_shading_'+fInstance.Renderer.MeshFragGlobalIlluminationTypeName+'msaa_'+fInstance.Renderer.MeshFragShadowTypeName+VelocityVariant+'_alphatest_nodiscard_frag.spv');
+    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_'+fInstance.Renderer.MeshFragTypeName+'_shading_'+fInstance.Renderer.MeshFragGlobalIlluminationTypeName+'msaa_'+WetnessMapVariant+fInstance.Renderer.MeshFragShadowTypeName+VelocityVariant+'_alphatest_nodiscard_frag.spv');
    end;
   end;
  end else begin
   if fInstance.Renderer.SurfaceSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_'+fInstance.Renderer.MeshFragTypeName+'_shading_'+fInstance.Renderer.MeshFragGlobalIlluminationTypeName+fInstance.Renderer.MeshFragShadowTypeName+VelocityVariant+'_alphatest_frag.spv');
   end else begin
-   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_'+fInstance.Renderer.MeshFragTypeName+'_shading_'+fInstance.Renderer.MeshFragGlobalIlluminationTypeName+'msaa_'+fInstance.Renderer.MeshFragShadowTypeName+VelocityVariant+'_alphatest_frag.spv');
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_'+fInstance.Renderer.MeshFragTypeName+'_shading_'+fInstance.Renderer.MeshFragGlobalIlluminationTypeName+'msaa_'+WetnessMapVariant+fInstance.Renderer.MeshFragShadowTypeName+VelocityVariant+'_alphatest_frag.spv');
   end;
  end;
  try
