@@ -3234,7 +3234,7 @@ begin
 
  fFrameGraph.AddImageResourceType('resourcetype_msaa_wetnessmap',
                                   false,
-                                  VK_FORMAT_R8_UNORM,
+                                  VK_FORMAT_R8G8B8A8_UINT,
                                   Renderer.SurfaceSampleCountFlagBits,
                                   TpvFrameGraph.TImageType.Color,
                                   TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,fSizeFactor,fSizeFactor,1.0,fCountSurfaceViews),
@@ -3575,7 +3575,7 @@ begin
 
  fFrameGraph.AddImageResourceType('resourcetype_wetnessmap',
                                   false,
-                                  VK_FORMAT_R8_UNORM,
+                                  VK_FORMAT_R8G8B8A8_UINT,
                                   TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
                                   TpvFrameGraph.TImageType.Color,
                                   TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,fSizeFactor,fSizeFactor,1.0,fCountSurfaceViews),

@@ -3686,6 +3686,7 @@ type EpvScene3D=class(Exception);
        fPlanetWaterRenderDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fPlanetRainStreakSimulationDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fPlanetRainStreakMeshGenerationDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
+       fWetnessMapDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fPlanetWaterSimulationUseParallelQueue:TPasMPBool32;
        fPlanetWaterSimulationQueue:TpvVulkanQueue;
        fPlanetWaterSimulationQueueFamilyIndex:TpvInt32;
@@ -4207,6 +4208,7 @@ type EpvScene3D=class(Exception);
        property PlanetWaterRenderDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fPlanetWaterRenderDescriptorSetLayout;
        property PlanetRainStreakSimulationDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fPlanetRainStreakSimulationDescriptorSetLayout;
        property PlanetRainStreakMeshGenerationDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fPlanetRainStreakMeshGenerationDescriptorSetLayout;
+       property WetnessMapDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fWetnessMapDescriptorSetLayout;
        property PlanetWaterSimulationUseParallelQueue:TPasMPBool32 read fPlanetWaterSimulationUseParallelQueue;
        property PlanetWaterSimulationQueue:TpvVulkanQueue read fPlanetWaterSimulationQueue;
        property PlanetWaterSimulationQueueFamilyIndex:TpvInt32 read fPlanetWaterSimulationQueueFamilyIndex;
@@ -28800,6 +28802,19 @@ begin
 
   fPlanetRainStreakMeshGenerationDescriptorSetLayout:=TpvScene3DPlanet.CreatePlanetRainStreakMeshGenerationDescriptorSetLayout(fVulkanDevice);
 
+  fWetnessMapDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(fVulkanDevice);
+  fWetnessMapDescriptorSetLayout.AddBinding(0, // DepthMap
+                                            VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+                                            1,
+                                            TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                            []);
+  fWetnessMapDescriptorSetLayout.AddBinding(1, // WetnessMap
+                                            VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
+                                            1,
+                                            TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                            []);
+  fWetnessMapDescriptorSetLayout.Initialize;
+
   // Use parallel queue for planet water simulation, when there are dedicated queues for compute and transfer detected and RenderDoc is not detected,
   // because RenderDoc does not support parallel queues while its operatings.
   fPlanetWaterSimulationUseParallelQueue:=aUseParallelQueues and
@@ -29365,6 +29380,8 @@ begin
  FreeAndNil(fPlanetRainStreakSimulationDescriptorSetLayout);
 
  FreeAndNil(fPlanetRainStreakMeshGenerationDescriptorSetLayout);
+
+ FreeAndNil(fWetnessMapDescriptorSetLayout);
 
  FreeAndNil(fMeshComputeVulkanDescriptorSet0Layout);
 

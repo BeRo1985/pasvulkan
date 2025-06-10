@@ -176,7 +176,7 @@ vec3 computeWetnessAtDepth(const in vec2 uv,
       float rainAtmosphereFactor = rainFactor * atmosphereFactor * visibilityFactor(planetSpaceCoordinates);
 
       // Get world space direction from the center of the planet to the point
-      vec3 worldSpaceDirectionFromPlanetCenter = normalize(planetSpaceCoordinates);
+      vec3 worldSpaceDirectionFromPlanetCenter = normalize(worldSpaceCoordinates.xyz - pushConstants.planetInverseModelMatrix[3].xyz);
 
       // Convert the direction to octahedral coordinates
       vec2 directionOctahedral = octEqualAreaUnsignedEncode(worldSpaceDirectionFromPlanetCenter);

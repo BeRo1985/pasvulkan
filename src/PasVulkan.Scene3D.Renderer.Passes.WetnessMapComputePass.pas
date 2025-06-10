@@ -93,7 +93,6 @@ type { TpvScene3DRendererPassesWetnessMapComputePass }
        fInstance:TpvScene3DRendererInstance;
        fResourceDepth:TpvFrameGraph.TPass.TUsedImageResource;
        fResourceWetnessMap:TpvFrameGraph.TPass.TUsedImageResource;
-       fCleared:array[0..MaxInFlightFrames-1] of Boolean;
        fVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fVulkanDescriptorPool:TpvVulkanDescriptorPool;
        fVulkanDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
@@ -123,19 +122,11 @@ begin
 
  if fInstance.Renderer.SurfaceSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
 
-  if fInstance.Renderer.EarlyDepthPrepassNeeded then begin
-
-   fResourceDepth:=AddImageDepthInput('resourcetype_depth',
-                                      'resource_depth_data',
-                                      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                      []
-                                     );
-
-  end else begin
-
-   fResourceDepth:=nil;
-
-  end;
+  fResourceDepth:=AddImageDepthInput('resourcetype_depth',
+                                     'resource_depth_data',
+                                     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                     []
+                                    );
 
   fResourceWetnessMap:=AddImageOutput('resourcetype_wetnessmap',
                                       'resource_wetnessmap',
@@ -147,18 +138,11 @@ begin
 
  end else begin
 
-  if fInstance.Renderer.EarlyDepthPrepassNeeded then begin
-
-   fResourceDepth:=AddImageDepthInput('resourcetype_msaa_depth',
-                                      'resource_msaa_depth_data',
-                                      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                      []
-                                     );
-  end else begin
-
-   fResourceDepth:=nil;
-
-  end;
+  fResourceDepth:=AddImageDepthInput('resourcetype_msaa_depth',
+                                     'resource_msaa_depth_data',
+                                     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                     []
+                                    );
 
   fResourceWetnessMap:=AddImageOutput('resourcetype_msaa_wetnessmap',
                                       'resource_msaa_wetnessmap',
@@ -195,57 +179,41 @@ begin
 
  inherited AcquireVolatileResources;
 
- if assigned(fResourceDepth) then begin
+ fVulkanDescriptorPool:=TpvVulkanDescriptorPool.Create(fInstance.Renderer.VulkanDevice,
+                                                       TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
+                                                       fInstance.Renderer.CountInFlightFrames*2);
+ fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,fInstance.Renderer.CountInFlightFrames*1);
+ fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,fInstance.Renderer.CountInFlightFrames*1);
+ fVulkanDescriptorPool.Initialize;
 
-  fVulkanDescriptorPool:=TpvVulkanDescriptorPool.Create(fInstance.Renderer.VulkanDevice,
-                                                        TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
-                                                        fInstance.Renderer.CountInFlightFrames*2);
-  fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,fInstance.Renderer.CountInFlightFrames*1);
-  fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,fInstance.Renderer.CountInFlightFrames*1);
-  fVulkanDescriptorPool.Initialize;
+ fVulkanDescriptorSetLayout:=fInstance.Renderer.Scene3D.WetnessMapDescriptorSetLayout;
 
-  fVulkanDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(fInstance.Renderer.VulkanDevice);
-  fVulkanDescriptorSetLayout.AddBinding(0, // DepthMap
-                                        VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
-                                        1,
-                                        TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
-                                        []);
-  fVulkanDescriptorSetLayout.AddBinding(1, // WetnessMap
-                                        VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
-                                        1,
-                                        TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
-                                        []);
-  fVulkanDescriptorSetLayout.Initialize;
-
-  for InFlightFrameIndex:=0 to FrameGraph.CountInFlightFrames-1 do begin
-   fVulkanDescriptorSets[InFlightFrameIndex]:=TpvVulkanDescriptorSet.Create(fVulkanDescriptorPool,
-                                                                            fVulkanDescriptorSetLayout);
-   fVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(0,
-                                                                  0,
-                                                                  1,
-                                                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
-                                                                  [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,
-                                                                                                 fResourceWetnessMap.VulkanImageViews[InFlightFrameIndex].Handle,
-                                                                                                 fResourceWetnessMap.ResourceTransition.Layout)],
-                                                                  [],
-                                                                  [],
-                                                                  false
-                                                                 );
-   fVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(1,
-                                                                  0,
-                                                                  1,
-                                                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE),
-                                                                  [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,
-                                                                                                 fResourceDepth.VulkanImageViews[InFlightFrameIndex].Handle,
-                                                                                                 fResourceDepth.ResourceTransition.Layout)],
-                                                                  [],
-                                                                  [],
-                                                                  false
-                                                                 );
-   fVulkanDescriptorSets[InFlightFrameIndex].Flush;
-  end;
-
-  fCleared[InFlightFrameIndex]:=false;
+ for InFlightFrameIndex:=0 to FrameGraph.CountInFlightFrames-1 do begin
+  fVulkanDescriptorSets[InFlightFrameIndex]:=TpvVulkanDescriptorSet.Create(fVulkanDescriptorPool,
+                                                                           fVulkanDescriptorSetLayout);
+  fVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(0,
+                                                                 0,
+                                                                 1,
+                                                                 TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
+                                                                 [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,
+                                                                                                fResourceWetnessMap.VulkanImageViews[InFlightFrameIndex].Handle,
+                                                                                                fResourceWetnessMap.ResourceTransition.Layout)],
+                                                                 [],
+                                                                 [],
+                                                                 false
+                                                                );
+  fVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(1,
+                                                                 0,
+                                                                 1,
+                                                                 TVkDescriptorType(VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE),
+                                                                 [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,
+                                                                                                fResourceDepth.VulkanImageViews[InFlightFrameIndex].Handle,
+                                                                                                fResourceDepth.ResourceTransition.Layout)],
+                                                                 [],
+                                                                 [],
+                                                                 false
+                                                                );
+  fVulkanDescriptorSets[InFlightFrameIndex].Flush;
 
  end;
 
@@ -257,13 +225,11 @@ procedure TpvScene3DRendererPassesWetnessMapComputePass.ReleaseVolatileResources
 var InFlightFrameIndex:TpvInt32;
 begin
 //fPlanetRainStreakComputePass.ReleaseResources;
- if assigned(fResourceDepth) then begin
-  for InFlightFrameIndex:=0 to FrameGraph.CountInFlightFrames-1 do begin
-   FreeAndNil(fVulkanDescriptorSets[InFlightFrameIndex]);
-  end;
-  FreeAndNil(fVulkanDescriptorSetLayout);
-  FreeAndNil(fVulkanDescriptorPool);
+ for InFlightFrameIndex:=0 to FrameGraph.CountInFlightFrames-1 do begin
+  FreeAndNil(fVulkanDescriptorSets[InFlightFrameIndex]);
  end;
+ fVulkanDescriptorSetLayout:=nil;
+ FreeAndNil(fVulkanDescriptorPool);
  inherited ReleaseVolatileResources;
 end;
 
@@ -285,92 +251,73 @@ begin
 
  InFlightFrameIndex:=aInFlightFrameIndex;
 
- // Process only when depth map and wetness map resources are available, otherwise clear just the wetness map for all frames once 
- if assigned(fResourceDepth) or not fCleared[InFlightFrameIndex] then begin
+ ImageSubresourceRange:=TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                        0,
+                                                        1,
+                                                        0,
+                                                        fInstance.CountSurfaceViews);
 
-  fCleared[InFlightFrameIndex]:=true;
+ // Image layout transition for the wetness map for clear operation
+ begin
 
-  // Image layout transition for the wetness map for clear operation
-  begin
+  CountImageMemoryBarriers:=0;
 
-   CountImageMemoryBarriers:=0;
+  ImageMemoryBarriers[CountImageMemoryBarriers]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                                              TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                                                                              fResourceWetnessMap.ResourceTransition.Layout,
+                                                                              VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, // for the clear operation
+                                                                              VK_QUEUE_FAMILY_IGNORED,
+                                                                              VK_QUEUE_FAMILY_IGNORED,
+                                                                              fResourceWetnessMap.VulkanImages[InFlightFrameIndex].Handle,
+                                                                              ImageSubresourceRange);
+  inc(CountImageMemoryBarriers);
 
-   ImageMemoryBarriers[CountImageMemoryBarriers]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
-                                                                               TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
-                                                                               fResourceWetnessMap.ResourceTransition.Layout,
-                                                                               VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, // for the clear operation
-                                                                               VK_QUEUE_FAMILY_IGNORED,
-                                                                               VK_QUEUE_FAMILY_IGNORED,
-                                                                               fResourceWetnessMap.VulkanImages[InFlightFrameIndex].Handle,
-                                                                               TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
-                                                                                                              0,
-                                                                                                              1,
-                                                                                                              0,
-                                                                                                              1));
-   inc(CountImageMemoryBarriers);
+  aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT),
+                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                    TVkDependencyFlags(0),
+                                    0,nil,
+                                    0,nil,
+                                    CountImageMemoryBarriers,ImageMemoryBarriers);
 
-   aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT),
-                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
-                                     TVkDependencyFlags(0),
-                                     0,nil,
-                                     0,nil,
-                                     CountImageMemoryBarriers,ImageMemoryBarriers);
+ end;
 
-  end;
+ // Clear the wetness map
+ begin
 
-  // Clear the wetness map
-  begin
+  ClearValues[0].color.float32[0]:=0.0;
+  ClearValues[0].color.float32[1]:=0.0;
+  ClearValues[0].color.float32[2]:=0.0;
+  ClearValues[0].color.float32[3]:=0.0;
 
-   ClearValues[0].color.float32[0]:=0.0;
-   ClearValues[0].color.float32[1]:=0.0;
-   ClearValues[0].color.float32[2]:=0.0;
-   ClearValues[0].color.float32[3]:=0.0;
+  aCommandBuffer.CmdClearColorImage(fResourceWetnessMap.VulkanImages[InFlightFrameIndex].Handle,
+                                    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                    @ClearValues[0],
+                                    1,
+                                    @ImageSubresourceRange);
 
-   ImageSubresourceRange:=TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
-                                                          0,
-                                                          1,
-                                                          0,
-                                                          1);
+ end;
 
-   aCommandBuffer.CmdClearColorImage(fResourceWetnessMap.VulkanImages[InFlightFrameIndex].Handle,
-                                     VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                                     @ClearValues[0],
-                                     1,
-                                     @ImageSubresourceRange);
+ // Image layout transition for the wetness map for compute shader usage
+ begin
 
-  end;
+  CountImageMemoryBarriers:=0;
 
-  // Image layout transition for the wetness map for compute shader usage
-  begin
+  ImageMemoryBarriers[CountImageMemoryBarriers]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                                                                              TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                                              VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                                                              fResourceWetnessMap.ResourceTransition.Layout,
+                                                                              VK_QUEUE_FAMILY_IGNORED,
+                                                                              VK_QUEUE_FAMILY_IGNORED,
+                                                                              fResourceWetnessMap.VulkanImages[InFlightFrameIndex].Handle,
+                                                                              ImageSubresourceRange);
+  inc(CountImageMemoryBarriers);
 
-   CountImageMemoryBarriers:=0;
-
-   ImageMemoryBarriers[CountImageMemoryBarriers]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
-                                                                               TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
-                                                                               VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                                                                               fResourceWetnessMap.ResourceTransition.Layout,
-                                                                               VK_QUEUE_FAMILY_IGNORED,
-                                                                               VK_QUEUE_FAMILY_IGNORED,
-                                                                               fResourceWetnessMap.VulkanImages[InFlightFrameIndex].Handle,
-                                                                               TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
-                                                                                                              0,
-                                                                                                              1,
-                                                                                                              0,
-                                                                                                              1));
-   inc(CountImageMemoryBarriers);
-
-   aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
-                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT),
-                                     TVkDependencyFlags(0),
-                                     0,nil,
-                                     0,nil,
-                                     CountImageMemoryBarriers,ImageMemoryBarriers);
-
-  end;
-
-  if assigned(fResourceDepth) then begin
-
-  end;
+  aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT),
+                                    TVkDependencyFlags(0),
+                                    0,nil,
+                                    0,nil,
+                                    CountImageMemoryBarriers,ImageMemoryBarriers);
 
  end;
 
