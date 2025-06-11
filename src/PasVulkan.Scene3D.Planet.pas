@@ -2305,6 +2305,7 @@ type TpvScene3DPlanets=class;
        class function CreatePlanetWaterPrepassDescriptorPool(const aVulkanDevice:TpvVulkanDevice;const aCountInFlightFrames:TpvSizeInt):TpvVulkanDescriptorPool; static;
        class function CreatePlanetWaterRenderDescriptorSetLayout(const aVulkanDevice:TpvVulkanDevice):TpvVulkanDescriptorSetLayout; static;
        class function CreatePlanetWaterRenderDescriptorPool(const aVulkanDevice:TpvVulkanDevice;const aCountInFlightFrames:TpvSizeInt):TpvVulkanDescriptorPool; static;
+       class function CreatePlanetRainAtmosphereDescriptorSetLayout(const aVulkanDevice:TpvVulkanDevice):TpvVulkanDescriptorSetLayout; static;
        class function CreatePlanetRainStreakSimulationDescriptorSetLayout(const aVulkanDevice:TpvVulkanDevice):TpvVulkanDescriptorSetLayout; static;
        class function CreatePlanetRainStreakSimulationDescriptorPool(const aVulkanDevice:TpvVulkanDevice;const aCountInFlightFrames:TpvSizeInt):TpvVulkanDescriptorPool; static;
        class function CreatePlanetRainStreakMeshGenerationDescriptorSetLayout(const aVulkanDevice:TpvVulkanDevice):TpvVulkanDescriptorSetLayout; static;
@@ -18575,7 +18576,19 @@ begin
 
  fVulkanDevice:=TpvScene3D(fScene3D).VulkanDevice;
 
- Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_screenspace_wetness_map_comp.spv');
+ if TpvScene3DRendererInstance(fRendererInstance).Renderer.SurfaceSampleCountFlagBits<>VK_SAMPLE_COUNT_1_BIT then begin
+  if TpvScene3DRendererInstance(fRendererInstance).CountSurfaceViews>1 then begin
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_screenspace_wetness_map_msaa_comp.spv');
+  end else begin
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_screenspace_wetness_map_msaa_multiview_comp.spv');
+  end;
+ end else begin
+  if TpvScene3DRendererInstance(fRendererInstance).CountSurfaceViews>1 then begin
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_screenspace_wetness_map_comp.spv');
+  end else begin
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_screenspace_wetness_map_multiview_comp.spv');
+  end;
+ end;
  try
   fComputeShaderModule:=TpvVulkanShaderModule.Create(fVulkanDevice,Stream);
  finally
@@ -18586,7 +18599,9 @@ begin
  fComputeShaderStage:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_COMPUTE_BIT,fComputeShaderModule,'main');
 
  fPipelineLayout:=TpvVulkanPipelineLayout.Create(fVulkanDevice);
- fPipelineLayout.AddDescriptorSetLayout(TpvScene3D(fScene3D).PlanetRainStreakSimulationDescriptorSetLayout);
+ fPipelineLayout.AddDescriptorSetLayout(TpvScene3D(fScene3D).WetnessMapDescriptorSetLayout);
+ fPipelineLayout.AddDescriptorSetLayout(TpvScene3D(fScene3D).PlanetRainAtmosphereDescriptorSetLayout);
+ fPipelineLayout.AddDescriptorSetLayout(TpvScene3DRendererInstance(fRendererInstance).ViewBuffersDescriptorSetLayout);
  fPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                                       0,
                                       SizeOf(TPushConstants));
@@ -22421,6 +22436,25 @@ begin
  result.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),1*aCountInFlightFrames);
  result.Initialize;
  aVulkanDevice.DebugUtils.SetObjectName(result.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'TpvScene3DPlanet.PlanetWaterRenderDescriptorPool');
+end;
+
+class function TpvScene3DPlanet.CreatePlanetRainAtmosphereDescriptorSetLayout(const aVulkanDevice:TpvVulkanDevice):TpvVulkanDescriptorSetLayout;
+begin
+ result:=TpvVulkanDescriptorSetLayout.Create(aVulkanDevice);
+ result.AddBinding(0, // RainMap
+                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                   1,
+                   TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                   [],
+                   0);
+ result.AddBinding(1, // AtmosphereMap
+                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                   1,
+                   TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                   [],
+                   0);
+ result.Initialize;
+ aVulkanDevice.DebugUtils.SetObjectName(result.Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT,'TpvScene3DPlanet.PlanetRainAtmosphereDescriptorSetLayout');
 end;
 
 class function TpvScene3DPlanet.CreatePlanetRainStreakSimulationDescriptorSetLayout(const aVulkanDevice:TpvVulkanDevice):TpvVulkanDescriptorSetLayout;

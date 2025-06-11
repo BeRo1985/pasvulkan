@@ -3684,6 +3684,7 @@ type EpvScene3D=class(Exception);
        fPlanetWaterCullDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fPlanetWaterPrepassDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fPlanetWaterRenderDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
+       fPlanetRainAtmosphereDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fPlanetRainStreakSimulationDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fPlanetRainStreakMeshGenerationDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fWetnessMapDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
@@ -4206,6 +4207,7 @@ type EpvScene3D=class(Exception);
        property PlanetWaterCullDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fPlanetWaterCullDescriptorSetLayout;
        property PlanetWaterPrepassDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fPlanetWaterPrepassDescriptorSetLayout;
        property PlanetWaterRenderDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fPlanetWaterRenderDescriptorSetLayout;
+       property PlanetRainAtmosphereDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fPlanetRainAtmosphereDescriptorSetLayout;
        property PlanetRainStreakSimulationDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fPlanetRainStreakSimulationDescriptorSetLayout;
        property PlanetRainStreakMeshGenerationDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fPlanetRainStreakMeshGenerationDescriptorSetLayout;
        property WetnessMapDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fWetnessMapDescriptorSetLayout;
@@ -28798,6 +28800,8 @@ begin
 
   fPlanetWaterRenderDescriptorSetLayout:=TpvScene3DPlanet.CreatePlanetWaterRenderDescriptorSetLayout(fVulkanDevice);
 
+  fPlanetRainAtmosphereDescriptorSetLayout:=TpvScene3DPlanet.CreatePlanetRainAtmosphereDescriptorSetLayout(fVulkanDevice);
+
   fPlanetRainStreakSimulationDescriptorSetLayout:=TpvScene3DPlanet.CreatePlanetRainStreakSimulationDescriptorSetLayout(fVulkanDevice);
 
   fPlanetRainStreakMeshGenerationDescriptorSetLayout:=TpvScene3DPlanet.CreatePlanetRainStreakMeshGenerationDescriptorSetLayout(fVulkanDevice);
@@ -29376,6 +29380,8 @@ begin
  FreeAndNil(fPlanetWaterPrepassDescriptorSetLayout);
 
  FreeAndNil(fPlanetWaterRenderDescriptorSetLayout);
+
+ FreeAndNil(fPlanetRainAtmosphereDescriptorSetLayout);
 
  FreeAndNil(fPlanetRainStreakSimulationDescriptorSetLayout);
 
