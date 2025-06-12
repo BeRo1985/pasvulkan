@@ -96,7 +96,7 @@ type { TpvScene3DRendererPassesWetnessMapComputePass }
        fVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fVulkanDescriptorPool:TpvVulkanDescriptorPool;
        fVulkanDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
-//      fPlanetRainStreakComputePass:TpvScene3DPlanet.TRainStreakComputePass;
+       fWetnessMapComputePass:TpvScene3DPlanet.TWetnessMapComputePass;
       public
        constructor Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance); reintroduce;
        destructor Destroy; override;
@@ -166,10 +166,13 @@ begin
 
  inherited AcquirePersistentResources;
 
+ fWetnessMapComputePass:=TpvScene3DPlanet.TWetnessMapComputePass.Create(fInstance.Renderer,fInstance,fInstance.Renderer.Scene3D);
+
 end;
 
 procedure TpvScene3DRendererPassesWetnessMapComputePass.ReleasePersistentResources;
 begin
+ FreeAndNil(fWetnessMapComputePass);
  inherited ReleasePersistentResources;
 end;
 
@@ -217,14 +220,14 @@ begin
 
  end;
 
-//fPlanetRainStreakComputePass.AllocateResources;
+ fWetnessMapComputePass.AllocateResources;
 
 end;
 
 procedure TpvScene3DRendererPassesWetnessMapComputePass.ReleaseVolatileResources;
 var InFlightFrameIndex:TpvInt32;
 begin
-//fPlanetRainStreakComputePass.ReleaseResources;
+ fWetnessMapComputePass.ReleaseResources;
  for InFlightFrameIndex:=0 to FrameGraph.CountInFlightFrames-1 do begin
   FreeAndNil(fVulkanDescriptorSets[InFlightFrameIndex]);
  end;
@@ -321,7 +324,7 @@ begin
 
  end;
 
-//PlanetRainStreakComputePass.Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
+ fWetnessMapComputePass.Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex,fResourceWetnessMap.VulkanImages[InFlightFrameIndex].Handle,fVulkanDescriptorSets[InFlightFrameIndex].Handle);
 
 end;
 

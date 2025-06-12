@@ -1786,7 +1786,7 @@ type TpvScene3DPlanets=class;
               destructor Destroy; override;
               procedure AllocateResources;
               procedure ReleaseResources;
-              procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt;const aWetnessMapImageHandle:TVkImage);
+              procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt;const aWetnessMapImageHandle:TVkImage;const aResourceDescriptorSetHandle:TVkDescriptorSet);
              public
               property PushConstants:TPushConstants read fPushConstants write fPushConstants;
             end;
@@ -18643,7 +18643,7 @@ procedure TpvScene3DPlanet.TWetnessMapComputePass.ReleaseResources;
 begin
 end;
 
-procedure TpvScene3DPlanet.TWetnessMapComputePass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt;const aWetnessMapImageHandle:TVkImage);
+procedure TpvScene3DPlanet.TWetnessMapComputePass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt;const aWetnessMapImageHandle:TVkImage;const aResourceDescriptorSetHandle:TVkDescriptorSet);
 var PlanetIndex,CountImageMemoryBarriers:TpvSizeInt;
     Planet:TpvScene3DPlanet;
     First:Boolean;
@@ -18724,14 +18724,15 @@ begin
 
       aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,fPipeline.Handle);
 
+      DescriptorSets[0]:=aResourceDescriptorSetHandle;
       DescriptorSets[1]:=RendererInstance.fRainAtmosphereDescriptorSets[aInFlightFrameIndex].Handle;
       DescriptorSets[2]:=TpvScene3DRendererInstance(fRendererInstance).ViewBuffersDescriptorSets[aInFlightFrameIndex].Handle;
 
       aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE,
                                            fPipelineLayout.Handle,
-                                           1,
-                                           2,
-                                           @DescriptorSets[1],
+                                           0,
+                                           3,
+                                           @DescriptorSets[0],
                                            0,
                                            nil);
 
