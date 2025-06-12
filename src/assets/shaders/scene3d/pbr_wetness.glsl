@@ -24,7 +24,7 @@ void applyPBRWetness(
 
     // Apply wetness to metallic and roughness
 //  metallic = mix(metallic, 0.0, wetness.x); // Decrease metallic with wetness
-    roughness = mix(roughness, roughness * 0.1, wetness.x * 0.5); // Decrease roughness with wetness
+    roughness = mix(roughness, roughness * 0.1, wetness.x); // Decrease roughness with wetness
 //  occlusion = mix(occlusion, 1.0, wetness.x); // Increase occlusion with wetness
 
   }
