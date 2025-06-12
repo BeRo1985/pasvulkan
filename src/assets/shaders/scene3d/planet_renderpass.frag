@@ -271,7 +271,9 @@ void main(){
     texturePlanetOctahedralMapArray(uPlanetArrayTextures[PLANET_TEXTURE_BLENDMAP], sphereNormal, 1)
   );
 
- layerMaterialGrass = clamp(texturePlanetOctahedralMap(uPlanetTextures[PLANET_TEXTURE_GRASSMAP], sphereNormal).x, 0.0, 1.0);
+  layerMaterialGrass = clamp(texturePlanetOctahedralMap(uPlanetTextures[PLANET_TEXTURE_GRASSMAP], sphereNormal).x, 0.0, 1.0);
+  
+  vec4 wetness = getWetness(sphereNormal);
 
 #ifdef EXTERNAL_VERTICES
   workNormal = inBlock.normal.xyz;

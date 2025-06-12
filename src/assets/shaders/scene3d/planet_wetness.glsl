@@ -4,9 +4,9 @@
 #include "octahedral.glsl"
 #include "octahedralmap.glsl"
  
-vec4 getWetness(vec3 position, vec3 planetCenter){
+vec4 getWetness(vec3 position){
 
-  vec3 normalizedPosition = normalize(position - planetCenter);
+  vec3 normalizedPosition = normalize(position);
   
   float rain = texturePlanetOctahedralMap(uPlanetTextures[PLANET_TEXTURE_RAINMAP], normalizedPosition).x;
   float atmosphere = texturePlanetOctahedralMap(uPlanetTextures[PLANET_TEXTURE_ATMOSPHEREMAP], normalizedPosition).x; 

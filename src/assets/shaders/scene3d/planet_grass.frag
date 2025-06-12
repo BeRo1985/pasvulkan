@@ -116,6 +116,8 @@ layout (set = 1, binding = 10, std430) readonly buffer FrustumClusterGridData {
 layout(set = 2, binding = 0) uniform sampler2D uPlanetTextures[]; // 0 = height map, 1 = normal map, 2 = tangent bitangent map
 layout(set = 2, binding = 0) uniform sampler2DArray uPlanetArrayTextures[]; // 0 = height map, 1 = normal map, 2 = tangent bitangent map
 
+#include "planet_textures.glsl"
+#include "planet_wetness.glsl"
 #include "planet_grass.glsl"
 
 #define FRAGMENT_SHADER
@@ -173,6 +175,8 @@ const vec3 inModelScale = vec3(1.0);
 void main(){
 
   float sideSign = gl_FrontFacing ? 1.0 : -1.0;
+
+  vec4 wetness = getWetness(inBlock.worldSpacePosition);
 
   // After vertex interpolation, the normal vector may not be normalized anymore, so it needs to be normalized. 
   vec3 normalizedNormal = normalize(inBlock.normal);
