@@ -1786,7 +1786,7 @@ type TpvScene3DPlanets=class;
               destructor Destroy; override;
               procedure AllocateResources;
               procedure ReleaseResources;
-              procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
+              procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt;const aWetnessMapImageHandle:TVkImage);
              public
               property PushConstants:TPushConstants read fPushConstants write fPushConstants;
             end;
@@ -18643,20 +18643,21 @@ procedure TpvScene3DPlanet.TWetnessMapComputePass.ReleaseResources;
 begin
 end;
 
-procedure TpvScene3DPlanet.TWetnessMapComputePass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
-var PlanetIndex,CountBufferMemoryBarriers:TpvSizeInt;
+procedure TpvScene3DPlanet.TWetnessMapComputePass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt;const aWetnessMapImageHandle:TVkImage);
+var PlanetIndex,CountImageMemoryBarriers:TpvSizeInt;
     Planet:TpvScene3DPlanet;
     First:Boolean;
     InFlightFrameState:TpvScene3DRendererInstance.PInFlightFrameState;
     RendererInstance:TpvScene3DPlanet.TRendererInstance;
-    BufferMemoryBarriers:array[0..3] of TVkBufferMemoryBarrier;
-    InverseViewMatrix:PpvMatrix4x4;
+    ImageSubresourceRange:TVkImageSubresourceRange;
+    ImageMemoryBarriers:array[0..3] of TVkImageMemoryBarrier;
+//  InverseViewMatrix:PpvMatrix4x4;
     DescriptorSets:array[0..3] of TVkDescriptorSet;
 begin
 
  InFlightFrameState:=@TpvScene3DRendererInstance(fRendererInstance).InFlightFrameStates^[aInFlightFrameIndex];
 
- TpvScene3D(fScene3D).VulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'TpvScene3DPlanet.TRainStreakComputePass.Execute',[0.75,0.25,0.5,1.0]);
+ TpvScene3D(fScene3D).VulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'TpvScene3DPlanet.TWetnessMapComputePass.Execute',[0.5,0.75,0.25,1.0]);
 
  TpvScene3DPlanets(TpvScene3D(fScene3D).Planets).Lock.AcquireRead;
  try
@@ -18679,11 +18680,43 @@ begin
 
       end;
 
-      InverseViewMatrix:=@TpvScene3DRendererInstance(fRendererInstance).Views[aInFlightFrameIndex].Items[InFlightFrameState^.FinalViewIndex].InverseViewMatrix;
+      ImageSubresourceRange:=TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                             0,
+                                                             1,
+                                                             0,
+                                                             TpvScene3DRendererInstance(fRendererInstance).CountSurfaceViews);
+           
+      CountImageMemoryBarriers:=0;
 
-      // First the simulation pass for the rain streaks 
+      ImageMemoryBarriers[CountImageMemoryBarriers]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                                                  TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                                                  VK_IMAGE_LAYOUT_GENERAL,
+                                                                                  VK_IMAGE_LAYOUT_GENERAL,
+                                                                                  VK_QUEUE_FAMILY_IGNORED,
+                                                                                  VK_QUEUE_FAMILY_IGNORED,
+                                                                                  aWetnessMapImageHandle,
+                                                                                  ImageSubresourceRange);
+      inc(CountImageMemoryBarriers);
+
+      aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                        TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                        TVkDependencyFlags(0),
+                                        0,nil,
+                                        0,nil,
+                                        CountImageMemoryBarriers,@ImageMemoryBarriers[0]);
+
+//    InverseViewMatrix:=@TpvScene3DRendererInstance(fRendererInstance).Views[aInFlightFrameIndex].Items[InFlightFrameState^.FinalViewIndex].InverseViewMatrix;
 
       fPushConstants.InversePlanetModelMatrix:=TpvScene3D(fScene3D).TransformOrigin(Planet.fInFlightFrameDataList[aInFlightFrameIndex].fModelMatrix,aInFlightFrameIndex,false).SimpleInverse;
+      if Planet.fPerInFlightFrameRainStreakOcclusionOBBActives[aInFlightFrameIndex] then begin
+       fPushConstants.OcclusionOBBCenter:=TpvVector4.InlineableCreate(Planet.fPerInFlightFrameRainStreakOcclusionOBBs[aInFlightFrameIndex].Center,Planet.fPerInFlightFrameRainStreakOcclusionOBBFadeFactors[aInFlightFrameIndex]);
+       fPushConstants.OcclusionOBBHalfSize:=TpvVector4.InlineableCreate(Planet.fPerInFlightFrameRainStreakOcclusionOBBs[aInFlightFrameIndex].HalfExtents,1.0);
+       fPushConstants.OcclusionOBBOrientation:=Planet.fPerInFlightFrameRainStreakOcclusionOBBs[aInFlightFrameIndex].Matrix.ToQuaternion.Vector;
+      end else begin
+       fPushConstants.OcclusionOBBCenter:=TpvVector4.InlineableCreate(0.0,0.0,0.0,0.0);
+       fPushConstants.OcclusionOBBHalfSize:=TpvVector4.InlineableCreate(0.0,0.0,0.0,0.0);
+       fPushConstants.OcclusionOBBOrientation:=TpvVector4.InlineableCreate(0.0,0.0,0.0,1.0);
+      end;
       fPushConstants.PlanetRadius:=Planet.fTopRadius;
       fPushConstants.ViewBaseIndex:=InFlightFrameState^.FinalViewIndex;
       fPushConstants.CountView:=InFlightFrameState^.CountFinalViews;
@@ -18691,11 +18724,14 @@ begin
 
       aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,fPipeline.Handle);
 
+      DescriptorSets[1]:=RendererInstance.fRainAtmosphereDescriptorSets[aInFlightFrameIndex].Handle;
+      DescriptorSets[2]:=TpvScene3DRendererInstance(fRendererInstance).ViewBuffersDescriptorSets[aInFlightFrameIndex].Handle;
+
       aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE,
                                            fPipelineLayout.Handle,
-                                           0,
                                            1,
-                                           @RendererInstance.fRainStreakSimulationDescriptorSets[aInFlightFrameIndex].Handle,
+                                           2,
+                                           @DescriptorSets[1],
                                            0,
                                            nil);
 
@@ -18709,34 +18745,25 @@ begin
                                  (TpvScene3DRendererInstance(fRendererInstance).ScaledHeight+16) shr 4,
                                  TpvScene3DRendererInstance(fRendererInstance).Renderer.CountSurfaceMSAASamples);
 
-      // Barrier to ensure that the simulation pass writes are visible to the mesh generation pass and the draw indexed indirect command buffer
+      CountImageMemoryBarriers:=0;
 
-      CountBufferMemoryBarriers:=0;
-
-      BufferMemoryBarriers[CountBufferMemoryBarriers]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
-                                                                                     TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
-                                                                                     VK_QUEUE_FAMILY_IGNORED,
-                                                                                     VK_QUEUE_FAMILY_IGNORED,
-                                                                                     RendererInstance.fVulkanRainDropBuffer.Handle,
-                                                                                     0,
-                                                                                     RendererInstance.fVulkanRainDropBuffer.Size);
-      inc(CountBufferMemoryBarriers);
-
-      BufferMemoryBarriers[CountBufferMemoryBarriers]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
-                                                                                     TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
-                                                                                     VK_QUEUE_FAMILY_IGNORED,
-                                                                                     VK_QUEUE_FAMILY_IGNORED,
-                                                                                     RendererInstance.fVulkanRainDropDrawIndexedIndirectCommandBuffer.Handle,
-                                                                                     0,
-                                                                                     RendererInstance.fVulkanRainDropDrawIndexedIndirectCommandBuffer.Size);
-      inc(CountBufferMemoryBarriers);
+      ImageMemoryBarriers[CountImageMemoryBarriers]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                                                  TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                                                  VK_IMAGE_LAYOUT_GENERAL,
+                                                                                  VK_IMAGE_LAYOUT_GENERAL, // The framegraph will transition this to VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL later
+                                                                                  VK_QUEUE_FAMILY_IGNORED,
+                                                                                  VK_QUEUE_FAMILY_IGNORED,
+                                                                                  aWetnessMapImageHandle,
+                                                                                  ImageSubresourceRange);
+      inc(CountImageMemoryBarriers);
 
       aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
-                                        TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                        TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT),
                                         TVkDependencyFlags(0),
                                         0,nil,
-                                        CountBufferMemoryBarriers,@BufferMemoryBarriers[0],
-                                        0,nil);
+                                        0,nil,
+                                        CountImageMemoryBarriers,@ImageMemoryBarriers[0]);
+
      end;
 
     end;
