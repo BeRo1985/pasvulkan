@@ -2238,8 +2238,8 @@ type TpvScene3DPlanets=class;
        fPlanetDataVulkanBuffers:TPlanetDataVulkanBuffers;
        fMaterials:TMaterials;
        fPointerToMaterials:PMaterials;
-       fDescriptorPool:TpvVulkanDescriptorPool;
-       fDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
+       fPlanetDescriptorPool:TpvVulkanDescriptorPool;
+       fPlanetDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
        fRaytracingLock:TPasMPCriticalSection;
        fRaytracingTiles:TRaytracingTiles;
        fRaytracingTileQueue:TRaytracingTiles;
@@ -16702,7 +16702,7 @@ begin
                                                fGrassPipelineLayout.Handle,
                                                2,
                                                1,
-                                               @Planet.fDescriptorSets[aInFlightFrameIndex].Handle,
+                                               @Planet.fPlanetDescriptorSets[aInFlightFrameIndex].Handle,
                                                0,
                                                nil);
 
@@ -17295,7 +17295,7 @@ begin
                                      @fPushConstants);
 
      DescriptorSets[0]:=RendererViewInstance.fWaterPrepassDescriptorSet.Handle;
-     DescriptorSets[1]:=Planet.fDescriptorSets[aInFlightFrameIndex].Handle;
+     DescriptorSets[1]:=Planet.fPlanetDescriptorSets[aInFlightFrameIndex].Handle;
 
      aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE,
                                           fPipelineLayout.Handle,
@@ -18277,7 +18277,7 @@ begin
                                            fPlanetPipelineLayout.Handle,
                                            2,
                                            1,
-                                           @Planet.fDescriptorSets[aInFlightFrameIndex].Handle,
+                                           @Planet.fPlanetDescriptorSets[aInFlightFrameIndex].Handle,
                                            0,
                                            nil);
 
@@ -18456,7 +18456,7 @@ begin
                                            fGrassPipelineLayout.Handle,
                                            2,
                                            1,
-                                           @Planet.fDescriptorSets[aInFlightFrameIndex].Handle,
+                                           @Planet.fPlanetDescriptorSets[aInFlightFrameIndex].Handle,
                                            0,
                                            nil);
 
@@ -19988,7 +19988,7 @@ begin
       if Planet.fRendererInstanceHashMap.TryGet(TpvScene3DPlanet.TRendererInstance.TKey.Create(fRendererInstance),RendererInstance) and
          Planet.fRendererViewInstanceHashMap.TryGet(TpvScene3DPlanet.TRendererViewInstance.TKey.Create(fRendererInstance,TpvScene3DRendererRenderPass.View),RendererViewInstance) then begin
 
-       DescriptorSets[0]:=Planet.fDescriptorSets[aInFlightFrameIndex].Handle;
+       DescriptorSets[0]:=Planet.fPlanetDescriptorSets[aInFlightFrameIndex].Handle;
        DescriptorSets[1]:=RendererViewInstance.fWaterRenderDescriptorSets[aInFlightFrameIndex].Handle;
 
        aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
@@ -21367,52 +21367,52 @@ begin
                                                                        );
   end;
 
-  fDescriptorPool:=TpvScene3DPlanet.CreatePlanetDescriptorPool(fVulkanDevice,TpvScene3D(fScene3D).CountInFlightFrames);
+  fPlanetDescriptorPool:=TpvScene3DPlanet.CreatePlanetDescriptorPool(fVulkanDevice,TpvScene3D(fScene3D).CountInFlightFrames);
 
   for InFlightFrameIndex:=0 to TpvScene3D(fScene3D).CountInFlightFrames-1 do begin
 
-   fDescriptorSets[InFlightFrameIndex]:=TpvVulkanDescriptorSet.Create(fDescriptorPool,TpvScene3D(fScene3D).PlanetDescriptorSetLayout);
-   fDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(0,
-                                                            0,
-                                                            6,
-                                                            TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                                                            [TVkDescriptorImageInfo.Create(TpvScene3D(fScene3D).GeneralComputeSampler.Handle,
-                                                                                           fInFlightFrameDataList[InFlightFrameIndex].fHeightMapImage.VulkanImageView.Handle,
-                                                                                           VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
-                                                             TVkDescriptorImageInfo.Create(TpvScene3D(fScene3D).GeneralComputeSampler.Handle,
-                                                                                           fInFlightFrameDataList[InFlightFrameIndex].fNormalMapImage.VulkanImageView.Handle,
-                                                                                           VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
-                                                             TVkDescriptorImageInfo.Create(TpvScene3D(fScene3D).GeneralComputeSampler.Handle,
-                                                                                           fInFlightFrameDataList[InFlightFrameIndex].fBlendMapImage.VulkanArrayImageView.Handle,
-                                                                                           VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
-                                                             TVkDescriptorImageInfo.Create(TpvScene3D(fScene3D).GeneralComputeSampler.Handle,
-                                                                                           fInFlightFrameDataList[InFlightFrameIndex].fGrassMapImage.VulkanImageView.Handle,
-                                                                                           VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
-                                                             TVkDescriptorImageInfo.Create(TpvScene3D(fScene3D).GeneralComputeSampler.Handle,
-                                                                                           {fInFlightFrameDataList[InFlightFrameIndex].}fData.fWaterHeightMapImage.VulkanImageView.Handle,
-                                                                                           VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
-                                                             TVkDescriptorImageInfo.Create(TpvScene3D(fScene3D).GeneralComputeSampler.Handle,
-                                                                                           fBrushesTexture.ImageView.Handle,
-                                                                                           VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
-                                                             TVkDescriptorImageInfo.Create(TpvScene3D(fScene3D).GeneralComputeSampler.Handle,
-                                                                                           fInFlightFrameDataList[InFlightFrameIndex].fRainMapImage.VulkanImageView.Handle,
-                                                                                           VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
-                                                             TVkDescriptorImageInfo.Create(TpvScene3D(fScene3D).GeneralComputeSampler.Handle,
-                                                                                           fInFlightFrameDataList[InFlightFrameIndex].fAtmosphereMapImage.VulkanImageView.Handle,
-                                                                                           VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
-                                                            ],
-                                                            [],
-                                                            [],
-                                                            false);
-   fDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(1,
-                                                            0,
-                                                            1,
-                                                            TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
-                                                            [],
-                                                            [fPlanetDataVulkanBuffers[InFlightFrameIndex].DescriptorBufferInfo],
-                                                            [],
-                                                            false);
-   fDescriptorSets[InFlightFrameIndex].Flush;
+   fPlanetDescriptorSets[InFlightFrameIndex]:=TpvVulkanDescriptorSet.Create(fPlanetDescriptorPool,TpvScene3D(fScene3D).PlanetDescriptorSetLayout);
+   fPlanetDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(0,
+                                                                  0,
+                                                                  6,
+                                                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                                                  [TVkDescriptorImageInfo.Create(TpvScene3D(fScene3D).GeneralComputeSampler.Handle,
+                                                                                                 fInFlightFrameDataList[InFlightFrameIndex].fHeightMapImage.VulkanImageView.Handle,
+                                                                                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
+                                                                   TVkDescriptorImageInfo.Create(TpvScene3D(fScene3D).GeneralComputeSampler.Handle,
+                                                                                                 fInFlightFrameDataList[InFlightFrameIndex].fNormalMapImage.VulkanImageView.Handle,
+                                                                                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
+                                                                   TVkDescriptorImageInfo.Create(TpvScene3D(fScene3D).GeneralComputeSampler.Handle,
+                                                                                                 fInFlightFrameDataList[InFlightFrameIndex].fBlendMapImage.VulkanArrayImageView.Handle,
+                                                                                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
+                                                                   TVkDescriptorImageInfo.Create(TpvScene3D(fScene3D).GeneralComputeSampler.Handle,
+                                                                                                 fInFlightFrameDataList[InFlightFrameIndex].fGrassMapImage.VulkanImageView.Handle,
+                                                                                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
+                                                                   TVkDescriptorImageInfo.Create(TpvScene3D(fScene3D).GeneralComputeSampler.Handle,
+                                                                                                 {fInFlightFrameDataList[InFlightFrameIndex].}fData.fWaterHeightMapImage.VulkanImageView.Handle,
+                                                                                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
+                                                                   TVkDescriptorImageInfo.Create(TpvScene3D(fScene3D).GeneralComputeSampler.Handle,
+                                                                                                 fBrushesTexture.ImageView.Handle,
+                                                                                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
+                                                                   TVkDescriptorImageInfo.Create(TpvScene3D(fScene3D).GeneralComputeSampler.Handle,
+                                                                                                 fInFlightFrameDataList[InFlightFrameIndex].fRainMapImage.VulkanImageView.Handle,
+                                                                                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
+                                                                   TVkDescriptorImageInfo.Create(TpvScene3D(fScene3D).GeneralComputeSampler.Handle,
+                                                                                                 fInFlightFrameDataList[InFlightFrameIndex].fAtmosphereMapImage.VulkanImageView.Handle,
+                                                                                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+                                                                  ],
+                                                                  [],
+                                                                  [],
+                                                                  false);
+   fPlanetDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(1,
+                                                                  0,
+                                                                  1,
+                                                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                                  [],
+                                                                  [fPlanetDataVulkanBuffers[InFlightFrameIndex].DescriptorBufferInfo],
+                                                                  [],
+                                                                  false);
+   fPlanetDescriptorSets[InFlightFrameIndex].Flush;
 
   end;
 
@@ -21422,10 +21422,10 @@ begin
    fPlanetDataVulkanBuffers[InFlightFrameIndex]:=nil;
   end;
 
-  fDescriptorPool:=nil;
+  fPlanetDescriptorPool:=nil;
 
   for InFlightFrameIndex:=0 to TpvScene3D(fScene3D).CountInFlightFrames-1 do begin
-   fDescriptorSets[InFlightFrameIndex]:=nil;
+   fPlanetDescriptorSets[InFlightFrameIndex]:=nil;
   end;
 
  end;
@@ -21559,10 +21559,10 @@ begin
  FreeAndNil(fRendererInstanceHashMap);
 
  for InFlightFrameIndex:=0 to TpvScene3D(fScene3D).CountInFlightFrames-1 do begin
-  FreeAndNil(fDescriptorSets[InFlightFrameIndex]);
+  FreeAndNil(fPlanetDescriptorSets[InFlightFrameIndex]);
  end;
 
- FreeAndNil(fDescriptorPool);
+ FreeAndNil(fPlanetDescriptorPool);
 
  for InFlightFrameIndex:=0 to TpvScene3D(fScene3D).CountInFlightFrames-1 do begin
   FreeAndNil(fPlanetDataVulkanBuffers[InFlightFrameIndex]);
