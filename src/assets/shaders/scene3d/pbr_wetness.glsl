@@ -17,14 +17,14 @@ void applyPBRWetness(
   if(wetness.x > 0.0){
 
     // Apply wetness to albedo
-    albedo = mix(albedo, vec3(0.0, 0.5, 1.0), wetness.x * 0.1); // Blend with blue color for wetness
+    albedo = mix(albedo, albedo * vec3(0.2, 0.8, 1.0), wetness.x * 0.1); // Blend with blue color for wetness
 
     // Apply wetness to normal
     normal = normalize(mix(normal, wetness.yzw, wetness.x * 0.1)); // Blend normal with the provided normal based on wetness factor
 
     // Apply wetness to metallic and roughness
 //  metallic = mix(metallic, 0.0, wetness.x); // Decrease metallic with wetness
-    roughness = mix(roughness, 0.1, wetness.x * 0.5); // Decrease roughness with wetness
+    roughness = mix(roughness, roughness * 0.1, wetness.x * 0.5); // Decrease roughness with wetness
 //  occlusion = mix(occlusion, 1.0, wetness.x); // Increase occlusion with wetness
 
   }
