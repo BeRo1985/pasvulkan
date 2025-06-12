@@ -74,6 +74,21 @@ vec3 colorOutput = vec3(0.0);
 
 vec3 clearcoatFresnel = vec3(0.0);
 
+float rcpSinFromCos(const in float cosAngle){
+  return inversesqrt(max(0.0, 1.0 - (cosAngle * cosAngle)));
+}
+
+// Based on https://x.com/BenSimsTech/status/1933128209786347709 
+vec3 getViewClampedNormal(vec3 normal, const in vec3 viewDirection, out float NdotV){
+  // Clamps the normal to the hemisphere defined by the view direction.
+  NdotV = clamp(dot(normal, viewDirection), 0.0, 1.0);
+  if(NdotV < 0.0){
+    normal = (normal - (viewDirection * NdotV)) * rcpSinFromCos(NdotV); 
+    NdotV = 0.0;
+  }
+  return normal;
+}
+
 float applyIorToRoughness(float roughness, float ior) {
   // Scale roughness with IOR so that an IOR of 1.0 results in no microfacet refraction and 
   // an IOR of 1.5 results in the default amount of microfacet refraction.
