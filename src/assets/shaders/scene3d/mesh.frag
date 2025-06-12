@@ -388,14 +388,17 @@ vec4 getWetness(){ // x = wetness, yzw = normal to planet ground
 #endif
   if(rawValues.x > 0u){
     // Unpack 12.12 bit from YZW 24 bit value, since it is encoded as an octahedral equal area unsigned normal vector.
-    uint value24bit = ((rawValues.y & 0xffu) << 0u) | ((rawValues.z & 0xffu) << 8u) | ((rawValues.w & 0xffu) << 16u);
-    uvec2 unpackedUInt = uvec2(value24bit & 0xfffu, value24bit >> 12u);
-    vec2 unpackedFloat = vec2(unpackedUInt) / 4095.0;
+    const uint value24bit = ((rawValues.y & 0xffu) << 0u) | ((rawValues.z & 0xffu) << 8u) | ((rawValues.w & 0xffu) << 16u);
+    const uvec2 unpackedUInt = uvec2(value24bit & 0xfffu, value24bit >> 12u);
+    const vec2 unpackedFloat = vec2(unpackedUInt) / 4095.0;
     return vec4(float(rawValues.x) / 255.0, octEqualAreaUnsignedDecode(unpackedFloat));
   }else{
     return vec4(0.0); // No wetness
   }
 }  
+
+#include "pbr_wetness.glsl"
+
 #endif // WETNESS
 
 void main() {
@@ -546,6 +549,37 @@ void main() {
         }
       }
 
+      vec3 normal;
+      if ((textureFlags.x & (1 << 2)) != 0) {
+        vec4 normalTexture = textureFetch(2, vec2(0.0, 1.0).xxyx, false);
+        normal = normalize(                                                                                                                      //
+            mat3(normalize(workTangent), normalize(workBitangent), normalize(workNormal)) *                                                            //
+            normalize((normalTexture.xyz - vec3(0.5)) * (vec2(material.metallicRoughnessNormalScaleOcclusionStrengthFactor.z, 1.0).xxy * 2.0))  //
+        );
+      } else {
+        normal = normalize(workNormal);
+      }
+      //normal *= (((flags & (1u << 6u)) != 0u) && !gl_FrontFacing) ? -1.0 : 1.0;
+
+      vec4 occlusionTexture = textureFetch(3, vec4(1.0), false);
+
+      float occlusion = clamp(mix(1.0, occlusionTexture.x, material.metallicRoughnessNormalScaleOcclusionStrengthFactor.w), 0.0, 1.0);
+
+#ifdef WETNESS
+      {
+        const vec4 wetness = getWetness();   
+        applyPBRWetness(
+          wetness,
+          mat3(workTangent, workBitangent, workNormal),
+          normal,
+          baseColor.xyz,
+          metallic,            // metallic
+          perceptualRoughness, // roughness 
+          occlusion            // occlusion
+        );
+      }
+#endif
+
 #undef UseGeometryRoughness
 #ifdef UseGeometryRoughness
 
@@ -583,22 +617,6 @@ void main() {
 #endif
 
       float alphaRoughness = perceptualRoughness * perceptualRoughness;
-
-      vec3 normal;
-      if ((textureFlags.x & (1 << 2)) != 0) {
-        vec4 normalTexture = textureFetch(2, vec2(0.0, 1.0).xxyx, false);
-        normal = normalize(                                                                                                                      //
-            mat3(normalize(workTangent), normalize(workBitangent), normalize(workNormal)) *                                                            //
-            normalize((normalTexture.xyz - vec3(0.5)) * (vec2(material.metallicRoughnessNormalScaleOcclusionStrengthFactor.z, 1.0).xxy * 2.0))  //
-        );
-      } else {
-        normal = normalize(workNormal);
-      }
-      //normal *= (((flags & (1u << 6u)) != 0u) && !gl_FrontFacing) ? -1.0 : 1.0;
-
-      vec4 occlusionTexture = textureFetch(3, vec4(1.0), false);
-
-      float occlusion = clamp(mix(1.0, occlusionTexture.x, material.metallicRoughnessNormalScaleOcclusionStrengthFactor.w), 0.0, 1.0);
 
       vec4 emissiveTexture = textureFetch(4, vec4(1.0), true);
 

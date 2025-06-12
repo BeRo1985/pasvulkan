@@ -171,6 +171,7 @@ const vec3 inModelScale = vec3(1.0);
 
 #undef ENABLE_ANISOTROPIC
 #include "pbr.glsl"
+#include "pbr_wetness.glsl"
 
 void main(){
 
@@ -213,7 +214,7 @@ void main(){
   const float fakeSelfShadowing = clamp(inBlock.texCoord.y, 0.1, 1.0); 
 
   vec4 albedo = vec4(baseColorLinearRGB * fakeSelfShadowing, 1.0);  
-  vec3 baseColor = albedo.xyz;
+//vec3 baseColor = albedo.xyz;
   vec4 occlusionRoughnessMetallic = vec4(1.0, 0.3, 0.0, 0.0);
 
 /*const vec3 baseColorSRGB = vec3(52.0, 106.0, 0.0); // vec3(74.0, 149.0, 0.0); 
@@ -230,6 +231,18 @@ void main(){
   vec3 bladeRelativeNormal = normalize(vec3(0.0, sin(vec2(radians(mix(-60.0, 60.0, inBlock.texCoord.x))) + vec2(0.0, 1.5707963267948966))));
   vec3 normal = normalize(mat3(workTangent, workBitangent, workNormal) * bladeRelativeNormal);
  
+  applyPBRWetness(
+    wetness,
+    mat3(workTangent, workBitangent, workNormal),
+    normal,
+    albedo.xyz,
+    occlusionRoughnessMetallic.z, // metallic
+    occlusionRoughnessMetallic.y, // roughness 
+    occlusionRoughnessMetallic.x  // occlusion
+  );
+
+  vec3 baseColor = albedo.xyz;
+
   float occlusion = clamp(occlusionRoughnessMetallic.x, 0.0, 1.0);
     
   vec2 metallicRoughness = clamp(occlusionRoughnessMetallic.zy, vec2(0.0, 1e-3), vec2(1.0));

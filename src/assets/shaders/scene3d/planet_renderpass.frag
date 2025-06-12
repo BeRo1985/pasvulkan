@@ -140,6 +140,8 @@ layout(set = 2, binding = 0) uniform sampler2DArray uPlanetArrayTextures[]; // 0
 #include "planet_wetness.glsl"
 #include "planet_renderpass.glsl"
 
+#include "pbr_wetness.glsl"
+
 #define FRAGMENT_SHADER
 
 const vec3 inModelScale = vec3(1.0); 
@@ -406,6 +408,16 @@ void main(){
   float surfaceHeight = texturePlanetOctahedralMap(uPlanetTextures[PLANET_TEXTURE_HEIGHTMAP], sphereNormal).x;
 
   albedo.xyz *= mix(planetData.minMaxHeightFactor.y, planetData.minMaxHeightFactor.w, pow(clamp((surfaceHeight - planetData.minMaxHeightFactor.x) / (planetData.minMaxHeightFactor.z - planetData.minMaxHeightFactor.x), 0.0, 1.0), planetData.heightFactorExponent));
+
+  applyPBRWetness(
+    wetness,
+    mat3(workTangent, workBitangent, workNormal),
+    normal,
+    albedo.xyz,
+    occlusionRoughnessMetallic.z, // metallic
+    occlusionRoughnessMetallic.y, // roughness 
+    occlusionRoughnessMetallic.x  // occlusion
+  );
 
   vec3 baseColor = albedo.xyz;
 
