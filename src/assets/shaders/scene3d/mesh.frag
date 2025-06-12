@@ -27,6 +27,9 @@
 #if defined(USESHADERBUFFERFLOAT32ATOMICADD)
   #extension GL_EXT_shader_atomic_float : enable
 #endif
+#ifdef WETNESS
+  #extension GL_EXT_samplerless_texture_functions : enable
+#endif
 
 /*#if defined(RAYTRACING)
   #extension GL_EXT_fragment_shader_barycentric : enable
@@ -194,9 +197,9 @@ layout (set = 1, binding = 8, std430) readonly buffer FrustumClusterGridData {
 
 #ifdef WETNESS
 #ifdef MSAA
-layout(set = 1, binding = 9) uniform usampler2DMSArray uWetnessMap;
+layout(set = 1, binding = 9) uniform utexture2DMSArray uWetnessMap;
 #else
-layout(set = 1, binding = 9) uniform usampler2DArray uWetnessMap;
+layout(set = 1, binding = 9) uniform utexture2DArray uWetnessMap;
 #endif
 #endif
 
@@ -373,6 +376,27 @@ float hologramNoise(float x){
 }
 
 #include "instancedataeffect.glsl"
+
+#ifdef WETNESS
+#include "octahedral.glsl"
+
+vec4 getWetness(){ // x = wetness, yzw = normal to planet ground
+#ifdef MSAA
+  const uvec4 rawValues = texelFetch(uWetnessMap, ivec3(gl_FragCoord.xy, gl_ViewIndex), gl_SampleID);
+#else
+  const uvec4 rawValues = texelFetch(uWetnessMap, ivec3(gl_FragCoord.xy, gl_ViewIndex), 0);
+#endif
+  if(rawValues.x > 0u){
+    // Unpack 12.12 bit from YZW 24 bit value, since it is encoded as an octahedral equal area unsigned normal vector.
+    uint value24bit = ((rawValues.y & 0xffu) << 0u) | ((rawValues.z & 0xffu) << 8u) | ((rawValues.w & 0xffu) << 16u);
+    uvec2 unpackedUInt = uvec2(value24bit & 0xfffu, value24bit >> 12u);
+    vec2 unpackedFloat = vec2(unpackedUInt) / 4095.0;
+    return vec4(float(rawValues.x) / 255.0, octEqualAreaUnsignedDecode(unpackedFloat));
+  }else{
+    return vec4(0.0); // No wetness
+  }
+}  
+#endif // WETNESS
 
 void main() {
 #ifdef VOXELIZATION
