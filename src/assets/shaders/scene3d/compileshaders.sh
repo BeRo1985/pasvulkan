@@ -17,7 +17,10 @@ USEZIP=0
 USEBIN2C=0 
 
 # Delete the temporary files after compilation
-DELETEAFTERCOMPILE=0
+DELETEAFTERCOMPILE=1
+
+# Debug mode, if set to 1, debug information will generated and written into the spirv files 
+DEBUG=0
 
 #############################################
 #            Initialization code            #
@@ -1304,6 +1307,10 @@ for index in ${!compileshaderarguments[@]}; do
   parameters=${compileshaderarguments[$index]}
   # echo "Processing $parameters . . ."
   (     
+    # Add -g to the parameters if DEBUG is set to 1, for to add debug information to the shader binary
+    if [ $DEBUG -eq 1 ]; then    
+      parameters="-g $parameters"
+    fi
     # If -DRAYTRACING is in the parameters, add --target-env vulkan1.2 to the parameters 
     if [[ $parameters == *"-DRAYTRACING"* ]]; then
       # but not for mesh.comp, due to a bug in the NVIDIA driver while GPU-assisted validation is enabled (it crashes the driver then) 
@@ -1311,7 +1318,7 @@ for index in ${!compileshaderarguments[@]}; do
         parameters="$parameters --target-env vulkan1.2"
       fi
     fi
-    ${glslangValidatorPath} -g $parameters #--target-env spirv1.5 >/dev/null
+    ${glslangValidatorPath} $parameters #--target-env spirv1.5 >/dev/null
     if [ $? -ne 0 ]; then
       echo "Compiling: ${glslangValidatorPath} -g $parameters"
       echo "Error encountered. Stopping compilation."
