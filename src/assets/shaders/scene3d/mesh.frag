@@ -285,6 +285,8 @@ vec3 volumeAttenuationColor = vec3(1.0);
 float volumeDispersion = 0.0;
 #endif
 
+#include "blendnormals.glsl"
+
 #define ENABLE_ANISOTROPIC
 #include "pbr.glsl"
    
