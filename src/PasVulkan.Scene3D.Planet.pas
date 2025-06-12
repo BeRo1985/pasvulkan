@@ -18684,7 +18684,7 @@ begin
                                                              0,
                                                              1,
                                                              0,
-                                                             TpvScene3DRendererInstance(fRendererInstance).CountSurfaceViews);
+                                                             Max(1,TpvScene3DRendererInstance(fRendererInstance).CountSurfaceViews));
            
       CountImageMemoryBarriers:=0;
 

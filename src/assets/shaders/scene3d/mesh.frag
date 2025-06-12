@@ -192,6 +192,14 @@ layout (set = 1, binding = 8, std430) readonly buffer FrustumClusterGridData {
 
 #endif
 
+#ifdef WETNESS
+#ifdef MSAA
+layout(set = 1, binding = 9) uniform usampler2DMSArray uWetnessMap;
+#else
+layout(set = 1, binding = 9) uniform usampler2DArray uWetnessMap;
+#endif
+#endif
+
 #ifdef VOXELIZATION
   layout(location = 0) out vec4 outFragColor;
   #include "voxelization_globals.glsl"

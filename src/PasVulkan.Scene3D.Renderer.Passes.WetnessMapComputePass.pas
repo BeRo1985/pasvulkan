@@ -258,7 +258,7 @@ begin
                                                         0,
                                                         1,
                                                         0,
-                                                        fInstance.CountSurfaceViews);
+                                                        Max(1,fInstance.CountSurfaceViews));
 
  // Image layout transition for the wetness map for clear operation
  begin

@@ -110,6 +110,7 @@ type { TpvScene3DRendererPassesForwardRenderPass }
        fResourceColor:TpvFrameGraph.TPass.TUsedImageResource;
        fResourceVelocity:TpvFrameGraph.TPass.TUsedImageResource;
        fResourceDepth:TpvFrameGraph.TPass.TUsedImageResource;
+       fResourceWetnessMap:TpvFrameGraph.TPass.TUsedImageResource;
        fMeshVertexShaderModule:TpvVulkanShaderModule;
        fMeshVelocityVertexShaderModule:TpvVulkanShaderModule;
        fMeshFragmentShaderModule:TpvVulkanShaderModule;
@@ -244,6 +245,16 @@ inherited Create(aFrameGraph);
 
   end;
 
+  if fInstance.Renderer.WetnessMapActive then begin
+   fResourceWetnessMap:=AddImageInput('resourcetype_wetnessmap',
+                                       'resource_wetnessmap',
+                                       VK_IMAGE_LAYOUT_GENERAL,
+                                       []
+                                      );
+  end else begin
+   fResourceWetnessMap:=nil;
+  end;
+
  end else begin
 
   fResourceColor:=AddImageOutput('resourcetype_msaa_color_optimized_non_alpha',
@@ -304,6 +315,16 @@ inherited Create(aFrameGraph);
                                        [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                       );
 
+  end;
+
+  if fInstance.Renderer.WetnessMapActive then begin
+   fResourceWetnessMap:=AddImageInput('resourcetype_msaa_wetnessmap',
+                                       'resource_msaa_wetnessmap',
+                                       VK_IMAGE_LAYOUT_GENERAL,
+                                       []
+                                      );
+  end else begin
+   fResourceWetnessMap:=nil;
   end;
 
  end;
@@ -596,6 +617,7 @@ var InFlightFrameIndex:TpvSizeInt;
     PrimitiveTopology:TpvScene3D.TPrimitiveTopology;
     FaceCullingMode:TpvScene3D.TFaceCullingMode;
     VulkanGraphicsPipeline:TpvVulkanGraphicsPipeline;
+    DescriptorImageInfos:array of TVkDescriptorImageInfo;
 begin
 
  inherited AcquireVolatileResources;
@@ -630,7 +652,7 @@ begin
                                            []);
  fPassVulkanDescriptorSetLayout.AddBinding(5,
                                            VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                                           2,
+                                           4,
                                            TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                            [],
                                            TVkDescriptorBindingFlags(VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT_EXT));
@@ -649,10 +671,17 @@ begin
                                            1,
                                            TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                            []);
+ if assigned(fResourceWetnessMap) then begin
+  fPassVulkanDescriptorSetLayout.AddBinding(9,
+                                            VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                            1,
+                                            TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                            []);
+ end;
  fPassVulkanDescriptorSetLayout.Initialize;
 
  fPassVulkanDescriptorPool:=TpvVulkanDescriptorPool.Create(fInstance.Renderer.VulkanDevice,TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),fInstance.Renderer.CountInFlightFrames);
- fPassVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,16*fInstance.Renderer.CountInFlightFrames);
+ fPassVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,20*fInstance.Renderer.CountInFlightFrames);
  fPassVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,3*fInstance.Renderer.CountInFlightFrames);
  fPassVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,3*fInstance.Renderer.CountInFlightFrames);
  fPassVulkanDescriptorPool.Initialize;
@@ -709,38 +738,34 @@ begin
                                                                      [],
                                                                      [],
                                                                      false);
-  if fInstance.Renderer.ScreenSpaceAmbientOcclusion then begin
+  DescriptorImageInfos:=nil;
+  try
+   // 0 = SSAO, 1 = Opaque frame buffer, 2 = Opaque depth buffer, 3 = Clouds shadow map, 4 = Wetness map 
+   SetLength(DescriptorImageInfos,4);
+   if fInstance.Renderer.ScreenSpaceAmbientOcclusion then begin
+    DescriptorImageInfos[0]:=TVkDescriptorImageInfo.Create(fInstance.Renderer.AmbientOcclusionSampler.Handle,
+                                                           fResourceSSAO.VulkanImageViews[InFlightFrameIndex].Handle,
+                                                           fResourceSSAO.ResourceTransition.Layout);// TVkImageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL));
+   end else begin
+    DescriptorImageInfos[0]:=TVkDescriptorImageInfo.Create(fInstance.Renderer.AmbientOcclusionSampler.Handle,
+                                                           fInstance.Renderer.EmptyAmbientOcclusionTexture.ImageView.Handle,
+                                                           TVkImageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL));
+   end;
+   // Duplicate as dummy really non-used opaque texture
+   DescriptorImageInfos[1]:=DescriptorImageInfos[0]; // Opaque frame buffer
+   DescriptorImageInfos[2]:=DescriptorImageInfos[0]; // Opaque depth buffer
+   DescriptorImageInfos[3]:=DescriptorImageInfos[0]; // Clouds shadow map (replaced with the real texture later, if implemented later, dummy for now)
    fPassVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(5,
                                                                       0,
-                                                                      2,
+                                                                      Length(DescriptorImageInfos),
                                                                       TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                                                                      [TVkDescriptorImageInfo.Create(fInstance.Renderer.AmbientOcclusionSampler.Handle,
-                                                                                                     fResourceSSAO.VulkanImageViews[InFlightFrameIndex].Handle,
-                                                                                                     fResourceSSAO.ResourceTransition.Layout),// TVkImageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL))],
-                                                                       // Duplicate as dummy really non-used opaque texture
-                                                                       TVkDescriptorImageInfo.Create(fInstance.Renderer.AmbientOcclusionSampler.Handle,
-                                                                                                     fResourceSSAO.VulkanImageViews[InFlightFrameIndex].Handle,
-                                                                                                     fResourceSSAO.ResourceTransition.Layout)],// TVkImageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL))
+                                                                      DescriptorImageInfos,
                                                                       [],
                                                                       [],
-                                                                      false);
-  end else begin
-   fPassVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(5,
-                                                                      0,
-                                                                      2,
-                                                                      TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                                                                      [TVkDescriptorImageInfo.Create(fInstance.Renderer.AmbientOcclusionSampler.Handle,
-                                                                                                     fInstance.Renderer.EmptyAmbientOcclusionTexture.ImageView.Handle,
-                                                                                                     TVkImageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)),
-                                                                       // Duplicate as dummy really non-used opaque texture
-                                                                       TVkDescriptorImageInfo.Create(fInstance.Renderer.AmbientOcclusionSampler.Handle,
-                                                                                                     fInstance.Renderer.EmptyAmbientOcclusionTexture.ImageView.Handle,
-                                                                                                     TVkImageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL))
-                                                                      ],
-                                                                      [],
-                                                                      [],
-                                                                      false);
-  end;
+                                                                      false); 
+  finally
+   DescriptorImageInfos:=nil;
+  end;                                                                     
   fPassVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(6,
                                                                      0,
                                                                      1,
@@ -765,6 +790,18 @@ begin
                                                                      [fInstance.FrustumClusterGridDataVulkanBuffers[InFlightFrameIndex].DescriptorBufferInfo],
                                                                      [],
                                                                      false);
+  if assigned(fResourceWetnessMap) then begin
+   fPassVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(9,
+                                                                      0,
+                                                                      1,
+                                                                      TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                                                      [TVkDescriptorImageInfo.Create(fInstance.Renderer.ClampedSampler.Handle,
+                                                                                                     fResourceWetnessMap.VulkanImageViews[InFlightFrameIndex].Handle,
+                                                                                                     fResourceWetnessMap.ResourceTransition.Layout)],
+                                                                      [],
+                                                                      [],
+                                                                      false);
+  end;
   fPassVulkanDescriptorSets[InFlightFrameIndex].Flush;
   fIBLDescriptors[InFlightFrameIndex]:=TpvScene3DRendererIBLDescriptor.Create(fInstance.Renderer.VulkanDevice,
                                                                               fPassVulkanDescriptorSets[InFlightFrameIndex],
