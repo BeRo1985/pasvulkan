@@ -423,6 +423,7 @@ vec4 doShade(float opaqueDepth, float surfaceDepth, bool underWater){
  
   float NdotV;
   normal = getViewClampedNormal(normal, viewDirection, NdotV);
+  NdotV = clamp(NdotV, 0.0, 1.0);
 
   float occlusion = clamp(occlusionRoughnessMetallic.x, 0.0, 1.0);
     

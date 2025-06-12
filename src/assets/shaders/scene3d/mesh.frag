@@ -584,6 +584,7 @@ void main() {
 
       float NdotV;
       normal = getViewClampedNormal(normal, viewDirection, NdotV);
+      NdotV = clamp(NdotV, 0.0, 1.0);
 
 #undef UseGeometryRoughness
 #ifdef UseGeometryRoughness
