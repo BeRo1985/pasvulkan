@@ -130,8 +130,6 @@ layout (set = 1, binding = 10, std430) readonly buffer FrustumClusterGridData {
 };
 #endif
 
-#ifdef WETNESS
-
 // Per planet descriptor set
 
 // Aliased textures, because some are array textures and some are not 
@@ -139,6 +137,7 @@ layout(set = 2, binding = 0) uniform sampler2D uPlanetTextures[]; // 0 = height 
 layout(set = 2, binding = 0) uniform sampler2DArray uPlanetArrayTextures[]; // 0 = height map, 1 = normal map, 2 = blend map, 3 = grass map, 4 = water map, 5 = brushes, 6 = rain map, 7 = atmosphere map
 
 #include "planet_textures.glsl"
+#include "planet_wetness.glsl"
 #include "planet_renderpass.glsl"
 
 #define FRAGMENT_SHADER
