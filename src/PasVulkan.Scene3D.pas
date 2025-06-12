@@ -3920,6 +3920,8 @@ type EpvScene3D=class(Exception);
        fPointerToDeltaTimes:PDeltaTimes;
        fVirtualReality:TpvVirtualReality;
        fBlueNoise2DTexture:TpvVulkanTexture;
+       fRainTexture:TpvVulkanTexture;
+       fRainNormalTexture:TpvVulkanTexture;
        fPasMPInstance:TPasMP;
        fLoadGLTFTimeDurationLock:TPasMPInt32;
        fLoadGLTFTimeDuration:TpvDouble;
@@ -4186,6 +4188,8 @@ type EpvScene3D=class(Exception);
        property RendererInstanceList:TpvObjectList read fRendererInstanceList;
       public
        property BlueNoise2DTexture:TpvVulkanTexture read fBlueNoise2DTexture;
+       property RainTexture:TpvVulkanTexture read fRainTexture;
+       property RainNormalTexture:TpvVulkanTexture read fRainNormalTexture;
       public
        property DrawDataGeneration:TPasMPUInt64 read fDrawDataGeneration write fDrawDataGeneration;
       public
@@ -28360,6 +28364,10 @@ begin
 
  fBlueNoise2DTexture:=nil;
 
+ fRainTexture:=nil;
+
+ fRainNormalTexture:=nil;
+
  fPlanets:=TpvScene3DPlanets.Create(self);
 
  fAtmospheres:=TpvScene3DAtmospheres.Create(self);
@@ -29192,26 +29200,28 @@ begin
 
  if assigned(fVulkanDevice) then begin
 
-  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('bluenoise_1024x1024_rgba8.raw');
+  UniversalQueue:=fVulkanDevice.UniversalQueue;
   try
-
-   GetMem(Memory,Stream.Size);
+   UniversalCommandPool:=TpvVulkanCommandPool.Create(fVulkanDevice,
+                                                     fVulkanDevice.UniversalQueueFamilyIndex,
+                                                     TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
    try
-
-    Stream.Seek(0,soBeginning);
-    Stream.ReadBuffer(Memory^,Stream.Size);
-
-    UniversalQueue:=fVulkanDevice.UniversalQueue;
+    UniversalCommandBuffer:=TpvVulkanCommandBuffer.Create(UniversalCommandPool,
+                                                          VK_COMMAND_BUFFER_LEVEL_PRIMARY);
     try
-     UniversalCommandPool:=TpvVulkanCommandPool.Create(fVulkanDevice,
-                                                       fVulkanDevice.UniversalQueueFamilyIndex,
-                                                       TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
+     UniversalFence:=TpvVulkanFence.Create(fVulkanDevice);
      try
-      UniversalCommandBuffer:=TpvVulkanCommandBuffer.Create(UniversalCommandPool,
-                                                            VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+
+      ///////////////////////////////////////////////////////////////////////////////////////////////
+
+      Stream:=pvScene3DShaderVirtualFileSystem.GetFile('bluenoise_1024x1024_rgba8.raw');
       try
-       UniversalFence:=TpvVulkanFence.Create(fVulkanDevice);
+
+       GetMem(Memory,Stream.Size);
        try
+
+        Stream.Seek(0,soBeginning);
+        Stream.ReadBuffer(Memory^,Stream.Size);
 
         fBlueNoise2DTexture:=TpvVulkanTexture.CreateFromMemory(fVulkanDevice,
                                                                UniversalQueue,
@@ -29245,26 +29255,125 @@ begin
                                                               );
 
        finally
-        FreeAndNil(UniversalFence);
+        FreeMem(Memory);
        end;
+
       finally
-       FreeAndNil(UniversalCommandBuffer);
+       FreeAndNil(Stream);
       end;
+
+      ///////////////////////////////////////////////////////////////////////////////////////////////
+
+      Stream:=pvScene3DShaderVirtualFileSystem.GetFile('rain_512.raw');
+      try
+
+       GetMem(Memory,Stream.Size);
+       try
+
+        Stream.Seek(0,soBeginning);
+        Stream.ReadBuffer(Memory^,Stream.Size);
+
+        fRainTexture:=TpvVulkanTexture.CreateFromMemory(fVulkanDevice,
+                                                        UniversalQueue,
+                                                        UniversalCommandBuffer,
+                                                        UniversalFence,
+                                                        UniversalQueue,
+                                                        UniversalCommandBuffer,
+                                                        UniversalFence,
+                                                        VK_FORMAT_R8G8B8A8_UNORM,
+                                                        VK_SAMPLE_COUNT_1_BIT,
+                                                        512,
+                                                        512,
+                                                        0,
+                                                        0,
+                                                        1,
+                                                        0,
+                                                        [TpvVulkanTextureUsageFlag.General,
+                                                         TpvVulkanTextureUsageFlag.TransferDst,
+                                                         TpvVulkanTextureUsageFlag.TransferSrc,
+                                                         TpvVulkanTextureUsageFlag.Sampled],
+                                                        Memory,
+                                                        512*512*4,
+                                                        false,
+                                                        false,
+                                                        0,
+                                                        true,
+                                                        false,
+                                                        false,
+                                                        0,
+                                                        'TpvScene3D.RainTexture'
+                                                       );
+
+       finally
+        FreeMem(Memory);
+       end;
+
+      finally
+       FreeAndNil(Stream);
+      end;
+
+      ///////////////////////////////////////////////////////////////////////////////////////////////
+
+      Stream:=pvScene3DShaderVirtualFileSystem.GetFile('rain_normal_512.raw');
+      try
+
+       GetMem(Memory,Stream.Size);
+       try
+
+        Stream.Seek(0,soBeginning);
+        Stream.ReadBuffer(Memory^,Stream.Size);
+
+        fRainNormalTexture:=TpvVulkanTexture.CreateFromMemory(fVulkanDevice,
+                                                              UniversalQueue,
+                                                              UniversalCommandBuffer,
+                                                              UniversalFence,
+                                                              UniversalQueue,
+                                                              UniversalCommandBuffer,
+                                                              UniversalFence,
+                                                              VK_FORMAT_R8G8B8A8_UNORM,
+                                                              VK_SAMPLE_COUNT_1_BIT,
+                                                              512,
+                                                              512,
+                                                              0,
+                                                              0,
+                                                              1,
+                                                              0,
+                                                              [TpvVulkanTextureUsageFlag.General,
+                                                               TpvVulkanTextureUsageFlag.TransferDst,
+                                                               TpvVulkanTextureUsageFlag.TransferSrc,
+                                                               TpvVulkanTextureUsageFlag.Sampled],
+                                                              Memory,
+                                                              512*512*4,
+                                                              false,
+                                                              false,
+                                                              0,
+                                                              true,
+                                                              false,
+                                                              false,
+                                                              0,
+                                                              'TpvScene3D.RainNormalTexture'
+                                                             );
+
+       finally
+        FreeMem(Memory);
+       end;
+
+      finally
+       FreeAndNil(Stream);
+      end;
+
      finally
-      FreeAndNil(UniversalCommandPool);
+      FreeAndNil(UniversalFence);
      end;
     finally
-     UniversalQueue:=nil;
+     FreeAndNil(UniversalCommandBuffer);
     end;
-
    finally
-    FreeMem(Memory);
+    FreeAndNil(UniversalCommandPool);
    end;
-
   finally
-   FreeAndNil(Stream);
+   UniversalQueue:=nil;
   end;
-
  end;
 
  if assigned(fVulkanDevice) then begin
@@ -29629,6 +29738,10 @@ begin
  FreeAndNil(fRendererInstanceLock);
 
  FreeAndNil(fBlueNoise2DTexture);
+
+ FreeAndNil(fRainTexture);
+ 
+ FreeAndNil(fRainNormalTexture);
 
  FreeAndNil(fAABBTreeLock);
 
