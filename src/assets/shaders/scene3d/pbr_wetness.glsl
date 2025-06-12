@@ -5,13 +5,16 @@
 
 void applyPBRWetness(
   const in vec4 wetness, // x = wetness factor, yzw = normal from planet ground
+  const in vec3 position, // world space position for triplanar mapping
   const in mat3 tangentSpaceBasis, // tangent space basis matrix (tangent, bitangent, normal)
   inout vec3 albedo, // albedo color
-  inout vec3 normal, // normal vector
+  out vec4 normal, // output normal vector for normal mapping, w = weight for normal mapping
   inout float metallic, // metallic value 
   inout float roughness, // roughness value
   inout float occlusion // occlusion value
 ){
+
+  normal = vec4(0.0, 0.0, 1.0, 0.0); // Initialize output normal
 
   // Not optimal yet, just the foundation for wetness application in PBR as first version.
   if(wetness.x > 0.0){

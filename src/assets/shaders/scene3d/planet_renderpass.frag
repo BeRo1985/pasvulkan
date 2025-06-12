@@ -263,6 +263,7 @@ vec3 workNormal;
 
 #undef ENABLE_ANISOTROPIC
 #include "pbr.glsl"
+#include "blendnormals.glsl"
 
 void main(){
 
@@ -403,21 +404,23 @@ void main(){
 
   }
 
-  vec3 normal = normalize(mat3(workTangent, workBitangent, workNormal) * normalize(fma(normalHeight.xyz, vec3(2.0), vec3(-1.0))));
- 
   float surfaceHeight = texturePlanetOctahedralMap(uPlanetTextures[PLANET_TEXTURE_HEIGHTMAP], sphereNormal).x;
 
   albedo.xyz *= mix(planetData.minMaxHeightFactor.y, planetData.minMaxHeightFactor.w, pow(clamp((surfaceHeight - planetData.minMaxHeightFactor.x) / (planetData.minMaxHeightFactor.z - planetData.minMaxHeightFactor.x), 0.0, 1.0), planetData.heightFactorExponent));
 
+  vec4 wetnessNormal = vec4(0.0);
   applyPBRWetness(
     wetness,
+    inWorldSpacePosition,
     mat3(workTangent, workBitangent, workNormal),
-    normal,
     albedo.xyz,
+    wetnessNormal,
     occlusionRoughnessMetallic.z, // metallic
     occlusionRoughnessMetallic.y, // roughness 
     occlusionRoughnessMetallic.x  // occlusion
   );
+
+  vec3 normal = normalize(mat3(workTangent, workBitangent, workNormal) * blendNormals(normalize(fma(normalHeight.xyz, vec3(2.0), vec3(-1.0))), wetnessNormal.xyz, wetnessNormal.w));
 
   float NdotV;
   normal = getViewClampedNormal(normal, viewDirection, NdotV);

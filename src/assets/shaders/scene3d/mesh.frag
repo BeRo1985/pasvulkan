@@ -549,36 +549,53 @@ void main() {
         }
       }
 
-      vec3 normal;
-      if ((textureFlags.x & (1 << 2)) != 0) {
-        vec4 normalTexture = textureFetch(2, vec2(0.0, 1.0).xxyx, false);
-        normal = normalize(                                                                                                                      //
-            mat3(normalize(workTangent), normalize(workBitangent), normalize(workNormal)) *                                                            //
-            normalize((normalTexture.xyz - vec3(0.5)) * (vec2(material.metallicRoughnessNormalScaleOcclusionStrengthFactor.z, 1.0).xxy * 2.0))  //
-        );
-      } else {
-        normal = normalize(workNormal);
-      }
-      //normal *= (((flags & (1u << 6u)) != 0u) && !gl_FrontFacing) ? -1.0 : 1.0;
-
       vec4 occlusionTexture = textureFetch(3, vec4(1.0), false);
 
       float occlusion = clamp(mix(1.0, occlusionTexture.x, material.metallicRoughnessNormalScaleOcclusionStrengthFactor.w), 0.0, 1.0);
 
 #ifdef WETNESS
+      vec4 wetnessNormal = vec4(0.0); 
       {
         const vec4 wetness = getWetness();   
         applyPBRWetness(
           wetness,
+          inWorldSpacePosition,
           mat3(workTangent, workBitangent, workNormal),
-          normal,
-          baseColor.xyz,
+          baseColor.xyz,       // base color
+          wetnessNormal,
           metallic,            // metallic
           perceptualRoughness, // roughness 
           occlusion            // occlusion
         );
       }
 #endif
+
+      vec3 normal;
+      if (((textureFlags.x & (1 << 2)) != 0) 
+#ifdef WETNESS
+          || (wetnessNormal.w > 0.0)
+#endif
+         ) {
+#ifdef WETNESS 
+        const vec4 normalTexture = ((textureFlags.x & (1 << 2)) != 0) ? textureFetch(2, vec2(0.0, 1.0).xxyx, false) : vec4(0.5, 0.5, 1.0, 0.0);
+#else
+        const vec4 normalTexture = textureFetch(2, vec2(0.0, 1.0).xxyx, false);
+#endif
+        const vec3 normalToApply = normalize((normalTexture.xyz - vec3(0.5)) * (vec2(material.metallicRoughnessNormalScaleOcclusionStrengthFactor.z, 1.0).xxy * 2.0));
+        normal = normalize(                                                                                                                      //
+            mat3(normalize(workTangent), normalize(workBitangent), normalize(workNormal)) *      
+#ifdef WETNESS
+            blendNormals(normalToApply, wetnessNormal.xyz, wetnessNormal.w)
+#else
+            normalToApply
+#endif
+        );
+      } else {
+        normal = normalize(workNormal);
+      }
+
+      // The normal vector is flipped for back-facing triangles, so that the lighting is correct.
+      //normal *= (((flags & (1u << 6u)) != 0u) && !gl_FrontFacing) ? -1.0 : 1.0;
 
       vec3 viewDirection = normalize(-inCameraRelativePosition);
 
