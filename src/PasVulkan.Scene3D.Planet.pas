@@ -21393,7 +21393,14 @@ begin
                                                                                            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
                                                              TVkDescriptorImageInfo.Create(TpvScene3D(fScene3D).GeneralComputeSampler.Handle,
                                                                                            fBrushesTexture.ImageView.Handle,
-                                                                                           VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
+                                                                                           VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
+                                                             TVkDescriptorImageInfo.Create(TpvScene3D(fScene3D).GeneralComputeSampler.Handle,
+                                                                                           fInFlightFrameDataList[InFlightFrameIndex].fRainMapImage.VulkanImageView.Handle,
+                                                                                           VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
+                                                             TVkDescriptorImageInfo.Create(TpvScene3D(fScene3D).GeneralComputeSampler.Handle,
+                                                                                           fInFlightFrameDataList[InFlightFrameIndex].fAtmosphereMapImage.VulkanImageView.Handle,
+                                                                                           VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+                                                            ],
                                                             [],
                                                             [],
                                                             false);
@@ -22205,10 +22212,10 @@ begin
 
  result:=TpvVulkanDescriptorSetLayout.Create(aVulkanDevice,0,true);
 
- // Height map + normal map + blend map + grass map + water map
+ // Height map + normal map + blend map + grass map + water map + brushes + rain map + atmosphere map
  result.AddBinding(0,
                    TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                   6,
+                   8,
                    ShaderStageFlags,
                    [],
                    TVkDescriptorBindingFlags(VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT_EXT));
@@ -22232,7 +22239,7 @@ begin
  result:=TpvVulkanDescriptorPool.Create(aVulkanDevice,
                                         TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
                                         aCountInFlightFrames);
- result.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),6*aCountInFlightFrames);
+ result.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),8*aCountInFlightFrames);
  result.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),1*aCountInFlightFrames);
  result.Initialize;
  aVulkanDevice.DebugUtils.SetObjectName(result.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'TpvScene3DPlanet.PlanetDescriptorPool');
