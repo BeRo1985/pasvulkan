@@ -419,6 +419,9 @@ void main(){
     occlusionRoughnessMetallic.x  // occlusion
   );
 
+  float NdotV;
+  normal = getViewClampedNormal(normal, viewDirection, NdotV);
+
   vec3 baseColor = albedo.xyz;
 
   float occlusion = clamp(occlusionRoughnessMetallic.x, 0.0, 1.0); 

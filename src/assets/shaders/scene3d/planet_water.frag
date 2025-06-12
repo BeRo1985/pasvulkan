@@ -421,6 +421,9 @@ vec4 doShade(float opaqueDepth, float surfaceDepth, bool underWater){
   // to fake roundness of the blade without real more complex geometry
   vec3 normal = workNormal;
  
+  float NdotV;
+  normal = getViewClampedNormal(normal, viewDirection, NdotV);
+
   float occlusion = clamp(occlusionRoughnessMetallic.x, 0.0, 1.0);
     
   vec2 metallicRoughness = clamp(occlusionRoughnessMetallic.zy, vec2(0.0, 1e-3), vec2(1.0));

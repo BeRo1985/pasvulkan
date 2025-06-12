@@ -580,6 +580,11 @@ void main() {
       }
 #endif
 
+      vec3 viewDirection = normalize(-inCameraRelativePosition);
+
+      float NdotV;
+      normal = getViewClampedNormal(normal, viewDirection, NdotV);
+
 #undef UseGeometryRoughness
 #ifdef UseGeometryRoughness
 
@@ -634,8 +639,6 @@ void main() {
   #endif
   #endif
 
-      vec3 viewDirection = normalize(-inCameraRelativePosition);
-
       diffuseOcclusion = occlusion * ambientOcclusion;
       specularOcclusion = getSpecularOcclusion(clamp(dot(normal, viewDirection), 0.0, 1.0), diffuseOcclusion, alphaRoughness);
 
@@ -659,7 +662,7 @@ void main() {
         }  
         //if(iridescenceFactor > 0.0)
         {
-          float NdotV = clamp(dot(normal, viewDirection), 0.0, 1.0);
+//        float NdotV = clamp(dot(normal, viewDirection), 0.0, 1.0);
           iridescenceFresnelDielectric = evalIridescence(1.0, iridescenceIor, NdotV, iridescenceThickness, F0Dielectric);
           iridescenceFresnelMetallic = evalIridescence(1.0, iridescenceIor, NdotV, iridescenceThickness, baseColor.xyz);
         }
@@ -846,8 +849,8 @@ void main() {
       float iblAlbedoSheenScaling = 1.0; 
       if ((flags & (1u << 7u)) != 0u) {
         iblSheen = getIBLRadianceCharlie(normal, viewDirection, sheenRoughness, sheenColor) * diffuseOcclusion;
-        float NDotV = clamp(dot(normal, viewDirection), 0.0, 1.0);
-        iblAlbedoSheenScaling = 1.0 - (max(max(sheenColor.x, sheenColor.y), sheenColor.z) * albedoSheenScalingLUT(NDotV, sheenRoughness));
+//      float NdotV = clamp(dot(normal, viewDirection), 0.0, 1.0);
+        iblAlbedoSheenScaling = 1.0 - (max(max(sheenColor.x, sheenColor.y), sheenColor.z) * albedoSheenScalingLUT(NdotV, sheenRoughness));
       }
       vec3 iblClearcoatBRDF = ((flags & (1u << 8u)) != 0u) ? (getIBLRadianceGGX(clearcoatNormal, viewDirection, clearcoatRoughness) * diffuseOcclusion) : vec3(0.0);
       vec3 iblResultColor = mix(iblDielectricBRDF, iblMetalBRDF * specularOcclusion, metallic); // Dielectric/metallic mix
