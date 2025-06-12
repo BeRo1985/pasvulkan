@@ -2044,6 +2044,8 @@ type TpvScene3DPlanets=class;
               fVulkanRainDropDrawIndexedIndirectCommandBuffer:TpvVulkanBuffer;
               fVulkanRainDropVerticesBuffer:TpvVulkanBuffer;
               fVulkanRainDropIndicesBuffer:TpvVulkanBuffer;
+              fRainAtmosphereDescriptorPool:TpvVulkanDescriptorPool;
+              fRainAtmosphereDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
               fRainStreakSimulationDescriptorPool:TpvVulkanDescriptorPool;
               fRainStreakSimulationDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
               fRainStreakMeshGenerationDescriptorPool:TpvVulkanDescriptorPool;
@@ -2306,6 +2308,7 @@ type TpvScene3DPlanets=class;
        class function CreatePlanetWaterRenderDescriptorSetLayout(const aVulkanDevice:TpvVulkanDevice):TpvVulkanDescriptorSetLayout; static;
        class function CreatePlanetWaterRenderDescriptorPool(const aVulkanDevice:TpvVulkanDevice;const aCountInFlightFrames:TpvSizeInt):TpvVulkanDescriptorPool; static;
        class function CreatePlanetRainAtmosphereDescriptorSetLayout(const aVulkanDevice:TpvVulkanDevice):TpvVulkanDescriptorSetLayout; static;
+       class function CreatePlanetRainAtmosphereDescriptorPool(const aVulkanDevice:TpvVulkanDevice;const aCountInFlightFrames:TpvSizeInt):TpvVulkanDescriptorPool; static;
        class function CreatePlanetRainStreakSimulationDescriptorSetLayout(const aVulkanDevice:TpvVulkanDevice):TpvVulkanDescriptorSetLayout; static;
        class function CreatePlanetRainStreakSimulationDescriptorPool(const aVulkanDevice:TpvVulkanDevice;const aCountInFlightFrames:TpvSizeInt):TpvVulkanDescriptorPool; static;
        class function CreatePlanetRainStreakMeshGenerationDescriptorSetLayout(const aVulkanDevice:TpvVulkanDevice):TpvVulkanDescriptorSetLayout; static;
@@ -20158,6 +20161,34 @@ begin
                                           0,
                                           fVulkanRainDropIndicesBuffer.Size);
 
+ fRainAtmosphereDescriptorPool:=TpvScene3DPlanet.CreatePlanetRainAtmosphereDescriptorPool(TpvScene3DRendererInstance(aRendererInstance).Renderer.VulkanDevice,TpvScene3DRendererInstance(aRendererInstance).Renderer.CountInFlightFrames);
+
+ for InFlightFrameIndex:=0 to fCountInFlightFrames-1 do begin
+  fRainAtmosphereDescriptorSets[InFlightFrameIndex]:=TpvVulkanDescriptorSet.Create(fRainAtmosphereDescriptorPool,TpvScene3D(fScene3D).PlanetRainAtmosphereDescriptorSetLayout);
+  fRainAtmosphereDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(0,
+                                                                         0,
+                                                                         1,
+                                                                         TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                                                         [TVkDescriptorImageInfo.Create(TpvScene3D(fScene3D).GeneralComputeSampler.Handle,
+                                                                                                        fPlanet.fData.fRainMapImage.VulkanImageView.Handle,
+                                                                                                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
+                                                                         [],
+                                                                         [],
+                                                                         false);
+  fRainAtmosphereDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(1,
+                                                                         0,
+                                                                         1,
+                                                                         TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                                                         [TVkDescriptorImageInfo.Create(TpvScene3D(fScene3D).GeneralComputeSampler.Handle,
+                                                                                                        fPlanet.fData.fAtmosphereMapImage.VulkanImageView.Handle,
+                                                                                                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
+                                                                         [],
+                                                                         [],
+                                                                         false);
+  fRainAtmosphereDescriptorSets[InFlightFrameIndex].Flush;
+  TpvScene3DRendererInstance(aRendererInstance).Renderer.VulkanDevice.DebugUtils.SetObjectName(fRainAtmosphereDescriptorSets[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET,'TpvScene3DPlanet.TRendererInstance.fRainAtmosphereDescriptorSets['+IntToStr(InFlightFrameIndex)+']');
+ end;
+
  fRainStreakSimulationDescriptorPool:=TpvScene3DPlanet.CreatePlanetRainStreakSimulationDescriptorPool(TpvScene3DRendererInstance(aRendererInstance).Renderer.VulkanDevice,TpvScene3DRendererInstance(aRendererInstance).Renderer.CountInFlightFrames);
 
  fRainStreakMeshGenerationDescriptorPool:=TpvScene3DPlanet.CreatePlanetRainStreakMeshGenerationDescriptorPool(TpvScene3DRendererInstance(aRendererInstance).Renderer.VulkanDevice,TpvScene3DRendererInstance(aRendererInstance).Renderer.CountInFlightFrames);
@@ -20241,6 +20272,7 @@ begin
  for InFlightFrameIndex:=0 to fCountInFlightFrames-1 do begin
   FreeAndNil(fRainStreakSimulationDescriptorSets[InFlightFrameIndex]);
   FreeAndNil(fRainStreakMeshGenerationDescriptorSets[InFlightFrameIndex]);
+  FreeAndNil(fRainAtmosphereDescriptorSets[InFlightFrameIndex]);
  end;
 
  FreeAndNil(fVulkanRainDropBuffer);
@@ -20250,6 +20282,7 @@ begin
 
  FreeAndNil(fRainStreakMeshGenerationDescriptorPool);
  FreeAndNil(fRainStreakSimulationDescriptorPool);
+ FreeAndNil(fRainAtmosphereDescriptorPool);
 
  inherited Destroy;
 
@@ -22455,6 +22488,16 @@ begin
                    0);
  result.Initialize;
  aVulkanDevice.DebugUtils.SetObjectName(result.Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT,'TpvScene3DPlanet.PlanetRainAtmosphereDescriptorSetLayout');
+end;
+
+class function TpvScene3DPlanet.CreatePlanetRainAtmosphereDescriptorPool(const aVulkanDevice:TpvVulkanDevice;const aCountInFlightFrames:TpvSizeInt):TpvVulkanDescriptorPool;
+begin
+ result:=TpvVulkanDescriptorPool.Create(aVulkanDevice,
+                                        TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
+                                        aCountInFlightFrames);
+ result.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),2*aCountInFlightFrames);
+ result.Initialize;
+ aVulkanDevice.DebugUtils.SetObjectName(result.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'TpvScene3DPlanet.PlanetRainAtmosphereDescriptorPool');
 end;
 
 class function TpvScene3DPlanet.CreatePlanetRainStreakSimulationDescriptorSetLayout(const aVulkanDevice:TpvVulkanDevice):TpvVulkanDescriptorSetLayout;
