@@ -25,7 +25,7 @@ void applyPBRWetness(
   if(wetness.x > 0.0){
 
     // Calculate the scaled position and its derivatives for triplanar mapping
-    vec3 scaledPosition = position * 0.25; // Scale position for triplanar mapping
+    vec3 scaledPosition = position * 0.5; // Scale position for triplanar mapping
     vec3 dpdx = dFdx(scaledPosition), dpdy = dFdy(scaledPosition); // Calculate derivatives for texture gradients
 
     // Calculate the tangent space basis from the wetness normal
@@ -34,7 +34,7 @@ void applyPBRWetness(
     vec3 n = wetness.yzw, t = n.yzx - n.zxy, b = normalize(cross(n, t = normalize(t - dot(t, n))));
     mat3 tbn = mat3x3(t, b, n); 
 
-#define USE_PBR_WETNESS_BIPLANAR 1
+#define USE_PBR_WETNESS_BIPLANAR 0 // Set to 1 to use biplanar mapping, 0 for triplanar mapping    
 #if USE_PBR_WETNESS_BIPLANAR
     vec3 absNormal = abs(n);
     ivec3 majorAxis = ((absNormal.x > absNormal.y) && (absNormal.x > absNormal.z)) ? ivec3(0, 1, 2) : ((absNormal.y > absNormal.z) ? ivec3(1, 2, 0) : ivec3(2, 0, 1));
@@ -79,7 +79,7 @@ void applyPBRWetness(
       ( \
         (textureGrad(source, pos.yz, dpdx.yz, dpdy.yz).xyz * triplanarWeights.x) + \
         (textureGrad(source, pos.zx, dpdx.zx, dpdy.zx).xyz * triplanarWeights.y) + \
-        (textureGrad(source, pos.xy, dpdx.xy, dpdy.xy).xyz * triplanarWeights.z) \ 
+        (textureGrad(source, pos.xy, dpdx.xy, dpdy.xy).xyz * triplanarWeights.z) \
       )
     #define PBR_WETNESS_FETCH_TEXTURE_CHANNEL(source, pos, c) \
       dot( \
@@ -151,7 +151,7 @@ void applyPBRWetness(
           puddles.xyz,
           puddles.w // Apply puddles effect
         ),
-        fma(PBR_WETNESS_FETCH_TEXTURE(rainStreakNormalTexture, scaledPosition).xyz, vec3(2.0), vec3(-1.0)),
+        fma(PBR_WETNESS_FETCH_TEXTURE(rainStreakNormalTexture, scaledPosition).xyz, vec3(2.0), vec3(-1.0)), // Normal from rain texture
         streaks // Apply streaks effect
       );           
     normal = vec4(rainNormal, 1.0); // Set the normal vector for normal mapping
