@@ -27,7 +27,7 @@ layout(push_constant) uniform PushConstants {
 #endif
 
   uint tileMapResolution;
-
+  
 } pushConstants;
 
 #else
@@ -52,6 +52,11 @@ layout(push_constant) uniform PushConstants {
 #else
   uvec2 unusedPlanetData; // Ignored in this case  
 #endif
+
+  uint timeSeconds; // The current time in seconds
+  float timeFractionalSecond; // The current time in fractional seconds
+  uint unused0; // Padding to ensure 16-byte alignment
+  uint unused1; // Padding to ensure 16-byte alignment
 
 } pushConstants;
 #endif // defined(PLANET_WATER)

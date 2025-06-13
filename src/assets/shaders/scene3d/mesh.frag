@@ -565,7 +565,8 @@ void main() {
 #ifdef WETNESS
       vec4 wetnessNormal = vec4(0.0); 
       {
-        const vec4 wetness = getWetness();   
+        const vec4 wetness = getWetness();  
+        const float rainTime = float(uint(pushConstants.timeSecondsTimeFractionalSecondWidthHeight.x & 4095u)) + uintBitsToFloat(pushConstants.timeSecondsTimeFractionalSecondWidthHeight.y); 
         applyPBRWetness(
           wetness,
           inWorldSpacePosition,
@@ -578,7 +579,8 @@ void main() {
           RainTexture,
           RainNormalTexture,
           RainStreaksNormalTexture,
-          0.0
+          rainTime,
+          1.0
         );
       }
 #endif

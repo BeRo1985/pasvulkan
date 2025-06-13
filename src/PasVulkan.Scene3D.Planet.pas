@@ -1541,18 +1541,27 @@ type TpvScene3DPlanets=class;
                    PPlanetPushConstants=^TPlanetPushConstants;
                    TGrassPushConstants=packed record
                     ModelMatrix:TpvMatrix4x4;
+
                     ViewBaseIndex:TpvUInt32;
                     CountViews:TpvUInt32;
                     CountAllViews:TpvUInt32;
-                    MaximalCountBladesPerPatch:TpvUInt32;
+                    MaximalCountBladesPerPatch:TpvUInt32;                    
+                    
                     MaximumDistance:TpvFloat;
                     GrassHeight:TpvFloat;
                     GrassThickness:TpvFloat;
                     Time:TpvFloat;
+                    
                     TileMapResolution:TpvUInt32;
                     TileResolution:TpvUInt32;
                     LOD:TpvUInt32;
                     FrameIndex:TpvUInt32;
+                    
+                    TimeSeconds:TpvUInt32;
+                    TimeFractionalSecond:TpvFloat;
+                    Unused0:TpvUInt32;
+                    Unused1:TpvUInt32;
+
                     MaximumCountTaskIndices:TpvUInt32;
                     MaximumCountVertices:TpvUInt32;
                     MaximumCountIndices:TpvUInt32;
@@ -1681,6 +1690,10 @@ type TpvScene3DPlanets=class;
                     FrameIndex:TpvUInt32;
                     Reversed:TpvUInt32;
                     PlanetData:TVkDeviceAddress;
+                    TimeSeconds:TpvUInt32;
+                    TimeFractionalSecond:TpvFloat;
+                    Unused0:TpvUInt32;
+                    Unused1:TpvUInt32;
                    end;
                    PPlanetPushConstants=^TPlanetPushConstants;
                    TGrassPushConstants=packed record
@@ -1700,6 +1713,11 @@ type TpvScene3DPlanets=class;
                     TileResolution:TpvUInt32;
                     ResolutionXY:TpvUInt32;
                     FrameIndex:TpvUInt32;
+
+                    TimeSeconds:TpvUInt32;
+                    TimeFractionalSecond:TpvFloat;
+                    Unused0:TpvUInt32;
+                    Unused1:TpvUInt32;
 
                     Jitter:TpvVector2;
                     InvocationVariants:TpvUInt32;
@@ -16581,6 +16599,10 @@ begin
          fGrassPushConstants.MaximalCountBladesPerPatch:=8;
          fGrassPushConstants.LOD:=Max(0,IntLog2(Planet.fHeightMapResolution)-IntLog2(Planet.fVisualResolution));
          fGrassPushConstants.FrameIndex:=0;
+         fGrassPushConstants.TimeSeconds:=trunc(TpvScene3D(Planet.Scene3D).SceneTimes^[aInFlightFrameIndex]);
+         fGrassPushConstants.TimeFractionalSecond:=frac(TpvScene3D(Planet.Scene3D).SceneTimes^[aInFlightFrameIndex]);
+         fGrassPushConstants.Unused0:=0;
+         fGrassPushConstants.Unused1:=0;
          fGrassPushConstants.MaximumCountTaskIndices:=Planet.fVisualResolution*Planet.fVisualResolution;
          fGrassPushConstants.MaximumCountVertices:=Planet.fMaxGrassVertices;
          fGrassPushConstants.MaximumCountIndices:=Planet.fMaxGrassIndices;
@@ -18342,6 +18364,10 @@ begin
       end else begin
        fPlanetPushConstants.PlanetData:=0;
       end;
+      fPlanetPushConstants.TimeSeconds:=trunc(TpvScene3D(Planet.Scene3D).SceneTimes^[aInFlightFrameIndex]);
+      fPlanetPushConstants.TimeFractionalSecond:=frac(TpvScene3D(Planet.Scene3D).SceneTimes^[aInFlightFrameIndex]);
+      fPlanetPushConstants.Unused0:=0;
+      fPlanetPushConstants.Unused1:=0;
 
       aCommandBuffer.CmdPushConstants(fPlanetPipelineLayout.Handle,
                                       fShaderStageFlags,
@@ -18489,6 +18515,10 @@ begin
       end else begin
        fGrassPushConstants.Jitter:=TpvVector2.Null;
       end;
+      fGrassPushConstants.TimeSeconds:=trunc(TpvScene3D(Planet.Scene3D).SceneTimes^[aInFlightFrameIndex]);
+      fGrassPushConstants.TimeFractionalSecond:=frac(TpvScene3D(Planet.Scene3D).SceneTimes^[aInFlightFrameIndex]);
+      fGrassPushConstants.Unused0:=0;
+      fGrassPushConstants.Unused1:=0;
       fGrassPushConstants.InvocationVariants:=Planet.fGrassInvocationVariants;
       fGrassPushConstants.FrameIndex:=aFrameIndex;
 {     if TpvScene3D(fScene3D).UseBufferDeviceAddress then begin

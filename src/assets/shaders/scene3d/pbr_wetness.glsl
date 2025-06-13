@@ -15,7 +15,8 @@ void applyPBRWetness(
   const in sampler2D rainTexture, // texture for rain effect
   const in sampler2D rainNormalTexture, // texture for rain normal mapping
   const in sampler2D rainStreakNormalTexture, // texture for rain normal mapping
-  const float rainTime
+  const in float rainTime,
+  const in float rainSpeed
 ){
 
   normal = vec4(0.0, 0.0, 1.0, 0.0); // Initialize output normal
@@ -43,7 +44,7 @@ void applyPBRWetness(
     );
 
     // Calculate fractional time for puddles effect
-    vec2 fracPuddleTimes = fract(vec2(rainTime, rainTime + 0.5)); 
+    vec2 fracPuddleTimes = fract(vec2(vec2(rainTime * rainSpeed) + vec2(0.0, 0.5))); // Offset for staggered puddles effect
 
     // Puddles effect based on rain texture
     vec2 puddleValues = vec2( 
@@ -87,7 +88,7 @@ void applyPBRWetness(
           rainTexture,
           vec2(
             streaksUV.x,
-            fract(streaksUV.y + (rainTime * 0.2))
+            fract(streaksUV.y + (rainTime * rainSpeed * 0.2))
           )
         ).z - 0.5,
         0.0,

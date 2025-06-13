@@ -7289,7 +7289,7 @@ begin
   MeshStagePushConstants^.TimeFractionalSecond:=frac(Time);
   MeshStagePushConstants^.Width:=fScaledWidth;
   MeshStagePushConstants^.Height:=fScaledHeight;
-
+  
   fSetGlobalResourcesDone[aRenderPass]:=false;
 
   Pipeline:=nil;

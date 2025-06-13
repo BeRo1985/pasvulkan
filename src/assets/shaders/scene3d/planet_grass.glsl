@@ -20,6 +20,11 @@ layout(push_constant) uniform PushConstants {
   uint lod;
   int frameIndex; 
 
+  uint timeSeconds; // The current time in seconds
+  float timeFractionalSecond; // The current time in fractional seconds
+  uint unused0; // Padding to ensure 16-byte alignment
+  uint unused1; // Padding to ensure 16-byte alignment
+
 #if defined(MESH_SHADER_EMULATION)
   uint maximalCountTaskIndices;
   uint maximalCountVertices;

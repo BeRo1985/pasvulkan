@@ -414,6 +414,7 @@ void main(){
   albedo.xyz *= mix(planetData.minMaxHeightFactor.y, planetData.minMaxHeightFactor.w, pow(clamp((surfaceHeight - planetData.minMaxHeightFactor.x) / (planetData.minMaxHeightFactor.z - planetData.minMaxHeightFactor.x), 0.0, 1.0), planetData.heightFactorExponent));
 
   vec4 wetnessNormal = vec4(0.0);
+  const float rainTime = float(uint(pushConstants.timeSeconds & 4095u)) + pushConstants.timeFractionalSecond;         
   applyPBRWetness(
     wetness,
     inWorldSpacePosition,
@@ -426,7 +427,8 @@ void main(){
     RainTexture,
     RainNormalTexture,
     RainStreaksNormalTexture,
-    0.0
+    rainTime,
+    1.0
   );
 
   vec3 normal = normalize(mat3(workTangent, workBitangent, workNormal) * blendNormals(normalize(fma(normalHeight.xyz, vec3(2.0), vec3(-1.0))), wetnessNormal.xyz, wetnessNormal.w));

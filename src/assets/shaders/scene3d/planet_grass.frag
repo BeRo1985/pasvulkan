@@ -233,6 +233,7 @@ void main(){
   vec4 occlusionRoughnessMetallic = vec4(fakeSelfShadowing, 0.25, 0.0, 0.0);*/
 
   vec4 wetnessNormal = vec4(0.0);
+  const float rainTime = float(uint(pushConstants.timeSeconds & 4095u)) + pushConstants.timeFractionalSecond;         
   applyPBRWetness(
     wetness,
     inWorldSpacePosition,
@@ -245,7 +246,8 @@ void main(){
     RainTexture,
     RainNormalTexture,
     RainStreaksNormalTexture,
-    0.0
+    rainTime,
+    1.0
   );
 
   // The blade normal is rotated slightly to the left or right depending on the x texture coordinate for
