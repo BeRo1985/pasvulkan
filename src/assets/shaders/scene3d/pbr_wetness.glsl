@@ -110,11 +110,8 @@ void applyPBRWetness(
     normal = vec4(rainNormal, 1.0); // Set the normal vector for normal mapping
 
     // Calculate the wetness and rain factors
-    float wet = clamp(wetness.x, 0.0, 1.0); // Clamp wetness factor to [0.0, 1.0]
+    float wet = 1.0 - (clamp(wetness.x, 0.0, 1.0) * 0.66); // Clamp wetness factor to [0.0, 1.0]
     float rain = clamp(puddles.w + streaks, 0.0, 1.0); // Get the maximum effect of puddles and streaks
-
-    // Apply wetness to roughness
-    roughness = mix(roughness * wet, 0.0, rain); // Apply wetness to roughness based on rain effect
 
     // Calculate the color based on wetness and metallic factor
     vec3 dryColor = albedo.xyz;
@@ -122,8 +119,9 @@ void applyPBRWetness(
     wetColor = mix(dryColor, wetColor, underRoof); 
     albedo.xyz = wetColor; // Set the albedo color based on wetness and rain effect
 
-    // Apply wetness to metallic
+    // Apply wetness to metallic and roughness
     metallic = mix(metallic, 0.0, rain); // Decrease metallic based on rain and wetness
+    roughness = mix(roughness * wet, 0.0, rain); // Apply wetness to roughness based on rain effect
 
   }
 
