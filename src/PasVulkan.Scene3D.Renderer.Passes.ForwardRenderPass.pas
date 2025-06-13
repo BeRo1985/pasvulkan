@@ -812,7 +812,7 @@ begin
    fPassVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(10,
                                                                       0,
                                                                       2,
-                                                                      TVkDescriptorType(VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE),
+                                                                      TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
                                                                       [TVkDescriptorImageInfo.Create(fInstance.Renderer.ClampedSampler.Handle,
                                                                                                      fInstance.Renderer.Scene3D.RainTexture.ImageView.Handle,
                                                                                                      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
