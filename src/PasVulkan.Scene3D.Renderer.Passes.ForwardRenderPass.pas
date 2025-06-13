@@ -677,11 +677,16 @@ begin
                                             1,
                                             TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                             []);
+  fPassVulkanDescriptorSetLayout.AddBinding(10,
+                                            VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                            2,
+                                            TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                            []);
  end;
  fPassVulkanDescriptorSetLayout.Initialize;
 
  fPassVulkanDescriptorPool:=TpvVulkanDescriptorPool.Create(fInstance.Renderer.VulkanDevice,TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),fInstance.Renderer.CountInFlightFrames);
- fPassVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,19*fInstance.Renderer.CountInFlightFrames);
+ fPassVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,21*fInstance.Renderer.CountInFlightFrames);
  fPassVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,3*fInstance.Renderer.CountInFlightFrames);
  fPassVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,3*fInstance.Renderer.CountInFlightFrames);
  if assigned(fResourceWetnessMap) then begin
@@ -743,7 +748,7 @@ begin
                                                                      false);
   DescriptorImageInfos:=nil;
   try
-   // 0 = SSAO, 1 = Opaque frame buffer, 2 = Opaque depth buffer, 3 = Clouds shadow map, 4 = Wetness map 
+   // 0 = SSAO, 1 = Opaque frame buffer, 2 = Opaque depth buffer, 3 = Clouds shadow map
    SetLength(DescriptorImageInfos,4);
    if fInstance.Renderer.ScreenSpaceAmbientOcclusion then begin
     DescriptorImageInfos[0]:=TVkDescriptorImageInfo.Create(fInstance.Renderer.AmbientOcclusionSampler.Handle,
@@ -801,6 +806,19 @@ begin
                                                                       [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,
                                                                                                      fResourceWetnessMap.VulkanImageViews[InFlightFrameIndex].Handle,
                                                                                                      fResourceWetnessMap.ResourceTransition.Layout)],
+                                                                      [],
+                                                                      [],
+                                                                      false);
+   fPassVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(10,
+                                                                      0,
+                                                                      2,
+                                                                      TVkDescriptorType(VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE),
+                                                                      [TVkDescriptorImageInfo.Create(fInstance.Renderer.ClampedSampler.Handle,
+                                                                                                     fInstance.Renderer.Scene3D.RainTexture.ImageView.Handle,
+                                                                                                     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
+                                                                       TVkDescriptorImageInfo.Create(fInstance.Renderer.ClampedSampler.Handle,
+                                                                                                     fInstance.Renderer.Scene3D.RainNormalTexture.ImageView.Handle,
+                                                                                                     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
                                                                       [],
                                                                       [],
                                                                       false);

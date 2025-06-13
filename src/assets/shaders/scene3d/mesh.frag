@@ -201,6 +201,12 @@ layout(set = 1, binding = 9) uniform utexture2DMSArray uWetnessMap;
 #else
 layout(set = 1, binding = 9) uniform utexture2DArray uWetnessMap;
 #endif
+
+layout(set = 1, binding = 10) uniform sampler2D uRainTextures[]; // 0 = rain texture, 1 = rain normal texture
+
+#define RainTexture uRainMapTexture[0]
+#define RainNormalTexture uRainMapTexture[1]
+
 #endif
 
 #ifdef VOXELIZATION

@@ -117,6 +117,10 @@ layout(set = 2, binding = 0) uniform sampler2D uPlanetTextures[]; // 0 = height 
 layout(set = 2, binding = 0) uniform sampler2DArray uPlanetArrayTextures[]; // 0 = height map, 1 = normal map, 2 = tangent bitangent map
 
 #include "planet_textures.glsl"
+
+#define RainTexture uPlanetTextures[PLANET_TEXTURE_RAINTEXTURE]
+#define RainNormalTexture uPlanetTextures[PLANET_TEXTURE_RAINNORMALTEXTURE]
+
 #include "planet_wetness.glsl"
 #include "planet_grass.glsl"
 
