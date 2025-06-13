@@ -41,7 +41,7 @@ void applyPBRWetness(
     vec2 puddlesUV = vec2(
       dot(tangentSpaceBasis[0], position), 
       dot(tangentSpaceBasis[1], position)
-    );
+    ) * 0.25;
 
     // Calculate fractional time for puddles effect
     vec2 fracPuddleTimes = fract(vec2(vec2(rainTime * rainSpeed) + vec2(0.0, 0.5))); // Offset for staggered puddles effect
@@ -72,7 +72,7 @@ void applyPBRWetness(
     vec2 streaksUV = vec2(
       dot(tangentSpaceBasis[1], position),
       dot(tangentSpaceBasis[2], position)
-    );
+    ) * 0.25;
 
     // Calculate the rain streaks effect
     float underRoof = smoothstep(-0.3, 0.0, normalDotGround);
