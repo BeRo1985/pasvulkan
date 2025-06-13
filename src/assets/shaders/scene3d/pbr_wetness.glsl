@@ -64,7 +64,7 @@ vec2 pbrWetnessTextureNoise22(vec2 p){
 }
 
 vec4 pbrWetnessTextureNoTile(const in sampler2D tex, in vec2 uv, const in vec2 duvdx, const in vec2 duvdy){
-#if 0
+#if 1
   return textureGrad(tex, uv, duvdx, duvdy);
 #else
 
