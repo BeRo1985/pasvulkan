@@ -202,10 +202,11 @@ layout(set = 1, binding = 9) uniform utexture2DMSArray uWetnessMap;
 layout(set = 1, binding = 9) uniform utexture2DArray uWetnessMap;
 #endif
 
-layout(set = 1, binding = 10) uniform sampler2D uRainTextures[]; // 0 = rain texture, 1 = rain normal texture
+layout(set = 1, binding = 10) uniform sampler2D uRainTextures[]; // 0 = rain texture, 1 = rain normal texture, 2 = rain streaks normal texture 
 
-#define RainTexture uRainMapTexture[0]
-#define RainNormalTexture uRainMapTexture[1]
+#define RainTexture uRainTextures[0]
+#define RainNormalTexture uRainTextures[1]
+#define RainStreaksNormalTexture uRainTextures[2]
 
 #endif
 
@@ -573,7 +574,11 @@ void main() {
           wetnessNormal,
           metallic,            // metallic
           perceptualRoughness, // roughness 
-          occlusion            // occlusion
+          occlusion,           // occlusion
+          RainTexture,
+          RainNormalTexture,
+          RainStreaksNormalTexture,
+          0.0
         );
       }
 #endif

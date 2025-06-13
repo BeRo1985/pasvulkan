@@ -679,14 +679,14 @@ begin
                                             []);
   fPassVulkanDescriptorSetLayout.AddBinding(10,
                                             VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                                            2,
+                                            3,
                                             TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                             []);
  end;
  fPassVulkanDescriptorSetLayout.Initialize;
 
  fPassVulkanDescriptorPool:=TpvVulkanDescriptorPool.Create(fInstance.Renderer.VulkanDevice,TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),fInstance.Renderer.CountInFlightFrames);
- fPassVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,21*fInstance.Renderer.CountInFlightFrames);
+ fPassVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,22*fInstance.Renderer.CountInFlightFrames);
  fPassVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,3*fInstance.Renderer.CountInFlightFrames);
  fPassVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,3*fInstance.Renderer.CountInFlightFrames);
  if assigned(fResourceWetnessMap) then begin
@@ -811,13 +811,16 @@ begin
                                                                       false);
    fPassVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(10,
                                                                       0,
-                                                                      2,
+                                                                      3,
                                                                       TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
                                                                       [TVkDescriptorImageInfo.Create(fInstance.Renderer.ClampedSampler.Handle,
                                                                                                      fInstance.Renderer.Scene3D.RainTexture.ImageView.Handle,
                                                                                                      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
                                                                        TVkDescriptorImageInfo.Create(fInstance.Renderer.ClampedSampler.Handle,
                                                                                                      fInstance.Renderer.Scene3D.RainNormalTexture.ImageView.Handle,
+                                                                                                     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
+                                                                       TVkDescriptorImageInfo.Create(fInstance.Renderer.ClampedSampler.Handle,
+                                                                                                     fInstance.Renderer.Scene3D.RainStreaksNormalTexture.ImageView.Handle,
                                                                                                      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
                                                                       [],
                                                                       [],

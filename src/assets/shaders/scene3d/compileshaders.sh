@@ -1198,6 +1198,8 @@ cp -f "${originalDirectory}/rain_512.raw" "${tempPath}/rain_512.raw" || exit 1
 
 cp -f "${originalDirectory}/rain_normal_512.raw" "${tempPath}/rain_normal_512.raw" || exit 1
 
+cp -f "${originalDirectory}/rain_streaks_normal_512.raw" "${tempPath}/rain_streaks_normal_512.raw" || exit 1
+
 #############################################
 #   Deduplication code for shader binaries  # 
 #############################################
@@ -1371,7 +1373,7 @@ cp packscene3dshaders "${tempPath}/packscene3dshaders"
 cd "${tempPath}"
 
 # Get a sorted list of .spv files, bluenoise_1024x1024_rgba8.raw and virtualsymlinks.json without their full paths
-toCompressFiles=( $((ls *.spv; echo virtualsymlinks.json; echo bluenoise_1024x1024_rgba8.raw; echo rain_512.raw; echo rain_normal_512.raw) | sort) ) # find "${tempPath}" -maxdepth 1 -type f -name "*.c" -printf "%f\n"
+toCompressFiles=( $((ls *.spv; echo virtualsymlinks.json; echo bluenoise_1024x1024_rgba8.raw; echo rain_512.raw; echo rain_normal_512.raw; echo rain_streaks_normal_512.raw) | sort) ) # find "${tempPath}" -maxdepth 1 -type f -name "*.c" -printf "%f\n"
 
 if [ $USEZIP -eq 1 ]; then
 

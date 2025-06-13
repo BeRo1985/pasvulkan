@@ -120,6 +120,7 @@ layout(set = 2, binding = 0) uniform sampler2DArray uPlanetArrayTextures[]; // 0
 
 #define RainTexture uPlanetTextures[PLANET_TEXTURE_RAINTEXTURE]
 #define RainNormalTexture uPlanetTextures[PLANET_TEXTURE_RAINNORMALTEXTURE]
+#define RainStreaksNormalTexture uPlanetTextures[PLANET_TEXTURE_RAINSTREAKSNORMALTEXTURE]
 
 #include "planet_wetness.glsl"
 #include "planet_grass.glsl"
@@ -240,7 +241,11 @@ void main(){
     wetnessNormal,
     occlusionRoughnessMetallic.z, // metallic
     occlusionRoughnessMetallic.y, // roughness 
-    occlusionRoughnessMetallic.x  // occlusion
+    occlusionRoughnessMetallic.x, // occlusion
+    RainTexture,
+    RainNormalTexture,
+    RainStreaksNormalTexture,
+    0.0
   );
 
   // The blade normal is rotated slightly to the left or right depending on the x texture coordinate for

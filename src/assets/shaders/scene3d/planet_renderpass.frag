@@ -140,6 +140,7 @@ layout(set = 2, binding = 0) uniform sampler2DArray uPlanetArrayTextures[]; // 0
 
 #define RainTexture uPlanetTextures[PLANET_TEXTURE_RAINTEXTURE]
 #define RainNormalTexture uPlanetTextures[PLANET_TEXTURE_RAINNORMALTEXTURE]
+#define RainStreaksNormalTexture uPlanetTextures[PLANET_TEXTURE_RAINSTREAKSNORMALTEXTURE]
 
 #include "planet_wetness.glsl"
 #include "planet_renderpass.glsl"
@@ -421,7 +422,11 @@ void main(){
     wetnessNormal,
     occlusionRoughnessMetallic.z, // metallic
     occlusionRoughnessMetallic.y, // roughness 
-    occlusionRoughnessMetallic.x  // occlusion
+    occlusionRoughnessMetallic.x, // occlusion
+    RainTexture,
+    RainNormalTexture,
+    RainStreaksNormalTexture,
+    0.0
   );
 
   vec3 normal = normalize(mat3(workTangent, workBitangent, workNormal) * blendNormals(normalize(fma(normalHeight.xyz, vec3(2.0), vec3(-1.0))), wetnessNormal.xyz, wetnessNormal.w));

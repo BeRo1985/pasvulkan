@@ -69,7 +69,7 @@ void applyPBRWetness(
 
     // Calcularte the UV coordinates for rain streaks
     vec2 streaksUV = vec2(
-      dot(tangentSpaceBasis[1], position), 
+      dot(tangentSpaceBasis[1], position),
       dot(tangentSpaceBasis[2], position)
     );
 

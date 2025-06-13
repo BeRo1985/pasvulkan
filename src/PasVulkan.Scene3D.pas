@@ -3922,6 +3922,7 @@ type EpvScene3D=class(Exception);
        fBlueNoise2DTexture:TpvVulkanTexture;
        fRainTexture:TpvVulkanTexture;
        fRainNormalTexture:TpvVulkanTexture;
+       fRainStreaksNormalTexture:TpvVulkanTexture;
        fPasMPInstance:TPasMP;
        fLoadGLTFTimeDurationLock:TPasMPInt32;
        fLoadGLTFTimeDuration:TpvDouble;
@@ -4190,6 +4191,7 @@ type EpvScene3D=class(Exception);
        property BlueNoise2DTexture:TpvVulkanTexture read fBlueNoise2DTexture;
        property RainTexture:TpvVulkanTexture read fRainTexture;
        property RainNormalTexture:TpvVulkanTexture read fRainNormalTexture;
+       property RainStreaksNormalTexture:TpvVulkanTexture read fRainStreaksNormalTexture;
       public
        property DrawDataGeneration:TPasMPUInt64 read fDrawDataGeneration write fDrawDataGeneration;
       public
@@ -28368,6 +28370,8 @@ begin
 
  fRainNormalTexture:=nil;
 
+ fRainStreaksNormalTexture:=nil;
+
  fPlanets:=TpvScene3DPlanets.Create(self);
 
  fAtmospheres:=TpvScene3DAtmospheres.Create(self);
@@ -29362,6 +29366,56 @@ begin
        FreeAndNil(Stream);
       end;
 
+      ///////////////////////////////////////////////////////////////////////////////////////////////
+
+      Stream:=pvScene3DShaderVirtualFileSystem.GetFile('rain_streaks_normal_512.raw');
+      try
+
+       GetMem(Memory,Stream.Size);
+       try
+
+        Stream.Seek(0,soBeginning);
+        Stream.ReadBuffer(Memory^,Stream.Size);
+
+        fRainStreaksNormalTexture:=TpvVulkanTexture.CreateFromMemory(fVulkanDevice,
+                                                                     UniversalQueue,
+                                                                     UniversalCommandBuffer,
+                                                                     UniversalFence,
+                                                                     UniversalQueue,
+                                                                     UniversalCommandBuffer,
+                                                                     UniversalFence,
+                                                                     VK_FORMAT_R8G8B8A8_UNORM,
+                                                                     VK_SAMPLE_COUNT_1_BIT,
+                                                                     512,
+                                                                     512,
+                                                                     0,
+                                                                     0,
+                                                                     1,
+                                                                     0,
+                                                                     [TpvVulkanTextureUsageFlag.General,
+                                                                      TpvVulkanTextureUsageFlag.TransferDst,
+                                                                      TpvVulkanTextureUsageFlag.TransferSrc,
+                                                                      TpvVulkanTextureUsageFlag.Sampled],
+                                                                     Memory,
+                                                                     512*512*4,
+                                                                     false,
+                                                                     false,
+                                                                     0,
+                                                                     true,
+                                                                     false,
+                                                                     false,
+                                                                     0,
+                                                                     'TpvScene3D.RainStreaksNormalTexture'
+                                                                    );
+
+       finally
+        FreeMem(Memory);
+       end;
+
+      finally
+       FreeAndNil(Stream);
+      end;
+
      finally
       FreeAndNil(UniversalFence);
      end;
@@ -29742,6 +29796,8 @@ begin
  FreeAndNil(fRainTexture);
  
  FreeAndNil(fRainNormalTexture);
+ 
+ FreeAndNil(fRainStreaksNormalTexture);
 
  FreeAndNil(fAABBTreeLock);
 
