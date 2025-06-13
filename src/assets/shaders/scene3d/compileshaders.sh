@@ -20,7 +20,7 @@ USEBIN2C=0
 DELETEAFTERCOMPILE=1
 
 # Debug mode, if set to 1, debug information will generated and written into the spirv files 
-DEBUG=0
+DEBUG=1
 
 #############################################
 #            Initialization code            #

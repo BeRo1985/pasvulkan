@@ -155,10 +155,11 @@ vec3 computeWetnessAtDepth(const in vec2 uv,
     worldSpaceCoordinates /= worldSpaceCoordinates.w;
 
     // Convert world space coordinates to planet space by applying the inverse model matrix
-    vec3 planetSpaceCoordinates = (pushConstants.planetInverseModelMatrix * worldSpaceCoordinates).xyz;
+    vec4 planetSpaceCoordinates = pushConstants.planetInverseModelMatrix * worldSpaceCoordinates;
+    planetSpaceCoordinates /= planetSpaceCoordinates.w;
 
     // Calculate the distance from the center of the planet
-    float distanceFromCenter = length(planetSpaceCoordinates);
+    float distanceFromCenter = length(planetSpaceCoordinates.xyz);
 
     // If the distance is greater than the planet radius, we can skip further calculations
     if(distanceFromCenter > pushConstants.planetRadius){
@@ -169,11 +170,11 @@ vec3 computeWetnessAtDepth(const in vec2 uv,
     }else{
 
       // Get the rain and atmosphere map values
-      float rainFactor = texturePlanetOctahedralMap(uRainMap, planetSpaceCoordinates).x;
-      float atmosphereFactor = texturePlanetOctahedralMap(uAtmosphereMap, planetSpaceCoordinates).x;
+      float rainFactor = texturePlanetOctahedralMap(uRainMap, planetSpaceCoordinates.xyz).x;
+      float atmosphereFactor = texturePlanetOctahedralMap(uAtmosphereMap, planetSpaceCoordinates.xyz).x;
 
       // Combine the rain factor and atmosphere factor and apply visibility factor
-      float rainAtmosphereFactor = rainFactor * atmosphereFactor * visibilityFactor(planetSpaceCoordinates);
+      float rainAtmosphereFactor = rainFactor * atmosphereFactor * visibilityFactor(planetSpaceCoordinates.xyz);
 
       // Get world space direction from the center of the planet to the point
       vec3 worldSpaceDirectionFromPlanetCenter = normalize(worldSpaceCoordinates.xyz - pushConstants.planetInverseModelMatrix[3].xyz);
@@ -226,7 +227,8 @@ void main() {
   float zFarDepthValue = GetZFarDepthValue(uView.views[viewIndex].projectionMatrix);
 
   // Combine the inverse matrices to get the inverse view-projection matrix
-  mat4 inverseViewProjectionMatrix = inverseProjectionMatrix * inverseViewMatrix;
+  mat4 inverseViewProjectionMatrix = inverseViewMatrix * inverseProjectionMatrix;
+  //mat4 inverseViewProjectionMatrix = inverse(uView.views[viewIndex].projectionMatrix * uView.views[viewIndex].viewMatrix);
 
 #ifdef MSAA
 
