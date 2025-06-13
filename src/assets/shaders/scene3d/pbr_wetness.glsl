@@ -1,6 +1,108 @@
 #ifndef PBR_WETNESS_GLSL
 #define PBR_WETNESS_GLSL
 
+float pbrWetnessTextureHash11(uint q){
+	uvec2 n = q * uvec2(1597334673U, 3812015801U);
+	q = (n.x ^ n.y) * 1597334673U;
+  return ((uintBitsToFloat(uint(uint(((q >> 9u) & uint(0x007fffffu)) | uint(0x3f800000u))))) - 1.0);
+}
+
+float pbrWetnessTextureHash11(float p){
+	uvec2 n = uint(int(p)) * uvec2(1597334673U, 3812015801U);
+	uint q = (n.x ^ n.y) * 1597334673U;
+  return ((uintBitsToFloat(uint(uint(((q >> 9u) & uint(0x007fffffu)) | uint(0x3f800000u))))) - 1.0);
+}
+
+float pbrWetnessTextureHash12(uvec2 q){
+	q *= uvec2(1597334673U, 3812015801U);
+	uint n = (q.x ^ q.y) * 1597334673U;
+  return ((uintBitsToFloat(uint(uint(((n >> 9u) & uint(0x007fffffu)) | uint(0x3f800000u))))) - 1.0);
+}
+
+float pbrWetnessTextureHash12(vec2 p){
+	uvec2 q = uvec2(ivec2(p)) * uvec2(1597334673U, 3812015801U);
+	uint n = (q.x ^ q.y) * 1597334673U;
+  return ((uintBitsToFloat(uint(uint(((n >> 9u) & uint(0x007fffffu)) | uint(0x3f800000u))))) - 1.0);
+}
+
+vec2 pbrWetnessTextureHash22(uvec2 q){
+  q *= uvec2(1597334673U, 3812015801U);
+  q = (q.x ^ q.y) * uvec2(1597334673U, 3812015801U);
+  return vec2(vec2(uintBitsToFloat(uvec2(uvec2(((q >> 9u) & uvec2(0x007fffffu)) | uvec2(0x3f800000u))))) - vec2(1.0));
+}
+
+vec2 pbrWetnessTextureHash22(vec2 p){
+  uvec2 q = uvec2(ivec2(p)) * uvec2(1597334673U, 3812015801U);
+  q = (q.x ^ q.y) * uvec2(1597334673U, 3812015801U);
+  return vec2(vec2(uintBitsToFloat(uvec2(uvec2(((q >> 9u) & uvec2(0x007fffffu)) | uvec2(0x3f800000u))))) - vec2(1.0));
+}
+
+float pbrWetnessTextureNoise11(float p){
+  float f = fract(p);
+  p -= f;
+  f = (f * f) * (3.0 - (2.0 * f));
+  return mix(pbrWetnessTextureHash11(p + 0.0), pbrWetnessTextureHash11(p + 1.0), f); 
+}
+
+float pbrWetnessTextureNoise12(vec2 p){
+  vec2 f = fract(p);
+  p -= f;
+  f = (f * f) * (3.0 - (2.0 * f));
+  vec2 n = vec2(0.0, 1.0);
+  return mix(mix(pbrWetnessTextureHash12(p + n.xx), pbrWetnessTextureHash12(p + n.yx), f.x),
+             mix(pbrWetnessTextureHash12(p + n.xy), pbrWetnessTextureHash12(p + n.yy), f.x), f.y);
+}
+
+vec2 pbrWetnessTextureNoise22(vec2 p){
+  vec2 f = fract(p);
+  p -= f;
+  f = (f * f) * (3.0 - (2.0 * f));
+  vec2 n = vec2(0.0, 1.0);
+  return mix(mix(pbrWetnessTextureHash22(p + n.xx), pbrWetnessTextureHash22(p + n.yx), f.x),
+             mix(pbrWetnessTextureHash22(p + n.xy), pbrWetnessTextureHash22(p + n.yy), f.x), f.y);
+  
+}
+
+vec4 pbrWetnessTextureNoTile(const in sampler2D tex, in vec2 uv, const in vec2 duvdx, const in vec2 duvdy){
+#if 0
+  return textureGrad(tex, uv, duvdx, duvdy);
+#else
+
+  // sample variation pattern   
+  float k = clamp(pbrWetnessTextureNoise12(uv), 0.0, 1.0); // low-frequency noise lookup per hash function
+    
+  // compute index for 8 variation patterns in total  
+  float l = k * 8.0;
+  float ia = floor(l);
+  float f = l - ia;
+  float ib = ia + 1.0;
+    
+  // offsets for the different virtual patterns      
+#if 1
+  vec2 offa = fma(pbrWetnessTextureNoise22(vec2(13.0, 17.0) * ia), vec2(2.0), vec2(-1.0));
+  vec2 offb = fma(pbrWetnessTextureNoise22(vec2(13.0, 17.0) * ib), vec2(2.0), vec2(-1.0));
+#else 
+  vec2 offa = sin(vec2(3.0, 7.0) * ia); // can replace with any other hash
+  vec2 offb = sin(vec2(3.0, 7.0) * ib); // can replace with any other hash 
+#endif
+
+  // sample the two closest virtual patterns   
+  vec4 cola = textureGrad(tex, uv + offa, duvdx, duvdy);
+  vec4 colb = textureGrad(tex, uv + offb, duvdx, duvdy);
+    
+  // interpolate between the two virtual patterns  
+  return mix(cola, colb, smoothstep(0.2, 0.8, f - (0.1 * dot(cola - colb, vec4(1.0)))));
+#endif
+}
+
+vec4 pbrWetnessTextureNoTile(const in sampler2D tex, in vec2 uv){
+  // Calculate the derivatives for texture gradients
+  vec2 dpdx = dFdx(uv), dpdy = dFdy(uv);
+  
+  // Sample the texture without tiling
+  return pbrWetnessTextureNoTile(tex, uv, dpdx, dpdy);
+}
+
 // Wetness for PBR materials
 
 void applyPBRWetness(
@@ -98,17 +200,17 @@ void applyPBRWetness(
 
     // UV mapping for puddles effect
     vec2 puddlesUV = vec2(
-      dot(tangentSpaceBasis[0], scaledPosition), 
-      dot(tangentSpaceBasis[1], scaledPosition)
-    );
+      dot(tangentSpaceBasis[0], position), 
+      dot(tangentSpaceBasis[1], position)
+    ) * 0.25;
 
     // Calculate fractional time for puddles effect
     vec2 fracPuddleTimes = fract(vec2(vec2(rainTime * rainSpeed) + vec2(0.0, 0.5))); // Offset for staggered puddles effect
 
     // Puddles effect based on rain texture
     vec2 puddleValues = vec2( 
-      texture(rainTexture, puddlesUV.xy).x,  
-      texture(rainTexture, puddlesUV.yx).x) - (vec2(1.0) - fracPuddleTimes); 
+      pbrWetnessTextureNoTile(rainTexture, puddlesUV.xy).x,  
+      pbrWetnessTextureNoTile(rainTexture, puddlesUV.yx).x) - (vec2(1.0) - fracPuddleTimes); 
     puddleValues =
       clamp(
         (vec2(1.0) - vec2(
@@ -119,7 +221,7 @@ void applyPBRWetness(
     vec4 puddles = vec4(
         mix(
           vec3(0.0, 0.0, 1.0),
-          fma(texture(rainNormalTexture, puddlesUV).xyz, vec3(2.0), vec3(-1.0)),
+          fma(pbrWetnessTextureNoTile(rainNormalTexture, puddlesUV).xyz, vec3(2.0), vec3(-1.0)),
           max(puddleValues.x, puddleValues.y)
         ),
         max(puddleValues.x, puddleValues.y)
