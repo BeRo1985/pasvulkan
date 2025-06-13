@@ -25,22 +25,24 @@ void applyPBRWetness(
   if(wetness.x > 0.0){
 
     // Calculate the scaled position and its derivatives for triplanar mapping
-    vec3 scaledPosition = position * 0.5; // Scale position for triplanar mapping
+    vec3 scaledPosition = position * 1.0; // Scale position for triplanar mapping
     vec3 dpdx = dFdx(scaledPosition), dpdy = dFdy(scaledPosition); // Calculate derivatives for texture gradients
+
+    vec3 up = normalize(wetness.yzw);
 
     // Calculate the tangent space basis from the wetness normal
     // wetness.yzw is the normal from the ground, we need to calculate the tangent and bitangent vectors
     // to create a tangent space basis for triplanar mapping
-    vec3 n = wetness.yzw, t = n.yzx - n.zxy, b = normalize(cross(n, t = normalize(t - dot(t, n))));
+    vec3 n = up, t = n.yzx - n.zxy, b = normalize(cross(n, t = normalize(t - dot(t, n))));
     mat3 tbn = mat3x3(t, b, n); 
 
-#define USE_PBR_WETNESS_BIPLANAR 0 // Set to 1 to use biplanar mapping, 0 for triplanar mapping    
+#define USE_PBR_WETNESS_BIPLANAR 1 // Set to 1 to use biplanar mapping, 0 for triplanar mapping    
 #if USE_PBR_WETNESS_BIPLANAR
-    vec3 absNormal = abs(n);
+    vec3 absNormal = abs(up);
     ivec3 majorAxis = ((absNormal.x > absNormal.y) && (absNormal.x > absNormal.z)) ? ivec3(0, 1, 2) : ((absNormal.y > absNormal.z) ? ivec3(1, 2, 0) : ivec3(2, 0, 1));
     ivec3 minorAxis = ((absNormal.x < absNormal.y) && (absNormal.x < absNormal.z)) ? ivec3(0, 1, 2) : ((absNormal.y < absNormal.z) ? ivec3(1, 2, 0) : ivec3(2, 0, 1));
     ivec3 medianAxis = (ivec3(3) - minorAxis) - majorAxis;
-    vec2 biplanarWeights = pow(clamp((vec2(normal[majorAxis.x], normal[medianAxis.x]) - vec2(0.5773)) / vec2(1.0 - 0.5773), vec2(0.0), vec2(1.0)), vec2(8.0 * 0.125));
+    vec2 biplanarWeights = pow(clamp((vec2(absNormal[majorAxis.x], absNormal[medianAxis.x]) - vec2(0.5773)) / vec2(1.0 - 0.5773), vec2(0.0), vec2(1.0)), vec2(8.0 * 0.125));
     float totalWeight = biplanarWeights.x + biplanarWeights.y;
     if(totalWeight > 0.0){
       biplanarWeights /= totalWeight; // Normalize the weights
@@ -62,7 +64,7 @@ void applyPBRWetness(
       )
 #else
     // Calculate the triplanar weights based on the tangent space basis
-    vec3 triplanarWeights = abs(tbn[2]);
+    vec3 triplanarWeights = abs(up);
     {
       // pow(triplanarWeights, vec3(8.0) => 3x sq 
       triplanarWeights *= triplanarWeights; 
@@ -92,12 +94,12 @@ void applyPBRWetness(
       )
 #endif
 
-    float normalDotGround = dot(tangentSpaceBasis[2], tbn[2]); // Dot product with ground normal to determine wetness effect on normal
+    float normalDotUp = dot(tangentSpaceBasis[2], up); // Dot product with ground normal to determine wetness effect on normal
 
     // UV mapping for puddles effect
     vec2 puddlesUV = vec2(
-      dot(tbn[0], scaledPosition), 
-      dot(tbn[1], scaledPosition)
+      dot(tangentSpaceBasis[0], scaledPosition), 
+      dot(tangentSpaceBasis[1], scaledPosition)
     );
 
     // Calculate fractional time for puddles effect
@@ -122,15 +124,15 @@ void applyPBRWetness(
         ),
         max(puddleValues.x, puddleValues.y)
       ) * 
-      clamp((normalDotGround - 0.2) * 5.0, 0.0, 1.0) * // Puddles only on top 
+      smoothstep(0.8, 1.0, normalDotUp) * // Puddles only on top 
       wetness.x; // Apply wetness factor to puddles, no rain, no puddles 
 
     // Calculate the rain streaks effect
-    float underRoof = smoothstep(-0.3, 0.0, normalDotGround);
+    float underRoof = smoothstep(-0.3, 0.0, normalDotUp);
     float streaks = PBR_WETNESS_FETCH_TEXTURE_CHANNEL(rainTexture, scaledPosition, 1) * // Get rain streaks from the texture
-                    (1.0 - clamp((normalDotGround - 0.05) * 20.0, 0.0, 1.0)) * // Streaks not on top, only on sides 
+                    smoothstep(0.97, 0.9, normalDotUp) *  // Streaks not on top, only on sides 
                     wetness.x; // Apply wetness factor to streaks, no rain, no streaks
-    vec3 offsetedPosition = scaledPosition + (tbn[2] * (rainTime * rainSpeed * 0.2));
+    vec3 offsetedPosition = scaledPosition + (up * (rainTime * rainSpeed * 0.2));
     streaks = smoothstep(
       0.0,
       0.1,
@@ -169,6 +171,13 @@ void applyPBRWetness(
     // Apply wetness to metallic and roughness
     metallic = mix(metallic, 0.0, rain); // Decrease metallic based on rain and wetness
     roughness = mix(roughness * wet, 0.0, rain); // Apply wetness to roughness based on rain effect
+
+#if 0
+    albedo.xyz = vec3(rainNormal.xyz);
+    metallic = 0.0;
+    roughness = 1.0;
+    occlusion = 1.0;
+#endif
 
   }
 
