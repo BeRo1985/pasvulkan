@@ -3678,6 +3678,7 @@ type EpvScene3D=class(Exception);
        fDefaultParticleImage:TImage;
        fDefaultParticleTexture:TTexture;
        fGeneralComputeSampler:TpvVulkanSampler;
+       fGeneralRepeatingSampler:TpvVulkanSampler;
        fPlanetDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fPlanetCullDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fPlanetGrassCullAndMeshGenerationDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
@@ -4205,6 +4206,7 @@ type EpvScene3D=class(Exception);
        property VulkanDevice:TpvVulkanDevice read fVulkanDevice;
        property VulkanPipelineCache:TpvVulkanPipelineCache read fVulkanPipelineCache;
        property GeneralComputeSampler:TpvVulkanSampler read fGeneralComputeSampler;
+       property GeneralRepeatingSampler:TpvVulkanSampler read fGeneralRepeatingSampler;
        property RaytracingBLASManager:TpvRaytracing read fRaytracing;
        property RaytracingBLASManagerLock:TPasMPMultipleReaderSingleWriterLock read fRaytracingLock;
        property PlanetDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fPlanetDescriptorSetLayout;
@@ -28800,6 +28802,24 @@ begin
                                                   false);
   fVulkanDevice.DebugUtils.SetObjectName(fGeneralComputeSampler.Handle,VK_OBJECT_TYPE_SAMPLER,'TpvScene3D.fGeneralComputeSampler');
 
+  fGeneralRepeatingSampler:=TpvVulkanSampler.Create(fVulkanDevice,
+                                                  VK_FILTER_LINEAR,
+                                                  VK_FILTER_LINEAR,
+                                                  VK_SAMPLER_MIPMAP_MODE_NEAREST,
+                                                  VK_SAMPLER_ADDRESS_MODE_REPEAT,
+                                                  VK_SAMPLER_ADDRESS_MODE_REPEAT,
+                                                  VK_SAMPLER_ADDRESS_MODE_REPEAT,
+                                                  0.0,
+                                                  false,
+                                                  1.0,
+                                                  false,
+                                                  VK_COMPARE_OP_ALWAYS,
+                                                  0.0,
+                                                  65535.0,
+                                                  VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK,
+                                                  false);
+  fVulkanDevice.DebugUtils.SetObjectName(fGeneralRepeatingSampler.Handle,VK_OBJECT_TYPE_SAMPLER,'TpvScene3D.fGeneralRepeatingSampler');
+
   fPlanetDescriptorSetLayout:=TpvScene3DPlanet.CreatePlanetDescriptorSetLayout(fVulkanDevice,fMeshShaderSupport);
 
   fPlanetCullDescriptorSetLayout:=TpvScene3DPlanet.CreatePlanetCullDescriptorSetLayout(fVulkanDevice);
@@ -29531,6 +29551,8 @@ begin
  end;
 
  FreeAndNil(fGeneralComputeSampler);
+
+ FreeAndNil(fGeneralRepeatingSampler);
 
  FreeAndNil(fPlanetDescriptorSetLayout);
 
