@@ -1266,6 +1266,8 @@ type EpvScene3D=class(Exception);
                      CastingShadows:boolean;
                      ReceiveShadows:boolean;
                      ForceRayOpaque:boolean;
+                     NoWetness:boolean;
+                     ExtendedWetness:boolean;
                      NormalTexture:TTextureReference;
                      NormalTextureScale:TpvFloat;
                      OcclusionTexture:TTextureReference;
@@ -1298,6 +1300,8 @@ type EpvScene3D=class(Exception);
                      CastingShadows:true;
                      ReceiveShadows:true;
                      ForceRayOpaque:false;
+                     NoWetness:false;
+                     ExtendedWetness:false;
                      NormalTexture:(Texture:nil;TexCoord:0;Transform:(Active:false;Offset:(x:0.0;y:0.0);Rotation:0.0;Scale:(x:1.0;y:1.0)));
                      NormalTextureScale:1.0;
                      OcclusionTexture:(Texture:nil;TexCoord:0;Transform:(Active:false;Offset:(x:0.0;y:0.0);Rotation:0.0;Scale:(x:1.0;y:1.0)));
@@ -9342,6 +9346,8 @@ begin
   fData.CastingShadows:=(Flags and 1)<>0;
   fData.ReceiveShadows:=(Flags and 2)<>0;
   fData.ForceRayOpaque:=(Flags and 4)<>0;
+  fData.NoWetness:=(Flags and 8)<>0;
+  fData.ExtendedWetness:=(Flags and 16)<>0;
 
   fData.AlphaCutOff:=StreamIO.ReadFloat;
 
@@ -9675,6 +9681,12 @@ begin
   if fData.ForceRayOpaque then begin
    Flags:=Flags or 4;
   end;
+  if fData.NoWetness then begin
+   Flags:=Flags or 8;
+  end;
+  if fData.ExtendedWetness then begin
+   Flags:=Flags or 16;
+  end;
   StreamIO.WriteUInt32(Flags);
 
   StreamIO.WriteFloat(fData.AlphaCutOff);
@@ -9920,6 +9932,8 @@ begin
   fData.CastingShadows:=pos('_noshadowcasting',LowerCaseName)=0;
   fData.ReceiveShadows:=pos('_noshadowreceive',LowerCaseName)=0;
   fData.ForceRayOpaque:=pos('_forcerayopaque',LowerCaseName)<>0;
+  fData.NoWetness:=pos('_nowetness',LowerCaseName)<>0;
+  fData.ExtendedWetness:=pos('_extendedwetness',LowerCaseName)<>0;
 
   begin
    fData.AlphaCutOff:=aSourceMaterial.AlphaCutOff;
@@ -10434,6 +10448,14 @@ begin
  fShaderData:=DefaultShaderData;
 
  fShaderData.Flags:=0;
+
+ if fData.ExtendedWetness then begin
+  fShaderData.Flags:=fShaderData.Flags or (TpvUInt32(1) shl 26);
+ end;
+
+ if fData.NoWetness then begin
+  fShaderData.Flags:=fShaderData.Flags or (TpvUInt32(1) shl 27);
+ end;
 
  if fData.ForceRayOpaque then begin
   fShaderData.Flags:=fShaderData.Flags or (TpvUInt32(1) shl 28);

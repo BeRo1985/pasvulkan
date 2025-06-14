@@ -247,7 +247,8 @@ void main(){
     RainNormalTexture,
     RainStreaksNormalTexture,
     rainTime,
-    1.0
+    1.0,
+    true // Extended effect, which includes the rain streaks and puddles
   );
 
   // The blade normal is rotated slightly to the left or right depending on the x texture coordinate for

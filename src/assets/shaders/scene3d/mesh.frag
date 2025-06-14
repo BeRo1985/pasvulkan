@@ -564,7 +564,7 @@ void main() {
 
 #ifdef WETNESS
       vec4 wetnessNormal = vec4(0.0); 
-      {
+      if((flags & (1u << 27u)) == 0u){
         const vec4 wetness = getWetness();  
         const float rainTime = float(uint(pushConstants.timeSecondsTimeFractionalSecondWidthHeight.x & 4095u)) + uintBitsToFloat(pushConstants.timeSecondsTimeFractionalSecondWidthHeight.y); 
         applyPBRWetness(
@@ -580,7 +580,8 @@ void main() {
           RainNormalTexture,
           RainStreaksNormalTexture,
           rainTime,
-          1.0
+          1.0,
+          (flags & (1u << 26u)) != 0u // Extended effects
         );
       }
 #endif

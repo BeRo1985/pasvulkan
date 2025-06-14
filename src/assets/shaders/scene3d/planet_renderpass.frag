@@ -428,7 +428,8 @@ void main(){
     RainNormalTexture,
     RainStreaksNormalTexture,
     rainTime,
-    1.0
+    1.0,
+    true // Extended effect, which includes the rain streaks and puddles
   );
 
   vec3 normal = normalize(mat3(workTangent, workBitangent, workNormal) * blendNormals(normalize(fma(normalHeight.xyz, vec3(2.0), vec3(-1.0))), wetnessNormal.xyz, wetnessNormal.w));
