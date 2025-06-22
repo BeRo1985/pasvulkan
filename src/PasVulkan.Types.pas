@@ -241,6 +241,8 @@ type PPpvInt8=^PpvInt8;
      PpvFileName=^TpvFileName;
      TpvFileName=String;
 
+     TpvUTF8StringDynamicArray=array of TpvUTF8String;
+
      PpvHandle=^TpvHandle;
      TpvHandle={$ifdef fpc}bitpacked{$endif} record
       Index:TpvUInt32;
