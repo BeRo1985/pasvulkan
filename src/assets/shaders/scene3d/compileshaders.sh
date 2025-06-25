@@ -445,15 +445,15 @@ compileshaderarguments=(
 
   "-V planet_grassmap_modification.comp -o ${tempPath}/planet_grassmap_modification_comp.spv"
 
-  "-V planet_rainmap_initialization.comp -o ${tempPath}/planet_rainmap_initialization_comp.spv"
+  "-V planet_precipitationmap_initialization.comp -o ${tempPath}/planet_precipitationmap_initialization_comp.spv"
 
-  "-V planet_rainmap_modification.comp -o ${tempPath}/planet_rainmap_modification_comp.spv"
+  "-V planet_precipitationmap_modification.comp -o ${tempPath}/planet_precipitationmap_modification_comp.spv"
 
   "-V planet_atmospheremap_initialization.comp -o ${tempPath}/planet_atmospheremap_initialization_comp.spv"
 
   "-V planet_atmospheremap_modification.comp -o ${tempPath}/planet_atmospheremap_modification_comp.spv"
 
-  "-V planet_rainatmospheremap.comp -o ${tempPath}/planet_rainatmospheremap_comp.spv"
+  "-V planet_precipitationatmospheremap.comp -o ${tempPath}/planet_precipitationatmospheremap_comp.spv"
 
   "-V planet_rainstreaks_simulation.comp -o ${tempPath}/planet_rainstreaks_simulation_comp.spv"
 

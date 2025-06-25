@@ -219,7 +219,7 @@ struct AtmosphereParameters {
 
 };
 
-const uint FLAGS_USE_RAIN_MAP = 1u << 0u;
+const uint FLAGS_USE_PRECIPITATION_MAP = 1u << 0u;
 const uint FLAGS_USE_ATMOSPHERE_MAP = 1u << 1u; 
 
 float getAtmosphereCullingSDF(const in AtmosphereCullingParameters CullingParameters, vec3 p){

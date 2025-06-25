@@ -4,7 +4,7 @@
 
 // This shader generates the wetness map for the planet in a screenspace manner, where the wetness map
 // is used by the forward rendering pass to apply wetness effects on the planet's surface.
-// It uses the rain and atmosphere maps to determine the wetness factor at each pixel on the screen.
+// It uses the precipitation and atmosphere maps to determine the wetness factor at each pixel on the screen.
 
 // If no wetness is used at all, the engine provides a dummy 16x16 wetness map with all values set to 0.0, 
 // so that the forward rendering pass can still render the planet without any wetness effects and without
@@ -58,9 +58,9 @@ layout(set = 0, binding = 1) uniform texture2D uDepthMap;
 #include "msaa_sample_positions.glsl"
 #endif
 
-// Planet descriptor set (for the rain and atmosphere maps)
+// Planet descriptor set (for the precipitation and atmosphere maps)
 
-layout(set = 1, binding = 0) uniform sampler2D uRainMap;
+layout(set = 1, binding = 0) uniform sampler2D uPrecipitationMap;
 
 layout(set = 1, binding = 1) uniform sampler2D uAtmosphereMap;
 
@@ -109,7 +109,7 @@ float GetZFarDepthValue(const in mat4 projectionMatrix){
 #include "quaternion.glsl"
 
 // A point is occluded if it is inside the OBB defined by the occlusionOBBCenter, occlusionOBBHalfSize, and occlusionOBBOrientation.
-// For to check if a point is inside a building or other occluder, where rain streaks should not be rendered. 
+// For to check if a point is inside a building or other occluder, where Precipitation streaks should not be rendered. 
 bool isOccluded(vec3 position){
   if(pushConstants.occlusionOBBHalfSize.w > 0.5){ 
     vec3 p = transformVectorByQuaternion(position.xyz - pushConstants.occlusionOBBCenter.xyz, pushConstants.occlusionOBBOrientation);
@@ -119,7 +119,7 @@ bool isOccluded(vec3 position){
   }
 }
 
-// Returns a factor for how much the rain streak should be occluded based on its position relative to the OBB. When inside the OBB, the
+// Returns a factor for how much the Precipitation streak should be occluded based on its position relative to the OBB. When inside the OBB, the
 // factor is 0.0 (invisible), and when outside the OBB, the factor is 1.0 (fully visible). The factor is smoothstep-ed to avoid hard edges.
 float visibilityFactor(vec3 position){
   if(pushConstants.occlusionOBBHalfSize.w > 0.5){ 
@@ -169,12 +169,12 @@ vec3 computeWetnessAtDepth(const in vec2 uv,
 
     }else{
 
-      // Get the rain and atmosphere map values
-      float rainFactor = texturePlanetOctahedralMap(uRainMap, planetSpaceCoordinates.xyz).x;
+      // Get the Precipitation and atmosphere map values
+      float wetnessFactor = clamp(texturePlanetOctahedralMap(uPrecipitationMap, planetSpaceCoordinates.xyz).x, 0.0, 1.0);
       float atmosphereFactor = texturePlanetOctahedralMap(uAtmosphereMap, planetSpaceCoordinates.xyz).x;
 
-      // Combine the rain factor and atmosphere factor and apply visibility factor
-      float rainAtmosphereFactor = rainFactor * atmosphereFactor * visibilityFactor(planetSpaceCoordinates.xyz);
+      // Combine the precipitation factor and atmosphere factor and apply visibility factor
+      float wetnessAtmosphereFactor = wetnessFactor * atmosphereFactor * visibilityFactor(planetSpaceCoordinates.xyz);
 
       // Get world space direction from the center of the planet to the point
       vec3 worldSpaceDirectionFromPlanetCenter = normalize(worldSpaceCoordinates.xyz - pushConstants.planetInverseModelMatrix[3].xyz);
@@ -183,7 +183,7 @@ vec3 computeWetnessAtDepth(const in vec2 uv,
       vec2 directionOctahedral = octEqualAreaUnsignedEncode(worldSpaceDirectionFromPlanetCenter);
       
       // Return the wetness factor
-      return vec3(rainAtmosphereFactor, directionOctahedral); 
+      return vec3(wetnessAtmosphereFactor, directionOctahedral); 
 
     }
 

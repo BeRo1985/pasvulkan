@@ -28,8 +28,8 @@ layout(local_size_x = WORKGROUP_SIZE, local_size_y = WORKGROUP_SIZE, local_size_
 
 layout(push_constant) uniform PushConstants {
   uint waterHeightMapResolution; // The resolution of the water height map
-  uint rainAtmosphereMapResolution; // The resolution of the rain atmosphere map
-  uint rainAtmosphereMapShift; // The shift for the rain atmosphere map relative to the water height map
+  uint precipitationAtmosphereMapResolution; // The resolution of the precipitation atmosphere map
+  uint precipitationAtmosphereMapShift; // The shift for the precipitation atmosphere map relative to the water height map
   uint frameIndex; // The current frame index, used for random number generation
   float rainIntensity; // The rain intensity
   float scale; // The scale of the noise
@@ -49,9 +49,9 @@ layout(set = 0, binding = 0, std430) buffer WaterHeightMap {
   _float values[];
 } waterHeightMap;
 
-layout(set = 0, binding = 1, std430) buffer RainAtmosphereMap {
+layout(set = 0, binding = 1, std430) buffer PrecipitationAtmosphereMap {
   _float values[];
-} rainAtmosphereMap;
+} precipitationAtmosphereMap;
 
 #include "pcg.glsl"
 
@@ -65,9 +65,9 @@ void main(){
 
     const uint heightMapIndex = (position.y * pushConstants.waterHeightMapResolution) + position.x;
 
-    const uint rainAtmosphereMapIndex = ((position.y >> pushConstants.rainAtmosphereMapShift) * pushConstants.rainAtmosphereMapResolution) + (position.x >> pushConstants.rainAtmosphereMapShift);
+    const uint precipitationAtmosphereMapIndex = ((position.y >> pushConstants.precipitationAtmosphereMapShift) * pushConstants.precipitationAtmosphereMapResolution) + (position.x >> pushConstants.precipitationAtmosphereMapShift);
 
-    float rainMapValue = rainAtmosphereMap.values[rainAtmosphereMapIndex] * pushConstants.rainIntensity * pushConstants.deltaTime; 
+    float rainMapValue = clamp(precipitationAtmosphereMap.values[precipitationAtmosphereMapIndex], 0.0, 1.0) * pushConstants.rainIntensity * pushConstants.deltaTime; 
     if(rainMapValue > 0.0){
       vec3 positionOctahedral = octPlanetUnsignedDecode((vec2(position) + vec2(0.5)) / vec2(pushConstants.waterHeightMapResolution));
       waterHeightMap.values[heightMapIndex] += rainMapValue * clamp(pcgNoise(vec4(vec3(positionOctahedral) * pushConstants.scale, float(pushConstants.frameIndex) * pushConstants.timeScale)), 0.0, 1.0);

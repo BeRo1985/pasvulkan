@@ -133,9 +133,9 @@ void main(){
       // Read the water height from the input water height map
       const float inWaterHeight = inWaterHeightMap.values[heightMapIndex];
 
-      // Calculate the rain fall value based on the rain atmosphere map and the rain intensity
-      const uint rainAtmosphereMapIndex = ((position.y >> pushConstants.rainAtmosphereMapShift) * pushConstants.rainAtmosphereMapResolution) + (position.x >> pushConstants.rainAtmosphereMapShift);
-      float rainFallValue = rainAtmosphereMap.values[rainAtmosphereMapIndex] * pushConstants.rainIntensity * pushConstants.deltaTime; 
+      // Calculate the rain fall value based on the precipitation atmosphere map and the rain intensity
+      const uint precipitationAtmosphereMapIndex = ((position.y >> pushConstants.precipitationAtmosphereMapShift) * pushConstants.precipitationAtmosphereMapResolution) + (position.x >> pushConstants.precipitationAtmosphereMapShift);
+      float rainFallValue = clamp(precipitationAtmosphereMap.values[precipitationAtmosphereMapIndex], 0.0, 1.0) * pushConstants.rainIntensity * pushConstants.deltaTime; 
       if(rainFallValue > 0.0){
         vec3 positionOctahedral = octPlanetUnsignedDecode((vec2(position) + vec2(0.5)) / vec2(pushConstants.waterHeightMapResolution));
         rainFallValue *= clamp(pcgNoise(vec4(vec3(positionOctahedral) * pushConstants.scale, float(pushConstants.frameIndex) * pushConstants.timeScale)), 0.0, 1.0);

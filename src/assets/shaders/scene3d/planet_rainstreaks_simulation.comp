@@ -18,9 +18,9 @@ layout(set = 0, binding = 0, std430) buffer RainDropBuffer {
   RainDrop data[]; // Array of raindrops
 } rainDropBuffer;
 
-layout(set = 0, binding = 1, std430) buffer RainAtmosphereMapBuffer {
+layout(set = 0, binding = 1, std430) buffer PrecipitationAtmosphereMapBuffer {
   float values[];
-} rainAtmosphereMapBuffer;
+} precipitationAtmosphereMapBuffer;
 
 layout(set = 0, binding = 2) uniform sampler2D uImageHeightMap; // Height map of the planet,
 
@@ -40,7 +40,7 @@ layout(push_constant) uniform PushConstants {
   float deltaTime; // Time delta for simulation
   uint countRainDrops; // Number of raindrops
 
-  uint rainAtmosphereResolution; // Resolution of the rain atmosphere map
+  uint precipitationAtmosphereResolution; // Resolution of the precipitation atmosphere map
   uint frameIndex; // Current frame rainDropIndex
    
 } pushConstants;  
@@ -60,13 +60,13 @@ float getRainAtmosphereFactor(const vec3 position) {
   vec2 uv = octEqualAreaUnsignedEncode(position);
 
   // Calculate the integer coordinates for the UV mapping
-  ivec2 xy = clamp(ivec2(round(uv * vec2(pushConstants.rainAtmosphereResolution))), ivec2(0), ivec2(pushConstants.rainAtmosphereResolution - 1));
+  ivec2 xy = clamp(ivec2(round(uv * vec2(pushConstants.precipitationAtmosphereResolution))), ivec2(0), ivec2(pushConstants.precipitationAtmosphereResolution - 1));
 
-  // Calculate the index in the rain atmosphere map buffer
-  uint index = uint(xy.x + (xy.y * pushConstants.rainAtmosphereResolution));
+  // Calculate the index in the precipitation atmosphere map buffer
+  uint index = uint(xy.x + (xy.y * pushConstants.precipitationAtmosphereResolution));
 
-  // Return the value from the rain atmosphere map buffer
-  return rainAtmosphereMapBuffer.values[index];
+  // Return the value from the precipitation atmosphere map buffer, but the wetness part > 0.0
+  return clamp(precipitationAtmosphereMapBuffer.values[index], 0.0, 1.0);
 
 }
 

@@ -52,9 +52,9 @@ layout(push_constant) uniform PushConstants {
   uint planetHeightMapResolution; // The resolution of the planet height map, used to calculate the indices for the height map  
   uint waterHeightMapResolution; // The resolution of the water height map, used to calculate the indices for the water height map
   uint waterHeightMapBorder; // The border size for the water height map, so that the solver does not need to handle the border cases of a octahedral map
-  uint rainAtmosphereMapResolution; // The resolution of the rain atmosphere map
+  uint precipitationAtmosphereMapResolution; // The resolution of the precipitation atmosphere map
 
-  uint rainAtmosphereMapShift; // The shift for the rain atmosphere map relative to the water height map
+  uint precipitationAtmosphereMapShift; // The shift for the precipitation atmosphere map relative to the water height map
   uint frameIndex; // The current frame index, used for random number generation
 
 } pushConstants;
@@ -100,9 +100,9 @@ layout(set = 0, binding = 4, std430) coherent buffer WaterMaxHeightDifference {
 
 #endif
 
-layout(set = 0, binding = 5, std430) buffer RainAtmosphereMap {
+layout(set = 0, binding = 5, std430) buffer PrecipitationAtmosphereMap {
   _float values[];
-} rainAtmosphereMap;
+} precipitationAtmosphereMap;
 
 #include "pcg.glsl"
 
@@ -240,9 +240,9 @@ void main(){
       // Read the water height from the input water height map
       const float inWaterHeight = inWaterHeightMap.values[heightMapIndex];
 
-      // Calculate the rain fall value based on the rain atmosphere map and the rain intensity
-      const uint rainAtmosphereMapIndex = ((position.y >> pushConstants.rainAtmosphereMapShift) * pushConstants.rainAtmosphereMapResolution) + (position.x >> pushConstants.rainAtmosphereMapShift);
-      float rainFallValue = rainAtmosphereMap.values[rainAtmosphereMapIndex] * pushConstants.rainIntensity * pushConstants.deltaTime; 
+      // Calculate the rain fall value based on the precipitation atmosphere map and the rain intensity
+      const uint precipitationAtmosphereMapIndex = ((position.y >> pushConstants.precipitationAtmosphereMapShift) * pushConstants.precipitationAtmosphereMapResolution) + (position.x >> pushConstants.precipitationAtmosphereMapShift);
+      float rainFallValue = clamp(precipitationAtmosphereMap.values[precipitationAtmosphereMapIndex], 0.0, 1.0) * pushConstants.rainIntensity * pushConstants.deltaTime; 
       if(rainFallValue > 0.0){
         vec3 positionOctahedral = octPlanetUnsignedDecode((vec2(position) + vec2(0.5)) / vec2(pushConstants.waterHeightMapResolution));
         rainFallValue *= clamp(pcgNoise(vec4(vec3(positionOctahedral) * pushConstants.scale, float(pushConstants.frameIndex) * pushConstants.timeScale)), 0.0, 1.0);

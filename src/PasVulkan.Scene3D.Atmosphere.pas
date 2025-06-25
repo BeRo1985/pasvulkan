@@ -773,9 +773,9 @@ type TpvScene3DAtmosphere=class;
             { TDirectionalMap }
             TDirectionalMap=class
              private
-              const Rain=0;
+              const Precipitation=0;
                     Atmosphere=1;
-                    Names:array[0..1] of TpvUTF8String=('Rain','Atmosphere');
+                    Names:array[0..1] of TpvUTF8String=('Precipitation','Atmosphere');
              private
               fScene3D:TObject;
               fAtmosphere:TpvScene3DAtmosphere;
@@ -817,9 +817,9 @@ type TpvScene3DAtmosphere=class;
        fWeatherMapTextureGeneration:TpvUInt64;
        fWeatherMapTextureLastGeneration:TpvUInt64;
        fCloudWeatherMapPushConstants:TpvScene3DAtmosphereGlobals.TCloudWeatherMapPushConstants;
-       fRainMap:TDirectionalMap;
+       fPrecipitationMap:TDirectionalMap;
        fAtmosphereMap:TDirectionalMap;
-       fUseRainMap:TPasMPBool32;
+       fUsePrecipitationMap:TPasMPBool32;
        fUseAtmosphereMap:TPasMPBool32;
        fRendererInstances:TRendererInstances;
        fRendererInstanceHashMap:TRendererInstanceHashMap;
@@ -867,9 +867,9 @@ type TpvScene3DAtmosphere=class;
                       var aPushConstants:TpvScene3DAtmosphereGlobals.TRaymarchingPushConstants);
       public
        property AtmosphereParameters:PAtmosphereParameters read fPointerToAtmosphereParameters;
-       property RainMap:TDirectionalMap read fRainMap;
+       property PrecipitationMap:TDirectionalMap read fPrecipitationMap;
        property AtmosphereMap:TDirectionalMap read fAtmosphereMap;
-       property UseRainMap:TPasMPBool32 read fUseRainMap write fUseRainMap;
+       property UsePrecipitationMap:TPasMPBool32 read fUsePrecipitationMap write fUsePrecipitationMap;
        property UseAtmosphereMap:TPasMPBool32 read fUseAtmosphereMap write fUseAtmosphereMap;
        property Ready:TPasMPBool32 read fReady;
        property Uploaded:LongBool read fUploaded;
@@ -2512,7 +2512,7 @@ begin
                                                                       1,
                                                                       TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
                                                                       [TVkDescriptorImageInfo.Create(TpvScene3DRenderer(fRendererInstance).Renderer.ClampedSampler.Handle,
-                                                                                                     fAtmosphere.fRAinMap.fTexture.VulkanImageView.Handle,
+                                                                                                     fAtmosphere.fPrecipitationMap.fTexture.VulkanImageView.Handle,
                                                                                                      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
                                                                       [],
                                                                       [],
@@ -2672,13 +2672,13 @@ begin
                                                                                [],
                                                                                false);
 
-  // Rain map
+  // Precipitation map
   fCloudRaymarchingPassDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(10,
                                                                                0,
                                                                                1,
                                                                                TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
                                                                                [TVkDescriptorImageInfo.Create(TpvScene3DRenderer(fRendererInstance).Renderer.ClampedSampler.Handle,
-                                                                                                              fAtmosphere.fRainMap.fTexture.VulkanImageView.Handle,
+                                                                                                              fAtmosphere.fPrecipitationMap.fTexture.VulkanImageView.Handle,
                                                                                                               VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
                                                                                [],
                                                                                [],
@@ -3938,7 +3938,7 @@ begin
  fTexture:=TpvScene3DRendererImageCubeMap.Create(TpvScene3D(fScene3D).VulkanDevice,
                                                  Size,
                                                  Size,
-                                                 VK_FORMAT_R8_UNORM,
+                                                 TVkFormat(IfThen(fType=TDirectionalMap.Precipitation,TVkInt32(VK_FORMAT_R8_SNORM),TVkInt32(VK_FORMAT_R8_UNORM))),
                                                  true,
                                                  VK_SAMPLE_COUNT_1_BIT,
                                                  VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
@@ -4330,7 +4330,7 @@ begin
 
    aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,TpvScene3DAtmosphereGlobals(TpvScene3D(fScene3D).AtmosphereGlobals).fDirectionalMapTextureInitializationComputePipeline.Handle);
 
-   if fType=TDirectionalMap.Rain then begin
+   if fType=TDirectionalMap.Precipitation then begin
     DirectionalMapTextureInitializationPushConstants.Value:=TpvVector4.InlineableCreate(0.0,0.0,0.0,0.0);
    end else begin
     DirectionalMapTextureInitializationPushConstants.Value:=TpvVector4.InlineableCreate(1.0,1.0,1.0,1.0);
@@ -4436,11 +4436,11 @@ begin
 
  FillChar(fInFlightFrameVisible,SizeOf(fInFlightFrameVisible),#0);
 
- fRainMap:=TDirectionalMap.Create(fScene3D,self,TDirectionalMap.Rain);
+ fPrecipitationMap:=TDirectionalMap.Create(fScene3D,self,TDirectionalMap.Precipitation);
 
  fAtmosphereMap:=TDirectionalMap.Create(fScene3D,self,TDirectionalMap.Atmosphere);
 
- fUseRainMap:=true;
+ fUsePrecipitationMap:=true;
 
  fUseAtmosphereMap:=true;
 
@@ -4455,7 +4455,7 @@ begin
 
  FreeAndNil(fAtmosphereMap);
 
- FreeAndNil(fRainMap);
+ FreeAndNil(fPrecipitationMap);
 
  FreeAndNil(fAtmosphereMapMinMaxBuffer);
 
@@ -4528,7 +4528,7 @@ begin
  
  if assigned(TpvScene3D(fScene3D).VulkanDevice) and not fUploaded then begin
 
-  fRainMap.AcquireResources;
+  fPrecipitationMap.AcquireResources;
 
   fAtmosphereMap.AcquireResources;
  
@@ -4627,7 +4627,7 @@ begin
   FreeAndNil(fWeatherMapTextureDescriptorPool);
   FreeAndNil(fWeatherMapTexture);
   fAtmosphereMap.ReleaseResources;
-  fRainMap.ReleaseResources;
+  fPrecipitationMap.ReleaseResources;
   fUploaded:=false;
  end;
 end;
@@ -4642,7 +4642,7 @@ begin
 
   fGPUAtmosphereParameters[aInFlightFrameIndex].Assign(fAtmosphereParameters,fScene3D,aInFlightFrameIndex);
 
-  fGPUAtmosphereParameters[aInFlightFrameIndex].Flags:=IfThen(assigned(fRainMap.fTextureSourceImage) and fUseRainMap,1 shl 0,0) or
+  fGPUAtmosphereParameters[aInFlightFrameIndex].Flags:=IfThen(assigned(fPrecipitationMap.fTextureSourceImage) and fUsePrecipitationMap,1 shl 0,0) or
                                                        IfThen(assigned(fAtmosphereMap.fTextureSourceImage) and fUseAtmosphereMap,1 shl 1,0);
 
 { fGPUAtmosphereParameters[aInFlightFrameIndex].Transform:=fGPUAtmosphereParameters[aInFlightFrameIndex].Transform;
@@ -4707,7 +4707,7 @@ begin
 
   fAtmosphereMap.Update(aCommandBuffer,aInFlightFrameIndex);
 
-  fRainMap.Update(aCommandBuffer,aInFlightFrameIndex);
+  fPrecipitationMap.Update(aCommandBuffer,aInFlightFrameIndex);
 
   begin
 
@@ -5248,7 +5248,7 @@ begin
                                              TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                                              []);
 
-  // Rain map texture
+  // Precipitation map texture
   fCubeMapPassDescriptorSetLayout.AddBinding(5,
                                              VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
                                              1,
@@ -5343,7 +5343,7 @@ begin
                                                       TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                                       []);
 
-  // Rain map texture
+  // Precipitation map texture
   fCloudRaymarchingPassDescriptorSetLayout.AddBinding(10,
                                                       VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
                                                       1,

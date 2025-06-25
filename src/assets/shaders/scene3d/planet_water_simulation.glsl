@@ -28,9 +28,9 @@ layout(push_constant) uniform PushConstants {
   uint planetHeightMapResolution; // The resolution of the planet height map, used to calculate the indices for the height map  
   uint waterHeightMapResolution; // The resolution of the water height map, used to calculate the indices for the water height map
   uint waterHeightMapBorder; // The border size for the water height map, so that the solver does not need to handle the border cases of a octahedral map
-  uint rainAtmosphereMapResolution; // The resolution of the rain atmosphere map
+  uint precipitationAtmosphereMapResolution; // The resolution of the precipitation atmosphere map
 
-  uint rainAtmosphereMapShift; // The shift for the rain atmosphere map relative to the water height map
+  uint precipitationAtmosphereMapShift; // The shift for the precipitation atmosphere map relative to the water height map
   uint frameIndex; // The current frame index, used for random number generation
 
 } pushConstants;
@@ -81,9 +81,9 @@ layout(set = 0, binding = 4, std430) coherent buffer WaterMaxHeightDifference {
   uint value;
 } waterMaxHeightDifference;
 
-layout(set = 0, binding = 5, std430) buffer RainAtmosphereMap {
+layout(set = 0, binding = 5, std430) buffer PrecipitationAtmosphereMap {
   _float values[];
-} rainAtmosphereMap;
+} precipitationAtmosphereMap;
 
 #include "pcg.glsl"
 

@@ -59,7 +59,7 @@ layout(set = 2, binding = 3) uniform samplerCube uSkyLuminanceLUTTexture;
 
 layout(set = 2, binding = 4) uniform samplerCube uAtmosphereMapTexture;
 
-layout(set = 2, binding = 5) uniform samplerCube uRainMapTexture;
+layout(set = 2, binding = 5) uniform samplerCube uPrecipitationMapTexture;
 
 layout(set = 2, binding = 6, std430) buffer AtmosphereParametersBuffer {
   AtmosphereParameters atmosphereParameters;
@@ -176,7 +176,7 @@ void main() {
       // Apply the rain map by darkening the atmosphere where rain is present, but only for the cubemaps for indirect lighting, 
       // but not for the direct lighting rendering, as here would be wrong, since clouds are already present in the direct lighting rendering,
       // so we don't want to darken the atmosphere again, as it would result in a double darkening effect.
-      float rainFactor = mix(1.0, atmosphereParameters.RainAtmosphereCubeMapLuminanceFactor, textureLod(uRainMapTexture, direction, 0.0).x);
+      float rainFactor = mix(1.0, atmosphereParameters.RainAtmosphereCubeMapLuminanceFactor, clamp(textureLod(uPrecipitationMapTexture, direction, 0.0).x, 0.0, 1.0));
       inscattering *= rainFactor;
       // Transmittance is not affected by rain, so it remains unchanged.
     }

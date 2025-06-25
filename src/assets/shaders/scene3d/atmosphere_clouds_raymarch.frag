@@ -185,7 +185,7 @@ layout(set = 2, binding = 8) uniform samplerCube uTextureSkyLuminanceLUT;
 
 layout(set = 2, binding = 9) uniform samplerCube uTextureWeatherMap;
 
-layout(set = 2, binding = 10) uniform samplerCube uTextureRainMap;
+layout(set = 2, binding = 10) uniform samplerCube uTexturePercipitationMap;
 
 layout(set = 2, binding = 11) uniform samplerCube uTextureAtmosphereMap;
 
@@ -206,7 +206,7 @@ layout(set = 2, binding = 13, rgba16) uniform image2D uDestinationTexture;
 
 //////////////////////////////////////////////////////////////////////////////////
 
-bool useRainMap = ((uAtmosphereParameters.atmosphereParameters.flags & FLAGS_USE_RAIN_MAP) != 0u);
+bool usePrecipitationMap = ((uAtmosphereParameters.atmosphereParameters.flags & FLAGS_USE_PRECIPITATION_MAP) != 0u);
 
 // Check if the atmosphere map should be used, if it is enabled in the flags and if the min and max values are not both 1.0,
 // which would indicate that the atmosphere can be considered fully existing everywhere (no atmosphere map lookups needed =>
@@ -311,7 +311,10 @@ vec3 scaleLayerHighCloudPosition(vec3 position){
 #include "rotation.glsl"
 
 vec4 getWeatherData(const in vec3 position, const in mat3 rotationMatrices[2], const float mipMapLevel){
-  const float wetness = useRainMap ? clamp(textureLod(uTextureRainMap, normalize(position), 0.0).x, 0.0, 1.0) : 0.0;
+  // Percipitation map: -1.0 = no clouds, 0.0 = dry clouds, 1.0 = wet clouds
+  const float percipitation = usePrecipitationMap ? clamp(textureLod(uTexturePercipitationMap, normalize(position), 0.0).x, -1.0, 1.0) : 0.0;
+  const float wetness = clamp(percipitation, 0.0, 1.0);
+  const float factor = clamp(percipitation + 1.0, 0.0, 1.0); // -1.0 .. 0.0 => 0.0 .. 1.0
   return clamp(
     fma(
       vec4(
@@ -320,7 +323,7 @@ vec4 getWeatherData(const in vec3 position, const in mat3 rotationMatrices[2], c
       ),
       mix(uAtmosphereParameters.atmosphereParameters.VolumetricClouds.dryCoverageTypeWetnessTopFactors, uAtmosphereParameters.atmosphereParameters.VolumetricClouds.wetCoverageTypeWetnessTopFactors, wetness), 
       mix(uAtmosphereParameters.atmosphereParameters.VolumetricClouds.dryCoverageTypeWetnessTopOffsets, uAtmosphereParameters.atmosphereParameters.VolumetricClouds.wetCoverageTypeWetnessTopOffsets, wetness)
-    ),
+    ) * vec2(factor, 1.0).xyyx,
     vec4(0.0),
     vec4(1.0)
   );
