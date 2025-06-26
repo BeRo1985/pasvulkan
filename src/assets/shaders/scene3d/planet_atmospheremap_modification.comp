@@ -82,14 +82,14 @@ void main(){
 
     if(d > 0.0){
 
-      float height = imageLoad(uImageAtmosphereMap, texel).x + (d * pushConstants.innerRadiusValueMinMax.y);
+      float value = imageLoad(uImageAtmosphereMap, texel).x + (d * pushConstants.innerRadiusValueMinMax.y);
           
       imageStore(
         uImageAtmosphereMap, 
         texel, 
         vec4(
           clamp(
-            height, 
+            value, 
             pushConstants.innerRadiusValueMinMax.z, 
             pushConstants.innerRadiusValueMinMax.w
           )
