@@ -58,13 +58,15 @@ void main(){
 
   const uvec2 position = uvec2(gl_GlobalInvocationID.xy);
 
-  if(all(lessThan(position, uvec2(pushConstants.waterHeightMapResolution)))){
+  bool inBounds = all(lessThan(position, uvec2(pushConstants.waterHeightMapResolution)));
 
-    const uint heightMapIndex = (position.y * pushConstants.waterHeightMapResolution) + position.x;
+  const uint heightMapIndex = (position.y * pushConstants.waterHeightMapResolution) + position.x;
 
-    const uint flowMapIndex = ((position.y + uint(pushConstants.waterHeightMapBorder)) * waterHeightMapResolutionWithBorder) + (position.x + uint(pushConstants.waterHeightMapBorder));
+  const uint flowMapIndex = ((position.y + uint(pushConstants.waterHeightMapBorder)) * waterHeightMapResolutionWithBorder) + (position.x + uint(pushConstants.waterHeightMapBorder));
 
-    float waterOutHeight;
+  float waterOutHeight;
+
+  if(inBounds){
 
     if(pushConstants.frameIndex == 0){
 
@@ -85,7 +87,7 @@ void main(){
         sharedWrappedFlowMapCoordinateIndices[gl_LocalInvocationID.y + 1][gl_LocalInvocationID.x + 0], // ivec2(-1,  0)
         sharedWrappedFlowMapCoordinateIndices[gl_LocalInvocationID.y + 0][gl_LocalInvocationID.x + 1]  // ivec2( 0, -1)
       );
-                   
+                  
       // Calculate the total outflow
       float totalOutFlow;
 
@@ -117,16 +119,16 @@ void main(){
             count++;
           }
         }
-       
+      
       }else{
 
         // If all wrapped coordinates are unique, we can use them directly without further non-unique checks for faster performance
         // Just sum the flow values for the 3x3 kernel   
-         
+        
         totalOutFlow = sharedFlowMapValues[gl_LocalInvocationID.y + 1][gl_LocalInvocationID.x + 2].z + // ivec2( 1,  0)
-                       sharedFlowMapValues[gl_LocalInvocationID.y + 2][gl_LocalInvocationID.x + 1].w + // ivec2( 0,  1)
-                       sharedFlowMapValues[gl_LocalInvocationID.y + 1][gl_LocalInvocationID.x + 0].x + // ivec2(-1,  0)
-                       sharedFlowMapValues[gl_LocalInvocationID.y + 0][gl_LocalInvocationID.x + 1].y;  // ivec2( 0, -1)
+                      sharedFlowMapValues[gl_LocalInvocationID.y + 2][gl_LocalInvocationID.x + 1].w + // ivec2( 0,  1)
+                      sharedFlowMapValues[gl_LocalInvocationID.y + 1][gl_LocalInvocationID.x + 0].x + // ivec2(-1,  0)
+                      sharedFlowMapValues[gl_LocalInvocationID.y + 0][gl_LocalInvocationID.x + 1].y;  // ivec2( 0, -1)
 
       }
 
@@ -146,8 +148,8 @@ void main(){
       waterOutHeight = max(
         0.0, 
         ((inWaterHeight + (((totalOutFlow - totalInFlow) * pushConstants.deltaTime) / pushConstants.pipeLengthSquared)) * 
-         (1.0 - clamp(pushConstants.evaporation * exp(-(inWaterHeight * pushConstants.evaporationHeightCoefficient)) * pushConstants.deltaTime, 0.0, 1.0))) +
-         rainFallValue
+        (1.0 - clamp(pushConstants.evaporation * exp(-(inWaterHeight * pushConstants.evaporationHeightCoefficient)) * pushConstants.deltaTime, 0.0, 1.0))) +
+        rainFallValue
       );
 
       // Calculate the absolute height differences
@@ -156,82 +158,86 @@ void main(){
     }
 
     outWaterHeightMap.values[heightMapIndex] = _float(waterOutHeight);
+  
+  }else{
 
-    // Perform a parallel max reduction to calculate the total absolute height differences
+    sharedHeightDifferences[gl_LocalInvocationIndex] = 0.0; // If the position is out of bounds, we set the height difference to zero
+    
+  }
 
-    memoryBarrierShared();
-    barrier();
+  // Perform a parallel max reduction to calculate the total absolute height differences
+
+  memoryBarrierShared();
+  barrier();
 
 #if WORKGROUP_SIZE != 16   
 
-    // Automatic unrolled version of the parallel max reduction for WORKGROUP_SIZE != 16
-    
-    [[unroll]] for(uint i = 128u; i > 0u; i >>= 1u){
-      if(gl_LocalInvocationIndex < i){
-        sharedHeightDifferences[gl_LocalInvocationIndex] = max(sharedHeightDifferences[gl_LocalInvocationIndex], sharedHeightDifferences[gl_LocalInvocationIndex + i]);
-      }
-      memoryBarrierShared();
-      barrier();
+  // Automatic unrolled version of the parallel max reduction for WORKGROUP_SIZE != 16
+  
+  [[unroll]] for(uint i = 128u; i > 0u; i >>= 1u){
+    if(gl_LocalInvocationIndex < i){
+      sharedHeightDifferences[gl_LocalInvocationIndex] = max(sharedHeightDifferences[gl_LocalInvocationIndex], sharedHeightDifferences[gl_LocalInvocationIndex + i]);
     }
+    memoryBarrierShared();
+    barrier();
+  }
 
 #else
 
-    // Manual unrolled version of the parallel max reduction for WORKGROUP_SIZE == 16
+  // Manual unrolled version of the parallel max reduction for WORKGROUP_SIZE == 16
 
-    if(gl_LocalInvocationIndex < 128){
-      sharedHeightDifferences[gl_LocalInvocationIndex] = max(sharedHeightDifferences[gl_LocalInvocationIndex], sharedHeightDifferences[gl_LocalInvocationIndex + 128]);
-    }
-    memoryBarrierShared();
-    barrier();
+  if(gl_LocalInvocationIndex < 128){
+    sharedHeightDifferences[gl_LocalInvocationIndex] = max(sharedHeightDifferences[gl_LocalInvocationIndex], sharedHeightDifferences[gl_LocalInvocationIndex + 128]);
+  }
+  memoryBarrierShared();
+  barrier();
 
-    if(gl_LocalInvocationIndex < 64){
-      sharedHeightDifferences[gl_LocalInvocationIndex] = max(sharedHeightDifferences[gl_LocalInvocationIndex], sharedHeightDifferences[gl_LocalInvocationIndex + 64]);
-    }
-    memoryBarrierShared();
-    barrier();
+  if(gl_LocalInvocationIndex < 64){
+    sharedHeightDifferences[gl_LocalInvocationIndex] = max(sharedHeightDifferences[gl_LocalInvocationIndex], sharedHeightDifferences[gl_LocalInvocationIndex + 64]);
+  }
+  memoryBarrierShared();
+  barrier();
 
-    if(gl_LocalInvocationIndex < 32){
-      sharedHeightDifferences[gl_LocalInvocationIndex] = max(sharedHeightDifferences[gl_LocalInvocationIndex], sharedHeightDifferences[gl_LocalInvocationIndex + 32]);
-    }
-    memoryBarrierShared();
-    barrier();
+  if(gl_LocalInvocationIndex < 32){
+    sharedHeightDifferences[gl_LocalInvocationIndex] = max(sharedHeightDifferences[gl_LocalInvocationIndex], sharedHeightDifferences[gl_LocalInvocationIndex + 32]);
+  }
+  memoryBarrierShared();
+  barrier();
 
-    if(gl_LocalInvocationIndex < 16){
-      sharedHeightDifferences[gl_LocalInvocationIndex] = max(sharedHeightDifferences[gl_LocalInvocationIndex], sharedHeightDifferences[gl_LocalInvocationIndex + 16]);
-    }
-    memoryBarrierShared();
-    barrier();
+  if(gl_LocalInvocationIndex < 16){
+    sharedHeightDifferences[gl_LocalInvocationIndex] = max(sharedHeightDifferences[gl_LocalInvocationIndex], sharedHeightDifferences[gl_LocalInvocationIndex + 16]);
+  }
+  memoryBarrierShared();
+  barrier();
 
-    if(gl_LocalInvocationIndex < 8){
-      sharedHeightDifferences[gl_LocalInvocationIndex] = max(sharedHeightDifferences[gl_LocalInvocationIndex], sharedHeightDifferences[gl_LocalInvocationIndex + 8]);
-    }
-    memoryBarrierShared();
-    barrier();
+  if(gl_LocalInvocationIndex < 8){
+    sharedHeightDifferences[gl_LocalInvocationIndex] = max(sharedHeightDifferences[gl_LocalInvocationIndex], sharedHeightDifferences[gl_LocalInvocationIndex + 8]);
+  }
+  memoryBarrierShared();
+  barrier();
 
-    if(gl_LocalInvocationIndex < 4){
-      sharedHeightDifferences[gl_LocalInvocationIndex] = max(sharedHeightDifferences[gl_LocalInvocationIndex], sharedHeightDifferences[gl_LocalInvocationIndex + 4]);
-    }
-    memoryBarrierShared();
-    barrier();
+  if(gl_LocalInvocationIndex < 4){
+    sharedHeightDifferences[gl_LocalInvocationIndex] = max(sharedHeightDifferences[gl_LocalInvocationIndex], sharedHeightDifferences[gl_LocalInvocationIndex + 4]);
+  }
+  memoryBarrierShared();
+  barrier();
 
-    if(gl_LocalInvocationIndex < 2){
-      sharedHeightDifferences[gl_LocalInvocationIndex] = max(sharedHeightDifferences[gl_LocalInvocationIndex], sharedHeightDifferences[gl_LocalInvocationIndex + 2]);
-    }
-    memoryBarrierShared();
-    barrier();
+  if(gl_LocalInvocationIndex < 2){
+    sharedHeightDifferences[gl_LocalInvocationIndex] = max(sharedHeightDifferences[gl_LocalInvocationIndex], sharedHeightDifferences[gl_LocalInvocationIndex + 2]);
+  }
+  memoryBarrierShared();
+  barrier();
 
-    if(gl_LocalInvocationIndex < 1){
-      sharedHeightDifferences[gl_LocalInvocationIndex] = max(sharedHeightDifferences[gl_LocalInvocationIndex], sharedHeightDifferences[gl_LocalInvocationIndex + 1]);
-    }
-    memoryBarrierShared();
-    barrier();
+  if(gl_LocalInvocationIndex < 1){
+    sharedHeightDifferences[gl_LocalInvocationIndex] = max(sharedHeightDifferences[gl_LocalInvocationIndex], sharedHeightDifferences[gl_LocalInvocationIndex + 1]);
+  }
+  memoryBarrierShared();
+  barrier();
 
 #endif
 
-    if(gl_LocalInvocationIndex == 0){
-      atomicMax(waterMaxHeightDifference.value, floatBitsToUint(sharedHeightDifferences[0]));
-    }    
-
-  }
+  if(inBounds && (gl_LocalInvocationIndex == 0)){
+    atomicMax(waterMaxHeightDifference.value, floatBitsToUint(sharedHeightDifferences[0]));
+  }    
 
 }

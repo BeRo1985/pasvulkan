@@ -59,9 +59,7 @@ void main() {
 
   int faceIndex = int(gl_WorkGroupID.z); 
 
-  if(any(lessThan(xy, ivec2(0))) || any(greaterThanEqual(xy, size)) || (faceIndex < 0) || (faceIndex >= 6)){
-    return;
-  }
+  bool inBounds = all(greaterThanEqual(xy, ivec2(0))) && all(lessThan(xy, size)) && (faceIndex >= 0) && (faceIndex < 6);
 
   vec2 pixPos = vec2(gl_GlobalInvocationID.xy) + vec2(0.5);
   vec2 uv = pixPos / vec2(size);
@@ -98,7 +96,7 @@ void main() {
   int x = localInvocationIndex - (y * SQRTSAMPLECOUNT);
   float i = float(int(y)) + 0.5;
   float j = float(int(x)) + 0.5;
-  {
+  if(inBounds){
     float randA = i / sqrtSample;
     float randB = j / sqrtSample;
     float theta = 2.0 * PI * randA;
@@ -123,6 +121,8 @@ void main() {
       false
     );
     SkyLuminanceSharedMem[localInvocationIndex] = result.L * SphereSolidAngle / (sqrtSample * sqrtSample);
+  }else{
+    SkyLuminanceSharedMem[localInvocationIndex] = vec3(0.0);
   }
   #undef SQRTSAMPLECOUNT
 
@@ -131,7 +131,7 @@ void main() {
   memoryBarrierShared();
 
   // 64 to 32
-  if (localInvocationIndex < 32) {
+  if(localInvocationIndex < 32){
     SkyLuminanceSharedMem[localInvocationIndex] += SkyLuminanceSharedMem[localInvocationIndex + 32];
   }
   barrier();
@@ -139,7 +139,7 @@ void main() {
   memoryBarrierShared();
 
   // 32 to 16
-  if (localInvocationIndex < 16) {
+  if(localInvocationIndex < 16){
     SkyLuminanceSharedMem[localInvocationIndex] += SkyLuminanceSharedMem[localInvocationIndex + 16];
   }
   barrier();
@@ -147,7 +147,7 @@ void main() {
   memoryBarrierShared();
 
   // 16 to 8
-  if (localInvocationIndex < 8) {
+  if(localInvocationIndex < 8){
     SkyLuminanceSharedMem[localInvocationIndex] += SkyLuminanceSharedMem[localInvocationIndex + 8];
   }
   barrier();
@@ -155,7 +155,7 @@ void main() {
   memoryBarrierShared();
 
   // 8 to 4
-  if (localInvocationIndex < 4) {
+  if(localInvocationIndex < 4){
     SkyLuminanceSharedMem[localInvocationIndex] += SkyLuminanceSharedMem[localInvocationIndex + 4];
   }
   barrier();
@@ -163,7 +163,7 @@ void main() {
   memoryBarrierShared();
 
   // 4 to 2
-  if (localInvocationIndex < 2) {
+  if(localInvocationIndex < 2){
     SkyLuminanceSharedMem[localInvocationIndex] += SkyLuminanceSharedMem[localInvocationIndex + 2];
   }
   barrier();
@@ -171,23 +171,23 @@ void main() {
   memoryBarrierShared();
 
   // 2 to 1
-  if (localInvocationIndex < 1) {
+  if(localInvocationIndex < 1){
     SkyLuminanceSharedMem[localInvocationIndex] += SkyLuminanceSharedMem[localInvocationIndex + 1];
   }
   barrier();
   groupMemoryBarrier();
   memoryBarrierShared();
 
-  if (localInvocationIndex > 0) {
-    return;
+  if(inBounds && (localInvocationIndex == 0)){
+
+  /*for(int i = 1; i < 64; i++){
+      SkyLuminanceSharedMem[0] += SkyLuminanceSharedMem[i];
+    }*/
+
+    vec3 InScatteredLuminance = SkyLuminanceSharedMem[0] * IsotropicPhase;
+
+    imageStore(uDestinationTexture, ivec3(pixPos, faceIndex), vec4(InScatteredLuminance, 1.0));
+
   }
-
-/*for (int i = 1; i < 64; i++) {
-    SkyLuminanceSharedMem[0] += SkyLuminanceSharedMem[i];
-  }*/
-
-  vec3 InScatteredLuminance = SkyLuminanceSharedMem[0] * IsotropicPhase;
-
-  imageStore(uDestinationTexture, ivec3(pixPos, faceIndex), vec4(InScatteredLuminance, 1.0));
 
 }

@@ -152,7 +152,8 @@ void main(){
 
   const uvec2 position = uvec2(gl_GlobalInvocationID.xy);
 
-  if(all(lessThan(position, uvec2(pushConstants.waterHeightMapResolution)))){
+  //if(all(lessThan(position, uvec2(pushConstants.waterHeightMapResolution)))) // avoid this check, because deadlock with barrier 
+  {
 
 #if defined(OUTFLOW)
     
