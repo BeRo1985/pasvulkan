@@ -10541,8 +10541,8 @@ begin
                                       0,
                                       1,
                                       TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                                      [TVkDescriptorImageInfo.Create(TpvScene3D(fPlanet.fScene3D).GeneralComputeSampler.Handle,
-                                                                     fPlanet.fBrushesTexture.ImageView.Handle,
+                                      [TVkDescriptorImageInfo.Create(TpvScene3D(fPlanet.fScene3D).GeneralRepeatingSampler.Handle,
+                                                                     TpvScene3D(fPlanet.fScene3D).BlueNoise2DTexture.ImageView.Handle, // dummy
                                                                      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
                                       [],
                                       [],
