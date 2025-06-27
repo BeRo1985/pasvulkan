@@ -888,6 +888,35 @@ type TpvScene3DPlanets=class;
              public
               property PushConstants:TPushConstants read fPushConstants write fPushConstants;
             end;
+            { TAtmosphereMapUpdate }
+            TAtmosphereMapUpdate=class
+             public
+              type TPushConstants=packed record
+                    AdditionFactor:TpvFloat;
+                    AdditionOffset:TpvFloat;
+                    ReductionFactor:TpvFloat;
+                    ReductionOffset:TpvFloat;
+                    Factor:TpvFloat;
+                   end;
+                   PPushConstants=^TPushConstants;
+             private
+              fPlanet:TpvScene3DPlanet;
+              fVulkanDevice:TpvVulkanDevice;
+              fComputeShaderModule:TpvVulkanShaderModule;
+              fComputeShaderStage:TpvVulkanPipelineShaderStage;
+              fPipeline:TpvVulkanComputePipeline;
+              fDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
+              fDescriptorPool:TpvVulkanDescriptorPool;
+              fDescriptorSet:TpvVulkanDescriptorSet;
+              fPipelineLayout:TpvVulkanPipelineLayout;
+              fPushConstants:TPushConstants;
+             public
+              constructor Create(const aPlanet:TpvScene3DPlanet); reintroduce;
+              destructor Destroy; override;
+              procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer);
+             public
+              property PushConstants:TPushConstants read fPushConstants write fPushConstants;
+            end;
             { TPrecipitationAtmosphereMapCombination }
             TPrecipitationAtmosphereMapCombination=class
              public
@@ -10404,6 +10433,198 @@ begin
  fPushConstants.PositionRadius:=aAtmosphereMapModificationItem.PositionRadius;
  fPushConstants.BrushIndex:=aAtmosphereMapModificationItem.BrushIndex;
  fPushConstants.BrushRotation:=aAtmosphereMapModificationItem.BrushRotation*TwoPI;
+
+ aCommandBuffer.CmdPushConstants(fPipelineLayout.Handle,
+                                 TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                 0,
+                                 SizeOf(TPushConstants),
+                                 @fPushConstants);
+
+ aCommandBuffer.CmdDispatch((fPlanet.fAtmosphereMapResolution+15) shr 4,
+                            (fPlanet.fAtmosphereMapResolution+15) shr 4,
+                            1);
+
+ ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                  TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                  VK_IMAGE_LAYOUT_GENERAL,
+                                                  VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                  VK_QUEUE_FAMILY_IGNORED,
+                                                  VK_QUEUE_FAMILY_IGNORED,
+                                                  fPlanet.fData.fAtmosphereMapImage.VulkanImage.Handle,
+                                                  TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                  0,
+                                                                                  1,
+                                                                                  0,
+                                                                                  1));
+
+ aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                   TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_HOST_BIT),
+                                   0,
+                                   0,nil,
+                                   0,nil,
+                                   1,@ImageMemoryBarrier);
+
+ inc(fPlanet.fData.fAtmosphereMapGeneration);
+
+ fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
+
+end;
+
+{ TpvScene3DPlanet.TAtmosphereMapUpdate }
+
+constructor TpvScene3DPlanet.TAtmosphereMapUpdate.Create(const aPlanet:TpvScene3DPlanet);
+var Stream:TStream;
+begin
+
+ inherited Create;
+
+ fPlanet:=aPlanet;
+
+ fVulkanDevice:=fPlanet.fVulkanDevice;
+
+ if assigned(fVulkanDevice) then begin
+
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_atmospheremap_update_comp.spv');
+  try
+   fComputeShaderModule:=TpvVulkanShaderModule.Create(fVulkanDevice,Stream);
+  finally
+   FreeAndNil(Stream);
+  end;
+
+  fVulkanDevice.DebugUtils.SetObjectName(fComputeShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DPlanet.TAtmosphereMapUpdate.fComputeShaderModule');
+
+  fComputeShaderStage:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_COMPUTE_BIT,fComputeShaderModule,'main');
+
+  fDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(fVulkanDevice);
+  fDescriptorSetLayout.AddBinding(0,
+                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
+                                  1,
+                                  TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                  [],
+                                  0);
+  fDescriptorSetLayout.AddBinding(1,
+                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                  1,
+                                  TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                  [],
+                                  0);
+  fDescriptorSetLayout.Initialize;
+
+  fPipelineLayout:=TpvVulkanPipelineLayout.Create(fVulkanDevice);
+  fPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),0,SizeOf(TPushConstants));
+  fPipelineLayout.AddDescriptorSetLayout(fDescriptorSetLayout);
+  fPipelineLayout.Initialize;
+
+  fVulkanDevice.DebugUtils.SetObjectName(fPipelineLayout.Handle,VK_OBJECT_TYPE_PIPELINE_LAYOUT,'TpvScene3DPlanet.TAtmosphereMapUpdate.fPipelineLayout');
+
+  fDescriptorPool:=TpvVulkanDescriptorPool.Create(fVulkanDevice,
+                                                  TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
+                                                  1);
+  fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),1);
+  fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),1);
+  fDescriptorPool.Initialize;
+
+  fVulkanDevice.DebugUtils.SetObjectName(fDescriptorPool.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'TpvScene3DPlanet.TAtmosphereMapUpdate.fDescriptorPool');
+
+  fDescriptorSet:=TpvVulkanDescriptorSet.Create(fDescriptorPool,fDescriptorSetLayout);
+  fDescriptorSet.WriteToDescriptorSet(0,
+                                      0,
+                                      1,
+                                      TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
+                                      [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,
+                                                                     fPlanet.fData.fAtmosphereMapImage.VulkanImageView.Handle,
+                                                                     VK_IMAGE_LAYOUT_GENERAL)],
+                                      [],
+                                      [],
+                                      false);
+  fDescriptorSet.WriteToDescriptorSet(1,
+                                      0,
+                                      1,
+                                      TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                      [TVkDescriptorImageInfo.Create(TpvScene3D(fPlanet.fScene3D).GeneralComputeSampler.Handle,
+                                                                     fPlanet.fBrushesTexture.ImageView.Handle,
+                                                                     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
+                                      [],
+                                      [],
+                                      false);
+  fDescriptorSet.Flush;
+
+  fPipeline:=TpvVulkanComputePipeline.Create(fVulkanDevice,
+                                             pvApplication.VulkanPipelineCache,
+                                             TVkPipelineCreateFlags(0),
+                                             fComputeShaderStage,
+                                             fPipelineLayout,
+                                             nil,
+                                             0);
+
+  fPushConstants.AdditionFactor:=1.0;
+  fPushConstants.AdditionOffset:=0.0;
+  fPushConstants.ReductionFactor:=1.0;
+  fPushConstants.ReductionOffset:=-1.0/255.0;
+  fPushConstants.Factor:=1.0;
+
+ end;
+
+end;
+
+destructor TpvScene3DPlanet.TAtmosphereMapUpdate.Destroy;
+begin
+
+ FreeAndNil(fPipeline);
+
+ FreeAndNil(fDescriptorSet);
+
+ FreeAndNil(fDescriptorPool);
+
+ FreeAndNil(fPipelineLayout);
+
+ FreeAndNil(fDescriptorSetLayout);
+
+ FreeAndNil(fComputeShaderStage);
+
+ FreeAndNil(fComputeShaderModule);
+
+ inherited Destroy;
+
+end;
+
+procedure TpvScene3DPlanet.TAtmosphereMapUpdate.Execute(const aCommandBuffer:TpvVulkanCommandBuffer);
+var ImageMemoryBarrier:TVkImageMemoryBarrier;
+begin
+
+ fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'Planet AtmosphereMapUpdate',[0.5,0.5,0.5,1.0]);
+
+ ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                  TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                  VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                  VK_IMAGE_LAYOUT_GENERAL,
+                                                  VK_QUEUE_FAMILY_IGNORED,
+                                                  VK_QUEUE_FAMILY_IGNORED,
+                                                  fPlanet.fData.fAtmosphereMapImage.VulkanImage.Handle,
+                                                  TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                  0,
+                                                                                  1,
+                                                                                  0,
+                                                                                  1));
+
+ aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_HOST_BIT),
+                                   TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                   0,
+                                   0,nil,
+                                   0,nil,
+                                   1,@ImageMemoryBarrier);
+
+ aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,fPipeline.Handle);
+
+ aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE,
+                                      fPipelineLayout.Handle,
+                                      0,
+                                      1,
+                                      @fDescriptorSet.Handle,
+                                      0,
+                                      nil);
+
+ fPushConstants.Factor:=1.0;
 
  aCommandBuffer.CmdPushConstants(fPipelineLayout.Handle,
                                  TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
