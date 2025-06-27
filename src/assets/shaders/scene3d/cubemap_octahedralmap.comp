@@ -25,6 +25,8 @@ layout(set = 0, binding = 0, r11f_g11f_b10f) writeonly uniform imageCube uDestin
 #elif defined(USE_RGBA8)
 #define ALPHA
 layout(set = 0, binding = 0, rgba8) writeonly uniform imageCube uDestinationTexture;
+#elif defined(USE_R8_SNORM)
+layout(set = 0, binding = 0, r8_snorm) writeonly uniform imageCube uDestinationTexture;
 #elif defined(USE_R8)
 layout(set = 0, binding = 0, r8) writeonly uniform imageCube uDestinationTexture;
 #else
