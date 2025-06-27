@@ -2325,6 +2325,8 @@ type TpvScene3DPlanets=class;
        fUseConcurrentWaterHeightMapImage:Boolean;
        fMustTransferWaterHeightMapImageOwnership:Boolean;
        fAtmosphereAdditionTextureImageView:TVkImageView;
+       fAtmosphereUpdateTimeAccumulator:TpvDouble;
+       fAtmosphereUpdateTimeInterval:TpvDouble;
       private
        procedure GenerateMeshIndices(const aTiledMeshIndices:TpvScene3DPlanet.TMeshIndices;
                                      const aTiledMeshIndexGroups:TpvScene3DPlanet.TTiledMeshIndexGroups;
@@ -2481,6 +2483,8 @@ type TpvScene3DPlanets=class;
        property RaytracingTileQueueUpdateIndex:TPasMPUInt32 read fRaytracingTileQueueUpdateIndex;
        property BrushesTexture:TpvVulkanTexture read fBrushesTexture;
        property AtmosphereAdditionTextureImageView:TVkImageView read fAtmosphereAdditionTextureImageView write fAtmosphereAdditionTextureImageView;
+       property AtmosphereUpdateTimeAccumulator:TpvDouble read fAtmosphereUpdateTimeAccumulator write fAtmosphereUpdateTimeAccumulator;
+       property AtmosphereUpdateTimeInterval:TpvDouble read fAtmosphereUpdateTimeInterval write fAtmosphereUpdateTimeInterval;
      end;
 
      { TpvScene3DPlanets }
@@ -21294,6 +21298,10 @@ begin
 
  fAtmosphereAdditionTextureImageView:=VK_NULL_HANDLE;
 
+ fAtmosphereUpdateTimeAccumulator:=0.0;
+
+ fAtmosphereUpdateTimeInterval:=1.0/10.0;
+
  fBrushes:=aBrushes;
 
  fHeightMapResolution:=RoundUpToPowerOfTwo(Min(Max(aHeightMapResolution,128),8192));
@@ -23324,7 +23332,7 @@ begin
 end;
 
 procedure TpvScene3DPlanet.ProcessModifications(const aInFlightFrameIndex:TpvSizeInt);
-var QueueTileIndex:TpvSizeInt;
+var QueueTileIndex,Steps:TpvSizeInt;
     TileIndex:TpvUInt32;
     Source:Pointer;
     UpdateRenderIndex,UpdateWaterVisibility,
@@ -23502,20 +23510,33 @@ begin
 
  end;
 
- if false then begin
+ if fAtmosphereAdditionTextureImageView<>VK_NULL_HANDLE then begin
 
   if assigned(fVulkanDevice) then begin
 
-   BeginUpdate;
-   try
+   fAtmosphereUpdateTimeAccumulator:=fAtmosphereUpdateTimeAccumulator+pvApplication.DeltaTime;
+   if fAtmosphereUpdateTimeAccumulator>=fAtmosphereUpdateTimeInterval then begin
 
-    fAtmosphereMapUpdate.Execute(fVulkanComputeCommandBuffer,0);
+    Steps:=Trunc(fAtmosphereUpdateTimeAccumulator/fAtmosphereUpdateTimeInterval);
 
-   finally
-    EndUpdate;
+    fAtmosphereUpdateTimeAccumulator:=fAtmosphereUpdateTimeAccumulator-(Steps*fAtmosphereUpdateTimeInterval);
+
+    if Steps>0 then begin
+
+     BeginUpdate;
+     try
+
+      fAtmosphereMapUpdate.Execute(fVulkanComputeCommandBuffer,Steps);
+
+     finally
+      EndUpdate;
+     end;
+
+     UpdatedAtmosphere:=true;
+
+    end;
+
    end;
-
-   UpdatedAtmosphere:=true;
 
   end;
 
