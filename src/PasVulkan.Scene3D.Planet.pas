@@ -910,6 +910,7 @@ type TpvScene3DPlanets=class;
               fDescriptorSet:TpvVulkanDescriptorSet;
               fPipelineLayout:TpvVulkanPipelineLayout;
               fPushConstants:TPushConstants;
+              fAtmosphereAdditionTextureImageView:TVkImageView;
              public
               constructor Create(const aPlanet:TpvScene3DPlanet); reintroduce;
               destructor Destroy; override;
@@ -2258,6 +2259,7 @@ type TpvScene3DPlanets=class;
        fPrecipitationMapModification:TPrecipitationMapModification;
        fAtmosphereMapInitialization:TAtmosphereMapInitialization;
        fAtmosphereMapModification:TAtmosphereMapModification;
+       fAtmosphereMapUpdate:TAtmosphereMapUpdate;
        fPrecipitationAtmosphereMapCombination:TPrecipitationAtmosphereMapCombination;
        fHeightMapRandomInitialization:THeightMapRandomInitialization;
        fHeightMapModification:THeightMapModification;
@@ -2322,6 +2324,7 @@ type TpvScene3DPlanets=class;
        fUsePlanetHeightMapBuffer:Boolean;
        fUseConcurrentWaterHeightMapImage:Boolean;
        fMustTransferWaterHeightMapImageOwnership:Boolean;
+       fAtmosphereAdditionTextureImageView:TVkImageView;
       private
        procedure GenerateMeshIndices(const aTiledMeshIndices:TpvScene3DPlanet.TMeshIndices;
                                      const aTiledMeshIndexGroups:TpvScene3DPlanet.TTiledMeshIndexGroups;
@@ -2477,6 +2480,7 @@ type TpvScene3DPlanets=class;
        property RaytracingTileQueues:TRaytracingTileQueues read fRaytracingTileQueues;
        property RaytracingTileQueueUpdateIndex:TPasMPUInt32 read fRaytracingTileQueueUpdateIndex;
        property BrushesTexture:TpvVulkanTexture read fBrushesTexture;
+       property AtmosphereAdditionTextureImageView:TVkImageView read fAtmosphereAdditionTextureImageView write fAtmosphereAdditionTextureImageView;
      end;
 
      { TpvScene3DPlanets }
@@ -10482,6 +10486,8 @@ begin
 
  fVulkanDevice:=fPlanet.fVulkanDevice;
 
+ fAtmosphereAdditionTextureImageView:=VK_NULL_HANDLE;
+
  if assigned(fVulkanDevice) then begin
 
   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_atmospheremap_update_comp.spv');
@@ -10593,6 +10599,23 @@ var ImageMemoryBarrier:TVkImageMemoryBarrier;
 begin
 
  fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'Planet AtmosphereMapUpdate',[0.5,0.5,0.5,1.0]);
+
+ if fAtmosphereAdditionTextureImageView<>fPlanet.fAtmosphereAdditionTextureImageView then begin
+
+  fAtmosphereAdditionTextureImageView:=fPlanet.fAtmosphereAdditionTextureImageView;
+
+  fDescriptorSet.WriteToDescriptorSet(1,
+                                      0,
+                                      1,
+                                      TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                      [TVkDescriptorImageInfo.Create(TpvScene3D(fPlanet.fScene3D).GeneralRepeatingSampler.Handle,
+                                                                     fAtmosphereAdditionTextureImageView,
+                                                                     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
+                                      [],
+                                      [],
+                                      false);
+
+ end;
 
  ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                   TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
@@ -21269,6 +21292,8 @@ begin
 
  fAtmosphere:=nil;
 
+ fAtmosphereAdditionTextureImageView:=VK_NULL_HANDLE;
+
  fBrushes:=aBrushes;
 
  fHeightMapResolution:=RoundUpToPowerOfTwo(Min(Max(aHeightMapResolution,128),8192));
@@ -21637,6 +21662,8 @@ begin
 
  fAtmosphereMapModification:=TAtmosphereMapModification.Create(self);
 
+ fAtmosphereMapUpdate:=TAtmosphereMapUpdate.Create(self);
+
  fPrecipitationAtmosphereMapCombination:=TPrecipitationAtmosphereMapCombination.Create(self);
 
  fHeightMapRandomInitialization:=THeightMapRandomInitialization.Create(self);
@@ -21971,6 +21998,8 @@ begin
  FreeAndNil(fAtmosphereMapInitialization);
 
  FreeAndNil(fAtmosphereMapModification);
+
+ FreeAndNil(fAtmosphereMapUpdate);
 
  FreeAndNil(fPrecipitationMapInitialization);
 
@@ -23462,6 +23491,25 @@ begin
     finally
      fAtmosphereMapModificationItems[aInFlightFrameIndex].Value:=0.0;
     end;
+
+   finally
+    EndUpdate;
+   end;
+
+   UpdatedAtmosphere:=true;
+
+  end;
+
+ end;
+
+ if false then begin
+
+  if assigned(fVulkanDevice) then begin
+
+   BeginUpdate;
+   try
+
+    fAtmosphereMapUpdate.Execute(fVulkanComputeCommandBuffer);
 
    finally
     EndUpdate;
