@@ -914,7 +914,7 @@ type TpvScene3DPlanets=class;
              public
               constructor Create(const aPlanet:TpvScene3DPlanet); reintroduce;
               destructor Destroy; override;
-              procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer);
+              procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aSteps:TpvSizeInt);
              public
               property PushConstants:TPushConstants read fPushConstants write fPushConstants;
             end;
@@ -10594,7 +10594,7 @@ begin
 
 end;
 
-procedure TpvScene3DPlanet.TAtmosphereMapUpdate.Execute(const aCommandBuffer:TpvVulkanCommandBuffer);
+procedure TpvScene3DPlanet.TAtmosphereMapUpdate.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aSteps:TpvSizeInt);
 var ImageMemoryBarrier:TVkImageMemoryBarrier;
 begin
 
@@ -10647,7 +10647,7 @@ begin
                                       0,
                                       nil);
 
- fPushConstants.Factor:=1.0;
+ fPushConstants.Factor:=aSteps;
 
  aCommandBuffer.CmdPushConstants(fPipelineLayout.Handle,
                                  TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
@@ -23509,7 +23509,7 @@ begin
    BeginUpdate;
    try
 
-    fAtmosphereMapUpdate.Execute(fVulkanComputeCommandBuffer);
+    fAtmosphereMapUpdate.Execute(fVulkanComputeCommandBuffer,0);
 
    finally
     EndUpdate;
