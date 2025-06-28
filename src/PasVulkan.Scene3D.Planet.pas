@@ -10567,7 +10567,7 @@ begin
                                              nil,
                                              0);
 
-  fPushConstants.AdditionFactor:=1.0;
+  fPushConstants.AdditionFactor:=0.1;
   fPushConstants.AdditionOffset:=0.0;
   fPushConstants.ReductionFactor:=1.0;
   fPushConstants.ReductionOffset:=-1.0/255.0;
@@ -21300,7 +21300,7 @@ begin
 
  fAtmosphereUpdateTimeAccumulator:=0.0;
 
- fAtmosphereUpdateTimeInterval:=1.0/10.0;
+ fAtmosphereUpdateTimeInterval:=1.0/30.0;
 
  fBrushes:=aBrushes;
 
