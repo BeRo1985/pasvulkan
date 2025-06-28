@@ -44,7 +44,7 @@ void main(){
     const float factor = pushConstants.factor;
 
     // Apply the reduction and addition factors and offsets
-    value = ((value * (pushConstants.reductionFactor * factor)) + (pushConstants.reductionOffset * factor)) +
+    value = ((value * ((factor > 1) ? pow(pushConstants.reductionFactor, factor) : pushConstants.reductionFactor)) + (pushConstants.reductionOffset * factor)) +
             ((additionValue * (pushConstants.additionFactor * factor)) + (pushConstants.additionOffset * factor));
 
     value = clamp(round(clamp(value, 0.0, 1.0) * 255.0) / 255.0, 0.0, 1.0); // Round to 8-bit precision 

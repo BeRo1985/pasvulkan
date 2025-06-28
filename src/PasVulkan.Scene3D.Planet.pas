@@ -2327,6 +2327,10 @@ type TpvScene3DPlanets=class;
        fAtmosphereAdditionTextureImageView:TVkImageView;
        fAtmosphereUpdateTimeAccumulator:TpvDouble;
        fAtmosphereUpdateTimeInterval:TpvDouble;
+       fAtmosphereAdditionFactor:TpvFloat;
+       fAtmosphereAdditionOffset:TpvFloat;
+       fAtmosphereReductionFactor:TpvFloat;
+       fAtmosphereReductionOffset:TpvFloat;
       private
        procedure GenerateMeshIndices(const aTiledMeshIndices:TpvScene3DPlanet.TMeshIndices;
                                      const aTiledMeshIndexGroups:TpvScene3DPlanet.TTiledMeshIndexGroups;
@@ -2485,6 +2489,10 @@ type TpvScene3DPlanets=class;
        property AtmosphereAdditionTextureImageView:TVkImageView read fAtmosphereAdditionTextureImageView write fAtmosphereAdditionTextureImageView;
        property AtmosphereUpdateTimeAccumulator:TpvDouble read fAtmosphereUpdateTimeAccumulator write fAtmosphereUpdateTimeAccumulator;
        property AtmosphereUpdateTimeInterval:TpvDouble read fAtmosphereUpdateTimeInterval write fAtmosphereUpdateTimeInterval;
+       property AtmosphereAdditionFactor:TpvFloat read fAtmosphereAdditionFactor write fAtmosphereAdditionFactor;
+       property AtmosphereAdditionOffset:TpvFloat read fAtmosphereAdditionOffset write fAtmosphereAdditionOffset;
+       property AtmosphereReductionFactor:TpvFloat read fAtmosphereReductionFactor write fAtmosphereReductionFactor;
+       property AtmosphereReductionOffset:TpvFloat read fAtmosphereReductionOffset write fAtmosphereReductionOffset;       
      end;
 
      { TpvScene3DPlanets }
@@ -10567,10 +10575,10 @@ begin
                                              nil,
                                              0);
 
-  fPushConstants.AdditionFactor:=0.1;
-  fPushConstants.AdditionOffset:=0.0;
-  fPushConstants.ReductionFactor:=1.0;
-  fPushConstants.ReductionOffset:=-1.0/255.0;
+  fPushConstants.AdditionFactor:=fPlanet.fAtmosphereAdditionFactor;
+  fPushConstants.AdditionOffset:=fPlanet.fAtmosphereAdditionOffset;
+  fPushConstants.ReductionFactor:=fPlanet.fAtmosphereReductionFactor;
+  fPushConstants.ReductionOffset:=fPlanet.fAtmosphereReductionOffset;
   fPushConstants.Factor:=1.0;
 
  end;
@@ -10651,6 +10659,10 @@ begin
                                       0,
                                       nil);
 
+ fPushConstants.AdditionFactor:=fPlanet.fAtmosphereAdditionFactor;
+ fPushConstants.AdditionOffset:=fPlanet.fAtmosphereAdditionOffset;
+ fPushConstants.ReductionFactor:=fPlanet.fAtmosphereReductionFactor;
+ fPushConstants.ReductionOffset:=fPlanet.fAtmosphereReductionOffset;
  fPushConstants.Factor:=aSteps;
 
  aCommandBuffer.CmdPushConstants(fPipelineLayout.Handle,
@@ -21301,6 +21313,14 @@ begin
  fAtmosphereUpdateTimeAccumulator:=0.0;
 
  fAtmosphereUpdateTimeInterval:=1.0/30.0;
+
+ fAtmosphereAdditionFactor:=0.1;
+
+ fAtmosphereAdditionOffset:=0.0;
+
+ fAtmosphereReductionFactor:=1.0;
+
+ fAtmosphereReductionOffset:=-1.0/255.0;
 
  fBrushes:=aBrushes;
 
