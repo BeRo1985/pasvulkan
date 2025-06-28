@@ -10617,7 +10617,7 @@ begin
                                                                      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
                                       [],
                                       [],
-                                      false);
+                                      true);
 
  end;
 
