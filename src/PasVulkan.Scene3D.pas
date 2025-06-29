@@ -6120,7 +6120,7 @@ begin
            DynamicAABBTree.CreateProxy(fManualBoundingBoxes.Items[Index],Index+1);
           end;
 
-          DynamicAABBTree.Rebuild;
+          DynamicAABBTree.Rebuild(true,true);
 
          end;
 
@@ -10934,7 +10934,7 @@ begin
   if fAABBTreeProxy<0 then begin
    fAABBTreeProxy:=fSceneInstance.fLightAABBTree.CreateProxy(fBoundingBox,TpvPtrInt(Pointer(self)));
   end else begin
-   fSceneInstance.fLightAABBTree.MoveProxy(fAABBTreeProxy,fBoundingBox,TpvVector3.Null,TpvVector3.AllAxis);
+   fSceneInstance.fLightAABBTree.MoveProxy(fAABBTreeProxy,fBoundingBox,TpvVector3.Null,TpvVector3.AllAxis,true);
   end;
   TPasMPInterlocked.Increment(fSceneInstance.fLightAABBTreeGeneration);
  end else begin
@@ -26871,13 +26871,14 @@ begin
        if InstanceNode.fAABBTreeProxy<0 then begin
         InstanceNode.fAABBTreeProxy:=fAABBTree.CreateProxy(InstanceNode.fBoundingBoxes[aInFlightFrameIndex],TpvPtrInt(Node.fIndex)+1);
        end else begin
-        fAABBTree.MoveProxy(InstanceNode.fAABBTreeProxy,InstanceNode.fBoundingBoxes[aInFlightFrameIndex],TpvVector3.Null,TpvVector3.AllAxis);
+        fAABBTree.MoveProxy(InstanceNode.fAABBTreeProxy,InstanceNode.fBoundingBoxes[aInFlightFrameIndex],TpvVector3.Null,TpvVector3.AllAxis,true);
        end;
       end else if InstanceNode.fAABBTreeProxy>=0 then begin
        fAABBTree.DestroyProxy(InstanceNode.fAABBTreeProxy);
        InstanceNode.fAABBTreeProxy:=-1;
       end;
      end;
+//   fAABBTree.Rebuild(false);
 //   EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
 //   inc(TotalCPUTime,EndCPUTime-StartCPUTime);
     end;
@@ -26994,9 +26995,9 @@ begin
     fAABBTreeProxy:=fGroup.fSceneInstance.fAABBTree.CreateProxy(fBoundingBox,TpvPtrInt(Pointer(self)));
    end else begin
     if fUseRenderInstances then begin
-     fGroup.fSceneInstance.fAABBTree.MoveProxy(fAABBTreeProxy,TpvAABB.Create(-TpvVector3.AllMaxAxis,TpvVector3.AllMaxAxis),TpvVector3.Null,TpvVector3.AllAxis);
+     fGroup.fSceneInstance.fAABBTree.MoveProxy(fAABBTreeProxy,TpvAABB.Create(-TpvVector3.AllMaxAxis,TpvVector3.AllMaxAxis),TpvVector3.Null,TpvVector3.AllAxis,true);
     end else begin
-     fGroup.fSceneInstance.fAABBTree.MoveProxy(fAABBTreeProxy,fBoundingBox,TpvVector3.Null,TpvVector3.AllAxis);
+     fGroup.fSceneInstance.fAABBTree.MoveProxy(fAABBTreeProxy,fBoundingBox,TpvVector3.Null,TpvVector3.AllAxis,true);
     end;
    end;
   finally
@@ -27087,6 +27088,7 @@ begin
  if aInFlightFrameIndex>=0 then begin
   AABBTreeState:=@fAABBTreeStates[aInFlightFrameIndex];
   if assigned(fAABBTree) then begin
+// fAABBTree.Rebuild(false);
    fAABBTree.UpdateGeneration;
    if AABBTreeState^.Generation<>fAABBTree.Generation then begin
     AABBTreeState^.Generation:=fAABBTree.Generation;
@@ -31909,6 +31911,7 @@ begin
  fAABBTreeLock.Acquire;
  try
   AABBTreeState:=@fAABBTreeStates[aInFlightFrameIndex];
+//fAABBTree.Rebuild(false);
   fAABBTree.UpdateGeneration;
   if AABBTreeState^.Generation<>fAABBTree.Generation then begin
    AABBTreeState^.Generation:=fAABBTree.Generation;
@@ -32192,6 +32195,7 @@ begin
      (TPasMPInterlocked.CompareExchange(fLightAABBTreeStateGenerations[aInFlightFrameIndex],NewGeneration,OldGeneration)=OldGeneration) then begin
 
    LightAABBTreeState:=@fLightAABBTreeStates[aInFlightFrameIndex];
+// fLightAABBTree.Rebuild(false);
    fLightAABBTree.UpdateGeneration;
    if LightAABBTreeState^.Generation<>fLightAABBTree.Generation then begin
     LightAABBTreeState^.Generation:=fLightAABBTree.Generation;
