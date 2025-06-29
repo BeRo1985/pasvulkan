@@ -1184,6 +1184,7 @@ type PpvScalar=^TpvScalar;
        procedure DirectCombineVector3(const v:TpvVector3); {$ifdef CAN_INLINE}inline;{$endif}
        function Combine(const WithAABB:TpvAABB):TpvAABB; {$ifdef CAN_INLINE}inline;{$endif}
        function CombineVector3(const v:TpvVector3):TpvAABB; {$ifdef CAN_INLINE}inline;{$endif}
+       function Enlarge(const aWithAABB:TpvAABB):boolean;
        function DistanceTo(const ToAABB:TpvAABB):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
        function Radius:TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
        function Compare(const WithAABB:TpvAABB):boolean; {$ifdef CAN_INLINE}inline;{$endif}
@@ -15326,6 +15327,35 @@ begin
  result.Max.x:=Math.Max(Max.x,v.x);
  result.Max.y:=Math.Max(Max.y,v.y);
  result.Max.z:=Math.Max(Max.z,v.z);
+end;
+
+function TpvAABB.Enlarge(const aWithAABB:TpvAABB):boolean;
+begin
+ result:=false;
+ if aWithAABB.Min.x<Min.x then begin
+  Min.x:=aWithAABB.Min.x;
+  result:=true;
+ end;
+ if aWithAABB.Min.y<Min.y then begin
+  Min.y:=aWithAABB.Min.y;
+  result:=true;
+ end;
+ if aWithAABB.Min.z<Min.z then begin
+  Min.z:=aWithAABB.Min.z;
+  result:=true;
+ end;
+ if aWithAABB.Max.x>Max.x then begin
+  Max.x:=aWithAABB.Max.x;
+  result:=true;
+ end;
+ if aWithAABB.Max.y>Max.y then begin
+  Max.y:=aWithAABB.Max.y;
+  result:=true;
+ end;
+ if aWithAABB.Max.z>Max.z then begin
+  Max.z:=aWithAABB.Max.z;
+  result:=true;
+ end;
 end;
 
 function TpvAABB.DistanceTo(const ToAABB:TpvAABB):TpvScalar;
