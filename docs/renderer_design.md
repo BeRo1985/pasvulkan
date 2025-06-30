@@ -277,3 +277,7 @@ PasVulkan uses a single-buffer architecture with bindless access, allowing shade
 Animations are no longer calculated dynamically in the vertex shader but are instead baked as static vertex data at the start of each frame by a compute shader. While this approach increases memory usage, it is necessary for hardware ray tracing compatibility and other modern rendering techniques. Developers must intelligently group animation states to reduce memory and preprocessing costs. This trade-off results in higher VRAM demands but ensures consistency, performance, and advanced rendering capabilities.
 
 Overall, PasVulkan offers a well-balanced solution combining flexibility and performance while meeting the demands of modern graphics technologies.
+
+## Global Illumination
+
+*TODO*
