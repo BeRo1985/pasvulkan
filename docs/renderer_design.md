@@ -217,7 +217,7 @@ To manage instances efficiently, particularly regarding animations and transform
 
 * Represents specific occurrences of the same unique instance in the scene with varying root transformations.
 * Enables multiple renderings of the same animated instance without duplicating unique animation data, conserving memory.
-* Stores per-render-instance properties such as root transformation matrix, specialized shader effects (selection highlighting, holographic effects) that are independent of the core animation and instance data.
+* Stores per-render-instance properties such as root transformation matrix, specialized shader effects (selection highlighting, holographic effect, and so on) that are independent of the core animation and instance data.
 
 #### Notes
 
