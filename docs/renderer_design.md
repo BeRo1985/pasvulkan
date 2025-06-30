@@ -183,6 +183,8 @@ To manage instances efficiently, particularly regarding animations and transform
 * Per-instance data includes:
   * **Animation State:** 
     * Defines the current animation state per instance.
+  * **Scene State:**
+    * Defines the current `GLTF Scene` state per instance, which is used to determine the current visible nodes in the scene graph and to apply the correct transformations to the instance.  
   * **Vertices:**
     * Input data is split into static and dynamic parts.
     * Static input includes texture coordinates, vertex colors, and material indices.
