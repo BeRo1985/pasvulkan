@@ -258,7 +258,7 @@ This requirement for explicit preprocessing and duplication of animation states 
 
 PasVulkan does not currently support the following features:
 
-* **Dynamic LODing:** The renderer does not yet implement dynamic Level of Detail (LOD) management, which would allow automatic adjustment of model detail based on distance from the camera or other criteria inside the Hi-Z two-pass occlusion culling process. The problem with dynamic LODing is that it requires additional preprocessing and management of multiple LOD levels per model, which would increase memory usage and complexity. And GLTF does not natively support dynamic LODing, so it would require additional extensions or custom implementations to handle this feature. However, this feature is planned for future versions to improve performance in large scenes.
+* **Dynamic LODing:** The renderer does not yet implement dynamic Level of Detail (LOD) management, which would allow automatic adjustment of model detail based on distance from the camera or other criteria inside the Hi-Z two-pass occlusion culling process. The problem with dynamic LODing is that it requires additional preprocessing and management of multiple LOD levels per model, which would increase memory usage and complexity. And GLTF does not natively support dynamic LODing yet, so it would require additional extensions or custom implementations to handle this feature. However, this feature is planned for future versions to improve performance in large scenes.
 
 ### Summary
 
