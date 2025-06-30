@@ -254,6 +254,12 @@ Modern GPU-driven architectures such as PasVulkan therefore trade flexibility fo
 
 This requirement for explicit preprocessing and duplication of animation states contributes to higher memory consumption in modern games. As a result, even titles with similar or only marginally improved visual quality compared to older games may demand significantly more video RAM (vRAM). This increased memory footprint is partly driven by the need to store multiple precomputed animation states and related data structures, which were previously avoided by dynamic runtime calculation but are now necessary for compatibility with advanced rendering features like hardware ray tracing as well as other modern rendering techniques and performance optimizations.
 
+### Missing Features
+
+PasVulkan does not currently support the following features:
+
+* **Dynamic LODing:** The renderer does not yet implement dynamic Level of Detail (LOD) management, which would allow automatic adjustment of model detail based on distance from the camera or other criteria inside the Hi-Z two-pass occlusion culling process. The problem with dynamic LODing is that it requires additional preprocessing and management of multiple LOD levels per model, which would increase memory usage and complexity. And GLTF does not natively support dynamic LODing, so it would require additional extensions or custom implementations to handle this feature. However, this feature is planned for future versions to improve performance in large scenes.
+
 ### Summary
 
 PasVulkan builds upon the GLTF format as its foundational model format, extending it to provide efficient and flexible management of 3D models within modern GPU-driven rendering pipelines.
