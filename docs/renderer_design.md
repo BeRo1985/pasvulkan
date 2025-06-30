@@ -156,7 +156,7 @@ Hi-Z Two-Pass Occlusion Culling is a powerful, GPU-centric technique for improvi
 
 ### Introduction
 
-Efficient model data management is critical in modern rendering engines for achieving optimal performance and flexibility. PasVulkan employs GLTF as its foundational model format, extending it internally for improved data representation, compatibility, and efficiency. Key design principles include a single buffer architecture, bindless data structures, and an optimized approach for handling animations and transformations.
+Efficient model data management is critical for modern rendering engines to achieve high performance and flexibility. PasVulkan uses GLTF as its base foundational model format, extending it internally for improved data representation, compatibility, and efficiency. Its key design principles include a single buffer architecture, bindless data structures, and an optimized approach for handling animations and transformations.
 
 ### Model Instance Structure
 
@@ -164,35 +164,106 @@ To manage instances efficiently, particularly regarding animations and transform
 
 #### 1. **TpvScene3D.TGroup**
 
-* Holds shared model data such as vertex attributes, indices, and material properties.
-* This data is shared across all instances of the same model, reducing redundancy.
-* Crucially, it does not directly contain instance-specific GPU data, but rather serves as the base structure from which instances derive.
+* Contains shared model data such as vertex attributes, indices, and material information.
+* Shared across all instances of the same model to reduce redundancy.
+* It does not directly contain instance-specific GPU data as whole, but rather serves as the base structure from which instances derive.
+* Per group data includes:
+  * **Materials:**
+    * Materials are `TpvScene3D` global, but linked per-group-wise. Deduplication of materials across groups happens during loadig, ensuring that materials are not duplicated unnecessarily. The deduplication is done per hash table lookup of a hash value of the raw data of the material.    
+  * **Textures:** 
+    * Textures are `TpvScene3D` global, but linked per-group-wise. Deduplication of textures across groups happens during loading, ensuring that textures are not duplicated unnecessarily. The deduplication is done per hash table lookup of a hash value of the raw data of the texture.
+    * Maximum 32,768 textures are supported inside `TpvScene3D`, which is sufficient for most applications. This limit is imposed by internal structures and optimizations, for example because each texture is accessible both as a linear RGB and as an sRGB image view for random shader access with interpolation-compatible color-type handling, requiring two slots per texture in the descriptor set. Consequently, the effective limit is 32,768 textures, as the internal hardcoded array size in the `TpvScene3D` texture descriptor management system is 65,536 (defined as a constant), divided by two. This allows a large number of textures to be used without exceeding the descriptor set slot limit.
 
 #### 2. **TpvScene3D.TGroup.TInstance**
 
-* Stores unique per-instance data, notably animation states and transformation matrices.
+* Contains unique per-instance data, notably animation states and transformation matrices.
 * Enables different instances to independently animate without duplicating the entire model data, reducing overall memory usage.
 * Requires additional preprocessed vertex data stored once per frame (not per draw call), particularly important for ray tracing, which relies on pre-baked vertex buffers calculated via compute shaders at each frame start.
 * Balances flexibility (unique animations per instance) and memory overhead (additional CPU/GPU memory usage).
+* Per-instance data includes:
+  * **Animation State:** Defines the current animation state per instance.
+  * **Vertices:**
+    * Input data is split into static and dynamic parts.
+    * Static input includes texture coordinates, vertex colors, and material indices.
+    * Dynamic input includes position, normal, tangent, morph target base index, joint block base index, joint block count, root node index, generation, and flags (e.g., sign of bitangent).
+    * Dynamic output is double-buffered across two large shared buffers to enable motion vector computation.
+    * Additionally, a position-only output buffer is used for acceleration structures (BLAS). These position-only vertices omit the root transformation matrix, as the root transformation is applied by the bottom-level acceleration structure (BLAS) instance data, which is used for hardware ray tracing.
+    * Approximate cost is \~3× vertex data per instance.
+    * Duplication is necessary since the vertex data contains per-instance positions, indices to materials, morph target and joint data offsets.    
+    * The generation field is used to determine whether the previous frame's vertex data corresponds to the current frame, allowing correct motion vector calculation.
+  * **Indices:**
+    * Each instance has its own index buffer referencing its portion of the shared vertex buffer.
+    * This allows distinct vertex ranges per instance.
+  * **Matrices:**
+    * Includes transformation matrices for positioning, rotation, and scaling per group node and bone joint matrices. This includes the root transformation matrix for the instance, which is applied to all vertices during processing in the compute shader, or in the case of GPU instances, applied to the instance data in the vertex shader. 
+  * **Bone Joint Indices and Weights:**
+    * Implemented using a linear list of quads (groups of 4 indices/weights), supporting variable bone influence per vertex, where each vertex has a start offset and count of bone influence quad blocks in their corresponding shared data buffers. 
+    * Enables high flexibility at the cost of increased compute complexity.
+    * This structure allows the compute shader to dynamically walk through bone influences per vertex without artificial limits.
+    * A high number of bones per vertex increases GPU workload due to complex branching and loop iterations in the compute shader. The more bones influence a vertex, the more branching and loop steps the GPU must execute, increasing computational load, cache-misses and potentially leading to performance bottlenecks.
+  * **Morph Targets / Blend Shapes:**
+    * Optional support for advanced deformations.
+    * Implemented using a linked list per-vertex and per-morph-vertex-wise, allowing for flexible morph target management, where each vertex has a starting morph target offset index pointing to the first linked list entry, or zero if no morph targets are applied.
+    * A high number of morph targets per vertex increases GPU workload due to complex branching and loop iterations in the compute shader. The more morph targets influence a vertex, the more branching and loop steps the GPU must execute, increasing computational load.
+    * A high number of morph targets per vertex can lead to increased memory usage, as each morph target requires additional storage for its vertex data. This can be a concern in memory-constrained environments, such as mobile devices or low-end GPUs.
+  * **Animated Materials:**
+    * Instances can have unique animated material variants.
+    * Static materials are shared; animated materials are duplicated per instance.
+       * Per-instance animated materials are duplicated to allow instance-unique material animation states. This is necessary for animated material properties, which require per-instance material values independent of the shared global material data.
+       * Static (non-animated) materials are shared to avoid duplication.
 
 #### 3. **TpvScene3D.TGroup.TInstance.TRenderInstance**
 
 * Represents specific occurrences of the same unique instance in the scene with varying root transformations.
 * Enables multiple renderings of the same animated instance without duplicating unique animation data, conserving memory.
-* Stores per-render-instance properties such as specialized shader effects (selection highlighting, holographic effects) that are independent of the core animation and instance data.
+* Stores per-render-instance properties such as root transformation matrix, specialized shader effects (selection highlighting, holographic effects) that are independent of the core animation and instance data.
+
+#### Notes
+
+Indeed, this is a little bit confusing, that two things are called "instance" in the PasVulkan renderer, but they are different things. The first one is the `TpvScene3D.TGroup.TInstance`, which is a unique instance of a model with its own animation state and transformation data, while the second one is the `TpvScene3D.TGroup.TInstance.TRenderInstance`, which represents a specific occurrence of that unique instance in the scene with varying root transformations. This distinction allows for efficient management of model instances and their rendering properties.
 
 ### Single Buffer Architecture and Bindless Access
 
-PasVulkan stores model data in a single buffer architecture, facilitating efficient random access to vertex attributes, indices, and material properties. This approach significantly reduces buffer binding overhead during rendering, enhancing real-time performance.
+PasVulkan uses a single buffer architecture to enable efficient random access to various data with minimal overhead. This eliminates the need for frequent buffer bindings, improves performance, and significantly reduces buffer binding overhead during rendering, enhancing real-time performance.
 
-Shaders employ bindless data structures, allowing them to access required materials and textures dynamically without additional render targets or extensive intermediate buffers. This design decreases memory bandwidth and optimizes GPU resource utilization compared to traditional deferred rendering methods.
+Bindless data structures allow shaders to random access mesh data, materials and textures directly, without extra render targets or intermediate buffers. This design reduces GPU memory traffic and is more efficient than other traditional approaches. It's needed for modern rendering techniques like forward+ and hardware ray tracing, where efficient data access is crucial for performance.
 
 ### Handling Per-Instance Animations
 
-Efficient management of per-instance animations is a critical challenge. Unlike traditional rendering pipelines, where vertex shaders dynamically calculate animations per instance, GPU-driven architectures like PasVulkan preprocess vertex data into buffers once per frame. Consequently, each unique animation state requires its own TpvScene3D.TGroup.TInstance, increasing memory usage.
+In GPU-driven pipelines like PasVulkan, all vertex data must be preprocessed at the start of each frame for all subsequent stages, including rasterization and hardware ray tracing. Each distinct animation state requires a separate `TpvScene3D.TGroup.TInstance`, increasing memory usage.
 
-To mitigate memory overhead, PasVulkan requires the implementation of intelligent animation-state-grouping strategies. Developers must manually group similar animation states together to minimize the number of unique instances needed. This optimization reduces memory consumption without significantly compromising animation flexibility. A trade-off occurs when no free unique instances are available, potentially causing animation state time-jumping and visual artifacts. Despite this drawback, it's preferable to rendering failures, highlighting the necessary balance between flexibility and performance in GPU-driven rendering architectures.
+To avoid excessive memory consumption, PasVulkan requires the use of intelligent animation-state-grouping. Developers must manually cluster similar animation states to reduce the number of unique instances.
+
+This technique involves trade-offs:
+
+* Reduces memory usage and preprocessing time.
+* May lead to animation state time-jumping when no suitable instance is available, causing minor visual artifacts.
+* Preferred over rendering failure or complete duplication of data.
+
+Animation-state-grouping is a necessary optimization in GPU-driven rendering architectures, especially in those being compatible with hardware ray tracing, demanding thoughtful preprocessing and grouping logic from developers. Hardware ray tracing requires static vertex data for BLAS (Bottom-Level Acceleration Structures), which must be precomputed and stored in a single buffer. This design choice ensures consistency between rasterization and ray tracing, as both processes rely on the same vertex data.
+
+In older GPU pipelines and render implementations, per-instance animations were often recalculated dynamically in the vertex shader at runtime. This allowed each instance to maintain a fully unique animation state without consuming additional memory. However, this method becomes increasingly inefficient in modern rendering pipelines, as the continuous per-frame recalculation introduces significant performance overhead.
+
+Furthermore, such dynamic vertex transformations are fundamentally incompatible with hardware ray tracing, which requires static vertex data for building Bottom-Level Acceleration Structures (BLAS). Any runtime-calculated animation data would violate this consistency, rendering the approach unusable for ray tracing. In addition, these structures must be constructed from the same precomputed vertex data used during hybrid rasterization, ensuring consistency across both stages. Otherwise, the ray tracing process would not be able to accurately represent the geometry as it was rendered, leading to potential visual artifacts and inconsistencies in the final image, such as incorrect shadows, reflections, and intersections.
+
+Modern GPU-driven architectures such as PasVulkan therefore trade flexibility for performance and compatibility. While per-instance uniqueness is still supported, it relies on explicit preprocessing and memory allocation. Developers must carefully manage animation-state grouping and memory layout to avoid unnecessary duplication  as well as both excessive memory and runtime cost.
+
+This requirement for explicit preprocessing and duplication of animation states contributes to higher memory consumption in modern games. As a result, even titles with similar or only marginally improved visual quality compared to older games may demand significantly more video RAM (vRAM). This increased memory footprint is partly driven by the need to store multiple precomputed animation states and related data structures, which were previously avoided by dynamic runtime calculation but are now necessary for compatibility with advanced rendering features like hardware ray tracing as well as other modern rendering techniques and performance optimizations.
 
 ### Summary
 
-PasVulkan's model data management system strategically combines single buffer architecture, bindless data structures, and a structured approach to model instances. This facilitates efficient and flexible real-time rendering. By carefully balancing the complexity of per-instance animations with developer-implemented intelligent grouping strategies, PasVulkan ensures robust performance, making effective use of GLTF's versatility.
+PasVulkan builds upon the GLTF format as its foundational model format, extending it to provide efficient and flexible management of 3D models within modern GPU-driven rendering pipelines.
+
+The system is organized into three key layers:
+
+* **TGroup:** Holds shared model data such as vertex attributes, indices, materials, and textures. Materials and textures are globally deduplicated to save memory. The system supports up to 32,768 textures, limited by internal constraints.
+
+* **TGroup.TInstance:** Contains instance-specific data like animation states, transformations, and dynamic vertex data. This data is preprocessed each frame and double-buffered, enabling correct motion vectors and compatibility with hardware ray tracing. The structure supports flexible bone and morph target management, allowing unique animations at the cost of increased memory and compute load.
+
+* **TRenderInstance:** Represents individual render occurrences of the same animated instance with varying root transforms and optional shader effects, without duplicating animation data.
+
+PasVulkan uses a single-buffer architecture with bindless access, allowing shaders direct and efficient random access to mesh, material, and texture data. This reduces overhead and boosts performance, which is critical for modern techniques like forward+ rendering and hardware ray tracing.
+
+Animations are no longer calculated dynamically in the vertex shader but are instead baked as static vertex data at the start of each frame by a compute shader. While this approach increases memory usage, it is necessary for hardware ray tracing compatibility and other modern rendering techniques. Developers must intelligently group animation states to reduce memory and preprocessing costs. This trade-off results in higher VRAM demands but ensures consistency, performance, and advanced rendering capabilities.
+
+Overall, PasVulkan offers a well-balanced solution combining flexibility and performance while meeting the demands of modern graphics technologies.
