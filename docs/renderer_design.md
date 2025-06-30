@@ -266,11 +266,11 @@ PasVulkan builds upon the GLTF format as its foundational model format, extendin
 
 The system is organized into three key layers:
 
-* **TGroup:** Holds shared model data such as vertex attributes, indices, materials, and textures. Materials and textures are globally deduplicated to save memory. The system supports up to 32,768 textures, limited by internal constraints.
+* **TpvScene3D.TGroup:** Holds shared model data such as vertex attributes, indices, materials, and textures. Materials and textures are globally deduplicated to save memory. The system supports up to 32,768 textures, limited by internal constraints. Short: A group is a GLTF model.
 
-* **TGroup.TInstance:** Contains instance-specific data like animation states, transformations, and dynamic vertex data. This data is preprocessed each frame and double-buffered, enabling correct motion vectors and compatibility with hardware ray tracing. The structure supports flexible bone and morph target management, allowing unique animations at the cost of increased memory and compute load.
+* **TpvScene3D.TGroup.TInstance:** Contains instance-specific data like animation states, transformations, and dynamic vertex data. This data is preprocessed each frame and double-buffered, enabling correct motion vectors and compatibility with hardware ray tracing. The structure supports flexible bone and morph target management, allowing unique animations at the cost of increased memory and compute load.
 
-* **TRenderInstance:** Represents individual render occurrences of the same animated instance with varying root transforms and optional shader effects, without duplicating animation data.
+* **TpvScene3D.TGroup.TInstance.TRenderInstance:** Represents individual render occurrences of the same animated instance with varying root transforms and optional shader effects, without duplicating animation data.
 
 PasVulkan uses a single-buffer architecture with bindless access, allowing shaders direct and efficient random access to mesh, material, and texture data. This reduces overhead and boosts performance, which is critical for modern techniques like forward+ rendering and hardware ray tracing.
 
