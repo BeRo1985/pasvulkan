@@ -181,7 +181,8 @@ To manage instances efficiently, particularly regarding animations and transform
 * Requires additional preprocessed vertex data stored once per frame (not per draw call), particularly important for ray tracing, which relies on pre-baked vertex buffers calculated via compute shaders at each frame start.
 * Balances flexibility (unique animations per instance) and memory overhead (additional CPU/GPU memory usage).
 * Per-instance data includes:
-  * **Animation State:** Defines the current animation state per instance.
+  * **Animation State:** 
+    * Defines the current animation state per instance.
   * **Vertices:**
     * Input data is split into static and dynamic parts.
     * Static input includes texture coordinates, vertex colors, and material indices.
