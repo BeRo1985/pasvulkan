@@ -156,28 +156,43 @@ Hi-Z Two-Pass Occlusion Culling is a powerful, GPU-centric technique for improvi
 
 ### Introduction
 
-In modern rendering engines, efficient management of model data is crucial for performance and flexibility. This section outlines the approach taken in PasVulkan to handle model data, focusing on the use of a single buffer architecture, bindless data structures, and the challenges associated with per-instance animations. PasVulkan's renderer architecture is designed to be flexible and efficient, allowing for high-performance rendering in real-time applications. The architecture is built around the Vulkan API, which provides low-level access to the GPU and enables advanced rendering techniques. GLTF is used as the primary model format, as a base for its own internal data structures but in more extended form, leveraging its capabilities for efficient data representation and compatibility with modern rendering techniques.
+Efficient model data management is critical in modern rendering engines for achieving optimal performance and flexibility. PasVulkan employs GLTF as its foundational model format, extending it internally for improved data representation, compatibility, and efficiency. Key design principles include a single buffer architecture, bindless data structures, and an optimized approach for handling animations and transformations.
 
-### Model Instance Structure Design Concept
+### Model Instance Structure
 
-In PasVulkan, it's essential to manage model instances efficiently, especially when dealing with animations and transformations. The model instance structure is designed to accommodate various animation states while minimizing memory usage and maintaining performance. It's subdivided into three parts:
+To manage instances efficiently, particularly regarding animations and transformations, PasVulkan organizes model instances into a clear hierarchy:
 
-1. **TpvScene3D.TGroup:** This part contains the model's acrual data, such as vertex attributes, indices, and material properties. It is shared across all instances of the model, but it's not yet the place where the actual GPU instance data is stored. Instead, it serves just as a base for the unique instances and render instances. Indeed, this can be a little bit confusing, as the TpvScene3D.TGroup is not the actual model instance and there are two things with "instance" in the name. Let's continue with the next two parts to clarify this.
+#### 1. **TpvScene3D.TGroup**
 
-2. **TpvScene3D.TGroup.TInstance:** This part contains the unique data for each instance of the model, such as transformation matrices and animation states. Each unique instance can have its own animation state, allowing for flexibility in rendering different animations without duplicating the entire model data. However, this still requires additional memory on CPU as well on the GPU for each unique instance, as the vertex data must be preprocessed and stored separately for each animation state, but once per frame, not per draw call, since for example the raytracing needs a pre-baked vertex buffer for the model data, which is then used for both rasterization and raytracing, calculated by a compute shader at the beginning of each frame. This allows for efficient rendering of complex scenes with multiple instances of the same model, each potentially having different animation states. This is a trade-off between flexibility and memory usage, as it allows for different animation states without the need for multiple full copies of the entire model data, instead just the unique instance data, which is much smaller in size compared to the entire model data. 
+* Holds shared model data such as vertex attributes, indices, and material properties.
+* This data is shared across all instances of the same model, reducing redundancy.
+* Crucially, it does not directly contain instance-specific GPU data, but rather serves as the base structure from which instances derive.
 
-3. **TpvScene3D.TGroup.TInstance.TRenderInstance:** This part is a renderer instance of a TpvScene3D.TGroup.TInstance, which can be used to render the same model unique instance in the scene multiple on various places in the scene, with different root transformations, but sharing the same unique instance data, for animation and other properties. This allows for efficient rendering of the same model unique instance multiple times in the scene without duplicating the entire unique instance data, which would increase memory usage and reduce performance. The TRenderInstance is used to store the transformation matrices and other per-render-instance data that is needed for rendering the model in the scene, such as some special shader effect properties like selection highlighting, hologram-effect or other per-render-instance properties that are not part of the unique instance data. But this means that the TRenderInstance is not a unique instance, but rather a render instance of a unique instance, which can be used to render the same unique instance multiple times in the scene with different root transformations and per-render-instance properties. In other words, more different animation states of a model do still need also more additional unique instances, and thus also more memory usage. So in a intelligent animation-state-grouping is needed to minimize the number of unique instances and thus memory usage, while still allowing for different animation states to be rendered in the scene.
+#### 2. **TpvScene3D.TGroup.TInstance**
 
-### Model Data Storage and Access
+* Stores unique per-instance data, notably animation states and transformation matrices.
+* Enables different instances to independently animate without duplicating the entire model data, reducing overall memory usage.
+* Requires additional preprocessed vertex data stored once per frame (not per draw call), particularly important for ray tracing, which relies on pre-baked vertex buffers calculated via compute shaders at each frame start.
+* Balances flexibility (unique animations per instance) and memory overhead (additional CPU/GPU memory usage).
 
-In PasVulkan, model data is stored in a single buffer architecture, which allows for efficient random access to vertex attributes, indices, and material properties. This approach minimizes the overhead of multiple buffer bindings during rendering and enables high-performance rendering in real-time applications.
+#### 3. **TpvScene3D.TGroup.TInstance.TRenderInstance**
 
-The model data is organized in a way that allows shaders to fetch the necessary information on demand, using bindless data structures. This means that shaders can access material properties and textures without the need for multiple render targets or large intermediate buffers, reducing memory usage and bandwidth requirements compared to deferred rendering.
+* Represents specific occurrences of the same unique instance in the scene with varying root transformations.
+* Enables multiple renderings of the same animated instance without duplicating unique animation data, conserving memory.
+* Stores per-render-instance properties such as specialized shader effects (selection highlighting, holographic effects) that are independent of the core animation and instance data.
 
-### Challenges of Per-Instance Animations
+### Single Buffer Architecture and Bindless Access
 
-As already said in the previous sections, one of the main challenges in a GPU-driven renderer architecture is handling per-instance animations. In a traditional rendering pipeline, animations are often calculated dynamically in the vertex shader, allowing each instance to have its own animation state. However, in a GPU-driven architecture where all vertex data is preprocessed and stored in a single buffer per frame, this flexibility is lost. And more different animation states of a model do still need also more additional unique instances, and thus also more memory usage. A *intelligent animation-state-grouping* is needed to minimize the number of unique instances and thus memory usage, while still allowing for different animation states to be rendered in the scene. even through with some trade-offs, such as animation-state-time-jumping, when there are no free unique instances available for a new animation state, which can lead to some visual artifacts, but is still better than not being able to render the model at all. It's just a disadvantage of the modern GPU-driven architecture, which always requires a trade-off between flexibility and performance.
+PasVulkan stores model data in a single buffer architecture, facilitating efficient random access to vertex attributes, indices, and material properties. This approach significantly reduces buffer binding overhead during rendering, enhancing real-time performance.
+
+Shaders employ bindless data structures, allowing them to access required materials and textures dynamically without additional render targets or extensive intermediate buffers. This design decreases memory bandwidth and optimizes GPU resource utilization compared to traditional deferred rendering methods.
+
+### Handling Per-Instance Animations
+
+Efficient management of per-instance animations is a critical challenge. Unlike traditional rendering pipelines, where vertex shaders dynamically calculate animations per instance, GPU-driven architectures like PasVulkan preprocess vertex data into buffers once per frame. Consequently, each unique animation state requires its own TpvScene3D.TGroup.TInstance, increasing memory usage.
+
+To mitigate memory overhead, PasVulkan requires the implementation of intelligent animation-state-grouping strategies. Developers must manually group similar animation states together to minimize the number of unique instances needed. This optimization reduces memory consumption without significantly compromising animation flexibility. A trade-off occurs when no free unique instances are available, potentially causing animation state time-jumping and visual artifacts. Despite this drawback, it's preferable to rendering failures, highlighting the necessary balance between flexibility and performance in GPU-driven rendering architectures.
 
 ### Summary
 
-PasVulkan's model data management approach leverages a single buffer architecture, bindless data structures, and a well-defined model instance structure to efficiently handle rendering in real-time applications. While the challenges of per-instance animations require careful consideration and trade-offs, the overall design allows for high-performance rendering with minimal overhead. The use of GLTF as the primary model format provides a solid foundation for efficient data representation and compatibility with modern rendering techniques.
+PasVulkan's model data management system strategically combines single buffer architecture, bindless data structures, and a structured approach to model instances. This facilitates efficient and flexible real-time rendering. By carefully balancing the complexity of per-instance animations with developer-implemented intelligent grouping strategies, PasVulkan ensures robust performance, making effective use of GLTF's versatility.
