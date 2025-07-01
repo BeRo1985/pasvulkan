@@ -211,8 +211,10 @@ type EpvBVHDynamicAABBTree=class(Exception);
        fRebuildDirty:TPasMPBool32;
        fDirty:TPasMPBool32;
        fGeneration:TpvUInt64;
+       fMultipleReaderSingleWriterLockState:TPasMPInt32;
+       fThreadSafe:Boolean;
       public
-       constructor Create;
+       constructor Create(const aThreadSafe:boolean=false);
        destructor Destroy; override;
        procedure Clear;
        function AllocateNode:TpvSizeInt;
@@ -228,8 +230,8 @@ type EpvBVHDynamicAABBTree=class(Exception);
        function MoveProxy(const aNodeID:TpvSizeInt;const aAABB:TpvAABB;const aDisplacement:TpvVector3;const aShouldRotate:boolean=true):boolean; overload;
        procedure EnlargeProxy(const aNodeID:TpvSizeInt;const aAABB:TpvAABB);
        procedure Rebalance(const aIterations:TpvSizeInt);
-       procedure RebuildBottomUp;
-       procedure RebuildTopDown(const aFull:Boolean=false);
+       procedure RebuildBottomUp(const aLock:Boolean=true);
+       procedure RebuildTopDown(const aFull:Boolean=false;const aLock:Boolean=true);
        procedure ForceRebuild;
        procedure Rebuild(const aFull:Boolean=false;const aForce:Boolean=false);
        function UpdateGeneration:TpvUInt64;
@@ -496,7 +498,7 @@ end;
 
 { TpvBVHDynamicAABBTree }
 
-constructor TpvBVHDynamicAABBTree.Create;
+constructor TpvBVHDynamicAABBTree.Create(const aThreadSafe:boolean);
 var i:TpvSizeInt;
 begin
  inherited Create;
@@ -540,6 +542,10 @@ begin
 
  fRebuildDirty:=false;
 
+ fThreadSafe:=aThreadSafe;
+
+ fMultipleReaderSingleWriterLockState:=0;
+
 end;
 
 destructor TpvBVHDynamicAABBTree.Destroy;
@@ -559,6 +565,9 @@ end;
 procedure TpvBVHDynamicAABBTree.Clear;
 var i:TpvSizeInt;
 begin
+ if fThreadSafe then begin
+  TPasMPMultipleReaderSingleWriterSpinLock.AcquireWrite(fMultipleReaderSingleWriterLockState);
+ end;
  fSkipListNodeStack.Count:=0;
  fSkipListNodeMap:=nil;
  fRoot:=NULLNODE;
@@ -577,6 +586,9 @@ begin
  fPath:=0;
  fInsertionCount:=0;
  fProxyCount:=0;
+ if fThreadSafe then begin
+  TPasMPMultipleReaderSingleWriterSpinLock.ReleaseRead(fMultipleReaderSingleWriterLockState);
+ end;
 end;
 
 function TpvBVHDynamicAABBTree.AllocateNode:TpvSizeInt;
@@ -1378,6 +1390,10 @@ var Node,ParentNode:PTreeNode;
     ParentIndex:TpvSizeInt;
 begin
 
+ if fThreadSafe then begin
+  TPasMPMultipleReaderSingleWriterSpinLock.AcquireWrite(fMultipleReaderSingleWriterLockState);
+ end;
+
  result:=AllocateNode;
 
  Node:=@fNodes[result];
@@ -1409,15 +1425,25 @@ begin
 
  fRebuildDirty:=true;
 
+ if fThreadSafe then begin
+  TPasMPMultipleReaderSingleWriterSpinLock.ReleaseWrite(fMultipleReaderSingleWriterLockState);
+ end;
+
 end;
 
 procedure TpvBVHDynamicAABBTree.DestroyProxy(const aNodeID:TpvSizeInt);
 begin
+ if fThreadSafe then begin
+  TPasMPMultipleReaderSingleWriterSpinLock.AcquireWrite(fMultipleReaderSingleWriterLockState);
+ end;
  dec(fProxyCount);
  RemoveLeaf(aNodeID);
  FreeNode(aNodeID);
  fRebuildDirty:=true;
  fDirty:=true;
+ if fThreadSafe then begin
+  TPasMPMultipleReaderSingleWriterSpinLock.ReleaseWrite(fMultipleReaderSingleWriterLockState);
+ end;
 end;
 
 function TpvBVHDynamicAABBTree.MoveProxy(const aNodeID:TpvSizeInt;const aAABB:TpvAABB;const aDisplacement,aMargin:TpvVector3;const aShouldRotate:boolean):boolean;
@@ -1427,11 +1453,19 @@ var Node,ParentNode:PTreeNode;
     d:TpvVector3;
 begin
 
+ if fThreadSafe then begin
+  TPasMPMultipleReaderSingleWriterSpinLock.AcquireRead(fMultipleReaderSingleWriterLockState);
+ end;
+
  Node:=@fNodes[aNodeID];
 
  result:=not Node^.AABB.Contains(aAABB);
 
  if result then begin
+
+  if fThreadSafe then begin
+   TPasMPMultipleReaderSingleWriterSpinLock.ReadToWrite(fMultipleReaderSingleWriterLockState);
+  end;
 
   RemoveLeaf(aNodeID);
 
@@ -1478,6 +1512,16 @@ begin
 
   fDirty:=true;
 
+  if fThreadSafe then begin
+   TPasMPMultipleReaderSingleWriterSpinLock.AcquireWrite(fMultipleReaderSingleWriterLockState);
+  end;
+
+ end else begin
+
+  if fThreadSafe then begin
+   TPasMPMultipleReaderSingleWriterSpinLock.ReleaseRead(fMultipleReaderSingleWriterLockState);
+  end;
+
  end;
 
 end;
@@ -1492,6 +1536,10 @@ var Node,ParentNode:PTreeNode;
     ParentIndex:TpvSizeInt;
     Changed:boolean;
 begin
+
+ if fThreadSafe then begin
+  TPasMPMultipleReaderSingleWriterSpinLock.AcquireWrite(fMultipleReaderSingleWriterLockState);
+ end;
 
  if (aNodeID>=0) and (aNodeID<fNodeCapacity) then begin
 
@@ -1523,6 +1571,10 @@ begin
 
  end;
 
+ if fThreadSafe then begin
+  TPasMPMultipleReaderSingleWriterSpinLock.ReleaseWrite(fMultipleReaderSingleWriterLockState);
+ end;
+
 end;
 
 procedure TpvBVHDynamicAABBTree.Rebalance(const aIterations:TpvSizeInt);
@@ -1530,6 +1582,9 @@ var Counter,Node:TpvSizeInt;
     Bit:TpvSizeUInt;
 //  Children:PSizeIntArray;
 begin
+ if fThreadSafe then begin
+  TPasMPMultipleReaderSingleWriterSpinLock.AcquireWrite(fMultipleReaderSingleWriterLockState);
+ end;
  if (fRoot>=0) and (fRoot<fNodeCount) then begin
   for Counter:=1 to aIterations do begin
    Bit:=0;
@@ -1547,9 +1602,12 @@ begin
    end;
   end;
  end;
+ if fThreadSafe then begin
+  TPasMPMultipleReaderSingleWriterSpinLock.ReleaseWrite(fMultipleReaderSingleWriterLockState);
+ end;
 end;
 
-procedure TpvBVHDynamicAABBTree.RebuildBottomUp;
+procedure TpvBVHDynamicAABBTree.RebuildBottomUp(const aLock:Boolean);
 var Count,IndexA,IndexB,IndexAMin,IndexBMin,Index1,Index2,ParentIndex:TpvSizeint;
     NewNodes:array of TpvSizeInt;
     Children:array[0..1] of TpvBVHDynamicAABBTree.PTreeNode;
@@ -1559,6 +1617,9 @@ var Count,IndexA,IndexB,IndexAMin,IndexBMin,Index1,Index2,ParentIndex:TpvSizeint
     AABB:TpvAABB;
     First:boolean;
 begin
+ if fThreadSafe and aLock then begin
+  TPasMPMultipleReaderSingleWriterSpinLock.AcquireWrite(fMultipleReaderSingleWriterLockState);
+ end;
  if fNodeCount>0 then begin
   NewNodes:=nil;
   try
@@ -1622,9 +1683,12 @@ begin
   end;
  end;
  fDirty:=true;
+ if fThreadSafe and aLock then begin
+  TPasMPMultipleReaderSingleWriterSpinLock.ReleaseWrite(fMultipleReaderSingleWriterLockState);
+ end;
 end;
 
-procedure TpvBVHDynamicAABBTree.RebuildTopDown(const aFull:Boolean);
+procedure TpvBVHDynamicAABBTree.RebuildTopDown(const aFull:Boolean;const aLock:Boolean);
 {$define DynamicAABBTreeRebuildTopDownSAH}
 {$define DynamicAABBTreeRebuildTopDownQuickSortStylePartitioning}
 {$ifdef DynamicAABBTreeRebuildTopDownSAH}
@@ -1687,6 +1751,10 @@ var Count,Index,ParentIndex,NodeIndex,TempIndex,
     NodeStackItem:TNodeStackItem;
     Node:PTreeNode;
 begin
+
+ if fThreadSafe and aLock then begin
+  TPasMPMultipleReaderSingleWriterSpinLock.AcquireWrite(fMultipleReaderSingleWriterLockState);
+ end;
 
  if (NodeCount>0) and (fRoot>=0) then begin
 
@@ -2143,24 +2211,46 @@ begin
 
  fDirty:=true;
 
+ if fThreadSafe and aLock then begin
+  TPasMPMultipleReaderSingleWriterSpinLock.ReleaseWrite(fMultipleReaderSingleWriterLockState);
+ end;
+
 end;
 
 procedure TpvBVHDynamicAABBTree.ForceRebuild;
 begin
+ if fThreadSafe then begin
+  TPasMPMultipleReaderSingleWriterSpinLock.AcquireWrite(fMultipleReaderSingleWriterLockState);
+ end;
  if fNodeCount<128 then begin
-  RebuildBottomUp;
+  RebuildBottomUp(false);
  end else begin
-  RebuildTopDown(true);
+  RebuildTopDown(true,false);
+ end;
+ if fThreadSafe then begin
+  TPasMPMultipleReaderSingleWriterSpinLock.ReleaseWrite(fMultipleReaderSingleWriterLockState);
  end;
 end;
 
 procedure TpvBVHDynamicAABBTree.Rebuild(const aFull:Boolean=false;const aForce:Boolean=false);
 begin
+ if fThreadSafe then begin
+  TPasMPMultipleReaderSingleWriterSpinLock.AcquireRead(fMultipleReaderSingleWriterLockState);
+ end;
  if fRebuildDirty or aForce then begin
+  if fThreadSafe then begin
+   TPasMPMultipleReaderSingleWriterSpinLock.ReadToWrite(fMultipleReaderSingleWriterLockState);
+  end;
   fRebuildDirty:=false;
   if fProxyCount>0 then begin
-   RebuildTopDown(aFull);
+   RebuildTopDown(aFull,false);
  //Assert(Validate);
+  end;
+  if fThreadSafe then begin
+   TPasMPMultipleReaderSingleWriterSpinLock.ReleaseWrite(fMultipleReaderSingleWriterLockState);
+  end;
+  if fThreadSafe then begin
+   TPasMPMultipleReaderSingleWriterSpinLock.ReleaseRead(fMultipleReaderSingleWriterLockState);
   end;
  end;
 end;
@@ -2185,6 +2275,9 @@ var Stack:TStack;
     NewStackItem:PStackItem;
     Node:PTreeNode;
 begin
+ if fThreadSafe then begin
+  TPasMPMultipleReaderSingleWriterSpinLock.AcquireRead(fMultipleReaderSingleWriterLockState);
+ end;
  result:=0;
  if fRoot>=0 then begin
   Stack.Initialize;
@@ -2212,14 +2305,23 @@ begin
    Stack.Finalize;
   end;
  end;
+ if fThreadSafe then begin
+  TPasMPMultipleReaderSingleWriterSpinLock.ReleaseRead(fMultipleReaderSingleWriterLockState);
+ end;
 end;
 
 function TpvBVHDynamicAABBTree.GetHeight:TpvSizeInt;
 begin
+ if fThreadSafe then begin
+  TPasMPMultipleReaderSingleWriterSpinLock.AcquireRead(fMultipleReaderSingleWriterLockState);
+ end;
  if fRoot>=0 then begin
   result:=fNodes[fRoot].Height;
  end else begin
   result:=0;
+ end;
+ if fThreadSafe then begin
+  TPasMPMultipleReaderSingleWriterSpinLock.ReleaseRead(fMultipleReaderSingleWriterLockState);
  end;
 end;
 
@@ -2227,6 +2329,9 @@ function TpvBVHDynamicAABBTree.GetAreaRatio:TpvDouble;
 var NodeID:TpvSizeInt;
     Node:TpvBVHDynamicAABBTree.PTreeNode;
 begin
+ if fThreadSafe then begin
+  TPasMPMultipleReaderSingleWriterSpinLock.AcquireRead(fMultipleReaderSingleWriterLockState);
+ end;
  result:=0.0;
  if fRoot>=0 then begin
   for NodeID:=0 to fNodeCount-1 do begin
@@ -2237,12 +2342,18 @@ begin
   end;
   result:=result/fNodes[fRoot].AABB.Cost;
  end;
+ if fThreadSafe then begin
+  TPasMPMultipleReaderSingleWriterSpinLock.ReleaseRead(fMultipleReaderSingleWriterLockState);
+ end;
 end;
 
 function TpvBVHDynamicAABBTree.GetMaxBalance:TpvSizeInt;
 var NodeID,Balance:TpvSizeInt;
     Node:TpvBVHDynamicAABBTree.PTreeNode;
 begin
+ if fThreadSafe then begin
+  TPasMPMultipleReaderSingleWriterSpinLock.AcquireRead(fMultipleReaderSingleWriterLockState);
+ end;
  result:=0;
  if fRoot>=0 then begin
   for NodeID:=0 to fNodeCount-1 do begin
@@ -2254,6 +2365,9 @@ begin
     end;
    end;
   end;
+ end;
+ if fThreadSafe then begin
+  TPasMPMultipleReaderSingleWriterSpinLock.ReleaseRead(fMultipleReaderSingleWriterLockState);
  end;
 end;
 
@@ -2269,6 +2383,9 @@ var Stack:TStack;
     NewStackItem:PStackItem;
     Node:PTreeNode;
 begin
+ if fThreadSafe then begin
+  TPasMPMultipleReaderSingleWriterSpinLock.AcquireRead(fMultipleReaderSingleWriterLockState);
+ end;
  result:=true;
  if fRoot>=0 then begin
   Stack.Initialize;
@@ -2305,6 +2422,9 @@ begin
    Stack.Finalize;
   end;
  end;
+ if fThreadSafe then begin
+  TPasMPMultipleReaderSingleWriterSpinLock.ReleaseRead(fMultipleReaderSingleWriterLockState);
+ end;
 end;
 
 function TpvBVHDynamicAABBTree.ValidateMetrics:boolean;
@@ -2318,6 +2438,9 @@ var Stack:TStack;
     NewStackItem:PStackItem;
     Node:PTreeNode;
 begin
+ if fThreadSafe then begin
+  TPasMPMultipleReaderSingleWriterSpinLock.AcquireRead(fMultipleReaderSingleWriterLockState);
+ end;
  result:=true;
  if fRoot>=0 then begin
   Stack.Initialize;
@@ -2350,11 +2473,17 @@ begin
    Stack.Finalize;
   end;
  end;
+ if fThreadSafe then begin
+  TPasMPMultipleReaderSingleWriterSpinLock.ReleaseRead(fMultipleReaderSingleWriterLockState);
+ end;
 end;
 
 function TpvBVHDynamicAABBTree.Validate:boolean;
 var NodeID,FreeCount:TpvSizeInt;
 begin
+ if fThreadSafe then begin
+  TPasMPMultipleReaderSingleWriterSpinLock.AcquireRead(fMultipleReaderSingleWriterLockState);
+ end;
  result:=ValidateStructure;
  if result then begin
   result:=ValidateMetrics;
@@ -2371,6 +2500,9 @@ begin
    end;
   end;
  end;
+ if fThreadSafe then begin
+  TPasMPMultipleReaderSingleWriterSpinLock.ReleaseRead(fMultipleReaderSingleWriterLockState);
+ end;
 end;
 
 function TpvBVHDynamicAABBTree.IntersectionQuery(const aAABB:TpvAABB):TpvBVHDynamicAABBTree.TUserDataArray;
@@ -2382,6 +2514,9 @@ var Stack:TStack;
     StackItem,NewStackItem:TStackItem;
     Node:TpvBVHDynamicAABBTree.PTreeNode;
 begin
+ if fThreadSafe then begin
+  TPasMPMultipleReaderSingleWriterSpinLock.AcquireRead(fMultipleReaderSingleWriterLockState);
+ end;
  result:=nil;
  if (fNodeCount>0) and (fRoot>=0) then begin
   Stack.Initialize;
@@ -2408,6 +2543,9 @@ begin
    Stack.Finalize;
   end;
  end;
+ if fThreadSafe then begin
+  TPasMPMultipleReaderSingleWriterSpinLock.ReleaseRead(fMultipleReaderSingleWriterLockState);
+ end;
 end;
 
 function TpvBVHDynamicAABBTree.IntersectionQuery(const aAABB:TpvAABB;const aTreeNodeList:TTreeNodeList):boolean;
@@ -2419,6 +2557,9 @@ var Stack:TStack;
     StackItem,NewStackItem:TStackItem;
     Node:TpvBVHDynamicAABBTree.PTreeNode;
 begin
+ if fThreadSafe then begin
+  TPasMPMultipleReaderSingleWriterSpinLock.AcquireRead(fMultipleReaderSingleWriterLockState);
+ end;
  result:=false;
  if (fNodeCount>0) and (fRoot>=0) then begin
   Stack.Initialize;
@@ -2446,6 +2587,9 @@ begin
    Stack.Finalize;
   end;
  end;
+ if fThreadSafe then begin
+  TPasMPMultipleReaderSingleWriterSpinLock.ReleaseRead(fMultipleReaderSingleWriterLockState);
+ end;
 end;
 
 function TpvBVHDynamicAABBTree.ContainQuery(const aAABB:TpvAABB):TpvBVHDynamicAABBTree.TUserDataArray;
@@ -2457,6 +2601,9 @@ var Stack:TStack;
     StackItem,NewStackItem:TStackItem;
     Node:TpvBVHDynamicAABBTree.PTreeNode;
 begin
+ if fThreadSafe then begin
+  TPasMPMultipleReaderSingleWriterSpinLock.AcquireRead(fMultipleReaderSingleWriterLockState);
+ end;
  result:=nil;
  if (fNodeCount>0) and (fRoot>=0) then begin
   Stack.Initialize;
@@ -2483,6 +2630,9 @@ begin
    Stack.Finalize;
   end;
  end;
+ if fThreadSafe then begin
+  TPasMPMultipleReaderSingleWriterSpinLock.ReleaseRead(fMultipleReaderSingleWriterLockState);
+ end;
 end;
 
 function TpvBVHDynamicAABBTree.ContainQuery(const aPoint:TpvVector3):TpvBVHDynamicAABBTree.TUserDataArray;
@@ -2494,6 +2644,9 @@ var Stack:TStack;
     StackItem,NewStackItem:TStackItem;
     Node:TpvBVHDynamicAABBTree.PTreeNode;
 begin
+ if fThreadSafe then begin
+  TPasMPMultipleReaderSingleWriterSpinLock.AcquireRead(fMultipleReaderSingleWriterLockState);
+ end;
  result:=nil;
  if (fNodeCount>0) and (fRoot>=0) then begin
   Stack.Initialize;
@@ -2520,6 +2673,9 @@ begin
    Stack.Finalize;
   end;
  end;
+ if fThreadSafe then begin
+  TPasMPMultipleReaderSingleWriterSpinLock.ReleaseRead(fMultipleReaderSingleWriterLockState);
+ end;
 end;
 
 function TpvBVHDynamicAABBTree.ContainQuery(const aPoint:TpvVector3;const aTreeNodeList:TTreeNodeList):boolean;
@@ -2531,6 +2687,9 @@ var Stack:TStack;
     StackItem,NewStackItem:TStackItem;
     Node:TpvBVHDynamicAABBTree.PTreeNode;
 begin
+ if fThreadSafe then begin
+  TPasMPMultipleReaderSingleWriterSpinLock.AcquireRead(fMultipleReaderSingleWriterLockState);
+ end;
  result:=false;
  if (fNodeCount>0) and (fRoot>=0) then begin
   Stack.Initialize;
@@ -2558,6 +2717,9 @@ begin
    Stack.Finalize;
   end;
  end;
+ if fThreadSafe then begin
+  TPasMPMultipleReaderSingleWriterSpinLock.ReleaseRead(fMultipleReaderSingleWriterLockState);
+ end;
 end;
 
 function TpvBVHDynamicAABBTree.FindClosest(const aPoint:TpvVector3):TpvBVHDynamicAABBTree.PTreeNode;
@@ -2568,6 +2730,9 @@ var Stack:TStack;
     TreeNode:TpvBVHDynamicAABBTree.PTreeNode;
     ChildDistances:array[0..1] of TpvFloat;
 begin
+ if fThreadSafe then begin
+  TPasMPMultipleReaderSingleWriterSpinLock.AcquireRead(fMultipleReaderSingleWriterLockState);
+ end;
  result:=nil;
  if fRoot>=0 then begin
   BestDistance:=Infinity;
@@ -2625,6 +2790,9 @@ begin
    Stack.Finalize;
   end;
  end;
+ if fThreadSafe then begin
+  TPasMPMultipleReaderSingleWriterSpinLock.ReleaseRead(fMultipleReaderSingleWriterLockState);
+ end;
 end;
 
 function TpvBVHDynamicAABBTree.GetDistance(const aTreeNode:PTreeNode;const aPoint:TpvVector3):TpvFloat;
@@ -2654,7 +2822,11 @@ var Stack:TStack;
     ResultItem:TResultItem;
     DistanceA,DistanceB:TpvFloat;
 begin
- 
+
+ if fThreadSafe then begin
+  TPasMPMultipleReaderSingleWriterSpinLock.AcquireRead(fMultipleReaderSingleWriterLockState);
+ end;
+
  // If aMaxDistance is less than or equal to zero, then set it to infinity as default
  if aMaxDistance<=0.0 then begin
   aMaxDistance:=Infinity;
@@ -2800,6 +2972,10 @@ begin
   ResultItemArray.Finalize;
  end;
 
+ if fThreadSafe then begin
+  TPasMPMultipleReaderSingleWriterSpinLock.ReleaseRead(fMultipleReaderSingleWriterLockState);
+ end;
+
 end;
 
 function TpvBVHDynamicAABBTree.RayCast(const aRayOrigin,aRayDirection:TpvVector3;out aTime:TpvFloat;out aUserData:TpvUInt32;const aStopAtFirstHit:boolean;const aRayCastUserData:TpvBVHDynamicAABBTree.TRayCastUserData):boolean;
@@ -2814,6 +2990,9 @@ var Stack:TStack;
     Time:TpvFloat;
     Stop:boolean;
 begin
+ if fThreadSafe then begin
+  TPasMPMultipleReaderSingleWriterSpinLock.AcquireRead(fMultipleReaderSingleWriterLockState);
+ end;
  result:=false;
  if assigned(aRayCastUserData) and (fNodeCount>0) and (fRoot>=0) then begin
   aTime:=Infinity;
@@ -2853,6 +3032,9 @@ begin
    Stack.Finalize;
   end;
  end;
+ if fThreadSafe then begin
+  TPasMPMultipleReaderSingleWriterSpinLock.ReleaseRead(fMultipleReaderSingleWriterLockState);
+ end;
 end;
 
 function TpvBVHDynamicAABBTree.RayCastLine(const aFrom,aTo:TpvVector3;out aTime:TpvFloat;out aUserData:TpvUInt32;const aStopAtFirstHit:boolean;const aRayCastUserData:TpvBVHDynamicAABBTree.TRayCastUserData):boolean;
@@ -2867,6 +3049,9 @@ var Stack:TStack;
     RayOrigin,RayDirection,RayEnd:TpvVector3;
     Stop:boolean;
 begin
+ if fThreadSafe then begin
+  TPasMPMultipleReaderSingleWriterSpinLock.AcquireRead(fMultipleReaderSingleWriterLockState);
+ end;
  result:=false;
  if assigned(aRayCastUserData) and (fNodeCount>0) and (fRoot>=0) then begin
   aTime:=Infinity;
@@ -2908,6 +3093,9 @@ begin
    Stack.Finalize;
   end;
  end;
+ if fThreadSafe then begin
+  TPasMPMultipleReaderSingleWriterSpinLock.ReleaseRead(fMultipleReaderSingleWriterLockState);
+ end;
 end;
 
 procedure TpvBVHDynamicAABBTree.GetSkipListNodes(var aSkipListNodeArray:TSkipListNodeArray;const aGetUserDataIndex:TpvBVHDynamicAABBTree.TGetUserDataIndex);
@@ -2917,6 +3105,9 @@ var StackItem,NewStackItem:TSkipListNodeStackItem;
     SkipListNode:TSkipListNode;
     SkipListNodeIndex:TpvSizeInt;
 begin
+ if fThreadSafe then begin
+  TPasMPMultipleReaderSingleWriterSpinLock.AcquireRead(fMultipleReaderSingleWriterLockState);
+ end;
  fSkipListNodeLock.Acquire;
  try
   if fRoot>=0 then begin
@@ -2972,6 +3163,9 @@ begin
   end;
  finally
   fSkipListNodeLock.Release;
+ end;
+ if fThreadSafe then begin
+  TPasMPMultipleReaderSingleWriterSpinLock.ReleaseRead(fMultipleReaderSingleWriterLockState);
  end;
 end;
 
