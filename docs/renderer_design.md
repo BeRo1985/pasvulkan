@@ -349,6 +349,7 @@ PasVulkan currently supports the following Global Illumination techniques:
   * Based on the concept of reflection maps, think as of shadow maps, but instead of just storing depth information, they store also albedo and normal information of the scene.
   * Discrete points (Voxel-grid) in camera space (“radiance hints”) are calculated from the reflection map, which serve as representatives for the surrounding luminance field. This technique makes it possible to simulate diffuse reflections, such as those caused by multiple bounces of light, in real time. 
   * The radiance hints are sampled at discrete points in frustum voxel volumes, creating a radiance hint volume with cascaded hierarchical levels of detail (LOD) for different distances from the camera, which is then used to approximate indirect lighting.
+  * Spherical harmonics are used to represent the radiance hints, allowing for efficient storage and interpolation of the lighting information.
   * Instead of continuously calculating the luminance field, “radiance hints” are stored at discrete points in space and interpolated. This technique is particularly useful for real-time calculation of global illumination in games or other interactive applications where fast calculations are required. 
   * Secondary bounces are also supported, allowing for more realistic lighting effects.
   * The cascaded radiance hints are stored in a 3D textures, which allows for efficient smooth sampling and interpolation of the radiance hints in the shader.
