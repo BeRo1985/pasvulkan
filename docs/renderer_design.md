@@ -367,3 +367,6 @@ PasVulkan currently supports the following Global Illumination techniques:
 4. **Ray Traced Global Illumination (RTGI):**   
   * It is planned to be implemented in the future, but it is not yet implemented. DDGI (Dynamic Diffuse Global Illumination) will be used as the starting point for the implementation, as it is a well-known and widely used technique for real-time ray traced global illumination. But however not in exactly the same way as DDGI, but rather in a more changed and extended way, as it will have more features and will be more flexible and efficient than DDGI in its original form. But let's see how it will turn out in the end.
   
+### Summary
+
+PasVulkan supports various Global Illumination techniques to achieve realistic lighting effects in 3D scenes.
