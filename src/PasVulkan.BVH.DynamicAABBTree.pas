@@ -1513,7 +1513,7 @@ begin
   fDirty:=true;
 
   if fThreadSafe then begin
-   TPasMPMultipleReaderSingleWriterSpinLock.AcquireWrite(fMultipleReaderSingleWriterLockState);
+   TPasMPMultipleReaderSingleWriterSpinLock.ReleaseWrite(fMultipleReaderSingleWriterLockState);
   end;
 
  end else begin
