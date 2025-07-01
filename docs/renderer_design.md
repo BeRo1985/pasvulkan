@@ -318,13 +318,13 @@ PasVulkan's animation system is designed to efficiently handle complex animation
 
   The system supports animating various properties, including:
 
-  - **Bone Transformations:** Each bone in a skeleton can be animated independently, allowing for complex character animations.
-  - **Morph Targets:** Supports morph target animations for facial expressions and other deformations.
-  - **Material Properties:** Materials can have animated properties, such as color, texture offsets, and other shader parameters.
-  - **Scene Graph Nodes:** Allows for animating the transformations of scene graph nodes, enabling hierarchical animations where parent-child relationships are respected.
-  - **Camera Animations:** Cameras can be animated to create dynamic viewpoints and transitions.
-  - **Light Animations:** Lights can have animated properties, such as intensity, color, and position, allowing for dynamic lighting effects in the scene.
-  - **And much more:** And even much store, as GLTF KHR_animation_pointer extension is support.  
+  * **Bone Transformations:** Each bone in a skeleton can be animated independently, allowing for complex character animations.
+  * **Morph Targets:** Supports morph target animations for facial expressions and other deformations.
+  * **Material Properties:** Materials can have animated properties, such as color, texture offsets, and other shader parameters.
+  * **Scene Graph Nodes:** Allows for animating the transformations of scene graph nodes, enabling hierarchical animations where parent-child relationships are respected.
+  * **Camera Animations:** Cameras can be animated to create dynamic viewpoints and transitions.
+  * **Light Animations:** Lights can have animated properties, such as intensity, color, and position, allowing for dynamic lighting effects in the scene.
+  * **And much more:** And even much store, as GLTF KHR_animation_pointer extension is support.  
 
 ### Summary
 
@@ -332,4 +332,37 @@ PasVulkan's animation system is designed to be simple yet powerful, allowing for
 
 ## Global Illumination
 
-*TODO*
+### Introduction
+
+PasVulkan supports different realtime Global Illumination (GI) techniques. The purpose of Global Illumination (GI) is understood as an approach to provide realistic lighting effects in 3D scenes by simulating the indirect lighting that occurs when light bounces off surfaces. 
+
+### Supported Techniques
+
+PasVulkan currently supports the following Global Illumination techniques:
+
+1. **Plain Image Based Lighting (IBL):**
+  * Uses precomputed environment maps to simulate indirect lighting.
+  * Provides a simple and efficient way to achieve realistic lighting effects without complex calculations.
+  * Suitable for static scenes or where high performance is required. 
+
+2. **Cascaded Radiance Hints:**
+  * Based on the concept of reflection maps, think as of shadow maps, but instead of just storing depth information, they store also albedo and normal information of the scene.
+  * Discrete points (Voxel-grid) in camera space (“radiance hints”) are calculated from the reflection map, which serve as representatives for the surrounding luminance field. This technique makes it possible to simulate diffuse reflections, such as those caused by multiple bounces of light, in real time. 
+  * The radiance hints are sampled at discrete points in frustum voxel volumes, creating a radiance hint volume with cascaded hierarchical levels of detail (LOD) for different distances from the camera, which is then used to approximate indirect lighting.
+  * Instead of continuously calculating the luminance field, “radiance hints” are stored at discrete points in space and interpolated. This technique is particularly useful for real-time calculation of global illumination in games or other interactive applications where fast calculations are required. 
+  * Secondary bounces are also supported, allowing for more realistic lighting effects.
+  * The cascaded radiance hints are stored in a 3D textures, which allows for efficient smooth sampling and interpolation of the radiance hints in the shader.
+
+3. **Cascaded Voxel Cone Tracing (CVCT):**
+  * An advanced technique that approximates indirect lighting using a voxel-based representation of the scene, divided into cascades of grid cells (voxels) at varying distances from the camera.
+  * By tracing cones through this voxel grid, the system gathers lighting data that enables detailed and realistic global illumination.
+  * Designed to support dynamic scenes and moving objects, making it well-suited for complex environments.
+  * Capable of handling reflections and multiple bounces of indirect light, which enhances overall lighting realism.
+  * The voxel grid is derived from the scene geometry and updated each frame to reflect any changes.
+  * It is stored in a 3D texture, enabling efficient sampling and smooth interpolation within shaders.
+  * The current implementation is visually broken and considered buggy.
+  * However, the feature may eventually be removed due to the complexity and performance challenges involved in implementing it correctly and efficiently, especially since it relies on geometry shaders to voxelize the scene geometry. Geometry shaders are fundamentally unsuitable for real-time use and have always been discouraged, as they are slow and inefficient across all GPU generations. Other voxelization methods, such as compute shader-based approaches, are likewise impractical in real-time contexts, as they take too long to rebuild the voxel grid every frame, and as of now, no alternative voxelization methods are implemented in PasVulkan, although that said, the feature may be retained in the future if a suitable and efficient solution is found, and otherwise, the feature will be removed, just as simple as that.
+
+4. **Ray Traced Global Illumination (RTGI):**   
+  * It is planned to be implemented in the future, but it is not yet implemented. DDGI (Dynamic Diffuse Global Illumination) will be used as the starting point for the implementation, as it is a well-known and widely used technique for real-time ray traced global illumination. But however not in exactly the same way as DDGI, but rather in a more changed and extended way, as it will have more features and will be more flexible and efficient than DDGI in its original form. But let's see how it will turn out in the end.
+  
