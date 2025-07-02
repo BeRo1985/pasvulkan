@@ -6957,7 +6957,7 @@ begin
   JSONItem:=JSONRootObject.Properties['rain'];
   if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
    JSONChildObject:=TPasJSONItemObject(JSONItem);
-   fRainIntensity:=TPasJSON.GetNumber(JSONChildObject.Properties['intensity'],fRainIntensity);
+   fRainIntensity:=TPasJSON.GetNumber(JSONChildObject.Properties['rainintensity'],TPasJSON.GetNumber(JSONChildObject.Properties['intensity'],fRainIntensity));
    fScale:=TPasJSON.GetNumber(JSONChildObject.Properties['scale'],fScale);
    fTimeScale:=TPasJSON.GetNumber(JSONChildObject.Properties['timescale'],fTimeScale);
   end;
