@@ -73,10 +73,12 @@ uses Classes,
      PasMP,
      Vulkan,
      PasDblStrUtils,
+     PasJSON,
      PasVulkan.Types,
      PasVulkan.Math,
      PasVulkan.Math.Double,
      PasVulkan.Utils,
+     PasVulkan.JSON,
      PasVulkan.Framework,
      PasVulkan.Application,
      PasVulkan.Resources,
@@ -548,6 +550,41 @@ type TpvScene3DPlanets=class;
               property HeightFactorExponent:TpvFloat read fHeightFactorExponent write fHeightFactorExponent;
             end;
             TInFlightFrameDataList=TpvObjectGenericList<TData>;
+            { TWaterRainSettings }
+            TWaterRainSettings=class
+             private
+              fTimeStep:TpvDouble;
+              fAttenuation:TpvFloat;
+              fStrength:TpvFloat;
+              fMinTotalFlow:TpvFloat;
+              fPipeLengthSquared:TpvFloat;
+              fCrossSectionalPipeArea:TpvFloat;
+              fGravity:TpvFloat;
+              fEvaporation:TpvFloat;
+              fEvaporationHeightCoefficient:TpvFloat;
+              fCompensationFactor:TpvFloat;
+              fRainIntensity:TpvFloat;
+              fScale:TpvFloat;
+              fTimeScale:TpvFloat;
+             public
+              constructor Create; reintroduce;
+              destructor Destroy; override;
+              procedure Assign(const aJSONItem:TPasJSONItem);
+             public
+              property TimeStep:TpvDouble read fTimeStep write fTimeStep;
+              property Attenuation:TpvFloat read fAttenuation write fAttenuation;
+              property Strength:TpvFloat read fStrength write fStrength;
+              property MinTotalFlow:TpvFloat read fMinTotalFlow write fMinTotalFlow;
+              property PipeLengthSquared:TpvFloat read fPipeLengthSquared write fPipeLengthSquared;
+              property CrossSectionalPipeArea:TpvFloat read fCrossSectionalPipeArea write fCrossSectionalPipeArea;
+              property Gravity:TpvFloat read fGravity write fGravity;
+              property Evaporation:TpvFloat read fEvaporation write fEvaporation;
+              property EvaporationHeightCoefficient:TpvFloat read fEvaporationHeightCoefficient write fEvaporationHeightCoefficient;
+              property CompensationFactor:TpvFloat read fCompensationFactor write fCompensationFactor;
+              property RainIntensity:TpvFloat read fRainIntensity write fRainIntensity;
+              property Scale:TpvFloat read fScale write fScale;
+              property TimeScale:TpvFloat read fTimeScale write fTimeScale;
+            end;
             { TSerializedData }
             TSerializedData=class
              public
@@ -2331,6 +2368,7 @@ type TpvScene3DPlanets=class;
        fAtmosphereAdditionOffset:TpvFloat;
        fAtmosphereReductionFactor:TpvFloat;
        fAtmosphereReductionOffset:TpvFloat;
+       fWaterRainSettings:TpvScene3DPlanet.TWaterRainSettings;
       private
        procedure GenerateMeshIndices(const aTiledMeshIndices:TpvScene3DPlanet.TMeshIndices;
                                      const aTiledMeshIndexGroups:TpvScene3DPlanet.TTiledMeshIndexGroups;
@@ -2493,6 +2531,7 @@ type TpvScene3DPlanets=class;
        property AtmosphereAdditionOffset:TpvFloat read fAtmosphereAdditionOffset write fAtmosphereAdditionOffset;
        property AtmosphereReductionFactor:TpvFloat read fAtmosphereReductionFactor write fAtmosphereReductionFactor;
        property AtmosphereReductionOffset:TpvFloat read fAtmosphereReductionOffset write fAtmosphereReductionOffset;       
+       property WaterRainSettings:TpvScene3DPlanet.TWaterRainSettings read fWaterRainSettings;
      end;
 
      { TpvScene3DPlanets }
@@ -6823,6 +6862,108 @@ begin
  fMinMaxHeightFactor:=aData.fMinMaxHeightFactor;
  fHeightFactorExponent:=aData.fHeightFactorExponent;
 end;
+
+{ TpvScene3DPlanet.TWaterRainSettings }
+
+constructor TpvScene3DPlanet.TWaterRainSettings.Create;
+begin
+ inherited Create;
+ fTimeStep:=1.0/60.0;
+{$if true}  
+ fAttenuation:=1.0;
+ fStrength:=1.0;
+ fMinTotalFlow:=1e-4;
+ fPipeLengthSquared:=sqr(1.0);
+ fCrossSectionalPipeArea:=1.0;
+ fGravity:=9.81;
+ fEvaporation:=0.015;
+ fEvaporationHeightCoefficient:=0.0;
+ fCompensationFactor:=60.0; //600.0;
+{$else}
+ fAttenuation:=0.995;
+ fStrength:=0.25;
+ fMinTotalFlow:=-1e-4;
+ fPipeLengthSquared:=sqr(1.0);
+ fCrossSectionalPipeArea:=1.0;
+ fGravity:=9.81;
+ fEvaporation:=0.015;
+ fEvaporationHeightCoefficient:=0.0;
+ fCompensationFactor:=Ln(1.0/60)/Ln(fTimeStep);//600.0;
+{$ifend}   
+ fRainIntensity:=0.001;
+ fScale:=128.0;
+ fTimeScale:=1e-4;
+end;
+
+destructor TpvScene3DPlanet.TWaterRainSettings.Destroy;
+begin
+ inherited Destroy;
+end;
+
+procedure TpvScene3DPlanet.TWaterRainSettings.Assign(const aJSONItem:TPasJSONItem);
+var JSONRootObject,JSONChildObject:TPasJSONItemObject;
+    JSONItem:TPasJSONItem; 
+begin
+ if assigned(aJSONItem) and (aJSONItem is TPasJSONItemObject) then begin
+  JSONRootObject:=TPasJSONItemObject(aJSONItem);
+  
+  JSONItem:=JSONRootObject.Properties['timestep'];
+  if assigned(JSONItem) then begin
+   fTimeStep:=TPasJSON.GetNumber(JSONItem,fTimeStep);
+  end else begin
+   fTimeStep:=1.0/Max(1,TPasJSON.GetNumber(JSONRootObject.Properties['framerate'],1.0/fTimeStep));  
+  end;
+
+  JSONItem:=JSONRootObject.Properties['water'];
+  if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
+  
+   JSONChildObject:=TPasJSONItemObject(JSONItem);
+
+   fAttenuation:=TPasJSON.GetNumber(JSONChildObject.Properties['attenuation'],fAttenuation);
+   fStrength:=TPasJSON.GetNumber(JSONChildObject.Properties['strength'],fStrength);
+   fMinTotalFlow:=TPasJSON.GetNumber(JSONChildObject.Properties['mintotalflow'],fMinTotalFlow);
+
+   JSONItem:=JSONChildObject.Properties['pipelengthsquared'];
+   if assigned(JSONItem) then begin
+    fPipeLengthSquared:=TPasJSON.GetNumber(JSONItem,fPipeLengthSquared);
+   end else begin
+    fPipeLengthSquared:=sqr(TPasJSON.GetNumber(JSONChildObject.Properties['pipelength'],sqrt(fPipeLengthSquared))); 
+   end; 
+   
+   fCrossSectionalPipeArea:=TPasJSON.GetNumber(JSONChildObject.Properties['crosssectionalpipearea'],fCrossSectionalPipeArea);
+   fGravity:=TPasJSON.GetNumber(JSONChildObject.Properties['gravity'],fGravity);
+   fEvaporation:=TPasJSON.GetNumber(JSONChildObject.Properties['evaporation'],fEvaporation);
+   fEvaporationHeightCoefficient:=TPasJSON.GetNumber(JSONChildObject.Properties['evaporationheightcoefficient'],fEvaporationHeightCoefficient);
+   
+   JSONItem:=JSONChildObject.Properties['compensationfactor'];
+   if assigned(JSONItem) then begin
+    fCompensationFactor:=TPasJSON.GetNumber(JSONItem,fCompensationFactor);
+   end else begin
+    JSONItem:=JSONChildObject.Properties['designtimestep'];
+    if assigned(JSONItem) then begin
+     fCompensationFactor:=Ln(TPasJSON.GetNumber(JSONItem,1.0/60.0))/Ln(fTimeStep);
+    end else begin
+     JSONItem:=JSONChildObject.Properties['designframerate'];
+     if assigned(JSONItem) then begin
+      fCompensationFactor:=Ln(1.0/TPasJSON.GetNumber(JSONItem,60.0))/Ln(fTimeStep);
+     end else begin
+      fCompensationFactor:=Ln(1.0/600)/Ln(fTimeStep);
+     end;
+    end;
+   end;
+    
+  end;
+
+  JSONItem:=JSONRootObject.Properties['rain'];
+  if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
+   JSONChildObject:=TPasJSONItemObject(JSONItem);
+   fRainIntensity:=TPasJSON.GetNumber(JSONChildObject.Properties['intensity'],fRainIntensity);
+   fScale:=TPasJSON.GetNumber(JSONChildObject.Properties['scale'],fScale);
+   fTimeScale:=TPasJSON.GetNumber(JSONChildObject.Properties['timescale'],fTimeScale);
+  end;
+
+ end;  
+end;    
 
 { TpvScene3DPlanet.TSerializedData }
 
@@ -11425,7 +11566,9 @@ begin
   fPushConstants.EvaporationHeightCoefficient:=0.0;
   fPushConstants.CompensationFactor:=1.0;}
 
-{$if true}
+  fTimeStep:=1.0/60.0;
+
+(*{$if true}
   fPushConstants.Attenuation:=1.0;//0.995;
   fPushConstants.Strength:=1.0;//0.25;
   fPushConstants.MinTotalFlow:=1e-4;
@@ -11446,15 +11589,29 @@ begin
   fPushConstants.EvaporationHeightCoefficient:=0.0;
   fPushConstants.CompensationFactor:=Ln(1.0/60)/Ln(fTimeStep);//600.0;
   fPushConstants.DeltaTime:=1.0;
-{$ifend}
+{$ifend}*)
 
   fPushConstants.BottomRadius:=fPlanet.fBottomRadius;
   fPushConstants.TopRadius:=fPlanet.fTopRadius;
 
   fPushConstants.DeltaTime:=1.0;
-  fPushConstants.RainIntensity:=0.001;
-  fPushConstants.Scale:=128.0;
-  fPushConstants.TimeScale:=1e-4;
+
+  fTimeStep:=fPlanet.fWaterRainSettings.fTimeStep;
+  fPushConstants.Attenuation:=fPlanet.fWaterRainSettings.fAttenuation;
+  fPushConstants.Strength:=fPlanet.fWaterRainSettings.fStrength;
+  fPushConstants.MinTotalFlow:=fPlanet.fWaterRainSettings.fMinTotalFlow;
+  fPushConstants.PipeLengthSquared:=fPlanet.fWaterRainSettings.fPipeLengthSquared;
+  fPushConstants.CrossSectionalPipeArea:=fPlanet.fWaterRainSettings.fCrossSectionalPipeArea;
+  fPushConstants.Gravity:=fPlanet.fWaterRainSettings.fGravity;
+  fPushConstants.Evaporation:=fPlanet.fWaterRainSettings.fEvaporation;
+  fPushConstants.EvaporationHeightCoefficient:=fPlanet.fWaterRainSettings.fEvaporationHeightCoefficient;
+  fPushConstants.CompensationFactor:=fPlanet.fWaterRainSettings.fCompensationFactor;
+  fPushConstants.RainIntensity:=fPlanet.fWaterRainSettings.fRainIntensity;
+  fPushConstants.Scale:=fPlanet.fWaterRainSettings.fScale;
+  fPushConstants.TimeScale:=fPlanet.fWaterRainSettings.fTimeScale;
+  fRainfallPushConstants.RainIntensity:=fPlanet.fWaterRainSettings.fRainIntensity;
+  fRainfallPushConstants.Scale:=fPlanet.fWaterRainSettings.fScale;
+  fRainfallPushConstants.TimeScale:=fPlanet.fWaterRainSettings.fTimeScale;
 
   fPushConstants.PlanetHeightMapResolution:=fPlanet.fHeightMapResolution;
   fPushConstants.WaterHeightMapResolution:=fPlanet.fWaterMapResolution;
@@ -11467,9 +11624,6 @@ begin
   fRainfallPushConstants.WaterHeightMapResolution:=fPlanet.fWaterMapResolution;
   fRainfallPushConstants.PrecipitationAtmosphereMapResolution:=fPlanet.fPrecipitationAtmosphereMapResolution;
   fRainfallPushConstants.PrecipitationAtmosphereMapShift:=fPlanet.fPrecipitationAtmosphereMapShift;
-  fRainfallPushConstants.RainIntensity:=0.001;
-  fRainfallPushConstants.Scale:=128.0;
-  fRainfallPushConstants.TimeScale:=1e-4;
 
   fModificationPushConstants.PositionRadius:=TpvVector4.Create(0.0,0.0,0.0,0.0);
   fModificationPushConstants.InnerRadius:=0.0;
@@ -11490,8 +11644,6 @@ begin
  fTimeAccumulator:=0.0;
 
  fLastTimeAccumulator:=-1.0;
-
- fTimeStep:=1.0/60.0;
 
 end;
 
@@ -11636,6 +11788,23 @@ var SourceBufferIndex,DestinationBufferIndex:TpvSizeInt;
 begin
 
  fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'Planet WaterSimulation',[0.5,0.5,0.5,1.0]);
+
+ fTimeStep:=fPlanet.fWaterRainSettings.fTimeStep;
+ fPushConstants.Attenuation:=fPlanet.fWaterRainSettings.fAttenuation;
+ fPushConstants.Strength:=fPlanet.fWaterRainSettings.fStrength;
+ fPushConstants.MinTotalFlow:=fPlanet.fWaterRainSettings.fMinTotalFlow;
+ fPushConstants.PipeLengthSquared:=fPlanet.fWaterRainSettings.fPipeLengthSquared;
+ fPushConstants.CrossSectionalPipeArea:=fPlanet.fWaterRainSettings.fCrossSectionalPipeArea;
+ fPushConstants.Gravity:=fPlanet.fWaterRainSettings.fGravity;
+ fPushConstants.Evaporation:=fPlanet.fWaterRainSettings.fEvaporation;
+ fPushConstants.EvaporationHeightCoefficient:=fPlanet.fWaterRainSettings.fEvaporationHeightCoefficient;
+ fPushConstants.CompensationFactor:=fPlanet.fWaterRainSettings.fCompensationFactor;
+ fPushConstants.RainIntensity:=fPlanet.fWaterRainSettings.fRainIntensity;
+ fPushConstants.Scale:=fPlanet.fWaterRainSettings.fScale;
+ fPushConstants.TimeScale:=fPlanet.fWaterRainSettings.fTimeScale;
+ fRainfallPushConstants.RainIntensity:=fPlanet.fWaterRainSettings.fRainIntensity;
+ fRainfallPushConstants.Scale:=fPlanet.fWaterRainSettings.fScale;
+ fRainfallPushConstants.TimeScale:=fPlanet.fWaterRainSettings.fTimeScale;
 
  WaterModificationItem:=@fPlanet.fWaterModificationItems[aInFlightFrameIndex];
  if abs(WaterModificationItem^.Value)>1e-7 then begin
@@ -21306,6 +21475,8 @@ begin
 
  fVulkanDevice:=TpvScene3D(fScene3D).VulkanDevice;
 
+ fWaterRainSettings:=TpvScene3DPlanet.TWaterRainSettings.Create;
+
  fAtmosphere:=nil;
 
  fAtmosphereAdditionTextureImageView:=VK_NULL_HANDLE;
@@ -22075,6 +22246,8 @@ begin
  FreeAndNil(fVulkanComputeCommandBuffer);
 
  FreeAndNil(fVulkanComputeCommandPool);
+
+ FreeAndNil(fWaterRainSettings);
 
  fGlobalBufferQueueFamilyIndices:=nil;
 
