@@ -288,27 +288,27 @@ PasVulkan's animation system is designed to efficiently handle complex animation
 
 1. **Linear Animation List:**
 
-  The animation system uses a linear list of animations, where each animation is defined by a set of times and weights. This allows for efficient blending and additive animations, enabling smooth transitions between different animation states. No complex animation tree graphs or state machines are used, simplifying the animation management process. Instead, animations are simply defined as a list of times with associated weights, which can be blended together or applied additively to achieve the desired effect. 
+   The animation system uses a linear list of animations, where each animation is defined by a set of times and weights. This allows for efficient blending and additive animations, enabling smooth transitions between different animation states. No complex animation tree graphs or state machines are used, simplifying the animation management process. Instead, animations are simply defined as a list of times with associated weights, which can be blended together or applied additively to achieve the desired effect. 
 
 2. **Time based**
 
-  Animations are time-based rather than keyframe-based. This means they are defined in terms of continuous time progression instead of relying on discrete keyframes. Such an approach enables more fluid and continuous motion, as well as smoother blending between animations.
+   Animations are time-based rather than keyframe-based. This means they are defined in terms of continuous time progression instead of relying on discrete keyframes. Such an approach enables more fluid and continuous motion, as well as smoother blending between animations.
 
-  Each animation progresses linearly over a defined duration, with a specific start time, end time, and total length. This structure allows for precise control over playback and enables smooth transitions between different animation states.
+   Each animation progresses linearly over a defined duration, with a specific start time, end time, and total length. This structure allows for precise control over playback and enables smooth transitions between different animation states.
 
-  The time-based nature of the system also makes it easier to synchronize animations with other subsystems in a game or application, such as physics or audio. This synchronization improves realism and contributes to a more cohesive user experience.
+   The time-based nature of the system also makes it easier to synchronize animations with other subsystems in a game or application, such as physics or audio. This synchronization improves realism and contributes to a more cohesive user experience.
 
-  This concept aligns with the animation model used in GLTF.
+   This concept aligns with the animation model used in GLTF.
 
 3. **Explicit animation time management:**
 
-  Animations are explicitly managed in time, allowing for precise control over playback, blending, and synchronization with other systems. The developer sets the current time of the animation, and the system updates the animation state accordingly. This is crucial for achieving realistic animations in real-time applications.
+   Animations are explicitly managed in time, allowing for precise control over playback, blending, and synchronization with other systems. The developer sets the current time of the animation, and the system updates the animation state accordingly. This is crucial for achieving realistic animations in real-time applications.
   
-  Animation time can also be used as a state factor. For example, it allows controlling the hip angles of a character, where the animation time determines the hip rotation based on the current progress of the animation. This enables more complex animations that can be influenced by the developer, including procedural animations or those driven by game logic.
+   Animation time can also be used as a state factor. For example, it allows controlling the hip angles of a character, where the animation time determines the hip rotation based on the current progress of the animation. This enables more complex animations that can be influenced by the developer, including procedural animations or those driven by game logic.
   
-  In this way, the animation system supports more dynamic and responsive animations that can adapt to the current state of the game or application, rather than being strictly time-based. A representative example of this is character animations, where the hip angles can reflect the character’s movement speed, direction, and other contextual factors, resulting in more realistic and fluid motion.
+   In this way, the animation system supports more dynamic and responsive animations that can adapt to the current state of the game or application, rather than being strictly time-based. A representative example of this is character animations, where the hip angles can reflect the character’s movement speed, direction, and other contextual factors, resulting in more realistic and fluid motion.
 
-  In addition to that, this gives the model designer more precise control over the fine-grained aspects of a model's dynamic movement possibilities by baking them into animations, which can then be controlled via animation time by the developer.
+   In addition to that, this gives the model designer more precise control over the fine-grained aspects of a model's dynamic movement possibilities by baking them into animations, which can then be controlled via animation time by the developer.
 
 4. **Additive and Blended Animations:**
 
@@ -316,15 +316,15 @@ PasVulkan's animation system is designed to efficiently handle complex animation
 
 5. **Most everything animatable:**
 
-  The system supports animating various properties, including:
+   The system supports animating various properties, including:
 
-  * **Bone Transformations:** Each bone in a skeleton can be animated independently, allowing for complex character animations.
-  * **Morph Targets:** Supports morph target animations for facial expressions and other deformations.
-  * **Material Properties:** Materials can have animated properties, such as color, texture offsets, and other shader parameters.
-  * **Scene Graph Nodes:** Allows for animating the transformations of scene graph nodes, enabling hierarchical animations where parent-child relationships are respected.
-  * **Camera Animations:** Cameras can be animated to create dynamic viewpoints and transitions.
-  * **Light Animations:** Lights can have animated properties, such as intensity, color, and position, allowing for dynamic lighting effects in the scene.
-  * **And much more:** And even much store, as GLTF KHR_animation_pointer extension is support.  
+   * **Bone Transformations:** Each bone in a skeleton can be animated independently, allowing for complex character animations.
+   * **Morph Targets:** Supports morph target animations for facial expressions and other deformations.
+   * **Material Properties:** Materials can have animated properties, such as color, texture offsets, and other shader parameters.
+   * **Scene Graph Nodes:** Allows for animating the transformations of scene graph nodes, enabling hierarchical animations where parent-child relationships are respected.
+   * **Camera Animations:** Cameras can be animated to create dynamic viewpoints and transitions.
+   * **Light Animations:** Lights can have animated properties, such as intensity, color, and position, allowing for dynamic lighting effects in the scene.
+   * **And much more:** And even much store, as GLTF KHR_animation_pointer extension is support.  
 
 ### Summary
 
