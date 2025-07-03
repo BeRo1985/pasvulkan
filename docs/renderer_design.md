@@ -324,7 +324,7 @@ PasVulkan's animation system is designed to efficiently handle complex animation
    * **Scene Graph Nodes:** Allows for animating the transformations of scene graph nodes, enabling hierarchical animations where parent-child relationships are respected.
    * **Camera Animations:** Cameras can be animated to create dynamic viewpoints and transitions.
    * **Light Animations:** Lights can have animated properties, such as intensity, color, and position, allowing for dynamic lighting effects in the scene.
-   * **And much more:** And even much store, as GLTF KHR_animation_pointer extension is support.  
+   * **And much more:** And even much store, as GLTF KHR_animation_pointer extension is supported.  
 
 ### Summary
 
