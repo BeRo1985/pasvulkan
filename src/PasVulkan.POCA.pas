@@ -9808,6 +9808,7 @@ begin
  POCAHashSetString(aContext,aHash,'KeyCode',POCANewNumber(aContext,aKeyEvent.KeyCode));
  POCAHashSetString(aContext,aHash,'ScanCode',POCANewNumber(aContext,aKeyEvent.ScanCode));
  POCAHashSetString(aContext,aHash,'KeyModifiers',POCANewNumber(aContext,ConvertKeyModifiers(aKeyEvent.KeyModifiers)));
+ result:=aHash;
 end;
 
 function POCASetInputEventHashPointer(const aContext:PPOCAContext;const aHash:TPOCAValue;const aPointerEvent:TpvApplicationInputPointerEvent):TPOCAValue;
@@ -9834,12 +9835,14 @@ begin
  POCAHashSetString(aContext,aHash,'Button',POCANewNumber(aContext,ConvertPointerButton(aPointerEvent.Button)));
  POCAHashSetString(aContext,aHash,'Buttons',POCANewNumber(aContext,ConvertPointerButtons(aPointerEvent.Buttons)));
  POCAHashSetString(aContext,aHash,'KeyModifiers',POCANewNumber(aContext,ConvertKeyModifiers(aPointerEvent.KeyModifiers)));
+ result:=aHash;
 end;
 
 function POCASetInputEventHashScroll(const aContext:PPOCAContext;const aHash:TPOCAValue;const aRelativeAmount:TpvVector2):TPOCAValue;
 begin
  POCAHashSetString(aContext,aHash,'EventType',POCANewNumber(aContext,EVENT_SCROLLED));
  POCAHashSetString(aContext,aHash,'RelativeAmount',POCANewVector2(aContext,aRelativeAmount));
+ result:=aHash;
 end;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
