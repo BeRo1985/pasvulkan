@@ -43,6 +43,9 @@ layout(push_constant) uniform PushConstants {
   float v; // Viscosity factor
   float vorticity; // Vorticity factor, not used in this shader but can be used for future enhancements
   float dampingFactor; // Damping factor for the velocity
+  float waterFactor; // Factor for the water height contribution
+  float waterExponent; // Exponent for the water height contribution
+  float waterForce; // Force applied to the water height
 } pushConstants;
 
 /* clang-format on */
@@ -147,8 +150,8 @@ void main(){
 
   float atmosphere = clamp(texturePlanetOctahedralMap(uImageAtmosphereMap, position).x, 0.0, 1.0);
   
-  float water = clamp(getWaterHeight(position) * 0.1, 0.0, 1.0);
-
+  float water = clamp(pow(getWaterHeight(position) * pushConstants.waterFactor, pushConstants.waterExponent), 0.0, 1.0);
+  
   float dt = pushConstants.deltaTime;
   float CScale = pushConstants.CScale;
   float K = pushConstants.K;
@@ -179,7 +182,7 @@ void main(){
   vec2 Was = vec2(texel) - ((FC.xy / vec2(precipitationSimulationMapResolution)) * dt);
   FC.xyw = getInterpolatedValue(Was).xyw;
 
-  vec2 externalForces = vec2(water * 1e-2);
+  vec2 externalForces = vec2(water * pushConstants.waterForce);
   
   // Update the velocity
   FC.xy += ((viscosityForce - PdX) + externalForces) * dt;
