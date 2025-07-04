@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 if [ ! -d "./externals" ]; then mkdir -p ./externals; fi
 if [ ! -d "./externals/pasmp" ]; then ln -s ../../PASMP.github/trunk ./externals/pasmp; fi
 if [ ! -d "./externals/pucu" ]; then ln -s ../../PUCU.github/trunk ./externals/pucu; fi

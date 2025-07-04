@@ -1,4 +1,5 @@
-#!/bin/bash
+#!/usr/bin/env bash
+set -euo pipefail
 
 # Check if the script is run from the root of the PasVulkan GIT repository by checking if the .git directory is present
 if [ ! -d ".git" ]; then

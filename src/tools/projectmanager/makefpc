@@ -1,5 +1,6 @@
-#!/bin/sh
+#!/usr/bin/env bash
+set -euo pipefail
 mkdir -p fpctemp
 fpc -Sd -B -FEfpctemp -FUfpctemp -o../../../projectmanager projectmanager.dpr
-rm -f fpctemp
+rm -Rf fpctemp
 

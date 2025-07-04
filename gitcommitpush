@@ -1,4 +1,5 @@
-#!/bin/sh
+#!/usr/bin/env bash
+set -euo pipefail
 
 read -p "Enter commit message (or leave blank for default): " commit_message
 
