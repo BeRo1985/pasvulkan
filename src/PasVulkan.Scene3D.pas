@@ -27362,7 +27362,7 @@ var NodeStack:TNodeStack;
     Node,ChildNode:TpvScene3D.TGroup.TNode;
 begin
  result:=TpvScene3D.TBakedMesh.Create;
- if assigned(Node) then begin
+ if assigned(aNode) then begin
   NodeStack.Initialize;
   try
    NodeStack.Push(aNode);
@@ -27391,7 +27391,7 @@ var NodeStack:TNodeStack;
     Node,ChildNode:TpvScene3D.TGroup.TNode;
 begin
  result:=TpvScene3D.TBakedMesh.Create;
- if assigned(Node) then begin
+ if assigned(aNodes) then begin
   NodeStack.Initialize;
   try
    for Node in aNodes do begin
