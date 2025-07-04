@@ -46,6 +46,7 @@ layout(push_constant) uniform PushConstants {
   float waterFactor; // Factor for the water height contribution
   float waterExponent; // Exponent for the water height contribution
   float waterForce; // Force applied to the water height
+  float maximumVelocity; // Maximum velocity for the simulation
 } pushConstants;
 
 /* clang-format on */
@@ -203,7 +204,7 @@ void main(){
   FC.xy *= atmosphere; // Apply atmosphere factor. No atmosphere means no movement. 
   
   // Stabilize 
-  FC = clamp(FC, vec2(-10.0, 0.5).xxyx, vec2(10.0, 3.0).xxyx);
+  FC = clamp(FC, vec2(-pushConstants.maximumVelocity, 0.5).xxyx, vec2(pushConstants.maximumVelocity, 3.0).xxyx);
 
   // Set the new value in the output buffer
   setValue(ivec2(texel), FC);
