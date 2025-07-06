@@ -33,20 +33,25 @@ layout(set = 0, binding = 4, std430) coherent buffer PrecipitationAdvectionMapOu
 layout(set = 0, binding = 5) uniform sampler2D uImageAtmosphereMap;
 
 layout(push_constant) uniform PushConstants {
+  
   uint waterHeightMapResolution; // Resolution of the water height map
   uint precipitationSimulationMapResolution; // Resolution of the precipitation simulation map
   float additionCoefficient; // Coefficient for the precipitation addition
   float removalCoefficient; // Coefficient for the precipitation removal
+  
   float deltaTime; // Time step in seconds
   float CScale; 
   float K;
   float v; // Viscosity factor
+  
   float vorticity; // Vorticity factor, not used in this shader but can be used for future enhancements
   float dampingFactor; // Damping factor for the velocity
   float waterFactor; // Factor for the water height contribution
   float waterExponent; // Exponent for the water height contribution
+  
   float waterForce; // Force applied to the water height
   float maximumVelocity; // Maximum velocity for the simulation
+  
 } pushConstants;
 
 /* clang-format on */
