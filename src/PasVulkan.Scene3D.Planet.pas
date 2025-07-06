@@ -585,6 +585,43 @@ type TpvScene3DPlanets=class;
               property Scale:TpvFloat read fScale write fScale;
               property TimeScale:TpvFloat read fTimeScale write fTimeScale;
             end;
+            { TPrecipitationSimulationSettings }
+            TPrecipitationSimulationSettings=class  
+             private
+              fAdditionCoefficient:TpvFloat;
+              fRemovalCoefficient:TpvFloat;
+              fCScale:TpvFloat;
+              fK:TpvFloat;
+              fV:TpvFloat; // Viscosity factor
+              fVorticity:TpvFloat; // Vorticity factor, not used in this shader but can be used for future enhancements
+              fDampingFactor:TpvFloat; // Damping factor for the velocity
+              fWaterFactor:TpvFloat; // Factor for the water height contribution
+              fWaterExponent:TpvFloat; // Exponent for the water height contribution
+              fWaterForce:TpvFloat; // Force applied to the water height
+              fMaximumVelocity:TpvFloat; // Maximum velocity for the simulation
+              fNoClouds:TpvFloat; // Value for no clouds
+              fDryClouds:TpvFloat; // Value for dry clouds
+              fWetClouds:TpvFloat; // Value for wet clouds
+             public
+              constructor Create; reintroduce;
+              destructor Destroy; override;
+              procedure Assign(const aJSONItem:TPasJSONItem);
+             public
+              property AdditionCoefficient:TpvFloat read fAdditionCoefficient write fAdditionCoefficient;
+              property RemovalCoefficient:TpvFloat read fRemovalCoefficient write fRemovalCoefficient;
+              property CScale:TpvFloat read fCScale write fCScale;
+              property K:TpvFloat read fK write fK;
+              property V:TpvFloat read fV write fV; // Viscosity factor
+              property Vorticity:TpvFloat read fVorticity write fVorticity;
+              property DampingFactor:TpvFloat read fDampingFactor write fDampingFactor;
+              property WaterFactor:TpvFloat read fWaterFactor write fWaterFactor;
+              property WaterExponent:TpvFloat read fWaterExponent write fWaterExponent;
+              property WaterForce:TpvFloat read fWaterForce write fWaterForce;
+              property MaximumVelocity:TpvFloat read fMaximumVelocity write fMaximumVelocity;
+              property NoClouds:TpvFloat read fNoClouds write fNoClouds;
+              property DryClouds:TpvFloat read fDryClouds write fDryClouds;
+              property WetClouds:TpvFloat read fWetClouds write fWetClouds;
+            end;
             { TSerializedData }
             TSerializedData=class
              public
@@ -2369,6 +2406,7 @@ type TpvScene3DPlanets=class;
        fAtmosphereReductionFactor:TpvFloat;
        fAtmosphereReductionOffset:TpvFloat;
        fWaterRainSettings:TpvScene3DPlanet.TWaterRainSettings;
+       fPrecipitationSimulationSettings:TpvScene3DPlanet.TPrecipitationSimulationSettings;
       private
        procedure GenerateMeshIndices(const aTiledMeshIndices:TpvScene3DPlanet.TMeshIndices;
                                      const aTiledMeshIndexGroups:TpvScene3DPlanet.TTiledMeshIndexGroups;
@@ -2532,6 +2570,7 @@ type TpvScene3DPlanets=class;
        property AtmosphereReductionFactor:TpvFloat read fAtmosphereReductionFactor write fAtmosphereReductionFactor;
        property AtmosphereReductionOffset:TpvFloat read fAtmosphereReductionOffset write fAtmosphereReductionOffset;       
        property WaterRainSettings:TpvScene3DPlanet.TWaterRainSettings read fWaterRainSettings;
+       property PrecipitationSimulationSettings:TpvScene3DPlanet.TPrecipitationSimulationSettings read fPrecipitationSimulationSettings;
      end;
 
      { TpvScene3DPlanets }
@@ -6964,6 +7003,71 @@ begin
 
  end;  
 end;    
+
+{ TpvScene3DPlanet.TPrecipitationSimulationSettings }
+
+constructor TpvScene3DPlanet.TPrecipitationSimulationSettings.Create;
+begin
+ inherited Create;
+ fAdditionCoefficient:=0.1;
+ fRemovalCoefficient:=0.1;
+ fCScale:=0.5;
+ fK:=0.22;
+ fV:=0.55; 
+ fVorticity:=0.0; // Vorticity factor
+ fDampingFactor:=0.1; // Damping factor for the velocity
+ fWaterFactor:=1.0; // Factor for the water height contribution
+ fWaterExponent:=2.0; // Exponent for the water height contribution
+ fWaterForce:=1.0; // Force applied to the water height
+ fMaximumVelocity:=10.0; // Maximum velocity for the simulation
+ fNoClouds:=0.0; // Value for no clouds
+ fDryClouds:=0.5; // Value for dry clouds
+ fWetClouds:=1.0; // Value for wet clouds
+end;
+
+destructor TpvScene3DPlanet.TPrecipitationSimulationSettings.Destroy;
+begin
+ inherited Destroy;
+end;
+
+procedure TpvScene3DPlanet.TPrecipitationSimulationSettings.Assign(const aJSONItem:TPasJSONItem);
+var JSONRootObject,JSONChildObject:TPasJSONItemObject;
+    JSONItem:TPasJSONItem;
+begin
+ if assigned(aJSONItem) and (aJSONItem is TPasJSONItemObject) then begin
+  JSONRootObject:=TPasJSONItemObject(aJSONItem);
+  
+  fAdditionCoefficient:=TPasJSON.GetNumber(JSONRootObject.Properties['additioncoefficient'],fAdditionCoefficient);
+
+  fRemovalCoefficient:=TPasJSON.GetNumber(JSONRootObject.Properties['removalcoefficient'],fRemovalCoefficient);
+  
+  fCScale:=TPasJSON.GetNumber(JSONRootObject.Properties['cscale'],fCScale);
+
+  fK:=TPasJSON.GetNumber(JSONRootObject.Properties['k'],fK);
+
+  fV:=TPasJSON.GetNumber(JSONRootObject.Properties['v'],fV); // Viscosity factor
+
+  fVorticity:=TPasJSON.GetNumber(JSONRootObject.Properties['vorticity'],fVorticity); // Vorticity factor, not used in this shader but can be used for future enhancements
+
+  fDampingFactor:=TPasJSON.GetNumber(JSONRootObject.Properties['dampingfactor'],fDampingFactor); // Damping factor for the velocity
+
+  fWaterFactor:=TPasJSON.GetNumber(JSONRootObject.Properties['waterfactor'],fWaterFactor); // Factor for the water height contribution
+
+  fWaterExponent:=TPasJSON.GetNumber(JSONRootObject.Properties['waterexponent'],fWaterExponent); // Exponent for the water height contribution
+
+  fWaterForce:=TPasJSON.GetNumber(JSONRootObject.Properties['waterforce'],fWaterForce); // Force applied to the water height
+
+  fMaximumVelocity:=TPasJSON.GetNumber(JSONRootObject.Properties['maximumvelocity'],fMaximumVelocity); // Maximum velocity for the simulation
+
+  fNoClouds:=TPasJSON.GetNumber(JSONRootObject.Properties['noclouds'],fNoClouds); // Value for no clouds
+
+  fDryClouds:=TPasJSON.GetNumber(JSONRootObject.Properties['dryclouds'],fDryClouds); // Value for dry clouds
+
+  fWetClouds:=TPasJSON.GetNumber(JSONRootObject.Properties['wetclouds'],fWetClouds); // Value for wet clouds
+
+ end;
+
+end;
 
 { TpvScene3DPlanet.TSerializedData }
 
@@ -21477,6 +21581,8 @@ begin
 
  fWaterRainSettings:=TpvScene3DPlanet.TWaterRainSettings.Create;
 
+ fPrecipitationSimulationSettings:=TpvScene3DPlanet.TPrecipitationSimulationSettings.Create;
+
  fAtmosphere:=nil;
 
  fAtmosphereAdditionTextureImageView:=VK_NULL_HANDLE;
@@ -22248,6 +22354,8 @@ begin
  FreeAndNil(fVulkanComputeCommandPool);
 
  FreeAndNil(fWaterRainSettings);
+
+ FreeAndNil(fPrecipitationSimulationSettings);
 
  fGlobalBufferQueueFamilyIndices:=nil;
 
