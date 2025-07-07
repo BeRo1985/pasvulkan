@@ -2380,6 +2380,7 @@ type TpvScene3DPlanets=class;
        fGrassMapModification:TGrassMapModification;
        fPrecipitationMapInitialization:TPrecipitationMapInitialization;
        fPrecipitationMapModification:TPrecipitationMapModification;
+       fPrecipitationMapSimulation:TPrecipitationMapSimulation;
        fAtmosphereMapInitialization:TAtmosphereMapInitialization;
        fAtmosphereMapModification:TAtmosphereMapModification;
        fAtmosphereMapUpdate:TAtmosphereMapUpdate;
@@ -22562,6 +22563,8 @@ begin
 
  fPrecipitationMapModification:=TPrecipitationMapModification.Create(self);
 
+ fPrecipitationMapSimulation:=TPrecipitationMapSimulation.Create(self);
+
  fAtmosphereMapInitialization:=TAtmosphereMapInitialization.Create(self);
 
  fAtmosphereMapModification:=TAtmosphereMapModification.Create(self);
@@ -22908,6 +22911,8 @@ begin
  FreeAndNil(fPrecipitationMapInitialization);
 
  FreeAndNil(fPrecipitationMapModification);
+
+ FreeAndNil(fPrecipitationMapSimulation);
 
  FreeAndNil(fGrassMapInitialization);
 
@@ -24382,6 +24387,25 @@ begin
    end;
 
    UpdatedPrecipitation:=true;
+
+  end;
+
+ end;
+
+ if (aInFlightFrameIndex>=0) and assigned(fPrecipitationMapSimulation) then begin
+
+  if assigned(fVulkanDevice) then begin
+
+   BeginUpdate;
+   try
+
+    fPrecipitationMapSimulation.Execute(fVulkanComputeCommandBuffer,pvApplication.DeltaTime);
+
+   finally
+    EndUpdate;
+   end;
+
+   //UpdatedPrecipitation:=true;
 
   end;
 
