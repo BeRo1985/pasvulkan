@@ -1284,7 +1284,7 @@ end;
 procedure ForwardTransformRGBA32OrderData(const aInData,aOutData:pointer;const aDataSize:TpvSizeInt);
 var Index,Count:TpvSizeInt;
 begin
- Count:=aDataSize shr 2;
+ Count:=aDataSize shr 4; // 4 bytes per pixel, 4 channels so 4*4 = 2+2 shift
  for Index:=0 to Count-1 do begin
   PpvUInt32Array(aOutData)^[Index+(Count*0)]:=PpvUInt32Array(aInData)^[(Index shl 2) or 0];
   PpvUInt32Array(aOutData)^[Index+(Count*1)]:=PpvUInt32Array(aInData)^[(Index shl 2) or 1];
@@ -1345,7 +1345,7 @@ end;
 procedure BackwardTransformRGBA32OrderData(const aInData,aOutData:pointer;const aDataSize:TpvSizeInt);
 var Index,Count:TpvSizeInt;
 begin
- Count:=aDataSize shr 2;
+ Count:=aDataSize shr 4; // 4 bytes per pixel, 4 channels so 4*4 = 2+2 shift
  for Index:=0 to Count-1 do begin
   PpvUInt32Array(aOutData)^[(Index shl 2) or 0]:=PpvUInt32Array(aInData)^[Index+(Count*0)];
   PpvUInt32Array(aOutData)^[(Index shl 2) or 1]:=PpvUInt32Array(aInData)^[Index+(Count*1)];
