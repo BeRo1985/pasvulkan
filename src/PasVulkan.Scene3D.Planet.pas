@@ -606,6 +606,7 @@ type TpvScene3DPlanets=class;
               fNoClouds:TpvFloat; // Value for no clouds
               fDryClouds:TpvFloat; // Value for dry clouds
               fWetClouds:TpvFloat; // Value for wet clouds
+              fInterval:TpvDouble;
              public
               constructor Create; reintroduce;
               destructor Destroy; override;
@@ -625,6 +626,7 @@ type TpvScene3DPlanets=class;
               property NoClouds:TpvFloat read fNoClouds write fNoClouds;
               property DryClouds:TpvFloat read fDryClouds write fDryClouds;
               property WetClouds:TpvFloat read fWetClouds write fWetClouds;
+              property Interval:TpvDouble read fInterval write fInterval;
             end;
             { TSerializedData }
             TSerializedData=class
@@ -910,6 +912,49 @@ type TpvScene3DPlanets=class;
               constructor Create(const aPlanet:TpvScene3DPlanet); reintroduce;
               destructor Destroy; override;
               procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aPrecipitationMapModificationItem:TPrecipitationMapModificationItem);
+             public
+              property PushConstants:TPushConstants read fPushConstants write fPushConstants;
+            end;
+            { TPrecipitationMapSimulation }
+            TPrecipitationMapSimulation=class
+             public
+              type TPushConstants=packed record
+                    
+                    WaterHeightMapResolution:TpvUInt32;
+                    PrecipitationSimulationMapResolution:TpvUInt32;
+                    AdditionCoefficient:TpvFloat;
+                    RemovalCoefficient:TpvFloat;
+
+                    DeltaTime:TpvFloat;
+                    CScale:TpvFloat;
+                    K:TpvFloat;
+                    V:TpvFloat; // Viscosity factor
+                    
+                    Vorticity:TpvFloat; // Vorticity factor, not used in this shader but can be used for future enhancements
+                    DampingFactor:TpvFloat; // Damping factor for the velocity
+                    WaterFactor:TpvFloat; // Factor for the water height contribution
+                    WaterExponent:TpvFloat; // Exponent for the water height contribution
+                    
+                    WaterForce:TpvFloat; // Force applied to the water height
+                    MaximumVelocity:TpvFloat; // Maximum velocity for the simulation                    
+              
+                   end;
+                   PPushConstants=^TPushConstants;
+             private
+              fPlanet:TpvScene3DPlanet;
+              fVulkanDevice:TpvVulkanDevice;
+              fComputeShaderModule:TpvVulkanShaderModule;
+              fComputeShaderStage:TpvVulkanPipelineShaderStage;
+              fPipeline:TpvVulkanComputePipeline;
+              fDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
+              fDescriptorPool:TpvVulkanDescriptorPool;
+              fDescriptorSets:array[0..1,0..1] of TpvVulkanDescriptorSet;
+              fPipelineLayout:TpvVulkanPipelineLayout;
+              fPushConstants:TPushConstants;
+             public
+              constructor Create(const aPlanet:TpvScene3DPlanet); reintroduce;
+              destructor Destroy; override;
+              procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aDeltaTime:TpvDouble);
              public
               property PushConstants:TPushConstants read fPushConstants write fPushConstants;
             end;
@@ -3414,6 +3459,12 @@ begin
                                                                       pvAllocationGroupIDScene3DPlanetStatic,
                                                                       'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fPrecipitationSimulationMapBuffers['+IntToStr(Index)+']'
                                                                      ); 
+    fPlanet.fVulkanDevice.MemoryStaging.Zero(fPlanet.fVulkanComputeQueue,
+                                             fPlanet.fVulkanComputeCommandBuffer,
+                                             fPlanet.fVulkanComputeFence,
+                                             fPrecipitationSimulationMapBuffers[Index],
+                                             0,
+                                             fPrecipitationSimulationMapBuffers[Index].Size);
    end;
 
    for Index:=0 to 1 do begin
@@ -3435,6 +3486,12 @@ begin
                                                                      pvAllocationGroupIDScene3DPlanetStatic,
                                                                      'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fPrecipitationAdvectionMapBuffers['+IntToStr(Index)+']'
                                                                     );
+    fPlanet.fVulkanDevice.MemoryStaging.Zero(fPlanet.fVulkanComputeQueue,
+                                             fPlanet.fVulkanComputeCommandBuffer,
+                                             fPlanet.fVulkanComputeFence,
+                                             fPrecipitationAdvectionMapBuffers[Index],
+                                             0,
+                                             fPrecipitationAdvectionMapBuffers[Index].Size);
    end;
 
   end else if (fInFlightFrameIndex>=0) and TpvScene3D(fPlanet.fScene3D).PlanetSingleBuffers then begin
@@ -4206,6 +4263,12 @@ begin
  fAtmosphereMapImage:=nil;
 
  fPrecipitationAtmosphereMapBuffer:=nil;
+
+ fPrecipitationSimulationMapBuffers[0]:=nil;
+ fPrecipitationSimulationMapBuffers[1]:=nil;
+
+ fPrecipitationAdvectionMapBuffers[0]:=nil;
+ fPrecipitationAdvectionMapBuffers[1]:=nil;
 
  fWaterMiniMapData:=nil;
 
@@ -7097,6 +7160,7 @@ begin
  fNoClouds:=0.0; // Value for no clouds
  fDryClouds:=0.5; // Value for dry clouds
  fWetClouds:=1.0; // Value for wet clouds
+ fInterval:=1.0/60.0;
 end;
 
 destructor TpvScene3DPlanet.TPrecipitationSimulationSettings.Destroy;
@@ -7109,6 +7173,7 @@ var JSONRootObject,JSONChildObject:TPasJSONItemObject;
     JSONItem:TPasJSONItem;
 begin
  if assigned(aJSONItem) and (aJSONItem is TPasJSONItemObject) then begin
+
   JSONRootObject:=TPasJSONItemObject(aJSONItem);
   
   fAdditionCoefficient:=TPasJSON.GetNumber(JSONRootObject.Properties['additioncoefficient'],fAdditionCoefficient);
@@ -7138,6 +7203,18 @@ begin
   fDryClouds:=TPasJSON.GetNumber(JSONRootObject.Properties['dryclouds'],fDryClouds); // Value for dry clouds
 
   fWetClouds:=TPasJSON.GetNumber(JSONRootObject.Properties['wetclouds'],fWetClouds); // Value for wet clouds
+
+  JSONItem:=JSONRootObject.Properties['interval'];
+  if assigned(JSONItem) then begin
+   Interval:= TPasJSON.GetNumber(JSONItem,fInterval);
+  end else begin
+   JSONItem:=JSONRootObject.Properties['framerate'];
+   if assigned(JSONItem) then begin
+    fInterval:=1.0/TPasJSON.GetNumber(JSONItem,60.0);
+   end else begin
+    fInterval:=1.0/60.0;
+   end;
+  end;
 
  end;
 
@@ -10437,6 +10514,454 @@ begin
  fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
 
 end;
+
+(*
+            { TPrecipitationMapSimulation }
+            TPrecipitationMapSimulation=class
+             public
+              type TPushConstants=packed record
+                    
+                    WaterHeightMapResolution:TpvUInt32;
+                    PrecipitationSimulationMapResolution:TpvUInt32;
+                    AdditionCoefficient:TpvFloat;
+                    RemovalCoefficient:TpvFloat;
+
+                    DeltaTime:TpvFloat;
+                    CScale:TpvFloat;
+                    K:TpvFloat;
+                    V:TpvFloat; // Viscosity factor
+                    
+                    Vorticity:TpvFloat; // Vorticity factor, not used in this shader but can be used for future enhancements
+                    DampingFactor:TpvFloat; // Damping factor for the velocity
+                    WaterFactor:TpvFloat; // Factor for the water height contribution
+                    WaterExponent:TpvFloat; // Exponent for the water height contribution
+                    
+                    WaterForce:TpvFloat; // Force applied to the water height
+                    MaximumVelocity:TpvFloat; // Maximum velocity for the simulation                    
+              
+                   end;
+                   PPushConstants=^TPushConstants;
+             private
+              fPlanet:TpvScene3DPlanet;
+              fVulkanDevice:TpvVulkanDevice;
+              fComputeShaderModule:TpvVulkanShaderModule;
+              fComputeShaderStage:TpvVulkanPipelineShaderStage;
+              fPipeline:TpvVulkanComputePipeline;
+              fDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
+              fDescriptorPool:TpvVulkanDescriptorPool;
+              fDescriptorSets:array[0..1] of TpvVulkanDescriptorSet;
+              fPipelineLayout:TpvVulkanPipelineLayout;
+              fPushConstants:TPushConstants;
+             public
+              constructor Create(const aPlanet:TpvScene3DPlanet); reintroduce;
+              destructor Destroy; override;
+              procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aDeltaTime:TpvDouble);
+             public
+              property PushConstants:TPushConstants read fPushConstants write fPushConstants;
+            end;
+*)
+
+{ TpvScene3DPlanet.TPrecipitationMapSimulation }
+
+constructor TpvScene3DPlanet.TPrecipitationMapSimulation.Create(const aPlanet:TpvScene3DPlanet);
+var Stream:TStream;
+    WaterIndex,SimulationIndex:TpvSizeInt;
+begin
+
+ inherited Create;
+
+ fPlanet:=aPlanet;
+
+ fVulkanDevice:=fPlanet.fVulkanDevice;
+
+ if assigned(fVulkanDevice) then begin
+
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_precipitationmap_simulation_comp.spv');
+  try
+   fComputeShaderModule:=TpvVulkanShaderModule.Create(fVulkanDevice,Stream);
+  finally
+   FreeAndNil(Stream);
+  end;
+
+  fVulkanDevice.DebugUtils.SetObjectName(fComputeShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DPlanet.TPrecipitationMapSimulation.fComputeShaderModule');
+
+  fComputeShaderStage:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_COMPUTE_BIT,fComputeShaderModule,'main');
+
+(*
+
+layout(set = 0, binding = 0, std430) coherent buffer WaterHeightMap {
+  float values[];
+} waterHeightMap;
+
+layout(set = 0, binding = 1, std430) coherent buffer PrecipitationSimulationMapInput {
+  vec4 values[];
+} precipitationSimulationMapInput;
+
+layout(set = 0, binding = 2, std430) coherent buffer PrecipitationSimulationMapOutput {
+  vec4 values[];
+} precipitationSimulationMapOutput;
+
+layout(set = 0, binding = 3, std430) coherent buffer PrecipitationAdvectionMapInput {
+  float values[];
+} precipitationAdvectionMapInput;
+
+layout(set = 0, binding = 4, std430) coherent buffer PrecipitationAdvectionMapOutput {
+  float values[];
+} precipitationAdvectionMapOutput;
+
+layout(set = 0, binding = 5) uniform sampler2D uImageAtmosphereMap;*)
+
+  fDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(fVulkanDevice);
+  fDescriptorSetLayout.AddBinding(0, // WaterHeightMap
+                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                  1,
+                                  TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                  [],
+                                  0);
+  fDescriptorSetLayout.AddBinding(1, // PrecipitationSimulationMapInput
+                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                  1,
+                                  TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                  [],
+                                  0);
+  fDescriptorSetLayout.AddBinding(2, // PrecipitationSimulationMapOutput
+                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                  1,
+                                  TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                  [],
+                                  0);
+  fDescriptorSetLayout.AddBinding(3, // PrecipitationAdvectionMapInput
+                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                  1,
+                                  TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                  [],
+                                  0); 
+  fDescriptorSetLayout.AddBinding(4, // PrecipitationAdvectionMapOutput
+                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                  1,
+                                  TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                  [],
+                                  0);
+  fDescriptorSetLayout.AddBinding(5, // AtmosphereMap
+                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                  1,
+                                  TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                  [],
+                                  0);
+  fDescriptorSetLayout.Initialize;
+
+  fPipelineLayout:=TpvVulkanPipelineLayout.Create(fVulkanDevice);
+  fPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),0,SizeOf(TPushConstants));
+  fPipelineLayout.AddDescriptorSetLayout(fDescriptorSetLayout);
+  fPipelineLayout.Initialize;
+
+  fVulkanDevice.DebugUtils.SetObjectName(fPipelineLayout.Handle,VK_OBJECT_TYPE_PIPELINE_LAYOUT,'TpvScene3DPlanet.TPrecipitationMapSimulation.fPipelineLayout');
+
+  fDescriptorPool:=TpvVulkanDescriptorPool.Create(fVulkanDevice,
+                                                  TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
+                                                  4);
+  fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),5);
+  fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),1);
+  fDescriptorPool.Initialize;
+  fVulkanDevice.DebugUtils.SetObjectName(fDescriptorPool.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'TpvScene3DPlanet.TPrecipitationMapSimulation.fDescriptorPool');
+
+  for WaterIndex:=0 to 1 do begin
+   for SimulationIndex:=0 to 1 do begin
+    fDescriptorSets[WaterIndex,SimulationIndex]:=TpvVulkanDescriptorSet.Create(fDescriptorPool,fDescriptorSetLayout);
+    fDescriptorSets[WaterIndex,SimulationIndex].WriteToDescriptorSet(0,
+                                                                     0,
+                                                                     1,
+                                                                     TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                                     [],
+                                                                     [TVkDescriptorBufferInfo.Create(fPlanet.fData.fWaterHeightMapBuffers[WaterIndex].Handle,
+                                                                                                     0,
+                                                                                                     fPlanet.fData.fWaterHeightMapBuffers[WaterIndex].Size)],
+                                                                     [],
+                                                                     false);
+    fDescriptorSets[WaterIndex,SimulationIndex].WriteToDescriptorSet(1,
+                                                                     0,
+                                                                     1,
+                                                                     TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                                     [],
+                                                                     [TVkDescriptorBufferInfo.Create(fPlanet.fData.fPrecipitationSimulationMapBuffers[SimulationIndex].Handle,
+                                                                                                     0,
+                                                                                                     fPlanet.fData.fPrecipitationSimulationMapBuffers[SimulationIndex].Size)],
+                                                                     [],
+                                                                     false);
+    fDescriptorSets[WaterIndex,SimulationIndex].WriteToDescriptorSet(2,
+                                                                     0,
+                                                                     1,
+                                                                     TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                                     [],
+                                                                     [TVkDescriptorBufferInfo.Create(fPlanet.fData.fPrecipitationSimulationMapBuffers[1-SimulationIndex].Handle,
+                                                                                                     0,
+                                                                                                     fPlanet.fData.fPrecipitationSimulationMapBuffers[1-SimulationIndex].Size)],
+                                                                     [],
+                                                                     false);
+    fDescriptorSets[WaterIndex,SimulationIndex].WriteToDescriptorSet(3,
+                                                                     0,
+                                                                     1,
+                                                                     TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                                     [],
+                                                                     [TVkDescriptorBufferInfo.Create(fPlanet.fData.fPrecipitationAdvectionMapBuffers[SimulationIndex].Handle,
+                                                                                                     0,
+                                                                                                     fPlanet.fData.fPrecipitationAdvectionMapBuffers[SimulationIndex].Size)],
+                                                                     [],
+                                                                     false);
+    fDescriptorSets[WaterIndex,SimulationIndex].WriteToDescriptorSet(4,
+                                                                     0,
+                                                                     1,
+                                                                     TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                                     [],
+                                                                     [TVkDescriptorBufferInfo.Create(fPlanet.fData.fPrecipitationAdvectionMapBuffers[1-SimulationIndex].Handle,
+                                                                                                     0,
+                                                                                                     fPlanet.fData.fPrecipitationAdvectionMapBuffers[1-SimulationIndex].Size)],
+                                                                     [],
+                                                                     false);
+    fDescriptorSets[WaterIndex,SimulationIndex].WriteToDescriptorSet(5,
+                                                                     0,
+                                                                     1,
+                                                                     TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                                                     [TVkDescriptorImageInfo.Create(TpvScene3D(fPlanet.fScene3D).GeneralComputeSampler.Handle,
+                                                                                                    fPlanet.fData.fAtmosphereMapImage.VulkanImageView.Handle,
+                                                                                                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
+                                                                     [],
+                                                                     [],
+                                                                     false);
+    fDescriptorSets[WaterIndex,SimulationIndex].Flush;
+    fVulkanDevice.DebugUtils.SetObjectName(fDescriptorSets[WaterIndex,SimulationIndex].Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET,'TpvScene3DPlanet.TPrecipitationMapSimulation.fDescriptorSets['+IntToStr(WaterIndex)+','+IntToStr(SimulationIndex)+']');
+   end;
+  end;
+
+  fPipeline:=TpvVulkanComputePipeline.Create(fVulkanDevice,
+                                             pvApplication.VulkanPipelineCache,
+                                             TVkPipelineCreateFlags(0),
+                                             fComputeShaderStage,
+                                             fPipelineLayout,
+                                             nil,
+                                             0);
+
+  fPushConstants.WaterHeightMapResolution:=fPlanet.fWaterMapResolution;
+
+  fPushConstants.PrecipitationSimulationMapResolution:=fPlanet.fPrecipitationMapResolution;
+
+  fPushConstants.DeltaTime:=0.0;
+
+ end;
+
+end;
+
+destructor TpvScene3DPlanet.TPrecipitationMapSimulation.Destroy;
+begin
+
+ FreeAndNil(fPipeline);
+
+ FreeAndNil(fDescriptorSets[0,0]);
+ FreeAndNil(fDescriptorSets[0,1]);
+ FreeAndNil(fDescriptorSets[1,0]);
+ FreeAndNil(fDescriptorSets[1,1]);
+
+ FreeAndNil(fDescriptorPool);
+
+ FreeAndNil(fPipelineLayout);
+
+ FreeAndNil(fDescriptorSetLayout);
+
+ FreeAndNil(fComputeShaderStage);
+
+ FreeAndNil(fComputeShaderModule);
+
+ inherited Destroy;
+
+end;
+
+procedure TpvScene3DPlanet.TPrecipitationMapSimulation.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aDeltaTime:TpvDouble);
+var WaterIndex,SimulationIndex,CountBufferMemoryBarriers:TpvSizeInt;
+    ImageMemoryBarrier:TVkImageMemoryBarrier;
+    BufferMemoryBarriers:array[0..4] of TVkBufferMemoryBarrier;
+begin
+
+ if aDeltaTime<=0.0 then begin
+  exit;
+ end;
+
+ fPushConstants.AdditionCoefficient:=fPlanet.fPrecipitationSimulationSettings.fAdditionCoefficient;
+ fPushConstants.RemovalCoefficient:=fPlanet.fPrecipitationSimulationSettings.fRemovalCoefficient;
+ fPushConstants.CScale:=fPlanet.fPrecipitationSimulationSettings.fCScale;
+ fPushConstants.K:=fPlanet.fPrecipitationSimulationSettings.fK;
+ fPushConstants.V:=fPlanet.fPrecipitationSimulationSettings.fV; // Viscosity factor
+ fPushConstants.Vorticity:=fPlanet.fPrecipitationSimulationSettings.fVorticity; // Vorticity factor, not used in this shader but can be used for future enhancements
+ fPushConstants.DampingFactor:=fPlanet.fPrecipitationSimulationSettings.fDampingFactor; // Damping factor for the velocity
+ fPushConstants.WaterFactor:=fPlanet.fPrecipitationSimulationSettings.fWaterFactor; // Factor for the water height contribution
+ fPushConstants.WaterExponent:=fPlanet.fPrecipitationSimulationSettings.fWaterExponent; // Exponent for the water height contribution
+ fPushConstants.WaterForce:=fPlanet.fPrecipitationSimulationSettings.fWaterForce; // Force applied to the water height
+ fPushConstants.MaximumVelocity:=fPlanet.fPrecipitationSimulationSettings.fMaximumVelocity; // Maximum velocity for the simulation
+
+ fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'Planet PrecipitationMapSimulation',[0.5,0.5,0.5,1.0]);
+
+ fPlanet.fData.fPrecipitationSimulationTime:=fPlanet.fData.fPrecipitationSimulationTime+aDeltaTime;
+
+ if fPlanet.fData.fPrecipitationSimulationTime>=fPlanet.fPrecipitationSimulationSettings.fInterval then begin
+
+  // Image memory barrier for the atmosphere map
+  ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT) or TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT) or TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                                                   TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                   VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                   VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                   VK_QUEUE_FAMILY_IGNORED,
+                                                   VK_QUEUE_FAMILY_IGNORED,
+                                                   fPlanet.fData.fPrecipitationMapImage.VulkanImage.Handle,
+                                                   TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                   0,
+                                                                                   1,
+                                                                                   0,
+                                                                                   1));
+
+  aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_HOST_BIT),
+                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                    0,
+                                    0,nil,
+                                    0,nil,
+                                    1,@ImageMemoryBarrier);                                                                                 
+
+  fPushConstants.DeltaTime:=fPlanet.fPrecipitationSimulationSettings.fInterval;
+
+  aCommandBuffer.CmdPushConstants(fPipelineLayout.Handle,
+                                  TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                  0,
+                                  SizeOf(TPushConstants),
+                                  @fPushConstants);
+  
+  while fPlanet.fData.fPrecipitationSimulationTime>=fPlanet.fPrecipitationSimulationSettings.fInterval do begin
+
+   fPlanet.fData.fPrecipitationSimulationTime:=fPlanet.fData.fPrecipitationSimulationTime-fPlanet.fPrecipitationSimulationSettings.fInterval;
+
+   WaterIndex:=fPlanet.fData.fWaterBufferIndex and 1;
+
+   SimulationIndex:=fPlanet.fData.fPrecipitationSimulationIndex and 1;
+
+   CountBufferMemoryBarriers:=0;
+
+   BufferMemoryBarriers[CountBufferMemoryBarriers]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                                                  TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                                                  VK_QUEUE_FAMILY_IGNORED,
+                                                                                  VK_QUEUE_FAMILY_IGNORED,
+                                                                                  fPlanet.fData.fWaterHeightMapBuffers[WaterIndex].Handle,
+                                                                                  0,
+                                                                                  fPlanet.fData.fWaterHeightMapBuffers[WaterIndex].Size);
+   inc(CountBufferMemoryBarriers);
+
+   BufferMemoryBarriers[CountBufferMemoryBarriers]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                                                  TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                                                  VK_QUEUE_FAMILY_IGNORED,
+                                                                                  VK_QUEUE_FAMILY_IGNORED,
+                                                                                  fPlanet.fData.fPrecipitationSimulationMapBuffers[0].Handle,
+                                                                                  0,
+                                                                                  fPlanet.fData.fPrecipitationSimulationMapBuffers[0].Size); 
+   inc(CountBufferMemoryBarriers);
+
+   BufferMemoryBarriers[CountBufferMemoryBarriers]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                                                  TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                                                  VK_QUEUE_FAMILY_IGNORED,
+                                                                                  VK_QUEUE_FAMILY_IGNORED,
+                                                                                  fPlanet.fData.fPrecipitationSimulationMapBuffers[1].Handle,
+                                                                                  0,
+                                                                                  fPlanet.fData.fPrecipitationSimulationMapBuffers[1].Size);
+   inc(CountBufferMemoryBarriers);
+
+   BufferMemoryBarriers[CountBufferMemoryBarriers]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                                                  TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                                                  VK_QUEUE_FAMILY_IGNORED,
+                                                                                  VK_QUEUE_FAMILY_IGNORED,
+                                                                                  fPlanet.fData.fPrecipitationAdvectionMapBuffers[0].Handle,
+                                                                                  0,
+                                                                                  fPlanet.fData.fPrecipitationAdvectionMapBuffers[0].Size);
+   inc(CountBufferMemoryBarriers);
+
+   BufferMemoryBarriers[CountBufferMemoryBarriers]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                                                  TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                                                  VK_QUEUE_FAMILY_IGNORED,
+                                                                                  VK_QUEUE_FAMILY_IGNORED,
+                                                                                  fPlanet.fData.fPrecipitationAdvectionMapBuffers[1].Handle,
+                                                                                  0,
+                                                                                  fPlanet.fData.fPrecipitationAdvectionMapBuffers[1].Size);  
+   inc(CountBufferMemoryBarriers);
+
+   aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                     0,
+                                     0,nil,
+                                     CountBufferMemoryBarriers, @BufferMemoryBarriers[0],
+                                     0,nil);
+
+   aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,fPipeline.Handle);
+
+   aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE,
+                                        fPipelineLayout.Handle,
+                                        0,
+                                        1,
+                                        @fDescriptorSets[WaterIndex,SimulationIndex].Handle,
+                                        0,
+                                        nil);
+
+   aCommandBuffer.CmdDispatch((fPlanet.fPrecipitationMapResolution+15) shr 4,
+                              (fPlanet.fPrecipitationMapResolution+15) shr 4,
+                              1);
+
+   fPlanet.fData.fPrecipitationSimulationIndex:=(fPlanet.fData.fPrecipitationSimulationIndex+1) and 1;
+    
+  end;
+
+  CountBufferMemoryBarriers:=0;
+
+  BufferMemoryBarriers[CountBufferMemoryBarriers]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                                                 TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                                                 VK_QUEUE_FAMILY_IGNORED,
+                                                                                 VK_QUEUE_FAMILY_IGNORED,
+                                                                                 fPlanet.fData.fPrecipitationSimulationMapBuffers[0].Handle,
+                                                                                 0,
+                                                                                 fPlanet.fData.fPrecipitationSimulationMapBuffers[0].Size);
+  inc(CountBufferMemoryBarriers);
+
+  BufferMemoryBarriers[CountBufferMemoryBarriers]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                                                 TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                                                 VK_QUEUE_FAMILY_IGNORED,
+                                                                                 VK_QUEUE_FAMILY_IGNORED,
+                                                                                 fPlanet.fData.fPrecipitationSimulationMapBuffers[1].Handle,
+                                                                                 0,
+                                                                                 fPlanet.fData.fPrecipitationSimulationMapBuffers[1].Size);
+  inc(CountBufferMemoryBarriers);
+
+  BufferMemoryBarriers[CountBufferMemoryBarriers]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                                                 TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                                                 VK_QUEUE_FAMILY_IGNORED,
+                                                                                 VK_QUEUE_FAMILY_IGNORED,
+                                                                                 fPlanet.fData.fPrecipitationAdvectionMapBuffers[0].Handle,
+                                                                                 0,
+                                                                                 fPlanet.fData.fPrecipitationAdvectionMapBuffers[0].Size);
+  inc(CountBufferMemoryBarriers);
+
+  BufferMemoryBarriers[CountBufferMemoryBarriers]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                                                 TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                                                 VK_QUEUE_FAMILY_IGNORED,
+                                                                                 VK_QUEUE_FAMILY_IGNORED,
+                                                                                 fPlanet.fData.fPrecipitationAdvectionMapBuffers[1].Handle,
+                                                                                 0,
+                                                                                 fPlanet.fData.fPrecipitationAdvectionMapBuffers[1].Size);
+  inc(CountBufferMemoryBarriers);
+  
+  aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                    0,
+                                    0,nil,
+                                    CountBufferMemoryBarriers,@BufferMemoryBarriers[0],
+                                    0,nil);
+
+ end;
+
+ fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
+
+end;     
 
 { TpvScene3DPlanet.TAtmosphereMapInitialization }
 
