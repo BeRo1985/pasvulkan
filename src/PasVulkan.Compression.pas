@@ -1283,30 +1283,14 @@ end;
 // This function transforms RGBA32 data to the reordered order (RGBARGBARGBARGBA => RRRRGGGGBBBBAAAA )
 procedure ForwardTransformRGBA32OrderData(const aInData,aOutData:pointer;const aDataSize:TpvSizeInt);
 var Index,Count:TpvSizeInt;
-    R,G,B,A:TpvUInt32;
-    DataR,DataG,DataB,DataA:PpvUInt32Array;
 begin
  Count:=aDataSize shr 2;
- GetMem(DataR,Count*SizeOf(TpvUInt32));
- GetMem(DataG,Count*SizeOf(TpvUInt32));
- GetMem(DataB,Count*SizeOf(TpvUInt32));
- GetMem(DataA,Count*SizeOf(TpvUInt32));
  for Index:=0 to Count-1 do begin
-  DataR^[Index]:=PpvUInt32Array(aInData)^[(Index shl 2) or 0];
-  DataG^[Index]:=PpvUInt32Array(aInData)^[(Index shl 2) or 1];
-  DataB^[Index]:=PpvUInt32Array(aInData)^[(Index shl 2) or 2];
-  DataA^[Index]:=PpvUInt32Array(aInData)^[(Index shl 2) or 3];
+  PpvUInt32Array(aOutData)^[Index+(Count*0)]:=PpvUInt32Array(aInData)^[(Index shl 2) or 0];
+  PpvUInt32Array(aOutData)^[Index+(Count*1)]:=PpvUInt32Array(aInData)^[(Index shl 2) or 1];
+  PpvUInt32Array(aOutData)^[Index+(Count*2)]:=PpvUInt32Array(aInData)^[(Index shl 2) or 2];
+  PpvUInt32Array(aOutData)^[Index+(Count*3)]:=PpvUInt32Array(aInData)^[(Index shl 2) or 3];
  end;
- for Index:=0 to Count-1 do begin
-  PpvUInt32Array(aOutData)^[Index]:=DataR^[Index];
-  PpvUInt32Array(aOutData)^[Index+Count]:=DataG^[Index];
-  PpvUInt32Array(aOutData)^[Index+(Count*2)]:=DataB^[Index];
-  PpvUInt32Array(aOutData)^[Index+(Count*3)]:=DataA^[Index];
- end;
- FreeMem(DataR);
- FreeMem(DataG);
- FreeMem(DataB);
- FreeMem(DataA);
 end;
 
 procedure ForwardTransformRGBA32OrderData(const aStream:TStream);
@@ -1360,29 +1344,14 @@ end;
 // This function transforms RGBA32 data back from the reordered order (RRRRGGGGBBBBAAAA => RGBARGBARGBARGBA)
 procedure BackwardTransformRGBA32OrderData(const aInData,aOutData:pointer;const aDataSize:TpvSizeInt);
 var Index,Count:TpvSizeInt;
-    DataR,DataG,DataB,DataA:PpvUInt32Array;
 begin
  Count:=aDataSize shr 2;
- GetMem(DataR,Count*SizeOf(TpvUInt32));
- GetMem(DataG,Count*SizeOf(TpvUInt32));
- GetMem(DataB,Count*SizeOf(TpvUInt32));
- GetMem(DataA,Count*SizeOf(TpvUInt32));
  for Index:=0 to Count-1 do begin
-  DataR^[Index]:=PpvUInt32Array(aInData)^[Index];
-  DataG^[Index]:=PpvUInt32Array(aInData)^[Index+Count];
-  DataB^[Index]:=PpvUInt32Array(aInData)^[Index+(Count*2)];
-  DataA^[Index]:=PpvUInt32Array(aInData)^[Index+(Count*3)];
+  PpvUInt32Array(aOutData)^[(Index shl 2) or 0]:=PpvUInt32Array(aInData)^[Index+(Count*0)];
+  PpvUInt32Array(aOutData)^[(Index shl 2) or 1]:=PpvUInt32Array(aInData)^[Index+(Count*1)];
+  PpvUInt32Array(aOutData)^[(Index shl 2) or 2]:=PpvUInt32Array(aInData)^[Index+(Count*2)];
+  PpvUInt32Array(aOutData)^[(Index shl 2) or 3]:=PpvUInt32Array(aInData)^[Index+(Count*3)];
  end;
- for Index:=0 to Count-1 do begin
-  PpvUInt32Array(aOutData)^[(Index shl 2) or 0]:=DataR^[Index];
-  PpvUInt32Array(aOutData)^[(Index shl 2) or 1]:=DataG^[Index];
-  PpvUInt32Array(aOutData)^[(Index shl 2) or 2]:=DataB^[Index];
-  PpvUInt32Array(aOutData)^[(Index shl 2) or 3]:=DataA^[Index];
- end;
- FreeMem(DataR);
- FreeMem(DataG);
- FreeMem(DataB);
- FreeMem(DataA);
 end;
 
 procedure BackwardTransformRGBA32OrderData(const aStream:TStream);
