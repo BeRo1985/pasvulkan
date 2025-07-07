@@ -14,11 +14,11 @@ layout(set = 0, binding = 0, std430) coherent buffer PrecipitationAdvectionMapIn
   float values[];
 } precipitationAdvectionMapInputA;
 
-layout(set = 0, binding = 0, std430) coherent buffer PrecipitationAdvectionMapInputB {
+layout(set = 0, binding = 1, std430) coherent buffer PrecipitationAdvectionMapInputB {
   float values[];
 } precipitationAdvectionMapInputB;
 
-layout(set = 0, binding = 0, r8_snorm) uniform image2D uImagePrecipitationMap;
+layout(set = 0, binding = 2, r8_snorm) uniform image2D uImagePrecipitationMap;
 
 layout(push_constant) uniform PushConstants {
   uint precipitationSimulationMapResolution; // Resolution of the precipitation simulation map
