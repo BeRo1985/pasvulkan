@@ -340,6 +340,10 @@ type TpvScene3DPlanets=class;
               fPrecipitationMapImage:TpvScene3DRendererImage2D; // R8_SNORM
               fAtmosphereMapImage:TpvScene3DRendererImage2D; // R8_UNORM
               fPrecipitationAtmosphereMapBuffer:TpvVulkanBuffer;
+              fPrecipitationSimulationMapBuffers:array[0..1] of TpvVulkanBuffer; // Double-buffered
+              fPrecipitationAdvectionMapBuffers:array[0..1] of TpvVulkanBuffer; // Double-buffered
+              fPrecipitationSimulationIndex:TpvUInt32;
+              fPrecipitationSimulationTime:TpvDouble;
               fTransferBuffer:TpvVulkanBuffer;
               fWaterHeightMapImage:TpvScene3DRendererImage2D; // R32_SFLOAT
               fWaterHeightMapBuffers:array[0..1] of TpvVulkanBuffer; // Double-buffered
@@ -3061,6 +3065,7 @@ var ImageSharingMode:TVkSharingMode;
     ImageQueueFamilyIndices:TpvVulkanQueueFamilyIndices;
     WaterHeightMapImageSharingMode:TVkSharingMode;
     WaterHeightMapImageQueueFamilyIndices:TpvVulkanQueueFamilyIndices;
+    Index:TpvSizeInt;
 begin
 
  inherited Create;
@@ -3138,6 +3143,15 @@ begin
 
  fPrecipitationAtmosphereMapBuffer:=nil;
 
+ fPrecipitationSimulationMapBuffers[0]:=nil;
+ fPrecipitationSimulationMapBuffers[1]:=nil;
+
+ fPrecipitationAdvectionMapBuffers[0]:=nil;
+ fPrecipitationAdvectionMapBuffers[1]:=nil;
+
+ fPrecipitationSimulationIndex:=0;
+ fPrecipitationSimulationTime:=0.0;
+ 
  fTransferBuffer:=nil;
 
  fWaterHeightMapImage:=nil;
@@ -3381,6 +3395,48 @@ begin
                                                             );
    fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fPrecipitationAtmosphereMapBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fPrecipitationAtmosphereMapBuffer');
 
+   for Index:=0 to 1 do begin
+    fPrecipitationSimulationMapBuffers[Index]:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
+                                                                      fPlanet.fPrecipitationMapResolution*fPlanet.fPrecipitationMapResolution*SizeOf(TpvFloat)*4,
+                                                                      TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
+                                                                      fPlanet.fGlobalBufferSharingMode,
+                                                                      fPlanet.fGlobalBufferQueueFamilyIndices,
+                                                                      0,
+                                                                      TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                                      0,
+                                                                      0,
+                                                                      0,
+                                                                      0,
+                                                                      0,
+                                                                      0,
+                                                                      [TpvVulkanBufferFlag.PreferDedicatedAllocation],
+                                                                      0,
+                                                                      pvAllocationGroupIDScene3DPlanetStatic,
+                                                                      'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fPrecipitationSimulationMapBuffers['+IntToStr(Index)+']'
+                                                                     ); 
+   end;
+
+   for Index:=0 to 1 do begin
+    fPrecipitationAdvectionMapBuffers[Index]:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
+                                                                     fPlanet.fPrecipitationMapResolution*fPlanet.fPrecipitationMapResolution*SizeOf(TpvFloat),
+                                                                     TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
+                                                                     fPlanet.fGlobalBufferSharingMode,
+                                                                     fPlanet.fGlobalBufferQueueFamilyIndices,
+                                                                     0,
+                                                                     TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                                     0,
+                                                                     0,
+                                                                     0,
+                                                                     0,
+                                                                     0,
+                                                                     0,
+                                                                     [TpvVulkanBufferFlag.PreferDedicatedAllocation],
+                                                                     0,
+                                                                     pvAllocationGroupIDScene3DPlanetStatic,
+                                                                     'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fPrecipitationAdvectionMapBuffers['+IntToStr(Index)+']'
+                                                                    );
+   end;
+
   end else if (fInFlightFrameIndex>=0) and TpvScene3D(fPlanet.fScene3D).PlanetSingleBuffers then begin
 
    fHeightMapImage:=fPlanet.fData.fHeightMapImage;
@@ -3391,6 +3447,12 @@ begin
    fPrecipitationMapImage:=fPlanet.fData.fPrecipitationMapImage;
    fAtmosphereMapImage:=fPlanet.fData.fAtmosphereMapImage;
    fPrecipitationAtmosphereMapBuffer:=fPlanet.fData.fPrecipitationAtmosphereMapBuffer;
+
+   fPrecipitationSimulationMapBuffers[0]:=fPlanet.fData.fPrecipitationSimulationMapBuffers[0];
+   fPrecipitationSimulationMapBuffers[1]:=fPlanet.fData.fPrecipitationSimulationMapBuffers[1];
+
+   fPrecipitationAdvectionMapBuffers[0]:=fPlanet.fData.fPrecipitationAdvectionMapBuffers[0];
+   fPrecipitationAdvectionMapBuffers[1]:=fPlanet.fData.fPrecipitationAdvectionMapBuffers[1];
 
   end;
 
@@ -4076,6 +4138,12 @@ begin
 
   FreeAndNil(fPrecipitationAtmosphereMapBuffer);
 
+  FreeAndNil(fPrecipitationSimulationMapBuffers[0]);
+  FreeAndNil(fPrecipitationSimulationMapBuffers[1]);
+
+  FreeAndNil(fPrecipitationAdvectionMapBuffers[0]);
+  FreeAndNil(fPrecipitationAdvectionMapBuffers[1]);   
+
  end else begin
 
   fHeightMapImage:=nil;
@@ -4093,6 +4161,12 @@ begin
   fAtmosphereMapImage:=nil;
 
   fPrecipitationAtmosphereMapBuffer:=nil;
+
+  fPrecipitationSimulationMapBuffers[0]:=nil;
+  fPrecipitationSimulationMapBuffers[1]:=nil;
+
+  fPrecipitationAdvectionMapBuffers[0]:=nil;
+  fPrecipitationAdvectionMapBuffers[1]:=nil;
 
  end;
 
