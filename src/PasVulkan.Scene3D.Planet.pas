@@ -7173,7 +7173,7 @@ begin
  fNoClouds:=0.0; // Value for no clouds
  fDryClouds:=0.5; // Value for dry clouds
  fWetClouds:=1.0; // Value for wet clouds
- fInterval:=1.0/60.0;
+ fInterval:=0.0;
 end;
 
 destructor TpvScene3DPlanet.TPrecipitationSimulationSettings.Destroy;
@@ -24927,7 +24927,7 @@ begin
 
  end;
 
- if (aInFlightFrameIndex>=0) and assigned(fPrecipitationMapSimulation) then begin
+ if (aInFlightFrameIndex>=0) and assigned(fPrecipitationMapSimulation) and (fPrecipitationSimulationSettings.fInterval>1e-6) then begin
 
   if assigned(fVulkanDevice) then begin
 
