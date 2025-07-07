@@ -73,6 +73,7 @@ uses SysUtils,
 
 procedure ResizeMonoByte2D(const aInData:Pointer;const aInWidth,aInHeight:TpvSizeInt;const aOutData:Pointer;const aOutWidth,aOutHeight:TpvSizeInt);
 procedure ResizeMonoFloat2D(const aInData:Pointer;const aInWidth,aInHeight:TpvSizeInt;const aOutData:Pointer;const aOutWidth,aOutHeight:TpvSizeInt);
+procedure ResizeRGBAFloat2D(const aInData:Pointer;const aInWidth,aInHeight:TpvSizeInt;const aOutData:Pointer;const aOutWidth,aOutHeight:TpvSizeInt);
 
 procedure ResizeR8(const aSrc:pointer;const aSrcWidth,aSrcHeight:TpvInt32;const aDst:pointer;const aDstWidth,aDstHeight:TpvInt32);
 
@@ -188,6 +189,63 @@ begin
 
  end; 
 
+end;
+
+procedure ResizeRGBAFloat2D(const aInData:Pointer;const aInWidth,aInHeight:TpvSizeInt;const aOutData:Pointer;const aOutWidth,aOutHeight:TpvSizeInt);
+var x,y,ix,iy,nx,ny,iwm,ihm,owm,ohm:TpvSizeInt;
+    wf,hf,fx,fy:TpvDouble;
+    InData,OutData:PpvFloatArray;
+begin
+
+ InData:=aInData;
+ OutData:=aOutData;
+
+ if (aInWidth=aOutWidth) and (aInHeight=aOutHeight) then begin
+ 
+  // Nothing to do, just copy the data, when the sizes are equal
+
+  Move(InData^,OutData^,aInWidth*aInHeight*SizeOf(TpvFloat)*4);
+
+ end else begin
+
+  // Use bilinear interpolation to resize the image when the sizes are not equal
+
+  iwm:=aInWidth-1;
+  ihm:=aInHeight-1;
+
+  owm:=aOutWidth-1;
+  ohm:=aOutHeight-1;
+
+  wf:=iwm/aOutWidth;
+  hf:=ihm/aOutHeight;
+
+  for y:=0 to ohm do begin
+   fy:=y*hf;
+   iy:=Trunc(fy);
+   fy:=fy-iy;
+   ny:=iy+1;
+   if ny>=aInHeight then begin
+    ny:=iy;
+   end;
+   for x:=0 to owm do begin
+    fx:=x*wf;
+    ix:=Trunc(fx);
+    fx:=fx-ix;
+    nx:=ix+1;
+    if nx>=aInWidth then begin
+     nx:=ix;
+    end;
+    OutData^[x+(y*aOutWidth)*4+0]:=(((InData^[((ix+(iy*aInWidth))*4)+0]*(1.0-fx))+(InData^[((nx+(iy*aInWidth))*4)+0]*fx))*(1.0-fy))+
+                                   (((InData^[((ix+(ny*aInWidth))*4)+0]*(1.0-fx))+(InData^[((nx+(ny*aInWidth))*4)+0]*fx))*fy);
+    OutData^[x+(y*aOutWidth)*4+1]:=(((InData^[((ix+(iy*aInWidth))*4)+1]*(1.0-fx))+(InData^[((nx+(iy*aInWidth))*4)+1]*fx))*(1.0-fy))+
+                                   (((InData^[((ix+(ny*aInWidth))*4)+1]*(1.0-fx))+(InData^[((nx+(ny*aInWidth))*4)+1]*fx))*fy);
+    OutData^[x+(y*aOutWidth)*4+2]:=(((InData^[((ix+(iy*aInWidth))*4)+2]*(1.0-fx))+(InData^[((nx+(iy*aInWidth))*4)+2]*fx))*(1.0-fy))+
+                                   (((InData^[((ix+(ny*aInWidth))*4)+2]*(1.0-fx))+(InData^[((nx+(ny*aInWidth))*4)+2]*fx))*fy);
+    OutData^[x+(y*aOutWidth)*4+3]:=(((InData^[((ix+(iy*aInWidth))*4)+3]*(1.0-fx))+(InData^[((nx+(iy*aInWidth))*4)+3]*fx))*(1.0-fy))+
+                                   (((InData^[((ix+(ny*aInWidth))*4)+3]*(1.0-fx))+(InData^[((nx+(ny*aInWidth))*4)+3]*fx))*fy);
+   end;
+  end;
+ end;
 end;
 
 procedure ResizeR8(const aSrc:pointer;const aSrcWidth,aSrcHeight:TpvInt32;const aDst:pointer;const aDstWidth,aDstHeight:TpvInt32);

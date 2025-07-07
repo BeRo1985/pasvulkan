@@ -673,6 +673,14 @@ type TpvScene3DPlanets=class;
                     Resolution:TpvUInt32;
                    end;
                    PPrecipitationMapDataChunkHeader=^TPrecipitationMapDataChunkHeader;
+                   TPrecipitationSimulationMapDataChunkHeader=packed record
+                    Resolution:TpvUInt32;
+                   end;
+                   PPrecipitationSimulationMapDataChunkHeader=^TPrecipitationSimulationMapDataChunkHeader;
+                   TPrecipitationAdvectionMapDataChunkHeader=packed record
+                    Resolution:TpvUInt32;
+                   end;
+                   PPrecipitationAdvectionMapDataChunkHeader=^TPrecipitationAdvectionMapDataChunkHeader;
                    TAtmosphereMapDataChunkHeader=packed record
                     Resolution:TpvUInt32;
                    end;
@@ -689,7 +697,9 @@ type TpvScene3DPlanets=class;
                      ChunkSignatureBlendMapData:TSignature=('B','M','D','T'); // Blend Map Data
                      ChunkSignatureGrassMapData:TSignature=('G','M','D','T'); // Grass Map Data
                      ChunkSignatureRainMapData:TSignature=('R','M','D','T'); // Rain Map Data
-                     ChunkSignaturePrecipitationMapData:TSignature=('P','M','D','T'); // Precipitation Map Data                     
+                     ChunkSignaturePrecipitationMapData:TSignature=('P','M','D','T'); // Precipitation Map Data         
+                     ChunkSignaturePrecipitationSimulationMapData:TSignature=('P','S','D','T'); // Precipitation Simulation Map Data            
+                     ChunkSignaturePrecipitationAdvectionMapData:TSignature=('P','A','D','T'); // Precipitation Advection Map Data
                      ChunkSignatureAtmosphereMapData:TSignature=('A','M','D','T'); // Atmosphere Map Data
                      ChunkSignatureWaterHeightMapData:TSignature=('W','M','D','T'); // Water Height Map Data
              private
@@ -704,6 +714,8 @@ type TpvScene3DPlanets=class;
               fBlendMapData:TMemoryStream;
               fGrassMapData:TMemoryStream;
               fPrecipitationMapData:TMemoryStream;
+              fPrecipitationSimulationMapData:TMemoryStream;
+              fPrecipitationAdvectionMapData:TMemoryStream;
               fAtmosphereMapData:TMemoryStream;
               fWaterHeightMapData:TMemoryStream;
              public 
@@ -7250,6 +7262,10 @@ begin
 
  fPrecipitationMapData:=TMemoryStream.Create;
 
+ fPrecipitationSimulationMapData:=TMemoryStream.Create;
+
+ fPrecipitationAdvectionMapData:=TMemoryStream.Create;
+
  fAtmosphereMapData:=TMemoryStream.Create;
 
  fWaterHeightMapData:=TMemoryStream.Create;
@@ -7262,6 +7278,8 @@ begin
  FreeAndNil(fBlendMapData);
  FreeAndNil(fGrassMapData);
  FreeAndNil(fPrecipitationMapData);
+ FreeAndNil(fPrecipitationSimulationMapData);
+ FreeAndNil(fPrecipitationAdvectionMapData);
  FreeAndNil(fAtmosphereMapData);
  FreeAndNil(fWaterHeightMapData);
  inherited Destroy;
@@ -7270,6 +7288,7 @@ end;
 procedure TpvScene3DPlanet.TSerializedData.Download(const aQueue:TpvVulkanQueue;const aCommandBuffer:TpvVulkanCommandBuffer;const aFence:TpvVulkanFence); 
 var TemporaryBuffer:TpvVulkanBuffer;
     ImageMemoryBarrier:TVkImageMemoryBarrier;
+    BufferMemoryBarrier:TVkBufferMemoryBarrier;
     BufferImageCopy:TVkBufferImageCopy;
     BufferCopy:TVkBufferCopy;
 begin
@@ -7290,6 +7309,14 @@ begin
   fPrecipitationMapData.SetSize(fPrecipitationMapResolution*fPrecipitationMapResolution*SizeOf(TpvInt8));
  end;
 
+ if fPrecipitationSimulationMapData.Size<>(fPrecipitationMapResolution*fPrecipitationMapResolution*SizeOf(TpvFloat)*4) then begin
+  fPrecipitationSimulationMapData.SetSize(fPrecipitationMapResolution*fPrecipitationMapResolution*SizeOf(TpvFloat)*4);
+ end;
+
+ if fPrecipitationAdvectionMapData.Size<>(fPrecipitationMapResolution*fPrecipitationMapResolution*SizeOf(TpvFloat)) then begin
+  fPrecipitationAdvectionMapData.SetSize(fPrecipitationMapResolution*fPrecipitationMapResolution*SizeOf(TpvFloat));
+ end;
+
  if fAtmosphereMapData.Size<>(fAtmosphereMapResolution*fAtmosphereMapResolution*SizeOf(TpvUInt8)) then begin
   fAtmosphereMapData.SetSize(fAtmosphereMapResolution*fAtmosphereMapResolution*SizeOf(TpvUInt8));
  end;
@@ -7305,7 +7332,13 @@ begin
                                            Max(
                                             fGrassMapResolution*fGrassMapResolution*SizeOf(TpvFloat),
                                             Max(
-                                             fPrecipitationMapResolution*fPrecipitationMapResolution*SizeOf(TpvUInt8),
+                                             Max(
+                                              fPrecipitationMapResolution*fPrecipitationMapResolution*SizeOf(TpvUInt8),
+                                              Max(
+                                               PrecipitationMapResolution*fPrecipitationMapResolution*SizeOf(TpvFloat),
+                                               PrecipitationMapResolution*fPrecipitationMapResolution*SizeOf(TpvFloat)*4
+                                              )
+                                             ),
                                              fAtmosphereMapResolution*fAtmosphereMapResolution*SizeOf(TpvUInt8)
                                             )
                                            )
@@ -7680,6 +7713,156 @@ begin
 
   end;
 
+  // Precipitation simulation map
+  begin
+
+   aCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+   aCommandBuffer.BeginRecording;
+
+   begin
+
+    BufferMemoryBarrier:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                       TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT),
+                                                       VK_QUEUE_FAMILY_IGNORED,
+                                                       VK_QUEUE_FAMILY_IGNORED,
+                                                       fPlanet.fData.fPrecipitationSimulationMapBuffers[(fPlanet.fData.fPrecipitationSimulationIndex+1) and 1].Handle,
+                                                       0,
+                                                       fPlanet.fData.fPrecipitationSimulationMapBuffers[(fPlanet.fData.fPrecipitationSimulationIndex+1) and 1].Size);
+
+    aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                      0,
+                                      0,nil,
+                                      1,@BufferMemoryBarrier,
+                                      0,nil);
+
+   end;
+
+   // Copy the precipitation simulation map to the buffer
+   begin
+
+    BufferCopy:=TVkBufferCopy.Create(0,
+                                     0,
+                                     fPrecipitationMapResolution*fPrecipitationMapResolution*SizeOf(TpvFloat)*4);
+
+    // First copy the precipitation simulation map to the temporary buffer
+    aCommandBuffer.CmdCopyBuffer(fPlanet.fData.fPrecipitationSimulationMapBuffers[(fPlanet.fData.fPrecipitationSimulationIndex+1) and 1].Handle,
+                                 TemporaryBuffer.Handle,
+                                 1,
+                                 @BufferCopy);
+
+   end;
+
+   // Change the layout of the precipitation simulation map buffer back to shader read write optimal
+   begin
+
+    BufferMemoryBarrier:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT),
+                                                       TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                       VK_QUEUE_FAMILY_IGNORED,
+                                                       VK_QUEUE_FAMILY_IGNORED,
+                                                       fPlanet.fData.fPrecipitationSimulationMapBuffers[(fPlanet.fData.fPrecipitationSimulationIndex+1) and 1].Handle,
+                                                       0,
+                                                       fPlanet.fData.fPrecipitationSimulationMapBuffers[(fPlanet.fData.fPrecipitationSimulationIndex+1) and 1].Size);
+
+    aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                      0,
+                                      0,nil,
+                                      1,@BufferMemoryBarrier,
+                                      0,nil);
+
+   end;
+
+   aCommandBuffer.EndRecording;
+
+   aCommandBuffer.Execute(aQueue,TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),nil,nil,aFence,true);
+
+   // Download the buffer of the precipitation simulation map data to fPrecipitationSimulationMapData
+   fPlanet.fVulkanDevice.MemoryStaging.Download(aQueue,
+                                                aCommandBuffer,
+                                                aFence,
+                                                TemporaryBuffer,
+                                                0,
+                                                fPrecipitationSimulationMapData.Memory^,
+                                                fPrecipitationMapResolution*fPrecipitationMapResolution*SizeOf(TpvFloat)*4);
+
+  end;
+
+  // Precipitation advection map
+  begin
+
+   aCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+   aCommandBuffer.BeginRecording;
+
+   begin
+
+    BufferMemoryBarrier:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                       TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT),
+                                                       VK_QUEUE_FAMILY_IGNORED,
+                                                       VK_QUEUE_FAMILY_IGNORED,
+                                                       fPlanet.fData.fPrecipitationAdvectionMapBuffers[(fPlanet.fData.fPrecipitationSimulationIndex+1) and 1].Handle,
+                                                       0,
+                                                       fPlanet.fData.fPrecipitationAdvectionMapBuffers[(fPlanet.fData.fPrecipitationSimulationIndex+1) and 1].Size);
+
+    aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                      0,
+                                      0,nil,
+                                      1,@BufferMemoryBarrier,
+                                      0,nil);
+
+   end;
+
+   // Copy the precipitation advection map to the buffer
+   begin
+
+    BufferCopy:=TVkBufferCopy.Create(0,
+                                     0,
+                                     fPrecipitationMapResolution*fPrecipitationMapResolution*SizeOf(TpvFloat));
+
+    // First copy the precipitation advection map to the temporary buffer
+    aCommandBuffer.CmdCopyBuffer(fPlanet.fData.fPrecipitationAdvectionMapBuffers[(fPlanet.fData.fPrecipitationSimulationIndex+1) and 1].Handle,
+                                 TemporaryBuffer.Handle,
+                                 1,
+                                 @BufferCopy);
+
+   end;
+
+   // Change the layout of the precipitation advection map buffer back to shader read write optimal
+   begin
+
+    BufferMemoryBarrier:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT),
+                                                       TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                       VK_QUEUE_FAMILY_IGNORED,
+                                                       VK_QUEUE_FAMILY_IGNORED,
+                                                       fPlanet.fData.fPrecipitationAdvectionMapBuffers[(fPlanet.fData.fPrecipitationSimulationIndex+1) and 1].Handle,
+                                                       0,
+                                                       fPlanet.fData.fPrecipitationAdvectionMapBuffers[(fPlanet.fData.fPrecipitationSimulationIndex+1) and 1].Size);
+
+    aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                      0,
+                                      0,nil,
+                                      1,@BufferMemoryBarrier,
+                                      0,nil);
+
+   end;
+
+   aCommandBuffer.EndRecording;
+
+   aCommandBuffer.Execute(aQueue,TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),nil,nil,aFence,true);
+
+   // Download the buffer of the precipitation advection map data to fPrecipitationAdvectionMapData
+   fPlanet.fVulkanDevice.MemoryStaging.Download(aQueue,
+                                                aCommandBuffer,
+                                                aFence,
+                                                TemporaryBuffer,
+                                                0,
+                                                fPrecipitationAdvectionMapData.Memory^,
+                                                fPrecipitationMapResolution*fPrecipitationMapResolution*SizeOf(TpvFloat));
+  
+  end;
+
   // Atmosphere map
   begin
 
@@ -7811,6 +7994,7 @@ end;
 procedure TpvScene3DPlanet.TSerializedData.Upload(const aQueue:TpvVulkanQueue;const aCommandBuffer:TpvVulkanCommandBuffer;const aFence:TpvVulkanFence); 
 var TemporaryBuffer:TpvVulkanBuffer;
     ImageMemoryBarrier:TVkImageMemoryBarrier;
+    BufferMemoryBarriers:array[0..1] of TVkBufferMemoryBarrier;
     BufferImageCopy:TVkBufferImageCopy;
     BufferCopy:TVkBufferCopy;
 begin
@@ -7822,7 +8006,13 @@ begin
                                            Max(
                                             fGrassMapResolution*fGrassMapResolution*SizeOf(TpvFloat),
                                             Max(
-                                             fPrecipitationMapResolution*fPrecipitationMapResolution*SizeOf(TpvUInt8),
+                                             Max(
+                                              fPrecipitationMapResolution*fPrecipitationMapResolution*SizeOf(TpvUInt8),
+                                              Max(
+                                               fPrecipitationMapResolution*fPrecipitationMapResolution*SizeOf(TpvFloat)*4,
+                                               fPrecipitationMapResolution*fPrecipitationMapResolution*SizeOf(TpvFloat)
+                                              )
+                                             ),
                                              fAtmosphereMapResolution*fAtmosphereMapResolution*SizeOf(TpvUInt8)
                                             )
                                            )
@@ -8220,6 +8410,209 @@ begin
 
   end;
 
+  if (fPrecipitationSimulationMapData.Size=(fPrecipitationMapResolution*fPrecipitationMapResolution*SizeOf(TpvFloat)*4)) and
+     (fPlanet.fPrecipitationMapResolution=fPrecipitationMapResolution) then begin
+
+   // Upload the precipitation simulation map data from fPrecipitationSimulationMapData to the buffer
+   fPlanet.fVulkanDevice.MemoryStaging.Upload(aQueue,
+                                              aCommandBuffer,
+                                              aFence,
+                                              fPrecipitationSimulationMapData.Memory^,
+                                              TemporaryBuffer,
+                                              0,
+                                              fPrecipitationMapResolution*fPrecipitationMapResolution*SizeOf(TpvFloat)*4);
+
+   aCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));             
+
+   aCommandBuffer.BeginRecording;
+
+   // Change the layout of the precipitation simulation map buffers to transfer destination optimal
+   begin
+     
+    BufferMemoryBarriers[0]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                           TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                                                           VK_QUEUE_FAMILY_IGNORED,
+                                                           VK_QUEUE_FAMILY_IGNORED,
+                                                           fPlanet.fData.fPrecipitationSimulationMapBuffers[0].Handle,
+                                                           0,
+                                                           fPrecipitationMapResolution*fPrecipitationMapResolution*SizeOf(TpvFloat)*4);
+
+    BufferMemoryBarriers[1]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                           TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                                                           VK_QUEUE_FAMILY_IGNORED,
+                                                           VK_QUEUE_FAMILY_IGNORED,
+                                                           fPlanet.fData.fPrecipitationSimulationMapBuffers[1].Handle,
+                                                           0,
+                                                           fPrecipitationMapResolution*fPrecipitationMapResolution*SizeOf(TpvFloat)*4);
+
+    aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
+                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                      0,
+                                      0,nil,
+                                      2,@BufferMemoryBarriers[0],
+                                      0,nil);
+
+   end;
+
+   // Copy the buffer to the precipitation simulation map buffers
+   begin
+
+    BufferCopy:=TVkBufferCopy.Create(0,
+                                     0,
+                                     fPrecipitationMapResolution*fPrecipitationMapResolution*SizeOf(TpvFloat)*4);
+
+    // Copy to both precipitation simulation map buffers, because we have two of them for double buffering
+    begin
+
+     aCommandBuffer.CmdCopyBuffer(TemporaryBuffer.Handle,
+                                  fPlanet.fData.fPrecipitationSimulationMapBuffers[0].Handle,
+                                  1,
+                                  @BufferCopy);
+
+     aCommandBuffer.CmdCopyBuffer(TemporaryBuffer.Handle,
+                                  fPlanet.fData.fPrecipitationSimulationMapBuffers[1].Handle,
+                                  1,
+                                  @BufferCopy);
+
+    end;
+
+   end;
+
+   // Change the layout of the precipitation simulation map buffers back to shader read only optimal
+   begin
+
+    BufferMemoryBarriers[0]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                                                           TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                           VK_QUEUE_FAMILY_IGNORED,
+                                                           VK_QUEUE_FAMILY_IGNORED,
+                                                           fPlanet.fData.fPrecipitationSimulationMapBuffers[0].Handle,
+                                                           0,
+                                                           fPrecipitationMapResolution*fPrecipitationMapResolution*SizeOf(TpvFloat)*4);
+
+    BufferMemoryBarriers[1]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                                                           TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                           VK_QUEUE_FAMILY_IGNORED,
+                                                           VK_QUEUE_FAMILY_IGNORED,
+                                                           fPlanet.fData.fPrecipitationSimulationMapBuffers[1].Handle,
+                                                           0,
+                                                           fPrecipitationMapResolution*fPrecipitationMapResolution*SizeOf(TpvFloat)*4);
+
+    aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
+                                      0,
+                                      0,nil,
+                                      2,@BufferMemoryBarriers[0],
+                                      0,nil);
+
+   end;
+
+   aCommandBuffer.EndRecording;
+
+   aCommandBuffer.Execute(aQueue,TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),nil,nil,aFence,true);
+
+  end;
+
+  if (fPrecipitationAdvectionMapData.Size=(fPrecipitationMapResolution*fPrecipitationMapResolution*SizeOf(TpvFloat))) and
+     (fPlanet.fPrecipitationMapResolution=fPrecipitationMapResolution) then begin
+
+   // Upload the precipitation advection map data from fPrecipitationAdvectionMapData to the buffer
+   fPlanet.fVulkanDevice.MemoryStaging.Upload(aQueue,
+                                              aCommandBuffer,
+                                              aFence,
+                                              fPrecipitationAdvectionMapData.Memory^,
+                                              TemporaryBuffer,
+                                              0,
+                                              fPrecipitationMapResolution*fPrecipitationMapResolution*SizeOf(TpvFloat));
+
+   aCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+   aCommandBuffer.BeginRecording;
+
+   // Change the layout of the precipitation advection map buffers to transfer destination optimal
+   begin
+
+    BufferMemoryBarriers[0]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                           TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                                                           VK_QUEUE_FAMILY_IGNORED,
+                                                           VK_QUEUE_FAMILY_IGNORED,
+                                                           fPlanet.fData.fPrecipitationAdvectionMapBuffers[0].Handle,
+                                                           0,
+                                                           fPrecipitationMapResolution*fPrecipitationMapResolution*SizeOf(TpvFloat));
+
+    BufferMemoryBarriers[1]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                           TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                                                           VK_QUEUE_FAMILY_IGNORED,
+                                                           VK_QUEUE_FAMILY_IGNORED,
+                                                           fPlanet.fData.fPrecipitationAdvectionMapBuffers[1].Handle,
+                                                           0,
+                                                           fPrecipitationMapResolution*fPrecipitationMapResolution*SizeOf(TpvFloat));
+
+    aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
+                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                      0,
+                                      0,nil,
+                                      2,@BufferMemoryBarriers[0],
+                                      0,nil); 
+
+   end;
+
+   // Copy the buffer to the precipitation advection map buffers
+   begin
+
+    BufferCopy:=TVkBufferCopy.Create(0,
+                                     0,
+                                     fPrecipitationMapResolution*fPrecipitationMapResolution*SizeOf(TpvFloat));
+
+    // Copy to both precipitation advection map buffers, because we have two of them for double buffering
+    begin
+
+     aCommandBuffer.CmdCopyBuffer(TemporaryBuffer.Handle,
+                                  fPlanet.fData.fPrecipitationAdvectionMapBuffers[0].Handle,
+                                  1,
+                                  @BufferCopy);
+
+     aCommandBuffer.CmdCopyBuffer(TemporaryBuffer.Handle,
+                                  fPlanet.fData.fPrecipitationAdvectionMapBuffers[1].Handle,
+                                  1,
+                                  @BufferCopy);
+
+    end;
+
+   end;
+
+   // Change the layout of the precipitation advection map buffers back to shader read only optimal
+   begin
+ 
+    BufferMemoryBarriers[0]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                                                           TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                           VK_QUEUE_FAMILY_IGNORED,
+                                                           VK_QUEUE_FAMILY_IGNORED,
+                                                           fPlanet.fData.fPrecipitationAdvectionMapBuffers[0].Handle,
+                                                           0,
+                                                           fPrecipitationMapResolution*fPrecipitationMapResolution*SizeOf(TpvFloat));
+
+    BufferMemoryBarriers[1]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                                                           TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                           VK_QUEUE_FAMILY_IGNORED,
+                                                           VK_QUEUE_FAMILY_IGNORED,
+                                                           fPlanet.fData.fPrecipitationAdvectionMapBuffers[1].Handle,
+                                                           0,
+                                                           fPrecipitationMapResolution*fPrecipitationMapResolution*SizeOf(TpvFloat));
+
+    aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
+                                      0,
+                                      0,nil,
+                                      2,@BufferMemoryBarriers[0],
+                                      0,nil);
+
+   end;
+
+   aCommandBuffer.EndRecording;
+
+   aCommandBuffer.Execute(aQueue,TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),nil,nil,aFence,true);
+
+  end; 
+
   if (fAtmosphereMapData.Size=(fAtmosphereMapResolution*fAtmosphereMapResolution*SizeOf(TpvUInt8))) and
      (fPlanet.fAtmosphereMapResolution=fAtmosphereMapResolution) then begin
 
@@ -8499,6 +8892,8 @@ var Header:TpvScene3DPlanet.TSerializedData.THeader;
     GrassMapDataChunkHeader:TGrassMapDataChunkHeader;
     RainMapDataChunkHeader:TRainMapDataChunkHeader;
     PrecipitationMapDataChunkHeader:TPrecipitationMapDataChunkHeader;
+    PrecipitationSimulationMapDataChunkHeader:TPrecipitationSimulationMapDataChunkHeader;
+    PrecipitationAdvectionMapDataChunkHeader:TPrecipitationAdvectionMapDataChunkHeader;
     AtmosphereMapDataChunkHeader:TAtmosphereMapDataChunkHeader;
     WaterHeightMapDataChunkHeader:TWaterHeightMapDataChunkHeader;
     CheckSum:TpvUInt64;
@@ -8855,6 +9250,91 @@ begin
 
      end;
 
+    end else if Chunk.Signature=TpvScene3DPlanet.TSerializedData.ChunkSignaturePrecipitationSimulationMapData then begin
+
+     aStream.ReadBuffer(PrecipitationSimulationMapDataChunkHeader,SizeOf(TPrecipitationSimulationMapDataChunkHeader));
+
+     fPrecipitationSimulationMapData.Seek(0,soBeginning);
+
+     if PrecipitationSimulationMapDataChunkHeader.Resolution=fPrecipitationMapResolution then begin
+
+      // The easy way, just copy the data
+
+      fPrecipitationSimulationMapData.CopyFrom(aStream,fPrecipitationMapResolution*fPrecipitationMapResolution*SizeOf(TpvFloat)*4);
+
+      BackwardTransform32BitFloatData(fPrecipitationSimulationMapData); // Decode floats as first step
+
+      BackwardTransformRGBA32OrderData(fPrecipitationSimulationMapData); // Reorder splitted-by-channel-streams floats back to RGBA32 order as second step
+
+     end else begin
+
+      // The more complicated way, resize the data
+
+      GetMem(InData,PrecipitationSimulationMapDataChunkHeader.Resolution*PrecipitationSimulationMapDataChunkHeader.Resolution*SizeOf(TpvFloat)*4);
+      try
+       GetMem(DecodedInData,PrecipitationSimulationMapDataChunkHeader.Resolution*PrecipitationSimulationMapDataChunkHeader.Resolution*SizeOf(TpvFloat)*4);
+       try
+        GetMem(OutData,fPrecipitationMapResolution*fPrecipitationMapResolution*SizeOf(TpvFloat)*4);
+        try
+         aStream.ReadBuffer(InData^,PrecipitationSimulationMapDataChunkHeader.Resolution*PrecipitationSimulationMapDataChunkHeader.Resolution*SizeOf(TpvFloat)*4);
+         BackwardTransform32BitFloatData(InData,DecodedInData,PrecipitationSimulationMapDataChunkHeader.Resolution*PrecipitationSimulationMapDataChunkHeader.Resolution*SizeOf(TpvFloat)*4); // Decode floats as first step
+         BackwardTransformRGBA32OrderData(DecodedInData,InData,PrecipitationSimulationMapDataChunkHeader.Resolution*PrecipitationSimulationMapDataChunkHeader.Resolution*SizeOf(TpvFloat)*4); // Reorder splitted-by-channel-streams floats back to RGBA32 order as second step
+         ResizeRGBAFloat2D(InData,PrecipitationSimulationMapDataChunkHeader.Resolution,PrecipitationSimulationMapDataChunkHeader.Resolution,
+                           OutData,fPrecipitationMapResolution,fPrecipitationMapResolution);
+         fPrecipitationSimulationMapData.WriteBuffer(OutData^,fPrecipitationMapResolution*fPrecipitationMapResolution*SizeOf(TpvFloat)*4);
+        finally
+         FreeMem(OutData);
+        end;
+       finally
+        FreeMem(DecodedInData);
+       end;
+      finally
+       FreeMem(InData);
+      end;
+
+     end;
+
+    end else if Chunk.Signature=TpvScene3DPlanet.TSerializedData.ChunkSignaturePrecipitationAdvectionMapData then begin
+
+     aStream.ReadBuffer(PrecipitationAdvectionMapDataChunkHeader,SizeOf(TPrecipitationAdvectionMapDataChunkHeader));
+
+     fPrecipitationAdvectionMapData.Seek(0,soBeginning);
+
+     if PrecipitationAdvectionMapDataChunkHeader.Resolution=fPrecipitationMapResolution then begin
+
+      // The easy way, just copy the data
+
+      fPrecipitationAdvectionMapData.CopyFrom(aStream,fPrecipitationMapResolution*fPrecipitationMapResolution*SizeOf(TpvFloat));
+
+      BackwardTransform32BitFloatData(fPrecipitationAdvectionMapData); 
+
+     end else begin
+
+      // The more complicated way, resize the data
+
+      GetMem(InData,PrecipitationAdvectionMapDataChunkHeader.Resolution*PrecipitationAdvectionMapDataChunkHeader.Resolution*SizeOf(TpvFloat));
+      try
+       GetMem(DecodedInData,PrecipitationAdvectionMapDataChunkHeader.Resolution*PrecipitationAdvectionMapDataChunkHeader.Resolution*SizeOf(TpvFloat));
+       try
+        GetMem(OutData,fPrecipitationMapResolution*fPrecipitationMapResolution*SizeOf(TpvFloat));
+        try
+         aStream.ReadBuffer(InData^,PrecipitationAdvectionMapDataChunkHeader.Resolution*PrecipitationAdvectionMapDataChunkHeader.Resolution*SizeOf(TpvFloat));
+         BackwardTransform32BitFloatData(InData,DecodedInData,PrecipitationAdvectionMapDataChunkHeader.Resolution*PrecipitationAdvectionMapDataChunkHeader.Resolution*SizeOf(TpvFloat));
+         ResizeMonoFloat2D(DecodedInData,PrecipitationAdvectionMapDataChunkHeader.Resolution,PrecipitationAdvectionMapDataChunkHeader.Resolution,
+                           OutData,fPrecipitationMapResolution,fPrecipitationMapResolution);
+         fPrecipitationAdvectionMapData.WriteBuffer(OutData^,fPrecipitationMapResolution*fPrecipitationMapResolution*SizeOf(TpvFloat));
+        finally
+         FreeMem(OutData);
+        end;
+       finally
+        FreeMem(DecodedInData);
+       end;
+      finally
+       FreeMem(InData);
+      end;
+     
+     end;
+
     end else if Chunk.Signature=TpvScene3DPlanet.TSerializedData.ChunkSignatureAtmosphereMapData then begin
 
      aStream.ReadBuffer(AtmosphereMapDataChunkHeader,SizeOf(TAtmosphereMapDataChunkHeader));
@@ -8962,6 +9442,8 @@ var StartPosition:TpvInt64;
     BlendMapDataChunkHeader:TBlendMapDataChunkHeader;
     GrassMapDataChunkHeader:TGrassMapDataChunkHeader;
     PrecipitationMapDataChunkHeader:TPrecipitationMapDataChunkHeader;
+    PrecipitationSimulationMapDataChunkHeader:TPrecipitationSimulationMapDataChunkHeader;
+    PrecipitationAdvectionMapDataChunkHeader:TPrecipitationAdvectionMapDataChunkHeader;
     AtmosphereMapDataChunkHeader:TAtmosphereMapDataChunkHeader;
     WaterHeightMapDataChunkHeader:TWaterHeightMapDataChunkHeader;
     InData,OutData:pointer;
@@ -9105,6 +9587,59 @@ begin
     try
      ForwardTransformR8Data(InData,OutData,fPrecipitationMapData.Size);
      OutStream.WriteBuffer(OutData^,fPrecipitationMapData.Size);
+    finally
+     FreeMem(OutData);
+    end;
+   finally
+    FreeMem(InData);
+   end;
+
+  end;
+
+  begin
+
+   Chunk.Signature:=TpvScene3DPlanet.TSerializedData.ChunkSignaturePrecipitationSimulationMapData;
+   Chunk.Size:=SizeOf(TPrecipitationSimulationMapDataChunkHeader)+(fPrecipitationMapResolution*fPrecipitationMapResolution*SizeOf(TpvFloat)*4);
+   OutStream.WriteBuffer(Chunk,SizeOf(TChunk));
+
+   PrecipitationSimulationMapDataChunkHeader.Resolution:=fPrecipitationMapResolution;
+   OutStream.WriteBuffer(PrecipitationSimulationMapDataChunkHeader,SizeOf(TPrecipitationSimulationMapDataChunkHeader));
+
+   fPrecipitationSimulationMapData.Seek(0,soBeginning);
+   GetMem(InData,fPrecipitationSimulationMapData.Size);
+   try
+    fPrecipitationSimulationMapData.ReadBuffer(InData^,fPrecipitationSimulationMapData.Size);
+    GetMem(OutData,fPrecipitationSimulationMapData.Size);
+    try
+     ForwardTransformRGBA32OrderData(InData,OutData,fPrecipitationSimulationMapData.Size); // Reorder splitted-by-channel-streams floats to RGBA32 order as first step
+     ForwardTransform32BitFloatData(OutData,InData,fPrecipitationSimulationMapData.Size); // Encode floats as second step
+     OutStream.WriteBuffer(InData^,fPrecipitationSimulationMapData.Size);
+    finally
+     FreeMem(OutData);
+    end;
+   finally
+    FreeMem(InData);
+   end;
+
+  end;
+
+  begin
+
+   Chunk.Signature:=TpvScene3DPlanet.TSerializedData.ChunkSignaturePrecipitationAdvectionMapData;
+   Chunk.Size:=SizeOf(TPrecipitationAdvectionMapDataChunkHeader)+(fPrecipitationMapResolution*fPrecipitationMapResolution*SizeOf(TpvFloat));
+   OutStream.WriteBuffer(Chunk,SizeOf(TChunk));
+
+   PrecipitationAdvectionMapDataChunkHeader.Resolution:=fPrecipitationMapResolution;
+   OutStream.WriteBuffer(PrecipitationAdvectionMapDataChunkHeader,SizeOf(TPrecipitationAdvectionMapDataChunkHeader));
+
+   fPrecipitationAdvectionMapData.Seek(0,soBeginning);
+   GetMem(InData,fPrecipitationAdvectionMapData.Size);
+   try
+    fPrecipitationAdvectionMapData.ReadBuffer(InData^,fPrecipitationAdvectionMapData.Size);
+    GetMem(OutData,fPrecipitationAdvectionMapData.Size);
+    try
+     ForwardTransform32BitFloatData(InData,OutData,fPrecipitationAdvectionMapData.Size);
+     OutStream.WriteBuffer(OutData^,fPrecipitationAdvectionMapData.Size);
     finally
      FreeMem(OutData);
     end;
@@ -10892,7 +11427,7 @@ begin
                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
                                      0,
                                      0,nil,
-                                     CountBufferMemoryBarriers, @BufferMemoryBarriers[0],
+                                     CountBufferMemoryBarriers,@BufferMemoryBarriers[0],
                                      0,nil);
 
    aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,fPipeline.Handle);
