@@ -11051,52 +11051,6 @@ begin
 
 end;
 
-(*
-            { TPrecipitationMapSimulation }
-            TPrecipitationMapSimulation=class
-             public
-              type TPushConstants=packed record
-                    
-                    WaterHeightMapResolution:TpvUInt32;
-                    PrecipitationSimulationMapResolution:TpvUInt32;
-                    AdditionCoefficient:TpvFloat;
-                    RemovalCoefficient:TpvFloat;
-
-                    DeltaTime:TpvFloat;
-                    CScale:TpvFloat;
-                    K:TpvFloat;
-                    V:TpvFloat; // Viscosity factor
-                    
-                    Vorticity:TpvFloat; // Vorticity factor, not used in this shader but can be used for future enhancements
-                    DampingFactor:TpvFloat; // Damping factor for the velocity
-                    WaterFactor:TpvFloat; // Factor for the water height contribution
-                    WaterExponent:TpvFloat; // Exponent for the water height contribution
-                    
-                    WaterForce:TpvFloat; // Force applied to the water height
-                    MaximumVelocity:TpvFloat; // Maximum velocity for the simulation                    
-              
-                   end;
-                   PPushConstants=^TPushConstants;
-             private
-              fPlanet:TpvScene3DPlanet;
-              fVulkanDevice:TpvVulkanDevice;
-              fComputeShaderModule:TpvVulkanShaderModule;
-              fComputeShaderStage:TpvVulkanPipelineShaderStage;
-              fPipeline:TpvVulkanComputePipeline;
-              fDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
-              fDescriptorPool:TpvVulkanDescriptorPool;
-              fDescriptorSets:array[0..1] of TpvVulkanDescriptorSet;
-              fPipelineLayout:TpvVulkanPipelineLayout;
-              fPushConstants:TPushConstants;
-             public
-              constructor Create(const aPlanet:TpvScene3DPlanet); reintroduce;
-              destructor Destroy; override;
-              procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aDeltaTime:TpvDouble);
-             public
-              property PushConstants:TPushConstants read fPushConstants write fPushConstants;
-            end;
-*)
-
 { TpvScene3DPlanet.TPrecipitationMapSimulation }
 
 constructor TpvScene3DPlanet.TPrecipitationMapSimulation.Create(const aPlanet:TpvScene3DPlanet);
