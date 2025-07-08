@@ -9809,7 +9809,7 @@ begin
   aStream.WriteBuffer(InputTopRadius,SizeOf(TpvFloat));
 
   fHeightMapData.Seek(0,soBeginning);
-  fHeightMapData.CopyFrom(aStream,fHeightMapResolution*fHeightMapResolution*SizeOf(TpvFloat));
+  aStream.CopyFrom(fHeightMapData,fHeightMapResolution*fHeightMapResolution*SizeOf(TpvFloat));
  {FloatArray:=nil;
   try
    SetLength(FloatArray,fHeightMapResolution*fHeightMapResolution);
