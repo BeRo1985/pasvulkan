@@ -729,6 +729,8 @@ type TpvScene3DPlanets=class;
               procedure SaveToStream(const aStream:TStream;const aCompressionMethod:TpvCompressionMethod=TpvCompressionMethod.None;const aCompressionLevel:TpvUInt32=5;const aParts:TpvUInt32=0);
               procedure LoadFromFile(const aFileName:String);
               procedure SaveToFile(const aFileName:String;const aCompressionMethod:TpvCompressionMethod=TpvCompressionMethod.None;const aCompressionLevel:TpvUInt32=5;const aParts:TpvUInt32=0);
+              procedure SaveHeightMapToStream(const aStream:TStream);
+              procedure SaveHeightMapToFile(const aFileName:String);
              published
               property Planet:TpvScene3DPlanet read fPlanet;
               property HeightMapResolution:TpvUInt32 read fHeightMapResolution write fHeightMapResolution;
@@ -9773,6 +9775,53 @@ begin
  Stream:=TMemoryStream.Create;
  try
   SaveToStream(Stream,aCompressionMethod,aCompressionLevel,aParts);
+  Stream.SaveToFile(aFileName);
+ finally
+  FreeAndNil(Stream);
+ end;
+end;
+
+procedure TpvScene3DPlanet.TSerializedData.SaveHeightMapToStream(const aStream:TStream);
+type TDataSignature=array[0..3] of AnsiChar;
+const DataSignature:TDataSignature='HMAP';
+var Signature:TDataSignature;
+    Version:TpvUInt32;
+    Width:TpvUInt32;
+    Height:TpvUInt32;
+    InputBottomRadius:TpvFloat;
+    InputTopRadius:TpvFloat;
+begin
+
+ if assigned(fPlanet) and assigned(fPlanet.fVulkanDevice) then begin
+
+  aStream.WriteBuffer(DataSignature,SizeOf(TDataSignature));
+ 
+  Version:=1;
+  aStream.WriteBuffer(Version,SizeOf(TpvUInt32));
+
+  Width:=fHeightMapResolution;
+  Height:=fHeightMapResolution;
+  aStream.WriteBuffer(Width,SizeOf(TpvUInt32));
+  aStream.WriteBuffer(Height,SizeOf(TpvUInt32));
+
+  InputBottomRadius:=fPlanet.fBottomRadius;
+  InputTopRadius:=fPlanet.fTopRadius;
+  aStream.WriteBuffer(InputBottomRadius,SizeOf(TpvFloat));
+  aStream.WriteBuffer(InputTopRadius,SizeOf(TpvFloat));
+
+  fHeightMapData.Seek(0,soBeginning);
+  aStream.CopyFrom(fHeightMapData,fHeightMapData.Size);
+
+ end;
+
+end;
+
+procedure TpvScene3DPlanet.TSerializedData.SaveHeightMapToFile(const aFileName:String);
+var Stream:TMemoryStream; 
+begin
+ Stream:=TMemoryStream.Create;
+ try
+  SaveHeightMapToStream(Stream);
   Stream.SaveToFile(aFileName);
  finally
   FreeAndNil(Stream);
