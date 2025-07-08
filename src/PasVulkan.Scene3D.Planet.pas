@@ -9783,13 +9783,12 @@ end;
 
 procedure TpvScene3DPlanet.TSerializedData.SaveHeightMapToStream(const aStream:TStream);
 type TDataSignature=array[0..3] of AnsiChar;
+     TFloatArray=array of TpvFloat;
 const DataSignature:TDataSignature='HMAP';
-var Signature:TDataSignature;
-    Version:TpvUInt32;
-    Width:TpvUInt32;
-    Height:TpvUInt32;
-    InputBottomRadius:TpvFloat;
-    InputTopRadius:TpvFloat;
+var Index:TpvSizeInt;
+    Version,Width,Height:TpvUInt32;
+    InputBottomRadius,InputTopRadius,Scale:TpvFloat;
+    FloatArray:TFloatArray;
 begin
 
  if assigned(fPlanet) and assigned(fPlanet.fVulkanDevice) then begin
@@ -9810,8 +9809,19 @@ begin
   aStream.WriteBuffer(InputTopRadius,SizeOf(TpvFloat));
 
   fHeightMapData.Seek(0,soBeginning);
-  aStream.CopyFrom(fHeightMapData,fHeightMapData.Size);
-
+  FloatArray:=nil;
+  try
+   SetLength(FloatArray,fHeightMapResolution*fHeightMapResolution);
+   fHeightMapData.ReadBuffer(FloatArray[0],length(FloatArray)*SizeOf(TpvFloat));
+   Scale:=InputTopRadius-InputBottomRadius;
+   for Index:=0 to length(FloatArray)-1 do begin
+    FloatArray[Index]:=(FloatArray[Index]*Scale)+InputBottomRadius; // Scale the height map data to the input bottom and top radius
+   end;
+   aStream.WriteBuffer(FloatArray[0],length(FloatArray)*SizeOf(TpvFloat));
+  finally
+   FloatArray:=nil;
+  end; 
+  
  end;
 
 end;
