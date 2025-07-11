@@ -75,7 +75,11 @@ uses SysUtils,
      PasVulkan.Archive.ZIP,
      PasVulkan.Archive.SPK;
 
-type { TpvVirtualFileSystem }
+type EpvVirtualFileSystem=class(Exception);
+
+     EpvVirtualFileSystemFileNotFound=class(EpvVirtualFileSystem);
+
+     { TpvVirtualFileSystem }
 
      TpvVirtualFileSystem=class
       public
@@ -91,8 +95,9 @@ type { TpvVirtualFileSystem }
        fArchiveZIP:TpvArchiveZIP;
        fStream:TStream;
        fVirtualSymLinkHashMap:TVirtualSymLinkHashMap;
+       fRaiseOnNonFoundFiles:Boolean;
       public
-       constructor Create(const aData:pointer;const aDataSize:TpvSizeInt;const aFileName:string=''); reintroduce; virtual;
+       constructor Create(const aData:pointer;const aDataSize:TpvSizeInt;const aFileName:string='';const aRaiseOnNonFoundFiles:Boolean=false); reintroduce; virtual;
        destructor Destroy; override;
        function ExistFile(const aFileName:string):boolean;
        function GetFile(const aFileName:string):TStream;
@@ -108,7 +113,7 @@ uses PasVulkan.Application,PasVulkan.Compression;
 
 { TpvVirtualFileSystem }
 
-constructor TpvVirtualFileSystem.Create(const aData:pointer;const aDataSize:TpvSizeInt;const aFileName:string);
+constructor TpvVirtualFileSystem.Create(const aData:pointer;const aDataSize:TpvSizeInt;const aFileName:string;const aRaiseOnNonFoundFiles:Boolean=false);
 var Index:TpvSizeInt;
     Stream,UncompressedStream:TStream;
     ZIPEntry:TpvArchiveZIPEntry;
@@ -119,7 +124,9 @@ var Index:TpvSizeInt;
     Compressed:Boolean;
 begin
  inherited Create;
- 
+
+ fRaiseOnNonFoundFiles:=aRaiseOnNonFoundFiles;
+
  if (aDataSize>=3) and (PpvUInt8Array(aData)^[0]=Ord('S')) and (PpvUInt8Array(aData)^[1]=Ord('P')) and (PpvUInt8Array(aData)^[2]=Ord('K')) then begin
   // Uncompressed SPK archive
   fArchiveType:=TArchiveType.SPK;
@@ -308,6 +315,9 @@ begin
   else begin 
    result:=nil;
   end;
+ end;
+ if fRaiseOnNonFoundFiles and not assigned(result) then begin
+  raise EpvVirtualFileSystemFileNotFound.Create('"'+aFileName+'" not found');
  end;
 end;
 

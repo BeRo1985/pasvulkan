@@ -356,9 +356,9 @@ end;
 
 initialization
 {$if declared(get_pasvulkan_scene3dshaders_spk_data) and declared(get_pasvulkan_scene3dshaders_spk_size)}
- pvScene3DShaderVirtualFileSystem:=TpvVirtualFileSystem.Create(get_pasvulkan_scene3dshaders_spk_data,get_pasvulkan_scene3dshaders_spk_size,{$ifdef Windows}'d:\GitHub\pasvulkan\src\assets\shaders\scene3d\scene3dshaders.spk'{$else}'/home/bero/Projects/GitHub/pasvulkan/src/assets/shaders/scene3d/scene3dshaders.spk'{$endif});
+ pvScene3DShaderVirtualFileSystem:=TpvVirtualFileSystem.Create(get_pasvulkan_scene3dshaders_spk_data,get_pasvulkan_scene3dshaders_spk_size,{$ifdef Windows}'d:\GitHub\pasvulkan\src\assets\shaders\scene3d\scene3dshaders.spk'{$else}'/home/bero/Projects/GitHub/pasvulkan/src/assets/shaders/scene3d/scene3dshaders.spk'{$endif},true);
 {$elseif declared(get_pasvulkan_scene3dshaders_zip_data) and declared(get_pasvulkan_scene3dshaders_zip_size)}
- pvScene3DShaderVirtualFileSystem:=TpvVirtualFileSystem.Create(get_pasvulkan_scene3dshaders_zip_data,get_pasvulkan_scene3dshaders_zip_size,{$ifdef Windows}'d:\GitHub\pasvulkan\src\assets\shaders\scene3d\scene3dshaders.zip'{$else}'/home/bero/Projects/GitHub/pasvulkan/src/assets/shaders/scene3d/scene3dshaders.zip'{$endif});
+ pvScene3DShaderVirtualFileSystem:=TpvVirtualFileSystem.Create(get_pasvulkan_scene3dshaders_zip_data,get_pasvulkan_scene3dshaders_zip_size,{$ifdef Windows}'d:\GitHub\pasvulkan\src\assets\shaders\scene3d\scene3dshaders.zip'{$else}'/home/bero/Projects/GitHub/pasvulkan/src/assets/shaders/scene3d/scene3dshaders.zip'{$endif},true);
 {$else}
  pvScene3DShaderVirtualFileSystem:=TpvVirtualFileSystem.Create(@PasVulkan.Scene3D.Assets.Scene3DSPIRVShadersData[0],PasVulkan.Scene3D.Assets.Scene3DSPIRVShadersDataSize,{$ifdef Windows}'d:\GitHub\pasvulkan\src\assets\shaders\scene3d\scene3dshaders.zip'{$else}'/home/bero/Projects/GitHub/pasvulkan/src/assets/shaders/scene3d/scene3dshaders.zip'{$endif});
 {$ifend}
