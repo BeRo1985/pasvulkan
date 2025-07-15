@@ -113,7 +113,7 @@ uses PasVulkan.Application,PasVulkan.Compression;
 
 { TpvVirtualFileSystem }
 
-constructor TpvVirtualFileSystem.Create(const aData:pointer;const aDataSize:TpvSizeInt;const aFileName:string;const aRaiseOnNonFoundFiles:Boolean=false);
+constructor TpvVirtualFileSystem.Create(const aData:pointer;const aDataSize:TpvSizeInt;const aFileName:string;const aRaiseOnNonFoundFiles:Boolean);
 var Index:TpvSizeInt;
     Stream,UncompressedStream:TStream;
     ZIPEntry:TpvArchiveZIPEntry;
