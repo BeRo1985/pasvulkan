@@ -2152,6 +2152,7 @@ type EpvScene3D=class(Exception);
                      procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceAnimation:TPasGLTF.TAnimation);
                      function GetAnimationBeginTime:TpvDouble;
                      function GetAnimationEndTime:TpvDouble;
+                     function GetAnimationDuration:TpvDouble;
                     published
                      property Index:TpvSizeInt read fIndex;
                      property Channels:TpvScene3D.TGroup.TAnimation.TChannels read fChannels;
@@ -13426,6 +13427,11 @@ end;
 function TpvScene3D.TGroup.TAnimation.GetAnimationEndTime:TpvDouble;
 begin
  result:=fAnimationEndTime;
+end;
+
+function TpvScene3D.TGroup.TAnimation.GetAnimationDuration:TpvDouble;
+begin
+ result:=fAnimationEndTime-fAnimationBeginTime;
 end;
 
 { TpvScene3D.TGroup.TCamera }
