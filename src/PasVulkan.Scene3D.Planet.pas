@@ -339,6 +339,7 @@ type TpvScene3DPlanets=class;
               fGrassMapImage:TpvScene3DRendererImage2D; // R32_FLOAT
               fPrecipitationMapImage:TpvScene3DRendererImage2D; // R8_SNORM
               fAtmosphereMapImage:TpvScene3DRendererImage2D; // R8_UNORM
+              fAtmosphereMiniMapImage:TpvScene3DRendererImage2D; // R8_UNORM
               fPrecipitationAtmosphereMapBuffer:TpvVulkanBuffer;
               fPrecipitationSimulationMapBuffers:array[0..1] of TpvVulkanBuffer; // Double-buffered
               fPrecipitationAdvectionMapBuffers:array[0..1] of TpvVulkanBuffer; // Double-buffered
@@ -485,6 +486,7 @@ type TpvScene3DPlanets=class;
               property GrassMapImage:TpvScene3DRendererImage2D read fGrassMapImage;
               property PrecipitationMapImage:TpvScene3DRendererImage2D read fPrecipitationMapImage;
               property AtmosphereMapImage:TpvScene3DRendererImage2D read fAtmosphereMapImage;
+              property AtmosphereMiniMapImage:TpvScene3DRendererImage2D read fAtmosphereMiniMapImage;
               property PrecipitationAtmosphereMapBuffer:TpvVulkanBuffer read fPrecipitationAtmosphereMapBuffer;
               property WaterHeightMapImage:TpvScene3DRendererImage2D read fWaterHeightMapImage;
               property TileLODMapBuffer:TpvVulkanBuffer read fTileLODMapBuffer;
@@ -2352,6 +2354,8 @@ type TpvScene3DPlanets=class;
        fPrecipitationAtmosphereMapShift:TpvInt32;
        fPrecipitationMapResolution:TpvInt32;
        fAtmosphereMapResolution:TpvInt32;
+       fAtmosphereMiniMapResolution:TpvInt32;
+       fAtmosphereMiniMapShift:TpvInt32;
        fWaterMapResolution:TpvInt32;
        fWaterMapBorder:TpvInt32;
        fTileMapResolution:TpvInt32;
@@ -2520,7 +2524,8 @@ type TpvScene3DPlanets=class;
                           const aTopRadius:TpvFloat=100.0;
                           const aGenerateLODIndices:Boolean=false;
                           const aWaterMiniMapResolutionShift:TpvSizeInt=4;
-                          const aBlendMiniMapResolutionShift:TpvSizeInt=4); reintroduce;
+                          const aBlendMiniMapResolutionShift:TpvSizeInt=4;
+                          const aAtmosphereMiniMapResolutionShift:TpvSizeInt=4); reintroduce;
        destructor Destroy; override;
        procedure AfterConstruction; override;
        procedure BeforeDestruction; override;
@@ -2606,6 +2611,7 @@ type TpvScene3DPlanets=class;
        property GrassMapResolution:TpvInt32 read fGrassMapResolution;
        property PrecipitationMapResolution:TpvInt32 read fPrecipitationMapResolution;
        property AtmosphereMapResolution:TpvInt32 read fAtmosphereMapResolution;
+       property AtmosphereMiniMapResolution:TpvInt32 read fAtmosphereMiniMapResolution;
        property WaterMapResolution:TpvInt32 read fWaterMapResolution;
        property WaterMapBorder:TpvInt32 read fWaterMapBorder;
        property TileMapResolution:TpvInt32 read fTileMapResolution;
@@ -3231,6 +3237,8 @@ begin
 
  fAtmosphereMapImage:=nil;
 
+ fAtmosphereMiniMapImage:=nil;
+
  fPrecipitationAtmosphereMapBuffer:=nil;
 
  fPrecipitationSimulationMapBuffers[0]:=nil;
@@ -3465,6 +3473,20 @@ begin
    fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fAtmosphereMapImage.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fAtmosphereMapImage.Image');
    fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fAtmosphereMapImage.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fAtmosphereMapImage.ImageView');
 
+   fAtmosphereMiniMapImage:=TpvScene3DRendererImage2D.Create(fPlanet.fVulkanDevice,
+                                                             fPlanet.fAtmosphereMiniMapResolution,
+                                                             fPlanet.fAtmosphereMiniMapResolution,
+                                                             VK_FORMAT_R8_UNORM,
+                                                             true,
+                                                             VK_SAMPLE_COUNT_1_BIT,
+                                                             VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                             ImageSharingMode,
+                                                             ImageQueueFamilyIndices,
+                                                             pvAllocationGroupIDScene3DPlanetStatic,
+                                                             'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fAtmosphereMiniMapImage');
+   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fAtmosphereMiniMapImage.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fAtmosphereMiniMapImage.Image');
+   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fAtmosphereMiniMapImage.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fAtmosphereMiniMapImage.ImageView');
+
    fPrecipitationAtmosphereMapBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
                                                              fPlanet.fPrecipitationAtmosphereMapResolution*fPlanet.fPrecipitationAtmosphereMapResolution*SizeOf(TpvFloat),
                                                              TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
@@ -3548,6 +3570,7 @@ begin
    fGrassMapImage:=fPlanet.fData.fGrassMapImage;
    fPrecipitationMapImage:=fPlanet.fData.fPrecipitationMapImage;
    fAtmosphereMapImage:=fPlanet.fData.fAtmosphereMapImage;
+   fAtmosphereMiniMapImage:=fPlanet.fData.fAtmosphereMiniMapImage;
    fPrecipitationAtmosphereMapBuffer:=fPlanet.fData.fPrecipitationAtmosphereMapBuffer;
 
    fPrecipitationSimulationMapBuffers[0]:=fPlanet.fData.fPrecipitationSimulationMapBuffers[0];
@@ -4238,6 +4261,8 @@ begin
 
   FreeAndNil(fAtmosphereMapImage);
 
+  FreeAndNil(fAtmosphereMiniMapImage);
+
   FreeAndNil(fPrecipitationAtmosphereMapBuffer);
 
   FreeAndNil(fPrecipitationSimulationMapBuffers[0]);
@@ -4261,6 +4286,8 @@ begin
   fPrecipitationMapImage:=nil;
 
   fAtmosphereMapImage:=nil;
+
+  fAtmosphereMiniMapImage:=nil;
 
   fPrecipitationAtmosphereMapBuffer:=nil;
 
@@ -4306,6 +4333,8 @@ begin
  fPrecipitationMapImage:=nil;
 
  fAtmosphereMapImage:=nil;
+
+ fAtmosphereMiniMapImage:=nil;
 
  fPrecipitationAtmosphereMapBuffer:=nil;
 
@@ -22950,7 +22979,8 @@ constructor TpvScene3DPlanet.Create(const aScene3D:TObject;
                                     const aTopRadius:TpvFloat;
                                     const aGenerateLODIndices:Boolean;
                                     const aWaterMiniMapResolutionShift:TpvSizeInt;
-                                    const aBlendMiniMapResolutionShift:TpvSizeInt);
+                                    const aBlendMiniMapResolutionShift:TpvSizeInt;
+                                    const aAtmosphereMiniMapResolutionShift:TpvSizeInt);
 var InFlightFrameIndex,Index,Resolution:TpvSizeInt;
 //  ta,tb:TpvHighResolutionTime;
     TileLODLevels:TTileLODLevels;
@@ -22999,6 +23029,9 @@ begin
  fPrecipitationMapResolution:=fPrecipitationAtmosphereMapResolution; // needs to be matched with fPrecipitationAtmosphereMapResolution for now
 
  fAtmosphereMapResolution:=fPrecipitationAtmosphereMapResolution; // needs to be matched with fPrecipitationAtmosphereMapResolution for now
+
+ fAtmosphereMiniMapShift:=Min(Max(aAtmosphereMiniMapResolutionShift,0),4);
+ fAtmosphereMiniMapResolution:=Max(1,fAtmosphereMapResolution shr fAtmosphereMiniMapShift);
 
  fWaterMapResolution:=fHeightMapResolution; // needs to be matched with fHeightMapResolution for now
 
