@@ -451,6 +451,8 @@ compileshaderarguments=(
 
   "-V planet_precipitationmap_modification.comp -o ${tempPath}/planet_precipitationmap_modification_comp.spv"
 
+  "-V planet_atmospheremap_downsample.comp -o ${tempPath}/planet_atmospheremap_downsample_comp.spv"
+
   "-V planet_atmospheremap_initialization.comp -o ${tempPath}/planet_atmospheremap_initialization_comp.spv"
 
   "-V planet_atmospheremap_modification.comp -o ${tempPath}/planet_atmospheremap_modification_comp.spv"
