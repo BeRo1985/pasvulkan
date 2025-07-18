@@ -26965,12 +26965,12 @@ var UV:TpvVector2;
     v00,v01,v10,v11:TpvScalar;
 begin
 
- if length(fData.fAtmosphereMapData)>0 then begin
+ if length(fData.fAtmosphereMiniMapData)>0 then begin
 
   UV:=WrapOctahedralCoordinates(aUV);
 
-  TexelX:=UV.x*fAtmosphereMapResolution;
-  TexelY:=UV.y*fAtmosphereMapResolution;
+  TexelX:=UV.x*fAtmosphereMiniMapResolution;
+  TexelY:=UV.y*fAtmosphereMiniMapResolution;
 
   xi:=Floor(TexelX);
   yi:=Floor(TexelY);
@@ -26978,19 +26978,19 @@ begin
   xf:=TexelX-xi;
   yf:=TexelY-yi;
 
-  xi:=Min(Max(xi,0),fAtmosphereMapResolution-1);
-  yi:=Min(Max(yi,0),fAtmosphereMapResolution-1);
+  xi:=Min(Max(xi,0),fAtmosphereMiniMapResolution-1);
+  yi:=Min(Max(yi,0),fAtmosphereMiniMapResolution-1);
 
-  v00:=fData.fAtmosphereMapData[(yi*fAtmosphereMapResolution)+xi]*c1d255;
+  v00:=fData.fAtmosphereMapData[(yi*fAtmosphereMiniMapResolution)+xi]*c1d255;
 
-  WrapOctahedralTexelCoordinatesEx(xi+1,yi,fAtmosphereMapResolution,fAtmosphereMapResolution,tx,ty);
-  v01:=fData.fAtmosphereMapData[(ty*fAtmosphereMapResolution)+tx]*c1d255;
+  WrapOctahedralTexelCoordinatesEx(xi+1,yi,fAtmosphereMiniMapResolution,fAtmosphereMiniMapResolution,tx,ty);
+  v01:=fData.fAtmosphereMapData[(ty*fAtmosphereMiniMapResolution)+tx]*c1d255;
 
-  WrapOctahedralTexelCoordinatesEx(xi,yi+1,fAtmosphereMapResolution,fAtmosphereMapResolution,tx,ty);
-  v10:=fData.fAtmosphereMapData[(ty*fAtmosphereMapResolution)+tx]*c1d255;
+  WrapOctahedralTexelCoordinatesEx(xi,yi+1,fAtmosphereMiniMapResolution,fAtmosphereMiniMapResolution,tx,ty);
+  v10:=fData.fAtmosphereMapData[(ty*fAtmosphereMiniMapResolution)+tx]*c1d255;
 
-  WrapOctahedralTexelCoordinatesEx(xi+1,yi+1,fAtmosphereMapResolution,fAtmosphereMapResolution,tx,ty);
-  v11:=fData.fAtmosphereMapData[(ty*fAtmosphereMapResolution)+tx]*c1d255;
+  WrapOctahedralTexelCoordinatesEx(xi+1,yi+1,fAtmosphereMiniMapResolution,fAtmosphereMiniMapResolution,tx,ty);
+  v11:=fData.fAtmosphereMapData[(ty*fAtmosphereMiniMapResolution)+tx]*c1d255;
 
   ixf:=1.0-xf;
   result:=(((v00*ixf)+(v01*xf))*(1.0-yf))+(((v10*ixf)+(v11*xf))*yf);
