@@ -867,6 +867,32 @@ type TpvScene3DPlanets=class;
              public
               property PushConstants:TPushConstants read fPushConstants write fPushConstants;
             end;
+            { TPrecipitationMapDownsampling }
+            TPrecipitationMapDownsampling=class
+             public
+              type TPushConstants=packed record
+                    PrecipitationMapResolution:TpvUInt32;
+                    TargetMipMapLevel:TpvUInt32;
+                   end;
+                   PPushConstants=^TPushConstants;
+             private
+              fPlanet:TpvScene3DPlanet;
+              fVulkanDevice:TpvVulkanDevice;
+              fComputeShaderModule:TpvVulkanShaderModule;
+              fComputeShaderStage:TpvVulkanPipelineShaderStage;
+              fPipeline:TpvVulkanComputePipeline;
+              fDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
+              fDescriptorPool:TpvVulkanDescriptorPool;
+              fDescriptorSet:TpvVulkanDescriptorSet;
+              fPipelineLayout:TpvVulkanPipelineLayout;
+              fPushConstants:TPushConstants;
+             public
+              constructor Create(const aPlanet:TpvScene3DPlanet); reintroduce;
+              destructor Destroy; override;
+              procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer);
+             public
+              property PushConstants:TPushConstants read fPushConstants write fPushConstants;
+            end;
             { TGrassMapInitialization }
             TGrassMapInitialization=class
              public
@@ -2468,6 +2494,7 @@ type TpvScene3DPlanets=class;
        fBlendMapModification:TBlendMapModification;
        fBlendMapDownsampling:TBlendMapDownsampling;
        fAtmosphereMapDownsampling:TAtmosphereMapDownsampling;
+       fPrecipitationMapDownsampling:TPrecipitationMapDownsampling;
        fGrassMapInitialization:TGrassMapInitialization;
        fGrassMapModification:TGrassMapModification;
        fPrecipitationMapInitialization:TPrecipitationMapInitialization;
@@ -10851,6 +10878,276 @@ begin
  fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
 
  inc(fPlanet.fData.fAtmosphereMiniMapGeneration);
+
+end;
+
+{ TpvScene3DPlanet.TPrecipitationMapDownsampling }
+
+constructor TpvScene3DPlanet.TPrecipitationMapDownsampling.Create(const aPlanet:TpvScene3DPlanet);
+var Stream:TStream;
+begin
+
+ inherited Create;
+
+ fPlanet:=aPlanet;
+
+ fVulkanDevice:=fPlanet.fVulkanDevice;
+
+ if assigned(fVulkanDevice) then begin
+
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_precipitationmap_downsample_comp.spv');
+  try
+   fComputeShaderModule:=TpvVulkanShaderModule.Create(fVulkanDevice,Stream);
+  finally
+   FreeAndNil(Stream);
+  end;
+
+  fVulkanDevice.DebugUtils.SetObjectName(fComputeShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DPlanet.TPrecipitationMapDownsampling.fComputeShaderModule');
+
+  fComputeShaderStage:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_COMPUTE_BIT,fComputeShaderModule,'main');
+
+  fDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(fVulkanDevice);
+  fDescriptorSetLayout.AddBinding(0,
+                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
+                                  1,
+                                  TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                  [],
+                                  0);
+  fDescriptorSetLayout.AddBinding(1,
+                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
+                                  1,
+                                  TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                  [],
+                                  0);
+  fDescriptorSetLayout.Initialize;
+
+  fPipelineLayout:=TpvVulkanPipelineLayout.Create(fVulkanDevice);
+  fPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),0,SizeOf(TPushConstants));
+  fPipelineLayout.AddDescriptorSetLayout(fDescriptorSetLayout);
+  fPipelineLayout.Initialize;
+
+  fVulkanDevice.DebugUtils.SetObjectName(fPipelineLayout.Handle,VK_OBJECT_TYPE_PIPELINE_LAYOUT,'TpvScene3DPlanet.TPrecipitationMapDownsampling.fPipelineLayout');
+
+  fDescriptorPool:=TpvVulkanDescriptorPool.Create(fVulkanDevice,
+                                                  TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
+                                                  1);
+  fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),2);
+  fDescriptorPool.Initialize;
+
+  fVulkanDevice.DebugUtils.SetObjectName(fDescriptorPool.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'TpvScene3DPlanet.TPrecipitationMapDownsampling.fDescriptorPool');
+
+  fDescriptorSet:=TpvVulkanDescriptorSet.Create(fDescriptorPool,fDescriptorSetLayout);
+  fDescriptorSet.WriteToDescriptorSet(0,
+                                      0,
+                                      1,
+                                      TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
+                                      [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,
+                                                                     fPlanet.fData.fPrecipitationMapImage.VulkanImageView.Handle,
+                                                                     VK_IMAGE_LAYOUT_GENERAL)],
+                                      [],
+                                      [],
+                                      false);
+  fDescriptorSet.WriteToDescriptorSet(1,
+                                      0,
+                                      1,
+                                      TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
+                                      [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,
+                                                                     fPlanet.fData.fPrecipitationMiniMapImage.VulkanImageView.Handle,
+                                                                     VK_IMAGE_LAYOUT_GENERAL)],
+                                      [],
+                                      [],
+                                      false);
+  fDescriptorSet.Flush;
+
+  fPipeline:=TpvVulkanComputePipeline.Create(fVulkanDevice,
+                                             pvApplication.VulkanPipelineCache,
+                                             TVkPipelineCreateFlags(0),
+                                             fComputeShaderStage,
+                                             fPipelineLayout,
+                                             nil,
+                                             0);
+
+  fPushConstants.PrecipitationMapResolution:=fPlanet.fPrecipitationMapResolution;
+  fPushConstants.TargetMipMapLevel:=fPlanet.fPrecipitationMiniMapResolutionShift;
+
+ end;
+
+end;
+
+destructor TpvScene3DPlanet.TPrecipitationMapDownsampling.Destroy;
+begin
+
+ FreeAndNil(fPipeline);
+
+ FreeAndNil(fDescriptorSet);
+
+ FreeAndNil(fDescriptorPool);
+
+ FreeAndNil(fPipelineLayout);
+
+ FreeAndNil(fDescriptorSetLayout);
+
+ FreeAndNil(fComputeShaderStage);
+
+ FreeAndNil(fComputeShaderModule);
+
+ inherited Destroy;
+
+end;
+
+procedure TpvScene3DPlanet.TPrecipitationMapDownsampling.Execute(const aCommandBuffer:TpvVulkanCommandBuffer);
+var ImageMemoryBarriers:array[0..1] of TVkImageMemoryBarrier; 
+    BufferMemoryBarrier:TVkBufferMemoryBarrier;
+    BufferImageCopy:TVkBufferImageCopy;
+begin
+
+ fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'Planet PrecipitationMapDownsampling',[0.5,0.5,0.5,1.0]);
+
+ ImageMemoryBarriers[0]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                      TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                      VK_IMAGE_LAYOUT_GENERAL,
+                                                      VK_QUEUE_FAMILY_IGNORED,
+                                                      VK_QUEUE_FAMILY_IGNORED,
+                                                      fPlanet.fData.fPrecipitationMapImage.VulkanImage.Handle,
+                                                      TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                      0,
+                                                                                      1,
+                                                                                      0,
+                                                                                      1));
+
+ ImageMemoryBarriers[1]:=TVkImageMemoryBarrier.Create(0,
+                                                      TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                      VK_IMAGE_LAYOUT_UNDEFINED,
+                                                      VK_IMAGE_LAYOUT_GENERAL,
+                                                      VK_QUEUE_FAMILY_IGNORED,
+                                                      VK_QUEUE_FAMILY_IGNORED,
+                                                      fPlanet.fData.fPrecipitationMiniMapImage.VulkanImage.Handle,
+                                                      TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                      0,
+                                                                                      1,
+                                                                                      0,
+                                                                                      1));
+
+ aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                   TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                   0,
+                                   0,nil,
+                                   0,nil,
+                                   2,@ImageMemoryBarriers[0]);
+
+ aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,fPipeline.Handle);
+
+ aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE,
+                                      fPipelineLayout.Handle,
+                                      0,
+                                      1,
+                                      @fDescriptorSet.Handle,
+                                      0,
+                                      nil);
+
+ fPushConstants.PrecipitationMapResolution:=fPlanet.fPrecipitationMapResolution;
+ fPushConstants.TargetMipMapLevel:=fPlanet.fPrecipitationMiniMapResolutionShift;
+
+ aCommandBuffer.CmdPushConstants(fPipelineLayout.Handle,
+                                 TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                 0,
+                                 SizeOf(TPushConstants),
+                                 @fPushConstants);
+
+ aCommandBuffer.CmdDispatch((fPlanet.fPrecipitationMapResolution+7) shr 3,
+                            (fPlanet.fPrecipitationMapResolution+7) shr 3,
+                            1);
+
+ ImageMemoryBarriers[0]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                      TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                      VK_IMAGE_LAYOUT_GENERAL,
+                                                      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                      VK_QUEUE_FAMILY_IGNORED,
+                                                      VK_QUEUE_FAMILY_IGNORED,
+                                                      fPlanet.fData.fPrecipitationMapImage.VulkanImage.Handle,
+                                                      TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                      0,
+                                                                                      1,
+                                                                                      0,
+                                                                                      1));
+
+ ImageMemoryBarriers[1]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                      TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT),
+                                                      VK_IMAGE_LAYOUT_GENERAL,
+                                                      VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                                                      VK_QUEUE_FAMILY_IGNORED,
+                                                      VK_QUEUE_FAMILY_IGNORED,
+                                                      fPlanet.fData.fPrecipitationMiniMapImage.VulkanImage.Handle,
+                                                      TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                      0,
+                                                                                      1,
+                                                                                      0,
+                                                                                      1));      
+
+ BufferMemoryBarrier:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_HOST_READ_BIT) or TVkAccessFlags(VK_ACCESS_HOST_WRITE_BIT),
+                                                    TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT) or TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                                                    VK_QUEUE_FAMILY_IGNORED,
+                                                    VK_QUEUE_FAMILY_IGNORED,
+                                                    fPlanet.fData.fPrecipitationMiniMapBuffer.Handle,
+                                                    0,
+                                                    VK_WHOLE_SIZE);                                                                                     
+
+ aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_HOST_BIT),
+                                   TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                   0,
+                                   0,nil,
+                                   1,@BufferMemoryBarrier,
+                                   2,@ImageMemoryBarriers[0]);
+
+ // Copy fPrecipitationMiniMapImage to fPrecipitationMapMiniMapBuffer
+ BufferImageCopy:=TVkBufferImageCopy.Create(0,
+                                       0,
+                                       0,
+                                       TVkImageSubresourceLayers.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                        0,
+                                                                        0,
+                                                                        1),
+                                       TVkOffset3D.Create(0,0,0),
+                                       TVkExtent3D.Create(fPlanet.fPrecipitationMiniMapResolution,fPlanet.fPrecipitationMiniMapResolution,1));
+
+ aCommandBuffer.CmdCopyImageToBuffer(fPlanet.fData.fPrecipitationMiniMapImage.VulkanImage.Handle,
+                                     VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                                     fPlanet.fData.fPrecipitationMiniMapBuffer.Handle,
+                                     1,
+                                     @BufferImageCopy);
+
+ ImageMemoryBarriers[0]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                      TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                      VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                                                      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                      VK_QUEUE_FAMILY_IGNORED,
+                                                      VK_QUEUE_FAMILY_IGNORED,
+                                                      fPlanet.fData.fPrecipitationMiniMapImage.VulkanImage.Handle,
+                                                      TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                      0,
+                                                                                      1,
+                                                                                      0,
+                                                                                      1));
+
+ BufferMemoryBarrier:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT) or TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                                                    TVkAccessFlags(VK_ACCESS_HOST_READ_BIT) or TVkAccessFlags(VK_ACCESS_HOST_WRITE_BIT),
+                                                    VK_QUEUE_FAMILY_IGNORED,
+                                                    VK_QUEUE_FAMILY_IGNORED,
+                                                    fPlanet.fData.fPrecipitationMiniMapBuffer.Handle,
+                                                    0,
+                                                    VK_WHOLE_SIZE);
+
+ aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                   TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_HOST_BIT),
+                                   0,
+                                   0,nil,
+                                   1,@BufferMemoryBarrier,
+                                   1,@ImageMemoryBarriers[0]);
+
+ fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
+
+ inc(fPlanet.fData.fPrecipitationMiniMapGeneration);
 
 end;
 
@@ -23797,6 +24094,8 @@ begin
 
  fAtmosphereMapDownsampling:=TAtmosphereMapDownsampling.Create(self);
 
+ fPrecipitationMapDownsampling:=TPrecipitationMapDownsampling.Create(self);
+
  fGrassMapInitialization:=TGrassMapInitialization.Create(self);
 
  fGrassMapModification:=TGrassMapModification.Create(self);
@@ -24171,6 +24470,8 @@ begin
  FreeAndNil(fBlendMapDownsampling);
 
  FreeAndNil(fAtmosphereMapDownsampling);
+
+ FreeAndNil(fPrecipitationMapDownsampling);
 
  FreeAndNil(fInFlightFrameDataList);
 
@@ -25731,6 +26032,8 @@ begin
 
     fAtmosphereMapDownsampling.Execute(fVulkanComputeCommandBuffer);
 
+    fPrecipitationMapDownsampling.Execute(fVulkanComputeCommandBuffer);
+
     fPrecipitationAtmosphereMapCombination.Execute(fVulkanComputeCommandBuffer);
 
    finally
@@ -25754,6 +26057,22 @@ begin
                                        fAtmosphereMiniMapResolution*fAtmosphereMiniMapResolution*SizeOf(TpvUInt8));
 
   UpdatedAtmosphere:=false;
+
+ end;
+
+ if UpdatedPrecipitation or (fData.fPrecipitationMiniMapTransferGeneration<>fData.fPrecipitationMiniMapGeneration) then begin
+
+  fData.fPrecipitationMiniMapTransferGeneration:=fData.fPrecipitationMiniMapGeneration;
+
+  fVulkanDevice.MemoryStaging.Download(fVulkanComputeQueue,
+                                       fVulkanComputeCommandBuffer,
+                                       fVulkanComputeFence,
+                                       fData.fPrecipitationMiniMapBuffer,
+                                       0,
+                                       fData.fPrecipitationMiniMapData[0],
+                                       fPrecipitationMiniMapResolution*fPrecipitationMiniMapResolution*SizeOf(TpvInt8));
+
+  UpdatedPrecipitation:=false;
 
  end;
 
@@ -26985,12 +27304,12 @@ var UV:TpvVector2;
     v00,v01,v10,v11:TpvScalar;
 begin
 
- if length(fData.fPrecipitationMapData)>0 then begin
+ if length(fData.fPrecipitationMiniMapData)>0 then begin
 
   UV:=WrapOctahedralCoordinates(aUV);
 
-  TexelX:=UV.x*fPrecipitationMapResolution;
-  TexelY:=UV.y*fPrecipitationMapResolution;
+  TexelX:=UV.x*fPrecipitationMiniMapResolution;
+  TexelY:=UV.y*fPrecipitationMiniMapResolution;
 
   xi:=Floor(TexelX);
   yi:=Floor(TexelY);
@@ -26998,19 +27317,19 @@ begin
   xf:=TexelX-xi;
   yf:=TexelY-yi;
 
-  xi:=Min(Max(xi,0),fPrecipitationMapResolution-1);
-  yi:=Min(Max(yi,0),fPrecipitationMapResolution-1);
+  xi:=Min(Max(xi,0),fPrecipitationMiniMapResolution-1);
+  yi:=Min(Max(yi,0),fPrecipitationMiniMapResolution-1);
 
-  v00:=fData.fPrecipitationMapData[(yi*fPrecipitationMapResolution)+xi]*c1d127;
+  v00:=fData.fPrecipitationMiniMapData[(yi*fPrecipitationMiniMapResolution)+xi]*c1d127;
 
-  WrapOctahedralTexelCoordinatesEx(xi+1,yi,fPrecipitationMapResolution,fPrecipitationMapResolution,tx,ty);
-  v01:=fData.fPrecipitationMapData[(ty*fPrecipitationMapResolution)+tx]*c1d127;
+  WrapOctahedralTexelCoordinatesEx(xi+1,yi,fPrecipitationMiniMapResolution,fPrecipitationMiniMapResolution,tx,ty);
+  v01:=fData.fPrecipitationMiniMapData[(ty*fPrecipitationMapResolution)+tx]*c1d127;
 
-  WrapOctahedralTexelCoordinatesEx(xi,yi+1,fPrecipitationMapResolution,fPrecipitationMapResolution,tx,ty);
-  v10:=fData.fPrecipitationMapData[(ty*fPrecipitationMapResolution)+tx]*c1d127;
+  WrapOctahedralTexelCoordinatesEx(xi,yi+1,fPrecipitationMiniMapResolution,fPrecipitationMiniMapResolution,tx,ty);
+  v10:=fData.fPrecipitationMiniMapData[(ty*fPrecipitationMiniMapResolution)+tx]*c1d127;
 
-  WrapOctahedralTexelCoordinatesEx(xi+1,yi+1,fPrecipitationMapResolution,fPrecipitationMapResolution,tx,ty);
-  v11:=fData.fPrecipitationMapData[(ty*fPrecipitationMapResolution)+tx]*c1d127;
+  WrapOctahedralTexelCoordinatesEx(xi+1,yi+1,fPrecipitationMiniMapResolution,fPrecipitationMiniMapResolution,tx,ty);
+  v11:=fData.fPrecipitationMiniMapData[(ty*fPrecipitationMiniMapResolution)+tx]*c1d127;
 
   ixf:=1.0-xf;
   result:=(((v00*ixf)+(v01*xf))*(1.0-yf))+(((v10*ixf)+(v11*xf))*yf);
