@@ -368,6 +368,7 @@ type TpvScene3DPlanets=class;
               fGrassMapData:TGrassMapData;
               fPrecipitationMapData:TPrecipitationMapData;
               fAtmosphereMapData:TAtmosphereMapData;
+              fAtmosphereMiniMapData:TAtmosphereMapData;
               fBlendMiniMapData:TBlendMapData;
               fWaterMiniMapData:TWaterMapData;
              private
@@ -406,6 +407,7 @@ type TpvScene3DPlanets=class;
               fPrecipitationMapGeneration:TpvUInt64;
               fAtmosphereMapGeneration:TpvUInt64;
               fAtmosphereMiniMapGeneration:TpvUInt64;
+              fAtmosphereMiniMapTransferGeneration:TpvUInt64;
               fPrecipitationAtmosphereMapGeneration:TpvUInt64;
               fPrecipitationAtmosphereMapPrecipitationMapGeneration:TpvUInt64;
               fPrecipitationAtmosphereMapAtmosphereMapGeneration:TpvUInt64;
@@ -511,6 +513,7 @@ type TpvScene3DPlanets=class;
               property GrassMapData:TGrassMapData read fGrassMapData;
               property PrecipitationMapData:TPrecipitationMapData read fPrecipitationMapData;
               property AtmosphereMapData:TAtmosphereMapData read fAtmosphereMapData;
+              property AtmosphereMiniMapData:TAtmosphereMapData read fAtmosphereMiniMapData;
               property BlendMiniMapData:TBlendMapData read fBlendMiniMapData;
               property WaterMiniMapData:TWaterMapData read fWaterMiniMapData;
              public
@@ -3249,6 +3252,8 @@ begin
   fPrecipitationAtmosphereMapGeneration:=High(TpvUInt64);
  end;
 
+ fAtmosphereMiniMapTransferGeneration:=not fAtmosphereMiniMapGeneration;
+
  fPrecipitationAtmosphereMapPrecipitationMapGeneration:=High(TpvUInt64) shr 1;
  fPrecipitationAtmosphereMapAtmosphereMapGeneration:=High(TpvUInt64) shr 1;
 
@@ -3327,6 +3332,8 @@ begin
  fPrecipitationMapData:=nil;
 
  fAtmosphereMapData:=nil;
+
+ fAtmosphereMiniMapData:=nil;
 
  fBlendMiniMapData:=nil;
 
@@ -3528,14 +3535,14 @@ begin
                                                     fPlanet.fGlobalBufferSharingMode,
                                                     fPlanet.fGlobalBufferQueueFamilyIndices,
                                                     0,
-                                                    TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                    TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_CACHED_BIT),
                                                     0,
                                                     0,
                                                     0,
                                                     0,
                                                     0,
                                                     0,
-                                                    [TpvVulkanBufferFlag.PreferDedicatedAllocation],
+                                                    [TpvVulkanBufferFlag.PersistentMappedIfPossible,TpvVulkanBufferFlag.PreferDedicatedAllocation],
                                                     0,
                                                     pvAllocationGroupIDScene3DPlanetStatic,
                                                     'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fAtmosphereMiniMapBuffer'
@@ -3675,6 +3682,9 @@ begin
   end;
 
   if fInFlightFrameIndex<0 then begin
+
+   SetLength(fAtmosphereMiniMapData,fPlanet.fAtmosphereMiniMapResolution*fPlanet.fAtmosphereMiniMapResolution);
+   FillChar(fAtmosphereMiniMapData[0],fPlanet.fAtmosphereMiniMapResolution*fPlanet.fAtmosphereMiniMapResolution*SizeOf(TpvUInt8),#0);
 
    SetLength(fBlendMiniMapData,fPlanet.fBlendMiniMapResolution*fPlanet.fBlendMiniMapResolution);
    FillChar(fBlendMiniMapData[0],fPlanet.fBlendMiniMapResolution*fPlanet.fBlendMiniMapResolution*SizeOf(TBlendMapValue),#0);
@@ -4387,6 +4397,8 @@ begin
 
  fBlendMapData:=nil;
 
+ fBlendMiniMapData:=nil;
+
  fGrassMapData:=nil;
 
  fPrecipitationMapImage:=nil;
@@ -4396,6 +4408,9 @@ begin
  fAtmosphereMiniMapImage:=nil;
 
  fAtmosphereMiniMapBuffer:=nil;
+
+ fAtmosphereMiniMapData:=nil;
+
 
  fPrecipitationAtmosphereMapBuffer:=nil;
 
@@ -25649,6 +25664,21 @@ begin
   end;
 
  end;
+
+ if fData.fAtmosphereMiniMapTransferGeneration<>fData.fAtmosphereMiniMapGeneration then begin
+
+  fData.fAtmosphereMiniMapTransferGeneration:=fData.fAtmosphereMiniMapGeneration;
+
+  fVulkanDevice.MemoryStaging.Download(fVulkanComputeQueue,
+                                       fVulkanComputeCommandBuffer,
+                                       fVulkanComputeFence,
+                                       fData.fAtmosphereMiniMapBuffer,
+                                       0,
+                                       fData.fAtmosphereMiniMapData[0],
+                                       fAtmosphereMiniMapResolution*fAtmosphereMiniMapResolution*SizeOf(TpvUInt8));
+
+ end;
+
 
  if (fData.fHeightMapProcessedGeneration<>fData.fHeightMapGeneration) or
     ((aInFlightFrameIndex>=0) and (abs(fHeightMapModificationItems[aInFlightFrameIndex].Value)>1e-7)) or
