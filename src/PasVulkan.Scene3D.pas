@@ -2142,6 +2142,7 @@ type EpvScene3D=class(Exception);
                      fDefaultChannels:TpvScene3D.TGroup.TAnimation.TDefaultChannels;
                      fAnimationBeginTime:TpvDouble;
                      fAnimationEndTime:TpvDouble;
+                     fAnimationDuration:TpvDouble;
                     public
                      constructor Create(const aGroup:TGroup;const aIndex:TpvSizeInt=-1); reintroduce;
                      destructor Destroy; override;
@@ -2156,6 +2157,10 @@ type EpvScene3D=class(Exception);
                      property Index:TpvSizeInt read fIndex;
                      property Channels:TpvScene3D.TGroup.TAnimation.TChannels read fChannels;
                      property DefaultChannels:TpvScene3D.TGroup.TAnimation.TDefaultChannels read fDefaultChannels;
+                    public
+                     property AnimationBeginTime:TpvDouble read fAnimationBeginTime;
+                     property AnimationEndTime:TpvDouble read fAnimationEndTime;
+                     property AnimationDuration:TpvDouble read fAnimationDuration;
                    end;
                    TAnimations=TpvObjectGenericList<TAnimation>;
                    { TCamera }
@@ -13093,6 +13098,7 @@ begin
  fDefaultChannels:=TpvScene3D.TGroup.TAnimation.TDefaultChannels.Create(true);
  fAnimationBeginTime:=0.0;
  fAnimationEndTime:=0.0;
+ fAnimationDuration:=0.0;
 end;
 
 destructor TpvScene3D.TGroup.TAnimation.Destroy;
@@ -13132,6 +13138,8 @@ begin
    end;
   end;
  end;
+
+ fAnimationDuration:=fAnimationEndTime-fAnimationBeginTime;
 
 end;
 
@@ -13178,6 +13186,8 @@ begin
   fAnimationBeginTime:=StreamIO.ReadDouble;
 
   fAnimationEndTime:=StreamIO.ReadDouble;
+
+  fAnimationDuration:=fAnimationEndTime-fAnimationBeginTime;
 
  finally
   FreeAndNil(StreamIO);
@@ -27656,7 +27666,7 @@ begin
 
    if assigned(GroupAnimation) then begin
 
-    AnimationLength:=GroupAnimation.fAnimationEndTime-GroupAnimation.fAnimationBeginTime;
+    AnimationLength:=GroupAnimation.fAnimationDuration;
 
     Time:=GroupInstanceAnimation.fTime;
     if Time>=0.0 then begin
