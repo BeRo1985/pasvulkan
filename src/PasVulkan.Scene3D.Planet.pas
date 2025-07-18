@@ -25677,8 +25677,9 @@ begin
                                        fData.fAtmosphereMiniMapData[0],
                                        fAtmosphereMiniMapResolution*fAtmosphereMiniMapResolution*SizeOf(TpvUInt8));
 
- end;
+  UpdatedAtmosphere:=false;
 
+ end;
 
  if (fData.fHeightMapProcessedGeneration<>fData.fHeightMapGeneration) or
     ((aInFlightFrameIndex>=0) and (abs(fHeightMapModificationItems[aInFlightFrameIndex].Value)>1e-7)) or
