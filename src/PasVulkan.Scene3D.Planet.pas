@@ -27323,7 +27323,7 @@ begin
   v00:=fData.fPrecipitationMiniMapData[(yi*fPrecipitationMiniMapResolution)+xi]*c1d127;
 
   WrapOctahedralTexelCoordinatesEx(xi+1,yi,fPrecipitationMiniMapResolution,fPrecipitationMiniMapResolution,tx,ty);
-  v01:=fData.fPrecipitationMiniMapData[(ty*fPrecipitationMapResolution)+tx]*c1d127;
+  v01:=fData.fPrecipitationMiniMapData[(ty*fPrecipitationMiniMapResolution)+tx]*c1d127;
 
   WrapOctahedralTexelCoordinatesEx(xi,yi+1,fPrecipitationMiniMapResolution,fPrecipitationMiniMapResolution,tx,ty);
   v10:=fData.fPrecipitationMiniMapData[(ty*fPrecipitationMiniMapResolution)+tx]*c1d127;
