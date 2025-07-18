@@ -26981,16 +26981,16 @@ begin
   xi:=Min(Max(xi,0),fAtmosphereMiniMapResolution-1);
   yi:=Min(Max(yi,0),fAtmosphereMiniMapResolution-1);
 
-  v00:=fData.fAtmosphereMapData[(yi*fAtmosphereMiniMapResolution)+xi]*c1d255;
+  v00:=fData.fAtmosphereMiniMapData[(yi*fAtmosphereMiniMapResolution)+xi]*c1d255;
 
   WrapOctahedralTexelCoordinatesEx(xi+1,yi,fAtmosphereMiniMapResolution,fAtmosphereMiniMapResolution,tx,ty);
-  v01:=fData.fAtmosphereMapData[(ty*fAtmosphereMiniMapResolution)+tx]*c1d255;
+  v01:=fData.fAtmosphereMiniMapData[(ty*fAtmosphereMiniMapResolution)+tx]*c1d255;
 
   WrapOctahedralTexelCoordinatesEx(xi,yi+1,fAtmosphereMiniMapResolution,fAtmosphereMiniMapResolution,tx,ty);
-  v10:=fData.fAtmosphereMapData[(ty*fAtmosphereMiniMapResolution)+tx]*c1d255;
+  v10:=fData.fAtmosphereMiniMapData[(ty*fAtmosphereMiniMapResolution)+tx]*c1d255;
 
   WrapOctahedralTexelCoordinatesEx(xi+1,yi+1,fAtmosphereMiniMapResolution,fAtmosphereMiniMapResolution,tx,ty);
-  v11:=fData.fAtmosphereMapData[(ty*fAtmosphereMiniMapResolution)+tx]*c1d255;
+  v11:=fData.fAtmosphereMiniMapData[(ty*fAtmosphereMiniMapResolution)+tx]*c1d255;
 
   ixf:=1.0-xf;
   result:=(((v00*ixf)+(v01*xf))*(1.0-yf))+(((v10*ixf)+(v11*xf))*yf);
