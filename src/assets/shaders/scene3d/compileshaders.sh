@@ -465,6 +465,8 @@ compileshaderarguments=(
 
   "-V planet_precipitationmap_simulation_transfer.comp -o ${tempPath}/planet_precipitationmap_simulation_transfer_comp.spv"
 
+  "-V planet_precipitationmap_downsample.comp -o ${tempPath}/planet_precipitationmap_downsample_comp.spv"
+
   "-V planet_rainstreaks_simulation.comp -o ${tempPath}/planet_rainstreaks_simulation_comp.spv"
 
   "-V planet_rainstreaks_meshgeneration.comp -o ${tempPath}/planet_rainstreaks_meshgeneration_comp.spv"
