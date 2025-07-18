@@ -405,6 +405,7 @@ type TpvScene3DPlanets=class;
               fGrassMapGeneration:TpvUInt64;
               fPrecipitationMapGeneration:TpvUInt64;
               fAtmosphereMapGeneration:TpvUInt64;
+              fAtmosphereMiniMapGeneration:TpvUInt64;
               fPrecipitationAtmosphereMapGeneration:TpvUInt64;
               fPrecipitationAtmosphereMapPrecipitationMapGeneration:TpvUInt64;
               fPrecipitationAtmosphereMapAtmosphereMapGeneration:TpvUInt64;
@@ -501,6 +502,7 @@ type TpvScene3DPlanets=class;
              public
               property PrecipitationMapGeneration:TpvUInt64 read fPrecipitationMapGeneration;
               property AtmosphereMapGeneration:TpvUInt64 read fAtmosphereMapGeneration;
+              property AtmosphereMiniMapGeneration:TpvUInt64 read fAtmosphereMiniMapGeneration;
               property PrecipitationAtmosphereMapGeneration:TpvUInt64 read fPrecipitationAtmosphereMapGeneration;
              public
               property HeightMapData:THeightMapData read fHeightMapData;
@@ -2451,6 +2453,7 @@ type TpvScene3DPlanets=class;
        fBlendMapInitialization:TBlendMapInitialization;
        fBlendMapModification:TBlendMapModification;
        fBlendMapDownsampling:TBlendMapDownsampling;
+       fAtmosphereMapDownsampling:TAtmosphereMapDownsampling;
        fGrassMapInitialization:TGrassMapInitialization;
        fGrassMapModification:TGrassMapModification;
        fPrecipitationMapInitialization:TPrecipitationMapInitialization;
@@ -3234,6 +3237,7 @@ begin
   fGrassMapGeneration:=0;
   fPrecipitationMapGeneration:=0;
   fAtmosphereMapGeneration:=0;
+  fAtmosphereMiniMapGeneration:=0;
   fPrecipitationAtmosphereMapGeneration:=0;
  end else begin
   fHeightMapGeneration:=High(TpvUInt64);
@@ -3241,6 +3245,7 @@ begin
   fGrassMapGeneration:=High(TpvUInt64);
   fPrecipitationMapGeneration:=High(TpvUInt64);
   fAtmosphereMapGeneration:=High(TpvUInt64);
+  fAtmosphereMiniMapGeneration:=High(TpvUInt64);
   fPrecipitationAtmosphereMapGeneration:=High(TpvUInt64);
  end;
 
@@ -10608,6 +10613,8 @@ end;
 
 procedure TpvScene3DPlanet.TAtmosphereMapDownsampling.Execute(const aCommandBuffer:TpvVulkanCommandBuffer);
 var ImageMemoryBarriers:array[0..1] of TVkImageMemoryBarrier; 
+    BufferMemoryBarrier:TVkBufferMemoryBarrier;
+    BufferImageCopy:TVkBufferImageCopy;
 begin
 
  fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'Planet AtmosphereMapDownsampling',[0.5,0.5,0.5,1.0]);
@@ -10682,9 +10689,9 @@ begin
                                                                                       1));
 
  ImageMemoryBarriers[1]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
-                                                      TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT) or TVkAccessFlags(VK_ACCESS_HOST_READ_BIT) or TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT),
+                                                      TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT),
                                                       VK_IMAGE_LAYOUT_GENERAL,
-                                                      VK_IMAGE_LAYOUT_GENERAL,
+                                                      VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
                                                       VK_QUEUE_FAMILY_IGNORED,
                                                       VK_QUEUE_FAMILY_IGNORED,
                                                       fPlanet.fData.fAtmosphereMiniMapImage.VulkanImage.Handle,
@@ -10694,14 +10701,69 @@ begin
                                                                                       0,
                                                                                       1));      
 
- aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
-                                   TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_HOST_BIT),
+ BufferMemoryBarrier:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_HOST_READ_BIT) or TVkAccessFlags(VK_ACCESS_HOST_WRITE_BIT),
+                                                    TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT) or TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                                                    VK_QUEUE_FAMILY_IGNORED,
+                                                    VK_QUEUE_FAMILY_IGNORED,
+                                                    fPlanet.fData.fAtmosphereMiniMapBuffer.Handle,
+                                                    0,
+                                                    VK_WHOLE_SIZE);                                                                                     
+
+ aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_HOST_BIT),
+                                   TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
                                    0,
                                    0,nil,
-                                   0,nil,
+                                   1,@BufferMemoryBarrier,
                                    2,@ImageMemoryBarriers[0]);
 
+ // Copy fAtmosphereMiniMapImage to fAtmosphereMapMiniMapBuffer
+ BufferImageCopy:=TVkBufferImageCopy.Create(0,
+                                       0,
+                                       0,
+                                       TVkImageSubresourceLayers.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                        0,
+                                                                        0,
+                                                                        1),
+                                       TVkOffset3D.Create(0,0,0),
+                                       TVkExtent3D.Create(fPlanet.fAtmosphereMiniMapResolution,fPlanet.fAtmosphereMiniMapResolution,1));
+
+ aCommandBuffer.CmdCopyImageToBuffer(fPlanet.fData.fAtmosphereMiniMapImage.VulkanImage.Handle,
+                                     VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                                     fPlanet.fData.fAtmosphereMiniMapBuffer.Handle,
+                                     1,
+                                     @BufferImageCopy);
+
+ ImageMemoryBarriers[0]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                      TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                      VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                                                      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                      VK_QUEUE_FAMILY_IGNORED,
+                                                      VK_QUEUE_FAMILY_IGNORED,
+                                                      fPlanet.fData.fAtmosphereMiniMapImage.VulkanImage.Handle,
+                                                      TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                      0,
+                                                                                      1,
+                                                                                      0,
+                                                                                      1));
+
+ BufferMemoryBarrier:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT) or TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                                                    TVkAccessFlags(VK_ACCESS_HOST_READ_BIT) or TVkAccessFlags(VK_ACCESS_HOST_WRITE_BIT),
+                                                    VK_QUEUE_FAMILY_IGNORED,
+                                                    VK_QUEUE_FAMILY_IGNORED,
+                                                    fPlanet.fData.fAtmosphereMiniMapBuffer.Handle,
+                                                    0,
+                                                    VK_WHOLE_SIZE);
+
+ aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                   TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_HOST_BIT),
+                                   0,
+                                   0,nil,
+                                   1,@BufferMemoryBarrier,
+                                   1,@ImageMemoryBarriers[0]);
+
  fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
+
+ inc(fPlanet.fData.fAtmosphereMiniMapGeneration);
 
 end;
 
@@ -23642,6 +23704,8 @@ begin
 
  fBlendMapDownsampling:=TBlendMapDownsampling.Create(self);
 
+ fAtmosphereMapDownsampling:=TAtmosphereMapDownsampling.Create(self);
+
  fGrassMapInitialization:=TGrassMapInitialization.Create(self);
 
  fGrassMapModification:=TGrassMapModification.Create(self);
@@ -24014,6 +24078,8 @@ begin
  FreeAndNil(fBlendMapModification);
 
  FreeAndNil(fBlendMapDownsampling);
+
+ FreeAndNil(fAtmosphereMapDownsampling);
 
  FreeAndNil(fInFlightFrameDataList);
 
@@ -25571,6 +25637,8 @@ begin
 
    BeginUpdate;
    try
+
+    fAtmosphereMapDownsampling.Execute(fVulkanComputeCommandBuffer);
 
     fPrecipitationAtmosphereMapCombination.Execute(fVulkanComputeCommandBuffer);
 
