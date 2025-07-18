@@ -25665,7 +25665,7 @@ begin
 
  end;
 
- if fData.fAtmosphereMiniMapTransferGeneration<>fData.fAtmosphereMiniMapGeneration then begin
+ if UpdatedAtmosphere or (fData.fAtmosphereMiniMapTransferGeneration<>fData.fAtmosphereMiniMapGeneration) then begin
 
   fData.fAtmosphereMiniMapTransferGeneration:=fData.fAtmosphereMiniMapGeneration;
 
