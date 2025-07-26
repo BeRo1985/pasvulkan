@@ -174,6 +174,7 @@ type PpvRandomGeneratorPCG32=^TpvRandomGeneratorPCG32;
        function GetDouble:double; // -1.0 .. 1.0
        function GetDoubleAbs:Double; // 0.0 .. 1.0
      end;
+     PpvPCG32=^TpvPCG32;
 
 function PCG32Next(var State:TpvRandomGeneratorPCG32):TpvUInt64; {$ifdef caninline}inline;{$endif}
 
