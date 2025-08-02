@@ -14032,10 +14032,19 @@ begin
  fPushConstants.PipeLengthSquared:=fPlanet.fWaterRainSettings.fPipeLengthSquared;
  fPushConstants.CrossSectionalPipeArea:=fPlanet.fWaterRainSettings.fCrossSectionalPipeArea;
  fPushConstants.Gravity:=fPlanet.fWaterRainSettings.fGravity;
- fPushConstants.Evaporation:=fPlanet.fWaterRainSettings.fEvaporation;
- fPushConstants.EvaporationHeightCoefficient:=fPlanet.fWaterRainSettings.fEvaporationHeightCoefficient;
+ if fPlanet.SimulationActive then begin
+  fPushConstants.Evaporation:=fPlanet.fWaterRainSettings.fEvaporation;
+  fPushConstants.EvaporationHeightCoefficient:=fPlanet.fWaterRainSettings.fEvaporationHeightCoefficient;
+ end else begin
+  fPushConstants.Evaporation:=0.0;
+  fPushConstants.EvaporationHeightCoefficient:=0.0;
+ end;
  fPushConstants.CompensationFactor:=fPlanet.fWaterRainSettings.fCompensationFactor;
- fPushConstants.RainIntensity:=fPlanet.fWaterRainSettings.fRainIntensity;
+ if fPlanet.SimulationActive then begin
+  fPushConstants.RainIntensity:=fPlanet.fWaterRainSettings.fRainIntensity;
+ end else begin
+  fPushConstants.RainIntensity:=0.0;
+ end;
  fPushConstants.Scale:=fPlanet.fWaterRainSettings.fScale;
  fPushConstants.TimeScale:=fPlanet.fWaterRainSettings.fTimeScale;
  fRainfallPushConstants.RainIntensity:=fPlanet.fWaterRainSettings.fRainIntensity;
