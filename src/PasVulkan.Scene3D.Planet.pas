@@ -263,7 +263,8 @@ type TpvScene3DPlanets=class;
              BrushRotation:TpvFloat;
             end;
             PGrassMapModificationItem=^TGrassMapModificationItem;
-            TGrassMapModificationItems=array[0..MaxInFlightFrames-1] of TGrassMapModificationItem;
+            TGrassMapModificationItems=TpvDynamicQueue<TGrassMapModificationItem>;
+            TGrassMapModificationPerInFlightFrameItems=array[0..MaxInFlightFrames-1] of TGrassMapModificationItems;
             TPrecipitationMapModificationItem=packed record
              PositionRadius:TpvVector4;
              InnerRadius:TpvFloat;
@@ -2550,7 +2551,7 @@ type TpvScene3DPlanets=class;
        fBlendMapUpdateGeneration:TpvUInt64;
        fBlendMapTransferGeneration:TpvUInt64;
        fBlendMapTransferLastTime:TpvDouble;
-       fGrassMapModificationItems:TGrassMapModificationItems;
+       fGrassMapModificationPerInFlightFrameItems:TGrassMapModificationPerInFlightFrameItems;
        fPrecipitationMapModificationItems:TPrecipitationMapModificationItems;
        fAtmosphereMapModificationItems:TAtmosphereMapModificationItems;
        fWaterModificationItems:TWaterModificationItems;
@@ -23865,7 +23866,10 @@ begin
 
  fBlendMapTransferLastTime:=0.0;
 
- FillChar(fGrassMapModificationItems,SizeOf(TGrassMapModificationItems),#0);
+ FillChar(fGrassMapModificationPerInFlightFrameItems,SizeOf(TGrassMapModificationPerInFlightFrameItems),#0);
+ for InFlightFrameIndex:=0 to MaxInFlightFrames-1 do begin
+  fGrassMapModificationPerInFlightFrameItems[InFlightFrameIndex].Initialize;
+ end;
 
  FillChar(fPrecipitationMapModificationItems,SizeOf(TPrecipitationMapModificationItems),#0);
 
@@ -24347,6 +24351,10 @@ begin
 
  for Index:=0 to 1 do begin
   FreeAndNil(fRaytracingTileQueues[Index]);
+ end;
+
+ for InFlightFrameIndex:=0 to MaxInFlightFrames-1 do begin
+  fGrassMapModificationPerInFlightFrameItems[InFlightFrameIndex].Finalize;
  end;
 
  FreeAndNil(fRaytracingLock);
@@ -25793,6 +25801,7 @@ var QueueTileIndex,Steps:TpvSizeInt;
     UpdatedHeightMap,UpdatedBlendMap,UpdatedGrass,UpdatedPrecipitation,UpdatedAtmosphere:Boolean;
     RaytracingTile:TRaytracingTile;
     CurrentRaytracingTileQueue:TRaytracingTiles;
+    GrassMapModificationItem:TGrassMapModificationItem;
 begin
 
  fData.fCountDirtyTiles:=0;
@@ -25895,17 +25904,17 @@ begin
 
  end;
 
- if (aInFlightFrameIndex>=0) and (abs(fGrassMapModificationItems[aInFlightFrameIndex].Value)>1e-7) then begin
+ if (aInFlightFrameIndex>=0) and not fGrassMapModificationPerInFlightFrameItems[aInFlightFrameIndex].IsEmpty then begin
 
   if assigned(fVulkanDevice) then begin
 
    BeginUpdate;
    try
 
-    try
-     fGrassMapModification.Execute(fVulkanComputeCommandBuffer,fGrassMapModificationItems[aInFlightFrameIndex]);
-    finally
-     fGrassMapModificationItems[aInFlightFrameIndex].Value:=0.0;
+    while fGrassMapModificationPerInFlightFrameItems[aInFlightFrameIndex].Dequeue(GrassMapModificationItem) do begin
+     if abs(GrassMapModificationItem.Value)>1e-7 then begin
+      fGrassMapModification.Execute(fVulkanComputeCommandBuffer,GrassMapModificationItem);
+     end;
     end;
 
    finally
@@ -26713,15 +26722,15 @@ begin
 end;
 
 procedure TpvScene3DPlanet.EnqueueGrassMapModification(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aRadius,aBorderRadius,aValue:TpvScalar);
-var GrassMapModificationItem:PGrassMapModificationItem;
+var GrassMapModificationItem:TGrassMapModificationItem;
 begin
  if aInFlightFrameIndex>=0 then begin
-  GrassMapModificationItem:=@fGrassMapModificationItems[aInFlightFrameIndex];
-  GrassMapModificationItem^.PositionRadius:=TpvVector4.Create(aPosition.Normalize,aRadius);
-  GrassMapModificationItem^.InnerRadius:=Max(1e-6,aBorderRadius);
-  GrassMapModificationItem^.Value:=aValue;
-  GrassMapModificationItem^.BrushIndex:=fData.fSelectedBrush;
-  GrassMapModificationItem^.BrushRotation:=fData.fBrushRotation;
+  GrassMapModificationItem.PositionRadius:=TpvVector4.Create(aPosition.Normalize,aRadius);
+  GrassMapModificationItem.InnerRadius:=Max(1e-6,aBorderRadius);
+  GrassMapModificationItem.Value:=aValue;
+  GrassMapModificationItem.BrushIndex:=fData.fSelectedBrush;
+  GrassMapModificationItem.BrushRotation:=fData.fBrushRotation;
+  fGrassMapModificationPerInFlightFrameItems[aInFlightFrameIndex].Enqueue(GrassMapModificationItem);
  end;
 end;
 
