@@ -2400,6 +2400,7 @@ type TpvScene3DPlanets=class;
       private
        fScene3D:TObject;
        fIndex:TpvSizeInt;
+       fSimulationActive:TPasMPBool32;
        fVulkanDevice:TpvVulkanDevice;
        fVulkanMemoryStagingQueue:TpvVulkanDeviceMemoryStagingQueue;
        fVulkanComputeQueue:TpvVulkanQueue;
@@ -2746,6 +2747,7 @@ type TpvScene3DPlanets=class;
        property AtmosphereReductionOffset:TpvFloat read fAtmosphereReductionOffset write fAtmosphereReductionOffset;       
        property WaterRainSettings:TpvScene3DPlanet.TWaterRainSettings read fWaterRainSettings;
        property PrecipitationSimulationSettings:TpvScene3DPlanet.TPrecipitationSimulationSettings read fPrecipitationSimulationSettings;
+       property SimulationActive:TPasMPBool32 read fSimulationActive write fSimulationActive;
      end;
 
      { TpvScene3DPlanets }
@@ -23711,6 +23713,8 @@ begin
 
  fVulkanDevice:=TpvScene3D(fScene3D).VulkanDevice;
 
+ fSimulationActive:=true;
+
  fWaterRainSettings:=TpvScene3DPlanet.TWaterRainSettings.Create;
 
  fPrecipitationSimulationSettings:=TpvScene3DPlanet.TPrecipitationSimulationSettings.Create;
@@ -25950,7 +25954,7 @@ begin
 
  end;
 
- if (aInFlightFrameIndex>=0) and assigned(fPrecipitationMapSimulation) and assigned(fPrecipitationMapSimulationTransfer) and (fPrecipitationSimulationSettings.fInterval>1e-6) then begin
+ if (aInFlightFrameIndex>=0) and assigned(fPrecipitationMapSimulation) and assigned(fPrecipitationMapSimulationTransfer) and (fPrecipitationSimulationSettings.fInterval>1e-6) and fSimulationActive then begin
 
   if assigned(fVulkanDevice) then begin
 
@@ -25996,7 +26000,7 @@ begin
 
  if fAtmosphereAdditionTextureImageView<>VK_NULL_HANDLE then begin
 
-  if assigned(fVulkanDevice) then begin
+  if assigned(fVulkanDevice) and fSimulationActive then begin
 
    fAtmosphereUpdateTimeAccumulator:=fAtmosphereUpdateTimeAccumulator+pvApplication.DeltaTime;
    if fAtmosphereUpdateTimeAccumulator>=fAtmosphereUpdateTimeInterval then begin
