@@ -228,26 +228,6 @@ begin
  // optimized to:
  fFactor:=exp(ln(Min(fResourceOutput.Width,fResourceOutput.Height))*MinusLog1d25OverLog2);
 
- fPushConstants.Factor:=fFactor*fInstance.LensFactor;
- fPushConstants.BloomFactor:=fInstance.BloomFactor;
- fPushConstants.LensflaresFactor:=fInstance.LensflareFactor;
- if fInstance.LensNormalization then begin
-  Factor:=fPushConstants.BloomFactor+fPushConstants.LensflaresFactor;
-  if not IsZero(Factor) then begin
-   Factor:=1.0/Factor;
-   fPushConstants.BloomFactor:=fPushConstants.BloomFactor*Factor;
-   fPushConstants.LensflaresFactor:=fPushConstants.LensflaresFactor*Factor;
-  end;
- end;
- fPushConstants.BloomLensflaresFactor:=1.0;
- fPushConstants.CountGhosts:=8;
- fPushConstants.LensStarRotationAngle:=0.0;
- fPushConstants.AspectRatio:=fResourceOutput.Width/fResourceOutput.Height;
- fPushConstants.InverseAspectRatio:=fResourceOutput.Height/fResourceOutput.Width;
- fPushConstants.Dispersal:=0.3;
- fPushConstants.HaloWidth:=0.5;
- fPushConstants.Distortion:=1.5;
-
  fVulkanRenderPass:=VulkanRenderPass;
 
  fVulkanDescriptorPool:=TpvVulkanDescriptorPool.Create(fInstance.Renderer.VulkanDevice,
@@ -414,22 +394,48 @@ end;
 
 procedure TpvScene3DRendererPassesLensResolveRenderPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
 var Matrix:TpvMatrix4x4;
+    Factor:TpvScalar;
 begin
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
+
  Matrix:=fInstance.Views[aInFlightFrameIndex].Items[fInstance.InFlightFrameStates[aInFlightFrameIndex].FinalViewIndex].ViewMatrix;
+
+ fPushConstants.Factor:=fFactor*fInstance.LensFactor;
+ fPushConstants.BloomFactor:=fInstance.BloomFactor;
+ fPushConstants.LensflaresFactor:=fInstance.LensflareFactor;
+ if fInstance.LensNormalization then begin
+  Factor:=fPushConstants.BloomFactor+fPushConstants.LensflaresFactor;
+  if not IsZero(Factor) then begin
+   Factor:=1.0/Factor;
+   fPushConstants.BloomFactor:=fPushConstants.BloomFactor*Factor;
+   fPushConstants.LensflaresFactor:=fPushConstants.LensflaresFactor*Factor;
+  end;
+ end;
+ fPushConstants.BloomLensflaresFactor:=1.0;
+ fPushConstants.CountGhosts:=8;
  fPushConstants.LensStarRotationAngle:=(Matrix.RawComponents[0,0]+Matrix.RawComponents[1,1]+Matrix.RawComponents[2,2])*(pi/3.0);
+ fPushConstants.AspectRatio:=fResourceOutput.Width/fResourceOutput.Height;
+ fPushConstants.InverseAspectRatio:=fResourceOutput.Height/fResourceOutput.Width;
+ fPushConstants.Dispersal:=0.3;
+ fPushConstants.HaloWidth:=0.5;
+ fPushConstants.Distortion:=1.5;
+
  aCommandBuffer.CmdPushConstants(fVulkanPipelineLayout.Handle,
                                  TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_FRAGMENT_BIT),
                                  0,
                                  SizeOf(TpvScene3DRendererPassesLensResolveRenderPass.TPushConstants),
                                  @fPushConstants);
+
  aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
                                       fVulkanPipelineLayout.Handle,
                                       0,
                                       1,
                                       @fVulkanDescriptorSets[aInFlightFrameIndex].Handle,0,nil);
+
  aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanGraphicsPipeline.Handle);
+
  aCommandBuffer.CmdDraw(3,1,0,0);
+
 end;
 
 end.
