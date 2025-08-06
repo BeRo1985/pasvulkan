@@ -67,7 +67,8 @@ uses SysUtils,
      PasVulkan.Types,
      PasVulkan.Math,
      PasVulkan.Utils,
-     Generics.Collections;
+     Generics.Collections,
+     Generics.Defaults;
 
 type { TpvDynamicArray }
      TpvDynamicArray<T>=record
@@ -321,11 +322,18 @@ type { TpvDynamicArray }
        fCount:TpvSizeInt;
        fAllocated:TpvSizeInt;
        fSorted:boolean;
+       fDefaultCompare:TpvTypedSort<T>.TpvTypedSortCompareFunction;
        function GetData:pointer;
        procedure SetCount(const aNewCount:TpvSizeInt);
        function GetItemPointer(const aIndex:TpvSizeInt):PT;
        function GetItem(const aIndex:TpvSizeInt):T;
        procedure SetItem(const aIndex:TpvSizeInt;const aItem:T);
+       procedure SetDefaultCompare(const aDefaultCompare:TpvTypedSort<T>.TpvTypedSortCompareFunction);
+       { Get suitable IComparer for all comparisons, based on DefaultCompare 
+         callback, falling back on the default comparer. }
+       function GetComparer:IComparer<T>;
+       { Do initial sorting of contents, using DefaultCompare if assigned. }
+       procedure IntroSort;
       protected
       public
        constructor Create;
@@ -349,6 +357,11 @@ type { TpvDynamicArray }
        property ItemPointers[const aIndex:TpvSizeInt]:PT read GetItemPointer;
        property Sorted:boolean read fSorted;
        property Data:pointer read GetData;
+       { If assigned, this is used by @link(Sort) (overloaded version 
+         without explicit compare callback) and to keep the list sorted
+         after @link(Add) and @link(Insert) operations.
+         If not assigned, we use default comparer, just like Generics.Collections. }
+       property DefaultCompare:TpvTypedSort<T>.TpvTypedSortCompareFunction read fDefaultCompare write SetDefaultCompare;
      end;
 
 {$ifdef fpc}
@@ -1073,8 +1086,6 @@ type { TpvDynamicArray }
      end;
 
 implementation
-
-uses Generics.Defaults;
 
 { TpvDynamicArray<T> }
 
@@ -2636,11 +2647,31 @@ begin
  fSorted:=aFrom.fSorted;
 end;
 
+function TpvGenericList<T>.GetComparer:IComparer<T>;
+begin
+ if Assigned(fDefaultCompare) then begin
+  Result:=TComparer<T>.Construct(fDefaultCompare);
+ end else begin
+  Result:=TComparer<T>.Default;
+ end;
+end;
+
+procedure TpvGenericList<T>.SetDefaultCompare(const aDefaultCompare:TpvTypedSort<T>.TpvTypedSortCompareFunction);
+begin
+ if @fDefaultCompare<>@aDefaultCompare then
+ begin
+  fDefaultCompare:=aDefaultCompare;
+  // do IntroSort again, as comparison changed
+  if Sorted then
+   IntroSort;
+ end;
+end;
+
 function TpvGenericList<T>.Contains(const aItem:T):Boolean;
 var Index,LowerIndexBound,UpperIndexBound,Difference:TpvInt32;
     Comparer:IComparer<T>;
 begin
- Comparer:=TComparer<T>.Default;
+ Comparer:=GetComparer;
  result:=false;
  if fSorted then begin
   LowerIndexBound:=0;
@@ -2671,7 +2702,7 @@ function TpvGenericList<T>.IndexOf(const aItem:T):TpvSizeInt;
 var Index,LowerIndexBound,UpperIndexBound,Difference:TpvInt32;
     Comparer:IComparer<T>;
 begin
- Comparer:=TComparer<T>.Default;
+ Comparer:=GetComparer;
  result:=-1;
  if fSorted then begin
   LowerIndexBound:=0;
@@ -2702,7 +2733,7 @@ function TpvGenericList<T>.Add(const aItem:T):TpvSizeInt;
 var Index,LowerIndexBound,UpperIndexBound,Difference:TpvInt32;
     Comparer:IComparer<T>;
 begin
- Comparer:=TComparer<T>.Default;
+ Comparer:=GetComparer;
  if fSorted and (fCount>0) then begin
   if Comparer.Compare(fItems[fCount-1],aItem)<0 then begin
    result:=fCount;
@@ -2822,12 +2853,21 @@ begin
  result:=TValueEnumerator.Create(self);
 end;
 
+procedure TpvGenericList<T>.IntroSort;
+begin
+ if fCount>1 then begin
+  if Assigned(fDefaultCompare) then begin
+   TpvTypedSort<T>.IntroSort(@fItems[0],0,fCount-1,fDefaultCompare);
+  end else begin
+   TpvTypedSort<T>.IntroSort(@fItems[0],0,fCount-1);
+  end;
+ end; 
+end;
+
 procedure TpvGenericList<T>.Sort;
 begin
  if not fSorted then begin
-  if fCount>1 then begin
-   TpvTypedSort<T>.IntroSort(@fItems[0],0,fCount-1);
-  end;
+  IntroSort;
   fSorted:=true;
  end;
 end;
