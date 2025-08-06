@@ -350,6 +350,17 @@ type { TpvDynamicArray }
        procedure Exchange(const aIndex,aWithIndex:TpvSizeInt);
        function GetEnumerator:TValueEnumerator;
        procedure Sort; overload;
+       { Sort using a custom compare function.
+
+         Warning: Right now this sorts one-time using the custom compare function,
+         but then later additions using @link(Add) will maintain order
+         using the default comparer from Generics.Collections
+         (which may behave differently than aCompareFunction).
+         To make future additions use a custom compare function, assign it to
+         @link(DefaultCompare) and then you can call @link(Sort) 
+         without parameters.
+         
+         TODO: Maybe this should just set @link(DefaultCompare) and call Sort()? }
        procedure Sort(const aCompareFunction:TpvTypedSort<T>.TpvTypedSortCompareFunction); overload;
        property Count:TpvSizeInt read fCount write SetCount;
        property Allocated:TpvSizeInt read fAllocated;
