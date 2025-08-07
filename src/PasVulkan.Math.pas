@@ -174,6 +174,13 @@ type PpvScalar=^TpvScalar;
      TpvInt32Vector2=packed record
       public
        x,y:TpvInt32;
+       class operator Equal(const aLeft,aRight:TpvInt32Vector2):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator NotEqual(const aLeft,aRight:TpvInt32Vector2):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Add(const a,b:TpvInt32Vector2):TpvInt32Vector2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Subtract(const a,b:TpvInt32Vector2):TpvInt32Vector2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Negative(const aValue:TpvInt32Vector2):TpvInt32Vector2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Positive(const aValue:TpvInt32Vector2):TpvInt32Vector2; {$ifdef CAN_INLINE}inline;{$endif}       
+       function Length:TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
      end;
 
      PpvVector2=^TpvVector2;
@@ -2557,6 +2564,44 @@ begin
  end else begin
   result:=(aV1*(1.0-aTime))+(aV2*aTime);
  end;
+end;
+
+class operator TpvInt32Vector2.Equal(const aLeft,aRight:TpvInt32Vector2):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+begin
+ result:=(aLeft.x=aRight.x) and (aLeft.y=aRight.y);
+end;
+
+class operator TpvInt32Vector2.NotEqual(const aLeft,aRight:TpvInt32Vector2):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+begin
+ result:=(aLeft.x<>aRight.x) or (aLeft.y<>aRight.y);
+end;
+
+class operator TpvInt32Vector2.Add(const a,b:TpvInt32Vector2):TpvInt32Vector2; {$ifdef CAN_INLINE}inline;{$endif}
+begin
+ result.x:=a.x+b.x;
+ result.y:=a.y+b.y;
+end;
+
+class operator TpvInt32Vector2.Subtract(const a,b:TpvInt32Vector2):TpvInt32Vector2; {$ifdef CAN_INLINE}inline;{$endif}
+begin
+ result.x:=a.x-b.x;
+ result.y:=a.y-b.y;
+end;
+
+class operator TpvInt32Vector2.Negative(const aValue:TpvInt32Vector2):TpvInt32Vector2; {$ifdef CAN_INLINE}inline;{$endif}
+begin
+ result.x:=-aValue.x;
+ result.y:=-aValue.y;
+end;
+
+class operator TpvInt32Vector2.Positive(const aValue:TpvInt32Vector2):TpvInt32Vector2; {$ifdef CAN_INLINE}inline;{$endif}
+begin
+ result:=aValue;
+end;
+
+function TpvInt32Vector2.Length:TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
+begin
+ result:=sqrt(sqr(x)+sqr(y));
 end;
 
 constructor TpvVector2.Create(const aX:TpvScalar);
