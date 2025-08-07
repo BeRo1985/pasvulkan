@@ -67,8 +67,7 @@ uses SysUtils,
      PasVulkan.Types,
      PasVulkan.Math,
      PasVulkan.Utils,
-     Generics.Collections,
-     Generics.Defaults;
+     Generics.Collections;
 
 type { TpvDynamicArray }
      TpvDynamicArray<T>=record
@@ -322,10 +321,6 @@ type { TpvDynamicArray }
        fCount:TpvSizeInt;
        fAllocated:TpvSizeInt;
        fSorted:boolean;
-       fCachedComparer:IComparer<T>;
-       fDefaultCompareFunction:TpvTypedSort<T>.TpvTypedSortCompareFunction;
-       procedure SetDefaultCompareFunction(const aNewDefaultCompareFunction:TpvTypedSort<T>.TpvTypedSortCompareFunction);
-       function GetComparer:IComparer<T>;
        function GetData:pointer;
        procedure SetCount(const aNewCount:TpvSizeInt);
        function GetItemPointer(const aIndex:TpvSizeInt):PT;
@@ -346,14 +341,14 @@ type { TpvDynamicArray }
        procedure Remove(const aItem:T);
        procedure Exchange(const aIndex,aWithIndex:TpvSizeInt);
        function GetEnumerator:TValueEnumerator;
-       procedure Sort(const aCompareFunction:TpvTypedSort<T>.TpvTypedSortCompareFunction=nil;const aForce:Boolean=false);
+       procedure Sort; overload;
+       procedure Sort(const aCompareFunction:TpvTypedSort<T>.TpvTypedSortCompareFunction); overload;
        property Count:TpvSizeInt read fCount write SetCount;
        property Allocated:TpvSizeInt read fAllocated;
        property Items[const aIndex:TpvSizeInt]:T read GetItem write SetItem; default;
        property ItemPointers[const aIndex:TpvSizeInt]:PT read GetItemPointer;
        property Sorted:boolean read fSorted;
        property Data:pointer read GetData;
-       property DefaultCompareFunction:TpvTypedSort<T>.TpvTypedSortCompareFunction read fDefaultCompareFunction write SetDefaultCompareFunction;
      end;
 
 {$ifdef fpc}
@@ -1078,6 +1073,8 @@ type { TpvDynamicArray }
      end;
 
 implementation
+
+uses Generics.Defaults;
 
 { TpvDynamicArray<T> }
 
@@ -2541,13 +2538,10 @@ begin
  fCount:=0;
  fAllocated:=0;
  fSorted:=false;
- fCachedComparer:=nil;
- fDefaultCompareFunction:=nil;
 end;
 
 destructor TpvGenericList<T>.Destroy;
 begin
- fCachedComparer:=nil;
  SetLength(fItems,0);
  fCount:=0;
  fAllocated:=0;
@@ -2567,29 +2561,6 @@ procedure TpvGenericList<T>.ClearNoFree;
 begin
  fCount:=0;
  fSorted:=false;
-end;
-
-procedure TpvGenericList<T>.SetDefaultCompareFunction(const aNewDefaultCompareFunction:TpvTypedSort<T>.TpvTypedSortCompareFunction);
-begin
- if @fDefaultCompareFunction<>@aNewDefaultCompareFunction then begin
-  fDefaultCompareFunction:=aNewDefaultCompareFunction;
-  fCachedComparer:=nil;
-  if fSorted then begin
-   Sort(aNewDefaultCompareFunction,true);
-  end;
- end;
-end;
-
-function TpvGenericList<T>.GetComparer:IComparer<T>;
-begin
- if not assigned(fCachedComparer) then begin
-  if assigned(fDefaultCompareFunction) then begin
-   fCachedComparer:=TComparer<T>.Construct(fDefaultCompareFunction);
-  end else begin
-   fCachedComparer:=TComparer<T>.Default;
-  end;
- end;
- result:=fCachedComparer;
 end;
 
 function TpvGenericList<T>.GetData:pointer;
@@ -2669,7 +2640,7 @@ function TpvGenericList<T>.Contains(const aItem:T):Boolean;
 var Index,LowerIndexBound,UpperIndexBound,Difference:TpvInt32;
     Comparer:IComparer<T>;
 begin
- Comparer:=GetComparer;
+ Comparer:=TComparer<T>.Default;
  result:=false;
  if fSorted then begin
   LowerIndexBound:=0;
@@ -2700,7 +2671,7 @@ function TpvGenericList<T>.IndexOf(const aItem:T):TpvSizeInt;
 var Index,LowerIndexBound,UpperIndexBound,Difference:TpvInt32;
     Comparer:IComparer<T>;
 begin
- Comparer:=GetComparer;
+ Comparer:=TComparer<T>.Default;
  result:=-1;
  if fSorted then begin
   LowerIndexBound:=0;
@@ -2731,7 +2702,7 @@ function TpvGenericList<T>.Add(const aItem:T):TpvSizeInt;
 var Index,LowerIndexBound,UpperIndexBound,Difference:TpvInt32;
     Comparer:IComparer<T>;
 begin
- Comparer:=GetComparer;
+ Comparer:=TComparer<T>.Default;
  if fSorted and (fCount>0) then begin
   if Comparer.Compare(fItems[fCount-1],aItem)<0 then begin
    result:=fCount;
@@ -2851,17 +2822,21 @@ begin
  result:=TValueEnumerator.Create(self);
 end;
 
-procedure TpvGenericList<T>.Sort(const aCompareFunction:TpvTypedSort<T>.TpvTypedSortCompareFunction;const aForce:Boolean);
+procedure TpvGenericList<T>.Sort;
 begin
- if aForce or not fSorted then begin
+ if not fSorted then begin
   if fCount>1 then begin
-   if assigned(aCompareFunction) then begin
-    TpvTypedSort<T>.IntroSort(@fItems[0],0,fCount-1,aCompareFunction);
-   end else if assigned(fDefaultCompareFunction) then begin
-    TpvTypedSort<T>.IntroSort(@fItems[0],0,fCount-1,fDefaultCompareFunction);
-   end else begin
-    TpvTypedSort<T>.IntroSort(@fItems[0],0,fCount-1);
-   end;
+   TpvTypedSort<T>.IntroSort(@fItems[0],0,fCount-1);
+  end;
+  fSorted:=true;
+ end;
+end;
+
+procedure TpvGenericList<T>.Sort(const aCompareFunction:TpvTypedSort<T>.TpvTypedSortCompareFunction);
+begin
+ if not fSorted then begin
+  if fCount>1 then begin
+   TpvTypedSort<T>.IntroSort(@fItems[0],0,fCount-1,aCompareFunction);
   end;
   fSorted:=true;
  end;
