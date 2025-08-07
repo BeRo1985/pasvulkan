@@ -120,9 +120,9 @@ type PpvRandomGeneratorPCG32=^TpvRandomGeneratorPCG32;
       private
        fState:TpvRandomGeneratorState;
        fGaussianFloatUseLast:boolean;
-       fGaussianFloatLast:single;
+       fGaussianFloatLast:TpvFloat;
        fGaussianDoubleUseLast:boolean;
-       fGaussianDoubleLast:double;
+       fGaussianDoubleLast:TpvDouble;
        fCriticalSection:TCriticalSection;
       public
        constructor Create;
@@ -131,15 +131,20 @@ type PpvRandomGeneratorPCG32=^TpvRandomGeneratorPCG32;
        function Get32:TpvUInt32;
        function Get64:TpvUInt64;
        function Get(Limit:TpvUInt32):TpvUInt32;
-       function GetFloat:single; // -1.0.0 .. 1.0
-       function GetFloatAbs:single; // 0.0 .. 1.0
-       function GetDouble:double; // -1.0.0 .. 1.0
-       function GetDoubleAbs:Double; // 0.0 .. 1.0
-       function GetGaussianFloat:single; // -1.0 .. 1.0
-       function GetGaussianFloatAbs:single; // 0.0 .. 1.0
-       function GetGaussianDouble:double; // -1.0 .. 1.0
-       function GetGaussianDoubleAbs:double; // 0.0 .. 1.0
+       function GetFloat:TpvFloat; // -1.0.0 .. 1.0
+       function GetFloatAbs:TpvFloat; // 0.0 .. 1.0
+       function GetDouble:TpvDouble; // -1.0.0 .. 1.0
+       function GetDoubleAbs:TpvDouble; // 0.0 .. 1.0
+       function GetGaussianFloat:TpvFloat; // -1.0 .. 1.0
+       function GetGaussianFloatAbs:TpvFloat; // 0.0 .. 1.0
+       function GetGaussianDouble:TpvDouble; // -1.0 .. 1.0
+       function GetGaussianDoubleAbs:TpvDouble; // 0.0 .. 1.0
        function GetGaussian(Limit:TpvUInt32):TpvUInt32;
+       function GetUInt32Range(const aMin,aMax:TpvUInt32):TpvUInt32; // aMin .. aMax 
+       function GetFloatRange(const aMin,aMax:TpvFloat):TpvFloat; // aMin .. aMax 
+       function GetDoubleRange(const aMin,aMax:TpvDouble):TpvDouble; // aMin .. aMax
+       function GetGaussianFloatRange(const aMin,aMax:TpvFloat):TpvFloat; // aMin .. aMax
+       function GetGaussianDoubleRange(const aMin,aMax:TpvDouble):TpvDouble; // aMin .. aMax
      end;
 
      TpvRandomUnique32BitSequence=class
@@ -163,18 +168,35 @@ type PpvRandomGeneratorPCG32=^TpvRandomGeneratorPCG32;
       private
        fState:TpvUInt64;
        fIncrement:TpvUInt64;
+       fGaussianFloatUseLast:boolean;
+       fGaussianFloatLast:TpvFloat;
+       fGaussianDoubleUseLast:boolean;
+       fGaussianDoubleLast:TpvDouble;
       public
        procedure Init(const aSeed:TpvUInt64=0);
        function Get32:TpvUInt32; {$ifdef caninline}inline;{$endif}
        function Get64:TpvUInt64; {$ifdef caninline}inline;{$endif}
        function GetBiasedBounded32Bit(const aRange:TpvUInt32):TpvUInt32; {$ifdef caninline}inline;{$endif}
        function GetUnbiasedBounded32Bit(const aRange:TpvUInt32):TpvUInt32;
-       function GetFloat:single; // -1.0 .. 1.0
-       function GetFloatAbs:single; // 0.0 .. 1.0
-       function GetDouble:double; // -1.0 .. 1.0
-       function GetDoubleAbs:Double; // 0.0 .. 1.0
+       function Get(Limit:TpvUInt32):TpvUInt32;
+       function GetFloat:TpvFloat; // -1.0 .. 1.0
+       function GetFloatAbs:TpvFloat; // 0.0 .. 1.0
+       function GetDouble:TpvDouble; // -1.0 .. 1.0
+       function GetDoubleAbs:TpvDouble; // 0.0 .. 1.0
+       function GetGaussianFloat:TpvFloat; // -1.0 .. 1.0
+       function GetGaussianFloatAbs:TpvFloat; // 0.0 .. 1.0
+       function GetGaussianDouble:TpvDouble; // -1.0 .. 1.0
+       function GetGaussianDoubleAbs:TpvDouble; // 0.0 .. 1.0
+       function GetGaussian(Limit:TpvUInt32):TpvUInt32;
+       function GetUInt32Range(const aMin,aMax:TpvUInt32):TpvUInt32; // aMin .. aMax 
+       function GetFloatRange(const aMin,aMax:TpvFloat):TpvFloat; // aMin .. aMax 
+       function GetDoubleRange(const aMin,aMax:TpvDouble):TpvDouble; // aMin .. aMax
+       function GetGaussianFloatRange(const aMin,aMax:TpvFloat):TpvFloat; // aMin .. aMax
+       function GetGaussianDoubleRange(const aMin,aMax:TpvDouble):TpvDouble; // aMin .. aMax
      end;
      PpvPCG32=^TpvPCG32;
+
+var pvPCG32:TpvPCG32; // Default global PCG32 random generator instance
 
 function PCG32Next(var State:TpvRandomGeneratorPCG32):TpvUInt64; {$ifdef caninline}inline;{$endif}
 
@@ -631,40 +653,40 @@ begin
  end;    
 end;
 
-function TpvRandomGenerator.GetFloat:single; // -1.0 .. 1.0
+function TpvRandomGenerator.GetFloat:TpvFloat; // -1.0 .. 1.0
 var t:TpvUInt32;
 begin
  t:=Get32;
  t:=(((t shr 9) and $7fffff)+((t shr 8) and 1)) or $40000000;
- result:=single(pointer(@t)^)-3.0;
+ result:=TpvFloat(pointer(@t)^)-3.0;
 end;
 
-function TpvRandomGenerator.GetFloatAbs:single; // 0.0 .. 1.0
+function TpvRandomGenerator.GetFloatAbs:TpvFloat; // 0.0 .. 1.0
 var t:TpvUInt32;
 begin
  t:=Get32;
  t:=(((t shr 9) and $7fffff)+((t shr 8) and 1)) or $3f800000;
- result:=single(pointer(@t)^)-1.0;
+ result:=TpvFloat(pointer(@t)^)-1.0;
 end;
 
-function TpvRandomGenerator.GetDouble:double; // -1.0 .. 1.0
+function TpvRandomGenerator.GetDouble:TpvDouble; // -1.0 .. 1.0
 var t:TpvUInt64;
 begin
  t:=Get64;
  t:=(((t shr 12) and $fffffffffffff)+((t shr 11) and 1)) or $4000000000000000;
- result:=double(pointer(@t)^)-3.0;
+ result:=TpvDouble(pointer(@t)^)-3.0;
 end;
 
-function TpvRandomGenerator.GetDoubleAbs:double; // 0.0 .. 1.0
+function TpvRandomGenerator.GetDoubleAbs:TpvDouble; // 0.0 .. 1.0
 var t:TpvInt64;
 begin
  t:=Get64;
  t:=(((t shr 12) and $7ffffffffffff)+((t shr 11) and 1)) or $3ff0000000000000;
- result:=double(pointer(@t)^)-1.0;
+ result:=TpvDouble(pointer(@t)^)-1.0;
 end;
 
-function TpvRandomGenerator.GetGaussianFloat:single; // -1.0 .. 1.0
-var x1,x2,w:single;
+function TpvRandomGenerator.GetGaussianFloat:TpvFloat; // -1.0 .. 1.0
+var x1,x2,w:TpvFloat;
     i:TpvUInt32;
 begin
  if fGaussianFloatUseLast then begin
@@ -698,7 +720,7 @@ begin
  end;
 end;
 
-function TpvRandomGenerator.GetGaussianFloatAbs:single; // 0.0 .. 1.0
+function TpvRandomGenerator.GetGaussianFloatAbs:TpvFloat; // 0.0 .. 1.0
 begin
  result:=(GetGaussianFloat+1.0)*0.5;
  if result<0.0 then begin
@@ -708,8 +730,8 @@ begin
  end;
 end;
 
-function TpvRandomGenerator.GetGaussianDouble:double; // -1.0 .. 1.0
-var x1,x2,w:double;
+function TpvRandomGenerator.GetGaussianDouble:TpvDouble; // -1.0 .. 1.0
+var x1,x2,w:TpvDouble;
     i:TpvUInt32;
 begin
  if fGaussianDoubleUseLast then begin
@@ -743,7 +765,7 @@ begin
  end;
 end;
 
-function TpvRandomGenerator.GetGaussianDoubleAbs:double; // 0.0 .. 1.0
+function TpvRandomGenerator.GetGaussianDoubleAbs:TpvDouble; // 0.0 .. 1.0
 begin
  result:=(GetGaussianDouble+1.0)*0.5;
  if result<0.0 then begin
@@ -756,6 +778,32 @@ end;
 function TpvRandomGenerator.GetGaussian(Limit:TpvUInt32):TpvUInt32;
 begin
  result:=round(GetGaussianDoubleAbs*((Limit-1)+0.25));
+end;
+
+function TpvRandomGenerator.GetUInt32Range(const aMin,aMax:TpvUInt32):TpvUInt32; // aMin .. aMax
+var Value:TpvUInt64;
+begin
+ result:=aMin+Get(aMax-aMin);
+end;
+
+function TpvRandomGenerator.GetFloatRange(const aMin,aMax:TpvFloat):TpvFloat; // aMin .. aMax
+begin
+ result:=aMin+(GetFloatAbs*(aMax-aMin));
+end;
+
+function TpvRandomGenerator.GetDoubleRange(const aMin,aMax:TpvDouble):TpvDouble; // aMin .. aMax
+begin
+  result:=aMin+(GetDoubleAbs*(aMax-aMin));
+end;
+
+function TpvRandomGenerator.GetGaussianFloatRange(const aMin,aMax:TpvFloat):TpvFloat; // aMin .. aMax
+begin
+ result:=aMin+(GetGaussianFloatAbs*(aMax-aMin));
+end;
+
+function TpvRandomGenerator.GetGaussianDoubleRange(const aMin,aMax:TpvDouble):TpvDouble; // aMin .. aMax
+begin
+ result:=aMin+(GetGaussianDoubleAbs*(aMax-aMin));
 end;
 
 constructor TpvRandomUnique32BitSequence.Create(const Seed1:TpvUInt32=$b46f23c7;const Seed2:TpvUInt32=$a54c2364);
@@ -804,6 +852,10 @@ begin
   fIncrement:=DefaultStream xor (aSeed*1566083941);
   inc(fIncrement,1-(fIncrement and 1));
  end;
+ fGaussianFloatUseLast:=false;
+ fGaussianFloatLast:=0.0;
+ fGaussianDoubleUseLast:=false;
+ fGaussianDoubleLast:=0.0;
 end;
 
 function TpvPCG32.Get32:TpvUInt32;
@@ -885,36 +937,167 @@ begin
  end;
 end;
 
-function TpvPCG32.GetFloat:single; // -1.0 .. 1.0
+function TpvPCG32.Get(Limit:TpvUInt32):TpvUInt32;
+begin
+ if (Limit and $ffff0000)=0 then begin
+  result:=((Get32 shr 16)*Limit) shr 16;
+ end else begin
+  result:=(TpvUInt64(Get32)*Limit) shr 32;
+ end;    
+end;
+
+function TpvPCG32.GetFloat:TpvFloat; // -1.0 .. 1.0
 var t:TpvUInt32;
 begin
  t:=Get32;
  t:=(((t shr 9) and $7fffff)+((t shr 8) and 1)) or $40000000;
- result:=single(pointer(@t)^)-3.0;
+ result:=TpvFloat(pointer(@t)^)-3.0;
 end;
 
-function TpvPCG32.GetFloatAbs:single; // 0.0 .. 1.0
+function TpvPCG32.GetFloatAbs:TpvFloat; // 0.0 .. 1.0
 var t:TpvUInt32;
 begin
  t:=Get32;
  t:=(((t shr 9) and $7fffff)+((t shr 8) and 1)) or $3f800000;
- result:=single(pointer(@t)^)-1.0;
+ result:=TpvFloat(pointer(@t)^)-1.0;
 end;
 
-function TpvPCG32.GetDouble:double; // -1.0 .. 1.0
+function TpvPCG32.GetDouble:TpvDouble; // -1.0 .. 1.0
 var t:TpvUInt64;
 begin
  t:=Get64;
  t:=(((t shr 12) and $fffffffffffff)+((t shr 11) and 1)) or $4000000000000000;
- result:=double(pointer(@t)^)-3.0;
+ result:=TpvDouble(pointer(@t)^)-3.0;
 end;
 
-function TpvPCG32.GetDoubleAbs:double; // 0.0 .. 1.0
+function TpvPCG32.GetDoubleAbs:TpvDouble; // 0.0 .. 1.0
 var t:TpvInt64;
 begin
  t:=Get64;
  t:=(((t shr 12) and $7ffffffffffff)+((t shr 11) and 1)) or $3ff0000000000000;
- result:=double(pointer(@t)^)-1.0;
+ result:=TpvDouble(pointer(@t)^)-1.0;
 end;
 
+function TpvPCG32.GetGaussianFloat:TpvFloat; // -1.0 .. 1.0
+var x1,x2,w:TpvFloat;
+    i:TpvUInt32;
+begin
+ if fGaussianFloatUseLast then begin
+  fGaussianFloatUseLast:=false;
+  result:=fGaussianFloatLast;
+ end else begin
+  i:=0;
+  repeat
+   x1:=GetFloat;
+   x2:=GetFloat;
+   w:=sqr(x1)+sqr(x2);
+   inc(i);
+  until ((i and $80000000)<>0) or (w<1.0);
+  if (i and $80000000)<>0 then begin
+   result:=x1;
+   fGaussianFloatLast:=x2;
+   fGaussianFloatUseLast:=true;
+  end else if abs(w)<1e-18 then begin
+   result:=0.0;
+  end else begin
+   w:=sqrt(((-2.0)*ln(w))/w);
+   result:=x1*w;
+   fGaussianFloatLast:=x2*w;
+   fGaussianFloatUseLast:=true;
+  end;
+ end;
+ if result<-1.0 then begin
+  result:=-1.0;
+ end else if result>1.0 then begin
+  result:=1.0;
+ end;
+end;
+
+function TpvPCG32.GetGaussianFloatAbs:TpvFloat; // 0.0 .. 1.0
+begin
+ result:=(GetGaussianFloat+1.0)*0.5;
+ if result<0.0 then begin
+  result:=0.0;
+ end else if result>1.0 then begin
+  result:=1.0;
+ end;
+end;
+
+function TpvPCG32.GetGaussianDouble:TpvDouble; // -1.0 .. 1.0
+var x1,x2,w:TpvDouble;
+    i:TpvUInt32;
+begin
+ if fGaussianDoubleUseLast then begin
+  fGaussianDoubleUseLast:=false;
+  result:=fGaussianDoubleLast;
+ end else begin
+  i:=0;
+  repeat
+   x1:=GetDouble;
+   x2:=GetDouble;
+   w:=sqr(x1)+sqr(x2);
+   inc(i);
+  until ((i and $80000000)<>0) or (w<1.0);
+  if (i and $80000000)<>0 then begin
+   result:=x1;
+   fGaussianDoubleLast:=x2;
+   fGaussianDoubleUseLast:=true;
+  end else if abs(w)<1e-18 then begin
+   result:=0.0;
+  end else begin
+   w:=sqrt(((-2.0)*ln(w))/w);
+   result:=x1*w;
+   fGaussianDoubleLast:=x2*w;
+   fGaussianDoubleUseLast:=true;
+  end;
+ end;
+ if result<-1.0 then begin
+  result:=-1.0;
+ end else if result>1.0 then begin
+  result:=1.0;
+ end;
+end;
+
+function TpvPCG32.GetGaussianDoubleAbs:TpvDouble; // 0.0 .. 1.0
+begin
+ result:=(GetGaussianDouble+1.0)*0.5;
+ if result<0.0 then begin
+  result:=0.0;
+ end else if result>1.0 then begin
+  result:=1.0;
+ end;
+end;
+
+function TpvPCG32.GetGaussian(Limit:TpvUInt32):TpvUInt32;
+begin
+ result:=round(GetGaussianDoubleAbs*((Limit-1)+0.25));
+end;  
+
+function TpvPCG32.GetUInt32Range(const aMin,aMax:TpvUInt32):TpvUInt32; // aMin .. aMax
+begin
+ result:=aMin+GetUnbiasedBounded32Bit(aMax-aMin);
+end;
+
+function TpvPCG32.GetFloatRange(const aMin,aMax:TpvFloat):TpvFloat; // aMin .. aMax
+begin
+ result:=aMin+(GetFloatAbs*(aMax-aMin));
+end;
+
+function TpvPCG32.GetDoubleRange(const aMin,aMax:TpvDouble):TpvDouble; // aMin .. aMax
+begin
+ result:=aMin+(GetDoubleAbs*(aMax-aMin));
+end;
+
+function TpvPCG32.GetGaussianFloatRange(const aMin,aMax:TpvFloat):TpvFloat; // aMin .. aMax
+begin
+ result:=aMin+(GetGaussianFloatAbs*(aMax-aMin));
+end;
+
+function TpvPCG32.GetGaussianDoubleRange(const aMin,aMax:TpvDouble):TpvDouble; // aMin .. aMax
+begin
+ result:=aMin+(GetGaussianDoubleAbs*(aMax-aMin));
+end;
+
+initialization
+ pvPCG32.Init(GetTickCount64 xor TpvUInt64($4c2a9d217a5cde81));
 end.
