@@ -82,10 +82,11 @@ type TpvSimpleParallelJobExecutor=class
             TWorkerThread=class(TPasMPThread)
               private
                fJobExecutor:TpvSimpleParallelJobExecutor;
+               fIndex:TPasMPInt32;
               protected
                procedure Execute; override;
               public
-               constructor Create(aJobExecutor:TpvSimpleParallelJobExecutor);
+               constructor Create(const aJobExecutor:TpvSimpleParallelJobExecutor;const aIndex:TPasMPInt32);
                destructor Destroy; override;
              end;
              TWorkerThreads=array of TWorkerThread;
@@ -128,9 +129,10 @@ implementation
 
 { TpvSimpleParallelJobExecutor.TWorkerThread }
 
-constructor TpvSimpleParallelJobExecutor.TWorkerThread.Create(aJobExecutor:TpvSimpleParallelJobExecutor);
+constructor TpvSimpleParallelJobExecutor.TWorkerThread.Create(const aJobExecutor:TpvSimpleParallelJobExecutor;const aIndex:TPasMPInt32);
 begin
  fJobExecutor:=aJobExecutor;
+ fIndex:=aIndex;
  inherited Create(false); // non-suspended thread
 end;
 
@@ -173,7 +175,7 @@ begin
   fJobExecutor.fAwareConditionVariable.Broadcast;
 
   if assigned(Job) and assigned(Job^.JobMethod) and not Terminated then begin
-   Job^.JobMethod(Job.Data,0);
+   Job^.JobMethod(Job^.Data,fIndex);
   end;
 
   fJobExecutor.fSleepConditionVariableLock.Acquire;
@@ -221,7 +223,7 @@ begin
  SetLength(fWorkerThreads,CountThreads);
 
  for Index:=0 to length(fWorkerThreads)-1 do begin
-  fWorkerThreads[Index]:=TWorkerThread.Create(self);
+  fWorkerThreads[Index]:=TWorkerThread.Create(self,Index);
  end;
 
 end;
