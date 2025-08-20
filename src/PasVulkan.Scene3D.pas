@@ -28309,7 +28309,8 @@ begin
 
  inherited Create(aResourceManager,aParent,aMetaResource);
 
- fPasMPInstance:=pvApplication.PasMPInstance;
+ fPasMPInstance:=TPasMP.Create;
+//fPasMPInstance:=pvApplication.PasMPInstance;
 
  fLoadLock:=TPasMPSpinLock.Create;
 
@@ -29875,6 +29876,8 @@ begin
  for Index:=0 to fCountInFlightFrames-1 do begin
   FreeAndNil(fProcessFrameTimerQueries[Index]);
  end;
+
+ FreeAndNIl(fPasMPInstance);
 
  inherited Destroy;
 end;
