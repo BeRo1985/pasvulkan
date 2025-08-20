@@ -89,6 +89,16 @@ type TpvSimpleParallelJobExecutor=class
                destructor Destroy; override;
              end;
              TWorkerThreads=array of TWorkerThread;
+             TParallelForJobMethod=procedure(const aData:pointer;const aFromIndex,aToIndex:TPasMPUInt32) of object;
+             TParallelForJobData=record
+              StartIndex:TPasMPUInt32;
+              EndIndex:TPasMPUInt32;
+              Granularity:TPasMPUInt32;
+              Current:TPasMPUInt32;
+              Method:TParallelForJobMethod;
+              Data:Pointer;
+             end;
+             PParallelForJobData=^TParallelForJobData;
       private
        fMaxThreads:TpvSizeInt;
        fWorkerThreads:TWorkerThreads;
@@ -103,6 +113,7 @@ type TpvSimpleParallelJobExecutor=class
        fSleepConditionVariableLock:TPasMPConditionVariableLock;
        fSleepConditionVariable:TPasMPConditionVariable;
        fWakeUpGeneration:TPasMPUInt64;
+       procedure ParallelForJobMethod(const aData:pointer);
        procedure WakeUpThreads;
        procedure WaitForThreads;                 
       public
@@ -261,6 +272,33 @@ begin
   fWorkerThreads:=nil;
 
  end;
+
+end;
+
+procedure TpvSimpleParallelJobExecutor.ParallelForJobMethod(const aData:pointer);
+var JobData:PParallelForJobData absolute aData;
+    CurrentIndex,StartIndex,EndIndex:TPasMPUInt32;
+begin
+
+ repeat
+
+  CurrentIndex:=TPasMPUInt32(TPasMPInterlocked.Add(JobData^.Current,JobData^.Granularity));
+
+  StartIndex:=CurrentIndex;
+  EndIndex:=(CurrentIndex+JobData^.Granularity)-1;
+  if EndIndex>=JobData^.EndIndex then begin
+   EndIndex:=JobData^.EndIndex;
+  end;
+
+  if StartIndex<=EndIndex then begin
+   if assigned(JobData^.Method) then begin
+    JobData^.Method(JobData^.Data,StartIndex,EndIndex);
+   end;
+  end else begin
+   break;
+  end;
+
+ until EndIndex>=JobData^.EndIndex;
 
 end;
 
