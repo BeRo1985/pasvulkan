@@ -295,6 +295,7 @@ begin
 
  repeat
 
+  // Fetch-and-add (a.k.a. ExchangeAdd) which returns the previous value
   CurrentIndex:=TPasMPInt32(TPasMPInterlocked.Add(JobData^.Current,JobData^.Granularity));
 
   StartIndex:=CurrentIndex;
