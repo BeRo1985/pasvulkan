@@ -73,7 +73,7 @@ uses SysUtils,
 // But no querying of jobs and no job management features are provided. Just a simple parallel job executor as such.
 type TpvSimpleParallelJobExecutor=class
       public
-       type TJobMethod=procedure(const aData:pointer) of object;
+       type TJobMethod=procedure(const aData:pointer;const aThreadIndex:TPasMPInt32) of object;
             TJob=record
              JobMethod:TJobMethod;
              Data:Pointer;
@@ -89,7 +89,7 @@ type TpvSimpleParallelJobExecutor=class
                destructor Destroy; override;
              end;
              TWorkerThreads=array of TWorkerThread;
-             TParallelForJobMethod=procedure(const aData:pointer;const aFromIndex,aToIndex:TPasMPUInt32) of object;
+             TParallelForJobMethod=procedure(const aData:pointer;const aFromIndex,aToIndex:TPasMPUInt32;const aThreadIndex:TPasMPInt32) of object;
              TParallelForJobData=record
               StartIndex:TPasMPUInt32;
               EndIndex:TPasMPUInt32;
@@ -113,7 +113,7 @@ type TpvSimpleParallelJobExecutor=class
        fSleepConditionVariableLock:TPasMPConditionVariableLock;
        fSleepConditionVariable:TPasMPConditionVariable;
        fWakeUpGeneration:TPasMPUInt64;
-       procedure ParallelForJobMethod(const aData:pointer);
+       procedure ParallelForJobMethod(const aData:pointer;const aThreadIndex:TPasMPInt32);
        procedure WakeUpThreads;
        procedure WaitForThreads;                 
       public
@@ -173,7 +173,7 @@ begin
   fJobExecutor.fAwareConditionVariable.Broadcast;
 
   if assigned(Job) and assigned(Job^.JobMethod) and not Terminated then begin
-   Job^.JobMethod(Job.Data);
+   Job^.JobMethod(Job.Data,0);
   end;
 
   fJobExecutor.fSleepConditionVariableLock.Acquire;
@@ -276,7 +276,7 @@ begin
 
 end;
 
-procedure TpvSimpleParallelJobExecutor.ParallelForJobMethod(const aData:pointer);
+procedure TpvSimpleParallelJobExecutor.ParallelForJobMethod(const aData:pointer;const aThreadIndex:TPasMPInt32);
 var JobData:PParallelForJobData absolute aData;
     CurrentIndex,StartIndex,EndIndex:TPasMPUInt32;
 begin
@@ -293,7 +293,7 @@ begin
 
   if StartIndex<=EndIndex then begin
    if assigned(JobData^.Method) then begin
-    JobData^.Method(JobData^.Data,StartIndex,EndIndex);
+    JobData^.Method(JobData^.Data,StartIndex,EndIndex,aThreadIndex);
    end;
   end else begin
    break;
@@ -315,7 +315,7 @@ begin
  end;
 
  if assigned(aJobMethod) then begin
-  aJobMethod(aData);
+  aJobMethod(aData,-1);
  end;
 
  if length(fWorkerThreads)>0 then begin
