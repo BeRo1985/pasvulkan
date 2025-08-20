@@ -9391,7 +9391,7 @@ begin
         GetMem(OutData,fPrecipitationMapResolution*fPrecipitationMapResolution*SizeOf(TpvUInt8));
         try
          aStream.ReadBuffer(InData^,RainMapDataChunkHeader.Resolution*RainMapDataChunkHeader.Resolution*SizeOf(TpvUInt8));
-         BackwardTransformR8Data(InData,DecodedInData,RainMapDataChunkHeader.Resolution*RainMapDataChunkHeader.Resolution*SizeOf(TpvFloat));
+         BackwardTransformR8Data(InData,DecodedInData,RainMapDataChunkHeader.Resolution*RainMapDataChunkHeader.Resolution*SizeOf(TpvUInt8));
          ResizeR8(DecodedInData,RainMapDataChunkHeader.Resolution,RainMapDataChunkHeader.Resolution,
                   OutData,fPrecipitationMapResolution,fPrecipitationMapResolution);
          fPrecipitationMapData.WriteBuffer(OutData^,fPrecipitationMapResolution*fPrecipitationMapResolution*SizeOf(TpvUInt8));
@@ -9457,7 +9457,7 @@ begin
          
          aStream.ReadBuffer(InData^,PrecipitationMapDataChunkHeader.Resolution*PrecipitationMapDataChunkHeader.Resolution*SizeOf(TpvUInt8));
          
-         BackwardTransformR8Data(InData,DecodedInData,PrecipitationMapDataChunkHeader.Resolution*PrecipitationMapDataChunkHeader.Resolution*SizeOf(TpvFloat));
+         BackwardTransformR8Data(InData,DecodedInData,PrecipitationMapDataChunkHeader.Resolution*PrecipitationMapDataChunkHeader.Resolution*SizeOf(TpvUInt8));
          
          // -128..127 => 0..255 so that the resizing works correctly here          
          for Index:=0 to (fPrecipitationMapResolution*fPrecipitationMapResolution)-1 do begin
@@ -9599,7 +9599,7 @@ begin
         GetMem(OutData,fAtmosphereMapResolution*fAtmosphereMapResolution*SizeOf(TpvUInt8));
         try
          aStream.ReadBuffer(InData^,AtmosphereMapDataChunkHeader.Resolution*AtmosphereMapDataChunkHeader.Resolution*SizeOf(TpvUInt8));
-         BackwardTransformR8Data(InData,DecodedInData,AtmosphereMapDataChunkHeader.Resolution*AtmosphereMapDataChunkHeader.Resolution*SizeOf(TpvFloat));
+         BackwardTransformR8Data(InData,DecodedInData,AtmosphereMapDataChunkHeader.Resolution*AtmosphereMapDataChunkHeader.Resolution*SizeOf(TpvUInt8));
          ResizeR8(DecodedInData,AtmosphereMapDataChunkHeader.Resolution,AtmosphereMapDataChunkHeader.Resolution,
                   OutData,fAtmosphereMapResolution,fAtmosphereMapResolution);
          fAtmosphereMapData.WriteBuffer(OutData^,fAtmosphereMapResolution*fAtmosphereMapResolution*SizeOf(TpvUInt8));
