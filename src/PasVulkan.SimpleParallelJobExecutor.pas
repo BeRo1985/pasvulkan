@@ -121,6 +121,7 @@ type TpvSimpleParallelJobExecutor=class
        destructor Destroy; override;
        procedure Shutdown;
        procedure Execute(const aJobMethod:TJobMethod;const aData:Pointer);
+       procedure ParallelFor(const aMethod:TParallelForJobMethod;const aData:pointer;const aFromIndex,aToIndex:TpvUInt32;const aGranularity:TpvUInt32=1);
      end;
 
 implementation
@@ -364,6 +365,22 @@ begin
  finally
   fSleepConditionVariableLock.Release;
  end;
+end;
+
+procedure TpvSimpleParallelJobExecutor.ParallelFor(const aMethod:TParallelForJobMethod;const aData:pointer;const aFromIndex,aToIndex:TpvUInt32;const aGranularity:TpvUInt32);
+var JobData:TParallelForJobData;
+begin
+ JobData.Method:=aMethod;
+ JobData.Data:=aData;
+ JobData.StartIndex:=aFromIndex;
+ JobData.EndIndex:=aToIndex;
+ JobData.Current:=aFromIndex;
+ if aGranularity>1 then begin
+  JobData.Granularity:=aGranularity;
+ end else begin
+  JobData.Granularity:=1; // Ensure minimum granularity to avoid starvation and deadlock
+ end;
+ Execute(@ParallelForJobMethod,@JobData);
 end;
 
 end.
