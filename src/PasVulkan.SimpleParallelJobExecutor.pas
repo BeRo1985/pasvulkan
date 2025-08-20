@@ -380,7 +380,7 @@ begin
  end else begin
   JobData.Granularity:=1; // Ensure minimum granularity to avoid starvation and deadlock
  end;
- Execute(@ParallelForJobMethod,@JobData);
+ Execute(ParallelForJobMethod,@JobData);
 end;
 
 end.
