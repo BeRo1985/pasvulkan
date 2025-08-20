@@ -116,7 +116,7 @@ type TpvSimpleParallelJobExecutor=class
        fWakeUpGeneration:TPasMPUInt64;
        procedure ParallelForJobMethod(const aData:pointer;const aThreadIndex:TPasMPInt32);
        procedure WakeUpThreads;
-       procedure WaitUntilAlllThreadsAreStarted;                 
+       procedure WaitUntilAllThreadsWokeUp;
        procedure WaitForThreads;                 
       public
        constructor Create(const aMaxThreads:TpvSizeInt=-1);
