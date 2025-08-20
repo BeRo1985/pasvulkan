@@ -34052,11 +34052,11 @@ procedure TpvScene3D.UpdateRaytracing(const aCommandBuffer:TpvVulkanCommandBuffe
 begin
  if assigned(fRaytracing) then begin
   fRaytracing.Update(fVulkanFrameGraphStagingQueue,
-                                fVulkanFrameGraphStagingCommandBuffer,
-                                fVulkanFrameGraphStagingFence,
-                                aCommandBuffer,
-                                aInFlightFrameIndex,
-                                aLabels);
+                     fVulkanFrameGraphStagingCommandBuffer,
+                     fVulkanFrameGraphStagingFence,
+                     aCommandBuffer,
+                     aInFlightFrameIndex,
+                     aLabels);
  end;
 end;
 
