@@ -117,7 +117,7 @@ type TpvSimpleParallelJobExecutor=class
        procedure ParallelForJobMethod(const aData:pointer;const aThreadIndex:TPasMPInt32);
        procedure WakeUpThreads;
        procedure WaitUntilAllThreadsWokeUp;
-       procedure WaitForThreads;                 
+       procedure WaitForThreads;
       public
        constructor Create(const aMaxThreads:TpvSizeInt=-1);
        destructor Destroy; override;
@@ -281,10 +281,10 @@ begin
    fWorkerThreads:=nil;
 
   end;
- 
+
  finally
   fLock.Release;
- end; 
+ end;
 
 end;
 
@@ -319,19 +319,19 @@ end;
 procedure TpvSimpleParallelJobExecutor.Execute(const aJobMethod:TJobMethod;const aData:Pointer);
 var HasWorkers:Boolean;
 begin
- 
+
  HasWorkers:=length(fWorkerThreads)>0;
 
  // Only a job at the same time
  fLock.Acquire;
- try 
+ try
 
   if HasWorkers then begin
 
    // Ensure that the job data are properly visible during the CV-wait
    fWakeUpConditionVariableLock.Acquire;
    try
-   
+
     fJob.JobMethod:=aJobMethod;
     fJob.Data:=aData;
 
@@ -363,7 +363,7 @@ begin
 
  finally
   fLock.Release;
- end; 
+ end;
 
 end;
 
