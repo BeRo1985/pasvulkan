@@ -344,8 +344,6 @@ begin
     fWakeUpConditionVariableLock.Release;
    end;
 
-   WaitUntilAllThreadsWokeUp;
-
   end else begin
    fJob.JobMethod:=aJobMethod;
    fJob.Data:=aData;
@@ -356,7 +354,11 @@ begin
   end;
 
   if HasWorkers then begin
+
+   WaitUntilAllThreadsWokeUp;
+
    WaitForThreads;
+
   end;
 
  finally
