@@ -183,8 +183,6 @@ var Index,CountThreads:TpvSizeInt;
 begin
  inherited Create;
 
- fPALM:=fTransformerInferenceInstance.fPALM;
-
  fLock:=TPasMPSlimReaderWriterLock.Create;
 
  fWakeUpConditionVariableLock:=TPasMPConditionVariableLock.Create;
