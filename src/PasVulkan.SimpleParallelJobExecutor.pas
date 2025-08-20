@@ -91,6 +91,7 @@ type TpvSimpleParallelJobExecutor=class
              TWorkerThreads=array of TWorkerThread;
       private
        fMaxThreads:TpvSizeInt;
+       fWorkerThreads:TWorkerThreads;
        fLock:TPasMPSlimReaderWriterLock;
        fJob:TJob;
        fStartedThreads:TPasMPInt32;
@@ -127,7 +128,7 @@ begin
 end;
 
 procedure TpvSimpleParallelJobExecutor.TWorkerThread.Execute;
-var Job:PPALMJobExecutorJob;
+var Job:PJob;
     WakeUpGeneration:TPasMPUInt64;
 begin
 
@@ -208,7 +209,7 @@ begin
  SetLength(fWorkerThreads,CountThreads);
 
  for Index:=0 to length(fWorkerThreads)-1 do begin
-  fWorkerThreads[Index]:=TPALMJobExecutorWorkerThread.Create(self);
+  fWorkerThreads[Index]:=TWorkerThread.Create(self);
  end;
 
 end;
