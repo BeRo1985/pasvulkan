@@ -29877,7 +29877,7 @@ begin
   FreeAndNil(fProcessFrameTimerQueries[Index]);
  end;
 
- FreeAndNIl(fPasMPInstance);
+ FreeAndNil(fPasMPInstance);
 
  inherited Destroy;
 end;
