@@ -13982,13 +13982,13 @@ begin
 
  if fDownsampleDownloadedGeneration<>fDownsampleProcessedGeneration then begin  
   try  
-{  fPlanet.fVulkanDevice.MemoryStaging.Download(aQueue,
+   fPlanet.fVulkanDevice.MemoryStaging.Download(aQueue,
                                                 aCommandBuffer,
                                                 aFence,
                                                 fPlanet.fData.fWaterMiniMapBuffer,
                                                 0,
                                                 fPlanet.fData.fWaterMiniMapData[0],
-                                                fPlanet.fWaterMiniMapResolution*fPlanet.fWaterMiniMapResolution*SizeOf(TpvFloat));}
+                                                fPlanet.fWaterMiniMapResolution*fPlanet.fWaterMiniMapResolution*SizeOf(TpvFloat));
 
   finally
    fDownsampleDownloadedGeneration:=fDownsampleProcessedGeneration;
