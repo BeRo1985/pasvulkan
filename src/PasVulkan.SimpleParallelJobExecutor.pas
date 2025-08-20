@@ -116,6 +116,7 @@ type TpvSimpleParallelJobExecutor=class
        fWakeUpGeneration:TPasMPUInt64;
        procedure ParallelForJobMethod(const aData:pointer;const aThreadIndex:TPasMPInt32);
        procedure WakeUpThreads;
+       procedure WaitUntilAlllThreadsAreStarted;                 
        procedure WaitForThreads;                 
       public
        constructor Create(const aMaxThreads:TpvSizeInt=-1);
@@ -257,24 +258,33 @@ procedure TpvSimpleParallelJobExecutor.Shutdown;
 var Index:TpvSizeInt;
 begin
 
- if length(fWorkerThreads)>0 then begin
+ fLock.Acquire;
+ try
 
-  for Index:=0 to length(fWorkerThreads)-1 do begin
-   fWorkerThreads[Index].Terminate;
+  if length(fWorkerThreads)>0 then begin
+
+   for Index:=0 to length(fWorkerThreads)-1 do begin
+    fWorkerThreads[Index].Terminate;
+   end;
+
+   WakeUpThreads;
+
+   WaitUntilAllThreadsWokeUp;
+
+   WaitForThreads;
+
+   for Index:=0 to length(fWorkerThreads)-1 do begin
+    fWorkerThreads[Index].WaitFor;
+    FreeAndNil(fWorkerThreads[Index]);
+   end;
+
+   fWorkerThreads:=nil;
+
   end;
-
-  WakeUpThreads;
-
-  WaitForThreads;
-
-  for Index:=0 to length(fWorkerThreads)-1 do begin
-   fWorkerThreads[Index].WaitFor;
-   FreeAndNil(fWorkerThreads[Index]);
-  end;
-
-  fWorkerThreads:=nil;
-
- end;
+ 
+ finally
+  fLock.Release;
+ end; 
 
 end;
 
@@ -306,23 +316,51 @@ begin
 end;
 
 procedure TpvSimpleParallelJobExecutor.Execute(const aJobMethod:TJobMethod;const aData:Pointer);
+var HasWorkers:Boolean;
 begin
+ 
+ HasWorkers:=length(fWorkerThreads)>0;
 
- fJob.JobMethod:=aJobMethod;
+ // Only a job at the same time
+ fLock.Acquire;
+ try 
 
- fJob.Data:=aData;
+  if HasWorkers then begin
 
- if length(fWorkerThreads)>0 then begin
-  WakeUpThreads;
- end;
+   // Ensure that the job data are properly visible during the CV-wait
+   fWakeUpConditionVariableLock.Acquire;
+   try
+   
+    fJob.JobMethod:=aJobMethod;
+    fJob.Data:=aData;
 
- if assigned(aJobMethod) then begin
-  aJobMethod(aData,-1);
- end;
+    fStartedThreads:=0;
+    fStoppedThreads:=0;
+    inc(fWakeUpGeneration);
+    fWakeUpConditionVariable.Broadcast;
 
- if length(fWorkerThreads)>0 then begin
-  WaitForThreads;
- end;
+   finally
+    fWakeUpConditionVariableLock.Release;
+   end;
+
+   WaitUntilAllThreadsWokeUp;
+
+  end else begin
+   fJob.JobMethod:=aJobMethod;
+   fJob.Data:=aData;
+  end;
+
+  if assigned(aJobMethod) then begin
+   aJobMethod(aData,-1);
+  end;
+
+  if HasWorkers then begin
+   WaitForThreads;
+  end;
+
+ finally
+  fLock.Release;
+ end; 
 
 end;
 
@@ -335,12 +373,15 @@ begin
  fWakeUpConditionVariableLock.Acquire;
  try
   inc(fWakeUpGeneration);
+  fWakeUpConditionVariable.Broadcast;
  finally
   fWakeUpConditionVariableLock.Release;
  end;
 
- fWakeUpConditionVariable.Broadcast;
+end;
 
+procedure TpvSimpleParallelJobExecutor.WaitUntilAllThreadsWokeUp;
+begin
  fAwareConditionVariableLock.Acquire;
  try
   while fStartedThreads<length(fWorkerThreads) do begin
@@ -354,7 +395,6 @@ begin
  finally
   fAwareConditionVariableLock.Release;
  end;
-
 end;
 
 procedure TpvSimpleParallelJobExecutor.WaitForThreads;
