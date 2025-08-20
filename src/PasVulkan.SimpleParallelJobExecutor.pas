@@ -89,12 +89,12 @@ type TpvSimpleParallelJobExecutor=class
                destructor Destroy; override;
              end;
              TWorkerThreads=array of TWorkerThread;
-             TParallelForJobMethod=procedure(const aData:pointer;const aFromIndex,aToIndex:TPasMPUInt32;const aThreadIndex:TPasMPInt32) of object;
+             TParallelForJobMethod=procedure(const aData:pointer;const aFromIndex,aToIndex:TPasMPInt32;const aThreadIndex:TPasMPInt32) of object;
              TParallelForJobData=record
-              StartIndex:TPasMPUInt32;
-              EndIndex:TPasMPUInt32;
-              Granularity:TPasMPUInt32;
-              Current:TPasMPUInt32;
+              StartIndex:TPasMPInt32;
+              EndIndex:TPasMPInt32;
+              Granularity:TPasMPInt32;
+              Current:TPasMPInt32;
               Method:TParallelForJobMethod;
               Data:Pointer;
              end;
@@ -121,7 +121,7 @@ type TpvSimpleParallelJobExecutor=class
        destructor Destroy; override;
        procedure Shutdown;
        procedure Execute(const aJobMethod:TJobMethod;const aData:Pointer);
-       procedure ParallelFor(const aMethod:TParallelForJobMethod;const aData:pointer;const aFromIndex,aToIndex:TpvUInt32;const aGranularity:TpvUInt32=1);
+       procedure ParallelFor(const aMethod:TParallelForJobMethod;const aData:pointer;const aFromIndex,aToIndex:TpvInt32;const aGranularity:TpvInt32=1);
      end;
 
 implementation
@@ -278,12 +278,12 @@ end;
 
 procedure TpvSimpleParallelJobExecutor.ParallelForJobMethod(const aData:pointer;const aThreadIndex:TPasMPInt32);
 var JobData:PParallelForJobData absolute aData;
-    CurrentIndex,StartIndex,EndIndex:TPasMPUInt32;
+    CurrentIndex,StartIndex,EndIndex:TPasMPInt32;
 begin
 
  repeat
 
-  CurrentIndex:=TPasMPUInt32(TPasMPInterlocked.Add(JobData^.Current,JobData^.Granularity));
+  CurrentIndex:=TPasMPInt32(TPasMPInterlocked.Add(JobData^.Current,JobData^.Granularity));
 
   StartIndex:=CurrentIndex;
   EndIndex:=(CurrentIndex+JobData^.Granularity)-1;
@@ -367,20 +367,22 @@ begin
  end;
 end;
 
-procedure TpvSimpleParallelJobExecutor.ParallelFor(const aMethod:TParallelForJobMethod;const aData:pointer;const aFromIndex,aToIndex:TpvUInt32;const aGranularity:TpvUInt32);
+procedure TpvSimpleParallelJobExecutor.ParallelFor(const aMethod:TParallelForJobMethod;const aData:pointer;const aFromIndex,aToIndex:TpvInt32;const aGranularity:TpvInt32);
 var JobData:TParallelForJobData;
 begin
- JobData.Method:=aMethod;
- JobData.Data:=aData;
- JobData.StartIndex:=aFromIndex;
- JobData.EndIndex:=aToIndex;
- JobData.Current:=aFromIndex;
- if aGranularity>1 then begin
-  JobData.Granularity:=aGranularity;
- end else begin
-  JobData.Granularity:=1; // Ensure minimum granularity to avoid starvation and deadlock
+ if aFromIndex<=aToIndex then begin
+  JobData.Method:=aMethod;
+  JobData.Data:=aData;
+  JobData.StartIndex:=aFromIndex;
+  JobData.EndIndex:=aToIndex;
+  JobData.Current:=aFromIndex;
+  if aGranularity>1 then begin
+   JobData.Granularity:=aGranularity;
+  end else begin
+   JobData.Granularity:=1; // Ensure minimum granularity to avoid starvation and deadlock
+  end;
+  Execute(ParallelForJobMethod,@JobData);
  end;
- Execute(ParallelForJobMethod,@JobData);
 end;
 
 end.
