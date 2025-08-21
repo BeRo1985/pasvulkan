@@ -420,6 +420,7 @@ type EpvVulkanException=class(Exception);
        fVulkan12Properties:TVkPhysicalDeviceVulkan12Properties;
        fVulkan13Features:TVkPhysicalDeviceVulkan13Features;
        fVulkan13Properties:TVkPhysicalDeviceVulkan13Properties;
+       fShader16BitStorageFeaturesKHR:TVkPhysicalDevice16BitStorageFeaturesKHR;
        fMultiviewFeaturesKHR:TVkPhysicalDeviceMultiviewFeaturesKHR;
        fMultiviewPropertiesKHR:TVkPhysicalDeviceMultiviewPropertiesKHR;
        fPhysicalDeviceAddressBindingReportFeaturesEXT:TVkPhysicalDeviceAddressBindingReportFeaturesEXT;
@@ -506,6 +507,7 @@ type EpvVulkanException=class(Exception);
        property Vulkan12Properties:TVkPhysicalDeviceVulkan12Properties read fVulkan12Properties;
        property Vulkan13Features:TVkPhysicalDeviceVulkan13Features read fVulkan13Features;
        property Vulkan13Properties:TVkPhysicalDeviceVulkan13Properties read fVulkan13Properties;
+       property Shader16BitStorageFeaturesKHR:TVkPhysicalDevice16BitStorageFeaturesKHR read fShader16BitStorageFeaturesKHR;
        property MultiviewFeaturesKHR:TVkPhysicalDeviceMultiviewFeaturesKHR read fMultiviewFeaturesKHR;
        property MultiviewPropertiesKHR:TVkPhysicalDeviceMultiviewPropertiesKHR read fMultiviewPropertiesKHR;
        property PhysicalDeviceAddressBindingReportFeaturesEXT:TVkPhysicalDeviceAddressBindingReportFeaturesEXT read fPhysicalDeviceAddressBindingReportFeaturesEXT;
@@ -733,6 +735,7 @@ type EpvVulkanException=class(Exception);
        fVulkan11Features:TVkPhysicalDeviceVulkan11Features;
        fVulkan12Features:TVkPhysicalDeviceVulkan12Features;
        fVulkan13Features:TVkPhysicalDeviceVulkan13Features;
+       fShader16BitStorageFeaturesKHR:TVkPhysicalDevice16BitStorageFeaturesKHR;
        fMultiviewFeaturesKHR:TVkPhysicalDeviceMultiviewFeaturesKHR;
        fPhysicalDeviceAddressBindingReportFeaturesEXT:TVkPhysicalDeviceAddressBindingReportFeaturesEXT;
        fMultiDrawFeaturesEXT:TVkPhysicalDeviceMultiDrawFeaturesEXT;
@@ -819,6 +822,7 @@ type EpvVulkanException=class(Exception);
        property Vulkan11Features:TVkPhysicalDeviceVulkan11Features read fVulkan11Features write fVulkan11Features;
        property Vulkan12Features:TVkPhysicalDeviceVulkan12Features read fVulkan12Features write fVulkan12Features;
        property Vulkan13Features:TVkPhysicalDeviceVulkan13Features read fVulkan13Features write fVulkan13Features;
+       property Shader16BitStorageFeaturesKHR:TVkPhysicalDevice16BitStorageFeaturesKHR read fShader16BitStorageFeaturesKHR write fShader16BitStorageFeaturesKHR;
        property MultiviewFeaturesKHR:TVkPhysicalDeviceMultiviewFeaturesKHR read fMultiviewFeaturesKHR write fMultiviewFeaturesKHR;
        property PhysicalDeviceAddressBindingReportFeaturesEXT:TVkPhysicalDeviceAddressBindingReportFeaturesEXT read fPhysicalDeviceAddressBindingReportFeaturesEXT write fPhysicalDeviceAddressBindingReportFeaturesEXT;
        property MultiDrawFeaturesEXT:TVkPhysicalDeviceMultiDrawFeaturesEXT read fMultiDrawFeaturesEXT write fMultiDrawFeaturesEXT;
@@ -8661,6 +8665,9 @@ begin
 
  begin
 
+  FillChar(fShader16BitStorageFeaturesKHR,SizeOf(TVkPhysicalDevice16BitStorageFeaturesKHR),#0);
+  fShader16BitStorageFeaturesKHR.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES;
+
   FillChar(fMultiviewFeaturesKHR,SizeOf(TVkPhysicalDeviceMultiviewFeaturesKHR),#0);
   fMultiviewFeaturesKHR.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES_KHR;
 
@@ -8670,6 +8677,11 @@ begin
    fVulkan11Features.pNext:=fFeatures2KHR.pNext;
    fFeatures2KHR.pNext:=@fVulkan11Features;
   end else begin
+
+   if AvailableExtensionNames.IndexOf(VK_KHR_16BIT_STORAGE_EXTENSION_NAME)>=0 then begin
+    fShader16BitStorageFeaturesKHR.pNext:=fFeatures2KHR.pNext;
+    fFeatures2KHR.pNext:=@fShader16BitStorageFeaturesKHR;
+   end;
 
    if MultiviewSupportEnabled then begin
     fMultiviewFeaturesKHR.pNext:=fFeatures2KHR.pNext;
@@ -8871,6 +8883,11 @@ begin
  fMultiviewPropertiesKHR.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_PROPERTIES_KHR;
 
  if (fInstance.APIVersion and VK_API_VERSION_WITHOUT_PATCH_MASK)>=VK_API_VERSION_1_2 then begin
+
+  fShader16BitStorageFeaturesKHR.storageBuffer16BitAccess:=fVulkan11Features.storageBuffer16BitAccess;
+  fShader16BitStorageFeaturesKHR.storageInputOutput16:=fVulkan11Features.storageInputOutput16;
+  fShader16BitStorageFeaturesKHR.storagePushConstant16:=fVulkan11Features.storagePushConstant16;
+  fShader16BitStorageFeaturesKHR.uniformAndStorageBuffer16BitAccess:=fVulkan11Features.uniformAndStorageBuffer16BitAccess;
 
   fMultiviewFeaturesKHR.multiview:=fVulkan11Features.multiview;
   fMultiviewFeaturesKHR.multiviewGeometryShader:=fVulkan11Features.multiviewGeometryShader;
@@ -10695,6 +10712,9 @@ begin
    FillChar(fVulkan11Features,SizeOf(TVkPhysicalDeviceVulkan11Features),#0);
    fVulkan11Features.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
 
+   FillChar(fShader16BitStorageFeaturesKHR,SizeOf(TVkPhysicalDevice16BitStorageFeaturesKHR),#0);
+   fShader16BitStorageFeaturesKHR.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES;
+
    FillChar(fMultiviewFeaturesKHR,SizeOf(TVkPhysicalDeviceMultiviewFeatures),#0);
    fMultiviewFeaturesKHR.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES_KHR;
 
@@ -10702,6 +10722,16 @@ begin
 
     fVulkan11Features.pNext:=DeviceCreateInfo.pNext;
     DeviceCreateInfo.pNext:=@fVulkan11Features;
+
+    fVulkan11Features.storageBuffer16BitAccess:=PhysicalDevice.fVulkan11Features.storageBuffer16BitAccess;
+    fVulkan11Features.storageInputOutput16:=PhysicalDevice.fVulkan11Features.storageInputOutput16;
+    fVulkan11Features.storagePushConstant16:=PhysicalDevice.fVulkan11Features.storagePushConstant16;
+    fVulkan11Features.uniformAndStorageBuffer16BitAccess:=PhysicalDevice.fVulkan11Features.uniformAndStorageBuffer16BitAccess;
+
+    fShader16BitStorageFeaturesKHR.storageBuffer16BitAccess:=PhysicalDevice.fVulkan11Features.storageBuffer16BitAccess;
+    fShader16BitStorageFeaturesKHR.storageInputOutput16:=PhysicalDevice.fVulkan11Features.storageInputOutput16;
+    fShader16BitStorageFeaturesKHR.storagePushConstant16:=PhysicalDevice.fVulkan11Features.storagePushConstant16;
+    fShader16BitStorageFeaturesKHR.uniformAndStorageBuffer16BitAccess:=PhysicalDevice.fVulkan11Features.uniformAndStorageBuffer16BitAccess;
 
     fVulkan11Features.multiview:=PhysicalDevice.fVulkan11Features.multiview;
     fVulkan11Features.multiviewTessellationShader:=PhysicalDevice.fVulkan11Features.multiviewTessellationShader;
@@ -10712,6 +10742,19 @@ begin
     fMultiviewFeaturesKHR.multiviewGeometryShader:=PhysicalDevice.fVulkan11Features.multiviewGeometryShader;
 
    end else begin
+
+    if (fEnabledExtensionNames.IndexOf(VK_KHR_16BIT_STORAGE_EXTENSION_NAME)>=0) and
+       ((fPhysicalDevice.fShader16BitStorageFeaturesKHR.storageBuffer16BitAccess<>VK_FALSE) or
+        (fPhysicalDevice.fShader16BitStorageFeaturesKHR.storageInputOutput16<>VK_FALSE) or
+        (fPhysicalDevice.fShader16BitStorageFeaturesKHR.storagePushConstant16<>VK_FALSE) or
+        (fPhysicalDevice.fShader16BitStorageFeaturesKHR.uniformAndStorageBuffer16BitAccess<>VK_FALSE)) then begin
+     fShader16BitStorageFeaturesKHR.pNext:=DeviceCreateInfo.pNext;
+     DeviceCreateInfo.pNext:=@fShader16BitStorageFeaturesKHR;
+     fShader16BitStorageFeaturesKHR.storageBuffer16BitAccess:=fPhysicalDevice.fShader16BitStorageFeaturesKHR.storageBuffer16BitAccess;
+     fShader16BitStorageFeaturesKHR.storageInputOutput16:=fPhysicalDevice.fShader16BitStorageFeaturesKHR.storageInputOutput16;
+     fShader16BitStorageFeaturesKHR.storagePushConstant16:=fPhysicalDevice.fShader16BitStorageFeaturesKHR.storagePushConstant16;
+     fShader16BitStorageFeaturesKHR.uniformAndStorageBuffer16BitAccess:=fPhysicalDevice.fShader16BitStorageFeaturesKHR.uniformAndStorageBuffer16BitAccess;
+    end;
 
     if (fEnabledExtensionNames.IndexOf(VK_KHR_MULTIVIEW_EXTENSION_NAME)>=0) and
        (PhysicalDevice.fMultiviewFeaturesKHR.multiview<>VK_FALSE) or

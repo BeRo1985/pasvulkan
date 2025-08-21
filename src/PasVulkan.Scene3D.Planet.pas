@@ -2568,6 +2568,7 @@ type TpvScene3DPlanets=class;
        fBrushes:TpvScene3DPlanet.TBrushes; 
        fBrushesTexture:TpvVulkanTexture;
        fUsePlanetHeightMapBuffer:Boolean;
+       fUse16Bit:Boolean;
        fUseConcurrentWaterHeightMapImage:Boolean;
        fMustTransferWaterHeightMapImageOwnership:Boolean;
        fAtmosphereAdditionTextureImageView:TVkImageView;
@@ -3857,7 +3858,7 @@ begin
    fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fWaterHeightMapBuffers[1].Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fWaterHeightMapBuffers[1]');
 
    fWaterFlowMapBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
-                                               (fPlanet.fWaterMapResolution+(fPlanet.fWaterMapBorder*2))*(fPlanet.fWaterMapResolution+(fPlanet.fWaterMapBorder*2))*SizeOf(TpvVector4),
+                                               (fPlanet.fWaterMapResolution+(fPlanet.fWaterMapBorder*2))*(fPlanet.fWaterMapResolution+(fPlanet.fWaterMapBorder*2))*IfThen(fPlanet.fUse16Bit,SizeOf(TpvHalfFloatVector4),SizeOf(TpvVector4)),
                                                TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
                                                fPlanet.fGlobalBufferSharingMode,
                                                fPlanet.fGlobalBufferQueueFamilyIndices,
@@ -13301,11 +13302,19 @@ begin
 
  if assigned(fVulkanDevice) then begin
 
-  if fPlanet.fUsePlanetHeightMapBuffer then begin
-   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_water_simulation_outflow_buffer_comp.spv');
+  if fPlanet.fUse16Bit then begin
+   if fPlanet.fUsePlanetHeightMapBuffer then begin
+    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_water_simulation_outflow_buffer_fp16_comp.spv');
+   end else begin
+    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_water_simulation_outflow_fp16_comp.spv');
+   end;
   end else begin
-   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_water_simulation_outflow_comp.spv');
-  end; 
+   if fPlanet.fUsePlanetHeightMapBuffer then begin
+    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_water_simulation_outflow_buffer_comp.spv');
+   end else begin
+    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_water_simulation_outflow_comp.spv');
+   end;
+  end;
   try
    fOutFlowComputeShaderModule:=TpvVulkanShaderModule.Create(fVulkanDevice,Stream);
   finally
@@ -13314,7 +13323,11 @@ begin
   fVulkanDevice.DebugUtils.SetObjectName(fOutFlowComputeShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DPlanet.TWaterSimulation.fPass2ComputeShaderModule');
   fOutFlowComputeShaderStage:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_COMPUTE_BIT,fOutFlowComputeShaderModule,'main');
 
-  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_water_simulation_waterheight_comp.spv');
+  if fPlanet.fUse16Bit then begin
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_water_simulation_waterheight_fp16_comp.spv');
+  end else begin
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_water_simulation_waterheight_comp.spv');
+  end;
   try
    fWaterHeightComputeShaderModule:=TpvVulkanShaderModule.Create(fVulkanDevice,Stream);
   finally
@@ -23941,11 +23954,15 @@ begin
 
  fUsePlanetHeightMapBuffer:=false;
 
+ fUse16Bit:=false;
+
  fUseConcurrentWaterHeightMapImage:=false;
 
  fMustTransferWaterHeightMapImageOwnership:=false;
 
  if assigned(fVulkanDevice) then begin
+
+  fUse16Bit:=fVulkanDevice.Shader16BitStorageFeaturesKHR.storageBuffer16BitAccess<>VK_FALSE;
 
   if TpvScene3D(fScene3D).PlanetWaterSimulationUseParallelQueue and
      (TpvScene3D(fScene3D).PlanetWaterSimulationQueueFamilyIndex<>fVulkanDevice.UniversalQueueFamilyIndex) and

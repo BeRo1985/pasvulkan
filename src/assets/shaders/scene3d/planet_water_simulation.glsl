@@ -58,7 +58,11 @@ layout(set = 0, binding = 0) uniform sampler2D uPlanetHeightmap;
 #define _vec4 f16vec4
 #else
 #define _float float
+#ifdef USE_FP16
+#define _vec4 f16vec4
+#else
 #define _vec4 vec4
+#endif
 #endif
 
 layout(set = 0, binding = 1, std430) readonly buffer InWaterHeightMap {

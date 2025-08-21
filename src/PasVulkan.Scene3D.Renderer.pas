@@ -556,6 +556,9 @@ begin
    raise EpvApplication.Create('Application','Support for VK_KHR_BIND_MEMORY_2 is needed',LOG_ERROR);
   end;
  end;
+ if aVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_KHR_16BIT_STORAGE_EXTENSION_NAME)>=0 then begin
+  aVulkanDevice.EnabledExtensionNames.Add(VK_KHR_16BIT_STORAGE_EXTENSION_NAME);
+ end;
  if aVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_KHR_IMAGE_FORMAT_LIST_EXTENSION_NAME)>=0 then begin
   aVulkanDevice.EnabledExtensionNames.Add(VK_KHR_IMAGE_FORMAT_LIST_EXTENSION_NAME);
  end;
