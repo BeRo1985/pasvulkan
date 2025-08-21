@@ -138,7 +138,8 @@ void main(){
       const float absMinTotalFlow = abs(pushConstants.minTotalFlow);
       if(absMinTotalFlow > 1e-7){ 
 #ifdef USE_COMPACT_FLOW
-        float totalOutFlow = abs(outFlow.x) + abs(outFlow.y);
+        // For compact flow: calculate total actual outflow from net flows
+        float totalOutFlow = max(0.0, outFlow.x) + max(0.0, outFlow.y) + max(0.0, -outFlow.x) + max(0.0, -outFlow.y);
 #else
         float totalOutFlow = dot(outFlow, vec4(1.0));
 #endif

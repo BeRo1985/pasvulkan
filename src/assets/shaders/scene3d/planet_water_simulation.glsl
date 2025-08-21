@@ -3,7 +3,7 @@
 
 #extension GL_GOOGLE_include_directive : enable
 
-#undef USE_COMPACT_FLOW
+#undef USE_COMPACT_FLOW // don't work correctly yet, so disabled for now
 
 layout(push_constant) uniform PushConstants {
 

@@ -98,27 +98,44 @@ void main(){
 
     }else{
 
-      // Calculate the total inflow
+      // Calculate water height change using flow divergence
 #ifdef USE_COMPACT_FLOW
+      // For compact flow, calculate net divergence directly from neighbor flows
       const vec2 selfFlow = vec2(waterFlowMap.values[flowMapIndex].xy);
-      const float totalInFlow = abs(selfFlow.x) + abs(selfFlow.y);
-#else
-      const float totalInFlow = dot(vec4(waterFlowMap.values[flowMapIndex]), vec4(1.0));
-#endif
-
-      // Calculate the total outflow
-#ifdef USE_COMPACT_FLOW
+      
+      // Get neighbor flows with octahedral corrections
       const ivec2 position = ivec2(gl_GlobalInvocationID.xy);
       const vec2 flowE = applyOctaCheckerboardFlip(sharedFlowMapValues[gl_LocalInvocationID.y + 1][gl_LocalInvocationID.x + 2], position, ivec2(position.x + 1, position.y)); // ( 1,  0)
       const vec2 flowS = applyOctaCheckerboardFlip(sharedFlowMapValues[gl_LocalInvocationID.y + 2][gl_LocalInvocationID.x + 1], position, ivec2(position.x, position.y + 1)); // ( 0,  1)
       const vec2 flowW = applyOctaCheckerboardFlip(sharedFlowMapValues[gl_LocalInvocationID.y + 1][gl_LocalInvocationID.x + 0], position, ivec2(position.x - 1, position.y)); // (-1,  0)
       const vec2 flowN = applyOctaCheckerboardFlip(sharedFlowMapValues[gl_LocalInvocationID.y + 0][gl_LocalInvocationID.x + 1], position, ivec2(position.x, position.y - 1)); // ( 0, -1)
-      const float totalOutFlow = max(0.0, -flowE.x) + max(0.0, -flowS.y) + max(0.0,  flowW.x) + max(0.0, flowN.y);
+      
+      // Calculate flow divergence more carefully to avoid instability
+      // Flow INTO this cell from neighbors (positive contribution)
+      const float inflowFromE = max(0.0, -flowE.x);  // East neighbor flowing west
+      const float inflowFromS = max(0.0, -flowS.y);  // South neighbor flowing north  
+      const float inflowFromW = max(0.0, flowW.x);   // West neighbor flowing east
+      const float inflowFromN = max(0.0, flowN.y);   // North neighbor flowing south
+      
+      // Flow OUT of this cell (negative contribution)  
+      const float outflowToE = max(0.0, selfFlow.x);   // This cell flowing east
+      const float outflowToS = max(0.0, selfFlow.y);   // This cell flowing south
+      const float outflowToW = max(0.0, -selfFlow.x);  // This cell flowing west
+      const float outflowToN = max(0.0, -selfFlow.y);  // This cell flowing north
+      
+      const float totalInflow = inflowFromE + inflowFromS + inflowFromW + inflowFromN;
+      const float totalOutflow = outflowToE + outflowToS + outflowToW + outflowToN;
+      
+      // Use the same formula as normal mode for consistency
+      const float flowDivergence = ((totalInflow - totalOutflow) * pushConstants.deltaTime) / pushConstants.pipeLengthSquared;
 #else
+      // Traditional inflow/outflow calculation
+      const float totalInFlow = dot(vec4(waterFlowMap.values[flowMapIndex]), vec4(1.0));
       const float totalOutFlow = sharedFlowMapValues[gl_LocalInvocationID.y + 1][gl_LocalInvocationID.x + 2].z + // ivec2( 1,  0)
                                  sharedFlowMapValues[gl_LocalInvocationID.y + 2][gl_LocalInvocationID.x + 1].w + // ivec2( 0,  1)
                                  sharedFlowMapValues[gl_LocalInvocationID.y + 1][gl_LocalInvocationID.x + 0].x + // ivec2(-1,  0)
                                  sharedFlowMapValues[gl_LocalInvocationID.y + 0][gl_LocalInvocationID.x + 1].y;  // ivec2( 0, -1)
+      const float flowDivergence = ((totalOutFlow - totalInFlow) * pushConstants.deltaTime) / pushConstants.pipeLengthSquared;
 #endif
  
       // Read the water height from the input water height map
@@ -132,11 +149,10 @@ void main(){
         rainFallValue *= clamp(pcgNoise(vec4(vec3(positionOctahedral) * pushConstants.scale, float(pushConstants.frameIndex) * pushConstants.timeScale)), 0.0, 1.0);
       }
 
-      // Calculate the new water height, considering the inflow, outflow, evaporation, and rain fall in the same pass, while the paper does it in
-      // seperate passes. This is for efficiency reasons, so that we can do the whole simulation in fewer passes and with less memory bandwidth usage.
+      // Calculate the new water height, considering the flow divergence, evaporation, and rain fall
       waterOutHeight = max(
         0.0, 
-        ((inWaterHeight + (((totalOutFlow - totalInFlow) * pushConstants.deltaTime) / pushConstants.pipeLengthSquared)) * 
+        ((inWaterHeight + flowDivergence) * 
         (1.0 - clamp(pushConstants.evaporation * exp(-(inWaterHeight * pushConstants.evaporationHeightCoefficient)) * pushConstants.deltaTime, 0.0, 1.0))) +
         rainFallValue
       );
