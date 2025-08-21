@@ -3,6 +3,8 @@
 
 #extension GL_GOOGLE_include_directive : enable
 
+#undef USE_COMPACT_FLOW
+
 layout(push_constant) uniform PushConstants {
 
   float attenuation; // The attenuation factor for the water flow, used to scale the water flow based on the height difference

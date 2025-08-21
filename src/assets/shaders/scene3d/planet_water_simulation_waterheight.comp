@@ -29,9 +29,27 @@ layout(local_size_x = WORKGROUP_SIZE, local_size_y = WORKGROUP_SIZE, local_size_
 #define READONLY_WATERFLOW
 #include "planet_water_simulation.glsl"
 
+#ifdef USE_COMPACT_FLOW
+shared vec2 sharedFlowMapValues[WORKGROUP_SIZE + 2][WORKGROUP_SIZE + 2]; // WORKGROUP_SIZE x WORKGROUP_SIZE + 1x1 for the border on each side for the 3x3 kernel 
+#else
 shared vec4 sharedFlowMapValues[WORKGROUP_SIZE + 2][WORKGROUP_SIZE + 2]; // WORKGROUP_SIZE x WORKGROUP_SIZE + 1x1 for the border on each side for the 3x3 kernel 
+#endif
 
 shared float sharedHeightDifferences[WORKGROUP_SIZE * WORKGROUP_SIZE];
+
+#ifdef USE_COMPACT_FLOW
+
+// Apply checkerboard flip to a 2D flow vector when crossing octahedral seams.
+// If the parity (x^y)&1 differs between source and target cell, swap+flip.
+// This maps neighbor flow orientation into the local cell's orientation.
+vec2 applyOctaCheckerboardFlip(vec2 v, ivec2 fromXY, ivec2 toXY){
+  fromXY = (fromXY + ivec2(int(pushConstants.waterHeightMapResolution))) / int(pushConstants.waterHeightMapResolution);
+  toXY = (toXY + ivec2(int(pushConstants.waterHeightMapResolution))) / int(pushConstants.waterHeightMapResolution);
+  bool flip = (((fromXY.x ^ fromXY.y) & 1) != ((toXY.x ^ toXY.y) & 1));
+  return flip ? vec2(v.y, -v.x) : v;
+}
+
+#endif
 
 void main(){
 
@@ -46,7 +64,11 @@ void main(){
           
     for(int i = threadID; i < totalElements; i += 256){
       ivec2 t = ivec2(i % dimension, i / dimension);
+#ifdef USE_COMPACT_FLOW      
+      sharedFlowMapValues[t.y][t.x] = waterFlowMap.values[getFlowMapIndex(tileOrigin + t)].xy;
+#else
       sharedFlowMapValues[t.y][t.x] = waterFlowMap.values[getFlowMapIndex(tileOrigin + t)];
+#endif
     }
 
   }
@@ -77,13 +99,27 @@ void main(){
     }else{
 
       // Calculate the total inflow
+#ifdef USE_COMPACT_FLOW
+      const vec2 selfFlow = vec2(waterFlowMap.values[flowMapIndex].xy);
+      const float totalInFlow = abs(selfFlow.x) + abs(selfFlow.y);
+#else
       const float totalInFlow = dot(vec4(waterFlowMap.values[flowMapIndex]), vec4(1.0));
-                  
+#endif
+
       // Calculate the total outflow
+#ifdef USE_COMPACT_FLOW
+      const ivec2 position = ivec2(gl_GlobalInvocationID.xy);
+      const vec2 flowE = applyOctaCheckerboardFlip(sharedFlowMapValues[gl_LocalInvocationID.y + 1][gl_LocalInvocationID.x + 2], position, ivec2(position.x + 1, position.y)); // ( 1,  0)
+      const vec2 flowS = applyOctaCheckerboardFlip(sharedFlowMapValues[gl_LocalInvocationID.y + 2][gl_LocalInvocationID.x + 1], position, ivec2(position.x, position.y + 1)); // ( 0,  1)
+      const vec2 flowW = applyOctaCheckerboardFlip(sharedFlowMapValues[gl_LocalInvocationID.y + 1][gl_LocalInvocationID.x + 0], position, ivec2(position.x - 1, position.y)); // (-1,  0)
+      const vec2 flowN = applyOctaCheckerboardFlip(sharedFlowMapValues[gl_LocalInvocationID.y + 0][gl_LocalInvocationID.x + 1], position, ivec2(position.x, position.y - 1)); // ( 0, -1)
+      const float totalOutFlow = max(0.0, -flowE.x) + max(0.0, -flowS.y) + max(0.0,  flowW.x) + max(0.0, flowN.y);
+#else
       const float totalOutFlow = sharedFlowMapValues[gl_LocalInvocationID.y + 1][gl_LocalInvocationID.x + 2].z + // ivec2( 1,  0)
                                  sharedFlowMapValues[gl_LocalInvocationID.y + 2][gl_LocalInvocationID.x + 1].w + // ivec2( 0,  1)
                                  sharedFlowMapValues[gl_LocalInvocationID.y + 1][gl_LocalInvocationID.x + 0].x + // ivec2(-1,  0)
                                  sharedFlowMapValues[gl_LocalInvocationID.y + 0][gl_LocalInvocationID.x + 1].y;  // ivec2( 0, -1)
+#endif
  
       // Read the water height from the input water height map
       const float inWaterHeight = inWaterHeightMap.values[heightMapIndex];
