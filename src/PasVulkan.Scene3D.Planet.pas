@@ -26825,6 +26825,10 @@ begin
   if assigned(InFlightFrameData) then begin
    fData.AcquireWaterOnSimulationQueue(aCommandBuffer);
    try
+    if (aInFlightFrameIndex>=0) and assigned(fPrecipitationMapSimulation) and assigned(fPrecipitationMapSimulationTransfer) and (fPrecipitationSimulationSettings.fInterval>1e-6) and fSimulationActive then begin
+{    fPrecipitationMapSimulation.Execute(aCommandBuffer,TpvScene3D(fScene3D).DeltaTimes^[aInFlightFrameIndex]);
+     fPrecipitationMapSimulationTransfer.Execute(aCommandBuffer);}
+    end; 
     fWaterSimulation.Execute(aCommandBuffer,TpvScene3D(fScene3D).DeltaTimes^[aInFlightFrameIndex],aInFlightFrameIndex);
     fWaterCullPass.Execute(aCommandBuffer);
    finally
