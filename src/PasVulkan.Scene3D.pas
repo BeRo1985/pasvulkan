@@ -28985,7 +28985,7 @@ begin
   end;
 
   // Initialize atmosphere/precipitation simulation queue settings
-  fPlanetAtmospherePrecipitationSimulationUseParallelQueue:=fPlanetWaterSimulationUseParallelQueue;
+  fPlanetAtmospherePrecipitationSimulationUseParallelQueue:=false; //fPlanetWaterSimulationUseParallelQueue;
 
   if fPlanetAtmospherePrecipitationSimulationUseParallelQueue then begin
 
@@ -32567,6 +32567,16 @@ begin
 
     fPlanetAtmospherePrecipitationSimulationQueue.Submit(1,@SubmitInfo,nil);
 
+   end else begin
+
+    fProcessFrameTimerQueryAtmosphereSimulationIndex:=fProcessFrameTimerQueries[aInFlightFrameIndex].Start(fVulkanProcessFrameQueue,CommandBuffer,'Atmosphere Simulation');
+    BeginTime:=pvApplication.HighResolutionTimer.GetTime;
+    fVulkanDevice.DebugUtils.CmdBufLabelBegin(CommandBuffer,'Planet Atmosphere Precipitation Simulation',[0.25,0.5,1.0,1.0]);
+    ProcessAtmosphereSimulations(CommandBuffer,aInFlightFrameIndex,fVulkanDevice.UniversalQueueFamilyIndex);
+    fVulkanDevice.DebugUtils.CmdBufLabelEnd(CommandBuffer);
+    fLastProcessFrameCPUTimeValues[fProcessFrameTimerQueryAtmosphereSimulationIndex]:=pvApplication.HighResolutionTimer.GetTime-BeginTime;
+    fProcessFrameTimerQueries[aInFlightFrameIndex].Stop(fVulkanProcessFrameQueue,CommandBuffer);
+
    end;
 
    if fPlanetWaterSimulationUseParallelQueue then begin
@@ -32625,16 +32635,6 @@ begin
     fLastProcessFrameCPUTimeValues[fProcessFrameTimerQueryPlanetSimulationIndex]:=pvApplication.HighResolutionTimer.GetTime-BeginTime;
     fProcessFrameTimerQueries[aInFlightFrameIndex].Stop(fVulkanProcessFrameQueue,CommandBuffer);
 
-   end;
-
-   if not fPlanetAtmospherePrecipitationSimulationUseParallelQueue then begin
-    fProcessFrameTimerQueryAtmosphereSimulationIndex:=fProcessFrameTimerQueries[aInFlightFrameIndex].Start(fVulkanProcessFrameQueue,CommandBuffer,'Atmosphere Simulation');
-    BeginTime:=pvApplication.HighResolutionTimer.GetTime;
-    fVulkanDevice.DebugUtils.CmdBufLabelBegin(CommandBuffer,'Atmosphere Simulation',[0.25,0.5,1.0,1.0]);
-    ProcessAtmosphereSimulations(CommandBuffer,aInFlightFrameIndex,fVulkanDevice.UniversalQueueFamilyIndex);
-    fVulkanDevice.DebugUtils.CmdBufLabelEnd(CommandBuffer);
-    fLastProcessFrameCPUTimeValues[fProcessFrameTimerQueryAtmosphereSimulationIndex]:=pvApplication.HighResolutionTimer.GetTime-BeginTime;
-    fProcessFrameTimerQueries[aInFlightFrameIndex].Stop(fVulkanProcessFrameQueue,CommandBuffer);
    end;
 
    fProcessFrameTimerQueryMeshComputeIndex:=fProcessFrameTimerQueries[aInFlightFrameIndex].Start(fVulkanProcessFrameQueue,CommandBuffer,'Mesh compute');
