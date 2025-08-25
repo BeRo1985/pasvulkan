@@ -32569,7 +32569,7 @@ begin
 
    end else begin
 
-    fProcessFrameTimerQueryAtmosphereSimulationIndex:=fProcessFrameTimerQueries[aInFlightFrameIndex].Start(fVulkanProcessFrameQueue,CommandBuffer,'Atmosphere Simulation');
+    fProcessFrameTimerQueryAtmosphereSimulationIndex:=fProcessFrameTimerQueries[aInFlightFrameIndex].Start(fVulkanProcessFrameQueue,CommandBuffer,'Planet Atmosphere Precipitation Simulation');
     BeginTime:=pvApplication.HighResolutionTimer.GetTime;
     fVulkanDevice.DebugUtils.CmdBufLabelBegin(CommandBuffer,'Planet Atmosphere Precipitation Simulation',[0.25,0.5,1.0,1.0]);
     ProcessAtmosphereSimulations(CommandBuffer,aInFlightFrameIndex,fVulkanDevice.UniversalQueueFamilyIndex);
