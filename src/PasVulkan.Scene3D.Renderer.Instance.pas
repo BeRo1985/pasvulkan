@@ -3937,9 +3937,6 @@ begin
  end;
 
  TpvScene3DRendererInstancePasses(fPasses).fAtmospherePrecipitationWaitCustomPass:=TpvScene3DRendererPassesAtmospherePrecipitationWaitCustomPass.Create(fFrameGraph,self);
-
- TpvScene3DRendererInstancePasses(fPasses).fAtmosphereProcessCustomPass:=TpvScene3DRendererPassesAtmosphereProcessCustomPass.Create(fFrameGraph,self);
- TpvScene3DRendererInstancePasses(fPasses).fAtmosphereProcessCustomPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fAtmospherePrecipitationWaitCustomPass);
  if fScene3D.PlanetAtmospherePrecipitationSimulationUseParallelQueue then begin
   FreeAndNil(fAtmosphereExternalWaitingOnSemaphore);
   fAtmosphereExternalWaitingOnSemaphore:=TpvFrameGraph.TExternalWaitingOnSemaphore.Create(fFrameGraph);
@@ -3948,11 +3945,14 @@ begin
     fAtmosphereExternalWaitingOnSemaphore.InFlightFrameSemaphores[InFlightFrameIndex]:=fAtmospherePrecipitationSimulationSemaphores[InFlightFrameIndex];
    end;
   finally
-   TpvScene3DRendererInstancePasses(fPasses).fAtmosphereProcessCustomPass.AddExternalWaitingOnSemaphore(fAtmosphereExternalWaitingOnSemaphore,TVkPipelineStageFlags(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT));
+   TpvScene3DRendererInstancePasses(fPasses).fAtmospherePrecipitationWaitCustomPass.AddExternalWaitingOnSemaphore(fAtmosphereExternalWaitingOnSemaphore,TVkPipelineStageFlags(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT));
   end;
  end else begin
   fAtmosphereExternalWaitingOnSemaphore:=nil;
  end;
+
+ TpvScene3DRendererInstancePasses(fPasses).fAtmosphereProcessCustomPass:=TpvScene3DRendererPassesAtmosphereProcessCustomPass.Create(fFrameGraph,self);
+ TpvScene3DRendererInstancePasses(fPasses).fAtmosphereProcessCustomPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fAtmospherePrecipitationWaitCustomPass);
  case Renderer.ShadowMode of
   TpvScene3DRendererShadowMode.None,
   TpvScene3DRendererShadowMode.PCF,TpvScene3DRendererShadowMode.DPCF,TpvScene3DRendererShadowMode.PCSS:begin
