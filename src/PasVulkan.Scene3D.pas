@@ -3629,6 +3629,8 @@ type EpvScene3D=class(Exception);
             POriginTransforms=^TOriginTransforms;
             TPlanetWaterSimulationCommandBuffers=array[0..MaxInFlightFrames-1] of TpvVulkanCommandBuffer;
             TPlanetWaterSimulationSemaphores=array[0..MaxInFlightFrames-1] of TpvVulkanSemaphore;
+            TPlanetAtmospherePrecipitationSimulationCommandBuffers=array[0..MaxInFlightFrames-1] of TpvVulkanCommandBuffer;
+            TPlanetAtmospherePrecipitationSimulationSemaphores=array[0..MaxInFlightFrames-1] of TpvVulkanSemaphore;
             TVkSemaphoreArray=array of TVkSemaphore;
       public
        const DoubleSidedFaceCullingModes:array[TDoubleSided,TFrontFacesInversed] of TFaceCullingMode=
@@ -3701,6 +3703,14 @@ type EpvScene3D=class(Exception);
        fPlanetWaterSimulationUseParallelQueue:TPasMPBool32;
        fPlanetWaterSimulationQueue:TpvVulkanQueue;
        fPlanetWaterSimulationQueueFamilyIndex:TpvInt32;
+       fPlanetAtmospherePrecipitationSimulationUseParallelQueue:TPasMPBool32;
+       fPlanetAtmospherePrecipitationSimulationQueue:TpvVulkanQueue;
+       fPlanetAtmospherePrecipitationSimulationQueueFamilyIndex:TpvInt32;
+       fPlanetAtmospherePrecipitationSimulationCommandPool:TpvVulkanCommandPool;
+       fPlanetAtmospherePrecipitationSimulationCommandBuffers:TPlanetAtmospherePrecipitationSimulationCommandBuffers;
+       fPlanetAtmospherePrecipitationSimulationSemaphores:TPlanetAtmospherePrecipitationSimulationSemaphores;
+       fPlanetAtmospherePrecipitationSimulationToSignalSemaphores:TVkSemaphoreArray;
+       fPlanetAtmospherePrecipitationSimulationMainThreadSemaphores:TPlanetAtmospherePrecipitationSimulationSemaphores;
        fPlanetWaterSimulationCommandPool:TpvVulkanCommandPool;
        fPlanetWaterSimulationCommandBuffers:TPlanetWaterSimulationCommandBuffers;
        fPlanetWaterSimulationSemaphores:TPlanetWaterSimulationSemaphores;
@@ -4040,7 +4050,8 @@ type EpvScene3D=class(Exception);
        procedure ProcessPlanetWaterSimulations(const aCommandBuffer:TpvVulkanCommandBuffer;
                                                const aInFlightFrameIndex:TpvSizeInt);
        procedure ProcessAtmosphereSimulations(const aCommandBuffer:TpvVulkanCommandBuffer;
-                                              const aInFlightFrameIndex:TpvSizeInt);
+                                              const aInFlightFrameIndex:TpvSizeInt;
+                                              const aQueueFamilyIndex:TpvInt32=-1);
        function RaytracingOnMustWaitForPreviousFrame(const aSender:TObject):Boolean;
        procedure RaytracingOnUpdate(const aSender:TObject);
        procedure UpdateRaytracing(const aCommandBuffer:TpvVulkanCommandBuffer;
@@ -4232,7 +4243,13 @@ type EpvScene3D=class(Exception);
        property PlanetWaterSimulationUseParallelQueue:TPasMPBool32 read fPlanetWaterSimulationUseParallelQueue;
        property PlanetWaterSimulationQueue:TpvVulkanQueue read fPlanetWaterSimulationQueue;
        property PlanetWaterSimulationQueueFamilyIndex:TpvInt32 read fPlanetWaterSimulationQueueFamilyIndex;
+       property PlanetAtmospherePrecipitationSimulationUseParallelQueue:TPasMPBool32 read fPlanetAtmospherePrecipitationSimulationUseParallelQueue;
+       property PlanetAtmospherePrecipitationSimulationQueue:TpvVulkanQueue read fPlanetAtmospherePrecipitationSimulationQueue;
+       property PlanetAtmospherePrecipitationSimulationQueueFamilyIndex:TpvInt32 read fPlanetAtmospherePrecipitationSimulationQueueFamilyIndex;
       public
+       property PlanetAtmospherePrecipitationSimulationSemaphores:TPlanetAtmospherePrecipitationSimulationSemaphores read fPlanetAtmospherePrecipitationSimulationSemaphores;
+       property PlanetAtmospherePrecipitationSimulationToSignalSemaphores:TVkSemaphoreArray read fPlanetAtmospherePrecipitationSimulationToSignalSemaphores;
+       property PlanetAtmospherePrecipitationSimulationMainThreadSemaphores:TPlanetAtmospherePrecipitationSimulationSemaphores read fPlanetAtmospherePrecipitationSimulationMainThreadSemaphores;
        property PlanetWaterSimulationSemaphores:TPlanetWaterSimulationSemaphores read fPlanetWaterSimulationSemaphores;
       published
        property MeshComputeVulkanDescriptorSet0Layout:TpvVulkanDescriptorSetLayout read fMeshComputeVulkanDescriptorSet0Layout;
@@ -28905,6 +28922,8 @@ begin
 
   fPlanetWaterSimulationToSignalSemaphores:=nil;
 
+  fPlanetAtmospherePrecipitationSimulationToSignalSemaphores:=nil;
+
   if fPlanetWaterSimulationUseParallelQueue then begin
 
    if TpvVulkanVendorID(fVulkanDevice.PhysicalDevice.Properties.vendorID)=TpvVulkanVendorID.NVIDIA then begin
@@ -28959,10 +28978,78 @@ begin
     fPlanetWaterSimulationCommandBuffers[InFlightFrameIndex]:=nil;
 
     fPlanetWaterSimulationSemaphores[InFlightFrameIndex]:=nil;
-
    end; 
 
    fPlanetWaterSimulationToSignalSemaphores:=nil;
+
+  end;
+
+  // Initialize atmosphere/precipitation simulation queue settings
+  fPlanetAtmospherePrecipitationSimulationUseParallelQueue:=fPlanetWaterSimulationUseParallelQueue;
+
+  if fPlanetAtmospherePrecipitationSimulationUseParallelQueue then begin
+
+   if not fPlanetSingleBuffers then begin
+
+    if fVulkanDevice.ComputeQueueFamilyIndex>=0 then begin
+     if fVulkanDevice.UniversalQueueFamilyIndex<>fVulkanDevice.ComputeQueueFamilyIndex then begin
+      fPlanetAtmospherePrecipitationSimulationQueue:=fVulkanDevice.ComputeQueue;
+      fPlanetAtmospherePrecipitationSimulationQueueFamilyIndex:=fVulkanDevice.ComputeQueueFamilyIndex;
+     end else begin
+      if (length(fVulkanDevice.UniversalQueues)>1) then begin
+       fPlanetAtmospherePrecipitationSimulationQueue:=VulkanDevice.UniversalQueues[1];
+       fPlanetAtmospherePrecipitationSimulationQueueFamilyIndex:=fVulkanDevice.UniversalQueueFamilyIndex;
+      end else begin
+       fPlanetAtmospherePrecipitationSimulationUseParallelQueue:=false;
+       fPlanetAtmospherePrecipitationSimulationQueue:=fVulkanDevice.ComputeQueue;
+       fPlanetAtmospherePrecipitationSimulationQueueFamilyIndex:=fVulkanDevice.ComputeQueueFamilyIndex;
+      end;
+     end;
+    end else begin
+     fPlanetAtmospherePrecipitationSimulationUseParallelQueue:=false;
+{    fPlanetAtmospherePrecipitationSimulationQueue:=fVulkanDevice.ComputeQueue;
+     fPlanetAtmospherePrecipitationSimulationQueueFamilyIndex:=fVulkanDevice.ComputeQueueFamilyIndex;}
+    end;
+
+   end;
+
+   fPlanetAtmospherePrecipitationSimulationCommandPool:=TpvVulkanCommandPool.Create(fVulkanDevice,
+                                                                                      fPlanetAtmospherePrecipitationSimulationQueueFamilyIndex,
+                                                                                      TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
+   fVulkanDevice.DebugUtils.SetObjectName(fPlanetAtmospherePrecipitationSimulationCommandPool.Handle,VK_OBJECT_TYPE_COMMAND_POOL,'TpvScene3D.fPlanetAtmospherePrecipitationSimulationCommandPool');
+
+   for InFlightFrameIndex:=0 to fCountInFlightFrames-1 do begin                                                          
+   
+    fPlanetAtmospherePrecipitationSimulationCommandBuffers[InFlightFrameIndex]:=TpvVulkanCommandBuffer.Create(fPlanetAtmospherePrecipitationSimulationCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+    fVulkanDevice.DebugUtils.SetObjectName(fPlanetAtmospherePrecipitationSimulationCommandBuffers[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_COMMAND_BUFFER,'TpvScene3D.fPlanetAtmospherePrecipitationSimulationCommandBuffers['+IntToStr(InFlightFrameIndex)+']');
+
+    fPlanetAtmospherePrecipitationSimulationSemaphores[InFlightFrameIndex]:=TpvVulkanSemaphore.Create(fVulkanDevice);
+    fVulkanDevice.DebugUtils.SetObjectName(fPlanetAtmospherePrecipitationSimulationSemaphores[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_SEMAPHORE,'TpvScene3D.fPlanetAtmospherePrecipitationSimulationSemaphores['+IntToStr(InFlightFrameIndex)+']');
+
+    fPlanetAtmospherePrecipitationSimulationMainThreadSemaphores[InFlightFrameIndex]:=TpvVulkanSemaphore.Create(fVulkanDevice);
+    fVulkanDevice.DebugUtils.SetObjectName(fPlanetAtmospherePrecipitationSimulationMainThreadSemaphores[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_SEMAPHORE,'TpvScene3D.fPlanetAtmospherePrecipitationSimulationMainThreadSemaphores['+IntToStr(InFlightFrameIndex)+']');
+
+   end;
+
+  end else begin
+
+   fPlanetAtmospherePrecipitationSimulationQueue:=nil;
+
+   fPlanetAtmospherePrecipitationSimulationQueueFamilyIndex:=-1;
+
+   fPlanetAtmospherePrecipitationSimulationCommandPool:=nil;
+
+   for InFlightFrameIndex:=0 to fCountInFlightFrames-1 do begin
+
+    fPlanetAtmospherePrecipitationSimulationCommandBuffers[InFlightFrameIndex]:=nil;
+
+    fPlanetAtmospherePrecipitationSimulationSemaphores[InFlightFrameIndex]:=nil;
+
+    fPlanetAtmospherePrecipitationSimulationMainThreadSemaphores[InFlightFrameIndex]:=nil;
+
+   end; 
+
+   fPlanetAtmospherePrecipitationSimulationToSignalSemaphores:=nil;
 
   end;
 
@@ -29524,6 +29611,23 @@ begin
   FreeAndNil(fPlanetWaterSimulationCommandPool);
 
   fPlanetWaterSimulationQueue:=nil;
+
+  // Cleanup atmosphere/precipitation simulation resources
+  for InFlightFrameIndex:=0 to fCountInFlightFrames-1 do begin
+
+   FreeAndNil(fPlanetAtmospherePrecipitationSimulationCommandBuffers[InFlightFrameIndex]);
+
+   FreeAndNil(fPlanetAtmospherePrecipitationSimulationSemaphores[InFlightFrameIndex]);
+
+   FreeAndNil(fPlanetAtmospherePrecipitationSimulationMainThreadSemaphores[InFlightFrameIndex]);
+
+  end; 
+
+  fPlanetAtmospherePrecipitationSimulationToSignalSemaphores:=nil;
+
+  FreeAndNil(fPlanetAtmospherePrecipitationSimulationCommandPool);
+
+  fPlanetAtmospherePrecipitationSimulationQueue:=nil;
 
  end;
 
@@ -32306,12 +32410,12 @@ begin
 end;
 
 procedure TpvScene3D.ProcessFrame(const aInFlightFrameIndex:TpvSizeInt;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence);
-var PlanetIndex,PassIndex,CountPlanetWaterSimulationToSignalSemaphores,Index:TpvSizeInt;
+var PlanetIndex,PassIndex,CountPlanetAtmospherePrecipitationSimulationToSignalSemaphores,CountPlanetWaterSimulationToSignalSemaphores,Index:TpvSizeInt;
     Planet:TpvScene3DPlanet;
     SubmitInfo:TVkSubmitInfo;
     WaitDstStageFlags:TVkPipelineStageFlags;
-    PlanetWaterSimulationCommandBuffer,CommandBuffer:TpvVulkanCommandBuffer;
-    PlanetWaterSimulationCommandBufferHandle,CommandBufferHandle:TVkCommandBuffer;
+    PlanetAtmospherePrecipitationSimulationCommandBuffer,PlanetWaterSimulationCommandBuffer,CommandBuffer:TpvVulkanCommandBuffer;
+    PlanetAtmospherePrecipitationSimulationCommandBufferHandle,PlanetWaterSimulationCommandBufferHandle,CommandBufferHandle:TVkCommandBuffer;
     BeginTime:TpvHighResolutionTime;
     VulkanShortTermDynamicBufferData:TVulkanShortTermDynamicBufferData;
     VulkanLongTermStaticBufferData:TVulkanLongTermStaticBufferData;
@@ -32334,6 +32438,10 @@ begin
    for PlanetIndex:=0 to TpvScene3DPlanets(fPlanets).Count-1 do begin
     Planet:=TpvScene3DPlanets(fPlanets).Items[PlanetIndex];
     if Planet.Ready then begin
+     Planet.PrepareAtmospherePrecipitationSimulation(fVulkanFrameGraphStagingQueue,
+                                                     fVulkanFrameGraphStagingCommandBuffer,
+                                                     fVulkanFrameGraphStagingFence,
+                                                     aInFlightFrameIndex);
      Planet.PrepareWaterSimulation(fVulkanFrameGraphStagingQueue,
                                    fVulkanFrameGraphStagingCommandBuffer,
                                    fVulkanFrameGraphStagingFence,
@@ -32414,6 +32522,53 @@ begin
    fLastProcessFrameCPUTimeValues[fProcessFrameTimerQueryUploadFrameDataIndex]:=pvApplication.HighResolutionTimer.GetTime-BeginTime;
    fProcessFrameTimerQueries[aInFlightFrameIndex].Stop(fVulkanProcessFrameQueue,CommandBuffer);
 
+   // Start atmosphere simulation after frame data upload is complete
+   if fPlanetAtmospherePrecipitationSimulationUseParallelQueue then begin
+
+    PlanetAtmospherePrecipitationSimulationCommandBuffer:=fPlanetAtmospherePrecipitationSimulationCommandBuffers[aInFlightFrameIndex];
+
+    PlanetAtmospherePrecipitationSimulationCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+    PlanetAtmospherePrecipitationSimulationCommandBuffer.BeginRecording(TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT));
+
+    fProcessFrameTimerQueryAtmosphereSimulationIndex:=fProcessFrameTimerQueries[aInFlightFrameIndex].Start(fPlanetAtmospherePrecipitationSimulationQueue,PlanetAtmospherePrecipitationSimulationCommandBuffer,'Planet Atmosphere Precipitation Simulation');
+    BeginTime:=pvApplication.HighResolutionTimer.GetTime;
+    fVulkanDevice.DebugUtils.CmdBufLabelBegin(PlanetAtmospherePrecipitationSimulationCommandBuffer,'Planet Atmosphere Precipitation Simulation',[0.25,0.5,1.0,1.0]);
+    ProcessAtmosphereSimulations(PlanetAtmospherePrecipitationSimulationCommandBuffer,aInFlightFrameIndex,fPlanetAtmospherePrecipitationSimulationQueueFamilyIndex);
+    fVulkanDevice.DebugUtils.CmdBufLabelEnd(PlanetAtmospherePrecipitationSimulationCommandBuffer);
+    fLastProcessFrameCPUTimeValues[fProcessFrameTimerQueryAtmosphereSimulationIndex]:=pvApplication.HighResolutionTimer.GetTime-BeginTime;
+    fProcessFrameTimerQueries[aInFlightFrameIndex].Stop(fPlanetAtmospherePrecipitationSimulationQueue,PlanetAtmospherePrecipitationSimulationCommandBuffer);
+
+    PlanetAtmospherePrecipitationSimulationCommandBuffer.EndRecording;
+
+    PlanetAtmospherePrecipitationSimulationCommandBufferHandle:=PlanetAtmospherePrecipitationSimulationCommandBuffer.Handle;
+
+    CountPlanetAtmospherePrecipitationSimulationToSignalSemaphores:=2+fRendererInstanceList.Count; // Signal simulation semaphore, main thread semaphore, and renderer instances
+    if length(fPlanetAtmospherePrecipitationSimulationToSignalSemaphores)<CountPlanetAtmospherePrecipitationSimulationToSignalSemaphores then begin
+     SetLength(fPlanetAtmospherePrecipitationSimulationToSignalSemaphores,CountPlanetAtmospherePrecipitationSimulationToSignalSemaphores*2);
+    end;
+    fPlanetAtmospherePrecipitationSimulationToSignalSemaphores[0]:=fPlanetAtmospherePrecipitationSimulationSemaphores[aInFlightFrameIndex].Handle;
+    fPlanetAtmospherePrecipitationSimulationToSignalSemaphores[1]:=fPlanetAtmospherePrecipitationSimulationMainThreadSemaphores[aInFlightFrameIndex].Handle;
+    for Index:=0 to fRendererInstanceList.Count-1 do begin
+     fPlanetAtmospherePrecipitationSimulationToSignalSemaphores[Index+2]:=TpvScene3DRendererInstance(fRendererInstanceList.RawItems[Index]).AtmospherePrecipitationSimulationSemaphores[aInFlightFrameIndex].Handle;
+    end;
+
+    FillChar(SubmitInfo,SizeOf(TVkSubmitInfo),#0);
+    SubmitInfo.sType:=VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    SubmitInfo.pNext:=nil;
+    SubmitInfo.waitSemaphoreCount:=0;
+    SubmitInfo.pWaitSemaphores:=nil;
+    SubmitInfo.pWaitDstStageMask:=nil;
+    SubmitInfo.commandBufferCount:=1;
+    SubmitInfo.pCommandBuffers:=@PlanetAtmospherePrecipitationSimulationCommandBufferHandle;
+    if CountPlanetAtmospherePrecipitationSimulationToSignalSemaphores>0 then begin
+     SubmitInfo.signalSemaphoreCount:=CountPlanetAtmospherePrecipitationSimulationToSignalSemaphores;
+     SubmitInfo.pSignalSemaphores:=@fPlanetAtmospherePrecipitationSimulationToSignalSemaphores[0];
+    end;
+
+    fPlanetAtmospherePrecipitationSimulationQueue.Submit(1,@SubmitInfo,nil);
+
+   end;
+
    if fPlanetWaterSimulationUseParallelQueue then begin
 
     fProcessFrameTimerQueryPlanetSimulationIndex:=fProcessFrameTimerQueries[aInFlightFrameIndex].Start(fPlanetWaterSimulationQueue,PlanetWaterSimulationCommandBuffer,'Planet Water Simulation');
@@ -32440,9 +32595,17 @@ begin
     FillChar(SubmitInfo,SizeOf(TVkSubmitInfo),#0);
     SubmitInfo.sType:=VK_STRUCTURE_TYPE_SUBMIT_INFO;
     SubmitInfo.pNext:=nil;
-    SubmitInfo.waitSemaphoreCount:=0;
-    SubmitInfo.pWaitSemaphores:=nil;
-    SubmitInfo.pWaitDstStageMask:=nil;
+    if fPlanetAtmospherePrecipitationSimulationUseParallelQueue then begin
+     // Wait for atmosphere/precipitation simulation to complete first
+     SubmitInfo.waitSemaphoreCount:=1;
+     SubmitInfo.pWaitSemaphores:=@fPlanetAtmospherePrecipitationSimulationSemaphores[aInFlightFrameIndex].Handle;
+     WaitDstStageFlags:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+     SubmitInfo.pWaitDstStageMask:=@WaitDstStageFlags;
+    end else begin
+     SubmitInfo.waitSemaphoreCount:=0;
+     SubmitInfo.pWaitSemaphores:=nil;
+     SubmitInfo.pWaitDstStageMask:=nil;
+    end;
     SubmitInfo.commandBufferCount:=1;
     SubmitInfo.pCommandBuffers:=@PlanetWaterSimulationCommandBufferHandle;
     if CountPlanetWaterSimulationToSignalSemaphores>0 then begin
@@ -32464,13 +32627,15 @@ begin
 
    end;
 
-   fProcessFrameTimerQueryAtmosphereSimulationIndex:=fProcessFrameTimerQueries[aInFlightFrameIndex].Start(fVulkanProcessFrameQueue,CommandBuffer,'Atmosphere Simulation');
-   BeginTime:=pvApplication.HighResolutionTimer.GetTime;
-   fVulkanDevice.DebugUtils.CmdBufLabelBegin(CommandBuffer,'Atmosphere Simulation',[0.25,0.5,1.0,1.0]);
-   ProcessAtmosphereSimulations(CommandBuffer,aInFlightFrameIndex);
-   fVulkanDevice.DebugUtils.CmdBufLabelEnd(CommandBuffer);
-   fLastProcessFrameCPUTimeValues[fProcessFrameTimerQueryAtmosphereSimulationIndex]:=pvApplication.HighResolutionTimer.GetTime-BeginTime;
-   fProcessFrameTimerQueries[aInFlightFrameIndex].Stop(fVulkanProcessFrameQueue,CommandBuffer);
+   if not fPlanetAtmospherePrecipitationSimulationUseParallelQueue then begin
+    fProcessFrameTimerQueryAtmosphereSimulationIndex:=fProcessFrameTimerQueries[aInFlightFrameIndex].Start(fVulkanProcessFrameQueue,CommandBuffer,'Atmosphere Simulation');
+    BeginTime:=pvApplication.HighResolutionTimer.GetTime;
+    fVulkanDevice.DebugUtils.CmdBufLabelBegin(CommandBuffer,'Atmosphere Simulation',[0.25,0.5,1.0,1.0]);
+    ProcessAtmosphereSimulations(CommandBuffer,aInFlightFrameIndex,fVulkanDevice.UniversalQueueFamilyIndex);
+    fVulkanDevice.DebugUtils.CmdBufLabelEnd(CommandBuffer);
+    fLastProcessFrameCPUTimeValues[fProcessFrameTimerQueryAtmosphereSimulationIndex]:=pvApplication.HighResolutionTimer.GetTime-BeginTime;
+    fProcessFrameTimerQueries[aInFlightFrameIndex].Stop(fVulkanProcessFrameQueue,CommandBuffer);
+   end;
 
    fProcessFrameTimerQueryMeshComputeIndex:=fProcessFrameTimerQueries[aInFlightFrameIndex].Start(fVulkanProcessFrameQueue,CommandBuffer,'Mesh compute');
    BeginTime:=pvApplication.HighResolutionTimer.GetTime;
@@ -32592,8 +32757,8 @@ procedure TpvScene3D.EndFrame(const aInFlightFrameIndex:TpvSizeInt;var aWaitSema
 var PlanetIndex,CountSemaphores:TpvSizeInt;
     Planet:TpvScene3DPlanet;
     SubmitInfo:TVkSubmitInfo;
-    Semaphores:array[0..1] of TVkSemaphore;
-    WaitDstStageFlags:array[0..1] of TVkPipelineStageFlags;
+    Semaphores:array[0..2] of TVkSemaphore;
+    WaitDstStageFlags:array[0..2] of TVkPipelineStageFlags;
 begin
 
  if assigned(fVulkanDevice) then begin
@@ -32614,7 +32779,7 @@ begin
    TpvScene3DPlanets(fPlanets).Lock.ReleaseRead;
   end;
 
-  if assigned(aWaitFence) or fPlanetWaterSimulationUseParallelQueue then begin
+  if assigned(aWaitFence) or fPlanetAtmospherePrecipitationSimulationUseParallelQueue or fPlanetWaterSimulationUseParallelQueue then begin
 
    FillChar(SubmitInfo,SizeOf(TVkSubmitInfo),#0);
    SubmitInfo.sType:=VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -32625,7 +32790,14 @@ begin
     WaitDstStageFlags[CountSemaphores]:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
     inc(CountSemaphores);
    end;
+   if fPlanetAtmospherePrecipitationSimulationUseParallelQueue then begin
+    // Atmosphere parallel queue is active - wait on atmosphere main thread semaphore
+    Semaphores[CountSemaphores]:=fPlanetAtmospherePrecipitationSimulationMainThreadSemaphores[aInFlightFrameIndex].Handle;
+    WaitDstStageFlags[CountSemaphores]:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
+    inc(CountSemaphores);
+   end;
    if fPlanetWaterSimulationUseParallelQueue then begin
+    // Water parallel queue is active
     Semaphores[CountSemaphores]:=fPlanetWaterSimulationSemaphores[aInFlightFrameIndex].Handle;
     WaitDstStageFlags[CountSemaphores]:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
     inc(CountSemaphores);
@@ -33866,6 +34038,7 @@ begin
   for PlanetIndex:=0 to TpvScene3DPlanets(fPlanets).Count-1 do begin
    Planet:=TpvScene3DPlanets(fPlanets).Items[PlanetIndex];
    if Planet.Ready then begin
+    Planet.ProcessAtmospherePrecipitationSimulation(aCommandBuffer,aInFlightFrameIndex);
     Planet.ProcessWaterSimulation(aCommandBuffer,aInFlightFrameIndex);
    end;
   end;
@@ -33875,7 +34048,8 @@ begin
 end;
 
 procedure TpvScene3D.ProcessAtmosphereSimulations(const aCommandBuffer:TpvVulkanCommandBuffer;
-                                                  const aInFlightFrameIndex:TpvSizeInt);
+                                                  const aInFlightFrameIndex:TpvSizeInt;
+                                                  const aQueueFamilyIndex:TpvInt32=-1);
 var AtmosphereIndex:TpvSizeInt;
     Atmosphere:TpvScene3DAtmosphere;
 begin
@@ -33884,7 +34058,7 @@ begin
   for AtmosphereIndex:=0 to TpvScene3DAtmospheres(fAtmospheres).Count-1 do begin
    Atmosphere:=TpvScene3DAtmospheres(fAtmospheres).Items[AtmosphereIndex];
    if Atmosphere.Ready then begin
-    Atmosphere.ProcessSimulation(aCommandBuffer,aInFlightFrameIndex);
+    Atmosphere.ProcessSimulation(aCommandBuffer,aInFlightFrameIndex,aQueueFamilyIndex);
    end;
   end;
  finally

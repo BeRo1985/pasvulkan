@@ -420,6 +420,7 @@ type TpvScene3DPlanets=class;
 //            fVisualMeshGeneration:TpvUInt64;
               fOwnershipHolderState:TpvScene3DPlanet.TData.TOwnershipHolderState;
               fWaterOwnershipHolderState:TpvScene3DPlanet.TData.TOwnershipHolderState;
+              fAtmospherePrecipitationOwnershipHolderState:TpvScene3DPlanet.TData.TOwnershipHolderState;
               fSelectedRegion:TpvVector4;
               fSelectedRegionProperty:TpvVector4Property;
               fSelectedColor:TpvVector4;
@@ -459,6 +460,10 @@ type TpvScene3DPlanets=class;
               procedure ReleaseWaterOnUniversalQueue(const aCommandBuffer:TpvVulkanCommandBuffer);
               procedure AcquireWaterOnSimulationQueue(const aCommandBuffer:TpvVulkanCommandBuffer);
               procedure ReleaseWaterOnSimulationQueue(const aCommandBuffer:TpvVulkanCommandBuffer);
+              procedure AcquireAtmospherePrecipitationOnUniversalQueue(const aCommandBuffer:TpvVulkanCommandBuffer);
+              procedure ReleaseAtmospherePrecipitationOnUniversalQueue(const aCommandBuffer:TpvVulkanCommandBuffer);
+              procedure AcquireAtmospherePrecipitationOnSimulationQueue(const aCommandBuffer:TpvVulkanCommandBuffer);
+              procedure ReleaseAtmospherePrecipitationOnSimulationQueue(const aCommandBuffer:TpvVulkanCommandBuffer);
               procedure CopyHeightMapImageToHeightMapBuffer;
               procedure CheckDirtyMap;
               procedure Download(const aQueue:TpvVulkanQueue;
@@ -2571,6 +2576,7 @@ type TpvScene3DPlanets=class;
        fUse16Bit:Boolean;
        fUseConcurrentWaterHeightMapImage:Boolean;
        fMustTransferWaterHeightMapImageOwnership:Boolean;
+       fMustTransferAtmospherePrecipitationImageOwnership:Boolean;
        fAtmosphereAdditionTextureImageView:TVkImageView;
        fAtmosphereUpdateTimeAccumulator:TpvDouble;
        fAtmosphereUpdateTimeInterval:TpvDouble;
@@ -2650,6 +2656,11 @@ type TpvScene3DPlanets=class;
                                         const aFence:TpvVulkanFence;
                                         const aInFlightFrameIndex:TpvSizeInt);
        procedure ProcessWaterSimulation(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt);
+       procedure PrepareAtmospherePrecipitationSimulation(const aQueue:TpvVulkanQueue;
+                                                          const aCommandBuffer:TpvVulkanCommandBuffer;
+                                                          const aFence:TpvVulkanFence;
+                                                          const aInFlightFrameIndex:TpvSizeInt);
+       procedure ProcessAtmospherePrecipitationSimulation(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt;const aQueueFamilyIndex:TpvInt32=-1);
        procedure BeginFrame(const aInFlightFrameIndex:TpvSizeInt;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil);
        procedure EndFrame(const aInFlightFrameIndex:TpvSizeInt;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil);
        procedure ExportPhysicsMeshToBIN(const aStream:TStream); overload;
@@ -3440,6 +3451,8 @@ begin
  fOwnershipHolderState:=TpvScene3DPlanet.TData.TOwnershipHolderState.Uninitialized;
 
  fWaterOwnershipHolderState:=TpvScene3DPlanet.TData.TOwnershipHolderState.Uninitialized;
+
+ fAtmospherePrecipitationOwnershipHolderState:=TpvScene3DPlanet.TData.TOwnershipHolderState.Uninitialized;
 
  fDirtyHeightMap:=false;
  
@@ -5178,6 +5191,270 @@ begin
   end;
 
   fWaterOwnershipHolderState:=TpvScene3DPlanet.TData.TOwnershipHolderState.ReleasedOnComputeQueue;
+
+ end;
+
+end;
+
+procedure TpvScene3DPlanet.TData.AcquireAtmospherePrecipitationOnUniversalQueue(const aCommandBuffer:TpvVulkanCommandBuffer);
+var ImageMemoryBarriers:array[0..1] of TVkImageMemoryBarrier;
+    CountImageMemoryBarriers:TpvInt32;
+begin
+
+ if fAtmospherePrecipitationOwnershipHolderState=TpvScene3DPlanet.TData.TOwnershipHolderState.ReleasedOnComputeQueue then begin
+
+  if assigned(fPlanet.fVulkanDevice) and fPlanet.fMustTransferAtmospherePrecipitationImageOwnership then begin
+
+   CountImageMemoryBarriers:=0;
+
+   if assigned(fAtmosphereMapImage) then begin
+    ImageMemoryBarriers[CountImageMemoryBarriers]:=TVkImageMemoryBarrier.Create(0,
+                                                         TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                         TpvScene3D(fPlanet.fScene3D).PlanetAtmospherePrecipitationSimulationQueueFamilyIndex,
+                                                         fPlanet.fVulkanDevice.UniversalQueueFamilyIndex,
+                                                         fAtmosphereMapImage.VulkanImage.Handle,
+                                                         TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                         0,
+                                                                                         1,
+                                                                                         0,
+                                                                                         1));
+    inc(CountImageMemoryBarriers);
+   end;
+
+   if assigned(fPrecipitationMapImage) then begin
+    ImageMemoryBarriers[CountImageMemoryBarriers]:=TVkImageMemoryBarrier.Create(0,
+                                                         TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                         TpvScene3D(fPlanet.fScene3D).PlanetAtmospherePrecipitationSimulationQueueFamilyIndex,
+                                                         fPlanet.fVulkanDevice.UniversalQueueFamilyIndex,
+                                                         fPrecipitationMapImage.VulkanImage.Handle,
+                                                         TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                         0,
+                                                                                         1,
+                                                                                         0,
+                                                                                         1));
+    inc(CountImageMemoryBarriers);
+   end;
+
+   if CountImageMemoryBarriers>0 then begin
+
+    fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].AcquireAtmospherePrecipitationOnUniversalQueue',[0.25,0.5,0.25,1.0]);
+
+    aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
+                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                      0,
+                                      0,nil,
+                                      0,nil,
+                                      CountImageMemoryBarriers,@ImageMemoryBarriers[0]);
+
+    fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
+
+   end;
+
+  end;
+
+  fAtmospherePrecipitationOwnershipHolderState:=TpvScene3DPlanet.TData.TOwnershipHolderState.AcquiredOnUniversalQueue;
+
+ end;
+
+end;
+
+procedure TpvScene3DPlanet.TData.ReleaseAtmospherePrecipitationOnUniversalQueue(const aCommandBuffer:TpvVulkanCommandBuffer);
+var ImageMemoryBarriers:array[0..1] of TVkImageMemoryBarrier;
+    CountImageMemoryBarriers:TpvInt32;
+begin
+
+ if fAtmospherePrecipitationOwnershipHolderState in [TpvScene3DPlanet.TData.TOwnershipHolderState.Uninitialized,TpvScene3DPlanet.TData.TOwnershipHolderState.AcquiredOnUniversalQueue] then begin
+
+  if assigned(fPlanet.fVulkanDevice) and fPlanet.fMustTransferAtmospherePrecipitationImageOwnership then begin
+
+   CountImageMemoryBarriers:=0;
+
+   if assigned(fAtmosphereMapImage) then begin
+    ImageMemoryBarriers[CountImageMemoryBarriers]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                         0,
+                                                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                         fPlanet.fVulkanDevice.UniversalQueueFamilyIndex,
+                                                         TpvScene3D(fPlanet.fScene3D).PlanetAtmospherePrecipitationSimulationQueueFamilyIndex,
+                                                         fAtmosphereMapImage.VulkanImage.Handle,
+                                                         TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                         0,
+                                                                                         1,
+                                                                                         0,
+                                                                                         1));
+    inc(CountImageMemoryBarriers);
+   end;
+
+   if assigned(fPrecipitationMapImage) then begin
+    ImageMemoryBarriers[CountImageMemoryBarriers]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                         0,
+                                                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                         fPlanet.fVulkanDevice.UniversalQueueFamilyIndex,
+                                                         TpvScene3D(fPlanet.fScene3D).PlanetAtmospherePrecipitationSimulationQueueFamilyIndex,
+                                                         fPrecipitationMapImage.VulkanImage.Handle,
+                                                         TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                         0,
+                                                                                         1,
+                                                                                         0,
+                                                                                         1));
+    inc(CountImageMemoryBarriers);
+   end;
+
+   if CountImageMemoryBarriers>0 then begin
+
+    fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].ReleaseAtmospherePrecipitationOnUniversalQueue',[0.25,0.5,0.25,1.0]);
+
+    aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
+                                      0,
+                                      0,nil,
+                                      0,nil,
+                                      CountImageMemoryBarriers,@ImageMemoryBarriers[0]);
+
+    fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
+
+   end;
+
+  end;
+
+  fAtmospherePrecipitationOwnershipHolderState:=TpvScene3DPlanet.TData.TOwnershipHolderState.ReleasedOnUniversalQueue;
+
+ end;
+
+end;
+
+procedure TpvScene3DPlanet.TData.AcquireAtmospherePrecipitationOnSimulationQueue(const aCommandBuffer:TpvVulkanCommandBuffer);
+var ImageMemoryBarriers:array[0..1] of TVkImageMemoryBarrier;
+    CountImageMemoryBarriers:TpvInt32;
+begin
+
+ if fAtmospherePrecipitationOwnershipHolderState=TpvScene3DPlanet.TData.TOwnershipHolderState.ReleasedOnUniversalQueue then begin
+
+  if assigned(fPlanet.fVulkanDevice) and fPlanet.fMustTransferAtmospherePrecipitationImageOwnership then begin
+
+   CountImageMemoryBarriers:=0;
+
+   if assigned(fAtmosphereMapImage) then begin
+    ImageMemoryBarriers[CountImageMemoryBarriers]:=TVkImageMemoryBarrier.Create(0,
+                                                         TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                         fPlanet.fVulkanDevice.UniversalQueueFamilyIndex,
+                                                         TpvScene3D(fPlanet.fScene3D).PlanetAtmospherePrecipitationSimulationQueueFamilyIndex,
+                                                         fAtmosphereMapImage.VulkanImage.Handle,
+                                                         TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                         0,
+                                                                                         1,
+                                                                                         0,
+                                                                                         1));
+    inc(CountImageMemoryBarriers);
+   end;
+
+   if assigned(fPrecipitationMapImage) then begin
+    ImageMemoryBarriers[CountImageMemoryBarriers]:=TVkImageMemoryBarrier.Create(0,
+                                                         TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                         fPlanet.fVulkanDevice.UniversalQueueFamilyIndex,
+                                                         TpvScene3D(fPlanet.fScene3D).PlanetAtmospherePrecipitationSimulationQueueFamilyIndex,
+                                                         fPrecipitationMapImage.VulkanImage.Handle,
+                                                         TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                         0,
+                                                                                         1,
+                                                                                         0,
+                                                                                         1));
+    inc(CountImageMemoryBarriers);
+   end;
+
+   if CountImageMemoryBarriers>0 then begin
+
+    fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].AcquireAtmospherePrecipitationOnSimulationQueue',[0.25,0.5,0.25,1.0]);
+
+    aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
+                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                      0,
+                                      0,nil,
+                                      0,nil,
+                                      CountImageMemoryBarriers,@ImageMemoryBarriers[0]);
+
+    fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
+
+   end;
+
+  end;
+
+  fAtmospherePrecipitationOwnershipHolderState:=TpvScene3DPlanet.TData.TOwnershipHolderState.AcquiredOnComputeQueue;
+
+ end;
+
+end;
+
+procedure TpvScene3DPlanet.TData.ReleaseAtmospherePrecipitationOnSimulationQueue(const aCommandBuffer:TpvVulkanCommandBuffer);
+var ImageMemoryBarriers:array[0..1] of TVkImageMemoryBarrier;
+    CountImageMemoryBarriers:TpvInt32;
+begin
+
+ if fAtmospherePrecipitationOwnershipHolderState in [TpvScene3DPlanet.TData.TOwnershipHolderState.Uninitialized,TpvScene3DPlanet.TData.TOwnershipHolderState.AcquiredOnComputeQueue] then begin
+
+  if assigned(fPlanet.fVulkanDevice) and fPlanet.fMustTransferAtmospherePrecipitationImageOwnership then begin
+
+   CountImageMemoryBarriers:=0;
+
+   if assigned(fAtmosphereMapImage) then begin
+    ImageMemoryBarriers[CountImageMemoryBarriers]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                         0,
+                                                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                         TpvScene3D(fPlanet.fScene3D).PlanetAtmospherePrecipitationSimulationQueueFamilyIndex,
+                                                         fPlanet.fVulkanDevice.UniversalQueueFamilyIndex,
+                                                         fAtmosphereMapImage.VulkanImage.Handle,
+                                                         TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                         0,
+                                                                                         1,
+                                                                                         0,
+                                                                                         1));
+    inc(CountImageMemoryBarriers);
+   end;
+
+   if assigned(fPrecipitationMapImage) then begin
+    ImageMemoryBarriers[CountImageMemoryBarriers]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                         0,
+                                                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                         TpvScene3D(fPlanet.fScene3D).PlanetAtmospherePrecipitationSimulationQueueFamilyIndex,
+                                                         fPlanet.fVulkanDevice.UniversalQueueFamilyIndex,
+                                                         fPrecipitationMapImage.VulkanImage.Handle,
+                                                         TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                         0,
+                                                                                         1,
+                                                                                         0,
+                                                                                         1));
+    inc(CountImageMemoryBarriers);
+   end;
+
+   if CountImageMemoryBarriers>0 then begin
+
+    fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].ReleaseAtmospherePrecipitationOnSimulationQueue',[0.25,0.5,0.25,1.0]);
+
+    aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
+                                      0,
+                                      0,nil,
+                                      0,nil,
+                                      CountImageMemoryBarriers,@ImageMemoryBarriers[0]);
+
+    fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
+
+   end;
+
+  end;
+
+  fAtmospherePrecipitationOwnershipHolderState:=TpvScene3DPlanet.TData.TOwnershipHolderState.ReleasedOnComputeQueue;
 
  end;
 
@@ -23960,6 +24237,8 @@ begin
 
  fMustTransferWaterHeightMapImageOwnership:=false;
 
+ fMustTransferAtmospherePrecipitationImageOwnership:=false;
+
  if assigned(fVulkanDevice) then begin
 
   fUse16Bit:=fVulkanDevice.Shader16BitStorageFeaturesKHR.storageBuffer16BitAccess<>VK_FALSE;
@@ -23983,6 +24262,22 @@ begin
    fUsePlanetHeightMapBuffer:=false;
    fUseConcurrentWaterHeightMapImage:=false;
    fMustTransferWaterHeightMapImageOwnership:=false;
+  end;
+
+  // Atmosphere/Precipitation ownership transfer logic
+  if TpvScene3D(fScene3D).PlanetAtmospherePrecipitationSimulationUseParallelQueue and
+     (TpvScene3D(fScene3D).PlanetAtmospherePrecipitationSimulationQueueFamilyIndex<>fVulkanDevice.UniversalQueueFamilyIndex) and
+     (length(fVulkanDevice.AllQueueFamilyIndices)>1) then begin
+   case TpvVulkanVendorID(fVulkanDevice.PhysicalDevice.Properties.vendorID) of
+    TpvVulkanVendorID.NVIDIA:begin
+     fMustTransferAtmospherePrecipitationImageOwnership:=false;
+    end;
+    else begin
+     fMustTransferAtmospherePrecipitationImageOwnership:=true;
+    end;
+   end;
+  end else begin
+   fMustTransferAtmospherePrecipitationImageOwnership:=false;
   end;
 
   if (fVulkanDevice.UniversalQueueFamilyIndex<>fVulkanDevice.ComputeQueueFamilyIndex) or
@@ -25957,6 +26252,14 @@ begin
 
  end;
 
+ // NOTE: Precipitation and Atmosphere simulation moved to ProcessAtmospherePrecipitationSimulation
+ // for optional parallel execution when PlanetSingleBuffers is false
+ // NOTE: Precipitation and Atmosphere simulation moved to ProcessAtmospherePrecipitationSimulation
+ // for optional parallel execution when PlanetSingleBuffers is false
+ // NOTE: Minimap downloads also moved to PrepareAtmospherePrecipitationSimulation
+ UpdatedAtmosphere:=false;
+ UpdatedPrecipitation:=false;
+{
  if (aInFlightFrameIndex>=0) and (abs(fPrecipitationMapModificationItems[aInFlightFrameIndex].Value)>1e-7) then begin
 
   if assigned(fVulkanDevice) then begin
@@ -26082,7 +26385,10 @@ begin
   end;
 
  end;
+}
 
+ // NOTE: Minimap downloads moved to PrepareAtmospherePrecipitationSimulation for parallel execution
+{
  if UpdatedAtmosphere or (fData.fAtmosphereMiniMapTransferGeneration<>fData.fAtmosphereMiniMapGeneration) then begin
 
   fData.fAtmosphereMiniMapTransferGeneration:=fData.fAtmosphereMiniMapGeneration;
@@ -26114,6 +26420,7 @@ begin
   UpdatedPrecipitation:=false;
 
  end;
+}
 
  if (fData.fHeightMapProcessedGeneration<>fData.fHeightMapGeneration) or
     ((aInFlightFrameIndex>=0) and (abs(fHeightMapModificationItems[aInFlightFrameIndex].Value)>1e-7)) or
@@ -26833,6 +27140,151 @@ begin
     fWaterCullPass.Execute(aCommandBuffer);
    finally
     fData.ReleaseWaterOnSimulationQueue(aCommandBuffer);
+   end;
+  end;
+ end;
+end;
+
+procedure TpvScene3DPlanet.PrepareAtmospherePrecipitationSimulation(const aQueue:TpvVulkanQueue;
+                                                                    const aCommandBuffer:TpvVulkanCommandBuffer;
+                                                                    const aFence:TpvVulkanFence;
+                                                                    const aInFlightFrameIndex:TpvSizeInt);
+var InFlightFrameData:TData;
+begin
+ if assigned(fVulkanDevice) and (aInFlightFrameIndex>=0) then begin
+  InFlightFrameData:=fInFlightFrameDataList[aInFlightFrameIndex];
+  if assigned(InFlightFrameData) then begin
+   
+   // Handle atmosphere minimap downloads 
+   if fData.fAtmosphereMiniMapTransferGeneration<>fData.fAtmosphereMiniMapGeneration then begin
+    fData.fAtmosphereMiniMapTransferGeneration:=fData.fAtmosphereMiniMapGeneration;
+    fVulkanDevice.MemoryStaging.Download(aQueue,
+                                         aCommandBuffer,
+                                         aFence,
+                                         fData.fAtmosphereMiniMapBuffer,
+                                         0,
+                                         fData.fAtmosphereMiniMapData[0],
+                                         fAtmosphereMiniMapResolution*fAtmosphereMiniMapResolution*SizeOf(TpvUInt8));
+   end;
+
+   // Handle precipitation minimap downloads
+   if fData.fPrecipitationMiniMapTransferGeneration<>fData.fPrecipitationMiniMapGeneration then begin
+    fData.fPrecipitationMiniMapTransferGeneration:=fData.fPrecipitationMiniMapGeneration;
+    fVulkanDevice.MemoryStaging.Download(aQueue,
+                                         aCommandBuffer,
+                                         aFence,
+                                         fData.fPrecipitationMiniMapBuffer,
+                                         0,
+                                         fData.fPrecipitationMiniMapData[0],
+                                         fPrecipitationMiniMapResolution*fPrecipitationMiniMapResolution*SizeOf(TpvInt8));
+   end;
+
+  end;
+ end;
+end;
+
+procedure TpvScene3DPlanet.ProcessAtmospherePrecipitationSimulation(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt;const aQueueFamilyIndex:TpvInt32=-1);
+var InFlightFrameData:TData;
+    UpdatedAtmosphere,UpdatedPrecipitation:Boolean;
+    Steps:TpvInt32;
+begin
+ if assigned(fVulkanDevice) and (aInFlightFrameIndex>=0) then begin
+  InFlightFrameData:=fInFlightFrameDataList[aInFlightFrameIndex];
+  if assigned(InFlightFrameData) then begin
+   fData.AcquireAtmospherePrecipitationOnSimulationQueue(aCommandBuffer);
+   try
+
+    UpdatedAtmosphere:=false;
+    UpdatedPrecipitation:=false;
+
+    // Process precipitation map modifications
+    if (aInFlightFrameIndex>=0) and (abs(fPrecipitationMapModificationItems[aInFlightFrameIndex].Value)>1e-7) then begin
+     if assigned(fVulkanDevice) then begin
+      fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'TpvScene3DPlanet.ProcessAtmospherePrecipitationSimulation.PrecipitationModification',[0.5,0.75,0.25,1.0]);
+      try
+       try
+        fPrecipitationMapModification.Execute(aCommandBuffer,fPrecipitationMapModificationItems[aInFlightFrameIndex]);
+       finally
+        fPrecipitationMapModificationItems[aInFlightFrameIndex].Value:=0.0;
+       end;
+      finally
+       fVulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
+      end;
+      UpdatedPrecipitation:=true;
+     end;
+    end;
+
+    // Process precipitation simulation
+    if (aInFlightFrameIndex>=0) and assigned(fPrecipitationMapSimulation) and assigned(fPrecipitationMapSimulationTransfer) and (fPrecipitationSimulationSettings.fInterval>1e-6) and fSimulationActive then begin
+     fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'TpvScene3DPlanet.ProcessAtmospherePrecipitationSimulation.PrecipitationSimulation',[0.5,0.75,0.25,1.0]);
+     try
+      fPrecipitationMapSimulation.Execute(aCommandBuffer,TpvScene3D(fScene3D).DeltaTimes^[aInFlightFrameIndex]);
+      fPrecipitationMapSimulationTransfer.Execute(aCommandBuffer);
+     finally
+      fVulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
+     end;
+     UpdatedPrecipitation:=true;
+    end;
+
+    // Process atmosphere map modifications
+    if (aInFlightFrameIndex>=0) and (abs(fAtmosphereMapModificationItems[aInFlightFrameIndex].Value)>1e-7) then begin
+     if assigned(fVulkanDevice) then begin
+      fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'TpvScene3DPlanet.ProcessAtmospherePrecipitationSimulation.AtmosphereModification',[0.25,0.75,0.5,1.0]);
+      try
+       try
+        fAtmosphereMapModification.Execute(aCommandBuffer,fAtmosphereMapModificationItems[aInFlightFrameIndex]);
+       finally
+        fAtmosphereMapModificationItems[aInFlightFrameIndex].Value:=0.0;
+       end;
+      finally
+       fVulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
+      end;
+      UpdatedAtmosphere:=true;
+     end;
+    end;
+
+    // Process atmosphere simulation using time accumulator
+    if fAtmosphereAdditionTextureImageView<>VK_NULL_HANDLE then begin
+     if assigned(fVulkanDevice) and fSimulationActive then begin
+      fAtmosphereUpdateTimeAccumulator:=fAtmosphereUpdateTimeAccumulator+TpvScene3D(fScene3D).DeltaTimes^[aInFlightFrameIndex];
+      if fAtmosphereUpdateTimeAccumulator>=fAtmosphereUpdateTimeInterval then begin
+       Steps:=Trunc(fAtmosphereUpdateTimeAccumulator/fAtmosphereUpdateTimeInterval);
+       fAtmosphereUpdateTimeAccumulator:=fAtmosphereUpdateTimeAccumulator-(Steps*fAtmosphereUpdateTimeInterval);
+       if Steps>0 then begin
+        fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'TpvScene3DPlanet.ProcessAtmospherePrecipitationSimulation.AtmosphereSimulation',[0.25,0.75,0.5,1.0]);
+        try
+         fAtmosphereMapUpdate.Execute(aCommandBuffer,Steps);
+        finally
+         fVulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
+        end;
+        UpdatedAtmosphere:=true;
+       end;
+      end;
+     end;
+    end;
+
+    // Process downsampling and combination if needed
+    if UpdatedAtmosphere or
+       UpdatedPrecipitation or
+       (fData.fPrecipitationAtmosphereMapPrecipitationMapGeneration<>fData.fPrecipitationMapGeneration) or
+       (fData.fPrecipitationAtmosphereMapAtmosphereMapGeneration<>fData.fAtmosphereMapGeneration) then begin
+
+     fData.fPrecipitationAtmosphereMapPrecipitationMapGeneration:=fData.fPrecipitationMapGeneration;
+     fData.fPrecipitationAtmosphereMapAtmosphereMapGeneration:=fData.fAtmosphereMapGeneration;
+
+     fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'TpvScene3DPlanet.ProcessAtmospherePrecipitationSimulation.DownsamplingCombination',[0.375,0.75,0.375,1.0]);
+     try
+      fAtmosphereMapDownsampling.Execute(aCommandBuffer);
+      fPrecipitationMapDownsampling.Execute(aCommandBuffer);
+      fPrecipitationAtmosphereMapCombination.Execute(aCommandBuffer);
+     finally
+      fVulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
+     end;
+
+    end;
+
+   finally
+    fData.ReleaseAtmospherePrecipitationOnSimulationQueue(aCommandBuffer);
    end;
   end;
  end;

@@ -612,7 +612,9 @@ type { TpvScene3DRendererInstance }
        fCameraPreset:TpvScene3DRendererCameraPreset;
        fUseDebugBlit:boolean;
        fWaterExternalWaitingOnSemaphore:TpvFrameGraph.TExternalWaitingOnSemaphore;
+       fAtmosphereExternalWaitingOnSemaphore:TpvFrameGraph.TExternalWaitingOnSemaphore;
        fWaterSimulationSemaphores:TInFlightFrameSemaphores;
+       fAtmospherePrecipitationSimulationSemaphores:TInFlightFrameSemaphores;
       private
        fMeshStagePushConstants:TpvScene3D.TMeshStagePushConstantArray;
        fDrawChoreographyBatchItemFrameBuckets:TpvScene3D.TDrawChoreographyBatchItemFrameBuckets;
@@ -1099,6 +1101,7 @@ type { TpvScene3DRendererInstance }
        property UseDebugBlit:boolean read fUseDebugBlit write fUseDebugBlit;
       public
        property WaterSimulationSemaphores:TInFlightFrameSemaphores read fWaterSimulationSemaphores;
+       property AtmospherePrecipitationSimulationSemaphores:TInFlightFrameSemaphores read fAtmospherePrecipitationSimulationSemaphores;
      end;
 
 implementation
@@ -2407,12 +2410,23 @@ begin
 
  fWaterExternalWaitingOnSemaphore:=nil;
 
+ fAtmosphereExternalWaitingOnSemaphore:=nil;
+
  FillChar(fWaterSimulationSemaphores,SizeOf(TInFlightFrameSemaphores),#0);
 
  if fScene3D.PlanetWaterSimulationUseParallelQueue then begin
   for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
    fWaterSimulationSemaphores[InFlightFrameIndex]:=TpvVulkanSemaphore.Create(Renderer.VulkanDevice,TVkSemaphoreCreateFlags(0));
    Renderer.VulkanDevice.DebugUtils.SetObjectName(fWaterSimulationSemaphores[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_SEMAPHORE,'TpvScene3DRendererInstance.fWaterSimulationSemaphores['+IntToStr(InFlightFrameIndex)+']');
+  end;
+ end;
+
+ FillChar(fAtmospherePrecipitationSimulationSemaphores,SizeOf(TInFlightFrameSemaphores),#0);
+
+ if fScene3D.PlanetAtmospherePrecipitationSimulationUseParallelQueue then begin
+  for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
+   fAtmospherePrecipitationSimulationSemaphores[InFlightFrameIndex]:=TpvVulkanSemaphore.Create(Renderer.VulkanDevice,TVkSemaphoreCreateFlags(0));
+   Renderer.VulkanDevice.DebugUtils.SetObjectName(fAtmospherePrecipitationSimulationSemaphores[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_SEMAPHORE,'TpvScene3DRendererInstance.fAtmospherePrecipitationSimulationSemaphores['+IntToStr(InFlightFrameIndex)+']');
   end;
  end;
 
@@ -2430,7 +2444,13 @@ begin
   FreeAndNil(fWaterSimulationSemaphores[InFlightFrameIndex]);
  end;
 
+ for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
+  FreeAndNil(fAtmospherePrecipitationSimulationSemaphores[InFlightFrameIndex]);
+ end;
+
  FreeAndNil(fWaterExternalWaitingOnSemaphore);
+
+ FreeAndNil(fAtmosphereExternalWaitingOnSemaphore);
 
  FreeAndNil(fFrameGraph);
 
@@ -3913,6 +3933,19 @@ begin
  end;
 
  TpvScene3DRendererInstancePasses(fPasses).fAtmosphereProcessCustomPass:=TpvScene3DRendererPassesAtmosphereProcessCustomPass.Create(fFrameGraph,self);
+ if fScene3D.PlanetAtmospherePrecipitationSimulationUseParallelQueue then begin
+  FreeAndNil(fAtmosphereExternalWaitingOnSemaphore);
+  fAtmosphereExternalWaitingOnSemaphore:=TpvFrameGraph.TExternalWaitingOnSemaphore.Create(fFrameGraph);
+  try
+   for InFlightFrameIndex:=0 to fFrameGraph.CountInFlightFrames-1 do begin
+    fAtmosphereExternalWaitingOnSemaphore.InFlightFrameSemaphores[InFlightFrameIndex]:=fAtmospherePrecipitationSimulationSemaphores[InFlightFrameIndex];
+   end;
+  finally
+   TpvScene3DRendererInstancePasses(fPasses).fAtmosphereProcessCustomPass.AddExternalWaitingOnSemaphore(fAtmosphereExternalWaitingOnSemaphore,TVkPipelineStageFlags(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT));
+  end;
+ end else begin
+  fAtmosphereExternalWaitingOnSemaphore:=nil;
+ end;
  case Renderer.ShadowMode of
   TpvScene3DRendererShadowMode.None,
   TpvScene3DRendererShadowMode.PCF,TpvScene3DRendererShadowMode.DPCF,TpvScene3DRendererShadowMode.PCSS:begin

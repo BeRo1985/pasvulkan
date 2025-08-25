@@ -801,7 +801,7 @@ type TpvScene3DAtmosphere=class;
               procedure BeforeDestruction; override;
               procedure AcquireResources;
               procedure ReleaseResources;
-              procedure Update(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt);
+              procedure Update(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt;const aQueueFamilyIndex:TpvInt32=-1);
              public
               property TextureSourceImage:TpvScene3DRendererImage2D read fTextureSourceImage write fTextureSourceImage;
               property TextureGeneration:TpvUInt64 read fTextureGeneration write fTextureGeneration;
@@ -850,7 +850,8 @@ type TpvScene3DAtmosphere=class;
        function IsInFlightFrameVisible(const aInFlightFrameIndex:TpvSizeInt):Boolean;
        function GetRenderInstance(const aRendererInstance:TObject):TpvScene3DAtmosphere.TRendererInstance;
        procedure ProcessSimulation(const aCommandBuffer:TpvVulkanCommandBuffer;
-                                   const aInFlightFrameIndex:TpvSizeInt);
+                                   const aInFlightFrameIndex:TpvSizeInt;
+                                   const aQueueFamilyIndex:TpvInt32=-1);
        procedure Execute(const aInFlightFrameIndex:TpvSizeInt;
                          const aCommandBuffer:TpvVulkanCommandBuffer;
                          const aRendererInstance:TObject);
@@ -4087,12 +4088,25 @@ begin
 
 end;
 
-procedure TpvScene3DAtmosphere.TDirectionalMap.Update(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt);
+procedure TpvScene3DAtmosphere.TDirectionalMap.Update(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt;const aQueueFamilyIndex:TpvInt32=-1);
 const FloatOne:TpvFloat=1.0;
 var ImageMemoryBarriers:array[0..1] of TVkImageMemoryBarrier;
     BufferMemoryBarrier:TVkBufferMemoryBarrier;
     DirectionalMapTextureInitializationPushConstants:TpvScene3DAtmosphereGlobals.TDirectionalMapTextureInitializationPushConstants;
+    SourcePipelineStageFlags,DestPipelineStageFlags:TVkPipelineStageFlags;
 begin
+
+ // Calculate appropriate pipeline stages based on queue family
+ if (aQueueFamilyIndex>=0) and (aQueueFamilyIndex=TpvScene3D(fScene3D).VulkanDevice.ComputeQueueFamilyIndex) and 
+    (TpvScene3D(fScene3D).VulkanDevice.UniversalQueueFamilyIndex<>TpvScene3D(fScene3D).VulkanDevice.ComputeQueueFamilyIndex) then begin
+   // We're on a compute-only queue, use only compute pipeline stages
+   SourcePipelineStageFlags:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT);
+   DestPipelineStageFlags:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+ end else begin
+   // We're on the universal queue or default, can use graphics+compute pipeline stages  
+   SourcePipelineStageFlags:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT);
+   DestPipelineStageFlags:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+ end;
 
  // Two code paths, if a source image is assigned or not.
  // If a source image is assigned, we need to transfer the data from the source image to the target image.
@@ -4121,7 +4135,7 @@ begin
                                                        0,
                                                        fAtmosphere.fAtmosphereMapMinMaxBuffer.Size);
 
-    aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+    aCommandBuffer.CmdPipelineBarrier(SourcePipelineStageFlags,
                                       TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
                                       0,
                                       0,nil,
@@ -4147,7 +4161,7 @@ begin
                                                        fAtmosphere.fAtmosphereMapMinMaxBuffer.Size);
 
     aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
-                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT),
+                                      DestPipelineStageFlags,
                                       0,
                                       0,nil,
                                       1,@BufferMemoryBarrier,
@@ -4254,7 +4268,7 @@ begin
                                                                                         6));
 
    aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
-                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT),
+                                     DestPipelineStageFlags,
                                      0,
                                      0,nil,
                                      1,@BufferMemoryBarrier,
@@ -4282,7 +4296,7 @@ begin
                                                        0,
                                                        fAtmosphere.fAtmosphereMapMinMaxBuffer.Size);
 
-    aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+    aCommandBuffer.CmdPipelineBarrier(SourcePipelineStageFlags,
                                       TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
                                       0,
                                       0,nil,
@@ -4303,7 +4317,7 @@ begin
                                                        fAtmosphere.fAtmosphereMapMinMaxBuffer.Size);
 
     aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
-                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT),
+                                      DestPipelineStageFlags,
                                       0,
                                       0,nil,
                                       1,@BufferMemoryBarrier,
@@ -4373,7 +4387,7 @@ begin
                                                                                         6));
 
    aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
-                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT),
+                                     DestPipelineStageFlags,
                                      0,
                                      0,nil,
                                      0,nil,
@@ -4703,18 +4717,35 @@ begin
 end;
 
 procedure TpvScene3DAtmosphere.ProcessSimulation(const aCommandBuffer:TpvVulkanCommandBuffer;
-                                                 const aInFlightFrameIndex:TpvSizeInt);
+                                                 const aInFlightFrameIndex:TpvSizeInt;
+                                                 const aQueueFamilyIndex:TpvInt32=-1);
 var Index:TpvSizeInt;
     AtmosphereGlobals:TpvScene3DAtmosphereGlobals;
     PushConstants:TpvScene3DAtmosphereGlobals.TCloudWeatherMapPushConstants;
     ImageMemoryBarrier:TVkImageMemoryBarrier;
+    BufferMemoryBarrier:TVkBufferMemoryBarrier;
+    ImageMemoryBarriers:array[0..2] of TVkImageMemoryBarrier;
+    ImageBarrierCount,BufferBarrierCount:TpvUInt32;
+    SourcePipelineStageFlags,DestPipelineStageFlags:TVkPipelineStageFlags;
 begin
+
+ // Calculate appropriate pipeline stages based on queue family
+ if (aQueueFamilyIndex>=0) and (aQueueFamilyIndex=TpvScene3D(fScene3D).VulkanDevice.ComputeQueueFamilyIndex) and 
+    (TpvScene3D(fScene3D).VulkanDevice.UniversalQueueFamilyIndex<>TpvScene3D(fScene3D).VulkanDevice.ComputeQueueFamilyIndex) then begin
+   // We're on a compute-only queue, use only compute pipeline stages
+   SourcePipelineStageFlags:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+   DestPipelineStageFlags:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+ end else begin
+   // We're on the universal queue or default, can use graphics+compute pipeline stages  
+   SourcePipelineStageFlags:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+   DestPipelineStageFlags:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+ end;
 
  if fInFlightFrameVisible[aInFlightFrameIndex] then begin
 
-  fAtmosphereMap.Update(aCommandBuffer,aInFlightFrameIndex);
+  fAtmosphereMap.Update(aCommandBuffer,aInFlightFrameIndex,aQueueFamilyIndex);
 
-  fPrecipitationMap.Update(aCommandBuffer,aInFlightFrameIndex);
+  fPrecipitationMap.Update(aCommandBuffer,aInFlightFrameIndex,aQueueFamilyIndex);
 
   begin
 
@@ -4752,7 +4783,7 @@ begin
                                                                                      0,
                                                                                      6));
 
-    aCommandBuffer.CmdPipelineBarrier(TpvScene3D(fScene3D).VulkanDevice.PhysicalDevice.PipelineStageAllShaderBits,
+    aCommandBuffer.CmdPipelineBarrier(SourcePipelineStageFlags,
                                       TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
                                       0,
                                       0,nil,
@@ -4793,7 +4824,7 @@ begin
                                                                                      6));
 
     aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
-                                      TpvScene3D(fScene3D).VulkanDevice.PhysicalDevice.PipelineStageAllShaderBits,
+                                      SourcePipelineStageFlags,
                                       0,
                                       0,nil,
                                       0,nil,
@@ -4801,6 +4832,86 @@ begin
 
    end;
 
+  end;
+
+  // Add explicit memory barriers for all atmosphere buffers and images
+  // to ensure compute shader writes are visible before subsequent operations
+  
+  // Collect all image memory barriers
+  ImageBarrierCount:=0;
+  BufferBarrierCount:=0;
+  
+  // Memory barrier for atmosphere map texture
+  if assigned(fAtmosphereMap) and assigned(fAtmosphereMap.fTexture) then begin
+   ImageMemoryBarriers[ImageBarrierCount]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT),
+                                                                        TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT),
+                                                                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                                        VK_QUEUE_FAMILY_IGNORED,
+                                                                        VK_QUEUE_FAMILY_IGNORED,
+                                                                        fAtmosphereMap.fTexture.VulkanImage.Handle,
+                                                                        TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                                        0,
+                                                                                                        1,
+                                                                                                        0,
+                                                                                                        6));
+   inc(ImageBarrierCount);
+  end;
+  
+  // Memory barrier for precipitation map texture  
+  if assigned(fPrecipitationMap) and assigned(fPrecipitationMap.fTexture) then begin
+   ImageMemoryBarriers[ImageBarrierCount]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT),
+                                                                        TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT),
+                                                                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                                        VK_QUEUE_FAMILY_IGNORED,
+                                                                        VK_QUEUE_FAMILY_IGNORED,
+                                                                        fPrecipitationMap.fTexture.VulkanImage.Handle,
+                                                                        TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                                        0,
+                                                                                                        1,
+                                                                                                        0,
+                                                                                                        6));
+   inc(ImageBarrierCount);
+  end;
+
+  // Memory barrier for weather map texture
+  if assigned(fWeatherMapTexture) then begin
+   ImageMemoryBarriers[ImageBarrierCount]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT),
+                                                                        TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT),
+                                                                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                                        VK_QUEUE_FAMILY_IGNORED,
+                                                                        VK_QUEUE_FAMILY_IGNORED,
+                                                                        fWeatherMapTexture.VulkanImage.Handle,
+                                                                        TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                                        0,
+                                                                                                        1,
+                                                                                                        0,
+                                                                                                        6));
+   inc(ImageBarrierCount);
+  end;
+
+  // Memory barrier for atmosphere map min/max buffer
+  if assigned(fAtmosphereMapMinMaxBuffer) then begin
+   BufferMemoryBarrier:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                      TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT),
+                                                      VK_QUEUE_FAMILY_IGNORED,
+                                                      VK_QUEUE_FAMILY_IGNORED,
+                                                      fAtmosphereMapMinMaxBuffer.Handle,
+                                                      0,
+                                                      fAtmosphereMapMinMaxBuffer.Size);
+   BufferBarrierCount:=1;
+  end;
+
+  // Single pipeline barrier call for all barriers
+  if (ImageBarrierCount>0) or (BufferBarrierCount>0) then begin
+   aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
+                                     0,
+                                     0,nil,
+                                     BufferBarrierCount,@BufferMemoryBarrier,
+                                     ImageBarrierCount,@ImageMemoryBarriers[0]);
   end;
 
  end;
