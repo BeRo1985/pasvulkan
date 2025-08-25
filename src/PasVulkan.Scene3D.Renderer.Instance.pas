@@ -1110,6 +1110,7 @@ uses PasVulkan.Scene3D.Atmosphere,
     {PasVulkan.Scene3D.Renderer.Passes.DataTransferPass,
      PasVulkan.Scene3D.Renderer.Passes.MeshComputePass,
      PasVulkan.Scene3D.Renderer.Passes.RaytracingBuildUpdatePass,}
+     PasVulkan.Scene3D.Renderer.Passes.AtmospherePrecipitationWaitCustomPass,
      PasVulkan.Scene3D.Renderer.Passes.AtmosphereProcessCustomPass,
      PasVulkan.Scene3D.Renderer.Passes.MeshCullPass0ComputePass,
      PasVulkan.Scene3D.Renderer.Passes.CullDepthRenderPass,
@@ -1214,6 +1215,7 @@ uses PasVulkan.Scene3D.Atmosphere,
      PasVulkan.Scene3D.Renderer.Passes.CanvasRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.HUDMipMapCustomPass,
      PasVulkan.Scene3D.Renderer.Passes.ContentProjectionRenderPass,
+     PasVulkan.Scene3D.Renderer.Passes.AtmospherePrecipitationReleaseCustomPass,
      PasVulkan.Scene3D.Renderer.Passes.WaterReleaseCustomPass,
      PasVulkan.Scene3D.Renderer.Passes.DebugBlitRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.FrameBufferBlitRenderPass;
@@ -1223,6 +1225,7 @@ type TpvScene3DRendererInstancePasses=class
 {      fDataTransferPass:TpvScene3DRendererPassesDataTransferPass;
        fMeshComputePass:TpvScene3DRendererPassesMeshComputePass;
        fRaytracingBuildUpdatePass:TpvScene3DRendererPassesRaytracingBuildUpdatePass;}
+       fAtmospherePrecipitationWaitCustomPass:TpvScene3DRendererPassesAtmospherePrecipitationWaitCustomPass;
        fAtmosphereProcessCustomPass:TpvScene3DRendererPassesAtmosphereProcessCustomPass;
        fCascadedShadowMapMeshCullPass0ComputePass:TpvScene3DRendererPassesMeshCullPass0ComputePass;
        fCascadedShadowMapCullDepthRenderPass:TpvScene3DRendererPassesCullDepthRenderPass;
@@ -1337,6 +1340,7 @@ type TpvScene3DRendererInstancePasses=class
        fHUDRenderPass:TpvScene3DRendererInstance.THUDRenderPass;
        fHUDMipMapCustomPass:TpvScene3DRendererPassesHUDMipMapCustomPass;
        fContentProjectionRenderPass:TpvScene3DRendererPassesContentProjectionRenderPass;
+       fAtmospherePrecipitationReleaseCustomPass:TpvScene3DRendererPassesAtmospherePrecipitationReleaseCustomPass;
        fWaterReleaseCustomPass:TpvScene3DRendererPassesWaterReleaseCustomPass;
        fDebugBlitRenderPass:TpvScene3DRendererPassesDebugBlitRenderPass;
        fFrameBufferBlitRenderPass:TpvScene3DRendererPassesFrameBufferBlitRenderPass;
@@ -3932,7 +3936,10 @@ begin
 
  end;
 
+ TpvScene3DRendererInstancePasses(fPasses).fAtmospherePrecipitationWaitCustomPass:=TpvScene3DRendererPassesAtmospherePrecipitationWaitCustomPass.Create(fFrameGraph,self);
+
  TpvScene3DRendererInstancePasses(fPasses).fAtmosphereProcessCustomPass:=TpvScene3DRendererPassesAtmosphereProcessCustomPass.Create(fFrameGraph,self);
+ TpvScene3DRendererInstancePasses(fPasses).fAtmosphereProcessCustomPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fAtmospherePrecipitationWaitCustomPass);
  if fScene3D.PlanetAtmospherePrecipitationSimulationUseParallelQueue then begin
   FreeAndNil(fAtmosphereExternalWaitingOnSemaphore);
   fAtmosphereExternalWaitingOnSemaphore:=TpvFrameGraph.TExternalWaitingOnSemaphore.Create(fFrameGraph);
@@ -4293,6 +4300,7 @@ begin
  TpvScene3DRendererInstancePasses(fPasses).fAtmosphereRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fDepthMipMapComputePass);
  // Ensure AtmosphereRenderPass waits for atmosphere simulation to complete
  TpvScene3DRendererInstancePasses(fPasses).fAtmosphereRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fAtmosphereProcessCustomPass);
+ TpvScene3DRendererInstancePasses(fPasses).fAtmosphereRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fAtmospherePrecipitationWaitCustomPass);
 
  TpvScene3DRendererInstancePasses(fPasses).fRainRenderPass:=TpvScene3DRendererPassesRainRenderPass.Create(fFrameGraph,self);
  TpvScene3DRendererInstancePasses(fPasses).fRainRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fForwardRenderPass);
@@ -4745,8 +4753,14 @@ TpvScene3DRendererInstancePasses(fPasses).fPlanetWaterPrepassComputePass.AddExpl
 
  end;
 
+ TpvScene3DRendererInstancePasses(fPasses).fAtmospherePrecipitationReleaseCustomPass:=TpvScene3DRendererPassesAtmospherePrecipitationReleaseCustomPass.Create(fFrameGraph,self);
+ TpvScene3DRendererInstancePasses(fPasses).fAtmospherePrecipitationReleaseCustomPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fAtmosphereRenderPass);
+ TpvScene3DRendererInstancePasses(fPasses).fAtmospherePrecipitationReleaseCustomPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fAtmosphereCloudRenderPass);
+ TpvScene3DRendererInstancePasses(fPasses).fAtmospherePrecipitationReleaseCustomPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fRainRenderPass);
+
  TpvScene3DRendererInstancePasses(fPasses).fWaterReleaseCustomPass:=TpvScene3DRendererPassesWaterReleaseCustomPass.Create(fFrameGraph,self);
  TpvScene3DRendererInstancePasses(fPasses).fWaterReleaseCustomPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fWaterRenderPass);
+ TpvScene3DRendererInstancePasses(fPasses).fWaterReleaseCustomPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fAtmospherePrecipitationReleaseCustomPass);
  if assigned(TpvScene3DRendererInstancePasses(fPasses).fHUDCustomPass) then begin
   TpvScene3DRendererInstancePasses(fPasses).fWaterReleaseCustomPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fHUDCustomPass);
  end;

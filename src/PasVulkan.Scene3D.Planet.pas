@@ -2216,6 +2216,36 @@ type TpvScene3DPlanets=class;
              public
               property PushConstants:TPushConstants read fPushConstants write fPushConstants;
             end;
+            { TAtmospherePrecipitationWaitPass } // Used by multiple TpvScene3DPlanet instances inside the TpvScene3D render passes per renderer instance
+            TAtmospherePrecipitationWaitPass=class
+             public
+             private
+              fRenderer:TObject;
+              fRendererInstance:TObject;
+              fScene3D:TObject;
+              fVulkanDevice:TpvVulkanDevice;
+             public
+              constructor Create(const aRenderer:TObject;
+                                 const aRendererInstance:TObject;
+                                 const aScene3D:TObject); reintroduce;
+              destructor Destroy; override;
+              procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
+            end;
+            { TAtmospherePrecipitationReleasePass } // Used by multiple TpvScene3DPlanet instances inside the TpvScene3D render passes per renderer instance
+            TAtmospherePrecipitationReleasePass=class
+             public
+             private
+              fRenderer:TObject;
+              fRendererInstance:TObject;
+              fScene3D:TObject;
+              fVulkanDevice:TpvVulkanDevice;
+             public
+              constructor Create(const aRenderer:TObject;
+                                 const aRendererInstance:TObject;
+                                 const aScene3D:TObject); reintroduce;
+              destructor Destroy; override;
+              procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
+            end;
             { TWaterWaitPass } // Used by multiple TpvScene3DPlanet instances inside the TpvScene3D render passes per renderer instance
             TWaterWaitPass=class
              public
@@ -22493,6 +22523,89 @@ begin
 
  TpvScene3D(fScene3D).VulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
 
+end;
+
+{ TpvScene3DPlanet.TAtmospherePrecipitationWaitPass }
+
+constructor TpvScene3DPlanet.TAtmospherePrecipitationWaitPass.Create(const aRenderer:TObject;
+                                                   const aRendererInstance:TObject;
+                                                   const aScene3D:TObject);
+begin
+
+ inherited Create;
+
+ fRenderer:=aRenderer;
+
+ fRendererInstance:=aRendererInstance;
+
+ fScene3D:=aScene3D;
+
+ fVulkanDevice:=TpvScene3D(fScene3D).VulkanDevice;
+
+end;
+
+destructor TpvScene3DPlanet.TAtmospherePrecipitationWaitPass.Destroy;
+begin
+
+ inherited Destroy;
+
+end;
+
+procedure TpvScene3DPlanet.TAtmospherePrecipitationWaitPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
+var PlanetIndex:TpvSizeInt;
+    Planet:TpvScene3DPlanet;
+begin
+
+ for PlanetIndex:=0 to TpvScene3DPlanets(TpvScene3D(fScene3D).Planets).Count-1 do begin
+
+  Planet:=TpvScene3DPlanets(TpvScene3D(fScene3D).Planets).Items[PlanetIndex];
+
+  if Planet.fReady and Planet.fInFlightFrameReady[aInFlightFrameIndex] then begin
+
+   Planet.fData.AcquireAtmospherePrecipitationOnUniversalQueue(aCommandBuffer);
+
+  end;
+
+ end;
+
+end;
+
+{ TpvScene3DPlanet.TAtmospherePrecipitationReleasePass }
+
+constructor TpvScene3DPlanet.TAtmospherePrecipitationReleasePass.Create(const aRenderer:TObject;
+                                                      const aRendererInstance:TObject;
+                                                      const aScene3D:TObject);
+begin
+
+ inherited Create;
+
+ fRenderer:=aRenderer;
+
+ fRendererInstance:=aRendererInstance;
+
+ fScene3D:=aScene3D;
+
+ fVulkanDevice:=TpvScene3D(fScene3D).VulkanDevice;
+
+end;
+
+destructor TpvScene3DPlanet.TAtmospherePrecipitationReleasePass.Destroy;
+begin
+
+ inherited Destroy;
+
+end;
+
+procedure TpvScene3DPlanet.TAtmospherePrecipitationReleasePass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
+var PlanetIndex:TpvSizeInt;
+    Planet:TpvScene3DPlanet;
+begin
+ for PlanetIndex:=0 to TpvScene3DPlanets(TpvScene3D(fScene3D).Planets).Count-1 do begin
+  Planet:=TpvScene3DPlanets(TpvScene3D(fScene3D).Planets).Items[PlanetIndex];
+  if Planet.fReady and Planet.fInFlightFrameReady[aInFlightFrameIndex] then begin
+   Planet.fData.ReleaseAtmospherePrecipitationOnUniversalQueue(aCommandBuffer);
+  end;
+ end;
 end;
 
 { TpvScene3DPlanet.TWaterWaitPass }

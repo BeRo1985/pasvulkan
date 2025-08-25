@@ -49,7 +49,7 @@
  * 11. Make sure the code runs on all platforms with Vulkan support           *
  *                                                                            *
  ******************************************************************************)
-unit PasVulkan.Scene3D.Renderer.Passes.AtmosphereProcessCustomPass;
+unit PasVulkan.Scene3D.Renderer.Passes.AtmospherePrecipitationWaitCustomPass;
 {$i PasVulkan.inc}
 {$ifndef fpc}
  {$ifdef conditionalexpressions}
@@ -74,12 +74,14 @@ uses SysUtils,
      PasVulkan.Scene3D,
      PasVulkan.Scene3D.Renderer.Globals,
      PasVulkan.Scene3D.Renderer,
-     PasVulkan.Scene3D.Renderer.Instance;
+     PasVulkan.Scene3D.Renderer.Instance,
+     PasVulkan.Scene3D.Planet;
 
-type { TpvScene3DRendererPassesAtmosphereProcessCustomPass }
-     TpvScene3DRendererPassesAtmosphereProcessCustomPass=class(TpvFrameGraph.TCustomPass)
+type { TpvScene3DRendererPassesAtmospherePrecipitationWaitCustomPass }
+     TpvScene3DRendererPassesAtmospherePrecipitationWaitCustomPass=class(TpvFrameGraph.TCustomPass)
       private
        fInstance:TpvScene3DRendererInstance;
+       fPlanetAtmospherePrecipitationWaitPass:TpvScene3DPlanet.TAtmospherePrecipitationWaitPass;
       public
        constructor Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance); reintroduce;
        destructor Destroy; override;
@@ -93,52 +95,58 @@ type { TpvScene3DRendererPassesAtmosphereProcessCustomPass }
 
 implementation
 
-{ TpvScene3DRendererPassesAtmosphereProcessCustomPass  }
+{ TpvScene3DRendererPassesAtmospherePrecipitationWaitCustomPass }
 
-constructor TpvScene3DRendererPassesAtmosphereProcessCustomPass.Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance);
+constructor TpvScene3DRendererPassesAtmospherePrecipitationWaitCustomPass.Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance);
 begin
  inherited Create(aFrameGraph);
-
  fInstance:=aInstance;
-
- Name:='AtmosphereProcessCustomPass';
-
+ Name:='AtmospherePrecipitationWaitCustomPass';
 end;
 
-destructor TpvScene3DRendererPassesAtmosphereProcessCustomPass.Destroy;
+destructor TpvScene3DRendererPassesAtmospherePrecipitationWaitCustomPass.Destroy;
 begin
  inherited Destroy;
 end;
 
-procedure TpvScene3DRendererPassesAtmosphereProcessCustomPass.AcquirePersistentResources;
+procedure TpvScene3DRendererPassesAtmospherePrecipitationWaitCustomPass.AcquirePersistentResources;
 begin
+
  inherited AcquirePersistentResources;
+
+ fPlanetAtmospherePrecipitationWaitPass:=TpvScene3DPlanet.TAtmospherePrecipitationWaitPass.Create(fInstance.Renderer,
+                                                              fInstance,
+                                                              fInstance.Renderer.Scene3D);
 end;
 
-procedure TpvScene3DRendererPassesAtmosphereProcessCustomPass.ReleasePersistentResources;
+procedure TpvScene3DRendererPassesAtmospherePrecipitationWaitCustomPass.ReleasePersistentResources;
 begin
+
+ FreeAndNil(fPlanetAtmospherePrecipitationWaitPass);
+
  inherited ReleasePersistentResources;
+
 end;
 
-procedure TpvScene3DRendererPassesAtmosphereProcessCustomPass.AcquireVolatileResources;
+procedure TpvScene3DRendererPassesAtmospherePrecipitationWaitCustomPass.AcquireVolatileResources;
 begin
  inherited AcquireVolatileResources;
 end;
 
-procedure TpvScene3DRendererPassesAtmosphereProcessCustomPass.ReleaseVolatileResources;
+procedure TpvScene3DRendererPassesAtmospherePrecipitationWaitCustomPass.ReleaseVolatileResources;
 begin
  inherited ReleaseVolatileResources;
 end;
 
-procedure TpvScene3DRendererPassesAtmosphereProcessCustomPass.Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt);
+procedure TpvScene3DRendererPassesAtmospherePrecipitationWaitCustomPass.Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt);
 begin
  inherited Update(aUpdateInFlightFrameIndex,aUpdateFrameIndex);
 end;
 
-procedure TpvScene3DRendererPassesAtmosphereProcessCustomPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
+procedure TpvScene3DRendererPassesAtmospherePrecipitationWaitCustomPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
 begin
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
- fInstance.ProcessAtmospheresForFrame(aInFlightFrameIndex,aCommandBuffer);
+ fPlanetAtmospherePrecipitationWaitPass.Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
 end;
 
 end.
