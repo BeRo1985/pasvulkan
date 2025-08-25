@@ -27187,6 +27187,7 @@ procedure TpvScene3DPlanet.ProcessAtmospherePrecipitationSimulation(const aComma
 var InFlightFrameData:TData;
     UpdatedAtmosphere,UpdatedPrecipitation:Boolean;
     Steps:TpvInt32;
+    BufferBarrier:TVkBufferMemoryBarrier;
 begin
  if assigned(fVulkanDevice) and (aInFlightFrameIndex>=0) then begin
   InFlightFrameData:=fInFlightFrameDataList[aInFlightFrameIndex];
@@ -27277,6 +27278,23 @@ begin
       fAtmosphereMapDownsampling.Execute(aCommandBuffer);
       fPrecipitationMapDownsampling.Execute(aCommandBuffer);
       fPrecipitationAtmosphereMapCombination.Execute(aCommandBuffer);
+      
+      // Add memory barrier to ensure PrecipitationAtmosphereMapBuffer writes are visible to atmosphere rendering
+      BufferBarrier:=TVkBufferMemoryBarrier.Create(VK_ACCESS_SHADER_WRITE_BIT,
+                                                   VK_ACCESS_SHADER_READ_BIT,
+                                                   VK_QUEUE_FAMILY_IGNORED,
+                                                   VK_QUEUE_FAMILY_IGNORED,
+                                                   fData.fPrecipitationAtmosphereMapBuffer.Handle,
+                                                   0,
+                                                   fData.fPrecipitationAtmosphereMapBuffer.Size);
+                                                   
+      aCommandBuffer.CmdPipelineBarrier(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                                        VK_PIPELINE_STAGE_VERTEX_SHADER_BIT or VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                                        0,
+                                        0,nil,
+                                        1,@BufferBarrier,
+                                        0,nil);
+
      finally
       fVulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
      end;
