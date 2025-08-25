@@ -27264,7 +27264,7 @@ procedure TpvScene3DPlanet.PrepareAtmospherePrecipitationSimulation(const aQueue
                                                                     const aInFlightFrameIndex:TpvSizeInt);
 var InFlightFrameData:TData;
 begin
- if assigned(fVulkanDevice) and (aInFlightFrameIndex>=0) then begin
+ if false and assigned(fVulkanDevice) and (aInFlightFrameIndex>=0) then begin
   InFlightFrameData:=fInFlightFrameDataList[aInFlightFrameIndex];
   if assigned(InFlightFrameData) then begin
    
