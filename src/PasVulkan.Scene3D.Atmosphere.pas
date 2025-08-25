@@ -4401,6 +4401,23 @@ begin
 
  end;
 
+ // Add memory barrier to ensure atmosphere map min/max buffer writes are visible to atmosphere rendering
+ if (fType=TDirectionalMap.Atmosphere) and assigned(fAtmosphere.fAtmosphereMapMinMaxBuffer) then begin
+  BufferMemoryBarrier:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                     TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT),
+                                                     VK_QUEUE_FAMILY_IGNORED,
+                                                     VK_QUEUE_FAMILY_IGNORED,
+                                                     fAtmosphere.fAtmosphereMapMinMaxBuffer.Handle,
+                                                     0,
+                                                     fAtmosphere.fAtmosphereMapMinMaxBuffer.Size);
+  aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT),
+                                    0,
+                                    0,nil,
+                                    1,@BufferMemoryBarrier,
+                                    0,nil);
+ end;
+
 end;
 
 { TpvScene3DAtmosphere }
