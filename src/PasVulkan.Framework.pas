@@ -11151,6 +11151,9 @@ begin
      for SubIndex:=0 to length(fQueueFamilyQueues[Index])-1 do begin
       fDeviceVulkan.GetDeviceQueue(fDeviceHandle,Index,SubIndex,@Queue);
       fQueueFamilyQueues[Index,SubIndex]:=TpvVulkanQueue.Create(self,Queue,Index);
+      if assigned(fDebugUtils) then begin
+       fDebugUtils.SetObjectName(fQueueFamilyQueues[Index,SubIndex].Handle,VK_OBJECT_TYPE_QUEUE,'TpvVulkanDevice.fQueueFamilyQueues['+IntToStr(Index)+','+IntToStr(SubIndex)+']');
+      end;
      end;
     end else begin
      raise EpvVulkanException.Create('Couldn''t create requested Vulkan queue');
@@ -11163,6 +11166,9 @@ begin
   if fUniversalQueueFamilyIndex>=0 then begin
    fUniversalQueue:=fQueueFamilyQueues[fUniversalQueueFamilyIndex,0];
    fUniversalQueues:=fQueueFamilyQueues[fUniversalQueueFamilyIndex];
+   if assigned(fDebugUtils) and assigned(fUniversalQueue) then begin
+    fDebugUtils.SetObjectName(fUniversalQueue.Handle,VK_OBJECT_TYPE_QUEUE,'TpvVulkanDevice.UniversalQueue');
+   end;
   end else begin
    fUniversalQueue:=nil;
    fUniversalQueues:=nil;
@@ -11171,6 +11177,9 @@ begin
   if fPresentQueueFamilyIndex>=0 then begin
    fPresentQueue:=fQueueFamilyQueues[fPresentQueueFamilyIndex,0];
    fPresentQueues:=fQueueFamilyQueues[fPresentQueueFamilyIndex];
+   if assigned(fDebugUtils) and assigned(fPresentQueue) then begin
+    fDebugUtils.SetObjectName(fPresentQueue.Handle,VK_OBJECT_TYPE_QUEUE,'TpvVulkanDevice.PresentQueue');
+   end;
   end else begin
    fPresentQueue:=nil;
    fPresentQueues:=nil;
@@ -11179,6 +11188,9 @@ begin
   if fGraphicsQueueFamilyIndex>=0 then begin
    fGraphicsQueue:=fQueueFamilyQueues[fGraphicsQueueFamilyIndex,0];
    fGraphicsQueues:=fQueueFamilyQueues[fGraphicsQueueFamilyIndex];
+   if assigned(fDebugUtils) and assigned(fGraphicsQueue) then begin
+    fDebugUtils.SetObjectName(fGraphicsQueue.Handle,VK_OBJECT_TYPE_QUEUE,'TpvVulkanDevice.GraphicsQueue');
+   end;
   end else begin
    fGraphicsQueue:=nil;
    fGraphicsQueues:=nil;
@@ -11187,6 +11199,9 @@ begin
   if fComputeQueueFamilyIndex>=0 then begin
    fComputeQueue:=fQueueFamilyQueues[fComputeQueueFamilyIndex,0];
    fComputeQueues:=fQueueFamilyQueues[fComputeQueueFamilyIndex];
+   if assigned(fDebugUtils) and assigned(fComputeQueue) then begin
+    fDebugUtils.SetObjectName(fComputeQueue.Handle,VK_OBJECT_TYPE_QUEUE,'TpvVulkanDevice.ComputeQueue');
+   end;
   end else begin
    fComputeQueue:=nil;
    fComputeQueues:=nil;
@@ -11195,6 +11210,9 @@ begin
   if fTransferQueueFamilyIndex>=0 then begin
    fTransferQueue:=fQueueFamilyQueues[fTransferQueueFamilyIndex,0];
    fTransferQueues:=fQueueFamilyQueues[fTransferQueueFamilyIndex];
+   if assigned(fDebugUtils) and assigned(fTransferQueue) then begin
+    fDebugUtils.SetObjectName(fTransferQueue.Handle,VK_OBJECT_TYPE_QUEUE,'TpvVulkanDevice.TransferQueue');
+   end;
   end else begin
    fTransferQueue:=nil;
    fTransferQueues:=nil;
