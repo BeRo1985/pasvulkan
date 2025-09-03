@@ -11261,6 +11261,15 @@ begin
     end;
    end;
 
+   if fUpdateQueueFamilyIndex<0 then begin
+    // Otherwise just use the universal queue
+    fUpdateQueue:=fUniversalQueue;
+    fUpdateQueueFamilyIndex:=fUniversalQueueFamilyIndex;
+    fUpdateQueues:=nil;
+    SetLength(fUpdateQueues,1);
+    fUpdateQueues[0]:=fUpdateQueue;
+   end;
+
   end;
 
   fMemoryManager.Initialize;
