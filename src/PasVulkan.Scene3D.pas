@@ -32623,7 +32623,7 @@ begin
      SubmitInfo.pSignalSemaphores:=@fPlanetWaterSimulationToSignalSemaphores[0];
     end;
 
-   fPlanetWaterSimulationQueue.Submit(1,@SubmitInfo,nil);
+    fPlanetWaterSimulationQueue.Submit(1,@SubmitInfo,nil);
 
    end else begin
 
